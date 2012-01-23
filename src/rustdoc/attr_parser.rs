@@ -289,7 +289,9 @@ mod test {
         let parse_sess = @{
             cm: cm,
             mutable next_id: 0,
-            diagnostic: diagnostic::mk_handler(cm, none)
+            diagnostic: diagnostic::mk_handler(cm, none),
+            mutable chpos: 0u,
+            mutable byte_pos: 0u
         };
         let parser = parser::new_parser_from_source_str(
             parse_sess, [], "-", source);

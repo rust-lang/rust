@@ -488,7 +488,9 @@ fn build_session(sopts: @session::options, input: str,
       parse_sess: @{
           cm: codemap,
           mutable next_id: 1,
-          diagnostic: diagnostic_handler
+          diagnostic: diagnostic_handler,
+          mutable chpos: 0u,
+          mutable byte_pos: 0u
       },
       codemap: codemap,
       // For a library crate, this is always none
