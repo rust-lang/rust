@@ -36,6 +36,7 @@ Lennart Kudling
 Lindsey Kuper <lindsey@rockstargirl.org>
 Marijn Haverbeke <marijnh@gmail.com>
 Matt Brubeck <mbrubeck@limpet.net>
+Matthew O'Connor <thegreendragon@gmail.com>
 Michael Bebenita <mbebenita@mozilla.com>
 Michael Sullivan <sully@msully.net>
 Niko Matsakis <niko@alum.mit.edu>
