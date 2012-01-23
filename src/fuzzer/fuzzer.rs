@@ -419,7 +419,9 @@ fn parse_and_print(code: str) -> str {
     let sess = @{
         cm: cm,
         mutable next_id: 0,
-        diagnostic: diagnostic::mk_handler(cm, none)
+        diagnostic: diagnostic::mk_handler(cm, none),
+        mutable chpos: 0u,
+        mutable byte_pos: 0u
     };
     write_file(filename, code);
     let crate = parser::parse_crate_from_source_str(
@@ -566,7 +568,9 @@ fn check_variants(files: [str], cx: context) {
         let sess = @{
             cm: cm,
             mutable next_id: 0,
-            diagnostic: diagnostic::mk_handler(cm, none)
+            diagnostic: diagnostic::mk_handler(cm, none),
+            mutable chpos: 0u,
+            mutable byte_pos: 0u
         };
         let crate =
             parser::parse_crate_from_source_str(

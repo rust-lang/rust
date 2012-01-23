@@ -12,7 +12,9 @@ fn new_parse_sess() -> parser::parse_sess {
     let sess = @{
         cm: cm,
         mutable next_id: 1,
-        diagnostic: diagnostic::mk_handler(cm, none)
+        diagnostic: diagnostic::mk_handler(cm, none),
+        mutable chpos: 0u,
+        mutable byte_pos: 0u
     };
     ret sess;
 }
