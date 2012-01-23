@@ -363,7 +363,7 @@ Iterate over the characters in a string
 FIXME: A synonym to iter_chars
 */
 fn chars_iter(ss: str, it: fn&(char)) {
-   iter_chars(ss, it)
+    iter_chars(ss, it)
 }
 
 /*
@@ -374,13 +374,13 @@ Iterate over the bytes in a string
 FIXME: Should it really include the last byte '\0'?
 */
 fn bytes_iter(ss: str, it: fn&(u8)) {
-   let pos = 0u;
-   let len = byte_len(ss);
+    let pos = 0u;
+    let len = byte_len(ss);
 
-   while (pos < len) {
-      it(ss[pos]);
-      pos += 1u;
-   }
+    while (pos < len) {
+        it(ss[pos]);
+        pos += 1u;
+    }
 }
 
 /*
@@ -920,7 +920,7 @@ Function: words_iter
 Apply a function to each word
 */
 fn words_iter(ss: str, ff: fn&(&&str)) {
-   vec::iter(words(ss), ff)
+    vec::iter(words(ss), ff)
 }
 
 /*
@@ -1723,29 +1723,29 @@ mod tests {
         assert(escape("abc\"def") == "abc\\\"def");
     }
 
-   #[test]
-   fn test_map() {
-      assert "" == map("", char::to_upper);
-      assert "YMCA" == map("ymca", char::to_upper);
-   }
+    #[test]
+    fn test_map() {
+        assert "" == map("", char::to_upper);
+        assert "YMCA" == map("ymca", char::to_upper);
+    }
 
-   #[test]
-   fn test_all() {
-       assert true  == all("", char::is_uppercase);
-       assert false == all("ymca", char::is_uppercase);
-       assert true  == all("YMCA", char::is_uppercase);
-       assert false == all("yMCA", char::is_uppercase);
-       assert false == all("YMCy", char::is_uppercase);
-   }
+    #[test]
+    fn test_all() {
+        assert true  == all("", char::is_uppercase);
+        assert false == all("ymca", char::is_uppercase);
+        assert true  == all("YMCA", char::is_uppercase);
+        assert false == all("yMCA", char::is_uppercase);
+        assert false == all("YMCy", char::is_uppercase);
+    }
 
-   #[test]
-   fn test_any() {
-       assert false  == any("", char::is_uppercase);
-       assert false == any("ymca", char::is_uppercase);
-       assert true  == any("YMCA", char::is_uppercase);
-       assert true == any("yMCA", char::is_uppercase);
-       assert true == any("YMCy", char::is_uppercase);
-   }
+    #[test]
+    fn test_any() {
+        assert false  == any("", char::is_uppercase);
+        assert false == any("ymca", char::is_uppercase);
+        assert true  == any("YMCA", char::is_uppercase);
+        assert true == any("yMCA", char::is_uppercase);
+        assert true == any("YMCy", char::is_uppercase);
+    }
 
     #[test]
     fn test_windowed() {
