@@ -44,11 +44,32 @@ fn fold_fn(
     fold: fold::fold<ctxt>,
     doc: doc::fndoc
 ) -> doc::fndoc {
+    let doc = ~{
+        args: vec::filter_map(doc.args) {|doc|
+            if option::is_some(doc.desc) {
+                some(doc)
+            } else {
+                none
+            }
+        }
+        with *doc
+    };
+
     fold.ctxt.have_docs =
         doc.brief != none
         || doc.desc != none
         || doc.return.desc != none;
     ret doc;
+}
+
+#[test]
+fn should_elide_undocumented_arguments() {
+    let source = "#[doc = \"hey\"] fn a(b: int) { }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = attr_pass::mk_pass()(srv, doc);
+    let doc = run(srv, doc);
+    assert vec::is_empty(doc.topmod.fns[0].args);
 }
 
 fn fold_modlist(
@@ -65,6 +86,35 @@ fn fold_modlist(
     })
 }
 
+#[test]
+fn should_elide_undocumented_mods() {
+    let source = "mod a { }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = run(srv, doc);
+    assert vec::is_empty(*doc.topmod.mods);
+}
+
+#[test]
+fn should_not_elide_undocument_mods_with_documented_mods() {
+    let source = "mod a { #[doc = \"b\"] mod b { } }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = attr_pass::mk_pass()(srv, doc);
+    let doc = run(srv, doc);
+    assert vec::is_not_empty(*doc.topmod.mods);
+}
+
+#[test]
+fn should_not_elide_undocument_mods_with_documented_fns() {
+    let source = "mod a { #[doc = \"b\"] fn b() { } }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = attr_pass::mk_pass()(srv, doc);
+    let doc = run(srv, doc);
+    assert vec::is_not_empty(*doc.topmod.mods);
+}
+
 fn fold_fnlist(
     fold: fold::fold<ctxt>,
     list: doc::fnlist
@@ -79,43 +129,11 @@ fn fold_fnlist(
     })
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn should_elide_undocumented_mods() {
-        let source = "mod a { }";
-        let srv = astsrv::mk_srv_from_str(source);
-        let doc = extract::from_srv(srv, "");
-        let doc = run(srv, doc);
-        assert vec::is_empty(*doc.topmod.mods);
-    }
-
-    #[test]
-    fn should_not_elide_undocument_mods_with_documented_mods() {
-        let source = "mod a { #[doc = \"b\"] mod b { } }";
-        let srv = astsrv::mk_srv_from_str(source);
-        let doc = extract::from_srv(srv, "");
-        let doc = attr_pass::mk_pass()(srv, doc);
-        let doc = run(srv, doc);
-        assert vec::is_not_empty(*doc.topmod.mods);
-    }
-
-    #[test]
-    fn should_not_elide_undocument_mods_with_documented_fns() {
-        let source = "mod a { #[doc = \"b\"] fn b() { } }";
-        let srv = astsrv::mk_srv_from_str(source);
-        let doc = extract::from_srv(srv, "");
-        let doc = attr_pass::mk_pass()(srv, doc);
-        let doc = run(srv, doc);
-        assert vec::is_not_empty(*doc.topmod.mods);
-    }
-
-    #[test]
-    fn should_elide_undocumented_fns() {
-        let source = "fn a() { }";
-        let srv = astsrv::mk_srv_from_str(source);
-        let doc = extract::from_srv(srv, "");
-        let doc = run(srv, doc);
-        assert vec::is_empty(*doc.topmod.fns);
-    }
+#[test]
+fn should_elide_undocumented_fns() {
+    let source = "fn a() { }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = run(srv, doc);
+    assert vec::is_empty(*doc.topmod.fns);
 }
