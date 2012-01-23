@@ -1,5 +1,5 @@
-// Regression test for issue #1362
-//   (without out that fix the location will be bogus)
+// Regression test for issue #1362 - without that fix the span will be bogus
+// no-reformat
 fn main() {
   let x: uint = 20; //! ERROR mismatched types
 }
