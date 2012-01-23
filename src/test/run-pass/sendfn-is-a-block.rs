@@ -1,4 +1,4 @@
-fn test(f: block(uint) -> uint) -> uint {
+fn test(f: fn(uint) -> uint) -> uint {
     ret f(22u);
 }
 

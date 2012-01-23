@@ -88,17 +88,17 @@ iface map<K: copy, V: copy> {
 
     Iterate over all the key/value pairs in the map
     */
-    fn items(block(K, V));
+    fn items(fn(K, V));
     /*
     Method: keys
 
     Iterate over all the keys in the map
     */
-    fn keys(block(K));
+    fn keys(fn(K));
     /*
     Iterate over all the values in the map
     */
-    fn values(block(V));
+    fn values(fn(V));
 }
 
 // FIXME: package this up and export it as a datatype usable for
@@ -246,7 +246,7 @@ mod chained {
     }
 
     fn foreach_entry<K: copy, V: copy>(chain0: chain<K,V>,
-                                     blk: block(@entry<K,V>)) {
+                                     blk: fn(@entry<K,V>)) {
         let chain = chain0;
         while true {
             alt chain {
@@ -261,7 +261,7 @@ mod chained {
     }
 
     fn foreach_chain<K: copy, V: copy>(chains: [const chain<K,V>],
-                                     blk: block(@entry<K,V>)) {
+                                     blk: fn(@entry<K,V>)) {
         let i = 0u, n = vec::len(chains);
         while i < n {
             foreach_entry(chains[i], blk);
@@ -281,7 +281,7 @@ mod chained {
         }
     }
 
-    fn items<K: copy, V: copy>(tbl: t<K,V>, blk: block(K,V)) {
+    fn items<K: copy, V: copy>(tbl: t<K,V>, blk: fn(K,V)) {
         let tbl_chains = tbl.chains;  // Satisfy alias checker.
         foreach_chain(tbl_chains) { |entry|
             let key = entry.key;
@@ -310,11 +310,11 @@ mod chained {
 
         fn remove(k: K) -> option::t<V> { remove(self, k) }
 
-        fn items(blk: block(K, V)) { items(self, blk); }
+        fn items(blk: fn(K, V)) { items(self, blk); }
 
-        fn keys(blk: block(K)) { items(self) { |k, _v| blk(k) } }
+        fn keys(blk: fn(K)) { items(self) { |k, _v| blk(k) } }
 
-        fn values(blk: block(V)) { items(self) { |_k, v| blk(v) } }
+        fn values(blk: fn(V)) { items(self) { |_k, v| blk(v) } }
     }
 
     fn mk<K: copy, V: copy>(hasher: hashfn<K>, eqer: eqfn<K>) -> map<K,V> {

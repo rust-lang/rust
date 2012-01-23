@@ -157,7 +157,7 @@ fn trans_vtable(ccx: @crate_ctxt, id: ast::node_id, name: str,
 }
 
 fn trans_wrapper(ccx: @crate_ctxt, pt: [ast::ident], llfty: TypeRef,
-                 fill: block(ValueRef, @block_ctxt) -> @block_ctxt)
+                 fill: fn(ValueRef, @block_ctxt) -> @block_ctxt)
     -> ValueRef {
     let lcx = @{path: pt, module_path: [], ccx: ccx};
     let name = link::mangle_internal_name_by_path(ccx, pt);

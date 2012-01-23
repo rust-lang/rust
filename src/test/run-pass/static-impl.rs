@@ -11,7 +11,7 @@ mod b {
 
 impl util for uint {
     fn str() -> str { uint::str(self) }
-    fn times(f: block(uint)) {
+    fn times(f: fn(uint)) {
         let c = 0u;
         while c < self { f(c); c += 1u; }
     }
@@ -19,8 +19,8 @@ impl util for uint {
 
 impl util<T> for [T] {
     fn len() -> uint { vec::len(self) }
-    fn iter(f: block(T)) { for x in self { f(x); } }
-    fn map<U>(f: block(T) -> U) -> [U] {
+    fn iter(f: fn(T)) { for x in self { f(x); } }
+    fn map<U>(f: fn(T) -> U) -> [U] {
         let r = [];
         for elt in self { r += [f(elt)]; }
         r

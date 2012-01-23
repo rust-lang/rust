@@ -241,7 +241,7 @@ fn follow_for_trans(cx: ext_ctxt, mmaybe: option::t<arb_depth<matchable>>,
 }
 
 /* helper for transcribe_exprs: what vars from `b` occur in `e`? */
-fn free_vars(b: bindings, e: @expr, it: block(ident)) {
+fn free_vars(b: bindings, e: @expr, it: fn(ident)) {
     let idents: hashmap<ident, ()> = new_str_hash::<()>();
     fn mark_ident(&&i: ident, _fld: ast_fold, b: bindings,
                   idents: hashmap<ident, ()>) -> ident {
@@ -536,7 +536,7 @@ fn block_to_ident(blk: blk_) -> option::t<ident> {
 
 fn p_t_s_r_mac(cx: ext_ctxt, mac: ast::mac, s: selector, b: binders) {
     fn select_pt_1(cx: ext_ctxt, m: matchable,
-                   fn_m: block(ast::mac) -> match_result) -> match_result {
+                   fn_m: fn(ast::mac) -> match_result) -> match_result {
         ret alt m {
               match_expr(e) {
                 alt e.node { expr_mac(mac) { fn_m(mac) } _ { none } }

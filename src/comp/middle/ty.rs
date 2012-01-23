@@ -1083,7 +1083,7 @@ fn type_is_native(cx: ctxt, ty: t) -> bool {
     alt struct(cx, ty) { ty_native(_) { ret true; } _ { ret false; } }
 }
 
-fn type_structurally_contains(cx: ctxt, ty: t, test: block(sty) -> bool) ->
+fn type_structurally_contains(cx: ctxt, ty: t, test: fn(sty) -> bool) ->
    bool {
     let sty = struct(cx, ty);
     if test(sty) { ret true; }
@@ -1420,7 +1420,7 @@ fn hash_type_structure(st: sty) -> uint {
 
 fn hash_raw_ty(&&rt: @raw_t) -> uint { ret rt.hash; }
 
-fn arg_eq<T>(eq: block(T, T) -> bool,
+fn arg_eq<T>(eq: fn(T, T) -> bool,
              a: @sp_constr_arg<T>,
              b: @sp_constr_arg<T>)
    -> bool {
@@ -1439,7 +1439,7 @@ fn arg_eq<T>(eq: block(T, T) -> bool,
     }
 }
 
-fn args_eq<T>(eq: block(T, T) -> bool,
+fn args_eq<T>(eq: fn(T, T) -> bool,
               a: [@sp_constr_arg<T>],
               b: [@sp_constr_arg<T>]) -> bool {
     let i: uint = 0u;
@@ -1930,7 +1930,6 @@ mod unify {
         fn sub_proto(p_sub: ast::proto, p_sup: ast::proto) -> bool {
             ret alt (p_sub, p_sup) {
               (_, ast::proto_any) { true }
-              (_, ast::proto_block) { true } /* NDM temporary */
               (ast::proto_bare, _) { true }
 
               // Equal prototypes are always subprotos:
@@ -2083,7 +2082,7 @@ mod unify {
     }
 
     fn unify_tps(cx: @ctxt, expected_tps: [t], actual_tps: [t],
-                 variance: variance, finish: block([t]) -> result) -> result {
+                 variance: variance, finish: fn([t]) -> result) -> result {
         let result_tps = [], i = 0u;
         for exp in expected_tps {
             let act = actual_tps[i];

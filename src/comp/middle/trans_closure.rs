@@ -57,7 +57,7 @@ import shape::{size_of};
 // closure is allocated in the task heap and is reference counted.
 // For a block, the closure is allocated on the stack.  Note that in
 // all cases we allocate space for a ref count just to make our lives
-// easier when upcasting to block(T)->U, in the shape code, and so
+// easier when upcasting to fn(T)->U, in the shape code, and so
 // forth.
 //
 // ## Opaque Closures ##
@@ -637,7 +637,7 @@ fn trans_bind_1(cx: @block_ctxt, outgoing_fty: ty::t,
 fn make_null_test(
     in_bcx: @block_ctxt,
     ptr: ValueRef,
-    blk: block(@block_ctxt) -> @block_ctxt)
+    blk: fn(@block_ctxt) -> @block_ctxt)
     -> @block_ctxt {
     let not_null_bcx = new_sub_block_ctxt(in_bcx, "not null");
     let next_bcx = new_sub_block_ctxt(in_bcx, "next");

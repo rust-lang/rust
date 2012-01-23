@@ -632,7 +632,7 @@ fn resolve_constr(e: @env, c: @ast::constr, sc: scopes, _v: vt<scopes>) {
 fn resolve_import(e: env, defid: ast::def_id, name: ast::ident,
                   ids: [ast::ident], sp: codemap::span, sc: scopes) {
     fn register(e: env, id: node_id, cx: ctxt, sp: codemap::span,
-                name: ast::ident, lookup: block(namespace) -> option::t<def>,
+                name: ast::ident, lookup: fn(namespace) -> option::t<def>,
                 impls: [@_impl]) {
         let val = lookup(ns_val(ns_any_value)), typ = lookup(ns_type),
             md = lookup(ns_module);
@@ -1712,7 +1712,7 @@ fn add_name(ch: checker, sp: span, name: ident) {
 
 fn ident_id(&&i: ident) -> ident { ret i; }
 
-fn ensure_unique<T>(e: env, sp: span, elts: [T], id: block(T) -> ident,
+fn ensure_unique<T>(e: env, sp: span, elts: [T], id: fn(T) -> ident,
                     kind: str) {
     let ch = checker(e, kind);
     for elt: T in elts { add_name(ch, sp, id(elt)); }

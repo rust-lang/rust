@@ -1,6 +1,6 @@
 // error-pattern:fail
 
-fn x(it: block(int)) {
+fn x(it: fn(int)) {
     let a = @0;
     it(1);
 }

@@ -258,7 +258,7 @@ fn trans_add(bcx: @block_ctxt, vec_ty: ty::t, lhs: ValueRef,
 
 type val_and_ty_fn = fn@(@block_ctxt, ValueRef, ty::t) -> result;
 
-type iter_vec_block = block(@block_ctxt, ValueRef, ty::t) -> @block_ctxt;
+type iter_vec_block = fn(@block_ctxt, ValueRef, ty::t) -> @block_ctxt;
 
 fn iter_vec_raw(bcx: @block_ctxt, vptr: ValueRef, vec_ty: ty::t,
                 fill: ValueRef, f: iter_vec_block) -> @block_ctxt {

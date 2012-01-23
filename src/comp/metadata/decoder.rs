@@ -460,7 +460,7 @@ fn list_crate_items(bytes: @[u8], md: ebml::doc, out: io::writer) {
     out.write_str("\n");
 }
 
-fn iter_crate_items(bytes: @[u8], proc: block(str, ast::def_id)) {
+fn iter_crate_items(bytes: @[u8], proc: fn(str, ast::def_id)) {
     let md = ebml::new_doc(bytes);
     let paths = ebml::get_doc(md, tag_paths);
     let index = ebml::get_doc(paths, tag_index);

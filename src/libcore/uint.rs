@@ -115,7 +115,7 @@ Function: range
 
 Iterate over the range [`lo`..`hi`)
 */
-fn range(lo: uint, hi: uint, it: block(uint)) {
+fn range(lo: uint, hi: uint, it: fn(uint)) {
     let i = lo;
     while i < hi { it(i); i += 1u; }
 }
@@ -136,7 +136,7 @@ Returns:
 `true` If execution proceeded correctly, `false` if it was interrupted,
 that is if `it` returned `false` at any point.
 */
-fn loop(lo: uint, hi: uint, it: block(uint) -> bool) -> bool {
+fn loop(lo: uint, hi: uint, it: fn(uint) -> bool) -> bool {
     let i = lo;
     while i < hi {
         if (!it(i)) { ret false; }

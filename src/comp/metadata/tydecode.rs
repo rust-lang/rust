@@ -16,7 +16,7 @@ export parse_bounds_data;
 // data buffer. Whatever format you choose should not contain pipe characters.
 
 // Callback to translate defs to strs or back:
-type conv_did = block(ast::def_id) -> ast::def_id;
+type conv_did = fn(ast::def_id) -> ast::def_id;
 
 type pstate = {data: @[u8], crate: int, mutable pos: uint, tcx: ty::ctxt};
 
@@ -138,7 +138,7 @@ fn parse_ty_constr_arg(st: @pstate) -> ast::constr_arg_general_<@path> {
 }
 
 fn parse_constr<T: copy>(st: @pstate, conv: conv_did,
-                         pser: block(@pstate) -> ast::constr_arg_general_<T>)
+                         pser: fn(@pstate) -> ast::constr_arg_general_<T>)
     -> @ty::constr_general<T> {
     let sp = ast_util::dummy_sp(); // FIXME: use a real span
     let args: [@sp_constr_arg<T>] = [];

@@ -436,7 +436,7 @@ fn check_if(c: @ast::expr, then: ast::blk, els: option::t<@ast::expr>,
     *sc.invalid = append_invalid(*sc.invalid, then_invalid, orig_invalid);
 }
 
-fn check_loop(cx: ctx, sc: scope, checker: block()) {
+fn check_loop(cx: ctx, sc: scope, checker: fn()) {
     let orig_invalid = filter_invalid(*sc.invalid, sc.bs);
     checker();
     let new_invalid = filter_invalid(*sc.invalid, sc.bs);

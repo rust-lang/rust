@@ -110,7 +110,7 @@ impl <V: copy> of map::map<uint, V> for smallintmap<V> {
     fn get(&&key: uint) -> V { get(self, key) }
     fn find(&&key: uint) -> option::t<V> { find(self, key) }
     fn rehash() { fail }
-    fn items(it: block(&&uint, V)) {
+    fn items(it: fn(&&uint, V)) {
         let idx = 0u;
         for item in self.v {
             alt item {
@@ -122,14 +122,14 @@ impl <V: copy> of map::map<uint, V> for smallintmap<V> {
             idx += 1u;
         }
     }
-    fn keys(it: block(&&uint)) {
+    fn keys(it: fn(&&uint)) {
         let idx = 0u;
         for item in self.v {
             if item != none { it(idx); }
             idx += 1u;
         }
     }
-    fn values(it: block(V)) {
+    fn values(it: fn(V)) {
         for item in self.v {
             alt item { some(elt) { it(elt); } _ {} }
         }

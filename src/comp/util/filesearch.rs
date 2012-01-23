@@ -18,7 +18,7 @@ export relative_target_lib_path;
 export get_cargo_root;
 export libdir;
 
-type pick<T> = block(path: fs::path) -> option::t<T>;
+type pick<T> = fn(path: fs::path) -> option::t<T>;
 
 fn pick_file(file: fs::path, path: fs::path) -> option::t<fs::path> {
     if fs::basename(path) == file { option::some(path) }

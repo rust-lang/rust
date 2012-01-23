@@ -419,7 +419,7 @@ Returns:
 `true` If execution proceeded correctly, `false` if it was interrupted,
 that is if `it` returned `false` at any point.
  */
-fn loop_chars(rope: rope, it: block(char) -> bool) -> bool {
+fn loop_chars(rope: rope, it: fn(char) -> bool) -> bool {
    alt(rope) {
       node::empty { ret true }
       node::content(x) { ret node::loop_chars(x, it) }
@@ -435,7 +435,7 @@ Parameters:
 rope - A rope to traverse. It may be empty
 it - A block to execute with each consecutive character of the rope.
  */
-fn iter_chars(rope: rope, it: block(char)) {
+fn iter_chars(rope: rope, it: fn(char)) {
     loop_chars(rope) {|x|
         it(x);
         ret true
@@ -466,7 +466,7 @@ Returns:
 `true` If execution proceeded correctly, `false` if it was interrupted,
 that is if `it` returned `false` at any point.
  */
-fn loop_leaves(rope: rope, it: block(node::leaf) -> bool) -> bool{
+fn loop_leaves(rope: rope, it: fn(node::leaf) -> bool) -> bool{
    alt(rope) {
       node::empty { ret true }
       node::content(x) {ret node::loop_leaves(x, it)}
@@ -1135,7 +1135,7 @@ mod node {
         ret result;
     }
 
-    fn loop_chars(node: @node, it: block(char) -> bool) -> bool {
+    fn loop_chars(node: @node, it: fn(char) -> bool) -> bool {
         ret loop_leaves(node, {|leaf|
             ret str::loop_chars_sub(*leaf.content,
                                     leaf.byte_offset,
@@ -1159,7 +1159,7 @@ mod node {
     `true` If execution proceeded correctly, `false` if it was interrupted,
     that is if `it` returned `false` at any point.
     */
-    fn loop_leaves(node: @node, it: block(leaf) -> bool) -> bool{
+    fn loop_leaves(node: @node, it: fn(leaf) -> bool) -> bool{
         let current = node;
         while true {
             alt(*current) {

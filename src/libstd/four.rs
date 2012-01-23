@@ -195,7 +195,7 @@ Function: all_values
 Iterates over all truth values by passing them to `blk`
 in an unspecified order
 */
-fn all_values(blk: block(v: t)) {
+fn all_values(blk: fn(v: t)) {
     blk(both);
     blk(four::true);
     blk(four::false);

@@ -10,7 +10,7 @@ export quick_sort;
 export quick_sort3;
 
 /* Type: lteq */
-type lteq<T> = block(T, T) -> bool;
+type lteq<T> = fn(T, T) -> bool;
 
 /*
 Function: merge_sort

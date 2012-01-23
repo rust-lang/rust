@@ -215,7 +215,7 @@ fn replace_ty_in_crate(crate: ast::crate, i: uint, newty: ast::ty, tm: test_mode
     *crate2
 }
 
-fn under(n: uint, it: block(uint)) {
+fn under(n: uint, it: fn(uint)) {
     let i: uint = 0u;
     while i < n { it(i); i += 1u; }
 }

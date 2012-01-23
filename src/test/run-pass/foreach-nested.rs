@@ -2,7 +2,7 @@
 
 
 // -*- rust -*-
-fn two(it: block(int)) { it(0); it(1); }
+fn two(it: fn(int)) { it(0); it(1); }
 
 fn main() {
     let a: [mutable int] = [mutable -1, -1, -1, -1];

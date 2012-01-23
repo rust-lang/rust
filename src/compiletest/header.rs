@@ -63,7 +63,7 @@ fn is_test_ignored(config: config, testfile: str) -> bool {
     }
 }
 
-fn iter_header(testfile: str, it: block(str)) {
+fn iter_header(testfile: str, it: fn(str)) {
     let rdr = result::get(io::file_reader(testfile));
     while !rdr.eof() {
         let ln = rdr.read_line();

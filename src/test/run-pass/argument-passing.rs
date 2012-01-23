@@ -6,7 +6,7 @@ fn f1(a: {mutable x: int}, &b: int, -c: int) -> int {
     ret r;
 }
 
-fn f2(a: int, f: block(int)) -> int { f(1); ret a; }
+fn f2(a: int, f: fn(int)) -> int { f(1); ret a; }
 
 fn main() {
     let a = {mutable x: 1}, b = 2, c = 3;

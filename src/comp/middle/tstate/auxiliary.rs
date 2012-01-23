@@ -968,7 +968,7 @@ fn non_init_constraint_mentions(_fcx: fn_ctxt, c: norm_constraint, v: node_id)
 }
 
 fn args_mention<T>(args: [@constr_arg_use],
-                   q: block([T], node_id) -> bool,
+                   q: fn([T], node_id) -> bool,
                    s: [T]) -> bool {
     /*
       FIXME

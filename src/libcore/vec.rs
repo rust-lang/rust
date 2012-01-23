@@ -26,7 +26,7 @@ Type: init_op
 
 A function used to initialize the elements of a vector.
 */
-type init_op<T> = block(uint) -> T;
+type init_op<T> = fn(uint) -> T;
 
 
 /*
@@ -402,7 +402,7 @@ Function: map
 
 Apply a function to each element of a vector and return the results
 */
-fn map<T, U>(v: [T], f: block(T) -> U) -> [U] {
+fn map<T, U>(v: [T], f: fn(T) -> U) -> [U] {
     let result = [];
     reserve(result, len(v));
     for elem: T in v { result += [f(elem)]; }
@@ -414,7 +414,7 @@ Function: map_mut
 
 Apply a function to each element of a mutable vector and return the results
 */
-fn map_mut<T: copy, U>(v: [const T], f: block(T) -> U) -> [U] {
+fn map_mut<T: copy, U>(v: [const T], f: fn(T) -> U) -> [U] {
     let result = [];
     reserve(result, len(v));
     for elem: T in v {
@@ -429,7 +429,7 @@ Function: map2
 
 Apply a function to each pair of elements and return the results
 */
-fn map2<T: copy, U: copy, V>(v0: [T], v1: [U], f: block(T, U) -> V) -> [V] {
+fn map2<T: copy, U: copy, V>(v0: [T], v1: [U], f: fn(T, U) -> V) -> [V] {
     let v0_len = len(v0);
     if v0_len != len(v1) { fail; }
     let u: [V] = [];
@@ -446,7 +446,7 @@ Apply a function to each element of a vector and return the results
 If function `f` returns `none` then that element is excluded from
 the resulting vector.
 */
-fn filter_map<T: copy, U: copy>(v: [const T], f: block(T) -> option::t<U>)
+fn filter_map<T: copy, U: copy>(v: [const T], f: fn(T) -> option::t<U>)
     -> [U] {
     let result = [];
     for elem: T in v {
@@ -467,7 +467,7 @@ holds.
 Apply function `f` to each element of `v` and return a vector containing
 only those elements for which `f` returned true.
 */
-fn filter<T: copy>(v: [T], f: block(T) -> bool) -> [T] {
+fn filter<T: copy>(v: [T], f: fn(T) -> bool) -> [T] {
     let result = [];
     for elem: T in v {
         if f(elem) { result += [elem]; }
@@ -492,7 +492,7 @@ Function: foldl
 
 Reduce a vector from left to right
 */
-fn foldl<T: copy, U>(z: T, v: [const U], p: block(T, U) -> T) -> T {
+fn foldl<T: copy, U>(z: T, v: [const U], p: fn(T, U) -> T) -> T {
     let accum = z;
     iter(v) { |elt|
         accum = p(accum, elt);
@@ -505,7 +505,7 @@ Function: foldr
 
 Reduce a vector from right to left
 */
-fn foldr<T, U: copy>(v: [const T], z: U, p: block(T, U) -> U) -> U {
+fn foldr<T, U: copy>(v: [const T], z: U, p: fn(T, U) -> U) -> U {
     let accum = z;
     riter(v) { |elt|
         accum = p(elt, accum);
@@ -520,7 +520,7 @@ Return true if a predicate matches any elements
 
 If the vector contains no elements then false is returned.
 */
-fn any<T>(v: [T], f: block(T) -> bool) -> bool {
+fn any<T>(v: [T], f: fn(T) -> bool) -> bool {
     for elem: T in v { if f(elem) { ret true; } }
     ret false;
 }
@@ -532,7 +532,7 @@ Return true if a predicate matches any elements in both vectors.
 
 If the vectors contains no elements then false is returned.
 */
-fn any2<T, U>(v0: [T], v1: [U], f: block(T, U) -> bool) -> bool {
+fn any2<T, U>(v0: [T], v1: [U], f: fn(T, U) -> bool) -> bool {
     let v0_len = len(v0);
     let v1_len = len(v1);
     let i = 0u;
@@ -550,7 +550,7 @@ Return true if a predicate matches all elements
 
 If the vector contains no elements then true is returned.
 */
-fn all<T>(v: [T], f: block(T) -> bool) -> bool {
+fn all<T>(v: [T], f: fn(T) -> bool) -> bool {
     for elem: T in v { if !f(elem) { ret false; } }
     ret true;
 }
@@ -562,7 +562,7 @@ Return true if a predicate matches all elements in both vectors.
 
 If the vectors are not the same size then false is returned.
 */
-fn all2<T, U>(v0: [T], v1: [U], f: block(T, U) -> bool) -> bool {
+fn all2<T, U>(v0: [T], v1: [U], f: fn(T, U) -> bool) -> bool {
     let v0_len = len(v0);
     if v0_len != len(v1) { ret false; }
     let i = 0u;
@@ -600,7 +600,7 @@ Apply function `f` to each element of `v`, starting from the first.
 When function `f` returns true then an option containing the element
 is returned. If `f` matches no elements then none is returned.
 */
-fn find<T: copy>(v: [T], f: block(T) -> bool) -> option::t<T> {
+fn find<T: copy>(v: [T], f: fn(T) -> bool) -> option::t<T> {
     for elt: T in v { if f(elt) { ret some(elt); } }
     ret none;
 }
@@ -626,7 +626,7 @@ Function: position_pred
 
 Find the first index for which the value matches some predicate
 */
-fn position_pred<T>(v: [T], f: block(T) -> bool) -> option::t<uint> {
+fn position_pred<T>(v: [T], f: fn(T) -> bool) -> option::t<uint> {
     let i: uint = 0u;
     while i < len(v) { if f(v[i]) { ret some::<uint>(i); } i += 1u; }
     ret none;
@@ -747,7 +747,7 @@ Iterates over vector `v` and, for each element, calls function `f` with the
 element's value.
 
 */
-fn iter<T>(v: [const T], f: block(T)) {
+fn iter<T>(v: [const T], f: fn(T)) {
     iteri(v) { |_i, v| f(v) }
 }
 
@@ -757,7 +757,7 @@ Function: iter2
 Iterates over two vectors in parallel
 
 */
-fn iter2<U, T>(v: [U], v2: [T], f: block(U, T)) {
+fn iter2<U, T>(v: [U], v2: [T], f: fn(U, T)) {
     let i = 0;
     for elt in v { f(elt, v2[i]); i += 1; }
 }
@@ -770,7 +770,7 @@ Iterates over a vector's elements and indexes
 Iterates over vector `v` and, for each element, calls function `f` with the
 element's value and index.
 */
-fn iteri<T>(v: [const T], f: block(uint, T)) {
+fn iteri<T>(v: [const T], f: fn(uint, T)) {
     let i = 0u, l = len(v);
     while i < l { f(i, v[i]); i += 1u; }
 }
@@ -784,7 +784,7 @@ Iterates over vector `v` and, for each element, calls function `f` with the
 element's value.
 
 */
-fn riter<T>(v: [const T], f: block(T)) {
+fn riter<T>(v: [const T], f: fn(T)) {
     riteri(v) { |_i, v| f(v) }
 }
 
@@ -796,7 +796,7 @@ Iterates over a vector's elements and indexes in reverse
 Iterates over vector `v` and, for each element, calls function `f` with the
 element's value and index.
 */
-fn riteri<T>(v: [const T], f: block(uint, T)) {
+fn riteri<T>(v: [const T], f: fn(uint, T)) {
     let i = len(v);
     while 0u < i {
         i -= 1u;
@@ -814,7 +814,7 @@ is sorted then the permutations are lexicographically sorted).
 The total number of permutations produced is `len(v)!`.  If `v` contains
 repeated elements, then some permutations are repeated.
 */
-fn permute<T: copy>(v: [const T], put: block([T])) {
+fn permute<T: copy>(v: [const T], put: fn([T])) {
   let ln = len(v);
   if ln == 0u {
     put([]);

@@ -1,7 +1,7 @@
 // error-pattern:assigning to upvar
 // Make sure that nesting a block within a fn@ doesn't let us
 // mutate upvars from a fn@.
-fn f2(x: block()) { x(); }
+fn f2(x: fn()) { x(); }
 
 fn main() {
     let i = 0;

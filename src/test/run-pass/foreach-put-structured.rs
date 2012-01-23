@@ -1,6 +1,6 @@
 
 
-fn pairs(it: block((int, int))) {
+fn pairs(it: fn((int, int))) {
     let i: int = 0;
     let j: int = 0;
     while i < 10 { it((i, j)); i += 1; j += i; }

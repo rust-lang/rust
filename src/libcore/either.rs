@@ -29,7 +29,7 @@ If `value` is left(T) then `f_left` is applied to its contents, if
 the result is returned.
 */
 fn either<T, U,
-          V>(f_left: block(T) -> V, f_right: block(U) -> V, value: t<T, U>) ->
+          V>(f_left: fn(T) -> V, f_right: fn(U) -> V, value: t<T, U>) ->
    V {
     alt value { left(l) { f_left(l) } right(r) { f_right(r) } }
 }

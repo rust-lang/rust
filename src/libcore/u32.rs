@@ -54,7 +54,7 @@ Function: range
 
 Iterate over the range [`lo`..`hi`)
 */
-fn range(lo: u32, hi: u32, it: block(u32)) {
+fn range(lo: u32, hi: u32, it: fn(u32)) {
     let i = lo;
     while i < hi { it(i); i += 1u32; }
 }

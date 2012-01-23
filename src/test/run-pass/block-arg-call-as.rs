@@ -8,7 +8,11 @@ fn asLambda( f : fn@()->uint ) -> uint {
    ret f();
 }
 
-fn asBlock( f : block()->uint ) -> uint {
+fn asBlock( f : fn&()->uint ) -> uint {
+   ret f();
+}
+
+fn asAny( f : fn()->uint ) -> uint {
    ret f();
 }
 

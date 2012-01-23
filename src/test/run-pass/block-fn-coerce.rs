@@ -1,4 +1,4 @@
-fn force(f: block() -> int) -> int { ret f(); }
+fn force(f: fn() -> int) -> int { ret f(); }
 fn main() {
     fn f() -> int { ret 7; }
     assert (force(f) == 7);

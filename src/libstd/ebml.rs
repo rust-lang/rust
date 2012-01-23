@@ -73,7 +73,7 @@ fn get_doc(d: doc, tg: uint) -> doc {
     }
 }
 
-fn docs(d: doc, it: block(uint, doc)) {
+fn docs(d: doc, it: fn(uint, doc)) {
     let pos = d.start;
     while pos < d.end {
         let elt_tag = vint_at(*d.data, pos);
@@ -83,7 +83,7 @@ fn docs(d: doc, it: block(uint, doc)) {
     }
 }
 
-fn tagged_docs(d: doc, tg: uint, it: block(doc)) {
+fn tagged_docs(d: doc, tg: uint, it: fn(doc)) {
     let pos = d.start;
     while pos < d.end {
         let elt_tag = vint_at(*d.data, pos);

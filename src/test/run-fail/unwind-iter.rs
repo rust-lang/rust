@@ -1,6 +1,6 @@
 // error-pattern:fail
 
-fn x(it: block(int)) {
+fn x(it: fn(int)) {
     fail;
     it(0);
 }

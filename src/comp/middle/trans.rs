@@ -3233,8 +3233,8 @@ fn invoke_full(bcx: @block_ctxt, llfn: ValueRef, llargs: [ValueRef],
 fn invoke_(bcx: @block_ctxt, llfn: ValueRef, llargs: [ValueRef],
            to_zero: [{v: ValueRef, t: ty::t}],
            to_revoke: [{v: ValueRef, t: ty::t}],
-           invoker: block(@block_ctxt, ValueRef, [ValueRef],
-                          BasicBlockRef, BasicBlockRef)) -> @block_ctxt {
+           invoker: fn(@block_ctxt, ValueRef, [ValueRef],
+                       BasicBlockRef, BasicBlockRef)) -> @block_ctxt {
     // FIXME: May be worth turning this into a plain call when there are no
     // cleanups to run
     if bcx.unreachable { ret bcx; }
@@ -4106,7 +4106,7 @@ fn trans_fn_cleanups(fcx: @fn_ctxt, cx: @block_ctxt) {
     }
 }
 
-fn block_locals(b: ast::blk, it: block(@ast::local)) {
+fn block_locals(b: ast::blk, it: fn(@ast::local)) {
     for s: @ast::stmt in b.node.stmts {
         alt s.node {
           ast::stmt_decl(d, _) {
@@ -4423,7 +4423,7 @@ enum self_arg { impl_self(ty::t), no_self, }
 fn trans_closure(cx: @local_ctxt, sp: span, decl: ast::fn_decl,
                  body: ast::blk, llfndecl: ValueRef,
                  ty_self: self_arg, ty_params: [ast::ty_param],
-                 id: ast::node_id, maybe_load_env: block(@fn_ctxt)) {
+                 id: ast::node_id, maybe_load_env: fn(@fn_ctxt)) {
     set_uwtable(llfndecl);
 
     // Set up arguments to the function.

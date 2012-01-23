@@ -40,7 +40,7 @@ fn sub(t: str, n: int) -> str {
 
 
 /* Using an interator */
-fn ninetynine(it: block(int)) {
+fn ninetynine(it: fn(int)) {
     let n: int = 100;
     while n > 1 { n -= 1; it(n); }
 }

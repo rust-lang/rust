@@ -53,7 +53,7 @@ fn create(nbits: uint, init: bool) -> t {
     ret @{storage: storage, nbits: nbits};
 }
 
-fn process(v0: t, v1: t, op: block(uint, uint) -> uint) -> bool {
+fn process(v0: t, v1: t, op: fn(uint, uint) -> uint) -> bool {
     let len = vec::len(v1.storage);
     assert (vec::len(v0.storage) == len);
     assert (v0.nbits == v1.nbits);

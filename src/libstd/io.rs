@@ -529,7 +529,7 @@ mod fsync {
     // fsync file after executing blk
     // FIXME find better way to create resources within lifetime of outer res
     fn FILE_res_sync(&&file: FILE_res, opt_level: option::t<level>,
-                  blk: block(&&res<os::libc::FILE>)) {
+                  blk: fn(&&res<os::libc::FILE>)) {
         blk(res({
             val: *file, opt_level: opt_level,
             fsync_fn: fn@(&&file: os::libc::FILE, l: level) -> int {
@@ -540,7 +540,7 @@ mod fsync {
 
     // fsync fd after executing blk
     fn fd_res_sync(&&fd: fd_res, opt_level: option::t<level>,
-                   blk: block(&&res<fd_t>)) {
+                   blk: fn(&&res<fd_t>)) {
         blk(res({
             val: *fd, opt_level: opt_level,
             fsync_fn: fn@(&&fd: fd_t, l: level) -> int {
@@ -553,7 +553,7 @@ mod fsync {
     iface t { fn fsync(l: level) -> int; }
 
     // Call o.fsync after executing blk
-    fn obj_sync(&&o: t, opt_level: option::t<level>, blk: block(&&res<t>)) {
+    fn obj_sync(&&o: t, opt_level: option::t<level>, blk: fn(&&res<t>)) {
         blk(res({
             val: o, opt_level: opt_level,
             fsync_fn: fn@(&&o: t, l: level) -> int { ret o.fsync(l); }

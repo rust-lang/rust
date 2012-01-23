@@ -46,7 +46,7 @@ ls - The list to fold
 z - The initial value
 f - The function to apply
 */
-fn foldl<T: copy, U>(ls: list<U>, z: T, f: block(T, U) -> T) -> T {
+fn foldl<T: copy, U>(ls: list<U>, z: T, f: fn(T, U) -> T) -> T {
     let accum: T = z;
     iter(ls) {|elt| accum = f(accum, elt);}
     accum
@@ -61,7 +61,7 @@ Apply function `f` to each element of `v`, starting from the first.
 When function `f` returns true then an option containing the element
 is returned. If `f` matches no elements then none is returned.
 */
-fn find<T: copy, U: copy>(ls: list<T>, f: block(T) -> option::t<U>)
+fn find<T: copy, U: copy>(ls: list<T>, f: fn(T) -> option::t<U>)
     -> option::t<U> {
     let ls = ls;
     while true {
@@ -164,7 +164,7 @@ Function: iter
 
 Iterate over a list
 */
-fn iter<T>(l: list<T>, f: block(T)) {
+fn iter<T>(l: list<T>, f: fn(T)) {
     alt l {
       cons(hd, tl) {
         f(hd);

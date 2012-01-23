@@ -110,7 +110,7 @@ Example:
 > })
 
 */
-fn chain<T, U: copy, V: copy>(res: t<T, V>, op: block(T) -> t<U, V>)
+fn chain<T, U: copy, V: copy>(res: t<T, V>, op: fn(T) -> t<U, V>)
     -> t<U, V> {
     alt res {
       ok(t) { op(t) }

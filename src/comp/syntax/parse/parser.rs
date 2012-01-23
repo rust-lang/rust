@@ -149,7 +149,7 @@ fn bad_expr_word_table() -> hashmap<str, ()> {
     for word in ["mod", "if", "else", "while", "do", "alt", "for", "break",
                  "cont", "ret", "be", "fail", "type", "resource", "check",
                  "assert", "claim", "native", "fn", "pure",
-                 "unsafe", "block", "import", "export", "let", "const",
+                 "unsafe", "import", "export", "let", "const",
                  "log", "copy", "sendfn", "impl", "iface", "enum"] {
         words.insert(word, ());
     }
@@ -366,7 +366,7 @@ fn parse_constr_in_type(p: parser) -> @ast::ty_constr {
 }
 
 
-fn parse_constrs<T: copy>(pser: block(parser) -> @ast::constr_general<T>,
+fn parse_constrs<T: copy>(pser: fn(parser) -> @ast::constr_general<T>,
                          p: parser) ->
    [@ast::constr_general<T>] {
     let constrs: [@ast::constr_general<T>] = [];
@@ -504,9 +504,6 @@ fn parse_ty(p: parser, colons_before_params: bool) -> @ast::ty {
           _ { /* fallthrough */ }
         }
         t = parse_ty_fn(proto, p);
-    } else if eat_word(p, "block") {
-        //p.warn("block is deprecated, use fn& or fn");
-        t = parse_ty_fn(ast::proto_block, p);
     } else if eat_word(p, "native") {
         expect_word(p, "fn");
         t = parse_ty_fn(ast::proto_bare, p);
@@ -545,7 +542,7 @@ fn parse_fn_block_arg(p: parser) -> ast::arg {
 }
 
 fn parse_seq_to_before_gt<T: copy>(sep: option::t<token::token>,
-                                  f: block(parser) -> T,
+                                  f: fn(parser) -> T,
                                   p: parser) -> [T] {
     let first = true;
     let v = [];
@@ -562,7 +559,7 @@ fn parse_seq_to_before_gt<T: copy>(sep: option::t<token::token>,
 }
 
 fn parse_seq_to_gt<T: copy>(sep: option::t<token::token>,
-                           f: block(parser) -> T, p: parser) -> [T] {
+                           f: fn(parser) -> T, p: parser) -> [T] {
     let v = parse_seq_to_before_gt(sep, f, p);
     expect_gt(p);
 
@@ -570,7 +567,7 @@ fn parse_seq_to_gt<T: copy>(sep: option::t<token::token>,
 }
 
 fn parse_seq_lt_gt<T: copy>(sep: option::t<token::token>,
-                           f: block(parser) -> T,
+                           f: fn(parser) -> T,
                            p: parser) -> spanned<[T]> {
     let lo = p.span.lo;
     expect(p, token::LT);
@@ -581,7 +578,7 @@ fn parse_seq_lt_gt<T: copy>(sep: option::t<token::token>,
 }
 
 fn parse_seq_to_end<T: copy>(ket: token::token, sep: seq_sep,
-                            f: block(parser) -> T, p: parser) -> [T] {
+                            f: fn(parser) -> T, p: parser) -> [T] {
     let val = parse_seq_to_before_end(ket, sep, f, p);
     p.bump();
     ret val;
@@ -604,7 +601,7 @@ fn seq_sep_none() -> seq_sep {
 
 fn parse_seq_to_before_end<T: copy>(ket: token::token,
                                    sep: seq_sep,
-                                   f: block(parser) -> T, p: parser) -> [T] {
+                                   f: fn(parser) -> T, p: parser) -> [T] {
     let first: bool = true;
     let v: [T] = [];
     while p.token != ket {
@@ -620,7 +617,7 @@ fn parse_seq_to_before_end<T: copy>(ket: token::token,
 
 
 fn parse_seq<T: copy>(bra: token::token, ket: token::token,
-                     sep: seq_sep, f: block(parser) -> T,
+                     sep: seq_sep, f: fn(parser) -> T,
                      p: parser) -> spanned<[T]> {
     let lo = p.span.lo;
     expect(p, bra);
@@ -813,9 +810,6 @@ fn parse_bottom_expr(p: parser) -> pexpr {
           _ { /* fallthrough */ }
         }
         ret pexpr(parse_fn_expr(p, proto));
-    } else if eat_word(p, "block") {
-        p.warn("block is deprecated, use fn& or fn");
-        ret pexpr(parse_fn_expr(p, ast::proto_block));
     } else if eat_word(p, "unchecked") {
         ret pexpr(parse_block_expr(p, lo, ast::unchecked_blk));
     } else if eat_word(p, "unsafe") {

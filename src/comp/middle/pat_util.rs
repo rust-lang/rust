@@ -91,7 +91,7 @@ fn pat_id_map(tcx: ty::ctxt, pat: @pat) -> pat_id_map {
 // This does *not* normalize. The pattern should be already normalized
 // if you want to get a normalized pattern out of it.
 // Could return a constrained type in order to express that (future work)
-fn pat_bindings(pat: @pat, it: block(@pat)) {
+fn pat_bindings(pat: @pat, it: fn(@pat)) {
   alt pat.node {
       pat_ident(_, option::none) { it(pat); }
       pat_ident(_, option::some(sub)) { it(pat); pat_bindings(sub, it); }

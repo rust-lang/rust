@@ -210,7 +210,7 @@ fn synth_comment(s: ps, text: str) {
     word(s.s, "*/");
 }
 
-fn commasep<IN>(s: ps, b: breaks, elts: [IN], op: block(ps, IN)) {
+fn commasep<IN>(s: ps, b: breaks, elts: [IN], op: fn(ps, IN)) {
     box(s, 0u, b);
     let first = true;
     for elt: IN in elts {
@@ -221,8 +221,8 @@ fn commasep<IN>(s: ps, b: breaks, elts: [IN], op: block(ps, IN)) {
 }
 
 
-fn commasep_cmnt<IN>(s: ps, b: breaks, elts: [IN], op: block(ps, IN),
-                     get_span: block(IN) -> codemap::span) {
+fn commasep_cmnt<IN>(s: ps, b: breaks, elts: [IN], op: fn(ps, IN),
+                     get_span: fn(IN) -> codemap::span) {
     box(s, 0u, b);
     let len = vec::len::<IN>(elts);
     let i = 0u;

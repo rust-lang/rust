@@ -347,7 +347,7 @@ Function: iter_chars
 Iterate over the characters in a string
 */
 
-fn iter_chars(s: str, it: block(char)) {
+fn iter_chars(s: str, it: fn(char)) {
     let pos = 0u, len = byte_len(s);
     while (pos < len) {
         let {ch, next} = char_range_at(s, pos);
@@ -371,7 +371,7 @@ Returns:
 `true` If execution proceeded correctly, `false` if it was interrupted,
 that is if `it` returned `false` at any point.
  */
-fn loop_chars(s: str, it: block(char) -> bool) -> bool{
+fn loop_chars(s: str, it: fn(char) -> bool) -> bool{
     ret loop_chars_sub(s, 0u, byte_len(s), it);
 }
 
@@ -398,7 +398,7 @@ Safety note:
  represent valid positions inside `s`
  */
 fn loop_chars_sub(s: str, byte_offset: uint, byte_len: uint,
-              it: block(char) -> bool) -> bool {
+              it: fn(char) -> bool) -> bool {
    let i = byte_offset;
    let result = true;
    while i < byte_len {
@@ -1061,7 +1061,7 @@ Example:
 > let s = str::as_buf("PATH", { |path_buf| libc::getenv(path_buf) });
 
 */
-fn as_buf<T>(s: str, f: block(sbuf) -> T) -> T unsafe {
+fn as_buf<T>(s: str, f: fn(sbuf) -> T) -> T unsafe {
     let buf = buf(s); f(buf)
 }
 

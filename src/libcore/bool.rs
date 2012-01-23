@@ -75,7 +75,7 @@ pure fn to_str(v: t) -> str { if v { "true" } else { "false" } }
   brief = "Iterates over all truth values by passing them to `blk` \
            in an unspecified order"
 )]
-fn all_values(blk: block(v: t)) {
+fn all_values(blk: fn(v: t)) {
     blk(true);
     blk(false);
 }

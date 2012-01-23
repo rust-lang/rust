@@ -10,7 +10,7 @@ fn main() {
     assert (sum == 45);
 }
 
-fn first_ten(it: block(int)) {
+fn first_ten(it: fn(int)) {
     let i: int = 0;
     while i < 10 { #debug("first_ten"); it(i); i = i + 1; }
 }

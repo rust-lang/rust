@@ -2,7 +2,7 @@
 
 enum thing { a, b, c, }
 
-fn foo(it: block(int)) { it(10); }
+fn foo(it: fn(int)) { it(10); }
 
 fn main() {
     let x = true;

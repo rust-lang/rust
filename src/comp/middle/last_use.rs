@@ -203,7 +203,7 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
     }
 }
 
-fn visit_block(tp: block_type, cx: ctx, visit: block()) {
+fn visit_block(tp: block_type, cx: ctx, visit: fn()) {
     let local = @{type: tp, mutable second: false, mutable exits: []};
     cx.blocks = cons(local, @cx.blocks);
     visit();

@@ -26,7 +26,7 @@ impl opt_ for option {
 }
 
 // FIXME: Copied from driver.rs, to work around a bug(#1566)
-fn time(do_it: bool, what: str, thunk: block()) {
+fn time(do_it: bool, what: str, thunk: fn()) {
     if !do_it{ ret thunk(); }
     let start = std::time::precise_time_s();
     thunk();

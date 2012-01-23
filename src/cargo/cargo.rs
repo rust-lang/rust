@@ -349,7 +349,7 @@ fn configure() -> cargo {
     c
 }
 
-fn for_each_package(c: cargo, b: block(source, package)) {
+fn for_each_package(c: cargo, b: fn(source, package)) {
     c.sources.values({ |v|
         for p in copy v.packages {
             b(v, p);

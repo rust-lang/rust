@@ -1,6 +1,6 @@
 
 
-fn range(a: int, b: int, it: block(int)) {
+fn range(a: int, b: int, it: fn(int)) {
     assert (a < b);
     let i: int = a;
     while i < b { it(i); i += 1; }
