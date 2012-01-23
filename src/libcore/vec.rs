@@ -829,6 +829,23 @@ fn permute<T: copy>(v: [const T], put: fn([T])) {
   }
 }
 
+fn windowed <TT: copy> (nn: uint, xx: [TT]) -> [[TT]] {
+   let ww = [];
+
+   assert 1u <= nn;
+
+   vec::iteri (xx, {|ii, _x|
+      let len = vec::len(xx);
+
+      if ii+nn <= len {
+         let w = vec::slice ( xx, ii, ii+nn );
+         vec::push (ww, w);
+      }
+   });
+
+   ret ww;
+}
+
 /*
 Function: to_ptr
 
@@ -1497,6 +1514,22 @@ mod tests {
         assert concat([[1], [2,3]]) == [1, 2, 3];
     }
 
+    #[test]
+    fn test_windowed () {
+        assert [[1u,2u,3u],[2u,3u,4u],[3u,4u,5u],[4u,5u,6u]]
+              == windowed (3u, [1u,2u,3u,4u,5u,6u]);
+
+        assert [[1u,2u,3u,4u],[2u,3u,4u,5u],[3u,4u,5u,6u]]
+              == windowed (4u, [1u,2u,3u,4u,5u,6u]);
+
+        assert [] == windowed (7u, [1u,2u,3u,4u,5u,6u]);
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_windowed_() {
+        let _x = windowed (0u, [1u,2u,3u,4u,5u,6u]);
+    }
 }
 
 // Local Variables:
