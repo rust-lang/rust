@@ -10,8 +10,13 @@ import syntax::fold::*;
 import syntax::ext::base::*;
 import syntax::parse::parser::parse_expr_from_source_str;
 
-fn expand_expr(exts: hashmap<str, syntax_extension>, cx: ext_ctxt, e: expr_,
-               fld: ast_fold, orig: fn@(expr_, ast_fold) -> expr_) -> expr_ {
+import codemap::span;
+
+fn expand_expr(exts: hashmap<str, syntax_extension>, cx: ext_ctxt,
+               e: expr_, s: span, fld: ast_fold,
+               orig: fn@(expr_, span, ast_fold) -> (expr_, span))
+    -> (expr_, span)
+{
     ret alt e {
           expr_mac(mac) {
             alt mac.node {
@@ -31,19 +36,19 @@ fn expand_expr(exts: hashmap<str, syntax_extension>, cx: ext_ctxt, e: expr_,
                     let fully_expanded = fld.fold_expr(expanded).node;
                     cx.bt_pop();
 
-                    fully_expanded
+                    (fully_expanded, s)
                   }
                   some(macro_defining(ext)) {
                     let named_extension = ext(cx, pth.span, args, body);
                     exts.insert(named_extension.ident, named_extension.ext);
-                    ast::expr_rec([], none)
+                    (ast::expr_rec([], none), s)
                   }
                 }
               }
               _ { cx.span_bug(mac.span, "naked syntactic bit") }
             }
           }
-          _ { orig(e, fld) }
+          _ { orig(e, s, fld) }
         };
 }
 
@@ -67,7 +72,7 @@ fn expand_crate(sess: session::session, c: @crate) -> @crate {
     let afp = default_ast_fold();
     let cx: ext_ctxt = mk_ctxt(sess);
     let f_pre =
-        {fold_expr: bind expand_expr(exts, cx, _, _, afp.fold_expr)
+        {fold_expr: bind expand_expr(exts, cx, _, _, _, afp.fold_expr)
             with *afp};
     let f = make_fold(f_pre);
     let cm = parse_expr_from_source_str("<anon>", core_macros(),
