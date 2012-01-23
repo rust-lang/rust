@@ -62,24 +62,9 @@ they don't contain references to things that aren't actually defined.
 
 ## Installation
 
-On win32, we make an executable [installer][] available. On other
-platforms you need to build from a [tarball][].
-
-If you're on windows, download and run the installer. It should install
-a self-contained set of tools and libraries to `C:\Program Files\Rust`,
-and add `C:\Program Files\Rust\bin` to your `PATH` environment variable.
-You should then be able to run the rust compiler as `rustc` directly
-from the command line.
-
-On Windows Rust additionally requires [MinGW][mingw] (version
-20110802 is known to work).  It is currently recommended that windows
-development be done under the MinGW shell to ensure that the
-environment is configured correctly.
-
-We hope to be distributing binary packages for various other operating
-systems at some point in the future, but at the moment only windows
-binary installers are being made. Other operating systems must build
-from "source".
+(Currently, you need to build from a tarball on all platforms. A
+self-sufficient windows installer will shortly follow when it is fixed
+up.)
 
 ***Note:*** The Rust compiler is slightly unusual in that it is written
 in Rust and therefore must be built by a precompiled "snapshot" version
@@ -106,6 +91,9 @@ packages:
   * gnu make 3.81 or later
   * curl
 
+Building from source on windows requires some extra steps, please see
+the [Getting started][wiki-get-started] page on the Rust wiki.
+
 Assuming you're on a relatively modern Linux system and have met the
 prerequisites, something along these lines should work:
 
@@ -130,9 +118,10 @@ a set of host and target libraries under `/usr/local/lib/rustc`.
 
 The install locations can be adjusted by passing a `--prefix` argument
 to `configure`. Various other options are also supported, pass `--help`
-for more information on them. 
+for more information on them.
 
 [installer]: http://dl.rust-lang.org/dist/rust-0.1-install.exe
+[wiki-get-started]: https://github.com/mozilla/rust/wiki/Doc-getting-started
 [tarball]: http://dl.rust-lang.org/dist/rust-0.1.tar.gz
 [mingw]: http://sourceforge.net/projects/mingw/files/Installer/mingw-get-inst/mingw-get-inst-20110802/mingw-get-inst-20110802.exe/download
 
