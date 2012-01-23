@@ -8,7 +8,7 @@ which are not obviously correct for all potential platforms.
 export c_int, c_uint, long, longlong, unsigned, ulong, ulonglong;
 export intptr_t, uintptr_t;
 export uint32_t;
-export void;
+export void::{};
 export c_float, c_double;
 export size_t, ssize_t;
 export off_t, fd_t, pid_t;

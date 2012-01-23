@@ -6,7 +6,7 @@ import std::map;
 import syntax::ast;
 import util::common::*;
 
-export cstore;
+export cstore::{};
 export cnum_map;
 export crate_metadata;
 export mk_cstore;

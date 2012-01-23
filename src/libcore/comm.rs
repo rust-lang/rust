@@ -26,8 +26,8 @@ import task;
 
 export send;
 export recv;
-export chan;
-export port;
+export chan::{};
+export port::{};
 
 #[abi = "cdecl"]
 native mod rustrt {
