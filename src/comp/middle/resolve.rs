@@ -1766,6 +1766,32 @@ fn check_exports(e: @env) {
         }
     }
 
+    fn check_enum_ok(e: @env, sp:span, id: ident, val: @indexed_mod)
+        -> node_id {
+        alt val.index.find(id) {
+           none { e.sess.span_fatal(sp, #fmt("error: undefined id %s\
+                         in an export", id)); }
+           some(ms) {
+             let maybe_id = list::find(ms) {|m|
+                  alt m {
+                     mie_item(an_item) {
+                      alt an_item.node {
+                          item_tag(_,_) { /* OK */ some(an_item.id) }
+                          _ { none }
+                      }
+                     }
+                     _ { none }
+               }
+             };
+             alt maybe_id {
+                some(an_id) { ret an_id; }
+                _ { e.sess.span_fatal(sp, #fmt("error: %s does not refer \
+                          to an enumeration", id)); }
+             }
+         }
+      }
+    }
+
     e.mod_map.values {|val|
         alt val.m {
           some(m) {
@@ -1776,14 +1802,44 @@ fn check_exports(e: @env) {
                         check_export(e, ident, val, vi);
                     }
                   }
+                  ast::view_item_export_tag_none(id, _) {
+                      let _ = check_enum_ok(e, vi.span, id, val);
+                  }
+                  ast::view_item_export_tag_some(id, ids, _) {
+                      // Check that it's an enum and all the given variants
+                      // belong to it
+                      let parent_id = check_enum_ok(e, vi.span, id, val);
+                      for variant_id in ids {
+                         alt val.index.find(variant_id.node.name) {
+                            some(ms) {
+                                list::iter(ms) {|m|
+                                   alt m {
+                                     mie_tag_variant(parent_item,_) {
+                                       if parent_item.id != parent_id {
+                                          e.sess.span_err(vi.span,
+                                           #fmt("variant %s \
+                                           doesn't belong to enum %s",
+                                                variant_id.node.name,
+                                                id));
+                                       }
+                                     }
+                                     _ { e.sess.span_err(vi.span,
+                                         #fmt("%s is not a \
+                                         variant", variant_id.node.name));  }
+                                       }}
+                            }
+                            _ { e.sess.span_err(vi.span, #fmt("%s is not a\
+                                         variant", variant_id.node.name));  }
+                      }
+                     }
+                  }
                   _ { }
                 }
             }
           }
           none { }
         }
-    };
-}
+    }}
 
 // Impl resolution
 
