@@ -12,9 +12,14 @@ export option, some, none;
 // warn-and-below.
 
 export error, warn, info, debug;
+
+#[doc = "The error log level"]
 const error : u32 = 0_u32;
+#[doc = "The warning log level"]
 const warn : u32 = 1_u32;
+#[doc = "The info log level"]
 const info : u32 = 2_u32;
+#[doc = "The debug log level"]
 const debug : u32 = 3_u32;
 
 // A curious inner-module that's not exported that contains the binding
