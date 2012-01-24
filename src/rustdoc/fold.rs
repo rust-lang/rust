@@ -1,3 +1,6 @@
+// FIXME: Random import to solve the mystery resolve bug
+import std;
+
 export fold;
 export fold_crate, fold_mod, fold_fn, fold_modlist, fold_fnlist;
 export default_seq_fold;
@@ -11,16 +14,23 @@ enum fold<T> = t<T>;
 type fold_crate<T> = fn~(fold: fold<T>, doc: doc::cratedoc) -> doc::cratedoc;
 type fold_mod<T> = fn~(fold: fold<T>, doc: doc::moddoc) -> doc::moddoc;
 type fold_fn<T> = fn~(fold: fold<T>, doc: doc::fndoc) -> doc::fndoc;
-type fold_modlist<T> = fn~(fold: fold<T>,list: doc::modlist) -> doc::modlist;
-type fold_fnlist<T> = fn~(fold: fold<T>,list: doc::fnlist) -> doc::fnlist;
+type fold_const<T> = fn~(fold: fold<T>, doc: doc::constdoc) -> doc::constdoc;
+type fold_modlist<T> = fn~(fold: fold<T>, list: doc::modlist) -> doc::modlist;
+type fold_fnlist<T> = fn~(fold: fold<T>, list: doc::fnlist) -> doc::fnlist;
+type fold_constlist<T> = fn~(
+    fold: fold<T>,
+    list: doc::constlist
+) -> doc::constlist;
 
 type t<T> = {
     ctxt: T,
     fold_crate: fold_crate<T>,
     fold_mod: fold_mod<T>,
     fold_fn: fold_fn<T>,
+    fold_const: fold_const<T>,
     fold_modlist: fold_modlist<T>,
-    fold_fnlist: fold_fnlist<T>
+    fold_fnlist: fold_fnlist<T>,
+    fold_constlist: fold_constlist<T>
 };
 
 
@@ -31,16 +41,20 @@ fn mk_fold<T:copy>(
     fold_crate: fold_crate<T>,
     fold_mod: fold_mod<T>,
     fold_fn: fold_fn<T>,
+    fold_const: fold_const<T>,
     fold_modlist: fold_modlist<T>,
-    fold_fnlist: fold_fnlist<T>
+    fold_fnlist: fold_fnlist<T>,
+    fold_constlist: fold_constlist<T>
 ) -> fold<T> {
     fold({
         ctxt: ctxt,
         fold_crate: fold_crate,
         fold_mod: fold_mod,
         fold_fn: fold_fn,
+        fold_const: fold_const,
         fold_modlist: fold_modlist,
-        fold_fnlist: fold_fnlist
+        fold_fnlist: fold_fnlist,
+        fold_constlist: fold_constlist
     })
 }
 
@@ -50,8 +64,10 @@ fn default_seq_fold<T:copy>(ctxt: T) -> fold<T> {
         {|f, d| default_seq_fold_crate(f, d)},
         {|f, d| default_seq_fold_mod(f, d)},
         {|f, d| default_seq_fold_fn(f, d)},
+        {|f, d| default_seq_fold_const(f, d)},
         {|f, d| default_seq_fold_modlist(f, d)},
-        {|f, d| default_seq_fold_fnlist(f, d)}
+        {|f, d| default_seq_fold_fnlist(f, d)},
+        {|f, d| default_seq_fold_constlist(f, d)}
     )
 }
 
@@ -82,6 +98,13 @@ fn default_seq_fold_fn<T>(
     doc
 }
 
+fn default_seq_fold_const<T>(
+    _fold: fold<T>,
+    doc: doc::constdoc
+) -> doc::constdoc {
+    doc
+}
+
 fn default_seq_fold_modlist<T>(
     fold: fold<T>,
     list: doc::modlist
@@ -100,15 +123,31 @@ fn default_seq_fold_fnlist<T>(
     })
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn default_fold_should_produce_same_doc() {
-        let source = "mod a { fn b() { } mod c { fn d() { } } }";
-        let ast = parse::from_str(source);
-        let doc = extract::extract(ast, "");
-        let fld = default_seq_fold(());
-        let folded = fld.fold_crate(fld, doc);
-        assert doc == folded;
-    }
+fn default_seq_fold_constlist<T>(
+    fold: fold<T>,
+    list: doc::constlist
+) -> doc::constlist {
+    doc::constlist(vec::map(*list) {|doc|
+        fold.fold_const(fold, doc)
+    })
+}
+
+#[test]
+fn default_fold_should_produce_same_doc() {
+    let source = "mod a { fn b() { } mod c { fn d() { } } }";
+    let ast = parse::from_str(source);
+    let doc = extract::extract(ast, "");
+    let fld = default_seq_fold(());
+    let folded = fld.fold_crate(fld, doc);
+    assert doc == folded;
+}
+
+#[test]
+fn default_fold_should_produce_same_consts() {
+    let source = "const a: int = 0;";
+    let ast = parse::from_str(source);
+    let doc = extract::extract(ast, "");
+    let fld = default_seq_fold(());
+    let folded = fld.fold_crate(fld, doc);
+    assert doc == folded;
 }
