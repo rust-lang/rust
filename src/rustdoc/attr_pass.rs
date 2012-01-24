@@ -22,7 +22,8 @@ fn run(
     let fold = fold::fold({
         fold_crate: fold_crate,
         fold_mod: fold_mod,
-        fold_fn: fold_fn
+        fold_fn: fold_fn,
+        fold_const: fold_const
         with *fold::default_seq_fold(srv)
     });
     fold.fold_crate(fold, doc)
@@ -208,4 +209,35 @@ fn fold_fn_should_preserve_sig() {
     let fold = fold::default_seq_fold(srv);
     let doc = fold_fn(fold, doc.topmod.fns[0]);
     assert doc.sig == some("fn a() -> int");
+}
+
+fn fold_const(
+    fold: fold::fold<astsrv::srv>,
+    doc: doc::constdoc
+) -> doc::constdoc {
+    let srv = fold.ctxt;
+    let attrs = astsrv::exec(srv) {|ctxt|
+        let attrs = alt ctxt.map.get(doc.id) {
+          ast_map::node_item(item) { item.attrs }
+        };
+        attr_parser::parse_mod(attrs)
+    };
+
+    ~{
+        brief: attrs.brief,
+        desc: attrs.desc
+        with *doc
+    }
+}
+
+#[test]
+fn fold_const_should_extract_docs() {
+    let source = "#[doc(brief = \"foo\", desc = \"bar\")]\
+                  const a: bool = true;";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let fold = fold::default_seq_fold(srv);
+    let doc = fold_const(fold, doc.topmod.consts[0]);
+    assert doc.brief == some("foo");
+    assert doc.desc == some("bar");
 }
