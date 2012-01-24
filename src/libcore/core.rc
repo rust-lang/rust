@@ -17,10 +17,8 @@ non-trivial program.
 It is linked by default to all crates and the contents imported. The effect is
 as though the user had written the following:
 
-~~~
-use core;
-import core::*;
-~~~
+    use core;
+    import core::*;
 
 This behavior can be disabled with the `--no-core` compiler flag."
 )];
