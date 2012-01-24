@@ -34,6 +34,7 @@ type package = {
     uuid: str,
     url: str,
     method: str,
+    description: str,
     ref: option::t<str>,
     tags: [str]
 };
@@ -269,12 +270,15 @@ fn load_one_source_package(&src: source, p: map::hashmap<str, json::json>) {
         }
         _ { }
     }
+    // TODO: make this *actually* get the description from the .rc file.
+    let description = "This package's description.";
     vec::grow(src.packages, 1u, {
         // source: _source(src),
         name: name,
         uuid: uuid,
         url: url,
         method: method,
+        description: description,
         ref: ref,
         tags: tags
     });
@@ -681,6 +685,9 @@ fn print_pkg(s: source, p: package) {
         m = m + " [" + str::connect(p.tags, ", ") + "]";
     }
     info(m);
+    if p.description != "" {
+        print("   >> " + p.description)
+    }
 }
 fn cmd_list(c: cargo, argv: [str]) {
     for_each_package(c, { |s, p|
