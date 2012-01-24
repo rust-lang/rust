@@ -16,7 +16,8 @@ fn run(
     doc: doc::cratedoc
 ) -> doc::cratedoc {
     let fold = fold::fold({
-        fold_fn: fold_fn
+        fold_fn: fold_fn,
+        fold_const: fold_const
         with *fold::default_seq_fold(srv)
     });
     fold.fold_crate(fold, doc)
@@ -149,4 +150,33 @@ fn should_add_arg_types() {
     let fn_ = doc.topmod.fns[0];
     assert fn_.args[0].ty == some("int");
     assert fn_.args[1].ty == some("bool");
+}
+
+fn fold_const(
+    fold: fold::fold<astsrv::srv>,
+    doc: doc::constdoc
+) -> doc::constdoc {
+    let srv = fold.ctxt;
+
+    ~{
+        ty: some(astsrv::exec(srv) {|ctxt|
+            alt ctxt.map.get(doc.id) {
+              ast_map::node_item(@{
+                node: ast::item_const(ty, _), _
+              }) {
+                pprust::ty_to_str(ty)
+              }
+            }
+        })
+        with *doc
+    }
+}
+
+#[test]
+fn should_add_const_types() {
+    let source = "const a: bool = true;";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = run(srv, doc);
+    assert doc.topmod.consts[0].ty == some("bool");
 }
