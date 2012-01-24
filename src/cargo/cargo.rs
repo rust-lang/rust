@@ -693,7 +693,7 @@ fn print_pkg(s: source, p: package) {
     }
     info(m);
     if p.description != "" {
-        print("   >> " + p.description)
+        print("   >> " + p.description + "\n")
     }
 }
 fn cmd_list(c: cargo, argv: [str]) {
