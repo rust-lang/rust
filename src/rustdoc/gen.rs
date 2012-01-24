@@ -117,9 +117,7 @@ fn write_fn(
 fn write_sig(ctxt: ctxt, sig: option<str>) {
     alt sig {
       some(sig) {
-        ctxt.w.write_line("```");
-        ctxt.w.write_line(#fmt("%s", sig));
-        ctxt.w.write_line("```");
+        ctxt.w.write_line(#fmt("    %s", sig));
         ctxt.w.write_line("");
       }
       none { fail "unimplemented" }
@@ -129,13 +127,13 @@ fn write_sig(ctxt: ctxt, sig: option<str>) {
 #[test]
 fn should_write_the_function_signature() {
     let markdown = test::render("#[doc = \"f\"] fn a() { }");
-    assert str::contains(markdown, "```\nfn a()\n```");
+    assert str::contains(markdown, "\n    fn a()\n");
 }
 
 #[test]
 fn should_insert_blank_line_after_fn_signature() {
     let markdown = test::render("#[doc = \"f\"] fn a() { }");
-    assert str::contains(markdown, "fn a()\n```\n\n");
+    assert str::contains(markdown, "fn a()\n\n");
 }
 
 fn write_brief(
@@ -335,7 +333,7 @@ mod test {
     #[test]
     fn should_leave_blank_line_between_fn_header_and_sig() {
         let markdown = render("#[doc(brief = \"brief\")] fn a() { }");
-        assert str::contains(markdown, "Function `a`\n\n```\nfn a()");
+        assert str::contains(markdown, "Function `a`\n\n    fn a()");
     }
 
     #[test]
