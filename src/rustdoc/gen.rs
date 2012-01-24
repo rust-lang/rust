@@ -371,7 +371,7 @@ mod test {
     #[test]
     fn write_markdown_should_write_function_header() {
         let markdown = render("fn func() { }");
-        assert str::contains(markdown, "## Function `func`");
+        assert str::contains(markdown, "### Function `func`");
     }
 
     #[test]
