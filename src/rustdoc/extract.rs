@@ -66,7 +66,17 @@ fn moddoc_from_mod(
                   }
                 }
             }),
-        consts: doc::constlist([])
+        consts: doc::constlist(
+            vec::filter_map(module.items) {|item|
+                alt item.node {
+                  ast::item_const(_, _) {
+                    some(constdoc_from_const(item.ident, item.id))
+                  }
+                  _ {
+                    none
+                  }
+                }
+            })
     }
 }
 
@@ -109,6 +119,26 @@ fn argdoc_from_arg(arg: ast::arg) -> doc::argdoc {
         desc: none,
         ty: none
     }
+}
+
+fn constdoc_from_const(
+    name: ast::ident,
+    id: ast::node_id
+) -> doc::constdoc {
+    ~{
+        id: id,
+        name: name,
+        ty: none
+    }
+}
+
+#[test]
+fn should_extract_const_name_and_id() {
+    let source = "const a: int = 0;";
+    let ast = parse::from_str(source);
+    let doc = extract(ast, "");
+    assert doc.topmod.consts[0].id != 0;
+    assert doc.topmod.consts[0].name == "a";
 }
 
 #[cfg(test)]
