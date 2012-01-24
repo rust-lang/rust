@@ -128,6 +128,8 @@ fn constdoc_from_const(
     ~{
         id: id,
         name: name,
+        brief: none,
+        desc: none,
         ty: none
     }
 }

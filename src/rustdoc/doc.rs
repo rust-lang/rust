@@ -20,6 +20,8 @@ type moddoc = ~{
 type constdoc = ~{
     id: ast_id,
     name: str,
+    brief: option<str>,
+    desc: option<str>,
     ty: option<str>
 };
 
