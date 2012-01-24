@@ -117,11 +117,17 @@ fn write_fn(
 fn write_sig(ctxt: ctxt, sig: option<str>) {
     alt sig {
       some(sig) {
-        ctxt.w.write_line(#fmt("    %s", sig));
+        ctxt.w.write_line(code_block_indent(sig));
         ctxt.w.write_line("");
       }
       none { fail "unimplemented" }
     }
+}
+
+fn code_block_indent(s: str) -> str {
+    let lines = str::lines_any(s);
+    let indented = vec::map(lines, { |line| #fmt("    %s", line) });
+    str::connect(indented, "\n")
 }
 
 #[test]
@@ -134,6 +140,23 @@ fn should_write_the_function_signature() {
 fn should_insert_blank_line_after_fn_signature() {
     let markdown = test::render("#[doc = \"f\"] fn a() { }");
     assert str::contains(markdown, "fn a()\n\n");
+}
+
+#[test]
+fn should_correctly_indent_fn_signature() {
+    let doc = test::create_doc("fn a() { }");
+    let doc = ~{
+        topmod: ~{
+            fns: doc::fnlist([~{
+                sig: some("line 1\nline 2")
+                with *doc.topmod.fns[0]
+            }])
+            with *doc.topmod
+        }
+        with *doc
+    };
+    let markdown = test::write_markdown_str(doc);
+    assert str::contains(markdown, "    line 1\n    line 2");
 }
 
 fn write_brief(
@@ -280,6 +303,13 @@ fn should_write_return_description_on_same_line_as_type() {
 #[cfg(test)]
 mod test {
     fn render(source: str) -> str {
+        let doc = create_doc(source);
+        let markdown = write_markdown_str(doc);
+        #debug("markdown: %s", markdown);
+        markdown
+    }
+
+    fn create_doc(source: str) -> doc::cratedoc {
         let srv = astsrv::mk_srv_from_str(source);
         let doc = extract::from_srv(srv, "");
         #debug("doc (extract): %?", doc);
@@ -289,9 +319,7 @@ mod test {
         #debug("doc (path): %?", doc);
         let doc = attr_pass::mk_pass()(srv, doc);
         #debug("doc (attr): %?", doc);
-        let markdown = write_markdown_str(doc);
-        #debug("markdown: %s", markdown);
-        markdown
+        doc
     }
 
     fn write_markdown_str(
