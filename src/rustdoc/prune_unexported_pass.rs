@@ -22,7 +22,8 @@ fn fold_mod(fold: fold::fold<astsrv::srv>, doc: doc::moddoc) -> doc::moddoc {
     let doc = fold::default_seq_fold_mod(fold, doc);
     ~{
         mods: doc::modlist(exported_mods(fold.ctxt, doc)),
-        fns: doc::fnlist(exported_fns(fold.ctxt, doc))
+        fns: doc::fnlist(exported_fns(fold.ctxt, doc)),
+        consts: doc::constlist(exported_consts(fold.ctxt, doc))
         with *doc
     }
 }
@@ -40,6 +41,14 @@ fn exported_fns(srv: astsrv::srv, doc: doc::moddoc) -> [doc::fndoc] {
         srv, doc,
         exported_fns_from_crate,
         exported_fns_from_mod
+    )
+}
+
+fn exported_consts(srv: astsrv::srv, doc: doc::moddoc) -> [doc::constdoc] {
+    exported_things(
+        srv, doc,
+        exported_consts_from_crate,
+        exported_consts_from_mod
     )
 }
 
@@ -84,6 +93,20 @@ fn exported_fns_from_mod(
     exported_fns_from(srv, doc, bind is_exported_from_mod(_, doc.id, _))
 }
 
+fn exported_consts_from_crate(
+    srv: astsrv::srv,
+    doc: doc::moddoc
+) -> [doc::constdoc] {
+    exported_consts_from(srv, doc, is_exported_from_crate)
+}
+
+fn exported_consts_from_mod(
+    srv: astsrv::srv,
+    doc: doc::moddoc
+) -> [doc::constdoc] {
+    exported_consts_from(srv, doc, bind is_exported_from_mod(_, doc.id, _))
+}
+
 fn exported_fns_from(
     srv: astsrv::srv,
     doc: doc::moddoc,
@@ -104,6 +127,20 @@ fn exported_mods_from(
     is_exported: fn(astsrv::srv, str) -> bool
 ) -> [doc::moddoc] {
     vec::filter_map(*doc.mods) { |doc|
+        if is_exported(srv, doc.name) {
+            some(doc)
+        } else {
+            none
+        }
+    }
+}
+
+fn exported_consts_from(
+    srv: astsrv::srv,
+    doc: doc::moddoc,
+    is_exported: fn(astsrv::srv, str) -> bool
+) -> [doc::constdoc] {
+    vec::filter_map(*doc.consts) { |doc|
         if is_exported(srv, doc.name) {
             some(doc)
         } else {
@@ -149,15 +186,6 @@ fn should_prune_unexported_fns() {
 }
 
 #[test]
-fn should_prune_unexported_modules() {
-    let source = "mod a { export a; mod a { } mod b { } }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = run(srv, doc);
-    assert vec::len(*doc.topmod.mods[0].mods) == 1u;
-}
-
-#[test]
 fn should_prune_unexported_fns_from_top_mod() {
     let source = "export a; fn a() { } fn b() { }";
     let srv = astsrv::mk_srv_from_str(source);
@@ -167,10 +195,39 @@ fn should_prune_unexported_fns_from_top_mod() {
 }
 
 #[test]
+fn should_prune_unexported_modules() {
+    let source = "mod a { export a; mod a { } mod b { } }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = run(srv, doc);
+    assert vec::len(*doc.topmod.mods[0].mods) == 1u;
+}
+
+#[test]
 fn should_prune_unexported_modules_from_top_mod() {
     let source = "export a; mod a { } mod b { }";
     let srv = astsrv::mk_srv_from_str(source);
     let doc = extract::from_srv(srv, "");
     let doc = run(srv, doc);
     assert vec::len(*doc.topmod.mods) == 1u;
+}
+
+#[test]
+fn should_prune_unexported_consts() {
+    let source = "mod a { export a; \
+                  const a: bool = true; \
+                  const b: bool = true; }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = run(srv, doc);
+    assert vec::len(*doc.topmod.mods[0].consts) == 1u;
+}
+
+#[test]
+fn should_prune_unexported_consts_from_top_mod() {
+    let source = "export a; const a: bool = true; const b: bool = true;";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = run(srv, doc);
+    assert vec::len(*doc.topmod.consts) == 1u;
 }
