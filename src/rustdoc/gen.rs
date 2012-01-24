@@ -81,6 +81,10 @@ fn write_mod_contents(
     write_brief(ctxt, doc.brief);
     write_desc(ctxt, doc.desc);
 
+    for constdoc in *doc.consts {
+        write_const(ctxt, constdoc);
+    }
+
     for fndoc in *doc.fns {
         write_fn(ctxt, fndoc);
     }
@@ -298,6 +302,30 @@ fn should_write_return_description_on_same_line_as_type() {
         "#[doc(return = \"blorp\")] fn a() -> int { }"
     );
     assert str::contains(markdown, "Returns `int` - blorp");
+}
+
+fn write_const(
+    ctxt: ctxt,
+    doc: doc::constdoc
+) {
+    write_header(ctxt, h3, #fmt("Const `%s`", doc.name));
+    write_sig(ctxt, doc.ty);
+    write_brief(ctxt, doc.brief);
+    write_desc(ctxt, doc.desc);
+}
+
+#[test]
+fn should_write_const_header() {
+    let markdown = test::render("const a: bool = true;");
+    assert str::contains(markdown, "### Const `a`\n\n");
+}
+
+#[test]
+fn should_write_const_description() {
+    let markdown = test::render(
+        "#[doc(brief = \"a\", desc = \"b\")]\
+         const a: bool = true;");
+    assert str::contains(markdown, "\n\na\n\nb\n\n");
 }
 
 #[cfg(test)]
