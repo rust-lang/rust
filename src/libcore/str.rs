@@ -13,6 +13,7 @@ export eq, lteq, hash, is_empty, is_not_empty, is_whitespace, byte_len,
        push_char, is_utf8, from_chars, to_chars, char_len, char_len_range,
        char_at, bytes, is_ascii, shift_byte, pop_byte,
        unsafe_from_byte, unsafe_from_bytes, from_char, char_range_at,
+       from_bytes,
        from_cstr, sbuf, as_buf, push_byte, utf8_char_width, safe_slice,
        contains, iter_chars, chars_iter, bytes_iter, words_iter, lines_iter,
        loop_chars, loop_chars_sub, escape, any, all, map, windowed;
@@ -189,6 +190,19 @@ fn unsafe_from_bytes(v: [const u8]) -> str unsafe {
     let scopy: str = unsafe::reinterpret_cast(vcopy);
     unsafe::leak(vcopy);
     ret scopy;
+}
+
+/*
+Function: from_bytes
+
+Safely convert a vector of bytes to a UTF-8 string, or error
+*/
+fn from_bytes(vv: [u8]) -> result::t<str, str> {
+   if is_utf8(vv) {
+      ret result::ok(unsafe_from_bytes(vv));
+   } else {
+      ret result::err("vector doesn't contain valid UTF-8");
+   }
 }
 
 /*
@@ -1592,6 +1606,23 @@ mod tests {
         let a = [65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8];
         let b = unsafe_from_bytes(a);
         assert (b == "AAAAAAA");
+    }
+
+    #[test]
+    fn test_from_bytes() {
+        let ss = "ศไทย中华Việt Nam";
+        let bb = [0xe0_u8, 0xb8_u8, 0xa8_u8,
+                  0xe0_u8, 0xb9_u8, 0x84_u8,
+                  0xe0_u8, 0xb8_u8, 0x97_u8,
+                  0xe0_u8, 0xb8_u8, 0xa2_u8,
+                  0xe4_u8, 0xb8_u8, 0xad_u8,
+                  0xe5_u8, 0x8d_u8, 0x8e_u8,
+                  0x56_u8, 0x69_u8, 0xe1_u8,
+                  0xbb_u8, 0x87_u8, 0x74_u8,
+                  0x20_u8, 0x4e_u8, 0x61_u8,
+                  0x6d_u8];
+
+         assert ss == result::get(from_bytes(bb));
     }
 
     #[test]
