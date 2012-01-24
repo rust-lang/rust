@@ -188,6 +188,7 @@ ifeq ($(CFG_C_COMPILER),clang)
   CC=clang
   CXX=clang++
   CPP=cpp
+  # -Wno-c++11-compat allows us to use 'alignof' as an identifier in the runtime
   CFG_GCCISH_CFLAGS += -Wall -Werror -Wno-c++11-compat -fno-rtti -g
   CFG_GCCISH_LINK_FLAGS += -g
   CFG_DEPEND_C = $(CFG_GCCISH_CROSS)$(CXX) $(CFG_GCCISH_CFLAGS) -MT "$(1)" \
