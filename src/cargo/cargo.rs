@@ -476,6 +476,25 @@ fn install_package(c: cargo, wd: str, pkg: package) {
     }
 }
 
+fn cargo_suggestion(c: cargo, syncing: bool, fallback: fn())
+{
+    if c.sources.size() == 0u {
+        error("No sources defined. You may wish to run " +
+              "\"cargo init\" then \"cargo sync\".");
+        ret;
+    }
+    if !syncing {
+        let npkg = 0u;
+        c.sources.values({ |v| npkg += vec::len(v.packages) });
+        if npkg == 0u {
+            error("No packages known. You may wish to run " +
+                  "\"cargo sync\".");
+            ret;
+        }
+    }
+    fallback();
+}
+
 fn install_uuid(c: cargo, wd: str, uuid: str) {
     let ps = [];
     for_each_package(c, { |s, p|
@@ -489,7 +508,7 @@ fn install_uuid(c: cargo, wd: str, uuid: str) {
         install_package(c, wd, p);
         ret;
     } else if vec::len(ps) == 0u {
-        error("No packages.");
+        cargo_suggestion(c, false, { || error("No packages match uuid."); });
         ret;
     }
     error("Found multiple packages:");
@@ -510,7 +529,7 @@ fn install_named(c: cargo, wd: str, name: str) {
         install_package(c, wd, p);
         ret;
     } else if vec::len(ps) == 0u {
-        error("No packages.");
+        cargo_suggestion(c, false, { || error("No packages match name."); });
         ret;
     }
     error("Found multiple packages:");
@@ -651,6 +670,7 @@ fn cmd_sync(c: cargo, argv: [str]) {
     if vec::len(argv) == 3u {
         sync_one(c, argv[2], c.sources.get(argv[2]));
     } else {
+        cargo_suggestion(c, true, { || } );
         c.sources.items { |k, v|
             sync_one(c, k, v);
         }
