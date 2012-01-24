@@ -27,6 +27,7 @@ Jeff Muizelaar <jmuizelaar@mozilla.com>
 Jeffrey Yasskin <jyasskin@gmail.com>
 Jesse Ruderman <jruderman@gmail.com>
 Josh Matthews <josh@joshmatthews.net>
+Joshua Clark <joshua.clark@txstate.edu>
 Joshua Wise <joshua@joshuawise.com>
 Jyun-Yan You <jyyou@cs.nctu.edu.tw>
 Kelly Wilson <wilsonk@cpsc.ucalgary.ca>
