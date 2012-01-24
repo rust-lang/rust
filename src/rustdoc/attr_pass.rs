@@ -60,6 +60,18 @@ fn should_replace_top_module_name_with_crate_name() {
     assert doc.topmod.name == "bond";
 }
 
+fn parse_item_attrs<T>(
+    srv: astsrv::srv,
+    id: doc::ast_id,
+    parse_attrs: fn~([ast::attribute]) -> T) -> T {
+    astsrv::exec(srv) {|ctxt|
+        let attrs = alt ctxt.map.get(id) {
+          ast_map::node_item(item) { item.attrs }
+        };
+        parse_attrs(attrs)
+    }
+}
+
 fn fold_mod(fold: fold::fold<astsrv::srv>, doc: doc::moddoc) -> doc::moddoc {
     let srv = fold.ctxt;
     let attrs = if doc.id == ast::crate_node_id {
@@ -68,12 +80,7 @@ fn fold_mod(fold: fold::fold<astsrv::srv>, doc: doc::moddoc) -> doc::moddoc {
             attr_parser::parse_mod(ctxt.ast.node.attrs)
         }
     } else {
-        astsrv::exec(srv) {|ctxt|
-            let attrs = alt ctxt.map.get(doc.id) {
-              ast_map::node_item(item) { item.attrs }
-            };
-            attr_parser::parse_mod(attrs)
-        }
+        parse_item_attrs(srv, doc.id, attr_parser::parse_mod)
     };
     let doc = fold::default_seq_fold_mod(fold, doc);
     ret merge_mod_attrs(doc, attrs);
@@ -117,12 +124,7 @@ fn fold_fn(
 
     let srv = fold.ctxt;
 
-    let attrs = astsrv::exec(srv) {|ctxt|
-        let attrs = alt ctxt.map.get(doc.id) {
-          ast_map::node_item(item) { item.attrs }
-        };
-        attr_parser::parse_fn(attrs)
-    };
+    let attrs = parse_item_attrs(srv, doc.id, attr_parser::parse_fn);
     ret merge_fn_attrs(doc, attrs);
 
     fn merge_fn_attrs(
@@ -216,12 +218,7 @@ fn fold_const(
     doc: doc::constdoc
 ) -> doc::constdoc {
     let srv = fold.ctxt;
-    let attrs = astsrv::exec(srv) {|ctxt|
-        let attrs = alt ctxt.map.get(doc.id) {
-          ast_map::node_item(item) { item.attrs }
-        };
-        attr_parser::parse_mod(attrs)
-    };
+    let attrs = parse_item_attrs(srv, doc.id, attr_parser::parse_mod);
 
     ~{
         brief: attrs.brief,
