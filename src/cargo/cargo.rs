@@ -3,18 +3,15 @@
 use rustc;
 use std;
 
-import rustc::syntax::{ast, codemap, visit};
+import rustc::syntax::{ast, codemap};
 import rustc::syntax::parse::parser;
 import rustc::util::filesearch::get_cargo_root;
 import rustc::driver::diagnostic;
 
 import std::fs;
-import std::generic_os;
 import std::io;
 import io::writer_util;
 import std::json;
-import option;
-import option::{none, some};
 import result;
 import std::map;
 import std::os;
