@@ -22,4 +22,5 @@ mod path_pass;
 mod attr_pass;
 mod tystr_pass;
 mod prune_undoc_pass;
+mod prune_unexported_pass;
 mod astsrv;
