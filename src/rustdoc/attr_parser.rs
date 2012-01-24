@@ -9,8 +9,8 @@ import rustc::syntax::ast;
 import rustc::front::attr;
 import core::tuple;
 
-export crate_attrs, mod_attrs, fn_attrs, arg_attrs;
-export parse_crate, parse_mod, parse_fn;
+export crate_attrs, mod_attrs, fn_attrs, arg_attrs, const_attrs;
+export parse_crate, parse_mod, parse_fn, parse_const;
 
 type crate_attrs = {
     name: option<str>
@@ -31,6 +31,11 @@ type fn_attrs = {
 type arg_attrs = {
     name: str,
     desc: str
+};
+
+type const_attrs = {
+    brief: option<str>,
+    desc: option<str>
 };
 
 fn doc_meta(
@@ -274,6 +279,47 @@ fn parse_fn_should_parse_the_argument_descriptions() {
     let attrs = parse_fn(attrs);
     assert attrs.args[0] == {name: "a", desc: "arg a"};
     assert attrs.args[1] == {name: "b", desc: "arg b"};
+}
+
+fn parse_const(attrs: [ast::attribute]) -> const_attrs {
+    parse_short_doc_or(
+        attrs,
+        {|desc|
+            {
+                brief: none,
+                desc: desc
+            }
+        },
+        parse_const_long_doc
+    )
+}
+
+fn parse_const_long_doc(
+    _items: [@ast::meta_item],
+    brief: option<str>,
+    desc: option<str>
+) -> const_attrs {
+    {
+        brief: brief,
+        desc: desc
+    }
+}
+
+#[test]
+fn should_parse_const_short_doc() {
+    let source = "#[doc = \"description\"]";
+    let attrs = test::parse_attributes(source);
+    let attrs = parse_fn(attrs);
+    assert attrs.desc == some("description");
+}
+
+#[test]
+fn should_parse_const_long_doc() {
+    let source = "#[doc(brief = \"a\", desc = \"b\")]";
+    let attrs = test::parse_attributes(source);
+    let attrs = parse_fn(attrs);
+    assert attrs.brief == some("a");
+    assert attrs.desc == some("b");
 }
 
 #[cfg(test)]
