@@ -376,7 +376,7 @@ Iterate over the characters in a string
 
 FIXME: A synonym to iter_chars
 */
-fn chars_iter(ss: str, it: fn&(char)) {
+fn chars_iter(ss: str, it: fn(char)) {
     iter_chars(ss, it)
 }
 
@@ -387,7 +387,7 @@ Iterate over the bytes in a string
 
 FIXME: Should it really include the last byte '\0'?
 */
-fn bytes_iter(ss: str, it: fn&(u8)) {
+fn bytes_iter(ss: str, it: fn(u8)) {
     let pos = 0u;
     let len = byte_len(ss);
 
@@ -866,7 +866,7 @@ Splits a string into substrings using a function
 
 FIXME: will be renamed to split.
 */
-fn split_func(ss: str, sepfn: fn&(cc: char)->bool) -> [str] {
+fn split_func(ss: str, sepfn: fn(cc: char)->bool) -> [str] {
     let vv: [str] = [];
     let accum: str = "";
     let ends_with_sep: bool = false;
@@ -933,7 +933,7 @@ Function: words_iter
 
 Apply a function to each word
 */
-fn words_iter(ss: str, ff: fn&(&&str)) {
+fn words_iter(ss: str, ff: fn(&&str)) {
     vec::iter(words(ss), ff)
 }
 
@@ -942,7 +942,7 @@ Function: lines_iter
 
 Apply a function to each lines (by '\n')
 */
-fn lines_iter(ss: str, ff: fn&(&&str)) {
+fn lines_iter(ss: str, ff: fn(&&str)) {
     vec::iter(lines(ss), ff)
 }
 
@@ -1180,7 +1180,7 @@ if the string contains no characters
 
 // FIXME: a synonym to loop_chars
 */
-fn all(ss: str, ff: fn&(char) -> bool) -> bool {
+fn all(ss: str, ff: fn(char) -> bool) -> bool {
     str::loop_chars(ss, ff)
 }
 
@@ -1190,7 +1190,7 @@ Function: any
 Return true if a predicate matches any character
 (and false if it matches none or there are no characters)
 */
-fn any(ss: str, pred: fn&(char) -> bool) -> bool {
+fn any(ss: str, pred: fn(char) -> bool) -> bool {
    !all(ss, {|cc| !pred(cc)})
 }
 
@@ -1199,7 +1199,7 @@ Function: map
 
 Apply a function to each character
 */
-fn map(ss: str, ff: fn&(char) -> char) -> str {
+fn map(ss: str, ff: fn(char) -> char) -> str {
     let result = "";
 
     str::iter_chars(ss, {|cc|
