@@ -53,6 +53,14 @@ fn fold_fn(
             } else {
                 none
             }
+        },
+        return: {
+            ty: if option::is_some(doc.return.desc) {
+                doc.return.ty
+            } else {
+                none
+            }
+            with doc.return
         }
         with *doc
     };
@@ -83,6 +91,17 @@ fn should_not_elide_fns_with_documented_arguments() {
     let doc = attr_pass::mk_pass()(srv, doc);
     let doc = run(srv, doc);
     assert vec::is_not_empty(*doc.topmod.fns);
+}
+
+#[test]
+fn should_elide_undocumented_return_values() {
+    let source = "#[doc = \"fonz\"] fn a() -> int { }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = tystr_pass::mk_pass()(srv, doc);
+    let doc = attr_pass::mk_pass()(srv, doc);
+    let doc = run(srv, doc);
+    assert doc.topmod.fns[0].return.ty == none;
 }
 
 fn fold_modlist(
