@@ -7,6 +7,22 @@
 #[license = "MIT"];
 #[crate_type = "lib"];
 
+#[doc(
+    brief = "The Rust core library",
+    desc =
+    "The core library provides functionality that is closely tied to \
+     the Rust built-in types and runtime services, or that is used in nearly \
+     every non-trivial program.\
+     \
+     The core library is linked by default to all crates and the contents \
+     imported. The effect is as though the user had written the following: \
+     \
+     > use core; \
+     > import core::*; \
+     \
+     This behavior can be disabled with the `--no-core` compiler flag."
+)];
+
 export box, char, float, bessel, f32, f64, int, str, ptr;
 export uint, u8, u32, u64, vec, bool;
 export either, option, result;
