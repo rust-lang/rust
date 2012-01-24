@@ -34,6 +34,7 @@ type package = {
     uuid: str,
     url: str,
     method: str,
+    description: str,
     ref: option::t<str>,
     tags: [str]
 };
@@ -271,12 +272,22 @@ fn load_one_source_package(&src: source, p: map::hashmap<str, json::json>) {
         }
         _ { }
     }
+
+    let description = alt p.find("description") {
+        some(json::string(_n)) { _n }
+        _ {
+            warn("Malformed source json: " + src.name + " (missing description)");
+            ret;
+        }
+    };
+
     vec::grow(src.packages, 1u, {
         // source: _source(src),
         name: name,
         uuid: uuid,
         url: url,
         method: method,
+        description: description,
         ref: ref,
         tags: tags
     });
@@ -683,6 +694,9 @@ fn print_pkg(s: source, p: package) {
         m = m + " [" + str::connect(p.tags, ", ") + "]";
     }
     info(m);
+    if p.description != "" {
+        print("   >> " + p.description + "\n")
+    }
 }
 fn cmd_list(c: cargo, argv: [str]) {
     for_each_package(c, { |s, p|
