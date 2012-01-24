@@ -1395,7 +1395,8 @@ type sbuf = *u8;
 mod tests {
 
     #[test]
-    fn test_eq() { assert (eq("", ""));
+    fn test_eq() {
+        assert (eq("", ""));
         assert (eq("foo", "foo"));
         assert (!eq("foo", "bar"));
     }
