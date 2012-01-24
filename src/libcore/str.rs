@@ -14,8 +14,8 @@ export eq, lteq, hash, is_empty, is_not_empty, is_whitespace, byte_len,
        char_at, bytes, is_ascii, shift_byte, pop_byte,
        unsafe_from_byte, unsafe_from_bytes, from_char, char_range_at,
        from_cstr, sbuf, as_buf, push_byte, utf8_char_width, safe_slice,
-       contains, iter_chars, loop_chars, loop_chars_sub,
-       escape;
+       contains, iter_chars, chars_iter, bytes_iter, words_iter, lines_iter,
+       loop_chars, loop_chars_sub, escape, any, all, map, windowed;
 
 #[abi = "cdecl"]
 native mod rustrt {
@@ -346,13 +346,40 @@ Function: iter_chars
 
 Iterate over the characters in a string
 */
-
 fn iter_chars(s: str, it: block(char)) {
     let pos = 0u, len = byte_len(s);
     while (pos < len) {
         let {ch, next} = char_range_at(s, pos);
         pos = next;
         it(ch);
+    }
+}
+
+/*
+Function: chars_iter
+
+Iterate over the characters in a string
+
+FIXME: A synonym to iter_chars
+*/
+fn chars_iter(ss: str, it: fn&(char)) {
+    iter_chars(ss, it)
+}
+
+/*
+Function: bytes_iter
+
+Iterate over the bytes in a string
+
+FIXME: Should it really include the last byte '\0'?
+*/
+fn bytes_iter(ss: str, it: fn&(u8)) {
+    let pos = 0u;
+    let len = byte_len(ss);
+
+    while (pos < len) {
+        it(ss[pos]);
+        pos += 1u;
     }
 }
 
@@ -888,6 +915,24 @@ fn words(ss: str) -> [str] {
 }
 
 /*
+Function: words_iter
+
+Apply a function to each word
+*/
+fn words_iter(ss: str, ff: fn&(&&str)) {
+    vec::iter(words(ss), ff)
+}
+
+/*
+Function: lines_iter
+
+Apply a function to each lines (by '\n')
+*/
+fn lines_iter(ss: str, ff: fn&(&&str)) {
+    vec::iter(lines(ss), ff)
+}
+
+/*
 Function: concat
 
 Concatenate a vector of strings
@@ -1111,6 +1156,64 @@ fn escape(s: str) -> str {
     let r = "";
     loop_chars(s, { |c| r += escape_char(c); true });
     r
+}
+
+/*
+Function: all
+
+Return true if a predicate matches all characters or
+if the string contains no characters
+
+// FIXME: a synonym to loop_chars
+*/
+fn all(ss: str, ff: fn&(char) -> bool) -> bool {
+    str::loop_chars(ss, ff)
+}
+
+/*
+Function: any
+
+Return true if a predicate matches any character
+(and false if it matches none or there are no characters)
+*/
+fn any(ss: str, pred: fn&(char) -> bool) -> bool {
+   !all(ss, {|cc| !pred(cc)})
+}
+
+/*
+Function: map
+
+Apply a function to each character
+*/
+fn map(ss: str, ff: fn&(char) -> char) -> str {
+    let result = "";
+
+    str::iter_chars(ss, {|cc|
+        str::push_char(result, ff(cc));
+    });
+
+    ret result;
+}
+
+/*
+Function: windowed
+
+Create a vector of substrings of size `nn`
+*/
+fn windowed(nn: uint, ss: str) -> [str] {
+    let ww = [];
+    let len = str::char_len(ss);
+
+    assert 1u <= nn;
+
+    let ii = 0u;
+    while ii+nn <= len {
+        let w = char_slice( ss, ii, ii+nn );
+        vec::push(ww,w);
+        ii += 1u;
+    }
+
+    ret ww;
 }
 
 #[cfg(test)]
@@ -1563,6 +1666,77 @@ mod tests {
             }
             i += 1;
         }
+
+        iter_chars("") {|_ch| fail; } // should not fail
+    }
+
+    #[test]
+    fn test_chars_iter() {
+        let i = 0;
+        chars_iter("x\u03c0y") {|ch|
+            alt i {
+              0 { assert ch == 'x'; }
+              1 { assert ch == '\u03c0'; }
+              2 { assert ch == 'y'; }
+            }
+            i += 1;
+        }
+
+        chars_iter("") {|_ch| fail; } // should not fail
+    }
+
+    #[test]
+    fn test_bytes_iter() {
+        let i = 0;
+
+        bytes_iter("xyz") {|bb|
+            alt i {
+              0 { assert bb == 'x' as u8; }
+              1 { assert bb == 'y' as u8; }
+              2 { assert bb == 'z' as u8; }
+            }
+            i += 1;
+        }
+
+        bytes_iter("") {|bb| assert bb == 0u8; }
+    }
+
+    #[test]
+    fn test_words_iter() {
+        let data = "\nMary had a little lamb\nLittle lamb\n";
+
+        let ii = 0;
+
+        words_iter(data) {|ww|
+            alt ii {
+              0 { assert "Mary"   == ww; }
+              1 { assert "had"    == ww; }
+              2 { assert "a"      == ww; }
+              3 { assert "little" == ww; }
+              _ { () }
+            }
+            ii += 1;
+        }
+
+        words_iter("") {|_x| fail; } // should not fail
+    }
+
+    #[test]
+    fn test_lines_iter () {
+        let lf = "\nMary had a little lamb\nLittle lamb\n";
+
+        let ii = 0;
+
+        lines_iter(lf) {|x|
+            alt ii {
+                0 { assert "" == x; }
+                1 { assert "Mary had a little lamb" == x; }
+                2 { assert "Little lamb" == x; }
+                3 { assert "" == x; }
+                _ { () }
+            }
+            ii += 1;
+        }
     }
 
     #[test]
@@ -1571,5 +1745,47 @@ mod tests {
         assert(escape("abc\\def") == "abc\\\\def");
         assert(escape("abc\ndef") == "abc\\ndef");
         assert(escape("abc\"def") == "abc\\\"def");
+    }
+
+    #[test]
+    fn test_map() {
+        assert "" == map("", char::to_upper);
+        assert "YMCA" == map("ymca", char::to_upper);
+    }
+
+    #[test]
+    fn test_all() {
+        assert true  == all("", char::is_uppercase);
+        assert false == all("ymca", char::is_uppercase);
+        assert true  == all("YMCA", char::is_uppercase);
+        assert false == all("yMCA", char::is_uppercase);
+        assert false == all("YMCy", char::is_uppercase);
+    }
+
+    #[test]
+    fn test_any() {
+        assert false  == any("", char::is_uppercase);
+        assert false == any("ymca", char::is_uppercase);
+        assert true  == any("YMCA", char::is_uppercase);
+        assert true == any("yMCA", char::is_uppercase);
+        assert true == any("Ymcy", char::is_uppercase);
+    }
+
+    #[test]
+    fn test_windowed() {
+        let data = "ประเทศไทย中";
+
+        assert ["ประ", "ระเ", "ะเท", "เทศ", "ทศไ", "ศไท", "ไทย", "ทย中"]
+            == windowed(3u, data);
+
+        assert [data] == windowed(10u, data);
+
+        assert [] == windowed(6u, "abcd");
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_windowed_() {
+        let _x = windowed(0u, "abcd");
     }
 }
