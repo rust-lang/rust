@@ -5,7 +5,7 @@
        uuid = "f8abd014-b281-484d-a0c3-26e3de8e2412",
        url = "http://rust-lang.org/doc/rustdoc")];
 
-#[desc = "The Rust documentation generator"];
+#[comment = "The Rust documentation generator"];
 #[license = "MIT"];
 #[crate_type = "bin"];
 
