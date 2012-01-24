@@ -270,8 +270,15 @@ fn load_one_source_package(&src: source, p: map::hashmap<str, json::json>) {
         }
         _ { }
     }
-    // TODO: make this *actually* get the description from the .rc file.
-    let description = "This package's description.";
+
+    let description = alt p.find("description") {
+        some(json::string(_n)) { _n }
+        _ {
+            warn("Malformed source json: " + src.name + " (missing description)");
+            ret;
+        }
+    };
+
     vec::grow(src.packages, 1u, {
         // source: _source(src),
         name: name,
