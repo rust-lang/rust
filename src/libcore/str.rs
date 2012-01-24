@@ -1,196 +1,118 @@
 /*
 Module: str
 
-String manipulation.
+String manipulation
+
+Strings are a packed UTF-8 representation of text, stored as null terminated
+buffers of u8 bytes.  Strings should be considered by character,
+for correctness, but some UTF-8 unsafe functions are also provided.
+For some heavy-duty uses, we recommend trying std::rope.
 */
 
-export eq, lteq, hash, is_empty, is_not_empty, is_whitespace, byte_len,
-       byte_len_range, index,
-       rindex, find, starts_with, ends_with, substr, slice, split, splitn,
-       split_str, split_func, split_char, lines, lines_any, words,
-       concat, connect, to_lower, to_upper, replace, char_slice,
-       trim_left, trim_right, trim, unshift_char, shift_char, pop_char,
-       push_char, is_utf8, from_chars, to_chars, char_len, char_len_range,
-       char_at, bytes, is_ascii, shift_byte, pop_byte,
-       unsafe_from_byte, unsafe_from_bytes, from_char, char_range_at,
-       from_bytes,
-       from_cstr, sbuf, as_buf, push_byte, utf8_char_width, safe_slice,
-       contains, iter_chars, chars_iter, bytes_iter, words_iter, lines_iter,
-       loop_chars, loop_chars_sub, escape, any, all, map, windowed;
+export
+   // Creating a string
+   from_bytes,
+   unsafe_from_bytes,
+   unsafe_from_byte,
+   //push_utf8_bytes,
+   from_char,
+   from_chars,
+   from_cstr,
+   concat,
+   connect,
+
+   // Adding things to and removing things from a string
+   push_char,
+   pop_char,
+   shift_char,
+   unshift_char,
+   push_byte,
+   //push_bytes,
+   pop_byte,
+   shift_byte,
+   trim_left,
+   trim_right,
+   trim,
+
+   // Transforming strings
+   bytes,
+   to_chars,
+   substr,
+   char_slice,
+   slice,
+   safe_slice,
+   split,
+   splitn,
+   split_str,
+   split_func,
+   split_char,
+   lines,
+   lines_any,
+   words,
+   windowed,
+   to_lower,
+   to_upper,
+   replace,
+   escape,
+
+   // Comparing strings
+   eq,
+   lteq,
+   hash,
+
+   // Iterating through strings
+   loop_chars,
+   all,
+   any,
+   map,
+   bytes_iter,
+   iter_chars,
+   chars_iter,
+   words_iter,
+   lines_iter,
+
+   // Searching
+   index,
+   rindex,
+   find,
+   contains,
+   starts_with,
+   ends_with,
+
+   // String properties
+   is_ascii,
+   is_empty,
+   is_not_empty,
+   is_whitespace,
+   byte_len,
+   char_len,
+
+   // Misc
+   // FIXME: perhaps some more of this section shouldn't be exported?
+   is_utf8,
+   char_len_range,
+   byte_len_range,
+   utf8_char_width,
+   char_range_at,
+   char_at,
+   loop_chars_sub,
+   escape_char,
+   as_buf,
+   //buf,
+   sbuf;
+
+
 
 #[abi = "cdecl"]
 native mod rustrt {
     fn rust_str_push(&s: str, ch: u8);
 }
 
-/*
-Function: eq
-
-Bytewise string equality
-*/
-pure fn eq(&&a: str, &&b: str) -> bool { a == b }
+// FIXME: add pure to a lot of functions
 
 /*
-Function: lteq
-
-Bytewise less than or equal
+Section: Creating a string
 */
-pure fn lteq(&&a: str, &&b: str) -> bool { a <= b }
-
-/*
-Function: hash
-
-String hash function
-*/
-fn hash(&&s: str) -> uint {
-    // djb hash.
-    // FIXME: replace with murmur.
-
-    let u: uint = 5381u;
-    for c: u8 in s { u *= 33u; u += c as uint; }
-    ret u;
-}
-
-// UTF-8 tags and ranges
-const tag_cont_u8: u8 = 128u8;
-const tag_cont: uint = 128u;
-const max_one_b: uint = 128u;
-const tag_two_b: uint = 192u;
-const max_two_b: uint = 2048u;
-const tag_three_b: uint = 224u;
-const max_three_b: uint = 65536u;
-const tag_four_b: uint = 240u;
-const max_four_b: uint = 2097152u;
-const tag_five_b: uint = 248u;
-const max_five_b: uint = 67108864u;
-const tag_six_b: uint = 252u;
-
-/*
-Function: is_utf8
-
-Determines if a vector uf bytes contains valid UTF-8
-*/
-fn is_utf8(v: [u8]) -> bool {
-    let i = 0u;
-    let total = vec::len::<u8>(v);
-    while i < total {
-        let chsize = utf8_char_width(v[i]);
-        if chsize == 0u { ret false; }
-        if i + chsize > total { ret false; }
-        i += 1u;
-        while chsize > 1u {
-            if v[i] & 192u8 != tag_cont_u8 { ret false; }
-            i += 1u;
-            chsize -= 1u;
-        }
-    }
-    ret true;
-}
-
-/*
-Function: is_ascii
-
-Determines if a string contains only ASCII characters
-*/
-fn is_ascii(s: str) -> bool {
-    let i: uint = byte_len(s);
-    while i > 0u { i -= 1u; if s[i] & 128u8 != 0u8 { ret false; } }
-    ret true;
-}
-
-/*
-Predicate: is_empty
-
-Returns true if the string has length 0
-*/
-pure fn is_empty(s: str) -> bool { for c: u8 in s { ret false; } ret true; }
-
-/*
-Predicate: is_not_empty
-
-Returns true if the string has length greater than 0
-*/
-pure fn is_not_empty(s: str) -> bool { !is_empty(s) }
-
-/*
-Function: is_whitespace
-
-Returns true if the string contains only whitespace
-*/
-fn is_whitespace(s: str) -> bool {
-    ret loop_chars(s, char::is_whitespace);
-}
-
-/*
-Function: byte_len
-
-Returns the length in bytes of a string
-*/
-pure fn byte_len(s: str) -> uint unsafe {
-    let v: [u8] = unsafe::reinterpret_cast(s);
-    let vlen = vec::len(v);
-    unsafe::leak(v);
-    // There should always be a null terminator
-    assert (vlen > 0u);
-    ret vlen - 1u;
-}
-
-/*
-Function: byte_len_range
-
-As byte_len but for a substring
-
-Parameters:
-s - A string
-byte_offset - The byte offset at which to start in the string
-char_len    - The number of chars (not bytes!) in the range
-
-Returns:
-The number of bytes in the substring starting at `byte_offset` and
-containing `char_len` chars.
-
-Safety note:
-
-This function fails if `byte_offset` or `char_len` do not represent
-valid positions in `s`
-*/
-fn byte_len_range(s: str, byte_offset: uint, char_len: uint) -> uint {
-    let i = byte_offset;
-    let chars = 0u;
-    while chars < char_len {
-        let chsize = utf8_char_width(s[i]);
-        assert (chsize > 0u);
-        i += chsize;
-        chars += 1u;
-    }
-    ret i - byte_offset;
-}
-
-/*
-Function: bytes
-
-Converts a string to a vector of bytes. The result vector is not
-null-terminated.
-*/
-fn bytes(s: str) -> [u8] unsafe {
-    let v = unsafe::reinterpret_cast(s);
-    let vcopy = vec::slice(v, 0u, vec::len(v) - 1u);
-    unsafe::leak(v);
-    ret vcopy;
-}
-
-/*
-Function: unsafe_from_bytes
-
-Converts a vector of bytes to a string. Does not verify that the
-vector contains valid UTF-8.
-*/
-fn unsafe_from_bytes(v: [const u8]) -> str unsafe {
-    let vcopy: [u8] = v + [0u8];
-    let scopy: str = unsafe::reinterpret_cast(vcopy);
-    unsafe::leak(vcopy);
-    ret scopy;
-}
 
 /*
 Function: from_bytes
@@ -206,10 +128,27 @@ fn from_bytes(vv: [u8]) -> result::t<str, str> {
 }
 
 /*
+Function: unsafe_from_bytes
+
+Converts a vector of bytes to a string. Does not verify that the
+vector contains valid UTF-8.
+
+// FIXME: remove?
+*/
+fn unsafe_from_bytes(v: [const u8]) -> str unsafe {
+    let vcopy: [u8] = v + [0u8];
+    let scopy: str = unsafe::reinterpret_cast(vcopy);
+    unsafe::leak(vcopy);
+    ret scopy;
+}
+
+/*
 Function: unsafe_from_byte
 
 Converts a byte to a string. Does not verify that the byte is
 valid UTF-8.
+
+FIXME: rename to 'from_byte'
 */
 fn unsafe_from_byte(u: u8) -> str { unsafe_from_bytes([u]) }
 
@@ -265,249 +204,52 @@ fn from_chars(chs: [char]) -> str {
 }
 
 /*
-Function: utf8_char_width
+Function: from_cstr
 
-Given a first byte, determine how many bytes are in this UTF-8 character
+Create a Rust string from a null-terminated C string
 */
-pure fn utf8_char_width(b: u8) -> uint {
-    let byte: uint = b as uint;
-    if byte < 128u { ret 1u; }
-    if byte < 192u {
-        ret 0u; // Not a valid start byte
-
-    }
-    if byte < 224u { ret 2u; }
-    if byte < 240u { ret 3u; }
-    if byte < 248u { ret 4u; }
-    if byte < 252u { ret 5u; }
-    ret 6u;
-}
-
-/*
-Function: char_range_at
-
-Pluck a character out of a string and return the index of the next character.
-This function can be used to iterate over the unicode characters of a string.
-
-Example:
-> let s = "中华Việt Nam";
-> let i = 0u;
-> while i < str::byte_len(s) {
->    let {ch, next} = str::char_range_at(s, i);
->    std::io::println(#fmt("%u: %c",i,ch));
->    i = next;
-> }
-
-Example output:
-
-      0: 中
-      3: 华
-      6: V
-      7: i
-      8: ệ
-      11: t
-      12:
-      13: N
-      14: a
-      15: m
-
-Parameters:
-
-s - The string
-i - The byte offset of the char to extract
-
-Returns:
-
-A record {ch: char, next: uint} containing the char value and the byte
-index of the next unicode character.
-
-Failure:
-
-If `i` is greater than or equal to the length of the string.
-If `i` is not the index of the beginning of a valid UTF-8 character.
-*/
-fn char_range_at(s: str, i: uint) -> {ch: char, next: uint} {
-    let b0 = s[i];
-    let w = utf8_char_width(b0);
-    assert (w != 0u);
-    if w == 1u { ret {ch: b0 as char, next: i + 1u}; }
-    let val = 0u;
-    let end = i + w;
-    let i = i + 1u;
-    while i < end {
-        let byte = s[i];
-        assert (byte & 192u8 == tag_cont_u8);
-        val <<= 6u;
-        val += byte & 63u8 as uint;
-        i += 1u;
-    }
-    // Clunky way to get the right bits from the first byte. Uses two shifts,
-    // the first to clip off the marker bits at the left of the byte, and then
-    // a second (as uint) to get it to the right position.
-    val += (b0 << (w + 1u as u8) as uint) << ((w - 1u) * 6u - w - 1u);
-    ret {ch: val as char, next: i};
-}
-
-/*
-Function: char_at
-
-Pluck a character out of a string
-*/
-fn char_at(s: str, i: uint) -> char { ret char_range_at(s, i).ch; }
-
-/*
-Function: iter_chars
-
-Iterate over the characters in a string
-*/
-fn iter_chars(s: str, it: fn(char)) {
-    let pos = 0u, len = byte_len(s);
-    while (pos < len) {
-        let {ch, next} = char_range_at(s, pos);
-        pos = next;
-        it(ch);
-    }
-}
-
-/*
-Function: chars_iter
-
-Iterate over the characters in a string
-
-FIXME: A synonym to iter_chars
-*/
-fn chars_iter(ss: str, it: fn(char)) {
-    iter_chars(ss, it)
-}
-
-/*
-Function: bytes_iter
-
-Iterate over the bytes in a string
-
-FIXME: Should it really include the last byte '\0'?
-*/
-fn bytes_iter(ss: str, it: fn(u8)) {
-    let pos = 0u;
-    let len = byte_len(ss);
-
-    while (pos < len) {
-        it(ss[pos]);
-        pos += 1u;
-    }
-}
-
-/*
-Function: loop_chars
-
-Loop through a string, char by char
-
-Parameters:
-s  - A string to traverse. It may be empty.
-it - A block to execute with each consecutive character of `s`.
-Return `true` to continue, `false` to stop.
-
-Returns:
-
-`true` If execution proceeded correctly, `false` if it was interrupted,
-that is if `it` returned `false` at any point.
- */
-fn loop_chars(s: str, it: fn(char) -> bool) -> bool{
-    ret loop_chars_sub(s, 0u, byte_len(s), it);
-}
-
-/*
-Function: loop_chars_sub
-
-Loop through a substring, char by char
-
-Parameters:
-s           - A string to traverse. It may be empty.
-byte_offset - The byte offset at which to start in the string.
-byte_len    - The number of bytes to traverse in the string
-it          - A block to execute with each consecutive character of `s`.
-Return `true` to continue, `false` to stop.
-
-Returns:
-
-`true` If execution proceeded correctly, `false` if it was interrupted,
-that is if `it` returned `false` at any point.
-
-Safety note:
-- This function does not check whether the substring is valid.
-- This function fails if `byte_offset` or `byte_len` do not
- represent valid positions inside `s`
- */
-fn loop_chars_sub(s: str, byte_offset: uint, byte_len: uint,
-              it: fn(char) -> bool) -> bool {
-   let i = byte_offset;
-   let result = true;
-   while i < byte_len {
-      let {ch, next} = char_range_at(s, i);
-      if !it(ch) {result = false; break;}
-      i = next;
-   }
-   ret result;
-}
-
-
-/*
-Function: char_len
-
-Count the number of unicode characters in a string
-*/
-fn char_len(s: str) -> uint {
-    ret char_len_range(s, 0u, byte_len(s));
-}
-
-/*
-Function: char_len_range
-
-As char_len but for a slice of a string
-
-Parameters:
- s           - A valid string
- byte_start  - The position inside `s` where to start counting in bytes.
- byte_len    - The number of bytes of `s` to take into account.
-
-Returns:
- The number of Unicode characters in `s` in
-segment [byte_start, byte_start+len( .
-
-Safety note:
-- This function does not check whether the substring is valid.
-- This function fails if `byte_offset` or `byte_len` do not
- represent valid positions inside `s`
-*/
-fn char_len_range(s: str, byte_start: uint, byte_len: uint) -> uint {
-    let i     = byte_start;
-    let len   = 0u;
-    while i < byte_len {
-        let chsize = utf8_char_width(s[i]);
-        assert (chsize > 0u);
-        len += 1u;
-        i += chsize;
-    }
-    assert (i == byte_len);
-    ret len;
-}
-
-/*
-Function: to_chars
-
-Convert a string to a vector of characters
-*/
-fn to_chars(s: str) -> [char] {
-    let buf: [char] = [];
+unsafe fn from_cstr(cstr: sbuf) -> str {
+    let res = "";
+    let start = cstr;
+    let curr = start;
     let i = 0u;
-    let len = byte_len(s);
-    while i < len {
-        let cur = char_range_at(s, i);
-        buf += [cur.ch];
-        i = cur.next;
+    while *curr != 0u8 {
+        push_byte(res, *curr);
+        i += 1u;
+        curr = ptr::offset(start, i);
     }
-    ret buf;
+    ret res;
 }
+
+/*
+Function: concat
+
+Concatenate a vector of strings
+*/
+fn concat(v: [str]) -> str {
+    let s: str = "";
+    for ss: str in v { s += ss; }
+    ret s;
+}
+
+/*
+Function: connect
+
+Concatenate a vector of strings, placing a given separator between each
+*/
+fn connect(v: [str], sep: str) -> str {
+    let s: str = "";
+    let first: bool = true;
+    for ss: str in v {
+        if first { first = false; } else { s += sep; }
+        s += ss;
+    }
+    ret s;
+}
+
+/*
+Section: Adding to and removing from a string
+*/
 
 /*
 Function: push_char
@@ -555,6 +297,636 @@ Function: unshift_char
 Prepend a char to a string
 */
 fn unshift_char(&s: str, ch: char) { s = from_char(ch) + s; }
+
+/*
+Function: push_byte
+
+Appends a byte to a string.
+
+This function is not unicode-safe.
+*/
+fn push_byte(&s: str, b: u8) { rustrt::rust_str_push(s, b); }
+
+/*
+Function: push_bytes
+
+Appends a vector of bytes to a string.
+
+This function is not unicode-safe.
+*/
+fn push_bytes(&s: str, bytes: [u8]) {
+    for byte in bytes { rustrt::rust_str_push(s, byte); }
+}
+
+/*
+Function: pop_byte
+
+Removes the last byte from a string and returns it.
+
+This function is not unicode-safe.
+*/
+fn pop_byte(&s: str) -> u8 {
+    let len = byte_len(s);
+    assert (len > 0u);
+    let b = s[len - 1u];
+    s = substr(s, 0u, len - 1u);
+    ret b;
+}
+
+/*
+Function: shift_byte
+
+Removes the first byte from a string and returns it.
+
+This function is not unicode-safe.
+*/
+fn shift_byte(&s: str) -> u8 {
+    let len = byte_len(s);
+    assert (len > 0u);
+    let b = s[0];
+    s = substr(s, 1u, len - 1u);
+    ret b;
+}
+
+/*
+Function: trim_left
+
+Returns a string with leading whitespace removed.
+*/
+fn trim_left(s: str) -> str {
+    fn count_whities(s: [char]) -> uint {
+        let i = 0u;
+        while i < vec::len(s) {
+            if !char::is_whitespace(s[i]) { break; }
+            i += 1u;
+        }
+        ret i;
+    }
+    let chars = to_chars(s);
+    let whities = count_whities(chars);
+    ret from_chars(vec::slice(chars, whities, vec::len(chars)));
+}
+
+/*
+Function: trim_right
+
+Returns a string with trailing whitespace removed.
+*/
+fn trim_right(s: str) -> str {
+    fn count_whities(s: [char]) -> uint {
+        let i = vec::len(s);
+        while 0u < i {
+            if !char::is_whitespace(s[i - 1u]) { break; }
+            i -= 1u;
+        }
+        ret i;
+    }
+    let chars = to_chars(s);
+    let whities = count_whities(chars);
+    ret from_chars(vec::slice(chars, 0u, whities));
+}
+
+/*
+Function: trim
+
+Returns a string with leading and trailing whitespace removed
+*/
+fn trim(s: str) -> str { trim_left(trim_right(s)) }
+
+
+/*
+Section: Transforming strings
+*/
+
+/*
+Function: bytes
+
+Converts a string to a vector of bytes. The result vector is not
+null-terminated.
+*/
+fn bytes(s: str) -> [u8] unsafe {
+    let v = unsafe::reinterpret_cast(s);
+    let vcopy = vec::slice(v, 0u, vec::len(v) - 1u);
+    unsafe::leak(v);
+    ret vcopy;
+}
+
+/*
+Function: to_chars
+
+Convert a string to a vector of characters
+
+FIXME: rename to 'chars'
+*/
+fn to_chars(s: str) -> [char] {
+    let buf: [char] = [];
+    let i = 0u;
+    let len = byte_len(s);
+    while i < len {
+        let cur = char_range_at(s, i);
+        buf += [cur.ch];
+        i = cur.next;
+    }
+    ret buf;
+}
+
+/*
+Function: substr
+
+Take a substring of another. Returns a string containing `len` bytes
+starting at byte offset `begin`.
+
+FIXME: This function is not unicode-safe.
+
+Failure:
+
+If `begin` + `len` is is greater than the byte length of the string
+*/
+fn substr(s: str, begin: uint, len: uint) -> str {
+    ret slice(s, begin, begin + len);
+}
+
+/*
+Function: char_slice
+
+Unicode-safe slice. Returns a slice of the given string containing
+the characters in the range [`begin`..`end`). `begin` and `end` are
+character indexes, not byte indexes.
+
+Failure:
+
+- If begin is greater than end
+- If end is greater than the character length of the string
+
+FIXME: rename to slice(), make faster by avoiding char conversion
+*/
+fn char_slice(s: str, begin: uint, end: uint) -> str {
+    from_chars(vec::slice(to_chars(s), begin, end))
+}
+
+/*
+Function: slice
+
+Takes a bytewise slice from a string. Returns the substring from
+[`begin`..`end`).
+
+This function is not unicode-safe.
+
+Failure:
+
+- If begin is greater than end.
+- If end is greater than the length of the string.
+
+FIXME: rename to slice_byte or slice_byte_unsafe
+*/
+fn slice(s: str, begin: uint, end: uint) -> str unsafe {
+    // FIXME: Typestate precondition
+    assert (begin <= end);
+    assert (end <= byte_len(s));
+
+    let v: [u8] = unsafe::reinterpret_cast(s);
+    let v2 = vec::slice(v, begin, end);
+    unsafe::leak(v);
+    v2 += [0u8];
+    let s2: str = unsafe::reinterpret_cast(v2);
+    unsafe::leak(v2);
+    ret s2;
+}
+
+/*
+Function: safe_slice
+
+FIXME: make sure char_slice / slice / byte_slice
+       have these preconditions and assertions
+FIXME: this shouldn't be mistaken for a UTF-8 safe slice
+*/
+fn safe_slice(s: str, begin: uint, end: uint) : uint::le(begin, end) -> str {
+    // would need some magic to make this a precondition
+    assert (end <= byte_len(s));
+    ret slice(s, begin, end);
+}
+
+/*
+Function: split
+
+Split a string at each occurance of a given separator
+
+Returns:
+
+A vector containing all the strings between each occurance of the separator
+
+FIXME: should be renamed to split_byte
+*/
+fn split(s: str, sep: u8) -> [str] {
+    let v: [str] = [];
+    let accum: str = "";
+    let ends_with_sep: bool = false;
+    for c: u8 in s {
+        if c == sep {
+            v += [accum];
+            accum = "";
+            ends_with_sep = true;
+        } else { accum += unsafe_from_byte(c); ends_with_sep = false; }
+    }
+    if byte_len(accum) != 0u || ends_with_sep { v += [accum]; }
+    ret v;
+}
+
+/*
+Function: splitn
+
+Split a string at each occurance of a given separator up to count times.
+
+Returns:
+
+A vector containing all the strings between each occurance of the separator
+
+FIXME: rename to 'splitn_char'
+*/
+fn splitn(s: str, sep: u8, count: uint) -> [str] {
+    let v = [];
+    let accum = "";
+    let n = count;
+    let ends_with_sep: bool = false;
+    for c in s {
+        if n > 0u && c == sep {
+            n -= 1u;
+            v += [accum];
+            accum = "";
+            ends_with_sep = true;
+        } else { accum += unsafe_from_byte(c); ends_with_sep = false; }
+    }
+    if byte_len(accum) != 0u || ends_with_sep { v += [accum]; }
+    ret v;
+}
+
+/*
+Function: split_str
+
+Splits a string at each occurrence of the given separator string. Empty
+leading fields are suppressed, and empty trailing fields are preserved.
+
+Returns:
+
+A vector containing all the strings between each occurrence of the separator.
+
+FIXME: should behave like split and split_char:
+         assert ["", "XXX", "YYY", ""] == split_str(".XXX.YYY.", ".");
+*/
+fn split_str(s: str, sep: str) -> [str] {
+    assert byte_len(sep) > 0u;
+    let v: [str] = [], accum = "", sep_match = 0u, leading = true;
+    for c: u8 in s {
+        // Did we match the entire separator?
+        if sep_match == byte_len(sep) {
+            if !leading { v += [accum]; }
+            accum = "";
+            sep_match = 0u;
+        }
+
+        if c == sep[sep_match] {
+            sep_match += 1u;
+        } else {
+            sep_match = 0u;
+            accum += unsafe_from_byte(c);
+            leading = false;
+        }
+    }
+
+    if byte_len(accum) > 0u { v += [accum]; }
+    if sep_match == byte_len(sep) { v += [""]; }
+
+    ret v;
+}
+
+/*
+Function: split_func
+
+Splits a string into substrings using a function
+(unicode safe)
+
+FIXME: rename to 'split'
+*/
+fn split_func(ss: str, sepfn: fn(cc: char)->bool) -> [str] {
+    let vv: [str] = [];
+    let accum: str = "";
+    let ends_with_sep: bool = false;
+
+    str::iter_chars(ss, {|cc| if sepfn(cc) {
+            vv += [accum];
+            accum = "";
+            ends_with_sep = true;
+        } else {
+            str::push_char(accum, cc);
+            ends_with_sep = false;
+        }
+    });
+
+    if char_len(accum) >= 0u || ends_with_sep {
+        vv += [accum];
+    }
+
+    ret vv;
+}
+
+/*
+Function: split_char
+
+Splits a string into a vector of the substrings separated by a given character
+*/
+fn split_char(ss: str, cc: char) -> [str] {
+   split_func(ss, {|kk| kk == cc})
+}
+
+/*
+Function: lines
+
+Splits a string into a vector of the substrings
+separated by LF ('\n')
+*/
+fn lines(ss: str) -> [str] {
+    split_func(ss, {|cc| cc == '\n'})
+}
+
+/*
+Function: lines_any
+
+Splits a string into a vector of the substrings
+separated by LF ('\n') and/or CR LF ('\r\n')
+*/
+fn lines_any(ss: str) -> [str] {
+    vec::map(lines(ss), {|s| trim_right(s)})
+}
+
+/*
+Function: words
+
+Splits a string into a vector of the substrings
+separated by whitespace
+*/
+fn words(ss: str) -> [str] {
+    ret vec::filter( split_func(ss, {|cc| char::is_whitespace(cc)}),
+                     {|w| 0u < str::char_len(w)});
+}
+
+/*
+Function: windowed
+
+Create a vector of substrings of size `nn`
+*/
+fn windowed(nn: uint, ss: str) -> [str] {
+    let ww = [];
+    let len = str::char_len(ss);
+
+    assert 1u <= nn;
+
+    let ii = 0u;
+    while ii+nn <= len {
+        let w = char_slice( ss, ii, ii+nn );
+        vec::push(ww,w);
+        ii += 1u;
+    }
+
+    ret ww;
+}
+
+/*
+Function: to_lower
+
+Convert a string to lowercase
+
+FIXME: rewrite with map
+*/
+fn to_lower(s: str) -> str {
+    let outstr = "";
+    iter_chars(s) { |c|
+        push_char(outstr, char::to_lower(c));
+    }
+    ret outstr;
+}
+
+/*
+Function: to_upper
+
+Convert a string to uppercase
+
+FIXME: rewrite with map
+*/
+fn to_upper(s: str) -> str {
+    let outstr = "";
+    iter_chars(s) { |c|
+        push_char(outstr, char::to_upper(c));
+    }
+    ret outstr;
+}
+
+// FIXME: This is super-inefficient
+/*
+Function: replace
+
+Replace all occurances of one string with another
+
+Parameters:
+
+s - The string containing substrings to replace
+from - The string to replace
+to - The replacement string
+
+Returns:
+
+The original string with all occurances of `from` replaced with `to`
+*/
+fn replace(s: str, from: str, to: str) : is_not_empty(from) -> str {
+    // FIXME (694): Shouldn't have to check this
+    check (is_not_empty(from));
+    if byte_len(s) == 0u {
+        ret "";
+    } else if starts_with(s, from) {
+        ret to + replace(slice(s, byte_len(from), byte_len(s)), from, to);
+    } else {
+        let idx = find(s, from);
+        if idx == -1 {
+            ret s;
+        }
+        ret char_slice(s, 0u, idx as uint) + to +
+            replace(char_slice(s, idx as uint + char_len(from), char_len(s)),
+                    from, to);
+    }
+}
+
+/*
+Function: escape
+
+Escapes special characters inside the string, making it safe for transfer.
+*/
+fn escape(s: str) -> str {
+    let r = "";
+    loop_chars(s, { |c| r += escape_char(c); true });
+    r
+}
+
+/*
+Section: Comparing strings
+*/
+
+/*
+Function: eq
+
+Bytewise string equality
+*/
+pure fn eq(&&a: str, &&b: str) -> bool { a == b }
+
+/*
+Function: lteq
+
+Bytewise less than or equal
+*/
+pure fn lteq(&&a: str, &&b: str) -> bool { a <= b }
+
+/*
+Function: hash
+
+String hash function
+*/
+fn hash(&&s: str) -> uint {
+    // djb hash.
+    // FIXME: replace with murmur.
+
+    let u: uint = 5381u;
+    for c: u8 in s { u *= 33u; u += c as uint; }
+    ret u;
+}
+
+/*
+Section: Iterating through strings
+*/
+
+/*
+Function: loop_chars
+
+Loop through a string, char by char
+
+Parameters:
+s  - A string to traverse. It may be empty.
+it - A block to execute with each consecutive character of `s`.
+Return `true` to continue, `false` to stop.
+
+Returns:
+
+`true` If execution proceeded correctly, `false` if it was interrupted,
+that is if `it` returned `false` at any point.
+
+FIXME: rename to 'chars_loop' (change? currently a synonym to 'all')
+ */
+fn loop_chars(s: str, it: fn(char) -> bool) -> bool{
+    ret loop_chars_sub(s, 0u, byte_len(s), it);
+}
+
+/*
+Function: all
+
+Return true if a predicate matches all characters or
+if the string contains no characters
+
+// FIXME: a synonym to loop_chars
+*/
+fn all(ss: str, ff: fn(char) -> bool) -> bool {
+    str::loop_chars(ss, ff)
+}
+
+/*
+Function: any
+
+Return true if a predicate matches any character
+(and false if it matches none or there are no characters)
+*/
+fn any(ss: str, pred: fn(char) -> bool) -> bool {
+   !all(ss, {|cc| !pred(cc)})
+}
+
+/*
+Function: map
+
+Apply a function to each character
+*/
+fn map(ss: str, ff: fn(char) -> char) -> str {
+    let result = "";
+
+    str::iter_chars(ss, {|cc|
+        str::push_char(result, ff(cc));
+    });
+
+    ret result;
+}
+
+/*
+Function: bytes_iter
+
+Iterate over the bytes in a string
+
+FIXME: Should it really include the last byte '\0'?
+*/
+fn bytes_iter(ss: str, it: fn(u8)) {
+    let pos = 0u;
+    let len = byte_len(ss);
+
+    while (pos < len) {
+        it(ss[pos]);
+        pos += 1u;
+    }
+}
+
+/*
+Function: iter_chars
+
+Iterate over the characters in a string
+
+FIXME: rename to 'chars_iter'
+*/
+fn iter_chars(s: str, it: fn(char)) {
+    let pos = 0u, len = byte_len(s);
+    while (pos < len) {
+        let {ch, next} = char_range_at(s, pos);
+        pos = next;
+        it(ch);
+    }
+}
+
+/*
+Function: chars_iter
+
+Iterate over the characters in a string
+
+FIXME: A synonym to iter_chars
+*/
+fn chars_iter(ss: str, it: fn(char)) {
+    iter_chars(ss, it)
+}
+
+/*
+Function: words_iter
+
+Apply a function to each word
+*/
+fn words_iter(ss: str, ff: fn(&&str)) {
+    vec::iter(words(ss), ff)
+}
+
+/*
+Function: lines_iter
+
+Apply a function to each lines (by '\n')
+*/
+fn lines_iter(ss: str, ff: fn(&&str)) {
+    vec::iter(lines(ss), ff)
+}
+
+// FIXME: ADD split_char_iter
+// FIXME: ADD splitn_char_iter
+
+/*
+Section: Searching
+*/
 
 /*
 Function: index
@@ -666,439 +1038,326 @@ fn ends_with(haystack: str, needle: str) -> bool {
 }
 
 /*
-Function: substr
-
-Take a substring of another. Returns a string containing `len` bytes
-starting at byte offset `begin`.
-
-This function is not unicode-safe.
-
-Failure:
-
-If `begin` + `len` is is greater than the byte length of the string
+Section: String properties
 */
-fn substr(s: str, begin: uint, len: uint) -> str {
-    ret slice(s, begin, begin + len);
+
+/*
+Function: is_ascii
+
+Determines if a string contains only ASCII characters
+
+FIXME: possibly implement using char::is_ascii when it exists
+*/
+fn is_ascii(s: str) -> bool {
+    let i: uint = byte_len(s);
+    while i > 0u { i -= 1u; if s[i] & 128u8 != 0u8 { ret false; } }
+    ret true;
 }
 
 /*
-Function: slice
+Predicate: is_empty
 
-Takes a bytewise slice from a string. Returns the substring from
-[`begin`..`end`).
-
-This function is not unicode-safe.
-
-Failure:
-
-- If begin is greater than end.
-- If end is greater than the length of the string.
+Returns true if the string has length 0
 */
-fn slice(s: str, begin: uint, end: uint) -> str unsafe {
-    // FIXME: Typestate precondition
-    assert (begin <= end);
-    assert (end <= byte_len(s));
+pure fn is_empty(s: str) -> bool { for c: u8 in s { ret false; } ret true; }
 
+/*
+Predicate: is_not_empty
+
+Returns true if the string has length greater than 0
+*/
+pure fn is_not_empty(s: str) -> bool { !is_empty(s) }
+
+/*
+Function: is_whitespace
+
+Returns true if the string contains only whitespace
+*/
+fn is_whitespace(s: str) -> bool {
+    ret loop_chars(s, char::is_whitespace);
+}
+
+/*
+Function: byte_len
+
+Returns the length in bytes of a string
+
+FIXME: rename to 'len_bytes'?
+*/
+pure fn byte_len(s: str) -> uint unsafe {
     let v: [u8] = unsafe::reinterpret_cast(s);
-    let v2 = vec::slice(v, begin, end);
+    let vlen = vec::len(v);
     unsafe::leak(v);
-    v2 += [0u8];
-    let s2: str = unsafe::reinterpret_cast(v2);
-    unsafe::leak(v2);
-    ret s2;
+    // There should always be a null terminator
+    assert (vlen > 0u);
+    ret vlen - 1u;
 }
 
 /*
-Function: safe_slice
+Function: char_len
+
+Count the number of unicode characters in a string
+
+FIXME: rename to 'len_chars'?
 */
-fn safe_slice(s: str, begin: uint, end: uint) : uint::le(begin, end) -> str {
-    // would need some magic to make this a precondition
-    assert (end <= byte_len(s));
-    ret slice(s, begin, end);
+fn char_len(s: str) -> uint {
+    ret char_len_range(s, 0u, byte_len(s));
 }
 
 /*
-Function: shift_byte
-
-Removes the first byte from a string and returns it.
-
-This function is not unicode-safe.
+Section: Misc
 */
-fn shift_byte(&s: str) -> u8 {
-    let len = byte_len(s);
-    assert (len > 0u);
-    let b = s[0];
-    s = substr(s, 1u, len - 1u);
-    ret b;
-}
 
 /*
-Function: pop_byte
+Function: is_utf8
 
-Removes the last byte from a string and returns it.
-
-This function is not unicode-safe.
+Determines if a vector of bytes contains valid UTF-8
 */
-fn pop_byte(&s: str) -> u8 {
-    let len = byte_len(s);
-    assert (len > 0u);
-    let b = s[len - 1u];
-    s = substr(s, 0u, len - 1u);
-    ret b;
-}
-
-/*
-Function: push_byte
-
-Appends a byte to a string.
-
-This function is not unicode-safe.
-*/
-fn push_byte(&s: str, b: u8) { rustrt::rust_str_push(s, b); }
-
-/*
-Function: push_bytes
-
-Appends a vector of bytes to a string.
-
-This function is not unicode-safe.
-*/
-fn push_bytes(&s: str, bytes: [u8]) {
-    for byte in bytes { rustrt::rust_str_push(s, byte); }
-}
-
-/*
-Function: split
-
-Split a string at each occurance of a given separator
-
-Returns:
-
-A vector containing all the strings between each occurance of the separator
-
-FIXME: should be renamed to split_byte
-*/
-fn split(s: str, sep: u8) -> [str] {
-    let v: [str] = [];
-    let accum: str = "";
-    let ends_with_sep: bool = false;
-    for c: u8 in s {
-        if c == sep {
-            v += [accum];
-            accum = "";
-            ends_with_sep = true;
-        } else { accum += unsafe_from_byte(c); ends_with_sep = false; }
-    }
-    if byte_len(accum) != 0u || ends_with_sep { v += [accum]; }
-    ret v;
-}
-
-/*
-Function: splitn
-
-Split a string at each occurance of a given separator up to count times.
-
-Returns:
-
-A vector containing all the strings between each occurance of the separator
-*/
-fn splitn(s: str, sep: u8, count: uint) -> [str] {
-    let v = [];
-    let accum = "";
-    let n = count;
-    let ends_with_sep: bool = false;
-    for c in s {
-        if n > 0u && c == sep {
-            n -= 1u;
-            v += [accum];
-            accum = "";
-            ends_with_sep = true;
-        } else { accum += unsafe_from_byte(c); ends_with_sep = false; }
-    }
-    if byte_len(accum) != 0u || ends_with_sep { v += [accum]; }
-    ret v;
-}
-
-/*
-Function: split_str
-
-Splits a string at each occurrence of the given separator string. Empty
-leading fields are suppressed, and empty trailing fields are preserved.
-
-Returns:
-
-A vector containing all the strings between each occurrence of the separator.
-
-FIXME: should behave like split and split_char:
-         assert ["", "XXX", "YYY", ""] == split_str(".XXX.YYY.", ".");
-*/
-fn split_str(s: str, sep: str) -> [str] {
-    assert byte_len(sep) > 0u;
-    let v: [str] = [], accum = "", sep_match = 0u, leading = true;
-    for c: u8 in s {
-        // Did we match the entire separator?
-        if sep_match == byte_len(sep) {
-            if !leading { v += [accum]; }
-            accum = "";
-            sep_match = 0u;
-        }
-
-        if c == sep[sep_match] {
-            sep_match += 1u;
-        } else {
-            sep_match = 0u;
-            accum += unsafe_from_byte(c);
-            leading = false;
+fn is_utf8(v: [u8]) -> bool {
+    let i = 0u;
+    let total = vec::len::<u8>(v);
+    while i < total {
+        let chsize = utf8_char_width(v[i]);
+        if chsize == 0u { ret false; }
+        if i + chsize > total { ret false; }
+        i += 1u;
+        while chsize > 1u {
+            if v[i] & 192u8 != tag_cont_u8 { ret false; }
+            i += 1u;
+            chsize -= 1u;
         }
     }
-
-    if byte_len(accum) > 0u { v += [accum]; }
-    if sep_match == byte_len(sep) { v += [""]; }
-
-    ret v;
+    ret true;
 }
 
 /*
-Function: split_func
+Function: char_len_range
 
-Splits a string into substrings using a function
-(unicode safe)
+As char_len but for a slice of a string
 
-FIXME: will be renamed to split.
+Parameters:
+ s           - A valid string
+ byte_start  - The position inside `s` where to start counting in bytes.
+ byte_len    - The number of bytes of `s` to take into account.
+
+Returns:
+ The number of Unicode characters in `s` in
+segment [byte_start, byte_start+len( .
+
+Safety note:
+- This function does not check whether the substring is valid.
+- This function fails if `byte_offset` or `byte_len` do not
+ represent valid positions inside `s`
+
+FIXME: rename to 'substr_len_chars'
 */
-fn split_func(ss: str, sepfn: fn(cc: char)->bool) -> [str] {
-    let vv: [str] = [];
-    let accum: str = "";
-    let ends_with_sep: bool = false;
-
-    str::iter_chars(ss, {|cc| if sepfn(cc) {
-            vv += [accum];
-            accum = "";
-            ends_with_sep = true;
-        } else {
-            str::push_char(accum, cc);
-            ends_with_sep = false;
-        }
-    });
-
-    if char_len(accum) >= 0u || ends_with_sep {
-        vv += [accum];
+fn char_len_range(s: str, byte_start: uint, byte_len: uint) -> uint {
+    let i     = byte_start;
+    let len   = 0u;
+    while i < byte_len {
+        let chsize = utf8_char_width(s[i]);
+        assert (chsize > 0u);
+        len += 1u;
+        i += chsize;
     }
-
-    ret vv;
+    assert (i == byte_len);
+    ret len;
 }
 
 /*
-Function: split_char
+Function: byte_len_range
 
-Splits a string into a vector of the substrings separated by a given character
+As byte_len but for a substring
+
+Parameters:
+s - A string
+byte_offset - The byte offset at which to start in the string
+char_len    - The number of chars (not bytes!) in the range
+
+Returns:
+The number of bytes in the substring starting at `byte_offset` and
+containing `char_len` chars.
+
+Safety note:
+
+This function fails if `byte_offset` or `char_len` do not represent
+valid positions in `s`
+
+FIXME: rename to 'substr_len_bytes'
 */
-fn split_char(ss: str, cc: char) -> [str] {
-   split_func(ss, {|kk| kk == cc})
-}
-
-/*
-Function: lines
-
-Splits a string into a vector of the substrings
-separated by LF ('\n')
-*/
-fn lines(ss: str) -> [str] {
-    split_func(ss, {|cc| cc == '\n'})
-}
-
-/*
-Function: lines_any
-
-Splits a string into a vector of the substrings
-separated by LF ('\n') and/or CR LF ('\r\n')
-*/
-fn lines_any(ss: str) -> [str] {
-    vec::map(lines(ss), {|s| trim_right(s)})
-}
-
-/*
-Function: words
-
-Splits a string into a vector of the substrings
-separated by whitespace
-*/
-fn words(ss: str) -> [str] {
-    ret vec::filter( split_func(ss, {|cc| char::is_whitespace(cc)}),
-                     {|w| 0u < str::char_len(w)});
-}
-
-/*
-Function: words_iter
-
-Apply a function to each word
-*/
-fn words_iter(ss: str, ff: fn(&&str)) {
-    vec::iter(words(ss), ff)
-}
-
-/*
-Function: lines_iter
-
-Apply a function to each lines (by '\n')
-*/
-fn lines_iter(ss: str, ff: fn(&&str)) {
-    vec::iter(lines(ss), ff)
-}
-
-/*
-Function: concat
-
-Concatenate a vector of strings
-*/
-fn concat(v: [str]) -> str {
-    let s: str = "";
-    for ss: str in v { s += ss; }
-    ret s;
-}
-
-/*
-Function: connect
-
-Concatenate a vector of strings, placing a given separator between each
-*/
-fn connect(v: [str], sep: str) -> str {
-    let s: str = "";
-    let first: bool = true;
-    for ss: str in v {
-        if first { first = false; } else { s += sep; }
-        s += ss;
+fn byte_len_range(s: str, byte_offset: uint, char_len: uint) -> uint {
+    let i = byte_offset;
+    let chars = 0u;
+    while chars < char_len {
+        let chsize = utf8_char_width(s[i]);
+        assert (chsize > 0u);
+        i += chsize;
+        chars += 1u;
     }
-    ret s;
+    ret i - byte_offset;
 }
 
 /*
-Function: to_lower
+Function: utf8_char_width
 
-Convert a string to lowercase
+Given a first byte, determine how many bytes are in this UTF-8 character
+
 */
-fn to_lower(s: str) -> str {
-    let outstr = "";
-    iter_chars(s) { |c|
-        push_char(outstr, char::to_lower(c));
-    }
-    ret outstr;
-}
-/*
-Function: to_upper
+pure fn utf8_char_width(b: u8) -> uint {
+    let byte: uint = b as uint;
+    if byte < 128u { ret 1u; }
+    if byte < 192u {
+        ret 0u; // Not a valid start byte
 
-Convert a string to uppercase
-*/
-fn to_upper(s: str) -> str {
-    let outstr = "";
-    iter_chars(s) { |c|
-        push_char(outstr, char::to_upper(c));
     }
-    ret outstr;
+    if byte < 224u { ret 2u; }
+    if byte < 240u { ret 3u; }
+    if byte < 248u { ret 4u; }
+    if byte < 252u { ret 5u; }
+    ret 6u;
 }
 
-// FIXME: This is super-inefficient
 /*
-Function: replace
+Function: char_range_at
 
-Replace all occurances of one string with another
+Pluck a character out of a string and return the index of the next character.
+This function can be used to iterate over the unicode characters of a string.
+
+Example:
+> let s = "中华Việt Nam";
+> let i = 0u;
+> while i < str::byte_len(s) {
+>    let {ch, next} = str::char_range_at(s, i);
+>    std::io::println(#fmt("%u: %c",i,ch));
+>    i = next;
+> }
+
+Example output:
+
+      0: 中
+      3: 华
+      6: V
+      7: i
+      8: ệ
+      11: t
+      12:
+      13: N
+      14: a
+      15: m
 
 Parameters:
 
-s - The string containing substrings to replace
-from - The string to replace
-to - The replacement string
+s - The string
+i - The byte offset of the char to extract
 
 Returns:
 
-The original string with all occurances of `from` replaced with `to`
-*/
-fn replace(s: str, from: str, to: str) : is_not_empty(from) -> str {
-    // FIXME (694): Shouldn't have to check this
-    check (is_not_empty(from));
-    if byte_len(s) == 0u {
-        ret "";
-    } else if starts_with(s, from) {
-        ret to + replace(slice(s, byte_len(from), byte_len(s)), from, to);
-    } else {
-        let idx = find(s, from);
-        if idx == -1 {
-            ret s;
-        }
-        ret char_slice(s, 0u, idx as uint) + to +
-            replace(char_slice(s, idx as uint + char_len(from), char_len(s)),
-                    from, to);
-    }
-}
-
-// FIXME: Also not efficient
-/*
-Function: char_slice
-
-Unicode-safe slice. Returns a slice of the given string containing
-the characters in the range [`begin`..`end`). `begin` and `end` are
-character indexes, not byte indexes.
+A record {ch: char, next: uint} containing the char value and the byte
+index of the next unicode character.
 
 Failure:
 
-- If begin is greater than end
-- If end is greater than the character length of the string
+If `i` is greater than or equal to the length of the string.
+If `i` is not the index of the beginning of a valid UTF-8 character.
 */
-fn char_slice(s: str, begin: uint, end: uint) -> str {
-    from_chars(vec::slice(to_chars(s), begin, end))
-}
-
-/*
-Function: trim_left
-
-Returns a string with leading whitespace removed.
-*/
-fn trim_left(s: str) -> str {
-    fn count_whities(s: [char]) -> uint {
-        let i = 0u;
-        while i < vec::len(s) {
-            if !char::is_whitespace(s[i]) { break; }
-            i += 1u;
-        }
-        ret i;
+fn char_range_at(s: str, i: uint) -> {ch: char, next: uint} {
+    let b0 = s[i];
+    let w = utf8_char_width(b0);
+    assert (w != 0u);
+    if w == 1u { ret {ch: b0 as char, next: i + 1u}; }
+    let val = 0u;
+    let end = i + w;
+    let i = i + 1u;
+    while i < end {
+        let byte = s[i];
+        assert (byte & 192u8 == tag_cont_u8);
+        val <<= 6u;
+        val += byte & 63u8 as uint;
+        i += 1u;
     }
-    let chars = to_chars(s);
-    let whities = count_whities(chars);
-    ret from_chars(vec::slice(chars, whities, vec::len(chars)));
+    // Clunky way to get the right bits from the first byte. Uses two shifts,
+    // the first to clip off the marker bits at the left of the byte, and then
+    // a second (as uint) to get it to the right position.
+    val += (b0 << (w + 1u as u8) as uint) << ((w - 1u) * 6u - w - 1u);
+    ret {ch: val as char, next: i};
 }
 
 /*
-Function: trim_right
+Function: char_at
 
-Returns a string with trailing whitespace removed.
+Pluck a character out of a string
 */
-fn trim_right(s: str) -> str {
-    fn count_whities(s: [char]) -> uint {
-        let i = vec::len(s);
-        while 0u < i {
-            if !char::is_whitespace(s[i - 1u]) { break; }
-            i -= 1u;
-        }
-        ret i;
+fn char_at(s: str, i: uint) -> char { ret char_range_at(s, i).ch; }
+
+/*
+Function: loop_chars_sub
+
+Loop through a substring, char by char
+
+Parameters:
+s           - A string to traverse. It may be empty.
+byte_offset - The byte offset at which to start in the string.
+byte_len    - The number of bytes to traverse in the string
+it          - A block to execute with each consecutive character of `s`.
+Return `true` to continue, `false` to stop.
+
+Returns:
+
+`true` If execution proceeded correctly, `false` if it was interrupted,
+that is if `it` returned `false` at any point.
+
+Safety note:
+- This function does not check whether the substring is valid.
+- This function fails if `byte_offset` or `byte_len` do not
+ represent valid positions inside `s`
+
+FIXME: rename to 'substr_all'
+ */
+fn loop_chars_sub(s: str, byte_offset: uint, byte_len: uint,
+              it: fn(char) -> bool) -> bool {
+   let i = byte_offset;
+   let result = true;
+   while i < byte_len {
+      let {ch, next} = char_range_at(s, i);
+      if !it(ch) {result = false; break;}
+      i = next;
+   }
+   ret result;
+}
+
+
+/*
+Function: escape_char
+
+Escapes a single character.
+*/
+fn escape_char(c: char) -> str {
+    alt c {
+      '"' { "\\\"" }
+      '\\' { "\\\\" }
+      '\n' { "\\n" }
+      '\t' { "\\t" }
+      '\r' { "\\r" }
+      // FIXME: uncomment this when extfmt is moved to core
+      // in a snapshot.
+      // '\x00' to '\x1f' { #fmt["\\x%02x", c as uint] }
+      v { from_char(c) }
     }
-    let chars = to_chars(s);
-    let whities = count_whities(chars);
-    ret from_chars(vec::slice(chars, 0u, whities));
 }
 
-/*
-Function: trim
-
-Returns a string with leading and trailing whitespace removed
-*/
-fn trim(s: str) -> str { trim_left(trim_right(s)) }
-
-/*
-Type: sbuf
-
-An unsafe buffer of bytes. Corresponds to a C char pointer.
-*/
-type sbuf = *u8;
+// UTF-8 tags and ranges
+const tag_cont_u8: u8 = 128u8;
+const tag_cont: uint = 128u;
+const max_one_b: uint = 128u;
+const tag_two_b: uint = 192u;
+const max_two_b: uint = 2048u;
+const tag_three_b: uint = 224u;
+const max_three_b: uint = 65536u;
+const tag_four_b: uint = 240u;
+const max_four_b: uint = 2097152u;
+const tag_five_b: uint = 248u;
+const max_five_b: uint = 67108864u;
+const tag_six_b: uint = 252u;
 
 // NB: This is intentionally unexported because it's easy to misuse (there's
 // no guarantee that the string is rooted). Instead, use as_buf below.
@@ -1125,110 +1384,12 @@ fn as_buf<T>(s: str, f: fn(sbuf) -> T) -> T unsafe {
 }
 
 /*
-Function: from_cstr
+Type: sbuf
 
-Create a Rust string from a null-terminated C string
+An unsafe buffer of bytes. Corresponds to a C char pointer.
 */
-unsafe fn from_cstr(cstr: sbuf) -> str {
-    let res = "";
-    let start = cstr;
-    let curr = start;
-    let i = 0u;
-    while *curr != 0u8 {
-        push_byte(res, *curr);
-        i += 1u;
-        curr = ptr::offset(start, i);
-    }
-    ret res;
-}
+type sbuf = *u8;
 
-/*
-Function: escape_char
-
-Escapes a single character.
-*/
-fn escape_char(c: char) -> str {
-    alt c {
-      '"' { "\\\"" }
-      '\\' { "\\\\" }
-      '\n' { "\\n" }
-      '\t' { "\\t" }
-      '\r' { "\\r" }
-      // FIXME: uncomment this when extfmt is moved to core
-      // in a snapshot.
-      // '\x00' to '\x1f' { #fmt["\\x%02x", c as uint] }
-      v { from_char(c) }
-    }
-}
-
-/*
-Function: escape
-
-Escapes special characters inside the string, making it safe for transfer.
-*/
-fn escape(s: str) -> str {
-    let r = "";
-    loop_chars(s, { |c| r += escape_char(c); true });
-    r
-}
-
-/*
-Function: all
-
-Return true if a predicate matches all characters or
-if the string contains no characters
-
-// FIXME: a synonym to loop_chars
-*/
-fn all(ss: str, ff: fn(char) -> bool) -> bool {
-    str::loop_chars(ss, ff)
-}
-
-/*
-Function: any
-
-Return true if a predicate matches any character
-(and false if it matches none or there are no characters)
-*/
-fn any(ss: str, pred: fn(char) -> bool) -> bool {
-   !all(ss, {|cc| !pred(cc)})
-}
-
-/*
-Function: map
-
-Apply a function to each character
-*/
-fn map(ss: str, ff: fn(char) -> char) -> str {
-    let result = "";
-
-    str::iter_chars(ss, {|cc|
-        str::push_char(result, ff(cc));
-    });
-
-    ret result;
-}
-
-/*
-Function: windowed
-
-Create a vector of substrings of size `nn`
-*/
-fn windowed(nn: uint, ss: str) -> [str] {
-    let ww = [];
-    let len = str::char_len(ss);
-
-    assert 1u <= nn;
-
-    let ii = 0u;
-    while ii+nn <= len {
-        let w = char_slice( ss, ii, ii+nn );
-        vec::push(ww,w);
-        ii += 1u;
-    }
-
-    ret ww;
-}
 
 #[cfg(test)]
 mod tests {
