@@ -226,14 +226,16 @@ fn write_return(
 ) {
     alt doc.ty {
       some(ty) {
-        ctxt.w.write_line(#fmt("Returns `%s`", ty));
-        ctxt.w.write_line("");
+        ctxt.w.write_str(#fmt("Returns `%s`", ty));
         alt doc.desc {
           some(d) {
-            ctxt.w.write_line(d);
+            ctxt.w.write_line(#fmt(" - %s", d));
             ctxt.w.write_line("");
           }
-          none { }
+          none {
+            ctxt.w.write_line("");
+            ctxt.w.write_line("");
+          }
         }
       }
       none { }
@@ -267,6 +269,14 @@ fn should_write_blank_line_after_return_description() {
         "#[doc(return = \"blorp\")] fn a() -> int { }"
     );
     assert str::contains(markdown, "blorp\n\n");
+}
+
+#[test]
+fn should_write_return_description_on_same_line_as_type() {
+    let markdown = test::render(
+        "#[doc(return = \"blorp\")] fn a() -> int { }"
+    );
+    assert str::contains(markdown, "Returns `int` - blorp");
 }
 
 #[cfg(test)]
