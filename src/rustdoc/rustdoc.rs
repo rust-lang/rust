@@ -92,6 +92,7 @@ fn run(source_file: str) {
     let srv = astsrv::mk_srv_from_file(source_file);
     let doc = extract::from_srv(srv, default_name);
     run_passes(srv, doc, [
+        prune_unexported_pass::mk_pass(),
         tystr_pass::mk_pass(),
         path_pass::mk_pass(),
         attr_pass::mk_pass(),
