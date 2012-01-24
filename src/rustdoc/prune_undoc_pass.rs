@@ -20,8 +20,10 @@ fn run(
     let fold = fold::fold({
         fold_mod: fold_mod,
         fold_fn: fold_fn,
+        fold_const: fold_const,
         fold_modlist: fold_modlist,
-        fold_fnlist: fold_fnlist
+        fold_fnlist: fold_fnlist,
+        fold_constlist: fold_constlist
         with *fold::default_seq_fold(ctxt)
     });
     fold.fold_crate(fold, doc)
@@ -109,7 +111,7 @@ fn fold_modlist(
     list: doc::modlist
 ) -> doc::modlist {
     doc::modlist(vec::filter_map(*list) {|doc|
-        let doc = fold_mod(fold, doc);
+        let doc = fold.fold_mod(fold, doc);
         if fold.ctxt.have_docs {
             some(doc)
         } else {
@@ -152,7 +154,7 @@ fn fold_fnlist(
     list: doc::fnlist
 ) -> doc::fnlist {
     doc::fnlist(vec::filter_map(*list) {|doc|
-        let doc = fold_fn(fold, doc);
+        let doc = fold.fold_fn(fold, doc);
         if fold.ctxt.have_docs {
             some(doc)
         } else {
@@ -168,4 +170,38 @@ fn should_elide_undocumented_fns() {
     let doc = extract::from_srv(srv, "");
     let doc = run(srv, doc);
     assert vec::is_empty(*doc.topmod.fns);
+}
+
+fn fold_const(
+    fold: fold::fold<ctxt>,
+    doc: doc::constdoc
+) -> doc::constdoc {
+    let doc = fold::default_seq_fold_const(fold, doc);
+    fold.ctxt.have_docs =
+        doc.brief != none
+        || doc.desc != none;
+    ret doc;
+}
+
+fn fold_constlist(
+    fold: fold::fold<ctxt>,
+    list: doc::constlist
+) -> doc::constlist {
+    doc::constlist(vec::filter_map(*list) {|doc|
+        let doc = fold.fold_const(fold, doc);
+        if fold.ctxt.have_docs {
+            some(doc)
+        } else {
+            none
+        }
+    })
+}
+
+#[test]
+fn should_elide_undocumented_consts() {
+    let source = "const a: bool = true;";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = run(srv, doc);
+    assert vec::is_empty(*doc.topmod.consts);
 }

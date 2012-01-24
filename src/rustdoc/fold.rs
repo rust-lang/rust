@@ -7,6 +7,7 @@ export default_seq_fold;
 export default_seq_fold_crate;
 export default_seq_fold_mod;
 export default_seq_fold_fn;
+export default_seq_fold_const;
 export default_seq_fold_fnlist;
 
 enum fold<T> = t<T>;
