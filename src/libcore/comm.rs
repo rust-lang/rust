@@ -1,21 +1,25 @@
 #[doc(
   brief = "Communication between tasks",
-  desc  = "Communication between tasks is facilitated by ports (in the \
-           receiving task), and channels (in the sending task). Any \
-           number of channels may feed into a single port. \
-           Ports and channels may only transmit values of unique \
-           types; that is, values that are statically guaranteed to \
-           be accessed by a single 'owner' at a time.  Unique types \
-           include scalars, vectors, strings, and records, tags, \
-           tuples and unique boxes (~T) thereof. Most notably, \
-           shared boxes (@T) may not be transmitted across channels. \
-           Example: \
-               let p = comm::port(); \
-               task::spawn(comm::chan(p), fn (c: chan<str>) { \
-                   comm::send(c, \"Hello, World\"); \
-               }); \
-               io::println(comm::recv(p));"
-)];
+  desc  = "
+
+Communication between tasks is facilitated by ports (in the receiving
+task), and channels (in the sending task). Any number of channels may
+feed into a single port.  Ports and channels may only transmit values
+of unique types; that is, values that are statically guaranteed to be
+accessed by a single 'owner' at a time.  Unique types include scalars,
+vectors, strings, and records, tags, tuples and unique boxes (`~T`)
+thereof. Most notably, shared boxes (`@T`) may not be transmitted
+across channels.
+
+Example:
+
+    let p = comm::port();
+    task::spawn(comm::chan(p), fn (c: chan<str>) {
+        comm::send(c, \"Hello, World\");
+    });
+    io::println(comm::recv(p));
+
+")];
 
 import sys;
 import task;
