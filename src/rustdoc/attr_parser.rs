@@ -13,8 +13,7 @@ export crate_attrs, mod_attrs, fn_attrs, arg_attrs;
 export parse_crate, parse_mod, parse_fn;
 
 type crate_attrs = {
-    name: option<str>,
-    desc: option<str>
+    name: option<str>
 };
 
 type mod_attrs = {
@@ -56,11 +55,9 @@ fn doc_meta(
 
 fn parse_crate(attrs: [ast::attribute]) -> crate_attrs {
     let link_metas = attr::find_linkage_metas(attrs);
-    let attr_metas = attr::attr_metas(attrs);
 
     {
-        name: attr::meta_item_value_from_list(link_metas, "name"),
-        desc: attr::meta_item_value_from_list(attr_metas, "desc")
+        name: attr::meta_item_value_from_list(link_metas, "name")
     }
 }
 
@@ -86,14 +83,6 @@ fn should_not_extract_crate_name_if_no_name_value_in_link_attribute() {
     let attrs = test::parse_attributes(source);
     let attrs = parse_crate(attrs);
     assert attrs.name == none;
-}
-
-#[test]
-fn should_extract_crate_desc() {
-    let source = "#[desc = \"Teddybears\"]";
-    let attrs = test::parse_attributes(source);
-    let attrs = parse_crate(attrs);
-    assert attrs.desc == some("Teddybears");
 }
 
 fn parse_mod(attrs: [ast::attribute]) -> mod_attrs {

@@ -36,25 +36,14 @@ fn fold_crate(
     let srv = fold.ctxt;
     let doc = fold::default_seq_fold_crate(fold, doc);
 
-    // Use various crate attributes to set documentation on the top mod
-
     let attrs = astsrv::exec(srv) {|ctxt|
         let attrs = ctxt.ast.node.attrs;
         attr_parser::parse_crate(attrs)
     };
 
-    let brief = option::maybe(doc.topmod.brief, attrs.desc) {|desc|
-        if option::is_some(doc.topmod.brief) {
-            #warn("overriding crate brief doc attribute \
-                   with crate description");
-        }
-        some(desc)
-    };
-
     ~{
         topmod: ~{
-            name: option::from_maybe(doc.topmod.name, attrs.name),
-            brief: brief
+            name: option::from_maybe(doc.topmod.name, attrs.name)
             with *doc.topmod
         }
     }
@@ -68,16 +57,6 @@ fn should_replace_top_module_name_with_crate_name() {
     let fold = fold::default_seq_fold(srv);
     let doc = fold_crate(fold, doc);
     assert doc.topmod.name == "bond";
-}
-
-#[test]
-fn should_replace_top_module_brief_with_crate_desc() {
-    let source = "#[desc = \"The Rust compiler\"];";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let fold = fold::default_seq_fold(srv);
-    let doc = fold_crate(fold, doc);
-    assert doc.topmod.brief == some("The Rust compiler");
 }
 
 fn fold_mod(fold: fold::fold<astsrv::srv>, doc: doc::moddoc) -> doc::moddoc {
