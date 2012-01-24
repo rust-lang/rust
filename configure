@@ -340,7 +340,8 @@ then
     CFG_CLANG_VERSION=$("$CFG_CLANG" \
                       --version \
                       | grep version \
-                      | cut -d ' ' -f 3)
+                      | sed 's/.*\(version .*\)/\1/' \
+                      | cut -d ' ' -f 2)
 
     case $CFG_CLANG_VERSION in
         (3.0svn | 3.0 | 3.1)
