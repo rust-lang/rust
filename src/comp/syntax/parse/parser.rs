@@ -150,7 +150,7 @@ fn bad_expr_word_table() -> hashmap<str, ()> {
                  "assert", "claim", "native", "fn", "pure",
                  "unsafe", "import", "export", "let", "const",
                  "log", "copy", "sendfn", "impl", "iface", "enum",
-                 "m32", "m64", "m128", "f80", "f16", f128",
+                 "m32", "m64", "m128", "f80", "f16", "f128",
                  "class", "trait"] {
         words.insert(word, ());
     }
