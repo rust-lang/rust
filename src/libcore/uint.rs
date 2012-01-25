@@ -236,12 +236,12 @@ fn to_str(num: uint, radix: uint) -> str {
     if n == 0u { ret "0"; }
     let s: str = "";
     while n != 0u {
-        s += str::unsafe_from_byte(digit(n % radix) as u8);
+        s += str::from_byte(digit(n % radix) as u8);
         n /= radix;
     }
     let s1: str = "";
     let len: uint = str::byte_len(s);
-    while len != 0u { len -= 1u; s1 += str::unsafe_from_byte(s[len]); }
+    while len != 0u { len -= 1u; s1 += str::from_byte(s[len]); }
     ret s1;
 }
 

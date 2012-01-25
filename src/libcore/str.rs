@@ -146,7 +146,7 @@ Function: unsafe_from_byte
 Converts a byte to a string. Does not verify that the byte is
 valid UTF-8.
 
-FIXME: rename to 'from_byte'
+FIXME: REMOVE.
 */
 fn unsafe_from_byte(u: u8) -> str { unsafe_from_bytes([u]) }
 

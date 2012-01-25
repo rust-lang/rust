@@ -39,7 +39,7 @@ fn parse_ident_(st: @pstate, is_last: fn@(char) -> bool) ->
    ast::ident {
     let rslt = "";
     while !is_last(peek(st) as char) {
-        rslt += str::unsafe_from_byte(next(st));
+        rslt += str::from_byte(next(st));
     }
     ret rslt;
 }
@@ -226,7 +226,7 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
         while peek(st) as char != ']' {
             let name = "";
             while peek(st) as char != '=' {
-                name += str::unsafe_from_byte(next(st));
+                name += str::from_byte(next(st));
             }
             st.pos = st.pos + 1u;
             fields += [{ident: name, mt: parse_mt(st, conv)}];
