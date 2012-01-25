@@ -2007,7 +2007,7 @@ alt_pat : pat [ "to" pat ] ? [ "if" expr ] ;
 
 An `alt` expression branches on a *pattern*. The exact form of matching that
 occurs depends on the pattern. Patterns consist of some combination of
-literals, destructured tag constructors, records and tuples, variable binding
+literals, destructured enum constructors, records and tuples, variable binding
 specifications and placeholders (`_`). An `alt` expression has a *head
 expression*, which is the value to compare to the patterns. The type of the
 patterns must equal the type of the head expression.
@@ -2022,7 +2022,7 @@ An example of an `alt` expression:
 
 
 ~~~~
-tag list<X> { nil; cons(X, @list<X>); }
+enum list<X> { nil; cons(X, @list<X>); }
 
 let x: list<int> = cons(10, @cons(11, @nil));
 
@@ -3286,7 +3286,7 @@ such as vectors, strings, and the low level communication system (ports,
 channels, tasks).
 
 Support for other built-in types such as simple types, tuples, records, and
-tags is open-coded by the Rust compiler.
+enums is open-coded by the Rust compiler.
 
 
 
