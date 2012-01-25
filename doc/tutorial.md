@@ -1346,7 +1346,7 @@ destructors. Resources might go away in the future.
 Rust datatypes are not trivial to copy (the way, for example,
 JavaScript values can be copied by simply taking one or two machine
 words and plunking them somewhere else). Shared boxes require
-reference count updates, big records, tags, or unique pointers require
+reference count updates, big records, enums, or unique pointers require
 an arbitrary amount of data to be copied (plus updating the reference
 counts of shared boxes hanging off them).
 
@@ -1459,7 +1459,7 @@ alt my_rec {
 
 The fact that arguments are conceptually passed by safe reference does
 not mean all arguments are passed by pointer. Composite types like
-records and tags *are* passed by pointer, but single-word values, like
+records and enums *are* passed by pointer, but single-word values, like
 integers and pointers, are simply passed by value. Most of the time,
 the programmer does not have to worry about this, as the compiler will
 simply pick the most efficient passing style. There is one exception,
