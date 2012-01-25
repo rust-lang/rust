@@ -2458,7 +2458,7 @@ fn parse_crate_from_source_file(input: str, cfg: ast::crate_cfg,
     let p = new_parser_from_file(sess, cfg, input, SOURCE_FILE);
     let r = parse_crate_mod(p, cfg);
     sess.chpos = p.reader.chpos;
-    sess.byte_pos = p.reader.pos;
+    sess.byte_pos = sess.byte_pos + p.reader.pos;
     ret r;
 }
 
@@ -2468,7 +2468,7 @@ fn parse_expr_from_source_str(name: str, source: @str, cfg: ast::crate_cfg,
     let p = new_parser_from_source_str(sess, cfg, name, source);
     let r = parse_expr(p);
     sess.chpos = p.reader.chpos;
-    sess.byte_pos = p.reader.pos;
+    sess.byte_pos = sess.byte_pos + p.reader.pos;
     ret r;
 }
 
@@ -2477,7 +2477,7 @@ fn parse_crate_from_source_str(name: str, source: @str, cfg: ast::crate_cfg,
     let p = new_parser_from_source_str(sess, cfg, name, source);
     let r = parse_crate_mod(p, cfg);
     sess.chpos = p.reader.chpos;
-    sess.byte_pos = p.reader.pos;
+    sess.byte_pos = sess.byte_pos + p.reader.pos;
     ret r;
 }
 
@@ -2579,7 +2579,7 @@ fn parse_crate_from_crate_file(input: str, cfg: ast::crate_cfg,
     let first_cdir_attr = leading_attrs.next;
     let cdirs = parse_crate_directives(p, token::EOF, first_cdir_attr);
     sess.chpos = p.reader.chpos;
-    sess.byte_pos = p.reader.pos;
+    sess.byte_pos = sess.byte_pos + p.reader.pos;
     let cx =
         @{p: p,
           sess: sess,
