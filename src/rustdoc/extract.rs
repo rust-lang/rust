@@ -76,7 +76,8 @@ fn moddoc_from_mod(
                     none
                   }
                 }
-            })
+            }),
+        enums: doc::enumlist([])
     }
 }
 

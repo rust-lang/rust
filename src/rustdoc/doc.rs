@@ -14,7 +14,8 @@ type moddoc = ~{
     desc: option<str>,
     mods: modlist,
     fns: fnlist,
-    consts: constlist
+    consts: constlist,
+    enums: enumlist
 };
 
 type constdoc = ~{
@@ -47,7 +48,22 @@ type retdoc = {
     ty: option<str>
 };
 
+type enumdoc = ~{
+    id: ast_id,
+    name: str,
+    brief: option<str>,
+    desc: option<str>,
+    variants: [variantdoc]
+};
+
+type variantdoc = ~{
+    name: str,
+    desc: option<str>,
+    sig: option<str>
+};
+
 // Just to break the structural recursive types
 enum modlist = [moddoc];
 enum constlist = [constdoc];
 enum fnlist = [fndoc];
+enum enumlist = [enumdoc];

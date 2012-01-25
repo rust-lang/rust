@@ -47,7 +47,8 @@ fn test_run_passes() {
                 desc: none,
                 mods: doc::modlist([]),
                 fns: doc::fnlist([]),
-                consts: doc::constlist([])
+                consts: doc::constlist([]),
+                enums: doc::enumlist([])
             }
         }
     }
@@ -64,7 +65,8 @@ fn test_run_passes() {
                 desc: none,
                 mods: doc::modlist([]),
                 fns: doc::fnlist([]),
-                consts: doc::constlist([])
+                consts: doc::constlist([]),
+                enums: doc::enumlist([])
             }
         }
     }
