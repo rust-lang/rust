@@ -71,7 +71,8 @@ fn fold_fn(
         doc.brief != none
         || doc.desc != none
         || have_arg_docs
-        || doc.return.desc != none;
+        || doc.return.desc != none
+        || doc.failure != none;
     ret doc;
 }
 
@@ -104,6 +105,16 @@ fn should_elide_undocumented_return_values() {
     let doc = attr_pass::mk_pass()(srv, doc);
     let doc = run(srv, doc);
     assert doc.topmod.fns[0].return.ty == none;
+}
+
+#[test]
+fn should_not_elide_fns_with_documented_failure_conditions() {
+    let source = "#[doc(failure = \"yup\")] fn a() { }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = attr_pass::mk_pass()(srv, doc);
+    let doc = run(srv, doc);
+    assert vec::is_not_empty(*doc.topmod.fns);
 }
 
 fn fold_modlist(
