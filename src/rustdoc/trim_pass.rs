@@ -91,7 +91,8 @@ fn fold_fn(fold: fold::fold<()>, doc: doc::fndoc) -> doc::fndoc {
         return: {
             desc: trimopt(doc.return.desc)
             with doc.return
-        }
+        },
+        failure: trimopt(doc.failure)
         with *doc
     }
 }
@@ -127,4 +128,14 @@ fn should_trim_ret() {
     let doc = attr_pass::mk_pass()(srv, doc);
     let doc = run(srv, doc);
     assert doc.topmod.fns[0].return.desc == some("a");
+}
+
+#[test]
+fn should_trim_failure_conditions() {
+    let source = "#[doc(failure = \"\na\n\")] fn a() -> int { }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = attr_pass::mk_pass()(srv, doc);
+    let doc = run(srv, doc);
+    assert doc.topmod.fns[0].failure == some("a");
 }
