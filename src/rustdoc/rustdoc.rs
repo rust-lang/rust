@@ -100,6 +100,7 @@ fn run(source_file: str) {
         attr_pass::mk_pass(),
         // FIXME: This pass should be optional
         prune_undoc_pass::mk_pass(),
+        desc_to_brief_pass::mk_pass(),
         gen::mk_pass {|| std::io:: stdout()}
     ]);
 }
