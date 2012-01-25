@@ -92,7 +92,9 @@ packages:
   * curl
 
 Assuming you're on a relatively modern Linux system and have met the
-prerequisites, something along these lines should work:
+prerequisites, something along these lines should work. Building from source on
+Windows requires some extra steps: please see the
+[getting started][wiki-get-started] page on the Rust wiki.
 
 ~~~~
 ## notrust
@@ -103,8 +105,9 @@ $ ./configure
 $ make && make install
 ~~~~
 
-Building from source on windows requires some extra steps, please see
-the [getting started][wiki-get-started] page on the Rust wiki.
+You may need to use `sudo make install` if you do not normally have
+permission to modify the destination directory (either `/usr/local/bin`
+or the directory specified with to `configure` with `--prefix`).
 
 When complete, `make install` will place the following programs into
 `/usr/local/bin`:
