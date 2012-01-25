@@ -24,4 +24,5 @@ mod tystr_pass;
 mod prune_undoc_pass;
 mod prune_unexported_pass;
 mod desc_to_brief_pass;
+mod trim_pass;
 mod astsrv;
