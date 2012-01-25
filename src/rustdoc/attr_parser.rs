@@ -352,7 +352,7 @@ mod test {
             mutable byte_pos: 0u
         };
         let parser = parser::new_parser_from_source_str(
-            parse_sess, [], "-", source);
+            parse_sess, [], "-", @source);
 
         parser::parse_outer_attributes(parser)
     }

@@ -27,5 +27,5 @@ fn from_file(file: str) -> @ast::crate {
 
 fn from_str(source: str) -> @ast::crate {
     parser::parse_crate_from_source_str(
-        "-", source, [], new_parse_sess())
+        "-", @source, [], new_parse_sess())
 }

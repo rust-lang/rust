@@ -261,7 +261,7 @@ fn check_variants_T<T: copy>(
                 // string for stability is easier and ok for now.
                 let handler = diagnostic::mk_handler(none);
                 let str3 =
-                    as_str(bind pprust::print_crate(
+                    @as_str(bind pprust::print_crate(
                         codemap,
                         diagnostic::mk_span_handler(handler, codemap),
                         crate2,
@@ -274,8 +274,8 @@ fn check_variants_T<T: copy>(
                   }
                   tm_run {
                     let file_label = #fmt("rusttmp/%s_%s_%u_%u", last_part(filename), thing_label, i, j);
-                    let safe_to_run = !(content_is_dangerous_to_run(str3) || has_raw_pointers(*crate2));
-                    check_whole_compiler(str3, file_label, safe_to_run);
+                    let safe_to_run = !(content_is_dangerous_to_run(*str3) || has_raw_pointers(*crate2));
+                    check_whole_compiler(*str3, file_label, safe_to_run);
                   }
                 }
             }
@@ -414,7 +414,7 @@ fn check_compiling(filename: str) -> happiness {
 }
 
 
-fn parse_and_print(code: str) -> str {
+fn parse_and_print(code: @str) -> str {
     let filename = "tmp.rs";
     let cm = codemap::new_codemap();
     let handler = diagnostic::mk_handler(none);
@@ -425,14 +425,14 @@ fn parse_and_print(code: str) -> str {
         mutable chpos: 0u,
         mutable byte_pos: 0u
     };
-    write_file(filename, code);
+    write_file(filename, *code);
     let crate = parser::parse_crate_from_source_str(
         filename, code, [], sess);
     ret as_str(bind pprust::print_crate(sess.cm,
                                         sess.span_diagnostic,
                                         crate,
                                         filename,
-                                        io::string_reader(code), _,
+                                        io::string_reader(*code), _,
                                         pprust::no_ann()));
 }
 
@@ -506,7 +506,7 @@ fn file_might_not_converge(filename: str) -> bool {
     ret false;
 }
 
-fn check_roundtrip_convergence(code: str, maxIters: uint) {
+fn check_roundtrip_convergence(code: @str, maxIters: uint) {
 
     let i = 0u;
     let new = code;
@@ -514,8 +514,8 @@ fn check_roundtrip_convergence(code: str, maxIters: uint) {
 
     while i < maxIters {
         old = new;
-        if content_might_not_converge(old) { ret; }
-        new = parse_and_print(old);
+        if content_might_not_converge(*old) { ret; }
+        new = @parse_and_print(old);
         if old == new { break; }
         i += 1u;
     }
@@ -524,8 +524,8 @@ fn check_roundtrip_convergence(code: str, maxIters: uint) {
         #error("Converged after %u iterations", i);
     } else {
         #error("Did not converge after %u iterations!", i);
-        write_file("round-trip-a.rs", old);
-        write_file("round-trip-b.rs", new);
+        write_file("round-trip-a.rs", *old);
+        write_file("round-trip-b.rs", *new);
         std::run::run_program("diff",
                               ["-w", "-u", "round-trip-a.rs",
                                "round-trip-b.rs"]);
@@ -537,8 +537,8 @@ fn check_convergence(files: [str]) {
     #error("pp convergence tests: %u files", vec::len(files));
     for file in files {
         if !file_might_not_converge(file) {
-            let s = result::get(io::read_whole_file_str(file));
-            if !content_might_not_converge(s) {
+            let s = @result::get(io::read_whole_file_str(file));
+            if !content_might_not_converge(*s) {
                 #error("pp converge: %s", file);
                 // Change from 7u to 2u once https://github.com/graydon/rust/issues/850 is fixed
                 check_roundtrip_convergence(s, 7u);
@@ -554,14 +554,14 @@ fn check_variants(files: [str], cx: context) {
             cont;
         }
 
-        let s = result::get(io::read_whole_file_str(file));
-        if contains(s, "#") {
+        let s = @result::get(io::read_whole_file_str(file));
+        if contains(*s, "#") {
             cont; // Macros are confusing
         }
-        if cx.mode == tm_converge && content_might_not_converge(s) {
+        if cx.mode == tm_converge && content_might_not_converge(*s) {
             cont;
         }
-        if cx.mode == tm_run && content_is_dangerous_to_compile(s) {
+        if cx.mode == tm_run && content_is_dangerous_to_compile(*s) {
             cont;
         }
 
@@ -584,7 +584,7 @@ fn check_variants(files: [str], cx: context) {
                                                sess.span_diagnostic,
                                                crate,
                                                file,
-                                               io::string_reader(s), _,
+                                               io::string_reader(*s), _,
                                                pprust::no_ann())));
         check_variants_of_ast(*crate, sess.cm, file, cx);
     }
