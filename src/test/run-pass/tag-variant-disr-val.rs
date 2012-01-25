@@ -5,6 +5,8 @@ enum color {
     black = 0x000000,
     white = 0xFFFFFF,
     imaginary = -1,
+    purple = 1 << 1,
+    orange = 8 >> 1
 }
 
 fn main() {
@@ -14,6 +16,8 @@ fn main() {
     test_color(black, 0x000000, "black");
     test_color(white, 0xFFFFFF, "white");
     test_color(imaginary, -1, "imaginary");
+    test_color(purple, 2, "purple");
+    test_color(orange, 4, "orange");
 }
 
 fn test_color(color: color, val: int, name: str) unsafe {
@@ -32,6 +36,8 @@ fn get_color_alt(color: color) -> str {
       black {"black"}
       white {"white"}
       imaginary {"imaginary"}
+      purple {"purple"}
+      orange {"orange"}
       _ {"unknown"}
     }
 }
@@ -43,6 +49,8 @@ fn get_color_if(color: color) -> str {
     else if color == black {"black"}
     else if color == white {"white"}
     else if color == imaginary {"imaginary"}
+    else if color == purple {"purple"}
+    else if color == orange {"orange"}
     else {"unknown"}
 }
 
