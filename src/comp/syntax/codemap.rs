@@ -11,7 +11,8 @@ type file_pos = {ch: uint, byte: uint};
  * compiler.
  */
 type filemap =
-    @{name: filename, start_pos: file_pos, mutable lines: [file_pos]};
+    @{name: filename, src: @str,
+      start_pos: file_pos, mutable lines: [file_pos]};
 
 type codemap = @{mutable files: [filemap]};
 
@@ -19,9 +20,10 @@ type loc = {filename: filename, line: uint, col: uint};
 
 fn new_codemap() -> codemap { ret @{mutable files: []}; }
 
-fn new_filemap(filename: filename, start_pos_ch: uint, start_pos_byte: uint)
+fn new_filemap(filename: filename, src: @str,
+               start_pos_ch: uint, start_pos_byte: uint)
    -> filemap {
-    ret @{name: filename,
+    ret @{name: filename, src: src,
           start_pos: {ch: start_pos_ch, byte: start_pos_byte},
           mutable lines: [{ch: start_pos_ch, byte: start_pos_byte}]};
 }
@@ -106,7 +108,7 @@ fn span_to_lines(sp: span, cm: codemap::codemap) -> @file_lines {
     ret @{name: lo.filename, lines: lines};
 }
 
-fn get_line(fm: filemap, line: int, file: str) -> str {
+fn get_line(fm: filemap, line: int) -> str {
     let begin: uint = fm.lines[line].byte - fm.start_pos.byte;
     let end: uint;
     if line as uint < vec::len(fm.lines) - 1u {
@@ -115,12 +117,12 @@ fn get_line(fm: filemap, line: int, file: str) -> str {
         // If we're not done parsing the file, we're at the limit of what's
         // parsed. If we just slice the rest of the string, we'll print out
         // the remainder of the file, which is undesirable.
-        end = str::byte_len(file);
-        let rest = str::slice(file, begin, end);
+        end = str::byte_len(*fm.src);
+        let rest = str::slice(*fm.src, begin, end);
         let newline = str::index(rest, '\n' as u8);
         if newline != -1 { end = begin + (newline as uint); }
     }
-    ret str::slice(file, begin, end);
+    ret str::slice(*fm.src, begin, end);
 }
 
 fn get_filemap(cm: codemap, filename: str) -> filemap {
