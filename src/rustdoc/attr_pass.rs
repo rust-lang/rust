@@ -135,7 +135,8 @@ fn fold_fn(
             brief: attrs.brief,
             desc: attrs.desc,
             args: merge_arg_attrs(doc.args, attrs.args),
-            return: merge_ret_attrs(doc.return, attrs.return)
+            return: merge_ret_attrs(doc.return, attrs.return),
+            failure: attrs.failure
             with *doc
         };
     }
@@ -211,6 +212,16 @@ fn fold_fn_should_preserve_sig() {
     let fold = fold::default_seq_fold(srv);
     let doc = fold_fn(fold, doc.topmod.fns[0]);
     assert doc.sig == some("fn a() -> int");
+}
+
+#[test]
+fn fold_fn_should_extract_failure_conditions() {
+    let source = "#[doc(failure = \"what\")] fn a() { }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let fold = fold::default_seq_fold(srv);
+    let doc = fold_fn(fold, doc.topmod.fns[0]);
+    assert doc.failure == some("what");
 }
 
 fn fold_const(

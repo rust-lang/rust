@@ -95,6 +95,7 @@ fn fndoc_from_fn(
             desc: none,
             ty: none
         },
+        failure: none,
         sig: none
     }
 }

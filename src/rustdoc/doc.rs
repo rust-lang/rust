@@ -32,6 +32,7 @@ type fndoc = ~{
     desc: option<str>,
     args: [argdoc],
     return: retdoc,
+    failure: option<str>,
     sig: option<str>
 };
 
