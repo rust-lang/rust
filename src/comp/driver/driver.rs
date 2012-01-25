@@ -96,7 +96,7 @@ fn get_input_str(sess: session, infile: str) -> str {
           }
         }
     } else { io::stdin() };
-    str::unsafe_from_bytes(stream.read_whole_stream())
+    str::from_bytes(stream.read_whole_stream())
 }
 
 fn time<T>(do_it: bool, what: str, thunk: fn@() -> T) -> T {
