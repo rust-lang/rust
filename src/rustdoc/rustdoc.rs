@@ -102,6 +102,6 @@ fn run(source_file: str) {
         prune_undoc_pass::mk_pass(),
         desc_to_brief_pass::mk_pass(),
         trim_pass::mk_pass(),
-        gen::mk_pass {|| std::io:: stdout()}
+        markdown_pass::mk_pass {|| std::io:: stdout()}
     ]);
 }

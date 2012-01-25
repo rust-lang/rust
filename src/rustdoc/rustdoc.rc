@@ -16,7 +16,7 @@ mod parse;
 mod extract;
 mod attr_parser;
 mod doc;
-mod gen;
+mod markdown_pass;
 mod fold;
 mod path_pass;
 mod attr_pass;
