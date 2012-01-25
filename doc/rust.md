@@ -1679,13 +1679,13 @@ x.y <- c;
 A _swap expression_ consists of an *lval* followed by a bi-directional arrow
 (`<->`) and another *lval* expression.
 
-Evaluating a swap expression causes, as a side effect, the vales held in the
+Evaluating a swap expression causes, as a side effect, the values held in the
 left-hand-side and right-hand-side *lvals* to be exchanged indivisibly.
 
-Evaluating a move expression does not change reference counts, nor does it
-cause a deep copy of any unique structure pointed to by the moved
-*rval*. Instead, the move expression represents an indivisible *exchange of
-ownership* between the right-hand-side to the left-hand-side of the
+Evaluating a swap expression neither changes reference counts nor deeply
+copies any unique structure pointed to by the moved
+*rval*. Instead, the swap expression represents an indivisible *exchange of
+ownership* between the right-hand-side and the left-hand-side of the
 expression. No allocation or destruction is entailed.
 
 An example of three different swap expressions:
