@@ -8,7 +8,7 @@ import driver::session;
 import driver::session::session;
 import middle::{trans, trans_common};
 import middle::trans_common::{crate_ctxt, val_ty, C_bytes, C_int,
-                              C_named_struct, C_struct, T_tag_variant,
+                              C_named_struct, C_struct, T_enum_variant,
                               block_ctxt, result, rslt, bcx_ccx, bcx_tcx,
                               type_has_static_size, umax, umin, align_to,
                               tydesc_info};
@@ -51,7 +51,7 @@ const shape_f32: u8 = 8u8;
 const shape_f64: u8 = 9u8;
 // (10 is currently unused, was evec)
 const shape_vec: u8 = 11u8;
-const shape_tag: u8 = 12u8;
+const shape_enum: u8 = 12u8;
 const shape_box: u8 = 13u8;
 const shape_struct: u8 = 17u8;
 const shape_box_fn: u8 = 18u8;
@@ -119,7 +119,7 @@ fn largest_variants(ccx: @crate_ctxt, tag_id: ast::def_id) -> [uint] {
     // contains (T,T) must be as least as large as any variant that contains
     // just T.
     let ranges = [];
-    let variants = ty::tag_variants(ccx.tcx, tag_id);
+    let variants = ty::enum_variants(ccx.tcx, tag_id);
     for variant: ty::variant_info in *variants {
         let bounded = true;
         let {a: min_size, b: min_align} = {a: 0u, b: 0u};
@@ -201,17 +201,17 @@ fn round_up(size: u16, align: u8) -> u16 {
 
 type size_align = {size: u16, align: u8};
 
-fn compute_static_tag_size(ccx: @crate_ctxt, largest_variants: [uint],
+fn compute_static_enum_size(ccx: @crate_ctxt, largest_variants: [uint],
                            did: ast::def_id) -> size_align {
     let max_size = 0u16;
     let max_align = 1u8;
-    let variants = ty::tag_variants(ccx.tcx, did);
+    let variants = ty::enum_variants(ccx.tcx, did);
     for vid: uint in largest_variants {
         // We increment a "virtual data pointer" to compute the size.
         let lltys = [];
         for typ: ty::t in variants[vid].args {
             // FIXME: there should really be a postcondition
-            // on tag_variants that would obviate the need for
+            // on enum_variants that would obviate the need for
             // this check. (Issue #586)
             check (trans_common::type_has_static_size(ccx, typ));
             lltys += [trans::type_of(ccx, dummy_sp(), typ)];
@@ -229,7 +229,7 @@ fn compute_static_tag_size(ccx: @crate_ctxt, largest_variants: [uint],
     // FIXME (issue #792): This is wrong. If the enum starts with an 8 byte
     // aligned quantity, we don't align it.
     if vec::len(*variants) > 1u {
-        let variant_t = T_tag_variant(ccx);
+        let variant_t = T_enum_variant(ccx);
         max_size += llsize_of_real(ccx, variant_t) as u16;
         let align = llalign_of_real(ccx, variant_t) as u8;
         if max_align < align { max_align = align; }
@@ -238,15 +238,15 @@ fn compute_static_tag_size(ccx: @crate_ctxt, largest_variants: [uint],
     ret {size: max_size, align: max_align};
 }
 
-enum tag_kind {
+enum enum_kind {
     tk_unit,    // 1 variant, no data
     tk_enum,    // N variants, no data
     tk_newtype, // 1 variant, data
     tk_complex  // N variants, no data
 }
 
-fn tag_kind(ccx: @crate_ctxt, did: ast::def_id) -> tag_kind {
-    let variants = ty::tag_variants(ccx.tcx, did);
+fn enum_kind(ccx: @crate_ctxt, did: ast::def_id) -> enum_kind {
+    let variants = ty::enum_variants(ccx.tcx, did);
     if vec::any(*variants) {|v| vec::len(v.args) > 0u} {
         if vec::len(*variants) == 1u { tk_newtype }
         else { tk_complex }
@@ -281,7 +281,7 @@ fn s_float(tcx: ty_ctxt) -> u8 {
     };
 }
 
-fn s_variant_tag_t(tcx: ty_ctxt) -> u8 {
+fn s_variant_enum_t(tcx: ty_ctxt) -> u8 {
     ret s_int(tcx);
 }
 
@@ -349,15 +349,15 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint]) -> [u8] {
         let unit_ty = ty::mk_mach_uint(ccx.tcx, ast::ty_u8);
         add_substr(s, shape_of(ccx, unit_ty, ty_param_map));
       }
-      ty::ty_tag(did, tps) {
-        alt tag_kind(ccx, did) {
+      ty::ty_enum(did, tps) {
+        alt enum_kind(ccx, did) {
           tk_unit {
             // FIXME: For now we do this.
-            s += [s_variant_tag_t(ccx.tcx)];
+            s += [s_variant_enum_t(ccx.tcx)];
           }
-          tk_enum { s += [s_variant_tag_t(ccx.tcx)]; }
+          tk_enum { s += [s_variant_enum_t(ccx.tcx)]; }
           tk_newtype | tk_complex {
-            s += [shape_tag];
+            s += [shape_enum];
 
             let sub = [];
 
@@ -481,16 +481,16 @@ fn shape_of_variant(ccx: @crate_ctxt, v: ty::variant_info,
 //    }
 //}
 
-fn gen_tag_shapes(ccx: @crate_ctxt) -> ValueRef {
-    // Loop over all the enum variants and write their shapes into a data
-    // buffer. As we do this, it's possible for us to discover new tags, so we
-    // must do this first.
+fn gen_enum_shapes(ccx: @crate_ctxt) -> ValueRef {
+    // Loop over all the enum variants and write their shapes into a
+    // data buffer. As we do this, it's possible for us to discover
+    // new enums, so we must do this first.
     let i = 0u;
     let data = [];
     let offsets = [];
     while i < vec::len(ccx.shape_cx.tag_order) {
         let did = ccx.shape_cx.tag_order[i];
-        let variants = ty::tag_variants(ccx.tcx, did);
+        let variants = ty::enum_variants(ccx.tcx, did);
         let item_tyt = ty::lookup_item_type(ccx.tcx, did);
         let ty_param_count = vec::len(*item_tyt.bounds);
 
@@ -519,7 +519,7 @@ fn gen_tag_shapes(ccx: @crate_ctxt) -> ValueRef {
     let info_sz = 0u16;
     for did_: ast::def_id in ccx.shape_cx.tag_order {
         let did = did_; // Satisfy alias checker.
-        let num_variants = vec::len(*ty::tag_variants(ccx.tcx, did)) as u16;
+        let num_variants = vec::len(*ty::enum_variants(ccx.tcx, did)) as u16;
         add_u16(header, header_sz + info_sz);
         info_sz += 2u16 * (num_variants + 2u16) + 3u16;
     }
@@ -532,7 +532,7 @@ fn gen_tag_shapes(ccx: @crate_ctxt) -> ValueRef {
     i = 0u;
     for did_: ast::def_id in ccx.shape_cx.tag_order {
         let did = did_; // Satisfy alias checker.
-        let variants = ty::tag_variants(ccx.tcx, did);
+        let variants = ty::enum_variants(ccx.tcx, did);
         add_u16(info, vec::len(*variants) as u16);
 
         // Construct the largest-variants table.
@@ -556,7 +556,7 @@ fn gen_tag_shapes(ccx: @crate_ctxt) -> ValueRef {
         let size_align;
         if dynamic {
             size_align = {size: 0u16, align: 0u8};
-        } else { size_align = compute_static_tag_size(ccx, lv, did); }
+        } else { size_align = compute_static_enum_size(ccx, lv, did); }
         add_u16(info, size_align.size);
         info += [size_align.align];
 
@@ -593,7 +593,7 @@ fn gen_resource_shapes(ccx: @crate_ctxt) -> ValueRef {
 }
 
 fn gen_shape_tables(ccx: @crate_ctxt) {
-    let lltagstable = gen_tag_shapes(ccx);
+    let lltagstable = gen_enum_shapes(ccx);
     let llresourcestable = gen_resource_shapes(ccx);
     trans_common::set_struct_body(ccx.shape_cx.llshapetablesty,
                                   [val_ty(lltagstable),
@@ -676,15 +676,15 @@ fn llalign_of(cx: @crate_ctxt, t: TypeRef) -> ValueRef {
 }
 
 // Computes the size of the data part of a non-dynamically-sized enum.
-fn static_size_of_tag(cx: @crate_ctxt, sp: span, t: ty::t)
+fn static_size_of_enum(cx: @crate_ctxt, sp: span, t: ty::t)
     : type_has_static_size(cx, t) -> uint {
-    if cx.tag_sizes.contains_key(t) { ret cx.tag_sizes.get(t); }
+    if cx.enum_sizes.contains_key(t) { ret cx.enum_sizes.get(t); }
     alt ty::struct(cx.tcx, t) {
-      ty::ty_tag(tid, subtys) {
+      ty::ty_enum(tid, subtys) {
         // Compute max(variant sizes).
 
         let max_size = 0u;
-        let variants = ty::tag_variants(cx.tcx, tid);
+        let variants = ty::enum_variants(cx.tcx, tid);
         for variant: ty::variant_info in *variants {
             let tup_ty = simplify_type(cx, ty::mk_tup(cx.tcx, variant.args));
             // Perform any type parameter substitutions.
@@ -700,11 +700,12 @@ fn static_size_of_tag(cx: @crate_ctxt, sp: span, t: ty::t)
                 llsize_of_real(cx, trans::type_of(cx, sp, tup_ty));
             if max_size < this_size { max_size = this_size; }
         }
-        cx.tag_sizes.insert(t, max_size);
+        cx.enum_sizes.insert(t, max_size);
         ret max_size;
       }
       _ {
-        cx.tcx.sess.span_fatal(sp, "non-enum passed to static_size_of_tag()");
+        cx.tcx.sess.span_fatal(
+            sp, "non-enum passed to static_size_of_enum()");
       }
     }
 }
@@ -754,7 +755,7 @@ fn dynamic_metrics(cx: @block_ctxt, t: ty::t) -> metrics {
         for tp in elts { tys += [tp]; }
         align_elements(cx, tys)
       }
-      ty::ty_tag(tid, tps) {
+      ty::ty_enum(tid, tps) {
         let bcx = cx;
         let ccx = bcx_ccx(bcx);
 
@@ -762,7 +763,7 @@ fn dynamic_metrics(cx: @block_ctxt, t: ty::t) -> metrics {
             // Compute max(variant sizes).
             let bcx = bcx;
             let max_size: ValueRef = C_int(ccx, 0);
-            let variants = ty::tag_variants(bcx_tcx(bcx), tid);
+            let variants = ty::enum_variants(bcx_tcx(bcx), tid);
             for variant: ty::variant_info in *variants {
                 // Perform type substitution on the raw argument types.
                 let tys = vec::map(variant.args) {|raw_ty|
@@ -775,12 +776,12 @@ fn dynamic_metrics(cx: @block_ctxt, t: ty::t) -> metrics {
             rslt(bcx, max_size)
         };
 
-        let {bcx, val: sz} = alt tag_kind(ccx, tid) {
-          tk_unit | tk_enum { rslt(bcx, llsize_of(ccx, T_tag_variant(ccx))) }
+        let {bcx, val: sz} = alt enum_kind(ccx, tid) {
+          tk_unit | tk_enum { rslt(bcx, llsize_of(ccx, T_enum_variant(ccx))) }
           tk_newtype { compute_max_variant_size(bcx) }
           tk_complex {
             let {bcx, val} = compute_max_variant_size(bcx);
-            rslt(bcx, Add(bcx, val, llsize_of(ccx, T_tag_variant(ccx))))
+            rslt(bcx, Add(bcx, val, llsize_of(ccx, T_enum_variant(ccx))))
           }
         };
 

@@ -20,7 +20,7 @@ fn path_name_i(idents: [ident]) -> str { str::connect(idents, "::") }
 fn local_def(id: node_id) -> def_id { ret {crate: local_crate, node: id}; }
 
 fn variant_def_ids(d: def) -> {tg: def_id, var: def_id} {
-    alt d { def_variant(tag_id, var_id) { ret {tg: tag_id, var: var_id}; } }
+    alt d { def_variant(enum_id, var_id) { ret {tg: enum_id, var: var_id}; } }
 }
 
 fn def_id_of_def(d: def) -> def_id {
@@ -113,15 +113,15 @@ fn float_ty_to_str(t: float_ty) -> str {
 
 fn is_exported(i: ident, m: _mod) -> bool {
     let nonlocal = true;
-    let parent_tag : option<ident> = none;
+    let parent_enum : option<ident> = none;
     for it: @item in m.items {
         if it.ident == i { nonlocal = false; }
         alt it.node {
-          item_tag(variants, _) {
+          item_enum(variants, _) {
             for v: variant in variants {
                 if v.node.name == i {
                    nonlocal = false;
-                   parent_tag = some(it.ident);
+                   parent_enum = some(it.ident);
                 }
             }
           }
@@ -133,24 +133,24 @@ fn is_exported(i: ident, m: _mod) -> bool {
     for vi: @view_item in m.view_items {
         alt vi.node {
           view_item_export(ids, _) {
-              // If any of ids is a tag, we want to consider
+              // If any of ids is a enum, we want to consider
               // all the variants to be exported
             for id in ids {
                 if str::eq(i, id) { ret true; }
-                alt parent_tag {
-                    some(parent_tag_id) {
-                        if str::eq(id, parent_tag_id) { ret true; }
+                alt parent_enum {
+                    some(parent_enum_id) {
+                        if str::eq(id, parent_enum_id) { ret true; }
                     }
                     _ { }
                  }
             }
             count += 1u;
           }
-          view_item_export_tag_none(id, _) {
+          view_item_export_enum_none(id, _) {
               if str::eq(i, id) { ret true; }
               count += 1u;
           }
-          view_item_export_tag_some(id, ids, _) {
+          view_item_export_enum_some(id, ids, _) {
               if str::eq(i, id) { ret true; }
               for id in ids { if str::eq(i, id.node.name) { ret true; } }
               count += 1u;
@@ -278,7 +278,8 @@ fn eval_const_expr(e: @expr) -> const_val {
               mul { const_uint(a * b) } div { const_uint(a / b) }
               rem { const_uint(a % b) } and | bitand { const_uint(a & b) }
               or | bitor { const_uint(a | b) } bitxor { const_uint(a ^ b) }
-              lsl { const_int(a << b as i64) } lsr { const_int(a >> b as i64) }
+              lsl { const_int(a << b as i64) }
+              lsr { const_int(a >> b as i64) }
               asr { const_int(a >>> b as i64) }
               eq { fromb(a == b) } lt { fromb(a < b) }
               le { fromb(a <= b) } ne { fromb(a != b) }

@@ -135,7 +135,7 @@ fn type_of_inner(cx: @crate_ctxt, sp: span, t: ty::t)
       ty::ty_uint(t) { T_uint_ty(cx, t) }
       ty::ty_float(t) { T_float_ty(cx, t) }
       ty::ty_str { T_ptr(T_vec(cx, T_i8())) }
-      ty::ty_tag(did, _) { type_of_tag(cx, sp, did, t) }
+      ty::ty_enum(did, _) { type_of_enum(cx, sp, did, t) }
       ty::ty_box(mt) {
         let mt_ty = mt.ty;
         check non_ty_var(cx, mt_ty);
@@ -213,18 +213,18 @@ fn type_of_inner(cx: @crate_ctxt, sp: span, t: ty::t)
     ret llty;
 }
 
-fn type_of_tag(cx: @crate_ctxt, sp: span, did: ast::def_id, t: ty::t)
+fn type_of_enum(cx: @crate_ctxt, sp: span, did: ast::def_id, t: ty::t)
     -> TypeRef {
-    let degen = vec::len(*ty::tag_variants(cx.tcx, did)) == 1u;
+    let degen = vec::len(*ty::enum_variants(cx.tcx, did)) == 1u;
     if check type_has_static_size(cx, t) {
-        let size = static_size_of_tag(cx, sp, t);
-        if !degen { T_tag(cx, size) }
-        else if size == 0u { T_struct([T_tag_variant(cx)]) }
+        let size = static_size_of_enum(cx, sp, t);
+        if !degen { T_enum(cx, size) }
+        else if size == 0u { T_struct([T_enum_variant(cx)]) }
         else { T_array(T_i8(), size) }
     }
     else {
-        if degen { T_struct([T_tag_variant(cx)]) }
-        else { T_opaque_tag(cx) }
+        if degen { T_struct([T_enum_variant(cx)]) }
+        else { T_opaque_enum(cx) }
     }
 }
 
@@ -498,16 +498,16 @@ fn simplify_type(ccx: @crate_ctxt, typ: ty::t) -> ty::t {
 }
 
 
-// Computes the size of the data part of a non-dynamically-sized tag.
-fn static_size_of_tag(cx: @crate_ctxt, sp: span, t: ty::t)
+// Computes the size of the data part of a non-dynamically-sized enum.
+fn static_size_of_enum(cx: @crate_ctxt, sp: span, t: ty::t)
     : type_has_static_size(cx, t) -> uint {
-    if cx.tag_sizes.contains_key(t) { ret cx.tag_sizes.get(t); }
+    if cx.enum_sizes.contains_key(t) { ret cx.enum_sizes.get(t); }
     alt ty::struct(cx.tcx, t) {
-      ty::ty_tag(tid, subtys) {
+      ty::ty_enum(tid, subtys) {
         // Compute max(variant sizes).
 
         let max_size = 0u;
-        let variants = ty::tag_variants(cx.tcx, tid);
+        let variants = ty::enum_variants(cx.tcx, tid);
         for variant: ty::variant_info in *variants {
             let tup_ty = simplify_type(cx, ty::mk_tup(cx.tcx, variant.args));
             // Perform any type parameter substitutions.
@@ -522,11 +522,8 @@ fn static_size_of_tag(cx: @crate_ctxt, sp: span, t: ty::t)
             let this_size = llsize_of_real(cx, type_of(cx, sp, tup_ty));
             if max_size < this_size { max_size = this_size; }
         }
-        cx.tag_sizes.insert(t, max_size);
+        cx.enum_sizes.insert(t, max_size);
         ret max_size;
-      }
-      _ {
-        cx.tcx.sess.span_fatal(sp, "non-tag passed to static_size_of_tag()");
       }
     }
 }
@@ -581,14 +578,14 @@ fn dynamic_size_of(cx: @block_ctxt, t: ty::t) -> result {
         for tp in elts { tys += [tp]; }
         ret align_elements(cx, tys);
       }
-      ty::ty_tag(tid, tps) {
+      ty::ty_enum(tid, tps) {
         let bcx = cx;
         let ccx = bcx_ccx(bcx);
         // Compute max(variant sizes).
 
         let max_size: ValueRef = alloca(bcx, ccx.int_type);
         Store(bcx, C_int(ccx, 0), max_size);
-        let variants = ty::tag_variants(bcx_tcx(bcx), tid);
+        let variants = ty::enum_variants(bcx_tcx(bcx), tid);
         for variant: ty::variant_info in *variants {
             // Perform type substitution on the raw argument types.
 
@@ -632,7 +629,7 @@ fn dynamic_align_of(cx: @block_ctxt, t: ty::t) -> result {
         }
         ret rslt(bcx, a);
       }
-      ty::ty_tag(_, _) {
+      ty::ty_enum(_, _) {
         ret rslt(cx, C_int(bcx_ccx(cx), 1)); // FIXME: stub
       }
       ty::ty_tup(elts) {
@@ -740,11 +737,11 @@ fn GEP_tup_like(bcx: @block_ctxt, t: ty::t, base: ValueRef, ixs: [int])
 // This function uses GEP_tup_like() above and automatically performs casts as
 // appropriate. @llblobptr is the data part of a enum value; its actual type
 // is meaningless, as it will be cast away.
-fn GEP_tag(cx: @block_ctxt, llblobptr: ValueRef, tag_id: ast::def_id,
+fn GEP_enum(cx: @block_ctxt, llblobptr: ValueRef, enum_id: ast::def_id,
            variant_id: ast::def_id, ty_substs: [ty::t],
-           ix: uint) : valid_variant_index(ix, cx, tag_id, variant_id) ->
+           ix: uint) : valid_variant_index(ix, cx, enum_id, variant_id) ->
    result {
-    let variant = ty::tag_variant_with_id(bcx_tcx(cx), tag_id, variant_id);
+    let variant = ty::enum_variant_with_id(bcx_tcx(cx), enum_id, variant_id);
     // Synthesize a tuple type so that GEP_tup_like() can work its magic.
     // Separately, store the type of the element we're interested in.
 
@@ -1592,7 +1589,7 @@ fn iter_structural_ty(cx: @block_ctxt, av: ValueRef, t: ty::t,
             let v_id = variant.id;
             for a: ty::arg in args {
                 check (valid_variant_index(j, cx, tid, v_id));
-                let rslt = GEP_tag(cx, a_tup, tid, v_id, tps, j);
+                let rslt = GEP_enum(cx, a_tup, tid, v_id, tps, j);
                 let llfldp_a = rslt.val;
                 cx = rslt.bcx;
                 let ty_subst = ty::substitute_type_params(ccx.tcx, tps, a.ty);
@@ -1639,20 +1636,20 @@ fn iter_structural_ty(cx: @block_ctxt, av: ValueRef, t: ty::t,
         let {bcx: bcx, val: llfld_a} = GEP_tup_like(cx, tup_t, av, [0, 1]);
         ret f(bcx, llfld_a, inner1);
       }
-      ty::ty_tag(tid, tps) {
-        let variants = ty::tag_variants(bcx_tcx(cx), tid);
+      ty::ty_enum(tid, tps) {
+        let variants = ty::enum_variants(bcx_tcx(cx), tid);
         let n_variants = vec::len(*variants);
 
-        // Cast the tags to types we can GEP into.
+        // Cast the enums to types we can GEP into.
         if n_variants == 1u {
             ret iter_variant(cx, av, variants[0], tps, tid, f);
         }
 
         let ccx = bcx_ccx(cx);
-        let lltagty = T_opaque_tag_ptr(ccx);
-        let av_tag = PointerCast(cx, av, lltagty);
-        let lldiscrim_a_ptr = GEPi(cx, av_tag, [0, 0]);
-        let llunion_a_ptr = GEPi(cx, av_tag, [0, 1]);
+        let llenumty = T_opaque_enum_ptr(ccx);
+        let av_enum = PointerCast(cx, av, llenumty);
+        let lldiscrim_a_ptr = GEPi(cx, av_enum, [0, 0]);
+        let llunion_a_ptr = GEPi(cx, av_enum, [0, 1]);
         let lldiscrim_a = Load(cx, lldiscrim_a_ptr);
 
         // NB: we must hit the discriminant first so that structural
@@ -2098,7 +2095,7 @@ fn trans_unary(bcx: @block_ctxt, op: ast::unop, e: @ast::expr,
         let {bcx, box, body} = trans_malloc_boxed(bcx, e_ty);
         add_clean_free(bcx, box, false);
         // Cast the body type to the type of the value. This is needed to
-        // make tags work, since tags have a different LLVM type depending
+        // make enums work, since enums have a different LLVM type depending
         // on whether they're boxed or not
         let ccx = bcx_ccx(bcx);
         if check type_has_static_size(ccx, e_ty) {
@@ -2262,8 +2259,8 @@ fn autoderef(cx: @block_ctxt, v: ValueRef, t: ty::t) -> result_t {
             t1 = ty::substitute_type_params(ccx.tcx, tps, inner);
             v1 = GEPi(cx, v1, [0, 1]);
           }
-          ty::ty_tag(did, tps) {
-            let variants = ty::tag_variants(ccx.tcx, did);
+          ty::ty_enum(did, tps) {
+            let variants = ty::enum_variants(ccx.tcx, did);
             if vec::len(*variants) != 1u ||
                    vec::len(variants[0].args) != 1u {
                 break;
@@ -2644,22 +2641,22 @@ fn trans_var(cx: @block_ctxt, sp: span, def: ast::def, id: ast::node_id)
         ret lval_static_fn(cx, did, id);
       }
       ast::def_variant(tid, vid) {
-        if vec::len(ty::tag_variant_with_id(ccx.tcx, tid, vid).args) > 0u {
+        if vec::len(ty::enum_variant_with_id(ccx.tcx, tid, vid).args) > 0u {
             // N-ary variant.
             ret lval_static_fn(cx, vid, id);
         } else {
             // Nullary variant.
-            let tag_ty = node_id_type(ccx, id);
-            let alloc_result = alloc_ty(cx, tag_ty);
-            let lltagblob = alloc_result.val;
-            let lltagty = type_of_tag(ccx, sp, tid, tag_ty);
+            let enum_ty = node_id_type(ccx, id);
+            let alloc_result = alloc_ty(cx, enum_ty);
+            let llenumblob = alloc_result.val;
+            let llenumty = type_of_enum(ccx, sp, tid, enum_ty);
             let bcx = alloc_result.bcx;
-            let lltagptr = PointerCast(bcx, lltagblob, T_ptr(lltagty));
-            let lldiscrimptr = GEPi(bcx, lltagptr, [0, 0]);
+            let llenumptr = PointerCast(bcx, llenumblob, T_ptr(llenumty));
+            let lldiscrimptr = GEPi(bcx, llenumptr, [0, 0]);
             let lldiscrim_gv = lookup_discriminant(bcx.fcx.lcx, vid);
             let lldiscrim = Load(bcx, lldiscrim_gv);
             Store(bcx, lldiscrim, lldiscrimptr);
-            ret lval_no_env(bcx, lltagptr, temporary);
+            ret lval_no_env(bcx, llenumptr, temporary);
         }
       }
       ast::def_const(did) {
@@ -2800,7 +2797,7 @@ fn trans_lval(cx: @block_ctxt, e: @ast::expr) -> lval_result {
               ty::ty_res(_, _, _) {
                 GEPi(sub.bcx, sub.val, [0, 1])
               }
-              ty::ty_tag(_, _) {
+              ty::ty_enum(_, _) {
                 let ety = ty::expr_ty(ccx.tcx, e);
                 let sp = e.span;
                 let ellty =
@@ -2896,7 +2893,7 @@ fn trans_cast(cx: @block_ctxt, e: @ast::expr, id: ast::node_id,
     check (type_has_static_size(ccx, t_out));
     let ll_t_out = type_of(ccx, e.span, t_out);
 
-    enum kind { pointer, integral, float, tag_, other, }
+    enum kind { pointer, integral, float, enum_, other, }
     fn t_kind(tcx: ty::ctxt, t: ty::t) -> kind {
         ret if ty::type_is_fp(tcx, t) {
                 float
@@ -2905,8 +2902,8 @@ fn trans_cast(cx: @block_ctxt, e: @ast::expr, id: ast::node_id,
                 pointer
             } else if ty::type_is_integral(tcx, t) {
                 integral
-            } else if ty::type_is_tag(tcx, t) {
-                tag_
+            } else if ty::type_is_enum(tcx, t) {
+                enum_
             } else { other };
     }
     let k_in = t_kind(ccx.tcx, t_in);
@@ -2940,11 +2937,11 @@ fn trans_cast(cx: @block_ctxt, e: @ast::expr, id: ast::node_id,
           {in: pointer, out: pointer} {
             PointerCast(e_res.bcx, e_res.val, ll_t_out)
           }
-          {in: tag_, out: integral} | {in: tag_, out: float} {
+          {in: enum_, out: integral} | {in: enum_, out: float} {
             let cx = e_res.bcx;
-            let lltagty = T_opaque_tag_ptr(ccx);
-            let av_tag = PointerCast(cx, e_res.val, lltagty);
-            let lldiscrim_a_ptr = GEPi(cx, av_tag, [0, 0]);
+            let llenumty = T_opaque_enum_ptr(ccx);
+            let av_enum = PointerCast(cx, e_res.val, llenumty);
+            let lldiscrim_a_ptr = GEPi(cx, av_enum, [0, 0]);
             let lldiscrim_a = Load(cx, lldiscrim_a_ptr);
             alt k_out {
               integral {int_cast(e_res.bcx, ll_t_out,
@@ -4520,7 +4517,7 @@ fn trans_res_ctor(cx: @local_ctxt, sp: span, dtor: ast::fn_decl,
 }
 
 
-fn trans_tag_variant(cx: @local_ctxt, tag_id: ast::node_id,
+fn trans_enum_variant(cx: @local_ctxt, enum_id: ast::node_id,
                      variant: ast::variant, disr: int, is_degen: bool,
                      ty_params: [ast::ty_param]) {
     let ccx = cx.ccx;
@@ -4546,7 +4543,7 @@ fn trans_tag_variant(cx: @local_ctxt, tag_id: ast::node_id,
       some(x) { llfndecl = x; }
       _ {
         ccx.sess.span_fatal(variant.span,
-                               "unbound variant id in trans_tag_variant");
+                               "unbound variant id in trans_enum_variant");
       }
     }
     let fcx = new_fn_ctxt(cx, variant.span, llfndecl);
@@ -4568,18 +4565,18 @@ fn trans_tag_variant(cx: @local_ctxt, tag_id: ast::node_id,
         if is_degen {
             fcx.llretptr
         } else {
-            let lltagptr =
-                PointerCast(bcx, fcx.llretptr, T_opaque_tag_ptr(ccx));
-            let lldiscrimptr = GEPi(bcx, lltagptr, [0, 0]);
+            let llenumptr =
+                PointerCast(bcx, fcx.llretptr, T_opaque_enum_ptr(ccx));
+            let lldiscrimptr = GEPi(bcx, llenumptr, [0, 0]);
             Store(bcx, C_int(ccx, disr), lldiscrimptr);
-            GEPi(bcx, lltagptr, [0, 1])
+            GEPi(bcx, llenumptr, [0, 1])
         };
     i = 0u;
-    let t_id = ast_util::local_def(tag_id);
+    let t_id = ast_util::local_def(enum_id);
     let v_id = ast_util::local_def(variant.node.id);
     for va: ast::variant_arg in variant.node.args {
         check (valid_variant_index(i, bcx, t_id, v_id));
-        let rslt = GEP_tag(bcx, llblobptr, t_id, v_id, ty_param_substs, i);
+        let rslt = GEP_enum(bcx, llblobptr, t_id, v_id, ty_param_substs, i);
         bcx = rslt.bcx;
         let lldestptr = rslt.val;
         // If this argument to this function is a enum, it'll have come in to
@@ -4915,14 +4912,14 @@ fn trans_item(cx: @local_ctxt, item: ast::item) {
               module_path: cx.module_path + [item.ident] with *cx};
         trans_mod(sub_cx, m);
       }
-      ast::item_tag(variants, tps) {
+      ast::item_enum(variants, tps) {
         let sub_cx = extend_path(cx, item.ident);
         let degen = vec::len(variants) == 1u;
-        let vi = ty::tag_variants(cx.ccx.tcx, {crate: ast::local_crate,
+        let vi = ty::enum_variants(cx.ccx.tcx, {crate: ast::local_crate,
                                                node: item.id});
         let i = 0;
         for variant: ast::variant in variants {
-            trans_tag_variant(sub_cx, item.id, variant,
+            trans_enum_variant(sub_cx, item.id, variant,
                               vi[i].disr_val, degen, tps);
             i += 1;
         }
@@ -5224,7 +5221,7 @@ fn collect_item(ccx: @crate_ctxt, abi: @mutable option::t<ast::native_abi>,
         check returns_non_ty_var(ccx, t);
         register_fn_full(ccx, i.span, new_pt, "res_dtor", tps, i.id, t);
       }
-      ast::item_tag(variants, tps) {
+      ast::item_enum(variants, tps) {
         for variant in variants {
             if vec::len(variant.node.args) != 0u {
                 register_fn(ccx, i.span, new_pt + [variant.node.name],
@@ -5252,8 +5249,8 @@ fn trans_constant(ccx: @crate_ctxt, it: @ast::item, &&pt: [str],
     let new_pt = pt + [it.ident];
     visit::visit_item(it, new_pt, v);
     alt it.node {
-      ast::item_tag(variants, _) {
-        let vi = ty::tag_variants(ccx.tcx, {crate: ast::local_crate,
+      ast::item_enum(variants, _) {
+        let vi = ty::enum_variants(ccx.tcx, {crate: ast::local_crate,
                                             node: it.id});
         let i = 0;
         for variant in variants {
@@ -5517,7 +5514,7 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           item_symbols: new_int_hash::<str>(),
           mutable main_fn: none::<ValueRef>,
           link_meta: link_meta,
-          tag_sizes: ty::new_ty_hash(),
+          enum_sizes: ty::new_ty_hash(),
           discrims: ast_util::new_def_id_hash::<ValueRef>(),
           discrim_symbols: new_int_hash::<str>(),
           consts: new_int_hash::<ValueRef>(),

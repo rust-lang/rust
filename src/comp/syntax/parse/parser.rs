@@ -1501,8 +1501,8 @@ fn parse_pat(p: parser) -> @ast::pat {
             let sub = eat(p, token::AT) ? some(parse_pat(p)) : none;
             pat = ast::pat_ident(name, sub);
         } else {
-            let tag_path = parse_path_and_ty_param_substs(p, true);
-            hi = tag_path.span.hi;
+            let enum_path = parse_path_and_ty_param_substs(p, true);
+            hi = enum_path.span.hi;
             let args: [@ast::pat];
             alt p.token {
               token::LPAREN {
@@ -1516,11 +1516,11 @@ fn parse_pat(p: parser) -> @ast::pat {
             }
             // at this point, we're not sure whether it's a enum or a bind
             if vec::len(args) == 0u &&
-               vec::len(tag_path.node.idents) == 1u {
-                pat = ast::pat_ident(tag_path, none);
+               vec::len(enum_path.node.idents) == 1u {
+                pat = ast::pat_ident(enum_path, none);
             }
             else {
-                pat = ast::pat_tag(tag_path, args);
+                pat = ast::pat_enum(enum_path, args);
             }
         }
       }
@@ -2024,7 +2024,7 @@ fn parse_item_type(p: parser, attrs: [ast::attribute]) -> @ast::item {
     ret mk_item(p, t.lo, hi, t.ident, ast::item_ty(ty, tps), attrs);
 }
 
-fn parse_item_tag(p: parser, attrs: [ast::attribute]) -> @ast::item {
+fn parse_item_enum(p: parser, attrs: [ast::attribute]) -> @ast::item {
     let lo = p.last_span.lo;
     let id = parse_ident(p);
     let ty_params = parse_ty_params(p);
@@ -2044,7 +2044,7 @@ fn parse_item_tag(p: parser, attrs: [ast::attribute]) -> @ast::item {
                      id: p.get_id(),
                      disr_expr: none});
         ret mk_item(p, lo, ty.span.hi, id,
-                    ast::item_tag([variant], ty_params), attrs);
+                    ast::item_enum([variant], ty_params), attrs);
     }
     expect(p, token::LBRACE);
     let all_nullary = true, have_disr = false;
@@ -2077,7 +2077,7 @@ fn parse_item_tag(p: parser, attrs: [ast::attribute]) -> @ast::item {
         p.fatal("discriminator values can only be used with a c-like enum");
     }
     ret mk_item(p, lo, p.last_span.hi, id,
-                ast::item_tag(variants, ty_params), attrs);
+                ast::item_enum(variants, ty_params), attrs);
 }
 
 fn parse_fn_ty_proto(p: parser) -> ast::proto {
@@ -2134,7 +2134,7 @@ fn parse_item(p: parser, attrs: [ast::attribute]) -> option::t<@ast::item> {
     } if eat_word(p, "type") {
         ret some(parse_item_type(p, attrs));
     } else if eat_word(p, "enum") {
-        ret some(parse_item_tag(p, attrs));
+        ret some(parse_item_enum(p, attrs));
     } else if eat_word(p, "iface") {
         ret some(parse_item_iface(p, attrs));
     } else if eat_word(p, "impl") {
@@ -2364,16 +2364,16 @@ fn parse_import(p: parser) -> ast::view_item_ {
     }
 }
 
-fn parse_tag_export(p:parser, tyname:ast::ident) -> ast::view_item_ {
-    let tagnames:[ast::import_ident] =
+fn parse_enum_export(p:parser, tyname:ast::ident) -> ast::view_item_ {
+    let enumnames:[ast::import_ident] =
         parse_seq(token::LBRACE, token::RBRACE,
              seq_sep(token::COMMA), {|p| parse_import_ident(p) }, p).node;
     let id = p.get_id();
-    if vec::is_empty(tagnames) {
-       ret ast::view_item_export_tag_none(tyname, id);
+    if vec::is_empty(enumnames) {
+       ret ast::view_item_export_enum_none(tyname, id);
     }
     else {
-       ret ast::view_item_export_tag_some(tyname, tagnames, id);
+       ret ast::view_item_export_enum_some(tyname, enumnames, id);
     }
 }
 
@@ -2382,7 +2382,7 @@ fn parse_export(p: parser) -> ast::view_item_ {
     alt p.token {
        token::MOD_SEP {
            p.bump();
-           ret parse_tag_export(p, first);
+           ret parse_enum_export(p, first);
        }
        t {
            if t == token::COMMA { p.bump(); }

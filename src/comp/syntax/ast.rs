@@ -103,12 +103,12 @@ enum pat_ {
     // In the nullary enum case, the parser can't determine
     // which it is. The resolver determines this, and
     // records this pattern's node_id in an auxiliary
-    // set (of "pat_idents that refer to nullary tags")
+    // set (of "pat_idents that refer to nullary enums")
     // After the resolution phase, code should never pattern-
     // match on a pat directly! Always call pat_util::normalize_pat --
-    // it turns any pat_idents that refer to nullary tags into pat_tags.
+    // it turns any pat_idents that refer to nullary enums into pat_enums.
     pat_ident(@path, option::t<@pat>),
-    pat_tag(@path, [@pat]),
+    pat_enum(@path, [@pat]),
     pat_rec([field_pat], bool),
     pat_tup([@pat]),
     pat_box(@pat),
@@ -440,9 +440,9 @@ enum view_item_ {
     view_item_import_from(@simple_path, [import_ident], node_id),
     view_item_export([ident], node_id),
     // export foo::{}
-    view_item_export_tag_none(ident, node_id),
+    view_item_export_enum_none(ident, node_id),
     // export foo::{bar, baz, blat}
-    view_item_export_tag_some(ident, [import_ident], node_id)
+    view_item_export_enum_some(ident, [import_ident], node_id)
 }
 
 // Meta-data associated with an item
@@ -465,7 +465,7 @@ enum item_ {
     item_mod(_mod),
     item_native_mod(native_mod),
     item_ty(@ty, [ty_param]),
-    item_tag([variant], [ty_param]),
+    item_enum([variant], [ty_param]),
     item_res(fn_decl /* dtor */, [ty_param], blk,
              node_id /* dtor id */, node_id /* ctor id */),
     item_iface([ty_param], [ty_method]),

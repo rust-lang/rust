@@ -77,7 +77,7 @@ export mk_res;
 export mk_param;
 export mk_ptr;
 export mk_rec;
-export mk_tag;
+export mk_enum;
 export mk_tup;
 export mk_type;
 export mk_send_type;
@@ -101,9 +101,9 @@ export sty;
 export substitute_type_params;
 export t;
 export new_ty_hash;
-export tag_variants;
+export enum_variants;
 export iface_methods, store_iface_methods, impl_iface;
-export tag_variant_with_id;
+export enum_variant_with_id;
 export ty_param_substs_opt_and_ty;
 export ty_param_bounds_and_ty;
 export ty_native_fn;
@@ -128,7 +128,7 @@ export ty_res;
 export ty_param;
 export ty_ptr;
 export ty_rec;
-export ty_tag;
+export ty_enum;
 export ty_tup;
 export ty_type;
 export ty_send_type;
@@ -172,7 +172,7 @@ export type_is_copyable;
 export type_is_tup_like;
 export type_is_str;
 export type_is_unique;
-export type_is_tag;
+export type_is_enum;
 export type_is_c_like_enum;
 export type_structurally_contains_uniques;
 export type_autoderef;
@@ -221,7 +221,7 @@ type ctxt =
       needs_drop_cache: hashmap<t, bool>,
       kind_cache: hashmap<t, kind>,
       ast_ty_to_ty_cache: hashmap<@ast::ty, option::t<t>>,
-      tag_var_cache: hashmap<def_id, @[variant_info]>,
+      enum_var_cache: hashmap<def_id, @[variant_info]>,
       iface_method_cache: hashmap<def_id, @[method]>,
       ty_param_bounds: hashmap<ast::node_id, param_bounds>};
 
@@ -258,7 +258,7 @@ enum sty {
     ty_uint(ast::uint_ty),
     ty_float(ast::float_ty),
     ty_str,
-    ty_tag(def_id, [t]),
+    ty_enum(def_id, [t]),
     ty_box(mt),
     ty_uniq(mt),
     ty_vec(mt),
@@ -437,7 +437,7 @@ fn mk_ctxt(s: session::session, dm: resolve::def_map, amap: ast_map::map,
           kind_cache: new_ty_hash(),
           ast_ty_to_ty_cache:
               map::mk_hashmap(ast_util::hash_ty, ast_util::eq_ty),
-          tag_var_cache: new_def_hash(),
+          enum_var_cache: new_def_hash(),
           iface_method_cache: new_def_hash(),
           ty_param_bounds: map::new_int_hash()};
     populate_type_store(cx);
@@ -475,7 +475,7 @@ fn mk_raw_ty(cx: ctxt, st: sty) -> @raw_t {
       }
       ty_param(_, _) { has_params = true; }
       ty_var(_) { has_vars = true; }
-      ty_tag(_, tys) | ty_iface(_, tys) {
+      ty_enum(_, tys) | ty_iface(_, tys) {
         for tt: t in tys { derive_flags_t(cx, has_params, has_vars, tt); }
       }
       ty_box(m) { derive_flags_mt(cx, has_params, has_vars, m); }
@@ -567,8 +567,8 @@ fn mk_char(_cx: ctxt) -> t { ret idx_char; }
 
 fn mk_str(_cx: ctxt) -> t { ret idx_str; }
 
-fn mk_tag(cx: ctxt, did: ast::def_id, tys: [t]) -> t {
-    ret gen_ty(cx, ty_tag(did, tys));
+fn mk_enum(cx: ctxt, did: ast::def_id, tys: [t]) -> t {
+    ret gen_ty(cx, ty_enum(did, tys));
 }
 
 fn mk_box(cx: ctxt, tm: mt) -> t { ret gen_ty(cx, ty_box(tm)); }
@@ -685,7 +685,7 @@ fn walk_ty(cx: ctxt, walker: ty_walk, ty: t) {
         /* no-op */
       }
       ty_box(tm) | ty_vec(tm) | ty_ptr(tm) { walk_ty(cx, walker, tm.ty); }
-      ty_tag(_, subtys) | ty_iface(_, subtys) {
+      ty_enum(_, subtys) | ty_iface(_, subtys) {
         for subty: t in subtys { walk_ty(cx, walker, subty); }
       }
       ty_rec(fields) {
@@ -748,8 +748,8 @@ fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
       ty_vec(tm) {
         ty = mk_vec(cx, {ty: fold_ty(cx, fld, tm.ty), mut: tm.mut});
       }
-      ty_tag(tid, subtys) {
-        ty = mk_tag(cx, tid, vec::map(subtys, {|t| fold_ty(cx, fld, t) }));
+      ty_enum(tid, subtys) {
+        ty = mk_enum(cx, tid, vec::map(subtys, {|t| fold_ty(cx, fld, t) }));
       }
       ty_iface(did, subtys) {
         ty = mk_iface(cx, did, vec::map(subtys, {|t| fold_ty(cx, fld, t) }));
@@ -826,7 +826,7 @@ fn type_is_bool(cx: ctxt, ty: t) -> bool {
 
 fn type_is_structural(cx: ctxt, ty: t) -> bool {
     alt struct(cx, ty) {
-      ty_rec(_) | ty_tup(_) | ty_tag(_, _) | ty_fn(_) |
+      ty_rec(_) | ty_tup(_) | ty_enum(_, _) | ty_fn(_) |
       ty_native_fn(_, _) | ty_res(_, _, _) { true }
       _ { false }
     }
@@ -954,8 +954,8 @@ fn type_needs_drop(cx: ctxt, ty: t) -> bool {
         for m in elts { if type_needs_drop(cx, m) { accum = true; } }
         accum
       }
-      ty_tag(did, tps) {
-        let variants = tag_variants(cx, did);
+      ty_enum(did, tps) {
+        let variants = enum_variants(cx, did);
         for variant in *variants {
             for aty in variant.args {
                 // Perform any type parameter substitutions.
@@ -1052,10 +1052,10 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
         for ty in tys { lowest = lower_kind(lowest, type_kind(cx, ty)); }
         lowest
       }
-      // Tags lower to the lowest of their variants.
-      ty_tag(did, tps) {
+      // Enums lower to the lowest of their variants.
+      ty_enum(did, tps) {
         let lowest = kind_sendable;
-        for variant in *tag_variants(cx, did) {
+        for variant in *enum_variants(cx, did) {
             for aty in variant.args {
                 // Perform any type parameter substitutions.
                 let arg_ty = substitute_type_params(cx, tps, aty);
@@ -1088,8 +1088,8 @@ fn type_structurally_contains(cx: ctxt, ty: t, test: fn(sty) -> bool) ->
     let sty = struct(cx, ty);
     if test(sty) { ret true; }
     alt sty {
-      ty_tag(did, tps) {
-        for variant in *tag_variants(cx, did) {
+      ty_enum(did, tps) {
+        for variant in *enum_variants(cx, did) {
             for aty in variant.args {
                 let sty = substitute_type_params(cx, tps, aty);
                 if type_structurally_contains(cx, sty, test) { ret true; }
@@ -1207,8 +1207,8 @@ fn type_is_pod(cx: ctxt, ty: t) -> bool {
       ty_str | ty_box(_) | ty_uniq(_) | ty_vec(_) | ty_fn(_) |
       ty_native_fn(_, _) | ty_iface(_, _) { result = false; }
       // Structural types
-      ty_tag(did, tps) {
-        let variants = tag_variants(cx, did);
+      ty_enum(did, tps) {
+        let variants = enum_variants(cx, did);
         for variant: variant_info in *variants {
             let tup_ty = mk_tup(cx, variant.args);
 
@@ -1238,9 +1238,9 @@ fn type_is_pod(cx: ctxt, ty: t) -> bool {
     ret result;
 }
 
-fn type_is_tag(cx: ctxt, ty: t) -> bool {
+fn type_is_enum(cx: ctxt, ty: t) -> bool {
     alt struct(cx, ty) {
-      ty_tag(_, _) { ret true; }
+      ty_enum(_, _) { ret true; }
       _ { ret false;}
     }
 }
@@ -1249,8 +1249,8 @@ fn type_is_tag(cx: ctxt, ty: t) -> bool {
 // constructors
 fn type_is_c_like_enum(cx: ctxt, ty: t) -> bool {
     alt struct(cx, ty) {
-      ty_tag(did, tps) {
-        let variants = tag_variants(cx, did);
+      ty_enum(did, tps) {
+        let variants = enum_variants(cx, did);
         let some_n_ary = vec::any(*variants, {|v| vec::len(v.args) > 0u});
         ret !some_n_ary;
       }
@@ -1287,8 +1287,8 @@ fn type_autoderef(cx: ctxt, t: ty::t) -> ty::t {
           ty_res(_, inner, tps) {
             t1 = substitute_type_params(cx, tps, inner);
           }
-          ty_tag(did, tps) {
-            let variants = tag_variants(cx, did);
+          ty_enum(did, tps) {
+            let variants = enum_variants(cx, did);
             if vec::len(*variants) != 1u || vec::len(variants[0].args) != 1u {
                 break;
             }
@@ -1372,7 +1372,7 @@ fn hash_type_structure(st: sty) -> uint {
         alt t { ast::ty_f { 13u } ast::ty_f32 { 14u } ast::ty_f64 { 15u } }
       }
       ty_str { ret 17u; }
-      ty_tag(did, tys) {
+      ty_enum(did, tys) {
         let h = hash_def(18u, did);
         for typ: t in tys { h += (h << 5u) + typ; }
         ret h;
@@ -2182,14 +2182,14 @@ mod unify {
               _ { ret ures_err(terr_mismatch); }
             }
           }
-          ty::ty_tag(expected_id, expected_tps) {
+          ty::ty_enum(expected_id, expected_tps) {
             alt struct(cx.tcx, actual) {
-              ty::ty_tag(actual_id, actual_tps) {
+              ty::ty_enum(actual_id, actual_tps) {
                 if expected_id != actual_id {
                     ret ures_err(terr_mismatch);
                 }
                 ret unify_tps(cx, expected_tps, actual_tps, variance, {|tps|
-                    ures_ok(mk_tag(cx.tcx, expected_id, tps))
+                    ures_ok(mk_enum(cx.tcx, expected_id, tps))
                 });
               }
               _ {/* fall through */ }
@@ -2628,23 +2628,23 @@ fn impl_iface(cx: ctxt, id: ast::def_id) -> option::t<t> {
     }
 }
 
-// Tag information
+// Enum information
 type variant_info = @{args: [ty::t], ctor_ty: ty::t, name: str,
                       id: ast::def_id, disr_val: int};
 
-fn tag_variants(cx: ctxt, id: ast::def_id) -> @[variant_info] {
-    alt cx.tag_var_cache.find(id) {
+fn enum_variants(cx: ctxt, id: ast::def_id) -> @[variant_info] {
+    alt cx.enum_var_cache.find(id) {
       some(variants) { ret variants; }
       _ { /* fallthrough */ }
     }
     let result = if ast::local_crate != id.crate {
-        @csearch::get_tag_variants(cx, id)
+        @csearch::get_enum_variants(cx, id)
     } else {
         // FIXME: Now that the variants are run through the type checker (to
         // check the disr_expr if it exists), this code should likely be
         // moved there to avoid having to call eval_const_expr twice.
         alt cx.items.get(id.node) {
-          ast_map::node_item(@{node: ast::item_tag(variants, _), _}) {
+          ast_map::node_item(@{node: ast::item_enum(variants, _), _}) {
             let disr_val = -1;
             @vec::map(variants, {|variant|
                 let ctor_ty = node_id_to_monotype(cx, variant.node.id);
@@ -2670,22 +2670,22 @@ fn tag_variants(cx: ctxt, id: ast::def_id) -> @[variant_info] {
           }
         }
     };
-    cx.tag_var_cache.insert(id, result);
+    cx.enum_var_cache.insert(id, result);
     result
 }
 
 
 // Returns information about the enum variant with the given ID:
-fn tag_variant_with_id(cx: ctxt, tag_id: ast::def_id, variant_id: ast::def_id)
-   -> variant_info {
-    let variants = tag_variants(cx, tag_id);
+fn enum_variant_with_id(cx: ctxt, enum_id: ast::def_id,
+                        variant_id: ast::def_id) -> variant_info {
+    let variants = enum_variants(cx, enum_id);
     let i = 0u;
     while i < vec::len::<variant_info>(*variants) {
         let variant = variants[i];
         if def_eq(variant.id, variant_id) { ret variant; }
         i += 1u;
     }
-    cx.sess.bug("tag_variant_with_id(): no variant exists with that ID");
+    cx.sess.bug("enum_variant_with_id(): no variant exists with that ID");
 }
 
 
@@ -2766,7 +2766,7 @@ fn is_binopable(cx: ctxt, ty: t, op: ast::binop) -> bool {
           ty_vec(_) { tycat_vec }
           ty_rec(_) { tycat_struct }
           ty_tup(_) { tycat_struct }
-          ty_tag(_, _) { tycat_struct }
+          ty_enum(_, _) { tycat_struct }
           ty_bot { tycat_bot }
           _ { tycat_other }
         }

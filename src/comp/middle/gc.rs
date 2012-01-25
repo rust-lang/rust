@@ -108,11 +108,6 @@ fn type_is_gc_relevant(cx: ty::ctxt, ty: ty::t) -> bool {
       ty::ty_type | ty::ty_ptr(_) | ty::ty_native(_) {
         ret false;
       }
-
-
-
-
-
       ty::ty_rec(fields) {
         for f in fields { if type_is_gc_relevant(cx, f.mt.ty) { ret true; } }
         ret false;
@@ -121,13 +116,8 @@ fn type_is_gc_relevant(cx: ty::ctxt, ty: ty::t) -> bool {
         for elt in elts { if type_is_gc_relevant(cx, elt) { ret true; } }
         ret false;
       }
-
-
-
-
-
-      ty::ty_tag(did, tps) {
-        let variants = ty::tag_variants(cx, did);
+      ty::ty_enum(did, tps) {
+        let variants = ty::enum_variants(cx, did);
         for variant in *variants {
             for aty in variant.args {
                 let arg_ty = ty::substitute_type_params(cx, tps, aty);
@@ -136,11 +126,6 @@ fn type_is_gc_relevant(cx: ty::ctxt, ty: ty::t) -> bool {
         }
         ret false;
       }
-
-
-
-
-
       ty::ty_vec(tm) {
         ret type_is_gc_relevant(cx, tm.ty);
       }

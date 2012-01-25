@@ -30,7 +30,7 @@ const tag_items_data_item_symbol: uint = 0x0du;
 
 const tag_items_data_item_variant: uint = 0x0eu;
 
-const tag_items_data_item_tag_id: uint = 0x0fu;
+const tag_items_data_item_enum_id: uint = 0x0fu;
 
 const tag_index: uint = 0x11u;
 

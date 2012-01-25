@@ -9,7 +9,7 @@ import driver::session;
 export get_symbol;
 export get_type_param_count;
 export lookup_defs;
-export get_tag_variants;
+export get_enum_variants;
 export get_impls_for_mod;
 export get_iface_methods;
 export get_type;
@@ -56,10 +56,10 @@ fn resolve_path(cstore: cstore::cstore, cnum: ast::crate_num,
     ret result;
 }
 
-fn get_tag_variants(tcx: ty::ctxt, def: ast::def_id) -> [ty::variant_info] {
+fn get_enum_variants(tcx: ty::ctxt, def: ast::def_id) -> [ty::variant_info] {
     let cstore = tcx.sess.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
-    ret decoder::get_tag_variants(cdata, def.node, tcx)
+    ret decoder::get_enum_variants(cdata, def.node, tcx)
 }
 
 fn get_impls_for_mod(cstore: cstore::cstore, def: ast::def_id,

@@ -405,10 +405,10 @@ fn ty_of_item(tcx: ty::ctxt, mode: mode, it: @ast::item)
         tcx.tcache.insert(local_def(it.id), t_res);
         ret t_res;
       }
-      ast::item_tag(_, tps) {
+      ast::item_enum(_, tps) {
         // Create a new generic polytype.
         let {bounds, params} = mk_ty_params(tcx, tps);
-        let t = ty::mk_named(tcx, ty::mk_tag(tcx, local_def(it.id), params),
+        let t = ty::mk_named(tcx, ty::mk_enum(tcx, local_def(it.id), params),
                              @it.ident);
         let tpt = {bounds: bounds, ty: t};
         tcx.tcache.insert(local_def(it.id), tpt);
@@ -644,7 +644,7 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span, impl_m: ty::method,
 mod collect {
     type ctxt = {tcx: ty::ctxt};
 
-    fn get_tag_variant_types(cx: @ctxt, tag_ty: ty::t,
+    fn get_enum_variant_types(cx: @ctxt, enum_ty: ty::t,
                              variants: [ast::variant],
                              ty_params: [ast::ty_param]) {
         // Create a set of parameter types shared among all the variants.
@@ -654,7 +654,7 @@ mod collect {
             // constructors get turned into functions.
 
             let result_ty = if vec::len(variant.node.args) == 0u {
-                tag_ty
+                enum_ty
             } else {
                 // As above, tell ast_ty_to_ty() that trans_ty_item_to_ty()
                 // should be called to resolve named types.
@@ -666,7 +666,7 @@ mod collect {
                 // FIXME: this will be different for constrained types
                 ty::mk_fn(cx.tcx,
                           {proto: ast::proto_box,
-                           inputs: args, output: tag_ty,
+                           inputs: args, output: enum_ty,
                            ret_style: ast::return_val, constraints: []})
             };
             let tpt = {bounds: ty_param_bounds(cx.tcx, m_collect, ty_params),
@@ -679,10 +679,10 @@ mod collect {
         alt it.node {
           // These don't define types.
           ast::item_mod(_) | ast::item_native_mod(_) {}
-          ast::item_tag(variants, ty_params) {
+          ast::item_enum(variants, ty_params) {
             let tpt = ty_of_item(cx.tcx, m_collect, it);
             write::ty_only(cx.tcx, it.id, tpt.ty);
-            get_tag_variant_types(cx, tpt.ty, variants, ty_params);
+            get_enum_variant_types(cx, tpt.ty, variants, ty_params);
           }
           ast::item_impl(tps, ifce, selfty, ms) {
             let i_bounds = ty_param_bounds(cx.tcx, m_collect, tps);
@@ -826,8 +826,8 @@ fn do_autoderef(fcx: @fn_ctxt, sp: span, t: ty::t) -> ty::t {
           ty::ty_res(_, inner, tps) {
             t1 = ty::substitute_type_params(fcx.ccx.tcx, tps, inner);
           }
-          ty::ty_tag(did, tps) {
-            let variants = ty::tag_variants(fcx.ccx.tcx, did);
+          ty::ty_enum(did, tps) {
+            let variants = ty::enum_variants(fcx.ccx.tcx, did);
             if vec::len(*variants) != 1u || vec::len(variants[0].args) != 1u {
                 ret t1;
             }
@@ -923,7 +923,7 @@ fn are_compatible(fcx: @fn_ctxt, expected: ty::t, actual: ty::t) -> bool {
 
 // Returns the types of the arguments to a enum variant.
 fn variant_arg_types(ccx: @crate_ctxt, _sp: span, vid: ast::def_id,
-                     tag_ty_params: [ty::t]) -> [ty::t] {
+                     enum_ty_params: [ty::t]) -> [ty::t] {
     let result: [ty::t] = [];
     let tpt = ty::lookup_item_type(ccx.tcx, vid);
     alt ty::struct(ccx.tcx, tpt.ty) {
@@ -931,7 +931,7 @@ fn variant_arg_types(ccx: @crate_ctxt, _sp: span, vid: ast::def_id,
         // N-ary variant.
         for arg: ty::arg in f.inputs {
             let arg_ty =
-                ty::substitute_type_params(ccx.tcx, tag_ty_params, arg.ty);
+                ty::substitute_type_params(ccx.tcx, enum_ty_params, arg.ty);
             result += [arg_ty];
         }
       }
@@ -1187,7 +1187,7 @@ fn check_pat(fcx: @fn_ctxt, map: pat_util::pat_id_map, pat: @ast::pat,
     alt normalize_pat(fcx.ccx.tcx, pat).node {
       ast::pat_wild {
           alt structure_of(fcx, pat.span, expected) {
-                  ty::ty_tag(_, expected_tps) {
+                  ty::ty_enum(_, expected_tps) {
                       let path_tpt = {substs: some(expected_tps),
                                       ty: expected};
                       write::ty_fixup(fcx, pat.id, path_tpt);
@@ -1236,16 +1236,16 @@ fn check_pat(fcx: @fn_ctxt, map: pat_util::pat_id_map, pat: @ast::pat,
           _ {}
         }
       }
-      ast::pat_tag(path, subpats) {
+      ast::pat_enum(path, subpats) {
         // Typecheck the path.
         let v_def = lookup_def(fcx, path.span, pat.id);
         let v_def_ids = ast_util::variant_def_ids(v_def);
-        let tag_tpt = ty::lookup_item_type(fcx.ccx.tcx, v_def_ids.tg);
-        let path_tpot = instantiate_path(fcx, path, tag_tpt, pat.span);
+        let enum_tpt = ty::lookup_item_type(fcx.ccx.tcx, v_def_ids.tg);
+        let path_tpot = instantiate_path(fcx, path, enum_tpt, pat.span);
 
         // Take the enum type params out of `expected`.
         alt structure_of(fcx, pat.span, expected) {
-          ty::ty_tag(_, expected_tps) {
+          ty::ty_enum(_, expected_tps) {
             // Unify with the expected enum type.
             let ctor_ty =
                 ty::ty_param_substs_opt_and_ty_to_monotype(fcx.ccx.tcx,
@@ -1837,12 +1837,12 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
               ty::ty_box(inner) { oper_t = inner.ty; }
               ty::ty_uniq(inner) { oper_t = inner.ty; }
               ty::ty_res(_, inner, _) { oper_t = inner; }
-              ty::ty_tag(id, tps) {
-                let variants = ty::tag_variants(tcx, id);
+              ty::ty_enum(id, tps) {
+                let variants = ty::enum_variants(tcx, id);
                 if vec::len(*variants) != 1u ||
                        vec::len(variants[0].args) != 1u {
                     tcx.sess.span_fatal(expr.span,
-                                        "can only dereference tags " +
+                                        "can only dereference enums " +
                                         "with a single variant which has a "
                                             + "single argument");
                 }
@@ -2463,7 +2463,7 @@ fn check_const(ccx: @crate_ctxt, _sp: span, e: @ast::expr, id: ast::node_id) {
     demand::simple(fcx, e.span, declty, cty);
 }
 
-fn check_tag_variants(ccx: @crate_ctxt, _sp: span, vs: [ast::variant],
+fn check_enum_variants(ccx: @crate_ctxt, _sp: span, vs: [ast::variant],
                       id: ast::node_id) {
     // FIXME: this is kinda a kludge; we manufacture a fake function context
     // and statement context for checking the initializer expression.
@@ -2683,7 +2683,7 @@ fn check_method(ccx: @crate_ctxt, method: @ast::method) {
 fn check_item(ccx: @crate_ctxt, it: @ast::item) {
     alt it.node {
       ast::item_const(_, e) { check_const(ccx, it.span, e, it.id); }
-      ast::item_tag(vs, _) { check_tag_variants(ccx, it.span, vs, it.id); }
+      ast::item_enum(vs, _) { check_enum_variants(ccx, it.span, vs, it.id); }
       ast::item_fn(decl, tps, body) {
         check_fn(ccx, ast::proto_bare, decl, body, it.id, none);
       }

@@ -103,7 +103,7 @@ enum mod_index_entry {
     mie_import_ident(node_id, codemap::span),
     mie_item(@ast::item),
     mie_native_item(@ast::native_item),
-    mie_tag_variant(/* enum item */@ast::item, /* variant index */uint),
+    mie_enum_variant(/* enum item */@ast::item, /* variant index */uint),
 }
 
 type mod_index = hashmap<ident, list<mod_index_entry>>;
@@ -119,8 +119,9 @@ type indexed_mod = {
     path: str
 };
 
-/* native modules can't contain tags, and we don't store their ASTs because we
-   only need to look at them to determine exports, which they can't control.*/
+/* native modules can't contain enums, and we don't store their ASTs because
+   we only need to look at them to determine exports, which they can't
+   control.*/
 
 type def_map = hashmap<node_id, def>;
 type ext_map = hashmap<def_id, [ident]>;
@@ -158,7 +159,7 @@ enum dir { inside, outside, }
 // when looking up a variable name that's not yet in scope to check
 // if it's already bound to a enum.
 enum namespace { ns_val(ns_value_type), ns_type, ns_module, }
-enum ns_value_type { ns_a_tag, ns_any_value, }
+enum ns_value_type { ns_a_enum, ns_any_value, }
 
 fn resolve_crate(sess: session, amap: ast_map::map, crate: @ast::crate) ->
    {def_map: def_map, exp_map: exp_map, impl_map: impl_map} {
@@ -406,7 +407,7 @@ fn resolve_names(e: @env, c: @ast::crate) {
     fn walk_pat(e: @env, pat: @ast::pat, sc: scopes, v: vt<scopes>) {
         visit::visit_pat(pat, sc, v);
         alt pat.node {
-          ast::pat_tag(p, _) {
+          ast::pat_enum(p, _) {
             let fnd = lookup_path_strict(*e, sc, p.span, p.node,
                                            ns_val(ns_any_value));
             alt option::get(fnd) {
@@ -424,7 +425,7 @@ fn resolve_names(e: @env, c: @ast::crate) {
            variable a refers to a nullary enum. */
           ast::pat_ident(p, none) {
               let fnd = lookup_in_scope(*e, sc, p.span, path_to_ident(p),
-                                    ns_val(ns_a_tag));
+                                    ns_val(ns_a_enum));
               alt fnd {
                 some(ast::def_variant(did, vid)) {
                     e.def_map.insert(pat.id, ast::def_variant(did, vid));
@@ -566,11 +567,11 @@ fn visit_local_with_scope(e: @env, loc: @local, sc:scopes, v:vt<scopes>) {
     // to enum foo, or is it binding a new name foo?)
     alt loc.node.pat.node {
       pat_ident(an_ident,_) {
-          // Be sure to pass ns_a_tag to lookup_in_scope so that
+          // Be sure to pass ns_a_enum to lookup_in_scope so that
           // if this is a name that's being shadowed, we don't die
           alt lookup_in_scope(*e, sc, loc.span,
-                 path_to_ident(an_ident), ns_val(ns_a_tag)) {
-              some(ast::def_variant(tag_id,variant_id)) {
+                 path_to_ident(an_ident), ns_val(ns_a_enum)) {
+              some(ast::def_variant(enum_id,variant_id)) {
                   // Declaration shadows a enum that's in scope.
                   // That's an error.
                   e.sess.span_err(loc.span,
@@ -742,7 +743,7 @@ fn ns_name(ns: namespace) -> str {
       ns_val(v) {
           alt (v) {
               ns_any_value { "name" }
-              ns_a_tag     { "enum" }
+              ns_a_enum    { "enum" }
           }
       }
       ns_module { ret "modulename" }
@@ -893,7 +894,7 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
               ast::item_impl(tps, _, _, _) {
                 if ns == ns_type { ret lookup_in_ty_params(e, name, tps); }
               }
-              ast::item_iface(tps, _) | ast::item_tag(_, tps) |
+              ast::item_iface(tps, _) | ast::item_enum(_, tps) |
               ast::item_ty(_, tps) {
                 if ns == ns_type { ret lookup_in_ty_params(e, name, tps); }
               }
@@ -970,7 +971,7 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
                             /* If we were looking for a enum, at this point
                                we know it's bound to a non-enum value, and
                                we can return none instead of failing */
-                            ns_a_tag { ret none; }
+                            ns_a_enum { ret none; }
                             _ { "attempted dynamic environment-capture" }
                           }
                       }
@@ -1074,7 +1075,7 @@ fn lookup_in_block(e: env, name: ident, sp: span, b: ast::blk_, pos: uint,
               }
               ast::decl_item(it) {
                 alt it.node {
-                  ast::item_tag(variants, _) {
+                  ast::item_enum(variants, _) {
                     if ns == ns_type {
                         if str::eq(it.ident, name) {
                             ret some(ast::def_ty(local_def(it.id)));
@@ -1150,7 +1151,7 @@ fn found_def_item(i: @ast::item, ns: namespace) -> option::t<def> {
       ast::item_native_mod(_) {
         if ns == ns_module { ret some(ast::def_native_mod(local_def(i.id))); }
       }
-      ast::item_ty(_, _) | item_iface(_, _) | item_tag(_, _) {
+      ast::item_ty(_, _) | item_iface(_, _) | item_enum(_, _) {
         if ns == ns_type { ret some(ast::def_ty(local_def(i.id))); }
       }
       ast::item_res(_, _, _, _, ctor_id) {
@@ -1292,7 +1293,7 @@ fn lookup_in_globs(e: env, globs: [glob_imp_def], sp: span, id: ident,
     if vec::len(matches) == 0u {
         ret none;
         }
-    else if vec::len(matches) == 1u || ns == ns_val(ns_a_tag) {
+    else if vec::len(matches) == 1u || ns == ns_val(ns_a_enum) {
         ret some(matches[0].def);
     } else {
         for match: glob_imp_def in matches {
@@ -1312,8 +1313,8 @@ fn lookup_glob_in_mod(e: env, info: @indexed_mod, sp: span, id: ident,
         info.glob_imported_names.insert(id, glob_resolving(sp));
         let val = lookup_in_globs(e, info.glob_imports, sp, id,
                                   // kludge
-                                  (if wanted_ns == ns_val(ns_a_tag)
-                                  { ns_val(ns_a_tag) }
+                                  (if wanted_ns == ns_val(ns_a_enum)
+                                  { ns_val(ns_a_enum) }
                                   else { ns_val(ns_any_value) }), dr);
         let typ = lookup_in_globs(e, info.glob_imports, sp, id, ns_type, dr);
         let md = lookup_in_globs(e, info.glob_imports, sp, id, ns_module, dr);
@@ -1341,9 +1342,9 @@ fn lookup_in_mie(e: env, mie: mod_index_entry, ns: namespace) ->
       }
       mie_import_ident(id, _) { ret lookup_import(e, local_def(id), ns); }
       mie_item(item) { ret found_def_item(item, ns); }
-      mie_tag_variant(item, variant_idx) {
+      mie_enum_variant(item, variant_idx) {
         alt item.node {
-          ast::item_tag(variants, _) {
+          ast::item_enum(variants, _) {
               alt ns {
                   ns_val(_) {
                      let vid = variants[variant_idx].node.id;
@@ -1415,12 +1416,12 @@ fn index_mod(md: ast::_mod) -> mod_index {
           ast::item_impl(_, _, _, _) | ast::item_iface(_, _) {
             add_to_index(index, it.ident, mie_item(it));
           }
-          ast::item_tag(variants, _) {
+          ast::item_enum(variants, _) {
             add_to_index(index, it.ident, mie_item(it));
             let variant_idx: uint = 0u;
             for v: ast::variant in variants {
                 add_to_index(index, v.node.name,
-                             mie_tag_variant(it, variant_idx));
+                             mie_enum_variant(it, variant_idx));
                 variant_idx += 1u;
             }
           }
@@ -1458,7 +1459,7 @@ fn index_nmod(md: ast::native_mod) -> mod_index {
 // External lookups
 fn ns_for_def(d: def) -> namespace {
     alt d {
-      ast::def_variant(_, _) { ns_val(ns_a_tag) }
+      ast::def_variant(_, _) { ns_val(ns_a_enum) }
       ast::def_fn(_, _) | ast::def_self(_) |
       ast::def_const(_) | ast::def_arg(_, _) | ast::def_local(_, _) |
       ast::def_upvar(_, _, _) |  ast::def_native_fn(_, _) | ast::def_self(_)
@@ -1473,7 +1474,7 @@ fn ns_for_def(d: def) -> namespace {
 // a enum
 fn ns_ok(wanted:namespace, actual:namespace) -> bool {
     alt actual {
-      ns_val(ns_a_tag) {
+      ns_val(ns_a_enum) {
         alt wanted {
           ns_val(_) { true }
           _ { false }
@@ -1548,7 +1549,7 @@ fn mie_span(mie: mod_index_entry) -> span {
           mie_view_item(item) { item.span }
           mie_import_ident(_, span) { span }
           mie_item(item) { item.span }
-          mie_tag_variant(item, _) { item.span }
+          mie_enum_variant(item, _) { item.span }
           mie_native_item(item) { item.span }
         };
 }
@@ -1566,7 +1567,7 @@ fn check_item(e: @env, i: @ast::item, &&x: (), v: vt<()>) {
         ensure_unique(*e, i.span, typaram_names(ty_params), ident_id,
                       "type parameter");
       }
-      ast::item_tag(_, ty_params) {
+      ast::item_enum(_, ty_params) {
         ensure_unique(*e, i.span, typaram_names(ty_params), ident_id,
                       "type parameter");
       }
@@ -1635,7 +1636,7 @@ fn check_block(e: @env, b: ast::blk, &&x: (), v: vt<()>) {
               }
               ast::decl_item(it) {
                 alt it.node {
-                  ast::item_tag(variants, _) {
+                  ast::item_enum(variants, _) {
                     add_name(types, it.span, it.ident);
                     for v: ast::variant in variants {
                         add_name(values, v.span, v.node.name);
@@ -1776,7 +1777,7 @@ fn check_exports(e: @env) {
                   alt m {
                      mie_item(an_item) {
                       alt an_item.node {
-                          item_tag(_,_) { /* OK */ some(an_item.id) }
+                          item_enum(_,_) { /* OK */ some(an_item.id) }
                           _ { none }
                       }
                      }
@@ -1802,10 +1803,10 @@ fn check_exports(e: @env) {
                         check_export(e, ident, val, vi);
                     }
                   }
-                  ast::view_item_export_tag_none(id, _) {
+                  ast::view_item_export_enum_none(id, _) {
                       let _ = check_enum_ok(e, vi.span, id, val);
                   }
-                  ast::view_item_export_tag_some(id, ids, _) {
+                  ast::view_item_export_enum_some(id, ids, _) {
                       // Check that it's an enum and all the given variants
                       // belong to it
                       let parent_id = check_enum_ok(e, vi.span, id, val);
@@ -1814,7 +1815,7 @@ fn check_exports(e: @env) {
                             some(ms) {
                                 list::iter(ms) {|m|
                                    alt m {
-                                     mie_tag_variant(parent_item,_) {
+                                     mie_enum_variant(parent_item,_) {
                                        if parent_item.id != parent_id {
                                           e.sess.span_err(vi.span,
                                            #fmt("variant %s \

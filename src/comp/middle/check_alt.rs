@@ -80,9 +80,9 @@ fn pattern_supersedes(tcx: ty::ctxt, a: @pat, b: @pat) -> bool {
           _ { false }
         }
       }
-      pat_tag(va, suba) {
+      pat_enum(va, suba) {
         alt b.node {
-          pat_tag(vb, subb) {
+          pat_enum(vb, subb) {
             tcx.def_map.get(a.id) == tcx.def_map.get(b.id) &&
                 patterns_supersede(tcx, suba, subb)
           }
@@ -154,9 +154,9 @@ fn is_refutable(tcx: ty::ctxt, pat: @pat) -> bool {
         for elt in elts { if is_refutable(tcx, elt) { ret true; } }
         false
       }
-      pat_tag(_, args) {
+      pat_enum(_, args) {
         let vdef = variant_def_ids(tcx.def_map.get(pat.id));
-        if vec::len(*ty::tag_variants(tcx, vdef.tg)) != 1u { ret true; }
+        if vec::len(*ty::enum_variants(tcx, vdef.tg)) != 1u { ret true; }
         for p: @pat in args { if is_refutable(tcx, p) { ret true; } }
         false
       }

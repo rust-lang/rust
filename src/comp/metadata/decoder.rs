@@ -11,7 +11,7 @@ import syntax::print::pprust;
 import cmd=cstore::crate_metadata;
 
 export get_symbol;
-export get_tag_variants;
+export get_enum_variants;
 export get_type;
 export get_type_param_count;
 export get_impl_iface;
@@ -86,8 +86,8 @@ fn item_symbol(item: ebml::doc) -> str {
     ret str::unsafe_from_bytes(ebml::doc_data(sym));
 }
 
-fn variant_tag_id(d: ebml::doc) -> ast::def_id {
-    let tagdoc = ebml::get_doc(d, tag_items_data_item_tag_id);
+fn variant_enum_id(d: ebml::doc) -> ast::def_id {
+    let tagdoc = ebml::get_doc(d, tag_items_data_item_enum_id);
     ret parse_def_id(ebml::doc_data(tagdoc));
 }
 
@@ -147,7 +147,7 @@ fn item_ty_param_count(item: ebml::doc) -> uint {
     n
 }
 
-fn tag_variant_ids(item: ebml::doc, cdata: cmd) -> [ast::def_id] {
+fn enum_variant_ids(item: ebml::doc, cdata: cmd) -> [ast::def_id] {
     let ids: [ast::def_id] = [];
     let v = tag_items_data_item_variant;
     ebml::tagged_docs(item, v) {|p|
@@ -189,7 +189,7 @@ fn lookup_def(cnum: ast::crate_num, data: @[u8], did_: ast::def_id) ->
     let item = lookup_item(did_.node, data);
     let fam_ch = item_family(item);
     let did = {crate: cnum, node: did_.node};
-    // We treat references to tags as references to types.
+    // We treat references to enums as references to types.
     let def =
         alt fam_ch as char {
           'c' { ast::def_const(did) }
@@ -205,7 +205,7 @@ fn lookup_def(cnum: ast::crate_num, data: @[u8], did_: ast::def_id) ->
           'm' { ast::def_mod(did) }
           'n' { ast::def_native_mod(did) }
           'v' {
-            let tid = variant_tag_id(item);
+            let tid = variant_enum_id(item);
             tid = {crate: cnum, node: tid.node};
             ast::def_variant(tid, did)
           }
@@ -237,13 +237,13 @@ fn get_symbol(data: @[u8], id: ast::node_id) -> str {
     ret item_symbol(lookup_item(id, data));
 }
 
-fn get_tag_variants(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
+fn get_enum_variants(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
     -> [ty::variant_info] {
     let data = cdata.data;
     let items = ebml::get_doc(ebml::new_doc(data), tag_items);
     let item = find_item(id, items);
     let infos: [ty::variant_info] = [];
-    let variant_ids = tag_variant_ids(item, cdata);
+    let variant_ids = enum_variant_ids(item, cdata);
     let disr_val = 0;
     for did: ast::def_id in variant_ids {
         let item = find_item(did.node, items);

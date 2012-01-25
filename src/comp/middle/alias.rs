@@ -502,7 +502,7 @@ fn ty_can_unsafely_include(cx: ctx, needle: unsafe_ty, haystack: ty::t,
           mut_contains(ty) { mut && ty == haystack }
         } { ret true; }
         alt ty::struct(tcx, haystack) {
-          ty::ty_tag(_, ts) {
+          ty::ty_enum(_, ts) {
             for t: ty::t in ts {
                 if helper(tcx, needle, t, mut) { ret true; }
             }
@@ -565,7 +565,7 @@ fn copy_is_expensive(tcx: ty::ctxt, ty: ty::t) -> bool {
           ty::ty_fn(_) | ty::ty_native_fn(_, _) { 4u }
           ty::ty_str | ty::ty_vec(_) | ty::ty_param(_, _) { 50u }
           ty::ty_uniq(mt) { 1u + score_ty(tcx, mt.ty) }
-          ty::ty_tag(_, ts) | ty::ty_tup(ts) {
+          ty::ty_enum(_, ts) | ty::ty_tup(ts) {
             let sum = 0u;
             for t in ts { sum += score_ty(tcx, t); }
             sum
@@ -596,7 +596,7 @@ fn pattern_roots(tcx: ty::ctxt, mut: option::t<unsafe_ty>, pat: @ast::pat)
                         span: pat.span}];
             alt sub { some(p) { walk(tcx, mut, p, set); } _ {} }
           }
-          ast::pat_tag(_, ps) | ast::pat_tup(ps) {
+          ast::pat_enum(_, ps) | ast::pat_tup(ps) {
             for p in ps { walk(tcx, mut, p, set); }
           }
           ast::pat_rec(fs, _) {

@@ -120,7 +120,7 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
         v.visit_fn(fk_res(i.ident, tps), decl, body, i.span,
                    dtor_id, e, v);
       }
-      item_tag(variants, tps) {
+      item_enum(variants, tps) {
         v.visit_ty_params(tps, e, v);
         for vr: variant in variants {
             for va: variant_arg in vr.node.args { v.visit_ty(va.ty, e, v); }
@@ -187,7 +187,7 @@ fn visit_path<E>(p: @path, e: E, v: vt<E>) {
 
 fn visit_pat<E>(p: @pat, e: E, v: vt<E>) {
     alt p.node {
-      pat_tag(path, children) {
+      pat_enum(path, children) {
         visit_path(path, e, v);
         for child: @pat in children { v.visit_pat(child, e, v); }
       }

@@ -68,7 +68,7 @@ fn trans_opt(bcx: @block_ctxt, o: opt) -> opt_result {
 // FIXME: invariant -- pat_id is bound in the def_map?
 fn variant_opt(ccx: @crate_ctxt, pat_id: ast::node_id) -> opt {
     let vdef = ast_util::variant_def_ids(ccx.tcx.def_map.get(pat_id));
-    let variants = ty::tag_variants(ccx.tcx, vdef.tg);
+    let variants = ty::enum_variants(ccx.tcx, vdef.tg);
     for v: ty::variant_info in *variants {
         if vdef.var == v.id { ret var(v.disr_val, vdef); }
     }
@@ -158,13 +158,13 @@ fn enter_default(m: match, col: uint, val: ValueRef) -> match {
     ret enter_match(m, col, val, e);
 }
 
-fn enter_opt(ccx: @crate_ctxt, m: match, opt: opt, col: uint, tag_size: uint,
+fn enter_opt(ccx: @crate_ctxt, m: match, opt: opt, col: uint, enum_size: uint,
              val: ValueRef) -> match {
     let dummy = @{id: 0, node: ast::pat_wild, span: dummy_sp()};
     fn e(ccx: @crate_ctxt, dummy: @ast::pat, opt: opt, size: uint,
          p: @ast::pat) -> option::t<[@ast::pat]> {
         alt p.node {
-          ast::pat_tag(ctor, subpats) {
+          ast::pat_enum(ctor, subpats) {
             ret if opt_eq(variant_opt(ccx, p.id), opt) {
                     some(subpats)
                 } else { none };
@@ -178,7 +178,7 @@ fn enter_opt(ccx: @crate_ctxt, m: match, opt: opt, col: uint, tag_size: uint,
           _ { ret some(vec::init_elt(size, dummy)); }
         }
     }
-    ret enter_match(m, col, val, bind e(ccx, dummy, opt, tag_size, _));
+    ret enter_match(m, col, val, bind e(ccx, dummy, opt, enum_size, _));
 }
 
 fn enter_rec(m: match, col: uint, fields: [ast::ident], val: ValueRef) ->
@@ -251,7 +251,7 @@ fn get_options(ccx: @crate_ctxt, m: match, col: uint) -> [opt] {
           ast::pat_range(l1, l2) {
             add_to_set(found, range(l1, l2));
           }
-          ast::pat_tag(_, _) {
+          ast::pat_enum(_, _) {
             add_to_set(found, variant_opt(ccx, br.pats[col].id));
           }
           _ { }
@@ -268,14 +268,14 @@ fn extract_variant_args(bcx: @block_ctxt, pat_id: ast::node_id,
     // pat_id must have the same length ty_param_substs as vdefs?
     let ty_param_substs = ty::node_id_to_type_params(ccx.tcx, pat_id);
     let blobptr = val;
-    let variants = ty::tag_variants(ccx.tcx, vdefs.tg);
+    let variants = ty::enum_variants(ccx.tcx, vdefs.tg);
     let args = [];
     let size =
-        vec::len(ty::tag_variant_with_id(ccx.tcx, vdefs.tg, vdefs.var).args);
+        vec::len(ty::enum_variant_with_id(ccx.tcx, vdefs.tg, vdefs.var).args);
     if size > 0u && vec::len(*variants) != 1u {
-        let tagptr =
-            PointerCast(bcx, val, trans_common::T_opaque_tag_ptr(ccx));
-        blobptr = GEPi(bcx, tagptr, [0, 1]);
+        let enumptr =
+            PointerCast(bcx, val, trans_common::T_opaque_enum_ptr(ccx));
+        blobptr = GEPi(bcx, enumptr, [0, 1]);
     }
     let i = 0u;
     let vdefs_tg = vdefs.tg;
@@ -286,8 +286,8 @@ fn extract_variant_args(bcx: @block_ctxt, pat_id: ast::node_id,
             // invariant needed:
             // how do we know it even makes sense to pass in ty_param_substs
             // here? What if it's [] and the enum type has variables in it?
-            trans::GEP_tag(bcx, blobptr, vdefs_tg, vdefs_var, ty_param_substs,
-                           i);
+            trans::GEP_enum(bcx, blobptr, vdefs_tg, vdefs_var,
+                            ty_param_substs, i);
         bcx = r.bcx;
         args += [r.val];
         i += 1u;
@@ -339,7 +339,7 @@ type mk_fail = fn@() -> BasicBlockRef;
 fn pick_col(m: match) -> uint {
     fn score(p: @ast::pat) -> uint {
         alt p.node {
-          ast::pat_lit(_) | ast::pat_tag(_, _) | ast::pat_range(_, _) { 1u }
+          ast::pat_lit(_) | ast::pat_enum(_, _) | ast::pat_range(_, _) { 1u }
           ast::pat_ident(_, some(p)) { score(p) }
           _ { 0u }
         }
@@ -479,13 +479,13 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
     if vec::len(opts) > 0u {
         alt opts[0] {
           var(_, vdef) {
-            if vec::len(*ty::tag_variants(ccx.tcx, vdef.tg)) == 1u {
+            if vec::len(*ty::enum_variants(ccx.tcx, vdef.tg)) == 1u {
                 kind = single;
             } else {
-                let tagptr =
+                let enumptr =
                     PointerCast(bcx, val,
-                                trans_common::T_opaque_tag_ptr(ccx));
-                let discrimptr = GEPi(bcx, tagptr, [0, 0]);
+                                trans_common::T_opaque_enum_ptr(ccx));
+                let discrimptr = GEPi(bcx, enumptr, [0, 0]);
                 test_val = Load(bcx, discrimptr);
                 kind = switch;
             }
@@ -725,7 +725,7 @@ fn bind_irrefutable_pat(bcx: @block_ctxt, pat: @ast::pat, val: ValueRef,
           _ {}
         }
       }
-      ast::pat_tag(_, sub) {
+      ast::pat_enum(_, sub) {
         if vec::len(sub) == 0u { ret bcx; }
         let vdefs = ast_util::variant_def_ids(ccx.tcx.def_map.get(pat.id));
         let args = extract_variant_args(bcx, pat.id, vdefs, val);

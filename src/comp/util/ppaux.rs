@@ -72,7 +72,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
     alt ty_name(cx, typ) {
       some(cs) {
         alt struct(cx, typ) {
-          ty_tag(_, tps) | ty_res(_, _, tps) {
+          ty_enum(_, tps) | ty_res(_, _, tps) {
             if vec::len(tps) > 0u {
                 let strs = vec::map(tps, {|t| ty_to_str(cx, t)});
                 ret *cs + "<" + str::connect(strs, ",") + ">";

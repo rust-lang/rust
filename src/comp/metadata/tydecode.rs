@@ -202,7 +202,7 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
         let params: [ty::t] = [];
         while peek(st) as char != ']' { params += [parse_ty(st, conv)]; }
         st.pos = st.pos + 1u;
-        ret ty::mk_tag(st.tcx, def, params);
+        ret ty::mk_enum(st.tcx, def, params);
       }
       'x' {
         assert (next(st) as char == '[');

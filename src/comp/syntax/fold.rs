@@ -226,8 +226,8 @@ fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
           item_mod(m) { item_mod(fld.fold_mod(m)) }
           item_native_mod(nm) { item_native_mod(fld.fold_native_mod(nm)) }
           item_ty(t, typms) { item_ty(fld.fold_ty(t), typms) }
-          item_tag(variants, typms) {
-            item_tag(vec::map(variants, fld.fold_variant), typms)
+          item_enum(variants, typms) {
+            item_enum(vec::map(variants, fld.fold_variant), typms)
           }
           item_impl(tps, ifce, ty, methods) {
             item_impl(tps, option::map(ifce, fld.fold_ty), fld.fold_ty(ty),
@@ -279,8 +279,8 @@ fn noop_fold_pat(p: pat_, fld: ast_fold) -> pat_ {
             pat_ident(fld.fold_path(pth), option::map(sub, fld.fold_pat))
           }
           pat_lit(_) { p }
-          pat_tag(pth, pats) {
-            pat_tag(fld.fold_path(pth), vec::map(pats, fld.fold_pat))
+          pat_enum(pth, pats) {
+            pat_enum(fld.fold_path(pth), vec::map(pats, fld.fold_pat))
           }
           pat_rec(fields, etc) {
             let fs = [];

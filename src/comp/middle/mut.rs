@@ -31,8 +31,8 @@ fn expr_root(tcx: ty::ctxt, ex: @expr, autoderef: bool) ->
                 ds += [@{mut: false, kind: unbox, outer_t: t}];
                 t = ty::substitute_type_params(tcx, tps, inner);
               }
-              ty::ty_tag(did, tps) {
-                let variants = ty::tag_variants(tcx, did);
+              ty::ty_enum(did, tps) {
+                let variants = ty::enum_variants(tcx, did);
                 if vec::len(*variants) != 1u ||
                        vec::len(variants[0].args) != 1u {
                     break;
@@ -90,7 +90,7 @@ fn expr_root(tcx: ty::ctxt, ex: @expr, autoderef: bool) ->
                   ty::ty_box(mt) { is_mut = mt.mut == mut; }
                   ty::ty_uniq(mt) { is_mut = mt.mut == mut; }
                   ty::ty_res(_, _, _) { }
-                  ty::ty_tag(_, _) { }
+                  ty::ty_enum(_, _) { }
                   ty::ty_ptr(mt) { is_mut = mt.mut == mut; }
                 }
                 ds += [@{mut: is_mut, kind: unbox, outer_t: base_t}];

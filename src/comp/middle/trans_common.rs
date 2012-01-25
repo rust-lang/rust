@@ -92,7 +92,7 @@ type crate_ctxt =
      item_symbols: hashmap<ast::node_id, str>,
      mutable main_fn: option::t<ValueRef>,
      link_meta: link::link_meta,
-     tag_sizes: hashmap<ty::t, uint>,
+     enum_sizes: hashmap<ty::t, uint>,
      discrims: hashmap<ast::def_id, ValueRef>,
      discrim_symbols: hashmap<ast::node_id, str>,
      consts: hashmap<ast::node_id, ValueRef>,
@@ -701,31 +701,31 @@ fn T_opaque_cbox_ptr(cx: @crate_ctxt) -> TypeRef {
     ret t;
 }
 
-fn T_tag_variant(cx: @crate_ctxt) -> TypeRef {
+fn T_enum_variant(cx: @crate_ctxt) -> TypeRef {
     ret cx.int_type;
 }
 
-fn T_tag(cx: @crate_ctxt, size: uint) -> TypeRef {
-    let s = "tag_" + uint::to_str(size, 10u);
+fn T_enum(cx: @crate_ctxt, size: uint) -> TypeRef {
+    let s = "enum_" + uint::to_str(size, 10u);
     alt name_has_type(cx.tn, s) { some(t) { ret t; } _ {} }
     let t =
         if size == 0u {
-            T_struct([T_tag_variant(cx)])
-        } else { T_struct([T_tag_variant(cx), T_array(T_i8(), size)]) };
+            T_struct([T_enum_variant(cx)])
+        } else { T_struct([T_enum_variant(cx), T_array(T_i8(), size)]) };
     associate_type(cx.tn, s, t);
     ret t;
 }
 
-fn T_opaque_tag(cx: @crate_ctxt) -> TypeRef {
-    let s = "opaque_tag";
+fn T_opaque_enum(cx: @crate_ctxt) -> TypeRef {
+    let s = "opaque_enum";
     alt name_has_type(cx.tn, s) { some(t) { ret t; } _ {} }
-    let t = T_struct([T_tag_variant(cx), T_i8()]);
+    let t = T_struct([T_enum_variant(cx), T_i8()]);
     associate_type(cx.tn, s, t);
     ret t;
 }
 
-fn T_opaque_tag_ptr(cx: @crate_ctxt) -> TypeRef {
-    ret T_ptr(T_opaque_tag(cx));
+fn T_opaque_enum_ptr(cx: @crate_ctxt) -> TypeRef {
+    ret T_ptr(T_opaque_enum(cx));
 }
 
 fn T_captured_tydescs(cx: @crate_ctxt, n: uint) -> TypeRef {
@@ -850,7 +850,7 @@ fn C_shape(ccx: @crate_ctxt, bytes: [u8]) -> ValueRef {
 }
 
 
-pure fn valid_variant_index(ix: uint, cx: @block_ctxt, tag_id: ast::def_id,
+pure fn valid_variant_index(ix: uint, cx: @block_ctxt, enum_id: ast::def_id,
                             variant_id: ast::def_id) -> bool {
 
     // Handwaving: it's ok to pretend this code is referentially
@@ -858,7 +858,7 @@ pure fn valid_variant_index(ix: uint, cx: @block_ctxt, tag_id: ast::def_id,
     // change. (We're not adding new variants during trans.)
     unchecked{
         let variant =
-            ty::tag_variant_with_id(bcx_tcx(cx), tag_id, variant_id);
+            ty::enum_variant_with_id(bcx_tcx(cx), enum_id, variant_id);
         ix < vec::len(variant.args)
     }
 }

@@ -117,7 +117,7 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
         }
       }
       ty::ty_str { w.write_char('S'); }
-      ty::ty_tag(def, tys) {
+      ty::ty_enum(def, tys) {
         w.write_str("t[");
         w.write_str(cx.ds(def));
         w.write_char('|');

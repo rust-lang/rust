@@ -412,7 +412,7 @@ fn print_item(s: ps, &&item: @ast::item) {
         word(s.s, ";");
         end(s); // end the outer ibox
       }
-      ast::item_tag(variants, params) {
+      ast::item_enum(variants, params) {
         let newtype =
             vec::len(variants) == 1u &&
                 str::eq(item.ident, variants[0].node.name) &&
@@ -1081,7 +1081,7 @@ fn print_pat(s: ps, &&pat: @ast::pat) {
           _ {}
         }
       }
-      ast::pat_tag(path, args) {
+      ast::pat_enum(path, args) {
         print_path(s, path, true);
         if vec::len(args) > 0u {
             popen(s);
@@ -1304,12 +1304,12 @@ fn print_view_item(s: ps, item: @ast::view_item) {
         commasep(s, inconsistent, ids,
                  fn@(s: ps, &&w: ast::ident) { word(s.s, w) });
       }
-      ast::view_item_export_tag_none(id, _) {
+      ast::view_item_export_enum_none(id, _) {
           head(s, "export");
           word(s.s, id);
           word(s.s, "::{}");
       }
-      ast::view_item_export_tag_some(id, ids, _) {
+      ast::view_item_export_enum_some(id, ids, _) {
           head(s, "export");
           word(s.s, id);
           word(s.s, "::{");

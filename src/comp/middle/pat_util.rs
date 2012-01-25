@@ -22,8 +22,8 @@ fn normalize_pat_def_map(dm: resolve::def_map, p: @pat) -> @pat {
         @{node: pat_ident(q, some(normalize_pat_def_map(dm, r)))
             with *p}
       }
-      pat_tag(a_path, subs) {
-        @{node: pat_tag(a_path,
+      pat_enum(a_path, subs) {
+        @{node: pat_enum(a_path,
            vec::map(subs, {|p| normalize_pat_def_map(dm, p)})) with *p}
       }
       pat_rec(field_pats, b) {
@@ -52,8 +52,8 @@ fn normalize_one(dm: resolve::def_map, p: @pat) -> @pat {
     alt dm.find(p.id) {
         some(d) {
           alt p.node {
-              pat_ident(tag_path, _) { @{id: p.id,
-                    node: pat_tag(tag_path, []),
+              pat_ident(enum_path, _) { @{id: p.id,
+                    node: pat_enum(enum_path, []),
                     span: p.span} }
               _ { p }
           }
@@ -95,7 +95,7 @@ fn pat_bindings(pat: @pat, it: fn(@pat)) {
   alt pat.node {
       pat_ident(_, option::none) { it(pat); }
       pat_ident(_, option::some(sub)) { it(pat); pat_bindings(sub, it); }
-      pat_tag(_, sub) { for p in sub { pat_bindings(p, it); } }
+      pat_enum(_, sub) { for p in sub { pat_bindings(p, it); } }
       pat_rec(fields, _) { for f in fields { pat_bindings(f.pat, it); } }
       pat_tup(elts) { for elt in elts { pat_bindings(elt, it); } }
       pat_box(sub) { pat_bindings(sub, it); }
