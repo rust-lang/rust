@@ -85,7 +85,7 @@ fn readclose(fd: fd_t) -> str {
     let buf = "";
     while !reader.eof() {
         let bytes = reader.read_bytes(4096u);
-        buf += str::unsafe_from_bytes(bytes);
+        buf += str::from_bytes(bytes);
     }
     os::fclose(file);
     ret buf;
@@ -114,8 +114,8 @@ fn worker(p: port<request>) {
                 // the alt discriminant are wrong.
                 alt recv(p) {
                   exec(lib_path, prog, args, respchan) {
-                    {lib_path: str::unsafe_from_bytes(lib_path),
-                     prog: str::unsafe_from_bytes(prog),
+                    {lib_path: str::from_bytes(lib_path),
+                     prog: str::from_bytes(prog),
                      args: clone_vecu8str(args),
                      respchan: respchan}
                   }
@@ -189,7 +189,7 @@ fn clone_vecstr(v: [str]) -> [[u8]] {
 fn clone_vecu8str(v: [[u8]]) -> [str] {
     let r = [];
     for t in vec::slice(v, 0u, vec::len(v)) {
-        r += [str::unsafe_from_bytes(t)];
+        r += [str::from_bytes(t)];
     }
     ret r;
 }
