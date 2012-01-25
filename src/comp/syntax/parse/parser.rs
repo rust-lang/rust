@@ -628,6 +628,13 @@ fn parse_seq<T: copy>(bra: token::token, ket: token::token,
     ret spanned(lo, hi, result);
 }
 
+fn have_dollar(p: parser) -> option::t<ast::mac_> {
+    alt p.token {
+      token::DOLLAR_NUM(num) {p.bump(); some(ast::mac_var(num))}
+      _                      {none}
+    }
+}
+
 fn lit_from_token(p: parser, tok: token::token) -> ast::lit_ {
     alt tok {
       token::LIT_INT(i, it) { ast::lit_int(i, it) }
@@ -755,6 +762,12 @@ fn parse_bottom_expr(p: parser) -> pexpr {
     let hi = p.span.hi;
 
     let ex: ast::expr_;
+
+    alt have_dollar(p) {
+      some(x) {ret pexpr(mk_mac_expr(p, lo, p.span.hi, x));}
+      _ {}
+    }
+
     if p.token == token::LPAREN {
         p.bump();
         if p.token == token::RPAREN {
@@ -843,6 +856,12 @@ fn parse_bottom_expr(p: parser) -> pexpr {
     } else if p.token == token::ELLIPSIS {
         p.bump();
         ret pexpr(mk_mac_expr(p, lo, p.span.hi, ast::mac_ellipsis));
+    } else if p.token == token::POUND_LPAREN {
+        p.bump();
+        let e = parse_expr(p);
+        expect(p, token::RPAREN);
+        ret pexpr(mk_mac_expr(p, lo, p.span.hi,
+                              ast::mac_qq(e.span, e)));
     } else if eat_word(p, "bind") {
         let e = parse_expr_res(p, RESTRICT_NO_CALL_EXPRS);
         fn parse_expr_opt(p: parser) -> option<@ast::expr> {

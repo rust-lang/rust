@@ -277,6 +277,9 @@ fn visit_mac<E>(m: mac, e: E, v: vt<E>) {
       ast::mac_embed_type(ty) { v.visit_ty(ty, e, v); }
       ast::mac_embed_block(blk) { v.visit_block(blk, e, v); }
       ast::mac_ellipsis { }
+      ast::mac_qq(_, e) { /* FIXME: maybe visit */ }
+      ast::mac_aq(_, e) { /* FIXME: maybe visit */ }
+      ast::mac_var(_) { }
     }
 }
 

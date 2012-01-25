@@ -138,6 +138,9 @@ fn fold_mac_(m: mac, fld: ast_fold) -> mac {
                mac_embed_type(ty) { mac_embed_type(fld.fold_ty(ty)) }
                mac_embed_block(blk) { mac_embed_block(fld.fold_block(blk)) }
                mac_ellipsis { mac_ellipsis }
+               mac_qq(_,_) { /* fixme */ m.node }
+               mac_aq(_,_) { /* fixme */ m.node }
+               mac_var(_) { /* fixme */ m.node }
              },
          span: m.span};
 }

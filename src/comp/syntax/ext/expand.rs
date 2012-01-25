@@ -5,7 +5,7 @@ import option::{none, some};
 import std::map::hashmap;
 import vec;
 
-import syntax::ast::{crate, expr_, expr_mac, mac_invoc};
+import syntax::ast::{crate, expr_, expr_mac, mac_invoc, mac_qq};
 import syntax::fold::*;
 import syntax::ext::base::*;
 import syntax::parse::parser::parse_expr_from_source_str;
@@ -45,11 +45,19 @@ fn expand_expr(exts: hashmap<str, syntax_extension>, cx: ext_ctxt,
                   }
                 }
               }
+              mac_qq(sp, exp) { (expand_qquote(cx, sp, exp), s) }
               _ { cx.span_bug(mac.span, "naked syntactic bit") }
             }
           }
           _ { orig(e, s, fld) }
         };
+}
+
+fn expand_qquote(cx: ext_ctxt, sp: span, e: @ast::expr) -> ast::expr_ {
+    import syntax::ext::build::*;
+    let str = codemap::span_to_snippet(sp, cx.session().parse_sess.cm);
+    let expr = make_new_str(cx, e.span, str);
+    ret expr.node;
 }
 
 // FIXME: this is a terrible kludge to inject some macros into the default

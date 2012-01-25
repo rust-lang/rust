@@ -739,6 +739,8 @@ fn print_mac(s: ps, m: ast::mac) {
         print_possibly_embedded_block(s, blk, block_normal, indent_unit);
       }
       ast::mac_ellipsis { word(s.s, "..."); }
+      ast::mac_var(v) { word(s.s, #fmt("$%u", v)); }
+      _ { /* fixme */ }
     }
 }
 

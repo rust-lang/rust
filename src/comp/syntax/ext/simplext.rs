@@ -587,6 +587,9 @@ fn p_t_s_r_mac(cx: ext_ctxt, mac: ast::mac, s: selector, b: binders) {
           none { no_des(cx, blk.span, "under `#{}`"); }
         }
       }
+      ast::mac_qq(_,_) { no_des(cx, mac.span, "quasiquotes"); }
+      ast::mac_aq(_,_) { no_des(cx, mac.span, "antiquotes"); }
+      ast::mac_var(_) { no_des(cx, mac.span, "antiquote variables"); }
     }
 }
 
