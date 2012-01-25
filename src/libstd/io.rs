@@ -463,7 +463,7 @@ fn mem_buffer_writer(b: mem_buffer) -> writer { b as writer }
 fn mem_buffer_buf(b: mem_buffer) -> [u8] { vec::from_mut(b.buf) }
 fn mem_buffer_str(b: mem_buffer) -> str {
    let b_ = vec::from_mut(b.buf);
-   str::unsafe_from_bytes(b_)
+   str::from_bytes(b_)
 }
 
 // Utility functions
