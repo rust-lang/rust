@@ -461,7 +461,10 @@ fn mk_mem_buffer() -> mem_buffer {
 }
 fn mem_buffer_writer(b: mem_buffer) -> writer { b as writer }
 fn mem_buffer_buf(b: mem_buffer) -> [u8] { vec::from_mut(b.buf) }
-fn mem_buffer_str(b: mem_buffer) -> str { str::unsafe_from_bytes(b.buf) }
+fn mem_buffer_str(b: mem_buffer) -> str {
+   let b_ = vec::from_mut(b.buf);
+   str::unsafe_from_bytes(b_)
+}
 
 // Utility functions
 fn seek_in_buf(offset: int, pos: uint, len: uint, whence: seek_style) ->
