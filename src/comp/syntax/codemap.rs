@@ -34,7 +34,9 @@ fn next_line(file: filemap, chpos: uint, byte_pos: uint) {
 
 type lookup_fn = fn@(file_pos) -> uint;
 
-fn lookup_pos(map: codemap, pos: uint, lookup: lookup_fn) -> loc {
+fn lookup_line(map: codemap, pos: uint, lookup: lookup_fn)
+    -> option::t<{fm: filemap, line: uint}>
+{
     let len = vec::len(map.files);
     let a = 0u;
     let b = len;
@@ -43,7 +45,7 @@ fn lookup_pos(map: codemap, pos: uint, lookup: lookup_fn) -> loc {
         if lookup(map.files[m].start_pos) > pos { b = m; } else { a = m; }
     }
     if (a >= len) {
-        ret { filename: "-", line: 0u, col: 0u };
+        ret none;
     }
     let f = map.files[a];
     a = 0u;
@@ -52,7 +54,18 @@ fn lookup_pos(map: codemap, pos: uint, lookup: lookup_fn) -> loc {
         let m = (a + b) / 2u;
         if lookup(f.lines[m]) > pos { b = m; } else { a = m; }
     }
-    ret {filename: f.name, line: a + 1u, col: pos - lookup(f.lines[a])};
+    ret some({fm: f, line: a});
+}
+
+fn lookup_pos(map: codemap, pos: uint, lookup: lookup_fn) -> loc {
+    alt lookup_line(map, pos, lookup) {
+      some({fm: f, line: a}) {
+        {filename: f.name, line: a + 1u, col: pos - lookup(f.lines[a])}
+      }
+      none {
+        { filename: "-", line: 0u, col: 0u }
+      }
+    }
 }
 
 fn lookup_char_pos(map: codemap, pos: uint) -> loc {
@@ -123,6 +136,30 @@ fn get_line(fm: filemap, line: int) -> str unsafe {
         if newline != -1 { end = begin + (newline as uint); }
     }
     ret str::unsafe::slice_bytes(*fm.src, begin, end);
+}
+
+fn lookup_byte_offset(cm: codemap::codemap, chpos: uint)
+    -> {fm: filemap, pos: uint}
+{
+    fn lookup(pos: file_pos) -> uint { ret pos.ch; }
+    let {fm,line} = option::get(lookup_line(cm,chpos,lookup));
+    let line_offset = fm.lines[line].byte;
+    let col = chpos - fm.lines[line].ch;
+    let col_offset = str::byte_len_range(*fm.src, line_offset, col);
+    ret {fm: fm, pos: line_offset + col_offset};
+}
+
+fn span_to_snippet(sp: span, cm: codemap::codemap) -> str {
+    let begin = lookup_byte_offset(cm,sp.lo);
+    let end   = lookup_byte_offset(cm,sp.hi);
+    assert begin.fm == end.fm;
+    ret str::slice(*begin.fm.src, begin.pos, end.pos);
+}
+
+fn get_snippet(cm: codemap::codemap, fidx: uint, lo: uint, hi: uint) -> str
+{
+    let fm = cm.files[fidx];
+    ret str::slice(*fm.src, lo, hi)
 }
 
 fn get_filemap(cm: codemap, filename: str) -> filemap {
