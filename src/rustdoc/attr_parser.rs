@@ -25,7 +25,8 @@ type fn_attrs = {
     brief: option<str>,
     desc: option<str>,
     args: [arg_attrs],
-    return: option<str>
+    return: option<str>,
+    failure: option<str>
 };
 
 type arg_attrs = {
@@ -193,7 +194,8 @@ fn parse_fn(
                 brief: none,
                 desc: desc,
                 args: [],
-                return: none
+                return: none,
+                failure: none
             }
         },
         parse_fn_long_doc
@@ -206,7 +208,7 @@ fn parse_fn_long_doc(
     desc: option<str>
 ) -> fn_attrs {
     let return = attr::meta_item_value_from_list(items, "return");
-
+    let failure = attr::meta_item_value_from_list(items, "failure");
     let args = alt attr::meta_item_list_from_list(items, "args") {
       some(items) {
         vec::filter_map(items) {|item|
@@ -225,7 +227,8 @@ fn parse_fn_long_doc(
         brief: brief,
         desc: desc,
         args: args,
-        return: return
+        return: return,
+        failure: failure
     }
 }
 
@@ -279,6 +282,14 @@ fn parse_fn_should_parse_the_argument_descriptions() {
     let attrs = parse_fn(attrs);
     assert attrs.args[0] == {name: "a", desc: "arg a"};
     assert attrs.args[1] == {name: "b", desc: "arg b"};
+}
+
+#[test]
+fn parse_fn_should_parse_failure_conditions() {
+    let source = "#[doc(failure = \"it's the fail\")]";
+    let attrs = test::parse_attributes(source);
+    let attrs = parse_fn(attrs);
+    assert attrs.failure == some("it's the fail");
 }
 
 fn parse_const(attrs: [ast::attribute]) -> const_attrs {
