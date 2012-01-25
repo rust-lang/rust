@@ -265,6 +265,8 @@ fn eval_const_expr(e: @expr) -> const_val {
               mul { const_int(a * b) } div { const_int(a / b) }
               rem { const_int(a % b) } and | bitand { const_int(a & b) }
               or | bitor { const_int(a | b) } bitxor { const_int(a ^ b) }
+              lsl { const_int(a << b) } lsr { const_int(a >> b) }
+              asr { const_int(a >>> b) }
               eq { fromb(a == b) } lt { fromb(a < b) }
               le { fromb(a <= b) } ne { fromb(a != b) }
               ge { fromb(a >= b) } gt { fromb(a > b) }
@@ -276,6 +278,8 @@ fn eval_const_expr(e: @expr) -> const_val {
               mul { const_uint(a * b) } div { const_uint(a / b) }
               rem { const_uint(a % b) } and | bitand { const_uint(a & b) }
               or | bitor { const_uint(a | b) } bitxor { const_uint(a ^ b) }
+              lsl { const_int(a << b as i64) } lsr { const_int(a >> b as i64) }
+              asr { const_int(a >>> b as i64) }
               eq { fromb(a == b) } lt { fromb(a < b) }
               le { fromb(a <= b) } ne { fromb(a != b) }
               ge { fromb(a >= b) } gt { fromb(a > b) }
