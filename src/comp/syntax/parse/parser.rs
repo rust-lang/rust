@@ -2047,64 +2047,37 @@ fn parse_item_tag(p: parser, attrs: [ast::attribute]) -> @ast::item {
                     ast::item_tag([variant], ty_params), attrs);
     }
     expect(p, token::LBRACE);
-    let all_nullary = true;
-    let have_disr = false;
-    let done = false;
-    while !done {
-        let tok = p.token;
-        alt tok {
-          token::IDENT(name, _) {
-            check_bad_word(p);
-            let vlo = p.span.lo;
-            p.bump();
-            let args: [ast::variant_arg] = [];
-            let vhi = p.span.hi;
-            let disr_expr = none;
-            alt p.token {
-              token::LPAREN {
-                all_nullary = false;
-                let arg_tys = parse_seq(token::LPAREN, token::RPAREN,
-                                        seq_sep(token::COMMA),
-                                        {|p| parse_ty(p, false)}, p);
-                for ty: @ast::ty in arg_tys.node {
-                    args += [{ty: ty, id: p.get_id()}];
-                }
-                vhi = arg_tys.span.hi;
-              }
-              token::EQ {
-                have_disr = true;
-                p.bump();
-                disr_expr = some(parse_expr(p));
-              }
-              _ {/* empty */ }
-            }
+    let all_nullary = true, have_disr = false;
 
-            alt p.token {
-              token::COMMA {
-                p.bump();
-                if p.token == token::RBRACE { done = true; }
-              }
-              token::RBRACE { done = true; }
-              _ { /* fall through */ }
+    while p.token != token::RBRACE {
+        let vlo = p.span.lo;
+        let ident = parse_value_ident(p);
+        let args = [], disr_expr = none;
+        if p.token == token::LPAREN {
+            all_nullary = false;
+            let arg_tys = parse_seq(token::LPAREN, token::RPAREN,
+                                    seq_sep(token::COMMA),
+                                    {|p| parse_ty(p, false)}, p);
+            for ty in arg_tys.node {
+                args += [{ty: ty, id: p.get_id()}];
             }
-
-            p.get_id();
-            let vr = {name: p.get_str(name), args: args, id: p.get_id(),
-                      disr_expr: disr_expr};
-            variants += [spanned(vlo, vhi, vr)];
-          }
-          _ {
-            p.fatal("expected name of variant or '}' but found '" +
-                        token::to_str(p.reader, tok) + "'");
-          }
+        } else if eat(p, token::EQ) {
+            have_disr = true;
+            disr_expr = some(parse_expr(p));
         }
+
+        let vr = {name: ident, args: args, id: p.get_id(),
+                  disr_expr: disr_expr};
+        variants += [spanned(vlo, p.last_span.hi, vr)];
+
+        if !eat(p, token::COMMA) { break; }
     }
-    let hi = p.span.hi;
+    expect(p, token::RBRACE);
     if (have_disr && !all_nullary) {
         p.fatal("discriminator values can only be used with a c-like enum");
     }
-    p.bump();
-    ret mk_item(p, lo, hi, id, ast::item_tag(variants, ty_params), attrs);
+    ret mk_item(p, lo, p.last_span.hi, id,
+                ast::item_tag(variants, ty_params), attrs);
 }
 
 fn parse_fn_ty_proto(p: parser) -> ast::proto {
