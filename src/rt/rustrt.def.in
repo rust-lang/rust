@@ -97,3 +97,5 @@ rust_uvtmp_close_connection
 rust_uvtmp_write
 rust_uvtmp_read_start
 rust_uvtmp_delete_buf
+rust_uvtmp_get_req_id
+

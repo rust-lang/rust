@@ -7,7 +7,9 @@
 class rust_uvtmp_thread;
 
 struct connect_data {
+    uint32_t req_id;
     rust_uvtmp_thread *thread;
+    char * ip_addr;
     uv_connect_t connect;
     uv_tcp_t tcp;
     chan_handle chan;
@@ -60,12 +62,13 @@ send(rust_task *task, chan_handle chan, void *data) {
 class rust_uvtmp_thread : public rust_thread {
 
 private:
+    std::map<int, connect_data *> req_map;
     rust_task *task;
     uv_loop_t *loop;
     uv_idle_t idle;
     lock_and_signal lock;
     bool stop_flag;
-    std::queue<std::pair<std::string, chan_handle> > connect_queue;
+    std::queue<std::pair<connect_data *, chan_handle> > connect_queue;
     std::queue<connect_data*> close_connection_queue;
     std::queue<write_data*> write_queue;
     std::queue<read_start_data*> read_start_queue;
@@ -90,40 +93,50 @@ public:
 	stop_flag = true;
     }
 
-    void connect(char *ip, chan_handle chan) {
+    connect_data *connect(uint32_t req_id, char *ip, chan_handle chan) {
 	scoped_lock with(lock);
-	connect_queue.push(std::pair<std::string, chan_handle>
-			   (std::string(ip), chan));
+        if (req_map.count(req_id)) return NULL;
+        connect_data *cd = new connect_data();
+        req_map[req_id] = cd;
+        cd->req_id = req_id;
+        cd->ip_addr = ip;
+	connect_queue.push(
+            std::pair<connect_data *, chan_handle>(cd, chan));
+        return cd;
     }
 
     void
-    close_connection(connect_data *cd) {
-	scoped_lock with(lock);
-	close_connection_queue.push(cd);
+    close_connection(uint32_t req_id) {
+        scoped_lock with(lock);
+        connect_data *cd = req_map[req_id];
+        close_connection_queue.push(cd);
+        req_map.erase(req_id);
     }
 
     void
-    write(connect_data *cd, uint8_t *buf, size_t len, chan_handle chan) {
-	scoped_lock with(lock);
-	write_data *wd = new write_data();
-	wd->cd = cd;
-	wd->buf = new uint8_t[len];
-	wd->len = len;
-	wd->chan = chan;
+    write(uint32_t req_id, uint8_t *buf, size_t len, chan_handle chan) {
+        scoped_lock with(lock);
+        connect_data *cd = req_map[req_id];
+        write_data *wd = new write_data();
+        wd->cd = cd;
+        wd->buf = new uint8_t[len];
+        wd->len = len;
+        wd->chan = chan;
 
-	memcpy(wd->buf, buf, len);
+        memcpy(wd->buf, buf, len);
 
-	write_queue.push(wd);
+        write_queue.push(wd);
     }
 
     void
-    read_start(connect_data *cd, chan_handle chan) {
-	scoped_lock with(lock);
-	read_start_data *rd = new read_start_data();
-	rd->cd = cd;
-	rd->chan = chan;
+    read_start(uint32_t req_id, chan_handle chan) {
+        scoped_lock with(lock);
+        connect_data *cd = req_map[req_id];
+        read_start_data *rd = new read_start_data();
+        rd->cd = cd;
+        rd->chan = chan;
 
-	read_start_queue.push(rd);
+        read_start_queue.push(rd);
     }
 
 private:
@@ -153,12 +166,12 @@ private:
     make_new_connections() {
 	assert(lock.lock_held_by_current_thread());
 	while (!connect_queue.empty()) {
-	    std::pair<std::string, chan_handle> pair = connect_queue.front();
+	    std::pair<connect_data *, chan_handle> pair = connect_queue.front();
 	    connect_queue.pop();
+            connect_data *cd = pair.first;
 	    struct sockaddr_in client_addr = uv_ip4_addr("0.0.0.0", 0);
-	    struct sockaddr_in server_addr = uv_ip4_addr(pair.first.c_str(), 80);
+	    struct sockaddr_in server_addr = uv_ip4_addr(cd->ip_addr, 80);
 
-	    connect_data *cd = new connect_data();
 	    cd->thread = this;
 	    cd->chan = pair.second;
 	    cd->connect.data = cd;
@@ -318,29 +331,36 @@ rust_uvtmp_delete_thread(rust_uvtmp_thread *thread) {
     delete thread;
 }
 
-extern "C" void
-rust_uvtmp_connect(rust_uvtmp_thread *thread, char *ip, chan_handle *chan) {
-    thread->connect(ip, *chan);
+extern "C" connect_data *
+rust_uvtmp_connect(rust_uvtmp_thread *thread, uint32_t req_id, char *ip, chan_handle *chan) {
+    return thread->connect(req_id, ip, *chan);
 }
 
 extern "C" void
-rust_uvtmp_close_connection(rust_uvtmp_thread *thread, connect_data *cd) {
-  thread->close_connection(cd);
+rust_uvtmp_close_connection(rust_uvtmp_thread *thread, uint32_t req_id) {
+  thread->close_connection(req_id);
 }
 
 extern "C" void
-rust_uvtmp_write(rust_uvtmp_thread *thread, connect_data *cd,
+rust_uvtmp_write(rust_uvtmp_thread *thread, uint32_t req_id,
 		 uint8_t *buf, size_t len, chan_handle *chan) {
-    thread->write(cd, buf, len, *chan);
+    thread->write(req_id, buf, len, *chan);
 }
 
 extern "C" void
-rust_uvtmp_read_start(rust_uvtmp_thread *thread, connect_data *cd,
+rust_uvtmp_read_start(rust_uvtmp_thread *thread, uint32_t req_id,
 		      chan_handle *chan) {
-    thread->read_start(cd, *chan);
+    thread->read_start(req_id, *chan);
 }
 
 extern "C" void
 rust_uvtmp_delete_buf(uint8_t *buf) {
     delete [] buf;
 }
+
+extern "C" uint32_t
+rust_uvtmp_get_req_id(connect_data *cd) {
+    return cd->req_id;
+}
+
+

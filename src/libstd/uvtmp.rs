@@ -13,20 +13,22 @@ native mod rustrt {
     fn rust_uvtmp_delete_thread(thread: thread);
     fn rust_uvtmp_connect(
         thread: thread,
+        req_id: u32,
         ip: str::sbuf,
-        chan: comm::chan<iomsg>);
-    fn rust_uvtmp_close_connection(thread: thread, cd: connect_data);
+        chan: comm::chan<iomsg>) -> connect_data;
+    fn rust_uvtmp_close_connection(thread: thread, req_id: u32);
     fn rust_uvtmp_write(
         thread: thread,
-        cd: connect_data,
+        req_id: u32,
         buf: *u8,
         len: ctypes::size_t,
         chan: comm::chan<iomsg>);
     fn rust_uvtmp_read_start(
         thread: thread,
-        cd: connect_data,
+        req_id: u32,
         chan: comm::chan<iomsg>);
     fn rust_uvtmp_delete_buf(buf: *u8);
+    fn rust_uvtmp_get_req_id(cd: connect_data) -> u32;
 }
 
 type thread = *ctypes::void;
@@ -56,29 +58,34 @@ fn delete_thread(thread: thread) {
     rustrt::rust_uvtmp_delete_thread(thread)
 }
 
-fn connect(thread: thread, ip: str, ch: comm::chan<iomsg>) {
+fn connect(thread: thread, req_id: u32,
+           ip: str, ch: comm::chan<iomsg>) -> connect_data {
     str::as_buf(ip) {|ipbuf|
-        rustrt::rust_uvtmp_connect(thread, ipbuf, ch)
+        rustrt::rust_uvtmp_connect(thread, req_id, ipbuf, ch)
     }
 }
 
-fn close_connection(thread: thread, cd: connect_data) {
-    rustrt::rust_uvtmp_close_connection(thread ,cd);
+fn close_connection(thread: thread, req_id: u32) {
+    rustrt::rust_uvtmp_close_connection(thread, req_id);
 }
 
-fn write(thread: thread, cd: connect_data,bytes: [u8],
+fn write(thread: thread, req_id: u32, bytes: [u8],
          chan: comm::chan<iomsg>) unsafe {
     rustrt::rust_uvtmp_write(
-        thread, cd, vec::to_ptr(bytes), vec::len(bytes), chan);
+        thread, req_id, vec::to_ptr(bytes), vec::len(bytes), chan);
 }
 
-fn read_start(thread: thread, cd: connect_data,
+fn read_start(thread: thread, req_id: u32,
               chan: comm::chan<iomsg>) {
-    rustrt::rust_uvtmp_read_start(thread, cd, chan);
+    rustrt::rust_uvtmp_read_start(thread, req_id, chan);
 }
 
 fn delete_buf(buf: *u8) {
     rustrt::rust_uvtmp_delete_buf(buf);
+}
+
+fn get_req_id(cd: connect_data) -> u32 {
+    ret rustrt::rust_uvtmp_get_req_id(cd);
 }
 
 #[test]
@@ -96,7 +103,7 @@ fn test_connect() {
     start_thread(thread);
     let port = comm::port();
     let chan = comm::chan(port);
-    connect(thread, "74.125.224.146", chan);
+    connect(thread, 0u32, "74.125.224.146", chan);
     alt comm::recv(port) {
       connected(cd) {
         close_connection(thread, cd);
@@ -113,7 +120,7 @@ fn test_http() {
     start_thread(thread);
     let port = comm::port();
     let chan = comm::chan(port);
-    connect(thread, "74.125.224.146", chan);
+    connect(thread, 0u32, "74.125.224.146", chan);
     alt comm::recv(port) {
       connected(cd) {
         write(thread, cd, str::bytes("GET / HTTP/1.0\n\n"), chan);
