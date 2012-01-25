@@ -259,10 +259,11 @@ fn check_variants_T<T: copy>(
                 let crate2 = @replacer(crate, i, things[j], cx.mode);
                 // It would be best to test the *crate* for stability, but testing the
                 // string for stability is easier and ok for now.
+                let handler = diagnostic::mk_handler(none);
                 let str3 =
                     as_str(bind pprust::print_crate(
                         codemap,
-                        diagnostic::mk_handler(codemap, none),
+                        diagnostic::mk_span_handler(handler, codemap),
                         crate2,
                         filename,
                         io::string_reader(""), _,
@@ -416,10 +417,11 @@ fn check_compiling(filename: str) -> happiness {
 fn parse_and_print(code: str) -> str {
     let filename = "tmp.rs";
     let cm = codemap::new_codemap();
+    let handler = diagnostic::mk_handler(none);
     let sess = @{
         cm: cm,
         mutable next_id: 0,
-        diagnostic: diagnostic::mk_handler(cm, none),
+        span_diagnostic: diagnostic::mk_span_handler(handler, cm),
         mutable chpos: 0u,
         mutable byte_pos: 0u
     };
@@ -427,7 +429,7 @@ fn parse_and_print(code: str) -> str {
     let crate = parser::parse_crate_from_source_str(
         filename, code, [], sess);
     ret as_str(bind pprust::print_crate(sess.cm,
-                                        sess.diagnostic,
+                                        sess.span_diagnostic,
                                         crate,
                                         filename,
                                         io::string_reader(code), _,
@@ -565,10 +567,11 @@ fn check_variants(files: [str], cx: context) {
 
         log(error, "check_variants: " + file);
         let cm = codemap::new_codemap();
+        let handler = diagnostic::mk_handler(none);
         let sess = @{
             cm: cm,
             mutable next_id: 0,
-            diagnostic: diagnostic::mk_handler(cm, none),
+            span_diagnostic: diagnostic::mk_span_handler(handler, cm),
             mutable chpos: 0u,
             mutable byte_pos: 0u
         };
@@ -578,7 +581,7 @@ fn check_variants(files: [str], cx: context) {
                 s, [], sess);
         #error("%s",
                as_str(bind pprust::print_crate(sess.cm,
-                                               sess.diagnostic,
+                                               sess.span_diagnostic,
                                                crate,
                                                file,
                                                io::string_reader(s), _,

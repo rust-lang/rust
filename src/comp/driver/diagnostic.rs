@@ -5,51 +5,82 @@ import codemap::span;
 
 export emitter, emit;
 export level, fatal, error, warning, note;
-export handler, mk_handler;
+export span_handler, handler, mk_span_handler, mk_handler;
+export codemap_span_handler, codemap_handler;
 export ice_msg;
 
 type emitter = fn@(cmsp: option<(codemap::codemap, span)>,
                    msg: str, lvl: level);
 
 
-iface handler {
+iface span_handler {
     fn span_fatal(sp: span, msg: str) -> !;
-    fn fatal(msg: str) -> !;
     fn span_err(sp: span, msg: str);
-    fn err(msg: str);
-    fn has_errors() -> bool;
-    fn abort_if_errors();
     fn span_warn(sp: span, msg: str);
-    fn warn(msg: str);
     fn span_note(sp: span, msg: str);
-    fn note(msg: str);
     fn span_bug(sp: span, msg: str) -> !;
-    fn bug(msg: str) -> !;
     fn span_unimpl(sp: span, msg: str) -> !;
-    fn unimpl(msg: str) -> !;
+    fn handler() -> handler;
 }
 
-type codemap_t = @{
-    cm: codemap::codemap,
+iface handler {
+    fn fatal(msg: str) -> !;
+    fn err(msg: str);
+    fn bump_err_count();
+    fn has_errors() -> bool;
+    fn abort_if_errors();
+    fn warn(msg: str);
+    fn note(msg: str);
+    fn bug(msg: str) -> !;
+    fn unimpl(msg: str) -> !;
+    fn emit(cmsp: option<(codemap::codemap, span)>, msg: str, lvl: level);
+}
+
+type handler_t = @{
     mutable err_count: uint,
-    emit: emitter
+    _emit: emitter
 };
 
-impl codemap_handler of handler for codemap_t {
+type codemap_t = @{
+    handler: handler,
+    cm: codemap::codemap
+};
+
+impl codemap_span_handler of span_handler for codemap_t {
     fn span_fatal(sp: span, msg: str) -> ! {
-        self.emit(some((self.cm, sp)), msg, fatal);
-        fail;
-    }
-    fn fatal(msg: str) -> ! {
-        self.emit(none, msg, fatal);
+        self.handler.emit(some((self.cm, sp)), msg, fatal);
         fail;
     }
     fn span_err(sp: span, msg: str) {
-        self.emit(some((self.cm, sp)), msg, error);
-        self.err_count += 1u;
+        self.handler.emit(some((self.cm, sp)), msg, error);
+        self.handler.bump_err_count();
+    }
+    fn span_warn(sp: span, msg: str) {
+        self.handler.emit(some((self.cm, sp)), msg, warning);
+    }
+    fn span_note(sp: span, msg: str) {
+        self.handler.emit(some((self.cm, sp)), msg, note);
+    }
+    fn span_bug(sp: span, msg: str) -> ! {
+        self.span_fatal(sp, ice_msg(msg));
+    }
+    fn span_unimpl(sp: span, msg: str) -> ! {
+        self.span_bug(sp, "unimplemented " + msg);
+    }
+    fn handler() -> handler {
+        self.handler
+    }
+}
+
+impl codemap_handler of handler for handler_t {
+    fn fatal(msg: str) -> ! {
+        self._emit(none, msg, fatal);
+        fail;
     }
     fn err(msg: str) {
-        self.emit(none, msg, error);
+        self._emit(none, msg, error);
+    }
+    fn bump_err_count() {
         self.err_count += 1u;
     }
     fn has_errors() -> bool { self.err_count > 0u }
@@ -58,36 +89,30 @@ impl codemap_handler of handler for codemap_t {
             self.fatal("aborting due to previous errors");
         }
     }
-    fn span_warn(sp: span, msg: str) {
-        self.emit(some((self.cm, sp)), msg, warning);
-    }
     fn warn(msg: str) {
-        self.emit(none, msg, warning);
-    }
-    fn span_note(sp: span, msg: str) {
-        self.emit(some((self.cm, sp)), msg, note);
+        self._emit(none, msg, warning);
     }
     fn note(msg: str) {
-        self.emit(none, msg, note);
-    }
-    fn span_bug(sp: span, msg: str) -> ! {
-        self.span_fatal(sp, ice_msg(msg));
+        self._emit(none, msg, note);
     }
     fn bug(msg: str) -> ! {
         self.fatal(ice_msg(msg));
     }
-    fn span_unimpl(sp: span, msg: str) -> ! {
-        self.span_bug(sp, "unimplemented " + msg);
-    }
     fn unimpl(msg: str) -> ! { self.bug("unimplemented " + msg); }
+    fn emit(cmsp: option<(codemap::codemap, span)>, msg: str, lvl: level) {
+        self._emit(cmsp, msg, lvl);
+    }
 }
 
 fn ice_msg(msg: str) -> str {
     #fmt["internal compiler error %s", msg]
 }
 
-fn mk_handler(cm: codemap::codemap,
-              emitter: option<emitter>) -> handler {
+fn mk_span_handler(handler: handler, cm: codemap::codemap) -> span_handler {
+    @{ handler: handler, cm: cm } as span_handler
+}
+
+fn mk_handler(emitter: option<emitter>) -> handler {
 
     let emit = alt emitter {
       some(e) { e }
@@ -101,9 +126,8 @@ fn mk_handler(cm: codemap::codemap,
     };
 
     @{
-        cm: cm,
         mutable err_count: 0u,
-        emit: emit
+        _emit: emit
     } as handler
 }
 

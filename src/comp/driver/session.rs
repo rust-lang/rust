@@ -60,53 +60,53 @@ type session = @{targ_cfg: @config,
                  codemap: codemap::codemap,
                  // For a library crate, this is always none
                  mutable main_fn: option::t<node_id>,
-                 diagnostic: diagnostic::handler,
+                 span_diagnostic: diagnostic::span_handler,
                  filesearch: filesearch::filesearch,
                  mutable building_library: bool,
                  working_dir: str};
 
 impl session for session {
     fn span_fatal(sp: span, msg: str) -> ! {
-        self.diagnostic.span_fatal(sp, msg)
+        self.span_diagnostic.span_fatal(sp, msg)
     }
     fn fatal(msg: str) -> ! {
-        self.diagnostic.fatal(msg)
+        self.span_diagnostic.handler().fatal(msg)
     }
     fn span_err(sp: span, msg: str) {
-        self.diagnostic.span_err(sp, msg)
+        self.span_diagnostic.span_err(sp, msg)
     }
     fn err(msg: str) {
-        self.diagnostic.err(msg)
+        self.span_diagnostic.handler().err(msg)
     }
     fn has_errors() -> bool {
-        self.diagnostic.has_errors()
+        self.span_diagnostic.handler().has_errors()
     }
     fn abort_if_errors() {
-        self.diagnostic.abort_if_errors()
+        self.span_diagnostic.handler().abort_if_errors()
     }
     fn span_warn(sp: span, msg: str) {
-        self.diagnostic.span_warn(sp, msg)
+        self.span_diagnostic.span_warn(sp, msg)
     }
     fn warn(msg: str) {
-        self.diagnostic.warn(msg)
+        self.span_diagnostic.handler().warn(msg)
     }
     fn span_note(sp: span, msg: str) {
-        self.diagnostic.span_note(sp, msg)
+        self.span_diagnostic.span_note(sp, msg)
     }
     fn note(msg: str) {
-        self.diagnostic.note(msg)
+        self.span_diagnostic.handler().note(msg)
     }
     fn span_bug(sp: span, msg: str) -> ! {
-        self.diagnostic.span_bug(sp, msg)
+        self.span_diagnostic.span_bug(sp, msg)
     }
     fn bug(msg: str) -> ! {
-        self.diagnostic.bug(msg)
+        self.span_diagnostic.handler().bug(msg)
     }
     fn span_unimpl(sp: span, msg: str) -> ! {
-        self.diagnostic.span_unimpl(sp, msg)
+        self.span_diagnostic.span_unimpl(sp, msg)
     }
     fn unimpl(msg: str) -> ! {
-        self.diagnostic.unimpl(msg)
+        self.span_diagnostic.handler().unimpl(msg)
     }
     fn next_node_id() -> ast::node_id {
         ret syntax::parse::parser::next_node_id(self.parse_sess);

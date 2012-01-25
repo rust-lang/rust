@@ -10,7 +10,7 @@ import driver::diagnostic;
 
 type reader = @{
     cm: codemap::codemap,
-    diagnostic: diagnostic::handler,
+    span_diagnostic: diagnostic::span_handler,
     src: str,
     len: uint,
     mutable col: uint,
@@ -49,17 +49,18 @@ impl reader for reader {
         } else { self.curr = -1 as char; }
     }
     fn fatal(m: str) -> ! {
-        self.diagnostic.span_fatal(
+        self.span_diagnostic.span_fatal(
             ast_util::mk_sp(self.chpos, self.chpos),
             m)
     }
 }
 
 fn new_reader(cm: codemap::codemap,
-              diagnostic: diagnostic::handler,
+              span_diagnostic: diagnostic::span_handler,
               src: str, filemap: codemap::filemap,
               itr: @interner::interner<str>) -> reader {
-    let r = @{cm: cm, diagnostic: diagnostic,
+    let r = @{cm: cm,
+              span_diagnostic: span_diagnostic,
               src: src, len: str::byte_len(src),
               mutable col: 0u, mutable pos: 0u, mutable curr: -1 as char,
               mutable chpos: filemap.start_pos.ch, mutable strs: [],
@@ -667,13 +668,13 @@ fn is_lit(t: token::token) -> bool {
 type lit = {lit: str, pos: uint};
 
 fn gather_comments_and_literals(cm: codemap::codemap,
-                                diagnostic: diagnostic::handler,
+                                span_diagnostic: diagnostic::span_handler,
                                 path: str,
                                 srdr: io::reader) ->
    {cmnts: [cmnt], lits: [lit]} {
     let src = str::unsafe_from_bytes(srdr.read_whole_stream());
     let itr = @interner::mk::<str>(str::hash, str::eq);
-    let rdr = new_reader(cm, diagnostic, src,
+    let rdr = new_reader(cm, span_diagnostic, src,
                          codemap::new_filemap(path, 0u, 0u), itr);
     let comments: [cmnt] = [];
     let literals: [lit] = [];

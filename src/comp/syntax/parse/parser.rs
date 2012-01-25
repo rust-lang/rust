@@ -24,7 +24,7 @@ enum file_type { CRATE_FILE, SOURCE_FILE, }
 type parse_sess = @{
     cm: codemap::codemap,
     mutable next_id: node_id,
-    diagnostic: diagnostic::handler,
+    span_diagnostic: diagnostic::span_handler,
     // these two must be kept up to date
     mutable chpos: uint,
     mutable byte_pos: uint
@@ -78,13 +78,13 @@ impl parser for parser {
         ret self.buffer[distance - 1u].tok;
     }
     fn fatal(m: str) -> ! {
-        self.sess.diagnostic.span_fatal(self.span, m)
+        self.sess.span_diagnostic.span_fatal(self.span, m)
     }
     fn span_fatal(sp: span, m: str) -> ! {
-        self.sess.diagnostic.span_fatal(sp, m)
+        self.sess.span_diagnostic.span_fatal(sp, m)
     }
     fn warn(m: str) {
-        self.sess.diagnostic.span_warn(self.span, m)
+        self.sess.span_diagnostic.span_warn(self.span, m)
     }
     fn get_str(i: token::str_num) -> str {
         interner::get(*self.reader.interner, i)
@@ -101,14 +101,14 @@ fn new_parser_from_file(sess: parse_sess, cfg: ast::crate_cfg, path: str,
         src
       }
       result::err(e) {
-        sess.diagnostic.fatal(e)
+        sess.span_diagnostic.handler().fatal(e)
       }
     };
     let filemap = codemap::new_filemap(path, sess.chpos, sess.byte_pos);
     sess.cm.files += [filemap];
     let itr = @interner::mk(str::hash, str::eq);
-    let rdr = lexer::new_reader(sess.cm, sess.diagnostic,
-                                src, filemap, itr);
+    let rdr = lexer::new_reader(sess.cm, sess.span_diagnostic, src, filemap,
+                                itr);
     ret new_parser(sess, cfg, rdr, ftype);
 }
 
@@ -118,8 +118,8 @@ fn new_parser_from_source_str(sess: parse_sess, cfg: ast::crate_cfg,
     let filemap = codemap::new_filemap(name, sess.chpos, sess.byte_pos);
     sess.cm.files += [filemap];
     let itr = @interner::mk(str::hash, str::eq);
-    let rdr = lexer::new_reader(sess.cm, sess.diagnostic,
-                                source, filemap, itr);
+    let rdr = lexer::new_reader(sess.cm, sess.span_diagnostic, source,
+                                filemap, itr);
     ret new_parser(sess, cfg, rdr, ftype);
 }
 
@@ -2628,7 +2628,8 @@ fn parse_crate_from_file(input: str, cfg: ast::crate_cfg, sess: parse_sess) ->
     } else if str::ends_with(input, ".rs") {
         parse_crate_from_source_file(input, cfg, sess)
     } else {
-        sess.diagnostic.fatal("unknown input file type: " + input)
+        sess.span_diagnostic.handler().fatal("unknown input file type: " +
+                                             input)
     }
 }
 

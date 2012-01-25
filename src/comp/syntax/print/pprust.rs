@@ -60,11 +60,12 @@ const default_columns: uint = 78u;
 // Requires you to pass an input filename and reader so that
 // it can scan the input text for comments and literals to
 // copy forward.
-fn print_crate(cm: codemap, diagnostic: diagnostic::handler,
+fn print_crate(cm: codemap, span_diagnostic: diagnostic::span_handler,
                crate: @ast::crate, filename: str, in: io::reader,
                out: io::writer, ann: pp_ann) {
     let boxes: [pp::breaks] = [];
-    let r = lexer::gather_comments_and_literals(cm, diagnostic, filename, in);
+    let r = lexer::gather_comments_and_literals(cm, span_diagnostic, filename,
+                                                in);
     let s =
         @{s: pp::mk_printer(out, default_columns),
           cm: some(cm),

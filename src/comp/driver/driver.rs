@@ -299,7 +299,7 @@ fn pretty_print_input(sess: session, cfg: ast::crate_cfg, input: str,
       }
       ppm_expanded | ppm_normal {}
     }
-    pprust::print_crate(sess.codemap, sess.diagnostic, crate, input,
+    pprust::print_crate(sess.codemap, sess.span_diagnostic, crate, input,
                         io::string_reader(src), io::stdout(), ann);
 }
 
@@ -481,21 +481,23 @@ fn build_session(sopts: @session::options, input: str,
         sopts.addl_lib_search_paths);
     let codemap = codemap::new_codemap();
     let diagnostic_handler =
-        diagnostic::mk_handler(codemap, some(demitter));
+        diagnostic::mk_handler(some(demitter));
+    let span_diagnostic_handler =
+        diagnostic::mk_span_handler(diagnostic_handler, codemap);
     @{targ_cfg: target_cfg,
       opts: sopts,
       cstore: cstore,
       parse_sess: @{
           cm: codemap,
           mutable next_id: 1,
-          diagnostic: diagnostic_handler,
+          span_diagnostic: span_diagnostic_handler,
           mutable chpos: 0u,
           mutable byte_pos: 0u
       },
       codemap: codemap,
       // For a library crate, this is always none
       mutable main_fn: none,
-      diagnostic: diagnostic_handler,
+      span_diagnostic: span_diagnostic_handler,
       filesearch: filesearch,
       mutable building_library: false,
       working_dir: fs::dirname(input)}
