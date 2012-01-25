@@ -343,10 +343,11 @@ mod test {
         import rustc::driver::diagnostic;
 
         let cm = rustc::syntax::codemap::new_codemap();
+        let handler = diagnostic::mk_handler(none);
         let parse_sess = @{
             cm: cm,
             mutable next_id: 0,
-            diagnostic: diagnostic::mk_handler(cm, none),
+            span_diagnostic: diagnostic::mk_span_handler(handler, cm),
             mutable chpos: 0u,
             mutable byte_pos: 0u
         };
