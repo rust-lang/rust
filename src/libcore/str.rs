@@ -1066,15 +1066,15 @@ Safety note:
 FIXME: rename to 'substr_len_chars'
 */
 fn char_len_range(s: str, byte_start: uint, byte_len: uint) -> uint {
-    let i     = byte_start;
+    let i         = byte_start;
+    let byte_stop = i + byte_len;
     let len   = 0u;
-    while i < byte_len {
+    while i < byte_stop {
         let chsize = utf8_char_width(s[i]);
         assert (chsize > 0u);
         len += 1u;
         i += chsize;
     }
-    assert (i == byte_len);
     ret len;
 }
 
