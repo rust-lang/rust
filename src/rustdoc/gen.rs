@@ -116,6 +116,7 @@ fn write_fn(
     write_desc(ctxt, doc.desc);
     write_args(ctxt, doc.args);
     write_return(ctxt, doc.return);
+    write_failure(ctxt, doc.failure);
 }
 
 fn write_sig(ctxt: ctxt, sig: option<str>) {
@@ -302,6 +303,25 @@ fn should_write_return_description_on_same_line_as_type() {
         "#[doc(return = \"blorp\")] fn a() -> int { }"
     );
     assert str::contains(markdown, "Returns `int` - blorp");
+}
+
+fn write_failure(ctxt: ctxt, str: option<str>) {
+    alt str {
+      some(str) {
+        ctxt.w.write_line(#fmt("Failure conditions: %s", str));
+        ctxt.w.write_line("");
+      }
+      none { }
+    }
+}
+
+#[test]
+fn should_write_failure_conditions() {
+    let markdown = test::render(
+        "#[doc(failure = \"it's the fail\")] fn a () { }");
+    assert str::contains(
+        markdown,
+        "\n\nFailure conditions: it's the fail\n\n");
 }
 
 fn write_const(
