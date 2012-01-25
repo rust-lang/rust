@@ -10,6 +10,7 @@ import option::{some};
 import extfmt::ct::*;
 import base::*;
 import codemap::span;
+import syntax::ext::build::*;
 export expand_syntax_ext;
 
 fn expand_syntax_ext(cx: ext_ctxt, sp: span, arg: @ast::expr,
@@ -41,47 +42,9 @@ fn expand_syntax_ext(cx: ext_ctxt, sp: span, arg: @ast::expr,
 // FIXME: A lot of these functions for producing expressions can probably
 // be factored out in common with other code that builds expressions.
 // FIXME: Cleanup the naming of these functions
+// NOTE: Moved many of the common ones to build.rs --kevina
 fn pieces_to_expr(cx: ext_ctxt, sp: span, pieces: [piece], args: [@ast::expr])
    -> @ast::expr {
-    fn make_new_lit(cx: ext_ctxt, sp: span, lit: ast::lit_) -> @ast::expr {
-        let sp_lit = @{node: lit, span: sp};
-        ret @{id: cx.next_id(), node: ast::expr_lit(sp_lit), span: sp};
-    }
-    fn make_new_str(cx: ext_ctxt, sp: span, s: str) -> @ast::expr {
-        let lit = ast::lit_str(s);
-        ret make_new_lit(cx, sp, lit);
-    }
-    fn make_new_int(cx: ext_ctxt, sp: span, i: int) -> @ast::expr {
-        let lit = ast::lit_int(i as i64, ast::ty_i);
-        ret make_new_lit(cx, sp, lit);
-    }
-    fn make_new_uint(cx: ext_ctxt, sp: span, u: uint) -> @ast::expr {
-        let lit = ast::lit_uint(u as u64, ast::ty_u);
-        ret make_new_lit(cx, sp, lit);
-    }
-    fn make_add_expr(cx: ext_ctxt, sp: span, lhs: @ast::expr, rhs: @ast::expr)
-       -> @ast::expr {
-        let binexpr = ast::expr_binary(ast::add, lhs, rhs);
-        ret @{id: cx.next_id(), node: binexpr, span: sp};
-    }
-    fn make_path_expr(cx: ext_ctxt, sp: span, idents: [ast::ident]) ->
-       @ast::expr {
-        let path = {global: false, idents: idents, types: []};
-        let sp_path = @{node: path, span: sp};
-        let pathexpr = ast::expr_path(sp_path);
-        ret @{id: cx.next_id(), node: pathexpr, span: sp};
-    }
-    fn make_vec_expr(cx: ext_ctxt, sp: span, exprs: [@ast::expr]) ->
-       @ast::expr {
-        let vecexpr = ast::expr_vec(exprs, ast::imm);
-        ret @{id: cx.next_id(), node: vecexpr, span: sp};
-    }
-    fn make_call(cx: ext_ctxt, sp: span, fn_path: [ast::ident],
-                 args: [@ast::expr]) -> @ast::expr {
-        let pathexpr = make_path_expr(cx, sp, fn_path);
-        let callexpr = ast::expr_call(pathexpr, args, false);
-        ret @{id: cx.next_id(), node: callexpr, span: sp};
-    }
     fn make_rec_expr(cx: ext_ctxt, sp: span,
                      fields: [{ident: ast::ident, ex: @ast::expr}]) ->
        @ast::expr {
