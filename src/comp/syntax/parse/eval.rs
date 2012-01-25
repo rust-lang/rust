@@ -79,7 +79,7 @@ fn parse_companion_mod(cx: ctx, prefix: str, suffix: option::t<str>)
         let first_item_outer_attrs = inner_attrs.next;
         let m0 = parse_mod_items(p0, token::EOF, first_item_outer_attrs);
         cx.sess.chpos = p0.reader.chpos;
-        cx.sess.byte_pos = p0.reader.pos;
+        cx.sess.byte_pos = cx.sess.byte_pos + p0.reader.pos;
         ret (m0.view_items, m0.items, inner_attrs.inner);
     } else {
         ret ([], [], []);
@@ -117,7 +117,7 @@ fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: str,
                                            ast::item_mod(m0), mod_attrs);
         // Thread defids, chpos and byte_pos through the parsers
         cx.sess.chpos = p0.reader.chpos;
-        cx.sess.byte_pos = p0.reader.pos;
+        cx.sess.byte_pos = cx.sess.byte_pos + p0.reader.pos;
         items += [i];
       }
       ast::cdir_dir_mod(id, cdirs, attrs) {

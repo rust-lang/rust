@@ -193,15 +193,6 @@ fn highlight_lines(cm: codemap::codemap, sp: span,
     // pull out the lines
     if lines.name == "-" { ret; }
 
-    // FIXME: reading in the entire file is the worst possible way to
-    //        get access to the necessary lines.
-    let file = alt io::read_whole_file_str(lines.name) {
-      result::ok(file) { file }
-      result::err(e) {
-        // Hard to report errors while reporting an error
-        ret;
-      }
-    };
     let fm = codemap::get_filemap(cm, lines.name);
 
     // arbitrarily only print up to six lines of the error
@@ -215,7 +206,7 @@ fn highlight_lines(cm: codemap::codemap, sp: span,
     // Print the offending lines
     for line: uint in display_lines {
         io::stdout().write_str(#fmt["%s:%u ", fm.name, line + 1u]);
-        let s = codemap::get_line(fm, line as int, file);
+        let s = codemap::get_line(fm, line as int);
         if !str::ends_with(s, "\n") { s += "\n"; }
         io::stdout().write_str(s);
     }

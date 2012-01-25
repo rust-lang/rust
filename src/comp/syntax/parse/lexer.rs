@@ -11,7 +11,7 @@ import driver::diagnostic;
 type reader = @{
     cm: codemap::codemap,
     span_diagnostic: diagnostic::span_handler,
-    src: str,
+    src: @str,
     len: uint,
     mutable col: uint,
     mutable pos: uint,
@@ -27,11 +27,11 @@ impl reader for reader {
     fn get_str_from(start: uint) -> str {
         // I'm pretty skeptical about this subtraction. What if there's a
         // multi-byte character before the mark?
-        ret str::slice(self.src, start - 1u, self.pos - 1u);
+        ret str::slice(*self.src, start - 1u, self.pos - 1u);
     }
     fn next() -> char {
         if self.pos < self.len {
-            ret str::char_at(self.src, self.pos);
+            ret str::char_at(*self.src, self.pos);
         } else { ret -1 as char; }
     }
     fn bump() {
@@ -43,7 +43,7 @@ impl reader for reader {
                                    self.filemap.start_pos.byte);
                 self.col = 0u;
             }
-            let next = str::char_range_at(self.src, self.pos);
+            let next = str::char_range_at(*self.src, self.pos);
             self.pos = next.next;
             self.curr = next.ch;
         } else { self.curr = -1 as char; }
@@ -57,16 +57,16 @@ impl reader for reader {
 
 fn new_reader(cm: codemap::codemap,
               span_diagnostic: diagnostic::span_handler,
-              src: str, filemap: codemap::filemap,
+              filemap: codemap::filemap,
               itr: @interner::interner<str>) -> reader {
     let r = @{cm: cm,
               span_diagnostic: span_diagnostic,
-              src: src, len: str::byte_len(src),
+              src: filemap.src, len: str::byte_len(*filemap.src),
               mutable col: 0u, mutable pos: 0u, mutable curr: -1 as char,
               mutable chpos: filemap.start_pos.ch, mutable strs: [],
               filemap: filemap, interner: itr};
     if r.pos < r.len {
-        let next = str::char_range_at(r.src, r.pos);
+        let next = str::char_range_at(*r.src, r.pos);
         r.pos = next.next;
         r.curr = next.ch;
     }
@@ -672,10 +672,10 @@ fn gather_comments_and_literals(cm: codemap::codemap,
                                 path: str,
                                 srdr: io::reader) ->
    {cmnts: [cmnt], lits: [lit]} {
-    let src = str::unsafe_from_bytes(srdr.read_whole_stream());
+    let src = @str::unsafe_from_bytes(srdr.read_whole_stream());
     let itr = @interner::mk::<str>(str::hash, str::eq);
-    let rdr = new_reader(cm, span_diagnostic, src,
-                         codemap::new_filemap(path, 0u, 0u), itr);
+    let rdr = new_reader(cm, span_diagnostic,
+                         codemap::new_filemap(path, src, 0u, 0u), itr);
     let comments: [cmnt] = [];
     let literals: [lit] = [];
     let first_read: bool = true;

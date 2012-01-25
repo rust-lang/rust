@@ -77,7 +77,7 @@ fn parse_cfgspecs(cfgspecs: [str]) -> ast::crate_cfg {
 fn input_is_stdin(filename: str) -> bool { filename == "-" }
 
 fn parse_input(sess: session, cfg: ast::crate_cfg, input: str)
-    -> {crate: @ast::crate, src: str} {
+    -> {crate: @ast::crate, src: @str} {
     let src = get_input_str(sess, input);
     let crate = if !input_is_stdin(input) {
         parser::parse_crate_from_file(input, cfg, sess.parse_sess)
@@ -87,7 +87,7 @@ fn parse_input(sess: session, cfg: ast::crate_cfg, input: str)
     {crate: crate, src: src}
 }
 
-fn get_input_str(sess: session, infile: str) -> str {
+fn get_input_str(sess: session, infile: str) -> @str {
     let stream = if !input_is_stdin(infile) {
         alt io::file_reader(infile) {
           result::ok(reader) { reader }
@@ -96,7 +96,7 @@ fn get_input_str(sess: session, infile: str) -> str {
           }
         }
     } else { io::stdin() };
-    str::unsafe_from_bytes(stream.read_whole_stream())
+    @str::unsafe_from_bytes(stream.read_whole_stream())
 }
 
 fn time<T>(do_it: bool, what: str, thunk: fn@() -> T) -> T {
@@ -141,7 +141,7 @@ enum compile_upto {
 fn compile_upto(sess: session, cfg: ast::crate_cfg,
                 input: str, upto: compile_upto,
                 outputs: option::t<output_filenames>)
-    -> {crate: @ast::crate, tcx: option::t<ty::ctxt>, src: str} {
+    -> {crate: @ast::crate, tcx: option::t<ty::ctxt>, src: @str} {
     let time_passes = sess.opts.time_passes;
     let {crate, src} =
         time(time_passes, "parsing", bind parse_input(sess, cfg, input));
@@ -300,7 +300,7 @@ fn pretty_print_input(sess: session, cfg: ast::crate_cfg, input: str,
       ppm_expanded | ppm_normal {}
     }
     pprust::print_crate(sess.codemap, sess.span_diagnostic, crate, input,
-                        io::string_reader(src), io::stdout(), ann);
+                        io::string_reader(*src), io::stdout(), ann);
 }
 
 fn get_os(triple: str) -> option<session::os> {
