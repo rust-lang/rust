@@ -131,7 +131,7 @@ fn test_http() {
                     unsafe {
                         log(error, len);
                         let buf = vec::unsafe::from_buf(buf, len as uint);
-                        let str = str::unsafe_from_bytes(buf);
+                        let str = str::from_bytes(buf);
                         #error("read something");
                         io::println(str);
                     }

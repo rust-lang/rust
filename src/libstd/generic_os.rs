@@ -75,7 +75,7 @@ fn getenv(n: str) -> option::t<str> {
             unsafe {
                 vec::unsafe::set_len(v, res);
             }
-            ret option::some(str::unsafe_from_bytes(v));
+            ret option::some(str::from_bytes(v)); // UTF-8 or fail
         } else { nsize = res; }
     }
     fail;

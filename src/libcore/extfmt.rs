@@ -440,6 +440,7 @@ mod rt {
             let head = s[0];
             if head == '+' as u8 || head == '-' as u8 || head == ' ' as u8 {
                 let headstr = str::unsafe_from_bytes([head]);
+                // FIXME: not UTF-8 safe
                 let bytelen = str::byte_len(s);
                 let numpart = str::substr(s, 1u, bytelen - 1u);
                 ret headstr + padstr + numpart;
