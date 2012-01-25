@@ -79,6 +79,7 @@ impl codemap_handler of handler for handler_t {
     }
     fn err(msg: str) {
         self._emit(none, msg, error);
+        self.bump_err_count();
     }
     fn bump_err_count() {
         self.err_count += 1u;
