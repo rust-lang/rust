@@ -1831,9 +1831,10 @@ fn parse_method(p: parser) -> @ast::method {
 
 fn parse_item_iface(p: parser, attrs: [ast::attribute]) -> @ast::item {
     let lo = p.last_span.lo, ident = parse_ident(p),
-        tps = parse_ty_params(p), meths = parse_ty_methods(p);
+        tps = parse_ty_params(p), meths = parse_ty_methods(p),
+        self_tp = {ident: "self", id: p.get_id(), bounds: @[]};
     ret mk_item(p, lo, p.last_span.hi, ident,
-                ast::item_iface(tps, meths), attrs);
+                ast::item_iface(tps + [self_tp], meths), attrs);
 }
 
 // Parses three variants (with the initial params always optional):

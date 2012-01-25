@@ -128,14 +128,15 @@ fn item_impl_iface(item: ebml::doc, tcx: ty::ctxt, cdata: cmd)
     result
 }
 
-fn item_ty_param_bounds(item: ebml::doc, tcx: ty::ctxt, cdata: cmd)
-    -> @[ty::param_bounds] {
-    let bounds = [];
+fn item_ty_param_bounds(item: ebml::doc, tcx: ty::ctxt, cdata: cmd,
+                        skip: bool) -> @[ty::param_bounds] {
+    let bounds = [], skip = skip;
     ebml::tagged_docs(item, tag_items_data_item_ty_param_bounds) {|p|
         let bd = parse_bounds_data(p.data, p.start, cdata.cnum, tcx, {|did|
             translate_def_id(cdata, did)
         });
-        bounds += [bd];
+        if skip { skip = false; }
+        else { bounds += [bd]; }
     }
     @bounds
 }
@@ -218,8 +219,9 @@ fn get_type(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
     -> ty::ty_param_bounds_and_ty {
     let item = lookup_item(id, cdata.data);
     let t = item_type(item, tcx, cdata);
-    let tp_bounds = if family_has_type_params(item_family(item)) {
-        item_ty_param_bounds(item, tcx, cdata)
+    let family = item_family(item);
+    let tp_bounds = if family_has_type_params(family) {
+        item_ty_param_bounds(item, tcx, cdata, family == ('I' as u8))
     } else { @[] };
     ret {bounds: tp_bounds, ty: t};
 }
@@ -302,7 +304,7 @@ fn get_iface_methods(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
     let data = cdata.data;
     let item = lookup_item(id, data), result = [];
     ebml::tagged_docs(item, tag_item_method) {|mth|
-        let bounds = item_ty_param_bounds(mth, tcx, cdata);
+        let bounds = item_ty_param_bounds(mth, tcx, cdata, false);
         let name = item_name(mth);
         let ty = doc_type(mth, tcx, cdata);
         let fty = alt ty::struct(tcx, ty) { ty::ty_fn(f) { f } };

@@ -12,9 +12,11 @@ impl of to_str for () {
 }
 
 iface map<T> {
+    fn iter(fn(T));
     fn map<U>(f: fn(T) -> U) -> [U];
 }
 impl <T> of map<T> for [T] {
+    fn iter(_f: fn(T)) {}
     fn map<U>(f: fn(T) -> U) -> [U] {
         let r = [];
         for x in self { r += [f(x)]; }
