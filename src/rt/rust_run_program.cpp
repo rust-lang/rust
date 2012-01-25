@@ -5,6 +5,64 @@
 #include <process.h>
 #include <io.h>
 
+bool backslash_run_ends_in_quote(char const *c) {
+    while (*c == '\\') ++c;
+    return *c == '"';
+}
+
+void append_first_char(char *&buf, char const *c) {
+    switch (*c) {
+
+    case '"':
+        // Escape quotes.
+        *buf++ = '\\';
+        *buf++ = '"';
+        break;
+
+
+    case '\\':
+        if (backslash_run_ends_in_quote(c)) {
+            // Double all backslashes that are in runs before quotes.
+            *buf++ = '\\';
+            *buf++ = '\\';
+        } else {
+            // Pass other backslashes through unescaped.
+            *buf++ = '\\';
+        }
+        break;
+
+    default:
+        *buf++ = *c;
+    }
+}
+
+bool contains_whitespace(char const *arg) {
+    while (*arg) {
+        switch (*arg++) {
+        case ' ':
+        case '\t':
+            return true;
+        }
+    }
+    return false;
+}
+
+void append_arg(char *& buf, char const *arg, bool last) {
+    bool quote = contains_whitespace(arg);
+    if (quote)
+        *buf++ = '"';
+    while (*arg)
+        append_first_char(buf, arg++);
+    if (quote)
+        *buf++ = '"';
+
+    if (! last) {
+        *buf++ = ' ';
+    } else {
+        *buf++ = '\0';
+    }
+}
+
 extern "C" CDECL int
 rust_run_program(const char* argv[], int in_fd, int out_fd, int err_fd) {
     STARTUPINFO si;
@@ -29,14 +87,14 @@ rust_run_program(const char* argv[], int in_fd, int out_fd, int err_fd) {
     size_t cmd_len = 0;
     for (const char** arg = argv; *arg; arg++) {
         cmd_len += strlen(*arg);
-        cmd_len++; // Space or \0
+        cmd_len += 3; // Two quotes plus trailing space or \0
     }
+    cmd_len *= 2; // Potentially backslash-escape everything.
+
     char* cmd = (char*)malloc(cmd_len);
     char* pos = cmd;
     for (const char** arg = argv; *arg; arg++) {
-        strcpy(pos, *arg);
-        pos += strlen(*arg);
-        if (*(arg+1)) *(pos++) = ' ';
+        append_arg(pos, *arg, *(arg+1) == NULL);
     }
 
     PROCESS_INFORMATION pi;
