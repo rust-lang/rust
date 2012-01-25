@@ -10,34 +10,7 @@ is interpreted as the brief description.
 export mk_pass;
 
 fn mk_pass() -> pass {
-    run
-}
-
-fn run(
-    _srv: astsrv::srv,
-    doc: doc::cratedoc
-) -> doc::cratedoc {
-    let fold = fold::fold({
-        fold_mod: fold_mod,
-        fold_const: fold_const,
-        fold_fn: fold_fn
-        with *fold::default_seq_fold(())
-    });
-    fold.fold_crate(fold, doc)
-}
-
-fn trimopt(s: option<str>) -> option<str> {
-    option::map(s, {|s| str::trim(s) })
-}
-
-fn fold_mod(fold: fold::fold<()>, doc: doc::moddoc) -> doc::moddoc {
-    let doc = fold::default_seq_fold_mod(fold, doc);
-
-    ~{
-        brief: trimopt(doc.brief),
-        desc: trimopt(doc.desc)
-        with *doc
-    }
+    desc_pass::mk_pass(str::trim)
 }
 
 #[test]
@@ -48,19 +21,9 @@ fn should_trim_mod() {
     let srv = astsrv::mk_srv_from_str(source);
     let doc = extract::from_srv(srv, "");
     let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = run(srv, doc);
+    let doc = mk_pass()(srv, doc);
     assert doc.topmod.mods[0].brief == some("brief");
     assert doc.topmod.mods[0].desc == some("desc");
-}
-
-fn fold_const(fold: fold::fold<()>, doc: doc::constdoc) -> doc::constdoc {
-    let doc = fold::default_seq_fold_const(fold, doc);
-
-    ~{
-        brief: trimopt(doc.brief),
-        desc: trimopt(doc.desc)
-        with *doc
-    }
 }
 
 #[test]
@@ -71,30 +34,9 @@ fn should_trim_const() {
     let srv = astsrv::mk_srv_from_str(source);
     let doc = extract::from_srv(srv, "");
     let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = run(srv, doc);
+    let doc = mk_pass()(srv, doc);
     assert doc.topmod.consts[0].brief == some("brief");
     assert doc.topmod.consts[0].desc == some("desc");
-}
-
-fn fold_fn(fold: fold::fold<()>, doc: doc::fndoc) -> doc::fndoc {
-    let doc = fold::default_seq_fold_fn(fold, doc);
-
-    ~{
-        brief: trimopt(doc.brief),
-        desc: trimopt(doc.desc),
-        args: vec::map(doc.args) {|doc|
-            ~{
-                desc: trimopt(doc.desc)
-                with *doc
-            }
-        },
-        return: {
-            desc: trimopt(doc.return.desc)
-            with doc.return
-        },
-        failure: trimopt(doc.failure)
-        with *doc
-    }
 }
 
 #[test]
@@ -105,7 +47,7 @@ fn should_trim_fn() {
     let srv = astsrv::mk_srv_from_str(source);
     let doc = extract::from_srv(srv, "");
     let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = run(srv, doc);
+    let doc = mk_pass()(srv, doc);
     assert doc.topmod.fns[0].brief == some("brief");
     assert doc.topmod.fns[0].desc == some("desc");
 }
@@ -116,7 +58,7 @@ fn should_trim_args() {
     let srv = astsrv::mk_srv_from_str(source);
     let doc = extract::from_srv(srv, "");
     let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = run(srv, doc);
+    let doc = mk_pass()(srv, doc);
     assert doc.topmod.fns[0].args[0].desc == some("a");
 }
 
@@ -126,7 +68,7 @@ fn should_trim_ret() {
     let srv = astsrv::mk_srv_from_str(source);
     let doc = extract::from_srv(srv, "");
     let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = run(srv, doc);
+    let doc = mk_pass()(srv, doc);
     assert doc.topmod.fns[0].return.desc == some("a");
 }
 
@@ -136,6 +78,6 @@ fn should_trim_failure_conditions() {
     let srv = astsrv::mk_srv_from_str(source);
     let doc = extract::from_srv(srv, "");
     let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = run(srv, doc);
+    let doc = mk_pass()(srv, doc);
     assert doc.topmod.fns[0].failure == some("a");
 }
