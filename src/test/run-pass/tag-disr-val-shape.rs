@@ -1,5 +1,3 @@
-// xfail-pretty Issue #1510
-
 enum color {
     red = 0xff0000,
     green = 0x00ff00,
