@@ -137,6 +137,24 @@ fn attribute_to_str(attr: ast::attribute) -> str {
     be to_str(attr, print_attribute);
 }
 
+fn variant_to_str(var: ast::variant) -> str {
+    be to_str(var, print_variant);
+}
+
+#[test]
+fn test_variant_to_str() {
+    let var = ast_util::respan(ast_util::dummy_sp(), {
+        name: "principle_skinner",
+        attrs: [],
+        args: [],
+        id: 0,
+        disr_expr: none
+    });
+
+    let varstr = variant_to_str(var);
+    assert varstr == "principle_skinner";
+}
+
 fn cbox(s: ps, u: uint) { s.boxes += [pp::consistent]; pp::cbox(s.s, u); }
 
 fn box(s: ps, u: uint, b: pp::breaks) { s.boxes += [b]; pp::box(s.s, u, b); }
@@ -436,23 +454,7 @@ fn print_item(s: ps, &&item: @ast::item) {
                 maybe_print_comment(s, v.span.lo);
                 print_outer_attributes(s, v.node.attrs);
                 ibox(s, indent_unit);
-                word(s.s, v.node.name);
-                if vec::len(v.node.args) > 0u {
-                    popen(s);
-                    fn print_variant_arg(s: ps, arg: ast::variant_arg) {
-                        print_type(s, arg.ty);
-                    }
-                    commasep(s, consistent, v.node.args, print_variant_arg);
-                    pclose(s);
-                }
-                alt v.node.disr_expr {
-                  some(d) {
-                    space(s.s);
-                    word_space(s, "=");
-                    print_expr(s, d);
-                  }
-                  _ {}
-                }
+                print_variant(s, v);
                 word(s.s, ",");
                 end(s);
                 maybe_print_trailing_comment(s, v.span, none::<uint>);
@@ -508,6 +510,26 @@ fn print_item(s: ps, &&item: @ast::item) {
       }
     }
     s.ann.post(ann_node);
+}
+
+fn print_variant(s: ps, v: ast::variant) {
+    word(s.s, v.node.name);
+    if vec::len(v.node.args) > 0u {
+        popen(s);
+        fn print_variant_arg(s: ps, arg: ast::variant_arg) {
+            print_type(s, arg.ty);
+        }
+        commasep(s, consistent, v.node.args, print_variant_arg);
+        pclose(s);
+    }
+    alt v.node.disr_expr {
+      some(d) {
+        space(s.s);
+        word_space(s, "=");
+        print_expr(s, d);
+      }
+      _ {}
+    }
 }
 
 fn print_ty_method(s: ps, m: ast::ty_method) {
