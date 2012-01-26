@@ -85,6 +85,10 @@ fn write_mod_contents(
         write_const(ctxt, constdoc);
     }
 
+    for enumdoc in *doc.enums {
+        write_enum(ctxt, enumdoc);
+    }
+
     for fndoc in *doc.fns {
         write_fn(ctxt, fndoc);
     }
@@ -346,6 +350,91 @@ fn should_write_const_description() {
         "#[doc(brief = \"a\", desc = \"b\")]\
          const a: bool = true;");
     assert str::contains(markdown, "\n\na\n\nb\n\n");
+}
+
+fn write_enum(
+    ctxt: ctxt,
+    doc: doc::enumdoc
+) {
+    write_header(ctxt, h3, #fmt("Enum `%s`", doc.name));
+    write_brief(ctxt, doc.brief);
+    write_desc(ctxt, doc.desc);
+    write_variants(ctxt, doc.variants);
+}
+
+#[test]
+fn should_write_enum_header() {
+    let markdown = test::render("enum a { b }");
+    assert str::contains(markdown, "### Enum `a`\n\n");
+}
+
+#[test]
+fn should_write_enum_description() {
+    let markdown = test::render(
+        "#[doc(brief = \"a\", desc = \"b\")] enum a { b }");
+    assert str::contains(markdown, "\n\na\n\nb\n\n");
+}
+
+fn write_variants(
+    ctxt: ctxt,
+    docs: [doc::variantdoc]
+) {
+    if vec::is_empty(docs) {
+        ret;
+    }
+
+    ctxt.w.write_line("Variants:");
+    ctxt.w.write_line("");
+
+    vec::iter(docs, {|variant| write_variant(ctxt, variant) });
+
+    ctxt.w.write_line("");
+}
+
+fn write_variant(ctxt: ctxt, doc: doc::variantdoc) {
+    assert option::is_some(doc.sig);
+    let sig = option::get(doc.sig);
+    alt doc.desc {
+      some(desc) {
+        ctxt.w.write_line(#fmt("* `%s` - %s", sig, desc));
+      }
+      none {
+        ctxt.w.write_line(#fmt("* `%s`", sig));
+      }
+    }
+}
+
+#[test]
+fn should_write_variant_list() {
+    let markdown = test::render(
+        "enum a { \
+         #[doc = \"test\"] b, \
+         #[doc = \"test\"] c }");
+    assert str::contains(
+        markdown,
+        "\n\nVariants:\n\
+         \n* `b` - test\
+         \n* `c` - test\n\n");
+}
+
+#[test]
+fn should_write_variant_list_without_descs() {
+    let markdown = test::render("enum a { b, c }");
+    assert str::contains(
+        markdown,
+        "\n\nVariants:\n\
+         \n* `b`\
+         \n* `c`\n\n");
+}
+
+#[test]
+fn should_write_variant_list_with_signatures() {
+    let markdown = test::render("enum a { b(int), #[doc = \"a\"] c(int) }");
+    assert str::contains(
+        markdown,
+        "\n\nVariants:\n\
+         \n* `b(int)`\
+         \n* `c(int)` - a\n\n");
 }
 
 #[cfg(test)]

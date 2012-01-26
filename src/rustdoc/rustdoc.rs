@@ -27,7 +27,11 @@ fn run_passes(
          original through each pass"
     )];
 
+    let passno = 0;
     vec::foldl(doc, passes) {|doc, pass|
+        log(debug, #fmt("pass #%d", passno));
+        passno += 1;
+        log(debug, doc);
         pass(srv, doc)
     }
 }
