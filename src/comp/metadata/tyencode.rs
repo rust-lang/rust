@@ -153,11 +153,6 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
         enc_proto(w, f.proto);
         enc_ty_fn(w, cx, f);
       }
-      ty::ty_native_fn(args, out) {
-        w.write_char('N');
-        enc_ty_fn(w, cx, {proto: proto_bare, inputs: args, output: out,
-                          ret_style: return_val, constraints: []});
-      }
       ty::ty_res(def, ty, tps) {
         w.write_str("r[");
         w.write_str(cx.ds(def));

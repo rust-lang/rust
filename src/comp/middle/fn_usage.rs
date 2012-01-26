@@ -19,8 +19,7 @@ fn fn_usage_expr(expr: @ast::expr,
       ast::expr_path(path) {
         if !ctx.unsafe_fn_legal {
             alt ctx.tcx.def_map.find(expr.id) {
-              some(ast::def_fn(_, ast::unsafe_fn)) |
-              some(ast::def_native_fn(_, ast::unsafe_fn)) {
+              some(ast::def_fn(_, ast::unsafe_fn)) {
                 log(error, ("expr=", expr_to_str(expr)));
                 ctx.tcx.sess.span_fatal(
                     expr.span,

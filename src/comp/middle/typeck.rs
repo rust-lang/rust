@@ -109,10 +109,8 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
           }
         }
       }
-      ast::def_fn(id, _) { ret ty::lookup_item_type(fcx.ccx.tcx, id); }
-      ast::def_native_fn(id, _) { ret ty::lookup_item_type(fcx.ccx.tcx, id); }
-      ast::def_const(id) { ret ty::lookup_item_type(fcx.ccx.tcx, id); }
-      ast::def_variant(_, vid) { ret ty::lookup_item_type(fcx.ccx.tcx, vid); }
+      ast::def_fn(id, _) | ast::def_const(id) |
+      ast::def_variant(_, id) { ret ty::lookup_item_type(fcx.ccx.tcx, id); }
       ast::def_binding(id) {
         assert (fcx.locals.contains_key(id.node));
         let typ = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, sp, id.node));
@@ -479,7 +477,11 @@ fn ty_of_native_fn_decl(tcx: ty::ctxt, mode: mode, decl: ast::fn_decl,
     for a: ast::arg in decl.inputs { input_tys += [ty_of_arg(tcx, mode, a)]; }
     let output_ty = ast_ty_to_ty(tcx, mode, decl.output);
 
-    let t_fn = ty::mk_native_fn(tcx, input_tys, output_ty);
+    let t_fn = ty::mk_fn(tcx, {proto: ast::proto_bare,
+                               inputs: input_tys,
+                               output: output_ty,
+                               ret_style: ast::return_val,
+                               constraints: []});
     let tpt = {bounds: bounds, ty: t_fn};
     tcx.tcache.insert(def_id, tpt);
     ret tpt;
@@ -1443,8 +1445,7 @@ fn require_pure_call(ccx: @crate_ctxt, caller_purity: ast::purity,
       ast::unsafe_fn { ret; }
       ast::impure_fn {
         alt ccx.tcx.def_map.find(callee.id) {
-          some(ast::def_fn(_, ast::unsafe_fn)) |
-          some(ast::def_native_fn(_, ast::unsafe_fn)) {
+          some(ast::def_fn(_, ast::unsafe_fn)) {
             ccx.tcx.sess.span_err(
                 sp,
                 "safe function calls function marked unsafe");
@@ -1457,7 +1458,6 @@ fn require_pure_call(ccx: @crate_ctxt, caller_purity: ast::purity,
       ast::pure_fn {
         alt ccx.tcx.def_map.find(callee.id) {
           some(ast::def_fn(_, ast::pure_fn)) |
-          some(ast::def_native_fn(_, ast::pure_fn)) |
           some(ast::def_variant(_, _)) { ret; }
           _ {
             ccx.tcx.sess.span_err
@@ -1626,7 +1626,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         // Grab the argument types
         let arg_tys =
             alt sty {
-              ty::ty_fn({inputs: arg_tys, _}) | ty::ty_native_fn(arg_tys, _) {
+              ty::ty_fn({inputs: arg_tys, _}) {
                 arg_tys
               }
               _ {
@@ -1726,16 +1726,14 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         let bot = check_call(fcx, sp, f, args);
 
         // Pull the return type out of the type of the function.
-        let rt_1;
         let fty = ty::expr_ty(fcx.ccx.tcx, f);
-        alt structure_of(fcx, sp, fty) {
+        let rt_1 = alt structure_of(fcx, sp, fty) {
           ty::ty_fn(f) {
             bot |= f.ret_style == ast::noreturn;
-            rt_1 = f.output;
+            f.output
           }
-          ty::ty_native_fn(_, rt) { rt_1 = rt; }
           _ { fcx.ccx.tcx.sess.span_fatal(sp, "calling non-function"); }
-        }
+        };
         write::ty_only_fixup(fcx, id, rt_1);
         ret bot;
     }
@@ -2085,13 +2083,6 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
             rt = f.output;
             cf = f.ret_style;
             constrs = f.constraints;
-          }
-          ty::ty_native_fn(arg_tys_, rt_) {
-            proto = ast::proto_bare;
-            arg_tys = arg_tys_;
-            rt = rt_;
-            cf = ast::return_val;
-            constrs = [];
           }
           _ { fail "LHS of bind expr didn't have a function type?!"; }
         }

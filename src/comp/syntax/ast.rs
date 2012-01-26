@@ -46,7 +46,6 @@ enum def {
     def_binding(def_id),
     def_use(def_id),
     def_native_ty(def_id),
-    def_native_fn(def_id, purity),
     def_upvar(def_id, @def, node_id), // node_id == expr_fn or expr_fn_block
 }
 

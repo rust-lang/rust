@@ -427,12 +427,11 @@ fn encode_info_for_native_item(ecx: @encode_ctxt, ebml_w: ebml::writer,
                     ty::mk_native(ecx.ccx.tcx, local_def(nitem.id)));
       }
       native_item_fn(fn_decl, tps) {
-        let letter =
-            alt fn_decl.purity {
-              unsafe_fn { 'U' }
-              pure_fn { 'P' }   // this is currently impossible, but hey.
-              impure_fn { 'F' }
-            } as u8;
+        let letter = alt fn_decl.purity {
+          unsafe_fn { 'u' }
+          pure_fn { 'p' }   // this is currently impossible, but hey.
+          impure_fn { 'f' }
+        } as u8;
         encode_def_id(ebml_w, local_def(nitem.id));
         encode_family(ebml_w, letter);
         encode_type_param_bounds(ebml_w, ecx, tps);

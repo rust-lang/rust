@@ -667,8 +667,8 @@ fn make_fn_glue(
     };
 
     ret alt ty::struct(tcx, t) {
-      ty::ty_native_fn(_, _) | ty::ty_fn({proto: ast::proto_bare, _}) { bcx }
-      ty::ty_fn({proto: ast::proto_block, _}) { bcx }
+      ty::ty_fn({proto: ast::proto_bare, _}) |
+      ty::ty_fn({proto: ast::proto_block, _}) |
       ty::ty_fn({proto: ast::proto_any, _}) { bcx }
       ty::ty_fn({proto: ast::proto_uniq, _}) { fn_env(ty::ck_uniq) }
       ty::ty_fn({proto: ast::proto_box, _}) { fn_env(ty::ck_box) }

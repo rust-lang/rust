@@ -116,10 +116,6 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
         fn_to_str(cx, f.proto, none, f.inputs, f.output, f.ret_style,
                   f.constraints)
       }
-      ty_native_fn(inputs, output) {
-        fn_to_str(cx, ast::proto_bare, none, inputs, output,
-                  ast::return_val, [])
-      }
       ty_var(v) { "<T" + int::str(v) + ">" }
       ty_param(id, _) {
         "'" + str::unsafe_from_bytes([('a' as u8) + (id as u8)])

@@ -29,7 +29,7 @@ fn def_id_of_def(d: def) -> def_id {
       def_native_mod(id) | def_const(id) | def_arg(id, _) | def_local(id, _) |
       def_variant(_, id) | def_ty(id) | def_ty_param(id, _) |
       def_binding(id) | def_use(id) | def_native_ty(id) |
-      def_native_fn(id, _) | def_upvar(id, _, _) { id }
+      def_upvar(id, _, _) { id }
     }
 }
 

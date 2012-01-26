@@ -169,10 +169,6 @@ fn type_of_inner(cx: @crate_ctxt, sp: span, t: ty::t)
       ty::ty_fn(_) {
         T_fn_pair(cx, type_of_fn_from_ty(cx, sp, t, []))
       }
-      ty::ty_native_fn(args, out) {
-        let nft = native_fn_wrapper_type(cx, sp, [], t);
-        T_fn_pair(cx, nft)
-      }
       ty::ty_iface(_, _) { T_opaque_iface_ptr(cx) }
       ty::ty_res(_, sub, tps) {
         let sub1 = ty::substitute_type_params(cx.tcx, tps, sub);
@@ -233,7 +229,7 @@ fn type_of_ty_param_bounds_and_ty(lcx: @local_ctxt, sp: span,
     let cx = lcx.ccx;
     let t = tpt.ty;
     alt ty::struct(cx.tcx, t) {
-      ty::ty_fn(_) | ty::ty_native_fn(_, _) {
+      ty::ty_fn(_) {
         ret type_of_fn_from_ty(cx, sp, t, *tpt.bounds);
       }
       _ {
@@ -1274,7 +1270,7 @@ fn make_take_glue(cx: @block_ctxt, v: ValueRef, t: ty::t) {
         Store(bcx, s, v);
         bcx
       }
-      ty::ty_native_fn(_, _) | ty::ty_fn(_) {
+      ty::ty_fn(_) {
         trans_closure::make_fn_glue(bcx, v, t, take_ty)
       }
       ty::ty_opaque_closure_ptr(ck) {
@@ -1350,7 +1346,7 @@ fn make_free_glue(bcx: @block_ctxt, v: ValueRef, t: ty::t) {
         Call(bcx, ccx.upcalls.free_shared_type_desc, [v]);
         bcx
       }
-      ty::ty_native_fn(_, _) | ty::ty_fn(_) {
+      ty::ty_fn(_) {
         trans_closure::make_fn_glue(bcx, v, t, free_ty)
       }
       ty::ty_opaque_closure_ptr(ck) {
@@ -1375,7 +1371,7 @@ fn make_drop_glue(bcx: @block_ctxt, v0: ValueRef, t: ty::t) {
           ty::ty_res(did, inner, tps) {
             trans_res_drop(bcx, v0, did, inner, tps)
           }
-          ty::ty_native_fn(_, _) | ty::ty_fn(_) {
+          ty::ty_fn(_) {
             trans_closure::make_fn_glue(bcx, v0, t, drop_ty)
           }
           ty::ty_opaque_closure_ptr(ck) {
@@ -2637,7 +2633,7 @@ fn trans_var(cx: @block_ctxt, sp: span, def: ast::def, id: ast::node_id)
     -> lval_maybe_callee {
     let ccx = bcx_ccx(cx);
     alt def {
-      ast::def_fn(did, _) | ast::def_native_fn(did, _) {
+      ast::def_fn(did, _) {
         ret lval_static_fn(cx, did, id);
       }
       ast::def_variant(tid, vid) {
@@ -4697,7 +4693,7 @@ fn c_stack_tys(ccx: @crate_ctxt,
                sp: span,
                id: ast::node_id) -> @c_stack_tys {
     alt ty::struct(ccx.tcx, ty::node_id_to_type(ccx.tcx, id)) {
-      ty::ty_native_fn(arg_tys, ret_ty) {
+      ty::ty_fn({inputs: arg_tys, output: ret_ty, _}) {
         let tcx = ccx.tcx;
         let llargtys = type_of_explicit_args(ccx, sp, arg_tys);
         check non_ty_var(ccx, ret_ty); // NDM does this truly hold?
@@ -5102,7 +5098,7 @@ fn native_fn_wrapper_type(cx: @crate_ctxt, sp: span,
                           param_bounds: [ty::param_bounds],
                           x: ty::t) -> TypeRef {
     alt ty::struct(cx.tcx, x) {
-      ty::ty_native_fn(args, out) {
+      ty::ty_fn({inputs: args, output: out, _}) {
         ret type_of_fn(cx, sp, args, out, param_bounds);
       }
     }

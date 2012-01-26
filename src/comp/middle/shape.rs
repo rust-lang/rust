@@ -413,7 +413,6 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint]) -> [u8] {
         }
         add_substr(s, sub);
       }
-      ty::ty_native_fn(_, _) { s += [shape_u32]; }
       ty::ty_iface(_, _) { s += [shape_iface]; }
       ty::ty_res(did, raw_subt, tps) {
         let subt = ty::substitute_type_params(ccx.tcx, tps, raw_subt);

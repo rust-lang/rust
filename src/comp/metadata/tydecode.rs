@@ -245,10 +245,6 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
         let proto = parse_proto(next(st) as char);
         parse_ty_rust_fn(st, conv, proto)
       }
-      'N' {
-        let func = parse_ty_fn(st, conv);
-        ret ty::mk_native_fn(st.tcx, func.inputs, func.output);
-      }
       'r' {
         assert (next(st) as char == '[');
         let def = parse_def(st, conv);

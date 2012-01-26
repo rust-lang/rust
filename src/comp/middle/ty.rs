@@ -70,7 +70,6 @@ export mk_mach_int;
 export mk_mach_uint;
 export mk_mach_float;
 export mk_native;
-export mk_native_fn;
 export mk_nil;
 export mk_iface;
 export mk_res;
@@ -106,7 +105,6 @@ export iface_methods, store_iface_methods, impl_iface;
 export enum_variant_with_id;
 export ty_param_substs_opt_and_ty;
 export ty_param_bounds_and_ty;
-export ty_native_fn;
 export ty_bool;
 export ty_bot;
 export ty_box;
@@ -265,7 +263,6 @@ enum sty {
     ty_ptr(mt),
     ty_rec([field]),
     ty_fn(fn_ty),
-    ty_native_fn([arg], t),
     ty_iface(def_id, [t]),
     ty_res(def_id, t, [t]),
     ty_tup([t]),
@@ -493,9 +490,6 @@ fn mk_raw_ty(cx: ctxt, st: sty) -> @raw_t {
       ty_fn(f) {
         derive_flags_sig(cx, has_params, has_vars, f.inputs, f.output);
       }
-      ty_native_fn(args, tt) {
-        derive_flags_sig(cx, has_params, has_vars, args, tt);
-      }
       ty_res(_, tt, tps) {
         derive_flags_t(cx, has_params, has_vars, tt);
         for tt: t in tps { derive_flags_t(cx, has_params, has_vars, tt); }
@@ -603,10 +597,6 @@ fn mk_fn(cx: ctxt, fty: fn_ty) -> t {
     ret gen_ty(cx, ty_fn(fty));
 }
 
-fn mk_native_fn(cx: ctxt, args: [arg], ty: t) -> t {
-    ret gen_ty(cx, ty_native_fn(args, ty));
-}
-
 fn mk_iface(cx: ctxt, did: ast::def_id, tys: [t]) -> t {
     ret gen_ty(cx, ty_iface(did, tys));
 }
@@ -692,10 +682,6 @@ fn walk_ty(cx: ctxt, ty: t, walker: fn(t)) {
         for a: arg in f.inputs { walk_ty(cx, a.ty, walker); }
         walk_ty(cx, f.output, walker);
       }
-      ty_native_fn(args, ret_ty) {
-        for a: arg in args { walk_ty(cx, a.ty, walker); }
-        walk_ty(cx, ret_ty, walker);
-      }
       ty_res(_, sub, tps) {
         walk_ty(cx, sub, walker);
         for tp: t in tps { walk_ty(cx, tp, walker); }
@@ -774,14 +760,6 @@ fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
                         output: fold_ty(cx, fld, f.output)
                         with f});
       }
-      ty_native_fn(args, ret_ty) {
-        let new_args: [arg] = [];
-        for a: arg in args {
-            let new_ty = fold_ty(cx, fld, a.ty);
-            new_args += [{mode: a.mode, ty: new_ty}];
-        }
-        ty = mk_native_fn(cx, new_args, fold_ty(cx, fld, ret_ty));
-      }
       ty_res(did, subty, tps) {
         let new_tps = [];
         for tp: t in tps { new_tps += [fold_ty(cx, fld, tp)]; }
@@ -823,7 +801,7 @@ fn type_is_bool(cx: ctxt, ty: t) -> bool {
 fn type_is_structural(cx: ctxt, ty: t) -> bool {
     alt struct(cx, ty) {
       ty_rec(_) | ty_tup(_) | ty_enum(_, _) | ty_fn(_) |
-      ty_native_fn(_, _) | ty_res(_, _, _) { true }
+      ty_res(_, _, _) { true }
       _ { false }
     }
 }
@@ -1025,7 +1003,7 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
       // Scalar and unique types are sendable
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
       ty_native(_) | ty_ptr(_) |
-      ty_send_type | ty_str | ty_native_fn(_, _) { kind_sendable }
+      ty_send_type | ty_str { kind_sendable }
       ty_type { kind_copyable }
       ty_fn(f) { proto_kind(f.proto) }
       ty_opaque_closure_ptr(ck_block) { kind_noncopyable }
@@ -1201,7 +1179,7 @@ fn type_is_pod(cx: ctxt, ty: t) -> bool {
       ty_send_type | ty_type | ty_native(_) | ty_ptr(_) { result = true; }
       // Boxed types
       ty_str | ty_box(_) | ty_uniq(_) | ty_vec(_) | ty_fn(_) |
-      ty_native_fn(_, _) | ty_iface(_, _) { result = false; }
+      ty_iface(_, _) { result = false; }
       // Structural types
       ty_enum(did, tps) {
         let variants = enum_variants(cx, did);
@@ -1384,7 +1362,6 @@ fn hash_type_structure(st: sty) -> uint {
 
       // ???
       ty_fn(f) { ret hash_fn(27u, f.inputs, f.output); }
-      ty_native_fn(args, rty) { ret hash_fn(28u, args, rty); }
       ty_var(v) { ret hash_uint(30u, v as uint); }
       ty_param(pid, _) { ret hash_uint(31u, pid); }
       ty_type { ret 32u; }
@@ -1542,7 +1519,6 @@ fn type_contains_params(cx: ctxt, typ: t) -> bool {
 fn ty_fn_args(cx: ctxt, fty: t) -> [arg] {
     alt struct(cx, fty) {
       ty::ty_fn(f) { ret f.inputs; }
-      ty::ty_native_fn(a, _) { ret a; }
       _ { cx.sess.bug("ty_fn_args() called on non-fn type"); }
     }
 }
@@ -1550,10 +1526,6 @@ fn ty_fn_args(cx: ctxt, fty: t) -> [arg] {
 fn ty_fn_proto(cx: ctxt, fty: t) -> ast::proto {
     alt struct(cx, fty) {
       ty::ty_fn(f) { ret f.proto; }
-      ty::ty_native_fn(_, _) {
-        // FIXME: This should probably be proto_bare
-        ret ast::proto_box;
-      }
       _ { cx.sess.bug("ty_fn_proto() called on non-fn type"); }
     }
 }
@@ -1562,7 +1534,6 @@ pure fn ty_fn_ret(cx: ctxt, fty: t) -> t {
     let sty = struct(cx, fty);
     alt sty {
       ty::ty_fn(f) { ret f.output; }
-      ty::ty_native_fn(_, r) { ret r; }
       _ {
         // Unchecked is ok since we diverge here
         // (might want to change the typechecker to allow
@@ -1577,7 +1548,6 @@ pure fn ty_fn_ret(cx: ctxt, fty: t) -> t {
 fn ty_fn_ret_style(cx: ctxt, fty: t) -> ast::ret_style {
     alt struct(cx, fty) {
       ty::ty_fn(f) { f.ret_style }
-      ty::ty_native_fn(_, _) { ast::return_val }
       _ { cx.sess.bug("ty_fn_ret_style() called on non-fn type"); }
     }
 }
@@ -1585,7 +1555,6 @@ fn ty_fn_ret_style(cx: ctxt, fty: t) -> ast::ret_style {
 fn is_fn_ty(cx: ctxt, fty: t) -> bool {
     alt struct(cx, fty) {
       ty::ty_fn(_) { ret true; }
-      ty::ty_native_fn(_, _) { ret true; }
       _ { ret false; }
     }
 }
@@ -2005,19 +1974,6 @@ mod unify {
           x { x }
         }
     }
-    fn unify_native_fn(cx: @ctxt, expected_inputs: [arg], expected_output: t,
-                       actual_inputs: [arg], actual_output: t,
-                       variance: variance) -> result {
-        let result_ins = alt unify_args(cx, expected_inputs,
-                                        actual_inputs, variance) {
-            either::left(err) { ret err; }
-            either::right(ts) { ts }
-        };
-        alt unify_step(cx, expected_output, actual_output, variance) {
-          ures_ok(out) { ures_ok(mk_native_fn(cx.tcx, result_ins, out)) }
-          err { err }
-        }
-    }
 
     // If the given type is a variable, returns the structure of that type.
     fn resolve_type_structure(tcx: ty_ctxt, vb: @var_bindings, typ: t) ->
@@ -2403,15 +2359,6 @@ mod unify {
               _ { ret ures_err(terr_mismatch); }
             }
           }
-          ty::ty_native_fn(expected_inputs, expected_output) {
-            alt struct(cx.tcx, actual) {
-              ty::ty_native_fn(actual_inputs, actual_output) {
-                ret unify_native_fn(cx, expected_inputs, expected_output,
-                                    actual_inputs, actual_output, variance);
-              }
-              _ { ret ures_err(terr_mismatch); }
-            }
-          }
           ty::ty_constr(expected_t, expected_constrs) {
 
             // unify the base types...
@@ -2595,8 +2542,7 @@ fn def_has_ty_params(def: ast::def) -> bool {
       ast::def_arg(_, _) | ast::def_local(_, _) | ast::def_upvar(_, _, _) |
       ast::def_ty_param(_, _) | ast::def_binding(_) | ast::def_use(_) |
       ast::def_native_ty(_) | ast::def_self(_) | ast::def_ty(_) { false }
-      ast::def_fn(_, _) | ast::def_variant(_, _) |
-      ast::def_native_fn(_, _) { true }
+      ast::def_fn(_, _) | ast::def_variant(_, _) { true }
     }
 }
 
