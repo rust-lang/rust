@@ -23,7 +23,8 @@ fn run(
         fold_crate: fold_crate,
         fold_mod: fold_mod,
         fold_fn: fold_fn,
-        fold_const: fold_const
+        fold_const: fold_const,
+        fold_enum: fold_enum
         with *fold::default_seq_fold(srv)
     });
     fold.fold_crate(fold, doc)
@@ -248,4 +249,61 @@ fn fold_const_should_extract_docs() {
     let doc = fold_const(fold, doc.topmod.consts[0]);
     assert doc.brief == some("foo");
     assert doc.desc == some("bar");
+}
+
+fn fold_enum(
+    fold: fold::fold<astsrv::srv>,
+    doc: doc::enumdoc
+) -> doc::enumdoc {
+    let srv = fold.ctxt;
+    let attrs = parse_item_attrs(srv, doc.id, attr_parser::parse_enum);
+
+    ~{
+        brief: attrs.brief,
+        desc: attrs.desc,
+        variants: vec::map(doc.variants) {|variant|
+            let attrs = astsrv::exec(srv) {|ctxt|
+                alt ctxt.map.get(doc.id) {
+                  ast_map::node_item(@{
+                    node: ast::item_enum(ast_variants, _), _
+                  }) {
+                    let ast_variant = option::get(
+                        vec::find(ast_variants) {|v|
+                            v.node.name == variant.name
+                        });
+
+                    attr_parser::parse_variant(ast_variant.node.attrs)
+                  }
+                }
+            };
+
+            ~{
+                desc: attrs.desc
+                with *variant
+            }
+        }
+        with *doc
+    }
+}
+
+#[test]
+fn fold_enum_should_extract_docs() {
+    let source = "#[doc(brief = \"a\", desc = \"b\")]\
+                  enum a { v }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let fold = fold::default_seq_fold(srv);
+    let doc = fold_enum(fold, doc.topmod.enums[0]);
+    assert doc.brief == some("a");
+    assert doc.desc == some("b");
+}
+
+#[test]
+fn fold_enum_should_extract_variant_docs() {
+    let source = "enum a { #[doc = \"c\"] v }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let fold = fold::default_seq_fold(srv);
+    let doc = fold_enum(fold, doc.topmod.enums[0]);
+    assert doc.variants[0].desc == some("c");
 }
