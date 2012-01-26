@@ -614,7 +614,9 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span, impl_m: ty::method,
     } else {
         let auto_modes = vec::map2(impl_m.fty.inputs, if_m.fty.inputs, {|i, f|
             alt ty::struct(tcx, f.ty) {
-              ty::ty_param(0u, _) { {mode: ast::by_ref with i} }
+              ty::ty_param(0u, _) if i.mode == ast::mode_infer {
+                {mode: ast::by_ref with i}
+              }
               _ { i }
             }
         });
