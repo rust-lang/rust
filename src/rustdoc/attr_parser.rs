@@ -320,7 +320,7 @@ fn parse_const_long_doc(
 fn should_parse_const_short_doc() {
     let source = "#[doc = \"description\"]";
     let attrs = test::parse_attributes(source);
-    let attrs = parse_fn(attrs);
+    let attrs = parse_const(attrs);
     assert attrs.desc == some("description");
 }
 
@@ -328,7 +328,7 @@ fn should_parse_const_short_doc() {
 fn should_parse_const_long_doc() {
     let source = "#[doc(brief = \"a\", desc = \"b\")]";
     let attrs = test::parse_attributes(source);
-    let attrs = parse_fn(attrs);
+    let attrs = parse_const(attrs);
     assert attrs.brief == some("a");
     assert attrs.desc == some("b");
 }
