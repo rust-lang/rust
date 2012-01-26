@@ -630,11 +630,79 @@ fn position_elt<T>(v: [T], x: T) -> option::t<uint> {
 /*
 Function: position
 
-Find the first index for which the value matches some predicate
+Find the first index matching some predicate
+
+Apply function `f` to each element of `v`.  When function `f` returns true
+then an option containing the index is returned. If `f` matches no elements
+then none is returned.
 */
 fn position<T>(v: [T], f: fn(T) -> bool) -> option::t<uint> {
-    let i: uint = 0u;
-    while i < len(v) { if f(v[i]) { ret some::<uint>(i); } i += 1u; }
+    position_from(v, 0u, len(v), f)
+}
+
+/*
+Function: position_from
+
+Find the first index matching some predicate within a range
+
+Apply function `f` to each element of `v` between the range [`start`, `end`).
+When function `f` returns true then an option containing the index is
+returned. If `f` matches no elements then none is returned.
+*/
+fn position_from<T>(v: [T], start: uint, end: uint, f: fn(T) -> bool) ->
+  option::t<uint> {
+    assert start <= end;
+    assert end <= len(v);
+    let i = start;
+    while i < end { if f(v[i]) { ret some::<uint>(i); } i += 1u; }
+    ret none;
+}
+
+/*
+Function: rposition_elt
+
+Find the last index containing a matching value
+
+Returns:
+
+option::some(uint) - The last index containing a matching value
+option::none - No elements matched
+*/
+fn rposition_elt<T>(v: [T], x: T) -> option::t<uint> {
+    rposition(v) { |y| x == y }
+}
+
+/*
+Function: rposition
+
+Find the last index matching some predicate
+
+Apply function `f` to each element of `v` in reverse order.  When function
+`f` returns true then an option containing the index is returned. If `f`
+matches no elements then none is returned.
+*/
+fn rposition<T>(v: [T], f: fn(T) -> bool) -> option::t<uint> {
+    rposition_from(v, 0u, len(v), f)
+}
+
+/*
+Function: rposition_from
+
+Find the last index matching some predicate within a range
+
+Apply function `f` to each element of `v` in reverse order between the range
+[`start`, `end`). When function `f` returns true then an option containing
+the index is returned. If `f` matches no elements then none is returned.
+*/
+fn rposition_from<T>(v: [T], start: uint, end: uint, f: fn(T) -> bool) ->
+  option::t<uint> {
+    assert start <= end;
+    assert end <= len(v);
+    let i = end;
+    while i > start {
+        if f(v[i - 1u]) { ret some::<uint>(i - 1u); }
+        i -= 1u;
+    }
     ret none;
 }
 
@@ -1474,6 +1542,72 @@ mod tests {
     }
 
     #[test]
+    fn test_position_from() {
+        assert position_from([], 0u, 0u, f) == none;
+
+        fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
+        let v = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
+
+        assert position_from(v, 0u, 0u, f) == none;
+        assert position_from(v, 0u, 1u, f) == none;
+        assert position_from(v, 0u, 2u, f) == some(1u);
+        assert position_from(v, 0u, 3u, f) == some(1u);
+        assert position_from(v, 0u, 4u, f) == some(1u);
+
+        assert position_from(v, 1u, 1u, f) == none;
+        assert position_from(v, 1u, 2u, f) == some(1u);
+        assert position_from(v, 1u, 3u, f) == some(1u);
+        assert position_from(v, 1u, 4u, f) == some(1u);
+
+        assert position_from(v, 2u, 2u, f) == none;
+        assert position_from(v, 2u, 3u, f) == none;
+        assert position_from(v, 2u, 4u, f) == some(3u);
+
+        assert position_from(v, 3u, 3u, f) == none;
+        assert position_from(v, 3u, 4u, f) == some(3u);
+
+        assert position_from(v, 4u, 4u, f) == none;
+    }
+
+    #[test]
+    fn test_rposition() {
+        assert find([], f) == none;
+
+        fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
+        fn g(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'd' }
+        let v = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
+
+        assert position(v, f) == some(1u);
+        assert position(v, g) == none;
+    }
+
+    #[test]
+    fn test_rposition_from() {
+        assert rposition_from([], 0u, 0u, f) == none;
+
+        fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
+        let v = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
+
+        assert rposition_from(v, 0u, 0u, f) == none;
+        assert rposition_from(v, 0u, 1u, f) == none;
+        assert rposition_from(v, 0u, 2u, f) == some(1u);
+        assert rposition_from(v, 0u, 3u, f) == some(1u);
+        assert rposition_from(v, 0u, 4u, f) == some(3u);
+
+        assert rposition_from(v, 1u, 1u, f) == none;
+        assert rposition_from(v, 1u, 2u, f) == some(1u);
+        assert rposition_from(v, 1u, 3u, f) == some(1u);
+        assert rposition_from(v, 1u, 4u, f) == some(3u);
+
+        assert rposition_from(v, 2u, 2u, f) == none;
+        assert rposition_from(v, 2u, 3u, f) == none;
+        assert rposition_from(v, 2u, 4u, f) == some(3u);
+
+        assert rposition_from(v, 3u, 3u, f) == none;
+        assert rposition_from(v, 3u, 4u, f) == some(3u);
+
+        assert rposition_from(v, 4u, 4u, f) == none;
+    }
     fn reverse_and_reversed() {
         let v: [mutable int] = [mutable 10, 20];
         assert (v[0] == 10);
