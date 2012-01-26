@@ -125,7 +125,12 @@ fn should_not_extract_crate_name_if_no_name_value_in_link_attribute() {
     assert attrs.name == none;
 }
 
-fn parse_mod(attrs: [ast::attribute]) -> mod_attrs {
+fn parse_basic(
+    attrs: [ast::attribute]
+) -> {
+    brief: option<str>,
+    desc: option<str>
+} {
     parse_short_doc_or(
         attrs,
         {|desc|
@@ -134,19 +139,17 @@ fn parse_mod(attrs: [ast::attribute]) -> mod_attrs {
                 desc: desc
             }
         },
-        parse_mod_long_doc
+        {|_items, brief, desc|
+            {
+                brief: brief,
+                desc: desc
+            }
+        }
     )
 }
 
-fn parse_mod_long_doc(
-    _items: [@ast::meta_item],
-    brief: option<str>,
-    desc: option<str>
-) -> mod_attrs {
-    {
-        brief: brief,
-        desc: desc
-    }
+fn parse_mod(attrs: [ast::attribute]) -> mod_attrs {
+    parse_basic(attrs)
 }
 
 #[test]
@@ -327,27 +330,7 @@ fn parse_fn_should_parse_failure_conditions() {
 }
 
 fn parse_const(attrs: [ast::attribute]) -> const_attrs {
-    parse_short_doc_or(
-        attrs,
-        {|desc|
-            {
-                brief: none,
-                desc: desc
-            }
-        },
-        parse_const_long_doc
-    )
-}
-
-fn parse_const_long_doc(
-    _items: [@ast::meta_item],
-    brief: option<str>,
-    desc: option<str>
-) -> const_attrs {
-    {
-        brief: brief,
-        desc: desc
-    }
+    parse_basic(attrs)
 }
 
 #[test]
@@ -368,27 +351,7 @@ fn should_parse_const_long_doc() {
 }
 
 fn parse_enum(attrs: [ast::attribute]) -> enum_attrs {
-    parse_short_doc_or(
-        attrs,
-        {|desc|
-            {
-                brief: none,
-                desc: desc
-            }
-        },
-        parse_enum_long_doc
-    )
-}
-
-fn parse_enum_long_doc(
-    _items: [@ast::meta_item],
-    brief: option<str>,
-    desc: option<str>
-) -> enum_attrs {
-    {
-        brief: brief,
-        desc: desc
-    }
+    parse_basic(attrs)
 }
 
 #[test]
