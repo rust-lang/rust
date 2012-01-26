@@ -536,14 +536,25 @@ do
 	# Disable unused LLVM features
 	LLVM_OPTS="$LLVM_DBG_OPTS --disable-docs --disable-jit --enable-bindings=none --disable-threads --disable-pthreads"
 
-	LLVM_CXX_32="g++ -m32"
-	LLVM_CC_32="gcc -m32"
+	if [ "$CFG_C_COMPILER" = "clang" ]
+	then
+	    LLVM_CXX_32="clang++ -m32"
+	    LLVM_CC_32="clang -m32"
+
+	    LLVM_CXX_64="clang++"
+	    LLVM_CC_64="clang"
+	else
+	    LLVM_CXX_32="g++ -m32"
+	    LLVM_CC_32="gcc -m32"
+
+	    LLVM_CXX_64="g++"
+	    LLVM_CC_64="gcc"
+	fi
+
 	LLVM_CFLAGS_32="-m32"
 	LLVM_CXXFLAGS_32="-m32"
 	LLVM_LDFLAGS_32="-m32"
 
-	LLVM_CXX_64="g++"
-	LLVM_CC_64="gcc"
 	LLVM_CFLAGS_64=""
 	LLVM_CXXFLAGS_64=""
 	LLVM_LDFLAGS_64=""
