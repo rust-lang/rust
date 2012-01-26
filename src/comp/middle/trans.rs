@@ -2724,9 +2724,8 @@ fn trans_rec_field(bcx: @block_ctxt, base: @ast::expr,
     ret {bcx: bcx, val: val, kind: owned};
 }
 
-fn trans_index(cx: @block_ctxt, sp: span, base: @ast::expr, idx: @ast::expr,
-               id: ast::node_id) -> lval_result {
-    // Is this an interior vector?
+fn trans_index(cx: @block_ctxt, ex: @ast::expr, base: @ast::expr,
+               idx: @ast::expr) -> lval_result {
     let base_ty = ty::expr_ty(bcx_tcx(cx), base);
     let exp = trans_temp_expr(cx, base);
     let lv = autoderef(exp.bcx, exp.val, base_ty);
@@ -2745,7 +2744,7 @@ fn trans_index(cx: @block_ctxt, sp: span, base: @ast::expr, idx: @ast::expr,
         ix_val = Trunc(bcx, ix.val, ccx.int_type);
     } else { ix_val = ix.val; }
 
-    let unit_ty = node_id_type(bcx_ccx(cx), id);
+    let unit_ty = node_id_type(bcx_ccx(cx), ex.id);
     let unit_sz = size_of(bcx, unit_ty);
     bcx = unit_sz.bcx;
     maybe_name_value(bcx_ccx(cx), unit_sz.val, "unit_sz");
@@ -2760,11 +2759,11 @@ fn trans_index(cx: @block_ctxt, sp: span, base: @ast::expr, idx: @ast::expr,
     CondBr(bcx, bounds_check, next_cx.llbb, fail_cx.llbb);
     // fail: bad bounds check.
 
-    trans_fail(fail_cx, some::<span>(sp), "bounds check");
+    trans_fail(fail_cx, some(ex.span), "bounds check");
     let elt =
         if check type_has_static_size(ncx, unit_ty) {
             let elt_1 = GEP(next_cx, body, [ix_val]);
-            let llunitty = type_of(ncx, sp, unit_ty);
+            let llunitty = type_of(ncx, ex.span, unit_ty);
             PointerCast(next_cx, elt_1, T_ptr(llunitty))
         } else {
             body = PointerCast(next_cx, body, T_ptr(T_i8()));
@@ -2812,7 +2811,7 @@ fn trans_lval(cx: @block_ctxt, e: @ast::expr) -> lval_result {
         ret trans_rec_field(cx, base, ident);
       }
       ast::expr_index(base, idx) {
-        ret trans_index(cx, e.span, base, idx, e.id);
+        ret trans_index(cx, e, base, idx);
       }
       ast::expr_unary(ast::deref, base) {
         let ccx = bcx_ccx(cx);
@@ -3559,6 +3558,15 @@ fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
       }
       ast::expr_field(_, _, _) {
         fail "Taking the value of a method does not work yet (issue #435)";
+      }
+      ast::expr_index(base, idx) {
+        // If it is here, it's not an lval, so this is a user-defined index op
+        let origin = bcx_ccx(bcx).method_map.get(e.id);
+        let callee_id = ast_util::op_expr_callee_id(e);
+        let fty = ty::node_id_to_monotype(tcx, callee_id);
+        ret trans_call_inner(bcx, fty, {|bcx|
+            trans_impl::trans_method_callee(bcx, callee_id, base, origin)
+        }, [idx], e.id, dest);
       }
 
       // These return nothing

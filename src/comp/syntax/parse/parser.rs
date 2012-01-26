@@ -1008,6 +1008,7 @@ fn parse_dot_or_call_expr_with(p: parser, e0: pexpr) -> pexpr {
             let ix = parse_expr(p);
             hi = ix.span.hi;
             expect(p, token::RBRACKET);
+            p.get_id(); // see ast_util::op_expr_callee_id
             e = mk_pexpr(p, lo, hi, ast::expr_index(to_expr(e), ix));
           }
 

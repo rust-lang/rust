@@ -1607,9 +1607,10 @@ fn expr_has_ty_params(cx: ctxt, expr: @ast::expr) -> bool {
 
 fn expr_is_lval(method_map: typeck::method_map, e: @ast::expr) -> bool {
     alt e.node {
-      ast::expr_path(_) | ast::expr_index(_, _) |
-      ast::expr_unary(ast::deref, _) { true }
-      ast::expr_field(base, ident, _) { !method_map.contains_key(e.id) }
+      ast::expr_path(_) | ast::expr_unary(ast::deref, _) { true }
+      ast::expr_field(_, _, _) | ast::expr_index(_, _) {
+        !method_map.contains_key(e.id)
+      }
       _ { false }
     }
 }

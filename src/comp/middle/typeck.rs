@@ -1780,6 +1780,22 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
           _ { none }
         }
     }
+    fn lookup_op_method(fcx: @fn_ctxt, op_ex: @ast::expr, self_t: ty::t,
+                        opname: str,
+                        args: [option::t<@ast::expr>]) -> option::t<ty::t> {
+        let isc = fcx.ccx.impl_map.get(op_ex.id);
+        alt lookup_method(fcx, isc, opname, self_t, op_ex.span) {
+          some({method_ty, n_tps: 0u, substs, origin}) {
+            let callee_id = ast_util::op_expr_callee_id(op_ex);
+            write::ty_fixup(fcx, callee_id, {substs: some(substs),
+                                             ty: method_ty});
+            check_call_or_bind(fcx, op_ex.span, method_ty, args);
+            fcx.ccx.method_map.insert(op_ex.id, origin);
+            some(ty::ty_fn_ret(fcx.ccx.tcx, method_ty))
+          }
+          _ { none }
+        }
+    }
     fn check_binop(fcx: @fn_ctxt, ex: @ast::expr, ty: ty::t,
                    op: ast::binop, rhs: @ast::expr) -> ty::t {
         let resolved_t = structurally_resolved_type(fcx, ex.span, ty);
@@ -1792,22 +1808,14 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
             };
         }
 
-        let isc = fcx.ccx.impl_map.get(ex.id);
         alt binop_method(op) {
           some(name) {
-            alt lookup_method(fcx, isc, name, resolved_t, ex.span) {
-              some({method_ty, n_tps: 0u, substs, origin}) {
-                let callee_id = ast_util::op_expr_callee_id(ex);
-                write::ty_fixup(fcx, callee_id, {substs: some(substs),
-                                                 ty: method_ty});
-                check_call_or_bind(fcx, ex.span, method_ty, [some(rhs)]);
-                fcx.ccx.method_map.insert(ex.id, origin);
-                ret ty::ty_fn_ret(tcx, method_ty);
-              }
+            alt lookup_op_method(fcx, ex, resolved_t, name, [some(rhs)]) {
+              some(ret_ty) { ret ret_ty; }
               _ {}
             }
           }
-          none {}
+          _ {}
         }
         tcx.sess.span_err(
             ex.span, "binary operation " + ast_util::binop_to_str(op) +
@@ -1817,23 +1825,15 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
     }
     fn check_user_unop(fcx: @fn_ctxt, op_str: str, mname: str,
                        ex: @ast::expr, rhs_t: ty::t) -> ty::t {
-        let isc = fcx.ccx.impl_map.get(ex.id);
-        let tcx = fcx.ccx.tcx;
-        alt lookup_method(fcx, isc, mname, rhs_t, ex.span) {
-          some({method_ty, n_tps: 0u, substs, origin}) {
-            let callee_id = ast_util::op_expr_callee_id(ex);
-            write::ty_fixup(fcx, callee_id, {substs: some(substs),
-                                             ty: method_ty});
-            check_call_or_bind(fcx, ex.span, method_ty, []);
-            fcx.ccx.method_map.insert(ex.id, origin);
-            ret ty::ty_fn_ret(tcx, method_ty);
+        alt lookup_op_method(fcx, ex, rhs_t, mname, []) {
+          some(ret_ty) { ret_ty }
+          _ {
+            fcx.ccx.tcx.sess.span_err(
+                ex.span, #fmt["cannot apply unary operator `%s` to type `%s`",
+                              op_str, ty_to_str(fcx.ccx.tcx, rhs_t)]);
+            rhs_t
           }
-          _ {}
         }
-        tcx.sess.span_err(
-            ex.span, #fmt["can not apply unary operator `%s` to type `%s`",
-                          op_str, ty_to_str(tcx, rhs_t)]);
-        rhs_t
     }
 
     let tcx = fcx.ccx.tcx;
@@ -1888,7 +1888,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
               }
               ty::ty_ptr(inner) {
                 oper_t = inner.ty;
-                require_unsafe(fcx.ccx.tcx.sess, fcx.purity, expr.span);
+                require_unsafe(tcx.sess, fcx.purity, expr.span);
               }
               _ {
                 tcx.sess.span_fatal(expr.span,
@@ -1989,7 +1989,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
       ast::expr_copy(a) {
         bot = check_expr_with_unifier(fcx, a, unify, expected);
         let tpot =
-            ty::node_id_to_ty_param_substs_opt_and_ty(fcx.ccx.tcx, a.id);
+            ty::node_id_to_ty_param_substs_opt_and_ty(tcx, a.id);
         write::ty_fixup(fcx, id, tpot);
 
       }
@@ -2073,9 +2073,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         let proto = alt ty::struct(tcx, expected) {
           ty::ty_fn({proto, _}) { proto }
           _ {
-            fcx.ccx.tcx.sess.span_warn(
-                expr.span,
-                "unable to infer kind of closure, defaulting to block");
+            tcx.sess.span_warn(expr.span, "unable to infer kind of closure, \
+                                           defaulting to block");
             ast::proto_block
           }
         };
@@ -2190,10 +2189,10 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         vec::reserve(elt_ts, vec::len(elts));
         for e in elts {
             check_expr(fcx, e);
-            let ety = expr_ty(fcx.ccx.tcx, e);
+            let ety = expr_ty(tcx, e);
             elt_ts += [ety];
         }
-        let typ = ty::mk_tup(fcx.ccx.tcx, elt_ts);
+        let typ = ty::mk_tup(tcx, elt_ts);
         write::ty_only_fixup(fcx, id, typ);
       }
       ast::expr_rec(fields, base) {
@@ -2312,26 +2311,39 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
       }
       ast::expr_index(base, idx) {
         bot |= check_expr(fcx, base);
-        let base_t = expr_ty(tcx, base);
-        base_t = do_autoderef(fcx, expr.span, base_t);
+        let raw_base_t = expr_ty(tcx, base);
+        let base_t = do_autoderef(fcx, expr.span, raw_base_t);
         bot |= check_expr(fcx, idx);
         let idx_t = expr_ty(tcx, idx);
-        if !type_is_integral(fcx, idx.span, idx_t) {
-            tcx.sess.span_err(idx.span,
-                              "mismatched types: expected \
-                               `integer` but found `"
-                                  + ty_to_str(tcx, idx_t) + "`");
+        fn require_integral(fcx: @fn_ctxt, sp: span, t: ty::t) {
+            if !type_is_integral(fcx, sp, t) {
+                fcx.ccx.tcx.sess.span_err(sp, "mismatched types: expected \
+                                               `integer` but found `"
+                                  + ty_to_str(fcx.ccx.tcx, t) + "`");
+            }
         }
         alt structure_of(fcx, expr.span, base_t) {
-          ty::ty_vec(mt) { write::ty_only_fixup(fcx, id, mt.ty); }
+          ty::ty_vec(mt) {
+            require_integral(fcx, idx.span, idx_t);
+            write::ty_only_fixup(fcx, id, mt.ty);
+          }
           ty::ty_str {
+            require_integral(fcx, idx.span, idx_t);
             let typ = ty::mk_mach_uint(tcx, ast::ty_u8);
             write::ty_only_fixup(fcx, id, typ);
           }
           _ {
-            tcx.sess.span_fatal(expr.span,
-                                "vector-indexing bad type: " +
-                                    ty_to_str(tcx, base_t));
+            let resolved = structurally_resolved_type(fcx, expr.span,
+                                                      raw_base_t);
+            alt lookup_op_method(fcx, expr, resolved, "op_index",
+                                 [some(idx)]) {
+              some(ret_ty) { write::ty_only_fixup(fcx, id, ret_ty); }
+              _ {
+                tcx.sess.span_fatal(
+                    expr.span, "cannot index a value of type `" +
+                    ty_to_str(tcx, base_t) + "`");
+              }
+            }
           }
         }
       }
@@ -2922,7 +2934,8 @@ mod dict {
           }
           // Must resolve bounds on methods with bounded params
           ast::expr_field(_, _, _) | ast::expr_binary(_, _, _) |
-          ast::expr_unary(_, _) | ast::expr_assign_op(_, _, _) {
+          ast::expr_unary(_, _) | ast::expr_assign_op(_, _, _) |
+          ast::expr_index(_, _) {
             alt cx.method_map.find(ex.id) {
               some(method_static(did)) {
                 let bounds = ty::lookup_item_type(cx.tcx, did).bounds;
