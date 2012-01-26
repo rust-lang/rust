@@ -6,8 +6,9 @@ PKG_NAME := rust
 PKG_DIR = $(PKG_NAME)-$(CFG_RELEASE)
 PKG_TAR = $(PKG_DIR).tar.gz
 
-ifdef CFG_MAKENSIS
-PKG_NSI = $(S)src/etc/pkg/rust.nsi
+ifdef CFG_ISCC
+PKG_ISS = $(wildcard $(S)src/etc/pkg/*.iss)
+PKG_ICO = $(S)src/etc/pkg/rust-logo.ico
 PKG_EXE = $(PKG_DIR)-install.exe
 endif
 
@@ -38,17 +39,22 @@ PKG_FILES := \
 
 UNROOTED_PKG_FILES := $(patsubst $(S)%,./%,$(PKG_FILES))
 
-lic.txt: $(S)LICENSE.txt
-	@$(call E, crlf: $@)
-	@$(Q)perl -pe 's@\r\n|\n@\r\n@go' <$< >$@
+ifdef CFG_ISCC
+LICENSE.txt: $(S)LICENSE.txt
+	cp $< $@
 
-ifdef CFG_MAKENSIS
-$(PKG_EXE): $(PKG_NSI) $(PKG_FILES) all rustc-stage3 lic.txt
-	@$(call E, makensis: $@)
-	$(Q)"$(CFG_MAKENSIS)" -NOCD -V1 "-XOutFile $@" \
-                        "-XLicenseData lic.txt" $<
-	$(Q)rm -f lic.txt
+%.iss: $(S)src/etc/pkg/%.iss
+	cp $< $@
+
+%.ico: $(S)src/etc/pkg/%.ico
+	cp $< $@
+
+$(PKG_EXE): rust.iss modpath.iss LICENSE.txt rust-logo.ico \
+            $(PKG_FILES) all rustc-stage3
+	@$(call E, ISCC: $@)
+	$(Q)"$(CFG_ISCC)" $<
 endif
+
 
 $(PKG_TAR): $(PKG_FILES)
 	@$(call E, making dist dir)
@@ -68,7 +74,7 @@ $(PKG_TAR): $(PKG_FILES)
 	$(Q)tar -czf $(PKG_TAR) -C dist $(PKG_DIR)
 	$(Q)rm -Rf dist
 
-.PHONY: dist nsis-dist distcheck
+.PHONY: dist distcheck
 
 ifdef CFG_WINDOWSY
 
@@ -83,8 +89,6 @@ distcheck: dist
 else
 
 dist: $(PKG_TAR)
-
-nsis-dist: $(PKG_EXE)
 
 distcheck: $(PKG_TAR)
 	$(Q)rm -Rf dist

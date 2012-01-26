@@ -289,7 +289,7 @@ probe CFG_GCC              gcc
 probe CFG_LLVM_CONFIG      llvm-config
 probe CFG_VALGRIND         valgrind
 probe CFG_PERF             perf
-probe CFG_MAKENSIS         makensis
+probe CFG_ISCC             iscc
 probe CFG_NATURALDOCS      NaturalDocs naturaldocs
 probe CFG_LLNEXTGEN        LLnextgen
 probe CFG_PANDOC           pandoc
