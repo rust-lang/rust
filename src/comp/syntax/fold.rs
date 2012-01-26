@@ -441,11 +441,18 @@ fn noop_fold_variant(v: variant_, fld: ast_fold) -> variant_ {
     }
     let fold_variant_arg = bind fold_variant_arg_(_, fld);
     let args = vec::map(v.args, fold_variant_arg);
+
+    let fold_meta_item = bind fold_meta_item_(_, fld);
+    let fold_attribute = bind fold_attribute_(_, fold_meta_item);
+    let attrs = vec::map(v.attrs, fold_attribute);
+
     let de = alt v.disr_expr {
       some(e) {some(fld.fold_expr(e))}
       none {none}
     };
-    ret {name: v.name, args: args, id: v.id,
+    ret {name: v.name,
+         attrs: attrs,
+         args: args, id: v.id,
          disr_expr: de};
 }
 

@@ -434,6 +434,7 @@ fn print_item(s: ps, &&item: @ast::item) {
             for v: ast::variant in variants {
                 space_if_not_bol(s);
                 maybe_print_comment(s, v.span.lo);
+                print_outer_attributes(s, v.node.attrs);
                 ibox(s, indent_unit);
                 word(s.s, v.node.name);
                 if vec::len(v.node.args) > 0u {

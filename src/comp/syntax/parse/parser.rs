@@ -2042,6 +2042,7 @@ fn parse_item_enum(p: parser, attrs: [ast::attribute]) -> @ast::item {
         let variant =
             spanned(ty.span.lo, ty.span.hi,
                     {name: id,
+                     attrs: [],
                      args: [{ty: ty, id: p.get_id()}],
                      id: p.get_id(),
                      disr_expr: none});
@@ -2049,9 +2050,11 @@ fn parse_item_enum(p: parser, attrs: [ast::attribute]) -> @ast::item {
                     ast::item_enum([variant], ty_params), attrs);
     }
     expect(p, token::LBRACE);
+
     let all_nullary = true, have_disr = false;
 
     while p.token != token::RBRACE {
+        let variant_attrs = parse_outer_attributes(p);
         let vlo = p.span.lo;
         let ident = parse_value_ident(p);
         let args = [], disr_expr = none;
@@ -2068,7 +2071,8 @@ fn parse_item_enum(p: parser, attrs: [ast::attribute]) -> @ast::item {
             disr_expr = some(parse_expr(p));
         }
 
-        let vr = {name: ident, args: args, id: p.get_id(),
+        let vr = {name: ident, attrs: variant_attrs,
+                  args: args, id: p.get_id(),
                   disr_expr: disr_expr};
         variants += [spanned(vlo, p.last_span.hi, vr)];
 
