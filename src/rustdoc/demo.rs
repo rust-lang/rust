@@ -20,8 +20,11 @@ type waitress = {
     hair_color: str
 };
 
+#[doc = "The type of things that produce omnomnom"]
 enum omnomnomy {
+    #[doc = "Delicious sugar cookies"]
     cookie,
+    #[doc = "It's pizza"]
     pizza_pie([uint])
 }
 
