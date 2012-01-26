@@ -17,7 +17,8 @@ fn run(
 ) -> doc::cratedoc {
     let fold = fold::fold({
         fold_fn: fold_fn,
-        fold_const: fold_const
+        fold_const: fold_const,
+        fold_enum: fold_enum
         with *fold::default_seq_fold(srv)
     });
     fold.fold_crate(fold, doc)
@@ -179,4 +180,45 @@ fn should_add_const_types() {
     let doc = extract::from_srv(srv, "");
     let doc = run(srv, doc);
     assert doc.topmod.consts[0].ty == some("bool");
+}
+
+fn fold_enum(
+    fold: fold::fold<astsrv::srv>,
+    doc: doc::enumdoc
+) -> doc::enumdoc {
+    let srv = fold.ctxt;
+
+    ~{
+        variants: vec::map(doc.variants) {|variant|
+            let sig = astsrv::exec(srv) {|ctxt|
+                alt ctxt.map.get(doc.id) {
+                  ast_map::node_item(@{
+                    node: ast::item_enum(ast_variants, _), _
+                  }) {
+                    let ast_variant = option::get(
+                        vec::find(ast_variants) {|v|
+                            v.node.name == variant.name
+                        });
+
+                    pprust::variant_to_str(ast_variant)
+                  }
+                }
+            };
+
+            ~{
+                sig: some(sig)
+                with *variant
+            }
+        }
+        with *doc
+    }
+}
+
+#[test]
+fn should_add_variant_sigs() {
+    let source = "enum a { b(int) }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = run(srv, doc);
+    assert doc.topmod.enums[0].variants[0].sig == some("b(int)");
 }

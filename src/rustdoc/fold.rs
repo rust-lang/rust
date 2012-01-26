@@ -97,7 +97,8 @@ fn default_seq_fold_mod<T>(
     ~{
         mods: fold.fold_modlist(fold, doc.mods),
         fns: fold.fold_fnlist(fold, doc.fns),
-        consts: fold.fold_constlist(fold, doc.consts)
+        consts: fold.fold_constlist(fold, doc.consts),
+        enums: fold.fold_enumlist(fold, doc.enums)
         with *doc
     }
 }
