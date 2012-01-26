@@ -15,6 +15,7 @@ $$(HBIN$(2)_H_$(4))/rustc$$(X): \
 	$$(TBIN$(1)_T_$(4)_H_$(3))/rustc$$(X) \
 	$$(HLIB$(2)_H_$(4))/$$(CFG_RUNTIME) \
 	$$(HLIB$(2)_H_$(4))/$$(CFG_RUSTLLVM) \
+	$$(HLIB$(2)_H_$(4))/$$(CFG_LIBRUSTC) \
 	$$(HCORELIB_DEFAULT$(2)_H_$(4)) \
 	$$(HSTDLIB_DEFAULT$(2)_H_$(4))
 	@$$(call E, cp: $$@)
