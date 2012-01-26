@@ -77,7 +77,17 @@ fn moddoc_from_mod(
                   }
                 }
             }),
-        enums: doc::enumlist([])
+        enums: doc::enumlist(
+            vec::filter_map(module.items) {|item|
+                alt item.node {
+                  ast::item_enum(variants, _) {
+                    some(enumdoc_from_enum(item.ident, item.id, variants))
+                  }
+                  _ {
+                    none
+                  }
+                }
+            })
     }
 }
 
@@ -143,6 +153,51 @@ fn should_extract_const_name_and_id() {
     let doc = extract(ast, "");
     assert doc.topmod.consts[0].id != 0;
     assert doc.topmod.consts[0].name == "a";
+}
+
+fn enumdoc_from_enum(
+    name: ast::ident,
+    id: ast::node_id,
+    variants: [ast::variant]
+) -> doc::enumdoc {
+    ~{
+        id: id,
+        name: name,
+        brief: none,
+        desc: none,
+        variants: variantdocs_from_variants(variants)
+    }
+}
+
+fn variantdocs_from_variants(
+    variants: [ast::variant]
+) -> [doc::variantdoc] {
+    vec::map(variants, variantdoc_from_variant)
+}
+
+fn variantdoc_from_variant(variant: ast::variant) -> doc::variantdoc {
+    ~{
+        name: variant.node.name,
+        desc: none,
+        sig: none
+    }
+}
+
+#[test]
+fn should_extract_enums() {
+    let source = "enum e { v }";
+    let ast = parse::from_str(source);
+    let doc = extract(ast, "");
+    assert doc.topmod.enums[0].id != 0;
+    assert doc.topmod.enums[0].name == "e";
+}
+
+#[test]
+fn should_extract_enum_variants() {
+    let source = "enum e { v }";
+    let ast = parse::from_str(source);
+    let doc = extract(ast, "");
+    assert doc.topmod.enums[0].variants[0].name == "v";
 }
 
 #[cfg(test)]
