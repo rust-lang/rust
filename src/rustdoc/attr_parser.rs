@@ -9,8 +9,10 @@ import rustc::syntax::ast;
 import rustc::front::attr;
 import core::tuple;
 
-export crate_attrs, mod_attrs, fn_attrs, arg_attrs, const_attrs, enum_attrs;
-export parse_crate, parse_mod, parse_fn, parse_const, parse_enum;
+export crate_attrs, mod_attrs, fn_attrs, arg_attrs,
+       const_attrs, enum_attrs, variant_attrs;
+export parse_crate, parse_mod, parse_fn, parse_const,
+       parse_enum, parse_variant;
 
 type crate_attrs = {
     name: option<str>
@@ -369,4 +371,49 @@ fn should_parse_enum_long_doc() {
     let attrs = parse_enum(attrs);
     assert attrs.brief == some("a");
     assert attrs.desc == some("b");
+}
+
+fn parse_variant(attrs: [ast::attribute]) -> variant_attrs {
+    parse_short_doc_or(
+        attrs,
+        {|desc|
+            {
+                desc: desc
+            }
+        },
+        {|_items, brief, desc|
+            if option::is_some(brief) && option::is_some(desc) {
+                // FIXME: Warn about dropping brief description
+            }
+
+            {
+                // Prefer desc over brief
+                desc: option::maybe(brief, desc, {|s| some(s) })
+            }
+        }
+    )
+}
+
+#[test]
+fn should_parse_variant_short_doc() {
+    let source = "#[doc = \"a\"]";
+    let attrs = test::parse_attributes(source);
+    let attrs = parse_variant(attrs);
+    assert attrs.desc == some("a");
+}
+
+#[test]
+fn should_parse_variant_brief_doc() {
+    let source = "#[doc(brief = \"a\")]";
+    let attrs = test::parse_attributes(source);
+    let attrs = parse_variant(attrs);
+    assert attrs.desc == some("a");
+}
+
+#[test]
+fn should_parse_variant_long_doc() {
+    let source = "#[doc(desc = \"a\")]";
+    let attrs = test::parse_attributes(source);
+    let attrs = parse_variant(attrs);
+    assert attrs.desc == some("a");
 }
