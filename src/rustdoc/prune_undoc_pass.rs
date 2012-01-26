@@ -21,9 +21,11 @@ fn run(
         fold_mod: fold_mod,
         fold_fn: fold_fn,
         fold_const: fold_const,
+        fold_enum: fold_enum,
         fold_modlist: fold_modlist,
         fold_fnlist: fold_fnlist,
-        fold_constlist: fold_constlist
+        fold_constlist: fold_constlist,
+        fold_enumlist: fold_enumlist
         with *fold::default_seq_fold(ctxt)
     });
     fold.fold_crate(fold, doc)
@@ -215,4 +217,66 @@ fn should_elide_undocumented_consts() {
     let doc = extract::from_srv(srv, "");
     let doc = run(srv, doc);
     assert vec::is_empty(*doc.topmod.consts);
+}
+
+fn fold_enum(fold: fold::fold<ctxt>, doc: doc::enumdoc) -> doc::enumdoc {
+    let doc = ~{
+        variants: vec::filter_map(doc.variants) {|variant|
+            if variant.desc != none {
+                some(variant)
+            } else {
+                none
+            }
+        }
+        with *fold::default_seq_fold_enum(fold, doc)
+    };
+    fold.ctxt.have_docs =
+        doc.brief != none
+        || doc.desc != none
+        || vec::is_not_empty(doc.variants);
+    ret doc;
+}
+
+fn fold_enumlist(
+    fold: fold::fold<ctxt>,
+    list: doc::enumlist
+) -> doc::enumlist {
+    doc::enumlist(vec::filter_map(*list) {|doc|
+        let doc = fold.fold_enum(fold, doc);
+        if fold.ctxt.have_docs {
+            some(doc)
+        } else {
+            none
+        }
+    })
+}
+
+#[test]
+fn should_elide_undocumented_enums() {
+    let source = "enum a { b }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = attr_pass::mk_pass()(srv, doc);
+    let doc = run(srv, doc);
+    assert vec::is_empty(*doc.topmod.enums);
+}
+
+#[test]
+fn should_elide_undocumented_variants() {
+    let source = "#[doc = \"a\"] enum a { b }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = attr_pass::mk_pass()(srv, doc);
+    let doc = run(srv, doc);
+    assert vec::is_empty(doc.topmod.enums[0].variants);
+}
+
+#[test]
+fn should_not_elide_enums_with_documented_variants() {
+    let source = "enum a { #[doc = \"a\"] b }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = attr_pass::mk_pass()(srv, doc);
+    let doc = run(srv, doc);
+    assert vec::is_not_empty(*doc.topmod.enums);
 }
