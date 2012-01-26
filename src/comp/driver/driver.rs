@@ -199,7 +199,7 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
         time(time_passes, "translation",
              bind trans::trans_crate(sess, crate, ty_cx,
                                      outputs.obj_filename, exp_map, ast_map,
-                                     mut_map, copy_map, last_uses,
+                                     mut_map, copy_map, last_uses, impl_map,
                                      method_map, dict_map));
     time(time_passes, "LLVM passes",
          bind link::write::run_passes(sess, llmod, outputs.obj_filename));

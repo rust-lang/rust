@@ -5498,8 +5498,8 @@ fn write_abi_version(ccx: @crate_ctxt) {
 fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
                output: str, emap: resolve::exp_map, amap: ast_map::map,
                mut_map: mut::mut_map, copy_map: alias::copy_map,
-               last_uses: last_use::last_uses, method_map: typeck::method_map,
-               dict_map: typeck::dict_map)
+               last_uses: last_use::last_uses, impl_map: resolve::impl_map,
+               method_map: typeck::method_map, dict_map: typeck::dict_map)
     -> (ModuleRef, link::link_meta) {
     let sha = std::sha1::mk_sha1();
     let link_meta = link::build_link_meta(sess, *crate, output, sha);
@@ -5576,6 +5576,7 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           mut_map: mut_map,
           copy_map: copy_map,
           last_uses: last_uses,
+          impl_map: impl_map,
           method_map: method_map,
           dict_map: dict_map,
           stats:

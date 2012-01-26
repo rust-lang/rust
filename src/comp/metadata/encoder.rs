@@ -1,6 +1,6 @@
 // Metadata encoding
 
-import std::{io, ebml, map};
+import std::{io, ebml, map, list};
 import io::writer_util;
 import syntax::ast::*;
 import syntax::ast_util;
@@ -151,13 +151,14 @@ fn encode_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt, crate: @crate)
 
 fn encode_reexport_paths(ebml_w: ebml::writer,
                          ecx: @encode_ctxt, &index: [entry<str>]) {
-    ecx.ccx.exp_map.items {|key, def|
-        let path = key.path;
-        index += [{val: path, pos: ebml_w.writer.tell()}];
-        ebml::start_tag(ebml_w, tag_paths_data_item);
-        encode_name(ebml_w, path);
-        encode_def_id(ebml_w, ast_util::def_id_of_def(def));
-        ebml::end_tag(ebml_w);
+    ecx.ccx.exp_map.items {|path, defs|
+        for def in *defs {
+            index += [{val: path, pos: ebml_w.writer.tell()}];
+            ebml::start_tag(ebml_w, tag_paths_data_item);
+            encode_name(ebml_w, path);
+            encode_def_id(ebml_w, ast_util::def_id_of_def(def));
+            ebml::end_tag(ebml_w);
+        }
     }
 }
 
@@ -258,23 +259,22 @@ fn encode_enum_variant_info(ecx: @encode_ctxt, ebml_w: ebml::writer,
     }
 }
 
-fn encode_info_for_mod(ebml_w: ebml::writer, md: _mod,
+fn encode_info_for_mod(ecx: @encode_ctxt, ebml_w: ebml::writer, md: _mod,
                        id: node_id, name: ident) {
     ebml::start_tag(ebml_w, tag_items_data_item);
     encode_def_id(ebml_w, local_def(id));
     encode_family(ebml_w, 'm' as u8);
     encode_name(ebml_w, name);
-    for i in md.items {
-        alt i.node {
-          item_impl(_, _, _, _) {
+    alt ecx.ccx.impl_map.get(id) {
+      list::cons(impls, @list::nil) {
+        for i in *impls {
             if ast_util::is_exported(i.ident, md) {
                 ebml::start_tag(ebml_w, tag_mod_impl);
-                ebml_w.writer.write(str::bytes(def_to_str(local_def(i.id))));
+                ebml_w.writer.write(str::bytes(def_to_str(i.did)));
                 ebml::end_tag(ebml_w);
             }
-          }
-          _ {}
         }
+      }
     }
     ebml::end_tag(ebml_w);
 }
@@ -306,7 +306,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         ebml::end_tag(ebml_w);
       }
       item_mod(m) {
-        encode_info_for_mod(ebml_w, m, item.id, item.ident);
+        encode_info_for_mod(ecx, ebml_w, m, item.id, item.ident);
       }
       item_native_mod(_) {
         ebml::start_tag(ebml_w, tag_items_data_item);
@@ -447,7 +447,7 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::writer,
     let index: [entry<int>] = [];
     ebml::start_tag(ebml_w, tag_items_data);
     index += [{val: crate_node_id, pos: ebml_w.writer.tell()}];
-    encode_info_for_mod(ebml_w, crate_mod, crate_node_id, "");
+    encode_info_for_mod(ecx, ebml_w, crate_mod, crate_node_id, "");
     ecx.ccx.ast_map.items {|key, val|
         alt val {
           middle::ast_map::node_item(i) {

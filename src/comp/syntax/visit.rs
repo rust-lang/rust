@@ -40,7 +40,7 @@ fn tps_of_fn(fk: fn_kind) -> [ty_param] {
 type visitor<E> =
     // takes the components so that one function can be
     // generic over constr and ty_constr
-    @{visit_mod: fn@(_mod, span, E, vt<E>),
+    @{visit_mod: fn@(_mod, span, node_id, E, vt<E>),
       visit_view_item: fn@(@view_item, E, vt<E>),
       visit_native_item: fn@(@native_item, E, vt<E>),
       visit_item: fn@(@item, E, vt<E>),
@@ -57,7 +57,7 @@ type visitor<E> =
       visit_fn: fn@(fn_kind, fn_decl, blk, span, node_id, E, vt<E>)};
 
 fn default_visitor<E>() -> visitor<E> {
-    ret @{visit_mod: bind visit_mod::<E>(_, _, _, _),
+    ret @{visit_mod: bind visit_mod::<E>(_, _, _, _, _),
           visit_view_item: bind visit_view_item::<E>(_, _, _),
           visit_native_item: bind visit_native_item::<E>(_, _, _),
           visit_item: bind visit_item::<E>(_, _, _),
@@ -75,7 +75,7 @@ fn default_visitor<E>() -> visitor<E> {
 }
 
 fn visit_crate<E>(c: crate, e: E, v: vt<E>) {
-    v.visit_mod(c.node.module, c.span, e, v);
+    v.visit_mod(c.node.module, c.span, crate_node_id, e, v);
 }
 
 fn visit_crate_directive<E>(cd: @crate_directive, e: E, v: vt<E>) {
@@ -91,7 +91,7 @@ fn visit_crate_directive<E>(cd: @crate_directive, e: E, v: vt<E>) {
     }
 }
 
-fn visit_mod<E>(m: _mod, _sp: span, e: E, v: vt<E>) {
+fn visit_mod<E>(m: _mod, _sp: span, _id: node_id, e: E, v: vt<E>) {
     for vi: @view_item in m.view_items { v.visit_view_item(vi, e, v); }
     for i: @item in m.items { v.visit_item(i, e, v); }
 }
@@ -110,7 +110,7 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
       item_fn(decl, tp, body) {
         v.visit_fn(fk_item_fn(i.ident, tp), decl, body, i.span, i.id, e, v);
       }
-      item_mod(m) { v.visit_mod(m, i.span, e, v); }
+      item_mod(m) { v.visit_mod(m, i.span, i.id, e, v); }
       item_native_mod(nm) {
         for vi: @view_item in nm.view_items { v.visit_view_item(vi, e, v); }
         for ni: @native_item in nm.items { v.visit_native_item(ni, e, v); }
@@ -376,7 +376,7 @@ fn visit_arm<E>(a: arm, e: E, v: vt<E>) {
 type simple_visitor =
     // takes the components so that one function can be
     // generic over constr and ty_constr
-    @{visit_mod: fn@(_mod, span),
+    @{visit_mod: fn@(_mod, span, node_id),
       visit_view_item: fn@(@view_item),
       visit_native_item: fn@(@native_item),
       visit_item: fn@(@item),
@@ -395,7 +395,7 @@ type simple_visitor =
 fn simple_ignore_ty(_t: @ty) {}
 
 fn default_simple_visitor() -> simple_visitor {
-    ret @{visit_mod: fn@(_m: _mod, _sp: span) { },
+    ret @{visit_mod: fn@(_m: _mod, _sp: span, _id: node_id) { },
           visit_view_item: fn@(_vi: @view_item) { },
           visit_native_item: fn@(_ni: @native_item) { },
           visit_item: fn@(_i: @item) { },
@@ -415,9 +415,10 @@ fn default_simple_visitor() -> simple_visitor {
 }
 
 fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
-    fn v_mod(f: fn@(_mod, span), m: _mod, sp: span, &&e: (), v: vt<()>) {
-        f(m, sp);
-        visit_mod(m, sp, e, v);
+    fn v_mod(f: fn@(_mod, span, node_id), m: _mod, sp: span, id: node_id,
+             &&e: (), v: vt<()>) {
+        f(m, sp, id);
+        visit_mod(m, sp, id, e, v);
     }
     fn v_view_item(f: fn@(@view_item), vi: @view_item, &&e: (), v: vt<()>) {
         f(vi);
@@ -484,7 +485,7 @@ fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
     } else {
         bind v_ty(v.visit_ty, _, _, _)
     };
-    ret mk_vt(@{visit_mod: bind v_mod(v.visit_mod, _, _, _, _),
+    ret mk_vt(@{visit_mod: bind v_mod(v.visit_mod, _, _, _, _, _),
                 visit_view_item: bind v_view_item(v.visit_view_item, _, _, _),
                 visit_native_item:
                     bind v_native_item(v.visit_native_item, _, _, _),
