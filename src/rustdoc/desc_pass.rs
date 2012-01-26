@@ -18,7 +18,8 @@ fn run(
     let fold = fold::fold({
         fold_mod: fold_mod,
         fold_const: fold_const,
-        fold_fn: fold_fn
+        fold_fn: fold_fn,
+        fold_enum: fold_enum
         with *fold::default_seq_fold(op)
     });
     fold.fold_crate(fold, doc)
@@ -67,4 +68,48 @@ fn fold_fn(fold: fold::fold<op>, doc: doc::fndoc) -> doc::fndoc {
         failure: maybe_apply_op(fold.ctxt, doc.failure)
         with *doc
     }
+}
+
+fn fold_enum(fold: fold::fold<op>, doc: doc::enumdoc) -> doc::enumdoc {
+    ~{
+        brief: maybe_apply_op(fold.ctxt, doc.brief),
+        desc: maybe_apply_op(fold.ctxt, doc.desc),
+        variants: vec::map(doc.variants) {|variant|
+            ~{
+                desc: maybe_apply_op(fold.ctxt, variant.desc)
+                with *variant
+            }
+        }
+        with *doc
+    }
+}
+
+#[test]
+fn should_execute_op_on_enum_brief() {
+    let source = "#[doc(brief = \" a \")] enum a { b }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = attr_pass::mk_pass()(srv, doc);
+    let doc = mk_pass(str::trim)(srv, doc);
+    assert doc.topmod.enums[0].brief == some("a");
+}
+
+#[test]
+fn should_execute_op_on_enum_desc() {
+    let source = "#[doc(desc = \" a \")] enum a { b }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = attr_pass::mk_pass()(srv, doc);
+    let doc = mk_pass(str::trim)(srv, doc);
+    assert doc.topmod.enums[0].desc == some("a");
+}
+
+#[test]
+fn should_execute_op_on_variant_desc() {
+    let source = "enum a { #[doc = \" a \"] b }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = attr_pass::mk_pass()(srv, doc);
+    let doc = mk_pass(str::trim)(srv, doc);
+    assert doc.topmod.enums[0].variants[0].desc == some("a");
 }
