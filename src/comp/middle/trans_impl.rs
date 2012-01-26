@@ -62,11 +62,28 @@ fn trans_self_arg(bcx: @block_ctxt, base: @ast::expr) -> result {
     rslt(bcx, PointerCast(bcx, val, T_opaque_cbox_ptr(bcx_ccx(bcx))))
 }
 
+fn trans_method_callee(bcx: @block_ctxt, callee_id: ast::node_id,
+                       self: @ast::expr, origin: typeck::method_origin)
+    -> lval_maybe_callee {
+    alt origin {
+      typeck::method_static(did) {
+        trans_static_callee(bcx, callee_id, self, did)
+      }
+      typeck::method_param(iid, off, p, b) {
+        trans_param_callee(bcx, callee_id, self, iid, off, p, b)
+      }
+      typeck::method_iface(off) {
+        trans_iface_callee(bcx, callee_id, self, off)
+      }
+    }
+}
+
 // Method callee where the method is statically known
-fn trans_static_callee(bcx: @block_ctxt, e: @ast::expr, base: @ast::expr,
-                       did: ast::def_id) -> lval_maybe_callee {
+fn trans_static_callee(bcx: @block_ctxt, callee_id: ast::node_id,
+                       base: @ast::expr, did: ast::def_id)
+    -> lval_maybe_callee {
     let {bcx, val} = trans_self_arg(bcx, base);
-    {env: self_env(val) with lval_static_fn(bcx, did, e.id)}
+    {env: self_env(val) with lval_static_fn(bcx, did, callee_id)}
 }
 
 fn wrapper_fn_ty(ccx: @crate_ctxt, dict_ty: TypeRef, m: ty::method)
@@ -79,7 +96,7 @@ fn wrapper_fn_ty(ccx: @crate_ctxt, dict_ty: TypeRef, m: ty::method)
 }
 
 fn trans_vtable_callee(bcx: @block_ctxt, self: ValueRef, dict: ValueRef,
-                       fld_expr: @ast::expr, iface_id: ast::def_id,
+                       callee_id: ast::node_id, iface_id: ast::def_id,
                        n_method: uint) -> lval_maybe_callee {
     let bcx = bcx, ccx = bcx_ccx(bcx), tcx = ccx.tcx;
     let method = ty::iface_methods(tcx, iface_id)[n_method];
@@ -90,7 +107,7 @@ fn trans_vtable_callee(bcx: @block_ctxt, self: ValueRef, dict: ValueRef,
     let generic = none;
     if vec::len(*method.tps) > 0u || ty::type_contains_params(tcx, fty) {
         let tydescs = [], tis = [];
-        let tptys = ty::node_id_to_type_params(tcx, fld_expr.id);
+        let tptys = ty::node_id_to_type_params(tcx, callee_id);
         for t in vec::tail_n(tptys, vec::len(tptys) - vec::len(*method.tps)) {
             let ti = none;
             let td = get_tydesc(bcx, t, true, ti).result;
@@ -102,7 +119,7 @@ fn trans_vtable_callee(bcx: @block_ctxt, self: ValueRef, dict: ValueRef,
                         static_tis: tis,
                         tydescs: tydescs,
                         param_bounds: method.tps,
-                        origins: bcx_ccx(bcx).dict_map.find(fld_expr.id)});
+                        origins: bcx_ccx(bcx).dict_map.find(callee_id)});
     }
     {bcx: bcx, val: mptr, kind: owned,
      env: dict_env(dict, self),
@@ -110,16 +127,16 @@ fn trans_vtable_callee(bcx: @block_ctxt, self: ValueRef, dict: ValueRef,
 }
 
 // Method callee where the dict comes from a type param
-fn trans_param_callee(bcx: @block_ctxt, fld_expr: @ast::expr,
+fn trans_param_callee(bcx: @block_ctxt, callee_id: ast::node_id,
                       base: @ast::expr, iface_id: ast::def_id, n_method: uint,
                       n_param: uint, n_bound: uint) -> lval_maybe_callee {
     let {bcx, val} = trans_self_arg(bcx, base);
     let dict = option::get(bcx.fcx.lltyparams[n_param].dicts)[n_bound];
-    trans_vtable_callee(bcx, val, dict, fld_expr, iface_id, n_method)
+    trans_vtable_callee(bcx, val, dict, callee_id, iface_id, n_method)
 }
 
 // Method callee where the dict comes from a boxed iface
-fn trans_iface_callee(bcx: @block_ctxt, fld_expr: @ast::expr,
+fn trans_iface_callee(bcx: @block_ctxt, callee_id: ast::node_id,
                       base: @ast::expr, n_method: uint)
     -> lval_maybe_callee {
     let tcx = bcx_tcx(bcx);
@@ -133,7 +150,7 @@ fn trans_iface_callee(bcx: @block_ctxt, fld_expr: @ast::expr,
     let iface_id = alt ty::struct(tcx, ty::expr_ty(tcx, base)) {
         ty::ty_iface(did, _) { did }
     };
-    trans_vtable_callee(bcx, self, dict, fld_expr, iface_id, n_method)
+    trans_vtable_callee(bcx, self, dict, callee_id, iface_id, n_method)
 }
 
 fn llfn_arg_tys(ft: TypeRef) -> {inputs: [TypeRef], output: TypeRef} {

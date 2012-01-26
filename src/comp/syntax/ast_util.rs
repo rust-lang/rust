@@ -326,6 +326,11 @@ fn ident_to_path(s: span, i: ident) -> @path {
     @respan(s, {global: false, idents: [i], types: []})
 }
 
+// Provides an extra node_id to hang callee information on, in case the
+// operator is deferred to a user-supplied method. The parser is responsible
+// for reserving this id.
+fn op_expr_callee_id(e: @expr) -> node_id { e.id - 1 }
+
 // Local Variables:
 // mode: rust
 // fill-column: 78;

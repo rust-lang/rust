@@ -1048,6 +1048,7 @@ fn parse_prefix_expr(p: parser) -> pexpr {
         p.bump();
         let e = to_expr(parse_prefix_expr(p));
         hi = e.span.hi;
+        p.get_id(); // see ast_util::op_expr_callee_id
         ex = ast::expr_unary(ast::not, e);
       }
       token::BINOP(b) {
@@ -1056,6 +1057,7 @@ fn parse_prefix_expr(p: parser) -> pexpr {
             p.bump();
             let e = to_expr(parse_prefix_expr(p));
             hi = e.span.hi;
+            p.get_id(); // see ast_util::op_expr_callee_id
             ex = ast::expr_unary(ast::neg, e);
           }
           token::STAR {
@@ -1146,6 +1148,7 @@ fn parse_more_binops(p: parser, plhs: pexpr, min_prec: int) ->
             p.bump();
             let expr = parse_prefix_expr(p);
             let rhs = parse_more_binops(p, expr, cur.prec);
+            p.get_id(); // see ast_util::op_expr_callee_id
             let bin = mk_pexpr(p, lhs.span.lo, rhs.span.hi,
                               ast::expr_binary(cur.op, lhs, rhs));
             ret parse_more_binops(p, bin, min_prec);
@@ -1186,6 +1189,7 @@ fn parse_assign_expr(p: parser) -> @ast::expr {
           token::LSR { aop = ast::lsr; }
           token::ASR { aop = ast::asr; }
         }
+        p.get_id(); // see ast_util::op_expr_callee_id
         ret mk_expr(p, lo, rhs.span.hi, ast::expr_assign_op(aop, lhs, rhs));
       }
       token::LARROW {

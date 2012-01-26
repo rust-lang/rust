@@ -1,3 +1,3 @@
-// error-pattern:applying unary minus to non-numeric type `str`
+// error-pattern:can not apply unary operator `-` to type `str`
 
 fn main() { -"foo"; }

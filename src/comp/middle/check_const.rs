@@ -2,11 +2,11 @@ import syntax::ast::*;
 import syntax::{visit, ast_util};
 import driver::session::session;
 
-fn check_crate(sess: session, crate: @crate) {
+fn check_crate(sess: session, crate: @crate, method_map: typeck::method_map) {
     visit::visit_crate(*crate, false, visit::mk_vt(@{
         visit_item: check_item,
         visit_pat: check_pat,
-        visit_expr: bind check_expr(sess, _, _, _)
+        visit_expr: bind check_expr(sess, method_map, _, _, _)
         with *visit::default_visitor()
     }));
     sess.abort_if_errors();
@@ -41,7 +41,8 @@ fn check_pat(p: @pat, &&_is_const: bool, v: visit::vt<bool>) {
     }
 }
 
-fn check_expr(sess: session, e: @expr, &&is_const: bool, v: visit::vt<bool>) {
+fn check_expr(sess: session, method_map: typeck::method_map, e: @expr,
+              &&is_const: bool, v: visit::vt<bool>) {
     if is_const {
         alt e.node {
           expr_unary(box(_), _) | expr_unary(uniq(_), _) |
@@ -54,7 +55,13 @@ fn check_expr(sess: session, e: @expr, &&is_const: bool, v: visit::vt<bool>) {
             sess.span_err(e.span,
                           "string constants are not supported");
           }
-          expr_lit(_) | expr_binary(_, _, _) | expr_unary(_, _) {}
+          expr_binary(_, _, _) | expr_unary(_, _) {
+            if method_map.contains_key(e.id) {
+                sess.span_err(e.span, "user-defined operators are not \
+                                       allowed in constant expressions");
+            }
+          }
+          expr_lit(_) {}
           _ {
             sess.span_err(e.span,
                           "constant contains unimplemented expression type");

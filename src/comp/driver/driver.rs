@@ -162,12 +162,12 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
     let freevars =
         time(time_passes, "freevar finding",
              bind freevars::annotate_freevars(def_map, crate));
-    time(time_passes, "const checking",
-         bind middle::check_const::check_crate(sess, crate));
     let ty_cx = ty::mk_ctxt(sess, def_map, ast_map, freevars);
     let (method_map, dict_map) =
         time(time_passes, "typechecking",
              bind typeck::check_crate(ty_cx, impl_map, crate));
+    time(time_passes, "const checking",
+         bind middle::check_const::check_crate(sess, crate, method_map));
 
     if upto == cu_typeck { ret {crate: crate, tcx: some(ty_cx)}; }
 

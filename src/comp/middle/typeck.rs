@@ -429,14 +429,14 @@ fn ty_of_native_item(tcx: ty::ctxt, mode: mode, it: @ast::native_item)
     alt it.node {
       ast::native_item_fn(fn_decl, params) {
         ret ty_of_native_fn_decl(tcx, mode, fn_decl, params,
-                                 ast_util::local_def(it.id));
+                                 local_def(it.id));
       }
       ast::native_item_ty {
         alt tcx.tcache.find(local_def(it.id)) {
           some(tpt) { ret tpt; }
           none { }
         }
-        let t = ty::mk_native(tcx, ast_util::local_def(it.id));
+        let t = ty::mk_native(tcx, local_def(it.id));
         let t = ty::mk_named(tcx, t, @it.ident);
         let tpt = {bounds: @[], ty: t};
         tcx.tcache.insert(local_def(it.id), tpt);
@@ -1613,45 +1613,30 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
 
     // A generic function to factor out common logic from call and bind
     // expressions.
-    fn check_call_or_bind(fcx: @fn_ctxt, sp: span, f: @ast::expr,
+    fn check_call_or_bind(fcx: @fn_ctxt, sp: span, fty: ty::t,
                           args: [option::t<@ast::expr>]) -> bool {
-        // Check the function.
-        let bot = check_expr(fcx, f);
-
-        // Get the function type.
-        let fty = expr_ty(fcx.ccx.tcx, f);
-
         let sty = structure_of(fcx, sp, fty);
-
         // Grab the argument types
-        let arg_tys =
-            alt sty {
-              ty::ty_fn({inputs: arg_tys, _}) {
-                arg_tys
-              }
-              _ {
-                fcx.ccx.tcx.sess.span_fatal(f.span,
-                                            "mismatched types: \
-                     expected function or native \
-                     function but found "
-                                                + ty_to_str(fcx.ccx.tcx, fty))
-              }
-            };
+        let arg_tys = alt sty {
+          ty::ty_fn({inputs: arg_tys, _}) { arg_tys }
+          _ {
+            fcx.ccx.tcx.sess.span_fatal(sp, "mismatched types: \
+                                             expected function or native \
+                                             function but found "
+                                        + ty_to_str(fcx.ccx.tcx, fty))
+          }
+        };
 
         // Check that the correct number of arguments were supplied.
         let expected_arg_count = vec::len(arg_tys);
         let supplied_arg_count = vec::len(args);
         if expected_arg_count != supplied_arg_count {
-            fcx.ccx.tcx.sess.span_err(sp,
-                                      #fmt["this function takes %u \
-                      parameter%s but %u parameter%s supplied",
-                                           expected_arg_count,
-                                           if expected_arg_count == 1u {
-                                               ""
-                                           } else { "s" }, supplied_arg_count,
-                                           if supplied_arg_count == 1u {
-                                               " was"
-                                           } else { "s were" }]);
+            fcx.ccx.tcx.sess.span_err(
+                sp, #fmt["this function takes %u parameter%s but %u \
+                          parameter%s supplied", expected_arg_count,
+                         expected_arg_count == 1u ? "" : "s",
+                         supplied_arg_count,
+                         supplied_arg_count == 1u ? " was" : "s were"]);
             // HACK: build an arguments list with dummy arguments to
             // check against
             let dummy = {mode: ast::by_ref, ty: ty::mk_bot(fcx.ccx.tcx)};
@@ -1665,33 +1650,27 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         // of arguments when we typecheck the functions. This isn't really the
         // right way to do this.
         let check_args = fn@(check_blocks: bool) -> bool {
-                let i = 0u;
-                let bot = false;
-                for a_opt: option::t<@ast::expr> in args {
-                    alt a_opt {
-                      some(a) {
-                        let is_block =
-                            alt a.node {
-                              ast::expr_fn_block(_, _) { true }
-                              _ { false }
-                            };
-                        if is_block == check_blocks {
-                            bot |=
-                                check_expr_with_unifier(fcx, a,
-                                                        demand::simple,
-                                                        arg_tys[i].ty);
-                        }
-                      }
-                      none { }
+            let i = 0u;
+            let bot = false;
+            for a_opt in args {
+                alt a_opt {
+                  some(a) {
+                    let is_block = alt a.node {
+                      ast::expr_fn_block(_, _) { true }
+                      _ { false }
+                    };
+                    if is_block == check_blocks {
+                        bot |= check_expr_with_unifier(
+                            fcx, a, demand::simple, arg_tys[i].ty);
                     }
-                    i += 1u;
+                  }
+                  none { }
                 }
-                ret bot;
-            };
-        bot |= check_args(false);
-        bot |= check_args(true);
-
-        ret bot;
+                i += 1u;
+            }
+            ret bot;
+        };
+        check_args(false) | check_args(true)
     }
 
     // A generic function for checking assignment expressions
@@ -1711,8 +1690,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
             args_opt_0 += [some::<@ast::expr>(arg)];
         }
 
+        let bot = check_expr(fcx, f);
         // Call the generic checker.
-        ret check_call_or_bind(fcx, sp, f, args_opt_0);
+        bot | check_call_or_bind(fcx, sp, expr_ty(fcx.ccx.tcx, f), args_opt_0)
     }
 
     // A generic function for doing all of the checking for call expressions
@@ -1784,18 +1764,76 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         ret if_bot;
     }
 
-    // Checks the compatibility
-    fn check_binop_type_compat(fcx: @fn_ctxt, span: span, ty: ty::t,
-                               binop: ast::binop) {
-        let resolved_t = resolve_type_vars_if_possible(fcx, ty);
-        if !ty::is_binopable(fcx.ccx.tcx, resolved_t, binop) {
-            let binopstr = ast_util::binop_to_str(binop);
-            let t_str = ty_to_str(fcx.ccx.tcx, resolved_t);
-            let errmsg =
-                "binary operation " + binopstr +
-                    " cannot be applied to type `" + t_str + "`";
-            fcx.ccx.tcx.sess.span_err(span, errmsg);
+    fn binop_method(op: ast::binop) -> option::t<str> {
+        alt op {
+          ast::add { some("op_add") }
+          ast::subtract { some("op_sub") }
+          ast::mul { some("op_mul") }
+          ast::div { some("op_div") }
+          ast::rem { some("op_rem") }
+          ast::bitxor { some("op_xor") }
+          ast::bitand { some("op_and") }
+          ast::bitor { some("op_or") }
+          ast::lsl { some("op_shift_left") }
+          ast::lsr { some("op_shift_right") }
+          ast::asr { some("op_ashift_right") }
+          _ { none }
         }
+    }
+    fn check_binop(fcx: @fn_ctxt, ex: @ast::expr, ty: ty::t,
+                   op: ast::binop, rhs: @ast::expr) -> ty::t {
+        let resolved_t = structurally_resolved_type(fcx, ex.span, ty);
+        let tcx = fcx.ccx.tcx;
+        if ty::is_binopable(tcx, resolved_t, op) {
+            ret alt op {
+              ast::eq | ast::lt | ast::le | ast::ne | ast::ge |
+              ast::gt { ty::mk_bool(tcx) }
+              _ { resolved_t }
+            };
+        }
+
+        let isc = fcx.ccx.impl_map.get(ex.id);
+        alt binop_method(op) {
+          some(name) {
+            alt lookup_method(fcx, isc, name, resolved_t, ex.span) {
+              some({method_ty, n_tps: 0u, substs, origin}) {
+                let callee_id = ast_util::op_expr_callee_id(ex);
+                write::ty_fixup(fcx, callee_id, {substs: some(substs),
+                                                 ty: method_ty});
+                check_call_or_bind(fcx, ex.span, method_ty, [some(rhs)]);
+                fcx.ccx.method_map.insert(ex.id, origin);
+                ret ty::ty_fn_ret(tcx, method_ty);
+              }
+              _ {}
+            }
+          }
+          none {}
+        }
+        tcx.sess.span_err(
+            ex.span, "binary operation " + ast_util::binop_to_str(op) +
+            " cannot be applied to type `" + ty_to_str(tcx, resolved_t) +
+            "`");
+        resolved_t
+    }
+    fn check_user_unop(fcx: @fn_ctxt, op_str: str, mname: str,
+                       ex: @ast::expr, rhs_t: ty::t) -> ty::t {
+        let isc = fcx.ccx.impl_map.get(ex.id);
+        let tcx = fcx.ccx.tcx;
+        alt lookup_method(fcx, isc, mname, rhs_t, ex.span) {
+          some({method_ty, n_tps: 0u, substs, origin}) {
+            let callee_id = ast_util::op_expr_callee_id(ex);
+            write::ty_fixup(fcx, callee_id, {substs: some(substs),
+                                             ty: method_ty});
+            check_call_or_bind(fcx, ex.span, method_ty, []);
+            fcx.ccx.method_map.insert(ex.id, origin);
+            ret ty::ty_fn_ret(tcx, method_ty);
+          }
+          _ {}
+        }
+        tcx.sess.span_err(
+            ex.span, #fmt["can not apply unary operator `%s` to type `%s`",
+                          op_str, ty_to_str(tcx, rhs_t)]);
+        rhs_t
     }
 
     let tcx = fcx.ccx.tcx;
@@ -1813,14 +1851,15 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         let rhs_bot = check_expr_with(fcx, rhs, lhs_t);
         if !ast_util::lazy_binop(binop) { bot |= rhs_bot; }
 
-        check_binop_type_compat(fcx, expr.span, lhs_t, binop);
-
-        let t = alt binop {
-          ast::eq | ast::lt | ast::le | ast::ne | ast::ge |
-          ast::gt { ty::mk_bool(tcx) }
-          _ { lhs_t }
-        };
-        write::ty_only_fixup(fcx, id, t);
+        let result = check_binop(fcx, expr, lhs_t, binop, rhs);
+        write::ty_only_fixup(fcx, id, result);
+      }
+      ast::expr_assign_op(op, lhs, rhs) {
+        require_impure(tcx.sess, fcx.purity, expr.span);
+        bot = check_assignment(fcx, expr.span, lhs, rhs, id);
+        let lhs_t = ty::expr_ty(tcx, lhs);
+        let result = check_binop(fcx, expr, lhs_t, op, rhs);
+        demand::simple(fcx, expr.span, result, lhs_t);
       }
       ast::expr_unary(unop, oper) {
         bot = check_expr(fcx, oper);
@@ -1860,22 +1899,17 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
             }
           }
           ast::not {
-            if !type_is_integral(fcx, oper.span, oper_t) &&
-                   structure_of(fcx, oper.span, oper_t) != ty::ty_bool {
-                tcx.sess.span_err(expr.span,
-                                  #fmt["mismatched types: expected `bool` \
-                          or `integer` but found `%s`",
-                                       ty_to_str(tcx, oper_t)]);
+            oper_t = structurally_resolved_type(fcx, oper.span, oper_t);
+            if !(ty::type_is_integral(tcx, oper_t) ||
+                 ty::struct(tcx, oper_t) == ty::ty_bool) {
+                oper_t = check_user_unop(fcx, "!", "op_not", expr, oper_t);
             }
           }
           ast::neg {
             oper_t = structurally_resolved_type(fcx, oper.span, oper_t);
             if !(ty::type_is_integral(tcx, oper_t) ||
-                     ty::type_is_fp(tcx, oper_t)) {
-                tcx.sess.span_err(expr.span,
-                                  "applying unary minus to \
-                   non-numeric type `"
-                                      + ty_to_str(tcx, oper_t) + "`");
+                 ty::type_is_fp(tcx, oper_t)) {
+                oper_t = check_user_unop(fcx, "-", "op_neg", expr, oper_t);
             }
           }
         }
@@ -1971,11 +2005,6 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         require_impure(tcx.sess, fcx.purity, expr.span);
         bot = check_assignment(fcx, expr.span, lhs, rhs, id);
       }
-      ast::expr_assign_op(op, lhs, rhs) {
-        require_impure(tcx.sess, fcx.purity, expr.span);
-        bot = check_assignment(fcx, expr.span, lhs, rhs, id);
-        check_binop_type_compat(fcx, expr.span, expr_ty(tcx, lhs), op);
-      }
       ast::expr_if(cond, thn, elsopt) {
         bot =
             check_expr_with(fcx, cond, ty::mk_bool(tcx)) |
@@ -2069,7 +2098,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
       }
       ast::expr_bind(f, args) {
         // Call the generic checker.
-        bot = check_call_or_bind(fcx, expr.span, f, args);
+        bot = check_expr(fcx, f);
+        bot |= check_call_or_bind(fcx, expr.span, expr_ty(tcx, f), args);
 
         // Pull the argument and return types out.
         let proto, arg_tys, rt, cf, constrs;
@@ -2891,14 +2921,19 @@ mod dict {
             }
           }
           // Must resolve bounds on methods with bounded params
-          ast::expr_field(_, _, _) {
+          ast::expr_field(_, _, _) | ast::expr_binary(_, _, _) |
+          ast::expr_unary(_, _) | ast::expr_assign_op(_, _, _) {
             alt cx.method_map.find(ex.id) {
               some(method_static(did)) {
                 let bounds = ty::lookup_item_type(cx.tcx, did).bounds;
                 if has_iface_bounds(*bounds) {
-                    let ts = ty::node_id_to_type_params(cx.tcx, ex.id);
+                    let callee_id = alt ex.node {
+                      ast::expr_field(_, _, _) { ex.id }
+                      _ { ast_util::op_expr_callee_id(ex) }
+                    };
+                    let ts = ty::node_id_to_type_params(cx.tcx, callee_id);
                     let iscs = cx.impl_map.get(ex.id);
-                    cx.dict_map.insert(ex.id, lookup_dicts(
+                    cx.dict_map.insert(callee_id, lookup_dicts(
                         fcx, iscs, ex.span, bounds, ts));
                 }
               }
