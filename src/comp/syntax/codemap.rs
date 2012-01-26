@@ -131,6 +131,7 @@ fn get_filemap(cm: codemap, filename: str) -> filemap {
     //      (or expected function, found _|_)
     fail; // ("asking for " + filename + " which we don't know about");
 }
+
 //
 // Local Variables:
 // mode: rust
