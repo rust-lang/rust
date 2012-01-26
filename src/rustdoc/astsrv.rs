@@ -19,7 +19,7 @@ export exec;
 
 type ctxt = {
     ast: @ast::crate,
-    map: ast_map::map
+    ast_map: ast_map::map
 };
 
 type ctxt_handler<T> = fn~(ctxt: ctxt) -> T;
@@ -48,7 +48,7 @@ fn build_ctxt(ast: @ast::crate) -> ctxt {
 
     {
         ast: ast,
-        map: ast_map::map_crate(*ast)
+        ast_map: ast_map::map_crate(*ast)
     }
 }
 
@@ -76,7 +76,7 @@ mod tests {
         let source = "fn a() { }";
         let srv = mk_srv_from_str(source);
         exec(srv) {|ctxt|
-            assert ctxt.map.size() != 0u
+            assert ctxt.ast_map.size() != 0u
         };
     }
 

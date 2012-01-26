@@ -66,7 +66,7 @@ fn parse_item_attrs<T>(
     id: doc::ast_id,
     parse_attrs: fn~([ast::attribute]) -> T) -> T {
     astsrv::exec(srv) {|ctxt|
-        let attrs = alt ctxt.map.get(id) {
+        let attrs = alt ctxt.ast_map.get(id) {
           ast_map::node_item(item) { item.attrs }
         };
         parse_attrs(attrs)
@@ -263,7 +263,7 @@ fn fold_enum(
         desc: attrs.desc,
         variants: vec::map(doc.variants) {|variant|
             let attrs = astsrv::exec(srv) {|ctxt|
-                alt ctxt.map.get(doc.id) {
+                alt ctxt.ast_map.get(doc.id) {
                   ast_map::node_item(@{
                     node: ast::item_enum(ast_variants, _), _
                   }) {

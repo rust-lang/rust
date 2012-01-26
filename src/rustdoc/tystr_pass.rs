@@ -41,7 +41,7 @@ fn fold_fn(
 
 fn get_fn_sig(srv: astsrv::srv, fn_id: doc::ast_id) -> option<str> {
     astsrv::exec(srv) {|ctxt|
-        alt ctxt.map.get(fn_id) {
+        alt ctxt.ast_map.get(fn_id) {
           ast_map::node_item(@{
             ident: ident,
             node: ast::item_fn(decl, _, blk), _
@@ -79,7 +79,7 @@ fn merge_ret_ty(
 
 fn get_ret_ty(srv: astsrv::srv, fn_id: doc::ast_id) -> option<str> {
     astsrv::exec(srv) {|ctxt|
-        alt ctxt.map.get(fn_id) {
+        alt ctxt.ast_map.get(fn_id) {
           ast_map::node_item(@{
             node: ast::item_fn(decl, _, _), _
           }) {
@@ -130,7 +130,7 @@ fn merge_arg_tys(
 
 fn get_arg_tys(srv: astsrv::srv, fn_id: doc::ast_id) -> [(str, str)] {
     astsrv::exec(srv) {|ctxt|
-        alt ctxt.map.get(fn_id) {
+        alt ctxt.ast_map.get(fn_id) {
           ast_map::node_item(@{
             node: ast::item_fn(decl, _, _), _
           }) {
@@ -161,7 +161,7 @@ fn fold_const(
 
     ~{
         ty: some(astsrv::exec(srv) {|ctxt|
-            alt ctxt.map.get(doc.id) {
+            alt ctxt.ast_map.get(doc.id) {
               ast_map::node_item(@{
                 node: ast::item_const(ty, _), _
               }) {
@@ -191,7 +191,7 @@ fn fold_enum(
     ~{
         variants: vec::map(doc.variants) {|variant|
             let sig = astsrv::exec(srv) {|ctxt|
-                alt ctxt.map.get(doc.id) {
+                alt ctxt.ast_map.get(doc.id) {
                   ast_map::node_item(@{
                     node: ast::item_enum(ast_variants, _), _
                   }) {
