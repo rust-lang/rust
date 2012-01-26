@@ -3375,7 +3375,7 @@ fn trans_rec(bcx: @block_ctxt, fields: [ast::field],
     let ty_fields = alt ty::struct(bcx_tcx(bcx), t) { ty::ty_rec(f) { f } };
     let temp_cleanups = [];
     for fld in fields {
-        let ix = option::get(vec::position_pred(ty_fields, {|ft|
+        let ix = option::get(vec::position(ty_fields, {|ft|
             str::eq(fld.node.ident, ft.ident)
         }));
         let dst = GEP_tup_like_1(bcx, t, addr, [0, ix as int]);

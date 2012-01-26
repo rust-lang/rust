@@ -614,7 +614,7 @@ fn find<T: copy>(v: [T], f: fn(T) -> bool) -> option::t<T> {
 }
 
 /*
-Function: position
+Function: position_elt
 
 Find the first index containing a matching value
 
@@ -623,18 +623,16 @@ Returns:
 option::some(uint) - The first index containing a matching value
 option::none - No elements matched
 */
-fn position<T>(x: T, v: [T]) -> option::t<uint> {
-    let i: uint = 0u;
-    while i < len(v) { if x == v[i] { ret some::<uint>(i); } i += 1u; }
-    ret none;
+fn position_elt<T>(v: [T], x: T) -> option::t<uint> {
+    position(v) { |y| x == y }
 }
 
 /*
-Function: position_pred
+Function: position
 
 Find the first index for which the value matches some predicate
 */
-fn position_pred<T>(v: [T], f: fn(T) -> bool) -> option::t<uint> {
+fn position<T>(v: [T], f: fn(T) -> bool) -> option::t<uint> {
     let i: uint = 0u;
     while i < len(v) { if f(v[i]) { ret some::<uint>(i); } i += 1u; }
     ret none;
@@ -1453,21 +1451,26 @@ mod tests {
     }
 
     #[test]
-    fn test_position() {
-        let v1: [int] = [1, 2, 3, 3, 2, 5];
-        assert (position(1, v1) == option::some::<uint>(0u));
-        assert (position(2, v1) == option::some::<uint>(1u));
-        assert (position(5, v1) == option::some::<uint>(5u));
-        assert (position(4, v1) == option::none::<uint>);
+    fn test_position_elt() {
+        assert position_elt([], 1) == none;
+
+        let v1 = [1, 2, 3, 3, 2, 5];
+        assert position_elt(v1, 1) == some(0u);
+        assert position_elt(v1, 2) == some(1u);
+        assert position_elt(v1, 5) == some(5u);
+        assert position_elt(v1, 4) == none;
     }
 
     #[test]
-    fn test_position_pred() {
+    fn test_position() {
         fn less_than_three(&&i: int) -> bool { ret i < 3; }
         fn is_eighteen(&&i: int) -> bool { ret i == 18; }
-        let v1: [int] = [5, 4, 3, 2, 1];
-        assert position_pred(v1, less_than_three) == option::some::<uint>(3u);
-        assert position_pred(v1, is_eighteen) == option::none::<uint>;
+
+        assert position([], less_than_three) == none;
+
+        let v1 = [5, 4, 3, 2, 1];
+        assert position(v1, less_than_three) == some(3u);
+        assert position(v1, is_eighteen) == none;
     }
 
     #[test]
