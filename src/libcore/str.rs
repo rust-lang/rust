@@ -131,7 +131,7 @@ Function: unsafe_from_bytes
 Converts a vector of bytes to a string. Does not verify that the
 vector contains valid UTF-8.
 
-FIXME: don't export?
+FIXME: stop exporting
 */
 fn unsafe_from_bytes(v: [const u8]) -> str unsafe {
     let vcopy: [u8] = v + [0u8];
@@ -146,7 +146,7 @@ Function: unsafe_from_byte
 Converts a byte to a string. Does not verify that the byte is
 valid UTF-8.
 
-FIXME: REMOVE.
+FIXME: stop exporting
 */
 fn unsafe_from_byte(u: u8) -> str { unsafe_from_bytes([u]) }
 
