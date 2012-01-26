@@ -94,6 +94,7 @@ mod front {
     mod attr;
     mod config;
     mod test;
+    mod core_inject;
 }
 
 mod back {

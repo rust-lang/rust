@@ -95,27 +95,6 @@ fn time<T>(do_it: bool, what: str, thunk: fn@() -> T) -> T {
     ret rv;
 }
 
-fn inject_libcore_reference(sess: session,
-                            crate: @ast::crate) -> @ast::crate {
-
-    fn spanned<T: copy>(x: T) -> @ast::spanned<T> {
-        ret @{node: x,
-              span: {lo: 0u, hi: 0u,
-                     expanded_from: codemap::os_none}};
-    }
-
-    let n1 = sess.next_node_id();
-    let n2 = sess.next_node_id();
-
-    let vi1 = spanned(ast::view_item_use("core", [], n1));
-    let vi2 = spanned(ast::view_item_import_glob(@["core"], n2));
-
-    let vis = [vi1, vi2] + crate.node.module.view_items;
-
-    ret @{node: {module: { view_items: vis with crate.node.module }
-                 with crate.node} with *crate }
-}
-
 enum compile_upto {
     cu_parse,
     cu_expand,
@@ -147,9 +126,8 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
              bind syntax::ext::expand::expand_crate(sess, crate));
 
     if upto == cu_expand { ret {crate: crate, tcx: none}; }
-    if sess.opts.libcore {
-        crate = inject_libcore_reference(sess, crate);
-    }
+
+    crate = front::core_inject::maybe_inject_libcore_ref(sess, crate);
 
     let ast_map =
         time(time_passes, "ast indexing",
