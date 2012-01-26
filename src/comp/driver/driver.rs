@@ -127,7 +127,9 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
 
     if upto == cu_expand { ret {crate: crate, tcx: none}; }
 
-    crate = front::core_inject::maybe_inject_libcore_ref(sess, crate);
+    crate =
+        time(time_passes, "core injection",
+             bind front::core_inject::maybe_inject_libcore_ref(sess, crate));
 
     let ast_map =
         time(time_passes, "ast indexing",
