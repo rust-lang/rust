@@ -284,7 +284,7 @@ fn parse_ty_methods(p: parser) -> [ast::ty_method] {
     parse_seq(token::LBRACE, token::RBRACE, seq_sep_none(), {|p|
         let flo = p.span.lo;
         expect_word(p, "fn");
-        let ident = parse_value_ident(p);
+        let ident = parse_method_name(p);
         let tps = parse_ty_params(p);
         let f = parse_ty_fn(ast::proto_bare, p), fhi = p.last_span.hi;
         expect(p, token::SEMI);
@@ -1824,10 +1824,19 @@ fn parse_item_fn(p: parser, purity: ast::purity,
                 ast::item_fn(decl, t.tps, body), attrs);
 }
 
+fn parse_method_name(p: parser) -> ast::ident {
+    alt p.token {
+      token::BINOP(op) { p.bump(); token::binop_to_str(op) }
+      token::NOT { p.bump(); "!" }
+      token::LBRACKET { p.bump(); expect(p, token::RBRACKET); "[]" }
+      _ { parse_value_ident(p) }
+    }
+}
+
 fn parse_method(p: parser) -> @ast::method {
     let lo = p.span.lo;
     expect_word(p, "fn");
-    let ident = parse_value_ident(p);
+    let ident = parse_method_name(p);
     let tps = parse_ty_params(p);
     let decl = parse_fn_decl(p, ast::impure_fn);
     let body = parse_block(p);

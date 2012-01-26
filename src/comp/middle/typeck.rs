@@ -1768,17 +1768,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
 
     fn binop_method(op: ast::binop) -> option::t<str> {
         alt op {
-          ast::add { some("op_add") }
-          ast::subtract { some("op_sub") }
-          ast::mul { some("op_mul") }
-          ast::div { some("op_div") }
-          ast::rem { some("op_rem") }
-          ast::bitxor { some("op_xor") }
-          ast::bitand { some("op_and") }
-          ast::bitor { some("op_or") }
-          ast::lsl { some("op_shift_left") }
-          ast::lsr { some("op_shift_right") }
-          ast::asr { some("op_ashift_right") }
+          ast::add | ast::subtract | ast::mul | ast::div | ast::rem |
+          ast::bitxor | ast::bitand | ast::bitor | ast::lsl | ast::lsr |
+          ast::asr { some(ast_util::binop_to_str(op)) }
           _ { none }
         }
     }
@@ -1904,14 +1896,14 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
             oper_t = structurally_resolved_type(fcx, oper.span, oper_t);
             if !(ty::type_is_integral(tcx, oper_t) ||
                  ty::struct(tcx, oper_t) == ty::ty_bool) {
-                oper_t = check_user_unop(fcx, "!", "op_not", expr, oper_t);
+                oper_t = check_user_unop(fcx, "!", "!", expr, oper_t);
             }
           }
           ast::neg {
             oper_t = structurally_resolved_type(fcx, oper.span, oper_t);
             if !(ty::type_is_integral(tcx, oper_t) ||
                  ty::type_is_fp(tcx, oper_t)) {
-                oper_t = check_user_unop(fcx, "-", "op_neg", expr, oper_t);
+                oper_t = check_user_unop(fcx, "-", "neg", expr, oper_t);
             }
           }
         }
@@ -2337,7 +2329,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
           _ {
             let resolved = structurally_resolved_type(fcx, expr.span,
                                                       raw_base_t);
-            alt lookup_op_method(fcx, expr, resolved, "op_index",
+            alt lookup_op_method(fcx, expr, resolved, "[]",
                                  [some(idx)]) {
               some(ret_ty) { write::ty_only_fixup(fcx, id, ret_ty); }
               _ {

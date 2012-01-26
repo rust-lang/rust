@@ -2219,8 +2219,8 @@ fn trans_assign_op(bcx: @block_ctxt, ex: @ast::expr, op: ast::binop,
         let fty = ty::node_id_to_monotype(bcx_tcx(bcx), callee_id);
         ret trans_call_inner(bcx, fty, {|bcx|
             // FIXME provide the already-computed address, not the expr
-            trans_impl::trans_method_callee(bcx, callee_id, src, origin)
-        }, [dst], ex.id, save_in(lhs_res.val));
+            trans_impl::trans_method_callee(bcx, callee_id, dst, origin)
+        }, [src], ex.id, save_in(lhs_res.val));
       }
       _ {}
     }
@@ -2333,16 +2333,16 @@ fn trans_lazy_binop(bcx: @block_ctxt, op: ast::binop, a: @ast::expr,
 
 
 
-fn trans_binary(bcx: @block_ctxt, op: ast::binop, a: @ast::expr,
-                b: @ast::expr, dest: dest, ex: @ast::expr) -> @block_ctxt {
+fn trans_binary(bcx: @block_ctxt, op: ast::binop, lhs: @ast::expr,
+                rhs: @ast::expr, dest: dest, ex: @ast::expr) -> @block_ctxt {
     // User-defined operators
     alt bcx_ccx(bcx).method_map.find(ex.id) {
       some(origin) {
         let callee_id = ast_util::op_expr_callee_id(ex);
         let fty = ty::node_id_to_monotype(bcx_tcx(bcx), callee_id);
         ret trans_call_inner(bcx, fty, {|bcx|
-            trans_impl::trans_method_callee(bcx, callee_id, a, origin)
-        }, [b], ex.id, dest);
+            trans_impl::trans_method_callee(bcx, callee_id, lhs, origin)
+        }, [rhs], ex.id, dest);
       }
       _ {}
     }
@@ -2350,15 +2350,15 @@ fn trans_binary(bcx: @block_ctxt, op: ast::binop, a: @ast::expr,
     // First couple cases are lazy:
     alt op {
       ast::and | ast::or {
-        ret trans_lazy_binop(bcx, op, a, b, dest);
+        ret trans_lazy_binop(bcx, op, lhs, rhs, dest);
       }
       _ {
         // Remaining cases are eager:
-        let lhs = trans_temp_expr(bcx, a);
-        let rhs = trans_temp_expr(lhs.bcx, b);
-        ret trans_eager_binop(rhs.bcx, op, lhs.val,
-                              ty::expr_ty(bcx_tcx(bcx), a), rhs.val,
-                              ty::expr_ty(bcx_tcx(bcx), b), dest);
+        let lhs_res = trans_temp_expr(bcx, lhs);
+        let rhs_res = trans_temp_expr(lhs_res.bcx, rhs);
+        ret trans_eager_binop(rhs_res.bcx, op, lhs_res.val,
+                              ty::expr_ty(bcx_tcx(bcx), lhs), rhs_res.val,
+                              ty::expr_ty(bcx_tcx(bcx), rhs), dest);
       }
     }
 }
@@ -3517,8 +3517,8 @@ fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
       ast::expr_tup(args) { ret trans_tup(bcx, args, e.id, dest); }
       ast::expr_lit(lit) { ret trans_lit(bcx, *lit, dest); }
       ast::expr_vec(args, _) { ret tvec::trans_vec(bcx, args, e.id, dest); }
-      ast::expr_binary(op, x, y) {
-        ret trans_binary(bcx, op, x, y, dest, e);
+      ast::expr_binary(op, lhs, rhs) {
+        ret trans_binary(bcx, op, lhs, rhs, dest, e);
       }
       ast::expr_unary(op, x) {
         assert op != ast::deref; // lvals are handled above
