@@ -56,7 +56,7 @@ fn expand_expr(exts: hashmap<str, syntax_extension>, cx: ext_ctxt,
 fn expand_qquote(cx: ext_ctxt, sp: span, e: @ast::expr) -> ast::expr_ {
     import syntax::ext::build::*;
     let str = codemap::span_to_snippet(sp, cx.session().parse_sess.cm);
-    let expr = make_new_str(cx, e.span, str);
+    let expr = mk_str(cx, e.span, str);
     ret expr.node;
 }
 
