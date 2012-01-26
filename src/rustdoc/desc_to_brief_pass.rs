@@ -20,7 +20,8 @@ fn run(
     let fold = fold::fold({
         fold_mod: fold_mod,
         fold_const: fold_const,
-        fold_fn: fold_fn
+        fold_fn: fold_fn,
+        fold_enum: fold_enum
         with *fold::default_seq_fold(())
     });
     fold.fold_crate(fold, doc)
@@ -50,6 +51,17 @@ fn fold_const(fold: fold::fold<()>, doc: doc::constdoc) -> doc::constdoc {
 
 fn fold_fn(fold: fold::fold<()>, doc: doc::fndoc) -> doc::fndoc {
     let doc = fold::default_seq_fold_fn(fold, doc);
+    let (brief, desc) = modify(doc.brief, doc.desc);
+
+    ~{
+        brief: brief,
+        desc: desc
+        with *doc
+    }
+}
+
+fn fold_enum(fold: fold::fold<()>, doc: doc::enumdoc) -> doc::enumdoc {
+    let doc = fold::default_seq_fold_enum(fold, doc);
     let (brief, desc) = modify(doc.brief, doc.desc);
 
     ~{
@@ -90,6 +102,17 @@ fn should_promote_fn_desc() {
     let doc = run(srv, doc);
     assert doc.topmod.fns[0].brief == some("desc");
     assert doc.topmod.fns[0].desc == none;
+}
+
+#[test]
+fn should_promote_enum_desc() {
+    let source = "#[doc(desc = \"desc\")] enum a { b }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = attr_pass::mk_pass()(srv, doc);
+    let doc = run(srv, doc);
+    assert doc.topmod.enums[0].brief == some("desc");
+    assert doc.topmod.enums[0].desc == none;
 }
 
 fn modify(
