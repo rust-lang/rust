@@ -9,8 +9,8 @@ import rustc::syntax::ast;
 import rustc::front::attr;
 import core::tuple;
 
-export crate_attrs, mod_attrs, fn_attrs, arg_attrs, const_attrs;
-export parse_crate, parse_mod, parse_fn, parse_const;
+export crate_attrs, mod_attrs, fn_attrs, arg_attrs, const_attrs, enum_attrs;
+export parse_crate, parse_mod, parse_fn, parse_const, parse_enum;
 
 type crate_attrs = {
     name: option<str>
@@ -38,6 +38,40 @@ type const_attrs = {
     brief: option<str>,
     desc: option<str>
 };
+
+type enum_attrs = {
+    brief: option<str>,
+    desc: option<str>
+};
+
+type variant_attrs = {
+    desc: option<str>
+};
+
+#[cfg(test)]
+mod test {
+
+    fn parse_attributes(source: str) -> [ast::attribute] {
+        import rustc::syntax::parse::parser;
+        // FIXME: Uncommenting this results in rustc bugs
+        //import rustc::syntax::codemap;
+        import rustc::driver::diagnostic;
+
+        let cm = rustc::syntax::codemap::new_codemap();
+        let handler = diagnostic::mk_handler(none);
+        let parse_sess = @{
+            cm: cm,
+            mutable next_id: 0,
+            span_diagnostic: diagnostic::mk_span_handler(handler, cm),
+            mutable chpos: 0u,
+            mutable byte_pos: 0u
+        };
+        let parser = parser::new_parser_from_source_str(
+            parse_sess, [], "-", @source);
+
+        parser::parse_outer_attributes(parser)
+    }
+}
 
 fn doc_meta(
     attrs: [ast::attribute]
@@ -333,27 +367,43 @@ fn should_parse_const_long_doc() {
     assert attrs.desc == some("b");
 }
 
-#[cfg(test)]
-mod test {
+fn parse_enum(attrs: [ast::attribute]) -> enum_attrs {
+    parse_short_doc_or(
+        attrs,
+        {|desc|
+            {
+                brief: none,
+                desc: desc
+            }
+        },
+        parse_enum_long_doc
+    )
+}
 
-    fn parse_attributes(source: str) -> [ast::attribute] {
-        import rustc::syntax::parse::parser;
-        // FIXME: Uncommenting this results in rustc bugs
-        //import rustc::syntax::codemap;
-        import rustc::driver::diagnostic;
-
-        let cm = rustc::syntax::codemap::new_codemap();
-        let handler = diagnostic::mk_handler(none);
-        let parse_sess = @{
-            cm: cm,
-            mutable next_id: 0,
-            span_diagnostic: diagnostic::mk_span_handler(handler, cm),
-            mutable chpos: 0u,
-            mutable byte_pos: 0u
-        };
-        let parser = parser::new_parser_from_source_str(
-            parse_sess, [], "-", @source);
-
-        parser::parse_outer_attributes(parser)
+fn parse_enum_long_doc(
+    _items: [@ast::meta_item],
+    brief: option<str>,
+    desc: option<str>
+) -> enum_attrs {
+    {
+        brief: brief,
+        desc: desc
     }
+}
+
+#[test]
+fn should_parse_enum_short_doc() {
+    let source = "#[doc = \"description\"]";
+    let attrs = test::parse_attributes(source);
+    let attrs = parse_enum(attrs);
+    assert attrs.desc == some("description");
+}
+
+#[test]
+fn should_parse_enum_long_doc() {
+    let source = "#[doc(brief = \"a\", desc = \"b\")]";
+    let attrs = test::parse_attributes(source);
+    let attrs = parse_enum(attrs);
+    assert attrs.brief == some("a");
+    assert attrs.desc == some("b");
 }
