@@ -1903,7 +1903,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
             oper_t = structurally_resolved_type(fcx, oper.span, oper_t);
             if !(ty::type_is_integral(tcx, oper_t) ||
                  ty::type_is_fp(tcx, oper_t)) {
-                oper_t = check_user_unop(fcx, "-", "neg", expr, oper_t);
+                oper_t = check_user_unop(fcx, "-", "unary-", expr, oper_t);
             }
           }
         }

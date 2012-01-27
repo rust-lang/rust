@@ -7,7 +7,7 @@ impl point_ops for point {
     fn -(other: point) -> point {
         {x: self.x - other.x, y: self.y - other.y}
     }
-    fn neg() -> point {
+    fn unary-() -> point {
         {x: -self.x, y: -self.y}
     }
     fn [](x: bool) -> int {

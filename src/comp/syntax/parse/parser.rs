@@ -1829,7 +1829,11 @@ fn parse_method_name(p: parser) -> ast::ident {
       token::BINOP(op) { p.bump(); token::binop_to_str(op) }
       token::NOT { p.bump(); "!" }
       token::LBRACKET { p.bump(); expect(p, token::RBRACKET); "[]" }
-      _ { parse_value_ident(p) }
+      _ {
+          let id = parse_value_ident(p);
+          if id == "unary" && eat(p, token::BINOP(token::MINUS)) { "unary-" }
+          else { id }
+      }
     }
 }
 
