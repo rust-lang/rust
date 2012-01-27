@@ -64,14 +64,14 @@ fn write_mod(
     moddoc: doc::moddoc
 ) {
     let fullpath = str::connect(moddoc.path + [moddoc.name], "::");
-    write_header(ctxt, h2, #fmt("Module `%s`", fullpath));
+    write_header(ctxt, h1, #fmt("Module `%s`", fullpath));
     write_mod_contents(ctxt, moddoc);
 }
 
 #[test]
 fn should_write_full_path_to_mod() {
     let markdown = test::render("mod a { mod b { mod c { } } }");
-    assert str::contains(markdown, "## Module `a::b::c`");
+    assert str::contains(markdown, "# Module `a::b::c`");
 }
 
 fn write_mod_contents(
@@ -118,7 +118,7 @@ fn write_fn(
     ctxt: ctxt,
     doc: doc::fndoc
 ) {
-    write_header(ctxt, h3, #fmt("Function `%s`", doc.name));
+    write_header(ctxt, h2, #fmt("Function `%s`", doc.name));
     write_sig(ctxt, doc.sig);
     write_brief(ctxt, doc.brief);
     write_desc(ctxt, doc.desc);
@@ -146,7 +146,7 @@ fn code_block_indent(s: str) -> str {
 #[test]
 fn write_markdown_should_write_function_header() {
     let markdown = test::render("fn func() { }");
-    assert str::contains(markdown, "### Function `func`");
+    assert str::contains(markdown, "## Function `func`");
 }
 
 #[test]
@@ -362,7 +362,7 @@ fn write_const(
     ctxt: ctxt,
     doc: doc::constdoc
 ) {
-    write_header(ctxt, h3, #fmt("Const `%s`", doc.name));
+    write_header(ctxt, h2, #fmt("Const `%s`", doc.name));
     write_sig(ctxt, doc.ty);
     write_brief(ctxt, doc.brief);
     write_desc(ctxt, doc.desc);
@@ -371,7 +371,7 @@ fn write_const(
 #[test]
 fn should_write_const_header() {
     let markdown = test::render("const a: bool = true;");
-    assert str::contains(markdown, "### Const `a`\n\n");
+    assert str::contains(markdown, "## Const `a`\n\n");
 }
 
 #[test]
@@ -386,7 +386,7 @@ fn write_enum(
     ctxt: ctxt,
     doc: doc::enumdoc
 ) {
-    write_header(ctxt, h3, #fmt("Enum `%s`", doc.name));
+    write_header(ctxt, h2, #fmt("Enum `%s`", doc.name));
     write_brief(ctxt, doc.brief);
     write_desc(ctxt, doc.desc);
     write_variants(ctxt, doc.variants);
@@ -395,7 +395,7 @@ fn write_enum(
 #[test]
 fn should_write_enum_header() {
     let markdown = test::render("enum a { b }");
-    assert str::contains(markdown, "### Enum `a`\n\n");
+    assert str::contains(markdown, "## Enum `a`\n\n");
 }
 
 #[test]
@@ -468,7 +468,7 @@ fn should_write_variant_list_with_signatures() {
 }
 
 fn write_res(ctxt: ctxt, doc: doc::resdoc) {
-    write_header(ctxt, h3, #fmt("Resource `%s`", doc.name));
+    write_header(ctxt, h2, #fmt("Resource `%s`", doc.name));
     write_sig(ctxt, doc.sig);
     write_brief(ctxt, doc.brief);
     write_desc(ctxt, doc.desc);
@@ -478,7 +478,7 @@ fn write_res(ctxt: ctxt, doc: doc::resdoc) {
 #[test]
 fn should_write_resource_header() {
     let markdown = test::render("resource r(a: bool) { }");
-    assert str::contains(markdown, "### Resource `r`");
+    assert str::contains(markdown, "## Resource `r`");
 }
 
 #[test]
@@ -537,7 +537,7 @@ mod test {
     #[test]
     fn write_markdown_should_write_mod_headers() {
         let markdown = render("mod moo { }");
-        assert str::contains(markdown, "## Module `moo`");
+        assert str::contains(markdown, "# Module `moo`");
     }
 
     #[test]
