@@ -134,6 +134,9 @@ fn get_arg_tys(srv: astsrv::srv, fn_id: doc::ast_id) -> [(str, str)] {
         alt ctxt.ast_map.get(fn_id) {
           ast_map::node_item(@{
             node: ast::item_fn(decl, _, _), _
+          }) |
+          ast_map::node_item(@{
+            node: ast::item_res(decl, _, _, _, _), _
           }) {
             vec::map(decl.inputs) {|arg|
                 (arg.ident, pprust::ty_to_str(arg.ty))
@@ -231,6 +234,7 @@ fn fold_res(
     let srv = fold.ctxt;
 
     ~{
+        args: merge_arg_tys(srv, doc.id, doc.args),
         sig: some(astsrv::exec(srv) {|ctxt|
             alt ctxt.ast_map.get(doc.id) {
               ast_map::node_item(@{
@@ -250,6 +254,14 @@ fn should_add_resource_sigs() {
     let srv = astsrv::mk_srv_from_str(source);
     let doc = extract::from_srv(srv, "");
     let doc = run(srv, doc);
-    log(error, doc.topmod.resources[0].sig);
     assert doc.topmod.resources[0].sig == some("resource r(b: bool)");
+}
+
+#[test]
+fn should_add_resource_arg_tys() {
+    let source = "resource r(a: bool) { }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = run(srv, doc);
+    assert doc.topmod.resources[0].args[0].ty == some("bool");
 }

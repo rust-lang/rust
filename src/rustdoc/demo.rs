@@ -70,3 +70,32 @@ mod blade_runner {
                 Alien 3 was crap though."
     )];
 }
+
+#[doc(
+    brief = "Bored",
+    desc = "
+
+    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed nec
+    molestie nisl. Duis massa risus, pharetra a scelerisque a,
+    molestie eu velit. Donec mattis ligula at ante imperdiet ut
+    dapibus mauris malesuada. Sed gravida nisi a metus elementum sit
+    amet hendrerit dolor bibendum. Aenean sit amet neque massa, sed
+    tempus tortor. Sed ut lobortis enim. Proin a mauris quis nunc
+    fermentum ultrices eget a erat. Mauris in lectus vitae metus
+    sodales auctor. Morbi nunc quam, ultricies at venenatis non,
+    pellentesque ac dui.
+
+    Quisque vitae est id eros placerat laoreet sit amet eu
+    nisi. Curabitur suscipit neque porttitor est euismod
+    lacinia. Curabitur non quam vitae ipsum adipiscing
+    condimentum. Mauris ut ante eget metus sollicitudin
+    blandit. Aliquam erat volutpat. Morbi sed nisl mauris. Nulla
+    facilisi. Phasellus at mollis ipsum. Maecenas sed convallis
+    sapien. Nullam in ligula turpis. Pellentesque a neque augue. Sed
+    eget ante feugiat tortor congue auctor ac quis ante. Proin
+    condimentum lacinia tincidunt.
+
+")]
+resource bored(bored: bool) {
+    log(error, bored);
+}
