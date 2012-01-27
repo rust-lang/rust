@@ -10,9 +10,9 @@ import rustc::front::attr;
 import core::tuple;
 
 export crate_attrs, mod_attrs, fn_attrs, arg_attrs,
-       const_attrs, enum_attrs, variant_attrs;
+       const_attrs, enum_attrs, variant_attrs, res_attrs;
 export parse_crate, parse_mod, parse_fn, parse_const,
-       parse_enum, parse_variant;
+       parse_enum, parse_variant, parse_res;
 
 type crate_attrs = {
     name: option<str>
@@ -48,6 +48,12 @@ type enum_attrs = {
 
 type variant_attrs = {
     desc: option<str>
+};
+
+type res_attrs = {
+    brief: option<str>,
+    desc: option<str>,
+    args: [arg_attrs]
 };
 
 #[cfg(test)]
@@ -248,7 +254,19 @@ fn parse_fn_long_doc(
 ) -> fn_attrs {
     let return = attr::meta_item_value_from_list(items, "return");
     let failure = attr::meta_item_value_from_list(items, "failure");
-    let args = alt attr::meta_item_list_from_list(items, "args") {
+    let args = parse_args(items);
+
+    {
+        brief: brief,
+        desc: desc,
+        args: args,
+        return: return,
+        failure: failure
+    }
+}
+
+fn parse_args(items: [@ast::meta_item]) -> [arg_attrs] {
+    alt attr::meta_item_list_from_list(items, "args") {
       some(items) {
         vec::filter_map(items) {|item|
             option::map(attr::name_value_str_pair(item)) { |pair|
@@ -260,14 +278,6 @@ fn parse_fn_long_doc(
         }
       }
       none { [] }
-    };
-
-    {
-        brief: brief,
-        desc: desc,
-        args: args,
-        return: return,
-        failure: failure
     }
 }
 
@@ -416,4 +426,59 @@ fn should_parse_variant_long_doc() {
     let attrs = test::parse_attributes(source);
     let attrs = parse_variant(attrs);
     assert attrs.desc == some("a");
+}
+
+fn parse_res(
+    attrs: [ast::attribute]
+) -> res_attrs {
+
+    parse_short_doc_or(
+        attrs,
+        {|desc|
+            {
+                brief: none,
+                desc: desc,
+                args: []
+            }
+        },
+        parse_res_long_doc
+    )
+}
+
+fn parse_res_long_doc(
+    items: [@ast::meta_item],
+    brief: option<str>,
+    desc: option<str>
+) -> res_attrs {
+    {
+        brief: brief,
+        desc: desc,
+        args: parse_args(items)
+    }
+}
+
+#[test]
+fn should_parse_resource_short_desc() {
+    let source = "#[doc = \"a\"]";
+    let attrs = test::parse_attributes(source);
+    let attrs = parse_res(attrs);
+    assert attrs.desc == some("a");
+}
+
+#[test]
+fn should_parse_resource_long_desc() {
+    let source = "#[doc(brief = \"a\", desc = \"b\")]";
+    let attrs = test::parse_attributes(source);
+    let attrs = parse_res(attrs);
+    assert attrs.brief == some("a");
+    assert attrs.desc == some("b");
+}
+
+#[test]
+fn shoulde_parse_resource_arg() {
+    let source = "#[doc(args(a = \"b\"))]";
+    let attrs = test::parse_attributes(source);
+    let attrs = parse_res(attrs);
+    assert attrs.args[0].name == "a";
+    assert attrs.args[0].desc == "b";
 }
