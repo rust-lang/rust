@@ -24,7 +24,8 @@ fn run(
         fold_mod: fold_mod,
         fold_fn: fold_fn,
         fold_const: fold_const,
-        fold_enum: fold_enum
+        fold_enum: fold_enum,
+        fold_res: fold_res
         with *fold::default_seq_fold(srv)
     });
     fold.fold_crate(fold, doc)
@@ -306,4 +307,50 @@ fn fold_enum_should_extract_variant_docs() {
     let fold = fold::default_seq_fold(srv);
     let doc = fold_enum(fold, doc.topmod.enums[0]);
     assert doc.variants[0].desc == some("c");
+}
+
+fn fold_res(
+    fold: fold::fold<astsrv::srv>,
+    doc: doc::resdoc
+) -> doc::resdoc {
+
+    let srv = fold.ctxt;
+    let attrs = parse_item_attrs(srv, doc.id, attr_parser::parse_fn);
+
+    ~{
+        brief: attrs.brief,
+        desc: attrs.desc,
+        args: vec::map(attrs.args) {|attrs|
+            ~{
+                name: attrs.name,
+                desc: some(attrs.desc),
+                ty: none
+            }
+        }
+        with *doc
+    }
+}
+
+#[test]
+fn fold_res_should_extract_docs() {
+    let source = "#[doc(brief = \"a\", desc = \"b\")]\
+                  resource r(b: bool) { }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let fold = fold::default_seq_fold(srv);
+    let doc = fold_res(fold, doc.topmod.resources[0]);
+    assert doc.brief == some("a");
+    assert doc.desc == some("b");
+}
+
+#[test]
+fn fold_res_should_extract_arg_docs() {
+    let source = "#[doc(args(a = \"b\"))]\
+                  resource r(a: bool) { }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let fold = fold::default_seq_fold(srv);
+    let doc = fold_res(fold, doc.topmod.resources[0]);
+    assert doc.args[0].name == "a";
+    assert doc.args[0].desc == some("b");
 }
