@@ -494,9 +494,7 @@ fn opts() -> [getopts::opt] {
          optmulti("cfg"), optflag("test"),
          optflag("lib"), optflag("bin"), optflag("static"), optflag("gc"),
          optflag("no-asm-comments"),
-         optflag("warn-unused-imports"),
-         // FIXME: Transitional. Please remove
-         optflag("no-core")];
+         optflag("warn-unused-imports")];
 }
 
 type output_filenames = @{out_filename: str, obj_filename:str};

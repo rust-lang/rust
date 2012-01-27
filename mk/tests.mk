@@ -196,7 +196,7 @@ $(3)/test/coretest.stage$(1)-$(2)$$(X):			\
 		$$(CORELIB_CRATE) $$(CORELIB_INPUTS)	\
         $$(SREQ$(1)_T_$(2)_H_$(3))
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test --no-core
+	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
 
 check-stage$(1)-T-$(2)-H-$(3)-core-dummy:			\
 		$(3)/test/coretest.stage$(1)-$(2)$$(X)
