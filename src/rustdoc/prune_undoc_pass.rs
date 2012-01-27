@@ -22,10 +22,12 @@ fn run(
         fold_fn: fold_fn,
         fold_const: fold_const,
         fold_enum: fold_enum,
+        fold_res: fold_res,
         fold_modlist: fold_modlist,
         fold_fnlist: fold_fnlist,
         fold_constlist: fold_constlist,
-        fold_enumlist: fold_enumlist
+        fold_enumlist: fold_enumlist,
+        fold_reslist: fold_reslist
         with *fold::default_seq_fold(ctxt)
     });
     fold.fold_crate(fold, doc)
@@ -279,4 +281,67 @@ fn should_not_elide_enums_with_documented_variants() {
     let doc = attr_pass::mk_pass()(srv, doc);
     let doc = run(srv, doc);
     assert vec::is_not_empty(*doc.topmod.enums);
+}
+
+fn fold_res(fold: fold::fold<ctxt>, doc: doc::resdoc) -> doc::resdoc {
+    let doc = ~{
+        args: vec::filter_map(doc.args) {|arg|
+            if arg.desc != none {
+                some(arg)
+            } else {
+                none
+            }
+        }
+        with *fold::default_seq_fold_res(fold, doc)
+    };
+    fold.ctxt.have_docs =
+        doc.brief != none
+        || doc.desc != none
+        || vec::is_not_empty(doc.args);
+    ret doc;
+}
+
+fn fold_reslist(
+    fold: fold::fold<ctxt>,
+    list: doc::reslist
+) -> doc::reslist {
+    doc::reslist(vec::filter_map(*list) {|doc|
+        let doc = fold.fold_res(fold, doc);
+        if fold.ctxt.have_docs {
+            some(doc)
+        } else {
+            none
+        }
+    })
+}
+
+#[test]
+fn should_elide_undocumented_resources() {
+    let source = "resource r(a: bool) { }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = run(srv, doc);
+    assert vec::is_empty(*doc.topmod.resources);
+}
+
+#[test]
+fn should_elide_undocumented_resource_args() {
+    let source = "#[doc = \"drunk\"]\
+                  resource r(a: bool) { }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = attr_pass::mk_pass()(srv, doc);
+    let doc = run(srv, doc);
+    assert vec::is_empty(doc.topmod.resources[0].args);
+}
+
+#[test]
+fn should_not_elide_resources_with_documented_args() {
+    let source = "#[doc(args(a = \"drunk\"))]\
+                  resource r(a: bool) { }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = attr_pass::mk_pass()(srv, doc);
+    let doc = run(srv, doc);
+    assert vec::is_not_empty(*doc.topmod.resources);
 }
