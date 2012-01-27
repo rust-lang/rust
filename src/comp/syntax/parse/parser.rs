@@ -630,8 +630,19 @@ fn parse_seq<T: copy>(bra: token::token, ket: token::token,
 
 fn have_dollar(p: parser) -> option::t<ast::mac_> {
     alt p.token {
-      token::DOLLAR_NUM(num) {p.bump(); some(ast::mac_var(num))}
-      _                      {none}
+      token::DOLLAR_NUM(num) {
+        p.bump();
+        some(ast::mac_var(num))
+      }
+      token::DOLLAR_LPAREN {
+        let lo = p.span.lo;
+        p.bump();
+        let e = parse_expr(p);
+        expect(p, token::RPAREN);
+        let hi = p.last_span.hi;
+        some(ast::mac_aq(ast_util::mk_sp(lo,hi), e))
+      }
+      _ {none}
     }
 }
 

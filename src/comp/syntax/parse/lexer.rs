@@ -372,10 +372,11 @@ fn next_token_inner(rdr: reader) -> token::token {
             }
             rdr.bump();
             ret token::DOLLAR_NUM(val);
-        } else if c == '(' {
+        } else if rdr.curr == '(' {
+            rdr.bump();
             ret token::DOLLAR_LPAREN;
         } else {
-            rdr.fatal("expected digit3");
+            rdr.fatal("expected digit");
         }
       }
 
