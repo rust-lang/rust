@@ -366,7 +366,6 @@ fn build_session_options(match: getopts::match,
         } else if opt_present(match, "emit-llvm") {
             link::output_type_bitcode
         } else { link::output_type_exe };
-    let libcore = !opt_present(match, "no-core");
     let verify = !opt_present(match, "no-verify");
     let save_temps = opt_present(match, "save-temps");
     let extra_debuginfo = opt_present(match, "xg");
@@ -414,7 +413,6 @@ fn build_session_options(match: getopts::match,
     let sopts: @session::options =
         @{crate_type: crate_type,
           static: static,
-          libcore: libcore,
           optimize: opt_level,
           debuginfo: debuginfo,
           extra_debuginfo: extra_debuginfo,
@@ -494,10 +492,11 @@ fn opts() -> [getopts::opt] {
          optflag("no-verify"),
          optflag("no-lint-ctypes"),
          optmulti("cfg"), optflag("test"),
-         optflag("no-core"),
          optflag("lib"), optflag("bin"), optflag("static"), optflag("gc"),
          optflag("no-asm-comments"),
-         optflag("warn-unused-imports")];
+         optflag("warn-unused-imports"),
+         // FIXME: Transitional. Please remove
+         optflag("no-core")];
 }
 
 type output_filenames = @{out_filename: str, obj_filename:str};

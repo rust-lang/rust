@@ -7,9 +7,13 @@
 #[license = "MIT"];
 #[crate_type = "lib"];
 
+// Don't link to core. We are core.
+#[no_core];
+
 #[doc(
     brief = "The Rust core library",
     desc = "
+
 The core library provides functionality that is closely tied to the Rust
 built-in types and runtime services, or that is used in nearly every
 non-trivial program.
@@ -20,7 +24,8 @@ as though the user had written the following:
     use core;
     import core::*;
 
-This behavior can be disabled with the `--no-core` compiler flag."
+This behavior can be disabled with the `no_core` crate attribute."
+
 )];
 
 export box, char, float, bessel, f32, f64, int, str, ptr;

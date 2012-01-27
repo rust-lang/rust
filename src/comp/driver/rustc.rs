@@ -33,7 +33,6 @@ options:
     --lib              compile a library crate
     --bin              compile an executable crate (default)
     --static           use or produce static libraries
-    --no-core          omit the 'core' library (used and imported by default)
     --pretty [type]    pretty-print the input instead of compiling
     --ls               list the symbols defined by a crate file
     -L <path>          add a directory to the library search path

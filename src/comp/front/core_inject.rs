@@ -1,16 +1,21 @@
 import driver::session::session;
-import syntax::ast;
 import syntax::codemap;
+import syntax::ast;
+import front::attr;
 
 export maybe_inject_libcore_ref;
 
 fn maybe_inject_libcore_ref(sess: session,
                             crate: @ast::crate) -> @ast::crate {
-    if sess.opts.libcore {
+    if use_core(crate) {
         inject_libcore_ref(sess, crate)
     } else {
         crate
     }
+}
+
+fn use_core(crate: @ast::crate) -> bool {
+    !attr::attrs_contains_name(crate.node.attrs, "no_core")
 }
 
 fn inject_libcore_ref(sess: session,

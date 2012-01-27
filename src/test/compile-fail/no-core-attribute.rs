@@ -1,6 +1,6 @@
-// error-pattern: whatever
+// error-pattern:unresolved name: debug
 #[no_core];
 
 fn main() {
-    log(debug, core::int::max_value);
+    log(debug, 0);
 }

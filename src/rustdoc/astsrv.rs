@@ -66,7 +66,6 @@ fn build_session() -> session::session {
     let sopts: @session::options = @{
         crate_type: session::lib_crate,
         static: false,
-        libcore: false,
         optimize: 0u,
         debuginfo: false,
         extra_debuginfo: false,

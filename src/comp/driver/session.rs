@@ -29,7 +29,6 @@ type options =
     // with additional crate configurations during the compile process
     {crate_type: crate_type,
      static: bool,
-     libcore: bool,
      optimize: uint,
      debuginfo: bool,
      extra_debuginfo: bool,

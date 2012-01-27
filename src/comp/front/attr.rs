@@ -9,6 +9,7 @@ export attr_meta;
 export attr_metas;
 export find_linkage_metas;
 export find_attrs_by_name;
+export attrs_contains_name;
 export find_meta_items_by_name;
 export contains;
 export contains_name;
@@ -54,6 +55,10 @@ fn find_attrs_by_name(attrs: [ast::attribute], name: ast::ident) ->
         }
     );
     ret vec::filter_map(attrs, filter);
+}
+
+fn attrs_contains_name(attrs: [ast::attribute], name: ast::ident) -> bool {
+    vec::is_not_empty(find_attrs_by_name(attrs, name))
 }
 
 fn get_attr_name(attr: ast::attribute) -> ast::ident {
