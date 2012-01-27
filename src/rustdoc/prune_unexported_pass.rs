@@ -23,7 +23,8 @@ fn fold_mod(fold: fold::fold<astsrv::srv>, doc: doc::moddoc) -> doc::moddoc {
     ~{
         mods: doc::modlist(exported_mods(fold.ctxt, doc)),
         fns: doc::fnlist(exported_fns(fold.ctxt, doc)),
-        consts: doc::constlist(exported_consts(fold.ctxt, doc))
+        consts: doc::constlist(exported_consts(fold.ctxt, doc)),
+        enums: doc::enumlist(exported_enums(fold.ctxt, doc))
         with *doc
     }
 }
@@ -49,6 +50,14 @@ fn exported_consts(srv: astsrv::srv, doc: doc::moddoc) -> [doc::constdoc] {
         srv, doc,
         exported_consts_from_crate,
         exported_consts_from_mod
+    )
+}
+
+fn exported_enums(srv: astsrv::srv, doc: doc::moddoc) -> [doc::enumdoc] {
+    exported_things(
+        srv, doc,
+        exported_enums_from_crate,
+        exported_enums_from_mod
     )
 }
 
@@ -107,6 +116,20 @@ fn exported_consts_from_mod(
     exported_consts_from(srv, doc, bind is_exported_from_mod(_, doc.id, _))
 }
 
+fn exported_enums_from_crate(
+    srv: astsrv::srv,
+    doc: doc::moddoc
+) -> [doc::enumdoc] {
+    exported_enums_from(srv, doc, is_exported_from_crate)
+}
+
+fn exported_enums_from_mod(
+    srv: astsrv::srv,
+    doc: doc::moddoc
+) -> [doc::enumdoc] {
+    exported_enums_from(srv, doc, bind is_exported_from_mod(_, doc.id, _))
+}
+
 fn exported_fns_from(
     srv: astsrv::srv,
     doc: doc::moddoc,
@@ -141,6 +164,38 @@ fn exported_consts_from(
     is_exported: fn(astsrv::srv, str) -> bool
 ) -> [doc::constdoc] {
     vec::filter_map(*doc.consts) { |doc|
+        if is_exported(srv, doc.name) {
+            some(doc)
+        } else {
+            none
+        }
+    }
+}
+
+fn exported_enums_from(
+    srv: astsrv::srv,
+    doc: doc::moddoc,
+    is_exported: fn(astsrv::srv, str) -> bool
+) -> [doc::enumdoc] {
+    vec::filter_map(*doc.enums) { |doc|
+        if is_exported(srv, doc.name) {
+            some(~{
+                variants: exported_variants_from(
+                    srv, doc, is_exported)
+                with *doc
+            })
+        } else {
+            none
+        }
+    }
+}
+
+fn exported_variants_from(
+    srv: astsrv::srv,
+    doc: doc::enumdoc,
+    is_exported: fn(astsrv::srv, str) -> bool
+) -> [doc::variantdoc] {
+    vec::filter_map(doc.variants) { |doc|
         if is_exported(srv, doc.name) {
             some(doc)
         } else {
@@ -230,4 +285,40 @@ fn should_prune_unexported_consts_from_top_mod() {
     let doc = extract::from_srv(srv, "");
     let doc = run(srv, doc);
     assert vec::len(*doc.topmod.consts) == 1u;
+}
+
+#[test]
+fn should_prune_unexported_enums_from_top_mod() {
+    let source = "export a; mod a { } enum b { c }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = run(srv, doc);
+    assert vec::len(*doc.topmod.enums) == 0u;
+}
+
+#[test]
+fn should_prune_unexported_enums() {
+    let source = "mod a { export a; mod a { } enum b { c } }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = run(srv, doc);
+    assert vec::len(*doc.topmod.mods[0].enums) == 0u;
+}
+
+#[test]
+fn should_prune_unexported_variants_from_top_mod() {
+    let source = "export b::{}; enum b { c }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = run(srv, doc);
+    assert vec::len(doc.topmod.enums[0].variants) == 0u;
+}
+
+#[test]
+fn should_prune_unexported_variants() {
+    let source = "mod a { export b::{}; enum b { c } }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = run(srv, doc);
+    assert vec::len(doc.topmod.mods[0].enums[0].variants) == 0u;
 }
