@@ -5,7 +5,7 @@ import syntax::visit;
 import syntax::ast_util;
 import driver::session::session;
 
-enum deref_t { unbox, field, index, }
+enum deref_t { unbox(bool), field, index, }
 
 type deref = @{mut: bool, kind: deref_t, outer_t: ty::t};
 
@@ -20,15 +20,15 @@ fn expr_root(tcx: ty::ctxt, ex: @expr, autoderef: bool) ->
         while true {
             alt ty::struct(tcx, t) {
               ty::ty_box(mt) {
-                ds += [@{mut: mt.mut == mut, kind: unbox, outer_t: t}];
+                ds += [@{mut: mt.mut == mut, kind: unbox(false), outer_t: t}];
                 t = mt.ty;
               }
               ty::ty_uniq(mt) {
-                ds += [@{mut: mt.mut == mut, kind: unbox, outer_t: t}];
+                ds += [@{mut: mt.mut == mut, kind: unbox(false), outer_t: t}];
                 t = mt.ty;
               }
               ty::ty_res(_, inner, tps) {
-                ds += [@{mut: false, kind: unbox, outer_t: t}];
+                ds += [@{mut: false, kind: unbox(false), outer_t: t}];
                 t = ty::substitute_type_params(tcx, tps, inner);
               }
               ty::ty_enum(did, tps) {
@@ -37,7 +37,7 @@ fn expr_root(tcx: ty::ctxt, ex: @expr, autoderef: bool) ->
                        vec::len(variants[0].args) != 1u {
                     break;
                 }
-                ds += [@{mut: false, kind: unbox, outer_t: t}];
+                ds += [@{mut: false, kind: unbox(false), outer_t: t}];
                 t = ty::substitute_type_params(tcx, tps, variants[0].args[0]);
               }
               _ { break; }
@@ -85,15 +85,16 @@ fn expr_root(tcx: ty::ctxt, ex: @expr, autoderef: bool) ->
           expr_unary(op, base) {
             if op == deref {
                 let base_t = ty::expr_ty(tcx, base);
-                let is_mut = false;
+                let is_mut = false, ptr = false;
                 alt ty::struct(tcx, base_t) {
                   ty::ty_box(mt) { is_mut = mt.mut == mut; }
                   ty::ty_uniq(mt) { is_mut = mt.mut == mut; }
                   ty::ty_res(_, _, _) { }
                   ty::ty_enum(_, _) { }
-                  ty::ty_ptr(mt) { is_mut = mt.mut == mut; }
+                  ty::ty_ptr(mt) { is_mut = mt.mut == mut; ptr = true; }
                 }
-                ds += [@{mut: is_mut, kind: unbox, outer_t: base_t}];
+                ds += [@{mut: is_mut, kind: unbox(ptr && is_mut),
+                         outer_t: base_t}];
                 ex = base;
             } else { break; }
           }
@@ -187,7 +188,7 @@ fn check_lval(cx: @ctx, dest: @expr, msg: msg) {
         } else if !root.ds[0].mut {
             let name =
                 alt root.ds[0].kind {
-                  mut::unbox { "immutable box" }
+                  mut::unbox(_) { "immutable box" }
                   mut::field { "immutable field" }
                   mut::index { "immutable vec content" }
                 };
@@ -212,7 +213,8 @@ fn check_move_rhs(cx: @ctx, src: @expr) {
         let root = expr_root(cx.tcx, src, false);
 
         // Not a path and no-derefs means this is a temporary.
-        if vec::len(*root.ds) != 0u {
+        if vec::len(*root.ds) != 0u &&
+           root.ds[vec::len(*root.ds) - 1u].kind != unbox(true) {
             cx.tcx.sess.span_err(src.span, "moving out of a data structure");
         }
       }
