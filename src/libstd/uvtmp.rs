@@ -27,6 +27,11 @@ native mod rustrt {
         thread: thread,
         req_id: u32,
         chan: comm::chan<iomsg>);
+    fn rust_uvtmp_timer(
+        thread: thread,
+        timeout: u32,
+        req_id: u32,
+        chan: comm::chan<iomsg>);
     fn rust_uvtmp_delete_buf(buf: *u8);
     fn rust_uvtmp_get_req_id(cd: connect_data) -> u32;
 }
@@ -39,7 +44,9 @@ enum iomsg {
     whatever,
     connected(connect_data),
     wrote(connect_data),
-    read(connect_data, *u8, ctypes::ssize_t)
+    read(connect_data, *u8, ctypes::ssize_t),
+    timer(u32),
+    exit
 }
 
 fn create_thread() -> thread {
@@ -58,8 +65,7 @@ fn delete_thread(thread: thread) {
     rustrt::rust_uvtmp_delete_thread(thread)
 }
 
-fn connect(thread: thread, req_id: u32,
-           ip: str, ch: comm::chan<iomsg>) -> connect_data {
+fn connect(thread: thread, req_id: u32, ip: str, ch: comm::chan<iomsg>) -> connect_data {
     str::as_buf(ip) {|ipbuf|
         rustrt::rust_uvtmp_connect(thread, req_id, ipbuf, ch)
     }
@@ -78,6 +84,11 @@ fn write(thread: thread, req_id: u32, bytes: [u8],
 fn read_start(thread: thread, req_id: u32,
               chan: comm::chan<iomsg>) {
     rustrt::rust_uvtmp_read_start(thread, req_id, chan);
+}
+
+fn timer_start(thread: thread, timeout: u32, req_id: u32,
+              chan: comm::chan<iomsg>) {
+    rustrt::rust_uvtmp_timer(thread, timeout, req_id, chan);
 }
 
 fn delete_buf(buf: *u8) {
