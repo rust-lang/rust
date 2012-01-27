@@ -59,13 +59,15 @@ pure fn gt(x: f32, y: f32) -> bool { ret x > y; }
 // to the libmath macros in the rust runtime for performance
 
 #[doc(
-  brief = "Returns true if `x` is a positive number, including +0.0f320 and +Infinity."
+  brief = "Returns true if `x` is a positive number, including +0.0f320 \
+           and +Infinity."
 )]
 pure fn is_positive(x: f32) -> bool
     { ret x > 0.0f32 || (1.0f32/x) == infinity; }
 
 #[doc(
-  brief = "Returns true if `x` is a negative number, including -0.0f320 and -Infinity."
+  brief = "Returns true if `x` is a negative number, including -0.0f320 \
+           and -Infinity."
 )]
 pure fn is_negative(x: f32) -> bool
     { ret x < 0.0f32 || (1.0f32/x) == neg_infinity; }
