@@ -19,7 +19,8 @@ fn run(
         fold_mod: fold_mod,
         fold_const: fold_const,
         fold_fn: fold_fn,
-        fold_enum: fold_enum
+        fold_enum: fold_enum,
+        fold_res: fold_res
         with *fold::default_seq_fold(op)
     });
     fold.fold_crate(fold, doc)
@@ -84,6 +85,20 @@ fn fold_enum(fold: fold::fold<op>, doc: doc::enumdoc) -> doc::enumdoc {
     }
 }
 
+fn fold_res(fold: fold::fold<op>, doc: doc::resdoc) -> doc::resdoc {
+    ~{
+        brief: maybe_apply_op(fold.ctxt, doc.brief),
+        desc: maybe_apply_op(fold.ctxt, doc.desc),
+        args: vec::map(doc.args) {|arg|
+            ~{
+                desc: maybe_apply_op(fold.ctxt, arg.desc)
+                with *arg
+            }
+        }
+        with *doc
+    }
+}
+
 #[test]
 fn should_execute_op_on_enum_brief() {
     let source = "#[doc(brief = \" a \")] enum a { b }";
@@ -112,4 +127,34 @@ fn should_execute_op_on_variant_desc() {
     let doc = attr_pass::mk_pass()(srv, doc);
     let doc = mk_pass(str::trim)(srv, doc);
     assert doc.topmod.enums[0].variants[0].desc == some("a");
+}
+
+#[test]
+fn should_execute_op_on_resource_brief() {
+    let source = "#[doc(brief = \" a \")] resource r(a: bool) { }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = attr_pass::mk_pass()(srv, doc);
+    let doc = mk_pass(str::trim)(srv, doc);
+    assert doc.topmod.resources[0].brief == some("a");
+}
+
+#[test]
+fn should_execute_op_on_resource_desc() {
+    let source = "#[doc(desc = \" a \")] resource r(a: bool) { }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = attr_pass::mk_pass()(srv, doc);
+    let doc = mk_pass(str::trim)(srv, doc);
+    assert doc.topmod.resources[0].desc == some("a");
+}
+
+#[test]
+fn should_execute_op_on_resource_args() {
+    let source = "#[doc(args(a = \" a \"))] resource r(a: bool) { }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = attr_pass::mk_pass()(srv, doc);
+    let doc = mk_pass(str::trim)(srv, doc);
+    assert doc.topmod.resources[0].args[0].desc == some("a");
 }
