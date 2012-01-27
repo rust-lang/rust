@@ -706,15 +706,55 @@ fn count<T>(x: T, v: [const T]) -> uint {
 /*
 Function: find
 
-Search for an element that matches a given predicate
+Search for the first element that matches a given predicate
 
 Apply function `f` to each element of `v`, starting from the first.
 When function `f` returns true then an option containing the element
 is returned. If `f` matches no elements then none is returned.
 */
 fn find<T: copy>(v: [T], f: fn(T) -> bool) -> option::t<T> {
-    for elt: T in v { if f(elt) { ret some(elt); } }
-    ret none;
+    find_from(v, 0u, len(v), f)
+}
+
+/*
+Function: find_from
+
+Search for the first element that matches a given predicate within a range
+
+Apply function `f` to each element of `v` within the range [`start`, `end`).
+When function `f` returns true then an option containing the element
+is returned. If `f` matches no elements then none is returned.
+*/
+fn find_from<T: copy>(v: [T], start: uint, end: uint, f: fn(T) -> bool) ->
+  option::t<T> {
+    option::map(position_from(v, start, end, f)) { |i| v[i] }
+}
+
+/*
+Function: rfind
+
+Search for the last element that matches a given predicate
+
+Apply function `f` to each element of `v` in reverse order. When function `f`
+returns true then an option containing the element is returned. If `f`
+matches no elements then none is returned.
+*/
+fn rfind<T: copy>(v: [T], f: fn(T) -> bool) -> option::t<T> {
+    rfind_from(v, 0u, len(v), f)
+}
+
+/*
+Function: rfind_from
+
+Search for the last element that matches a given predicate within a range
+
+Apply function `f` to each element of `v` in reverse order within the range
+[`start`, `end`). When function `f` returns true then an option containing
+the element is returned. If `f` matches no elements then none is returned.
+*/
+fn rfind_from<T: copy>(v: [T], start: uint, end: uint, f: fn(T) -> bool) ->
+  option::t<T> {
+    option::map(rposition_from(v, start, end, f)) { |i| v[i] }
 }
 
 /*
@@ -1674,6 +1714,46 @@ mod tests {
     }
 
     #[test]
+    fn test_find() {
+        assert find([], f) == none;
+
+        fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
+        fn g(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'd' }
+        let v = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
+
+        assert find(v, f) == some((1, 'b'));
+        assert find(v, g) == none;
+    }
+
+    #[test]
+    fn test_find_from() {
+        assert find_from([], 0u, 0u, f) == none;
+
+        fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
+        let v = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
+
+        assert find_from(v, 0u, 0u, f) == none;
+        assert find_from(v, 0u, 1u, f) == none;
+        assert find_from(v, 0u, 2u, f) == some((1, 'b'));
+        assert find_from(v, 0u, 3u, f) == some((1, 'b'));
+        assert find_from(v, 0u, 4u, f) == some((1, 'b'));
+
+        assert find_from(v, 1u, 1u, f) == none;
+        assert find_from(v, 1u, 2u, f) == some((1, 'b'));
+        assert find_from(v, 1u, 3u, f) == some((1, 'b'));
+        assert find_from(v, 1u, 4u, f) == some((1, 'b'));
+
+        assert find_from(v, 2u, 2u, f) == none;
+        assert find_from(v, 2u, 3u, f) == none;
+        assert find_from(v, 2u, 4u, f) == some((3, 'b'));
+
+        assert find_from(v, 3u, 3u, f) == none;
+        assert find_from(v, 3u, 4u, f) == some((3, 'b'));
+
+        assert find_from(v, 4u, 4u, f) == none;
+    }
+
+    #[test]
     fn test_rposition() {
         assert find([], f) == none;
 
@@ -1712,6 +1792,48 @@ mod tests {
 
         assert rposition_from(v, 4u, 4u, f) == none;
     }
+
+    #[test]
+    fn test_rfind() {
+        assert rfind([], f) == none;
+
+        fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
+        fn g(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'd' }
+        let v = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
+
+        assert rfind(v, f) == some((3, 'b'));
+        assert rfind(v, g) == none;
+    }
+
+    #[test]
+    fn test_rfind_from() {
+        assert rfind_from([], 0u, 0u, f) == none;
+
+        fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
+        let v = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
+
+        assert rfind_from(v, 0u, 0u, f) == none;
+        assert rfind_from(v, 0u, 1u, f) == none;
+        assert rfind_from(v, 0u, 2u, f) == some((1, 'b'));
+        assert rfind_from(v, 0u, 3u, f) == some((1, 'b'));
+        assert rfind_from(v, 0u, 4u, f) == some((3, 'b'));
+
+        assert rfind_from(v, 1u, 1u, f) == none;
+        assert rfind_from(v, 1u, 2u, f) == some((1, 'b'));
+        assert rfind_from(v, 1u, 3u, f) == some((1, 'b'));
+        assert rfind_from(v, 1u, 4u, f) == some((3, 'b'));
+
+        assert rfind_from(v, 2u, 2u, f) == none;
+        assert rfind_from(v, 2u, 3u, f) == none;
+        assert rfind_from(v, 2u, 4u, f) == some((3, 'b'));
+
+        assert rfind_from(v, 3u, 3u, f) == none;
+        assert rfind_from(v, 3u, 4u, f) == some((3, 'b'));
+
+        assert rfind_from(v, 4u, 4u, f) == none;
+    }
+
+    #[test]
     fn reverse_and_reversed() {
         let v: [mutable int] = [mutable 10, 20];
         assert (v[0] == 10);
