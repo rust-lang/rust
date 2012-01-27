@@ -106,7 +106,7 @@ fn test_connect() {
     connect(thread, 0u32, "74.125.224.146", chan);
     alt comm::recv(port) {
       connected(cd) {
-        close_connection(thread, cd);
+        close_connection(thread, 0u32);
       }
     }
     join_thread(thread);
@@ -123,10 +123,10 @@ fn test_http() {
     connect(thread, 0u32, "74.125.224.146", chan);
     alt comm::recv(port) {
       connected(cd) {
-        write(thread, cd, str::bytes("GET / HTTP/1.0\n\n"), chan);
+        write(thread, 0u32, str::bytes("GET / HTTP/1.0\n\n"), chan);
         alt comm::recv(port) {
           wrote(cd) {
-            read_start(thread, cd, chan);
+            read_start(thread, 0u32, chan);
             let keep_going = true;
             while keep_going {
                 alt comm::recv(port) {
@@ -146,7 +146,7 @@ fn test_http() {
                   }
                 }
             }
-            close_connection(thread, cd);
+            close_connection(thread, 0u32);
           }
         }
       }
