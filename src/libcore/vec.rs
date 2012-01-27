@@ -278,6 +278,110 @@ fn slice_mut<T: copy>(v: [const T], start: uint, end: uint) -> [mutable T] {
     ret result;
 }
 
+/*
+Function: split
+
+Split the vector `v` by applying each element against the predicate `f`.
+*/
+fn split<T: copy>(v: [T], f: fn(T) -> bool) -> [[T]] {
+    let ln = len(v);
+    if (ln == 0u) { ret [] }
+
+    let start = 0u;
+    let result = [];
+    while start < ln {
+        alt position_from(v, start, ln, f) {
+          none { break }
+          some(i) {
+            push(result, slice(v, start, i));
+            start = i + 1u;
+          }
+        }
+    }
+    push(result, slice(v, start, ln));
+    result
+}
+
+/*
+Function: splitn
+
+Split the vector `v` by applying each element against the predicate `f` up
+to `n` times.
+*/
+fn splitn<T: copy>(v: [T], n: uint, f: fn(T) -> bool) -> [[T]] {
+    let ln = len(v);
+    if (ln == 0u) { ret [] }
+
+    let start = 0u;
+    let count = n;
+    let result = [];
+    while start < ln && count > 0u {
+        alt position_from(v, start, ln, f) {
+          none { break }
+          some(i) {
+            push(result, slice(v, start, i));
+            // Make sure to skip the separator.
+            start = i + 1u;
+            count -= 1u;
+          }
+        }
+    }
+    push(result, slice(v, start, ln));
+    result
+}
+
+/*
+Function: rsplit
+
+Reverse split the vector `v` by applying each element against the predicate
+`f`.
+*/
+fn rsplit<T: copy>(v: [T], f: fn(T) -> bool) -> [[T]] {
+    let ln = len(v);
+    if (ln == 0u) { ret [] }
+
+    let end = ln;
+    let result = [];
+    while end > 0u {
+        alt rposition_from(v, 0u, end, f) {
+          none { break }
+          some(i) {
+            push(result, slice(v, i + 1u, end));
+            end = i;
+          }
+        }
+    }
+    push(result, slice(v, 0u, end));
+    reversed(result)
+}
+
+/*
+Function: rsplitn
+
+Reverse split the vector `v` by applying each element against the predicate
+`f` up to `n times.
+*/
+fn rsplitn<T: copy>(v: [T], n: uint, f: fn(T) -> bool) -> [[T]] {
+    let ln = len(v);
+    if (ln == 0u) { ret [] }
+
+    let end = ln;
+    let count = n;
+    let result = [];
+    while end > 0u && count > 0u {
+        alt rposition_from(v, 0u, end, f) {
+          none { break }
+          some(i) {
+            push(result, slice(v, i + 1u, end));
+            // Make sure to skip the separator.
+            end = i;
+            count -= 1u;
+          }
+        }
+    }
+    push(result, slice(v, 0u, end));
+    reversed(result)
+}
 
 // Mutators
 
@@ -1639,6 +1743,48 @@ mod tests {
     fn test_init() {
         let v = init([1, 2, 3]);
         assert v == [1, 2];
+    }
+
+    #[test]
+    fn test_split() {
+        fn f(&&x: int) -> bool { x == 3 }
+
+        assert split([], f) == [];
+        assert split([1, 2], f) == [[1, 2]];
+        assert split([3, 1, 2], f) == [[], [1, 2]];
+        assert split([1, 2, 3], f) == [[1, 2], []];
+        assert split([1, 2, 3, 4, 3, 5], f) == [[1, 2], [4], [5]];
+    }
+
+    #[test]
+    fn test_splitn() {
+        fn f(&&x: int) -> bool { x == 3 }
+
+        assert splitn([], 1u, f) == [];
+        assert splitn([1, 2], 1u, f) == [[1, 2]];
+        assert splitn([3, 1, 2], 1u, f) == [[], [1, 2]];
+        assert splitn([1, 2, 3], 1u, f) == [[1, 2], []];
+        assert splitn([1, 2, 3, 4, 3, 5], 1u, f) == [[1, 2], [4, 3, 5]];
+    }
+
+    #[test]
+    fn test_rsplit() {
+        fn f(&&x: int) -> bool { x == 3 }
+
+        assert rsplit([], f) == [];
+        assert rsplit([1, 2], f) == [[1, 2]];
+        assert rsplit([1, 2, 3], f) == [[1, 2], []];
+        assert rsplit([1, 2, 3, 4, 3, 5], f) == [[1, 2], [4], [5]];
+    }
+
+    #[test]
+    fn test_rsplitn() {
+        fn f(&&x: int) -> bool { x == 3 }
+
+        assert rsplitn([], 1u, f) == [];
+        assert rsplitn([1, 2], 1u, f) == [[1, 2]];
+        assert rsplitn([1, 2, 3], 1u, f) == [[1, 2], []];
+        assert rsplitn([1, 2, 3, 4, 3, 5], 1u, f) == [[1, 2, 3, 4], [5]];
     }
 
     #[test]
