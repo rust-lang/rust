@@ -186,6 +186,17 @@ included:
     USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
     OF SUCH DAMAGE.
 
+* The auxiliary file src/etc/pkg/modpath.iss contains a
+  library routine compiled, by Inno Setup, into the Windows
+  installer binary. This file is licensed under the LGPL,
+  but, in our legal interpretation, this does not affect the
+  aggregate "collected work" license of the Rust
+  distribution (MIT) nor any other components of it. We
+  believe that the terms governing distribution of the
+  binary Windows installer built from modpath.iss are
+  therefore LGPL, but not the terms governing distribution
+  of any of the files installed by such an installer (such
+  as the Rust compiler or runtime libraries themselves).
 
 * The libuv asynchronous I/O library. Code for this package
   is found in the src/rt/libuv directory, within this
