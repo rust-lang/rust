@@ -172,6 +172,7 @@ export type_is_str;
 export type_is_unique;
 export type_is_enum;
 export type_is_c_like_enum;
+export type_structurally_contains;
 export type_structurally_contains_uniques;
 export type_autoderef;
 export type_param;
