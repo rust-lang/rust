@@ -65,7 +65,8 @@ fn delete_thread(thread: thread) {
     rustrt::rust_uvtmp_delete_thread(thread)
 }
 
-fn connect(thread: thread, req_id: u32, ip: str, ch: comm::chan<iomsg>) -> connect_data {
+fn connect(thread: thread, req_id: u32,
+           ip: str, ch: comm::chan<iomsg>) -> connect_data {
     str::as_buf(ip) {|ipbuf|
         rustrt::rust_uvtmp_connect(thread, req_id, ipbuf, ch)
     }
