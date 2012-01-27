@@ -608,7 +608,10 @@ fn link_binary(sess: session,
     // The location of crates will be determined as needed.
     let stage: str = "-L" + sess.filesearch.get_target_lib_path();
 
-    let prog: str = "gcc";
+    // In the future, FreeBSD will use clang as default compiler.
+    // It would be flexible to use cc (system's default C compiler)
+    // instead of hard-coded gcc
+    let prog: str = "cc";
     // The invocations of gcc share some flags across platforms
 
     let gcc_args =
