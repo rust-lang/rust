@@ -240,7 +240,6 @@ type fn_ctxt =
      derived_tydescs: hashmap<ty::t, derived_tydesc_info>,
      id: ast::node_id,
      ret_style: ast::ret_style,
-     sp: span,
      lcx: @local_ctxt};
 
 enum cleanup {
@@ -311,7 +310,7 @@ fn revoke_clean(cx: @block_ctxt, val: ValueRef) {
     ret;
 }
 
-fn get_res_dtor(ccx: @crate_ctxt, sp: span, did: ast::def_id, inner_t: ty::t)
+fn get_res_dtor(ccx: @crate_ctxt, did: ast::def_id, inner_t: ty::t)
    -> ValueRef {
     if did.crate == ast::local_crate {
         alt ccx.item_ids.find(did.node) {
@@ -324,8 +323,7 @@ fn get_res_dtor(ccx: @crate_ctxt, sp: span, did: ast::def_id, inner_t: ty::t)
     let nil_res = ty::mk_nil(ccx.tcx);
     // FIXME: Silly check -- mk_nil should have a postcondition
     check non_ty_var(ccx, nil_res);
-    let f_t = type_of_fn(ccx, sp,
-                         [{mode: ast::by_ref, ty: inner_t}],
+    let f_t = type_of_fn(ccx, [{mode: ast::by_ref, ty: inner_t}],
                          nil_res, *param_bounds);
     ret trans::get_extern_const(ccx.externs, ccx.llmod,
                                 csearch::get_symbol(ccx.sess.cstore,
@@ -384,7 +382,6 @@ type block_ctxt =
      mutable cleanups: [cleanup],
      mutable lpad_dirty: bool,
      mutable lpad: option::t<BasicBlockRef>,
-     sp: span,
      fcx: @fn_ctxt};
 
 // FIXME: we should be able to use option::t<@block_parent> here but

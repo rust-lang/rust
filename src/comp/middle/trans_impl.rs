@@ -89,8 +89,7 @@ fn trans_static_callee(bcx: @block_ctxt, callee_id: ast::node_id,
 fn wrapper_fn_ty(ccx: @crate_ctxt, dict_ty: TypeRef, m: ty::method)
     -> {ty: ty::t, llty: TypeRef} {
     let fty = ty::mk_fn(ccx.tcx, m.fty);
-    let bare_fn_ty = type_of_fn_from_ty(ccx, ast_util::dummy_sp(),
-                                        fty, *m.tps);
+    let bare_fn_ty = type_of_fn_from_ty(ccx, fty, *m.tps);
     let {inputs, output} = llfn_arg_tys(bare_fn_ty);
     {ty: fty, llty: T_fn([dict_ty] + inputs, output)}
 }
@@ -179,7 +178,7 @@ fn trans_wrapper(ccx: @crate_ctxt, pt: [ast::ident], llfty: TypeRef,
     let lcx = @{path: pt, module_path: [], ccx: ccx};
     let name = link::mangle_internal_name_by_path(ccx, pt);
     let llfn = decl_internal_cdecl_fn(ccx.llmod, name, llfty);
-    let fcx = new_fn_ctxt(lcx, ast_util::dummy_sp(), llfn);
+    let fcx = new_fn_ctxt(lcx, llfn);
     let bcx = new_top_block_ctxt(fcx), lltop = bcx.llbb;
     let bcx = fill(llfn, bcx);
     build_return(bcx);

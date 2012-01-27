@@ -135,7 +135,7 @@ fn largest_variants(ccx: @crate_ctxt, tag_id: ast::def_id) -> [uint] {
                 // (Could add a postcondition to type_contains_params,
                 // once we implement Issue #586.)
                 check (trans_common::type_has_static_size(ccx, elem_t));
-                let llty = trans::type_of(ccx, dummy_sp(), elem_t);
+                let llty = trans::type_of(ccx, elem_t);
                 min_size += llsize_of_real(ccx, llty);
                 min_align += llalign_of_real(ccx, llty);
             }
@@ -214,7 +214,7 @@ fn compute_static_enum_size(ccx: @crate_ctxt, largest_variants: [uint],
             // on enum_variants that would obviate the need for
             // this check. (Issue #586)
             check (trans_common::type_has_static_size(ccx, typ));
-            lltys += [trans::type_of(ccx, dummy_sp(), typ)];
+            lltys += [trans::type_of(ccx, typ)];
         }
 
         let llty = trans_common::T_struct(lltys);
@@ -584,7 +584,7 @@ fn gen_resource_shapes(ccx: @crate_ctxt) -> ValueRef {
     let len = interner::len(ccx.shape_cx.resources);
     while i < len {
         let ri = interner::get(ccx.shape_cx.resources, i);
-        dtors += [trans_common::get_res_dtor(ccx, dummy_sp(), ri.did, ri.t)];
+        dtors += [trans_common::get_res_dtor(ccx, ri.did, ri.t)];
         i += 1u;
     }
 
@@ -627,7 +627,7 @@ type tag_metrics = {
 fn size_of(bcx: @block_ctxt, t: ty::t) -> result {
     let ccx = bcx_ccx(bcx);
     if check type_has_static_size(ccx, t) {
-        rslt(bcx, llsize_of(ccx, trans::type_of(ccx, bcx.sp, t)))
+        rslt(bcx, llsize_of(ccx, trans::type_of(ccx, t)))
     } else {
         let { bcx, sz, align: _ } = dynamic_metrics(bcx, t);
         rslt(bcx, sz)
@@ -637,7 +637,7 @@ fn size_of(bcx: @block_ctxt, t: ty::t) -> result {
 fn align_of(bcx: @block_ctxt, t: ty::t) -> result {
     let ccx = bcx_ccx(bcx);
     if check type_has_static_size(ccx, t) {
-        rslt(bcx, llalign_of(ccx, trans::type_of(ccx, bcx.sp, t)))
+        rslt(bcx, llalign_of(ccx, trans::type_of(ccx, t)))
     } else {
         let { bcx, sz: _, align } = dynamic_metrics(bcx, t);
         rslt(bcx, align)
@@ -647,7 +647,7 @@ fn align_of(bcx: @block_ctxt, t: ty::t) -> result {
 fn metrics(bcx: @block_ctxt, t: ty::t) -> metrics {
     let ccx = bcx_ccx(bcx);
     if check type_has_static_size(ccx, t) {
-        let llty = trans::type_of(ccx, bcx.sp, t);
+        let llty = trans::type_of(ccx, t);
         { bcx: bcx, sz: llsize_of(ccx, llty), align: llalign_of(ccx, llty) }
     } else {
         dynamic_metrics(bcx, t)
@@ -675,7 +675,7 @@ fn llalign_of(cx: @crate_ctxt, t: TypeRef) -> ValueRef {
 }
 
 // Computes the size of the data part of a non-dynamically-sized enum.
-fn static_size_of_enum(cx: @crate_ctxt, sp: span, t: ty::t)
+fn static_size_of_enum(cx: @crate_ctxt, t: ty::t)
     : type_has_static_size(cx, t) -> uint {
     if cx.enum_sizes.contains_key(t) { ret cx.enum_sizes.get(t); }
     alt ty::struct(cx.tcx, t) {
@@ -696,15 +696,11 @@ fn static_size_of_enum(cx: @crate_ctxt, sp: span, t: ty::t)
             // express that with constrained types.
             check (type_has_static_size(cx, tup_ty));
             let this_size =
-                llsize_of_real(cx, trans::type_of(cx, sp, tup_ty));
+                llsize_of_real(cx, trans::type_of(cx, tup_ty));
             if max_size < this_size { max_size = this_size; }
         }
         cx.enum_sizes.insert(t, max_size);
         ret max_size;
-      }
-      _ {
-        cx.tcx.sess.span_fatal(
-            sp, "non-enum passed to static_size_of_enum()");
       }
     }
 }

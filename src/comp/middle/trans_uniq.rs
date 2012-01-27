@@ -44,7 +44,7 @@ fn alloc_uniq(cx: @block_ctxt, uniq_ty: ty::t)
 
     let ccx = bcx_ccx(bcx);
     check non_ty_var(ccx, contents_ty);
-    let llptrty = T_ptr(type_of_inner(ccx, bcx.sp, contents_ty));
+    let llptrty = T_ptr(type_of_inner(ccx, contents_ty));
 
     r = trans_shared_malloc(bcx, llptrty, llsz);
     bcx = r.bcx;

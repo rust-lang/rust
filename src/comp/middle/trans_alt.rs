@@ -713,7 +713,7 @@ fn bind_irrefutable_pat(bcx: @block_ctxt, pat: @ast::pat, val: ValueRef,
             // check unnecessary.
             check (type_has_static_size(ccx, ty));
             check non_ty_var(ccx, ty);
-            let llty = trans::type_of(ccx, pat.span, ty);
+            let llty = trans::type_of(ccx, ty);
             let alloc = trans::alloca(bcx, llty);
             bcx = trans::copy_val(bcx, trans::INIT, alloc,
                                   trans::load_if_immediate(bcx, val, ty), ty);
