@@ -117,6 +117,34 @@ fn test_fun_to_str() {
     assert fun_to_str(decl, "a", []) == "fn a()";
 }
 
+fn res_to_str(decl: ast::fn_decl, name: ast::ident,
+              params: [ast::ty_param]) -> str {
+    let buffer = io::mk_mem_buffer();
+    let s = rust_printer(io::mem_buffer_writer(buffer));
+    print_res(s, decl, name, params);
+    end(s); // Close the head box
+    end(s); // Close the outer box
+    eof(s.s);
+    io::mem_buffer_str(buffer)
+}
+
+#[test]
+fn test_res_to_str() {
+    let decl: ast::fn_decl = {
+        inputs: [{
+            mode: ast::by_val,
+            ty: @ast_util::respan(ast_util::dummy_sp(), ast::ty_bool),
+            ident: "b",
+            id: 0
+        }],
+        output: @ast_util::respan(ast_util::dummy_sp(), ast::ty_nil),
+        purity: ast::impure_fn,
+        cf: ast::return_val,
+        constraints: []
+    };
+    assert res_to_str(decl, "a", []) == "resource a(b: bool)";
+}
+
 fn block_to_str(blk: ast::blk) -> str {
     let buffer = io::mk_mem_buffer();
     let s = rust_printer(io::mem_buffer_writer(buffer));
@@ -498,18 +526,23 @@ fn print_item(s: ps, &&item: @ast::item) {
         bclose(s, item.span);
       }
       ast::item_res(decl, tps, body, dt_id, ct_id) {
-        head(s, "resource");
-        word(s.s, item.ident);
-        print_type_params(s, tps);
-        popen(s);
-        word_space(s, decl.inputs[0].ident + ":");
-        print_type(s, decl.inputs[0].ty);
-        pclose(s);
-        space(s.s);
+        print_res(s, decl, item.ident, tps);
         print_block(s, body);
       }
     }
     s.ann.post(ann_node);
+}
+
+fn print_res(s: ps, decl: ast::fn_decl, name: ast::ident,
+             typarams: [ast::ty_param]) {
+    head(s, "resource");
+    word(s.s, name);
+    print_type_params(s, typarams);
+    popen(s);
+    word_space(s, decl.inputs[0].ident + ":");
+    print_type(s, decl.inputs[0].ty);
+    pclose(s);
+    space(s.s);
 }
 
 fn print_variant(s: ps, v: ast::variant) {
