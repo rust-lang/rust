@@ -22,7 +22,7 @@ import lib::llvm::{True, False, Bool};
 import metadata::{csearch};
 
 // FIXME: These should probably be pulled in here too.
-import trans::{type_of_fn, drop_ty};
+import base::{type_of_fn, drop_ty};
 
 type namegen = fn@(str) -> str;
 fn new_namegen() -> namegen {
@@ -258,7 +258,7 @@ fn add_clean_temp(cx: @block_ctxt, val: ValueRef, ty: ty::t) {
     fn do_drop(bcx: @block_ctxt, val: ValueRef, ty: ty::t) ->
        @block_ctxt {
         if ty::type_is_immediate(bcx_tcx(bcx), ty) {
-            ret trans::drop_ty_immediate(bcx, val, ty);
+            ret base::drop_ty_immediate(bcx, val, ty);
         } else {
             ret drop_ty(bcx, val, ty);
         }
@@ -276,8 +276,8 @@ fn add_clean_temp_mem(cx: @block_ctxt, val: ValueRef, ty: ty::t) {
 }
 fn add_clean_free(cx: @block_ctxt, ptr: ValueRef, shared: bool) {
     let scope_cx = find_scope_cx(cx);
-    let free_fn = if shared { bind trans::trans_shared_free(_, ptr) }
-                  else { bind trans::trans_free_if_not_gc(_, ptr) };
+    let free_fn = if shared { bind base::trans_shared_free(_, ptr) }
+                  else { bind base::trans_free_if_not_gc(_, ptr) };
     scope_cx.cleanups += [clean_temp(ptr, free_fn)];
     scope_cx.lpad_dirty = true;
 }
@@ -325,7 +325,7 @@ fn get_res_dtor(ccx: @crate_ctxt, did: ast::def_id, inner_t: ty::t)
     check non_ty_var(ccx, nil_res);
     let f_t = type_of_fn(ccx, [{mode: ast::by_ref, ty: inner_t}],
                          nil_res, *param_bounds);
-    ret trans::get_extern_const(ccx.externs, ccx.llmod,
+    ret base::get_extern_const(ccx.externs, ccx.llmod,
                                 csearch::get_symbol(ccx.sess.cstore,
                                                     did), f_t);
 }
@@ -420,10 +420,6 @@ fn find_scope_cx(cx: @block_ctxt) -> @block_ctxt {
     if cx.kind != NON_SCOPE_BLOCK { ret cx; }
     alt cx.parent {
       parent_some(b) { ret find_scope_cx(b); }
-      parent_none {
-        cx.fcx.lcx.ccx.sess.bug("trans::find_scope_cx() " +
-                                    "called on parentless block_ctxt");
-      }
     }
 }
 
@@ -901,19 +897,19 @@ fn hash_dict_id(&&dp: dict_id) -> uint {
 }
 
 fn umax(cx: @block_ctxt, a: ValueRef, b: ValueRef) -> ValueRef {
-    let cond = trans_build::ICmp(cx, lib::llvm::LLVMIntULT, a, b);
-    ret trans_build::Select(cx, cond, b, a);
+    let cond = build::ICmp(cx, lib::llvm::LLVMIntULT, a, b);
+    ret build::Select(cx, cond, b, a);
 }
 
 fn umin(cx: @block_ctxt, a: ValueRef, b: ValueRef) -> ValueRef {
-    let cond = trans_build::ICmp(cx, lib::llvm::LLVMIntULT, a, b);
-    ret trans_build::Select(cx, cond, a, b);
+    let cond = build::ICmp(cx, lib::llvm::LLVMIntULT, a, b);
+    ret build::Select(cx, cond, a, b);
 }
 
 fn align_to(cx: @block_ctxt, off: ValueRef, align: ValueRef) -> ValueRef {
-    let mask = trans_build::Sub(cx, align, C_int(bcx_ccx(cx), 1));
-    let bumped = trans_build::Add(cx, off, mask);
-    ret trans_build::And(cx, bumped, trans_build::Not(cx, mask));
+    let mask = build::Sub(cx, align, C_int(bcx_ccx(cx), 1));
+    let bumped = build::Add(cx, off, mask);
+    ret build::And(cx, bumped, build::Not(cx, mask));
 }
 
 //

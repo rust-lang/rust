@@ -6,8 +6,8 @@ import syntax::codemap;
 import codemap::span;
 import llvm::{ValueRef, TypeRef, BasicBlockRef, BuilderRef, Opcode,
               ModuleRef};
-import trans_common::{block_ctxt, T_ptr, T_nil, T_i8, T_i1, T_void,
-                      T_fn, val_ty, bcx_ccx, C_i32};
+import common::{block_ctxt, T_ptr, T_nil, T_i8, T_i1, T_void,
+                T_fn, val_ty, bcx_ccx, C_i32};
 
 fn B(cx: @block_ctxt) -> BuilderRef {
     let b = *cx.fcx.lcx.ccx.builder;

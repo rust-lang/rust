@@ -3,8 +3,9 @@ import std::fs;
 import std::map::hashmap;
 import lib::llvm::llvm;
 import lib::llvm::llvm::ValueRef;
-import middle::trans_common::*;
-import middle::trans_build::B;
+import trans::common::*;
+import trans::base;
+import trans::build::B;
 import middle::ty;
 import syntax::{ast, codemap};
 import codemap::span;
@@ -84,7 +85,7 @@ fn add_named_metadata(cx: @crate_ctxt, name: str, val: ValueRef) {
 
 type debug_ctxt = {
     llmetadata: metadata_cache,
-    names: trans_common::namegen
+    names: namegen
 };
 
 fn update_cache(cache: metadata_cache, mdtag: int, val: debug_metadata) {
@@ -239,8 +240,8 @@ fn create_block(cx: @block_ctxt, sp: span) -> @metadata<block_md> {
     }
 
     let parent = alt cx.parent {
-      trans_common::parent_none { create_function(cx.fcx, sp).node }
-      trans_common::parent_some(bcx) { create_block(cx, sp).node }
+      parent_none { create_function(cx.fcx, sp).node }
+      parent_some(bcx) { create_block(cx, sp).node }
     };
     let file_node = create_file(bcx_ccx(cx), fname);
     let unique_id = alt cache.find(LexicalBlockTag) {
@@ -637,12 +638,12 @@ fn create_local_var(bcx: @block_ctxt, local: @ast::local)
     });
     let loc = codemap::lookup_char_pos(cx.sess.codemap,
                                        local.span.lo);
-    let ty = trans::node_id_type(cx, local.node.id);
+    let ty = base::node_id_type(cx, local.node.id);
     let tymd = create_ty(cx, ty, local.node.ty);
     let filemd = create_file(cx, loc.filename);
     let context = alt bcx.parent {
-      trans_common::parent_none { create_function(bcx.fcx, local.span).node }
-      trans_common::parent_some(_) { create_block(bcx, local.span).node }
+      parent_none { create_function(bcx.fcx, local.span).node }
+      parent_some(_) { create_block(bcx, local.span).node }
     };
     let mdnode = create_var(tg, context, name, filemd.node,
                             loc.line as int, tymd.node);
@@ -658,8 +659,8 @@ fn create_local_var(bcx: @block_ctxt, local: @ast::local)
       }
     };
     let declargs = [llmdnode([llptr]), mdnode];
-    trans_build::Call(bcx, cx.intrinsics.get("llvm.dbg.declare"),
-                      declargs);
+    trans::build::Call(bcx, cx.intrinsics.get("llvm.dbg.declare"),
+                       declargs);
     ret mdval;
 }
 
@@ -680,7 +681,7 @@ fn create_arg(bcx: @block_ctxt, arg: ast::arg, sp: span)
     };*/
     let loc = codemap::lookup_char_pos(cx.sess.codemap,
                                        sp.lo);
-    let ty = trans::node_id_type(cx, arg.id);
+    let ty = base::node_id_type(cx, arg.id);
     let tymd = create_ty(cx, ty, arg.ty);
     let filemd = create_file(cx, loc.filename);
     let context = create_function(bcx.fcx, sp);
@@ -693,8 +694,8 @@ fn create_arg(bcx: @block_ctxt, arg: ast::arg, sp: span)
       local_mem(v) | local_imm(v) { v }
     };
     let declargs = [llmdnode([llptr]), mdnode];
-    trans_build::Call(bcx, cx.intrinsics.get("llvm.dbg.declare"),
-                      declargs);
+    trans::build::Call(bcx, cx.intrinsics.get("llvm.dbg.declare"),
+                       declargs);
     ret mdval;
 }
 
@@ -710,7 +711,7 @@ fn update_source_pos(cx: @block_ctxt, s: span) {
                      blockmd.node,
                      llnull()];
     let dbgscope = llmdnode(scopedata);
-    llvm::LLVMSetCurrentDebugLocation(trans_build::B(cx), dbgscope);
+    llvm::LLVMSetCurrentDebugLocation(trans::build::B(cx), dbgscope);
 }
 
 fn create_function(fcx: @fn_ctxt, sp: span) -> @metadata<subprogram_md> {

@@ -6,7 +6,7 @@ import syntax::ast::*;
 import syntax::ast_util;
 import syntax::ast_util::local_def;
 import common::*;
-import middle::trans_common::crate_ctxt;
+import middle::trans::common::crate_ctxt;
 import middle::ty;
 import middle::ty::node_id_to_monotype;
 import front::attr;

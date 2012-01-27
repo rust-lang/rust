@@ -1,10 +1,10 @@
 
 import driver::session;
-import middle::trans;
-import middle::trans_common::{T_fn, T_i1, T_i8, T_i32,
-                              T_int, T_nil, T_dict,
-                              T_opaque_vec, T_ptr,
-                              T_size_t, T_void};
+import middle::trans::base;
+import middle::trans::common::{T_fn, T_i1, T_i8, T_i32,
+                               T_int, T_nil, T_dict,
+                               T_opaque_vec, T_ptr,
+                               T_size_t, T_void};
 import lib::llvm::type_names;
 import lib::llvm::llvm::ModuleRef;
 import lib::llvm::llvm::ValueRef;
@@ -42,7 +42,7 @@ fn declare_upcalls(targ_cfg: @session::config,
         let arg_tys: [TypeRef] = [];
         for t: TypeRef in tys { arg_tys += [t]; }
         let fn_ty = T_fn(arg_tys, rv);
-        ret trans::decl_cdecl_fn(llmod, "upcall_" + name, fn_ty);
+        ret base::decl_cdecl_fn(llmod, "upcall_" + name, fn_ty);
     }
     let d = bind decl(llmod, _, _, _);
     let dv = bind decl(llmod, _, _, T_void());

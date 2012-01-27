@@ -5,7 +5,7 @@ import lib::llvm::llvm;
 import front::attr;
 import middle::ty;
 import metadata::{encoder, cstore};
-import middle::trans_common::crate_ctxt;
+import middle::trans::common::crate_ctxt;
 import str;
 import std::fs;
 import vec;

@@ -6,12 +6,12 @@ import lib::llvm::{True, False};
 import lib::llvm::llvm::{ModuleRef, TypeRef, ValueRef};
 import driver::session;
 import driver::session::session;
-import middle::{trans, trans_common};
-import middle::trans_common::{crate_ctxt, val_ty, C_bytes, C_int,
-                              C_named_struct, C_struct, T_enum_variant,
-                              block_ctxt, result, rslt, bcx_ccx, bcx_tcx,
-                              type_has_static_size, umax, umin, align_to,
-                              tydesc_info};
+import trans::base;
+import middle::trans::common::{crate_ctxt, val_ty, C_bytes, C_int,
+                               C_named_struct, C_struct, T_enum_variant,
+                               block_ctxt, result, rslt, bcx_ccx, bcx_tcx,
+                               type_has_static_size, umax, umin, align_to,
+                               tydesc_info};
 import back::abi;
 import middle::ty;
 import middle::ty::field;
@@ -19,7 +19,7 @@ import syntax::ast;
 import syntax::ast_util::dummy_sp;
 import syntax::util::interner;
 import util::common;
-import trans_build::{Load, Store, Add, GEPi};
+import trans::build::{Load, Store, Add, GEPi};
 import syntax::codemap::span;
 
 import core::{vec, str};
@@ -68,7 +68,7 @@ const shape_tydesc: u8 = 28u8;
 const shape_send_tydesc: u8 = 29u8;
 
 // FIXME: This is a bad API in trans_common.
-fn C_u8(n: u8) -> ValueRef { ret trans_common::C_u8(n as uint); }
+fn C_u8(n: u8) -> ValueRef { ret trans::common::C_u8(n as uint); }
 
 fn hash_res_info(ri: res_info) -> uint {
     let h = 5381u;
@@ -134,8 +134,8 @@ fn largest_variants(ccx: @crate_ctxt, tag_id: ast::def_id) -> [uint] {
                 // follow from how elem_t doesn't contain params.
                 // (Could add a postcondition to type_contains_params,
                 // once we implement Issue #586.)
-                check (trans_common::type_has_static_size(ccx, elem_t));
-                let llty = trans::type_of(ccx, elem_t);
+                check (trans::common::type_has_static_size(ccx, elem_t));
+                let llty = base::type_of(ccx, elem_t);
                 min_size += llsize_of_real(ccx, llty);
                 min_align += llalign_of_real(ccx, llty);
             }
@@ -213,11 +213,11 @@ fn compute_static_enum_size(ccx: @crate_ctxt, largest_variants: [uint],
             // FIXME: there should really be a postcondition
             // on enum_variants that would obviate the need for
             // this check. (Issue #586)
-            check (trans_common::type_has_static_size(ccx, typ));
-            lltys += [trans::type_of(ccx, typ)];
+            check (trans::common::type_has_static_size(ccx, typ));
+            lltys += [base::type_of(ccx, typ)];
         }
 
-        let llty = trans_common::T_struct(lltys);
+        let llty = trans::common::T_struct(lltys);
         let dp = llsize_of_real(ccx, llty) as u16;
         let variant_align = llalign_of_real(ccx, llty) as u8;
 
@@ -294,13 +294,10 @@ fn s_send_tydesc(_tcx: ty_ctxt) -> u8 {
 }
 
 fn mk_ctxt(llmod: ModuleRef) -> ctxt {
-    let llshapetablesty = trans_common::T_named_struct("shapes");
-    let llshapetables =
-        str::as_buf("shapes",
-                    {|buf|
-                        lib::llvm::llvm::LLVMAddGlobal(llmod, llshapetablesty,
-                                                       buf)
-                    });
+    let llshapetablesty = trans::common::T_named_struct("shapes");
+    let llshapetables = str::as_buf("shapes", {|buf|
+        lib::llvm::llvm::LLVMAddGlobal(llmod, llshapetablesty, buf)
+    });
 
     ret {mutable next_tag_id: 0u16,
          pad: 0u16,
@@ -584,7 +581,7 @@ fn gen_resource_shapes(ccx: @crate_ctxt) -> ValueRef {
     let len = interner::len(ccx.shape_cx.resources);
     while i < len {
         let ri = interner::get(ccx.shape_cx.resources, i);
-        dtors += [trans_common::get_res_dtor(ccx, ri.did, ri.t)];
+        dtors += [trans::common::get_res_dtor(ccx, ri.did, ri.t)];
         i += 1u;
     }
 
@@ -594,9 +591,9 @@ fn gen_resource_shapes(ccx: @crate_ctxt) -> ValueRef {
 fn gen_shape_tables(ccx: @crate_ctxt) {
     let lltagstable = gen_enum_shapes(ccx);
     let llresourcestable = gen_resource_shapes(ccx);
-    trans_common::set_struct_body(ccx.shape_cx.llshapetablesty,
-                                  [val_ty(lltagstable),
-                                   val_ty(llresourcestable)]);
+    trans::common::set_struct_body(ccx.shape_cx.llshapetablesty,
+                                   [val_ty(lltagstable),
+                                    val_ty(llresourcestable)]);
 
     let lltables =
         C_named_struct(ccx.shape_cx.llshapetablesty,
@@ -627,7 +624,7 @@ type tag_metrics = {
 fn size_of(bcx: @block_ctxt, t: ty::t) -> result {
     let ccx = bcx_ccx(bcx);
     if check type_has_static_size(ccx, t) {
-        rslt(bcx, llsize_of(ccx, trans::type_of(ccx, t)))
+        rslt(bcx, llsize_of(ccx, base::type_of(ccx, t)))
     } else {
         let { bcx, sz, align: _ } = dynamic_metrics(bcx, t);
         rslt(bcx, sz)
@@ -637,7 +634,7 @@ fn size_of(bcx: @block_ctxt, t: ty::t) -> result {
 fn align_of(bcx: @block_ctxt, t: ty::t) -> result {
     let ccx = bcx_ccx(bcx);
     if check type_has_static_size(ccx, t) {
-        rslt(bcx, llalign_of(ccx, trans::type_of(ccx, t)))
+        rslt(bcx, llalign_of(ccx, base::type_of(ccx, t)))
     } else {
         let { bcx, sz: _, align } = dynamic_metrics(bcx, t);
         rslt(bcx, align)
@@ -647,7 +644,7 @@ fn align_of(bcx: @block_ctxt, t: ty::t) -> result {
 fn metrics(bcx: @block_ctxt, t: ty::t) -> metrics {
     let ccx = bcx_ccx(bcx);
     if check type_has_static_size(ccx, t) {
-        let llty = trans::type_of(ccx, t);
+        let llty = base::type_of(ccx, t);
         { bcx: bcx, sz: llsize_of(ccx, llty), align: llalign_of(ccx, llty) }
     } else {
         dynamic_metrics(bcx, t)
@@ -696,7 +693,7 @@ fn static_size_of_enum(cx: @crate_ctxt, t: ty::t)
             // express that with constrained types.
             check (type_has_static_size(cx, tup_ty));
             let this_size =
-                llsize_of_real(cx, trans::type_of(cx, tup_ty));
+                llsize_of_real(cx, base::type_of(cx, tup_ty));
             if max_size < this_size { max_size = this_size; }
         }
         cx.enum_sizes.insert(t, max_size);
@@ -735,7 +732,7 @@ fn dynamic_metrics(cx: @block_ctxt, t: ty::t) -> metrics {
     alt ty::struct(bcx_tcx(cx), t) {
       ty::ty_param(p, _) {
         let ti = none::<@tydesc_info>;
-        let {bcx, val: tydesc} = trans::get_tydesc(cx, t, false, ti).result;
+        let {bcx, val: tydesc} = base::get_tydesc(cx, t, false, ti).result;
         let szptr = GEPi(bcx, tydesc, [0, abi::tydesc_field_size]);
         let aptr = GEPi(bcx, tydesc, [0, abi::tydesc_field_align]);
         {bcx: bcx, sz: Load(bcx, szptr), align: Load(bcx, aptr)}

@@ -1,7 +1,7 @@
 import core::ctypes::c_uint;
-import trans::*;
-import trans_common::*;
-import trans_build::*;
+import base::*;
+import common::*;
+import build::*;
 import option::{some, none};
 import syntax::{ast, ast_util};
 import metadata::csearch;

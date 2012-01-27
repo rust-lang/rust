@@ -5,8 +5,8 @@ import driver::session::session;
 import lib::llvm::llvm;
 import lib::llvm::llvm::{ValueRef, BasicBlockRef};
 import pat_util::*;
-import trans_build::*;
-import trans::{new_sub_block_ctxt, new_scope_block_ctxt, load_if_immediate};
+import build::*;
+import base::{new_sub_block_ctxt, new_scope_block_ctxt, load_if_immediate};
 import syntax::ast;
 import syntax::ast_util;
 import syntax::ast_util::{dummy_sp};
@@ -14,7 +14,7 @@ import syntax::ast::def_id;
 import syntax::codemap::span;
 import syntax::print::pprust::pat_to_str;
 
-import trans_common::*;
+import common::*;
 
 // An option identifying a branch (either a literal, a enum variant or a
 // range)
@@ -46,21 +46,21 @@ fn trans_opt(bcx: @block_ctxt, o: opt) -> opt_result {
         alt l.node {
           ast::expr_lit(@{node: ast::lit_str(s), _}) {
             let strty = ty::mk_str(bcx_tcx(bcx));
-            let cell = trans::empty_dest_cell();
-            bcx = trans_vec::trans_str(bcx, s, trans::by_val(cell));
+            let cell = base::empty_dest_cell();
+            bcx = tvec::trans_str(bcx, s, base::by_val(cell));
             add_clean_temp(bcx, *cell, strty);
             ret single_result(rslt(bcx, *cell));
           }
           _ {
             ret single_result(
-                rslt(bcx, trans::trans_const_expr(ccx, l)));
+                rslt(bcx, base::trans_const_expr(ccx, l)));
           }
         }
       }
       var(disr_val, _) { ret single_result(rslt(bcx, C_int(ccx, disr_val))); }
       range(l1, l2) {
-        ret range_result(rslt(bcx, trans::trans_const_expr(ccx, l1)),
-                         rslt(bcx, trans::trans_const_expr(ccx, l2)));
+        ret range_result(rslt(bcx, base::trans_const_expr(ccx, l1)),
+                         rslt(bcx, base::trans_const_expr(ccx, l2)));
       }
     }
 }
@@ -274,7 +274,7 @@ fn extract_variant_args(bcx: @block_ctxt, pat_id: ast::node_id,
         vec::len(ty::enum_variant_with_id(ccx.tcx, vdefs.tg, vdefs.var).args);
     if size > 0u && vec::len(*variants) != 1u {
         let enumptr =
-            PointerCast(bcx, val, trans_common::T_opaque_enum_ptr(ccx));
+            PointerCast(bcx, val, T_opaque_enum_ptr(ccx));
         blobptr = GEPi(bcx, enumptr, [0, 1]);
     }
     let i = 0u;
@@ -286,7 +286,7 @@ fn extract_variant_args(bcx: @block_ctxt, pat_id: ast::node_id,
             // invariant needed:
             // how do we know it even makes sense to pass in ty_param_substs
             // here? What if it's [] and the enum type has variables in it?
-            trans::GEP_enum(bcx, blobptr, vdefs_tg, vdefs_var,
+            base::GEP_enum(bcx, blobptr, vdefs_tg, vdefs_var,
                             ty_param_substs, i);
         bcx = r.bcx;
         args += [r.val];
@@ -381,8 +381,8 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
                 bcx.fcx.lllocals.insert(val, local);
             };
             let {bcx: guard_bcx, val: guard_val} =
-                trans::trans_temp_expr(guard_cx, e);
-            guard_bcx = trans::trans_block_cleanups(guard_bcx, guard_cx);
+                base::trans_temp_expr(guard_cx, e);
+            guard_bcx = base::trans_block_cleanups(guard_bcx, guard_cx);
             let next_cx = new_sub_block_ctxt(guard_cx, "submatch_next");
             let else_cx = new_sub_block_ctxt(guard_cx, "submatch_else");
             CondBr(guard_bcx, guard_val, next_cx.llbb, else_cx.llbb);
@@ -426,7 +426,7 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
             let ix = option::get(ty::field_idx(field_name, fields));
             // not sure how to get rid of this check
             check type_is_tup_like(bcx, rec_ty);
-            let r = trans::GEP_tup_like(bcx, rec_ty, val, [0, ix as int]);
+            let r = base::GEP_tup_like(bcx, rec_ty, val, [0, ix as int]);
             rec_vals += [r.val];
             bcx = r.bcx;
         }
@@ -445,7 +445,7 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
         while i < n_tup_elts {
             // how to get rid of this check?
             check type_is_tup_like(bcx, tup_ty);
-            let r = trans::GEP_tup_like(bcx, tup_ty, val, [0, i as int]);
+            let r = base::GEP_tup_like(bcx, tup_ty, val, [0, i as int]);
             tup_vals += [r.val];
             bcx = r.bcx;
             i += 1u;
@@ -483,8 +483,7 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
                 kind = single;
             } else {
                 let enumptr =
-                    PointerCast(bcx, val,
-                                trans_common::T_opaque_enum_ptr(ccx));
+                    PointerCast(bcx, val, T_opaque_enum_ptr(ccx));
                 let discrimptr = GEPi(bcx, enumptr, [0, 0]);
                 test_val = Load(bcx, discrimptr);
                 kind = switch;
@@ -546,22 +545,22 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
               single_result(r) {
                 bcx = r.bcx;
                 let eq =
-                    trans::trans_compare(bcx, ast::eq, test_val, t, r.val, t);
-                let cleanup_cx = trans::trans_block_cleanups(
+                    base::trans_compare(bcx, ast::eq, test_val, t, r.val, t);
+                let cleanup_cx = base::trans_block_cleanups(
                     eq.bcx, compare_cx);
                 bcx = new_sub_block_ctxt(bcx, "compare_next");
                 CondBr(cleanup_cx, eq.val, opt_cx.llbb, bcx.llbb);
               }
               range_result(rbegin, rend) {
                 bcx = rend.bcx;
-                let ge = trans::trans_compare(bcx, ast::ge, test_val, t,
+                let ge = base::trans_compare(bcx, ast::ge, test_val, t,
                                               rbegin.val, t);
-                let le = trans::trans_compare(ge.bcx, ast::le, test_val, t,
+                let le = base::trans_compare(ge.bcx, ast::le, test_val, t,
                                               rend.val, t);
                 let in_range = rslt(le.bcx, And(le.bcx, ge.val, le.val));
                 bcx = in_range.bcx;
                 let cleanup_cx =
-                    trans::trans_block_cleanups(bcx, compare_cx);
+                    base::trans_block_cleanups(bcx, compare_cx);
                 bcx = new_sub_block_ctxt(bcx, "compare_next");
                 CondBr(cleanup_cx, in_range.val, opt_cx.llbb, bcx.llbb);
               }
@@ -621,8 +620,8 @@ fn make_phi_bindings(bcx: @block_ctxt, map: [exit_node],
                   local_mem(x) { x }
                 };
                 let e_ty = ty::node_id_to_type(bcx_tcx(bcx), node_id);
-                let {bcx: abcx, val: alloc} = trans::alloc_ty(bcx, e_ty);
-                bcx = trans::copy_val(abcx, trans::INIT, alloc,
+                let {bcx: abcx, val: alloc} = base::alloc_ty(bcx, e_ty);
+                bcx = base::copy_val(abcx, base::INIT, alloc,
                                       load_if_immediate(abcx, local, e_ty),
                                       e_ty);
                 add_clean(bcx, alloc, e_ty);
@@ -636,13 +635,13 @@ fn make_phi_bindings(bcx: @block_ctxt, map: [exit_node],
 }
 
 fn trans_alt(cx: @block_ctxt, expr: @ast::expr, arms_: [ast::arm],
-             dest: trans::dest) -> @block_ctxt {
+             dest: base::dest) -> @block_ctxt {
     let bodies = [];
     let match: match = [];
     let alt_cx = new_scope_block_ctxt(cx, "alt");
     Br(cx, alt_cx.llbb);
 
-    let er = trans::trans_temp_expr(alt_cx, expr);
+    let er = base::trans_temp_expr(alt_cx, expr);
     if er.bcx.unreachable { ret er.bcx; }
 
     /*
@@ -669,14 +668,14 @@ fn trans_alt(cx: @block_ctxt, expr: @ast::expr, arms_: [ast::arm],
                done: @mutable option::t<BasicBlockRef>) -> BasicBlockRef {
         alt *done { some(bb) { ret bb; } _ { } }
         let fail_cx = new_sub_block_ctxt(cx, "case_fallthrough");
-        trans::trans_fail(fail_cx, some(sp), "non-exhaustive match failure");;
+        base::trans_fail(fail_cx, some(sp), "non-exhaustive match failure");;
         *done = some(fail_cx.llbb);
         ret fail_cx.llbb;
     }
 
     let exit_map = [];
-    let t = trans::node_id_type(cx.fcx.lcx.ccx, expr.id);
-    let vr = trans::spill_if_immediate(er.bcx, er.val, t);
+    let t = base::node_id_type(cx.fcx.lcx.ccx, expr.id);
+    let vr = base::spill_if_immediate(er.bcx, er.val, t);
     compile_submatch(vr.bcx, match, [vr.val],
                      bind mk_fail(alt_cx, expr.span, fail_cx), exit_map);
 
@@ -686,14 +685,14 @@ fn trans_alt(cx: @block_ctxt, expr: @ast::expr, arms_: [ast::arm],
         if make_phi_bindings(body_cx, exit_map,
                              pat_util::pat_id_map(bcx_tcx(cx),
                                                   a.pats[0])) {
-            let arm_dest = trans::dup_for_join(dest);
+            let arm_dest = base::dup_for_join(dest);
             arm_dests += [arm_dest];
-            arm_cxs += [trans::trans_block_dps(body_cx, a.body, arm_dest)];
+            arm_cxs += [base::trans_block_dps(body_cx, a.body, arm_dest)];
         }
         i += 1u;
     }
-    let after_cx = trans::join_returns(cx, arm_cxs, arm_dests, dest);
-    after_cx = trans::trans_block_cleanups(after_cx, alt_cx);
+    let after_cx = base::join_returns(cx, arm_cxs, arm_dests, dest);
+    after_cx = base::trans_block_cleanups(after_cx, alt_cx);
     let next_cx = new_sub_block_ctxt(after_cx, "next");
     Br(after_cx, next_cx.llbb);
     ret next_cx;
@@ -713,12 +712,12 @@ fn bind_irrefutable_pat(bcx: @block_ctxt, pat: @ast::pat, val: ValueRef,
             // check unnecessary.
             check (type_has_static_size(ccx, ty));
             check non_ty_var(ccx, ty);
-            let llty = trans::type_of(ccx, ty);
-            let alloc = trans::alloca(bcx, llty);
-            bcx = trans::copy_val(bcx, trans::INIT, alloc,
-                                  trans::load_if_immediate(bcx, val, ty), ty);
+            let llty = base::type_of(ccx, ty);
+            let alloc = base::alloca(bcx, llty);
+            bcx = base::copy_val(bcx, base::INIT, alloc,
+                                  base::load_if_immediate(bcx, val, ty), ty);
             bcx.fcx.lllocals.insert(pat.id, local_mem(alloc));
-            trans_common::add_clean(bcx, alloc, ty);
+            add_clean(bcx, alloc, ty);
         } else { bcx.fcx.lllocals.insert(pat.id, local_mem(val)); }
         alt inner {
           some(pat) { bcx = bind_irrefutable_pat(bcx, pat, val, true); }
@@ -743,7 +742,7 @@ fn bind_irrefutable_pat(bcx: @block_ctxt, pat: @ast::pat, val: ValueRef,
             let ix = option::get(ty::field_idx(f.ident, rec_fields));
             // how to get rid of this check?
             check type_is_tup_like(bcx, rec_ty);
-            let r = trans::GEP_tup_like(bcx, rec_ty, val, [0, ix as int]);
+            let r = base::GEP_tup_like(bcx, rec_ty, val, [0, ix as int]);
             bcx = bind_irrefutable_pat(r.bcx, f.pat, r.val, make_copy);
         }
       }
@@ -753,7 +752,7 @@ fn bind_irrefutable_pat(bcx: @block_ctxt, pat: @ast::pat, val: ValueRef,
         for elem in elems {
             // how to get rid of this check?
             check type_is_tup_like(bcx, tup_ty);
-            let r = trans::GEP_tup_like(bcx, tup_ty, val, [0, i as int]);
+            let r = base::GEP_tup_like(bcx, tup_ty, val, [0, i as int]);
             bcx = bind_irrefutable_pat(r.bcx, elem, r.val, make_copy);
             i += 1u;
         }

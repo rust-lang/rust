@@ -3,13 +3,13 @@ import option::none;
 import syntax::ast;
 import lib::llvm::llvm::{ValueRef, TypeRef};
 import back::abi;
-import trans::{call_memmove, trans_shared_malloc, type_of_or_i8,
+import base::{call_memmove, trans_shared_malloc, type_of_or_i8,
                INIT, copy_val, load_if_immediate, get_tydesc,
                node_id_type, new_sub_block_ctxt, do_spill_noroot,
                dest};
 import shape::{llsize_of, size_of};
-import trans_build::*;
-import trans_common::*;
+import build::*;
+import common::*;
 
 fn get_fill(bcx: @block_ctxt, vptr: ValueRef) -> ValueRef {
     Load(bcx, GEPi(bcx, vptr, [0, abi::vec_elt_fill]))
@@ -77,7 +77,7 @@ fn duplicate(bcx: @block_ctxt, vptr: ValueRef, vec_ty: ty::t) -> result {
     let unit_ty = ty::sequence_element_type(bcx_tcx(bcx), vec_ty);
     Store(bcx, fill, GEPi(bcx, newptr, [0, abi::vec_elt_alloc]));
     if ty::type_needs_drop(bcx_tcx(bcx), unit_ty) {
-        bcx = iter_vec(bcx, newptr, vec_ty, trans::take_ty);
+        bcx = iter_vec(bcx, newptr, vec_ty, base::take_ty);
     }
     ret rslt(bcx, newptr);
 }
@@ -89,9 +89,9 @@ fn make_free_glue(bcx: @block_ctxt, vptr: ValueRef, vec_ty: ty::t) ->
     let null_test = IsNull(bcx, vptr);
     CondBr(bcx, null_test, next_cx.llbb, drop_cx.llbb);
     if ty::type_needs_drop(bcx_tcx(bcx), unit_ty) {
-        drop_cx = iter_vec(drop_cx, vptr, vec_ty, trans::drop_ty);
+        drop_cx = iter_vec(drop_cx, vptr, vec_ty, base::drop_ty);
     }
-    drop_cx = trans::trans_shared_free(drop_cx, vptr);
+    drop_cx = base::trans_shared_free(drop_cx, vptr);
     Br(drop_cx, next_cx.llbb);
     ret next_cx;
 }
@@ -99,9 +99,9 @@ fn make_free_glue(bcx: @block_ctxt, vptr: ValueRef, vec_ty: ty::t) ->
 fn trans_vec(bcx: @block_ctxt, args: [@ast::expr], id: ast::node_id,
              dest: dest) -> @block_ctxt {
     let ccx = bcx_ccx(bcx), bcx = bcx;
-    if dest == trans::ignore {
+    if dest == base::ignore {
         for arg in args {
-            bcx = trans::trans_expr(bcx, arg, trans::ignore);
+            bcx = base::trans_expr(bcx, arg, base::ignore);
         }
         ret bcx;
     }
@@ -121,13 +121,13 @@ fn trans_vec(bcx: @block_ctxt, args: [@ast::expr], id: ast::node_id,
         let lleltptr = if ty::type_has_dynamic_size(bcx_tcx(bcx), unit_ty) {
             InBoundsGEP(bcx, dataptr, [Mul(bcx, C_uint(ccx, i), llunitsz)])
         } else { InBoundsGEP(bcx, dataptr, [C_uint(ccx, i)]) };
-        bcx = trans::trans_expr_save_in(bcx, e, lleltptr);
+        bcx = base::trans_expr_save_in(bcx, e, lleltptr);
         add_clean_temp_mem(bcx, lleltptr, unit_ty);
         temp_cleanups += [lleltptr];
         i += 1u;
     }
     for cln in temp_cleanups { revoke_clean(bcx, cln); }
-    ret trans::store_in_dest(bcx, vptr, dest);
+    ret base::store_in_dest(bcx, vptr, dest);
 }
 
 fn trans_str(bcx: @block_ctxt, s: str, dest: dest) -> @block_ctxt {
@@ -140,7 +140,7 @@ fn trans_str(bcx: @block_ctxt, s: str, dest: dest) -> @block_ctxt {
     let bcx =
         call_memmove(bcx, get_dataptr(bcx, sptr, T_i8()), llcstr,
                      C_uint(ccx, veclen)).bcx;
-    ret trans::store_in_dest(bcx, sptr, dest);
+    ret base::store_in_dest(bcx, sptr, dest);
 }
 
 fn trans_append(cx: @block_ctxt, vec_ty: ty::t, lhsptr: ValueRef,
@@ -202,13 +202,13 @@ fn trans_append_literal(bcx: @block_ctxt, vptrptr: ValueRef, vec_ty: ty::t,
     let ti = none;
     let {bcx: bcx, val: td} =
         get_tydesc(bcx, elt_ty, false, ti).result;
-    trans::lazily_emit_tydesc_glue(bcx, abi::tydesc_field_take_glue, ti);
+    base::lazily_emit_tydesc_glue(bcx, abi::tydesc_field_take_glue, ti);
     let opaque_v = PointerCast(bcx, vptrptr,
                                T_ptr(T_ptr(ccx.opaque_vec_type)));
     for val in vals {
-        let {bcx: e_bcx, val: elt} = trans::trans_temp_expr(bcx, val);
+        let {bcx: e_bcx, val: elt} = base::trans_temp_expr(bcx, val);
         bcx = e_bcx;
-        let r = trans::spill_if_immediate(bcx, elt, elt_ty);
+        let r = base::spill_if_immediate(bcx, elt, elt_ty);
         let spilled = r.val;
         bcx = r.bcx;
         Call(bcx, bcx_ccx(bcx).upcalls.vec_push,
@@ -253,7 +253,7 @@ fn trans_add(bcx: @block_ctxt, vec_ty: ty::t, lhs: ValueRef,
 
     let bcx = iter_vec_raw(bcx, lhs, vec_ty, lhs_fill, copy_fn);
     bcx = iter_vec_raw(bcx, rhs, vec_ty, rhs_fill, copy_fn);
-    ret trans::store_in_dest(bcx, new_vec_ptr, dest);
+    ret base::store_in_dest(bcx, new_vec_ptr, dest);
 }
 
 type val_and_ty_fn = fn@(@block_ctxt, ValueRef, ty::t) -> result;

@@ -2,16 +2,15 @@
 
 import lib::llvm::True;
 import lib::llvm::llvm::ValueRef;
-import middle::trans;
-import middle::trans::get_tydesc;
-import middle::trans_common::*;
-import middle::ty;
+import trans::base::get_tydesc;
+import trans::common::*;
+import trans::base;
 import option::none;
 import str;
 import driver::session::session;
 
 import lll = lib::llvm::llvm;
-import bld = trans_build;
+import bld = trans::build;
 
 type ctxt = @{mutable next_tydesc_num: uint};
 
@@ -40,7 +39,7 @@ fn add_gc_root(cx: @block_ctxt, llval: ValueRef, ty: ty::t) -> @block_ctxt {
 
     // FIXME (issue #839): For now, we are unconditionally zeroing out all
     // GC-relevant types. Eventually we should use typestate for this.
-    bcx = trans::zero_alloca(bcx, llval, ty);
+    bcx = base::zero_alloca(bcx, llval, ty);
 
     let ti = none;
     let td_r = get_tydesc(bcx, ty, false, ti);
@@ -53,10 +52,10 @@ fn add_gc_root(cx: @block_ctxt, llval: ValueRef, ty: ty::t) -> @block_ctxt {
     alt td_r.kind {
       tk_derived {
         // It's a derived type descriptor. First, spill it.
-        let lltydescptr = trans::alloca(bcx, val_ty(lltydesc));
+        let lltydescptr = base::alloca(bcx, val_ty(lltydesc));
 
         let llderivedtydescs =
-            trans::llderivedtydescs_block_ctxt(bcx_fcx(bcx));
+            base::llderivedtydescs_block_ctxt(bcx_fcx(bcx));
         bld::Store(llderivedtydescs, lltydesc, lltydescptr);
 
         let number = gc_cx.next_tydesc_num;

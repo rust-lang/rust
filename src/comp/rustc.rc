@@ -14,14 +14,16 @@ use std (name = "std",
          url = "http://rust-lang.org/src/std");
 
 mod middle {
-    mod trans_common;
-    mod trans_build;
-    mod trans;
-    mod trans_alt;
-    mod trans_uniq;
-    mod trans_closure;
-    mod trans_vec;
-    mod trans_impl;
+    mod trans {
+        mod common;
+        mod build;
+        mod base;
+        mod alt;
+        mod uniq;
+        mod closure;
+        mod tvec;
+        mod impl;
+    }
     mod ty;
     mod ast_map;
     mod resolve;

@@ -1,8 +1,8 @@
 import syntax::ast;
 import lib::llvm::llvm::ValueRef;
-import trans_common::*;
-import trans_build::*;
-import trans::{
+import common::*;
+import build::*;
+import base::{
     trans_shared_malloc,
     type_of_inner,
     node_id_type,
@@ -28,9 +28,9 @@ fn trans_uniq(bcx: @block_ctxt, contents: @ast::expr,
     check type_is_unique_box(bcx, uniq_ty);
     let {bcx, val: llptr} = alloc_uniq(bcx, uniq_ty);
     add_clean_free(bcx, llptr, true);
-    bcx = trans::trans_expr_save_in(bcx, contents, llptr);
+    bcx = base::trans_expr_save_in(bcx, contents, llptr);
     revoke_clean(bcx, llptr);
-    ret trans::store_in_dest(bcx, llptr, dest);
+    ret base::store_in_dest(bcx, llptr, dest);
 }
 
 fn alloc_uniq(cx: @block_ctxt, uniq_ty: ty::t)
@@ -92,6 +92,6 @@ fn duplicate(bcx: @block_ctxt, v: ValueRef, t: ty::t)
 
     let src = load_if_immediate(bcx, v, content_ty);
     let dst = llptr;
-    let bcx = trans::copy_val(bcx, INIT, dst, src, content_ty);
+    let bcx = base::copy_val(bcx, INIT, dst, src, content_ty);
     ret rslt(bcx, dst);
 }

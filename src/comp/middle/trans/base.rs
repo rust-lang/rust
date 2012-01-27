@@ -42,9 +42,8 @@ import link::{mangle_internal_name_by_type_only,
 import metadata::{csearch, cstore};
 import util::ppaux::{ty_to_str, ty_to_short_str};
 
-import trans_common::*;
-import trans_build::*;
-import tvec = trans_vec;
+import common::*;
+import build::*;
 
 fn type_of_1(bcx: @block_ctxt, t: ty::t) -> TypeRef {
     let cx = bcx_ccx(bcx);
@@ -1243,8 +1242,8 @@ fn make_take_glue(cx: @block_ctxt, v: ValueRef, t: ty::t) {
         incr_refcnt_of_boxed(bcx, Load(bcx, v))
       }
       ty::ty_uniq(_) {
-        check trans_uniq::type_is_unique_box(bcx, t);
-        let r = trans_uniq::duplicate(bcx, Load(bcx, v), t);
+        check uniq::type_is_unique_box(bcx, t);
+        let r = uniq::duplicate(bcx, Load(bcx, v), t);
         Store(r.bcx, r.val, v);
         r.bcx
       }
@@ -1262,10 +1261,10 @@ fn make_take_glue(cx: @block_ctxt, v: ValueRef, t: ty::t) {
         bcx
       }
       ty::ty_fn(_) {
-        trans_closure::make_fn_glue(bcx, v, t, take_ty)
+        closure::make_fn_glue(bcx, v, t, take_ty)
       }
       ty::ty_opaque_closure_ptr(ck) {
-        trans_closure::make_opaque_cbox_take_glue(bcx, ck, v)
+        closure::make_opaque_cbox_take_glue(bcx, ck, v)
       }
       _ if ty::type_is_structural(bcx_tcx(bcx), t) {
         iter_structural_ty(bcx, v, t, take_ty)
@@ -1308,9 +1307,9 @@ fn make_free_glue(bcx: @block_ctxt, v: ValueRef, t: ty::t) {
         free_box(bcx, v, t)
       }
       ty::ty_uniq(content_mt) {
-        check trans_uniq::type_is_unique_box(bcx, t);
+        check uniq::type_is_unique_box(bcx, t);
         let v = PointerCast(bcx, v, type_of_1(bcx, t));
-        trans_uniq::make_free_glue(bcx, v, t)
+        uniq::make_free_glue(bcx, v, t)
       }
       ty::ty_vec(_) | ty::ty_str {
         tvec::make_free_glue(bcx, PointerCast(bcx, v, type_of_1(bcx, t)), t)
@@ -1338,10 +1337,10 @@ fn make_free_glue(bcx: @block_ctxt, v: ValueRef, t: ty::t) {
         bcx
       }
       ty::ty_fn(_) {
-        trans_closure::make_fn_glue(bcx, v, t, free_ty)
+        closure::make_fn_glue(bcx, v, t, free_ty)
       }
       ty::ty_opaque_closure_ptr(ck) {
-        trans_closure::make_opaque_cbox_free_glue(bcx, ck, v)
+        closure::make_opaque_cbox_free_glue(bcx, ck, v)
       }
       _ { bcx }
     };
@@ -1363,10 +1362,10 @@ fn make_drop_glue(bcx: @block_ctxt, v0: ValueRef, t: ty::t) {
             trans_res_drop(bcx, v0, did, inner, tps)
           }
           ty::ty_fn(_) {
-            trans_closure::make_fn_glue(bcx, v0, t, drop_ty)
+            closure::make_fn_glue(bcx, v0, t, drop_ty)
           }
           ty::ty_opaque_closure_ptr(ck) {
-            trans_closure::make_opaque_cbox_drop_glue(bcx, ck, v0)
+            closure::make_opaque_cbox_drop_glue(bcx, ck, v0)
           }
           _ {
             if ty::type_needs_drop(ccx.tcx, t) &&
@@ -1398,7 +1397,7 @@ fn trans_res_drop(cx: @block_ctxt, rs: ValueRef, did: ast::def_id,
     let val = GEP_tup_like(cx, tup_ty, rs, [0, 1]);
     cx = val.bcx;
     // Find and call the actual destructor.
-    let dtor_addr = trans_common::get_res_dtor(ccx, did, inner_t);
+    let dtor_addr = common::get_res_dtor(ccx, did, inner_t);
     let args = [cx.fcx.llretptr, null_env_ptr(cx)];
     for tp: ty::t in tps {
         let ti: option::t<@tydesc_info> = none;
@@ -1865,8 +1864,8 @@ fn take_ty_immediate(bcx: @block_ctxt, v: ValueRef, t: ty::t) -> result {
         rslt(incr_refcnt_of_boxed(bcx, v), v)
       }
       ty::ty_uniq(_) {
-        check trans_uniq::type_is_unique_box(bcx, t);
-        trans_uniq::duplicate(bcx, v, t)
+        check uniq::type_is_unique_box(bcx, t);
+        uniq::duplicate(bcx, v, t)
       }
       ty::ty_str | ty::ty_vec(_) { tvec::duplicate(bcx, v, t) }
       _ { rslt(bcx, v) }
@@ -2060,7 +2059,7 @@ fn trans_unary(bcx: @block_ctxt, op: ast::unop, e: @ast::expr,
         let callee_id = ast_util::op_expr_callee_id(un_expr);
         let fty = ty::node_id_to_monotype(bcx_tcx(bcx), callee_id);
         ret trans_call_inner(bcx, fty, {|bcx|
-            trans_impl::trans_method_callee(bcx, callee_id, e, origin)
+            impl::trans_method_callee(bcx, callee_id, e, origin)
         }, [], un_expr.id, dest);
       }
       _ {}
@@ -2096,7 +2095,7 @@ fn trans_unary(bcx: @block_ctxt, op: ast::unop, e: @ast::expr,
         ret store_in_dest(bcx, box, dest);
       }
       ast::uniq(_) {
-        ret trans_uniq::trans_uniq(bcx, e, un_expr.id, dest);
+        ret uniq::trans_uniq(bcx, e, un_expr.id, dest);
       }
       ast::deref {
         bcx_ccx(bcx).sess.bug("deref expressions should have been \
@@ -2199,7 +2198,7 @@ fn trans_assign_op(bcx: @block_ctxt, ex: @ast::expr, op: ast::binop,
         let fty = ty::node_id_to_monotype(bcx_tcx(bcx), callee_id);
         ret trans_call_inner(bcx, fty, {|bcx|
             // FIXME provide the already-computed address, not the expr
-            trans_impl::trans_method_callee(bcx, callee_id, dst, origin)
+            impl::trans_method_callee(bcx, callee_id, dst, origin)
         }, [src], ex.id, save_in(lhs_res.val));
       }
       _ {}
@@ -2251,8 +2250,8 @@ fn autoderef(cx: @block_ctxt, v: ValueRef, t: ty::t) -> result_t {
             } else { v1 = body; }
           }
           ty::ty_uniq(_) {
-            check trans_uniq::type_is_unique_box(cx, t1);
-            let derefed = trans_uniq::autoderef(cx, v1, t1);
+            check uniq::type_is_unique_box(cx, t1);
+            let derefed = uniq::autoderef(cx, v1, t1);
             t1 = derefed.t;
             v1 = derefed.v;
           }
@@ -2320,7 +2319,7 @@ fn trans_binary(bcx: @block_ctxt, op: ast::binop, lhs: @ast::expr,
         let callee_id = ast_util::op_expr_callee_id(ex);
         let fty = ty::node_id_to_monotype(bcx_tcx(bcx), callee_id);
         ret trans_call_inner(bcx, fty, {|bcx|
-            trans_impl::trans_method_callee(bcx, callee_id, lhs, origin)
+            impl::trans_method_callee(bcx, callee_id, lhs, origin)
         }, [rhs], ex.id, dest);
       }
       _ {}
@@ -2446,7 +2445,7 @@ fn trans_for(cx: @block_ctxt, local: @ast::local, seq: @ast::expr,
                                       outer_next_cx, "for loop scope");
         Br(bcx, scope_cx.llbb);
         let curr = PointerCast(bcx, curr, T_ptr(type_of_or_i8(bcx, t)));
-        let bcx = trans_alt::bind_irrefutable_pat(scope_cx, local.node.pat,
+        let bcx = alt::bind_irrefutable_pat(scope_cx, local.node.pat,
                                                   curr, false);
         bcx = trans_block_dps(bcx, body, ignore);
         Br(bcx, next_cx.llbb);
@@ -2764,7 +2763,7 @@ fn trans_callee(bcx: @block_ctxt, e: @ast::expr) -> lval_maybe_callee {
         if !expr_is_lval(bcx, e) {
             alt bcx_ccx(bcx).method_map.find(e.id) {
               some(origin) { // An impl method
-                ret trans_impl::trans_method_callee(bcx, e.id, base, origin);
+                ret impl::trans_method_callee(bcx, e.id, base, origin);
               }
             }
         }
@@ -2846,7 +2845,7 @@ fn lval_maybe_callee_to_lval(c: lval_maybe_callee, ty: ty::t) -> lval_result {
         let n_args = vec::len(ty::ty_fn_args(bcx_tcx(c.bcx), ty));
         let args = vec::init_elt(n_args, none::<@ast::expr>);
         let space = alloc_ty(c.bcx, ty);
-        let bcx = trans_closure::trans_bind_1(space.bcx, ty, c, args, ty,
+        let bcx = closure::trans_bind_1(space.bcx, ty, c, args, ty,
                                               save_in(space.val));
         add_clean_temp(bcx, space.val, ty);
         ret {bcx: bcx, val: space.val, kind: temporary};
@@ -2887,7 +2886,7 @@ fn trans_cast(cx: @block_ctxt, e: @ast::expr, id: ast::node_id,
     let ccx = bcx_ccx(cx);
     let t_out = node_id_type(ccx, id);
     alt ty::struct(ccx.tcx, t_out) {
-      ty::ty_iface(_, _) { ret trans_impl::trans_cast(cx, e, id, dest); }
+      ty::ty_iface(_, _) { ret impl::trans_cast(cx, e, id, dest); }
       _ {}
     }
     let e_res = trans_temp_expr(cx, e);
@@ -3065,7 +3064,7 @@ fn trans_args(cx: @block_ctxt, llenv: ValueRef,
             for bound in *param {
                 alt bound {
                   ty::bound_iface(_) {
-                    let res = trans_impl::get_dict(
+                    let res = impl::get_dict(
                         bcx, option::get(g.origins)[n_orig]);
                     lltydescs += [res.val];
                     bcx = res.bcx;
@@ -3477,7 +3476,7 @@ fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
       }
       ast::expr_alt(expr, arms) {
           //          tcx.sess.span_note(e.span, "about to call trans_alt");
-        ret trans_alt::trans_alt(bcx, expr, arms, dest);
+        ret alt::trans_alt(bcx, expr, arms, dest);
       }
       ast::expr_block(blk) {
         let sub_cx = new_scope_block_ctxt(bcx, "block-expr body");
@@ -3502,7 +3501,7 @@ fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
         ret trans_unary(bcx, op, x, e, dest);
       }
       ast::expr_fn(proto, decl, body, cap_clause) {
-        ret trans_closure::trans_expr_fn(
+        ret closure::trans_expr_fn(
             bcx, proto, decl, body, e.span, e.id, *cap_clause, dest);
       }
       ast::expr_fn_block(decl, body) {
@@ -3511,7 +3510,7 @@ fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
             #debug("translating fn_block %s with type %s",
                    expr_to_str(e), ty_to_str(tcx, ty::expr_ty(tcx, e)));
             let cap_clause = { copies: [], moves: [] };
-            ret trans_closure::trans_expr_fn(
+            ret closure::trans_expr_fn(
                 bcx, proto, decl, body, e.span, e.id, cap_clause, dest);
           }
           _ {
@@ -3520,7 +3519,7 @@ fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
         }
       }
       ast::expr_bind(f, args) {
-        ret trans_closure::trans_bind(
+        ret closure::trans_bind(
             bcx, f, args, e.id, dest);
       }
       ast::expr_copy(a) {
@@ -3542,7 +3541,7 @@ fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
         let callee_id = ast_util::op_expr_callee_id(e);
         let fty = ty::node_id_to_monotype(tcx, callee_id);
         ret trans_call_inner(bcx, fty, {|bcx|
-            trans_impl::trans_method_callee(bcx, callee_id, base, origin)
+            impl::trans_method_callee(bcx, callee_id, base, origin)
         }, [idx], e.id, dest);
       }
 
@@ -3948,7 +3947,7 @@ fn init_local(bcx: @block_ctxt, local: @ast::local) -> @block_ctxt {
     }
     // Make a note to drop this slot on the way out.
     add_clean(bcx, llptr, ty);
-    ret trans_alt::bind_irrefutable_pat(bcx, local.node.pat, llptr, false);
+    ret alt::bind_irrefutable_pat(bcx, local.node.pat, llptr, false);
 }
 
 fn init_ref_local(bcx: @block_ctxt, local: @ast::local) -> @block_ctxt {
@@ -3958,7 +3957,7 @@ fn init_ref_local(bcx: @block_ctxt, local: @ast::local) -> @block_ctxt {
       owned_imm { val = do_spill_noroot(bcx, val); }
       owned {}
     }
-    ret trans_alt::bind_irrefutable_pat(bcx, local.node.pat, val, false);
+    ret alt::bind_irrefutable_pat(bcx, local.node.pat, val, false);
 }
 
 fn zero_alloca(cx: @block_ctxt, llptr: ValueRef, t: ty::t)
@@ -4888,7 +4887,7 @@ fn trans_item(cx: @local_ctxt, item: ast::item) {
         }
       }
       ast::item_impl(tps, _, _, ms) {
-        trans_impl::trans_impl(cx, item.ident, ms, item.id, tps);
+        impl::trans_impl(cx, item.ident, ms, item.id, tps);
       }
       ast::item_res(decl, tps, body, dtor_id, ctor_id) {
         trans_res_ctor(cx, decl, ctor_id, tps);
@@ -5267,10 +5266,10 @@ fn trans_constant(ccx: @crate_ctxt, it: @ast::item, &&pt: [str],
       }
       ast::item_impl(tps, some(@{node: ast::ty_path(_, id), _}), _, ms) {
         let i_did = ast_util::def_id_of_def(ccx.tcx.def_map.get(id));
-        trans_impl::trans_impl_vtable(ccx, pt, i_did, ms, tps, it);
+        impl::trans_impl_vtable(ccx, pt, i_did, ms, tps, it);
       }
       ast::item_iface(_, _) {
-        trans_impl::trans_iface_vtable(ccx, pt, it);
+        impl::trans_iface_vtable(ccx, pt, it);
       }
       _ { }
     }
@@ -5414,16 +5413,14 @@ fn fill_crate_map(ccx: @crate_ctxt, map: ValueRef) {
 fn write_metadata(cx: @crate_ctxt, crate: @ast::crate) {
     if !cx.sess.building_library { ret; }
     let llmeta = C_postr(metadata::encoder::encode_metadata(cx, crate));
-    let llconst = trans_common::C_struct([llmeta]);
-    let llglobal =
-        str::as_buf("rust_metadata",
-                    {|buf|
-                        llvm::LLVMAddGlobal(cx.llmod, val_ty(llconst), buf)
-                    });
+    let llconst = C_struct([llmeta]);
+    let llglobal = str::as_buf("rust_metadata", {|buf|
+        llvm::LLVMAddGlobal(cx.llmod, val_ty(llconst), buf)
+    });
     llvm::LLVMSetInitializer(llglobal, llconst);
-    let _: () =
-        str::as_buf(cx.sess.targ_cfg.target_strs.meta_sect_name,
-                    {|buf| llvm::LLVMSetSection(llglobal, buf) });
+    str::as_buf(cx.sess.targ_cfg.target_strs.meta_sect_name, {|buf|
+        llvm::LLVMSetSection(llglobal, buf)
+    });
     llvm::LLVMSetLinkage(llglobal,
                          lib::llvm::LLVMInternalLinkage as llvm::Linkage);
 

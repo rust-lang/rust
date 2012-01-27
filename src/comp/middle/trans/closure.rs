@@ -3,9 +3,9 @@ import syntax::ast;
 import syntax::ast_util;
 import lib::llvm::llvm;
 import llvm::{ValueRef, TypeRef};
-import trans_common::*;
-import trans_build::*;
-import trans::*;
+import common::*;
+import build::*;
+import base::*;
 import middle::freevars::{get_freevars, freevar_info};
 import option::{some, none};
 import back::abi;
@@ -15,7 +15,7 @@ import back::link::{
     mangle_internal_name_by_path,
     mangle_internal_name_by_path_and_seq};
 import util::ppaux::ty_to_str;
-import trans::{
+import base::{
     trans_shared_malloc,
     type_of_inner,
     node_id_type,
@@ -70,7 +70,7 @@ import shape::{size_of};
 // closure".
 //
 // Typically an opaque closure suffices because I only manipulate it
-// by ptr.  The routine trans_common::T_opaque_cbox_ptr() returns an
+// by ptr.  The routine common::T_opaque_cbox_ptr() returns an
 // appropriate type for such an opaque closure; it allows access to the
 // first two fields, but not the others.
 //
@@ -246,7 +246,7 @@ fn allocate_cbox(bcx: @block_ctxt,
         (bcx, box, 0x12345678) // use arbitrary value for debugging
       }
       ty::ck_block {
-        let {bcx, val: box} = trans::alloc_ty(bcx, cbox_ty);
+        let {bcx, val: box} = base::alloc_ty(bcx, cbox_ty);
         (bcx, box, 0x12345678) // use arbitrary value for debugging
       }
     };
@@ -316,10 +316,10 @@ fn store_environment(
         let ti = none;
 
         let {result:closure_td, _} =
-            trans::get_tydesc(bcx, cbox_ty, true, ti);
-        trans::lazily_emit_tydesc_glue(bcx, abi::tydesc_field_take_glue, ti);
-        trans::lazily_emit_tydesc_glue(bcx, abi::tydesc_field_drop_glue, ti);
-        trans::lazily_emit_tydesc_glue(bcx, abi::tydesc_field_free_glue, ti);
+            base::get_tydesc(bcx, cbox_ty, true, ti);
+        base::lazily_emit_tydesc_glue(bcx, abi::tydesc_field_take_glue, ti);
+        base::lazily_emit_tydesc_glue(bcx, abi::tydesc_field_drop_glue, ti);
+        base::lazily_emit_tydesc_glue(bcx, abi::tydesc_field_free_glue, ti);
         bcx = closure_td.bcx;
         let td = maybe_clone_tydesc(bcx, ck, closure_td.val);
         Store(bcx, td, bound_tydesc);
@@ -367,16 +367,16 @@ fn store_environment(
         let bound_data = bound_data.val;
         alt bv {
           env_expr(e) {
-            bcx = trans::trans_expr_save_in(bcx, e, bound_data);
+            bcx = base::trans_expr_save_in(bcx, e, bound_data);
             add_clean_temp_mem(bcx, bound_data, bound_tys[i]);
             temp_cleanups += [bound_data];
           }
           env_copy(val, ty, owned) {
             let val1 = load_if_immediate(bcx, val, ty);
-            bcx = trans::copy_val(bcx, INIT, bound_data, val1, ty);
+            bcx = base::copy_val(bcx, INIT, bound_data, val1, ty);
           }
           env_copy(val, ty, owned_imm) {
-            bcx = trans::copy_val(bcx, INIT, bound_data, val, ty);
+            bcx = base::copy_val(bcx, INIT, bound_data, val, ty);
           }
           env_copy(_, _, temporary) {
             fail "Cannot capture temporary upvar";
@@ -572,7 +572,7 @@ fn trans_bind_1(cx: @block_ctxt, outgoing_fty: ty::t,
             for bound in *bounds {
                 alt bound {
                   ty::bound_iface(_) {
-                    let dict = trans_impl::get_dict(
+                    let dict = impl::get_dict(
                         bcx, option::get(ginfo.origins)[orig]);
                     tds += [PointerCast(bcx, dict.val, val_ty(td))];
                     orig += 1u;
