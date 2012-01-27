@@ -87,7 +87,8 @@ fn moddoc_from_mod(
                     none
                   }
                 }
-            })
+            }),
+        resources: doc::resourcelist([])
     }
 }
 
