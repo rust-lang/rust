@@ -93,6 +93,10 @@ fn write_mod_contents(
         write_fn(ctxt, fndoc);
     }
 
+    for resdoc in *doc.resources {
+        write_res(ctxt, resdoc);
+    }
+
     for moddoc in *doc.mods {
         write_mod(ctxt, moddoc);
     }
@@ -140,6 +144,12 @@ fn code_block_indent(s: str) -> str {
 }
 
 #[test]
+fn write_markdown_should_write_function_header() {
+    let markdown = test::render("fn func() { }");
+    assert str::contains(markdown, "### Function `func`");
+}
+
+#[test]
 fn should_write_the_function_signature() {
     let markdown = test::render("#[doc = \"f\"] fn a() { }");
     assert str::contains(markdown, "\n    fn a()\n");
@@ -168,6 +178,12 @@ fn should_correctly_indent_fn_signature() {
     assert str::contains(markdown, "    line 1\n    line 2");
 }
 
+#[test]
+fn should_leave_blank_line_between_fn_header_and_sig() {
+    let markdown = test::render("#[doc(brief = \"brief\")] fn a() { }");
+    assert str::contains(markdown, "Function `a`\n\n    fn a()");
+}
+
 fn write_brief(
     ctxt: ctxt,
     brief: option<str>
@@ -179,6 +195,20 @@ fn write_brief(
       }
       none { }
     }
+}
+
+#[test]
+fn should_leave_blank_line_after_brief() {
+    let markdown = test::render("#[doc(brief = \"brief\")] fn a() { }");
+    assert str::contains(markdown, "brief\n\n");
+}
+
+#[test]
+fn should_leave_blank_line_between_brief_and_desc() {
+    let markdown = test::render(
+        "#[doc(brief = \"brief\", desc = \"desc\")] fn a() { }"
+    );
+    assert str::contains(markdown, "brief\n\ndesc");
 }
 
 fn write_desc(
@@ -437,6 +467,33 @@ fn should_write_variant_list_with_signatures() {
          \n* `c(int)` - a\n\n");
 }
 
+fn write_res(ctxt: ctxt, doc: doc::resdoc) {
+    write_header(ctxt, h3, #fmt("Resource `%s`", doc.name));
+    write_sig(ctxt, doc.sig);
+    write_brief(ctxt, doc.brief);
+    write_desc(ctxt, doc.desc);
+    write_args(ctxt, doc.args);
+}
+
+#[test]
+fn should_write_resource_header() {
+    let markdown = test::render("resource r(a: bool) { }");
+    assert str::contains(markdown, "### Resource `r`");
+}
+
+#[test]
+fn should_write_resource_signature() {
+    let markdown = test::render("resource r(a: bool) { }");
+    assert str::contains(markdown, "\n    resource r(a: bool)\n");
+}
+
+#[test]
+fn should_write_resource_args() {
+    let markdown = test::render("#[doc(args(a = \"b\"))]\
+                                 resource r(a: bool) { }");
+    assert str::contains(markdown, "Arguments:\n\n* `a`: `bool` - b");
+}
+
 #[cfg(test)]
 mod test {
     fn render(source: str) -> str {
@@ -478,12 +535,6 @@ mod test {
     }
 
     #[test]
-    fn write_markdown_should_write_function_header() {
-        let markdown = render("fn func() { }");
-        assert str::contains(markdown, "### Function `func`");
-    }
-
-    #[test]
     fn write_markdown_should_write_mod_headers() {
         let markdown = render("mod moo { }");
         assert str::contains(markdown, "## Module `moo`");
@@ -494,25 +545,4 @@ mod test {
         let markdown = render("mod morp { }");
         assert str::contains(markdown, "Module `morp`\n\n");
     }
-
-    #[test]
-    fn should_leave_blank_line_between_fn_header_and_sig() {
-        let markdown = render("#[doc(brief = \"brief\")] fn a() { }");
-        assert str::contains(markdown, "Function `a`\n\n    fn a()");
-    }
-
-    #[test]
-    fn should_leave_blank_line_after_brief() {
-        let markdown = render("#[doc(brief = \"brief\")] fn a() { }");
-        assert str::contains(markdown, "brief\n\n");
-    }
-
-    #[test]
-    fn should_leave_blank_line_between_brief_and_desc() {
-        let markdown = render(
-            "#[doc(brief = \"brief\", desc = \"desc\")] fn a() { }"
-        );
-        assert str::contains(markdown, "brief\n\ndesc");
-    }
-
 }
