@@ -2,7 +2,7 @@ import driver::session;
 
 import option::{none, some};
 
-import syntax::ast::{crate, expr_, expr_mac, mac_invoc, mac_qq};
+import syntax::ast::{crate, expr_, expr_mac, mac_invoc, mac_qq, mac_var};
 import syntax::fold::*;
 import syntax::ext::base::*;
 import syntax::ext::build::*;
@@ -27,6 +27,28 @@ fn expand_qquote(cx: ext_ctxt, sp: span, _e: @ast::expr) -> ast::expr_ {
                         mk_access_(cx,sp, session_call(), "parse_sess")]
                       );
     ret call.node;
+}
+
+fn replace(e: @ast::expr, repls: [@ast::expr]) -> @ast::expr {
+    let aft = default_ast_fold();
+    let f_pre = {fold_expr: bind replace_expr(repls, _, _, _,
+                                              aft.fold_expr)
+                 with *aft};
+    let f = make_fold(f_pre);
+    ret f.fold_expr(e);
+}
+
+fn replace_expr(repls: [@ast::expr],
+                e: ast::expr_, s: span, fld: ast_fold,
+                orig: fn@(ast::expr_, span, ast_fold)->(ast::expr_, span))
+    -> (ast::expr_, span)
+{
+    // note: nested enum matching will be really nice here so I can jusy say
+    //       expr_mac(mac_var(i))
+    alt e {
+      expr_mac({node: mac_var(i), _}) {let r = repls[i]; (r.node, r.span)}
+      _ {orig(e,s,fld)}
+    }
 }
 
 // Local Variables:
