@@ -18,7 +18,8 @@ fn run(
     let fold = fold::fold({
         fold_fn: fold_fn,
         fold_const: fold_const,
-        fold_enum: fold_enum
+        fold_enum: fold_enum,
+        fold_res: fold_res
         with *fold::default_seq_fold(srv)
     });
     fold.fold_crate(fold, doc)
@@ -221,4 +222,34 @@ fn should_add_variant_sigs() {
     let doc = extract::from_srv(srv, "");
     let doc = run(srv, doc);
     assert doc.topmod.enums[0].variants[0].sig == some("b(int)");
+}
+
+fn fold_res(
+    fold: fold::fold<astsrv::srv>,
+    doc: doc::resdoc
+) -> doc::resdoc {
+    let srv = fold.ctxt;
+
+    ~{
+        sig: some(astsrv::exec(srv) {|ctxt|
+            alt ctxt.ast_map.get(doc.id) {
+              ast_map::node_item(@{
+                node: ast::item_res(decl, _, _, _, _), _
+              }) {
+                pprust::res_to_str(decl, doc.name, [])
+              }
+            }
+        })
+        with *doc
+    }
+}
+
+#[test]
+fn should_add_resource_sigs() {
+    let source = "resource r(b: bool) { }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = run(srv, doc);
+    log(error, doc.topmod.resources[0].sig);
+    assert doc.topmod.resources[0].sig == some("resource r(b: bool)");
 }
