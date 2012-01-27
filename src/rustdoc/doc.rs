@@ -16,7 +16,7 @@ type moddoc = ~{
     fns: fnlist,
     consts: constlist,
     enums: enumlist,
-    resources: resourcelist
+    resources: reslist
 };
 
 type constdoc = ~{
@@ -63,7 +63,7 @@ type variantdoc = ~{
     sig: option<str>
 };
 
-type resourcedoc = ~{
+type resdoc = ~{
     id: ast_id,
     name: str,
     brief: option<str>,
@@ -77,4 +77,4 @@ enum modlist = [moddoc];
 enum constlist = [constdoc];
 enum fnlist = [fndoc];
 enum enumlist = [enumdoc];
-enum resourcelist = [resourcedoc];
+enum reslist = [resdoc];

@@ -53,7 +53,7 @@ fn test_run_passes() {
                 fns: doc::fnlist([]),
                 consts: doc::constlist([]),
                 enums: doc::enumlist([]),
-                resources: doc::resourcelist([])
+                resources: doc::reslist([])
             }
         }
     }
@@ -72,7 +72,7 @@ fn test_run_passes() {
                 fns: doc::fnlist([]),
                 consts: doc::constlist([]),
                 enums: doc::enumlist([]),
-                resources: doc::resourcelist([])
+                resources: doc::reslist([])
             }
         }
     }

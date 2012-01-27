@@ -88,7 +88,17 @@ fn moddoc_from_mod(
                   }
                 }
             }),
-        resources: doc::resourcelist([])
+        resources: doc::reslist(
+            vec::filter_map(module.items) {|item|
+                alt item.node {
+                  ast::item_res(_, _, _, _, _) {
+                    some(resdoc_from_resource(item.ident, item.id))
+                  }
+                  _ {
+                    none
+                  }
+                }
+            })
     }
 }
 
@@ -199,6 +209,29 @@ fn should_extract_enum_variants() {
     let ast = parse::from_str(source);
     let doc = extract(ast, "");
     assert doc.topmod.enums[0].variants[0].name == "v";
+}
+
+fn resdoc_from_resource(
+    name: str,
+    id: ast::node_id
+) -> doc::resdoc {
+    ~{
+        id: id,
+        name: name,
+        brief: none,
+        desc: none,
+        args: [],
+        sig: none
+    }
+}
+
+#[test]
+fn should_extract_resources() {
+    let source = "resource r(b: bool) { }";
+    let ast = parse::from_str(source);
+    let doc = extract(ast, "");
+    assert doc.topmod.resources[0].id != 0;
+    assert doc.topmod.resources[0].name == "r";
 }
 
 #[cfg(test)]
