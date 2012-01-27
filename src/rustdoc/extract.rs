@@ -91,8 +91,8 @@ fn moddoc_from_mod(
         resources: doc::reslist(
             vec::filter_map(module.items) {|item|
                 alt item.node {
-                  ast::item_res(_, _, _, _, _) {
-                    some(resdoc_from_resource(item.ident, item.id))
+                  ast::item_res(decl, _, _, _, _) {
+                    some(resdoc_from_resource(decl, item.ident, item.id))
                   }
                   _ {
                     none
@@ -212,6 +212,7 @@ fn should_extract_enum_variants() {
 }
 
 fn resdoc_from_resource(
+    decl: ast::fn_decl,
     name: str,
     id: ast::node_id
 ) -> doc::resdoc {
@@ -220,7 +221,7 @@ fn resdoc_from_resource(
         name: name,
         brief: none,
         desc: none,
-        args: [],
+        args: argdocs_from_args(decl.inputs),
         sig: none
     }
 }
@@ -232,6 +233,14 @@ fn should_extract_resources() {
     let doc = extract(ast, "");
     assert doc.topmod.resources[0].id != 0;
     assert doc.topmod.resources[0].name == "r";
+}
+
+#[test]
+fn should_extract_resource_args() {
+    let source = "resource r(b: bool) { }";
+    let ast = parse::from_str(source);
+    let doc = extract(ast, "");
+    assert doc.topmod.resources[0].args[0].name == "b";
 }
 
 #[cfg(test)]

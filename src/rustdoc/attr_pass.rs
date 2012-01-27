@@ -320,11 +320,17 @@ fn fold_res(
     ~{
         brief: attrs.brief,
         desc: attrs.desc,
-        args: vec::map(attrs.args) {|attrs|
-            ~{
-                name: attrs.name,
-                desc: some(attrs.desc),
-                ty: none
+        args: vec::map(doc.args) {|doc|
+            alt vec::find(attrs.args) {|attr|
+                attr.name == doc.name
+            } {
+                some(attr) {
+                    ~{
+                        desc: some(attr.desc)
+                        with *doc
+                    }
+                }
+                none { doc }
             }
         }
         with *doc
