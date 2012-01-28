@@ -45,6 +45,11 @@ fn moddoc_from_mod(
         desc: none,
         items: vec::filter_map(module.items) {|item|
             alt item.node {
+              ast::item_const(_, _) {
+                some(doc::consttag(
+                    constdoc_from_const(item.ident, item.id)
+                ))
+              }
               ast::item_enum(variants, _) {
                 some(doc::enumtag(
                     enumdoc_from_enum(item.ident, item.id, variants)
@@ -77,17 +82,6 @@ fn moddoc_from_mod(
                   ast::item_fn(decl, _, _) {
                     some(fndoc_from_fn(
                         decl, item.ident, item.id))
-                  }
-                  _ {
-                    none
-                  }
-                }
-            }),
-        consts: doc::constlist(
-            vec::filter_map(module.items) {|item|
-                alt item.node {
-                  ast::item_const(_, _) {
-                    some(constdoc_from_const(item.ident, item.id))
                   }
                   _ {
                     none
@@ -157,8 +151,8 @@ fn should_extract_const_name_and_id() {
     let source = "const a: int = 0;";
     let ast = parse::from_str(source);
     let doc = extract(ast, "");
-    assert doc.topmod.consts[0].id != 0;
-    assert doc.topmod.consts[0].name == "a";
+    assert doc.topmod.consts()[0].id != 0;
+    assert doc.topmod.consts()[0].name == "a";
 }
 
 fn enumdoc_from_enum(

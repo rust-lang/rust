@@ -247,7 +247,7 @@ fn fold_const_should_extract_docs() {
     let srv = astsrv::mk_srv_from_str(source);
     let doc = extract::from_srv(srv, "");
     let fold = fold::default_seq_fold(srv);
-    let doc = fold_const(fold, doc.topmod.consts[0]);
+    let doc = fold_const(fold, doc.topmod.consts()[0]);
     assert doc.brief == some("foo");
     assert doc.desc == some("bar");
 }

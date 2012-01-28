@@ -24,8 +24,7 @@ fn run(
         fold_enum: fold_enum,
         fold_res: fold_res,
         fold_modlist: fold_modlist,
-        fold_fnlist: fold_fnlist,
-        fold_constlist: fold_constlist
+        fold_fnlist: fold_fnlist
         with *fold::default_seq_fold(ctxt)
     });
     fold.fold_crate(fold, doc)
@@ -38,6 +37,14 @@ fn fold_mod(
     let doc = ~{
         items: vec::filter_map(doc.items) {|itemtag|
             alt itemtag {
+              doc::consttag(constdoc) {
+                let doc = fold.fold_const(fold, constdoc);
+                if fold.ctxt.have_docs {
+                    some(doc::consttag(doc))
+                } else {
+                    none
+                }
+              }
               doc::enumtag(enumdoc) {
                 let doc = fold.fold_enum(fold, enumdoc);
                 if fold.ctxt.have_docs {
@@ -219,27 +226,13 @@ fn fold_const(
     ret doc;
 }
 
-fn fold_constlist(
-    fold: fold::fold<ctxt>,
-    list: doc::constlist
-) -> doc::constlist {
-    doc::constlist(vec::filter_map(*list) {|doc|
-        let doc = fold.fold_const(fold, doc);
-        if fold.ctxt.have_docs {
-            some(doc)
-        } else {
-            none
-        }
-    })
-}
-
 #[test]
 fn should_elide_undocumented_consts() {
     let source = "const a: bool = true;";
     let srv = astsrv::mk_srv_from_str(source);
     let doc = extract::from_srv(srv, "");
     let doc = run(srv, doc);
-    assert vec::is_empty(*doc.topmod.consts);
+    assert vec::is_empty(doc.topmod.consts());
 }
 
 fn fold_enum(fold: fold::fold<ctxt>, doc: doc::enumdoc) -> doc::enumdoc {

@@ -22,8 +22,7 @@ type moddoc = ~{
     desc: option<str>,
     items: [itemtag],
     mods: modlist,
-    fns: fnlist,
-    consts: constlist
+    fns: fnlist
 };
 
 type constdoc = ~{
@@ -81,10 +80,18 @@ type resdoc = ~{
 
 // Just to break the structural recursive types
 enum modlist = [moddoc];
-enum constlist = [constdoc];
 enum fnlist = [fndoc];
 
 impl util for moddoc {
+
+    fn consts() -> [constdoc] {
+        vec::filter_map(self.items) {|itemtag|
+            alt itemtag {
+              consttag(constdoc) { some(constdoc) }
+              _ { none }
+            }
+        }
+    }
 
     fn enums() -> [enumdoc] {
         vec::filter_map(self.items) {|itemtag|

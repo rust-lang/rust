@@ -35,8 +35,8 @@ fn should_trim_const() {
     let doc = extract::from_srv(srv, "");
     let doc = attr_pass::mk_pass()(srv, doc);
     let doc = mk_pass()(srv, doc);
-    assert doc.topmod.consts[0].brief == some("brief");
-    assert doc.topmod.consts[0].desc == some("desc");
+    assert doc.topmod.consts()[0].brief == some("brief");
+    assert doc.topmod.consts()[0].desc == some("desc");
 }
 
 #[test]

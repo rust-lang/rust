@@ -183,7 +183,7 @@ fn should_add_const_types() {
     let srv = astsrv::mk_srv_from_str(source);
     let doc = extract::from_srv(srv, "");
     let doc = run(srv, doc);
-    assert doc.topmod.consts[0].ty == some("bool");
+    assert doc.topmod.consts()[0].ty == some("bool");
 }
 
 fn fold_enum(
