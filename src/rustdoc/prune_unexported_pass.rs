@@ -138,7 +138,7 @@ fn exported_items_from(
     vec::filter_map(doc.items) { |itemtag|
         let name = alt itemtag {
           doc::enumtag(~{name, _}) { name }
-          doc::restag(~{name, _}) { "FIXME" }
+          doc::restag(~{name, _}) { name }
         };
         let itemtag = alt itemtag {
           doc::enumtag(enumdoc) {
@@ -331,4 +331,22 @@ fn should_prune_unexported_variants() {
     let doc = extract::from_srv(srv, "");
     let doc = run(srv, doc);
     assert vec::len(doc.topmod.mods[0].enums()[0].variants) == 0u;
+}
+
+#[test]
+fn should_prune_unexported_resources_from_top_mod() {
+    let source = "export a; mod a { } resource r(a: bool) { }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = run(srv, doc);
+    assert vec::is_empty(doc.topmod.resources());
+}
+
+#[test]
+fn should_prune_unexported_resources() {
+    let source = "mod a { export a; mod a { } resource r(a: bool) { } }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = run(srv, doc);
+    assert vec::is_empty(doc.topmod.mods[0].resources());
 }
