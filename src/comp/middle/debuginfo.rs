@@ -101,7 +101,7 @@ type metadata<T> = {node: ValueRef, data: T};
 
 type file_md = {path: str};
 type compile_unit_md = {path: str};
-type subprogram_md = {path: str};
+type subprogram_md = {id: ast::node_id};
 type local_var_md = {id: ast::node_id};
 type tydesc_md = {hash: uint};
 type block_md = {start: codemap::loc, end: codemap::loc};
@@ -225,39 +225,39 @@ fn line_from_span(cm: codemap::codemap, sp: span) -> uint {
 }
 
 fn create_block(cx: @block_ctxt, sp: span) -> @metadata<block_md> {
-    let cache = get_cache(bcx_ccx(cx));
+    //let cache = get_cache(bcx_ccx(cx));
     let start = codemap::lookup_char_pos(bcx_ccx(cx).sess.codemap,
                                          sp.lo);
     let fname = start.filename;
     let end = codemap::lookup_char_pos(bcx_ccx(cx).sess.codemap,
                                        sp.hi);
     let tg = LexicalBlockTag;
-    alt cached_metadata::<@metadata<block_md>>(
+    /*alt cached_metadata::<@metadata<block_md>>(
         cache, tg,
         {|md| start == md.data.start && end == md.data.end}) {
       option::some(md) { ret md; }
       option::none {}
-    }
+    }*/
 
     let parent = alt cx.parent {
       parent_none { create_function(cx.fcx, sp).node }
-      parent_some(bcx) { create_block(cx, sp).node }
+      parent_some(bcx) { create_block(bcx, sp).node }
     };
     let file_node = create_file(bcx_ccx(cx), fname);
-    let unique_id = alt cache.find(LexicalBlockTag) {
+    /*let unique_id = alt cache.find(LexicalBlockTag) {
       option::some(v) { vec::len(v) as int }
       option::none { 0 }
-    };
+    };*/
     let lldata = [lltag(tg),
                   parent,
                   lli32(start.line as int),
                   lli32(start.col as int),
-                  file_node.node,
-                  lli32(unique_id)
+                  file_node.node/*,
+                  lli32(unique_id)*/
                  ];
       let val = llmdnode(lldata);
       let mdval = @{node: val, data: {start: start, end: end}};
-      update_cache(cache, tg, block_metadata(mdval));
+      //update_cache(cache, tg, block_metadata(mdval));
       ret mdval;
 }
 
@@ -721,7 +721,7 @@ fn create_function(fcx: @fn_ctxt, sp: span) -> @metadata<subprogram_md> {
     #debug("~~");
     log(debug, fcx.id);
 
-    log(debug, codemap::span_to_str(sp, cx.sess.codemap));
+    //log(debug, codemap::span_to_str(sp, cx.sess.codemap));
 
     let (ident, ret_ty, id) = alt cx.ast_map.get(fcx.id) {
       ast_map::node_item(item) {
@@ -754,15 +754,14 @@ fn create_function(fcx: @fn_ctxt, sp: span) -> @metadata<subprogram_md> {
     log(debug, ident);
     log(debug, id);
 
-    let path = str::connect(fcx.lcx.path + [ident], "::");
-
-    let cache = get_cache(cx);
+    /*let cache = get_cache(cx);
     alt cached_metadata::<@metadata<subprogram_md>>(
-        cache, SubprogramTag, {|md| md.data.path == path &&
-                                    /*md.data.path == ??*/ true}) {
+        cache, SubprogramTag, {|md| md.data.id == id}) {
       option::some(md) { ret md; }
       option::none {}
-    }
+    }*/
+
+    let path = str::connect(fcx.lcx.path + [ident], "::");
 
     let loc = codemap::lookup_char_pos(cx.sess.codemap,
                                        sp.lo);
@@ -805,7 +804,7 @@ fn create_function(fcx: @fn_ctxt, sp: span) -> @metadata<subprogram_md> {
                       ];
     let val = llmdnode(fn_metadata);
     add_named_metadata(cx, "llvm.dbg.sp", val);
-    let mdval = @{node: val, data: {path: path}};
-    update_cache(cache, SubprogramTag, subprogram_metadata(mdval));
+    let mdval = @{node: val, data: {id: id}};
+    //update_cache(cache, SubprogramTag, subprogram_metadata(mdval));
     ret mdval;
 }
