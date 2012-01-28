@@ -333,8 +333,8 @@ private:
 
             uv_timer_t *timer = (uv_timer_t *)malloc(sizeof(uv_timer_t));
             timer->data = td;
-            int result = uv_timer_init(loop, timer);
-            result = uv_timer_start(timer, timer_cb, td->timeout, 0);
+            uv_timer_init(loop, timer);
+            uv_timer_start(timer, timer_cb, td->timeout, 0);
 	}
     }
 
