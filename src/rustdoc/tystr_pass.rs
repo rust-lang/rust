@@ -224,7 +224,7 @@ fn should_add_variant_sigs() {
     let srv = astsrv::mk_srv_from_str(source);
     let doc = extract::from_srv(srv, "");
     let doc = run(srv, doc);
-    assert doc.topmod.enums[0].variants[0].sig == some("b(int)");
+    assert doc.topmod.enums()[0].variants[0].sig == some("b(int)");
 }
 
 fn fold_res(

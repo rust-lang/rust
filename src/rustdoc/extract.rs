@@ -45,6 +45,11 @@ fn moddoc_from_mod(
         desc: none,
         items: vec::filter_map(module.items) {|item|
             alt item.node {
+              ast::item_enum(variants, _) {
+                some(doc::enumtag(
+                    enumdoc_from_enum(item.ident, item.id, variants)
+                ))
+              }
               ast::item_res(decl, _, _, _, _) {
                 some(doc::restag(
                     resdoc_from_resource(decl, item.ident, item.id)
@@ -83,17 +88,6 @@ fn moddoc_from_mod(
                 alt item.node {
                   ast::item_const(_, _) {
                     some(constdoc_from_const(item.ident, item.id))
-                  }
-                  _ {
-                    none
-                  }
-                }
-            }),
-        enums: doc::enumlist(
-            vec::filter_map(module.items) {|item|
-                alt item.node {
-                  ast::item_enum(variants, _) {
-                    some(enumdoc_from_enum(item.ident, item.id, variants))
                   }
                   _ {
                     none
@@ -200,8 +194,8 @@ fn should_extract_enums() {
     let source = "enum e { v }";
     let ast = parse::from_str(source);
     let doc = extract(ast, "");
-    assert doc.topmod.enums[0].id != 0;
-    assert doc.topmod.enums[0].name == "e";
+    assert doc.topmod.enums()[0].id != 0;
+    assert doc.topmod.enums()[0].name == "e";
 }
 
 #[test]
@@ -209,7 +203,7 @@ fn should_extract_enum_variants() {
     let source = "enum e { v }";
     let ast = parse::from_str(source);
     let doc = extract(ast, "");
-    assert doc.topmod.enums[0].variants[0].name == "v";
+    assert doc.topmod.enums()[0].variants[0].name == "v";
 }
 
 fn resdoc_from_resource(

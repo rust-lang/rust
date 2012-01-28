@@ -85,10 +85,6 @@ fn write_mod_contents(
         write_const(ctxt, constdoc);
     }
 
-    for enumdoc in *doc.enums {
-        write_enum(ctxt, enumdoc);
-    }
-
     for fndoc in *doc.fns {
         write_fn(ctxt, fndoc);
     }
@@ -99,6 +95,7 @@ fn write_mod_contents(
 
     for itemtag in doc.items {
         alt itemtag {
+          doc::enumtag(enumdoc) { write_enum(ctxt, enumdoc) }
           doc::restag(resdoc) { write_res(ctxt, resdoc) }
         }
     }

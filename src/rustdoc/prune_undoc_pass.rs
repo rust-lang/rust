@@ -25,8 +25,7 @@ fn run(
         fold_res: fold_res,
         fold_modlist: fold_modlist,
         fold_fnlist: fold_fnlist,
-        fold_constlist: fold_constlist,
-        fold_enumlist: fold_enumlist
+        fold_constlist: fold_constlist
         with *fold::default_seq_fold(ctxt)
     });
     fold.fold_crate(fold, doc)
@@ -39,6 +38,14 @@ fn fold_mod(
     let doc = ~{
         items: vec::filter_map(doc.items) {|itemtag|
             alt itemtag {
+              doc::enumtag(enumdoc) {
+                let doc = fold.fold_enum(fold, enumdoc);
+                if fold.ctxt.have_docs {
+                    some(doc::enumtag(doc))
+                } else {
+                    none
+                }
+              }
               doc::restag(resdoc) {
                 let doc = fold.fold_res(fold, resdoc);
                 if fold.ctxt.have_docs {
@@ -253,20 +260,6 @@ fn fold_enum(fold: fold::fold<ctxt>, doc: doc::enumdoc) -> doc::enumdoc {
     ret doc;
 }
 
-fn fold_enumlist(
-    fold: fold::fold<ctxt>,
-    list: doc::enumlist
-) -> doc::enumlist {
-    doc::enumlist(vec::filter_map(*list) {|doc|
-        let doc = fold.fold_enum(fold, doc);
-        if fold.ctxt.have_docs {
-            some(doc)
-        } else {
-            none
-        }
-    })
-}
-
 #[test]
 fn should_elide_undocumented_enums() {
     let source = "enum a { b }";
@@ -274,7 +267,7 @@ fn should_elide_undocumented_enums() {
     let doc = extract::from_srv(srv, "");
     let doc = attr_pass::mk_pass()(srv, doc);
     let doc = run(srv, doc);
-    assert vec::is_empty(*doc.topmod.enums);
+    assert vec::is_empty(doc.topmod.enums());
 }
 
 #[test]
@@ -284,7 +277,7 @@ fn should_elide_undocumented_variants() {
     let doc = extract::from_srv(srv, "");
     let doc = attr_pass::mk_pass()(srv, doc);
     let doc = run(srv, doc);
-    assert vec::is_empty(doc.topmod.enums[0].variants);
+    assert vec::is_empty(doc.topmod.enums()[0].variants);
 }
 
 #[test]
@@ -294,7 +287,7 @@ fn should_not_elide_enums_with_documented_variants() {
     let doc = extract::from_srv(srv, "");
     let doc = attr_pass::mk_pass()(srv, doc);
     let doc = run(srv, doc);
-    assert vec::is_not_empty(*doc.topmod.enums);
+    assert vec::is_not_empty(doc.topmod.enums());
 }
 
 fn fold_res(fold: fold::fold<ctxt>, doc: doc::resdoc) -> doc::resdoc {

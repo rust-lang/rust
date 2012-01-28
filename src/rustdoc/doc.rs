@@ -23,8 +23,7 @@ type moddoc = ~{
     items: [itemtag],
     mods: modlist,
     fns: fnlist,
-    consts: constlist,
-    enums: enumlist
+    consts: constlist
 };
 
 type constdoc = ~{
@@ -84,9 +83,18 @@ type resdoc = ~{
 enum modlist = [moddoc];
 enum constlist = [constdoc];
 enum fnlist = [fndoc];
-enum enumlist = [enumdoc];
 
 impl util for moddoc {
+
+    fn enums() -> [enumdoc] {
+        vec::filter_map(self.items) {|itemtag|
+            alt itemtag {
+              enumtag(enumdoc) { some(enumdoc) }
+              _ { none }
+            }
+        }
+    }
+
     fn resources() -> [resdoc] {
         vec::filter_map(self.items) {|itemtag|
             alt itemtag {
