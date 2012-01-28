@@ -5,6 +5,7 @@ Graydon Hoare <graydon@mozilla.com>
 Other authors:
 
 Adam Bozanich <adam.boz@gmail.com>
+Aleksander Balicki <balicki.aleksander@gmail.com>
 Andreas Gal <gal@mozilla.com>
 Austin Seipp <mad.one@gmail.com>
 Ben Striegel <ben.striegel@gmail.com>

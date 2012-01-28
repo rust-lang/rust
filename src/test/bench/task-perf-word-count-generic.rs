@@ -32,7 +32,7 @@ import comm::recv;
 import comm::send;
 
 fn map(&&filename: [u8], emit: map_reduce::putter<[u8], int>) {
-    let f = io::file_reader(str::unsafe_from_bytes(filename));
+    let f = io::file_reader(str::from_bytes(filename));
 
     while true {
         alt read_word(f) {

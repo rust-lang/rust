@@ -128,7 +128,7 @@ Function: tail
 
 Returns all but the first element of a list
 */
-pure fn tail<T: copy>(ls: list<T>) : is_not_empty(ls) -> list<T> {
+pure fn tail<T: copy>(ls: list<T>) -> list<T> {
     alt ls {
         cons(_, tl) { ret *tl; }
         nil { fail "list empty" }

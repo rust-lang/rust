@@ -1,2 +1,2 @@
-// error-pattern: Type inference failed because I could not find
+// error-pattern: can not instantiate infinite type
 fn main() { let f; f = @f; }

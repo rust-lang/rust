@@ -27,6 +27,11 @@ native mod rustrt {
         thread: thread,
         req_id: u32,
         chan: comm::chan<iomsg>);
+    fn rust_uvtmp_timer(
+        thread: thread,
+        timeout: u32,
+        req_id: u32,
+        chan: comm::chan<iomsg>);
     fn rust_uvtmp_delete_buf(buf: *u8);
     fn rust_uvtmp_get_req_id(cd: connect_data) -> u32;
 }
@@ -39,7 +44,9 @@ enum iomsg {
     whatever,
     connected(connect_data),
     wrote(connect_data),
-    read(connect_data, *u8, ctypes::ssize_t)
+    read(connect_data, *u8, ctypes::ssize_t),
+    timer(u32),
+    exit
 }
 
 fn create_thread() -> thread {
@@ -78,6 +85,11 @@ fn write(thread: thread, req_id: u32, bytes: [u8],
 fn read_start(thread: thread, req_id: u32,
               chan: comm::chan<iomsg>) {
     rustrt::rust_uvtmp_read_start(thread, req_id, chan);
+}
+
+fn timer_start(thread: thread, timeout: u32, req_id: u32,
+              chan: comm::chan<iomsg>) {
+    rustrt::rust_uvtmp_timer(thread, timeout, req_id, chan);
 }
 
 fn delete_buf(buf: *u8) {
@@ -138,7 +150,7 @@ fn test_http() {
                     unsafe {
                         log(error, len);
                         let buf = vec::unsafe::from_buf(buf, len as uint);
-                        let str = str::unsafe_from_bytes(buf);
+                        let str = str::from_bytes(buf);
                         #error("read something");
                         io::println(str);
                     }

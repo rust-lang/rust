@@ -109,7 +109,7 @@ impl reader_util for reader {
             if ch == -1 || ch == 10 { break; }
             buf += [ch as u8];
         }
-        str::unsafe_from_bytes(buf)
+        str::from_bytes(buf)
     }
 
     fn read_c_str() -> str {
@@ -118,7 +118,7 @@ impl reader_util for reader {
             let ch = self.read_byte();
             if ch < 1 { break; } else { buf += [ch as u8]; }
         }
-        str::unsafe_from_bytes(buf)
+        str::from_bytes(buf)
     }
 
     // FIXME deal with eof?
@@ -461,7 +461,10 @@ fn mk_mem_buffer() -> mem_buffer {
 }
 fn mem_buffer_writer(b: mem_buffer) -> writer { b as writer }
 fn mem_buffer_buf(b: mem_buffer) -> [u8] { vec::from_mut(b.buf) }
-fn mem_buffer_str(b: mem_buffer) -> str { str::unsafe_from_bytes(b.buf) }
+fn mem_buffer_str(b: mem_buffer) -> str {
+   let b_ = vec::from_mut(b.buf);
+   str::from_bytes(b_)
+}
 
 // Utility functions
 fn seek_in_buf(offset: int, pos: uint, len: uint, whence: seek_style) ->
@@ -479,7 +482,7 @@ fn seek_in_buf(offset: int, pos: uint, len: uint, whence: seek_style) ->
 
 fn read_whole_file_str(file: str) -> result::t<str, str> {
     result::chain(read_whole_file(file), { |bytes|
-        result::ok(str::unsafe_from_bytes(bytes))
+        result::ok(str::from_bytes(bytes))
     })
 }
 

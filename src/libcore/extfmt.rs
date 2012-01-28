@@ -390,7 +390,7 @@ mod rt {
     fn str_init_elt(n_elts: uint, c: char) -> str {
         let svec = vec::init_elt::<u8>(n_elts, c as u8);
 
-        ret str::unsafe_from_bytes(svec);
+        ret str::from_bytes(svec);
     }
     enum pad_mode { pad_signed, pad_unsigned, pad_nozero, }
     fn pad(cv: conv, s: str, mode: pad_mode) -> str {
@@ -439,7 +439,8 @@ mod rt {
         if signed && zero_padding && str::byte_len(s) > 0u {
             let head = s[0];
             if head == '+' as u8 || head == '-' as u8 || head == ' ' as u8 {
-                let headstr = str::unsafe_from_bytes([head]);
+                let headstr = str::from_bytes([head]);
+                // FIXME: not UTF-8 safe
                 let bytelen = str::byte_len(s);
                 let numpart = str::substr(s, 1u, bytelen - 1u);
                 ret headstr + padstr + numpart;

@@ -15,9 +15,12 @@ struct connect_data {
     chan_handle chan;
 };
 
+const intptr_t whatever_tag = 0;
 const intptr_t connected_tag = 1;
 const intptr_t wrote_tag = 2;
 const intptr_t read_tag = 3;
+const intptr_t timer_tag = 4;
+const intptr_t exit_tag = 5;
 
 struct iomsg {
     intptr_t tag;
@@ -29,6 +32,7 @@ struct iomsg {
 	    uint8_t *buf;
 	    ssize_t nread;
 	} read_val;
+        uint32_t timer_req_id;
     } val;
 };
 
@@ -41,6 +45,13 @@ struct write_data {
 
 struct read_start_data {
     connect_data *cd;
+    chan_handle chan;
+};
+
+struct timer_start_data {
+    rust_uvtmp_thread *thread;
+    uint32_t timeout;
+    uint32_t req_id;
     chan_handle chan;
 };
 
@@ -72,7 +83,7 @@ private:
     std::queue<connect_data*> close_connection_queue;
     std::queue<write_data*> write_queue;
     std::queue<read_start_data*> read_start_queue;
-
+    std::queue<timer_start_data*> timer_start_queue;
 public:
 
     rust_uvtmp_thread() {
@@ -139,6 +150,17 @@ public:
         read_start_queue.push(rd);
     }
 
+    void
+    timer(uint32_t timeout, uint32_t req_id, chan_handle chan) {
+        scoped_lock with(lock);
+
+        timer_start_data *td = new timer_start_data();
+        td->timeout = timeout;
+        td->req_id = req_id;
+        td->chan = chan;
+        timer_start_queue.push(td);
+    }
+
 private:
 
     virtual void
@@ -159,6 +181,7 @@ private:
 	close_connections();
 	write_buffers();
 	start_reads();
+        start_timers();
 	close_idle_if_stop();
     }
 
@@ -246,7 +269,7 @@ private:
     void
     on_write(uv_write_t *handle, write_data *wd) {
 	iomsg msg;
-	msg.tag = wrote_tag;
+	msg.tag = timer_tag;
 	msg.val.wrote_val = wd->cd;
 
 	send(task, wd->chan, &msg);
@@ -297,6 +320,40 @@ private:
 	if (nread == -1) {
 	    delete rd;
 	}
+    }
+
+    void
+    start_timers() {
+	assert (lock.lock_held_by_current_thread());
+	while (!timer_start_queue.empty()) {
+	    timer_start_data *td = timer_start_queue.front();
+	    timer_start_queue.pop();
+
+            td->thread = this;
+
+            uv_timer_t *timer = (uv_timer_t *)malloc(sizeof(uv_timer_t));
+            timer->data = td;
+            uv_timer_init(loop, timer);
+            uv_timer_start(timer, timer_cb, td->timeout, 0);
+	}
+    }
+
+    static void
+    timer_cb(uv_timer_t *handle, int what) {
+	timer_start_data *td = (timer_start_data*)handle->data;
+	rust_uvtmp_thread *self = td->thread;
+	self->on_timer(td);
+        free(handle);
+    }
+
+    void
+    on_timer(timer_start_data *rd) {
+	iomsg msg;
+	msg.tag = timer_tag;
+        msg.val.timer_req_id = rd->req_id;
+
+	send(task, rd->chan, &msg);
+        delete rd;
     }
 
     void
@@ -351,6 +408,11 @@ extern "C" void
 rust_uvtmp_read_start(rust_uvtmp_thread *thread, uint32_t req_id,
 		      chan_handle *chan) {
     thread->read_start(req_id, *chan);
+}
+
+extern "C" void
+rust_uvtmp_timer(rust_uvtmp_thread *thread, uint32_t timeout, uint32_t req_id, chan_handle *chan) {
+    thread->timer(timeout, req_id, *chan);
 }
 
 extern "C" void

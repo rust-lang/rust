@@ -259,10 +259,9 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
     alt tcx.ast_ty_to_ty_cache.find(ast_ty) {
       some(some(ty)) { ret ty; }
       some(none) {
-        tcx.sess.span_fatal(ast_ty.span,
-                            "illegal recursive type \
-                              insert a enum in the cycle, \
-                              if this is desired)");
+        tcx.sess.span_fatal(ast_ty.span, "illegal recursive type. \
+                                          insert a enum in the cycle, \
+                                          if this is desired)");
       }
       none { }
     } /* go on */
@@ -2298,7 +2297,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                 let msg = #fmt["attempted access of field %s on type %s, but \
                                 no method implementation was found",
                                field, ty_to_str(tcx, t_err)];
-                tcx.sess.span_fatal(expr.span, msg);
+                tcx.sess.span_err(expr.span, msg);
+                // NB: Adding a bogus type to allow typechecking to continue
+                write::ty_only_fixup(fcx, id, ty::mk_nil(tcx));
               }
             }
         }
@@ -2490,7 +2491,7 @@ fn check_const(ccx: @crate_ctxt, _sp: span, e: @ast::expr, id: ast::node_id) {
     demand::simple(fcx, e.span, declty, cty);
 }
 
-fn check_enum_variants(ccx: @crate_ctxt, _sp: span, vs: [ast::variant],
+fn check_enum_variants(ccx: @crate_ctxt, sp: span, vs: [ast::variant],
                       id: ast::node_id) {
     // FIXME: this is kinda a kludge; we manufacture a fake function context
     // and statement context for checking the initializer expression.
@@ -2512,7 +2513,7 @@ fn check_enum_variants(ccx: @crate_ctxt, _sp: span, vs: [ast::variant],
           some(e) {
             check_expr(fcx, e);
             let cty = expr_ty(fcx.ccx.tcx, e);
-            let declty =ty::mk_int(fcx.ccx.tcx);
+            let declty = ty::mk_int(fcx.ccx.tcx);
             demand::simple(fcx, e.span, declty, cty);
             // FIXME: issue #1417
             // Also, check_expr (from check_const pass) doesn't guarantee that
@@ -2536,6 +2537,20 @@ fn check_enum_variants(ccx: @crate_ctxt, _sp: span, vs: [ast::variant],
         }
         disr_vals += [disr_val];
         disr_val += 1;
+    }
+    let outer = true, did = local_def(id);
+    if ty::type_structurally_contains(ccx.tcx, rty, {|sty|
+        alt sty {
+          ty::ty_enum(id, _) if id == did {
+            if outer { outer = false; false }
+            else { true }
+          }
+          _ { false }
+        }
+    }) {
+        ccx.tcx.sess.span_fatal(sp, "illegal recursive enum type. \
+                                     wrap the inner value in a box to \
+                                     make it represenable");
     }
 }
 

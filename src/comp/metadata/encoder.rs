@@ -661,7 +661,7 @@ fn encode_hash(ebml_w: ebml::writer, hash: str) {
     ebml::end_tag(ebml_w);
 }
 
-fn encode_metadata(cx: @crate_ctxt, crate: @crate) -> str {
+fn encode_metadata(cx: @crate_ctxt, crate: @crate) -> [u8] {
 
     let abbrevs = ty::new_ty_hash();
     let ecx = @{ccx: cx, type_abbrevs: abbrevs};
@@ -694,7 +694,7 @@ fn encode_metadata(cx: @crate_ctxt, crate: @crate) -> str {
     // Pad this, since something (LLVM, presumably) is cutting off the
     // remaining % 4 bytes.
     buf_w.write([0u8, 0u8, 0u8, 0u8]);
-    io::mem_buffer_str(buf)
+    io::mem_buffer_buf(buf)
 }
 
 // Get the encoded string for a type

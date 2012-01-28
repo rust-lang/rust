@@ -672,7 +672,7 @@ fn gather_comments_and_literals(cm: codemap::codemap,
                                 path: str,
                                 srdr: io::reader) ->
    {cmnts: [cmnt], lits: [lit]} {
-    let src = @str::unsafe_from_bytes(srdr.read_whole_stream());
+    let src = @str::from_bytes(srdr.read_whole_stream());
     let itr = @interner::mk::<str>(str::hash, str::eq);
     let rdr = new_reader(cm, span_diagnostic,
                          codemap::new_filemap(path, src, 0u, 0u), itr);

@@ -307,6 +307,14 @@ fn pop<T: copy>(&v: [const T]) -> T {
     let e = v[ln];
     v = slice(v, 0u, ln);
     ret e;
+// FIXME use this implementation after the next snapshot (27.01.2012)
+/*  let new_ln = len(v) - 1u;
+    assert (new_ln > 0u);
+    let valptr = ptr::mut_addr_of(v[new_ln]);
+    let val <- *valptr;
+    unsafe::set_len(v, new_ln);
+    val
+*/
 }
 
 /*

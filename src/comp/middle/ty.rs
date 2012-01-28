@@ -172,6 +172,7 @@ export type_is_str;
 export type_is_unique;
 export type_is_enum;
 export type_is_c_like_enum;
+export type_structurally_contains;
 export type_structurally_contains_uniques;
 export type_autoderef;
 export type_param;
@@ -2420,7 +2421,8 @@ mod unify {
     fn fixup_vars(tcx: ty_ctxt, sp: option::t<span>, vb: @var_bindings,
                   typ: t) -> fixup_result {
         fn subst_vars(tcx: ty_ctxt, sp: option::t<span>, vb: @var_bindings,
-                      unresolved: @mutable option::t<int>, vid: int) -> t {
+                      unresolved: @mutable option::t<int>,
+                      vars_seen: std::list::list<int>, vid: int) -> t {
             // Should really return a fixup_result instead of a t, but fold_ty
             // doesn't allow returning anything but a t.
             if vid as uint >= ufind::set_count(vb.sets) {
@@ -2431,21 +2433,28 @@ mod unify {
             alt smallintmap::find::<t>(vb.types, root_id) {
               none { *unresolved = some(vid); ret ty::mk_var(tcx, vid); }
               some(rt) {
-                if occurs_check_fails(tcx, sp, vid, rt) {
-                    // Return the type unchanged, so we can error out
-                    // downstream
-                    ret rt;
+                let give_up = false;
+                std::list::iter(vars_seen) {|v|
+                    if v == vid {
+                        give_up = true;
+                        option::may(sp) {|sp|
+                            tcx.sess.span_fatal(
+                                sp, "can not instantiate infinite type");
+                        }
+                    }
                 }
-                ret fold_ty(tcx,
-                            fm_var(bind subst_vars(tcx, sp, vb, unresolved,
-                                                   _)), rt);
+                // Return the type unchanged, so we can error out
+                // downstream
+                if give_up { ret rt; }
+                ret fold_ty(tcx, fm_var(bind subst_vars(
+                    tcx, sp, vb, unresolved, std::list::cons(vid, @vars_seen),
+                    _)), rt);
               }
             }
         }
         let unresolved = @mutable none::<int>;
-        let rty =
-            fold_ty(tcx, fm_var(bind subst_vars(tcx, sp, vb, unresolved, _)),
-                    typ);
+        let rty = fold_ty(tcx, fm_var(bind subst_vars(
+            tcx, sp, vb, unresolved, std::list::nil, _)), typ);
         let ur = *unresolved;
         alt ur {
           none { ret fix_ok(rty); }

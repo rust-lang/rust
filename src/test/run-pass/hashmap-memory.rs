@@ -81,7 +81,7 @@ mod map_reduce {
               mapper_done { num_mappers -= 1; }
               find_reducer(k, cc) {
                 let c;
-                alt reducers.find(str::unsafe_from_bytes(k)) {
+                alt reducers.find(str::from_bytes(k)) {
                   some(_c) { c = _c; }
                   none { c = 0; }
                 }
