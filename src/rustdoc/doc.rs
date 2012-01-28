@@ -6,12 +6,21 @@ type cratedoc = ~{
     topmod: moddoc,
 };
 
+enum itemtag {
+    modtag(moddoc),
+    consttag(constdoc),
+    fntag(fndoc),
+    enumtag(enumdoc),
+    restag(resdoc)
+}
+
 type moddoc = ~{
     id: ast_id,
     name: str,
     path: [str],
     brief: option<str>,
     desc: option<str>,
+    items: [itemtag],
     mods: modlist,
     fns: fnlist,
     consts: constlist,
