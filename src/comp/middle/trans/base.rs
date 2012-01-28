@@ -1122,7 +1122,7 @@ fn declare_generic_glue(cx: @local_ctxt, t: ty::t, llfnty: TypeRef, name: str)
 fn make_generic_glue_inner(cx: @local_ctxt, t: ty::t,
                            llfn: ValueRef, helper: glue_helper,
                            ty_params: [uint]) -> ValueRef {
-    let fcx = new_fn_ctxt(cx, llfn);
+    let fcx = new_fn_ctxt(cx, llfn, none);
     llvm::LLVMSetLinkage(llfn,
                          lib::llvm::LLVMInternalLinkage as llvm::Linkage);
     cx.ccx.stats.n_glues_created += 1u;
@@ -1151,7 +1151,7 @@ fn make_generic_glue_inner(cx: @local_ctxt, t: ty::t,
 
     fcx.lltyparams = vec::map_mut(lltydescs, {|d| {desc: d, dicts: none}});
 
-    let bcx = new_top_block_ctxt(fcx);
+    let bcx = new_top_block_ctxt(fcx, none);
     let lltop = bcx.llbb;
     let llrawptr0 = llvm::LLVMGetParam(llfn, 3u as c_uint);
     let llval0 = BitCast(bcx, llrawptr0, llty);
@@ -2410,8 +2410,11 @@ fn trans_if(cx: @block_ctxt, cond: @ast::expr, thn: ast::blk,
 
     let then_dest = dup_for_join(dest);
     let else_dest = dup_for_join(dest);
-    let then_cx = new_scope_block_ctxt(bcx, "then");
-    let else_cx = new_scope_block_ctxt(bcx, "else");
+    let then_cx = new_real_block_ctxt(bcx, "then", thn.span);
+    let else_cx = new_real_block_ctxt(bcx, "else", alt els {
+        some(e) { e.span }
+        _ { ast_util::dummy_sp() }
+    });
     CondBr(bcx, cond_val, then_cx.llbb, else_cx.llbb);
     then_cx = trans_block_dps(then_cx, thn, then_dest);
     // Calling trans_block directly instead of trans_expr
@@ -2442,7 +2445,8 @@ fn trans_for(cx: @block_ctxt, local: @ast::local, seq: @ast::expr,
         let next_cx = new_sub_block_ctxt(bcx, "next");
         let scope_cx =
             new_loop_scope_block_ctxt(bcx, option::some(next_cx),
-                                      outer_next_cx, "for loop scope");
+                                      outer_next_cx, "for loop scope",
+                                      body.span);
         Br(bcx, scope_cx.llbb);
         let curr = PointerCast(bcx, curr, T_ptr(type_of_or_i8(bcx, t)));
         let bcx = alt::bind_irrefutable_pat(scope_cx, local.node.pat,
@@ -2471,7 +2475,7 @@ fn trans_while(cx: @block_ctxt, cond: @ast::expr, body: ast::blk)
     let next_cx = new_sub_block_ctxt(cx, "while next");
     let cond_cx =
         new_loop_scope_block_ctxt(cx, option::none::<@block_ctxt>, next_cx,
-                                  "while cond");
+                                  "while cond", body.span);
     let body_cx = new_scope_block_ctxt(cond_cx, "while loop body");
     let body_end = trans_block(body_cx, body);
     let cond_res = trans_temp_expr(cond_cx, cond);
@@ -2487,7 +2491,7 @@ fn trans_do_while(cx: @block_ctxt, body: ast::blk, cond: @ast::expr) ->
     let next_cx = new_sub_block_ctxt(cx, "next");
     let body_cx =
         new_loop_scope_block_ctxt(cx, option::none::<@block_ctxt>, next_cx,
-                                  "do-while loop body");
+                                  "do-while loop body", body.span);
     let body_end = trans_block(body_cx, body);
     let cond_cx = new_scope_block_ctxt(body_cx, "do-while cond");
     Br(body_end, cond_cx.llbb);
@@ -3479,7 +3483,8 @@ fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
         ret alt::trans_alt(bcx, expr, arms, dest);
       }
       ast::expr_block(blk) {
-        let sub_cx = new_scope_block_ctxt(bcx, "block-expr body");
+        let sub_cx = new_real_block_ctxt(bcx, "block-expr body",
+                                          blk.span);
         Br(bcx, sub_cx.llbb);
         sub_cx = trans_block_dps(sub_cx, blk, dest);
         let next_cx = new_sub_block_ctxt(bcx, "next");
@@ -4022,7 +4027,7 @@ fn trans_stmt(cx: @block_ctxt, s: ast::stmt) -> @block_ctxt {
 // You probably don't want to use this one. See the
 // next three functions instead.
 fn new_block_ctxt(cx: @fn_ctxt, parent: block_parent, kind: block_kind,
-                  name: str) -> @block_ctxt {
+                  name: str, block_span: option::t<span>) -> @block_ctxt {
     let s = "";
     if cx.lcx.ccx.sess.opts.save_temps ||
            cx.lcx.ccx.sess.opts.debuginfo {
@@ -4037,7 +4042,8 @@ fn new_block_ctxt(cx: @fn_ctxt, parent: block_parent, kind: block_kind,
                 kind: kind,
                 mutable cleanups: [],
                 mutable lpad_dirty: true,
-                mutable lpad: option::none,
+                mutable lpad: none,
+                block_span: block_span,
                 fcx: cx};
     alt parent {
       parent_some(cx) {
@@ -4050,26 +4056,32 @@ fn new_block_ctxt(cx: @fn_ctxt, parent: block_parent, kind: block_kind,
 
 
 // Use this when you're at the top block of a function or the like.
-fn new_top_block_ctxt(fcx: @fn_ctxt) -> @block_ctxt {
-    ret new_block_ctxt(fcx, parent_none, SCOPE_BLOCK, "function top level");
+fn new_top_block_ctxt(fcx: @fn_ctxt, sp: option::t<span>) -> @block_ctxt {
+    ret new_block_ctxt(fcx, parent_none, SCOPE_BLOCK, "function top level",
+                       sp);
 }
 
 
 // Use this when you're at a curly-brace or similar lexical scope.
 fn new_scope_block_ctxt(bcx: @block_ctxt, n: str) -> @block_ctxt {
-    ret new_block_ctxt(bcx.fcx, parent_some(bcx), SCOPE_BLOCK, n);
+    ret new_block_ctxt(bcx.fcx, parent_some(bcx), SCOPE_BLOCK, n, none);
+}
+
+fn new_real_block_ctxt(bcx: @block_ctxt, n: str, sp: span) -> @block_ctxt {
+    ret new_block_ctxt(bcx.fcx, parent_some(bcx), SCOPE_BLOCK, n, some(sp));
 }
 
 fn new_loop_scope_block_ctxt(bcx: @block_ctxt, _cont: option::t<@block_ctxt>,
-                             _break: @block_ctxt, n: str) -> @block_ctxt {
+                             _break: @block_ctxt, n: str, sp: span)
+    -> @block_ctxt {
     ret new_block_ctxt(bcx.fcx, parent_some(bcx),
-                       LOOP_SCOPE_BLOCK(_cont, _break), n);
+                       LOOP_SCOPE_BLOCK(_cont, _break), n, some(sp));
 }
 
 
 // Use this when you're making a general CFG BB within a scope.
 fn new_sub_block_ctxt(bcx: @block_ctxt, n: str) -> @block_ctxt {
-    ret new_block_ctxt(bcx.fcx, parent_some(bcx), NON_SCOPE_BLOCK, n);
+    ret new_block_ctxt(bcx.fcx, parent_some(bcx), NON_SCOPE_BLOCK, n, none);
 }
 
 fn new_raw_block_ctxt(fcx: @fn_ctxt, llbb: BasicBlockRef) -> @block_ctxt {
@@ -4080,7 +4092,8 @@ fn new_raw_block_ctxt(fcx: @fn_ctxt, llbb: BasicBlockRef) -> @block_ctxt {
           kind: NON_SCOPE_BLOCK,
           mutable cleanups: [],
           mutable lpad_dirty: true,
-          mutable lpad: option::none,
+          mutable lpad: none,
+          block_span: none,
           fcx: fcx};
 }
 
@@ -4146,7 +4159,8 @@ fn llstaticallocas_block_ctxt(fcx: @fn_ctxt) -> @block_ctxt {
           kind: SCOPE_BLOCK,
           mutable cleanups: [],
           mutable lpad_dirty: true,
-          mutable lpad: option::none,
+          mutable lpad: none,
+          block_span: none,
           fcx: fcx};
 }
 
@@ -4158,7 +4172,8 @@ fn llderivedtydescs_block_ctxt(fcx: @fn_ctxt) -> @block_ctxt {
           kind: SCOPE_BLOCK,
           mutable cleanups: [],
           mutable lpad_dirty: true,
-          mutable lpad: option::none,
+          mutable lpad: none,
+          block_span: none,
           fcx: fcx};
 }
 
@@ -4290,8 +4305,8 @@ fn mk_standard_basic_blocks(llfn: ValueRef) ->
 //  - new_fn_ctxt
 //  - trans_args
 fn new_fn_ctxt_w_id(cx: @local_ctxt, llfndecl: ValueRef,
-                    id: ast::node_id, rstyle: ast::ret_style)
-    -> @fn_ctxt {
+                    id: ast::node_id, rstyle: ast::ret_style,
+                    sp: option::t<span>) -> @fn_ctxt {
     let llbbs = mk_standard_basic_blocks(llfndecl);
     ret @{llfn: llfndecl,
           llenv: llvm::LLVMGetParam(llfndecl, 1u as c_uint),
@@ -4311,11 +4326,13 @@ fn new_fn_ctxt_w_id(cx: @local_ctxt, llfndecl: ValueRef,
           derived_tydescs: ty::new_ty_hash(),
           id: id,
           ret_style: rstyle,
+          span: sp,
           lcx: cx};
 }
 
-fn new_fn_ctxt(cx: @local_ctxt, llfndecl: ValueRef) -> @fn_ctxt {
-    ret new_fn_ctxt_w_id(cx, llfndecl, -1, ast::return_val);
+fn new_fn_ctxt(cx: @local_ctxt, llfndecl: ValueRef, sp: option::t<span>)
+    -> @fn_ctxt {
+    ret new_fn_ctxt_w_id(cx, llfndecl, -1, ast::return_val, sp);
 }
 
 // NB: must keep 4 fns in sync:
@@ -4430,19 +4447,19 @@ enum self_arg { impl_self(ty::t), no_self, }
 // trans_closure: Builds an LLVM function out of a source function.
 // If the function closes over its environment a closure will be
 // returned.
-fn trans_closure(cx: @local_ctxt, decl: ast::fn_decl,
+fn trans_closure(cx: @local_ctxt, sp: span, decl: ast::fn_decl,
                  body: ast::blk, llfndecl: ValueRef,
                  ty_self: self_arg, ty_params: [ast::ty_param],
                  id: ast::node_id, maybe_load_env: fn(@fn_ctxt)) {
     set_uwtable(llfndecl);
 
     // Set up arguments to the function.
-    let fcx = new_fn_ctxt_w_id(cx, llfndecl, id, decl.cf);
+    let fcx = new_fn_ctxt_w_id(cx, llfndecl, id, decl.cf, some(sp));
     create_llargs_for_fn_args(fcx, ty_self, decl.inputs, ty_params);
 
     // Create the first basic block in the function and keep a handle on it to
     //  pass to finish_fn later.
-    let bcx = new_top_block_ctxt(fcx);
+    let bcx = new_top_block_ctxt(fcx, some(body.span));
     let lltop = bcx.llbb;
     let block_ty = node_id_type(cx.ccx, body.node.id);
 
@@ -4478,10 +4495,10 @@ fn trans_fn(cx: @local_ctxt, sp: span, decl: ast::fn_decl, body: ast::blk,
     let do_time = cx.ccx.sess.opts.stats;
     let start = do_time ? time::get_time() : {sec: 0u32, usec: 0u32};
     let fcx = option::none;
-    trans_closure(cx, decl, body, llfndecl, ty_self, ty_params, id,
+    trans_closure(cx, sp, decl, body, llfndecl, ty_self, ty_params, id,
                   {|new_fcx| fcx = option::some(new_fcx);});
     if cx.ccx.sess.opts.extra_debuginfo {
-        debuginfo::create_function(option::get(fcx), sp);
+        debuginfo::create_function(option::get(fcx));
     }
     if do_time {
         let end = time::get_time();
@@ -4495,10 +4512,10 @@ fn trans_res_ctor(cx: @local_ctxt, dtor: ast::fn_decl,
 
     // Create a function for the constructor
     let llctor_decl = ccx.item_ids.get(ctor_id);
-    let fcx = new_fn_ctxt(cx, llctor_decl);
+    let fcx = new_fn_ctxt(cx, llctor_decl, none);
     let ret_t = ty::ret_ty_of_fn(cx.ccx.tcx, ctor_id);
     create_llargs_for_fn_args(fcx, no_self, dtor.inputs, ty_params);
-    let bcx = new_top_block_ctxt(fcx);
+    let bcx = new_top_block_ctxt(fcx, none);
     let lltop = bcx.llbb;
     let arg_t = arg_tys_of_fn(ccx, ctor_id)[0].ty;
     let tup_t = ty::mk_tup(ccx.tcx, [ty::mk_int(ccx.tcx), arg_t]);
@@ -4555,7 +4572,7 @@ fn trans_enum_variant(cx: @local_ctxt, enum_id: ast::node_id,
                                "unbound variant id in trans_enum_variant");
       }
     }
-    let fcx = new_fn_ctxt(cx, llfndecl);
+    let fcx = new_fn_ctxt(cx, llfndecl, none);
     create_llargs_for_fn_args(fcx, no_self, fn_args, ty_params);
     let ty_param_substs: [ty::t] = [];
     i = 0u;
@@ -4565,7 +4582,7 @@ fn trans_enum_variant(cx: @local_ctxt, enum_id: ast::node_id,
         i += 1u;
     }
     let arg_tys = arg_tys_of_fn(ccx, variant.node.id);
-    let bcx = new_top_block_ctxt(fcx);
+    let bcx = new_top_block_ctxt(fcx, none);
     let lltop = bcx.llbb;
     bcx = copy_args_to_allocas(fcx, bcx, fn_args, arg_tys);
 
@@ -4777,8 +4794,8 @@ fn trans_native_mod(lcx: @local_ctxt, native_mod: ast::native_mod,
             ccx.llmod, shim_name, tys.shim_fn_ty);
 
         // Declare the body of the shim function:
-        let fcx = new_fn_ctxt(lcx, llshimfn);
-        let bcx = new_top_block_ctxt(fcx);
+        let fcx = new_fn_ctxt(lcx, llshimfn, none);
+        let bcx = new_top_block_ctxt(fcx, none);
         let lltop = bcx.llbb;
         let llargbundle = llvm::LLVMGetParam(llshimfn, 0 as c_uint);
         let i = 0u, n = vec::len(tys.arg_tys);
@@ -4814,8 +4831,8 @@ fn trans_native_mod(lcx: @local_ctxt, native_mod: ast::native_mod,
                      llshimfn: ValueRef,
                      llwrapfn: ValueRef) {
         let ccx = lcx_ccx(lcx);
-        let fcx = new_fn_ctxt(lcx, llwrapfn);
-        let bcx = new_top_block_ctxt(fcx);
+        let fcx = new_fn_ctxt(lcx, llwrapfn, none);
+        let bcx = new_top_block_ctxt(fcx, none);
         let lltop = bcx.llbb;
 
         // Allocate the struct and write the arguments into it.
@@ -5006,9 +5023,9 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
         let llfdecl = decl_fn(ccx.llmod, "_rust_main",
                               lib::llvm::LLVMCCallConv, llfty);
 
-        let fcx = new_fn_ctxt(new_local_ctxt(ccx), llfdecl);
+        let fcx = new_fn_ctxt(new_local_ctxt(ccx), llfdecl, none);
 
-        let bcx = new_top_block_ctxt(fcx);
+        let bcx = new_top_block_ctxt(fcx, none);
         let lltop = bcx.llbb;
 
         let lloutputarg = llvm::LLVMGetParam(llfdecl, 0 as c_uint);

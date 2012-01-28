@@ -6,7 +6,8 @@ import lib::llvm::llvm;
 import lib::llvm::llvm::{ValueRef, BasicBlockRef};
 import pat_util::*;
 import build::*;
-import base::{new_sub_block_ctxt, new_scope_block_ctxt, load_if_immediate};
+import base::{new_sub_block_ctxt, new_scope_block_ctxt,
+              new_real_block_ctxt, load_if_immediate};
 import syntax::ast;
 import syntax::ast_util;
 import syntax::ast_util::{dummy_sp};
@@ -651,7 +652,8 @@ fn trans_alt(cx: @block_ctxt, expr: @ast::expr, arms_: [ast::arm],
     let arms = normalize_arms(bcx_tcx(cx), arms_);
 
     for a: ast::arm in arms {
-        let body = new_scope_block_ctxt(er.bcx, "case_body");
+        let body = new_real_block_ctxt(er.bcx, "case_body",
+                                       a.body.span);
         let id_map = pat_util::pat_id_map(bcx_tcx(cx), a.pats[0]);
         bodies += [body];
         for p: @ast::pat in a.pats {

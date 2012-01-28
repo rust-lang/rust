@@ -520,7 +520,7 @@ fn trans_expr_fn(bcx: @block_ctxt,
         let cap_vars = capture::compute_capture_vars(
             ccx.tcx, id, proto, cap_clause);
         let {llbox, cbox_ty, bcx} = build_closure(bcx, cap_vars, ck);
-        trans_closure(sub_cx, decl, body, llfn, no_self, [], id, {|fcx|
+        trans_closure(sub_cx, sp, decl, body, llfn, no_self, [], id, {|fcx|
             load_environment(bcx, fcx, cbox_ty, cap_vars, ck);
         });
         llbox
@@ -532,7 +532,7 @@ fn trans_expr_fn(bcx: @block_ctxt,
       ast::proto_uniq { trans_closure_env(ty::ck_uniq) }
       ast::proto_bare {
         let closure = C_null(T_opaque_cbox_ptr(ccx));
-        trans_closure(sub_cx, decl, body, llfn, no_self, [],
+        trans_closure(sub_cx, sp, decl, body, llfn, no_self, [],
                       id, {|_fcx|});
         closure
       }
@@ -825,8 +825,8 @@ fn trans_bind_thunk(cx: @local_ctxt,
 
     // Create a new function context and block context for the thunk, and hold
     // onto a pointer to the first block in the function for later use.
-    let fcx = new_fn_ctxt(cx, llthunk);
-    let bcx = new_top_block_ctxt(fcx);
+    let fcx = new_fn_ctxt(cx, llthunk, none);
+    let bcx = new_top_block_ctxt(fcx, none);
     let lltop = bcx.llbb;
     // Since we might need to construct derived tydescs that depend on
     // our bound tydescs, we need to load tydescs out of the environment
