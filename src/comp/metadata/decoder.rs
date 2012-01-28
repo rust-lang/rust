@@ -83,7 +83,7 @@ fn item_family(item: ebml::doc) -> u8 {
 
 fn item_symbol(item: ebml::doc) -> str {
     let sym = ebml::get_doc(item, tag_items_data_item_symbol);
-    ret str::unsafe_from_bytes(ebml::doc_data(sym));
+    ret str::from_bytes(ebml::doc_data(sym));
 }
 
 fn variant_enum_id(d: ebml::doc) -> ast::def_id {
@@ -162,7 +162,7 @@ fn enum_variant_ids(item: ebml::doc, cdata: cmd) -> [ast::def_id] {
 // definition the path refers to.
 fn resolve_path(path: [ast::ident], data: @[u8]) -> [ast::def_id] {
     fn eq_item(data: [u8], s: str) -> bool {
-        ret str::eq(str::unsafe_from_bytes(data), s);
+        ret str::eq(str::from_bytes(data), s);
     }
     let s = str::connect(path, "::");
     let md = ebml::new_doc(data);
@@ -178,7 +178,7 @@ fn resolve_path(path: [ast::ident], data: @[u8]) -> [ast::def_id] {
 
 fn item_name(item: ebml::doc) -> ast::ident {
     let name = ebml::get_doc(item, tag_paths_data_name);
-    str::unsafe_from_bytes(ebml::doc_data(name))
+    str::from_bytes(ebml::doc_data(name))
 }
 
 fn lookup_item_name(data: @[u8], id: ast::node_id) -> ast::ident {
@@ -325,7 +325,7 @@ fn read_path(d: ebml::doc) -> {path: str, pos: uint} {
     let desc = ebml::doc_data(d);
     let pos = ebml::be_uint_from_bytes(@desc, 0u, 4u);
     let pathbytes = vec::slice::<u8>(desc, 4u, vec::len::<u8>(desc));
-    let path = str::unsafe_from_bytes(pathbytes);
+    let path = str::from_bytes(pathbytes);
     ret {path: path, pos: pos};
 }
 
@@ -358,21 +358,21 @@ fn get_meta_items(md: ebml::doc) -> [@ast::meta_item] {
     let items: [@ast::meta_item] = [];
     ebml::tagged_docs(md, tag_meta_item_word) {|meta_item_doc|
         let nd = ebml::get_doc(meta_item_doc, tag_meta_item_name);
-        let n = str::unsafe_from_bytes(ebml::doc_data(nd));
+        let n = str::from_bytes(ebml::doc_data(nd));
         items += [attr::mk_word_item(n)];
     };
     ebml::tagged_docs(md, tag_meta_item_name_value) {|meta_item_doc|
         let nd = ebml::get_doc(meta_item_doc, tag_meta_item_name);
         let vd = ebml::get_doc(meta_item_doc, tag_meta_item_value);
-        let n = str::unsafe_from_bytes(ebml::doc_data(nd));
-        let v = str::unsafe_from_bytes(ebml::doc_data(vd));
+        let n = str::from_bytes(ebml::doc_data(nd));
+        let v = str::from_bytes(ebml::doc_data(vd));
         // FIXME (#611): Should be able to decode meta_name_value variants,
         // but currently they can't be encoded
         items += [attr::mk_name_value_item_str(n, v)];
     };
     ebml::tagged_docs(md, tag_meta_item_list) {|meta_item_doc|
         let nd = ebml::get_doc(meta_item_doc, tag_meta_item_name);
-        let n = str::unsafe_from_bytes(ebml::doc_data(nd));
+        let n = str::from_bytes(ebml::doc_data(nd));
         let subitems = get_meta_items(meta_item_doc);
         items += [attr::mk_list_item(n, subitems)];
     };
@@ -427,7 +427,7 @@ fn get_crate_deps(data: @[u8]) -> [crate_dep] {
     let depsdoc = ebml::get_doc(cratedoc, tag_crate_deps);
     let crate_num = 1;
     ebml::tagged_docs(depsdoc, tag_crate_dep) {|depdoc|
-        let depname = str::unsafe_from_bytes(ebml::doc_data(depdoc));
+        let depname = str::from_bytes(ebml::doc_data(depdoc));
         deps += [{cnum: crate_num, ident: depname}];
         crate_num += 1;
     };
@@ -447,7 +447,7 @@ fn list_crate_deps(data: @[u8], out: io::writer) {
 fn get_crate_hash(data: @[u8]) -> str {
     let cratedoc = ebml::new_doc(data);
     let hashdoc = ebml::get_doc(cratedoc, tag_crate_hash);
-    ret str::unsafe_from_bytes(ebml::doc_data(hashdoc));
+    ret str::from_bytes(ebml::doc_data(hashdoc));
 }
 
 fn list_crate_items(bytes: @[u8], md: ebml::doc, out: io::writer) {

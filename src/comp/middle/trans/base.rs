@@ -268,7 +268,7 @@ fn sanitize(s: str) -> str {
                            c != ' ' as u8 && c != '\t' as u8 && c != ';' as u8
                        {
                         let v = [c];
-                        result += str::unsafe_from_bytes(v);
+                        result += str::from_bytes(v);
                     }
                 }
             }
@@ -5412,7 +5412,7 @@ fn fill_crate_map(ccx: @crate_ctxt, map: ValueRef) {
 
 fn write_metadata(cx: @crate_ctxt, crate: @ast::crate) {
     if !cx.sess.building_library { ret; }
-    let llmeta = C_postr(metadata::encoder::encode_metadata(cx, crate));
+    let llmeta = C_bytes(metadata::encoder::encode_metadata(cx, crate));
     let llconst = C_struct([llmeta]);
     let llglobal = str::as_buf("rust_metadata", {|buf|
         llvm::LLVMAddGlobal(cx.llmod, val_ty(llconst), buf)

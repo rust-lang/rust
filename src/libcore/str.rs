@@ -13,6 +13,7 @@ export
    // Creating a string
    from_bytes,
    unsafe_from_bytes,
+   from_byte,
    unsafe_from_byte,
    //push_utf8_bytes,
    from_char,
@@ -117,14 +118,11 @@ Section: Creating a string
 /*
 Function: from_bytes
 
-Safely convert a vector of bytes to a UTF-8 string, or error
+Convert a vector of bytes to a UTF-8 string.  Fails if invalid UTF-8.
 */
-fn from_bytes(vv: [u8]) -> result::t<str, str> {
-   if is_utf8(vv) {
-      ret result::ok(unsafe_from_bytes(vv));
-   } else {
-      ret result::err("vector doesn't contain valid UTF-8");
-   }
+fn from_bytes(vv: [u8]) -> str {
+   assert is_utf8(vv);
+   ret unsafe_from_bytes(vv);
 }
 
 /*
@@ -133,7 +131,7 @@ Function: unsafe_from_bytes
 Converts a vector of bytes to a string. Does not verify that the
 vector contains valid UTF-8.
 
-// FIXME: remove?
+FIXME: stop exporting
 */
 fn unsafe_from_bytes(v: [const u8]) -> str unsafe {
     let vcopy: [u8] = v + [0u8];
@@ -148,9 +146,19 @@ Function: unsafe_from_byte
 Converts a byte to a string. Does not verify that the byte is
 valid UTF-8.
 
-FIXME: rename to 'from_byte'
+FIXME: stop exporting
 */
 fn unsafe_from_byte(u: u8) -> str { unsafe_from_bytes([u]) }
+
+
+/*
+Function: from_byte
+
+Convert a byte to a UTF-8 string.  Fails if invalid UTF-8.
+*/
+fn from_byte(uu: u8) -> str {
+    from_bytes([uu])
+}
 
 fn push_utf8_bytes(&s: str, ch: char) {
     let code = ch as uint;
@@ -209,16 +217,16 @@ Function: from_cstr
 Create a Rust string from a null-terminated C string
 */
 unsafe fn from_cstr(cstr: sbuf) -> str {
-    let res = "";
+    let res = [];
     let start = cstr;
     let curr = start;
     let i = 0u;
     while *curr != 0u8 {
-        push_byte(res, *curr);
+        vec::push(res, *curr);
         i += 1u;
         curr = ptr::offset(start, i);
     }
-    ret res;
+    ret from_bytes(res);
 }
 
 /*
@@ -526,7 +534,7 @@ fn split(s: str, sep: u8) -> [str] {
             v += [accum];
             accum = "";
             ends_with_sep = true;
-        } else { accum += unsafe_from_byte(c); ends_with_sep = false; }
+        } else { accum += from_byte(c); ends_with_sep = false; }
     }
     if byte_len(accum) != 0u || ends_with_sep { v += [accum]; }
     ret v;
@@ -554,7 +562,7 @@ fn splitn(s: str, sep: u8, count: uint) -> [str] {
             v += [accum];
             accum = "";
             ends_with_sep = true;
-        } else { accum += unsafe_from_byte(c); ends_with_sep = false; }
+        } else { accum += from_byte(c); ends_with_sep = false; }
     }
     if byte_len(accum) != 0u || ends_with_sep { v += [accum]; }
     ret v;
@@ -575,12 +583,12 @@ FIXME: should behave like split and split_char:
 */
 fn split_str(s: str, sep: str) -> [str] {
     assert byte_len(sep) > 0u;
-    let v: [str] = [], accum = "", sep_match = 0u, leading = true;
+    let v: [str] = [], accum = [], sep_match = 0u, leading = true;
     for c: u8 in s {
         // Did we match the entire separator?
         if sep_match == byte_len(sep) {
-            if !leading { v += [accum]; }
-            accum = "";
+            if !leading { vec::push(v, from_bytes(accum)); }
+            accum = [];
             sep_match = 0u;
         }
 
@@ -588,13 +596,13 @@ fn split_str(s: str, sep: str) -> [str] {
             sep_match += 1u;
         } else {
             sep_match = 0u;
-            accum += unsafe_from_byte(c);
+            vec::push(accum, c);
             leading = false;
         }
     }
 
-    if byte_len(accum) > 0u { v += [accum]; }
-    if sep_match == byte_len(sep) { v += [""]; }
+    if vec::len(accum) > 0u { vec::push(v, from_bytes(accum)); }
+    if sep_match == byte_len(sep) { vec::push(v, ""); }
 
     ret v;
 }
@@ -1783,7 +1791,24 @@ mod tests {
                   0x20_u8, 0x4e_u8, 0x61_u8,
                   0x6d_u8];
 
-         assert ss == result::get(from_bytes(bb));
+         assert ss == from_bytes(bb);
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_from_bytes_fail() {
+        let bb = [0xff_u8, 0xb8_u8, 0xa8_u8,
+                  0xe0_u8, 0xb9_u8, 0x84_u8,
+                  0xe0_u8, 0xb8_u8, 0x97_u8,
+                  0xe0_u8, 0xb8_u8, 0xa2_u8,
+                  0xe4_u8, 0xb8_u8, 0xad_u8,
+                  0xe5_u8, 0x8d_u8, 0x8e_u8,
+                  0x56_u8, 0x69_u8, 0xe1_u8,
+                  0xbb_u8, 0x87_u8, 0x74_u8,
+                  0x20_u8, 0x4e_u8, 0x61_u8,
+                  0x6d_u8];
+
+         let _x = from_bytes(bb);
     }
 
     #[test]
@@ -1821,7 +1846,7 @@ mod tests {
         let s1: str = "All mimsy were the borogoves";
 
         let v: [u8] = bytes(s1);
-        let s2: str = unsafe_from_bytes(v);
+        let s2: str = from_bytes(v);
         let i: uint = 0u;
         let n1: uint = byte_len(s1);
         let n2: uint = vec::len::<u8>(v);
