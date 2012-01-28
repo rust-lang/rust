@@ -600,6 +600,21 @@ fn concat<T: copy>(v: [const [const T]]) -> [T] {
 }
 
 /*
+Function: connect
+
+Concatenate a vector of vectors, placing a given separator between each
+*/
+fn connect<T: copy>(v: [const [const T]], sep: T) -> [T] {
+    let new: [T] = [];
+    let first = true;
+    for inner: [T] in v {
+        if first { first = false; } else { push(new, sep); }
+        new += inner;
+    }
+    ret new;
+}
+
+/*
 Function: foldl
 
 Reduce a vector from left to right
@@ -1925,6 +1940,13 @@ mod tests {
     #[test]
     fn test_concat() {
         assert concat([[1], [2,3]]) == [1, 2, 3];
+    }
+
+    #[test]
+    fn test_connect() {
+        assert connect([], 0) == [];
+        assert connect([[1], [2, 3]], 0) == [1, 0, 2, 3];
+        assert connect([[1], [2], [3]], 0) == [1, 0, 2, 0, 3];
     }
 
     #[test]
