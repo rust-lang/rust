@@ -43,7 +43,18 @@ fn moddoc_from_mod(
         path: [],
         brief: none,
         desc: none,
-        items: [],
+        items: vec::filter_map(module.items) {|item|
+            alt item.node {
+              ast::item_res(decl, _, _, _, _) {
+                some(doc::restag(
+                    resdoc_from_resource(decl, item.ident, item.id)
+                ))
+              }
+              _ {
+                none
+              }
+            }
+        },
         mods: doc::modlist(
             vec::filter_map(module.items) {|item|
                 alt item.node {
@@ -83,17 +94,6 @@ fn moddoc_from_mod(
                 alt item.node {
                   ast::item_enum(variants, _) {
                     some(enumdoc_from_enum(item.ident, item.id, variants))
-                  }
-                  _ {
-                    none
-                  }
-                }
-            }),
-        resources: doc::reslist(
-            vec::filter_map(module.items) {|item|
-                alt item.node {
-                  ast::item_res(decl, _, _, _, _) {
-                    some(resdoc_from_resource(decl, item.ident, item.id))
                   }
                   _ {
                     none
@@ -232,8 +232,8 @@ fn should_extract_resources() {
     let source = "resource r(b: bool) { }";
     let ast = parse::from_str(source);
     let doc = extract(ast, "");
-    assert doc.topmod.resources[0].id != 0;
-    assert doc.topmod.resources[0].name == "r";
+    assert doc.topmod.resources()[0].id != 0;
+    assert doc.topmod.resources()[0].name == "r";
 }
 
 #[test]
@@ -241,7 +241,7 @@ fn should_extract_resource_args() {
     let source = "resource r(b: bool) { }";
     let ast = parse::from_str(source);
     let doc = extract(ast, "");
-    assert doc.topmod.resources[0].args[0].name == "b";
+    assert doc.topmod.resources()[0].args[0].name == "b";
 }
 
 #[cfg(test)]

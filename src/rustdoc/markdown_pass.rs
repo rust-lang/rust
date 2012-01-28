@@ -93,12 +93,14 @@ fn write_mod_contents(
         write_fn(ctxt, fndoc);
     }
 
-    for resdoc in *doc.resources {
-        write_res(ctxt, resdoc);
-    }
-
     for moddoc in *doc.mods {
         write_mod(ctxt, moddoc);
+    }
+
+    for itemtag in doc.items {
+        alt itemtag {
+          doc::restag(resdoc) { write_res(ctxt, resdoc) }
+        }
     }
 }
 

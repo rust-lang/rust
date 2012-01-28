@@ -136,7 +136,7 @@ fn should_execute_op_on_resource_brief() {
     let doc = extract::from_srv(srv, "");
     let doc = attr_pass::mk_pass()(srv, doc);
     let doc = mk_pass(str::trim)(srv, doc);
-    assert doc.topmod.resources[0].brief == some("a");
+    assert doc.topmod.resources()[0].brief == some("a");
 }
 
 #[test]
@@ -146,7 +146,7 @@ fn should_execute_op_on_resource_desc() {
     let doc = extract::from_srv(srv, "");
     let doc = attr_pass::mk_pass()(srv, doc);
     let doc = mk_pass(str::trim)(srv, doc);
-    assert doc.topmod.resources[0].desc == some("a");
+    assert doc.topmod.resources()[0].desc == some("a");
 }
 
 #[test]
@@ -156,5 +156,5 @@ fn should_execute_op_on_resource_args() {
     let doc = extract::from_srv(srv, "");
     let doc = attr_pass::mk_pass()(srv, doc);
     let doc = mk_pass(str::trim)(srv, doc);
-    assert doc.topmod.resources[0].args[0].desc == some("a");
+    assert doc.topmod.resources()[0].args[0].desc == some("a");
 }

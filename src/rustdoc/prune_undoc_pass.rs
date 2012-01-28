@@ -26,8 +26,7 @@ fn run(
         fold_modlist: fold_modlist,
         fold_fnlist: fold_fnlist,
         fold_constlist: fold_constlist,
-        fold_enumlist: fold_enumlist,
-        fold_reslist: fold_reslist
+        fold_enumlist: fold_enumlist
         with *fold::default_seq_fold(ctxt)
     });
     fold.fold_crate(fold, doc)
@@ -37,7 +36,22 @@ fn fold_mod(
     fold: fold::fold<ctxt>,
     doc: doc::moddoc
 ) -> doc::moddoc {
-    let doc = fold::default_seq_fold_mod(fold, doc);
+    let doc = ~{
+        items: vec::filter_map(doc.items) {|itemtag|
+            alt itemtag {
+              doc::restag(resdoc) {
+                let doc = fold.fold_res(fold, resdoc);
+                if fold.ctxt.have_docs {
+                    some(doc::restag(doc))
+                } else {
+                    none
+                }
+              }
+              _ { some(itemtag) }
+            }
+        }
+        with *fold::default_seq_fold_mod(fold, doc)
+    };
     fold.ctxt.have_docs =
         doc.brief != none
         || doc.desc != none
@@ -301,27 +315,13 @@ fn fold_res(fold: fold::fold<ctxt>, doc: doc::resdoc) -> doc::resdoc {
     ret doc;
 }
 
-fn fold_reslist(
-    fold: fold::fold<ctxt>,
-    list: doc::reslist
-) -> doc::reslist {
-    doc::reslist(vec::filter_map(*list) {|doc|
-        let doc = fold.fold_res(fold, doc);
-        if fold.ctxt.have_docs {
-            some(doc)
-        } else {
-            none
-        }
-    })
-}
-
 #[test]
 fn should_elide_undocumented_resources() {
     let source = "resource r(a: bool) { }";
     let srv = astsrv::mk_srv_from_str(source);
     let doc = extract::from_srv(srv, "");
     let doc = run(srv, doc);
-    assert vec::is_empty(*doc.topmod.resources);
+    assert vec::is_empty(doc.topmod.resources());
 }
 
 #[test]
@@ -332,7 +332,7 @@ fn should_elide_undocumented_resource_args() {
     let doc = extract::from_srv(srv, "");
     let doc = attr_pass::mk_pass()(srv, doc);
     let doc = run(srv, doc);
-    assert vec::is_empty(doc.topmod.resources[0].args);
+    assert vec::is_empty(doc.topmod.resources()[0].args);
 }
 
 #[test]
@@ -343,5 +343,5 @@ fn should_not_elide_resources_with_documented_args() {
     let doc = extract::from_srv(srv, "");
     let doc = attr_pass::mk_pass()(srv, doc);
     let doc = run(srv, doc);
-    assert vec::is_not_empty(*doc.topmod.resources);
+    assert vec::is_not_empty(doc.topmod.resources());
 }

@@ -26,8 +26,6 @@ type fold_constlist<T> = fn~(
     fold: fold<T>, list: doc::constlist) -> doc::constlist;
 type fold_enumlist<T> = fn~(
     fold: fold<T>, list: doc::enumlist) -> doc::enumlist;
-type fold_reslist<T> = fn~(
-    fold: fold<T>, list: doc::reslist) -> doc::reslist;
 
 type t<T> = {
     ctxt: T,
@@ -41,7 +39,6 @@ type t<T> = {
     fold_fnlist: fold_fnlist<T>,
     fold_constlist: fold_constlist<T>,
     fold_enumlist: fold_enumlist<T>,
-    fold_reslist: fold_reslist<T>
 };
 
 
@@ -58,8 +55,7 @@ fn mk_fold<T:copy>(
     fold_modlist: fold_modlist<T>,
     fold_fnlist: fold_fnlist<T>,
     fold_constlist: fold_constlist<T>,
-    fold_enumlist: fold_enumlist<T>,
-    fold_reslist: fold_reslist<T>
+    fold_enumlist: fold_enumlist<T>
 ) -> fold<T> {
     fold({
         ctxt: ctxt,
@@ -72,8 +68,7 @@ fn mk_fold<T:copy>(
         fold_modlist: fold_modlist,
         fold_fnlist: fold_fnlist,
         fold_constlist: fold_constlist,
-        fold_enumlist: fold_enumlist,
-        fold_reslist: fold_reslist
+        fold_enumlist: fold_enumlist
     })
 }
 
@@ -89,8 +84,7 @@ fn default_seq_fold<T:copy>(ctxt: T) -> fold<T> {
         {|f, d| default_seq_fold_modlist(f, d)},
         {|f, d| default_seq_fold_fnlist(f, d)},
         {|f, d| default_seq_fold_constlist(f, d)},
-        {|f, d| default_seq_fold_enumlist(f, d)},
-        {|f, d| default_seq_fold_reslist(f, d)}
+        {|f, d| default_seq_fold_enumlist(f, d)}
     )
 }
 
@@ -108,11 +102,17 @@ fn default_seq_fold_mod<T>(
     doc: doc::moddoc
 ) -> doc::moddoc {
     ~{
+        items: vec::map(doc.items) {|itemtag|
+            alt itemtag {
+              doc::restag(resdoc) {
+                doc::restag(fold.fold_res(fold, resdoc))
+              }
+            }
+        },
         mods: fold.fold_modlist(fold, doc.mods),
         fns: fold.fold_fnlist(fold, doc.fns),
         consts: fold.fold_constlist(fold, doc.consts),
-        enums: fold.fold_enumlist(fold, doc.enums),
-        resources: fold.fold_reslist(fold, doc.resources)
+        enums: fold.fold_enumlist(fold, doc.enums)
         with *doc
     }
 }
@@ -178,15 +178,6 @@ fn default_seq_fold_enumlist<T>(
 ) -> doc::enumlist {
     doc::enumlist(vec::map(*list) {|doc|
         fold.fold_enum(fold, doc)
-    })
-}
-
-fn default_seq_fold_reslist<T>(
-    fold: fold<T>,
-    list: doc::reslist
-) -> doc::reslist {
-    doc::reslist(vec::map(*list) {|doc|
-        fold.fold_res(fold, doc)
     })
 }
 

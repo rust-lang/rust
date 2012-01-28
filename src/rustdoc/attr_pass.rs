@@ -344,7 +344,7 @@ fn fold_res_should_extract_docs() {
     let srv = astsrv::mk_srv_from_str(source);
     let doc = extract::from_srv(srv, "");
     let fold = fold::default_seq_fold(srv);
-    let doc = fold_res(fold, doc.topmod.resources[0]);
+    let doc = fold_res(fold, doc.topmod.resources()[0]);
     assert doc.brief == some("a");
     assert doc.desc == some("b");
 }
@@ -356,7 +356,7 @@ fn fold_res_should_extract_arg_docs() {
     let srv = astsrv::mk_srv_from_str(source);
     let doc = extract::from_srv(srv, "");
     let fold = fold::default_seq_fold(srv);
-    let doc = fold_res(fold, doc.topmod.resources[0]);
+    let doc = fold_res(fold, doc.topmod.resources()[0]);
     assert doc.args[0].name == "a";
     assert doc.args[0].desc == some("b");
 }

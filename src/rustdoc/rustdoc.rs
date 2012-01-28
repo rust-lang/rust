@@ -2,6 +2,8 @@
  * Copyright 2011 Google Inc.
  */
 
+import doc::util;
+
 #[doc = "A single operation on the document model"]
 type pass = fn~(srv: astsrv::srv, doc: doc::cratedoc) -> doc::cratedoc;
 
@@ -53,8 +55,7 @@ fn test_run_passes() {
                 mods: doc::modlist([]),
                 fns: doc::fnlist([]),
                 consts: doc::constlist([]),
-                enums: doc::enumlist([]),
-                resources: doc::reslist([])
+                enums: doc::enumlist([])
             }
         }
     }
@@ -73,8 +74,7 @@ fn test_run_passes() {
                 mods: doc::modlist([]),
                 fns: doc::fnlist([]),
                 consts: doc::constlist([]),
-                enums: doc::enumlist([]),
-                resources: doc::reslist([])
+                enums: doc::enumlist([])
             }
         }
     }
