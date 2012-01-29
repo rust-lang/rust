@@ -445,7 +445,7 @@ fn visit_item_with_scope(e: @env, i: @ast::item, sc: scopes, v: vt<scopes>) {
         v.visit_ty(sty, sc, v);
         for m in methods {
             let msc = cons(scope_method(i.id, tps + m.tps), @sc);
-            v.visit_fn(visit::fk_method(m.ident, []),
+            v.visit_fn(visit::fk_method(m.ident, m.tps),
                        m.decl, m.body, m.span, m.id, msc, v);
         }
       }
