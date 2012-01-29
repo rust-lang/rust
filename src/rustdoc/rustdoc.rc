@@ -29,3 +29,4 @@ mod unindent_pass;
 mod trim_pass;
 mod astsrv;
 mod demo;
+mod sort_pass;
