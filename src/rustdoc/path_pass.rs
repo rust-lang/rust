@@ -44,6 +44,6 @@ fn should_record_mod_paths() {
     let srv = astsrv::mk_srv_from_str(source);
     let doc = extract::from_srv(srv, "");
     let doc = run(srv, doc);
-    assert doc.topmod.mods[0].mods[0].mods[0].path == ["a", "b"];
-    assert doc.topmod.mods[0].mods[1].mods[0].path == ["a", "d"];
+    assert doc.topmod.mods()[0].mods()[0].mods()[0].path == ["a", "b"];
+    assert doc.topmod.mods()[0].mods()[1].mods()[0].path == ["a", "d"];
 }

@@ -45,6 +45,11 @@ fn moddoc_from_mod(
         desc: none,
         items: vec::filter_map(module.items) {|item|
             alt item.node {
+              ast::item_mod(m) {
+                some(doc::modtag(
+                    moddoc_from_mod(m, item.ident, item.id)
+                ))
+              }
               ast::item_fn(decl, _, _) {
                 some(doc::fntag(
                     fndoc_from_fn(decl, item.ident, item.id)
@@ -69,18 +74,7 @@ fn moddoc_from_mod(
                 none
               }
             }
-        },
-        mods: doc::modlist(
-            vec::filter_map(module.items) {|item|
-                alt item.node {
-                  ast::item_mod(m) {
-                    some(moddoc_from_mod(m, item.ident, item.id))
-                  }
-                  _ {
-                    none
-                  }
-                }
-            })
+        }
     }
 }
 
@@ -233,8 +227,7 @@ mod tests {
         let source = ""; // empty crate
         let ast = parse::from_str(source);
         let doc = extract(ast, "");
-        // FIXME #1535: These are boxed to prevent a crash
-        assert ~doc.topmod.mods == ~doc::modlist([]);
+        assert vec::is_empty(doc.topmod.mods());
         assert vec::is_empty(doc.topmod.fns());
     }
 
@@ -243,9 +236,9 @@ mod tests {
         let source = "mod a { mod b { } mod c { } }";
         let ast = parse::from_str(source);
         let doc = extract(ast, "");
-        assert doc.topmod.mods[0].name == "a";
-        assert doc.topmod.mods[0].mods[0].name == "b";
-        assert doc.topmod.mods[0].mods[1].name == "c";
+        assert doc.topmod.mods()[0].name == "a";
+        assert doc.topmod.mods()[0].mods()[0].name == "b";
+        assert doc.topmod.mods()[0].mods()[1].name == "c";
     }
 
     #[test]
@@ -253,7 +246,7 @@ mod tests {
         let source = "mod a { mod b { mod c { } } }";
         let ast = parse::from_str(source);
         let doc = extract(ast, "");
-        assert doc.topmod.mods[0].mods[0].mods[0].name == "c";
+        assert doc.topmod.mods()[0].mods()[0].mods()[0].name == "c";
     }
 
     #[test]
@@ -261,7 +254,7 @@ mod tests {
         let source = "mod a { }";
         let ast = parse::from_str(source);
         let doc = extract(ast, "");
-        assert doc.topmod.mods[0].id != 0;
+        assert doc.topmod.mods()[0].id != 0;
     }
 
     #[test]
@@ -272,7 +265,7 @@ mod tests {
         let ast = parse::from_str(source);
         let doc = extract(ast, "");
         assert doc.topmod.fns()[0].name == "a";
-        assert doc.topmod.mods[0].fns()[0].name == "c";
+        assert doc.topmod.mods()[0].fns()[0].name == "c";
     }
 
     #[test]

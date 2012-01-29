@@ -51,8 +51,7 @@ fn test_run_passes() {
                 path: [],
                 brief: none,
                 desc: none,
-                items: [],
-                mods: doc::modlist([])
+                items: []
             }
         }
     }
@@ -67,8 +66,7 @@ fn test_run_passes() {
                 path: [],
                 brief: none,
                 desc: none,
-                items: [],
-                mods: doc::modlist([])
+                items: []
             }
         }
     }

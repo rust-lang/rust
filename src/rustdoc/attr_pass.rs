@@ -105,7 +105,7 @@ fn fold_mod_should_extract_mod_attributes() {
     let srv = astsrv::mk_srv_from_str(source);
     let doc = extract::from_srv(srv, "");
     let fold = fold::default_seq_fold(srv);
-    let doc = fold_mod(fold, doc.topmod.mods[0]);
+    let doc = fold_mod(fold, doc.topmod.mods()[0]);
     assert doc.desc == some("test");
 }
 

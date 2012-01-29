@@ -22,8 +22,8 @@ fn should_trim_mod() {
     let doc = extract::from_srv(srv, "");
     let doc = attr_pass::mk_pass()(srv, doc);
     let doc = mk_pass()(srv, doc);
-    assert doc.topmod.mods[0].brief == some("brief");
-    assert doc.topmod.mods[0].desc == some("desc");
+    assert doc.topmod.mods()[0].brief == some("brief");
+    assert doc.topmod.mods()[0].desc == some("desc");
 }
 
 #[test]

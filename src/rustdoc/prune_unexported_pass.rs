@@ -21,8 +21,7 @@ fn run(srv: astsrv::srv, doc: doc::cratedoc) -> doc::cratedoc {
 fn fold_mod(fold: fold::fold<astsrv::srv>, doc: doc::moddoc) -> doc::moddoc {
     let doc = fold::default_seq_fold_mod(fold, doc);
     ~{
-        items: exported_items(fold.ctxt, doc),
-        mods: doc::modlist(exported_mods(fold.ctxt, doc))
+        items: exported_items(fold.ctxt, doc)
         with *doc
     }
 }
@@ -32,14 +31,6 @@ fn exported_items(srv: astsrv::srv, doc: doc::moddoc) -> [doc::itemtag] {
         srv, doc,
         exported_items_from_crate,
         exported_items_from_mod
-    )
-}
-
-fn exported_mods(srv: astsrv::srv, doc: doc::moddoc) -> [doc::moddoc] {
-    exported_things(
-        srv, doc,
-        exported_mods_from_crate,
-        exported_mods_from_mod
     )
 }
 
@@ -70,20 +61,6 @@ fn exported_items_from_mod(
     exported_items_from(srv, doc, bind is_exported_from_mod(_, doc.id, _))
 }
 
-fn exported_mods_from_crate(
-    srv: astsrv::srv,
-    doc: doc::moddoc
-) -> [doc::moddoc] {
-    exported_mods_from(srv, doc, is_exported_from_crate)
-}
-
-fn exported_mods_from_mod(
-    srv: astsrv::srv,
-    doc: doc::moddoc
-) -> [doc::moddoc] {
-    exported_mods_from(srv, doc, bind is_exported_from_mod(_, doc.id, _))
-}
-
 fn exported_items_from(
     srv: astsrv::srv,
     doc: doc::moddoc,
@@ -91,6 +68,7 @@ fn exported_items_from(
 ) -> [doc::itemtag] {
     vec::filter_map(doc.items) { |itemtag|
         let name = alt itemtag {
+          doc::modtag(~{name, _}) { name }
           doc::fntag(~{name, _}) { name }
           doc::consttag(~{name, _}) { name }
           doc::enumtag(~{name, _}) { name }
@@ -108,20 +86,6 @@ fn exported_items_from(
         };
         if is_exported(srv, name) {
             some(itemtag)
-        } else {
-            none
-        }
-    }
-}
-
-fn exported_mods_from(
-    srv: astsrv::srv,
-    doc: doc::moddoc,
-    is_exported: fn(astsrv::srv, str) -> bool
-) -> [doc::moddoc] {
-    vec::filter_map(*doc.mods) { |doc|
-        if is_exported(srv, doc.name) {
-            some(doc)
         } else {
             none
         }
@@ -175,7 +139,7 @@ fn should_prune_unexported_fns() {
     let srv = astsrv::mk_srv_from_str(source);
     let doc = extract::from_srv(srv, "");
     let doc = run(srv, doc);
-    assert vec::len(doc.topmod.mods[0].fns()) == 1u;
+    assert vec::len(doc.topmod.mods()[0].fns()) == 1u;
 }
 
 #[test]
@@ -193,7 +157,7 @@ fn should_prune_unexported_modules() {
     let srv = astsrv::mk_srv_from_str(source);
     let doc = extract::from_srv(srv, "");
     let doc = run(srv, doc);
-    assert vec::len(*doc.topmod.mods[0].mods) == 1u;
+    assert vec::len(doc.topmod.mods()[0].mods()) == 1u;
 }
 
 #[test]
@@ -202,7 +166,7 @@ fn should_prune_unexported_modules_from_top_mod() {
     let srv = astsrv::mk_srv_from_str(source);
     let doc = extract::from_srv(srv, "");
     let doc = run(srv, doc);
-    assert vec::len(*doc.topmod.mods) == 1u;
+    assert vec::len(doc.topmod.mods()) == 1u;
 }
 
 #[test]
@@ -213,7 +177,7 @@ fn should_prune_unexported_consts() {
     let srv = astsrv::mk_srv_from_str(source);
     let doc = extract::from_srv(srv, "");
     let doc = run(srv, doc);
-    assert vec::len(doc.topmod.mods[0].consts()) == 1u;
+    assert vec::len(doc.topmod.mods()[0].consts()) == 1u;
 }
 
 #[test]
@@ -240,7 +204,7 @@ fn should_prune_unexported_enums() {
     let srv = astsrv::mk_srv_from_str(source);
     let doc = extract::from_srv(srv, "");
     let doc = run(srv, doc);
-    assert vec::len(doc.topmod.mods[0].enums()) == 0u;
+    assert vec::len(doc.topmod.mods()[0].enums()) == 0u;
 }
 
 #[test]
@@ -258,7 +222,7 @@ fn should_prune_unexported_variants() {
     let srv = astsrv::mk_srv_from_str(source);
     let doc = extract::from_srv(srv, "");
     let doc = run(srv, doc);
-    assert vec::len(doc.topmod.mods[0].enums()[0].variants) == 0u;
+    assert vec::len(doc.topmod.mods()[0].enums()[0].variants) == 0u;
 }
 
 #[test]
@@ -276,5 +240,5 @@ fn should_prune_unexported_resources() {
     let srv = astsrv::mk_srv_from_str(source);
     let doc = extract::from_srv(srv, "");
     let doc = run(srv, doc);
-    assert vec::is_empty(doc.topmod.mods[0].resources());
+    assert vec::is_empty(doc.topmod.mods()[0].resources());
 }
