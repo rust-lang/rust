@@ -180,7 +180,7 @@ fn fold_fn_should_extract_fn_attributes() {
     let srv = astsrv::mk_srv_from_str(source);
     let doc = extract::from_srv(srv, "");
     let fold = fold::default_seq_fold(srv);
-    let doc = fold_fn(fold, doc.topmod.fns[0]);
+    let doc = fold_fn(fold, doc.topmod.fns()[0]);
     assert doc.desc == some("test");
 }
 
@@ -190,7 +190,7 @@ fn fold_fn_should_extract_arg_attributes() {
     let srv = astsrv::mk_srv_from_str(source);
     let doc = extract::from_srv(srv, "");
     let fold = fold::default_seq_fold(srv);
-    let doc = fold_fn(fold, doc.topmod.fns[0]);
+    let doc = fold_fn(fold, doc.topmod.fns()[0]);
     assert doc.args[0].desc == some("b");
 }
 
@@ -201,7 +201,7 @@ fn fold_fn_should_extract_return_attributes() {
     let doc = extract::from_srv(srv, "");
     let doc = tystr_pass::mk_pass()(srv, doc);
     let fold = fold::default_seq_fold(srv);
-    let doc = fold_fn(fold, doc.topmod.fns[0]);
+    let doc = fold_fn(fold, doc.topmod.fns()[0]);
     assert doc.return.desc == some("what");
 }
 
@@ -212,7 +212,7 @@ fn fold_fn_should_preserve_sig() {
     let doc = extract::from_srv(srv, "");
     let doc = tystr_pass::mk_pass()(srv, doc);
     let fold = fold::default_seq_fold(srv);
-    let doc = fold_fn(fold, doc.topmod.fns[0]);
+    let doc = fold_fn(fold, doc.topmod.fns()[0]);
     assert doc.sig == some("fn a() -> int");
 }
 
@@ -222,7 +222,7 @@ fn fold_fn_should_extract_failure_conditions() {
     let srv = astsrv::mk_srv_from_str(source);
     let doc = extract::from_srv(srv, "");
     let fold = fold::default_seq_fold(srv);
-    let doc = fold_fn(fold, doc.topmod.fns[0]);
+    let doc = fold_fn(fold, doc.topmod.fns()[0]);
     assert doc.failure == some("what");
 }
 

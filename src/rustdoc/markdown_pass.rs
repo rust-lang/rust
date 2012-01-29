@@ -81,16 +81,13 @@ fn write_mod_contents(
     write_brief(ctxt, doc.brief);
     write_desc(ctxt, doc.desc);
 
-    for fndoc in *doc.fns {
-        write_fn(ctxt, fndoc);
-    }
-
     for moddoc in *doc.mods {
         write_mod(ctxt, moddoc);
     }
 
     for itemtag in doc.items {
         alt itemtag {
+          doc::fntag(fndoc) { write_fn(ctxt, fndoc) }
           doc::consttag(constdoc) { write_const(ctxt, constdoc) }
           doc::enumtag(enumdoc) { write_enum(ctxt, enumdoc) }
           doc::restag(resdoc) { write_res(ctxt, resdoc) }
@@ -162,10 +159,10 @@ fn should_correctly_indent_fn_signature() {
     let doc = test::create_doc("fn a() { }");
     let doc = ~{
         topmod: ~{
-            fns: doc::fnlist([~{
+            items: [doc::fntag(~{
                 sig: some("line 1\nline 2")
-                with *doc.topmod.fns[0]
-            }])
+                with *doc.topmod.fns()[0]
+            })]
             with *doc.topmod
         }
         with *doc

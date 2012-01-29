@@ -59,7 +59,7 @@ fn should_add_fn_sig() {
     let srv = astsrv::mk_srv_from_str(source);
     let doc = extract::from_srv(srv, "");
     let doc = run(srv, doc);
-    assert doc.topmod.fns[0].sig == some("fn a() -> int");
+    assert doc.topmod.fns()[0].sig == some("fn a() -> int");
 }
 
 fn merge_ret_ty(
@@ -101,7 +101,7 @@ fn should_add_fn_ret_types() {
     let srv = astsrv::mk_srv_from_str(source);
     let doc = extract::from_srv(srv, "");
     let doc = run(srv, doc);
-    assert doc.topmod.fns[0].return.ty == some("int");
+    assert doc.topmod.fns()[0].return.ty == some("int");
 }
 
 #[test]
@@ -110,7 +110,7 @@ fn should_not_add_nil_ret_type() {
     let srv = astsrv::mk_srv_from_str(source);
     let doc = extract::from_srv(srv, "");
     let doc = run(srv, doc);
-    assert doc.topmod.fns[0].return.ty == none;
+    assert doc.topmod.fns()[0].return.ty == none;
 }
 
 fn merge_arg_tys(
@@ -152,7 +152,7 @@ fn should_add_arg_types() {
     let srv = astsrv::mk_srv_from_str(source);
     let doc = extract::from_srv(srv, "");
     let doc = run(srv, doc);
-    let fn_ = doc.topmod.fns[0];
+    let fn_ = doc.topmod.fns()[0];
     assert fn_.args[0].ty == some("int");
     assert fn_.args[1].ty == some("bool");
 }

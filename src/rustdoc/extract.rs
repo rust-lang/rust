@@ -45,6 +45,11 @@ fn moddoc_from_mod(
         desc: none,
         items: vec::filter_map(module.items) {|item|
             alt item.node {
+              ast::item_fn(decl, _, _) {
+                some(doc::fntag(
+                    fndoc_from_fn(decl, item.ident, item.id)
+                ))
+              }
               ast::item_const(_, _) {
                 some(doc::consttag(
                     constdoc_from_const(item.ident, item.id)
@@ -70,18 +75,6 @@ fn moddoc_from_mod(
                 alt item.node {
                   ast::item_mod(m) {
                     some(moddoc_from_mod(m, item.ident, item.id))
-                  }
-                  _ {
-                    none
-                  }
-                }
-            }),
-        fns: doc::fnlist(
-            vec::filter_map(module.items) {|item|
-                alt item.node {
-                  ast::item_fn(decl, _, _) {
-                    some(fndoc_from_fn(
-                        decl, item.ident, item.id))
                   }
                   _ {
                     none
@@ -116,7 +109,7 @@ fn should_extract_fn_args() {
     let source = "fn a(b: int, c: int) { }";
     let ast = parse::from_str(source);
     let doc = extract(ast, "");
-    let fn_ = doc.topmod.fns[0];
+    let fn_ = doc.topmod.fns()[0];
     assert fn_.args[0].name == "b";
     assert fn_.args[1].name == "c";
 }
@@ -242,7 +235,7 @@ mod tests {
         let doc = extract(ast, "");
         // FIXME #1535: These are boxed to prevent a crash
         assert ~doc.topmod.mods == ~doc::modlist([]);
-        assert ~doc.topmod.fns == ~doc::fnlist([]);
+        assert vec::is_empty(doc.topmod.fns());
     }
 
     #[test]
@@ -278,8 +271,8 @@ mod tests {
              mod b { fn c() { } }";
         let ast = parse::from_str(source);
         let doc = extract(ast, "");
-        assert doc.topmod.fns[0].name == "a";
-        assert doc.topmod.mods[0].fns[0].name == "c";
+        assert doc.topmod.fns()[0].name == "a";
+        assert doc.topmod.mods[0].fns()[0].name == "c";
     }
 
     #[test]
@@ -287,7 +280,7 @@ mod tests {
         let source = "fn a() { }";
         let ast = parse::from_str(source);
         let doc = extract(ast, "");
-        assert doc.topmod.fns[0].id != 0;
+        assert doc.topmod.fns()[0].id != 0;
     }
 
     #[test]

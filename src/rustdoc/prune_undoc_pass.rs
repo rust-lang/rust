@@ -23,8 +23,7 @@ fn run(
         fold_const: fold_const,
         fold_enum: fold_enum,
         fold_res: fold_res,
-        fold_modlist: fold_modlist,
-        fold_fnlist: fold_fnlist
+        fold_modlist: fold_modlist
         with *fold::default_seq_fold(ctxt)
     });
     fold.fold_crate(fold, doc)
@@ -37,6 +36,14 @@ fn fold_mod(
     let doc = ~{
         items: vec::filter_map(doc.items) {|itemtag|
             alt itemtag {
+              doc::fntag(fndoc) {
+                let doc = fold.fold_fn(fold, fndoc);
+                if fold.ctxt.have_docs {
+                    some(doc::fntag(doc))
+                } else {
+                    none
+                }
+              }
               doc::consttag(constdoc) {
                 let doc = fold.fold_const(fold, constdoc);
                 if fold.ctxt.have_docs {
@@ -70,7 +77,7 @@ fn fold_mod(
         doc.brief != none
         || doc.desc != none
         || vec::is_not_empty(*doc.mods)
-        || vec::is_not_empty(*doc.fns);
+        || vec::is_not_empty(doc.items);
     ret doc;
 }
 
@@ -115,7 +122,7 @@ fn should_elide_undocumented_arguments() {
     let doc = extract::from_srv(srv, "");
     let doc = attr_pass::mk_pass()(srv, doc);
     let doc = run(srv, doc);
-    assert vec::is_empty(doc.topmod.fns[0].args);
+    assert vec::is_empty(doc.topmod.fns()[0].args);
 }
 
 #[test]
@@ -125,7 +132,7 @@ fn should_not_elide_fns_with_documented_arguments() {
     let doc = extract::from_srv(srv, "");
     let doc = attr_pass::mk_pass()(srv, doc);
     let doc = run(srv, doc);
-    assert vec::is_not_empty(*doc.topmod.fns);
+    assert vec::is_not_empty(doc.topmod.fns());
 }
 
 #[test]
@@ -136,7 +143,7 @@ fn should_elide_undocumented_return_values() {
     let doc = tystr_pass::mk_pass()(srv, doc);
     let doc = attr_pass::mk_pass()(srv, doc);
     let doc = run(srv, doc);
-    assert doc.topmod.fns[0].return.ty == none;
+    assert doc.topmod.fns()[0].return.ty == none;
 }
 
 #[test]
@@ -146,7 +153,7 @@ fn should_not_elide_fns_with_documented_failure_conditions() {
     let doc = extract::from_srv(srv, "");
     let doc = attr_pass::mk_pass()(srv, doc);
     let doc = run(srv, doc);
-    assert vec::is_not_empty(*doc.topmod.fns);
+    assert vec::is_not_empty(doc.topmod.fns());
 }
 
 fn fold_modlist(
@@ -192,27 +199,13 @@ fn should_not_elide_undocument_mods_with_documented_fns() {
     assert vec::is_not_empty(*doc.topmod.mods);
 }
 
-fn fold_fnlist(
-    fold: fold::fold<ctxt>,
-    list: doc::fnlist
-) -> doc::fnlist {
-    doc::fnlist(vec::filter_map(*list) {|doc|
-        let doc = fold.fold_fn(fold, doc);
-        if fold.ctxt.have_docs {
-            some(doc)
-        } else {
-            none
-        }
-    })
-}
-
 #[test]
 fn should_elide_undocumented_fns() {
     let source = "fn a() { }";
     let srv = astsrv::mk_srv_from_str(source);
     let doc = extract::from_srv(srv, "");
     let doc = run(srv, doc);
-    assert vec::is_empty(*doc.topmod.fns);
+    assert vec::is_empty(doc.topmod.fns());
 }
 
 fn fold_const(

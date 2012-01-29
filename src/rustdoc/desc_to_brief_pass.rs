@@ -112,8 +112,8 @@ fn should_promote_fn_desc() {
     let doc = extract::from_srv(srv, "");
     let doc = attr_pass::mk_pass()(srv, doc);
     let doc = run(srv, doc);
-    assert doc.topmod.fns[0].brief == some("desc");
-    assert doc.topmod.fns[0].desc == none;
+    assert doc.topmod.fns()[0].brief == some("desc");
+    assert doc.topmod.fns()[0].desc == none;
 }
 
 #[test]

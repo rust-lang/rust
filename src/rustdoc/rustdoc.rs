@@ -52,8 +52,7 @@ fn test_run_passes() {
                 brief: none,
                 desc: none,
                 items: [],
-                mods: doc::modlist([]),
-                fns: doc::fnlist([])
+                mods: doc::modlist([])
             }
         }
     }
@@ -69,8 +68,7 @@ fn test_run_passes() {
                 brief: none,
                 desc: none,
                 items: [],
-                mods: doc::modlist([]),
-                fns: doc::fnlist([])
+                mods: doc::modlist([])
             }
         }
     }

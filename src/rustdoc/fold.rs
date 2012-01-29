@@ -2,7 +2,7 @@
 import std;
 
 export fold;
-export fold_crate, fold_mod, fold_fn, fold_modlist, fold_fnlist;
+export fold_crate, fold_mod, fold_fn, fold_modlist;
 export default_seq_fold;
 export default_seq_fold_crate;
 export default_seq_fold_mod;
@@ -10,7 +10,6 @@ export default_seq_fold_fn;
 export default_seq_fold_const;
 export default_seq_fold_enum;
 export default_seq_fold_res;
-export default_seq_fold_fnlist;
 
 enum fold<T> = t<T>;
 
@@ -21,7 +20,6 @@ type fold_const<T> = fn~(fold: fold<T>, doc: doc::constdoc) -> doc::constdoc;
 type fold_enum<T> = fn~(fold: fold<T>, doc: doc::enumdoc) -> doc::enumdoc;
 type fold_res<T> = fn~(fold: fold<T>, doc: doc::resdoc) -> doc::resdoc;
 type fold_modlist<T> = fn~(fold: fold<T>, list: doc::modlist) -> doc::modlist;
-type fold_fnlist<T> = fn~(fold: fold<T>, list: doc::fnlist) -> doc::fnlist;
 
 type t<T> = {
     ctxt: T,
@@ -31,8 +29,7 @@ type t<T> = {
     fold_const: fold_const<T>,
     fold_enum: fold_enum<T>,
     fold_res: fold_res<T>,
-    fold_modlist: fold_modlist<T>,
-    fold_fnlist: fold_fnlist<T>
+    fold_modlist: fold_modlist<T>
 };
 
 
@@ -46,8 +43,7 @@ fn mk_fold<T:copy>(
     fold_const: fold_const<T>,
     fold_enum: fold_enum<T>,
     fold_res: fold_res<T>,
-    fold_modlist: fold_modlist<T>,
-    fold_fnlist: fold_fnlist<T>
+    fold_modlist: fold_modlist<T>
 ) -> fold<T> {
     fold({
         ctxt: ctxt,
@@ -57,8 +53,7 @@ fn mk_fold<T:copy>(
         fold_const: fold_const,
         fold_enum: fold_enum,
         fold_res: fold_res,
-        fold_modlist: fold_modlist,
-        fold_fnlist: fold_fnlist
+        fold_modlist: fold_modlist
     })
 }
 
@@ -71,8 +66,7 @@ fn default_seq_fold<T:copy>(ctxt: T) -> fold<T> {
         {|f, d| default_seq_fold_const(f, d)},
         {|f, d| default_seq_fold_enum(f, d)},
         {|f, d| default_seq_fold_res(f, d)},
-        {|f, d| default_seq_fold_modlist(f, d)},
-        {|f, d| default_seq_fold_fnlist(f, d)}
+        {|f, d| default_seq_fold_modlist(f, d)}
     )
 }
 
@@ -92,6 +86,9 @@ fn default_seq_fold_mod<T>(
     ~{
         items: vec::map(doc.items) {|itemtag|
             alt itemtag {
+              doc::fntag(fndoc) {
+                doc::fntag(fold.fold_fn(fold, fndoc))
+              }
               doc::consttag(constdoc) {
                 doc::consttag(fold.fold_const(fold, constdoc))
               }
@@ -103,8 +100,7 @@ fn default_seq_fold_mod<T>(
               }
             }
         },
-        mods: fold.fold_modlist(fold, doc.mods),
-        fns: fold.fold_fnlist(fold, doc.fns)
+        mods: fold.fold_modlist(fold, doc.mods)
         with *doc
     }
 }
@@ -143,15 +139,6 @@ fn default_seq_fold_modlist<T>(
 ) -> doc::modlist {
     doc::modlist(vec::map(*list) {|doc|
         fold.fold_mod(fold, doc)
-    })
-}
-
-fn default_seq_fold_fnlist<T>(
-    fold: fold<T>,
-    list: doc::fnlist
-) -> doc::fnlist {
-    doc::fnlist(vec::map(*list) {|doc|
-        fold.fold_fn(fold, doc)
     })
 }
 
