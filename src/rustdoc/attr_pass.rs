@@ -231,7 +231,7 @@ fn fold_const(
     doc: doc::constdoc
 ) -> doc::constdoc {
     let srv = fold.ctxt;
-    let attrs = parse_item_attrs(srv, doc.id, attr_parser::parse_mod);
+    let attrs = parse_item_attrs(srv, doc.id, attr_parser::parse_const);
 
     ~{
         brief: attrs.brief,
