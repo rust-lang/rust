@@ -38,7 +38,7 @@ fn visit_expr_aq(expr: @ast::expr, &&cx: aq_ctxt, v: vt<aq_ctxt>)
     }
 }
 
-fn expand_qquote(ecx: ext_ctxt, sp: span, e: @ast::expr) -> ast::expr_ {
+fn expand_qquote(ecx: ext_ctxt, sp: span, e: @ast::expr) -> @ast::expr {
     let str = codemap::span_to_snippet(sp, ecx.session().parse_sess.cm);
     let qcx = gather_anti_quotes(sp.lo, e);
     let cx = qcx;
@@ -89,7 +89,7 @@ fn expand_qquote(ecx: ext_ctxt, sp: span, e: @ast::expr) -> ast::expr_ {
                          mk_vec_e(cx,sp, vec::map(qcx.gather, {|g| g.e}))]);
     }
 
-    ret rcall.node;
+    ret rcall;
 }
 
 fn replace(e: @ast::expr, repls: [@ast::expr]) -> @ast::expr {

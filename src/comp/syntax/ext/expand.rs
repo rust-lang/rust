@@ -46,7 +46,13 @@ fn expand_expr(exts: hashmap<str, syntax_extension>, cx: ext_ctxt,
                   }
                 }
               }
-              mac_qq(sp, exp) { (expand_qquote(cx, sp, exp), s) }
+              mac_qq(sp, exp) {
+                let r = expand_qquote(cx, sp, exp);
+                // need to keep going, resuls may contain embedded qquote or
+                // macro that need expanding
+                let r2 = fld.fold_expr(r);
+                (r2.node, s)
+              }
               _ { cx.span_bug(mac.span, "naked syntactic bit") }
             }
           }
