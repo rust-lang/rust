@@ -67,13 +67,6 @@ fn exported_items_from(
     is_exported: fn(astsrv::srv, str) -> bool
 ) -> [doc::itemtag] {
     vec::filter_map(doc.items) { |itemtag|
-        let name = alt itemtag {
-          doc::modtag(~{name, _}) { name }
-          doc::fntag(~{name, _}) { name }
-          doc::consttag(~{name, _}) { name }
-          doc::enumtag(~{name, _}) { name }
-          doc::restag(~{name, _}) { name }
-        };
         let itemtag = alt itemtag {
           doc::enumtag(enumdoc) {
             // Also need to check variant exportedness
@@ -84,7 +77,7 @@ fn exported_items_from(
           }
           _ { itemtag }
         };
-        if is_exported(srv, name) {
+        if is_exported(srv, itemtag.name()) {
             some(itemtag)
         } else {
             none

@@ -123,3 +123,15 @@ impl util for moddoc {
         }
     }
 }
+
+impl util for itemtag {
+    fn name() -> str {
+        alt self {
+          doc::modtag(~{name, _}) { name }
+          doc::fntag(~{name, _}) { name }
+          doc::consttag(~{name, _}) { name }
+          doc::enumtag(~{name, _}) { name }
+          doc::restag(~{name, _}) { name }
+        }
+    }
+}
