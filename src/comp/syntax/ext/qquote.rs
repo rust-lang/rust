@@ -38,6 +38,10 @@ fn visit_expr_aq(expr: @ast::expr, &&cx: aq_ctxt, v: vt<aq_ctxt>)
     }
 }
 
+fn is_space(c: char) -> bool {
+    syntax::parse::lexer::is_whitespace(c)
+}
+
 fn expand_qquote(ecx: ext_ctxt, sp: span, e: @ast::expr) -> @ast::expr {
     let str = codemap::span_to_snippet(sp, ecx.session().parse_sess.cm);
     let qcx = gather_anti_quotes(sp.lo, e);
@@ -48,20 +52,28 @@ fn expand_qquote(ecx: ext_ctxt, sp: span, e: @ast::expr) -> @ast::expr {
         prev = lo;
     }
     let str2 = "";
-    let active = true;
+    enum state {active, skip(uint), blank};
+    let state = active;
     let i = 0u, j = 0u;
     let g_len = vec::len(cx.gather);
     str::chars_iter(str) {|ch|
-        if (active && j < g_len && i == cx.gather[j].lo) {
+        if (j < g_len && i == cx.gather[j].lo) {
             assert ch == '$';
-            active = false;
-            str2 += #fmt(" $%u ", j);
+            let repl = #fmt("$%u ", j);
+            state = skip(str::char_len(repl));
+            str2 += repl;
         }
-        if (active) {str::push_char(str2, ch);}
+        alt state {
+          active {str::push_char(str2, ch);}
+          skip(1u) {state = blank;}
+          skip(sk) {state = skip (sk-1u);}
+          blank if is_space(ch) {str::push_char(str2, ch);}
+          blank {str::push_char(str2, ' ');}
+        }
         i += 1u;
-        if (!active && j < g_len && i == cx.gather[j].hi) {
+        if (j < g_len && i == cx.gather[j].hi) {
             assert ch == ')';
-            active = true;
+            state = active;
             j += 1u;
         }
     }
