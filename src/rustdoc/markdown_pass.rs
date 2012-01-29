@@ -5,16 +5,65 @@ import std::io::writer_util;
 
 export mk_pass;
 
+// FIXME: This is a really convoluted interface to work around trying
+// to get a writer into a unique closure and then being able to test
+// what was written afterward
 fn mk_pass(
-    writer: fn~() -> io::writer
+    give_writer: fn~(fn(io::writer))
 ) -> pass {
-    ret fn~(
-        _srv: astsrv::srv,
+    fn~(
+        srv: astsrv::srv,
         doc: doc::cratedoc
     ) -> doc::cratedoc {
-        write_markdown(doc, writer());
+
+        fn mods_last(item1: doc::itemtag, item2: doc::itemtag) -> bool {
+            fn is_mod(item: doc::itemtag) -> bool {
+                alt item {
+                  doc::modtag(_) { true }
+                  _ { false }
+                }
+            }
+
+            let lteq = !is_mod(item1) || is_mod(item2);
+            lteq
+        }
+
+        give_writer {|writer|
+            // Sort the items so mods come last. All mods will be
+            // output at the same header level so sorting mods last
+            // makes the headers come out nested correctly.
+            let sorted_doc = sort_pass::mk_pass(mods_last)(srv, doc);
+
+            write_markdown(sorted_doc, writer);
+        }
         doc
-    };
+    }
+}
+
+#[test]
+fn should_write_modules_last() {
+    /*
+    Because the markdown pass writes all modules at the same level of
+    indentation (it doesn't 'nest' them), we need to make sure that we
+    write all of the modules contained in each module after all other
+    types of items, or else the header nesting will end up wrong, with
+    modules appearing to contain items that they do not.
+    */
+    let markdown = test::render(
+        "mod a { }\
+         fn b() { }\
+         mod c { }\
+         fn d() { }"
+    );
+
+    let idx_a = str::find(markdown, "# Module `a`");
+    let idx_b = str::find(markdown, "## Function `b`");
+    let idx_c = str::find(markdown, "# Module `c`");
+    let idx_d = str::find(markdown, "## Function `d`");
+
+    assert idx_b < idx_d;
+    assert idx_d < idx_a;
+    assert idx_a < idx_c;
 }
 
 type ctxt = {
@@ -487,13 +536,13 @@ fn should_write_resource_args() {
 #[cfg(test)]
 mod test {
     fn render(source: str) -> str {
-        let doc = create_doc(source);
-        let markdown = write_markdown_str(doc);
+        let (srv, doc) = create_doc_srv(source);
+        let markdown = write_markdown_str_srv(srv, doc);
         #debug("markdown: %s", markdown);
         markdown
     }
 
-    fn create_doc(source: str) -> doc::cratedoc {
+    fn create_doc_srv(source: str) -> (astsrv::srv, doc::cratedoc) {
         let srv = astsrv::mk_srv_from_str(source);
         let doc = extract::from_srv(srv, "");
         #debug("doc (extract): %?", doc);
@@ -503,6 +552,11 @@ mod test {
         #debug("doc (path): %?", doc);
         let doc = attr_pass::mk_pass()(srv, doc);
         #debug("doc (attr): %?", doc);
+        (srv, doc)
+    }
+
+    fn create_doc(source: str) -> doc::cratedoc {
+        let (_, doc) = create_doc_srv(source);
         doc
     }
 
@@ -513,6 +567,24 @@ mod test {
         let writer = io::mem_buffer_writer(buffer);
         write_markdown(doc, writer);
         ret io::mem_buffer_str(buffer);
+    }
+
+    fn write_markdown_str_srv(
+        srv: astsrv::srv,
+        doc: doc::cratedoc
+    ) -> str {
+        let port = comm::port();
+        let chan = comm::chan(port);
+
+        let pass = mk_pass {|f|
+            let buffer = io::mk_mem_buffer();
+            let writer = io::mem_buffer_writer(buffer);
+            f(writer);
+            let result = io::mem_buffer_str(buffer);
+            comm::send(chan, result);
+        };
+        pass(srv, doc);
+        ret comm::recv(port);
     }
 
     #[test]
