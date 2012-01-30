@@ -70,6 +70,11 @@ fn moddoc_from_mod(
                     resdoc_from_resource(decl, item.ident, item.id)
                 ))
               }
+              ast::item_iface(_, methods) {
+                some(doc::ifacetag(
+                    ifacedoc_from_iface(methods, item.ident, item.id)
+                ))
+              }
               _ {
                 none
               }
@@ -217,6 +222,57 @@ fn should_extract_resource_args() {
     let ast = parse::from_str(source);
     let doc = extract(ast, "");
     assert doc.topmod.resources()[0].args[0].name == "b";
+}
+
+fn ifacedoc_from_iface(
+    methods: [ast::ty_method],
+    name: str,
+    id: ast::node_id
+) -> doc::ifacedoc {
+    {
+        id: id,
+        name: name,
+        brief: none,
+        desc: none,
+        methods: vec::map(methods) {|method|
+            {
+                name: method.ident,
+                brief: none,
+                desc: none,
+                args: argdocs_from_args(method.decl.inputs),
+                return: {
+                    desc: none,
+                    ty: none
+                },
+                failure: none,
+                sig: none
+            }
+        }
+    }
+}
+
+#[test]
+fn should_extract_ifaces() {
+    let source = "iface i { fn f(); }";
+    let ast = parse::from_str(source);
+    let doc = extract(ast, "");
+    assert doc.topmod.ifaces()[0].name == "i";
+}
+
+#[test]
+fn should_extract_iface_methods() {
+    let source = "iface i { fn f(); }";
+    let ast = parse::from_str(source);
+    let doc = extract(ast, "");
+    assert doc.topmod.ifaces()[0].methods[0].name == "f";
+}
+
+#[test]
+fn should_extract_iface_method_args() {
+    let source = "iface i { fn f(a: bool); }";
+    let ast = parse::from_str(source);
+    let doc = extract(ast, "");
+    assert doc.topmod.ifaces()[0].methods[0].args[0].name == "a";
 }
 
 #[cfg(test)]
