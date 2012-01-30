@@ -305,10 +305,42 @@ fn lit_to_const(lit: @lit) -> const_val {
 
 fn compare_const_vals(a: const_val, b: const_val) -> int {
   alt (a, b) {
-    (const_int(a), const_int(b)) { a == b ? 0 : a < b ? -1 : 1 }
-    (const_uint(a), const_uint(b)) { a == b ? 0 : a < b ? -1 : 1 }
-    (const_float(a), const_float(b)) { a == b ? 0 : a < b ? -1 : 1 }
-    (const_str(a), const_str(b)) { a == b ? 0 : a < b ? -1 : 1 }
+    (const_int(a), const_int(b)) {
+        if a == b {
+            0
+        } else if a < b {
+            -1
+        } else {
+            1
+        }
+    }
+    (const_uint(a), const_uint(b)) {
+        if a == b {
+            0
+        } else if a < b {
+            -1
+        } else {
+            1
+        }
+    }
+    (const_float(a), const_float(b)) {
+        if a == b {
+            0
+        } else if a < b {
+            -1
+        } else {
+            1
+        }
+    }
+    (const_str(a), const_str(b)) {
+        if a == b {
+            0
+        } else if a < b {
+            -1
+        } else {
+            1
+        }
+    }
   }
 }
 

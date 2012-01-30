@@ -11,7 +11,7 @@ impl point_ops for point {
         {x: -self.x, y: -self.y}
     }
     fn [](x: bool) -> int {
-        x ? self.x : self.y
+        if x { self.x } else { self.y }
     }
 }
 
