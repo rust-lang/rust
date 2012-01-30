@@ -19,7 +19,7 @@ fn zombiejesus() {
     do  {
         while (ret) {
             if (ret) {
-                alt (ret) { _ { ret ? ret : ret } };
+                alt (ret) { _ { if ret { ret } else { ret } } };
             } else if (ret) {
                 ret;
             }

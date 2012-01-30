@@ -24,7 +24,7 @@ fn test7() -> uint {
     (*regs < 2) as uint
 }
 
-fn test8() -> int { let val = @0; alt true { true { } } *val < 1 ? 0 : 1 }
+fn test8() -> int { let val = @0; alt true { true { } } if *val < 1 { 0 } else { 1 } }
 
 fn test9() { let regs = @mutable 0; alt true { true { } } *regs += 1; }
 
