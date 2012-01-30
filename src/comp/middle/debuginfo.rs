@@ -234,7 +234,7 @@ fn create_block(cx: @block_ctxt) -> @metadata<block_md> {
         }
     }
     let sp = option::get(cx.block_span);
-        
+
     let start = codemap::lookup_char_pos(bcx_ccx(cx).sess.codemap,
                                          sp.lo);
     let fname = start.filename;
