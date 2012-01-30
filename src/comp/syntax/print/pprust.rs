@@ -510,9 +510,10 @@ fn print_item(s: ps, &&item: @ast::item) {
         for meth in methods {
             hardbreak_if_not_bol(s);
             maybe_print_comment(s, meth.span.lo);
+            print_outer_attributes(s, meth.attrs);
             print_fn(s, meth.decl, meth.ident, meth.tps);
             word(s.s, " ");
-            print_block(s, meth.body);
+            print_block_with_attrs(s, meth.body, meth.attrs);
         }
         bclose(s, item.span);
       }
@@ -520,6 +521,7 @@ fn print_item(s: ps, &&item: @ast::item) {
         head(s, "iface");
         word(s.s, item.ident);
         print_type_params(s, tps);
+        word(s.s, " ");
         bopen(s);
         for meth in methods { print_ty_method(s, meth); }
         bclose(s, item.span);
@@ -566,11 +568,10 @@ fn print_variant(s: ps, v: ast::variant) {
 
 fn print_ty_method(s: ps, m: ast::ty_method) {
     hardbreak_if_not_bol(s);
-    cbox(s, indent_unit);
     maybe_print_comment(s, m.span.lo);
+    print_outer_attributes(s, m.attrs);
     print_ty_fn(s, none, m.decl, some(m.ident), some(m.tps));
     word(s.s, ";");
-    end(s);
 }
 
 fn print_outer_attributes(s: ps, attrs: [ast::attribute]) {

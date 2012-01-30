@@ -282,6 +282,7 @@ fn parse_ty_fn(proto: ast::proto, p: parser) -> ast::ty_ {
 
 fn parse_ty_methods(p: parser) -> [ast::ty_method] {
     parse_seq(token::LBRACE, token::RBRACE, seq_sep_none(), {|p|
+        let attrs = parse_outer_attributes(p);
         let flo = p.span.lo;
         expect_word(p, "fn");
         let ident = parse_method_name(p);
@@ -290,7 +291,7 @@ fn parse_ty_methods(p: parser) -> [ast::ty_method] {
         expect(p, token::SEMI);
         alt f {
           ast::ty_fn(_, d) {
-            {ident: ident, decl: d, tps: tps,
+            {ident: ident, attrs: attrs, decl: d, tps: tps,
              span: ast_util::mk_sp(flo, fhi)}
           }
         }
@@ -1849,13 +1850,15 @@ fn parse_method_name(p: parser) -> ast::ident {
 }
 
 fn parse_method(p: parser) -> @ast::method {
+    let attrs = parse_outer_attributes(p);
     let lo = p.span.lo;
     expect_word(p, "fn");
     let ident = parse_method_name(p);
     let tps = parse_ty_params(p);
     let decl = parse_fn_decl(p, ast::impure_fn);
-    let body = parse_block(p);
-    @{ident: ident, tps: tps, decl: decl, body: body,
+    let (inner_attrs, body) = parse_inner_attrs_and_block(p, true);
+    let attrs = attrs + inner_attrs;
+    @{ident: ident, attrs: attrs, tps: tps, decl: decl, body: body,
       id: p.get_id(), span: ast_util::mk_sp(lo, body.span.hi)}
 }
 

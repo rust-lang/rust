@@ -299,7 +299,8 @@ type ty_field_ = {ident: ident, mt: mt};
 
 type ty_field = spanned<ty_field_>;
 
-type ty_method = {ident: ident, decl: fn_decl, tps: [ty_param], span: span};
+type ty_method = {ident: ident, attrs: [attribute],
+                  decl: fn_decl, tps: [ty_param], span: span};
 
 enum int_ty { ty_i, ty_char, ty_i8, ty_i16, ty_i32, ty_i64, }
 
@@ -399,7 +400,8 @@ enum ret_style {
     return_val, // everything else
 }
 
-type method = {ident: ident, tps: [ty_param], decl: fn_decl, body: blk,
+type method = {ident: ident, attrs: [attribute],
+               tps: [ty_param], decl: fn_decl, body: blk,
                id: node_id, span: span};
 
 type _mod = {view_items: [@view_item], items: [@item]};
