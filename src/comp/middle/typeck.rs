@@ -1578,9 +1578,17 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
             fcx.ccx.tcx.sess.span_err(
                 sp, #fmt["this function takes %u parameter%s but %u \
                           parameter%s supplied", expected_arg_count,
-                         expected_arg_count == 1u ? "" : "s",
+                         if expected_arg_count == 1u {
+                             ""
+                         } else {
+                             "s"
+                         },
                          supplied_arg_count,
-                         supplied_arg_count == 1u ? " was" : "s were"]);
+                         if supplied_arg_count == 1u {
+                             " was"
+                         } else {
+                             "s were"
+                         }]);
             // HACK: build an arguments list with dummy arguments to
             // check against
             let dummy = {mode: ast::by_ref, ty: ty::mk_bot(fcx.ccx.tcx)};

@@ -7,14 +7,14 @@ Function: min
 
 Returns the minimum of two values
 */
-pure fn min<T: copy>(x: T, y: T) -> T { x < y ? x : y }
+pure fn min<T: copy>(x: T, y: T) -> T { if x < y { x } else { y} }
 
 /*
 Function: max
 
 Returns the maximum of two values
 */
-pure fn max<T: copy>(x: T, y: T) -> T { x < y ? y : x }
+pure fn max<T: copy>(x: T, y: T) -> T { if x < y { y } else { x } }
 
 #[test]
 fn test_max_min() {

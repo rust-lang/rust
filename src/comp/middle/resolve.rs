@@ -1986,7 +1986,7 @@ fn visit_block_with_impl_scope(e: @env, b: ast::blk, sc: iscopes,
           _ {}
         }
     }
-    let sc = vec::len(impls) > 0u ? cons(@impls, @sc) : sc;
+    let sc = if vec::len(impls) > 0u { cons(@impls, @sc) } else { sc };
     visit::visit_block(b, sc, v);
 }
 
@@ -1998,8 +1998,11 @@ fn visit_mod_with_impl_scope(e: @env, m: ast::_mod, s: span, id: node_id,
     }
     for i in m.items { find_impls_in_item(*e, i, impls, none, none); }
     let impls = @impls;
-    visit::visit_mod(m, s, id,
-                     vec::len(*impls) > 0u ? cons(impls, @sc) : sc, v);
+    visit::visit_mod(m, s, id, if vec::len(*impls) > 0u {
+                                   cons(impls, @sc)
+                               } else {
+                                   sc
+                               }, v);
     e.impl_map.insert(id, cons(impls, @nil));
 }
 

@@ -402,8 +402,11 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
 
     let col = pick_col(m);
     let val = vals[col];
-    let m = has_nested_bindings(m, col) ?
-        expand_nested_bindings(m, col, val) : m;
+    let m = if has_nested_bindings(m, col) {
+                expand_nested_bindings(m, col, val)
+            } else {
+                m
+            };
 
     let vals_left =
         vec::slice(vals, 0u, col) +
@@ -493,7 +496,11 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
           lit(l) {
             test_val = Load(bcx, val);
             let pty = ty::node_id_to_type(ccx.tcx, pat_id);
-            kind = ty::type_is_integral(ccx.tcx, pty) ? switch : compare;
+            kind = if ty::type_is_integral(ccx.tcx, pty) {
+                       switch
+                   } else {
+                       compare
+                   };
           }
           range(_, _) {
             test_val = Load(bcx, val);

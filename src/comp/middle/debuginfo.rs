@@ -465,10 +465,16 @@ fn create_composite_type(type_tag: int, name: str, file: ValueRef, line: int,
                   lli64(align), // align
                   lli64(offset), // offset
                   lli32(0), // flags
-                  option::is_none(derived) ? llnull() : // derived from
-                                             option::get(derived),
-                  option::is_none(members) ? llnull() : // members
-                                             llmdnode(option::get(members)),
+                  if option::is_none(derived) {
+                      llnull()
+                  } else { // derived from
+                      option::get(derived)
+                  },
+                  if option::is_none(members) {
+                      llnull()
+                  } else { //members
+                      llmdnode(option::get(members))
+                  },
                   lli32(0),  // runtime language
                   llnull()
                  ];
@@ -776,7 +782,7 @@ fn create_function(fcx: @fn_ctxt) -> @metadata<subprogram_md> {
     let loc = codemap::lookup_char_pos(cx.sess.codemap,
                                        sp.lo);
     let file_node = create_file(cx, loc.filename).node;
-    let key = cx.item_symbols.contains_key(fcx.id) ? fcx.id : id;
+    let key = if cx.item_symbols.contains_key(fcx.id) { fcx.id } else { id };
     let mangled = cx.item_symbols.get(key);
     let ty_node = if cx.sess.opts.extra_debuginfo {
         alt ret_ty.node {

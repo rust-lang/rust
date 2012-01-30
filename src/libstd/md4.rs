@@ -65,7 +65,7 @@ fn md4(msg: [u8]) -> {a: u32, b: u32, c: u32, d: u32} {
 
         let j = 0u, q = 0x6ed9eba1u32;
         while j < 8u {
-            let jj = j > 2u ? j - 3u : j;
+            let jj = if j > 2u { j - 3u } else { j };
             a = rot(3, a + (b ^ c ^ d) + x[jj] + q);
             d = rot(9, d + (a ^ b ^ c) + x[jj + 8u] + q);
             c = rot(11, c + (d ^ a ^ b) + x[jj + 4u] + q);

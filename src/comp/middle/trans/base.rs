@@ -68,7 +68,7 @@ fn type_of_explicit_args(cx: @crate_ctxt, inputs: [ty::arg]) ->
         // that would obviate the need for this check
         check non_ty_var(cx, arg_ty);
         let llty = type_of_inner(cx, arg_ty);
-        atys += [arg.mode == ast::by_val ? llty : T_ptr(llty)];
+        atys += [if arg.mode == ast::by_val { llty } else { T_ptr(llty) }];
     }
     ret atys;
 }
@@ -2015,8 +2015,11 @@ fn store_temp_expr(cx: @block_ctxt, action: copy_action, dst: ValueRef,
     -> @block_ctxt {
     // Lvals in memory are not temporaries. Copy them.
     if src.kind != temporary && !last_use {
-        let v = src.kind == owned ? load_if_immediate(cx, src.val, t)
-                                  : src.val;
+        let v = if src.kind == owned {
+                    load_if_immediate(cx, src.val, t)
+                } else {
+                    src.val
+                };
         ret copy_val(cx, action, dst, v, t);
     }
     ret move_val(cx, action, dst, src, t);
@@ -3417,7 +3420,7 @@ fn trans_expr_save_in(bcx: @block_ctxt, e: @ast::expr, dest: ValueRef)
     -> @block_ctxt {
     let tcx = bcx_tcx(bcx), t = ty::expr_ty(tcx, e);
     let do_ignore = ty::type_is_bot(tcx, t) || ty::type_is_nil(tcx, t);
-    ret trans_expr(bcx, e, do_ignore ? ignore : save_in(dest));
+    ret trans_expr(bcx, e, if do_ignore { ignore } else { save_in(dest) });
 }
 
 // Call this to compile an expression that you need as an intermediate value,
@@ -4256,7 +4259,7 @@ fn trans_block_dps(bcx: @block_ctxt, b: ast::blk, dest: dest)
       some(e) {
         let bt = ty::type_is_bot(bcx_tcx(bcx), ty::expr_ty(bcx_tcx(bcx), e));
         debuginfo::update_source_pos(bcx, e.span);
-        bcx = trans_expr(bcx, e, bt ? ignore : dest);
+        bcx = trans_expr(bcx, e, if bt { ignore } else { dest });
       }
       _ { assert dest == ignore || bcx.unreachable; }
     }
@@ -4493,7 +4496,11 @@ fn trans_fn(cx: @local_ctxt, sp: span, decl: ast::fn_decl, body: ast::blk,
             llfndecl: ValueRef, ty_self: self_arg, ty_params: [ast::ty_param],
             id: ast::node_id) {
     let do_time = cx.ccx.sess.opts.stats;
-    let start = do_time ? time::get_time() : {sec: 0u32, usec: 0u32};
+    let start = if do_time {
+                    time::get_time()
+                } else {
+                    {sec: 0u32, usec: 0u32}
+                };
     let fcx = option::none;
     trans_closure(cx, sp, decl, body, llfndecl, ty_self, ty_params, id,
                   {|new_fcx| fcx = option::some(new_fcx);});
@@ -5396,7 +5403,7 @@ fn decl_crate_map(sess: session::session, mapname: str,
     let n_subcrates = 1;
     let cstore = sess.cstore;
     while cstore::have_crate_data(cstore, n_subcrates) { n_subcrates += 1; }
-    let mapname = sess.building_library ? mapname : "toplevel";
+    let mapname = if sess.building_library { mapname } else { "toplevel" };
     let sym_name = "_rust_crate_map_" + mapname;
     let arrtype = T_array(int_type, n_subcrates as uint);
     let maptype = T_struct([int_type, arrtype]);
