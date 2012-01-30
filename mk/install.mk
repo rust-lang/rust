@@ -44,6 +44,7 @@ install-target-$(1)-host-$(2): $$(SREQ$$(ISTAGE)_T_$(1)_H_$(2))
 		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(LIBRUSTC_GLOB))
 	$$(Q)$$(call INSTALL,$$(TL$(1)$(2)),$$(PTL$(1)$(2)),intrinsics.bc)
 	$$(Q)$$(call INSTALL,$$(TL$(1)$(2)),$$(PTL$(1)$(2)),libmorestack.a)
+
 endef
 
 $(foreach target,$(CFG_TARGET_TRIPLES), \
@@ -80,3 +81,23 @@ install-host: $(SREQ$(ISTAGE)_T_$(CFG_HOST_TRIPLE)_H_$(CFG_HOST_TRIPLE))
 	     $(PREFIX_ROOT)/share/man/man1,rustc.1)
 
 install-targets: $(INSTALL_TARGET_RULES)
+
+
+HOST_LIB_FROM_HL_GLOB = \
+  $(patsubst $(HL)/%,$(PHL)/%,$(wildcard $(HL)/$(1)))
+
+uninstall:
+	$(Q)rm -f $(PHB)/rustc$(X)
+	$(Q)rm -f $(PHB)/cargo$(X)
+	$(Q)rm -f $(PHB)/rustdoc$(X)
+	$(Q)rm -f $(PHL)/$(CFG_RUSTLLVM)
+	$(Q)rm -f $(PHL)/$(CFG_RUNTIME)
+	$(Q)for i in \
+          $(call HOST_LIB_FROM_HL_GLOB,$(CORELIB_GLOB)) \
+          $(call HOST_LIB_FROM_HL_GLOB,$(STDLIB_GLOB)) \
+          $(call HOST_LIB_FROM_HL_GLOB,$(LIBRUSTC_GLOB)) \
+        ; \
+        do rm -f $$i ; \
+        done
+	$(Q)rm -Rf $(PHL)/rustc
+	$(Q)rm -f $(PREFIX_ROOT)/share/man/man1/rustc.1
