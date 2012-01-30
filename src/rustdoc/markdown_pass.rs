@@ -130,7 +130,7 @@ fn write_mod_contents(
     write_brief(ctxt, doc.brief);
     write_desc(ctxt, doc.desc);
 
-    for itemtag in doc.items {
+    for itemtag in *doc.items {
         alt itemtag {
           doc::modtag(moddoc) { write_mod(ctxt, moddoc) }
           doc::fntag(fndoc) { write_fn(ctxt, fndoc) }
@@ -203,15 +203,15 @@ fn should_insert_blank_line_after_fn_signature() {
 #[test]
 fn should_correctly_indent_fn_signature() {
     let doc = test::create_doc("fn a() { }");
-    let doc = ~{
-        topmod: ~{
-            items: [doc::fntag(~{
+    let doc = {
+        topmod: {
+            items: ~[doc::fntag({
                 sig: some("line 1\nline 2")
-                with *doc.topmod.fns()[0]
+                with doc.topmod.fns()[0]
             })]
-            with *doc.topmod
+            with doc.topmod
         }
-        with *doc
+        with doc
     };
     let markdown = test::write_markdown_str(doc);
     assert str::contains(markdown, "    line 1\n    line 2");

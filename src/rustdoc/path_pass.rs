@@ -32,9 +32,9 @@ fn fold_mod(fold: fold::fold<ctxt>, doc: doc::moddoc) -> doc::moddoc {
     if !is_topmod { vec::push(fold.ctxt.path, doc.name); }
     let doc = fold::default_seq_fold_mod(fold, doc);
     if !is_topmod { vec::pop(fold.ctxt.path); }
-    ~{
+    {
         path: fold.ctxt.path
-        with *doc
+        with doc
     }
 }
 

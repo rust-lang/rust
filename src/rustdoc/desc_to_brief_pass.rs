@@ -32,10 +32,10 @@ fn fold_mod(fold: fold::fold<()>, doc: doc::moddoc) -> doc::moddoc {
     let doc = fold::default_seq_fold_mod(fold, doc);
     let (brief, desc) = modify(doc.brief, doc.desc);
 
-    ~{
+    {
         brief: brief,
         desc: desc
-        with *doc
+        with doc
     }
 }
 
@@ -43,10 +43,10 @@ fn fold_const(fold: fold::fold<()>, doc: doc::constdoc) -> doc::constdoc {
     let doc = fold::default_seq_fold_const(fold, doc);
     let (brief, desc) = modify(doc.brief, doc.desc);
 
-    ~{
+    {
         brief: brief,
         desc: desc
-        with *doc
+        with doc
     }
 }
 
@@ -54,10 +54,10 @@ fn fold_fn(fold: fold::fold<()>, doc: doc::fndoc) -> doc::fndoc {
     let doc = fold::default_seq_fold_fn(fold, doc);
     let (brief, desc) = modify(doc.brief, doc.desc);
 
-    ~{
+    {
         brief: brief,
         desc: desc
-        with *doc
+        with doc
     }
 }
 
@@ -65,10 +65,10 @@ fn fold_enum(fold: fold::fold<()>, doc: doc::enumdoc) -> doc::enumdoc {
     let doc = fold::default_seq_fold_enum(fold, doc);
     let (brief, desc) = modify(doc.brief, doc.desc);
 
-    ~{
+    {
         brief: brief,
         desc: desc
-        with *doc
+        with doc
     }
 }
 
@@ -76,10 +76,10 @@ fn fold_res(fold: fold::fold<()>, doc: doc::resdoc) -> doc::resdoc {
     let doc = fold::default_seq_fold_res(fold, doc);
     let (brief, desc) = modify(doc.brief, doc.desc);
 
-    ~{
+    {
         brief: brief,
         desc: desc
-        with *doc
+        with doc
     }
 }
 

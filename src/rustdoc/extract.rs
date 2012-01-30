@@ -20,7 +20,7 @@ fn extract(
     crate: @ast::crate,
     default_name: str
 ) -> doc::cratedoc {
-    ~{
+    {
         topmod: top_moddoc_from_crate(crate, default_name),
     }
 }
@@ -37,13 +37,13 @@ fn moddoc_from_mod(
     name: ast::ident,
     id: ast::node_id
 ) -> doc::moddoc {
-    ~{
+    {
         id: id,
         name: name,
         path: [],
         brief: none,
         desc: none,
-        items: vec::filter_map(module.items) {|item|
+        items: ~vec::filter_map(module.items) {|item|
             alt item.node {
               ast::item_mod(m) {
                 some(doc::modtag(
@@ -83,7 +83,7 @@ fn fndoc_from_fn(
     name: ast::ident,
     id: ast::node_id
 ) -> doc::fndoc {
-    ~{
+    {
         id: id,
         name: name,
         brief: none,
@@ -113,7 +113,7 @@ fn argdocs_from_args(args: [ast::arg]) -> [doc::argdoc] {
 }
 
 fn argdoc_from_arg(arg: ast::arg) -> doc::argdoc {
-    ~{
+    {
         name: arg.ident,
         desc: none,
         ty: none
@@ -124,7 +124,7 @@ fn constdoc_from_const(
     name: ast::ident,
     id: ast::node_id
 ) -> doc::constdoc {
-    ~{
+    {
         id: id,
         name: name,
         brief: none,
@@ -147,7 +147,7 @@ fn enumdoc_from_enum(
     id: ast::node_id,
     variants: [ast::variant]
 ) -> doc::enumdoc {
-    ~{
+    {
         id: id,
         name: name,
         brief: none,
@@ -163,7 +163,7 @@ fn variantdocs_from_variants(
 }
 
 fn variantdoc_from_variant(variant: ast::variant) -> doc::variantdoc {
-    ~{
+    {
         name: variant.node.name,
         desc: none,
         sig: none
@@ -192,7 +192,7 @@ fn resdoc_from_resource(
     name: str,
     id: ast::node_id
 ) -> doc::resdoc {
-    ~{
+    {
         id: id,
         name: name,
         brief: none,

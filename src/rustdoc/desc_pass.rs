@@ -33,33 +33,33 @@ fn maybe_apply_op(op: op, s: option<str>) -> option<str> {
 fn fold_mod(fold: fold::fold<op>, doc: doc::moddoc) -> doc::moddoc {
     let doc = fold::default_seq_fold_mod(fold, doc);
 
-    ~{
+    {
         brief: maybe_apply_op(fold.ctxt, doc.brief),
         desc: maybe_apply_op(fold.ctxt, doc.desc)
-        with *doc
+        with doc
     }
 }
 
 fn fold_const(fold: fold::fold<op>, doc: doc::constdoc) -> doc::constdoc {
     let doc = fold::default_seq_fold_const(fold, doc);
 
-    ~{
+    {
         brief: maybe_apply_op(fold.ctxt, doc.brief),
         desc: maybe_apply_op(fold.ctxt, doc.desc)
-        with *doc
+        with doc
     }
 }
 
 fn fold_fn(fold: fold::fold<op>, doc: doc::fndoc) -> doc::fndoc {
     let doc = fold::default_seq_fold_fn(fold, doc);
 
-    ~{
+    {
         brief: maybe_apply_op(fold.ctxt, doc.brief),
         desc: maybe_apply_op(fold.ctxt, doc.desc),
         args: vec::map(doc.args) {|doc|
-            ~{
+            {
                 desc: maybe_apply_op(fold.ctxt, doc.desc)
-                with *doc
+                with doc
             }
         },
         return: {
@@ -67,35 +67,35 @@ fn fold_fn(fold: fold::fold<op>, doc: doc::fndoc) -> doc::fndoc {
             with doc.return
         },
         failure: maybe_apply_op(fold.ctxt, doc.failure)
-        with *doc
+        with doc
     }
 }
 
 fn fold_enum(fold: fold::fold<op>, doc: doc::enumdoc) -> doc::enumdoc {
-    ~{
+    {
         brief: maybe_apply_op(fold.ctxt, doc.brief),
         desc: maybe_apply_op(fold.ctxt, doc.desc),
         variants: vec::map(doc.variants) {|variant|
-            ~{
+            {
                 desc: maybe_apply_op(fold.ctxt, variant.desc)
-                with *variant
+                with variant
             }
         }
-        with *doc
+        with doc
     }
 }
 
 fn fold_res(fold: fold::fold<op>, doc: doc::resdoc) -> doc::resdoc {
-    ~{
+    {
         brief: maybe_apply_op(fold.ctxt, doc.brief),
         desc: maybe_apply_op(fold.ctxt, doc.desc),
         args: vec::map(doc.args) {|arg|
-            ~{
+            {
                 desc: maybe_apply_op(fold.ctxt, arg.desc)
-                with *arg
+                with arg
             }
         }
-        with *doc
+        with doc
     }
 }
 

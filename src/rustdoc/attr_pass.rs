@@ -44,10 +44,10 @@ fn fold_crate(
         attr_parser::parse_crate(attrs)
     };
 
-    ~{
-        topmod: ~{
+    {
+        topmod: {
             name: option::from_maybe(doc.topmod.name, attrs.name)
-            with *doc.topmod
+            with doc.topmod
         }
     }
 }
@@ -91,10 +91,10 @@ fn fold_mod(fold: fold::fold<astsrv::srv>, doc: doc::moddoc) -> doc::moddoc {
         doc: doc::moddoc,
         attrs: attr_parser::mod_attrs
     ) -> doc::moddoc {
-        ~{
+        {
             brief: attrs.brief,
             desc: attrs.desc
-            with *doc
+            with doc
         }
     }
 }
@@ -133,13 +133,13 @@ fn fold_fn(
         doc: doc::fndoc,
         attrs: attr_parser::fn_attrs
     ) -> doc::fndoc {
-        ret ~{
+        ret {
             brief: attrs.brief,
             desc: attrs.desc,
             args: merge_arg_attrs(doc.args, attrs.args),
             return: merge_ret_attrs(doc.return, attrs.return),
             failure: attrs.failure
-            with *doc
+            with doc
         };
     }
 
@@ -152,9 +152,9 @@ fn fold_fn(
                 attr.name == doc.name
             } {
                 some(attr) {
-                    ~{
+                    {
                         desc: some(attr.desc)
-                        with *doc
+                        with doc
                     }
                 }
                 none { doc }
@@ -233,10 +233,10 @@ fn fold_const(
     let srv = fold.ctxt;
     let attrs = parse_item_attrs(srv, doc.id, attr_parser::parse_const);
 
-    ~{
+    {
         brief: attrs.brief,
         desc: attrs.desc
-        with *doc
+        with doc
     }
 }
 
@@ -259,7 +259,7 @@ fn fold_enum(
     let srv = fold.ctxt;
     let attrs = parse_item_attrs(srv, doc.id, attr_parser::parse_enum);
 
-    ~{
+    {
         brief: attrs.brief,
         desc: attrs.desc,
         variants: vec::map(doc.variants) {|variant|
@@ -278,12 +278,12 @@ fn fold_enum(
                 }
             };
 
-            ~{
+            {
                 desc: attrs.desc
-                with *variant
+                with variant
             }
         }
-        with *doc
+        with doc
     }
 }
 
@@ -317,7 +317,7 @@ fn fold_res(
     let srv = fold.ctxt;
     let attrs = parse_item_attrs(srv, doc.id, attr_parser::parse_fn);
 
-    ~{
+    {
         brief: attrs.brief,
         desc: attrs.desc,
         args: vec::map(doc.args) {|doc|
@@ -325,15 +325,15 @@ fn fold_res(
                 attr.name == doc.name
             } {
                 some(attr) {
-                    ~{
+                    {
                         desc: some(attr.desc)
-                        with *doc
+                        with doc
                     }
                 }
                 none { doc }
             }
         }
-        with *doc
+        with doc
     }
 }
 

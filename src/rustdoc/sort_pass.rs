@@ -29,9 +29,9 @@ fn fold_mod(
     doc: doc::moddoc
 ) -> doc::moddoc {
     let doc = fold::default_seq_fold_mod(fold, doc);
-    ~{
-        items: sort::merge_sort(fold.ctxt, doc.items)
-        with *doc
+    {
+        items: ~sort::merge_sort(fold.ctxt, *doc.items)
+        with doc
     }
 }
 

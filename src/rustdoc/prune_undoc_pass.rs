@@ -32,8 +32,8 @@ fn fold_mod(
     fold: fold::fold<ctxt>,
     doc: doc::moddoc
 ) -> doc::moddoc {
-    let doc = ~{
-        items: vec::filter_map(doc.items) {|itemtag|
+    let doc = {
+        items: ~vec::filter_map(*doc.items) {|itemtag|
             alt itemtag {
               doc::modtag(moddoc) {
                 let doc = fold.fold_mod(fold, moddoc);
@@ -78,12 +78,12 @@ fn fold_mod(
               _ { some(itemtag) }
             }
         }
-        with *fold::default_seq_fold_mod(fold, doc)
+        with fold::default_seq_fold_mod(fold, doc)
     };
     fold.ctxt.have_docs =
         doc.brief != none
         || doc.desc != none
-        || vec::is_not_empty(doc.items);
+        || vec::is_not_empty(*doc.items);
     ret doc;
 }
 
@@ -92,7 +92,7 @@ fn fold_fn(
     doc: doc::fndoc
 ) -> doc::fndoc {
     let have_arg_docs = false;
-    let doc = ~{
+    let doc = {
         args: vec::filter_map(doc.args) {|doc|
             if option::is_some(doc.desc) {
                 have_arg_docs = true;
@@ -109,7 +109,7 @@ fn fold_fn(
             }
             with doc.return
         }
-        with *doc
+        with doc
     };
 
     fold.ctxt.have_docs =
@@ -221,7 +221,7 @@ fn should_elide_undocumented_consts() {
 }
 
 fn fold_enum(fold: fold::fold<ctxt>, doc: doc::enumdoc) -> doc::enumdoc {
-    let doc = ~{
+    let doc = {
         variants: vec::filter_map(doc.variants) {|variant|
             if variant.desc != none {
                 some(variant)
@@ -229,7 +229,7 @@ fn fold_enum(fold: fold::fold<ctxt>, doc: doc::enumdoc) -> doc::enumdoc {
                 none
             }
         }
-        with *fold::default_seq_fold_enum(fold, doc)
+        with fold::default_seq_fold_enum(fold, doc)
     };
     fold.ctxt.have_docs =
         doc.brief != none
@@ -269,7 +269,7 @@ fn should_not_elide_enums_with_documented_variants() {
 }
 
 fn fold_res(fold: fold::fold<ctxt>, doc: doc::resdoc) -> doc::resdoc {
-    let doc = ~{
+    let doc = {
         args: vec::filter_map(doc.args) {|arg|
             if arg.desc != none {
                 some(arg)
@@ -277,7 +277,7 @@ fn fold_res(fold: fold::fold<ctxt>, doc: doc::resdoc) -> doc::resdoc {
                 none
             }
         }
-        with *fold::default_seq_fold_res(fold, doc)
+        with fold::default_seq_fold_res(fold, doc)
     };
     fold.ctxt.have_docs =
         doc.brief != none

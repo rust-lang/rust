@@ -69,7 +69,7 @@ fn default_seq_fold_crate<T>(
     fold: fold<T>,
     doc: doc::cratedoc
 ) -> doc::cratedoc {
-    ~{
+    {
         topmod: fold.fold_mod(fold, doc.topmod)
     }
 }
@@ -78,8 +78,8 @@ fn default_seq_fold_mod<T>(
     fold: fold<T>,
     doc: doc::moddoc
 ) -> doc::moddoc {
-    ~{
-        items: vec::map(doc.items) {|itemtag|
+    {
+        items: ~vec::map(*doc.items) {|itemtag|
             alt itemtag {
               doc::modtag(moddoc) {
                 doc::modtag(fold.fold_mod(fold, moddoc))
@@ -98,7 +98,7 @@ fn default_seq_fold_mod<T>(
               }
             }
         }
-        with *doc
+        with doc
     }
 }
 

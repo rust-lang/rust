@@ -32,11 +32,11 @@ fn fold_fn(
 
     let srv = fold.ctxt;
 
-    ~{
+    {
         args: merge_arg_tys(srv, doc.id, doc.args),
         return: merge_ret_ty(srv, doc.id, doc.return),
         sig: get_fn_sig(srv, doc.id)
-        with *doc
+        with doc
     }
 }
 
@@ -122,9 +122,9 @@ fn merge_arg_tys(
     vec::map2(args, tys) {|arg, ty|
         // Sanity check that we're talking about the same args
         assert arg.name == tuple::first(ty);
-        ~{
+        {
             ty: some(tuple::second(ty))
-            with *arg
+            with arg
         }
     }
 }
@@ -163,7 +163,7 @@ fn fold_const(
 ) -> doc::constdoc {
     let srv = fold.ctxt;
 
-    ~{
+    {
         ty: some(astsrv::exec(srv) {|ctxt|
             alt ctxt.ast_map.get(doc.id) {
               ast_map::node_item(@{
@@ -173,7 +173,7 @@ fn fold_const(
               }
             }
         })
-        with *doc
+        with doc
     }
 }
 
@@ -192,7 +192,7 @@ fn fold_enum(
 ) -> doc::enumdoc {
     let srv = fold.ctxt;
 
-    ~{
+    {
         variants: vec::map(doc.variants) {|variant|
             let sig = astsrv::exec(srv) {|ctxt|
                 alt ctxt.ast_map.get(doc.id) {
@@ -209,12 +209,12 @@ fn fold_enum(
                 }
             };
 
-            ~{
+            {
                 sig: some(sig)
-                with *variant
+                with variant
             }
         }
-        with *doc
+        with doc
     }
 }
 
@@ -233,7 +233,7 @@ fn fold_res(
 ) -> doc::resdoc {
     let srv = fold.ctxt;
 
-    ~{
+    {
         args: merge_arg_tys(srv, doc.id, doc.args),
         sig: some(astsrv::exec(srv) {|ctxt|
             alt ctxt.ast_map.get(doc.id) {
@@ -244,7 +244,7 @@ fn fold_res(
               }
             }
         })
-        with *doc
+        with doc
     }
 }
 

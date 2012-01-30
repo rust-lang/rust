@@ -44,14 +44,14 @@ fn test_run_passes() {
         _srv: astsrv::srv,
         doc: doc::cratedoc
     ) -> doc::cratedoc {
-        ~{
-            topmod: ~{
+        {
+            topmod: {
                 id: 0,
                 name: doc.topmod.name + "two",
                 path: [],
                 brief: none,
                 desc: none,
-                items: []
+                items: ~[]
             }
         }
     }
@@ -59,14 +59,14 @@ fn test_run_passes() {
         _srv: astsrv::srv,
         doc: doc::cratedoc
     ) -> doc::cratedoc {
-        ~{
-            topmod: ~{
+        {
+            topmod: {
                 id: 0,
                 name: doc.topmod.name + "three",
                 path: [],
                 brief: none,
                 desc: none,
-                items: []
+                items: ~[]
             }
         }
     }
