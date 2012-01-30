@@ -46,7 +46,7 @@ exact - Whether to enforce the exact number of significant digits
 */
 fn to_str_common(num: float, digits: uint, exact: bool) -> str {
     if is_NaN(num) { ret "NaN"; }
-    let (num, accum) = num < 0.0 ? (-num, "-") : (num, "");
+    let (num, accum) = if num < 0.0 { (-num, "-") } else { (num, "") };
     let trunc = num as uint;
     let frac = num - (trunc as float);
     accum += uint::str(trunc);

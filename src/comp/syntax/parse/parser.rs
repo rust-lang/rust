@@ -538,8 +538,11 @@ fn parse_arg(p: parser) -> ast::arg {
 fn parse_fn_block_arg(p: parser) -> ast::arg {
     let m = parse_arg_mode(p);
     let i = parse_value_ident(p);
-    let t = eat(p, token::COLON) ? parse_ty(p, false) :
-        @spanned(p.span.lo, p.span.hi, ast::ty_infer);
+    let t = if eat(p, token::COLON) {
+                parse_ty(p, false)
+            } else {
+                @spanned(p.span.lo, p.span.hi, ast::ty_infer)
+            };
     ret {mode: m, ty: t, ident: i, id: p.get_id()};
 }
 
@@ -676,7 +679,12 @@ fn parse_path(p: parser) -> @ast::path {
 fn parse_path_and_ty_param_substs(p: parser, colons: bool) -> @ast::path {
     let lo = p.span.lo;
     let path = parse_path(p);
-    if colons ? eat(p, token::MOD_SEP) : p.token == token::LT {
+    let b = if colons {
+                eat(p, token::MOD_SEP)
+            } else {
+                p.token == token::LT
+            };
+    if b {
         let seq = parse_seq_lt_gt(some(token::COMMA),
                                   {|p| parse_ty(p, false)}, p);
         @spanned(lo, seq.span.hi, {types: seq.node with path.node})
@@ -1504,7 +1512,11 @@ fn parse_pat(p: parser) -> @ast::pat {
                         _ { true }
                       } {
             let name = parse_path(p);
-            let sub = eat(p, token::AT) ? some(parse_pat(p)) : none;
+            let sub = if eat(p, token::AT) {
+                          some(parse_pat(p))
+                      } else {
+                          none
+                      };
             pat = ast::pat_ident(name, sub);
         } else {
             let enum_path = parse_path_and_ty_param_substs(p, true);
@@ -1546,7 +1558,11 @@ fn parse_local(p: parser, allow_init: bool) -> @ast::local {
 
 fn parse_let(p: parser) -> @ast::decl {
     fn parse_let_style(p: parser) -> ast::let_style {
-        eat(p, token::BINOP(token::AND)) ? ast::let_ref : ast::let_copy
+        if eat(p, token::BINOP(token::AND)) {
+            ast::let_ref
+        } else {
+            ast::let_copy
+        }
     }
     let lo = p.span.lo;
     let locals = [(parse_let_style(p), parse_local(p, true))];
@@ -1786,11 +1802,19 @@ fn parse_fn_decl(p: parser, purity: ast::purity)
 }
 
 fn parse_fn_block_decl(p: parser) -> ast::fn_decl {
-    let inputs = eat(p, token::OROR) ? [] :
-        parse_seq(token::BINOP(token::OR), token::BINOP(token::OR),
-                  seq_sep(token::COMMA), parse_fn_block_arg, p).node;
-    let output = eat(p, token::RARROW) ? parse_ty(p, false) :
-        @spanned(p.span.lo, p.span.hi, ast::ty_infer);
+    let inputs = if eat(p, token::OROR) {
+                     []
+                 } else {
+                     parse_seq(token::BINOP(token::OR),
+                               token::BINOP(token::OR),
+                               seq_sep(token::COMMA),
+                               parse_fn_block_arg, p).node
+                 };
+    let output = if eat(p, token::RARROW) {
+                     parse_ty(p, false)
+                 } else {
+                     @spanned(p.span.lo, p.span.hi, ast::ty_infer)
+                 };
     ret {inputs: inputs,
          output: output,
          purity: ast::impure_fn,

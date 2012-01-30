@@ -197,31 +197,31 @@ fn scan_number(c: char, rdr: reader) -> token::token {
     c = rdr.curr;
     n = rdr.next();
     if c == 'u' || c == 'i' {
-        let signed = c == 'i', tp = signed ? either::left(ast::ty_i)
-                                           : either::right(ast::ty_u);
+        let signed = c == 'i', tp = if signed { either::left(ast::ty_i) }
+                                         else { either::right(ast::ty_u) };
         rdr.bump();
         c = rdr.curr;
         if c == '8' {
             rdr.bump();
-            tp = signed ? either::left(ast::ty_i8)
-                        : either::right(ast::ty_u8);
+            tp = if signed { either::left(ast::ty_i8) }
+                      else { either::right(ast::ty_u8) };
         }
         n = rdr.next();
         if c == '1' && n == '6' {
             rdr.bump();
             rdr.bump();
-            tp = signed ? either::left(ast::ty_i16)
-                        : either::right(ast::ty_u16);
+            tp = if signed { either::left(ast::ty_i16) }
+                      else { either::right(ast::ty_u16) };
         } else if c == '3' && n == '2' {
             rdr.bump();
             rdr.bump();
-            tp = signed ? either::left(ast::ty_i32)
-                        : either::right(ast::ty_u32);
+            tp = if signed { either::left(ast::ty_i32) }
+                      else { either::right(ast::ty_u32) };
         } else if c == '6' && n == '4' {
             rdr.bump();
             rdr.bump();
-            tp = signed ? either::left(ast::ty_i64)
-                        : either::right(ast::ty_u64);
+            tp = if signed { either::left(ast::ty_i64) }
+                      else { either::right(ast::ty_u64) };
         }
         let parsed = u64::from_str(num_str, base as u64);
         alt tp {

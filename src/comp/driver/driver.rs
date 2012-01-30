@@ -333,7 +333,11 @@ fn host_triple() -> str {
     // grabbing (at compile time) the target triple that this rustc is
     // built with and calling that (at runtime) the host triple.
     let ht = #env("CFG_HOST_TRIPLE");
-    ret ht != "" ? ht : fail "rustc built without CFG_HOST_TRIPLE";
+    ret if ht != "" {
+            ht
+        } else {
+            fail "rustc built without CFG_HOST_TRIPLE"
+        };
 }
 
 fn build_session_options(match: getopts::match,
