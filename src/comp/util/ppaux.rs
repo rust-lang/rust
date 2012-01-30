@@ -24,10 +24,10 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
        str {
         let modestr = alt input.mode {
           ast::by_ref {
-            ty::type_is_immediate(cx, input.ty) ? "&&" : ""
+            if ty::type_is_immediate(cx, input.ty) { "&&" } else { "" }
           }
           ast::by_val {
-            ty::type_is_immediate(cx, input.ty) ? "" : "++"
+            if ty::type_is_immediate(cx, input.ty) { "" } else { "++" }
           }
           _ { mode_str(input.mode) }
         };

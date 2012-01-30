@@ -149,9 +149,13 @@ fn trans_append(cx: @block_ctxt, vec_ty: ty::t, lhsptr: ValueRef,
     let ccx = bcx_ccx(cx);
     let unit_ty = ty::sequence_element_type(bcx_tcx(cx), vec_ty);
     let dynamic = ty::type_has_dynamic_size(bcx_tcx(cx), unit_ty);
-    let (lhsptr, rhs) = !dynamic ? (lhsptr, rhs) :
-        (PointerCast(cx, lhsptr, T_ptr(T_ptr(ccx.opaque_vec_type))),
-         PointerCast(cx, rhs, T_ptr(ccx.opaque_vec_type)));
+    let (lhsptr, rhs) =
+        if !dynamic {
+            (lhsptr, rhs)
+        } else {
+            (PointerCast(cx, lhsptr, T_ptr(T_ptr(ccx.opaque_vec_type))),
+             PointerCast(cx, rhs, T_ptr(ccx.opaque_vec_type)))
+        };
     let strings = alt ty::struct(bcx_tcx(cx), vec_ty) {
       ty::ty_str { true }
       ty::ty_vec(_) { false }
@@ -187,7 +191,11 @@ fn trans_append(cx: @block_ctxt, vec_ty: ty::t, lhsptr: ValueRef,
                              copy_val(bcx, INIT, write_ptr,
                                       load_if_immediate(bcx, addr, unit_ty),
                                       unit_ty);
-                         let incr = dynamic ? unit_sz : C_int(ccx, 1);
+                         let incr = if dynamic {
+                                        unit_sz
+                                    } else {
+                                        C_int(ccx, 1)
+                                    };
                          Store(bcx, InBoundsGEP(bcx, write_ptr, [incr]),
                                write_ptr_ptr);
                          ret bcx;
@@ -244,8 +252,11 @@ fn trans_add(bcx: @block_ctxt, vec_ty: ty::t, lhs: ValueRef,
         let bcx = copy_val(bcx, INIT, write_ptr,
                            load_if_immediate(bcx, addr, unit_ty), unit_ty);
         let incr =
-            ty::type_has_dynamic_size(bcx_tcx(bcx), unit_ty) ?
-            llunitsz : C_int(ccx, 1);
+            if ty::type_has_dynamic_size(bcx_tcx(bcx), unit_ty) {
+                llunitsz
+            } else {
+                C_int(ccx, 1)
+            };
         Store(bcx, InBoundsGEP(bcx, write_ptr, [incr]),
               write_ptr_ptr);
         ret bcx;

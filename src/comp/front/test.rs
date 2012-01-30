@@ -244,7 +244,7 @@ fn mk_path(cx: test_ctxt, path: [ast::ident]) -> [ast::ident] {
           _ { false }
         }
     };
-    (is_std ? [] : ["std"]) + path
+    (if is_std { [] } else { ["std"] }) + path
 }
 
 // The ast::ty of [std::test::test_desc]

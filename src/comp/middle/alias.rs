@@ -602,23 +602,26 @@ fn pattern_roots(tcx: ty::ctxt, mut: option::t<unsafe_ty>, pat: @ast::pat)
           ast::pat_rec(fs, _) {
             let ty = ty::node_id_to_type(tcx, pat.id);
             for f in fs {
-                let m = ty::get_field(tcx, ty, f.ident).mt.mut != ast::imm;
-                walk(tcx, m ? some(contains(ty)) : mut, f.pat, set);
+                let m = ty::get_field(tcx, ty, f.ident).mt.mut != ast::imm,
+                    c = if m { some(contains(ty)) } else { mut };
+                walk(tcx, c, f.pat, set);
             }
           }
           ast::pat_box(p) {
             let ty = ty::node_id_to_type(tcx, pat.id);
             let m = alt ty::struct(tcx, ty) {
               ty::ty_box(mt) { mt.mut != ast::imm }
-            };
-            walk(tcx, m ? some(contains(ty)) : mut, p, set);
+            },
+                c = if m  {some(contains(ty)) } else { mut };
+            walk(tcx, c, p, set);
           }
           ast::pat_uniq(p) {
             let ty = ty::node_id_to_type(tcx, pat.id);
             let m = alt ty::struct(tcx, ty) {
               ty::ty_uniq(mt) { mt.mut != ast::imm }
-            };
-            walk(tcx, m ? some(contains(ty)) : mut, p, set);
+            },
+                c = if m { some(contains(ty)) } else { mut };
+            walk(tcx, c, p, set);
           }
         }
     }
