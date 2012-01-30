@@ -43,6 +43,7 @@ const LLVMGhostLinkage: uint = 12u;
 const LLVMCommonLinkage: uint = 13u;
 const LLVMLinkerPrivateLinkage: uint = 14u;
 const LLVMLinkerPrivateWeakLinkage: uint = 15u;
+const LLVMLinkerPrivateWeakDefAutoLinkage: uint = 16u;
 
 const LLVMZExtAttribute: uint = 1u;
 const LLVMSExtAttribute: uint = 2u;
