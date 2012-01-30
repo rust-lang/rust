@@ -22,10 +22,8 @@ import util::ppaux::ty_constr_to_str;
 import util::ppaux::mode_str;
 import syntax::print::pprust::*;
 
-export node_id_to_monotype;
 export node_id_to_type;
 export node_id_to_type_params;
-export node_id_to_ty_param_substs_opt_and_ty;
 export arg;
 export args_eq;
 export ast_constr_to_constr;
@@ -103,7 +101,6 @@ export new_ty_hash;
 export enum_variants;
 export iface_methods, store_iface_methods, impl_iface;
 export enum_variant_with_id;
-export ty_param_substs_opt_and_ty;
 export ty_param_bounds_and_ty;
 export ty_bool;
 export ty_bot;
@@ -136,7 +133,6 @@ export ty_var;
 export ty_named;
 export same_type;
 export ty_var_id;
-export ty_param_substs_opt_and_ty_to_monotype;
 export ty_fn_args;
 export type_constr;
 export type_contains_params;
@@ -212,6 +208,7 @@ type ctxt =
       sess: session::session,
       def_map: resolve::def_map,
       node_types: node_type_table,
+      node_type_substs: hashmap<node_id, [t]>,
       items: ast_map::map,
       freevars: freevars::freevar_map,
       tcache: type_cache,
@@ -369,12 +366,7 @@ const idx_first_others: uint = 20u;
 
 type type_store = interner::interner<@raw_t>;
 
-// substs is a list of actuals that correspond to ty's
-// formal parameters
-type ty_param_substs_opt_and_ty = {substs: option::t<[ty::t]>, ty: ty::t};
-
-type node_type_table =
-    @smallintmap::smallintmap<ty::ty_param_substs_opt_and_ty>;
+type node_type_table = @smallintmap::smallintmap<t>;
 
 fn populate_type_store(cx: ctxt) {
     intern(cx, ty_nil);
@@ -415,8 +407,6 @@ fn new_ty_hash<V: copy>() -> map::hashmap<t, V> { map::new_uint_hash() }
 
 fn mk_ctxt(s: session::session, dm: resolve::def_map, amap: ast_map::map,
            freevars: freevars::freevar_map) -> ctxt {
-    let ntt: node_type_table =
-        @smallintmap::mk::<ty::ty_param_substs_opt_and_ty>();
     fn eq_raw_ty(&&a: @raw_t, &&b: @raw_t) -> bool {
         ret a.hash == b.hash && a.struct == b.struct;
     }
@@ -425,7 +415,8 @@ fn mk_ctxt(s: session::session, dm: resolve::def_map, amap: ast_map::map,
         @{ts: ts,
           sess: s,
           def_map: dm,
-          node_types: ntt,
+          node_types: @smallintmap::mk(),
+          node_type_substs: map::new_int_hash(),
           items: amap,
           freevars: freevars,
           tcache: new_def_hash(),
@@ -1442,54 +1433,20 @@ fn constrs_eq(cs: [@constr], ds: [@constr]) -> bool {
     ret true;
 }
 
-// Type lookups
-fn node_id_to_ty_param_substs_opt_and_ty(cx: ctxt, id: ast::node_id) ->
-   ty_param_substs_opt_and_ty {
-    // Pull out the node type table.
-    alt smallintmap::find(*cx.node_types, id as uint) {
-      none {
-        cx.sess.bug("node_id_to_ty_param_substs_opt_and_ty() called on " +
-                        "an untyped node (" + int::to_str(id, 10u) +
-                        ")");
-      }
-      some(tpot) { ret tpot; }
-    }
-}
-
 fn node_id_to_type(cx: ctxt, id: ast::node_id) -> t {
-    ret node_id_to_ty_param_substs_opt_and_ty(cx, id).ty;
+    smallintmap::get(*cx.node_types, id as uint)
 }
 
 fn node_id_to_type_params(cx: ctxt, id: ast::node_id) -> [t] {
-    alt node_id_to_ty_param_substs_opt_and_ty(cx, id).substs {
+    alt cx.node_type_substs.find(id) {
       none { ret []; }
-      some(tps) { ret tps; }
+      some(ts) { ret ts; }
     }
 }
 
 fn node_id_has_type_params(cx: ctxt, id: ast::node_id) -> bool {
-    ret vec::len(node_id_to_type_params(cx, id)) > 0u;
+    ret cx.node_type_substs.contains_key(id);
 }
-
-
-// Returns a type with type parameter substitutions performed if applicable
-fn ty_param_substs_opt_and_ty_to_monotype(cx: ctxt,
-                                          tpot: ty_param_substs_opt_and_ty) ->
-   t {
-    alt tpot.substs {
-      none { ret tpot.ty; }
-      some(tps) { ret substitute_type_params(cx, tps, tpot.ty); }
-    }
-}
-
-
-// Returns the type of an annotation, with type parameter substitutions
-// performed if applicable
-fn node_id_to_monotype(cx: ctxt, id: ast::node_id) -> t {
-    let tpot = node_id_to_ty_param_substs_opt_and_ty(cx, id);
-    ret ty_param_substs_opt_and_ty_to_monotype(cx, tpot);
-}
-
 
 // Returns the number of distinct type parameters in the given type.
 fn count_ty_params(cx: ctxt, ty: t) -> uint {
@@ -1587,7 +1544,7 @@ fn block_ty(cx: ctxt, b: ast::blk) -> t {
 // Returns the type of a pattern as a monotype. Like @expr_ty, this function
 // doesn't provide type parameter substitutions.
 fn pat_ty(cx: ctxt, pat: @ast::pat) -> t {
-    ret node_id_to_monotype(cx, pat.id);
+    ret node_id_to_type(cx, pat.id);
 }
 
 
@@ -1598,7 +1555,7 @@ fn pat_ty(cx: ctxt, pat: @ast::pat) -> t {
 // instead of "fn(t) -> T with T = int". If this isn't what you want, see
 // expr_ty_params_and_ty() below.
 fn expr_ty(cx: ctxt, expr: @ast::expr) -> t {
-    ret node_id_to_monotype(cx, expr.id);
+    ret node_id_to_type(cx, expr.id);
 }
 
 fn expr_ty_params_and_ty(cx: ctxt, expr: @ast::expr) -> {params: [t], ty: t} {
@@ -1739,7 +1696,6 @@ mod unify {
                 smallintmap::insert::<t>(vb.types, root_c, t);
             }
         );
-
 
         alt smallintmap::find(vb.types, root_a) {
           none {
@@ -2534,7 +2490,6 @@ fn type_err_to_str(err: ty::type_err) -> str {
 // Replaces type parameters in the given type using the given list of
 // substitions.
 fn substitute_type_params(cx: ctxt, substs: [ty::t], typ: t) -> t {
-
    if !type_contains_params(cx, typ) { ret typ; }
     // Precondition? idx < vec::len(substs)
     fn substituter(_cx: ctxt, substs: @[ty::t], idx: uint, _did: def_id)
@@ -2603,7 +2558,7 @@ fn enum_variants(cx: ctxt, id: ast::def_id) -> @[variant_info] {
           ast_map::node_item(@{node: ast::item_enum(variants, _), _}) {
             let disr_val = -1;
             @vec::map(variants, {|variant|
-                let ctor_ty = node_id_to_monotype(cx, variant.node.id);
+                let ctor_ty = node_id_to_type(cx, variant.node.id);
                 let arg_tys = if vec::len(variant.node.args) > 0u {
                     vec::map(ty_fn_args(cx, ctor_ty), {|a| a.ty})
                 } else { [] };

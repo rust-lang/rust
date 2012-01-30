@@ -2048,7 +2048,7 @@ fn trans_lit(cx: @block_ctxt, lit: ast::lit, dest: dest) -> @block_ctxt {
 
 // Converts an annotation to a type
 fn node_id_type(cx: @crate_ctxt, id: ast::node_id) -> ty::t {
-    ret ty::node_id_to_monotype(cx.tcx, id);
+    ret ty::node_id_to_type(cx.tcx, id);
 }
 
 fn trans_unary(bcx: @block_ctxt, op: ast::unop, e: @ast::expr,
@@ -2057,7 +2057,7 @@ fn trans_unary(bcx: @block_ctxt, op: ast::unop, e: @ast::expr,
     alt bcx_ccx(bcx).method_map.find(un_expr.id) {
       some(origin) {
         let callee_id = ast_util::op_expr_callee_id(un_expr);
-        let fty = ty::node_id_to_monotype(bcx_tcx(bcx), callee_id);
+        let fty = ty::node_id_to_type(bcx_tcx(bcx), callee_id);
         ret trans_call_inner(bcx, fty, {|bcx|
             impl::trans_method_callee(bcx, callee_id, e, origin)
         }, [], un_expr.id, dest);
@@ -2195,7 +2195,7 @@ fn trans_assign_op(bcx: @block_ctxt, ex: @ast::expr, op: ast::binop,
     alt bcx_ccx(bcx).method_map.find(ex.id) {
       some(origin) {
         let callee_id = ast_util::op_expr_callee_id(ex);
-        let fty = ty::node_id_to_monotype(bcx_tcx(bcx), callee_id);
+        let fty = ty::node_id_to_type(bcx_tcx(bcx), callee_id);
         ret trans_call_inner(bcx, fty, {|bcx|
             // FIXME provide the already-computed address, not the expr
             impl::trans_method_callee(bcx, callee_id, dst, origin)
@@ -2317,7 +2317,7 @@ fn trans_binary(bcx: @block_ctxt, op: ast::binop, lhs: @ast::expr,
     alt bcx_ccx(bcx).method_map.find(ex.id) {
       some(origin) {
         let callee_id = ast_util::op_expr_callee_id(ex);
-        let fty = ty::node_id_to_monotype(bcx_tcx(bcx), callee_id);
+        let fty = ty::node_id_to_type(bcx_tcx(bcx), callee_id);
         ret trans_call_inner(bcx, fty, {|bcx|
             impl::trans_method_callee(bcx, callee_id, lhs, origin)
         }, [rhs], ex.id, dest);
@@ -2681,7 +2681,7 @@ fn trans_var(cx: @block_ctxt, def: ast::def, id: ast::node_id)
             assert (ccx.consts.contains_key(did.node));
             ret lval_no_env(cx, ccx.consts.get(did.node), owned);
         } else {
-            let tp = ty::node_id_to_monotype(ccx.tcx, id);
+            let tp = ty::node_id_to_type(ccx.tcx, id);
             let val = trans_external_path(cx, did, {bounds: @[], ty: tp});
             ret lval_no_env(cx, load_if_immediate(cx, val, tp), owned_imm);
         }
@@ -3544,7 +3544,7 @@ fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
         // If it is here, it's not an lval, so this is a user-defined index op
         let origin = bcx_ccx(bcx).method_map.get(e.id);
         let callee_id = ast_util::op_expr_callee_id(e);
-        let fty = ty::node_id_to_monotype(tcx, callee_id);
+        let fty = ty::node_id_to_type(tcx, callee_id);
         ret trans_call_inner(bcx, fty, {|bcx|
             impl::trans_method_callee(bcx, callee_id, base, origin)
         }, [idx], e.id, dest);

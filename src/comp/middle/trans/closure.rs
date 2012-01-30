@@ -417,7 +417,7 @@ fn build_closure(bcx0: @block_ctxt,
     vec::iter(cap_vars) { |cap_var|
         let lv = trans_local_var(bcx, cap_var.def);
         let nid = ast_util::def_id_of_def(cap_var.def).node;
-        let ty = ty::node_id_to_monotype(tcx, nid);
+        let ty = ty::node_id_to_type(tcx, nid);
         alt cap_var.mode {
           capture::cap_ref {
             assert ck == ty::ck_block;

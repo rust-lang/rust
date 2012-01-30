@@ -419,7 +419,7 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
     let rec_fields = collect_record_fields(m, col);
     // Separate path for extracting and binding record fields
     if vec::len(rec_fields) > 0u {
-        let rec_ty = ty::node_id_to_monotype(ccx.tcx, pat_id);
+        let rec_ty = ty::node_id_to_type(ccx.tcx, pat_id);
         let fields =
             alt ty::struct(ccx.tcx, rec_ty) { ty::ty_rec(fields) { fields } };
         let rec_vals = [];
@@ -437,7 +437,7 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
     }
 
     if any_tup_pat(m, col) {
-        let tup_ty = ty::node_id_to_monotype(ccx.tcx, pat_id);
+        let tup_ty = ty::node_id_to_type(ccx.tcx, pat_id);
         let n_tup_elts =
             alt ty::struct(ccx.tcx, tup_ty) {
               ty::ty_tup(elts) { vec::len(elts) }
@@ -492,7 +492,7 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
           }
           lit(l) {
             test_val = Load(bcx, val);
-            let pty = ty::node_id_to_monotype(ccx.tcx, pat_id);
+            let pty = ty::node_id_to_type(ccx.tcx, pat_id);
             kind = ty::type_is_integral(ccx.tcx, pty) ? switch : compare;
           }
           range(_, _) {
@@ -709,7 +709,7 @@ fn bind_irrefutable_pat(bcx: @block_ctxt, pat: @ast::pat, val: ValueRef,
     alt normalize_pat(bcx_tcx(bcx), pat).node {
       ast::pat_ident(_,inner) {
         if make_copy || ccx.copy_map.contains_key(pat.id) {
-            let ty = ty::node_id_to_monotype(ccx.tcx, pat.id);
+            let ty = ty::node_id_to_type(ccx.tcx, pat.id);
             // FIXME: Could constrain pat_bind to make this
             // check unnecessary.
             check (type_has_static_size(ccx, ty));
@@ -737,7 +737,7 @@ fn bind_irrefutable_pat(bcx: @block_ctxt, pat: @ast::pat, val: ValueRef,
         }
       }
       ast::pat_rec(fields, _) {
-        let rec_ty = ty::node_id_to_monotype(ccx.tcx, pat.id);
+        let rec_ty = ty::node_id_to_type(ccx.tcx, pat.id);
         let rec_fields =
             alt ty::struct(ccx.tcx, rec_ty) { ty::ty_rec(fields) { fields } };
         for f: ast::field_pat in fields {
@@ -749,7 +749,7 @@ fn bind_irrefutable_pat(bcx: @block_ctxt, pat: @ast::pat, val: ValueRef,
         }
       }
       ast::pat_tup(elems) {
-        let tup_ty = ty::node_id_to_monotype(ccx.tcx, pat.id);
+        let tup_ty = ty::node_id_to_type(ccx.tcx, pat.id);
         let i = 0u;
         for elem in elems {
             // how to get rid of this check?
