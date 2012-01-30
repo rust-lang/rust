@@ -60,17 +60,19 @@ const LLVMAlwaysInlineAttribute: uint = 4096u;
 const LLVMOptimizeForSizeAttribute: uint = 8192u;
 const LLVMStackProtectAttribute: uint = 16384u;
 const LLVMStackProtectReqAttribute: uint = 32768u;
-const LLVMAlignmentAttribute: uint = 2031616u;
 // 31 << 16
+const LLVMAlignmentAttribute: uint = 2031616u;
 const LLVMNoCaptureAttribute: uint = 2097152u;
 const LLVMNoRedZoneAttribute: uint = 4194304u;
 const LLVMNoImplicitFloatAttribute: uint = 8388608u;
 const LLVMNakedAttribute: uint = 16777216u;
 const LLVMInlineHintAttribute: uint = 33554432u;
-const LLVMStackAttribute: uint = 469762048u;
 // 7 << 26
-const LLVMUWTableAttribute: uint = 1073741824u;
+const LLVMStackAttribute: uint = 469762048u;
+const LLVMReturnsTwiceAttribute: uint = 536870912u;
 // 1 << 30
+const LLVMUWTableAttribute: uint = 1073741824u;
+const LLVMNonLazyBindAttribute: uint = 2147483648u;
 
 
 // Consts for the LLVM IntPredicate type, pre-cast to uint.
