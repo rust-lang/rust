@@ -10,9 +10,11 @@ import rustc::front::attr;
 import core::tuple;
 
 export crate_attrs, mod_attrs, fn_attrs, arg_attrs,
-       const_attrs, enum_attrs, variant_attrs, res_attrs;
+       const_attrs, enum_attrs, variant_attrs, res_attrs,
+       iface_attrs, method_attrs;
 export parse_crate, parse_mod, parse_fn, parse_const,
-       parse_enum, parse_variant, parse_res;
+       parse_enum, parse_variant, parse_res,
+       parse_iface, parse_method;
 
 type crate_attrs = {
     name: option<str>
@@ -55,6 +57,13 @@ type res_attrs = {
     desc: option<str>,
     args: [arg_attrs]
 };
+
+type iface_attrs = {
+    brief: option<str>,
+    desc: option<str>
+};
+
+type method_attrs = fn_attrs;
 
 #[cfg(test)]
 mod test {
@@ -481,4 +490,12 @@ fn shoulde_parse_resource_arg() {
     let attrs = parse_res(attrs);
     assert attrs.args[0].name == "a";
     assert attrs.args[0].desc == "b";
+}
+
+fn parse_iface(attrs: [ast::attribute]) -> iface_attrs {
+    parse_basic(attrs)
+}
+
+fn parse_method(attrs: [ast::attribute]) -> method_attrs {
+    parse_fn(attrs)
 }
