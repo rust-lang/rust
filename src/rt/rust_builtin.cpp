@@ -445,13 +445,6 @@ migrate_alloc(void *alloc, rust_task_id tid) {
     }
 }
 
-// defined in rust_task.cpp
-extern size_t g_custom_min_stack_size;
-extern "C" CDECL void
-set_min_stack(uintptr_t stack_size) {
-    g_custom_min_stack_size = stack_size;
-}
-
 extern "C" CDECL int
 sched_threads() {
     rust_task *task = rust_scheduler::get_task();

@@ -6,7 +6,6 @@ import task;
 import std::rand;
 
 native mod rustrt {
-    fn set_min_stack(size: uint);
     fn debug_get_stk_seg() -> *u8;
 
     fn unsupervise();
@@ -71,7 +70,6 @@ fn main() {
     for f in fns {
         let sz = rng.next() % 256u32 + 256u32;
         let frame_backoff = rng.next() % 10u32 + 1u32;
-        rustrt::set_min_stack(sz as uint);
         task::join(task::spawn_joinable {|| runtest(f, frame_backoff);});
     }
 }
