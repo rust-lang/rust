@@ -881,7 +881,7 @@ fn linearize_ty_params(cx: @block_ctxt, t: ty::t) ->
     }
     let x = @{cx: cx, mutable vals: param_vals, mutable defs: param_defs};
     let f = bind linearizer(x, _);
-    ty::walk_ty(bcx_tcx(cx), t, f);
+    ty::walk_ty(bcx_tcx(cx), f, t);
     ret {params: x.defs, descs: x.vals};
 }
 

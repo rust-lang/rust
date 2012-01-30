@@ -664,33 +664,37 @@ pure fn ty_name(cx: ctxt, typ: t) -> option::t<@str> {
     }
 }
 
-fn walk_ty(cx: ctxt, ty: t, walker: fn(t)) {
+
+// Type folds
+type ty_walk = fn@(t);
+
+fn walk_ty(cx: ctxt, walker: ty_walk, ty: t) {
     alt struct(cx, ty) {
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
       ty_str | ty_send_type | ty_type | ty_native(_) |
       ty_opaque_closure_ptr(_) {
         /* no-op */
       }
-      ty_box(tm) | ty_vec(tm) | ty_ptr(tm) { walk_ty(cx, tm.ty, walker); }
+      ty_box(tm) | ty_vec(tm) | ty_ptr(tm) { walk_ty(cx, walker, tm.ty); }
       ty_enum(_, subtys) | ty_iface(_, subtys) {
-        for subty: t in subtys { walk_ty(cx, subty, walker); }
+        for subty: t in subtys { walk_ty(cx, walker, subty); }
       }
       ty_rec(fields) {
-        for fl: field in fields { walk_ty(cx, fl.mt.ty, walker); }
+        for fl: field in fields { walk_ty(cx, walker, fl.mt.ty); }
       }
-      ty_tup(ts) { for tt in ts { walk_ty(cx, tt, walker); } }
+      ty_tup(ts) { for tt in ts { walk_ty(cx, walker, tt); } }
       ty_fn(f) {
-        for a: arg in f.inputs { walk_ty(cx, a.ty, walker); }
-        walk_ty(cx, f.output, walker);
+        for a: arg in f.inputs { walk_ty(cx, walker, a.ty); }
+        walk_ty(cx, walker, f.output);
       }
       ty_res(_, sub, tps) {
-        walk_ty(cx, sub, walker);
-        for tp: t in tps { walk_ty(cx, tp, walker); }
+        walk_ty(cx, walker, sub);
+        for tp: t in tps { walk_ty(cx, walker, tp); }
       }
-      ty_constr(sub, _) { walk_ty(cx, sub, walker); }
+      ty_constr(sub, _) { walk_ty(cx, walker, sub); }
       ty_var(_) {/* no-op */ }
       ty_param(_, _) {/* no-op */ }
-      ty_uniq(tm) { walk_ty(cx, tm.ty, walker); }
+      ty_uniq(tm) { walk_ty(cx, walker, tm.ty); }
     }
     walker(ty);
 }
@@ -1248,7 +1252,7 @@ fn vars_in_type(cx: ctxt, ty: t) -> [int] {
         alt struct(cx, ty) { ty_var(v) { *vars += [v]; } _ { } }
     }
     let rslt: @mutable [int] = @mutable [];
-    walk_ty(cx, ty) {|t| collect_var(cx, rslt, t)}
+    walk_ty(cx, bind collect_var(cx, rslt, _), ty);
     // Works because of a "convenient" bug that lets us
     // return a mutable vec as if it's immutable
     ret *rslt;
@@ -1503,7 +1507,7 @@ fn count_ty_params(cx: ctxt, ty: t) -> uint {
     }
     let param_indices: @mutable [uint] = @mutable [];
     let f = bind counter(cx, param_indices, _);
-    walk_ty(cx, ty, f);
+    walk_ty(cx, f, ty);
     ret vec::len::<uint>(*param_indices);
 }
 
@@ -2647,6 +2651,7 @@ fn lookup_item_type(cx: ctxt, did: ast::def_id) -> ty_param_bounds_and_ty {
     if did.crate == ast::local_crate {
         // The item is in this crate. The caller should have added it to the
         // type cache already; we simply return it.
+
         ret cx.tcache.get(did);
     }
     alt cx.tcache.find(did) {

@@ -412,15 +412,16 @@ fn ty_of_item(tcx: ty::ctxt, mode: mode, it: @ast::item)
         ret tpt;
       }
       ast::item_iface(tps, ms) {
-        let s_tp = vec::len(tps) - 1u;
-        tcx.ty_param_bounds.insert(tps[s_tp].id, @[]);
-        let {bounds, params} = mk_ty_params(tcx, vec::slice(tps, 0u, s_tp));
-        let t = ty::mk_named(tcx, ty::mk_iface(tcx, local_def(it.id), params),
+        let {bounds, params} = mk_ty_params(tcx, tps);
+        let t = ty::mk_named(tcx, ty::mk_iface(tcx, local_def(it.id),
+                                               params),
                              @it.ident);
         let tpt = {bounds: bounds, ty: t};
         tcx.tcache.insert(local_def(it.id), tpt);
         ret tpt;
       }
+      ast::item_impl(_, _, _, _) | ast::item_mod(_) |
+      ast::item_native_mod(_) { fail; }
     }
 }
 fn ty_of_native_item(tcx: ty::ctxt, mode: mode, it: @ast::native_item)
@@ -604,22 +605,12 @@ fn mk_ty_params(tcx: ty::ctxt, atps: [ast::ty_param])
 }
 
 fn compare_impl_method(tcx: ty::ctxt, sp: span, impl_m: ty::method,
-                       impl_tps: uint, if_m: ty::method, substs: [ty::t])
-    -> ty::t {
+                       impl_tps: uint, if_m: ty::method, substs: [ty::t]) {
     if impl_m.tps != if_m.tps {
         tcx.sess.span_err(sp, "method `" + if_m.ident +
                           "` has an incompatible set of type parameters");
-        ty::mk_fn(tcx, impl_m.fty)
     } else {
-        let auto_modes = vec::map2(impl_m.fty.inputs, if_m.fty.inputs, {|i, f|
-            alt ty::struct(tcx, f.ty) {
-              ty::ty_param(0u, _) if i.mode == ast::mode_infer {
-                {mode: ast::by_ref with i}
-              }
-              _ { i }
-            }
-        });
-        let impl_fty = ty::mk_fn(tcx, {inputs: auto_modes with impl_m.fty});
+        let impl_fty = ty::mk_fn(tcx, impl_m.fty);
         // Add dummy substs for the parameters of the impl method
         let substs = substs + vec::init_fn(vec::len(*if_m.tps), {|i|
             ty::mk_param(tcx, i + impl_tps, {crate: 0, node: 0})
@@ -631,9 +622,8 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span, impl_m: ty::method,
             tcx.sess.span_err(sp, "method `" + if_m.ident +
                               "` has an incompatible type: " +
                               ty::type_err_to_str(err));
-            impl_fty
           }
-          ty::unify::ures_ok(tp) { tp }
+          _ {}
         }
     }
 }
@@ -701,15 +691,15 @@ mod collect {
             for m in ms {
                 let bounds = ty_param_bounds(cx.tcx, m_collect, m.tps);
                 let mty = ty_of_method(cx.tcx, m_collect, m);
-                my_methods += [{mty: mty, id: m.id}];
+                my_methods += [mty];
                 let fty = ty::mk_fn(cx.tcx, mty.fty);
                 cx.tcx.tcache.insert(local_def(m.id),
                                      {bounds: @(*i_bounds + *bounds),
                                       ty: fty});
                 write::ty_only(cx.tcx, m.id, fty);
             }
-            let selfty = ast_ty_to_ty(cx.tcx, m_collect, selfty);
-            write::ty_only(cx.tcx, it.id, selfty);
+            write::ty_only(cx.tcx, it.id, ast_ty_to_ty(cx.tcx, m_collect,
+                                                       selfty));
             alt ifce {
               some(t) {
                 let iface_ty = ast_ty_to_ty(cx.tcx, m_collect, t);
@@ -719,18 +709,10 @@ mod collect {
                   ty::ty_iface(did, tys) {
                     for if_m in *ty::iface_methods(cx.tcx, did) {
                         alt vec::find(my_methods,
-                                      {|m| if_m.ident == m.mty.ident}) {
-                          some({mty: m, id}) {
-                            let mt = compare_impl_method(
-                                cx.tcx, t.span, m, vec::len(tps), if_m,
-                                tys + [selfty]);
-                            let old = cx.tcx.tcache.get(local_def(id));
-                            if old.ty != mt {
-                                cx.tcx.tcache.insert(local_def(id),
-                                                     {bounds: old.bounds,
-                                                      ty: mt});
-                                write::ty_only(cx.tcx, id, mt);
-                            }
+                                      {|m| if_m.ident == m.ident}) {
+                          some(m) {
+                            compare_impl_method(cx.tcx, t.span, m,
+                                                vec::len(tps), if_m, tys);
                           }
                           none {
                             cx.tcx.sess.span_err(t.span, "missing method `" +
@@ -1518,7 +1500,7 @@ fn lookup_method(fcx: @fn_ctxt, isc: resolve::iscopes,
                     let m = ifce_methods[pos];
                     ret some({method_ty: ty::mk_fn(tcx, m.fty),
                               n_tps: vec::len(*m.tps),
-                              substs: tps + [ty],
+                              substs: tps,
                               origin: method_param(iid, pos, n, bound_n)});
                   }
                   _ {}
@@ -1536,13 +1518,24 @@ fn lookup_method(fcx: @fn_ctxt, isc: resolve::iscopes,
             if m.ident == name {
                 ret some({method_ty: ty::mk_fn(tcx, m.fty),
                           n_tps: vec::len(*m.tps),
-                          substs: tps + [ty::mk_int(tcx)],
+                          substs: tps,
                           origin: method_iface(i)});
             }
             i += 1u;
         }
       }
       _ {}
+    }
+
+    fn ty_from_did(tcx: ty::ctxt, did: ast::def_id) -> ty::t {
+        if did.crate == ast::local_crate {
+            alt tcx.items.get(did.node) {
+              ast_map::node_method(m) {
+                let mt = ty_of_method(tcx, m_check, m);
+                ty::mk_fn(tcx, mt.fty)
+              }
+            }
+        } else { csearch::get_type(tcx, did).ty }
     }
 
     let result = none;
@@ -1563,7 +1556,7 @@ fn lookup_method(fcx: @fn_ctxt, isc: resolve::iscopes,
                             sp, "multiple applicable methods in scope");
                     } else {
                         result = some({
-                            method_ty: ty::lookup_item_type(tcx, m.did).ty,
+                            method_ty: ty_from_did(tcx, m.did),
                             n_tps: m.n_tps,
                             substs: vars,
                             origin: method_static(m.did)
@@ -2963,38 +2956,9 @@ mod dict {
             }
           }
           ast::expr_cast(src, _) {
-            // Ifaces that refer to a self type can not be cast to -- callers
-            // wouldn't know what self refers to.
-            fn type_refers_to_self(tcx: ty::ctxt, t: ty::t, s_param: uint)
-                -> bool {
-                let found = false;
-                if ty::type_contains_params(tcx, t) {
-                    ty::walk_ty(tcx, t) {|t|
-                        alt ty::struct(tcx, t) {
-                          ty::ty_param(n, _) if n == s_param { found = true; }
-                          _ {}
-                        }
-                    }
-                }
-                found
-            }
-            fn method_refers_to_self(tcx: ty::ctxt, m: ty::method,
-                                     s_param: uint) -> bool {
-                vec::any(m.fty.inputs, {|in|
-                    type_refers_to_self(tcx, in.ty, s_param)
-                }) || type_refers_to_self(tcx, m.fty.output, s_param)
-            }
             let target_ty = expr_ty(cx.tcx, ex);
             alt ty::struct(cx.tcx, target_ty) {
-              ty::ty_iface(id, tps) {
-                for m in *ty::iface_methods(cx.tcx, id) {
-                    if method_refers_to_self(cx.tcx, m, vec::len(tps)) {
-                        cx.tcx.sess.span_err(
-                            ex.span, "can not cast to an iface type that \
-                                      refers to `self` " + m.ident);
-                        break;
-                    }
-                }
+              ty::ty_iface(_, _) {
                 let impls = cx.impl_map.get(ex.id);
                 let dict = lookup_dict(fcx, impls, ex.span,
                                        expr_ty(cx.tcx, src), target_ty);
