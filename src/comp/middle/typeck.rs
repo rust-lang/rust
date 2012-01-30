@@ -44,9 +44,7 @@ type dict_map = hashmap<ast::node_id, dict_res>;
 type ty_table = hashmap<ast::def_id, ty::t>;
 
 // Used for typechecking the methods of an impl
-enum self_info {
-    self_impl(ty::t),
-}
+enum self_info { self_impl(ty::t) }
 
 type crate_ctxt = {mutable self_infos: [self_info],
                    impl_map: resolve::impl_map,
@@ -117,11 +115,6 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
         assert (fcx.locals.contains_key(id.node));
         let typ = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, sp, id.node));
         ret {bounds: @[], ty: typ};
-      }
-      ast::def_mod(_) {
-        // Hopefully part of a path.
-        // TODO: return a type that's more poisonous, perhaps?
-        ret {bounds: @[], ty: ty::mk_nil(fcx.ccx.tcx)};
       }
       ast::def_ty(_) {
         fcx.ccx.tcx.sess.span_fatal(sp, "expected value but found type");
@@ -317,19 +310,34 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
         typ = ty::mk_fn(tcx, ty_of_fn_decl(tcx, mode, proto, decl));
       }
       ast::ty_path(path, id) {
-        alt tcx.def_map.find(id) {
-          some(ast::def_ty(id)) {
+        alt tcx.def_map.get(id) {
+          ast::def_ty(id) {
             typ = instantiate(tcx, ast_ty.span, mode, id, path.node.types);
           }
-          some(ast::def_ty_param(id, n)) {
+          ast::def_ty_param(id, n) {
+            if vec::len(path.node.types) > 0u {
+                tcx.sess.span_err(ast_ty.span, "provided type parameters to \
+                                                a type parameter");
+            }
             typ = ty::mk_param(tcx, n, id);
           }
-          some(_) {
-            tcx.sess.span_fatal(ast_ty.span,
-                                "found type name used as a variable");
+          ast::def_self(iface_id) {
+            alt tcx.items.get(iface_id.node) {
+              ast_map::node_item(@{node: ast::item_iface(tps, _), _}, _) {
+                if vec::len(tps) != vec::len(path.node.types) {
+                    tcx.sess.span_err(ast_ty.span, "incorrect number of type \
+                                                    parameter to self type");
+                }
+                typ = ty::mk_self(tcx, vec::map(path.node.types, {|ast_ty|
+                    ast_ty_to_ty(tcx, mode, ast_ty)
+                }));
+              }
+              _ { fail; }
+            }
           }
           _ {
-            tcx.sess.span_fatal(ast_ty.span, "internal error in instantiate");
+            tcx.sess.span_fatal(ast_ty.span,
+                                "found type name used as a variable");
           }
         }
       }
@@ -588,14 +596,17 @@ fn mk_ty_params(tcx: ty::ctxt, atps: [ast::ty_param])
 }
 
 fn compare_impl_method(tcx: ty::ctxt, sp: span, impl_m: ty::method,
-                       impl_tps: uint, if_m: ty::method, substs: [ty::t]) {
+                       impl_tps: uint, if_m: ty::method, substs: [ty::t],
+                       self_ty: ty::t) -> ty::t {
     if impl_m.tps != if_m.tps {
         tcx.sess.span_err(sp, "method `" + if_m.ident +
                           "` has an incompatible set of type parameters");
+        ty::mk_fn(tcx, impl_m.fty)
     } else {
         let auto_modes = vec::map2(impl_m.fty.inputs, if_m.fty.inputs, {|i, f|
             alt ty::struct(tcx, f.ty) {
-              ty::ty_param(0u, _) {
+              ty::ty_param(_, _) | ty::ty_self(_)
+              if alt i.mode { ast::infer(_) { true } _ { false } } {
                 {mode: ast::expl(ast::by_ref) with i}
               }
               _ { i }
@@ -606,17 +617,79 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span, impl_m: ty::method,
         let substs = substs + vec::init_fn(vec::len(*if_m.tps), {|i|
             ty::mk_param(tcx, i + impl_tps, {crate: 0, node: 0})
         });
-        let if_fty = ty::substitute_type_params(tcx, substs,
-                                                ty::mk_fn(tcx, if_m.fty));
+        let if_fty = ty::mk_fn(tcx, if_m.fty);
+        if_fty = ty::substitute_type_params(tcx, substs, if_fty);
+        if ty::type_contains_vars(tcx, if_fty) {
+            if_fty = fixup_self_in_method_ty(tcx, if_fty, substs,
+                                             self_full(self_ty, impl_tps));
+        }
         alt ty::unify::unify(impl_fty, if_fty, ty::unify::precise, tcx) {
           ty::unify::ures_err(err) {
             tcx.sess.span_err(sp, "method `" + if_m.ident +
                               "` has an incompatible type: " +
                               ty::type_err_to_str(err));
+            impl_fty
           }
-          _ {}
+          ty::unify::ures_ok(tp) { tp }
         }
     }
+}
+
+enum self_subst { self_param(ty::t, @fn_ctxt, span), self_full(ty::t, uint) }
+
+// Mangles an iface method ty to make its self type conform to the self type
+// of a specific impl or bounded type parameter. This is rather involved
+// because the type parameters of ifaces and impls are not required to line up
+// (an impl can have less or more parameters than the iface it implements), so
+// some mangling of the substituted types is required.
+fn fixup_self_in_method_ty(cx: ty::ctxt, mty: ty::t, m_substs: [ty::t],
+                           self: self_subst) -> ty::t {
+    if ty::type_contains_vars(cx, mty) {
+        ty::fold_ty(cx, ty::fm_general(fn@(t: ty::t) -> ty::t {
+            alt ty::struct(cx, t) {
+              ty::ty_self(tps) {
+                if vec::len(tps) > 0u {
+                    // Move the substs into the type param system of the
+                    // context.
+                    let substs = vec::map(tps, {|t|
+                        let f = fixup_self_in_method_ty(cx, t, m_substs,
+                                                        self);
+                        ty::substitute_type_params(cx, m_substs, f)
+                    });
+                    alt self {
+                      self_param(t, fcx, sp) {
+                        // Simply ensure that the type parameters for the self
+                        // type match the context.
+                        vec::iter2(substs, m_substs) {|s, ms|
+                            demand::simple(fcx, sp, s, ms);
+                        }
+                        t
+                      }
+                      self_full(selfty, impl_n_tps) {
+                        // Add extra substs for impl type parameters.
+                        while vec::len(substs) < impl_n_tps {
+                            substs += [ty::mk_param(cx, vec::len(substs),
+                                                    {crate: 0, node: 0})];
+                        }
+                        // And for method type parameters.
+                        let method_n_tps =
+                            (vec::len(m_substs) - vec::len(tps)) as int;
+                        if method_n_tps > 0 {
+                            substs += vec::tail_n(m_substs, vec::len(m_substs)
+                                                  - (method_n_tps as uint));
+                        }
+                        // And then instantiate the self type using all those.
+                        ty::substitute_type_params(cx, substs, selfty)
+                      }
+                    }
+                } else {
+                    alt self { self_param(t, _, _) | self_full(t, _) { t } }
+                }
+              }
+              _ { t }
+            }
+        }), mty)
+    } else { mty }
 }
 
 // Item collection - a pair of bootstrap passes:
@@ -682,15 +755,15 @@ mod collect {
             for m in ms {
                 let bounds = ty_param_bounds(cx.tcx, m_collect, m.tps);
                 let mty = ty_of_method(cx.tcx, m_collect, m);
-                my_methods += [mty];
+                my_methods += [{mty: mty, id: m.id, span: m.span}];
                 let fty = ty::mk_fn(cx.tcx, mty.fty);
                 cx.tcx.tcache.insert(local_def(m.id),
                                      {bounds: @(*i_bounds + *bounds),
                                       ty: fty});
                 write_ty(cx.tcx, m.id, fty);
             }
-            write_ty(cx.tcx, it.id, ast_ty_to_ty(cx.tcx, m_collect,
-                                                       selfty));
+            let selfty = ast_ty_to_ty(cx.tcx, m_collect, selfty);
+            write_ty(cx.tcx, it.id, selfty);
             alt ifce {
               some(t) {
                 let iface_ty = ast_ty_to_ty(cx.tcx, m_collect, t);
@@ -700,10 +773,18 @@ mod collect {
                   ty::ty_iface(did, tys) {
                     for if_m in *ty::iface_methods(cx.tcx, did) {
                         alt vec::find(my_methods,
-                                      {|m| if_m.ident == m.ident}) {
-                          some(m) {
-                            compare_impl_method(cx.tcx, t.span, m,
-                                                vec::len(tps), if_m, tys);
+                                      {|m| if_m.ident == m.mty.ident}) {
+                          some({mty: m, id, span}) {
+                            let mt = compare_impl_method(
+                                cx.tcx, span, m, vec::len(tps), if_m, tys,
+                                selfty);
+                            let old = cx.tcx.tcache.get(local_def(id));
+                            if old.ty != mt {
+                                cx.tcx.tcache.insert(local_def(id),
+                                                     {bounds: old.bounds,
+                                                     ty: mt});
+                                write_ty(cx.tcx, id, mt);
+                            }
                           }
                           none {
                             cx.tcx.sess.span_err(t.span, "missing method `" +
@@ -1459,12 +1540,54 @@ fn impl_self_ty(tcx: ty::ctxt, did: ast::def_id) -> {n_tps: uint, ty: ty::t} {
     }
 }
 
-fn lookup_method(fcx: @fn_ctxt, isc: resolve::iscopes,
-                 name: ast::ident, ty: ty::t, sp: span)
-    -> option<{method_ty: ty::t, n_tps: uint, substs: [ty::t],
-                  origin: method_origin}> {
-    let tcx = fcx.ccx.tcx;
+fn lookup_method(fcx: @fn_ctxt, expr: @ast::expr, node_id: ast::node_id,
+                 name: ast::ident, ty: ty::t, tps: [ty::t])
+    -> option::t<method_origin> {
+    alt lookup_method_inner(fcx, expr, name, ty) {
+      some({method_ty: fty, n_tps: method_n_tps, substs, origin, self_sub}) {
+        let tcx = fcx.ccx.tcx;
+        let substs = substs, n_tps = vec::len(substs), n_tys = vec::len(tps);
+        let has_self = ty::type_contains_params(tcx, fty);
+        if method_n_tps + n_tps > 0u {
+            if n_tys > 0u {
+                if n_tys != method_n_tps {
+                    tcx.sess.span_fatal
+                        (expr.span, "incorrect number of type \
+                                     parameters given for this method");
 
+                }
+                substs += tps;
+            } else {
+                substs += vec::init_fn(method_n_tps, {|_i|
+                    ty::mk_var(tcx, next_ty_var_id(fcx))
+                });
+            };
+            write_ty_substs(tcx, node_id, fty, substs);
+        } else if n_tys > 0u {
+            tcx.sess.span_fatal(expr.span,
+                                "this method does not take type \
+                                 parameters");
+        } else {
+            write_ty(tcx, node_id, fty);
+        }
+        if has_self && !option::is_none(self_sub) {
+            let fty = ty::node_id_to_type(tcx, node_id);
+            fty = fixup_self_in_method_ty(
+                tcx, fty, substs, option::get(self_sub));
+            write_ty(tcx, node_id, fty);
+        }
+        some(origin)
+      }
+      none { none }
+    }
+}
+
+fn lookup_method_inner(fcx: @fn_ctxt, expr: @ast::expr,
+                       name: ast::ident, ty: ty::t)
+    -> option::t<{method_ty: ty::t, n_tps: uint, substs: [ty::t],
+                  origin: method_origin,
+                  self_sub: option::t<self_subst>}> {
+    let tcx = fcx.ccx.tcx;
     // First, see whether this is an interface-bounded parameter
     alt ty::struct(tcx, ty) {
       ty::ty_param(n, did) {
@@ -1473,11 +1596,8 @@ fn lookup_method(fcx: @fn_ctxt, isc: resolve::iscopes,
             alt bound {
               ty::bound_iface(t) {
                 let (iid, tps) = alt ty::struct(tcx, t) {
-                    ty::ty_iface(i, tps) { (i, tps) }
-                    _ {
-                        tcx.sess.span_bug(sp, "Undocument invariant in \
-                          lookup_method");
-                    }
+                  ty::ty_iface(i, tps) { (i, tps) }
+                  _ { fail; }
                 };
                 let ifce_methods = ty::iface_methods(tcx, iid);
                 alt vec::position(*ifce_methods, {|m| m.ident == name}) {
@@ -1486,7 +1606,9 @@ fn lookup_method(fcx: @fn_ctxt, isc: resolve::iscopes,
                     ret some({method_ty: ty::mk_fn(tcx, m.fty),
                               n_tps: vec::len(*m.tps),
                               substs: tps,
-                              origin: method_param(iid, pos, n, bound_n)});
+                              origin: method_param(iid, pos, n, bound_n),
+                              self_sub: some(self_param(ty, fcx, expr.span))
+                             });
                   }
                   _ {}
                 }
@@ -1501,10 +1623,17 @@ fn lookup_method(fcx: @fn_ctxt, isc: resolve::iscopes,
         let i = 0u;
         for m in *ty::iface_methods(tcx, did) {
             if m.ident == name {
-                ret some({method_ty: ty::mk_fn(tcx, m.fty),
+                let fty = ty::mk_fn(tcx, m.fty);
+                if ty::type_contains_vars(tcx, fty) {
+                    tcx.sess.span_fatal(
+                        expr.span, "can not call a method that contains a \
+                                    self type through a boxed iface");
+                }
+                ret some({method_ty: fty,
                           n_tps: vec::len(*m.tps),
                           substs: tps,
-                          origin: method_iface(i)});
+                          origin: method_iface(i),
+                          self_sub: none});
             }
             i += 1u;
         }
@@ -1527,7 +1656,7 @@ fn lookup_method(fcx: @fn_ctxt, isc: resolve::iscopes,
     }
 
     let result = none;
-    std::list::iter(isc) {|impls|
+    std::list::iter(fcx.ccx.impl_map.get(expr.id)) {|impls|
         if option::is_some(result) { ret; }
         for @{did, methods, _} in *impls {
             alt vec::find(methods, {|m| m.ident == name}) {
@@ -1541,13 +1670,14 @@ fn lookup_method(fcx: @fn_ctxt, isc: resolve::iscopes,
                     if option::is_some(result) {
                         // FIXME[impl] score specificity to resolve ambiguity?
                         tcx.sess.span_err(
-                            sp, "multiple applicable methods in scope");
+                           expr.span, "multiple applicable methods in scope");
                     } else {
                         result = some({
                             method_ty: ty_from_did(tcx, m.did),
                             n_tps: m.n_tps,
                             substs: vars,
-                            origin: method_static(m.did)
+                            origin: method_static(m.did),
+                            self_sub: none
                         });
                     }
                   }
@@ -1763,13 +1893,12 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         }
     }
     fn lookup_op_method(fcx: @fn_ctxt, op_ex: @ast::expr, self_t: ty::t,
-                        opname: str,
-                        args: [option<@ast::expr>]) -> option<ty::t> {
-        let isc = fcx.ccx.impl_map.get(op_ex.id);
-        alt lookup_method(fcx, isc, opname, self_t, op_ex.span) {
-          some({method_ty, n_tps: 0u, substs, origin}) {
-            let callee_id = ast_util::op_expr_callee_id(op_ex);
-            write_ty_substs(fcx.ccx.tcx, callee_id, method_ty, substs);
+                        opname: str, args: [option::t<@ast::expr>])
+        -> option::t<ty::t> {
+        let callee_id = ast_util::op_expr_callee_id(op_ex);
+        alt lookup_method(fcx, op_ex, callee_id, opname, self_t, []) {
+          some(origin) {
+            let method_ty = ty::node_id_to_type(fcx.ccx.tcx, callee_id);
             check_call_or_bind(fcx, op_ex.span, method_ty, args);
             fcx.ccx.method_map.insert(op_ex.id, origin);
             some(ty::ty_fn_ret(fcx.ccx.tcx, method_ty))
@@ -2235,36 +2364,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
           _ {}
         }
         if !handled {
-            let iscope = fcx.ccx.impl_map.get(expr.id);
-            alt lookup_method(fcx, iscope, field, expr_t, expr.span) {
-              some({method_ty: fty, n_tps: method_n_tps, substs, origin}) {
-                let substs = substs, n_tps = vec::len(substs);
-                if method_n_tps + n_tps > 0u {
-                    if n_tys > 0u {
-                        if n_tys != method_n_tps {
-                            tcx.sess.span_fatal
-                                (expr.span, "incorrect number of type \
-                                           parameters given for this method");
-
-                        }
-                        for ty in tys {
-                            substs += [ast_ty_to_ty_crate(fcx.ccx, ty)];
-                        }
-                    } else {
-                        let i = 0u;
-                        while i < method_n_tps {
-                            substs += [ty::mk_var(tcx, next_ty_var_id(fcx))];
-                            i += 1u;
-                        }
-                    }
-                    write_ty_substs(fcx.ccx.tcx, id, fty, substs);
-                } else if n_tys > 0u {
-                    tcx.sess.span_fatal(expr.span,
-                                        "this method does not take type \
-                                         parameters");
-                } else {
-                    write_ty(tcx, id, fty);
-                }
+            let tps = vec::map(tys, {|ty| ast_ty_to_ty_crate(fcx.ccx, ty)});
+            alt lookup_method(fcx, expr, expr.id, field, expr_t, tps) {
+              some(origin) {
                 fcx.ccx.method_map.insert(id, origin);
               }
               none {

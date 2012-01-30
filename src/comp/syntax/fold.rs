@@ -259,9 +259,7 @@ fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
             item_impl(tps, option::map(ifce, fld.fold_ty), fld.fold_ty(ty),
                       vec::map(methods, fld.fold_method))
           }
-          item_iface(tps, methods) {
-            item_iface(tps, methods)
-          }
+          item_iface(tps, methods) { item_iface(tps, methods) }
           item_res(decl, typms, body, did, cid) {
             item_res(fold_fn_decl(decl, fld), typms, fld.fold_block(body),
                      did, cid)

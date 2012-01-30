@@ -421,9 +421,6 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint]) -> [u8] {
         add_substr(s, shape_of(ccx, subt, ty_param_map));
 
       }
-      ty::ty_var(n) {
-        fail "shape_of ty_var";
-      }
       ty::ty_param(n, _) {
         // Find the type parameter in the parameter list.
         alt vec::position_elt(ty_param_map, n) {
@@ -450,8 +447,8 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint]) -> [u8] {
       ty::ty_constr(inner_t, _) {
         s += shape_of(ccx, inner_t, ty_param_map);
       }
-      ty::ty_named(_, _) {
-        ccx.tcx.sess.bug("shape_of: shouldn't see a ty_named");
+      ty::ty_var(_) | ty::ty_named(_, _) | ty::ty_self(_) {
+        ccx.tcx.sess.bug("shape_of: unexpected type struct found");
       }
     }
 

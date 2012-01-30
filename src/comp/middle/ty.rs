@@ -80,6 +80,7 @@ export mk_send_type;
 export mk_uint;
 export mk_uniq;
 export mk_var;
+export mk_self;
 export mk_opaque_closure_ptr;
 export mk_named;
 export gen_ty;
@@ -126,6 +127,7 @@ export ty_send_type;
 export ty_uint;
 export ty_uniq;
 export ty_var;
+export ty_self;
 export ty_named;
 export same_type;
 export ty_var_id;
@@ -266,9 +268,10 @@ enum sty {
     ty_iface(def_id, [t]),
     ty_res(def_id, t, [t]),
     ty_tup([t]),
-    ty_var(int), // type variable
 
-    ty_param(uint, def_id), // fn/enum type param
+    ty_var(int), // type variable during typechecking
+    ty_param(uint, def_id), // type parameter
+    ty_self([t]), // interface method self type
 
     ty_type, // type_desc*
     ty_send_type, // type_desc* that has been cloned into exchange heap
@@ -324,45 +327,25 @@ type ty_param_bounds_and_ty = {bounds: @[param_bounds], ty: t};
 type type_cache = hashmap<ast::def_id, ty_param_bounds_and_ty>;
 
 const idx_nil: uint = 0u;
-
 const idx_bool: uint = 1u;
-
 const idx_int: uint = 2u;
-
 const idx_float: uint = 3u;
-
 const idx_uint: uint = 4u;
-
 const idx_i8: uint = 5u;
-
 const idx_i16: uint = 6u;
-
 const idx_i32: uint = 7u;
-
 const idx_i64: uint = 8u;
-
 const idx_u8: uint = 9u;
-
 const idx_u16: uint = 10u;
-
 const idx_u32: uint = 11u;
-
 const idx_u64: uint = 12u;
-
 const idx_f32: uint = 13u;
-
 const idx_f64: uint = 14u;
-
 const idx_char: uint = 15u;
-
 const idx_str: uint = 16u;
-
 const idx_type: uint = 17u;
-
 const idx_send_type: uint = 18u;
-
 const idx_bot: uint = 19u;
-
 const idx_first_others: uint = 20u;
 
 type type_store = interner::interner<@raw_t>;
@@ -462,7 +445,7 @@ fn mk_raw_ty(cx: ctxt, st: sty) -> @raw_t {
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
       ty_str | ty_type | ty_send_type | ty_opaque_closure_ptr(_) {}
       ty_param(_, _) { has_params = true; }
-      ty_var(_) { has_vars = true; }
+      ty_var(_) | ty_self(_) { has_vars = true; }
       ty_enum(_, tys) | ty_iface(_, tys) {
         for tt: t in tys { derive_flags_t(cx, has_params, has_vars, tt); }
       }
@@ -598,6 +581,8 @@ fn mk_res(cx: ctxt, did: ast::def_id, inner: t, tps: [t]) -> t {
 
 fn mk_var(cx: ctxt, v: int) -> t { ret gen_ty(cx, ty_var(v)); }
 
+fn mk_self(cx: ctxt, tps: [t]) -> t { ret gen_ty(cx, ty_self(tps)); }
+
 fn mk_param(cx: ctxt, n: uint, k: def_id) -> t {
     ret gen_ty(cx, ty_param(n, k));
 }
@@ -653,7 +638,6 @@ pure fn ty_name(cx: ctxt, typ: t) -> option<@str> {
 }
 
 fn default_arg_mode_for_ty(tcx: ty::ctxt, ty: ty::t) -> ast::rmode {
-    assert !ty::type_contains_vars(tcx, ty);
     if ty::type_is_immediate(tcx, ty) { ast::by_val }
     else { ast::by_ref }
 }
@@ -664,7 +648,7 @@ fn walk_ty(cx: ctxt, ty: t, f: fn(t)) {
       ty_str | ty_send_type | ty_type |
       ty_opaque_closure_ptr(_) | ty_var(_) | ty_param(_, _) {}
       ty_box(tm) | ty_vec(tm) | ty_ptr(tm) { walk_ty(cx, tm.ty, f); }
-      ty_enum(_, subtys) | ty_iface(_, subtys) {
+      ty_enum(_, subtys) | ty_iface(_, subtys) | ty_self(subtys) {
         for subty: t in subtys { walk_ty(cx, subty, f); }
       }
       ty_rec(fields) {
@@ -727,6 +711,9 @@ fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
       }
       ty_iface(did, subtys) {
         ty = mk_iface(cx, did, vec::map(subtys, {|t| fold_ty(cx, fld, t) }));
+      }
+      ty_self(subtys) {
+        ty = mk_self(cx, vec::map(subtys, {|t| fold_ty(cx, fld, t) }));
       }
       ty_rec(fields) {
         let new_fields: [field] = [];
@@ -1189,15 +1176,9 @@ fn type_is_pod(cx: ctxt, ty: t) -> bool {
         result = type_is_pod(cx, substitute_type_params(cx, tps, inner));
       }
       ty_constr(subt, _) { result = type_is_pod(cx, subt); }
-      ty_var(_) {
-          cx.sess.bug("ty_var in type_is_pod");
-      }
       ty_param(_, _) { result = false; }
       ty_opaque_closure_ptr(_) { result = true; }
-      ty_named(_,_) {
-          cx.sess.bug("ty_named in type_is_pod");
-      }
-
+      _ { cx.sess.bug("unexpected type in type_is_pod"); }
     }
 
     ret result;
@@ -1352,6 +1333,11 @@ fn hash_type_structure(st: sty) -> uint {
       ty_fn(f) { ret hash_fn(27u, f.inputs, f.output); }
       ty_var(v) { ret hash_uint(30u, v as uint); }
       ty_param(pid, _) { ret hash_uint(31u, pid); }
+      ty_self(ts) {
+        let h = 28u;
+        for t in ts { h += (h << 5u) + t; }
+        ret h;
+      }
       ty_type { ret 32u; }
       ty_bot { ret 34u; }
       ty_ptr(mt) { ret hash_subty(35u, mt.ty); }
@@ -2548,19 +2534,8 @@ fn type_err_to_str(err: ty::type_err) -> str {
 // Replaces type parameters in the given type using the given list of
 // substitions.
 fn substitute_type_params(cx: ctxt, substs: [ty::t], typ: t) -> t {
-   if !type_contains_params(cx, typ) { ret typ; }
     // Precondition? idx < vec::len(substs)
-    fn substituter(_cx: ctxt, substs: @[ty::t], idx: uint, _did: def_id)
-        -> t {
-        if idx < vec::len(*substs) {
-            ret substs[idx];
-        }
-        else {
-            fail #fmt("Internal error in substituter (substitute_type_params)\
-             %u %u", vec::len(*substs), idx);
-        }
-    }
-    ret fold_ty(cx, fm_param(bind substituter(cx, @substs, _, _)), typ);
+    fold_ty(cx, fm_param({|idx, _id| substs[idx]}), typ)
 }
 
 fn def_has_ty_params(def: ast::def) -> bool {

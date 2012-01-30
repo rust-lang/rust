@@ -216,6 +216,13 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
         let did = parse_def(st, conv);
         ret ty::mk_param(st.tcx, parse_int(st) as uint, did);
       }
+      's' {
+        assert next(st) as char == '[';
+        let params = [];
+        while peek(st) as char != ']' { params += [parse_ty(st, conv)]; }
+        st.pos += 1u;
+        ret ty::mk_self(st.tcx, params);
+      }
       '@' { ret ty::mk_box(st.tcx, parse_mt(st, conv)); }
       '~' { ret ty::mk_uniq(st.tcx, parse_mt(st, conv)); }
       '*' { ret ty::mk_ptr(st.tcx, parse_mt(st, conv)); }

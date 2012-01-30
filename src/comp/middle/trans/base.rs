@@ -5315,7 +5315,10 @@ fn trans_constant(ccx: @crate_ctxt, it: @ast::item) {
         impl::trans_impl_vtable(ccx, item_path(ccx, it), i_did, ms, tps, it);
       }
       ast::item_iface(_, _) {
-        impl::trans_iface_vtable(ccx, item_path(ccx, it), it);
+        if !vec::any(*ty::iface_methods(ccx.tcx, local_def(it.id)), {|m|
+            ty::type_contains_vars(ccx.tcx, ty::mk_fn(ccx.tcx, m.fty))}) {
+            impl::trans_iface_vtable(ccx, item_path(ccx, it), it);
+        }
       }
       _ { }
     }

@@ -888,9 +888,16 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
               ast::item_impl(tps, _, _, _) {
                 if ns == ns_type { ret lookup_in_ty_params(e, name, tps); }
               }
-              ast::item_iface(tps, _) | ast::item_enum(_, tps) |
-              ast::item_ty(_, tps) {
+              ast::item_enum(_, tps) | ast::item_ty(_, tps) {
                 if ns == ns_type { ret lookup_in_ty_params(e, name, tps); }
+              }
+              ast::item_iface(tps, _) {
+                if ns == ns_type {
+                    if name == "self" {
+                        ret some(def_self(local_def(it.id)));
+                    }
+                    ret lookup_in_ty_params(e, name, tps);
+                }
               }
               ast::item_mod(_) {
                 ret lookup_in_local_mod(e, it.id, sp, name, ns, inside);

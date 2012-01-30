@@ -94,10 +94,9 @@ fn trans_static_callee(bcx: @block_ctxt, callee_id: ast::node_id,
     {env: self_env(val) with lval_static_fn(bcx, did, callee_id)}
 }
 
-fn wrapper_fn_ty(ccx: @crate_ctxt, dict_ty: TypeRef, m: ty::method)
-    -> {ty: ty::t, llty: TypeRef} {
-    let fty = ty::mk_fn(ccx.tcx, m.fty);
-    let bare_fn_ty = type_of_fn_from_ty(ccx, fty, *m.tps);
+fn wrapper_fn_ty(ccx: @crate_ctxt, dict_ty: TypeRef, fty: ty::t,
+                 tps: @[ty::param_bounds]) -> {ty: ty::t, llty: TypeRef} {
+    let bare_fn_ty = type_of_fn_from_ty(ccx, fty, *tps);
     let {inputs, output} = llfn_arg_tys(bare_fn_ty);
     {ty: fty, llty: T_fn([dict_ty] + inputs, output)}
 }
@@ -107,7 +106,9 @@ fn trans_vtable_callee(bcx: @block_ctxt, self: ValueRef, dict: ValueRef,
                        n_method: uint) -> lval_maybe_callee {
     let bcx = bcx, ccx = bcx_ccx(bcx), tcx = ccx.tcx;
     let method = ty::iface_methods(tcx, iface_id)[n_method];
-    let {ty: fty, llty: llfty} = wrapper_fn_ty(ccx, val_ty(dict), method);
+    let {ty: fty, llty: llfty} =
+        wrapper_fn_ty(ccx, val_ty(dict), ty::node_id_to_type(tcx, callee_id),
+                      method.tps);
     let vtable = PointerCast(bcx, Load(bcx, GEPi(bcx, dict, [0, 0])),
                              T_ptr(T_array(T_ptr(llfty), n_method + 1u)));
     let mptr = Load(bcx, GEPi(bcx, vtable, [0, n_method as int]));
@@ -266,7 +267,8 @@ fn trans_impl_vtable(ccx: @crate_ctxt, pt: path,
 
 fn trans_iface_wrapper(ccx: @crate_ctxt, pt: path, m: ty::method,
                        n: uint) -> ValueRef {
-    let {llty: llfty, _} = wrapper_fn_ty(ccx, T_ptr(T_i8()), m);
+    let {llty: llfty, _} = wrapper_fn_ty(ccx, T_ptr(T_i8()),
+                                         ty::mk_fn(ccx.tcx, m.fty), m.tps);
     trans_wrapper(ccx, pt, llfty, {|llfn, bcx|
         let self = Load(bcx, PointerCast(bcx,
                                          LLVMGetParam(llfn, 2u as c_uint),
@@ -358,10 +360,7 @@ fn dict_id(tcx: ty::ctxt, origin: typeck::dict_origin) -> dict_id {
                     d_params += [dict_param_dict(dict_id(tcx, origs[orig]))];
                     orig += 1u;
                   }
-                  _ {
-                    tcx.sess.bug("Someone forgot to document an invariant in \
-                      dict_id");
-                  }
+                  _ {}
                 }
             }
         }
