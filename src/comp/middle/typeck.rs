@@ -1921,9 +1921,6 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
             check_pred_expr(fcx, cond) |
                 check_then_else(fcx, thn, elsopt, id, expr.span);
       }
-      ast::expr_ternary(_, _, _) {
-        bot = check_expr(fcx, ast_util::ternary_to_if(expr));
-      }
       ast::expr_assert(e) {
         bot = check_expr_with(fcx, e, ty::mk_bool(tcx));
         write_nil(tcx, id);

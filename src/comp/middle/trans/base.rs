@@ -3478,9 +3478,6 @@ fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
       ast::expr_if(cond, thn, els) | ast::expr_if_check(cond, thn, els) {
         ret trans_if(bcx, cond, thn, els, dest);
       }
-      ast::expr_ternary(_, _, _) {
-        ret trans_expr(bcx, ast_util::ternary_to_if(e), dest);
-      }
       ast::expr_alt(expr, arms) {
           //          tcx.sess.span_note(e.span, "about to call trans_alt");
         ret alt::trans_alt(bcx, expr, arms, dest);

@@ -466,9 +466,6 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
         ret join_then_else(fcx, antec, conseq, maybe_alt, e.id, plain_if,
                            pres);
       }
-      expr_ternary(_, _, _) {
-        ret find_pre_post_state_expr(fcx, pres, ternary_to_if(e));
-      }
       expr_binary(bop, l, r) {
         if lazy_binop(bop) {
             let changed = find_pre_post_state_expr(fcx, pres, l);

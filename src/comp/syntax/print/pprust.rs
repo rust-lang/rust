@@ -855,15 +855,6 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
       ast::expr_if_check(test, blk, elseopt) {
         print_if(s, test, blk, elseopt, true);
       }
-      ast::expr_ternary(test, then, els) {
-        print_expr(s, test);
-        space(s.s);
-        word_space(s, "?");
-        print_expr(s, then);
-        space(s.s);
-        word_space(s, ":");
-        print_expr(s, els);
-      }
       ast::expr_while(test, blk) {
         head(s, "while");
         print_maybe_parens_discrim(s, test);
@@ -1044,8 +1035,8 @@ fn print_expr_parens_if_not_bot(s: ps, ex: @ast::expr) {
     let parens = alt ex.node {
       ast::expr_fail(_) | ast::expr_ret(_) |
       ast::expr_binary(_, _, _) | ast::expr_unary(_, _) |
-      ast::expr_ternary(_, _, _) | ast::expr_move(_, _) |
-      ast::expr_copy(_) | ast::expr_assign(_, _) | ast::expr_be(_) |
+      ast::expr_move(_, _) | ast::expr_copy(_) |
+      ast::expr_assign(_, _) | ast::expr_be(_) |
       ast::expr_assign_op(_, _, _) | ast::expr_swap(_, _) |
       ast::expr_log(_, _, _) | ast::expr_assert(_) |
       ast::expr_call(_, _, true) |
@@ -1395,7 +1386,6 @@ fn need_parens(expr: @ast::expr, outer_prec: int) -> bool {
     alt expr.node {
       ast::expr_binary(op, _, _) { operator_prec(op) < outer_prec }
       ast::expr_cast(_, _) { parse::parser::as_prec < outer_prec }
-      ast::expr_ternary(_, _, _) { parse::parser::ternary_prec < outer_prec }
       // This may be too conservative in some cases
       ast::expr_assign(_, _) { true }
       ast::expr_move(_, _) { true }
@@ -1757,8 +1747,8 @@ fn ends_in_lit_int(ex: @ast::expr) -> bool {
     alt ex.node {
       ast::expr_lit(@{node: ast::lit_int(_, ast::ty_i), _}) { true }
       ast::expr_binary(_, _, sub) | ast::expr_unary(_, sub) |
-      ast::expr_ternary(_, _, sub) | ast::expr_move(_, sub) |
-      ast::expr_copy(sub) | ast::expr_assign(_, sub) | ast::expr_be(sub) |
+      ast::expr_move(_, sub) | ast::expr_copy(sub) |
+      ast::expr_assign(_, sub) | ast::expr_be(sub) |
       ast::expr_assign_op(_, _, sub) | ast::expr_swap(_, sub) |
       ast::expr_log(_, _, sub) | ast::expr_assert(sub) |
       ast::expr_check(_, sub) { ends_in_lit_int(sub) }

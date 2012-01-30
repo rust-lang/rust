@@ -213,7 +213,6 @@ enum expr_ {
     expr_lit(@lit),
     expr_cast(@expr, @ty),
     expr_if(@expr, blk, option::t<@expr>),
-    expr_ternary(@expr, @expr, @expr),
     expr_while(@expr, blk),
     expr_for(@local, @expr, blk),
     expr_do_while(blk, @expr),
