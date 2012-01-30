@@ -19,7 +19,8 @@ fn run(
         fold_fn: fold_fn,
         fold_const: fold_const,
         fold_enum: fold_enum,
-        fold_res: fold_res
+        fold_res: fold_res,
+        fold_iface: fold_iface
         with *fold::default_seq_fold(srv)
     });
     fold.fold_crate(fold, doc)
@@ -84,14 +85,18 @@ fn get_ret_ty(srv: astsrv::srv, fn_id: doc::ast_id) -> option<str> {
           ast_map::node_item(@{
             node: ast::item_fn(decl, _, _), _
           }) {
-            if decl.output.node != ast::ty_nil {
-                some(pprust::ty_to_str(decl.output))
-            } else {
-                // Nil-typed return values are not interesting
-                none
-            }
+            ret_ty_to_str(decl)
           }
         }
+    }
+}
+
+fn ret_ty_to_str(decl: ast::fn_decl) -> option<str> {
+    if decl.output.node != ast::ty_nil {
+        some(pprust::ty_to_str(decl.output))
+    } else {
+        // Nil-typed return values are not interesting
+        none
     }
 }
 
@@ -138,11 +143,15 @@ fn get_arg_tys(srv: astsrv::srv, fn_id: doc::ast_id) -> [(str, str)] {
           ast_map::node_item(@{
             node: ast::item_res(decl, _, _, _, _), _
           }) {
-            vec::map(decl.inputs) {|arg|
-                (arg.ident, pprust::ty_to_str(arg.ty))
-            }
+            decl_arg_tys(decl)
           }
         }
+    }
+}
+
+fn decl_arg_tys(decl: ast::fn_decl) -> [(str, str)] {
+    vec::map(decl.inputs) {|arg|
+        (arg.ident, pprust::ty_to_str(arg.ty))
     }
 }
 
@@ -264,4 +273,169 @@ fn should_add_resource_arg_tys() {
     let doc = extract::from_srv(srv, "");
     let doc = run(srv, doc);
     assert doc.topmod.resources()[0].args[0].ty == some("bool");
+}
+
+fn fold_iface(
+    fold: fold::fold<astsrv::srv>,
+    doc: doc::ifacedoc
+) -> doc::ifacedoc {
+
+    let srv = fold.ctxt;
+
+    {
+        methods: vec::map(doc.methods) {|methoddoc|
+            {
+                args: merge_method_arg_tys(
+                    srv,
+                    doc.id,
+                    methoddoc.args,
+                    methoddoc.name),
+                return: merge_method_ret_ty(
+                    srv,
+                    doc.id,
+                    methoddoc.return,
+                    methoddoc.name),
+                sig: get_method_sig(srv, doc.id, methoddoc.name)
+                with methoddoc
+            }
+        }
+        with doc
+    }
+}
+
+fn merge_method_ret_ty(
+    srv: astsrv::srv,
+    item_id: doc::ast_id,
+    doc: doc::retdoc,
+    method_name: str
+) -> doc::retdoc {
+    alt get_method_ret_ty(srv, item_id, method_name) {
+      some(ty) {
+        {
+            ty: some(ty)
+            with doc
+        }
+      }
+      none { doc }
+    }
+}
+
+fn get_method_ret_ty(
+    srv: astsrv::srv,
+    item_id: doc::ast_id,
+    method_name: str
+) -> option<str> {
+    astsrv::exec(srv) {|ctxt|
+        alt ctxt.ast_map.get(item_id) {
+          ast_map::node_item(@{
+            node: ast::item_iface(_, methods), _
+          }) {
+            alt vec::find(methods) {|method|
+                method.ident == method_name
+            } {
+                some(method) {
+                    ret_ty_to_str(method.decl)
+                }
+            }
+          }
+        }
+    }
+}
+
+fn get_method_sig(
+    srv: astsrv::srv,
+    item_id: doc::ast_id,
+    method_name: str
+) -> option<str> {
+    astsrv::exec(srv) {|ctxt|
+        alt ctxt.ast_map.get(item_id) {
+          ast_map::node_item(@{
+            node: ast::item_iface(_, methods), _
+          }) {
+            alt vec::find(methods) {|method|
+                method.ident == method_name
+            } {
+                some(method) {
+                    some(pprust::fun_to_str(method.decl, method.ident, []))
+                }
+            }
+          }
+        }
+    }
+}
+
+fn merge_method_arg_tys(
+    srv: astsrv::srv,
+    item_id: doc::ast_id,
+    args: [doc::argdoc],
+    method_name: str
+) -> [doc::argdoc] {
+    let tys = get_method_arg_tys(srv, item_id, method_name);
+    vec::map2(args, tys) {|arg, ty|
+        assert arg.name == tuple::first(ty);
+        {
+            ty: some(tuple::second(ty))
+            with arg
+        }
+    }
+}
+
+fn get_method_arg_tys(
+    srv: astsrv::srv,
+    item_id: doc::ast_id,
+    method_name: str
+) -> [(str, str)] {
+    astsrv::exec(srv) {|ctxt|
+        alt ctxt.ast_map.get(item_id) {
+          ast_map::node_item(@{
+            node: ast::item_iface(_, methods), _
+          }) {
+            alt vec::find(methods) {|method|
+                method.ident == method_name
+            } {
+                some(method) {
+                    decl_arg_tys(method.decl)
+                }
+            }
+          }
+        }
+    }
+}
+
+#[test]
+fn should_add_iface_method_sigs() {
+    let source = "iface i { fn a() -> int; }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = run(srv, doc);
+    assert doc.topmod.ifaces()[0].methods[0].sig == some("fn a() -> int");
+}
+
+#[test]
+fn should_add_iface_method_ret_types() {
+    let source = "iface i { fn a() -> int; }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = run(srv, doc);
+    assert doc.topmod.ifaces()[0].methods[0].return.ty == some("int");
+}
+
+#[test]
+fn should_not_add_iface_method_nil_ret_type() {
+    let source = "iface i { fn a(); }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = run(srv, doc);
+    assert doc.topmod.ifaces()[0].methods[0].return.ty == none;
+}
+
+#[test]
+fn should_add_iface_method_arg_types() {
+    let source = "iface i { fn a(b: int, c: bool); }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = run(srv, doc);
+    let fn_ = doc.topmod.ifaces()[0].methods[0];
+    assert fn_.args[0].ty == some("int");
+    assert fn_.args[1].ty == some("bool");
 }
