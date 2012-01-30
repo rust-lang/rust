@@ -1097,18 +1097,6 @@ fn parse_prefix_expr(p: parser) -> pexpr {
     ret mk_pexpr(p, lo, hi, ex);
 }
 
-fn parse_ternary(p: parser) -> @ast::expr {
-    let cond_expr = parse_binops(p);
-    if p.token == token::QUES {
-        p.bump();
-        let then_expr = parse_expr(p);
-        expect(p, token::COLON);
-        let else_expr = parse_expr(p);
-        ret mk_expr(p, cond_expr.span.lo, else_expr.span.hi,
-                    ast::expr_ternary(cond_expr, then_expr, else_expr));
-    } else { ret cond_expr; }
-}
-
 type op_spec = {tok: token::token, op: ast::binop, prec: int};
 
 
@@ -1143,7 +1131,6 @@ fn parse_binops(p: parser) -> @ast::expr {
 const unop_prec: int = 100;
 
 const as_prec: int = 5;
-const ternary_prec: int = 0;
 
 fn parse_more_binops(p: parser, plhs: pexpr, min_prec: int) ->
    @ast::expr {
@@ -1174,7 +1161,7 @@ fn parse_more_binops(p: parser, plhs: pexpr, min_prec: int) ->
 
 fn parse_assign_expr(p: parser) -> @ast::expr {
     let lo = p.span.lo;
-    let lhs = parse_ternary(p);
+    let lhs = parse_binops(p);
     alt p.token {
       token::EQ {
         p.bump();

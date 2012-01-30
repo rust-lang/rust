@@ -473,13 +473,6 @@ The comparison operators are the traditional `==`, `!=`, `<`, `>`,
 `<=`, and `>=`. Short-circuiting (lazy) boolean operators are written
 `&&` (and) and `||` (or).
 
-Rust has a ternary conditional operator `?:`, as in:
-
-~~~~
-let badness = 12;
-let message = badness < 10 ? "error" : "FATAL ERROR";
-~~~~
-
 For type casting, Rust uses the binary `as` operator, which has a
 precedence between the bitwise combination operators (`&`, `|`, `^`)
 and the comparison operators. It takes an expression on the left side,

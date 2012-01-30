@@ -352,10 +352,6 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
             expr_if(fld.fold_expr(cond), fld.fold_block(tr),
                     option::map(fl, fld.fold_expr))
           }
-          expr_ternary(cond, tr, fl) {
-            expr_ternary(fld.fold_expr(cond), fld.fold_expr(tr),
-                         fld.fold_expr(fl))
-          }
           expr_while(cond, body) {
             expr_while(fld.fold_expr(cond), fld.fold_block(body))
           }

@@ -415,7 +415,6 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
       expr_if(antec, conseq, maybe_alt) {
         join_then_else(fcx, antec, conseq, maybe_alt, e.id, plain_if);
       }
-      expr_ternary(_, _, _) { find_pre_post_expr(fcx, ternary_to_if(e)); }
       expr_binary(bop, l, r) {
         if lazy_binop(bop) {
             find_pre_post_expr(fcx, l);

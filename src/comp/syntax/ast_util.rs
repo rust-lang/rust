@@ -205,23 +205,6 @@ fn default_block(stmts1: [@stmt], expr1: option::t<@expr>, id1: node_id) ->
     {view_items: [], stmts: stmts1, expr: expr1, id: id1, rules: default_blk}
 }
 
-// This is a convenience function to transfor ternary expressions to if
-// expressions so that they can be treated the same
-fn ternary_to_if(e: @expr) -> @expr {
-    alt e.node {
-      expr_ternary(cond, then, els) {
-        let then_blk = block_from_expr(then);
-        let els_blk = block_from_expr(els);
-        let els_expr =
-            @{id: els.id, node: expr_block(els_blk), span: els.span};
-        ret @{id: e.id,
-              node: expr_if(cond, then_blk, option::some(els_expr)),
-              span: e.span};
-      }
-      _ { fail; }
-    }
-}
-
 // FIXME this doesn't handle big integer/float literals correctly (nor does
 // the rest of our literal handling)
 enum const_val {
