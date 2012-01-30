@@ -13,8 +13,6 @@ fn ack(m: int, n: int) -> int {
 }
 
 fn main(args: [str]) {
-    // FIXME: #1527
-    sys::set_min_stack(1000000u);
     let n = if vec::len(args) == 2u {
         int::from_str(args[1])
     } else {
