@@ -151,13 +151,19 @@ rust_kernel::fail() {
 }
 
 rust_task_id
-rust_kernel::create_task(rust_task *spawner, const char *name) {
+rust_kernel::create_task(rust_task *spawner, const char *name,
+                         size_t init_stack_sz) {
     scoped_lock with(_kernel_lock);
     rust_scheduler *thread = threads[isaac_rand(&rctx) % num_threads];
-    rust_task *t = thread->create_task(spawner, name);
+    rust_task *t = thread->create_task(spawner, name, init_stack_sz);
     t->user.id = max_id++;
     task_table.put(t->user.id, t);
     return t->user.id;
+}
+
+rust_task_id
+rust_kernel::create_task(rust_task *spawner, const char *name) {
+    return create_task(spawner, name, env->min_stack_size);
 }
 
 rust_task *

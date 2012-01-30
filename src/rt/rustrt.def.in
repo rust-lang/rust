@@ -49,7 +49,6 @@ rust_getcwd
 rust_task_is_unwinding
 rust_task_sleep
 rust_get_task
-set_min_stack
 sched_threads
 shape_log_str
 squareroot

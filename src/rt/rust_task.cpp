@@ -65,18 +65,6 @@ const uint8_t stack_canary[] = {0xAB, 0xCD, 0xAB, 0xCD,
                                 0xAB, 0xCD, 0xAB, 0xCD,
                                 0xAB, 0xCD, 0xAB, 0xCD};
 
-// Stack size
-size_t g_custom_min_stack_size = 0;
-
-static size_t
-get_min_stk_size(size_t default_size) {
-    if (g_custom_min_stack_size != 0) {
-        return g_custom_min_stack_size;
-    } else {
-        return default_size;
-    }
-}
-
 static size_t
 get_next_stk_size(rust_scheduler *sched, rust_task *task,
                   size_t min, size_t current, size_t requested) {
@@ -157,7 +145,7 @@ new_stk(rust_scheduler *sched, rust_task *task, size_t requested_sz)
     }
 
     // The minimum stack size, in bytes, of a Rust stack, excluding red zone
-    size_t min_sz = get_min_stk_size(sched->min_stack_size);
+    size_t min_sz = sched->min_stack_size;
 
     // Try to reuse an existing stack segment
     if (task->stk != NULL && task->stk->prev != NULL) {
@@ -239,7 +227,8 @@ del_stk(rust_task *task, stk_seg *stk)
 
 // Tasks
 rust_task::rust_task(rust_scheduler *sched, rust_task_list *state,
-                     rust_task *spawner, const char *name) :
+                     rust_task *spawner, const char *name,
+                     size_t init_stack_sz) :
     ref_count(1),
     stk(NULL),
     runtime_sp(0),
@@ -271,7 +260,7 @@ rust_task::rust_task(rust_scheduler *sched, rust_task_list *state,
 
     user.notify_enabled = 0;
 
-    stk = new_stk(sched, this, 0);
+    stk = new_stk(sched, this, init_stack_sz);
     user.rust_sp = stk->end;
     if (supervisor) {
         supervisor->ref();

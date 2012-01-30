@@ -999,7 +999,7 @@ fn lookup_in_ty_params(e: env, name: ident, ty_params: [ast::ty_param])
         } { ret some(ast::def_ty_param(local_def(tp.id), n)); }
         n += 1u;
     }
-    ret none;
+    ret none::<def>;
 }
 
 fn lookup_in_pat(e: env, name: ident, pat: @ast::pat) -> option::t<def_id> {

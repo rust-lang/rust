@@ -268,7 +268,7 @@ fn is_immutable_def(cx: @ctx, def: def) -> option::t<str> {
       def_arg(_, mode_infer) { some("argument") }
       def_self(_) { some("self argument") }
       def_upvar(_, inner, node_id) {
-        let ty = ty::node_id_to_monotype(cx.tcx, node_id);
+        let ty = ty::node_id_to_type(cx.tcx, node_id);
         let proto = ty::ty_fn_proto(cx.tcx, ty);
         ret alt proto {
           proto_any | proto_block { is_immutable_def(cx, *inner) }

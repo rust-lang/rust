@@ -66,7 +66,9 @@ public:
     void win32_require(LPCTSTR fn, BOOL ok);
 #endif
 
-    rust_task_id create_task(rust_task *spawner, const char *name);
+    rust_task_id create_task(rust_task *spawner, const char *name,
+			     size_t init_stack_size);
+    rust_task_id create_task(rust_task * spawner, const char *name);
     rust_task *get_task_by_id(rust_task_id id);
     void release_task_id(rust_task_id tid);
     void set_exit_status(int code);

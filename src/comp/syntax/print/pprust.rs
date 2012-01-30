@@ -519,8 +519,7 @@ fn print_item(s: ps, &&item: @ast::item) {
       ast::item_iface(tps, methods) {
         head(s, "iface");
         word(s.s, item.ident);
-        print_type_params(s, vec::slice(tps, 0u, vec::len(tps) - 1u));
-        nbsp(s);
+        print_type_params(s, tps);
         bopen(s);
         for meth in methods { print_ty_method(s, meth); }
         bclose(s, item.span);

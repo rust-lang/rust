@@ -64,7 +64,7 @@ fn find_last_uses(c: @crate, def_map: resolve::def_map,
 }
 
 fn ex_is_blockish(cx: ctx, id: node_id) -> bool {
-    alt ty::struct(cx.tcx, ty::node_id_to_monotype(cx.tcx, id)) {
+    alt ty::struct(cx.tcx, ty::node_id_to_type(cx.tcx, id)) {
       ty::ty_fn({proto: p, _}) if is_blockish(p) { true }
       _ { false }
     }

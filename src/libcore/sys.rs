@@ -21,7 +21,6 @@ native mod rustrt {
     fn unsupervise();
     fn shape_log_str<T>(t: *sys::type_desc, data: T) -> str;
     fn rust_set_exit_status(code: ctypes::intptr_t);
-    fn set_min_stack(size: ctypes::uintptr_t);
 }
 
 #[abi = "rust-intrinsic"]
@@ -104,22 +103,6 @@ fn log_str<T>(t: T) -> str {
 )]
 fn set_exit_status(code: int) {
     rustrt::rust_set_exit_status(code as ctypes::intptr_t);
-}
-
-// FIXME: #1495 - This shouldn't exist
-#[doc(
-    brief =
-    "Globally set the minimum size, in bytes, of a stack segment",
-    desc =
-    "Rust tasks have segmented stacks that are connected in a linked list \
-     allowing them to start very small and grow very large. In some \
-     situations this can result in poor performance. Calling this function \
-     will set the minimum size of all stack segments allocated in the \
-     future, for all tasks."
-)]
-#[deprecated]
-fn set_min_stack(size: uint) {
-    rustrt::set_min_stack(size);
 }
 
 #[cfg(test)]

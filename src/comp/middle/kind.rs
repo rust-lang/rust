@@ -59,7 +59,7 @@ fn check_crate(tcx: ty::ctxt, method_map: typeck::method_map,
 // closure.
 fn with_appropriate_checker(cx: ctx, id: node_id,
                             b: fn(fn@(ctx, ty::t, sp: span))) {
-    let fty = ty::node_id_to_monotype(cx.tcx, id);
+    let fty = ty::node_id_to_type(cx.tcx, id);
     alt ty::ty_fn_proto(cx.tcx, fty) {
       proto_uniq { b(check_send); }
       proto_box { b(check_copy); }
@@ -168,8 +168,7 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
         }
       }
       expr_path(_) {
-        let substs = ty::node_id_to_ty_param_substs_opt_and_ty(cx.tcx, e.id);
-        alt substs.substs {
+        alt cx.tcx.node_type_substs.find(e.id) {
           some(ts) {
             let did = ast_util::def_id_of_def(cx.tcx.def_map.get(e.id));
             let bounds = ty::lookup_item_type(cx.tcx, did).bounds;

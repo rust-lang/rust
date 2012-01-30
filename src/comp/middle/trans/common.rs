@@ -240,6 +240,7 @@ type fn_ctxt =
      derived_tydescs: hashmap<ty::t, derived_tydesc_info>,
      id: ast::node_id,
      ret_style: ast::ret_style,
+     span: option::t<span>,
      lcx: @local_ctxt};
 
 enum cleanup {
@@ -331,22 +332,14 @@ fn get_res_dtor(ccx: @crate_ctxt, did: ast::def_id, inner_t: ty::t)
 }
 
 enum block_kind {
-
-
-    // A scope block is a basic block created by translating a block { ... }
-    // in the source language.  Since these blocks create variable scope, any
-    // variables created in them that are still live at the end of the block
-    // must be dropped and cleaned up when the block ends.
+    // A scope at the end of which temporary values created inside of it are
+    // cleaned up. May correspond to an actual block in the language, but also
+    // to an implicit scope, for example, calls introduce an implicit scope in
+    // which the arguments are evaluated and cleaned up.
     SCOPE_BLOCK,
-
-
     // A basic block created from the body of a loop.  Contains pointers to
-    // which block to jump to in the case of "continue" or "break", with the
-    // "continue" block optional, because "while" and "do while" don't support
-    // "continue" (TODO: is this intentional?)
+    // which block to jump to in the case of "continue" or "break".
     LOOP_SCOPE_BLOCK(option::t<@block_ctxt>, @block_ctxt),
-
-
     // A non-scope block is a basic block created as a translation artifact
     // from translating code that expresses conditional logic rather than by
     // explicit { ... } block structure in the source language.  It's called a
@@ -382,6 +375,7 @@ type block_ctxt =
      mutable cleanups: [cleanup],
      mutable lpad_dirty: bool,
      mutable lpad: option::t<BasicBlockRef>,
+     block_span: option::t<span>,
      fcx: @fn_ctxt};
 
 // FIXME: we should be able to use option::t<@block_parent> here but
