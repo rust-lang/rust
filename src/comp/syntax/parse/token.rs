@@ -43,7 +43,6 @@ enum token {
     SEMI,
     COLON,
     MOD_SEP,
-    QUES,
     RARROW,
     LARROW,
     DARROW,
@@ -114,7 +113,6 @@ fn to_str(r: reader, t: token) -> str {
       SEMI { ret ";"; }
       COLON { ret ":"; }
       MOD_SEP { ret "::"; }
-      QUES { ret "?"; }
       RARROW { ret "->"; }
       LARROW { ret "<-"; }
       DARROW { ret "<->"; }

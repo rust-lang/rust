@@ -328,10 +328,6 @@ fn next_token_inner(rdr: reader) -> token::token {
 
 
       // One-byte tokens.
-      '?' {
-        rdr.bump();
-        ret token::QUES;
-      }
       ';' { rdr.bump(); ret token::SEMI; }
       ',' { rdr.bump(); ret token::COMMA; }
       '.' {

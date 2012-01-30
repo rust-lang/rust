@@ -312,11 +312,6 @@ fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
         v.visit_block(b, e, v);
         visit_expr_opt(eo, e, v);
       }
-      expr_ternary(c, t, el) {
-        v.visit_expr(c, e, v);
-        v.visit_expr(t, e, v);
-        v.visit_expr(el, e, v);
-      }
       expr_while(x, b) { v.visit_expr(x, e, v); v.visit_block(b, e, v); }
       expr_for(dcl, x, b) {
         v.visit_local(dcl, e, v);
