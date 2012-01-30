@@ -239,7 +239,8 @@ del_stk(rust_task *task, stk_seg *stk)
 
 // Tasks
 rust_task::rust_task(rust_scheduler *sched, rust_task_list *state,
-                     rust_task *spawner, const char *name) :
+                     rust_task *spawner, const char *name,
+                     size_t init_stack_sz) :
     ref_count(1),
     stk(NULL),
     runtime_sp(0),
@@ -271,7 +272,7 @@ rust_task::rust_task(rust_scheduler *sched, rust_task_list *state,
 
     user.notify_enabled = 0;
 
-    stk = new_stk(sched, this, 0);
+    stk = new_stk(sched, this, init_stack_sz);
     user.rust_sp = stk->end;
     if (supervisor) {
         supervisor->ref();

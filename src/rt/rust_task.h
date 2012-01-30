@@ -133,7 +133,8 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     rust_task(rust_scheduler *sched,
               rust_task_list *state,
               rust_task *spawner,
-              const char *name);
+              const char *name,
+              size_t init_stack_sz);
 
     ~rust_task();
 
