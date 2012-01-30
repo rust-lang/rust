@@ -235,3 +235,12 @@ fn should_prune_unexported_resources() {
     let doc = run(srv, doc);
     assert vec::is_empty(doc.topmod.mods()[0].resources());
 }
+
+#[test]
+fn should_prune_unexported_ifaces_from_top_mod() {
+    let source = "export a; mod a { } iface b { fn c(); }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = run(srv, doc);
+    assert vec::is_empty(doc.topmod.ifaces());
+}
