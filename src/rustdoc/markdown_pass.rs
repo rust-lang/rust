@@ -137,6 +137,7 @@ fn write_mod_contents(
           doc::consttag(constdoc) { write_const(ctxt, constdoc) }
           doc::enumtag(enumdoc) { write_enum(ctxt, enumdoc) }
           doc::restag(resdoc) { write_res(ctxt, resdoc) }
+          doc::ifacetag(ifacedoc) { write_iface(ctxt, ifacedoc) }
         }
     }
 }
@@ -158,12 +159,32 @@ fn write_fn(
     doc: doc::fndoc
 ) {
     write_header(ctxt, h2, #fmt("Function `%s`", doc.name));
-    write_sig(ctxt, doc.sig);
-    write_brief(ctxt, doc.brief);
-    write_desc(ctxt, doc.desc);
-    write_args(ctxt, doc.args);
-    write_return(ctxt, doc.return);
-    write_failure(ctxt, doc.failure);
+    write_fnlike(
+        ctxt,
+        doc.sig,
+        doc.brief,
+        doc.desc,
+        doc.args,
+        doc.return,
+        doc.failure
+    );
+}
+
+fn write_fnlike(
+    ctxt: ctxt,
+    sig: option<str>,
+    brief: option<str>,
+    desc: option<str>,
+    args: [doc::argdoc],
+    return: doc::retdoc,
+    failure: option<str>
+) {
+    write_sig(ctxt, sig);
+    write_brief(ctxt, brief);
+    write_desc(ctxt, desc);
+    write_args(ctxt, args);
+    write_return(ctxt, return);
+    write_failure(ctxt, failure);
 }
 
 fn write_sig(ctxt: ctxt, sig: option<str>) {
@@ -531,6 +552,99 @@ fn should_write_resource_args() {
     let markdown = test::render("#[doc(args(a = \"b\"))]\
                                  resource r(a: bool) { }");
     assert str::contains(markdown, "Arguments:\n\n* `a`: `bool` - b");
+}
+
+fn write_iface(ctxt: ctxt, doc: doc::ifacedoc) {
+    write_header(ctxt, h2, #fmt("Interface `%s`", doc.name));
+    write_brief(ctxt, doc.brief);
+    write_desc(ctxt, doc.desc);
+    write_methods(ctxt, doc.methods);
+}
+
+fn write_methods(ctxt: ctxt, docs: [doc::methoddoc]) {
+    vec::iter(docs) {|doc| write_method(ctxt, doc) }
+}
+
+fn write_method(ctxt: ctxt, doc: doc::methoddoc) {
+    write_header(ctxt, h3, #fmt("Method `%s`", doc.name));
+    write_fnlike(
+        ctxt,
+        doc.sig,
+        doc.brief,
+        doc.desc,
+        doc.args,
+        doc.return,
+        doc.failure
+    );
+}
+
+#[test]
+fn should_write_iface_header() {
+    let markdown = test::render("iface i { fn a(); }");
+    assert str::contains(markdown, "## Interface `i`");
+}
+
+#[test]
+fn should_write_iface_brief() {
+    let markdown = test::render(
+        "#[doc(brief = \"brief\")] iface i { fn a(); }");
+    assert str::contains(markdown, "brief");
+}
+
+#[test]
+fn should_write_iface_desc() {
+    let markdown = test::render(
+        "#[doc(desc = \"desc\")] iface i { fn a(); }");
+    assert str::contains(markdown, "desc");
+}
+
+#[test]
+fn should_write_iface_method_header() {
+    let markdown = test::render(
+        "iface i { fn a(); }");
+    assert str::contains(markdown, "### Method `a`");
+}
+
+#[test]
+fn should_write_iface_method_signature() {
+    let markdown = test::render(
+        "iface i { fn a(); }");
+    assert str::contains(markdown, "\n    fn a()");
+}
+
+#[test]
+fn should_write_iface_method_argument_header() {
+    let markdown = test::render(
+        "iface a { fn a(b: int); }");
+    assert str::contains(markdown, "\n\nArguments:\n\n");
+}
+
+#[test]
+fn should_write_iface_method_arguments() {
+    let markdown = test::render(
+        "iface a { fn a(b: int); }");
+    assert str::contains(markdown, "* `b`: `int`\n");
+}
+
+#[test]
+fn should_not_write_iface_method_arguments_if_none() {
+    let markdown = test::render(
+        "iface a { fn a(); }");
+    assert !str::contains(markdown, "Arguments");
+}
+
+#[test]
+fn should_write_iface_method_return_info() {
+    let markdown = test::render(
+        "iface a { fn a() -> int; }");
+    assert str::contains(markdown, "Returns `int`");
+}
+
+#[test]
+fn should_write_iface_method_failure_conditions() {
+    let markdown = test::render(
+        "iface a { #[doc(failure = \"nuked\")] fn a(); }");
+    assert str::contains(markdown, "Failure conditions: nuked");
 }
 
 #[cfg(test)]
