@@ -215,9 +215,24 @@ fn maybe_copy(cx: ctx, ex: @expr) {
     check_copy_ex(cx, ex, true);
 }
 
+fn is_nullary_variant(cx: ctx, ex: @expr) -> bool {
+    alt ex.node {
+      expr_path(_) {
+        alt cx.tcx.def_map.get(ex.id) {
+          def_variant(edid, vdid) {
+            vec::len(ty::enum_variant_with_id(cx.tcx, edid, vdid).args) == 0u
+          }
+          _ { false }
+        }
+      }
+      _ { false }
+    }
+}
+
 fn check_copy_ex(cx: ctx, ex: @expr, _warn: bool) {
     if ty::expr_is_lval(cx.method_map, ex) &&
-       !cx.last_uses.contains_key(ex.id) {
+       !cx.last_uses.contains_key(ex.id) &&
+       !is_nullary_variant(cx, ex) {
         let ty = ty::expr_ty(cx.tcx, ex);
         check_copy(cx, ty, ex.span);
         // FIXME turn this on again once vector types are no longer unique.
