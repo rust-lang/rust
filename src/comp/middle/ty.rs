@@ -655,39 +655,31 @@ pure fn ty_name(cx: ctxt, typ: t) -> option::t<@str> {
     }
 }
 
-
-// Type folds
-type ty_walk = fn@(t);
-
-fn walk_ty(cx: ctxt, walker: ty_walk, ty: t) {
+fn walk_ty(cx: ctxt, ty: t, f: fn(t)) {
     alt struct(cx, ty) {
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
       ty_str | ty_send_type | ty_type | ty_native(_) |
-      ty_opaque_closure_ptr(_) {
-        /* no-op */
-      }
-      ty_box(tm) | ty_vec(tm) | ty_ptr(tm) { walk_ty(cx, walker, tm.ty); }
+      ty_opaque_closure_ptr(_) | ty_var(_) | ty_param(_, _) {}
+      ty_box(tm) | ty_vec(tm) | ty_ptr(tm) { walk_ty(cx, tm.ty, f); }
       ty_enum(_, subtys) | ty_iface(_, subtys) {
-        for subty: t in subtys { walk_ty(cx, walker, subty); }
+        for subty: t in subtys { walk_ty(cx, subty, f); }
       }
       ty_rec(fields) {
-        for fl: field in fields { walk_ty(cx, walker, fl.mt.ty); }
+        for fl: field in fields { walk_ty(cx, fl.mt.ty, f); }
       }
-      ty_tup(ts) { for tt in ts { walk_ty(cx, walker, tt); } }
-      ty_fn(f) {
-        for a: arg in f.inputs { walk_ty(cx, walker, a.ty); }
-        walk_ty(cx, walker, f.output);
+      ty_tup(ts) { for tt in ts { walk_ty(cx, tt, f); } }
+      ty_fn(ft) {
+        for a: arg in ft.inputs { walk_ty(cx, a.ty, f); }
+        walk_ty(cx, ft.output, f);
       }
       ty_res(_, sub, tps) {
-        walk_ty(cx, walker, sub);
-        for tp: t in tps { walk_ty(cx, walker, tp); }
+        walk_ty(cx, sub, f);
+        for tp: t in tps { walk_ty(cx, tp, f); }
       }
-      ty_constr(sub, _) { walk_ty(cx, walker, sub); }
-      ty_var(_) {/* no-op */ }
-      ty_param(_, _) {/* no-op */ }
-      ty_uniq(tm) { walk_ty(cx, walker, tm.ty); }
+      ty_constr(sub, _) { walk_ty(cx, sub, f); }
+      ty_uniq(tm) { walk_ty(cx, tm.ty, f); }
     }
-    walker(ty);
+    f(ty);
 }
 
 enum fold_mode {
@@ -1239,14 +1231,11 @@ fn type_param(cx: ctxt, ty: t) -> option::t<uint> {
 // Returns a vec of all the type variables
 // occurring in t. It may contain duplicates.
 fn vars_in_type(cx: ctxt, ty: t) -> [int] {
-    fn collect_var(cx: ctxt, vars: @mutable [int], ty: t) {
-        alt struct(cx, ty) { ty_var(v) { *vars += [v]; } _ { } }
+    let rslt = [];
+    walk_ty(cx, ty) {|ty|
+        alt struct(cx, ty) { ty_var(v) { rslt += [v]; } _ { } }
     }
-    let rslt: @mutable [int] = @mutable [];
-    walk_ty(cx, bind collect_var(cx, rslt, _), ty);
-    // Works because of a "convenient" bug that lets us
-    // return a mutable vec as if it's immutable
-    ret *rslt;
+    rslt
 }
 
 fn type_autoderef(cx: ctxt, t: ty::t) -> ty::t {
@@ -1450,22 +1439,18 @@ fn node_id_has_type_params(cx: ctxt, id: ast::node_id) -> bool {
 
 // Returns the number of distinct type parameters in the given type.
 fn count_ty_params(cx: ctxt, ty: t) -> uint {
-    fn counter(cx: ctxt, param_indices: @mutable [uint], ty: t) {
-        alt struct(cx, ty) {
+    let param_indices = [];
+    walk_ty(cx, ty) {|t|
+        alt struct(cx, t) {
           ty_param(param_idx, _) {
-            let seen = false;
-            for other_param_idx: uint in *param_indices {
-                if param_idx == other_param_idx { seen = true; }
+            if !vec::any(param_indices, {|i| i == param_idx}) {
+                param_indices += [param_idx];
             }
-            if !seen { *param_indices += [param_idx]; }
           }
-          _ {/* fall through */ }
+          _ {}
         }
     }
-    let param_indices: @mutable [uint] = @mutable [];
-    let f = bind counter(cx, param_indices, _);
-    walk_ty(cx, f, ty);
-    ret vec::len::<uint>(*param_indices);
+    vec::len(param_indices)
 }
 
 fn type_contains_vars(cx: ctxt, typ: t) -> bool {

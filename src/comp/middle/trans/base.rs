@@ -861,28 +861,19 @@ fn field_of_tydesc(cx: @block_ctxt, t: ty::t, escapes: bool, field: int) ->
 // constructing derived tydescs.
 fn linearize_ty_params(cx: @block_ctxt, t: ty::t) ->
    {params: [uint], descs: [ValueRef]} {
-    let param_vals: [ValueRef] = [];
-    let param_defs: [uint] = [];
-    type rr =
-        {cx: @block_ctxt, mutable vals: [ValueRef], mutable defs: [uint]};
-
-    fn linearizer(r: @rr, t: ty::t) {
-        alt ty::struct(bcx_tcx(r.cx), t) {
+    let param_vals = [], param_defs = [];
+    ty::walk_ty(bcx_tcx(cx), t) {|t|
+        alt ty::struct(bcx_tcx(cx), t) {
           ty::ty_param(pid, _) {
-            let seen: bool = false;
-            for d: uint in r.defs { if d == pid { seen = true; } }
-            if !seen {
-                r.vals += [r.cx.fcx.lltyparams[pid].desc];
-                r.defs += [pid];
+            if !vec::any(param_defs, {|d| d == pid}) {
+                param_vals += [cx.fcx.lltyparams[pid].desc];
+                param_defs += [pid];
             }
           }
           _ { }
         }
     }
-    let x = @{cx: cx, mutable vals: param_vals, mutable defs: param_defs};
-    let f = bind linearizer(x, _);
-    ty::walk_ty(bcx_tcx(cx), f, t);
-    ret {params: x.defs, descs: x.vals};
+    ret {params: param_defs, descs: param_vals};
 }
 
 fn trans_stack_local_derived_tydesc(cx: @block_ctxt, llsz: ValueRef,
