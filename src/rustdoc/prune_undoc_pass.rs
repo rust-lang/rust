@@ -22,7 +22,8 @@ fn run(
         fold_fn: fold_fn,
         fold_const: fold_const,
         fold_enum: fold_enum,
-        fold_res: fold_res
+        fold_res: fold_res,
+        fold_iface: fold_iface
         with *fold::default_seq_fold(ctxt)
     });
     fold.fold_crate(fold, doc)
@@ -75,6 +76,14 @@ fn fold_mod(
                     none
                 }
               }
+              doc::ifacetag(ifacedoc) {
+                let doc = fold.fold_iface(fold, ifacedoc);
+                if fold.ctxt.have_docs {
+                    some(doc::ifacetag(doc))
+                } else {
+                    none
+                }
+              }
               _ { some(itemtag) }
             }
         }
@@ -91,34 +100,40 @@ fn fold_fn(
     fold: fold::fold<ctxt>,
     doc: doc::fndoc
 ) -> doc::fndoc {
-    let have_arg_docs = false;
     let doc = {
-        args: vec::filter_map(doc.args) {|doc|
-            if option::is_some(doc.desc) {
-                have_arg_docs = true;
-                some(doc)
-            } else {
-                none
-            }
-        },
-        return: {
-            ty: if option::is_some(doc.return.desc) {
-                doc.return.ty
-            } else {
-                none
-            }
-            with doc.return
-        }
+        args: prune_args(doc.args),
+        return: prune_return(doc.return)
         with doc
     };
 
     fold.ctxt.have_docs =
         doc.brief != none
         || doc.desc != none
-        || have_arg_docs
+        || vec::is_not_empty(doc.args)
         || doc.return.desc != none
         || doc.failure != none;
     ret doc;
+}
+
+fn prune_args(docs: [doc::argdoc]) -> [doc::argdoc] {
+    vec::filter_map(docs) {|doc|
+        if option::is_some(doc.desc) {
+            some(doc)
+        } else {
+            none
+        }
+    }
+}
+
+fn prune_return(doc: doc::retdoc) -> doc::retdoc {
+    {
+        ty: if option::is_some(doc.desc) {
+            doc.ty
+        } else {
+            none
+        }
+        with doc
+    }
 }
 
 #[test]
@@ -315,4 +330,94 @@ fn should_not_elide_resources_with_documented_args() {
     let doc = attr_pass::mk_pass()(srv, doc);
     let doc = run(srv, doc);
     assert vec::is_not_empty(doc.topmod.resources());
+}
+
+fn fold_iface(
+    fold: fold::fold<ctxt>,
+    doc: doc::ifacedoc
+) -> doc::ifacedoc {
+    let doc = fold::default_seq_fold_iface(fold, doc);
+    let doc = {
+        methods: vec::map(doc.methods) {|doc|
+            {
+                args: prune_args(doc.args),
+                return: prune_return(doc.return)
+                with doc
+            }
+        }
+        with doc
+    };
+    let methods_have_docs = vec::foldl(false, doc.methods) {|accum, doc|
+        accum
+            || doc.brief != none
+            || doc.desc != none
+            || vec::is_not_empty(doc.args)
+            || doc.return.desc != none
+            || doc.failure != none
+    };
+    fold.ctxt.have_docs =
+        doc.brief != none
+        || doc.desc != none
+        || methods_have_docs;
+    ret doc;
+}
+
+#[test]
+fn should_elide_undocumented_ifaces() {
+    let source = "iface i { fn a(); }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = attr_pass::mk_pass()(srv, doc);
+    let doc = run(srv, doc);
+    assert vec::is_empty(doc.topmod.ifaces());
+}
+
+#[test]
+fn should_not_elide_documented_ifaces() {
+    let source = "#[doc = \"hey\"] iface i { fn a(); }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = attr_pass::mk_pass()(srv, doc);
+    let doc = run(srv, doc);
+    assert vec::is_not_empty(doc.topmod.ifaces());
+}
+
+#[test]
+fn should_not_elide_ifaces_with_documented_methods() {
+    let source = "iface i { #[doc = \"hey\"] fn a(); }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = attr_pass::mk_pass()(srv, doc);
+    let doc = run(srv, doc);
+    assert vec::is_not_empty(doc.topmod.ifaces());
+}
+
+#[test]
+fn should_not_elide_undocumented_methods() {
+    let source = "#[doc = \"hey\"] iface i { fn a(); }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = attr_pass::mk_pass()(srv, doc);
+    let doc = run(srv, doc);
+    assert vec::is_not_empty(doc.topmod.ifaces()[0].methods);
+}
+
+#[test]
+fn should_elide_undocumented_method_args() {
+    let source = "#[doc = \"hey\"] iface i { fn a(); }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = attr_pass::mk_pass()(srv, doc);
+    let doc = run(srv, doc);
+    assert vec::is_empty(doc.topmod.ifaces()[0].methods[0].args);
+}
+
+#[test]
+fn should_elide_undocumented_method_return_values() {
+    let source = "#[doc = \"hey\"] iface i { fn a() -> int; }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = attr_pass::mk_pass()(srv, doc);
+    let doc = run(srv, doc);
+    assert doc.topmod.ifaces()[0].methods[0].return.ty == none;
 }
