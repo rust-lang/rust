@@ -25,7 +25,8 @@ fn run(
         fold_fn: fold_fn,
         fold_const: fold_const,
         fold_enum: fold_enum,
-        fold_res: fold_res
+        fold_res: fold_res,
+        fold_iface: fold_iface
         with *fold::default_seq_fold(srv)
     });
     fold.fold_crate(fold, doc)
@@ -142,35 +143,36 @@ fn fold_fn(
             with doc
         };
     }
+}
 
-    fn merge_arg_attrs(
-        docs: [doc::argdoc],
-        attrs: [attr_parser::arg_attrs]
-    ) -> [doc::argdoc] {
-        vec::map(docs) {|doc|
-            alt vec::find(attrs) {|attr|
-                attr.name == doc.name
-            } {
-                some(attr) {
-                    {
-                        desc: some(attr.desc)
-                        with doc
-                    }
+fn merge_arg_attrs(
+    docs: [doc::argdoc],
+    attrs: [attr_parser::arg_attrs]
+) -> [doc::argdoc] {
+    vec::map(docs) {|doc|
+        alt vec::find(attrs) {|attr|
+            attr.name == doc.name
+        } {
+            some(attr) {
+                {
+                    desc: some(attr.desc)
+                    with doc
                 }
-                none { doc }
             }
+            none { doc }
         }
-        // FIXME: Warning when documenting a non-existent arg
     }
+    // FIXME: Warning when documenting a non-existent arg
+}
 
-    fn merge_ret_attrs(
-        doc: doc::retdoc,
-        attrs: option<str>
-    ) -> doc::retdoc {
-        {
-            desc: attrs
-            with doc
-        }
+
+fn merge_ret_attrs(
+    doc: doc::retdoc,
+    attrs: option<str>
+) -> doc::retdoc {
+    {
+        desc: attrs
+        with doc
     }
 }
 
@@ -359,4 +361,84 @@ fn fold_res_should_extract_arg_docs() {
     let doc = fold_res(fold, doc.topmod.resources()[0]);
     assert doc.args[0].name == "a";
     assert doc.args[0].desc == some("b");
+}
+
+
+fn fold_iface(
+    fold: fold::fold<astsrv::srv>,
+    doc: doc::ifacedoc
+) -> doc::ifacedoc {
+    let srv = fold.ctxt;
+    let doc = fold::default_seq_fold_iface(fold, doc);
+    let attrs = parse_item_attrs(srv, doc.id, attr_parser::parse_iface);
+
+    {
+        brief: attrs.brief,
+        desc: attrs.desc,
+        methods: merge_method_attrs(srv, doc.id, doc.methods)
+        with doc
+    }
+}
+
+fn merge_method_attrs(
+    srv: astsrv::srv,
+    item_id: doc::ast_id,
+    docs: [doc::methoddoc]
+) -> [doc::methoddoc] {
+    // Create an assoc list from method name to attributes
+    let attrs = astsrv::exec(srv) {|ctxt|
+        alt ctxt.ast_map.get(item_id) {
+          ast_map::node_item(@{
+            node: ast::item_iface(_, methods), _
+          }) {
+            vec::map(methods) {|method|
+                (method.ident, attr_parser::parse_method(method.attrs))
+            }
+          }
+        }
+    };
+
+    vec::map2(docs, attrs) {|doc, attrs|
+        assert doc.name == tuple::first(attrs);
+        let attrs = tuple::second(attrs);
+
+        {
+            brief: attrs.brief,
+            desc: attrs.desc,
+            args: merge_arg_attrs(doc.args, attrs.args),
+            return: merge_ret_attrs(doc.return, attrs.return),
+            failure: attrs.failure
+            with doc
+        }
+    }
+}
+
+#[test]
+fn should_extract_iface_docs() {
+    let source = "#[doc = \"whatever\"] iface i { fn a(); }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = run(srv, doc);
+    assert doc.topmod.ifaces()[0].desc == some("whatever");
+}
+
+#[test]
+fn should_extract_iface_method_docs() {
+    let source = "iface i {\
+                  #[doc(\
+                  brief = \"brief\",\
+                  desc = \"desc\",\
+                  args(a = \"a\"),\
+                  return = \"return\",\
+                  failure = \"failure\")]\
+                  fn f(a: bool) -> bool;\
+                  }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = run(srv, doc);
+    assert doc.topmod.ifaces()[0].methods[0].brief == some("brief");
+    assert doc.topmod.ifaces()[0].methods[0].desc == some("desc");
+    assert doc.topmod.ifaces()[0].methods[0].args[0].desc == some("a");
+    assert doc.topmod.ifaces()[0].methods[0].return.desc == some("return");
+    assert doc.topmod.ifaces()[0].methods[0].failure == some("failure");
 }
