@@ -35,7 +35,7 @@ export
 
    // Transforming strings
    bytes,
-   to_chars,
+   chars,
    substr,
    char_slice,
    slice,
@@ -341,7 +341,7 @@ fn trim_left(s: str) -> str {
         }
         ret i;
     }
-    let chars = to_chars(s);
+    let chars = chars(s);
     let whities = count_whities(chars);
     ret from_chars(vec::slice(chars, whities, vec::len(chars)));
 }
@@ -360,7 +360,7 @@ fn trim_right(s: str) -> str {
         }
         ret i;
     }
-    let chars = to_chars(s);
+    let chars = chars(s);
     let whities = count_whities(chars);
     ret from_chars(vec::slice(chars, 0u, whities));
 }
@@ -391,13 +391,13 @@ fn bytes(s: str) -> [u8] unsafe {
 }
 
 /*
-Function: to_chars
+Function: chars
 
 Convert a string to a vector of characters
 
 FIXME: rename to 'chars'
 */
-fn to_chars(s: str) -> [char] {
+fn chars(s: str) -> [char] {
     let buf: [char] = [];
     let i = 0u;
     let len = byte_len(s);
@@ -440,7 +440,7 @@ Failure:
 FIXME: rename to slice(), make faster by avoiding char conversion
 */
 fn char_slice(s: str, begin: uint, end: uint) -> str {
-    from_chars(vec::slice(to_chars(s), begin, end))
+    from_chars(vec::slice(chars(s), begin, end))
 }
 
 /*
@@ -1977,5 +1977,12 @@ mod tests {
     #[should_fail]
     fn test_windowed_() {
         let _x = windowed(0u, "abcd");
+    }
+
+    #[test]
+    fn test_chars() {
+        let ss = "ศไทย中华Việt Nam";
+        assert ['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m']
+            == chars(ss);
     }
 }
