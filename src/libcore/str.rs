@@ -183,7 +183,6 @@ fn from_chars(chs: [char]) -> str {
     ret buf;
 }
 
-// FIXME: not unsafe now
 /*
 Function: from_cstr
 
@@ -1371,20 +1370,19 @@ An unsafe buffer of bytes. Corresponds to a C char pointer.
 */
 type sbuf = *u8;
 
+// Module: unsafe
+//
+// These functions may create invalid UTF-8 strings and eat your baby.
 mod unsafe {
    export
       // UNSAFE
       from_bytes,
       from_byte;
 
-   /*
-   Function: unsafe::from_bytes
-
-   Converts a vector of bytes to a string. Does not verify that the
-   vector contains valid UTF-8.
-
-   FIXME: stop exporting
-   */
+   // Function: unsafe::from_bytes
+   //
+   // Converts a vector of bytes to a string. Does not verify that the
+   // vector contains valid UTF-8.
    unsafe fn from_bytes(v: [const u8]) -> str unsafe {
        let vcopy: [u8] = v + [0u8];
        let scopy: str = ::unsafe::reinterpret_cast(vcopy);
@@ -1392,14 +1390,10 @@ mod unsafe {
        ret scopy;
    }
 
-   /*
-   Function: unsafe::from_byte
-
-   Converts a byte to a string. Does not verify that the byte is
-   valid UTF-8.
-
-   FIXME: stop exporting
-   */
+   // Function: unsafe::from_byte
+   //
+   // Converts a byte to a string. Does not verify that the byte is
+   // valid UTF-8.
    unsafe fn from_byte(u: u8) -> str { unsafe::from_bytes([u]) }
 }
 
