@@ -65,6 +65,8 @@ export
    map,
    bytes_iter,
    chars_iter,
+   split_chars_iter,
+   splitn_chars_iter,
    words_iter,
    lines_iter,
 
@@ -818,8 +820,6 @@ fn map(ss: str, ff: fn(char) -> char) -> str {
 Function: bytes_iter
 
 Iterate over the bytes in a string
-
-FIXME: Should it really include the last byte '\0'?
 */
 fn bytes_iter(ss: str, it: fn(u8)) {
     let pos = 0u;
@@ -846,6 +846,28 @@ fn chars_iter(s: str, it: fn(char)) {
 }
 
 /*
+Function: split_chars_iter
+
+Apply a function to each substring after splitting
+by character
+*/
+fn split_chars_iter(ss: str, cc: char, ff: fn(&&str)) {
+   vec::iter(split_char(ss, cc), ff)
+}
+
+/*
+Function: splitn_chars_iter
+
+Apply a function to each substring after splitting
+by character, up to nn times
+
+FIXME: make this use chars when splitn/splitn_char is fixed
+*/
+fn splitn_chars_iter(ss: str, sep: u8, count: uint, ff: fn(&&str)) {
+   vec::iter(splitn(ss, sep, count), ff)
+}
+
+/*
 Function: words_iter
 
 Apply a function to each word
@@ -862,9 +884,6 @@ Apply a function to each lines (by '\n')
 fn lines_iter(ss: str, ff: fn(&&str)) {
     vec::iter(lines(ss), ff)
 }
-
-// FIXME: ADD split_char_iter
-// FIXME: ADD splitn_char_iter
 
 /*
 Section: Searching
@@ -1860,6 +1879,41 @@ mod tests {
         }
 
         bytes_iter("") {|bb| assert bb == 0u8; }
+    }
+
+    #[test]
+    fn test_split_chars_iter() {
+        let data = "\nMary had a little lamb\nLittle lamb\n";
+
+        let ii = 0;
+
+        split_chars_iter(data, ' ') {|xx|
+            alt ii {
+              0 { assert "\nMary" == xx; }
+              1 { assert "had"    == xx; }
+              2 { assert "a"      == xx; }
+              3 { assert "little" == xx; }
+              _ { () }
+            }
+            ii += 1;
+        }
+    }
+
+    #[test]
+    fn test_splitn_chars_iter() {
+        let data = "\nMary had a little lamb\nLittle lamb\n";
+
+        let ii = 0;
+
+        splitn_chars_iter(data, ' ' as u8, 2u) {|xx|
+            alt ii {
+              0 { assert "\nMary" == xx; }
+              1 { assert "had"    == xx; }
+              2 { assert "a little lamb\nLittle lamb\n" == xx; }
+              _ { () }
+            }
+            ii += 1;
+        }
     }
 
     #[test]
