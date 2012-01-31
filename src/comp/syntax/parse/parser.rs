@@ -1039,7 +1039,28 @@ fn parse_dot_or_call_expr_with(p: parser, e0: pexpr) -> pexpr {
     let e = e0;
     let lo = e.span.lo;
     let hi = e.span.hi;
-    while !expr_is_complete(p, e) {
+    while true {
+        // expr.f
+        if eat(p, token::DOT) {
+            alt p.token {
+              token::IDENT(i, _) {
+                hi = p.span.hi;
+                p.bump();
+                let tys = if eat(p, token::MOD_SEP) {
+                    expect(p, token::LT);
+                    parse_seq_to_gt(some(token::COMMA),
+                                    {|p| parse_ty(p, false)}, p)
+                } else { [] };
+                e = mk_pexpr(p, lo, hi,
+                             ast::expr_field(to_expr(e),
+                                             p.get_str(i),
+                                             tys));
+              }
+              t { unexpected(p, t); }
+            }
+            cont;
+        }
+        if expr_is_complete(p, e) { break; }
         alt p.token {
           // expr(...)
           token::LPAREN if permits_call(p) {
@@ -1074,27 +1095,6 @@ fn parse_dot_or_call_expr_with(p: parser, e0: pexpr) -> pexpr {
             expect(p, token::RBRACKET);
             p.get_id(); // see ast_util::op_expr_callee_id
             e = mk_pexpr(p, lo, hi, ast::expr_index(to_expr(e), ix));
-          }
-
-          // expr.f
-          token::DOT {
-            p.bump();
-            alt p.token {
-              token::IDENT(i, _) {
-                hi = p.span.hi;
-                p.bump();
-                let tys = if eat(p, token::MOD_SEP) {
-                    expect(p, token::LT);
-                    parse_seq_to_gt(some(token::COMMA),
-                                    {|p| parse_ty(p, false)}, p)
-                } else { [] };
-                e = mk_pexpr(p, lo, hi,
-                             ast::expr_field(to_expr(e),
-                                             p.get_str(i),
-                                             tys));
-              }
-              t { unexpected(p, t); }
-            }
           }
 
           _ { ret e; }
