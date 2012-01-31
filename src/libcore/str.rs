@@ -60,7 +60,6 @@ export
    hash,
 
    // Iterating through strings
-   loop_chars,
    all,
    any,
    map,
@@ -94,7 +93,7 @@ export
    utf8_char_width,
    char_range_at,
    char_at,
-   loop_chars_sub,
+   substr_all,
    escape_char,
    as_buf,
    //buf,
@@ -741,7 +740,7 @@ Escapes special characters inside the string, making it safe for transfer.
 */
 fn escape(s: str) -> str {
     let r = "";
-    loop_chars(s, { |c| r += escape_char(c); true });
+    all(s, { |c| r += escape_char(c); true });
     r
 }
 
@@ -782,36 +781,13 @@ Section: Iterating through strings
 */
 
 /*
-Function: loop_chars
-
-Loop through a string, char by char
-
-Parameters:
-s  - A string to traverse. It may be empty.
-it - A block to execute with each consecutive character of `s`.
-Return `true` to continue, `false` to stop.
-
-Returns:
-
-`true` If execution proceeded correctly, `false` if it was interrupted,
-that is if `it` returned `false` at any point.
-
-FIXME: rename to 'chars_loop' (change? currently a synonym to 'all')
- */
-fn loop_chars(s: str, it: fn(char) -> bool) -> bool{
-    ret loop_chars_sub(s, 0u, byte_len(s), it);
-}
-
-/*
 Function: all
 
 Return true if a predicate matches all characters or
 if the string contains no characters
-
-// FIXME: a synonym to loop_chars
 */
-fn all(ss: str, ff: fn(char) -> bool) -> bool {
-    str::loop_chars(ss, ff)
+fn all(s: str, it: fn(char) -> bool) -> bool{
+    ret substr_all(s, 0u, byte_len(s), it);
 }
 
 /*
@@ -1054,7 +1030,7 @@ Function: is_whitespace
 Returns true if the string contains only whitespace
 */
 fn is_whitespace(s: str) -> bool {
-    ret loop_chars(s, char::is_whitespace);
+    ret all(s, char::is_whitespace);
 }
 
 /*
@@ -1270,7 +1246,7 @@ Pluck a character out of a string
 fn char_at(s: str, i: uint) -> char { ret char_range_at(s, i).ch; }
 
 /*
-Function: loop_chars_sub
+Function: substr_all
 
 Loop through a substring, char by char
 
@@ -1290,10 +1266,8 @@ Safety note:
 - This function does not check whether the substring is valid.
 - This function fails if `byte_offset` or `byte_len` do not
  represent valid positions inside `s`
-
-FIXME: rename to 'substr_all'
  */
-fn loop_chars_sub(s: str, byte_offset: uint, byte_len: uint,
+fn substr_all(s: str, byte_offset: uint, byte_len: uint,
               it: fn(char) -> bool) -> bool {
    let i = byte_offset;
    let result = true;

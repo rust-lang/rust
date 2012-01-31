@@ -1137,7 +1137,7 @@ mod node {
 
     fn loop_chars(node: @node, it: fn(char) -> bool) -> bool {
         ret loop_leaves(node, {|leaf|
-            ret str::loop_chars_sub(*leaf.content,
+            ret str::substr_all(*leaf.content,
                                     leaf.byte_offset,
                                     leaf.byte_len, it)
         })
