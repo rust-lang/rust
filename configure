@@ -267,8 +267,8 @@ opt mingw-cross 0 "cross-compile for win32 using mingw"
 opt clang 0 "prefer clang to gcc for building the runtime"
 valopt prefix "/usr/local" "set installation prefix"
 valopt llvm-root "" "set LLVM root"
-valopt host-triple "$DEFAULT_HOST_TRIPLE" "primary LLVM host triple"
-valopt target-triples "" "LLVM target triples (defaults to host if unset)"
+valopt host-triple "${DEFAULT_HOST_TRIPLE}" "LLVM host triple"
+valopt target-triples "${CFG_HOST_TRIPLE}" "LLVM target triples"
 
 if [ $HELP -eq 1 ]
 then
@@ -356,23 +356,10 @@ else
     CFG_C_COMPILER="gcc"
 fi
 
-if [ -z "$CFG_PREFIX" ]
-then
-    CFG_PREFIX=/usr/local
-fi
+# a little post-processing of various config values
 
-if [ -z "$CFG_HOST_TRIPLE" ]
-then
-    CFG_HOST_TRIPLE="$DEFAULT_HOST_TRIPLE"
-fi
-
-if [ -z "$CFG_TARGET_TRIPLES" ]
-then
-    CFG_TARGET_TRIPLES="${CFG_HOST_TRIPLE}"
-else
-    CFG_TARGET_TRIPLES="$(echo $CFG_TARGET_TRIPLES | tr ',' ' ')"
-fi
-
+CFG_PREFIX=${CFG_PREFIX%/}
+CFG_TARGET_TRIPLES="$(echo $CFG_TARGET_TRIPLES | tr ',' ' ')"
 case $CFG_TARGET_TRIPLES in
     (*$CFG_HOST_TRIPLE*) ;;
     (*) err "Host triple is not among the target triples." ;;
@@ -628,10 +615,9 @@ putvar CFG_BUILD_DIR
 putvar CFG_OSTYPE
 putvar CFG_CPUTYPE
 putvar CFG_CONFIGURE_ARGS
-putvar CFG_HOST_TRIPLE
+putvar CFG_PREFIX
 putvar CFG_TARGET_TRIPLES
 putvar CFG_C_COMPILER
-putvar CFG_PREFIX
 putvar CFG_LIBDIR
 
 # Setting this again because it may have been changed
