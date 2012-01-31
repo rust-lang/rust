@@ -22,7 +22,8 @@ fn run(
         fold_const: fold_const,
         fold_fn: fold_fn,
         fold_enum: fold_enum,
-        fold_res: fold_res
+        fold_res: fold_res,
+        fold_iface: fold_iface
         with *fold::default_seq_fold(())
     });
     fold.fold_crate(fold, doc)
@@ -83,6 +84,26 @@ fn fold_res(fold: fold::fold<()>, doc: doc::resdoc) -> doc::resdoc {
     }
 }
 
+fn fold_iface(fold: fold::fold<()>, doc: doc::ifacedoc) -> doc::ifacedoc {
+    let doc =fold::default_seq_fold_iface(fold, doc);
+    let (brief, desc) = modify(doc.brief, doc.desc);
+
+    {
+        brief: brief,
+        desc: desc,
+        methods: vec::map(doc.methods) {|doc|
+            let (brief, desc) = modify(doc.brief, doc.desc);
+
+            {
+                brief: brief,
+                desc: desc
+                with doc
+            }
+        }
+        with doc
+    }
+}
+
 #[test]
 fn should_promote_mod_desc() {
     let source = "#[doc(desc = \"desc\")] mod m { }";
@@ -136,6 +157,28 @@ fn should_promote_resource_desc() {
     let doc = run(srv, doc);
     assert doc.topmod.resources()[0].brief == some("desc");
     assert doc.topmod.resources()[0].desc == none;
+}
+
+#[test]
+fn should_promote_iface_desc() {
+    let source = "#[doc(desc = \"desc\")] iface i { fn a(); }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = attr_pass::mk_pass()(srv, doc);
+    let doc = run(srv, doc);
+    assert doc.topmod.ifaces()[0].brief == some("desc");
+    assert doc.topmod.ifaces()[0].desc == none;
+}
+
+#[test]
+fn should_promote_iface_method_desc() {
+    let source = "iface i { #[doc(desc = \"desc\")] fn a(); }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = attr_pass::mk_pass()(srv, doc);
+    let doc = run(srv, doc);
+    assert doc.topmod.ifaces()[0].methods[0].brief == some("desc");
+    assert doc.topmod.ifaces()[0].methods[0].desc == none;
 }
 
 fn modify(
