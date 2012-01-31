@@ -96,6 +96,7 @@ type methoddoc = {
     sig: option<str>
 };
 
+#[doc = "Some helper methods on moddoc, mostly for testing"]
 impl util for moddoc {
 
     fn mods() -> [moddoc] {
@@ -153,6 +154,7 @@ impl util for moddoc {
     }
 }
 
+#[doc = "Helper methods on itemtag"]
 impl util for itemtag {
     fn name() -> str {
         alt self {
