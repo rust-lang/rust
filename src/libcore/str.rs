@@ -674,30 +674,18 @@ fn windowed(nn: uint, ss: str) -> [str] {
 Function: to_lower
 
 Convert a string to lowercase
-
-FIXME: rewrite with map
 */
 fn to_lower(s: str) -> str {
-    let outstr = "";
-    chars_iter(s) { |c|
-        push_char(outstr, char::to_lower(c));
-    }
-    ret outstr;
+    map(s, char::to_lower)
 }
 
 /*
 Function: to_upper
 
 Convert a string to uppercase
-
-FIXME: rewrite with map
 */
 fn to_upper(s: str) -> str {
-    let outstr = "";
-    chars_iter(s) { |c|
-        push_char(outstr, char::to_upper(c));
-    }
-    ret outstr;
+    map(s, char::to_upper)
 }
 
 // FIXME: This is super-inefficient
@@ -1583,14 +1571,21 @@ mod tests {
 
     #[test]
     fn test_to_upper() {
-        // to_upper doesn't understand unicode yet,
-        // but we need to at least preserve it
+        // char::to_upper, and hence str::to_upper
+        // are culturally insensitive: I'm not sure they
+        // really work for anything but English ASCII, but YMMV
 
         let unicode = "\u65e5\u672c";
         let input = "abcDEF" + unicode + "xyz:.;";
         let expected = "ABCDEF" + unicode + "XYZ:.;";
         let actual = to_upper(input);
         assert (eq(expected, actual));
+    }
+
+    #[test]
+    fn test_to_lower() {
+        assert "" == map("", char::to_lower);
+        assert "ymca" == map("YMCA", char::to_lower);
     }
 
     #[test]
