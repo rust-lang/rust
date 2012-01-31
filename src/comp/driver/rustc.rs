@@ -21,43 +21,52 @@ fn version(argv0: str) {
 }
 
 fn usage(argv0: str) {
-    io::stdout().write_str(#fmt["usage: %s [options] <input>\n", argv0] +
+    io::stdout().write_str(#fmt["Usage: %s [options] <input>\n", argv0] +
                                "
-options:
+Options:
 
-    -h --help          display this message
-    -v --version       print version info and exit
+    --bin              Compile an executable crate (default)
+    -c                 Compile and assemble, but do not link
+    --cfg <cfgspec>    Configure the compilation environment
+    --emit-llvm        Produce an LLVM bitcode file
+    -g                 Produce debug info
+    --gc               Garbage collect shared data (experimental/temporary)
+    -h --help          Display this message
+    -L <path>          Add a directory to the library search path
+    --lib              Compile a library crate
+    --ls               List the symbols defined by a compiled library crate
+    --no-asm-comments  Do not add comments into the assembly source
+    --no-lint-ctypes   Suppress warnings for possibly incorrect ctype usage
+    --no-trans         Run all passes except translation; no output
+    --no-verify        Suppress LLVM verification step (slight speedup)
+                       (see http://llvm.org/docs/Passes.html for detail)
+    -O                 Equivalent to --opt-level=2
+    -o <filename>      Write output to <filename>
+    --opt-level <lvl>  Optimize with possible levels 0-3
+    --out-dir <dir>    Write output to compiler-chosen filename in <dir>
+    --parse-only       Parse only; do not compile, assemble, or link
+    --pretty [type]    Pretty-print the input instead of compiling;
+                       valid types are: normal (un-annotated source), 
+                       expanded (crates expanded), typed (crates expanded,
+                       with type annotations), or identified (fully
+                       parenthesized, AST nodes and blocks with IDs)
+    -S                 Compile only; do not assemble or link
+    --save-temps       Write intermediate files (.bc, .opt.bc, .o)
+                       in addition to normal output
+    --static           Use or produce static libraries or binaries
+    --stats            Print compilation statistics
+    --sysroot <path>   Override the system root
+    --test             Build a test harness
+    --target <triple>  Target cpu-manufacturer-kernel[-os] to compile for
+                       (default: host triple)
+                       (see http://sources.redhat.com/autobook/autobook/
+                       autobook_17.html for detail)
 
-    -o <filename>      write output to <filename>
-    --out-dir <dir>    write output to compiler-chosen filename in <dir>
-    --lib              compile a library crate
-    --bin              compile an executable crate (default)
-    --static           use or produce static libraries
-    --pretty [type]    pretty-print the input instead of compiling
-    --ls               list the symbols defined by a crate file
-    -L <path>          add a directory to the library search path
-    --no-verify        suppress LLVM verification step (slight speedup)
-    --parse-only       parse only; do not compile, assemble, or link
-    --no-trans         run all passes except translation; no output
-    -g                 produce debug info
-    --opt-level <lvl>  optimize with possible levels 0-3
-    -O                 equivalent to --opt-level=2
-    -S                 compile only; do not assemble or link
-    --no-asm-comments  do not add comments into the assembly source
-    -c                 compile and assemble, but do not link
-    --emit-llvm        produce an LLVM bitcode file
-    --save-temps       write intermediate files in addition to normal output
-    --stats            gather and report various compilation statistics
-    --cfg <cfgspec>    configure the compilation environment
-    --time-passes      time the individual phases of the compiler
-    --time-llvm-passes time the individual phases of the LLVM backend
-    --sysroot <path>   override the system root
-    --target <triple>  target to compile for (default: host triple)
-    --test             build test harness
-    --gc               garbage collect shared data (experimental/temporary)
+    --time-passes      Time the individual phases of the compiler
+    --time-llvm-passes Time the individual phases of the LLVM backend
+    -v --version       Print version info and exit
     --warn-unused-imports
-                       warn about unnecessary imports
-    --no-lint-ctypes   suppress lint-style ctypes usage check
+                       Warn about unnecessary imports
 
 ");
 }
