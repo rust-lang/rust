@@ -64,7 +64,6 @@ export
    any,
    map,
    bytes_iter,
-   iter_chars,
    chars_iter,
    words_iter,
    lines_iter,
@@ -591,7 +590,7 @@ fn split_func(ss: str, sepfn: fn(cc: char)->bool) -> [str] {
     let accum: str = "";
     let ends_with_sep: bool = false;
 
-    str::iter_chars(ss, {|cc| if sepfn(cc) {
+    chars_iter(ss, {|cc| if sepfn(cc) {
             vv += [accum];
             accum = "";
             ends_with_sep = true;
@@ -678,7 +677,7 @@ FIXME: rewrite with map
 */
 fn to_lower(s: str) -> str {
     let outstr = "";
-    iter_chars(s) { |c|
+    chars_iter(s) { |c|
         push_char(outstr, char::to_lower(c));
     }
     ret outstr;
@@ -693,7 +692,7 @@ FIXME: rewrite with map
 */
 fn to_upper(s: str) -> str {
     let outstr = "";
-    iter_chars(s) { |c|
+    chars_iter(s) { |c|
         push_char(outstr, char::to_upper(c));
     }
     ret outstr;
@@ -808,7 +807,7 @@ Apply a function to each character
 fn map(ss: str, ff: fn(char) -> char) -> str {
     let result = "";
 
-    str::iter_chars(ss, {|cc|
+    chars_iter(ss, {|cc|
         str::push_char(result, ff(cc));
     });
 
@@ -833,30 +832,17 @@ fn bytes_iter(ss: str, it: fn(u8)) {
 }
 
 /*
-Function: iter_chars
+Function: chars_iter
 
 Iterate over the characters in a string
-
-FIXME: rename to 'chars_iter'
 */
-fn iter_chars(s: str, it: fn(char)) {
+fn chars_iter(s: str, it: fn(char)) {
     let pos = 0u, len = byte_len(s);
     while (pos < len) {
         let {ch, next} = char_range_at(s, pos);
         pos = next;
         it(ch);
     }
-}
-
-/*
-Function: chars_iter
-
-Iterate over the characters in a string
-
-FIXME: A synonym to iter_chars
-*/
-fn chars_iter(ss: str, it: fn(char)) {
-    iter_chars(ss, it)
 }
 
 /*
@@ -1843,21 +1829,6 @@ mod tests {
         assert contains("", "");
         assert !contains("abcde", "def");
         assert !contains("", "a");
-    }
-
-    #[test]
-    fn test_iter_chars() {
-        let i = 0;
-        iter_chars("x\u03c0y") {|ch|
-            alt i {
-              0 { assert ch == 'x'; }
-              1 { assert ch == '\u03c0'; }
-              2 { assert ch == 'y'; }
-            }
-            i += 1;
-        }
-
-        iter_chars("") {|_ch| fail; } // should not fail
     }
 
     #[test]
