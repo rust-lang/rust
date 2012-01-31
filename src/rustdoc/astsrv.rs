@@ -100,14 +100,12 @@ fn should_prune_unconfigured_items() {
 }
 
 #[test]
-#[ignore]
 fn srv_should_build_ast_map() {
-    // FIXME
-    /*let source = "fn a() { }";
+    let source = "fn a() { }";
     let srv = mk_srv_from_str(source);
     exec(srv) {|ctxt|
         assert ctxt.ast_map.size() != 0u
-    };*/
+    };
 }
 
 #[test]
