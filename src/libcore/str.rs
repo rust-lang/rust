@@ -12,9 +12,7 @@ For some heavy-duty uses, we recommend trying std::rope.
 export
    // Creating a string
    from_bytes,
-   unsafe_from_bytes,
    from_byte,
-   unsafe_from_byte,
    //push_utf8_bytes,
    from_char,
    from_chars,
@@ -120,36 +118,10 @@ Function: from_bytes
 
 Convert a vector of bytes to a UTF-8 string.  Fails if invalid UTF-8.
 */
-fn from_bytes(vv: [u8]) -> str {
+fn from_bytes(vv: [u8]) -> str unsafe {
    assert is_utf8(vv);
-   ret unsafe_from_bytes(vv);
+   ret unsafe::from_bytes(vv);
 }
-
-/*
-Function: unsafe_from_bytes
-
-Converts a vector of bytes to a string. Does not verify that the
-vector contains valid UTF-8.
-
-FIXME: stop exporting
-*/
-fn unsafe_from_bytes(v: [const u8]) -> str unsafe {
-    let vcopy: [u8] = v + [0u8];
-    let scopy: str = unsafe::reinterpret_cast(vcopy);
-    unsafe::leak(vcopy);
-    ret scopy;
-}
-
-/*
-Function: unsafe_from_byte
-
-Converts a byte to a string. Does not verify that the byte is
-valid UTF-8.
-
-FIXME: stop exporting
-*/
-fn unsafe_from_byte(u: u8) -> str { unsafe_from_bytes([u]) }
-
 
 /*
 Function: from_byte
@@ -211,6 +183,7 @@ fn from_chars(chs: [char]) -> str {
     ret buf;
 }
 
+// FIXME: not unsafe now
 /*
 Function: from_cstr
 
@@ -413,9 +386,9 @@ Converts a string to a vector of bytes. The result vector is not
 null-terminated.
 */
 fn bytes(s: str) -> [u8] unsafe {
-    let v = unsafe::reinterpret_cast(s);
+    let v = ::unsafe::reinterpret_cast(s);
     let vcopy = vec::slice(v, 0u, vec::len(v) - 1u);
-    unsafe::leak(v);
+    ::unsafe::leak(v);
     ret vcopy;
 }
 
@@ -492,12 +465,12 @@ fn slice(s: str, begin: uint, end: uint) -> str unsafe {
     assert (begin <= end);
     assert (end <= byte_len(s));
 
-    let v: [u8] = unsafe::reinterpret_cast(s);
+    let v: [u8] = ::unsafe::reinterpret_cast(s);
     let v2 = vec::slice(v, begin, end);
-    unsafe::leak(v);
+    ::unsafe::leak(v);
     v2 += [0u8];
-    let s2: str = unsafe::reinterpret_cast(v2);
-    unsafe::leak(v2);
+    let s2: str = ::unsafe::reinterpret_cast(v2);
+    ::unsafe::leak(v2);
     ret s2;
 }
 
@@ -1093,9 +1066,9 @@ Returns the length in bytes of a string
 FIXME: rename to 'len_bytes'?
 */
 pure fn byte_len(s: str) -> uint unsafe {
-    let v: [u8] = unsafe::reinterpret_cast(s);
+    let v: [u8] = ::unsafe::reinterpret_cast(s);
     let vlen = vec::len(v);
-    unsafe::leak(v);
+    ::unsafe::leak(v);
     // There should always be a null terminator
     assert (vlen > 0u);
     ret vlen - 1u;
@@ -1371,7 +1344,7 @@ const tag_six_b: uint = 252u;
 // no guarantee that the string is rooted). Instead, use as_buf below.
 unsafe fn buf(s: str) -> sbuf {
     let saddr = ptr::addr_of(s);
-    let vaddr: *[u8] = unsafe::reinterpret_cast(saddr);
+    let vaddr: *[u8] = ::unsafe::reinterpret_cast(saddr);
     let buf = vec::to_ptr(*vaddr);
     ret buf;
 }
@@ -1397,6 +1370,38 @@ Type: sbuf
 An unsafe buffer of bytes. Corresponds to a C char pointer.
 */
 type sbuf = *u8;
+
+mod unsafe {
+   export
+      // UNSAFE
+      from_bytes,
+      from_byte;
+
+   /*
+   Function: unsafe::from_bytes
+
+   Converts a vector of bytes to a string. Does not verify that the
+   vector contains valid UTF-8.
+
+   FIXME: stop exporting
+   */
+   unsafe fn from_bytes(v: [const u8]) -> str unsafe {
+       let vcopy: [u8] = v + [0u8];
+       let scopy: str = ::unsafe::reinterpret_cast(vcopy);
+       ::unsafe::leak(vcopy);
+       ret scopy;
+   }
+
+   /*
+   Function: unsafe::from_byte
+
+   Converts a byte to a string. Does not verify that the byte is
+   valid UTF-8.
+
+   FIXME: stop exporting
+   */
+   unsafe fn from_byte(u: u8) -> str { unsafe::from_bytes([u]) }
+}
 
 
 #[cfg(test)]
@@ -1771,9 +1776,9 @@ mod tests {
     }
 
     #[test]
-    fn test_unsafe_from_bytes() {
+    fn test_unsafe_from_bytes() unsafe {
         let a = [65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8];
-        let b = unsafe_from_bytes(a);
+        let b = unsafe::from_bytes(a);
         assert (b == "AAAAAAA");
     }
 
