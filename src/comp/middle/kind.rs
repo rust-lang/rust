@@ -142,7 +142,9 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
           some(ex) {
             // All noncopyable fields must be overridden
             let t = ty::expr_ty(cx.tcx, ex);
-            let ty_fields = alt ty::struct(cx.tcx, t) { ty::ty_rec(f) { f } };
+            let ty_fields = alt ty::struct(cx.tcx, t) { ty::ty_rec(f) { f }
+              _ { cx.tcx.sess.span_bug(ex.span,
+                     "Bad expr type in record"); } };
             for tf in ty_fields {
                 if !vec::any(fields, {|f| f.node.ident == tf.ident}) &&
                     !ty::kind_can_be_copied(ty::type_kind(cx.tcx, tf.mt.ty)) {

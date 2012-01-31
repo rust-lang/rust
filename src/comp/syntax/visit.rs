@@ -165,7 +165,6 @@ fn visit_ty<E>(t: @ty, e: E, v: vt<E>) {
         v.visit_ty(decl.output, e, v);
       }
       ty_path(p, _) { visit_path(p, e, v); }
-      ty_type {/* no-op */ }
       ty_constr(t, cs) {
         v.visit_ty(t, e, v);
         for tc: @spanned<constr_general_<@path, node_id>> in cs {

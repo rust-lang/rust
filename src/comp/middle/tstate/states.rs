@@ -215,6 +215,8 @@ fn find_pre_post_state_exprs(fcx: fn_ctxt, pres: prestate, id: node_id,
 
 fn find_pre_post_state_loop(fcx: fn_ctxt, pres: prestate, l: @local,
                             index: @expr, body: blk, id: node_id) -> bool {
+    // I'm confused about this -- how does the poststate for the body
+    // ever grow larger? It seems like it can't?
     let loop_pres = intersect_states(pres, block_poststate(fcx.ccx, body));
 
     let changed =
@@ -224,10 +226,9 @@ fn find_pre_post_state_loop(fcx: fn_ctxt, pres: prestate, l: @local,
     // Make sure the index vars are considered initialized
     // in the body
     let index_post = tritv_clone(expr_poststate(fcx.ccx, index));
-    pat_bindings(pat_util::normalize_pat(fcx.ccx.tcx, l.node.pat)) {|p|
-        let ident = alt p.node
-           { pat_ident(name, _) { path_to_ident(name) } };
-        set_in_poststate_ident(fcx, p.id, ident, index_post);
+    pat_bindings(pat_util::normalize_pat(fcx.ccx.tcx, l.node.pat))
+      {|p_id, _s, n|
+       set_in_poststate_ident(fcx, p_id, path_to_ident(n), index_post);
     };
 
     changed |= find_pre_post_state_block(fcx, index_post, body);

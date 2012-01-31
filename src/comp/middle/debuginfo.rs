@@ -12,6 +12,7 @@ import codemap::span;
 import ast::ty;
 import pat_util::*;
 import util::ppaux::ty_to_str;
+import driver::session::session;
 
 export create_local_var;
 export create_function;
@@ -249,8 +250,8 @@ fn create_block(cx: @block_ctxt) -> @metadata<block_md> {
     }*/
 
     let parent = alt cx.parent {
-      parent_none { create_function(cx.fcx).node }
-      parent_some(bcx) { create_block(bcx).node }
+        parent_none { create_function(cx.fcx).node }
+        parent_some(bcx) { create_block(bcx).node }
     };
     let file_node = create_file(bcx_ccx(cx), fname);
     let unique_id = alt cache.find(LexicalBlockTag) {
@@ -306,6 +307,8 @@ fn create_basic_type(cx: @crate_ctxt, t: ty::t, ty: @ast::ty)
         ast::ty_f32 {("f32", size_and_align_of::<f32>(), DW_ATE_float)}
         ast::ty_f64 {("f64", size_and_align_of::<f64>(), DW_ATE_float)}
       }}
+      _ { cx.tcx.sess.span_bug(ty.span,
+             "create_basic_type: unhandled type"); }
     };
 
     let fname = filename_from_span(cx, ty.span);
@@ -481,15 +484,15 @@ fn create_composite_type(type_tag: int, name: str, file: ValueRef, line: int,
     ret llmdnode(lldata);
 }
 
-fn create_vec(cx: @crate_ctxt, vec_t: ty::t, elem_t: ty::t, vec_ty: @ast::ty)
+fn create_vec(cx: @crate_ctxt, vec_t: ty::t, elem_t: ty::t,
+              vec_ty_span: codemap::span, elem_ty: @ast::ty)
     -> @metadata<tydesc_md> {
-    let fname = filename_from_span(cx, vec_ty.span);
+    let fname = filename_from_span(cx, vec_ty_span);
     let file_node = create_file(cx, fname);
-    let elem_ty = alt vec_ty.node { ast::ty_vec(mt) { mt.ty } };
     let elem_ty_md = create_ty(cx, elem_t, elem_ty);
     let tcx = ccx_tcx(cx);
     let scx = create_structure(file_node, ty_to_str(tcx, vec_t), 0);
-    let uint_ty = @{node: ast::ty_uint(ast::ty_u), span: vec_ty.span};
+    let uint_ty = @{node: ast::ty_uint(ast::ty_u), span: vec_ty_span};
     let size_t_type = create_basic_type(cx, ty::mk_uint(tcx), uint_ty);
     add_member(scx, "fill", 0, sys::size_of::<ctypes::size_t>() as int,
                sys::align_of::<ctypes::size_t>() as int, size_t_type.node);
@@ -516,12 +519,14 @@ fn member_size_and_align(ty: @ast::ty) -> (int, int) {
         ast::ty_i8 { size_and_align_of::<i8>() }
         ast::ty_i16 { size_and_align_of::<i16>() }
         ast::ty_i32 { size_and_align_of::<i32>() }
+        ast::ty_i64 { size_and_align_of::<i64>() }
       }}
       ast::ty_uint(m) { alt m {
         ast::ty_u { size_and_align_of::<uint>() }
         ast::ty_u8 { size_and_align_of::<i8>() }
         ast::ty_u16 { size_and_align_of::<u16>() }
         ast::ty_u32 { size_and_align_of::<u32>() }
+        ast::ty_u64 { size_and_align_of::<u64>() }
       }}
       ast::ty_float(m) { alt m {
         ast::ty_f { size_and_align_of::<float>() }
@@ -542,6 +547,7 @@ fn member_size_and_align(ty: @ast::ty) -> (int, int) {
       ast::ty_vec(_) {
         size_and_align_of::<ctypes::uintptr_t>()
       }
+      _ { fail "member_size_and_align: can't handle this type"; }
     }
 }
 
@@ -578,6 +584,9 @@ fn create_ty(cx: @crate_ctxt, t: ty::t, ty: @ast::ty)
           }
           ty::ty_vec(mt) { ast::ty_vec({ty: t_to_ty(cx, mt.ty, span),
                                         mut: mt.mut}) }
+          _ {
+            cx.tcx.sess.span_bug(span, "t_to_ty: Can't handle this type");
+          }
         };
         ret @{node: ty, span: span};
     }
@@ -586,6 +595,7 @@ fn create_ty(cx: @crate_ctxt, t: ty::t, ty: @ast::ty)
       ast::ty_box(mt) {
         let inner_t = alt ty::struct(ccx_tcx(cx), t) {
           ty::ty_box(boxed) { boxed.ty }
+          _ { cx.tcx.sess.span_bug(ty.span, "t_to_ty was incoherent"); }
         };
         let md = create_ty(cx, inner_t, mt.ty);
         let box = create_boxed_type(cx, t, inner_t, ty.span, md);
@@ -595,6 +605,8 @@ fn create_ty(cx: @crate_ctxt, t: ty::t, ty: @ast::ty)
       ast::ty_uniq(mt) {
         let inner_t = alt ty::struct(ccx_tcx(cx), t) {
           ty::ty_uniq(boxed) { boxed.ty }
+          // Hoping we'll have a way to eliminate this check soon.
+          _ { cx.tcx.sess.span_bug(ty.span, "t_to_ty was incoherent"); }
         };
         let md = create_ty(cx, inner_t, mt.ty);
         ret create_pointer_type(cx, t, ty.span, md);
@@ -611,7 +623,8 @@ fn create_ty(cx: @crate_ctxt, t: ty::t, ty: @ast::ty)
 
       ast::ty_vec(mt) {
         let inner_t = ty::sequence_element_type(ccx_tcx(cx), t);
-        let v = create_vec(cx, t, inner_t, ty);
+        let inner_ast_t = t_to_ty(cx, inner_t, mt.ty.span);
+        let v = create_vec(cx, t, inner_t, ty.span, inner_ast_t);
         ret create_pointer_type(cx, t, ty.span, v);
       }
 
@@ -650,15 +663,17 @@ fn create_local_var(bcx: @block_ctxt, local: @ast::local)
     let name = path_to_ident(alt pat_util::normalize_pat(bcx_tcx(bcx),
                                            local.node.pat).node {
       ast::pat_ident(ident, _) { ident /*XXX deal w/ optional node binding*/ }
-    });
+      _ { bcx_tcx(bcx).sess.span_bug(local.span, "create_local_var: \
+             weird pattern in local"); }
+     });
     let loc = codemap::lookup_char_pos(cx.sess.codemap,
                                        local.span.lo);
     let ty = base::node_id_type(cx, local.node.id);
     let tymd = create_ty(cx, ty, local.node.ty);
     let filemd = create_file(cx, loc.filename);
     let context = alt bcx.parent {
-      parent_none { create_function(bcx.fcx).node }
-      parent_some(_) { create_block(bcx).node }
+        parent_none { create_function(bcx.fcx).node }
+        parent_some(_) { create_block(bcx).node }
     };
     let mdnode = create_var(tg, context, name, filemd.node,
                             loc.line as int, tymd.node);
@@ -667,9 +682,15 @@ fn create_local_var(bcx: @block_ctxt, local: @ast::local)
 
     let llptr = alt bcx.fcx.lllocals.find(local.node.id) {
       option::some(local_mem(v)) { v }
+      option::some(_) {
+        bcx_tcx(bcx).sess.span_bug(local.span, "local is bound to \
+                something weird");
+      }
       option::none {
         alt bcx.fcx.lllocals.get(local.node.pat.id) {
           local_imm(v) { v }
+          _ { bcx_tcx(bcx).sess.span_bug(local.span, "local is bound to \
+                something weird"); }
         }
       }
     };
@@ -745,15 +766,21 @@ fn create_function(fcx: @fn_ctxt) -> @metadata<subprogram_md> {
           ast::item_fn(decl, _, _) | ast::item_res(decl, _, _, _, _) {
             (item.ident, decl.output, item.id)
           }
+          _ { fcx_tcx(fcx).sess.span_bug(item.span, "create_function: item \
+                bound to non-function"); }
         }
       }
       ast_map::node_method(method) {
           (method.ident, method.decl.output, method.id)
       }
       ast_map::node_res_ctor(item) {
-        alt item.node { ast::item_res(decl, _, _, _, ctor_id) {
-          (item.ident, decl.output, ctor_id)
-        }}
+        alt item.node {
+            ast::item_res(decl, _, _, _, ctor_id) {
+              (item.ident, decl.output, ctor_id)
+            }
+            _ { fcx_tcx(fcx).sess.span_bug(item.span, "create_function: \
+                  expected an item_res here"); }
+          }
       }
       ast_map::node_expr(expr) {
         alt expr.node {
@@ -763,8 +790,12 @@ fn create_function(fcx: @fn_ctxt) -> @metadata<subprogram_md> {
           ast::expr_fn_block(decl, _) {
             (dbg_cx.names("fn"), decl.output, expr.id)
           }
+          _ { fcx_tcx(fcx).sess.span_bug(expr.span, "create_function: \
+                  expected an expr_fn or fn_block here"); }
         }
       }
+      _ { fcx_tcx(fcx).sess.bug("create_function: unexpected \
+            sort of node"); }
     };
 
     log(debug, ident);

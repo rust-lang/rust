@@ -50,6 +50,9 @@ fn get_fn_sig(srv: astsrv::srv, fn_id: doc::ast_id) -> option<str> {
           }) {
             some(pprust::fun_to_str(decl, ident, []))
           }
+          _ {
+            fail "get_fn_sig: undocumented invariant";
+          }
         }
     }
 }
@@ -87,6 +90,7 @@ fn get_ret_ty(srv: astsrv::srv, fn_id: doc::ast_id) -> option<str> {
           }) {
             ret_ty_to_str(decl)
           }
+          _ { fail "get_ret_ty: undocumented invariant"; }
         }
     }
 }
@@ -145,6 +149,9 @@ fn get_arg_tys(srv: astsrv::srv, fn_id: doc::ast_id) -> [(str, str)] {
           }) {
             decl_arg_tys(decl)
           }
+          _ {
+            fail "get_arg_tys: undocumented invariant";
+          }
         }
     }
 }
@@ -179,6 +186,9 @@ fn fold_const(
                 node: ast::item_const(ty, _), _
               }) {
                 pprust::ty_to_str(ty)
+              }
+              _ {
+                fail "fold_const: undocumented invariant";
               }
             }
         })
@@ -215,6 +225,7 @@ fn fold_enum(
 
                     pprust::variant_to_str(ast_variant)
                   }
+                  _ { fail "fold_enum: undocumented invariant"; }
                 }
             };
 
@@ -251,6 +262,7 @@ fn fold_res(
               }) {
                 pprust::res_to_str(decl, doc.name, [])
               }
+              _ { fail "fold_res: undocumented invariant"; }
             }
         })
         with doc
@@ -336,8 +348,10 @@ fn get_method_ret_ty(
                 some(method) {
                     ret_ty_to_str(method.decl)
                 }
+                _ { fail "get_method_ret_ty: undocumented invariant"; }
             }
           }
+          _ { fail "get_method_ret_ty: undocumented invariant"; }
         }
     }
 }
@@ -358,8 +372,10 @@ fn get_method_sig(
                 some(method) {
                     some(pprust::fun_to_str(method.decl, method.ident, []))
                 }
+                _ { fail "get_method_ret_sig: undocumented invariant"; }
             }
           }
+          _ { fail "get_method_ret_sig: undocumented invariant"; }
         }
     }
 }
@@ -396,8 +412,10 @@ fn get_method_arg_tys(
                 some(method) {
                     decl_arg_tys(method.decl)
                 }
+                _ { fail "get_method_arg_tys: undocumented invariant"; }
             }
           }
+          _ { fail "get_method_arg_tys: undocumented invariant"; }
         }
     }
 }

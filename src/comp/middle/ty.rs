@@ -42,6 +42,7 @@ export fold_ty;
 export field;
 export field_idx;
 export get_field;
+export get_fields;
 export fm_general;
 export get_element_type;
 export idx_nil;
@@ -84,7 +85,6 @@ export mk_var;
 export mk_opaque_closure_ptr;
 export mk_named;
 export gen_ty;
-export mode;
 export mt;
 export node_type_table;
 export pat_ty;
@@ -125,7 +125,6 @@ export ty_ptr;
 export ty_rec;
 export ty_enum;
 export ty_tup;
-export ty_type;
 export ty_send_type;
 export ty_uint;
 export ty_uniq;
@@ -177,7 +176,6 @@ export variant_info;
 export walk_ty;
 export occurs_check_fails;
 export closure_kind;
-export ck_any;
 export ck_block;
 export ck_box;
 export ck_uniq;
@@ -186,7 +184,10 @@ export param_bounds_to_kind;
 
 // Data types
 
-type arg = {mode: mode, ty: t};
+// TODO: really should be a separate type, or a refinement,
+// so that we don't have to handle the mode_infer case after
+// typeck. but that's too hard right now.
+type arg = {mode: ast::mode, ty: t};
 
 type field = {ident: ast::ident, mt: mt};
 
@@ -232,7 +233,6 @@ type raw_t = {struct: sty,
 type t = uint;
 
 enum closure_kind {
-    ck_any,
     ck_block,
     ck_box,
     ck_uniq,
@@ -458,7 +458,7 @@ fn mk_raw_ty(cx: ctxt, st: sty) -> @raw_t {
     }
     alt st {
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
-      ty_str | ty_send_type | ty_type | ty_native(_) |
+      ty_str | ty_type | ty_send_type | ty_native(_) |
       ty_opaque_closure_ptr(_) {
         /* no-op */
       }
@@ -629,7 +629,7 @@ pure fn struct_raw(cx: ctxt, typ: t) -> sty {
     interner::get(*cx.ts, typ).struct
 }
 
-// Returns struact(cx, typ) but replaces all occurences of platform
+// Returns struct(cx, typ) but replaces all occurences of platform
 // dependent primitive types with their machine type equivalent
 pure fn mach_struct(cx: ctxt, cfg: @session::config, typ: t) -> sty {
     alt interner::get(*cx.ts, typ).struct {
@@ -678,6 +678,9 @@ fn walk_ty(cx: ctxt, ty: t, f: fn(t)) {
       }
       ty_constr(sub, _) { walk_ty(cx, sub, f); }
       ty_uniq(tm) { walk_ty(cx, tm.ty, f); }
+      // precondition?
+      ty_named(_,_) { cx.sess.bug("walk_ty: should not see a ty_named \
+                        here"); }
     }
     f(ty);
 }
@@ -699,7 +702,7 @@ fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
     }
     alt interner::get(*cx.ts, ty).struct {
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
-      ty_str | ty_send_type | ty_type | ty_native(_) |
+      ty_str | ty_type | ty_send_type | ty_native(_) |
       ty_opaque_closure_ptr(_) {
         /* no-op */
       }
@@ -1033,6 +1036,7 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
           param_bounds_to_kind(cx.ty_param_bounds.get(did.node))
       }
       ty_constr(t, _) { type_kind(cx, t) }
+      _ { cx.sess.bug("Bad type in type_kind"); }
     };
 
     cx.kind_cache.insert(ty, result);
@@ -1192,9 +1196,14 @@ fn type_is_pod(cx: ctxt, ty: t) -> bool {
       }
       ty_constr(subt, _) { result = type_is_pod(cx, subt); }
       ty_var(_) {
-        fail "ty_var in type_is_pod";
+          cx.sess.bug("ty_var in type_is_pod");
       }
       ty_param(_, _) { result = false; }
+      ty_opaque_closure_ptr(_) { result = true; }
+      ty_named(_,_) {
+          cx.sess.bug("ty_named in type_is_pod");
+      }
+
     }
 
     ret result;
@@ -1577,12 +1586,17 @@ fn field_idx(id: ast::ident, fields: [field]) -> option::t<uint> {
 }
 
 fn get_field(tcx: ctxt, rec_ty: t, id: ast::ident) -> field {
+    alt vec::find(get_fields(tcx, rec_ty), {|f| str::eq(f.ident, id) }) {
+         some(f) { ret f; }
+         _ { tcx.sess.bug(#fmt("get_field: bad field id %s", id)); }
+    }
+}
+
+// TODO: could have a precondition instead of failing
+fn get_fields(tcx:ctxt, rec_ty:t) -> [field] {
     alt struct(tcx, rec_ty) {
-      ty_rec(fields) {
-        alt vec::find(fields, {|f| str::eq(f.ident, id) }) {
-            some(f) { ret f; }
-        }
-      }
+       ty::ty_rec(fields) { fields }
+       _ { tcx.sess.bug("get_fields called on non-record type"); }
     }
 }
 
@@ -1669,6 +1683,8 @@ mod unify {
              variance: variance) -> union_result {
         let vb = alt cx.st {
             in_bindings(vb) { vb }
+            _ { cx.tcx.sess.bug("Someone forgot to document an invariant \
+                         in union"); }
         };
         ufind::grow(vb.sets, math::max(set_a, set_b) + 1u);
         let root_a = ufind::find(vb.sets, set_a);
@@ -1719,7 +1735,10 @@ mod unify {
     fn record_var_binding(
         cx: @ctxt, key: int, typ: t, variance: variance) -> result {
 
-        let vb = alt cx.st { in_bindings(vb) { vb } };
+        let vb = alt cx.st { in_bindings(vb) { vb }
+            _ { cx.tcx.sess.bug("Someone forgot to document an invariant \
+                 in record_var_binding");  }
+        };
         ufind::grow(vb.sets, (key as uint) + 1u);
         let root = ufind::find(vb.sets, key as uint);
         let result_type = typ;
@@ -2060,7 +2079,7 @@ mod unify {
             ret ures_ok(actual);
           }
           ty::ty_bool | ty::ty_int(_) | ty_uint(_) | ty_float(_) |
-          ty::ty_str | ty::ty_type | ty::ty_send_type {
+          ty::ty_str | ty::ty_send_type {
             ret struct_cmp(cx, expected, actual);
           }
           ty::ty_native(ex_id) {
@@ -2333,6 +2352,7 @@ mod unify {
               }
             }
           }
+          _ { cx.tcx.sess.bug("unify: unexpected type"); }
         }
     }
     fn unify(expected: t, actual: t, st: unify_style,
@@ -2497,6 +2517,7 @@ fn def_has_ty_params(def: ast::def) -> bool {
       ast::def_ty_param(_, _) | ast::def_binding(_) | ast::def_use(_) |
       ast::def_native_ty(_) | ast::def_self(_) | ast::def_ty(_) { false }
       ast::def_fn(_, _) | ast::def_variant(_, _) { true }
+      _ { false } // ????
     }
 }
 
@@ -2552,6 +2573,7 @@ fn enum_variants(cx: ctxt, id: ast::def_id) -> @[variant_info] {
                     // FIXME: issue #1417
                     disr_val = alt syntax::ast_util::eval_const_expr(ex) {
                       ast_util::const_int(val) {val as int}
+                      _ { cx.sess.bug("tag_variants: bad disr expr"); }
                     }
                   }
                   _ {disr_val += 1;}
@@ -2564,6 +2586,7 @@ fn enum_variants(cx: ctxt, id: ast::def_id) -> @[variant_info] {
                  }
             })
           }
+          _ { cx.sess.bug("tag_variants: id not bound to an enum"); }
         }
     };
     cx.enum_var_cache.insert(id, result);

@@ -582,12 +582,14 @@ fn expr_to_constr_arg(tcx: ty::ctxt, e: @expr) -> @constr_arg_use {
             ret @respan(p.span,
                         carg_ident({ident: p.node.idents[0], node: id.node}));
           }
-          some(_) {
-            tcx.sess.bug("exprs_to_constr_args: non-local variable " +
-                             "as pred arg");
+          some(what) {
+              tcx.sess.span_bug(e.span,
+                 #fmt("exprs_to_constr_args: non-local variable %? \
+                                     as pred arg", what));
           }
           none {
-            tcx.sess.bug("exprs_to_constr_args: NONE " + "as pred arg");
+              tcx.sess.span_bug(e.span,
+                 "exprs_to_constr_args: unbound id as pred arg");
 
           }
         }
@@ -1055,10 +1057,8 @@ type binding = {lhs: [inst], rhs: option::t<initializer>};
 
 fn local_to_bindings(tcx: ty::ctxt, loc: @local) -> binding {
     let lhs = [];
-    pat_bindings(pat_util::normalize_pat(tcx, loc.node.pat)) {|p|
-            let ident = alt p.node
-               { pat_ident(name, _) { path_to_ident(name) } };
-        lhs += [{ident: ident, node: p.id}];
+    pat_bindings(pat_util::normalize_pat(tcx, loc.node.pat)) {|p_id, _s, name|
+        lhs += [{ident: path_to_ident(name), node: p_id}];
     };
     {lhs: lhs, rhs: loc.node.init}
 }
@@ -1070,7 +1070,7 @@ fn locals_to_bindings(tcx: ty::ctxt,
     ret rslt;
 }
 
-fn callee_modes(fcx: fn_ctxt, callee: node_id) -> [ty::mode] {
+fn callee_modes(fcx: fn_ctxt, callee: node_id) -> [mode] {
     let ty =
         ty::type_autoderef(fcx.ccx.tcx,
                            ty::node_id_to_type(fcx.ccx.tcx, callee));
@@ -1089,7 +1089,7 @@ fn callee_modes(fcx: fn_ctxt, callee: node_id) -> [ty::mode] {
 }
 
 fn callee_arg_init_ops(fcx: fn_ctxt, callee: node_id) -> [init_op] {
-    fn mode_to_op(m: ty::mode) -> init_op {
+    fn mode_to_op(m: mode) -> init_op {
         alt m { by_move { init_move } _ { init_assign } }
     }
     vec::map(callee_modes(fcx, callee), mode_to_op)

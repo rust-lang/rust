@@ -6,10 +6,12 @@ import syntax::visit;
 import visit::vt;
 import core::{vec, option};
 import std::list;
+import std::util::unreachable;
 import option::{some, none, is_none};
 import list::list;
 import driver::session::session;
 import pat_util::*;
+import util::ppaux::ty_to_str;
 
 // This is not an alias-analyser (though it would merit from becoming one, or
 // getting input from one, to be more precise). It is a pass that checks
@@ -575,6 +577,11 @@ fn copy_is_expensive(tcx: ty::ctxt, ty: ty::t) -> bool {
             for f in fs { sum += score_ty(tcx, f.mt.ty); }
             sum
           }
+          _ {
+            tcx.sess.warn(#fmt("score_ty: unexpected type %s",
+               ty_to_str(tcx, ty)));
+            1u // ???
+          }
         };
     }
     ret score_ty(tcx, ty) > 8u;
@@ -611,6 +618,7 @@ fn pattern_roots(tcx: ty::ctxt, mut: option::t<unsafe_ty>, pat: @ast::pat)
             let ty = ty::node_id_to_type(tcx, pat.id);
             let m = alt ty::struct(tcx, ty) {
               ty::ty_box(mt) { mt.mut != ast::imm }
+              _ { tcx.sess.span_bug(pat.span, "box pat has non-box type"); }
             },
                 c = if m  {some(contains(ty)) } else { mut };
             walk(tcx, c, p, set);
@@ -619,6 +627,7 @@ fn pattern_roots(tcx: ty::ctxt, mut: option::t<unsafe_ty>, pat: @ast::pat)
             let ty = ty::node_id_to_type(tcx, pat.id);
             let m = alt ty::struct(tcx, ty) {
               ty::ty_uniq(mt) { mt.mut != ast::imm }
+              _ { tcx.sess.span_bug(pat.span, "uniq pat has non-uniq type"); }
             },
                 c = if m { some(contains(ty)) } else { mut };
             walk(tcx, c, p, set);
@@ -672,6 +681,10 @@ fn append_invalid(dest: list<@invalid>, src: list<@invalid>,
             }
             cur = *tail;
           }
+          list::nil {
+              fail "append_invalid: stop doesn't appear to be \
+                 a postfix of src";
+          }
         }
     }
     ret dest;
@@ -685,6 +698,10 @@ fn filter_invalid(src: list<@invalid>, bs: [binding]) -> list<@invalid> {
             let p = vec::position_pred(bs, {|b| b.node_id == head.node_id});
             if !is_none(p) { out = list::cons(head, @out); }
             cur = *tail;
+          }
+          list::nil {
+            // typestate would help...
+            unreachable();
           }
         }
     }

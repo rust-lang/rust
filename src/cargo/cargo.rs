@@ -93,6 +93,7 @@ fn load_link(mis: [@ast::meta_item]) -> (option::t<str>,
                     _ { }
                 }
             }
+            _ { fail "load_link: meta items must be name-values"; }
         }
     }
     (name, vers, uuid)
@@ -135,6 +136,7 @@ fn load_pkg(filename: str) -> option::t<pkg> {
                     uuid = u;
                 }
             }
+            _ { fail "load_pkg: pkg attributes may not contain meta_words"; }
         }
     }
 

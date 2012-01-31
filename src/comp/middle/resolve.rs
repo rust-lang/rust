@@ -45,15 +45,15 @@ enum scope {
 type scopes = list<scope>;
 
 enum import_state {
-    todo(ast::node_id, ast::ident, @[ast::ident], codemap::span, scopes),
-    is_glob(@[ast::ident], scopes, codemap::span),
+    todo(ast::node_id, ast::ident, @[ast::ident], span, scopes),
+    is_glob(@[ast::ident], scopes, span),
     resolving(span),
     resolved(option::t<def>, /* value */
              option::t<def>, /* type */
              option::t<def>, /* module */
              @[@_impl], /* impls */
              /* used for reporting unused import warning */
-             ast::ident, codemap::span),
+             ast::ident, span),
 }
 
 enum glob_import_state {
@@ -83,11 +83,13 @@ fn new_ext_hash() -> ext_hash {
 }
 
 enum mod_index_entry {
-    mie_view_item(@ast::view_item),
-    mie_import_ident(node_id, codemap::span),
+    mie_view_item(ident, node_id, span),
+    mie_import_ident(node_id, span),
     mie_item(@ast::item),
     mie_native_item(@ast::native_item),
-    mie_enum_variant(/* enum item */@ast::item, /* variant index */uint),
+    mie_enum_variant(/* variant index */uint,
+                     /*parts of enum item*/ [variant],
+                    node_id, span),
 }
 
 type mod_index = hashmap<ident, list<mod_index_entry>>;
@@ -278,6 +280,8 @@ fn map_crate(e: @env, c: @ast::crate) {
                   scope_crate {
                     e.mod_map.get(ast::crate_node_id).glob_imports += [glob];
                   }
+                  _ { e.sess.span_bug(vi.span, "Unexpected scope in a glob \
+                       import"); }
                 }
             }
           }
@@ -294,6 +298,7 @@ fn resolve_imports(e: env) {
             resolve_import(e, local_def(node_id), name, *path, span, scopes);
           }
           resolved(_, _, _, _, _, _) | is_glob(_, _, _) { }
+          _ { e.sess.bug("Shouldn't see a resolving in resolve_imports"); }
         }
     };
     e.used_imports.track = false;
@@ -478,7 +483,7 @@ fn visit_fn_with_scope(e: @env, fk: visit::fn_kind, decl: ast::fn_decl,
         if is_main_name([nm]) && !e.sess.building_library {
             // This is a main function -- set it in the session
             // as the main ID
-            e.sess.main_fn = some(id);
+            e.sess.main_fn = some((id, sp));
         }
       }
       _ { /* fallthrough */ }
@@ -664,6 +669,9 @@ fn resolve_import(e: env, defid: ast::def_id, name: ast::ident,
           cons(scope_crate, _) {
             lst(id,
                 option::get(e.mod_map.get(ast::crate_node_id).m).view_items)
+          }
+          _ {
+              e.sess.bug("find_imports_after: nil or unexpected scope");
           }
         }
     }
@@ -904,6 +912,10 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
               ast::native_item_fn(decl, ty_params) {
                 ret lookup_in_fn(e, name, decl, ty_params, ns);
               }
+              _ {
+                  e.sess.span_bug(it.span, "lookup_in_scope: \
+                    scope_native_item doesn't refer to a native item");
+              }
             }
           }
           scope_bare_fn(decl, _, ty_params) |
@@ -1005,10 +1017,10 @@ fn lookup_in_ty_params(e: env, name: ident, ty_params: [ast::ty_param])
 fn lookup_in_pat(e: env, name: ident, pat: @ast::pat) -> option::t<def_id> {
     let found = none;
 
-    pat_util::pat_bindings(normalize_pat_def_map(e.def_map, pat)) {|bound|
-        let p_name = alt bound.node { ast::pat_ident(n, _) { n } };
-        if str::eq(path_to_ident(p_name), name)
-                    { found = some(local_def(bound.id)); }
+    pat_util::pat_bindings(normalize_pat_def_map(e.def_map, pat))
+     {|p_id, _sp, n|
+        if str::eq(path_to_ident(n), name)
+                    { found = some(local_def(p_id)); }
     };
     ret found;
 }
@@ -1114,6 +1126,7 @@ fn lookup_in_block(e: env, name: ident, sp: span, b: ast::blk_, pos: uint,
               _ {}
             }
           }
+          _ { e.sess.span_bug(vi.span, "Unexpected view_item in block"); }
         }
     }
     ret none;
@@ -1189,16 +1202,16 @@ fn lookup_in_mod(e: env, m: def, sp: span, name: ident, ns: namespace,
       ast::def_native_mod(defid) {
         ret lookup_in_local_native_mod(e, defid.node, sp, name, ns);
       }
+      _ {
+          // Precondition
+          e.sess.span_bug(sp, "lookup_in_mod was passed a non-mod def");
+      }
     }
 }
 
-fn found_view_item(e: env, vi: @ast::view_item) -> option::t<def> {
-    alt vi.node {
-      ast::view_item_use(_, _, id) {
-        let cnum = cstore::get_use_stmt_cnum(e.cstore, id);
-        ret some(ast::def_mod({crate: cnum, node: ast::crate_node_id}));
-      }
-    }
+fn found_view_item(e: env, id: node_id) -> def {
+    let cnum = cstore::get_use_stmt_cnum(e.cstore, id);
+    ret ast::def_mod({crate: cnum, node: ast::crate_node_id});
 }
 
 fn lookup_import(e: env, defid: def_id, ns: namespace) -> option::t<def> {
@@ -1219,6 +1232,9 @@ fn lookup_import(e: env, defid: def_id, ns: namespace) -> option::t<def> {
         }
         ret alt ns { ns_val(_) { val } ns_type { typ }
                      ns_module { md } };
+      }
+      is_glob(_,_,_) {
+          e.sess.bug("lookup_import: can't handle is_glob");
       }
     }
 }
@@ -1266,6 +1282,9 @@ fn lookup_in_globs(e: env, globs: [glob_imp_def], sp: span, id: ident,
         alt def.item.node {
           ast::view_item_import_glob(_, id) {
             if vec::member(id, e.ignored_imports) { ret none; }
+          }
+          _ {
+            e.sess.span_bug(sp, "lookup_in_globs: not a glob");
           }
         }
         alt lookup_in_mod(e, def.def, sp, name, ns, dr) {
@@ -1322,24 +1341,20 @@ fn lookup_glob_in_mod(e: env, info: @indexed_mod, sp: span, id: ident,
 fn lookup_in_mie(e: env, mie: mod_index_entry, ns: namespace) ->
    option::t<def> {
     alt mie {
-      mie_view_item(view_item) {
-        if ns == ns_module { ret found_view_item(e, view_item); }
+      mie_view_item(_, id, _) {
+         if ns == ns_module { ret some(found_view_item(e, id)); }
       }
       mie_import_ident(id, _) { ret lookup_import(e, local_def(id), ns); }
       mie_item(item) { ret found_def_item(item, ns); }
-      mie_enum_variant(item, variant_idx) {
-        alt item.node {
-          ast::item_enum(variants, _) {
-              alt ns {
-                  ns_val(_) {
-                     let vid = variants[variant_idx].node.id;
-                     ret some(ast::def_variant(local_def(item.id),
+      mie_enum_variant(variant_idx, variants, parent_id, parent_span) {
+         alt ns {
+            ns_val(_) {
+               let vid = variants[variant_idx].node.id;
+               ret some(ast::def_variant(local_def(parent_id),
                                         local_def(vid)));
-                  }
-                  _ { ret none::<def>; }
-              }
-          }
-        }
+            }
+            _ { ret none::<def>; }
+         }
       }
       mie_native_item(native_item) {
         alt native_item.node {
@@ -1374,8 +1389,8 @@ fn index_mod(md: ast::_mod) -> mod_index {
     let index = new_str_hash::<list<mod_index_entry>>();
     for it: @ast::view_item in md.view_items {
         alt it.node {
-          ast::view_item_use(ident, _, _) {
-            add_to_index(index, ident, mie_view_item(it));
+          ast::view_item_use(ident, _, id) {
+           add_to_index(index, ident, mie_view_item(ident, id, it.span));
           }
           ast::view_item_import(ident, _, id) {
             add_to_index(index, ident, mie_import_ident(id, it.span));
@@ -1405,7 +1420,8 @@ fn index_mod(md: ast::_mod) -> mod_index {
             let variant_idx: uint = 0u;
             for v: ast::variant in variants {
                 add_to_index(index, v.node.name,
-                             mie_enum_variant(it, variant_idx));
+                             mie_enum_variant(variant_idx, variants,
+                                             it.id, it.span));
                 variant_idx += 1u;
             }
           }
@@ -1418,8 +1434,9 @@ fn index_nmod(md: ast::native_mod) -> mod_index {
     let index = new_str_hash::<list<mod_index_entry>>();
     for it: @ast::view_item in md.view_items {
         alt it.node {
-          ast::view_item_use(ident, _, _) {
-            add_to_index(index, ident, mie_view_item(it));
+          ast::view_item_use(ident, _, id) {
+            add_to_index(index, ident, mie_view_item(ident, id,
+                                                     it.span));
           }
           ast::view_item_import(ident, _, id) {
             add_to_index(index, ident, mie_import_ident(id, it.span));
@@ -1431,6 +1448,7 @@ fn index_nmod(md: ast::native_mod) -> mod_index {
             }
           }
           ast::view_item_import_glob(_, _) | ast::view_item_export(_, _) { }
+          _ { /* tag exports */ }
         }
     }
     for it: @ast::native_item in md.items {
@@ -1450,6 +1468,7 @@ fn ns_for_def(d: def) -> namespace {
       ast::def_mod(_) | ast::def_native_mod(_) { ns_module }
       ast::def_ty(_) | ast::def_binding(_) | ast::def_use(_) |
       ast::def_native_ty(_) { ns_type }
+      ast::def_ty_param(_, _) { ns_type }
     }
 }
 
@@ -1529,10 +1548,10 @@ fn check_mod_name(e: env, name: ident, entries: list<mod_index_entry>) {
 
 fn mie_span(mie: mod_index_entry) -> span {
     ret alt mie {
-          mie_view_item(item) { item.span }
+          mie_view_item(_, _, span) { span }
           mie_import_ident(_, span) { span }
           mie_item(item) { item.span }
-          mie_enum_variant(item, _) { item.span }
+          mie_enum_variant(_, _, _, span) { span }
           mie_native_item(item) { item.span }
         };
 }
@@ -1559,9 +1578,8 @@ fn check_item(e: @env, i: @ast::item, &&x: (), v: vt<()>) {
 }
 
 fn check_pat(e: @env, ch: checker, p: @ast::pat) {
-    pat_util::pat_bindings(normalize_pat_def_map(e.def_map, p)) {|p|
-        let ident = path_to_ident(alt p.node { pat_ident(n, _) { n } });
-        add_name(ch, p.span, ident);
+    pat_util::pat_bindings(normalize_pat_def_map(e.def_map, p)) {|_i, p_sp, n|
+       add_name(ch, p_sp, path_to_ident(n));
     };
 }
 
@@ -1607,14 +1625,13 @@ fn check_block(e: @env, b: ast::blk, &&x: (), v: vt<()>) {
               ast::decl_local(locs) {
                 let local_values = checker(*e, "value");
                 for (_, loc) in locs {
-                        pat_util::pat_bindings
-                            (normalize_pat_def_map(e.def_map, loc.node.pat))
-                            {|p|
-                            let ident = path_to_ident(alt p.node
-                                 { pat_ident(n, _) { n } });
-                        add_name(local_values, p.span, ident);
-                        check_name(values, p.span, ident);
-                    };
+                     pat_util::pat_bindings
+                        (normalize_pat_def_map(e.def_map, loc.node.pat))
+                            {|_i, p_sp, n|
+                            let ident = path_to_ident(n);
+                            add_name(local_values, p_sp, ident);
+                            check_name(values, p_sp, ident);
+                          };
                 }
               }
               ast::decl_item(it) {
@@ -1807,8 +1824,9 @@ fn check_exports(e: @env) {
                             some(ms) {
                                 list::iter(ms) {|m|
                                    alt m {
-                                     mie_enum_variant(parent_item,_) {
-                                       if parent_item.id != parent_id {
+                                     mie_enum_variant(_, _, actual_parent_id,
+                                                     _) {
+                                       if actual_parent_id != parent_id {
                                           e.sess.span_err(vi.span,
                                            #fmt("variant %s \
                                            doesn't belong to enum %s",
@@ -1860,6 +1878,10 @@ fn find_impls_in_view_item(e: env, vi: @ast::view_item,
                            scopes);
             alt e.imports.get(id) {
               resolved(_, _, _, is, _, _) { act(is); }
+              _ {
+                  e.sess.bug("Undocumented invariant in \
+                    lookup_imported_impls");
+              }
             }
           }
           _ {}
@@ -1899,6 +1921,8 @@ fn find_impls_in_view_item(e: env, vi: @ast::view_item,
                 _ {}
               }
             }
+            _ { e.sess.span_bug(vi.span, "Undocumented invariant in \
+                  find_impls_in_view_item"); }
           }
       }
       _ {}

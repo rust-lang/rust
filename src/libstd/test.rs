@@ -398,7 +398,8 @@ mod tests {
     fn first_free_arg_should_be_a_filter() {
         let args = ["progname", "filter"];
         check (vec::is_not_empty(args));
-        let opts = alt parse_opts(args) { either::left(o) { o } };
+        let opts = alt parse_opts(args) { either::left(o) { o }
+          _ { fail "Malformed arg in first_free_arg_should_be_a_filter"; } };
         assert (str::eq("filter", option::get(opts.filter)));
     }
 
@@ -406,7 +407,8 @@ mod tests {
     fn parse_ignored_flag() {
         let args = ["progname", "filter", "--ignored"];
         check (vec::is_not_empty(args));
-        let opts = alt parse_opts(args) { either::left(o) { o } };
+        let opts = alt parse_opts(args) { either::left(o) { o }
+          _ { fail "Malformed arg in parse_ignored_flag"; } };
         assert (opts.run_ignored);
     }
 

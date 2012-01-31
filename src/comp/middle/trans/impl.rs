@@ -2,6 +2,7 @@ import core::ctypes::c_uint;
 import base::*;
 import common::*;
 import build::*;
+import driver::session::session;
 import option::{some, none};
 import syntax::{ast, ast_util};
 import metadata::csearch;
@@ -45,9 +46,12 @@ fn trans_impl(cx: @local_ctxt, name: ast::ident, methods: [@ast::method],
     for m in methods {
         alt cx.ccx.item_ids.find(m.id) {
           some(llfn) {
-            trans_fn(extend_path(sub_cx, m.ident), m.span, m.decl, m.body,
+            trans_fn(extend_path(sub_cx, m.ident), m.decl, m.body,
                      llfn, impl_self(ty::node_id_to_type(cx.ccx.tcx, id)),
                      tps + m.tps, m.id);
+          }
+          _ {
+            cx.ccx.tcx.sess.bug("Unbound id in trans_impl");
           }
         }
     }
@@ -148,6 +152,9 @@ fn trans_iface_callee(bcx: @block_ctxt, callee_id: ast::node_id,
                            T_opaque_cbox_ptr(bcx_ccx(bcx)));
     let iface_id = alt ty::struct(tcx, ty::expr_ty(tcx, base)) {
         ty::ty_iface(did, _) { did }
+        // precondition
+        _ { bcx_tcx(bcx).sess.span_bug(base.span, "base has non-iface type \
+             in trans_iface_callee"); }
     };
     trans_vtable_callee(bcx, self, dict, callee_id, iface_id, n_method)
 }
@@ -240,6 +247,10 @@ fn trans_impl_vtable(ccx: @crate_ctxt, pt: [ast::ident],
           some(m) {
             let target = ccx.item_ids.get(m.id);
             trans_impl_wrapper(ccx, new_pt + [m.ident], extra_tps, target)
+          }
+          _ {
+            ccx.tcx.sess.span_bug(it.span, "No matching method \
+               in trans_impl_vtable");
           }
         }
     });
@@ -340,6 +351,10 @@ fn dict_id(tcx: ty::ctxt, origin: typeck::dict_origin) -> dict_id {
                     d_params += [dict_param_dict(dict_id(tcx, origs[orig]))];
                     orig += 1u;
                   }
+                  _ {
+                    tcx.sess.bug("Someone forgot to document an invariant in \
+                      dict_id");
+                  }
                 }
             }
         }
@@ -347,6 +362,9 @@ fn dict_id(tcx: ty::ctxt, origin: typeck::dict_origin) -> dict_id {
       }
       typeck::dict_iface(did) {
         @{def: did, params: []}
+      }
+      _ {
+        tcx.sess.bug("Unexpected dict_param in dict_id");
       }
     }
 }
@@ -409,6 +427,9 @@ fn get_dict_ptrs(bcx: @block_ctxt, origin: typeck::dict_origin)
       }
       typeck::dict_iface(did) {
         {bcx: bcx, ptrs: [get_vtable(ccx, did)]}
+      }
+      _ {
+        bcx_tcx(bcx).sess.bug("Unexpected dict_param in get_dict_ptrs");
       }
     }
 }

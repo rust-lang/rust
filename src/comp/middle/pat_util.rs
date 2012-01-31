@@ -3,6 +3,7 @@ import syntax::ast_util;
 import syntax::ast_util::respan;
 import syntax::fold;
 import syntax::fold::*;
+import syntax::codemap::span;
 
 export normalize_arms;
 export normalize_pat;
@@ -80,10 +81,8 @@ type pat_id_map = std::map::hashmap<str, node_id>;
 // use the node_id of their namesake in the first pattern.
 fn pat_id_map(tcx: ty::ctxt, pat: @pat) -> pat_id_map {
     let map = std::map::new_str_hash::<node_id>();
-    pat_bindings(normalize_pat(tcx, pat)) {|bound|
-        let name = path_to_ident(alt bound.node
-           { pat_ident(n, _) { n } });
-        map.insert(name, bound.id);
+    pat_bindings(normalize_pat(tcx, pat)) {|p_id, _s, n|
+      map.insert(path_to_ident(n), p_id);
     };
     ret map;
 }
@@ -91,10 +90,11 @@ fn pat_id_map(tcx: ty::ctxt, pat: @pat) -> pat_id_map {
 // This does *not* normalize. The pattern should be already normalized
 // if you want to get a normalized pattern out of it.
 // Could return a constrained type in order to express that (future work)
-fn pat_bindings(pat: @pat, it: fn(@pat)) {
+fn pat_bindings(pat: @pat, it: fn(node_id, span, @path)) {
   alt pat.node {
-      pat_ident(_, option::none) { it(pat); }
-      pat_ident(_, option::some(sub)) { it(pat); pat_bindings(sub, it); }
+      pat_ident(pth, option::none) { it(pat.id, pat.span, pth); }
+      pat_ident(pth, option::some(sub)) { it(pat.id, pat.span, pth);
+        pat_bindings(sub, it); }
       pat_enum(_, sub) { for p in sub { pat_bindings(p, it); } }
       pat_rec(fields, _) { for f in fields { pat_bindings(f.pat, it); } }
       pat_tup(elts) { for elt in elts { pat_bindings(elt, it); } }
@@ -106,7 +106,7 @@ fn pat_bindings(pat: @pat, it: fn(@pat)) {
 
 fn pat_binding_ids(pat: @pat) -> [node_id] {
     let found = [];
-    pat_bindings(pat) {|b| found += [b.id]; };
+    pat_bindings(pat) {|b_id, _sp, _pt| found += [b_id]; };
     ret found;
 }
 

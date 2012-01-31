@@ -451,6 +451,12 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint]) -> [u8] {
       ty::ty_opaque_closure_ptr(_) {
         s += [shape_opaque_closure_ptr];
       }
+      ty::ty_constr(inner_t, _) {
+        s += shape_of(ccx, inner_t, ty_param_map);
+      }
+      ty::ty_named(_, _) {
+        ccx.tcx.sess.bug("shape_of: shouldn't see a ty_named");
+      }
     }
 
     ret s;
@@ -699,6 +705,7 @@ fn static_size_of_enum(cx: @crate_ctxt, t: ty::t)
         cx.enum_sizes.insert(t, max_size);
         ret max_size;
       }
+      _ { cx.tcx.sess.bug("static_size_of_enum called on non-enum"); }
     }
 }
 
@@ -778,6 +785,11 @@ fn dynamic_metrics(cx: @block_ctxt, t: ty::t) -> metrics {
         };
 
         { bcx: bcx, sz: sz, align: C_int(ccx, 1) }
+      }
+      _ {
+        // Precondition?
+        bcx_tcx(cx).sess.bug("dynamic_metrics: type has static \
+          size");
       }
     }
 }

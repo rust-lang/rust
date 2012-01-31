@@ -58,7 +58,7 @@ type session = @{targ_cfg: @config,
                  parse_sess: parse_sess,
                  codemap: codemap::codemap,
                  // For a library crate, this is always none
-                 mutable main_fn: option::t<node_id>,
+                 mutable main_fn: option::t<(node_id, codemap::span)>,
                  span_diagnostic: diagnostic::span_handler,
                  filesearch: filesearch::filesearch,
                  mutable building_library: bool,

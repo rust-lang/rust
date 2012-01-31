@@ -8,7 +8,7 @@ import syntax::print::pprust::{path_to_str, constr_args_to_str, proto_to_str};
 import syntax::{ast, ast_util};
 import middle::ast_map;
 
-fn mode_str(m: ty::mode) -> str {
+fn mode_str(m: ast::mode) -> str {
     alt m {
       ast::by_ref { "&&" }
       ast::by_val { "++" }
@@ -20,7 +20,7 @@ fn mode_str(m: ty::mode) -> str {
 }
 
 fn ty_to_str(cx: ctxt, typ: t) -> str {
-    fn fn_input_to_str(cx: ctxt, input: {mode: middle::ty::mode, ty: t}) ->
+    fn fn_input_to_str(cx: ctxt, input: {mode: ast::mode, ty: t}) ->
        str {
         let modestr = alt input.mode {
           ast::by_ref {

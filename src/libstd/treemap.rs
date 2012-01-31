@@ -66,14 +66,13 @@ Find a value based on the key
 fn find<K: copy, V: copy>(m: treemap<K, V>, k: K) -> option<V> {
     alt *m {
       empty { none }
-      node(@kk, @v, _, _) {
+      // TODO: was that an optimization?
+      node(@kk, @v, left, right) {
         if k == kk {
             some(v)
         } else if k < kk {
-
-            // Again, ugliness to unpack left and right individually.
-            alt *m { node(_, _, left, _) { find(left, k) } }
-        } else { alt *m { node(_, _, _, right) { find(right, k) } } }
+            find(left, k)
+        } else { find(right, k) }
       }
     }
 }
@@ -86,11 +85,16 @@ Visit all pairs in the map in order.
 fn traverse<K, V>(m: treemap<K, V>, f: fn(K, V)) {
     alt *m {
       empty { }
-      node(k, v, _, _) {
+      /*
+        Previously, this had what looked like redundant
+        matches to me, so I changed it. but that may be a
+        de-optimization -- tjc
+       */
+      node(k, v, left, right) {
         let k1 = k, v1 = v;
-        alt *m { node(_, _, left, _) { traverse(left, f); } }
+        traverse(left, f);
         f(*k1, *v1);
-        alt *m { node(_, _, _, right) { traverse(right, f); } }
+        traverse(right, f);
       }
     }
 }

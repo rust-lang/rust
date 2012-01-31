@@ -44,15 +44,15 @@ fn map_fn(cx: ctx, _fk: visit::fn_kind, decl: fn_decl, _body: blk,
 }
 
 fn map_local(cx: ctx, loc: @local) {
-    pat_util::pat_bindings(loc.node.pat) {|p|
-        cx.map.insert(p.id, node_local(cx.local_id));
+    pat_util::pat_bindings(loc.node.pat) {|p_id, _s, _p|
+        cx.map.insert(p_id, node_local(cx.local_id));
         cx.local_id += 1u;
     };
 }
 
 fn map_arm(cx: ctx, arm: arm) {
-    pat_util::pat_bindings(arm.pats[0]) {|p|
-        cx.map.insert(p.id, node_local(cx.local_id));
+    pat_util::pat_bindings(arm.pats[0]) {|p_id, _s, _p|
+        cx.map.insert(p_id, node_local(cx.local_id));
         cx.local_id += 1u;
     };
 }
@@ -77,50 +77,6 @@ fn map_native_item(cx: ctx, i: @native_item) {
 
 fn map_expr(cx: ctx, ex: @expr) {
     cx.map.insert(ex.id, node_expr(ex));
-}
-
-fn node_span(node: ast_node) -> codemap::span {
-    alt node {
-      node_item(item) { item.span }
-      node_native_item(nitem) { nitem.span }
-      node_expr(expr) { expr.span }
-    }
-}
-
-#[cfg(test)]
-mod test {
-    import syntax::ast_util;
-
-    #[test]
-    fn test_node_span_item() {
-        let expected: codemap::span = ast_util::mk_sp(20u, 30u);
-        let node =
-            node_item(@{ident: "test",
-                        attrs: [],
-                        id: 0,
-                        node: item_mod({view_items: [], items: []}),
-                        span: expected});
-        assert (node_span(node) == expected);
-    }
-
-    #[test]
-    fn test_node_span_native_item() {
-        let expected: codemap::span = ast_util::mk_sp(20u, 30u);
-        let node =
-            node_native_item(@{ident: "test",
-                               attrs: [],
-                               node: native_item_ty,
-                               id: 0,
-                               span: expected});
-        assert (node_span(node) == expected);
-    }
-
-    #[test]
-    fn test_node_span_expr() {
-        let expected: codemap::span = ast_util::mk_sp(20u, 30u);
-        let node = node_expr(@{id: 0, node: expr_break, span: expected});
-        assert (node_span(node) == expected);
-    }
 }
 
 // Local Variables:

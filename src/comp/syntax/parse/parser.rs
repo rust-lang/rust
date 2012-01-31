@@ -258,7 +258,7 @@ fn check_bad_word(p: parser) {
     }
 }
 
-fn parse_ty_fn(proto: ast::proto, p: parser) -> ast::ty_ {
+fn parse_ty_fn(p: parser) -> ast::fn_decl {
     fn parse_fn_input_ty(p: parser) -> ast::arg {
         let mode = parse_arg_mode(p);
         let name = if is_plain_ident(p) && p.look_ahead(1u) == token::COLON {
@@ -275,9 +275,9 @@ fn parse_ty_fn(proto: ast::proto, p: parser) -> ast::ty_ {
     //  auto constrs = parse_constrs(~[], p);
     let constrs: [@ast::constr] = [];
     let (ret_style, ret_ty) = parse_ret_ty(p);
-    ret ast::ty_fn(proto, {inputs: inputs.node, output: ret_ty,
+    ret {inputs: inputs.node, output: ret_ty,
                            purity: ast::impure_fn, cf: ret_style,
-                           constraints: constrs});
+                           constraints: constrs};
 }
 
 fn parse_ty_methods(p: parser) -> [ast::ty_method] {
@@ -287,15 +287,10 @@ fn parse_ty_methods(p: parser) -> [ast::ty_method] {
         expect_word(p, "fn");
         let ident = parse_method_name(p);
         let tps = parse_ty_params(p);
-        let f = parse_ty_fn(ast::proto_bare, p), fhi = p.last_span.hi;
+        let d = parse_ty_fn(p), fhi = p.last_span.hi;
         expect(p, token::SEMI);
-        alt f {
-          ast::ty_fn(_, d) {
             {ident: ident, attrs: attrs, decl: d, tps: tps,
-             span: ast_util::mk_sp(flo, fhi)}
-          }
-        }
-    }, p).node
+                    span: ast_util::mk_sp(flo, fhi)}}, p).node
 }
 
 fn parse_mt(p: parser) -> ast::mt {
@@ -506,10 +501,10 @@ fn parse_ty(p: parser, colons_before_params: bool) -> @ast::ty {
           ast::proto_bare { p.warn("fn is deprecated, use native fn"); }
           _ { /* fallthrough */ }
         }
-        t = parse_ty_fn(proto, p);
+        t = ast::ty_fn(proto, parse_ty_fn(p));
     } else if eat_word(p, "native") {
         expect_word(p, "fn");
-        t = parse_ty_fn(ast::proto_bare, p);
+        t = ast::ty_fn(ast::proto_bare, parse_ty_fn(p));
     } else if p.token == token::MOD_SEP || is_ident(p.token) {
         let path = parse_path(p);
         t = ast::ty_path(path, p.get_id());

@@ -120,6 +120,7 @@ fn test_connect() {
       connected(cd) {
         close_connection(thread, 0u32);
       }
+      _ { fail "test_connect: port isn't connected"; }
     }
     join_thread(thread);
     delete_thread(thread);
@@ -156,12 +157,15 @@ fn test_http() {
                     }
                     delete_buf(buf);
                   }
+                  _ { fail "test_http: protocol error"; }
                 }
             }
             close_connection(thread, 0u32);
           }
+          _ { fail "test_http: expected `wrote`"; }
         }
       }
+      _ { fail "test_http: port not connected"; }
     }
     join_thread(thread);
     delete_thread(thread);

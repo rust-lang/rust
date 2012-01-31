@@ -87,12 +87,17 @@ Visit all pairs in the map in order.
 fn traverse<K, V: copy>(m: treemap<K, V>, f: fn(K, V)) {
     alt *m {
       empty { }
-      node(@k, @v, _, _) {
+      /*
+        Previously, this had what looked like redundant
+        matches to me, so I changed it. but that may be a
+        de-optimization -- tjc
+       */
+      node(@k, @v, left, right) {
         // copy v to make aliases work out
         let v1 = v;
-        alt *m { node(_, _, left, _) { traverse(left, f); } }
+        traverse(left, f);
         f(k, v1);
-        alt *m { node(_, _, _, right) { traverse(right, f); } }
+        traverse(right, f);
       }
     }
 }

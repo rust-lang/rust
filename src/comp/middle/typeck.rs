@@ -107,6 +107,9 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
           some(self_impl(impl_t)) {
             ret {bounds: @[], ty: impl_t};
           }
+          none {
+              fcx.ccx.tcx.sess.span_bug(sp, "def_self with no self_info");
+          }
         }
       }
       ast::def_fn(id, _) | ast::def_const(id) |
@@ -248,15 +251,13 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
                   some(ast_map::node_native_item(native_item)) {
                     ty_of_native_item(tcx, mode, native_item)
                   }
+                  _ {
+                    tcx.sess.bug("Unexpected sort of item in ast_ty_to_ty");
+                  }
                 }
             }
           }
         }
-    }
-    fn ast_arg_to_arg(tcx: ty::ctxt, mode: mode, arg: ast::arg)
-        -> {mode: ty::mode, ty: ty::t} {
-        let ty = ast_ty_to_ty(tcx, mode, arg.ty);
-        ret {mode: default_arg_mode_for_ty(tcx, arg.mode, ty), ty: ty};
     }
     alt tcx.ast_ty_to_ty_cache.find(ast_ty) {
       some(some(ty)) { ret ty; }
@@ -363,6 +364,10 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
           _ { tcx.sess.span_bug(ast_ty.span,
                                 "found `ty_infer` in unexpected place"); }
         }
+      }
+      ast::ty_mac(_) {
+          tcx.sess.span_bug(ast_ty.span,
+                                "found `ty_mac` in unexpected place");
       }
     }
     tcx.ast_ty_to_ty_cache.insert(ast_ty, some(typ));
@@ -587,7 +592,13 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span, impl_m: ty::method,
         tcx.sess.span_err(sp, "method `" + if_m.ident +
                           "` has an incompatible set of type parameters");
     } else {
-        let impl_fty = ty::mk_fn(tcx, impl_m.fty);
+        let auto_modes = vec::map2(impl_m.fty.inputs, if_m.fty.inputs, {|i, f|
+            alt ty::struct(tcx, f.ty) {
+              ty::ty_param(0u, _) { {mode: ast::by_ref with i} }
+              _ { i }
+            }
+        });
+        let impl_fty = ty::mk_fn(tcx, {inputs: auto_modes with impl_m.fty});
         // Add dummy substs for the parameters of the impl method
         let substs = substs + vec::init_fn(vec::len(*if_m.tps), {|i|
             ty::mk_param(tcx, i + impl_tps, {crate: 0, node: 0})
@@ -1209,7 +1220,7 @@ fn check_pat(fcx: @fn_ctxt, map: pat_util::pat_id_map, pat: @ast::pat,
         // Typecheck the path.
         let v_def = lookup_def(fcx, path.span, pat.id);
         let v_def_ids = ast_util::variant_def_ids(v_def);
-        let ctor_tpt = ty::lookup_item_type(tcx, v_def_ids.tg);
+        let ctor_tpt = ty::lookup_item_type(tcx, v_def_ids.enm);
         instantiate_path(fcx, path, ctor_tpt, pat.span, pat.id);
 
         // Take the enum type params out of `expected`.
@@ -1422,6 +1433,9 @@ fn impl_self_ty(tcx: ty::ctxt, did: ast::def_id) -> {n_tps: uint, ty: ty::t} {
                                _}) {
             {n_tps: vec::len(ts), ty: ast_ty_to_ty(tcx, m_check, st)}
           }
+          an_item {
+              tcx.sess.bug("Undocumented invariant in impl_self_ty");
+          }
         }
     } else {
         let tpt = csearch::get_type(tcx, did);
@@ -1444,6 +1458,10 @@ fn lookup_method(fcx: @fn_ctxt, isc: resolve::iscopes,
               ty::bound_iface(t) {
                 let (iid, tps) = alt ty::struct(tcx, t) {
                     ty::ty_iface(i, tps) { (i, tps) }
+                    _ {
+                        tcx.sess.span_bug(sp, "Undocument invariant in \
+                          lookup_method");
+                    }
                 };
                 let ifce_methods = ty::iface_methods(tcx, iid);
                 alt vec::position_pred(*ifce_methods, {|m| m.ident == name}) {
@@ -1484,6 +1502,9 @@ fn lookup_method(fcx: @fn_ctxt, isc: resolve::iscopes,
               ast_map::node_method(m) {
                 let mt = ty_of_method(tcx, m_check, m);
                 ty::mk_fn(tcx, mt.fty)
+              }
+              _ {
+                  tcx.sess.bug("Undocumented invariant in ty_from_did");
               }
             }
         } else { csearch::get_type(tcx, did).ty }
@@ -1793,7 +1814,6 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
 
         let rhs_bot = check_expr_with(fcx, rhs, lhs_t);
         if !ast_util::lazy_binop(binop) { bot |= rhs_bot; }
-
         let result = check_binop(fcx, expr, lhs_t, binop, rhs);
         write_ty(tcx, id, result);
       }
@@ -2335,6 +2355,8 @@ fn check_decl_local(fcx: @fn_ctxt, local: @ast::local) -> bool {
         let id_map = pat_util::pat_id_map(fcx.ccx.tcx, local.node.pat);
         check_pat(fcx, id_map, local.node.pat, t);
       }
+      _ { fcx.ccx.tcx.sess.span_bug(local.span, "Undocumented invariant \
+            in check_decl_local");  }
     }
     ret bot;
 }
@@ -2697,7 +2719,7 @@ fn arg_is_argv_ty(tcx: ty::ctxt, a: ty::arg) -> bool {
     }
 }
 
-fn check_main_fn_ty(tcx: ty::ctxt, main_id: ast::node_id) {
+fn check_main_fn_ty(tcx: ty::ctxt, main_id: ast::node_id, main_span: span) {
     let main_t = ty::node_id_to_type(tcx, main_id);
     alt ty::struct(tcx, main_t) {
       ty::ty_fn({proto: ast::proto_bare, inputs, output,
@@ -2708,15 +2730,13 @@ fn check_main_fn_ty(tcx: ty::ctxt, main_id: ast::node_id) {
         ok &= num_args == 0u || num_args == 1u &&
               arg_is_argv_ty(tcx, inputs[0]);
         if !ok {
-            let span = ast_map::node_span(tcx.items.get(main_id));
-            tcx.sess.span_err(span,
+            tcx.sess.span_err(main_span,
                               "wrong type in main function: found `" +
                                   ty_to_str(tcx, main_t) + "`");
         }
       }
       _ {
-        let span = ast_map::node_span(tcx.items.get(main_id));
-        tcx.sess.span_bug(span,
+        tcx.sess.span_bug(main_span,
                           "main has a non-function type: found `" +
                               ty_to_str(tcx, main_t) + "`");
       }
@@ -2726,7 +2746,7 @@ fn check_main_fn_ty(tcx: ty::ctxt, main_id: ast::node_id) {
 fn check_for_main_fn(tcx: ty::ctxt, crate: @ast::crate) {
     if !tcx.sess.building_library {
         alt tcx.sess.main_fn {
-          some(id) { check_main_fn_ty(tcx, id); }
+          some((id, sp)) { check_main_fn_ty(tcx, id, sp); }
           none { tcx.sess.span_err(crate.span, "main function not found"); }
         }
     }
@@ -2765,6 +2785,8 @@ mod dict {
         let tcx = fcx.ccx.tcx;
         let (iface_id, iface_tps) = alt ty::struct(tcx, iface_ty) {
             ty::ty_iface(did, tps) { (did, tps) }
+            _ { tcx.sess.span_bug(sp, "Undocumented invariant in lookup\
+                 _dict"); }
         };
         let ty = fixup_ty(fcx, sp, ty);
         alt ty::struct(tcx, ty) {
@@ -2777,6 +2799,8 @@ mod dict {
                       ty::ty_iface(idid, _) {
                         if iface_id == idid { ret dict_param(n, n_bound); }
                       }
+                      _ { tcx.sess.span_bug(sp, "Undocumented invariant in \
+                           lookup_dict"); }
                     }
                     n_bound += 1u;
                   }
@@ -2796,6 +2820,9 @@ mod dict {
                       some(ity) {
                         alt ty::struct(tcx, ity) {
                           ty::ty_iface(id, _) { id == iface_id }
+                          // Bleah, abstract this
+                          _ { tcx.sess.span_bug(sp, "Undocumented invariant \
+                               in lookup_dict"); }
                         }
                       }
                       _ { false }
@@ -2861,6 +2888,10 @@ mod dict {
           ty::ty_iface(_, tps) {
             vec::iter2(tps, iface_tys,
                        {|a, b| demand::simple(fcx, sp, a, b);});
+          }
+          _ {
+              tcx.sess.span_bug(sp, "Undocumented invariant in \
+                 connect_iface_tps");
           }
         }
     }

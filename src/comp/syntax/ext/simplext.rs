@@ -4,6 +4,7 @@ import codemap::span;
 import core::{vec, option};
 import std::map::{hashmap, new_str_hash};
 import option::{some, none};
+import driver::session::session;
 
 import base::{ext_ctxt, normal};
 
@@ -460,11 +461,6 @@ fn p_t_s_rec(cx: ext_ctxt, m: matchable, s: selector, b: binders) {
               }
             }
           }
-
-
-
-
-
           /* TODO: handle embedded types and blocks, at least */
           expr_mac(mac) {
             p_t_s_r_mac(cx, mac, s, b);
@@ -482,6 +478,9 @@ fn p_t_s_rec(cx: ext_ctxt, m: matchable, s: selector, b: binders) {
             b.literal_ast_matchers += [bind select(cx, _, e)];
           }
         }
+      }
+      _ {
+          cx.session().bug("undocumented invariant in p_t_s_rec");
       }
     }
 }
@@ -717,6 +716,10 @@ fn add_new_extension(cx: ext_ctxt, sp: span, arg: @expr,
                            body: elts[1u]}];
                     // FIXME: check duplicates (or just simplify
                     // the macro arg situation)
+                  }
+                  _ {
+                      cx.span_bug(mac.span, "undocumented invariant in \
+                         add_extension");
                   }
                 }
               }

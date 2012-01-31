@@ -42,6 +42,7 @@ import link::{mangle_internal_name_by_type_only,
 import metadata::{csearch, cstore};
 import util::ppaux::{ty_to_str, ty_to_short_str};
 
+import shape::static_size_of_enum;
 import common::*;
 import build::*;
 
@@ -489,37 +490,6 @@ fn simplify_type(ccx: @crate_ctxt, typ: ty::t) -> ty::t {
     ret ty::fold_ty(ccx.tcx, ty::fm_general(bind simplifier(ccx, _)), typ);
 }
 
-
-// Computes the size of the data part of a non-dynamically-sized enum.
-fn static_size_of_enum(cx: @crate_ctxt, t: ty::t)
-    : type_has_static_size(cx, t) -> uint {
-    if cx.enum_sizes.contains_key(t) { ret cx.enum_sizes.get(t); }
-    alt ty::struct(cx.tcx, t) {
-      ty::ty_enum(tid, subtys) {
-        // Compute max(variant sizes).
-
-        let max_size = 0u;
-        let variants = ty::enum_variants(cx.tcx, tid);
-        for variant: ty::variant_info in *variants {
-            let tup_ty = simplify_type(cx, ty::mk_tup(cx.tcx, variant.args));
-            // Perform any type parameter substitutions.
-
-            tup_ty = ty::substitute_type_params(cx.tcx, subtys, tup_ty);
-            // Here we possibly do a recursive call.
-
-            // FIXME: Avoid this check. Since the parent has static
-            // size, any field must as well. There should be a way to
-            // express that with constrained types.
-            check (type_has_static_size(cx, tup_ty));
-            let this_size = llsize_of_real(cx, type_of(cx, tup_ty));
-            if max_size < this_size { max_size = this_size; }
-        }
-        cx.enum_sizes.insert(t, max_size);
-        ret max_size;
-      }
-    }
-}
-
 fn dynamic_size_of(cx: @block_ctxt, t: ty::t) -> result {
     fn align_elements(cx: @block_ctxt, elts: [ty::t]) -> result {
         //
@@ -600,6 +570,9 @@ fn dynamic_size_of(cx: @block_ctxt, t: ty::t) -> result {
             } else { max_size_val };
         ret rslt(bcx, total_size);
       }
+      // Precondition?
+      _ { bcx_tcx(cx).sess.fatal("trans::dynamic_size_of alled on something \
+            with static size"); }
     }
 }
 
@@ -634,6 +607,8 @@ fn dynamic_align_of(cx: @block_ctxt, t: ty::t) -> result {
         }
         ret rslt(bcx, a);
       }
+      _ { bcx_tcx(cx).sess.bug("trans::dynamic_align_of called on \
+            something with static size"); }
     }
 }
 
@@ -1457,15 +1432,15 @@ fn compare_scalar_types(cx: @block_ctxt, lhs: ValueRef, rhs: ValueRef,
       ty::ty_int(_) { ret rslt(cx, f(signed_int)); }
       ty::ty_uint(_) { ret rslt(cx, f(unsigned_int)); }
       ty::ty_float(_) { ret rslt(cx, f(floating_point)); }
+      ty::ty_native(_) {
+        let cx = trans_fail(cx, none::<span>,
+                            "attempt to compare values of type native");
+        ret rslt(cx, C_nil());
+      }
       ty::ty_type {
         ret rslt(trans_fail(cx, none,
                             "attempt to compare values of type type"),
                  C_nil());
-      }
-      ty::ty_native(_) {
-        let cx = trans_fail(cx, none,
-                            "attempt to compare values of type native");
-        ret rslt(cx, C_nil());
       }
       _ {
         // Should never get here, because t is scalar.
@@ -1479,6 +1454,11 @@ fn compare_scalar_types(cx: @block_ctxt, lhs: ValueRef, rhs: ValueRef,
 // A helper function to do the actual comparison of scalar values.
 fn compare_scalar_values(cx: @block_ctxt, lhs: ValueRef, rhs: ValueRef,
                          nt: scalar_type, op: ast::binop) -> ValueRef {
+    fn die_(cx: @block_ctxt) -> ! {
+        bcx_tcx(cx).sess.bug("compare_scalar_values: must be a\
+          comparison operator");
+    }
+    let die = bind die_(cx);
     alt nt {
       nil_type {
         // We don't need to do actual comparisons for nil.
@@ -1486,6 +1466,8 @@ fn compare_scalar_values(cx: @block_ctxt, lhs: ValueRef, rhs: ValueRef,
         alt op {
           ast::eq | ast::le | ast::ge { ret C_bool(true); }
           ast::ne | ast::lt | ast::gt { ret C_bool(false); }
+          // refinements would be nice
+          _ { die(); }
         }
       }
       floating_point {
@@ -1496,6 +1478,7 @@ fn compare_scalar_values(cx: @block_ctxt, lhs: ValueRef, rhs: ValueRef,
           ast::le { lib::llvm::LLVMRealOLE }
           ast::gt { lib::llvm::LLVMRealOGT }
           ast::ge { lib::llvm::LLVMRealOGE }
+          _ { die(); }
         };
         ret FCmp(cx, cmp, lhs, rhs);
       }
@@ -1507,6 +1490,7 @@ fn compare_scalar_values(cx: @block_ctxt, lhs: ValueRef, rhs: ValueRef,
           ast::le { lib::llvm::LLVMIntSLE }
           ast::gt { lib::llvm::LLVMIntSGT }
           ast::ge { lib::llvm::LLVMIntSGE }
+          _ { die(); }
         };
         ret ICmp(cx, cmp, lhs, rhs);
       }
@@ -1518,6 +1502,7 @@ fn compare_scalar_values(cx: @block_ctxt, lhs: ValueRef, rhs: ValueRef,
           ast::le { lib::llvm::LLVMIntULE }
           ast::gt { lib::llvm::LLVMIntUGT }
           ast::ge { lib::llvm::LLVMIntUGE }
+          _ { die(); }
         };
         ret ICmp(cx, cmp, lhs, rhs);
       }
@@ -1574,6 +1559,8 @@ fn iter_structural_ty(cx: @block_ctxt, av: ValueRef, t: ty::t,
                 j += 1u;
             }
           }
+          // Precondition?
+          _ { bcx_tcx(cx).sess.bug("iter_variant: not a function type"); }
         }
         ret cx;
     }
@@ -1846,6 +1833,8 @@ fn drop_ty_immediate(bcx: @block_ctxt, v: ValueRef, t: ty::t) -> @block_ctxt {
     alt ty::struct(bcx_tcx(bcx), t) {
       ty::ty_uniq(_) | ty::ty_vec(_) | ty::ty_str { free_ty(bcx, v, t) }
       ty::ty_box(_) | ty::ty_iface(_, _) { decr_refcnt_maybe_free(bcx, v, t) }
+      // Precondition?
+      _ { bcx_tcx(bcx).sess.bug("drop_ty_immediate: non-box ty"); }
     }
 }
 
@@ -2112,6 +2101,9 @@ fn trans_compare(cx: @block_ctxt, op: ast::binop, lhs: ValueRef,
       ast::eq | ast::ne { llop = C_u8(abi::cmp_glue_op_eq); }
       ast::lt | ast::ge { llop = C_u8(abi::cmp_glue_op_lt); }
       ast::le | ast::gt { llop = C_u8(abi::cmp_glue_op_le); }
+      // Precondition?
+      _ { bcx_tcx(cx).sess.bug("trans_compare got\
+              non-comparison-op"); }
     }
 
     let rs = call_cmp_glue(cx, lhs, rhs, rhs_t, llop);
@@ -2122,6 +2114,8 @@ fn trans_compare(cx: @block_ctxt, op: ast::binop, lhs: ValueRef,
       ast::ne | ast::ge | ast::gt {
         ret rslt(rs.bcx, Not(rs.bcx, rs.val));
       }
+      _ { bcx_tcx(cx).sess.bug("trans_compare got\
+              non-comparison-op"); }
     }
 }
 
@@ -2272,9 +2266,12 @@ fn autoderef(cx: @block_ctxt, v: ValueRef, t: ty::t) -> result_t {
     ret {bcx: cx, val: v1, ty: t1};
 }
 
-fn trans_lazy_binop(bcx: @block_ctxt, op: ast::binop, a: @ast::expr,
+// refinement types would obviate the need for this
+enum lazy_binop_ty { lazy_and, lazy_or }
+
+fn trans_lazy_binop(bcx: @block_ctxt, op: lazy_binop_ty, a: @ast::expr,
                     b: @ast::expr, dest: dest) -> @block_ctxt {
-    let is_and = alt op { ast::and { true } ast::or { false } };
+    let is_and = alt op { lazy_and { true } lazy_or { false } };
     let lhs_res = trans_temp_expr(bcx, a);
     if lhs_res.bcx.unreachable { ret lhs_res.bcx; }
     let rhs_cx = new_scope_block_ctxt(lhs_res.bcx, "rhs");
@@ -2321,8 +2318,11 @@ fn trans_binary(bcx: @block_ctxt, op: ast::binop, lhs: @ast::expr,
 
     // First couple cases are lazy:
     alt op {
-      ast::and | ast::or {
-        ret trans_lazy_binop(bcx, op, lhs, rhs, dest);
+      ast::and {
+        ret trans_lazy_binop(bcx, lazy_and, lhs, rhs, dest);
+      }
+      ast::or {
+        ret trans_lazy_binop(bcx, lazy_or, lhs, rhs, dest);
       }
       _ {
         // Remaining cases are eager:
@@ -2394,7 +2394,11 @@ fn store_in_dest(bcx: @block_ctxt, val: ValueRef, dest: dest) -> @block_ctxt {
 }
 
 fn get_dest_addr(dest: dest) -> ValueRef {
-    alt dest { save_in(a) { a } }
+    alt dest {
+       save_in(a) { a }
+       // Precondition?
+       _ { fail "get_dest_addr: not a save_in"; }
+    }
 }
 
 fn trans_if(cx: @block_ctxt, cond: @ast::expr, thn: ast::blk,
@@ -2425,6 +2429,9 @@ fn trans_if(cx: @block_ctxt, cond: @ast::expr, thn: ast::blk,
           ast::expr_block(blk) {
             else_cx = trans_block_dps(else_cx, blk, else_dest);
           }
+          // would be nice to have a constraint on ifs
+          _ { bcx_tcx(cx).sess.bug("Strange alternative\
+                in if"); }
         }
       }
       _ {}
@@ -2691,7 +2698,12 @@ fn trans_rec_field(bcx: @block_ctxt, base: @ast::expr,
                    field: ast::ident) -> lval_result {
     let {bcx, val} = trans_temp_expr(bcx, base);
     let {bcx, val, ty} = autoderef(bcx, val, ty::expr_ty(bcx_tcx(bcx), base));
-    let fields = alt ty::struct(bcx_tcx(bcx), ty) { ty::ty_rec(fs) { fs } };
+    let fields = alt ty::struct(bcx_tcx(bcx), ty) {
+            ty::ty_rec(fs) { fs }
+            // Constraint?
+            _ { bcx_tcx(bcx).sess.span_bug(base.span, "trans_rec_field:\
+                 base expr has non-record type"); }
+        };
     let ix = option::get(ty::field_idx(field, fields));
     // Silly check
     check type_is_tup_like(bcx, ty);
@@ -2763,6 +2775,9 @@ fn trans_callee(bcx: @block_ctxt, e: @ast::expr) -> lval_maybe_callee {
               some(origin) { // An impl method
                 ret impl::trans_method_callee(bcx, e.id, base, origin);
               }
+              // Precondition?
+              _ { bcx_tcx(bcx).sess.span_bug(e.span, "trans_callee: weird\
+                    expr"); }
             }
         }
       }
@@ -2809,6 +2824,11 @@ fn trans_lval(cx: @block_ctxt, e: @ast::expr) -> lval_result {
                 PointerCast(sub.bcx, sub.val, ellty)
               }
               ty::ty_ptr(_) | ty::ty_uniq(_) { sub.val }
+              // Precondition?
+              _ {
+                  bcx_tcx(cx).sess.span_bug(e.span, "trans_lval:\
+                    Weird argument in deref");
+              }
             };
         ret lval_owned(sub.bcx, val);
       }
@@ -2949,6 +2969,7 @@ fn trans_cast(cx: @block_ctxt, e: @ast::expr, id: ast::node_id,
               integral {int_cast(e_res.bcx, ll_t_out,
                                   val_ty(lldiscrim_a), lldiscrim_a, true)}
               float {SIToFP(e_res.bcx, lldiscrim_a, ll_t_out)}
+              _ { ccx.sess.bug("Translating unsupported cast.") }
             }
           }
           _ { ccx.sess.bug("Translating unsupported cast.") }
@@ -2990,7 +3011,7 @@ fn trans_arg_expr(cx: @block_ctxt, arg: ty::arg, lldestty: TypeRef,
         if arg.mode == ast::by_val && (lv.kind == owned || !imm) {
             val = Load(bcx, val);
         }
-    } else if arg.mode == ast::by_copy {
+        } else if arg.mode == ast::by_copy {
         let {bcx: cx, val: alloc} = alloc_ty(bcx, e_ty);
         let last_use = ccx.last_uses.contains_key(e.id);
         bcx = cx;
@@ -3341,6 +3362,7 @@ fn trans_tup(bcx: @block_ctxt, elts: [@ast::expr], id: ast::node_id,
         ret bcx;
       }
       save_in(pos) { pos }
+      _ { bcx_tcx(bcx).sess.bug("trans_tup: weird dest"); }
     };
     let temp_cleanups = [], i = 0;
     for e in elts {
@@ -3368,9 +3390,12 @@ fn trans_rec(bcx: @block_ctxt, fields: [ast::field],
         ret bcx;
       }
       save_in(pos) { pos }
+      _ { bcx_tcx(bcx).sess.bug("trans_rec: weird dest"); }
     };
 
-    let ty_fields = alt ty::struct(bcx_tcx(bcx), t) { ty::ty_rec(f) { f } };
+    let ty_fields = alt ty::struct(bcx_tcx(bcx), t) { ty::ty_rec(f) { f }
+      _ { bcx_tcx(bcx).sess.bug("trans_rec: id doesn't\
+           have a record type") } };
     let temp_cleanups = [];
     for fld in fields {
         let ix = option::get(vec::position_pred(ty_fields, {|ft|
@@ -3644,6 +3669,9 @@ fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
         assert dest == ignore;
         ret trans_assign_op(bcx, e, op, dst, src);
       }
+      _ { bcx_tcx(bcx).sess.span_bug(e.span, "trans_expr reached\
+             fall-through case"); }
+
     }
 }
 
@@ -3914,9 +3942,18 @@ fn init_local(bcx: @block_ctxt, local: @ast::local) -> @block_ctxt {
     let ty = node_id_type(bcx_ccx(bcx), local.node.id);
     let llptr = alt bcx.fcx.lllocals.find(local.node.id) {
       some(local_mem(v)) { v }
+      some(_) { bcx_tcx(bcx).sess.span_bug(local.span,
+                        "init_local: Someone forgot to document why it's\
+                         safe to assume local.node.init must be local_mem!");
+      }
       // This is a local that is kept immediate
       none {
-        let initexpr = alt local.node.init { some({expr, _}) { expr } };
+        let initexpr = alt local.node.init {
+                some({expr, _}) { expr }
+                none { bcx_tcx(bcx).sess.span_bug(local.span,
+                        "init_local: Someone forgot to document why it's\
+                         safe to assume local.node.init isn't none!"); }
+            };
         let {bcx, val, kind} = trans_temp_lval(bcx, initexpr);
         if kind != temporary {
             if kind == owned { val = Load(bcx, val); }
@@ -3952,6 +3989,8 @@ fn init_ref_local(bcx: @block_ctxt, local: @ast::local) -> @block_ctxt {
     alt kind {
       owned_imm { val = do_spill_noroot(bcx, val); }
       owned {}
+      _ { bcx_tcx(bcx).sess.span_bug(local.span,
+           "Someone forgot to document an invariant in init_ref_local!"); }
     }
     ret alt::bind_irrefutable_pat(bcx, local.node.pat, val, false);
 }
@@ -4388,9 +4427,15 @@ fn create_llargs_for_fn_args(cx: @fn_ctxt, ty_self: self_arg,
 fn copy_args_to_allocas(fcx: @fn_ctxt, bcx: @block_ctxt, args: [ast::arg],
                         arg_tys: [ty::arg]) -> @block_ctxt {
     let arg_n: uint = 0u, bcx = bcx;
+    fn epic_fail_(bcx: @block_ctxt) -> ! {
+        bcx_tcx(bcx).sess.bug("Someone forgot\
+                to document an invariant in copy_args_to_allocas!");
+    }
+    let epic_fail = bind epic_fail_(bcx);
     for arg in arg_tys {
         let id = args[arg_n].id;
-        let argval = alt fcx.llargs.get(id) { local_mem(v) { v } };
+        let argval = alt fcx.llargs.get(id) { local_mem(v) { v }
+                                              _ { epic_fail() } };
         alt arg.mode {
           ast::by_mut_ref { }
           ast::by_move | ast::by_copy { add_clean(bcx, argval, arg.ty); }
@@ -4405,6 +4450,7 @@ fn copy_args_to_allocas(fcx: @fn_ctxt, bcx: @block_ctxt, args: [ast::arg],
             }
           }
           ast::by_ref {}
+          _ { epic_fail(); }
         }
         if fcx_ccx(fcx).sess.opts.extra_debuginfo {
             debuginfo::create_arg(bcx, args[arg_n], args[arg_n].ty.span);
@@ -4414,9 +4460,13 @@ fn copy_args_to_allocas(fcx: @fn_ctxt, bcx: @block_ctxt, args: [ast::arg],
     ret bcx;
 }
 
+// cries out for a precondition
 fn arg_tys_of_fn(ccx: @crate_ctxt, id: ast::node_id) -> [ty::arg] {
-    alt ty::struct(ccx.tcx, ty::node_id_to_type(ccx.tcx, id)) {
+    let tt = ty::node_id_to_type(ccx.tcx, id);
+    alt ty::struct(ccx.tcx, tt) {
       ty::ty_fn({inputs, _}) { inputs }
+      _ { ccx.sess.bug(#fmt("arg_tys_of_fn called on non-function\
+            type %s", ty_to_str(ccx.tcx, tt)));}
     }
 }
 
@@ -4438,14 +4488,14 @@ enum self_arg { impl_self(ty::t), no_self, }
 // trans_closure: Builds an LLVM function out of a source function.
 // If the function closes over its environment a closure will be
 // returned.
-fn trans_closure(cx: @local_ctxt, sp: span, decl: ast::fn_decl,
+fn trans_closure(cx: @local_ctxt, decl: ast::fn_decl,
                  body: ast::blk, llfndecl: ValueRef,
                  ty_self: self_arg, ty_params: [ast::ty_param],
                  id: ast::node_id, maybe_load_env: fn(@fn_ctxt)) {
     set_uwtable(llfndecl);
 
     // Set up arguments to the function.
-    let fcx = new_fn_ctxt_w_id(cx, llfndecl, id, decl.cf, some(sp));
+    let fcx = new_fn_ctxt_w_id(cx, llfndecl, id, decl.cf, some(body.span));
     create_llargs_for_fn_args(fcx, ty_self, decl.inputs, ty_params);
 
     // Create the first basic block in the function and keep a handle on it to
@@ -4480,7 +4530,7 @@ fn trans_closure(cx: @local_ctxt, sp: span, decl: ast::fn_decl,
 
 // trans_fn: creates an LLVM function corresponding to a source language
 // function.
-fn trans_fn(cx: @local_ctxt, sp: span, decl: ast::fn_decl, body: ast::blk,
+fn trans_fn(cx: @local_ctxt, decl: ast::fn_decl, body: ast::blk,
             llfndecl: ValueRef, ty_self: self_arg, ty_params: [ast::ty_param],
             id: ast::node_id) {
     let do_time = cx.ccx.sess.opts.stats;
@@ -4490,7 +4540,7 @@ fn trans_fn(cx: @local_ctxt, sp: span, decl: ast::fn_decl, body: ast::blk,
                     {sec: 0u32, usec: 0u32}
                 };
     let fcx = option::none;
-    trans_closure(cx, sp, decl, body, llfndecl, ty_self, ty_params, id,
+    trans_closure(cx, decl, body, llfndecl, ty_self, ty_params, id,
                   {|new_fcx| fcx = option::some(new_fcx);});
     if cx.ccx.sess.opts.extra_debuginfo {
         debuginfo::create_function(option::get(fcx));
@@ -4516,6 +4566,8 @@ fn trans_res_ctor(cx: @local_ctxt, dtor: ast::fn_decl,
     let tup_t = ty::mk_tup(ccx.tcx, [ty::mk_int(ccx.tcx), arg_t]);
     let arg = alt fcx.llargs.find(dtor.inputs[0].id) {
       some(local_mem(x)) { x }
+      _ { ccx.sess.bug("Someone forgot to document an invariant \
+            in trans_res_ctor"); }
     };
     let llretptr = fcx.llretptr;
     if ty::type_has_dynamic_size(ccx.tcx, ret_t) {
@@ -4603,7 +4655,9 @@ fn trans_enum_variant(cx: @local_ctxt, enum_id: ast::node_id,
         // If this argument to this function is a enum, it'll have come in to
         // this function as an opaque blob due to the way that type_of()
         // works. So we have to cast to the destination's view of the type.
-        let llarg = alt fcx.llargs.find(va.id) { some(local_mem(x)) { x } };
+        let llarg = alt fcx.llargs.find(va.id) { some(local_mem(x)) { x }
+          _ { bcx_tcx(bcx).sess.span_fatal(variant.span, "Someone forgot\
+                to document an invariant in trans_tag_variant"); } };
         let arg_ty = arg_tys[i].ty;
         if ty::type_contains_params(bcx_tcx(bcx), arg_ty) {
             lldestptr = PointerCast(bcx, lldestptr, val_ty(llarg));
@@ -4732,6 +4786,10 @@ fn c_stack_tys(ccx: @crate_ctxt,
             bundle_ty: bundle_ty,
             shim_fn_ty: T_fn([T_ptr(bundle_ty)], T_void())
         };
+      }
+      _ {
+          // Precondition?
+          ccx.tcx.sess.bug("c_stack_tys called on non-function type");
       }
     }
 }
@@ -4889,7 +4947,7 @@ fn trans_item(cx: @local_ctxt, item: ast::item) {
         let sub_cx = extend_path(cx, item.ident);
         alt cx.ccx.item_ids.find(item.id) {
           some(llfndecl) {
-            trans_fn(sub_cx, item.span, decl, body, llfndecl, no_self, tps,
+            trans_fn(sub_cx, decl, body, llfndecl, no_self, tps,
                      item.id);
           }
           _ {
@@ -4907,7 +4965,7 @@ fn trans_item(cx: @local_ctxt, item: ast::item) {
         // Create a function for the destructor
         alt cx.ccx.item_ids.find(item.id) {
           some(lldtor_decl) {
-            trans_fn(cx, item.span, decl, body, lldtor_decl, no_self,
+            trans_fn(cx, decl, body, lldtor_decl, no_self,
                      tps, dtor_id);
           }
           _ {
@@ -4998,8 +5056,10 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
     }
 
     let main_takes_argv =
+        // invariant!
         alt ty::struct(ccx.tcx, main_node_type) {
           ty::ty_fn({inputs, _}) { vec::len(inputs) != 0u }
+          _ { ccx.sess.span_fatal(sp, "main has a non-function type"); }
         };
 
     let llfn = create_main(ccx, main_llfn, main_takes_argv);
@@ -5094,7 +5154,10 @@ fn fill_fn_pair(bcx: @block_ctxt, pair: ValueRef, llfn: ValueRef,
 fn native_fn_ty_param_count(cx: @crate_ctxt, id: ast::node_id) -> uint {
     let count;
     let native_item =
-        alt cx.ast_map.find(id) { some(ast_map::node_native_item(i)) { i } };
+        // invariant?!
+        alt cx.ast_map.find(id) { some(ast_map::node_native_item(i)) { i }
+         _ { cx.sess.bug("native_fn_ty_param_count\
+                         given a non-native item"); } };
     alt native_item.node {
       ast::native_item_ty {
         cx.sess.bug("register_native_fn(): native fn isn't \
@@ -5107,13 +5170,17 @@ fn native_fn_ty_param_count(cx: @crate_ctxt, id: ast::node_id) -> uint {
     ret count;
 }
 
-fn native_fn_wrapper_type(cx: @crate_ctxt,
+
+// TODO: precondition
+fn native_fn_wrapper_type(cx: @crate_ctxt, sp: span,
                           param_bounds: [ty::param_bounds],
                           x: ty::t) -> TypeRef {
     alt ty::struct(cx.tcx, x) {
       ty::ty_fn({inputs: args, output: out, _}) {
         ret type_of_fn(cx, args, out, param_bounds);
       }
+      _ { cx.sess.span_bug(sp, "native_fn_wrapper_type got ill-typed\
+              thing"); }
     }
 }
 

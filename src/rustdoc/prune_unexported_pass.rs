@@ -111,8 +111,12 @@ fn is_exported_from_mod(
               ast::item_mod(m) {
                 ast_util::is_exported(item_name, m)
               }
+              _ {
+                fail "is_exported_from_mod: not a mod";
+              }
             }
           }
+          _ { fail "is_exported_from_mod: not an item"; }
         }
     }
 }

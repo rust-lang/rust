@@ -104,7 +104,7 @@ fn type_is_gc_relevant(cx: ty::ctxt, ty: ty::t) -> bool {
     alt ty::struct(cx, ty) {
       ty::ty_nil | ty::ty_bot | ty::ty_bool | ty::ty_int(_) |
       ty::ty_float(_) | ty::ty_uint(_) | ty::ty_str |
-      ty::ty_type | ty::ty_ptr(_) | ty::ty_native(_) {
+      ty::ty_type | ty::ty_send_type | ty::ty_ptr(_) | ty::ty_native(_) {
         ret false;
       }
       ty::ty_rec(fields) {
@@ -131,8 +131,18 @@ fn type_is_gc_relevant(cx: ty::ctxt, ty: ty::t) -> bool {
       ty::ty_constr(sub, _) { ret type_is_gc_relevant(cx, sub); }
       ty::ty_box(_) | ty::ty_uniq(_) | ty::ty_fn(_) |
       ty::ty_param(_, _) | ty::ty_res(_, _, _) { ret true; }
+      ty::ty_opaque_closure_ptr(_) {
+        ret false; // I guess?
+      }
+      // A precondition to rule out these cases would be nice
       ty::ty_var(_) {
         fail "ty_var in type_is_gc_relevant";
+      }
+      ty::ty_iface(_, _) {
+        fail "ty_iface in type_is_gc_relevant";
+      }
+      ty::ty_named(_,_) {
+        fail "ty_named in type_is_gc_relevant";
       }
     }
 }

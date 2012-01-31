@@ -336,17 +336,6 @@ fn print_type(s: ps, &&ty: @ast::ty) {
         word(s.s, "]");
       }
       ast::ty_ptr(mt) { word(s.s, "*"); print_mt(s, mt); }
-      ast::ty_task { word(s.s, "task"); }
-      ast::ty_port(t) {
-        word(s.s, "port<");
-        print_type(s, t);
-        word(s.s, ">");
-      }
-      ast::ty_chan(t) {
-        word(s.s, "chan<");
-        print_type(s, t);
-        word(s.s, ">");
-      }
       ast::ty_rec(fields) {
         word(s.s, "{");
         fn print_field(s: ps, f: ast::ty_field) {
@@ -370,12 +359,18 @@ fn print_type(s: ps, &&ty: @ast::ty) {
         print_ty_fn(s, some(proto), d, none, none);
       }
       ast::ty_path(path, _) { print_path(s, path, false); }
-      ast::ty_type { word(s.s, "type"); }
       ast::ty_constr(t, cs) {
         print_type(s, t);
         space(s.s);
         word(s.s, ast_ty_constrs_str(cs));
       }
+      ast::ty_mac(_) {
+          fail "print_type doesn't know how to print a ty_mac";
+      }
+      ast::ty_infer {
+          fail "print_type shouldn't see a ty_infer";
+      }
+
     }
     end(s);
 }
@@ -703,11 +698,6 @@ fn print_if(s: ps, test: @ast::expr, blk: ast::blk,
         alt els {
           some(_else) {
             alt _else.node {
-
-
-
-
-
               // "another else-if"
               ast::expr_if(i, t, e) {
                 cbox(s, indent_unit - 1u);
@@ -718,17 +708,16 @@ fn print_if(s: ps, test: @ast::expr, blk: ast::blk,
                 print_block(s, t);
                 do_else(s, e);
               }
-
-
-
-
-
               // "final else"
               ast::expr_block(b) {
                 cbox(s, indent_unit - 1u);
                 ibox(s, 0u);
                 word(s.s, " else ");
                 print_block(s, b);
+              }
+              // BLEAH, constraints would be great here
+              _ {
+                  fail "print_if saw if with weird alternative";
               }
             }
           }

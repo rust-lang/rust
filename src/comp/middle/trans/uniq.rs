@@ -74,6 +74,7 @@ fn content_ty(bcx: @block_ctxt, t: ty::t)
 
     alt ty::struct(bcx_tcx(bcx), t) {
       ty::ty_uniq({ty: ct, _}) { ct }
+      _ { std::util::unreachable(); }
     }
 }
 

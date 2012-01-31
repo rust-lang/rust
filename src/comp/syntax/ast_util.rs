@@ -19,8 +19,10 @@ fn path_name_i(idents: [ident]) -> str { str::connect(idents, "::") }
 
 fn local_def(id: node_id) -> def_id { ret {crate: local_crate, node: id}; }
 
-fn variant_def_ids(d: def) -> {tg: def_id, var: def_id} {
-    alt d { def_variant(enum_id, var_id) { ret {tg: enum_id, var: var_id}; } }
+fn variant_def_ids(d: def) -> {enm: def_id, var: def_id} {
+    alt d { def_variant(enum_id, var_id) {
+            ret {enm: enum_id, var: var_id}; }
+        _ { fail "non-variant in variant_def_ids"; } }
 }
 
 fn def_id_of_def(d: def) -> def_id {
@@ -77,6 +79,7 @@ fn is_path(e: @expr) -> bool {
 
 fn int_ty_to_str(t: int_ty) -> str {
     alt t {
+      ty_char { "u8" } // ???
       ty_i { "" } ty_i8 { "i8" } ty_i16 { "i16" }
       ty_i32 { "i32" } ty_i64 { "i64" }
     }
@@ -86,7 +89,7 @@ fn int_ty_max(t: int_ty) -> u64 {
     alt t {
       ty_i8 { 0x80u64 }
       ty_i16 { 0x800u64 }
-      ty_char | ty_i32 { 0x80000000u64 }
+      ty_i | ty_char | ty_i32 { 0x80000000u64 } // actually ni about ty_i
       ty_i64 { 0x8000000000000000u64 }
     }
 }
@@ -102,7 +105,7 @@ fn uint_ty_max(t: uint_ty) -> u64 {
     alt t {
       ty_u8 { 0xffu64 }
       ty_u16 { 0xffffu64 }
-      ty_u32 { 0xffffffffu64 }
+      ty_u | ty_u32 { 0xffffffffu64 } // actually ni about ty_u
       ty_u64 { 0xffffffffffffffffu64 }
     }
 }
@@ -223,12 +226,14 @@ fn eval_const_expr(e: @expr) -> const_val {
           const_float(f) { const_float(-f) }
           const_int(i) { const_int(-i) }
           const_uint(i) { const_uint(-i) }
+          _ { fail "eval_const_expr: bad neg argument"; }
         }
       }
       expr_unary(not, inner) {
         alt eval_const_expr(inner) {
           const_int(i) { const_int(!i) }
           const_uint(i) { const_uint(!i) }
+          _ { fail "eval_const_expr: bad not argument"; }
         }
       }
       expr_binary(op, a, b) {
@@ -240,6 +245,7 @@ fn eval_const_expr(e: @expr) -> const_val {
               rem { const_float(a % b) } eq { fromb(a == b) }
               lt { fromb(a < b) } le { fromb(a <= b) } ne { fromb(a != b) }
               ge { fromb(a >= b) } gt { fromb(a > b) }
+              _ { fail "eval_const_expr: can't apply this binop to floats"; }
             }
           }
           (const_int(a), const_int(b)) {
@@ -253,6 +259,7 @@ fn eval_const_expr(e: @expr) -> const_val {
               eq { fromb(a == b) } lt { fromb(a < b) }
               le { fromb(a <= b) } ne { fromb(a != b) }
               ge { fromb(a >= b) } gt { fromb(a > b) }
+              _ { fail "eval_const_expr: can't apply this binop to ints"; }
             }
           }
           (const_uint(a), const_uint(b)) {
@@ -267,11 +274,17 @@ fn eval_const_expr(e: @expr) -> const_val {
               eq { fromb(a == b) } lt { fromb(a < b) }
               le { fromb(a <= b) } ne { fromb(a != b) }
               ge { fromb(a >= b) } gt { fromb(a > b) }
+              _ { fail "eval_const_expr: can't apply this binop to uints"; }
             }
           }
+          _ { fail "eval_constr_expr: bad binary arguments"; }
         }
       }
       expr_lit(lit) { lit_to_const(lit) }
+      // Precondition?
+      _ {
+          fail "eval_const_expr: non-constant expression";
+      }
     }
 }
 
@@ -324,6 +337,9 @@ fn compare_const_vals(a: const_val, b: const_val) -> int {
             1
         }
     }
+    _ {
+        fail "compare_const_vals: ill-typed comparison";
+    }
   }
 }
 
@@ -339,6 +355,17 @@ fn lit_eq(a: @lit, b: @lit) -> bool {
 
 fn ident_to_path(s: span, i: ident) -> @path {
     @respan(s, {global: false, idents: [i], types: []})
+}
+
+pure fn is_unguarded(&&a: arm) -> bool {
+    alt a.guard {
+      none { true }
+      _    { false }
+    }
+}
+
+pure fn unguarded_pat(a: arm) -> option::t<[@pat]> {
+    if is_unguarded(a) { some(a.pats) } else { none }
 }
 
 // Provides an extra node_id to hang callee information on, in case the

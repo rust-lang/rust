@@ -2,6 +2,7 @@ import syntax::{visit, ast_util};
 import syntax::ast::*;
 import syntax::codemap::span;
 import std::list::{is_not_empty, list, nil, cons, tail};
+import std::util::unreachable;
 import core::{vec, option};
 import std::list;
 
@@ -222,6 +223,11 @@ fn add_block_exit(cx: ctx, tp: block_type) -> bool {
                 ret true;
             }
             cur = *tail;
+          }
+          nil {
+            // typestate can't use the while loop condition --
+            // *sigh*
+            unreachable();
           }
         }
     }

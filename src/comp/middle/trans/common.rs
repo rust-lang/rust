@@ -414,6 +414,9 @@ fn find_scope_cx(cx: @block_ctxt) -> @block_ctxt {
     if cx.kind != NON_SCOPE_BLOCK { ret cx; }
     alt cx.parent {
       parent_some(b) { ret find_scope_cx(b); }
+      _ {
+          bcx_tcx(cx).sess.bug("find_scope_cx: empty scope");
+      }
     }
 }
 

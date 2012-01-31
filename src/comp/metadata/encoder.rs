@@ -10,6 +10,7 @@ import middle::trans::common::crate_ctxt;
 import middle::ty;
 import middle::ty::node_id_to_type;
 import front::attr;
+import driver::session::session;
 
 export encode_metadata;
 export encoded_ty;
@@ -275,6 +276,8 @@ fn encode_info_for_mod(ecx: @encode_ctxt, ebml_w: ebml::writer, md: _mod,
             }
         }
       }
+      _ { ecx.ccx.tcx.sess.bug("encode_info_for_mod: \
+             undocumented invariant"); }
     }
     ebml::end_tag(ebml_w);
 }

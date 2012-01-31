@@ -608,6 +608,8 @@ mod test {
         let match =
             alt getopts::getopts(["--test"], opts()) {
               ok(m) { m }
+              err(f) { fail "test_switch_implies_cfg_test: " +
+                       getopts::fail_str(f); }
             };
         let sessopts = build_session_options(match, diagnostic::emit);
         let sess = build_session(sessopts, "", diagnostic::emit);
@@ -622,6 +624,8 @@ mod test {
         let match =
             alt getopts::getopts(["--test", "--cfg=test"], opts()) {
               ok(m) { m }
+              err(f) { fail "test_switch_implies_cfg_test_unless_cfg_test: " +
+                       getopts::fail_str(f); }
             };
         let sessopts = build_session_options(match, diagnostic::emit);
         let sess = build_session(sessopts, "", diagnostic::emit);

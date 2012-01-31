@@ -21,7 +21,7 @@ import common::*;
 // range)
 enum opt {
     lit(@ast::expr),
-    var(/* disr val */int, /* variant dids */{tg: def_id, var: def_id}),
+    var(/* disr val */int, /* variant dids */{enm: def_id, var: def_id}),
     range(@ast::expr, @ast::expr)
 }
 fn opt_eq(a: opt, b: opt) -> bool {
@@ -69,7 +69,7 @@ fn trans_opt(bcx: @block_ctxt, o: opt) -> opt_result {
 // FIXME: invariant -- pat_id is bound in the def_map?
 fn variant_opt(ccx: @crate_ctxt, pat_id: ast::node_id) -> opt {
     let vdef = ast_util::variant_def_ids(ccx.tcx.def_map.get(pat_id));
-    let variants = ty::enum_variants(ccx.tcx, vdef.tg);
+    let variants = ty::enum_variants(ccx.tcx, vdef.enm);
     for v: ty::variant_info in *variants {
         if vdef.var == v.id { ret var(v.disr_val, vdef); }
     }
@@ -262,24 +262,24 @@ fn get_options(ccx: @crate_ctxt, m: match, col: uint) -> [opt] {
 }
 
 fn extract_variant_args(bcx: @block_ctxt, pat_id: ast::node_id,
-                        vdefs: {tg: def_id, var: def_id}, val: ValueRef) ->
+                        vdefs: {enm: def_id, var: def_id}, val: ValueRef) ->
    {vals: [ValueRef], bcx: @block_ctxt} {
     let ccx = bcx.fcx.lcx.ccx, bcx = bcx;
     // invariant:
     // pat_id must have the same length ty_param_substs as vdefs?
     let ty_param_substs = ty::node_id_to_type_params(ccx.tcx, pat_id);
     let blobptr = val;
-    let variants = ty::enum_variants(ccx.tcx, vdefs.tg);
+    let variants = ty::enum_variants(ccx.tcx, vdefs.enm);
     let args = [];
     let size =
-        vec::len(ty::enum_variant_with_id(ccx.tcx, vdefs.tg, vdefs.var).args);
+       vec::len(ty::enum_variant_with_id(ccx.tcx, vdefs.enm, vdefs.var).args);
     if size > 0u && vec::len(*variants) != 1u {
         let enumptr =
             PointerCast(bcx, val, T_opaque_enum_ptr(ccx));
         blobptr = GEPi(bcx, enumptr, [0, 1]);
     }
     let i = 0u;
-    let vdefs_tg = vdefs.tg;
+    let vdefs_tg = vdefs.enm;
     let vdefs_var = vdefs.var;
     while i < size {
         check (valid_variant_index(i, bcx, vdefs_tg, vdefs_var));
@@ -423,8 +423,7 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
     // Separate path for extracting and binding record fields
     if vec::len(rec_fields) > 0u {
         let rec_ty = ty::node_id_to_type(ccx.tcx, pat_id);
-        let fields =
-            alt ty::struct(ccx.tcx, rec_ty) { ty::ty_rec(fields) { fields } };
+        let fields = ty::get_fields(ccx.tcx, rec_ty);
         let rec_vals = [];
         for field_name: ast::ident in rec_fields {
             let ix = option::get(ty::field_idx(field_name, fields));
@@ -444,6 +443,10 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
         let n_tup_elts =
             alt ty::struct(ccx.tcx, tup_ty) {
               ty::ty_tup(elts) { vec::len(elts) }
+              _ {
+                  ccx.sess.bug("Non-tuple type in tuple\
+                    pattern");
+              }
             };
         let tup_vals = [], i = 0u;
         while i < n_tup_elts {
@@ -483,7 +486,7 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
     if vec::len(opts) > 0u {
         alt opts[0] {
           var(_, vdef) {
-            if vec::len(*ty::enum_variants(ccx.tcx, vdef.tg)) == 1u {
+            if vec::len(*ty::enum_variants(ccx.tcx, vdef.enm)) == 1u {
                 kind = single;
             } else {
                 let enumptr =
@@ -541,6 +544,8 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
                 llvm::LLVMAddCase(sw, r.val, opt_cx.llbb);
                 bcx = r.bcx;
               }
+              _ { bcx_tcx(bcx).sess.bug("Someone forgot to\
+                    document an invariant in compile_submatch"); }
             }
           }
           compare {
@@ -624,8 +629,11 @@ fn make_phi_bindings(bcx: @block_ctxt, map: [exit_node],
         // Copy references that the alias analysis considered unsafe
         ids.values {|node_id|
             if bcx_ccx(bcx).copy_map.contains_key(node_id) {
-                let local = alt bcx.fcx.lllocals.get(node_id) {
-                  local_mem(x) { x }
+                let local = alt bcx.fcx.lllocals.find(node_id) {
+                  some(local_mem(x)) { x }
+                  _ { bcx_tcx(bcx).sess.bug("Someone \
+                        forgot to document an invariant in \
+                        make_phi_bindings"); }
                 };
                 let e_ty = ty::node_id_to_type(bcx_tcx(bcx), node_id);
                 let {bcx: abcx, val: alloc} = base::alloc_ty(bcx, e_ty);
@@ -745,8 +753,7 @@ fn bind_irrefutable_pat(bcx: @block_ctxt, pat: @ast::pat, val: ValueRef,
       }
       ast::pat_rec(fields, _) {
         let rec_ty = ty::node_id_to_type(ccx.tcx, pat.id);
-        let rec_fields =
-            alt ty::struct(ccx.tcx, rec_ty) { ty::ty_rec(fields) { fields } };
+        let rec_fields = ty::get_fields(ccx.tcx, rec_ty);
         for f: ast::field_pat in fields {
             let ix = option::get(ty::field_idx(f.ident, rec_fields));
             // how to get rid of this check?

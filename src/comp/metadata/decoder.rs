@@ -3,6 +3,7 @@
 import std::{ebml, map, io};
 import io::writer_util;
 import syntax::{ast, ast_util};
+import driver::session::session;
 import front::attr;
 import middle::ty;
 import common::*;
@@ -302,7 +303,9 @@ fn get_iface_methods(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
         let bounds = item_ty_param_bounds(mth, tcx, cdata);
         let name = item_name(mth);
         let ty = doc_type(mth, tcx, cdata);
-        let fty = alt ty::struct(tcx, ty) { ty::ty_fn(f) { f } };
+        let fty = alt ty::struct(tcx, ty) { ty::ty_fn(f) { f }
+          _ { tcx.sess.bug("get_iface_methods: id has non-function type");
+        } };
         result += [{ident: name, tps: bounds, fty: fty}];
     }
     @result

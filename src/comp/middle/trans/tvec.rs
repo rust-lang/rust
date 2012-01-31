@@ -1,6 +1,7 @@
 import vec;
 import option::none;
 import syntax::ast;
+import driver::session::session;
 import lib::llvm::llvm::{ValueRef, TypeRef};
 import back::abi;
 import base::{call_memmove, trans_shared_malloc, type_of_or_i8,
@@ -159,6 +160,10 @@ fn trans_append(cx: @block_ctxt, vec_ty: ty::t, lhsptr: ValueRef,
     let strings = alt ty::struct(bcx_tcx(cx), vec_ty) {
       ty::ty_str { true }
       ty::ty_vec(_) { false }
+      _ {
+          // precondition?
+          bcx_tcx(cx).sess.bug("Bad argument type in trans_append");
+      }
     };
 
     let {bcx: bcx, val: unit_sz} = size_of(cx, unit_ty);
@@ -230,7 +235,7 @@ fn trans_add(bcx: @block_ctxt, vec_ty: ty::t, lhs: ValueRef,
     let ccx = bcx_ccx(bcx);
     let strings = alt ty::struct(bcx_tcx(bcx), vec_ty) {
       ty::ty_str { true }
-      ty::ty_vec(_) { false }
+      _ { false }
     };
     let unit_ty = ty::sequence_element_type(bcx_tcx(bcx), vec_ty);
     let llunitty = type_of_or_i8(bcx, unit_ty);

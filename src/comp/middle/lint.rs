@@ -51,6 +51,7 @@ fn merge_opts(attrs: [ast::attribute], cmd_opts: [(option, bool)]) ->
           ast::meta_word(name) {
             str_to_option(name)
           }
+          _ { fail "meta_to_option: meta_list contains a non-meta-word"; }
         };
     }
 

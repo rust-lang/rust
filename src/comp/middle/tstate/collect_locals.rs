@@ -12,11 +12,9 @@ import aux::*;
 type ctxt = {cs: @mutable [sp_constr], tcx: ty::ctxt};
 
 fn collect_local(loc: @local, cx: ctxt, v: visit::vt<ctxt>) {
-    pat_bindings(pat_util::normalize_pat(cx.tcx, loc.node.pat)) {|p|
-            let ident = alt p.node
-                 { pat_ident(id, _) { path_to_ident(id) } };
-        log(debug, "collect_local: pushing " + ident);;
-        *cx.cs += [respan(loc.span, ninit(p.id, ident))];
+    pat_bindings(pat_util::normalize_pat(cx.tcx, loc.node.pat))
+     {|p_id, _s, id|
+       *cx.cs += [respan(loc.span, ninit(p_id, path_to_ident(id)))];
     };
     visit::visit_local(loc, cx, v);
 }
@@ -25,10 +23,6 @@ fn collect_pred(e: @expr, cx: ctxt, v: visit::vt<ctxt>) {
     alt e.node {
       expr_check(_, ch) { *cx.cs += [expr_to_constr(cx.tcx, ch)]; }
       expr_if_check(ex, _, _) { *cx.cs += [expr_to_constr(cx.tcx, ex)]; }
-
-
-
-
 
       // If it's a call, generate appropriate instances of the
       // call's constraints.

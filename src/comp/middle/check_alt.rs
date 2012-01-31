@@ -1,10 +1,14 @@
+
 import syntax::ast::*;
 import syntax::ast_util::{variant_def_ids, dummy_sp, compare_lit_exprs,
-                          lit_expr_eq};
+        lit_expr_eq, unguarded_pat};
+import syntax::codemap::span;
 import pat_util::*;
 import syntax::visit;
 import option::{some, none};
 import driver::session::session;
+import middle::ty;
+import middle::ty::*;
 
 fn check_crate(tcx: ty::ctxt, crate: @crate) {
     let v =
@@ -18,15 +22,20 @@ fn check_crate(tcx: ty::ctxt, crate: @crate) {
 fn check_expr(tcx: ty::ctxt, ex: @expr, &&s: (), v: visit::vt<()>) {
     visit::visit_expr(ex, s, v);
     alt ex.node {
-        expr_alt(_, arms) {
-            check_arms(tcx, pat_util::normalize_arms(tcx, arms));
+        expr_alt(scrut, arms) {
+            check_arms(tcx, ex.span, scrut,
+                       pat_util::normalize_arms(tcx, arms));
         }
         _ { }
     }
 }
 
-fn check_arms(tcx: ty::ctxt, arms: [arm]) {
+fn check_arms(tcx: ty::ctxt, sp:span, scrut: @expr, arms: [arm]) {
     let i = 0;
+    let scrut_ty = expr_ty(tcx, scrut);
+    /* (Could both checks be done in a single pass?) */
+
+    /* Check for unreachable patterns */
     for arm: arm in arms {
         for arm_pat: @pat in arm.pats {
             let reachable = true;
@@ -46,6 +55,97 @@ fn check_arms(tcx: ty::ctxt, arms: [arm]) {
             }
         }
         i += 1;
+    }
+
+    /* Check for exhaustiveness */
+
+    check_exhaustive(tcx, sp, scrut_ty,
+       vec::concat(vec::filter_map(arms, unguarded_pat)));
+}
+
+// Precondition: patterns have been normalized
+// (not checked statically yet)
+fn check_exhaustive(tcx: ty::ctxt, sp:span, scrut_ty:ty::t, pats:[@pat]) {
+    let represented : [def_id] = [];
+    /* Determine the type of the scrutinee */
+    /* If it's not an enum, exit (bailing out on checking non-enum alts
+       for now) */
+    /* Otherwise, get the list of variants and make sure each one is
+     represented. Then recurse on the columns. */
+
+    let ty_def_id = alt ty::struct(tcx, scrut_ty) {
+            ty_enum(id, _) { id }
+            _ { ret; } };
+
+    let variants = *enum_variants(tcx, ty_def_id);
+    for pat in pats {
+        if !is_refutable(tcx, pat) {
+                /* automatically makes this alt complete */ ret;
+        }
+        alt pat.node {
+                // want the def_id for the constructor
+            pat_enum(id,_) {
+                alt tcx.def_map.find(pat.id) {
+                    some(def_variant(_, variant_def_id)) {
+                        represented += [variant_def_id];
+                    }
+                    _ { tcx.sess.span_bug(pat.span, "check_exhaustive:
+                          pat_tag not bound to a variant"); }
+                }
+            }
+            _ { tcx.sess.span_bug(pat.span, "check_exhaustive: ill-typed \
+                  pattern");   // we know this has enum type,
+            }                  // so anything else should be impossible
+         }
+    }
+    fn not_represented(v: [def_id], &&vinfo: variant_info) -> bool {
+        !vec::member(vinfo.id, v)
+    }
+    // Could be more efficient (bitvectors?)
+    alt vec::find(variants, bind not_represented(represented,_)) {
+        some(bad) {
+        // complain
+        // TODO: give examples of cases that aren't covered
+            tcx.sess.note("Patterns not covered include:");
+            tcx.sess.note(bad.name);
+            tcx.sess.span_err(sp, "Non-exhaustive pattern");
+        }
+        _ {}
+    }
+    // Otherwise, check subpatterns
+    // inefficient
+    for variant in variants {
+        // rows consists of the argument list for each pat that's an enum
+        let rows : [[@pat]] = [];
+        for pat in pats {
+            alt pat.node {
+               pat_enum(id, args) {
+                  alt tcx.def_map.find(pat.id) {
+                      some(def_variant(_,variant_id))
+                        if variant_id == variant.id { rows += [args]; }
+                      _ { }
+                  }
+               }
+               _ {}
+            }
+        }
+        if check vec::is_not_empty(rows) {
+             let i = 0u;
+             for it in rows[0] {
+                let column = [it];
+                // Annoying -- see comment in
+                // tstate::states::find_pre_post_state_loop
+                check vec::is_not_empty(rows);
+                for row in vec::tail(rows) {
+                  column += [row[i]];
+                }
+                check_exhaustive(tcx, sp, pat_ty(tcx, it), column);
+                i += 1u;
+             }
+        }
+        // This shouldn't actually happen, since there were no
+        // irrefutable patterns if we got here.
+        else { cont; }
     }
 }
 
@@ -145,8 +245,8 @@ fn is_refutable(tcx: ty::ctxt, pat: @pat) -> bool {
       pat_wild | pat_ident(_, none) { false }
       pat_lit(_) { true }
       pat_rec(fields, _) {
-        for field: field_pat in fields {
-            if is_refutable(tcx, field.pat) { ret true; }
+        for it: field_pat in fields {
+            if is_refutable(tcx, it.pat) { ret true; }
         }
         false
       }
@@ -156,10 +256,11 @@ fn is_refutable(tcx: ty::ctxt, pat: @pat) -> bool {
       }
       pat_enum(_, args) {
         let vdef = variant_def_ids(tcx.def_map.get(pat.id));
-        if vec::len(*ty::enum_variants(tcx, vdef.tg)) != 1u { ret true; }
+        if vec::len(*ty::enum_variants(tcx, vdef.enm)) != 1u { ret true; }
         for p: @pat in args { if is_refutable(tcx, p) { ret true; } }
         false
       }
+      pat_range(_, _) { true }
     }
 }
 

@@ -70,6 +70,9 @@ fn parse_item_attrs<T>(
     astsrv::exec(srv) {|ctxt|
         let attrs = alt ctxt.ast_map.get(id) {
           ast_map::node_item(item) { item.attrs }
+          _ {
+            fail "parse_item_attrs: not an item";
+          }
         };
         parse_attrs(attrs)
     }
@@ -277,6 +280,7 @@ fn fold_enum(
 
                     attr_parser::parse_variant(ast_variant.node.attrs)
                   }
+                  _ { fail "fold_enum: undocumented invariant"; }
                 }
             };
 
@@ -363,7 +367,6 @@ fn fold_res_should_extract_arg_docs() {
     assert doc.args[0].desc == some("b");
 }
 
-
 fn fold_iface(
     fold: fold::fold<astsrv::srv>,
     doc: doc::ifacedoc
@@ -394,6 +397,9 @@ fn merge_method_attrs(
             vec::map(methods) {|method|
                 (method.ident, attr_parser::parse_method(method.attrs))
             }
+          }
+          _ {
+            fail "Undocumented invariant in merge_method_attrs";
           }
         }
     };
