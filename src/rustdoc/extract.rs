@@ -75,6 +75,11 @@ fn moddoc_from_mod(
                     ifacedoc_from_iface(methods, item.ident, item.id)
                 ))
               }
+              ast::item_impl(_, _, _, methods) {
+                some(doc::impltag(
+                    impldoc_from_impl(methods, item.ident, item.id)
+                ))
+              }
               _ {
                 none
               }
@@ -273,6 +278,67 @@ fn should_extract_iface_method_args() {
     let ast = parse::from_str(source);
     let doc = extract(ast, "");
     assert doc.topmod.ifaces()[0].methods[0].args[0].name == "a";
+}
+
+fn impldoc_from_impl(
+    methods: [@ast::method],
+    name: str,
+    id: ast::node_id
+) -> doc::impldoc {
+    {
+        id: id,
+        name: name,
+        brief: none,
+        desc: none,
+        iface_ty: none,
+        for_ty: none,
+        methods: vec::map(methods) {|method|
+            {
+                name: method.ident,
+                brief: none,
+                desc: none,
+                args: argdocs_from_args(method.decl.inputs),
+                return: {
+                    desc: none,
+                    ty: none
+                },
+                failure: none,
+                sig: none
+            }
+        }
+    }
+}
+
+#[test]
+fn should_extract_impls_with_names() {
+    let source = "impl i for int { fn a() { } }";
+    let ast = parse::from_str(source);
+    let doc = extract(ast, "");
+    assert doc.topmod.impls()[0].name == "i";
+}
+
+#[test]
+fn should_extract_impls_without_names() {
+    let source = "impl of i for int { fn a() { } }";
+    let ast = parse::from_str(source);
+    let doc = extract(ast, "");
+    assert doc.topmod.impls()[0].name == "i";
+}
+
+#[test]
+fn should_extract_impl_methods() {
+    let source = "impl i for int { fn f() { } }";
+    let ast = parse::from_str(source);
+    let doc = extract(ast, "");
+    assert doc.topmod.impls()[0].methods[0].name == "f";
+}
+
+#[test]
+fn should_extract_impl_method_args() {
+    let source = "impl i for int { fn f(a: bool) { } }";
+    let ast = parse::from_str(source);
+    let doc = extract(ast, "");
+    assert doc.topmod.impls()[0].methods[0].args[0].name == "a";
 }
 
 #[cfg(test)]
