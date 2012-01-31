@@ -95,6 +95,7 @@ iface map<K: copy, V: copy> {
     Iterate over all the keys in the map
     */
     fn keys(fn(K));
+
     /*
     Iterate over all the values in the map
     */
