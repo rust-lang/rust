@@ -41,22 +41,7 @@ fn find_pre_post_method(ccx: crate_ctxt, m: @method) {
 fn find_pre_post_item(ccx: crate_ctxt, i: item) {
     alt i.node {
       item_const(_, e) {
-        // make a fake fcx
-        let v: @mutable [node_id] = @mutable [];
-        let fake_fcx =
-            {
-             // just bogus
-             enclosing:
-                 {constrs: new_def_hash::<constraint>(),
-                  num_constraints: 0u,
-                  cf: return_val,
-                  i_return: ninit(0, ""),
-                  i_diverge: ninit(0, ""),
-                  used_vars: v},
-             id: 0,
-             name: "",
-             ccx: ccx};
-        find_pre_post_expr(fake_fcx, e);
+          // do nothing -- item_consts don't refer to local vars
       }
       item_fn(_, _, body) {
         assert (ccx.fm.contains_key(i.id));
