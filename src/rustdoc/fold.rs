@@ -11,6 +11,7 @@ export default_seq_fold_const;
 export default_seq_fold_enum;
 export default_seq_fold_res;
 export default_seq_fold_iface;
+export default_seq_fold_impl;
 
 enum fold<T> = t<T>;
 
@@ -21,6 +22,7 @@ type fold_const<T> = fn~(fold: fold<T>, doc: doc::constdoc) -> doc::constdoc;
 type fold_enum<T> = fn~(fold: fold<T>, doc: doc::enumdoc) -> doc::enumdoc;
 type fold_res<T> = fn~(fold: fold<T>, doc: doc::resdoc) -> doc::resdoc;
 type fold_iface<T> = fn~(fold: fold<T>, doc: doc::ifacedoc) -> doc::ifacedoc;
+type fold_impl<T> = fn~(fold: fold<T>, doc: doc::impldoc) -> doc::impldoc;
 
 type t<T> = {
     ctxt: T,
@@ -30,7 +32,8 @@ type t<T> = {
     fold_const: fold_const<T>,
     fold_enum: fold_enum<T>,
     fold_res: fold_res<T>,
-    fold_iface: fold_iface<T>
+    fold_iface: fold_iface<T>,
+    fold_impl: fold_impl<T>
 };
 
 
@@ -44,7 +47,8 @@ fn mk_fold<T:copy>(
     fold_const: fold_const<T>,
     fold_enum: fold_enum<T>,
     fold_res: fold_res<T>,
-    fold_iface: fold_iface<T>
+    fold_iface: fold_iface<T>,
+    fold_impl: fold_impl<T>
 ) -> fold<T> {
     fold({
         ctxt: ctxt,
@@ -54,7 +58,8 @@ fn mk_fold<T:copy>(
         fold_const: fold_const,
         fold_enum: fold_enum,
         fold_res: fold_res,
-        fold_iface: fold_iface
+        fold_iface: fold_iface,
+        fold_impl: fold_impl
     })
 }
 
@@ -67,7 +72,8 @@ fn default_seq_fold<T:copy>(ctxt: T) -> fold<T> {
         {|f, d| default_seq_fold_const(f, d)},
         {|f, d| default_seq_fold_enum(f, d)},
         {|f, d| default_seq_fold_res(f, d)},
-        {|f, d| default_seq_fold_iface(f, d)}
+        {|f, d| default_seq_fold_iface(f, d)},
+        {|f, d| default_seq_fold_impl(f, d)}
     )
 }
 
@@ -104,6 +110,9 @@ fn default_seq_fold_mod<T>(
               }
               doc::ifacetag(ifacedoc) {
                 doc::ifacetag(fold.fold_iface(fold, ifacedoc))
+              }
+              doc::impltag(impldoc) {
+                doc::impltag(fold.fold_impl(fold, impldoc))
               }
             }
         }
@@ -143,6 +152,13 @@ fn default_seq_fold_iface<T>(
     _fold: fold<T>,
     doc: doc::ifacedoc
 ) -> doc::ifacedoc {
+    doc
+}
+
+fn default_seq_fold_impl<T>(
+    _fold: fold<T>,
+    doc: doc::impldoc
+) -> doc::impldoc {
     doc
 }
 

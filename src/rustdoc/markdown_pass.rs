@@ -138,6 +138,7 @@ fn write_mod_contents(
           doc::enumtag(enumdoc) { write_enum(ctxt, enumdoc) }
           doc::restag(resdoc) { write_res(ctxt, resdoc) }
           doc::ifacetag(ifacedoc) { write_iface(ctxt, ifacedoc) }
+          doc::impltag(impldoc) { fail }
         }
     }
 }
