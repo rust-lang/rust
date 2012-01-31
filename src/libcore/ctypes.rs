@@ -5,7 +5,7 @@ FIXME: Add a test that uses some native code to verify these sizes,
 which are not obviously correct for all potential platforms.
 */
 
-export c_int, c_uint, long, longlong, unsigned, ulong, ulonglong;
+export c_char, c_int, c_uint, long, longlong, unsigned, ulong, ulonglong;
 export intptr_t, uintptr_t;
 export uint32_t;
 export void::{};
@@ -15,6 +15,9 @@ export off_t, fd_t, pid_t;
 export enum;
 
 // PORT adapt to architecture
+
+#[doc = "A signed integer with the same size as a C `char`."]
+type c_char = i8;
 
 #[doc(
   brief = "A signed integer with the same size as a C `int`."
