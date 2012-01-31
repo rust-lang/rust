@@ -47,7 +47,7 @@ fn unindent(s: str) -> str {
         } else {
             saw_first_line = true;
             let spaces = 0u;
-            str::loop_chars(line) {|char|
+            str::all(line) {|char|
                 // Only comparing against space because I wouldn't
                 // know what to do with mixed whitespace chars
                 if char == ' ' {
