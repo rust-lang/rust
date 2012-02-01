@@ -143,7 +143,7 @@ fn lookup_byte_offset(cm: codemap::codemap, chpos: uint)
 {
     fn lookup(pos: file_pos) -> uint { ret pos.ch; }
     let {fm,line} = option::get(lookup_line(cm,chpos,lookup));
-    let line_offset = fm.lines[line].byte;
+    let line_offset = fm.lines[line].byte - fm.start_pos.byte;
     let col = chpos - fm.lines[line].ch;
     let col_offset = str::byte_len_range(*fm.src, line_offset, col);
     ret {fm: fm, pos: line_offset + col_offset};
