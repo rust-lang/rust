@@ -841,6 +841,8 @@ Function: index
 
 Returns the index of the first matching byte. Returns -1 if
 no match is found.
+
+FIXME: UTF-8
 */
 fn index(s: str, c: u8) -> int {
     let i: int = 0;
@@ -853,6 +855,8 @@ Function: rindex
 
 Returns the index of the last matching byte. Returns -1
 if no match is found.
+
+FIXME: UTF-8
 */
 fn rindex(s: str, c: u8) -> int {
     let n: int = byte_len(s) as int;
@@ -874,6 +878,8 @@ needle - The string to look for
 Returns:
 
 The index of the first occurance of `needle`, or -1 if not found.
+
+FIXME: UTF-8?
 */
 fn find(haystack: str, needle: str) -> int {
     let haystack_len: int = byte_len(haystack) as int;
@@ -1589,9 +1595,9 @@ mod tests {
 
     #[test]
     fn test_unsafe_slice() unsafe {
-        assert (eq("ab", slice("abc", 0u, 2u)));
-        assert (eq("bc", slice("abc", 1u, 3u)));
-        assert (eq("", slice("abc", 1u, 1u)));
+        assert (eq("ab", unsafe::slice_bytes("abc", 0u, 2u)));
+        assert (eq("bc", unsafe::slice_bytes("abc", 1u, 3u)));
+        assert (eq("", unsafe::slice_bytes("abc", 1u, 1u)));
         fn a_million_letter_a() -> str {
             let i = 0;
             let rs = "";
