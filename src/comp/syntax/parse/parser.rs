@@ -420,6 +420,13 @@ fn parse_ret_ty(p: parser) -> (ast::ret_style, @ast::ty) {
 
 fn parse_ty(p: parser, colons_before_params: bool) -> @ast::ty {
     let lo = p.span.lo;
+
+    alt have_dollar(p) {
+      some(e) {ret @spanned(lo, p.span.hi,
+                            ast::ty_mac(spanned(lo, p.span.hi, e)))}
+      none {}
+    }
+
     let t: ast::ty_;
     // FIXME: do something with this
 

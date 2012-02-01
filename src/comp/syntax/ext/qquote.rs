@@ -2,7 +2,7 @@ import driver::session;
 
 import option::{none, some};
 
-import syntax::ast::{crate, expr_, expr_mac, mac_invoc,
+import syntax::ast::{crate, expr_, mac_invoc,
                      mac_qq, mac_aq, mac_var};
 import syntax::fold::*;
 import syntax::visit::*;
@@ -17,16 +17,28 @@ import std::io::*;
 import codemap::span;
 
 type aq_ctxt = @{lo: uint,
-                 mutable gather: [{lo: uint, hi: uint, e: @ast::expr}]};
+                 mutable gather: [{lo: uint, hi: uint,
+                                   e: @ast::expr, constr: str}]};
+enum fragment {
+    from_expr(@ast::expr),
+    from_ty(@ast::ty)
+}
 
 iface qq_helper {
     fn span() -> span;
     fn visit(aq_ctxt, vt<aq_ctxt>);
+    fn extract_mac() -> option<ast::mac_>;
     fn mk_parse_fn(ext_ctxt,span) -> @ast::expr;
 }
 impl of qq_helper for @ast::expr {
     fn span() -> span {self.span}
     fn visit(cx: aq_ctxt, v: vt<aq_ctxt>) {visit_expr(self, cx, v);}
+    fn extract_mac() -> option<ast::mac_> {
+        alt (self.node) {
+          ast::expr_mac({node: mac, _}) {some(mac)}
+          _ {none}
+        }
+    }
     fn mk_parse_fn(cx: ext_ctxt, sp: span) -> @ast::expr {
         mk_path(cx, sp, ["syntax", "parse", "parser", "parse_expr"])
     }
@@ -34,6 +46,12 @@ impl of qq_helper for @ast::expr {
 impl of qq_helper for @ast::ty {
     fn span() -> span {self.span}
     fn visit(cx: aq_ctxt, v: vt<aq_ctxt>) {visit_ty(self, cx, v);}
+    fn extract_mac() -> option<ast::mac_> {
+        alt (self.node) {
+          ast::ty_mac({node: mac, _}) {some(mac)}
+          _ {none}
+        }
+    }
     fn mk_parse_fn(cx: ext_ctxt, sp: span) -> @ast::expr {
         mk_path(cx, sp, ["syntax", "ext", "qquote", "parse_ty"])
     }
@@ -41,6 +59,7 @@ impl of qq_helper for @ast::ty {
 impl of qq_helper for @ast::item {
     fn span() -> span {self.span}
     fn visit(cx: aq_ctxt, v: vt<aq_ctxt>) {visit_item(self, cx, v);}
+    fn extract_mac() -> option<ast::mac_> {fail}
     fn mk_parse_fn(cx: ext_ctxt, sp: span) -> @ast::expr {
         mk_path(cx, sp, ["syntax", "ext", "qquote", "parse_item"])
     }
@@ -48,6 +67,7 @@ impl of qq_helper for @ast::item {
 impl of qq_helper for @ast::stmt {
     fn span() -> span {self.span}
     fn visit(cx: aq_ctxt, v: vt<aq_ctxt>) {visit_stmt(self, cx, v);}
+    fn extract_mac() -> option<ast::mac_> {fail}
     fn mk_parse_fn(cx: ext_ctxt, sp: span) -> @ast::expr {
         mk_path(cx, sp, ["syntax", "ext", "qquote", "parse_stmt"])
     }
@@ -55,6 +75,7 @@ impl of qq_helper for @ast::stmt {
 impl of qq_helper for @ast::pat {
     fn span() -> span {self.span}
     fn visit(cx: aq_ctxt, v: vt<aq_ctxt>) {visit_pat(self, cx, v);}
+    fn extract_mac() -> option<ast::mac_> {fail}
     fn mk_parse_fn(cx: ext_ctxt, sp: span) -> @ast::expr {
         mk_path(cx, sp, ["syntax", "parse", "parser", "parse_pat"])
     }
@@ -62,22 +83,31 @@ impl of qq_helper for @ast::pat {
 
 fn gather_anti_quotes<N: qq_helper>(lo: uint, node: N) -> aq_ctxt
 {
-    let v = @{visit_expr: visit_expr_aq
+    let v = @{visit_expr: visit_aq_expr,
+              visit_ty: visit_aq_ty
               with *default_visitor()};
     let cx = @{lo:lo, mutable gather: []};
     node.visit(cx, mk_vt(v));
     ret cx;
 }
 
-fn visit_expr_aq(expr: @ast::expr, &&cx: aq_ctxt, v: vt<aq_ctxt>)
+fn visit_aq<T:qq_helper>(node: T, constr: str, &&cx: aq_ctxt, v: vt<aq_ctxt>)
 {
-    alt (expr.node) {
-      expr_mac({node: mac_aq(sp, e), _}) {
+    alt (node.extract_mac()) {
+      some(mac_aq(sp, e)) {
         cx.gather += [{lo: sp.lo - cx.lo, hi: sp.hi - cx.lo,
-                       e: e}];
+                       e: e, constr: constr}];
       }
-      _ {visit_expr(expr, cx, v);}
+      _ {node.visit(cx, v);}
     }
+}
+// FIXME: these are only here because I (kevina) couldn't figure out how to
+// get bind to work in gather_anti_quotes
+fn visit_aq_expr(node: @ast::expr, &&cx: aq_ctxt, v: vt<aq_ctxt>) {
+    visit_aq(node,"from_expr",cx,v);
+}
+fn visit_aq_ty(node: @ast::ty, &&cx: aq_ctxt, v: vt<aq_ctxt>) {
+    visit_aq(node,"from_ty",cx,v);
 }
 
 fn is_space(c: char) -> bool {
@@ -211,28 +241,51 @@ fn expand_qquote<N: qq_helper>
         rcall = mk_call(cx,sp,
                         ["syntax", "ext", "qquote", "replace"],
                         [pcall,
-                         mk_vec_e(cx,sp, vec::map(qcx.gather, {|g| g.e}))]);
+                         mk_vec_e(cx,sp, vec::map(qcx.gather) {|g|
+                             mk_call(cx,sp,
+                                     ["syntax", "ext", "qquote", g.constr],
+                                     [g.e])
+                         })]);
     }
 
     ret rcall;
 }
 
-fn replace(e: @ast::expr, repls: [@ast::expr]) -> @ast::expr {
+fn replace(e: @ast::expr, repls: [fragment]) -> @ast::expr {
     let aft = default_ast_fold();
     let f_pre = {fold_expr: bind replace_expr(repls, _, _, _,
-                                              aft.fold_expr)
+                                              aft.fold_expr),
+                 fold_ty: bind replace_ty(repls, _, _, _,
+                                          aft.fold_ty)
                  with *aft};
     let f = make_fold(f_pre);
     ret f.fold_expr(e);
 }
 
-fn replace_expr(repls: [@ast::expr],
+fn replace_expr(repls: [fragment],
                 e: ast::expr_, s: span, fld: ast_fold,
                 orig: fn@(ast::expr_, span, ast_fold)->(ast::expr_, span))
     -> (ast::expr_, span)
 {
     alt e {
-      expr_mac({node: mac_var(i), _}) {let r = repls[i]; (r.node, r.span)}
+      ast::expr_mac({node: mac_var(i), _}) {
+        alt (repls[i]) {
+          from_expr(r) {(r.node, r.span)}
+          _ {fail /* fixme error message */}}}
+      _ {orig(e,s,fld)}
+    }
+}
+
+fn replace_ty(repls: [fragment],
+                e: ast::ty_, s: span, fld: ast_fold,
+                orig: fn@(ast::ty_, span, ast_fold)->(ast::ty_, span))
+    -> (ast::ty_, span)
+{
+    alt e {
+      ast::ty_mac({node: mac_var(i), _}) {
+        alt (repls[i]) {
+          from_ty(r) {(r.node, r.span)}
+          _ {fail /* fixme error message */}}}
       _ {orig(e,s,fld)}
     }
 }

@@ -50,12 +50,6 @@ fn main() {
     let abc = #ast{23};
     check_pp(abc,  pprust::print_expr, "23");
 
-    let expr = #ast{1 - $0 + 8};
-    check_pp(expr,  pprust::print_expr, "1 - $0 + 8");
-
-    let expr2 = rustc::syntax::ext::qquote::replace(expr, [abc]);
-    check_pp(expr2,  pprust::print_expr, "1 - 23 + 8");
-
     let expr3 = #ast{2 - $(abc) + 7};
     check_pp(expr3,  pprust::print_expr, "2 - 23 + 7");
 
@@ -67,6 +61,9 @@ fn main() {
 
     let item = #ast(item){const x : int = 10;};
     check_pp(item, pprust::print_item, "const x: int = 10;");
+
+    //let item2: @ast::item = #ast(item){const x : int = $(abc);};
+    //check_pp(item2, pprust::print_item, "const x: int = 23;");
 
     let stmt = #ast(stmt){let x = 20;};
     check_pp(*stmt, pprust::print_stmt, "let x = 20;");
