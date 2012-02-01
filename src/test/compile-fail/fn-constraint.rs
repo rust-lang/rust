@@ -2,8 +2,8 @@
 use std;
 import str::*;
 
-fn main() {
+fn main() unsafe {
     let a: uint = 4u;
     let b: uint = 1u;
-    log(error, safe_slice("kitties", a, b));
+    log(error, str::unsafe::safe_slice("kitties", a, b));
 }
