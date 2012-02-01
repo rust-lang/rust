@@ -6,7 +6,7 @@ import option::{some, none};
 // A very naive implementation of union-find with unsigned integer nodes.
 // Maintains the invariant that the root of a node is always equal to or less
 // than the node itself.
-type node = option::t<uint>;
+type node = option<uint>;
 
 type ufind = {mutable nodes: [mutable node]};
 

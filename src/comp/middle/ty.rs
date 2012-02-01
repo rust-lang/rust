@@ -217,7 +217,7 @@ type ctxt =
       short_names_cache: hashmap<t, @str>,
       needs_drop_cache: hashmap<t, bool>,
       kind_cache: hashmap<t, kind>,
-      ast_ty_to_ty_cache: hashmap<@ast::ty, option::t<t>>,
+      ast_ty_to_ty_cache: hashmap<@ast::ty, option<t>>,
       enum_var_cache: hashmap<def_id, @[variant_info]>,
       iface_method_cache: hashmap<def_id, @[method]>,
       ty_param_bounds: hashmap<ast::node_id, param_bounds>};
@@ -648,7 +648,7 @@ pure fn mach_sty(cfg: @session::config, s: sty) -> sty {
     }
 }
 
-pure fn ty_name(cx: ctxt, typ: t) -> option::t<@str> {
+pure fn ty_name(cx: ctxt, typ: t) -> option<@str> {
     alt interner::get(*cx.ts, typ).struct {
       ty_named(_, n) { some(n) }
       _ { none }
@@ -1229,7 +1229,7 @@ fn type_is_c_like_enum(cx: ctxt, ty: t) -> bool {
     }
 }
 
-fn type_param(cx: ctxt, ty: t) -> option::t<uint> {
+fn type_param(cx: ctxt, ty: t) -> option<uint> {
     alt struct(cx, ty) {
       ty_param(id, _) { ret some(id); }
       _ {/* fall through */ }
@@ -1579,7 +1579,7 @@ fn stmt_node_id(s: @ast::stmt) -> ast::node_id {
     }
 }
 
-fn field_idx(id: ast::ident, fields: [field]) -> option::t<uint> {
+fn field_idx(id: ast::ident, fields: [field]) -> option<uint> {
     let i = 0u;
     for f in fields { if f.ident == id { ret some(i); } i += 1u; }
     ret none;
@@ -1600,7 +1600,7 @@ fn get_fields(tcx:ctxt, rec_ty:t) -> [field] {
     }
 }
 
-fn method_idx(id: ast::ident, meths: [method]) -> option::t<uint> {
+fn method_idx(id: ast::ident, meths: [method]) -> option<uint> {
     let i = 0u;
     for m in meths { if m.ident == id { ret some(i); } i += 1u; }
     ret none;
@@ -1613,7 +1613,7 @@ fn sort_methods(meths: [method]) -> [method] {
     ret std::sort::merge_sort(bind method_lteq(_, _), meths);
 }
 
-fn occurs_check_fails(tcx: ctxt, sp: option::t<span>, vid: int, rt: t) ->
+fn occurs_check_fails(tcx: ctxt, sp: option<span>, vid: int, rt: t) ->
    bool {
     if !type_contains_vars(tcx, rt) {
         // Fast path
@@ -1821,7 +1821,7 @@ mod unify {
     // Unifies two mutability flags.
     fn unify_mut(expected: ast::mutability, actual: ast::mutability,
                  variance: variance) ->
-       option::t<(ast::mutability, variance)> {
+       option<(ast::mutability, variance)> {
 
         // If you're unifying on something mutable then we have to
         // be invariant on the inner type
@@ -1847,7 +1847,7 @@ mod unify {
         ret none;
     }
     fn unify_fn_proto(e_proto: ast::proto, a_proto: ast::proto,
-                      variance: variance) -> option::t<result> {
+                      variance: variance) -> option<result> {
         // Prototypes form a diamond-shaped partial order:
         //
         //        block
@@ -2365,7 +2365,7 @@ mod unify {
         while i < vec::len::<ufind::node>(vb.sets.nodes) {
             let sets = "";
             let j = 0u;
-            while j < vec::len::<option::t<uint>>(vb.sets.nodes) {
+            while j < vec::len::<option<uint>>(vb.sets.nodes) {
                 if ufind::find(vb.sets, j) == i { sets += #fmt[" %u", j]; }
                 j += 1u;
             }
@@ -2383,10 +2383,10 @@ mod unify {
     //    Takes an optional span - complain about occurs check violations
     //    iff the span is present (so that if we already know we're going
     //    to error anyway, we don't complain)
-    fn fixup_vars(tcx: ty_ctxt, sp: option::t<span>, vb: @var_bindings,
+    fn fixup_vars(tcx: ty_ctxt, sp: option<span>, vb: @var_bindings,
                   typ: t) -> fixup_result {
-        fn subst_vars(tcx: ty_ctxt, sp: option::t<span>, vb: @var_bindings,
-                      unresolved: @mutable option::t<int>,
+        fn subst_vars(tcx: ty_ctxt, sp: option<span>, vb: @var_bindings,
+                      unresolved: @mutable option<int>,
                       vars_seen: std::list::list<int>, vid: int) -> t {
             // Should really return a fixup_result instead of a t, but fold_ty
             // doesn't allow returning anything but a t.
@@ -2426,7 +2426,7 @@ mod unify {
           some(var_id) { ret fix_err(var_id); }
         }
     }
-    fn resolve_type_var(tcx: ty_ctxt, sp: option::t<span>, vb: @var_bindings,
+    fn resolve_type_var(tcx: ty_ctxt, sp: option<span>, vb: @var_bindings,
                         vid: int) -> fixup_result {
         if vid as uint >= ufind::set_count(vb.sets) { ret fix_err(vid); }
         let root_id = ufind::find(vb.sets, vid as uint);
@@ -2537,7 +2537,7 @@ fn iface_methods(cx: ctxt, id: ast::def_id) -> @[method] {
     result
 }
 
-fn impl_iface(cx: ctxt, id: ast::def_id) -> option::t<t> {
+fn impl_iface(cx: ctxt, id: ast::def_id) -> option<t> {
     if id.crate == ast::local_crate {
         option::map(cx.tcache.find(id), {|it| it.ty})
     } else {

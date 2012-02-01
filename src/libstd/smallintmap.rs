@@ -12,7 +12,7 @@ import core::option::{some, none};
 /*
 Type: smallintmap
 */
-type smallintmap<T> = @{mutable v: [mutable option::t<T>]};
+type smallintmap<T> = @{mutable v: [mutable option<T>]};
 
 /*
 Function: mk
@@ -20,7 +20,7 @@ Function: mk
 Create a smallintmap
 */
 fn mk<T>() -> smallintmap<T> {
-    let v: [mutable option::t<T>] = [mutable];
+    let v: [mutable option<T>] = [mutable];
     ret @{mutable v: v};
 }
 
@@ -31,7 +31,7 @@ Add a value to the map. If the map already contains a value for
 the specified key then the original value is replaced.
 */
 fn insert<T: copy>(m: smallintmap<T>, key: uint, val: T) {
-    vec::grow_set::<option::t<T>>(m.v, key, none::<T>, some::<T>(val));
+    vec::grow_set::<option<T>>(m.v, key, none::<T>, some::<T>(val));
 }
 
 /*
@@ -40,8 +40,8 @@ Function: find
 Get the value for the specified key. If the key does not exist
 in the map then returns none
 */
-fn find<T: copy>(m: smallintmap<T>, key: uint) -> option::t<T> {
-    if key < vec::len::<option::t<T>>(m.v) { ret m.v[key]; }
+fn find<T: copy>(m: smallintmap<T>, key: uint) -> option<T> {
+    if key < vec::len::<option<T>>(m.v) { ret m.v[key]; }
     ret none::<T>;
 }
 
@@ -73,11 +73,11 @@ fn contains_key<T: copy>(m: smallintmap<T>, key: uint) -> bool {
 // FIXME: Are these really useful?
 
 fn truncate<T: copy>(m: smallintmap<T>, len: uint) {
-    m.v = vec::slice_mut::<option::t<T>>(m.v, 0u, len);
+    m.v = vec::slice_mut::<option<T>>(m.v, 0u, len);
 }
 
 fn max_key<T>(m: smallintmap<T>) -> uint {
-    ret vec::len::<option::t<T>>(m.v);
+    ret vec::len::<option<T>>(m.v);
 }
 
 /*
@@ -98,7 +98,7 @@ impl <V: copy> of map::map<uint, V> for smallintmap<V> {
         insert(self, key, value);
         ret !exists;
     }
-    fn remove(&&key: uint) -> option::t<V> {
+    fn remove(&&key: uint) -> option<V> {
         if key >= vec::len(self.v) { ret none; }
         let old = self.v[key];
         self.v[key] = none;
@@ -108,7 +108,7 @@ impl <V: copy> of map::map<uint, V> for smallintmap<V> {
         contains_key(self, key)
     }
     fn get(&&key: uint) -> V { get(self, key) }
-    fn find(&&key: uint) -> option::t<V> { find(self, key) }
+    fn find(&&key: uint) -> option<V> { find(self, key) }
     fn rehash() { fail }
     fn items(it: fn(&&uint, V)) {
         let idx = 0u;

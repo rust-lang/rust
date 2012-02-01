@@ -26,7 +26,7 @@ export reqchan;
 type reqchan = chan<request>;
 
 type handle =
-    {task: option::t<(task::task, port<task::task_notification>)>,
+    {task: option<(task::task, port<task::task_notification>)>,
      chan: reqchan};
 
 enum request { exec([u8], [u8], [[u8]], chan<response>), stop, }
@@ -54,7 +54,7 @@ fn close(handle: handle) {
 }
 
 fn run(handle: handle, lib_path: str, prog: str, args: [str],
-       input: option::t<str>) -> {status: int, out: str, err: str} {
+       input: option<str>) -> {status: int, out: str, err: str} {
     let p = port();
     let ch = chan(p);
     send(handle.chan,
@@ -69,7 +69,7 @@ fn run(handle: handle, lib_path: str, prog: str, args: [str],
     ret {status: status, out: output, err: errput};
 }
 
-fn writeclose(fd: fd_t, s: option::t<str>) {
+fn writeclose(fd: fd_t, s: option<str>) {
     if option::is_some(s) {
         let writer = io::fd_writer(fd, false);
         writer.write_str(option::get(s));

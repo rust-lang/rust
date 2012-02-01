@@ -63,7 +63,7 @@ fn get_enum_variants(tcx: ty::ctxt, def: ast::def_id) -> [ty::variant_info] {
 }
 
 fn get_impls_for_mod(cstore: cstore::cstore, def: ast::def_id,
-                     name: option::t<ast::ident>)
+                     name: option<ast::ident>)
     -> @[@middle::resolve::_impl] {
     let cdata = cstore::get_crate_data(cstore, def.crate);
     decoder::get_impls_for_mod(cdata, def.node, name)
@@ -82,7 +82,7 @@ fn get_type(tcx: ty::ctxt, def: ast::def_id) -> ty::ty_param_bounds_and_ty {
 }
 
 fn get_impl_iface(tcx: ty::ctxt, def: ast::def_id)
-    -> option::t<ty::t> {
+    -> option<ty::t> {
     let cstore = tcx.sess.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
     decoder::get_impl_iface(cdata, def.node, tcx)

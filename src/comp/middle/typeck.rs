@@ -191,7 +191,7 @@ fn structure_of(fcx: @fn_ctxt, sp: span, typ: ty::t) -> ty::sty {
 // Returns the one-level-deep structure of the given type or none if it
 // is not known yet.
 fn structure_of_maybe(fcx: @fn_ctxt, _sp: span, typ: ty::t) ->
-   option::t<ty::sty> {
+   option<ty::sty> {
     let r =
         ty::unify::resolve_type_structure(fcx.ccx.tcx, fcx.var_bindings, typ);
     ret alt r {
@@ -545,7 +545,7 @@ fn ast_ty_to_ty_crate(ccx: @crate_ctxt, &&ast_ty: @ast::ty) -> ty::t {
 
 // A wrapper around ast_ty_to_ty_crate that handles ty_infer.
 fn ast_ty_to_ty_crate_infer(ccx: @crate_ctxt, &&ast_ty: @ast::ty) ->
-   option::t<ty::t> {
+   option<ty::t> {
     alt ast_ty.node {
       ast::ty_infer { none }
       _ { some(ast_ty_to_ty_crate(ccx, ast_ty)) }
@@ -946,7 +946,7 @@ mod writeback {
     export resolve_type_vars_in_expr;
 
     fn resolve_type_vars_in_type(fcx: @fn_ctxt, sp: span, typ: ty::t) ->
-       option::t<ty::t> {
+       option<ty::t> {
         if !ty::type_contains_vars(fcx.ccx.tcx, typ) { ret some(typ); }
         alt ty::unify::fixup_vars(fcx.ccx.tcx, some(sp), fcx.var_bindings,
                                   typ) {
@@ -1077,7 +1077,7 @@ fn gather_locals(ccx: @crate_ctxt,
                  decl: ast::fn_decl,
                  body: ast::blk,
                  id: ast::node_id,
-                 old_fcx: option::t<@fn_ctxt>) -> gather_result {
+                 old_fcx: option<@fn_ctxt>) -> gather_result {
     let {vb: vb, locals: locals, nvi: nvi} =
         alt old_fcx {
           none {
@@ -1094,7 +1094,7 @@ fn gather_locals(ccx: @crate_ctxt,
     let tcx = ccx.tcx;
 
     let next_var_id = fn@() -> int { let rv = *nvi; *nvi += 1; ret rv; };
-    let assign = fn@(nid: ast::node_id, ty_opt: option::t<ty::t>) {
+    let assign = fn@(nid: ast::node_id, ty_opt: option<ty::t>) {
             let var_id = next_var_id();
             locals.insert(nid, var_id);
             alt ty_opt {
@@ -1445,7 +1445,7 @@ fn impl_self_ty(tcx: ty::ctxt, did: ast::def_id) -> {n_tps: uint, ty: ty::t} {
 
 fn lookup_method(fcx: @fn_ctxt, isc: resolve::iscopes,
                  name: ast::ident, ty: ty::t, sp: span)
-    -> option::t<{method_ty: ty::t, n_tps: uint, substs: [ty::t],
+    -> option<{method_ty: ty::t, n_tps: uint, substs: [ty::t],
                   origin: method_origin}> {
     let tcx = fcx.ccx.tcx;
 
@@ -1579,7 +1579,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
     // A generic function to factor out common logic from call and bind
     // expressions.
     fn check_call_or_bind(fcx: @fn_ctxt, sp: span, fty: ty::t,
-                          args: [option::t<@ast::expr>]) -> bool {
+                          args: [option<@ast::expr>]) -> bool {
         let sty = structure_of(fcx, sp, fty);
         // Grab the argument types
         let arg_tys = alt sty {
@@ -1658,7 +1658,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
     // A generic function for checking call expressions
     fn check_call(fcx: @fn_ctxt, sp: span, f: @ast::expr, args: [@ast::expr])
         -> bool {
-        let args_opt_0: [option::t<@ast::expr>] = [];
+        let args_opt_0: [option<@ast::expr>] = [];
         for arg: @ast::expr in args {
             args_opt_0 += [some::<@ast::expr>(arg)];
         }
@@ -1712,7 +1712,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
     // A generic function for checking the then and else in an if
     // or if-check
     fn check_then_else(fcx: @fn_ctxt, thn: ast::blk,
-                       elsopt: option::t<@ast::expr>, id: ast::node_id,
+                       elsopt: option<@ast::expr>, id: ast::node_id,
                        _sp: span) -> bool {
         let (if_t, if_bot) =
             alt elsopt {
@@ -1737,7 +1737,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         ret if_bot;
     }
 
-    fn binop_method(op: ast::binop) -> option::t<str> {
+    fn binop_method(op: ast::binop) -> option<str> {
         alt op {
           ast::add | ast::subtract | ast::mul | ast::div | ast::rem |
           ast::bitxor | ast::bitand | ast::bitor | ast::lsl | ast::lsr |
@@ -1747,7 +1747,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
     }
     fn lookup_op_method(fcx: @fn_ctxt, op_ex: @ast::expr, self_t: ty::t,
                         opname: str,
-                        args: [option::t<@ast::expr>]) -> option::t<ty::t> {
+                        args: [option<@ast::expr>]) -> option<ty::t> {
         let isc = fcx.ccx.impl_map.get(op_ex.id);
         alt lookup_method(fcx, isc, opname, self_t, op_ex.span) {
           some({method_ty, n_tps: 0u, substs, origin}) {
@@ -2329,7 +2329,7 @@ fn bind_params(fcx: @fn_ctxt, tp: ty::t, count: uint)
     {vars: vars, ty: ty::substitute_type_params(fcx.ccx.tcx, vars, tp)}
 }
 
-fn get_self_info(ccx: @crate_ctxt) -> option::t<self_info> {
+fn get_self_info(ccx: @crate_ctxt) -> option<self_info> {
     ret vec::last(ccx.self_infos);
 }
 
@@ -2633,7 +2633,7 @@ fn check_fn(ccx: @crate_ctxt,
             decl: ast::fn_decl,
             body: ast::blk,
             id: ast::node_id,
-            old_fcx: option::t<@fn_ctxt>) {
+            old_fcx: option<@fn_ctxt>) {
     // If old_fcx is some(...), this is a block fn { |x| ... }.
     // In that case, the purity is inherited from the context.
     let purity = alt old_fcx {

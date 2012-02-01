@@ -84,11 +84,11 @@ fn log_config(config: config) {
     logv(c, #fmt["\n"]);
 }
 
-fn opt_str(maybestr: option::t<str>) -> str {
+fn opt_str(maybestr: option<str>) -> str {
     alt maybestr { option::some(s) { s } option::none { "(none)" } }
 }
 
-fn str_opt(maybestr: str) -> option::t<str> {
+fn str_opt(maybestr: str) -> option<str> {
     if maybestr != "(none)" { option::some(maybestr) } else { option::none }
 }
 

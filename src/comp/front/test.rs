@@ -67,7 +67,7 @@ fn fold_mod(_cx: test_ctxt, m: ast::_mod, fld: fold::ast_fold) -> ast::_mod {
     // the one we're going to add.  FIXME: This is sloppy. Instead we should
     // have some mechanism to indicate to the translation pass which function
     // we want to be main.
-    fn nomain(&&item: @ast::item) -> option::t<@ast::item> {
+    fn nomain(&&item: @ast::item) -> option<@ast::item> {
         alt item.node {
           ast::item_fn(_, _, _) {
             if item.ident == "main" {

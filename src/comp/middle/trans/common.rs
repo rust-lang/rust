@@ -43,10 +43,10 @@ type tydesc_info =
      tydesc: ValueRef,
      size: ValueRef,
      align: ValueRef,
-     mutable take_glue: option::t<ValueRef>,
-     mutable drop_glue: option::t<ValueRef>,
-     mutable free_glue: option::t<ValueRef>,
-     mutable cmp_glue: option::t<ValueRef>,
+     mutable take_glue: option<ValueRef>,
+     mutable drop_glue: option<ValueRef>,
+     mutable free_glue: option<ValueRef>,
+     mutable cmp_glue: option<ValueRef>,
      ty_params: [uint]};
 
 /*
@@ -90,7 +90,7 @@ type crate_ctxt =
      ast_map: ast_map::map,
      exp_map: resolve::exp_map,
      item_symbols: hashmap<ast::node_id, str>,
-     mutable main_fn: option::t<ValueRef>,
+     mutable main_fn: option<ValueRef>,
      link_meta: link::link_meta,
      enum_sizes: hashmap<ty::t, uint>,
      discrims: hashmap<ast::def_id, ValueRef>,
@@ -122,7 +122,7 @@ type crate_ctxt =
      shape_cx: shape::ctxt,
      gc_cx: gc::ctxt,
      crate_map: ValueRef,
-     dbg_cx: option::t<@debuginfo::debug_ctxt>};
+     dbg_cx: option<@debuginfo::debug_ctxt>};
 
 type local_ctxt =
     {path: [str],
@@ -134,7 +134,7 @@ type val_self_pair = {v: ValueRef, t: ty::t};
 
 enum local_val { local_mem(ValueRef), local_imm(ValueRef), }
 
-type fn_ty_param = {desc: ValueRef, dicts: option::t<[ValueRef]>};
+type fn_ty_param = {desc: ValueRef, dicts: option<[ValueRef]>};
 
 // Function context.  Every LLVM function we create will have one of
 // these.
@@ -231,8 +231,8 @@ type fn_ctxt =
      mutable llderivedtydescs: BasicBlockRef,
      mutable lldynamicallocas: BasicBlockRef,
      mutable llreturn: BasicBlockRef,
-     mutable llobstacktoken: option::t<ValueRef>,
-     mutable llself: option::t<val_self_pair>,
+     mutable llobstacktoken: option<ValueRef>,
+     mutable llself: option<val_self_pair>,
      llargs: hashmap<ast::node_id, local_val>,
      lllocals: hashmap<ast::node_id, local_val>,
      llupvars: hashmap<ast::node_id, ValueRef>,
@@ -240,7 +240,7 @@ type fn_ctxt =
      derived_tydescs: hashmap<ty::t, derived_tydesc_info>,
      id: ast::node_id,
      ret_style: ast::ret_style,
-     span: option::t<span>,
+     span: option<span>,
      lcx: @local_ctxt};
 
 enum cleanup {
@@ -339,7 +339,7 @@ enum block_kind {
     SCOPE_BLOCK,
     // A basic block created from the body of a loop.  Contains pointers to
     // which block to jump to in the case of "continue" or "break".
-    LOOP_SCOPE_BLOCK(option::t<@block_ctxt>, @block_ctxt),
+    LOOP_SCOPE_BLOCK(option<@block_ctxt>, @block_ctxt),
     // A non-scope block is a basic block created as a translation artifact
     // from translating code that expresses conditional logic rather than by
     // explicit { ... } block structure in the source language.  It's called a
@@ -374,11 +374,11 @@ type block_ctxt =
      kind: block_kind,
      mutable cleanups: [cleanup],
      mutable lpad_dirty: bool,
-     mutable lpad: option::t<BasicBlockRef>,
-     block_span: option::t<span>,
+     mutable lpad: option<BasicBlockRef>,
+     block_span: option<span>,
      fcx: @fn_ctxt};
 
-// FIXME: we should be able to use option::t<@block_parent> here but
+// FIXME: we should be able to use option<@block_parent> here but
 // the infinite-enum check in rustboot gets upset.
 enum block_parent { parent_none, parent_some(@block_ctxt), }
 

@@ -61,8 +61,8 @@ Apply function `f` to each element of `v`, starting from the first.
 When function `f` returns true then an option containing the element
 is returned. If `f` matches no elements then none is returned.
 */
-fn find<T: copy, U: copy>(ls: list<T>, f: fn(T) -> option::t<U>)
-    -> option::t<U> {
+fn find<T: copy, U: copy>(ls: list<T>, f: fn(T) -> option<U>)
+    -> option<U> {
     let ls = ls;
     while true {
         alt ls {
@@ -259,7 +259,7 @@ mod tests {
 
     #[test]
     fn test_find_success() {
-        fn match(&&i: int) -> option::t<int> {
+        fn match(&&i: int) -> option<int> {
             ret if i == 2 { option::some(i) } else { option::none::<int> };
         }
         let l = from_vec([0, 1, 2]);
@@ -268,7 +268,7 @@ mod tests {
 
     #[test]
     fn test_find_fail() {
-        fn match(&&_i: int) -> option::t<int> { ret option::none::<int>; }
+        fn match(&&_i: int) -> option<int> { ret option::none::<int>; }
         let l = from_vec([0, 1, 2]);
         let empty = list::nil::<int>;
         assert (list::find(l, match) == option::none::<int>);

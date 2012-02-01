@@ -105,8 +105,8 @@ enum compile_upto {
 
 fn compile_upto(sess: session, cfg: ast::crate_cfg,
                 input: str, upto: compile_upto,
-                outputs: option::t<output_filenames>)
-    -> {crate: @ast::crate, tcx: option::t<ty::ctxt>} {
+                outputs: option<output_filenames>)
+    -> {crate: @ast::crate, tcx: option<ty::ctxt>} {
     let time_passes = sess.opts.time_passes;
     let crate = time(time_passes, "parsing",
                      bind parse_input(sess, cfg, input));
@@ -197,7 +197,7 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
 }
 
 fn compile_input(sess: session, cfg: ast::crate_cfg, input: str,
-                 outdir: option::t<str>, output: option::t<str>) {
+                 outdir: option<str>, output: option<str>) {
 
     let upto = if sess.opts.parse_only { cu_parse }
                else if sess.opts.no_trans { cu_no_trans }
@@ -504,8 +504,8 @@ fn opts() -> [getopts::opt] {
 type output_filenames = @{out_filename: str, obj_filename:str};
 
 fn build_output_filenames(ifile: str,
-                          odir: option::t<str>,
-                          ofile: option::t<str>,
+                          odir: option<str>,
+                          ofile: option<str>,
                           sess: session)
         -> output_filenames {
     let obj_path = "";

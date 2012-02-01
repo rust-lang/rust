@@ -32,16 +32,16 @@ type package = {
     url: str,
     method: str,
     description: str,
-    ref: option::t<str>,
+    ref: option<str>,
     tags: [str]
 };
 
 type source = {
     name: str,
     url: str,
-    sig: option::t<str>,
-    key: option::t<str>,
-    keyfp: option::t<str>,
+    sig: option<str>,
+    key: option<str>,
+    keyfp: option<str>,
     mutable packages: [package]
 };
 
@@ -60,9 +60,9 @@ type pkg = {
     name: str,
     vers: str,
     uuid: str,
-    desc: option::t<str>,
-    sigs: option::t<str>,
-    crate_type: option::t<str>
+    desc: option<str>,
+    sigs: option<str>,
+    crate_type: option<str>
 };
 
 fn info(msg: str) {
@@ -77,9 +77,9 @@ fn error(msg: str) {
     io::stdout().write_line("error: " + msg);
 }
 
-fn load_link(mis: [@ast::meta_item]) -> (option::t<str>,
-                                         option::t<str>,
-                                         option::t<str>) {
+fn load_link(mis: [@ast::meta_item]) -> (option<str>,
+                                         option<str>,
+                                         option<str>) {
     let name = none;
     let vers = none;
     let uuid = none;
@@ -99,7 +99,7 @@ fn load_link(mis: [@ast::meta_item]) -> (option::t<str>,
     (name, vers, uuid)
 }
 
-fn load_pkg(filename: str) -> option::t<pkg> {
+fn load_pkg(filename: str) -> option<pkg> {
     let cm = codemap::new_codemap();
     let handler = diagnostic::mk_handler(none);
     let sess = @{
@@ -439,7 +439,7 @@ fn install_source(c: cargo, path: str) {
     }
 }
 
-fn install_git(c: cargo, wd: str, url: str, ref: option::t<str>) {
+fn install_git(c: cargo, wd: str, url: str, ref: option<str>) {
     run::run_program("git", ["clone", url, wd]);
     if option::is_some::<str>(ref) {
         let r = option::get::<str>(ref);

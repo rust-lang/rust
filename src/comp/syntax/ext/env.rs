@@ -10,7 +10,7 @@ import base::*;
 export expand_syntax_ext;
 
 fn expand_syntax_ext(cx: ext_ctxt, sp: codemap::span, arg: @ast::expr,
-                     _body: option::t<str>) -> @ast::expr {
+                     _body: option<str>) -> @ast::expr {
     let args: [@ast::expr] =
         alt arg.node {
           ast::expr_vec(elts, _) { elts }
@@ -22,7 +22,7 @@ fn expand_syntax_ext(cx: ext_ctxt, sp: codemap::span, arg: @ast::expr,
         cx.span_fatal(sp, "malformed #env call");
     }
     // FIXME: if this was more thorough it would manufacture an
-    // option::t<str> rather than just an maybe-empty string.
+    // option<str> rather than just an maybe-empty string.
 
     let var = expr_to_str(cx, args[0], "#env requires a string");
     alt generic_os::getenv(var) {

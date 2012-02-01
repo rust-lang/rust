@@ -24,9 +24,9 @@ type config =
      stage_id: str,
      mode: mode,
      run_ignored: bool,
-     filter: option::t<str>,
-     runtool: option::t<str>,
-     rustcflags: option::t<str>,
+     filter: option<str>,
+     runtool: option<str>,
+     rustcflags: option<str>,
      verbose: bool};
 
 type cx = {config: config, procsrv: procsrv::handle};

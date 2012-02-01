@@ -75,14 +75,14 @@ iface map<K: copy, V: copy> {
     Get the value for the specified key. If the key does not exist
     in the map then returns none.
     */
-    fn find(K) -> option::t<V>;
+    fn find(K) -> option<V>;
     /*
     Method: remove
 
     Remove and return a value from the map. If the key does not exist
     in the map then returns none.
     */
-    fn remove(K) -> option::t<V>;
+    fn remove(K) -> option<V>;
     /*
     Method: items
 
@@ -205,7 +205,7 @@ mod chained {
         }
     }
 
-    fn get<K: copy, V: copy>(tbl: t<K,V>, k: K) -> core::option::t<V> {
+    fn get<K: copy, V: copy>(tbl: t<K,V>, k: K) -> core::option<V> {
         alt search_tbl(tbl, k, tbl.hasher(k)) {
           not_found {
             ret core::option::none;
@@ -221,7 +221,7 @@ mod chained {
         }
     }
 
-    fn remove<K: copy, V: copy>(tbl: t<K,V>, k: K) -> core::option::t<V> {
+    fn remove<K: copy, V: copy>(tbl: t<K,V>, k: K) -> core::option<V> {
         alt search_tbl(tbl, k, tbl.hasher(k)) {
           not_found {
             ret core::option::none;
@@ -306,9 +306,9 @@ mod chained {
 
         fn get(k: K) -> V { option::get(get(self, k)) }
 
-        fn find(k: K) -> option::t<V> { get(self, k) }
+        fn find(k: K) -> option<V> { get(self, k) }
 
-        fn remove(k: K) -> option::t<V> { remove(self, k) }
+        fn remove(k: K) -> option<V> { remove(self, k) }
 
         fn items(blk: fn(K, V)) { items(self, blk); }
 

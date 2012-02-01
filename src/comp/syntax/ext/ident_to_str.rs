@@ -3,7 +3,7 @@ import base::*;
 import syntax::ast;
 
 fn expand_syntax_ext(cx: ext_ctxt, sp: codemap::span, arg: @ast::expr,
-                     _body: option::t<str>) -> @ast::expr {
+                     _body: option<str>) -> @ast::expr {
     let args: [@ast::expr] =
         alt arg.node {
           ast::expr_vec(elts, _) { elts }

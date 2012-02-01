@@ -56,7 +56,7 @@ fn test_main(args: [str], tests: [test_desc]) {
     if !run_tests_console(opts, tests) { fail "Some tests failed"; }
 }
 
-type test_opts = {filter: option::t<str>, run_ignored: bool};
+type test_opts = {filter: option<str>, run_ignored: bool};
 
 type opt_res = either::t<test_opts, str>;
 
@@ -248,7 +248,7 @@ fn filter_tests(opts: test_opts,
         };
 
         fn filter_fn(test: test_desc, filter_str: str) ->
-            option::t<test_desc> {
+            option<test_desc> {
             if str::find(test.name, filter_str) >= 0 {
                 ret option::some(test);
             } else { ret option::none; }
@@ -263,7 +263,7 @@ fn filter_tests(opts: test_opts,
     filtered = if !opts.run_ignored {
         filtered
     } else {
-        fn filter(test: test_desc) -> option::t<test_desc> {
+        fn filter(test: test_desc) -> option<test_desc> {
             if test.ignore {
                 ret option::some({name: test.name,
                                   fn: test.fn,

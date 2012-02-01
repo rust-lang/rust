@@ -203,7 +203,7 @@ fn block_from_expr(e: @expr) -> blk {
     ret {node: blk_, span: e.span};
 }
 
-fn default_block(stmts1: [@stmt], expr1: option::t<@expr>, id1: node_id) ->
+fn default_block(stmts1: [@stmt], expr1: option<@expr>, id1: node_id) ->
    blk_ {
     {view_items: [], stmts: stmts1, expr: expr1, id: id1, rules: default_blk}
 }
@@ -364,7 +364,7 @@ pure fn is_unguarded(&&a: arm) -> bool {
     }
 }
 
-pure fn unguarded_pat(a: arm) -> option::t<[@pat]> {
+pure fn unguarded_pat(a: arm) -> option<[@pat]> {
     if is_unguarded(a) { some(a.pats) } else { none }
 }
 

@@ -12,7 +12,7 @@ import rand;
 /*
 Function: mkdtemp
 */
-fn mkdtemp(prefix: str, suffix: str) -> option::t<str> {
+fn mkdtemp(prefix: str, suffix: str) -> option<str> {
     let r = rand::mk_rng();
     let i = 0u;
     while (i < 1000u) {

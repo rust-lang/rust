@@ -1,6 +1,6 @@
 // -*- rust -*-
 // xfail-test
-// error-pattern:option::t
+// error-pattern:option
 use std;
 import vec::*;
 

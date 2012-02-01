@@ -264,7 +264,7 @@ fn visit_decl<E>(d: @decl, e: E, v: vt<E>) {
     }
 }
 
-fn visit_expr_opt<E>(eo: option::t<@expr>, e: E, v: vt<E>) {
+fn visit_expr_opt<E>(eo: option<@expr>, e: E, v: vt<E>) {
     alt eo { none { } some(ex) { v.visit_expr(ex, e, v); } }
 }
 
@@ -295,7 +295,7 @@ fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
       }
       expr_bind(callee, args) {
         v.visit_expr(callee, e, v);
-        for eo: option::t<@expr> in args { visit_expr_opt(eo, e, v); }
+        for eo: option<@expr> in args { visit_expr_opt(eo, e, v); }
       }
       expr_binary(_, a, b) { v.visit_expr(a, e, v); v.visit_expr(b, e, v); }
       expr_unary(_, a) { v.visit_expr(a, e, v); }

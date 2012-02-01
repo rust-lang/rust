@@ -10,7 +10,7 @@ red-black tree or something else.
 */
 
 import core::option::{some, none};
-import option = core::option::t;
+import option = core::option;
 
 export treemap;
 export init;

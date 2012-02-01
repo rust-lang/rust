@@ -48,9 +48,9 @@ enum import_state {
     todo(ast::node_id, ast::ident, @[ast::ident], span, scopes),
     is_glob(@[ast::ident], scopes, span),
     resolving(span),
-    resolved(option::t<def>, /* value */
-             option::t<def>, /* type */
-             option::t<def>, /* module */
+    resolved(option<def>, /* value */
+             option<def>, /* type */
+             option<def>, /* module */
              @[@_impl], /* impls */
              /* used for reporting unused import warning */
              ast::ident, span),
@@ -58,9 +58,9 @@ enum import_state {
 
 enum glob_import_state {
     glob_resolving(span),
-    glob_resolved(option::t<def>,  /* value */
-                  option::t<def>,  /* type */
-                  option::t<def>), /* module */
+    glob_resolved(option<def>,  /* value */
+                  option<def>,  /* type */
+                  option<def>), /* module */
 }
 
 type ext_hash = hashmap<{did: def_id, ident: str, ns: namespace}, def>;
@@ -98,7 +98,7 @@ type mod_index = hashmap<ident, list<mod_index_entry>>;
 type glob_imp_def = {def: def, item: @ast::view_item};
 
 type indexed_mod = {
-    m: option::t<ast::_mod>,
+    m: option<ast::_mod>,
     index: mod_index,
     mutable glob_imports: [glob_imp_def],
     glob_imported_names: hashmap<str, glob_import_state>,
@@ -113,7 +113,7 @@ type def_map = hashmap<node_id, def>;
 type ext_map = hashmap<def_id, [ident]>;
 type exp_map = hashmap<str, @mutable [def]>;
 type impl_map = hashmap<node_id, iscopes>;
-type impl_cache = hashmap<def_id, option::t<@[@_impl]>>;
+type impl_cache = hashmap<def_id, option<@[@_impl]>>;
 
 type env =
     {cstore: cstore::cstore,
@@ -131,7 +131,7 @@ type env =
                     mutable data: [ast::node_id]},
      mutable reported: [{ident: str, sc: scope}],
      mutable ignored_imports: [node_id],
-     mutable current_tp: option::t<uint>,
+     mutable current_tp: option<uint>,
      mutable resolve_unexported: bool,
      sess: session};
 
@@ -324,7 +324,7 @@ fn resolve_capture_item(e: @env, sc: scopes, &&cap_item: @ast::capture_item) {
     maybe_insert(e, cap_item.id, dcur);
 }
 
-fn maybe_insert(e: @env, id: node_id, def: option::t<def>) {
+fn maybe_insert(e: @env, id: node_id, def: option<def>) {
     if option::is_some(def) { e.def_map.insert(id, option::get(def)); }
 }
 
@@ -578,7 +578,7 @@ fn visit_local_with_scope(e: @env, loc: @local, sc:scopes, v:vt<scopes>) {
 
 
 fn follow_import(e: env, sc: scopes, path: [ident], sp: span) ->
-   option::t<def> {
+   option<def> {
     let path_len = vec::len(path);
     let dcur = lookup_in_scope_strict(e, sc, sp, path[0], ns_module);
     let i = 1u;
@@ -623,7 +623,7 @@ fn resolve_constr(e: @env, c: @ast::constr, sc: scopes, _v: vt<scopes>) {
 fn resolve_import(e: env, defid: ast::def_id, name: ast::ident,
                   ids: [ast::ident], sp: codemap::span, sc: scopes) {
     fn register(e: env, id: node_id, cx: ctxt, sp: codemap::span,
-                name: ast::ident, lookup: fn(namespace) -> option::t<def>,
+                name: ast::ident, lookup: fn(namespace) -> option<def>,
                 impls: [@_impl]) {
         let val = lookup(ns_val(ns_any_value)), typ = lookup(ns_type),
             md = lookup(ns_module);
@@ -746,7 +746,7 @@ fn ns_name(ns: namespace) -> str {
 enum ctxt { in_mod(def), in_scope(scopes), }
 
 fn unresolved_err(e: env, cx: ctxt, sp: span, name: ident, kind: str) {
-    fn find_fn_or_mod_scope(sc: scopes) -> option::t<scope> {
+    fn find_fn_or_mod_scope(sc: scopes) -> option<scope> {
         let sc = sc;
         while true {
             alt sc {
@@ -803,7 +803,7 @@ fn mk_unresolved_msg(id: ident, kind: str) -> str {
 
 // Lookup helpers
 fn lookup_path_strict(e: env, sc: scopes, sp: span, pth: ast::path_,
-                      ns: namespace) -> option::t<def> {
+                      ns: namespace) -> option<def> {
     let n_idents = vec::len(pth.idents);
     let headns = if n_idents == 1u { ns } else { ns_module };
 
@@ -827,7 +827,7 @@ fn lookup_path_strict(e: env, sc: scopes, sp: span, pth: ast::path_,
 }
 
 fn lookup_in_scope_strict(e: env, sc: scopes, sp: span, name: ident,
-                          ns: namespace) -> option::t<def> {
+                          ns: namespace) -> option<def> {
     alt lookup_in_scope(e, sc, sp, name, ns) {
       none {
         unresolved_err(e, in_scope(sc), sp, name, ns_name(ns));
@@ -847,7 +847,7 @@ fn scope_is_fn(sc: scope) -> bool {
 // Returns:
 //   none - does not close
 //   some(node_id) - closes via the expr w/ node_id
-fn scope_closes(sc: scope) -> option::t<node_id> {
+fn scope_closes(sc: scope) -> option<node_id> {
     alt sc {
       scope_fn_expr(_, node_id, _) { some(node_id) }
       _ { none }
@@ -874,9 +874,9 @@ fn def_is_ty_arg(d: def) -> bool {
 }
 
 fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
-   -> option::t<def> {
+   -> option<def> {
     fn in_scope(e: env, sp: span, name: ident, s: scope, ns: namespace) ->
-       option::t<def> {
+       option<def> {
         alt s {
           scope_crate {
             ret lookup_in_local_mod(e, ast::crate_node_id, sp,
@@ -1003,7 +1003,7 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
 }
 
 fn lookup_in_ty_params(e: env, name: ident, ty_params: [ast::ty_param])
-    -> option::t<def> {
+    -> option<def> {
     let n = 0u;
     for tp: ast::ty_param in ty_params {
         if str::eq(tp.ident, name) && alt e.current_tp {
@@ -1014,7 +1014,7 @@ fn lookup_in_ty_params(e: env, name: ident, ty_params: [ast::ty_param])
     ret none::<def>;
 }
 
-fn lookup_in_pat(e: env, name: ident, pat: @ast::pat) -> option::t<def_id> {
+fn lookup_in_pat(e: env, name: ident, pat: @ast::pat) -> option<def_id> {
     let found = none;
 
     pat_util::pat_bindings(normalize_pat_def_map(e.def_map, pat))
@@ -1027,7 +1027,7 @@ fn lookup_in_pat(e: env, name: ident, pat: @ast::pat) -> option::t<def_id> {
 
 fn lookup_in_fn(e: env, name: ident, decl: ast::fn_decl,
                 ty_params: [ast::ty_param],
-                ns: namespace) -> option::t<def> {
+                ns: namespace) -> option<def> {
     alt ns {
       ns_val(ns_any_value) {
         for a: ast::arg in decl.inputs {
@@ -1044,7 +1044,7 @@ fn lookup_in_fn(e: env, name: ident, decl: ast::fn_decl,
 
 
 fn lookup_in_block(e: env, name: ident, sp: span, b: ast::blk_, pos: uint,
-                   loc_pos: uint, ns: namespace) -> option::t<def> {
+                   loc_pos: uint, ns: namespace) -> option<def> {
     let i = vec::len(b.stmts);
     while i > 0u {
         i -= 1u;
@@ -1132,7 +1132,7 @@ fn lookup_in_block(e: env, name: ident, sp: span, b: ast::blk_, pos: uint,
     ret none;
 }
 
-fn found_def_item(i: @ast::item, ns: namespace) -> option::t<def> {
+fn found_def_item(i: @ast::item, ns: namespace) -> option<def> {
     alt i.node {
       ast::item_const(_, _) {
         if ns == ns_val(ns_any_value) {
@@ -1167,7 +1167,7 @@ fn found_def_item(i: @ast::item, ns: namespace) -> option::t<def> {
 }
 
 fn lookup_in_mod_strict(e: env, m: def, sp: span, name: ident,
-                        ns: namespace, dr: dir) -> option::t<def> {
+                        ns: namespace, dr: dir) -> option<def> {
     alt lookup_in_mod(e, m, sp, name, ns, dr) {
       none {
         unresolved_err(e, in_mod(m), sp, name, ns_name(ns));
@@ -1178,7 +1178,7 @@ fn lookup_in_mod_strict(e: env, m: def, sp: span, name: ident,
 }
 
 fn lookup_in_mod(e: env, m: def, sp: span, name: ident, ns: namespace,
-                 dr: dir) -> option::t<def> {
+                 dr: dir) -> option<def> {
     let defid = def_id_of_def(m);
     if defid.crate != ast::local_crate {
         // examining a module in an external crate
@@ -1214,7 +1214,7 @@ fn found_view_item(e: env, id: node_id) -> def {
     ret ast::def_mod({crate: cnum, node: ast::crate_node_id});
 }
 
-fn lookup_import(e: env, defid: def_id, ns: namespace) -> option::t<def> {
+fn lookup_import(e: env, defid: def_id, ns: namespace) -> option<def> {
     // Imports are simply ignored when resolving themselves.
     if vec::member(defid.node, e.ignored_imports) { ret none; }
     alt e.imports.get(defid.node) {
@@ -1240,7 +1240,7 @@ fn lookup_import(e: env, defid: def_id, ns: namespace) -> option::t<def> {
 }
 
 fn lookup_in_local_native_mod(e: env, node_id: node_id, sp: span, id: ident,
-                              ns: namespace) -> option::t<def> {
+                              ns: namespace) -> option<def> {
     ret lookup_in_local_mod(e, node_id, sp, id, ns, inside);
 }
 
@@ -1249,7 +1249,7 @@ fn is_exported(e: env, i: ident, m: _mod) -> bool {
 }
 
 fn lookup_in_local_mod(e: env, node_id: node_id, sp: span, id: ident,
-                       ns: namespace, dr: dir) -> option::t<def> {
+                       ns: namespace, dr: dir) -> option<def> {
     let info = e.mod_map.get(node_id);
     if dr == outside && !is_exported(e, id, option::get(info.m)) {
         // if we're in a native mod, then dr==inside, so info.m is some _mod
@@ -1276,9 +1276,9 @@ fn lookup_in_local_mod(e: env, node_id: node_id, sp: span, id: ident,
 }
 
 fn lookup_in_globs(e: env, globs: [glob_imp_def], sp: span, id: ident,
-                   ns: namespace, dr: dir) -> option::t<def> {
+                   ns: namespace, dr: dir) -> option<def> {
     fn lookup_in_mod_(e: env, def: glob_imp_def, sp: span, name: ident,
-                      ns: namespace, dr: dir) -> option::t<glob_imp_def> {
+                      ns: namespace, dr: dir) -> option<glob_imp_def> {
         alt def.item.node {
           ast::view_item_import_glob(_, id) {
             if vec::member(id, e.ignored_imports) { ret none; }
@@ -1310,7 +1310,7 @@ fn lookup_in_globs(e: env, globs: [glob_imp_def], sp: span, id: ident,
 }
 
 fn lookup_glob_in_mod(e: env, info: @indexed_mod, sp: span, id: ident,
-                      wanted_ns: namespace, dr: dir) -> option::t<def> {
+                      wanted_ns: namespace, dr: dir) -> option<def> {
     // since we don't know what names we have in advance,
     // absence takes the place of todo()
     if !info.glob_imported_names.contains_key(id) {
@@ -1339,7 +1339,7 @@ fn lookup_glob_in_mod(e: env, info: @indexed_mod, sp: span, id: ident,
 }
 
 fn lookup_in_mie(e: env, mie: mod_index_entry, ns: namespace) ->
-   option::t<def> {
+   option<def> {
     alt mie {
       mie_view_item(_, id, _) {
          if ns == ns_module { ret some(found_view_item(e, id)); }
@@ -1487,7 +1487,7 @@ fn ns_ok(wanted:namespace, actual:namespace) -> bool {
 }
 
 fn lookup_external(e: env, cnum: int, ids: [ident], ns: namespace) ->
-   option::t<def> {
+   option<def> {
     for d: def in csearch::lookup_defs(e.sess.cstore, cnum, ids) {
         e.ext_map.insert(def_id_of_def(d), ids);
         if ns_ok(ns, ns_for_def(d)) { ret some(d); }
@@ -1734,7 +1734,7 @@ fn check_exports(e: @env) {
         is_some(m) || is_some(v) || is_some(t)
     }
 
-    fn maybe_add_reexport(e: @env, path: str, def: option::t<def>) {
+    fn maybe_add_reexport(e: @env, path: str, def: option<def>) {
         alt def {
           some(def) {
             alt e.exp_map.find(path) {
@@ -1868,7 +1868,7 @@ fn resolve_impls(e: @env, c: @ast::crate) {
 }
 
 fn find_impls_in_view_item(e: env, vi: @ast::view_item,
-                           &impls: [@_impl], sc: option::t<iscopes>) {
+                           &impls: [@_impl], sc: option<iscopes>) {
     fn lookup_imported_impls(e: env, id: ast::node_id,
                              act: fn(@[@_impl])) {
         alt e.imports.get(id) {
@@ -1930,8 +1930,8 @@ fn find_impls_in_view_item(e: env, vi: @ast::view_item,
 }
 
 fn find_impls_in_item(e: env, i: @ast::item, &impls: [@_impl],
-                      name: option::t<ident>,
-                      ck_exports: option::t<ast::_mod>) {
+                      name: option<ident>,
+                      ck_exports: option<ast::_mod>) {
     alt i.node {
       ast::item_impl(_, ifce, _, mthds) {
         if alt name { some(n) { n == i.ident } _ { true } } &&
@@ -1953,7 +1953,7 @@ fn find_impls_in_item(e: env, i: @ast::item, &impls: [@_impl],
 }
 
 fn find_impls_in_mod_by_id(e: env, defid: def_id, &impls: [@_impl],
-                           name: option::t<ident>) {
+                           name: option<ident>) {
     let cached;
     alt e.impl_cache.find(defid) {
       some(some(v)) { cached = v; }
@@ -1987,7 +1987,7 @@ fn find_impls_in_mod_by_id(e: env, defid: def_id, &impls: [@_impl],
 }
 
 fn find_impls_in_mod(e: env, m: def, &impls: [@_impl],
-                     name: option::t<ident>) {
+                     name: option<ident>) {
     alt m {
       ast::def_mod(defid) {
         find_impls_in_mod_by_id(e, defid, impls, name);

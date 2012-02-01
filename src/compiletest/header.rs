@@ -14,10 +14,10 @@ type test_props = {
     // Lines that should be expected, in order, on standard out
     error_patterns: [str],
     // Extra flags to pass to the compiler
-    compile_flags: option::t<str>,
+    compile_flags: option<str>,
     // If present, the name of a file that this test should match when
     // pretty-printed
-    pp_exact: option::t<str>
+    pp_exact: option<str>
 };
 
 // Load any test directives embedded in the file
@@ -78,15 +78,15 @@ fn iter_header(testfile: str, it: fn(str)) {
     }
 }
 
-fn parse_error_pattern(line: str) -> option::t<str> {
+fn parse_error_pattern(line: str) -> option<str> {
     parse_name_value_directive(line, "error-pattern")
 }
 
-fn parse_compile_flags(line: str) -> option::t<str> {
+fn parse_compile_flags(line: str) -> option<str> {
     parse_name_value_directive(line, "compile-flags")
 }
 
-fn parse_pp_exact(line: str, testfile: str) -> option::t<str> {
+fn parse_pp_exact(line: str, testfile: str) -> option<str> {
     alt parse_name_value_directive(line, "pp-exact") {
       option::some(s) { option::some(s) }
       option::none {
@@ -104,7 +104,7 @@ fn parse_name_directive(line: str, directive: str) -> bool {
 }
 
 fn parse_name_value_directive(line: str,
-                              directive: str) -> option::t<str> {
+                              directive: str) -> option<str> {
     let keycolon = directive + ":";
     if str::find(line, keycolon) >= 0 {
         let colon = str::find(line, keycolon) as uint;

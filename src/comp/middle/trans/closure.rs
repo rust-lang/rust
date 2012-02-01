@@ -541,7 +541,7 @@ fn trans_expr_fn(bcx: @block_ctxt,
     ret bcx;
 }
 
-fn trans_bind(cx: @block_ctxt, f: @ast::expr, args: [option::t<@ast::expr>],
+fn trans_bind(cx: @block_ctxt, f: @ast::expr, args: [option<@ast::expr>],
               id: ast::node_id, dest: dest) -> @block_ctxt {
     let f_res = trans_callee(cx, f);
     ret trans_bind_1(cx, ty::expr_ty(bcx_tcx(cx), f), f_res, args,
@@ -550,10 +550,10 @@ fn trans_bind(cx: @block_ctxt, f: @ast::expr, args: [option::t<@ast::expr>],
 
 fn trans_bind_1(cx: @block_ctxt, outgoing_fty: ty::t,
                 f_res: lval_maybe_callee,
-                args: [option::t<@ast::expr>], pair_ty: ty::t,
+                args: [option<@ast::expr>], pair_ty: ty::t,
                 dest: dest) -> @block_ctxt {
     let bound: [@ast::expr] = [];
-    for argopt: option::t<@ast::expr> in args {
+    for argopt: option<@ast::expr> in args {
         alt argopt { none { } some(e) { bound += [e]; } }
     }
     let bcx = f_res.bcx;
@@ -781,10 +781,10 @@ fn make_opaque_cbox_free_glue(
 fn trans_bind_thunk(cx: @local_ctxt,
                     incoming_fty: ty::t,
                     outgoing_fty: ty::t,
-                    args: [option::t<@ast::expr>],
+                    args: [option<@ast::expr>],
                     cbox_ty: ty::t,
                     param_bounds: [ty::param_bounds],
-                    target_fn: option::t<ValueRef>)
+                    target_fn: option<ValueRef>)
     -> {val: ValueRef, ty: TypeRef} {
     // If we supported constraints on record fields, we could make the
     // constraints for this function:
@@ -926,7 +926,7 @@ fn trans_bind_thunk(cx: @local_ctxt,
     let outgoing_arg_index: uint = 0u;
     let llout_arg_tys: [TypeRef] =
         type_of_explicit_args(cx.ccx, outgoing_args);
-    for arg: option::t<@ast::expr> in args {
+    for arg: option<@ast::expr> in args {
         let out_arg = outgoing_args[outgoing_arg_index];
         let llout_arg_ty = llout_arg_tys[outgoing_arg_index];
         alt arg {

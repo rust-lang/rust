@@ -110,7 +110,7 @@ fn find_pre_post_loop(fcx: fn_ctxt, l: @local, index: @expr, body: blk,
 // annotation for an if-expression with consequent conseq
 // and alternative maybe_alt
 fn join_then_else(fcx: fn_ctxt, antec: @expr, conseq: blk,
-                  maybe_alt: option::t<@expr>, id: node_id, chck: if_ty) {
+                  maybe_alt: option<@expr>, id: node_id, chck: if_ty) {
     find_pre_post_expr(fcx, antec);
     find_pre_post_block(fcx, conseq);
     alt maybe_alt {
@@ -521,7 +521,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
         let cmodes = callee_modes(fcx, operator.id);
         let modes = [];
         let i = 0;
-        for expr_opt: option::t<@expr> in maybe_args {
+        for expr_opt: option<@expr> in maybe_args {
             alt expr_opt {
               none {/* no-op */ }
               some(expr) { modes += [cmodes[i]]; args += [expr]; }

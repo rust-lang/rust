@@ -878,7 +878,7 @@ fn trans_stack_local_derived_tydesc(cx: @block_ctxt, llsz: ValueRef,
 }
 
 fn get_derived_tydesc(cx: @block_ctxt, t: ty::t, escapes: bool,
-                      &static_ti: option::t<@tydesc_info>) -> result {
+                      &static_ti: option<@tydesc_info>) -> result {
     alt cx.fcx.derived_tydescs.find(t) {
       some(info) {
         // If the tydesc escapes in this context, the cached derived
@@ -949,7 +949,7 @@ fn get_derived_tydesc(cx: @block_ctxt, t: ty::t, escapes: bool,
 type get_tydesc_result = {kind: tydesc_kind, result: result};
 
 fn get_tydesc(cx: @block_ctxt, t: ty::t, escapes: bool,
-              &static_ti: option::t<@tydesc_info>)
+              &static_ti: option<@tydesc_info>)
    -> get_tydesc_result {
 
     // Is the supplied type a type param? If so, return the passed-in tydesc.
@@ -1366,7 +1366,7 @@ fn trans_res_drop(cx: @block_ctxt, rs: ValueRef, did: ast::def_id,
     let dtor_addr = common::get_res_dtor(ccx, did, inner_t);
     let args = [cx.fcx.llretptr, null_env_ptr(cx)];
     for tp: ty::t in tps {
-        let ti: option::t<@tydesc_info> = none;
+        let ti: option<@tydesc_info> = none;
         let td = get_tydesc(cx, tp, false, ti).result;
         args += [td.val];
         cx = td.bcx;
@@ -1641,7 +1641,7 @@ fn iter_structural_ty(cx: @block_ctxt, av: ValueRef, t: ty::t,
 }
 
 fn lazily_emit_all_tydesc_glue(cx: @block_ctxt,
-                               static_ti: option::t<@tydesc_info>) {
+                               static_ti: option<@tydesc_info>) {
     lazily_emit_tydesc_glue(cx, abi::tydesc_field_take_glue, static_ti);
     lazily_emit_tydesc_glue(cx, abi::tydesc_field_drop_glue, static_ti);
     lazily_emit_tydesc_glue(cx, abi::tydesc_field_free_glue, static_ti);
@@ -1650,13 +1650,13 @@ fn lazily_emit_all_tydesc_glue(cx: @block_ctxt,
 
 fn lazily_emit_all_generic_info_tydesc_glues(cx: @block_ctxt,
                                              gi: generic_info) {
-    for ti: option::t<@tydesc_info> in gi.static_tis {
+    for ti: option<@tydesc_info> in gi.static_tis {
         lazily_emit_all_tydesc_glue(cx, ti);
     }
 }
 
 fn lazily_emit_tydesc_glue(cx: @block_ctxt, field: int,
-                           static_ti: option::t<@tydesc_info>) {
+                           static_ti: option<@tydesc_info>) {
     alt static_ti {
       none { }
       some(ti) {
@@ -1731,7 +1731,7 @@ fn lazily_emit_tydesc_glue(cx: @block_ctxt, field: int,
 }
 
 fn call_tydesc_glue_full(cx: @block_ctxt, v: ValueRef, tydesc: ValueRef,
-                         field: int, static_ti: option::t<@tydesc_info>) {
+                         field: int, static_ti: option<@tydesc_info>) {
     lazily_emit_tydesc_glue(cx, field, static_ti);
 
     let static_glue_fn = none;
@@ -1768,7 +1768,7 @@ fn call_tydesc_glue_full(cx: @block_ctxt, v: ValueRef, tydesc: ValueRef,
 
 fn call_tydesc_glue(cx: @block_ctxt, v: ValueRef, t: ty::t, field: int) ->
    @block_ctxt {
-    let ti: option::t<@tydesc_info> = none::<@tydesc_info>;
+    let ti: option<@tydesc_info> = none::<@tydesc_info>;
     let {bcx: bcx, val: td} = get_tydesc(cx, t, false, ti).result;
     call_tydesc_glue_full(bcx, v, td, field, ti);
     ret bcx;
@@ -2402,7 +2402,7 @@ fn get_dest_addr(dest: dest) -> ValueRef {
 }
 
 fn trans_if(cx: @block_ctxt, cond: @ast::expr, thn: ast::blk,
-            els: option::t<@ast::expr>, dest: dest)
+            els: option<@ast::expr>, dest: dest)
     -> @block_ctxt {
     let {bcx, val: cond_val} = trans_temp_expr(cx, cond);
 
@@ -2505,10 +2505,10 @@ fn trans_do_while(cx: @block_ctxt, body: ast::blk, cond: @ast::expr) ->
 
 type generic_info = {
     item_type: ty::t,
-    static_tis: [option::t<@tydesc_info>],
+    static_tis: [option<@tydesc_info>],
     tydescs: [ValueRef],
     param_bounds: @[ty::param_bounds],
-    origins: option::t<typeck::dict_res>
+    origins: option<typeck::dict_res>
 };
 
 enum lval_kind {
@@ -2528,7 +2528,7 @@ type lval_maybe_callee = {bcx: @block_ctxt,
                           val: ValueRef,
                           kind: lval_kind,
                           env: callee_env,
-                          generic: option::t<generic_info>};
+                          generic: option<generic_info>};
 
 fn null_env_ptr(bcx: @block_ctxt) -> ValueRef {
     C_null(T_opaque_cbox_ptr(bcx_ccx(bcx)))
@@ -3055,7 +3055,7 @@ fn trans_arg_expr(cx: @block_ctxt, arg: ty::arg, lldestty: TypeRef,
 //  - new_fn_ctxt
 //  - trans_args
 fn trans_args(cx: @block_ctxt, llenv: ValueRef,
-              gen: option::t<generic_info>, es: [@ast::expr], fn_ty: ty::t,
+              gen: option<generic_info>, es: [@ast::expr], fn_ty: ty::t,
               dest: dest)
    -> {bcx: @block_ctxt,
        args: [ValueRef],
@@ -3378,7 +3378,7 @@ fn trans_tup(bcx: @block_ctxt, elts: [@ast::expr], id: ast::node_id,
 }
 
 fn trans_rec(bcx: @block_ctxt, fields: [ast::field],
-             base: option::t<@ast::expr>, id: ast::node_id,
+             base: option<@ast::expr>, id: ast::node_id,
              dest: dest) -> @block_ctxt {
     let t = node_id_type(bcx_ccx(bcx), id);
     let bcx = bcx;
@@ -3809,8 +3809,8 @@ fn trans_check_expr(cx: @block_ctxt, e: @ast::expr, s: str) -> @block_ctxt {
     ret next_cx;
 }
 
-fn trans_fail_expr(bcx: @block_ctxt, sp_opt: option::t<span>,
-                   fail_expr: option::t<@ast::expr>) -> @block_ctxt {
+fn trans_fail_expr(bcx: @block_ctxt, sp_opt: option<span>,
+                   fail_expr: option<@ast::expr>) -> @block_ctxt {
     let bcx = bcx;
     alt fail_expr {
       some(expr) {
@@ -3836,13 +3836,13 @@ fn trans_fail_expr(bcx: @block_ctxt, sp_opt: option::t<span>,
     }
 }
 
-fn trans_fail(bcx: @block_ctxt, sp_opt: option::t<span>, fail_str: str) ->
+fn trans_fail(bcx: @block_ctxt, sp_opt: option<span>, fail_str: str) ->
     @block_ctxt {
     let V_fail_str = C_cstr(bcx_ccx(bcx), fail_str);
     ret trans_fail_value(bcx, sp_opt, V_fail_str);
 }
 
-fn trans_fail_value(bcx: @block_ctxt, sp_opt: option::t<span>,
+fn trans_fail_value(bcx: @block_ctxt, sp_opt: option<span>,
                     V_fail_str: ValueRef) -> @block_ctxt {
     let ccx = bcx_ccx(bcx);
     let V_filename;
@@ -3907,7 +3907,7 @@ fn trans_cont(cx: @block_ctxt) -> @block_ctxt {
     ret trans_break_cont(cx, false);
 }
 
-fn trans_ret(bcx: @block_ctxt, e: option::t<@ast::expr>) -> @block_ctxt {
+fn trans_ret(bcx: @block_ctxt, e: option<@ast::expr>) -> @block_ctxt {
     let cleanup_cx = bcx, bcx = bcx;
     alt e {
       some(x) { bcx = trans_expr_save_in(bcx, x, bcx.fcx.llretptr); }
@@ -4057,7 +4057,7 @@ fn trans_stmt(cx: @block_ctxt, s: ast::stmt) -> @block_ctxt {
 // You probably don't want to use this one. See the
 // next three functions instead.
 fn new_block_ctxt(cx: @fn_ctxt, parent: block_parent, kind: block_kind,
-                  name: str, block_span: option::t<span>) -> @block_ctxt {
+                  name: str, block_span: option<span>) -> @block_ctxt {
     let s = "";
     if cx.lcx.ccx.sess.opts.save_temps ||
            cx.lcx.ccx.sess.opts.debuginfo {
@@ -4086,7 +4086,7 @@ fn new_block_ctxt(cx: @fn_ctxt, parent: block_parent, kind: block_kind,
 
 
 // Use this when you're at the top block of a function or the like.
-fn new_top_block_ctxt(fcx: @fn_ctxt, sp: option::t<span>) -> @block_ctxt {
+fn new_top_block_ctxt(fcx: @fn_ctxt, sp: option<span>) -> @block_ctxt {
     ret new_block_ctxt(fcx, parent_none, SCOPE_BLOCK, "function top level",
                        sp);
 }
@@ -4101,7 +4101,7 @@ fn new_real_block_ctxt(bcx: @block_ctxt, n: str, sp: span) -> @block_ctxt {
     ret new_block_ctxt(bcx.fcx, parent_some(bcx), SCOPE_BLOCK, n, some(sp));
 }
 
-fn new_loop_scope_block_ctxt(bcx: @block_ctxt, _cont: option::t<@block_ctxt>,
+fn new_loop_scope_block_ctxt(bcx: @block_ctxt, _cont: option<@block_ctxt>,
                              _break: @block_ctxt, n: str, sp: span)
     -> @block_ctxt {
     ret new_block_ctxt(bcx.fcx, parent_some(bcx),
@@ -4336,7 +4336,7 @@ fn mk_standard_basic_blocks(llfn: ValueRef) ->
 //  - trans_args
 fn new_fn_ctxt_w_id(cx: @local_ctxt, llfndecl: ValueRef,
                     id: ast::node_id, rstyle: ast::ret_style,
-                    sp: option::t<span>) -> @fn_ctxt {
+                    sp: option<span>) -> @fn_ctxt {
     let llbbs = mk_standard_basic_blocks(llfndecl);
     ret @{llfn: llfndecl,
           llenv: llvm::LLVMGetParam(llfndecl, 1u as c_uint),
@@ -4360,7 +4360,7 @@ fn new_fn_ctxt_w_id(cx: @local_ctxt, llfndecl: ValueRef,
           lcx: cx};
 }
 
-fn new_fn_ctxt(cx: @local_ctxt, llfndecl: ValueRef, sp: option::t<span>)
+fn new_fn_ctxt(cx: @local_ctxt, llfndecl: ValueRef, sp: option<span>)
     -> @fn_ctxt {
     ret new_fn_ctxt_w_id(cx, llfndecl, -1, ast::return_val, sp);
 }
@@ -5198,7 +5198,7 @@ fn link_name(i: @ast::native_item) -> str {
 }
 
 fn collect_native_item(ccx: @crate_ctxt,
-                       abi: @mutable option::t<ast::native_abi>,
+                       abi: @mutable option<ast::native_abi>,
                        i: @ast::native_item,
                        &&pt: [str],
                        _v: vt<[str]>) {
@@ -5248,7 +5248,7 @@ fn collect_native_item(ccx: @crate_ctxt,
     }
 }
 
-fn collect_item(ccx: @crate_ctxt, abi: @mutable option::t<ast::native_abi>,
+fn collect_item(ccx: @crate_ctxt, abi: @mutable option<ast::native_abi>,
                 i: @ast::item, &&pt: [str], v: vt<[str]>) {
     let new_pt = pt + [i.ident];
     alt i.node {

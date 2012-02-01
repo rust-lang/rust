@@ -38,7 +38,7 @@ fn llvm_err(sess: session, msg: str) unsafe {
     } else { sess.fatal(msg + ": " + str::from_cstr(buf)); }
 }
 
-fn load_intrinsics_bc(sess: session) -> option::t<ModuleRef> {
+fn load_intrinsics_bc(sess: session) -> option<ModuleRef> {
     let path = alt filesearch::search(
         sess.filesearch,
         bind filesearch::pick_file("intrinsics.bc", _)) {
@@ -368,14 +368,14 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
                    sha: sha1) -> link_meta {
 
     type provided_metas =
-        {name: option::t<str>,
-         vers: option::t<str>,
+        {name: option<str>,
+         vers: option<str>,
          cmh_items: [@ast::meta_item]};
 
     fn provided_link_metas(sess: session, c: ast::crate) ->
        provided_metas {
-        let name: option::t<str> = none;
-        let vers: option::t<str> = none;
+        let name: option<str> = none;
+        let vers: option<str> = none;
         let cmh_items: [@ast::meta_item] = [];
         let linkage_metas = attr::find_linkage_metas(c.node.attrs);
         attr::require_unique_names(sess, linkage_metas);

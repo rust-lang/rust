@@ -111,7 +111,7 @@ fn waitpid(pid: pid_t) -> i32 { ret rustrt::rust_process_wait(pid); }
 
 fn getcwd() -> str { ret rustrt::rust_getcwd(); }
 
-fn get_exe_path() -> option::t<fs::path> {
+fn get_exe_path() -> option<fs::path> {
     // FIXME: This doesn't handle the case where the buffer is too small
     // FIXME: path "strings" will likely need fixing...
     let bufsize = 1023u;

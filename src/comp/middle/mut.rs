@@ -240,7 +240,7 @@ fn check_call(cx: @ctx, f: @expr, args: [@expr]) {
     }
 }
 
-fn check_bind(cx: @ctx, f: @expr, args: [option::t<@expr>]) {
+fn check_bind(cx: @ctx, f: @expr, args: [option<@expr>]) {
     let arg_ts = ty::ty_fn_args(cx.tcx, ty::expr_ty(cx.tcx, f));
     let i = 0u;
     for arg in args {
@@ -264,7 +264,7 @@ fn check_bind(cx: @ctx, f: @expr, args: [option::t<@expr>]) {
     }
 }
 
-fn is_immutable_def(cx: @ctx, def: def) -> option::t<str> {
+fn is_immutable_def(cx: @ctx, def: def) -> option<str> {
     alt def {
       def_fn(_, _) | def_mod(_) | def_native_mod(_) | def_const(_) |
       def_use(_) {

@@ -917,11 +917,11 @@ fn associate_type(tn: type_names, s: str, t: TypeRef) {
     assert tn.named_types.insert(s, t);
 }
 
-fn type_has_name(tn: type_names, t: TypeRef) -> option::t<str> {
+fn type_has_name(tn: type_names, t: TypeRef) -> option<str> {
     ret tn.type_names.find(t);
 }
 
-fn name_has_type(tn: type_names, s: str) -> option::t<TypeRef> {
+fn name_has_type(tn: type_names, s: str) -> option<TypeRef> {
     ret tn.named_types.find(s);
 }
 
@@ -1072,7 +1072,7 @@ resource object_file_res(ObjectFile: ObjectFileRef) {
 
 type object_file = {llof: ObjectFileRef, dtor: @object_file_res};
 
-fn mk_object_file(llmb: MemoryBufferRef) -> option::t<object_file> {
+fn mk_object_file(llmb: MemoryBufferRef) -> option<object_file> {
     let llof = llvm::LLVMCreateObjectFile(llmb);
     if llof as int == 0 { ret option::none::<object_file>; }
     ret option::some({llof: llof, dtor: @object_file_res(llof)});

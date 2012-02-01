@@ -55,7 +55,7 @@ fn lookup_hash(d: ebml::doc, eq_fn: fn@([u8]) -> bool, hash: uint) ->
     ret result;
 }
 
-fn maybe_find_item(item_id: int, items: ebml::doc) -> option::t<ebml::doc> {
+fn maybe_find_item(item_id: int, items: ebml::doc) -> option<ebml::doc> {
     fn eq_item(bytes: [u8], item_id: int) -> bool {
         ret ebml::be_uint_from_bytes(@bytes, 0u, 4u) as int == item_id;
     }
@@ -92,7 +92,7 @@ fn variant_enum_id(d: ebml::doc) -> ast::def_id {
     ret parse_def_id(ebml::doc_data(tagdoc));
 }
 
-fn variant_disr_val(d: ebml::doc) -> option::t<int> {
+fn variant_disr_val(d: ebml::doc) -> option<int> {
     alt ebml::maybe_get_doc(d, tag_disr_val) {
       some(val_doc) {
         let val_buf = ebml::doc_data(val_doc);
@@ -118,7 +118,7 @@ fn item_type(item: ebml::doc, tcx: ty::ctxt, cdata: cmd) -> ty::t {
 }
 
 fn item_impl_iface(item: ebml::doc, tcx: ty::ctxt, cdata: cmd)
-    -> option::t<ty::t> {
+    -> option<ty::t> {
     let result = none;
     ebml::tagged_docs(item, tag_impl_iface) {|ity|
         let t = parse_ty_data(ity.data, cdata.cnum, ity.start, tcx, {|did|
@@ -227,7 +227,7 @@ fn get_type_param_count(data: @[u8], id: ast::node_id) -> uint {
 }
 
 fn get_impl_iface(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
-    -> option::t<ty::t> {
+    -> option<ty::t> {
     item_impl_iface(lookup_item(id, cdata.data), tcx, cdata)
 }
 
@@ -279,7 +279,7 @@ fn item_impl_methods(cdata: cmd, item: ebml::doc, base_tps: uint)
 }
 
 fn get_impls_for_mod(cdata: cmd, m_id: ast::node_id,
-                     name: option::t<ast::ident>)
+                     name: option<ast::ident>)
     -> @[@middle::resolve::_impl] {
     let data = cdata.data;
     let mod_item = lookup_item(m_id, data), result = [];

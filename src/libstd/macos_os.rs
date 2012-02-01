@@ -131,7 +131,7 @@ fn target_os() -> str { ret "macos"; }
 
 fn dylib_filename(base: str) -> str { ret "lib" + base + ".dylib"; }
 
-fn get_exe_path() -> option::t<fs::path> {
+fn get_exe_path() -> option<fs::path> {
     // FIXME: This doesn't handle the case where the buffer is too small
     // FIXME: path "strings" will likely need fixing...
     let bufsize = 1023u32;

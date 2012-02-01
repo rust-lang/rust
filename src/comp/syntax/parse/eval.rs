@@ -25,7 +25,7 @@ fn eval_crate_directives(cx: ctx, cdirs: [@ast::crate_directive], prefix: str,
 }
 
 fn eval_crate_directives_to_mod(cx: ctx, cdirs: [@ast::crate_directive],
-                                prefix: str, suffix: option::t<str>)
+                                prefix: str, suffix: option<str>)
     -> (ast::_mod, [ast::attribute]) {
     #debug("eval crate prefix: %s", prefix);
     #debug("eval crate suffix: %s",
@@ -50,10 +50,10 @@ companion mod is a .rs file with the same name as the directory.
 We build the path to the companion mod by combining the prefix and the
 optional suffix then adding the .rs extension.
 */
-fn parse_companion_mod(cx: ctx, prefix: str, suffix: option::t<str>)
+fn parse_companion_mod(cx: ctx, prefix: str, suffix: option<str>)
     -> ([@ast::view_item], [@ast::item], [ast::attribute]) {
 
-    fn companion_file(prefix: str, suffix: option::t<str>) -> str {
+    fn companion_file(prefix: str, suffix: option<str>) -> str {
         ret alt suffix {
           option::some(s) { fs::connect(prefix, s) }
           option::none { prefix }

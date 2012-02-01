@@ -50,7 +50,7 @@ fn doc_at(data: @[u8], start: uint) -> doc {
     ret {data: data, start: elt_size.next, end: end};
 }
 
-fn maybe_get_doc(d: doc, tg: uint) -> option::t<doc> {
+fn maybe_get_doc(d: doc, tg: uint) -> option<doc> {
     let pos = d.start;
     while pos < d.end {
         let elt_tag = vint_at(*d.data, pos);

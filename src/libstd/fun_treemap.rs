@@ -13,7 +13,7 @@ of features.
 */
 
 import option::{some, none};
-import option = option::t;
+import option = option;
 
 export treemap;
 export init;

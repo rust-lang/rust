@@ -28,9 +28,9 @@ fn no_ann() -> pp_ann {
 
 type ps =
     @{s: pp::printer,
-      cm: option::t<codemap>,
-      comments: option::t<[lexer::cmnt]>,
-      literals: option::t<[lexer::lit]>,
+      cm: option<codemap>,
+      comments: option<[lexer::cmnt]>,
+      literals: option<[lexer::lit]>,
       mutable cur_cmnt: uint,
       mutable cur_lit: uint,
       mutable boxes: [pp::breaks],
@@ -688,13 +688,13 @@ fn print_maybe_parens_discrim(s: ps, e: @ast::expr) {
 }
 
 fn print_if(s: ps, test: @ast::expr, blk: ast::blk,
-            elseopt: option::t<@ast::expr>, chk: bool) {
+            elseopt: option<@ast::expr>, chk: bool) {
     head(s, "if");
     if chk { word_nbsp(s, "check"); }
     print_maybe_parens_discrim(s, test);
     space(s.s);
     print_block(s, blk);
-    fn do_else(s: ps, els: option::t<@ast::expr>) {
+    fn do_else(s: ps, els: option<@ast::expr>) {
         alt els {
           some(_else) {
             alt _else.node {
@@ -809,7 +809,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         }
       }
       ast::expr_bind(func, args) {
-        fn print_opt(s: ps, expr: option::t<@ast::expr>) {
+        fn print_opt(s: ps, expr: option<@ast::expr>) {
             alt expr {
               some(expr) { print_expr(s, expr); }
               _ { word(s.s, "_"); }
@@ -1411,8 +1411,8 @@ fn print_mt(s: ps, mt: ast::mt) {
 }
 
 fn print_ty_fn(s: ps, opt_proto: option<ast::proto>,
-               decl: ast::fn_decl, id: option::t<ast::ident>,
-               tps: option::t<[ast::ty_param]>) {
+               decl: ast::fn_decl, id: option<ast::ident>,
+               tps: option<[ast::ty_param]>) {
     ibox(s, indent_unit);
     word(s.s, opt_proto_to_str(opt_proto));
     alt id { some(id) { word(s.s, " "); word(s.s, id); } _ { } }
@@ -1442,7 +1442,7 @@ fn print_ty_fn(s: ps, opt_proto: option<ast::proto>,
 }
 
 fn maybe_print_trailing_comment(s: ps, span: codemap::span,
-                                next_pos: option::t<uint>) {
+                                next_pos: option<uint>) {
     let cm;
     alt s.cm { some(ccm) { cm = ccm; } _ { ret; } }
     alt next_comment(s) {
@@ -1512,7 +1512,7 @@ fn print_literal(s: ps, &&lit: @ast::lit) {
 
 fn lit_to_str(l: @ast::lit) -> str { be to_str(l, print_literal); }
 
-fn next_lit(s: ps, pos: uint) -> option::t<lexer::lit> {
+fn next_lit(s: ps, pos: uint) -> option<lexer::lit> {
     alt s.literals {
       some(lits) {
         while s.cur_lit < vec::len(lits) {
@@ -1621,7 +1621,7 @@ fn to_str<T>(t: T, f: fn@(ps, T)) -> str {
     io::mem_buffer_str(buffer)
 }
 
-fn next_comment(s: ps) -> option::t<lexer::cmnt> {
+fn next_comment(s: ps) -> option<lexer::cmnt> {
     alt s.comments {
       some(cmnts) {
         if s.cur_cmnt < vec::len(cmnts) {

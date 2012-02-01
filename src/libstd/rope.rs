@@ -481,7 +481,7 @@ mod iterator {
               node::content(x) { ret node::leaf_iterator::start(x) }
             }
         }
-        fn next(it: node::leaf_iterator::t) -> option::t<node::leaf> {
+        fn next(it: node::leaf_iterator::t) -> option<node::leaf> {
             ret node::leaf_iterator::next(it);
         }
     }
@@ -492,7 +492,7 @@ mod iterator {
               node::content(x) { ret node::char_iterator::start(x) }
             }
         }
-        fn next(it: node::char_iterator::t) -> option::t<char> {
+        fn next(it: node::char_iterator::t) -> option<char> {
             ret node::char_iterator::next(it)
         }
     }
@@ -952,7 +952,7 @@ mod node {
     - `option::some(x)` otherwise, in which case `x` has the same contents
        as `node` bot lower height and/or fragmentation.
     */
-    fn bal(node: @node) -> option::t<@node> {
+    fn bal(node: @node) -> option<@node> {
         if height(node) < hint_max_node_height { ret option::none; }
         //1. Gather all leaves as a forest
         let forest = [mutable];
@@ -1230,7 +1230,7 @@ mod node {
             }
         }
 
-        fn next(it: t) -> option::t<leaf> {
+        fn next(it: t) -> option<leaf> {
             if it.stackpos < 0 { ret option::none; }
             while true {
                 let current = it.stack[it.stackpos];
@@ -1254,7 +1254,7 @@ mod node {
     mod char_iterator {
         type t = {
             leaf_iterator: leaf_iterator::t,
-            mutable leaf:  option::t<leaf>,
+            mutable leaf:  option<leaf>,
             mutable leaf_byte_pos: uint
         };
 
@@ -1274,7 +1274,7 @@ mod node {
             }
         }
 
-        fn next(it: t) -> option::t<char> {
+        fn next(it: t) -> option<char> {
             while true {
                 alt(get_current_or_next_leaf(it)) {
                   option::none { ret option::none; }
@@ -1294,7 +1294,7 @@ mod node {
             fail;//unreachable
         }
 
-        fn get_current_or_next_leaf(it: t) -> option::t<leaf> {
+        fn get_current_or_next_leaf(it: t) -> option<leaf> {
             alt(it.leaf) {
               option::some(_) { ret it.leaf }
               option::none {
@@ -1311,7 +1311,7 @@ mod node {
             }
         }
 
-        fn get_next_char_in_leaf(it: t) -> option::t<char> {
+        fn get_next_char_in_leaf(it: t) -> option<char> {
             alt(it.leaf) {
               option::none { ret option::none }
               option::some(aleaf) {

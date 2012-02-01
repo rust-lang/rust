@@ -48,7 +48,7 @@ fn find_linkage_metas(attrs: [ast::attribute]) -> [@ast::meta_item] {
 fn find_attrs_by_name(attrs: [ast::attribute], name: ast::ident) ->
    [ast::attribute] {
     let filter = (
-        fn@(a: ast::attribute) -> option::t<ast::attribute> {
+        fn@(a: ast::attribute) -> option<ast::attribute> {
             if get_attr_name(a) == name {
                 option::some(a)
             } else { option::none }
@@ -67,7 +67,7 @@ fn get_attr_name(attr: ast::attribute) -> ast::ident {
 
 fn find_meta_items_by_name(metas: [@ast::meta_item], name: ast::ident) ->
    [@ast::meta_item] {
-    let filter = fn@(&&m: @ast::meta_item) -> option::t<@ast::meta_item> {
+    let filter = fn@(&&m: @ast::meta_item) -> option<@ast::meta_item> {
         if get_meta_item_name(m) == name {
             option::some(m)
         } else { option::none }
@@ -85,7 +85,7 @@ fn get_meta_item_name(meta: @ast::meta_item) -> ast::ident {
 
 // Gets the string value if the meta_item is a meta_name_value variant
 // containing a string, otherwise none
-fn get_meta_item_value_str(meta: @ast::meta_item) -> option::t<str> {
+fn get_meta_item_value_str(meta: @ast::meta_item) -> option<str> {
     alt meta.node {
       ast::meta_name_value(_, v) {
         alt v.node { ast::lit_str(s) { option::some(s) } _ { option::none } }
@@ -95,7 +95,7 @@ fn get_meta_item_value_str(meta: @ast::meta_item) -> option::t<str> {
 }
 
 fn get_meta_item_value_str_by_name(attrs: [ast::attribute], name: ast::ident)
-    -> option::t<str> {
+    -> option<str> {
     let mattrs = find_attrs_by_name(attrs, name);
     if vec::len(mattrs) > 0u {
         ret get_meta_item_value_str(attr_meta(mattrs[0]));
@@ -103,7 +103,7 @@ fn get_meta_item_value_str_by_name(attrs: [ast::attribute], name: ast::ident)
     ret option::none;
 }
 
-fn get_meta_item_list(meta: @ast::meta_item) -> option::t<[@ast::meta_item]> {
+fn get_meta_item_list(meta: @ast::meta_item) -> option<[@ast::meta_item]> {
     alt meta.node {
       ast::meta_list(_, l) { option::some(l) }
       _ { option::none }
@@ -184,7 +184,7 @@ fn sort_meta_items(items: [@ast::meta_item]) -> [@ast::meta_item] {
 fn remove_meta_items_by_name(items: [@ast::meta_item], name: str) ->
    [@ast::meta_item] {
 
-    let filter = fn@(&&item: @ast::meta_item) -> option::t<@ast::meta_item> {
+    let filter = fn@(&&item: @ast::meta_item) -> option<@ast::meta_item> {
         if get_meta_item_name(item) != name {
             option::some(item)
         } else { option::none }

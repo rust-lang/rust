@@ -38,7 +38,7 @@ Function: create
 // FIXME eventually, a proper datatype plus an exported impl would be
 // preferrable
 fn create<T: copy>() -> t<T> {
-    type cell<T> = option::t<T>;
+    type cell<T> = option<T>;
 
     let initial_capacity: uint = 32u; // 2^5
      /**

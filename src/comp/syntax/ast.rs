@@ -8,7 +8,7 @@ type spanned<T> = {node: T, span: span};
 type ident = str;
 
 // Functions may or may not have names.
-type fn_ident = option::t<ident>;
+type fn_ident = option<ident>;
 
 // FIXME: with typestate constraint, could say
 // idents and types are the same length, and are
@@ -87,7 +87,7 @@ enum meta_item_ {
 
 type blk = spanned<blk_>;
 
-type blk_ = {view_items: [@view_item], stmts: [@stmt], expr: option::t<@expr>,
+type blk_ = {view_items: [@view_item], stmts: [@stmt], expr: option<@expr>,
              id: node_id, rules: blk_check_mode};
 
 type pat = {id: node_id, node: pat_, span: span};
@@ -106,7 +106,7 @@ enum pat_ {
     // After the resolution phase, code should never pattern-
     // match on a pat directly! Always call pat_util::normalize_pat --
     // it turns any pat_idents that refer to nullary enums into pat_enums.
-    pat_ident(@path, option::t<@pat>),
+    pat_ident(@path, option<@pat>),
     pat_enum(@path, [@pat]),
     pat_rec([field_pat], bool),
     pat_tup([@pat]),
@@ -180,7 +180,7 @@ enum init_op { init_assign, init_move, }
 type initializer = {op: init_op, expr: @expr};
 
 type local_ =  // FIXME: should really be a refinement on pat
-    {ty: @ty, pat: @pat, init: option::t<initializer>, id: node_id};
+    {ty: @ty, pat: @pat, init: option<initializer>, id: node_id};
 
 type local = spanned<local_>;
 
@@ -190,7 +190,7 @@ enum let_style { let_copy, let_ref, }
 
 enum decl_ { decl_local([(let_style, @local)]), decl_item(@item), }
 
-type arm = {pats: [@pat], guard: option::t<@expr>, body: blk};
+type arm = {pats: [@pat], guard: option<@expr>, body: blk};
 
 type field_ = {mut: mutability, ident: ident, expr: @expr};
 
@@ -204,15 +204,15 @@ type expr = {id: node_id, node: expr_, span: span};
 
 enum expr_ {
     expr_vec([@expr], mutability),
-    expr_rec([field], option::t<@expr>),
+    expr_rec([field], option<@expr>),
     expr_call(@expr, [@expr], bool),
     expr_tup([@expr]),
-    expr_bind(@expr, [option::t<@expr>]),
+    expr_bind(@expr, [option<@expr>]),
     expr_binary(binop, @expr, @expr),
     expr_unary(unop, @expr),
     expr_lit(@lit),
     expr_cast(@expr, @ty),
-    expr_if(@expr, blk, option::t<@expr>),
+    expr_if(@expr, blk, option<@expr>),
     expr_while(@expr, blk),
     expr_for(@local, @expr, blk),
     expr_do_while(blk, @expr),
@@ -233,10 +233,10 @@ enum expr_ {
     expr_field(@expr, ident, [@ty]),
     expr_index(@expr, @expr),
     expr_path(@path),
-    expr_fail(option::t<@expr>),
+    expr_fail(option<@expr>),
     expr_break,
     expr_cont,
-    expr_ret(option::t<@expr>),
+    expr_ret(option<@expr>),
     expr_be(@expr),
     expr_log(int, @expr, @expr),
 
@@ -248,7 +248,7 @@ enum expr_ {
 
     /* FIXME Would be nice if expr_check desugared
        to expr_if_check. */
-    expr_if_check(@expr, blk, option::t<@expr>),
+    expr_if_check(@expr, blk, option<@expr>),
     expr_mac(mac),
 }
 
@@ -274,7 +274,7 @@ enum blk_sort {
 type mac = spanned<mac_>;
 
 enum mac_ {
-    mac_invoc(@path, @expr, option::t<str>),
+    mac_invoc(@path, @expr, option<str>),
     mac_embed_type(@ty),
     mac_embed_block(blk),
     mac_ellipsis,
@@ -415,7 +415,7 @@ type native_mod =
 type variant_arg = {ty: @ty, id: node_id};
 
 type variant_ = {name: ident, attrs: [attribute], args: [variant_arg],
-                 id: node_id, disr_expr: option::t<@expr>};
+                 id: node_id, disr_expr: option<@expr>};
 
 type variant = spanned<variant_>;
 
@@ -465,7 +465,7 @@ enum item_ {
     item_res(fn_decl /* dtor */, [ty_param], blk,
              node_id /* dtor id */, node_id /* ctor id */),
     item_iface([ty_param], [ty_method]),
-    item_impl([ty_param], option::t<@ty> /* iface */,
+    item_impl([ty_param], option<@ty> /* iface */,
               @ty /* self */, [@method]),
 }
 

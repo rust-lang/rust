@@ -27,7 +27,7 @@ enum unsafe_ty { contains(ty::t), mut_contains(ty::t), }
 
 type binding = @{node_id: node_id,
                  span: span,
-                 root_var: option::t<node_id>,
+                 root_var: option<node_id>,
                  local_id: uint,
                  unsafe_tys: [unsafe_ty],
                  mutable copied: copied};
@@ -36,7 +36,7 @@ type binding = @{node_id: node_id,
 type scope = {bs: [binding],
               invalid: @mutable list<@invalid>};
 
-fn mk_binding(cx: ctx, id: node_id, span: span, root_var: option::t<node_id>,
+fn mk_binding(cx: ctx, id: node_id, span: span, root_var: option<node_id>,
               unsafe_tys: [unsafe_ty]) -> binding {
     alt root_var {
       some(r_id) { cx.ref_map.insert(id, r_id); }
@@ -427,7 +427,7 @@ fn check_assign(cx: @ctx, dest: @ast::expr, src: @ast::expr, sc: scope,
     check_lval(cx, dest, sc, v);
 }
 
-fn check_if(c: @ast::expr, then: ast::blk, els: option::t<@ast::expr>,
+fn check_if(c: @ast::expr, then: ast::blk, els: option<@ast::expr>,
             sc: scope, v: vt<scope>) {
     v.visit_expr(c, sc, v);
     let orig_invalid = *sc.invalid;
@@ -476,14 +476,14 @@ fn test_scope(cx: ctx, sc: scope, b: binding, p: @ast::path) {
     }
 }
 
-fn path_def(cx: ctx, ex: @ast::expr) -> option::t<ast::def> {
+fn path_def(cx: ctx, ex: @ast::expr) -> option<ast::def> {
     ret alt ex.node {
           ast::expr_path(_) { some(cx.tcx.def_map.get(ex.id)) }
           _ { none }
         }
 }
 
-fn path_def_id(cx: ctx, ex: @ast::expr) -> option::t<ast::node_id> {
+fn path_def_id(cx: ctx, ex: @ast::expr) -> option<ast::node_id> {
     alt ex.node {
       ast::expr_path(_) {
         ret some(ast_util::def_id_of_def(cx.tcx.def_map.get(ex.id)).node);
@@ -589,12 +589,12 @@ fn copy_is_expensive(tcx: ty::ctxt, ty: ty::t) -> bool {
 
 type pattern_root = {id: node_id,
                      name: ident,
-                     mut: option::t<unsafe_ty>,
+                     mut: option<unsafe_ty>,
                      span: span};
 
-fn pattern_roots(tcx: ty::ctxt, mut: option::t<unsafe_ty>, pat: @ast::pat)
+fn pattern_roots(tcx: ty::ctxt, mut: option<unsafe_ty>, pat: @ast::pat)
     -> [pattern_root] {
-    fn walk(tcx: ty::ctxt, mut: option::t<unsafe_ty>, pat: @ast::pat,
+    fn walk(tcx: ty::ctxt, mut: option<unsafe_ty>, pat: @ast::pat,
             &set: [pattern_root]) {
         alt normalize_pat(tcx, pat).node {
           ast::pat_wild | ast::pat_lit(_) | ast::pat_range(_, _) {}
@@ -642,7 +642,7 @@ fn pattern_roots(tcx: ty::ctxt, mut: option::t<unsafe_ty>, pat: @ast::pat)
 // Wraps the expr_root in mut.rs to also handle roots that exist through
 // return-by-reference
 fn expr_root(cx: ctx, ex: @ast::expr, autoderef: bool)
-    -> {ex: @ast::expr, mut: option::t<unsafe_ty>} {
+    -> {ex: @ast::expr, mut: option<unsafe_ty>} {
     let base_root = mut::expr_root(cx.tcx, ex, autoderef);
     let unsafe_ty = none;
     for d in *base_root.ds {
@@ -651,12 +651,12 @@ fn expr_root(cx: ctx, ex: @ast::expr, autoderef: bool)
     ret {ex: base_root.ex, mut: unsafe_ty};
 }
 
-fn unsafe_set(from: option::t<unsafe_ty>) -> [unsafe_ty] {
+fn unsafe_set(from: option<unsafe_ty>) -> [unsafe_ty] {
     alt from { some(t) { [t] } _ { [] } }
 }
 
 fn find_invalid(id: node_id, lst: list<@invalid>)
-    -> option::t<@invalid> {
+    -> option<@invalid> {
     let cur = lst;
     while true {
         alt cur {

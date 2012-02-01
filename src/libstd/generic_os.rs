@@ -16,7 +16,7 @@ Function: getenv
 
 Get the value of an environment variable
 */
-fn getenv(n: str) -> option::t<str> { }
+fn getenv(n: str) -> option<str> { }
 
 #[cfg(bogus)]
 /*
@@ -29,7 +29,7 @@ fn setenv(n: str, v: str) { }
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
-fn getenv(n: str) -> option::t<str> unsafe {
+fn getenv(n: str) -> option<str> unsafe {
     let s = str::as_buf(n, {|buf| os::libc::getenv(buf) });
     ret if unsafe::reinterpret_cast(s) == 0 {
             option::none::<str>
@@ -55,7 +55,7 @@ fn setenv(n: str, v: str) {
 }
 
 #[cfg(target_os = "win32")]
-fn getenv(n: str) -> option::t<str> {
+fn getenv(n: str) -> option<str> {
     let nsize = 256u;
     while true {
         let v: [u8] = [];

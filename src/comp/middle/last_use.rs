@@ -298,7 +298,7 @@ fn clear_def_if_path(cx: ctx, d: def, to: bool)
 }
 
 fn clear_if_path(cx: ctx, ex: @expr, v: visit::vt<ctx>, to: bool)
-    -> option::t<node_id> {
+    -> option<node_id> {
     alt ex.node {
       expr_path(_) {
         ret clear_def_if_path(cx, cx.def_map.get(ex.id), to);

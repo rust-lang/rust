@@ -37,7 +37,7 @@ fn strip_items(crate: @ast::crate, in_cfg: in_cfg_pred)
 }
 
 fn filter_item(cx: ctxt, &&item: @ast::item) ->
-   option::t<@ast::item> {
+   option<@ast::item> {
     if item_in_cfg(cx, item) { option::some(item) } else { option::none }
 }
 
@@ -50,7 +50,7 @@ fn fold_mod(cx: ctxt, m: ast::_mod, fld: fold::ast_fold) ->
 }
 
 fn filter_native_item(cx: ctxt, &&item: @ast::native_item) ->
-   option::t<@ast::native_item> {
+   option<@ast::native_item> {
     if native_item_in_cfg(cx, item) {
         option::some(item)
     } else { option::none }
@@ -65,7 +65,7 @@ fn fold_native_mod(cx: ctxt, nm: ast::native_mod,
 }
 
 fn filter_stmt(cx: ctxt, &&stmt: @ast::stmt) ->
-   option::t<@ast::stmt> {
+   option<@ast::stmt> {
     alt stmt.node {
       ast::stmt_decl(decl, _) {
         alt decl.node {

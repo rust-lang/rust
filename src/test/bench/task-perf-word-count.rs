@@ -10,7 +10,7 @@
 
 use std;
 
-import option = option::t;
+import option = option;
 import option::{some, none};
 import std::{map, io, time};
 import io::reader_util;

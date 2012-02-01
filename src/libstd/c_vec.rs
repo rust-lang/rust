@@ -46,7 +46,7 @@ enum t<T> {
     t({ base: *mutable T, len: uint, rsrc: @dtor_res})
 }
 
-resource dtor_res(dtor: option::t<fn@()>) {
+resource dtor_res(dtor: option<fn@()>) {
     alt dtor {
       option::none { }
       option::some(f) { f(); }

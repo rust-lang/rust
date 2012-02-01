@@ -103,7 +103,7 @@ fn seq_states(fcx: fn_ctxt, pres: prestate, bindings: [binding]) ->
 }
 
 fn find_pre_post_state_sub(fcx: fn_ctxt, pres: prestate, e: @expr,
-                           parent: node_id, c: option::t<tsconstr>) -> bool {
+                           parent: node_id, c: option<tsconstr>) -> bool {
     let changed = find_pre_post_state_expr(fcx, pres, e);
 
     changed = set_prestate_ann(fcx.ccx, parent, pres) || changed;
@@ -261,7 +261,7 @@ fn gen_if_local(fcx: fn_ctxt, p: poststate, e: @expr) -> bool {
 }
 
 fn join_then_else(fcx: fn_ctxt, antec: @expr, conseq: blk,
-                  maybe_alt: option::t<@expr>, id: node_id, chk: if_ty,
+                  maybe_alt: option<@expr>, id: node_id, chk: if_ty,
                   pres: prestate) -> bool {
     let changed =
         set_prestate_ann(fcx.ccx, id, pres) |
@@ -376,7 +376,7 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
         let callee_ops = callee_arg_init_ops(fcx, operator.id);
         let ops = [];
         let i = 0;
-        for a_opt: option::t<@expr> in maybe_args {
+        for a_opt: option<@expr> in maybe_args {
             alt a_opt {
               none {/* no-op */ }
               some(a) { ops += [callee_ops[i]]; args += [a]; }

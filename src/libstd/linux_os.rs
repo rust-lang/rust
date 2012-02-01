@@ -123,7 +123,7 @@ fn dylib_filename(base: str) -> str { ret "lib" + base + ".so"; }
 
 /// Returns the directory containing the running program
 /// followed by a path separator
-fn get_exe_path() -> option::t<fs::path> {
+fn get_exe_path() -> option<fs::path> {
     let bufsize = 1023u;
     // FIXME: path "strings" will likely need fixing...
     let path = str::from_bytes(vec::init_elt(bufsize, 0u8));

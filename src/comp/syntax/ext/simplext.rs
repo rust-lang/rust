@@ -15,7 +15,7 @@ import ast::{ident, path, ty, blk_, expr, path_, expr_path,
 
 export add_new_extension;
 
-fn path_to_ident(pth: @path) -> option::t<ident> {
+fn path_to_ident(pth: @path) -> option<ident> {
     if vec::len(pth.node.idents) == 1u && vec::len(pth.node.types) == 0u {
         ret some(pth.node.idents[0u]);
     }
@@ -71,11 +71,11 @@ fn match_error(cx: ext_ctxt, m: matchable, expected: str) -> ! {
 // If we want better match failure error messages (like in Fortifying Syntax),
 // we'll want to return something indicating amount of progress and location
 // of failure instead of `none`.
-type match_result = option::t<arb_depth<matchable>>;
+type match_result = option<arb_depth<matchable>>;
 type selector = fn@(matchable) -> match_result;
 
 fn elts_to_ell(cx: ext_ctxt, elts: [@expr]) ->
-   {pre: [@expr], rep: option::t<@expr>, post: [@expr]} {
+   {pre: [@expr], rep: option<@expr>, post: [@expr]} {
     let idx: uint = 0u;
     let res = none;
     for elt: @expr in elts {
@@ -104,8 +104,8 @@ fn elts_to_ell(cx: ext_ctxt, elts: [@expr]) ->
         }
 }
 
-fn option_flatten_map<T: copy, U: copy>(f: fn@(T) -> option::t<U>, v: [T]) ->
-   option::t<[U]> {
+fn option_flatten_map<T: copy, U: copy>(f: fn@(T) -> option<U>, v: [T]) ->
+   option<[U]> {
     let res = [];
     for elem: T in v {
         alt f(elem) { none { ret none; } some(fv) { res += [fv]; } }
@@ -165,7 +165,7 @@ fn pattern_to_selectors(cx: ext_ctxt, e: @expr) -> binders {
 bindings. Most of the work is done in p_t_s, which generates the
 selectors. */
 
-fn use_selectors_to_bind(b: binders, e: @expr) -> option::t<bindings> {
+fn use_selectors_to_bind(b: binders, e: @expr) -> option<bindings> {
     let res = new_str_hash::<arb_depth<matchable>>();
     //need to do this first, to check vec lengths.
     for sel: selector in b.literal_ast_matchers {
@@ -223,8 +223,8 @@ fn follow(m: arb_depth<matchable>, idx_path: @mutable [uint]) ->
     ret res;
 }
 
-fn follow_for_trans(cx: ext_ctxt, mmaybe: option::t<arb_depth<matchable>>,
-                    idx_path: @mutable [uint]) -> option::t<matchable> {
+fn follow_for_trans(cx: ext_ctxt, mmaybe: option<arb_depth<matchable>>,
+                    idx_path: @mutable [uint]) -> option<matchable> {
     alt mmaybe {
       none { ret none }
       some(m) {
@@ -269,7 +269,7 @@ fn transcribe_exprs(cx: ext_ctxt, b: bindings, idx_path: @mutable [uint],
         alt repeat_me_maybe {
           none { }
           some(repeat_me) {
-            let repeat: option::t<{rep_count: uint, name: ident}> = none;
+            let repeat: option<{rep_count: uint, name: ident}> = none;
             /* we need to walk over all the free vars in lockstep, except for
             the leaves, which are just duplicated */
             free_vars(b, repeat_me) {|fv|
@@ -523,7 +523,7 @@ fn p_t_s_r_path(cx: ext_ctxt, p: @path, s: selector, b: binders) {
     }
 }
 
-fn block_to_ident(blk: blk_) -> option::t<ident> {
+fn block_to_ident(blk: blk_) -> option<ident> {
     if vec::len(blk.stmts) != 0u { ret none; }
     ret alt blk.expr {
           some(expr) {
@@ -667,7 +667,7 @@ fn p_t_s_r_actual_vector(cx: ext_ctxt, elts: [@expr], _repeat_after: bool,
 }
 
 fn add_new_extension(cx: ext_ctxt, sp: span, arg: @expr,
-                     _body: option::t<str>) -> base::macro_def {
+                     _body: option<str>) -> base::macro_def {
     let args: [@ast::expr] =
         alt arg.node {
           ast::expr_vec(elts, _) { elts }
@@ -677,7 +677,7 @@ fn add_new_extension(cx: ext_ctxt, sp: span, arg: @expr,
           }
         };
 
-    let macro_name: option::t<str> = none;
+    let macro_name: option<str> = none;
     let clauses: [@clause] = [];
     for arg: @expr in args {
         alt arg.node {
@@ -751,7 +751,7 @@ fn add_new_extension(cx: ext_ctxt, sp: span, arg: @expr,
          ext: normal(ext)};
 
     fn generic_extension(cx: ext_ctxt, sp: span, arg: @expr,
-                         _body: option::t<str>, clauses: [@clause]) -> @expr {
+                         _body: option<str>, clauses: [@clause]) -> @expr {
         for c: @clause in clauses {
             alt use_selectors_to_bind(c.params, arg) {
               some(bindings) { ret transcribe(cx, bindings, c.body); }

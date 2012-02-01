@@ -542,7 +542,7 @@ fn parse_fn_block_arg(p: parser) -> ast::arg {
     ret {mode: m, ty: t, ident: i, id: p.get_id()};
 }
 
-fn parse_seq_to_before_gt<T: copy>(sep: option::t<token::token>,
+fn parse_seq_to_before_gt<T: copy>(sep: option<token::token>,
                                   f: fn(parser) -> T,
                                   p: parser) -> [T] {
     let first = true;
@@ -559,7 +559,7 @@ fn parse_seq_to_before_gt<T: copy>(sep: option::t<token::token>,
     ret v;
 }
 
-fn parse_seq_to_gt<T: copy>(sep: option::t<token::token>,
+fn parse_seq_to_gt<T: copy>(sep: option<token::token>,
                            f: fn(parser) -> T, p: parser) -> [T] {
     let v = parse_seq_to_before_gt(sep, f, p);
     expect_gt(p);
@@ -567,7 +567,7 @@ fn parse_seq_to_gt<T: copy>(sep: option::t<token::token>,
     ret v;
 }
 
-fn parse_seq_lt_gt<T: copy>(sep: option::t<token::token>,
+fn parse_seq_lt_gt<T: copy>(sep: option<token::token>,
                            f: fn(parser) -> T,
                            p: parser) -> spanned<[T]> {
     let lo = p.span.lo;
@@ -586,7 +586,7 @@ fn parse_seq_to_end<T: copy>(ket: token::token, sep: seq_sep,
 }
 
 type seq_sep = {
-    sep: option::t<token::token>,
+    sep: option<token::token>,
     trailing_opt: bool   // is trailing separator optional?
 };
 
@@ -845,7 +845,7 @@ fn parse_bottom_expr(p: parser) -> pexpr {
         ret pexpr(mk_mac_expr(p, lo, p.span.hi, ast::mac_ellipsis));
     } else if eat_word(p, "bind") {
         let e = parse_expr_res(p, RESTRICT_NO_CALL_EXPRS);
-        fn parse_expr_opt(p: parser) -> option::t<@ast::expr> {
+        fn parse_expr_opt(p: parser) -> option<@ast::expr> {
             alt p.token {
               token::UNDERSCORE { p.bump(); ret none; }
               _ { ret some(parse_expr(p)); }
@@ -1202,13 +1202,13 @@ fn parse_assign_expr(p: parser) -> @ast::expr {
 fn parse_if_expr_1(p: parser) ->
    {cond: @ast::expr,
     then: ast::blk,
-    els: option::t<@ast::expr>,
+    els: option<@ast::expr>,
     lo: uint,
     hi: uint} {
     let lo = p.last_span.lo;
     let cond = parse_expr(p);
     let thn = parse_block(p);
-    let els: option::t<@ast::expr> = none;
+    let els: option<@ast::expr> = none;
     let hi = thn.span.hi;
     if eat_word(p, "else") {
         let elexpr = parse_else_expr(p);
@@ -1364,7 +1364,7 @@ fn parse_expr_res(p: parser, r: restriction) -> @ast::expr {
     ret e;
 }
 
-fn parse_initializer(p: parser) -> option::t<ast::initializer> {
+fn parse_initializer(p: parser) -> option<ast::initializer> {
     alt p.token {
       token::EQ {
         p.bump();
@@ -2143,7 +2143,7 @@ fn fn_expr_lookahead(tok: token::token) -> bool {
     }
 }
 
-fn parse_item(p: parser, attrs: [ast::attribute]) -> option::t<@ast::item> {
+fn parse_item(p: parser, attrs: [ast::attribute]) -> option<@ast::item> {
     if eat_word(p, "const") {
         ret some(parse_item_const(p, attrs));
     } else if eat_word(p, "inline") {
@@ -2178,7 +2178,7 @@ fn parse_item(p: parser, attrs: [ast::attribute]) -> option::t<@ast::item> {
 
 // A type to distingush between the parsing of item attributes or syntax
 // extensions, which both begin with token.POUND
-type attr_or_ext = option::t<either::t<[ast::attribute], @ast::expr>>;
+type attr_or_ext = option<either::t<[ast::attribute], @ast::expr>>;
 
 fn parse_outer_attrs_or_ext(
     p: parser,
@@ -2292,7 +2292,7 @@ fn parse_use(p: parser) -> ast::view_item_ {
 }
 
 fn parse_rest_import_name(p: parser, first: ast::ident,
-                          def_ident: option::t<ast::ident>) ->
+                          def_ident: option<ast::ident>) ->
    ast::view_item_ {
     let identifiers: [ast::ident] = [first];
     let glob: bool = false;

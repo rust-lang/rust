@@ -137,7 +137,7 @@ fn default_native_lib_naming(sess: session::session, static: bool) ->
 
 fn find_library_crate(sess: session::session, ident: ast::ident,
                       metas: [@ast::meta_item])
-   -> option::t<{ident: str, data: @[u8]}> {
+   -> option<{ident: str, data: @[u8]}> {
 
     attr::require_unique_names(sess, metas);
     let metas = metas;
@@ -173,7 +173,7 @@ fn find_library_crate_aux(sess: session::session,
                           crate_name: str,
                           metas: [@ast::meta_item],
                           filesearch: filesearch::filesearch) ->
-   option::t<{ident: str, data: @[u8]}> {
+   option<{ident: str, data: @[u8]}> {
     let prefix: str = nn.prefix + crate_name + "-";
     let suffix: str = nn.suffix;
 
@@ -206,7 +206,7 @@ fn find_library_crate_aux(sess: session::session,
 }
 
 fn get_metadata_section(sess: session::session,
-                        filename: str) -> option::t<@[u8]> unsafe {
+                        filename: str) -> option<@[u8]> unsafe {
     let mb = str::as_buf(filename, {|buf|
         llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf)
                                    });

@@ -33,7 +33,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
         };
         modestr + ty_to_str(cx, input.ty)
     }
-    fn fn_to_str(cx: ctxt, proto: ast::proto, ident: option::t<ast::ident>,
+    fn fn_to_str(cx: ctxt, proto: ast::proto, ident: option<ast::ident>,
                  inputs: [arg], output: t, cf: ast::ret_style,
                  constrs: [@constr]) -> str {
         let s = proto_to_str(proto);

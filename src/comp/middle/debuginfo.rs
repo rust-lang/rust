@@ -143,7 +143,7 @@ fn md_from_metadata<T>(val: debug_metadata) -> T unsafe {
 }
 
 fn cached_metadata<T: copy>(cache: metadata_cache, mdtag: int,
-                           eq: fn(md: T) -> bool) -> option::t<T> unsafe {
+                           eq: fn(md: T) -> bool) -> option<T> unsafe {
     if cache.contains_key(mdtag) {
         let items = cache.get(mdtag);
         for item in items {
@@ -456,8 +456,8 @@ fn create_boxed_type(cx: @crate_ctxt, outer: ty::t, _inner: ty::t,
 
 fn create_composite_type(type_tag: int, name: str, file: ValueRef, line: int,
                          size: int, align: int, offset: int,
-                         derived: option::t<ValueRef>,
-                         members: option::t<[ValueRef]>)
+                         derived: option<ValueRef>,
+                         members: option<[ValueRef]>)
     -> ValueRef {
     let lldata = [lltag(type_tag),
                   file,

@@ -74,7 +74,7 @@ fn rest(s: str) -> str {
     str::char_slice(s, 1u, str::char_len(s))
 }
 
-fn from_str_str(s: str) -> (option::t<json>, str) {
+fn from_str_str(s: str) -> (option<json>, str) {
     let pos = 0u;
     let len = str::byte_len(s);
     let escape = false;
@@ -107,7 +107,7 @@ fn from_str_str(s: str) -> (option::t<json>, str) {
     ret (none, s);
 }
 
-fn from_str_list(s: str) -> (option::t<json>, str) {
+fn from_str_list(s: str) -> (option<json>, str) {
     if str::char_at(s, 0u) != '[' { ret (none, s); }
     let s0 = str::trim_left(rest(s));
     let vals = [];
@@ -133,7 +133,7 @@ fn from_str_list(s: str) -> (option::t<json>, str) {
     ret (none, s0);
 }
 
-fn from_str_dict(s: str) -> (option::t<json>, str) {
+fn from_str_dict(s: str) -> (option<json>, str) {
     if str::char_at(s, 0u) != '{' { ret (none, s); }
     let s0 = str::trim_left(rest(s));
     let vals = map::new_str_hash::<json>();
@@ -170,7 +170,7 @@ fn from_str_dict(s: str) -> (option::t<json>, str) {
     (none, s)
 }
 
-fn from_str_float(s: str) -> (option::t<json>, str) {
+fn from_str_float(s: str) -> (option<json>, str) {
     let pos = 0u;
     let len = str::byte_len(s);
     let res = 0f;
@@ -226,7 +226,7 @@ fn from_str_float(s: str) -> (option::t<json>, str) {
     ret (some(num(neg * res)), str::char_slice(s, pos, str::char_len(s)));
 }
 
-fn from_str_bool(s: str) -> (option::t<json>, str) {
+fn from_str_bool(s: str) -> (option<json>, str) {
     if (str::starts_with(s, "true")) {
         (some(boolean(true)), str::slice(s, 4u, str::byte_len(s)))
     } else if (str::starts_with(s, "false")) {
@@ -236,7 +236,7 @@ fn from_str_bool(s: str) -> (option::t<json>, str) {
     }
 }
 
-fn from_str_null(s: str) -> (option::t<json>, str) {
+fn from_str_null(s: str) -> (option<json>, str) {
     if (str::starts_with(s, "null")) {
         (some(null), str::slice(s, 4u, str::byte_len(s)))
     } else {
@@ -244,7 +244,7 @@ fn from_str_null(s: str) -> (option::t<json>, str) {
     }
 }
 
-fn from_str_helper(s: str) -> (option::t<json>, str) {
+fn from_str_helper(s: str) -> (option<json>, str) {
     let s = str::trim_left(s);
     if str::is_empty(s) { ret (none, s); }
     let start = str::char_at(s, 0u);
@@ -264,7 +264,7 @@ Function: from_str
 
 Deserializes a json value from a string.
 */
-fn from_str(s: str) -> option::t<json> {
+fn from_str(s: str) -> option<json> {
     let (j, _) = from_str_helper(s);
     j
 }

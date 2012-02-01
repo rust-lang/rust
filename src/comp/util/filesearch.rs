@@ -18,9 +18,9 @@ export relative_target_lib_path;
 export get_cargo_root;
 export libdir;
 
-type pick<T> = fn(path: fs::path) -> option::t<T>;
+type pick<T> = fn(path: fs::path) -> option<T>;
 
-fn pick_file(file: fs::path, path: fs::path) -> option::t<fs::path> {
+fn pick_file(file: fs::path, path: fs::path) -> option<fs::path> {
     if fs::basename(path) == file { option::some(path) }
     else { option::none }
 }
@@ -32,7 +32,7 @@ iface filesearch {
     fn get_target_lib_file_path(file: fs::path) -> fs::path;
 }
 
-fn mk_filesearch(maybe_sysroot: option::t<fs::path>,
+fn mk_filesearch(maybe_sysroot: option<fs::path>,
                  target_triple: str,
                  addl_lib_search_paths: [fs::path]) -> filesearch {
     type filesearch_impl = {sysroot: fs::path,
@@ -64,7 +64,7 @@ fn mk_filesearch(maybe_sysroot: option::t<fs::path>,
 }
 
 // FIXME #1001: This can't be an obj method
-fn search<T: copy>(filesearch: filesearch, pick: pick<T>) -> option::t<T> {
+fn search<T: copy>(filesearch: filesearch, pick: pick<T>) -> option<T> {
     for lib_search_path in filesearch.lib_search_paths() {
         #debug("searching %s", lib_search_path);
         for path in fs::list_dir(lib_search_path) {
@@ -102,7 +102,7 @@ fn get_default_sysroot() -> fs::path {
     }
 }
 
-fn get_sysroot(maybe_sysroot: option::t<fs::path>) -> fs::path {
+fn get_sysroot(maybe_sysroot: option<fs::path>) -> fs::path {
     alt maybe_sysroot {
       option::some(sr) { sr }
       option::none { get_default_sysroot() }

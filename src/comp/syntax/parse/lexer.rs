@@ -148,7 +148,7 @@ fn consume_block_comment(rdr: reader) {
     be consume_whitespace_and_comments(rdr);
 }
 
-fn scan_exponent(rdr: reader) -> option::t<str> {
+fn scan_exponent(rdr: reader) -> option<str> {
     let c = rdr.curr;
     let rslt = "";
     if c == 'e' || c == 'E' {

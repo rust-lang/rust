@@ -6,7 +6,7 @@
 
 use std;
 
-import option = option::t;
+import option = option;
 import option::some;
 import option::none;
 import str;

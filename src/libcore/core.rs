@@ -1,6 +1,6 @@
 // Top-level, visible-everywhere definitions.
 
-// Export type option as a synonym for option::t and export the some and none
+// Export type option as a synonym for option and export the some and none
 // enum constructors.
 
 import option::{some,  none};
