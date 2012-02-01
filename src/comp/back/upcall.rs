@@ -5,10 +5,7 @@ import middle::trans::common::{T_fn, T_i1, T_i8, T_i32,
                                T_int, T_nil, T_dict,
                                T_opaque_vec, T_ptr,
                                T_size_t, T_void};
-import lib::llvm::type_names;
-import lib::llvm::llvm::ModuleRef;
-import lib::llvm::llvm::ValueRef;
-import lib::llvm::llvm::TypeRef;
+import lib::llvm::{type_names, ModuleRef, ValueRef, TypeRef};
 
 type upcalls =
     {_fail: ValueRef,

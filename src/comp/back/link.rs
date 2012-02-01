@@ -16,10 +16,7 @@ import option::none;
 import std::sha1::sha1;
 import syntax::ast;
 import syntax::print::pprust;
-import lib::llvm::llvm::ModuleRef;
-import lib::llvm::mk_pass_manager;
-import lib::llvm::mk_target_data;
-import lib::llvm::False;
+import lib::llvm::{ModuleRef, mk_pass_manager, mk_target_data, True, False};
 import util::filesearch;
 
 enum output_type {
@@ -182,7 +179,7 @@ mod write {
             let MPMB = llvm::LLVMPassManagerBuilderCreate();
             llvm::LLVMPassManagerBuilderSetOptLevel(MPMB,
                                                     opts.optimize as c_uint);
-            llvm::LLVMPassManagerBuilderSetSizeLevel(MPMB, 0);
+            llvm::LLVMPassManagerBuilderSetSizeLevel(MPMB, False);
             llvm::LLVMPassManagerBuilderSetDisableUnitAtATime(MPMB, False);
             llvm::LLVMPassManagerBuilderSetDisableUnrollLoops(MPMB, False);
             llvm::LLVMPassManagerBuilderSetDisableSimplifyLibCalls(MPMB,

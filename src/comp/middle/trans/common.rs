@@ -17,7 +17,7 @@ import util::common::*;
 import syntax::codemap::span;
 import lib::llvm::{llvm, target_data, type_names, associate_type,
                    name_has_type};
-import lib::llvm::llvm::{ModuleRef, ValueRef, TypeRef, BasicBlockRef};
+import lib::llvm::{ModuleRef, ValueRef, TypeRef, BasicBlockRef, BuilderRef};
 import lib::llvm::{True, False, Bool};
 import metadata::{csearch};
 
@@ -72,7 +72,7 @@ type stats =
      mutable n_real_glues: uint,
      fn_times: @mutable [{ident: str, time: int}]};
 
-resource BuilderRef_res(B: llvm::BuilderRef) { llvm::LLVMDisposeBuilder(B); }
+resource BuilderRef_res(B: BuilderRef) { llvm::LLVMDisposeBuilder(B); }
 
 // Crate context.  Every crate we compile has one of these.
 type crate_ctxt =
@@ -788,7 +788,7 @@ fn C_cstr(cx: @crate_ctxt, s: str) -> ValueRef {
                     {|buf| llvm::LLVMAddGlobal(cx.llmod, val_ty(sc), buf) });
     llvm::LLVMSetInitializer(g, sc);
     llvm::LLVMSetGlobalConstant(g, True);
-    llvm::LLVMSetLinkage(g, lib::llvm::LLVMInternalLinkage as llvm::Linkage);
+    lib::llvm::SetLinkage(g, lib::llvm::InternalLinkage);
     ret g;
 }
 
@@ -835,8 +835,7 @@ fn C_shape(ccx: @crate_ctxt, bytes: [u8]) -> ValueRef {
     });
     llvm::LLVMSetInitializer(llglobal, llshape);
     llvm::LLVMSetGlobalConstant(llglobal, True);
-    llvm::LLVMSetLinkage(llglobal,
-                         lib::llvm::LLVMInternalLinkage as llvm::Linkage);
+    lib::llvm::SetLinkage(llglobal, lib::llvm::InternalLinkage);
     ret llvm::LLVMConstPointerCast(llglobal, T_ptr(T_i8()));
 }
 
@@ -894,12 +893,12 @@ fn hash_dict_id(&&dp: dict_id) -> uint {
 }
 
 fn umax(cx: @block_ctxt, a: ValueRef, b: ValueRef) -> ValueRef {
-    let cond = build::ICmp(cx, lib::llvm::LLVMIntULT, a, b);
+    let cond = build::ICmp(cx, lib::llvm::IntULT, a, b);
     ret build::Select(cx, cond, b, a);
 }
 
 fn umin(cx: @block_ctxt, a: ValueRef, b: ValueRef) -> ValueRef {
-    let cond = build::ICmp(cx, lib::llvm::LLVMIntULT, a, b);
+    let cond = build::ICmp(cx, lib::llvm::IntULT, a, b);
     ret build::Select(cx, cond, a, b);
 }
 

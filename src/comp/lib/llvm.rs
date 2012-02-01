@@ -1,144 +1,149 @@
 import core::{vec, str, option};
 import str::sbuf;
 
-import llvm::{TypeRef, MemoryBufferRef,
-              PassManagerRef, TargetDataRef,
-              ObjectFileRef, SectionIteratorRef};
 import ctypes::{c_int, c_uint, unsigned, longlong, ulonglong};
 
-type Long = i32;
-type Bool = int;
-
-
-const True: Bool = 1;
-const False: Bool = 0;
+type Opcode = u32;
+type Bool = unsigned;
+const True: Bool = 1u32;
+const False: Bool = 0u32;
 
 // Consts for the LLVM CallConv type, pre-cast to uint.
-// FIXME: figure out a way to merge these with the native
-// typedef and/or a enum type in the native module below.
 
-const LLVMCCallConv: uint = 0u;
-const LLVMFastCallConv: uint = 8u;
-const LLVMColdCallConv: uint = 9u;
-const LLVMX86StdcallCallConv: uint = 64u;
-const LLVMX86FastcallCallConv: uint = 65u;
+enum CallConv {
+    CCallConv = 0,
+    FastCallConv = 8,
+    ColdCallConv = 9,
+    X86StdcallCallConv = 64,
+    X86FastcallCallConv = 65,
+}
 
-const LLVMDefaultVisibility: uint = 0u;
-const LLVMHiddenVisibility: uint = 1u;
-const LLVMProtectedVisibility: uint = 2u;
+enum Visibility {
+    LLVMDefaultVisibility = 0,
+    HiddenVisibility = 1,
+    ProtectedVisibility = 2,
+}
 
-const LLVMExternalLinkage: uint = 0u;
-const LLVMAvailableExternallyLinkage: uint = 1u;
-const LLVMLinkOnceAnyLinkage: uint = 2u;
-const LLVMLinkOnceODRLinkage: uint = 3u;
-const LLVMWeakAnyLinkage: uint = 4u;
-const LLVMWeakODRLinkage: uint = 5u;
-const LLVMAppendingLinkage: uint = 6u;
-const LLVMInternalLinkage: uint = 7u;
-const LLVMPrivateLinkage: uint = 8u;
-const LLVMDLLImportLinkage: uint = 9u;
-const LLVMDLLExportLinkage: uint = 10u;
-const LLVMExternalWeakLinkage: uint = 11u;
-const LLVMGhostLinkage: uint = 12u;
-const LLVMCommonLinkage: uint = 13u;
-const LLVMLinkerPrivateLinkage: uint = 14u;
-const LLVMLinkerPrivateWeakLinkage: uint = 15u;
-const LLVMLinkerPrivateWeakDefAutoLinkage: uint = 16u;
+enum Linkage {
+    ExternalLinkage = 0,
+    AvailableExternallyLinkage = 1,
+    LinkOnceAnyLinkage = 2,
+    LinkOnceODRLinkage = 3,
+    WeakAnyLinkage = 4,
+    WeakODRLinkage = 5,
+    AppendingLinkage = 6,
+    InternalLinkage = 7,
+    PrivateLinkage = 8,
+    DLLImportLinkage = 9,
+    DLLExportLinkage = 10,
+    ExternalWeakLinkage = 11,
+    GhostLinkage = 12,
+    CommonLinkage = 13,
+    LinkerPrivateLinkage = 14,
+    LinkerPrivateWeakLinkage = 15,
+    LinkerPrivateWeakDefAutoLinkage = 16,
+}
 
-const LLVMZExtAttribute: uint = 1u;
-const LLVMSExtAttribute: uint = 2u;
-const LLVMNoReturnAttribute: uint = 4u;
-const LLVMInRegAttribute: uint = 8u;
-const LLVMStructRetAttribute: uint = 16u;
-const LLVMNoUnwindAttribute: uint = 32u;
-const LLVMNoAliasAttribute: uint = 64u;
-const LLVMByValAttribute: uint = 128u;
-const LLVMNestAttribute: uint = 256u;
-const LLVMReadNoneAttribute: uint = 512u;
-const LLVMReadOnlyAttribute: uint = 1024u;
-const LLVMNoInlineAttribute: uint = 2048u;
-const LLVMAlwaysInlineAttribute: uint = 4096u;
-const LLVMOptimizeForSizeAttribute: uint = 8192u;
-const LLVMStackProtectAttribute: uint = 16384u;
-const LLVMStackProtectReqAttribute: uint = 32768u;
-// 31 << 16
-const LLVMAlignmentAttribute: uint = 2031616u;
-const LLVMNoCaptureAttribute: uint = 2097152u;
-const LLVMNoRedZoneAttribute: uint = 4194304u;
-const LLVMNoImplicitFloatAttribute: uint = 8388608u;
-const LLVMNakedAttribute: uint = 16777216u;
-const LLVMInlineHintAttribute: uint = 33554432u;
-// 7 << 26
-const LLVMStackAttribute: uint = 469762048u;
-const LLVMReturnsTwiceAttribute: uint = 536870912u;
-// 1 << 30
-const LLVMUWTableAttribute: uint = 1073741824u;
-const LLVMNonLazyBindAttribute: uint = 2147483648u;
-
+enum Attribute {
+    ZExtAttribute = 1,
+    SExtAttribute = 2,
+    NoReturnAttribute = 4,
+    InRegAttribute = 8,
+    StructRetAttribute = 16,
+    NoUnwindAttribute = 32,
+    NoAliasAttribute = 64,
+    ByValAttribute = 128,
+    NestAttribute = 256,
+    ReadNoneAttribute = 512,
+    ReadOnlyAttribute = 1024,
+    NoInlineAttribute = 2048,
+    AlwaysInlineAttribute = 4096,
+    OptimizeForSizeAttribute = 8192,
+    StackProtectAttribute = 16384,
+    StackProtectReqAttribute = 32768,
+    // 31 << 16
+    AlignmentAttribute = 2031616,
+    NoCaptureAttribute = 2097152,
+    NoRedZoneAttribute = 4194304,
+    NoImplicitFloatAttribute = 8388608,
+    NakedAttribute = 16777216,
+    InlineHintAttribute = 33554432,
+    // 7 << 26
+    StackAttribute = 469762048,
+    ReturnsTwiceAttribute = 536870912,
+    // 1 << 30
+    UWTableAttribute = 1073741824,
+    NonLazyBindAttribute = 2147483648,
+}
 
 // Consts for the LLVM IntPredicate type, pre-cast to uint.
 // FIXME: as above.
 
-
-const LLVMIntEQ: uint = 32u;
-const LLVMIntNE: uint = 33u;
-const LLVMIntUGT: uint = 34u;
-const LLVMIntUGE: uint = 35u;
-const LLVMIntULT: uint = 36u;
-const LLVMIntULE: uint = 37u;
-const LLVMIntSGT: uint = 38u;
-const LLVMIntSGE: uint = 39u;
-const LLVMIntSLT: uint = 40u;
-const LLVMIntSLE: uint = 41u;
-
+enum IntPredicate {
+    IntEQ = 32,
+    IntNE = 33,
+    IntUGT = 34,
+    IntUGE = 35,
+    IntULT = 36,
+    IntULE = 37,
+    IntSGT = 38,
+    IntSGE = 39,
+    IntSLT = 40,
+    IntSLE = 41,
+}
 
 // Consts for the LLVM RealPredicate type, pre-case to uint.
 // FIXME: as above.
 
-const LLVMRealOEQ: uint = 1u;
-const LLVMRealOGT: uint = 2u;
-const LLVMRealOGE: uint = 3u;
-const LLVMRealOLT: uint = 4u;
-const LLVMRealOLE: uint = 5u;
-const LLVMRealONE: uint = 6u;
+enum RealPredicate {
+    RealOEQ = 1,
+    RealOGT = 2,
+    RealOGE = 3,
+    RealOLT = 4,
+    RealOLE = 5,
+    RealONE = 6,
+    RealORD = 7,
+    RealUNO = 8,
+    RealUEQ = 9,
+    RealUGT = 10,
+    RealUGE = 11,
+    RealULT = 12,
+    RealULE = 13,
+    RealUNE = 14,
+}
 
-const LLVMRealORD: uint = 7u;
-const LLVMRealUNO: uint = 8u;
-const LLVMRealUEQ: uint = 9u;
-const LLVMRealUGT: uint = 10u;
-const LLVMRealUGE: uint = 11u;
-const LLVMRealULT: uint = 12u;
-const LLVMRealULE: uint = 13u;
-const LLVMRealUNE: uint = 14u;
+// Opaque pointer types
+enum Module_opaque {}
+type ModuleRef = *Module_opaque;
+enum Context_opaque {}
+type ContextRef = *Context_opaque;
+enum Type_opaque {}
+type TypeRef = *Type_opaque;
+enum Value_opaque {}
+type ValueRef = *Value_opaque;
+enum BasicBlock_opaque {}
+type BasicBlockRef = *BasicBlock_opaque;
+enum Builder_opaque {}
+type BuilderRef = *Builder_opaque;
+enum MemoryBuffer_opaque {}
+type MemoryBufferRef = *MemoryBuffer_opaque;
+enum PassManager_opaque {}
+type PassManagerRef = *PassManager_opaque;
+enum PassManagerBuilder_opaque {}
+type PassManagerBuilderRef = *PassManagerBuilder_opaque;
+enum Use_opaque {}
+type UseRef = *Use_opaque;
+enum TargetData_opaque {}
+type TargetDataRef = *TargetData_opaque;
+enum ObjectFile_opaque {}
+type ObjectFileRef = *ObjectFile_opaque;
+enum SectionIterator_opaque {}
+type SectionIteratorRef = *SectionIterator_opaque;
 
 #[link_args = "-Lrustllvm"]
 #[link_name = "rustllvm"]
 #[abi = "cdecl"]
 native mod llvm {
-
-    type ModuleRef;
-    type ContextRef;
-    type TypeRef;
-    type TypeHandleRef;
-    type ValueRef;
-    type BasicBlockRef;
-    type BuilderRef;
-    type ModuleProviderRef;
-    type MemoryBufferRef;
-    type PassManagerRef;
-    type PassManagerBuilderRef;
-    type UseRef;
-    type TargetDataRef;
-
-    /* FIXME: These are enums in the C header. Represent them how, in rust? */
-    type Linkage;
-    type Attribute;
-    type Visibility;
-    type CallConv;
-    type IntPredicate;
-    type RealPredicate;
-    type Opcode;
-
     /* Create and destroy contexts. */
     fn LLVMContextCreate() -> ContextRef;
     fn LLVMGetGlobalContext() -> ContextRef;
@@ -422,12 +427,12 @@ native mod llvm {
     /* Operations on global variables, functions, and aliases (globals) */
     fn LLVMGetGlobalParent(Global: ValueRef) -> ModuleRef;
     fn LLVMIsDeclaration(Global: ValueRef) -> Bool;
-    fn LLVMGetLinkage(Global: ValueRef) -> Linkage;
-    fn LLVMSetLinkage(Global: ValueRef, Link: Linkage);
+    fn LLVMGetLinkage(Global: ValueRef) -> unsigned;
+    fn LLVMSetLinkage(Global: ValueRef, Link: unsigned);
     fn LLVMGetSection(Global: ValueRef) -> sbuf;
     fn LLVMSetSection(Global: ValueRef, Section: sbuf);
-    fn LLVMGetVisibility(Global: ValueRef) -> Visibility;
-    fn LLVMSetVisibility(Global: ValueRef, Viz: Visibility);
+    fn LLVMGetVisibility(Global: ValueRef) -> unsigned;
+    fn LLVMSetVisibility(Global: ValueRef, Viz: unsigned);
     fn LLVMGetAlignment(Global: ValueRef) -> unsigned;
     fn LLVMSetAlignment(Global: ValueRef, Bytes: unsigned);
 
@@ -469,9 +474,9 @@ native mod llvm {
     fn LLVMSetFunctionCallConv(Fn: ValueRef, CC: unsigned);
     fn LLVMGetGC(Fn: ValueRef) -> sbuf;
     fn LLVMSetGC(Fn: ValueRef, Name: sbuf);
-    fn LLVMAddFunctionAttr(Fn: ValueRef, PA: Attribute, HighPA: unsigned);
-    fn LLVMGetFunctionAttr(Fn: ValueRef) -> Attribute;
-    fn LLVMRemoveFunctionAttr(Fn: ValueRef, PA: Attribute, HighPA: unsigned);
+    fn LLVMAddFunctionAttr(Fn: ValueRef, PA: unsigned, HighPA: unsigned);
+    fn LLVMGetFunctionAttr(Fn: ValueRef) -> unsigned;
+    fn LLVMRemoveFunctionAttr(Fn: ValueRef, PA: unsigned, HighPA: unsigned);
 
     /* Operations on parameters */
     fn LLVMCountParams(Fn: ValueRef) -> unsigned;
@@ -482,9 +487,9 @@ native mod llvm {
     fn LLVMGetLastParam(Fn: ValueRef) -> ValueRef;
     fn LLVMGetNextParam(Arg: ValueRef) -> ValueRef;
     fn LLVMGetPreviousParam(Arg: ValueRef) -> ValueRef;
-    fn LLVMAddAttribute(Arg: ValueRef, PA: Attribute);
-    fn LLVMRemoveAttribute(Arg: ValueRef, PA: Attribute);
-    fn LLVMGetAttribute(Arg: ValueRef) -> Attribute;
+    fn LLVMAddAttribute(Arg: ValueRef, PA: unsigned);
+    fn LLVMRemoveAttribute(Arg: ValueRef, PA: unsigned);
+    fn LLVMGetAttribute(Arg: ValueRef) -> unsigned;
     fn LLVMSetParamAlignment(Arg: ValueRef, align: unsigned);
 
     /* Operations on basic blocks */
@@ -520,9 +525,9 @@ native mod llvm {
     /* Operations on call sites */
     fn LLVMSetInstructionCallConv(Instr: ValueRef, CC: unsigned);
     fn LLVMGetInstructionCallConv(Instr: ValueRef) -> unsigned;
-    fn LLVMAddInstrAttribute(Instr: ValueRef, index: unsigned, IA: Attribute);
+    fn LLVMAddInstrAttribute(Instr: ValueRef, index: unsigned, IA: unsigned);
     fn LLVMRemoveInstrAttribute(Instr: ValueRef, index: unsigned,
-                                IA: Attribute);
+                                IA: unsigned);
     fn LLVMSetInstrParamAlignment(Instr: ValueRef, index: unsigned,
                                   align: unsigned);
 
@@ -836,9 +841,6 @@ native mod llvm {
 
     /* Stuff that's in rustllvm/ because it's not upstream yet. */
 
-    type ObjectFileRef;
-    type SectionIteratorRef;
-
     /** Opens an object file. */
     fn LLVMCreateObjectFile(MemBuf: MemoryBufferRef) -> ObjectFileRef;
     /** Closes an object file. */
@@ -905,6 +907,16 @@ native mod llvm {
     /** Links LLVM modules together. `Src` is destroyed by this call and
         must never be referenced again. */
     fn LLVMLinkModules(Dest: ModuleRef, Src: ModuleRef) -> Bool;
+}
+
+fn SetInstructionCallConv(Instr: ValueRef, CC: CallConv) {
+    llvm::LLVMSetInstructionCallConv(Instr, CC as unsigned);
+}
+fn SetFunctionCallConv(Fn: ValueRef, CC: CallConv) {
+    llvm::LLVMSetFunctionCallConv(Fn, CC as unsigned);
+}
+fn SetLinkage(Global: ValueRef, Link: Linkage) {
+    llvm::LLVMSetLinkage(Global, Link as unsigned);
 }
 
 /* Memory-managed object interface to type handles. */

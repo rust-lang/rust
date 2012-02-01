@@ -4,8 +4,9 @@ import str::sbuf;
 import lib::llvm::llvm;
 import syntax::codemap;
 import codemap::span;
-import llvm::{ValueRef, TypeRef, BasicBlockRef, BuilderRef, Opcode,
-              ModuleRef};
+import lib::llvm::{ValueRef, TypeRef, BasicBlockRef, BuilderRef, ModuleRef};
+import lib::llvm::{Opcode, IntPredicate, RealPredicate, True, False,
+                   CallConv};
 import common::{block_ctxt, T_ptr, T_nil, T_i8, T_i1, T_void,
                 T_fn, val_ty, bcx_ccx, C_i32};
 
@@ -110,8 +111,7 @@ fn FastInvoke(cx: @block_ctxt, Fn: ValueRef, Args: [ValueRef],
         let v = llvm::LLVMBuildInvoke(B(cx), Fn, vec::to_ptr(Args),
                                       vec::len(Args) as c_uint,
                                       Then, Catch, noname());
-        llvm::LLVMSetInstructionCallConv(
-            v, lib::llvm::LLVMFastCallConv as c_uint);
+        lib::llvm::SetInstructionCallConv(v, lib::llvm::FastCallConv);
     }
 }
 
@@ -467,12 +467,14 @@ fn FPCast(cx: @block_ctxt, Val: ValueRef, DestTy: TypeRef) -> ValueRef {
 
 
 /* Comparisons */
-fn ICmp(cx: @block_ctxt, Op: uint, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
+fn ICmp(cx: @block_ctxt, Op: IntPredicate, LHS: ValueRef, RHS: ValueRef)
+    -> ValueRef {
     if cx.unreachable { ret llvm::LLVMGetUndef(T_i1()); }
     ret llvm::LLVMBuildICmp(B(cx), Op as c_uint, LHS, RHS, noname());
 }
 
-fn FCmp(cx: @block_ctxt, Op: uint, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
+fn FCmp(cx: @block_ctxt, Op: RealPredicate, LHS: ValueRef, RHS: ValueRef)
+    -> ValueRef {
     if cx.unreachable { ret llvm::LLVMGetUndef(T_i1()); }
     ret llvm::LLVMBuildFCmp(B(cx), Op as c_uint, LHS, RHS, noname());
 }
@@ -528,9 +530,12 @@ fn add_comment(bcx: @block_ctxt, text: str) {
         check str::is_not_empty("$");
         let sanitized = str::replace(text, "$", "");
         let comment_text = "; " + sanitized;
-        let asm = str::as_buf(comment_text, { |c|
-            str::as_buf("", { |e|
-                llvm::LLVMConstInlineAsm(T_fn([], T_void()), c, e, 0, 0)})});
+        let asm = str::as_buf(comment_text, {|c|
+            str::as_buf("", {|e|
+                llvm::LLVMConstInlineAsm(T_fn([], T_void()), c, e,
+                                         False, False)
+            })
+        });
         Call(bcx, asm, []);
     }
 }
@@ -548,19 +553,18 @@ fn FastCall(cx: @block_ctxt, Fn: ValueRef, Args: [ValueRef]) -> ValueRef {
     unsafe {
         let v = llvm::LLVMBuildCall(B(cx), Fn, vec::to_ptr(Args),
                                     vec::len(Args) as c_uint, noname());
-        llvm::LLVMSetInstructionCallConv(
-            v, lib::llvm::LLVMFastCallConv as c_uint);
+        lib::llvm::SetInstructionCallConv(v, lib::llvm::FastCallConv);
         ret v;
     }
 }
 
 fn CallWithConv(cx: @block_ctxt, Fn: ValueRef, Args: [ValueRef],
-                Conv: c_uint) -> ValueRef {
+                Conv: CallConv) -> ValueRef {
     if cx.unreachable { ret _UndefReturn(cx, Fn); }
     unsafe {
         let v = llvm::LLVMBuildCall(B(cx), Fn, vec::to_ptr(Args),
                                     vec::len(Args) as c_uint, noname());
-        llvm::LLVMSetInstructionCallConv(v, Conv);
+        lib::llvm::SetInstructionCallConv(v, Conv);
         ret v;
     }
 }

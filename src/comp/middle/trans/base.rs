@@ -32,7 +32,7 @@ import pat_util::*;
 import visit::vt;
 import util::common::*;
 import lib::llvm::{llvm, mk_target_data, mk_type_names};
-import lib::llvm::llvm::{ModuleRef, ValueRef, TypeRef, BasicBlockRef};
+import lib::llvm::{ModuleRef, ValueRef, TypeRef, BasicBlockRef};
 import lib::llvm::{True, False};
 import link::{mangle_internal_name_by_type_only,
               mangle_internal_name_by_seq,
@@ -288,17 +288,17 @@ fn log_fn_time(ccx: @crate_ctxt, name: str, start: time::timeval,
 }
 
 
-fn decl_fn(llmod: ModuleRef, name: str, cc: uint, llty: TypeRef) ->
-    ValueRef {
-    let llfn: ValueRef =
-        str::as_buf(name, {|buf|
-            llvm::LLVMGetOrInsertFunction(llmod, buf, llty) });
-    llvm::LLVMSetFunctionCallConv(llfn, cc as c_uint);
+fn decl_fn(llmod: ModuleRef, name: str, cc: lib::llvm::CallConv,
+           llty: TypeRef) -> ValueRef {
+    let llfn: ValueRef = str::as_buf(name, {|buf|
+        llvm::LLVMGetOrInsertFunction(llmod, buf, llty)
+    });
+    lib::llvm::SetFunctionCallConv(llfn, cc);
     ret llfn;
 }
 
 fn decl_cdecl_fn(llmod: ModuleRef, name: str, llty: TypeRef) -> ValueRef {
-    ret decl_fn(llmod, name, lib::llvm::LLVMCCallConv, llty);
+    ret decl_fn(llmod, name, lib::llvm::CCallConv, llty);
 }
 
 
@@ -307,13 +307,12 @@ fn decl_cdecl_fn(llmod: ModuleRef, name: str, llty: TypeRef) -> ValueRef {
 fn decl_internal_cdecl_fn(llmod: ModuleRef, name: str, llty: TypeRef) ->
    ValueRef {
     let llfn = decl_cdecl_fn(llmod, name, llty);
-    llvm::LLVMSetLinkage(llfn,
-                         lib::llvm::LLVMInternalLinkage as llvm::Linkage);
+    lib::llvm::SetLinkage(llfn, lib::llvm::InternalLinkage);
     ret llfn;
 }
 
 fn get_extern_fn(externs: hashmap<str, ValueRef>, llmod: ModuleRef, name: str,
-                 cc: uint, ty: TypeRef) -> ValueRef {
+                 cc: lib::llvm::CallConv, ty: TypeRef) -> ValueRef {
     if externs.contains_key(name) { ret externs.get(name); }
     let f = decl_fn(llmod, name, cc, ty);
     externs.insert(name, f);
@@ -336,8 +335,7 @@ fn get_simple_extern_fn(cx: @block_ctxt,
     let inputs = vec::init_elt::<TypeRef>(n_args as uint, ccx.int_type);
     let output = ccx.int_type;
     let t = T_fn(inputs, output);
-    ret get_extern_fn(externs, llmod, name,
-                      lib::llvm::LLVMCCallConv, t);
+    ret get_extern_fn(externs, llmod, name, lib::llvm::CCallConv, t);
 }
 
 fn trans_native_call(cx: @block_ctxt, externs: hashmap<str, ValueRef>,
@@ -370,12 +368,12 @@ fn trans_shared_free(cx: @block_ctxt, v: ValueRef) -> @block_ctxt {
 }
 
 fn umax(cx: @block_ctxt, a: ValueRef, b: ValueRef) -> ValueRef {
-    let cond = ICmp(cx, lib::llvm::LLVMIntULT, a, b);
+    let cond = ICmp(cx, lib::llvm::IntULT, a, b);
     ret Select(cx, cond, b, a);
 }
 
 fn umin(cx: @block_ctxt, a: ValueRef, b: ValueRef) -> ValueRef {
-    let cond = ICmp(cx, lib::llvm::LLVMIntULT, a, b);
+    let cond = ICmp(cx, lib::llvm::IntULT, a, b);
     ret Select(cx, cond, a, b);
 }
 
@@ -992,32 +990,25 @@ fn get_static_tydesc(cx: @block_ctxt, t: ty::t, ty_params: [uint])
 }
 
 fn set_no_inline(f: ValueRef) {
-    llvm::LLVMAddFunctionAttr(f,
-                              lib::llvm::LLVMNoInlineAttribute as
-                                  lib::llvm::llvm::Attribute,
+    llvm::LLVMAddFunctionAttr(f, lib::llvm::NoInlineAttribute as c_uint,
                               0u as c_uint);
 }
 
 // Tell LLVM to emit the information necessary to unwind the stack for the
 // function f.
 fn set_uwtable(f: ValueRef) {
-    llvm::LLVMAddFunctionAttr(f,
-                              lib::llvm::LLVMUWTableAttribute as
-                                  lib::llvm::llvm::Attribute,
+    llvm::LLVMAddFunctionAttr(f, lib::llvm::UWTableAttribute as c_uint,
                               0u as c_uint);
 }
 
 fn set_always_inline(f: ValueRef) {
-    llvm::LLVMAddFunctionAttr(f,
-                              lib::llvm::LLVMAlwaysInlineAttribute as
-                                  lib::llvm::llvm::Attribute,
+    llvm::LLVMAddFunctionAttr(f, lib::llvm::AlwaysInlineAttribute as c_uint,
                               0u as c_uint);
 }
 
 fn set_custom_stack_growth_fn(f: ValueRef) {
     // TODO: Remove this hack to work around the lack of u64 in the FFI.
-    llvm::LLVMAddFunctionAttr(f, 0 as lib::llvm::llvm::Attribute,
-                              1u as c_uint);
+    llvm::LLVMAddFunctionAttr(f, 0u as c_uint, 1u as c_uint);
 }
 
 fn set_glue_inlining(cx: @local_ctxt, f: ValueRef, t: ty::t) {
@@ -1089,8 +1080,7 @@ fn make_generic_glue_inner(cx: @local_ctxt, t: ty::t,
                            llfn: ValueRef, helper: glue_helper,
                            ty_params: [uint]) -> ValueRef {
     let fcx = new_fn_ctxt(cx, llfn, none);
-    llvm::LLVMSetLinkage(llfn,
-                         lib::llvm::LLVMInternalLinkage as llvm::Linkage);
+    lib::llvm::SetLinkage(llfn, lib::llvm::InternalLinkage);
     cx.ccx.stats.n_glues_created += 1u;
     // Any nontrivial glue is with values passed *by alias*; this is a
     // requirement since in many contexts glue is invoked indirectly and
@@ -1193,8 +1183,7 @@ fn emit_tydescs(ccx: @crate_ctxt) {
         let gvar = ti.tydesc;
         llvm::LLVMSetInitializer(gvar, tydesc);
         llvm::LLVMSetGlobalConstant(gvar, True);
-        llvm::LLVMSetLinkage(gvar,
-                             lib::llvm::LLVMInternalLinkage as llvm::Linkage);
+        lib::llvm::SetLinkage(gvar, lib::llvm::InternalLinkage);
     };
 }
 
@@ -1402,7 +1391,7 @@ fn decr_refcnt_maybe_free(cx: @block_ctxt, box_ptr: ValueRef, t: ty::t)
     let rc = Load(rc_adj_cx, rc_ptr);
     rc = Sub(rc_adj_cx, rc, C_int(ccx, 1));
     Store(rc_adj_cx, rc, rc_ptr);
-    let zero_test = ICmp(rc_adj_cx, lib::llvm::LLVMIntEQ, C_int(ccx, 0), rc);
+    let zero_test = ICmp(rc_adj_cx, lib::llvm::IntEQ, C_int(ccx, 0), rc);
     CondBr(rc_adj_cx, zero_test, free_cx.llbb, next_cx.llbb);
     let free_cx = free_ty(free_cx, box_ptr, t);
     Br(free_cx, next_cx.llbb);
@@ -1472,36 +1461,36 @@ fn compare_scalar_values(cx: @block_ctxt, lhs: ValueRef, rhs: ValueRef,
       }
       floating_point {
         let cmp = alt op {
-          ast::eq { lib::llvm::LLVMRealOEQ }
-          ast::ne { lib::llvm::LLVMRealUNE }
-          ast::lt { lib::llvm::LLVMRealOLT }
-          ast::le { lib::llvm::LLVMRealOLE }
-          ast::gt { lib::llvm::LLVMRealOGT }
-          ast::ge { lib::llvm::LLVMRealOGE }
+          ast::eq { lib::llvm::RealOEQ }
+          ast::ne { lib::llvm::RealUNE }
+          ast::lt { lib::llvm::RealOLT }
+          ast::le { lib::llvm::RealOLE }
+          ast::gt { lib::llvm::RealOGT }
+          ast::ge { lib::llvm::RealOGE }
           _ { die(); }
         };
         ret FCmp(cx, cmp, lhs, rhs);
       }
       signed_int {
         let cmp = alt op {
-          ast::eq { lib::llvm::LLVMIntEQ }
-          ast::ne { lib::llvm::LLVMIntNE }
-          ast::lt { lib::llvm::LLVMIntSLT }
-          ast::le { lib::llvm::LLVMIntSLE }
-          ast::gt { lib::llvm::LLVMIntSGT }
-          ast::ge { lib::llvm::LLVMIntSGE }
+          ast::eq { lib::llvm::IntEQ }
+          ast::ne { lib::llvm::IntNE }
+          ast::lt { lib::llvm::IntSLT }
+          ast::le { lib::llvm::IntSLE }
+          ast::gt { lib::llvm::IntSGT }
+          ast::ge { lib::llvm::IntSGE }
           _ { die(); }
         };
         ret ICmp(cx, cmp, lhs, rhs);
       }
       unsigned_int {
         let cmp = alt op {
-          ast::eq { lib::llvm::LLVMIntEQ }
-          ast::ne { lib::llvm::LLVMIntNE }
-          ast::lt { lib::llvm::LLVMIntULT }
-          ast::le { lib::llvm::LLVMIntULE }
-          ast::gt { lib::llvm::LLVMIntUGT }
-          ast::ge { lib::llvm::LLVMIntUGE }
+          ast::eq { lib::llvm::IntEQ }
+          ast::ne { lib::llvm::IntNE }
+          ast::lt { lib::llvm::IntULT }
+          ast::le { lib::llvm::IntULE }
+          ast::gt { lib::llvm::IntUGT }
+          ast::ge { lib::llvm::IntUGE }
           _ { die(); }
         };
         ret ICmp(cx, cmp, lhs, rhs);
@@ -1920,7 +1909,7 @@ fn copy_val(cx: @block_ctxt, action: copy_action, dst: ValueRef,
         let next_cx = new_sub_block_ctxt(cx, "next");
         let dstcmp = load_if_immediate(cx, dst, t);
         let self_assigning =
-            ICmp(cx, lib::llvm::LLVMIntNE,
+            ICmp(cx, lib::llvm::IntNE,
                  PointerCast(cx, dstcmp, val_ty(src)), src);
         CondBr(cx, self_assigning, do_copy_cx.llbb, next_cx.llbb);
         do_copy_cx = copy_val_no_check(do_copy_cx, action, dst, src, t);
@@ -2598,13 +2587,10 @@ fn lookup_discriminant(lcx: @local_ctxt, vid: ast::def_id) -> ValueRef {
         // It's an external discriminant that we haven't seen yet.
         assert (vid.crate != ast::local_crate);
         let sym = csearch::get_symbol(lcx.ccx.sess.cstore, vid);
-        let gvar =
-            str::as_buf(sym,
-                        {|buf|
-                            llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type, buf)
-                        });
-        llvm::LLVMSetLinkage(gvar,
-                             lib::llvm::LLVMExternalLinkage as llvm::Linkage);
+        let gvar = str::as_buf(sym, {|buf|
+            llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type, buf)
+        });
+        lib::llvm::SetLinkage(gvar, lib::llvm::ExternalLinkage);
         llvm::LLVMSetGlobalConstant(gvar, True);
         lcx.ccx.discrims.insert(vid, gvar);
         ret gvar;
@@ -2739,7 +2725,7 @@ fn trans_index(cx: @block_ctxt, ex: @ast::expr, base: @ast::expr,
     maybe_name_value(bcx_ccx(cx), scaled_ix, "scaled_ix");
     let lim = tvec::get_fill(bcx, v);
     let body = tvec::get_dataptr(bcx, v, type_of_or_i8(bcx, unit_ty));
-    let bounds_check = ICmp(bcx, lib::llvm::LLVMIntULT, scaled_ix, lim);
+    let bounds_check = ICmp(bcx, lib::llvm::IntULT, scaled_ix, lim);
     let fail_cx = new_sub_block_ctxt(bcx, "fail");
     let next_cx = new_sub_block_ctxt(bcx, "next");
     let ncx = bcx_ccx(next_cx);
@@ -3760,8 +3746,7 @@ fn trans_log(lvl: @ast::expr, cx: @block_ctxt, e: @ast::expr) -> @block_ctxt {
         });
         llvm::LLVMSetGlobalConstant(global, False);
         llvm::LLVMSetInitializer(global, C_null(T_i32()));
-        llvm::LLVMSetLinkage(global,
-                             lib::llvm::LLVMInternalLinkage as llvm::Linkage);
+        lib::llvm::SetLinkage(global, lib::llvm::InternalLinkage);
         lcx.ccx.module_data.insert(modname, global);
         global
     };
@@ -3772,7 +3757,7 @@ fn trans_log(lvl: @ast::expr, cx: @block_ctxt, e: @ast::expr) -> @block_ctxt {
 
     Br(cx, level_cx.llbb);
     let level_res = trans_temp_expr(level_cx, lvl);
-    let test = ICmp(level_res.bcx, lib::llvm::LLVMIntUGE,
+    let test = ICmp(level_res.bcx, lib::llvm::IntUGE,
                     load, level_res.val);
 
     CondBr(level_res.bcx, test, log_cx.llbb, after_cx.llbb);
@@ -4834,7 +4819,7 @@ fn trans_native_mod(lcx: @local_ctxt, native_mod: ast::native_mod,
     fn build_shim_fn(lcx: @local_ctxt,
                      native_item: @ast::native_item,
                      tys: @c_stack_tys,
-                     cc: uint) -> ValueRef {
+                     cc: lib::llvm::CallConv) -> ValueRef {
         let lname = link_name(native_item);
         let ccx = lcx_ccx(lcx);
 
@@ -4861,7 +4846,7 @@ fn trans_native_mod(lcx: @local_ctxt, native_mod: ast::native_mod,
 
         // Create the call itself and store the return value:
         let llretval = CallWithConv(bcx, llbasefn,
-                                    llargvals, cc as c_uint); // r
+                                    llargvals, cc); // r
         if tys.ret_def {
             // R** llretptr = &args->r;
             let llretptr = GEPi(bcx, llargbundle, [0, n as int]);
@@ -4911,11 +4896,11 @@ fn trans_native_mod(lcx: @local_ctxt, native_mod: ast::native_mod,
     }
 
     let ccx = lcx_ccx(lcx);
-    let cc = lib::llvm::LLVMCCallConv;
+    let cc = lib::llvm::CCallConv;
     alt abi {
       ast::native_abi_rust_intrinsic { ret; }
-      ast::native_abi_cdecl { cc = lib::llvm::LLVMCCallConv; }
-      ast::native_abi_stdcall { cc = lib::llvm::LLVMX86StdcallCallConv; }
+      ast::native_abi_cdecl { cc = lib::llvm::CCallConv; }
+      ast::native_abi_stdcall { cc = lib::llvm::X86StdcallCallConv; }
     }
 
     for native_item in native_mod.items {
@@ -5076,7 +5061,7 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
         let nt = ty::mk_nil(ccx.tcx);
         let llfty = type_of_fn(ccx, [vecarg_ty], nt, []);
         let llfdecl = decl_fn(ccx.llmod, "_rust_main",
-                              lib::llvm::LLVMCCallConv, llfty);
+                              lib::llvm::CCallConv, llfty);
 
         let fcx = new_fn_ctxt(new_local_ctxt(ccx), llfdecl, none);
 
@@ -5230,7 +5215,7 @@ fn collect_native_item(ccx: @crate_ctxt,
             let ri_name = "rust_intrinsic_" + link_name(i);
             let llnativefn = get_extern_fn(
                 ccx.externs, ccx.llmod, ri_name,
-                lib::llvm::LLVMCCallConv, fn_type);
+                lib::llvm::CCallConv, fn_type);
             ccx.item_ids.insert(id, llnativefn);
             ccx.item_symbols.insert(id, ri_name);
           }
@@ -5433,11 +5418,10 @@ fn trap(bcx: @block_ctxt) {
 fn create_module_map(ccx: @crate_ctxt) -> ValueRef {
     let elttype = T_struct([ccx.int_type, ccx.int_type]);
     let maptype = T_array(elttype, ccx.module_data.size() + 1u);
-    let map =
-        str::as_buf("_rust_mod_map",
-                    {|buf| llvm::LLVMAddGlobal(ccx.llmod, maptype, buf) });
-    llvm::LLVMSetLinkage(map,
-                         lib::llvm::LLVMInternalLinkage as llvm::Linkage);
+    let map = str::as_buf("_rust_mod_map", {|buf|
+        llvm::LLVMAddGlobal(ccx.llmod, maptype, buf)
+    });
+    lib::llvm::SetLinkage(map, lib::llvm::InternalLinkage);
     let elts: [ValueRef] = [];
     ccx.module_data.items {|key, val|
         let elt = C_struct([p2i(ccx, C_cstr(ccx, key)),
@@ -5465,8 +5449,7 @@ fn decl_crate_map(sess: session::session, mapname: str,
     let map = str::as_buf(sym_name, {|buf|
         llvm::LLVMAddGlobal(llmod, maptype, buf)
     });
-    llvm::LLVMSetLinkage(map, lib::llvm::LLVMExternalLinkage
-                         as llvm::Linkage);
+    lib::llvm::SetLinkage(map, lib::llvm::ExternalLinkage);
     ret map;
 }
 
@@ -5500,19 +5483,14 @@ fn write_metadata(cx: @crate_ctxt, crate: @ast::crate) {
     str::as_buf(cx.sess.targ_cfg.target_strs.meta_sect_name, {|buf|
         llvm::LLVMSetSection(llglobal, buf)
     });
-    llvm::LLVMSetLinkage(llglobal,
-                         lib::llvm::LLVMInternalLinkage as llvm::Linkage);
+    lib::llvm::SetLinkage(llglobal, lib::llvm::InternalLinkage);
 
     let t_ptr_i8 = T_ptr(T_i8());
     llglobal = llvm::LLVMConstBitCast(llglobal, t_ptr_i8);
-    let llvm_used =
-        str::as_buf("llvm.used",
-                    {|buf|
-                        llvm::LLVMAddGlobal(cx.llmod, T_array(t_ptr_i8, 1u),
-                                            buf)
-                    });
-    llvm::LLVMSetLinkage(llvm_used,
-                         lib::llvm::LLVMAppendingLinkage as llvm::Linkage);
+    let llvm_used = str::as_buf("llvm.used", {|buf|
+        llvm::LLVMAddGlobal(cx.llmod, T_array(t_ptr_i8, 1u), buf)
+    });
+    lib::llvm::SetLinkage(llvm_used, lib::llvm::AppendingLinkage);
     llvm::LLVMSetInitializer(llvm_used, C_array(t_ptr_i8, [llglobal]));
 }
 

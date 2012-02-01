@@ -8,7 +8,8 @@ import syntax::{ast, ast_util};
 import metadata::csearch;
 import back::{link, abi};
 import lib::llvm::llvm;
-import llvm::{ValueRef, TypeRef, LLVMGetParam};
+import lib::llvm::{ValueRef, TypeRef};
+import lib::llvm::llvm::LLVMGetParam;
 
 // Translation functionality related to impls and ifaces
 //
@@ -384,8 +385,7 @@ fn get_static_dict(bcx: @block_ctxt, origin: typeck::dict_origin)
     });
     llvm::LLVMSetGlobalConstant(gvar, lib::llvm::True);
     llvm::LLVMSetInitializer(gvar, ptrs);
-    llvm::LLVMSetLinkage(gvar,
-                         lib::llvm::LLVMInternalLinkage as llvm::Linkage);
+    lib::llvm::SetLinkage(gvar, lib::llvm::InternalLinkage);
     let cast = llvm::LLVMConstPointerCast(gvar, T_ptr(T_dict()));
     ccx.dicts.insert(id, cast);
     cast

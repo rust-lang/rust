@@ -2,7 +2,7 @@ import core::ctypes::c_uint;
 import syntax::ast;
 import syntax::ast_util;
 import lib::llvm::llvm;
-import llvm::{ValueRef, TypeRef};
+import lib::llvm::{ValueRef, TypeRef};
 import common::*;
 import build::*;
 import base::*;

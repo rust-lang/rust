@@ -2,7 +2,7 @@ import vec;
 import option::none;
 import syntax::ast;
 import driver::session::session;
-import lib::llvm::llvm::{ValueRef, TypeRef};
+import lib::llvm::{ValueRef, TypeRef};
 import back::abi;
 import base::{call_memmove, trans_shared_malloc, type_of_or_i8,
                INIT, copy_val, load_if_immediate, get_tydesc,
@@ -170,7 +170,7 @@ fn trans_append(cx: @block_ctxt, vec_ty: ty::t, lhsptr: ValueRef,
     let llunitty = type_of_or_i8(cx, unit_ty);
 
     let lhs = Load(bcx, lhsptr);
-    let self_append = ICmp(bcx, lib::llvm::LLVMIntEQ, lhs, rhs);
+    let self_append = ICmp(bcx, lib::llvm::IntEQ, lhs, rhs);
     let lfill = get_fill(bcx, lhs);
     let rfill = get_fill(bcx, rhs);
     let new_fill = Add(bcx, lfill, rfill);
@@ -295,7 +295,7 @@ fn iter_vec_raw(bcx: @block_ctxt, vptr: ValueRef, vec_ty: ty::t,
     Br(bcx, header_cx.llbb);
     let data_ptr = Phi(header_cx, val_ty(data_ptr), [data_ptr], [bcx.llbb]);
     let not_yet_at_end =
-        ICmp(header_cx, lib::llvm::LLVMIntULT, data_ptr, data_end_ptr);
+        ICmp(header_cx, lib::llvm::IntULT, data_ptr, data_end_ptr);
     let body_cx = new_sub_block_ctxt(header_cx, "iter_vec_loop_body");
     let next_cx = new_sub_block_ctxt(header_cx, "iter_vec_next");
     CondBr(header_cx, not_yet_at_end, body_cx.llbb, next_cx.llbb);

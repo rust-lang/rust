@@ -1,5 +1,5 @@
 import syntax::ast;
-import lib::llvm::llvm::ValueRef;
+import lib::llvm::ValueRef;
 import common::*;
 import build::*;
 import base::{

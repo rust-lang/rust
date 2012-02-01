@@ -2,8 +2,7 @@
 // This substitutes for the runtime tags used by e.g. MLs.
 
 import lib::llvm::llvm;
-import lib::llvm::{True, False};
-import lib::llvm::llvm::{ModuleRef, TypeRef, ValueRef};
+import lib::llvm::{True, False, ModuleRef, TypeRef, ValueRef};
 import driver::session;
 import driver::session::session;
 import trans::base;
@@ -97,9 +96,7 @@ fn mk_global(ccx: @crate_ctxt, name: str, llval: ValueRef, internal: bool) ->
     lib::llvm::llvm::LLVMSetGlobalConstant(llglobal, True);
 
     if internal {
-        lib::llvm::llvm::LLVMSetLinkage(llglobal,
-                                        lib::llvm::LLVMInternalLinkage as
-                                            lib::llvm::llvm::Linkage);
+        lib::llvm::SetLinkage(llglobal, lib::llvm::InternalLinkage);
     }
 
     ret llglobal;
@@ -606,9 +603,8 @@ fn gen_shape_tables(ccx: @crate_ctxt) {
                        [lltagstable, llresourcestable]);
     lib::llvm::llvm::LLVMSetInitializer(ccx.shape_cx.llshapetables, lltables);
     lib::llvm::llvm::LLVMSetGlobalConstant(ccx.shape_cx.llshapetables, True);
-    lib::llvm::llvm::LLVMSetLinkage(ccx.shape_cx.llshapetables,
-                                    lib::llvm::LLVMInternalLinkage as
-                                        lib::llvm::llvm::Linkage);
+    lib::llvm::SetLinkage(ccx.shape_cx.llshapetables,
+                          lib::llvm::InternalLinkage);
 }
 
 // ______________________________________________________________________

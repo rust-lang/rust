@@ -1,7 +1,6 @@
 // Routines useful for garbage collection.
 
-import lib::llvm::True;
-import lib::llvm::llvm::ValueRef;
+import lib::llvm::{True, ValueRef};
 import trans::base::get_tydesc;
 import trans::common::*;
 import trans::base;

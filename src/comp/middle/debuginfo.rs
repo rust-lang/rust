@@ -2,7 +2,7 @@ import core::{vec, str, option, sys, ctypes, unsafe};
 import std::fs;
 import std::map::hashmap;
 import lib::llvm::llvm;
-import lib::llvm::llvm::ValueRef;
+import lib::llvm::ValueRef;
 import trans::common::*;
 import trans::base;
 import trans::build::B;

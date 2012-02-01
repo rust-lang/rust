@@ -3,7 +3,7 @@ import option::{some, none};
 
 import driver::session::session;
 import lib::llvm::llvm;
-import lib::llvm::llvm::{ValueRef, BasicBlockRef};
+import lib::llvm::{ValueRef, BasicBlockRef};
 import pat_util::*;
 import build::*;
 import base::{new_sub_block_ctxt, new_scope_block_ctxt,
