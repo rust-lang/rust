@@ -43,23 +43,25 @@ fn is_space(c: char) -> bool {
     syntax::parse::lexer::is_whitespace(c)
 }
 
-fn expand_ast(ecx: ext_ctxt, _sp: span, _arg: ast::mac_arg, body: ast::mac_body)
-    -> @ast::expr 
+fn expand_ast(ecx: ext_ctxt, _sp: span, _arg:
+              ast::mac_arg, body: ast::mac_body)
+    -> @ast::expr
 {
     let body = get_mac_body(ecx,_sp,body);
-    let str = @codemap::span_to_snippet(body.span, ecx.session().parse_sess.cm);
-    let (fname, ss) = codemap::get_substr_info(ecx.session().parse_sess.cm, 
+    let cm = ecx.session().parse_sess.cm;
+    let str = @codemap::span_to_snippet(body.span, cm);
+    let (fname, ss) = codemap::get_substr_info(cm,
                                                body.span.lo, body.span.hi);
-    let {node: e, _} = parse_from_source_str(parser::parse_expr, 
-                                             fname, some(ss), str, 
-                                             ecx.session().opts.cfg, 
+    let {node: e, _} = parse_from_source_str(parser::parse_expr,
+                                             fname, some(ss), str,
+                                             ecx.session().opts.cfg,
                                              ecx.session().parse_sess);
     ret expand_qquote(ecx, e.span, some(*str), e);
 }
 
-fn expand_qquote(ecx: ext_ctxt, sp: span, maybe_str: option::t<str>, 
-                 e: @ast::expr) 
-    -> @ast::expr 
+fn expand_qquote(ecx: ext_ctxt, sp: span, maybe_str: option::t<str>,
+                 e: @ast::expr)
+    -> @ast::expr
 {
     let str = alt(maybe_str) {
       some(s) {s}

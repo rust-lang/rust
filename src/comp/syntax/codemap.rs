@@ -38,7 +38,7 @@ fn new_filemap_w_substr(filename: filename, substr: file_substr,
 fn new_filemap(filename: filename, src: @str,
                start_pos_ch: uint, start_pos_byte: uint)
     -> filemap {
-    ret new_filemap_w_substr(filename, none, src, 
+    ret new_filemap_w_substr(filename, none, src,
                              start_pos_ch, start_pos_byte);
 }
 
