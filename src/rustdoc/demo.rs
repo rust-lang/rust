@@ -168,3 +168,14 @@ iface the_shunned_house {
     )]
     fn construct() -> bool;
 }
+
+#[doc = "Whatever"]
+impl of the_shunned_house for omnomnomy {
+    #[doc(args(_unkempt_yard = "Whatever"))]
+    fn dingy_house(_unkempt_yard: int) {
+    }
+
+    fn construct() -> bool {
+        fail;
+    }
+}
