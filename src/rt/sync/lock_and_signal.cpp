@@ -11,7 +11,6 @@
 
 #if defined(__WIN32__)
 lock_and_signal::lock_and_signal()
-    : alive(true)
 {
     // FIXME: In order to match the behavior of pthread_cond_broadcast on
     // Windows, we create manual reset events. This however breaks the
@@ -24,7 +23,7 @@ lock_and_signal::lock_and_signal()
 
 #else
 lock_and_signal::lock_and_signal()
-    : _locked(false), alive(true)
+    : _locked(false)
 {
     CHECKED(pthread_cond_init(&_cond, NULL));
     CHECKED(pthread_mutex_init(&_mutex, NULL));
@@ -38,7 +37,6 @@ lock_and_signal::~lock_and_signal() {
     CHECKED(pthread_cond_destroy(&_cond));
     CHECKED(pthread_mutex_destroy(&_mutex));
 #endif
-    alive = false;
 }
 
 void lock_and_signal::lock() {

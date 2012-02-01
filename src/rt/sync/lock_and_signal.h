@@ -15,8 +15,6 @@ class lock_and_signal {
 #endif
     bool _locked;
 
-    bool alive;
-
 public:
     lock_and_signal();
     virtual ~lock_and_signal();
