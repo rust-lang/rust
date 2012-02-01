@@ -103,7 +103,7 @@ type impldoc = {
     brief: option<str>,
     desc: option<str>,
     iface_ty: option<str>,
-    for_ty: option<str>,
+    self_ty: option<str>,
     methods: [methoddoc]
 };
 

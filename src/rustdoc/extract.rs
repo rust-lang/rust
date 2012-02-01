@@ -291,7 +291,7 @@ fn impldoc_from_impl(
         brief: none,
         desc: none,
         iface_ty: none,
-        for_ty: none,
+        self_ty: none,
         methods: vec::map(methods) {|method|
             {
                 name: method.ident,
