@@ -562,9 +562,9 @@ fn mangle_internal_name_by_seq(ccx: @crate_ctxt, flav: str) -> str {
 fn link_binary(sess: session,
                obj_filename: str,
                out_filename: str,
-               lm: link_meta) unsafe {
+               lm: link_meta) {
     // Converts a library file name into a gcc -l argument
-    fn unlib(config: @session::config, filename: str) -> str {
+    fn unlib(config: @session::config, filename: str) -> str unsafe {
         let rmlib = fn@(filename: str) -> str {
             if config.os == session::os_macos ||
                 (config.os == session::os_linux ||

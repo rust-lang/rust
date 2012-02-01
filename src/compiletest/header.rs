@@ -104,12 +104,12 @@ fn parse_name_directive(line: str, directive: str) -> bool {
 }
 
 fn parse_name_value_directive(line: str,
-                              directive: str) -> option<str> {
+                              directive: str) -> option<str> unsafe {
     let keycolon = directive + ":";
     if str::find(line, keycolon) >= 0 {
         let colon = str::find(line, keycolon) as uint;
         let value =
-            str::slice(line, colon + str::byte_len(keycolon),
+            str::unsafe::slice(line, colon + str::byte_len(keycolon),
                        str::byte_len(line));
         #debug("%s: %s", directive,  value);
         option::some(value)

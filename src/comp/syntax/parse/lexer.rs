@@ -579,7 +579,8 @@ fn all_whitespace(s: str, begin: uint, end: uint) -> bool {
     ret true;
 }
 
-fn trim_whitespace_prefix_and_push_line(&lines: [str], s: str, col: uint) unsafe {
+fn trim_whitespace_prefix_and_push_line(&lines: [str],
+                                        s: str, col: uint) unsafe {
     let s1;
     if all_whitespace(s, 0u, col) {
         if col < str::byte_len(s) {
