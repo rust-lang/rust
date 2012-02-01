@@ -985,14 +985,20 @@ fn parse_syntax_ext_naked(p: parser, lo: uint) -> @ast::expr {
     let pth = parse_path(p);
     //temporary for a backwards-compatible cycle:
     let sep = seq_sep(token::COMMA);
-    let es =
-        if p.token == token::LPAREN {
-            parse_seq(token::LPAREN, token::RPAREN, sep, parse_expr, p)
-        } else {
-            parse_seq(token::LBRACKET, token::RBRACKET, sep, parse_expr, p)
-        };
-    let hi = es.span.hi;
-    let e = mk_expr(p, es.span.lo, hi, ast::expr_vec(es.node, ast::imm));
+    let e = none;
+    if (p.token == token::LPAREN || p.token == token::LBRACKET) {
+        let es =
+            if p.token == token::LPAREN {
+                parse_seq(token::LPAREN, token::RPAREN,
+                          sep, parse_expr, p)
+            } else {
+                parse_seq(token::LBRACKET, token::RBRACKET,
+                          sep, parse_expr, p)
+            };
+        let hi = es.span.hi;
+        e = some(mk_expr(p, es.span.lo, hi,
+                         ast::expr_vec(es.node, ast::imm)));
+    }
     let b = none;
     if p.token == token::LBRACE {
         p.bump();

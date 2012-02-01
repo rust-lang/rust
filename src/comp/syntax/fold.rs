@@ -133,7 +133,10 @@ fn fold_mac_(m: mac, fld: ast_fold) -> mac {
     ret {node:
              alt m.node {
                mac_invoc(pth, arg, body) {
-                 mac_invoc(fld.fold_path(pth), fld.fold_expr(arg), body)
+                 mac_invoc(fld.fold_path(pth),
+                           // FIXME: bind should work, but causes a crash
+                           option::map(arg) {|arg| fld.fold_expr(arg)},
+                           body)
                }
                mac_embed_type(ty) { mac_embed_type(fld.fold_ty(ty)) }
                mac_embed_block(blk) { mac_embed_block(fld.fold_block(blk)) }

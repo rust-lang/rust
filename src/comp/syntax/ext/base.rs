@@ -118,6 +118,13 @@ fn make_new_lit(cx: ext_ctxt, sp: codemap::span, lit: ast::lit_) ->
     ret @{id: cx.next_id(), node: ast::expr_lit(sp_lit), span: sp};
 }
 
+fn get_mac_arg(cx: ext_ctxt, sp: span, arg: ast::mac_arg) -> @ast::expr {
+    alt (arg) {
+      some(expr) {expr}
+      none {cx.span_fatal(sp, "missing macro args")}
+    }
+}
+
 fn get_mac_body(cx: ext_ctxt, sp: span, args: ast::mac_body)
     -> ast::mac_body_
 {

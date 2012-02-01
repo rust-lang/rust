@@ -726,8 +726,11 @@ fn print_mac(s: ps, m: ast::mac) {
       ast::mac_invoc(path, arg, body) {
         word(s.s, "#");
         print_path(s, path, false);
-        alt arg.node { ast::expr_vec(_, _) { } _ { word(s.s, " "); } }
-        print_expr(s, arg);
+        alt arg {
+          some(@{node: ast::expr_vec(_, _), _}) { }
+          _ { word(s.s, " "); }
+        }
+        option::may(arg, bind print_expr(s, _));
         // FIXME: extension 'body'
       }
       ast::mac_embed_type(ty) {

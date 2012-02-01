@@ -272,7 +272,7 @@ enum blk_sort {
 
 type mac = spanned<mac_>;
 
-type mac_arg = @expr;
+type mac_arg = option::t<@expr>;
 
 type mac_body_ = {span: span};
 type mac_body = option::t<mac_body_>;
