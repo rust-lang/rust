@@ -30,7 +30,7 @@ This behavior can be disabled with the `no_core` crate attribute."
 
 export box, char, float, bessel, f32, f64, int, str, ptr;
 export uint, u8, u32, u64, vec, bool;
-export either, option, result;
+export either, option, result, iter;
 export ctypes, sys, unsafe, comm, task, logging;
 export extfmt;
 export math;
@@ -64,7 +64,7 @@ mod either;
 mod option;
 mod result;
 mod tuple;
-
+mod iter;
 
 // Runtime and language-primitive support
 

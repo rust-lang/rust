@@ -138,6 +138,7 @@ fn write_mod_contents(
           doc::enumtag(enumdoc) { write_enum(ctxt, enumdoc) }
           doc::restag(resdoc) { write_res(ctxt, resdoc) }
           doc::ifacetag(ifacedoc) { write_iface(ctxt, ifacedoc) }
+          doc::impltag(impldoc) { write_impl(ctxt, impldoc) }
         }
     }
 }
@@ -644,6 +645,101 @@ fn should_write_iface_method_return_info() {
 fn should_write_iface_method_failure_conditions() {
     let markdown = test::render(
         "iface a { #[doc(failure = \"nuked\")] fn a(); }");
+    assert str::contains(markdown, "Failure conditions: nuked");
+}
+
+fn write_impl(ctxt: ctxt, doc: doc::impldoc) {
+    assert option::is_some(doc.self_ty);
+    let self_ty = option::get(doc.self_ty);
+    alt doc.iface_ty {
+      some(iface_ty) {
+        write_header(ctxt, h2,
+                     #fmt("Implementation `%s` of `%s` for `%s`",
+                          doc.name, iface_ty, self_ty));
+      }
+      none {
+        write_header(ctxt, h2,
+                     #fmt("Implementation `%s` for `%s`",
+                          doc.name, self_ty));
+      }
+    }
+    write_brief(ctxt, doc.brief);
+    write_desc(ctxt, doc.desc);
+    write_methods(ctxt, doc.methods);
+}
+
+#[test]
+fn should_write_impl_header() {
+    let markdown = test::render("impl i for int { fn a() { } }");
+    assert str::contains(markdown, "## Implementation `i` for `int`");
+}
+
+#[test]
+fn should_write_impl_header_with_iface() {
+    let markdown = test::render("impl i of j for int { fn a() { } }");
+    assert str::contains(markdown, "## Implementation `i` of `j` for `int`");
+}
+
+#[test]
+fn should_write_impl_brief() {
+    let markdown = test::render(
+        "#[doc(brief = \"brief\")] impl i for int { fn a() { } }");
+    assert str::contains(markdown, "brief");
+}
+
+#[test]
+fn should_write_impl_desc() {
+    let markdown = test::render(
+        "#[doc(desc = \"desc\")] impl i for int { fn a() { } }");
+    assert str::contains(markdown, "desc");
+}
+
+#[test]
+fn should_write_impl_method_header() {
+    let markdown = test::render(
+        "impl i for int { fn a() { } }");
+    assert str::contains(markdown, "### Method `a`");
+}
+
+#[test]
+fn should_write_impl_method_signature() {
+    let markdown = test::render(
+        "impl i for int { fn a() { } }");
+    assert str::contains(markdown, "\n    fn a()");
+}
+
+#[test]
+fn should_write_impl_method_argument_header() {
+    let markdown = test::render(
+        "impl a for int { fn a(b: int) { } }");
+    assert str::contains(markdown, "\n\nArguments:\n\n");
+}
+
+#[test]
+fn should_write_impl_method_arguments() {
+    let markdown = test::render(
+        "impl a for int { fn a(b: int) { } }");
+    assert str::contains(markdown, "* `b`: `int`\n");
+}
+
+#[test]
+fn should_not_write_impl_method_arguments_if_none() {
+    let markdown = test::render(
+        "impl a for int { fn a() { } }");
+    assert !str::contains(markdown, "Arguments");
+}
+
+#[test]
+fn should_write_impl_method_return_info() {
+    let markdown = test::render(
+        "impl a for int { fn a() -> int { } }");
+    assert str::contains(markdown, "Returns `int`");
+}
+
+#[test]
+fn should_write_impl_method_failure_conditions() {
+    let markdown = test::render(
+        "impl a for int { #[doc(failure = \"nuked\")] fn a() { } }");
     assert str::contains(markdown, "Failure conditions: nuked");
 }
 

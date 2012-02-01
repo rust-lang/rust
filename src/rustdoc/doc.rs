@@ -12,7 +12,8 @@ enum itemtag {
     fntag(fndoc),
     enumtag(enumdoc),
     restag(resdoc),
-    ifacetag(ifacedoc)
+    ifacetag(ifacedoc),
+    impltag(impldoc)
 }
 
 type moddoc = {
@@ -96,6 +97,16 @@ type methoddoc = {
     sig: option<str>
 };
 
+type impldoc = {
+    id: ast_id,
+    name: str,
+    brief: option<str>,
+    desc: option<str>,
+    iface_ty: option<str>,
+    self_ty: option<str>,
+    methods: [methoddoc]
+};
+
 #[doc = "Some helper methods on moddoc, mostly for testing"]
 impl util for moddoc {
 
@@ -152,6 +163,15 @@ impl util for moddoc {
             }
         }
     }
+
+    fn impls() -> [impldoc] {
+        vec::filter_map(*self.items) {|itemtag|
+            alt itemtag {
+              impltag(impldoc) { some(impldoc) }
+              _ { none }
+            }
+        }
+    }
 }
 
 #[doc = "Helper methods on itemtag"]
@@ -164,6 +184,7 @@ impl util for itemtag {
           doc::enumtag({name, _}) { name }
           doc::restag({name, _}) { name }
           doc::ifacetag({name, _}) { name }
+          doc::impltag({name, _}) { name }
         }
     }
 }

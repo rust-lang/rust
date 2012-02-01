@@ -26,7 +26,8 @@ fn run(
         fold_const: fold_const,
         fold_enum: fold_enum,
         fold_res: fold_res,
-        fold_iface: fold_iface
+        fold_iface: fold_iface,
+        fold_impl: fold_impl
         with *fold::default_seq_fold(srv)
     });
     fold.fold_crate(fold, doc)
@@ -55,11 +56,7 @@ fn fold_crate(
 
 #[test]
 fn should_replace_top_module_name_with_crate_name() {
-    let source = "#[link(name = \"bond\")];";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let fold = fold::default_seq_fold(srv);
-    let doc = fold_crate(fold, doc);
+    let doc = test::mk_doc("#[link(name = \"bond\")];");
     assert doc.topmod.name == "bond";
 }
 
@@ -105,22 +102,14 @@ fn fold_mod(fold: fold::fold<astsrv::srv>, doc: doc::moddoc) -> doc::moddoc {
 
 #[test]
 fn fold_mod_should_extract_mod_attributes() {
-    let source = "#[doc = \"test\"] mod a { }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let fold = fold::default_seq_fold(srv);
-    let doc = fold_mod(fold, doc.topmod.mods()[0]);
-    assert doc.desc == some("test");
+    let doc = test::mk_doc("#[doc = \"test\"] mod a { }");
+    assert doc.topmod.mods()[0].desc == some("test");
 }
 
 #[test]
 fn fold_mod_should_extract_top_mod_attributes() {
-    let source = "#[doc = \"test\"];";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let fold = fold::default_seq_fold(srv);
-    let doc = fold_mod(fold, doc.topmod);
-    assert doc.desc == some("test");
+    let doc = test::mk_doc("#[doc = \"test\"];");
+    assert doc.topmod.desc == some("test");
 }
 
 fn fold_fn(
@@ -181,22 +170,14 @@ fn merge_ret_attrs(
 
 #[test]
 fn fold_fn_should_extract_fn_attributes() {
-    let source = "#[doc = \"test\"] fn a() -> int { }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let fold = fold::default_seq_fold(srv);
-    let doc = fold_fn(fold, doc.topmod.fns()[0]);
-    assert doc.desc == some("test");
+    let doc = test::mk_doc("#[doc = \"test\"] fn a() -> int { }");
+    assert doc.topmod.fns()[0].desc == some("test");
 }
 
 #[test]
 fn fold_fn_should_extract_arg_attributes() {
-    let source = "#[doc(args(a = \"b\"))] fn c(a: bool) { }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let fold = fold::default_seq_fold(srv);
-    let doc = fold_fn(fold, doc.topmod.fns()[0]);
-    assert doc.args[0].desc == some("b");
+    let doc = test::mk_doc("#[doc(args(a = \"b\"))] fn c(a: bool) { }");
+    assert doc.topmod.fns()[0].args[0].desc == some("b");
 }
 
 #[test]
@@ -223,12 +204,8 @@ fn fold_fn_should_preserve_sig() {
 
 #[test]
 fn fold_fn_should_extract_failure_conditions() {
-    let source = "#[doc(failure = \"what\")] fn a() { }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let fold = fold::default_seq_fold(srv);
-    let doc = fold_fn(fold, doc.topmod.fns()[0]);
-    assert doc.failure == some("what");
+    let doc = test::mk_doc("#[doc(failure = \"what\")] fn a() { }");
+    assert doc.topmod.fns()[0].failure == some("what");
 }
 
 fn fold_const(
@@ -247,14 +224,10 @@ fn fold_const(
 
 #[test]
 fn fold_const_should_extract_docs() {
-    let source = "#[doc(brief = \"foo\", desc = \"bar\")]\
-                  const a: bool = true;";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let fold = fold::default_seq_fold(srv);
-    let doc = fold_const(fold, doc.topmod.consts()[0]);
-    assert doc.brief == some("foo");
-    assert doc.desc == some("bar");
+    let doc = test::mk_doc("#[doc(brief = \"foo\", desc = \"bar\")]\
+                            const a: bool = true;");
+    assert doc.topmod.consts()[0].brief == some("foo");
+    assert doc.topmod.consts()[0].desc == some("bar");
 }
 
 fn fold_enum(
@@ -295,24 +268,16 @@ fn fold_enum(
 
 #[test]
 fn fold_enum_should_extract_docs() {
-    let source = "#[doc(brief = \"a\", desc = \"b\")]\
-                  enum a { v }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let fold = fold::default_seq_fold(srv);
-    let doc = fold_enum(fold, doc.topmod.enums()[0]);
-    assert doc.brief == some("a");
-    assert doc.desc == some("b");
+    let doc = test::mk_doc("#[doc(brief = \"a\", desc = \"b\")]\
+                            enum a { v }");
+    assert doc.topmod.enums()[0].brief == some("a");
+    assert doc.topmod.enums()[0].desc == some("b");
 }
 
 #[test]
 fn fold_enum_should_extract_variant_docs() {
-    let source = "enum a { #[doc = \"c\"] v }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let fold = fold::default_seq_fold(srv);
-    let doc = fold_enum(fold, doc.topmod.enums()[0]);
-    assert doc.variants[0].desc == some("c");
+    let doc = test::mk_doc("enum a { #[doc = \"c\"] v }");
+    assert doc.topmod.enums()[0].variants[0].desc == some("c");
 }
 
 fn fold_res(
@@ -345,26 +310,18 @@ fn fold_res(
 
 #[test]
 fn fold_res_should_extract_docs() {
-    let source = "#[doc(brief = \"a\", desc = \"b\")]\
-                  resource r(b: bool) { }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let fold = fold::default_seq_fold(srv);
-    let doc = fold_res(fold, doc.topmod.resources()[0]);
-    assert doc.brief == some("a");
-    assert doc.desc == some("b");
+    let doc = test::mk_doc("#[doc(brief = \"a\", desc = \"b\")]\
+                            resource r(b: bool) { }");
+    assert doc.topmod.resources()[0].brief == some("a");
+    assert doc.topmod.resources()[0].desc == some("b");
 }
 
 #[test]
 fn fold_res_should_extract_arg_docs() {
-    let source = "#[doc(args(a = \"b\"))]\
-                  resource r(a: bool) { }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let fold = fold::default_seq_fold(srv);
-    let doc = fold_res(fold, doc.topmod.resources()[0]);
-    assert doc.args[0].name == "a";
-    assert doc.args[0].desc == some("b");
+    let doc = test::mk_doc("#[doc(args(a = \"b\"))]\
+                            resource r(a: bool) { }");
+    assert doc.topmod.resources()[0].args[0].name == "a";
+    assert doc.topmod.resources()[0].args[0].desc == some("b");
 }
 
 fn fold_iface(
@@ -398,9 +355,14 @@ fn merge_method_attrs(
                 (method.ident, attr_parser::parse_method(method.attrs))
             }
           }
-          _ {
-            fail "Undocumented invariant in merge_method_attrs";
+          ast_map::node_item(@{
+            node: ast::item_impl(_, _, _, methods), _
+          }) {
+            vec::map(methods) {|method|
+                (method.ident, attr_parser::parse_method(method.attrs))
+            }
           }
+          _ { fail "unexpected item" }
         }
     };
 
@@ -421,30 +383,77 @@ fn merge_method_attrs(
 
 #[test]
 fn should_extract_iface_docs() {
-    let source = "#[doc = \"whatever\"] iface i { fn a(); }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("#[doc = \"whatever\"] iface i { fn a(); }");
     assert doc.topmod.ifaces()[0].desc == some("whatever");
 }
 
 #[test]
 fn should_extract_iface_method_docs() {
-    let source = "iface i {\
-                  #[doc(\
-                  brief = \"brief\",\
-                  desc = \"desc\",\
-                  args(a = \"a\"),\
-                  return = \"return\",\
-                  failure = \"failure\")]\
-                  fn f(a: bool) -> bool;\
-                  }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = run(srv, doc);
+    let doc = test::mk_doc(
+        "iface i {\
+         #[doc(\
+         brief = \"brief\",\
+         desc = \"desc\",\
+         args(a = \"a\"),\
+         return = \"return\",\
+         failure = \"failure\")]\
+         fn f(a: bool) -> bool;\
+         }");
     assert doc.topmod.ifaces()[0].methods[0].brief == some("brief");
     assert doc.topmod.ifaces()[0].methods[0].desc == some("desc");
     assert doc.topmod.ifaces()[0].methods[0].args[0].desc == some("a");
     assert doc.topmod.ifaces()[0].methods[0].return.desc == some("return");
     assert doc.topmod.ifaces()[0].methods[0].failure == some("failure");
+}
+
+
+fn fold_impl(
+    fold: fold::fold<astsrv::srv>,
+    doc: doc::impldoc
+) -> doc::impldoc {
+    let srv = fold.ctxt;
+    let doc = fold::default_seq_fold_impl(fold, doc);
+    let attrs = parse_item_attrs(srv, doc.id, attr_parser::parse_impl);
+
+    {
+        brief: attrs.brief,
+        desc: attrs.desc,
+        methods: merge_method_attrs(srv, doc.id, doc.methods)
+        with doc
+    }
+}
+
+#[test]
+fn should_extract_impl_docs() {
+    let doc = test::mk_doc(
+        "#[doc = \"whatever\"] impl i for int { fn a() { } }");
+    assert doc.topmod.impls()[0].desc == some("whatever");
+}
+
+#[test]
+fn should_extract_impl_method_docs() {
+    let doc = test::mk_doc(
+        "impl i for int {\
+         #[doc(\
+         brief = \"brief\",\
+         desc = \"desc\",\
+         args(a = \"a\"),\
+         return = \"return\",\
+         failure = \"failure\")]\
+         fn f(a: bool) -> bool { }\
+         }");
+    assert doc.topmod.impls()[0].methods[0].brief == some("brief");
+    assert doc.topmod.impls()[0].methods[0].desc == some("desc");
+    assert doc.topmod.impls()[0].methods[0].args[0].desc == some("a");
+    assert doc.topmod.impls()[0].methods[0].return.desc == some("return");
+    assert doc.topmod.impls()[0].methods[0].failure == some("failure");
+}
+
+#[cfg(test)]
+mod test {
+    fn mk_doc(source: str) -> doc::cratedoc {
+        let srv = astsrv::mk_srv_from_str(source);
+        let doc = extract::from_srv(srv, "");
+        run(srv, doc)
+    }
 }

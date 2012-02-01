@@ -20,7 +20,8 @@ fn run(
         fold_const: fold_const,
         fold_enum: fold_enum,
         fold_res: fold_res,
-        fold_iface: fold_iface
+        fold_iface: fold_iface,
+        fold_impl: fold_impl
         with *fold::default_seq_fold(srv)
     });
     fold.fold_crate(fold, doc)
@@ -59,10 +60,7 @@ fn get_fn_sig(srv: astsrv::srv, fn_id: doc::ast_id) -> option<str> {
 
 #[test]
 fn should_add_fn_sig() {
-    let source = "fn a() -> int { }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("fn a() -> int { }");
     assert doc.topmod.fns()[0].sig == some("fn a() -> int");
 }
 
@@ -106,19 +104,13 @@ fn ret_ty_to_str(decl: ast::fn_decl) -> option<str> {
 
 #[test]
 fn should_add_fn_ret_types() {
-    let source = "fn a() -> int { }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("fn a() -> int { }");
     assert doc.topmod.fns()[0].return.ty == some("int");
 }
 
 #[test]
 fn should_not_add_nil_ret_type() {
-    let source = "fn a() { }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("fn a() { }");
     assert doc.topmod.fns()[0].return.ty == none;
 }
 
@@ -164,10 +156,7 @@ fn decl_arg_tys(decl: ast::fn_decl) -> [(str, str)] {
 
 #[test]
 fn should_add_arg_types() {
-    let source = "fn a(b: int, c: bool) { }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("fn a(b: int, c: bool) { }");
     let fn_ = doc.topmod.fns()[0];
     assert fn_.args[0].ty == some("int");
     assert fn_.args[1].ty == some("bool");
@@ -198,10 +187,7 @@ fn fold_const(
 
 #[test]
 fn should_add_const_types() {
-    let source = "const a: bool = true;";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("const a: bool = true;");
     assert doc.topmod.consts()[0].ty == some("bool");
 }
 
@@ -240,10 +226,7 @@ fn fold_enum(
 
 #[test]
 fn should_add_variant_sigs() {
-    let source = "enum a { b(int) }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("enum a { b(int) }");
     assert doc.topmod.enums()[0].variants[0].sig == some("b(int)");
 }
 
@@ -271,19 +254,13 @@ fn fold_res(
 
 #[test]
 fn should_add_resource_sigs() {
-    let source = "resource r(b: bool) { }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("resource r(b: bool) { }");
     assert doc.topmod.resources()[0].sig == some("resource r(b: bool)");
 }
 
 #[test]
 fn should_add_resource_arg_tys() {
-    let source = "resource r(a: bool) { }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("resource r(a: bool) { }");
     assert doc.topmod.resources()[0].args[0].ty == some("bool");
 }
 
@@ -291,27 +268,32 @@ fn fold_iface(
     fold: fold::fold<astsrv::srv>,
     doc: doc::ifacedoc
 ) -> doc::ifacedoc {
-
-    let srv = fold.ctxt;
-
     {
-        methods: vec::map(doc.methods) {|methoddoc|
-            {
-                args: merge_method_arg_tys(
-                    srv,
-                    doc.id,
-                    methoddoc.args,
-                    methoddoc.name),
-                return: merge_method_ret_ty(
-                    srv,
-                    doc.id,
-                    methoddoc.return,
-                    methoddoc.name),
-                sig: get_method_sig(srv, doc.id, methoddoc.name)
-                with methoddoc
-            }
-        }
+        methods: merge_methods(fold.ctxt, doc.id, doc.methods)
         with doc
+    }
+}
+
+fn merge_methods(
+    srv: astsrv::srv,
+    item_id: doc::ast_id,
+    docs: [doc::methoddoc]
+) -> [doc::methoddoc] {
+    vec::map(docs) {|doc|
+        {
+            args: merge_method_arg_tys(
+                srv,
+                item_id,
+                doc.args,
+                doc.name),
+            return: merge_method_ret_ty(
+                srv,
+                item_id,
+                doc.return,
+                doc.name),
+            sig: get_method_sig(srv, item_id, doc.name)
+            with doc
+        }
     }
 }
 
@@ -351,7 +333,19 @@ fn get_method_ret_ty(
                 _ { fail "get_method_ret_ty: undocumented invariant"; }
             }
           }
-          _ { fail "get_method_ret_ty: undocumented invariant"; }
+          ast_map::node_item(@{
+            node: ast::item_impl(_, _, _, methods), _
+          }) {
+            alt vec::find(methods) {|method|
+                method.ident == method_name
+            } {
+                some(method) {
+                    ret_ty_to_str(method.decl)
+                }
+                _ { fail "get_method_ret_ty: undocumented invariant"; }
+            }
+          }
+          _ { fail }
         }
     }
 }
@@ -372,10 +366,22 @@ fn get_method_sig(
                 some(method) {
                     some(pprust::fun_to_str(method.decl, method.ident, []))
                 }
-                _ { fail "get_method_ret_sig: undocumented invariant"; }
+                _ { fail "get_method_sig: undocumented invariant"; }
             }
           }
-          _ { fail "get_method_ret_sig: undocumented invariant"; }
+          ast_map::node_item(@{
+            node: ast::item_impl(_, _, _, methods), _
+          }) {
+            alt vec::find(methods) {|method|
+                method.ident == method_name
+            } {
+                some(method) {
+                    some(pprust::fun_to_str(method.decl, method.ident, []))
+                }
+                _ { fail "get_method_sig: undocumented invariant"; }
+            }
+          }
+          _ { fail "get_method_sig: undocumented invariant"; }
         }
     }
 }
@@ -412,48 +418,130 @@ fn get_method_arg_tys(
                 some(method) {
                     decl_arg_tys(method.decl)
                 }
-                _ { fail "get_method_arg_tys: undocumented invariant"; }
+                _ { fail "get_method_arg_tys: expected method"; }
             }
           }
-          _ { fail "get_method_arg_tys: undocumented invariant"; }
+          ast_map::node_item(@{
+            node: ast::item_impl(_, _, _, methods), _
+          }) {
+            alt vec::find(methods) {|method|
+                method.ident == method_name
+            } {
+                some(method) {
+                    decl_arg_tys(method.decl)
+                }
+                _ { fail "get_method_arg_tys: expected method"; }
+            }
+          }
+          _ { fail }
         }
     }
 }
 
 #[test]
 fn should_add_iface_method_sigs() {
-    let source = "iface i { fn a() -> int; }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("iface i { fn a() -> int; }");
     assert doc.topmod.ifaces()[0].methods[0].sig == some("fn a() -> int");
 }
 
 #[test]
 fn should_add_iface_method_ret_types() {
-    let source = "iface i { fn a() -> int; }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("iface i { fn a() -> int; }");
     assert doc.topmod.ifaces()[0].methods[0].return.ty == some("int");
 }
 
 #[test]
 fn should_not_add_iface_method_nil_ret_type() {
-    let source = "iface i { fn a(); }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("iface i { fn a(); }");
     assert doc.topmod.ifaces()[0].methods[0].return.ty == none;
 }
 
 #[test]
 fn should_add_iface_method_arg_types() {
-    let source = "iface i { fn a(b: int, c: bool); }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("iface i { fn a(b: int, c: bool); }");
     let fn_ = doc.topmod.ifaces()[0].methods[0];
     assert fn_.args[0].ty == some("int");
     assert fn_.args[1].ty == some("bool");
+}
+
+fn fold_impl(
+    fold: fold::fold<astsrv::srv>,
+    doc: doc::impldoc
+) -> doc::impldoc {
+
+    let srv = fold.ctxt;
+
+    let (iface_ty, self_ty) = astsrv::exec(srv) {|ctxt|
+        alt ctxt.ast_map.get(doc.id) {
+          ast_map::node_item(@{
+            node: ast::item_impl(_, iface_ty, self_ty, _), _
+          }) {
+            let iface_ty = option::map(iface_ty) {|iface_ty|
+                pprust::ty_to_str(iface_ty)
+            };
+            (iface_ty, some(pprust::ty_to_str(self_ty)))
+          }
+          _ { fail "expected impl" }
+        }
+    };
+
+    {
+        iface_ty: iface_ty,
+        self_ty: self_ty,
+        methods: merge_methods(fold.ctxt, doc.id, doc.methods)
+        with doc
+    }
+}
+
+#[test]
+fn should_add_impl_iface_ty() {
+    let doc = test::mk_doc("impl i of j for int { fn a() { } }");
+    assert doc.topmod.impls()[0].iface_ty == some("j");
+}
+
+#[test]
+fn should_not_add_impl_iface_ty_if_none() {
+    let doc = test::mk_doc("impl i for int { fn a() { } }");
+    assert doc.topmod.impls()[0].iface_ty == none;
+}
+
+#[test]
+fn should_add_impl_self_ty() {
+    let doc = test::mk_doc("impl i for int { fn a() { } }");
+    assert doc.topmod.impls()[0].self_ty == some("int");
+}
+
+#[test]
+fn should_add_impl_method_sigs() {
+    let doc = test::mk_doc("impl i for int { fn a() -> int { fail } }");
+    assert doc.topmod.impls()[0].methods[0].sig == some("fn a() -> int");
+}
+
+#[test]
+fn should_add_impl_method_ret_types() {
+    let doc = test::mk_doc("impl i for int { fn a() -> int { fail } }");
+    assert doc.topmod.impls()[0].methods[0].return.ty == some("int");
+}
+
+#[test]
+fn should_not_add_impl_method_nil_ret_type() {
+    let doc = test::mk_doc("impl i for int { fn a() { } }");
+    assert doc.topmod.impls()[0].methods[0].return.ty == none;
+}
+
+#[test]
+fn should_add_impl_method_arg_types() {
+    let doc = test::mk_doc("impl i for int { fn a(b: int, c: bool) { } }");
+    let fn_ = doc.topmod.impls()[0].methods[0];
+    assert fn_.args[0].ty == some("int");
+    assert fn_.args[1].ty == some("bool");
+}
+
+#[cfg(test)]
+mod test {
+    fn mk_doc(source: str) -> doc::cratedoc {
+        let srv = astsrv::mk_srv_from_str(source);
+        let doc = extract::from_srv(srv, "");
+        run(srv, doc)
+    }
 }

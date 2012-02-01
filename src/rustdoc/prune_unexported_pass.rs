@@ -132,119 +132,99 @@ fn is_exported_from_crate(
 
 #[test]
 fn should_prune_unexported_fns() {
-    let source = "mod b { export a; fn a() { } fn b() { } }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("mod b { export a; fn a() { } fn b() { } }");
     assert vec::len(doc.topmod.mods()[0].fns()) == 1u;
 }
 
 #[test]
 fn should_prune_unexported_fns_from_top_mod() {
-    let source = "export a; fn a() { } fn b() { }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("export a; fn a() { } fn b() { }");
     assert vec::len(doc.topmod.fns()) == 1u;
 }
 
 #[test]
 fn should_prune_unexported_modules() {
-    let source = "mod a { export a; mod a { } mod b { } }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("mod a { export a; mod a { } mod b { } }");
     assert vec::len(doc.topmod.mods()[0].mods()) == 1u;
 }
 
 #[test]
 fn should_prune_unexported_modules_from_top_mod() {
-    let source = "export a; mod a { } mod b { }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("export a; mod a { } mod b { }");
     assert vec::len(doc.topmod.mods()) == 1u;
 }
 
 #[test]
 fn should_prune_unexported_consts() {
-    let source = "mod a { export a; \
-                  const a: bool = true; \
-                  const b: bool = true; }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = run(srv, doc);
+    let doc = test::mk_doc(
+        "mod a { export a; \
+         const a: bool = true; \
+         const b: bool = true; }");
     assert vec::len(doc.topmod.mods()[0].consts()) == 1u;
 }
 
 #[test]
 fn should_prune_unexported_consts_from_top_mod() {
-    let source = "export a; const a: bool = true; const b: bool = true;";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = run(srv, doc);
+    let doc = test::mk_doc(
+        "export a; const a: bool = true; const b: bool = true;");
     assert vec::len(doc.topmod.consts()) == 1u;
 }
 
 #[test]
 fn should_prune_unexported_enums_from_top_mod() {
-    let source = "export a; mod a { } enum b { c }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("export a; mod a { } enum b { c }");
     assert vec::len(doc.topmod.enums()) == 0u;
 }
 
 #[test]
 fn should_prune_unexported_enums() {
-    let source = "mod a { export a; mod a { } enum b { c } }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("mod a { export a; mod a { } enum b { c } }");
     assert vec::len(doc.topmod.mods()[0].enums()) == 0u;
 }
 
 #[test]
 fn should_prune_unexported_variants_from_top_mod() {
-    let source = "export b::{}; enum b { c }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("export b::{}; enum b { c }");
     assert vec::len(doc.topmod.enums()[0].variants) == 0u;
 }
 
 #[test]
 fn should_prune_unexported_variants() {
-    let source = "mod a { export b::{}; enum b { c } }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("mod a { export b::{}; enum b { c } }");
     assert vec::len(doc.topmod.mods()[0].enums()[0].variants) == 0u;
 }
 
 #[test]
 fn should_prune_unexported_resources_from_top_mod() {
-    let source = "export a; mod a { } resource r(a: bool) { }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("export a; mod a { } resource r(a: bool) { }");
     assert vec::is_empty(doc.topmod.resources());
 }
 
 #[test]
 fn should_prune_unexported_resources() {
-    let source = "mod a { export a; mod a { } resource r(a: bool) { } }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = run(srv, doc);
+    let doc = test::mk_doc(
+        "mod a { export a; mod a { } resource r(a: bool) { } }");
     assert vec::is_empty(doc.topmod.mods()[0].resources());
 }
 
 #[test]
 fn should_prune_unexported_ifaces_from_top_mod() {
-    let source = "export a; mod a { } iface b { fn c(); }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("export a; mod a { } iface b { fn c(); }");
     assert vec::is_empty(doc.topmod.ifaces());
+}
+
+#[test]
+fn should_prune_unexported_impls_from_top_mod() {
+    let doc = test::mk_doc(
+        "export a; mod a { } impl b for int { fn c() { } }");
+    assert vec::is_empty(doc.topmod.impls())
+}
+
+#[cfg(test)]
+mod test {
+    fn mk_doc(source: str) -> doc::cratedoc {
+        let srv = astsrv::mk_srv_from_str(source);
+        let doc = extract::from_srv(srv, "");
+        run(srv, doc)
+    }
 }

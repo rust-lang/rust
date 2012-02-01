@@ -15,69 +15,55 @@ fn mk_pass() -> pass {
 
 #[test]
 fn should_trim_mod() {
-    let source = "#[doc(brief = \"\nbrief\n\", \
-                  desc = \"\ndesc\n\")] \
-                  mod m { }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = mk_pass()(srv, doc);
+    let doc = test::mk_doc("#[doc(brief = \"\nbrief\n\", \
+                            desc = \"\ndesc\n\")] \
+                            mod m { }");
     assert doc.topmod.mods()[0].brief == some("brief");
     assert doc.topmod.mods()[0].desc == some("desc");
 }
 
 #[test]
 fn should_trim_const() {
-    let source = "#[doc(brief = \"\nbrief\n\", \
-                  desc = \"\ndesc\n\")] \
-                  const a: bool = true;";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = mk_pass()(srv, doc);
+    let doc = test::mk_doc("#[doc(brief = \"\nbrief\n\", \
+                            desc = \"\ndesc\n\")] \
+                            const a: bool = true;");
     assert doc.topmod.consts()[0].brief == some("brief");
     assert doc.topmod.consts()[0].desc == some("desc");
 }
 
 #[test]
 fn should_trim_fn() {
-    let source = "#[doc(brief = \"\nbrief\n\", \
-                  desc = \"\ndesc\n\")] \
-                  fn a() { }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = mk_pass()(srv, doc);
+    let doc = test::mk_doc("#[doc(brief = \"\nbrief\n\", \
+                            desc = \"\ndesc\n\")] \
+                            fn a() { }");
     assert doc.topmod.fns()[0].brief == some("brief");
     assert doc.topmod.fns()[0].desc == some("desc");
 }
 
 #[test]
 fn should_trim_args() {
-    let source = "#[doc(args(a = \"\na\n\"))] fn a(a: int) { }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = mk_pass()(srv, doc);
+    let doc = test::mk_doc("#[doc(args(a = \"\na\n\"))] fn a(a: int) { }");
     assert doc.topmod.fns()[0].args[0].desc == some("a");
 }
 
 #[test]
 fn should_trim_ret() {
-    let source = "#[doc(return = \"\na\n\")] fn a() -> int { }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = mk_pass()(srv, doc);
+    let doc = test::mk_doc("#[doc(return = \"\na\n\")] fn a() -> int { }");
     assert doc.topmod.fns()[0].return.desc == some("a");
 }
 
 #[test]
 fn should_trim_failure_conditions() {
-    let source = "#[doc(failure = \"\na\n\")] fn a() -> int { }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = mk_pass()(srv, doc);
+    let doc = test::mk_doc("#[doc(failure = \"\na\n\")] fn a() -> int { }");
     assert doc.topmod.fns()[0].failure == some("a");
+}
+
+#[cfg(test)]
+mod test {
+    fn mk_doc(source: str) -> doc::cratedoc {
+        let srv = astsrv::mk_srv_from_str(source);
+        let doc = extract::from_srv(srv, "");
+        let doc = attr_pass::mk_pass()(srv, doc);
+        mk_pass()(srv, doc)
+    }
 }
