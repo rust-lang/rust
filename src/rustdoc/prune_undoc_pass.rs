@@ -23,7 +23,8 @@ fn run(
         fold_const: fold_const,
         fold_enum: fold_enum,
         fold_res: fold_res,
-        fold_iface: fold_iface
+        fold_iface: fold_iface,
+        fold_impl: fold_impl
         with *fold::default_seq_fold(ctxt)
     });
     fold.fold_crate(fold, doc)
@@ -80,6 +81,14 @@ fn fold_mod(
                 let doc = fold.fold_iface(fold, ifacedoc);
                 if fold.ctxt.have_docs {
                     some(doc::ifacetag(doc))
+                } else {
+                    none
+                }
+              }
+              doc::impltag(impldoc) {
+                let doc = fold.fold_impl(fold, impldoc);
+                if fold.ctxt.have_docs {
+                    some(doc::impltag(doc))
                 } else {
                     none
                 }
@@ -286,28 +295,35 @@ fn fold_iface(
 ) -> doc::ifacedoc {
     let doc = fold::default_seq_fold_iface(fold, doc);
     let doc = {
-        methods: vec::map(doc.methods) {|doc|
-            {
-                args: prune_args(doc.args),
-                return: prune_return(doc.return)
-                with doc
-            }
-        }
+        methods: prune_methods(doc.methods)
         with doc
     };
-    let methods_have_docs = vec::foldl(false, doc.methods) {|accum, doc|
+    fold.ctxt.have_docs =
+        doc.brief != none
+        || doc.desc != none
+        || methods_have_docs(doc.methods);
+    ret doc;
+}
+
+fn prune_methods(docs: [doc::methoddoc]) -> [doc::methoddoc] {
+    vec::map(docs) {|doc|
+        {
+            args: prune_args(doc.args),
+            return: prune_return(doc.return)
+            with doc
+        }
+    }
+}
+
+fn methods_have_docs(docs: [doc::methoddoc]) -> bool {
+    vec::foldl(false, docs) {|accum, doc|
         accum
             || doc.brief != none
             || doc.desc != none
             || vec::is_not_empty(doc.args)
             || doc.return.desc != none
             || doc.failure != none
-    };
-    fold.ctxt.have_docs =
-        doc.brief != none
-        || doc.desc != none
-        || methods_have_docs;
-    ret doc;
+    }
 }
 
 #[test]
@@ -329,21 +345,75 @@ fn should_not_elide_ifaces_with_documented_methods() {
 }
 
 #[test]
-fn should_not_elide_undocumented_methods() {
+fn should_not_elide_undocumented_iface_methods() {
     let doc = test::mk_doc("#[doc = \"hey\"] iface i { fn a(); }");
     assert vec::is_not_empty(doc.topmod.ifaces()[0].methods);
 }
 
 #[test]
-fn should_elide_undocumented_method_args() {
+fn should_elide_undocumented_iface_method_args() {
     let doc = test::mk_doc("#[doc = \"hey\"] iface i { fn a(); }");
     assert vec::is_empty(doc.topmod.ifaces()[0].methods[0].args);
 }
 
 #[test]
-fn should_elide_undocumented_method_return_values() {
+fn should_elide_undocumented_iface_method_return_values() {
     let doc = test::mk_doc("#[doc = \"hey\"] iface i { fn a() -> int; }");
     assert doc.topmod.ifaces()[0].methods[0].return.ty == none;
+}
+
+fn fold_impl(
+    fold: fold::fold<ctxt>,
+    doc: doc::impldoc
+) -> doc::impldoc {
+    let doc = fold::default_seq_fold_impl(fold, doc);
+    let doc = {
+        methods: prune_methods(doc.methods)
+        with doc
+    };
+    fold.ctxt.have_docs =
+        doc.brief != none
+        || doc.desc != none
+        || methods_have_docs(doc.methods);
+    ret doc;
+}
+
+#[test]
+fn should_elide_undocumented_impls() {
+    let doc = test::mk_doc("impl i for int { fn a() { } }");
+    assert vec::is_empty(doc.topmod.impls());
+}
+
+#[test]
+fn should_not_elide_documented_impls() {
+    let doc = test::mk_doc("#[doc = \"hey\"] impl i for int { fn a() { } }");
+    assert vec::is_not_empty(doc.topmod.impls());
+}
+
+#[test]
+fn should_not_elide_impls_with_documented_methods() {
+    let doc = test::mk_doc("impl i for int { #[doc = \"hey\"] fn a() { } }");
+    assert vec::is_not_empty(doc.topmod.impls());
+}
+
+#[test]
+fn should_not_elide_undocumented_impl_methods() {
+    let doc = test::mk_doc("#[doc = \"hey\"] impl i for int { fn a() { } }");
+    assert vec::is_not_empty(doc.topmod.impls()[0].methods);
+}
+
+#[test]
+fn should_elide_undocumented_impl_method_args() {
+    let doc = test::mk_doc(
+        "#[doc = \"hey\"] impl i for int { fn a(b: bool) { } }");
+    assert vec::is_empty(doc.topmod.impls()[0].methods[0].args);
+}
+
+#[test]
+fn should_elide_undocumented_impl_method_return_values() {
+    let doc = test::mk_doc(
+        "#[doc = \"hey\"] impl i for int { fn a() -> int { } }");
+    assert doc.topmod.impls()[0].methods[0].return.ty == none;
 }
 
 #[cfg(test)]
