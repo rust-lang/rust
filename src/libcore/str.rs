@@ -425,7 +425,7 @@ Failure:
 If `begin` + `len` is is greater than the byte length of the string
 */
 fn substr(s: str, begin: uint, len: uint) -> str {
-    ret slice(s, begin, begin + len);
+    ret unsafe::slice(s, begin, begin + len);
 }
 
 /*
@@ -712,7 +712,7 @@ fn replace(s: str, from: str, to: str) : is_not_empty(from) -> str {
     if byte_len(s) == 0u {
         ret "";
     } else if starts_with(s, from) {
-        ret to + replace(slice(s, byte_len(from), byte_len(s)), from, to);
+        ret to + replace(unsafe::slice(s, byte_len(from), byte_len(s)), from, to);
     } else {
         let idx = find(s, from);
         if idx == -1 {
@@ -1346,7 +1346,9 @@ mod unsafe {
    export
       // UNSAFE
       from_bytes,
-      from_byte;
+      from_byte,
+      slice,
+      safe_slice;
 
    // Function: unsafe::from_bytes
    //
@@ -1364,6 +1366,47 @@ mod unsafe {
    // Converts a byte to a string. Does not verify that the byte is
    // valid UTF-8.
    unsafe fn from_byte(u: u8) -> str { unsafe::from_bytes([u]) }
+
+   /*
+   Function: slice
+
+   Takes a bytewise slice from a string. Returns the substring from
+   [`begin`..`end`).
+
+   This function is not unicode-safe.
+
+   Failure:
+
+   - If begin is greater than end.
+   - If end is greater than the length of the string.
+
+   FIXME: rename to byte_slice
+   */
+   unsafe fn slice(s: str, begin: uint, end: uint) -> str unsafe {
+       // FIXME: Typestate precondition
+       assert (begin <= end);
+       assert (end <= byte_len(s));
+
+       let v: [u8] = ::unsafe::reinterpret_cast(s);
+       let v2 = vec::slice(v, begin, end);
+       ::unsafe::leak(v);
+       v2 += [0u8];
+       let s2: str = ::unsafe::reinterpret_cast(v2);
+       ::unsafe::leak(v2);
+       ret s2;
+   }
+
+   /*
+   Function: safe_slice
+
+   FIXME: rename to safe_range_byte_slice
+   */
+   unsafe fn safe_slice(s: str, begin: uint, end: uint) : uint::le(begin, end) -> str {
+       // would need some magic to make this a precondition
+       assert (end <= byte_len(s));
+       ret slice(s, begin, end);
+   }
+
 }
 
 
