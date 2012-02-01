@@ -189,11 +189,7 @@ fn emit(cmsp: option<(codemap::codemap, span)>,
 fn highlight_lines(cm: codemap::codemap, sp: span,
                    lines: @codemap::file_lines) {
 
-    // If we're not looking at a real file then we can't re-open it to
-    // pull out the lines
-    if lines.name == "-" { ret; }
-
-    let fm = codemap::get_filemap(cm, lines.name);
+    let fm = lines.file;
 
     // arbitrarily only print up to six lines of the error
     let max_lines = 6u;

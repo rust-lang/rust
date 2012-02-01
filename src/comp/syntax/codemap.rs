@@ -16,9 +16,11 @@ type filemap =
 
 type codemap = @{mutable files: [filemap]};
 
-type loc = {filename: filename, line: uint, col: uint};
+type loc = {file: filemap, line: uint, col: uint};
 
-fn new_codemap() -> codemap { ret @{mutable files: []}; }
+fn new_codemap() -> codemap {
+    @{mutable files: [new_filemap("-", @"", 0u, 0u)]}
+}
 
 fn new_filemap(filename: filename, src: @str,
                start_pos_ch: uint, start_pos_byte: uint)
@@ -27,6 +29,8 @@ fn new_filemap(filename: filename, src: @str,
           start_pos: {ch: start_pos_ch, byte: start_pos_byte},
           mutable lines: [{ch: start_pos_ch, byte: start_pos_byte}]};
 }
+
+fn empty_filemap(cm: codemap) -> filemap {cm.files[0]}
 
 fn next_line(file: filemap, chpos: uint, byte_pos: uint) {
     file.lines += [{ch: chpos, byte: byte_pos}];
@@ -60,10 +64,10 @@ fn lookup_line(map: codemap, pos: uint, lookup: lookup_fn)
 fn lookup_pos(map: codemap, pos: uint, lookup: lookup_fn) -> loc {
     alt lookup_line(map, pos, lookup) {
       some({fm: f, line: a}) {
-        {filename: f.name, line: a + 1u, col: pos - lookup(f.lines[a])}
+        {file: f, line: a + 1u, col: pos - lookup(f.lines[a])}
       }
       none {
-        { filename: "-", line: 0u, col: 0u }
+        { file: empty_filemap(map), line: 0u, col: 0u }
       }
     }
 }
@@ -89,20 +93,21 @@ type span = {lo: uint, hi: uint, expanded_from: opt_span};
 fn span_to_str(sp: span, cm: codemap) -> str {
     let cur = sp;
     let res = "";
+    // FIXME: Should probably be doing pointer comparison on filemap
     let prev_file = none;
     while true {
         let lo = lookup_char_pos(cm, cur.lo);
         let hi = lookup_char_pos(cm, cur.hi);
         res +=
             #fmt["%s:%u:%u: %u:%u",
-                 if some(lo.filename) == prev_file {
+                 if some(lo.file.name) == prev_file {
                      "-"
-                 } else { lo.filename }, lo.line, lo.col, hi.line, hi.col];
+                 } else { lo.file.name }, lo.line, lo.col, hi.line, hi.col];
         alt cur.expanded_from {
           os_none { break; }
           os_some(new_sp) {
             cur = *new_sp;
-            prev_file = some(lo.filename);
+            prev_file = some(lo.file.name);
             res += "<<";
           }
         }
@@ -111,14 +116,15 @@ fn span_to_str(sp: span, cm: codemap) -> str {
     ret res;
 }
 
-type file_lines = {name: str, lines: [uint]};
+type file_lines = {file: filemap, lines: [uint]};
 
 fn span_to_lines(sp: span, cm: codemap::codemap) -> @file_lines {
     let lo = lookup_char_pos(cm, sp.lo);
     let hi = lookup_char_pos(cm, sp.hi);
+    // FIXME: Check for filemap?
     let lines = [];
     uint::range(lo.line - 1u, hi.line as uint) {|i| lines += [i]; };
-    ret @{name: lo.filename, lines: lines};
+    ret @{file: lo.file, lines: lines};
 }
 
 fn get_line(fm: filemap, line: int) -> str unsafe {
