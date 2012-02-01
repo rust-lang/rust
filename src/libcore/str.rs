@@ -98,7 +98,9 @@ export
    escape_char,
    as_buf,
    //buf,
-   sbuf;
+   sbuf,
+
+   unsafe;
 
 
 
