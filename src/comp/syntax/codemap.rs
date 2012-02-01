@@ -118,11 +118,11 @@ fn get_line(fm: filemap, line: int) -> str unsafe {
         // parsed. If we just slice the rest of the string, we'll print out
         // the remainder of the file, which is undesirable.
         end = str::byte_len(*fm.src);
-        let rest = str::unsafe::slice(*fm.src, begin, end);
+        let rest = str::unsafe::slice_bytes(*fm.src, begin, end);
         let newline = str::index(rest, '\n' as u8);
         if newline != -1 { end = begin + (newline as uint); }
     }
-    ret str::unsafe::slice(*fm.src, begin, end);
+    ret str::unsafe::slice_bytes(*fm.src, begin, end);
 }
 
 fn get_filemap(cm: codemap, filename: str) -> filemap {

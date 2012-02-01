@@ -16,5 +16,5 @@ fn main() unsafe {
     // the next statement, since it's not true in the
     // prestate.
     let d <- a;
-    log(debug, str::unsafe::safe_slice("kitties", b, d));
+    log(debug, str::unsafe::slice_bytes_safe_range("kitties", b, d));
 }

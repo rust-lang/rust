@@ -38,8 +38,6 @@ export
    chars,
    substr,
    char_slice,
-   //slice,
-   //safe_slice,
    split,
    splitn,
    split_str,
@@ -425,7 +423,7 @@ Failure:
 If `begin` + `len` is is greater than the byte length of the string
 */
 fn substr(s: str, begin: uint, len: uint) -> str unsafe {
-    ret unsafe::slice(s, begin, begin + len);
+    ret unsafe::slice_bytes(s, begin, begin + len);
 }
 
 /*
@@ -444,48 +442,6 @@ FIXME: rename to slice(), make faster by avoiding char conversion
 */
 fn char_slice(s: str, begin: uint, end: uint) -> str {
     from_chars(vec::slice(chars(s), begin, end))
-}
-
-/*
-Function: slice
-
-Takes a bytewise slice from a string. Returns the substring from
-[`begin`..`end`).
-
-This function is not unicode-safe.
-
-Failure:
-
-- If begin is greater than end.
-- If end is greater than the length of the string.
-
-FIXME: rename to slice_byte or slice_byte_unsafe
-*/
-fn slice(s: str, begin: uint, end: uint) -> str unsafe {
-    // FIXME: Typestate precondition
-    assert (begin <= end);
-    assert (end <= byte_len(s));
-
-    let v: [u8] = ::unsafe::reinterpret_cast(s);
-    let v2 = vec::slice(v, begin, end);
-    ::unsafe::leak(v);
-    v2 += [0u8];
-    let s2: str = ::unsafe::reinterpret_cast(v2);
-    ::unsafe::leak(v2);
-    ret s2;
-}
-
-/*
-Function: safe_slice
-
-FIXME: make sure char_slice / slice / byte_slice
-       have these preconditions and assertions
-FIXME: this shouldn't be mistaken for a UTF-8 safe slice
-*/
-fn safe_slice(s: str, begin: uint, end: uint) : uint::le(begin, end) -> str {
-    // would need some magic to make this a precondition
-    assert (end <= byte_len(s));
-    ret slice(s, begin, end);
 }
 
 /*
@@ -712,7 +668,7 @@ fn replace(s: str, from: str, to: str) : is_not_empty(from) -> str unsafe {
     if byte_len(s) == 0u {
         ret "";
     } else if starts_with(s, from) {
-        ret to + replace(unsafe::slice(s, byte_len(from), byte_len(s)),
+        ret to + replace(unsafe::slice_bytes(s, byte_len(from), byte_len(s)),
                                        from, to);
     } else {
         let idx = find(s, from);
@@ -1348,8 +1304,8 @@ mod unsafe {
       // UNSAFE
       from_bytes,
       from_byte,
-      slice,
-      safe_slice;
+      slice_bytes,
+      slice_bytes_safe_range;
 
    // Function: unsafe::from_bytes
    //
@@ -1371,19 +1327,15 @@ mod unsafe {
    /*
    Function: slice
 
-   Takes a bytewise slice from a string. Returns the substring from
-   [`begin`..`end`).
-
-   This function is not unicode-safe.
+   Takes a bytewise (not UTF-8) slice from a string.
+   Returns the substring from [`begin`..`end`).
 
    Failure:
 
    - If begin is greater than end.
    - If end is greater than the length of the string.
-
-   FIXME: rename to byte_slice
    */
-   unsafe fn slice(s: str, begin: uint, end: uint) -> str unsafe {
+   unsafe fn slice_bytes(s: str, begin: uint, end: uint) -> str unsafe {
        // FIXME: Typestate precondition
        assert (begin <= end);
        assert (end <= byte_len(s));
@@ -1398,15 +1350,15 @@ mod unsafe {
    }
 
    /*
-   Function: safe_slice
+   Function: slice_bytes_safe_range
 
-   FIXME: rename to safe_range_byte_slice
+   Like slice_bytes, with a precondition
    */
-   unsafe fn safe_slice(s: str, begin: uint, end: uint)
+   unsafe fn slice_bytes_safe_range(s: str, begin: uint, end: uint)
        : uint::le(begin, end) -> str {
        // would need some magic to make this a precondition
        assert (end <= byte_len(s));
-       ret slice(s, begin, end);
+       ret slice_bytes(s, begin, end);
    }
 
 }
@@ -1653,7 +1605,7 @@ mod tests {
             ret rs;
         }
         assert (eq(half_a_million_letter_a(),
-                        unsafe::slice(a_million_letter_a(), 0u, 500000u)));
+               unsafe::slice_bytes(a_million_letter_a(), 0u, 500000u)));
     }
 
     #[test]

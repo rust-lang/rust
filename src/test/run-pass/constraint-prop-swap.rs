@@ -7,5 +7,5 @@ fn main() unsafe {
     let b: uint = 1u;
     check (le(b, a));
     b <-> a;
-    log(debug, str::unsafe::safe_slice("kitties", a, b));
+    log(debug, str::unsafe::slice_bytes_safe_range("kitties", a, b));
 }
