@@ -562,7 +562,7 @@ fn mangle_internal_name_by_seq(ccx: @crate_ctxt, flav: str) -> str {
 fn link_binary(sess: session,
                obj_filename: str,
                out_filename: str,
-               lm: link_meta) {
+               lm: link_meta) unsafe {
     // Converts a library file name into a gcc -l argument
     fn unlib(config: @session::config, filename: str) -> str {
         let rmlib = fn@(filename: str) -> str {
@@ -570,7 +570,7 @@ fn link_binary(sess: session,
                 (config.os == session::os_linux ||
                  config.os == session::os_freebsd) &&
                 str::find(filename, "lib") == 0 {
-                ret str::slice(filename, 3u,
+                ret str::unsafe::slice(filename, 3u,
                                str::byte_len(filename));
             } else { ret filename; }
         };

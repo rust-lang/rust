@@ -209,7 +209,7 @@ ok(match) - On success. Use functions such as <opt_present>
             <opt_str>, etc. to interrogate results.
 err(fail_) - On failure. Use <fail_str> to get an error message.
 */
-fn getopts(args: [str], opts: [opt]) -> result {
+fn getopts(args: [str], opts: [opt]) -> result unsafe {
     let n_opts = vec::len::<opt>(opts);
     fn f(_x: uint) -> [optval] { ret []; }
     let vals = vec::init_fn_mut::<[optval]>(n_opts, f);
@@ -229,14 +229,14 @@ fn getopts(args: [str], opts: [opt]) -> result {
             let names;
             let i_arg = option::none::<str>;
             if cur[1] == '-' as u8 {
-                let tail = str::slice(cur, 2u, curlen);
+                let tail = str::unsafe::slice(cur, 2u, curlen);
                 let eq = str::index(tail, '=' as u8);
                 if eq == -1 {
                     names = [long(tail)];
                 } else {
-                    names = [long(str::slice(tail, 0u, eq as uint))];
+                    names = [long(str::unsafe::slice(tail, 0u, eq as uint))];
                     i_arg =
-                        option::some::<str>(str::slice(tail,
+                        option::some::<str>(str::unsafe::slice(tail,
                                                        (eq as uint) + 1u,
                                                        curlen - 2u));
                 }
