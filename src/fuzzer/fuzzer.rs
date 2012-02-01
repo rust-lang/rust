@@ -283,10 +283,10 @@ fn check_variants_T<T: copy>(
     }
 }
 
-fn last_part(filename: str) -> str {
+fn last_part(filename: str) -> str unsafe {
   let ix = str::rindex(filename, 47u8 /* '/' */);
   assert ix >= 0;
-  str::slice(filename, ix as uint + 1u, str::byte_len(filename) - 3u)
+  str::unsafe::slice(filename, ix as uint + 1u, str::byte_len(filename) - 3u)
 }
 
 enum happiness { passed, cleanly_rejected(str), known_bug(str), failed(str), }

@@ -228,9 +228,9 @@ fn from_str_float(s: str) -> (option<json>, str) {
 
 fn from_str_bool(s: str) -> (option<json>, str) {
     if (str::starts_with(s, "true")) {
-        (some(boolean(true)), str::slice(s, 4u, str::byte_len(s)))
+        (some(boolean(true)), str::char_slice(s, 4u, str::char_len(s)))
     } else if (str::starts_with(s, "false")) {
-        (some(boolean(false)), str::slice(s, 5u, str::byte_len(s)))
+        (some(boolean(false)), str::char_slice(s, 5u, str::char_len(s)))
     } else {
         (none, s)
     }
@@ -238,7 +238,7 @@ fn from_str_bool(s: str) -> (option<json>, str) {
 
 fn from_str_null(s: str) -> (option<json>, str) {
     if (str::starts_with(s, "null")) {
-        (some(null), str::slice(s, 4u, str::byte_len(s)))
+        (some(null), str::char_slice(s, 4u, str::char_len(s)))
     } else {
         (none, s)
     }

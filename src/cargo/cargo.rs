@@ -573,7 +573,7 @@ fn install_named_specific(c: cargo, wd: str, src: str, name: str) {
     error("Can't find package " + src + "/" + name);
 }
 
-fn cmd_install(c: cargo, argv: [str]) {
+fn cmd_install(c: cargo, argv: [str]) unsafe {
     // cargo install <pkg>
     if vec::len(argv) < 3u {
         cmd_usage();
@@ -596,8 +596,9 @@ fn cmd_install(c: cargo, argv: [str]) {
         let uuid = rest(target, 5u);
         let idx = str::index(uuid, '/' as u8);
         if idx != -1 {
-            let source = str::slice(uuid, 0u, idx as uint);
-            uuid = str::slice(uuid, idx as uint + 1u, str::byte_len(uuid));
+            let source = str::unsafe::slice(uuid, 0u, idx as uint);
+            uuid = str::unsafe::slice(uuid, idx as uint + 1u,
+                                      str::byte_len(uuid));
             install_uuid_specific(c, wd, source, uuid);
         } else {
             install_uuid(c, wd, uuid);
@@ -606,8 +607,9 @@ fn cmd_install(c: cargo, argv: [str]) {
         let name = target;
         let idx = str::index(name, '/' as u8);
         if idx != -1 {
-            let source = str::slice(name, 0u, idx as uint);
-            name = str::slice(name, idx as uint + 1u, str::byte_len(name));
+            let source = str::unsafe::slice(name, 0u, idx as uint);
+            name = str::unsafe::slice(name, idx as uint + 1u,
+                                      str::byte_len(name));
             install_named_specific(c, wd, source, name);
         } else {
             install_named(c, wd, name);
