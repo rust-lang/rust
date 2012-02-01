@@ -11,10 +11,10 @@ import core::tuple;
 
 export crate_attrs, mod_attrs, fn_attrs, arg_attrs,
        const_attrs, enum_attrs, variant_attrs, res_attrs,
-       iface_attrs, method_attrs;
+       iface_attrs, method_attrs, impl_attrs;
 export parse_crate, parse_mod, parse_fn, parse_const,
        parse_enum, parse_variant, parse_res,
-       parse_iface, parse_method;
+       parse_iface, parse_method, parse_impl;
 
 type crate_attrs = {
     name: option<str>
@@ -59,6 +59,11 @@ type res_attrs = {
 };
 
 type iface_attrs = {
+    brief: option<str>,
+    desc: option<str>
+};
+
+type impl_attrs = {
     brief: option<str>,
     desc: option<str>
 };
@@ -498,4 +503,8 @@ fn parse_iface(attrs: [ast::attribute]) -> iface_attrs {
 
 fn parse_method(attrs: [ast::attribute]) -> method_attrs {
     parse_fn(attrs)
+}
+
+fn parse_impl(attrs: [ast::attribute]) -> impl_attrs {
+    parse_basic(attrs)
 }

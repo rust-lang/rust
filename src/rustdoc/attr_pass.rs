@@ -26,7 +26,8 @@ fn run(
         fold_const: fold_const,
         fold_enum: fold_enum,
         fold_res: fold_res,
-        fold_iface: fold_iface
+        fold_iface: fold_iface,
+        fold_impl: fold_impl
         with *fold::default_seq_fold(srv)
     });
     fold.fold_crate(fold, doc)
@@ -398,9 +399,14 @@ fn merge_method_attrs(
                 (method.ident, attr_parser::parse_method(method.attrs))
             }
           }
-          _ {
-            fail "Undocumented invariant in merge_method_attrs";
+          ast_map::node_item(@{
+            node: ast::item_impl(_, _, _, methods), _
+          }) {
+            vec::map(methods) {|method|
+                (method.ident, attr_parser::parse_method(method.attrs))
+            }
           }
+          _ { fail "unexpected item" }
         }
     };
 
@@ -447,4 +453,51 @@ fn should_extract_iface_method_docs() {
     assert doc.topmod.ifaces()[0].methods[0].args[0].desc == some("a");
     assert doc.topmod.ifaces()[0].methods[0].return.desc == some("return");
     assert doc.topmod.ifaces()[0].methods[0].failure == some("failure");
+}
+
+
+fn fold_impl(
+    fold: fold::fold<astsrv::srv>,
+    doc: doc::impldoc
+) -> doc::impldoc {
+    let srv = fold.ctxt;
+    let doc = fold::default_seq_fold_impl(fold, doc);
+    let attrs = parse_item_attrs(srv, doc.id, attr_parser::parse_impl);
+
+    {
+        brief: attrs.brief,
+        desc: attrs.desc,
+        methods: merge_method_attrs(srv, doc.id, doc.methods)
+        with doc
+    }
+}
+
+#[test]
+fn should_extract_impl_docs() {
+    let source = "#[doc = \"whatever\"] impl i for int { fn a() { } }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = run(srv, doc);
+    assert doc.topmod.impls()[0].desc == some("whatever");
+}
+
+#[test]
+fn should_extract_impl_method_docs() {
+    let source = "impl i for int {\
+                  #[doc(\
+                  brief = \"brief\",\
+                  desc = \"desc\",\
+                  args(a = \"a\"),\
+                  return = \"return\",\
+                  failure = \"failure\")]\
+                  fn f(a: bool) -> bool { }\
+                  }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = run(srv, doc);
+    assert doc.topmod.impls()[0].methods[0].brief == some("brief");
+    assert doc.topmod.impls()[0].methods[0].desc == some("desc");
+    assert doc.topmod.impls()[0].methods[0].args[0].desc == some("a");
+    assert doc.topmod.impls()[0].methods[0].return.desc == some("return");
+    assert doc.topmod.impls()[0].methods[0].failure == some("failure");
 }
