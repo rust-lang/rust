@@ -424,7 +424,7 @@ Failure:
 
 If `begin` + `len` is is greater than the byte length of the string
 */
-fn substr(s: str, begin: uint, len: uint) -> str {
+fn substr(s: str, begin: uint, len: uint) -> str unsafe {
     ret unsafe::slice(s, begin, begin + len);
 }
 
@@ -706,13 +706,14 @@ Returns:
 
 The original string with all occurances of `from` replaced with `to`
 */
-fn replace(s: str, from: str, to: str) : is_not_empty(from) -> str {
+fn replace(s: str, from: str, to: str) : is_not_empty(from) -> str unsafe {
     // FIXME (694): Shouldn't have to check this
     check (is_not_empty(from));
     if byte_len(s) == 0u {
         ret "";
     } else if starts_with(s, from) {
-        ret to + replace(unsafe::slice(s, byte_len(from), byte_len(s)), from, to);
+        ret to + replace(unsafe::slice(s, byte_len(from), byte_len(s)),
+                                       from, to);
     } else {
         let idx = find(s, from);
         if idx == -1 {
@@ -1401,7 +1402,8 @@ mod unsafe {
 
    FIXME: rename to safe_range_byte_slice
    */
-   unsafe fn safe_slice(s: str, begin: uint, end: uint) : uint::le(begin, end) -> str {
+   unsafe fn safe_slice(s: str, begin: uint, end: uint)
+       : uint::le(begin, end) -> str {
        // would need some magic to make this a precondition
        assert (end <= byte_len(s));
        ret slice(s, begin, end);
@@ -1634,7 +1636,7 @@ mod tests {
     }
 
     #[test]
-    fn test_slice() {
+    fn test_unsafe_slice() unsafe {
         assert (eq("ab", slice("abc", 0u, 2u)));
         assert (eq("bc", slice("abc", 1u, 3u)));
         assert (eq("", slice("abc", 1u, 1u)));
@@ -1651,7 +1653,7 @@ mod tests {
             ret rs;
         }
         assert (eq(half_a_million_letter_a(),
-                        slice(a_million_letter_a(), 0u, 500000u)));
+                        unsafe::slice(a_million_letter_a(), 0u, 500000u)));
     }
 
     #[test]
