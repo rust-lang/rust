@@ -109,7 +109,7 @@ fn parse_name_value_directive(line: str,
     if str::find(line, keycolon) >= 0 {
         let colon = str::find(line, keycolon) as uint;
         let value =
-            str::unsafe::slice(line, colon + str::byte_len(keycolon),
+            str::unsafe::slice_bytes(line, colon + str::byte_len(keycolon),
                        str::byte_len(line));
         #debug("%s: %s", directive,  value);
         option::some(value)

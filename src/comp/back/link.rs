@@ -570,7 +570,7 @@ fn link_binary(sess: session,
                 (config.os == session::os_linux ||
                  config.os == session::os_freebsd) &&
                 str::find(filename, "lib") == 0 {
-                ret str::unsafe::slice(filename, 3u,
+                ret str::unsafe::slice_bytes(filename, 3u,
                                str::byte_len(filename));
             } else { ret filename; }
         };

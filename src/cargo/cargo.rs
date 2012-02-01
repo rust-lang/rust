@@ -596,8 +596,8 @@ fn cmd_install(c: cargo, argv: [str]) unsafe {
         let uuid = rest(target, 5u);
         let idx = str::index(uuid, '/' as u8);
         if idx != -1 {
-            let source = str::unsafe::slice(uuid, 0u, idx as uint);
-            uuid = str::unsafe::slice(uuid, idx as uint + 1u,
+            let source = str::unsafe::slice_bytes(uuid, 0u, idx as uint);
+            uuid = str::unsafe::slice_bytes(uuid, idx as uint + 1u,
                                       str::byte_len(uuid));
             install_uuid_specific(c, wd, source, uuid);
         } else {
@@ -607,8 +607,8 @@ fn cmd_install(c: cargo, argv: [str]) unsafe {
         let name = target;
         let idx = str::index(name, '/' as u8);
         if idx != -1 {
-            let source = str::unsafe::slice(name, 0u, idx as uint);
-            name = str::unsafe::slice(name, idx as uint + 1u,
+            let source = str::unsafe::slice_bytes(name, 0u, idx as uint);
+            name = str::unsafe::slice_bytes(name, idx as uint + 1u,
                                       str::byte_len(name));
             install_named_specific(c, wd, source, name);
         } else {

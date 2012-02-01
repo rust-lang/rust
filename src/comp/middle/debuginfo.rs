@@ -168,7 +168,7 @@ fn create_compile_unit(cx: @crate_ctxt, full_path: str)
 
     let work_dir = cx.sess.working_dir;
     let file_path = if str::starts_with(full_path, work_dir) {
-        str::unsafe::slice(full_path, str::byte_len(work_dir),
+        str::unsafe::slice_bytes(full_path, str::byte_len(work_dir),
                    str::byte_len(full_path))
     } else {
         full_path

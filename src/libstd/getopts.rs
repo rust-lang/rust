@@ -229,14 +229,15 @@ fn getopts(args: [str], opts: [opt]) -> result unsafe {
             let names;
             let i_arg = option::none::<str>;
             if cur[1] == '-' as u8 {
-                let tail = str::unsafe::slice(cur, 2u, curlen);
+                let tail = str::unsafe::slice_bytes(cur, 2u, curlen);
                 let eq = str::index(tail, '=' as u8);
                 if eq == -1 {
                     names = [long(tail)];
                 } else {
-                    names = [long(str::unsafe::slice(tail, 0u, eq as uint))];
+                    names =
+                        [long(str::unsafe::slice_bytes(tail,0u,eq as uint))];
                     i_arg =
-                        option::some::<str>(str::unsafe::slice(tail,
+                        option::some::<str>(str::unsafe::slice_bytes(tail,
                                                        (eq as uint) + 1u,
                                                        curlen - 2u));
                 }
