@@ -272,8 +272,11 @@ enum blk_sort {
 
 type mac = spanned<mac_>;
 
+type mac_body_ = {str: str, span: span};
+type mac_body = option::t<mac_body_>;
+
 enum mac_ {
-    mac_invoc(@path, @expr, option<str>),
+    mac_invoc(@path, @expr, mac_body),
     mac_embed_type(@ty),
     mac_embed_block(blk),
     mac_ellipsis,

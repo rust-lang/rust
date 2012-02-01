@@ -6,10 +6,10 @@ import std::map::new_str_hash;
 import codemap;
 
 type syntax_expander =
-    fn@(ext_ctxt, span, @ast::expr, option<str>) -> @ast::expr;
+    fn@(ext_ctxt, span, @ast::expr, ast::mac_body) -> @ast::expr;
 type macro_def = {ident: str, ext: syntax_extension};
 type macro_definer =
-    fn@(ext_ctxt, span, @ast::expr, option<str>) -> macro_def;
+    fn@(ext_ctxt, span, @ast::expr, ast::mac_body) -> macro_def;
 
 enum syntax_extension {
     normal(syntax_expander),
