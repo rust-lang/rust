@@ -75,13 +75,7 @@ type uint32_t = u32;
          but using pointers to this type when interoperating \
          with C void pointers can help in documentation."
 )]
-enum void {
-    // Making the only variant reference itself makes it impossible to
-    // construct. Not exporting it makes it impossible to destructure.
-    void_private(@void),
-    // FIXME: #881
-    void_private2(@void),
-}
+enum void {}
 
 #[doc(
   brief = "A float value with the same size as a C `float`."

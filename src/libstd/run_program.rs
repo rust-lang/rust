@@ -171,8 +171,8 @@ fn start_program(prog: str, args: [str]) -> program {
 
     type prog_repr = {pid: pid_t,
                       mutable in_fd: fd_t,
-                      out_file: os::libc::FILE,
-                      err_file: os::libc::FILE,
+                      out_file: os::FILE,
+                      err_file: os::FILE,
                       mutable finished: bool};
 
     fn close_repr_input(r: prog_repr) {

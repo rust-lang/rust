@@ -29,10 +29,10 @@ export recv;
 export chan::{};
 export port::{};
 
+enum rust_port {}
+
 #[abi = "cdecl"]
 native mod rustrt {
-    type rust_port;
-
     fn chan_id_send<T: send>(t: *sys::type_desc,
                             target_task: task::task, target_port: port_id,
                             data: T) -> ctypes::uintptr_t;
@@ -72,7 +72,7 @@ enum chan<T: send> {
     chan_t(task::task, port_id)
 }
 
-resource port_ptr<T: send>(po: *rustrt::rust_port) {
+resource port_ptr<T: send>(po: *rust_port) {
     // Once the port is detached it's guaranteed not to receive further
     // messages
     rustrt::rust_port_detach(po);
@@ -127,13 +127,13 @@ fn recv<T: send>(p: port<T>) -> T { recv_(***p) }
 #[doc(
   brief = "Receive on a raw port pointer"
 )]
-fn recv_<T: send>(p: *rustrt::rust_port) -> T {
+fn recv_<T: send>(p: *rust_port) -> T {
     // FIXME: Due to issue 1185 we can't use a return pointer when
     // calling C code, and since we can't create our own return
     // pointer on the stack, we're going to call a little intrinsic
     // that will grab the value of the return pointer, then call this
     // function, which we will then use to call the runtime.
-    fn recv(dptr: *uint, port: *rustrt::rust_port,
+    fn recv(dptr: *uint, port: *rust_port,
             yield: *ctypes::uintptr_t,
             killed: *ctypes::uintptr_t) unsafe {
         rustrt::port_recv(dptr, port, yield, killed);

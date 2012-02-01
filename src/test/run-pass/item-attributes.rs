@@ -163,9 +163,6 @@ mod test_native_items {
         #[attr];
 
         #[attr]
-        type sbuf;
-
-        #[attr]
         fn unsupervise();
     }
 }

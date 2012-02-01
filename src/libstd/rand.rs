@@ -3,12 +3,14 @@ Module: rand
 
 Random number generation
 */
+
+enum rctx {}
+
 #[abi = "cdecl"]
 native mod rustrt {
-    type rctx;
-    fn rand_new() -> rctx;
-    fn rand_next(c: rctx) -> u32;
-    fn rand_free(c: rctx);
+    fn rand_new() -> *rctx;
+    fn rand_next(c: *rctx) -> u32;
+    fn rand_free(c: *rctx);
 }
 
 /* Section: Types */
@@ -48,7 +50,7 @@ iface rng {
     fn gen_bytes(len: uint) -> [u8];
 }
 
-resource rand_res(c: rustrt::rctx) { rustrt::rand_free(c); }
+resource rand_res(c: *rctx) { rustrt::rand_free(c); }
 
 /* Section: Operations */
 

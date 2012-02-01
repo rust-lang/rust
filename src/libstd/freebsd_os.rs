@@ -10,7 +10,7 @@ import core::ctypes::*;
 export libc;
 export libc_constants;
 export pipe;
-export fd_FILE;
+export FILE, fd_FILE;
 export close;
 export fclose;
 export waitpid;
@@ -24,16 +24,20 @@ export fsync_fd;
 // FIXME Somehow merge stuff duplicated here and macosx_os.rs. Made difficult
 // by https://github.com/graydon/rust/issues#issue/268
 
+enum FILE_opaque {}
+type FILE = *FILE_opaque;
+enum dir {}
+enum dirent {}
+
 #[nolink]
 #[abi = "cdecl"]
 native mod libc {
     fn read(fd: fd_t, buf: *u8, count: size_t) -> ssize_t;
     fn write(fd: fd_t, buf: *u8, count: size_t) -> ssize_t;
-    fn fread(buf: *u8, size: size_t, n: size_t, f: libc::FILE) -> size_t;
-    fn fwrite(buf: *u8, size: size_t, n: size_t, f: libc::FILE) -> size_t;
+    fn fread(buf: *u8, size: size_t, n: size_t, f: FILE) -> size_t;
+    fn fwrite(buf: *u8, size: size_t, n: size_t, f: FILE) -> size_t;
     fn open(s: str::sbuf, flags: c_int, mode: unsigned) -> fd_t;
     fn close(fd: fd_t) -> c_int;
-    type FILE;
     fn fopen(path: str::sbuf, mode: str::sbuf) -> FILE;
     fn fdopen(fd: fd_t, mode: str::sbuf) -> FILE;
     fn fclose(f: FILE);
@@ -45,11 +49,9 @@ native mod libc {
     fn feof(f: FILE) -> c_int;
     fn fseek(f: FILE, offset: long, whence: c_int) -> c_int;
     fn ftell(f: FILE) -> long;
-    type dir;
-    fn opendir(d: str::sbuf) -> dir;
-    fn closedir(d: dir) -> c_int;
-    type dirent;
-    fn readdir(d: dir) -> dirent;
+    fn opendir(d: str::sbuf) -> *dir;
+    fn closedir(d: *dir) -> c_int;
+    fn readdir(d: *dir) -> *dirent;
     fn getenv(n: str::sbuf) -> str::sbuf;
     fn setenv(n: str::sbuf, v: str::sbuf, overwrite: c_int) -> c_int;
     fn unsetenv(n: str::sbuf) -> c_int;
@@ -90,7 +92,7 @@ fn pipe() -> {in: fd_t, out: fd_t} {
     ret {in: fds.in, out: fds.out};
 }
 
-fn fd_FILE(fd: fd_t) -> libc::FILE {
+fn fd_FILE(fd: fd_t) -> FILE {
     ret str::as_buf("r", {|modebuf| libc::fdopen(fd, modebuf) });
 }
 
@@ -98,7 +100,7 @@ fn close(fd: fd_t) -> c_int {
     libc::close(fd)
 }
 
-fn fclose(file: libc::FILE) {
+fn fclose(file: FILE) {
     libc::fclose(file)
 }
 

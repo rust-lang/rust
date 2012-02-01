@@ -1,18 +1,20 @@
 import core::option;
 import core::ctypes::*;
 
+enum FILE_opaque {}
+type FILE = *FILE_opaque;
+
 #[abi = "cdecl"]
 #[nolink]
 native mod libc {
     fn read(fd: fd_t, buf: *u8, count: size_t) -> ssize_t;
     fn write(fd: fd_t, buf: *u8, count: size_t) -> ssize_t;
-    fn fread(buf: *u8, size: size_t, n: size_t, f: libc::FILE) -> size_t;
-    fn fwrite(buf: *u8, size: size_t, n: size_t, f: libc::FILE) -> size_t;
+    fn fread(buf: *u8, size: size_t, n: size_t, f: FILE) -> size_t;
+    fn fwrite(buf: *u8, size: size_t, n: size_t, f: FILE) -> size_t;
     #[link_name = "_open"]
     fn open(s: str::sbuf, flags: c_int, mode: unsigned) -> c_int;
     #[link_name = "_close"]
     fn close(fd: fd_t) -> c_int;
-    type FILE;
     fn fopen(path: str::sbuf, mode: str::sbuf) -> FILE;
     fn _fdopen(fd: fd_t, mode: str::sbuf) -> FILE;
     fn fclose(f: FILE);
@@ -46,9 +48,10 @@ type HMODULE = uint;
 type LPTSTR = str::sbuf;
 type LPCTSTR = str::sbuf;
 
+type LPSECURITY_ATTRIBUTES = *ctypes::void;
+
 #[abi = "stdcall"]
 native mod kernel32 {
-    type LPSECURITY_ATTRIBUTES;
     fn GetEnvironmentVariableA(n: str::sbuf, v: str::sbuf, nsize: uint) ->
        uint;
     fn SetEnvironmentVariableA(n: str::sbuf, v: str::sbuf) -> int;
@@ -84,7 +87,7 @@ fn pipe() -> {in: fd_t, out: fd_t} {
     ret {in: fds.in, out: fds.out};
 }
 
-fn fd_FILE(fd: fd_t) -> libc::FILE {
+fn fd_FILE(fd: fd_t) -> FILE {
     ret str::as_buf("r", {|modebuf| libc::_fdopen(fd, modebuf) });
 }
 
@@ -92,7 +95,7 @@ fn close(fd: fd_t) -> c_int {
     libc::close(fd)
 }
 
-fn fclose(file: libc::FILE) {
+fn fclose(file: FILE) {
     libc::fclose(file)
 }
 

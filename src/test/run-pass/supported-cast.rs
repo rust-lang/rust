@@ -2,7 +2,7 @@ use std;
 import std::os;
 
 fn main() {
-  let f = 1 as os::libc::FILE;
+  let f = 1 as os::FILE;
   log(debug, f as int);
   log(debug, f as uint);
   log(debug, f as i8);
@@ -18,7 +18,7 @@ fn main() {
   log(debug, 1 as uint);
   log(debug, 1 as float);
   log(debug, 1 as bool);
-  log(debug, 1 as os::libc::FILE);
+  log(debug, 1 as os::FILE);
   log(debug, 1 as i8);
   log(debug, 1 as i16);
   log(debug, 1 as i32);
@@ -34,7 +34,7 @@ fn main() {
   log(debug, 1u as uint);
   log(debug, 1u as float);
   log(debug, 1u as bool);
-  log(debug, 1u as os::libc::FILE);
+  log(debug, 1u as os::FILE);
   log(debug, 1u as i8);
   log(debug, 1u as i16);
   log(debug, 1u as i32);
@@ -50,7 +50,7 @@ fn main() {
   log(debug, 1i8 as uint);
   log(debug, 1i8 as float);
   log(debug, 1i8 as bool);
-  log(debug, 1i8 as os::libc::FILE);
+  log(debug, 1i8 as os::FILE);
   log(debug, 1i8 as i8);
   log(debug, 1i8 as i16);
   log(debug, 1i8 as i32);
@@ -66,7 +66,7 @@ fn main() {
   log(debug, 1u8 as uint);
   log(debug, 1u8 as float);
   log(debug, 1u8 as bool);
-  log(debug, 1u8 as os::libc::FILE);
+  log(debug, 1u8 as os::FILE);
   log(debug, 1u8 as i8);
   log(debug, 1u8 as i16);
   log(debug, 1u8 as i32);
@@ -82,7 +82,7 @@ fn main() {
   log(debug, 1i16 as uint);
   log(debug, 1i16 as float);
   log(debug, 1i16 as bool);
-  log(debug, 1i16 as os::libc::FILE);
+  log(debug, 1i16 as os::FILE);
   log(debug, 1i16 as i8);
   log(debug, 1i16 as i16);
   log(debug, 1i16 as i32);
@@ -98,7 +98,7 @@ fn main() {
   log(debug, 1u16 as uint);
   log(debug, 1u16 as float);
   log(debug, 1u16 as bool);
-  log(debug, 1u16 as os::libc::FILE);
+  log(debug, 1u16 as os::FILE);
   log(debug, 1u16 as i8);
   log(debug, 1u16 as i16);
   log(debug, 1u16 as i32);
@@ -114,7 +114,7 @@ fn main() {
   log(debug, 1i32 as uint);
   log(debug, 1i32 as float);
   log(debug, 1i32 as bool);
-  log(debug, 1i32 as os::libc::FILE);
+  log(debug, 1i32 as os::FILE);
   log(debug, 1i32 as i8);
   log(debug, 1i32 as i16);
   log(debug, 1i32 as i32);
@@ -130,7 +130,7 @@ fn main() {
   log(debug, 1u32 as uint);
   log(debug, 1u32 as float);
   log(debug, 1u32 as bool);
-  log(debug, 1u32 as os::libc::FILE);
+  log(debug, 1u32 as os::FILE);
   log(debug, 1u32 as i8);
   log(debug, 1u32 as i16);
   log(debug, 1u32 as i32);
@@ -146,7 +146,7 @@ fn main() {
   log(debug, 1i64 as uint);
   log(debug, 1i64 as float);
   log(debug, 1i64 as bool);
-  log(debug, 1i64 as os::libc::FILE);
+  log(debug, 1i64 as os::FILE);
   log(debug, 1i64 as i8);
   log(debug, 1i64 as i16);
   log(debug, 1i64 as i32);
@@ -162,7 +162,7 @@ fn main() {
   log(debug, 1u64 as uint);
   log(debug, 1u64 as float);
   log(debug, 1u64 as bool);
-  log(debug, 1u64 as os::libc::FILE);
+  log(debug, 1u64 as os::FILE);
   log(debug, 1u64 as i8);
   log(debug, 1u64 as i16);
   log(debug, 1u64 as i32);
@@ -178,7 +178,7 @@ fn main() {
   log(debug, 1u64 as uint);
   log(debug, 1u64 as float);
   log(debug, 1u64 as bool);
-  log(debug, 1u64 as os::libc::FILE);
+  log(debug, 1u64 as os::FILE);
   log(debug, 1u64 as i8);
   log(debug, 1u64 as i16);
   log(debug, 1u64 as i32);
@@ -194,7 +194,7 @@ fn main() {
   log(debug, true as uint);
   log(debug, true as float);
   log(debug, true as bool);
-  log(debug, true as os::libc::FILE);
+  log(debug, true as os::FILE);
   log(debug, true as i8);
   log(debug, true as i16);
   log(debug, true as i32);

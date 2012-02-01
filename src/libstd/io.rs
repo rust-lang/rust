@@ -9,9 +9,9 @@ import core::ctypes::c_int;
 
 #[abi = "cdecl"]
 native mod rustrt {
-    fn rust_get_stdin() -> os::libc::FILE;
-    fn rust_get_stdout() -> os::libc::FILE;
-    fn rust_get_stderr() -> os::libc::FILE;
+    fn rust_get_stdin() -> os::FILE;
+    fn rust_get_stdout() -> os::FILE;
+    fn rust_get_stderr() -> os::FILE;
 }
 
 // Reading
@@ -166,7 +166,7 @@ fn convert_whence(whence: seek_style) -> i32 {
     };
 }
 
-impl of reader for os::libc::FILE {
+impl of reader for os::FILE {
     fn read_bytes(len: uint) -> [u8] unsafe {
         let buf = [];
         vec::reserve(buf, len);
@@ -195,9 +195,9 @@ impl <T: reader, C> of reader for {base: T, cleanup: C} {
     fn tell() -> uint { self.base.tell() }
 }
 
-resource FILE_res(f: os::libc::FILE) { os::libc::fclose(f); }
+resource FILE_res(f: os::FILE) { os::libc::fclose(f); }
 
-fn FILE_reader(f: os::libc::FILE, cleanup: bool) -> reader {
+fn FILE_reader(f: os::FILE, cleanup: bool) -> reader {
     if cleanup {
         {base: f, cleanup: FILE_res(f)} as reader
     } else {
@@ -282,7 +282,7 @@ impl <T: writer, C> of writer for {base: T, cleanup: C} {
     fn flush() -> int { self.base.flush() }
 }
 
-impl of writer for os::libc::FILE {
+impl of writer for os::FILE {
     fn write(v: [const u8]) unsafe {
         let len = vec::len(v);
         let vbuf = vec::unsafe::to_ptr(v);
@@ -296,7 +296,7 @@ impl of writer for os::libc::FILE {
     fn flush() -> int { os::libc::fflush(self) as int }
 }
 
-fn FILE_writer(f: os::libc::FILE, cleanup: bool) -> writer {
+fn FILE_writer(f: os::FILE, cleanup: bool) -> writer {
     if cleanup {
         {base: f, cleanup: FILE_res(f)} as writer
     } else {
@@ -532,10 +532,10 @@ mod fsync {
     // fsync file after executing blk
     // FIXME find better way to create resources within lifetime of outer res
     fn FILE_res_sync(&&file: FILE_res, opt_level: option<level>,
-                  blk: fn(&&res<os::libc::FILE>)) {
+                  blk: fn(&&res<os::FILE>)) {
         blk(res({
             val: *file, opt_level: opt_level,
-            fsync_fn: fn@(&&file: os::libc::FILE, l: level) -> int {
+            fsync_fn: fn@(&&file: os::FILE, l: level) -> int {
                 ret os::fsync_fd(os::libc::fileno(file), l) as int;
             }
         }));
