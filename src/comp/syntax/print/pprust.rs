@@ -479,6 +479,52 @@ fn print_item(s: ps, &&item: @ast::item) {
             bclose(s, item.span);
         }
       }
+      ast::item_class(tps,items,ctor_decl,ctor_body) {
+          head(s, "class");
+          word_nbsp(s, item.ident);
+          print_type_params(s, tps);
+          bopen(s);
+          hardbreak_if_not_bol(s);
+          head(s, "new");
+          print_fn_args_and_ret(s, ctor_decl);
+          space(s.s);
+          print_block(s, ctor_body);
+          for ci in items {
+                  /*
+                     TODO: collect all private items and print them
+                     in a single "priv" section
+                   */
+             hardbreak_if_not_bol(s);
+             alt ci.node.privacy {
+                ast::priv {
+                    head(s, "priv");
+                    bopen(s);
+                    hardbreak_if_not_bol(s);
+                }
+                _ {}
+             }
+             alt *ci.node.decl {
+                 ast::instance_var(nm, t, mt, _) {
+                    word_nbsp(s, "let");
+                    alt mt {
+                      ast::class_mutable { word_nbsp(s, "mutable"); }
+                      _ {}
+                    }
+                    word(s.s, nm);
+                    word_nbsp(s, ":");
+                    print_type(s, t);
+                    word(s.s, ";");
+                }
+                ast::class_method(i) {
+                    print_item(s, i);
+                }
+             }
+             alt ci.node.privacy {
+                 ast::priv { bclose(s, ci.span); }
+                 _ {}
+             }
+          }
+       }
       ast::item_impl(tps, ifce, ty, methods) {
         head(s, "impl");
         word(s.s, item.ident);
@@ -641,7 +687,6 @@ fn print_possibly_embedded_block_(s: ps, blk: ast::blk, embedded: embed_type,
       ast::unsafe_blk { word(s.s, "unsafe"); }
       ast::default_blk { }
     }
-
     maybe_print_comment(s, blk.span.lo);
     let ann_node = node_block(s, blk);
     s.ann.pre(ann_node);

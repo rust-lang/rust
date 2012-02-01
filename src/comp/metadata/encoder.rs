@@ -119,6 +119,9 @@ fn encode_module_item_paths(ebml_w: ebml::writer, module: _mod, path: [str],
             encode_def_id(ebml_w, local_def(it.id));
             ebml::end_tag(ebml_w);
           }
+          item_class(_,_,_,_) {
+              fail "encode: implement item_class";
+          }
           item_enum(variants, tps) {
             add_to_index(ebml_w, path, index, it.ident);
             ebml::start_tag(ebml_w, tag_paths_data_item);
@@ -339,6 +342,9 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         }
         ebml::end_tag(ebml_w);
         encode_enum_variant_info(ecx, ebml_w, item.id, variants, index, tps);
+      }
+      item_class(_,_,_,_) {
+          fail "encode: implement item_class";
       }
       item_res(_, tps, _, _, ctor_id) {
         let fn_ty = node_id_to_type(tcx, ctor_id);

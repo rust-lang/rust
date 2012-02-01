@@ -60,6 +60,9 @@ fn find_pre_post_item(ccx: crate_ctxt, i: item) {
              ccx: ccx};
         find_pre_post_fn(fcx, body);
       }
+      item_class(_,_,_,_) {
+          fail "find_pre_post_item: implement item_class";
+      }
       item_impl(_, _, _, ms) { for m in ms { find_pre_post_method(ccx, m); } }
     }
 }

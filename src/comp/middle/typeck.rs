@@ -426,6 +426,9 @@ fn ty_of_item(tcx: ty::ctxt, mode: mode, it: @ast::item)
         tcx.tcache.insert(local_def(it.id), tpt);
         ret tpt;
       }
+      ast::item_class(_,_,_,_) {
+          fail "ty_of_item: implement item_class";
+      }
       ast::item_impl(_, _, _, _) | ast::item_mod(_) |
       ast::item_native_mod(_) { fail; }
     }
@@ -1232,7 +1235,7 @@ fn check_pat(fcx: @fn_ctxt, map: pat_util::pat_id_map, pat: @ast::pat,
                                  if subpats_len == 1u { "" } else { "s" },
                                  arg_len,
                                  if arg_len == 1u { "" } else { "s" }];
-                    tcx.sess.span_fatal(pat.span, s);
+                    tcx.sess.span_err(pat.span, s);
                 }
 
                 vec::iter2(subpats, arg_types) {|subpat, arg_ty|
@@ -1240,7 +1243,7 @@ fn check_pat(fcx: @fn_ctxt, map: pat_util::pat_id_map, pat: @ast::pat,
                 }
             } else if subpats_len > 0u {
                 // TODO: note definition of enum variant
-                tcx.sess.span_fatal
+                tcx.sess.span_err
                     (pat.span, #fmt["this pattern has %u field%s, \
                                      but the corresponding \
                                      variant has no fields",
@@ -1252,7 +1255,7 @@ fn check_pat(fcx: @fn_ctxt, map: pat_util::pat_id_map, pat: @ast::pat,
           _ {
             // FIXME: Switch expected and actual in this message? I
             // can never tell.
-            tcx.sess.span_fatal
+            tcx.sess.span_err
                 (pat.span,
                  #fmt["mismatched types: expected `%s` but found enum",
                       ty_to_str(tcx, expected)]);

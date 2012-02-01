@@ -27,6 +27,7 @@ type ast_fold_precursor =
      fold_view_item: fn@(view_item_, ast_fold) -> view_item_,
      fold_native_item: fn@(&&@native_item, ast_fold) -> @native_item,
      fold_item: fn@(&&@item, ast_fold) -> @item,
+     fold_class_item: fn@(&&@class_item, ast_fold) -> @class_item,
      fold_item_underscore: fn@(item_, ast_fold) -> item_,
      fold_method: fn@(&&@method, ast_fold) -> @method,
      fold_block: fn@(blk_, span, ast_fold) -> (blk_, span),
@@ -53,6 +54,7 @@ type a_f =
      fold_view_item: fn@(&&@view_item) -> @view_item,
      fold_native_item: fn@(&&@native_item) -> @native_item,
      fold_item: fn@(&&@item) -> @item,
+     fold_class_item: fn@(&&@class_item) -> @class_item,
      fold_item_underscore: fn@(item_) -> item_,
      fold_method: fn@(&&@method) -> @method,
      fold_block: fn@(blk) -> blk,
@@ -82,6 +84,7 @@ fn nf_crate_directive_dummy(&&_c: @crate_directive) -> @crate_directive {
 fn nf_view_item_dummy(&&_v: @view_item) -> @view_item { fail; }
 fn nf_native_item_dummy(&&_n: @native_item) -> @native_item { fail; }
 fn nf_item_dummy(&&_i: @item) -> @item { fail; }
+fn nf_class_item_dummy(&&_ci: @class_item) -> @class_item { fail; }
 fn nf_item_underscore_dummy(_i: item_) -> item_ { fail; }
 fn nf_method_dummy(&&_m: @method) -> @method { fail; }
 fn nf_blk_dummy(_b: blk) -> blk { fail; }
@@ -220,6 +223,20 @@ fn noop_fold_item(&&i: @item, fld: ast_fold) -> @item {
           span: i.span};
 }
 
+fn noop_fold_class_item(&&ci: @class_item, fld: ast_fold)
+    -> @class_item {
+    @{node: {
+      privacy:ci.node.privacy,
+            decl:
+     @alt *ci.node.decl {
+        instance_var(ident, t, cm, id) {
+            instance_var(ident, fld.fold_ty(t), cm, id)
+        }
+        class_method(i) { class_method(fld.fold_item(i)) }
+         }},
+       span: ci.span}
+}
+
 fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
     ret alt i {
           item_const(t, e) { item_const(fld.fold_ty(t), fld.fold_expr(e)) }
@@ -232,6 +249,12 @@ fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
           item_ty(t, typms) { item_ty(fld.fold_ty(t), typms) }
           item_enum(variants, typms) {
             item_enum(vec::map(variants, fld.fold_variant), typms)
+          }
+          item_class(typms, items, ctor_decl, ctor_body) {
+              item_class(typms,
+                         vec::map(items, fld.fold_class_item),
+                         fold_fn_decl(ctor_decl, fld),
+                         fld.fold_block(ctor_body))
           }
           item_impl(tps, ifce, ty, methods) {
             item_impl(tps, option::map(ifce, fld.fold_ty), fld.fold_ty(ty),
@@ -518,6 +541,7 @@ fn default_ast_fold() -> @ast_fold_precursor {
           fold_view_item: noop_fold_view_item,
           fold_native_item: noop_fold_native_item,
           fold_item: noop_fold_item,
+          fold_class_item: noop_fold_class_item,
           fold_item_underscore: noop_fold_item_underscore,
           fold_method: noop_fold_method,
           fold_block: wrap(noop_fold_block),
@@ -548,6 +572,7 @@ fn make_fold(afp: ast_fold_precursor) -> ast_fold {
                   fold_view_item: bind nf_view_item_dummy(_),
                   fold_native_item: bind nf_native_item_dummy(_),
                   fold_item: bind nf_item_dummy(_),
+                  fold_class_item: bind nf_class_item_dummy(_),
                   fold_item_underscore: bind nf_item_underscore_dummy(_),
                   fold_method: bind nf_method_dummy(_),
                   fold_block: bind nf_blk_dummy(_),
@@ -590,6 +615,21 @@ fn make_fold(afp: ast_fold_precursor) -> ast_fold {
     }
     fn f_item(afp: ast_fold_precursor, f: ast_fold, &&i: @item) -> @item {
         ret afp.fold_item(i, f);
+    }
+    fn f_class_item(afp: ast_fold_precursor, f: ast_fold,
+                      &&ci: @class_item) -> @class_item {
+        @{node:
+         {privacy:ci.node.privacy,
+               decl:
+        @alt *ci.node.decl {
+           instance_var(nm, t, mt, id) {
+               instance_var(nm, f_ty(afp, f, t),
+                                 mt, id)
+           }
+           class_method(i) {
+               class_method(afp.fold_item(i, f))
+           }
+            }}, span: ci.span}
     }
     fn f_item_underscore(afp: ast_fold_precursor, f: ast_fold, i: item_) ->
        item_ {
@@ -665,6 +705,7 @@ fn make_fold(afp: ast_fold_precursor) -> ast_fold {
          fold_view_item: bind f_view_item(afp, result, _),
          fold_native_item: bind f_native_item(afp, result, _),
          fold_item: bind f_item(afp, result, _),
+         fold_class_item: bind f_class_item(afp, result, _),
          fold_item_underscore: bind f_item_underscore(afp, result, _),
          fold_method: bind f_method(afp, result, _),
          fold_block: bind f_block(afp, result, _),

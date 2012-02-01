@@ -472,10 +472,28 @@ enum item_ {
     item_enum([variant], [ty_param]),
     item_res(fn_decl /* dtor */, [ty_param], blk,
              node_id /* dtor id */, node_id /* ctor id */),
+    item_class([ty_param], /* ty params for class */
+               [@class_item], /* methods, etc. */
+                             /* (not including ctor) */
+               fn_decl, /* ctor decl */
+               blk /* ctor body */
+               ),
     item_iface([ty_param], [ty_method]),
     item_impl([ty_param], option<@ty> /* iface */,
               @ty /* self */, [@method]),
 }
+
+type class_item_ = {privacy: privacy, decl: @class_member};
+type class_item = spanned<class_item_>;
+
+enum class_member {
+    instance_var(ident, @ty, class_mutability, node_id),
+    class_method(@item)
+}
+
+enum class_mutability { class_mutable, class_immutable }
+
+enum privacy { priv, pub }
 
 type native_item =
     {ident: ident,

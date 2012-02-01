@@ -1421,6 +1421,9 @@ fn index_mod(md: ast::_mod) -> mod_index {
                 variant_idx += 1u;
             }
           }
+          ast::item_class(_, items, ctor_decl, _) {
+              fail "resolve::index_mod: item_class";
+          }
         }
     }
     ret index;
