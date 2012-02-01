@@ -13,7 +13,6 @@ class lock_and_signal {
 
     pthread_t _holding_thread;
 #endif
-    bool _locked;
 
 public:
     lock_and_signal();

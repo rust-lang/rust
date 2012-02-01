@@ -1,3 +1,4 @@
+#include <assert.h>
 #include "../globals.h"
 
 /*
@@ -9,8 +10,13 @@
 
 #include "lock_and_signal.h"
 
+// FIXME: This is not a portable way of specifying an invalid pthread_t
+#define INVALID_THREAD 0
+
+
 #if defined(__WIN32__)
 lock_and_signal::lock_and_signal()
+    : _holding_thread(INVALID_THREAD)
 {
     // FIXME: In order to match the behavior of pthread_cond_broadcast on
     // Windows, we create manual reset events. This however breaks the
@@ -23,7 +29,7 @@ lock_and_signal::lock_and_signal()
 
 #else
 lock_and_signal::lock_and_signal()
-    : _locked(false)
+    : _holding_thread(INVALID_THREAD)
 {
     CHECKED(pthread_cond_init(&_cond, NULL));
     CHECKED(pthread_mutex_init(&_mutex, NULL));
@@ -47,11 +53,10 @@ void lock_and_signal::lock() {
     CHECKED(pthread_mutex_lock(&_mutex));
     _holding_thread = pthread_self();
 #endif
-    _locked = true;
 }
 
 void lock_and_signal::unlock() {
-    _locked = false;
+    _holding_thread = INVALID_THREAD;
 #if defined(__WIN32__)
     LeaveCriticalSection(&_cs);
 #else
@@ -67,7 +72,8 @@ void lock_and_signal::wait() {
 }
 
 bool lock_and_signal::timed_wait(size_t timeout_in_ms) {
-    _locked = false;
+    assert(lock_held_by_current_thread());
+    _holding_thread = INVALID_THREAD;
     bool rv = true;
 #if defined(__WIN32__)
     LeaveCriticalSection(&_cs);
@@ -105,7 +111,6 @@ bool lock_and_signal::timed_wait(size_t timeout_in_ms) {
     }
     _holding_thread = pthread_self();
 #endif
-    _locked = true;
     return rv;
 }
 
@@ -134,9 +139,9 @@ void lock_and_signal::signal_all() {
 bool lock_and_signal::lock_held_by_current_thread()
 {
 #if defined(__WIN32__)
-    return _locked && _holding_thread == GetCurrentThreadId();
+    return _holding_thread == GetCurrentThreadId();
 #else
-    return _locked && _holding_thread == pthread_self();
+    return pthread_equal(_holding_thread, pthread_self());
 #endif
 }
 
