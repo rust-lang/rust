@@ -688,7 +688,7 @@ Escapes special characters inside the string, making it safe for transfer.
 */
 fn escape(s: str) -> str {
     let r = "";
-    all(s, { |c| r += escape_char(c); true });
+    chars_iter(s) { |c| r += escape_char(c) };
     r
 }
 
