@@ -113,10 +113,11 @@ fn new_parser_from_file(sess: parse_sess, cfg: ast::crate_cfg, path: str,
 }
 
 fn new_parser_from_source_str(sess: parse_sess, cfg: ast::crate_cfg,
-                              name: str, source: @str) -> parser {
+                              name: str, ss: codemap::file_substr,
+                              source: @str) -> parser {
     let ftype = SOURCE_FILE;
-    let filemap = codemap::new_filemap(name, source,
-                                       sess.chpos, sess.byte_pos);
+    let filemap = codemap::new_filemap_w_substr
+        (name, ss, source, sess.chpos, sess.byte_pos);
     sess.cm.files += [filemap];
     let itr = @interner::mk(str::hash, str::eq);
     let rdr = lexer::new_reader(sess.cm, sess.span_diagnostic,
@@ -2536,19 +2537,20 @@ fn parse_crate_from_source_file(input: str, cfg: ast::crate_cfg,
 
 fn parse_expr_from_source_str(name: str, source: @str, cfg: ast::crate_cfg,
                               sess: parse_sess) -> @ast::expr {
-    let p = new_parser_from_source_str(sess, cfg, name, source);
+    let p = new_parser_from_source_str(sess, cfg, name, none, source);
     let r = parse_expr(p);
     sess.chpos = p.reader.chpos;
     sess.byte_pos = sess.byte_pos + p.reader.pos;
     ret r;
 }
 
-fn parse_from_source_str<T>(f: fn (p: parser) -> T, 
-                            name: str, source: @str, cfg: ast::crate_cfg,
-                            sess: parse_sess) 
+fn parse_from_source_str<T>(f: fn (p: parser) -> T,
+                            name: str, ss: codemap::file_substr,
+                            source: @str, cfg: ast::crate_cfg,
+                            sess: parse_sess)
     -> {node: T, fm: codemap::filemap}
 {
-    let p = new_parser_from_source_str(sess, cfg, name, source);
+    let p = new_parser_from_source_str(sess, cfg, name, ss, source);
     let r = f(p);
     sess.chpos = p.reader.chpos;
     sess.byte_pos = sess.byte_pos + p.reader.pos;
@@ -2557,7 +2559,7 @@ fn parse_from_source_str<T>(f: fn (p: parser) -> T,
 
 fn parse_crate_from_source_str(name: str, source: @str, cfg: ast::crate_cfg,
                                sess: parse_sess) -> @ast::crate {
-    let p = new_parser_from_source_str(sess, cfg, name, source);
+    let p = new_parser_from_source_str(sess, cfg, name, none, source);
     let r = parse_crate_mod(p, cfg);
     sess.chpos = p.reader.chpos;
     sess.byte_pos = sess.byte_pos + p.reader.pos;

@@ -10,8 +10,12 @@ type file_pos = {ch: uint, byte: uint};
  * with single-word things, rather than passing records all over the
  * compiler.
  */
+
+type file_substr_ = {lo: uint, hi: uint, col: uint, line: uint};
+type file_substr = option<file_substr_>;
+
 type filemap =
-    @{name: filename, src: @str,
+    @{name: filename, substr: file_substr, src: @str,
       start_pos: file_pos, mutable lines: [file_pos]};
 
 type codemap = @{mutable files: [filemap]};
@@ -22,12 +26,28 @@ fn new_codemap() -> codemap {
     @{mutable files: [new_filemap("-", @"", 0u, 0u)]}
 }
 
-fn new_filemap(filename: filename, src: @str,
-               start_pos_ch: uint, start_pos_byte: uint)
+fn new_filemap_w_substr(filename: filename, substr: file_substr,
+                        src: @str,
+                        start_pos_ch: uint, start_pos_byte: uint)
    -> filemap {
-    ret @{name: filename, src: src,
+    ret @{name: filename, substr: substr, src: src,
           start_pos: {ch: start_pos_ch, byte: start_pos_byte},
           mutable lines: [{ch: start_pos_ch, byte: start_pos_byte}]};
+}
+
+fn new_filemap(filename: filename, src: @str,
+               start_pos_ch: uint, start_pos_byte: uint)
+    -> filemap {
+    ret new_filemap_w_substr(filename, none, src, 
+                             start_pos_ch, start_pos_byte);
+}
+
+fn get_substr_info(cm: codemap, lo: uint, hi: uint)
+    -> (filename, file_substr_)
+{
+    let pos = lookup_char_pos(cm, lo);
+    let name = #fmt("<%s:%u:%u>", pos.file.name, pos.line, pos.col);
+    ret (name, {lo: lo, hi: hi, col: pos.col, line: pos.line});
 }
 
 fn empty_filemap(cm: codemap) -> filemap {cm.files[0]}

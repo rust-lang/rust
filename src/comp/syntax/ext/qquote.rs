@@ -48,8 +48,10 @@ fn expand_ast(ecx: ext_ctxt, _sp: span, _arg: ast::mac_arg, body: ast::mac_body)
 {
     let body = get_mac_body(ecx,_sp,body);
     let str = @codemap::span_to_snippet(body.span, ecx.session().parse_sess.cm);
+    let (fname, ss) = codemap::get_substr_info(ecx.session().parse_sess.cm, 
+                                               body.span.lo, body.span.hi);
     let {node: e, _} = parse_from_source_str(parser::parse_expr, 
-                                             "<anon>", str, 
+                                             fname, some(ss), str, 
                                              ecx.session().opts.cfg, 
                                              ecx.session().parse_sess);
     ret expand_qquote(ecx, e.span, some(*str), e);
