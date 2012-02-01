@@ -244,13 +244,6 @@ void
 rust_scheduler::start_main_loop() {
     lock.lock();
 
-    // Make sure someone is watching, to pull us out of infinite loops.
-    //
-    // FIXME: time-based interruption is not presently working; worked
-    // in rustboot and has been completely broken in rustc.
-    //
-    // rust_timer timer(this);
-
     DLOG(this, dom, "started domain loop %d", id);
 
     while (kernel->live_tasks > 0) {

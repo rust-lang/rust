@@ -220,27 +220,6 @@ public:
 #include "rust_kernel.h"
 #include "rust_scheduler.h"
 
-struct rust_timer {
-    // FIXME: This will probably eventually need replacement
-    // with something more sophisticated and integrated with
-    // an IO event-handling library, when we have such a thing.
-    // For now it's just the most basic "thread that can interrupt
-    // its associated domain-thread" device, so that we have
-    // *some* form of task-preemption.
-    rust_scheduler *sched;
-    uintptr_t exit_flag;
-
-#if defined(__WIN32__)
-    HANDLE thread;
-#else
-    pthread_attr_t attr;
-    pthread_t thread;
-#endif
-
-    rust_timer(rust_scheduler *sched);
-    ~rust_timer();
-};
-
 typedef void CDECL (glue_fn)(void *, void *,
                              const type_desc **, void *);
 typedef void CDECL (cmp_glue_fn)(void *, void *,
