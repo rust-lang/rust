@@ -30,6 +30,8 @@ fn syntax_expander_table() -> hashmap<str, syntax_extension> {
                             normal(ext::ident_to_str::expand_syntax_ext));
     syntax_expanders.insert("log_syntax",
                             normal(ext::log_syntax::expand_syntax_ext));
+    syntax_expanders.insert("ast",
+                            normal(ext::qquote::expand_ast));
     ret syntax_expanders;
 }
 

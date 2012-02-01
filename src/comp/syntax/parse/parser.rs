@@ -1013,7 +1013,7 @@ fn parse_syntax_ext_naked(p: parser, lo: uint) -> @ast::expr {
             }
             p.bump();
         }
-        let hi = p.last_span.hi;
+        let hi = p.last_span.lo;
         b = some({span: mk_sp(lo,hi)});
     }
     ret mk_mac_expr(p, lo, p.span.hi, ast::mac_invoc(pth, e, b));
@@ -2541,6 +2541,18 @@ fn parse_expr_from_source_str(name: str, source: @str, cfg: ast::crate_cfg,
     sess.chpos = p.reader.chpos;
     sess.byte_pos = sess.byte_pos + p.reader.pos;
     ret r;
+}
+
+fn parse_from_source_str<T>(f: fn (p: parser) -> T, 
+                            name: str, source: @str, cfg: ast::crate_cfg,
+                            sess: parse_sess) 
+    -> {node: T, fm: codemap::filemap}
+{
+    let p = new_parser_from_source_str(sess, cfg, name, source);
+    let r = f(p);
+    sess.chpos = p.reader.chpos;
+    sess.byte_pos = sess.byte_pos + p.reader.pos;
+    ret {node: r, fm: option::get(vec::last(sess.cm.files))};
 }
 
 fn parse_crate_from_source_str(name: str, source: @str, cfg: ast::crate_cfg,

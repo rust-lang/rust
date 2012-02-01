@@ -8,7 +8,8 @@ import syntax::fold::*;
 import syntax::visit::*;
 import syntax::ext::base::*;
 import syntax::ext::build::*;
-import syntax::parse::parser::parse_expr_from_source_str;
+import syntax::parse::parser;
+import syntax::parse::parser::{parse_from_source_str};
 
 import syntax::print::*;
 import std::io::*;
@@ -42,8 +43,26 @@ fn is_space(c: char) -> bool {
     syntax::parse::lexer::is_whitespace(c)
 }
 
-fn expand_qquote(ecx: ext_ctxt, sp: span, e: @ast::expr) -> @ast::expr {
-    let str = codemap::span_to_snippet(sp, ecx.session().parse_sess.cm);
+fn expand_ast(ecx: ext_ctxt, _sp: span, _arg: ast::mac_arg, body: ast::mac_body)
+    -> @ast::expr 
+{
+    let body = get_mac_body(ecx,_sp,body);
+    let str = @codemap::span_to_snippet(body.span, ecx.session().parse_sess.cm);
+    let {node: e, _} = parse_from_source_str(parser::parse_expr, 
+                                             "<anon>", str, 
+                                             ecx.session().opts.cfg, 
+                                             ecx.session().parse_sess);
+    ret expand_qquote(ecx, e.span, some(*str), e);
+}
+
+fn expand_qquote(ecx: ext_ctxt, sp: span, maybe_str: option::t<str>, 
+                 e: @ast::expr) 
+    -> @ast::expr 
+{
+    let str = alt(maybe_str) {
+      some(s) {s}
+      none {codemap::span_to_snippet(sp, ecx.session().parse_sess.cm)}
+    };
     let qcx = gather_anti_quotes(sp.lo, e);
     let cx = qcx;
     let prev = 0u;
