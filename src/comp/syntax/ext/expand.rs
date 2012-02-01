@@ -8,7 +8,7 @@ import vec;
 import syntax::ast::{crate, expr_, expr_mac, mac_invoc, mac_qq};
 import syntax::fold::*;
 import syntax::ext::base::*;
-import syntax::ext::qquote::expand_qquote;
+import syntax::ext::qquote::{expand_qquote,qq_helper};
 import syntax::parse::parser::parse_expr_from_source_str;
 
 import codemap::span;

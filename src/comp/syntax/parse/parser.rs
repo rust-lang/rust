@@ -2548,13 +2548,13 @@ fn parse_from_source_str<T>(f: fn (p: parser) -> T,
                             name: str, ss: codemap::file_substr,
                             source: @str, cfg: ast::crate_cfg,
                             sess: parse_sess)
-    -> {node: T, fm: codemap::filemap}
+    -> T
 {
     let p = new_parser_from_source_str(sess, cfg, name, ss, source);
     let r = f(p);
     sess.chpos = p.reader.chpos;
     sess.byte_pos = sess.byte_pos + p.reader.pos;
-    ret {node: r, fm: option::get(vec::last(sess.cm.files))};
+    ret r;
 }
 
 fn parse_crate_from_source_str(name: str, source: @str, cfg: ast::crate_cfg,
