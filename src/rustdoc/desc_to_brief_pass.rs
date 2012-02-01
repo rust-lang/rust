@@ -106,79 +106,62 @@ fn fold_iface(fold: fold::fold<()>, doc: doc::ifacedoc) -> doc::ifacedoc {
 
 #[test]
 fn should_promote_mod_desc() {
-    let source = "#[doc(desc = \"desc\")] mod m { }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("#[doc(desc = \"desc\")] mod m { }");
     assert doc.topmod.mods()[0].brief == some("desc");
     assert doc.topmod.mods()[0].desc == none;
 }
 
 #[test]
 fn should_promote_const_desc() {
-    let source = "#[doc(desc = \"desc\")] const a: bool = true;";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("#[doc(desc = \"desc\")] const a: bool = true;");
     assert doc.topmod.consts()[0].brief == some("desc");
     assert doc.topmod.consts()[0].desc == none;
 }
 
 #[test]
 fn should_promote_fn_desc() {
-    let source = "#[doc(desc = \"desc\")] fn a() { }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("#[doc(desc = \"desc\")] fn a() { }");
     assert doc.topmod.fns()[0].brief == some("desc");
     assert doc.topmod.fns()[0].desc == none;
 }
 
 #[test]
 fn should_promote_enum_desc() {
-    let source = "#[doc(desc = \"desc\")] enum a { b }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("#[doc(desc = \"desc\")] enum a { b }");
     assert doc.topmod.enums()[0].brief == some("desc");
     assert doc.topmod.enums()[0].desc == none;
 }
 
 #[test]
 fn should_promote_resource_desc() {
-    let source = "#[doc(desc = \"desc\")] resource r(a: bool) { }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = run(srv, doc);
+    let doc = test::mk_doc(
+        "#[doc(desc = \"desc\")] resource r(a: bool) { }");
     assert doc.topmod.resources()[0].brief == some("desc");
     assert doc.topmod.resources()[0].desc == none;
 }
 
 #[test]
 fn should_promote_iface_desc() {
-    let source = "#[doc(desc = \"desc\")] iface i { fn a(); }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("#[doc(desc = \"desc\")] iface i { fn a(); }");
     assert doc.topmod.ifaces()[0].brief == some("desc");
     assert doc.topmod.ifaces()[0].desc == none;
 }
 
 #[test]
 fn should_promote_iface_method_desc() {
-    let source = "iface i { #[doc(desc = \"desc\")] fn a(); }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("iface i { #[doc(desc = \"desc\")] fn a(); }");
     assert doc.topmod.ifaces()[0].methods[0].brief == some("desc");
     assert doc.topmod.ifaces()[0].methods[0].desc == none;
+}
+
+#[cfg(test)]
+mod test {
+    fn mk_doc(source: str) -> doc::cratedoc {
+        let srv = astsrv::mk_srv_from_str(source);
+        let doc = extract::from_srv(srv, "");
+        let doc = attr_pass::mk_pass()(srv, doc);
+        run(srv, doc)
+    }
 }
 
 fn modify(

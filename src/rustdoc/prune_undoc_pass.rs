@@ -138,21 +138,13 @@ fn prune_return(doc: doc::retdoc) -> doc::retdoc {
 
 #[test]
 fn should_elide_undocumented_arguments() {
-    let source = "#[doc = \"hey\"] fn a(b: int) { }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("#[doc = \"hey\"] fn a(b: int) { }");
     assert vec::is_empty(doc.topmod.fns()[0].args);
 }
 
 #[test]
 fn should_not_elide_fns_with_documented_arguments() {
-    let source = "#[doc(args(a = \"b\"))] fn a(a: int) { }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("#[doc(args(a = \"b\"))] fn a(a: int) { }");
     assert vec::is_not_empty(doc.topmod.fns());
 }
 
@@ -169,49 +161,31 @@ fn should_elide_undocumented_return_values() {
 
 #[test]
 fn should_not_elide_fns_with_documented_failure_conditions() {
-    let source = "#[doc(failure = \"yup\")] fn a() { }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("#[doc(failure = \"yup\")] fn a() { }");
     assert vec::is_not_empty(doc.topmod.fns());
 }
 
 #[test]
 fn should_elide_undocumented_mods() {
-    let source = "mod a { }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("mod a { }");
     assert vec::is_empty(doc.topmod.mods());
 }
 
 #[test]
 fn should_not_elide_undocument_mods_with_documented_mods() {
-    let source = "mod a { #[doc = \"b\"] mod b { } }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("mod a { #[doc = \"b\"] mod b { } }");
     assert vec::is_not_empty(doc.topmod.mods());
 }
 
 #[test]
 fn should_not_elide_undocument_mods_with_documented_fns() {
-    let source = "mod a { #[doc = \"b\"] fn b() { } }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("mod a { #[doc = \"b\"] fn b() { } }");
     assert vec::is_not_empty(doc.topmod.mods());
 }
 
 #[test]
 fn should_elide_undocumented_fns() {
-    let source = "fn a() { }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("fn a() { }");
     assert vec::is_empty(doc.topmod.fns());
 }
 
@@ -228,10 +202,7 @@ fn fold_const(
 
 #[test]
 fn should_elide_undocumented_consts() {
-    let source = "const a: bool = true;";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("const a: bool = true;");
     assert vec::is_empty(doc.topmod.consts());
 }
 
@@ -255,31 +226,19 @@ fn fold_enum(fold: fold::fold<ctxt>, doc: doc::enumdoc) -> doc::enumdoc {
 
 #[test]
 fn should_elide_undocumented_enums() {
-    let source = "enum a { b }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("enum a { b }");
     assert vec::is_empty(doc.topmod.enums());
 }
 
 #[test]
 fn should_elide_undocumented_variants() {
-    let source = "#[doc = \"a\"] enum a { b }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("#[doc = \"a\"] enum a { b }");
     assert vec::is_empty(doc.topmod.enums()[0].variants);
 }
 
 #[test]
 fn should_not_elide_enums_with_documented_variants() {
-    let source = "enum a { #[doc = \"a\"] b }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("enum a { #[doc = \"a\"] b }");
     assert vec::is_not_empty(doc.topmod.enums());
 }
 
@@ -303,32 +262,21 @@ fn fold_res(fold: fold::fold<ctxt>, doc: doc::resdoc) -> doc::resdoc {
 
 #[test]
 fn should_elide_undocumented_resources() {
-    let source = "resource r(a: bool) { }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("resource r(a: bool) { }");
     assert vec::is_empty(doc.topmod.resources());
 }
 
 #[test]
 fn should_elide_undocumented_resource_args() {
-    let source = "#[doc = \"drunk\"]\
-                  resource r(a: bool) { }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("#[doc = \"drunk\"]\
+                            resource r(a: bool) { }");
     assert vec::is_empty(doc.topmod.resources()[0].args);
 }
 
 #[test]
 fn should_not_elide_resources_with_documented_args() {
-    let source = "#[doc(args(a = \"drunk\"))]\
-                  resource r(a: bool) { }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("#[doc(args(a = \"drunk\"))]\
+                            resource r(a: bool) { }");
     assert vec::is_not_empty(doc.topmod.resources());
 }
 
@@ -364,60 +312,46 @@ fn fold_iface(
 
 #[test]
 fn should_elide_undocumented_ifaces() {
-    let source = "iface i { fn a(); }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("iface i { fn a(); }");
     assert vec::is_empty(doc.topmod.ifaces());
 }
 
 #[test]
 fn should_not_elide_documented_ifaces() {
-    let source = "#[doc = \"hey\"] iface i { fn a(); }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("#[doc = \"hey\"] iface i { fn a(); }");
     assert vec::is_not_empty(doc.topmod.ifaces());
 }
 
 #[test]
 fn should_not_elide_ifaces_with_documented_methods() {
-    let source = "iface i { #[doc = \"hey\"] fn a(); }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("iface i { #[doc = \"hey\"] fn a(); }");
     assert vec::is_not_empty(doc.topmod.ifaces());
 }
 
 #[test]
 fn should_not_elide_undocumented_methods() {
-    let source = "#[doc = \"hey\"] iface i { fn a(); }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("#[doc = \"hey\"] iface i { fn a(); }");
     assert vec::is_not_empty(doc.topmod.ifaces()[0].methods);
 }
 
 #[test]
 fn should_elide_undocumented_method_args() {
-    let source = "#[doc = \"hey\"] iface i { fn a(); }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("#[doc = \"hey\"] iface i { fn a(); }");
     assert vec::is_empty(doc.topmod.ifaces()[0].methods[0].args);
 }
 
 #[test]
 fn should_elide_undocumented_method_return_values() {
-    let source = "#[doc = \"hey\"] iface i { fn a() -> int; }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = run(srv, doc);
+    let doc = test::mk_doc("#[doc = \"hey\"] iface i { fn a() -> int; }");
     assert doc.topmod.ifaces()[0].methods[0].return.ty == none;
+}
+
+#[cfg(test)]
+mod test {
+    fn mk_doc(source: str) -> doc::cratedoc {
+        let srv = astsrv::mk_srv_from_str(source);
+        let doc = extract::from_srv(srv, "");
+        let doc = attr_pass::mk_pass()(srv, doc);
+        run(srv, doc)
+    }
 }

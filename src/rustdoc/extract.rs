@@ -145,9 +145,7 @@ fn constdoc_from_const(
 
 #[test]
 fn should_extract_const_name_and_id() {
-    let source = "const a: int = 0;";
-    let ast = parse::from_str(source);
-    let doc = extract(ast, "");
+    let doc = test::mk_doc("const a: int = 0;");
     assert doc.topmod.consts()[0].id != 0;
     assert doc.topmod.consts()[0].name == "a";
 }
@@ -182,18 +180,14 @@ fn variantdoc_from_variant(variant: ast::variant) -> doc::variantdoc {
 
 #[test]
 fn should_extract_enums() {
-    let source = "enum e { v }";
-    let ast = parse::from_str(source);
-    let doc = extract(ast, "");
+    let doc = test::mk_doc("enum e { v }");
     assert doc.topmod.enums()[0].id != 0;
     assert doc.topmod.enums()[0].name == "e";
 }
 
 #[test]
 fn should_extract_enum_variants() {
-    let source = "enum e { v }";
-    let ast = parse::from_str(source);
-    let doc = extract(ast, "");
+    let doc = test::mk_doc("enum e { v }");
     assert doc.topmod.enums()[0].variants[0].name == "v";
 }
 
@@ -214,18 +208,14 @@ fn resdoc_from_resource(
 
 #[test]
 fn should_extract_resources() {
-    let source = "resource r(b: bool) { }";
-    let ast = parse::from_str(source);
-    let doc = extract(ast, "");
+    let doc = test::mk_doc("resource r(b: bool) { }");
     assert doc.topmod.resources()[0].id != 0;
     assert doc.topmod.resources()[0].name == "r";
 }
 
 #[test]
 fn should_extract_resource_args() {
-    let source = "resource r(b: bool) { }";
-    let ast = parse::from_str(source);
-    let doc = extract(ast, "");
+    let doc = test::mk_doc("resource r(b: bool) { }");
     assert doc.topmod.resources()[0].args[0].name == "b";
 }
 
@@ -258,25 +248,19 @@ fn ifacedoc_from_iface(
 
 #[test]
 fn should_extract_ifaces() {
-    let source = "iface i { fn f(); }";
-    let ast = parse::from_str(source);
-    let doc = extract(ast, "");
+    let doc = test::mk_doc("iface i { fn f(); }");
     assert doc.topmod.ifaces()[0].name == "i";
 }
 
 #[test]
 fn should_extract_iface_methods() {
-    let source = "iface i { fn f(); }";
-    let ast = parse::from_str(source);
-    let doc = extract(ast, "");
+    let doc = test::mk_doc("iface i { fn f(); }");
     assert doc.topmod.ifaces()[0].methods[0].name == "f";
 }
 
 #[test]
 fn should_extract_iface_method_args() {
-    let source = "iface i { fn f(a: bool); }";
-    let ast = parse::from_str(source);
-    let doc = extract(ast, "");
+    let doc = test::mk_doc("iface i { fn f(a: bool); }");
     assert doc.topmod.ifaces()[0].methods[0].args[0].name == "a";
 }
 
@@ -311,53 +295,46 @@ fn impldoc_from_impl(
 
 #[test]
 fn should_extract_impls_with_names() {
-    let source = "impl i for int { fn a() { } }";
-    let ast = parse::from_str(source);
-    let doc = extract(ast, "");
+    let doc = test::mk_doc("impl i for int { fn a() { } }");
     assert doc.topmod.impls()[0].name == "i";
 }
 
 #[test]
 fn should_extract_impls_without_names() {
-    let source = "impl of i for int { fn a() { } }";
-    let ast = parse::from_str(source);
-    let doc = extract(ast, "");
+    let doc = test::mk_doc("impl of i for int { fn a() { } }");
     assert doc.topmod.impls()[0].name == "i";
 }
 
 #[test]
 fn should_extract_impl_methods() {
-    let source = "impl i for int { fn f() { } }";
-    let ast = parse::from_str(source);
-    let doc = extract(ast, "");
+    let doc = test::mk_doc("impl i for int { fn f() { } }");
     assert doc.topmod.impls()[0].methods[0].name == "f";
 }
 
 #[test]
 fn should_extract_impl_method_args() {
-    let source = "impl i for int { fn f(a: bool) { } }";
-    let ast = parse::from_str(source);
-    let doc = extract(ast, "");
+    let doc = test::mk_doc("impl i for int { fn f(a: bool) { } }");
     assert doc.topmod.impls()[0].methods[0].args[0].name == "a";
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
+
+    fn mk_doc(source: str) -> doc::cratedoc {
+        let ast = parse::from_str(source);
+        extract(ast, "")
+    }
 
     #[test]
     fn extract_empty_crate() {
-        let source = ""; // empty crate
-        let ast = parse::from_str(source);
-        let doc = extract(ast, "");
+        let doc = mk_doc("");
         assert vec::is_empty(doc.topmod.mods());
         assert vec::is_empty(doc.topmod.fns());
     }
 
     #[test]
     fn extract_mods() {
-        let source = "mod a { mod b { } mod c { } }";
-        let ast = parse::from_str(source);
-        let doc = extract(ast, "");
+        let doc = mk_doc("mod a { mod b { } mod c { } }");
         assert doc.topmod.mods()[0].name == "a";
         assert doc.topmod.mods()[0].mods()[0].name == "b";
         assert doc.topmod.mods()[0].mods()[1].name == "c";
@@ -365,36 +342,28 @@ mod tests {
 
     #[test]
     fn extract_mods_deep() {
-        let source = "mod a { mod b { mod c { } } }";
-        let ast = parse::from_str(source);
-        let doc = extract(ast, "");
+        let doc = mk_doc("mod a { mod b { mod c { } } }");
         assert doc.topmod.mods()[0].mods()[0].mods()[0].name == "c";
     }
 
     #[test]
     fn extract_should_set_mod_ast_id() {
-        let source = "mod a { }";
-        let ast = parse::from_str(source);
-        let doc = extract(ast, "");
+        let doc = mk_doc("mod a { }");
         assert doc.topmod.mods()[0].id != 0;
     }
 
     #[test]
     fn extract_fns() {
-        let source =
+        let doc = mk_doc(
             "fn a() { } \
-             mod b { fn c() { } }";
-        let ast = parse::from_str(source);
-        let doc = extract(ast, "");
+             mod b { fn c() { } }");
         assert doc.topmod.fns()[0].name == "a";
         assert doc.topmod.mods()[0].fns()[0].name == "c";
     }
 
     #[test]
     fn extract_should_set_fn_ast_id() {
-        let source = "fn a() { }";
-        let ast = parse::from_str(source);
-        let doc = extract(ast, "");
+        let doc = mk_doc("fn a() { }");
         assert doc.topmod.fns()[0].id != 0;
     }
 

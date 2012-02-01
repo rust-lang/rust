@@ -128,130 +128,95 @@ fn fold_iface(fold: fold::fold<op>, doc: doc::ifacedoc) -> doc::ifacedoc {
 
 #[test]
 fn should_execute_op_on_enum_brief() {
-    let source = "#[doc(brief = \" a \")] enum a { b }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = mk_pass(str::trim)(srv, doc);
+    let doc = test::mk_doc("#[doc(brief = \" a \")] enum a { b }");
     assert doc.topmod.enums()[0].brief == some("a");
 }
 
 #[test]
 fn should_execute_op_on_enum_desc() {
-    let source = "#[doc(desc = \" a \")] enum a { b }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = mk_pass(str::trim)(srv, doc);
+    let doc = test::mk_doc("#[doc(desc = \" a \")] enum a { b }");
     assert doc.topmod.enums()[0].desc == some("a");
 }
 
 #[test]
 fn should_execute_op_on_variant_desc() {
-    let source = "enum a { #[doc = \" a \"] b }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = mk_pass(str::trim)(srv, doc);
+    let doc = test::mk_doc("enum a { #[doc = \" a \"] b }");
     assert doc.topmod.enums()[0].variants[0].desc == some("a");
 }
 
 #[test]
 fn should_execute_op_on_resource_brief() {
-    let source = "#[doc(brief = \" a \")] resource r(a: bool) { }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = mk_pass(str::trim)(srv, doc);
+    let doc = test::mk_doc("#[doc(brief = \" a \")] resource r(a: bool) { }");
     assert doc.topmod.resources()[0].brief == some("a");
 }
 
 #[test]
 fn should_execute_op_on_resource_desc() {
-    let source = "#[doc(desc = \" a \")] resource r(a: bool) { }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = mk_pass(str::trim)(srv, doc);
+    let doc = test::mk_doc("#[doc(desc = \" a \")] resource r(a: bool) { }");
     assert doc.topmod.resources()[0].desc == some("a");
 }
 
 #[test]
 fn should_execute_op_on_resource_args() {
-    let source = "#[doc(args(a = \" a \"))] resource r(a: bool) { }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = mk_pass(str::trim)(srv, doc);
+    let doc = test::mk_doc(
+        "#[doc(args(a = \" a \"))] resource r(a: bool) { }");
     assert doc.topmod.resources()[0].args[0].desc == some("a");
 }
 
 #[test]
 fn should_execute_op_on_iface_brief() {
-    let source = "#[doc(brief = \" a \")] iface i { fn a(); }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = mk_pass(str::trim)(srv, doc);
+    let doc = test::mk_doc(
+        "#[doc(brief = \" a \")] iface i { fn a(); }");
     assert doc.topmod.ifaces()[0].brief == some("a");
 }
 
 #[test]
 fn should_execute_op_on_iface_desc() {
-    let source = "#[doc(desc = \" a \")] iface i { fn a(); }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = mk_pass(str::trim)(srv, doc);
+    let doc = test::mk_doc(
+        "#[doc(desc = \" a \")] iface i { fn a(); }");
     assert doc.topmod.ifaces()[0].desc == some("a");
 }
 
 #[test]
 fn should_execute_op_on_iface_method_brief() {
-    let source = "iface i { #[doc(brief = \" a \")] fn a(); }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = mk_pass(str::trim)(srv, doc);
+    let doc = test::mk_doc(
+        "iface i { #[doc(brief = \" a \")] fn a(); }");
     assert doc.topmod.ifaces()[0].methods[0].brief == some("a");
 }
 
 #[test]
 fn should_execute_op_on_iface_method_desc() {
-    let source = "iface i { #[doc(desc = \" a \")] fn a(); }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = mk_pass(str::trim)(srv, doc);
+    let doc = test::mk_doc(
+        "iface i { #[doc(desc = \" a \")] fn a(); }");
     assert doc.topmod.ifaces()[0].methods[0].desc == some("a");
 }
 
 #[test]
 fn should_execute_op_on_iface_method_args() {
-    let source = "iface i { #[doc(args(a = \" a \"))] fn a(a: bool); }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = mk_pass(str::trim)(srv, doc);
+    let doc = test::mk_doc(
+        "iface i { #[doc(args(a = \" a \"))] fn a(a: bool); }");
     assert doc.topmod.ifaces()[0].methods[0].args[0].desc == some("a");
 }
 
 #[test]
 fn should_execute_op_on_iface_method_return() {
-    let source = "iface i { #[doc(return = \" a \")] fn a() -> int; }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = mk_pass(str::trim)(srv, doc);
+    let doc = test::mk_doc(
+        "iface i { #[doc(return = \" a \")] fn a() -> int; }");
     assert doc.topmod.ifaces()[0].methods[0].return.desc == some("a");
 }
 
 #[test]
 fn should_execute_op_on_iface_method_failure_condition() {
-    let source = "iface i { #[doc(failure = \" a \")] fn a(); }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = mk_pass(str::trim)(srv, doc);
+    let doc = test::mk_doc("iface i { #[doc(failure = \" a \")] fn a(); }");
     assert doc.topmod.ifaces()[0].methods[0].failure == some("a");
+}
+
+#[cfg(test)]
+mod test {
+    fn mk_doc(source: str) -> doc::cratedoc {
+        let srv = astsrv::mk_srv_from_str(source);
+        let doc = extract::from_srv(srv, "");
+        let doc = attr_pass::mk_pass()(srv, doc);
+        mk_pass(str::trim)(srv, doc)
+    }
 }
