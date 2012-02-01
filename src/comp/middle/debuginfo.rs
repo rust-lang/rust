@@ -157,7 +157,7 @@ fn cached_metadata<T: copy>(cache: metadata_cache, mdtag: int,
 }
 
 fn create_compile_unit(cx: @crate_ctxt, full_path: str)
-    -> @metadata<compile_unit_md> {
+    -> @metadata<compile_unit_md> unsafe {
     let cache = get_cache(cx);
     let tg = CompileUnitTag;
     alt cached_metadata::<@metadata<compile_unit_md>>(cache, tg,
@@ -168,7 +168,7 @@ fn create_compile_unit(cx: @crate_ctxt, full_path: str)
 
     let work_dir = cx.sess.working_dir;
     let file_path = if str::starts_with(full_path, work_dir) {
-        str::slice(full_path, str::byte_len(work_dir),
+        str::unsafe::slice(full_path, str::byte_len(work_dir),
                    str::byte_len(full_path))
     } else {
         full_path

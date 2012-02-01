@@ -24,10 +24,10 @@ type reader = @{
 
 impl reader for reader {
     fn is_eof() -> bool { self.curr == -1 as char }
-    fn get_str_from(start: uint) -> str {
+    fn get_str_from(start: uint) -> str unsafe {
         // I'm pretty skeptical about this subtraction. What if there's a
         // multi-byte character before the mark?
-        ret str::slice(*self.src, start - 1u, self.pos - 1u);
+        ret str::unsafe::slice(*self.src, start - 1u, self.pos - 1u);
     }
     fn next() -> char {
         if self.pos < self.len {
@@ -579,11 +579,11 @@ fn all_whitespace(s: str, begin: uint, end: uint) -> bool {
     ret true;
 }
 
-fn trim_whitespace_prefix_and_push_line(&lines: [str], s: str, col: uint) {
+fn trim_whitespace_prefix_and_push_line(&lines: [str], s: str, col: uint) unsafe {
     let s1;
     if all_whitespace(s, 0u, col) {
         if col < str::byte_len(s) {
-            s1 = str::slice(s, col, str::byte_len(s));
+            s1 = str::unsafe::slice(s, col, str::byte_len(s));
         } else { s1 = ""; }
     } else { s1 = s; }
     log(debug, "pushing line: " + s1);

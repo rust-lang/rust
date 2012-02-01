@@ -63,7 +63,7 @@ path separators in the path then the returned path is identical to
 the provided path. If an empty path is provided or the path ends
 with a path separator then an empty path is returned.
 */
-fn basename(p: path) -> path {
+fn basename(p: path) -> path unsafe {
     let i: int = str::rindex(p, os_fs::path_sep as u8);
     if i == -1 {
         i = str::rindex(p, os_fs::alt_path_sep as u8);
@@ -71,7 +71,7 @@ fn basename(p: path) -> path {
     }
     let len = str::byte_len(p);
     if i + 1 as uint >= len { ret p; }
-    ret str::slice(p, i + 1 as uint, len);
+    ret str::unsafe::slice(p, i + 1 as uint, len);
 }
 
 
