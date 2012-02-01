@@ -380,16 +380,6 @@ fn print_native_item(s: ps, item: @ast::native_item) {
     maybe_print_comment(s, item.span.lo);
     print_outer_attributes(s, item.attrs);
     alt item.node {
-      ast::native_item_ty {
-        ibox(s, indent_unit);
-        ibox(s, 0u);
-        word_nbsp(s, "type");
-        word(s.s, item.ident);
-        end(s); // end the inner ibox
-        word(s.s, ";");
-        end(s); // end the outer ibox
-
-      }
       ast::native_item_fn(decl, typarams) {
         print_fn(s, decl, item.ident, typarams);
         end(s); // end head-ibox

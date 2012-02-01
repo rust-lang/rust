@@ -125,7 +125,6 @@ fn type_of_inner(cx: @crate_ctxt, t: ty::t)
 
     if cx.lltypes.contains_key(t) { ret cx.lltypes.get(t); }
     let llty = alt ty::struct(cx.tcx, t) {
-      ty::ty_native(_) { T_ptr(T_i8()) }
       ty::ty_nil { T_nil() }
       ty::ty_bot {
         T_nil() /* ...I guess? */
@@ -1421,11 +1420,6 @@ fn compare_scalar_types(cx: @block_ctxt, lhs: ValueRef, rhs: ValueRef,
       ty::ty_int(_) { ret rslt(cx, f(signed_int)); }
       ty::ty_uint(_) { ret rslt(cx, f(unsigned_int)); }
       ty::ty_float(_) { ret rslt(cx, f(floating_point)); }
-      ty::ty_native(_) {
-        let cx = trans_fail(cx, none::<span>,
-                            "attempt to compare values of type native");
-        ret rslt(cx, C_nil());
-      }
       ty::ty_type {
         ret rslt(trans_fail(cx, none,
                             "attempt to compare values of type type"),
@@ -1922,7 +1916,7 @@ fn copy_val(cx: @block_ctxt, action: copy_action, dst: ValueRef,
 fn copy_val_no_check(bcx: @block_ctxt, action: copy_action, dst: ValueRef,
                      src: ValueRef, t: ty::t) -> @block_ctxt {
     let ccx = bcx_ccx(bcx), bcx = bcx;
-    if ty::type_is_scalar(ccx.tcx, t) || ty::type_is_native(ccx.tcx, t) {
+    if ty::type_is_scalar(ccx.tcx, t) {
         Store(bcx, src, dst);
         ret bcx;
     }
@@ -1952,7 +1946,7 @@ fn move_val(cx: @block_ctxt, action: copy_action, dst: ValueRef,
             src: lval_result, t: ty::t) -> @block_ctxt {
     let src_val = src.val;
     let tcx = bcx_tcx(cx), cx = cx;
-    if ty::type_is_scalar(tcx, t) || ty::type_is_native(tcx, t) {
+    if ty::type_is_scalar(tcx, t) {
         if src.kind == owned { src_val = Load(cx, src_val); }
         Store(cx, src_val, dst);
         ret cx;
@@ -2905,8 +2899,7 @@ fn trans_cast(cx: @block_ctxt, e: @ast::expr, id: ast::node_id,
     fn t_kind(tcx: ty::ctxt, t: ty::t) -> kind {
         ret if ty::type_is_fp(tcx, t) {
                 float
-            } else if ty::type_is_native(tcx, t) ||
-                      ty::type_is_unsafe_ptr(tcx, t) {
+            } else if ty::type_is_unsafe_ptr(tcx, t) {
                 pointer
             } else if ty::type_is_integral(tcx, t) {
                 integral
@@ -4905,7 +4898,6 @@ fn trans_native_mod(lcx: @local_ctxt, native_mod: ast::native_mod,
 
     for native_item in native_mod.items {
       alt native_item.node {
-        ast::native_item_ty {}
         ast::native_item_fn(fn_decl, tps) {
           let id = native_item.id;
           let tys = c_stack_tys(ccx, id);
@@ -5144,10 +5136,6 @@ fn native_fn_ty_param_count(cx: @crate_ctxt, id: ast::node_id) -> uint {
          _ { cx.sess.bug("native_fn_ty_param_count\
                          given a non-native item"); } };
     alt native_item.node {
-      ast::native_item_ty {
-        cx.sess.bug("register_native_fn(): native fn isn't \
-                        actually a fn");
-      }
       ast::native_item_fn(_, tps) {
         count = vec::len::<ast::ty_param>(tps);
       }

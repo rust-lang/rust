@@ -85,7 +85,6 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
       _ { }
     }
     ret alt struct(cx, typ) {
-      ty_native(_) { "native" }
       ty_nil { "()" }
       ty_bot { "_|_" }
       ty_bool { "bool" }

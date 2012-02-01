@@ -255,7 +255,6 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
         ret ty::mk_res(st.tcx, def, inner, params);
       }
       'X' { ret ty::mk_var(st.tcx, parse_int(st)); }
-      'E' { let def = parse_def(st, conv); ret ty::mk_native(st.tcx, def); }
       'Y' { ret ty::mk_type(st.tcx); }
       'y' { ret ty::mk_send_type(st.tcx); }
       'C' {

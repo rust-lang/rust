@@ -198,7 +198,6 @@ fn lookup_def(cnum: ast::crate_num, data: @[u8], did_: ast::def_id) ->
           'f' { ast::def_fn(did, ast::impure_fn) }
           'p' { ast::def_fn(did, ast::pure_fn) }
           'y' { ast::def_ty(did) }
-          'T' { ast::def_native_ty(did) }
           't' { ast::def_ty(did) }
           'm' { ast::def_mod(did) }
           'n' { ast::def_native_mod(did) }

@@ -103,7 +103,7 @@ fn type_is_gc_relevant(cx: ty::ctxt, ty: ty::t) -> bool {
     alt ty::struct(cx, ty) {
       ty::ty_nil | ty::ty_bot | ty::ty_bool | ty::ty_int(_) |
       ty::ty_float(_) | ty::ty_uint(_) | ty::ty_str |
-      ty::ty_type | ty::ty_send_type | ty::ty_ptr(_) | ty::ty_native(_) {
+      ty::ty_type | ty::ty_send_type | ty::ty_ptr(_) {
         ret false;
       }
       ty::ty_rec(fields) {

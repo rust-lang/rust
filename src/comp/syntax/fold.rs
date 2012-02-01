@@ -189,7 +189,6 @@ fn noop_fold_native_item(&&ni: @native_item, fld: ast_fold) -> @native_item {
           attrs: vec::map(ni.attrs, fold_attribute),
           node:
               alt ni.node {
-                native_item_ty { native_item_ty }
                 native_item_fn(fdec, typms) {
                   native_item_fn({inputs: vec::map(fdec.inputs, fold_arg),
                                   output: fld.fold_ty(fdec.output),

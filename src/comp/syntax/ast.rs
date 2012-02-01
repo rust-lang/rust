@@ -45,7 +45,6 @@ enum def {
     def_ty_param(def_id, uint),
     def_binding(def_id),
     def_use(def_id),
-    def_native_ty(def_id),
     def_upvar(def_id, @def, node_id), // node_id == expr_fn or expr_fn_block
 }
 
@@ -477,7 +476,6 @@ type native_item =
      span: span};
 
 enum native_item_ {
-    native_item_ty,
     native_item_fn(fn_decl, [ty_param]),
 }
 

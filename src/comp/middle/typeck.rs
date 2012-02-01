@@ -338,7 +338,6 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
           some(ast::def_ty(id)) {
             typ = instantiate(tcx, ast_ty.span, mode, id, path.node.types);
           }
-          some(ast::def_native_ty(id)) { typ = getter(tcx, mode, id).ty; }
           some(ast::def_ty_param(id, n)) {
             typ = ty::mk_param(tcx, n, id);
           }
@@ -437,17 +436,6 @@ fn ty_of_native_item(tcx: ty::ctxt, mode: mode, it: @ast::native_item)
       ast::native_item_fn(fn_decl, params) {
         ret ty_of_native_fn_decl(tcx, mode, fn_decl, params,
                                  local_def(it.id));
-      }
-      ast::native_item_ty {
-        alt tcx.tcache.find(local_def(it.id)) {
-          some(tpt) { ret tpt; }
-          none { }
-        }
-        let t = ty::mk_native(tcx, local_def(it.id));
-        let t = ty::mk_named(tcx, t, @it.ident);
-        let tpt = {bounds: @[], ty: t};
-        tcx.tcache.insert(local_def(it.id), tpt);
-        ret tpt;
       }
     }
 }
@@ -762,9 +750,6 @@ mod collect {
         // table.
         let tpt = ty_of_native_item(cx.tcx, m_collect, i);
         alt i.node {
-          ast::native_item_ty {
-            // FIXME: Native types have no annotation. Should they? --pcw
-          }
           ast::native_item_fn(_, _) {
             write_ty(cx.tcx, i.id, tpt.ty);
           }

@@ -211,7 +211,6 @@ fn visit_native_item<E>(ni: @native_item, e: E, v: vt<E>) {
         v.visit_ty_params(tps, e, v);
         visit_fn_decl(fd, e, v);
       }
-      native_item_ty { }
     }
 }
 

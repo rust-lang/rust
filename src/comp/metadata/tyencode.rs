@@ -163,11 +163,6 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
         w.write_char(']');
       }
       ty::ty_var(id) { w.write_char('X'); w.write_str(int::str(id)); }
-      ty::ty_native(def) {
-        w.write_char('E');
-        w.write_str(cx.ds(def));
-        w.write_char('|');
-      }
       ty::ty_param(id, did) {
         w.write_char('p');
         w.write_str(cx.ds(did));

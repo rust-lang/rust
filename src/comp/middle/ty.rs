@@ -68,7 +68,6 @@ export mk_vec;
 export mk_mach_int;
 export mk_mach_uint;
 export mk_mach_float;
-export mk_native;
 export mk_nil;
 export mk_iface;
 export mk_res;
@@ -116,7 +115,6 @@ export ty_fn_ret_style;
 export ty_int;
 export ty_str;
 export ty_vec;
-export ty_native;
 export ty_nil;
 export ty_iface;
 export ty_res;
@@ -153,7 +151,6 @@ export type_is_fp;
 export type_allows_implicit_copy;
 export type_is_integral;
 export type_is_numeric;
-export type_is_native;
 export type_is_nil;
 export type_is_pod;
 export type_is_scalar;
@@ -270,7 +267,6 @@ enum sty {
 
     ty_type, // type_desc*
     ty_send_type, // type_desc* that has been cloned into exchange heap
-    ty_native(def_id),
     ty_constr(t, [@type_constr]),
     ty_opaque_closure_ptr(closure_kind), // ptr to env for fn, fn@, fn~
     ty_named(t, @str),
@@ -458,10 +454,7 @@ fn mk_raw_ty(cx: ctxt, st: sty) -> @raw_t {
     }
     alt st {
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
-      ty_str | ty_type | ty_send_type | ty_native(_) |
-      ty_opaque_closure_ptr(_) {
-        /* no-op */
-      }
+      ty_str | ty_type | ty_send_type | ty_opaque_closure_ptr(_) {}
       ty_param(_, _) { has_params = true; }
       ty_var(_) { has_vars = true; }
       ty_enum(_, tys) | ty_iface(_, tys) {
@@ -607,8 +600,6 @@ fn mk_type(_cx: ctxt) -> t { ret idx_type; }
 
 fn mk_send_type(_cx: ctxt) -> t { ret idx_send_type; }
 
-fn mk_native(cx: ctxt, did: def_id) -> t { ret gen_ty(cx, ty_native(did)); }
-
 fn mk_opaque_closure_ptr(cx: ctxt, ck: closure_kind) -> t {
     ret gen_ty(cx, ty_opaque_closure_ptr(ck));
 }
@@ -658,7 +649,7 @@ pure fn ty_name(cx: ctxt, typ: t) -> option<@str> {
 fn walk_ty(cx: ctxt, ty: t, f: fn(t)) {
     alt struct(cx, ty) {
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
-      ty_str | ty_send_type | ty_type | ty_native(_) |
+      ty_str | ty_send_type | ty_type |
       ty_opaque_closure_ptr(_) | ty_var(_) | ty_param(_, _) {}
       ty_box(tm) | ty_vec(tm) | ty_ptr(tm) { walk_ty(cx, tm.ty, f); }
       ty_enum(_, subtys) | ty_iface(_, subtys) {
@@ -702,10 +693,7 @@ fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
     }
     alt interner::get(*cx.ts, ty).struct {
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
-      ty_str | ty_type | ty_send_type | ty_native(_) |
-      ty_opaque_closure_ptr(_) {
-        /* no-op */
-      }
+      ty_str | ty_type | ty_send_type | ty_opaque_closure_ptr(_) {}
       ty_box(tm) {
         ty = mk_box(cx, {ty: fold_ty(cx, fld, tm.ty), mut: tm.mut});
       }
@@ -889,7 +877,7 @@ pure fn type_is_unique(cx: ctxt, ty: t) -> bool {
 pure fn type_is_scalar(cx: ctxt, ty: t) -> bool {
     alt struct(cx, ty) {
       ty_nil | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
-      ty_send_type | ty_type | ty_native(_) | ty_ptr(_) { true }
+      ty_send_type | ty_type | ty_ptr(_) { true }
       _ { false }
     }
 }
@@ -897,7 +885,7 @@ pure fn type_is_scalar(cx: ctxt, ty: t) -> bool {
 // FIXME maybe inline this for speed?
 fn type_is_immediate(cx: ctxt, ty: t) -> bool {
     ret type_is_scalar(cx, ty) || type_is_boxed(cx, ty) ||
-        type_is_unique(cx, ty) || type_is_native(cx, ty);
+        type_is_unique(cx, ty);
 }
 
 fn type_needs_drop(cx: ctxt, ty: t) -> bool {
@@ -910,7 +898,7 @@ fn type_needs_drop(cx: ctxt, ty: t) -> bool {
     let result = alt struct(cx, ty) {
       // scalar types
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
-      ty_type | ty_native(_) | ty_ptr(_) { false }
+      ty_type | ty_ptr(_) { false }
       ty_rec(flds) {
         for f in flds { if type_needs_drop(cx, f.mt.ty) { accum = true; } }
         accum
@@ -993,8 +981,7 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
     let result = alt struct(cx, ty) {
       // Scalar and unique types are sendable
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
-      ty_native(_) | ty_ptr(_) |
-      ty_send_type | ty_str { kind_sendable }
+      ty_ptr(_) | ty_send_type | ty_str { kind_sendable }
       ty_type { kind_copyable }
       ty_fn(f) { proto_kind(f.proto) }
       ty_opaque_closure_ptr(ck_block) { kind_noncopyable }
@@ -1041,12 +1028,6 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
 
     cx.kind_cache.insert(ty, result);
     ret result;
-}
-
-// FIXME: should we just return true for native types in
-// type_is_scalar?
-fn type_is_native(cx: ctxt, ty: t) -> bool {
-    alt struct(cx, ty) { ty_native(_) { ret true; } _ { ret false; } }
 }
 
 fn type_structurally_contains(cx: ctxt, ty: t, test: fn(sty) -> bool) ->
@@ -1168,7 +1149,7 @@ fn type_is_pod(cx: ctxt, ty: t) -> bool {
     alt struct(cx, ty) {
       // Scalar types
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
-      ty_send_type | ty_type | ty_native(_) | ty_ptr(_) { result = true; }
+      ty_send_type | ty_type | ty_ptr(_) { result = true; }
       // Boxed types
       ty_str | ty_box(_) | ty_uniq(_) | ty_vec(_) | ty_fn(_) |
       ty_iface(_, _) { result = false; }
@@ -1359,7 +1340,6 @@ fn hash_type_structure(st: sty) -> uint {
       ty_var(v) { ret hash_uint(30u, v as uint); }
       ty_param(pid, _) { ret hash_uint(31u, pid); }
       ty_type { ret 32u; }
-      ty_native(did) { ret hash_def(33u, did); }
       ty_bot { ret 34u; }
       ty_ptr(mt) { ret hash_subty(35u, mt.ty); }
       ty_res(did, sub, tps) {
@@ -2082,16 +2062,6 @@ mod unify {
           ty::ty_str | ty::ty_send_type {
             ret struct_cmp(cx, expected, actual);
           }
-          ty::ty_native(ex_id) {
-            alt struct(cx.tcx, actual) {
-              ty_native(act_id) {
-                if ex_id.crate == act_id.crate && ex_id.node == act_id.node {
-                    ret ures_ok(actual);
-                } else { ret ures_err(terr_mismatch); }
-              }
-              _ { ret ures_err(terr_mismatch); }
-            }
-          }
           ty::ty_param(expected_n, _) {
             alt struct(cx.tcx, actual) {
               ty::ty_param(actual_n, _) if expected_n == actual_n {
@@ -2515,7 +2485,7 @@ fn def_has_ty_params(def: ast::def) -> bool {
       ast::def_mod(_) | ast::def_const(_) |
       ast::def_arg(_, _) | ast::def_local(_, _) | ast::def_upvar(_, _, _) |
       ast::def_ty_param(_, _) | ast::def_binding(_) | ast::def_use(_) |
-      ast::def_native_ty(_) | ast::def_self(_) | ast::def_ty(_) { false }
+      ast::def_self(_) | ast::def_ty(_) { false }
       ast::def_fn(_, _) | ast::def_variant(_, _) { true }
       _ { false } // ????
     }

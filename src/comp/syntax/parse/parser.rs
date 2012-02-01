@@ -1963,18 +1963,6 @@ fn parse_item_mod(p: parser, attrs: [ast::attribute]) -> @ast::item {
     ret mk_item(p, lo, hi, id, ast::item_mod(m), attrs + inner_attrs.inner);
 }
 
-fn parse_item_native_type(p: parser, attrs: [ast::attribute]) ->
-   @ast::native_item {
-    let t = parse_type_decl(p);
-    let hi = p.span.hi;
-    expect(p, token::SEMI);
-    ret @{ident: t.ident,
-          attrs: attrs,
-          node: ast::native_item_ty,
-          id: p.get_id(),
-          span: ast_util::mk_sp(t.lo, hi)};
-}
-
 fn parse_item_native_fn(p: parser, attrs: [ast::attribute],
                         purity: ast::purity) -> @ast::native_item {
     let lo = p.last_span.lo;
@@ -1991,9 +1979,7 @@ fn parse_item_native_fn(p: parser, attrs: [ast::attribute],
 
 fn parse_native_item(p: parser, attrs: [ast::attribute]) ->
    @ast::native_item {
-    if eat_word(p, "type") {
-        ret parse_item_native_type(p, attrs);
-    } else if eat_word(p, "fn") {
+    if eat_word(p, "fn") {
         ret parse_item_native_fn(p, attrs, ast::impure_fn);
     } else if eat_word(p, "pure") {
         expect_word(p, "fn");
