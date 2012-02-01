@@ -108,7 +108,7 @@ fn span_to_lines(sp: span, cm: codemap::codemap) -> @file_lines {
     ret @{name: lo.filename, lines: lines};
 }
 
-fn get_line(fm: filemap, line: int) -> str {
+fn get_line(fm: filemap, line: int) -> str unsafe {
     let begin: uint = fm.lines[line].byte - fm.start_pos.byte;
     let end: uint;
     if line as uint < vec::len(fm.lines) - 1u {
@@ -118,11 +118,11 @@ fn get_line(fm: filemap, line: int) -> str {
         // parsed. If we just slice the rest of the string, we'll print out
         // the remainder of the file, which is undesirable.
         end = str::byte_len(*fm.src);
-        let rest = str::slice(*fm.src, begin, end);
+        let rest = str::unsafe::slice(*fm.src, begin, end);
         let newline = str::index(rest, '\n' as u8);
         if newline != -1 { end = begin + (newline as uint); }
     }
-    ret str::slice(*fm.src, begin, end);
+    ret str::unsafe::slice(*fm.src, begin, end);
 }
 
 fn get_filemap(cm: codemap, filename: str) -> filemap {
