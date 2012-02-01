@@ -13,7 +13,7 @@ import codemap::span;
 import syntax::ext::build::*;
 export expand_syntax_ext;
 
-fn expand_syntax_ext(cx: ext_ctxt, sp: span, arg: @ast::expr,
+fn expand_syntax_ext(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                      _body: ast::mac_body) -> @ast::expr {
     let args: [@ast::expr] =
         alt arg.node {

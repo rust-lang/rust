@@ -993,7 +993,24 @@ fn parse_syntax_ext_naked(p: parser, lo: uint) -> @ast::expr {
         };
     let hi = es.span.hi;
     let e = mk_expr(p, es.span.lo, hi, ast::expr_vec(es.node, ast::imm));
-    ret mk_mac_expr(p, lo, hi, ast::mac_invoc(pth, e, none));
+    let b = none;
+    if p.token == token::LBRACE {
+        p.bump();
+        let lo = p.span.lo;
+        let depth = 1u;
+        while (depth > 0u) {
+            alt (p.token) {
+              token::LBRACE {depth += 1u;}
+              token::RBRACE {depth -= 1u;}
+              token::EOF {p.fatal("unexpected EOF in macro body");}
+              _ {}
+            }
+            p.bump();
+        }
+        let hi = p.last_span.hi;
+        b = some({span: mk_sp(lo,hi)});
+    }
+    ret mk_mac_expr(p, lo, p.span.hi, ast::mac_invoc(pth, e, b));
 }
 
 fn parse_dot_or_call_expr(p: parser) -> pexpr {

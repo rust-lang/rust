@@ -6,7 +6,7 @@ import std::map::{hashmap, new_str_hash};
 import option::{some, none};
 import driver::session::session;
 
-import base::{ext_ctxt, normal};
+import base::*;
 
 import fold::*;
 import ast_util::respan;
@@ -669,7 +669,7 @@ fn p_t_s_r_actual_vector(cx: ext_ctxt, elts: [@expr], _repeat_after: bool,
     }
 }
 
-fn add_new_extension(cx: ext_ctxt, sp: span, arg: @expr,
+fn add_new_extension(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                      _body: ast::mac_body) -> base::macro_def {
     let args: [@ast::expr] =
         alt arg.node {
@@ -715,8 +715,10 @@ fn add_new_extension(cx: ext_ctxt, sp: span, arg: @expr,
                       }
                     }
                     clauses +=
-                        [@{params: pattern_to_selectors(cx, invoc_arg),
+                        [@{params: pattern_to_selectors
+                               (cx, invoc_arg),
                            body: elts[1u]}];
+
                     // FIXME: check duplicates (or just simplify
                     // the macro arg situation)
                   }
@@ -753,7 +755,7 @@ fn add_new_extension(cx: ext_ctxt, sp: span, arg: @expr,
              },
          ext: normal(ext)};
 
-    fn generic_extension(cx: ext_ctxt, sp: span, arg: @expr,
+    fn generic_extension(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                          _body: ast::mac_body, clauses: [@clause]) -> @expr {
         for c: @clause in clauses {
             alt use_selectors_to_bind(c.params, arg) {
