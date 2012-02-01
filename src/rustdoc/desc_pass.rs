@@ -21,7 +21,8 @@ fn run(
         fold_fn: fold_fn,
         fold_enum: fold_enum,
         fold_res: fold_res,
-        fold_iface: fold_iface
+        fold_iface: fold_iface,
+        fold_impl: fold_impl
         with *fold::default_seq_fold(op)
     });
     fold.fold_crate(fold, doc)
@@ -104,24 +105,37 @@ fn fold_iface(fold: fold::fold<op>, doc: doc::ifacedoc) -> doc::ifacedoc {
     {
         brief: maybe_apply_op(fold.ctxt, doc.brief),
         desc: maybe_apply_op(fold.ctxt, doc.desc),
-        methods: vec::map(doc.methods) {|doc|
-            {
-                brief: maybe_apply_op(fold.ctxt, doc.brief),
-                desc: maybe_apply_op(fold.ctxt, doc.desc),
-                args: vec::map(doc.args) {|doc|
-                    {
-                        desc: maybe_apply_op(fold.ctxt, doc.desc)
-                        with doc
-                    }
-                },
-                return: {
-                    desc: maybe_apply_op(fold.ctxt, doc.return.desc)
-                    with doc.return
-                },
-                failure: maybe_apply_op(fold.ctxt, doc.failure)
-                with doc
-            }
+        methods: apply_to_methods(fold.ctxt, doc.methods)
+        with doc
+    }
+}
+
+fn apply_to_methods(op: op, docs: [doc::methoddoc]) -> [doc::methoddoc] {
+    vec::map(docs) {|doc|
+        {
+            brief: maybe_apply_op(op, doc.brief),
+            desc: maybe_apply_op(op, doc.desc),
+            args: vec::map(doc.args) {|doc|
+                {
+                    desc: maybe_apply_op(op, doc.desc)
+                    with doc
+                }
+            },
+            return: {
+                desc: maybe_apply_op(op, doc.return.desc)
+                with doc.return
+            },
+            failure: maybe_apply_op(op, doc.failure)
+            with doc
         }
+    }
+}
+
+fn fold_impl(fold: fold::fold<op>, doc: doc::impldoc) -> doc::impldoc {
+    {
+        brief: maybe_apply_op(fold.ctxt, doc.brief),
+        desc: maybe_apply_op(fold.ctxt, doc.desc),
+        methods: apply_to_methods(fold.ctxt, doc.methods)
         with doc
     }
 }
@@ -209,6 +223,55 @@ fn should_execute_op_on_iface_method_return() {
 fn should_execute_op_on_iface_method_failure_condition() {
     let doc = test::mk_doc("iface i { #[doc(failure = \" a \")] fn a(); }");
     assert doc.topmod.ifaces()[0].methods[0].failure == some("a");
+}
+
+#[test]
+fn should_execute_op_on_impl_brief() {
+    let doc = test::mk_doc(
+        "#[doc(brief = \" a \")] impl i for int { fn a() { } }");
+    assert doc.topmod.impls()[0].brief == some("a");
+}
+
+#[test]
+fn should_execute_op_on_impl_desc() {
+    let doc = test::mk_doc(
+        "#[doc(desc = \" a \")] impl i for int { fn a() { } }");
+    assert doc.topmod.impls()[0].desc == some("a");
+}
+
+#[test]
+fn should_execute_op_on_impl_method_brief() {
+    let doc = test::mk_doc(
+        "impl i for int { #[doc(brief = \" a \")] fn a() { } }");
+    assert doc.topmod.impls()[0].methods[0].brief == some("a");
+}
+
+#[test]
+fn should_execute_op_on_impl_method_desc() {
+    let doc = test::mk_doc(
+        "impl i for int { #[doc(desc = \" a \")] fn a() { } }");
+    assert doc.topmod.impls()[0].methods[0].desc == some("a");
+}
+
+#[test]
+fn should_execute_op_on_impl_method_args() {
+    let doc = test::mk_doc(
+        "impl i for int { #[doc(args(a = \" a \"))] fn a(a: bool) { } }");
+    assert doc.topmod.impls()[0].methods[0].args[0].desc == some("a");
+}
+
+#[test]
+fn should_execute_op_on_impl_method_return() {
+    let doc = test::mk_doc(
+        "impl i for int { #[doc(return = \" a \")] fn a() -> int { fail } }");
+    assert doc.topmod.impls()[0].methods[0].return.desc == some("a");
+}
+
+#[test]
+fn should_execute_op_on_impl_method_failure_condition() {
+    let doc = test::mk_doc(
+        "impl i for int { #[doc(failure = \" a \")] fn a() { } }");
+    assert doc.topmod.impls()[0].methods[0].failure == some("a");
 }
 
 #[cfg(test)]
