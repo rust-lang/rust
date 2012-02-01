@@ -100,8 +100,9 @@ fn run(source_file: str) {
         tystr_pass::mk_pass(),
         path_pass::mk_pass(),
         attr_pass::mk_pass(),
+        prune_undoc_details_pass::mk_pass(),
         // FIXME: This pass should be optional
-        prune_undoc_pass::mk_pass(),
+        // prune_undoc_items_pass::mk_pass(),
         desc_to_brief_pass::mk_pass(),
         trim_pass::mk_pass(),
         unindent_pass::mk_pass(),

@@ -1,4 +1,4 @@
-#[doc = "Prunes branches of the document tree that contain no documentation"];
+#[doc = "Prunes items of the document tree that contain no documentation"];
 
 export mk_pass;
 
@@ -109,63 +109,33 @@ fn fold_fn(
     fold: fold::fold<ctxt>,
     doc: doc::fndoc
 ) -> doc::fndoc {
-    let doc = {
-        args: prune_args(doc.args),
-        return: prune_return(doc.return)
-        with doc
-    };
+    let doc = fold::default_seq_fold_fn(fold, doc);
 
     fold.ctxt.have_docs =
         doc.brief != none
         || doc.desc != none
-        || vec::is_not_empty(doc.args)
+        || args_have_docs(doc.args)
         || doc.return.desc != none
         || doc.failure != none;
     ret doc;
 }
 
-fn prune_args(docs: [doc::argdoc]) -> [doc::argdoc] {
-    vec::filter_map(docs) {|doc|
-        if option::is_some(doc.desc) {
-            some(doc)
-        } else {
-            none
-        }
-    }
-}
-
-fn prune_return(doc: doc::retdoc) -> doc::retdoc {
-    {
-        ty: if option::is_some(doc.desc) {
-            doc.ty
-        } else {
-            none
-        }
-        with doc
+fn args_have_docs(docs: [doc::argdoc]) -> bool {
+    vec::foldl(false, docs) {|accum, doc|
+        accum || doc.desc != none
     }
 }
 
 #[test]
-fn should_elide_undocumented_arguments() {
-    let doc = test::mk_doc("#[doc = \"hey\"] fn a(b: int) { }");
-    assert vec::is_empty(doc.topmod.fns()[0].args);
+fn should_elide_fns_with_undocumented_arguments() {
+    let doc = test::mk_doc("fn a(a: int) { }");
+    assert vec::is_empty(doc.topmod.fns());
 }
 
 #[test]
 fn should_not_elide_fns_with_documented_arguments() {
     let doc = test::mk_doc("#[doc(args(a = \"b\"))] fn a(a: int) { }");
     assert vec::is_not_empty(doc.topmod.fns());
-}
-
-#[test]
-fn should_elide_undocumented_return_values() {
-    let source = "#[doc = \"fonz\"] fn a() -> int { }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = tystr_pass::mk_pass()(srv, doc);
-    let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = run(srv, doc);
-    assert doc.topmod.fns()[0].return.ty == none;
 }
 
 #[test]
@@ -252,20 +222,12 @@ fn should_not_elide_enums_with_documented_variants() {
 }
 
 fn fold_res(fold: fold::fold<ctxt>, doc: doc::resdoc) -> doc::resdoc {
-    let doc = {
-        args: vec::filter_map(doc.args) {|arg|
-            if arg.desc != none {
-                some(arg)
-            } else {
-                none
-            }
-        }
-        with fold::default_seq_fold_res(fold, doc)
-    };
+    let doc = fold::default_seq_fold_res(fold, doc);
+
     fold.ctxt.have_docs =
         doc.brief != none
         || doc.desc != none
-        || vec::is_not_empty(doc.args);
+        || args_have_docs(doc.args);
     ret doc;
 }
 
@@ -273,13 +235,6 @@ fn fold_res(fold: fold::fold<ctxt>, doc: doc::resdoc) -> doc::resdoc {
 fn should_elide_undocumented_resources() {
     let doc = test::mk_doc("resource r(a: bool) { }");
     assert vec::is_empty(doc.topmod.resources());
-}
-
-#[test]
-fn should_elide_undocumented_resource_args() {
-    let doc = test::mk_doc("#[doc = \"drunk\"]\
-                            resource r(a: bool) { }");
-    assert vec::is_empty(doc.topmod.resources()[0].args);
 }
 
 #[test]
@@ -294,10 +249,7 @@ fn fold_iface(
     doc: doc::ifacedoc
 ) -> doc::ifacedoc {
     let doc = fold::default_seq_fold_iface(fold, doc);
-    let doc = {
-        methods: prune_methods(doc.methods)
-        with doc
-    };
+
     fold.ctxt.have_docs =
         doc.brief != none
         || doc.desc != none
@@ -305,22 +257,12 @@ fn fold_iface(
     ret doc;
 }
 
-fn prune_methods(docs: [doc::methoddoc]) -> [doc::methoddoc] {
-    vec::map(docs) {|doc|
-        {
-            args: prune_args(doc.args),
-            return: prune_return(doc.return)
-            with doc
-        }
-    }
-}
-
 fn methods_have_docs(docs: [doc::methoddoc]) -> bool {
     vec::foldl(false, docs) {|accum, doc|
         accum
             || doc.brief != none
             || doc.desc != none
-            || vec::is_not_empty(doc.args)
+            || args_have_docs(doc.args)
             || doc.return.desc != none
             || doc.failure != none
     }
@@ -339,6 +281,12 @@ fn should_not_elide_documented_ifaces() {
 }
 
 #[test]
+fn should_elide_ifaces_with_undocumented_args() {
+    let doc = test::mk_doc("iface i { fn a(b: bool); }");
+    assert vec::is_empty(doc.topmod.ifaces());
+}
+
+#[test]
 fn should_not_elide_ifaces_with_documented_methods() {
     let doc = test::mk_doc("iface i { #[doc = \"hey\"] fn a(); }");
     assert vec::is_not_empty(doc.topmod.ifaces());
@@ -350,27 +298,12 @@ fn should_not_elide_undocumented_iface_methods() {
     assert vec::is_not_empty(doc.topmod.ifaces()[0].methods);
 }
 
-#[test]
-fn should_elide_undocumented_iface_method_args() {
-    let doc = test::mk_doc("#[doc = \"hey\"] iface i { fn a(); }");
-    assert vec::is_empty(doc.topmod.ifaces()[0].methods[0].args);
-}
-
-#[test]
-fn should_elide_undocumented_iface_method_return_values() {
-    let doc = test::mk_doc("#[doc = \"hey\"] iface i { fn a() -> int; }");
-    assert doc.topmod.ifaces()[0].methods[0].return.ty == none;
-}
-
 fn fold_impl(
     fold: fold::fold<ctxt>,
     doc: doc::impldoc
 ) -> doc::impldoc {
     let doc = fold::default_seq_fold_impl(fold, doc);
-    let doc = {
-        methods: prune_methods(doc.methods)
-        with doc
-    };
+
     fold.ctxt.have_docs =
         doc.brief != none
         || doc.desc != none
@@ -400,20 +333,6 @@ fn should_not_elide_impls_with_documented_methods() {
 fn should_not_elide_undocumented_impl_methods() {
     let doc = test::mk_doc("#[doc = \"hey\"] impl i for int { fn a() { } }");
     assert vec::is_not_empty(doc.topmod.impls()[0].methods);
-}
-
-#[test]
-fn should_elide_undocumented_impl_method_args() {
-    let doc = test::mk_doc(
-        "#[doc = \"hey\"] impl i for int { fn a(b: bool) { } }");
-    assert vec::is_empty(doc.topmod.impls()[0].methods[0].args);
-}
-
-#[test]
-fn should_elide_undocumented_impl_method_return_values() {
-    let doc = test::mk_doc(
-        "#[doc = \"hey\"] impl i for int { fn a() -> int { } }");
-    assert doc.topmod.impls()[0].methods[0].return.ty == none;
 }
 
 #[cfg(test)]
