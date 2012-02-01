@@ -184,7 +184,7 @@ impl util for itemtag {
           doc::enumtag({name, _}) { name }
           doc::restag({name, _}) { name }
           doc::ifacetag({name, _}) { name }
-          _ { fail }
+          doc::impltag({name, _}) { name }
         }
     }
 }
