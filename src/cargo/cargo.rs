@@ -162,7 +162,7 @@ fn rest(s: str, start: uint) -> str {
     if (start >= str::char_len(s)) {
         ""
     } else {
-        str::char_slice(s, start, str::char_len(s))
+        str::slice(s, start, str::char_len(s))
     }
 }
 
