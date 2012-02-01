@@ -14,7 +14,7 @@ if !exists("main_syntax")
   let main_syntax='rust'
 endif
 
-syn keyword   rustKeyword     alt as assert be bind block break
+syn keyword   rustKeyword     alt as assert be bind break
 syn keyword   rustKeyword     check claim cont const copy do else enum export fail
 syn keyword   rustKeyword     fn for if iface impl import in inline lambda let log
 syn keyword   rustKeyword     mod mutable native note of prove pure
