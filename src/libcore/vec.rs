@@ -1526,6 +1526,7 @@ mod tests {
 
     #[test]
     #[should_fail]
+    #[ignore(cfg(target_os = "win32"))]
     fn test_windowed_() {
         let _x = windowed (0u, [1u,2u,3u,4u,5u,6u]);
     }

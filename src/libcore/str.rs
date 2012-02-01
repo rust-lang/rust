@@ -1769,6 +1769,7 @@ mod tests {
 
     #[test]
     #[should_fail]
+    #[ignore(cfg(target_os = "win32"))]
     fn test_from_bytes_fail() {
         let bb = [0xff_u8, 0xb8_u8, 0xa8_u8,
                   0xe0_u8, 0xb9_u8, 0x84_u8,
@@ -1995,6 +1996,7 @@ mod tests {
 
     #[test]
     #[should_fail]
+    #[ignore(cfg(target_os = "win32"))]
     fn test_windowed_() {
         let _x = windowed(0u, "abcd");
     }
