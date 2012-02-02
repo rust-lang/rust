@@ -56,8 +56,11 @@ fn main() {
     let expr4 = #ast{2 - $(#(3)) + 9};
     check_pp(expr4,  pprust::print_expr, "2 - 3 + 9");
 
-    let ty = #ast(ty){option<int>};
-    check_pp(ty, pprust::print_type, "option<int>");
+    let ty = #ast(ty){int};
+    check_pp(ty, pprust::print_type, "int");
+
+    let ty2 = #ast(ty){option<$(ty)>};
+    check_pp(ty2, pprust::print_type, "option<int>");
 
     let item = #ast(item){const x : int = 10;};
     check_pp(item, pprust::print_item, "const x: int = 10;");
@@ -68,8 +71,8 @@ fn main() {
     let stmt = #ast(stmt){let x = 20;};
     check_pp(*stmt, pprust::print_stmt, "let x = 20;");
 
-    let stmt2 = #ast(stmt){let x : $(ty) = some($(abc));};
-    check_pp(*stmt2, pprust::print_stmt, "let x: option<int> = some(23);");
+    let stmt2 = #ast(stmt){let x : $(ty) = $(abc);};
+    check_pp(*stmt2, pprust::print_stmt, "let x: int = 23;");
 
     let pat = #ast(pat){some(_)};
     check_pp(pat, pprust::print_pat, "some(_)");
