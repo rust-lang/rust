@@ -3,10 +3,6 @@ This is intended to be a low-level binding to libuv that very closely mimics
 the C libuv API. Does very little right now pending scheduler improvements.
 */
 
-#[cfg(target_os = "linux")];
-#[cfg(target_os = "macos")];
-#[cfg(target_os = "freebsd")];
-
 export sanity_check;
 export loop_t, idle_t;
 export loop_new, loop_delete, default_loop, run, unref;
@@ -38,9 +34,6 @@ type handle_type = ctypes::enum;
 type close_cb = opaque_cb;
 type idle_cb = opaque_cb;
 
-#[cfg(target_os = "linux")]
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "freebsd")]
 type handle_private_fields = {
     a00: ctypes::c_int,
     a01: ctypes::c_int,
@@ -121,9 +114,6 @@ fn sanity_check() {
                sys::size_of::<idle_t>());
 }
 
-#[cfg(target_os = "linux")]
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "freebsd")]
 fn handle_fields_new() -> handle_fields {
     {
         loop: ptr::null(),
@@ -154,46 +144,53 @@ fn idle_new() -> idle_t {
     }
 }
 
-#[cfg(test)]
-mod tests {
+#[cfg(target_os = "linux")]
+#[cfg(target_os = "macos")]
+#[cfg(target_os = "freebsd")]
+// FIXME: We're out of date on libuv and not testing
+// it on windows presently. This needs to change.
+mod os {
 
-    #[test]
-    fn test_sanity_check() {
-        sanity_check();
-    }
-
-    // From test-ref.c
-    mod test_ref {
+    #[cfg(test)]
+    mod tests {
 
         #[test]
-        fn ref() {
-            let loop = loop_new();
-            run(loop);
-            loop_delete(loop);
+        fn test_sanity_check() {
+            sanity_check();
         }
 
-        #[test]
-        fn idle_ref() {
-            let loop = loop_new();
-            let h = idle_new();
-            idle_init(loop, ptr::addr_of(h));
-            idle_start(ptr::addr_of(h), ptr::null());
-            unref(loop);
-            run(loop);
-            loop_delete(loop);
-        }
+        // From test-ref.c
+        mod test_ref {
 
-        #[test]
-        fn async_ref() {
-            /*
-            let loop = loop_new();
-            let h = async_new();
-            async_init(loop, ptr::addr_of(h), ptr::null());
-            unref(loop);
-            run(loop);
-            loop_delete(loop);
-            */
+            #[test]
+            fn ref() {
+                let loop = loop_new();
+                run(loop);
+                loop_delete(loop);
+            }
+
+            #[test]
+            fn idle_ref() {
+                let loop = loop_new();
+                let h = idle_new();
+                idle_init(loop, ptr::addr_of(h));
+                idle_start(ptr::addr_of(h), ptr::null());
+                unref(loop);
+                run(loop);
+                loop_delete(loop);
+            }
+
+            #[test]
+            fn async_ref() {
+                /*
+                let loop = loop_new();
+                let h = async_new();
+                async_init(loop, ptr::addr_of(h), ptr::null());
+                unref(loop);
+                run(loop);
+                loop_delete(loop);
+                */
+            }
         }
     }
 }
-

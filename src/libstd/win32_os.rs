@@ -44,7 +44,7 @@ mod libc_constants {
 }
 
 type DWORD = u32;
-type HMODULE = uint;
+type HMODULE = c_uint;
 type LPTSTR = str::sbuf;
 type LPCTSTR = str::sbuf;
 
@@ -52,9 +52,9 @@ type LPSECURITY_ATTRIBUTES = *ctypes::void;
 
 #[abi = "stdcall"]
 native mod kernel32 {
-    fn GetEnvironmentVariableA(n: str::sbuf, v: str::sbuf, nsize: uint) ->
-       uint;
-    fn SetEnvironmentVariableA(n: str::sbuf, v: str::sbuf) -> int;
+    fn GetEnvironmentVariableA(n: str::sbuf, v: str::sbuf, nsize: c_uint) ->
+       c_uint;
+    fn SetEnvironmentVariableA(n: str::sbuf, v: str::sbuf) -> c_int;
     fn GetModuleFileNameA(hModule: HMODULE,
                           lpFilename: LPTSTR,
                           nSize: DWORD) -> DWORD;
@@ -99,7 +99,7 @@ fn fclose(file: FILE) {
     libc::fclose(file)
 }
 
-fn fsync_fd(fd: fd_t, level: io::fsync::level) -> c_int {
+fn fsync_fd(_fd: fd_t, _level: io::fsync::level) -> c_int {
     // FIXME (1253)
     fail;
 }
