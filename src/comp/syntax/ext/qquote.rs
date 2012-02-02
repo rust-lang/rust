@@ -18,7 +18,8 @@ import codemap::span;
 
 type aq_ctxt = @{lo: uint,
                  mutable gather: [{lo: uint, hi: uint,
-                                   e: @ast::expr, constr: str}]};
+                                   e: @ast::expr,
+                                   constr: str}]};
 enum fragment {
     from_expr(@ast::expr),
     from_ty(@ast::ty)
@@ -29,6 +30,7 @@ iface qq_helper {
     fn visit(aq_ctxt, vt<aq_ctxt>);
     fn extract_mac() -> option<ast::mac_>;
     fn mk_parse_fn(ext_ctxt,span) -> @ast::expr;
+    fn get_fold_fn() -> str;
 }
 impl of qq_helper for @ast::expr {
     fn span() -> span {self.span}
@@ -42,6 +44,7 @@ impl of qq_helper for @ast::expr {
     fn mk_parse_fn(cx: ext_ctxt, sp: span) -> @ast::expr {
         mk_path(cx, sp, ["syntax", "parse", "parser", "parse_expr"])
     }
+    fn get_fold_fn() -> str {"fold_expr"}
 }
 impl of qq_helper for @ast::ty {
     fn span() -> span {self.span}
@@ -55,6 +58,7 @@ impl of qq_helper for @ast::ty {
     fn mk_parse_fn(cx: ext_ctxt, sp: span) -> @ast::expr {
         mk_path(cx, sp, ["syntax", "ext", "qquote", "parse_ty"])
     }
+    fn get_fold_fn() -> str {"fold_ty"}
 }
 impl of qq_helper for @ast::item {
     fn span() -> span {self.span}
@@ -63,6 +67,7 @@ impl of qq_helper for @ast::item {
     fn mk_parse_fn(cx: ext_ctxt, sp: span) -> @ast::expr {
         mk_path(cx, sp, ["syntax", "ext", "qquote", "parse_item"])
     }
+    fn get_fold_fn() -> str {"fold_item"}
 }
 impl of qq_helper for @ast::stmt {
     fn span() -> span {self.span}
@@ -71,6 +76,7 @@ impl of qq_helper for @ast::stmt {
     fn mk_parse_fn(cx: ext_ctxt, sp: span) -> @ast::expr {
         mk_path(cx, sp, ["syntax", "ext", "qquote", "parse_stmt"])
     }
+    fn get_fold_fn() -> str {"fold_stmt"}
 }
 impl of qq_helper for @ast::pat {
     fn span() -> span {self.span}
@@ -79,6 +85,7 @@ impl of qq_helper for @ast::pat {
     fn mk_parse_fn(cx: ext_ctxt, sp: span) -> @ast::expr {
         mk_path(cx, sp, ["syntax", "parse", "parser", "parse_pat"])
     }
+    fn get_fold_fn() -> str {"fold_pat"}
 }
 
 fn gather_anti_quotes<N: qq_helper>(lo: uint, node: N) -> aq_ctxt
@@ -244,23 +251,30 @@ fn expand_qquote<N: qq_helper>
                          mk_vec_e(cx,sp, vec::map(qcx.gather) {|g|
                              mk_call(cx,sp,
                                      ["syntax", "ext", "qquote", g.constr],
-                                     [g.e])
-                         })]);
+                                     [g.e])}),
+                         mk_path(cx,sp,
+                                 ["syntax", "ext", "qquote",
+                                  node.get_fold_fn()])]);
     }
-
     ret rcall;
 }
 
-fn replace(e: @ast::expr, repls: [fragment]) -> @ast::expr {
+fn replace<T>(node: T, repls: [fragment], ff: fn (ast_fold, T) -> T)
+    -> T
+{
     let aft = default_ast_fold();
     let f_pre = {fold_expr: bind replace_expr(repls, _, _, _,
                                               aft.fold_expr),
                  fold_ty: bind replace_ty(repls, _, _, _,
                                           aft.fold_ty)
                  with *aft};
-    let f = make_fold(f_pre);
-    ret f.fold_expr(e);
+    ret ff(make_fold(f_pre), node);
 }
+fn fold_expr(f: ast_fold, &&n: @ast::expr) -> @ast::expr {f.fold_expr(n)}
+fn fold_ty(f: ast_fold, &&n: @ast::ty) -> @ast::ty {f.fold_ty(n)}
+fn fold_item(f: ast_fold, &&n: @ast::item) -> @ast::item {f.fold_item(n)}
+fn fold_stmt(f: ast_fold, &&n: @ast::stmt) -> @ast::stmt {f.fold_stmt(n)}
+fn fold_pat(f: ast_fold, &&n: @ast::pat) -> @ast::pat {f.fold_pat(n)}
 
 fn replace_expr(repls: [fragment],
                 e: ast::expr_, s: span, fld: ast_fold,

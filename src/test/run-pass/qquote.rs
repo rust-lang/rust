@@ -62,8 +62,8 @@ fn main() {
     let item = #ast(item){const x : int = 10;};
     check_pp(item, pprust::print_item, "const x: int = 10;");
 
-    //let item2: @ast::item = #ast(item){const x : int = $(abc);};
-    //check_pp(item2, pprust::print_item, "const x: int = 23;");
+    let item2: @ast::item = #ast(item){const x : int = $(abc);};
+    check_pp(item2, pprust::print_item, "const x: int = 23;");
 
     let stmt = #ast(stmt){let x = 20;};
     check_pp(*stmt, pprust::print_stmt, "let x = 20;");
