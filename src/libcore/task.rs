@@ -122,7 +122,7 @@ fn spawn(+f: fn~()) -> task {
 }
 
 fn spawn_inner(-f: fn~(),
-            notify: option::t<comm::chan<task_notification>>) -> task unsafe {
+            notify: option<comm::chan<task_notification>>) -> task unsafe {
     let closure: *rust_closure = unsafe::reinterpret_cast(ptr::addr_of(f));
     #debug("spawn: closure={%x,%x}", (*closure).fnptr, (*closure).envptr);
     let id = rustrt::new_task();

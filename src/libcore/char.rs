@@ -103,7 +103,7 @@ pure fn to_digit(c: char) -> u8 unsafe {
   brief = "Convert a char to the corresponding digit. Returns none when \
            character is not a valid hexadecimal digit."
 )]
-pure fn maybe_digit(c: char) -> option::t<u8> {
+pure fn maybe_digit(c: char) -> option<u8> {
     alt c {
       '0' to '9' { option::some(c as u8 - ('0' as u8)) }
       'a' to 'z' { option::some(c as u8 + 10u8 - ('a' as u8)) }

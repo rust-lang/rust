@@ -230,7 +230,7 @@ Returns:
 An option containing the last element of `v` if `v` is not empty, or
 none if `v` is empty.
 */
-pure fn last<T: copy>(v: [const T]) -> option::t<T> {
+pure fn last<T: copy>(v: [const T]) -> option<T> {
     if len(v) == 0u { ret none; }
     ret some(v[len(v) - 1u]);
 }
@@ -445,7 +445,7 @@ Apply a function to each element of a vector and return the results
 If function `f` returns `none` then that element is excluded from
 the resulting vector.
 */
-fn filter_map<T: copy, U: copy>(v: [const T], f: fn(T) -> option::t<U>)
+fn filter_map<T: copy, U: copy>(v: [const T], f: fn(T) -> option<U>)
     -> [U] {
     let result = [];
     for elem: T in v {
@@ -599,7 +599,7 @@ Apply function `f` to each element of `v`, starting from the first.
 When function `f` returns true then an option containing the element
 is returned. If `f` matches no elements then none is returned.
 */
-fn find<T: copy>(v: [T], f: fn(T) -> bool) -> option::t<T> {
+fn find<T: copy>(v: [T], f: fn(T) -> bool) -> option<T> {
     for elt: T in v { if f(elt) { ret some(elt); } }
     ret none;
 }
@@ -614,7 +614,7 @@ Returns:
 option::some(uint) - The first index containing a matching value
 option::none - No elements matched
 */
-fn position<T>(x: T, v: [T]) -> option::t<uint> {
+fn position<T>(x: T, v: [T]) -> option<uint> {
     let i: uint = 0u;
     while i < len(v) { if x == v[i] { ret some::<uint>(i); } i += 1u; }
     ret none;
@@ -625,7 +625,7 @@ Function: position_pred
 
 Find the first index for which the value matches some predicate
 */
-fn position_pred<T>(v: [T], f: fn(T) -> bool) -> option::t<uint> {
+fn position_pred<T>(v: [T], f: fn(T) -> bool) -> option<uint> {
     let i: uint = 0u;
     while i < len(v) { if f(v[i]) { ret some::<uint>(i); } i += 1u; }
     ret none;
@@ -1010,7 +1010,7 @@ mod tests {
 
     pure fn is_equal(&&x: uint, &&y:uint) -> bool { ret x == y; }
 
-    fn square_if_odd(&&n: uint) -> option::t<uint> {
+    fn square_if_odd(&&n: uint) -> option<uint> {
         ret if n % 2u == 1u { some(n * n) } else { none };
     }
 
@@ -1267,7 +1267,7 @@ mod tests {
         assert (w[1] == 9u);
         assert (w[2] == 25u);
 
-        fn halve(&&i: int) -> option::t<int> {
+        fn halve(&&i: int) -> option<int> {
             if i % 2 == 0 {
                 ret option::some::<int>(i / 2);
             } else { ret option::none::<int>; }
