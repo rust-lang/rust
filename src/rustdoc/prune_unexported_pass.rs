@@ -220,6 +220,12 @@ fn should_prune_unexported_impls_from_top_mod() {
     assert vec::is_empty(doc.topmod.impls())
 }
 
+#[test]
+fn should_prune_unexported_types() {
+    let doc = test::mk_doc("export a; mod a { } type b = int;");
+    assert vec::is_empty(doc.topmod.types());
+}
+
 #[cfg(test)]
 mod test {
     fn mk_doc(source: str) -> doc::cratedoc {

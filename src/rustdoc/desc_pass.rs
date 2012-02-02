@@ -22,7 +22,8 @@ fn run(
         fold_enum: fold_enum,
         fold_res: fold_res,
         fold_iface: fold_iface,
-        fold_impl: fold_impl
+        fold_impl: fold_impl,
+        fold_type: fold_type
         with *fold::default_seq_fold(op)
     });
     fold.fold_crate(fold, doc)
@@ -136,6 +137,14 @@ fn fold_impl(fold: fold::fold<op>, doc: doc::impldoc) -> doc::impldoc {
         brief: maybe_apply_op(fold.ctxt, doc.brief),
         desc: maybe_apply_op(fold.ctxt, doc.desc),
         methods: apply_to_methods(fold.ctxt, doc.methods)
+        with doc
+    }
+}
+
+fn fold_type(fold: fold::fold<op>, doc: doc::tydoc) -> doc::tydoc {
+    {
+        brief: maybe_apply_op(fold.ctxt, doc.brief),
+        desc: maybe_apply_op(fold.ctxt, doc.desc)
         with doc
     }
 }
@@ -272,6 +281,21 @@ fn should_execute_op_on_impl_method_failure_condition() {
     let doc = test::mk_doc(
         "impl i for int { #[doc(failure = \" a \")] fn a() { } }");
     assert doc.topmod.impls()[0].methods[0].failure == some("a");
+}
+
+
+#[test]
+fn should_execute_op_on_type_brief() {
+    let doc = test::mk_doc(
+        "#[doc(brief = \" a \")] type t = int;");
+    assert doc.topmod.types()[0].brief == some("a");
+}
+
+#[test]
+fn should_execute_op_on_type_desc() {
+    let doc = test::mk_doc(
+        "#[doc(desc = \" a \")] type t = int;");
+    assert doc.topmod.types()[0].desc == some("a");
 }
 
 #[cfg(test)]

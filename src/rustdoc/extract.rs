@@ -80,6 +80,11 @@ fn moddoc_from_mod(
                     impldoc_from_impl(methods, item.ident, item.id)
                 ))
               }
+              ast::item_ty(_, _) {
+                some(doc::tytag(
+                    tydoc_from_ty(item.ident, item.id)
+                ))
+              }
               _ {
                 none
               }
@@ -315,6 +320,25 @@ fn should_extract_impl_methods() {
 fn should_extract_impl_method_args() {
     let doc = test::mk_doc("impl i for int { fn f(a: bool) { } }");
     assert doc.topmod.impls()[0].methods[0].args[0].name == "a";
+}
+
+fn tydoc_from_ty(
+    name: str,
+    id: ast::node_id
+) -> doc::tydoc {
+    {
+        id: id,
+        name: name,
+        brief: none,
+        desc: none,
+        sig: none
+    }
+}
+
+#[test]
+fn should_extract_tys() {
+    let doc = test::mk_doc("type a = int;");
+    assert doc.topmod.types()[0].name == "a";
 }
 
 #[cfg(test)]

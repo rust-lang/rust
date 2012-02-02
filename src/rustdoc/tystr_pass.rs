@@ -21,7 +21,8 @@ fn run(
         fold_enum: fold_enum,
         fold_res: fold_res,
         fold_iface: fold_iface,
-        fold_impl: fold_impl
+        fold_impl: fold_impl,
+        fold_type: fold_type
         with *fold::default_seq_fold(srv)
     });
     fold.fold_crate(fold, doc)
@@ -535,6 +536,40 @@ fn should_add_impl_method_arg_types() {
     let fn_ = doc.topmod.impls()[0].methods[0];
     assert fn_.args[0].ty == some("int");
     assert fn_.args[1].ty == some("bool");
+}
+
+fn fold_type(
+    fold: fold::fold<astsrv::srv>,
+    doc: doc::tydoc
+) -> doc::tydoc {
+
+    let srv = fold.ctxt;
+
+    {
+        sig: astsrv::exec(srv) {|ctxt|
+            alt ctxt.ast_map.get(doc.id) {
+              ast_map::node_item(@{
+                ident: ident,
+                node: ast::item_ty(ty, params), _
+              }) {
+                some(#fmt(
+                    "type %s%s = %s",
+                    ident,
+                    pprust::typarams_to_str(params),
+                    pprust::ty_to_str(ty)
+                ))
+              }
+              _ { fail "expected type" }
+            }
+        }
+        with doc
+    }
+}
+
+#[test]
+fn should_add_type_signatures() {
+    let doc = test::mk_doc("type t<T> = int;");
+    assert doc.topmod.types()[0].sig == some("type t<T> = int");
 }
 
 #[cfg(test)]

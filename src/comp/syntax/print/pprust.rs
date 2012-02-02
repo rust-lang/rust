@@ -90,6 +90,10 @@ fn stmt_to_str(s: ast::stmt) -> str { be to_str(s, print_stmt); }
 
 fn item_to_str(i: @ast::item) -> str { be to_str(i, print_item); }
 
+fn typarams_to_str(tps: [ast::ty_param]) -> str {
+    be to_str(tps, print_type_params)
+}
+
 fn path_to_str(&&p: @ast::path) -> str {
     be to_str(p, bind print_path(_, _, false));
 }
@@ -1253,7 +1257,7 @@ fn print_bounds(s: ps, bounds: @[ast::ty_param_bound]) {
     }
 }
 
-fn print_type_params(s: ps, params: [ast::ty_param]) {
+fn print_type_params(s: ps, &&params: [ast::ty_param]) {
     if vec::len(params) > 0u {
         word(s.s, "<");
         fn printParam(s: ps, param: ast::ty_param) {

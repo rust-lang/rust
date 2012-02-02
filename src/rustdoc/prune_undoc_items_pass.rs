@@ -24,7 +24,8 @@ fn run(
         fold_enum: fold_enum,
         fold_res: fold_res,
         fold_iface: fold_iface,
-        fold_impl: fold_impl
+        fold_impl: fold_impl,
+        fold_type: fold_type
         with *fold::default_seq_fold(ctxt)
     });
     fold.fold_crate(fold, doc)
@@ -89,6 +90,14 @@ fn fold_mod(
                 let doc = fold.fold_impl(fold, impldoc);
                 if fold.ctxt.have_docs {
                     some(doc::impltag(doc))
+                } else {
+                    none
+                }
+              }
+              doc::tytag(tydoc) {
+                let doc = fold.fold_type(fold, tydoc);
+                if fold.ctxt.have_docs {
+                    some(doc::tytag(doc))
                 } else {
                     none
                 }
@@ -333,6 +342,24 @@ fn should_not_elide_impls_with_documented_methods() {
 fn should_not_elide_undocumented_impl_methods() {
     let doc = test::mk_doc("#[doc = \"hey\"] impl i for int { fn a() { } }");
     assert vec::is_not_empty(doc.topmod.impls()[0].methods);
+}
+
+fn fold_type(
+    fold: fold::fold<ctxt>,
+    doc: doc::tydoc
+) -> doc::tydoc {
+    let doc = fold::default_seq_fold_type(fold, doc);
+
+    fold.ctxt.have_docs =
+        doc.brief != none
+        || doc.desc != none;
+    ret doc;
+}
+
+#[test]
+fn should_elide_undocumented_types() {
+    let doc = test::mk_doc("type t = int;");
+    assert vec::is_empty(doc.topmod.types());
 }
 
 #[cfg(test)]

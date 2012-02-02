@@ -24,7 +24,8 @@ fn run(
         fold_enum: fold_enum,
         fold_res: fold_res,
         fold_iface: fold_iface,
-        fold_impl: fold_impl
+        fold_impl: fold_impl,
+        fold_type: fold_type
         with *fold::default_seq_fold(())
     });
     fold.fold_crate(fold, doc)
@@ -125,6 +126,17 @@ fn fold_impl(fold: fold::fold<()>, doc: doc::impldoc) -> doc::impldoc {
     }
 }
 
+fn fold_type(fold: fold::fold<()>, doc: doc::tydoc) -> doc::tydoc {
+    let doc = fold::default_seq_fold_type(fold, doc);
+    let (brief, desc) = modify(doc.brief, doc.desc);
+
+    {
+        brief: brief,
+        desc: desc
+        with doc
+    }
+}
+
 #[test]
 fn should_promote_mod_desc() {
     let doc = test::mk_doc("#[doc(desc = \"desc\")] mod m { }");
@@ -189,6 +201,13 @@ fn should_promote_impl_method_desc() {
         "impl i for int { #[doc(desc = \"desc\")] fn a() { } }");
     assert doc.topmod.impls()[0].methods[0].brief == some("desc");
     assert doc.topmod.impls()[0].methods[0].desc == none;
+}
+
+#[test]
+fn should_promote_type_desc() {
+    let doc = test::mk_doc("#[doc(desc = \"desc\")] type t = int;");
+    assert doc.topmod.types()[0].brief == some("desc");
+    assert doc.topmod.types()[0].desc == none;
 }
 
 #[cfg(test)]

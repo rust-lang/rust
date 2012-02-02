@@ -139,6 +139,7 @@ fn write_mod_contents(
           doc::restag(resdoc) { write_res(ctxt, resdoc) }
           doc::ifacetag(ifacedoc) { write_iface(ctxt, ifacedoc) }
           doc::impltag(impldoc) { write_impl(ctxt, impldoc) }
+          doc::tytag(tydoc) { write_type(ctxt, tydoc) }
         }
     }
 }
@@ -741,6 +742,42 @@ fn should_write_impl_method_failure_conditions() {
     let markdown = test::render(
         "impl a for int { #[doc(failure = \"nuked\")] fn a() { } }");
     assert str::contains(markdown, "Failure conditions: nuked");
+}
+
+fn write_type(
+    ctxt: ctxt,
+    doc: doc::tydoc
+) {
+    write_header(ctxt, h2, #fmt("Type `%s`", doc.name));
+    write_sig(ctxt, doc.sig);
+    write_brief(ctxt, doc.brief);
+    write_desc(ctxt, doc.desc);
+}
+
+#[test]
+fn should_write_type_header() {
+    let markdown = test::render("type t = int;");
+    assert str::contains(markdown, "## Type `t`");
+}
+
+#[test]
+fn should_write_type_brief() {
+    let markdown = test::render(
+        "#[doc(brief = \"brief\")] type t = int;");
+    assert str::contains(markdown, "\n\nbrief\n\n");
+}
+
+#[test]
+fn should_write_type_desc() {
+    let markdown = test::render(
+        "#[doc(desc = \"desc\")] type t = int;");
+    assert str::contains(markdown, "\n\ndesc\n\n");
+}
+
+#[test]
+fn should_write_type_signature() {
+    let markdown = test::render("type t = int;");
+    assert str::contains(markdown, "\n\n    type t = int\n\n");
 }
 
 #[cfg(test)]

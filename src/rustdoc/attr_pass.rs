@@ -27,7 +27,8 @@ fn run(
         fold_enum: fold_enum,
         fold_res: fold_res,
         fold_iface: fold_iface,
-        fold_impl: fold_impl
+        fold_impl: fold_impl,
+        fold_type: fold_type
         with *fold::default_seq_fold(srv)
     });
     fold.fold_crate(fold, doc)
@@ -447,6 +448,30 @@ fn should_extract_impl_method_docs() {
     assert doc.topmod.impls()[0].methods[0].args[0].desc == some("a");
     assert doc.topmod.impls()[0].methods[0].return.desc == some("return");
     assert doc.topmod.impls()[0].methods[0].failure == some("failure");
+}
+
+fn fold_type(
+    fold: fold::fold<astsrv::srv>,
+    doc: doc::tydoc
+) -> doc::tydoc {
+    let srv = fold.ctxt;
+    let doc = fold::default_seq_fold_type(fold, doc);
+    let attrs = parse_item_attrs(srv, doc.id, attr_parser::parse_type);
+
+    {
+        brief: attrs.brief,
+        desc: attrs.desc
+        with doc
+    }
+}
+
+#[test]
+fn should_extract_type_docs() {
+    let doc = test::mk_doc(
+        "#[doc(brief = \"brief\", desc = \"desc\")]\
+         type t = int;");
+    assert doc.topmod.types()[0].brief == some("brief");
+    assert doc.topmod.types()[0].desc == some("desc");
 }
 
 #[cfg(test)]
