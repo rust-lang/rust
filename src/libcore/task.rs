@@ -37,8 +37,6 @@ export yield;
 export task_notification;
 export join;
 export unsupervise;
-export pin;
-export unpin;
 export task_result;
 export tr_success;
 export tr_failure;
@@ -64,9 +62,6 @@ type rust_closure = {
 #[link_name = "rustrt"]
 #[abi = "cdecl"]
 native mod rustrt {
-    // these can run on the C stack:
-    fn pin_task();
-    fn unpin_task();
     fn get_task_id() -> task_id;
     fn rust_get_task() -> *rust_task;
 
@@ -309,20 +304,6 @@ Detaches this task from its parent in the task tree
 An unsupervised task will not propagate its failure up the task tree
 */
 fn unsupervise() { ret sys::unsupervise(); }
-
-/*
-Function: pin
-
-Pins the current task and future child tasks to a single scheduler thread
-*/
-fn pin() { rustrt::pin_task(); }
-
-/*
-Function: unpin
-
-Unpin the current task and future child tasks
-*/
-fn unpin() { rustrt::unpin_task(); }
 
 /*
 Function: currently_unwinding()

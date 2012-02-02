@@ -13,8 +13,6 @@ native mod rustrt {
     fn rust_getcwd() -> str;
     fn refcount(box: @int);
     fn do_gc();
-    fn pin_task();
-    fn unpin_task();
     fn get_task_id();
     fn sched_threads();
     fn rust_get_task();
@@ -25,8 +23,6 @@ fn calllink02() { rustrt::last_os_error(); }
 fn calllink03() { rustrt::rust_getcwd(); }
 fn calllink04() { rustrt::refcount(@0); }
 fn calllink05() { rustrt::do_gc(); }
-fn calllink06() { rustrt::pin_task(); }
-fn calllink07() { rustrt::unpin_task(); }
 fn calllink08() { rustrt::get_task_id(); }
 fn calllink09() { rustrt::sched_threads(); }
 fn calllink10() { rustrt::rust_get_task(); }
@@ -60,8 +56,6 @@ fn main() {
         calllink03,
         calllink04,
         calllink05,
-        calllink06,
-        calllink07,
         calllink08,
         calllink09,
         calllink10

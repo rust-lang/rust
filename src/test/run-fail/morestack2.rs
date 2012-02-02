@@ -8,14 +8,14 @@
 use std;
 
 native mod rustrt {
-    fn pin_task();
+    fn do_gc();
 }
 
 fn getbig_call_c_and_fail(i: int) {
     if i != 0 {
         getbig_call_c_and_fail(i - 1);
     } else {
-        rustrt::pin_task();
+        rustrt::do_gc();
         fail;
     }
 }

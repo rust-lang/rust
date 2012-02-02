@@ -20,9 +20,7 @@ leak
 nano_time
 new_port
 new_task
-pin_task
 port_recv
-unpin_task
 rand_free
 rand_new
 rand_next

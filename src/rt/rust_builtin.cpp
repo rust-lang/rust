@@ -380,18 +380,6 @@ nano_time(uint64_t *ns) {
     *ns = t.time_ns();
 }
 
-extern "C" CDECL void
-pin_task() {
-    rust_task *task = rust_scheduler::get_task();
-    task->pin();
-}
-
-extern "C" CDECL void
-unpin_task() {
-    rust_task *task = rust_scheduler::get_task();
-    task->unpin();
-}
-
 extern "C" CDECL rust_task_id
 get_task_id() {
     rust_task *task = rust_scheduler::get_task();

@@ -245,7 +245,6 @@ rust_task::rust_task(rust_scheduler *sched, rust_task_list *state,
     next_port_id(0),
     rendezvous_ptr(0),
     running_on(-1),
-    pinned_on(-1),
     local_region(&sched->srv->local_region),
     boxed(&local_region),
     unwinding(false),
@@ -628,27 +627,12 @@ rust_task::backtrace() {
 bool rust_task::can_schedule(int id)
 {
     return
-        running_on == -1 &&
-        (pinned_on == -1 || pinned_on == id);
+        running_on == -1;
 }
 
 void *
 rust_task::calloc(size_t size, const char *tag) {
     return local_region.calloc(size, tag);
-}
-
-void rust_task::pin() {
-    I(this->sched, running_on != -1);
-    pinned_on = running_on;
-}
-
-void rust_task::pin(int id) {
-    I(this->sched, running_on == -1);
-    pinned_on = id;
-}
-
-void rust_task::unpin() {
-    pinned_on = -1;
 }
 
 rust_port_id rust_task::register_port(rust_port *port) {

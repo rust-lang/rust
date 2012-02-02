@@ -101,7 +101,6 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     // This flag indicates that a worker is either currently running the task
     // or is about to run this task.
     int running_on;
-    int pinned_on;
 
     memory_region local_region;
     boxed_region boxed;
@@ -179,10 +178,6 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     bool can_schedule(int worker);
 
     void *calloc(size_t size, const char *tag);
-
-    void pin();
-    void pin(int id);
-    void unpin();
 
     rust_port_id register_port(rust_port *port);
     void release_port(rust_port_id id);

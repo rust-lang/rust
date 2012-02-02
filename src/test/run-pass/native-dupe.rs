@@ -4,16 +4,16 @@
 #[abi = "cdecl"]
 #[link_name = "rustrt"]
 native mod rustrt1 {
-    fn pin_task();
+    fn do_gc();
 }
 
 #[abi = "cdecl"]
 #[link_name = "rustrt"]
 native mod rustrt2 {
-    fn pin_task();
+    fn do_gc();
 }
 
 fn main() {
-    rustrt1::pin_task();
-    rustrt2::pin_task();
+    rustrt1::do_gc();
+    rustrt2::do_gc();
 }

@@ -331,9 +331,6 @@ rust_scheduler::create_task(rust_task *spawner, const char *name,
         rust_task (this, &newborn_tasks, spawner, name, init_stack_sz);
     DLOG(this, task, "created task: " PTR ", spawner: %s, name: %s",
                         task, spawner ? spawner->name : "null", name);
-    if(spawner) {
-        task->pin(spawner->pinned_on);
-    }
 
     {
         scoped_lock with(lock);
