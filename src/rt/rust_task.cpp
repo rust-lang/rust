@@ -482,11 +482,11 @@ rust_task::fail_parent() {
 void
 rust_task::unsupervise()
 {
-    DLOG(sched, task,
+    if (supervisor) {
+        DLOG(sched, task,
              "task %s @0x%" PRIxPTR
              " disconnecting from supervisor %s @0x%" PRIxPTR,
              name, this, supervisor->name, supervisor);
-    if (supervisor) {
         supervisor->deref();
     }
     supervisor = NULL;
