@@ -28,7 +28,6 @@ rust_kernel::create_scheduler(int id) {
         new (this, "rust_scheduler") rust_scheduler(this, srv, id);
     KLOG_("created scheduler: " PTR ", id: %d, index: %d",
           sched, id, sched->list_index);
-    _kernel_lock.signal_all();
     _kernel_lock.unlock();
     return sched;
 }
@@ -41,7 +40,6 @@ rust_kernel::destroy_scheduler(rust_scheduler *sched) {
     rust_srv *srv = sched->srv;
     delete sched;
     delete srv;
-    _kernel_lock.signal_all();
     _kernel_lock.unlock();
 }
 
@@ -116,7 +114,6 @@ void rust_kernel::free(void *mem) {
 void
 rust_kernel::signal_kernel_lock() {
     _kernel_lock.lock();
-    _kernel_lock.signal_all();
     _kernel_lock.unlock();
 }
 
