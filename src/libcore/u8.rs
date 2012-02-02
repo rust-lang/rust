@@ -49,6 +49,9 @@ pure fn ge(x: u8, y: u8) -> bool { ret x >= y; }
 /* Predicate: gt */
 pure fn gt(x: u8, y: u8) -> bool { ret x > y; }
 
+/* Predicate: is_ascii */
+pure fn is_ascii(x: u8) -> bool { ret 0u8 == x & 128u8; }
+
 /*
 Function: range
 

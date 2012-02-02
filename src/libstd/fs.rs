@@ -252,12 +252,16 @@ the first element of the returned vector will be the drive letter
 followed by a colon.
 */
 fn split(p: path) -> [path] {
-    let split1 = str::split(p, os_fs::path_sep as u8);
+    // FIXME: use UTF-8 safe str, and/or various other string formats
+    let split1 = str::split_byte(p, os_fs::path_sep as u8);
     let split2 = [];
     for s in split1 {
-        split2 += str::split(s, os_fs::alt_path_sep as u8);
+        split2 += str::split_byte(s, os_fs::alt_path_sep as u8);
     }
-    ret split2;
+
+    // filter out ""
+    let split3 = vec::filter(split2, {|seg| "" != seg});
+    ret split3;
 }
 
 /*
@@ -270,9 +274,10 @@ path includes directory components then they are included in the filename part
 of the result pair.
 */
 fn splitext(p: path) -> (str, str) {
+    // FIXME: use UTF-8 safe str, and/or various other string formats
     if str::is_empty(p) { ("", "") }
     else {
-        let parts = str::split(p, '.' as u8);
+        let parts = str::split_byte(p, '.' as u8);
         if vec::len(parts) > 1u {
             let base = str::connect(vec::init(parts), ".");
             let ext = "." + option::get(vec::last(parts));
