@@ -294,10 +294,6 @@ extern "C" type_desc *rust_clone_type_desc(type_desc*);
 #include "rust_port.h"
 #include "memory.h"
 
-#include "test/rust_test_harness.h"
-#include "test/rust_test_util.h"
-#include "test/rust_test_runtime.h"
-
 //
 // Local Variables:
 // mode: C++

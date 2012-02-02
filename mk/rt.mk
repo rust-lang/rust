@@ -62,9 +62,6 @@ RUNTIME_CS_$(1) := \
               rt/rust_debug.cpp \
               rt/memory_region.cpp \
               rt/boxed_region.cpp \
-              rt/test/rust_test_harness.cpp \
-              rt/test/rust_test_runtime.cpp \
-              rt/test/rust_test_util.cpp \
               rt/arch/$$(HOST_$(1))/context.cpp
 
 RUNTIME_S_$(1) := rt/arch/$$(HOST_$(1))/_context.S \
@@ -102,9 +99,6 @@ RUNTIME_HDR_$(1) := rt/globals.h \
                rt/rust_kernel.h \
                rt/memory_region.h \
                rt/memory.h \
-               rt/test/rust_test_harness.h \
-               rt/test/rust_test_runtime.h \
-               rt/test/rust_test_util.h \
                rt/arch/$$(HOST_$(1))/context.h \
                rt/arch/$$(HOST_$(1))/regs.h
 
