@@ -14,6 +14,7 @@
 #include "rust_internal.h"
 #include "rust_kernel.h"
 #include "rust_obstack.h"
+#include "boxed_region.h"
 
 // Corresponds to the rust chan (currently _chan) type.
 struct chan_handle {
@@ -106,6 +107,7 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     int pinned_on;
 
     memory_region local_region;
+    boxed_region boxed;
 
     // Indicates that fail() has been called and we are cleaning up.
     // We use this to suppress the "killed" flag during calls to yield.
@@ -121,7 +123,6 @@ rust_task : public kernel_owned<rust_task>, rust_cond
 
     rust_obstack dynastack;
 
-    std::map<void *,const type_desc *> local_allocs;
     uint32_t cc_counter;
 
     debug::task_debug_info debug;
@@ -139,7 +140,7 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     ~rust_task();
 
     void start(spawn_fn spawnee_fn,
-               rust_opaque_closure *env,
+               rust_opaque_box *env,
                void *args);
     void start();
     bool running();
@@ -193,11 +194,6 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     // Use this function sparingly. Depending on the ref count is generally
     // not at all safe.
     intptr_t get_ref_count() const { return ref_count; }
-
-    // FIXME: These functions only exist to get the tasking system off the
-    // ground. We should never be migrating shared boxes between tasks.
-    const type_desc *release_alloc(void *alloc);
-    void claim_alloc(void *alloc, const type_desc *tydesc);
 
     void notify(bool success);
 

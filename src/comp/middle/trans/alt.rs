@@ -14,6 +14,7 @@ import syntax::ast_util::{dummy_sp};
 import syntax::ast::def_id;
 import syntax::codemap::span;
 import syntax::print::pprust::pat_to_str;
+import back::abi;
 
 import common::*;
 
@@ -465,7 +466,7 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
     // Unbox in case of a box field
     if any_box_pat(m, col) {
         let box = Load(bcx, val);
-        let unboxed = GEPi(bcx, box, [0, back::abi::box_rc_field_body]);
+        let unboxed = GEPi(bcx, box, [0, abi::box_field_body]);
         compile_submatch(bcx, enter_box(m, col, val), [unboxed] + vals_left,
                          f, exits);
         ret;
@@ -776,7 +777,7 @@ fn bind_irrefutable_pat(bcx: @block_ctxt, pat: @ast::pat, val: ValueRef,
       ast::pat_box(inner) {
         let box = Load(bcx, val);
         let unboxed =
-            GEPi(bcx, box, [0, back::abi::box_rc_field_body]);
+            GEPi(bcx, box, [0, abi::box_field_body]);
         bcx = bind_irrefutable_pat(bcx, inner, unboxed, true);
       }
       ast::pat_uniq(inner) {

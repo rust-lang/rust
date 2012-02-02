@@ -8,7 +8,7 @@ import lib::llvm::{ValueRef, TypeRef, BasicBlockRef, BuilderRef, ModuleRef};
 import lib::llvm::{Opcode, IntPredicate, RealPredicate, True, False,
                    CallConv};
 import common::{block_ctxt, T_ptr, T_nil, T_i8, T_i1, T_void,
-                T_fn, val_ty, bcx_ccx, C_i32};
+                T_fn, val_ty, bcx_ccx, C_i32, val_str};
 
 fn B(cx: @block_ctxt) -> BuilderRef {
     let b = *cx.fcx.lcx.ccx.builder;
@@ -95,6 +95,10 @@ fn Invoke(cx: @block_ctxt, Fn: ValueRef, Args: [ValueRef],
     if cx.unreachable { ret; }
     assert (!cx.terminated);
     cx.terminated = true;
+    #debug["Invoke(%s with arguments (%s))",
+           val_str(bcx_ccx(cx).tn, Fn),
+           str::connect(vec::map(Args, {|a|val_str(bcx_ccx(cx).tn, a)}),
+                        ", ")];
     unsafe {
         llvm::LLVMBuildInvoke(B(cx), Fn, vec::to_ptr(Args),
                               vec::len(Args) as c_uint, Then, Catch,

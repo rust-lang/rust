@@ -50,6 +50,9 @@ private:
     void dec_alloc();
     void maybe_poison(void *mem);
 
+    void release_alloc(void *mem);
+    void claim_alloc(void *mem);
+
 public:
     memory_region(rust_srv *srv, bool synchronized);
     memory_region(memory_region *parent);
@@ -58,10 +61,7 @@ public:
     void *realloc(void *mem, size_t size);
     void free(void *mem);
     virtual ~memory_region();
-
-    void release_alloc(void *mem);
-    void claim_alloc(void *mem);
-};
+ };
 
 inline void *operator new(size_t size, memory_region &region,
                           const char *tag) {

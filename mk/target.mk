@@ -7,7 +7,7 @@
 # If you are making non-backwards compatible changes to the runtime,
 # set this flag to 1.  It will cause stage1 to use the snapshot
 # runtime rather than the runtime from the working directory.
-USE_SNAPSHOT_RUNTIME=0
+USE_SNAPSHOT_RUNTIME=1
 
 define TARGET_STAGE_N
 

@@ -91,7 +91,7 @@ fn type_of_fn(cx: @crate_ctxt, inputs: [ty::arg],
     atys += [out_ty];
 
     // Arg 1: Environment
-    atys += [T_opaque_cbox_ptr(cx)];
+    atys += [T_opaque_box_ptr(cx)];
 
     // Args >2: ty params, if not acquired via capture...
     for bounds in params {
@@ -193,7 +193,7 @@ fn type_of_inner(cx: @crate_ctxt, t: ty::t)
         T_struct(tys)
       }
       ty::ty_opaque_closure_ptr(_) {
-        T_opaque_cbox_ptr(cx)
+        T_opaque_box_ptr(cx)
       }
       ty::ty_constr(subt,_) {
         // FIXME: could be a constraint on ty_fn
@@ -764,54 +764,54 @@ fn trans_shared_malloc(cx: @block_ctxt, llptr_ty: TypeRef, llsize: ValueRef)
     ret rslt(cx, PointerCast(cx, rval, llptr_ty));
 }
 
+// Returns a pointer to the body for the box. The box may be an opaque
+// box. The result will be casted to the type of body_t, if it is statically
+// known.
+//
+// The runtime equivalent is box_body() in "rust_internal.h".
+fn opaque_box_body(bcx: @block_ctxt,
+                      body_t: ty::t,
+                      boxptr: ValueRef) -> ValueRef {
+    let ccx = bcx_ccx(bcx);
+    let boxptr = PointerCast(bcx, boxptr, T_ptr(T_box_header(ccx)));
+    let bodyptr = GEPi(bcx, boxptr, [1]);
+    if check type_has_static_size(ccx, body_t) {
+        PointerCast(bcx, bodyptr, T_ptr(type_of(ccx, body_t)))
+    } else {
+        PointerCast(bcx, bodyptr, T_ptr(T_i8()))
+    }
+}
+
 // trans_malloc_boxed_raw: expects an unboxed type and returns a pointer to
-// enough space for something of that type, along with space for a reference
-// count; in other words, it allocates a box for something of that type.
-fn trans_malloc_boxed_raw(cx: @block_ctxt, t: ty::t) -> result {
-    let bcx = cx;
-
-    // Synthesize a fake box type structurally so we have something
-    // to measure the size of.
-
-    // We synthesize two types here because we want both the type of the
-    // pointer and the pointee.  boxed_body is the type that we measure the
-    // size of; box_ptr is the type that's converted to a TypeRef and used as
-    // the pointer cast target in trans_raw_malloc.
-
-    // The mk_int here is the space being
-    // reserved for the refcount.
-    let boxed_body = ty::mk_tup(bcx_tcx(bcx), [ty::mk_int(bcx_tcx(cx)), t]);
-    let box_ptr = ty::mk_imm_box(bcx_tcx(bcx), t);
-    let r = size_of(cx, boxed_body);
-    let llsz = r.val; bcx = r.bcx;
+// enough space for a box of that type.  This includes a rust_opaque_box
+// header.
+fn trans_malloc_boxed_raw(bcx: @block_ctxt, t: ty::t,
+                          &static_ti: option<@tydesc_info>) -> result {
+    let bcx = bcx;
+    let ccx = bcx_ccx(bcx);
 
     // Grab the TypeRef type of box_ptr, because that's what trans_raw_malloc
     // wants.
-    // FIXME: Could avoid this check with a postcondition on mk_imm_box?
-    // (requires Issue #586)
-    let ccx = bcx_ccx(bcx);
+    let box_ptr = ty::mk_imm_box(bcx_tcx(bcx), t);
     check (type_has_static_size(ccx, box_ptr));
     let llty = type_of(ccx, box_ptr);
 
-    let ti = none;
-    let tydesc_result = get_tydesc(bcx, t, true, ti);
-    let lltydesc = tydesc_result.result.val; bcx = tydesc_result.result.bcx;
+    // Get the tydesc for the body:
+    let {bcx, val: lltydesc} = get_tydesc(bcx, t, true, static_ti).result;
 
-    let rval = Call(cx, ccx.upcalls.malloc,
-                    [llsz, lltydesc]);
-    ret rslt(cx, PointerCast(cx, rval, llty));
+    // Allocate space:
+    let rval = Call(bcx, ccx.upcalls.malloc, [lltydesc]);
+    ret rslt(bcx, PointerCast(bcx, rval, llty));
 }
 
 // trans_malloc_boxed: usefully wraps trans_malloc_box_raw; allocates a box,
 // initializes the reference count to 1, and pulls out the body and rc
-fn trans_malloc_boxed(cx: @block_ctxt, t: ty::t) ->
+fn trans_malloc_boxed(bcx: @block_ctxt, t: ty::t) ->
    {bcx: @block_ctxt, box: ValueRef, body: ValueRef} {
-    let res = trans_malloc_boxed_raw(cx, t);
-    let box = res.val;
-    let rc = GEPi(res.bcx, box, [0, abi::box_rc_field_refcnt]);
-    Store(res.bcx, C_int(bcx_ccx(cx), 1), rc);
-    let body = GEPi(res.bcx, box, [0, abi::box_rc_field_body]);
-    ret {bcx: res.bcx, box: res.val, body: body};
+    let ti = none;
+    let {bcx, val:box} = trans_malloc_boxed_raw(bcx, t, ti);
+    let body = GEPi(bcx, box, [0, abi::box_field_body]);
+    ret {bcx: bcx, box: box, body: body};
 }
 
 // Type descriptor and type glue stuff
@@ -1231,8 +1231,8 @@ fn make_take_glue(cx: @block_ctxt, v: ValueRef, t: ty::t) {
 
 fn incr_refcnt_of_boxed(cx: @block_ctxt, box_ptr: ValueRef) -> @block_ctxt {
     let ccx = bcx_ccx(cx);
-    let rc_ptr =
-        GEPi(cx, box_ptr, [0, abi::box_rc_field_refcnt]);
+    maybe_validate_box(cx, box_ptr);
+    let rc_ptr = GEPi(cx, box_ptr, [0, abi::box_field_refcnt]);
     let rc = Load(cx, rc_ptr);
     rc = Add(cx, rc, C_int(ccx, 1));
     Store(cx, rc, rc_ptr);
@@ -1243,7 +1243,7 @@ fn free_box(bcx: @block_ctxt, v: ValueRef, t: ty::t) -> @block_ctxt {
     ret alt ty::struct(bcx_tcx(bcx), t) {
       ty::ty_box(body_mt) {
         let v = PointerCast(bcx, v, type_of_1(bcx, t));
-        let body = GEPi(bcx, v, [0, abi::box_rc_field_body]);
+        let body = GEPi(bcx, v, [0, abi::box_field_body]);
         let bcx = drop_ty(bcx, body, body_mt.ty);
         trans_free_if_not_gc(bcx, v)
       }
@@ -1274,7 +1274,7 @@ fn make_free_glue(bcx: @block_ctxt, v: ValueRef, t: ty::t) {
         let ccx = bcx_ccx(bcx);
         let llbox_ty = T_opaque_iface_ptr(ccx);
         let b = PointerCast(bcx, v, llbox_ty);
-        let body = GEPi(bcx, b, [0, abi::box_rc_field_body]);
+        let body = GEPi(bcx, b, [0, abi::box_field_body]);
         let tydescptr = GEPi(bcx, body, [0, 0]);
         let tydesc = Load(bcx, tydescptr);
         let ti = none;
@@ -1375,9 +1375,23 @@ fn trans_res_drop(cx: @block_ctxt, rs: ValueRef, did: ast::def_id,
     ret next_cx;
 }
 
+fn maybe_validate_box(_cx: @block_ctxt, _box_ptr: ValueRef) {
+    // Uncomment this when debugging annoying use-after-free
+    // bugs.  But do not commit with this uncommented!  Big performance hit.
+
+    // let cx = _cx, box_ptr = _box_ptr;
+    // let ccx = bcx_ccx(cx);
+    // warn_not_to_commit(ccx, "validate_box() is uncommented");
+    // let raw_box_ptr = PointerCast(cx, box_ptr, T_ptr(T_i8()));
+    // Call(cx, ccx.upcalls.validate_box, [raw_box_ptr]);
+}
+
 fn decr_refcnt_maybe_free(cx: @block_ctxt, box_ptr: ValueRef, t: ty::t)
     -> @block_ctxt {
     let ccx = bcx_ccx(cx);
+
+    maybe_validate_box(cx, box_ptr);
+
     let rc_adj_cx = new_sub_block_ctxt(cx, "rc--");
     let free_cx = new_sub_block_ctxt(cx, "free");
     let next_cx = new_sub_block_ctxt(cx, "next");
@@ -1385,8 +1399,7 @@ fn decr_refcnt_maybe_free(cx: @block_ctxt, box_ptr: ValueRef, t: ty::t)
     let box_ptr = PointerCast(cx, box_ptr, llbox_ty);
     let null_test = IsNull(cx, box_ptr);
     CondBr(cx, null_test, next_cx.llbb, rc_adj_cx.llbb);
-    let rc_ptr =
-        GEPi(rc_adj_cx, box_ptr, [0, abi::box_rc_field_refcnt]);
+    let rc_ptr = GEPi(rc_adj_cx, box_ptr, [0, abi::box_field_refcnt]);
     let rc = Load(rc_adj_cx, rc_ptr);
     rc = Sub(rc_adj_cx, rc, C_int(ccx, 1));
     Store(rc_adj_cx, rc, rc_ptr);
@@ -1396,7 +1409,6 @@ fn decr_refcnt_maybe_free(cx: @block_ctxt, box_ptr: ValueRef, t: ty::t)
     Br(free_cx, next_cx.llbb);
     ret next_cx;
 }
-
 
 // Structural comparison: a rather involved form of glue.
 fn maybe_name_value(cx: @crate_ctxt, v: ValueRef, s: str) {
@@ -2208,7 +2220,7 @@ fn autoderef(cx: @block_ctxt, v: ValueRef, t: ty::t) -> result_t {
     while true {
         alt ty::struct(ccx.tcx, t1) {
           ty::ty_box(mt) {
-            let body = GEPi(cx, v1, [0, abi::box_rc_field_body]);
+            let body = GEPi(cx, v1, [0, abi::box_field_body]);
             t1 = mt.ty;
 
             // Since we're changing levels of box indirection, we may have
@@ -2514,7 +2526,7 @@ type lval_maybe_callee = {bcx: @block_ctxt,
                           generic: option<generic_info>};
 
 fn null_env_ptr(bcx: @block_ctxt) -> ValueRef {
-    C_null(T_opaque_cbox_ptr(bcx_ccx(bcx)))
+    C_null(T_opaque_box_ptr(bcx_ccx(bcx)))
 }
 
 fn lval_from_local_var(bcx: @block_ctxt, r: local_var_result) -> lval_result {
@@ -2790,7 +2802,7 @@ fn trans_lval(cx: @block_ctxt, e: @ast::expr) -> lval_result {
         let val =
             alt ty::struct(ccx.tcx, t) {
               ty::ty_box(_) {
-                GEPi(sub.bcx, sub.val, [0, abi::box_rc_field_body])
+                GEPi(sub.bcx, sub.val, [0, abi::box_field_body])
               }
               ty::ty_res(_, _, _) {
                 GEPi(sub.bcx, sub.val, [0, 1])
@@ -3160,7 +3172,7 @@ fn trans_call_inner(in_cx: @block_ctxt, fn_expr_ty: ty::t,
     let llenv, dict_param = none;
     alt f_res.env {
       null_env {
-        llenv = llvm::LLVMGetUndef(T_opaque_cbox_ptr(bcx_ccx(cx)));
+        llenv = llvm::LLVMGetUndef(T_opaque_box_ptr(bcx_ccx(cx)));
       }
       self_env(e) { llenv = e; }
       dict_env(dict, e) { llenv = e; dict_param = some(dict); }
@@ -3464,6 +3476,8 @@ fn trans_temp_expr(bcx: @block_ctxt, e: @ast::expr) -> result {
 fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
     let tcx = bcx_tcx(bcx);
     debuginfo::update_source_pos(bcx, e.span);
+
+    #debug["trans_expr(%s,%?)", expr_to_str(e), dest];
 
     if expr_is_lval(bcx, e) {
         ret lval_to_dps(bcx, e, dest);
@@ -3998,6 +4012,8 @@ fn zero_alloca(cx: @block_ctxt, llptr: ValueRef, t: ty::t)
 }
 
 fn trans_stmt(cx: @block_ctxt, s: ast::stmt) -> @block_ctxt {
+    #debug["trans_expr(%s)", stmt_to_str(s)];
+
     if (!bcx_ccx(cx).sess.opts.no_asm_comments) {
         add_span_comment(cx, s.span, stmt_to_str(s));
     }
@@ -5122,8 +5138,7 @@ fn fill_fn_pair(bcx: @block_ctxt, pair: ValueRef, llfn: ValueRef,
     let code_cell = GEPi(bcx, pair, [0, abi::fn_field_code]);
     Store(bcx, llfn, code_cell);
     let env_cell = GEPi(bcx, pair, [0, abi::fn_field_box]);
-    let llenvblobptr =
-        PointerCast(bcx, llenvptr, T_opaque_cbox_ptr(ccx));
+    let llenvblobptr = PointerCast(bcx, llenvptr, T_opaque_box_ptr(ccx));
     Store(bcx, llenvblobptr, env_cell);
 }
 
@@ -5591,7 +5606,8 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           shape_cx: shape::mk_ctxt(llmod),
           gc_cx: gc::mk_ctxt(),
           crate_map: crate_map,
-          dbg_cx: dbg_cx};
+          dbg_cx: dbg_cx,
+          mutable do_not_commit_warning_issued: false};
     let cx = new_local_ctxt(ccx);
     collect_items(ccx, crate);
     trans_constants(ccx, crate);

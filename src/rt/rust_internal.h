@@ -231,29 +231,36 @@ struct rust_shape_tables {
     uint8_t *resources;
 };
 
-struct rust_opaque_closure;
+typedef unsigned long ref_cnt_t;
+
+// Corresponds to the boxed data in the @ region.  The body follows the
+// header; you can obtain a ptr via box_body() below.
+struct rust_opaque_box {
+    ref_cnt_t ref_count;
+    type_desc *td;
+    rust_opaque_box *prev;
+    rust_opaque_box *next;
+};
 
 // The type of functions that we spawn, which fall into two categories:
 // - the main function: has a NULL environment, but uses the void* arg
 // - unique closures of type fn~(): have a non-NULL environment, but
 //   no arguments (and hence the final void*) is harmless
-typedef void (*CDECL spawn_fn)(void*, rust_opaque_closure*, void *);
+typedef void (*CDECL spawn_fn)(void*, rust_opaque_box*, void *);
 
 // corresponds to the layout of a fn(), fn@(), fn~() etc
 struct fn_env_pair {
     spawn_fn f;
-    rust_opaque_closure *env;
+    rust_opaque_box *env;
 };
 
-// corresponds the closures generated in trans_closure.rs
-struct rust_opaque_closure {
-    intptr_t ref_count;
-    const type_desc *td;
-    // The size/types of these will vary per closure, so they
-    // cannot be statically expressed.  See trans_closure.rs:
-    const type_desc *captured_tds[0];
-    // struct bound_data;
-};
+static inline void *box_body(rust_opaque_box *box) {
+    // Here we take advantage of the fact that the size of a box in 32
+    // (resp. 64) bit is 16 (resp. 32) bytes, and thus always 16-byte aligned.
+    // If this were to change, we would have to update the method
+    // rustc::middle::trans::base::opaque_box_body() as well.
+    return (void*)(box + 1);
+}
 
 struct type_desc {
     // First part of type_desc is known to compiler.
