@@ -75,6 +75,8 @@ native mod rustrt {
     fn drop_task(task_id: *rust_task);
     fn get_task_pointer(id: task_id) -> *rust_task;
 
+    fn migrate_alloc(alloc: *u8, target: task_id);
+
     fn start_task(id: task, closure: *rust_closure);
 
     fn rust_task_is_unwinding(rt: *rust_task) -> bool;

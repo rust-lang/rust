@@ -11,7 +11,6 @@ type upcalls =
     {_fail: ValueRef,
      malloc: ValueRef,
      free: ValueRef,
-     validate_box: ValueRef,
      shared_malloc: ValueRef,
      shared_free: ValueRef,
      mark: ValueRef,
@@ -53,12 +52,10 @@ fn declare_upcalls(targ_cfg: @session::config,
                              T_ptr(T_i8()),
                              size_t]),
           malloc:
-              d("malloc", [T_ptr(tydesc_type)],
+              d("malloc", [size_t, T_ptr(tydesc_type)],
                 T_ptr(T_i8())),
           free:
               dv("free", [T_ptr(T_i8()), int_t]),
-          validate_box:
-              dv("validate_box", [T_ptr(T_i8())]),
           shared_malloc:
               d("shared_malloc", [size_t, T_ptr(tydesc_type)],
                 T_ptr(T_i8())),

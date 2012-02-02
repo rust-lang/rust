@@ -122,8 +122,7 @@ type crate_ctxt =
      shape_cx: shape::ctxt,
      gc_cx: gc::ctxt,
      crate_map: ValueRef,
-     dbg_cx: option<@debuginfo::debug_ctxt>,
-     mutable do_not_commit_warning_issued: bool};
+     dbg_cx: option<@debuginfo::debug_ctxt>};
 
 type local_ctxt =
     {path: [str],
@@ -243,13 +242,6 @@ type fn_ctxt =
      ret_style: ast::ret_style,
      span: option<span>,
      lcx: @local_ctxt};
-
-fn warn_not_to_commit(ccx: @crate_ctxt, msg: str) {
-    if !ccx.do_not_commit_warning_issued {
-        ccx.do_not_commit_warning_issued = true;
-        ccx.sess.warn(msg + " -- do not commit like this!");
-    }
-}
 
 enum cleanup {
     clean(fn@(@block_ctxt) -> @block_ctxt),
@@ -660,42 +652,8 @@ fn T_opaque_vec(targ_cfg: @session::config) -> TypeRef {
     ret T_vec2(targ_cfg, T_i8());
 }
 
-// Let T be the content of a box @T.  tuplify_box_ty(t) returns the
-// representation of @T as a tuple (i.e., the ty::t version of what T_box()
-// returns).
-fn tuplify_box_ty(tcx: ty::ctxt, t: ty::t) -> ty::t {
-    ret tuplify_cbox_ty(tcx, t, ty::mk_type(tcx));
-}
-
-// As tuplify_box_ty(), but allows the caller to specify what type of type
-// descr is embedded in the box (ty::type vs ty::send_type).  This is useful
-// for unique closure boxes, hence the name "cbox_ty" (closure box type).
-fn tuplify_cbox_ty(tcx: ty::ctxt, t: ty::t, tydesc_t: ty::t) -> ty::t {
-    let ptr = ty::mk_ptr(tcx, {ty: ty::mk_nil(tcx), mut: ast::imm});
-    ret ty::mk_tup(tcx, [ty::mk_uint(tcx), tydesc_t,
-                         ptr, ptr,
-                         t]);
-}
-
-fn T_box_header_fields(cx: @crate_ctxt) -> [TypeRef] {
-    let ptr = T_ptr(T_i8());
-    ret [cx.int_type, T_ptr(cx.tydesc_type), ptr, ptr];
-}
-
-fn T_box_header(cx: @crate_ctxt) -> TypeRef {
-    ret T_struct(T_box_header_fields(cx));
-}
-
 fn T_box(cx: @crate_ctxt, t: TypeRef) -> TypeRef {
-    ret T_struct(T_box_header_fields(cx) + [t]);
-}
-
-fn T_opaque_box(cx: @crate_ctxt) -> TypeRef {
-    ret T_box(cx, T_i8());
-}
-
-fn T_opaque_box_ptr(cx: @crate_ctxt) -> TypeRef {
-    ret T_ptr(T_opaque_box(cx));
+    ret T_struct([cx.int_type, t]);
 }
 
 fn T_port(cx: @crate_ctxt, _t: TypeRef) -> TypeRef {
@@ -723,9 +681,15 @@ fn T_typaram(tn: type_names) -> TypeRef {
 fn T_typaram_ptr(tn: type_names) -> TypeRef { ret T_ptr(T_typaram(tn)); }
 
 fn T_opaque_cbox_ptr(cx: @crate_ctxt) -> TypeRef {
-    // closures look like boxes (even when they are fn~ or fn&)
-    // see trans_closure.rs
-    ret T_opaque_box_ptr(cx);
+    let s = "*cbox";
+    alt name_has_type(cx.tn, s) { some(t) { ret t; } _ {} }
+    let t = T_ptr(T_struct([cx.int_type,
+                            T_ptr(cx.tydesc_type),
+                            T_i8() /* represents closed over tydescs
+                            and data go here; see trans_closure.rs*/
+                           ]));
+    associate_type(cx.tn, s, t);
+    ret t;
 }
 
 fn T_enum_variant(cx: @crate_ctxt) -> TypeRef {

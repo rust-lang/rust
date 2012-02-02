@@ -16,20 +16,6 @@
 #include <stdint.h>
 
 
-#ifdef __GNUC__
-#define LOG_UPCALL_ENTRY(task)                            \
-    LOG(task, upcall,                                     \
-        "> UPCALL %s - task: %s 0x%" PRIxPTR              \
-        " retpc: x%" PRIxPTR,                             \
-        __FUNCTION__,                                     \
-        (task)->name, (task),                             \
-        __builtin_return_address(0));
-#else
-#define LOG_UPCALL_ENTRY(task)                            \
-    LOG(task, upcall, "> UPCALL task: %s @x%" PRIxPTR,    \
-        (task)->name, (task));
-#endif
-
 // This is called to ensure we've set up our rust stacks
 // correctly. Strategically placed at entry to upcalls because they begin on
 // the rust stack and happen frequently enough to catch most stack changes,
@@ -112,6 +98,7 @@ upcall_fail(char const *expr,
 
 struct s_malloc_args {
     uintptr_t retval;
+    size_t nbytes;
     type_desc *td;
 };
 
@@ -120,27 +107,31 @@ upcall_s_malloc(s_malloc_args *args) {
     rust_task *task = rust_scheduler::get_task();
     LOG_UPCALL_ENTRY(task);
 
-    LOG(task, mem, "upcall malloc(0x%" PRIxPTR ")", args->td);
+    LOG(task, mem,
+        "upcall malloc(%" PRIdPTR ", 0x%" PRIxPTR ")",
+        args->nbytes, args->td);
 
     gc::maybe_gc(task);
     cc::maybe_cc(task);
 
-    // FIXME--does this have to be calloc?
-    rust_opaque_box *box = task->boxed.calloc(args->td);
-    void *body = box_body(box);
+    // TODO: Maybe use dladdr here to find a more useful name for the
+    // type_desc.
 
-    debug::maybe_track_origin(task, box);
+    void *p = task->malloc(args->nbytes, "tdesc", args->td);
+    memset(p, '\0', args->nbytes);
+
+    task->local_allocs[p] = args->td;
+    debug::maybe_track_origin(task, p);
 
     LOG(task, mem,
-        "upcall malloc(0x%" PRIxPTR ") = box 0x%" PRIxPTR
-        " with body 0x%" PRIxPTR,
-        args->td, (uintptr_t)box, (uintptr_t)body);
-    args->retval = (uintptr_t) box;
+        "upcall malloc(%" PRIdPTR ", 0x%" PRIxPTR ") = 0x%" PRIxPTR,
+        args->nbytes, args->td, (uintptr_t)p);
+    args->retval = (uintptr_t) p;
 }
 
 extern "C" CDECL uintptr_t
-upcall_malloc(type_desc *td) {
-    s_malloc_args args = {0, td};
+upcall_malloc(size_t nbytes, type_desc *td) {
+    s_malloc_args args = {0, nbytes, td};
     UPCALL_SWITCH_STACK(&args, upcall_s_malloc);
     return args.retval;
 }
@@ -164,31 +155,16 @@ upcall_s_free(s_free_args *args) {
              "upcall free(0x%" PRIxPTR ", is_gc=%" PRIdPTR ")",
              (uintptr_t)args->ptr, args->is_gc);
 
+    task->local_allocs.erase(args->ptr);
     debug::maybe_untrack_origin(task, args->ptr);
 
-    rust_opaque_box *box = (rust_opaque_box*) args->ptr;
-    task->boxed.free(box);
+    task->free(args->ptr, (bool) args->is_gc);
 }
 
 extern "C" CDECL void
 upcall_free(void* ptr, uintptr_t is_gc) {
     s_free_args args = {ptr, is_gc};
     UPCALL_SWITCH_STACK(&args, upcall_s_free);
-}
-
-/**********************************************************************
- * Sanity checks on boxes, insert when debugging possible
- * use-after-free bugs.  See maybe_validate_box() in trans.rs.
- */
-
-extern "C" CDECL void
-upcall_validate_box(rust_opaque_box* ptr) {
-    if (ptr) {
-        assert(ptr->ref_count > 0);
-        assert(ptr->td != NULL);
-        assert(ptr->td->align <= 8);
-        assert(ptr->td->size <= 4096); // might not really be true...
-    }
 }
 
 /**********************************************************************

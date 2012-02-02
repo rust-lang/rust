@@ -61,7 +61,6 @@ RUNTIME_CS_$(1) := \
               rt/rust_cc.cpp \
               rt/rust_debug.cpp \
               rt/memory_region.cpp \
-              rt/boxed_region.cpp \
               rt/test/rust_test_harness.cpp \
               rt/test/rust_test_runtime.cpp \
               rt/test/rust_test_util.cpp \

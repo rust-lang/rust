@@ -1928,7 +1928,6 @@ fn parse_mod_items(p: parser, term: token::token,
     while p.token != term {
         let attrs = initial_attrs + parse_outer_attributes(p);
         initial_attrs = [];
-        #debug["parse_mod_items: parse_item(attrs=%?)", attrs];
         alt parse_item(p, attrs) {
           some(i) { items += [i]; }
           _ {
@@ -1936,7 +1935,6 @@ fn parse_mod_items(p: parser, term: token::token,
                     token::to_str(p.reader, p.token) + "'");
           }
         }
-        #debug["parse_mod_items: attrs=%?", attrs];
     }
     ret {view_items: view_items, items: items};
 }

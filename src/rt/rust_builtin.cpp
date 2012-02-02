@@ -429,6 +429,22 @@ start_task(rust_task_id id, fn_env_pair *f) {
     target->deref();
 }
 
+extern "C" CDECL void
+migrate_alloc(void *alloc, rust_task_id tid) {
+    rust_task *task = rust_scheduler::get_task();
+    if(!alloc) return;
+    rust_task *target = task->kernel->get_task_by_id(tid);
+    if(target) {
+        const type_desc *tydesc = task->release_alloc(alloc);
+        target->claim_alloc(alloc, tydesc);
+        target->deref();
+    }
+    else {
+        // We couldn't find the target. Maybe we should just free?
+        task->fail();
+    }
+}
+
 extern "C" CDECL int
 sched_threads() {
     rust_task *task = rust_scheduler::get_task();

@@ -25,7 +25,7 @@ namespace cc {
 
 // Internal reference count computation
 
-typedef std::map<rust_opaque_box*,uintptr_t> irc_map;
+typedef std::map<void *,uintptr_t> irc_map;
 
 class irc : public shape::data<irc,shape::ptr> {
     friend class shape::data<irc,shape::ptr>;
@@ -118,6 +118,13 @@ class irc : public shape::data<irc,shape::ptr> {
         }
     }
 
+    void walk_obj2() {
+        dp += sizeof(void *); // skip vtable
+        uint8_t *box_ptr = shape::bump_dp<uint8_t *>(dp);
+        shape::ptr ref_count_dp(box_ptr);
+        maybe_record_irc(ref_count_dp);
+    }
+
     void walk_iface2() {
         walk_box2();
     }
@@ -138,32 +145,30 @@ class irc : public shape::data<irc,shape::ptr> {
 
     void walk_uniq_contents2(irc &sub) { sub.walk(); }
 
-    void walk_box_contents2(irc &sub, shape::ptr &box_dp) {
-        maybe_record_irc(box_dp);
+    void walk_box_contents2(irc &sub, shape::ptr &ref_count_dp) {
+        maybe_record_irc(ref_count_dp);
 
         // Do not traverse the contents of this box; it's in the allocation
         // somewhere, so we're guaranteed to come back to it (if we haven't
         // traversed it already).
     }
 
-    void maybe_record_irc(shape::ptr &box_dp) {
-        if (!box_dp)
+    void maybe_record_irc(shape::ptr &ref_count_dp) {
+        if (!ref_count_dp)
             return;
 
-        rust_opaque_box *box_ptr = (rust_opaque_box *) box_dp;
-
         // Bump the internal reference count of the box.
-        if (ircs.find(box_ptr) == ircs.end()) {
+        if (ircs.find((void *)ref_count_dp) == ircs.end()) {
           LOG(task, gc,
               "setting internal reference count for %p to 1",
-              box_ptr);
-          ircs[box_ptr] = 1;
+              (void *)ref_count_dp);
+          ircs[(void *)ref_count_dp] = 1;
         } else {
-          uintptr_t newcount = ircs[box_ptr] + 1;
+          uintptr_t newcount = ircs[(void *)ref_count_dp] + 1;
           LOG(task, gc,
               "bumping internal reference count for %p to %lu",
-              box_ptr, newcount);
-          ircs[box_ptr] = newcount;
+              (void *)ref_count_dp, newcount);
+          ircs[(void *)ref_count_dp] = newcount;
         }
     }
 
@@ -202,25 +207,36 @@ irc::walk_variant2(shape::tag_info &tinfo, uint32_t variant_id,
 
 void
 irc::compute_ircs(rust_task *task, irc_map &ircs) {
-    boxed_region *boxed = &task->boxed;
-    for (rust_opaque_box *box = boxed->first_live_alloc();
-         box != NULL;
-         box = box->next) {
-        type_desc *tydesc = box->td;
-        uint8_t *body = (uint8_t*) box_body(box);
+    std::map<void *,const type_desc *>::iterator
+        begin(task->local_allocs.begin()), end(task->local_allocs.end());
+    while (begin != end) {
+        uint8_t *p = reinterpret_cast<uint8_t *>(begin->first);
 
-        LOG(task, gc, 
-            "determining internal ref counts: "
-            "box=%p tydesc=%p body=%p",
-            box, tydesc, body);
-        
+        const type_desc *tydesc = begin->second;
+
+        LOG(task, gc, "determining internal ref counts: %p, tydesc=%p", p,
+            tydesc);
+
         shape::arena arena;
         shape::type_param *params =
-            shape::type_param::from_tydesc_and_data(tydesc, body, arena);
+            shape::type_param::from_tydesc_and_data(tydesc, p, arena);
+
+#if 0
+        shape::print print(task, true, tydesc->shape, params,
+                           tydesc->shape_tables);
+        print.walk();
+
+        shape::log log(task, true, tydesc->shape, params,
+                       tydesc->shape_tables, p + sizeof(uintptr_t),
+                       std::cerr);
+        log.walk();
+#endif
 
         irc irc(task, true, tydesc->shape, params, tydesc->shape_tables,
-                body, ircs);
+                p + sizeof(uintptr_t), ircs);
         irc.walk();
+
+        ++begin;
     }
 }
 
@@ -228,17 +244,17 @@ irc::compute_ircs(rust_task *task, irc_map &ircs) {
 // Root finding
 
 void
-find_roots(rust_task *task, irc_map &ircs,
-           std::vector<rust_opaque_box *> &roots) {
-    boxed_region *boxed = &task->boxed;
-    for (rust_opaque_box *box = boxed->first_live_alloc();
-         box != NULL;
-         box = box->next) {
-        uintptr_t ref_count = box->ref_count;
+find_roots(rust_task *task, irc_map &ircs, std::vector<void *> &roots) {
+    std::map<void *,const type_desc *>::iterator
+        begin(task->local_allocs.begin()), end(task->local_allocs.end());
+    while (begin != end) {
+        void *alloc = begin->first;
+        uintptr_t *ref_count_ptr = reinterpret_cast<uintptr_t *>(alloc);
+        uintptr_t ref_count = *ref_count_ptr;
 
         uintptr_t irc;
-        if (ircs.find(box) != ircs.end())
-            irc = ircs[box];
+        if (ircs.find(alloc) != ircs.end())
+            irc = ircs[alloc];
         else
             irc = 0;
 
@@ -246,14 +262,16 @@ find_roots(rust_task *task, irc_map &ircs,
             // This allocation must be a root, because the internal reference
             // count is smaller than the total reference count.
             LOG(task, gc,"root found: %p, irc %lu, ref count %lu",
-                box, irc, ref_count);
-            roots.push_back(box);
+                alloc, irc, ref_count);
+            roots.push_back(alloc);
         } else {
             LOG(task, gc, "nonroot found: %p, irc %lu, ref count %lu",
-                box, irc, ref_count);
+                alloc, irc, ref_count);
             assert(irc == ref_count && "Internal reference count must be "
                    "less than or equal to the total reference count!");
         }
+
+        ++begin;
     }
 }
 
@@ -263,7 +281,7 @@ find_roots(rust_task *task, irc_map &ircs,
 class mark : public shape::data<mark,shape::ptr> {
     friend class shape::data<mark,shape::ptr>;
 
-    std::set<rust_opaque_box *> &marked;
+    std::set<void *> &marked;
 
     mark(const mark &other, const shape::ptr &in_dp)
     : shape::data<mark,shape::ptr>(other.task, other.align, other.sp,
@@ -301,7 +319,7 @@ class mark : public shape::data<mark,shape::ptr> {
          const shape::type_param *in_params,
          const rust_shape_tables *in_tables,
          uint8_t *in_data,
-         std::set<rust_opaque_box*> &in_marked)
+         std::set<void *> &in_marked)
     : shape::data<mark,shape::ptr>(in_task, in_align, in_sp, in_params,
                                    in_tables, in_data),
       marked(in_marked) {}
@@ -339,7 +357,7 @@ class mark : public shape::data<mark,shape::ptr> {
           case shape::SHAPE_BOX_FN: {
               // Record an irc for the environment box, but don't descend
               // into it since it will be walked via the box's allocation
-              shape::data<mark,shape::ptr>::walk_fn_contents1();
+              shape::data<mark,shape::ptr>::walk_fn_contents1(dp, false);
               break;
           }
           case shape::SHAPE_BARE_FN:        // Does not close over data.
@@ -348,6 +366,10 @@ class mark : public shape::data<mark,shape::ptr> {
                                              * (and hence acyclic) data */
           default: abort();
         }
+    }
+
+    void walk_obj2() {
+        shape::data<mark,shape::ptr>::walk_obj_contents1(dp);
     }
 
     void walk_res2(const shape::rust_fn *dtor, unsigned n_params,
@@ -370,16 +392,14 @@ class mark : public shape::data<mark,shape::ptr> {
 
     void walk_uniq_contents2(mark &sub) { sub.walk(); }
 
-    void walk_box_contents2(mark &sub, shape::ptr &box_dp) {
-        if (!box_dp)
+    void walk_box_contents2(mark &sub, shape::ptr &ref_count_dp) {
+        if (!ref_count_dp)
             return;
 
-        rust_opaque_box *box_ptr = (rust_opaque_box *) box_dp;
-
-        if (marked.find(box_ptr) != marked.end())
+        if (marked.find((void *)ref_count_dp) != marked.end())
             return; // Skip to avoid chasing cycles.
 
-        marked.insert(box_ptr);
+        marked.insert((void *)ref_count_dp);
         sub.walk();
     }
 
@@ -398,9 +418,8 @@ class mark : public shape::data<mark,shape::ptr> {
     inline void walk_number2() { /* no-op */ }
 
 public:
-    static void do_mark(rust_task *task,
-                        const std::vector<rust_opaque_box *> &roots,
-                        std::set<rust_opaque_box*> &marked);
+    static void do_mark(rust_task *task, const std::vector<void *> &roots,
+                        std::set<void *> &marked);
 };
 
 void
@@ -419,28 +438,35 @@ mark::walk_variant2(shape::tag_info &tinfo, uint32_t variant_id,
 }
 
 void
-mark::do_mark(rust_task *task,
-              const std::vector<rust_opaque_box *> &roots,
-              std::set<rust_opaque_box *> &marked) {
-    std::vector<rust_opaque_box *>::const_iterator 
-      begin(roots.begin()),
-      end(roots.end());
+mark::do_mark(rust_task *task, const std::vector<void *> &roots,
+              std::set<void *> &marked) {
+    std::vector<void *>::const_iterator begin(roots.begin()),
+                                        end(roots.end());
     while (begin != end) {
-        rust_opaque_box *box = *begin;
-        if (marked.find(box) == marked.end()) {
-            marked.insert(box);
+        void *alloc = *begin;
+        if (marked.find(alloc) == marked.end()) {
+            marked.insert(alloc);
 
-            const type_desc *tydesc = box->td;
+            const type_desc *tydesc = task->local_allocs[alloc];
 
-            LOG(task, gc, "marking: %p, tydesc=%p", box, tydesc);
+            LOG(task, gc, "marking: %p, tydesc=%p", alloc, tydesc);
 
-            uint8_t *p = (uint8_t*) box_body(box);
+            uint8_t *p = reinterpret_cast<uint8_t *>(alloc);
             shape::arena arena;
             shape::type_param *params =
                 shape::type_param::from_tydesc_and_data(tydesc, p, arena);
 
+#if 0
+            // We skip over the reference count here.
+            shape::log log(task, true, tydesc->shape, params,
+                           tydesc->shape_tables, p + sizeof(uintptr_t),
+                           std::cerr);
+            log.walk();
+#endif
+
+            // We skip over the reference count here.
             mark mark(task, true, tydesc->shape, params, tydesc->shape_tables,
-                      p, marked);
+                      p + sizeof(uintptr_t), marked);
             mark.walk();
         }
 
@@ -526,9 +552,13 @@ class sweep : public shape::data<sweep,shape::ptr> {
               fn_env_pair pair = *(fn_env_pair*)dp;
 
               // free closed over data:
-              shape::data<sweep,shape::ptr>::walk_fn_contents1();
+              shape::data<sweep,shape::ptr>::walk_fn_contents1(dp, true);
 
               // now free the embedded type descr:
+              //
+              // see comment in walk_fn_contents1() concerning null_td
+              // to understand why this does not occur during the normal
+              // walk.
               upcall_s_free_shared_type_desc((type_desc*)pair.env->td);
 
               // now free the ptr:
@@ -580,7 +610,7 @@ class sweep : public shape::data<sweep,shape::ptr> {
 
     void walk_uniq_contents2(sweep &sub) { sub.walk(); }
 
-    void walk_box_contents2(sweep &sub, shape::ptr &box_dp) {
+    void walk_box_contents2(sweep &sub, shape::ptr &ref_count_dp) {
         return;
     }
 
@@ -607,50 +637,50 @@ class sweep : public shape::data<sweep,shape::ptr> {
     inline void walk_number2() { /* no-op */ }
 
 public:
-    static void do_sweep(rust_task *task,
-                         const std::set<rust_opaque_box*> &marked);
+    static void do_sweep(rust_task *task, const std::set<void *> &marked);
 };
 
 void
-sweep::do_sweep(rust_task *task,
-                const std::set<rust_opaque_box*> &marked) {
-    boxed_region *boxed = &task->boxed;
-    rust_opaque_box *box = boxed->first_live_alloc();
-    while (box != NULL) {
-        // save next ptr as we may be freeing box
-        rust_opaque_box *box_next = box->next;
-        if (marked.find(box) == marked.end()) {
-            LOG(task, gc, "object is part of a cycle: %p", box);
+sweep::do_sweep(rust_task *task, const std::set<void *> &marked) {
+    std::map<void *,const type_desc *>::iterator
+        begin(task->local_allocs.begin()), end(task->local_allocs.end());
+    while (begin != end) {
+        void *alloc = begin->first;
 
-            const type_desc *tydesc = box->td;
-            uint8_t *p = (uint8_t*) box_body(box);
+        if (marked.find(alloc) == marked.end()) {
+            LOG(task, gc, "object is part of a cycle: %p", alloc);
+
+            const type_desc *tydesc = begin->second;
+            uint8_t *p = reinterpret_cast<uint8_t *>(alloc);
             shape::arena arena;
             shape::type_param *params =
                 shape::type_param::from_tydesc_and_data(tydesc, p, arena);
 
             sweep sweep(task, true, tydesc->shape,
                         params, tydesc->shape_tables,
-                        p);
+                        p + sizeof(uintptr_t));
             sweep.walk();
 
-            boxed->free(box);
+            // FIXME: Run the destructor, *if* it's a resource.
+            task->free(alloc);
         }
-        box = box_next;
+        ++begin;
     }
 }
 
 
 void
 do_cc(rust_task *task) {
-    LOG(task, gc, "cc");
+    LOG(task, gc, "cc; n allocs = %lu",
+        (long unsigned int)task->local_allocs.size());
 
     irc_map ircs;
     irc::compute_ircs(task, ircs);
 
-    std::vector<rust_opaque_box*> roots;
+    std::vector<void *> roots;
     find_roots(task, ircs, roots);
 
-    std::set<rust_opaque_box*> marked;
+    std::set<void *> marked;
     mark::do_mark(task, roots, marked);
 
     sweep::do_sweep(task, marked);

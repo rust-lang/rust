@@ -17,6 +17,7 @@ get_task_pointer
 get_time
 last_os_error
 leak
+migrate_alloc
 nano_time
 new_port
 new_task
@@ -62,7 +63,6 @@ upcall_dynastack_free
 upcall_dynastack_mark
 upcall_fail
 upcall_free
-upcall_validate_box
 upcall_create_shared_type_desc
 upcall_free_shared_type_desc
 upcall_get_type_desc
@@ -98,3 +98,4 @@ rust_uvtmp_read_start
 rust_uvtmp_timer
 rust_uvtmp_delete_buf
 rust_uvtmp_get_req_id
+
