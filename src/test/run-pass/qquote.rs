@@ -68,6 +68,9 @@ fn main() {
     let stmt = #ast(stmt){let x = 20;};
     check_pp(*stmt, pprust::print_stmt, "let x = 20;");
 
+    let stmt2 = #ast(stmt){let x : $(ty) = some($(abc));};
+    check_pp(*stmt2, pprust::print_stmt, "let x: option<int> = some(23);");
+
     let pat = #ast(pat){some(_)};
     check_pp(pat, pprust::print_pat, "some(_)");
 }
