@@ -5,7 +5,6 @@ import build::*;
 import base::{
     trans_shared_malloc,
     type_of_inner,
-    node_id_type,
     INIT,
     trans_shared_free,
     drop_ty,
@@ -24,7 +23,7 @@ pure fn type_is_unique_box(bcx: @block_ctxt, ty: ty::t) -> bool {
 
 fn trans_uniq(bcx: @block_ctxt, contents: @ast::expr,
               node_id: ast::node_id, dest: dest) -> @block_ctxt {
-    let uniq_ty = node_id_type(bcx_ccx(bcx), node_id);
+    let uniq_ty = node_id_type(bcx, node_id);
     check type_is_unique_box(bcx, uniq_ty);
     let {bcx, val: llptr} = alloc_uniq(bcx, uniq_ty);
     add_clean_free(bcx, llptr, true);

@@ -6,7 +6,7 @@ import lib::llvm::{ValueRef, TypeRef};
 import back::abi;
 import base::{call_memmove, trans_shared_malloc, type_of_or_i8,
                INIT, copy_val, load_if_immediate, get_tydesc,
-               node_id_type, new_sub_block_ctxt, do_spill_noroot,
+               new_sub_block_ctxt, do_spill_noroot,
                dest};
 import shape::{llsize_of, size_of};
 import build::*;
@@ -106,7 +106,7 @@ fn trans_vec(bcx: @block_ctxt, args: [@ast::expr], id: ast::node_id,
         }
         ret bcx;
     }
-    let vec_ty = node_id_type(bcx_ccx(bcx), id);
+    let vec_ty = node_id_type(bcx, id);
     let {bcx: bcx,
          val: vptr,
          llunitsz: llunitsz,

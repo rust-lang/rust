@@ -47,6 +47,7 @@ type options =
      parse_only: bool,
      no_trans: bool,
      no_asm_comments: bool,
+     monomorphize: bool,
      warn_unused_imports: bool};
 
 type crate_metadata = {name: str, data: [u8]};

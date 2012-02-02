@@ -692,7 +692,7 @@ fn trans_alt(cx: @block_ctxt, expr: @ast::expr, arms_: [ast::arm],
     }
 
     let exit_map = [];
-    let t = base::node_id_type(cx.fcx.ccx, expr.id);
+    let t = node_id_type(cx, expr.id);
     let vr = base::spill_if_immediate(er.bcx, er.val, t);
     compile_submatch(vr.bcx, match, [vr.val],
                      bind mk_fail(alt_cx, expr.span, fail_cx), exit_map);
@@ -725,7 +725,7 @@ fn bind_irrefutable_pat(bcx: @block_ctxt, pat: @ast::pat, val: ValueRef,
     alt normalize_pat(bcx_tcx(bcx), pat).node {
       ast::pat_ident(_,inner) {
         if make_copy || ccx.copy_map.contains_key(pat.id) {
-            let ty = ty::node_id_to_type(ccx.tcx, pat.id);
+            let ty = node_id_type(bcx, pat.id);
             // FIXME: Could constrain pat_bind to make this
             // check unnecessary.
             check (type_has_static_size(ccx, ty));
@@ -753,7 +753,7 @@ fn bind_irrefutable_pat(bcx: @block_ctxt, pat: @ast::pat, val: ValueRef,
         }
       }
       ast::pat_rec(fields, _) {
-        let rec_ty = ty::node_id_to_type(ccx.tcx, pat.id);
+        let rec_ty = node_id_type(bcx, pat.id);
         let rec_fields = ty::get_fields(ccx.tcx, rec_ty);
         for f: ast::field_pat in fields {
             let ix = option::get(ty::field_idx(f.ident, rec_fields));
@@ -764,7 +764,7 @@ fn bind_irrefutable_pat(bcx: @block_ctxt, pat: @ast::pat, val: ValueRef,
         }
       }
       ast::pat_tup(elems) {
-        let tup_ty = ty::node_id_to_type(ccx.tcx, pat.id);
+        let tup_ty = node_id_type(bcx, pat.id);
         let i = 0u;
         for elem in elems {
             // how to get rid of this check?

@@ -668,7 +668,7 @@ fn create_local_var(bcx: @block_ctxt, local: @ast::local)
      });
     let loc = codemap::lookup_char_pos(cx.sess.codemap,
                                        local.span.lo);
-    let ty = base::node_id_type(cx, local.node.id);
+    let ty = node_id_type(bcx, local.node.id);
     let tymd = create_ty(cx, ty, local.node.ty);
     let filemd = create_file(cx, loc.filename);
     let context = alt bcx.parent {
@@ -717,7 +717,7 @@ fn create_arg(bcx: @block_ctxt, arg: ast::arg, sp: span)
     };*/
     let loc = codemap::lookup_char_pos(cx.sess.codemap,
                                        sp.lo);
-    let ty = base::node_id_type(cx, arg.id);
+    let ty = node_id_type(bcx, arg.id);
     let tymd = create_ty(cx, ty, arg.ty);
     let filemd = create_file(cx, loc.filename);
     let context = create_function(bcx.fcx);

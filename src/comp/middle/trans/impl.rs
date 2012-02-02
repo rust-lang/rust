@@ -51,7 +51,7 @@ fn trans_impl(ccx: @crate_ctxt, path: path, name: ast::ident,
           some(llfn) {
             trans_fn(ccx, sub_path + [path_name(m.ident)], m.decl, m.body,
                      llfn, impl_self(ty::node_id_to_type(ccx.tcx, id)),
-                     tps + m.tps, m.id);
+                     tps + m.tps, none, m.id);
           }
           _ {
             ccx.tcx.sess.bug("Unbound id in trans_impl");
@@ -62,7 +62,7 @@ fn trans_impl(ccx: @crate_ctxt, path: path, name: ast::ident,
 
 fn trans_self_arg(bcx: @block_ctxt, base: @ast::expr) -> result {
     let tz = [], tr = [];
-    let basety = ty::expr_ty(bcx_tcx(bcx), base);
+    let basety = expr_ty(bcx, base);
     let {bcx, val} = trans_arg_expr(bcx, {mode: ast::by_ref, ty: basety},
                                     T_ptr(type_of_or_i8(bcx, basety)), tz,
                                     tr, base);
@@ -153,7 +153,7 @@ fn trans_iface_callee(bcx: @block_ctxt, callee_id: ast::node_id,
     // FIXME[impl] I doubt this is alignment-safe
     let self = PointerCast(bcx, GEPi(bcx, box_body, [0, 2]),
                            T_opaque_cbox_ptr(bcx_ccx(bcx)));
-    let iface_id = alt ty::struct(tcx, ty::expr_ty(tcx, base)) {
+    let iface_id = alt ty::struct(tcx, expr_ty(bcx, base)) {
         ty::ty_iface(did, _) { did }
         // precondition
         _ { bcx_tcx(bcx).sess.span_bug(base.span, "base has non-iface type \
@@ -442,7 +442,7 @@ fn get_dict_ptrs(bcx: @block_ctxt, origin: typeck::dict_origin)
 fn trans_cast(bcx: @block_ctxt, val: @ast::expr, id: ast::node_id, dest: dest)
     -> @block_ctxt {
     let ccx = bcx_ccx(bcx), tcx = ccx.tcx;
-    let val_ty = ty::expr_ty(tcx, val);
+    let val_ty = expr_ty(bcx, val);
     let {bcx, val: dict} = get_dict(bcx, ccx.dict_map.get(id)[0]);
     let body_ty = ty::mk_tup(tcx, [ty::mk_type(tcx), ty::mk_type(tcx),
                                    val_ty]);

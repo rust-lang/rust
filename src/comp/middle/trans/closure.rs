@@ -89,7 +89,7 @@ import ast_map::{path, path_mod, path_name};
 
 enum environment_value {
     // Evaluate expr and store result in env (used for bind).
-    env_expr(@ast::expr),
+    env_expr(@ast::expr, ty::t),
 
     // Copy the value from this llvm ValueRef into the environment.
     env_copy(ValueRef, ty::t, lval_kind),
@@ -103,7 +103,7 @@ enum environment_value {
 
 fn ev_to_str(ccx: @crate_ctxt, ev: environment_value) -> str {
     alt ev {
-      env_expr(ex) { expr_to_str(ex) }
+      env_expr(ex, _) { expr_to_str(ex) }
       env_copy(v, t, lk) { #fmt("copy(%s,%s)", val_str(ccx.tn, v),
                                 ty_to_str(ccx.tcx, t)) }
       env_move(v, t, lk) { #fmt("move(%s,%s)", val_str(ccx.tn, v),
@@ -151,7 +151,7 @@ fn mk_closure_tys(tcx: ty::ctxt,
             env_copy(_, t, _) { t }
             env_move(_, t, _) { t }
             env_ref(_, t, _) { t }
-            env_expr(e) { ty::expr_ty(tcx, e) }
+            env_expr(_, t) { t }
         }];
     }
     let bound_data_ty = ty::mk_tup(tcx, bound_tys);
@@ -316,7 +316,7 @@ fn store_environment(
         bcx = bound_data.bcx;
         let bound_data = bound_data.val;
         alt bv {
-          env_expr(e) {
+          env_expr(e, _) {
             bcx = base::trans_expr_save_in(bcx, e, bound_data);
             add_clean_temp_mem(bcx, bound_data, bound_tys[i]);
             temp_cleanups += [bound_data];
@@ -457,7 +457,7 @@ fn trans_expr_fn(bcx: @block_ctxt,
                  dest: dest) -> @block_ctxt {
     if dest == ignore { ret bcx; }
     let ccx = bcx_ccx(bcx), bcx = bcx;
-    let fty = node_id_type(ccx, id);
+    let fty = node_id_type(bcx, id);
     let llfnty = type_of_fn_from_ty(ccx, fty, []);
     let sub_path = bcx.fcx.path + [path_name("anon")];
     let s = mangle_internal_name_by_path(ccx, sub_path);
@@ -468,7 +468,8 @@ fn trans_expr_fn(bcx: @block_ctxt,
         let cap_vars = capture::compute_capture_vars(
             ccx.tcx, id, proto, cap_clause);
         let {llbox, cdata_ty, bcx} = build_closure(bcx, cap_vars, ck);
-        trans_closure(ccx, sub_path, decl, body, llfn, no_self, [], id, {|fcx|
+        trans_closure(ccx, sub_path, decl, body, llfn, no_self, [],
+                      bcx.fcx.param_substs, id, {|fcx|
             load_environment(bcx, fcx, cdata_ty, cap_vars, ck);
         });
         llbox
@@ -479,10 +480,9 @@ fn trans_expr_fn(bcx: @block_ctxt,
       ast::proto_box { trans_closure_env(ty::ck_box) }
       ast::proto_uniq { trans_closure_env(ty::ck_uniq) }
       ast::proto_bare {
-        let closure = C_null(T_opaque_box_ptr(ccx));
-        trans_closure(ccx, sub_path, decl, body, llfn, no_self, [], id,
-                      {|_fcx|});
-        closure
+        trans_closure(ccx, sub_path, decl, body, llfn, no_self, [], none,
+                      id, {|_fcx|});
+        C_null(T_opaque_box_ptr(ccx))
       }
     };
     fill_fn_pair(bcx, get_dest_addr(dest), llfn, closure);
@@ -492,7 +492,7 @@ fn trans_expr_fn(bcx: @block_ctxt,
 fn trans_bind(cx: @block_ctxt, f: @ast::expr, args: [option<@ast::expr>],
               id: ast::node_id, dest: dest) -> @block_ctxt {
     let f_res = trans_callee(cx, f);
-    ret trans_bind_1(cx, ty::expr_ty(bcx_tcx(cx), f), f_res, args,
+    ret trans_bind_1(cx, expr_ty(cx, f), f_res, args,
                      ty::node_id_to_type(bcx_tcx(cx), id), dest);
 }
 
@@ -567,7 +567,7 @@ fn trans_bind_1(cx: @block_ctxt, outgoing_fty: ty::t,
     // Actually construct the closure
     let {llbox, cdata_ty, bcx} = store_environment(
         bcx, vec::map(lltydescs, {|d| {desc: d, dicts: none}}),
-        env_vals + vec::map(bound, {|x| env_expr(x)}),
+        env_vals + vec::map(bound, {|x| env_expr(x, expr_ty(bcx, x))}),
         ty::ck_box);
 
     // Make thunk

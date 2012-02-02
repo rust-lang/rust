@@ -99,6 +99,7 @@ type crate_ctxt =
      consts: hashmap<ast::node_id, ValueRef>,
      tydescs: hashmap<ty::t, @tydesc_info>,
      dicts: hashmap<dict_id, ValueRef>,
+     monomorphized: hashmap<mono_id, ValueRef>,
      module_data: hashmap<str, ValueRef>,
      lltypes: hashmap<ty::t, TypeRef>,
      names: namegen,
@@ -235,6 +236,7 @@ type fn_ctxt =
      mutable lltyparams: [fn_ty_param],
      derived_tydescs: hashmap<ty::t, derived_tydesc_info>,
      id: ast::node_id,
+     param_substs: option<[ty::t]>,
      span: option<span>,
      path: path,
      ccx: @crate_ctxt};
@@ -917,6 +919,16 @@ fn hash_dict_id(&&dp: dict_id) -> uint {
     h
 }
 
+// Used to identify cached monomorphized functions
+// FIXME[mono] don't count different boxes as different types
+type mono_id = @{def: ast::def_id, substs: [ty::t], dicts: [dict_id]};
+fn hash_mono_id(&&mi: mono_id) -> uint {
+    let h = syntax::ast_util::hash_def_id(mi.def);
+    for ty in mi.substs { h = (h << 2u) + ty; }
+    for dict in mi.dicts { h = (h << 2u) + hash_dict_id(dict); }
+    h
+}
+
 fn umax(cx: @block_ctxt, a: ValueRef, b: ValueRef) -> ValueRef {
     let cond = build::ICmp(cx, lib::llvm::IntULT, a, b);
     ret build::Select(cx, cond, b, a);
@@ -943,6 +955,18 @@ fn path_str(p: path) -> str {
         } }
     }
     r
+}
+
+fn node_id_type(bcx: @block_ctxt, id: ast::node_id) -> ty::t {
+    let tcx = bcx_tcx(bcx);
+    let t = ty::node_id_to_type(tcx, id);
+    alt bcx.fcx.param_substs {
+      some(s) { ty::substitute_type_params(tcx, s, t) }
+      _ { t }
+    }
+}
+fn expr_ty(bcx: @block_ctxt, ex: @ast::expr) -> ty::t {
+    node_id_type(bcx, ex.id)
 }
 
 //

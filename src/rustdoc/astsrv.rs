@@ -62,6 +62,8 @@ fn build_ctxt(sess: session::session, ast: @ast::crate) -> ctxt {
     }
 }
 
+// FIXME: this whole structure should not be duplicated here. makes it
+// painful to add or remove options.
 fn build_session() -> session::session {
     let sopts: @session::options = @{
         crate_type: session::lib_crate,
@@ -84,6 +86,7 @@ fn build_session() -> session::session {
         parse_only: false,
         no_trans: false,
         no_asm_comments: false,
+        monomorphize: false,
         warn_unused_imports: false
     };
     driver::build_session(sopts, ".", diagnostic::emit)

@@ -2581,15 +2581,12 @@ fn enum_variant_with_id(cx: ctxt, enum_id: ast::def_id,
 // If the given item is in an external crate, looks up its type and adds it to
 // the type cache. Returns the type parameters and type.
 fn lookup_item_type(cx: ctxt, did: ast::def_id) -> ty_param_bounds_and_ty {
-    if did.crate == ast::local_crate {
-        // The item is in this crate. The caller should have added it to the
-        // type cache already; we simply return it.
-
-        ret cx.tcache.get(did);
-    }
     alt cx.tcache.find(did) {
       some(tpt) { ret tpt; }
       none {
+        // The item is in this crate. The caller should have added it to the
+        // type cache already
+        assert did.crate != ast::local_crate;
         let tyt = csearch::get_type(cx, did);
         cx.tcache.insert(did, tyt);
         ret tyt;
