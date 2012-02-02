@@ -78,10 +78,7 @@ fn expr_root(tcx: ty::ctxt, ex: @expr, autoderef: bool) ->
               ty::ty_str {
                 ds += [@{mut: false, kind: index, outer_t: auto_unbox.t}];
               }
-              _ {
-                  tcx.sess.span_bug(base.span, "Ill-typed base expression in \
-                    index");
-              }
+              _ { break; }
             }
             ds += auto_unbox.ds;
             ex = base;
