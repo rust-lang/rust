@@ -33,7 +33,6 @@ import c = ctypes;
 
 export task;
 export joinable_task;
-export sleep;
 export yield;
 export task_notification;
 export join;
@@ -55,7 +54,7 @@ export try;
 #[abi = "rust-intrinsic"]
 native mod rusti {
     // these must run on the Rust stack so that they can swap stacks etc:
-    fn task_sleep(task: *rust_task, time_in_us: c::size_t, &killed: bool);
+    fn task_yield(task: *rust_task, &killed: bool);
 }
 
 type rust_closure = {
@@ -258,34 +257,20 @@ Retreives a handle to the currently executing task
 fn get_task() -> task { rustrt::get_task_id() }
 
 /*
-Function: sleep
-
-Hints the scheduler to yield this task for a specified ammount of time.
-
-Parameters:
-
-time_in_us - maximum number of microseconds to yield control for
-*/
-fn sleep(time_in_us: uint) {
-    let task = rustrt::rust_get_task();
-    let killed = false;
-    // FIXME: uncomment this when extfmt is moved to core
-    // in a snapshot.
-    // #debug("yielding for %u us", time_in_us);
-    rusti::task_sleep(task, time_in_us, killed);
-    if killed && !currently_unwinding() {
-        fail "killed";
-    }
-}
-
-/*
 Function: yield
 
 Yield control to the task scheduler
 
 The scheduler may schedule another task to execute.
 */
-fn yield() { sleep(1u) }
+fn yield() {
+    let task = rustrt::rust_get_task();
+    let killed = false;
+    rusti::task_yield(task, killed);
+    if killed && !currently_unwinding() {
+        fail "killed";
+    }
+}
 
 /*
 Function: join
@@ -374,9 +359,6 @@ fn try<T:send>(+f: fn~() -> T) -> result::t<T,()> {
 
 #[cfg(test)]
 mod tests {
-    #[test]
-    fn test_sleep() { sleep(1000000u); }
-
     // FIXME: Leaks on windows
     #[test]
     #[ignore(cfg(target_os = "win32"))]

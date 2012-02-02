@@ -10,7 +10,7 @@
 #include <cstring>
 
 extern "C" CDECL void
-rust_task_sleep(rust_task *task, size_t time_in_us, bool *killed);
+rust_task_yield(rust_task *task, bool *killed);
 
 extern "C" void
 rust_intrinsic_vec_len(size_t *retptr,
@@ -77,11 +77,10 @@ rust_intrinsic_get_type_desc(void **retptr,
 }
 
 extern "C" void
-rust_intrinsic_task_sleep(void **retptr,
+rust_intrinsic_task_yield(void **retptr,
                           void *env,
 			  rust_task *task,
-                          size_t time_in_us,
 			  bool *killed) {
-    rust_task_sleep(task, time_in_us, killed);
+    rust_task_yield(task, killed);
 }
 

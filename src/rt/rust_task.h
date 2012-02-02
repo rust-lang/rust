@@ -159,8 +159,8 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     // Print a backtrace, if the "bt" logging option is on.
     void backtrace();
 
-    // Yields for a specified duration of time.
-    void yield(size_t time_in_ms, bool *killed);
+    // Yields control to the scheduler. Called from the Rust stack
+    void yield(bool *killed);
 
     // Fail this task (assuming caller-on-stack is different task).
     void kill();

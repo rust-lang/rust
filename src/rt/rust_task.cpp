@@ -401,7 +401,7 @@ void rust_task::start()
 
 // Only run this on the rust stack
 void
-rust_task::yield(size_t time_in_us, bool *killed) {
+rust_task::yield(bool *killed) {
     if (this->killed) {
         *killed = true;
     }
