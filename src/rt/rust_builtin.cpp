@@ -385,7 +385,7 @@ get_task_id() {
 extern "C" CDECL rust_task_id
 new_task() {
     rust_task *task = rust_task_thread::get_task();
-    return task->kernel->create_task(task, NULL);
+    return task->sched->create_task(task, NULL);
 }
 
 extern "C" CDECL void
