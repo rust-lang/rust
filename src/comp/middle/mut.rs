@@ -18,7 +18,7 @@ fn expr_root(tcx: ty::ctxt, ex: @expr, autoderef: bool) ->
     fn maybe_auto_unbox(tcx: ty::ctxt, t: ty::t) -> {t: ty::t, ds: [deref]} {
         let ds = [], t = t;
         while true {
-            alt ty::struct(tcx, t) {
+            alt ty::get(t).struct {
               ty::ty_box(mt) {
                 ds += [@{mut: mt.mut == mut, kind: unbox(false), outer_t: t}];
                 t = mt.ty;
@@ -51,7 +51,7 @@ fn expr_root(tcx: ty::ctxt, ex: @expr, autoderef: bool) ->
           expr_field(base, ident, _) {
             let auto_unbox = maybe_auto_unbox(tcx, ty::expr_ty(tcx, base));
             let is_mut = false;
-            alt ty::struct(tcx, auto_unbox.t) {
+            alt ty::get(auto_unbox.t).struct {
               ty::ty_rec(fields) {
                 for fld: ty::field in fields {
                     if str::eq(ident, fld.ident) {
@@ -68,7 +68,7 @@ fn expr_root(tcx: ty::ctxt, ex: @expr, autoderef: bool) ->
           }
           expr_index(base, _) {
             let auto_unbox = maybe_auto_unbox(tcx, ty::expr_ty(tcx, base));
-            alt ty::struct(tcx, auto_unbox.t) {
+            alt ty::get(auto_unbox.t).struct {
               ty::ty_vec(mt) {
                 ds +=
                     [@{mut: mt.mut == mut,
@@ -87,7 +87,7 @@ fn expr_root(tcx: ty::ctxt, ex: @expr, autoderef: bool) ->
             if op == deref {
                 let base_t = ty::expr_ty(tcx, base);
                 let is_mut = false, ptr = false;
-                alt ty::struct(tcx, base_t) {
+                alt ty::get(base_t).struct {
                   ty::ty_box(mt) { is_mut = mt.mut == mut; }
                   ty::ty_uniq(mt) { is_mut = mt.mut == mut; }
                   ty::ty_res(_, _, _) { }
@@ -225,7 +225,7 @@ fn check_move_rhs(cx: @ctx, src: @expr) {
 }
 
 fn check_call(cx: @ctx, f: @expr, args: [@expr]) {
-    let arg_ts = ty::ty_fn_args(cx.tcx, ty::expr_ty(cx.tcx, f));
+    let arg_ts = ty::ty_fn_args(ty::expr_ty(cx.tcx, f));
     let i = 0u;
     for arg_t: ty::arg in arg_ts {
         alt ty::resolved_mode(cx.tcx, arg_t.mode) {
@@ -238,7 +238,7 @@ fn check_call(cx: @ctx, f: @expr, args: [@expr]) {
 }
 
 fn check_bind(cx: @ctx, f: @expr, args: [option<@expr>]) {
-    let arg_ts = ty::ty_fn_args(cx.tcx, ty::expr_ty(cx.tcx, f));
+    let arg_ts = ty::ty_fn_args(ty::expr_ty(cx.tcx, f));
     let i = 0u;
     for arg in args {
         alt arg {
@@ -277,7 +277,7 @@ fn is_immutable_def(cx: @ctx, def: def) -> option<str> {
       def_self(_) { some("self argument") }
       def_upvar(_, inner, node_id) {
         let ty = ty::node_id_to_type(cx.tcx, node_id);
-        let proto = ty::ty_fn_proto(cx.tcx, ty);
+        let proto = ty::ty_fn_proto(ty);
         ret alt proto {
           proto_any | proto_block { is_immutable_def(cx, *inner) }
           _ { some("upvar") }

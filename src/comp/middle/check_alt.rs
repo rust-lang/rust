@@ -73,7 +73,7 @@ fn check_exhaustive(tcx: ty::ctxt, sp:span, scrut_ty:ty::t, pats:[@pat]) {
     /* Otherwise, get the list of variants and make sure each one is
      represented. Then recurse on the columns. */
 
-    let ty_def_id = alt ty::struct(tcx, scrut_ty) {
+    let ty_def_id = alt ty::get(scrut_ty).struct {
             ty_enum(id, _) { id }
             _ { ret; } };
 

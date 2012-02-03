@@ -13,7 +13,7 @@ fn check_crate(tcx: ty::ctxt, crate: @crate) {
 
 fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
     if !cx.allow_block {
-        alt ty::struct(cx.tcx, ty::expr_ty(cx.tcx, ex)) {
+        alt ty::get(ty::expr_ty(cx.tcx, ex)).struct {
           ty::ty_fn({proto: p, _}) if is_blockish(p) {
             cx.tcx.sess.span_err(ex.span, "expressions with block type \
                 can only appear in callee or (by-ref) argument position");
@@ -27,7 +27,7 @@ fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
         cx.allow_block = true;
         v.visit_expr(f, cx, v);
         let i = 0u;
-        for arg_t in ty::ty_fn_args(cx.tcx, ty::expr_ty(cx.tcx, f)) {
+        for arg_t in ty::ty_fn_args(ty::expr_ty(cx.tcx, f)) {
             cx.allow_block = (ty::arg_mode(cx.tcx, arg_t) == by_ref);
             v.visit_expr(args[i], cx, v);
             i += 1u;

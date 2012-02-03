@@ -234,7 +234,7 @@ fn add_clean_temp(cx: @block_ctxt, val: ValueRef, ty: ty::t) {
     if !ty::type_needs_drop(bcx_tcx(cx), ty) { ret; }
     fn do_drop(bcx: @block_ctxt, val: ValueRef, ty: ty::t) ->
        @block_ctxt {
-        if ty::type_is_immediate(bcx_tcx(bcx), ty) {
+        if ty::type_is_immediate(ty) {
             ret base::drop_ty_immediate(bcx, val, ty);
         } else {
             ret drop_ty(bcx, val, ty);
@@ -298,8 +298,6 @@ fn get_res_dtor(ccx: @crate_ctxt, did: ast::def_id, inner_t: ty::t)
 
     let param_bounds = ty::lookup_item_type(ccx.tcx, did).bounds;
     let nil_res = ty::mk_nil(ccx.tcx);
-    // FIXME: Silly check -- mk_nil should have a postcondition
-    check non_ty_var(ccx, nil_res);
     let fn_mode = ast::expl(ast::by_ref);
     let f_t = type_of_fn(ccx, [{mode: fn_mode, ty: inner_t}],
                          nil_res, *param_bounds);
@@ -856,23 +854,6 @@ pure fn type_has_static_size(cx: @crate_ctxt, t: ty::t) -> bool {
     !ty::type_has_dynamic_size(cx.tcx, t)
 }
 
-pure fn non_ty_var(cx: @crate_ctxt, t: ty::t) -> bool {
-    let st = ty::struct(cx.tcx, t);
-    alt st {
-      ty::ty_var(_) { false }
-      _          { true }
-    }
-}
-
-pure fn returns_non_ty_var(cx: @crate_ctxt, t: ty::t) -> bool {
-    non_ty_var(cx, ty::ty_fn_ret(cx.tcx, t))
-}
-
-pure fn type_is_tup_like(cx: @block_ctxt, t: ty::t) -> bool {
-    let tcx = bcx_tcx(cx);
-    ty::type_is_tup_like(tcx, t)
-}
-
 // Used to identify cached dictionaries
 enum dict_param {
     dict_param_dict(dict_id),
@@ -885,7 +866,7 @@ fn hash_dict_id(&&dp: dict_id) -> uint {
         h = h << 2u;
         alt param {
           dict_param_dict(d) { h += hash_dict_id(d); }
-          dict_param_ty(t) { h += t; }
+          dict_param_ty(t) { h += ty::type_id(t); }
         }
     }
     h
@@ -896,7 +877,7 @@ fn hash_dict_id(&&dp: dict_id) -> uint {
 type mono_id = @{def: ast::def_id, substs: [ty::t], dicts: [dict_id]};
 fn hash_mono_id(&&mi: mono_id) -> uint {
     let h = syntax::ast_util::hash_def_id(mi.def);
-    for ty in mi.substs { h = (h << 2u) + ty; }
+    for ty in mi.substs { h = (h << 2u) + ty::type_id(ty); }
     for dict in mi.dicts { h = (h << 2u) + hash_dict_id(dict); }
     h
 }

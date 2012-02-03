@@ -80,7 +80,7 @@ fn visit_fn(cx: @ctx, _fk: visit::fn_kind, decl: ast::fn_decl,
             id: ast::node_id, sc: scope, v: vt<scope>) {
     visit::visit_fn_decl(decl, sc, v);
     let fty = ty::node_id_to_type(cx.tcx, id);
-    let args = ty::ty_fn_args(cx.tcx, fty);
+    let args = ty::ty_fn_args(fty);
     for arg in args {
         alt ty::resolved_mode(cx.tcx, arg.mode) {
           ast::by_val if ty::type_has_dynamic_size(cx.tcx, arg.ty) {
@@ -92,7 +92,7 @@ fn visit_fn(cx: @ctx, _fk: visit::fn_kind, decl: ast::fn_decl,
 
     // Blocks need to obey any restrictions from the enclosing scope, and may
     // be called multiple times.
-    let proto = ty::ty_fn_proto(cx.tcx, fty);
+    let proto = ty::ty_fn_proto(fty);
     alt proto {
       ast::proto_block | ast::proto_any {
         check_loop(*cx, sc) {|| v.visit_block(body, sc, v);}
@@ -221,7 +221,7 @@ fn cant_copy(cx: ctx, b: binding) -> bool {
 fn check_call(cx: ctx, sc: scope, f: @ast::expr, args: [@ast::expr])
     -> [binding] {
     let fty = ty::expr_ty(cx.tcx, f);
-    let arg_ts = ty::ty_fn_args(cx.tcx, fty);
+    let arg_ts = ty::ty_fn_args(fty);
     let mut_roots: [{arg: uint, node: node_id}] = [];
     let bindings = [];
     let i = 0u;
@@ -371,7 +371,7 @@ fn check_for(cx: ctx, local: @ast::local, seq: @ast::expr, blk: ast::blk,
     // If this is a mutable vector, don't allow it to be touched.
     let seq_t = ty::expr_ty(cx.tcx, seq);
     let cur_mut = root.mut;
-    alt ty::struct(cx.tcx, seq_t) {
+    alt ty::get(seq_t).struct {
       ty::ty_vec(mt) {
         if mt.mut != ast::imm {
             cur_mut = some(contains(seq_t));
@@ -510,7 +510,7 @@ fn ty_can_unsafely_include(cx: ctx, needle: unsafe_ty, haystack: ty::t,
           contains(ty) { ty == haystack }
           mut_contains(ty) { mut && ty == haystack }
         } { ret true; }
-        alt ty::struct(tcx, haystack) {
+        alt ty::get(haystack).struct {
           ty::ty_enum(_, ts) {
             for t: ty::t in ts {
                 if helper(tcx, needle, t, mut) { ret true; }
@@ -565,7 +565,7 @@ fn local_id_of_node(cx: ctx, id: node_id) -> uint {
 // implicit copy.
 fn copy_is_expensive(tcx: ty::ctxt, ty: ty::t) -> bool {
     fn score_ty(tcx: ty::ctxt, ty: ty::t) -> uint {
-        ret alt ty::struct(tcx, ty) {
+        ret alt ty::get(ty).struct {
           ty::ty_nil | ty::ty_bot | ty::ty_bool | ty::ty_int(_) |
           ty::ty_uint(_) | ty::ty_float(_) | ty::ty_type |
           ty::ty_ptr(_) { 1u }
@@ -623,7 +623,7 @@ fn pattern_roots(tcx: ty::ctxt, mut: option<unsafe_ty>, pat: @ast::pat)
           }
           ast::pat_box(p) {
             let ty = ty::node_id_to_type(tcx, pat.id);
-            let m = alt ty::struct(tcx, ty) {
+            let m = alt ty::get(ty).struct {
               ty::ty_box(mt) { mt.mut != ast::imm }
               _ { tcx.sess.span_bug(pat.span, "box pat has non-box type"); }
             },
@@ -632,7 +632,7 @@ fn pattern_roots(tcx: ty::ctxt, mut: option<unsafe_ty>, pat: @ast::pat)
           }
           ast::pat_uniq(p) {
             let ty = ty::node_id_to_type(tcx, pat.id);
-            let m = alt ty::struct(tcx, ty) {
+            let m = alt ty::get(ty).struct {
               ty::ty_uniq(mt) { mt.mut != ast::imm }
               _ { tcx.sess.span_bug(pat.span, "uniq pat has non-uniq type"); }
             },

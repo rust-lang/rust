@@ -16,8 +16,8 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
         let modestr = alt canon_mode(cx, mode) {
           ast::infer(_) { "" }
           ast::expl(m) {
-            if !ty::type_contains_vars(cx, ty) &&
-                m == ty::default_arg_mode_for_ty(cx, ty) {
+            if !ty::type_has_vars(ty) &&
+                m == ty::default_arg_mode_for_ty(ty) {
                 ""
             } else {
                 mode_to_str(ast::expl(m))
@@ -36,7 +36,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
         for a: arg in inputs { strs += [fn_input_to_str(cx, a)]; }
         s += str::connect(strs, ", ");
         s += ")";
-        if struct(cx, output) != ty_nil {
+        if ty::get(output).struct != ty_nil {
             s += " -> ";
             alt cf {
               ast::noreturn { s += "!"; }
@@ -62,22 +62,22 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
         }
         ret mstr + ty_to_str(cx, m.ty);
     }
-    alt ty_name(cx, typ) {
+    alt ty::type_name(typ) {
       some(cs) {
-        alt struct(cx, typ) {
+        alt ty::get(typ).struct {
           ty_enum(_, tps) | ty_res(_, _, tps) {
             if vec::len(tps) > 0u {
                 let strs = vec::map(tps, {|t| ty_to_str(cx, t)});
-                ret *cs + "<" + str::connect(strs, ",") + ">";
+                ret cs + "<" + str::connect(strs, ",") + ">";
             }
           }
           _ {}
         }
-        ret *cs;
+        ret cs;
       }
       _ { }
     }
-    ret alt struct(cx, typ) {
+    ret alt ty::get(typ).struct {
       ty_nil { "()" }
       ty_bot { "_|_" }
       ty_bool { "bool" }

@@ -76,7 +76,7 @@ fn hash_res_info(ri: res_info) -> uint {
     h *= 33u;
     h += ri.did.node as uint;
     h *= 33u;
-    h += ri.t as uint;
+    h += ty::type_id(ri.t);
     ret h;
 }
 
@@ -121,7 +121,7 @@ fn largest_variants(ccx: @crate_ctxt, tag_id: ast::def_id) -> [uint] {
         let bounded = true;
         let {a: min_size, b: min_align} = {a: 0u, b: 0u};
         for elem_t: ty::t in variant.args {
-            if ty::type_contains_params(ccx.tcx, elem_t) {
+            if ty::type_has_params(elem_t) {
                 // TODO: We could do better here; this causes us to
                 // conservatively assume that (int, T) has minimum size 0,
                 // when in fact it has minimum size sizeof(int).
@@ -319,7 +319,7 @@ fn add_substr(&dest: [u8], src: [u8]) {
 fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint]) -> [u8] {
     let s = [];
 
-    alt ty::struct(ccx.tcx, t) {
+    alt ty::get(t).struct {
       ty::ty_nil | ty::ty_bool | ty::ty_uint(ast::ty_u8) |
       ty::ty_bot { s += [shape_u8]; }
       ty::ty_int(ast::ty_i) { s += [s_int(ccx.tcx)]; }
@@ -447,7 +447,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint]) -> [u8] {
       ty::ty_constr(inner_t, _) {
         s += shape_of(ccx, inner_t, ty_param_map);
       }
-      ty::ty_var(_) | ty::ty_named(_, _) | ty::ty_self(_) {
+      ty::ty_var(_) | ty::ty_self(_) {
         ccx.tcx.sess.bug("shape_of: unexpected type struct found");
       }
     }
@@ -664,7 +664,7 @@ fn llalign_of(cx: @crate_ctxt, t: TypeRef) -> ValueRef {
 fn static_size_of_enum(cx: @crate_ctxt, t: ty::t)
     : type_has_static_size(cx, t) -> uint {
     if cx.enum_sizes.contains_key(t) { ret cx.enum_sizes.get(t); }
-    alt ty::struct(cx.tcx, t) {
+    alt ty::get(t).struct {
       ty::ty_enum(tid, subtys) {
         // Compute max(variant sizes).
 
@@ -719,7 +719,7 @@ fn dynamic_metrics(cx: @block_ctxt, t: ty::t) -> metrics {
         ret { bcx: bcx, sz: off, align: max_align };
     }
 
-    alt ty::struct(bcx_tcx(cx), t) {
+    alt ty::get(t).struct {
       ty::ty_param(p, _) {
         let ti = none::<@tydesc_info>;
         let {bcx, val: tydesc} = base::get_tydesc(cx, t, false, ti).result;
@@ -783,7 +783,7 @@ fn dynamic_metrics(cx: @block_ctxt, t: ty::t) -> metrics {
 // types.
 fn simplify_type(ccx: @crate_ctxt, typ: ty::t) -> ty::t {
     fn simplifier(ccx: @crate_ctxt, typ: ty::t) -> ty::t {
-        alt ty::struct(ccx.tcx, typ) {
+        alt ty::get(typ).struct {
           ty::ty_box(_) | ty::ty_iface(_, _) {
             ret ty::mk_imm_box(ccx.tcx, ty::mk_nil(ccx.tcx));
           }

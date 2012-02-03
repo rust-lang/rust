@@ -157,7 +157,7 @@ fn trans_append(cx: @block_ctxt, vec_ty: ty::t, lhsptr: ValueRef,
             (PointerCast(cx, lhsptr, T_ptr(T_ptr(ccx.opaque_vec_type))),
              PointerCast(cx, rhs, T_ptr(ccx.opaque_vec_type)))
         };
-    let strings = alt ty::struct(bcx_tcx(cx), vec_ty) {
+    let strings = alt ty::get(vec_ty).struct {
       ty::ty_str { true }
       ty::ty_vec(_) { false }
       _ {
@@ -233,7 +233,7 @@ fn trans_append_literal(bcx: @block_ctxt, vptrptr: ValueRef, vec_ty: ty::t,
 fn trans_add(bcx: @block_ctxt, vec_ty: ty::t, lhs: ValueRef,
              rhs: ValueRef, dest: dest) -> @block_ctxt {
     let ccx = bcx_ccx(bcx);
-    let strings = alt ty::struct(bcx_tcx(bcx), vec_ty) {
+    let strings = alt ty::get(vec_ty).struct {
       ty::ty_str { true }
       _ { false }
     };

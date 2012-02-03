@@ -113,7 +113,7 @@ fn check_states_against_conditions(fcx: fn_ctxt,
     /* Check that the return value is initialized */
     let post = aux::block_poststate(fcx.ccx, f_body);
     if !promises(fcx, post, fcx.enclosing.i_return) &&
-       !type_is_nil(fcx.ccx.tcx, ret_ty_of_fn(fcx.ccx.tcx, id)) &&
+       !type_is_nil(ret_ty_of_fn(fcx.ccx.tcx, id)) &&
        f_decl.cf == return_val {
         fcx.ccx.tcx.sess.span_err(f_body.span,
                                   "In function " + fcx.name +

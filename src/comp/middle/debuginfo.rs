@@ -280,7 +280,7 @@ fn create_basic_type(cx: @crate_ctxt, t: ty::t, ty: @ast::ty)
     let cache = get_cache(cx);
     let tg = BasicTypeDescriptorTag;
     alt cached_metadata::<@metadata<tydesc_md>>(
-        cache, tg, {|md| t == md.data.hash}) {
+        cache, tg, {|md| ty::type_id(t) == md.data.hash}) {
       option::some(md) { ret md; }
       option::none {}
     }
@@ -325,7 +325,7 @@ fn create_basic_type(cx: @crate_ctxt, t: ty::t, ty: @ast::ty)
                   lli32(0), //XXX flags?
                   lli32(encoding)];
     let llnode = llmdnode(lldata);
-    let mdval = @{node: llnode, data: {hash: t}};
+    let mdval = @{node: llnode, data: {hash: ty::type_id(t)}};
     update_cache(cache, tg, tydesc_metadata(mdval));
     add_named_metadata(cx, "llvm.dbg.ty", llnode);
     ret mdval;
@@ -347,7 +347,7 @@ fn create_pointer_type(cx: @crate_ctxt, t: ty::t, span: span,
     //let cu_node = create_compile_unit(cx, fname);
     let llnode = create_derived_type(tg, file_node.node, "", 0, size * 8,
                                      align * 8, 0, pointee.node);
-    let mdval = @{node: llnode, data: {hash: t}};
+    let mdval = @{node: llnode, data: {hash: ty::type_id(t)}};
     //update_cache(cache, tg, tydesc_metadata(mdval));
     add_named_metadata(cx, "llvm.dbg.ty", llnode);
     ret mdval;
@@ -420,7 +420,7 @@ fn create_record(cx: @crate_ctxt, t: ty::t, fields: [ast::ty_field],
                    line_from_span(cx.sess.codemap, field.span) as int,
                    size as int, align as int, ty_md.node);
     }
-    let mdval = @{node: finish_structure(scx), data:{hash: t}};
+    let mdval = @{node: finish_structure(scx), data:{hash: ty::type_id(t)}};
     ret mdval;
 }
 
@@ -448,7 +448,7 @@ fn create_boxed_type(cx: @crate_ctxt, outer: ty::t, _inner: ty::t,
                8, //XXX just a guess
                boxed.node);
     let llnode = finish_structure(scx);
-    let mdval = @{node: llnode, data: {hash: outer}};
+    let mdval = @{node: llnode, data: {hash: ty::type_id(outer)}};
     //update_cache(cache, tg, tydesc_metadata(mdval));
     add_named_metadata(cx, "llvm.dbg.ty", llnode);
     ret mdval;
@@ -507,7 +507,7 @@ fn create_vec(cx: @crate_ctxt, vec_t: ty::t, elem_t: ty::t,
     add_member(scx, "data", 0, 0, // clang says the size should be 0
                sys::align_of::<u8>() as int, data_ptr);
     let llnode = finish_structure(scx);
-    ret @{node: llnode, data: {hash: vec_t}};
+    ret @{node: llnode, data: {hash: ty::type_id(vec_t)}};
 }
 
 fn member_size_and_align(ty: @ast::ty) -> (int, int) {
@@ -561,7 +561,7 @@ fn create_ty(cx: @crate_ctxt, t: ty::t, ty: @ast::ty)
     }*/
 
     fn t_to_ty(cx: @crate_ctxt, t: ty::t, span: span) -> @ast::ty {
-        let ty = alt ty::struct(ccx_tcx(cx), t) {
+        let ty = alt ty::get(t).struct {
           ty::ty_nil { ast::ty_nil }
           ty::ty_bot { ast::ty_bot }
           ty::ty_bool { ast::ty_bool }
@@ -593,7 +593,7 @@ fn create_ty(cx: @crate_ctxt, t: ty::t, ty: @ast::ty)
 
     alt ty.node {
       ast::ty_box(mt) {
-        let inner_t = alt ty::struct(ccx_tcx(cx), t) {
+        let inner_t = alt ty::get(t).struct {
           ty::ty_box(boxed) { boxed.ty }
           _ { cx.tcx.sess.span_bug(ty.span, "t_to_ty was incoherent"); }
         };
@@ -603,7 +603,7 @@ fn create_ty(cx: @crate_ctxt, t: ty::t, ty: @ast::ty)
       }
 
       ast::ty_uniq(mt) {
-        let inner_t = alt ty::struct(ccx_tcx(cx), t) {
+        let inner_t = alt ty::get(t).struct {
           ty::ty_uniq(boxed) { boxed.ty }
           // Hoping we'll have a way to eliminate this check soon.
           _ { cx.tcx.sess.span_bug(ty.span, "t_to_ty was incoherent"); }

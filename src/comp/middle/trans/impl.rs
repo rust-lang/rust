@@ -113,7 +113,7 @@ fn trans_vtable_callee(bcx: @block_ctxt, self: ValueRef, dict: ValueRef,
                              T_ptr(T_array(T_ptr(llfty), n_method + 1u)));
     let mptr = Load(bcx, GEPi(bcx, vtable, [0, n_method as int]));
     let generic = none;
-    if vec::len(*method.tps) > 0u || ty::type_contains_params(tcx, fty) {
+    if vec::len(*method.tps) > 0u || ty::type_has_params(fty) {
         let tydescs = [], tis = [];
         let tptys = ty::node_id_to_type_params(tcx, callee_id);
         for t in vec::tail_n(tptys, vec::len(tptys) - vec::len(*method.tps)) {
@@ -147,7 +147,6 @@ fn trans_param_callee(bcx: @block_ctxt, callee_id: ast::node_id,
 fn trans_iface_callee(bcx: @block_ctxt, callee_id: ast::node_id,
                       base: @ast::expr, n_method: uint)
     -> lval_maybe_callee {
-    let tcx = bcx_tcx(bcx);
     let {bcx, val} = trans_temp_expr(bcx, base);
     let box_body = GEPi(bcx, val, [0, abi::box_field_body]);
     let dict = Load(bcx, PointerCast(bcx, GEPi(bcx, box_body, [0, 1]),
@@ -155,7 +154,7 @@ fn trans_iface_callee(bcx: @block_ctxt, callee_id: ast::node_id,
     // FIXME[impl] I doubt this is alignment-safe
     let self = PointerCast(bcx, GEPi(bcx, box_body, [0, 2]),
                            T_opaque_cbox_ptr(bcx_ccx(bcx)));
-    let iface_id = alt ty::struct(tcx, expr_ty(bcx, base)) {
+    let iface_id = alt ty::get(expr_ty(bcx, base)).struct {
         ty::ty_iface(did, _) { did }
         // precondition
         _ { bcx_tcx(bcx).sess.span_bug(base.span, "base has non-iface type \
@@ -310,7 +309,7 @@ fn trans_iface_vtable(ccx: @crate_ctxt, pt: path, it: @ast::item) {
 fn dict_is_static(tcx: ty::ctxt, origin: typeck::dict_origin) -> bool {
     alt origin {
       typeck::dict_static(_, ts, origs) {
-        vec::all(ts, {|t| !ty::type_contains_params(tcx, t)}) &&
+        vec::all(ts, {|t| !ty::type_has_params(t)}) &&
         vec::all(*origs, {|o| dict_is_static(tcx, o)})
       }
       typeck::dict_iface(_) { true }

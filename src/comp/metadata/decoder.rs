@@ -113,7 +113,7 @@ fn doc_type(doc: ebml::doc, tcx: ty::ctxt, cdata: cmd) -> ty::t {
 fn item_type(item: ebml::doc, tcx: ty::ctxt, cdata: cmd) -> ty::t {
     let t = doc_type(item, tcx, cdata);
     if family_names_type(item_family(item)) {
-        ty::mk_named(tcx, t, @item_name(item))
+        ty::mk_named(tcx, t, item_name(item))
     } else { t }
 }
 
@@ -247,7 +247,7 @@ fn get_enum_variants(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
         let ctor_ty = item_type(item, tcx, cdata);
         let name = item_name(item);
         let arg_tys: [ty::t] = [];
-        alt ty::struct(tcx, ctor_ty) {
+        alt ty::get(ctor_ty).struct {
           ty::ty_fn(f) {
             for a: ty::arg in f.inputs { arg_tys += [a.ty]; }
           }
@@ -302,7 +302,7 @@ fn get_iface_methods(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
         let bounds = item_ty_param_bounds(mth, tcx, cdata);
         let name = item_name(mth);
         let ty = doc_type(mth, tcx, cdata);
-        let fty = alt ty::struct(tcx, ty) { ty::ty_fn(f) { f }
+        let fty = alt ty::get(ty).struct { ty::ty_fn(f) { f }
           _ { tcx.sess.bug("get_iface_methods: id has non-function type");
         } };
         result += [{ident: name, tps: bounds, fty: fty}];

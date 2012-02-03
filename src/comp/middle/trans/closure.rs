@@ -202,7 +202,6 @@ fn allocate_cbox(bcx: @block_ctxt,
       }
       ty::ck_uniq {
         let uniq_cbox_ty = mk_tuplified_uniq_cbox_ty(tcx, cdata_ty);
-        check uniq::type_is_unique_box(bcx, uniq_cbox_ty);
         let {bcx, val: box} = uniq::alloc_uniq(bcx, uniq_cbox_ty);
         nuke_ref_count(bcx, box);
         let bcx = store_uniq_tydesc(bcx, cdata_ty, box, ti);
@@ -279,7 +278,6 @@ fn store_environment(
     let cbox_ty = tuplify_box_ty(tcx, cdata_ty);
     let cboxptr_ty = ty::mk_ptr(tcx, {ty:cbox_ty, mut:ast::imm});
     let llbox = cast_if_we_can(bcx, llbox, cboxptr_ty);
-    check type_is_tup_like(bcx, cbox_ty);
 
     // If necessary, copy tydescs describing type parameters into the
     // appropriate slot in the closure.
@@ -308,11 +306,9 @@ fn store_environment(
                                   ev_to_str(ccx, bv)));
         }
 
-        let bound_data = GEP_tup_like_1(bcx, cbox_ty, llbox,
-                                        [0,
-                                         abi::box_field_body,
-                                         abi::closure_body_bindings,
-                                         i as int]);
+        let bound_data = GEP_tup_like(bcx, cbox_ty, llbox,
+                                      [0, abi::box_field_body,
+                                       abi::closure_body_bindings, i as int]);
         bcx = bound_data.bcx;
         let bound_data = bound_data.val;
         alt bv {
@@ -404,7 +400,6 @@ fn load_environment(enclosing_cx: @block_ctxt,
     // Populate the type parameters from the environment. We need to
     // do this first because the tydescs are needed to index into
     // the bindings if they are dynamically sized.
-    check type_is_tup_like(bcx, cdata_ty);
     let {bcx, val: lltydescs} = GEP_tup_like(bcx, cdata_ty, llcdata,
                                             [0, abi::closure_body_ty_params]);
     let off = 0;
@@ -429,7 +424,6 @@ fn load_environment(enclosing_cx: @block_ctxt,
         alt cap_var.mode {
           capture::cap_drop { /* ignore */ }
           _ {
-            check type_is_tup_like(bcx, cdata_ty);
             let upvarptr =
                 GEP_tup_like(bcx, cdata_ty, llcdata,
                              [0, abi::closure_body_bindings, i as int]);
@@ -612,7 +606,7 @@ fn make_fn_glue(
         }
     };
 
-    ret alt ty::struct(tcx, t) {
+    ret alt ty::get(t).struct {
       ty::ty_fn({proto: ast::proto_bare, _}) |
       ty::ty_fn({proto: ast::proto_block, _}) |
       ty::ty_fn({proto: ast::proto_any, _}) { bcx }
@@ -742,7 +736,7 @@ fn trans_bind_thunk(ccx: @crate_ctxt,
     // If we supported constraints on record fields, we could make the
     // constraints for this function:
     /*
-    : returns_non_ty_var(ccx, outgoing_fty),
+    : returns_non_ty_var(outgoing_fty),
       type_has_static_size(ccx, incoming_fty) ->
     */
     // but since we don't, we have to do the checks at the beginning.
@@ -811,8 +805,6 @@ fn trans_bind_thunk(ccx: @crate_ctxt,
         (fptr, llvm::LLVMGetUndef(T_opaque_cbox_ptr(ccx)), 0)
       }
       none {
-        // Silly check
-        check type_is_tup_like(bcx, cdata_ty);
         let {bcx: cx, val: pair} =
             GEP_tup_like(bcx, cdata_ty, llcdata,
                          [0, abi::closure_body_bindings, 0]);
@@ -830,16 +822,15 @@ fn trans_bind_thunk(ccx: @crate_ctxt,
 
     // Get f's return type, which will also be the return type of the entire
     // bind expression.
-    let outgoing_ret_ty = ty::ty_fn_ret(ccx.tcx, outgoing_fty);
+    let outgoing_ret_ty = ty::ty_fn_ret(outgoing_fty);
 
     // Get the types of the arguments to f.
-    let outgoing_args = ty::ty_fn_args(ccx.tcx, outgoing_fty);
+    let outgoing_args = ty::ty_fn_args(outgoing_fty);
 
     // The 'llretptr' that will arrive in the thunk we're creating also needs
     // to be the correct type.  Cast it to f's return type, if necessary.
     let llretptr = fcx.llretptr;
-    if ty::type_contains_params(ccx.tcx, outgoing_ret_ty) {
-        check non_ty_var(ccx, outgoing_ret_ty);
+    if ty::type_has_params(outgoing_ret_ty) {
         let llretty = type_of_inner(ccx, outgoing_ret_ty);
         llretptr = PointerCast(bcx, llretptr, T_ptr(llretty));
     }
@@ -848,7 +839,6 @@ fn trans_bind_thunk(ccx: @crate_ctxt,
     let llargs: [ValueRef] = [llretptr, lltargetenv];
 
     // Copy in the type parameters.
-    check type_is_tup_like(l_bcx, cdata_ty);
     let {bcx: l_bcx, val: param_record} =
         GEP_tup_like(l_bcx, cdata_ty, llcdata,
                      [0, abi::closure_body_ty_params]);
@@ -888,8 +878,6 @@ fn trans_bind_thunk(ccx: @crate_ctxt,
           // Arg provided at binding time; thunk copies it from
           // closure.
           some(e) {
-            // Silly check
-            check type_is_tup_like(bcx, cdata_ty);
             let bound_arg =
                 GEP_tup_like(bcx, cdata_ty, llcdata,
                              [0, abi::closure_body_bindings, b]);
@@ -911,7 +899,7 @@ fn trans_bind_thunk(ccx: @crate_ctxt,
 
             // If the type is parameterized, then we need to cast the
             // type we actually have to the parameterized out type.
-            if ty::type_contains_params(ccx.tcx, out_arg.ty) {
+            if ty::type_has_params(out_arg.ty) {
                 val = PointerCast(bcx, val, llout_arg_ty);
             }
             llargs += [val];
@@ -921,7 +909,7 @@ fn trans_bind_thunk(ccx: @crate_ctxt,
           // Arg will be provided when the thunk is invoked.
           none {
             let arg: ValueRef = llvm::LLVMGetParam(llthunk, a as c_uint);
-            if ty::type_contains_params(ccx.tcx, out_arg.ty) {
+            if ty::type_has_params(out_arg.ty) {
                 arg = PointerCast(bcx, arg, llout_arg_ty);
             }
             llargs += [arg];
