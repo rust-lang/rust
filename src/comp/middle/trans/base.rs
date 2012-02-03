@@ -4826,43 +4826,6 @@ fn fill_fn_pair(bcx: @block_ctxt, pair: ValueRef, llfn: ValueRef,
     Store(bcx, llenvblobptr, env_cell);
 }
 
-// Returns the number of type parameters that the given native function has.
-fn native_fn_ty_param_count(cx: @crate_ctxt, id: ast::node_id) -> uint {
-    let count;
-    let native_item =
-        // invariant?!
-        alt cx.ast_map.find(id) {
-          some(ast_map::node_native_item(i, _)) { i }
-         _ { cx.sess.bug("native_fn_ty_param_count \
-                          given a non-native item"); } };
-    alt native_item.node {
-      ast::native_item_fn(_, tps) {
-        count = vec::len::<ast::ty_param>(tps);
-      }
-    }
-    ret count;
-}
-
-
-// TODO: precondition
-fn native_fn_wrapper_type(cx: @crate_ctxt, sp: span,
-                          param_bounds: [ty::param_bounds],
-                          x: ty::t) -> TypeRef {
-    alt ty::get(x).struct {
-      ty::ty_fn({inputs: args, output: out, _}) {
-        ret type_of_fn(cx, args, out, param_bounds);
-      }
-      _ { cx.sess.span_bug(sp, "native_fn_wrapper_type got ill-typed\
-              thing"); }
-    }
-}
-
-fn raw_native_fn_type(ccx: @crate_ctxt, args: [ty::arg],
-                      ret_ty: ty::t) -> TypeRef {
-    check type_has_static_size(ccx, ret_ty);
-    ret T_fn(type_of_explicit_args(ccx, args), type_of(ccx, ret_ty));
-}
-
 fn link_name(i: @ast::native_item) -> str {
     alt attr::get_meta_item_value_str_by_name(i.attrs, "link_name") {
       none { ret i.ident; }
