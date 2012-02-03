@@ -21,7 +21,6 @@ public:
     void lock();
     void unlock();
     void wait();
-    bool timed_wait(size_t timeout_in_ns);
     void signal();
     void signal_all();
 

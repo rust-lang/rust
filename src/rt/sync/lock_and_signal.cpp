@@ -68,50 +68,17 @@ void lock_and_signal::unlock() {
  * Wait indefinitely until condition is signaled.
  */
 void lock_and_signal::wait() {
-    timed_wait(0);
-}
-
-bool lock_and_signal::timed_wait(size_t timeout_in_ms) {
     assert(lock_held_by_current_thread());
     _holding_thread = INVALID_THREAD;
-    bool rv = true;
 #if defined(__WIN32__)
     LeaveCriticalSection(&_cs);
-    DWORD timeout = timeout_in_ms == 0 ? INFINITE : timeout_in_ms;
-    rv = WaitForSingleObject(_event, timeout) != WAIT_TIMEOUT;
+    WaitForSingleObject(_event, INFINITE);
     EnterCriticalSection(&_cs);
     _holding_thread = GetCurrentThreadId();
 #else
-    if (timeout_in_ms == 0) {
-        CHECKED(pthread_cond_wait(&_cond, &_mutex));
-    } else {
-        timeval time_val;
-        gettimeofday(&time_val, NULL);
-        timespec time_spec;
-        time_spec.tv_sec = time_val.tv_sec + 0;
-        time_spec.tv_nsec = time_val.tv_usec * 1000 + timeout_in_ms * 1000000;
-        if(time_spec.tv_nsec >= 1000000000) {
-            time_spec.tv_sec++;
-            time_spec.tv_nsec -= 1000000000;
-        }
-        int cond_wait_status
-            = pthread_cond_timedwait(&_cond, &_mutex, &time_spec);
-        switch(cond_wait_status) {
-        case 0:
-            // successfully grabbed the lock.
-            break;
-        case ETIMEDOUT:
-            // Oops, we timed out.
-            rv = false;
-            break;
-        default:
-            // Error
-            CHECKED(cond_wait_status);
-        }
-    }
+    CHECKED(pthread_cond_wait(&_cond, &_mutex));
     _holding_thread = pthread_self();
 #endif
-    return rv;
 }
 
 /**
