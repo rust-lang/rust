@@ -18,7 +18,7 @@
 lock_and_signal::lock_and_signal()
     : _holding_thread(INVALID_THREAD)
 {
-    _event = CreateEvent(NULL, TRUE, FALSE, NULL);
+    _event = CreateEvent(NULL, FALSE, FALSE, NULL);
     InitializeCriticalSection(&_cs);
 }
 
