@@ -395,7 +395,6 @@ rust_task::start(spawn_fn spawnee_fn,
 
 void rust_task::start()
 {
-    yield_timer.reset_us(0);
     transition(&sched->newborn_tasks, &sched->running_tasks);
     sched->lock.signal();
 }
@@ -406,8 +405,6 @@ rust_task::yield(size_t time_in_us, bool *killed) {
     if (this->killed) {
         *killed = true;
     }
-
-    yield_timer.reset_us(time_in_us);
 
     // Return to the scheduler.
     ctx.next->swap(ctx);
@@ -630,7 +627,7 @@ rust_task::backtrace() {
 
 bool rust_task::can_schedule(int id)
 {
-    return yield_timer.has_timed_out() &&
+    return
         running_on == -1 &&
         (pinned_on == -1 || pinned_on == id);
 }

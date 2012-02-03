@@ -207,11 +207,9 @@ rust_scheduler::log_state() {
     if (!running_tasks.is_empty()) {
         log(NULL, log_debug, "running tasks:");
         for (size_t i = 0; i < running_tasks.length(); i++) {
-            log(NULL, log_debug, "\t task: %s @0x%" PRIxPTR
-                " remaining: %" PRId64 " us",
+            log(NULL, log_debug, "\t task: %s @0x%" PRIxPTR,
                 running_tasks[i]->name,
-                running_tasks[i],
-                running_tasks[i]->yield_timer.remaining_us());
+                running_tasks[i]);
         }
     }
 

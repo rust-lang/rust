@@ -4,6 +4,7 @@
 #include "rust_scheduler.h"
 #include "rust_task.h"
 #include "rust_util.h"
+#include "sync/timer.h"
 
 #if !defined(__WIN32__)
 #include <sys/time.h>

@@ -90,9 +90,6 @@ rust_task : public kernel_owned<rust_task>, rust_cond
 
     rust_port_id next_port_id;
 
-    // Keeps track of the last time this task yielded.
-    timer yield_timer;
-
     // Rendezvous pointer for receiving data when blocked on a port. If we're
     // trying to read data and no data is available on any incoming channel,
     // we block on the port, and yield control to the scheduler. Since, we
