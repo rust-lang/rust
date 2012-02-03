@@ -99,6 +99,10 @@ ifneq ($(findstring darwin,$(CFG_OSTYPE)),)
   CFG_INSTALL_NAME = -Wl,-install_name,@rpath/$(1)
 endif
 
+# Hack: not sure how to test if a file exists in make other than this
+OS_SUPP = $(patsubst %,--suppressions=%,\
+	    $(wildcard $(CFG_SRC_DIR)src/etc/$(CFG_OSTYPE).supp*))
+
 ifneq ($(findstring mingw,$(CFG_OSTYPE)),)
   CFG_WINDOWSY := 1
 endif
@@ -154,7 +158,9 @@ ifdef CFG_UNIXY
   ifdef CFG_VALGRIND
     CFG_VALGRIND += --leak-check=full \
                     --error-exitcode=100 \
-                    --quiet --suppressions=$(CFG_SRC_DIR)src/etc/x86.supp
+                    --quiet \
+                    --suppressions=$(CFG_SRC_DIR)src/etc/x86.supp \
+                    $(OS_SUPP)
   endif
 endif
 

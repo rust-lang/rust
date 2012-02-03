@@ -1,0 +1,9 @@
+{
+   issue_1333_setenv_leak
+   Memcheck:Leak
+   fun:malloc_zone_malloc
+   ...
+   fun:setenv
+   fun:setenv__c_stack_shim
+   ...
+}
