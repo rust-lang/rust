@@ -91,6 +91,8 @@ struct rust_scheduler : public kernel_owned<rust_scheduler>,
     rust_env *env;
     context c_context;
 
+    bool should_exit;
+
     // Only a pointer to 'name' is kept, so it must live as long as this
     // domain.
     rust_scheduler(rust_kernel *kernel, rust_srv *srv, int id);
@@ -127,6 +129,9 @@ struct rust_scheduler : public kernel_owned<rust_scheduler>,
     void place_task_in_tls(rust_task *task);
 
     static rust_task *get_task();
+
+    // Tells the scheduler to exit it's scheduling loop and thread
+    void exit();
 };
 
 inline rust_log &

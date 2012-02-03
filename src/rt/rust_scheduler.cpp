@@ -32,7 +32,8 @@ rust_scheduler::rust_scheduler(rust_kernel *kernel,
     kernel(kernel),
     id(id),
     min_stack_size(kernel->env->min_stack_size),
-    env(kernel->env)
+    env(kernel->env),
+    should_exit(false)
 {
     LOGPTR(this, "new dom", (uintptr_t)this);
     isaac_init(this, &rctx);
@@ -160,8 +161,12 @@ rust_scheduler::reap_dead_tasks(int id) {
         rust_task *task = dead_tasks_copy[i];
         if (task) {
             task->deref();
-            sync::decrement(kernel->live_tasks);
-            kernel->wakeup_schedulers();
+            int live_tasks = sync::decrement(kernel->live_tasks);
+            if (live_tasks == 0) {
+                // There are no more tasks and there never will be.
+                // Tell all the schedulers to exit.
+                kernel->exit_schedulers();
+            }
         }
     }
     srv->free(dead_tasks_copy);
@@ -236,7 +241,7 @@ rust_scheduler::start_main_loop() {
 
     DLOG(this, dom, "started domain loop %d", id);
 
-    while (kernel->live_tasks > 0) {
+    while (!should_exit) {
         A(this, kernel->is_deadlocked() == false, "deadlock");
 
         DLOG(this, dom, "worker %d, number_of_live_tasks = %d, total = %d",
@@ -374,6 +379,14 @@ rust_scheduler::get_task() {
     return task;
 }
 #endif
+
+void
+rust_scheduler::exit() {
+    A(this, !lock.lock_held_by_current_thread(), "Shouldn't have lock");
+    scoped_lock with(lock);
+    should_exit = true;
+    lock.signal_all();
+}
 
 //
 // Local Variables:

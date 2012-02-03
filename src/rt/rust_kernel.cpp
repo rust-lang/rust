@@ -189,11 +189,9 @@ rust_kernel::release_task_id(rust_task_id id) {
     task_table.remove(id);
 }
 
-void rust_kernel::wakeup_schedulers() {
+void rust_kernel::exit_schedulers() {
     for(size_t i = 0; i < num_threads; ++i) {
-        rust_scheduler *sched = threads[i];
-        scoped_lock with(sched->lock);
-        sched->lock.signal_all();
+        threads[i]->exit();
     }
 }
 

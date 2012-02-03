@@ -47,7 +47,7 @@ public:
     bool is_deadlocked();
 
     void signal_kernel_lock();
-    void wakeup_schedulers();
+    void exit_schedulers();
 
     void log_all_scheduler_state();
     void log(uint32_t level, char const *fmt, ...);
