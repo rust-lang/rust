@@ -521,14 +521,19 @@ fn parse_ty(p: parser, colons_before_params: bool) -> @ast::ty {
 }
 
 fn parse_arg_mode(p: parser) -> ast::mode {
-    if eat(p, token::BINOP(token::AND)) { ast::by_mut_ref }
-    else if eat(p, token::BINOP(token::MINUS)) { ast::by_move }
-    else if eat(p, token::ANDAND) { ast::by_ref }
-    else if eat(p, token::BINOP(token::PLUS)) {
-        if eat(p, token::BINOP(token::PLUS)) { ast::by_val }
-        else { ast::by_copy }
-    }
-    else { ast::mode_infer }
+    if eat(p, token::BINOP(token::AND)) {
+        ast::expl(ast::by_mut_ref)
+    } else if eat(p, token::BINOP(token::MINUS)) {
+        ast::expl(ast::by_move)
+    } else if eat(p, token::ANDAND) {
+        ast::expl(ast::by_ref)
+    } else if eat(p, token::BINOP(token::PLUS)) {
+        if eat(p, token::BINOP(token::PLUS)) {
+            ast::expl(ast::by_val)
+        } else {
+            ast::expl(ast::by_copy)
+        }
+    } else { ast::infer(p.get_id()) }
 }
 
 fn parse_arg(p: parser) -> ast::arg {
@@ -1984,8 +1989,8 @@ fn parse_item_res(p: parser, attrs: [ast::attribute]) -> @ast::item {
     let dtor = parse_block_no_value(p);
     let decl =
         {inputs:
-             [{mode: ast::by_ref, ty: t, ident: arg_ident,
-               id: p.get_id()}],
+             [{mode: ast::expl(ast::by_ref), ty: t,
+               ident: arg_ident, id: p.get_id()}],
          output: @spanned(lo, lo, ast::ty_nil),
          purity: ast::impure_fn,
          cf: ast::return_val,

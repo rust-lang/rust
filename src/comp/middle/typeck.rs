@@ -64,7 +64,6 @@ type fn_ctxt =
      var_bindings: @ty::unify::var_bindings,
      locals: hashmap<ast::node_id, int>,
      next_var_id: @mutable int,
-     mutable fixups: [ast::node_id],
      ccx: @crate_ctxt};
 
 
@@ -215,27 +214,11 @@ fn type_is_c_like_enum(fcx: @fn_ctxt, sp: span, typ: ty::t) -> bool {
     ret ty::type_is_c_like_enum(fcx.ccx.tcx, typ_s);
 }
 
-// Parses the programmer's textual representation of a type into our internal
-// notion of a type. `getter` is a function that returns the type
-// corresponding to a definition ID:
-fn default_arg_mode_for_ty(tcx: ty::ctxt, m: ast::mode,
-                           ty: ty::t) -> ast::mode {
-    alt m {
-      ast::mode_infer {
-        alt ty::struct(tcx, ty) {
-            ty::ty_var(_) { ast::mode_infer }
-            _ {
-                if ty::type_is_immediate(tcx, ty) { ast::by_val }
-                else { ast::by_ref }
-            }
-        }
-      }
-      _ { m }
-    }
-}
-
 enum mode { m_collect, m_check, m_check_tyvar(@fn_ctxt), }
 
+// Parses the programmer's textual representation of a type into our
+// internal notion of a type. `getter` is a function that returns the type
+// corresponding to a definition ID:
 fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
     fn getter(tcx: ty::ctxt, mode: mode, id: ast::def_id)
         -> ty::ty_param_bounds_and_ty {
@@ -443,13 +426,38 @@ fn ty_of_native_item(tcx: ty::ctxt, mode: mode, it: @ast::native_item)
     }
 }
 fn ty_of_arg(tcx: ty::ctxt, mode: mode, a: ast::arg) -> ty::arg {
+    fn arg_mode(tcx: ty::ctxt, m: ast::mode, ty: ty::t) -> ast::mode {
+        alt m {
+          ast::infer(_) {
+            alt ty::struct(tcx, ty) {
+              // If the type is not specified, then this must be a fn expr.
+              // Leave the mode as infer(_), it will get inferred based
+              // on constraints elsewhere.
+              ty::ty_var(_) { m }
+
+              // If the type is known, then use the default for that type.
+              // Here we unify m and the default.  This should update the
+              // tables in tcx but should never fail, because nothing else
+              // will have been unified with m yet:
+              _ {
+                let m1 = ast::expl(ty::default_arg_mode_for_ty(tcx, ty));
+                result::get(ty::unify_mode(tcx, m, m1))
+              }
+            }
+          }
+          ast::expl(_) { m }
+        }
+    }
+
     let ty = ast_ty_to_ty(tcx, mode, a.ty);
-    {mode: default_arg_mode_for_ty(tcx, a.mode, ty), ty: ty}
+    let mode = arg_mode(tcx, a.mode, ty);
+    {mode: mode, ty: ty}
 }
-fn ty_of_fn_decl(tcx: ty::ctxt, mode: mode,
-                 proto: ast::proto, decl: ast::fn_decl) -> ty::fn_ty {
-    let input_tys = [];
-    for a: ast::arg in decl.inputs { input_tys += [ty_of_arg(tcx, mode, a)]; }
+fn ty_of_fn_decl(tcx: ty::ctxt,
+                 mode: mode,
+                 proto: ast::proto,
+                 decl: ast::fn_decl) -> ty::fn_ty {
+    let input_tys = vec::map(decl.inputs) {|a| ty_of_arg(tcx, mode, a) };
     let output_ty = ast_ty_to_ty(tcx, mode, decl.output);
 
     let out_constrs = [];
@@ -472,7 +480,9 @@ fn ty_of_native_fn_decl(tcx: ty::ctxt, mode: mode, decl: ast::fn_decl,
                         ty_params: [ast::ty_param], def_id: ast::def_id)
     -> ty::ty_param_bounds_and_ty {
     let input_tys = [], bounds = ty_param_bounds(tcx, mode, ty_params);
-    for a: ast::arg in decl.inputs { input_tys += [ty_of_arg(tcx, mode, a)]; }
+    for a: ast::arg in decl.inputs {
+        input_tys += [ty_of_arg(tcx, mode, a)];
+    }
     let output_ty = ast_ty_to_ty(tcx, mode, decl.output);
 
     let t_fn = ty::mk_fn(tcx, {proto: ast::proto_bare,
@@ -585,7 +595,9 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span, impl_m: ty::method,
     } else {
         let auto_modes = vec::map2(impl_m.fty.inputs, if_m.fty.inputs, {|i, f|
             alt ty::struct(tcx, f.ty) {
-              ty::ty_param(0u, _) { {mode: ast::by_ref with i} }
+              ty::ty_param(0u, _) {
+                {mode: ast::expl(ast::by_ref) with i}
+              }
               _ { i }
             }
         });
@@ -641,7 +653,7 @@ mod collect {
                 let args: [arg] = [];
                 for va: ast::variant_arg in variant.node.args {
                     let arg_ty = ast_ty_to_ty(cx.tcx, m_collect, va.ty);
-                    args += [{mode: ast::by_copy, ty: arg_ty}];
+                    args += [{mode: ast::expl(ast::by_copy), ty: arg_ty}];
                 }
                 // FIXME: this will be different for constrained types
                 ty::mk_fn(cx.tcx,
@@ -716,7 +728,7 @@ mod collect {
                                    params);
             let t_ctor = ty::mk_fn(cx.tcx, {
                 proto: ast::proto_box,
-                inputs: [{mode: ast::by_copy with t_arg}],
+                inputs: [{mode: ast::expl(ast::by_copy) with t_arg}],
                 output: t_res,
                 ret_style: ast::return_val, constraints: []
             });
@@ -925,9 +937,6 @@ fn variant_arg_types(ccx: @crate_ctxt, _sp: span, vid: ast::def_id,
 // Type resolution: the phase that finds all the types in the AST with
 // unresolved type variables and replaces "ty_var" types with their
 // substitutions.
-//
-// TODO: inefficient since not all types have vars in them. It would be better
-// to maintain a list of fixups.
 mod writeback {
 
     export resolve_type_vars_in_block;
@@ -946,24 +955,32 @@ mod writeback {
           }
         }
     }
-    fn resolve_type_vars_for_node(wbcx: wb_ctxt, sp: span, id: ast::node_id) {
+    fn resolve_type_vars_for_node(wbcx: wb_ctxt, sp: span, id: ast::node_id)
+        -> option<ty::t> {
         let fcx = wbcx.fcx, tcx = fcx.ccx.tcx;
         alt resolve_type_vars_in_type(fcx, sp, ty::node_id_to_type(tcx, id)) {
-          some(t) { write_ty(tcx, id, t); }
-          none { wbcx.success = false; ret }
-        }
-        alt tcx.node_type_substs.find(id) {
-          some(substs) {
-            let new_substs = [];
-            for subst: ty::t in substs {
-                alt resolve_type_vars_in_type(fcx, sp, subst) {
-                  some(t) { new_substs += [t]; }
-                  none { wbcx.success = false; ret; }
-                }
-            }
-            write_substs(tcx, id, new_substs);
+          none {
+            wbcx.success = false;
+            ret none;
           }
-          none {}
+
+          some(t) {
+            write_ty(tcx, id, t);
+            alt tcx.node_type_substs.find(id) {
+              some(substs) {
+                let new_substs = [];
+                for subst: ty::t in substs {
+                    alt resolve_type_vars_in_type(fcx, sp, subst) {
+                      some(t) { new_substs += [t]; }
+                      none { wbcx.success = false; ret none; }
+                    }
+                }
+                write_substs(tcx, id, new_substs);
+              }
+              none {}
+            }
+            ret some(t);
+          }
         }
     }
 
@@ -984,8 +1001,19 @@ mod writeback {
         alt e.node {
           ast::expr_fn(_, decl, _, _) |
           ast::expr_fn_block(decl, _) {
-            for input in decl.inputs {
-                resolve_type_vars_for_node(wbcx, e.span, input.id);
+            vec::iter(decl.inputs) {|input|
+                let r_ty = resolve_type_vars_for_node(wbcx, e.span, input.id);
+
+                // Just in case we never constrained the mode to anything,
+                // constrain it to the default for the type in question.
+                alt (r_ty, input.mode) {
+                  (some(t), ast::infer(_)) {
+                    let tcx = wbcx.fcx.ccx.tcx;
+                    let m_def = ty::default_arg_mode_for_ty(tcx, t);
+                    ty::set_default_mode(tcx, input.mode, m_def);
+                  }
+                  _ {}
+                }
             }
           }
           _ { }
@@ -1541,8 +1569,8 @@ fn check_expr_fn_with_unifier(fcx: @fn_ctxt,
                               unify: unifier,
                               expected: ty::t) {
     let tcx = fcx.ccx.tcx;
-    let fty = ty::mk_fn(tcx, ty_of_fn_decl(tcx, m_check_tyvar(fcx),
-                                           proto, decl));
+    let fty = ty::mk_fn(tcx,
+                        ty_of_fn_decl(tcx, m_check_tyvar(fcx), proto, decl));
 
     #debug("check_expr_fn_with_unifier %s fty=%s",
            expr_to_str(expr),
@@ -1600,7 +1628,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                          }]);
             // HACK: build an arguments list with dummy arguments to
             // check against
-            let dummy = {mode: ast::by_ref, ty: ty::mk_bot(fcx.ccx.tcx)};
+            let dummy = {mode: ast::expl(ast::by_ref),
+                         ty: ty::mk_bot(fcx.ccx.tcx)};
             arg_tys = vec::init_elt(supplied_arg_count, dummy);
         }
 
@@ -2027,7 +2056,6 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                ty_to_str(tcx, expected));
         check_expr_fn_with_unifier(fcx, expr, proto, decl, body,
                                    unify, expected);
-        write_ty(tcx, id, expected);
       }
       ast::expr_block(b) {
         // If this is an unchecked block, turn off purity-checking
@@ -2428,7 +2456,6 @@ fn check_const(ccx: @crate_ctxt, _sp: span, e: @ast::expr, id: ast::node_id) {
     // FIXME: this is kinda a kludge; we manufacture a fake function context
     // and statement context for checking the initializer expression.
     let rty = node_id_to_type(ccx.tcx, id);
-    let fixups: [ast::node_id] = [];
     let fcx: @fn_ctxt =
         @{ret_ty: rty,
           purity: ast::pure_fn,
@@ -2436,7 +2463,6 @@ fn check_const(ccx: @crate_ctxt, _sp: span, e: @ast::expr, id: ast::node_id) {
           var_bindings: ty::unify::mk_var_bindings(),
           locals: new_int_hash::<int>(),
           next_var_id: @mutable 0,
-          mutable fixups: fixups,
           ccx: ccx};
     check_expr(fcx, e);
     let cty = expr_ty(fcx.ccx.tcx, e);
@@ -2449,7 +2475,6 @@ fn check_enum_variants(ccx: @crate_ctxt, sp: span, vs: [ast::variant],
     // FIXME: this is kinda a kludge; we manufacture a fake function context
     // and statement context for checking the initializer expression.
     let rty = node_id_to_type(ccx.tcx, id);
-    let fixups: [ast::node_id] = [];
     let fcx: @fn_ctxt =
         @{ret_ty: rty,
           purity: ast::pure_fn,
@@ -2457,7 +2482,6 @@ fn check_enum_variants(ccx: @crate_ctxt, sp: span, vs: [ast::variant],
           var_bindings: ty::unify::mk_var_bindings(),
           locals: new_int_hash::<int>(),
           next_var_id: @mutable 0,
-          mutable fixups: fixups,
           ccx: ccx};
     let disr_vals: [int] = [];
     let disr_val = 0;
@@ -2630,7 +2654,6 @@ fn check_fn(ccx: @crate_ctxt,
     };
 
     let gather_result = gather_locals(ccx, decl, body, id, old_fcx);
-    let fixups: [ast::node_id] = [];
     let fcx: @fn_ctxt =
         @{ret_ty: ty::ty_fn_ret(ccx.tcx, ty::node_id_to_type(ccx.tcx, id)),
           purity: purity,
@@ -2638,7 +2661,6 @@ fn check_fn(ccx: @crate_ctxt,
           var_bindings: gather_result.var_bindings,
           locals: gather_result.locals,
           next_var_id: gather_result.next_var_id,
-          mutable fixups: fixups,
           ccx: ccx};
 
     check_constraints(fcx, decl.constraints, decl.inputs);

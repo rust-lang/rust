@@ -19,7 +19,6 @@ import util::common::*;
 import syntax::util::interner;
 import util::ppaux::ty_to_str;
 import util::ppaux::ty_constr_to_str;
-import util::ppaux::mode_str;
 import syntax::print::pprust::*;
 
 export node_id_to_type;
@@ -168,6 +167,10 @@ export type_structurally_contains;
 export type_structurally_contains_uniques;
 export type_autoderef;
 export type_param;
+export resolved_mode;
+export arg_mode;
+export unify_mode;
+export set_default_mode;
 export unify;
 export variant_info;
 export walk_ty;
@@ -178,12 +181,12 @@ export ck_box;
 export ck_uniq;
 export param_bound, param_bounds, bound_copy, bound_send, bound_iface;
 export param_bounds_to_kind;
+export default_arg_mode_for_ty;
 
 // Data types
 
-// TODO: really should be a separate type, or a refinement,
-// so that we don't have to handle the mode_infer case after
-// typeck. but that's too hard right now.
+// Note: after typeck, you should use resolved_mode() to convert this mode
+// into an rmode, which will take into account the results of mode inference.
 type arg = {mode: ast::mode, ty: t};
 
 type field = {ident: ast::ident, mt: mt};
@@ -217,7 +220,8 @@ type ctxt =
       ast_ty_to_ty_cache: hashmap<@ast::ty, option<t>>,
       enum_var_cache: hashmap<def_id, @[variant_info]>,
       iface_method_cache: hashmap<def_id, @[method]>,
-      ty_param_bounds: hashmap<ast::node_id, param_bounds>};
+      ty_param_bounds: hashmap<ast::node_id, param_bounds>,
+      inferred_modes: hashmap<ast::node_id, ast::mode>};
 
 type ty_ctxt = ctxt;
 
@@ -424,7 +428,8 @@ fn mk_ctxt(s: session::session, dm: resolve::def_map, amap: ast_map::map,
               map::mk_hashmap(ast_util::hash_ty, ast_util::eq_ty),
           enum_var_cache: new_def_hash(),
           iface_method_cache: new_def_hash(),
-          ty_param_bounds: map::new_int_hash()};
+          ty_param_bounds: map::new_int_hash(),
+          inferred_modes: map::new_int_hash()};
     populate_type_store(cx);
     ret cx;
 }
@@ -646,6 +651,12 @@ pure fn ty_name(cx: ctxt, typ: t) -> option<@str> {
     }
 }
 
+fn default_arg_mode_for_ty(tcx: ty::ctxt, ty: ty::t) -> ast::rmode {
+    assert !ty::type_contains_vars(tcx, ty);
+    if ty::type_is_immediate(tcx, ty) { ast::by_val }
+    else { ast::by_ref }
+}
+
 fn walk_ty(cx: ctxt, ty: t, f: fn(t)) {
     alt struct(cx, ty) {
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
@@ -684,13 +695,14 @@ enum fold_mode {
 
 fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
     let ty = ty_0;
-    // Fast paths.
 
+    // Fast paths.
     alt fld {
       fm_var(_) { if !type_contains_vars(cx, ty) { ret ty; } }
       fm_param(_) { if !type_contains_params(cx, ty) { ret ty; } }
       fm_general(_) {/* no fast path */ }
     }
+
     alt interner::get(*cx.ts, ty).struct {
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
       ty_str | ty_type | ty_send_type | ty_opaque_closure_ptr(_) {}
@@ -1619,6 +1631,77 @@ fn occurs_check_fails(tcx: ctxt, sp: option<span>, vid: int, rt: t) ->
     } else { ret false; }
 }
 
+// Maintains a little union-set tree for inferred modes.  `canon()` returns
+// the current head value for `m0`.
+fn canon<T:copy>(tbl: hashmap<ast::node_id, ast::inferable<T>>,
+                 m0: ast::inferable<T>) -> ast::inferable<T> {
+    alt m0 {
+      ast::infer(id) {
+        alt tbl.find(id) {
+          none { m0 }
+          some(m1) {
+            let cm1 = canon(tbl, m1);
+            // path compression:
+            if cm1 != m1 { tbl.insert(id, cm1); }
+            cm1
+          }
+        }
+      }
+      _ { m0 }
+    }
+}
+
+// Maintains a little union-set tree for inferred modes.  `resolve_mode()`
+// returns the current head value for `m0`.
+fn canon_mode(cx: ctxt, m0: ast::mode) -> ast::mode {
+    canon(cx.inferred_modes, m0)
+}
+
+// Returns the head value for mode, failing if `m` was a infer(_) that
+// was never inferred.  This should be safe for use after typeck.
+fn resolved_mode(cx: ctxt, m: ast::mode) -> ast::rmode {
+    alt canon_mode(cx, m) {
+      ast::infer(_) {
+        cx.sess.bug(#fmt["mode %? was never resolved", m]);
+      }
+      ast::expl(m0) { m0 }
+    }
+}
+
+fn arg_mode(cx: ctxt, a: arg) -> ast::rmode { ty::resolved_mode(cx, a.mode) }
+
+// Unifies `m1` and `m2`.  Returns unified value or failure code.
+fn unify_mode(cx: ctxt, m1: ast::mode, m2: ast::mode)
+    -> result::t<ast::mode, type_err> {
+    alt (canon_mode(cx, m1), canon_mode(cx, m2)) {
+      (m1, m2) if (m1 == m2) {
+        result::ok(m1)
+      }
+      (ast::infer(id1), ast::infer(id2)) {
+        cx.inferred_modes.insert(id2, m1);
+        result::ok(m1)
+      }
+      (ast::infer(id), m) | (m, ast::infer(id)) {
+        cx.inferred_modes.insert(id, m);
+        result::ok(m1)
+      }
+      (m1, m2) {
+        result::err(terr_mode_mismatch(m1, m2))
+      }
+    }
+}
+
+// If `m` was never unified, unifies it with `m_def`.  Returns the final value
+// for `m`.
+fn set_default_mode(cx: ctxt, m: ast::mode, m_def: ast::rmode) {
+    alt canon_mode(cx, m) {
+      ast::infer(id) {
+        cx.inferred_modes.insert(id, ast::expl(m_def));
+      }
+      ast::expl(_) { }
+    }
+}
+
 // Type unification via Robinson's algorithm (Robinson 1965). Implemented as
 // described in Hoder and Voronkov:
 //
@@ -1869,15 +1952,14 @@ mod unify {
         for expected_input in e_args {
             let actual_input = a_args[i];
             i += 1u;
+
             // Unify the result modes.
-            let result_mode = if expected_input.mode == ast::mode_infer {
-                actual_input.mode
-            } else if actual_input.mode == ast::mode_infer {
-                expected_input.mode
-            } else if expected_input.mode != actual_input.mode {
-                ret either::left(ures_err(terr_mode_mismatch(
-                    expected_input.mode, actual_input.mode)));
-            } else { expected_input.mode };
+            let result_mode =
+                alt unify_mode(cx.tcx, expected_input.mode,
+                               actual_input.mode) {
+                  result::err(err) { ret either::left(ures_err(err)); }
+                  result::ok(m) { m }
+                };
 
             alt unify_step(cx, expected_input.ty, actual_input.ty,
                            variance) {
@@ -2446,8 +2528,8 @@ fn type_err_to_str(err: ty::type_err) -> str {
       }
       terr_arg_count { ret "incorrect number of function parameters"; }
       terr_mode_mismatch(e_mode, a_mode) {
-        ret "expected argument mode " + mode_str(e_mode) + " but found " +
-                mode_str(a_mode);
+        ret "expected argument mode " + mode_to_str(e_mode) + " but found " +
+                mode_to_str(a_mode);
       }
       terr_constr_len(e_len, a_len) {
         ret "Expected a type with " + uint::str(e_len) +

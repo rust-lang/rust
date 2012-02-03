@@ -136,7 +136,7 @@ fn res_to_str(decl: ast::fn_decl, name: ast::ident,
 fn test_res_to_str() {
     let decl: ast::fn_decl = {
         inputs: [{
-            mode: ast::by_val,
+            mode: ast::expl(ast::by_val),
             ty: @ast_util::respan(ast_util::dummy_sp(), ast::ty_bool),
             ident: "b",
             id: 0
@@ -1280,15 +1280,20 @@ fn print_fn_block_args(s: ps, decl: ast::fn_decl) {
     maybe_print_comment(s, decl.output.span.lo);
 }
 
-fn print_arg_mode(s: ps, m: ast::mode) {
+fn mode_to_str(m: ast::mode) -> str {
     alt m {
-      ast::by_mut_ref { word(s.s, "&"); }
-      ast::by_move { word(s.s, "-"); }
-      ast::by_ref { word(s.s, "&&"); }
-      ast::by_val { word(s.s, "++"); }
-      ast::by_copy { word(s.s, "+"); }
-      ast::mode_infer {}
+      ast::expl(ast::by_mut_ref) { "&" }
+      ast::expl(ast::by_move) { "-" }
+      ast::expl(ast::by_ref) { "&&" }
+      ast::expl(ast::by_val) { "++" }
+      ast::expl(ast::by_copy) { "+" }
+      ast::infer(_) { "" }
     }
+}
+
+fn print_arg_mode(s: ps, m: ast::mode) {
+    let ms = mode_to_str(m);
+    if ms != "" { word(s.s, ms); }
 }
 
 fn print_bounds(s: ps, bounds: @[ast::ty_param_bound]) {

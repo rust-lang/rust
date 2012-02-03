@@ -63,7 +63,8 @@ fn trans_impl(ccx: @crate_ctxt, path: path, name: ast::ident,
 fn trans_self_arg(bcx: @block_ctxt, base: @ast::expr) -> result {
     let tz = [], tr = [];
     let basety = expr_ty(bcx, base);
-    let {bcx, val} = trans_arg_expr(bcx, {mode: ast::by_ref, ty: basety},
+    let m_by_ref = ast::expl(ast::by_ref);
+    let {bcx, val} = trans_arg_expr(bcx, {mode: m_by_ref, ty: basety},
                                     T_ptr(type_of_or_i8(bcx, basety)), tz,
                                     tr, base);
     rslt(bcx, PointerCast(bcx, val, T_opaque_cbox_ptr(bcx_ccx(bcx))))

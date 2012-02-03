@@ -353,7 +353,7 @@ fn parse_ty_fn(st: @pstate, conv: conv_did) -> ty::fn_ty {
           '#' { ast::by_val }
         };
         st.pos += 1u;
-        inputs += [{mode: mode, ty: parse_ty(st, conv)}];
+        inputs += [{mode: ast::expl(mode), ty: parse_ty(st, conv)}];
     }
     st.pos += 1u; // eat the ']'
     let cs = parse_constrs(st, conv);

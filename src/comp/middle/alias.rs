@@ -82,9 +82,11 @@ fn visit_fn(cx: @ctx, _fk: visit::fn_kind, decl: ast::fn_decl,
     let fty = ty::node_id_to_type(cx.tcx, id);
     let args = ty::ty_fn_args(cx.tcx, fty);
     for arg in args {
-        if arg.mode == ast::by_val &&
-           ty::type_has_dynamic_size(cx.tcx, arg.ty) {
+        alt ty::resolved_mode(cx.tcx, arg.mode) {
+          ast::by_val if ty::type_has_dynamic_size(cx.tcx, arg.ty) {
             err(*cx, sp, "can not pass a dynamically-sized type by value");
+          }
+          _ { /* fallthrough */ }
         }
     }
 
@@ -226,7 +228,8 @@ fn check_call(cx: ctx, sc: scope, f: @ast::expr, args: [@ast::expr])
     for arg_t: ty::arg in arg_ts {
         let arg = args[i];
         let root = expr_root(cx, arg, false);
-        if arg_t.mode == ast::by_mut_ref {
+        alt ty::resolved_mode(cx.tcx, arg_t.mode) {
+          ast::by_mut_ref {
             alt path_def(cx, arg) {
               some(def) {
                 let dnum = ast_util::def_id_of_def(def).node;
@@ -234,18 +237,21 @@ fn check_call(cx: ctx, sc: scope, f: @ast::expr, args: [@ast::expr])
               }
               _ { }
             }
+          }
+          ast::by_ref | ast::by_val | ast::by_move | ast::by_copy { }
         }
         let root_var = path_def_id(cx, root.ex);
+        let arg_copied = alt ty::resolved_mode(cx.tcx, arg_t.mode) {
+          ast::by_move | ast::by_copy { copied }
+          ast::by_mut_ref { not_allowed }
+          ast::by_ref | ast::by_val { not_copied }
+        };
         bindings += [@{node_id: arg.id,
                        span: arg.span,
                        root_var: root_var,
                        local_id: 0u,
                        unsafe_tys: unsafe_set(root.mut),
-                       mutable copied: alt arg_t.mode {
-                         ast::by_move | ast::by_copy { copied }
-                         ast::by_mut_ref { not_allowed }
-                         _ { not_copied }
-                       }}];
+                       mutable copied: arg_copied}];
         i += 1u;
     }
     let f_may_close =
@@ -279,7 +285,8 @@ fn check_call(cx: ctx, sc: scope, f: @ast::expr, args: [@ast::expr])
         for unsafe_ty in b.unsafe_tys {
             let i = 0u;
             for arg_t: ty::arg in arg_ts {
-                let mut_alias = arg_t.mode == ast::by_mut_ref;
+                let mut_alias =
+                    (ast::by_mut_ref == ty::arg_mode(cx.tcx, arg_t));
                 if i != j &&
                        ty_can_unsafely_include(cx, unsafe_ty, arg_t.ty,
                                                mut_alias) &&

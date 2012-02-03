@@ -895,13 +895,20 @@ fn trans_bind_thunk(ccx: @crate_ctxt,
                              [0, abi::closure_body_bindings, b]);
             bcx = bound_arg.bcx;
             let val = bound_arg.val;
-            if out_arg.mode == ast::by_val { val = Load(bcx, val); }
-            if out_arg.mode == ast::by_copy {
+
+            alt ty::resolved_mode(tcx, out_arg.mode) {
+              ast::by_val {
+                val = Load(bcx, val);
+              }
+              ast::by_copy {
                 let {bcx: cx, val: alloc} = alloc_ty(bcx, out_arg.ty);
                 bcx = memmove_ty(cx, alloc, val, out_arg.ty);
                 bcx = take_ty(bcx, alloc, out_arg.ty);
                 val = alloc;
+              }
+              ast::by_ref | ast::by_mut_ref | ast::by_move { }
             }
+
             // If the type is parameterized, then we need to cast the
             // type we actually have to the parameterized out type.
             if ty::type_contains_params(ccx.tcx, out_arg.ty) {

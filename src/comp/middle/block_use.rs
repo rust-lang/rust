@@ -28,7 +28,7 @@ fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
         v.visit_expr(f, cx, v);
         let i = 0u;
         for arg_t in ty::ty_fn_args(cx.tcx, ty::expr_ty(cx.tcx, f)) {
-            cx.allow_block = arg_t.mode == by_ref;
+            cx.allow_block = (ty::arg_mode(cx.tcx, arg_t) == by_ref);
             v.visit_expr(args[i], cx, v);
             i += 1u;
         }

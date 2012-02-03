@@ -4,32 +4,18 @@ import middle::ty;
 import middle::ty::*;
 import metadata::encoder;
 import syntax::print::pprust;
-import syntax::print::pprust::{path_to_str, constr_args_to_str, proto_to_str};
+import syntax::print::pprust::{path_to_str, constr_args_to_str, proto_to_str,
+                               mode_to_str};
 import syntax::{ast, ast_util};
 import middle::ast_map;
-
-fn mode_str(m: ast::mode) -> str {
-    alt m {
-      ast::by_ref { "&&" }
-      ast::by_val { "++" }
-      ast::by_mut_ref { "&" }
-      ast::by_move { "-" }
-      ast::by_copy { "+" }
-      _ { "" }
-    }
-}
 
 fn ty_to_str(cx: ctxt, typ: t) -> str {
     fn fn_input_to_str(cx: ctxt, input: {mode: ast::mode, ty: t}) ->
        str {
-        let modestr = alt input.mode {
-          ast::by_ref {
-            if ty::type_is_immediate(cx, input.ty) { "&&" } else { "" }
-          }
-          ast::by_val {
-            if ty::type_is_immediate(cx, input.ty) { "" } else { "++" }
-          }
-          _ { mode_str(input.mode) }
+        let arg_mode = ty::arg_mode(cx, input);
+        let modestr = {
+            if arg_mode == ty::default_arg_mode_for_ty(cx, input.ty) { "" }
+            else { mode_to_str(input.mode) }
         };
         modestr + ty_to_str(cx, input.ty)
     }

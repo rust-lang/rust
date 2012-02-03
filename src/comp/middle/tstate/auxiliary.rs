@@ -1089,10 +1089,12 @@ fn callee_modes(fcx: fn_ctxt, callee: node_id) -> [mode] {
 }
 
 fn callee_arg_init_ops(fcx: fn_ctxt, callee: node_id) -> [init_op] {
-    fn mode_to_op(m: mode) -> init_op {
-        alt m { by_move { init_move } _ { init_assign } }
+    vec::map(callee_modes(fcx, callee)) {|m|
+        alt ty::resolved_mode(fcx.ccx.tcx, m) {
+          by_move { init_move }
+          by_copy | by_ref | by_val | by_mut_ref { init_assign }
+        }
     }
-    vec::map(callee_modes(fcx, callee), mode_to_op)
 }
 
 fn anon_bindings(ops: [init_op], es: [@expr]) -> [binding] {

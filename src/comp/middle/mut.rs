@@ -228,10 +228,10 @@ fn check_call(cx: @ctx, f: @expr, args: [@expr]) {
     let arg_ts = ty::ty_fn_args(cx.tcx, ty::expr_ty(cx.tcx, f));
     let i = 0u;
     for arg_t: ty::arg in arg_ts {
-        alt arg_t.mode {
+        alt ty::resolved_mode(cx.tcx, arg_t.mode) {
           by_mut_ref { check_lval(cx, args[i], msg_mut_ref); }
           by_move { check_lval(cx, args[i], msg_move_out); }
-          _ {}
+          by_ref | by_val | by_copy { }
         }
         i += 1u;
     }
@@ -267,8 +267,12 @@ fn is_immutable_def(cx: @ctx, def: def) -> option<str> {
       def_use(_) {
         some("static item")
       }
-      def_arg(_, by_ref) | def_arg(_, by_val) |
-      def_arg(_, mode_infer) { some("argument") }
+      def_arg(_, m) {
+        alt ty::resolved_mode(cx.tcx, m) {
+          by_ref | by_val { some("argument") }
+          by_mut_ref | by_move | by_copy { none }
+        }
+      }
       def_self(_) { some("self argument") }
       def_upvar(_, inner, node_id) {
         let ty = ty::node_id_to_type(cx.tcx, node_id);

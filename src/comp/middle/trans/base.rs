@@ -63,16 +63,18 @@ fn type_of(cx: @crate_ctxt, t: ty::t) : type_has_static_size(cx, t)
 
 fn type_of_explicit_args(cx: @crate_ctxt, inputs: [ty::arg]) ->
    [TypeRef] {
-    let atys = [];
-    for arg in inputs {
+    let tcx = ccx_tcx(cx);
+    vec::map(inputs) {|arg|
         let arg_ty = arg.ty;
         // FIXME: would be nice to have a constraint on arg
         // that would obviate the need for this check
         check non_ty_var(cx, arg_ty);
         let llty = type_of_inner(cx, arg_ty);
-        atys += [if arg.mode == ast::by_val { llty } else { T_ptr(llty) }];
+        alt ty::resolved_mode(tcx, arg.mode) {
+          ast::by_val { llty }
+          _ { T_ptr(llty) }
+        }
     }
-    ret atys;
 }
 
 
@@ -2981,15 +2983,16 @@ fn trans_arg_expr(cx: @block_ctxt, arg: ty::arg, lldestty: TypeRef,
     let lv = trans_temp_lval(cx, e);
     let bcx = lv.bcx;
     let val = lv.val;
+    let arg_mode = ty::resolved_mode(ccx.tcx, arg.mode);
     if is_bot {
         // For values of type _|_, we generate an
         // "undef" value, as such a value should never
         // be inspected. It's important for the value
         // to have type lldestty (the callee's expected type).
         val = llvm::LLVMGetUndef(lldestty);
-    } else if arg.mode == ast::by_ref || arg.mode == ast::by_val {
+    } else if arg_mode == ast::by_ref || arg_mode == ast::by_val {
         let copied = false, imm = ty::type_is_immediate(ccx.tcx, e_ty);
-        if arg.mode == ast::by_ref && lv.kind != owned && imm {
+        if arg_mode == ast::by_ref && lv.kind != owned && imm {
             val = do_spill_noroot(bcx, val);
             copied = true;
         }
@@ -3002,10 +3005,10 @@ fn trans_arg_expr(cx: @block_ctxt, arg: ty::arg, lldestty: TypeRef,
             } else { bcx = take_ty(bcx, val, e_ty); }
             add_clean(bcx, val, e_ty);
         }
-        if arg.mode == ast::by_val && (lv.kind == owned || !imm) {
+        if arg_mode == ast::by_val && (lv.kind == owned || !imm) {
             val = Load(bcx, val);
         }
-        } else if arg.mode == ast::by_copy {
+        } else if arg_mode == ast::by_copy {
         let {bcx: cx, val: alloc} = alloc_ty(bcx, e_ty);
         let last_use = ccx.last_uses.contains_key(e.id);
         bcx = cx;
@@ -3031,7 +3034,7 @@ fn trans_arg_expr(cx: @block_ctxt, arg: ty::arg, lldestty: TypeRef,
     }
 
     // Collect arg for later if it happens to be one we've moving out.
-    if arg.mode == ast::by_move {
+    if arg_mode == ast::by_move {
         if lv.kind == owned {
             // Use actual ty, not declared ty -- anything else doesn't make
             // sense if declared ty is a ty param
@@ -4414,9 +4417,10 @@ fn create_llargs_for_fn_args(cx: @fn_ctxt, ty_self: self_arg,
 
 fn copy_args_to_allocas(fcx: @fn_ctxt, bcx: @block_ctxt, args: [ast::arg],
                         arg_tys: [ty::arg]) -> @block_ctxt {
+    let tcx = bcx_tcx(bcx);
     let arg_n: uint = 0u, bcx = bcx;
-    fn epic_fail_(bcx: @block_ctxt) -> ! {
-        bcx_tcx(bcx).sess.bug("Someone forgot\
+    let epic_fail = fn@() -> ! {
+        tcx.sess.bug("Someone forgot\
                 to document an invariant in copy_args_to_allocas!");
     }
     let epic_fail = bind epic_fail_(bcx);
@@ -4424,7 +4428,7 @@ fn copy_args_to_allocas(fcx: @fn_ctxt, bcx: @block_ctxt, args: [ast::arg],
         let id = args[arg_n].id;
         let argval = alt fcx.llargs.get(id) { local_mem(v) { v }
                                               _ { epic_fail() } };
-        alt arg.mode {
+        alt ty::resolved_mode(tcx, arg.mode) {
           ast::by_mut_ref { }
           ast::by_move | ast::by_copy { add_clean(bcx, argval, arg.ty); }
           ast::by_val {
@@ -4438,7 +4442,6 @@ fn copy_args_to_allocas(fcx: @fn_ctxt, bcx: @block_ctxt, args: [ast::arg],
             }
           }
           ast::by_ref {}
-          _ { epic_fail(); }
         }
         if fcx_ccx(fcx).sess.opts.extra_debuginfo {
             debuginfo::create_arg(bcx, args[arg_n], args[arg_n].ty.span);
@@ -4585,7 +4588,7 @@ fn trans_enum_variant(ccx: @crate_ctxt,
     // Translate variant arguments to function arguments.
     let fn_args = [], i = 0u;
     for varg in variant.node.args {
-        fn_args += [{mode: ast::by_copy,
+        fn_args += [{mode: ast::expl(ast::by_copy),
                      ty: varg.ty,
                      ident: "arg" + uint::to_str(i, 10u),
                      id: varg.id}];
@@ -5039,7 +5042,7 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
                    takes_argv: bool) -> ValueRef {
         let unit_ty = ty::mk_str(ccx.tcx);
         let vecarg_ty: ty::arg =
-            {mode: ast::by_val,
+            {mode: ast::expl(ast::by_val),
              ty: ty::mk_vec(ccx.tcx, {ty: unit_ty, mut: ast::imm})};
         // FIXME: mk_nil should have a postcondition
         let nt = ty::mk_nil(ccx.tcx);

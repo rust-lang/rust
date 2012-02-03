@@ -203,16 +203,12 @@ fn enc_proto(w: io::writer, proto: proto) {
 fn enc_ty_fn(w: io::writer, cx: @ctxt, ft: ty::fn_ty) {
     w.write_char('[');
     for arg: ty::arg in ft.inputs {
-        alt arg.mode {
+        alt ty::resolved_mode(cx.tcx, arg.mode) {
           by_mut_ref { w.write_char('&'); }
           by_move { w.write_char('-'); }
           by_copy { w.write_char('+'); }
           by_ref { w.write_char('='); }
           by_val { w.write_char('#'); }
-          // tediously, this has to be there until there's a way
-          // to constraint post-typeck types not to contain a mode_infer
-          mode_infer { cx.tcx.sess.bug("enc_ty_fn: shouldn't see \
-            mode_infer"); }
         }
         enc_ty(w, cx, arg.ty);
     }

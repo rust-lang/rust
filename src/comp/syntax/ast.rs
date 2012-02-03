@@ -160,7 +160,17 @@ enum unop {
     deref, not, neg,
 }
 
-enum mode { by_ref, by_val, by_mut_ref, by_move, by_copy, mode_infer, }
+// Generally, after typeck you can get the inferred value
+// using ty::resolved_T(...).
+enum inferable<T> {
+    expl(T), infer(node_id)
+}
+
+// "resolved" mode: the real modes.
+enum rmode { by_ref, by_val, by_mut_ref, by_move, by_copy }
+
+// inferable mode.
+type mode = inferable<rmode>;
 
 type stmt = spanned<stmt_>;
 

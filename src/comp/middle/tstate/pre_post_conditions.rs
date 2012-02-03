@@ -276,12 +276,11 @@ fn handle_var_def(fcx: fn_ctxt, rslt: pre_and_post, def: def, name: ident) {
 
 fn forget_args_moved_in(fcx: fn_ctxt, parent: @expr, modes: [mode],
                         operands: [@expr]) {
-    let i = 0u;
-    for mode: mode in modes {
-        if mode == by_move {
-            forget_in_postcond(fcx, parent.id, operands[i].id);
+    vec::iteri(modes) {|i,mode|
+        alt ty::resolved_mode(fcx.ccx.tcx, mode) {
+          by_move { forget_in_postcond(fcx, parent.id, operands[i].id); }
+          by_ref | by_val | by_mut_ref | by_copy { }
         }
-        i += 1u;
     }
 }
 

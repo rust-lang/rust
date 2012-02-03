@@ -165,7 +165,10 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
       expr_call(f, args, _) {
         let i = 0u;
         for arg_t in ty::ty_fn_args(cx.tcx, ty::expr_ty(cx.tcx, f)) {
-            alt arg_t.mode { by_copy { maybe_copy(cx, args[i]); } _ {} }
+            alt ty::arg_mode(cx.tcx, arg_t) {
+              by_copy { maybe_copy(cx, args[i]); }
+              by_ref | by_val | by_mut_ref | by_move { }
+            }
             i += 1u;
         }
       }
