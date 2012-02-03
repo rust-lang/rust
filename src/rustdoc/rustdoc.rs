@@ -106,6 +106,8 @@ fn run(source_file: str) {
         desc_to_brief_pass::mk_pass(),
         trim_pass::mk_pass(),
         unindent_pass::mk_pass(),
+        sort_item_name_pass::mk_pass(),
+        sort_item_type_pass::mk_pass(),
         markdown_pass::mk_pass {|f| f(std::io:: stdout()) }
     ]);
 }

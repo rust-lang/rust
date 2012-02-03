@@ -31,3 +31,5 @@ mod trim_pass;
 mod astsrv;
 mod demo;
 mod sort_pass;
+mod sort_item_name_pass;
+mod sort_item_type_pass;
