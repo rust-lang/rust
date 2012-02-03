@@ -3,4 +3,4 @@
 	url = git://github.com/brson/llvm.git
 [submodule "src/libuv"]
 	path = src/libuv
-	url = git://github.com/joyent/libuv
+	url = git://github.com/graydon/libuv.git

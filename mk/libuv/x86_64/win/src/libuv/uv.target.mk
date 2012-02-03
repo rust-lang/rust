@@ -2,21 +2,53 @@
 
 TOOLSET := target
 TARGET := uv
-DEFS_Default := '-DHAVE_CONFIG_H' \
-	'-D_WIN32_WINNT=0x0502' \
+DEFS_Debug := '-DWIN32' \
+	'-D_CRT_SECURE_NO_DEPRECATE' \
+	'-D_CRT_NONSTDC_NO_DEPRECATE' \
+	'-DHAVE_CONFIG_H' \
+	'-D_WIN32_WINNT=0x0600' \
 	'-DEIO_STACKSIZE=262144' \
-	'-D_GNU_SOURCE'
+	'-D_GNU_SOURCE' \
+	'-DDEBUG' \
+	'-D_DEBUG'
 
 # Flags passed to all source files.
-CFLAGS_Default := 
+CFLAGS_Debug := -g \
+	-O0
 
 # Flags passed to only C files.
-CFLAGS_C_Default := 
+CFLAGS_C_Debug := 
 
 # Flags passed to only C++ files.
-CFLAGS_CC_Default := 
+CFLAGS_CC_Debug := 
 
-INCS_Default := -I$(srcdir)/src/libuv/include \
+INCS_Debug := -I$(srcdir)/src/libuv/include \
+	-I$(srcdir)/src/libuv/include/uv-private \
+	-I$(srcdir)/src/libuv/src \
+	-I$(srcdir)/src/libuv/src/ares/config_win32
+
+DEFS_Release := '-DWIN32' \
+	'-D_CRT_SECURE_NO_DEPRECATE' \
+	'-D_CRT_NONSTDC_NO_DEPRECATE' \
+	'-DHAVE_CONFIG_H' \
+	'-D_WIN32_WINNT=0x0600' \
+	'-DEIO_STACKSIZE=262144' \
+	'-D_GNU_SOURCE' \
+	'-DNDEBUG'
+
+# Flags passed to all source files.
+CFLAGS_Release := -O3 \
+	-fomit-frame-pointer \
+	-fdata-sections \
+	-ffunction-sections
+
+# Flags passed to only C files.
+CFLAGS_C_Release := 
+
+# Flags passed to only C++ files.
+CFLAGS_CC_Release := 
+
+INCS_Release := -I$(srcdir)/src/libuv/include \
 	-I$(srcdir)/src/libuv/include/uv-private \
 	-I$(srcdir)/src/libuv/src \
 	-I$(srcdir)/src/libuv/src/ares/config_win32
@@ -79,13 +111,13 @@ OBJS := $(obj).target/$(TARGET)/src/libuv/src/uv-common.o \
 	$(obj).target/$(TARGET)/src/libuv/src/win/handle.o \
 	$(obj).target/$(TARGET)/src/libuv/src/win/loop-watcher.o \
 	$(obj).target/$(TARGET)/src/libuv/src/win/pipe.o \
+	$(obj).target/$(TARGET)/src/libuv/src/win/thread.o \
 	$(obj).target/$(TARGET)/src/libuv/src/win/process.o \
 	$(obj).target/$(TARGET)/src/libuv/src/win/req.o \
 	$(obj).target/$(TARGET)/src/libuv/src/win/stream.o \
 	$(obj).target/$(TARGET)/src/libuv/src/win/tcp.o \
 	$(obj).target/$(TARGET)/src/libuv/src/win/tty.o \
 	$(obj).target/$(TARGET)/src/libuv/src/win/threadpool.o \
-	$(obj).target/$(TARGET)/src/libuv/src/win/threads.o \
 	$(obj).target/$(TARGET)/src/libuv/src/win/timer.o \
 	$(obj).target/$(TARGET)/src/libuv/src/win/udp.o \
 	$(obj).target/$(TARGET)/src/libuv/src/win/util.o \
@@ -98,8 +130,8 @@ all_deps += $(OBJS)
 # CFLAGS et al overrides must be target-local.
 # See "Target-specific Variable Values" in the GNU Make manual.
 $(OBJS): TOOLSET := $(TOOLSET)
-$(OBJS): GYP_CFLAGS := $(DEFS_$(BUILDTYPE)) $(INCS_$(BUILDTYPE)) $(CFLAGS_$(BUILDTYPE)) $(CFLAGS_C_$(BUILDTYPE))
-$(OBJS): GYP_CXXFLAGS := $(DEFS_$(BUILDTYPE)) $(INCS_$(BUILDTYPE)) $(CFLAGS_$(BUILDTYPE)) $(CFLAGS_CC_$(BUILDTYPE))
+$(OBJS): GYP_CFLAGS := $(DEFS_$(BUILDTYPE)) $(INCS_$(BUILDTYPE))  $(CFLAGS_$(BUILDTYPE)) $(CFLAGS_C_$(BUILDTYPE))
+$(OBJS): GYP_CXXFLAGS := $(DEFS_$(BUILDTYPE)) $(INCS_$(BUILDTYPE))  $(CFLAGS_$(BUILDTYPE)) $(CFLAGS_CC_$(BUILDTYPE))
 
 # Suffix rules, putting all outputs into $(obj).
 
@@ -116,7 +148,9 @@ $(obj).$(TOOLSET)/$(TARGET)/%.o: $(obj)/%.c FORCE_DO_CMD
 
 # End of this set of suffix rules
 ### Rules for final target.
-LDFLAGS_Default := 
+LDFLAGS_Debug := 
+
+LDFLAGS_Release := 
 
 LIBS := 
 

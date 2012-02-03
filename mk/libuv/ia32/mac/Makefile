@@ -8,6 +8,7 @@ MAKEFLAGS=-r
 
 # The source directory tree.
 srcdir := ../../../..
+abs_srcdir := $(abspath $(srcdir))
 
 # The name of the builddir.
 builddir_name ?= out
@@ -20,7 +21,7 @@ else
 endif
 
 # Specify BUILDTYPE=Release on the command line for a release build.
-BUILDTYPE ?= Default
+BUILDTYPE ?= Debug
 
 # Directory all our build output goes into.
 # Note that this must be two directories beneath src/ for unit tests to pass,
@@ -147,7 +148,7 @@ cmd_objcxx = $(CXX.$(TOOLSET)) $(GYP_OBJCXXFLAGS) $(DEPFLAGS) -c -o $@ $<
 quiet_cmd_pch_c = CXX($(TOOLSET)) $@
 cmd_pch_c = $(CC.$(TOOLSET)) $(GYP_PCH_CFLAGS) $(DEPFLAGS) $(CXXFLAGS.$(TOOLSET)) -c -o $@ $<
 quiet_cmd_pch_cc = CXX($(TOOLSET)) $@
-cmd_pch_cc = $(CC.$(TOOLSET)) $(GYP_PCH_CCFLAGS) $(DEPFLAGS) $(CXXFLAGS.$(TOOLSET)) -c -o $@ $<
+cmd_pch_cc = $(CC.$(TOOLSET)) $(GYP_PCH_CXXFLAGS) $(DEPFLAGS) $(CXXFLAGS.$(TOOLSET)) -c -o $@ $<
 quiet_cmd_pch_m = CXX($(TOOLSET)) $@
 cmd_pch_m = $(CC.$(TOOLSET)) $(GYP_PCH_OBJCFLAGS) $(DEPFLAGS) -c -o $@ $<
 quiet_cmd_pch_mm = CXX($(TOOLSET)) $@
@@ -161,6 +162,9 @@ cmd_mac_tool = ./gyp-mac-tool $(4) $< "$@"
 
 quiet_cmd_mac_package_framework = PACKAGE FRAMEWORK $@
 cmd_mac_package_framework = ./gyp-mac-tool package-framework "$@" $(4)
+
+quiet_cmd_infoplist = INFOPLIST $@
+cmd_infoplist = $(CC.$(TOOLSET)) -E -P -Wno-trigraphs -x c $(INFOPLIST_DEFINES) "$<" -o "$@"
 
 quiet_cmd_touch = TOUCH $@
 cmd_touch = touch $@
@@ -262,8 +266,8 @@ $(if $(or $(command_changed),$(prereq_changed)),
 )
 endef
 
-# Declare "all" target first so it is the default, even though we don't have the
-# deps yet.
+# Declare the "all" target first so it is the default,
+# even though we don't have the deps yet.
 .PHONY: all
 all:
 
@@ -343,9 +347,9 @@ ifeq ($(strip $(foreach prefix,$(NO_LOAD),\
   include src/libuv/uv.target.mk
 endif
 
-quiet_cmd_regen_makefile = ACTION Regenerating $@
-cmd_regen_makefile = ./src/libuv/build/gyp/gyp -fmake --ignore-environment "--toplevel-dir=." "--depth=." "--generator-output=mk/libuv/ia32/mac" "-Dlibrary=static_library" "-Dtarget_arch=ia32" "-DOS=mac" src/libuv/uv.gyp
-Makefile: $(srcdir)/src/libuv/uv.gyp
+#quiet_cmd_regen_makefile = ACTION Regenerating $@
+#cmd_regen_makefile = ./src/libuv/build/gyp/gyp -fmake --ignore-environment "--toplevel-dir=." -Isrc/libuv/common.gypi "--depth=." "--generator-output=mk/libuv/ia32/mac" "-Ddefault_configuration=Default" "-Dcomponent=static_library" "-Dlibrary=static_library" "-Dtarget_arch=ia32" "-DOS=mac" src/libuv/uv.gyp
+#Makefile: $(srcdir)/src/libuv/uv.gyp $(srcdir)/src/libuv/common.gypi
 #	$(call do_cmd,regen_makefile)
 
 # "all" is a concatenation of the "all" targets from all the included

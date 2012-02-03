@@ -2,18 +2,42 @@
 
 TOOLSET := target
 TARGET := run-benchmarks
-DEFS_Default := 
+DEFS_Debug := '-DWIN32' \
+	'-D_CRT_SECURE_NO_DEPRECATE' \
+	'-D_CRT_NONSTDC_NO_DEPRECATE' \
+	'-DDEBUG' \
+	'-D_DEBUG'
 
 # Flags passed to all source files.
-CFLAGS_Default := 
+CFLAGS_Debug := -g \
+	-O0
 
 # Flags passed to only C files.
-CFLAGS_C_Default := 
+CFLAGS_C_Debug := 
 
 # Flags passed to only C++ files.
-CFLAGS_CC_Default := 
+CFLAGS_CC_Debug := 
 
-INCS_Default := -I$(srcdir)/src/libuv/include
+INCS_Debug := -I$(srcdir)/src/libuv/include
+
+DEFS_Release := '-DWIN32' \
+	'-D_CRT_SECURE_NO_DEPRECATE' \
+	'-D_CRT_NONSTDC_NO_DEPRECATE' \
+	'-DNDEBUG'
+
+# Flags passed to all source files.
+CFLAGS_Release := -O3 \
+	-fomit-frame-pointer \
+	-fdata-sections \
+	-ffunction-sections
+
+# Flags passed to only C files.
+CFLAGS_C_Release := 
+
+# Flags passed to only C++ files.
+CFLAGS_CC_Release := 
+
+INCS_Release := -I$(srcdir)/src/libuv/include
 
 OBJS := $(obj).target/$(TARGET)/src/libuv/test/benchmark-ares.o \
 	$(obj).target/$(TARGET)/src/libuv/test/benchmark-getaddrinfo.o \
@@ -22,6 +46,7 @@ OBJS := $(obj).target/$(TARGET)/src/libuv/test/benchmark-ares.o \
 	$(obj).target/$(TARGET)/src/libuv/test/benchmark-pump.o \
 	$(obj).target/$(TARGET)/src/libuv/test/benchmark-sizes.o \
 	$(obj).target/$(TARGET)/src/libuv/test/benchmark-spawn.o \
+	$(obj).target/$(TARGET)/src/libuv/test/benchmark-thread.o \
 	$(obj).target/$(TARGET)/src/libuv/test/benchmark-tcp-write-batch.o \
 	$(obj).target/$(TARGET)/src/libuv/test/benchmark-udp-packet-storm.o \
 	$(obj).target/$(TARGET)/src/libuv/test/dns-server.o \
@@ -40,8 +65,8 @@ $(OBJS): | $(obj).target/src/libuv/libuv.a
 # CFLAGS et al overrides must be target-local.
 # See "Target-specific Variable Values" in the GNU Make manual.
 $(OBJS): TOOLSET := $(TOOLSET)
-$(OBJS): GYP_CFLAGS := $(DEFS_$(BUILDTYPE)) $(INCS_$(BUILDTYPE)) $(CFLAGS_$(BUILDTYPE)) $(CFLAGS_C_$(BUILDTYPE))
-$(OBJS): GYP_CXXFLAGS := $(DEFS_$(BUILDTYPE)) $(INCS_$(BUILDTYPE)) $(CFLAGS_$(BUILDTYPE)) $(CFLAGS_CC_$(BUILDTYPE))
+$(OBJS): GYP_CFLAGS := $(DEFS_$(BUILDTYPE)) $(INCS_$(BUILDTYPE))  $(CFLAGS_$(BUILDTYPE)) $(CFLAGS_C_$(BUILDTYPE))
+$(OBJS): GYP_CXXFLAGS := $(DEFS_$(BUILDTYPE)) $(INCS_$(BUILDTYPE))  $(CFLAGS_$(BUILDTYPE)) $(CFLAGS_CC_$(BUILDTYPE))
 
 # Suffix rules, putting all outputs into $(obj).
 
@@ -58,10 +83,14 @@ $(obj).$(TOOLSET)/$(TARGET)/%.o: $(obj)/%.c FORCE_DO_CMD
 
 # End of this set of suffix rules
 ### Rules for final target.
-LDFLAGS_Default := 
+LDFLAGS_Debug := 
+
+LDFLAGS_Release := 
 
 LIBS := ws2_32.lib \
-	-lws2_32.lib
+	-lws2_32.lib \
+	-lpsapi.lib \
+	-liphlpapi.lib
 
 $(builddir)/run-benchmarks: GYP_LDFLAGS := $(LDFLAGS_$(BUILDTYPE))
 $(builddir)/run-benchmarks: LIBS := $(LIBS)

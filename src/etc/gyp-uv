@@ -2,55 +2,61 @@
 
 # This script generates rust compatible makefiles from libuv. When upgrading
 # libuv, do:
+#
 # cd $RUST_DIR
-# rm -r mk/libuv
-# cd $LIBUV_DIR
-# git archive --prefix libuv/ $REVISION > libuv.tar.gz
-# cd $RUST_DIR/src/rt
-# rm -r libuv
-# tar -xvf $LIBUV_DIR/libuv.tar.gz
-# mkdir -p libuv/build
-# svn co http://gyp.googlecode.com/svn/trunk libuv/build/gyp
+# cd src/libuv
+# git checkout master
+# git pull
+# svn co http://gyp.googlecode.com/svn/trunk build/gyp
 # cd ../..
-# ./src/etc/gyp_uv
+# rm -r mk/libuv
+# ./src/etc/gyp-uv
+#
+# Note: you must not run gyp on windows. It will get the backslashes
+# incorrect in its rules, and not work.
 
 set -e
 
 cd `dirname $0`
 cd ../..
 
+GYPFILE=src/libuv/uv.gyp
+INCLUDES="-I src/libuv/common.gypi"
+
 for ARCH in ia32 x86_64
 do
-    args="--depth . -Dlibrary=static_library -Dtarget_arch=$ARCH"
+    ARGS="$GYPFILE \
+         $INCLUDES \
+         --depth . \
+         -Dcomponent=static_library \
+         -Dlibrary=static_library \
+         -Dtarget_arch=$ARCH"
     
-    ./src/libuv/build/gyp/gyp src/libuv/uv.gyp $args \
+    ./src/libuv/build/gyp/gyp $ARGS \
         -f make-mac \
         --generator-output mk/libuv/$ARCH/mac \
         -DOS=mac
 
-    ./src/libuv/build/gyp/gyp src/libuv/uv.gyp $args \
+    ./src/libuv/build/gyp/gyp $ARGS \
         -f make-linux \
         --generator-output mk/libuv/$ARCH/unix \
         -DOS=linux
 
-    ./src/libuv/build/gyp/gyp src/libuv/uv.gyp $args \
+    ./src/libuv/build/gyp/gyp $ARGS \
         -f make-linux \
         --generator-output mk/libuv/$ARCH/win \
         -DOS=win
 
-    # Comment out the gyp auto regeneration
-    for os in mac unix win; do
-        sed -i \
-            -e 's/^\(Makefile: $(srcdir)\/src\/rt\/libuv\/uv\.gyp\)/#\1/' \
-            mk/libuv/$ARCH/$os/Makefile
-
-        sed -i \
-            -e 's/^\(	$(call do_cmd,regen_makefile)\)/#\1/' \
-            mk/libuv/$ARCH/$os/Makefile
-    done
 done
 
 # On Mac, GYP hardcodes a -arch i386 into the output. Fix that.
 sed -i \
     -e 's/-arch i386/-arch x86_64/' \
     mk/libuv/x86_64/mac/src/libuv/*.mk
+
+MKFILES=$(find mk/libuv -name \*.mk -o -name Makefile)
+
+# Comment out the gyp auto regeneration
+perl -i -p -e 's@^(Makefile:.*)@#\1@go' $MKFILES
+perl -i -p -e 's@^(Makefile:.*)@#\1@go' $MKFILES
+perl -i -p -e 's@(.*regen_makefile.*)@#\1@go' $MKFILES

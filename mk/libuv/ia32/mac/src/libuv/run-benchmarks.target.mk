@@ -2,31 +2,77 @@
 
 TOOLSET := target
 TARGET := run-benchmarks
-DEFS_Default := '-D_LARGEFILE_SOURCE' \
+DEFS_Debug := '-D_LARGEFILE_SOURCE' \
 	'-D_FILE_OFFSET_BITS=64' \
 	'-D_GNU_SOURCE' \
-	'-DEIO_STACKSIZE=262144'
+	'-DEIO_STACKSIZE=262144' \
+	'-DDEBUG' \
+	'-D_DEBUG' \
+	'-DEV_VERIFY=2'
 
 # Flags passed to all source files.
-CFLAGS_Default := -fasm-blocks \
-	-mpascal-strings \
-	-Os \
+CFLAGS_Debug := -Os \
 	-gdwarf-2 \
-	-arch i386
+	-fvisibility=hidden \
+	-Wnewline-eof \
+	-arch i386 \
+	-fno-strict-aliasing \
+	-Wall \
+	-Wendif-labels \
+	-W \
+	-Wno-unused-parameter
 
 # Flags passed to only C files.
-CFLAGS_C_Default := 
+CFLAGS_C_Debug := 
 
 # Flags passed to only C++ files.
-CFLAGS_CC_Default := 
+CFLAGS_CC_Debug := -fno-rtti \
+	-fno-exceptions \
+	-fvisibility-inlines-hidden \
+	-fno-threadsafe-statics
 
 # Flags passed to only ObjC files.
-CFLAGS_OBJC_Default := 
+CFLAGS_OBJC_Debug := 
 
 # Flags passed to only ObjC++ files.
-CFLAGS_OBJCC_Default := 
+CFLAGS_OBJCC_Debug := 
 
-INCS_Default := -I$(srcdir)/src/libuv/include
+INCS_Debug := -I$(srcdir)/src/libuv/include
+
+DEFS_Release := '-D_LARGEFILE_SOURCE' \
+	'-D_FILE_OFFSET_BITS=64' \
+	'-D_GNU_SOURCE' \
+	'-DEIO_STACKSIZE=262144' \
+	'-DNDEBUG'
+
+# Flags passed to all source files.
+CFLAGS_Release := -Os \
+	-gdwarf-2 \
+	-fvisibility=hidden \
+	-Wnewline-eof \
+	-arch i386 \
+	-fno-strict-aliasing \
+	-Wall \
+	-Wendif-labels \
+	-W \
+	-Wno-unused-parameter
+
+# Flags passed to only C files.
+CFLAGS_C_Release := 
+
+# Flags passed to only C++ files.
+CFLAGS_CC_Release := -fno-rtti \
+	-fno-exceptions \
+	-fvisibility-inlines-hidden \
+	-fno-threadsafe-statics
+
+# Flags passed to only ObjC files.
+CFLAGS_OBJC_Release := 
+
+# Flags passed to only ObjC++ files.
+CFLAGS_OBJCC_Release := 
+
+INCS_Release := -I$(srcdir)/src/libuv/include
 
 OBJS := $(obj).target/$(TARGET)/src/libuv/test/benchmark-ares.o \
 	$(obj).target/$(TARGET)/src/libuv/test/benchmark-getaddrinfo.o \
@@ -35,6 +81,7 @@ OBJS := $(obj).target/$(TARGET)/src/libuv/test/benchmark-ares.o \
 	$(obj).target/$(TARGET)/src/libuv/test/benchmark-pump.o \
 	$(obj).target/$(TARGET)/src/libuv/test/benchmark-sizes.o \
 	$(obj).target/$(TARGET)/src/libuv/test/benchmark-spawn.o \
+	$(obj).target/$(TARGET)/src/libuv/test/benchmark-thread.o \
 	$(obj).target/$(TARGET)/src/libuv/test/benchmark-tcp-write-batch.o \
 	$(obj).target/$(TARGET)/src/libuv/test/benchmark-udp-packet-storm.o \
 	$(obj).target/$(TARGET)/src/libuv/test/dns-server.o \
@@ -53,10 +100,10 @@ $(OBJS): | $(builddir)/libuv.a
 # CFLAGS et al overrides must be target-local.
 # See "Target-specific Variable Values" in the GNU Make manual.
 $(OBJS): TOOLSET := $(TOOLSET)
-$(OBJS): GYP_CFLAGS := $(DEFS_$(BUILDTYPE)) $(INCS_$(BUILDTYPE)) $(CFLAGS_$(BUILDTYPE)) $(CFLAGS_C_$(BUILDTYPE))
-$(OBJS): GYP_CXXFLAGS := $(DEFS_$(BUILDTYPE)) $(INCS_$(BUILDTYPE)) $(CFLAGS_$(BUILDTYPE)) $(CFLAGS_CC_$(BUILDTYPE))
-$(OBJS): GYP_OBJCFLAGS := $(DEFS_$(BUILDTYPE)) $(INCS_$(BUILDTYPE)) $(CFLAGS_$(BUILDTYPE)) $(CFLAGS_C_$(BUILDTYPE)) $(CFLAGS_OBJC_$(BUILDTYPE))
-$(OBJS): GYP_OBJCXXFLAGS := $(DEFS_$(BUILDTYPE)) $(INCS_$(BUILDTYPE)) $(CFLAGS_$(BUILDTYPE)) $(CFLAGS_CC_$(BUILDTYPE)) $(CFLAGS_OBJCC_$(BUILDTYPE))
+$(OBJS): GYP_CFLAGS := $(DEFS_$(BUILDTYPE)) $(INCS_$(BUILDTYPE))  $(CFLAGS_$(BUILDTYPE)) $(CFLAGS_C_$(BUILDTYPE))
+$(OBJS): GYP_CXXFLAGS := $(DEFS_$(BUILDTYPE)) $(INCS_$(BUILDTYPE))  $(CFLAGS_$(BUILDTYPE)) $(CFLAGS_CC_$(BUILDTYPE))
+$(OBJS): GYP_OBJCFLAGS := $(DEFS_$(BUILDTYPE)) $(INCS_$(BUILDTYPE))  $(CFLAGS_$(BUILDTYPE)) $(CFLAGS_C_$(BUILDTYPE)) $(CFLAGS_OBJC_$(BUILDTYPE))
+$(OBJS): GYP_OBJCXXFLAGS := $(DEFS_$(BUILDTYPE)) $(INCS_$(BUILDTYPE))  $(CFLAGS_$(BUILDTYPE)) $(CFLAGS_CC_$(BUILDTYPE)) $(CFLAGS_OBJCC_$(BUILDTYPE))
 
 # Suffix rules, putting all outputs into $(obj).
 
@@ -73,7 +120,12 @@ $(obj).$(TOOLSET)/$(TARGET)/%.o: $(obj)/%.c FORCE_DO_CMD
 
 # End of this set of suffix rules
 ### Rules for final target.
-LDFLAGS_Default := -arch i386 \
+LDFLAGS_Debug := -Wl,-search_paths_first \
+	-arch i386 \
+	-L$(builddir)
+
+LDFLAGS_Release := -Wl,-search_paths_first \
+	-arch i386 \
 	-L$(builddir)
 
 LIBS := -framework Carbon \

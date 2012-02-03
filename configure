@@ -467,6 +467,8 @@ cd ${CFG_SRC_DIR}
 
 if [ -z $CFG_DISABLE_MANAGE_SUBMODULES ]
 then
+msg "git: submodule sync"
+"${CFG_GIT}" submodule sync --quiet
 SUBMODULE_STATUS=$("${CFG_GIT}" submodule status)
 NEED_INIT_COUNT=$(echo "$SUBMODULE_STATUS" | grep -c "^-")
 NEED_UPDATE_COUNT=$(echo "$SUBMODULE_STATUS" | grep -c "^+")

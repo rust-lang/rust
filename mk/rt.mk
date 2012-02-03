@@ -116,16 +116,16 @@ endif
 
 ifeq ($$(CFG_WINDOWSY), 1)
   LIBUV_OSTYPE_$(1) := win
-  LIBUV_LIB_$(1) := rt/$(1)/libuv/Default/obj.target/src/libuv/libuv.a
+  LIBUV_LIB_$(1) := rt/$(1)/libuv/Release/obj.target/src/libuv/libuv.a
 else ifeq ($(CFG_OSTYPE), apple-darwin)
   LIBUV_OSTYPE_$(1) := mac
-  LIBUV_LIB_$(1) := rt/$(1)/libuv/Default/libuv.a
+  LIBUV_LIB_$(1) := rt/$(1)/libuv/Release/libuv.a
 else ifeq ($(CFG_OSTYPE), unknown-freebsd)
   LIBUV_OSTYPE_$(1) := freebsd
-  LIBUV_LIB_$(1) := rt/$(1)/libuv/Default/obj.target/src/libuv/libuv.a
+  LIBUV_LIB_$(1) := rt/$(1)/libuv/Release/obj.target/src/libuv/libuv.a
 else
   LIBUV_OSTYPE_$(1) := unix
-  LIBUV_LIB_$(1) := rt/$(1)/libuv/Default/obj.target/src/libuv/libuv.a
+  LIBUV_LIB_$(1) := rt/$(1)/libuv/Release/obj.target/src/libuv/libuv.a
 endif
 
 RUNTIME_DEF_$(1) := rt/rustrt$$(CFG_DEF_SUFFIX)
@@ -172,6 +172,7 @@ $$(LIBUV_LIB_$(1)): $$(wildcard \
 		CC="$$(CFG_GCCISH_CROSS)$$(CC)" \
 		CXX="$$(CFG_GCCISH_CROSS)$$(CXX)" \
 		AR="$$(CFG_GCCISH_CROSS)$$(AR)" \
+		BUILDTYPE=Release \
 		builddir_name="$$(CFG_BUILD_DIR)/rt/$(1)/libuv" \
 		V=$$(VERBOSE) FLOCK= uv
 

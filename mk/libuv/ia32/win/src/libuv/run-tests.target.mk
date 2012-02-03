@@ -2,29 +2,56 @@
 
 TOOLSET := target
 TARGET := run-tests
-DEFS_Default := 
+DEFS_Debug := '-DWIN32' \
+	'-D_CRT_SECURE_NO_DEPRECATE' \
+	'-D_CRT_NONSTDC_NO_DEPRECATE' \
+	'-DDEBUG' \
+	'-D_DEBUG'
 
 # Flags passed to all source files.
-CFLAGS_Default := 
+CFLAGS_Debug := -g \
+	-O0
 
 # Flags passed to only C files.
-CFLAGS_C_Default := 
+CFLAGS_C_Debug := 
 
 # Flags passed to only C++ files.
-CFLAGS_CC_Default := 
+CFLAGS_CC_Debug := 
 
-INCS_Default := -I$(srcdir)/src/libuv/include
+INCS_Debug := -I$(srcdir)/src/libuv/include
+
+DEFS_Release := '-DWIN32' \
+	'-D_CRT_SECURE_NO_DEPRECATE' \
+	'-D_CRT_NONSTDC_NO_DEPRECATE' \
+	'-DNDEBUG'
+
+# Flags passed to all source files.
+CFLAGS_Release := -O3 \
+	-fomit-frame-pointer \
+	-fdata-sections \
+	-ffunction-sections
+
+# Flags passed to only C files.
+CFLAGS_C_Release := 
+
+# Flags passed to only C++ files.
+CFLAGS_CC_Release := 
+
+INCS_Release := -I$(srcdir)/src/libuv/include
 
 OBJS := $(obj).target/$(TARGET)/src/libuv/test/blackhole-server.o \
 	$(obj).target/$(TARGET)/src/libuv/test/echo-server.o \
 	$(obj).target/$(TARGET)/src/libuv/test/run-tests.o \
 	$(obj).target/$(TARGET)/src/libuv/test/runner.o \
 	$(obj).target/$(TARGET)/src/libuv/test/test-get-loadavg.o \
+	$(obj).target/$(TARGET)/src/libuv/test/test-util.o \
 	$(obj).target/$(TARGET)/src/libuv/test/test-async.o \
 	$(obj).target/$(TARGET)/src/libuv/test/test-error.o \
 	$(obj).target/$(TARGET)/src/libuv/test/test-callback-stack.o \
 	$(obj).target/$(TARGET)/src/libuv/test/test-connection-fail.o \
+	$(obj).target/$(TARGET)/src/libuv/test/test-cwd-and-chdir.o \
 	$(obj).target/$(TARGET)/src/libuv/test/test-delayed-accept.o \
+	$(obj).target/$(TARGET)/src/libuv/test/test-eio-overflow.o \
 	$(obj).target/$(TARGET)/src/libuv/test/test-fail-always.o \
 	$(obj).target/$(TARGET)/src/libuv/test/test-fs.o \
 	$(obj).target/$(TARGET)/src/libuv/test/test-fs-event.o \
@@ -36,12 +63,15 @@ OBJS := $(obj).target/$(TARGET)/src/libuv/test/blackhole-server.o \
 	$(obj).target/$(TARGET)/src/libuv/test/test-hrtime.o \
 	$(obj).target/$(TARGET)/src/libuv/test/test-idle.o \
 	$(obj).target/$(TARGET)/src/libuv/test/test-ipc.o \
+	$(obj).target/$(TARGET)/src/libuv/test/test-ipc-threads.o \
 	$(obj).target/$(TARGET)/src/libuv/test/test-loop-handles.o \
 	$(obj).target/$(TARGET)/src/libuv/test/test-multiple-listen.o \
 	$(obj).target/$(TARGET)/src/libuv/test/test-pass-always.o \
 	$(obj).target/$(TARGET)/src/libuv/test/test-ping-pong.o \
 	$(obj).target/$(TARGET)/src/libuv/test/test-pipe-bind-error.o \
 	$(obj).target/$(TARGET)/src/libuv/test/test-pipe-connect-error.o \
+	$(obj).target/$(TARGET)/src/libuv/test/test-platform-output.o \
+	$(obj).target/$(TARGET)/src/libuv/test/test-process-title.o \
 	$(obj).target/$(TARGET)/src/libuv/test/test-ref.o \
 	$(obj).target/$(TARGET)/src/libuv/test/test-shutdown-eof.o \
 	$(obj).target/$(TARGET)/src/libuv/test/test-spawn.o \
@@ -56,13 +86,17 @@ OBJS := $(obj).target/$(TARGET)/src/libuv/test/blackhole-server.o \
 	$(obj).target/$(TARGET)/src/libuv/test/test-tcp-write-to-half-open-connection.o \
 	$(obj).target/$(TARGET)/src/libuv/test/test-tcp-writealot.o \
 	$(obj).target/$(TARGET)/src/libuv/test/test-threadpool.o \
+	$(obj).target/$(TARGET)/src/libuv/test/test-mutexes.o \
+	$(obj).target/$(TARGET)/src/libuv/test/test-thread.o \
 	$(obj).target/$(TARGET)/src/libuv/test/test-timer-again.o \
 	$(obj).target/$(TARGET)/src/libuv/test/test-timer.o \
 	$(obj).target/$(TARGET)/src/libuv/test/test-tty.o \
 	$(obj).target/$(TARGET)/src/libuv/test/test-udp-dgram-too-big.o \
 	$(obj).target/$(TARGET)/src/libuv/test/test-udp-ipv6.o \
+	$(obj).target/$(TARGET)/src/libuv/test/test-udp-options.o \
 	$(obj).target/$(TARGET)/src/libuv/test/test-udp-send-and-recv.o \
 	$(obj).target/$(TARGET)/src/libuv/test/test-udp-multicast-join.o \
+	$(obj).target/$(TARGET)/src/libuv/test/test-counters-init.o \
 	$(obj).target/$(TARGET)/src/libuv/test/runner-win.o
 
 # Add to the list of files we specially track dependencies for.
@@ -74,8 +108,8 @@ $(OBJS): | $(obj).target/src/libuv/libuv.a
 # CFLAGS et al overrides must be target-local.
 # See "Target-specific Variable Values" in the GNU Make manual.
 $(OBJS): TOOLSET := $(TOOLSET)
-$(OBJS): GYP_CFLAGS := $(DEFS_$(BUILDTYPE)) $(INCS_$(BUILDTYPE)) $(CFLAGS_$(BUILDTYPE)) $(CFLAGS_C_$(BUILDTYPE))
-$(OBJS): GYP_CXXFLAGS := $(DEFS_$(BUILDTYPE)) $(INCS_$(BUILDTYPE)) $(CFLAGS_$(BUILDTYPE)) $(CFLAGS_CC_$(BUILDTYPE))
+$(OBJS): GYP_CFLAGS := $(DEFS_$(BUILDTYPE)) $(INCS_$(BUILDTYPE))  $(CFLAGS_$(BUILDTYPE)) $(CFLAGS_C_$(BUILDTYPE))
+$(OBJS): GYP_CXXFLAGS := $(DEFS_$(BUILDTYPE)) $(INCS_$(BUILDTYPE))  $(CFLAGS_$(BUILDTYPE)) $(CFLAGS_CC_$(BUILDTYPE))
 
 # Suffix rules, putting all outputs into $(obj).
 
@@ -92,10 +126,14 @@ $(obj).$(TOOLSET)/$(TARGET)/%.o: $(obj)/%.c FORCE_DO_CMD
 
 # End of this set of suffix rules
 ### Rules for final target.
-LDFLAGS_Default := 
+LDFLAGS_Debug := 
+
+LDFLAGS_Release := 
 
 LIBS := ws2_32.lib \
-	-lws2_32.lib
+	-lws2_32.lib \
+	-lpsapi.lib \
+	-liphlpapi.lib
 
 $(builddir)/run-tests: GYP_LDFLAGS := $(LDFLAGS_$(BUILDTYPE))
 $(builddir)/run-tests: LIBS := $(LIBS)

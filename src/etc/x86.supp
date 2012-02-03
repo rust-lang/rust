@@ -369,11 +369,7 @@
    libuv-0-byte-realloc1
    Memcheck:Leak
    fun:malloc
-   fun:realloc
-   fun:ev_realloc_emul
-   fun:ev_realloc
-   fun:epoll_destroy
-   fun:ev_loop_destroy
+   ...
    fun:uv_loop_delete
 }
 
@@ -381,9 +377,6 @@
    libuv-0-byte-realloc2
    Memcheck:Leak
    fun:malloc
-   fun:realloc
-   fun:ev_realloc_emul
-   fun:ev_realloc
-   fun:ev_loop_destroy
+   ...
    fun:uv_loop_delete
 }

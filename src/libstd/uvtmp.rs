@@ -95,82 +95,74 @@ fn get_req_id(cd: connect_data) -> u32 {
     ret rustrt::rust_uvtmp_get_req_id(cd);
 }
 
-#[cfg(target_os = "linux")]
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "freebsd")]
-// FIXME: We're out of date on libuv and not testing
-// it on windows presently. This needs to change.
-mod os {
+#[test]
+fn test_start_stop() {
+    let thread = create_thread();
+    start_thread(thread);
+    join_thread(thread);
+    delete_thread(thread);
+}
 
-    #[test]
-    fn test_start_stop() {
-        let thread = create_thread();
-        start_thread(thread);
-        join_thread(thread);
-        delete_thread(thread);
+#[test]
+#[ignore]
+fn test_connect() {
+    let thread = create_thread();
+    start_thread(thread);
+    let port = comm::port();
+    let chan = comm::chan(port);
+    connect(thread, 0u32, "74.125.224.146", chan);
+    alt comm::recv(port) {
+      connected(cd) {
+        close_connection(thread, 0u32);
+      }
+      _ { fail "test_connect: port isn't connected"; }
     }
+    join_thread(thread);
+    delete_thread(thread);
+}
 
-    #[test]
-    #[ignore]
-    fn test_connect() {
-        let thread = create_thread();
-        start_thread(thread);
-        let port = comm::port();
-        let chan = comm::chan(port);
-        connect(thread, 0u32, "74.125.224.146", chan);
+#[test]
+#[ignore]
+fn test_http() {
+    let thread = create_thread();
+    start_thread(thread);
+    let port = comm::port();
+    let chan = comm::chan(port);
+    connect(thread, 0u32, "74.125.224.146", chan);
+    alt comm::recv(port) {
+      connected(cd) {
+        write(thread, 0u32, str::bytes("GET / HTTP/1.0\n\n"), chan);
         alt comm::recv(port) {
-          connected(cd) {
+          wrote(cd) {
+            read_start(thread, 0u32, chan);
+            let keep_going = true;
+            while keep_going {
+                alt comm::recv(port) {
+                  read(_, buf, -1) {
+                    keep_going = false;
+                    delete_buf(buf);
+                  }
+                  read(_, buf, len) {
+                    unsafe {
+                        log(error, len);
+                        let buf = vec::unsafe::from_buf(buf,
+                                                        len as uint);
+                        let str = str::from_bytes(buf);
+                        #error("read something");
+                        io::println(str);
+                    }
+                    delete_buf(buf);
+                  }
+                  _ { fail "test_http: protocol error"; }
+                }
+            }
             close_connection(thread, 0u32);
           }
-          _ { fail "test_connect: port isn't connected"; }
+          _ { fail "test_http: expected `wrote`"; }
         }
-        join_thread(thread);
-        delete_thread(thread);
+      }
+      _ { fail "test_http: port not connected"; }
     }
-
-    #[test]
-    #[ignore]
-    fn test_http() {
-        let thread = create_thread();
-        start_thread(thread);
-        let port = comm::port();
-        let chan = comm::chan(port);
-        connect(thread, 0u32, "74.125.224.146", chan);
-        alt comm::recv(port) {
-          connected(cd) {
-            write(thread, 0u32, str::bytes("GET / HTTP/1.0\n\n"), chan);
-            alt comm::recv(port) {
-              wrote(cd) {
-                read_start(thread, 0u32, chan);
-                let keep_going = true;
-                while keep_going {
-                    alt comm::recv(port) {
-                      read(_, buf, -1) {
-                        keep_going = false;
-                        delete_buf(buf);
-                      }
-                      read(_, buf, len) {
-                        unsafe {
-                            log(error, len);
-                            let buf = vec::unsafe::from_buf(buf,
-                                                            len as uint);
-                            let str = str::from_bytes(buf);
-                            #error("read something");
-                            io::println(str);
-                        }
-                        delete_buf(buf);
-                      }
-                      _ { fail "test_http: protocol error"; }
-                    }
-                }
-                close_connection(thread, 0u32);
-              }
-              _ { fail "test_http: expected `wrote`"; }
-            }
-          }
-          _ { fail "test_http: port not connected"; }
-        }
-        join_thread(thread);
-        delete_thread(thread);
-    }
+    join_thread(thread);
+    delete_thread(thread);
 }

@@ -8,6 +8,7 @@ MAKEFLAGS=-r
 
 # The source directory tree.
 srcdir := ../../../..
+abs_srcdir := $(abspath $(srcdir))
 
 # The name of the builddir.
 builddir_name ?= out
@@ -20,7 +21,7 @@ else
 endif
 
 # Specify BUILDTYPE=Release on the command line for a release build.
-BUILDTYPE ?= Default
+BUILDTYPE ?= Debug
 
 # Directory all our build output goes into.
 # Note that this must be two directories beneath src/ for unit tests to pass,
@@ -252,8 +253,8 @@ $(if $(or $(command_changed),$(prereq_changed)),
 )
 endef
 
-# Declare "all" target first so it is the default, even though we don't have the
-# deps yet.
+# Declare the "all" target first so it is the default,
+# even though we don't have the deps yet.
 .PHONY: all
 all:
 
@@ -321,9 +322,9 @@ ifeq ($(strip $(foreach prefix,$(NO_LOAD),\
   include src/libuv/uv.target.mk
 endif
 
-quiet_cmd_regen_makefile = ACTION Regenerating $@
-cmd_regen_makefile = ./src/libuv/build/gyp/gyp -fmake --ignore-environment "--toplevel-dir=." "--depth=." "--generator-output=mk/libuv/ia32/unix" "-Dlibrary=static_library" "-Dtarget_arch=ia32" "-DOS=linux" src/libuv/uv.gyp
-Makefile: $(srcdir)/src/libuv/uv.gyp
+#quiet_cmd_regen_makefile = ACTION Regenerating $@
+#cmd_regen_makefile = ./src/libuv/build/gyp/gyp -fmake --ignore-environment "--toplevel-dir=." -Isrc/libuv/common.gypi "--depth=." "--generator-output=mk/libuv/ia32/unix" "-Ddefault_configuration=Default" "-Dcomponent=static_library" "-Dlibrary=static_library" "-Dtarget_arch=ia32" "-DOS=linux" src/libuv/uv.gyp
+#Makefile: $(srcdir)/src/libuv/uv.gyp $(srcdir)/src/libuv/common.gypi
 #	$(call do_cmd,regen_makefile)
 
 # "all" is a concatenation of the "all" targets from all the included
