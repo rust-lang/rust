@@ -417,7 +417,7 @@ start_task(rust_task_id id, fn_env_pair *f) {
 extern "C" CDECL int
 sched_threads() {
     rust_task *task = rust_task_thread::get_task();
-    return task->thread->sched->number_of_threads();
+    return task->sched->number_of_threads();
 }
 
 extern "C" CDECL rust_port*

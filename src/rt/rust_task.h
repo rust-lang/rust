@@ -72,10 +72,10 @@ rust_task : public kernel_owned<rust_task>, rust_cond
 
     RUST_ATOMIC_REFCOUNT();
 
-    // Fields known to the compiler.
     context ctx;
     stk_seg *stk;
     uintptr_t runtime_sp;      // Runtime sp while task running.
+    rust_scheduler *sched;
     rust_task_thread *thread;
     rust_crate_cache *cache;
 
