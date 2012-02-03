@@ -21,7 +21,7 @@ rust_port::~rust_port() {
 }
 
 void rust_port::detach() {
-    I(task->sched, !task->lock.lock_held_by_current_thread());
+    I(task->thread, !task->lock.lock_held_by_current_thread());
     scoped_lock with(task->lock);
     {
         task->release_port(id);
@@ -29,7 +29,7 @@ void rust_port::detach() {
 }
 
 void rust_port::send(void *sptr) {
-    I(task->sched, !lock.lock_held_by_current_thread());
+    I(task->thread, !lock.lock_held_by_current_thread());
     scoped_lock with(lock);
 
     buffer.enqueue(sptr);
@@ -46,7 +46,7 @@ void rust_port::send(void *sptr) {
 }
 
 bool rust_port::receive(void *dptr) {
-    I(task->sched, lock.lock_held_by_current_thread());
+    I(task->thread, lock.lock_held_by_current_thread());
     if (buffer.is_empty() == false) {
         buffer.dequeue(dptr);
         LOG(task, comm, "<=== read data ===");
@@ -56,7 +56,7 @@ bool rust_port::receive(void *dptr) {
 }
 
 size_t rust_port::size() {
-    I(task->sched, !lock.lock_held_by_current_thread());
+    I(task->thread, !lock.lock_held_by_current_thread());
     scoped_lock with(lock);
     return buffer.size();
 }

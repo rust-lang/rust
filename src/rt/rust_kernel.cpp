@@ -20,25 +20,25 @@ rust_kernel::rust_kernel(rust_srv *srv, size_t num_threads) :
     create_schedulers();
 }
 
-rust_scheduler *
+rust_task_thread *
 rust_kernel::create_scheduler(int id) {
     _kernel_lock.lock();
     rust_srv *srv = this->srv->clone();
-    rust_scheduler *sched =
-        new (this, "rust_scheduler") rust_scheduler(this, srv, id);
+    rust_task_thread *thread =
+        new (this, "rust_task_thread") rust_task_thread(this, srv, id);
     KLOG_("created scheduler: " PTR ", id: %d, index: %d",
-          sched, id, sched->list_index);
+          thread, id, thread->list_index);
     _kernel_lock.unlock();
-    return sched;
+    return thread;
 }
 
 void
-rust_kernel::destroy_scheduler(rust_scheduler *sched) {
+rust_kernel::destroy_scheduler(rust_task_thread *thread) {
     _kernel_lock.lock();
     KLOG_("deleting scheduler: " PTR ", name: %s, index: %d",
-        sched, sched->name, sched->list_index);
-    rust_srv *srv = sched->srv;
-    delete sched;
+        thread, thread->name, thread->list_index);
+    rust_srv *srv = thread->srv;
+    delete thread;
     delete srv;
     _kernel_lock.unlock();
 }
@@ -120,12 +120,12 @@ rust_kernel::signal_kernel_lock() {
 int rust_kernel::start_task_threads()
 {
     for(size_t i = 0; i < num_threads; ++i) {
-        rust_scheduler *thread = threads[i];
+        rust_task_thread *thread = threads[i];
         thread->start();
     }
 
     for(size_t i = 0; i < num_threads; ++i) {
-        rust_scheduler *thread = threads[i];
+        rust_task_thread *thread = threads[i];
         thread->join();
     }
 
@@ -142,7 +142,7 @@ rust_kernel::fail() {
     exit(rval);
 #endif
     for(size_t i = 0; i < num_threads; ++i) {
-        rust_scheduler *thread = threads[i];
+        rust_task_thread *thread = threads[i];
         thread->kill_all_tasks();
     }
 }
@@ -151,7 +151,7 @@ rust_task_id
 rust_kernel::create_task(rust_task *spawner, const char *name,
                          size_t init_stack_sz) {
     scoped_lock with(_kernel_lock);
-    rust_scheduler *thread = threads[isaac_rand(&rctx) % num_threads];
+    rust_task_thread *thread = threads[isaac_rand(&rctx) % num_threads];
     rust_task *t = thread->create_task(spawner, name, init_stack_sz);
     t->user.id = max_id++;
     task_table.put(t->user.id, t);

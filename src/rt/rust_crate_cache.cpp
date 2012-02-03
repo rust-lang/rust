@@ -9,20 +9,20 @@ rust_crate_cache::get_type_desc(size_t size,
                                 type_desc const **descs,
                                 uintptr_t n_obj_params)
 {
-    I(sched, n_descs > 1);
+    I(thread, n_descs > 1);
     type_desc *td = NULL;
     size_t keysz = n_descs * sizeof(type_desc*);
     HASH_FIND(hh, this->type_descs, descs, keysz, td);
     if (td) {
-        DLOG(sched, cache, "rust_crate_cache::get_type_desc hit");
+        DLOG(thread, cache, "rust_crate_cache::get_type_desc hit");
 
         // FIXME: This is a gross hack.
         td->n_obj_params = std::max(td->n_obj_params, n_obj_params);
 
         return td;
     }
-    DLOG(sched, cache, "rust_crate_cache::get_type_desc miss");
-    td = (type_desc*) sched->kernel->malloc(sizeof(type_desc) + keysz,
+    DLOG(thread, cache, "rust_crate_cache::get_type_desc miss");
+    td = (type_desc*) thread->kernel->malloc(sizeof(type_desc) + keysz,
                                             "crate cache typedesc");
     if (!td)
         return NULL;
@@ -34,7 +34,7 @@ rust_crate_cache::get_type_desc(size_t size,
     td->size = size;
     td->align = align;
     for (size_t i = 0; i < n_descs; ++i) {
-        DLOG(sched, cache,
+        DLOG(thread, cache,
                  "rust_crate_cache::descs[%" PRIdPTR "] = 0x%" PRIxPTR,
                  i, descs[i]);
         td->descs[i] = descs[i];
@@ -52,7 +52,7 @@ rust_crate_cache::get_dict(size_t n_fields, void** dict) {
     HASH_FIND(hh, this->dicts, dict, dictsz, found);
     if (found) return &(found->fields[0]);
     found = (rust_hashable_dict*)
-        sched->kernel->malloc(sizeof(UT_hash_handle) + dictsz,
+        thread->kernel->malloc(sizeof(UT_hash_handle) + dictsz,
                               "crate cache dict");
     if (!found) return NULL;
     void** retptr = &(found->fields[0]);
@@ -61,28 +61,28 @@ rust_crate_cache::get_dict(size_t n_fields, void** dict) {
     return retptr;
 }
 
-rust_crate_cache::rust_crate_cache(rust_scheduler *sched)
+rust_crate_cache::rust_crate_cache(rust_task_thread *thread)
     : type_descs(NULL),
       dicts(NULL),
-      sched(sched),
+      thread(thread),
       idx(0)
 {
 }
 
 void
 rust_crate_cache::flush() {
-    DLOG(sched, cache, "rust_crate_cache::flush()");
+    DLOG(thread, cache, "rust_crate_cache::flush()");
 
     while (type_descs) {
         type_desc *d = type_descs;
         HASH_DEL(type_descs, d);
-        DLOG(sched, mem, "rust_crate_cache::flush() tydesc %" PRIxPTR, d);
-        sched->kernel->free(d);
+        DLOG(thread, mem, "rust_crate_cache::flush() tydesc %" PRIxPTR, d);
+        thread->kernel->free(d);
     }
     while (dicts) {
         rust_hashable_dict *d = dicts;
         HASH_DEL(dicts, d);
-        sched->kernel->free(d);
+        thread->kernel->free(d);
     }
 }
 

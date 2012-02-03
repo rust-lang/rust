@@ -1,7 +1,7 @@
 /* Native builtins. */
 
 #include "rust_internal.h"
-#include "rust_scheduler.h"
+#include "rust_task_thread.h"
 #include "rust_task.h"
 #include "rust_util.h"
 #include "sync/timer.h"
@@ -12,7 +12,7 @@
 
 extern "C" CDECL rust_str*
 last_os_error() {
-    rust_task *task = rust_scheduler::get_task();
+    rust_task *task = rust_task_thread::get_task();
 
     LOG(task, task, "last_os_error()");
 
@@ -55,7 +55,7 @@ last_os_error() {
 
 extern "C" CDECL rust_str *
 rust_getcwd() {
-    rust_task *task = rust_scheduler::get_task();
+    rust_task *task = rust_task_thread::get_task();
     LOG(task, task, "rust_getcwd()");
 
     char cbuf[BUF_BYTES];
@@ -93,14 +93,14 @@ refcount(intptr_t *v) {
 
 extern "C" CDECL void
 unsupervise() {
-    rust_task *task = rust_scheduler::get_task();
+    rust_task *task = rust_task_thread::get_task();
     task->unsupervise();
 }
 
 extern "C" CDECL void
 vec_reserve_shared(type_desc* ty, rust_vec** vp,
                    size_t n_elts) {
-    rust_task *task = rust_scheduler::get_task();
+    rust_task *task = rust_task_thread::get_task();
     reserve_vec(task, vp, n_elts * ty->size);
 }
 
@@ -110,7 +110,7 @@ vec_reserve_shared(type_desc* ty, rust_vec** vp,
  */
 extern "C" CDECL rust_vec*
 vec_from_buf_shared(type_desc *ty, void *ptr, size_t count) {
-    rust_task *task = rust_scheduler::get_task();
+    rust_task *task = rust_task_thread::get_task();
     size_t fill = ty->size * count;
     rust_vec* v = (rust_vec*)task->kernel->malloc(fill + sizeof(rust_vec),
                                                     "vec_from_buf");
@@ -121,7 +121,7 @@ vec_from_buf_shared(type_desc *ty, void *ptr, size_t count) {
 
 extern "C" CDECL void
 rust_str_push(rust_vec** sp, uint8_t byte) {
-    rust_task *task = rust_scheduler::get_task();
+    rust_task *task = rust_task_thread::get_task();
     size_t fill = (*sp)->fill;
     reserve_vec(task, sp, fill + 1);
     (*sp)->data[fill-1] = byte;
@@ -131,14 +131,14 @@ rust_str_push(rust_vec** sp, uint8_t byte) {
 
 extern "C" CDECL void *
 rand_new() {
-    rust_task *task = rust_scheduler::get_task();
-    rust_scheduler *sched = task->sched;
+    rust_task *task = rust_task_thread::get_task();
+    rust_task_thread *thread = task->thread;
     randctx *rctx = (randctx *) task->malloc(sizeof(randctx), "randctx");
     if (!rctx) {
         task->fail();
         return NULL;
     }
-    isaac_init(sched, rctx);
+    isaac_init(thread, rctx);
     return rctx;
 }
 
@@ -149,7 +149,7 @@ rand_next(randctx *rctx) {
 
 extern "C" CDECL void
 rand_free(randctx *rctx) {
-    rust_task *task = rust_scheduler::get_task();
+    rust_task *task = rust_task_thread::get_task();
     task->free(rctx);
 }
 
@@ -158,7 +158,7 @@ rand_free(randctx *rctx) {
 static void
 debug_tydesc_helper(type_desc *t)
 {
-    rust_task *task = rust_scheduler::get_task();
+    rust_task *task = rust_task_thread::get_task();
     LOG(task, stdlib, "  size %" PRIdPTR ", align %" PRIdPTR
         ", first_param 0x%" PRIxPTR,
         t->size, t->align, t->first_param);
@@ -166,14 +166,14 @@ debug_tydesc_helper(type_desc *t)
 
 extern "C" CDECL void
 debug_tydesc(type_desc *t) {
-    rust_task *task = rust_scheduler::get_task();
+    rust_task *task = rust_task_thread::get_task();
     LOG(task, stdlib, "debug_tydesc");
     debug_tydesc_helper(t);
 }
 
 extern "C" CDECL void
 debug_opaque(type_desc *t, uint8_t *front) {
-    rust_task *task = rust_scheduler::get_task();
+    rust_task *task = rust_task_thread::get_task();
     LOG(task, stdlib, "debug_opaque");
     debug_tydesc_helper(t);
     // FIXME may want to actually account for alignment.  `front` may not
@@ -192,7 +192,7 @@ struct rust_box {
 
 extern "C" CDECL void
 debug_box(type_desc *t, rust_box *box) {
-    rust_task *task = rust_scheduler::get_task();
+    rust_task *task = rust_task_thread::get_task();
     LOG(task, stdlib, "debug_box(0x%" PRIxPTR ")", box);
     debug_tydesc_helper(t);
     LOG(task, stdlib, "  refcount %" PRIdPTR,
@@ -209,7 +209,7 @@ struct rust_tag {
 
 extern "C" CDECL void
 debug_tag(type_desc *t, rust_tag *tag) {
-    rust_task *task = rust_scheduler::get_task();
+    rust_task *task = rust_task_thread::get_task();
 
     LOG(task, stdlib, "debug_tag");
     debug_tydesc_helper(t);
@@ -227,7 +227,7 @@ struct rust_obj {
 
 extern "C" CDECL void
 debug_obj(type_desc *t, rust_obj *obj, size_t nmethods, size_t nbytes) {
-    rust_task *task = rust_scheduler::get_task();
+    rust_task *task = rust_task_thread::get_task();
 
     LOG(task, stdlib, "debug_obj with %" PRIdPTR " methods", nmethods);
     debug_tydesc_helper(t);
@@ -249,7 +249,7 @@ struct rust_fn {
 
 extern "C" CDECL void
 debug_fn(type_desc *t, rust_fn *fn) {
-    rust_task *task = rust_scheduler::get_task();
+    rust_task *task = rust_task_thread::get_task();
     LOG(task, stdlib, "debug_fn");
     debug_tydesc_helper(t);
     LOG(task, stdlib, "  thunk at 0x%" PRIxPTR, fn->thunk);
@@ -263,7 +263,7 @@ extern "C" CDECL void *
 debug_ptrcast(type_desc *from_ty,
               type_desc *to_ty,
               void *ptr) {
-    rust_task *task = rust_scheduler::get_task();
+    rust_task *task = rust_task_thread::get_task();
     LOG(task, stdlib, "debug_ptrcast from");
     debug_tydesc_helper(from_ty);
     LOG(task, stdlib, "to");
@@ -273,13 +273,13 @@ debug_ptrcast(type_desc *from_ty,
 
 extern "C" CDECL void *
 debug_get_stk_seg() {
-    rust_task *task = rust_scheduler::get_task();
+    rust_task *task = rust_task_thread::get_task();
     return task->stk;
 }
 
 extern "C" CDECL rust_vec*
 rust_list_files(rust_str *path) {
-    rust_task *task = rust_scheduler::get_task();
+    rust_task *task = rust_task_thread::get_task();
     array_list<rust_str*> strings;
 #if defined(__WIN32__)
     WIN32_FIND_DATA FindFileData;
@@ -346,7 +346,7 @@ rust_ptr_eq(type_desc *t, rust_box *a, rust_box *b) {
 #if defined(__WIN32__)
 extern "C" CDECL void
 get_time(uint32_t *sec, uint32_t *usec) {
-    rust_task *task = rust_scheduler::get_task();
+    rust_task *task = rust_task_thread::get_task();
     SYSTEMTIME systemTime;
     FILETIME fileTime;
     GetSystemTime(&systemTime);
@@ -377,13 +377,13 @@ nano_time(uint64_t *ns) {
 
 extern "C" CDECL rust_task_id
 get_task_id() {
-    rust_task *task = rust_scheduler::get_task();
+    rust_task *task = rust_task_thread::get_task();
     return task->user.id;
 }
 
 extern "C" CDECL rust_task_id
 new_task() {
-    rust_task *task = rust_scheduler::get_task();
+    rust_task *task = rust_task_thread::get_task();
     return task->kernel->create_task(task, NULL);
 }
 
@@ -396,18 +396,18 @@ drop_task(rust_task *target) {
 
 extern "C" CDECL rust_task *
 get_task_pointer(rust_task_id id) {
-    rust_task *task = rust_scheduler::get_task();
+    rust_task *task = rust_task_thread::get_task();
     return task->kernel->get_task_by_id(id);
 }
 
 extern "C" rust_task *
 rust_get_task() {
-    return rust_scheduler::get_task();
+    return rust_task_thread::get_task();
 }
 
 extern "C" CDECL void
 start_task(rust_task_id id, fn_env_pair *f) {
-    rust_task *task = rust_scheduler::get_task();
+    rust_task *task = rust_task_thread::get_task();
     rust_task *target = task->kernel->get_task_by_id(id);
     target->start(f->f, f->env, NULL);
     target->deref();
@@ -415,13 +415,13 @@ start_task(rust_task_id id, fn_env_pair *f) {
 
 extern "C" CDECL int
 sched_threads() {
-    rust_task *task = rust_scheduler::get_task();
+    rust_task *task = rust_task_thread::get_task();
     return task->kernel->num_threads;
 }
 
 extern "C" CDECL rust_port*
 new_port(size_t unit_sz) {
-    rust_task *task = rust_scheduler::get_task();
+    rust_task *task = rust_task_thread::get_task();
     LOG(task, comm, "new_port(task=0x%" PRIxPTR " (%s), unit_sz=%d)",
         (uintptr_t) task, task->name, unit_sz);
     // port starts with refcount == 1
@@ -430,7 +430,7 @@ new_port(size_t unit_sz) {
 
 extern "C" CDECL void
 rust_port_detach(rust_port *port) {
-    rust_task *task = rust_scheduler::get_task();
+    rust_task *task = rust_task_thread::get_task();
     LOG(task, comm, "rust_port_detach(0x%" PRIxPTR ")", (uintptr_t) port);
     port->detach();
     // FIXME: Busy waiting until we're the only ref
@@ -443,9 +443,9 @@ rust_port_detach(rust_port *port) {
 
 extern "C" CDECL void
 del_port(rust_port *port) {
-    rust_task *task = rust_scheduler::get_task();
+    rust_task *task = rust_task_thread::get_task();
     LOG(task, comm, "del_port(0x%" PRIxPTR ")", (uintptr_t) port);
-    A(task->sched, port->ref_count == 1, "Expected port ref_count == 1");
+    A(task->thread, port->ref_count == 1, "Expected port ref_count == 1");
     port->deref();
 }
 
@@ -464,7 +464,7 @@ chan_id_send(type_desc *t, rust_task_id target_task_id,
              rust_port_id target_port_id, void *sptr) {
     // FIXME: make sure this is thread-safe
     bool sent = false;
-    rust_task *task = rust_scheduler::get_task();
+    rust_task *task = rust_task_thread::get_task();
     rust_task *target_task = task->kernel->get_task_by_id(target_task_id);
     if(target_task) {
         rust_port *port = target_task->get_port_by_id(target_port_id);
@@ -491,7 +491,7 @@ port_recv(uintptr_t *dptr, rust_port *port,
           uintptr_t *yield, uintptr_t *killed) {
     *yield = false;
     *killed = false;
-    rust_task *task = rust_scheduler::get_task();
+    rust_task *task = rust_task_thread::get_task();
     {
         scoped_lock with(port->lock);
 
@@ -524,7 +524,7 @@ port_recv(uintptr_t *dptr, rust_port *port,
 
 extern "C" CDECL void
 rust_set_exit_status(intptr_t code) {
-    rust_task *task = rust_scheduler::get_task();
+    rust_task *task = rust_task_thread::get_task();
     task->kernel->set_exit_status((int)code);
 }
 
@@ -539,7 +539,7 @@ extern void log_console_off(rust_env *env);
 
 extern "C" CDECL void
 rust_log_console_off() {
-    rust_task *task = rust_scheduler::get_task();
+    rust_task *task = rust_task_thread::get_task();
     log_console_off(task->kernel->env);
 }
 

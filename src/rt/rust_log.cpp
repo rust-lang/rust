@@ -40,9 +40,9 @@ log_console_off(rust_env *env) {
     }
 }
 
-rust_log::rust_log(rust_srv *srv, rust_scheduler *sched) :
+rust_log::rust_log(rust_srv *srv, rust_task_thread *thread) :
     _srv(srv),
-    _sched(sched) {
+    _thread(thread) {
 }
 
 rust_log::~rust_log() {
@@ -118,12 +118,12 @@ rust_log::trace_ln(rust_task *task, uint32_t level, char *message) {
 #endif
 
     char prefix[BUF_BYTES] = "";
-    if (_sched && _sched->name) {
+    if (_thread && _thread->name) {
         append_string(prefix, "%04" PRIxPTR ":%.10s:",
-                      thread_id, _sched->name);
+                      thread_id, _thread->name);
     } else {
         append_string(prefix, "%04" PRIxPTR ":0x%08" PRIxPTR ":",
-                      thread_id, (uintptr_t) _sched);
+                      thread_id, (uintptr_t) _thread);
     }
     if (task) {
         if (task->name) {

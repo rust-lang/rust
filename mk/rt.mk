@@ -42,7 +42,7 @@ RUNTIME_CS_$(1) := \
               rt/rust_run_program.cpp \
               rt/rust_crate_cache.cpp \
               rt/rust_env.cpp \
-              rt/rust_scheduler.cpp \
+              rt/rust_task_thread.cpp \
               rt/rust_task.cpp \
               rt/rust_task_list.cpp \
               rt/rust_port.cpp \
@@ -79,7 +79,7 @@ RUNTIME_HDR_$(1) := rt/globals.h \
                rt/rust_unwind.h \
                rt/rust_upcall.h \
                rt/rust_port.h \
-               rt/rust_scheduler.h \
+               rt/rust_task_thread.h \
                rt/rust_shape.h \
                rt/rust_task.h \
                rt/rust_task_list.h \

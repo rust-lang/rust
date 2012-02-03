@@ -7,14 +7,14 @@
 #include "globals.h"
 
 #ifndef _WIN32
-pthread_key_t rust_scheduler::task_key;
+pthread_key_t rust_task_thread::task_key;
 #else
-DWORD rust_scheduler::task_key;
+DWORD rust_task_thread::task_key;
 #endif
 
-bool rust_scheduler::tls_initialized = false;
+bool rust_task_thread::tls_initialized = false;
 
-rust_scheduler::rust_scheduler(rust_kernel *kernel,
+rust_task_thread::rust_task_thread(rust_kernel *kernel,
                                rust_srv *srv,
                                int id) :
     ref_count(1),
@@ -46,8 +46,8 @@ rust_scheduler::rust_scheduler(rust_kernel *kernel,
         init_tls();
 }
 
-rust_scheduler::~rust_scheduler() {
-    DLOG(this, dom, "~rust_scheduler %s @0x%" PRIxPTR, name, (uintptr_t)this);
+rust_task_thread::~rust_task_thread() {
+    DLOG(this, dom, "~rust_task_thread %s @0x%" PRIxPTR, name, (uintptr_t)this);
 
     newborn_tasks.delete_all();
     running_tasks.delete_all();
@@ -59,7 +59,7 @@ rust_scheduler::~rust_scheduler() {
 }
 
 void
-rust_scheduler::activate(rust_task *task) {
+rust_task_thread::activate(rust_task *task) {
     task->ctx.next = &c_context;
     DLOG(this, task, "descheduling...");
     lock.unlock();
@@ -69,7 +69,7 @@ rust_scheduler::activate(rust_task *task) {
 }
 
 void
-rust_scheduler::log(rust_task* task, uint32_t level, char const *fmt, ...) {
+rust_task_thread::log(rust_task* task, uint32_t level, char const *fmt, ...) {
     char buf[BUF_BYTES];
     va_list args;
     va_start(args, fmt);
@@ -79,14 +79,14 @@ rust_scheduler::log(rust_task* task, uint32_t level, char const *fmt, ...) {
 }
 
 void
-rust_scheduler::fail() {
+rust_task_thread::fail() {
     log(NULL, log_err, "domain %s @0x%" PRIxPTR " root task failed",
         name, this);
     kernel->fail();
 }
 
 void
-rust_scheduler::kill_all_tasks() {
+rust_task_thread::kill_all_tasks() {
     I(this, !lock.lock_held_by_current_thread());
     scoped_lock with(lock);
 
@@ -104,7 +104,7 @@ rust_scheduler::kill_all_tasks() {
 }
 
 size_t
-rust_scheduler::number_of_live_tasks() {
+rust_task_thread::number_of_live_tasks() {
     return running_tasks.length() + blocked_tasks.length();
 }
 
@@ -112,7 +112,7 @@ rust_scheduler::number_of_live_tasks() {
  * Delete any dead tasks.
  */
 void
-rust_scheduler::reap_dead_tasks() {
+rust_task_thread::reap_dead_tasks() {
     I(this, lock.lock_held_by_current_thread());
     if (dead_tasks.length() == 0) {
         return;
@@ -157,7 +157,7 @@ rust_scheduler::reap_dead_tasks() {
  * Returns NULL if no tasks can be scheduled.
  */
 rust_task *
-rust_scheduler::schedule_task() {
+rust_task_thread::schedule_task() {
     I(this, this);
     // FIXME: in the face of failing tasks, this is not always right.
     // I(this, n_live_tasks() > 0);
@@ -173,7 +173,7 @@ rust_scheduler::schedule_task() {
 }
 
 void
-rust_scheduler::log_state() {
+rust_task_thread::log_state() {
     if (log_rt_task < log_debug) return;
 
     if (!running_tasks.is_empty()) {
@@ -211,7 +211,7 @@ rust_scheduler::log_state() {
  * drop to zero.
  */
 void
-rust_scheduler::start_main_loop() {
+rust_task_thread::start_main_loop() {
     lock.lock();
 
     DLOG(this, dom, "started domain loop %d", id);
@@ -277,12 +277,12 @@ rust_scheduler::start_main_loop() {
 }
 
 rust_crate_cache *
-rust_scheduler::get_cache() {
+rust_task_thread::get_cache() {
     return &cache;
 }
 
 rust_task *
-rust_scheduler::create_task(rust_task *spawner, const char *name,
+rust_task_thread::create_task(rust_task *spawner, const char *name,
                             size_t init_stack_sz) {
     rust_task *task =
         new (this->kernel, "rust_task")
@@ -300,27 +300,27 @@ rust_scheduler::create_task(rust_task *spawner, const char *name,
     return task;
 }
 
-void rust_scheduler::run() {
+void rust_task_thread::run() {
     this->start_main_loop();
 }
 
 #ifndef _WIN32
 void
-rust_scheduler::init_tls() {
+rust_task_thread::init_tls() {
     int result = pthread_key_create(&task_key, NULL);
     assert(!result && "Couldn't create the TLS key!");
     tls_initialized = true;
 }
 
 void
-rust_scheduler::place_task_in_tls(rust_task *task) {
+rust_task_thread::place_task_in_tls(rust_task *task) {
     int result = pthread_setspecific(task_key, task);
     assert(!result && "Couldn't place the task in TLS!");
     task->record_stack_limit();
 }
 
 rust_task *
-rust_scheduler::get_task() {
+rust_task_thread::get_task() {
     if (!tls_initialized)
         return NULL;
     rust_task *task = reinterpret_cast<rust_task *>
@@ -330,21 +330,21 @@ rust_scheduler::get_task() {
 }
 #else
 void
-rust_scheduler::init_tls() {
+rust_task_thread::init_tls() {
     task_key = TlsAlloc();
     assert(task_key != TLS_OUT_OF_INDEXES && "Couldn't create the TLS key!");
     tls_initialized = true;
 }
 
 void
-rust_scheduler::place_task_in_tls(rust_task *task) {
+rust_task_thread::place_task_in_tls(rust_task *task) {
     BOOL result = TlsSetValue(task_key, task);
     assert(result && "Couldn't place the task in TLS!");
     task->record_stack_limit();
 }
 
 rust_task *
-rust_scheduler::get_task() {
+rust_task_thread::get_task() {
     if (!tls_initialized)
         return NULL;
     rust_task *task = reinterpret_cast<rust_task *>(TlsGetValue(task_key));
@@ -354,7 +354,7 @@ rust_scheduler::get_task() {
 #endif
 
 void
-rust_scheduler::exit() {
+rust_task_thread::exit() {
     A(this, !lock.lock_held_by_current_thread(), "Shouldn't have lock");
     scoped_lock with(lock);
     should_exit = true;

@@ -5,7 +5,6 @@
 
 #include "../rust_internal.h"
 #include "../rust_util.h"
-#include "../rust_scheduler.h"
 #include <cstdlib>
 #include <cstring>
 

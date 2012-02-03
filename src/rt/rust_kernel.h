@@ -5,7 +5,7 @@
 #include "memory_region.h"
 #include "rust_log.h"
 
-struct rust_scheduler;
+struct rust_task_thread;
 
 /**
  * A global object shared by all thread domains. Most of the data structures
@@ -21,12 +21,12 @@ public:
 private:
     lock_and_signal _kernel_lock;
 
-    array_list<rust_scheduler *> threads;
+    array_list<rust_task_thread *> threads;
 
     randctx rctx;
 
-    rust_scheduler *create_scheduler(int id);
-    void destroy_scheduler(rust_scheduler *sched);
+    rust_task_thread *create_scheduler(int id);
+    void destroy_scheduler(rust_task_thread *thread);
 
     void create_schedulers();
     void destroy_schedulers();

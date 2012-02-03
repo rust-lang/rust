@@ -1,5 +1,5 @@
-#ifndef RUST_SCHEDULER_H
-#define RUST_SCHEDULER_H
+#ifndef RUST_TASK_THREAD_H
+#define RUST_TASK_THREAD_H
 
 #include "context.h"
 
@@ -9,7 +9,7 @@
 #include <windows.h>
 #endif
 
-struct rust_scheduler;
+struct rust_task_thread;
 
 struct rust_hashable_dict {
     UT_hash_handle hh;
@@ -32,18 +32,18 @@ private:
 
 public:
 
-    rust_scheduler *sched;
+    rust_task_thread *thread;
     size_t idx;
 
-    rust_crate_cache(rust_scheduler *sched);
+    rust_crate_cache(rust_task_thread *thread);
     ~rust_crate_cache();
     void flush();
 };
 
-struct rust_scheduler : public kernel_owned<rust_scheduler>,
+struct rust_task_thread : public kernel_owned<rust_task_thread>,
                         rust_thread
 {
-    RUST_REFCOUNTED(rust_scheduler)
+    RUST_REFCOUNTED(rust_task_thread)
 
     // Fields known only by the runtime:
     rust_log _log;
@@ -92,8 +92,8 @@ struct rust_scheduler : public kernel_owned<rust_scheduler>,
 
     // Only a pointer to 'name' is kept, so it must live as long as this
     // domain.
-    rust_scheduler(rust_kernel *kernel, rust_srv *srv, int id);
-    ~rust_scheduler();
+    rust_task_thread(rust_kernel *kernel, rust_srv *srv, int id);
+    ~rust_task_thread();
     void activate(rust_task *task);
     void log(rust_task *task, uint32_t level, char const *fmt, ...);
     rust_log & get_log();
@@ -132,7 +132,7 @@ struct rust_scheduler : public kernel_owned<rust_scheduler>,
 };
 
 inline rust_log &
-rust_scheduler::get_log() {
+rust_task_thread::get_log() {
     return _log;
 }
 
@@ -147,4 +147,4 @@ rust_scheduler::get_log() {
 // End:
 //
 
-#endif /* RUST_SCHEDULER_H */
+#endif /* RUST_TASK_THREAD_H */

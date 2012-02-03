@@ -76,7 +76,7 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     context ctx;
     stk_seg *stk;
     uintptr_t runtime_sp;      // Runtime sp while task running.
-    rust_scheduler *sched;
+    rust_task_thread *thread;
     rust_crate_cache *cache;
 
     // Fields known only to the runtime.
@@ -123,7 +123,7 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     size_t total_stack_sz;
 
     // Only a pointer to 'name' is kept, so it must live as long as this task.
-    rust_task(rust_scheduler *sched,
+    rust_task(rust_task_thread *thread,
               rust_task_list *state,
               rust_task *spawner,
               const char *name,

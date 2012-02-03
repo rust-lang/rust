@@ -87,7 +87,7 @@ private:
 public:
 
     rust_uvtmp_thread() {
-	task = rust_scheduler::get_task();
+	task = rust_task_thread::get_task();
 	stop_flag = false;
 	loop = uv_loop_new();
 	uv_idle_init(loop, &idle);

@@ -8,9 +8,9 @@
 class rust_task_list : public indexed_list<rust_task>,
                        public kernel_owned<rust_task_list> {
 public:
-    rust_scheduler *sched;
+    rust_task_thread *thread;
     const char* name;
-    rust_task_list (rust_scheduler *sched, const char* name);
+    rust_task_list (rust_task_thread *thread, const char* name);
     void delete_all();
 };
 

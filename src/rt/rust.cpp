@@ -90,15 +90,15 @@ rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map) {
     rust_task_id root_id = kernel->create_task(NULL, "main", MAIN_STACK_SIZE);
     rust_task *root_task = kernel->get_task_by_id(root_id);
     I(kernel, root_task != NULL);
-    rust_scheduler *sched = root_task->sched;
+    rust_task_thread *thread = root_task->thread;
     command_line_args *args
         = new (kernel, "main command line args")
         command_line_args(root_task, argc, argv);
 
-    DLOG(sched, dom, "startup: %d args in 0x%" PRIxPTR,
+    DLOG(thread, dom, "startup: %d args in 0x%" PRIxPTR,
              args->argc, (uintptr_t)args->args);
     for (int i = 0; i < args->argc; i++) {
-        DLOG(sched, dom, "startup: arg[%d] = '%s'", i, args->argv[i]);
+        DLOG(thread, dom, "startup: arg[%d] = '%s'", i, args->argv[i]);
     }
 
     root_task->start((spawn_fn)main_fn, NULL, args->args);

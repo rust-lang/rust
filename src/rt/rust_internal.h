@@ -50,7 +50,7 @@ extern "C" {
 #include "sync/lock_and_signal.h"
 #include "sync/lock_free_queue.h"
 
-struct rust_scheduler;
+struct rust_task_thread;
 struct rust_task;
 class rust_log;
 class rust_port;
@@ -217,7 +217,7 @@ public:
 #include "rust_srv.h"
 #include "rust_log.h"
 #include "rust_kernel.h"
-#include "rust_scheduler.h"
+#include "rust_task_thread.h"
 
 typedef void CDECL (glue_fn)(void *, void *,
                              const type_desc **, void *);
