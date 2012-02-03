@@ -135,16 +135,10 @@ rust_scheduler::reap_dead_tasks(int id) {
     for (size_t i = 0; i < dead_tasks_len; ++i) {
         rust_task *task = dead_tasks_copy[i];
         task->lock.lock();
-        // Make sure this task isn't still running somewhere else...
-        if (task->can_schedule(id)) {
-            DLOG(this, task,
-                "deleting unreferenced dead task %s @0x%" PRIxPTR,
-                task->name, task);
-            task->lock.unlock();
-        } else {
-            task->lock.unlock();
-            dead_tasks_copy[i] = NULL;
-        }
+        DLOG(this, task,
+             "deleting unreferenced dead task %s @0x%" PRIxPTR,
+             task->name, task);
+        task->lock.unlock();
     }
 
     // Now grab the lock again and remove the tasks that were truly dead
@@ -192,9 +186,7 @@ rust_scheduler::schedule_task(int id) {
         // Look around for a runnable task, starting at k.
         for(size_t j = 0; j < running_tasks.length(); ++j) {
             size_t  i = (j + k) % running_tasks.length();
-            if (running_tasks[i]->can_schedule(id)) {
-                return (rust_task *)running_tasks[i];
-            }
+            return (rust_task *)running_tasks[i];
         }
     }
     return NULL;

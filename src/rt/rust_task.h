@@ -171,8 +171,6 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     frame_glue_fns *get_frame_glue_fns(uintptr_t fp);
     rust_crate_cache * get_crate_cache();
 
-    bool can_schedule(int worker);
-
     void *calloc(size_t size, const char *tag);
 
     rust_port_id register_port(rust_port *port);

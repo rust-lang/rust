@@ -623,11 +623,6 @@ rust_task::backtrace() {
 #endif
 }
 
-bool rust_task::can_schedule(int id)
-{
-    return true;
-}
-
 void *
 rust_task::calloc(size_t size, const char *tag) {
     return local_region.calloc(size, tag);
