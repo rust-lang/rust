@@ -112,7 +112,7 @@ rust_scheduler::number_of_live_tasks() {
  * Delete any dead tasks.
  */
 void
-rust_scheduler::reap_dead_tasks(int id) {
+rust_scheduler::reap_dead_tasks() {
     I(this, lock.lock_held_by_current_thread());
     if (dead_tasks.length() == 0) {
         return;
@@ -157,7 +157,7 @@ rust_scheduler::reap_dead_tasks(int id) {
  * Returns NULL if no tasks can be scheduled.
  */
 rust_task *
-rust_scheduler::schedule_task(int id) {
+rust_scheduler::schedule_task() {
     I(this, this);
     // FIXME: in the face of failing tasks, this is not always right.
     // I(this, n_live_tasks() > 0);
@@ -222,7 +222,7 @@ rust_scheduler::start_main_loop() {
         DLOG(this, dom, "worker %d, number_of_live_tasks = %d, total = %d",
              id, number_of_live_tasks(), kernel->live_tasks);
 
-        rust_task *scheduled_task = schedule_task(id);
+        rust_task *scheduled_task = schedule_task();
 
         if (scheduled_task == NULL) {
             log_state();
@@ -230,7 +230,7 @@ rust_scheduler::start_main_loop() {
                  "all tasks are blocked, scheduler id %d yielding ...",
                  id);
             lock.timed_wait(10);
-            reap_dead_tasks(id);
+            reap_dead_tasks();
             DLOG(this, task,
                  "scheduler %d resuming ...", id);
             continue;
@@ -263,7 +263,7 @@ rust_scheduler::start_main_loop() {
              scheduled_task->user.rust_sp,
              id);
 
-        reap_dead_tasks(id);
+        reap_dead_tasks();
     }
 
     A(this, newborn_tasks.is_empty(), "Should have no newborn tasks");

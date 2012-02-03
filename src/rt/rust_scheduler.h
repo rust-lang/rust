@@ -102,8 +102,8 @@ struct rust_scheduler : public kernel_owned<rust_scheduler>,
     rust_crate_cache *get_cache();
     size_t number_of_live_tasks();
 
-    void reap_dead_tasks(int id);
-    rust_task *schedule_task(int id);
+    void reap_dead_tasks();
+    rust_task *schedule_task();
 
     void start_main_loop();
 
