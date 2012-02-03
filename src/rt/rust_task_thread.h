@@ -69,6 +69,7 @@ struct rust_task_thread : public kernel_owned<rust_task_thread>,
     randctx rctx;
 
     rust_kernel *kernel;
+    rust_scheduler *sched;
     int32_t list_index;
 
     const int id;
@@ -92,7 +93,7 @@ struct rust_task_thread : public kernel_owned<rust_task_thread>,
 
     // Only a pointer to 'name' is kept, so it must live as long as this
     // domain.
-    rust_task_thread(rust_kernel *kernel, rust_srv *srv, int id);
+    rust_task_thread(rust_scheduler *sched, rust_srv *srv, int id);
     ~rust_task_thread();
     void activate(rust_task *task);
     void log(rust_task *task, uint32_t level, char const *fmt, ...);

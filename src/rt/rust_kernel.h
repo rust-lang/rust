@@ -6,6 +6,7 @@
 #include "rust_log.h"
 
 struct rust_task_thread;
+struct rust_scheduler;
 
 /**
  * A global object shared by all thread domains. Most of the data structures
@@ -20,36 +21,21 @@ public:
     rust_srv *srv;
 private:
     lock_and_signal _kernel_lock;
-
-    array_list<rust_task_thread *> threads;
-
-    randctx rctx;
-
-    rust_task_thread *create_scheduler(int id);
-    void destroy_scheduler(rust_task_thread *thread);
-
-    void create_schedulers();
-    void destroy_schedulers();
+    rust_scheduler *sched;
 
     rust_task_id max_id;
     hash_map<rust_task_id, rust_task *> task_table;
-
     int rval;
 
 public:
-    const size_t num_threads;
 
     volatile int live_tasks;
     struct rust_env *env;
 
     rust_kernel(rust_srv *srv, size_t num_threads);
 
-    bool is_deadlocked();
-
-    void signal_kernel_lock();
     void exit_schedulers();
 
-    void log_all_scheduler_state();
     void log(uint32_t level, char const *fmt, ...);
     void fatal(char const *fmt, ...);
     virtual ~rust_kernel();
@@ -60,7 +46,7 @@ public:
 
     void fail();
 
-    int start_task_threads();
+    int start_schedulers();
 
 #ifdef __WIN32__
     void win32_require(LPCTSTR fn, BOOL ok);
@@ -69,6 +55,7 @@ public:
     rust_task_id create_task(rust_task *spawner, const char *name,
 			     size_t init_stack_size);
     rust_task_id create_task(rust_task * spawner, const char *name);
+    void register_task(rust_task *task);
     rust_task *get_task_by_id(rust_task_id id);
     void release_task_id(rust_task_id tid);
     void set_exit_status(int code);

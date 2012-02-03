@@ -105,7 +105,7 @@ rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map) {
     root_task->deref();
     root_task = NULL;
 
-    int ret = kernel->start_task_threads();
+    int ret = kernel->start_schedulers();
     delete args;
     delete kernel;
     delete srv;

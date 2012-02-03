@@ -4,6 +4,7 @@
 #include "rust_task_thread.h"
 #include "rust_task.h"
 #include "rust_util.h"
+#include "rust_scheduler.h"
 #include "sync/timer.h"
 
 #if !defined(__WIN32__)
@@ -416,7 +417,7 @@ start_task(rust_task_id id, fn_env_pair *f) {
 extern "C" CDECL int
 sched_threads() {
     rust_task *task = rust_task_thread::get_task();
-    return task->kernel->num_threads;
+    return task->thread->sched->number_of_threads();
 }
 
 extern "C" CDECL rust_port*

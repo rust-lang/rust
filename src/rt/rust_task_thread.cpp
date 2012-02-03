@@ -5,6 +5,7 @@
 #include "rust_internal.h"
 #include "rust_util.h"
 #include "globals.h"
+#include "rust_scheduler.h"
 
 #ifndef _WIN32
 pthread_key_t rust_task_thread::task_key;
@@ -14,9 +15,9 @@ DWORD rust_task_thread::task_key;
 
 bool rust_task_thread::tls_initialized = false;
 
-rust_task_thread::rust_task_thread(rust_kernel *kernel,
-                               rust_srv *srv,
-                               int id) :
+rust_task_thread::rust_task_thread(rust_scheduler *sched,
+                                   rust_srv *srv,
+                                   int id) :
     ref_count(1),
     _log(srv, this),
     log_lvl(log_debug),
@@ -28,7 +29,8 @@ rust_task_thread::rust_task_thread(rust_kernel *kernel,
     blocked_tasks(this, "blocked"),
     dead_tasks(this, "dead"),
     cache(this),
-    kernel(kernel),
+    kernel(sched->kernel),
+    sched(sched),
     id(id),
     min_stack_size(kernel->env->min_stack_size),
     env(kernel->env),
@@ -217,8 +219,6 @@ rust_task_thread::start_main_loop() {
     DLOG(this, dom, "started domain loop %d", id);
 
     while (!should_exit) {
-        A(this, kernel->is_deadlocked() == false, "deadlock");
-
         DLOG(this, dom, "worker %d, number_of_live_tasks = %d, total = %d",
              id, number_of_live_tasks(), kernel->live_tasks);
 
