@@ -10,21 +10,21 @@ target triple = "@CFG_TARGET_TRIPLE@"
 %struct.rust_vec = type { i64, i64, [0 x i8] }
 %struct.rust_fn = type { i64*, %struct.rust_box* }
 %struct.rust_box = type opaque
-%struct.rust_task = type { %struct.rust_task_user, i64, %class.context, %struct.stk_seg*, i64, %struct.rust_scheduler*, %class.rust_crate_cache*, %class.rust_kernel*, i8*, %class.rust_task_list*, %struct.rust_cond*, i8*, %struct.rust_task*, i32, i64, %class.timer, i64*, i32, i32, %class.memory_region, i8, i8, i8, %class.lock_and_signal, %class.hash_map.4, %class.rust_obstack, %"class.std::map", i32, %"class.debug::task_debug_info" }
+%struct.rust_task = type { %struct.rust_task_user, i64, %class.context, %struct.stk_seg*, i64, %struct.rust_scheduler*, %class.rust_crate_cache*, %class.rust_kernel*, i8*, %class.rust_task_list*, %struct.rust_cond*, i8*, %struct.rust_task*, i32, i64, %class.timer, i64*, i32, i32, %class.memory_region, %class.boxed_region, i8, i8, i8, %class.lock_and_signal, %class.hash_map.4, %class.rust_obstack, i32, %"class.debug::task_debug_info", i64, [8 x i8] }
 %struct.rust_task_user = type { i64, i64, %struct.chan_handle, i64 }
 %struct.chan_handle = type { i64, i64 }
-%class.context = type { %struct.registers_t, %class.context* }
+%class.context = type { %struct.registers_t, %class.context*, [8 x i8] }
 %struct.registers_t = type { [22 x i64] }
-%struct.stk_seg = type { %struct.stk_seg*, i64, i32, [0 x i8] }
+%struct.stk_seg = type { %struct.stk_seg*, %struct.stk_seg*, i64, i32, [0 x i8] }
 %struct.rust_scheduler = type { %class.rust_thread, i64, i64, %class.rust_log, i32, %class.rust_srv*, i8*, %class.rust_task_list, %class.rust_task_list, %class.rust_task_list, %class.rust_task_list, %class.rust_crate_cache, %struct.randctx, %class.rust_kernel*, i32, i32, %class.lock_and_signal, i64, %union.pthread_attr_t, %struct.rust_env*, %class.context }
 %class.rust_thread = type { i32 (...)**, i8, i64 }
 %class.rust_log = type { i32 (...)**, %class.rust_srv*, %struct.rust_scheduler*, i8 }
 %class.rust_srv = type { i32 (...)**, %struct.rust_env*, %class.memory_region }
-%struct.rust_env = type { i64, i64, i8*, i8, i8, i8* }
+%struct.rust_env = type { i64, i64, i64, i8*, i8, i8, i8* }
 %class.memory_region = type { i32 (...)**, %class.rust_srv*, %class.memory_region*, i32, %class.array_list, i8, i8, %class.lock_and_signal }
 %class.array_list = type { i64, %"struct.memory_region::alloc_header"**, i64 }
 %"struct.memory_region::alloc_header" = type { i8 }
-%class.lock_and_signal = type { i32 (...)**, %union.pthread_cond_t, %union.pthread_mutex_t, i64, i8, i8 }
+%class.lock_and_signal = type { i32 (...)**, %union.pthread_cond_t, %union.pthread_mutex_t, i64 }
 %union.pthread_cond_t = type { %struct.anon }
 %struct.anon = type { i32, i32, i64, i64, i64, i8*, i32, i32 }
 %union.pthread_mutex_t = type { %"struct.<anonymous union>::__pthread_mutex_s" }
@@ -33,81 +33,88 @@ target triple = "@CFG_TARGET_TRIPLE@"
 %class.rust_task_list = type { %class.indexed_list, %struct.rust_scheduler*, i8* }
 %class.indexed_list = type { i32 (...)**, %class.array_list.1 }
 %class.array_list.1 = type { i64, %struct.rust_task**, i64 }
-%class.rust_crate_cache = type { %struct.type_desc*, %struct.rust_scheduler*, i64 }
+%class.rust_crate_cache = type { %struct.type_desc*, %struct.rust_hashable_dict*, %struct.rust_scheduler*, i64 }
+%struct.rust_hashable_dict = type { %struct.UT_hash_handle, [0 x i8*] }
 %struct.randctx = type { i64, [256 x i64], [256 x i64], i64, i64, i64 }
-%class.rust_kernel = type { i32 (...)**, %class.memory_region, %class.rust_log, %class.rust_srv*, %class.lock_and_signal, %class.array_list.3, %struct.randctx, i64, %class.hash_map, i64, i32, i32, %struct.rust_env* }
+%class.rust_kernel = type { i32 (...)**, %class.memory_region, %class.rust_log, %class.rust_srv*, %class.lock_and_signal, %class.array_list.3, %struct.randctx, i64, %class.hash_map, i32, i64, i32, %struct.rust_env* }
 %class.array_list.3 = type { i64, %struct.rust_scheduler**, i64 }
 %class.hash_map = type { %"struct.hash_map<long, rust_task *>::map_entry"* }
 %"struct.hash_map<long, rust_task *>::map_entry" = type opaque
 %union.pthread_attr_t = type { i64, [48 x i8] }
 %struct.rust_cond = type { i8 }
 %class.timer = type { i32 (...)**, i64, i64 }
+%class.boxed_region = type { %class.memory_region*, %struct.rust_opaque_box* }
+%struct.rust_opaque_box = type { i64, %struct.type_desc*, %struct.rust_opaque_box*, %struct.rust_opaque_box* }
 %class.hash_map.4 = type { %"struct.hash_map<long, rust_port *>::map_entry"* }
 %"struct.hash_map<long, rust_port *>::map_entry" = type opaque
 %class.rust_obstack = type { %struct.rust_obstack_chunk*, %struct.rust_task* }
 %struct.rust_obstack_chunk = type { %struct.rust_obstack_chunk*, i64, i64, i64, [0 x i8] }
+%"class.debug::task_debug_info" = type { %"class.std::map" }
 %"class.std::map" = type { %"class.std::_Rb_tree" }
-%"class.std::_Rb_tree" = type { %"struct.std::_Rb_tree<void *, std::pair<void *const, const type_desc *>, std::_Select1st<std::pair<void *const, const type_desc *> >, std::less<void *>, std::allocator<std::pair<void *const, const type_desc *> > >::_Rb_tree_impl" }
-%"struct.std::_Rb_tree<void *, std::pair<void *const, const type_desc *>, std::_Select1st<std::pair<void *const, const type_desc *> >, std::less<void *>, std::allocator<std::pair<void *const, const type_desc *> > >::_Rb_tree_impl" = type { %"struct.std::less", %"struct.std::_Rb_tree_node_base", i64 }
+%"class.std::_Rb_tree" = type { %"struct.std::_Rb_tree<void *, std::pair<void *const, std::basic_string<char> >, std::_Select1st<std::pair<void *const, std::basic_string<char> > >, std::less<void *>, std::allocator<std::pair<void *const, std::basic_string<char> > > >::_Rb_tree_impl" }
+%"struct.std::_Rb_tree<void *, std::pair<void *const, std::basic_string<char> >, std::_Select1st<std::pair<void *const, std::basic_string<char> > >, std::less<void *>, std::allocator<std::pair<void *const, std::basic_string<char> > > >::_Rb_tree_impl" = type { %"struct.std::less", %"struct.std::_Rb_tree_node_base", i64 }
 %"struct.std::less" = type { i8 }
 %"struct.std::_Rb_tree_node_base" = type { i32, %"struct.std::_Rb_tree_node_base"*, %"struct.std::_Rb_tree_node_base"*, %"struct.std::_Rb_tree_node_base"* }
-%"class.debug::task_debug_info" = type { %"class.std::map.5" }
-%"class.std::map.5" = type { %"class.std::_Rb_tree.6" }
-%"class.std::_Rb_tree.6" = type { %"struct.std::_Rb_tree<void *, std::pair<void *const, std::basic_string<char> >, std::_Select1st<std::pair<void *const, std::basic_string<char> > >, std::less<void *>, std::allocator<std::pair<void *const, std::basic_string<char> > > >::_Rb_tree_impl" }
-%"struct.std::_Rb_tree<void *, std::pair<void *const, std::basic_string<char> >, std::_Select1st<std::pair<void *const, std::basic_string<char> > >, std::less<void *>, std::allocator<std::pair<void *const, std::basic_string<char> > > >::_Rb_tree_impl" = type { %"struct.std::less", %"struct.std::_Rb_tree_node_base", i64 }
 
 define void @rust_intrinsic_vec_len(i64* nocapture %retptr, i8* nocapture %env, %struct.type_desc* nocapture %ty, %struct.rust_vec** nocapture %vp) nounwind uwtable {
-  %1 = load %struct.rust_vec** %vp, align 8, !tbaa !0
-  %2 = getelementptr inbounds %struct.rust_vec* %1, i64 0, i32 0
-  %3 = load i64* %2, align 8, !tbaa !3
-  %4 = getelementptr inbounds %struct.type_desc* %ty, i64 0, i32 1
-  %5 = load i64* %4, align 8, !tbaa !3
-  %6 = udiv i64 %3, %5
-  store i64 %6, i64* %retptr, align 8, !tbaa !3
+entry:
+  %0 = load %struct.rust_vec** %vp, align 8, !tbaa !0
+  %fill = getelementptr inbounds %struct.rust_vec* %0, i64 0, i32 0
+  %1 = load i64* %fill, align 8, !tbaa !3
+  %size = getelementptr inbounds %struct.type_desc* %ty, i64 0, i32 1
+  %2 = load i64* %size, align 8, !tbaa !3
+  %div = udiv i64 %1, %2
+  store i64 %div, i64* %retptr, align 8, !tbaa !3
   ret void
 }
 
 define void @rust_intrinsic_ptr_offset(i8** nocapture %retptr, i8* nocapture %env, %struct.type_desc* nocapture %ty, i8* %ptr, i64 %count) nounwind uwtable {
-  %1 = getelementptr inbounds %struct.type_desc* %ty, i64 0, i32 1
-  %2 = load i64* %1, align 8, !tbaa !3
-  %3 = mul i64 %2, %count
-  %4 = getelementptr inbounds i8* %ptr, i64 %3
-  store i8* %4, i8** %retptr, align 8, !tbaa !0
+entry:
+  %size = getelementptr inbounds %struct.type_desc* %ty, i64 0, i32 1
+  %0 = load i64* %size, align 8, !tbaa !3
+  %mul = mul i64 %0, %count
+  %arrayidx = getelementptr inbounds i8* %ptr, i64 %mul
+  store i8* %arrayidx, i8** %retptr, align 8, !tbaa !0
   ret void
 }
 
 define void @rust_intrinsic_cast(i8* nocapture %retptr, i8* nocapture %env, %struct.type_desc* nocapture %t1, %struct.type_desc* nocapture %t2, i8* nocapture %src) nounwind uwtable {
-  %1 = getelementptr inbounds %struct.type_desc* %t1, i64 0, i32 1
-  %2 = load i64* %1, align 8, !tbaa !3
-  tail call void @llvm.memmove.p0i8.p0i8.i64(i8* %retptr, i8* %src, i64 %2, i32 1, i1 false)
+entry:
+  %size = getelementptr inbounds %struct.type_desc* %t1, i64 0, i32 1
+  %0 = load i64* %size, align 8, !tbaa !3
+  tail call void @llvm.memmove.p0i8.p0i8.i64(i8* %retptr, i8* %src, i64 %0, i32 1, i1 false)
   ret void
 }
 
 declare void @llvm.memmove.p0i8.p0i8.i64(i8* nocapture, i8* nocapture, i64, i32, i1) nounwind
 
 define void @rust_intrinsic_addr_of(i8** nocapture %retptr, i8* nocapture %env, %struct.type_desc* nocapture %ty, i8* %valptr) nounwind uwtable {
+entry:
   store i8* %valptr, i8** %retptr, align 8, !tbaa !0
   ret void
 }
 
 define void @rust_intrinsic_call_with_retptr(i8** %retptr, i8* nocapture %env, %struct.type_desc* nocapture %ty, %struct.rust_fn* nocapture %recvfn) uwtable {
-  %1 = getelementptr inbounds %struct.rust_fn* %recvfn, i64 0, i32 0
-  %2 = load i64** %1, align 8, !tbaa !0
-  %3 = bitcast i64* %2 to void (i8**, i8*, i8**)*
-  %4 = getelementptr inbounds %struct.rust_fn* %recvfn, i64 0, i32 1
-  %5 = load %struct.rust_box** %4, align 8, !tbaa !0
-  %6 = bitcast %struct.rust_box* %5 to i8*
-  tail call void %3(i8** null, i8* %6, i8** %retptr)
+entry:
+  %fn1 = getelementptr inbounds %struct.rust_fn* %recvfn, i64 0, i32 0
+  %0 = load i64** %fn1, align 8, !tbaa !0
+  %1 = bitcast i64* %0 to void (i8**, i8*, i8**)*
+  %env2 = getelementptr inbounds %struct.rust_fn* %recvfn, i64 0, i32 1
+  %2 = load %struct.rust_box** %env2, align 8, !tbaa !0
+  %3 = bitcast %struct.rust_box* %2 to i8*
+  tail call void %1(i8** null, i8* %3, i8** %retptr)
   ret void
 }
 
 define void @rust_intrinsic_get_type_desc(i8** nocapture %retptr, i8* nocapture %env, %struct.type_desc* %ty) nounwind uwtable {
+entry:
   %ty.c = bitcast %struct.type_desc* %ty to i8*
   store i8* %ty.c, i8** %retptr, align 8, !tbaa !0
   ret void
 }
 
 define void @rust_intrinsic_task_sleep(i8** nocapture %retptr, i8* nocapture %env, %struct.rust_task* %task, i64 %time_in_us, i8* %killed) uwtable {
+entry:
   tail call void @rust_task_sleep(%struct.rust_task* %task, i64 %time_in_us, i8* %killed)
   ret void
 }
