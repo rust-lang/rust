@@ -83,7 +83,6 @@ fn build_session() -> session::session {
         test: false,
         parse_only: false,
         no_trans: false,
-        do_gc: false,
         no_asm_comments: false,
         warn_unused_imports: false
     };

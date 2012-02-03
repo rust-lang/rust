@@ -412,7 +412,6 @@ fn build_session_options(match: getopts::match,
     let addl_lib_search_paths = getopts::opt_strs(match, "L");
     let cfg = parse_cfgspecs(getopts::opt_strs(match, "cfg"));
     let test = opt_present(match, "test");
-    let do_gc = opt_present(match, "gc");
     let warn_unused_imports = opt_present(match, "warn-unused-imports");
     let sopts: @session::options =
         @{crate_type: crate_type,
@@ -434,7 +433,6 @@ fn build_session_options(match: getopts::match,
           test: test,
           parse_only: parse_only,
           no_trans: no_trans,
-          do_gc: do_gc,
           no_asm_comments: no_asm_comments,
           warn_unused_imports: warn_unused_imports};
     ret sopts;

@@ -120,15 +120,13 @@ fn test_fn() {
 #[abi = "cdecl"]
 #[nolink]
 native mod test {
-    fn do_gc();
     fn unsupervise();
 }
 
 // FIXME (#1058): comparison of native fns
 fn test_native_fn() {
     /*
-    assert (native_mod::do_gc == native_mod::do_gc);
-    assert (native_mod::do_gc != native_mod::unsupervise);
+    assert (native_mod::last_os_error != native_mod::unsupervise);
     */
 }
 

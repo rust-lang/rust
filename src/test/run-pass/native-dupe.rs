@@ -4,16 +4,16 @@
 #[abi = "cdecl"]
 #[link_name = "rustrt"]
 native mod rustrt1 {
-    fn do_gc();
+    fn last_os_error() -> str;
 }
 
 #[abi = "cdecl"]
 #[link_name = "rustrt"]
 native mod rustrt2 {
-    fn do_gc();
+    fn last_os_error() -> str;
 }
 
 fn main() {
-    rustrt1::do_gc();
-    rustrt2::do_gc();
+    rustrt1::last_os_error();
+    rustrt2::last_os_error();
 }

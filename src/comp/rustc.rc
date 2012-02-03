@@ -39,7 +39,6 @@ mod middle {
     mod kind;
     mod freevars;
     mod shape;
-    mod gc;
     mod debuginfo;
     mod capture;
     mod pat_util;

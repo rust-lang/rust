@@ -21,7 +21,6 @@ import option::{some, none};
 import driver::session;
 import session::session;
 import front::attr;
-import middle::{ty, gc, resolve, debuginfo};
 import middle::freevars::*;
 import back::{link, abi, upcall};
 import syntax::{ast, ast_util, codemap};
@@ -350,14 +349,9 @@ fn trans_native_call(cx: @block_ctxt, externs: hashmap<str, ValueRef>,
     ret Call(cx, llnative, call_args);
 }
 
-fn trans_free_if_not_gc(cx: @block_ctxt, v: ValueRef) -> @block_ctxt {
-    let ccx = bcx_ccx(cx);
-    if !ccx.sess.opts.do_gc {
-        Call(cx, ccx.upcalls.free,
-             [PointerCast(cx, v, T_ptr(T_i8())),
-              C_int(bcx_ccx(cx), 0)]);
-    }
-    ret cx;
+fn trans_free(cx: @block_ctxt, v: ValueRef) -> @block_ctxt {
+    Call(cx, bcx_ccx(cx).upcalls.free, [PointerCast(cx, v, T_ptr(T_i8()))]);
+    cx
 }
 
 fn trans_shared_free(cx: @block_ctxt, v: ValueRef) -> @block_ctxt {
@@ -1245,7 +1239,7 @@ fn free_box(bcx: @block_ctxt, v: ValueRef, t: ty::t) -> @block_ctxt {
         let v = PointerCast(bcx, v, type_of_1(bcx, t));
         let body = GEPi(bcx, v, [0, abi::box_field_body]);
         let bcx = drop_ty(bcx, body, body_mt.ty);
-        trans_free_if_not_gc(bcx, v)
+        trans_free(bcx, v)
       }
 
       _ { fail "free_box invoked with non-box type"; }
@@ -1280,7 +1274,7 @@ fn make_free_glue(bcx: @block_ctxt, v: ValueRef, t: ty::t) {
         let ti = none;
         call_tydesc_glue_full(bcx, body, tydesc,
                               abi::tydesc_field_drop_glue, ti);
-        trans_free_if_not_gc(bcx, b)
+        trans_free(bcx, b)
       }
       ty::ty_send_type {
         // sendable type descriptors are basically unique pointers,
@@ -4226,10 +4220,6 @@ fn alloc_ty(cx: @block_ctxt, t: ty::t) -> result {
     // past caller conventions and may well make sense again,
     // so we leave it as-is.
 
-    if bcx_tcx(cx).sess.opts.do_gc {
-        bcx = gc::add_gc_root(bcx, val, t);
-    }
-
     ret rslt(cx, val);
 }
 
@@ -5604,7 +5594,6 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           opaque_vec_type: T_opaque_vec(targ_cfg),
           builder: BuilderRef_res(llvm::LLVMCreateBuilder()),
           shape_cx: shape::mk_ctxt(llmod),
-          gc_cx: gc::mk_ctxt(),
           crate_map: crate_map,
           dbg_cx: dbg_cx,
           mutable do_not_commit_warning_issued: false};

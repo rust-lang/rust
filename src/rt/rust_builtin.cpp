@@ -92,11 +92,6 @@ refcount(intptr_t *v) {
 }
 
 extern "C" CDECL void
-do_gc() {
-    // TODO
-}
-
-extern "C" CDECL void
 unsupervise() {
     rust_task *task = rust_scheduler::get_task();
     task->unsupervise();

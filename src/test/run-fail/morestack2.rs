@@ -8,14 +8,14 @@
 use std;
 
 native mod rustrt {
-    fn do_gc();
+    fn last_os_error() -> str;
 }
 
 fn getbig_call_c_and_fail(i: int) {
     if i != 0 {
         getbig_call_c_and_fail(i - 1);
     } else {
-        rustrt::do_gc();
+        rustrt::last_os_error();
         fail;
     }
 }

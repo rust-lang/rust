@@ -141,8 +141,8 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     bool dead();
 
     void *malloc(size_t sz, const char *tag, type_desc *td=0);
-    void *realloc(void *data, size_t sz, bool gc_mem=false);
-    void free(void *p, bool gc_mem=false);
+    void *realloc(void *data, size_t sz);
+    void free(void *p);
 
     void transition(rust_task_list *src, rust_task_list *dst);
 

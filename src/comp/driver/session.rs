@@ -46,7 +46,6 @@ type options =
      test: bool,
      parse_only: bool,
      no_trans: bool,
-     do_gc: bool,
      no_asm_comments: bool,
      warn_unused_imports: bool};
 

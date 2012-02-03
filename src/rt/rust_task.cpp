@@ -523,13 +523,13 @@ rust_task::malloc(size_t sz, const char *tag, type_desc *td)
 }
 
 void *
-rust_task::realloc(void *data, size_t sz, bool is_gc)
+rust_task::realloc(void *data, size_t sz)
 {
     return local_region.realloc(data, sz);
 }
 
 void
-rust_task::free(void *p, bool is_gc)
+rust_task::free(void *p)
 {
     local_region.free(p);
 }

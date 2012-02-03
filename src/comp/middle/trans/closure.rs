@@ -716,7 +716,7 @@ fn make_opaque_cbox_free_glue(
         alt ck {
           ty::ck_block { fail "Impossible"; }
           ty::ck_box {
-            trans_free_if_not_gc(bcx, cbox)
+            trans_free(bcx, cbox)
           }
           ty::ck_uniq {
             let bcx = free_ty(bcx, tydesc, mk_tydesc_ty(tcx, ck));

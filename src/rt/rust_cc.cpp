@@ -2,7 +2,6 @@
 // time until LLVM's GC infrastructure is more mature.
 
 #include "rust_debug.h"
-#include "rust_gc.h"
 #include "rust_internal.h"
 #include "rust_shape.h"
 #include "rust_task.h"

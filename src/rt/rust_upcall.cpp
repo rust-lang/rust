@@ -7,7 +7,6 @@
  */
 
 #include "rust_cc.h"
-#include "rust_gc.h"
 #include "rust_internal.h"
 #include "rust_scheduler.h"
 #include "rust_unwind.h"
@@ -122,7 +121,6 @@ upcall_s_malloc(s_malloc_args *args) {
 
     LOG(task, mem, "upcall malloc(0x%" PRIxPTR ")", args->td);
 
-    gc::maybe_gc(task);
     cc::maybe_cc(task);
 
     // FIXME--does this have to be calloc?
@@ -151,7 +149,6 @@ upcall_malloc(type_desc *td) {
 
 struct s_free_args {
     void *ptr;
-    uintptr_t is_gc;
 };
 
 extern "C" CDECL void
@@ -162,7 +159,7 @@ upcall_s_free(s_free_args *args) {
     rust_scheduler *sched = task->sched;
     DLOG(sched, mem,
              "upcall free(0x%" PRIxPTR ", is_gc=%" PRIdPTR ")",
-             (uintptr_t)args->ptr, args->is_gc);
+             (uintptr_t)args->ptr);
 
     debug::maybe_untrack_origin(task, args->ptr);
 
@@ -171,8 +168,8 @@ upcall_s_free(s_free_args *args) {
 }
 
 extern "C" CDECL void
-upcall_free(void* ptr, uintptr_t is_gc) {
-    s_free_args args = {ptr, is_gc};
+upcall_free(void* ptr) {
+    s_free_args args = {ptr};
     UPCALL_SWITCH_STACK(&args, upcall_s_free);
 }
 

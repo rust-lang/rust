@@ -17,7 +17,6 @@ native mod rustrt {
     // visible-in-crate, but not re-exported.
     fn last_os_error() -> str;
     fn refcount<T>(t: @T) -> ctypes::intptr_t;
-    fn do_gc();
     fn unsupervise();
     fn shape_log_str<T>(t: *sys::type_desc, data: T) -> str;
     fn rust_set_exit_status(code: ctypes::intptr_t);
@@ -72,15 +71,6 @@ Returns the refcount of a shared box
 */
 fn refcount<T>(t: @T) -> uint {
     ret rustrt::refcount::<T>(t);
-}
-
-/*
-Function: do_gc
-
-Force a garbage collection
-*/
-fn do_gc() -> () {
-    ret rustrt::do_gc();
 }
 
 // FIXME: There's a wrapper for this in the task module and this really

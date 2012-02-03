@@ -120,7 +120,6 @@ type crate_ctxt =
      opaque_vec_type: TypeRef,
      builder: BuilderRef_res,
      shape_cx: shape::ctxt,
-     gc_cx: gc::ctxt,
      crate_map: ValueRef,
      dbg_cx: option<@debuginfo::debug_ctxt>,
      mutable do_not_commit_warning_issued: bool};
@@ -286,7 +285,7 @@ fn add_clean_temp_mem(cx: @block_ctxt, val: ValueRef, ty: ty::t) {
 fn add_clean_free(cx: @block_ctxt, ptr: ValueRef, shared: bool) {
     let scope_cx = find_scope_cx(cx);
     let free_fn = if shared { bind base::trans_shared_free(_, ptr) }
-                  else { bind base::trans_free_if_not_gc(_, ptr) };
+                  else { bind base::trans_free(_, ptr) };
     scope_cx.cleanups += [clean_temp(ptr, free_fn)];
     scope_cx.lpad_dirty = true;
 }
