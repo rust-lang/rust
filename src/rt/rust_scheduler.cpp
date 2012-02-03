@@ -358,7 +358,7 @@ rust_scheduler::exit() {
     A(this, !lock.lock_held_by_current_thread(), "Shouldn't have lock");
     scoped_lock with(lock);
     should_exit = true;
-    lock.signal_all();
+    lock.signal();
 }
 
 //

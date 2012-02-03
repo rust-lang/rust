@@ -22,7 +22,6 @@ public:
     void unlock();
     void wait();
     void signal();
-    void signal_all();
 
     bool lock_held_by_current_thread();
 };

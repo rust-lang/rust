@@ -18,11 +18,6 @@
 lock_and_signal::lock_and_signal()
     : _holding_thread(INVALID_THREAD)
 {
-    // FIXME: In order to match the behavior of pthread_cond_broadcast on
-    // Windows, we create manual reset events. This however breaks the
-    // behavior of pthread_cond_signal, fixing this is quite involved:
-    // refer to: http://www.cs.wustl.edu/~schmidt/win32-cv-1.html
-
     _event = CreateEvent(NULL, TRUE, FALSE, NULL);
     InitializeCriticalSection(&_cs);
 }
@@ -89,17 +84,6 @@ void lock_and_signal::signal() {
     SetEvent(_event);
 #else
     CHECKED(pthread_cond_signal(&_cond));
-#endif
-}
-
-/**
- * Signal condition, and resume all waiting threads.
- */
-void lock_and_signal::signal_all() {
-#if defined(__WIN32__)
-    SetEvent(_event);
-#else
-    CHECKED(pthread_cond_broadcast(&_cond));
 #endif
 }
 
