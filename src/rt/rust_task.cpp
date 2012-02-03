@@ -244,7 +244,6 @@ rust_task::rust_task(rust_scheduler *sched, rust_task_list *state,
     list_index(-1),
     next_port_id(0),
     rendezvous_ptr(0),
-    running_on(-1),
     local_region(&sched->srv->local_region),
     boxed(&local_region),
     unwinding(false),
@@ -626,8 +625,7 @@ rust_task::backtrace() {
 
 bool rust_task::can_schedule(int id)
 {
-    return
-        running_on == -1;
+    return true;
 }
 
 void *

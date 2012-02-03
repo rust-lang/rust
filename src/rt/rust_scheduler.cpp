@@ -282,9 +282,7 @@ rust_scheduler::start_main_loop() {
         DLOG(this, task,
              "Running task %p on worker %d",
              scheduled_task, id);
-        scheduled_task->running_on = id;
         activate(scheduled_task);
-        scheduled_task->running_on = -1;
 
         DLOG(this, task,
              "returned from task %s @0x%" PRIxPTR

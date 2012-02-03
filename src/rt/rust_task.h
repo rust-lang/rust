@@ -98,10 +98,6 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     // that location before waking us up.
     uintptr_t* rendezvous_ptr;
 
-    // This flag indicates that a worker is either currently running the task
-    // or is about to run this task.
-    int running_on;
-
     memory_region local_region;
     boxed_region boxed;
 
