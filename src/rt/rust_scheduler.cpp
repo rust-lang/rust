@@ -18,7 +18,6 @@ rust_scheduler::rust_scheduler(rust_kernel *kernel,
                                rust_srv *srv,
                                int id) :
     ref_count(1),
-    interrupt_flag(0),
     _log(srv, this),
     log_lvl(log_debug),
     srv(srv),
@@ -273,8 +272,6 @@ rust_scheduler::start_main_loop() {
              scheduled_task->state->name);
 
         place_task_in_tls(scheduled_task);
-
-        interrupt_flag = 0;
 
         DLOG(this, task,
              "Running task %p on worker %d",

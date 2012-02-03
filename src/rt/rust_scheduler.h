@@ -45,9 +45,6 @@ struct rust_scheduler : public kernel_owned<rust_scheduler>,
 {
     RUST_REFCOUNTED(rust_scheduler)
 
-    // Fields known to the compiler:
-    uintptr_t interrupt_flag;
-
     // Fields known only by the runtime:
     rust_log _log;
 
