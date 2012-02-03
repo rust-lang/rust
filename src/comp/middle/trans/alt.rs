@@ -265,7 +265,7 @@ fn get_options(ccx: @crate_ctxt, m: match, col: uint) -> [opt] {
 fn extract_variant_args(bcx: @block_ctxt, pat_id: ast::node_id,
                         vdefs: {enm: def_id, var: def_id}, val: ValueRef) ->
    {vals: [ValueRef], bcx: @block_ctxt} {
-    let ccx = bcx.fcx.lcx.ccx, bcx = bcx;
+    let ccx = bcx.fcx.ccx, bcx = bcx;
     // invariant:
     // pat_id must have the same length ty_param_substs as vdefs?
     let ty_param_substs = ty::node_id_to_type_params(ccx.tcx, pat_id);
@@ -412,7 +412,7 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
     let vals_left =
         vec::slice(vals, 0u, col) +
             vec::slice(vals, col + 1u, vec::len(vals));
-    let ccx = bcx.fcx.lcx.ccx;
+    let ccx = bcx.fcx.ccx;
     let pat_id = 0;
     for br: match_branch in m {
         // Find a real id (we're adding placeholder wildcard patterns, but
@@ -692,7 +692,7 @@ fn trans_alt(cx: @block_ctxt, expr: @ast::expr, arms_: [ast::arm],
     }
 
     let exit_map = [];
-    let t = base::node_id_type(cx.fcx.lcx.ccx, expr.id);
+    let t = base::node_id_type(cx.fcx.ccx, expr.id);
     let vr = base::spill_if_immediate(er.bcx, er.val, t);
     compile_submatch(vr.bcx, match, [vr.val],
                      bind mk_fail(alt_cx, expr.span, fail_cx), exit_map);
@@ -719,7 +719,7 @@ fn trans_alt(cx: @block_ctxt, expr: @ast::expr, arms_: [ast::arm],
 // Not alt-related, but similar to the pattern-munging code above
 fn bind_irrefutable_pat(bcx: @block_ctxt, pat: @ast::pat, val: ValueRef,
                         make_copy: bool) -> @block_ctxt {
-    let ccx = bcx.fcx.lcx.ccx, bcx = bcx;
+    let ccx = bcx.fcx.ccx, bcx = bcx;
 
     // Necessary since bind_irrefutable_pat is called outside trans_alt
     alt normalize_pat(bcx_tcx(bcx), pat).node {

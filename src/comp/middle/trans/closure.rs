@@ -16,6 +16,7 @@ import back::link::{
     mangle_internal_name_by_path_and_seq};
 import util::ppaux::ty_to_str;
 import shape::{size_of};
+import ast_map::{path, path_mod, path_name};
 
 // ___Good to know (tm)__________________________________________________
 //
@@ -458,16 +459,16 @@ fn trans_expr_fn(bcx: @block_ctxt,
     let ccx = bcx_ccx(bcx), bcx = bcx;
     let fty = node_id_type(ccx, id);
     let llfnty = type_of_fn_from_ty(ccx, fty, []);
-    let sub_cx = extend_path(bcx.fcx.lcx, ccx.names("anon"));
-    let s = mangle_internal_name_by_path(ccx, sub_cx.path);
+    let sub_path = bcx.fcx.path + [path_name("anon")];
+    let s = mangle_internal_name_by_path(ccx, sub_path);
     let llfn = decl_internal_cdecl_fn(ccx.llmod, s, llfnty);
-    register_fn(ccx, sp, sub_cx.path, "anon fn", [], id);
+    register_fn(ccx, sp, sub_path, "anon fn", [], id);
 
     let trans_closure_env = fn@(ck: ty::closure_kind) -> ValueRef {
         let cap_vars = capture::compute_capture_vars(
             ccx.tcx, id, proto, cap_clause);
         let {llbox, cdata_ty, bcx} = build_closure(bcx, cap_vars, ck);
-        trans_closure(sub_cx, decl, body, llfn, no_self, [], id, {|fcx|
+        trans_closure(ccx, sub_path, decl, body, llfn, no_self, [], id, {|fcx|
             load_environment(bcx, fcx, cdata_ty, cap_vars, ck);
         });
         llbox
@@ -479,7 +480,8 @@ fn trans_expr_fn(bcx: @block_ctxt,
       ast::proto_uniq { trans_closure_env(ty::ck_uniq) }
       ast::proto_bare {
         let closure = C_null(T_opaque_box_ptr(ccx));
-        trans_closure(sub_cx, decl, body, llfn, no_self, [], id, {|_fcx|});
+        trans_closure(ccx, sub_path, decl, body, llfn, no_self, [], id,
+                      {|_fcx|});
         closure
       }
     };
@@ -569,9 +571,9 @@ fn trans_bind_1(cx: @block_ctxt, outgoing_fty: ty::t,
         ty::ck_box);
 
     // Make thunk
-    let llthunk =
-        trans_bind_thunk(cx.fcx.lcx, pair_ty, outgoing_fty_real, args,
-                         cdata_ty, *param_bounds, target_res);
+    let llthunk = trans_bind_thunk(
+        cx.fcx.ccx, cx.fcx.path, pair_ty, outgoing_fty_real, args,
+        cdata_ty, *param_bounds, target_res);
 
     // Fill the function pair
     fill_fn_pair(bcx, get_dest_addr(dest), llthunk.val, llbox);
@@ -727,7 +729,8 @@ fn make_opaque_cbox_free_glue(
 }
 
 // pth is cx.path
-fn trans_bind_thunk(cx: @local_ctxt,
+fn trans_bind_thunk(ccx: @crate_ctxt,
+                    path: path,
                     incoming_fty: ty::t,
                     outgoing_fty: ty::t,
                     args: [option<@ast::expr>],
@@ -743,8 +746,7 @@ fn trans_bind_thunk(cx: @local_ctxt,
       type_has_static_size(ccx, incoming_fty) ->
     */
     // but since we don't, we have to do the checks at the beginning.
-    let ccx = cx.ccx;
-    let tcx = ccx_tcx(ccx);
+    let tcx = ccx.tcx;
     check type_has_static_size(ccx, incoming_fty);
 
     #debug["trans_bind_thunk[incoming_fty=%s,outgoing_fty=%s,\
@@ -776,13 +778,13 @@ fn trans_bind_thunk(cx: @local_ctxt,
     // construct and return that thunk.
 
     // Give the thunk a name, type, and value.
-    let s: str = mangle_internal_name_by_path_and_seq(ccx, cx.path, "thunk");
-    let llthunk_ty: TypeRef = get_pair_fn_ty(type_of(ccx, incoming_fty));
-    let llthunk: ValueRef = decl_internal_cdecl_fn(ccx.llmod, s, llthunk_ty);
+    let s = mangle_internal_name_by_path_and_seq(ccx, path, "thunk");
+    let llthunk_ty = get_pair_fn_ty(type_of(ccx, incoming_fty));
+    let llthunk = decl_internal_cdecl_fn(ccx.llmod, s, llthunk_ty);
 
     // Create a new function context and block context for the thunk, and hold
     // onto a pointer to the first block in the function for later use.
-    let fcx = new_fn_ctxt(cx, llthunk, none);
+    let fcx = new_fn_ctxt(ccx, path, llthunk, none);
     let bcx = new_top_block_ctxt(fcx, none);
     let lltop = bcx.llbb;
     // Since we might need to construct derived tydescs that depend on
@@ -828,15 +830,14 @@ fn trans_bind_thunk(cx: @local_ctxt,
 
     // Get f's return type, which will also be the return type of the entire
     // bind expression.
-    let outgoing_ret_ty = ty::ty_fn_ret(cx.ccx.tcx, outgoing_fty);
+    let outgoing_ret_ty = ty::ty_fn_ret(ccx.tcx, outgoing_fty);
 
     // Get the types of the arguments to f.
-    let outgoing_args = ty::ty_fn_args(cx.ccx.tcx, outgoing_fty);
+    let outgoing_args = ty::ty_fn_args(ccx.tcx, outgoing_fty);
 
     // The 'llretptr' that will arrive in the thunk we're creating also needs
     // to be the correct type.  Cast it to f's return type, if necessary.
     let llretptr = fcx.llretptr;
-    let ccx = cx.ccx;
     if ty::type_contains_params(ccx.tcx, outgoing_ret_ty) {
         check non_ty_var(ccx, outgoing_ret_ty);
         let llretty = type_of_inner(ccx, outgoing_ret_ty);
@@ -879,7 +880,7 @@ fn trans_bind_thunk(cx: @local_ctxt,
     let b: int = starting_idx;
     let outgoing_arg_index: uint = 0u;
     let llout_arg_tys: [TypeRef] =
-        type_of_explicit_args(cx.ccx, outgoing_args);
+        type_of_explicit_args(ccx, outgoing_args);
     for arg: option<@ast::expr> in args {
         let out_arg = outgoing_args[outgoing_arg_index];
         let llout_arg_ty = llout_arg_tys[outgoing_arg_index];
@@ -903,7 +904,7 @@ fn trans_bind_thunk(cx: @local_ctxt,
             }
             // If the type is parameterized, then we need to cast the
             // type we actually have to the parameterized out type.
-            if ty::type_contains_params(cx.ccx.tcx, out_arg.ty) {
+            if ty::type_contains_params(ccx.tcx, out_arg.ty) {
                 val = PointerCast(bcx, val, llout_arg_ty);
             }
             llargs += [val];
@@ -913,7 +914,7 @@ fn trans_bind_thunk(cx: @local_ctxt,
           // Arg will be provided when the thunk is invoked.
           none {
             let arg: ValueRef = llvm::LLVMGetParam(llthunk, a as c_uint);
-            if ty::type_contains_params(cx.ccx.tcx, out_arg.ty) {
+            if ty::type_contains_params(ccx.tcx, out_arg.ty) {
                 arg = PointerCast(bcx, arg, llout_arg_ty);
             }
             llargs += [arg];
@@ -927,8 +928,6 @@ fn trans_bind_thunk(cx: @local_ctxt,
     // This is necessary because the type of the function that we have
     // in the closure does not know how many type descriptors the function
     // needs to take.
-    let ccx = bcx_ccx(bcx);
-
     let lltargetty =
         type_of_fn_from_ty(ccx, outgoing_fty, param_bounds);
     lltargetfn = PointerCast(bcx, lltargetfn, T_ptr(lltargetty));

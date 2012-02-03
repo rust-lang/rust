@@ -761,7 +761,7 @@ fn create_function(fcx: @fn_ctxt) -> @metadata<subprogram_md> {
     log(debug, codemap::span_to_str(sp, cx.sess.codemap));
 
     let (ident, ret_ty, id) = alt cx.ast_map.get(fcx.id) {
-      ast_map::node_item(item) {
+      ast_map::node_item(item, _) {
         alt item.node {
           ast::item_fn(decl, _, _) | ast::item_res(decl, _, _, _, _) {
             (item.ident, decl.output, item.id)
@@ -770,7 +770,7 @@ fn create_function(fcx: @fn_ctxt) -> @metadata<subprogram_md> {
                 bound to non-function"); }
         }
       }
-      ast_map::node_method(method) {
+      ast_map::node_method(method, _) {
           (method.ident, method.decl.output, method.id)
       }
       ast_map::node_res_ctor(item) {
@@ -808,7 +808,7 @@ fn create_function(fcx: @fn_ctxt) -> @metadata<subprogram_md> {
       option::none {}
     }
 
-    let path = str::connect(fcx.lcx.path + [ident], "::");
+    let path = path_str(fcx.path);
 
     let loc = codemap::lookup_char_pos(cx.sess.codemap,
                                        sp.lo);

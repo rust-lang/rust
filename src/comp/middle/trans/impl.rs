@@ -10,6 +10,7 @@ import back::{link, abi};
 import lib::llvm::llvm;
 import lib::llvm::{ValueRef, TypeRef};
 import lib::llvm::llvm::LLVMGetParam;
+import ast_map::{path, path_mod, path_name};
 
 // Translation functionality related to impls and ifaces
 //
@@ -41,18 +42,19 @@ import lib::llvm::llvm::LLVMGetParam;
 // annotates notes with information about the methods and dicts that
 // are referenced (ccx.method_map and ccx.dict_map).
 
-fn trans_impl(cx: @local_ctxt, name: ast::ident, methods: [@ast::method],
-              id: ast::node_id, tps: [ast::ty_param]) {
-    let sub_cx = extend_path(cx, name);
+fn trans_impl(ccx: @crate_ctxt, path: path, name: ast::ident,
+              methods: [@ast::method], id: ast::node_id,
+              tps: [ast::ty_param]) {
+    let sub_path = path + [path_name(name)];
     for m in methods {
-        alt cx.ccx.item_ids.find(m.id) {
+        alt ccx.item_ids.find(m.id) {
           some(llfn) {
-            trans_fn(extend_path(sub_cx, m.ident), m.decl, m.body,
-                     llfn, impl_self(ty::node_id_to_type(cx.ccx.tcx, id)),
+            trans_fn(ccx, sub_path + [path_name(m.ident)], m.decl, m.body,
+                     llfn, impl_self(ty::node_id_to_type(ccx.tcx, id)),
                      tps + m.tps, m.id);
           }
           _ {
-            cx.ccx.tcx.sess.bug("Unbound id in trans_impl");
+            ccx.tcx.sess.bug("Unbound id in trans_impl");
           }
         }
     }
@@ -180,13 +182,12 @@ fn trans_vtable(ccx: @crate_ctxt, id: ast::node_id, name: str,
     ccx.item_symbols.insert(id, name);
 }
 
-fn trans_wrapper(ccx: @crate_ctxt, pt: [ast::ident], llfty: TypeRef,
+fn trans_wrapper(ccx: @crate_ctxt, pt: path, llfty: TypeRef,
                  fill: fn(ValueRef, @block_ctxt) -> @block_ctxt)
     -> ValueRef {
-    let lcx = @{path: pt, module_path: [], ccx: ccx};
     let name = link::mangle_internal_name_by_path(ccx, pt);
     let llfn = decl_internal_cdecl_fn(ccx.llmod, name, llfty);
-    let fcx = new_fn_ctxt(lcx, llfn, none);
+    let fcx = new_fn_ctxt(ccx, [], llfn, none);
     let bcx = new_top_block_ctxt(fcx, none), lltop = bcx.llbb;
     let bcx = fill(llfn, bcx);
     build_return(bcx);
@@ -194,7 +195,7 @@ fn trans_wrapper(ccx: @crate_ctxt, pt: [ast::ident], llfty: TypeRef,
     ret llfn;
 }
 
-fn trans_impl_wrapper(ccx: @crate_ctxt, pt: [ast::ident],
+fn trans_impl_wrapper(ccx: @crate_ctxt, pt: path,
                       extra_tps: [ty::param_bounds], real_fn: ValueRef)
     -> ValueRef {
     let {inputs: real_args, output: real_ret} =
@@ -238,16 +239,18 @@ fn trans_impl_wrapper(ccx: @crate_ctxt, pt: [ast::ident],
     })
 }
 
-fn trans_impl_vtable(ccx: @crate_ctxt, pt: [ast::ident],
+fn trans_impl_vtable(ccx: @crate_ctxt, pt: path,
                      iface_id: ast::def_id, ms: [@ast::method],
                      tps: [ast::ty_param], it: @ast::item) {
-    let new_pt = pt + [it.ident + int::str(it.id), "wrap"];
+    let new_pt = pt + [path_name(it.ident), path_name(int::str(it.id)),
+                       path_name("wrap")];
     let extra_tps = vec::map(tps, {|p| param_bounds(ccx, p)});
     let ptrs = vec::map(*ty::iface_methods(ccx.tcx, iface_id), {|im|
         alt vec::find(ms, {|m| m.ident == im.ident}) {
           some(m) {
             let target = ccx.item_ids.get(m.id);
-            trans_impl_wrapper(ccx, new_pt + [m.ident], extra_tps, target)
+            trans_impl_wrapper(ccx, new_pt + [path_name(m.ident)], extra_tps,
+                               target)
           }
           _ {
             ccx.tcx.sess.span_bug(it.span, "No matching method \
@@ -255,11 +258,12 @@ fn trans_impl_vtable(ccx: @crate_ctxt, pt: [ast::ident],
           }
         }
     });
-    let s = link::mangle_internal_name_by_path(ccx, new_pt + ["!vtable"]);
+    let s = link::mangle_internal_name_by_path(
+        ccx, new_pt + [path_name("!vtable")]);
     trans_vtable(ccx, it.id, s, ptrs);
 }
 
-fn trans_iface_wrapper(ccx: @crate_ctxt, pt: [ast::ident], m: ty::method,
+fn trans_iface_wrapper(ccx: @crate_ctxt, pt: path, m: ty::method,
                        n: uint) -> ValueRef {
     let {llty: llfty, _} = wrapper_fn_ty(ccx, T_ptr(T_i8()), m);
     trans_wrapper(ccx, pt, llfty, {|llfn, bcx|
@@ -287,15 +291,16 @@ fn trans_iface_wrapper(ccx: @crate_ctxt, pt: [ast::ident], m: ty::method,
     })
 }
 
-fn trans_iface_vtable(ccx: @crate_ctxt, pt: [ast::ident], it: @ast::item) {
-    let new_pt = pt + [it.ident + int::str(it.id)];
+fn trans_iface_vtable(ccx: @crate_ctxt, pt: path, it: @ast::item) {
+    let new_pt = pt + [path_name(it.ident), path_name(int::str(it.id))];
     let i_did = ast_util::local_def(it.id), i = 0u;
     let ptrs = vec::map(*ty::iface_methods(ccx.tcx, i_did), {|m|
-        let w = trans_iface_wrapper(ccx, new_pt + [m.ident], m, i);
+        let w = trans_iface_wrapper(ccx, new_pt + [path_name(m.ident)], m, i);
         i += 1u;
         w
     });
-    let s = link::mangle_internal_name_by_path(ccx, new_pt + ["!vtable"]);
+    let s = link::mangle_internal_name_by_path(
+        ccx, new_pt + [path_name("!vtable")]);
     trans_vtable(ccx, it.id, s, ptrs);
 }
 

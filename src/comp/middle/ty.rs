@@ -2531,7 +2531,7 @@ fn enum_variants(cx: ctxt, id: ast::def_id) -> @[variant_info] {
         // check the disr_expr if it exists), this code should likely be
         // moved there to avoid having to call eval_const_expr twice.
         alt cx.items.get(id.node) {
-          ast_map::node_item(@{node: ast::item_enum(variants, _), _}) {
+          ast_map::node_item(@{node: ast::item_enum(variants, _), _}, _) {
             let disr_val = -1;
             @vec::map(variants, {|variant|
                 let ctor_ty = node_id_to_type(cx, variant.node.id);

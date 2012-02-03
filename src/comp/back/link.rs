@@ -18,6 +18,7 @@ import syntax::ast;
 import syntax::print::pprust;
 import lib::llvm::{ModuleRef, mk_pass_manager, mk_target_data, True, False};
 import util::filesearch;
+import middle::ast_map::{path, path_mod, path_name};
 
 enum output_type {
     output_type_none,
@@ -514,25 +515,27 @@ fn get_symbol_hash(ccx: @crate_ctxt, t: ty::t) -> str {
     ret hash;
 }
 
-fn mangle(ss: [str]) -> str {
+fn mangle(ss: path) -> str {
     // Follow C++ namespace-mangling style
 
     let n = "_ZN"; // Begin name-sequence.
 
-    for s: str in ss { n += #fmt["%u%s", str::byte_len(s), s]; }
+    for s in ss {
+        alt s { path_name(s) | path_mod(s) {
+          n += #fmt["%u%s", str::byte_len(s), s];
+        } }
+    }
     n += "E"; // End name-sequence.
-
-    ret n;
+    n
 }
 
-fn exported_name(path: [str], hash: str, _vers: str) -> str {
+fn exported_name(path: path, hash: str, _vers: str) -> str {
     // FIXME: versioning isn't working yet
-
-    ret mangle(path + [hash]); //  + "@" + vers;
+    ret mangle(path + [path_name(hash)]); //  + "@" + vers;
 
 }
 
-fn mangle_exported_name(ccx: @crate_ctxt, path: [str], t: ty::t) -> str {
+fn mangle_exported_name(ccx: @crate_ctxt, path: path, t: ty::t) -> str {
     let hash = get_symbol_hash(ccx, t);
     ret exported_name(path, hash, ccx.link_meta.vers);
 }
@@ -541,15 +544,15 @@ fn mangle_internal_name_by_type_only(ccx: @crate_ctxt, t: ty::t, name: str) ->
    str {
     let s = util::ppaux::ty_to_short_str(ccx.tcx, t);
     let hash = get_symbol_hash(ccx, t);
-    ret mangle([name, s, hash]);
+    ret mangle([path_name(name), path_name(s), path_name(hash)]);
 }
 
-fn mangle_internal_name_by_path_and_seq(ccx: @crate_ctxt, path: [str],
+fn mangle_internal_name_by_path_and_seq(ccx: @crate_ctxt, path: path,
                                         flav: str) -> str {
-    ret mangle(path + [ccx.names(flav)]);
+    ret mangle(path + [path_name(ccx.names(flav))]);
 }
 
-fn mangle_internal_name_by_path(_ccx: @crate_ctxt, path: [str]) -> str {
+fn mangle_internal_name_by_path(_ccx: @crate_ctxt, path: path) -> str {
     ret mangle(path);
 }
 

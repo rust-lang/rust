@@ -245,10 +245,10 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
             if id.crate != ast::local_crate { csearch::get_type(tcx, id) }
             else {
                 alt tcx.items.find(id.node) {
-                  some(ast_map::node_item(item)) {
+                  some(ast_map::node_item(item, _)) {
                     ty_of_item(tcx, mode, item)
                   }
-                  some(ast_map::node_native_item(native_item)) {
+                  some(ast_map::node_native_item(native_item, _)) {
                     ty_of_native_item(tcx, mode, native_item)
                   }
                   _ {
@@ -1415,7 +1415,7 @@ fn impl_self_ty(tcx: ty::ctxt, did: ast::def_id) -> {n_tps: uint, ty: ty::t} {
     if did.crate == ast::local_crate {
         alt tcx.items.get(did.node) {
           ast_map::node_item(@{node: ast::item_impl(ts, _, st, _),
-                               _}) {
+                               _}, _) {
             {n_tps: vec::len(ts), ty: ast_ty_to_ty(tcx, m_check, st)}
           }
           an_item {
@@ -1484,7 +1484,7 @@ fn lookup_method(fcx: @fn_ctxt, isc: resolve::iscopes,
     fn ty_from_did(tcx: ty::ctxt, did: ast::def_id) -> ty::t {
         if did.crate == ast::local_crate {
             alt tcx.items.get(did.node) {
-              ast_map::node_method(m) {
+              ast_map::node_method(m, _) {
                 let mt = ty_of_method(tcx, m_check, m);
                 ty::mk_fn(tcx, mt.fty)
               }

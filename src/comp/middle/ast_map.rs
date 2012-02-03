@@ -4,10 +4,13 @@ import syntax::ast::*;
 import syntax::ast_util;
 import syntax::{visit, codemap};
 
+enum path_elt { path_mod(str), path_name(str) }
+type path = [path_elt];
+
 enum ast_node {
-    node_item(@item),
-    node_native_item(@native_item),
-    node_method(@method),
+    node_item(@item, @path),
+    node_native_item(@native_item, @path),
+    node_method(@method, @path),
     node_expr(@expr),
     // Locals are numbered, because the alias analysis needs to know in which
     // order they are introduced.
@@ -17,66 +20,78 @@ enum ast_node {
 }
 
 type map = std::map::map<node_id, ast_node>;
-type ctx = @{map: map, mutable local_id: uint};
+type ctx = {map: map, mutable path: path, mutable local_id: uint};
+type vt = visit::vt<ctx>;
 
 fn map_crate(c: crate) -> map {
-    let cx = @{map: std::map::new_int_hash(),
-               mutable local_id: 0u};
-
-    let v_map = visit::mk_simple_visitor
-        (@{visit_item: bind map_item(cx, _),
-           visit_native_item: bind map_native_item(cx, _),
-           visit_expr: bind map_expr(cx, _),
-           visit_fn: bind map_fn(cx, _, _, _, _, _),
-           visit_local: bind map_local(cx, _),
-           visit_arm: bind map_arm(cx, _)
-           with *visit::default_simple_visitor()});
-    visit::visit_crate(c, (), v_map);
+    let cx = {map: std::map::new_int_hash(),
+              mutable path: [],
+              mutable local_id: 0u};
+    visit::visit_crate(c, cx, visit::mk_vt(@{
+        visit_item: map_item,
+        visit_native_item: map_native_item,
+        visit_expr: map_expr,
+        visit_fn: map_fn,
+        visit_local: map_local,
+        visit_arm: map_arm
+        with *visit::default_visitor()
+    }));
     ret cx.map;
 }
 
-fn map_fn(cx: ctx, _fk: visit::fn_kind, decl: fn_decl, _body: blk,
-          _sp: codemap::span, _id: node_id) {
+fn map_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
+          sp: codemap::span, id: node_id, cx: ctx, v: vt) {
     for a in decl.inputs {
         cx.map.insert(a.id, node_arg(a, cx.local_id));
         cx.local_id += 1u;
     }
+    visit::visit_fn(fk, decl, body, sp, id, cx, v);
 }
 
-fn map_local(cx: ctx, loc: @local) {
+fn map_local(loc: @local, cx: ctx, v: vt) {
     pat_util::pat_bindings(loc.node.pat) {|p_id, _s, _p|
         cx.map.insert(p_id, node_local(cx.local_id));
         cx.local_id += 1u;
     };
+    visit::visit_local(loc, cx, v);
 }
 
-fn map_arm(cx: ctx, arm: arm) {
+fn map_arm(arm: arm, cx: ctx, v: vt) {
     pat_util::pat_bindings(arm.pats[0]) {|p_id, _s, _p|
         cx.map.insert(p_id, node_local(cx.local_id));
         cx.local_id += 1u;
     };
+    visit::visit_arm(arm, cx, v);
 }
 
-fn map_item(cx: ctx, i: @item) {
-    cx.map.insert(i.id, node_item(i));
+fn map_item(i: @item, cx: ctx, v: vt) {
+    cx.map.insert(i.id, node_item(i, @cx.path));
     alt i.node {
       item_impl(_, _, _, ms) {
-        for m in ms { cx.map.insert(m.id, node_method(m)); }
+        for m in ms { cx.map.insert(m.id, node_method(m, @cx.path)); }
       }
       item_res(_, _, _, dtor_id, ctor_id) {
         cx.map.insert(ctor_id, node_res_ctor(i));
-        cx.map.insert(dtor_id, node_item(i));
+        cx.map.insert(dtor_id, node_item(i, @cx.path));
       }
       _ { }
     }
+    alt i.node {
+      item_mod(_) | item_native_mod(_) { cx.path += [path_mod(i.ident)]; }
+      _ { cx.path += [path_name(i.ident)]; }
+    }
+    visit::visit_item(i, cx, v);
+    vec::pop(cx.path);
 }
 
-fn map_native_item(cx: ctx, i: @native_item) {
-    cx.map.insert(i.id, node_native_item(i));
+fn map_native_item(i: @native_item, cx: ctx, v: vt) {
+    cx.map.insert(i.id, node_native_item(i, @cx.path));
+    visit::visit_native_item(i, cx, v);
 }
 
-fn map_expr(cx: ctx, ex: @expr) {
+fn map_expr(ex: @expr, cx: ctx, v: vt) {
     cx.map.insert(ex.id, node_expr(ex));
+    visit::visit_expr(ex, cx, v);
 }
 
 // Local Variables:

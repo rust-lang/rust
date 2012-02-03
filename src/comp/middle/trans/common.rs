@@ -19,7 +19,8 @@ import lib::llvm::{llvm, target_data, type_names, associate_type,
                    name_has_type};
 import lib::llvm::{ModuleRef, ValueRef, TypeRef, BasicBlockRef, BuilderRef};
 import lib::llvm::{True, False, Bool};
-import metadata::{csearch};
+import metadata::csearch;
+import ast_map::path;
 
 // FIXME: These should probably be pulled in here too.
 import base::{type_of_fn, drop_ty};
@@ -123,11 +124,6 @@ type crate_ctxt =
      crate_map: ValueRef,
      dbg_cx: option<@debuginfo::debug_ctxt>,
      mutable do_not_commit_warning_issued: bool};
-
-type local_ctxt =
-    {path: [str],
-     module_path: [str],
-     ccx: @crate_ctxt};
 
 // Types used for llself.
 type val_self_pair = {v: ValueRef, t: ty::t};
@@ -239,9 +235,9 @@ type fn_ctxt =
      mutable lltyparams: [fn_ty_param],
      derived_tydescs: hashmap<ty::t, derived_tydesc_info>,
      id: ast::node_id,
-     ret_style: ast::ret_style,
      span: option<span>,
-     lcx: @local_ctxt};
+     path: path,
+     ccx: @crate_ctxt};
 
 fn warn_not_to_commit(ccx: @crate_ctxt, msg: str) {
     if !ccx.do_not_commit_warning_issued {
@@ -392,10 +388,6 @@ enum block_parent { parent_none, parent_some(@block_ctxt), }
 type result = {bcx: @block_ctxt, val: ValueRef};
 type result_t = {bcx: @block_ctxt, val: ValueRef, ty: ty::t};
 
-fn extend_path(cx: @local_ctxt, name: str) -> @local_ctxt {
-    ret @{path: cx.path + [name] with *cx};
-}
-
 fn rslt(bcx: @block_ctxt, val: ValueRef) -> result {
     {bcx: bcx, val: val}
 }
@@ -430,13 +422,11 @@ fn find_scope_cx(cx: @block_ctxt) -> @block_ctxt {
 // Accessors
 // TODO: When we have overloading, simplify these names!
 
-pure fn bcx_tcx(bcx: @block_ctxt) -> ty::ctxt { ret bcx.fcx.lcx.ccx.tcx; }
-pure fn bcx_ccx(bcx: @block_ctxt) -> @crate_ctxt { ret bcx.fcx.lcx.ccx; }
-pure fn bcx_lcx(bcx: @block_ctxt) -> @local_ctxt { ret bcx.fcx.lcx; }
+pure fn bcx_tcx(bcx: @block_ctxt) -> ty::ctxt { ret bcx.fcx.ccx.tcx; }
+pure fn bcx_ccx(bcx: @block_ctxt) -> @crate_ctxt { ret bcx.fcx.ccx; }
 pure fn bcx_fcx(bcx: @block_ctxt) -> @fn_ctxt { ret bcx.fcx; }
-pure fn fcx_ccx(fcx: @fn_ctxt) -> @crate_ctxt { ret fcx.lcx.ccx; }
-pure fn fcx_tcx(fcx: @fn_ctxt) -> ty::ctxt { ret fcx.lcx.ccx.tcx; }
-pure fn lcx_ccx(lcx: @local_ctxt) -> @crate_ctxt { ret lcx.ccx; }
+pure fn fcx_ccx(fcx: @fn_ctxt) -> @crate_ctxt { ret fcx.ccx; }
+pure fn fcx_tcx(fcx: @fn_ctxt) -> ty::ctxt { ret fcx.ccx.tcx; }
 pure fn ccx_tcx(ccx: @crate_ctxt) -> ty::ctxt { ret ccx.tcx; }
 
 // LLVM type constructors.
@@ -941,6 +931,18 @@ fn align_to(cx: @block_ctxt, off: ValueRef, align: ValueRef) -> ValueRef {
     let mask = build::Sub(cx, align, C_int(bcx_ccx(cx), 1));
     let bumped = build::Add(cx, off, mask);
     ret build::And(cx, bumped, build::Not(cx, mask));
+}
+
+fn path_str(p: path) -> str {
+    let r = "", first = true;
+    for e in p {
+        alt e { ast_map::path_name(s) | ast_map::path_mod(s) {
+          if first { first = false; }
+          else { r += "::"; }
+          r += s;
+        } }
+    }
+    r
 }
 
 //

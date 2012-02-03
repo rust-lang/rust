@@ -89,11 +89,9 @@ fn local_rhs_span(l: @ast::local, def: span) -> span {
     alt l.node.init { some(i) { ret i.expr.span; } _ { ret def; } }
 }
 
-fn is_main_name(path: [ast::ident]) -> bool {
-    str::eq(option::get(vec::last(path)), "main")
+fn is_main_name(path: middle::ast_map::path) -> bool {
+    option::get(vec::last(path)) == middle::ast_map::path_name("main")
 }
-
-
 
 //
 // Local Variables:

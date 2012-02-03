@@ -11,7 +11,7 @@ import common::{block_ctxt, T_ptr, T_nil, T_i8, T_i1, T_void,
                 T_fn, val_ty, bcx_ccx, C_i32, val_str};
 
 fn B(cx: @block_ctxt) -> BuilderRef {
-    let b = *cx.fcx.lcx.ccx.builder;
+    let b = *cx.fcx.ccx.builder;
     llvm::LLVMPositionBuilderAtEnd(b, cx.llbb);
     ret b;
 }
@@ -312,7 +312,7 @@ fn Free(cx: @block_ctxt, PointerVal: ValueRef) {
 }
 
 fn Load(cx: @block_ctxt, PointerVal: ValueRef) -> ValueRef {
-    let ccx = cx.fcx.lcx.ccx;
+    let ccx = cx.fcx.ccx;
     if cx.unreachable {
         let ty = val_ty(PointerVal);
         let eltty = if llvm::LLVMGetTypeKind(ty) == 11 as c_int {
@@ -511,7 +511,7 @@ fn AddIncomingToPhi(phi: ValueRef, val: ValueRef, bb: BasicBlockRef) {
 }
 
 fn _UndefReturn(cx: @block_ctxt, Fn: ValueRef) -> ValueRef {
-    let ccx = cx.fcx.lcx.ccx;
+    let ccx = cx.fcx.ccx;
     let ty = val_ty(Fn);
     let retty = if llvm::LLVMGetTypeKind(ty) == 8 as c_int {
         llvm::LLVMGetReturnType(ty) } else { ccx.int_type };
@@ -625,7 +625,7 @@ fn IsNotNull(cx: @block_ctxt, Val: ValueRef) -> ValueRef {
 }
 
 fn PtrDiff(cx: @block_ctxt, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    let ccx = cx.fcx.lcx.ccx;
+    let ccx = cx.fcx.ccx;
     if cx.unreachable { ret llvm::LLVMGetUndef(ccx.int_type); }
     ret llvm::LLVMBuildPtrDiff(B(cx), LHS, RHS, noname());
 }

@@ -67,7 +67,7 @@ fn parse_item_attrs<T>(
     parse_attrs: fn~([ast::attribute]) -> T) -> T {
     astsrv::exec(srv) {|ctxt|
         let attrs = alt ctxt.ast_map.get(id) {
-          ast_map::node_item(item) { item.attrs }
+          ast_map::node_item(item, _) { item.attrs }
           _ {
             fail "parse_item_attrs: not an item";
           }
@@ -246,7 +246,7 @@ fn fold_enum(
                 alt ctxt.ast_map.get(doc.id) {
                   ast_map::node_item(@{
                     node: ast::item_enum(ast_variants, _), _
-                  }) {
+                  }, _) {
                     let ast_variant = option::get(
                         vec::find(ast_variants) {|v|
                             v.node.name == variant.name
@@ -351,14 +351,14 @@ fn merge_method_attrs(
         alt ctxt.ast_map.get(item_id) {
           ast_map::node_item(@{
             node: ast::item_iface(_, methods), _
-          }) {
+          }, _) {
             vec::map(methods) {|method|
                 (method.ident, attr_parser::parse_method(method.attrs))
             }
           }
           ast_map::node_item(@{
             node: ast::item_impl(_, _, _, methods), _
-          }) {
+          }, _) {
             vec::map(methods) {|method|
                 (method.ident, attr_parser::parse_method(method.attrs))
             }

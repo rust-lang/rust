@@ -447,11 +447,11 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::writer,
     encode_info_for_mod(ecx, ebml_w, crate_mod, crate_node_id, "");
     ecx.ccx.ast_map.items {|key, val|
         alt val {
-          middle::ast_map::node_item(i) {
+          middle::ast_map::node_item(i, _) {
             index += [{val: key, pos: ebml_w.writer.tell()}];
             encode_info_for_item(ecx, ebml_w, i, index);
           }
-          middle::ast_map::node_native_item(i) {
+          middle::ast_map::node_native_item(i, _) {
             index += [{val: key, pos: ebml_w.writer.tell()}];
             encode_info_for_native_item(ecx, ebml_w, i);
           }

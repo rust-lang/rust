@@ -480,7 +480,8 @@ fn visit_fn_with_scope(e: @env, fk: visit::fn_kind, decl: ast::fn_decl,
     // is this a main fn declaration?
     alt fk {
       visit::fk_item_fn(nm, _) {
-        if is_main_name([nm]) && !e.sess.building_library {
+        if is_main_name([ast_map::path_name(nm)]) &&
+           !e.sess.building_library {
             // This is a main function -- set it in the session
             // as the main ID
             e.sess.main_fn = some((id, sp));

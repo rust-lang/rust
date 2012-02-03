@@ -470,15 +470,6 @@ fn shape_of_variant(ccx: @crate_ctxt, v: ty::variant_info,
     ret s;
 }
 
-//fn variant_names(ccx: @crate_ctxt, tag_id: ast::def_id) -> [str] {
-//    assert ast::local_crate == tag_id.crate;
-//    alt ccx.tcx.items.get(tag_id.node) {
-//      ast_map::node_item(@{node: ast::item_tag(variants, _), _}) {
-//        vec::map(variants) {|variant| variant.node.name}
-//      }
-//    }
-//}
-
 fn gen_enum_shapes(ccx: @crate_ctxt) -> ValueRef {
     // Loop over all the enum variants and write their shapes into a
     // data buffer. As we do this, it's possible for us to discover
