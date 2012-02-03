@@ -9,8 +9,8 @@ export merge_sort;
 export quick_sort;
 export quick_sort3;
 
-/* Type: lteq */
-type lteq<T> = fn(T, T) -> bool;
+/* Type: le */
+type le<T> = fn(T, T) -> bool;
 
 /*
 Function: merge_sort
@@ -20,8 +20,8 @@ Merge sort. Returns a new vector containing the sorted list.
 Has worst case O(n log n) performance, best case O(n), but
 is not space efficient. This is a stable sort.
 */
-fn merge_sort<T: copy>(le: lteq<T>, v: [const T]) -> [T] {
-    fn merge<T: copy>(le: lteq<T>, a: [T], b: [T]) -> [T] {
+fn merge_sort<T: copy>(le: le<T>, v: [const T]) -> [T] {
+    fn merge<T: copy>(le: le<T>, a: [T], b: [T]) -> [T] {
         let rs: [T] = [];
         let a_len: uint = len::<T>(a);
         let a_ix: uint = 0u;
@@ -46,7 +46,7 @@ fn merge_sort<T: copy>(le: lteq<T>, v: [const T]) -> [T] {
     ret merge::<T>(le, merge_sort::<T>(le, a), merge_sort::<T>(le, b));
 }
 
-fn part<T: copy>(compare_func: lteq<T>, arr: [mutable T], left: uint,
+fn part<T: copy>(compare_func: le<T>, arr: [mutable T], left: uint,
                 right: uint, pivot: uint) -> uint {
     let pivot_value = arr[pivot];
     arr[pivot] <-> arr[right];
@@ -63,7 +63,7 @@ fn part<T: copy>(compare_func: lteq<T>, arr: [mutable T], left: uint,
     ret storage_index;
 }
 
-fn qsort<T: copy>(compare_func: lteq<T>, arr: [mutable T], left: uint,
+fn qsort<T: copy>(compare_func: le<T>, arr: [mutable T], left: uint,
              right: uint) {
     if right > left {
         let pivot = (left + right) / 2u;
@@ -84,12 +84,12 @@ Quicksort. Sorts a mutable vector in place.
 Has worst case O(n^2) performance, average case O(n log n).
 This is an unstable sort.
 */
-fn quick_sort<T: copy>(compare_func: lteq<T>, arr: [mutable T]) {
+fn quick_sort<T: copy>(compare_func: le<T>, arr: [mutable T]) {
     if len::<T>(arr) == 0u { ret; }
     qsort::<T>(compare_func, arr, 0u, len::<T>(arr) - 1u);
 }
 
-fn qsort3<T: copy>(compare_func_lt: lteq<T>, compare_func_eq: lteq<T>,
+fn qsort3<T: copy>(compare_func_lt: le<T>, compare_func_eq: le<T>,
                   arr: [mutable T], left: int, right: int) {
     if right <= left { ret; }
     let v: T = arr[right];
@@ -150,7 +150,7 @@ According to these slides this is the algorithm of choice for
 
 This is an unstable sort.
 */
-fn quick_sort3<T: copy>(compare_func_lt: lteq<T>, compare_func_eq: lteq<T>,
+fn quick_sort3<T: copy>(compare_func_lt: le<T>, compare_func_eq: le<T>,
                        arr: [mutable T]) {
     if len::<T>(arr) == 0u { ret; }
     qsort3::<T>(compare_func_lt, compare_func_eq, arr, 0,
@@ -204,8 +204,8 @@ mod test_qsort3 {
 mod test_qsort {
     fn check_sort(v1: [mutable int], v2: [mutable int]) {
         let len = vec::len::<int>(v1);
-        fn ltequal(&&a: int, &&b: int) -> bool { ret a <= b; }
-        let f = ltequal;
+        fn leual(&&a: int, &&b: int) -> bool { ret a <= b; }
+        let f = leual;
         quick_sort::<int>(f, v1);
         let i = 0u;
         while i < len {
@@ -247,8 +247,8 @@ mod test_qsort {
 
         let expected = [1, 2, 3];
 
-        fn lteq(&&a: int, &&b: int) -> bool { int::le(a, b) }
-        sort::quick_sort(lteq, names);
+        fn le(&&a: int, &&b: int) -> bool { int::le(a, b) }
+        sort::quick_sort(le, names);
 
         let immut_names = vec::from_mut(names);
 
@@ -264,8 +264,8 @@ mod tests {
 
     fn check_sort(v1: [int], v2: [int]) {
         let len = vec::len::<int>(v1);
-        fn lteq(&&a: int, &&b: int) -> bool { ret a <= b; }
-        let f = lteq;
+        fn le(&&a: int, &&b: int) -> bool { ret a <= b; }
+        let f = le;
         let v3 = merge_sort::<int>(f, v1);
         let i = 0u;
         while i < len {
@@ -294,9 +294,9 @@ mod tests {
 
     #[test]
     fn test_merge_sort_mutable() {
-        fn lteq(&&a: int, &&b: int) -> bool { ret a <= b; }
+        fn le(&&a: int, &&b: int) -> bool { ret a <= b; }
         let v1 = [mutable 3, 2, 1];
-        let v2 = merge_sort(lteq, v1);
+        let v2 = merge_sort(le, v1);
         assert v2 == [1, 2, 3];
     }
 }
