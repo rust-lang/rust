@@ -135,72 +135,54 @@ type fn_ty_param = {desc: ValueRef, dicts: option<[ValueRef]>};
 
 // Function context.  Every LLVM function we create will have one of
 // these.
-type fn_ctxt =
+type fn_ctxt = {
     // The ValueRef returned from a call to llvm::LLVMAddFunction; the
     // address of the first instruction in the sequence of
     // instructions for this function that will go in the .text
     // section of the executable we're generating.
+    llfn: ValueRef,
 
-    // The three implicit arguments that arrive in the function we're
-    // creating.  For instance, foo(int, int) is really foo(ret*,
-    // task*, env*, int, int).  These are also available via
-    // llvm::LLVMGetParam(llfn, uint) where uint = 1, 2, 0
-    // respectively, but we unpack them into these fields for
-    // convenience.
+    // The two implicit arguments that arrive in the function we're creating.
+    // For instance, foo(int, int) is really foo(ret*, env*, int, int).
+    llenv: ValueRef,
+    llretptr: ValueRef,
 
-    // Points to the current task.
-
-    // Points to the current environment (bindings of variables to
-    // values), if this is a regular function
-
-    // Points to where the return value of this function should end
-    // up.
-
-    // The next three elements: "hoisted basic blocks" containing
+    // These elements: "hoisted basic blocks" containing
     // administrative activities that have to happen in only one place in
     // the function, due to LLVM's quirks.
-
     // A block for all the function's static allocas, so that LLVM
     // will coalesce them into a single alloca call.
-
+    mutable llstaticallocas: BasicBlockRef,
     // A block containing code that copies incoming arguments to space
     // already allocated by code in one of the llallocas blocks.
     // (LLVM requires that arguments be copied to local allocas before
     // allowing most any operation to be performed on them.)
-
-    // The first block containing derived tydescs received from the
-    // runtime.  See description of derived_tydescs, below.
-
-    // The last block of the llderivedtydescs group.
-
+    mutable llloadenv: BasicBlockRef,
+    // The first and last block containing derived tydescs received from the
+    // runtime. See description of derived_tydescs, below.
+    mutable llderivedtydescs_first: BasicBlockRef,
+    mutable llderivedtydescs: BasicBlockRef,
     // A block for all of the dynamically sized allocas.  This must be
     // after llderivedtydescs, because these sometimes depend on
     // information computed from derived tydescs.
-
+    mutable lldynamicallocas: BasicBlockRef,
+    mutable llreturn: BasicBlockRef,
     // The token used to clear the dynamic allocas at the end of this frame.
-
+    mutable llobstacktoken: option<ValueRef>,
     // The 'self' value currently in use in this function, if there
     // is one.
-
-    // If this function is actually a iter, a block containing the
-    // code called whenever the iter calls 'put'.
-
-    // The next four items: hash tables mapping from AST def_ids to
-    // LLVM-stuff-in-the-frame.
+    mutable llself: option<val_self_pair>,
 
     // Maps arguments to allocas created for them in llallocas.
-
+    llargs: hashmap<ast::node_id, local_val>,
     // Maps the def_ids for local variables to the allocas created for
     // them in llallocas.
+    lllocals: hashmap<ast::node_id, local_val>,
+    // Same as above, but for closure upvars
+    llupvars: hashmap<ast::node_id, ValueRef>,
 
-    // The same as above, but for variables accessed via the frame
-    // pointer we pass into an iter, for access to the static
-    // environment of the iter-calling frame.
-
-    // For convenience, a vector of the incoming tydescs for each of
-    // this functions type parameters, fetched via llvm::LLVMGetParam.
-    // For example, for a function foo::<A, B, C>(), lltydescs contains
-    // the ValueRefs for the tydescs for A, B, and C.
+    // A vector of incoming type descriptors and their associated iface dicts.
+    mutable lltyparams: [fn_ty_param],
 
     // Derived tydescs are tydescs created at runtime, for types that
     // involve type parameters inside type constructors.  For example,
@@ -211,35 +193,24 @@ type fn_ctxt =
     // when information about both "[T]" and "T" are available.  When
     // such a tydesc is created, we cache it in the derived_tydescs
     // table for the next time that such a tydesc is needed.
+    derived_tydescs: hashmap<ty::t, derived_tydesc_info>,
 
     // The node_id of the function, or -1 if it doesn't correspond to
     // a user-defined function.
+    id: ast::node_id,
 
-    // The source span where this function comes from, for error
-    // reporting.
+    // If this function is being monomorphized, this contains the type
+    // substitutions used.
+    param_substs: option<[ty::t]>,
 
-    // This function's enclosing local context.
-    {llfn: ValueRef,
-     llenv: ValueRef,
-     llretptr: ValueRef,
-     mutable llstaticallocas: BasicBlockRef,
-     mutable llloadenv: BasicBlockRef,
-     mutable llderivedtydescs_first: BasicBlockRef,
-     mutable llderivedtydescs: BasicBlockRef,
-     mutable lldynamicallocas: BasicBlockRef,
-     mutable llreturn: BasicBlockRef,
-     mutable llobstacktoken: option<ValueRef>,
-     mutable llself: option<val_self_pair>,
-     llargs: hashmap<ast::node_id, local_val>,
-     lllocals: hashmap<ast::node_id, local_val>,
-     llupvars: hashmap<ast::node_id, ValueRef>,
-     mutable lltyparams: [fn_ty_param],
-     derived_tydescs: hashmap<ty::t, derived_tydesc_info>,
-     id: ast::node_id,
-     param_substs: option<[ty::t]>,
-     span: option<span>,
-     path: path,
-     ccx: @crate_ctxt};
+    // The source span and nesting context where this function comes from, for
+    // error reporting and symbol generation.
+    span: option<span>,
+    path: path,
+
+    // This function's enclosing crate context.
+    ccx: @crate_ctxt
+};
 
 fn warn_not_to_commit(ccx: @crate_ctxt, msg: str) {
     if !ccx.do_not_commit_warning_issued {
