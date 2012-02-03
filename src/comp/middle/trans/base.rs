@@ -3742,9 +3742,10 @@ fn trans_log(lvl: @ast::expr, cx: @block_ctxt, e: @ast::expr) -> @block_ctxt {
        ret trans_expr(cx, lvl, ignore);
     }
 
-    let modpath = vec::filter(cx.fcx.path, {|e|
-        alt e { path_mod(_) { true } _ { false } }
-    });
+    let modpath = [path_mod(ccx.link_meta.name)] +
+        vec::filter(cx.fcx.path, {|e|
+            alt e { path_mod(_) { true } _ { false } }
+        });
     let modname = path_str(modpath);
 
     let global = if ccx.module_data.contains_key(modname) {
