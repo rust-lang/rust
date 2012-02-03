@@ -353,7 +353,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_def_id(ebml_w, local_def(ctor_id));
         encode_family(ebml_w, 'y' as u8);
         encode_type_param_bounds(ebml_w, ecx, tps);
-        encode_type(ecx, ebml_w, ty::ty_fn_ret(tcx, fn_ty));
+        encode_type(ecx, ebml_w, ty::ty_fn_ret(fn_ty));
         encode_name(ebml_w, item.ident);
         encode_symbol(ecx, ebml_w, item.id);
         ebml::end_tag(ebml_w);

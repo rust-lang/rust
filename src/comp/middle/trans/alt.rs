@@ -428,8 +428,6 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
         let rec_vals = [];
         for field_name: ast::ident in rec_fields {
             let ix = option::get(ty::field_idx(field_name, fields));
-            // not sure how to get rid of this check
-            check type_is_tup_like(bcx, rec_ty);
             let r = base::GEP_tup_like(bcx, rec_ty, val, [0, ix as int]);
             rec_vals += [r.val];
             bcx = r.bcx;
@@ -441,18 +439,12 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
 
     if any_tup_pat(m, col) {
         let tup_ty = ty::node_id_to_type(ccx.tcx, pat_id);
-        let n_tup_elts =
-            alt ty::struct(ccx.tcx, tup_ty) {
-              ty::ty_tup(elts) { vec::len(elts) }
-              _ {
-                  ccx.sess.bug("Non-tuple type in tuple\
-                    pattern");
-              }
-            };
+        let n_tup_elts = alt ty::get(tup_ty).struct {
+          ty::ty_tup(elts) { vec::len(elts) }
+          _ { ccx.sess.bug("Non-tuple type in tuple pattern"); }
+        };
         let tup_vals = [], i = 0u;
         while i < n_tup_elts {
-            // how to get rid of this check?
-            check type_is_tup_like(bcx, tup_ty);
             let r = base::GEP_tup_like(bcx, tup_ty, val, [0, i as int]);
             tup_vals += [r.val];
             bcx = r.bcx;
@@ -500,11 +492,8 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
           lit(l) {
             test_val = Load(bcx, val);
             let pty = ty::node_id_to_type(ccx.tcx, pat_id);
-            kind = if ty::type_is_integral(ccx.tcx, pty) {
-                       switch
-                   } else {
-                       compare
-                   };
+            kind = if ty::type_is_integral(pty) { switch }
+                   else { compare };
           }
           range(_, _) {
             test_val = Load(bcx, val);
@@ -729,7 +718,6 @@ fn bind_irrefutable_pat(bcx: @block_ctxt, pat: @ast::pat, val: ValueRef,
             // FIXME: Could constrain pat_bind to make this
             // check unnecessary.
             check (type_has_static_size(ccx, ty));
-            check non_ty_var(ccx, ty);
             let llty = base::type_of(ccx, ty);
             let alloc = base::alloca(bcx, llty);
             bcx = base::copy_val(bcx, base::INIT, alloc,
@@ -758,7 +746,6 @@ fn bind_irrefutable_pat(bcx: @block_ctxt, pat: @ast::pat, val: ValueRef,
         for f: ast::field_pat in fields {
             let ix = option::get(ty::field_idx(f.ident, rec_fields));
             // how to get rid of this check?
-            check type_is_tup_like(bcx, rec_ty);
             let r = base::GEP_tup_like(bcx, rec_ty, val, [0, ix as int]);
             bcx = bind_irrefutable_pat(r.bcx, f.pat, r.val, make_copy);
         }
@@ -767,8 +754,6 @@ fn bind_irrefutable_pat(bcx: @block_ctxt, pat: @ast::pat, val: ValueRef,
         let tup_ty = node_id_type(bcx, pat.id);
         let i = 0u;
         for elem in elems {
-            // how to get rid of this check?
-            check type_is_tup_like(bcx, tup_ty);
             let r = base::GEP_tup_like(bcx, tup_ty, val, [0, i as int]);
             bcx = bind_irrefutable_pat(r.bcx, elem, r.val, make_copy);
             i += 1u;
