@@ -14,7 +14,7 @@ do
     fi
 
     clang++ -emit-llvm -S -m$BITS -O3 -Isrc/rt/isaac -Isrc/rt/uthash \
-        -Isrc/rt/arch/$ARCH -fno-stack-protector \
+        -Isrc/rt/arch/$ARCH -Isrc/rt -fno-stack-protector \
         -o src/rt/intrinsics/intrinsics.$ARCH.ll.in \
         src/rt/intrinsics/intrinsics.cpp
     sed -i .orig \
