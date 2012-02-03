@@ -191,7 +191,9 @@ rust_kernel::release_task_id(rust_task_id id) {
 
 void rust_kernel::wakeup_schedulers() {
     for(size_t i = 0; i < num_threads; ++i) {
-        threads[i]->lock.signal_all();
+        rust_scheduler *sched = threads[i];
+        scoped_lock with(sched->lock);
+        sched->lock.signal_all();
     }
 }
 

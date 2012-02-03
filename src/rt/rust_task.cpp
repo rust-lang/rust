@@ -394,7 +394,6 @@ rust_task::start(spawn_fn spawnee_fn,
 void rust_task::start()
 {
     transition(&sched->newborn_tasks, &sched->running_tasks);
-    sched->lock.signal();
 }
 
 // Only run this on the rust stack
@@ -428,8 +427,6 @@ rust_task::kill() {
     killed = true;
     // Unblock the task so it can unwind.
     unblock();
-
-    sched->lock.signal();
 
     LOG(this, task, "preparing to unwind task: 0x%" PRIxPTR, this);
     // run_on_resume(rust_unwind_glue);
@@ -551,6 +548,7 @@ rust_task::transition(rust_task_list *src, rust_task_list *dst) {
     src->remove(this);
     dst->append(this);
     state = dst;
+    sched->lock.signal();
     if(unlock)
         sched->lock.unlock();
 }
@@ -578,12 +576,9 @@ rust_task::wakeup(rust_cond *from) {
                         (uintptr_t) cond, (uintptr_t) from);
     A(sched, cond == from, "Cannot wake up blocked task on wrong condition.");
 
-    transition(&sched->blocked_tasks, &sched->running_tasks);
-    I(sched, cond == from);
     cond = NULL;
     cond_name = "none";
-
-    sched->lock.signal();
+    transition(&sched->blocked_tasks, &sched->running_tasks);
 }
 
 void
@@ -591,7 +586,6 @@ rust_task::die() {
     I(sched, !lock.lock_held_by_current_thread());
     scoped_lock with(lock);
     transition(&sched->running_tasks, &sched->dead_tasks);
-    sched->lock.signal();
 }
 
 void
