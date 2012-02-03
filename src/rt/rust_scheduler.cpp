@@ -229,7 +229,7 @@ rust_scheduler::start_main_loop() {
             DLOG(this, task,
                  "all tasks are blocked, scheduler id %d yielding ...",
                  id);
-            lock.timed_wait(10);
+            lock.wait();
             reap_dead_tasks();
             DLOG(this, task,
                  "scheduler %d resuming ...", id);
