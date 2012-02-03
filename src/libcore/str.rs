@@ -54,7 +54,7 @@ export
 
    // Comparing strings
    eq,
-   lteq,
+   le,
    hash,
 
    // Iterating through strings
@@ -704,11 +704,11 @@ Bytewise string equality
 pure fn eq(&&a: str, &&b: str) -> bool { a == b }
 
 /*
-Function: lteq
+Function: le
 
 Bytewise less than or equal
 */
-pure fn lteq(&&a: str, &&b: str) -> bool { a <= b }
+pure fn le(&&a: str, &&b: str) -> bool { a <= b }
 
 /*
 Function: hash
@@ -1381,10 +1381,10 @@ mod tests {
     }
 
     #[test]
-    fn test_lteq() {
-        assert (lteq("", ""));
-        assert (lteq("", "foo"));
-        assert (lteq("foo", "foo"));
+    fn test_le() {
+        assert (le("", ""));
+        assert (le("", "foo"));
+        assert (le("foo", "foo"));
         assert (!eq("foo", "bar"));
     }
 

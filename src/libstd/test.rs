@@ -279,7 +279,7 @@ fn filter_tests(opts: test_opts,
     filtered =
         {
             fn lteq(t1: test_desc, t2: test_desc) -> bool {
-                str::lteq(t1.name, t2.name)
+                str::le(t1.name, t2.name)
             }
             sort::merge_sort(bind lteq(_, _), filtered)
         };
