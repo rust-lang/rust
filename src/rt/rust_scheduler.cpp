@@ -123,37 +123,13 @@ rust_scheduler::reap_dead_tasks(int id) {
     rust_task **dead_tasks_copy = (rust_task**)
         srv->malloc(sizeof(rust_task*) * dead_tasks_len);
     for (size_t i = 0; i < dead_tasks_len; ++i) {
-        rust_task *task = dead_tasks[i];
-        dead_tasks_copy[i] = task;
-    }
-
-    // Now drop the lock and futz with the tasks. This avoids establishing
-    // a sched->lock then task->lock locking order, which would be devestating
-    // to performance.
-    lock.unlock();
-
-    for (size_t i = 0; i < dead_tasks_len; ++i) {
-        rust_task *task = dead_tasks_copy[i];
-        task->lock.lock();
-        DLOG(this, task,
-             "deleting unreferenced dead task %s @0x%" PRIxPTR,
-             task->name, task);
-        task->lock.unlock();
-    }
-
-    // Now grab the lock again and remove the tasks that were truly dead
-    lock.lock();
-
-    for (size_t i = 0; i < dead_tasks_len; ++i) {
-        rust_task *task = dead_tasks_copy[i];
-        if (task) {
-            dead_tasks.remove(task);
-        }
+        dead_tasks_copy[i] = dead_tasks.pop_value();
     }
 
     // Now unlock again because we have to actually free the dead tasks,
-    // and that may end up wanting to lock the task and sched locks
-    // again (via target->send)
+    // and that may end up wanting to lock the kernel lock. We have
+    // a kernel lock -> scheduler lock locking order that we need
+    // to maintain.
     lock.unlock();
 
     for (size_t i = 0; i < dead_tasks_len; ++i) {
