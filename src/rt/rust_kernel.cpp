@@ -65,6 +65,11 @@ int rust_kernel::start_schedulers()
     return rval;
 }
 
+rust_scheduler *
+rust_kernel::get_default_scheduler() {
+    return sched;
+}
+
 void
 rust_kernel::fail() {
     // FIXME: On windows we're getting "Application has requested the
@@ -75,17 +80,6 @@ rust_kernel::fail() {
     exit(rval);
 #endif
     sched->kill_all_tasks();
-}
-
-rust_task_id
-rust_kernel::create_task(rust_task *spawner, const char *name,
-                         size_t init_stack_sz) {
-    return sched->create_task(spawner, name, init_stack_sz);
-}
-
-rust_task_id
-rust_kernel::create_task(rust_task *spawner, const char *name) {
-    return create_task(spawner, name, env->min_stack_size);
 }
 
 void

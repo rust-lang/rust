@@ -1,5 +1,6 @@
 #include "rust_internal.h"
 #include "rust_util.h"
+#include "rust_scheduler.h"
 #include <cstdio>
 
 struct
@@ -87,7 +88,8 @@ rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map) {
 
     rust_srv *srv = new rust_srv(env);
     rust_kernel *kernel = new rust_kernel(srv, env->num_sched_threads);
-    rust_task_id root_id = kernel->create_task(NULL, "main", MAIN_STACK_SIZE);
+    rust_scheduler *sched = kernel->get_default_scheduler();
+    rust_task_id root_id = sched->create_task(NULL, "main", MAIN_STACK_SIZE);
     rust_task *root_task = kernel->get_task_by_id(root_id);
     I(kernel, root_task != NULL);
     rust_task_thread *thread = root_task->thread;
