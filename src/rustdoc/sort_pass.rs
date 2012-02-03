@@ -38,7 +38,7 @@ fn fold_mod(
 #[test]
 fn test() {
     fn name_lteq(item1: doc::itemtag, item2: doc::itemtag) -> bool {
-        str::lteq(item1.name(), item2.name())
+        str::le(item1.name(), item2.name())
     }
 
     let source = "mod z { mod y { } fn x() { } } mod w { }";

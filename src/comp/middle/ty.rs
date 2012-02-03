@@ -1588,7 +1588,7 @@ fn method_idx(id: ast::ident, meths: [method]) -> option<uint> {
 
 fn sort_methods(meths: [method]) -> [method] {
     fn method_lteq(a: method, b: method) -> bool {
-        ret str::lteq(a.ident, b.ident);
+        ret str::le(a.ident, b.ident);
     }
     ret std::sort::merge_sort(bind method_lteq(_, _), meths);
 }
