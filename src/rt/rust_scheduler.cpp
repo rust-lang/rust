@@ -288,20 +288,10 @@ rust_scheduler::start_main_loop() {
         reap_dead_tasks(id);
     }
 
-    DLOG(this, dom,
-         "terminated scheduler loop, reaping dead tasks ...");
-
-    while (dead_tasks.length() > 0) {
-        DLOG(this, dom,
-             "waiting for %d dead tasks to become dereferenced, "
-             "scheduler yielding ...",
-             dead_tasks.length());
-        log_state();
-        lock.unlock();
-        sync::yield();
-        lock.lock();
-        reap_dead_tasks(id);
-    }
+    A(this, newborn_tasks.is_empty(), "Should have no newborn tasks");
+    A(this, running_tasks.is_empty(), "Should have no running tasks");
+    A(this, blocked_tasks.is_empty(), "Should have no blocked tasks");
+    A(this, dead_tasks.is_empty(), "Should have no dead tasks");
 
     DLOG(this, dom, "finished main-loop %d", id);
 
