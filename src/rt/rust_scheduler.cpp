@@ -19,25 +19,21 @@ rust_scheduler::~rust_scheduler() {
 
 rust_task_thread *
 rust_scheduler::create_task_thread(int id) {
-    lock.lock();
     rust_srv *srv = this->srv->clone();
     rust_task_thread *thread =
         new (kernel, "rust_task_thread") rust_task_thread(this, srv, id);
     KLOG(kernel, kern, "created task thread: " PTR ", id: %d, index: %d",
           thread, id, thread->list_index);
-    lock.unlock();
     return thread;
 }
 
 void
 rust_scheduler::destroy_task_thread(rust_task_thread *thread) {
-    lock.lock();
     KLOG(kernel, kern, "deleting task thread: " PTR ", name: %s, index: %d",
         thread, thread->name, thread->list_index);
     rust_srv *srv = thread->srv;
     delete thread;
     delete srv;
-    lock.unlock();
 }
 
 void
