@@ -37,7 +37,7 @@ rust_task_thread::rust_task_thread(rust_scheduler *sched,
     should_exit(false)
 {
     LOGPTR(this, "new dom", (uintptr_t)this);
-    isaac_init(this, &rctx);
+    isaac_init(kernel, &rctx);
 #ifndef __WIN32__
     pthread_attr_init(&attr);
     pthread_attr_setstacksize(&attr, 1024 * 1024);

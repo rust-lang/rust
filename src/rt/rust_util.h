@@ -124,13 +124,12 @@ align_to(T size, size_t alignment) {
 
 // Initialization helper for ISAAC RNG
 
-template <typename thread_or_kernel>
-static inline void
-isaac_init(thread_or_kernel *thread, randctx *rctx)
+inline void
+isaac_init(rust_kernel *kernel, randctx *rctx)
 {
         memset(rctx, 0, sizeof(randctx));
 
-        char *rust_seed = thread->env->rust_seed;
+        char *rust_seed = kernel->env->rust_seed;
         if (rust_seed != NULL) {
             ub4 seed = (ub4) atoi(rust_seed);
             for (size_t i = 0; i < RANDSIZ; i ++) {
@@ -140,24 +139,24 @@ isaac_init(thread_or_kernel *thread, randctx *rctx)
         } else {
 #ifdef __WIN32__
             HCRYPTPROV hProv;
-            thread->win32_require
+            kernel->win32_require
                 (_T("CryptAcquireContext"),
                  CryptAcquireContext(&hProv, NULL, NULL, PROV_RSA_FULL,
                                      CRYPT_VERIFYCONTEXT|CRYPT_SILENT));
-            thread->win32_require
+            kernel->win32_require
                 (_T("CryptGenRandom"),
                  CryptGenRandom(hProv, sizeof(rctx->randrsl),
                                 (BYTE*)(&rctx->randrsl)));
-            thread->win32_require
+            kernel->win32_require
                 (_T("CryptReleaseContext"),
                  CryptReleaseContext(hProv, 0));
 #else
             int fd = open("/dev/urandom", O_RDONLY);
-            I(thread, fd > 0);
-            I(thread,
+            I(kernel, fd > 0);
+            I(kernel,
               read(fd, (void*) &rctx->randrsl, sizeof(rctx->randrsl))
               == sizeof(rctx->randrsl));
-            I(thread, close(fd) == 0);
+            I(kernel, close(fd) == 0);
 #endif
         }
 

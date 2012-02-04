@@ -139,7 +139,7 @@ rand_new() {
         task->fail();
         return NULL;
     }
-    isaac_init(thread, rctx);
+    isaac_init(thread->kernel, rctx);
     return rctx;
 }
 

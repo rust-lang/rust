@@ -9,7 +9,7 @@ rust_scheduler::rust_scheduler(rust_kernel *kernel,
     env(srv->env),
     num_threads(num_threads)
 {
-    isaac_init(this, &rctx);
+    isaac_init(kernel, &rctx);
     create_task_threads();
 }
 

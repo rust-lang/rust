@@ -117,12 +117,6 @@ struct rust_task_thread : public kernel_owned<rust_task_thread>,
 
     virtual void run();
 
-#ifdef __WIN32__
-    inline void win32_require(LPCTSTR fn, BOOL ok) {
-        kernel->win32_require(fn, ok);
-    }
-#endif
-
     void init_tls();
     void place_task_in_tls(rust_task *task);
 
