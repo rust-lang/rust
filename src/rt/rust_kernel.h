@@ -22,12 +22,13 @@ public:
 private:
     rust_scheduler *sched;
 
+    // Protects live_tasks, max_task_id and task_table
+    lock_and_signal task_lock;
     // Tracks the number of tasks that are being managed by
     // schedulers. When this hits 0 we will tell all schedulers
     // to exit.
-    volatile int live_tasks;
-    // Protects max_task_id and task_table
-    lock_and_signal task_lock;
+    int live_tasks;
+    // The next task id
     rust_task_id max_task_id;
     hash_map<rust_task_id, rust_task *> task_table;
 

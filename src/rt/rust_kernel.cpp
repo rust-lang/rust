@@ -84,25 +84,27 @@ rust_kernel::fail() {
 
 void
 rust_kernel::register_task(rust_task *task) {
+    int new_live_tasks;
     {
         scoped_lock with(task_lock);
         task->user.id = max_task_id++;
         task_table.put(task->user.id, task);
+        new_live_tasks = ++live_tasks;
     }
     K(srv, task->user.id != INTPTR_MAX, "Hit the maximum task id");
     KLOG_("Registered task %" PRIdPTR, task->user.id);
-    int new_live_tasks = sync::increment(live_tasks);
     KLOG_("Total outstanding tasks: %d", new_live_tasks);
 }
 
 void
 rust_kernel::release_task_id(rust_task_id id) {
     KLOG_("Releasing task %" PRIdPTR, id);
+    int new_live_tasks;
     {
         scoped_lock with(task_lock);
         task_table.remove(id);
+        new_live_tasks = --live_tasks;
     }
-    int new_live_tasks = sync::decrement(live_tasks);
     KLOG_("Total outstanding tasks: %d", new_live_tasks);
     if (new_live_tasks == 0) {
         // There are no more tasks and there never will be.
