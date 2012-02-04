@@ -7,6 +7,7 @@ rust_scheduler::rust_scheduler(rust_kernel *kernel,
     kernel(kernel),
     srv(srv),
     env(srv->env),
+    live_threads(num_threads),
     num_threads(num_threads)
 {
     isaac_init(kernel, &rctx);
@@ -59,11 +60,6 @@ rust_scheduler::start_task_threads()
         rust_task_thread *thread = threads[i];
         thread->start();
     }
-
-    for(size_t i = 0; i < num_threads; ++i) {
-        rust_task_thread *thread = threads[i];
-        thread->join();
-    }
 }
 
 void
@@ -101,4 +97,17 @@ rust_scheduler::exit() {
 size_t
 rust_scheduler::number_of_threads() {
     return num_threads;
+}
+
+void
+rust_scheduler::release_task_thread() {
+    I(this, !lock.lock_held_by_current_thread());
+    uintptr_t new_live_threads;
+    {
+	scoped_lock with(lock);
+	new_live_threads = --live_threads;
+    }
+    if (new_live_threads == 0) {
+	kernel->release_scheduler();
+    }
 }
