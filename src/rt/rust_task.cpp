@@ -275,11 +275,10 @@ rust_task::~rust_task()
     DLOG(thread, task, "~rust_task %s @0x%" PRIxPTR ", refcnt=%d",
          name, (uintptr_t)this, ref_count);
 
+    // FIXME: We should do this when the task exits, not in the destructor
     if (supervisor) {
         supervisor->deref();
     }
-
-    kernel->release_task_id(user.id);
 
     /* FIXME: tighten this up, there are some more
        assertions that hold at task-lifecycle events. */
@@ -288,6 +287,7 @@ rust_task::~rust_task()
 
     // Delete all the stacks. There may be more than one if the task failed
     // and no landing pads stopped to clean up.
+    // FIXME: We should do this when the task exits, not in the destructor
     while (stk != NULL) {
         del_stk(this, stk);
     }

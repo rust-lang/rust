@@ -112,8 +112,8 @@ struct rust_task_thread : public kernel_owned<rust_task_thread>,
 
     void kill_all_tasks();
 
-    rust_task *create_task(rust_task *spawner, const char *name,
-                           size_t init_stack_sz);
+    rust_task_id create_task(rust_task *spawner, const char *name,
+                             size_t init_stack_sz);
 
     virtual void run();
 

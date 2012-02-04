@@ -20,25 +20,29 @@ class rust_kernel {
 public:
     rust_srv *srv;
 private:
-    lock_and_signal _kernel_lock;
     rust_scheduler *sched;
 
-    rust_task_id max_id;
+    // Tracks the number of tasks that are being managed by
+    // schedulers. When this hits 0 we will tell all schedulers
+    // to exit.
+    volatile int live_tasks;
+    // Protects max_task_id and task_table
+    lock_and_signal task_lock;
+    rust_task_id max_task_id;
     hash_map<rust_task_id, rust_task *> task_table;
+
+    lock_and_signal rval_lock;
     int rval;
 
 public:
 
-    volatile int live_tasks;
     struct rust_env *env;
 
     rust_kernel(rust_srv *srv, size_t num_threads);
-
-    void exit_schedulers();
+    ~rust_kernel();
 
     void log(uint32_t level, char const *fmt, ...);
     void fatal(char const *fmt, ...);
-    virtual ~rust_kernel();
 
     void *malloc(size_t size, const char *tag);
     void *realloc(void *mem, size_t size);

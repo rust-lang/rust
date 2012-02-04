@@ -11,9 +11,9 @@ rust_kernel::rust_kernel(rust_srv *srv, size_t num_threads) :
     _region(srv, true),
     _log(srv, NULL),
     srv(srv),
-    max_id(0),
-    rval(0),
     live_tasks(0),
+    max_task_id(0),
+    rval(0),
     env(srv->env)
 {
     sched = new (this, "rust_scheduler")
@@ -84,14 +84,35 @@ rust_kernel::fail() {
 
 void
 rust_kernel::register_task(rust_task *task) {
-    scoped_lock with(_kernel_lock);
-    task->user.id = max_id++;
-    task_table.put(task->user.id, task);
+    {
+        scoped_lock with(task_lock);
+        task->user.id = max_task_id++;
+        task_table.put(task->user.id, task);
+    }
+    KLOG_("Registered task %" PRIdPTR, task->user.id);
+    int new_live_tasks = sync::increment(live_tasks);
+    KLOG_("Total outstanding tasks: %d", new_live_tasks);
+}
+
+void
+rust_kernel::release_task_id(rust_task_id id) {
+    KLOG_("Releasing task %" PRIdPTR, id);
+    {
+        scoped_lock with(task_lock);
+        task_table.remove(id);
+    }
+    int new_live_tasks = sync::decrement(live_tasks);
+    KLOG_("Total outstanding tasks: %d", new_live_tasks);
+    if (new_live_tasks == 0) {
+        // There are no more tasks and there never will be.
+        // Tell all the schedulers to exit.
+        sched->exit();
+    }
 }
 
 rust_task *
 rust_kernel::get_task_by_id(rust_task_id id) {
-    scoped_lock with(_kernel_lock);
+    scoped_lock with(task_lock);
     rust_task *task = NULL;
     // get leaves task unchanged if not found.
     task_table.get(id, &task);
@@ -107,16 +128,6 @@ rust_kernel::get_task_by_id(rust_task_id id) {
         }
     }
     return task;
-}
-
-void
-rust_kernel::release_task_id(rust_task_id id) {
-    scoped_lock with(_kernel_lock);
-    task_table.remove(id);
-}
-
-void rust_kernel::exit_schedulers() {
-    sched->exit();
 }
 
 #ifdef __WIN32__
@@ -140,7 +151,7 @@ rust_kernel::win32_require(LPCTSTR fn, BOOL ok) {
 
 void
 rust_kernel::set_exit_status(int code) {
-    scoped_lock with(_kernel_lock);
+    scoped_lock with(rval_lock);
     // If we've already failed then that's the code we're going to use
     if (rval != PROC_FAIL_CODE) {
         rval = code;

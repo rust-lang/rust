@@ -137,13 +137,8 @@ rust_task_thread::reap_dead_tasks() {
     for (size_t i = 0; i < dead_tasks_len; ++i) {
         rust_task *task = dead_tasks_copy[i];
         if (task) {
+            kernel->release_task_id(task->user.id);
             task->deref();
-            int live_tasks = sync::decrement(kernel->live_tasks);
-            if (live_tasks == 0) {
-                // There are no more tasks and there never will be.
-                // Tell all the schedulers to exit.
-                kernel->exit_schedulers();
-            }
         }
     }
     srv->free(dead_tasks_copy);
@@ -219,8 +214,8 @@ rust_task_thread::start_main_loop() {
     DLOG(this, dom, "started domain loop %d", id);
 
     while (!should_exit) {
-        DLOG(this, dom, "worker %d, number_of_live_tasks = %d, total = %d",
-             id, number_of_live_tasks(), kernel->live_tasks);
+        DLOG(this, dom, "worker %d, number_of_live_tasks = %d",
+             id, number_of_live_tasks());
 
         rust_task *scheduled_task = schedule_task();
 
@@ -281,7 +276,7 @@ rust_task_thread::get_cache() {
     return &cache;
 }
 
-rust_task *
+rust_task_id
 rust_task_thread::create_task(rust_task *spawner, const char *name,
                             size_t init_stack_sz) {
     rust_task *task =
@@ -295,9 +290,8 @@ rust_task_thread::create_task(rust_task *spawner, const char *name,
         newborn_tasks.append(task);
     }
 
-    sync::increment(kernel->live_tasks);
-
-    return task;
+    kernel->register_task(task);
+    return task->user.id;
 }
 
 void rust_task_thread::run() {

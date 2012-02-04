@@ -87,9 +87,7 @@ rust_scheduler::create_task(rust_task *spawner, const char *name,
 	thread_no = isaac_rand(&rctx) % num_threads;
     }
     rust_task_thread *thread = threads[thread_no];
-    rust_task *t = thread->create_task(spawner, name, init_stack_sz);
-    kernel->register_task(t);
-    return t->user.id;
+    return thread->create_task(spawner, name, init_stack_sz);
 }
 
 rust_task_id
