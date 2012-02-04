@@ -105,6 +105,13 @@ vec_reserve_shared(type_desc* ty, rust_vec** vp,
     reserve_vec_exact(task, vp, n_elts * ty->size);
 }
 
+extern "C" CDECL void
+str_reserve_shared(rust_vec** sp,
+                   size_t n_elts) {
+    rust_task *task = rust_task_thread::get_task();
+    reserve_vec_exact(task, sp, n_elts + 1);
+}
+
 /**
  * Copies elements in an unsafe buffer to the given interior vector. The
  * vector must have size zero.
