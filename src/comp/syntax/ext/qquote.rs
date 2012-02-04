@@ -3,7 +3,7 @@ import driver::session;
 import option::{none, some};
 
 import syntax::ast::{crate, expr_, mac_invoc,
-                     mac_qq, mac_aq, mac_var};
+                     mac_aq, mac_var};
 import syntax::fold::*;
 import syntax::visit::*;
 import syntax::ext::base::*;
@@ -156,7 +156,7 @@ fn expand_ast(ecx: ext_ctxt, _sp: span,
         let node = parse_from_source_str
             (f, fname, some(ss), str,
              ecx.session().opts.cfg, ecx.session().parse_sess);
-        ret expand_qquote(ecx, node.span(), some(*str), node);
+        ret expand_qquote(ecx, node.span(), *str, node);
     }
 
     ret alt what {
@@ -185,13 +185,9 @@ fn parse_item(p: parser) -> @ast::item {
 }
 
 fn expand_qquote<N: qq_helper>
-    (ecx: ext_ctxt, sp: span, maybe_str: option::t<str>, node: N)
+    (ecx: ext_ctxt, sp: span, str: str, node: N)
     -> @ast::expr
 {
-    let str = alt(maybe_str) {
-      some(s) {s}
-      none {codemap::span_to_snippet(sp, ecx.session().parse_sess.cm)}
-    };
     let qcx = gather_anti_quotes(sp.lo, node);
     let cx = qcx;
     let prev = 0u;

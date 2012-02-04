@@ -53,7 +53,7 @@ fn main() {
     let expr3 = #ast{2 - $(abc) + 7};
     check_pp(expr3,  pprust::print_expr, "2 - 23 + 7");
 
-    let expr4 = #ast{2 - $(#(3)) + 9};
+    let expr4 = #ast{2 - $(#ast{3}) + 9};
     check_pp(expr4,  pprust::print_expr, "2 - 3 + 9");
 
     let ty = #ast(ty){int};
