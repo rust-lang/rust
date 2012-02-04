@@ -293,7 +293,6 @@ enum mac_ {
     mac_embed_block(blk),
     mac_ellipsis,
     // the span is used by the quoter/anti-quoter ...
-    mac_qq(span /* span of expr */, @expr), // quasi-quote
     mac_aq(span /* span of quote */, @expr), // anti-quote
     mac_var(uint)
 }

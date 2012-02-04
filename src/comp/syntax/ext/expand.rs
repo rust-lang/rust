@@ -5,7 +5,7 @@ import option::{none, some};
 import std::map::hashmap;
 import vec;
 
-import syntax::ast::{crate, expr_, expr_mac, mac_invoc, mac_qq};
+import syntax::ast::{crate, expr_, expr_mac, mac_invoc};
 import syntax::fold::*;
 import syntax::ext::base::*;
 import syntax::ext::qquote::{expand_qquote,qq_helper};
@@ -45,13 +45,6 @@ fn expand_expr(exts: hashmap<str, syntax_extension>, cx: ext_ctxt,
                     (ast::expr_rec([], none), s)
                   }
                 }
-              }
-              mac_qq(sp, exp) {
-                let r = expand_qquote(cx, sp, none, exp);
-                // need to keep going, resuls may contain embedded qquote or
-                // macro that need expanding
-                let r2 = fld.fold_expr(r);
-                (r2.node, s)
               }
               _ { cx.span_bug(mac.span, "naked syntactic bit") }
             }

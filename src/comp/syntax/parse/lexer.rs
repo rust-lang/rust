@@ -349,7 +349,6 @@ fn next_token_inner(rdr: reader) -> token::token {
       '#' {
         rdr.bump();
         if rdr.curr == '<' { rdr.bump(); ret token::POUND_LT; }
-        if rdr.curr == '(' { rdr.bump(); ret token::POUND_LPAREN; }
         if rdr.curr == '{' { rdr.bump(); ret token::POUND_LBRACE; }
         ret token::POUND;
       }

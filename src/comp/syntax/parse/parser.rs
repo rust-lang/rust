@@ -880,12 +880,6 @@ fn parse_bottom_expr(p: parser) -> pexpr {
     } else if p.token == token::ELLIPSIS {
         p.bump();
         ret pexpr(mk_mac_expr(p, lo, p.span.hi, ast::mac_ellipsis));
-    } else if p.token == token::POUND_LPAREN {
-        p.bump();
-        let e = parse_expr(p);
-        expect(p, token::RPAREN);
-        ret pexpr(mk_mac_expr(p, lo, p.span.hi,
-                              ast::mac_qq(e.span, e)));
     } else if eat_word(p, "bind") {
         let e = parse_expr_res(p, RESTRICT_NO_CALL_EXPRS);
         fn parse_expr_opt(p: parser) -> option<@ast::expr> {

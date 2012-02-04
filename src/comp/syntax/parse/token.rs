@@ -53,7 +53,6 @@ enum token {
     LBRACE,
     RBRACE,
     POUND,
-    POUND_LPAREN,
     POUND_LBRACE,
     POUND_LT,
 
@@ -128,7 +127,6 @@ fn to_str(r: reader, t: token) -> str {
       LBRACE { ret "{"; }
       RBRACE { ret "}"; }
       POUND { ret "#"; }
-      POUND_LPAREN { ret "#("; }
       POUND_LBRACE { ret "#{"; }
       POUND_LT { ret "#<"; }
 
