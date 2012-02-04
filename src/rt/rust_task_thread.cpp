@@ -296,6 +296,7 @@ rust_task_thread::create_task(rust_task *spawner, const char *name,
 
 void rust_task_thread::run() {
     this->start_main_loop();
+    sched->release_task_thread();
 }
 
 #ifndef _WIN32

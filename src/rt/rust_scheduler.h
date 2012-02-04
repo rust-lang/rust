@@ -10,9 +10,13 @@ public:
     rust_srv *srv;
     rust_env *env;
 private:
+    // Protects the random number context and live_threads
     lock_and_signal lock;
-    array_list<rust_task_thread *> threads;
+    // When this hits zero we'll tell the kernel to release us
+    uintptr_t live_threads;
     randctx rctx;
+
+    array_list<rust_task_thread *> threads;
     const size_t num_threads;
 
     void create_task_threads();
@@ -31,8 +35,12 @@ public:
 			     const char *name,
 			     size_t init_stack_sz);
     rust_task_id create_task(rust_task *spawner, const char *name);
+
     void exit();
     size_t number_of_threads();
+    // Called by each thread when it terminates. When all threads
+    // terminate the scheduler does as well.
+    void release_task_thread();
 };
 
 #endif /* RUST_SCHEDULER_H */

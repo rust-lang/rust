@@ -35,6 +35,13 @@ private:
     lock_and_signal rval_lock;
     int rval;
 
+    // Protects live_schedulers
+    lock_and_signal sched_lock;
+    // Tracks the number of schedulers currently running.
+    // When this hits 0 we will signal the sched_lock and the
+    // kernel will terminate.
+    uintptr_t live_schedulers;
+
 public:
 
     struct rust_env *env;
@@ -53,6 +60,8 @@ public:
 
     int start_schedulers();
     rust_scheduler* get_default_scheduler();
+    // Called by a scheduler to indicate that it is terminating
+    void release_scheduler();
 
 #ifdef __WIN32__
     void win32_require(LPCTSTR fn, BOOL ok);

@@ -18,6 +18,11 @@ rust_kernel::rust_kernel(rust_srv *srv, size_t num_threads) :
 {
     sched = new (this, "rust_scheduler")
         rust_scheduler(this, srv, num_threads);
+    live_schedulers = 1;
+}
+
+rust_kernel::~rust_kernel() {
+    delete sched;
 }
 
 void
@@ -41,10 +46,6 @@ rust_kernel::fatal(char const *fmt, ...) {
     va_end(args);
 }
 
-rust_kernel::~rust_kernel() {
-    delete sched;
-}
-
 void *
 rust_kernel::malloc(size_t size, const char *tag) {
     return _region.malloc(size, tag);
@@ -61,13 +62,32 @@ void rust_kernel::free(void *mem) {
 
 int rust_kernel::start_schedulers()
 {
+    I(this, !sched_lock.lock_held_by_current_thread());
     sched->start_task_threads();
-    return rval;
+    {
+        scoped_lock with(sched_lock);
+        // Schedulers could possibly have already exited
+        if (live_schedulers != 0) {
+            sched_lock.wait();
+        }
+        return rval;
+    }
 }
 
 rust_scheduler *
 rust_kernel::get_default_scheduler() {
     return sched;
+}
+
+void
+rust_kernel::release_scheduler() {
+    I(this, !sched_lock.lock_held_by_current_thread());
+    scoped_lock with(sched_lock);
+    --live_schedulers;
+    if (live_schedulers == 0) {
+        // We're all done. Tell the main thread to continue
+        sched_lock.signal();
+    }
 }
 
 void
