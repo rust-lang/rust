@@ -199,7 +199,7 @@ fn check_error_patterns(props: test_props,
 
     let next_err_idx = 0u;
     let next_err_pat = props.error_patterns[next_err_idx];
-    for line: str in str::split(procres.stdout, '\n' as u8) {
+    for line: str in str::split(procres.stderr, '\n' as u8) {
         if str::find(line, next_err_pat) > 0 {
             #debug("found error pattern %s", next_err_pat);
             next_err_idx += 1u;
@@ -246,7 +246,7 @@ fn check_expected_errors(expected_errors: [errors::expected_error],
     //    filename:line1:col1: line2:col2: *warning:* msg
     // where line1:col1: is the starting point, line2:col2:
     // is the ending point, and * represents ANSI color codes.
-    for line: str in str::split(procres.stdout, '\n' as u8) {
+    for line: str in str::split(procres.stderr, '\n' as u8) {
         let was_expected = false;
         vec::iteri(expected_errors) {|i, ee|
             if !found_flags[i] {
