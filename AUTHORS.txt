@@ -59,6 +59,7 @@ Sean Stangl <sstangl@mozilla.com>
 startling <tdixon51793@gmail.com>
 Stefan Plantikow <stefan.plantikow@googlemail.com>
 Taras Shpot <mrshpot@gmail.com>
+Ted Horst <ted.horst@earthlink.net>
 Tim Chevalier <chevalier@alum.wellesley.edu>
 Tycho Sci <tychosci@gmail.com>
 Wade Mealing <wmealing@gmail.com>
