@@ -12,12 +12,19 @@ import middle::ast_map;
 fn ty_to_str(cx: ctxt, typ: t) -> str {
     fn fn_input_to_str(cx: ctxt, input: {mode: ast::mode, ty: t}) ->
        str {
-        let arg_mode = ty::arg_mode(cx, input);
-        let modestr = {
-            if arg_mode == ty::default_arg_mode_for_ty(cx, input.ty) { "" }
-            else { mode_to_str(input.mode) }
+        let {mode, ty} = input;
+        let modestr = alt canon_mode(cx, mode) {
+          ast::infer(_) { "" }
+          ast::expl(m) {
+            if !ty::type_contains_vars(cx, ty) &&
+                m == ty::default_arg_mode_for_ty(cx, ty) {
+                ""
+            } else {
+                mode_to_str(ast::expl(m))
+            }
+          }
         };
-        modestr + ty_to_str(cx, input.ty)
+        modestr + ty_to_str(cx, ty)
     }
     fn fn_to_str(cx: ctxt, proto: ast::proto, ident: option<ast::ident>,
                  inputs: [arg], output: t, cf: ast::ret_style,

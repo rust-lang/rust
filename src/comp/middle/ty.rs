@@ -167,6 +167,7 @@ export type_structurally_contains;
 export type_structurally_contains_uniques;
 export type_autoderef;
 export type_param;
+export canon_mode;
 export resolved_mode;
 export arg_mode;
 export unify_mode;
