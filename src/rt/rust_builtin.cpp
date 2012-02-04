@@ -102,7 +102,7 @@ extern "C" CDECL void
 vec_reserve_shared(type_desc* ty, rust_vec** vp,
                    size_t n_elts) {
     rust_task *task = rust_task_thread::get_task();
-    reserve_vec(task, vp, n_elts * ty->size);
+    reserve_vec_exact(task, vp, n_elts * ty->size);
 }
 
 /**
