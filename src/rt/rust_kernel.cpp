@@ -84,7 +84,7 @@ rust_kernel::fail() {
 
 void
 rust_kernel::register_task(rust_task *task) {
-    int new_live_tasks;
+    uintptr_t new_live_tasks;
     {
         scoped_lock with(task_lock);
         task->user.id = max_task_id++;
@@ -99,7 +99,7 @@ rust_kernel::register_task(rust_task *task) {
 void
 rust_kernel::release_task_id(rust_task_id id) {
     KLOG_("Releasing task %" PRIdPTR, id);
-    int new_live_tasks;
+    uintptr_t new_live_tasks;
     {
         scoped_lock with(task_lock);
         task_table.remove(id);

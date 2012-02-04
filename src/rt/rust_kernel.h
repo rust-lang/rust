@@ -27,7 +27,7 @@ private:
     // Tracks the number of tasks that are being managed by
     // schedulers. When this hits 0 we will tell all schedulers
     // to exit.
-    int live_tasks;
+    uintptr_t live_tasks;
     // The next task id
     rust_task_id max_task_id;
     hash_map<rust_task_id, rust_task *> task_table;
