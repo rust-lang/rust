@@ -2,11 +2,15 @@
 //  http://shootout.alioth.debian.org/
 //   u64q/program.php?test=mandelbrot&lang=python3&id=2
 //
-//  takes 2 optional numeric args: square image size and yield frequency
+//  takes 3 optional args:
+//   square image size, defaults to 80_u
+//   yield frequency, defaults to 10_u (yield every 10 spawns)
+//   output path, default is "" (no output), "-" means stdout
+//
 //  in the shootout, they use 16000 as image size
 //  yield frequency doesn't seem to have much effect
 //
-//  writes pbm image to stdout
+//  writes pbm image to output path
 
 use std;
 import std::io::writer_util;
@@ -72,12 +76,33 @@ fn chanmb(i: uint, size: uint, ch: comm::chan<line>) -> ()
     comm::send(ch, {i:i, b:crv});
 }
 
-fn writer(writech: comm::chan<comm::chan<line>>, size: uint)
+type devnull = {dn: int};
+
+impl of std::io::writer for devnull {
+    fn write(_b: [const u8]) {}
+    fn seek(_i: int, _s: std::io::seek_style) {}
+    fn tell() -> uint {0_u}
+    fn flush() -> int {0}
+}
+
+fn writer(path: str, writech: comm::chan<comm::chan<line>>, size: uint)
 {
     let p: comm::port<line> = comm::port();
     let ch = comm::chan(p);
     comm::send(writech, ch);
-    let cout = std::io::stdout();
+    let cout: std::io::writer = alt path {
+        "" {
+            {dn: 0} as std::io::writer
+        }
+        "-" {
+            std::io::stdout()
+        }
+        _ {
+            result::get(
+                std::io::file_writer(path,
+                [std::io::create, std::io::truncate]))
+        }
+    };
     cout.write_line("P4");
     cout.write_line(#fmt("%u %u", size, size));
     let lines = std::map::new_uint_hash();
@@ -125,10 +150,16 @@ fn main(argv: [str])
     else {
         uint::from_str(argv[2])
     };
+    let path = if vec::len(argv) < 4_u {
+        ""
+    }
+    else {
+        argv[3]
+    };
     let writep = comm::port();
     let writech = comm::chan(writep);
     task::spawn {
-        || writer(writech, size);
+        || writer(path, writech, size);
     };
     let ch = comm::recv(writep);
     uint::range(0_u, size) {
