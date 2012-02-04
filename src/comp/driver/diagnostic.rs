@@ -159,16 +159,16 @@ fn diagnosticcolor(lvl: level) -> u8 {
 
 fn print_diagnostic(topic: str, lvl: level, msg: str) {
     if str::is_not_empty(topic) {
-        io::stdout().write_str(#fmt["%s ", topic]);
+        io::stderr().write_str(#fmt["%s ", topic]);
     }
     if term::color_supported() {
-        term::fg(io::stdout(), diagnosticcolor(lvl));
+        term::fg(io::stderr(), diagnosticcolor(lvl));
     }
-    io::stdout().write_str(#fmt["%s:", diagnosticstr(lvl)]);
+    io::stderr().write_str(#fmt["%s:", diagnosticstr(lvl)]);
     if term::color_supported() {
-        term::reset(io::stdout());
+        term::reset(io::stderr());
     }
-    io::stdout().write_str(#fmt[" %s\n", msg]);
+    io::stderr().write_str(#fmt[" %s\n", msg]);
 }
 
 fn emit(cmsp: option<(codemap::codemap, span)>,
@@ -201,10 +201,10 @@ fn highlight_lines(cm: codemap::codemap, sp: span,
     }
     // Print the offending lines
     for line: uint in display_lines {
-        io::stdout().write_str(#fmt["%s:%u ", fm.name, line + 1u]);
+        io::stderr().write_str(#fmt["%s:%u ", fm.name, line + 1u]);
         let s = codemap::get_line(fm, line as int);
         if !str::ends_with(s, "\n") { s += "\n"; }
-        io::stdout().write_str(s);
+        io::stderr().write_str(s);
     }
     if elided {
         let last_line = display_lines[vec::len(display_lines) - 1u];
@@ -213,7 +213,7 @@ fn highlight_lines(cm: codemap::codemap, sp: span,
         let out = "";
         while indent > 0u { out += " "; indent -= 1u; }
         out += "...\n";
-        io::stdout().write_str(out);
+        io::stderr().write_str(out);
     }
 
 
@@ -238,6 +238,6 @@ fn highlight_lines(cm: codemap::codemap, sp: span,
             let width = hi.col - lo.col - 1u;
             while width > 0u { str::push_char(s, '~'); width -= 1u; }
         }
-        io::stdout().write_str(s + "\n");
+        io::stderr().write_str(s + "\n");
     }
 }
