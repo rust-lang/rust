@@ -89,6 +89,7 @@ rust_kernel::register_task(rust_task *task) {
         task->user.id = max_task_id++;
         task_table.put(task->user.id, task);
     }
+    K(srv, task->user.id != INTPTR_MAX, "Hit the maximum task id");
     KLOG_("Registered task %" PRIdPTR, task->user.id);
     int new_live_tasks = sync::increment(live_tasks);
     KLOG_("Total outstanding tasks: %d", new_live_tasks);

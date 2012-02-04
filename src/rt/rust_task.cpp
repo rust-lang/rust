@@ -628,6 +628,7 @@ rust_port_id rust_task::register_port(rust_port *port) {
     scoped_lock with(lock);
 
     rust_port_id id = next_port_id++;
+    A(thread, id != INTPTR_MAX, "Hit the maximum port id");
     port_table.put(id, port);
     return id;
 }
