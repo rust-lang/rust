@@ -711,9 +711,12 @@ fn gather_comments_and_literals(cm: codemap::codemap,
         }
         let tok = next_token(rdr);
         if is_lit(tok.tok) {
-            literals += [{lit: rdr.get_str_from(tok.bpos), pos: tok.chpos}];
+            let s = rdr.get_str_from(tok.bpos);
+            literals += [{lit: s, pos: tok.chpos}];
+            log(debug, "tok lit: " + s);
+        } else {
+            log(debug, "tok: " + token::to_str(rdr, tok.tok));
         }
-        log(debug, "tok: " + token::to_str(rdr, tok.tok));
         first_read = false;
     }
     ret {cmnts: comments, lits: literals};

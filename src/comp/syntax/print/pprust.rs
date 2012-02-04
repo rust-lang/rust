@@ -1010,9 +1010,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
       }
       ast::expr_assert(expr) {
         word_nbsp(s, "assert");
-        popen(s);
         print_expr(s, expr);
-        pclose(s);
       }
       ast::expr_mac(m) { print_mac(s, m); }
     }
@@ -1494,10 +1492,20 @@ fn print_literal(s: ps, &&lit: @ast::lit) {
         word(s.s, "'" + escape_str(str::from_char(ch as char), '\'') + "'");
       }
       ast::lit_int(i, t) {
-        word(s.s, int::str(i as int) + ast_util::int_ty_to_str(t));
+        if i < 0_i64 {
+            word(s.s,
+                 "-" + u64::to_str(-i as u64, 10u)
+                 + ast_util::int_ty_to_str(t));
+        } else {
+            word(s.s,
+                 u64::to_str(i as u64, 10u)
+                 + ast_util::int_ty_to_str(t));
+        }
       }
       ast::lit_uint(u, t) {
-        word(s.s, uint::str(u as uint) + ast_util::uint_ty_to_str(t));
+        word(s.s,
+             u64::to_str(u, 10u)
+             + ast_util::uint_ty_to_str(t));
       }
       ast::lit_float(f, t) {
         word(s.s, f + ast_util::float_ty_to_str(t));

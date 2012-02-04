@@ -22,9 +22,7 @@ type codemap = @{mutable files: [filemap]};
 
 type loc = {file: filemap, line: uint, col: uint};
 
-fn new_codemap() -> codemap {
-    @{mutable files: [new_filemap("-", @"", 0u, 0u)]}
-}
+fn new_codemap() -> codemap { @{mutable files: [] } }
 
 fn new_filemap_w_substr(filename: filename, substr: file_substr,
                         src: @str,
@@ -50,8 +48,6 @@ fn get_substr_info(cm: codemap, lo: uint, hi: uint)
     ret (name, {lo: lo, hi: hi, col: pos.col, line: pos.line});
 }
 
-fn empty_filemap(cm: codemap) -> filemap {cm.files[0]}
-
 fn next_line(file: filemap, chpos: uint, byte_pos: uint) {
     file.lines += [{ch: chpos, byte: byte_pos}];
 }
@@ -59,7 +55,7 @@ fn next_line(file: filemap, chpos: uint, byte_pos: uint) {
 type lookup_fn = fn@(file_pos) -> uint;
 
 fn lookup_line(map: codemap, pos: uint, lookup: lookup_fn)
-    -> option::t<{fm: filemap, line: uint}>
+    -> {fm: filemap, line: uint}
 {
     let len = vec::len(map.files);
     let a = 0u;
@@ -69,7 +65,7 @@ fn lookup_line(map: codemap, pos: uint, lookup: lookup_fn)
         if lookup(map.files[m].start_pos) > pos { b = m; } else { a = m; }
     }
     if (a >= len) {
-        ret none;
+        fail #fmt("position %u does not resolve to a source location", pos)
     }
     let f = map.files[a];
     a = 0u;
@@ -78,18 +74,12 @@ fn lookup_line(map: codemap, pos: uint, lookup: lookup_fn)
         let m = (a + b) / 2u;
         if lookup(f.lines[m]) > pos { b = m; } else { a = m; }
     }
-    ret some({fm: f, line: a});
+    ret {fm: f, line: a};
 }
 
 fn lookup_pos(map: codemap, pos: uint, lookup: lookup_fn) -> loc {
-    alt lookup_line(map, pos, lookup) {
-      some({fm: f, line: a}) {
-        {file: f, line: a + 1u, col: pos - lookup(f.lines[a])}
-      }
-      none {
-        { file: empty_filemap(map), line: 0u, col: 0u }
-      }
-    }
+    let {fm: f, line: a} = lookup_line(map, pos, lookup);
+    ret {file: f, line: a + 1u, col: pos - lookup(f.lines[a])};
 }
 
 fn lookup_char_pos(map: codemap, pos: uint) -> loc {
@@ -168,7 +158,7 @@ fn lookup_byte_offset(cm: codemap::codemap, chpos: uint)
     -> {fm: filemap, pos: uint}
 {
     fn lookup(pos: file_pos) -> uint { ret pos.ch; }
-    let {fm,line} = option::get(lookup_line(cm,chpos,lookup));
+    let {fm,line} = lookup_line(cm,chpos,lookup);
     let line_offset = fm.lines[line].byte - fm.start_pos.byte;
     let col = chpos - fm.lines[line].ch;
     let col_offset = str::byte_len_range(*fm.src, line_offset, col);

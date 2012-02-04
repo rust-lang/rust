@@ -83,7 +83,8 @@ fn expand_crate(sess: session::session, c: @crate) -> @crate {
         {fold_expr: bind expand_expr(exts, cx, _, _, _, afp.fold_expr)
             with *afp};
     let f = make_fold(f_pre);
-    let cm = parse_expr_from_source_str("<anon>", @core_macros(),
+    let cm = parse_expr_from_source_str("<core-macros>",
+                                        @core_macros(),
                                         sess.opts.cfg,
                                         sess.parse_sess);
 

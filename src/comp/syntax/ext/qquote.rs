@@ -248,7 +248,7 @@ fn expand_qquote<N: qq_helper>
         rcall = mk_call(cx,sp,
                         ["syntax", "ext", "qquote", "replace"],
                         [pcall,
-                         mk_vec_e(cx,sp, vec::map(qcx.gather) {|g|
+                         mk_vec_e(cx,sp, vec::map(copy qcx.gather) {|g|
                              mk_call(cx,sp,
                                      ["syntax", "ext", "qquote", g.constr],
                                      [g.e])}),

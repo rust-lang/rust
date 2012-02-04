@@ -85,6 +85,9 @@ fn check_pp<T>(expr: T, f: fn(pprust::ps, T), expect: str) {
     pp::eof(pp.s);
     let str = mem_buffer_str(buf);
     stdout().write_line(str);
-    if expect != "" {assert str == expect;}
+    if expect != "" {
+        #error("expect: '%s', got: '%s'", expect, str);
+        assert str == expect;
+    }
 }
 

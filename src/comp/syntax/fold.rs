@@ -432,14 +432,10 @@ fn noop_fold_ty(t: ty_, fld: ast_fold) -> ty_ {
       ty_uniq(mt) {ty_uniq(fold_mt(mt, fld))}
       ty_vec(mt) {ty_vec(fold_mt(mt, fld))}
       ty_ptr(mt) {ty_ptr(fold_mt(mt, fld))}
-      ty_task {t}
-      ty_port(ty) {ty_port(fld.fold_ty(ty))}
-      ty_chan(ty) {ty_chan(fld.fold_ty(ty))}
       ty_rec(fields) {ty_rec(vec::map(fields) {|f| fold_field(f, fld)})}
       ty_fn(proto, decl) {ty_fn(proto, fold_fn_decl(decl, fld))}
       ty_tup(tys) {ty_tup(vec::map(tys) {|ty| fld.fold_ty(ty)})}
       ty_path(path, id) {ty_path(fld.fold_path(path), fld.new_id(id))}
-      ty_type {t}
       // FIXME: constrs likely needs to be folded...
       ty_constr(ty, constrs) {ty_constr(fld.fold_ty(ty), constrs)}
       ty_mac(mac) {ty_mac(fold_mac(mac))}
