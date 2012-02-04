@@ -50,6 +50,7 @@ shape_log_str
 squareroot
 start_task
 vec_reserve_shared
+str_reserve_shared
 vec_from_buf_shared
 unsupervise
 upcall_cmp_type

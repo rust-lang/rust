@@ -97,6 +97,7 @@ export
    as_buf,
    //buf,
    sbuf,
+   reserve,
 
    unsafe;
 
@@ -105,6 +106,7 @@ export
 #[abi = "cdecl"]
 native mod rustrt {
     fn rust_str_push(&s: str, ch: u8);
+    fn str_reserve_shared(&ss: str, nn: ctypes::size_t);
 }
 
 // FIXME: add pure to a lot of functions
@@ -755,6 +757,7 @@ Apply a function to each character
 */
 fn map(ss: str, ff: fn(char) -> char) -> str {
     let result = "";
+    reserve(result, byte_len(ss));
 
     chars_iter(ss, {|cc|
         str::push_char(result, ff(cc));
@@ -1301,6 +1304,13 @@ Type: sbuf
 An unsafe buffer of bytes. Corresponds to a C char pointer.
 */
 type sbuf = *u8;
+
+// Function: reserve
+//
+// Allocate more memory for a string, up to `nn` + 1 bytes
+fn reserve(&ss: str, nn: uint) {
+    rustrt::str_reserve_shared(ss, nn);
+}
 
 // Module: unsafe
 //
