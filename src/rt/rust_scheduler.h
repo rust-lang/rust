@@ -14,7 +14,6 @@ private:
     array_list<rust_task_thread *> threads;
     randctx rctx;
     const size_t num_threads;
-    int rval;
 
     void create_task_threads();
     void destroy_task_threads();
