@@ -113,10 +113,11 @@ fn new_parser_from_file(sess: parse_sess, cfg: ast::crate_cfg, path: str,
 }
 
 fn new_parser_from_source_str(sess: parse_sess, cfg: ast::crate_cfg,
-                              name: str, source: @str) -> parser {
+                              name: str, ss: codemap::file_substr,
+                              source: @str) -> parser {
     let ftype = SOURCE_FILE;
-    let filemap = codemap::new_filemap(name, source,
-                                       sess.chpos, sess.byte_pos);
+    let filemap = codemap::new_filemap_w_substr
+        (name, ss, source, sess.chpos, sess.byte_pos);
     sess.cm.files += [filemap];
     let itr = @interner::mk(str::hash, str::eq);
     let rdr = lexer::new_reader(sess.cm, sess.span_diagnostic,
@@ -419,6 +420,13 @@ fn parse_ret_ty(p: parser) -> (ast::ret_style, @ast::ty) {
 
 fn parse_ty(p: parser, colons_before_params: bool) -> @ast::ty {
     let lo = p.span.lo;
+
+    alt have_dollar(p) {
+      some(e) {ret @spanned(lo, p.span.hi,
+                            ast::ty_mac(spanned(lo, p.span.hi, e)))}
+      none {}
+    }
+
     let t: ast::ty_;
     // FIXME: do something with this
 
@@ -628,6 +636,24 @@ fn parse_seq<T: copy>(bra: token::token, ket: token::token,
     ret spanned(lo, hi, result);
 }
 
+fn have_dollar(p: parser) -> option::t<ast::mac_> {
+    alt p.token {
+      token::DOLLAR_NUM(num) {
+        p.bump();
+        some(ast::mac_var(num))
+      }
+      token::DOLLAR_LPAREN {
+        let lo = p.span.lo;
+        p.bump();
+        let e = parse_expr(p);
+        expect(p, token::RPAREN);
+        let hi = p.last_span.hi;
+        some(ast::mac_aq(ast_util::mk_sp(lo,hi), e))
+      }
+      _ {none}
+    }
+}
+
 fn lit_from_token(p: parser, tok: token::token) -> ast::lit_ {
     alt tok {
       token::LIT_INT(i, it) { ast::lit_int(i, it) }
@@ -755,6 +781,12 @@ fn parse_bottom_expr(p: parser) -> pexpr {
     let hi = p.span.hi;
 
     let ex: ast::expr_;
+
+    alt have_dollar(p) {
+      some(x) {ret pexpr(mk_mac_expr(p, lo, p.span.hi, x));}
+      _ {}
+    }
+
     if p.token == token::LPAREN {
         p.bump();
         if p.token == token::RPAREN {
@@ -843,6 +875,12 @@ fn parse_bottom_expr(p: parser) -> pexpr {
     } else if p.token == token::ELLIPSIS {
         p.bump();
         ret pexpr(mk_mac_expr(p, lo, p.span.hi, ast::mac_ellipsis));
+    } else if p.token == token::POUND_LPAREN {
+        p.bump();
+        let e = parse_expr(p);
+        expect(p, token::RPAREN);
+        ret pexpr(mk_mac_expr(p, lo, p.span.hi,
+                              ast::mac_qq(e.span, e)));
     } else if eat_word(p, "bind") {
         let e = parse_expr_res(p, RESTRICT_NO_CALL_EXPRS);
         fn parse_expr_opt(p: parser) -> option<@ast::expr> {
@@ -955,15 +993,38 @@ fn parse_syntax_ext_naked(p: parser, lo: uint) -> @ast::expr {
     let pth = parse_path(p);
     //temporary for a backwards-compatible cycle:
     let sep = seq_sep(token::COMMA);
-    let es =
-        if p.token == token::LPAREN {
-            parse_seq(token::LPAREN, token::RPAREN, sep, parse_expr, p)
-        } else {
-            parse_seq(token::LBRACKET, token::RBRACKET, sep, parse_expr, p)
-        };
-    let hi = es.span.hi;
-    let e = mk_expr(p, es.span.lo, hi, ast::expr_vec(es.node, ast::imm));
-    ret mk_mac_expr(p, lo, hi, ast::mac_invoc(pth, e, none));
+    let e = none;
+    if (p.token == token::LPAREN || p.token == token::LBRACKET) {
+        let es =
+            if p.token == token::LPAREN {
+                parse_seq(token::LPAREN, token::RPAREN,
+                          sep, parse_expr, p)
+            } else {
+                parse_seq(token::LBRACKET, token::RBRACKET,
+                          sep, parse_expr, p)
+            };
+        let hi = es.span.hi;
+        e = some(mk_expr(p, es.span.lo, hi,
+                         ast::expr_vec(es.node, ast::imm)));
+    }
+    let b = none;
+    if p.token == token::LBRACE {
+        p.bump();
+        let lo = p.span.lo;
+        let depth = 1u;
+        while (depth > 0u) {
+            alt (p.token) {
+              token::LBRACE {depth += 1u;}
+              token::RBRACE {depth -= 1u;}
+              token::EOF {p.fatal("unexpected EOF in macro body");}
+              _ {}
+            }
+            p.bump();
+        }
+        let hi = p.last_span.lo;
+        b = some({span: mk_sp(lo,hi)});
+    }
+    ret mk_mac_expr(p, lo, p.span.hi, ast::mac_invoc(pth, e, b));
 }
 
 fn parse_dot_or_call_expr(p: parser) -> pexpr {
@@ -2483,8 +2544,21 @@ fn parse_crate_from_source_file(input: str, cfg: ast::crate_cfg,
 
 fn parse_expr_from_source_str(name: str, source: @str, cfg: ast::crate_cfg,
                               sess: parse_sess) -> @ast::expr {
-    let p = new_parser_from_source_str(sess, cfg, name, source);
+    let p = new_parser_from_source_str(sess, cfg, name, none, source);
     let r = parse_expr(p);
+    sess.chpos = p.reader.chpos;
+    sess.byte_pos = sess.byte_pos + p.reader.pos;
+    ret r;
+}
+
+fn parse_from_source_str<T>(f: fn (p: parser) -> T,
+                            name: str, ss: codemap::file_substr,
+                            source: @str, cfg: ast::crate_cfg,
+                            sess: parse_sess)
+    -> T
+{
+    let p = new_parser_from_source_str(sess, cfg, name, ss, source);
+    let r = f(p);
     sess.chpos = p.reader.chpos;
     sess.byte_pos = sess.byte_pos + p.reader.pos;
     ret r;
@@ -2492,7 +2566,7 @@ fn parse_expr_from_source_str(name: str, source: @str, cfg: ast::crate_cfg,
 
 fn parse_crate_from_source_str(name: str, source: @str, cfg: ast::crate_cfg,
                                sess: parse_sess) -> @ast::crate {
-    let p = new_parser_from_source_str(sess, cfg, name, source);
+    let p = new_parser_from_source_str(sess, cfg, name, none, source);
     let r = parse_crate_mod(p, cfg);
     sess.chpos = p.reader.chpos;
     sess.byte_pos = sess.byte_pos + p.reader.pos;

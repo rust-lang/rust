@@ -272,11 +272,20 @@ enum blk_sort {
 
 type mac = spanned<mac_>;
 
+type mac_arg = option::t<@expr>;
+
+type mac_body_ = {span: span};
+type mac_body = option::t<mac_body_>;
+
 enum mac_ {
-    mac_invoc(@path, @expr, option<str>),
+    mac_invoc(@path, mac_arg, mac_body),
     mac_embed_type(@ty),
     mac_embed_block(blk),
     mac_ellipsis,
+    // the span is used by the quoter/anti-quoter ...
+    mac_qq(span /* span of expr */, @expr), // quasi-quote
+    mac_aq(span /* span of quote */, @expr), // anti-quote
+    mac_var(uint)
 }
 
 type lit = spanned<lit_>;

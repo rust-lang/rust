@@ -238,7 +238,7 @@ fn create_block(cx: @block_ctxt) -> @metadata<block_md> {
 
     let start = codemap::lookup_char_pos(bcx_ccx(cx).sess.codemap,
                                          sp.lo);
-    let fname = start.filename;
+    let fname = start.file.name;
     let end = codemap::lookup_char_pos(bcx_ccx(cx).sess.codemap,
                                        sp.hi);
     let tg = LexicalBlockTag;
@@ -632,8 +632,8 @@ fn create_ty(cx: @crate_ctxt, t: ty::t, ty: @ast::ty)
     };
 }
 
-fn filename_from_span(cx: @crate_ctxt, sp: span) -> str {
-    codemap::lookup_char_pos(cx.sess.codemap, sp.lo).filename
+fn filename_from_span(cx: @crate_ctxt, sp: codemap::span) -> str {
+    codemap::lookup_char_pos(cx.sess.codemap, sp.lo).file.name
 }
 
 fn create_var(type_tag: int, context: ValueRef, name: str, file: ValueRef,
@@ -670,7 +670,7 @@ fn create_local_var(bcx: @block_ctxt, local: @ast::local)
                                        local.span.lo);
     let ty = node_id_type(bcx, local.node.id);
     let tymd = create_ty(cx, ty, local.node.ty);
-    let filemd = create_file(cx, loc.filename);
+    let filemd = create_file(cx, loc.file.name);
     let context = alt bcx.parent {
         parent_none { create_function(bcx.fcx).node }
         parent_some(_) { create_block(bcx).node }
@@ -719,7 +719,7 @@ fn create_arg(bcx: @block_ctxt, arg: ast::arg, sp: span)
                                        sp.lo);
     let ty = node_id_type(bcx, arg.id);
     let tymd = create_ty(cx, ty, arg.ty);
-    let filemd = create_file(cx, loc.filename);
+    let filemd = create_file(cx, loc.file.name);
     let context = create_function(bcx.fcx);
     let mdnode = create_var(tg, context.node, arg.ident, filemd.node,
                             loc.line as int, tymd.node);
@@ -812,7 +812,7 @@ fn create_function(fcx: @fn_ctxt) -> @metadata<subprogram_md> {
 
     let loc = codemap::lookup_char_pos(cx.sess.codemap,
                                        sp.lo);
-    let file_node = create_file(cx, loc.filename).node;
+    let file_node = create_file(cx, loc.file.name).node;
     let key = if cx.item_symbols.contains_key(fcx.id) { fcx.id } else { id };
     let mangled = cx.item_symbols.get(key);
     let ty_node = if cx.sess.opts.extra_debuginfo {

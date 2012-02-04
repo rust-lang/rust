@@ -349,6 +349,7 @@ fn next_token_inner(rdr: reader) -> token::token {
       '#' {
         rdr.bump();
         if rdr.curr == '<' { rdr.bump(); ret token::POUND_LT; }
+        if rdr.curr == '(' { rdr.bump(); ret token::POUND_LPAREN; }
         if rdr.curr == '{' { rdr.bump(); ret token::POUND_LBRACE; }
         ret token::POUND;
       }
@@ -359,6 +360,24 @@ fn next_token_inner(rdr: reader) -> token::token {
             rdr.bump();
             ret token::MOD_SEP;
         } else { ret token::COLON; }
+      }
+
+      '$' {
+        rdr.bump();
+        if is_dec_digit(rdr.curr) {
+            let val = dec_digit_val(rdr.curr) as uint;
+            while is_dec_digit(rdr.next()) {
+                rdr.bump();
+                val = val * 10u + (dec_digit_val(rdr.curr) as uint);
+            }
+            rdr.bump();
+            ret token::DOLLAR_NUM(val);
+        } else if rdr.curr == '(' {
+            rdr.bump();
+            ret token::DOLLAR_LPAREN;
+        } else {
+            rdr.fatal("expected digit");
+        }
       }
 
 
@@ -692,9 +711,12 @@ fn gather_comments_and_literals(cm: codemap::codemap,
         }
         let tok = next_token(rdr);
         if is_lit(tok.tok) {
-            literals += [{lit: rdr.get_str_from(tok.bpos), pos: tok.chpos}];
+            let s = rdr.get_str_from(tok.bpos);
+            literals += [{lit: s, pos: tok.chpos}];
+            log(debug, "tok lit: " + s);
+        } else {
+            log(debug, "tok: " + token::to_str(rdr, tok.tok));
         }
-        log(debug, "tok: " + token::to_str(rdr, tok.tok));
         first_read = false;
     }
     ret {cmnts: comments, lits: literals};

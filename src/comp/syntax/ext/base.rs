@@ -6,10 +6,10 @@ import std::map::new_str_hash;
 import codemap;
 
 type syntax_expander =
-    fn@(ext_ctxt, span, @ast::expr, option<str>) -> @ast::expr;
+    fn@(ext_ctxt, span, ast::mac_arg, ast::mac_body) -> @ast::expr;
 type macro_def = {ident: str, ext: syntax_extension};
 type macro_definer =
-    fn@(ext_ctxt, span, @ast::expr, option<str>) -> macro_def;
+    fn@(ext_ctxt, span, ast::mac_arg, ast::mac_body) -> macro_def;
 
 enum syntax_extension {
     normal(syntax_expander),
@@ -30,6 +30,8 @@ fn syntax_expander_table() -> hashmap<str, syntax_extension> {
                             normal(ext::ident_to_str::expand_syntax_ext));
     syntax_expanders.insert("log_syntax",
                             normal(ext::log_syntax::expand_syntax_ext));
+    syntax_expanders.insert("ast",
+                            normal(ext::qquote::expand_ast));
     ret syntax_expanders;
 }
 
@@ -118,7 +120,21 @@ fn make_new_lit(cx: ext_ctxt, sp: codemap::span, lit: ast::lit_) ->
     ret @{id: cx.next_id(), node: ast::expr_lit(sp_lit), span: sp};
 }
 
+fn get_mac_arg(cx: ext_ctxt, sp: span, arg: ast::mac_arg) -> @ast::expr {
+    alt (arg) {
+      some(expr) {expr}
+      none {cx.span_fatal(sp, "missing macro args")}
+    }
+}
 
+fn get_mac_body(cx: ext_ctxt, sp: span, args: ast::mac_body)
+    -> ast::mac_body_
+{
+    alt (args) {
+      some(body) {body}
+      none {cx.span_fatal(sp, "missing macro body")}
+    }
+}
 
 //
 // Local Variables:

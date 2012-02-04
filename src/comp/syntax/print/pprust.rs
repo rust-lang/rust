@@ -726,8 +726,11 @@ fn print_mac(s: ps, m: ast::mac) {
       ast::mac_invoc(path, arg, body) {
         word(s.s, "#");
         print_path(s, path, false);
-        alt arg.node { ast::expr_vec(_, _) { } _ { word(s.s, " "); } }
-        print_expr(s, arg);
+        alt arg {
+          some(@{node: ast::expr_vec(_, _), _}) { }
+          _ { word(s.s, " "); }
+        }
+        option::may(arg, bind print_expr(s, _));
         // FIXME: extension 'body'
       }
       ast::mac_embed_type(ty) {
@@ -739,6 +742,8 @@ fn print_mac(s: ps, m: ast::mac) {
         print_possibly_embedded_block(s, blk, block_normal, indent_unit);
       }
       ast::mac_ellipsis { word(s.s, "..."); }
+      ast::mac_var(v) { word(s.s, #fmt("$%u", v)); }
+      _ { /* fixme */ }
     }
 }
 
@@ -1005,9 +1010,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
       }
       ast::expr_assert(expr) {
         word_nbsp(s, "assert");
-        popen(s);
         print_expr(s, expr);
-        pclose(s);
       }
       ast::expr_mac(m) { print_mac(s, m); }
     }
@@ -1489,10 +1492,20 @@ fn print_literal(s: ps, &&lit: @ast::lit) {
         word(s.s, "'" + escape_str(str::from_char(ch as char), '\'') + "'");
       }
       ast::lit_int(i, t) {
-        word(s.s, int::str(i as int) + ast_util::int_ty_to_str(t));
+        if i < 0_i64 {
+            word(s.s,
+                 "-" + u64::to_str(-i as u64, 10u)
+                 + ast_util::int_ty_to_str(t));
+        } else {
+            word(s.s,
+                 u64::to_str(i as u64, 10u)
+                 + ast_util::int_ty_to_str(t));
+        }
       }
       ast::lit_uint(u, t) {
-        word(s.s, uint::str(u as uint) + ast_util::uint_ty_to_str(t));
+        word(s.s,
+             u64::to_str(u, 10u)
+             + ast_util::uint_ty_to_str(t));
       }
       ast::lit_float(f, t) {
         word(s.s, f + ast_util::float_ty_to_str(t));

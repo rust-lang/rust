@@ -53,8 +53,12 @@ enum token {
     LBRACE,
     RBRACE,
     POUND,
+    POUND_LPAREN,
     POUND_LBRACE,
     POUND_LT,
+
+    DOLLAR_LPAREN,
+    DOLLAR_NUM(uint),
 
     /* Literals */
     LIT_INT(i64, ast::int_ty),
@@ -69,6 +73,7 @@ enum token {
     UNDERSCORE,
     BRACEQUOTE(str_num),
     EOF,
+
 }
 
 fn binop_to_str(o: binop) -> str {
@@ -123,8 +128,14 @@ fn to_str(r: reader, t: token) -> str {
       LBRACE { ret "{"; }
       RBRACE { ret "}"; }
       POUND { ret "#"; }
+      POUND_LPAREN { ret "#("; }
       POUND_LBRACE { ret "#{"; }
       POUND_LT { ret "#<"; }
+
+      DOLLAR_LPAREN { ret "$("; }
+      DOLLAR_NUM(u) {
+        ret "$" + uint::to_str(u as uint, 10u);
+      }
 
       /* Literals */
       LIT_INT(c, ast::ty_char) {

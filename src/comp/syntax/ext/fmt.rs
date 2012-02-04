@@ -10,10 +10,12 @@ import option::{some};
 import extfmt::ct::*;
 import base::*;
 import codemap::span;
+import syntax::ext::build::*;
 export expand_syntax_ext;
 
-fn expand_syntax_ext(cx: ext_ctxt, sp: span, arg: @ast::expr,
-                     _body: option<str>) -> @ast::expr {
+fn expand_syntax_ext(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
+                     _body: ast::mac_body) -> @ast::expr {
+    let arg = get_mac_arg(cx,sp,arg);
     let args: [@ast::expr] =
         alt arg.node {
           ast::expr_vec(elts, _) { elts }
@@ -41,67 +43,15 @@ fn expand_syntax_ext(cx: ext_ctxt, sp: span, arg: @ast::expr,
 // FIXME: A lot of these functions for producing expressions can probably
 // be factored out in common with other code that builds expressions.
 // FIXME: Cleanup the naming of these functions
+// NOTE: Moved many of the common ones to build.rs --kevina
 fn pieces_to_expr(cx: ext_ctxt, sp: span, pieces: [piece], args: [@ast::expr])
    -> @ast::expr {
-    fn make_new_lit(cx: ext_ctxt, sp: span, lit: ast::lit_) -> @ast::expr {
-        let sp_lit = @{node: lit, span: sp};
-        ret @{id: cx.next_id(), node: ast::expr_lit(sp_lit), span: sp};
-    }
-    fn make_new_str(cx: ext_ctxt, sp: span, s: str) -> @ast::expr {
-        let lit = ast::lit_str(s);
-        ret make_new_lit(cx, sp, lit);
-    }
-    fn make_new_int(cx: ext_ctxt, sp: span, i: int) -> @ast::expr {
-        let lit = ast::lit_int(i as i64, ast::ty_i);
-        ret make_new_lit(cx, sp, lit);
-    }
-    fn make_new_uint(cx: ext_ctxt, sp: span, u: uint) -> @ast::expr {
-        let lit = ast::lit_uint(u as u64, ast::ty_u);
-        ret make_new_lit(cx, sp, lit);
-    }
-    fn make_add_expr(cx: ext_ctxt, sp: span, lhs: @ast::expr, rhs: @ast::expr)
-       -> @ast::expr {
-        let binexpr = ast::expr_binary(ast::add, lhs, rhs);
-        ret @{id: cx.next_id(), node: binexpr, span: sp};
-    }
-    fn make_path_expr(cx: ext_ctxt, sp: span, idents: [ast::ident]) ->
-       @ast::expr {
-        let path = {global: false, idents: idents, types: []};
-        let sp_path = @{node: path, span: sp};
-        let pathexpr = ast::expr_path(sp_path);
-        ret @{id: cx.next_id(), node: pathexpr, span: sp};
-    }
-    fn make_vec_expr(cx: ext_ctxt, sp: span, exprs: [@ast::expr]) ->
-       @ast::expr {
-        let vecexpr = ast::expr_vec(exprs, ast::imm);
-        ret @{id: cx.next_id(), node: vecexpr, span: sp};
-    }
-    fn make_call(cx: ext_ctxt, sp: span, fn_path: [ast::ident],
-                 args: [@ast::expr]) -> @ast::expr {
-        let pathexpr = make_path_expr(cx, sp, fn_path);
-        let callexpr = ast::expr_call(pathexpr, args, false);
-        ret @{id: cx.next_id(), node: callexpr, span: sp};
-    }
-    fn make_rec_expr(cx: ext_ctxt, sp: span,
-                     fields: [{ident: ast::ident, ex: @ast::expr}]) ->
-       @ast::expr {
-        let astfields: [ast::field] = [];
-        for field: {ident: ast::ident, ex: @ast::expr} in fields {
-            let ident = field.ident;
-            let val = field.ex;
-            let astfield =
-                {node: {mut: ast::imm, ident: ident, expr: val}, span: sp};
-            astfields += [astfield];
-        }
-        let recexpr = ast::expr_rec(astfields, option::none::<@ast::expr>);
-        ret @{id: cx.next_id(), node: recexpr, span: sp};
-    }
     fn make_path_vec(_cx: ext_ctxt, ident: ast::ident) -> [ast::ident] {
         ret ["extfmt", "rt", ident];
     }
     fn make_rt_path_expr(cx: ext_ctxt, sp: span, ident: str) -> @ast::expr {
         let path = make_path_vec(cx, ident);
-        ret make_path_expr(cx, sp, path);
+        ret mk_path(cx, sp, path);
     }
     // Produces an AST expression that represents a RT::conv record,
     // which tells the RT::conv* functions how to perform the conversion
@@ -127,7 +77,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span, pieces: [piece], args: [@ast::expr])
             if vec::len::<@ast::expr>(flagexprs) == 0u {
                 flagexprs += [make_rt_path_expr(cx, sp, "flag_none")];
             }
-            ret make_vec_expr(cx, sp, flagexprs);
+            ret mk_vec_e(cx, sp, flagexprs);
         }
         fn make_count(cx: ext_ctxt, sp: span, cnt: count) -> @ast::expr {
             alt cnt {
@@ -135,10 +85,10 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span, pieces: [piece], args: [@ast::expr])
                 ret make_rt_path_expr(cx, sp, "count_implied");
               }
               count_is(c) {
-                let count_lit = make_new_int(cx, sp, c);
+                let count_lit = mk_int(cx, sp, c);
                 let count_is_path = make_path_vec(cx, "count_is");
                 let count_is_args = [count_lit];
-                ret make_call(cx, sp, count_is_path, count_is_args);
+                ret mk_call(cx, sp, count_is_path, count_is_args);
               }
               _ { cx.span_unimpl(sp, "unimplemented #fmt conversion"); }
             }
@@ -161,11 +111,11 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span, pieces: [piece], args: [@ast::expr])
         fn make_conv_rec(cx: ext_ctxt, sp: span, flags_expr: @ast::expr,
                          width_expr: @ast::expr, precision_expr: @ast::expr,
                          ty_expr: @ast::expr) -> @ast::expr {
-            ret make_rec_expr(cx, sp,
-                              [{ident: "flags", ex: flags_expr},
-                               {ident: "width", ex: width_expr},
-                               {ident: "precision", ex: precision_expr},
-                               {ident: "ty", ex: ty_expr}]);
+            ret mk_rec_e(cx, sp,
+                         [{ident: "flags", ex: flags_expr},
+                          {ident: "width", ex: width_expr},
+                          {ident: "precision", ex: precision_expr},
+                          {ident: "ty", ex: ty_expr}]);
         }
         let rt_conv_flags = make_flags(cx, sp, cnv.flags);
         let rt_conv_width = make_count(cx, sp, cnv.width);
@@ -180,7 +130,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span, pieces: [piece], args: [@ast::expr])
         let path = make_path_vec(cx, fname);
         let cnv_expr = make_rt_conv_expr(cx, sp, cnv);
         let args = [cnv_expr, arg];
-        ret make_call(cx, arg.span, path, args);
+        ret mk_call(cx, arg.span, path, args);
     }
     fn make_new_conv(cx: ext_ctxt, sp: span, cnv: conv, arg: @ast::expr) ->
        @ast::expr {
@@ -309,13 +259,13 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span, pieces: [piece], args: [@ast::expr])
     }
     let fmt_sp = args[0].span;
     let n = 0u;
-    let tmp_expr = make_new_str(cx, sp, "");
+    let tmp_expr = mk_str(cx, sp, "");
     let nargs = vec::len::<@ast::expr>(args);
     for pc: piece in pieces {
         alt pc {
           piece_string(s) {
-            let s_expr = make_new_str(cx, fmt_sp, s);
-            tmp_expr = make_add_expr(cx, fmt_sp, tmp_expr, s_expr);
+            let s_expr = mk_str(cx, fmt_sp, s);
+            tmp_expr = mk_binary(cx, fmt_sp, ast::add, tmp_expr, s_expr);
           }
           piece_conv(conv) {
             n += 1u;
@@ -328,7 +278,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span, pieces: [piece], args: [@ast::expr])
             log_conv(conv);
             let arg_expr = args[n];
             let c_expr = make_new_conv(cx, fmt_sp, conv, arg_expr);
-            tmp_expr = make_add_expr(cx, fmt_sp, tmp_expr, c_expr);
+            tmp_expr = mk_binary(cx, fmt_sp, ast::add, tmp_expr, c_expr);
           }
         }
     }

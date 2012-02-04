@@ -74,6 +74,8 @@ mod syntax {
     mod ext {
         mod base;
         mod expand;
+        mod qquote;
+        mod build;
 
         mod fmt;
         mod env;

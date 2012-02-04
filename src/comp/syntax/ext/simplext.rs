@@ -6,7 +6,7 @@ import std::map::{hashmap, new_str_hash};
 import option::{some, none};
 import driver::session::session;
 
-import base::{ext_ctxt, normal};
+import base::*;
 
 import fold::*;
 import ast_util::respan;
@@ -587,6 +587,9 @@ fn p_t_s_r_mac(cx: ext_ctxt, mac: ast::mac, s: selector, b: binders) {
           none { no_des(cx, blk.span, "under `#{}`"); }
         }
       }
+      ast::mac_qq(_,_) { no_des(cx, mac.span, "quasiquotes"); }
+      ast::mac_aq(_,_) { no_des(cx, mac.span, "antiquotes"); }
+      ast::mac_var(_) { no_des(cx, mac.span, "antiquote variables"); }
     }
 }
 
@@ -666,8 +669,9 @@ fn p_t_s_r_actual_vector(cx: ext_ctxt, elts: [@expr], _repeat_after: bool,
     }
 }
 
-fn add_new_extension(cx: ext_ctxt, sp: span, arg: @expr,
-                     _body: option<str>) -> base::macro_def {
+fn add_new_extension(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
+                     _body: ast::mac_body) -> base::macro_def {
+    let arg = get_mac_arg(cx,sp,arg);
     let args: [@ast::expr] =
         alt arg.node {
           ast::expr_vec(elts, _) { elts }
@@ -712,8 +716,10 @@ fn add_new_extension(cx: ext_ctxt, sp: span, arg: @expr,
                       }
                     }
                     clauses +=
-                        [@{params: pattern_to_selectors(cx, invoc_arg),
+                        [@{params: pattern_to_selectors
+                               (cx, get_mac_arg(cx,mac.span,invoc_arg)),
                            body: elts[1u]}];
+
                     // FIXME: check duplicates (or just simplify
                     // the macro arg situation)
                   }
@@ -750,8 +756,9 @@ fn add_new_extension(cx: ext_ctxt, sp: span, arg: @expr,
              },
          ext: normal(ext)};
 
-    fn generic_extension(cx: ext_ctxt, sp: span, arg: @expr,
-                         _body: option<str>, clauses: [@clause]) -> @expr {
+    fn generic_extension(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
+                         _body: ast::mac_body, clauses: [@clause]) -> @expr {
+        let arg = get_mac_arg(cx,sp,arg);
         for c: @clause in clauses {
             alt use_selectors_to_bind(c.params, arg) {
               some(bindings) { ret transcribe(cx, bindings, c.body); }

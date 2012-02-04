@@ -5,9 +5,10 @@ import option::{none, some};
 import std::map::hashmap;
 import vec;
 
-import syntax::ast::{crate, expr_, expr_mac, mac_invoc};
+import syntax::ast::{crate, expr_, expr_mac, mac_invoc, mac_qq};
 import syntax::fold::*;
 import syntax::ext::base::*;
+import syntax::ext::qquote::{expand_qquote,qq_helper};
 import syntax::parse::parser::parse_expr_from_source_str;
 
 import codemap::span;
@@ -45,6 +46,13 @@ fn expand_expr(exts: hashmap<str, syntax_extension>, cx: ext_ctxt,
                   }
                 }
               }
+              mac_qq(sp, exp) {
+                let r = expand_qquote(cx, sp, none, exp);
+                // need to keep going, resuls may contain embedded qquote or
+                // macro that need expanding
+                let r2 = fld.fold_expr(r);
+                (r2.node, s)
+              }
               _ { cx.span_bug(mac.span, "naked syntactic bit") }
             }
           }
@@ -75,7 +83,8 @@ fn expand_crate(sess: session::session, c: @crate) -> @crate {
         {fold_expr: bind expand_expr(exts, cx, _, _, _, afp.fold_expr)
             with *afp};
     let f = make_fold(f_pre);
-    let cm = parse_expr_from_source_str("<anon>", @core_macros(),
+    let cm = parse_expr_from_source_str("<core-macros>",
+                                        @core_macros(),
                                         sess.opts.cfg,
                                         sess.parse_sess);
 

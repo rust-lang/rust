@@ -133,11 +133,17 @@ fn fold_mac_(m: mac, fld: ast_fold) -> mac {
     ret {node:
              alt m.node {
                mac_invoc(pth, arg, body) {
-                 mac_invoc(fld.fold_path(pth), fld.fold_expr(arg), body)
+                 mac_invoc(fld.fold_path(pth),
+                           // FIXME: bind should work, but causes a crash
+                           option::map(arg) {|arg| fld.fold_expr(arg)},
+                           body)
                }
                mac_embed_type(ty) { mac_embed_type(fld.fold_ty(ty)) }
                mac_embed_block(blk) { mac_embed_block(fld.fold_block(blk)) }
                mac_ellipsis { mac_ellipsis }
+               mac_qq(_,_) { /* fixme */ m.node }
+               mac_aq(_,_) { /* fixme */ m.node }
+               mac_var(_) { /* fixme */ m.node }
              },
          span: m.span};
 }
@@ -409,9 +415,32 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
         }
 }
 
-fn noop_fold_ty(t: ty_, _fld: ast_fold) -> ty_ {
-    //drop in ty::fold_ty here if necessary
-    ret t;
+fn noop_fold_ty(t: ty_, fld: ast_fold) -> ty_ {
+    let fold_mac = bind fold_mac_(_, fld);
+    fn fold_mt(mt: mt, fld: ast_fold) -> mt {
+        {ty: fld.fold_ty(mt.ty), mut: mt.mut}
+    }
+    fn fold_field(f: ty_field, fld: ast_fold) -> ty_field {
+        {node: {ident: fld.fold_ident(f.node.ident),
+                mt: fold_mt(f.node.mt, fld)},
+         span: fld.new_span(f.span)}
+    }
+    alt t {
+      ty_nil | ty_bot | ty_bool | ty_str {t}
+      ty_int(_) | ty_uint(_) | ty_float(_) {t}
+      ty_box(mt) {ty_box(fold_mt(mt, fld))}
+      ty_uniq(mt) {ty_uniq(fold_mt(mt, fld))}
+      ty_vec(mt) {ty_vec(fold_mt(mt, fld))}
+      ty_ptr(mt) {ty_ptr(fold_mt(mt, fld))}
+      ty_rec(fields) {ty_rec(vec::map(fields) {|f| fold_field(f, fld)})}
+      ty_fn(proto, decl) {ty_fn(proto, fold_fn_decl(decl, fld))}
+      ty_tup(tys) {ty_tup(vec::map(tys) {|ty| fld.fold_ty(ty)})}
+      ty_path(path, id) {ty_path(fld.fold_path(path), fld.new_id(id))}
+      // FIXME: constrs likely needs to be folded...
+      ty_constr(ty, constrs) {ty_constr(fld.fold_ty(ty), constrs)}
+      ty_mac(mac) {ty_mac(fold_mac(mac))}
+      ty_infer {t}
+    }
 }
 
 fn noop_fold_constr(c: constr_, fld: ast_fold) -> constr_ {
