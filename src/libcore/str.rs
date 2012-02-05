@@ -768,7 +768,7 @@ Function: bytes_iter
 
 Iterate over the bytes in a string
 */
-fn bytes_iter(ss: str, it: fn(u8)) {
+fn bytes_iter(ss: str, it: fn(&&u8)) {
     let pos = 0u;
     let len = byte_len(ss);
 
@@ -783,7 +783,7 @@ Function: chars_iter
 
 Iterate over the characters in a string
 */
-fn chars_iter(s: str, it: fn(char)) {
+fn chars_iter(s: str, it: fn(&&char)) {
     let pos = 0u, len = byte_len(s);
     while (pos < len) {
         let {ch, next} = char_range_at(s, pos);

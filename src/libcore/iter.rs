@@ -33,6 +33,12 @@ impl<A> of iterable<A> for option<A> {
     }
 }
 
+impl of iterable<char> for str {
+    fn iter(blk: fn(&&char)) {
+        str::chars_iter(self, blk)
+    }
+}
+
 fn enumerate<A,IA:iterable<A>>(self: IA, blk: fn(uint, A)) {
     let i = 0u;
     self.iter {|a|
@@ -168,4 +174,15 @@ fn test_repeat() {
     assert c == [0u, 1u, 4u, 9u, 16u];
 }
 
-
+#[test]
+fn test_str_char_iter() {
+    let i = 0u;
+    "፩፪፫".iter {|&&c: char|
+        alt i {
+          0 { assert "፩" == c }
+          1 { assert "፪" == c }
+          2 { assert "፫" == c }
+        }
+        i += 1u;
+    }
+}
