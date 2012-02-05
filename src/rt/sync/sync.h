@@ -37,8 +37,6 @@ public:
  * Thread utility class. Derive and implement your own run() method.
  */
 class rust_thread {
-private:
-    volatile bool _is_running;
 public:
 #if defined(__WIN32__)
     HANDLE thread;
@@ -53,8 +51,6 @@ public:
     }
 
     void join();
-
-    bool is_running();
 
     virtual ~rust_thread() {}   // quiet the compiler
 };
