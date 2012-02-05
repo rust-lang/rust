@@ -149,7 +149,7 @@ fn name_str(nm: name) -> str {
 }
 
 fn find_opt(opts: [opt], nm: name) -> option<uint> {
-    vec::position_pred(opts, { |opt| opt.name == nm })
+    vec::position(opts, { |opt| opt.name == nm })
 }
 
 /*

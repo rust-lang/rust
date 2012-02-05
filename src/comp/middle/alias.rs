@@ -702,7 +702,7 @@ fn filter_invalid(src: list<@invalid>, bs: [binding]) -> list<@invalid> {
     while cur != list::nil {
         alt cur {
           list::cons(head, tail) {
-            let p = vec::position_pred(bs, {|b| b.node_id == head.node_id});
+            let p = vec::position(bs, {|b| b.node_id == head.node_id});
             if !is_none(p) { out = list::cons(head, @out); }
             cur = *tail;
           }

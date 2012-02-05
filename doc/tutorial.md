@@ -922,8 +922,8 @@ for the parameter list, as in `{|| ...}`.
 Partial application is done using the `bind` keyword in Rust.
 
 ~~~~
-let daynum = bind vec::position(_, ["mo", "tu", "we", "do",
-                                    "fr", "sa", "su"]);
+let daynum = bind vec::position_elt(["mo", "tu", "we", "do",
+                                     "fr", "sa", "su"], _);
 ~~~~
 
 Binding a function produces a boxed closure (`fn@` type) in which some

@@ -426,7 +426,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint]) -> [u8] {
       }
       ty::ty_param(n, _) {
         // Find the type parameter in the parameter list.
-        alt vec::position(n, ty_param_map) {
+        alt vec::position_elt(ty_param_map, n) {
           some(i) { s += [shape_var, i as u8]; }
           none { fail "ty param not found in ty_param_map"; }
         }

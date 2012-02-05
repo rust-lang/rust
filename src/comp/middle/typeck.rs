@@ -1480,7 +1480,7 @@ fn lookup_method(fcx: @fn_ctxt, isc: resolve::iscopes,
                     }
                 };
                 let ifce_methods = ty::iface_methods(tcx, iid);
-                alt vec::position_pred(*ifce_methods, {|m| m.ident == name}) {
+                alt vec::position(*ifce_methods, {|m| m.ident == name}) {
                   some(pos) {
                     let m = ifce_methods[pos];
                     ret some({method_ty: ty::mk_fn(tcx, m.fty),
