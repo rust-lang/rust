@@ -179,6 +179,7 @@ fn emit(cmsp: option<(codemap::codemap, span)>,
         let lines = codemap::span_to_lines(sp, cm);
         print_diagnostic(ss, lvl, msg);
         highlight_lines(cm, sp, lines);
+        print_macro_backtrace(cm, sp);
       }
       none {
         print_diagnostic("", lvl, msg);
@@ -239,5 +240,17 @@ fn highlight_lines(cm: codemap::codemap, sp: span,
             while width > 0u { str::push_char(s, '~'); width -= 1u; }
         }
         io::stderr().write_str(s + "\n");
+    }
+}
+
+fn print_macro_backtrace(cm: codemap::codemap, sp: span) {
+    option::may (sp.expn_info) {|ei|
+        let ss = option::maybe("", ei.callie.span,
+                               bind codemap::span_to_str(_, cm));
+        print_diagnostic(ss, note,
+                         #fmt("in expansion of #%s", ei.callie.name));
+        let ss = codemap::span_to_str(ei.call_site, cm);
+        print_diagnostic(ss, note, "expansion site");
+        print_macro_backtrace(cm, ei.call_site);
     }
 }

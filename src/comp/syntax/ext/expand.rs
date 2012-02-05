@@ -11,7 +11,7 @@ import syntax::ext::base::*;
 import syntax::ext::qquote::{expand_qquote,qq_helper};
 import syntax::parse::parser::parse_expr_from_source_str;
 
-import codemap::span;
+import codemap::{span, expanded_from};
 
 fn expand_expr(exts: hashmap<str, syntax_extension>, cx: ext_ctxt,
                e: expr_, s: span, fld: ast_fold,
@@ -29,10 +29,12 @@ fn expand_expr(exts: hashmap<str, syntax_extension>, cx: ext_ctxt,
                     cx.span_fatal(pth.span,
                                   #fmt["macro undefined: '%s'", extname])
                   }
-                  some(normal(ext)) {
-                    let expanded = ext(cx, pth.span, args, body);
+                  some(normal({expander: exp, span: exp_sp})) {
+                    let expanded = exp(cx, pth.span, args, body);
 
-                    cx.bt_push(mac.span);
+                    let info = {call_site: s,
+                                callie: {name: extname, span: exp_sp}};
+                    cx.bt_push(expanded_from(info));
                     //keep going, outside-in
                     let fully_expanded = fld.fold_expr(expanded).node;
                     cx.bt_pop();
@@ -51,6 +53,11 @@ fn expand_expr(exts: hashmap<str, syntax_extension>, cx: ext_ctxt,
           }
           _ { orig(e, s, fld) }
         };
+}
+
+fn new_span(cx: ext_ctxt, sp: span) -> span {
+    /* this discards information in the case of macro-defining macros */
+    ret {lo: sp.lo, hi: sp.hi, expn_info: cx.backtrace()};
 }
 
 // FIXME: this is a terrible kludge to inject some macros into the default
@@ -73,7 +80,8 @@ fn expand_crate(sess: session::session, c: @crate) -> @crate {
     let afp = default_ast_fold();
     let cx: ext_ctxt = mk_ctxt(sess);
     let f_pre =
-        {fold_expr: bind expand_expr(exts, cx, _, _, _, afp.fold_expr)
+        {fold_expr: bind expand_expr(exts, cx, _, _, _, afp.fold_expr),
+         new_span: bind new_span(cx, _)
             with *afp};
     let f = make_fold(f_pre);
     let cm = parse_expr_from_source_str("<core-macros>",

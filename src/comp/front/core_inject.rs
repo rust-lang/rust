@@ -24,7 +24,7 @@ fn inject_libcore_ref(sess: session,
     fn spanned<T: copy>(x: T) -> @ast::spanned<T> {
         ret @{node: x,
               span: {lo: 0u, hi: 0u,
-                     expanded_from: codemap::os_none}};
+                     expn_info: option::none}};
     }
 
     let n1 = sess.next_node_id();

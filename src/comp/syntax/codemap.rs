@@ -92,38 +92,18 @@ fn lookup_byte_pos(map: codemap, pos: uint) -> loc {
     ret lookup_pos(map, pos, lookup);
 }
 
-enum opt_span {
-
-    //hack (as opposed to option), to make `span` compile
-    os_none,
-    os_some(@span),
+enum expn_info_ {
+    expanded_from({call_site: span,
+                   callie: {name: str, span: option<span>}})
 }
-type span = {lo: uint, hi: uint, expanded_from: opt_span};
+type expn_info = option<@expn_info_>;
+type span = {lo: uint, hi: uint, expn_info: expn_info};
 
 fn span_to_str(sp: span, cm: codemap) -> str {
-    let cur = sp;
-    let res = "";
-    // FIXME: Should probably be doing pointer comparison on filemap
-    let prev_file = none;
-    while true {
-        let lo = lookup_char_pos(cm, cur.lo);
-        let hi = lookup_char_pos(cm, cur.hi);
-        res +=
-            #fmt["%s:%u:%u: %u:%u",
-                 if some(lo.file.name) == prev_file {
-                     "-"
-                 } else { lo.file.name }, lo.line, lo.col, hi.line, hi.col];
-        alt cur.expanded_from {
-          os_none { break; }
-          os_some(new_sp) {
-            cur = *new_sp;
-            prev_file = some(lo.file.name);
-            res += "<<";
-          }
-        }
-    }
-
-    ret res;
+    let lo = lookup_char_pos(cm, sp.lo);
+    let hi = lookup_char_pos(cm, sp.hi);
+    ret #fmt("%s:%u:%u: %u:%u", lo.file.name,
+             lo.line, lo.col, hi.line, hi.col)
 }
 
 type file_lines = {file: filemap, lines: [uint]};

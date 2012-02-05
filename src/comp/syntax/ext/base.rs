@@ -1,12 +1,15 @@
 import core::{vec, option};
 import std::map::hashmap;
 import driver::session::session;
-import codemap::span;
+import codemap::{span, expn_info, expanded_from};
 import std::map::new_str_hash;
 import codemap;
 
-type syntax_expander =
+type syntax_expander_ =
     fn@(ext_ctxt, span, ast::mac_arg, ast::mac_body) -> @ast::expr;
+type syntax_expander = {
+    expander: syntax_expander_,
+    span: option<span>};
 type macro_def = {ident: str, ext: syntax_extension};
 type macro_definer =
     fn@(ext_ctxt, span, ast::mac_arg, ast::mac_body) -> macro_def;
@@ -19,27 +22,29 @@ enum syntax_extension {
 // A temporary hard-coded map of methods for expanding syntax extension
 // AST nodes into full ASTs
 fn syntax_expander_table() -> hashmap<str, syntax_extension> {
+    fn builtin(f: syntax_expander_) -> syntax_extension
+        {normal({expander: f, span: none})}
     let syntax_expanders = new_str_hash::<syntax_extension>();
-    syntax_expanders.insert("fmt", normal(ext::fmt::expand_syntax_ext));
-    syntax_expanders.insert("env", normal(ext::env::expand_syntax_ext));
+    syntax_expanders.insert("fmt", builtin(ext::fmt::expand_syntax_ext));
+    syntax_expanders.insert("env", builtin(ext::env::expand_syntax_ext));
     syntax_expanders.insert("macro",
                             macro_defining(ext::simplext::add_new_extension));
     syntax_expanders.insert("concat_idents",
-                            normal(ext::concat_idents::expand_syntax_ext));
+                            builtin(ext::concat_idents::expand_syntax_ext));
     syntax_expanders.insert("ident_to_str",
-                            normal(ext::ident_to_str::expand_syntax_ext));
+                            builtin(ext::ident_to_str::expand_syntax_ext));
     syntax_expanders.insert("log_syntax",
-                            normal(ext::log_syntax::expand_syntax_ext));
+                            builtin(ext::log_syntax::expand_syntax_ext));
     syntax_expanders.insert("ast",
-                            normal(ext::qquote::expand_ast));
+                            builtin(ext::qquote::expand_ast));
     ret syntax_expanders;
 }
 
 iface ext_ctxt {
     fn session() -> session;
     fn print_backtrace();
-    fn backtrace() -> codemap::opt_span;
-    fn bt_push(sp: span);
+    fn backtrace() -> expn_info;
+    fn bt_push(ei: codemap::expn_info_);
     fn bt_pop();
     fn span_fatal(sp: span, msg: str) -> !;
     fn span_err(sp: span, msg: str);
@@ -51,20 +56,26 @@ iface ext_ctxt {
 
 fn mk_ctxt(sess: session) -> ext_ctxt {
     type ctxt_repr = {sess: session,
-                      mutable backtrace: codemap::opt_span};
+                      mutable backtrace: expn_info};
     impl of ext_ctxt for ctxt_repr {
         fn session() -> session { self.sess }
         fn print_backtrace() { }
-        fn backtrace() -> codemap::opt_span { self.backtrace }
-        fn bt_push(sp: span) {
-            self.backtrace = codemap::os_some(
-                @{lo: sp.lo, hi: sp.hi, expanded_from: self.backtrace});
+        fn backtrace() -> expn_info { self.backtrace }
+        fn bt_push(ei: codemap::expn_info_) {
+            alt ei {
+              expanded_from({call_site: cs, callie: callie}) {
+                self.backtrace =
+                    some(@expanded_from({
+                        call_site: {lo: cs.lo, hi: cs.hi,
+                                    expn_info: self.backtrace},
+                        callie: callie}));
+              }
+            }
         }
         fn bt_pop() {
             alt self.backtrace {
-              codemap::os_some(@{expanded_from: pre, _}) {
-                let tmp = pre;
-                self.backtrace = tmp;
+              some(@expanded_from({call_site: {expn_info: prev, _}, _})) {
+                self.backtrace = prev
               }
               _ { self.bug("tried to pop without a push"); }
             }
@@ -88,7 +99,8 @@ fn mk_ctxt(sess: session) -> ext_ctxt {
         fn bug(msg: str) -> ! { self.print_backtrace(); self.sess.bug(msg); }
         fn next_id() -> ast::node_id { ret self.sess.next_node_id(); }
     }
-    {sess: sess, mutable backtrace: codemap::os_none} as ext_ctxt
+    let imp : ctxt_repr = {sess: sess, mutable backtrace: none};
+    ret imp as ext_ctxt
 }
 
 fn expr_to_str(cx: ext_ctxt, expr: @ast::expr, error: str) -> str {
