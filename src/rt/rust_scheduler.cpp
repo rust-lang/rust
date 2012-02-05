@@ -56,6 +56,11 @@ rust_scheduler::destroy_task_threads() {
 void
 rust_scheduler::start_task_threads()
 {
+    // Copy num_threads because it's possible for the last thread
+    // to terminate and have the kernel delete us before we
+    // hit the last check against num_threads, in which case
+    // we would be accessing invalid memory.
+    uintptr_t num_threads = this->num_threads;
     for(size_t i = 0; i < num_threads; ++i) {
         rust_task_thread *thread = threads[i];
         thread->start();
