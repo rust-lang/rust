@@ -9,8 +9,6 @@ fn start(+token: int) {
     let p = comm::port();
     let ch = iter::foldl(bind int::range(2, n_threads + 1, _),
                          comm::chan(p)) { |ch, i|
-        // FIXME: Some twiddling because we don't have a standard
-        // reverse range function yet
         let id = n_threads + 2 - i;
         let {to_child, _} = task::spawn_connected::<int, int> {|p, _ch|
             roundtrip(id, p, ch)
