@@ -1785,6 +1785,7 @@ fn world() -> str { "world" }
 ~~~~
 ## ignore
 // main.rs
+use std;
 use mylib;
 fn main() { std::io::println("hello " + mylib::world()); }
 ~~~~
