@@ -19,7 +19,7 @@ void sync::sleep(size_t timeout_in_ms) {
 #endif
 }
 
-rust_thread::rust_thread() : _is_running(false), thread(0) {
+rust_thread::rust_thread() : thread(0) {
 }
 
 #if defined(__WIN32__)
@@ -46,7 +46,6 @@ rust_thread::start() {
    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
    pthread_create(&thread, &attr, rust_thread_start, (void *) this);
 #endif
-   _is_running = true;
 }
 
 void
@@ -59,10 +58,4 @@ rust_thread::join() {
      pthread_join(thread, NULL);
 #endif
    thread = 0;
-   _is_running = false;
-}
-
-bool
-rust_thread::is_running() {
-    return _is_running;
 }
