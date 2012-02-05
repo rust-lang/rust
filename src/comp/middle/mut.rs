@@ -243,11 +243,12 @@ fn check_bind(cx: @ctx, f: @expr, args: [option<@expr>]) {
     for arg in args {
         alt arg {
           some(expr) {
-            alt (alt arg_ts[i].mode {
+            let o_msg = alt ty::resolved_mode(cx.tcx, arg_ts[i].mode) {
               by_mut_ref { some("by mutable reference") }
               by_move { some("by move") }
               _ { none }
-            }) {
+            };
+            alt o_msg {
               some(name) {
                 cx.tcx.sess.span_err(
                     expr.span, "can not bind an argument passed " + name);

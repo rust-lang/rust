@@ -4422,8 +4422,7 @@ fn copy_args_to_allocas(fcx: @fn_ctxt, bcx: @block_ctxt, args: [ast::arg],
     let epic_fail = fn@() -> ! {
         tcx.sess.bug("Someone forgot\
                 to document an invariant in copy_args_to_allocas!");
-    }
-    let epic_fail = bind epic_fail_(bcx);
+    };
     for arg in arg_tys {
         let id = args[arg_n].id;
         let argval = alt fcx.llargs.get(id) { local_mem(v) { v }

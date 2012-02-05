@@ -2045,11 +2045,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         // Take the prototype from the expected type, but default to block:
         let proto = alt ty::struct(tcx, expected) {
           ty::ty_fn({proto, _}) { proto }
-          _ {
-            tcx.sess.span_warn(expr.span, "unable to infer kind of closure, \
-                                           defaulting to block");
-            ast::proto_block
-          }
+          _ { ast::proto_box }
         };
         #debug("checking expr_fn_block %s expected=%s",
                expr_to_str(expr),
