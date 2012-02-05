@@ -5,7 +5,7 @@ use std;
 
 import rustc::syntax::{ast, codemap};
 import rustc::syntax::parse::parser;
-import rustc::util::filesearch::get_cargo_root;
+import rustc::util::filesearch::{get_cargo_root, get_cargo_root_nearest};
 import rustc::driver::diagnostic;
 
 import std::fs;
@@ -19,6 +19,8 @@ import std::run;
 import str;
 import std::tempfile;
 import vec;
+import std::getopts;
+import getopts::{optflag, opt_present};
 
 enum _src {
     /* Break cycles in package <-> source */
@@ -53,7 +55,7 @@ type cargo = {
     workdir: str,
     sourcedir: str,
     sources: map::hashmap<str, source>,
-    mutable test: bool
+    opts: options
 };
 
 type pkg = {
@@ -64,6 +66,16 @@ type pkg = {
     sigs: option<str>,
     crate_type: option<str>
 };
+
+type options = {
+    test: bool,
+    cwd: bool,
+    free: [str],
+};
+
+fn opts() -> [getopts::opt] {
+    [optflag("g"), optflag("global"), optflag("test")]
+}
 
 fn info(msg: str) {
     io::stdout().write_line("info: " + msg);
@@ -322,8 +334,28 @@ fn load_source_packages(&c: cargo, &src: source) {
     };
 }
 
-fn configure() -> cargo {
-    let p = alt get_cargo_root() {
+fn build_cargo_options(argv: [str]) -> options {
+    let match = alt getopts::getopts(argv, opts()) {
+        result::ok(m) { m }
+        result::err(f) {
+            fail #fmt["%s", getopts::fail_str(f)];
+        }
+    };
+
+    let test = opt_present(match, "test");
+    let cwd = !(opt_present(match, "g") || opt_present(match, "global"));
+
+    {test: test, cwd: cwd, free: match.free}
+}
+
+fn configure(opts: options) -> cargo {
+    let get_cargo_dir = if opts.cwd {
+        get_cargo_root_nearest
+    } else {
+        get_cargo_root
+    };
+
+    let p = alt get_cargo_dir() {
       result::ok(p) { p }
       result::err(e) { fail e }
     };
@@ -339,7 +371,7 @@ fn configure() -> cargo {
         workdir: fs::connect(p, "work"),
         sourcedir: fs::connect(p, "sources"),
         sources: sources,
-        mutable test: false
+        opts: opts
     };
 
     need_dir(c.root);
@@ -430,7 +462,7 @@ fn install_source(c: cargo, path: str) {
         alt p {
             none { cont; }
             some(_p) {
-                if c.test {
+                if c.opts.test {
                     test_one_crate(c, path, cf, _p);
                 }
                 install_one_crate(c, path, cf, _p);
@@ -573,19 +605,14 @@ fn install_named_specific(c: cargo, wd: str, src: str, name: str) {
     error("Can't find package " + src + "/" + name);
 }
 
-fn cmd_install(c: cargo, argv: [str]) unsafe {
+fn cmd_install(c: cargo) unsafe {
     // cargo install <pkg>
-    if vec::len(argv) < 3u {
+    if vec::len(c.opts.free) < 3u {
         cmd_usage();
         ret;
     }
 
-    let target = argv[2];
-    // TODO: getopts
-    if vec::len(argv) > 3u && argv[2] == "--test" {
-        c.test = true;
-        target = argv[3];
-    }
+    let target = c.opts.free[2];
 
     let wd = alt tempfile::mkdtemp(c.workdir + fs::path_sep(), "") {
         some(_wd) { _wd }
@@ -671,9 +698,9 @@ fn sync_one(c: cargo, name: str, src: source) {
     run::run_program("cp", [pkgfile, destpkgfile]);
 }
 
-fn cmd_sync(c: cargo, argv: [str]) {
-    if vec::len(argv) == 3u {
-        sync_one(c, argv[2], c.sources.get(argv[2]));
+fn cmd_sync(c: cargo) {
+    if vec::len(c.opts.free) == 3u {
+        sync_one(c, c.opts.free[2], c.sources.get(c.opts.free[2]));
     } else {
         cargo_suggestion(c, true, { || } );
         c.sources.items { |k, v|
@@ -721,22 +748,22 @@ fn print_pkg(s: source, p: package) {
         print("   >> " + p.description + "\n")
     }
 }
-fn cmd_list(c: cargo, argv: [str]) {
+fn cmd_list(c: cargo) {
     for_each_package(c, { |s, p|
-        if vec::len(argv) <= 2u || argv[2] == s.name {
+        if vec::len(c.opts.free) <= 2u || c.opts.free[2] == s.name {
             print_pkg(s, p);
         }
     });
 }
 
-fn cmd_search(c: cargo, argv: [str]) {
-    if vec::len(argv) < 3u {
+fn cmd_search(c: cargo) {
+    if vec::len(c.opts.free) < 3u {
         cmd_usage();
         ret;
     }
     let n = 0;
-    let name = argv[2];
-    let tags = vec::slice(argv, 3u, vec::len(argv));
+    let name = c.opts.free[2];
+    let tags = vec::slice(c.opts.free, 3u, vec::len(c.opts.free));
     for_each_package(c, { |s, p|
         if (str::contains(p.name, name) || name == "*") &&
             vec::all(tags, { |t| vec::member(t, p.tags) }) {
@@ -749,7 +776,7 @@ fn cmd_search(c: cargo, argv: [str]) {
 
 fn cmd_usage() {
     print("Usage: cargo <verb> [args...]");
-    print("  init                                          Set up ~/.cargo");
+    print("  init                                          Set up .cargo");
     print("  install [--test] [source/]package-name        Install by name");
     print("  install [--test] uuid:[source/]package-uuid   Install by uuid");
     print("  list [source]                                 List packages");
@@ -759,17 +786,21 @@ fn cmd_usage() {
 }
 
 fn main(argv: [str]) {
-    if vec::len(argv) < 2u {
+    let o = build_cargo_options(argv);
+
+    if vec::len(o.free) < 2u {
         cmd_usage();
         ret;
     }
-    let c = configure();
-    alt argv[1] {
+
+    let c = configure(o);
+
+    alt o.free[1] {
         "init" { cmd_init(c); }
-        "install" { cmd_install(c, argv); }
-        "list" { cmd_list(c, argv); }
-        "search" { cmd_search(c, argv); }
-        "sync" { cmd_sync(c, argv); }
+        "install" { cmd_install(c); }
+        "list" { cmd_list(c); }
+        "search" { cmd_search(c); }
+        "sync" { cmd_sync(c); }
         "usage" { cmd_usage(); }
         _ { cmd_usage(); }
     }

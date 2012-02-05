@@ -11,6 +11,7 @@ export pick_file;
 export search;
 export relative_target_lib_path;
 export get_cargo_root;
+export get_cargo_root_nearest;
 export libdir;
 
 type pick<T> = fn(path: fs::path) -> option<T>;
@@ -38,6 +39,10 @@ fn mk_filesearch(maybe_sysroot: option<fs::path>,
         fn lib_search_paths() -> [fs::path] {
             self.addl_lib_search_paths
                 + [make_target_lib_path(self.sysroot, self.target_triple)]
+                + alt get_cargo_lib_path_nearest() {
+                  result::ok(p) { [p] }
+                  result::err(p) { [] }
+                }
                 + alt get_cargo_lib_path() {
                   result::ok(p) { [p] }
                   result::err(p) { [] }
@@ -116,8 +121,40 @@ fn get_cargo_root() -> result::t<fs::path, str> {
     }
 }
 
+fn get_cargo_root_nearest() -> result::t<fs::path, str> {
+    result::chain(get_cargo_root()) { |p|
+        let cwd = os::getcwd();
+        let dirname = fs::dirname(cwd);
+        let dirpath = fs::split(dirname);
+        let cwd_cargo = fs::connect(cwd, ".cargo");
+        let par_cargo = fs::connect(dirname, ".cargo");
+
+        // FIXME: this duplicates lib path
+        if cwd_cargo == p {
+            ret result::ok(p);
+        }
+
+        while vec::is_not_empty(dirpath) && par_cargo != p {
+            if fs::path_is_dir(par_cargo) {
+                ret result::ok(par_cargo);
+            }
+            vec::pop(dirpath);
+            dirname = fs::dirname(dirname);
+            par_cargo = fs::connect(dirname, ".cargo");
+        }
+
+        result::ok(cwd_cargo)
+    }
+}
+
 fn get_cargo_lib_path() -> result::t<fs::path, str> {
     result::chain(get_cargo_root()) { |p|
+        result::ok(fs::connect(p, libdir()))
+    }
+}
+
+fn get_cargo_lib_path_nearest() -> result::t<fs::path, str> {
+    result::chain(get_cargo_root_nearest()) { |p|
         result::ok(fs::connect(p, libdir()))
     }
 }
