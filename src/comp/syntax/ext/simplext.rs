@@ -190,7 +190,7 @@ fn transcribe(cx: ext_ctxt, b: bindings, body: @expr) -> @expr {
     fn new_id(_old: node_id, cx: ext_ctxt) -> node_id { ret cx.next_id(); }
     fn new_span(cx: ext_ctxt, sp: span) -> span {
         /* this discards information in the case of macro-defining macros */
-        ret {lo: sp.lo, hi: sp.hi, expanded_from: cx.backtrace()};
+        ret {lo: sp.lo, hi: sp.hi, expn_info: cx.backtrace()};
     }
     let afp = default_ast_fold();
     let f_pre =
@@ -202,8 +202,8 @@ fn transcribe(cx: ext_ctxt, b: bindings, body: @expr) -> @expr {
          fold_block:
              bind transcribe_block(cx, b, idx_path, _, _, _, afp.fold_block),
          map_exprs: bind transcribe_exprs(cx, b, idx_path, _, _),
-         new_id: bind new_id(_, cx),
-         new_span: bind new_span(cx, _) with *afp};
+         new_id: bind new_id(_, cx)
+         with *afp};
     let f = make_fold(f_pre);
     let result = f.fold_expr(body);
     ret result;
@@ -753,7 +753,7 @@ fn add_new_extension(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                                    "at least one clause")
                }
              },
-         ext: normal(ext)};
+         ext: normal({expander: ext, span: some(arg.span)})};
 
     fn generic_extension(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                          _body: ast::mac_body, clauses: [@clause]) -> @expr {

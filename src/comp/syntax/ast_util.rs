@@ -7,7 +7,7 @@ fn respan<T: copy>(sp: span, t: T) -> spanned<T> {
 
 /* assuming that we're not in macro expansion */
 fn mk_sp(lo: uint, hi: uint) -> span {
-    ret {lo: lo, hi: hi, expanded_from: codemap::os_none};
+    ret {lo: lo, hi: hi, expn_info: none};
 }
 
 // make this a const, once the compiler supports it
