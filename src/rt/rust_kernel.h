@@ -47,7 +47,6 @@ public:
     struct rust_env *env;
 
     rust_kernel(rust_srv *srv, size_t num_threads);
-    ~rust_kernel();
 
     void log(uint32_t level, char const *fmt, ...);
     void fatal(char const *fmt, ...);

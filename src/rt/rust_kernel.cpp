@@ -21,10 +21,6 @@ rust_kernel::rust_kernel(rust_srv *srv, size_t num_threads) :
     live_schedulers = 1;
 }
 
-rust_kernel::~rust_kernel() {
-    delete sched;
-}
-
 void
 rust_kernel::log(uint32_t level, char const *fmt, ...) {
     char buf[BUF_BYTES];
@@ -83,6 +79,7 @@ void
 rust_kernel::release_scheduler() {
     I(this, !sched_lock.lock_held_by_current_thread());
     scoped_lock with(sched_lock);
+    delete sched;
     --live_schedulers;
     if (live_schedulers == 0) {
         // We're all done. Tell the main thread to continue
