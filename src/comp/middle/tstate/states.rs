@@ -758,7 +758,7 @@ fn find_pre_post_state_fn(fcx: fn_ctxt,
         // We don't want to clear the diverges bit for bottom typed things,
         // which really do diverge. I feel like there is a cleaner way
         // to do this than checking the type.
-        if !type_is_bot(fcx.ccx.tcx, expr_ty(fcx.ccx.tcx, tailexpr)) {
+        if !type_is_bot(expr_ty(fcx.ccx.tcx, tailexpr)) {
             let post = false_postcond(num_constrs);
             // except for the "diverges" bit...
             kill_poststate_(fcx, fcx.enclosing.i_diverge, post);

@@ -65,7 +65,7 @@ fn find_last_uses(c: @crate, def_map: resolve::def_map,
 }
 
 fn ex_is_blockish(cx: ctx, id: node_id) -> bool {
-    alt ty::struct(cx.tcx, ty::node_id_to_type(cx.tcx, id)) {
+    alt ty::get(ty::node_id_to_type(cx.tcx, id)).struct {
       ty::ty_fn({proto: p, _}) if is_blockish(p) { true }
       _ { false }
     }
@@ -147,7 +147,7 @@ fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
       expr_call(f, args, _) {
         v.visit_expr(f, cx, v);
         let i = 0u, fns = [];
-        let arg_ts = ty::ty_fn_args(cx.tcx, ty::expr_ty(cx.tcx, f));
+        let arg_ts = ty::ty_fn_args(ty::expr_ty(cx.tcx, f));
         for arg in args {
             alt arg.node {
               expr_fn(p, _, _, _) if is_blockish(p) {
@@ -175,7 +175,7 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
             sp: span, id: node_id,
             cx: ctx, v: visit::vt<ctx>) {
     let fty = ty::node_id_to_type(cx.tcx, id);
-    let proto = ty::ty_fn_proto(cx.tcx, fty);
+    let proto = ty::ty_fn_proto(fty);
     alt proto {
       proto_any | proto_block {
         visit_block(func, cx, {||
