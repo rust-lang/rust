@@ -366,6 +366,10 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
 
 fn ty_of_item(tcx: ty::ctxt, mode: mode, it: @ast::item)
     -> ty::ty_param_bounds_and_ty {
+    alt tcx.tcache.find(local_def(it.id)) {
+      some(tpt) { ret tpt; }
+      _ {}
+    }
     alt it.node {
       ast::item_const(t, _) {
         let typ = ast_ty_to_ty(tcx, mode, t);
@@ -740,6 +744,16 @@ mod collect {
             write_ty(cx.tcx, variant.node.id, result_ty);
         }
     }
+    fn ensure_iface_methods(tcx: ty::ctxt, id: ast::node_id) {
+        alt tcx.items.get(id) {
+          ast_map::node_item(@{node: ast::item_iface(_, ms), _}, _) {
+            ty::store_iface_methods(tcx, id, @vec::map(ms, {|m|
+                ty_of_ty_method(tcx, m_collect, m)
+            }));
+          }
+          _ { fail; }
+        }
+    }
     fn convert(cx: @ctxt, it: @ast::item) {
         alt it.node {
           // These don't define types.
@@ -771,6 +785,9 @@ mod collect {
                                      {bounds: i_bounds, ty: iface_ty});
                 alt ty::struct(cx.tcx, iface_ty) {
                   ty::ty_iface(did, tys) {
+                    if did.crate == ast::local_crate {
+                        ensure_iface_methods(cx.tcx, did.node);
+                    }
                     for if_m in *ty::iface_methods(cx.tcx, did) {
                         alt vec::find(my_methods,
                                       {|m| if_m.ident == m.mty.ident}) {
@@ -827,9 +844,7 @@ mod collect {
           ast::item_iface(_, ms) {
             let tpt = ty_of_item(cx.tcx, m_collect, it);
             write_ty(cx.tcx, it.id, tpt.ty);
-            ty::store_iface_methods(cx.tcx, it.id, @vec::map(ms, {|m|
-                ty_of_ty_method(cx.tcx, m_collect, m)
-            }));
+            ensure_iface_methods(cx.tcx, it.id);
           }
           _ {
             // This call populates the type cache with the converted type
