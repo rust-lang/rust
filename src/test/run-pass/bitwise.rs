@@ -7,9 +7,7 @@ fn target() {
 
 #[cfg(target_arch = "x86_64")]
 fn target() {
-    // FIXME (974) Can't lex this as a single integer
-    assert (-1000 >> 3 == 23058430 * 1000000000 * 100
-            + 92 * 100000000 + 13693827);
+    assert (-1000 >> 3 == 2305843009213693827);
 }
 
 fn general() {

@@ -62,8 +62,7 @@ fn test_box_rec() {
 fn main() {
     test_box();
     test_rec();
-    // FIXME: enum constructors don't optimize their arguments into moves
-    // test_tag();
+    test_tag();
     test_tup();
     test_unique();
     test_box_rec();
