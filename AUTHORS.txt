@@ -23,6 +23,7 @@ Erik Rose <erik@mozilla.com>
 Grahame Bowland <grahame@angrygoats.net>
 Graham Fawcett <fawcett@uwindsor.ca>
 Haitao Li <lihaitao@gmail.com>
+Ian D. Bollinger <ian.bollinger@gmail.com>
 Jason Orendorff <jorendorff@mozilla.com>
 Jeff Balogh <jbalogh@mozilla.com>
 Jeff Muizelaar <jmuizelaar@mozilla.com>
