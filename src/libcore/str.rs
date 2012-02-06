@@ -665,8 +665,6 @@ Returns:
 The original string with all occurances of `from` replaced with `to`
 */
 fn replace(s: str, from: str, to: str) : is_not_empty(from) -> str unsafe {
-    // FIXME (694): Shouldn't have to check this
-    check (is_not_empty(from));
     if byte_len(s) == 0u {
         ret "";
     } else if starts_with(s, from) {

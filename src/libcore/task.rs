@@ -72,6 +72,7 @@ native mod rustrt {
     fn start_task(id: task, closure: *rust_closure);
 
     fn rust_task_is_unwinding(rt: *rust_task) -> bool;
+    fn unsupervise();
 }
 
 /* Section: Types */
@@ -287,10 +288,7 @@ fn join(task_port: joinable_task) -> task_result {
         if _id == id {
             ret res
         } else {
-            // FIXME: uncomment this when extfmt is moved to core
-            // in a snapshot.
-            // fail #fmt["join received id %d, expected %d", _id, id]
-            fail;
+            fail #fmt["join received id %d, expected %d", _id, id]
         }
       }
     }
@@ -303,7 +301,9 @@ Detaches this task from its parent in the task tree
 
 An unsupervised task will not propagate its failure up the task tree
 */
-fn unsupervise() { ret sys::unsupervise(); }
+fn unsupervise() {
+    rustrt::unsupervise();
+}
 
 /*
 Function: currently_unwinding()

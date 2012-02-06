@@ -164,28 +164,26 @@ mod ct {
         let noflags: [flag] = [];
         if i >= lim { ret {flags: noflags, next: i}; }
 
-        // FIXME: This recursion generates illegal instructions if the return
-        // value isn't boxed. Only started happening after the ivec conversion
         fn more_(f: flag, s: str, i: uint, lim: uint) ->
-           @{flags: [flag], next: uint} {
+           {flags: [flag], next: uint} {
             let next = parse_flags(s, i + 1u, lim);
             let rest = next.flags;
             let j = next.next;
             let curr: [flag] = [f];
-            ret @{flags: curr + rest, next: j};
+            ret {flags: curr + rest, next: j};
         }
         let more = bind more_(_, s, i, lim);
         let f = s[i];
         ret if f == '-' as u8 {
-                *more(flag_left_justify)
+                more(flag_left_justify)
             } else if f == '0' as u8 {
-                *more(flag_left_zero_pad)
+                more(flag_left_zero_pad)
             } else if f == ' ' as u8 {
-                *more(flag_space_for_sign)
+                more(flag_space_for_sign)
             } else if f == '+' as u8 {
-                *more(flag_sign_always)
+                more(flag_sign_always)
             } else if f == '#' as u8 {
-                *more(flag_alternate)
+                more(flag_alternate)
             } else { {flags: noflags, next: i} };
     }
     fn parse_count(s: str, i: uint, lim: uint) -> {count: count, next: uint} {
