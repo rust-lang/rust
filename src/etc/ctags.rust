@@ -5,3 +5,4 @@
 --regex-rust=/[ \t]*enum[ \t]+([a-zA-Z0-9_]+)/\1/T,types/
 --regex-rust=/[ \t]*resource[ \t]+([a-zA-Z0-9_]+)/\1/T,types/
 --regex-rust=/[ \t]*mod[ \t]+([a-zA-Z0-9_]+)/\1/m,modules/
+--regex-rust=/[ \t]*const[ \t]+([a-zA-Z0-9_]+)/\1/m,consts/

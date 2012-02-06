@@ -154,10 +154,9 @@ fn create_writer(w: io::writer) -> writer {
 // TODO: Provide a function to write the standard ebml header.
 fn start_tag(w: writer, tag_id: uint) {
     // Write the enum ID:
-
     write_vint(w.writer, tag_id);
-    // Write a placeholder four-byte size.
 
+    // Write a placeholder four-byte size.
     w.size_positions += [w.writer.tell()];
     let zeroes: [u8] = [0u8, 0u8, 0u8, 0u8];
     w.writer.write(zeroes);
@@ -170,5 +169,26 @@ fn end_tag(w: writer) {
     write_sized_vint(w.writer, cur_pos - last_size_pos - 4u, 4u);
     w.writer.seek(cur_pos as int, io::seek_set);
 }
+
+impl writer_util for writer {
+    fn wr_tag(tag_id: uint, blk: fn()) {
+        start_tag(self, tag_id);
+        blk();
+        end_tag(self);
+    }
+
+    fn wr_uint(id: uint) {
+        write_vint(self.writer, id);
+    }
+
+    fn wr_bytes(b: [u8]) {
+        self.writer.write(b);
+    }
+
+    fn wr_str(s: str) {
+        self.wr_bytes(str::bytes(s));
+    }
+}
+
 // TODO: optionally perform "relaxations" on end_tag to more efficiently
 // encode sizes; this is a fixed point iteration
