@@ -99,17 +99,22 @@ fn check_ctypes(tcx: ty::ctxt, crate: @ast::crate) {
         let tys = vec::map(decl.inputs) {|a| a.ty };
         for ty in (tys + [decl.output]) {
             alt ty.node {
-              ast::ty_int(ast::ty_i) {
-                tcx.sess.span_warn(
-                    ty.span,
-                    "found rust type `int` in native module, while \
-                     ctypes::c_int or ctypes::long should be used");
-              }
-              ast::ty_uint(ast::ty_u) {
-                tcx.sess.span_warn(
-                    ty.span,
-                    "found rust type `uint` in native module, while \
-                     ctypes::c_uint or ctypes::ulong should be used");
+              ast::ty_path(_, id) {
+                alt tcx.def_map.get(id) {
+                  ast::def_prim_ty(ast::ty_int(ast::ty_i)) {
+                    tcx.sess.span_warn(
+                        ty.span,
+                        "found rust type `int` in native module, while \
+                         ctypes::c_int or ctypes::long should be used");
+                  }
+                  ast::def_prim_ty(ast::ty_uint(ast::ty_u)) {
+                    tcx.sess.span_warn(
+                        ty.span,
+                        "found rust type `uint` in native module, while \
+                         ctypes::c_uint or ctypes::ulong should be used");
+                  }
+                  _ { }
+                }
               }
               _ { }
             }

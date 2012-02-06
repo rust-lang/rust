@@ -42,6 +42,7 @@ enum def {
     def_local(def_id, let_style),
     def_variant(def_id /* enum */, def_id /* variant */),
     def_ty(def_id),
+    def_prim_ty(prim_ty),
     def_ty_param(def_id, uint),
     def_binding(def_id),
     def_use(def_id),
@@ -327,20 +328,18 @@ enum float_ty { ty_f, ty_f32, ty_f64, }
 
 type ty = spanned<ty_>;
 
-enum ty_ {
-    ty_nil,
-    ty_bot, /* return type of ! functions and type of
-             ret/fail/break/cont. there is no syntax
-             for this type. */
-
-     /* bot represents the value of functions that don't return a value
-        locally to their context. in contrast, things like log that do
-        return, but don't return a meaningful value, have result type nil. */
-    ty_bool,
+// Not represented directly in the AST, referred to by name through a ty_path.
+enum prim_ty {
     ty_int(int_ty),
     ty_uint(uint_ty),
     ty_float(float_ty),
     ty_str,
+    ty_bool,
+}
+
+enum ty_ {
+    ty_nil,
+    ty_bot, /* bottom type */
     ty_box(mt),
     ty_uniq(mt),
     ty_vec(mt),

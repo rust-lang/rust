@@ -152,7 +152,6 @@ fn bad_expr_word_table() -> hashmap<str, ()> {
                  "assert", "claim", "native", "fn", "pure",
                  "unsafe", "import", "export", "let", "const",
                  "log", "copy", "impl", "iface", "enum",
-                 "m32", "m64", "m128", "f80", "f16", "f128",
                  "class", "trait"] {
         words.insert(word, ());
     }
@@ -427,96 +426,62 @@ fn parse_ty(p: parser, colons_before_params: bool) -> @ast::ty {
       none {}
     }
 
-    let t: ast::ty_;
-    // FIXME: do something with this
-
-    if eat_word(p, "bool") {
-        t = ast::ty_bool;
-    } else if eat_word(p, "int") {
-        t = ast::ty_int(ast::ty_i);
-    } else if eat_word(p, "uint") {
-        t = ast::ty_uint(ast::ty_u);
-    } else if eat_word(p, "float") {
-        t = ast::ty_float(ast::ty_f);
-    } else if eat_word(p, "str") {
-        t = ast::ty_str;
-    } else if eat_word(p, "char") {
-        t = ast::ty_int(ast::ty_char);
-    } else if eat_word(p, "i8") {
-        t = ast::ty_int(ast::ty_i8);
-    } else if eat_word(p, "i16") {
-        t = ast::ty_int(ast::ty_i16);
-    } else if eat_word(p, "i32") {
-        t = ast::ty_int(ast::ty_i32);
-    } else if eat_word(p, "i64") {
-        t = ast::ty_int(ast::ty_i64);
-    } else if eat_word(p, "u8") {
-        t = ast::ty_uint(ast::ty_u8);
-    } else if eat_word(p, "u16") {
-        t = ast::ty_uint(ast::ty_u16);
-    } else if eat_word(p, "u32") {
-        t = ast::ty_uint(ast::ty_u32);
-    } else if eat_word(p, "u64") {
-        t = ast::ty_uint(ast::ty_u64);
-    } else if eat_word(p, "f32") {
-        t = ast::ty_float(ast::ty_f32);
-    } else if eat_word(p, "f64") {
-        t = ast::ty_float(ast::ty_f64);
-    } else if p.token == token::LPAREN {
+    let t = if p.token == token::LPAREN {
         p.bump();
         if p.token == token::RPAREN {
             p.bump();
-            t = ast::ty_nil;
+            ast::ty_nil
         } else {
             let ts = [parse_ty(p, false)];
             while p.token == token::COMMA {
                 p.bump();
                 ts += [parse_ty(p, false)];
             }
-            if vec::len(ts) == 1u {
-                t = ts[0].node;
-            } else { t = ast::ty_tup(ts); }
+            let t = if vec::len(ts) == 1u { ts[0].node }
+                    else { ast::ty_tup(ts) };
             expect(p, token::RPAREN);
+            t
         }
     } else if p.token == token::AT {
         p.bump();
-        t = ast::ty_box(parse_mt(p));
+        ast::ty_box(parse_mt(p))
     } else if p.token == token::TILDE {
         p.bump();
-        t = ast::ty_uniq(parse_mt(p));
+        ast::ty_uniq(parse_mt(p))
     } else if p.token == token::BINOP(token::STAR) {
         p.bump();
-        t = ast::ty_ptr(parse_mt(p));
+        ast::ty_ptr(parse_mt(p))
     } else if p.token == token::LBRACE {
         let elems =
             parse_seq(token::LBRACE, token::RBRACE, seq_sep_opt(token::COMMA),
                       parse_ty_field, p);
         if vec::len(elems.node) == 0u { unexpected(p, token::RBRACE); }
         let hi = elems.span.hi;
-        t = ast::ty_rec(elems.node);
+
+        let t = ast::ty_rec(elems.node);
         if p.token == token::COLON {
             p.bump();
-            t = ast::ty_constr(@spanned(lo, hi, t),
-                               parse_type_constraints(p));
-        }
+            ast::ty_constr(@spanned(lo, hi, t), parse_type_constraints(p))
+        } else { t }
     } else if p.token == token::LBRACKET {
         expect(p, token::LBRACKET);
-        t = ast::ty_vec(parse_mt(p));
+        let t = ast::ty_vec(parse_mt(p));
         expect(p, token::RBRACKET);
+        t
     } else if eat_word(p, "fn") {
         let proto = parse_fn_ty_proto(p);
         alt proto {
           ast::proto_bare { p.warn("fn is deprecated, use native fn"); }
           _ { /* fallthrough */ }
         }
-        t = ast::ty_fn(proto, parse_ty_fn(p));
+        ast::ty_fn(proto, parse_ty_fn(p))
     } else if eat_word(p, "native") {
         expect_word(p, "fn");
-        t = ast::ty_fn(ast::proto_bare, parse_ty_fn(p));
+        ast::ty_fn(ast::proto_bare, parse_ty_fn(p))
     } else if p.token == token::MOD_SEP || is_ident(p.token) {
         let path = parse_path(p);
-        t = ast::ty_path(path, p.get_id());
-    } else { p.fatal("expecting type"); }
+        ast::ty_path(path, p.get_id())
+    } else { p.fatal("expecting type"); };
     ret parse_ty_postfix(t, p, colons_before_params, lo);
 }
 

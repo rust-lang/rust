@@ -116,7 +116,7 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
         let typ = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, sp, id.node));
         ret {bounds: @[], ty: typ};
       }
-      ast::def_ty(_) {
+      ast::def_ty(_) | ast::def_prim_ty(_) {
         fcx.ccx.tcx.sess.span_fatal(sp, "expected value but found type");
       }
       ast::def_upvar(_, inner, _) {
@@ -273,30 +273,24 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
                                        ty_param_bounds_and_ty.ty);
         ret typ;
     }
-    let typ;
-    alt ast_ty.node {
-      ast::ty_nil { typ = ty::mk_nil(tcx); }
-      ast::ty_bot { typ = ty::mk_bot(tcx); }
-      ast::ty_bool { typ = ty::mk_bool(tcx); }
-      ast::ty_int(it) { typ = ty::mk_mach_int(tcx, it); }
-      ast::ty_uint(uit) { typ = ty::mk_mach_uint(tcx, uit); }
-      ast::ty_float(ft) { typ = ty::mk_mach_float(tcx, ft); }
-      ast::ty_str { typ = ty::mk_str(tcx); }
+    let typ = alt ast_ty.node {
+      ast::ty_nil { ty::mk_nil(tcx) }
+      ast::ty_bot { ty::mk_bot(tcx) }
       ast::ty_box(mt) {
-        typ = ty::mk_box(tcx, ast_mt_to_mt(tcx, mode, mt));
+        ty::mk_box(tcx, ast_mt_to_mt(tcx, mode, mt))
       }
       ast::ty_uniq(mt) {
-        typ = ty::mk_uniq(tcx, ast_mt_to_mt(tcx, mode, mt));
+        ty::mk_uniq(tcx, ast_mt_to_mt(tcx, mode, mt))
       }
       ast::ty_vec(mt) {
-        typ = ty::mk_vec(tcx, ast_mt_to_mt(tcx, mode, mt));
+        ty::mk_vec(tcx, ast_mt_to_mt(tcx, mode, mt))
       }
       ast::ty_ptr(mt) {
-        typ = ty::mk_ptr(tcx, ast_mt_to_mt(tcx, mode, mt));
+        ty::mk_ptr(tcx, ast_mt_to_mt(tcx, mode, mt))
       }
       ast::ty_tup(fields) {
         let flds = vec::map(fields, bind ast_ty_to_ty(tcx, mode, _));
-        typ = ty::mk_tup(tcx, flds);
+        ty::mk_tup(tcx, flds)
       }
       ast::ty_rec(fields) {
         let flds: [field] = [];
@@ -304,22 +298,31 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
             let tm = ast_mt_to_mt(tcx, mode, f.node.mt);
             flds += [{ident: f.node.ident, mt: tm}];
         }
-        typ = ty::mk_rec(tcx, flds);
+        ty::mk_rec(tcx, flds)
       }
       ast::ty_fn(proto, decl) {
-        typ = ty::mk_fn(tcx, ty_of_fn_decl(tcx, mode, proto, decl));
+        ty::mk_fn(tcx, ty_of_fn_decl(tcx, mode, proto, decl))
       }
       ast::ty_path(path, id) {
         alt tcx.def_map.get(id) {
           ast::def_ty(id) {
-            typ = instantiate(tcx, ast_ty.span, mode, id, path.node.types);
+            instantiate(tcx, ast_ty.span, mode, id, path.node.types)
+          }
+          ast::def_prim_ty(nty) {
+            alt nty {
+              ast::ty_bool { ty::mk_bool(tcx) }
+              ast::ty_int(it) { ty::mk_mach_int(tcx, it) }
+              ast::ty_uint(uit) { ty::mk_mach_uint(tcx, uit) }
+              ast::ty_float(ft) { ty::mk_mach_float(tcx, ft) }
+              ast::ty_str { ty::mk_str(tcx) }
+            }
           }
           ast::def_ty_param(id, n) {
             if vec::len(path.node.types) > 0u {
                 tcx.sess.span_err(ast_ty.span, "provided type parameters to \
                                                 a type parameter");
             }
-            typ = ty::mk_param(tcx, n, id);
+            ty::mk_param(tcx, n, id)
           }
           ast::def_self(iface_id) {
             alt tcx.items.get(iface_id.node) {
@@ -328,9 +331,9 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
                     tcx.sess.span_err(ast_ty.span, "incorrect number of type \
                                                     parameter to self type");
                 }
-                typ = ty::mk_self(tcx, vec::map(path.node.types, {|ast_ty|
+                ty::mk_self(tcx, vec::map(path.node.types, {|ast_ty|
                     ast_ty_to_ty(tcx, mode, ast_ty)
-                }));
+                }))
               }
               _ { fail; }
             }
@@ -346,7 +349,7 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
         for constr: @ast::ty_constr in cs {
             out_cs += [ty::ast_constr_to_constr(tcx, constr)];
         }
-        typ = ty::mk_constr(tcx, ast_ty_to_ty(tcx, mode, t), out_cs);
+        ty::mk_constr(tcx, ast_ty_to_ty(tcx, mode, t), out_cs)
       }
       ast::ty_infer {
         alt mode {
@@ -359,7 +362,7 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
           tcx.sess.span_bug(ast_ty.span,
                                 "found `ty_mac` in unexpected place");
       }
-    }
+    };
     tcx.ast_ty_to_ty_cache.insert(ast_ty, some(typ));
     ret typ;
 }

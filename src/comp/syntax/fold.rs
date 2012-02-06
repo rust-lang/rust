@@ -446,8 +446,7 @@ fn noop_fold_ty(t: ty_, fld: ast_fold) -> ty_ {
          span: fld.new_span(f.span)}
     }
     alt t {
-      ty_nil | ty_bot | ty_bool | ty_str {t}
-      ty_int(_) | ty_uint(_) | ty_float(_) {t}
+      ty_nil | ty_bot {t}
       ty_box(mt) {ty_box(fold_mt(mt, fld))}
       ty_uniq(mt) {ty_uniq(fold_mt(mt, fld))}
       ty_vec(mt) {ty_vec(fold_mt(mt, fld))}

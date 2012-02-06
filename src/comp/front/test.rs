@@ -377,8 +377,9 @@ fn mk_test_wrapper(cx: test_ctxt,
 }
 
 fn mk_main(cx: test_ctxt) -> @ast::item {
-
-    let args_mt: ast::mt = {ty: @nospan(ast::ty_str), mut: ast::imm};
+    let str_pt = @nospan({global: false, idents: ["str"], types: []});
+    let str_ty = @nospan(ast::ty_path(str_pt, cx.sess.next_node_id()));
+    let args_mt: ast::mt = {ty: str_ty, mut: ast::imm};
     let args_ty: ast::ty = nospan(ast::ty_vec(args_mt));
 
     let args_arg: ast::arg =

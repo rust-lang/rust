@@ -137,7 +137,7 @@ fn test_res_to_str() {
     let decl: ast::fn_decl = {
         inputs: [{
             mode: ast::expl(ast::by_val),
-            ty: @ast_util::respan(ast_util::dummy_sp(), ast::ty_bool),
+            ty: @ast_util::respan(ast_util::dummy_sp(), ast::ty_nil),
             ident: "b",
             id: 0
         }],
@@ -146,7 +146,7 @@ fn test_res_to_str() {
         cf: ast::return_val,
         constraints: []
     };
-    assert res_to_str(decl, "a", []) == "resource a(b: bool)";
+    assert res_to_str(decl, "a", []) == "resource a(b: ())";
 }
 
 fn block_to_str(blk: ast::blk) -> str {
@@ -317,16 +317,7 @@ fn print_type(s: ps, &&ty: @ast::ty) {
     ibox(s, 0u);
     alt ty.node {
       ast::ty_nil { word(s.s, "()"); }
-      ast::ty_bool { word(s.s, "bool"); }
       ast::ty_bot { word(s.s, "!"); }
-      ast::ty_int(ast::ty_i) { word(s.s, "int"); }
-      ast::ty_int(ast::ty_char) { word(s.s, "char"); }
-      ast::ty_int(t) { word(s.s, ast_util::int_ty_to_str(t)); }
-      ast::ty_uint(ast::ty_u) { word(s.s, "uint"); }
-      ast::ty_uint(t) { word(s.s, ast_util::uint_ty_to_str(t)); }
-      ast::ty_float(ast::ty_f) { word(s.s, "float"); }
-      ast::ty_float(t) { word(s.s, ast_util::float_ty_to_str(t)); }
-      ast::ty_str { word(s.s, "str"); }
       ast::ty_box(mt) { word(s.s, "@"); print_mt(s, mt); }
       ast::ty_uniq(mt) { word(s.s, "~"); print_mt(s, mt); }
       ast::ty_vec(mt) {
