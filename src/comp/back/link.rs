@@ -561,12 +561,12 @@ fn mangle_internal_name_by_seq(ccx: @crate_ctxt, flav: str) -> str {
 }
 
 // If the user wants an exe generated we need to invoke
-// gcc to link the object file with some libs
+// cc to link the object file with some libs
 fn link_binary(sess: session,
                obj_filename: str,
                out_filename: str,
                lm: link_meta) {
-    // Converts a library file name into a gcc -l argument
+    // Converts a library file name into a cc -l argument
     fn unlib(config: @session::config, filename: str) -> str unsafe {
         let rmlib = fn@(filename: str) -> str {
             if config.os == session::os_macos ||
@@ -610,12 +610,15 @@ fn link_binary(sess: session,
 
     // In the future, FreeBSD will use clang as default compiler.
     // It would be flexible to use cc (system's default C compiler)
-    // instead of hard-coded gcc
-    let prog: str = "cc";
-    // The invocations of gcc share some flags across platforms
+    // instead of hard-coded gcc.
+    // For win32, there is no cc command,
+    // so we add a condition to make it use gcc.
+    let cc_prog: str =
+        if sess.targ_cfg.os == session::os_win32 { "gcc" } else { "cc" };
+    // The invocations of cc share some flags across platforms
 
-    let gcc_args =
-        [stage] + sess.targ_cfg.target_strs.gcc_args +
+    let cc_args =
+        [stage] + sess.targ_cfg.target_strs.cc_args +
         ["-o", output, obj_filename];
 
     let lib_cmd;
@@ -627,47 +630,47 @@ fn link_binary(sess: session,
     let cstore = sess.cstore;
     for cratepath: str in cstore::get_used_crate_files(cstore) {
         if str::ends_with(cratepath, ".rlib") {
-            gcc_args += [cratepath];
+            cc_args += [cratepath];
             cont;
         }
         let cratepath = cratepath;
         let dir = fs::dirname(cratepath);
-        if dir != "" { gcc_args += ["-L" + dir]; }
+        if dir != "" { cc_args += ["-L" + dir]; }
         let libarg = unlib(sess.targ_cfg, fs::basename(cratepath));
-        gcc_args += ["-l" + libarg];
+        cc_args += ["-l" + libarg];
     }
 
     let ula = cstore::get_used_link_args(cstore);
-    for arg: str in ula { gcc_args += [arg]; }
+    for arg: str in ula { cc_args += [arg]; }
 
     let used_libs = cstore::get_used_libraries(cstore);
-    for l: str in used_libs { gcc_args += ["-l" + l]; }
+    for l: str in used_libs { cc_args += ["-l" + l]; }
 
     if sess.building_library {
-        gcc_args += [lib_cmd];
+        cc_args += [lib_cmd];
 
         // On mac we need to tell the linker to let this library
         // be rpathed
         if sess.targ_cfg.os == session::os_macos {
-            gcc_args += ["-Wl,-install_name,@rpath/"
+            cc_args += ["-Wl,-install_name,@rpath/"
                         + fs::basename(output)];
         }
     } else {
         // FIXME: why do we hardcode -lm?
-        gcc_args += ["-lm"];
+        cc_args += ["-lm"];
     }
 
     // Always want the runtime linked in
-    gcc_args += ["-lrustrt"];
+    cc_args += ["-lrustrt"];
 
     // On linux librt and libdl are an indirect dependencies via rustrt,
     // and binutils 2.22+ won't add them automatically
     if sess.targ_cfg.os == session::os_linux {
-        gcc_args += ["-lrt", "-ldl"];
+        cc_args += ["-lrt", "-ldl"];
     }
 
     if sess.targ_cfg.os == session::os_freebsd {
-        gcc_args += ["-lrt", "-L/usr/local/lib", "-lexecinfo",
+        cc_args += ["-lrt", "-L/usr/local/lib", "-lexecinfo",
                      "-L/usr/local/lib/gcc46",
                      "-L/usr/local/lib/gcc44", "-lstdc++",
                      "-Wl,-z,origin",
@@ -680,20 +683,22 @@ fn link_binary(sess: session,
     // understand how to unwind our __morestack frame, so we have to turn it
     // off. This has impacted some other projects like GHC.
     if sess.targ_cfg.os == session::os_macos {
-        gcc_args += ["-Wl,-no_compact_unwind"];
+        cc_args += ["-Wl,-no_compact_unwind"];
     }
 
     // Stack growth requires statically linking a __morestack function
-    gcc_args += ["-lmorestack"];
+    cc_args += ["-lmorestack"];
 
-    gcc_args += rpath::get_rpath_flags(sess, output);
+    cc_args += rpath::get_rpath_flags(sess, output);
 
-    #debug("gcc link args: %s", str::connect(gcc_args, " "));
-    // We run 'gcc' here
-    let prog = run::program_output(prog, gcc_args);
+    #debug("%s link args: %s", cc_prog, str::connect(cc_args, " "));
+    // We run 'cc' here
+    let prog = run::program_output(cc_prog, cc_args);
     if 0 != prog.status {
-        sess.err(#fmt["linking with gcc failed with code %d", prog.status]);
-        sess.note(#fmt["gcc arguments: %s", str::connect(gcc_args, " ")]);
+        sess.err(#fmt["linking with %s failed with code %d",
+                      cc_prog, prog.status]);
+        sess.note(#fmt["%s arguments: %s",
+                       cc_prog, str::connect(cc_args, " ")]);
         sess.note(prog.err + prog.out);
         sess.abort_if_errors();
     }
