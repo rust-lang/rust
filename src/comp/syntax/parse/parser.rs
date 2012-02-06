@@ -151,7 +151,7 @@ fn bad_expr_word_table() -> hashmap<str, ()> {
                  "cont", "ret", "be", "fail", "type", "resource", "check",
                  "assert", "claim", "native", "fn", "pure",
                  "unsafe", "import", "export", "let", "const",
-                 "log", "copy", "sendfn", "impl", "iface", "enum",
+                 "log", "copy", "impl", "iface", "enum",
                  "m32", "m64", "m128", "f80", "f16", "f128",
                  "class", "trait"] {
         words.insert(word, ());
@@ -1167,7 +1167,7 @@ fn prec_table() -> @[op_spec] {
           {tok: token::BINOP(token::LSR), op: ast::lsr, prec: 9},
           {tok: token::BINOP(token::ASR), op: ast::asr, prec: 9},
           {tok: token::BINOP(token::AND), op: ast::bitand, prec: 8},
-          {tok: token::BINOP(token::CARET), op: ast::bitxor, prec: 6},
+          {tok: token::BINOP(token::CARET), op: ast::bitxor, prec: 7},
           {tok: token::BINOP(token::OR), op: ast::bitor, prec: 6},
           // 'as' sits between here with 5
           {tok: token::LT, op: ast::lt, prec: 4},
