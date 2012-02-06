@@ -80,11 +80,10 @@ mod test {
 
     fn parse_attributes(source: str) -> [ast::attribute] {
         import rustc::syntax::parse::parser;
-        // FIXME: Uncommenting this results in rustc bugs
-        //import rustc::syntax::codemap;
+        import rustc::syntax::codemap;
         import rustc::driver::diagnostic;
 
-        let cm = rustc::syntax::codemap::new_codemap();
+        let cm = codemap::new_codemap();
         let handler = diagnostic::mk_handler(none);
         let parse_sess = @{
             cm: cm,
