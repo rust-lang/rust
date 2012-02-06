@@ -147,12 +147,12 @@ fn new_parser(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader,
 // interpreted as a specific kind of statement, which would be confusing.
 fn bad_expr_word_table() -> hashmap<str, ()> {
     let words = new_str_hash();
-    for word in ["mod", "if", "else", "while", "do", "alt", "for", "break",
-                 "cont", "ret", "be", "fail", "type", "resource", "check",
-                 "assert", "claim", "native", "fn", "pure",
-                 "unsafe", "import", "export", "let", "const",
-                 "log", "copy", "impl", "iface", "enum",
-                 "class", "trait"] {
+    for word in ["alt", "assert", "be", "break", "check", "claim",
+                 "class", "const", "cont", "copy", "do", "else", "enum",
+                 "export", "fail", "fn", "for", "if",  "iface", "impl",
+                 "import", "let", "log", "mod", "mutable", "native", "pure",
+                 "resource", "ret", "trait", "type", "unchecked", "unsafe",
+                 "while"] {
         words.insert(word, ());
     }
     words
