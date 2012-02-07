@@ -291,7 +291,7 @@ fn mk_sha1() -> sha1 {
 mod tests {
 
     #[test]
-    fn test() {
+    fn test() unsafe {
         type test = {input: str, output: [u8]};
 
         fn a_million_letter_a() -> str {
@@ -372,7 +372,8 @@ mod tests {
             let left = len;
             while left > 0u {
                 let take = (left + 1u) / 2u;
-                sh.input_str(str::substr(t.input, len - left, take));
+                sh.input_str(str::unsafe::slice_bytes(t.input, len - left,
+                             take + len - left));
                 left = left - take;
             }
             let out = sh.result();

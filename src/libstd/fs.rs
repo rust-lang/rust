@@ -43,13 +43,13 @@ The dirname of "/usr/share" will be "/usr", but the dirname of
 
 If the path is not prefixed with a directory, then "." is returned.
 */
-fn dirname(p: path) -> path {
+fn dirname(p: path) -> path unsafe {
     let i: int = str::rindex(p, os_fs::path_sep as u8);
     if i == -1 {
         i = str::rindex(p, os_fs::alt_path_sep as u8);
         if i == -1 { ret "."; }
     }
-    ret str::substr(p, 0u, i as uint);
+    ret str::unsafe::slice_bytes(p, 0u, i as uint);
 }
 
 /*

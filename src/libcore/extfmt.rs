@@ -80,7 +80,7 @@ mod ct {
     enum piece { piece_string(str), piece_conv(conv), }
     type error_fn = fn@(str) -> ! ;
 
-    fn parse_fmt_string(s: str, error: error_fn) -> [piece] {
+    fn parse_fmt_string(s: str, error: error_fn) -> [piece] unsafe {
         let pieces: [piece] = [];
         let lim = str::byte_len(s);
         let buf = "";
@@ -93,13 +93,13 @@ mod ct {
         }
         let i = 0u;
         while i < lim {
-            let curr = str::substr(s, i, 1u);
+            let curr = str::unsafe::slice_bytes(s, i, i+1u);
             if str::eq(curr, "%") {
                 i += 1u;
                 if i >= lim {
                     error("unterminated conversion at end of string");
                 }
-                let curr2 = str::substr(s, i, 1u);
+                let curr2 = str::unsafe::slice_bytes(s, i, i+1u);
                 if str::eq(curr2, "%") {
                     buf += curr2;
                     i += 1u;
@@ -223,9 +223,9 @@ mod ct {
             } else { {count: count_implied, next: i} };
     }
     fn parse_type(s: str, i: uint, lim: uint, error: error_fn) ->
-       {ty: ty, next: uint} {
+       {ty: ty, next: uint} unsafe {
         if i >= lim { error("missing type in conversion"); }
-        let tstr = str::substr(s, i, 1u);
+        let tstr = str::unsafe::slice_bytes(s, i, i+1u);
         // TODO: Do we really want two signed types here?
         // How important is it to be printf compatible?
         let t =
@@ -317,7 +317,7 @@ mod rt {
     fn conv_char(cv: conv, c: char) -> str {
         ret pad(cv, str::from_char(c), pad_nozero);
     }
-    fn conv_str(cv: conv, s: str) -> str {
+    fn conv_str(cv: conv, s: str) -> str unsafe {
         // For strings, precision is the maximum characters
         // displayed
 
@@ -327,7 +327,7 @@ mod rt {
               count_implied { s }
               count_is(max) {
                 if max as uint < str::char_len(s) {
-                    str::substr(s, 0u, max as uint)
+                    str::unsafe::slice_bytes(s, 0u, max as uint)
                 } else { s }
               }
             };
@@ -391,7 +391,7 @@ mod rt {
         ret str::from_bytes(svec);
     }
     enum pad_mode { pad_signed, pad_unsigned, pad_nozero, }
-    fn pad(cv: conv, s: str, mode: pad_mode) -> str {
+    fn pad(cv: conv, s: str, mode: pad_mode) -> str unsafe {
         let uwidth;
         alt cv.width {
           count_implied { ret s; }
@@ -440,7 +440,7 @@ mod rt {
                 let headstr = str::from_bytes([head]);
                 // FIXME: not UTF-8 safe
                 let bytelen = str::byte_len(s);
-                let numpart = str::substr(s, 1u, bytelen - 1u);
+                let numpart = str::unsafe::slice_bytes(s, 1u, bytelen);
                 ret headstr + padstr + numpart;
             }
         }
