@@ -489,7 +489,7 @@ enum item_ {
     item_class([ty_param], /* ty params for class */
                [@class_item], /* methods, etc. */
                              /* (not including ctor) */
-               node_id,
+               node_id,  /* ctor id */
                fn_decl, /* ctor decl */
                blk /* ctor body */
                ),
