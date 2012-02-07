@@ -47,7 +47,6 @@ type tydesc_info =
      mutable take_glue: option<ValueRef>,
      mutable drop_glue: option<ValueRef>,
      mutable free_glue: option<ValueRef>,
-     mutable cmp_glue: option<ValueRef>,
      ty_params: [uint]};
 
 /*
@@ -570,14 +569,6 @@ fn T_glue_fn(cx: @crate_ctxt) -> TypeRef {
     ret t;
 }
 
-fn T_cmp_glue_fn(cx: @crate_ctxt) -> TypeRef {
-    let s = "cmp_glue_fn";
-    alt name_has_type(cx.tn, s) { some(t) { ret t; } _ {} }
-    let t = T_tydesc_field(cx, abi::tydesc_field_cmp_glue);
-    associate_type(cx.tn, s, t);
-    ret t;
-}
-
 fn T_tydesc(targ_cfg: @session::config) -> TypeRef {
     let tydesc = T_named_struct("tydesc");
     let tydescpp = T_ptr(T_ptr(tydesc));
@@ -585,15 +576,12 @@ fn T_tydesc(targ_cfg: @session::config) -> TypeRef {
     let glue_fn_ty =
         T_ptr(T_fn([T_ptr(T_nil()), T_ptr(T_nil()), tydescpp,
                     pvoid], T_void()));
-    let cmp_glue_fn_ty =
-        T_ptr(T_fn([T_ptr(T_i1()), T_ptr(tydesc), tydescpp,
-                    pvoid, pvoid, T_i8()], T_void()));
 
     let int_type = T_int(targ_cfg);
     let elems =
         [tydescpp, int_type, int_type,
          glue_fn_ty, glue_fn_ty, glue_fn_ty,
-         T_ptr(T_i8()), glue_fn_ty, glue_fn_ty, glue_fn_ty, cmp_glue_fn_ty,
+         T_ptr(T_i8()), glue_fn_ty, glue_fn_ty, glue_fn_ty, T_ptr(T_i8()),
          T_ptr(T_i8()), T_ptr(T_i8()), int_type, int_type];
     set_struct_body(tydesc, elems);
     ret tydesc;

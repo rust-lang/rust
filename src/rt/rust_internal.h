@@ -221,9 +221,6 @@ public:
 
 typedef void CDECL (glue_fn)(void *, void *,
                              const type_desc **, void *);
-typedef void CDECL (cmp_glue_fn)(void *, void *,
-                                 const type_desc **,
-                                 void *, void *, int8_t);
 
 struct rust_shape_tables {
     uint8_t *tags;
@@ -270,11 +267,11 @@ struct type_desc {
     glue_fn *take_glue;
     glue_fn *drop_glue;
     glue_fn *free_glue;
-    void *unused;
+    void *UNUSED;
     glue_fn *sever_glue;    // For GC.
     glue_fn *mark_glue;     // For GC.
     uintptr_t unused2;
-    cmp_glue_fn *cmp_glue;
+    void *UNUSED_2;
     const uint8_t *shape;
     const rust_shape_tables *shape_tables;
     uintptr_t n_params;

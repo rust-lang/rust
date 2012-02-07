@@ -977,7 +977,6 @@ fn declare_tydesc(ccx: @crate_ctxt, t: ty::t, ty_params: [uint])
           mutable take_glue: none,
           mutable drop_glue: none,
           mutable free_glue: none,
-          mutable cmp_glue: none,
           ty_params: ty_params};
     log(debug, "--- declare_tydesc " + ty_to_str(ccx.tcx, t));
     ret info;
@@ -1055,7 +1054,6 @@ fn make_generic_glue(ccx: @crate_ctxt, t: ty::t, llfn: ValueRef,
 fn emit_tydescs(ccx: @crate_ctxt) {
     ccx.tydescs.items {|key, val|
         let glue_fn_ty = T_ptr(T_glue_fn(ccx));
-        let cmp_fn_ty = T_ptr(T_cmp_glue_fn(ccx));
         let ti = val;
         let take_glue =
             alt ti.take_glue {
@@ -1070,11 +1068,6 @@ fn emit_tydescs(ccx: @crate_ctxt) {
         let free_glue =
             alt ti.free_glue {
               none { ccx.stats.n_null_glues += 1u; C_null(glue_fn_ty) }
-              some(v) { ccx.stats.n_real_glues += 1u; v }
-            };
-        let cmp_glue =
-            alt ti.cmp_glue {
-              none { ccx.stats.n_null_glues += 1u; C_null(cmp_fn_ty) }
               some(v) { ccx.stats.n_real_glues += 1u; v }
             };
 
@@ -1095,7 +1088,7 @@ fn emit_tydescs(ccx: @crate_ctxt) {
                             C_null(glue_fn_ty), // sever_glue
                             C_null(glue_fn_ty), // mark_glue
                             C_null(glue_fn_ty), // unused
-                            cmp_glue, // cmp_glue
+                            C_null(T_ptr(T_i8())), // cmp_glue
                             C_shape(ccx, shape), // shape
                             shape_tables, // shape_tables
                             C_int(ccx, 0), // n_params
@@ -1548,7 +1541,6 @@ fn lazily_emit_all_tydesc_glue(ccx: @crate_ctxt,
     lazily_emit_tydesc_glue(ccx, abi::tydesc_field_take_glue, static_ti);
     lazily_emit_tydesc_glue(ccx, abi::tydesc_field_drop_glue, static_ti);
     lazily_emit_tydesc_glue(ccx, abi::tydesc_field_free_glue, static_ti);
-    lazily_emit_tydesc_glue(ccx, abi::tydesc_field_cmp_glue, static_ti);
 }
 
 fn lazily_emit_all_generic_info_tydesc_glues(ccx: @crate_ctxt,
@@ -1608,17 +1600,6 @@ fn lazily_emit_tydesc_glue(ccx: @crate_ctxt, field: int,
                                   make_free_glue,
                                   ti.ty_params, "free");
                 #debug("--- lazily_emit_tydesc_glue FREE %s",
-                       ty_to_str(ccx.tcx, ti.ty));
-              }
-            }
-        } else if field == abi::tydesc_field_cmp_glue {
-            alt ti.cmp_glue {
-              some(_) { }
-              none {
-                #debug("+++ lazily_emit_tydesc_glue CMP %s",
-                       ty_to_str(ccx.tcx, ti.ty));
-                ti.cmp_glue = some(ccx.upcalls.cmp_type);
-                #debug("--- lazily_emit_tydesc_glue CMP %s",
                        ty_to_str(ccx.tcx, ti.ty));
               }
             }
@@ -1687,24 +1668,15 @@ fn call_cmp_glue(cx: @block_ctxt, lhs: ValueRef, rhs: ValueRef, t: ty::t,
 
     let llrawlhsptr = BitCast(bcx, lllhs, T_ptr(T_i8()));
     let llrawrhsptr = BitCast(bcx, llrhs, T_ptr(T_i8()));
-    let ti = none::<@tydesc_info>;
+    let ti = none;
     r = get_tydesc(bcx, t, false, ti).result;
     let lltydesc = r.val;
     bcx = r.bcx;
-    lazily_emit_tydesc_glue(bcx_ccx(bcx), abi::tydesc_field_cmp_glue, ti);
     let lltydescs =
         GEPi(bcx, lltydesc, [0, abi::tydesc_field_first_param]);
     lltydescs = Load(bcx, lltydescs);
 
-    let llfn;
-    alt ti {
-      none {
-        let llfnptr =
-            GEPi(bcx, lltydesc, [0, abi::tydesc_field_cmp_glue]);
-        llfn = Load(bcx, llfnptr);
-      }
-      some(sti) { llfn = option::get(sti.cmp_glue); }
-    }
+    let llfn = bcx_ccx(bcx).upcalls.cmp_type;
 
     let llcmpresultptr = alloca(bcx, T_i1());
     Call(bcx, llfn, [llcmpresultptr, lltydesc, lltydescs,
