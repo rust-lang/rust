@@ -9,6 +9,7 @@ rust_scheduler::rust_scheduler(rust_kernel *kernel,
     srv(srv),
     env(srv->env),
     live_threads(num_threads),
+    live_tasks(0),
     num_threads(num_threads),
     id(id)
 {
@@ -84,6 +85,7 @@ rust_scheduler::create_task(rust_task *spawner, const char *name,
     {
 	scoped_lock with(lock);
 	thread_no = isaac_rand(&rctx) % num_threads;
+	live_tasks++;
     }
     rust_task_thread *thread = threads[thread_no];
     return thread->create_task(spawner, name, init_stack_sz);
@@ -95,8 +97,27 @@ rust_scheduler::create_task(rust_task *spawner, const char *name) {
 }
 
 void
+rust_scheduler::release_task() {
+    bool need_exit = false;
+    {
+	scoped_lock with(lock);
+	live_tasks--;
+	if (live_tasks == 0) {
+	    need_exit = true;
+	}
+    }
+    if (need_exit) {
+	// There are no more tasks on this scheduler. Time to leave
+	exit();
+    }
+}
+
+void
 rust_scheduler::exit() {
-    for(size_t i = 0; i < num_threads; ++i) {
+    // Take a copy of num_threads. After the last thread exits this
+    // scheduler will get destroyed, and our fields will cease to exist.
+    size_t current_num_threads = num_threads;
+    for(size_t i = 0; i < current_num_threads; ++i) {
         threads[i]->exit();
     }
 }

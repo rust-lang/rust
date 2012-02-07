@@ -129,11 +129,6 @@ rust_kernel::release_task_id(rust_task_id id) {
         new_live_tasks = --live_tasks;
     }
     KLOG_("Total outstanding tasks: %d", new_live_tasks);
-    if (new_live_tasks == 0) {
-        // There are no more tasks and there never will be.
-        // Tell all the schedulers to exit.
-        sched->exit();
-    }
 }
 
 rust_task *

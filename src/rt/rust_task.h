@@ -122,14 +122,17 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     // The amount of stack we're using, excluding red zones
     size_t total_stack_sz;
 
+private:
+    // Called when the atomic refcount reaches zero
+    void delete_this();
+public:
+
     // Only a pointer to 'name' is kept, so it must live as long as this task.
     rust_task(rust_task_thread *thread,
               rust_task_list *state,
               rust_task *spawner,
               const char *name,
               size_t init_stack_sz);
-
-    ~rust_task();
 
     void start(spawn_fn spawnee_fn,
                rust_opaque_box *env,
