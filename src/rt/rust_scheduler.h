@@ -19,6 +19,8 @@ private:
     array_list<rust_task_thread *> threads;
     const size_t num_threads;
 
+    rust_sched_id id;
+
     void create_task_threads();
     void destroy_task_threads();
 
@@ -26,7 +28,8 @@ private:
     void destroy_task_thread(rust_task_thread *thread);
 
 public:
-    rust_scheduler(rust_kernel *kernel, rust_srv *srv, size_t num_threads);
+    rust_scheduler(rust_kernel *kernel, rust_srv *srv, size_t num_threads,
+		   rust_sched_id id);
     ~rust_scheduler();
 
     void start_task_threads();

@@ -17,7 +17,7 @@ rust_kernel::rust_kernel(rust_srv *srv, size_t num_threads) :
     env(srv->env)
 {
     sched = new (this, "rust_scheduler")
-        rust_scheduler(this, srv, num_threads);
+        rust_scheduler(this, srv, num_threads, 0);
     live_schedulers = 1;
 }
 

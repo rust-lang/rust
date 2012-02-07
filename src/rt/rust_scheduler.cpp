@@ -3,12 +3,14 @@
 
 rust_scheduler::rust_scheduler(rust_kernel *kernel,
 			       rust_srv *srv,
-			       size_t num_threads) :
+			       size_t num_threads,
+			       rust_sched_id id) :
     kernel(kernel),
     srv(srv),
     env(srv->env),
     live_threads(num_threads),
-    num_threads(num_threads)
+    num_threads(num_threads),
+    id(id)
 {
     isaac_init(kernel, &rctx);
     create_task_threads();
