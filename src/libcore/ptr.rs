@@ -7,6 +7,8 @@ Unsafe pointer utility functions
 native mod rusti {
     fn addr_of<T>(val: T) -> *T;
     fn ptr_offset<T>(ptr: *T, count: ctypes::uintptr_t) -> *T;
+    fn memcpy<T>(dst: *T, src: *T, count: ctypes::uintptr_t);
+    fn memmove<T>(dst: *T, src: *T, count: ctypes::uintptr_t);
 }
 
 /*
@@ -51,6 +53,20 @@ Create an unsafe null pointer
 */
 fn null<T>() -> *T unsafe { ret unsafe::reinterpret_cast(0u); }
 
+/*
+Function: memcpy
+
+Copies data from one src to dst that is not overlapping each other.
+*/
+fn memcpy<T>(dst: *T, src: *T, count: uint) unsafe { rusti::memcpy(dst, src, count); }
+
+/*
+Function: memmove
+
+Copies data from one src to dst, overlap between the two pointers may occur.
+*/
+fn memmove<T>(dst: *T, src: *T, count: uint) unsafe { rusti::memcpy(dst, src, count); }
+
 #[test]
 fn test() unsafe {
     type pair = {mutable fst: int, mutable snd: int};
@@ -66,4 +82,14 @@ fn test() unsafe {
     assert (*iptr == 50);
     assert (p.fst == 50);
     assert (p.snd == 60);
+
+    let v0 = [32000u16, 32001u16, 32002u16];
+    let v1 = [0u16, 0u16, 0u16];
+    
+    ptr::memcpy(ptr::offset(vec::unsafe::to_ptr(v1), 1u), ptr::offset(vec::unsafe::to_ptr(v0), 1u), 1u);
+    assert (v1[0] == 0u16 && v1[1] == 32001u16 && v1[2] == 0u16);
+    ptr::memcpy(vec::unsafe::to_ptr(v1), ptr::offset(vec::unsafe::to_ptr(v0), 2u), 1u);
+    assert (v1[0] == 32002u16 && v1[1] == 32001u16 && v1[2] == 0u16);
+    ptr::memcpy(ptr::offset(vec::unsafe::to_ptr(v1), 2u), vec::unsafe::to_ptr(v0), 1u);
+    assert (v1[0] == 32002u16 && v1[1] == 32001u16 && v1[2] == 32000u16);
 }
