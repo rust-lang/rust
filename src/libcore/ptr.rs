@@ -57,15 +57,17 @@ fn null<T>() -> *T unsafe { ret unsafe::reinterpret_cast(0u); }
 Function: memcpy
 
 Copies data from one src to dst that is not overlapping each other.
+Count is the number of elements to copy and not the number of bytes.
 */
-fn memcpy<T>(dst: *T, src: *T, count: uint) unsafe { rusti::memcpy(dst, src, count); }
+unsafe fn memcpy<T>(dst: *T, src: *T, count: uint) { rusti::memcpy(dst, src, count); }
 
 /*
 Function: memmove
 
 Copies data from one src to dst, overlap between the two pointers may occur.
+Count is the number of elements to copy and not the number of bytes.
 */
-fn memmove<T>(dst: *T, src: *T, count: uint) unsafe { rusti::memcpy(dst, src, count); }
+unsafe fn memmove<T>(dst: *T, src: *T, count: uint)  { rusti::memcpy(dst, src, count); }
 
 #[test]
 fn test() unsafe {
