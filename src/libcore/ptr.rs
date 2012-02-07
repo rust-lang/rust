@@ -59,7 +59,9 @@ Function: memcpy
 Copies data from one src to dst that is not overlapping each other.
 Count is the number of elements to copy and not the number of bytes.
 */
-unsafe fn memcpy<T>(dst: *T, src: *T, count: uint) { rusti::memcpy(dst, src, count); }
+unsafe fn memcpy<T>(dst: *T, src: *T, count: uint) {
+    rusti::memcpy(dst, src, count);
+}
 
 /*
 Function: memmove
@@ -67,7 +69,9 @@ Function: memmove
 Copies data from one src to dst, overlap between the two pointers may occur.
 Count is the number of elements to copy and not the number of bytes.
 */
-unsafe fn memmove<T>(dst: *T, src: *T, count: uint)  { rusti::memcpy(dst, src, count); }
+unsafe fn memmove<T>(dst: *T, src: *T, count: uint)  {
+    rusti::memcpy(dst, src, count);
+}
 
 #[test]
 fn test() unsafe {
@@ -87,11 +91,14 @@ fn test() unsafe {
 
     let v0 = [32000u16, 32001u16, 32002u16];
     let v1 = [0u16, 0u16, 0u16];
-    
-    ptr::memcpy(ptr::offset(vec::unsafe::to_ptr(v1), 1u), ptr::offset(vec::unsafe::to_ptr(v0), 1u), 1u);
+
+    ptr::memcpy(ptr::offset(vec::unsafe::to_ptr(v1), 1u),
+                ptr::offset(vec::unsafe::to_ptr(v0), 1u), 1u);
     assert (v1[0] == 0u16 && v1[1] == 32001u16 && v1[2] == 0u16);
-    ptr::memcpy(vec::unsafe::to_ptr(v1), ptr::offset(vec::unsafe::to_ptr(v0), 2u), 1u);
+    ptr::memcpy(vec::unsafe::to_ptr(v1),
+                ptr::offset(vec::unsafe::to_ptr(v0), 2u), 1u);
     assert (v1[0] == 32002u16 && v1[1] == 32001u16 && v1[2] == 0u16);
-    ptr::memcpy(ptr::offset(vec::unsafe::to_ptr(v1), 2u), vec::unsafe::to_ptr(v0), 1u);
+    ptr::memcpy(ptr::offset(vec::unsafe::to_ptr(v1), 2u),
+                vec::unsafe::to_ptr(v0), 1u);
     assert (v1[0] == 32002u16 && v1[1] == 32001u16 && v1[2] == 32000u16);
 }
