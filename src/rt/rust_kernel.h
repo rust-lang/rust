@@ -46,7 +46,7 @@ public:
 
     struct rust_env *env;
 
-    rust_kernel(rust_srv *srv, size_t num_threads);
+    rust_kernel(rust_srv *srv);
 
     void log(uint32_t level, char const *fmt, ...);
     void fatal(char const *fmt, ...);
@@ -57,10 +57,11 @@ public:
 
     void fail();
 
-    int start_schedulers();
-    rust_scheduler* get_default_scheduler();
+    rust_sched_id create_scheduler(size_t num_threads);
+    rust_scheduler* get_scheduler_by_id(rust_sched_id id);
     // Called by a scheduler to indicate that it is terminating
-    void release_scheduler();
+    void release_scheduler_id(rust_sched_id id);
+    int wait_for_schedulers();
 
 #ifdef __WIN32__
     void win32_require(LPCTSTR fn, BOOL ok);

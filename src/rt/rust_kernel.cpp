@@ -7,18 +7,16 @@
 #define KLOG_ERR_(field, ...)                   \
     KLOG_LVL(this, field, log_err, __VA_ARGS__)
 
-rust_kernel::rust_kernel(rust_srv *srv, size_t num_threads) :
+rust_kernel::rust_kernel(rust_srv *srv) :
     _region(srv, true),
     _log(srv, NULL),
     srv(srv),
     live_tasks(0),
     max_task_id(0),
     rval(0),
+    live_schedulers(0),
     env(srv->env)
 {
-    sched = new (this, "rust_scheduler")
-        rust_scheduler(this, srv, num_threads, 0);
-    live_schedulers = 1;
 }
 
 void
@@ -56,7 +54,34 @@ void rust_kernel::free(void *mem) {
     _region.free(mem);
 }
 
-int rust_kernel::start_schedulers()
+rust_sched_id
+rust_kernel::create_scheduler(size_t num_threads) {
+    I(this, live_schedulers == 0);
+    sched = new (this, "rust_scheduler")
+        rust_scheduler(this, srv, num_threads, 0);
+    live_schedulers = 1;
+    return 0;
+}
+
+rust_scheduler *
+rust_kernel::get_scheduler_by_id(rust_sched_id id) {
+    return sched;
+}
+
+void
+rust_kernel::release_scheduler_id(rust_sched_id id) {
+    I(this, !sched_lock.lock_held_by_current_thread());
+    scoped_lock with(sched_lock);
+    delete sched;
+    --live_schedulers;
+    if (live_schedulers == 0) {
+        // We're all done. Tell the main thread to continue
+        sched_lock.signal();
+    }
+}
+
+int
+rust_kernel::wait_for_schedulers()
 {
     I(this, !sched_lock.lock_held_by_current_thread());
     sched->start_task_threads();
@@ -67,23 +92,6 @@ int rust_kernel::start_schedulers()
             sched_lock.wait();
         }
         return rval;
-    }
-}
-
-rust_scheduler *
-rust_kernel::get_default_scheduler() {
-    return sched;
-}
-
-void
-rust_kernel::release_scheduler() {
-    I(this, !sched_lock.lock_held_by_current_thread());
-    scoped_lock with(sched_lock);
-    delete sched;
-    --live_schedulers;
-    if (live_schedulers == 0) {
-        // We're all done. Tell the main thread to continue
-        sched_lock.signal();
     }
 }
 
