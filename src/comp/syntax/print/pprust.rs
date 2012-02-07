@@ -846,7 +846,12 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
               _ { word(s.s, "_"); }
             }
         }
-        word_nbsp(s, "bind");
+
+        // "bind" keyword is only needed if there are no "_" arguments.
+        if !vec::any(args) {|arg| option::is_none(arg) } {
+            word_nbsp(s, "bind");
+        }
+
         print_expr(s, func);
         popen(s);
         commasep(s, inconsistent, args, print_opt);

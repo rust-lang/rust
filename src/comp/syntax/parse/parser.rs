@@ -854,15 +854,9 @@ fn parse_bottom_expr(p: parser) -> pexpr {
         ret pexpr(mk_mac_expr(p, lo, p.span.hi, ast::mac_ellipsis));
     } else if eat_word(p, "bind") {
         let e = parse_expr_res(p, RESTRICT_NO_CALL_EXPRS);
-        fn parse_expr_opt(p: parser) -> option<@ast::expr> {
-            alt p.token {
-              token::UNDERSCORE { p.bump(); ret none; }
-              _ { ret some(parse_expr(p)); }
-            }
-        }
         let es =
             parse_seq(token::LPAREN, token::RPAREN, seq_sep(token::COMMA),
-                      parse_expr_opt, p);
+                      parse_expr_or_hole, p);
         hi = es.span.hi;
         ex = ast::expr_bind(e, es.node);
     } else if p.token == token::POUND {
@@ -1036,10 +1030,18 @@ fn parse_dot_or_call_expr_with(p: parser, e0: pexpr) -> pexpr {
         alt p.token {
           // expr(...)
           token::LPAREN if permits_call(p) {
-            let es = parse_seq(token::LPAREN, token::RPAREN,
-                               seq_sep(token::COMMA), parse_expr, p);
-            hi = es.span.hi;
-            let nd = ast::expr_call(to_expr(e), es.node, false);
+            let es_opt =
+                parse_seq(token::LPAREN, token::RPAREN,
+                          seq_sep(token::COMMA), parse_expr_or_hole, p);
+            hi = es_opt.span.hi;
+
+            let nd =
+                if vec::any(es_opt.node, {|e| option::is_none(e) }) {
+                    ast::expr_bind(to_expr(e), es_opt.node)
+                } else {
+                    let es = vec::map(es_opt.node) {|e| option::get(e) };
+                    ast::expr_call(to_expr(e), es, false)
+                };
             e = mk_pexpr(p, lo, hi, nd);
           }
 
@@ -1386,6 +1388,13 @@ fn parse_alt_expr(p: parser) -> @ast::expr {
 
 fn parse_expr(p: parser) -> @ast::expr {
     ret parse_expr_res(p, UNRESTRICTED);
+}
+
+fn parse_expr_or_hole(p: parser) -> option<@ast::expr> {
+    alt p.token {
+      token::UNDERSCORE { p.bump(); ret none; }
+      _ { ret some(parse_expr(p)); }
+    }
 }
 
 fn parse_expr_res(p: parser, r: restriction) -> @ast::expr {

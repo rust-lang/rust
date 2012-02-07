@@ -14,7 +14,7 @@ fn test_box() {
         log(debug, *b2);
         ret *b1 == *b2;
     }
-    let eq = bind compare_box(_, _);
+    let eq = compare_box(_, _);
     test_generic::<bool>(~true, eq);
 }
 
