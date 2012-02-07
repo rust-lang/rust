@@ -38,11 +38,12 @@ export
    chars,
    substr,
    slice,
-   split_byte,
-   splitn_byte,
    split,
    split_str,
    split_char,
+   splitn_char,
+   split_byte,
+   splitn_byte,
    lines,
    lines_any,
    words,
@@ -580,6 +581,34 @@ fn split_char(ss: str, cc: char) -> [str] {
 }
 
 /*
+Function: splitn_char
+
+Splits a string into a vector of the substrings separated by a given character
+up to `count` times
+*/
+fn splitn_char(ss: str, sep: char, count: uint) -> [str] unsafe {
+
+   let vv = [];
+   let start = 0u, current = 0u, len = byte_len(ss);
+   let splits_done = 0u;
+
+   while splits_done < count && current < len {
+      // grab a char...
+      let {ch, next} = char_range_at(ss, current);
+
+      if sep == ch {
+         vec::push(vv, str::unsafe::slice_bytes(ss, start, current));
+         start = next;
+         splits_done += 1u;
+      }
+      current = next;
+   }
+
+   vec::push(vv, str::unsafe::slice_bytes(ss, start, len));
+   ret vv;
+}
+
+/*
 Function: lines
 
 Splits a string into a vector of the substrings
@@ -808,12 +837,10 @@ fn split_char_iter(ss: str, cc: char, ff: fn(&&str)) {
 Function: splitn_char_iter
 
 Apply a function to each substring after splitting
-by character, up to nn times
-
-FIXME: make this use chars when splitn/splitn_char is fixed
+by character, up to `count` times
 */
-fn splitn_char_iter(ss: str, sep: u8, count: uint, ff: fn(&&str)) unsafe {
-   vec::iter(splitn_byte(ss, sep, count), ff)
+fn splitn_char_iter(ss: str, sep: char, count: uint, ff: fn(&&str)) unsafe {
+   vec::iter(splitn_char(ss, sep, count), ff)
 }
 
 /*
@@ -1542,6 +1569,19 @@ mod tests {
     }
 
     #[test]
+    fn test_splitn_char () {
+        let data = "ประเทศไทย中华Việt Nam";
+        assert ["ประเทศไทย中", "Việt Nam"]
+            == splitn_char(data, '华', 1u);
+
+        assert ["", "", "XXX", "YYYzWWWz"]
+            == splitn_char("zzXXXzYYYzWWWz", 'z', 3u);
+        assert ["",""] == splitn_char("z", 'z', 5u);
+        assert [""] == splitn_char("", 'z', 5u);
+        assert ["ok"] == splitn_char("ok", 'z', 5u);
+    }
+
+    #[test]
     fn test_lines () {
         let lf = "\nMary had a little lamb\nLittle lamb\n";
         let crlf = "\r\nMary had a little lamb\r\nLittle lamb\r\n";
@@ -1955,7 +1995,7 @@ mod tests {
 
         let ii = 0;
 
-        splitn_char_iter(data, ' ' as u8, 2u) {|xx|
+        splitn_char_iter(data, ' ', 2u) {|xx|
             alt ii {
               0 { assert "\nMary" == xx; }
               1 { assert "had"    == xx; }
