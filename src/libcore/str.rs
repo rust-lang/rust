@@ -249,12 +249,12 @@ Failure:
 
 If the string does not contain any characters.
 */
-fn pop_char(&s: str) -> char {
+fn pop_char(&s: str) -> char unsafe {
     let end = byte_len(s);
     while end > 0u && s[end - 1u] & 192u8 == tag_cont_u8 { end -= 1u; }
     assert (end > 0u);
     let ch = char_at(s, end - 1u);
-    s = substr(s, 0u, end - 1u);
+    s = unsafe::slice_bytes(s, 0u, end - 1u);
     ret ch;
 }
 
@@ -267,9 +267,9 @@ Failure:
 
 If the string does not contain any characters.
 */
-fn shift_char(&s: str) -> char {
+fn shift_char(&s: str) -> char unsafe {
     let r = char_range_at(s, 0u);
-    s = substr(s, r.next, byte_len(s) - r.next);
+    s = unsafe::slice_bytes(s, r.next, byte_len(s));
     ret r.ch;
 }
 
@@ -306,12 +306,13 @@ Function: pop_byte
 Removes the last byte from a string and returns it.
 
 This function is not unicode-safe.
+FIXME: move to unsafe?
 */
-fn pop_byte(&s: str) -> u8 {
+fn pop_byte(&s: str) -> u8 unsafe {
     let len = byte_len(s);
     assert (len > 0u);
     let b = s[len - 1u];
-    s = substr(s, 0u, len - 1u);
+    s = unsafe::slice_bytes(s, 0u, len - 1u);
     ret b;
 }
 
@@ -321,12 +322,13 @@ Function: shift_byte
 Removes the first byte from a string and returns it.
 
 This function is not unicode-safe.
+FIXME: move to unsafe?
 */
-fn shift_byte(&s: str) -> u8 {
+fn shift_byte(&s: str) -> u8 unsafe {
     let len = byte_len(s);
     assert (len > 0u);
     let b = s[0];
-    s = substr(s, 1u, len - 1u);
+    s = unsafe::slice_bytes(s, 1u, len);
     ret b;
 }
 
@@ -413,17 +415,15 @@ fn chars(s: str) -> [char] {
 /*
 Function: substr
 
-Take a substring of another. Returns a string containing `len` bytes
-starting at byte offset `begin`.
-
-FIXME: This function is not unicode-safe.
+Take a substring of another. Returns a string containing `len` chars
+starting at char offset `begin`.
 
 Failure:
 
-If `begin` + `len` is is greater than the byte length of the string
+If `begin` + `len` is is greater than the char length of the string
 */
-fn substr(s: str, begin: uint, len: uint) -> str unsafe {
-    ret unsafe::slice_bytes(s, begin, begin + len);
+fn substr(s: str, begin: uint, len: uint) -> str {
+    ret slice(s, begin, begin + len);
 }
 
 /*
@@ -941,8 +941,8 @@ haystack - The string to look in
 needle - The string to look for
 */
 fn ends_with(haystack: str, needle: str) -> bool {
-    let haystack_len: uint = byte_len(haystack);
-    let needle_len: uint = byte_len(needle);
+    let haystack_len: uint = char_len(haystack);
+    let needle_len: uint = char_len(needle);
     ret if needle_len == 0u {
             true
         } else if needle_len > haystack_len {
@@ -1598,7 +1598,9 @@ mod tests {
         }
         t("hello", "llo", 2);
         t("hello", "el", 1);
-        t("substr should not be a challenge", "not", 14);
+
+        assert "ะเทศไท"
+            == substr("ประเทศไทย中华Việt Nam", 2u, 6u);
     }
 
     #[test]

@@ -113,12 +113,13 @@ mod write {
 
     // Decides what to call an intermediate file, given the name of the output
     // and the extension to use.
-    fn mk_intermediate_name(output_path: str, extension: str) -> str {
+    fn mk_intermediate_name(output_path: str, extension: str) -> str unsafe {
         let dot_pos = str::index(output_path, '.' as u8);
         let stem;
         if dot_pos < 0 {
             stem = output_path;
-        } else { stem = str::substr(output_path, 0u, dot_pos as uint); }
+        } else { stem = str::unsafe::slice_bytes(output_path, 0u,
+                                                 dot_pos as uint); }
         ret stem + "." + extension;
     }
     fn run_passes(sess: session, llmod: ModuleRef, output: str) {
@@ -480,8 +481,8 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
     ret {name: name, vers: vers, extras_hash: extras_hash};
 }
 
-fn truncated_sha1_result(sha: sha1) -> str {
-    ret str::substr(sha.result_str(), 0u, 16u);
+fn truncated_sha1_result(sha: sha1) -> str unsafe {
+    ret str::unsafe::slice_bytes(sha.result_str(), 0u, 16u);
 }
 
 

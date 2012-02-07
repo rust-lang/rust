@@ -1341,11 +1341,12 @@ mod tests {
           node::empty { ret "" }
           node::content(x) {
             let str = @mutable "";
-            fn aux(str: @mutable str, node: @node::node) {
+            fn aux(str: @mutable str, node: @node::node) unsafe {
                 alt(*node) {
                   node::leaf(x) {
-                    *str += str::substr(
-                        *x.content, x.byte_offset, x.byte_len);
+                    *str += str::unsafe::slice_bytes(
+                        *x.content, x.byte_offset,
+                        x.byte_offset + x.byte_len);
                   }
                   node::concat(x) {
                     aux(str, x.left);
