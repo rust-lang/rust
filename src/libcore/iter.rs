@@ -1,3 +1,6 @@
+export iterable, enumerate, filter, map, flat_map,
+       foldl, to_list, repeat, all, any;
+
 iface iterable<A> {
     fn iter(blk: fn(A));
 }
@@ -64,6 +67,14 @@ fn map<A,B,IA:iterable<A>>(self: IA, cnv: fn@(A) -> B, blk: fn(B)) {
     }
 }
 
+//fn real_map<A, B, IA:iterable<A>, IB:iterable<B>>
+//           (self: IA, cnv: fn@(A) -> B, blk: fn(B), new: IB) {
+//    self.iter {|a|
+//        new = new.append(blk(cnv(a)));
+//    }
+//    ret new;
+//}
+
 fn flat_map<A,B,IA:iterable<A>,IB:iterable<B>>(
     self: IA, cnv: fn@(A) -> IB, blk: fn(B)) {
     self.iter {|a|
@@ -91,6 +102,17 @@ fn repeat(times: uint, blk: fn()) {
     }
 }
 
+fn all<A, IA:iterable<A>>(self: IA, prd: fn(A) -> bool) -> bool {
+    let r: bool = true;
+    self.iter {|a|
+        r = r && prd(a)
+    }
+    ret r;
+}
+
+fn any<A, IA:iterable<A>>(self: IA, prd: fn(A) -> bool) -> bool {
+    !all(self, {|c| !prd(c) })
+}
 
 #[test]
 fn test_enumerate() {
@@ -179,10 +201,62 @@ fn test_str_char_iter() {
     let i = 0u;
     "፩፪፫".iter {|&&c: char|
         alt i {
-          0 { assert "፩" == c }
-          1 { assert "፪" == c }
-          2 { assert "፫" == c }
+          0u { assert '፩' == c }
+          1u { assert '፪' == c }
+          2u { assert '፫' == c }
         }
         i += 1u;
     }
+}
+
+#[test]
+fn test_str_all() {
+    assert true == all("፩፪፫") {|&&c|
+        unicode::general_category::No(c)
+    };
+    assert false == all("፩፪፫") {|&&c|
+        unicode::general_category::Lu(c)
+    };
+    assert false == all("፩፪3") {|&&c|
+        unicode::general_category::No(c)
+    };
+    assert true == all("") {|&&c|
+        unicode::general_category::Lu(c)
+    };
+}
+
+#[test]
+fn test_str_all_calls() {
+    let calls: uint = 0u;
+    assert false == all("፩2፫") {|&&c|
+        calls += 1u;
+        unicode::general_category::No(c)
+    };
+    assert calls == 2u;
+}
+
+#[test]
+fn test_str_any() {
+    assert true == any("፩፪፫") {|&&c|
+        unicode::general_category::No(c)
+    };
+    assert false == any("፩፪፫") {|&&c|
+        unicode::general_category::Lu(c)
+    };
+    assert true == any("1፪፫") {|&&c|
+        unicode::general_category::No(c)
+    };
+    assert false == any("") {|&&c|
+        unicode::general_category::Lu(c)
+    };
+}
+
+#[test]
+fn test_str_any_calls() {
+    let calls: uint = 0u;
+    assert true == any("፩2፫") {|&&c|
+        calls += 1u;
+        unicode::general_category::Nd(c)
+    };
+    assert calls == 2u;
 }

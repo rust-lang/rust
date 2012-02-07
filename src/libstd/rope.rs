@@ -419,7 +419,7 @@ Returns:
 `true` If execution proceeded correctly, `false` if it was interrupted,
 that is if `it` returned `false` at any point.
  */
-fn loop_chars(rope: rope, it: fn(char) -> bool) -> bool {
+fn loop_chars(rope: rope, it: fn(&&char) -> bool) -> bool {
    alt(rope) {
       node::empty { ret true }
       node::content(x) { ret node::loop_chars(x, it) }
@@ -1135,7 +1135,7 @@ mod node {
         ret result;
     }
 
-    fn loop_chars(node: @node, it: fn(char) -> bool) -> bool {
+    fn loop_chars(node: @node, it: fn(&&char) -> bool) -> bool {
         ret loop_leaves(node, {|leaf|
             ret str::substr_all(*leaf.content,
                                     leaf.byte_offset,

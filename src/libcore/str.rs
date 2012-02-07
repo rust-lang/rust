@@ -58,8 +58,8 @@ export
    hash,
 
    // Iterating through strings
-   all,
-   any,
+   //all,
+   //any,
    map,
    bytes_iter,
    chars_iter,
@@ -100,7 +100,7 @@ export
 
    unsafe;
 
-
+import iter::iterable;
 
 #[abi = "cdecl"]
 native mod rustrt {
@@ -545,7 +545,7 @@ Splits a string into substrings using a function
 
 FIXME: rename to 'split'
 */
-fn split_func(ss: str, sepfn: fn(cc: char)->bool) -> [str] {
+fn split_func(ss: str, sepfn: fn(&&cc: char)->bool) -> [str] {
     let vv: [str] = [];
     let accum: str = "";
     let ends_with_sep: bool = false;
@@ -688,7 +688,7 @@ Escapes special characters inside the string, making it safe for transfer.
 */
 fn escape(s: str) -> str {
     let r = "";
-    all(s, { |c| r += escape_char(c); true });
+    iter::all(s, { |c| r += escape_char(c); true });
     r
 }
 
@@ -734,9 +734,9 @@ Function: all
 Return true if a predicate matches all characters or
 if the string contains no characters
 */
-fn all(s: str, it: fn(char) -> bool) -> bool{
-    ret substr_all(s, 0u, byte_len(s), it);
-}
+//fn all(s: str, it: fn(&&char) -> bool) -> bool{
+//    ret substr_all(s, 0u, byte_len(s), it);
+//}
 
 /*
 Function: any
@@ -744,16 +744,17 @@ Function: any
 Return true if a predicate matches any character
 (and false if it matches none or there are no characters)
 */
-fn any(ss: str, pred: fn(char) -> bool) -> bool {
-   !all(ss, {|cc| !pred(cc)})
-}
+//fn any(ss: str, pred: fn(char) -> bool) -> bool {
+//   !all(ss, {|cc| !pred(cc)})
+//}
 
 /*
 Function: map
 
 Apply a function to each character
 */
-fn map(ss: str, ff: fn(char) -> char) -> str {
+fn map(ss: str, ff: fn(&&char) -> char) -> str {
+//    iter::map(ss, {|c| c}, ff);
     let result = "";
 
     chars_iter(ss, {|cc|
@@ -988,7 +989,7 @@ Function: is_whitespace
 Returns true if the string contains only whitespace
 */
 fn is_whitespace(s: str) -> bool {
-    ret all(s, char::is_whitespace);
+    ret iter::all(s, char::is_whitespace);
 }
 
 /*
@@ -1226,7 +1227,7 @@ Safety note:
  represent valid positions inside `s`
  */
 fn substr_all(s: str, byte_offset: uint, byte_len: uint,
-              it: fn(char) -> bool) -> bool {
+              it: fn(&&char) -> bool) -> bool {
    let i = byte_offset;
    let result = true;
    while i < byte_len {
@@ -1971,20 +1972,20 @@ mod tests {
 
     #[test]
     fn test_all() {
-        assert true  == all("", char::is_uppercase);
-        assert false == all("ymca", char::is_uppercase);
-        assert true  == all("YMCA", char::is_uppercase);
-        assert false == all("yMCA", char::is_uppercase);
-        assert false == all("YMCy", char::is_uppercase);
+        assert true  == iter::all("", char::is_uppercase);
+        assert false == iter::all("ymca", char::is_uppercase);
+        assert true  == iter::all("YMCA", char::is_uppercase);
+        assert false == iter::all("yMCA", char::is_uppercase);
+        assert false == iter::all("YMCy", char::is_uppercase);
     }
 
     #[test]
     fn test_any() {
-        assert false  == any("", char::is_uppercase);
-        assert false == any("ymca", char::is_uppercase);
-        assert true  == any("YMCA", char::is_uppercase);
-        assert true == any("yMCA", char::is_uppercase);
-        assert true == any("Ymcy", char::is_uppercase);
+        assert false  == iter::any("", char::is_uppercase);
+        assert false == iter::any("ymca", char::is_uppercase);
+        assert true  == iter::any("YMCA", char::is_uppercase);
+        assert true == iter::any("yMCA", char::is_uppercase);
+        assert true == iter::any("Ymcy", char::is_uppercase);
     }
 
     #[test]

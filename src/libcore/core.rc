@@ -36,6 +36,8 @@ export extfmt;
 export math;
 export tuple;
 
+mod iter;
+
 // Built-in-type support modules
 
 mod box;
@@ -64,7 +66,6 @@ mod either;
 mod option;
 mod result;
 mod tuple;
-mod iter;
 
 // Runtime and language-primitive support
 

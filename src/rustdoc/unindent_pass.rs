@@ -13,6 +13,8 @@ middle of a line, and each of the following lines is indented.
 
 export mk_pass;
 
+import iter::iterable;
+
 fn mk_pass() -> pass {
     desc_pass::mk_pass(unindent)
 }
@@ -47,7 +49,7 @@ fn unindent(s: str) -> str {
         } else {
             saw_first_line = true;
             let spaces = 0u;
-            str::all(line) {|char|
+            iter::all(line) {|char|
                 // Only comparing against space because I wouldn't
                 // know what to do with mixed whitespace chars
                 if char == ' ' {
