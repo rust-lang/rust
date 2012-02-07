@@ -47,24 +47,11 @@ import common::*;
 import build::*;
 import ast_map::{path, path_mod, path_name};
 
-fn type_of_1(bcx: @block_ctxt, t: ty::t) -> TypeRef {
-    let cx = bcx_ccx(bcx);
-    check type_has_static_size(cx, t);
-    type_of(cx, t)
-}
-
-fn type_of(cx: @crate_ctxt, t: ty::t) : type_has_static_size(cx, t)
-   -> TypeRef {
-    type_of_inner(cx, t)
-}
-
-fn type_of_explicit_args(cx: @crate_ctxt, inputs: [ty::arg]) ->
-   [TypeRef] {
-    let tcx = ccx_tcx(cx);
+fn type_of_explicit_args(cx: @crate_ctxt, inputs: [ty::arg]) -> [TypeRef] {
     vec::map(inputs) {|arg|
         let arg_ty = arg.ty;
-        let llty = type_of_inner(cx, arg_ty);
-        alt ty::resolved_mode(tcx, arg.mode) {
+        let llty = type_of(cx, arg_ty);
+        alt ty::resolved_mode(cx.tcx, arg.mode) {
           ast::by_val { llty }
           _ { T_ptr(llty) }
         }
@@ -83,8 +70,7 @@ fn type_of_fn(cx: @crate_ctxt, inputs: [ty::arg],
     let atys: [TypeRef] = [];
 
     // Arg 0: Output pointer.
-    let out_ty = T_ptr(type_of_inner(cx, output));
-    atys += [out_ty];
+    atys += [T_ptr(type_of(cx, output))];
 
     // Arg 1: Environment
     atys += [T_opaque_box_ptr(cx)];
@@ -110,16 +96,13 @@ fn type_of_fn_from_ty(cx: @crate_ctxt, fty: ty::t,
     type_of_fn(cx, ty::ty_fn_args(fty), ty::ty_fn_ret(fty), param_bounds)
 }
 
-fn type_of_inner(cx: @crate_ctxt, t: ty::t) -> TypeRef {
+fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
     assert !ty::type_has_vars(t);
     // Check the cache.
 
     if cx.lltypes.contains_key(t) { ret cx.lltypes.get(t); }
     let llty = alt ty::get(t).struct {
-      ty::ty_nil { T_nil() }
-      ty::ty_bot {
-        T_nil() /* ...I guess? */
-      }
+      ty::ty_nil | ty::ty_bot { T_nil() }
       ty::ty_bool { T_bool() }
       ty::ty_int(t) { T_int_ty(cx, t) }
       ty::ty_uint(t) { T_uint_ty(cx, t) }
@@ -128,25 +111,26 @@ fn type_of_inner(cx: @crate_ctxt, t: ty::t) -> TypeRef {
       ty::ty_enum(did, _) { type_of_enum(cx, did, t) }
       ty::ty_box(mt) {
         let mt_ty = mt.ty;
-        T_ptr(T_box(cx, type_of_inner(cx, mt_ty))) }
+        T_ptr(T_box(cx, type_of(cx, mt_ty))) }
+      ty::ty_opaque_box { T_ptr(T_box(cx, T_i8())) }
       ty::ty_uniq(mt) {
         let mt_ty = mt.ty;
-        T_ptr(type_of_inner(cx, mt_ty)) }
+        T_ptr(type_of(cx, mt_ty)) }
       ty::ty_vec(mt) {
         let mt_ty = mt.ty;
         if ty::type_has_dynamic_size(cx.tcx, mt_ty) {
             T_ptr(cx.opaque_vec_type)
         } else {
-            T_ptr(T_vec(cx, type_of_inner(cx, mt_ty))) }
+            T_ptr(T_vec(cx, type_of(cx, mt_ty))) }
       }
       ty::ty_ptr(mt) {
         let mt_ty = mt.ty;
-        T_ptr(type_of_inner(cx, mt_ty)) }
+        T_ptr(type_of(cx, mt_ty)) }
       ty::ty_rec(fields) {
         let tys: [TypeRef] = [];
         for f: ty::field in fields {
             let mt_ty = f.mt.ty;
-            tys += [type_of_inner(cx, mt_ty)];
+            tys += [type_of(cx, mt_ty)];
         }
         T_struct(tys)
       }
@@ -157,33 +141,21 @@ fn type_of_inner(cx: @crate_ctxt, t: ty::t) -> TypeRef {
       ty::ty_res(_, sub, tps) {
         let sub1 = ty::substitute_type_params(cx.tcx, tps, sub);
         // FIXME #1184: Resource flag is larger than necessary
-        ret T_struct([cx.int_type, type_of_inner(cx, sub1)]);
-      }
-      ty::ty_var(_) {
-        // Should be unreachable b/c of precondition.
-        // FIXME: would be nice to have a way of expressing this
-        // through postconditions, and then making it sound to omit
-        // cases in the alt
-        std::util::unreachable()
+        ret T_struct([cx.int_type, type_of(cx, sub1)]);
       }
       ty::ty_param(_, _) { T_typaram(cx.tn) }
       ty::ty_send_type | ty::ty_type { T_ptr(cx.tydesc_type) }
       ty::ty_tup(elts) {
         let tys = [];
         for elt in elts {
-            tys += [type_of_inner(cx, elt)];
+            tys += [type_of(cx, elt)];
         }
         T_struct(tys)
       }
-      ty::ty_opaque_closure_ptr(_) {
-        T_opaque_box_ptr(cx)
-      }
-      ty::ty_constr(subt,_) {
-          type_of_inner(cx, subt)
-      }
-      _ {
-        fail "type_of_inner not implemented for this kind of type";
-      }
+      ty::ty_opaque_closure_ptr(_) { T_opaque_box_ptr(cx) }
+      ty::ty_constr(subt,_) { type_of(cx, subt) }
+
+      _ { fail "type_of not implemented for this kind of type"; }
     };
     cx.lltypes.insert(t, llty);
     ret llty;
@@ -222,8 +194,7 @@ fn type_of_ty_param_bounds_and_ty
     type_of(ccx, t)
 }
 
-fn type_of_or_i8(bcx: @block_ctxt, typ: ty::t) -> TypeRef {
-    let ccx = bcx_ccx(bcx);
+fn type_of_or_i8(ccx: @crate_ctxt, typ: ty::t) -> TypeRef {
     if check type_has_static_size(ccx, typ) {
         type_of(ccx, typ)
     } else { T_i8() }
@@ -311,7 +282,7 @@ fn get_simple_extern_fn(cx: @block_ctxt,
                         llmod: ModuleRef,
                         name: str, n_args: int) -> ValueRef {
     let ccx = cx.fcx.ccx;
-    let inputs = vec::init_elt::<TypeRef>(n_args as uint, ccx.int_type);
+    let inputs = vec::init_elt(n_args as uint, ccx.int_type);
     let output = ccx.int_type;
     let t = T_fn(inputs, output);
     ret get_extern_fn(externs, llmod, name, lib::llvm::CCallConv, t);
@@ -396,7 +367,7 @@ fn alloca(cx: @block_ctxt, t: TypeRef) -> ValueRef {
 
 fn dynastack_alloca(cx: @block_ctxt, t: TypeRef, n: ValueRef, ty: ty::t) ->
    ValueRef {
-    if cx.unreachable { ret llvm::LLVMGetUndef(t); }
+    if cx.unreachable { ret llvm::LLVMGetUndef(T_ptr(t)); }
     let bcx = cx;
     let dy_cx = new_raw_block_ctxt(cx.fcx, cx.fcx.lldynamicallocas);
     alt bcx_fcx(cx).llobstacktoken {
@@ -433,7 +404,7 @@ fn mk_obstack_token(ccx: @crate_ctxt, fcx: @fn_ctxt) ->
 fn simplify_type(ccx: @crate_ctxt, typ: ty::t) -> ty::t {
     fn simplifier(ccx: @crate_ctxt, typ: ty::t) -> ty::t {
         alt ty::get(typ).struct {
-          ty::ty_box(_) | ty::ty_iface(_, _) {
+          ty::ty_box(_) | ty::ty_iface(_, _) | ty::ty_opaque_box {
             ret ty::mk_imm_box(ccx.tcx, ty::mk_nil(ccx.tcx));
           }
           ty::ty_uniq(_) {
@@ -846,9 +817,9 @@ fn get_derived_tydesc(cx: @block_ctxt, t: ty::t, escapes: bool,
     bcx_ccx(cx).stats.n_derived_tydescs += 1u;
     let bcx = new_raw_block_ctxt(cx.fcx, cx.fcx.llderivedtydescs);
     let tys = linearize_ty_params(bcx, t);
-    let root_ti = get_static_tydesc(bcx, t, tys.params);
+    let root_ti = get_static_tydesc(bcx_ccx(bcx), t, tys.params);
     static_ti = some::<@tydesc_info>(root_ti);
-    lazily_emit_all_tydesc_glue(cx, static_ti);
+    lazily_emit_all_tydesc_glue(bcx_ccx(cx), static_ti);
     let root = root_ti.tydesc;
     let sz = size_of(bcx, t);
     bcx = sz.bcx;
@@ -926,19 +897,19 @@ fn get_tydesc(cx: @block_ctxt, t: ty::t, escapes: bool,
              result: get_derived_tydesc(cx, t, escapes, static_ti)};
     }
     // Otherwise, generate a tydesc if necessary, and return it.
-    let info = get_static_tydesc(cx, t, []);
+    let info = get_static_tydesc(bcx_ccx(cx), t, []);
     static_ti = some(info);
     ret {kind: tk_static, result: rslt(cx, info.tydesc)};
 }
 
-fn get_static_tydesc(cx: @block_ctxt, t: ty::t, ty_params: [uint])
+fn get_static_tydesc(ccx: @crate_ctxt, t: ty::t, ty_params: [uint])
     -> @tydesc_info {
-    alt bcx_ccx(cx).tydescs.find(t) {
+    alt ccx.tydescs.find(t) {
       some(info) { ret info; }
       none {
-        bcx_ccx(cx).stats.n_static_tydescs += 1u;
-        let info = declare_tydesc(cx.fcx.ccx, t, ty_params);
-        bcx_ccx(cx).tydescs.insert(t, info);
+        ccx.stats.n_static_tydescs += 1u;
+        let info = declare_tydesc(ccx, t, ty_params);
+        ccx.tydescs.insert(t, info);
         ret info;
       }
     }
@@ -1142,7 +1113,7 @@ fn make_take_glue(cx: @block_ctxt, v: ValueRef, t: ty::t) {
     let bcx = cx;
     // NB: v is an *alias* of type t here, not a direct value.
     bcx = alt ty::get(t).struct {
-      ty::ty_box(_) | ty::ty_iface(_, _) {
+      ty::ty_box(_) | ty::ty_iface(_, _) | ty::ty_opaque_box {
         incr_refcnt_of_boxed(bcx, Load(bcx, v))
       }
       ty::ty_uniq(_) {
@@ -1188,33 +1159,32 @@ fn incr_refcnt_of_boxed(cx: @block_ctxt, box_ptr: ValueRef) -> @block_ctxt {
     ret cx;
 }
 
-fn free_box(bcx: @block_ctxt, v: ValueRef, t: ty::t) -> @block_ctxt {
-    ret alt ty::get(t).struct {
-      ty::ty_box(body_mt) {
-        let v = PointerCast(bcx, v, type_of_1(bcx, t));
-        let body = GEPi(bcx, v, [0, abi::box_field_body]);
-        let bcx = drop_ty(bcx, body, body_mt.ty);
-        trans_free(bcx, v)
-      }
-
-      _ { fail "free_box invoked with non-box type"; }
-    };
-}
-
 fn make_free_glue(bcx: @block_ctxt, v: ValueRef, t: ty::t) {
     // v is a pointer to the actual box component of the type here. The
     // ValueRef will have the wrong type here (make_generic_glue is casting
     // everything to a pointer to the type that the glue acts on).
+    let ccx = bcx_ccx(bcx);
     let bcx = alt ty::get(t).struct {
       ty::ty_box(body_mt) {
-        free_box(bcx, v, t)
+        let v = PointerCast(bcx, v, type_of(ccx, t));
+        let body = GEPi(bcx, v, [0, abi::box_field_body]);
+        let bcx = drop_ty(bcx, body, body_mt.ty);
+        trans_free(bcx, v)
+      }
+      ty::ty_opaque_box {
+        let v = PointerCast(bcx, v, type_of(ccx, t));
+        let td = Load(bcx, GEPi(bcx, v, [0, abi::box_field_tydesc]));
+        let valptr = GEPi(bcx, v, [0, abi::box_field_body]);
+        call_tydesc_glue_full(bcx, valptr, td, abi::tydesc_field_drop_glue,
+                              none);
+        trans_free(bcx, v)
       }
       ty::ty_uniq(content_mt) {
-        let v = PointerCast(bcx, v, type_of_1(bcx, t));
+        let v = PointerCast(bcx, v, type_of(ccx, t));
         uniq::make_free_glue(bcx, v, t)
       }
       ty::ty_vec(_) | ty::ty_str {
-        tvec::make_free_glue(bcx, PointerCast(bcx, v, type_of_1(bcx, t)), t)
+        tvec::make_free_glue(bcx, PointerCast(bcx, v, type_of(ccx, t)), t)
       }
       ty::ty_iface(_, _) {
         // Call through the box's own fields-drop glue first.
@@ -1253,7 +1223,7 @@ fn make_drop_glue(bcx: @block_ctxt, v0: ValueRef, t: ty::t) {
     // NB: v0 is an *alias* of type t here, not a direct value.
     let ccx = bcx_ccx(bcx);
     let bcx = alt ty::get(t).struct {
-      ty::ty_box(_) | ty::ty_iface(_, _) {
+      ty::ty_box(_) | ty::ty_iface(_, _) | ty::ty_opaque_box {
         decr_refcnt_maybe_free(bcx, Load(bcx, v0), t)
       }
       ty::ty_uniq(_) | ty::ty_vec(_) | ty::ty_str | ty::ty_send_type {
@@ -1573,24 +1543,23 @@ fn iter_structural_ty(cx: @block_ctxt, av: ValueRef, t: ty::t,
     ret cx;
 }
 
-fn lazily_emit_all_tydesc_glue(cx: @block_ctxt,
+fn lazily_emit_all_tydesc_glue(ccx: @crate_ctxt,
                                static_ti: option<@tydesc_info>) {
-    lazily_emit_tydesc_glue(cx, abi::tydesc_field_take_glue, static_ti);
-    lazily_emit_tydesc_glue(cx, abi::tydesc_field_drop_glue, static_ti);
-    lazily_emit_tydesc_glue(cx, abi::tydesc_field_free_glue, static_ti);
-    lazily_emit_tydesc_glue(cx, abi::tydesc_field_cmp_glue, static_ti);
+    lazily_emit_tydesc_glue(ccx, abi::tydesc_field_take_glue, static_ti);
+    lazily_emit_tydesc_glue(ccx, abi::tydesc_field_drop_glue, static_ti);
+    lazily_emit_tydesc_glue(ccx, abi::tydesc_field_free_glue, static_ti);
+    lazily_emit_tydesc_glue(ccx, abi::tydesc_field_cmp_glue, static_ti);
 }
 
-fn lazily_emit_all_generic_info_tydesc_glues(cx: @block_ctxt,
+fn lazily_emit_all_generic_info_tydesc_glues(ccx: @crate_ctxt,
                                              gi: generic_info) {
     for ti: option<@tydesc_info> in gi.static_tis {
-        lazily_emit_all_tydesc_glue(cx, ti);
+        lazily_emit_all_tydesc_glue(ccx, ti);
     }
 }
 
-fn lazily_emit_tydesc_glue(cx: @block_ctxt, field: int,
+fn lazily_emit_tydesc_glue(ccx: @crate_ctxt, field: int,
                            static_ti: option<@tydesc_info>) {
-    let ccx = cx.fcx.ccx;
     alt static_ti {
       none { }
       some(ti) {
@@ -1599,7 +1568,7 @@ fn lazily_emit_tydesc_glue(cx: @block_ctxt, field: int,
               some(_) { }
               none {
                 #debug("+++ lazily_emit_tydesc_glue TAKE %s",
-                       ty_to_str(bcx_tcx(cx), ti.ty));
+                       ty_to_str(ccx.tcx, ti.ty));
                 let glue_fn = declare_generic_glue
                     (ccx, ti.ty, T_glue_fn(ccx), "take");
                 ti.take_glue = some(glue_fn);
@@ -1607,7 +1576,7 @@ fn lazily_emit_tydesc_glue(cx: @block_ctxt, field: int,
                                   make_take_glue,
                                   ti.ty_params, "take");
                 #debug("--- lazily_emit_tydesc_glue TAKE %s",
-                       ty_to_str(bcx_tcx(cx), ti.ty));
+                       ty_to_str(ccx.tcx, ti.ty));
               }
             }
         } else if field == abi::tydesc_field_drop_glue {
@@ -1615,7 +1584,7 @@ fn lazily_emit_tydesc_glue(cx: @block_ctxt, field: int,
               some(_) { }
               none {
                 #debug("+++ lazily_emit_tydesc_glue DROP %s",
-                       ty_to_str(bcx_tcx(cx), ti.ty));
+                       ty_to_str(ccx.tcx, ti.ty));
                 let glue_fn =
                     declare_generic_glue(ccx, ti.ty, T_glue_fn(ccx), "drop");
                 ti.drop_glue = some(glue_fn);
@@ -1623,7 +1592,7 @@ fn lazily_emit_tydesc_glue(cx: @block_ctxt, field: int,
                                   make_drop_glue,
                                   ti.ty_params, "drop");
                 #debug("--- lazily_emit_tydesc_glue DROP %s",
-                       ty_to_str(bcx_tcx(cx), ti.ty));
+                       ty_to_str(ccx.tcx, ti.ty));
               }
             }
         } else if field == abi::tydesc_field_free_glue {
@@ -1631,7 +1600,7 @@ fn lazily_emit_tydesc_glue(cx: @block_ctxt, field: int,
               some(_) { }
               none {
                 #debug("+++ lazily_emit_tydesc_glue FREE %s",
-                       ty_to_str(bcx_tcx(cx), ti.ty));
+                       ty_to_str(ccx.tcx, ti.ty));
                 let glue_fn =
                     declare_generic_glue(ccx, ti.ty, T_glue_fn(ccx), "free");
                 ti.free_glue = some(glue_fn);
@@ -1639,7 +1608,7 @@ fn lazily_emit_tydesc_glue(cx: @block_ctxt, field: int,
                                   make_free_glue,
                                   ti.ty_params, "free");
                 #debug("--- lazily_emit_tydesc_glue FREE %s",
-                       ty_to_str(bcx_tcx(cx), ti.ty));
+                       ty_to_str(ccx.tcx, ti.ty));
               }
             }
         } else if field == abi::tydesc_field_cmp_glue {
@@ -1647,10 +1616,10 @@ fn lazily_emit_tydesc_glue(cx: @block_ctxt, field: int,
               some(_) { }
               none {
                 #debug("+++ lazily_emit_tydesc_glue CMP %s",
-                       ty_to_str(bcx_tcx(cx), ti.ty));
-                ti.cmp_glue = some(bcx_ccx(cx).upcalls.cmp_type);
+                       ty_to_str(ccx.tcx, ti.ty));
+                ti.cmp_glue = some(ccx.upcalls.cmp_type);
                 #debug("--- lazily_emit_tydesc_glue CMP %s",
-                       ty_to_str(bcx_tcx(cx), ti.ty));
+                       ty_to_str(ccx.tcx, ti.ty));
               }
             }
         }
@@ -1660,7 +1629,7 @@ fn lazily_emit_tydesc_glue(cx: @block_ctxt, field: int,
 
 fn call_tydesc_glue_full(cx: @block_ctxt, v: ValueRef, tydesc: ValueRef,
                          field: int, static_ti: option<@tydesc_info>) {
-    lazily_emit_tydesc_glue(cx, field, static_ti);
+    lazily_emit_tydesc_glue(bcx_ccx(cx), field, static_ti);
 
     let static_glue_fn = none;
     alt static_ti {
@@ -1722,7 +1691,7 @@ fn call_cmp_glue(cx: @block_ctxt, lhs: ValueRef, rhs: ValueRef, t: ty::t,
     r = get_tydesc(bcx, t, false, ti).result;
     let lltydesc = r.val;
     bcx = r.bcx;
-    lazily_emit_tydesc_glue(bcx, abi::tydesc_field_cmp_glue, ti);
+    lazily_emit_tydesc_glue(bcx_ccx(bcx), abi::tydesc_field_cmp_glue, ti);
     let lltydescs =
         GEPi(bcx, lltydesc, [0, abi::tydesc_field_first_param]);
     lltydescs = Load(bcx, lltydescs);
@@ -1760,7 +1729,9 @@ fn drop_ty(cx: @block_ctxt, v: ValueRef, t: ty::t) -> @block_ctxt {
 fn drop_ty_immediate(bcx: @block_ctxt, v: ValueRef, t: ty::t) -> @block_ctxt {
     alt ty::get(t).struct {
       ty::ty_uniq(_) | ty::ty_vec(_) | ty::ty_str { free_ty(bcx, v, t) }
-      ty::ty_box(_) | ty::ty_iface(_, _) { decr_refcnt_maybe_free(bcx, v, t) }
+      ty::ty_box(_) | ty::ty_iface(_, _) | ty::ty_opaque_box {
+        decr_refcnt_maybe_free(bcx, v, t)
+      }
       // Precondition?
       _ { bcx_tcx(bcx).sess.bug("drop_ty_immediate: non-box ty"); }
     }
@@ -1768,7 +1739,7 @@ fn drop_ty_immediate(bcx: @block_ctxt, v: ValueRef, t: ty::t) -> @block_ctxt {
 
 fn take_ty_immediate(bcx: @block_ctxt, v: ValueRef, t: ty::t) -> result {
     alt ty::get(t).struct {
-      ty::ty_box(_) | ty::ty_iface(_, _) {
+      ty::ty_box(_) | ty::ty_iface(_, _) | ty::ty_opaque_box {
         rslt(incr_refcnt_of_boxed(bcx, v), v)
       }
       ty::ty_uniq(_) {
@@ -2369,7 +2340,8 @@ fn trans_for(cx: @block_ctxt, local: @ast::local, seq: @ast::expr,
                                       outer_next_cx, "for loop scope",
                                       body.span);
         Br(bcx, scope_cx.llbb);
-        let curr = PointerCast(bcx, curr, T_ptr(type_of_or_i8(bcx, t)));
+        let curr = PointerCast(bcx, curr,
+                               T_ptr(type_of_or_i8(bcx_ccx(bcx), t)));
         let bcx = alt::bind_irrefutable_pat(scope_cx, local.node.pat,
                                                   curr, false);
         bcx = trans_block_dps(bcx, body, ignore);
@@ -2423,13 +2395,17 @@ fn trans_do_while(cx: @block_ctxt, body: ast::blk, cond: @ast::expr) ->
     ret next_cx;
 }
 
-type generic_info = {
-    item_type: ty::t,
-    static_tis: [option<@tydesc_info>],
-    tydescs: [ValueRef],
-    param_bounds: @[ty::param_bounds],
-    origins: option<typeck::dict_res>
-};
+type generic_info = {item_type: ty::t,
+                     static_tis: [option<@tydesc_info>],
+                     tydescs: [ValueRef],
+                     param_bounds: @[ty::param_bounds],
+                     origins: option<typeck::dict_res>};
+
+enum generic_callee {
+    generic_full(generic_info),
+    generic_mono(ty::t),
+    generic_none,
+}
 
 enum lval_kind {
     temporary, //< Temporary value passed by value if of immediate type
@@ -2448,7 +2424,7 @@ type lval_maybe_callee = {bcx: @block_ctxt,
                           val: ValueRef,
                           kind: lval_kind,
                           env: callee_env,
-                          generic: option<generic_info>};
+                          generic: generic_callee};
 
 fn null_env_ptr(bcx: @block_ctxt) -> ValueRef {
     C_null(T_opaque_box_ptr(bcx_ccx(bcx)))
@@ -2467,7 +2443,8 @@ fn lval_temp(bcx: @block_ctxt, val: ValueRef) -> lval_result {
 
 fn lval_no_env(bcx: @block_ctxt, val: ValueRef, kind: lval_kind)
     -> lval_maybe_callee {
-    ret {bcx: bcx, val: val, kind: kind, env: is_closure, generic: none};
+    ret {bcx: bcx, val: val, kind: kind, env: is_closure,
+         generic: generic_none};
 }
 
 fn trans_external_path(cx: @block_ctxt, did: ast::def_id,
@@ -2479,7 +2456,20 @@ fn trans_external_path(cx: @block_ctxt, did: ast::def_id,
 }
 
 fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
-                  dicts: option<typeck::dict_res>) -> ValueRef {
+                  dicts: option<typeck::dict_res>)
+    -> {llfn: ValueRef, fty: ty::t} {
+    let substs = vec::map(substs, {|t|
+        alt ty::get(t).struct {
+          ty::ty_box(mt) {
+            if !ty::type_has_params(mt.ty) {
+                let ti = some(get_static_tydesc(ccx, mt.ty, []));
+                lazily_emit_all_tydesc_glue(ccx, ti);
+            }
+            ty::mk_opaque_box(ccx.tcx)
+          }
+          _ { t }
+        }
+    });
     let hash_id = @{def: fn_id, substs: substs, dicts: alt dicts {
       some(os) { vec::map(*os, {|o| impl::dict_id(ccx.tcx, o)}) }
       none { [] }
@@ -2505,8 +2495,9 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
       }
       _ { fail "FIXME[mono] handle other constructs"; }
     };
-    ccx.monomorphized.insert(hash_id, result);
-    result
+    let val = {llfn: result, fty: mono_ty};
+    ccx.monomorphized.insert(hash_id, val);
+    val
 }
 
 fn lval_static_fn(bcx: @block_ctxt, fn_id: ast::def_id, id: ast::node_id)
@@ -2521,8 +2512,10 @@ fn lval_static_fn(bcx: @block_ctxt, fn_id: ast::def_id, id: ast::node_id)
            alt b { ty::bound_iface(_) { false } _ { true } }
        })}) {
         let dicts = ccx.dict_map.find(id);
-        ret {bcx: bcx, val: monomorphic_fn(ccx, fn_id, tys, dicts),
-             kind: owned, env: null_env, generic: none};
+        let {llfn, fty} = monomorphic_fn(ccx, fn_id, tys, dicts);
+        ret {bcx: bcx, val: llfn,
+             kind: owned, env: null_env,
+             generic: generic_mono(fty)};
     }
     let val = if fn_id.crate == ast::local_crate {
         // Internal reference.
@@ -2532,7 +2525,7 @@ fn lval_static_fn(bcx: @block_ctxt, fn_id: ast::def_id, id: ast::node_id)
         // External reference.
         trans_external_path(bcx, fn_id, tpt)
     };
-    let gen = none, bcx = bcx;
+    let gen = generic_none, bcx = bcx;
     if vec::len(tys) > 0u {
         let tydescs = [], tis = [];
         for t in tys {
@@ -2543,11 +2536,11 @@ fn lval_static_fn(bcx: @block_ctxt, fn_id: ast::def_id, id: ast::node_id)
             bcx = td.bcx;
             tydescs += [td.val];
         }
-        gen = some({item_type: tpt.ty,
-                    static_tis: tis,
-                    tydescs: tydescs,
-                    param_bounds: tpt.bounds,
-                    origins: ccx.dict_map.find(id)});
+        gen = generic_full({item_type: tpt.ty,
+                            static_tis: tis,
+                            tydescs: tydescs,
+                            param_bounds: tpt.bounds,
+                            origins: ccx.dict_map.find(id)});
     }
     ret {bcx: bcx, val: val, kind: owned, env: null_env, generic: gen};
 }
@@ -2594,7 +2587,8 @@ fn trans_local_var(cx: @block_ctxt, def: ast::def) -> local_var_result {
       }
       ast::def_self(did) {
         let slf = option::get(cx.fcx.llself);
-        let ptr = PointerCast(cx, slf.v, T_ptr(type_of_or_i8(cx, slf.t)));
+        let ptr = PointerCast(cx, slf.v,
+                              T_ptr(type_of_or_i8(bcx_ccx(cx), slf.t)));
         ret {val: ptr, kind: owned};
       }
       _ {
@@ -2693,7 +2687,7 @@ fn trans_index(cx: @block_ctxt, ex: @ast::expr, base: @ast::expr,
     let scaled_ix = Mul(bcx, ix_val, unit_sz.val);
     maybe_name_value(bcx_ccx(cx), scaled_ix, "scaled_ix");
     let lim = tvec::get_fill(bcx, v);
-    let body = tvec::get_dataptr(bcx, v, type_of_or_i8(bcx, unit_ty));
+    let body = tvec::get_dataptr(bcx, v, type_of_or_i8(ccx, unit_ty));
     let bounds_check = ICmp(bcx, lib::llvm::IntULT, scaled_ix, lim);
     let fail_cx = new_sub_block_ctxt(bcx, "fail");
     let next_cx = new_sub_block_ctxt(bcx, "next");
@@ -2807,7 +2801,7 @@ fn maybe_add_env(bcx: @block_ctxt, c: lval_maybe_callee)
 
 fn lval_maybe_callee_to_lval(c: lval_maybe_callee, ty: ty::t) -> lval_result {
     alt c.generic {
-      some(gi) {
+      generic_full(gi) {
         let n_args = vec::len(ty::ty_fn_args(ty));
         let args = vec::init_elt(n_args, none::<@ast::expr>);
         let space = alloc_ty(c.bcx, ty);
@@ -2816,7 +2810,7 @@ fn lval_maybe_callee_to_lval(c: lval_maybe_callee, ty: ty::t) -> lval_result {
         add_clean_temp(bcx, space.val, ty);
         ret {bcx: bcx, val: space.val, kind: temporary};
       }
-      none {
+      _ {
         let (kind, val) = maybe_add_env(c.bcx, c);
         ret {bcx: c.bcx, val: val, kind: kind};
       }
@@ -2976,7 +2970,7 @@ fn trans_arg_expr(cx: @block_ctxt, arg: ty::arg, lldestty: TypeRef,
         bcx = r.bcx;
     }
 
-    if !is_bot && ty::type_has_params(arg.ty) {
+    if !is_bot && arg.ty != e_ty || ty::type_has_params(arg.ty) {
         val = PointerCast(bcx, val, lldestty);
     }
 
@@ -2999,7 +2993,7 @@ fn trans_arg_expr(cx: @block_ctxt, arg: ty::arg, lldestty: TypeRef,
 //  - new_fn_ctxt
 //  - trans_args
 fn trans_args(cx: @block_ctxt, llenv: ValueRef,
-              gen: option<generic_info>, es: [@ast::expr], fn_ty: ty::t,
+              gen: generic_callee, es: [@ast::expr], fn_ty: ty::t,
               dest: dest)
    -> {bcx: @block_ctxt,
        args: [ValueRef],
@@ -3018,8 +3012,8 @@ fn trans_args(cx: @block_ctxt, llenv: ValueRef,
 
     let retty = ty::ty_fn_ret(fn_ty), full_retty = retty;
     alt gen {
-      some(g) {
-        lazily_emit_all_generic_info_tydesc_glues(cx, g);
+      generic_full(g) {
+        lazily_emit_all_generic_info_tydesc_glues(ccx, g);
         let i = 0u, n_orig = 0u;
         for param in *g.param_bounds {
             lltydescs += [g.tydescs[i]];
@@ -3039,6 +3033,10 @@ fn trans_args(cx: @block_ctxt, llenv: ValueRef,
         }
         args = ty::ty_fn_args(g.item_type);
         retty = ty::ty_fn_ret(g.item_type);
+      }
+      generic_mono(t) {
+        args = ty::ty_fn_args(t);
+        retty = ty::ty_fn_ret(t);
       }
       _ { }
     }
@@ -3061,13 +3059,13 @@ fn trans_args(cx: @block_ctxt, llenv: ValueRef,
       }
     };
 
-    if ty::type_has_params(retty) {
+    if retty != full_retty || ty::type_has_params(retty) {
         // It's possible that the callee has some generic-ness somewhere in
         // its return value -- say a method signature within an obj or a fn
         // type deep in a structure -- which the caller has a concrete view
         // of. If so, cast the caller's view of the restlot to the callee's
         // view, for the sake of making a type-compatible call.
-        let llretty = T_ptr(type_of_inner(ccx, retty));
+        let llretty = T_ptr(type_of(ccx, retty));
         llargs += [PointerCast(cx, llretslot, llretty)];
     } else { llargs += [llretslot]; }
 
@@ -3439,7 +3437,6 @@ fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
         ret trans_if(bcx, cond, thn, els, dest);
       }
       ast::expr_alt(expr, arms) {
-          //          tcx.sess.span_note(e.span, "about to call trans_alt");
         ret alt::trans_alt(bcx, expr, arms, dest);
       }
       ast::expr_block(blk) {
@@ -3759,7 +3756,7 @@ fn trans_fail_expr(bcx: @block_ctxt, sp_opt: option<span>,
     let bcx = bcx;
     alt fail_expr {
       some(expr) {
-        let tcx = bcx_tcx(bcx);
+        let ccx = bcx_ccx(bcx), tcx = ccx.tcx;
         let expr_res = trans_temp_expr(bcx, expr);
         let e_ty = expr_ty(bcx, expr);
         bcx = expr_res.bcx;
@@ -3767,7 +3764,7 @@ fn trans_fail_expr(bcx: @block_ctxt, sp_opt: option<span>,
         if ty::type_is_str(e_ty) {
             let data = tvec::get_dataptr(
                 bcx, expr_res.val, type_of_or_i8(
-                    bcx, ty::mk_mach_uint(tcx, ast::ty_u8)));
+                    ccx, ty::mk_mach_uint(tcx, ast::ty_u8)));
             ret trans_fail_value(bcx, sp_opt, data);
         } else if bcx.unreachable || ty::type_is_bot(e_ty) {
             ret bcx;
@@ -4155,21 +4152,19 @@ fn llderivedtydescs_block_ctxt(fcx: @fn_ctxt) -> @block_ctxt {
 
 
 fn alloc_ty(cx: @block_ctxt, t: ty::t) -> result {
-    let bcx = cx;
-    let ccx = bcx_ccx(cx);
-    let val =
-        if check type_has_static_size(ccx, t) {
-            alloca(bcx, type_of(ccx, t))
-        } else {
-            // NB: we have to run this particular 'size_of' in a
-            // block_ctxt built on the llderivedtydescs block for the fn,
-            // so that the size dominates the array_alloca that
-            // comes next.
-
-            let n = size_of(llderivedtydescs_block_ctxt(bcx.fcx), t);
-            bcx.fcx.llderivedtydescs = n.bcx.llbb;
-            dynastack_alloca(bcx, T_i8(), n.val, t)
-        };
+    let bcx = cx, ccx = bcx_ccx(cx);
+    let llty = type_of(ccx, t);
+    let val = if type_has_static_size(ccx, t) {
+        alloca(bcx, llty)
+    } else {
+        // NB: we have to run this particular 'size_of' in a
+        // block_ctxt built on the llderivedtydescs block for the fn,
+        // so that the size dominates the array_alloca that
+        // comes next.
+        let n = size_of(llderivedtydescs_block_ctxt(bcx.fcx), t);
+        bcx.fcx.llderivedtydescs = n.bcx.llbb;
+        PointerCast(bcx, dynastack_alloca(bcx, T_i8(), n.val, t), T_ptr(llty))
+    };
 
     // NB: since we've pushed all size calculations in this
     // function up to the alloca block, we actually return the
@@ -4395,7 +4390,6 @@ fn copy_args_to_allocas(fcx: @fn_ctxt, bcx: @block_ctxt, args: [ast::arg],
     ret bcx;
 }
 
-// cries out for a precondition
 fn arg_tys_of_fn(ccx: @crate_ctxt, id: ast::node_id) -> [ty::arg] {
     let tt = ty::node_id_to_type(ccx.tcx, id);
     alt ty::get(tt).struct {
@@ -4442,6 +4436,14 @@ fn trans_closure(ccx: @crate_ctxt, path: path, decl: ast::fn_decl,
     let block_ty = node_id_type(bcx, body.node.id);
 
     let arg_tys = arg_tys_of_fn(fcx.ccx, id);
+    alt param_substs {
+      some(ts) {
+        arg_tys = vec::map(arg_tys, {|a|
+            {mode: a.mode,
+             ty: ty::substitute_type_params(fcx.ccx.tcx, ts, a.ty)}})
+      }
+      _ {}
+    }
     bcx = copy_args_to_allocas(fcx, bcx, decl.inputs, arg_tys);
 
     maybe_load_env(fcx);
@@ -4696,7 +4698,7 @@ fn c_stack_tys(ccx: @crate_ctxt,
     alt ty::get(ty::node_id_to_type(ccx.tcx, id)).struct {
       ty::ty_fn({inputs: arg_tys, output: ret_ty, _}) {
         let llargtys = type_of_explicit_args(ccx, arg_tys);
-        let llretty = type_of_inner(ccx, ret_ty);
+        let llretty = type_of(ccx, ret_ty);
         let bundle_ty = T_struct(llargtys + [T_ptr(llretty)]);
         ret @{
             arg_tys: llargtys,

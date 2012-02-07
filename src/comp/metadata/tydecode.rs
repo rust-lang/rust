@@ -301,6 +301,7 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
         let inner = parse_ty(st, conv);
         ty::mk_named(st.tcx, inner, name)
       }
+      'B' { ty::mk_opaque_box(st.tcx) }
       c { #error("unexpected char in type string: %c", c); fail;}
     }
 }

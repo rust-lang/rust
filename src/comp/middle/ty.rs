@@ -48,39 +48,8 @@ export is_pred_ty;
 export lookup_item_type;
 export method;
 export method_idx;
-export mk_bool;
-export mk_bot;
-export mk_box;
-export mk_char;
-export mk_constr;
 export mk_ctxt;
-export mk_float;
-export mk_fn;
-export mk_imm_box;
-export mk_imm_uniq;
-export mk_mut_ptr;
-export mk_int;
-export mk_str;
-export mk_vec;
-export mk_mach_int;
-export mk_mach_uint;
-export mk_mach_float;
-export mk_nil;
-export mk_iface;
-export mk_res;
-export mk_param;
-export mk_ptr;
-export mk_rec;
-export mk_enum;
-export mk_tup;
-export mk_type;
-export mk_send_type;
-export mk_uint;
-export mk_uniq;
-export mk_var;
-export mk_self;
-export mk_opaque_closure_ptr;
-export mk_named;
+export mk_named, type_name;
 export mt;
 export node_type_table;
 export pat_ty;
@@ -96,34 +65,34 @@ export enum_variants;
 export iface_methods, store_iface_methods, impl_iface;
 export enum_variant_with_id;
 export ty_param_bounds_and_ty;
-export ty_bool;
-export ty_bot;
-export ty_box;
-export ty_constr;
-export ty_opaque_closure_ptr;
+export ty_bool, mk_bool, type_is_bool;
+export ty_bot, mk_bot, type_is_bot;
+export ty_box, mk_box, mk_imm_box, type_is_box, type_is_boxed;
+export ty_constr, mk_constr;
+export ty_opaque_closure_ptr, mk_opaque_closure_ptr;
+export ty_opaque_box, mk_opaque_box;
 export ty_constr_arg;
-export ty_float;
-export ty_fn, fn_ty;
-export ty_fn_proto;
-export ty_fn_ret;
-export ty_fn_ret_style;
-export ty_int;
-export ty_str;
-export ty_vec;
-export ty_nil;
-export ty_iface;
-export ty_res;
-export ty_param;
-export ty_ptr;
-export ty_rec;
-export ty_enum;
-export ty_tup;
-export ty_send_type;
-export ty_uint;
-export ty_uniq;
-export ty_var;
-export ty_self;
-export get, type_has_params, type_has_vars, type_name, type_id;
+export ty_float, mk_float, mk_mach_float, type_is_fp;
+export ty_fn, fn_ty, mk_fn;
+export ty_fn_proto, ty_fn_ret, ty_fn_ret_style;
+export ty_int, mk_int, mk_mach_int, mk_char;
+export ty_str, mk_str, type_is_str;
+export ty_vec, mk_vec, type_is_vec;
+export ty_nil, mk_nil, type_is_nil;
+export ty_iface, mk_iface;
+export ty_res, mk_res;
+export ty_param, mk_param;
+export ty_ptr, mk_ptr, mk_mut_ptr, type_is_unsafe_ptr;
+export ty_rec, mk_rec;
+export ty_enum, mk_enum, type_is_enum;
+export ty_tup, mk_tup;
+export ty_send_type, mk_send_type;
+export ty_type, mk_type;
+export ty_uint, mk_uint, mk_mach_uint;
+export ty_uniq, mk_uniq, mk_imm_uniq, type_is_unique_box;
+export ty_var, mk_var;
+export ty_self, mk_self;
+export get, type_has_params, type_has_vars, type_id;
 export same_type;
 export ty_var_id;
 export ty_fn_args;
@@ -134,18 +103,9 @@ export type_err;
 export type_err_to_str;
 export type_has_dynamic_size;
 export type_needs_drop;
-export type_is_bool;
-export type_is_bot;
-export type_is_box;
-export type_is_boxed;
-export type_is_unique_box;
-export type_is_unsafe_ptr;
-export type_is_vec;
-export type_is_fp;
 export type_allows_implicit_copy;
 export type_is_integral;
 export type_is_numeric;
-export type_is_nil;
 export type_is_pod;
 export type_is_scalar;
 export type_is_immediate;
@@ -154,9 +114,7 @@ export type_is_signed;
 export type_is_structural;
 export type_is_copyable;
 export type_is_tup_like;
-export type_is_str;
 export type_is_unique;
-export type_is_enum;
 export type_is_c_like_enum;
 export type_structurally_contains;
 export type_structurally_contains_uniques;
@@ -285,6 +243,7 @@ enum sty {
 
     ty_type, // type_desc*
     ty_send_type, // type_desc* that has been cloned into exchange heap
+    ty_opaque_box, // used by monomorphizer to represend any @ box
     ty_constr(t, [@type_constr]),
     ty_opaque_closure_ptr(closure_kind), // ptr to env for fn, fn@, fn~
 }
@@ -400,7 +359,8 @@ fn mk_t_named(cx: ctxt, st: sty, name: option<str>) -> t {
     }
     alt st {
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
-      ty_str | ty_type | ty_send_type | ty_opaque_closure_ptr(_) {}
+      ty_str | ty_type | ty_send_type | ty_opaque_closure_ptr(_) |
+      ty_opaque_box {}
       ty_param(_, _) { has_params = true; }
       ty_var(_) | ty_self(_) { has_vars = true; }
       ty_enum(_, tys) | ty_iface(_, tys) {
@@ -509,6 +469,8 @@ fn mk_opaque_closure_ptr(cx: ctxt, ck: closure_kind) -> t {
     mk_t(cx, ty_opaque_closure_ptr(ck))
 }
 
+fn mk_opaque_box(cx: ctxt) -> t { mk_t(cx, ty_opaque_box) }
+
 fn mk_named(cx: ctxt, base: t, name: str) -> t {
     mk_t_named(cx, get(base).struct, some(name))
 }
@@ -531,7 +493,7 @@ fn default_arg_mode_for_ty(ty: ty::t) -> ast::rmode {
 fn walk_ty(cx: ctxt, ty: t, f: fn(t)) {
     alt get(ty).struct {
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
-      ty_str | ty_send_type | ty_type |
+      ty_str | ty_send_type | ty_type | ty_opaque_box |
       ty_opaque_closure_ptr(_) | ty_var(_) | ty_param(_, _) {}
       ty_box(tm) | ty_vec(tm) | ty_ptr(tm) { walk_ty(cx, tm.ty, f); }
       ty_enum(_, subtys) | ty_iface(_, subtys) | ty_self(subtys) {
@@ -573,7 +535,8 @@ fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
 
     alt tb.struct {
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
-      ty_str | ty_type | ty_send_type | ty_opaque_closure_ptr(_) {}
+      ty_str | ty_type | ty_send_type | ty_opaque_closure_ptr(_) |
+      ty_opaque_box {}
       ty_box(tm) {
         ty = mk_box(cx, {ty: fold_ty(cx, fld, tm.ty), mut: tm.mut});
       }
@@ -705,8 +668,8 @@ pure fn type_is_box(ty: t) -> bool {
 
 pure fn type_is_boxed(ty: t) -> bool {
     alt get(ty).struct {
-      ty_box(_) | ty_iface(_, _) { ret true; }
-      _ { ret false; }
+      ty_box(_) | ty_iface(_, _) | ty_opaque_box { true }
+      _ { false }
     }
 }
 
@@ -856,7 +819,7 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
       ty_opaque_closure_ptr(ck_uniq) { kind_sendable }
       // Those with refcounts-to-inner raise pinned to shared,
       // lower unique to shared. Therefore just set result to shared.
-      ty_box(_) | ty_iface(_, _) { kind_copyable }
+      ty_box(_) | ty_iface(_, _) | ty_opaque_box { kind_copyable }
       // Boxes and unique pointers raise pinned to shared.
       ty_vec(tm) | ty_uniq(tm) { type_kind(cx, tm.ty) }
       // Records lower to the lowest of their members.
@@ -932,7 +895,6 @@ fn type_structurally_contains(cx: ctxt, ty: t, test: fn(sty) -> bool) ->
 }
 
 pure fn type_has_dynamic_size(cx: ctxt, ty: t) -> bool unchecked {
-
     /* type_structurally_contains can't be declared pure
     because it takes a function argument. But it should be
     referentially transparent, since a given type's size should
@@ -1019,7 +981,7 @@ fn type_is_pod(cx: ctxt, ty: t) -> bool {
       ty_send_type | ty_type | ty_ptr(_) { result = true; }
       // Boxed types
       ty_str | ty_box(_) | ty_uniq(_) | ty_vec(_) | ty_fn(_) |
-      ty_iface(_, _) { result = false; }
+      ty_iface(_, _) | ty_opaque_box { result = false; }
       // Structural types
       ty_enum(did, tps) {
         let variants = enum_variants(cx, did);
@@ -1201,6 +1163,7 @@ fn hash_type_structure(st: sty) -> uint {
       ty_opaque_closure_ptr(ck_block) { 41u }
       ty_opaque_closure_ptr(ck_box) { 42u }
       ty_opaque_closure_ptr(ck_uniq) { 43u }
+      ty_opaque_box { 44u }
     }
 }
 
@@ -2358,12 +2321,8 @@ fn substitute_type_params(cx: ctxt, substs: [ty::t], typ: t) -> t {
 
 fn def_has_ty_params(def: ast::def) -> bool {
     alt def {
-      ast::def_mod(_) | ast::def_const(_) |
-      ast::def_arg(_, _) | ast::def_local(_, _) | ast::def_upvar(_, _, _) |
-      ast::def_ty_param(_, _) | ast::def_binding(_) | ast::def_use(_) |
-      ast::def_self(_) | ast::def_ty(_) { false }
       ast::def_fn(_, _) | ast::def_variant(_, _) { true }
-      _ { false } // ????
+      _ { false }
     }
 }
 

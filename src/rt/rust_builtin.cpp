@@ -191,6 +191,7 @@ debug_opaque(type_desc *t, uint8_t *front) {
     }
 }
 
+// FIXME this no longer reflects the actual structure of boxes!
 struct rust_box {
     RUST_REFCOUNTED(rust_box)
 

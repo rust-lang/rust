@@ -168,7 +168,7 @@ fn allocate_cbox(bcx: @block_ctxt,
     -> (@block_ctxt, ValueRef, [ValueRef]) {
 
     // let ccx = bcx_ccx(bcx);
-    let tcx = bcx_tcx(bcx);
+    let ccx = bcx_ccx(bcx), tcx = ccx.tcx;
 
     fn nuke_ref_count(bcx: @block_ctxt, box: ValueRef) {
         // Initialize ref count to arbitrary value for debugging:
@@ -215,9 +215,9 @@ fn allocate_cbox(bcx: @block_ctxt,
       }
     };
 
-    base::lazily_emit_tydesc_glue(bcx, abi::tydesc_field_take_glue, ti);
-    base::lazily_emit_tydesc_glue(bcx, abi::tydesc_field_drop_glue, ti);
-    base::lazily_emit_tydesc_glue(bcx, abi::tydesc_field_free_glue, ti);
+    base::lazily_emit_tydesc_glue(ccx, abi::tydesc_field_take_glue, ti);
+    base::lazily_emit_tydesc_glue(ccx, abi::tydesc_field_drop_glue, ti);
+    base::lazily_emit_tydesc_glue(ccx, abi::tydesc_field_free_glue, ti);
 
     ret (bcx, box, temp_cleanups);
 }
@@ -506,8 +506,7 @@ fn trans_bind_1(cx: @block_ctxt, outgoing_fty: ty::t,
 
     // Figure out which tydescs we need to pass, if any.
     let (outgoing_fty_real, lltydescs, param_bounds) = alt f_res.generic {
-      none { (outgoing_fty, [], @[]) }
-      some(ginfo) {
+      generic_full(ginfo) {
         let tds = [], orig = 0u;
         vec::iter2(ginfo.tydescs, *ginfo.param_bounds) {|td, bounds|
             tds += [td];
@@ -524,9 +523,10 @@ fn trans_bind_1(cx: @block_ctxt, outgoing_fty: ty::t,
                 }
             }
         }
-        lazily_emit_all_generic_info_tydesc_glues(cx, ginfo);
+        lazily_emit_all_generic_info_tydesc_glues(bcx_ccx(cx), ginfo);
         (ginfo.item_type, tds, ginfo.param_bounds)
       }
+      _ { (outgoing_fty, [], @[]) }
     };
 
     if vec::len(bound) == 0u && vec::len(lltydescs) == 0u {
@@ -831,7 +831,7 @@ fn trans_bind_thunk(ccx: @crate_ctxt,
     // to be the correct type.  Cast it to f's return type, if necessary.
     let llretptr = fcx.llretptr;
     if ty::type_has_params(outgoing_ret_ty) {
-        let llretty = type_of_inner(ccx, outgoing_ret_ty);
+        let llretty = type_of(ccx, outgoing_ret_ty);
         llretptr = PointerCast(bcx, llretptr, T_ptr(llretty));
     }
 

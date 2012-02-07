@@ -48,7 +48,7 @@ type alloc_result =
 fn alloc(bcx: @block_ctxt, vec_ty: ty::t, elts: uint) -> alloc_result {
     let ccx = bcx_ccx(bcx);
     let unit_ty = ty::sequence_element_type(bcx_tcx(bcx), vec_ty);
-    let llunitty = type_of_or_i8(bcx, unit_ty);
+    let llunitty = type_of_or_i8(ccx, unit_ty);
     let llvecty = T_vec(ccx, llunitty);
     let {bcx: bcx, val: unit_sz} = size_of(bcx, unit_ty);
 
@@ -167,7 +167,7 @@ fn trans_append(cx: @block_ctxt, vec_ty: ty::t, lhsptr: ValueRef,
     };
 
     let {bcx: bcx, val: unit_sz} = size_of(cx, unit_ty);
-    let llunitty = type_of_or_i8(cx, unit_ty);
+    let llunitty = type_of_or_i8(ccx, unit_ty);
 
     let lhs = Load(bcx, lhsptr);
     let self_append = ICmp(bcx, lib::llvm::IntEQ, lhs, rhs);
@@ -215,7 +215,7 @@ fn trans_append_literal(bcx: @block_ctxt, vptrptr: ValueRef, vec_ty: ty::t,
     let ti = none;
     let {bcx: bcx, val: td} =
         get_tydesc(bcx, elt_ty, false, ti).result;
-    base::lazily_emit_tydesc_glue(bcx, abi::tydesc_field_take_glue, ti);
+    base::lazily_emit_tydesc_glue(ccx, abi::tydesc_field_take_glue, ti);
     let opaque_v = PointerCast(bcx, vptrptr,
                                T_ptr(T_ptr(ccx.opaque_vec_type)));
     for val in vals {
@@ -238,7 +238,7 @@ fn trans_add(bcx: @block_ctxt, vec_ty: ty::t, lhs: ValueRef,
       _ { false }
     };
     let unit_ty = ty::sequence_element_type(bcx_tcx(bcx), vec_ty);
-    let llunitty = type_of_or_i8(bcx, unit_ty);
+    let llunitty = type_of_or_i8(ccx, unit_ty);
     let {bcx: bcx, val: llunitsz} = size_of(bcx, unit_ty);
 
     let lhs_fill = get_fill(bcx, lhs);
@@ -280,7 +280,7 @@ fn iter_vec_raw(bcx: @block_ctxt, vptr: ValueRef, vec_ty: ty::t,
                 fill: ValueRef, f: iter_vec_block) -> @block_ctxt {
     let ccx = bcx_ccx(bcx);
     let unit_ty = ty::sequence_element_type(bcx_tcx(bcx), vec_ty);
-    let llunitty = type_of_or_i8(bcx, unit_ty);
+    let llunitty = type_of_or_i8(ccx, unit_ty);
     let {bcx: bcx, val: unit_sz} = size_of(bcx, unit_ty);
     let vptr = PointerCast(bcx, vptr, T_ptr(T_vec(ccx, llunitty)));
     let data_ptr = get_dataptr(bcx, vptr, llunitty);

@@ -4,7 +4,7 @@ import common::*;
 import build::*;
 import base::{
     trans_shared_malloc,
-    type_of_inner,
+    type_of,
     INIT,
     trans_shared_free,
     drop_ty,
@@ -33,7 +33,7 @@ fn alloc_uniq(cx: @block_ctxt, uniq_ty: ty::t) -> result {
     bcx = r.bcx;
     let llsz = r.val;
 
-    let llptrty = T_ptr(type_of_inner(bcx_ccx(bcx), contents_ty));
+    let llptrty = T_ptr(type_of(bcx_ccx(bcx), contents_ty));
 
     r = trans_shared_malloc(bcx, llptrty, llsz);
     bcx = r.bcx;

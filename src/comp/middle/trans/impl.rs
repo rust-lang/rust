@@ -64,9 +64,10 @@ fn trans_self_arg(bcx: @block_ctxt, base: @ast::expr) -> result {
     let tz = [], tr = [];
     let basety = expr_ty(bcx, base);
     let m_by_ref = ast::expl(ast::by_ref);
-    let {bcx, val} = trans_arg_expr(bcx, {mode: m_by_ref, ty: basety},
-                                    T_ptr(type_of_or_i8(bcx, basety)), tz,
-                                    tr, base);
+    let {bcx, val} =
+        trans_arg_expr(bcx, {mode: m_by_ref, ty: basety},
+                       T_ptr(type_of_or_i8(bcx_ccx(bcx), basety)), tz,
+                       tr, base);
     rslt(bcx, PointerCast(bcx, val, T_opaque_cbox_ptr(bcx_ccx(bcx))))
 }
 
@@ -112,7 +113,7 @@ fn trans_vtable_callee(bcx: @block_ctxt, self: ValueRef, dict: ValueRef,
     let vtable = PointerCast(bcx, Load(bcx, GEPi(bcx, dict, [0, 0])),
                              T_ptr(T_array(T_ptr(llfty), n_method + 1u)));
     let mptr = Load(bcx, GEPi(bcx, vtable, [0, n_method as int]));
-    let generic = none;
+    let generic = generic_none;
     if vec::len(*method.tps) > 0u || ty::type_has_params(fty) {
         let tydescs = [], tis = [];
         let tptys = ty::node_id_to_type_params(tcx, callee_id);
@@ -123,11 +124,11 @@ fn trans_vtable_callee(bcx: @block_ctxt, self: ValueRef, dict: ValueRef,
             tydescs += [td.val];
             bcx = td.bcx;
         }
-        generic = some({item_type: fty,
-                        static_tis: tis,
-                        tydescs: tydescs,
-                        param_bounds: method.tps,
-                        origins: bcx_ccx(bcx).dict_map.find(callee_id)});
+        generic = generic_full({item_type: fty,
+                                static_tis: tis,
+                                tydescs: tydescs,
+                                param_bounds: method.tps,
+                                origins: ccx.dict_map.find(callee_id)});
     }
     {bcx: bcx, val: mptr, kind: owned,
      env: dict_env(dict, self),
@@ -447,7 +448,7 @@ fn trans_cast(bcx: @block_ctxt, val: @ast::expr, id: ast::node_id, dest: dest)
                                    val_ty]);
     let ti = none;
     let {bcx, val: tydesc} = get_tydesc(bcx, body_ty, true, ti).result;
-    lazily_emit_all_tydesc_glue(bcx, ti);
+    lazily_emit_all_tydesc_glue(ccx, ti);
     let {bcx, box, body: box_body} = trans_malloc_boxed(bcx, body_ty);
     Store(bcx, tydesc, GEPi(bcx, box_body, [0, 0]));
     Store(bcx, PointerCast(bcx, dict, T_ptr(ccx.tydesc_type)),

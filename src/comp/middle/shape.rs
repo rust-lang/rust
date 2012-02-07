@@ -381,6 +381,10 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint]) -> [u8] {
         s += [shape_box];
         add_substr(s, shape_of(ccx, mt.ty, ty_param_map));
       }
+      ty::ty_opaque_box {
+        s += [shape_box];
+        add_substr(s, [shape_u8]);
+      }
       ty::ty_uniq(mt) {
         s += [shape_uniq];
         add_substr(s, shape_of(ccx, mt.ty, ty_param_map));

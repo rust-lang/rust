@@ -99,7 +99,7 @@ type crate_ctxt =
      consts: hashmap<ast::node_id, ValueRef>,
      tydescs: hashmap<ty::t, @tydesc_info>,
      dicts: hashmap<dict_id, ValueRef>,
-     monomorphized: hashmap<mono_id, ValueRef>,
+     monomorphized: hashmap<mono_id, {llfn: ValueRef, fty: ty::t}>,
      module_data: hashmap<str, ValueRef>,
      lltypes: hashmap<ty::t, TypeRef>,
      names: namegen,
@@ -873,7 +873,6 @@ fn hash_dict_id(&&dp: dict_id) -> uint {
 }
 
 // Used to identify cached monomorphized functions
-// FIXME[mono] don't count different boxes as different types
 type mono_id = @{def: ast::def_id, substs: [ty::t], dicts: [dict_id]};
 fn hash_mono_id(&&mi: mono_id) -> uint {
     let h = syntax::ast_util::hash_def_id(mi.def);
