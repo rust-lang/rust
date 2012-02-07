@@ -424,7 +424,7 @@ fn ty_of_item(tcx: ty::ctxt, mode: mode, it: @ast::item)
         tcx.tcache.insert(local_def(it.id), tpt);
         ret tpt;
       }
-      ast::item_class(_,_,_,_) {
+      ast::item_class(_,_,_,_,_) {
           fail "ty_of_item: implement item_class";
       }
       ast::item_impl(_, _, _, _) | ast::item_mod(_) |
@@ -2006,7 +2006,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                 let variants = ty::enum_variants(tcx, id);
                 if vec::len(*variants) != 1u ||
                        vec::len(variants[0].args) != 1u {
-                    tcx.sess.span_fatal(expr.span,
+                    tcx.sess.span_err(expr.span,
                                         "can only dereference enums " +
                                         "with a single variant which has a "
                                             + "single argument");
@@ -2019,7 +2019,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                 require_unsafe(tcx.sess, fcx.purity, expr.span);
               }
               _ {
-                tcx.sess.span_fatal(expr.span,
+                tcx.sess.span_err(expr.span,
                                     "dereferencing non-" +
                                         "dereferenceable type: " +
                                         ty_to_str(tcx, oper_t));

@@ -1452,7 +1452,7 @@ fn index_mod(md: ast::_mod) -> mod_index {
                 variant_idx += 1u;
             }
           }
-          ast::item_class(_, items, ctor_decl, _) {
+          ast::item_class(_, items, _, ctor_decl, _) {
               fail "resolve::index_mod: item_class";
           }
         }
@@ -1498,6 +1498,7 @@ fn ns_for_def(d: def) -> namespace {
       ast::def_mod(_) | ast::def_native_mod(_) { ns_module }
       ast::def_ty(_) | ast::def_binding(_) | ast::def_use(_) |
       ast::def_ty_param(_, _) | ast::def_prim_ty(_) { ns_type }
+      _ { fail "Dead"; }
     }
 }
 

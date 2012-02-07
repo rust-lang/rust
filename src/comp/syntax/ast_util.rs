@@ -32,6 +32,7 @@ fn def_id_of_def(d: def) -> def_id {
       def_variant(_, id) | def_ty(id) | def_ty_param(id, _) |
       def_binding(id) | def_use(id) | def_upvar(id, _, _) { id }
       def_prim_ty(_) { fail; }
+      _ { fail "Dead"; }
     }
 }
 

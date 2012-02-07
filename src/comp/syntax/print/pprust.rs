@@ -470,7 +470,7 @@ fn print_item(s: ps, &&item: @ast::item) {
             bclose(s, item.span);
         }
       }
-      ast::item_class(tps,items,ctor_decl,ctor_body) {
+      ast::item_class(tps,items,_,ctor_decl,ctor_body) {
           head(s, "class");
           word_nbsp(s, item.ident);
           print_type_params(s, tps);
@@ -494,7 +494,7 @@ fn print_item(s: ps, &&item: @ast::item) {
                 }
                 _ {}
              }
-             alt *ci.node.decl {
+             alt ci.node.decl {
                  ast::instance_var(nm, t, mt, _) {
                     word_nbsp(s, "let");
                     alt mt {

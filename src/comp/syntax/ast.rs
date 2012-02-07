@@ -47,6 +47,12 @@ enum def {
     def_binding(def_id),
     def_use(def_id),
     def_upvar(def_id, @def, node_id), // node_id == expr_fn or expr_fn_block
+    def_class(def_id),
+    // first def_id is for parent class
+    def_class_field(def_id, def_id),
+    // No purity allowed for now, I guess
+    // (simpler this way, b/c presumably methods read mutable state)
+    def_class_method(def_id, def_id)
 }
 
 // The set of meta_items that define the compilation environment of the crate,
@@ -483,6 +489,7 @@ enum item_ {
     item_class([ty_param], /* ty params for class */
                [@class_item], /* methods, etc. */
                              /* (not including ctor) */
+               node_id,
                fn_decl, /* ctor decl */
                blk /* ctor body */
                ),
@@ -491,12 +498,15 @@ enum item_ {
               @ty /* self */, [@method]),
 }
 
-type class_item_ = {privacy: privacy, decl: @class_member};
+type class_item_ = {privacy: privacy, decl: class_member};
 type class_item = spanned<class_item_>;
 
 enum class_member {
     instance_var(ident, @ty, class_mutability, node_id),
-    class_method(@item)
+    class_method(@item) // FIXME: methods aren't allowed to be
+    // type-parametric.
+    // without constrained types, have to duplicate some stuff. or factor out
+    // item to separate out things with type params?
 }
 
 enum class_mutability { class_mutable, class_immutable }

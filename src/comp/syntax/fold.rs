@@ -227,7 +227,7 @@ fn noop_fold_class_item(&&ci: @class_item, fld: ast_fold)
     @{node: {
       privacy:ci.node.privacy,
             decl:
-     @alt *ci.node.decl {
+      alt ci.node.decl {
         instance_var(ident, t, cm, id) {
             instance_var(ident, fld.fold_ty(t), cm, id)
         }
@@ -249,9 +249,10 @@ fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
           item_enum(variants, typms) {
             item_enum(vec::map(variants, fld.fold_variant), typms)
           }
-          item_class(typms, items, ctor_decl, ctor_body) {
+          item_class(typms, items, id, ctor_decl, ctor_body) {
               item_class(typms,
                          vec::map(items, fld.fold_class_item),
+                         id,
                          fold_fn_decl(ctor_decl, fld),
                          fld.fold_block(ctor_body))
           }
@@ -617,7 +618,7 @@ fn make_fold(afp: ast_fold_precursor) -> ast_fold {
         @{node:
          {privacy:ci.node.privacy,
                decl:
-        @alt *ci.node.decl {
+          alt ci.node.decl {
            instance_var(nm, t, mt, id) {
                instance_var(nm, f_ty(afp, f, t),
                                  mt, id)

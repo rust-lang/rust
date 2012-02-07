@@ -1965,6 +1965,7 @@ fn parse_item_class(p: parser, attrs: [ast::attribute]) -> @ast::item {
     let ty_params = parse_ty_params(p);
     expect(p, token::LBRACE);
     let items: [@ast::class_item] = [];
+    let ctor_id = p.get_id();
     let the_ctor : option<(ast::fn_decl, ast::blk)> = none;
     while p.token != token::RBRACE {
        alt parse_class_item(p) {
@@ -1972,12 +1973,12 @@ fn parse_item_class(p: parser, attrs: [ast::attribute]) -> @ast::item {
                 the_ctor = some((a_fn_decl, blk));
             }
             plain_decl(a_decl) {
-                items += [@{node: {privacy: ast::pub, decl: a_decl},
+                items += [@{node: {privacy: ast::pub, decl: *a_decl},
                             span: p.last_span}];
             }
             priv_decls(some_decls) {
                 items += vec::map(some_decls, {|d|
-                            @{node: {privacy: ast::priv, decl: d},
+                            @{node: {privacy: ast::priv, decl: *d},
                                 span: p.last_span}});
             }
        }
@@ -1985,7 +1986,8 @@ fn parse_item_class(p: parser, attrs: [ast::attribute]) -> @ast::item {
     p.bump();
     alt the_ctor {
        some((ct_d, ct_b)) { ret mk_item(p, lo, p.last_span.hi, class_name,
-                     ast::item_class(ty_params, items, ct_d, ct_b), attrs); }
+                                 ast::item_class(ty_params, items, ctor_id,
+                                                 ct_d, ct_b), attrs); }
        /*
          Is it strange for the parser to check this?
        */
