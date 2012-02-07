@@ -83,3 +83,32 @@ rust_intrinsic_task_yield(void **retptr,
     rust_task_yield(task, killed);
 }
 
+extern "C" void
+rust_intrinsic_memmove(void *retptr,
+                    void *env,
+                    type_desc *ty,
+                    void *dst,
+                    void *src,
+                    uintptr_t count)
+{
+    memmove(dst, src, ty->size * count);
+}
+
+extern "C" void
+rust_intrinsic_memcpy(void *retptr,
+                    void *env,
+                    type_desc *ty,
+                    void *dst,
+                    void *src,
+                    uintptr_t count)
+{
+    memcpy(dst, src, ty->size * count);
+}
+
+extern "C" void
+rust_intrinsic_leak(void *retptr,
+                    void *env,
+                    type_desc *ty,
+                    void *thing)
+{
+}

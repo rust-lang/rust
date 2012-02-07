@@ -9,10 +9,6 @@ export reinterpret_cast, leak;
 #[abi = "rust-intrinsic"]
 native mod rusti {
     fn cast<T, U>(src: T) -> U;
-}
-
-#[abi = "cdecl"]
-native mod rustrt {
     fn leak<T>(-thing: T);
 }
 
@@ -40,7 +36,7 @@ to run any required cleanup or memory-management operations on it. This
 can be used for various acts of magick, particularly when using
 reinterpret_cast on managed pointer types.
 */
-unsafe fn leak<T>(-thing: T) { rustrt::leak(thing); }
+unsafe fn leak<T>(-thing: T) { rusti::leak(thing); }
 
 #[cfg(test)]
 mod tests {

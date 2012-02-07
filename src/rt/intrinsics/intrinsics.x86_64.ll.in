@@ -120,6 +120,28 @@ entry:
 
 declare void @rust_task_yield(%struct.rust_task*, i8*)
 
+define void @rust_intrinsic_memmove(i8* nocapture %retptr, i8* nocapture %env, %struct.type_desc* nocapture %ty, i8* nocapture %dst, i8* nocapture %src, i64 %count) nounwind uwtable {
+  %1 = getelementptr inbounds %struct.type_desc* %ty, i64 0, i32 1
+  %2 = load i64* %1, align 8, !tbaa !3
+  %3 = mul i64 %2, %count
+  tail call void @llvm.memmove.p0i8.p0i8.i64(i8* %dst, i8* %src, i64 %3, i32 1, i1 false)
+  ret void
+}
+
+define void @rust_intrinsic_memcpy(i8* nocapture %retptr, i8* nocapture %env, %struct.type_desc* nocapture %ty, i8* nocapture %dst, i8* nocapture %src, i64 %count) nounwind uwtable {
+  %1 = getelementptr inbounds %struct.type_desc* %ty, i64 0, i32 1
+  %2 = load i64* %1, align 8, !tbaa !3
+  %3 = mul i64 %2, %count
+  tail call void @llvm.memcpy.p0i8.p0i8.i64(i8* %dst, i8* %src, i64 %3, i32 1, i1 false)
+  ret void
+}
+
+declare void @llvm.memcpy.p0i8.p0i8.i64(i8* nocapture, i8* nocapture, i64, i32, i1) nounwind
+
+define void @rust_intrinsic_leak(i8* nocapture %retptr, i8* nocapture %env, %struct.type_desc* nocapture %ty, i8* nocapture %thing) nounwind uwtable readnone {
+  ret void
+}
+
 !0 = metadata !{metadata !"any pointer", metadata !1}
 !1 = metadata !{metadata !"omnipotent char", metadata !2}
 !2 = metadata !{metadata !"Simple C/C++ TBAA", null}
