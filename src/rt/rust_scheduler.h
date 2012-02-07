@@ -14,6 +14,8 @@ private:
     lock_and_signal lock;
     // When this hits zero we'll tell the kernel to release us
     uintptr_t live_threads;
+    // When this hits zero we'll tell the threads to exit
+    uintptr_t live_tasks;
     randctx rctx;
 
     array_list<rust_task_thread *> threads;
@@ -27,6 +29,8 @@ private:
     rust_task_thread *create_task_thread(int id);
     void destroy_task_thread(rust_task_thread *thread);
 
+    void exit();
+
 public:
     rust_scheduler(rust_kernel *kernel, rust_srv *srv, size_t num_threads,
 		   rust_sched_id id);
@@ -39,7 +43,8 @@ public:
 			     size_t init_stack_sz);
     rust_task_id create_task(rust_task *spawner, const char *name);
 
-    void exit();
+    void release_task();
+
     size_t number_of_threads();
     // Called by each thread when it terminates. When all threads
     // terminate the scheduler does as well.

@@ -136,14 +136,28 @@ rust_task_thread::reap_dead_tasks() {
 
     for (size_t i = 0; i < dead_tasks_len; ++i) {
         rust_task *task = dead_tasks_copy[i];
-        if (task) {
-            kernel->release_task_id(task->user.id);
-            task->deref();
-        }
+        // Release the task from the kernel so nobody else can get at it
+        kernel->release_task_id(task->user.id);
+        // Deref the task, which may cause it to request us to release it
+        task->deref();
     }
     srv->free(dead_tasks_copy);
 
     lock.lock();
+}
+
+void
+rust_task_thread::release_task(rust_task *task) {
+    // Nobody should have a ref to the task at this point
+    I(this, task->ref_count == 0);
+    // Kernel should not know about the task any more
+    I(this, kernel->get_task_by_id(task->user.id) == NULL);
+    // Now delete the task, which will require using this thread's
+    // memory region.
+    delete task;
+    // Now release the task from the scheduler, which may trigger this
+    // thread to exit
+    sched->release_task();
 }
 
 /**

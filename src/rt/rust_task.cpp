@@ -268,7 +268,8 @@ rust_task::rust_task(rust_task_thread *thread, rust_task_list *state,
     }
 }
 
-rust_task::~rust_task()
+void
+rust_task::delete_this()
 {
     I(thread, !thread->lock.lock_held_by_current_thread());
     I(thread, port_table.is_empty());
@@ -291,6 +292,8 @@ rust_task::~rust_task()
     while (stk != NULL) {
         del_stk(this, stk);
     }
+
+    thread->release_task(this);
 }
 
 struct spawn_args {

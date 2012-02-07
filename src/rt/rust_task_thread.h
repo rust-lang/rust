@@ -122,6 +122,9 @@ struct rust_task_thread : public kernel_owned<rust_task_thread>,
 
     static rust_task *get_task();
 
+    // Called by each task when they are ready to be destroyed
+    void release_task(rust_task *task);
+
     // Tells the scheduler to exit it's scheduling loop and thread
     void exit();
 };
