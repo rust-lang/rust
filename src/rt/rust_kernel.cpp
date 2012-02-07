@@ -60,6 +60,7 @@ rust_kernel::create_scheduler(size_t num_threads) {
     sched = new (this, "rust_scheduler")
         rust_scheduler(this, srv, num_threads, 0);
     live_schedulers = 1;
+    sched->start_task_threads();
     return 0;
 }
 
@@ -84,15 +85,12 @@ int
 rust_kernel::wait_for_schedulers()
 {
     I(this, !sched_lock.lock_held_by_current_thread());
-    sched->start_task_threads();
-    {
-        scoped_lock with(sched_lock);
-        // Schedulers could possibly have already exited
-        if (live_schedulers != 0) {
-            sched_lock.wait();
-        }
-        return rval;
+    scoped_lock with(sched_lock);
+    // Schedulers could possibly have already exited
+    if (live_schedulers != 0) {
+        sched_lock.wait();
     }
+    return rval;
 }
 
 void
