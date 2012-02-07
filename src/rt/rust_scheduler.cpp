@@ -115,6 +115,6 @@ rust_scheduler::release_task_thread() {
 	new_live_threads = --live_threads;
     }
     if (new_live_threads == 0) {
-	kernel->release_scheduler();
+	kernel->release_scheduler_id(id);
     }
 }
