@@ -10,6 +10,7 @@ export pick;
 export pick_file;
 export search;
 export relative_target_lib_path;
+export get_cargo_sysroot;
 export get_cargo_root;
 export get_cargo_root_nearest;
 export libdir;
@@ -47,6 +48,8 @@ fn mk_filesearch(maybe_sysroot: option<fs::path>,
                   result::ok(p) { [p] }
                   result::err(p) { [] }
                 }
+                + [fs::connect(fs::connect(self.sysroot, ".cargo"),
+                               libdir())]
         }
         fn get_target_lib_path() -> fs::path {
             make_target_lib_path(self.sysroot, self.target_triple)
@@ -109,6 +112,10 @@ fn get_sysroot(maybe_sysroot: option<fs::path>) -> fs::path {
     }
 }
 
+fn get_cargo_sysroot() -> result::t<fs::path, str> {
+    result::ok(fs::connect(get_default_sysroot(),  ".cargo"))
+}
+
 fn get_cargo_root() -> result::t<fs::path, str> {
     alt generic_os::getenv("CARGO_ROOT") {
         some(_p) { result::ok(_p) }
@@ -129,9 +136,8 @@ fn get_cargo_root_nearest() -> result::t<fs::path, str> {
         let cwd_cargo = fs::connect(cwd, ".cargo");
         let par_cargo = fs::connect(dirname, ".cargo");
 
-        // FIXME: this duplicates lib path
-        if cwd_cargo == p {
-            ret result::ok(p);
+        if fs::path_is_dir(cwd_cargo) || cwd_cargo == p {
+            ret result::ok(cwd_cargo);
         }
 
         while vec::is_not_empty(dirpath) && par_cargo != p {
