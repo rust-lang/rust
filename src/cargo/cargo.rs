@@ -5,7 +5,8 @@ use std;
 
 import rustc::syntax::{ast, codemap};
 import rustc::syntax::parse::parser;
-import rustc::util::filesearch::{get_cargo_root, get_cargo_root_nearest};
+import rustc::util::filesearch::{get_cargo_root, get_cargo_root_nearest,
+                                 get_cargo_sysroot};
 import rustc::driver::diagnostic;
 
 import std::fs;
@@ -20,7 +21,7 @@ import str;
 import std::tempfile;
 import vec;
 import std::getopts;
-import getopts::{optflag, opt_present};
+import getopts::{optflag, optopt, opt_present};
 
 enum _src {
     /* Break cycles in package <-> source */
@@ -69,12 +70,14 @@ type pkg = {
 
 type options = {
     test: bool,
-    cwd: bool,
+    mode: mode,
     free: [str],
 };
 
+enum mode { system_mode, user_mode, local_mode }
+
 fn opts() -> [getopts::opt] {
-    [optflag("g"), optflag("global"), optflag("test")]
+    [optflag("g"), optflag("G"), optopt("mode"), optflag("test")]
 }
 
 fn info(msg: str) {
@@ -343,21 +346,40 @@ fn build_cargo_options(argv: [str]) -> options {
     };
 
     let test = opt_present(match, "test");
-    let cwd = !(opt_present(match, "g") || opt_present(match, "global"));
+    let mode = if opt_present(match, "G") {
+        if opt_present(match, "mode") { fail "--mode and -G both provided"; }
+        if opt_present(match, "g") { fail "-G and -g both provided"; }
+        system_mode
+    } else if opt_present(match, "g") {
+        if opt_present(match, "mode") { fail "--mode and -g both provided"; }
+        if opt_present(match, "G") { fail "-G and -g both provided"; }
+        user_mode
+    } else if opt_present(match, "mode") {
+        alt getopts::opt_str(match, "mode") {
+            "system" { system_mode }
+            "user" { user_mode }
+            "local" { local_mode }
+            _ { fail "argument to `mode` must be one of `system`" +
+                ", `user`, or `normal`";
+            }
+        }
+    } else {
+        local_mode
+    };
 
-    {test: test, cwd: cwd, free: match.free}
+    {test: test, mode: mode, free: match.free}
 }
 
 fn configure(opts: options) -> cargo {
-    let get_cargo_dir = if opts.cwd {
-        get_cargo_root_nearest
-    } else {
-        get_cargo_root
+    let get_cargo_dir = alt opts.mode {
+        system_mode { get_cargo_sysroot }
+        user_mode { get_cargo_root }
+        local_mode { get_cargo_root_nearest }
     };
 
     let p = alt get_cargo_dir() {
-      result::ok(p) { p }
-      result::err(e) { fail e }
+        result::ok(p) { p }
+        result::err(e) { fail e }
     };
 
     let sources = map::new_str_hash::<source>();
@@ -736,6 +758,8 @@ fn cmd_init(c: cargo) {
     }
     info(#fmt["signature ok for sources.json"]);
     run::run_program("cp", [srcfile, destsrcfile]);
+
+    info(#fmt["Initialized .cargo in %s", c.root]);
 }
 
 fn print_pkg(s: source, p: package) {
@@ -775,14 +799,28 @@ fn cmd_search(c: cargo) {
 }
 
 fn cmd_usage() {
-    print("Usage: cargo <verb> [args...]");
-    print("  init                                          Set up .cargo");
-    print("  install [--test] [source/]package-name        Install by name");
-    print("  install [--test] uuid:[source/]package-uuid   Install by uuid");
-    print("  list [source]                                 List packages");
-    print("  search <name | '*'> [tags...]                 Search packages");
-    print("  sync                                          Sync all sources");
-    print("  usage                                         This");
+    print("Usage: cargo <verb> [options] [args...]" +
+          "
+
+    init                                          Set up .cargo
+    install [--test] [source/]package-name        Install by name
+    install [--test] uuid:[source/]package-uuid   Install by uuid
+    list [source]                                 List packages
+    search <name | '*'> [tags...]                 Search packages
+    sync                                          Sync all sources
+    usage                                         This
+
+Options:
+
+    --mode=[system,user,local]   change mode as (system/user/local)
+    -g                           equivalent to --mode=user
+    -G                           equivalent to --mode=system
+
+NOTE:
+This command creates/uses local-level .cargo by default.
+To create/use user-level .cargo, use option -g/--mode=user.
+To create/use system-level .cargo, use option -G/--mode=system.
+");
 }
 
 fn main(argv: [str]) {
