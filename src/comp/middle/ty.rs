@@ -53,7 +53,7 @@ export sty;
 export substitute_type_params;
 export t;
 export new_ty_hash;
-export enum_variants;
+export enum_variants, substd_enum_variants;
 export iface_methods, store_iface_methods, impl_iface;
 export enum_variant_with_id;
 export ty_param_bounds_and_ty;
@@ -2356,6 +2356,20 @@ fn impl_iface(cx: ctxt, id: ast::def_id) -> option<t> {
 // Enum information
 type variant_info = @{args: [t], ctor_ty: t, name: str,
                       id: ast::def_id, disr_val: int};
+
+fn substd_enum_variants(cx: ctxt, id: ast::def_id, tps: [ty::t])
+    -> [variant_info] {
+    vec::map(*enum_variants(cx, id)) { |variant_info|
+        let substd_args = vec::map(variant_info.args) {|aty|
+            substitute_type_params(cx, tps, aty)
+        };
+
+        let substd_ctor_ty =
+            substitute_type_params(cx, tps, variant_info.ctor_ty);
+
+        @{args: substd_args, ctor_ty: substd_ctor_ty with *variant_info}
+    }
+}
 
 fn enum_variants(cx: ctxt, id: ast::def_id) -> @[variant_info] {
     alt cx.enum_var_cache.find(id) {
