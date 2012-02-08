@@ -49,6 +49,8 @@ public:
     // Called by each thread when it terminates. When all threads
     // terminate the scheduler does as well.
     void release_task_thread();
+
+    rust_sched_id get_id() { return id; }
 };
 
 #endif /* RUST_SCHEDULER_H */
