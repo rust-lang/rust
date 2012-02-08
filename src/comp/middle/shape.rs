@@ -48,10 +48,10 @@ const shape_i32: u8 = 6u8;
 const shape_i64: u8 = 7u8;
 const shape_f32: u8 = 8u8;
 const shape_f64: u8 = 9u8;
-// (10 is currently unused, was evec)
+const shape_box: u8 = 10u8;
 const shape_vec: u8 = 11u8;
 const shape_enum: u8 = 12u8;
-const shape_box: u8 = 13u8;
+const shape_box_old: u8 = 13u8; // deprecated, remove after snapshot
 const shape_struct: u8 = 17u8;
 const shape_box_fn: u8 = 18u8;
 const shape_UNUSED: u8 = 19u8;
@@ -377,13 +377,8 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint]) -> [u8] {
           }
         }
       }
-      ty::ty_box(mt) {
+      ty::ty_box(_) | ty::ty_opaque_box {
         s += [shape_box];
-        add_substr(s, shape_of(ccx, mt.ty, ty_param_map));
-      }
-      ty::ty_opaque_box {
-        s += [shape_box];
-        add_substr(s, [shape_u8]);
       }
       ty::ty_uniq(mt) {
         s += [shape_uniq];
