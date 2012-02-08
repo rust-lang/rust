@@ -100,3 +100,9 @@ rust_uvtmp_read_start
 rust_uvtmp_timer
 rust_uvtmp_delete_buf
 rust_uvtmp_get_req_id
+rust_dbg_lock_create
+rust_dbg_lock_destroy
+rust_dbg_lock_lock
+rust_dbg_lock_unlock
+rust_dbg_lock_wait
+rust_dbg_lock_signal
