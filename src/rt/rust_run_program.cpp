@@ -153,7 +153,11 @@ rust_run_program(const char* argv[],
     if (err_fd) dup2(err_fd, 2);
     /* Close all other fds. */
     for (int fd = getdtablesize() - 1; fd >= 3; fd--) close(fd);
-    if (dir) { chdir(dir); }
+    if (dir) {
+        int result = chdir(dir);
+        // FIXME: need error handling
+        assert(!result && "chdir failed");
+    }
 
 #ifdef __APPLE__
     if (envp) {
