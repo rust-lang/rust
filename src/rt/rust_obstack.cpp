@@ -18,7 +18,7 @@
 #endif
 
 #undef DPRINT
-#define DPRINT(fmt, ...)
+#define DPRINT(fmt, ...) 
 
 const size_t DEFAULT_CHUNK_SIZE = 128;
 const size_t MAX_CHUNK_SIZE = (1024*64);
@@ -38,16 +38,20 @@ struct rust_obstack_alloc {
 
 void *
 rust_obstack_chunk::alloc(size_t len, type_desc *tydesc) {
-    alen = align_to(alen, DEFAULT_ALIGNMENT);
+    DPRINT("alloc(%lu) alen=%lu size=%lu\n", len, alen, size);
 
-    if (sizeof(rust_obstack_alloc) + len > size - alen) {
-        DPRINT("Not enough space, len=%lu!\n", len);
+    size_t aligned_alen = align_to(alen, DEFAULT_ALIGNMENT);
+    size_t end_alen = aligned_alen + sizeof(rust_obstack_alloc) + len;
+    if (end_alen > size) {
+        DPRINT("Not enough space, len=%lu alen=%lu aligned=%lu end=%lu!\n",
+               len, alen, aligned_alen, end_alen);
         return NULL;    // Not enough space.
     }
 
-    rust_obstack_alloc *a = new(data + alen) rust_obstack_alloc(len, tydesc);
-    alen += sizeof(*a) + len;
+    rust_obstack_alloc *a =
+      new(data + aligned_alen) rust_obstack_alloc(len, tydesc);
     memset(a->data, '\0', len); // FIXME: For GC.
+    alen = end_alen;
     return &a->data;
 }
 
@@ -63,7 +67,9 @@ rust_obstack_chunk::free(void *ptr) {
 
 void *
 rust_obstack_chunk::mark() {
-    return data + alen;
+    uint8_t *m = data + alen;
+    assert (m >= data && m <= data+size);
+    return m;
 }
 
 // Allocates the given number of bytes in a new chunk.
@@ -109,7 +115,9 @@ rust_obstack::free(void *ptr) {
 
     assert(chunk);
     while (!chunk->free(ptr)) {
-        DPRINT("deleting chunk at %p\n", chunk);
+        DPRINT("deleting chunk at %p (ptr=%p, data=%p-%p)\n",
+               chunk, ptr,
+               chunk->data, chunk->data + chunk->size);
         rust_obstack_chunk *prev = chunk->prev;
         task->free(chunk);
         chunk = prev;
@@ -119,7 +127,11 @@ rust_obstack::free(void *ptr) {
 
 void *
 rust_obstack::mark() {
-    return chunk ? chunk->mark() : NULL;
+    void *m = chunk ? chunk->mark() : NULL;
+    DPRINT("mark == %p, chunk == %p, data == %p-%p\n", m, chunk,
+           (chunk ? chunk->data : NULL),
+           (chunk ? chunk->data + chunk->size : NULL));
+    return m;
 }
 
 
