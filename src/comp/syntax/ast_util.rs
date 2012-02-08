@@ -30,9 +30,9 @@ fn def_id_of_def(d: def) -> def_id {
       def_fn(id, _) | def_self(id) | def_mod(id) |
       def_native_mod(id) | def_const(id) | def_arg(id, _) | def_local(id, _) |
       def_variant(_, id) | def_ty(id) | def_ty_param(id, _) |
-      def_binding(id) | def_use(id) | def_upvar(id, _, _) { id }
+      def_binding(id) | def_use(id) | def_upvar(id, _, _) |
+      def_class(id) | def_class_field(_, id) | def_class_method(_, id) { id }
       def_prim_ty(_) { fail; }
-      _ { fail "Dead"; }
     }
 }
 
@@ -373,6 +373,13 @@ pure fn unguarded_pat(a: arm) -> option<[@pat]> {
 // operator is deferred to a user-supplied method. The parser is responsible
 // for reserving this id.
 fn op_expr_callee_id(e: @expr) -> node_id { e.id - 1 }
+
+pure fn class_item_ident(ci: @class_item) -> ident {
+    alt ci.node.decl {
+      instance_var(i,_,_,_) { i }
+      class_method(it) { it.ident }
+    }
+}
 
 // Local Variables:
 // mode: rust

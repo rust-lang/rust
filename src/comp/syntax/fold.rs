@@ -618,7 +618,7 @@ fn make_fold(afp: ast_fold_precursor) -> ast_fold {
         @{node:
          {privacy:ci.node.privacy,
                decl:
-          alt ci.node.decl {
+         alt ci.node.decl {
            instance_var(nm, t, mt, id) {
                instance_var(nm, f_ty(afp, f, t),
                                  mt, id)

@@ -2,7 +2,7 @@
 import syntax::{ast, ast_util, codemap};
 import syntax::ast::*;
 import ast::{ident, fn_ident, def, def_id, node_id};
-import syntax::ast_util::{local_def, def_id_of_def};
+import syntax::ast_util::{local_def, def_id_of_def, class_item_ident};
 import pat_util::*;
 
 import front::attr;
@@ -91,6 +91,8 @@ enum mod_index_entry {
     mie_view_item(ident, node_id, span),
     mie_import_ident(node_id, span),
     mie_item(@ast::item),
+    mie_class_item(node_id, /* parent class name */
+                   @ast::class_item), /* class member */
     mie_native_item(@ast::native_item),
     mie_enum_variant(/* variant index */uint,
                      /*parts of enum item*/ [variant],
@@ -267,27 +269,30 @@ fn map_crate(e: @env, c: @ast::crate) {
         alt vi.node {
           //if it really is a glob import, that is
           ast::view_item_import_glob(path, _) {
-            let imp = follow_import(*e, sc, *path, vi.span);
-            if option::is_some(imp) {
-                let glob = {def: option::get(imp), item: vi};
-                check list::is_not_empty(sc);
-                alt list::head(sc) {
-                  scope_item(i) {
-                    e.mod_map.get(i.id).glob_imports += [glob];
-                  }
-                  scope_block(b, _, _) {
-                    let globs = alt e.block_map.find(b.node.id) {
-                      some(globs) { globs + [glob] } none { [glob] }
-                    };
-                    e.block_map.insert(b.node.id, globs);
-                  }
-                  scope_crate {
-                    e.mod_map.get(ast::crate_node_id).glob_imports += [glob];
-                  }
-                  _ { e.sess.span_bug(vi.span, "Unexpected scope in a glob \
-                       import"); }
+              alt follow_import(*e, sc, *path, vi.span) {
+                 some(imp) {
+                    let glob = {def: imp, item: vi};
+                    check list::is_not_empty(sc);
+                    alt list::head(sc) {
+                      scope_item(i) {
+                        e.mod_map.get(i.id).glob_imports += [glob];
+                      }
+                      scope_block(b, _, _) {
+                        let globs = alt e.block_map.find(b.node.id) {
+                                some(globs) { globs + [glob] } none { [glob] }
+                        };
+                        e.block_map.insert(b.node.id, globs);
+                      }
+                      scope_crate {
+                        e.mod_map.get(ast::crate_node_id).glob_imports
+                            += [glob];
+                      }
+                      _ { e.sess.span_bug(vi.span, "Unexpected scope in a \
+                           glob import"); }
+                      }
                 }
-            }
+                _ { }
+             }
           }
           _ { }
         }
@@ -329,7 +334,10 @@ fn resolve_capture_item(e: @env, sc: scopes, &&cap_item: @ast::capture_item) {
 }
 
 fn maybe_insert(e: @env, id: node_id, def: option<def>) {
-    if option::is_some(def) { e.def_map.insert(id, option::get(def)); }
+    alt def {
+       some(df) { e.def_map.insert(id, df); }
+       _ {}
+    }
 }
 
 fn resolve_names(e: @env, c: @ast::crate) {
@@ -401,11 +409,10 @@ fn resolve_names(e: @env, c: @ast::crate) {
         visit::visit_pat(pat, sc, v);
         alt pat.node {
           ast::pat_enum(p, _) {
-            let fnd = lookup_path_strict(*e, sc, p.span, p.node,
-                                           ns_val(ns_any_value));
-            alt option::get(fnd) {
-              ast::def_variant(did, vid) {
-                e.def_map.insert(pat.id, option::get(fnd));
+            alt lookup_path_strict(*e, sc, p.span, p.node,
+                                           ns_val(ns_any_value)) {
+              some(fnd@ast::def_variant(_,_)) {
+                e.def_map.insert(pat.id, fnd);
               }
               _ {
                 e.sess.span_err(p.span,
@@ -417,11 +424,10 @@ fn resolve_names(e: @env, c: @ast::crate) {
           /* Here we determine whether a given pat_ident binds a new
            variable a refers to a nullary enum. */
           ast::pat_ident(p, none) {
-              let fnd = lookup_in_scope(*e, sc, p.span, path_to_ident(p),
-                                    ns_val(ns_a_enum));
-              alt fnd {
-                some(ast::def_variant(did, vid)) {
-                    e.def_map.insert(pat.id, ast::def_variant(did, vid));
+              alt lookup_in_scope(*e, sc, p.span, path_to_ident(p),
+                                    ns_val(ns_a_enum)) {
+                some(fnd@ast::def_variant(_,_)) {
+                    e.def_map.insert(pat.id, fnd);
                 }
                 _ {
                     // Binds a var -- nothing needs to be done
@@ -587,16 +593,21 @@ fn follow_import(e: env, sc: scopes, path: [ident], sp: span) ->
     let path_len = vec::len(path);
     let dcur = lookup_in_scope_strict(e, sc, sp, path[0], ns_module);
     let i = 1u;
-    while true && option::is_some(dcur) {
-        if i == path_len { break; }
-        dcur =
-            lookup_in_mod_strict(e, option::get(dcur), sp, path[i],
+    while true {
+       alt dcur {
+          some(dcur_def) {
+            if i == path_len { break; }
+            dcur =
+                lookup_in_mod_strict(e, dcur_def, sp, path[i],
                                  ns_module, outside);
-        i += 1u;
+            i += 1u;
+          }
+          _ { break; }
+       }
     }
     if i == path_len {
-        alt option::get(dcur) {
-          ast::def_mod(_) | ast::def_native_mod(_) { ret dcur; }
+       alt dcur {
+          some(ast::def_mod(_)) | some(ast::def_native_mod(_)) { ret dcur; }
           _ {
             e.sess.span_err(sp, str::connect(path, "::") +
                             " does not name a module.");
@@ -607,20 +618,16 @@ fn follow_import(e: env, sc: scopes, path: [ident], sp: span) ->
 }
 
 fn resolve_constr(e: @env, c: @ast::constr, sc: scopes, _v: vt<scopes>) {
-    let new_def =
-        lookup_path_strict(*e, sc, c.span, c.node.path.node,
-                           ns_val(ns_any_value));
-    if option::is_some(new_def) {
-        alt option::get(new_def) {
-          ast::def_fn(pred_id, ast::pure_fn) {
-            e.def_map.insert(c.node.id, ast::def_fn(pred_id, ast::pure_fn));
-          }
-          _ {
-            e.sess.span_err(c.span,
-                            "Non-predicate in constraint: " +
-                                path_to_str(c.node.path));
-          }
-        }
+    alt lookup_path_strict(*e, sc, c.span, c.node.path.node,
+                           ns_val(ns_any_value)) {
+       some(d@ast::def_fn(_,ast::pure_fn)) {
+         e.def_map.insert(c.node.id, d);
+       }
+       _ {
+           e.sess.span_err(c.span,
+                           "Non-predicate in constraint: " +
+                           path_to_str(c.node.path));
+       }
     }
 }
 
@@ -744,7 +751,7 @@ fn ns_name(ns: namespace) -> str {
               ns_a_enum    { "enum" }
           }
       }
-      ns_module { ret "modulename" }
+      ns_module { "modulename" }
     }
 }
 
@@ -814,18 +821,26 @@ fn lookup_path_strict(e: env, sc: scopes, sp: span, pth: ast::path_,
 
     let first_scope = if pth.global { top_scope() } else { sc };
 
-    let dcur =
+    let dcur_ =
         lookup_in_scope_strict(e, first_scope, sp, pth.idents[0], headns);
 
-    let i = 1u;
-    while i < n_idents && option::is_some(dcur) {
-        let curns = if n_idents == i + 1u { ns } else { ns_module };
-        dcur =
-            lookup_in_mod_strict(e, option::get(dcur), sp, pth.idents[i],
-                                 curns, outside);
-        i += 1u;
+    alt dcur_ {
+      none { ret none; }
+      some(dcur__) {
+         let i = 1u;
+         let dcur = dcur__;
+         while i < n_idents {
+            let curns = if n_idents == i + 1u { ns } else { ns_module };
+            alt lookup_in_mod_strict(e, dcur, sp, pth.idents[i],
+                                 curns, outside) {
+               none { break; }
+               some(thing) { dcur = thing; }
+            }
+            i += 1u;
+         }
+         ret some(dcur);
+      }
     }
-    ret dcur;
 }
 
 fn lookup_in_scope_strict(e: env, sc: scopes, sp: span, name: ident,
@@ -985,11 +1000,11 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
         alt copy sc {
           nil { ret none; }
           cons(hd, tl) {
-            let fnd = in_scope(e, sp, name, hd, ns);
-            if !is_none(fnd) {
-                let df = option::get(fnd);
-                let local = def_is_local(df), self_scope = def_is_self(df);
-                if left_fn && local || left_fn_level2 && self_scope
+              alt in_scope(e, sp, name, hd, ns) {
+               some(df_) {
+                 let df = df_;
+                 let local = def_is_local(df), self_scope = def_is_self(df);
+                 if left_fn && local || left_fn_level2 && self_scope
                    || scope_is_fn(hd) && left_fn && def_is_ty_arg(df) {
                     let msg = alt ns {
                       ns_type {
@@ -1013,12 +1028,13 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
                         i -= 1u;
                         df = ast::def_upvar(def_id_of_def(df), @df,
                                             closing[i]);
-                        fnd = some(df);
                     }
                 }
-                ret fnd;
+                ret some(df);
             }
-            if left_fn {
+                      _ {}
+                  }
+             if left_fn {
                 left_fn_level2 = true;
             } else if ns != ns_module {
                 left_fn = scope_is_fn(hd);
@@ -1193,7 +1209,10 @@ fn found_def_item(i: @ast::item, ns: namespace) -> option<def> {
           _ { }
         }
       }
-      _ { }
+      ast::item_class(_, _, _, _, _) {
+          fail "class! don't know what to do";
+      }
+      ast::item_impl(_,_,_,_) { /* ??? */ }
     }
     ret none;
 }
@@ -1220,12 +1239,13 @@ fn lookup_in_mod(e: env, m: def, sp: span, name: ident, ns: namespace,
         if defid.node != ast::crate_node_id {
             path = cstore::get_path(e.cstore, defid) + path;
         }
-        let fnd = lookup_external(e, defid.crate, path, ns);
-        if !is_none(fnd) {
-            e.ext_cache.insert({did: defid, ident: name, ns: ns},
-                               option::get(fnd));
+        alt lookup_external(e, defid.crate, path, ns) {
+           some(df) {
+               e.ext_cache.insert({did: defid, ident: name, ns: ns}, df);
+               ret some(df);
+           }
+           _ { ret none; }
         }
-        ret fnd;
     }
     alt m {
       ast::def_mod(defid) {
@@ -1263,7 +1283,7 @@ fn lookup_import(e: env, defid: def_id, ns: namespace) -> option<def> {
             e.used_imports.data += [defid.node];
         }
         ret alt ns { ns_val(_) { val } ns_type { typ }
-                     ns_module { md } };
+            ns_module { md } };
       }
       is_glob(_,_,_) {
           e.sess.bug("lookup_import: can't handle is_glob");
@@ -1398,6 +1418,18 @@ fn lookup_in_mie(e: env, mie: mod_index_entry, ns: namespace) ->
           }
         }
       }
+      mie_class_item(parent_id, class_item) {
+          alt class_item.node.decl {
+              instance_var(_,_,_,id) {
+                  ret some(ast::def_class_field(local_def(parent_id),
+                                                local_def(id)));
+              }
+              class_method(it) {
+                  ret some(ast::def_class_method(local_def(parent_id),
+                                                 local_def(it.id)));
+              }
+          }
+      }
     }
     ret none;
 }
@@ -1452,8 +1484,21 @@ fn index_mod(md: ast::_mod) -> mod_index {
                 variant_idx += 1u;
             }
           }
-          ast::item_class(_, items, _, ctor_decl, _) {
-              fail "resolve::index_mod: item_class";
+          ast::item_class(tps, items, ctor_id, ctor_decl, ctor_body) {
+              // add the class name itself
+              add_to_index(index, it.ident, mie_item(it));
+              // add the constructor decl
+              add_to_index(index, it.ident,
+                           mie_item(@{ident: it.ident, attrs: [],
+                                       id: ctor_id,
+                                       node:
+                                         item_fn(ctor_decl, tps, ctor_body),
+                                       span: ctor_body.span}));
+              // add the members
+              for ci in items {
+                 add_to_index(index, class_item_ident(ci),
+                              mie_class_item(it.id, ci));
+              }
           }
         }
     }
@@ -1494,11 +1539,13 @@ fn ns_for_def(d: def) -> namespace {
       ast::def_variant(_, _) { ns_val(ns_a_enum) }
       ast::def_fn(_, _) | ast::def_self(_) |
       ast::def_const(_) | ast::def_arg(_, _) | ast::def_local(_, _) |
-      ast::def_upvar(_, _, _) |  ast::def_self(_) { ns_val(ns_any_value) }
+      ast::def_upvar(_, _, _) |  ast::def_self(_) |
+      ast::def_class_field(_,_) | ast::def_class_method(_,_)
+          { ns_val(ns_any_value) }
       ast::def_mod(_) | ast::def_native_mod(_) { ns_module }
       ast::def_ty(_) | ast::def_binding(_) | ast::def_use(_) |
-      ast::def_ty_param(_, _) | ast::def_prim_ty(_) { ns_type }
-      _ { fail "Dead"; }
+      ast::def_ty_param(_, _) | ast::def_prim_ty(_) | ast::def_class(_)
+      { ns_type }
     }
 }
 
@@ -1583,6 +1630,7 @@ fn mie_span(mie: mod_index_entry) -> span {
           mie_item(item) { item.span }
           mie_enum_variant(_, _, _, span) { span }
           mie_native_item(item) { item.span }
+          mie_class_item(_,item) { item.span }
         };
 }
 
