@@ -53,7 +53,6 @@ export mk_named, type_name;
 export mt;
 export node_type_table;
 export pat_ty;
-export ret_ty_of_fn;
 export sequence_element_type;
 export sort_methods;
 export stmt_node_id;
@@ -2427,10 +2426,6 @@ fn lookup_item_type(cx: ctxt, did: ast::def_id) -> ty_param_bounds_and_ty {
         ret tyt;
       }
     }
-}
-
-fn ret_ty_of_fn(cx: ctxt, id: ast::node_id) -> t {
-    ty_fn_ret(node_id_to_type(cx, id))
 }
 
 fn is_binopable(_cx: ctxt, ty: t, op: ast::binop) -> bool {

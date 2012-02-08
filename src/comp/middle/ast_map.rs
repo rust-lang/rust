@@ -11,6 +11,7 @@ enum ast_node {
     node_item(@item, @path),
     node_native_item(@native_item, @path),
     node_method(@method, @path),
+    node_variant(variant, def_id, @path),
     node_expr(@expr),
     // Locals are numbered, because the alias analysis needs to know in which
     // order they are introduced.
@@ -73,6 +74,13 @@ fn map_item(i: @item, cx: ctx, v: vt) {
       item_res(_, _, _, dtor_id, ctor_id) {
         cx.map.insert(ctor_id, node_res_ctor(i));
         cx.map.insert(dtor_id, node_item(i, @cx.path));
+      }
+      item_enum(vs, _) {
+        for v in vs {
+            cx.map.insert(v.node.id, node_variant(
+                v, ast_util::local_def(i.id),
+                @(cx.path + [path_name(i.ident)])));
+        }
       }
       _ { }
     }
