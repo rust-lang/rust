@@ -321,13 +321,12 @@ mod rt {
         // For strings, precision is the maximum characters
         // displayed
 
-        // FIXME: substr works on bytes, not chars!
         let unpadded =
             alt cv.precision {
               count_implied { s }
               count_is(max) {
                 if max as uint < str::char_len(s) {
-                    str::unsafe::slice_bytes(s, 0u, max as uint)
+                    str::substr(s, 0u, max as uint)
                 } else { s }
               }
             };
