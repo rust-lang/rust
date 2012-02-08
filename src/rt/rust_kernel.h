@@ -2,11 +2,14 @@
 #ifndef RUST_KERNEL_H
 #define RUST_KERNEL_H
 
+#include <map>
 #include "memory_region.h"
 #include "rust_log.h"
 
 struct rust_task_thread;
 struct rust_scheduler;
+
+typedef std::map<rust_sched_id, rust_scheduler*> sched_map;
 
 /**
  * A global object shared by all thread domains. Most of the data structures
@@ -20,8 +23,6 @@ class rust_kernel {
 public:
     rust_srv *srv;
 private:
-    rust_scheduler *sched;
-
     // Protects live_tasks, max_task_id and task_table
     lock_and_signal task_lock;
     // Tracks the number of tasks that are being managed by
@@ -35,12 +36,14 @@ private:
     lock_and_signal rval_lock;
     int rval;
 
-    // Protects live_schedulers
+    // Protects live_schedulers, max_sched_id and sched_table
     lock_and_signal sched_lock;
     // Tracks the number of schedulers currently running.
     // When this hits 0 we will signal the sched_lock and the
     // kernel will terminate.
     uintptr_t live_schedulers;
+    rust_sched_id max_sched_id;
+    sched_map sched_table;
 
 public:
 

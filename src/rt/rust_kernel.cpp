@@ -1,3 +1,4 @@
+#include <vector>
 #include "rust_internal.h"
 #include "rust_util.h"
 #include "rust_scheduler.h"
@@ -15,6 +16,7 @@ rust_kernel::rust_kernel(rust_srv *srv) :
     max_task_id(0),
     rval(0),
     live_schedulers(0),
+    max_sched_id(0),
     env(srv->env)
 {
 }
@@ -56,25 +58,45 @@ void rust_kernel::free(void *mem) {
 
 rust_sched_id
 rust_kernel::create_scheduler(size_t num_threads) {
-    I(this, live_schedulers == 0);
-    sched = new (this, "rust_scheduler")
-        rust_scheduler(this, srv, num_threads, 0);
-    live_schedulers = 1;
+    I(this, !sched_lock.lock_held_by_current_thread());
+    rust_scheduler *sched;
+    {
+        scoped_lock with(sched_lock);
+        rust_sched_id id = max_sched_id++;
+        K(srv, id != INTPTR_MAX, "Hit the maximum scheduler id");
+        sched = new (this, "rust_scheduler")
+            rust_scheduler(this, srv, num_threads, id);
+        bool is_new = sched_table
+            .insert(std::pair<rust_sched_id, rust_scheduler*>(id, sched)).second;
+        A(this, is_new, "Reusing a sched id?");
+        live_schedulers++;
+    }
     sched->start_task_threads();
     return 0;
 }
 
 rust_scheduler *
 rust_kernel::get_scheduler_by_id(rust_sched_id id) {
-    return sched;
+    I(this, !sched_lock.lock_held_by_current_thread());
+    scoped_lock with(sched_lock);
+    sched_map::iterator iter = sched_table.find(id);
+    if (iter != sched_table.end()) {
+        return iter->second;
+    } else {
+        return NULL;
+    }
 }
 
 void
 rust_kernel::release_scheduler_id(rust_sched_id id) {
     I(this, !sched_lock.lock_held_by_current_thread());
     scoped_lock with(sched_lock);
+    sched_map::iterator iter = sched_table.find(id);
+    I(this, iter != sched_table.end());
+    rust_scheduler *sched = iter->second;
+    sched_table.erase(iter);
     delete sched;
-    --live_schedulers;
+    live_schedulers--;
     if (live_schedulers == 0) {
         // We're all done. Tell the main thread to continue
         sched_lock.signal();
@@ -93,6 +115,7 @@ rust_kernel::wait_for_schedulers()
     return rval;
 }
 
+// FIXME: Fix all these FIXMEs
 void
 rust_kernel::fail() {
     // FIXME: On windows we're getting "Application has requested the
@@ -102,7 +125,29 @@ rust_kernel::fail() {
 #if defined(__WIN32__)
     exit(rval);
 #endif
-    sched->kill_all_tasks();
+    // Copy the list of schedulers so that we don't hold the lock while
+    // running kill_all_tasks.
+    // FIXME: There's a lot that happens under kill_all_tasks, and I don't
+    // know that holding sched_lock here is ok, but we need to hold the
+    // sched lock to prevent the scheduler from being destroyed while
+    // we are using it. Probably we need to make rust_scheduler atomicly
+    // reference counted.
+    std::vector<rust_scheduler*> scheds;
+    {
+        scoped_lock with(sched_lock);
+        for (sched_map::iterator iter = sched_table.begin();
+             iter != sched_table.end(); iter++) {
+            scheds.push_back(iter->second);
+        }
+    }
+
+    // FIXME: This is not a foolproof way to kill all tasks while ensuring
+    // that no new tasks or schedulers are created in the meantime that
+    // keep the scheduler alive.
+    for (std::vector<rust_scheduler*>::iterator iter = scheds.begin();
+         iter != scheds.end(); iter++) {
+        (*iter)->kill_all_tasks();
+    }
 }
 
 void
