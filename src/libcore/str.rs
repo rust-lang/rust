@@ -95,6 +95,7 @@ export
    char_at,
    substr_all,
    escape_char,
+   as_bytes,
    as_buf,
    //buf,
    sbuf,
@@ -390,10 +391,7 @@ Converts a string to a vector of bytes. The result vector is not
 null-terminated.
 */
 fn bytes(s: str) -> [u8] unsafe {
-    let v = ::unsafe::reinterpret_cast(s);
-    let vcopy = vec::slice(v, 0u, vec::len(v) - 1u);
-    ::unsafe::leak(v);
-    ret vcopy;
+    as_bytes(s) { |v| vec::slice(v, 0u, vec::len(v) - 1u) }
 }
 
 /*
@@ -1026,12 +1024,12 @@ Returns the length in bytes of a string
 FIXME: rename to 'len_bytes'
 */
 pure fn byte_len(s: str) -> uint unsafe {
-    let v: [u8] = ::unsafe::reinterpret_cast(s);
-    let vlen = vec::len(v);
-    ::unsafe::leak(v);
-    // There should always be a null terminator
-    assert (vlen > 0u);
-    ret vlen - 1u;
+    as_bytes(s) { |v|
+        let vlen = vec::len(v);
+        // There should always be a null terminator
+        assert (vlen > 0u);
+        vlen - 1u
+    }
 }
 
 /*
@@ -1299,6 +1297,24 @@ const max_five_b: uint = 67108864u;
 const tag_six_b: uint = 252u;
 
 /*
+Function: as_bytes
+
+Work with the byte buffer of a string. Allows for unsafe manipulation
+of strings, which is useful for native interop.
+
+Example:
+
+> let i = str::as_bytes("Hello World") { |bytes| vec::len(bytes) };
+
+*/
+fn as_bytes<T>(s: str, f: fn([u8]) -> T) -> T unsafe {
+    let v: [u8] = ::unsafe::reinterpret_cast(s);
+    let r = f(v);
+    ::unsafe::leak(v);
+    r
+}
+
+/*
 Function: as_buf
 
 Work with the byte buffer of a string. Allows for unsafe manipulation
@@ -1310,10 +1326,7 @@ Example:
 
 */
 fn as_buf<T>(s: str, f: fn(sbuf) -> T) -> T unsafe {
-    let v: [u8] = ::unsafe::reinterpret_cast(s);
-    let r = vec::as_buf(v, f);
-    ::unsafe::leak(v);
-    r
+    as_bytes(s) { |v| vec::as_buf(v, f) }
 }
 
 /*
@@ -1373,13 +1386,11 @@ mod unsafe {
        assert (begin <= end);
        assert (end <= byte_len(s));
 
-       let v: [u8] = ::unsafe::reinterpret_cast(s);
-       let v2 = vec::slice(v, begin, end);
+       let v = as_bytes(s) { |v| vec::slice(v, begin, end) };
+       v += [0u8];
+       let s: str = ::unsafe::reinterpret_cast(v);
        ::unsafe::leak(v);
-       v2 += [0u8];
-       let s2: str = ::unsafe::reinterpret_cast(v2);
-       ::unsafe::leak(v2);
-       ret s2;
+       ret s;
    }
 
    /*
