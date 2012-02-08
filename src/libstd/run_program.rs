@@ -5,7 +5,7 @@ Process spawning
 */
 import option::{some, none};
 import str::sbuf;
-import ctypes::{fd_t, pid_t};
+import ctypes::{fd_t, pid_t, void};
 
 export program;
 export run_program;
@@ -16,8 +16,9 @@ export waitpid;
 
 #[abi = "cdecl"]
 native mod rustrt {
-    fn rust_run_program(argv: *sbuf, in_fd: fd_t,
-                        out_fd: fd_t, err_fd: fd_t) -> pid_t;
+    fn rust_run_program(argv: *sbuf, envp: *void, dir: sbuf,
+                        in_fd: fd_t, out_fd: fd_t, err_fd: fd_t)
+        -> pid_t;
 }
 
 /* Section: Types */
@@ -82,13 +83,6 @@ iface program {
 
 /* Section: Operations */
 
-fn arg_vec(prog: str, args: [@str]) -> [sbuf] {
-    let argptrs = str::as_buf(prog, {|buf| [buf] });
-    for arg in args { argptrs += str::as_buf(*arg, {|buf| [buf] }); }
-    argptrs += [ptr::null()];
-    ret argptrs;
-}
-
 /*
 Function: spawn_process
 
@@ -98,6 +92,8 @@ Parameters:
 
 prog - The path to an executable
 args - Vector of arguments to pass to the child process
+env - optional env-modification for child
+dir - optional dir to run child in (default current dir)
 in_fd - A file descriptor for the child to use as std input
 out_fd - A file descriptor for the child to use as std output
 err_fd - A file descriptor for the child to use as std error
@@ -106,18 +102,90 @@ Returns:
 
 The process id of the spawned process
 */
-fn spawn_process(prog: str, args: [str], in_fd: fd_t,
-                 out_fd: fd_t, err_fd: fd_t)
+fn spawn_process(prog: str, args: [str],
+                 env: option<[(str,str)]>,
+                 dir: option<str>,
+                 in_fd: fd_t, out_fd: fd_t, err_fd: fd_t)
    -> pid_t unsafe {
-    // Note: we have to hold on to these vector references while we hold a
-    // pointer to their buffers
-    let prog = prog;
-    let args = vec::map(args, {|arg| @arg });
-    let argv = arg_vec(prog, args);
-    let pid =
-        rustrt::rust_run_program(vec::unsafe::to_ptr(argv), in_fd, out_fd,
-                                 err_fd);
-    ret pid;
+    with_argv(prog, args) {|argv|
+        with_envp(env) { |envp|
+            with_dirp(dir) { |dirp|
+                rustrt::rust_run_program(argv, envp, dirp,
+                                         in_fd, out_fd, err_fd)
+            }
+        }
+    }
+}
+
+fn with_argv<T>(prog: str, args: [str],
+                cb: fn(*sbuf) -> T) -> T unsafe {
+    let argptrs = str::as_buf(prog) {|b| [b] };
+    let tmps = [];
+    for arg in args {
+        let t = @arg;
+        tmps += [t];
+        argptrs += str::as_buf(*t) {|b| [b] };
+    }
+    argptrs += [ptr::null()];
+    vec::as_buf(argptrs, cb)
+}
+
+#[cfg(target_os = "macos")]
+#[cfg(target_os = "linux")]
+#[cfg(target_os = "freebsd")]
+fn with_envp<T>(env: option<[(str,str)]>,
+                cb: fn(*void) -> T) -> T unsafe {
+    // On posixy systems we can pass a char** for envp, which is
+    // a null-terminated array of "k=v\n" strings.
+    alt env {
+      some (es) {
+        let tmps = [];
+        let ptrs = [];
+
+        for (k,v) in es {
+            let t = @(#fmt("%s=%s", k, v));
+            vec::push(tmps, t);
+            ptrs += str::as_buf(*t) {|b| [b]};
+        }
+        ptrs += [ptr::null()];
+        vec::as_buf(ptrs) { |p| cb(::unsafe::reinterpret_cast(p)) }
+      }
+      none {
+        cb(ptr::null())
+      }
+    }
+}
+
+#[cfg(target_os = "win32")]
+fn with_envp<T>(env: option<[(str,str)]>,
+                cb: fn(*void) -> T) -> T unsafe {
+    // On win32 we pass an "environment block" which is not a char**, but
+    // rather a concatenation of null-terminated k=v\0 sequences, with a final
+    // \0 to terminate.
+    alt env {
+      some (es) {
+        let blk : [u8] = [];
+        for (k,v) in es {
+            let t = #fmt("%s=%s", k, v);
+            let v : [u8] = ::unsafe::reinterpret_cast(t);
+            blk += v;
+            ::unsafe::leak(v);
+        }
+        blk += [0_u8];
+        vec::as_buf(blk) {|p| cb(::unsafe::reinterpret_cast(p)) }
+      }
+      none {
+        cb(ptr::null())
+      }
+    }
+}
+
+fn with_dirp<T>(d: option<str>,
+                cb: fn(sbuf) -> T) -> T unsafe {
+    alt d {
+      some(dir) { str::as_buf(dir, cb) }
+      none { cb(ptr::null()) }
+    }
 }
 
 /*
@@ -135,7 +203,8 @@ Returns:
 The process id
 */
 fn run_program(prog: str, args: [str]) -> int {
-    ret waitpid(spawn_process(prog, args, 0i32, 0i32, 0i32));
+    ret waitpid(spawn_process(prog, args, none, none,
+                              0i32, 0i32, 0i32));
 }
 
 /*
@@ -161,7 +230,8 @@ fn start_program(prog: str, args: [str]) -> program {
     let pipe_output = os::pipe();
     let pipe_err = os::pipe();
     let pid =
-        spawn_process(prog, args, pipe_input.in, pipe_output.out,
+        spawn_process(prog, args, none, none,
+                      pipe_input.in, pipe_output.out,
                       pipe_err.out);
 
     if pid == -1i32 { fail; }
@@ -316,7 +386,8 @@ mod tests {
 
         let pid =
             run::spawn_process(
-                "cat", [], pipe_in.in, pipe_out.out, pipe_err.out);
+                "cat", [], none, none,
+                pipe_in.in, pipe_out.out, pipe_err.out);
         os::close(pipe_in.in);
         os::close(pipe_out.out);
         os::close(pipe_err.out);
@@ -356,7 +427,9 @@ mod tests {
 
     #[test]
     fn waitpid() {
-        let pid = run::spawn_process("false", [], 0i32, 0i32, 0i32);
+        let pid = run::spawn_process("false", [],
+                                     none, none,
+                                     0i32, 0i32, 0i32);
         let status = run::waitpid(pid);
         assert status == 1;
     }

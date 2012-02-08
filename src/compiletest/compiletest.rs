@@ -17,7 +17,6 @@ import comm::chan;
 import comm::send;
 import comm::recv;
 
-import common::cx;
 import common::config;
 import common::mode_run_pass;
 import common::mode_run_fail;
@@ -113,10 +112,8 @@ fn mode_str(mode: mode) -> str {
 
 fn run_tests(config: config) {
     let opts = test_opts(config);
-    let cx = {config: config, procsrv: procsrv::mk()};
-    let tests = make_tests(cx);
+    let tests = make_tests(config);
     let res = test::run_tests_console(opts, tests);
-    procsrv::close(cx.procsrv);
     if !res { fail "Some tests failed"; }
 }
 
@@ -129,14 +126,14 @@ fn test_opts(config: config) -> test::test_opts {
      run_ignored: config.run_ignored}
 }
 
-fn make_tests(cx: cx) -> [test::test_desc] {
-    #debug("making tests from %s", cx.config.src_base);
+fn make_tests(config: config) -> [test::test_desc] {
+    #debug("making tests from %s", config.src_base);
     let tests = [];
-    for file: str in fs::list_dir(cx.config.src_base) {
+    for file: str in fs::list_dir(config.src_base) {
         let file = file;
         #debug("inspecting file %s", file);
-        if is_test(cx.config, file) {
-            tests += [make_test(cx, file)]
+        if is_test(config, file) {
+            tests += [make_test(config, file)]
         }
     }
     ret tests;
@@ -162,12 +159,12 @@ fn is_test(config: config, testfile: str) -> bool {
     ret valid;
 }
 
-fn make_test(cx: cx, testfile: str) ->
+fn make_test(config: config, testfile: str) ->
    test::test_desc {
     {
-        name: make_test_name(cx.config, testfile),
-        fn: make_test_closure(cx, testfile),
-        ignore: header::is_test_ignored(cx.config, testfile),
+        name: make_test_name(config, testfile),
+        fn: make_test_closure(config, testfile),
+        ignore: header::is_test_ignored(config, testfile),
         should_fail: false
     }
 }
@@ -176,22 +173,10 @@ fn make_test_name(config: config, testfile: str) -> str {
     #fmt["[%s] %s", mode_str(config.mode), testfile]
 }
 
-fn make_test_closure(cx: cx, testfile: str) -> test::test_fn {
-    let config = cx.config;
-    let chan = cx.procsrv.chan;
+fn make_test_closure(config: config, testfile: str) -> test::test_fn {
     ret {||
-        run_test_task(config, chan, testfile);
+        runtest::run(config, copy testfile);
     };
-}
-
-fn run_test_task(config: common::config,
-                 procsrv_chan: procsrv::reqchan,
-                 testfile: str) {
-
-    let procsrv = procsrv::from_chan(procsrv_chan);
-    let cx = {config: config, procsrv: procsrv};
-
-    runtest::run(cx, copy testfile);
 }
 
 // Local Variables:

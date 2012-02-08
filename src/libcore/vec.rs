@@ -1078,6 +1078,18 @@ FIXME: We don't need this wrapper
 unsafe fn to_ptr<T>(v: [T]) -> *T { ret unsafe::to_ptr(v); }
 
 /*
+Function: as_buf
+
+Work with the buffer of a vector. Allows for unsafe manipulation
+of vector contents, which is useful for native interop.
+
+*/
+fn as_buf<E,T>(v: [const E], f: fn(*E) -> T) -> T unsafe {
+    let buf = unsafe::to_ptr(v); f(buf)
+}
+
+
+/*
 Module: unsafe
 */
 mod unsafe {

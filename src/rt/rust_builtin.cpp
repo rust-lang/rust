@@ -7,6 +7,10 @@
 #include "rust_scheduler.h"
 #include "sync/timer.h"
 
+#ifdef __APPLE__
+#include <crt_externs.h>
+#endif
+
 #if !defined(__WIN32__)
 #include <sys/time.h>
 #endif
@@ -72,6 +76,49 @@ rust_getcwd() {
 
     return make_str(task->kernel, cbuf, strlen(cbuf), "rust_str(getcwd");
 }
+
+
+#if defined(__WIN32__)
+extern "C" CDECL rust_vec *
+rust_env_pairs() {
+    rust_task *task = rust_task_thread::get_task();
+    size_t envc = 0;
+    LPTCH ch = GetEnvironmentStringsA();
+    LPTCH c;
+    for (c = ch; *c; c += strlen(c) + 1) {
+        ++envc;
+    }
+    c = ch;
+    rust_vec *v = (rust_vec *)
+        task->kernel->malloc(vec_size<rust_vec*>(envc),
+                       "str vec interior");
+    v->fill = v->alloc = sizeof(rust_vec*) * envc;
+    for (size_t i = 0; i < envc; ++i) {
+        size_t n = strlen(c);
+        rust_str *str = make_str(task->kernel, c, n, "str");
+        ((rust_str**)&v->data)[i] = str;
+        c += n + 1;
+    }
+    if (ch) {
+        FreeEnvironmentStrings(ch);
+    }
+    return v;
+}
+#else
+extern "C" CDECL rust_vec *
+rust_env_pairs() {
+    rust_task *task = rust_task_thread::get_task();
+#ifdef __APPLE__
+    char **environ = *_NSGetEnviron();
+#endif
+    char **e = environ;
+    size_t envc = 0;
+    while (*e) {
+        ++envc; ++e;
+    }
+    return make_str_vec(task->kernel, envc, environ);
+}
+#endif
 
 // TODO: Allow calling native functions that return double results.
 extern "C" CDECL

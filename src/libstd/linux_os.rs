@@ -20,6 +20,7 @@ export target_os;
 export dylib_filename;
 export get_exe_path;
 export fsync_fd;
+export rustrt;
 
 // FIXME Somehow merge stuff duplicated here and macosx_os.rs. Made difficult
 // by https://github.com/graydon/rust/issues#issue/268
@@ -112,6 +113,7 @@ fn waitpid(pid: pid_t) -> i32 {
 
 #[abi = "cdecl"]
 native mod rustrt {
+    fn rust_env_pairs() -> [str];
     fn rust_getcwd() -> str;
 }
 

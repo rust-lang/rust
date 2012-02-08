@@ -14,6 +14,7 @@ export target_os;
 export dylib_filename;
 export get_exe_path;
 export fsync_fd;
+export rustrt;
 
 // FIXME Refactor into unix_os module or some such. Doesn't
 // seem to work right now.
@@ -115,6 +116,7 @@ fn fsync_fd(fd: fd_t, level: io::fsync::level) -> c_int {
 
 #[abi = "cdecl"]
 native mod rustrt {
+    fn rust_env_pairs() -> [str];
     fn rust_getcwd() -> str;
 }
 

@@ -11,20 +11,22 @@ import core::option;
 // Wow, this is an ugly way to write doc comments
 
 #[cfg(bogus)]
-/*
-Function: getenv
-
-Get the value of an environment variable
-*/
+#[doc = "Get the value of an environment variable"]
 fn getenv(n: str) -> option<str> { }
 
 #[cfg(bogus)]
-/*
-Function: setenv
-
-Set the value of an environment variable
-*/
+#[doc = "Set the value of an environment variable"]
 fn setenv(n: str, v: str) { }
+
+fn env() -> [(str,str)] {
+    let pairs = [];
+    for p in os::rustrt::rust_env_pairs() {
+        let vs = str::split(p, '=' as u8);
+        assert vec::len(vs) == 2u;
+        pairs += [(vs[0], vs[1])];
+    }
+    ret pairs;
+}
 
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]

@@ -227,10 +227,19 @@ fn run_tests(opts: test_opts, tests: [test_desc],
     }
 }
 
+// Windows tends to dislike being overloaded with threads.
+#[cfg(target_os = "win32")]
+const sched_overcommit : uint = 1u;
+
+#[cfg(target_os = "linux")]
+#[cfg(target_os = "freebsd")]
+#[cfg(target_os = "macos")]
+const sched_overcommit : uint = 4u;
+
 fn get_concurrency() -> uint {
     let threads = rustrt::sched_threads();
     if threads == 1u { 1u }
-    else { threads * 4u }
+    else { threads * sched_overcommit }
 }
 
 fn filter_tests(opts: test_opts,

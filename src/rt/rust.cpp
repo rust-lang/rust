@@ -41,16 +41,7 @@ command_line_args : public kernel_owned<command_line_args>
         LocalFree(wargv);
 #endif
 
-        args = (rust_vec *)
-            kernel->malloc(vec_size<rust_vec*>(argc),
-                           "command line arg interior");
-        args->fill = args->alloc = sizeof(rust_vec*) * argc;
-        for (int i = 0; i < argc; ++i) {
-            rust_str *str = make_str(kernel, argv[i],
-                                     strlen(argv[i]),
-                                     "command line arg");
-            ((rust_str**)&args->data)[i] = str;
-        }
+        args = make_str_vec(kernel, argc, argv);
     }
 
     ~command_line_args() {

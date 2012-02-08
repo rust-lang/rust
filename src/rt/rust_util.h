@@ -204,6 +204,21 @@ make_str(rust_kernel* kernel, const char* c, size_t strlen, const char* name) {
     return str;
 }
 
+inline rust_vec *
+make_str_vec(rust_kernel* kernel, size_t nstrs, char **strs) {
+    rust_vec *v = (rust_vec *)
+        kernel->malloc(vec_size<rust_vec*>(nstrs),
+                       "str vec interior");
+    v->fill = v->alloc = sizeof(rust_vec*) * nstrs;
+    for (size_t i = 0; i < nstrs; ++i) {
+        rust_str *str = make_str(kernel, strs[i],
+                                 strlen(strs[i]),
+                                 "str");
+        ((rust_str**)&v->data)[i] = str;
+    }
+    return v;
+}
+
 //
 // Local Variables:
 // mode: C++

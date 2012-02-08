@@ -1298,15 +1298,6 @@ const tag_five_b: uint = 248u;
 const max_five_b: uint = 67108864u;
 const tag_six_b: uint = 252u;
 
-// NB: This is intentionally unexported because it's easy to misuse (there's
-// no guarantee that the string is rooted). Instead, use as_buf below.
-unsafe fn buf(s: str) -> sbuf {
-    let saddr = ptr::addr_of(s);
-    let vaddr: *[u8] = ::unsafe::reinterpret_cast(saddr);
-    let buf = vec::to_ptr(*vaddr);
-    ret buf;
-}
-
 /*
 Function: as_buf
 
@@ -1319,7 +1310,10 @@ Example:
 
 */
 fn as_buf<T>(s: str, f: fn(sbuf) -> T) -> T unsafe {
-    let buf = buf(s); f(buf)
+    let v: [u8] = ::unsafe::reinterpret_cast(s);
+    let r = vec::as_buf(v, f);
+    ::unsafe::leak(v);
+    r
 }
 
 /*

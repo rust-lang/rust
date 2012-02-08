@@ -28,5 +28,3 @@ type config =
      runtool: option<str>,
      rustcflags: option<str>,
      verbose: bool};
-
-type cx = {config: config, procsrv: procsrv::handle};
