@@ -52,8 +52,8 @@ fn run(lib_path: str, prog: str, args: [str],
 
 
     writeclose(pipe_in.out, input);
-    let output = readclose(pipe_out.in);
     let errput = readclose(pipe_err.in);
+    let output = readclose(pipe_out.in);
     let status = run::waitpid(pid);
     ret {status: status, out: output, err: errput};
 }
