@@ -712,6 +712,17 @@ public:
     inline operator bool() const { return p != NULL; }
     inline operator uintptr_t() const { return (uintptr_t)p; }
 
+    inline const type_desc *box_body_td() const {
+        rust_opaque_box *box = *reinterpret_cast<rust_opaque_box**>(p);
+        assert(box->ref_count >= 1);
+        return box->td;
+    }
+
+    inline ptr box_body() const {
+        rust_opaque_box *box = *reinterpret_cast<rust_opaque_box**>(p);
+        return make((uint8_t*)::box_body(box));
+    }
+
     static inline ptr make(uint8_t *in_p) {
         ptr self(in_p);
         return self;
@@ -746,7 +757,7 @@ public:
     inline void operator=(const T rhs) { fst = snd = rhs; }
 
     static data_pair<T> make(T &fst, T &snd) {
-        data_pair<T> data(fst, snd);
+          data_pair<T> data(fst, snd);
         return data;
     }
 };
@@ -791,6 +802,25 @@ public:
     static inline ptr_pair make(const data_pair<uint8_t *> &pair) {
         ptr_pair self(pair.fst, pair.snd);
         return self;
+    }
+
+    inline const type_desc *box_body_td() const {
+        // Here we assume that the two ptrs are both boxes with
+        // equivalent type descriptors.  This is safe because we only
+        // use ptr_pair in the cmp glue, and we only use the cmp glue
+        // when rust guarantees us that the boxes are of the same
+        // type.  As box types are not opaque to Rust, it is in a
+        // position to make this determination.
+        rust_opaque_box *box_fst = *reinterpret_cast<rust_opaque_box**>(fst);
+        assert(box_fst->ref_count >= 1);
+        return box_fst->td;
+    }
+
+    inline ptr_pair box_body() const {
+        rust_opaque_box *box_fst = *reinterpret_cast<rust_opaque_box**>(fst);
+        rust_opaque_box *box_snd = *reinterpret_cast<rust_opaque_box**>(snd);
+        return make((uint8_t*)::box_body(box_fst),
+                    (uint8_t*)::box_body(box_snd));
     }
 };
 
@@ -933,18 +963,16 @@ public:
 template<typename T,typename U>
 void
 data<T,U>::walk_box_contents1() {
-    typename U::template data<uint8_t *>::t box_ptr = bump_dp<uint8_t *>(dp);
-    U box_dp(box_ptr);
-
-    // No need to worry about alignment so long as the box header is
-    // a multiple of 16 bytes.  We can just find the body by adding
-    // the size of header to box_dp.
-    assert ((sizeof(rust_opaque_box) % 16) == 0 ||
-            !"Must align to find the box body");
-
-    U body_dp = box_dp + sizeof(rust_opaque_box);
-    T sub(*static_cast<T *>(this), body_dp);
-    static_cast<T *>(this)->walk_box_contents2(sub, box_dp);
+    const type_desc *body_td = dp.box_body_td();
+    if (body_td) {
+        U body_dp(dp.box_body());
+        arena arena;
+        type_param *params = type_param::from_tydesc(body_td, arena);
+        T sub(*static_cast<T *>(this), body_td->shape, params,
+              body_td->shape_tables, body_dp);
+        sub.align = true;
+        static_cast<T *>(this)->walk_box_contents2(sub);
+    }
 }
 
 template<typename T,typename U>
@@ -1006,7 +1034,7 @@ data<T,U>::walk_tag1(tag_info &tinfo) {
 
 template<typename T,typename U>
 void
-data<T,U>::walk_fn_contents1() {
+  data<T,U>::walk_fn_contents1() {
     fn_env_pair pair = bump_dp<fn_env_pair>(dp);
     if (!pair.env)
         return;
@@ -1119,9 +1147,10 @@ private:
 
     void walk_subcontext2(log &sub) { sub.walk(); }
 
-    void walk_box_contents2(log &sub, ptr &ref_count_dp) {
+    void walk_box_contents2(log &sub) {
         out << prefix;
-        if (!ref_count_dp) {
+        rust_opaque_box *box_ptr = *(rust_opaque_box **) dp;
+        if (!box_ptr) {
             out << "(null)";
         } else {
             sub.align = true;

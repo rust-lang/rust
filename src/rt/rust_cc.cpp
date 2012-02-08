@@ -93,7 +93,11 @@ class irc : public shape::data<irc,shape::ptr> {
     }
 
     void walk_box2() {
-        shape::data<irc,shape::ptr>::walk_box_contents1();
+        // the box ptr can be NULL for env ptrs in closures and data
+        // not fully initialized
+        rust_opaque_box *box = *(rust_opaque_box**)dp;
+        if (box)
+            shape::data<irc,shape::ptr>::walk_box_contents1();
     }
 
     void walk_uniq2() {
@@ -103,8 +107,6 @@ class irc : public shape::data<irc,shape::ptr> {
     void walk_fn2(char code) {
         switch (code) {
           case shape::SHAPE_BOX_FN: {
-              // Record an irc for the environment box, but don't descend
-              // into it since it will be walked via the box's allocation
               shape::bump_dp<void*>(dp); // skip over the code ptr
               walk_box2();               // walk over the environment ptr
               break;
@@ -137,19 +139,19 @@ class irc : public shape::data<irc,shape::ptr> {
 
     void walk_uniq_contents2(irc &sub) { sub.walk(); }
 
-    void walk_box_contents2(irc &sub, shape::ptr &box_dp) {
-        maybe_record_irc(box_dp);
+    void walk_box_contents2(irc &sub) {
+        maybe_record_irc();
 
         // Do not traverse the contents of this box; it's in the allocation
         // somewhere, so we're guaranteed to come back to it (if we haven't
         // traversed it already).
     }
 
-    void maybe_record_irc(shape::ptr &box_dp) {
-        if (!box_dp)
-            return;
+    void maybe_record_irc() {
+        rust_opaque_box *box_ptr = *(rust_opaque_box **) dp;
 
-        rust_opaque_box *box_ptr = (rust_opaque_box *) box_dp;
+        if (!box_ptr)
+            return;
 
         // Bump the internal reference count of the box.
         if (ircs.find(box_ptr) == ircs.end()) {
@@ -326,7 +328,11 @@ class mark : public shape::data<mark,shape::ptr> {
     }
 
     void walk_box2() {
-        shape::data<mark,shape::ptr>::walk_box_contents1();
+        // the box ptr can be NULL for env ptrs in closures and data
+        // not fully initialized
+        rust_opaque_box *box = *(rust_opaque_box**)dp;
+        if (box)
+            shape::data<mark,shape::ptr>::walk_box_contents1();
     }
 
     void walk_uniq2() {
@@ -336,8 +342,6 @@ class mark : public shape::data<mark,shape::ptr> {
     void walk_fn2(char code) {
         switch (code) {
           case shape::SHAPE_BOX_FN: {
-              // Record an irc for the environment box, but don't descend
-              // into it since it will be walked via the box's allocation
               shape::data<mark,shape::ptr>::walk_fn_contents1();
               break;
           }
@@ -369,11 +373,11 @@ class mark : public shape::data<mark,shape::ptr> {
 
     void walk_uniq_contents2(mark &sub) { sub.walk(); }
 
-    void walk_box_contents2(mark &sub, shape::ptr &box_dp) {
-        if (!box_dp)
-            return;
+    void walk_box_contents2(mark &sub) {
+        rust_opaque_box *box_ptr = *(rust_opaque_box **) dp;
 
-        rust_opaque_box *box_ptr = (rust_opaque_box *) box_dp;
+        if (!box_ptr)
+            return;
 
         if (marked.find(box_ptr) != marked.end())
             return; // Skip to avoid chasing cycles.
@@ -516,7 +520,9 @@ class sweep : public shape::data<sweep,shape::ptr> {
     }
 
     void walk_box2() {
-        shape::data<sweep,shape::ptr>::walk_box_contents1();
+        // In sweep phase, do not walk the box contents.  There is an
+        // outer loop walking all remaining boxes, and this box may well
+        // have been freed already!
     }
 
     void walk_fn2(char code) {
@@ -524,14 +530,16 @@ class sweep : public shape::data<sweep,shape::ptr> {
           case shape::SHAPE_UNIQ_FN: {
               fn_env_pair pair = *(fn_env_pair*)dp;
 
-              // free closed over data:
-              shape::data<sweep,shape::ptr>::walk_fn_contents1();
-
-              // now free the embedded type descr:
-              upcall_s_free_shared_type_desc((type_desc*)pair.env->td);
-
-              // now free the ptr:
-              task->kernel->free(pair.env);
+              if (pair.env) {
+                  // free closed over data:
+                  shape::data<sweep,shape::ptr>::walk_fn_contents1();
+                  
+                  // now free the embedded type descr:
+                  upcall_s_free_shared_type_desc((type_desc*)pair.env->td);
+                  
+                  // now free the ptr:
+                  task->kernel->free(pair.env);
+              }
               break;
           }
           case shape::SHAPE_BOX_FN: {
@@ -578,10 +586,6 @@ class sweep : public shape::data<sweep,shape::ptr> {
     void walk_subcontext2(sweep &sub) { sub.walk(); }
 
     void walk_uniq_contents2(sweep &sub) { sub.walk(); }
-
-    void walk_box_contents2(sweep &sub, shape::ptr &box_dp) {
-        return;
-    }
 
     void walk_struct2(const uint8_t *end_sp) {
         while (this->sp != end_sp) {
