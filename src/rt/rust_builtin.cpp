@@ -431,16 +431,43 @@ nano_time(uint64_t *ns) {
     *ns = t.time_ns();
 }
 
+extern "C" CDECL rust_sched_id
+rust_get_sched_id() {
+    rust_task *task = rust_task_thread::get_task();
+    return task->sched->get_id();
+}
+
+extern "C" CDECL rust_sched_id
+rust_new_sched(size_t threads) {
+    rust_task *task = rust_task_thread::get_task();
+    A(task->thread, threads > 0,
+      "Can't create a scheduler with no threads, silly!");
+    return task->kernel->create_scheduler(threads);
+}
+
 extern "C" CDECL rust_task_id
 get_task_id() {
     rust_task *task = rust_task_thread::get_task();
     return task->user.id;
 }
 
+static rust_task_id
+new_task_common(rust_scheduler *sched, rust_task *parent) {
+    return sched->create_task(parent, NULL);
+}
+
 extern "C" CDECL rust_task_id
 new_task() {
     rust_task *task = rust_task_thread::get_task();
-    return task->sched->create_task(task, NULL);
+    return new_task_common(task->sched, task);
+}
+
+extern "C" CDECL rust_task_id
+rust_new_task_in_sched(rust_sched_id id) {
+    rust_task *task = rust_task_thread::get_task();
+    rust_scheduler *sched = task->kernel->get_scheduler_by_id(id);
+    // FIXME: What if we didn't get the scheduler?
+    return new_task_common(sched, task);
 }
 
 extern "C" CDECL void

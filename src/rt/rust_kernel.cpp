@@ -59,10 +59,11 @@ void rust_kernel::free(void *mem) {
 rust_sched_id
 rust_kernel::create_scheduler(size_t num_threads) {
     I(this, !sched_lock.lock_held_by_current_thread());
+    rust_sched_id id;
     rust_scheduler *sched;
     {
         scoped_lock with(sched_lock);
-        rust_sched_id id = max_sched_id++;
+        id = max_sched_id++;
         K(srv, id != INTPTR_MAX, "Hit the maximum scheduler id");
         sched = new (this, "rust_scheduler")
             rust_scheduler(this, srv, num_threads, id);
@@ -72,7 +73,7 @@ rust_kernel::create_scheduler(size_t num_threads) {
         live_schedulers++;
     }
     sched->start_task_threads();
-    return 0;
+    return id;
 }
 
 rust_scheduler *
