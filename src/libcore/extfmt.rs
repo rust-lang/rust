@@ -326,7 +326,7 @@ mod rt {
               count_implied { s }
               count_is(max) {
                 if max as uint < str::char_len(s) {
-                    str::substr(s, 0u, max as uint)
+                    str::unsafe::slice_bytes(s, 0u, max as uint)
                 } else { s }
               }
             };
