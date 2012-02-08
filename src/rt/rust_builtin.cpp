@@ -626,6 +626,46 @@ rust_log_console_off() {
     log_console_off(task->kernel->env);
 }
 
+extern "C" CDECL lock_and_signal *
+rust_dbg_lock_create() {
+    return new lock_and_signal();
+}
+
+extern "C" CDECL void
+rust_dbg_lock_destroy(lock_and_signal *lock) {
+    rust_task *task = rust_task_thread::get_task();
+    I(task->thread, lock);
+    delete lock;
+}
+
+extern "C" CDECL void
+rust_dbg_lock_lock(lock_and_signal *lock) {
+    rust_task *task = rust_task_thread::get_task();
+    I(task->thread, lock);
+    lock->lock();
+}
+
+extern "C" CDECL void
+rust_dbg_lock_unlock(lock_and_signal *lock) {
+    rust_task *task = rust_task_thread::get_task();
+    I(task->thread, lock);
+    lock->unlock();
+}
+
+extern "C" CDECL void
+rust_dbg_lock_wait(lock_and_signal *lock) {
+    rust_task *task = rust_task_thread::get_task();
+    I(task->thread, lock);
+    lock->wait();
+}
+
+extern "C" CDECL void
+rust_dbg_lock_signal(lock_and_signal *lock) {
+    rust_task *task = rust_task_thread::get_task();
+    I(task->thread, lock);
+    lock->signal();
+}
+
 //
 // Local Variables:
 // mode: C++

@@ -504,6 +504,74 @@ mod tests {
         comm::recv(po);
     }
 
+    #[nolink]
+    native mod rt {
+        fn rust_dbg_lock_create() -> *ctypes::void;
+        fn rust_dbg_lock_destroy(lock: *ctypes::void);
+        fn rust_dbg_lock_lock(lock: *ctypes::void);
+        fn rust_dbg_lock_unlock(lock: *ctypes::void);
+        fn rust_dbg_lock_wait(lock: *ctypes::void);
+        fn rust_dbg_lock_signal(lock: *ctypes::void);
+    }
+
+    #[test]
+    fn spawn_sched_blocking() {
+
+        // Testing that a task in one scheduler can block natively
+        // without affecting other schedulers
+        iter::repeat(20u) {||
+
+            let start_po = comm::port();
+            let start_ch = comm::chan(start_po);
+            let fin_po = comm::port();
+            let fin_ch = comm::chan(fin_po);
+
+            let lock = rt::rust_dbg_lock_create();
+
+            spawn_sched(1u) {||
+                rt::rust_dbg_lock_lock(lock);
+
+                comm::send(start_ch, ());
+
+                // Block the scheduler thread
+                rt::rust_dbg_lock_wait(lock);
+                rt::rust_dbg_lock_unlock(lock);
+
+                comm::send(fin_ch, ());
+            };
+
+            // Wait until the other task has its lock
+            comm::recv(start_po);
+
+            fn pingpong(po: comm::port<int>, ch: comm::chan<int>) {
+                let val = 20;
+                while val > 0 {
+                    val = comm::recv(po);
+                    comm::send(ch, val - 1);
+                }
+            }
+
+            let setup_po = comm::port();
+            let setup_ch = comm::chan(setup_po);
+            let parent_po = comm::port();
+            let parent_ch = comm::chan(parent_po);
+            spawn {||
+                let child_po = comm::port();
+                comm::send(setup_ch, comm::chan(child_po));
+                pingpong(child_po, parent_ch);
+            };
+
+            let child_ch = comm::recv(setup_po);
+            comm::send(child_ch, 20);
+            pingpong(parent_po, child_ch);
+            rt::rust_dbg_lock_lock(lock);
+            rt::rust_dbg_lock_signal(lock);
+            rt::rust_dbg_lock_unlock(lock);
+            comm::recv(fin_po);
+            rt::rust_dbg_lock_destroy(lock);
+        }
+    }
+
 }
 
 
