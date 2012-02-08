@@ -15,6 +15,7 @@
 #include "rust_kernel.h"
 #include "rust_obstack.h"
 #include "boxed_region.h"
+#include "rust_stack.h"
 
 // Corresponds to the rust chan (currently _chan) type.
 struct chan_handle {
@@ -23,18 +24,6 @@ struct chan_handle {
 };
 
 struct rust_box;
-
-struct stk_seg {
-    stk_seg *prev;
-    stk_seg *next;
-    uintptr_t end;
-    unsigned int valgrind_id;
-#ifndef _LP64
-    uint32_t pad;
-#endif
-
-    uint8_t data[];
-};
 
 struct frame_glue_fns {
     uintptr_t mark_glue_off;
