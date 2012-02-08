@@ -21,7 +21,7 @@ fn setenv(n: str, v: str) { }
 fn env() -> [(str,str)] {
     let pairs = [];
     for p in os::rustrt::rust_env_pairs() {
-        let vs = str::split(p, '=' as u8);
+        let vs = str::split_char(p, '=');
         assert vec::len(vs) == 2u;
         pairs += [(vs[0], vs[1])];
     }
