@@ -153,7 +153,13 @@ rust_run_program(const char* argv[],
     if (err_fd) dup2(err_fd, 2);
     /* Close all other fds. */
     for (int fd = getdtablesize() - 1; fd >= 3; fd--) close(fd);
-    if (dir) { chdir(dir); }
+    if (dir) {
+        /* FIXME: Hack to get around GCC 4.6 warnings: chdir is marked __attribute__((warn_unused_result))
+           Realistically it's in good faith; this should be checked for failure.
+        */
+        int _chdir_res __attribute__((unused));
+        _chdir_res = chdir(dir);
+    }
 
 #ifdef __APPLE__
     if (envp) {
