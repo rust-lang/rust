@@ -37,6 +37,7 @@ export is_alphabetic,
        is_XID_start, is_XID_continue,
        is_lowercase, is_uppercase,
        is_whitespace, is_alphanumeric,
+       is_ascii,
        to_digit, to_lower, to_upper, maybe_digit, cmp;
 
 import is_alphabetic = unicode::derived_property::Alphabetic;
@@ -84,6 +85,9 @@ pure fn is_alphanumeric(c: char) -> bool {
         unicode::general_category::No(c);
 }
 
+pure fn is_ascii(c: char) -> bool {
+   c - ('\x7F' & c) == '\x00'
+}
 
 #[doc(
   brief = "Convert a char to the corresponding digit. \
@@ -221,3 +225,10 @@ fn test_to_upper() {
     //assert (to_upper('ü') == 'Ü');
     assert (to_upper('ß') == 'ß');
 }
+
+#[test]
+fn test_ascii() unsafe {
+   assert str::all("banana", char::is_ascii);
+   assert ! str::all("ประเทศไทย中华Việt Nam", char::is_ascii);
+}
+
