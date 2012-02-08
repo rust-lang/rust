@@ -44,6 +44,7 @@ export get_task;
 export spawn;
 export spawn_joinable;
 export spawn_connected;
+export spawn_sched;
 export connected_fn;
 export connected_task;
 export currently_unwinding;
@@ -62,10 +63,15 @@ type rust_closure = {
 #[link_name = "rustrt"]
 #[abi = "cdecl"]
 native mod rustrt {
+    fn rust_get_sched_id() -> sched_id;
+    fn rust_new_sched(num_threads: c::uintptr_t) -> sched_id;
+
     fn get_task_id() -> task_id;
     fn rust_get_task() -> *rust_task;
 
     fn new_task() -> task_id;
+    fn rust_new_task_in_sched(id: sched_id) -> task_id;
+
     fn drop_task(task_id: *rust_task);
     fn get_task_pointer(id: task_id) -> *rust_task;
 
@@ -85,6 +91,7 @@ type rust_task =
 
 resource rust_task_ptr(task: *rust_task) { rustrt::drop_task(task); }
 
+type sched_id = int;
 type task_id = int;
 
 /*
@@ -111,14 +118,17 @@ Returns:
 A handle to the new task
 */
 fn spawn(+f: fn~()) -> task {
-    spawn_inner(f, none)
+    spawn_inner(f, none, new_task_in_this_sched)
 }
 
-fn spawn_inner(-f: fn~(),
-            notify: option<comm::chan<task_notification>>) -> task unsafe {
+fn spawn_inner(
+    -f: fn~(),
+    notify: option<comm::chan<task_notification>>,
+    new_task: fn() -> task_id
+) -> task unsafe {
     let closure: *rust_closure = unsafe::reinterpret_cast(ptr::addr_of(f));
     #debug("spawn: closure={%x,%x}", (*closure).fnptr, (*closure).envptr);
-    let id = rustrt::new_task();
+    let id = new_task();
 
     // set up notifications if they are enabled.
     option::may(notify) {|c|
@@ -132,6 +142,39 @@ fn spawn_inner(-f: fn~(),
     ret id;
 }
 
+fn new_task_in_this_sched() -> task_id {
+    rustrt::new_task()
+}
+
+fn new_task_in_new_sched(num_threads: uint) -> task_id {
+    let sched_id = rustrt::rust_new_sched(num_threads);
+    rustrt::rust_new_task_in_sched(sched_id)
+}
+
+/*
+Function: spawn_sched
+
+Creates a new scheduler and executes a task on it. Tasks subsequently
+spawned by that task will also execute on the new scheduler. When
+there are no more tasks to execute the scheduler terminates.
+
+Arguments:
+
+num_threads - The number of OS threads to dedicate schedule tasks on
+f - A unique closure to execute as a task on the new scheduler
+
+Failure:
+
+The number of threads must be greater than 0
+
+*/
+fn spawn_sched(num_threads: uint, +f: fn~()) -> task {
+    if num_threads < 1u {
+        fail "Can not create a scheduler with no threads";
+    }
+    spawn_inner(f, none, bind new_task_in_new_sched(num_threads))
+}
+
 /*
 Type: joinable_task
 
@@ -142,7 +185,7 @@ type joinable_task = (task, comm::port<task_notification>);
 fn spawn_joinable(+f: fn~()) -> joinable_task {
     let notify_port = comm::port();
     let notify_chan = comm::chan(notify_port);
-    let task = spawn_inner(f, some(notify_chan));
+    let task = spawn_inner(f, some(notify_chan), new_task_in_this_sched);
     ret (task, notify_port);
     /*
     resource notify_rsrc(data: (comm::chan<task_notification>,
@@ -411,6 +454,56 @@ mod tests {
             _ { fail; }
         }
     }
+
+    #[test]
+    #[should_fail]
+    #[ignore(cfg(target_os = "win32"))]
+    fn spawn_sched_no_threads() {
+        spawn_sched(0u) {|| };
+    }
+
+    #[test]
+    fn spawn_sched_1() {
+        let po = comm::port();
+        let ch = comm::chan(po);
+
+        fn f(i: int, ch: comm::chan<()>) {
+            let parent_sched_id = rustrt::rust_get_sched_id();
+
+            spawn_sched(1u) {||
+                let child_sched_id = rustrt::rust_get_sched_id();
+                assert parent_sched_id != child_sched_id;
+
+                if (i == 0) {
+                    comm::send(ch, ());
+                } else {
+                    f(i - 1, ch);
+                }
+            };
+
+        }
+        f(10, ch);
+        comm::recv(po);
+    }
+
+    #[test]
+    fn spawn_sched_childs_on_same_sched() {
+        let po = comm::port();
+        let ch = comm::chan(po);
+
+        spawn_sched(1u) {||
+            let parent_sched_id = rustrt::rust_get_sched_id();
+            spawn {||
+                let child_sched_id = rustrt::rust_get_sched_id();
+                // This should be on the same scheduler
+                assert parent_sched_id == child_sched_id;
+                comm::send(ch, ());
+            };
+        };
+
+        comm::recv(po);
+    }
+
 }
 
 

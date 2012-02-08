@@ -7,7 +7,7 @@ type task = *ctypes::void;
 type closure = *ctypes::void;
 
 native mod rustrt {
-    fn rust_new_sched(num_threads: ctypes::size_t) -> sched_id;
+    fn rust_new_sched(num_threads: uint) -> sched_id;
     fn rust_get_sched_id() -> sched_id;
     fn rust_new_task_in_sched(id: sched_id) -> task_id;
     fn start_task(id: task_id, f: closure);
