@@ -11,7 +11,7 @@ export is_zero, is_infinite, is_finite;
 export NaN, is_NaN, infinity, neg_infinity;
 export consts;
 export logarithm;
-export acos, asin, atan, atan2, cbrt, ceil, copysign, cos, cosh;
+export acos, asin, atan, atan2, cbrt, ceil, copysign, cos, cosh, floor;
 export erf, erfc, exp, expm1, exp2, abs, abs_sub;
 export mul_add, fmax, fmin, nextafter, frexp, hypot, ldexp;
 export lgamma, ln, log_radix, ln1p, log10, log2, ilog_radix;
