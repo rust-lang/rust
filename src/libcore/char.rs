@@ -85,8 +85,16 @@ pure fn is_alphanumeric(c: char) -> bool {
         unicode::general_category::No(c);
 }
 
+#[doc( brief = "Indicates whether the character is an ASCII character" )]
 pure fn is_ascii(c: char) -> bool {
    c - ('\x7F' & c) == '\x00'
+}
+
+#[doc( brief = "Indicates whether the character is numeric (Nd, Nl, or No)" )]
+pure fn is_digit(c: char) -> bool {
+    ret unicode::general_category::Nd(c) ||
+        unicode::general_category::Nl(c) ||
+        unicode::general_category::No(c);
 }
 
 #[doc(
@@ -227,8 +235,18 @@ fn test_to_upper() {
 }
 
 #[test]
-fn test_ascii() unsafe {
+fn test_is_ascii() unsafe {
    assert str::all("banana", char::is_ascii);
    assert ! str::all("ประเทศไทย中华Việt Nam", char::is_ascii);
+}
+
+#[test]
+fn test_is_digit() {
+   assert is_digit('2');
+   assert is_digit('7');
+   assert ! is_digit('c');
+   assert ! is_digit('i');
+   assert ! is_digit('z');
+   assert ! is_digit('Q');
 }
 
