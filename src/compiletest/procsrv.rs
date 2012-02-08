@@ -26,7 +26,7 @@ fn target_env(lib_path: str, prog: str) -> option<[(str,str)]> {
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
-fn target_env(lib_path: str, prog: str) -> option<[(str,str)]> {
+fn target_env(_lib_path: str, _prog: str) -> option<[(str,str)]> {
     none
 }
 
