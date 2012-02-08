@@ -438,7 +438,7 @@ rust_get_sched_id() {
 }
 
 extern "C" CDECL rust_sched_id
-rust_new_sched(size_t threads) {
+rust_new_sched(uintptr_t threads) {
     rust_task *task = rust_task_thread::get_task();
     A(task->thread, threads > 0,
       "Can't create a scheduler with no threads, silly!");
