@@ -481,6 +481,16 @@ drop_task(rust_task *target) {
     }
 }
 
+extern "C" CDECL void
+rust_task_config_notify(rust_task_id task_id, chan_handle *chan) {
+    rust_task *task = rust_task_thread::get_task();
+    rust_task *target = task->kernel->get_task_by_id(task_id);
+    A(task->thread, target != NULL,
+      "This function should only be called when we know the task exists");
+    target->config_notify(*chan);
+    target->deref();
+}
+
 extern "C" CDECL rust_task *
 get_task_pointer(rust_task_id id) {
     rust_task *task = rust_task_thread::get_task();

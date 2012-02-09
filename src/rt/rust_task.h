@@ -181,6 +181,8 @@ public:
     void reset_stack_limit();
     bool on_rust_stack();
     void check_stack_canary();
+
+    void config_notify(chan_handle chan);
 };
 
 //

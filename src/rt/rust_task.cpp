@@ -713,6 +713,12 @@ rust_task::check_stack_canary() {
     ::check_stack_canary(stk);
 }
 
+void
+rust_task::config_notify(chan_handle chan) {
+    user.notify_enabled = true;
+    user.notify_chan = chan;
+}
+
 //
 // Local Variables:
 // mode: C++
