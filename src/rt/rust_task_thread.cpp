@@ -13,6 +13,8 @@ pthread_key_t rust_task_thread::task_key;
 DWORD rust_task_thread::task_key;
 #endif
 
+const size_t C_STACK_SIZE = (1024*1024);
+
 bool rust_task_thread::tls_initialized = false;
 
 rust_task_thread::rust_task_thread(rust_scheduler *sched,
@@ -34,7 +36,8 @@ rust_task_thread::rust_task_thread(rust_scheduler *sched,
     id(id),
     min_stack_size(kernel->env->min_stack_size),
     env(kernel->env),
-    should_exit(false)
+    should_exit(false),
+    cached_c_stack(NULL)
 {
     LOGPTR(this, "new dom", (uintptr_t)this);
     isaac_init(kernel, &rctx);
@@ -58,6 +61,10 @@ rust_task_thread::~rust_task_thread() {
 #ifndef __WIN32__
     pthread_attr_destroy(&attr);
 #endif
+
+    if (cached_c_stack) {
+        destroy_stack(kernel, cached_c_stack);
+    }
 }
 
 void
@@ -365,6 +372,27 @@ rust_task_thread::exit() {
     scoped_lock with(lock);
     should_exit = true;
     lock.signal();
+}
+
+stk_seg *
+rust_task_thread::borrow_c_stack() {
+
+    if (cached_c_stack) {
+        stk_seg *your_stack = cached_c_stack;
+        cached_c_stack = NULL;
+        return your_stack;
+    } else {
+        return create_stack(kernel, C_STACK_SIZE);
+    }
+}
+
+void
+rust_task_thread::return_c_stack(stk_seg *stack) {
+    if (cached_c_stack) {
+        destroy_stack(kernel, stack);
+    } else {
+        cached_c_stack = stack;
+    }
 }
 
 //

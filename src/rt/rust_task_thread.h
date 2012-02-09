@@ -1,6 +1,7 @@
 #ifndef RUST_TASK_THREAD_H
 #define RUST_TASK_THREAD_H
 
+#include "rust_stack.h"
 #include "context.h"
 
 #ifndef _WIN32
@@ -91,6 +92,12 @@ struct rust_task_thread : public kernel_owned<rust_task_thread>,
 
     bool should_exit;
 
+private:
+
+    stk_seg *cached_c_stack;
+
+public:
+
     // Only a pointer to 'name' is kept, so it must live as long as this
     // domain.
     rust_task_thread(rust_scheduler *sched, rust_srv *srv, int id);
@@ -127,6 +134,10 @@ struct rust_task_thread : public kernel_owned<rust_task_thread>,
 
     // Tells the scheduler to exit it's scheduling loop and thread
     void exit();
+
+    // Called by tasks when they need a stack on which to run C code
+    stk_seg *borrow_c_stack();
+    void return_c_stack(stk_seg *stack);
 };
 
 inline rust_log &
