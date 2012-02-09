@@ -308,7 +308,7 @@ fn mk_ctxt(llmod: ModuleRef) -> ctxt {
 fn add_bool(&dest: [u8], val: bool) { dest += [if val { 1u8 } else { 0u8 }]; }
 
 fn add_u16(&dest: [u8], val: u16) {
-    dest += [val & 0xffu16 as u8, val >> 8u16 as u8];
+    dest += [(val & 0xffu16) as u8, (val >> 8u16) as u8];
 }
 
 fn add_substr(&dest: [u8], src: [u8]) {

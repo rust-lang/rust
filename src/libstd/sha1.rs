@@ -193,10 +193,10 @@ fn mk_sha1() -> sha1 {
         if !st.computed { pad_msg(st); st.computed = true; }
         let rs: [u8] = [];
         for hpart: u32 in st.h {
-            let a = hpart >> 24u32 & 0xFFu32 as u8;
-            let b = hpart >> 16u32 & 0xFFu32 as u8;
-            let c = hpart >> 8u32 & 0xFFu32 as u8;
-            let d = hpart & 0xFFu32 as u8;
+            let a = (hpart >> 24u32 & 0xFFu32) as u8;
+            let b = (hpart >> 16u32 & 0xFFu32) as u8;
+            let c = (hpart >> 8u32 & 0xFFu32) as u8;
+            let d = (hpart & 0xFFu32) as u8;
             rs += [a, b, c, d];
         }
         ret rs;
@@ -238,14 +238,14 @@ fn mk_sha1() -> sha1 {
         }
 
         // Store the message length as the last 8 octets
-        st.msg_block[56] = st.len_high >> 24u32 & 0xFFu32 as u8;
-        st.msg_block[57] = st.len_high >> 16u32 & 0xFFu32 as u8;
-        st.msg_block[58] = st.len_high >> 8u32 & 0xFFu32 as u8;
-        st.msg_block[59] = st.len_high & 0xFFu32 as u8;
-        st.msg_block[60] = st.len_low >> 24u32 & 0xFFu32 as u8;
-        st.msg_block[61] = st.len_low >> 16u32 & 0xFFu32 as u8;
-        st.msg_block[62] = st.len_low >> 8u32 & 0xFFu32 as u8;
-        st.msg_block[63] = st.len_low & 0xFFu32 as u8;
+        st.msg_block[56] = (st.len_high >> 24u32 & 0xFFu32) as u8;
+        st.msg_block[57] = (st.len_high >> 16u32 & 0xFFu32) as u8;
+        st.msg_block[58] = (st.len_high >> 8u32 & 0xFFu32) as u8;
+        st.msg_block[59] = (st.len_high & 0xFFu32) as u8;
+        st.msg_block[60] = (st.len_low >> 24u32 & 0xFFu32) as u8;
+        st.msg_block[61] = (st.len_low >> 16u32 & 0xFFu32) as u8;
+        st.msg_block[62] = (st.len_low >> 8u32 & 0xFFu32) as u8;
+        st.msg_block[63] = (st.len_low & 0xFFu32) as u8;
         process_msg_block(st);
     }
 

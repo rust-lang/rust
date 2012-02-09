@@ -70,8 +70,8 @@ fn basename(p: path) -> path unsafe {
         if i == -1 { ret p; }
     }
     let len = str::byte_len(p);
-    if i + 1 as uint >= len { ret p; }
-    ret str::unsafe::slice_bytes(p, i + 1 as uint, len);
+    if (i + 1) as uint >= len { ret p; }
+    ret str::unsafe::slice_bytes(p, (i + 1) as uint, len);
 }
 
 

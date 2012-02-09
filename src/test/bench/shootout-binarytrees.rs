@@ -38,7 +38,7 @@ fn main(args: [str]) {
     let long_lived_tree = bottom_up_tree(0, max_depth);
     let depth = min_depth;
     while depth <= max_depth {
-        let iterations = int::pow(2, max_depth - depth + min_depth as uint);
+        let iterations = int::pow(2, (max_depth - depth + min_depth) as uint);
         let chk = 0;
         let i = 1;
         while i <= iterations {

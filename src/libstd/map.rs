@@ -296,7 +296,7 @@ mod chained {
 
         fn insert(k: K, v: V) -> bool {
             let nchains = vec::len(self.chains);
-            let load = {num: self.size + 1u as int, den: nchains as int};
+            let load = {num: (self.size + 1u) as int, den: nchains as int};
             // Structural consts would be nice. This is a const 3/4
             // load factor that we compare against.
             if !util::rational_leq(load, {num:3, den:4}) { rehash(self); }

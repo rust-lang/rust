@@ -19,22 +19,22 @@ type doc = {data: @[u8], start: uint, end: uint};
 
 fn vint_at(data: [u8], start: uint) -> {val: uint, next: uint} {
     let a = data[start];
-    if a & 0x80u8 != 0u8 { ret {val: a & 0x7fu8 as uint, next: start + 1u}; }
+    if a & 0x80u8 != 0u8 {
+        ret {val: (a & 0x7fu8) as uint, next: start + 1u};
+    }
     if a & 0x40u8 != 0u8 {
-        ret {val: (a & 0x3fu8 as uint) << 8u | (data[start + 1u] as uint),
+        ret {val: ((a & 0x3fu8) as uint) << 8u | (data[start + 1u] as uint),
              next: start + 2u};
     } else if a & 0x20u8 != 0u8 {
-        ret {val:
-                 (a & 0x1fu8 as uint) << 16u |
-                     (data[start + 1u] as uint) << 8u |
-                     (data[start + 2u] as uint),
+        ret {val: ((a & 0x1fu8) as uint) << 16u |
+                 (data[start + 1u] as uint) << 8u |
+                 (data[start + 2u] as uint),
              next: start + 3u};
     } else if a & 0x10u8 != 0u8 {
-        ret {val:
-                 (a & 0x0fu8 as uint) << 24u |
-                     (data[start + 1u] as uint) << 16u |
-                     (data[start + 2u] as uint) << 8u |
-                     (data[start + 3u] as uint),
+        ret {val: ((a & 0x0fu8) as uint) << 24u |
+                 (data[start + 1u] as uint) << 16u |
+                 (data[start + 2u] as uint) << 8u |
+                 (data[start + 3u] as uint),
              next: start + 4u};
     } else { #error("vint too big"); fail; }
 }
@@ -122,16 +122,14 @@ fn write_sized_vint(w: io::writer, n: uint, size: uint) {
     let buf: [u8];
     alt size {
       1u { buf = [0x80u8 | (n as u8)]; }
-      2u { buf = [0x40u8 | (n >> 8u as u8), n & 0xffu as u8]; }
+      2u { buf = [0x40u8 | ((n >> 8u) as u8), (n & 0xffu) as u8]; }
       3u {
-        buf =
-            [0x20u8 | (n >> 16u as u8), n >> 8u & 0xffu as u8,
-             n & 0xffu as u8];
+        buf = [0x20u8 | ((n >> 16u) as u8), (n >> 8u & 0xffu) as u8,
+               (n & 0xffu) as u8];
       }
       4u {
-        buf =
-            [0x10u8 | (n >> 24u as u8), n >> 16u & 0xffu as u8,
-             n >> 8u & 0xffu as u8, n & 0xffu as u8];
+        buf = [0x10u8 | ((n >> 24u) as u8), (n >> 16u & 0xffu) as u8,
+               (n >> 8u & 0xffu) as u8, (n & 0xffu) as u8];
       }
       _ { #error("vint to write too big"); fail; }
     }

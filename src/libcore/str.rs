@@ -142,25 +142,30 @@ fn push_utf8_bytes(&s: str, ch: char) {
         if code < max_one_b {
             [code as u8]
         } else if code < max_two_b {
-            [code >> 6u & 31u | tag_two_b as u8, code & 63u | tag_cont as u8]
+            [(code >> 6u & 31u | tag_two_b) as u8,
+             (code & 63u | tag_cont) as u8]
         } else if code < max_three_b {
-            [code >> 12u & 15u | tag_three_b as u8,
-             code >> 6u & 63u | tag_cont as u8, code & 63u | tag_cont as u8]
+            [(code >> 12u & 15u | tag_three_b) as u8,
+             (code >> 6u & 63u | tag_cont) as u8,
+             (code & 63u | tag_cont) as u8]
         } else if code < max_four_b {
-            [code >> 18u & 7u | tag_four_b as u8,
-             code >> 12u & 63u | tag_cont as u8,
-             code >> 6u & 63u | tag_cont as u8, code & 63u | tag_cont as u8]
+            [(code >> 18u & 7u | tag_four_b) as u8,
+             (code >> 12u & 63u | tag_cont) as u8,
+             (code >> 6u & 63u | tag_cont) as u8,
+             (code & 63u | tag_cont) as u8]
         } else if code < max_five_b {
-            [code >> 24u & 3u | tag_five_b as u8,
-             code >> 18u & 63u | tag_cont as u8,
-             code >> 12u & 63u | tag_cont as u8,
-             code >> 6u & 63u | tag_cont as u8, code & 63u | tag_cont as u8]
+            [(code >> 24u & 3u | tag_five_b) as u8,
+             (code >> 18u & 63u | tag_cont) as u8,
+             (code >> 12u & 63u | tag_cont) as u8,
+             (code >> 6u & 63u | tag_cont) as u8,
+             (code & 63u | tag_cont) as u8]
         } else {
-            [code >> 30u & 1u | tag_six_b as u8,
-             code >> 24u & 63u | tag_cont as u8,
-             code >> 18u & 63u | tag_cont as u8,
-             code >> 12u & 63u | tag_cont as u8,
-             code >> 6u & 63u | tag_cont as u8, code & 63u | tag_cont as u8]
+            [(code >> 30u & 1u | tag_six_b) as u8,
+             (code >> 24u & 63u | tag_cont) as u8,
+             (code >> 18u & 63u | tag_cont) as u8,
+             (code >> 12u & 63u | tag_cont) as u8,
+             (code >> 6u & 63u | tag_cont) as u8,
+             (code & 63u | tag_cont) as u8]
         };
     push_bytes(s, bytes);
 }
@@ -1211,13 +1216,13 @@ fn char_range_at(s: str, i: uint) -> {ch: char, next: uint} {
         let byte = s[i];
         assert (byte & 192u8 == tag_cont_u8);
         val <<= 6u;
-        val += byte & 63u8 as uint;
+        val += (byte & 63u8) as uint;
         i += 1u;
     }
     // Clunky way to get the right bits from the first byte. Uses two shifts,
     // the first to clip off the marker bits at the left of the byte, and then
     // a second (as uint) to get it to the right position.
-    val += (b0 << (w + 1u as u8) as uint) << ((w - 1u) * 6u - w - 1u);
+    val += ((b0 << ((w + 1u) as u8)) as uint) << ((w - 1u) * 6u - w - 1u);
     ret {ch: val as char, next: i};
 }
 

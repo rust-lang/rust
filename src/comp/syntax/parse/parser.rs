@@ -1123,7 +1123,8 @@ type op_spec = {tok: token::token, op: ast::binop, prec: int};
 
 // FIXME make this a const, don't store it in parser state
 fn prec_table() -> @[op_spec] {
-    ret @[{tok: token::BINOP(token::STAR), op: ast::mul, prec: 11},
+    ret @[// 'as' sits between here with 12
+          {tok: token::BINOP(token::STAR), op: ast::mul, prec: 11},
           {tok: token::BINOP(token::SLASH), op: ast::div, prec: 11},
           {tok: token::BINOP(token::PERCENT), op: ast::rem, prec: 11},
           {tok: token::BINOP(token::PLUS), op: ast::add, prec: 10},
@@ -1134,7 +1135,6 @@ fn prec_table() -> @[op_spec] {
           {tok: token::BINOP(token::AND), op: ast::bitand, prec: 8},
           {tok: token::BINOP(token::CARET), op: ast::bitxor, prec: 7},
           {tok: token::BINOP(token::OR), op: ast::bitor, prec: 6},
-          // 'as' sits between here with 5
           {tok: token::LT, op: ast::lt, prec: 4},
           {tok: token::LE, op: ast::le, prec: 4},
           {tok: token::GE, op: ast::ge, prec: 4},
@@ -1151,7 +1151,7 @@ fn parse_binops(p: parser) -> @ast::expr {
 
 const unop_prec: int = 100;
 
-const as_prec: int = 5;
+const as_prec: int = 12;
 
 fn parse_more_binops(p: parser, plhs: pexpr, min_prec: int) ->
    @ast::expr {

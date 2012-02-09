@@ -48,7 +48,7 @@ fn run(args: [str]) {
     let elapsed = end - start;
     std::io::stdout().write_str(#fmt("Count is %?\n", result));
     std::io::stdout().write_str(#fmt("Test took %? seconds\n", elapsed));
-    let thruput = (size / workers * workers as float) / (elapsed as float);
+    let thruput = ((size / workers * workers) as float) / (elapsed as float);
     std::io::stdout().write_str(#fmt("Throughput=%f per sec\n", thruput));
 }
 

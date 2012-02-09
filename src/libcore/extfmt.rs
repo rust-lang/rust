@@ -119,7 +119,7 @@ mod ct {
         if i >= lim { ret none; }
         let c = s[i];
         if !('0' as u8 <= c && c <= '9' as u8) { ret option::none; }
-        let n = c - ('0' as u8) as uint;
+        let n = (c - ('0' as u8)) as uint;
         ret alt peek_num(s, i + 1u, lim) {
               none { some({num: n, next: i + 1u}) }
               some(next) {

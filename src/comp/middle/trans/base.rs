@@ -231,9 +231,8 @@ fn sanitize(s: str) -> str {
 
 fn log_fn_time(ccx: @crate_ctxt, name: str, start: time::timeval,
                end: time::timeval) {
-    let elapsed =
-        1000 * (end.sec - start.sec as int) +
-            ((end.usec as int) - (start.usec as int)) / 1000;
+    let elapsed = 1000 * ((end.sec - start.sec) as int) +
+        ((end.usec as int) - (start.usec as int)) / 1000;
     *ccx.stats.fn_times += [{ident: name, time: elapsed}];
 }
 
