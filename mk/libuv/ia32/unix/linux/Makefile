@@ -7,7 +7,7 @@
 MAKEFLAGS=-r
 
 # The source directory tree.
-srcdir := ../../../..
+srcdir := ../../../../..
 abs_srcdir := $(abspath $(srcdir))
 
 # The name of the builddir.
@@ -56,7 +56,7 @@ CFLAGS.target ?= $(CFLAGS)
 CXX.target ?= $(CXX)
 CXXFLAGS.target ?= $(CXXFLAGS)
 LINK.target ?= $(LINK)
-LDFLAGS.target ?= $(LDFLAGS) 
+LDFLAGS.target ?= $(LDFLAGS)
 AR.target ?= $(AR)
 ARFLAGS.target ?= crsT
 
@@ -323,7 +323,7 @@ ifeq ($(strip $(foreach prefix,$(NO_LOAD),\
 endif
 
 #quiet_cmd_regen_makefile = ACTION Regenerating $@
-#cmd_regen_makefile = ./src/libuv/build/gyp/gyp -fmake --ignore-environment "--toplevel-dir=." -Isrc/libuv/common.gypi "--depth=." "--generator-output=mk/libuv/ia32/unix" "-Ddefault_configuration=Default" "-Dcomponent=static_library" "-Dlibrary=static_library" "-Dtarget_arch=ia32" "-DOS=linux" src/libuv/uv.gyp
+#cmd_regen_makefile = ./src/libuv/build/gyp/gyp -fmake --ignore-environment "--toplevel-dir=." -Isrc/libuv/common.gypi "--depth=." "--generator-output=mk/libuv/ia32/unix/linux" "-Ddefault_configuration=Default" "-Dcomponent=static_library" "-Dlibrary=static_library" "-Dtarget_arch=ia32" "-DOS=linux" src/libuv/uv.gyp
 #Makefile: $(srcdir)/src/libuv/uv.gyp $(srcdir)/src/libuv/common.gypi
 #	$(call do_cmd,regen_makefile)
 

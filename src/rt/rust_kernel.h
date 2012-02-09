@@ -7,7 +7,7 @@
 #include "rust_log.h"
 
 struct rust_task_thread;
-struct rust_scheduler;
+class rust_scheduler;
 
 typedef std::map<rust_sched_id, rust_scheduler*> sched_map;
 

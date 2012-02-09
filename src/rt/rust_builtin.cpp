@@ -15,6 +15,10 @@
 #include <sys/time.h>
 #endif
 
+#ifdef __FreeBSD__
+extern char **environ;
+#endif
+
 extern "C" CDECL rust_str*
 last_os_error() {
     rust_task *task = rust_task_thread::get_task();
