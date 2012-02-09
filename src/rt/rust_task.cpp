@@ -732,6 +732,11 @@ rust_task::config_notify(chan_handle chan) {
     notify_chan = chan;
 }
 
+// This is the function that switches stacks by calling another function with
+// a single void* argument while changing the stack pointer. It has a funny
+// name because gdb doesn't normally like to backtrace through split stacks
+// (thinks it indicates a bug), but has a special case to allow functions
+// named __morestack to move the stack pointer around.
 extern "C" void __morestack(void *args, void *fn_ptr, uintptr_t stack_ptr);
 
 static uintptr_t
