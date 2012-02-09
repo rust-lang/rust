@@ -42,7 +42,7 @@ public:
   void swap(context &out);
   void call(void *f, void *arg, void *sp);
 
-  void call_shim_on_c_stack(void *args, void *fn_ptr) {
+  void call_and_change_stacks(void *args, void *fn_ptr) {
       __morestack(args, fn_ptr, regs.esp);
   }
 };

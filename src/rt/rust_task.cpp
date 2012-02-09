@@ -194,7 +194,7 @@ void task_start_wrapper(spawn_args *a)
 
     // The cleanup work needs lots of stack
     cleanup_args ca = {a, threw_exception};
-    task->thread->c_context.call_shim_on_c_stack(&ca, (void*)cleanup_task);
+    task->thread->c_context.call_and_change_stacks(&ca, (void*)cleanup_task);
 
     task->ctx.next->swap(task->ctx);
 }
