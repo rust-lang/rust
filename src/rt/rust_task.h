@@ -110,6 +110,7 @@ private:
     // The stack used for running C code, borrowed from the scheduler thread
     stk_seg *c_stack;
     uintptr_t next_c_sp;
+    uintptr_t next_rust_sp;
 
     // Called when the atomic refcount reaches zero
     void delete_this();
@@ -194,6 +195,7 @@ public:
     void config_notify(chan_handle chan);
 
     void call_on_c_stack(void *args, void *fn_ptr);
+    void call_on_rust_stack(void *args, void *fn_ptr);
 };
 
 //

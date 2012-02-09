@@ -90,7 +90,8 @@ rust_task::rust_task(rust_task_thread *thread, rust_task_list *state,
     cc_counter(0),
     total_stack_sz(0),
     c_stack(NULL),
-    next_c_sp(0)
+    next_c_sp(0),
+    next_rust_sp(0)
 {
     LOGPTR(thread, "new task", (uintptr_t)this);
     DLOG(thread, task, "sizeof(task) = %d (0x%x)", sizeof *this, sizeof *this);
@@ -658,6 +659,7 @@ rust_task::prev_stack() {
 
 void
 rust_task::record_stack_limit() {
+    I(thread, stk);
     // The function prolog compares the amount of stack needed to the end of
     // the stack. As an optimization, when the frame size is less than 256
     // bytes, it will simply compare %esp to to the stack limit instead of
@@ -732,24 +734,58 @@ rust_task::config_notify(chan_handle chan) {
 
 extern "C" void __morestack(void *args, void *fn_ptr, uintptr_t stack_ptr);
 
+static uintptr_t
+sanitize_next_sp(uintptr_t next_sp) {
+
+    // Since I'm not precisely sure where the next stack pointer sits in
+    // relation to where the context switch actually happened, nor in relation
+    // to the amount of stack needed for calling __morestack I've added some
+    // extra bytes here.
+
+    // FIXME: On the rust stack this potentially puts is quite far into the
+    // red zone. Might want to just allocate a new rust stack every time we
+    // switch back to rust.
+    const uintptr_t padding = 16;
+
+    return align_down(next_sp - padding);
+}
+
 void
 rust_task::call_on_c_stack(void *args, void *fn_ptr) {
     I(thread, on_rust_stack());
 
+    next_rust_sp = get_sp();
+
     bool borrowed_a_c_stack = false;
+    uintptr_t sp;
     if (c_stack == NULL) {
         c_stack = thread->borrow_c_stack();
         next_c_sp = align_down(c_stack->end);
+        sp = next_c_sp;
         borrowed_a_c_stack = true;
+    } else {
+        sp = sanitize_next_sp(next_c_sp);
     }
 
-    __morestack(args, fn_ptr, next_c_sp);
+    __morestack(args, fn_ptr, sp);
 
     // Note that we may not actually get here if we threw an exception,
     // in which case we will return the c stack when the exception is caught.
     if (borrowed_a_c_stack) {
         return_c_stack();
     }
+}
+
+void
+rust_task::call_on_rust_stack(void *args, void *fn_ptr) {
+    I(thread, !on_rust_stack());
+    I(thread, next_rust_sp);
+
+    next_c_sp = get_sp();
+
+    uintptr_t sp = sanitize_next_sp(next_rust_sp);
+
+    __morestack(args, fn_ptr, sp);
 }
 
 void

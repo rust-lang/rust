@@ -71,11 +71,36 @@ upcall_call_shim_on_c_stack(void *args, void *fn_ptr) {
     try {
         task->call_on_c_stack(args, fn_ptr);
     } catch (...) {
-        A(task->thread, false, "Native code threw an exception");
+        LOG_ERR(task, task, "Native code threw an exception");
+        abort();
     }
 
     task = rust_task_thread::get_task();
     task->record_stack_limit();
+}
+
+/*
+ * The opposite of above. Starts on a C stack and switches to the Rust
+ * stack. This is the only upcall that runs from the C stack.
+ */
+extern "C" CDECL void
+upcall_call_shim_on_rust_stack(void *args, void *fn_ptr) {
+    rust_task *task = rust_task_thread::get_task();
+
+    // FIXME: Because of the hack in the other function that disables the
+    // stack limit when entering the C stack, here we restore the stack limit
+    // again.
+    task->record_stack_limit();
+
+    try {
+        task->call_on_rust_stack(args, fn_ptr);
+    } catch (...) {
+        // We can't count on being able to unwind through arbitrary
+        // code. Our best option is to just fail hard.
+        LOG_ERR(task, task,
+                "Rust task failed after reentering the Rust stack");
+        abort();
+    }
 }
 
 /**********************************************************************/
