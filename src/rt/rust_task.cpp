@@ -219,7 +219,6 @@ rust_task::rust_task(rust_task_thread *thread, rust_task_list *state,
     DLOG(thread, task, "sizeof(task) = %d (0x%x)", sizeof *this, sizeof *this);
 
     stk = new_stk(thread, this, init_stack_sz);
-    rust_sp = stk->end;
     if (supervisor) {
         supervisor->ref();
     }
@@ -336,7 +335,7 @@ rust_task::start(spawn_fn spawnee_fn,
 
     I(thread, stk->data != NULL);
 
-    char *sp = (char *)rust_sp;
+    char *sp = (char *)stk->end;
 
     sp -= sizeof(spawn_args);
 
