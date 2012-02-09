@@ -70,7 +70,7 @@ Copies data from one src to dst, overlap between the two pointers may occur.
 Count is the number of elements to copy and not the number of bytes.
 */
 unsafe fn memmove<T>(dst: *T, src: *T, count: uint)  {
-    rusti::memcpy(dst, src, count);
+    rusti::memmove(dst, src, count);
 }
 
 #[test]
