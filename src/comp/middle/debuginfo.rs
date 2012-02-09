@@ -802,7 +802,7 @@ fn create_function(fcx: @fn_ctxt) -> @metadata<subprogram_md> {
                 bound to non-function"); }
         }
       }
-      ast_map::node_method(method, _) {
+      ast_map::node_method(method, _, _) {
           (method.ident, method.decl.output, method.id)
       }
       ast_map::node_res_ctor(item) {

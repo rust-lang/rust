@@ -10,7 +10,7 @@ type path = [path_elt];
 enum ast_node {
     node_item(@item, @path),
     node_native_item(@native_item, @path),
-    node_method(@method, @path),
+    node_method(@method, node_id, @path),
     node_variant(variant, def_id, @path),
     node_expr(@expr),
     // Locals are numbered, because the alias analysis needs to know in which
@@ -69,7 +69,7 @@ fn map_item(i: @item, cx: ctx, v: vt) {
     cx.map.insert(i.id, node_item(i, @cx.path));
     alt i.node {
       item_impl(_, _, _, ms) {
-        for m in ms { cx.map.insert(m.id, node_method(m, @cx.path)); }
+        for m in ms { cx.map.insert(m.id, node_method(m, i.id, @cx.path)); }
       }
       item_res(_, _, _, dtor_id, ctor_id) {
         cx.map.insert(ctor_id, node_res_ctor(i));

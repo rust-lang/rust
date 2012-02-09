@@ -2450,10 +2450,12 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
       some(val) { ret some(val); }
       none {}
     }
+
     let tpt = ty::lookup_item_type(ccx.tcx, fn_id);
     let mono_ty = ty::substitute_type_params(ccx.tcx, substs, tpt.ty);
     let llfty = type_of_fn_from_ty(ccx, mono_ty, []);
     let lldecl;
+    let psubsts = some({tys: substs, dicts: dicts, bounds: tpt.bounds});
     alt ccx.tcx.items.get(fn_id.node) {
       ast_map::node_item(item, pt) {
         let pt = *pt + [path_name(item.ident)];
@@ -2462,10 +2464,10 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
         alt item.node {
           ast::item_fn(decl, _, body) {
             trans_fn(ccx, pt, decl, body, lldecl, no_self, [],
-                     some(substs), fn_id.node);
+                     psubsts, fn_id.node);
           }
           ast::item_res(decl, _, _, _, ctor_id) {
-            trans_res_ctor(ccx, pt, decl, ctor_id, [], some(substs), lldecl);
+            trans_res_ctor(ccx, pt, decl, ctor_id, [], psubsts, lldecl);
           }
           _ { fail "Unexpected item type"; }
         }
@@ -2478,7 +2480,16 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
         let this_tv = option::get(vec::find(*tvs, {|tv|
             tv.id.node == fn_id.node}));
         trans_enum_variant(ccx, enum_id.node, v, this_tv.disr_val,
-                           vec::len(*tvs) == 1u, [], some(substs), lldecl);
+                           vec::len(*tvs) == 1u, [], psubsts, lldecl);
+      }
+      ast_map::node_method(mth, impl_id, pt) {
+        let pt = *pt + [path_name(mth.ident)];
+        let s = mangle_exported_name(ccx, pt, mono_ty);
+        lldecl = decl_cdecl_fn(ccx.llmod, s, llfty);
+        let selfty = ty::node_id_to_type(ccx.tcx, impl_id);
+        let selfty = ty::substitute_type_params(ccx.tcx, substs, selfty);
+        trans_fn(ccx, pt, mth.decl, mth.body, lldecl,
+                 impl_self(selfty), [], psubsts, fn_id.node);
       }
       ast_map::node_native_item(_, _) {
         ret none;
@@ -2490,19 +2501,35 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
     some(val)
 }
 
-fn lval_static_fn(bcx: @block_ctxt, fn_id: ast::def_id, id: ast::node_id)
+fn lval_static_fn(bcx: @block_ctxt, fn_id: ast::def_id, id: ast::node_id,
+                  substs: option<([ty::t], typeck::dict_res)>)
     -> lval_maybe_callee {
     let ccx = bcx_ccx(bcx);
     let tys = ty::node_id_to_type_params(ccx.tcx, id);
     let tpt = ty::lookup_item_type(ccx.tcx, fn_id);
-    if ccx.sess.opts.monomorphize && vec::len(tys) > 0u &&
+    if ccx.sess.opts.monomorphize &&
+       (option::is_some(substs) || vec::len(tys) > 0u) &&
        fn_id.crate == ast::local_crate &&
-       !vec::any(tys, {|t| ty::type_has_params(t)}) &&
-       vec::all(*tpt.bounds, {|bs| vec::all(*bs, {|b|
-           alt b { ty::bound_iface(_) { false } _ { true } }
-       })}) {
-        let dicts = ccx.dict_map.find(id);
-        alt monomorphic_fn(ccx, fn_id, tys, dicts) {
+       !vec::any(tys, {|t| ty::type_has_params(t)}) {
+        let mono = alt substs {
+          some((stys, dicts)) {
+            if (vec::len(stys) + vec::len(stys)) > 0u {
+                monomorphic_fn(ccx, fn_id, stys + tys, some(dicts))
+            } else { none }
+          }
+          none {
+            alt ccx.dict_map.find(id) {
+              some(dicts) {
+                alt impl::resolve_dicts_in_fn_ctxt(bcx.fcx, dicts) {
+                  some(dicts) { monomorphic_fn(ccx, fn_id, tys, some(dicts)) }
+                  none { none }
+                }
+              }
+              none { monomorphic_fn(ccx, fn_id, tys, none) }
+            }
+          }
+        };
+        alt mono {
           some({llfn, fty}) {
             ret {bcx: bcx, val: llfn,
                  kind: owned, env: null_env,
@@ -2601,12 +2628,12 @@ fn trans_var(cx: @block_ctxt, def: ast::def, id: ast::node_id)
     let ccx = bcx_ccx(cx);
     alt def {
       ast::def_fn(did, _) {
-        ret lval_static_fn(cx, did, id);
+        ret lval_static_fn(cx, did, id, none);
       }
       ast::def_variant(tid, vid) {
         if vec::len(ty::enum_variant_with_id(ccx.tcx, tid, vid).args) > 0u {
             // N-ary variant.
-            ret lval_static_fn(cx, vid, id);
+            ret lval_static_fn(cx, vid, id, none);
         } else {
             // Nullary variant.
             let enum_ty = ty::node_id_to_type(ccx.tcx, id);
@@ -4259,7 +4286,7 @@ fn mk_standard_basic_blocks(llfn: ValueRef) ->
 //  - trans_args
 fn new_fn_ctxt_w_id(ccx: @crate_ctxt, path: path,
                     llfndecl: ValueRef, id: ast::node_id,
-                    param_substs: option<[ty::t]>,
+                    param_substs: option<param_substs>,
                     sp: option<span>) -> @fn_ctxt {
     let llbbs = mk_standard_basic_blocks(llfndecl);
     ret @{llfn: llfndecl,
@@ -4405,7 +4432,7 @@ enum self_arg { impl_self(ty::t), no_self, }
 fn trans_closure(ccx: @crate_ctxt, path: path, decl: ast::fn_decl,
                  body: ast::blk, llfndecl: ValueRef,
                  ty_self: self_arg, ty_params: [ast::ty_param],
-                 param_substs: option<[ty::t]>,
+                 param_substs: option<param_substs>,
                  id: ast::node_id, maybe_load_env: fn(@fn_ctxt)) {
     set_uwtable(llfndecl);
 
@@ -4421,14 +4448,6 @@ fn trans_closure(ccx: @crate_ctxt, path: path, decl: ast::fn_decl,
     let block_ty = node_id_type(bcx, body.node.id);
 
     let arg_tys = ty::ty_fn_args(node_id_type(bcx, id));
-    alt param_substs {
-      some(ts) {
-        arg_tys = vec::map(arg_tys, {|a|
-            {mode: a.mode,
-             ty: ty::substitute_type_params(fcx.ccx.tcx, ts, a.ty)}})
-      }
-      _ {}
-    }
     bcx = copy_args_to_allocas(fcx, bcx, decl.inputs, arg_tys);
 
     maybe_load_env(fcx);
@@ -4454,7 +4473,7 @@ fn trans_closure(ccx: @crate_ctxt, path: path, decl: ast::fn_decl,
 // function.
 fn trans_fn(ccx: @crate_ctxt, path: path, decl: ast::fn_decl,
             body: ast::blk, llfndecl: ValueRef, ty_self: self_arg,
-            ty_params: [ast::ty_param], param_substs: option<[ty::t]>,
+            ty_params: [ast::ty_param], param_substs: option<param_substs>,
             id: ast::node_id) {
     let do_time = ccx.sess.opts.stats;
     let start = if do_time { time::get_time() }
@@ -4473,7 +4492,7 @@ fn trans_fn(ccx: @crate_ctxt, path: path, decl: ast::fn_decl,
 
 fn trans_res_ctor(ccx: @crate_ctxt, path: path, dtor: ast::fn_decl,
                   ctor_id: ast::node_id, ty_params: [ast::ty_param],
-                  param_substs: option<[ty::t]>, llfndecl: ValueRef) {
+                  param_substs: option<param_substs>, llfndecl: ValueRef) {
     // Create a function for the constructor
     let fcx = new_fn_ctxt_w_id(ccx, path, llfndecl, ctor_id,
                                param_substs, none);
@@ -4505,11 +4524,11 @@ fn trans_res_ctor(ccx: @crate_ctxt, path: path, dtor: ast::fn_decl,
 }
 
 
-fn trans_enum_variant(ccx: @crate_ctxt,
-                      enum_id: ast::node_id,
+fn trans_enum_variant(ccx: @crate_ctxt, enum_id: ast::node_id,
                       variant: ast::variant, disr: int, is_degen: bool,
                       ty_params: [ast::ty_param],
-                      param_substs: option<[ty::t]>, llfndecl: ValueRef) {
+                      param_substs: option<param_substs>,
+                      llfndecl: ValueRef) {
     // Translate variant arguments to function arguments.
     let fn_args = [], i = 0u;
     for varg in variant.node.args {
@@ -4522,7 +4541,7 @@ fn trans_enum_variant(ccx: @crate_ctxt,
                                param_substs, none);
     create_llargs_for_fn_args(fcx, no_self, fn_args, ty_params);
     let ty_param_substs = alt param_substs {
-      some(ts) { ts }
+      some(substs) { substs.tys }
       none {
         let i = 0u;
         vec::map(ty_params, {|tp|

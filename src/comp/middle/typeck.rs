@@ -1663,7 +1663,7 @@ fn lookup_method_inner(fcx: @fn_ctxt, expr: @ast::expr,
     fn ty_from_did(tcx: ty::ctxt, did: ast::def_id) -> ty::t {
         if did.crate == ast::local_crate {
             alt tcx.items.get(did.node) {
-              ast_map::node_method(m, _) {
+              ast_map::node_method(m, _, _) {
                 let mt = ty_of_method(tcx, m_check, m);
                 ty::mk_fn(tcx, mt.fty)
               }

@@ -76,10 +76,18 @@ fn trans_method_callee(bcx: @block_ctxt, callee_id: ast::node_id,
     -> lval_maybe_callee {
     alt origin {
       typeck::method_static(did) {
-        trans_static_callee(bcx, callee_id, self, did)
+        trans_static_callee(bcx, callee_id, self, did, none)
       }
       typeck::method_param(iid, off, p, b) {
-        trans_param_callee(bcx, callee_id, self, iid, off, p, b)
+        alt bcx.fcx.param_substs {
+          some(substs) {
+            trans_monomorphized_callee(bcx, callee_id, self,
+                                       iid, off, p, b, substs)
+          }
+          none {
+            trans_param_callee(bcx, callee_id, self, iid, off, p, b)
+          }
+        }
       }
       typeck::method_iface(off) {
         trans_iface_callee(bcx, callee_id, self, off)
@@ -89,10 +97,11 @@ fn trans_method_callee(bcx: @block_ctxt, callee_id: ast::node_id,
 
 // Method callee where the method is statically known
 fn trans_static_callee(bcx: @block_ctxt, callee_id: ast::node_id,
-                       base: @ast::expr, did: ast::def_id)
+                       base: @ast::expr, did: ast::def_id,
+                       substs: option<([ty::t], typeck::dict_res)>)
     -> lval_maybe_callee {
     let {bcx, val} = trans_self_arg(bcx, base);
-    {env: self_env(val) with lval_static_fn(bcx, did, callee_id)}
+    {env: self_env(val) with lval_static_fn(bcx, did, callee_id, substs)}
 }
 
 fn wrapper_fn_ty(ccx: @crate_ctxt, dict_ty: TypeRef, fty: ty::t,
@@ -134,6 +143,38 @@ fn trans_vtable_callee(bcx: @block_ctxt, self: ValueRef, dict: ValueRef,
      env: dict_env(dict, self),
      generic: generic}
 }
+
+fn trans_monomorphized_callee(bcx: @block_ctxt, callee_id: ast::node_id,
+                              base: @ast::expr, iface_id: ast::def_id,
+                              n_method: uint, n_param: uint, n_bound: uint,
+                              substs: param_substs) -> lval_maybe_callee {
+    alt find_dict_in_fn_ctxt(substs, n_param, n_bound) {
+      typeck::dict_static(impl_did, tys, sub_origins) {
+        let tcx = bcx_tcx(bcx);
+        if impl_did.crate != ast::local_crate {
+            ret trans_param_callee(bcx, callee_id, base, iface_id,
+                                   n_method, n_param, n_bound);
+        }
+        let mname = ty::iface_methods(tcx, iface_id)[n_method].ident;
+        let mth = alt tcx.items.get(impl_did.node) {
+          ast_map::node_item(@{node: ast::item_impl(_, _, _, ms), _}, _) {
+            option::get(vec::find(ms, {|m| m.ident == mname}))
+          }
+          _ { fail; }
+        };
+        ret trans_static_callee(bcx, callee_id, base,
+                                ast_util::local_def(mth.id),
+                                some((tys, sub_origins)));
+      }
+      typeck::dict_iface(_) {
+        ret trans_iface_callee(bcx, callee_id, base, n_method);
+      }
+      typeck::dict_param(n_param, n_bound) {
+        fail "dict_param left in monomorphized function's dict substs";
+      }
+    }
+}
+
 
 // Method callee where the dict comes from a type param
 fn trans_param_callee(bcx: @block_ctxt, callee_id: ast::node_id,
@@ -182,6 +223,46 @@ fn trans_vtable(ccx: @crate_ctxt, id: ast::node_id, name: str,
     llvm::LLVMSetGlobalConstant(vt_gvar, lib::llvm::True);
     ccx.item_ids.insert(id, vt_gvar);
     ccx.item_symbols.insert(id, name);
+}
+
+fn find_dict_in_fn_ctxt(ps: param_substs, n_param: uint, n_bound: uint)
+    -> typeck::dict_origin {
+    let dict_off = n_bound, i = 0u;
+    // Dicts are stored in a flat array, finding the right one is
+    // somewhat awkward
+    for bounds in *ps.bounds {
+        i += 1u;
+        if i >= n_param { break; }
+        for bound in *bounds {
+            alt bound { ty::bound_iface(_) { dict_off += 1u; } _ {} }
+        }
+    }
+    option::get(ps.dicts)[dict_off]
+}
+
+fn resolve_dicts_in_fn_ctxt(fcx: @fn_ctxt, dicts: typeck::dict_res)
+    -> option<typeck::dict_res> {
+    let result = [];
+    for dict in *dicts {
+        result += [alt dict {
+          typeck::dict_static(iid, tys, sub) {
+            alt resolve_dicts_in_fn_ctxt(fcx, sub) {
+              some(sub) { typeck::dict_static(iid, tys, sub) }
+              none { ret none; }
+            }
+          }
+          typeck::dict_param(n_param, n_bound) {
+            alt fcx.param_substs {
+              some(substs) {
+                find_dict_in_fn_ctxt(substs, n_param, n_bound)
+              }
+              none { ret none; }
+            }
+          }
+          _ { dict }
+        }];
+    }
+    some(@result)
 }
 
 fn trans_wrapper(ccx: @crate_ctxt, pt: path, llfty: TypeRef,

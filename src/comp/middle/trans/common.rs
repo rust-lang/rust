@@ -132,6 +132,10 @@ enum local_val { local_mem(ValueRef), local_imm(ValueRef), }
 
 type fn_ty_param = {desc: ValueRef, dicts: option<[ValueRef]>};
 
+type param_substs = {tys: [ty::t],
+                     dicts: option<typeck::dict_res>,
+                     bounds: @[ty::param_bounds]};
+
 // Function context.  Every LLVM function we create will have one of
 // these.
 type fn_ctxt = {
@@ -200,7 +204,7 @@ type fn_ctxt = {
 
     // If this function is being monomorphized, this contains the type
     // substitutions used.
-    param_substs: option<[ty::t]>,
+    param_substs: option<param_substs>,
 
     // The source span and nesting context where this function comes from, for
     // error reporting and symbol generation.
@@ -901,7 +905,7 @@ fn node_id_type(bcx: @block_ctxt, id: ast::node_id) -> ty::t {
     let tcx = bcx_tcx(bcx);
     let t = ty::node_id_to_type(tcx, id);
     alt bcx.fcx.param_substs {
-      some(s) { ty::substitute_type_params(tcx, s, t) }
+      some(substs) { ty::substitute_type_params(tcx, substs.tys, t) }
       _ { t }
     }
 }
