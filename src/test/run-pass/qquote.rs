@@ -76,6 +76,11 @@ fn main() {
 
     let pat = #ast(pat){some(_)};
     check_pp(pat, pprust::print_pat, "some(_)");
+
+    // issue #1785
+    let x = #ast{1};
+    let test1 = #ast{1+$(x)};
+    check_pp(test1, pprust::print_expr, "1 + 1");
 }
 
 fn check_pp<T>(expr: T, f: fn(pprust::ps, T), expect: str) {
