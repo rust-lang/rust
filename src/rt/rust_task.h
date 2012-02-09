@@ -167,8 +167,8 @@ public:
 
     void notify(bool success);
 
-    void *new_stack(size_t stk_sz, void *args_addr, size_t args_sz);
-    void del_stack();
+    void *next_stack(size_t stk_sz, void *args_addr, size_t args_sz);
+    void prev_stack();
     void record_stack_limit();
     void reset_stack_limit();
     bool on_rust_stack();

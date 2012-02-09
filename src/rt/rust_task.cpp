@@ -634,7 +634,7 @@ extern "C" CDECL void
 record_sp(void *limit);
 
 void *
-rust_task::new_stack(size_t stk_sz, void *args_addr, size_t args_sz) {
+rust_task::next_stack(size_t stk_sz, void *args_addr, size_t args_sz) {
 
     stk_seg *stk_seg = new_stk(thread, this, stk_sz + args_sz);
     A(thread, stk_seg->end - (uintptr_t)stk_seg->data >= stk_sz + args_sz,
@@ -643,13 +643,17 @@ rust_task::new_stack(size_t stk_sz, void *args_addr, size_t args_sz) {
     // Push the function arguments to the new stack
     new_sp = align_down(new_sp - args_sz);
     memcpy(new_sp, args_addr, args_sz);
+    A(thread, rust_task_thread::get_task() == this,
+      "Recording the stack limit for the wrong thread");
     record_stack_limit();
     return new_sp;
 }
 
 void
-rust_task::del_stack() {
+rust_task::prev_stack() {
     del_stk(this, stk);
+    A(thread, rust_task_thread::get_task() == this,
+      "Recording the stack limit for the wrong thread");
     record_stack_limit();
 }
 

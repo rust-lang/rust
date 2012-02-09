@@ -660,9 +660,9 @@ struct s_new_stack_args {
 extern "C" CDECL void
 upcall_s_new_stack(struct s_new_stack_args *args) {
     rust_task *task = rust_task_thread::get_task();
-    args->result = task->new_stack(args->stk_sz,
-                                   args->args_addr,
-                                   args->args_sz);
+    args->result = task->next_stack(args->stk_sz,
+                                    args->args_addr,
+                                    args->args_sz);
 }
 
 extern "C" CDECL void *
@@ -675,7 +675,7 @@ upcall_new_stack(size_t stk_sz, void *args_addr, size_t args_sz) {
 extern "C" CDECL void
 upcall_s_del_stack() {
     rust_task *task = rust_task_thread::get_task();
-    task->del_stack();
+    task->prev_stack();
 }
 
 extern "C" CDECL void
