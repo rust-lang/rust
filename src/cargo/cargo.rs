@@ -367,6 +367,14 @@ fn build_cargo_options(argv: [str]) -> options {
         local_mode
     };
 
+    if mode == system_mode {
+        // FIXME: Per discussion on #1760, we need to think about how
+        // system mode works. It should install files to the normal
+        // sysroot paths, but it also needsd an area to place various
+        // cargo configuration and work files.
+        fail "system mode does not exist yet";
+    }
+
     {test: test, mode: mode, free: match.free}
 }
 
