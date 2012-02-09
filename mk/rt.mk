@@ -37,6 +37,7 @@ RUNTIME_CS_$(1) := \
               rt/sync/timer.cpp \
               rt/sync/sync.cpp \
               rt/sync/lock_and_signal.cpp \
+              rt/sync/rust_thread.cpp \
               rt/rust.cpp \
               rt/rust_builtin.cpp \
               rt/rust_run_program.cpp \
@@ -97,6 +98,7 @@ RUNTIME_HDR_$(1) := rt/globals.h \
                rt/sync/timer.h \
                rt/sync/lock_and_signal.h \
                rt/sync/lock_free_queue.h \
+               rt/sync/rust_thread.h \
                rt/rust_srv.h \
                rt/rust_kernel.h \
                rt/memory_region.h \

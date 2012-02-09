@@ -1,6 +1,7 @@
 #ifndef RUST_TASK_THREAD_H
 #define RUST_TASK_THREAD_H
 
+#include "sync/rust_thread.h"
 #include "rust_stack.h"
 #include "context.h"
 
