@@ -1902,7 +1902,7 @@ fn trans_unary(bcx: @block_ctxt, op: ast::unop, e: @ast::expr,
     alt bcx_ccx(bcx).method_map.find(un_expr.id) {
       some(origin) {
         let callee_id = ast_util::op_expr_callee_id(un_expr);
-        let fty = ty::node_id_to_type(bcx_tcx(bcx), callee_id);
+        let fty = node_id_type(bcx, callee_id);
         ret trans_call_inner(bcx, fty, {|bcx|
             impl::trans_method_callee(bcx, callee_id, e, origin)
         }, [], un_expr.id, dest);
@@ -2036,7 +2036,6 @@ fn trans_eager_binop(cx: @block_ctxt, op: ast::binop, lhs: ValueRef,
 
 fn trans_assign_op(bcx: @block_ctxt, ex: @ast::expr, op: ast::binop,
                    dst: @ast::expr, src: @ast::expr) -> @block_ctxt {
-    let tcx = bcx_tcx(bcx);
     let t = expr_ty(bcx, src);
     let lhs_res = trans_lval(bcx, dst);
     assert (lhs_res.kind == owned);
@@ -2045,7 +2044,7 @@ fn trans_assign_op(bcx: @block_ctxt, ex: @ast::expr, op: ast::binop,
     alt bcx_ccx(bcx).method_map.find(ex.id) {
       some(origin) {
         let callee_id = ast_util::op_expr_callee_id(ex);
-        let fty = ty::node_id_to_type(tcx, callee_id);
+        let fty = node_id_type(bcx, callee_id);
         ret trans_call_inner(bcx, fty, {|bcx|
             // FIXME provide the already-computed address, not the expr
             impl::trans_method_callee(bcx, callee_id, dst, origin)
@@ -2169,7 +2168,7 @@ fn trans_binary(bcx: @block_ctxt, op: ast::binop, lhs: @ast::expr,
     alt bcx_ccx(bcx).method_map.find(ex.id) {
       some(origin) {
         let callee_id = ast_util::op_expr_callee_id(ex);
-        let fty = ty::node_id_to_type(bcx_tcx(bcx), callee_id);
+        let fty = node_id_type(bcx, callee_id);
         ret trans_call_inner(bcx, fty, {|bcx|
             impl::trans_method_callee(bcx, callee_id, lhs, origin)
         }, [rhs], ex.id, dest);
@@ -2452,59 +2451,58 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
     let tpt = ty::lookup_item_type(ccx.tcx, fn_id);
     let mono_ty = ty::substitute_type_params(ccx.tcx, substs, tpt.ty);
     let llfty = type_of_fn_from_ty(ccx, mono_ty, []);
-    let lldecl;
+
+    let map_node = ccx.tcx.items.get(fn_id.node);
+    // Get the path so that we can create a symbol
+    let (pt, name) = alt map_node {
+      ast_map::node_item(i, pt) { (pt, i.ident) }
+      ast_map::node_variant(v, _, pt) { (pt, v.node.name) }
+      ast_map::node_method(m, _, pt) { (pt, m.ident) }
+      // We can't monomorphize native functions
+      ast_map::node_native_item(_, _) { ret none; }
+      _ { fail "Unexpected node type"; }
+    };
+    let pt = *pt + [path_name(ccx.names(name))];
+    let s = mangle_exported_name(ccx, pt, mono_ty);
+    let lldecl = decl_cdecl_fn(ccx.llmod, s, llfty);
+    ccx.monomorphized.insert(hash_id, {llfn: lldecl, fty: mono_ty});
+
     let psubsts = some({tys: substs, dicts: dicts, bounds: tpt.bounds});
-    alt ccx.tcx.items.get(fn_id.node) {
-      ast_map::node_item(item, pt) {
-        let pt = *pt + [path_name(item.ident)];
-        let s = mangle_exported_name(ccx, pt, mono_ty);
-        lldecl = decl_cdecl_fn(ccx.llmod, s, llfty);
-        alt item.node {
-          ast::item_fn(decl, _, body) {
-            trans_fn(ccx, pt, decl, body, lldecl, no_self, [],
-                     psubsts, fn_id.node);
-          }
-          ast::item_res(decl, _, _, _, ctor_id) {
-            trans_res_ctor(ccx, pt, decl, ctor_id, [], psubsts, lldecl);
-          }
-          _ { fail "Unexpected item type"; }
-        }
+    alt map_node {
+      ast_map::node_item(@{node: ast::item_fn(decl, _, body), _}, _) {
+        trans_fn(ccx, pt, decl, body, lldecl, no_self, [],
+                 psubsts, fn_id.node);
       }
-      ast_map::node_variant(v, enum_id, pt) {
-        let pt = *pt + [path_name(v.node.name)];
-        let s = mangle_exported_name(ccx, pt, mono_ty);
-        lldecl = decl_cdecl_fn(ccx.llmod, s, llfty);
+      ast_map::node_item(@{node: ast::item_res(decl, _, _, _, _), _}, _) {
+        trans_res_ctor(ccx, pt, decl, fn_id.node, [], psubsts, lldecl);
+      }
+      ast_map::node_variant(v, enum_id, _) {
         let tvs = ty::enum_variants(ccx.tcx, enum_id);
         let this_tv = option::get(vec::find(*tvs, {|tv|
             tv.id.node == fn_id.node}));
         trans_enum_variant(ccx, enum_id.node, v, this_tv.disr_val,
                            vec::len(*tvs) == 1u, [], psubsts, lldecl);
       }
-      ast_map::node_method(mth, impl_id, pt) {
-        let pt = *pt + [path_name(mth.ident)];
-        let s = mangle_exported_name(ccx, pt, mono_ty);
-        lldecl = decl_cdecl_fn(ccx.llmod, s, llfty);
+      ast_map::node_method(mth, impl_id, _) {
         let selfty = ty::node_id_to_type(ccx.tcx, impl_id);
         let selfty = ty::substitute_type_params(ccx.tcx, substs, selfty);
         trans_fn(ccx, pt, mth.decl, mth.body, lldecl,
                  impl_self(selfty), [], psubsts, fn_id.node);
       }
-      ast_map::node_native_item(_, _) {
-        ret none;
-      }
-      _ { fail "Unexpected node type"; }
+      _ { fail; }
     }
-    let val = {llfn: lldecl, fty: mono_ty};
-    ccx.monomorphized.insert(hash_id, val);
-    some(val)
+    some({llfn: lldecl, fty: mono_ty})
 }
 
 fn lval_static_fn(bcx: @block_ctxt, fn_id: ast::def_id, id: ast::node_id,
                   substs: option<([ty::t], typeck::dict_res)>)
     -> lval_maybe_callee {
     let ccx = bcx_ccx(bcx);
-    let tys = ty::node_id_to_type_params(ccx.tcx, id);
+    let tys = node_id_type_params(bcx, id);
     let tpt = ty::lookup_item_type(ccx.tcx, fn_id);
+    // The awkwardness below mostly stems from the fact that we're mixing
+    // monomorphized and non-monomorphized functions at the moment. If
+    // monomorphizing becomes the only approach, this'll be much simpler.
     if ccx.sess.opts.monomorphize &&
        (option::is_some(substs) || vec::len(tys) > 0u) &&
        fn_id.crate == ast::local_crate &&
@@ -2634,7 +2632,7 @@ fn trans_var(cx: @block_ctxt, def: ast::def, id: ast::node_id)
             ret lval_static_fn(cx, vid, id, none);
         } else {
             // Nullary variant.
-            let enum_ty = ty::node_id_to_type(ccx.tcx, id);
+            let enum_ty = node_id_type(cx, id);
             let alloc_result = alloc_ty(cx, enum_ty);
             let llenumblob = alloc_result.val;
             let llenumty = type_of_enum(ccx, tid, enum_ty);
@@ -2652,7 +2650,7 @@ fn trans_var(cx: @block_ctxt, def: ast::def, id: ast::node_id)
             assert (ccx.consts.contains_key(did.node));
             ret lval_no_env(cx, ccx.consts.get(did.node), owned);
         } else {
-            let tp = ty::node_id_to_type(ccx.tcx, id);
+            let tp = node_id_type(cx, id);
             let val = trans_external_path(cx, did, {bounds: @[], ty: tp});
             ret lval_no_env(cx, load_if_immediate(cx, val, tp), owned_imm);
         }
@@ -3129,8 +3127,6 @@ fn trans_call_inner(in_cx: @block_ctxt, fn_expr_ty: ty::t,
     // NB: 'f' isn't necessarily a function; it might be an entire self-call
     // expression because of the hack that allows us to process self-calls
     // with trans_call.
-    let tcx = bcx_tcx(in_cx);
-
     let cx = new_scope_block_ctxt(in_cx, "call");
     Br(in_cx, cx.llbb);
     let f_res = get_callee(cx);
@@ -3157,7 +3153,7 @@ fn trans_call_inner(in_cx: @block_ctxt, fn_expr_ty: ty::t,
       }
     }
 
-    let ret_ty = ty::node_id_to_type(tcx, id);
+    let ret_ty = node_id_type(bcx, id);
     let args_res =
         trans_args(bcx, llenv, f_res.generic, args, fn_expr_ty, dest);
     bcx = args_res.bcx;
@@ -3520,7 +3516,7 @@ fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
         // If it is here, it's not an lval, so this is a user-defined index op
         let origin = bcx_ccx(bcx).method_map.get(e.id);
         let callee_id = ast_util::op_expr_callee_id(e);
-        let fty = ty::node_id_to_type(tcx, callee_id);
+        let fty = node_id_type(bcx, callee_id);
         ret trans_call_inner(bcx, fty, {|bcx|
             impl::trans_method_callee(bcx, callee_id, base, origin)
         }, [idx], e.id, dest);

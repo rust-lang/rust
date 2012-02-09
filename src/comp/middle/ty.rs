@@ -1339,18 +1339,18 @@ fn field_idx(id: ast::ident, fields: [field]) -> option<uint> {
     ret none;
 }
 
-fn get_field(tcx: ctxt, rec_ty: t, id: ast::ident) -> field {
-    alt vec::find(get_fields(tcx, rec_ty), {|f| str::eq(f.ident, id) }) {
-         some(f) { ret f; }
-         _ { tcx.sess.bug(#fmt("get_field: bad field id %s", id)); }
+fn get_field(rec_ty: t, id: ast::ident) -> field {
+    alt vec::find(get_fields(rec_ty), {|f| str::eq(f.ident, id) }) {
+      some(f) { f }
+      _ { fail #fmt("get_field: bad field id %s", id); }
     }
 }
 
 // TODO: could have a precondition instead of failing
-fn get_fields(tcx:ctxt, rec_ty:t) -> [field] {
+fn get_fields(rec_ty:t) -> [field] {
     alt get(rec_ty).struct {
-       ty_rec(fields) { fields }
-       _ { tcx.sess.bug("get_fields called on non-record type"); }
+      ty_rec(fields) { fields }
+      _ { fail "get_fields called on non-record type"; }
     }
 }
 

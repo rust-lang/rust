@@ -910,6 +910,16 @@ fn node_id_type(bcx: @block_ctxt, id: ast::node_id) -> ty::t {
 fn expr_ty(bcx: @block_ctxt, ex: @ast::expr) -> ty::t {
     node_id_type(bcx, ex.id)
 }
+fn node_id_type_params(bcx: @block_ctxt, id: ast::node_id) -> [ty::t] {
+    let tcx = bcx_tcx(bcx);
+    let params = ty::node_id_to_type_params(tcx, id);
+    alt bcx.fcx.param_substs {
+      some(substs) {
+        vec::map(params) {|t| ty::substitute_type_params(tcx, substs.tys, t) }
+      }
+      _ { params }
+    }
+}
 
 //
 // Local Variables:

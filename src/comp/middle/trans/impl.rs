@@ -116,7 +116,7 @@ fn trans_vtable_callee(bcx: @block_ctxt, self: ValueRef, dict: ValueRef,
     let bcx = bcx, ccx = bcx_ccx(bcx), tcx = ccx.tcx;
     let method = ty::iface_methods(tcx, iface_id)[n_method];
     let {ty: fty, llty: llfty} =
-        wrapper_fn_ty(ccx, val_ty(dict), ty::node_id_to_type(tcx, callee_id),
+        wrapper_fn_ty(ccx, val_ty(dict), node_id_type(bcx, callee_id),
                       method.tps);
     let vtable = PointerCast(bcx, Load(bcx, GEPi(bcx, dict, [0, 0])),
                              T_ptr(T_array(T_ptr(llfty), n_method + 1u)));
@@ -124,7 +124,7 @@ fn trans_vtable_callee(bcx: @block_ctxt, self: ValueRef, dict: ValueRef,
     let generic = generic_none;
     if vec::len(*method.tps) > 0u || ty::type_has_params(fty) {
         let tydescs = [], tis = [];
-        let tptys = ty::node_id_to_type_params(tcx, callee_id);
+        let tptys = node_id_type_params(bcx, callee_id);
         for t in vec::tail_n(tptys, vec::len(tptys) - vec::len(*method.tps)) {
             let ti = none;
             let td = get_tydesc(bcx, t, true, ti).result;
@@ -246,7 +246,17 @@ fn resolve_dicts_in_fn_ctxt(fcx: @fn_ctxt, dicts: typeck::dict_res)
         result += [alt dict {
           typeck::dict_static(iid, tys, sub) {
             alt resolve_dicts_in_fn_ctxt(fcx, sub) {
-              some(sub) { typeck::dict_static(iid, tys, sub) }
+              some(sub) {
+                let tys = alt fcx.param_substs {
+                  some(substs) {
+                    vec::map(tys, {|t|
+                        ty::substitute_type_params(fcx.ccx.tcx, substs.tys, t)
+                    })
+                  }
+                  _ { tys }
+                };
+                typeck::dict_static(iid, tys, sub)
+              }
               none { ret none; }
             }
           }

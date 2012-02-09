@@ -265,7 +265,7 @@ fn extract_variant_args(bcx: @block_ctxt, pat_id: ast::node_id,
     let ccx = bcx.fcx.ccx, bcx = bcx;
     // invariant:
     // pat_id must have the same length ty_param_substs as vdefs?
-    let ty_param_substs = ty::node_id_to_type_params(ccx.tcx, pat_id);
+    let ty_param_substs = node_id_type_params(bcx, pat_id);
     let blobptr = val;
     let variants = ty::enum_variants(ccx.tcx, vdefs.enm);
     let args = [];
@@ -420,8 +420,8 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
     let rec_fields = collect_record_fields(m, col);
     // Separate path for extracting and binding record fields
     if vec::len(rec_fields) > 0u {
-        let rec_ty = ty::node_id_to_type(ccx.tcx, pat_id);
-        let fields = ty::get_fields(ccx.tcx, rec_ty);
+        let rec_ty = node_id_type(bcx, pat_id);
+        let fields = ty::get_fields(rec_ty);
         let rec_vals = [];
         for field_name: ast::ident in rec_fields {
             let ix = option::get(ty::field_idx(field_name, fields));
@@ -435,7 +435,7 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
     }
 
     if any_tup_pat(m, col) {
-        let tup_ty = ty::node_id_to_type(ccx.tcx, pat_id);
+        let tup_ty = node_id_type(bcx, pat_id);
         let n_tup_elts = alt ty::get(tup_ty).struct {
           ty::ty_tup(elts) { vec::len(elts) }
           _ { ccx.sess.bug("Non-tuple type in tuple pattern"); }
@@ -488,7 +488,7 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
           }
           lit(l) {
             test_val = Load(bcx, val);
-            let pty = ty::node_id_to_type(ccx.tcx, pat_id);
+            let pty = node_id_type(bcx, pat_id);
             kind = if ty::type_is_integral(pty) { switch }
                    else { compare };
           }
@@ -539,7 +539,7 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
             let compare_cx = new_scope_block_ctxt(bcx, "compare_scope");
             Br(bcx, compare_cx.llbb);
             bcx = compare_cx;
-            let t = ty::node_id_to_type(ccx.tcx, pat_id);
+            let t = node_id_type(bcx, pat_id);
             let res = trans_opt(bcx, opt);
             alt res {
               single_result(r) {
@@ -622,7 +622,7 @@ fn make_phi_bindings(bcx: @block_ctxt, map: [exit_node],
                         forgot to document an invariant in \
                         make_phi_bindings"); }
                 };
-                let e_ty = ty::node_id_to_type(bcx_tcx(bcx), node_id);
+                let e_ty = node_id_type(bcx, node_id);
                 let {bcx: abcx, val: alloc} = base::alloc_ty(bcx, e_ty);
                 bcx = base::copy_val(abcx, base::INIT, alloc,
                                       load_if_immediate(abcx, local, e_ty),
@@ -739,7 +739,7 @@ fn bind_irrefutable_pat(bcx: @block_ctxt, pat: @ast::pat, val: ValueRef,
       }
       ast::pat_rec(fields, _) {
         let rec_ty = node_id_type(bcx, pat.id);
-        let rec_fields = ty::get_fields(ccx.tcx, rec_ty);
+        let rec_fields = ty::get_fields(rec_ty);
         for f: ast::field_pat in fields {
             let ix = option::get(ty::field_idx(f.ident, rec_fields));
             // how to get rid of this check?

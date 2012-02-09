@@ -615,7 +615,7 @@ fn pattern_roots(tcx: ty::ctxt, mut: option<unsafe_ty>, pat: @ast::pat)
           ast::pat_rec(fs, _) {
             let ty = ty::node_id_to_type(tcx, pat.id);
             for f in fs {
-                let m = ty::get_field(tcx, ty, f.ident).mt.mut != ast::imm,
+                let m = ty::get_field(ty, f.ident).mt.mut != ast::imm,
                     c = if m { some(contains(ty)) } else { mut };
                 walk(tcx, c, f.pat, set);
             }

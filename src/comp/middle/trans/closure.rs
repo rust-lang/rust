@@ -16,6 +16,7 @@ import back::link::{
 import util::ppaux::ty_to_str;
 import shape::{size_of};
 import ast_map::{path, path_mod, path_name};
+import driver::session::session;
 
 // ___Good to know (tm)__________________________________________________
 //
@@ -362,7 +363,7 @@ fn build_closure(bcx0: @block_ctxt,
     vec::iter(cap_vars) { |cap_var|
         let lv = trans_local_var(bcx, cap_var.def);
         let nid = ast_util::def_id_of_def(cap_var.def).node;
-        let ty = ty::node_id_to_type(tcx, nid);
+        let ty = node_id_type(bcx, nid);
         alt cap_var.mode {
           capture::cap_ref {
             assert ck == ty::ck_block;
@@ -486,7 +487,7 @@ fn trans_bind(cx: @block_ctxt, f: @ast::expr, args: [option<@ast::expr>],
               id: ast::node_id, dest: dest) -> @block_ctxt {
     let f_res = trans_callee(cx, f);
     ret trans_bind_1(cx, expr_ty(cx, f), f_res, args,
-                     ty::node_id_to_type(bcx_tcx(cx), id), dest);
+                     node_id_type(cx, id), dest);
 }
 
 fn trans_bind_1(cx: @block_ctxt, outgoing_fty: ty::t,

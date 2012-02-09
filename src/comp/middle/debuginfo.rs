@@ -411,7 +411,7 @@ fn create_record(cx: @crate_ctxt, t: ty::t, fields: [ast::ty_field],
                                line_from_span(cx.sess.codemap,
                                               span) as int);
     for field in fields {
-        let field_t = ty::get_field(ccx_tcx(cx), t, field.node.ident).mt.ty;
+        let field_t = ty::get_field(t, field.node.ident).mt.ty;
         let ty_md = create_ty(cx, field_t, field.node.mt.ty);
         let (size, align) = member_size_and_align(cx.tcx, field.node.mt.ty);
         add_member(scx, field.node.ident,
