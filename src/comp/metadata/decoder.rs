@@ -286,7 +286,7 @@ fn get_impls_for_mod(cdata: cmd, m_id: ast::node_id,
         let did = translate_def_id(cdata, parse_def_id(ebml::doc_data(doc)));
         let item = lookup_item(did.node, data), nm = item_name(item);
         if alt name { some(n) { n == nm } none { true } } {
-            let base_tps = item_ty_param_count(doc);
+            let base_tps = item_ty_param_count(item);
             result += [@{did: did, ident: nm,
                          methods: item_impl_methods(cdata, item, base_tps)}];
         }

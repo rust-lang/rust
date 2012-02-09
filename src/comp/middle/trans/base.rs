@@ -2509,7 +2509,7 @@ fn lval_static_fn(bcx: @block_ctxt, fn_id: ast::def_id, id: ast::node_id,
        !vec::any(tys, {|t| ty::type_has_params(t)}) {
         let mono = alt substs {
           some((stys, dicts)) {
-            if (vec::len(stys) + vec::len(stys)) > 0u {
+            if (vec::len(stys) + vec::len(tys)) > 0u {
                 monomorphic_fn(ccx, fn_id, stys + tys, some(dicts))
             } else { none }
           }
