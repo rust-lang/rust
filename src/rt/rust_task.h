@@ -106,6 +106,12 @@ rust_task : public kernel_owned<rust_task>, rust_cond
 private:
     // Called when the atomic refcount reaches zero
     void delete_this();
+
+    void new_stack(size_t sz);
+    void del_stack();
+    void free_stack(stk_seg *stk);
+    size_t get_next_stack_size(size_t min, size_t current, size_t requested);
+
 public:
 
     // Only a pointer to 'name' is kept, so it must live as long as this task.
