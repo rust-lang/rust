@@ -31,16 +31,6 @@ struct frame_glue_fns {
     uintptr_t reloc_glue_off;
 };
 
-// portions of the task structure that are accessible from the standard
-// library. This struct must agree with the std::task::rust_task record.
-struct rust_task_user {
-    rust_task_id id;
-    intptr_t notify_enabled;   // this is way more bits than necessary, but it
-                               // simplifies the alignment.
-    chan_handle notify_chan;
-    uintptr_t rust_sp;         // Saved sp when not running.
-};
-
 // std::lib::task::task_result
 typedef unsigned long task_result;
 #define tr_success 0
@@ -57,9 +47,13 @@ struct task_notification {
 struct
 rust_task : public kernel_owned<rust_task>, rust_cond
 {
-    rust_task_user user;
-
     RUST_ATOMIC_REFCOUNT();
+
+    rust_task_id id;
+    bool notify_enabled;
+    chan_handle notify_chan;
+
+    uintptr_t rust_sp;         // Saved sp when not running.
 
     context ctx;
     stk_seg *stk;

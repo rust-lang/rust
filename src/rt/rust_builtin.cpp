@@ -439,7 +439,7 @@ rust_new_sched(uintptr_t threads) {
 extern "C" CDECL rust_task_id
 get_task_id() {
     rust_task *task = rust_task_thread::get_task();
-    return task->user.id;
+    return task->id;
 }
 
 static rust_task_id

@@ -161,12 +161,12 @@ rust_kernel::register_task(rust_task *task) {
     uintptr_t new_live_tasks;
     {
         scoped_lock with(task_lock);
-        task->user.id = max_task_id++;
-        task_table.put(task->user.id, task);
+        task->id = max_task_id++;
+        task_table.put(task->id, task);
         new_live_tasks = ++live_tasks;
     }
-    K(srv, task->user.id != INTPTR_MAX, "Hit the maximum task id");
-    KLOG_("Registered task %" PRIdPTR, task->user.id);
+    K(srv, task->id != INTPTR_MAX, "Hit the maximum task id");
+    KLOG_("Registered task %" PRIdPTR, task->id);
     KLOG_("Total outstanding tasks: %d", new_live_tasks);
 }
 

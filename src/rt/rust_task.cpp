@@ -190,6 +190,8 @@ rust_task::rust_task(rust_task_thread *thread, rust_task_list *state,
                      rust_task *spawner, const char *name,
                      size_t init_stack_sz) :
     ref_count(1),
+    id(0),
+    notify_enabled(false),
     stk(NULL),
     runtime_sp(0),
     sched(thread->sched),
@@ -216,12 +218,8 @@ rust_task::rust_task(rust_task_thread *thread, rust_task_list *state,
     LOGPTR(thread, "new task", (uintptr_t)this);
     DLOG(thread, task, "sizeof(task) = %d (0x%x)", sizeof *this, sizeof *this);
 
-    assert((void*)this == (void*)&user);
-
-    user.notify_enabled = 0;
-
     stk = new_stk(thread, this, init_stack_sz);
-    user.rust_sp = stk->end;
+    rust_sp = stk->end;
     if (supervisor) {
         supervisor->ref();
     }
@@ -338,7 +336,7 @@ rust_task::start(spawn_fn spawnee_fn,
 
     I(thread, stk->data != NULL);
 
-    char *sp = (char *)user.rust_sp;
+    char *sp = (char *)rust_sp;
 
     sp -= sizeof(spawn_args);
 
@@ -614,14 +612,14 @@ rust_port *rust_task::get_port_by_id(rust_port_id id) {
 void
 rust_task::notify(bool success) {
     // FIXME (1078) Do this in rust code
-    if(user.notify_enabled) {
-        rust_task *target_task = kernel->get_task_by_id(user.notify_chan.task);
+    if(notify_enabled) {
+        rust_task *target_task = kernel->get_task_by_id(notify_chan.task);
         if (target_task) {
             rust_port *target_port =
-                target_task->get_port_by_id(user.notify_chan.port);
+                target_task->get_port_by_id(notify_chan.port);
             if(target_port) {
                 task_notification msg;
-                msg.id = user.id;
+                msg.id = id;
                 msg.result = !success ? tr_failure : tr_success;
 
                 target_port->send(&msg);
@@ -715,8 +713,8 @@ rust_task::check_stack_canary() {
 
 void
 rust_task::config_notify(chan_handle chan) {
-    user.notify_enabled = true;
-    user.notify_chan = chan;
+    notify_enabled = true;
+    notify_chan = chan;
 }
 
 //
