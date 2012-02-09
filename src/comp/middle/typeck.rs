@@ -108,7 +108,9 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
         }
       }
       ast::def_fn(id, _) | ast::def_const(id) |
-      ast::def_variant(_, id) { ret ty::lookup_item_type(fcx.ccx.tcx, id); }
+      ast::def_variant(_, id) | ast::def_class(id)
+          | ast::def_class_method(_, id) | ast::def_class_field(_, id)
+         { ret ty::lookup_item_type(fcx.ccx.tcx, id); }
       ast::def_binding(id) {
         assert (fcx.locals.contains_key(id.node));
         let typ = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, sp, id.node));
@@ -422,8 +424,12 @@ fn ty_of_item(tcx: ty::ctxt, mode: mode, it: @ast::item)
         tcx.tcache.insert(local_def(it.id), tpt);
         ret tpt;
       }
-      ast::item_class(_,_,_,_,_) {
-          fail "ty_of_item: implement item_class";
+      ast::item_class(tps,_,_,_,_) {
+          let {bounds,params} = mk_ty_params(tcx, tps);
+          let t = ty::mk_class(tcx, local_def(it.id), params);
+          let tpt = {bounds: bounds, ty: t};
+          tcx.tcache.insert(local_def(it.id), tpt);
+          ret tpt;
       }
       ast::item_impl(_, _, _, _) | ast::item_mod(_) |
       ast::item_native_mod(_) { fail; }
@@ -755,6 +761,10 @@ mod collect {
           _ { fail; }
         }
     }
+    fn convert_class_item(cx: @ctxt, parent_ty: ty::t,
+                          ci: ast::class_member) {
+        /* TODO */
+    }
     fn convert(cx: @ctxt, it: @ast::item) {
         alt it.node {
           // These don't define types.
@@ -846,6 +856,19 @@ mod collect {
             let tpt = ty_of_item(cx.tcx, m_collect, it);
             write_ty(cx.tcx, it.id, tpt.ty);
             ensure_iface_methods(cx.tcx, it.id);
+          }
+          ast::item_class(tps, members, ctor_id, ctor_decl, ctor_block) {
+              let parent_ty = ty::lookup_item_type(cx.tcx, local_def(it.id));
+              // Write the ctor type
+              let t_ctor = ty::mk_fn(cx.tcx,
+                                     ty_of_fn_decl(cx.tcx, m_collect,
+                                             ast::proto_any, ctor_decl));
+              write_ty(cx.tcx, ctor_id, t_ctor);
+              /* FIXME: check for proper public/privateness */
+              // Write the type of each of the members
+              for m in members {
+                 convert_class_item(cx, parent_ty.ty, m.node.decl);
+              }
           }
           _ {
             // This call populates the type cache with the converted type

@@ -63,6 +63,7 @@ const shape_stack_fn: u8 = 26u8;
 const shape_bare_fn: u8 = 27u8;
 const shape_tydesc: u8 = 28u8;
 const shape_send_tydesc: u8 = 29u8;
+const shape_class: u8 = 30u8;
 
 // FIXME: This is a bad API in trans_common.
 fn C_u8(n: u8) -> ValueRef { ret trans::common::C_u8(n as uint); }
@@ -404,6 +405,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint]) -> [u8] {
         add_substr(s, sub);
       }
       ty::ty_iface(_, _) { s += [shape_iface]; }
+      ty::ty_class(_, _) { s += [shape_class]; }
       ty::ty_res(did, raw_subt, tps) {
         let subt = ty::substitute_type_params(ccx.tcx, tps, raw_subt);
         let ri = {did: did, t: subt};

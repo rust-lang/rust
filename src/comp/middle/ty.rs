@@ -40,6 +40,7 @@ export is_pred_ty;
 export lookup_item_type;
 export method;
 export method_idx;
+export mk_class;
 export mk_ctxt;
 export mk_named, type_name;
 export mt;
@@ -225,6 +226,7 @@ enum sty {
     ty_rec([field]),
     ty_fn(fn_ty),
     ty_iface(def_id, [t]),
+    ty_class(def_id, [t]),
     ty_res(def_id, t, [t]),
     ty_tup([t]),
 
@@ -354,7 +356,7 @@ fn mk_t_named(cx: ctxt, st: sty, name: option<str>) -> t {
       ty_opaque_box {}
       ty_param(_, _) { has_params = true; }
       ty_var(_) | ty_self(_) { has_vars = true; }
-      ty_enum(_, tys) | ty_iface(_, tys) {
+      ty_enum(_, tys) | ty_iface(_, tys) | ty_class(_, tys) {
         for tt in tys { derive_flags(has_params, has_vars, tt); }
       }
       ty_box(m) | ty_uniq(m) | ty_vec(m) | ty_ptr(m) {
@@ -442,6 +444,10 @@ fn mk_iface(cx: ctxt, did: ast::def_id, tys: [t]) -> t {
     mk_t(cx, ty_iface(did, tys))
 }
 
+fn mk_class(cx: ctxt, class_id: ast::def_id, tys: [t]) -> t {
+    mk_t(cx, ty_class(class_id, tys))
+}
+
 fn mk_res(cx: ctxt, did: ast::def_id, inner: t, tps: [t]) -> t {
     mk_t(cx, ty_res(did, inner, tps))
 }
@@ -487,7 +493,8 @@ fn walk_ty(cx: ctxt, ty: t, f: fn(t)) {
       ty_str | ty_send_type | ty_type | ty_opaque_box |
       ty_opaque_closure_ptr(_) | ty_var(_) | ty_param(_, _) {}
       ty_box(tm) | ty_vec(tm) | ty_ptr(tm) { walk_ty(cx, tm.ty, f); }
-      ty_enum(_, subtys) | ty_iface(_, subtys) | ty_self(subtys) {
+      ty_enum(_, subtys) | ty_iface(_, subtys) | ty_class(_, subtys)
+       | ty_self(subtys) {
         for subty: t in subtys { walk_ty(cx, subty, f); }
       }
       ty_rec(fields) {
@@ -1155,6 +1162,11 @@ fn hash_type_structure(st: sty) -> uint {
       ty_opaque_closure_ptr(ck_box) { 42u }
       ty_opaque_closure_ptr(ck_uniq) { 43u }
       ty_opaque_box { 44u }
+      ty_class(did, tys) {
+          let h = hash_def(45u, did);
+          for typ: t in tys { h = hash_subty(h, typ); }
+          h
+      }
     }
 }
 
@@ -2410,6 +2422,9 @@ fn lookup_item_type(cx: ctxt, did: ast::def_id) -> ty_param_bounds_and_ty {
     alt cx.tcache.find(did) {
       some(tpt) { ret tpt; }
       none {
+          /* where do things get added to the cache?
+             Have to add class members */
+
         // The item is in this crate. The caller should have added it to the
         // type cache already
         assert did.crate != ast::local_crate;

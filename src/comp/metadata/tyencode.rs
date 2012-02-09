@@ -192,6 +192,13 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
         w.write_char(']');
       }
       ty::ty_opaque_box { w.write_char('B'); }
+      ty::ty_class(def, tys) {
+          w.write_str("c[");
+          w.write_str(cx.ds(def));
+          w.write_char('|');
+          for t: ty::t in tys { enc_ty(w, cx, t); }
+          w.write_char(']');
+      }
     }
 }
 fn enc_proto(w: io::writer, proto: proto) {

@@ -472,6 +472,16 @@ fn visit_item_with_scope(e: @env, i: @ast::item, sc: scopes, v: vt<scopes>) {
             v.visit_ty(m.decl.output, msc, v);
         }
       }
+      ast::item_class(tps, members, ctor_id, ctor_decl, ctor_block) {
+        visit::visit_ty_params(tps, sc, v);
+        let ctor_scope = cons(scope_fn_expr(ctor_decl, ctor_id, tps), @sc);
+        for cm in members {
+            alt cm.node.decl {
+              class_method(i) { visit_item_with_scope(e, i, ctor_scope, v); }
+              _ { } // instance var -- nothing to do
+            }
+        }
+      }
       _ { visit::visit_item(i, sc, v); }
     }
 
@@ -1209,7 +1219,9 @@ fn found_def_item(i: @ast::item, ns: namespace) -> option<def> {
         }
       }
       ast::item_class(_, _, _, _, _) {
-          fail "class! don't know what to do";
+          if ns == ns_type {
+            ret some(ast::def_class(local_def(i.id)));
+          }
       }
       ast::item_impl(_,_,_,_) { /* ??? */ }
     }
