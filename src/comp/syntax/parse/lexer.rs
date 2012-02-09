@@ -43,7 +43,13 @@ impl reader for reader {
             let next = str::char_range_at(*self.src, self.pos);
             self.pos = next.next;
             self.curr = next.ch;
-        } else { self.curr = -1 as char; }
+        } else {
+            if (self.curr != -1 as char) {
+                self.col += 1u;
+                self.chpos += 1u;
+                self.curr = -1 as char;
+            }
+        }
     }
     fn fatal(m: str) -> ! {
         self.span_diagnostic.span_fatal(
