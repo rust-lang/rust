@@ -28,8 +28,6 @@ struct registers_t {
     uint64_t data[RUSTRT_MAX];
 } __attribute__((aligned(16)));
 
-extern "C" void __morestack(void *args, void *fn_ptr, uintptr_t stack_ptr);
-
 class context {
 public:
     registers_t regs;
@@ -40,10 +38,6 @@ public:
     
     void swap(context &out);
     void call(void *f, void *arg, void *sp);
-
-    void call_and_change_stacks(void *args, void *fn_ptr) {
-        __morestack(args, fn_ptr, regs.data[RUSTRT_RSP]);
-    }
 };
 
 #endif

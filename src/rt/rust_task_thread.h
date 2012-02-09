@@ -95,6 +95,10 @@ struct rust_task_thread : public kernel_owned<rust_task_thread>,
 private:
 
     stk_seg *cached_c_stack;
+    stk_seg *extra_c_stack;
+
+    void prepare_c_stack();
+    void unprepare_c_stack();
 
 public:
 

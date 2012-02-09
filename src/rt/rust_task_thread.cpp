@@ -61,10 +61,6 @@ rust_task_thread::~rust_task_thread() {
 #ifndef __WIN32__
     pthread_attr_destroy(&attr);
 #endif
-
-    if (cached_c_stack) {
-        destroy_stack(kernel, cached_c_stack);
-    }
 }
 
 void
@@ -72,7 +68,9 @@ rust_task_thread::activate(rust_task *task) {
     task->ctx.next = &c_context;
     DLOG(this, task, "descheduling...");
     lock.unlock();
+    prepare_c_stack();
     task->ctx.swap(c_context);
+    unprepare_c_stack();
     lock.lock();
     DLOG(this, task, "task has returned");
 }
@@ -287,6 +285,13 @@ rust_task_thread::start_main_loop() {
     DLOG(this, dom, "finished main-loop %d", id);
 
     lock.unlock();
+
+    I(this, !extra_c_stack);
+    if (cached_c_stack) {
+        unconfig_valgrind_stack(cached_c_stack);
+        destroy_stack(kernel, cached_c_stack);
+        cached_c_stack = NULL;
+    }
 }
 
 rust_crate_cache *
@@ -374,24 +379,51 @@ rust_task_thread::exit() {
     lock.signal();
 }
 
-stk_seg *
-rust_task_thread::borrow_c_stack() {
-
-    if (cached_c_stack) {
-        stk_seg *your_stack = cached_c_stack;
-        cached_c_stack = NULL;
-        return your_stack;
-    } else {
-        return create_stack(kernel, C_STACK_SIZE);
+// Before activating each task, make sure we have a C stack available.
+// It needs to be allocated ahead of time (while we're on our own
+// stack), because once we're on the Rust stack we won't have enough
+// room to do the allocation
+void
+rust_task_thread::prepare_c_stack() {
+    I(this, !extra_c_stack);
+    if (!cached_c_stack) {
+        cached_c_stack = create_stack(kernel, C_STACK_SIZE);
     }
 }
 
 void
-rust_task_thread::return_c_stack(stk_seg *stack) {
-    if (cached_c_stack) {
-        destroy_stack(kernel, stack);
+rust_task_thread::unprepare_c_stack() {
+    if (extra_c_stack) {
+        destroy_stack(kernel, extra_c_stack);
+        extra_c_stack = NULL;
+    }
+}
+
+// NB: Runs on the Rust stack
+stk_seg *
+rust_task_thread::borrow_c_stack() {
+    I(this, cached_c_stack);
+    stk_seg *your_stack;
+    if (extra_c_stack) {
+        your_stack = extra_c_stack;
+        extra_c_stack = NULL;
     } else {
+        your_stack = cached_c_stack;
+        cached_c_stack = NULL;
+    }
+    config_valgrind_stack(your_stack);
+    return your_stack;
+}
+
+// NB: Runs on the Rust stack
+void
+rust_task_thread::return_c_stack(stk_seg *stack) {
+    I(this, !extra_c_stack);
+    unconfig_valgrind_stack(stack);
+    if (!cached_c_stack) {
         cached_c_stack = stack;
+    } else {
+        extra_c_stack = stack;
     }
 }
 

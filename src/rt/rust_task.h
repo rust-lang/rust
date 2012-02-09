@@ -36,6 +36,8 @@ typedef unsigned long task_result;
 #define tr_success 0
 #define tr_failure 1
 
+struct spawn_args;
+
 // std::lib::task::task_notification
 //
 // since it's currently a unary tag, we only add the fields.
@@ -104,6 +106,11 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     size_t total_stack_sz;
 
 private:
+
+    // The stack used for running C code, borrowed from the scheduler thread
+    stk_seg *c_stack;
+    uintptr_t next_c_sp;
+
     // Called when the atomic refcount reaches zero
     void delete_this();
 
@@ -111,6 +118,10 @@ private:
     void del_stack();
     void free_stack(stk_seg *stk);
     size_t get_next_stack_size(size_t min, size_t current, size_t requested);
+
+    void return_c_stack();
+
+    friend void task_start_wrapper(spawn_args *a);
 
 public:
 

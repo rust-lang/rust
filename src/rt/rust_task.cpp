@@ -88,7 +88,9 @@ rust_task::rust_task(rust_task_thread *thread, rust_task_list *state,
     propagate_failure(true),
     dynastack(this),
     cc_counter(0),
-    total_stack_sz(0)
+    total_stack_sz(0),
+    c_stack(NULL),
+    next_c_sp(0)
 {
     LOGPTR(thread, "new task", (uintptr_t)this);
     DLOG(thread, task, "sizeof(task) = %d (0x%x)", sizeof *this, sizeof *this);
@@ -166,7 +168,6 @@ cleanup_task(cleanup_args *args) {
 }
 
 // This runs on the Rust stack
-extern "C" CDECL
 void task_start_wrapper(spawn_args *a)
 {
     rust_task *task = a->task;
@@ -180,7 +181,14 @@ void task_start_wrapper(spawn_args *a)
         A(task->thread, ex == task,
           "Expected this task to be thrown for unwinding");
         threw_exception = true;
+
+        if (task->c_stack) {
+            task->return_c_stack();
+        }
     }
+
+    // We should have returned any C stack by now
+    I(task->thread, task->c_stack == NULL);
 
     rust_opaque_box* env = a->envptr;
     if(env) {
@@ -722,10 +730,35 @@ rust_task::config_notify(chan_handle chan) {
     notify_chan = chan;
 }
 
+extern "C" void __morestack(void *args, void *fn_ptr, uintptr_t stack_ptr);
+
 void
 rust_task::call_on_c_stack(void *args, void *fn_ptr) {
     I(thread, on_rust_stack());
-    thread->c_context.call_and_change_stacks(args, fn_ptr);
+
+    bool borrowed_a_c_stack = false;
+    if (c_stack == NULL) {
+        c_stack = thread->borrow_c_stack();
+        next_c_sp = align_down(c_stack->end);
+        borrowed_a_c_stack = true;
+    }
+
+    __morestack(args, fn_ptr, next_c_sp);
+
+    // Note that we may not actually get here if we threw an exception,
+    // in which case we will return the c stack when the exception is caught.
+    if (borrowed_a_c_stack) {
+        return_c_stack();
+    }
+}
+
+void
+rust_task::return_c_stack() {
+    I(thread, on_rust_stack());
+    I(thread, c_stack != NULL);
+    thread->return_c_stack(c_stack);
+    c_stack = NULL;
+    next_c_sp = 0;
 }
 
 //
