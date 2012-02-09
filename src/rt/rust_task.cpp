@@ -538,7 +538,7 @@ void
 rust_task::free_stack(stk_seg *stk) {
     LOGPTR(thread, "freeing stk segment", (uintptr_t)stk);
     total_stack_sz -= user_stack_size(stk);
-    free(stk);
+    destroy_stack(this, stk);
 }
 
 void
@@ -581,8 +581,8 @@ rust_task::new_stack(size_t requested_sz) {
         fail();
     }
 
-    size_t sz = sizeof(stk_seg) + rust_stk_sz + RED_ZONE_SIZE;
-    stk_seg *new_stk = (stk_seg *)malloc(sz, "stack");
+    size_t sz = rust_stk_sz + RED_ZONE_SIZE;
+    stk_seg *new_stk = create_stack(this, sz);
     LOGPTR(thread, "new stk", (uintptr_t)new_stk);
     memset(new_stk, 0, sizeof(stk_seg));
     add_stack_canary(new_stk);
