@@ -4,8 +4,6 @@
 
 class sync {
 public:
-    static void yield();
-    static void sleep(size_t timeout_in_ms);
     template <class T>
     static bool compare_and_swap(T *address,
         T oldValue, T newValue) {

@@ -35,7 +35,6 @@ define DEF_RUNTIME_TARGETS
 
 RUNTIME_CS_$(1) := \
               rt/sync/timer.cpp \
-              rt/sync/sync.cpp \
               rt/sync/lock_and_signal.cpp \
               rt/sync/rust_thread.cpp \
               rt/rust.cpp \
