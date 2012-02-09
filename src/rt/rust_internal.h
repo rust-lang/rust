@@ -105,8 +105,9 @@ static size_t const BUF_BYTES = 2048;
   void deref() { if (--ref_count == 0) { dtor; } }
 
 #define RUST_ATOMIC_REFCOUNT()                                            \
-public:                                                                   \
+private:                                                                  \
    intptr_t ref_count;                                                    \
+public:                                                                   \
    void ref() {                                                           \
        intptr_t old = sync::increment(ref_count);                         \
        assert(old > 0);                                                   \

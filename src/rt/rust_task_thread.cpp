@@ -149,7 +149,7 @@ rust_task_thread::reap_dead_tasks() {
 void
 rust_task_thread::release_task(rust_task *task) {
     // Nobody should have a ref to the task at this point
-    I(this, task->ref_count == 0);
+    I(this, task->get_ref_count() == 0);
     // Kernel should not know about the task any more
     I(this, kernel->get_task_by_id(task->id) == NULL);
     // Now delete the task, which will require using this thread's

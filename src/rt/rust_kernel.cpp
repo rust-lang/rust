@@ -190,6 +190,7 @@ rust_kernel::get_task_by_id(rust_task_id id) {
     task_table.get(id, &task);
     if(task) {
         if(task->get_ref_count() == 0) {
+            // FIXME: I don't think this is possible.
             // this means the destructor is running, since the destructor
             // grabs the kernel lock to unregister the task. Pretend this
             // doesn't actually exist.
