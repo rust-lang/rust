@@ -761,8 +761,8 @@ mod collect {
           _ { fail; }
         }
     }
-    fn convert_class_item(cx: @ctxt, parent_ty: ty::t,
-                          ci: ast::class_member) {
+    fn convert_class_item(_cx: @ctxt, _parent_ty: ty::t,
+                          _ci: ast::class_member) {
         /* TODO */
     }
     fn convert(cx: @ctxt, it: @ast::item) {
