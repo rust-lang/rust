@@ -81,7 +81,6 @@ rust_getcwd() {
     return make_str(task->kernel, cbuf, strlen(cbuf), "rust_str(getcwd");
 }
 
-
 #if defined(__WIN32__)
 extern "C" CDECL rust_vec *
 rust_env_pairs() {
@@ -123,18 +122,6 @@ rust_env_pairs() {
     return make_str_vec(task->kernel, envc, environ);
 }
 #endif
-
-// TODO: Allow calling native functions that return double results.
-extern "C" CDECL
-void squareroot(double *input, double *output) {
-    *output = sqrt(*input);
-}
-
-extern "C" CDECL void
-leak(void *thing) {
-    // Do nothing. Call this with move-mode in order to say "Don't worry rust,
-    // I'll take care of this."
-}
 
 extern "C" CDECL intptr_t
 refcount(intptr_t *v) {
@@ -475,13 +462,6 @@ rust_new_task_in_sched(rust_sched_id id) {
 }
 
 extern "C" CDECL void
-drop_task(rust_task *target) {
-    if(target) {
-        target->deref();
-    }
-}
-
-extern "C" CDECL void
 rust_task_config_notify(rust_task_id task_id, chan_handle *chan) {
     rust_task *task = rust_task_thread::get_task();
     rust_task *target = task->kernel->get_task_by_id(task_id);
@@ -489,12 +469,6 @@ rust_task_config_notify(rust_task_id task_id, chan_handle *chan) {
       "This function should only be called when we know the task exists");
     target->config_notify(*chan);
     target->deref();
-}
-
-extern "C" CDECL rust_task *
-get_task_pointer(rust_task_id id) {
-    rust_task *task = rust_task_thread::get_task();
-    return task->kernel->get_task_by_id(id);
 }
 
 extern "C" rust_task *
