@@ -584,11 +584,9 @@ rust_task::new_stack(size_t requested_sz) {
     size_t sz = rust_stk_sz + RED_ZONE_SIZE;
     stk_seg *new_stk = create_stack(this, sz);
     LOGPTR(thread, "new stk", (uintptr_t)new_stk);
-    memset(new_stk, 0, sizeof(stk_seg));
     add_stack_canary(new_stk);
     new_stk->prev = NULL;
     new_stk->next = stk;
-    new_stk->end = (uintptr_t) &new_stk->data[rust_stk_sz + RED_ZONE_SIZE];
     LOGPTR(thread, "stk end", new_stk->end);
 
     stk = new_stk;

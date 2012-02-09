@@ -17,7 +17,10 @@ template <class T>
 stk_seg *
 create_stack(T allocer, size_t sz) {
   size_t total_sz = sizeof(stk_seg) + sz;
-  return (stk_seg *)allocer->malloc(total_sz, "stack");
+  stk_seg *stk = (stk_seg *)allocer->malloc(total_sz, "stack");
+  memset(stk, 0, sizeof(stk_seg));
+  stk->end = (uintptr_t) &stk->data[sz];
+  return stk;
 }
 
 template <class T>
