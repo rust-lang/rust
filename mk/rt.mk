@@ -115,10 +115,10 @@ else ifeq ($(CFG_OSTYPE), apple-darwin)
   LIBUV_OSTYPE_$(1) := mac
   LIBUV_LIB_$(1) := rt/$(1)/libuv/Release/libuv.a
 else ifeq ($(CFG_OSTYPE), unknown-freebsd)
-  LIBUV_OSTYPE_$(1) := freebsd
+  LIBUV_OSTYPE_$(1) := unix/freebsd
   LIBUV_LIB_$(1) := rt/$(1)/libuv/Release/obj.target/src/libuv/libuv.a
 else
-  LIBUV_OSTYPE_$(1) := unix
+  LIBUV_OSTYPE_$(1) := unix/linux
   LIBUV_LIB_$(1) := rt/$(1)/libuv/Release/obj.target/src/libuv/libuv.a
 endif
 

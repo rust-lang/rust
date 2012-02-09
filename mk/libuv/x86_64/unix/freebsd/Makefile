@@ -7,7 +7,7 @@
 MAKEFLAGS=-r
 
 # The source directory tree.
-srcdir := ../../../..
+srcdir := ../../../../..
 abs_srcdir := $(abspath $(srcdir))
 
 # The name of the builddir.
@@ -56,9 +56,9 @@ CFLAGS.target ?= $(CFLAGS)
 CXX.target ?= $(CXX)
 CXXFLAGS.target ?= $(CXXFLAGS)
 LINK.target ?= $(LINK)
-LDFLAGS.target ?= $(LDFLAGS) 
+LDFLAGS.target ?= $(LDFLAGS)
 AR.target ?= $(AR)
-ARFLAGS.target ?= crsT
+ARFLAGS.target ?= crs
 
 # N.B.: the logic of which commands to run should match the computation done
 # in gyp's make.py where ARFLAGS.host etc. is computed.
@@ -71,7 +71,7 @@ CXXFLAGS.host ?=
 LINK.host ?= g++
 LDFLAGS.host ?=
 AR.host ?= ar
-ARFLAGS.host := crsT
+ARFLAGS.host := crs
 
 # Define a dir function that can handle spaces.
 # http://www.gnu.org/software/make/manual/make.html#Syntax-of-Functions
@@ -322,10 +322,10 @@ ifeq ($(strip $(foreach prefix,$(NO_LOAD),\
   include src/libuv/uv.target.mk
 endif
 
-#quiet_cmd_regen_makefile = ACTION Regenerating $@
-#cmd_regen_makefile = ./src/libuv/build/gyp/gyp -fmake --ignore-environment "--toplevel-dir=." -Isrc/libuv/common.gypi "--depth=." "--generator-output=mk/libuv/x86_64/unix" "-Ddefault_configuration=Default" "-Dcomponent=static_library" "-Dlibrary=static_library" "-Dtarget_arch=x86_64" "-DOS=linux" src/libuv/uv.gyp
-#Makefile: $(srcdir)/src/libuv/uv.gyp $(srcdir)/src/libuv/common.gypi
-#	$(call do_cmd,regen_makefile)
+quiet_cmd_regen_makefile = ACTION Regenerating $@
+cmd_regen_makefile = ./src/libuv/build/gyp/gyp -fmake --ignore-environment "--toplevel-dir=." -Isrc/libuv/common.gypi "--depth=." "--generator-output=mk/libuv/x86_64/unix/freebsd" "-Ddefault_configuration=Default" "-Dcomponent=static_library" "-Dlibrary=static_library" "-Dtarget_arch=x86_64" "-DOS=freebsd" src/libuv/uv.gyp
+Makefile: $(srcdir)/src/libuv/uv.gyp $(srcdir)/src/libuv/common.gypi
+	$(call do_cmd,regen_makefile)
 
 # "all" is a concatenation of the "all" targets from all the included
 # sub-makefiles. This is just here to clarify.
