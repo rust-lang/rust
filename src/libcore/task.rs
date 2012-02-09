@@ -72,8 +72,8 @@ native mod rustrt {
     fn new_task() -> task_id;
     fn rust_new_task_in_sched(id: sched_id) -> task_id;
 
-    fn drop_task(task_id: *rust_task);
-    fn get_task_pointer(id: task_id) -> *rust_task;
+    fn rust_task_config_notify(
+        id: task_id, &&chan: comm::chan<task_notification>);
 
     fn start_task(id: task, closure: *rust_closure);
 
@@ -83,13 +83,7 @@ native mod rustrt {
 
 /* Section: Types */
 
-type rust_task =
-    {id: task,
-     mutable notify_enabled: int,
-     mutable notify_chan: comm::chan<task_notification>,
-     mutable stack_ptr: *u8};
-
-resource rust_task_ptr(task: *rust_task) { rustrt::drop_task(task); }
+type rust_task = *ctypes::void;
 
 type sched_id = int;
 type task_id = int;
@@ -132,9 +126,7 @@ fn spawn_inner(
 
     // set up notifications if they are enabled.
     option::may(notify) {|c|
-        let task_ptr <- rust_task_ptr(rustrt::get_task_pointer(id));
-        (**task_ptr).notify_enabled = 1;
-        (**task_ptr).notify_chan = c;
+        rustrt::rust_task_config_notify(id, c);
     }
 
     rustrt::start_task(id, closure);
