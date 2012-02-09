@@ -1,5 +1,3 @@
-import vec;
-import option::none;
 import syntax::ast;
 import driver::session::session;
 import lib::llvm::{ValueRef, TypeRef};

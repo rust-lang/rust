@@ -1,4 +1,3 @@
-import core::{vec, int, uint, option};
 import option::*;
 import pat_util::*;
 import syntax::ast::*;

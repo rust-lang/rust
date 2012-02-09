@@ -1,5 +1,3 @@
-import core::{vec, str, option};
-import option::{some};
 import codemap::span;
 import syntax::ext::base::ext_ctxt;
 

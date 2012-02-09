@@ -5,8 +5,6 @@
  * should all get sucked into either the standard library extfmt module or the
  * compiler syntax extension plugin interface.
  */
-import core::{vec, str, option};
-import option::{some};
 import extfmt::ct::*;
 import base::*;
 import codemap::span;

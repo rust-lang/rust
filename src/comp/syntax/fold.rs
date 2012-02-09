@@ -1,8 +1,6 @@
 import syntax::codemap::span;
 import ast::*;
 
-import core::{vec, option};
-
 export ast_fold_precursor;
 export ast_fold;
 export default_ast_fold;

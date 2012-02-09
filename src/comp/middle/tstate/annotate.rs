@@ -1,5 +1,4 @@
 
-import core::{int, uint};
 import syntax::ast::*;
 import syntax::visit;
 import syntax::codemap::span;

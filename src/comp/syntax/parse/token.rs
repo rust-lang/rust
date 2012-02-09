@@ -1,6 +1,5 @@
 
 import util::interner;
-import core::{int, uint, str};
 import lexer::reader;
 
 type str_num = uint;

@@ -1,5 +1,3 @@
-import core::{vec, option};
-import option::{none, some};
 import ann::*;
 import aux::*;
 import tritv::{tritv_clone, tritv_set, ttrue};

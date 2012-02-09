@@ -1,5 +1,3 @@
-import core::{vec, str, option};
-import option::{some, none};
 import syntax::ast::*;
 import syntax::visit;
 import syntax::ast_util;

@@ -2,12 +2,7 @@
 // FIXME: I'm not happy how this module turned out. Should probably
 // just be folded into cstore.
 
-import core::option;
-import std::fs;
-import vec;
-import std::os;
-import result;
-import std::generic_os;
+import std::{fs, os, generic_os};
 
 export filesearch;
 export mk_filesearch;

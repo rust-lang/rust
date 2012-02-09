@@ -13,11 +13,10 @@ import std::map::{new_int_hash, new_str_hash};
 import syntax::codemap::span;
 import syntax::visit;
 import visit::vt;
-import core::{vec, option, str};
 import std::list;
 import std::map::hashmap;
 import std::list::{list, nil, cons};
-import option::{some, none, is_none, is_some};
+import option::{is_none, is_some};
 import syntax::print::pprust::*;
 
 export resolve_crate;

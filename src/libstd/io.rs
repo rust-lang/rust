@@ -264,7 +264,7 @@ fn string_reader(s: str) -> reader {
 
 
 // Writing
-enum fileflag { append, create, truncate, none, }
+enum fileflag { append, create, truncate, no_flag, }
 
 // FIXME: Seekable really should be orthogonal.
 // FIXME: eventually u64
@@ -350,7 +350,7 @@ fn mk_file_writer(path: str, flags: [fileflag])
           append { fflags |= os::libc_constants::O_APPEND; }
           create { fflags |= os::libc_constants::O_CREAT; }
           truncate { fflags |= os::libc_constants::O_TRUNC; }
-          none { }
+          no_flag { }
         }
     }
     let fd = str::as_buf(path, {|pathbuf|

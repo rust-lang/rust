@@ -1,9 +1,6 @@
 
 import ast::*;
-import option;
-import option::{none, some};
 import codemap::span;
-
 
 // Context-passing AST walker. Each overridden visit method has full control
 // over what happens with its node, it can do its own traversal of the node's

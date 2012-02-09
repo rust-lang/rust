@@ -2,11 +2,9 @@ use std;
 use rustc;
 
 // -*- rust -*-
-import core::{option, str, vec, result};
 import result::{ok, err};
 import std::{io, getopts};
 import io::writer_util;
-import option::{some, none};
 import getopts::{opt_present};
 import rustc::driver::driver::*;
 import rustc::syntax::codemap;

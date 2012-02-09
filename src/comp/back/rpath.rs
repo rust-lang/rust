@@ -1,10 +1,4 @@
-import std::os;
-import std::fs;
-import std::os_fs;
-import vec;
-import std::map;
-import str;
-import uint;
+import std::{os, fs, os_fs, map};
 import metadata::cstore;
 import driver::session;
 import util::filesearch;

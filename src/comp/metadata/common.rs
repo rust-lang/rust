@@ -1,7 +1,5 @@
 // EBML enum definitions and utils shared by the encoder and decoder
 
-import str;
-
 const tag_paths: uint = 0x01u;
 
 const tag_items: uint = 0x02u;

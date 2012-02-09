@@ -1,5 +1,4 @@
-import core::{vec, str};
-import core::ctypes::{c_uint, c_int};
+import ctypes::{c_uint, c_int};
 import str::sbuf;
 import lib::llvm::llvm;
 import syntax::codemap;

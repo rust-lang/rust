@@ -1,7 +1,5 @@
 import driver::session;
 
-import option::{none, some};
-
 import syntax::ast::{crate, expr_, mac_invoc,
                      mac_aq, mac_var};
 import syntax::fold::*;

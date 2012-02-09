@@ -3,7 +3,6 @@ import syntax::ast::*;
 import syntax::codemap::span;
 import std::list::{is_not_empty, list, nil, cons, tail};
 import std::util::unreachable;
-import core::{vec, option};
 import std::list;
 
 // Last use analysis pass.

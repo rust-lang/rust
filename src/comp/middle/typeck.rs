@@ -13,10 +13,8 @@ import middle::ty::{node_id_to_type, arg, block_ty,
                     ty_param_bounds_and_ty};
 import util::ppaux::ty_to_str;
 import middle::ty::unify::{ures_ok, ures_err, fix_ok, fix_err};
-import core::{int, vec, str, option};
 import std::smallintmap;
 import std::map::{hashmap, new_int_hash};
-import option::{none, some};
 import syntax::print::pprust::*;
 
 export check_crate;

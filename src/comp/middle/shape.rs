@@ -21,9 +21,7 @@ import util::common;
 import trans::build::{Load, Store, Add, GEPi};
 import syntax::codemap::span;
 
-import core::{vec, str};
 import std::map::hashmap;
-import option::{none, some};
 
 import ty_ctxt = middle::ty::ctxt;
 

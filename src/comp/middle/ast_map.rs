@@ -1,4 +1,3 @@
-import option;
 import std::map;
 import syntax::ast::*;
 import syntax::ast_util;

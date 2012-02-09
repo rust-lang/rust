@@ -7,7 +7,6 @@ import common::*;
 import build::*;
 import base::*;
 import middle::freevars::{get_freevars, freevar_info};
-import option::{some, none};
 import back::abi;
 import syntax::codemap::span;
 import syntax::print::pprust::expr_to_str;

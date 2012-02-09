@@ -3,7 +3,6 @@
 import std::io;
 import io::writer_util;
 import std::map::hashmap;
-import option::{some, none};
 import syntax::ast::*;
 import driver::session::session;
 import middle::ty;

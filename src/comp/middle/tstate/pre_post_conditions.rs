@@ -1,7 +1,3 @@
-
-import core::{vec, option};
-import option::{none, some};
-
 import tstate::ann::*;
 import aux::*;
 import bitvectors::{bit_num, seq_preconds, seq_postconds,

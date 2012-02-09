@@ -10,7 +10,6 @@ import syntax::codemap::span;
 import util::{filesearch};
 import std::{io, fs};
 import io::writer_util;
-import option::{none, some};
 import std::map::{hashmap, new_int_hash};
 import syntax::print::pprust;
 import common::*;

@@ -1,4 +1,3 @@
-import option::{some, none};
 import syntax::{visit, ast_util};
 import syntax::ast::*;
 import syntax::codemap::span;

@@ -1,6 +1,3 @@
-import core::{str, vec, option};
-import option::{some, none};
-
 import driver::session::session;
 import lib::llvm::llvm;
 import lib::llvm::{ValueRef, BasicBlockRef};

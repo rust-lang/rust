@@ -10,11 +10,9 @@ import middle::{trans, resolve, freevars, kind, ty, typeck, fn_usage,
 import syntax::print::{pp, pprust};
 import util::{ppaux, filesearch};
 import back::link;
-import core::{option, str, int, result};
 import result::{ok, err};
 import std::{fs, io, getopts};
 import io::{reader_util, writer_util};
-import option::{some, none};
 import getopts::{optopt, optmulti, optflag, optflagopt, opt_present};
 import back::{x86, x86_64};
 

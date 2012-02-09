@@ -1,9 +1,8 @@
-import core::ctypes::c_uint;
+import ctypes::c_uint;
 import base::*;
 import common::*;
 import build::*;
 import driver::session::session;
-import option::{some, none};
 import syntax::{ast, ast_util};
 import metadata::csearch;
 import back::{link, abi};

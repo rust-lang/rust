@@ -1,5 +1,3 @@
-import core::{vec, str, int, option};
-import option::{none, some};
 import middle::ty;
 import middle::ty::*;
 import metadata::encoder;

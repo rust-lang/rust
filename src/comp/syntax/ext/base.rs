@@ -1,9 +1,7 @@
-import core::{vec, option};
 import std::map::hashmap;
 import driver::session::session;
 import codemap::{span, expn_info, expanded_from};
 import std::map::new_str_hash;
-import codemap;
 
 type syntax_expander_ =
     fn@(ext_ctxt, span, ast::mac_arg, ast::mac_body) -> @ast::expr;

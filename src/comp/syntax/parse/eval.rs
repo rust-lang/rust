@@ -1,8 +1,6 @@
 
 import front::attr;
-import core::{option, result};
 import std::{io, fs};
-import option::{some, none};
 import syntax::ast;
 import syntax::parse::token;
 import syntax::parse::parser::{parser, new_parser_from_file,

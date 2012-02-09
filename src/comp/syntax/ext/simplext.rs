@@ -1,9 +1,7 @@
 use std;
 
 import codemap::span;
-import core::{vec, option};
 import std::map::{hashmap, new_str_hash};
-import option::{some, none};
 import driver::session::session;
 
 import base::*;

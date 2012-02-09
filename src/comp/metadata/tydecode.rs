@@ -1,7 +1,5 @@
 // Type decoding
 
-import core::{vec, str, uint};
-import option::{none, some};
 import syntax::ast;
 import syntax::ast::*;
 import syntax::ast_util;

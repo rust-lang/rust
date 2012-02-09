@@ -1,11 +1,7 @@
 
-import core::{vec, int, str, uint, option};
 import std::io;
 import parse::lexer;
 import syntax::codemap::codemap;
-import ast;
-import ast_util;
-import option::{some, none};
 import pp::{break_offset, word, printer,
             space, zerobreak, hardbreak, breaks, consistent,
             inconsistent, eof};

@@ -1,6 +1,5 @@
 // The Rust abstract syntax tree.
 
-import option;
 import codemap::{span, filename};
 
 type spanned<T> = {node: T, span: span};

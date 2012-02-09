@@ -1,13 +1,5 @@
-import vec;
-import str;
-import uint;
-import std::ufind;
-import std::map;
+import std::{ufind, map, smallintmap};
 import std::map::hashmap;
-import option;
-import option::none;
-import option::some;
-import std::smallintmap;
 import driver::session;
 import session::session;
 import syntax::ast;

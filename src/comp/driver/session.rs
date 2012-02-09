@@ -3,8 +3,6 @@ import syntax::{ast, codemap};
 import syntax::ast::node_id;
 import codemap::span;
 import syntax::ast::{int_ty, uint_ty, float_ty};
-import option;
-import option::{some, none};
 import syntax::parse::parser::parse_sess;
 import util::filesearch;
 import back::target_strs;

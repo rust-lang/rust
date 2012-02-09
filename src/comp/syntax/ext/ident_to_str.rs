@@ -1,4 +1,3 @@
-import core::{vec, option};
 import base::*;
 import syntax::ast;
 

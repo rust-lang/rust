@@ -6,7 +6,6 @@ import syntax::codemap::span;
 import middle::ty;
 import tstate::ann::{precond, prestate,
                      implies, ann_precond, ann_prestate};
-import option;
 import aux::*;
 import syntax::print::pprust::ty_to_str;
 import bitvectors::*;

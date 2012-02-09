@@ -1,6 +1,5 @@
 import syntax::ast::*;
 import syntax::visit;
-import vec;
 import option::*;
 import aux::*;
 import tstate::ann::{pre_and_post, precond, postcond, prestate, poststate,

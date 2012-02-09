@@ -1,6 +1,4 @@
-import core::{vec, str, option, either, result};
 import std::{io, fs};
-import option::{some, none};
 import either::{left, right};
 import std::map::{hashmap, new_str_hash};
 import token::can_begin_expr;

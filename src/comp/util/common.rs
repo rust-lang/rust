@@ -1,6 +1,5 @@
 import math::{max, min};
 import std::map::hashmap;
-import option::{some};
 import syntax::ast;
 import ast::{ty, pat};
 import syntax::codemap::{span};

@@ -1,6 +1,3 @@
-import core::{vec, uint, str, option, result};
-import option::{some, none};
-
 type filename = str;
 
 type file_pos = {ch: uint, byte: uint};

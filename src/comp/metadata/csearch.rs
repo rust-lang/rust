@@ -3,7 +3,6 @@
 import syntax::ast;
 import syntax::ast_util;
 import middle::ty;
-import option::{some, none};
 import driver::session;
 
 export get_symbol;

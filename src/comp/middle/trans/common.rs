@@ -3,11 +3,9 @@
 
 */
 
-import core::{int, vec, str, uint, option, unsafe};
-import core::ctypes::unsigned;
+import ctypes::unsigned;
 import vec::to_ptr;
 import std::map::hashmap;
-import option::some;
 import syntax::ast;
 import driver::session;
 import session::session;
