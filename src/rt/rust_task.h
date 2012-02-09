@@ -181,6 +181,8 @@ public:
     void check_stack_canary();
 
     void config_notify(chan_handle chan);
+
+    void call_on_c_stack(void *args, void *fn_ptr);
 };
 
 //

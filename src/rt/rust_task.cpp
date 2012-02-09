@@ -194,7 +194,7 @@ void task_start_wrapper(spawn_args *a)
 
     // The cleanup work needs lots of stack
     cleanup_args ca = {a, threw_exception};
-    task->thread->c_context.call_and_change_stacks(&ca, (void*)cleanup_task);
+    task->call_on_c_stack(&ca, (void*)cleanup_task);
 
     task->ctx.next->swap(task->ctx);
 }
@@ -699,7 +699,18 @@ Returns true if we're currently running on the Rust stack
  */
 bool
 rust_task::on_rust_stack() {
-    return sp_in_stk_seg(get_sp(), stk);
+    uintptr_t sp = get_sp();
+    bool in_first_segment = sp_in_stk_seg(sp, stk);
+    if (in_first_segment) {
+        return true;
+    } else if (stk->next != NULL) {
+        // This happens only when calling the upcall to delete
+        // a stack segment
+        bool in_second_segment = sp_in_stk_seg(sp, stk->next);
+        return in_second_segment;
+    } else {
+        return false;
+    }
 }
 
 void
@@ -711,6 +722,12 @@ void
 rust_task::config_notify(chan_handle chan) {
     notify_enabled = true;
     notify_chan = chan;
+}
+
+void
+rust_task::call_on_c_stack(void *args, void *fn_ptr) {
+    I(thread, on_rust_stack());
+    thread->c_context.call_and_change_stacks(args, fn_ptr);
 }
 
 //

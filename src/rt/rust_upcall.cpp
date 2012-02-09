@@ -47,8 +47,7 @@ inline void
 call_upcall_on_c_stack(void *args, void *fn_ptr) {
     check_stack_alignment();
     rust_task *task = rust_task_thread::get_task();
-    rust_task_thread *thread = task->thread;
-    thread->c_context.call_and_change_stacks(args, fn_ptr);
+    task->call_on_c_stack(args, fn_ptr);
 }
 
 extern "C" void record_sp(void *limit);
@@ -69,11 +68,10 @@ upcall_call_shim_on_c_stack(void *args, void *fn_ptr) {
     // stack.
     record_sp(0);
 
-    rust_task_thread *thread = task->thread;
     try {
-        thread->c_context.call_and_change_stacks(args, fn_ptr);
+        task->call_on_c_stack(args, fn_ptr);
     } catch (...) {
-        A(thread, false, "Native code threw an exception");
+        A(task->thread, false, "Native code threw an exception");
     }
 
     task = rust_task_thread::get_task();
