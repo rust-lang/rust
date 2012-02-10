@@ -2,7 +2,7 @@ import std::{io, fs};
 import either::{left, right};
 import std::map::{hashmap, new_str_hash};
 import token::can_begin_expr;
-import codemap::span;
+import codemap::{span,fss_none};
 import util::interner;
 import ast::{node_id, spanned};
 import ast_util::{mk_sp, ident_to_path};
@@ -2618,7 +2618,7 @@ fn parse_crate_from_source_file(input: str, cfg: ast::crate_cfg,
 
 fn parse_expr_from_source_str(name: str, source: @str, cfg: ast::crate_cfg,
                               sess: parse_sess) -> @ast::expr {
-    let p = new_parser_from_source_str(sess, cfg, name, none, source);
+    let p = new_parser_from_source_str(sess, cfg, name, fss_none, source);
     let r = parse_expr(p);
     sess.chpos = p.reader.chpos;
     sess.byte_pos = sess.byte_pos + p.reader.pos;
@@ -2640,7 +2640,7 @@ fn parse_from_source_str<T>(f: fn (p: parser) -> T,
 
 fn parse_crate_from_source_str(name: str, source: @str, cfg: ast::crate_cfg,
                                sess: parse_sess) -> @ast::crate {
-    let p = new_parser_from_source_str(sess, cfg, name, none, source);
+    let p = new_parser_from_source_str(sess, cfg, name, fss_none, source);
     let r = parse_crate_mod(p, cfg);
     sess.chpos = p.reader.chpos;
     sess.byte_pos = sess.byte_pos + p.reader.pos;

@@ -149,10 +149,9 @@ fn expand_ast(ecx: ext_ctxt, _sp: span,
     {
         let cm = ecx.session().parse_sess.cm;
         let str = @codemap::span_to_snippet(body.span, cm);
-        let (fname, ss) = codemap::get_substr_info
-            (cm, body.span.lo, body.span.hi);
+        let (fname, ss) = codemap::get_substr_info(cm, body.span);
         let node = parse_from_source_str
-            (f, fname, some(ss), str,
+            (f, fname, ss, str,
              ecx.session().opts.cfg, ecx.session().parse_sess);
         ret expand_qquote(ecx, node.span(), *str, node);
     }
@@ -229,7 +228,7 @@ fn expand_qquote<N: qq_helper>
                         "parse_from_source_str"],
                        [node.mk_parse_fn(cx,sp),
                         mk_str(cx,sp, "<anon>"),
-                        mk_path(cx,sp, ["option","none"]),
+                        mk_path(cx,sp, ["syntax", "codemap", "fss_none"]),
                         mk_unary(cx,sp, ast::box(ast::imm),
                                  mk_str(cx,sp, str2)),
                         mk_access_(cx,sp,
