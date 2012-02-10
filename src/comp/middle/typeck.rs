@@ -1590,7 +1590,7 @@ fn lookup_method(fcx: @fn_ctxt, expr: @ast::expr, node_id: ast::node_id,
         let has_self = ty::type_has_params(fty);
         if method_n_tps + n_tps > 0u {
             if n_tys == 0u || n_tys != method_n_tps {
-                if n_tys != method_n_tps {
+                if n_tys != 0u {
                     tcx.sess.span_err
                         (expr.span, "incorrect number of type \
                                      parameters given for this method");
