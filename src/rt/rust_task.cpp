@@ -673,6 +673,17 @@ rust_task::record_stack_limit() {
     record_sp(stk->data + LIMIT_OFFSET + RED_ZONE_SIZE);
 }
 
+static bool
+sp_in_stk_seg(uintptr_t sp, stk_seg *stk) {
+    // Not positive these bounds for sp are correct.  I think that the first
+    // possible value for esp on a new stack is stk->end, which points to the
+    // address before the first value to be pushed onto a new stack. The last
+    // possible address we can push data to is stk->data.  Regardless, there's
+    // so much slop at either end that we should never hit one of these
+    // boundaries.
+    return (uintptr_t)stk->data <= sp && sp <= stk->end;
+}
+
 /*
 Called by landing pads during unwinding to figure out which
 stack segment we are currently running on, delete the others,
@@ -698,6 +709,25 @@ void
 rust_task::config_notify(chan_handle chan) {
     notify_enabled = true;
     notify_chan = chan;
+}
+
+/*
+Returns true if we're currently running on the Rust stack
+ */
+bool
+rust_task::on_rust_stack() {
+    uintptr_t sp = get_sp();
+    bool in_first_segment = sp_in_stk_seg(sp, stk);
+    if (in_first_segment) {
+        return true;
+    } else if (stk->next != NULL) {
+        // This happens only when calling the upcall to delete
+        // a stack segment
+        bool in_second_segment = sp_in_stk_seg(sp, stk->next);
+        return in_second_segment;
+    } else {
+        return false;
+    }
 }
 
 //

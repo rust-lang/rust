@@ -150,6 +150,8 @@ rust_task_thread::get_log() {
     return _log;
 }
 
+// This stuff is on the stack-switching fast path
+
 #ifndef __WIN32__
 
 inline rust_task *

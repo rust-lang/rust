@@ -198,6 +198,8 @@ public:
     void call_on_rust_stack(void *args, void *fn_ptr);
 };
 
+// This stuff is on the stack-switching fast path
+
 // Get a rough approximation of the current stack pointer
 extern "C" uintptr_t get_sp();
 
@@ -226,7 +228,8 @@ sanitize_next_sp(uintptr_t next_sp) {
 
 inline void
 rust_task::call_on_c_stack(void *args, void *fn_ptr) {
-    I(thread, on_rust_stack());
+    // Too expensive to check
+    // I(thread, on_rust_stack());
 
     next_rust_sp = get_sp();
 
@@ -252,7 +255,8 @@ rust_task::call_on_c_stack(void *args, void *fn_ptr) {
 
 inline void
 rust_task::call_on_rust_stack(void *args, void *fn_ptr) {
-    I(thread, !on_rust_stack());
+    // Too expensive to check
+    // I(thread, !on_rust_stack());
     I(thread, next_rust_sp);
 
     next_c_sp = get_sp();
@@ -264,41 +268,12 @@ rust_task::call_on_rust_stack(void *args, void *fn_ptr) {
 
 inline void
 rust_task::return_c_stack() {
-    I(thread, on_rust_stack());
+    // Too expensive to check
+    // I(thread, on_rust_stack());
     I(thread, c_stack != NULL);
     thread->return_c_stack(c_stack);
     c_stack = NULL;
     next_c_sp = 0;
-}
-
-inline bool
-sp_in_stk_seg(uintptr_t sp, stk_seg *stk) {
-    // Not positive these bounds for sp are correct.  I think that the first
-    // possible value for esp on a new stack is stk->end, which points to the
-    // address before the first value to be pushed onto a new stack. The last
-    // possible address we can push data to is stk->data.  Regardless, there's
-    // so much slop at either end that we should never hit one of these
-    // boundaries.
-    return (uintptr_t)stk->data <= sp && sp <= stk->end;
-}
-
-/*
-Returns true if we're currently running on the Rust stack
- */
-inline bool
-rust_task::on_rust_stack() {
-    uintptr_t sp = get_sp();
-    bool in_first_segment = sp_in_stk_seg(sp, stk);
-    if (in_first_segment) {
-        return true;
-    } else if (stk->next != NULL) {
-        // This happens only when calling the upcall to delete
-        // a stack segment
-        bool in_second_segment = sp_in_stk_seg(sp, stk->next);
-        return in_second_segment;
-    } else {
-        return false;
-    }
 }
 
 //
