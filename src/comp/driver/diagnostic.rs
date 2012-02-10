@@ -175,6 +175,7 @@ fn emit(cmsp: option<(codemap::codemap, span)>,
         msg: str, lvl: level) {
     alt cmsp {
       some((cm, sp)) {
+        let sp = codemap::adjust_span(cm,sp);
         let ss = codemap::span_to_str(sp, cm);
         let lines = codemap::span_to_lines(sp, cm);
         print_diagnostic(ss, lvl, msg);
