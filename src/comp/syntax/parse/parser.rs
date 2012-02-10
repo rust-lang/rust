@@ -666,6 +666,15 @@ fn parse_path(p: parser) -> @ast::path {
                  {global: global, idents: ids, types: []});
 }
 
+fn parse_value_path(p: parser) -> @ast::path {
+    let pt = parse_path(p);
+    let last_word = pt.node.idents[vec::len(pt.node.idents)-1u];
+    if p.bad_expr_words.contains_key(last_word) {
+        p.fatal("found " + last_word + " in expression position");
+    }
+    pt
+}
+
 fn parse_path_and_ty_param_substs(p: parser, colons: bool) -> @ast::path {
     let lo = p.span.lo;
     let path = parse_path(p);
@@ -1510,11 +1519,11 @@ fn parse_pat(p: parser) -> @ast::pat {
                 pat = ast::pat_lit(val);
             }
         } else if is_plain_ident(p) &&
-                      alt p.look_ahead(1u) {
-                        token::LPAREN | token::LBRACKET | token::LT { false }
-                        _ { true }
-                      } {
-            let name = parse_path(p);
+            alt p.look_ahead(1u) {
+              token::LPAREN | token::LBRACKET | token::LT { false }
+              _ { true }
+            } {
+            let name = parse_value_path(p);
             let sub = if eat(p, token::AT) { some(parse_pat(p)) }
                       else { none };
             pat = ast::pat_ident(name, sub);
