@@ -51,12 +51,13 @@ const uint8_t SHAPE_OBJ = 19u;
 const uint8_t SHAPE_RES = 20u;
 const uint8_t SHAPE_VAR = 21u;
 const uint8_t SHAPE_UNIQ = 22u;
-const uint8_t SHAPE_IFACE = 24u;
+const uint8_t SHAPE_IFACE_OLD = 24u;
 const uint8_t SHAPE_UNIQ_FN = 25u;
 const uint8_t SHAPE_STACK_FN = 26u;
 const uint8_t SHAPE_BARE_FN = 27u;
 const uint8_t SHAPE_TYDESC = 28u;
 const uint8_t SHAPE_SEND_TYDESC = 29u;
+const uint8_t SHAPE_IFACE = 31u;
 
 #ifdef _LP64
 const uint8_t SHAPE_PTR = SHAPE_U64;
@@ -381,7 +382,7 @@ ctxt<T>::walk() {
     case SHAPE_RES:      walk_res0();             break;
     case SHAPE_VAR:      walk_var0();             break;
     case SHAPE_UNIQ:     walk_uniq0();            break;
-    case SHAPE_IFACE:    WALK_SIMPLE(walk_iface1);    break;
+    case SHAPE_IFACE_OLD: WALK_SIMPLE(walk_iface1);    break;
     case SHAPE_BOX_FN:
     case SHAPE_UNIQ_FN:
     case SHAPE_STACK_FN:

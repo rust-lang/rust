@@ -41,9 +41,9 @@ import link::{mangle_internal_name_by_type_only,
 import metadata::{csearch, cstore};
 import util::ppaux::{ty_to_str, ty_to_short_str};
 
-import shape::static_size_of_enum;
 import common::*;
 import build::*;
+import shape::*;
 import ast_map::{path, path_mod, path_name};
 
 fn type_of_explicit_args(cx: @crate_ctxt, inputs: [ty::arg]) -> [TypeRef] {
@@ -136,7 +136,7 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
       ty::ty_fn(_) {
         T_fn_pair(cx, type_of_fn_from_ty(cx, t, []))
       }
-      ty::ty_iface(_, _) { T_opaque_iface_ptr(cx) }
+      ty::ty_iface(_, _) { T_opaque_iface(cx) }
       ty::ty_res(_, sub, tps) {
         let sub1 = ty::substitute_type_params(cx.tcx, tps, sub);
         // FIXME #1184: Resource flag is larger than necessary
@@ -320,44 +320,6 @@ fn umin(cx: @block_ctxt, a: ValueRef, b: ValueRef) -> ValueRef {
     ret Select(cx, cond, a, b);
 }
 
-// Returns the real size of the given type for the current target.
-fn llsize_of_real(cx: @crate_ctxt, t: TypeRef) -> uint {
-    ret llvm::LLVMStoreSizeOfType(cx.td.lltd, t) as uint;
-}
-
-// Returns the real alignment of the given type for the current target.
-fn llalign_of_real(cx: @crate_ctxt, t: TypeRef) -> uint {
-    ret llvm::LLVMPreferredAlignmentOfType(cx.td.lltd, t) as uint;
-}
-
-fn llsize_of(cx: @crate_ctxt, t: TypeRef) -> ValueRef {
-    ret llvm::LLVMConstIntCast(lib::llvm::llvm::LLVMSizeOf(t), cx.int_type,
-                               False);
-}
-
-fn llalign_of(cx: @crate_ctxt, t: TypeRef) -> ValueRef {
-    ret llvm::LLVMConstIntCast(lib::llvm::llvm::LLVMAlignOf(t), cx.int_type,
-                               False);
-}
-
-fn size_of(cx: @block_ctxt, t: ty::t) -> result {
-    size_of_(cx, t)
-}
-
-fn size_of_(cx: @block_ctxt, t: ty::t) -> result {
-    let ccx = bcx_ccx(cx);
-    if check type_has_static_size(ccx, t) {
-        rslt(cx, llsize_of(bcx_ccx(cx), type_of(ccx, t)))
-    } else { dynamic_size_of(cx, t) }
-}
-
-fn align_of(cx: @block_ctxt, t: ty::t) -> result {
-    let ccx = bcx_ccx(cx);
-    if check type_has_static_size(ccx, t) {
-        rslt(cx, llalign_of(bcx_ccx(cx), type_of(ccx, t)))
-    } else { dynamic_align_of(cx, t) }
-}
-
 fn alloca(cx: @block_ctxt, t: TypeRef) -> ValueRef {
     if cx.unreachable { ret llvm::LLVMGetUndef(t); }
     ret Alloca(new_raw_block_ctxt(cx.fcx, cx.fcx.llstaticallocas), t);
@@ -392,158 +354,6 @@ fn mk_obstack_token(ccx: @crate_ctxt, fcx: @fn_ctxt) ->
    ValueRef {
     let cx = new_raw_block_ctxt(fcx, fcx.lldynamicallocas);
     ret Call(cx, ccx.upcalls.dynastack_mark, []);
-}
-
-
-// Creates a simpler, size-equivalent type. The resulting type is guaranteed
-// to have (a) the same size as the type that was passed in; (b) to be non-
-// recursive. This is done by replacing all boxes in a type with boxed unit
-// types.
-fn simplify_type(ccx: @crate_ctxt, typ: ty::t) -> ty::t {
-    fn simplifier(ccx: @crate_ctxt, typ: ty::t) -> ty::t {
-        alt ty::get(typ).struct {
-          ty::ty_box(_) | ty::ty_iface(_, _) | ty::ty_opaque_box {
-            ret ty::mk_imm_box(ccx.tcx, ty::mk_nil(ccx.tcx));
-          }
-          ty::ty_uniq(_) {
-            ret ty::mk_imm_uniq(ccx.tcx, ty::mk_nil(ccx.tcx));
-          }
-          ty::ty_fn(_) {
-            ret ty::mk_tup(ccx.tcx,
-                           [ty::mk_imm_box(ccx.tcx, ty::mk_nil(ccx.tcx)),
-                            ty::mk_imm_box(ccx.tcx, ty::mk_nil(ccx.tcx))]);
-          }
-          ty::ty_res(_, sub, tps) {
-            let sub1 = ty::substitute_type_params(ccx.tcx, tps, sub);
-            ret ty::mk_tup(ccx.tcx,
-                           [ty::mk_int(ccx.tcx), simplify_type(ccx, sub1)]);
-          }
-          _ { ret typ; }
-        }
-    }
-    ret ty::fold_ty(ccx.tcx, ty::fm_general(bind simplifier(ccx, _)), typ);
-}
-
-fn dynamic_size_of(cx: @block_ctxt, t: ty::t) -> result {
-    fn align_elements(cx: @block_ctxt, elts: [ty::t]) -> result {
-        //
-        // C padding rules:
-        //
-        //
-        //   - Pad after each element so that next element is aligned.
-        //   - Pad after final structure member so that whole structure
-        //     is aligned to max alignment of interior.
-        //
-
-        let off = C_int(bcx_ccx(cx), 0);
-        let max_align = C_int(bcx_ccx(cx), 1);
-        let bcx = cx;
-        for e: ty::t in elts {
-            let elt_align = align_of(bcx, e);
-            bcx = elt_align.bcx;
-            let elt_size = size_of(bcx, e);
-            bcx = elt_size.bcx;
-            let aligned_off = align_to(bcx, off, elt_align.val);
-            off = Add(bcx, aligned_off, elt_size.val);
-            max_align = umax(bcx, max_align, elt_align.val);
-        }
-        off = align_to(bcx, off, max_align);
-        //off = alt mode {
-        //  align_total. {
-        //    align_to(bcx, off, max_align)
-        //  }
-        //  align_next(t) {
-        //    let {bcx, val: align} = align_of(bcx, t);
-        //    align_to(bcx, off, align)
-        //  }
-        //};
-        ret rslt(bcx, off);
-    }
-    alt ty::get(t).struct {
-      ty::ty_param(p, _) {
-        let szptr = field_of_tydesc(cx, t, false, abi::tydesc_field_size);
-        ret rslt(szptr.bcx, Load(szptr.bcx, szptr.val));
-      }
-      ty::ty_rec(flds) {
-        let tys: [ty::t] = [];
-        for f: ty::field in flds { tys += [f.mt.ty]; }
-        ret align_elements(cx, tys);
-      }
-      ty::ty_tup(elts) {
-        let tys = [];
-        for tp in elts { tys += [tp]; }
-        ret align_elements(cx, tys);
-      }
-      ty::ty_enum(tid, tps) {
-        let bcx = cx;
-        let ccx = bcx_ccx(bcx);
-        // Compute max(variant sizes).
-
-        let max_size: ValueRef = alloca(bcx, ccx.int_type);
-        Store(bcx, C_int(ccx, 0), max_size);
-        let variants = ty::enum_variants(bcx_tcx(bcx), tid);
-        for variant: ty::variant_info in *variants {
-            // Perform type substitution on the raw argument types.
-
-            let raw_tys: [ty::t] = variant.args;
-            let tys: [ty::t] = [];
-            for raw_ty: ty::t in raw_tys {
-                let t = ty::substitute_type_params(bcx_tcx(cx), tps, raw_ty);
-                tys += [t];
-            }
-            let rslt = align_elements(bcx, tys);
-            bcx = rslt.bcx;
-            let this_size = rslt.val;
-            let old_max_size = Load(bcx, max_size);
-            Store(bcx, umax(bcx, this_size, old_max_size), max_size);
-        }
-        let max_size_val = Load(bcx, max_size);
-        let total_size =
-            if vec::len(*variants) != 1u {
-                Add(bcx, max_size_val, llsize_of(ccx, ccx.int_type))
-            } else { max_size_val };
-        ret rslt(bcx, total_size);
-      }
-      // Precondition?
-      _ { bcx_tcx(cx).sess.fatal("trans::dynamic_size_of alled on something \
-            with static size"); }
-    }
-}
-
-fn dynamic_align_of(cx: @block_ctxt, t: ty::t) -> result {
-// FIXME: Typestate constraint that shows this alt is
-// exhaustive
-    alt ty::get(t).struct {
-      ty::ty_param(p, _) {
-        let aptr = field_of_tydesc(cx, t, false, abi::tydesc_field_align);
-        ret rslt(aptr.bcx, Load(aptr.bcx, aptr.val));
-      }
-      ty::ty_rec(flds) {
-        let a = C_int(bcx_ccx(cx), 1);
-        let bcx = cx;
-        for f: ty::field in flds {
-            let align = align_of(bcx, f.mt.ty);
-            bcx = align.bcx;
-            a = umax(bcx, a, align.val);
-        }
-        ret rslt(bcx, a);
-      }
-      ty::ty_enum(_, _) {
-        ret rslt(cx, C_int(bcx_ccx(cx), 1)); // FIXME: stub
-      }
-      ty::ty_tup(elts) {
-        let a = C_int(bcx_ccx(cx), 1);
-        let bcx = cx;
-        for e in elts {
-            let align = align_of(bcx, e);
-            bcx = align.bcx;
-            a = umax(bcx, a, align.val);
-        }
-        ret rslt(bcx, a);
-      }
-      _ { bcx_tcx(cx).sess.bug("trans::dynamic_align_of called on \
-            something with static size"); }
-    }
 }
 
 // Given a pointer p, returns a pointer sz(p) (i.e., inc'd by sz bytes).
@@ -712,8 +522,7 @@ fn opaque_box_body(bcx: @block_ctxt,
 // header.
 fn trans_malloc_boxed_raw(bcx: @block_ctxt, t: ty::t,
                           &static_ti: option<@tydesc_info>) -> result {
-    let bcx = bcx;
-    let ccx = bcx_ccx(bcx);
+    let bcx = bcx, ccx = bcx_ccx(bcx);
 
     // Grab the TypeRef type of box_ptr, because that's what trans_raw_malloc
     // wants.
@@ -723,6 +532,7 @@ fn trans_malloc_boxed_raw(bcx: @block_ctxt, t: ty::t,
 
     // Get the tydesc for the body:
     let {bcx, val: lltydesc} = get_tydesc(bcx, t, true, static_ti).result;
+    lazily_emit_all_tydesc_glue(ccx, static_ti);
 
     // Allocate space:
     let rval = Call(bcx, ccx.upcalls.malloc, [lltydesc]);
@@ -816,7 +626,7 @@ fn get_derived_tydesc(cx: @block_ctxt, t: ty::t, escapes: bool,
     let bcx = new_raw_block_ctxt(cx.fcx, cx.fcx.llderivedtydescs);
     let tys = linearize_ty_params(bcx, t);
     let root_ti = get_static_tydesc(bcx_ccx(bcx), t, tys.params);
-    static_ti = some::<@tydesc_info>(root_ti);
+    static_ti = some(root_ti);
     lazily_emit_all_tydesc_glue(bcx_ccx(cx), static_ti);
     let root = root_ti.tydesc;
     let sz = size_of(bcx, t);
@@ -1069,7 +879,7 @@ fn emit_tydescs(ccx: @crate_ctxt) {
               some(v) { ccx.stats.n_real_glues += 1u; v }
             };
 
-        let shape = shape::shape_of(ccx, key, ti.ty_params);
+        let shape = shape_of(ccx, key, ti.ty_params);
         let shape_tables =
             llvm::LLVMConstPointerCast(ccx.shape_cx.llshapetables,
                                        T_ptr(T_i8()));
@@ -1100,11 +910,10 @@ fn emit_tydescs(ccx: @crate_ctxt) {
 }
 
 fn make_take_glue(cx: @block_ctxt, v: ValueRef, t: ty::t) {
-
     let bcx = cx;
-    // NB: v is an *alias* of type t here, not a direct value.
+    // NB: v is a *pointer* to type t here, not a direct value.
     bcx = alt ty::get(t).struct {
-      ty::ty_box(_) | ty::ty_iface(_, _) | ty::ty_opaque_box {
+      ty::ty_box(_) | ty::ty_opaque_box {
         incr_refcnt_of_boxed(bcx, Load(bcx, v))
       }
       ty::ty_uniq(_) {
@@ -1127,6 +936,10 @@ fn make_take_glue(cx: @block_ctxt, v: ValueRef, t: ty::t) {
       }
       ty::ty_fn(_) {
         closure::make_fn_glue(bcx, v, t, take_ty)
+      }
+      ty::ty_iface(_, _) {
+        let box = Load(bcx, GEPi(bcx, v, [0, 1]));
+        incr_refcnt_of_boxed(bcx, box)
       }
       ty::ty_opaque_closure_ptr(ck) {
         closure::make_opaque_cbox_take_glue(bcx, ck, v)
@@ -1177,20 +990,6 @@ fn make_free_glue(bcx: @block_ctxt, v: ValueRef, t: ty::t) {
       ty::ty_vec(_) | ty::ty_str {
         tvec::make_free_glue(bcx, PointerCast(bcx, v, type_of(ccx, t)), t)
       }
-      ty::ty_iface(_, _) {
-        // Call through the box's own fields-drop glue first.
-        // Then free the body.
-        let ccx = bcx_ccx(bcx);
-        let llbox_ty = T_opaque_iface_ptr(ccx);
-        let b = PointerCast(bcx, v, llbox_ty);
-        let body = GEPi(bcx, b, [0, abi::box_field_body]);
-        let tydescptr = GEPi(bcx, body, [0, 0]);
-        let tydesc = Load(bcx, tydescptr);
-        let ti = none;
-        call_tydesc_glue_full(bcx, body, tydesc,
-                              abi::tydesc_field_drop_glue, ti);
-        trans_free(bcx, b)
-      }
       ty::ty_send_type {
         // sendable type descriptors are basically unique pointers,
         // they must be freed.
@@ -1214,7 +1013,7 @@ fn make_drop_glue(bcx: @block_ctxt, v0: ValueRef, t: ty::t) {
     // NB: v0 is an *alias* of type t here, not a direct value.
     let ccx = bcx_ccx(bcx);
     let bcx = alt ty::get(t).struct {
-      ty::ty_box(_) | ty::ty_iface(_, _) | ty::ty_opaque_box {
+      ty::ty_box(_) | ty::ty_opaque_box {
         decr_refcnt_maybe_free(bcx, Load(bcx, v0), t)
       }
       ty::ty_uniq(_) | ty::ty_vec(_) | ty::ty_str | ty::ty_send_type {
@@ -1225,6 +1024,10 @@ fn make_drop_glue(bcx: @block_ctxt, v0: ValueRef, t: ty::t) {
       }
       ty::ty_fn(_) {
         closure::make_fn_glue(bcx, v0, t, drop_ty)
+      }
+      ty::ty_iface(_, _) {
+        let box = Load(bcx, GEPi(bcx, v0, [0, 1]));
+        decr_refcnt_maybe_free(bcx, box, ty::mk_opaque_box(ccx.tcx))
       }
       ty::ty_opaque_closure_ptr(ck) {
         closure::make_opaque_cbox_drop_glue(bcx, ck, v0)
@@ -1300,7 +1103,7 @@ fn decr_refcnt_maybe_free(cx: @block_ctxt, box_ptr: ValueRef, t: ty::t)
     let rc_adj_cx = new_sub_block_ctxt(cx, "rc--");
     let free_cx = new_sub_block_ctxt(cx, "free");
     let next_cx = new_sub_block_ctxt(cx, "next");
-    let llbox_ty = T_opaque_iface_ptr(ccx);
+    let llbox_ty = T_opaque_box_ptr(ccx);
     let box_ptr = PointerCast(cx, box_ptr, llbox_ty);
     let null_test = IsNull(cx, box_ptr);
     CondBr(cx, null_test, next_cx.llbb, rc_adj_cx.llbb);
@@ -1699,7 +1502,7 @@ fn drop_ty(cx: @block_ctxt, v: ValueRef, t: ty::t) -> @block_ctxt {
 fn drop_ty_immediate(bcx: @block_ctxt, v: ValueRef, t: ty::t) -> @block_ctxt {
     alt ty::get(t).struct {
       ty::ty_uniq(_) | ty::ty_vec(_) | ty::ty_str { free_ty(bcx, v, t) }
-      ty::ty_box(_) | ty::ty_iface(_, _) | ty::ty_opaque_box {
+      ty::ty_box(_) | ty::ty_opaque_box {
         decr_refcnt_maybe_free(bcx, v, t)
       }
       // Precondition?
@@ -1709,7 +1512,7 @@ fn drop_ty_immediate(bcx: @block_ctxt, v: ValueRef, t: ty::t) -> @block_ctxt {
 
 fn take_ty_immediate(bcx: @block_ctxt, v: ValueRef, t: ty::t) -> result {
     alt ty::get(t).struct {
-      ty::ty_box(_) | ty::ty_iface(_, _) | ty::ty_opaque_box {
+      ty::ty_box(_) | ty::ty_opaque_box {
         rslt(incr_refcnt_of_boxed(bcx, v), v)
       }
       ty::ty_uniq(_) {
@@ -2429,13 +2232,7 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
     -> option<{llfn: ValueRef, fty: ty::t}> {
     let substs = vec::map(substs, {|t|
         alt ty::get(t).struct {
-          ty::ty_box(mt) {
-            if !ty::type_has_params(mt.ty) {
-                let ti = some(get_static_tydesc(ccx, mt.ty, []));
-                lazily_emit_all_tydesc_glue(ccx, ti);
-            }
-            ty::mk_opaque_box(ccx.tcx)
-          }
+          ty::ty_box(mt) { ty::mk_opaque_box(ccx.tcx) }
           _ { t }
         }
     });
@@ -4254,21 +4051,16 @@ fn mk_standard_basic_blocks(llfn: ValueRef) ->
     dt: BasicBlockRef,
     da: BasicBlockRef,
     rt: BasicBlockRef} {
-    ret {sa:
-             str::as_buf("static_allocas",
-                         {|buf| llvm::LLVMAppendBasicBlock(llfn, buf) }),
-         ca:
-             str::as_buf("load_env",
-                         {|buf| llvm::LLVMAppendBasicBlock(llfn, buf) }),
-         dt:
-             str::as_buf("derived_tydescs",
-                         {|buf| llvm::LLVMAppendBasicBlock(llfn, buf) }),
-         da:
-             str::as_buf("dynamic_allocas",
-                         {|buf| llvm::LLVMAppendBasicBlock(llfn, buf) }),
-         rt:
-             str::as_buf("return",
-                         {|buf| llvm::LLVMAppendBasicBlock(llfn, buf) })};
+    ret {sa: str::as_buf("static_allocas", {|buf|
+                 llvm::LLVMAppendBasicBlock(llfn, buf) }),
+         ca: str::as_buf("load_env", {|buf|
+                 llvm::LLVMAppendBasicBlock(llfn, buf) }),
+         dt: str::as_buf("derived_tydescs", {|buf|
+                 llvm::LLVMAppendBasicBlock(llfn, buf) }),
+         da: str::as_buf("dynamic_allocas", {|buf|
+                 llvm::LLVMAppendBasicBlock(llfn, buf) }),
+         rt: str::as_buf("return", {|buf|
+                 llvm::LLVMAppendBasicBlock(llfn, buf) })};
 }
 
 
@@ -5415,7 +5207,7 @@ fn write_metadata(cx: @crate_ctxt, crate: @ast::crate) {
 
 // Writes the current ABI version into the crate.
 fn write_abi_version(ccx: @crate_ctxt) {
-    shape::mk_global(ccx, "rust_abi_version", C_uint(ccx, abi::abi_version),
+    mk_global(ccx, "rust_abi_version", C_uint(ccx, abi::abi_version),
                      false);
 }
 
@@ -5520,7 +5312,7 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           task_type: task_type,
           opaque_vec_type: T_opaque_vec(targ_cfg),
           builder: BuilderRef_res(llvm::LLVMCreateBuilder()),
-          shape_cx: shape::mk_ctxt(llmod),
+          shape_cx: mk_ctxt(llmod),
           crate_map: crate_map,
           dbg_cx: dbg_cx,
           mutable do_not_commit_warning_issued: false};
@@ -5529,7 +5321,7 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
     trans_mod(ccx, crate.node.module);
     fill_crate_map(ccx, crate_map);
     emit_tydescs(ccx);
-    shape::gen_shape_tables(ccx);
+    gen_shape_tables(ccx);
     write_abi_version(ccx);
 
     // Translate the metadata.

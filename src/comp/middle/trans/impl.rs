@@ -38,7 +38,7 @@ import ast_map::{path, path_mod, path_name};
 // up.
 //
 // The trans_constants pass in trans.rs outputs the vtables. Typeck
-// annotates notes with information about the methods and dicts that
+// annotates nodes with information about the methods and dicts that
 // are referenced (ccx.method_map and ccx.dict_map).
 
 fn trans_impl(ccx: @crate_ctxt, path: path, name: ast::ident,
@@ -189,17 +189,15 @@ fn trans_iface_callee(bcx: @block_ctxt, callee_id: ast::node_id,
                       base: @ast::expr, n_method: uint)
     -> lval_maybe_callee {
     let {bcx, val} = trans_temp_expr(bcx, base);
-    let box_body = GEPi(bcx, val, [0, abi::box_field_body]);
-    let dict = Load(bcx, PointerCast(bcx, GEPi(bcx, box_body, [0, 1]),
+    let dict = Load(bcx, PointerCast(bcx, GEPi(bcx, val, [0, 0]),
                                      T_ptr(T_ptr(T_dict()))));
+    let box = Load(bcx, GEPi(bcx, val, [0, 1]));
     // FIXME[impl] I doubt this is alignment-safe
-    let self = PointerCast(bcx, GEPi(bcx, box_body, [0, 2]),
+    let self = PointerCast(bcx, GEPi(bcx, box, [0, abi::box_field_body]),
                            T_opaque_cbox_ptr(bcx_ccx(bcx)));
     let iface_id = alt ty::get(expr_ty(bcx, base)).struct {
         ty::ty_iface(did, _) { did }
-        // precondition
-        _ { bcx_tcx(bcx).sess.span_bug(base.span, "base has non-iface type \
-             in trans_iface_callee"); }
+        _ { fail "base has non-iface type in trans_iface_callee"; }
     };
     trans_vtable_callee(bcx, self, dict, callee_id, iface_id, n_method)
 }
@@ -360,20 +358,17 @@ fn trans_iface_wrapper(ccx: @crate_ctxt, pt: path, m: ty::method,
     let {llty: llfty, _} = wrapper_fn_ty(ccx, T_ptr(T_i8()),
                                          ty::mk_fn(ccx.tcx, m.fty), m.tps);
     trans_wrapper(ccx, pt, llfty, {|llfn, bcx|
-        let self = Load(bcx, PointerCast(bcx,
-                                         LLVMGetParam(llfn, 2u as c_uint),
-                                         T_ptr(T_opaque_iface_ptr(ccx))));
-        let boxed = GEPi(bcx, self, [0, abi::box_field_body]);
-        let dict = Load(bcx, PointerCast(bcx, GEPi(bcx, boxed, [0, 1]),
-                                         T_ptr(T_ptr(T_dict()))));
+        let param = PointerCast(bcx, LLVMGetParam(llfn, 2u as c_uint),
+                                T_ptr(T_opaque_iface(ccx)));
+        let dict = Load(bcx, GEPi(bcx, param, [0, 0]));
+        let box = Load(bcx, GEPi(bcx, param, [0, 1]));
+        let self = GEPi(bcx, box, [0, abi::box_field_body]);
         let vtable = PointerCast(bcx, Load(bcx, GEPi(bcx, dict, [0, 0])),
                                  T_ptr(T_array(T_ptr(llfty), n + 1u)));
         let mptr = Load(bcx, GEPi(bcx, vtable, [0, n as int]));
-        // FIXME[impl] This doesn't account for more-than-ptr-sized alignment
-        let inner_self = GEPi(bcx, boxed, [0, 2]);
         let args = [PointerCast(bcx, dict, T_ptr(T_i8())),
                     LLVMGetParam(llfn, 1u as c_uint),
-                    PointerCast(bcx, inner_self, T_opaque_cbox_ptr(ccx))];
+                    PointerCast(bcx, self, T_opaque_cbox_ptr(ccx))];
         let i = 3u as c_uint, total = llvm::LLVMCountParamTypes(llfty);
         while i < total {
             args += [LLVMGetParam(llfn, i)];
@@ -531,18 +526,18 @@ fn get_dict_ptrs(bcx: @block_ctxt, origin: typeck::dict_origin)
 
 fn trans_cast(bcx: @block_ctxt, val: @ast::expr, id: ast::node_id, dest: dest)
     -> @block_ctxt {
-    let ccx = bcx_ccx(bcx), tcx = ccx.tcx;
-    let val_ty = expr_ty(bcx, val);
+    if dest == ignore { ret trans_expr(bcx, val, ignore); }
+    let ccx = bcx_ccx(bcx);
+    let v_ty = expr_ty(bcx, val);
+    let {bcx, box, body} = trans_malloc_boxed(bcx, v_ty);
+    add_clean_free(bcx, box, false);
+    bcx = trans_expr_save_in(bcx, val, body);
+    revoke_clean(bcx, box);
+    let result = get_dest_addr(dest);
+    Store(bcx, box, PointerCast(bcx, GEPi(bcx, result, [0, 1]),
+                                T_ptr(val_ty(box))));
     let {bcx, val: dict} = get_dict(bcx, ccx.dict_map.get(id)[0]);
-    let body_ty = ty::mk_tup(tcx, [ty::mk_type(tcx), ty::mk_type(tcx),
-                                   val_ty]);
-    let ti = none;
-    let {bcx, val: tydesc} = get_tydesc(bcx, body_ty, true, ti).result;
-    lazily_emit_all_tydesc_glue(ccx, ti);
-    let {bcx, box, body: box_body} = trans_malloc_boxed(bcx, body_ty);
-    Store(bcx, tydesc, GEPi(bcx, box_body, [0, 0]));
-    Store(bcx, PointerCast(bcx, dict, T_ptr(ccx.tydesc_type)),
-          GEPi(bcx, box_body, [0, 1]));
-    bcx = trans_expr_save_in(bcx, val, GEPi(bcx, box_body, [0, 2]));
-    store_in_dest(bcx, PointerCast(bcx, box, T_opaque_iface_ptr(ccx)), dest)
+    Store(bcx, dict, PointerCast(bcx, GEPi(bcx, result, [0, 0]),
+                                 T_ptr(val_ty(dict))));
+    bcx
 }

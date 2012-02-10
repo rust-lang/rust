@@ -642,7 +642,7 @@ fn make_opaque_cbox_take_glue(
         let sz = Load(bcx, GEPi(bcx, tydesc, [0, abi::tydesc_field_size]));
 
         // Adjust sz to account for the rust_opaque_box header fields
-        let sz = Add(bcx, sz, base::llsize_of(ccx, T_box_header(ccx)));
+        let sz = Add(bcx, sz, shape::llsize_of(ccx, T_box_header(ccx)));
 
         // Allocate memory, update original ptr, and copy existing data
         let malloc = ccx.upcalls.shared_malloc;

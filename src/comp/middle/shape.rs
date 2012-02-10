@@ -57,16 +57,12 @@ const shape_res: u8 = 20u8;
 const shape_var: u8 = 21u8;
 const shape_uniq: u8 = 22u8;
 const shape_opaque_closure_ptr: u8 = 23u8; // the closure itself.
-const shape_iface: u8 = 24u8;
 const shape_uniq_fn: u8 = 25u8;
 const shape_stack_fn: u8 = 26u8;
 const shape_bare_fn: u8 = 27u8;
 const shape_tydesc: u8 = 28u8;
 const shape_send_tydesc: u8 = 29u8;
 const shape_class: u8 = 30u8;
-
-// FIXME: This is a bad API in trans_common.
-fn C_u8(n: u8) -> ValueRef { ret trans::common::C_u8(n as uint); }
 
 fn hash_res_info(ri: res_info) -> uint {
     let h = 5381u;
@@ -404,7 +400,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint]) -> [u8] {
         }
         add_substr(s, sub);
       }
-      ty::ty_iface(_, _) { s += [shape_iface]; }
+      ty::ty_iface(_, _) { s += [shape_box_fn]; }
       ty::ty_class(_, _) { s += [shape_class]; }
       ty::ty_res(did, raw_subt, tps) {
         let subt = ty::substitute_type_params(ccx.tcx, tps, raw_subt);
@@ -720,7 +716,7 @@ fn dynamic_metrics(cx: @block_ctxt, t: ty::t) -> metrics {
 
     alt ty::get(t).struct {
       ty::ty_param(p, _) {
-        let ti = none::<@tydesc_info>;
+        let ti = none;
         let {bcx, val: tydesc} = base::get_tydesc(cx, t, false, ti).result;
         let szptr = GEPi(bcx, tydesc, [0, abi::tydesc_field_size]);
         let aptr = GEPi(bcx, tydesc, [0, abi::tydesc_field_align]);
@@ -783,7 +779,7 @@ fn dynamic_metrics(cx: @block_ctxt, t: ty::t) -> metrics {
 fn simplify_type(ccx: @crate_ctxt, typ: ty::t) -> ty::t {
     fn simplifier(ccx: @crate_ctxt, typ: ty::t) -> ty::t {
         alt ty::get(typ).struct {
-          ty::ty_box(_) | ty::ty_iface(_, _) {
+          ty::ty_box(_) | ty::ty_opaque_box {
             ret ty::mk_imm_box(ccx.tcx, ty::mk_nil(ccx.tcx));
           }
           ty::ty_uniq(_) {

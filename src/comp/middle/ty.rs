@@ -615,7 +615,7 @@ fn type_is_bool(ty: t) -> bool { get(ty).struct == ty_bool }
 fn type_is_structural(ty: t) -> bool {
     alt get(ty).struct {
       ty_rec(_) | ty_tup(_) | ty_enum(_, _) | ty_fn(_) |
-      ty_res(_, _, _) { true }
+      ty_iface(_, _) | ty_res(_, _, _) { true }
       _ { false }
     }
 }
@@ -666,7 +666,7 @@ pure fn type_is_box(ty: t) -> bool {
 
 pure fn type_is_boxed(ty: t) -> bool {
     alt get(ty).struct {
-      ty_box(_) | ty_iface(_, _) | ty_opaque_box { true }
+      ty_box(_) | ty_opaque_box { true }
       _ { false }
     }
 }
