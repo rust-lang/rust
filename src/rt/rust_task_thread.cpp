@@ -389,12 +389,14 @@ rust_task_thread::prepare_c_stack() {
     I(this, !extra_c_stack);
     if (!cached_c_stack) {
         cached_c_stack = create_stack(kernel, C_STACK_SIZE);
+        config_valgrind_stack(cached_c_stack);
     }
 }
 
 void
 rust_task_thread::unprepare_c_stack() {
     if (extra_c_stack) {
+        unconfig_valgrind_stack(extra_c_stack);
         destroy_stack(kernel, extra_c_stack);
         extra_c_stack = NULL;
     }
@@ -412,7 +414,6 @@ rust_task_thread::borrow_c_stack() {
         your_stack = cached_c_stack;
         cached_c_stack = NULL;
     }
-    config_valgrind_stack(your_stack);
     return your_stack;
 }
 
@@ -420,7 +421,6 @@ rust_task_thread::borrow_c_stack() {
 void
 rust_task_thread::return_c_stack(stk_seg *stack) {
     I(this, !extra_c_stack);
-    unconfig_valgrind_stack(stack);
     if (!cached_c_stack) {
         cached_c_stack = stack;
     } else {
