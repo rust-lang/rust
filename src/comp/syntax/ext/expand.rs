@@ -5,7 +5,7 @@ import std::map::hashmap;
 import syntax::ast::{crate, expr_, expr_mac, mac_invoc};
 import syntax::fold::*;
 import syntax::ext::base::*;
-import syntax::ext::qquote::{expand_qquote,qq_helper};
+import syntax::ext::qquote::{qq_helper};
 import syntax::parse::parser::parse_expr_from_source_str;
 
 import codemap::{span, expanded_from};
