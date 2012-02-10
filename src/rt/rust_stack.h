@@ -13,12 +13,16 @@ struct stk_seg {
     uint8_t data[];
 };
 
+void
+add_stack_canary(stk_seg *stk);
+
 template <class T>
 stk_seg *
 create_stack(T allocer, size_t sz) {
   size_t total_sz = sizeof(stk_seg) + sz;
   stk_seg *stk = (stk_seg *)allocer->malloc(total_sz, "stack");
   memset(stk, 0, sizeof(stk_seg));
+  add_stack_canary(stk);
   stk->end = (uintptr_t) &stk->data[sz];
   return stk;
 }
@@ -34,9 +38,6 @@ config_valgrind_stack(stk_seg *stk);
 
 void
 unconfig_valgrind_stack(stk_seg *stk);
-
-void
-add_stack_canary(stk_seg *stk);
 
 void
 check_stack_canary(stk_seg *stk);
