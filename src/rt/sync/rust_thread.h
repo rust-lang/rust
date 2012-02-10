@@ -12,6 +12,8 @@ public:
     pthread_t thread;
 #endif
     rust_thread();
+    virtual ~rust_thread();
+
     void start();
 
     virtual void run() {
@@ -19,8 +21,7 @@ public:
     }
 
     void join();
-
-    virtual ~rust_thread() {}   // quiet the compiler
+    void detach();
 };
 
 #endif /* RUST_THREAD_H */

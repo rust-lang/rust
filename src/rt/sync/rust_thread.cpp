@@ -4,6 +4,9 @@
 rust_thread::rust_thread() : thread(0) {
 }
 
+rust_thread::~rust_thread() {
+}
+
 #if defined(__WIN32__)
 static DWORD WINAPI
 #elif defined(__GNUC__)
@@ -40,4 +43,13 @@ rust_thread::join() {
      pthread_join(thread, NULL);
 #endif
    thread = 0;
+}
+
+void
+rust_thread::detach() {
+#if !defined(__WIN32__)
+    // Don't leak pthread resources.
+    // http://crosstantine.blogspot.com/2010/01/pthreadcreate-memory-leak.html
+    pthread_detach(thread);
+#endif
 }
