@@ -20,6 +20,12 @@ const uint8_t stack_canary[] = {0xAB, 0xCD, 0xAB, 0xCD,
                                 0xAB, 0xCD, 0xAB, 0xCD};
 
 void
+register_valgrind_stack(stk_seg *stk);
+
+void
+deregister_valgrind_stack(stk_seg *stk);
+
+void
 add_stack_canary(stk_seg *stk);
 
 template <class T>
@@ -28,25 +34,21 @@ create_stack(T allocer, size_t sz) {
   size_t total_sz = sizeof(stk_seg) + sz + sizeof(stack_canary);
   stk_seg *stk = (stk_seg *)allocer->malloc(total_sz, "stack");
   memset(stk, 0, sizeof(stk_seg));
-  add_stack_canary(stk);
   stk->end = (uintptr_t) &stk->data[sz];
+  add_stack_canary(stk);
+  register_valgrind_stack(stk);
   return stk;
 }
 
 template <class T>
 void
 destroy_stack(T allocer, stk_seg *stk) {
+  deregister_valgrind_stack(stk);
   allocer->free(stk);
 }
 
 void
-register_valgrind_stack(stk_seg *stk);
-
-void
 prepare_valgrind_stack(stk_seg *stk);
-
-void
-deregister_valgrind_stack(stk_seg *stk);
 
 void
 check_stack_canary(stk_seg *stk);

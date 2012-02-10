@@ -290,7 +290,6 @@ rust_task_thread::start_main_loop() {
 
     I(this, !extra_c_stack);
     if (cached_c_stack) {
-        deregister_valgrind_stack(cached_c_stack);
         destroy_stack(kernel, cached_c_stack);
         cached_c_stack = NULL;
     }
@@ -372,7 +371,6 @@ rust_task_thread::prepare_c_stack() {
     I(this, !extra_c_stack);
     if (!cached_c_stack) {
         cached_c_stack = create_stack(kernel, C_STACK_SIZE);
-        register_valgrind_stack(cached_c_stack);
         prepare_valgrind_stack(cached_c_stack);
     }
 }
@@ -380,7 +378,6 @@ rust_task_thread::prepare_c_stack() {
 void
 rust_task_thread::unprepare_c_stack() {
     if (extra_c_stack) {
-        deregister_valgrind_stack(extra_c_stack);
         destroy_stack(kernel, extra_c_stack);
         extra_c_stack = NULL;
     }
