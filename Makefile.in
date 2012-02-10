@@ -410,6 +410,7 @@ TSREQS :=											\
 FUZZ := $(HBIN3_H_$(CFG_HOST_TRIPLE))/fuzzer$(X)
 CARGO := $(HBIN3_H_$(CFG_HOST_TRIPLE))/cargo$(X)
 RUSTDOC := $(HBIN3_H_$(CFG_HOST_TRIPLE))/rustdoc$(X)
+SERIALIZER := $(HBIN3_H_$(CFG_HOST_TRIPLE))/serializer$(X)
 
 all: rustc $(GENERATED) docs $(FUZZ) $(CARGO) $(RUSTDOC)
 

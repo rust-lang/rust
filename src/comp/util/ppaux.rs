@@ -110,6 +110,16 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
       ty_param(id, _) {
         "'" + str::from_bytes([('a' as u8) + (id as u8)])
       }
+      ty_enum(did, tps) {
+        let path = ty::item_path(cx, did);
+        let base = ast_map::path_to_str(path);
+        if vec::is_empty(tps) {
+            base
+        } else {
+            let tps_strs = vec::map(tps) {|t| ty_to_str(cx, t) };
+            #fmt["%s<%s>", base, str::connect(tps_strs, ",")]
+        }
+      }
       _ { ty_to_short_str(cx, typ) }
     }
 }

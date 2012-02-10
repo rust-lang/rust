@@ -28,4 +28,13 @@ type test5 = {
 
 type test6 = option<int>;
 
+mod test7 {
+    enum testa {
+    }
+
+    enum testb {
+        t4_a(@testa), t4_b(@testb)
+    }
+}
+
 fn main() {}

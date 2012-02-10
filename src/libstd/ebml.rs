@@ -97,6 +97,8 @@ fn tagged_docs(d: doc, tg: uint, it: fn(doc)) {
 
 fn doc_data(d: doc) -> [u8] { ret vec::slice::<u8>(*d.data, d.start, d.end); }
 
+fn doc_str(d: doc) -> str { ret str::from_bytes(doc_data(d)); }
+
 fn be_uint_from_bytes(data: @[u8], start: uint, size: uint) -> uint {
     let sz = size;
     assert (sz <= 4u);
@@ -136,11 +138,11 @@ fn write_sized_vint(w: io::writer, n: uint, size: uint) {
     w.write(buf);
 }
 
-fn write_vint(w: io::writer, n: uint) {
-    if n < 0x7fu { write_sized_vint(w, n, 1u); ret; }
-    if n < 0x4000u { write_sized_vint(w, n, 2u); ret; }
-    if n < 0x200000u { write_sized_vint(w, n, 3u); ret; }
-    if n < 0x10000000u { write_sized_vint(w, n, 4u); ret; }
+fn write_vint(w: io::writer, n: u64) {
+    if n < 0x7f_u64 { write_sized_vint(w, n, 1u); ret; }
+    if n < 0x4000_u64 { write_sized_vint(w, n, 2u); ret; }
+    if n < 0x200000_u64 { write_sized_vint(w, n, 3u); ret; }
+    if n < 0x10000000_u64 { write_sized_vint(w, n, 4u); ret; }
     #error("vint to write too big");
     fail;
 }
@@ -177,7 +179,11 @@ impl writer_util for writer {
         end_tag(self);
     }
 
-    fn wr_uint(id: uint) {
+    fn wr_uint(id: u64) {
+        write_vint(self.writer, id);
+    }
+
+    fn wr_int(id: uint) {
         write_vint(self.writer, id);
     }
 

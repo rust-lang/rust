@@ -70,6 +70,13 @@ const tag_impl_iface: uint = 0x32u;
 // discriminator value for variants
 const tag_disr_val: uint = 0x34u;
 
+// used to encode ast_map::path and ast_map::path_elt
+const tag_path: uint = 0x40u;
+const tag_path_len: uint = 0x41u;
+const tag_path_elt_mod: uint = 0x42u;
+const tag_path_elt_name: uint = 0x43u;
+
+
 // djb's cdb hashes.
 fn hash_node_id(&&node_id: int) -> uint { ret 177573u ^ (node_id as uint); }
 

@@ -10,6 +10,7 @@ import common::*;
 import middle::trans::common::crate_ctxt;
 import middle::ty;
 import middle::ty::node_id_to_type;
+import middle::ast_map;
 import front::attr;
 import driver::session::session;
 
@@ -233,8 +234,9 @@ fn encode_enum_id(ebml_w: ebml::writer, id: def_id) {
 }
 
 fn encode_enum_variant_info(ecx: @encode_ctxt, ebml_w: ebml::writer,
-                           id: node_id, variants: [variant],
-                           &index: [entry<int>], ty_params: [ty_param]) {
+                            id: node_id, variants: [variant],
+                            path: ast_map::path, &index: [entry<int>],
+                            ty_params: [ty_param]) {
     let disr_val = 0;
     let i = 0;
     let vi = ty::enum_variants(ecx.ccx.tcx, {crate: local_crate, node: id});
@@ -256,14 +258,38 @@ fn encode_enum_variant_info(ecx: @encode_ctxt, ebml_w: ebml::writer,
             disr_val = vi[i].disr_val;
         }
         encode_type_param_bounds(ebml_w, ecx, ty_params);
+        encode_path(ebml_w, path, ast_map::path_name(variant.node.name));
         ebml::end_tag(ebml_w);
         disr_val += 1;
         i += 1;
     }
 }
 
+fn encode_path(ebml_w: ebml::writer,
+               path: ast_map::path,
+               name: ast_map::path_elt) {
+    fn encode_path_elt(ebml_w: ebml::writer, elt: ast_map::path_elt) {
+        let (tag, name) = alt elt {
+          ast_map::path_mod(name) { (tag_path_elt_mod, name) }
+          ast_map::path_name(name) { (tag_path_elt_name, name) }
+        };
+
+        ebml_w.wr_tag(tag) {||
+            ebml_w.wr_str(name)
+        }
+    }
+
+    ebml_w.wr_tag(tag_path) {||
+        ebml_w.wr_tag(tag_path_len) {||
+            ebml_w.wr_uint(vec::len(path) + 1u);
+        }
+        vec::iter(path) {|pe| encode_path_elt(ebml_w, pe); }
+        encode_path_elt(ebml_w, name);
+    }
+}
+
 fn encode_info_for_mod(ecx: @encode_ctxt, ebml_w: ebml::writer, md: _mod,
-                       id: node_id, name: ident) {
+                       id: node_id, path: ast_map::path, name: ident) {
     ebml::start_tag(ebml_w, tag_items_data_item);
     encode_def_id(ebml_w, local_def(id));
     encode_family(ebml_w, 'm' as u8);
@@ -281,11 +307,12 @@ fn encode_info_for_mod(ecx: @encode_ctxt, ebml_w: ebml::writer, md: _mod,
       _ { ecx.ccx.tcx.sess.bug("encode_info_for_mod: \
              undocumented invariant"); }
     }
+    encode_path(ebml_w, path, ast_map::path_mod(name));
     ebml::end_tag(ebml_w);
 }
 
 fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
-                        &index: [entry<int>]) {
+                        &index: [entry<int>], path: ast_map::path) {
     let tcx = ecx.ccx.tcx;
     alt item.node {
       item_const(_, _) {
@@ -294,6 +321,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_family(ebml_w, 'c' as u8);
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_symbol(ecx, ebml_w, item.id);
+        encode_path(ebml_w, path, ast_map::path_name(item.ident));
         ebml::end_tag(ebml_w);
       }
       item_fn(decl, tps, _) {
@@ -308,16 +336,18 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_type_param_bounds(ebml_w, ecx, tps);
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_symbol(ecx, ebml_w, item.id);
+        encode_path(ebml_w, path, ast_map::path_name(item.ident));
         ebml::end_tag(ebml_w);
       }
       item_mod(m) {
-        encode_info_for_mod(ecx, ebml_w, m, item.id, item.ident);
+        encode_info_for_mod(ecx, ebml_w, m, item.id, path, item.ident);
       }
       item_native_mod(_) {
         ebml::start_tag(ebml_w, tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
         encode_family(ebml_w, 'n' as u8);
         encode_name(ebml_w, item.ident);
+        encode_path(ebml_w, path, ast_map::path_name(item.ident));
         ebml::end_tag(ebml_w);
       }
       item_ty(_, tps) {
@@ -327,6 +357,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_type_param_bounds(ebml_w, ecx, tps);
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_name(ebml_w, item.ident);
+        encode_path(ebml_w, path, ast_map::path_name(item.ident));
         ebml::end_tag(ebml_w);
       }
       item_enum(variants, tps) {
@@ -339,8 +370,10 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         for v: variant in variants {
             encode_variant_id(ebml_w, local_def(v.node.id));
         }
+        encode_path(ebml_w, path, ast_map::path_name(item.ident));
         ebml::end_tag(ebml_w);
-        encode_enum_variant_info(ecx, ebml_w, item.id, variants, index, tps);
+        encode_enum_variant_info(ecx, ebml_w, item.id, variants,
+                                 path, index, tps);
       }
       item_class(_,_,_,_,_) {
           fail "encode: implement item_class";
@@ -355,6 +388,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_type(ecx, ebml_w, ty::ty_fn_ret(fn_ty));
         encode_name(ebml_w, item.ident);
         encode_symbol(ecx, ebml_w, item.id);
+        encode_path(ebml_w, path, ast_map::path_name(item.ident));
         ebml::end_tag(ebml_w);
 
         index += [{val: ctor_id, pos: ebml_w.writer.tell()}];
@@ -364,6 +398,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_type_param_bounds(ebml_w, ecx, tps);
         encode_type(ecx, ebml_w, fn_ty);
         encode_symbol(ecx, ebml_w, ctor_id);
+        encode_path(ebml_w, path, ast_map::path_name(item.ident));
         ebml::end_tag(ebml_w);
       }
       item_impl(tps, ifce, _, methods) {
@@ -388,8 +423,10 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
           }
           _ {}
         }
+        encode_path(ebml_w, path, ast_map::path_name(item.ident));
         ebml::end_tag(ebml_w);
 
+        let impl_path = path + [ast_map::path_name(item.ident)];
         for m in methods {
             index += [{val: m.id, pos: ebml_w.writer.tell()}];
             ebml::start_tag(ebml_w, tag_items_data_item);
@@ -400,6 +437,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
                         node_id_to_type(tcx, m.id));
             encode_name(ebml_w, m.ident);
             encode_symbol(ecx, ebml_w, m.id);
+            encode_path(ebml_w, impl_path, ast_map::path_name(m.ident));
             ebml::end_tag(ebml_w);
         }
       }
@@ -419,13 +457,14 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
             ebml::end_tag(ebml_w);
             i += 1u;
         }
+        encode_path(ebml_w, path, ast_map::path_name(item.ident));
         ebml::end_tag(ebml_w);
       }
     }
 }
 
 fn encode_info_for_native_item(ecx: @encode_ctxt, ebml_w: ebml::writer,
-                               nitem: @native_item) {
+                               nitem: @native_item, path: ast_map::path) {
     ebml::start_tag(ebml_w, tag_items_data_item);
     alt nitem.node {
       native_item_fn(fn_decl, tps) {
@@ -439,6 +478,7 @@ fn encode_info_for_native_item(ecx: @encode_ctxt, ebml_w: ebml::writer,
         encode_type_param_bounds(ebml_w, ecx, tps);
         encode_type(ecx, ebml_w, node_id_to_type(ecx.ccx.tcx, nitem.id));
         encode_symbol(ecx, ebml_w, nitem.id);
+        encode_path(ebml_w, path, ast_map::path_name(nitem.ident));
       }
     }
     ebml::end_tag(ebml_w);
@@ -449,16 +489,16 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::writer,
     let index: [entry<int>] = [];
     ebml::start_tag(ebml_w, tag_items_data);
     index += [{val: crate_node_id, pos: ebml_w.writer.tell()}];
-    encode_info_for_mod(ecx, ebml_w, crate_mod, crate_node_id, "");
+    encode_info_for_mod(ecx, ebml_w, crate_mod, crate_node_id, [], "");
     ecx.ccx.ast_map.items {|key, val|
         alt val {
-          middle::ast_map::node_item(i, _) {
+          middle::ast_map::node_item(i, path) {
             index += [{val: key, pos: ebml_w.writer.tell()}];
-            encode_info_for_item(ecx, ebml_w, i, index);
+            encode_info_for_item(ecx, ebml_w, i, index, *path);
           }
-          middle::ast_map::node_native_item(i, _) {
+          middle::ast_map::node_native_item(i, path) {
             index += [{val: key, pos: ebml_w.writer.tell()}];
-            encode_info_for_native_item(ecx, ebml_w, i);
+            encode_info_for_native_item(ecx, ebml_w, i, *path);
           }
           _ { }
         }

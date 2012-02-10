@@ -2,7 +2,8 @@
 
 import syntax::ast;
 import syntax::ast_util;
-import middle::ty;
+import middle::{ty, ast_map};
+import option::{some, none};
 import driver::session;
 
 export get_symbol;
@@ -13,6 +14,7 @@ export get_impls_for_mod;
 export get_iface_methods;
 export get_type;
 export get_impl_iface;
+export get_item_path;
 
 fn get_symbol(cstore: cstore::cstore, def: ast::def_id) -> str {
     let cdata = cstore::get_crate_data(cstore, def.crate).data;
@@ -53,6 +55,12 @@ fn resolve_path(cstore: cstore::cstore, cnum: ast::crate_num,
         }
     }
     ret result;
+}
+
+fn get_item_path(tcx: ty::ctxt, def: ast::def_id) -> ast_map::path {
+    let cstore = tcx.sess.cstore;
+    let cdata = cstore::get_crate_data(cstore, def.crate);
+    ret decoder::get_item_path(cdata, def.node);
 }
 
 fn get_enum_variants(tcx: ty::ctxt, def: ast::def_id) -> [ty::variant_info] {

@@ -128,6 +128,7 @@ export ck_uniq;
 export param_bound, param_bounds, bound_copy, bound_send, bound_iface;
 export param_bounds_to_kind;
 export default_arg_mode_for_ty;
+export item_path;
 
 // Data types
 
@@ -2368,6 +2369,44 @@ fn substd_enum_variants(cx: ctxt, id: ast::def_id, tps: [ty::t])
             substitute_type_params(cx, tps, variant_info.ctor_ty);
 
         @{args: substd_args, ctor_ty: substd_ctor_ty with *variant_info}
+    }
+}
+
+fn item_path(cx: ctxt, id: ast::def_id) -> ast_map::path {
+    if id.crate != ast::local_crate {
+        csearch::get_item_path(cx, id)
+    } else {
+        let node = cx.items.get(id.node);
+        alt node {
+          ast_map::node_item(item, path) {
+            let item_elt = alt item.node {
+              item_mod(_) | item_native_mod(_) {
+                ast_map::path_mod(item.ident)
+              }
+              _ {
+                ast_map::path_name(item.ident)
+              }
+            };
+            *path + [item_elt]
+          }
+
+          ast_map::node_native_item(nitem, path) {
+            *path + [ast_map::path_name(nitem.ident)]
+          }
+
+          ast_map::node_method(method, path) {
+            *path + [ast_map::path_name(method.ident)]
+          }
+
+          ast_map::node_variant(variant, _, path) {
+            vec::init(*path) + [ast_map::path_name(variant.node.name)]
+          }
+
+          ast_map::node_expr(_) | ast_map::node_arg(_, _) |
+          ast_map::node_local(_) | ast_map::node_res_ctor(_) {
+            cx.sess.bug(#fmt["cannot find item_path for node %?", node]);
+          }
+        }
     }
 }
 

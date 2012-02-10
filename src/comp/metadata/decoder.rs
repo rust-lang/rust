@@ -6,6 +6,7 @@ import syntax::{ast, ast_util};
 import driver::session::session;
 import front::attr;
 import middle::ty;
+import middle::ast_map;
 import common::*;
 import tydecode::{parse_ty_data, parse_def_id, parse_bounds_data};
 import syntax::print::pprust;
@@ -28,6 +29,7 @@ export get_crate_hash;
 export get_impls_for_mod;
 export get_iface_methods;
 export get_crate_module_paths;
+export get_item_path;
 
 // A function that takes a def_id relative to the crate being searched and
 // returns a def_id relative to the compilation environment, i.e. if we hit a
@@ -176,6 +178,30 @@ fn resolve_path(path: [ast::ident], data: @[u8]) -> [ast::def_id] {
     ret result;
 }
 
+fn item_path(item_doc: ebml::doc) -> ast_map::path {
+    let path_doc = ebml::get_doc(item_doc, tag_path);
+
+    let len_doc = ebml::get_doc(path_doc, tag_path_len);
+    let len = ebml::doc_as_uint(len_doc);
+
+    let result = [];
+    vec::reserve(result, len);
+
+    ebml::docs(path_doc) {|tag, elt_doc|
+        if tag == tag_path_elt_mod {
+            let str = ebml::doc_str(elt_doc);
+            result += [ast_map::path_mod(str)];
+        } else if tag == tag_path_elt_name {
+            let str = ebml::doc_str(elt_doc);
+            result += [ast_map::path_name(str)];
+        } else {
+            // ignore tag_path_len element
+        }
+    }
+
+    ret result;
+}
+
 fn item_name(item: ebml::doc) -> ast::ident {
     let name = ebml::get_doc(item, tag_paths_data_name);
     str::from_bytes(ebml::doc_data(name))
@@ -232,6 +258,10 @@ fn get_impl_iface(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
 
 fn get_symbol(data: @[u8], id: ast::node_id) -> str {
     ret item_symbol(lookup_item(id, data));
+}
+
+fn get_item_path(cdata: cmd, id: ast::node_id) -> ast_map::path {
+    item_path(lookup_item(id, cdata.data))
 }
 
 fn get_enum_variants(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)

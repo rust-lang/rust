@@ -6,6 +6,20 @@ import syntax::{visit, codemap};
 enum path_elt { path_mod(str), path_name(str) }
 type path = [path_elt];
 
+fn path_to_str_with_sep(p: path, sep: str) -> str {
+    let strs = vec::map(p) {|e|
+        alt e {
+          path_mod(s) { s }
+          path_name(s) { s }
+        }
+    };
+    str::connect(strs, sep)
+}
+
+fn path_to_str(p: path) -> str {
+    path_to_str_with_sep(p, "::")
+}
+
 enum ast_node {
     node_item(@item, @path),
     node_native_item(@native_item, @path),

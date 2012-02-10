@@ -106,12 +106,8 @@ impl serialize_ctx for serialize_ctx {
         ret tps_map;
     }
 
-    fn path(mod_: [str], id: str) -> str {
-        str::connect(mod_ + [id], "::")
-    }
-
-    fn ident(mod_: [str], id: str) -> str {
-        str::connect(mod_ + [id], "_")
+    fn ident(base_path: ast_map::path, id: str) -> str {
+        #fmt["%s_%s", ast_map::path_to_str_with_sep(base_path, "_"), id]
     }
 
     fn instantiate(id: ast::def_id, args: [ty::t]) -> ty::t {
@@ -134,7 +130,11 @@ impl serialize_ctx for serialize_ctx {
     }
 
     fn blk(stmts: [ast_stmt]) -> ast_blk {
-        "{" + str::connect(stmts, ";") + "}"
+        if vec::is_empty(stmts) {
+            ""
+        } else {
+            "{" + str::connect(stmts, ";") + "}"
+        }
     }
 
     fn blk_expr(stmts: [ast_stmt]) -> ast_expr {
@@ -159,6 +159,7 @@ impl serialize_ctx for serialize_ctx {
         // in case of recursive calls:
         let id = self.tyfns.size();
         let ty0_str = ppaux::ty_to_str(self.tcx, ty0);
+        #debug["ty0_str = %s / ty0 = %?", ty0_str, ty0];
         let name = #fmt["serialize_%u /*%s*/", id, ty0_str];
         self.tyfns.insert(ty0, name);
         let v = "v";
@@ -221,11 +222,11 @@ impl serialize_ctx for serialize_ctx {
     fn serialize_enum(v: ast_expr,
                       id: ast::def_id,
                       tps: [ty::t]) -> ast_expr {
-        let path = [];
         let variants = ty::substd_enum_variants(self.tcx, id, tps);
 
         let arms = vec::map(variants) {|variant|
-            let v_path = self.path(path, variant.name);
+            let item_path = ty::item_path(self.tcx, variant.id);
+            let v_path = ast_map::path_to_str(item_path);
             let n_args = vec::len(variant.args);
             let (v_pat, stmts) = {
                 if n_args == 0u {
@@ -235,7 +236,8 @@ impl serialize_ctx for serialize_ctx {
                 }
             };
 
-            let v_const = #fmt["at_%s", self.ident(path, variant.name)];
+            let v_ident = ast_map::path_to_str_with_sep(item_path, "_");
+            let v_const = #fmt["at_%s", v_ident];
 
             #fmt["%s { \
                     start_variant(cx, %s); \
