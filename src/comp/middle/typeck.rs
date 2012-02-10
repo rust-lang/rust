@@ -1695,7 +1695,7 @@ fn lookup_method_inner(fcx: @fn_ctxt, expr: @ast::expr,
         } else { csearch::get_type(tcx, did).ty }
     }
 
-    let result = none;
+    let result = none, complained = false;
     std::list::iter(fcx.ccx.impl_map.get(expr.id)) {|impls|
         if option::is_some(result) { ret; }
         for @{did, methods, _} in *impls {
@@ -1709,8 +1709,11 @@ fn lookup_method_inner(fcx: @fn_ctxt, expr: @ast::expr,
                   ures_ok(_) {
                     if option::is_some(result) {
                         // FIXME[impl] score specificity to resolve ambiguity?
-                        tcx.sess.span_err(
-                           expr.span, "multiple applicable methods in scope");
+                        if !complained {
+                           tcx.sess.span_err(expr.span, "multiple applicable \
+                                                         methods in scope");
+                           complained = true;
+                        }
                     } else {
                         result = some({
                             method_ty: ty_from_did(tcx, m.did),
