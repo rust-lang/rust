@@ -312,7 +312,12 @@ fn encode_info_for_mod(ecx: @encode_ctxt, ebml_w: ebml::writer, md: _mod,
 }
 
 fn purity_fn_family(p: purity) -> char {
-    alt p { unsafe_fn { 'u' } pure_fn { 'p' } impure_fn { 'f' } }
+    alt p {
+      unsafe_fn { 'u' }
+      pure_fn { 'p' }
+      impure_fn { 'f' }
+      crust_fn { 'c' }
+    }
 }
 
 fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,

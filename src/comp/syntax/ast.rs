@@ -407,6 +407,7 @@ enum purity {
     pure_fn, // declared with "pure fn"
     unsafe_fn, // declared with "unsafe fn"
     impure_fn, // declared with "fn"
+    crust_fn, // declared with "crust fn"
 }
 
 enum ret_style {

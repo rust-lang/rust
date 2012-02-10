@@ -1199,6 +1199,7 @@ fn print_fn(s: ps, decl: ast::fn_decl, name: ast::ident,
       ast::impure_fn { head(s, "fn"); }
       ast::unsafe_fn { head(s, "unsafe fn"); }
       ast::pure_fn { head(s, "pure fn"); }
+      ast::crust_fn { head(s, "crust fn"); }
     }
     word(s.s, name);
     print_type_params(s, typarams);
