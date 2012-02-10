@@ -107,6 +107,18 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
           }
         }
       }
+      ast::def_fn(id, ast::crust_fn) {
+        // Crust functions are just u8 pointers
+        ret {
+            bounds: @[],
+            ty: ty::mk_ptr(
+                fcx.ccx.tcx,
+                {
+                    ty: ty::mk_mach_uint(fcx.ccx.tcx, ast::ty_u8),
+                    mut: ast::imm
+                })
+        };
+      }
       ast::def_fn(id, _) | ast::def_const(id) |
       ast::def_variant(_, id) | ast::def_class(id)
           | ast::def_class_method(_, id) | ast::def_class_field(_, id)
