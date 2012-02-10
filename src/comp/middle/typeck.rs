@@ -1535,7 +1535,7 @@ fn require_unsafe(sess: session, f_purity: ast::purity, sp: span) {
 fn require_impure(sess: session, f_purity: ast::purity, sp: span) {
     alt f_purity {
       ast::unsafe_fn { ret; }
-      ast::impure_fn { ret; }
+      ast::impure_fn | ast::crust_fn { ret; }
       ast::pure_fn {
         sess.span_err(sp, "Found impure expression in pure function decl");
       }
@@ -1568,7 +1568,7 @@ fn require_pure_call(ccx: @crate_ctxt, caller_purity: ast::purity,
       }
     };
     alt (caller_purity, callee_purity) {
-      (ast::impure_fn, ast::unsafe_fn) {
+      (ast::impure_fn, ast::unsafe_fn) | (ast::crust_fn, ast::unsafe_fn) {
         ccx.tcx.sess.span_err(sp, "safe function calls function marked \
                                    unsafe");
       }
