@@ -8,8 +8,11 @@ type file_pos = {ch: uint, byte: uint};
  * compiler.
  */
 
-type file_substr_ = {lo: uint, hi: uint, col: uint, line: uint};
-type file_substr = option<file_substr_>;
+enum file_substr {
+    fss_none,
+    fss_internal(span),
+    fss_external({filename: str, line: uint, col: uint})
+}
 
 type filemap =
     @{name: filename, substr: file_substr, src: @str,
@@ -33,16 +36,16 @@ fn new_filemap_w_substr(filename: filename, substr: file_substr,
 fn new_filemap(filename: filename, src: @str,
                start_pos_ch: uint, start_pos_byte: uint)
     -> filemap {
-    ret new_filemap_w_substr(filename, none, src,
+    ret new_filemap_w_substr(filename, fss_none, src,
                              start_pos_ch, start_pos_byte);
 }
 
-fn get_substr_info(cm: codemap, lo: uint, hi: uint)
-    -> (filename, file_substr_)
+fn get_substr_info(cm: codemap, sp: span)
+    -> (filename, file_substr)
 {
-    let pos = lookup_char_pos(cm, lo);
+    let pos = lookup_char_pos(cm, sp.lo);
     let name = #fmt("<%s:%u:%u>", pos.file.name, pos.line, pos.col);
-    ret (name, {lo: lo, hi: hi, col: pos.col, line: pos.line});
+    ret (name, fss_internal(sp));
 }
 
 fn next_line(file: filemap, chpos: uint, byte_pos: uint) {
