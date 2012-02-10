@@ -3,14 +3,8 @@
 #include "vg/valgrind.h"
 #include "vg/memcheck.h"
 
-// A value that goes at the end of the stack and must not be touched
-const uint8_t stack_canary[] = {0xAB, 0xCD, 0xAB, 0xCD,
-                                0xAB, 0xCD, 0xAB, 0xCD,
-                                0xAB, 0xCD, 0xAB, 0xCD,
-                                0xAB, 0xCD, 0xAB, 0xCD};
-
 void
-config_valgrind_stack(stk_seg *stk) {
+register_valgrind_stack(stk_seg *stk) {
     stk->valgrind_id =
         VALGRIND_STACK_REGISTER(&stk->data[0],
                                 stk->end);
@@ -25,7 +19,7 @@ config_valgrind_stack(stk_seg *stk) {
 }
 
 void
-unconfig_valgrind_stack(stk_seg *stk) {
+deregister_valgrind_stack(stk_seg *stk) {
     VALGRIND_STACK_DEREGISTER(stk->valgrind_id);
 }
 

@@ -567,7 +567,7 @@ rust_task::new_stack(size_t requested_sz) {
             LOG(this, mem, "reusing existing stack");
             stk = stk->prev;
             A(thread, stk->prev == NULL, "Bogus stack ptr");
-            config_valgrind_stack(stk);
+            register_valgrind_stack(stk);
             return;
         } else {
             LOG(this, mem, "existing stack is not big enough");
@@ -598,7 +598,7 @@ rust_task::new_stack(size_t requested_sz) {
     LOGPTR(thread, "stk end", new_stk->end);
 
     stk = new_stk;
-    config_valgrind_stack(stk);
+    register_valgrind_stack(stk);
     total_stack_sz += user_stack_size(new_stk);
 }
 
@@ -626,7 +626,7 @@ rust_task::del_stack() {
         old_stk->prev = NULL;
     }
 
-    unconfig_valgrind_stack(old_stk);
+    deregister_valgrind_stack(old_stk);
     if (delete_stack) {
         free_stack(old_stk);
         A(thread, total_stack_sz == 0, "Stack size should be 0");

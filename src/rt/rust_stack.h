@@ -40,10 +40,10 @@ destroy_stack(T allocer, stk_seg *stk) {
 }
 
 void
-config_valgrind_stack(stk_seg *stk);
+register_valgrind_stack(stk_seg *stk);
 
 void
-unconfig_valgrind_stack(stk_seg *stk);
+deregister_valgrind_stack(stk_seg *stk);
 
 void
 check_stack_canary(stk_seg *stk);
