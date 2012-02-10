@@ -43,6 +43,9 @@ void
 register_valgrind_stack(stk_seg *stk);
 
 void
+prepare_valgrind_stack(stk_seg *stk);
+
+void
 deregister_valgrind_stack(stk_seg *stk);
 
 void

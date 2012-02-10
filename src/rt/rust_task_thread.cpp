@@ -373,6 +373,7 @@ rust_task_thread::prepare_c_stack() {
     if (!cached_c_stack) {
         cached_c_stack = create_stack(kernel, C_STACK_SIZE);
         register_valgrind_stack(cached_c_stack);
+        prepare_valgrind_stack(cached_c_stack);
     }
 }
 

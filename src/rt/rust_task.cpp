@@ -568,6 +568,7 @@ rust_task::new_stack(size_t requested_sz) {
             stk = stk->prev;
             A(thread, stk->prev == NULL, "Bogus stack ptr");
             register_valgrind_stack(stk);
+            prepare_valgrind_stack(stk);
             return;
         } else {
             LOG(this, mem, "existing stack is not big enough");
@@ -599,6 +600,7 @@ rust_task::new_stack(size_t requested_sz) {
 
     stk = new_stk;
     register_valgrind_stack(stk);
+    prepare_valgrind_stack(stk);
     total_stack_sz += user_stack_size(new_stk);
 }
 

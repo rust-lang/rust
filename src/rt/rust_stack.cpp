@@ -8,6 +8,10 @@ register_valgrind_stack(stk_seg *stk) {
     stk->valgrind_id =
         VALGRIND_STACK_REGISTER(&stk->data[0],
                                 stk->end);
+}
+
+void
+prepare_valgrind_stack(stk_seg *stk) {
 #ifndef NVALGRIND
     // Establish that the stack is accessible.  This must be done when reusing
     // old stack segments, since the act of popping the stack previously
