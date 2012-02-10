@@ -220,6 +220,9 @@ fn scan_number(c: char, rdr: reader) -> token::token {
             tp = if signed { either::left(ast::ty_i64) }
                       else { either::right(ast::ty_u64) };
         }
+        if str::byte_len(num_str) == 0u {
+            rdr.fatal("no valid digits found for number");
+        }
         let parsed = u64::from_str(num_str, base as u64);
         alt tp {
           either::left(t) { ret token::LIT_INT(parsed as i64, t); }
@@ -264,6 +267,9 @@ fn scan_number(c: char, rdr: reader) -> token::token {
         ret token::LIT_FLOAT(interner::intern(*rdr.interner, num_str),
                              ast::ty_f);
     } else {
+        if str::byte_len(num_str) == 0u {
+            rdr.fatal("no valid digits found for number");
+        }
         let parsed = u64::from_str(num_str, base as u64);
         ret token::LIT_INT(parsed as i64, ast::ty_i);
     }
