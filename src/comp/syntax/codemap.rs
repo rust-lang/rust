@@ -46,6 +46,8 @@ fn get_substr_info(cm: codemap, sp: span)
     let pos = lookup_char_pos(cm, sp.lo);
     let name = #fmt("<%s:%u:%u>", pos.file.name, pos.line, pos.col);
     ret (name, fss_internal(sp));
+    //ret (name, fss_external({filename: pos.file.name,
+    //                         line: pos.line, col: pos.col}));
 }
 
 fn next_line(file: filemap, chpos: uint, byte_pos: uint) {
@@ -92,6 +94,40 @@ fn lookup_byte_pos(map: codemap, pos: uint) -> loc {
     ret lookup_pos(map, pos, lookup);
 }
 
+fn lookup_char_pos_adj(map: codemap, pos: uint)
+    -> {filename: str, line: uint, col: uint, file: option<filemap>}
+{
+    let loc = lookup_char_pos(map, pos);
+    alt (loc.file.substr) {
+      fss_none {
+        {filename: loc.file.name, line: loc.line, col: loc.col,
+         file: some(loc.file)}
+      }
+      fss_internal(sp) {
+        lookup_char_pos_adj(map, sp.lo + (pos - loc.file.start_pos.ch))
+      }
+      fss_external(eloc) {
+        {filename: eloc.filename,
+         line: eloc.line + loc.line - 1u,
+         col: if loc.line == 1u {eloc.col + loc.col} else {loc.col},
+         file: none}
+      }
+    }
+}
+
+fn adjust_span(map: codemap, sp: span) -> span {
+    fn lookup(pos: file_pos) -> uint { ret pos.ch; }
+    let line = lookup_line(map, sp.lo, lookup);
+    alt (line.fm.substr) {
+      fss_none {sp}
+      fss_internal(s) {
+        adjust_span(map, {lo: s.lo + (sp.lo - line.fm.start_pos.ch),
+                          hi: s.lo + (sp.hi - line.fm.start_pos.ch),
+                          expn_info: sp.expn_info})}
+      fss_external(_) {sp}
+    }
+}
+
 enum expn_info_ {
     expanded_from({call_site: span,
                    callie: {name: str, span: option<span>}})
@@ -99,10 +135,17 @@ enum expn_info_ {
 type expn_info = option<@expn_info_>;
 type span = {lo: uint, hi: uint, expn_info: expn_info};
 
-fn span_to_str(sp: span, cm: codemap) -> str {
+fn span_to_str_no_adj(sp: span, cm: codemap) -> str {
     let lo = lookup_char_pos(cm, sp.lo);
     let hi = lookup_char_pos(cm, sp.hi);
     ret #fmt("%s:%u:%u: %u:%u", lo.file.name,
+             lo.line, lo.col, hi.line, hi.col)
+}
+
+fn span_to_str(sp: span, cm: codemap) -> str {
+    let lo = lookup_char_pos_adj(cm, sp.lo);
+    let hi = lookup_char_pos_adj(cm, sp.hi);
+    ret #fmt("%s:%u:%u: %u:%u", lo.filename,
              lo.line, lo.col, hi.line, hi.col)
 }
 
@@ -111,7 +154,6 @@ type file_lines = {file: filemap, lines: [uint]};
 fn span_to_lines(sp: span, cm: codemap::codemap) -> @file_lines {
     let lo = lookup_char_pos(cm, sp.lo);
     let hi = lookup_char_pos(cm, sp.hi);
-    // FIXME: Check for filemap?
     let lines = [];
     uint::range(lo.line - 1u, hi.line as uint) {|i| lines += [i]; };
     ret @{file: lo.file, lines: lines};
