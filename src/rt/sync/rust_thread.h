@@ -5,13 +5,17 @@
  * Thread utility class. Derive and implement your own run() method.
  */
 class rust_thread {
-public:
+ private:
 #if defined(__WIN32__)
     HANDLE thread;
 #else
     pthread_t thread;
 #endif
+    size_t stack_sz;
+ public:
+
     rust_thread();
+    rust_thread(size_t stack_sz);
     virtual ~rust_thread();
 
     void start();

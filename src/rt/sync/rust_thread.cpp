@@ -1,7 +1,13 @@
 #include "globals.h"
 #include "rust_thread.h"
 
-rust_thread::rust_thread() : thread(0) {
+const size_t default_stack_sz = 1024*1024;
+
+rust_thread::rust_thread() : thread(0), stack_sz(default_stack_sz) {
+}
+
+rust_thread::rust_thread(size_t stack_sz)
+  : thread(0), stack_sz(stack_sz) {
 }
 
 rust_thread::~rust_thread() {
@@ -23,11 +29,11 @@ rust_thread_start(void *ptr) {
 void
 rust_thread::start() {
 #if defined(__WIN32__)
-   thread = CreateThread(NULL, 0, rust_thread_start, this, 0, NULL);
+   thread = CreateThread(NULL, stack_sz, rust_thread_start, this, 0, NULL);
 #else
    pthread_attr_t attr;
    pthread_attr_init(&attr);
-   pthread_attr_setstacksize(&attr, 1024 * 1024);
+   pthread_attr_setstacksize(&attr, stack_sz);
    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
    pthread_create(&thread, &attr, rust_thread_start, (void *) this);
 #endif

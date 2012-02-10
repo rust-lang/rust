@@ -13,13 +13,15 @@ pthread_key_t rust_task_thread::task_key;
 DWORD rust_task_thread::task_key;
 #endif
 
-const size_t C_STACK_SIZE = (1024*1024);
+const size_t SCHED_STACK_SIZE = 1024*100;
+const size_t C_STACK_SIZE = 1024*1024;
 
 bool rust_task_thread::tls_initialized = false;
 
 rust_task_thread::rust_task_thread(rust_scheduler *sched,
                                    rust_srv *srv,
                                    int id) :
+    rust_thread(SCHED_STACK_SIZE),
     ref_count(1),
     _log(srv, this),
     log_lvl(log_debug),
