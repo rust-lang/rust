@@ -6,6 +6,7 @@ import syntax::print::pprust::{path_to_str, constr_args_to_str, proto_to_str,
                                mode_to_str};
 import syntax::{ast, ast_util};
 import middle::ast_map;
+import driver::session::session;
 
 fn ty_to_str(cx: ctxt, typ: t) -> str {
     fn fn_input_to_str(cx: ctxt, input: {mode: ast::mode, ty: t}) ->
@@ -60,21 +61,28 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
         }
         ret mstr + ty_to_str(cx, m.ty);
     }
-    alt ty::type_name(typ) {
-      some(cs) {
-        alt ty::get(typ).struct {
-          ty_enum(_, tps) | ty_res(_, _, tps) {
-            if vec::len(tps) > 0u {
-                let strs = vec::map(tps, {|t| ty_to_str(cx, t)});
-                ret cs + "<" + str::connect(strs, ",") + ">";
-            }
-          }
-          _ {}
+    fn parameterized(cx: ctxt, base: str, tps: [ty::t]) -> str {
+        if vec::len(tps) > 0u {
+            let strs = vec::map(tps, {|t| ty_to_str(cx, t)});
+            #fmt["%s<%s>", base, str::connect(strs, ",")]
+        } else {
+            base
         }
-        ret cs;
-      }
-      _ { }
     }
+
+    // if there is an id, print that instead of the structural type:
+    alt ty::type_def_id(typ) {
+      some(def_id) {
+        let cs = ast_map::path_to_str(ty::item_path(cx, def_id));
+        ret alt ty::get(typ).struct {
+          ty_enum(_, tps) | ty_res(_, _, tps) { parameterized(cx, cs, tps) }
+          _ { cs }
+        };
+      }
+      none { /* fallthrough */}
+    }
+
+    // pretty print the structural type representation:
     ret alt ty::get(typ).struct {
       ty_nil { "()" }
       ty_bot { "_|_" }
@@ -110,15 +118,13 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
       ty_param(id, _) {
         "'" + str::from_bytes([('a' as u8) + (id as u8)])
       }
-      ty_enum(did, tps) {
+      ty_enum(did, tps) | ty_res(did, _, tps) {
+        // Not sure why, but under some circumstances enum or resource types
+        // do not have an associated id.  I didn't investigate enough to know
+        // if there is a good reason for this. - Niko, 2012-02-10
         let path = ty::item_path(cx, did);
         let base = ast_map::path_to_str(path);
-        if vec::is_empty(tps) {
-            base
-        } else {
-            let tps_strs = vec::map(tps) {|t| ty_to_str(cx, t) };
-            #fmt["%s<%s>", base, str::connect(tps_strs, ",")]
-        }
+        parameterized(cx, base, tps)
       }
       _ { ty_to_short_str(cx, typ) }
     }

@@ -6,3 +6,6 @@
 --regex-rust=/[ \t]*resource[ \t]+([a-zA-Z0-9_]+)/\1/T,types/
 --regex-rust=/[ \t]*mod[ \t]+([a-zA-Z0-9_]+)/\1/m,modules/
 --regex-rust=/[ \t]*const[ \t]+([a-zA-Z0-9_]+)/\1/m,consts/
+--regex-rust=/[ \t]*iface[ \t]+([a-zA-Z0-9_]+)/\1/m,ifaces/
+--regex-rust=/[ \t]*impl[ \t]+([a-zA-Z0-9_]+)/\1/m,impls/
+--regex-rust=/[ \t]*impl[ \t]+of[ \t]([a-zA-Z0-9_]+)/\1/m,impls/

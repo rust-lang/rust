@@ -42,7 +42,7 @@ export method;
 export method_idx;
 export mk_class;
 export mk_ctxt;
-export mk_named, type_name;
+export mk_with_id, type_def_id;
 export mt;
 export node_type_table;
 export pat_ty;
@@ -151,8 +151,10 @@ type mt = {ty: t, mut: ast::mutability};
 // the types of AST nodes.
 type creader_cache = hashmap<{cnum: int, pos: uint, len: uint}, t>;
 
+type intern_key = {struct: sty, o_def_id: option<ast::def_id>};
+
 type ctxt =
-    @{interner: hashmap<{struct: sty, name: option<str>}, t_box>,
+    @{interner: hashmap<intern_key, t_box>,
       mutable next_id: uint,
       sess: session::session,
       def_map: resolve::def_map,
@@ -175,7 +177,7 @@ type t_box = @{struct: sty,
                id: uint,
                has_params: bool,
                has_vars: bool,
-               name: option<str>};
+               o_def_id: option<ast::def_id>};
 
 // To reduce refcounting cost, we're representing types as unsafe pointers
 // throughout the compiler. These are simply casted t_box values. Use ty::get
@@ -194,7 +196,7 @@ pure fn get(t: t) -> t_box unsafe {
 
 fn type_has_params(t: t) -> bool { get(t).has_params }
 fn type_has_vars(t: t) -> bool { get(t).has_vars }
-fn type_name(t: t) -> option<str> { get(t).name }
+fn type_def_id(t: t) -> option<ast::def_id> { get(t).o_def_id }
 fn type_id(t: t) -> uint { get(t).id }
 
 enum closure_kind {
@@ -308,10 +310,9 @@ fn new_ty_hash<V: copy>() -> map::hashmap<t, V> {
 
 fn mk_ctxt(s: session::session, dm: resolve::def_map, amap: ast_map::map,
            freevars: freevars::freevar_map) -> ctxt {
-    let interner = map::mk_hashmap({|&&k: {struct: sty, name: option<str>}|
-        hash_type_structure(k.struct) + alt k.name {
-          some(s) { str::hash(s) } _ { 0u }
-        }
+    let interner = map::mk_hashmap({|&&k: intern_key|
+        hash_type_structure(k.struct) +
+            option::maybe(0u, k.o_def_id, ast_util::hash_def_id)
     }, {|&&a, &&b| a == b});
     @{interner: interner,
       mutable next_id: 0u,
@@ -335,12 +336,12 @@ fn mk_ctxt(s: session::session, dm: resolve::def_map, amap: ast_map::map,
 
 
 // Type constructors
-fn mk_t(cx: ctxt, st: sty) -> t { mk_t_named(cx, st, none) }
+fn mk_t(cx: ctxt, st: sty) -> t { mk_t_with_id(cx, st, none) }
 
 // Interns a type/name combination, stores the resulting box in cx.interner,
 // and returns the box as cast to an unsafe ptr (see comments for t above).
-fn mk_t_named(cx: ctxt, st: sty, name: option<str>) -> t {
-    let key = {struct: st, name: name};
+fn mk_t_with_id(cx: ctxt, st: sty, o_def_id: option<ast::def_id>) -> t {
+    let key = {struct: st, o_def_id: o_def_id};
     alt cx.interner.find(key) {
       some(t) { unsafe { ret unsafe::reinterpret_cast(t); } }
       _ {}
@@ -385,7 +386,7 @@ fn mk_t_named(cx: ctxt, st: sty, name: option<str>) -> t {
               id: cx.next_id,
               has_params: has_params,
               has_vars: has_vars,
-              name: name};
+              o_def_id: o_def_id};
     cx.interner.insert(key, t);
     cx.next_id += 1u;
     unsafe { unsafe::reinterpret_cast(t) }
@@ -469,8 +470,8 @@ fn mk_opaque_closure_ptr(cx: ctxt, ck: closure_kind) -> t {
 
 fn mk_opaque_box(cx: ctxt) -> t { mk_t(cx, ty_opaque_box) }
 
-fn mk_named(cx: ctxt, base: t, name: str) -> t {
-    mk_t_named(cx, get(base).struct, some(name))
+fn mk_with_id(cx: ctxt, base: t, def_id: ast::def_id) -> t {
+    mk_t_with_id(cx, get(base).struct, some(def_id))
 }
 
 // Converts s to its machine type equivalent

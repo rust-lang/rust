@@ -112,10 +112,11 @@ fn doc_type(doc: ebml::doc, tcx: ty::ctxt, cdata: cmd) -> ty::t {
     })
 }
 
-fn item_type(item: ebml::doc, tcx: ty::ctxt, cdata: cmd) -> ty::t {
+fn item_type(item_id: ast::def_id, item: ebml::doc,
+             tcx: ty::ctxt, cdata: cmd) -> ty::t {
     let t = doc_type(item, tcx, cdata);
     if family_names_type(item_family(item)) {
-        ty::mk_named(tcx, t, item_name(item))
+        ty::mk_with_id(tcx, t, item_id)
     } else { t }
 }
 
@@ -240,7 +241,7 @@ fn lookup_def(cnum: ast::crate_num, data: @[u8], did_: ast::def_id) ->
 fn get_type(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
     -> ty::ty_param_bounds_and_ty {
     let item = lookup_item(id, cdata.data);
-    let t = item_type(item, tcx, cdata);
+    let t = item_type({crate: cdata.cnum, node: id}, item, tcx, cdata);
     let tp_bounds = if family_has_type_params(item_family(item)) {
         item_ty_param_bounds(item, tcx, cdata)
     } else { @[] };
@@ -274,7 +275,8 @@ fn get_enum_variants(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
     let disr_val = 0;
     for did: ast::def_id in variant_ids {
         let item = find_item(did.node, items);
-        let ctor_ty = item_type(item, tcx, cdata);
+        let ctor_ty = item_type({crate: cdata.cnum, node: id}, item,
+                                tcx, cdata);
         let name = item_name(item);
         let arg_tys: [ty::t] = [];
         alt ty::get(ctor_ty).struct {

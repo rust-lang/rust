@@ -53,11 +53,11 @@ fn enc_ty(w: io::writer, cx: @ctxt, t: ty::t) {
           some(a) { w.write_str(*a.s); ret; }
           none {
             let pos = w.tell();
-            alt ty::type_name(t) {
-              some(n) {
+            alt ty::type_def_id(t) {
+              some(def_id) {
                 w.write_char('"');
-                w.write_str(n);
-                w.write_char('"');
+                w.write_str(cx.ds(def_id));
+                w.write_char('|');
               }
               _ {}
             }
