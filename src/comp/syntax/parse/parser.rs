@@ -150,7 +150,7 @@ fn bad_expr_word_table() -> hashmap<str, ()> {
                  "export", "fail", "fn", "for", "if",  "iface", "impl",
                  "import", "let", "log", "mod", "mutable", "native", "pure",
                  "resource", "ret", "trait", "type", "unchecked", "unsafe",
-                 "while"] {
+                 "while, crust"] {
         words.insert(word, ());
     }
     words
@@ -2276,6 +2276,9 @@ fn parse_item(p: parser, attrs: [ast::attribute]) -> option<@ast::item> {
         p.bump();
         expect_word(p, "fn");
         ret some(parse_item_fn(p, ast::unsafe_fn, attrs));
+    } else if eat_word(p, "crust") {
+        expect_word(p, "fn");
+        ret some(parse_item_fn(p, ast::crust_fn, attrs));
     } else if eat_word(p, "mod") {
         ret some(parse_item_mod(p, attrs));
     } else if eat_word(p, "native") {
