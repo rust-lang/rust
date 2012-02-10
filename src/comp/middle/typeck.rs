@@ -1589,25 +1589,25 @@ fn lookup_method(fcx: @fn_ctxt, expr: @ast::expr, node_id: ast::node_id,
         let substs = substs, n_tps = vec::len(substs), n_tys = vec::len(tps);
         let has_self = ty::type_has_params(fty);
         if method_n_tps + n_tps > 0u {
-            if n_tys > 0u {
+            if n_tys == 0u || n_tys != method_n_tps {
                 if n_tys != method_n_tps {
-                    tcx.sess.span_fatal
+                    tcx.sess.span_err
                         (expr.span, "incorrect number of type \
                                      parameters given for this method");
 
                 }
-                substs += tps;
-            } else {
                 substs += vec::init_fn(method_n_tps, {|_i|
                     ty::mk_var(tcx, next_ty_var_id(fcx))
                 });
-            };
+            } else {
+                substs += tps;
+            }
             write_ty_substs(tcx, node_id, fty, substs);
-        } else if n_tys > 0u {
-            tcx.sess.span_fatal(expr.span,
-                                "this method does not take type \
-                                 parameters");
         } else {
+            if n_tys > 0u {
+                tcx.sess.span_err(expr.span, "this method does not take type \
+                                              parameters");
+            }
             write_ty(tcx, node_id, fty);
         }
         if has_self && !option::is_none(self_sub) {
