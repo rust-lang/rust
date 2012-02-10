@@ -2633,6 +2633,9 @@ fn parse_from_source_str<T>(f: fn (p: parser) -> T,
 {
     let p = new_parser_from_source_str(sess, cfg, name, ss, source);
     let r = f(p);
+    if !p.reader.is_eof() {
+        p.reader.fatal("expected end-of-string");
+    }
     sess.chpos = p.reader.chpos;
     sess.byte_pos = sess.byte_pos + p.reader.pos;
     ret r;
