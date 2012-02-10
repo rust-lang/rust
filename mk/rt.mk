@@ -158,11 +158,18 @@ rt/$(1)/$(CFG_RUNTIME): $$(RUNTIME_OBJS_$(1)) $$(MKFILE_DEPS) \
 # FIXME: For some reason libuv's makefiles can't figure out the correct definition
 # of CC on the mingw I'm using, so we are explicitly using gcc. Also, we
 # have to list environment variables first on windows... mysterious
-$$(LIBUV_LIB_$(1)): $$(wildcard \
-                     $$(S)src/libuv/* \
-                     $$(S)src/libuv/*/* \
-                     $$(S)src/libuv/*/*/* \
-                     $$(S)src/libuv/*/*/*/*)
+
+ifdef CFG_ENABLE_FAST_MAKE
+LIBUV_DEPS := $$(S)/.gitmodules
+else
+LIBUV_DEPS := $$(wildcard \
+              $$(S)src/libuv/* \
+              $$(S)src/libuv/*/* \
+              $$(S)src/libuv/*/*/* \
+              $$(S)src/libuv/*/*/*/*)
+endif
+
+$$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS)
 	$$(Q)$$(MAKE) -C $$(S)mk/libuv/$$(LIBUV_ARCH_$(1))/$$(LIBUV_OSTYPE_$(1)) \
 		CFLAGS="$$(LIBUV_FLAGS_$$(HOST_$(1)))" \
         LDFLAGS="$$(LIBUV_FLAGS_$$(HOST_$(1)))" \
