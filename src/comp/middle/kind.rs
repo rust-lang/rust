@@ -204,7 +204,7 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
 fn check_stmt(stmt: @stmt, cx: ctx, v: visit::vt<ctx>) {
     alt stmt.node {
       stmt_decl(@{node: decl_local(locals), _}, _) {
-        for (_, local) in locals {
+        for local in locals {
             alt local.node.init {
               some({op: init_assign, expr}) { maybe_copy(cx, expr); }
               _ {}

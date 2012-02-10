@@ -2395,7 +2395,7 @@ fn trans_local_var(cx: @block_ctxt, def: ast::def) -> local_var_result {
         assert (cx.fcx.llargs.contains_key(did.node));
         ret take_local(cx.fcx.llargs, did.node);
       }
-      ast::def_local(did, _) | ast::def_binding(did) {
+      ast::def_local(did) | ast::def_binding(did) {
         assert (cx.fcx.lllocals.contains_key(did.node));
         ret take_local(cx.fcx.lllocals, did.node);
       }
@@ -3737,18 +3737,6 @@ fn init_local(bcx: @block_ctxt, local: @ast::local) -> @block_ctxt {
     ret alt::bind_irrefutable_pat(bcx, local.node.pat, llptr, false);
 }
 
-fn init_ref_local(bcx: @block_ctxt, local: @ast::local) -> @block_ctxt {
-    let init_expr = option::get(local.node.init).expr;
-    let {bcx, val, kind} = trans_lval(bcx, init_expr);
-    alt kind {
-      owned_imm { val = do_spill_noroot(bcx, val); }
-      owned {}
-      _ { bcx_tcx(bcx).sess.span_bug(local.span,
-           "Someone forgot to document an invariant in init_ref_local!"); }
-    }
-    ret alt::bind_irrefutable_pat(bcx, local.node.pat, val, false);
-}
-
 fn zero_alloca(cx: @block_ctxt, llptr: ValueRef, t: ty::t)
     -> @block_ctxt {
     let bcx = cx;
@@ -3790,12 +3778,8 @@ fn trans_stmt(cx: @block_ctxt, s: ast::stmt) -> @block_ctxt {
       ast::stmt_decl(d, _) {
         alt d.node {
           ast::decl_local(locals) {
-            for (style, local) in locals {
-                if style == ast::let_copy {
-                    bcx = init_local(bcx, local);
-                } else {
-                    bcx = init_ref_local(bcx, local);
-                }
+            for local in locals {
+                bcx = init_local(bcx, local);
                 if bcx_ccx(cx).sess.opts.extra_debuginfo {
                     debuginfo::create_local_var(bcx, local);
                 }
@@ -3924,9 +3908,7 @@ fn block_locals(b: ast::blk, it: fn(@ast::local)) {
           ast::stmt_decl(d, _) {
             alt d.node {
               ast::decl_local(locals) {
-                for (style, local) in locals {
-                    if style == ast::let_copy { it(local); }
-                }
+                for local in locals { it(local); }
               }
               _ {/* fall through */ }
             }

@@ -542,7 +542,7 @@ fn visit_decl_with_scope(d: @decl, sc: scopes, v: vt<scopes>) {
     };
     alt d.node {
       decl_local(locs) {
-        for (_, loc) in locs { v.visit_local(loc, sc, v);; *loc_pos += 1u; }
+        for loc in locs { v.visit_local(loc, sc, v);; *loc_pos += 1u; }
       }
       decl_item(it) { v.visit_item(it, sc, v); }
     }
@@ -882,7 +882,7 @@ fn scope_closes(sc: scope) -> option<node_id> {
 
 fn def_is_local(d: def) -> bool {
     alt d {
-      ast::def_arg(_, _) | ast::def_local(_, _) | ast::def_binding(_) |
+      ast::def_arg(_, _) | ast::def_local(_) | ast::def_binding(_) |
       ast::def_upvar(_, _, _) { true }
       _ { false }
     }
@@ -1114,12 +1114,12 @@ fn lookup_in_block(e: env, name: ident, sp: span, b: ast::blk_, pos: uint,
                     let j = vec::len(locs);
                     while j > 0u {
                         j -= 1u;
-                        let (style, loc) = locs[j];
+                        let loc = locs[j];
                         if ns == ns_val(ns_any_value)
                                      && (i < pos || j < loc_pos) {
                             alt lookup_in_pat(e, name, loc.node.pat) {
                               some(did) {
-                                ret some(ast::def_local(did, style));
+                                ret some(ast::def_local(did));
                               }
                               _ { }
                             }
@@ -1549,7 +1549,7 @@ fn ns_for_def(d: def) -> namespace {
     alt d {
       ast::def_variant(_, _) { ns_val(ns_a_enum) }
       ast::def_fn(_, _) | ast::def_self(_) |
-      ast::def_const(_) | ast::def_arg(_, _) | ast::def_local(_, _) |
+      ast::def_const(_) | ast::def_arg(_, _) | ast::def_local(_) |
       ast::def_upvar(_, _, _) |  ast::def_self(_) |
       ast::def_class_field(_,_) | ast::def_class_method(_,_)
           { ns_val(ns_any_value) }
@@ -1713,7 +1713,7 @@ fn check_block(e: @env, b: ast::blk, &&x: (), v: vt<()>) {
             alt d.node {
               ast::decl_local(locs) {
                 let local_values = checker(*e, "value");
-                for (_, loc) in locs {
+                for loc in locs {
                      pat_util::pat_bindings
                         (normalize_pat_def_map(e.def_map, loc.node.pat))
                             {|_i, p_sp, n|

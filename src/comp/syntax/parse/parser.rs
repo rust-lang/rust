@@ -1511,18 +1511,12 @@ fn parse_pat(p: parser) -> @ast::pat {
             }
         } else if is_plain_ident(p) &&
                       alt p.look_ahead(1u) {
-                        token::LPAREN | token::LBRACKET |
-                            token::LT {
-                          false
-                        }
+                        token::LPAREN | token::LBRACKET | token::LT { false }
                         _ { true }
                       } {
             let name = parse_path(p);
-            let sub = if eat(p, token::AT) {
-                          some(parse_pat(p))
-                      } else {
-                          none
-                      };
+            let sub = if eat(p, token::AT) { some(parse_pat(p)) }
+                      else { none };
             pat = ast::pat_ident(name, sub);
         } else {
             let enum_path = parse_path_and_ty_param_substs(p, true);
@@ -1563,17 +1557,10 @@ fn parse_local(p: parser, allow_init: bool) -> @ast::local {
 }
 
 fn parse_let(p: parser) -> @ast::decl {
-    fn parse_let_style(p: parser) -> ast::let_style {
-        if eat(p, token::BINOP(token::AND)) {
-            ast::let_ref
-        } else {
-            ast::let_copy
-        }
-    }
     let lo = p.span.lo;
-    let locals = [(parse_let_style(p), parse_local(p, true))];
+    let locals = [parse_local(p, true)];
     while eat(p, token::COMMA) {
-        locals += [(parse_let_style(p), parse_local(p, true))];
+        locals += [parse_local(p, true)];
     }
     ret @spanned(lo, p.last_span.hi, ast::decl_local(locals));
 }

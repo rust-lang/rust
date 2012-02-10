@@ -285,7 +285,7 @@ fn clear_in_current(cx: ctx, my_def: node_id, to: bool) {
 fn clear_def_if_path(cx: ctx, d: def, to: bool)
     -> option<node_id> {
     alt d {
-      def_local(def_id, let_copy) {
+      def_local(def_id) {
         clear_in_current(cx, def_id.node, to);
         some(def_id.node)
       }

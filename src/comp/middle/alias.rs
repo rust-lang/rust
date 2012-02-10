@@ -141,18 +141,14 @@ fn visit_expr(cx: @ctx, ex: @ast::expr, sc: scope, v: vt<scope>) {
 }
 
 fn visit_block(cx: @ctx, b: ast::blk, sc: scope, v: vt<scope>) {
-    let bs = sc.bs, sc = sc;
+    let sc = sc;
     for stmt in b.node.stmts {
         alt stmt.node {
           ast::stmt_decl(@{node: ast::decl_item(it), _}, _) {
             v.visit_item(it, sc, v);
           }
           ast::stmt_decl(@{node: ast::decl_local(locs), _}, _) {
-            for (st, loc) in locs {
-                if st == ast::let_ref {
-                    add_bindings_for_let(*cx, bs, loc);
-                    sc = {bs: bs with sc};
-                }
+            for loc in locs {
                 alt loc.node.init {
                   some(init) {
                     if init.op == ast::init_move {
@@ -547,7 +543,7 @@ fn ty_can_unsafely_include(cx: ctx, needle: unsafe_ty, haystack: ty::t,
 
 fn def_is_local(d: ast::def) -> bool {
     alt d {
-      ast::def_local(_, _) | ast::def_arg(_, _) | ast::def_binding(_) |
+      ast::def_local(_) | ast::def_arg(_, _) | ast::def_binding(_) |
       ast::def_upvar(_, _, _) | ast::def_self(_) { true }
       _ { false }
     }

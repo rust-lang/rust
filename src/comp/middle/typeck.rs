@@ -92,7 +92,7 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
         let typ = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, sp, id.node));
         ret {bounds: @[], ty: typ};
       }
-      ast::def_local(id, _) {
+      ast::def_local(id) {
         assert (fcx.locals.contains_key(id.node));
         let typ = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, sp, id.node));
         ret {bounds: @[], ty: typ};
@@ -2526,7 +2526,7 @@ fn check_stmt(fcx: @fn_ctxt, stmt: @ast::stmt) -> bool {
         node_id = id;
         alt decl.node {
           ast::decl_local(ls) {
-            for (_, l) in ls { bot |= check_decl_local(fcx, l); }
+            for l in ls { bot |= check_decl_local(fcx, l); }
           }
           ast::decl_item(_) {/* ignore for now */ }
         }

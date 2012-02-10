@@ -137,7 +137,7 @@ fn visit_decl(cx: @ctx, d: @decl, &&e: (), v: visit::vt<()>) {
     visit::visit_decl(d, e, v);
     alt d.node {
       decl_local(locs) {
-        for (_, loc) in locs {
+        for loc in locs {
             alt loc.node.init {
               some(init) {
                 if init.op == init_move { check_move_rhs(cx, init.expr); }
@@ -282,7 +282,6 @@ fn is_immutable_def(cx: @ctx, def: def) -> option<str> {
         };
       }
       def_binding(_) { some("binding") }
-      def_local(_, let_ref) { some("by-reference binding") }
       _ { none }
     }
 }

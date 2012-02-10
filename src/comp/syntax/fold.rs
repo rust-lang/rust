@@ -320,13 +320,10 @@ fn noop_fold_pat(p: pat_, fld: ast_fold) -> pat_ {
 }
 
 fn noop_fold_decl(d: decl_, fld: ast_fold) -> decl_ {
-    ret alt d {
-          decl_local(ls) {
-            decl_local(vec::map(ls, {|l| let (st, lc) = l;
-                                 (st, fld.fold_local(lc))}))
-          }
-          decl_item(it) { decl_item(fld.fold_item(it)) }
-        }
+    alt d {
+      decl_local(ls) { decl_local(vec::map(ls, fld.fold_local)) }
+      decl_item(it) { decl_item(fld.fold_item(it)) }
+    }
 }
 
 fn wrap<T>(f: fn@(T, ast_fold) -> T)

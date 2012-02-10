@@ -38,7 +38,7 @@ enum def {
     def_native_mod(def_id),
     def_const(def_id),
     def_arg(def_id, mode),
-    def_local(def_id, let_style),
+    def_local(def_id),
     def_variant(def_id /* enum */, def_id /* variant */),
     def_ty(def_id),
     def_prim_ty(prim_ty),
@@ -201,9 +201,7 @@ type local = spanned<local_>;
 
 type decl = spanned<decl_>;
 
-enum let_style { let_copy, let_ref, }
-
-enum decl_ { decl_local([(let_style, @local)]), decl_item(@item), }
+enum decl_ { decl_local([@local]), decl_item(@item), }
 
 type arm = {pats: [@pat], guard: option<@expr>, body: blk};
 

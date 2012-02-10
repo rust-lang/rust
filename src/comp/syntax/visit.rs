@@ -276,7 +276,7 @@ fn visit_stmt<E>(s: @stmt, e: E, v: vt<E>) {
 fn visit_decl<E>(d: @decl, e: E, v: vt<E>) {
     alt d.node {
       decl_local(locs) {
-        for (_, loc) in locs { v.visit_local(loc, e, v); }
+        for loc in locs { v.visit_local(loc, e, v); }
       }
       decl_item(it) { v.visit_item(it, e, v); }
     }
