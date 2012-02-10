@@ -52,10 +52,33 @@ fn run(lib_path: str, prog: str, args: [str],
 
 
     writeclose(pipe_in.out, input);
-    let errput = readclose(pipe_err.in);
-    let output = readclose(pipe_out.in);
+    let p = comm::port();
+    let ch = comm::chan(p);
+    task::spawn_sched(1u) {||
+        let errput = readclose(pipe_err.in);
+        comm::send(ch, (2, errput));
+    };
+    task::spawn_sched(1u) {||
+        let output = readclose(pipe_out.in);
+        comm::send(ch, (1, output));
+    };
     let status = run::waitpid(pid);
-    ret {status: status, out: output, err: errput};
+    let errs = "";
+    let outs = "";
+    let count = 2;
+    while count > 0 {
+        let stream = comm::recv(p);
+        alt stream {
+            (1, s) {
+                outs = s;
+            }
+            (2, s) {
+                errs = s;
+            }
+        };
+        count -= 1;
+    };
+    ret {status: status, out: outs, err: errs};
 }
 
 fn writeclose(fd: fd_t, s: option<str>) {
