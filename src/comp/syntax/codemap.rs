@@ -40,14 +40,10 @@ fn new_filemap(filename: filename, src: @str,
                              start_pos_ch, start_pos_byte);
 }
 
-fn get_substr_info(cm: codemap, sp: span)
-    -> (filename, file_substr)
+fn mk_substr_filename(cm: codemap, sp: span) -> str
 {
     let pos = lookup_char_pos(cm, sp.lo);
-    let name = #fmt("<%s:%u:%u>", pos.file.name, pos.line, pos.col);
-    ret (name, fss_internal(sp));
-    //ret (name, fss_external({filename: pos.file.name,
-    //                         line: pos.line, col: pos.col}));
+    ret #fmt("<%s:%u:%u>", pos.file.name, pos.line, pos.col);
 }
 
 fn next_line(file: filemap, chpos: uint, byte_pos: uint) {
