@@ -337,16 +337,6 @@ rust_task_thread::place_task_in_tls(rust_task *task) {
     assert(!result && "Couldn't place the task in TLS!");
     task->record_stack_limit();
 }
-
-rust_task *
-rust_task_thread::get_task() {
-    if (!tls_initialized)
-        return NULL;
-    rust_task *task = reinterpret_cast<rust_task *>
-        (pthread_getspecific(task_key));
-    assert(task && "Couldn't get the task from TLS!");
-    return task;
-}
 #else
 void
 rust_task_thread::init_tls() {
@@ -360,15 +350,6 @@ rust_task_thread::place_task_in_tls(rust_task *task) {
     BOOL result = TlsSetValue(task_key, task);
     assert(result && "Couldn't place the task in TLS!");
     task->record_stack_limit();
-}
-
-rust_task *
-rust_task_thread::get_task() {
-    if (!tls_initialized)
-        return NULL;
-    rust_task *task = reinterpret_cast<rust_task *>(TlsGetValue(task_key));
-    assert(task && "Couldn't get the task from TLS!");
-    return task;
 }
 #endif
 
@@ -399,32 +380,6 @@ rust_task_thread::unprepare_c_stack() {
         unconfig_valgrind_stack(extra_c_stack);
         destroy_stack(kernel, extra_c_stack);
         extra_c_stack = NULL;
-    }
-}
-
-// NB: Runs on the Rust stack
-stk_seg *
-rust_task_thread::borrow_c_stack() {
-    I(this, cached_c_stack);
-    stk_seg *your_stack;
-    if (extra_c_stack) {
-        your_stack = extra_c_stack;
-        extra_c_stack = NULL;
-    } else {
-        your_stack = cached_c_stack;
-        cached_c_stack = NULL;
-    }
-    return your_stack;
-}
-
-// NB: Runs on the Rust stack
-void
-rust_task_thread::return_c_stack(stk_seg *stack) {
-    I(this, !extra_c_stack);
-    if (!cached_c_stack) {
-        cached_c_stack = stack;
-    } else {
-        extra_c_stack = stack;
     }
 }
 

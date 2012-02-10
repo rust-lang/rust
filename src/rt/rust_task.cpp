@@ -673,19 +673,6 @@ rust_task::record_stack_limit() {
     record_sp(stk->data + LIMIT_OFFSET + RED_ZONE_SIZE);
 }
 
-extern "C" uintptr_t get_sp();
-
-static bool
-sp_in_stk_seg(uintptr_t sp, stk_seg *stk) {
-    // Not positive these bounds for sp are correct.  I think that the first
-    // possible value for esp on a new stack is stk->end, which points to the
-    // address before the first value to be pushed onto a new stack. The last
-    // possible address we can push data to is stk->data.  Regardless, there's
-    // so much slop at either end that we should never hit one of these
-    // boundaries.
-    return (uintptr_t)stk->data <= sp && sp <= stk->end;
-}
-
 /*
 Called by landing pads during unwinding to figure out which
 stack segment we are currently running on, delete the others,
@@ -702,25 +689,6 @@ rust_task::reset_stack_limit() {
     record_stack_limit();
 }
 
-/*
-Returns true if we're currently running on the Rust stack
- */
-bool
-rust_task::on_rust_stack() {
-    uintptr_t sp = get_sp();
-    bool in_first_segment = sp_in_stk_seg(sp, stk);
-    if (in_first_segment) {
-        return true;
-    } else if (stk->next != NULL) {
-        // This happens only when calling the upcall to delete
-        // a stack segment
-        bool in_second_segment = sp_in_stk_seg(sp, stk->next);
-        return in_second_segment;
-    } else {
-        return false;
-    }
-}
-
 void
 rust_task::check_stack_canary() {
     ::check_stack_canary(stk);
@@ -730,76 +698,6 @@ void
 rust_task::config_notify(chan_handle chan) {
     notify_enabled = true;
     notify_chan = chan;
-}
-
-// This is the function that switches stacks by calling another function with
-// a single void* argument while changing the stack pointer. It has a funny
-// name because gdb doesn't normally like to backtrace through split stacks
-// (thinks it indicates a bug), but has a special case to allow functions
-// named __morestack to move the stack pointer around.
-extern "C" void __morestack(void *args, void *fn_ptr, uintptr_t stack_ptr);
-
-static uintptr_t
-sanitize_next_sp(uintptr_t next_sp) {
-
-    // Since I'm not precisely sure where the next stack pointer sits in
-    // relation to where the context switch actually happened, nor in relation
-    // to the amount of stack needed for calling __morestack I've added some
-    // extra bytes here.
-
-    // FIXME: On the rust stack this potentially puts is quite far into the
-    // red zone. Might want to just allocate a new rust stack every time we
-    // switch back to rust.
-    const uintptr_t padding = 16;
-
-    return align_down(next_sp - padding);
-}
-
-void
-rust_task::call_on_c_stack(void *args, void *fn_ptr) {
-    I(thread, on_rust_stack());
-
-    next_rust_sp = get_sp();
-
-    bool borrowed_a_c_stack = false;
-    uintptr_t sp;
-    if (c_stack == NULL) {
-        c_stack = thread->borrow_c_stack();
-        next_c_sp = align_down(c_stack->end);
-        sp = next_c_sp;
-        borrowed_a_c_stack = true;
-    } else {
-        sp = sanitize_next_sp(next_c_sp);
-    }
-
-    __morestack(args, fn_ptr, sp);
-
-    // Note that we may not actually get here if we threw an exception,
-    // in which case we will return the c stack when the exception is caught.
-    if (borrowed_a_c_stack) {
-        return_c_stack();
-    }
-}
-
-void
-rust_task::call_on_rust_stack(void *args, void *fn_ptr) {
-    I(thread, !on_rust_stack());
-    I(thread, next_rust_sp);
-
-    next_c_sp = get_sp();
-
-    uintptr_t sp = sanitize_next_sp(next_rust_sp);
-
-    __morestack(args, fn_ptr, sp);
-}
-
-void
-rust_task::return_c_stack() {
-    I(thread, on_rust_stack());
-    I(thread, c_stack != NULL);
-    thread->return_c_stack(c_stack);
-    c_stack = NULL;
-    next_c_sp = 0;
 }
 
 //

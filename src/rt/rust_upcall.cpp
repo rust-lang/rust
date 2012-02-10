@@ -75,7 +75,6 @@ upcall_call_shim_on_c_stack(void *args, void *fn_ptr) {
         abort();
     }
 
-    task = rust_task_thread::get_task();
     task->record_stack_limit();
 }
 

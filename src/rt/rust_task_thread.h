@@ -150,6 +150,58 @@ rust_task_thread::get_log() {
     return _log;
 }
 
+#ifndef __WIN32__
+
+inline rust_task *
+rust_task_thread::get_task() {
+    if (!tls_initialized)
+        return NULL;
+    rust_task *task = reinterpret_cast<rust_task *>
+        (pthread_getspecific(task_key));
+    assert(task && "Couldn't get the task from TLS!");
+    return task;
+}
+
+#else
+
+inline rust_task *
+rust_task_thread::get_task() {
+    if (!tls_initialized)
+        return NULL;
+    rust_task *task = reinterpret_cast<rust_task *>(TlsGetValue(task_key));
+    assert(task && "Couldn't get the task from TLS!");
+    return task;
+}
+
+#endif
+
+// NB: Runs on the Rust stack
+inline stk_seg *
+rust_task_thread::borrow_c_stack() {
+    I(this, cached_c_stack);
+    stk_seg *your_stack;
+    if (extra_c_stack) {
+        your_stack = extra_c_stack;
+        extra_c_stack = NULL;
+    } else {
+        your_stack = cached_c_stack;
+        cached_c_stack = NULL;
+    }
+    return your_stack;
+}
+
+// NB: Runs on the Rust stack
+inline void
+rust_task_thread::return_c_stack(stk_seg *stack) {
+    I(this, !extra_c_stack);
+    if (!cached_c_stack) {
+        cached_c_stack = stack;
+    } else {
+        extra_c_stack = stack;
+    }
+}
+
+
 //
 // Local Variables:
 // mode: C++
