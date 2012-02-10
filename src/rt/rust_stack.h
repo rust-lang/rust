@@ -19,12 +19,15 @@ const uint8_t stack_canary[] = {0xAB, 0xCD, 0xAB, 0xCD,
                                 0xAB, 0xCD, 0xAB, 0xCD,
                                 0xAB, 0xCD, 0xAB, 0xCD};
 
+// Used by create_stack
 void
 register_valgrind_stack(stk_seg *stk);
 
+// Used by destroy_stack
 void
 deregister_valgrind_stack(stk_seg *stk);
 
+// Used by create_stack
 void
 add_stack_canary(stk_seg *stk);
 
@@ -47,9 +50,12 @@ destroy_stack(T allocer, stk_seg *stk) {
   allocer->free(stk);
 }
 
+// Must be called before each time a stack is reused to tell valgrind
+// that the stack is accessible.
 void
 prepare_valgrind_stack(stk_seg *stk);
 
+// Run a sanity check
 void
 check_stack_canary(stk_seg *stk);
 
