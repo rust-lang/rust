@@ -870,6 +870,30 @@ fn lines_iter(ss: str, ff: fn(&&str)) {
 Section: Searching
 */
 
+// Function: index
+//
+// Returns the index of the first matching char
+// (as option some/none)
+fn index(ss: str, cc: char) -> option<uint> {
+    let bii = 0u;
+    let cii = 0u;
+    let len = byte_len(ss);
+    while bii < len {
+        let {ch, next} = char_range_at(ss, bii);
+
+        // found here?
+        if ch == cc {
+            ret option::some(cii);
+        }
+
+        cii += 1u;
+        bii = next;
+    }
+
+    // wasn't found
+    ret option::none;
+}
+
 /*
 Function: index
 
@@ -1448,6 +1472,9 @@ mod tests {
         assert (index_byte("hello", 'e' as u8) == 1);
         assert (index_byte("hello", 'o' as u8) == 4);
         assert (index_byte("hello", 'z' as u8) == -1);
+        assert (index("hello", 'e') == option::some(1u));
+        assert (index("hello", 'o') == option::some(4u));
+        assert (index("hello", 'z') == option::none);
         assert (rindex_byte("hello", 'l' as u8) == 3);
         assert (rindex_byte("hello", 'h' as u8) == 0);
         assert (rindex_byte("hello", 'z' as u8) == -1);
