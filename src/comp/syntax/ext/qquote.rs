@@ -184,11 +184,12 @@ fn finish<T: qq_helper>
     let sp = node.span();
     let qcx = gather_anti_quotes(sp.lo, node);
     let cx = qcx;
-    let prev = 0u;
-    for {lo: lo, _} in cx.gather {
-        assert lo > prev;
-        prev = lo;
+
+    // assert that the vector is sorted by position:
+    uint::range(1u, vec::len(cx.gather)) {|i|
+        assert cx.gather[i-1u].lo < cx.gather[i].lo;
     }
+
     let str2 = "";
     enum state {active, skip(uint), blank};
     let state = active;
