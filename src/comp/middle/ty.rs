@@ -2395,7 +2395,7 @@ fn item_path(cx: ctxt, id: ast::def_id) -> ast_map::path {
             *path + [ast_map::path_name(nitem.ident)]
           }
 
-          ast_map::node_method(method, path) {
+          ast_map::node_method(method, _, path) {
             *path + [ast_map::path_name(method.ident)]
           }
 

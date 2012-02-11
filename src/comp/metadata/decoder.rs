@@ -43,7 +43,7 @@ fn lookup_hash(d: ebml::doc, eq_fn: fn@([u8]) -> bool, hash: uint) ->
     let table = ebml::get_doc(index, tag_index_table);
     let hash_pos = table.start + hash % 256u * 4u;
     let pos = ebml::be_uint_from_bytes(d.data, hash_pos, 4u);
-    let bucket = ebml::doc_at(d.data, pos);
+    let {tag:_, doc:bucket} = ebml::doc_at(d.data, pos);
     // Awkward logic because we can't ret from foreach yet
 
     let result: [ebml::doc] = [];
@@ -51,7 +51,7 @@ fn lookup_hash(d: ebml::doc, eq_fn: fn@([u8]) -> bool, hash: uint) ->
     ebml::tagged_docs(bucket, belt) {|elt|
         let pos = ebml::be_uint_from_bytes(elt.data, elt.start, 4u);
         if eq_fn(vec::slice::<u8>(*elt.data, elt.start + 4u, elt.end)) {
-            result += [ebml::doc_at(d.data, pos)];
+            result += [ebml::doc_at(d.data, pos).doc];
         }
     };
     ret result;
@@ -500,7 +500,7 @@ fn iter_crate_items(bytes: @[u8], proc: fn(str, ast::def_id)) {
         let et = tag_index_buckets_bucket_elt;
         ebml::tagged_docs(bucket, et) {|elt|
             let data = read_path(elt);
-            let def = ebml::doc_at(bytes, data.pos);
+            let {tag:_, doc:def} = ebml::doc_at(bytes, data.pos);
             let did_doc = ebml::get_doc(def, tag_def_id);
             let did = parse_def_id(ebml::doc_data(did_doc));
             proc(data.path, did);

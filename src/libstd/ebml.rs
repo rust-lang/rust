@@ -17,6 +17,8 @@ type ebml_state = {ebml_tag: ebml_tag, tag_pos: uint, data_pos: uint};
 // ebml reading
 type doc = {data: @[u8], start: uint, end: uint};
 
+type tagged_doc = {tag: uint, doc: doc};
+
 fn vint_at(data: [u8], start: uint) -> {val: uint, next: uint} {
     let a = data[start];
     if a & 0x80u8 != 0u8 {
@@ -43,11 +45,12 @@ fn new_doc(data: @[u8]) -> doc {
     ret {data: data, start: 0u, end: vec::len::<u8>(*data)};
 }
 
-fn doc_at(data: @[u8], start: uint) -> doc {
+fn doc_at(data: @[u8], start: uint) -> tagged_doc {
     let elt_tag = vint_at(*data, start);
     let elt_size = vint_at(*data, elt_tag.next);
     let end = elt_size.next + elt_size.val;
-    ret {data: data, start: elt_size.next, end: end};
+    ret {tag: elt_tag.val,
+         doc: {data: data, start: elt_size.next, end: end}};
 }
 
 fn maybe_get_doc(d: doc, tg: uint) -> option<doc> {
@@ -120,18 +123,18 @@ fn doc_as_uint(d: doc) -> uint {
 // ebml writing
 type writer = {writer: io::writer, mutable size_positions: [uint]};
 
-fn write_sized_vint(w: io::writer, n: uint, size: uint) {
+fn write_sized_vint(w: io::writer, n: u64, size: uint) {
     let buf: [u8];
     alt size {
       1u { buf = [0x80u8 | (n as u8)]; }
-      2u { buf = [0x40u8 | ((n >> 8u) as u8), (n & 0xffu) as u8]; }
+      2u { buf = [0x40u8 | ((n >> 8_u64) as u8), n as u8]; }
       3u {
-        buf = [0x20u8 | ((n >> 16u) as u8), (n >> 8u & 0xffu) as u8,
-               (n & 0xffu) as u8];
+        buf = [0x20u8 | ((n >> 16_u64) as u8), (n >> 8_u64) as u8,
+               n as u8];
       }
       4u {
-        buf = [0x10u8 | ((n >> 24u) as u8), (n >> 16u & 0xffu) as u8,
-               (n >> 8u & 0xffu) as u8, (n & 0xffu) as u8];
+        buf = [0x10u8 | ((n >> 24_u64) as u8), (n >> 16_u64) as u8,
+               (n >> 8_u64) as u8, n as u8];
       }
       _ { #error("vint to write too big"); fail; }
     }
@@ -156,7 +159,7 @@ fn create_writer(w: io::writer) -> writer {
 // TODO: Provide a function to write the standard ebml header.
 fn start_tag(w: writer, tag_id: uint) {
     // Write the enum ID:
-    write_vint(w.writer, tag_id);
+    write_vint(w.writer, tag_id as u64);
 
     // Write a placeholder four-byte size.
     w.size_positions += [w.writer.tell()];
@@ -168,7 +171,7 @@ fn end_tag(w: writer) {
     let last_size_pos = vec::pop::<uint>(w.size_positions);
     let cur_pos = w.writer.tell();
     w.writer.seek(last_size_pos as int, io::seek_set);
-    write_sized_vint(w.writer, cur_pos - last_size_pos - 4u, 4u);
+    write_sized_vint(w.writer, (cur_pos - last_size_pos - 4u) as u64, 4u);
     w.writer.seek(cur_pos as int, io::seek_set);
 }
 
@@ -179,12 +182,12 @@ impl writer_util for writer {
         end_tag(self);
     }
 
-    fn wr_uint(id: u64) {
+    fn wr_u64(id: u64) {
         write_vint(self.writer, id);
     }
 
-    fn wr_int(id: uint) {
-        write_vint(self.writer, id);
+    fn wr_uint(id: uint) {
+        self.wr_u64(id as u64);
     }
 
     fn wr_bytes(b: [u8]) {

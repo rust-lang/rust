@@ -166,24 +166,30 @@ impl serialize_ctx for serialize_ctx {
 
         let body_node = alt ty::get(ty0).struct {
           ty::ty_nil | ty::ty_bot { "()" }
-          ty::ty_int(_) { #fmt["serialize_i64(cx, %s as i64)", v] }
-          ty::ty_uint(_) { #fmt["serialize_u64(cx, %s as u64)", v] }
-          ty::ty_float(_) { #fmt["serialize_float(cx, %s as float)", v] }
-          ty::ty_bool { #fmt["serialize_bool(cx, %s)", v] }
-          ty::ty_str { #fmt["serialize_str(cx, %s)", v] }
+          ty::ty_int(_) { #fmt["s.emit_i64(%s as i64)", v] }
+          ty::ty_uint(_) { #fmt["s.emit_u64(%s as u64)", v] }
+          ty::ty_float(_) { #fmt["s.emit_f64(%s as f64)", v] }
+          ty::ty_bool { #fmt["s.emit_bool(%s)", v] }
+          ty::ty_str { #fmt["s.emit_str(%s)", v] }
           ty::ty_enum(def_id, tps) { self.serialize_enum(v, def_id, tps) }
-          ty::ty_box(mt) | ty::ty_uniq(mt) | ty::ty_ptr(mt) {
-            self.serialize_ty(mt.ty, #fmt["*%s", v])
+          ty::ty_box(mt) {
+            let s = self.serialize_ty(mt.ty, #fmt["*%s", v]);
+            #fmt["s.emit_box({||%s})", s]
+          }
+          ty::ty_uniq(mt) {
+            let s = self.serialize_ty(mt.ty, #fmt["*%s", v]);
+            #fmt["s.emit_uniq({||%s})", s]
           }
           ty::ty_vec(mt) {
             let selem = self.serialize_ty(mt.ty, "i");
-            #fmt["start_vec(cx); \
-                  vec::iter(v) {|i| \
-                  start_vec_item(cx); \
-                  %s; \
-                  end_vec_item(cx); \
-                  } \
-                  end_vec(cx);", selem]
+            #fmt["s.emit_vec(vec::len(v), {|| \
+                  uint::range(0, vec::len(v), {|i| \
+                  s.emit_vec_elt(i, {||\
+                  %s;\
+                  })})})", selem]
+          }
+          ty::ty_class(_, _) {
+            fail "TODO--implement class";
           }
           ty::ty_rec(fields) {
             let stmts = vec::map(fields) {|field|
@@ -191,17 +197,18 @@ impl serialize_ctx for serialize_ctx {
                 let f_ty = field.mt.ty;
                 self.serialize_ty(f_ty, #fmt["%s.%s", v, f_name])
             };
-            self.blk_expr(stmts)
+            #fmt["s.emit_rec({||%s})", self.blk_expr(stmts)]
           }
           ty::ty_tup(tys) {
-            let (pat, stmts) = self.serialize_arm("", tys);
-            #fmt["alt %s { \
+            let (pat, stmts) = self.serialize_arm("", "emit_tup_elt", tys);
+            #fmt["s.emit_tup(%uu, {|| alt %s { \
                     %s %s \
-                  }", v, pat, self.blk_expr(stmts)]
+                  }})", vec::len(tys), v, pat, self.blk_expr(stmts)]
           }
           ty::ty_constr(t, _) {
             self.serialize_ty(t, v)
           }
+          ty::ty_ptr(_) |
           ty::ty_fn(_) |
           ty::ty_iface(_, _) |
           ty::ty_res(_, _, _) |
@@ -212,7 +219,8 @@ impl serialize_ctx for serialize_ctx {
           }
         };
 
-        let item = #fmt["fn %s(cx: ctxt, v: %s) {\
+        let item = #fmt["fn %s<S:std::serialization::serializer>\
+                            (s: S, v: %s) {\
                              %s;\
                          }", name, ty0_str, body_node];
         self.add_item(item);
@@ -232,7 +240,8 @@ impl serialize_ctx for serialize_ctx {
                 if n_args == 0u {
                     (v_path, [])
                 } else {
-                    self.serialize_arm(v_path, variant.args)
+                    self.serialize_arm(v_path, "emit_enum_variant_arg",
+                                       variant.args)
                 }
             };
 
@@ -251,7 +260,8 @@ impl serialize_ctx for serialize_ctx {
               }", v, str::connect(arms, "\n")]
     }
 
-    fn serialize_arm(v_path: str, args: [ty::t]) -> (ast_pat, [ast_stmt]) {
+    fn serialize_arm(v_path: str, emit_fn: str, args: [ty::t])
+        -> (ast_pat, [ast_stmt]) {
         let n_args = vec::len(args);
         let arg_nms = vec::init_fn(n_args) {|i| #fmt["v%u", i] };
         let v_pat =
@@ -260,7 +270,7 @@ impl serialize_ctx for serialize_ctx {
             let arg_ty = args[i];
             let serialize_expr =
                 self.serialize_ty(arg_ty, arg_nms[i]);
-            #fmt["%s;", serialize_expr]
+            #fmt["s.%s(%uu, {|| %s })", emit_fn, i, serialize_expr]
         };
         (v_pat, stmts)
     }
