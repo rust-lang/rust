@@ -17,7 +17,7 @@ fn path_to_str_with_sep(p: path, sep: str) -> str {
 }
 
 fn path_to_str(p: path) -> str {
-    path_to_str_with_sep(p, "::")
+    "::" + path_to_str_with_sep(p, "::")
 }
 
 enum ast_node {
