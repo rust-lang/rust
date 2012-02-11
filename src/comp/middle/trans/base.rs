@@ -2338,6 +2338,19 @@ fn lval_static_fn(bcx: @block_ctxt, fn_id: ast::def_id, id: ast::node_id,
         // External reference.
         trans_external_path(bcx, fn_id, tpt)
     };
+
+    // FIXME: Need to support external crust functions
+    if fn_id.crate == ast::local_crate {
+        alt bcx_tcx(bcx).def_map.find(id) {
+          some(ast::def_fn(_, ast::crust_fn)) {
+            // Crust functions are just opaque pointers
+            let val = PointerCast(bcx, val, T_ptr(T_i8()));
+            ret lval_no_env(bcx, val, owned_imm);
+          }
+          _ { }
+        }
+    }
+
     let gen = generic_none, bcx = bcx;
     if tys.len() > 0u {
         let tydescs = [], tis = [];
