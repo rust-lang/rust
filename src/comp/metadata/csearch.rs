@@ -60,8 +60,7 @@ fn resolve_path(cstore: cstore::cstore, cnum: ast::crate_num,
 fn get_item_path(tcx: ty::ctxt, def: ast::def_id) -> ast_map::path {
     let cstore = tcx.sess.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
-    let path = decoder::get_item_path(cdata, def.node);
-    [ast_map::path_mod(cdata.name)] + path
+    ret decoder::get_item_path(cdata, def.node);
 }
 
 fn get_enum_variants(tcx: ty::ctxt, def: ast::def_id) -> [ty::variant_info] {
