@@ -125,7 +125,7 @@ fn get_line(fm: filemap, line: int) -> str unsafe {
         // the remainder of the file, which is undesirable.
         end = str::byte_len(*fm.src);
         let rest = str::unsafe::slice_bytes(*fm.src, begin, end);
-        let newline = str::index(rest, '\n' as u8);
+        let newline = str::index_byte(rest, '\n' as u8);
         if newline != -1 { end = begin + (newline as uint); }
     }
     ret str::unsafe::slice_bytes(*fm.src, begin, end);

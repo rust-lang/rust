@@ -284,7 +284,7 @@ fn check_variants_T<T: copy>(
 }
 
 fn last_part(filename: str) -> str unsafe {
-  let ix = str::rindex(filename, 47u8 /* '/' */);
+  let ix = str::rindex_byte(filename, 47u8 /* '/' */);
   assert ix >= 0;
   str::unsafe::slice_bytes(filename, ix as uint + 1u, str::byte_len(filename) - 3u)
 }

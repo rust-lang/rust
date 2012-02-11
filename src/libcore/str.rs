@@ -70,8 +70,10 @@ export
    lines_iter,
 
    // Searching
-   index,
-   rindex,
+   //index,
+   //rindex,
+   index_byte,
+   rindex_byte,
    find,
    contains,
    starts_with,
@@ -876,7 +878,7 @@ no match is found.
 
 FIXME: UTF-8
 */
-fn index(s: str, c: u8) -> int {
+fn index_byte(s: str, c: u8) -> int {
     let i: int = 0;
     for k: u8 in s { if k == c { ret i; } i += 1; }
     ret -1;
@@ -890,7 +892,7 @@ if no match is found.
 
 FIXME: UTF-8
 */
-fn rindex(s: str, c: u8) -> int {
+fn rindex_byte(s: str, c: u8) -> int {
     let n: int = byte_len(s) as int;
     while n >= 0 { if s[n] == c { ret n; } n -= 1; }
     ret n;
@@ -1443,12 +1445,12 @@ mod tests {
 
     #[test]
     fn test_index_and_rindex() {
-        assert (index("hello", 'e' as u8) == 1);
-        assert (index("hello", 'o' as u8) == 4);
-        assert (index("hello", 'z' as u8) == -1);
-        assert (rindex("hello", 'l' as u8) == 3);
-        assert (rindex("hello", 'h' as u8) == 0);
-        assert (rindex("hello", 'z' as u8) == -1);
+        assert (index_byte("hello", 'e' as u8) == 1);
+        assert (index_byte("hello", 'o' as u8) == 4);
+        assert (index_byte("hello", 'z' as u8) == -1);
+        assert (rindex_byte("hello", 'l' as u8) == 3);
+        assert (rindex_byte("hello", 'h' as u8) == 0);
+        assert (rindex_byte("hello", 'z' as u8) == -1);
     }
 
     #[test]

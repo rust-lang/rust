@@ -109,7 +109,7 @@ mod write {
     // Decides what to call an intermediate file, given the name of the output
     // and the extension to use.
     fn mk_intermediate_name(output_path: str, extension: str) -> str unsafe {
-        let dot_pos = str::index(output_path, '.' as u8);
+        let dot_pos = str::index_byte(output_path, '.' as u8);
         let stem;
         if dot_pos < 0 {
             stem = output_path;

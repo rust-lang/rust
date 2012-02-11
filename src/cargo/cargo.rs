@@ -651,7 +651,7 @@ fn cmd_install(c: cargo) unsafe {
 
     if str::starts_with(target, "uuid:") {
         let uuid = rest(target, 5u);
-        let idx = str::index(uuid, '/' as u8);
+        let idx = str::index_byte(uuid, '/' as u8);
         if idx != -1 {
             let source = str::unsafe::slice_bytes(uuid, 0u, idx as uint);
             uuid = str::unsafe::slice_bytes(uuid, idx as uint + 1u,
@@ -662,7 +662,7 @@ fn cmd_install(c: cargo) unsafe {
         }
     } else {
         let name = target;
-        let idx = str::index(name, '/' as u8);
+        let idx = str::index_byte(name, '/' as u8);
         if idx != -1 {
             let source = str::unsafe::slice_bytes(name, 0u, idx as uint);
             name = str::unsafe::slice_bytes(name, idx as uint + 1u,

@@ -44,9 +44,9 @@ The dirname of "/usr/share" will be "/usr", but the dirname of
 If the path is not prefixed with a directory, then "." is returned.
 */
 fn dirname(p: path) -> path unsafe {
-    let i: int = str::rindex(p, os_fs::path_sep as u8);
+    let i: int = str::rindex_byte(p, os_fs::path_sep as u8);
     if i == -1 {
-        i = str::rindex(p, os_fs::alt_path_sep as u8);
+        i = str::rindex_byte(p, os_fs::alt_path_sep as u8);
         if i == -1 { ret "."; }
     }
     ret str::unsafe::slice_bytes(p, 0u, i as uint);
@@ -64,9 +64,9 @@ the provided path. If an empty path is provided or the path ends
 with a path separator then an empty path is returned.
 */
 fn basename(p: path) -> path unsafe {
-    let i: int = str::rindex(p, os_fs::path_sep as u8);
+    let i: int = str::rindex_byte(p, os_fs::path_sep as u8);
     if i == -1 {
-        i = str::rindex(p, os_fs::alt_path_sep as u8);
+        i = str::rindex_byte(p, os_fs::alt_path_sep as u8);
         if i == -1 { ret p; }
     }
     let len = str::byte_len(p);
