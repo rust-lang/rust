@@ -70,7 +70,7 @@ export
    lines_iter,
 
    // Searching
-   //index,
+   index,
    //rindex,
    index_byte,
    rindex_byte,
