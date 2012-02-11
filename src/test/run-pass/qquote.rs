@@ -81,6 +81,13 @@ fn main() {
     let x = #ast{1};
     let test1 = #ast{1+$(x)};
     check_pp(test1, pprust::print_expr, "1 + 1");
+
+    let test2 = #ast{$(x)+1};
+    check_pp(test2, pprust::print_expr, "1 + 1");
+
+    let y = #ast{2};
+    let test3 = #ast{$(x) + $(y)};
+    check_pp(test3, pprust::print_expr, "1 + 2");
 }
 
 fn check_pp<T>(expr: T, f: fn(pprust::ps, T), expect: str) {
