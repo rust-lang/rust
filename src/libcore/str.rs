@@ -71,7 +71,7 @@ export
 
    // Searching
    index,
-   //rindex,
+   rindex,
    index_byte,
    rindex_byte,
    find,
@@ -255,15 +255,12 @@ Function: pop_char
 Remove the final character from a string and return it.
 
 Failure:
-
 If the string does not contain any characters.
 */
 fn pop_char(&s: str) -> char unsafe {
     let end = byte_len(s);
-    while end > 0u && s[end - 1u] & 192u8 == tag_cont_u8 { end -= 1u; }
-    assert (end > 0u);
-    let ch = char_at(s, end - 1u);
-    s = unsafe::slice_bytes(s, 0u, end - 1u);
+    let {ch:ch, prev:end} = char_range_at_reverse(s, end);
+    s = unsafe::slice_bytes(s, 0u, end);
     ret ch;
 }
 
@@ -894,6 +891,28 @@ fn index(ss: str, cc: char) -> option<uint> {
     ret option::none;
 }
 
+// Function: rindex
+//
+// Returns the index of the first matching char
+// (as option some/none)
+fn rindex(ss: str, cc: char) -> option<uint> {
+    let bii = byte_len(ss);
+    let cii = char_len(ss);
+    while bii > 0u {
+        let {ch, prev} = char_range_at_reverse(ss, bii);
+        cii -= 1u;
+        bii = prev;
+
+        // found here?
+        if ch == cc {
+            ret option::some(cii);
+        }
+    }
+
+    // wasn't found
+    ret option::none;
+}
+
 /*
 Function: index
 
@@ -1259,6 +1278,25 @@ Pluck a character out of a string
 */
 fn char_at(s: str, i: uint) -> char { ret char_range_at(s, i).ch; }
 
+// Function: char_range_at_reverse
+//
+// Given a byte position and a str, return the previous char and its position
+// This function can be used to iterate over a unicode string in reverse.
+fn char_range_at_reverse(ss: str, start: uint) -> {ch: char, prev: uint} {
+    let prev = start;
+
+    // while there is a previous byte == 10......
+    while prev > 0u && ss[prev - 1u] & 192u8 == tag_cont_u8 {
+        prev -= 1u;
+    }
+
+    // now refer to the initial byte of previous char
+    prev -= 1u;
+
+    let ch = char_at(ss, prev);
+    ret {ch:ch, prev:prev};
+}
+
 /*
 Function: substr_all
 
@@ -1468,16 +1506,56 @@ mod tests {
     }
 
     #[test]
-    fn test_index_and_rindex() {
-        assert (index_byte("hello", 'e' as u8) == 1);
-        assert (index_byte("hello", 'o' as u8) == 4);
-        assert (index_byte("hello", 'z' as u8) == -1);
-        assert (index("hello", 'e') == option::some(1u));
-        assert (index("hello", 'o') == option::some(4u));
-        assert (index("hello", 'z') == option::none);
+    fn test_index() {
+        assert ( index("hello", 'h') == option::some(0u));
+        assert ( index("hello", 'e') == option::some(1u));
+        assert ( index("hello", 'o') == option::some(4u));
+        assert ( index("hello", 'z') == option::none);
+    }
+
+    #[test]
+    fn test_rindex() {
+        assert (rindex("hello", 'l') == option::some(3u));
+        assert (rindex("hello", 'o') == option::some(4u));
+        assert (rindex("hello", 'h') == option::some(0u));
+        assert (rindex("hello", 'z') == option::none);
+    }
+
+    #[test]
+    fn test_index_byte() {
+        assert ( index_byte("hello", 'e' as u8) == 1);
+        assert ( index_byte("hello", 'o' as u8) == 4);
+        assert ( index_byte("hello", 'z' as u8) == -1);
+    }
+
+    #[test]
+    fn test_rindex_byte() {
         assert (rindex_byte("hello", 'l' as u8) == 3);
         assert (rindex_byte("hello", 'h' as u8) == 0);
         assert (rindex_byte("hello", 'z' as u8) == -1);
+    }
+
+    #[test]
+    fn test_pop_char() {
+        let data = "ประเทศไทย中华";
+        let cc = pop_char(data);
+        assert "ประเทศไทย中" == data;
+        assert '华' == cc;
+    }
+
+    #[test]
+    fn test_pop_char_2() {
+        let data2 = "华";
+        let cc2 = pop_char(data2);
+        assert "" == data2;
+        assert '华' == cc2;
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_pop_char_fail() {
+        let data = "";
+        let _cc3 = pop_char(data);
     }
 
     #[test]
