@@ -58,7 +58,7 @@ fn new_reader(cm: codemap::codemap,
               itr: @interner::interner<str>) -> reader {
     let r = @{cm: cm,
               span_diagnostic: span_diagnostic,
-              src: filemap.src, len: str::byte_len(*filemap.src),
+              src: filemap.src, len: str::len_bytes(*filemap.src),
               mutable col: 0u, mutable pos: 0u, mutable curr: -1 as char,
               mutable chpos: filemap.start_pos.ch, mutable strs: [],
               filemap: filemap, interner: itr};
@@ -157,7 +157,7 @@ fn scan_exponent(rdr: reader) -> option<str> {
             rdr.bump();
         }
         let exponent = scan_digits(rdr, 10u);
-        if str::byte_len(exponent) > 0u {
+        if str::len_bytes(exponent) > 0u {
             ret some(rslt + exponent);
         } else { rdr.fatal("scan_exponent: bad fp literal"); }
     } else { ret none::<str>; }
@@ -220,7 +220,7 @@ fn scan_number(c: char, rdr: reader) -> token::token {
             tp = if signed { either::left(ast::ty_i64) }
                       else { either::right(ast::ty_u64) };
         }
-        if str::byte_len(num_str) == 0u {
+        if str::len_bytes(num_str) == 0u {
             rdr.fatal("no valid digits found for number");
         }
         let parsed = u64::from_str(num_str, base as u64);
@@ -267,7 +267,7 @@ fn scan_number(c: char, rdr: reader) -> token::token {
         ret token::LIT_FLOAT(interner::intern(*rdr.interner, num_str),
                              ast::ty_f);
     } else {
-        if str::byte_len(num_str) == 0u {
+        if str::len_bytes(num_str) == 0u {
             rdr.fatal("no valid digits found for number");
         }
         let parsed = u64::from_str(num_str, base as u64);
@@ -604,8 +604,8 @@ fn trim_whitespace_prefix_and_push_line(&lines: [str],
                                         s: str, col: uint) unsafe {
     let s1;
     if all_whitespace(s, 0u, col) {
-        if col < str::byte_len(s) {
-            s1 = str::unsafe::slice_bytes(s, col, str::byte_len(s));
+        if col < str::len_bytes(s) {
+            s1 = str::unsafe::slice_bytes(s, col, str::len_bytes(s));
         } else { s1 = ""; }
     } else { s1 = s; }
     log(debug, "pushing line: " + s1);
@@ -645,7 +645,7 @@ fn read_block_comment(rdr: reader, code_to_the_left: bool) -> cmnt {
             }
         }
     }
-    if str::byte_len(curr_line) != 0u {
+    if str::len_bytes(curr_line) != 0u {
         trim_whitespace_prefix_and_push_line(lines, curr_line, col);
     }
     let style = if code_to_the_left { trailing } else { isolated };

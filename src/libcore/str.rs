@@ -79,8 +79,8 @@ export
    is_empty,
    is_not_empty,
    is_whitespace,
-   byte_len,
-   char_len,
+   len_bytes,
+   len_chars, len,
 
    // Misc
    // FIXME: perhaps some more of this section shouldn't be exported?
@@ -473,7 +473,7 @@ fn split_str(ss: str, sep: str) -> [str] unsafe {
     // unsafe is justified: we are splitting
     // UTF-8 with UTF-8, so the results will be OK
 
-    let sep_len = str::byte_len(sep);
+    let sep_len = len_bytes(sep);
     assert sep_len > 0u;
     let vv = [];
     let start = 0u, start_match = 0u, current = 0u, matching = 0u;
@@ -525,7 +525,7 @@ fn split(ss: str, sepfn: fn(cc: char)->bool) -> [str] {
         }
     });
 
-    if char_len(accum) >= 0u || ends_with_sep {
+    if len(accum) >= 0u || ends_with_sep {
         vv += [accum];
     }
 
@@ -597,7 +597,7 @@ separated by whitespace
 */
 fn words(ss: str) -> [str] {
     ret vec::filter( split(ss, {|cc| char::is_whitespace(cc)}),
-                     {|w| 0u < str::char_len(w)});
+                     {|w| 0u < str::len(w)});
 }
 
 /*
@@ -607,7 +607,7 @@ Create a vector of substrings of size `nn`
 */
 fn windowed(nn: uint, ss: str) -> [str] {
     let ww = [];
-    let len = str::char_len(ss);
+    let len = str::len(ss);
 
     assert 1u <= nn;
 
@@ -667,7 +667,7 @@ fn replace(s: str, from: str, to: str) : is_not_empty(from) -> str unsafe {
             ret s;
         }
         ret slice(s, 0u, idx as uint) + to +
-            replace(slice(s, idx as uint + char_len(from), char_len(s)),
+            replace(slice(s, idx as uint + len(from), len(s)),
                     from, to);
     }
 }
@@ -856,7 +856,7 @@ fn index(ss: str, cc: char) -> option<uint> {
 // (as option some/none)
 fn rindex(ss: str, cc: char) -> option<uint> {
     let bii = byte_len(ss);
-    let cii = char_len(ss);
+    let cii = len(ss);
     while bii > 0u {
         let {ch, prev} = char_range_at_reverse(ss, bii);
         cii -= 1u;
@@ -947,8 +947,8 @@ haystack - The string to look in
 needle - The string to look for
 */
 fn ends_with(haystack: str, needle: str) -> bool {
-    let haystack_len: uint = char_len(haystack);
-    let needle_len: uint = char_len(needle);
+    let haystack_len: uint = len(haystack);
+    let needle_len: uint = len(needle);
     ret if needle_len == 0u {
             true
         } else if needle_len > haystack_len {
@@ -997,14 +997,12 @@ fn is_whitespace(s: str) -> bool {
     ret all(s, char::is_whitespace);
 }
 
-/*
-Function: byte_len
 
-Returns the length in bytes of a string
-
-FIXME: rename to 'len_bytes'
-*/
-pure fn byte_len(s: str) -> uint unsafe {
+// Function: len_bytes
+//
+// Returns the string length in bytes
+// (Synonym: byte_len)
+pure fn len_bytes(s: str) -> uint unsafe {
     as_bytes(s) { |v|
         let vlen = vec::len(v);
         // There should always be a null terminator
@@ -1013,16 +1011,21 @@ pure fn byte_len(s: str) -> uint unsafe {
     }
 }
 
-/*
-Function: char_len
+// FIXME: remove
+pure fn byte_len(s: str) -> uint unsafe { len_bytes(s) }
 
-Count the number of unicode characters in a string
-
-FIXME: rename to 'len_chars'
-*/
-fn char_len(s: str) -> uint {
-    ret char_len_range(s, 0u, byte_len(s));
+// Function: len
+//
+// String length or size in characters.
+// (Synonyms: len_chars, char_len)
+fn len(s: str) -> uint {
+    char_len_range(s, 0u, byte_len(s))
 }
+
+fn len_chars(s: str) -> uint { len(s) }
+
+// FIXME: remove
+fn char_len(s: str) -> uint { len(s) }
 
 /*
 Section: Misc

@@ -201,7 +201,7 @@ fn head(s: ps, w: str) {
     // outer-box is consistent
     cbox(s, indent_unit);
     // head-box is inconsistent
-    ibox(s, str::char_len(w) + 1u);
+    ibox(s, str::len(w) + 1u);
     // keyword that starts the head
     word_nbsp(s, w);
 }
@@ -1458,7 +1458,7 @@ fn print_ty_fn(s: ps, opt_proto: option<ast::proto>,
     popen(s);
     fn print_arg(s: ps, input: ast::arg) {
         print_arg_mode(s, input.mode);
-        if str::byte_len(input.ident) > 0u {
+        if str::len_bytes(input.ident) > 0u {
             word_space(s, input.ident + ":");
         }
         print_type(s, input.ty);
@@ -1640,7 +1640,7 @@ fn print_string(s: ps, st: str) {
 
 fn escape_str(st: str, to_escape: char) -> str {
     let out: str = "";
-    let len = str::byte_len(st);
+    let len = str::len_bytes(st);
     let i = 0u;
     while i < len {
         alt st[i] as char {

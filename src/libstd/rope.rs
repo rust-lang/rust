@@ -65,7 +65,7 @@ Performance notes:
 - the function runs in linear time.
  */
 fn of_str(str: @str) -> rope {
-    ret of_substr(str, 0u, str::byte_len(*str));
+    ret of_substr(str, 0u, str::len_bytes(*str));
 }
 
 /*
@@ -93,7 +93,7 @@ Safety notes:
  */
 fn of_substr(str: @str, byte_offset: uint, byte_len: uint) -> rope {
     if byte_len == 0u { ret node::empty; }
-    if byte_offset + byte_len  > str::byte_len(*str) { fail; }
+    if byte_offset + byte_len  > str::len_bytes(*str) { fail; }
     ret node::content(node::of_substr(str, byte_offset, byte_len));
 }
 
@@ -540,6 +540,7 @@ pure fn char_len(rope: rope) -> uint {
  Returns: The number of bytes in the rope
 
  Performance note: Constant time.
+ FIXME: char or byte?
  */
 pure fn byte_len(rope: rope) -> uint {
    alt(rope) {
@@ -720,7 +721,7 @@ mod node {
     the length of `str`.
      */
     fn of_str(str: @str) -> @node {
-        ret of_substr(str, 0u, str::byte_len(*str));
+        ret of_substr(str, 0u, str::len_bytes(*str));
     }
 
     /*
@@ -767,7 +768,7 @@ mod node {
     */
     fn of_substr_unsafer(str: @str, byte_start: uint, byte_len: uint,
                           char_len: uint) -> @node {
-        assert(byte_start + byte_len <= str::byte_len(*str));
+        assert(byte_start + byte_len <= str::len_bytes(*str));
         let candidate = @leaf({
                 byte_offset: byte_start,
                 byte_len:    byte_len,
@@ -1372,7 +1373,7 @@ mod tests {
         let sample = @"0123456789ABCDE";
         let r      = of_str(sample);
 
-        assert char_len(r) == str::char_len(*sample);
+        assert char_len(r) == str::len(*sample);
         assert rope_to_string(r) == *sample;
     }
 
@@ -1383,11 +1384,11 @@ mod tests {
         while i < 10 { *buf = *buf + *buf; i+=1;}
         let sample = @*buf;
         let r      = of_str(sample);
-        assert char_len(r) == str::char_len(*sample);
+        assert char_len(r) == str::len(*sample);
         assert rope_to_string(r) == *sample;
 
         let string_iter = 0u;
-        let string_len  = str::byte_len(*sample);
+        let string_len  = str::len_bytes(*sample);
         let rope_iter   = iterator::char::start(r);
         let equal       = true;
         let pos         = 0u;
@@ -1426,7 +1427,7 @@ mod tests {
             }
         }
 
-        assert len == str::char_len(*sample);
+        assert len == str::len(*sample);
     }
 
     #[test]
