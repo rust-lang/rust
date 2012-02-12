@@ -77,6 +77,11 @@ fn to_list<A:copy,IA:iterable<A>>(self: IA) -> [A] {
     foldl::<A,[A],IA>(self, [], {|r, a| r + [a]})
 }
 
+// FIXME: This could be made more efficient with an riterable interface
+fn reverse<A:copy,IA:iterable<A>>(self: IA, blk: fn(A)) {
+    vec::riter(to_list(self), blk)
+}
+
 fn repeat(times: uint, blk: fn()) {
     let i = 0u;
     while i < times {
@@ -213,4 +218,9 @@ fn test_max() {
 #[ignore(cfg(target_os = "win32"))]
 fn test_max_empty() {
     max::<int, [int]>([]);
+}
+
+#[test]
+fn test_reverse() {
+    assert to_list(bind reverse([1, 2, 3], _)) == [3, 2, 1];
 }
