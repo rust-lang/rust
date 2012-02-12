@@ -7,7 +7,7 @@ import vec::*;
 import alternate_supplier::*;
 
 mod alternate_supplier {
-    fn member() { }
+    fn contains() { }
 }
 
-fn main() { member() }
+fn main() { contains() }
