@@ -1,3 +1,5 @@
+#[doc = "Operations and constants for `uint`"];
+
 /*
 Module: uint
 */

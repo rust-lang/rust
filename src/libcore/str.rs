@@ -1980,6 +1980,14 @@ mod tests {
     }
 
     #[test]
+    fn test_from_cstr_len() unsafe {
+        let a = [65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 0u8];
+        let b = vec::to_ptr(a);
+        let c = from_cstr_len(b, 3u);
+        assert (c == "AAA");
+    }
+
+    #[test]
     fn test_as_buf() unsafe {
         let a = "Abcdefg";
         let b = as_buf(a, {|buf| assert (*buf == 65u8); 100 });
