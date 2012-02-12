@@ -322,10 +322,10 @@ ifeq ($(strip $(foreach prefix,$(NO_LOAD),\
   include src/libuv/uv.target.mk
 endif
 
-quiet_cmd_regen_makefile = ACTION Regenerating $@
-cmd_regen_makefile = ./src/libuv/build/gyp/gyp -fmake --ignore-environment "--toplevel-dir=." -Isrc/libuv/common.gypi "--depth=." "--generator-output=mk/libuv/x86_64/unix/freebsd" "-Ddefault_configuration=Default" "-Dcomponent=static_library" "-Dlibrary=static_library" "-Dtarget_arch=x86_64" "-DOS=freebsd" src/libuv/uv.gyp
-Makefile: $(srcdir)/src/libuv/uv.gyp $(srcdir)/src/libuv/common.gypi
-	$(call do_cmd,regen_makefile)
+#quiet_cmd_regen_makefile = ACTION Regenerating $@
+#cmd_regen_makefile = ./src/libuv/build/gyp/gyp -fmake --ignore-environment "--toplevel-dir=." -Isrc/libuv/common.gypi "--depth=." "--generator-output=mk/libuv/x86_64/unix/freebsd" "-Ddefault_configuration=Default" "-Dcomponent=static_library" "-Dlibrary=static_library" "-Dtarget_arch=x86_64" "-DOS=freebsd" src/libuv/uv.gyp
+#Makefile: $(srcdir)/src/libuv/uv.gyp $(srcdir)/src/libuv/common.gypi
+#	$(call do_cmd,regen_makefile)
 
 # "all" is a concatenation of the "all" targets from all the included
 # sub-makefiles. This is just here to clarify.
