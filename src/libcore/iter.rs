@@ -73,6 +73,16 @@ fn foldl<A,B:copy,IA:iterable<A>>(self: IA, b0: B, blk: fn(B, A) -> B) -> B {
     ret b;
 }
 
+fn foldr<A:copy,B:copy,IA:iterable<A>>(
+    self: IA, b0: B, blk: fn(A, B) -> B) -> B {
+
+    let b = b0;
+    reverse(self) {|a|
+        b = blk(a, b);
+    }
+    ret b;
+}
+
 fn to_list<A:copy,IA:iterable<A>>(self: IA) -> [A] {
     foldl::<A,[A],IA>(self, [], {|r, a| r + [a]})
 }
@@ -238,4 +248,13 @@ fn test_reverse() {
 #[test]
 fn test_count() {
     assert count([1, 2, 1, 2, 1], 1) == 3u;
+}
+
+#[test]
+fn test_foldr() {
+    fn sub(&&a: int, &&b: int) -> int {
+        a - b
+    }
+    let sum = foldr([1, 2, 3, 4], 0, sub);
+    assert sum == -2;
 }
