@@ -37,7 +37,7 @@ export is_alphabetic,
        is_XID_start, is_XID_continue,
        is_lowercase, is_uppercase,
        is_whitespace, is_alphanumeric,
-       is_ascii,
+       is_ascii, is_digit,
        to_digit, to_lower, to_upper, maybe_digit, cmp;
 
 import is_alphabetic = unicode::derived_property::Alphabetic;
