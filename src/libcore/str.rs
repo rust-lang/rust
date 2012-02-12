@@ -195,16 +195,14 @@ Function: from_cstr
 Create a Rust string from a null-terminated C string
 */
 unsafe fn from_cstr(cstr: sbuf) -> str {
-    let res = [];
     let start = cstr;
     let curr = start;
     let i = 0u;
     while *curr != 0u8 {
-        vec::push(res, *curr);
         i += 1u;
         curr = ptr::offset(start, i);
     }
-    ret from_bytes(res);
+    ret from_cstr_len(cstr, i);
 }
 
 /*
