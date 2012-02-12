@@ -135,7 +135,7 @@ fn lookup_byte_offset(cm: codemap::codemap, chpos: uint)
     let {fm,line} = lookup_line(cm,chpos,lookup);
     let line_offset = fm.lines[line].byte - fm.start_pos.byte;
     let col = chpos - fm.lines[line].ch;
-    let col_offset = str::byte_len_range(*fm.src, line_offset, col);
+    let col_offset = str::substr_len_bytes(*fm.src, line_offset, col);
     ret {fm: fm, pos: line_offset + col_offset};
 }
 
