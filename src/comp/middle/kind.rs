@@ -109,7 +109,7 @@ fn check_fn_cap_clause(cx: ctx,
         let check_var = fn@(&&cap_item: @capture_item) {
             let cap_def = cx.tcx.def_map.get(cap_item.id);
             let cap_def_id = ast_util::def_id_of_def(cap_def).node;
-            if !vec::contains(cap_def_id, freevar_ids) {
+            if !vec::contains(freevar_ids, cap_def_id) {
                 let ty = ty::node_id_to_type(cx.tcx, cap_def_id);
                 checker(cx, ty, cap_item.span);
             }

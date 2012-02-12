@@ -800,7 +800,7 @@ fn cmd_search(c: cargo) {
     let tags = vec::slice(c.opts.free, 3u, vec::len(c.opts.free));
     for_each_package(c, { |s, p|
         if (str::contains(p.name, name) || name == "*") &&
-            vec::all(tags, { |t| vec::contains(t, p.tags) }) {
+            vec::all(tags, { |t| vec::contains(p.tags, t) }) {
             print_pkg(s, p);
             n += 1;
         }

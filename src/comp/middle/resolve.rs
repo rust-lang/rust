@@ -317,7 +317,7 @@ fn check_unused_imports(e: @env) {
     e.imports.items {|k, v|
         alt v {
             resolved(_, _, _, _, name, sp) {
-              if !vec::contains(k, e.used_imports.data) {
+              if !vec::contains(e.used_imports.data, k) {
                 e.sess.span_warn(sp, "unused import " + name);
               }
             }
@@ -1279,7 +1279,7 @@ fn found_view_item(e: env, id: node_id) -> def {
 
 fn lookup_import(e: env, defid: def_id, ns: namespace) -> option<def> {
     // Imports are simply ignored when resolving themselves.
-    if vec::contains(defid.node, e.ignored_imports) { ret none; }
+    if vec::contains(e.ignored_imports, defid.node) { ret none; }
     alt e.imports.get(defid.node) {
       todo(node_id, name, path, span, scopes) {
         resolve_import(e, local_def(node_id), name, *path, span, scopes);
@@ -1344,7 +1344,7 @@ fn lookup_in_globs(e: env, globs: [glob_imp_def], sp: span, id: ident,
                       ns: namespace, dr: dir) -> option<glob_imp_def> {
         alt def.item.node {
           ast::view_item_import_glob(_, id) {
-            if vec::contains(id, e.ignored_imports) { ret none; }
+            if vec::contains(e.ignored_imports, id) { ret none; }
           }
           _ {
             e.sess.span_bug(sp, "lookup_in_globs: not a glob");

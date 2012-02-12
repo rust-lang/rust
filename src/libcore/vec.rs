@@ -693,7 +693,7 @@ Function: contains
 
 Return true if a vector contains an element with the given value
 */
-fn contains<T>(x: T, v: [T]) -> bool {
+fn contains<T>(v: [T], x: T) -> bool {
     for elt: T in v { if x == elt { ret true; } }
     ret false;
 }
@@ -703,7 +703,7 @@ Function: count
 
 Returns the number of elements that are equal to a given value
 */
-fn count<T>(x: T, v: [const T]) -> uint {
+fn count<T>(v: [const T], x: T) -> uint {
     let cnt = 0u;
     for elt: T in v { if x == elt { cnt += 1u; } }
     ret cnt;
