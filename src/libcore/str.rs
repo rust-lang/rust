@@ -72,8 +72,6 @@ export
    // Searching
    index,
    rindex,
-   index_byte,
-   rindex_byte,
    find,
    contains,
    starts_with,
@@ -914,34 +912,6 @@ fn rindex(ss: str, cc: char) -> option<uint> {
 }
 
 /*
-Function: index
-
-Returns the index of the first matching byte. Returns -1 if
-no match is found.
-
-FIXME: UTF-8
-*/
-fn index_byte(s: str, c: u8) -> int {
-    let i: int = 0;
-    for k: u8 in s { if k == c { ret i; } i += 1; }
-    ret -1;
-}
-
-/*
-Function: rindex
-
-Returns the index of the last matching byte. Returns -1
-if no match is found.
-
-FIXME: UTF-8
-*/
-fn rindex_byte(s: str, c: u8) -> int {
-    let n: int = byte_len(s) as int;
-    while n >= 0 { if s[n] == c { ret n; } n -= 1; }
-    ret n;
-}
-
-/*
 Function: find
 
 Finds the index of the first matching substring.
@@ -1519,20 +1489,6 @@ mod tests {
         assert (rindex("hello", 'o') == option::some(4u));
         assert (rindex("hello", 'h') == option::some(0u));
         assert (rindex("hello", 'z') == option::none);
-    }
-
-    #[test]
-    fn test_index_byte() {
-        assert ( index_byte("hello", 'e' as u8) == 1);
-        assert ( index_byte("hello", 'o' as u8) == 4);
-        assert ( index_byte("hello", 'z' as u8) == -1);
-    }
-
-    #[test]
-    fn test_rindex_byte() {
-        assert (rindex_byte("hello", 'l' as u8) == 3);
-        assert (rindex_byte("hello", 'h' as u8) == 0);
-        assert (rindex_byte("hello", 'z' as u8) == -1);
     }
 
     #[test]
