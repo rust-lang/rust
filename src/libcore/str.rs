@@ -213,16 +213,16 @@ Function: from_cstr_len
 Create a Rust string from a C string of the given length
 */
 unsafe fn from_cstr_len(cstr: sbuf, len: uint) -> str {
-    let res = [];
-    let start = cstr;
-    let curr = start;
-    let i = 0u;
-    while i < len {
-        vec::push(res, *curr);
-        i += 1u;
-        curr = ptr::offset(start, i);
-    }
-    ret from_bytes(res);
+    let buf: [u8] = [];
+    vec::reserve(buf, len + 1u);
+    vec::as_buf(buf) {|b| ptr::memcpy(b, cstr, len); }
+    vec::unsafe::set_len(buf, len);
+    buf += [0u8];
+
+    assert is_utf8(buf);
+    let s: str = ::unsafe::reinterpret_cast(buf);
+    ::unsafe::leak(buf);
+    ret s;
 }
 
 /*
