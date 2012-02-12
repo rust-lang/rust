@@ -25,14 +25,14 @@ const max_value: uint = 0u - 1u;
 /*
 Function: max
 */
-fn max(x: uint, y: uint) -> uint {
+pure fn max(x: uint, y: uint) -> uint {
     if x > y { x } else { y }
 }
 
 /*
 Function: min
 */
-fn min(x: uint, y: uint) -> uint {
+pure fn min(x: uint, y: uint) -> uint {
     if x < y { x } else { y }
 }
 
