@@ -85,6 +85,29 @@ fn repeat(times: uint, blk: fn()) {
     }
 }
 
+fn min<A:copy,IA:iterable<A>>(self: IA) -> A {
+    alt foldl(self, none) {|a, b|
+        alt a {
+          some(a) { some(math::min(a, b)) }
+          none { some(b) }
+        }
+    } {
+        some(val) { val }
+        none { fail "min called on empty iterator" }
+    }
+}
+
+fn max<A:copy,IA:iterable<A>>(self: IA) -> A {
+    alt foldl(self, none) {|a, b|
+        alt a {
+          some(a) { some(math::max(a, b)) }
+          none { some(b) }
+        }
+    } {
+        some(val) { val }
+        none { fail "max called on empty iterator" }
+    }
+}
 
 #[test]
 fn test_enumerate() {
@@ -168,4 +191,26 @@ fn test_repeat() {
     assert c == [0u, 1u, 4u, 9u, 16u];
 }
 
+#[test]
+fn test_min() {
+    assert min([5, 4, 1, 2, 3]) == 1;
+}
 
+#[test]
+#[should_fail]
+#[ignore(cfg(target_os = "win32"))]
+fn test_min_empty() {
+    min::<int, [int]>([]);
+}
+
+#[test]
+fn test_max() {
+    assert max([1, 2, 4, 2, 3]) == 4;
+}
+
+#[test]
+#[should_fail]
+#[ignore(cfg(target_os = "win32"))]
+fn test_max_empty() {
+    max::<int, [int]>([]);
+}
