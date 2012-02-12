@@ -1,15 +1,8 @@
-#[doc = "Operations and constants constants for `u8`"];
+#[doc = "Operations and constants for `u8`"];
 
 /*
 Module: u8
 */
-
-/*
-Const: max_value
-
-The maximum value of a u8.
-*/
-const max_value: u8 = 255u8;
 
 /*
 Const: min_value
@@ -17,6 +10,13 @@ Const: min_value
 The minumum value of a u8.
 */
 const min_value: u8 = 0u8;
+
+/*
+Const: max_value
+
+The maximum value of a u8.
+*/
+const max_value: u8 = 255u8;
 
 /* Function: add */
 pure fn add(x: u8, y: u8) -> u8 { ret x + y; }

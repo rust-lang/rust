@@ -1,4 +1,4 @@
-#[doc = "Operations and constants constants for `u64`"];
+#[doc = "Operations and constants for `u64`"];
 
 /*
 Module: u64

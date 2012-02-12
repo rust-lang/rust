@@ -1,4 +1,4 @@
-#[doc = "Operations and constants constants for `float`"];
+#[doc = "Operations and constants for `float`"];
 
 /*
 Module: float

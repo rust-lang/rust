@@ -1,4 +1,4 @@
-#[doc = "Operations and constants constants for `uint`"];
+#[doc = "Operations and constants for `uint`"];
 
 /*
 Module: uint

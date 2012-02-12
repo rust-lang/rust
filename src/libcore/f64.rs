@@ -1,4 +1,4 @@
-#[doc = "Operations and constants constants for `f64`"];
+#[doc = "Operations and constants for `f64`"];
 
 // PORT
 

@@ -1,4 +1,4 @@
-#[doc = "Operations and constants constants for `u32`"];
+#[doc = "Operations and constants for `u32`"];
 
 /*
 Module: u32

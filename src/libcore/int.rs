@@ -1,8 +1,19 @@
-#[doc = "Operations and constants constants for `int`"];
+#[doc = "Operations and constants for `int`"];
 
 /*
 Module: int
 */
+
+/*
+Const: min_value
+
+The minumum value of an integer
+*/
+#[cfg(target_arch="x86")]
+const min_value: int = -1 << 31;
+
+#[cfg(target_arch="x86_64")]
+const min_value: int = -1 << 63;
 
 /*
 Const: max_value
@@ -15,17 +26,6 @@ const max_value: int = (-1 << 31)-1;
 
 #[cfg(target_arch="x86_64")]
 const max_value: int = (-1 << 63)-1;
-
-/*
-Const: min_value
-
-The minumum value of an integer
-*/
-#[cfg(target_arch="x86")]
-const min_value: int = -1 << 31;
-
-#[cfg(target_arch="x86_64")]
-const min_value: int = -1 << 63;
 
 /* Function: add */
 pure fn add(x: int, y: int) -> int { ret x + y; }
