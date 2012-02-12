@@ -667,9 +667,10 @@ fn replace(s: str, from: str, to: str) : is_not_empty(from) -> str unsafe {
         if idx == -1 {
             ret s;
         }
-        ret slice(s, 0u, idx as uint) + to +
-            replace(slice(s, idx as uint + len(from), len(s)),
-                    from, to);
+        let before = unsafe::slice_bytes(s, 0u, idx as uint);
+        let after  = unsafe::slice_bytes(s, idx as uint + len_bytes(from),
+                                         len_bytes(s));
+        ret before + to + replace(after, from, to);
     }
 }
 
@@ -932,8 +933,8 @@ haystack - The string to look in
 needle - The string to look for
 */
 fn starts_with(haystack: str, needle: str) -> bool {
-    let haystack_len: uint = len_bytes(haystack);
-    let needle_len: uint = len_bytes(needle);
+    let haystack_len: uint = len(haystack);
+    let needle_len: uint = len(needle);
     if needle_len == 0u { ret true; }
     if needle_len > haystack_len { ret false; }
     ret eq(substr(haystack, 0u, needle_len), needle);
@@ -1715,6 +1716,13 @@ mod tests {
         t("this is a simple", "", 0);
         t("this is a simple", "simple", 10);
         t("this", "simple", -1);
+
+        // FIXME: return option<char> position instead
+        let data = "ประเทศไทย中华Việt Nam";
+        assert (find(data, "ประเ") ==  0);
+        assert (find(data, "ะเ")   ==  6); // byte position
+        assert (find(data, "中华") ==  27); // byte position
+        assert (find(data, "ไท华") == -1);
     }
 
     #[test]
@@ -1830,6 +1838,49 @@ mod tests {
         check (is_not_empty(test));
         assert (replace(" test test ", test, "toast") == " toast toast ");
         assert (replace(" test test ", test, "") == "   ");
+    }
+
+    #[test]
+    fn test_replace_2a() {
+        let data = "ประเทศไทย中华";
+        let repl = "دولة الكويت";
+
+        let a = "ประเ";
+        let A = "دولة الكويتทศไทย中华";
+        check is_not_empty(a);
+        assert (replace(data, a, repl) ==  A);
+    }
+
+    #[test]
+    fn test_replace_2b() {
+        let data = "ประเทศไทย中华";
+        let repl = "دولة الكويت";
+
+        let b = "ะเ";
+        let B = "ปรدولة الكويتทศไทย中华";
+        check is_not_empty(b);
+        assert (replace(data, b,   repl) ==  B);
+    }
+
+    #[test]
+    fn test_replace_2c() {
+        let data = "ประเทศไทย中华";
+        let repl = "دولة الكويت";
+
+        let c = "中华";
+        let C = "ประเทศไทยدولة الكويت";
+        check is_not_empty(c);
+        assert (replace(data, c, repl) ==  C);
+    }
+
+    #[test]
+    fn test_replace_2d() {
+        let data = "ประเทศไทย中华";
+        let repl = "دولة الكويت";
+
+        let d = "ไท华";
+        check is_not_empty(d);
+        assert (replace(data, d, repl) == data);
     }
 
     #[test]
@@ -2032,6 +2083,12 @@ mod tests {
         assert contains("", "");
         assert !contains("abcde", "def");
         assert !contains("", "a");
+
+        let data = "ประเทศไทย中华Việt Nam";
+        assert  contains(data, "ประเ");
+        assert  contains(data, "ะเ");
+        assert  contains(data, "中华");
+        assert !contains(data, "ไท华");
     }
 
     #[test]
