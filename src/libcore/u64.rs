@@ -1,3 +1,5 @@
+#[doc = "Operations and constants constants for `u64`"];
+
 /*
 Module: u64
 */

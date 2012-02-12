@@ -28,12 +28,14 @@ This behavior can be disabled with the `no_core` crate attribute."
 
 )];
 
-export box, char, float, bessel, f32, f64, int, str, ptr;
-export uint, u8, u32, u64, vec, bool;
+export int, i8, i16, i32, i64;
+export uint, u8, u16, u32, u64;
+export float, f32, f64;
+export box, char, str, ptr, vec, bool;
 export either, option, result, iter;
 export ctypes, sys, unsafe, comm, task, logging;
 export extfmt;
-export math;
+export math, bessel;
 export tuple;
 
 // Built-in-type support modules
@@ -45,10 +47,15 @@ mod bessel;
 mod f32;
 mod f64;
 mod int;
+mod i8;
+mod i16;
+mod i32;
+mod i64;
 mod str;
 mod ptr;
 mod uint;
 mod u8;
+mod u16;
 mod u32;
 mod u64;
 mod vec;

@@ -1,3 +1,5 @@
+#[doc = "Operations and constants constants for `float`"];
+
 /*
 Module: float
 */

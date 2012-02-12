@@ -1,3 +1,5 @@
+#[doc = "Operations and constants constants for `int`"];
+
 /*
 Module: int
 */
