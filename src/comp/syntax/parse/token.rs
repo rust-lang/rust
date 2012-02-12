@@ -139,7 +139,7 @@ fn to_str(r: reader, t: token) -> str {
         // FIXME: escape.
         let tmp = "'";
         str::push_char(tmp, c as char);
-        str::push_byte(tmp, '\'' as u8);
+        str::push_char(tmp, '\'');
         ret tmp;
       }
       LIT_INT(i, t) {
