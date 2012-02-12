@@ -889,7 +889,7 @@ Returns:
 
 The index of the first occurance of `needle`, or -1 if not found.
 
-FIXME: UTF-8
+FIXME: return an option<char position uint> instead
 */
 fn find(haystack: str, needle: str) -> int {
     let haystack_len: int = len_bytes(haystack) as int;
@@ -1003,7 +1003,6 @@ fn is_whitespace(s: str) -> bool {
 // Function: len_bytes
 //
 // Returns the string length in bytes
-// (Synonym: byte_len)
 pure fn len_bytes(s: str) -> uint unsafe {
     as_bytes(s) { |v|
         let vlen = vec::len(v);
@@ -1013,21 +1012,15 @@ pure fn len_bytes(s: str) -> uint unsafe {
     }
 }
 
-// FIXME: remove
-pure fn byte_len(s: str) -> uint unsafe { len_bytes(s) }
-
 // Function: len
 //
 // String length or size in characters.
-// (Synonyms: len_chars, char_len)
+// (Synonym: len_chars)
 fn len(s: str) -> uint {
     substr_len_chars(s, 0u, len_bytes(s))
 }
 
 fn len_chars(s: str) -> uint { len(s) }
-
-// FIXME: remove
-fn char_len(s: str) -> uint { len(s) }
 
 /*
 Section: Misc
