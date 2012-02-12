@@ -767,7 +767,7 @@ fn C_u8(i: uint) -> ValueRef { ret C_integral(T_i8(), i as u64, False); }
 // our boxed-and-length-annotated strings.
 fn C_cstr(cx: @crate_ctxt, s: str) -> ValueRef {
     let sc = str::as_buf(s) {|buf|
-        llvm::LLVMConstString(buf, str::byte_len(s) as unsigned, False)
+        llvm::LLVMConstString(buf, str::len_bytes(s) as unsigned, False)
     };
     let g =
         str::as_buf(cx.names("str"),
@@ -781,7 +781,7 @@ fn C_cstr(cx: @crate_ctxt, s: str) -> ValueRef {
 // Returns a Plain Old LLVM String:
 fn C_postr(s: str) -> ValueRef {
     ret str::as_buf(s) {|buf|
-        llvm::LLVMConstString(buf, str::byte_len(s) as unsigned, False)
+        llvm::LLVMConstString(buf, str::len_bytes(s) as unsigned, False)
     };
 }
 

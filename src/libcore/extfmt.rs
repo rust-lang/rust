@@ -82,10 +82,10 @@ mod ct {
 
     fn parse_fmt_string(s: str, error: error_fn) -> [piece] unsafe {
         let pieces: [piece] = [];
-        let lim = str::byte_len(s);
+        let lim = str::len_bytes(s);
         let buf = "";
         fn flush_buf(buf: str, &pieces: [piece]) -> str {
-            if str::byte_len(buf) > 0u {
+            if str::len_bytes(buf) > 0u {
                 let piece = piece_string(buf);
                 pieces += [piece];
             }
@@ -325,7 +325,7 @@ mod rt {
             alt cv.precision {
               count_implied { s }
               count_is(max) {
-                if max as uint < str::char_len(s) {
+                if max as uint < str::len(s) {
                     str::substr(s, 0u, max as uint)
                 } else { s }
               }
@@ -368,7 +368,7 @@ mod rt {
                 ""
             } else {
                 let s = uint::to_str(num, radix);
-                let len = str::char_len(s);
+                let len = str::len(s);
                 if len < prec {
                     let diff = prec - len;
                     let pad = str_init_elt(diff, '0');
@@ -400,7 +400,7 @@ mod rt {
             uwidth = width as uint;
           }
         }
-        let strlen = str::char_len(s);
+        let strlen = str::len(s);
         if uwidth <= strlen { ret s; }
         let padchar = ' ';
         let diff = uwidth - strlen;
@@ -433,12 +433,12 @@ mod rt {
         // zeros. It may make sense to convert zero padding to a precision
         // instead.
 
-        if signed && zero_padding && str::byte_len(s) > 0u {
+        if signed && zero_padding && str::len_bytes(s) > 0u {
             let head = s[0];
             if head == '+' as u8 || head == '-' as u8 || head == ' ' as u8 {
                 let headstr = str::from_bytes([head]);
                 // FIXME: not UTF-8 safe
-                let bytelen = str::byte_len(s);
+                let bytelen = str::len_bytes(s);
                 let numpart = str::unsafe::slice_bytes(s, 1u, bytelen);
                 ret headstr + padstr + numpart;
             }
