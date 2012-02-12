@@ -620,6 +620,13 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span, impl_m: ty::method,
         tcx.sess.span_err(sp, "method `" + if_m.ident +
                           "` has an incompatible set of type parameters");
         ty::mk_fn(tcx, impl_m.fty)
+    } else if vec::len(impl_m.fty.inputs) != vec::len(if_m.fty.inputs) {
+        tcx.sess.span_err(sp,#fmt["method `%s`` has %u parameters \
+                                   but the iface has %u",
+                                  if_m.ident,
+                                  vec::len(impl_m.fty.inputs),
+                                  vec::len(if_m.fty.inputs)]);
+        ty::mk_fn(tcx, impl_m.fty)
     } else {
         let auto_modes = vec::map2(impl_m.fty.inputs, if_m.fty.inputs, {|i, f|
             alt ty::get(f.ty).struct {
