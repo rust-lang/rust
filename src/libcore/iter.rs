@@ -65,18 +65,18 @@ fn flat_map<A,B,IA:iterable<A>,IB:iterable<B>>(
     }
 }
 
-fn foldl<A,B:copy,IA:iterable<A>>(self: IA, b0: B, blk: fn(B, A) -> B) -> B {
-    let b = b0;
+fn foldl<A,B,IA:iterable<A>>(self: IA, +b0: B, blk: fn(-B, A) -> B) -> B {
+    let b <- b0;
     self.iter {|a|
         b = blk(b, a);
     }
     ret b;
 }
 
-fn foldr<A:copy,B:copy,IA:iterable<A>>(
-    self: IA, b0: B, blk: fn(A, B) -> B) -> B {
+fn foldr<A:copy,B,IA:iterable<A>>(
+    self: IA, +b0: B, blk: fn(A, -B) -> B) -> B {
 
-    let b = b0;
+    let b <- b0;
     reverse(self) {|a|
         b = blk(a, b);
     }
@@ -111,10 +111,13 @@ fn repeat(times: uint, blk: fn()) {
 }
 
 fn min<A:copy,IA:iterable<A>>(self: IA) -> A {
-    alt foldl(self, none) {|a, b|
+    alt foldl::<A,option<A>,IA>(self, none) {|a, b|
         alt a {
-          some(a) { some(math::min(a, b)) }
-          none { some(b) }
+          some(a_) if a_ < b {
+            // FIXME: Not sure if this is successfully optimized to a move
+            a
+          }
+          _ { some(b) }
         }
     } {
         some(val) { val }
@@ -123,10 +126,13 @@ fn min<A:copy,IA:iterable<A>>(self: IA) -> A {
 }
 
 fn max<A:copy,IA:iterable<A>>(self: IA) -> A {
-    alt foldl(self, none) {|a, b|
+    alt foldl::<A,option<A>,IA>(self, none) {|a, b|
         alt a {
-          some(a) { some(math::max(a, b)) }
-          none { some(b) }
+          some(a_) if a_ > b {
+            // FIXME: Not sure if this is successfully optimized to a move
+            a
+          }
+          _ { some(b) }
         }
     } {
         some(val) { val }
@@ -252,7 +258,7 @@ fn test_count() {
 
 #[test]
 fn test_foldr() {
-    fn sub(&&a: int, &&b: int) -> int {
+    fn sub(&&a: int, -b: int) -> int {
         a - b
     }
     let sum = foldr([1, 2, 3, 4], 0, sub);
