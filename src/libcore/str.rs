@@ -26,10 +26,6 @@ export
    pop_char,
    shift_char,
    unshift_char,
-   push_byte,
-   //push_bytes,
-   pop_byte,
-   shift_byte,
    trim_left,
    trim_right,
    trim,
@@ -137,7 +133,7 @@ fn from_byte(uu: u8) -> str {
     from_bytes([uu])
 }
 
-fn push_utf8_bytes(&s: str, ch: char) {
+fn push_utf8_bytes(&s: str, ch: char) unsafe {
     let code = ch as uint;
     let bytes =
         if code < max_one_b {
@@ -168,7 +164,7 @@ fn push_utf8_bytes(&s: str, ch: char) {
              (code >> 6u & 63u | tag_cont) as u8,
              (code & 63u | tag_cont) as u8]
         };
-    push_bytes(s, bytes);
+    unsafe::push_bytes(s, bytes);
 }
 
 /*
@@ -302,58 +298,6 @@ Function: unshift_char
 Prepend a char to a string
 */
 fn unshift_char(&s: str, ch: char) { s = from_char(ch) + s; }
-
-/*
-Function: push_byte
-
-Appends a byte to a string.
-
-This function is not unicode-safe.
-*/
-fn push_byte(&s: str, b: u8) { rustrt::rust_str_push(s, b); }
-
-/*
-Function: push_bytes
-
-Appends a vector of bytes to a string.
-
-This function is not unicode-safe.
-*/
-fn push_bytes(&s: str, bytes: [u8]) {
-    for byte in bytes { rustrt::rust_str_push(s, byte); }
-}
-
-/*
-Function: pop_byte
-
-Removes the last byte from a string and returns it.
-
-This function is not unicode-safe.
-FIXME: move to unsafe?
-*/
-fn pop_byte(&s: str) -> u8 unsafe {
-    let len = byte_len(s);
-    assert (len > 0u);
-    let b = s[len - 1u];
-    s = unsafe::slice_bytes(s, 0u, len - 1u);
-    ret b;
-}
-
-/*
-Function: shift_byte
-
-Removes the first byte from a string and returns it.
-
-This function is not unicode-safe.
-FIXME: move to unsafe?
-*/
-fn shift_byte(&s: str) -> u8 unsafe {
-    let len = byte_len(s);
-    assert (len > 0u);
-    let b = s[0];
-    s = unsafe::slice_bytes(s, 1u, len);
-    ret b;
-}
 
 /*
 Function: trim_left
@@ -592,8 +536,6 @@ fn split(ss: str, sepfn: fn(cc: char)->bool) -> [str] {
 Function: split_char
 
 Splits a string into a vector of the substrings separated by a given character
-
-FIXME: also add  splitn_char
 */
 fn split_char(ss: str, cc: char) -> [str] {
    split(ss, {|kk| kk == cc})
@@ -1409,7 +1351,11 @@ mod unsafe {
       from_bytes,
       from_byte,
       slice_bytes,
-      slice_bytes_safe_range;
+      slice_bytes_safe_range,
+      push_byte,
+      push_bytes, // note: wasn't exported
+      pop_byte,
+      shift_byte;
 
    // Function: unsafe::from_bytes
    //
@@ -1462,6 +1408,43 @@ mod unsafe {
        assert (end <= byte_len(s));
        ret slice_bytes(s, begin, end);
    }
+
+   // Function: push_byte
+   //
+   // Appends a byte to a string. (Not UTF-8 safe).
+   unsafe fn push_byte(&s: str, b: u8) {
+       rustrt::rust_str_push(s, b);
+   }
+
+   // Function: push_bytes
+   //
+   // Appends a vector of bytes to a string. (Not UTF-8 safe).
+   unsafe fn push_bytes(&s: str, bytes: [u8]) {
+       for byte in bytes { rustrt::rust_str_push(s, byte); }
+   }
+
+   // Function: pop_byte
+   //
+   // Removes the last byte from a string and returns it.  (Not UTF-8 safe).
+   unsafe fn pop_byte(&s: str) -> u8 unsafe {
+       let len = byte_len(s);
+       assert (len > 0u);
+       let b = s[len - 1u];
+       s = unsafe::slice_bytes(s, 0u, len - 1u);
+       ret b;
+   }
+
+   // Function: shift_byte
+   //
+   // Removes the first byte from a string and returns it. (Not UTF-8 safe).
+   unsafe fn shift_byte(&s: str) -> u8 unsafe {
+       let len = byte_len(s);
+       assert (len > 0u);
+       let b = s[0];
+       s = unsafe::slice_bytes(s, 1u, len);
+       ret b;
+   }
+
 }
 
 
@@ -1914,17 +1897,17 @@ mod tests {
     }
 
     #[test]
-    fn test_shift_byte() {
+    fn test_shift_byte() unsafe {
         let s = "ABC";
-        let b = shift_byte(s);
+        let b = unsafe::shift_byte(s);
         assert (s == "BC");
         assert (b == 65u8);
     }
 
     #[test]
-    fn test_pop_byte() {
+    fn test_pop_byte() unsafe {
         let s = "ABC";
-        let b = pop_byte(s);
+        let b = unsafe::pop_byte(s);
         assert (s == "AB");
         assert (b == 67u8);
     }

@@ -149,11 +149,11 @@ fn scan_exponent(rdr: reader) -> option<str> {
     let c = rdr.curr;
     let rslt = "";
     if c == 'e' || c == 'E' {
-        str::push_byte(rslt, c as u8);
+        str::push_char(rslt, c);
         rdr.bump();
         c = rdr.curr;
         if c == '-' || c == '+' {
-            str::push_byte(rslt, c as u8);
+            str::push_char(rslt, c);
             rdr.bump();
         }
         let exponent = scan_digits(rdr, 10u);
@@ -170,7 +170,7 @@ fn scan_digits(rdr: reader, radix: uint) -> str {
         if c == '_' { rdr.bump(); cont; }
         alt char::maybe_digit(c) {
           some(d) if (d as uint) < radix {
-            str::push_byte(rslt, c as u8);
+            str::push_char(rslt, c);
             rdr.bump();
           }
           _ { break; }
@@ -472,11 +472,11 @@ fn next_token_inner(rdr: reader) -> token::token {
                 let escaped = rdr.curr;
                 rdr.bump();
                 alt escaped {
-                  'n' { str::push_byte(accum_str, '\n' as u8); }
-                  'r' { str::push_byte(accum_str, '\r' as u8); }
-                  't' { str::push_byte(accum_str, '\t' as u8); }
-                  '\\' { str::push_byte(accum_str, '\\' as u8); }
-                  '"' { str::push_byte(accum_str, '"' as u8); }
+                  'n' { str::push_char(accum_str, '\n'); }
+                  'r' { str::push_char(accum_str, '\r'); }
+                  't' { str::push_char(accum_str, '\t'); }
+                  '\\' { str::push_char(accum_str, '\\'); }
+                  '"' { str::push_char(accum_str, '"'); }
                   '\n' { consume_whitespace(rdr); }
                   'x' {
                     str::push_char(accum_str, scan_numeric_escape(rdr, 2u));

@@ -22,7 +22,7 @@ fn b8() -> str {
     ret "Go to the store and buy some more, # of beer on the wall.";
 }
 
-fn sub(t: str, n: int) -> str {
+fn sub(t: str, n: int) -> str unsafe {
     let b: str = "";
     let i: uint = 0u;
     let ns: str;
@@ -32,7 +32,8 @@ fn sub(t: str, n: int) -> str {
       _ { ns = int::to_str(n, 10u) + " bottles"; }
     }
     while i < str::byte_len(t) {
-        if t[i] == '#' as u8 { b += ns; } else { str::push_byte(b, t[i]); }
+        if t[i] == '#' as u8 { b += ns; }
+        else { str::unsafe::push_byte(b, t[i]); }
         i += 1u;
     }
     ret b;
