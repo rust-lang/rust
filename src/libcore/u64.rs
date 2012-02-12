@@ -16,7 +16,7 @@ Const: max_value
 
 Return the maximal value for a u64
 */
-const max_value: u64 = 18446744073709551615u64;
+const max_value: u64 = 0u64 - 1u64;
 
 pure fn min(x: u64, y: u64) -> u64 { if x < y { x } else { y } }
 pure fn max(x: u64, y: u64) -> u64 { if x > y { x } else { y } }

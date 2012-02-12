@@ -16,7 +16,7 @@ Const: max_value
 
 The maximum value of a u8.
 */
-const max_value: u8 = 255u8;
+const max_value: u8 = 0u8 - 1u8;
 
 /* Function: add */
 pure fn add(x: u8, y: u8) -> u8 { ret x + y; }

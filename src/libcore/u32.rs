@@ -16,7 +16,7 @@ Const: max_value
 
 Return the maximal value for a u32
 */
-const max_value: u32 = 0xffff_ffffu32;
+const max_value: u32 = 0u32 - 1u32;
 
 pure fn min(x: u32, y: u32) -> u32 { if x < y { x } else { y } }
 pure fn max(x: u32, y: u32) -> u32 { if x > y { x } else { y } }
