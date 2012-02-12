@@ -396,7 +396,7 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
                               metas: provided_metas,
                               dep_hashes: [str]) -> str {
         fn len_and_str(s: str) -> str {
-            ret #fmt["%u_%s", str::byte_len(s), s];
+            ret #fmt["%u_%s", str::len_bytes(s), s];
         }
 
         fn len_and_str_lit(l: ast::lit) -> str {
@@ -521,7 +521,7 @@ fn mangle(ss: path) -> str {
 
     for s in ss {
         alt s { path_name(s) | path_mod(s) {
-          n += #fmt["%u%s", str::byte_len(s), s];
+          n += #fmt["%u%s", str::len_bytes(s), s];
         } }
     }
     n += "E"; // End name-sequence.
@@ -573,7 +573,7 @@ fn link_binary(sess: session,
                  config.os == session::os_freebsd) &&
                 str::find(filename, "lib") == 0 {
                 ret str::unsafe::slice_bytes(filename, 3u,
-                               str::byte_len(filename));
+                               str::len_bytes(filename));
             } else { ret filename; }
         };
         fn rmext(filename: str) -> str {

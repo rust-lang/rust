@@ -48,7 +48,7 @@ const DW_ATE_unsigned_char: int = 0x08;
 
 fn llstr(s: str) -> ValueRef {
     str::as_buf(s, {|sbuf|
-        llvm::LLVMMDString(sbuf, str::byte_len(s) as ctypes::c_uint)
+        llvm::LLVMMDString(sbuf, str::len_bytes(s) as ctypes::c_uint)
     })
 }
 fn lltag(lltag: int) -> ValueRef {
@@ -167,8 +167,8 @@ fn create_compile_unit(cx: @crate_ctxt, full_path: str)
 
     let work_dir = cx.sess.working_dir;
     let file_path = if str::starts_with(full_path, work_dir) {
-        str::unsafe::slice_bytes(full_path, str::byte_len(work_dir),
-                   str::byte_len(full_path))
+        str::unsafe::slice_bytes(full_path, str::len_bytes(work_dir),
+                   str::len_bytes(full_path))
     } else {
         full_path
     };
