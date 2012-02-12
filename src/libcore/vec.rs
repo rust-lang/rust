@@ -689,11 +689,11 @@ fn all2<T, U>(v0: [T], v1: [U], f: fn(T, U) -> bool) -> bool {
 }
 
 /*
-Function: member
+Function: contains
 
 Return true if a vector contains an element with the given value
 */
-fn member<T>(x: T, v: [T]) -> bool {
+fn contains<T>(x: T, v: [T]) -> bool {
     for elt: T in v { if x == elt { ret true; } }
     ret false;
 }

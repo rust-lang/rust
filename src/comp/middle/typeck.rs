@@ -2656,7 +2656,7 @@ fn check_enum_variants(ccx: @crate_ctxt, sp: span, vs: [ast::variant],
           }
           _ {}
         }
-        if vec::member(disr_val, disr_vals) {
+        if vec::contains(disr_val, disr_vals) {
             ccx.tcx.sess.span_err(v.span,
                                   "discriminator value already exists.");
         }

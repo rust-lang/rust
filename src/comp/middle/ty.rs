@@ -1387,7 +1387,7 @@ fn occurs_check_fails(tcx: ctxt, sp: option<span>, vid: int, rt: t) ->
     if !type_has_vars(rt) { ret false; }
 
     // Occurs check!
-    if vec::member(vid, vars_in_type(tcx, rt)) {
+    if vec::contains(vid, vars_in_type(tcx, rt)) {
         alt sp {
           some(s) {
             // Maybe this should be span_err -- however, there's an

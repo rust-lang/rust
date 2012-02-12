@@ -98,7 +98,7 @@ fn check_exhaustive(tcx: ty::ctxt, sp:span, scrut_ty:ty::t, pats:[@pat]) {
          }
     }
     fn not_represented(v: [def_id], &&vinfo: variant_info) -> bool {
-        !vec::member(vinfo.id, v)
+        !vec::contains(vinfo.id, v)
     }
     // Could be more efficient (bitvectors?)
     alt vec::find(variants, bind not_represented(represented,_)) {
