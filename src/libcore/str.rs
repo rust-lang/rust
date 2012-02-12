@@ -194,7 +194,7 @@ Function: from_cstr
 
 Create a Rust string from a null-terminated C string
 */
-unsafe fn from_cstr(cstr: sbuf) -> str {
+fn from_cstr(cstr: sbuf) -> str unsafe {
     let start = cstr;
     let curr = start;
     let i = 0u;
@@ -210,7 +210,7 @@ Function: from_cstr_len
 
 Create a Rust string from a C string of the given length
 */
-unsafe fn from_cstr_len(cstr: sbuf, len: uint) -> str {
+fn from_cstr_len(cstr: sbuf, len: uint) -> str unsafe {
     let buf: [u8] = [];
     vec::reserve(buf, len + 1u);
     vec::as_buf(buf) {|b| ptr::memcpy(b, cstr, len); }
