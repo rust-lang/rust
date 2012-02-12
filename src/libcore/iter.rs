@@ -82,6 +82,16 @@ fn reverse<A:copy,IA:iterable<A>>(self: IA, blk: fn(A)) {
     vec::riter(to_list(self), blk)
 }
 
+fn count<A,IA:iterable<A>>(self: IA, x: A) -> uint {
+    foldl(self, 0u) {|count, value|
+        if value == x {
+            count + 1u
+        } else {
+            count
+        }
+    }
+}
+
 fn repeat(times: uint, blk: fn()) {
     let i = 0u;
     while i < times {
@@ -223,4 +233,9 @@ fn test_max_empty() {
 #[test]
 fn test_reverse() {
     assert to_list(bind reverse([1, 2, 3], _)) == [3, 2, 1];
+}
+
+#[test]
+fn test_count() {
+    assert count([1, 2, 1, 2, 1], 1) == 3u;
 }
