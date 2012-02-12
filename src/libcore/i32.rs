@@ -3,6 +3,9 @@
 const min_value: i32 = -1i32 << 31i32;
 const max_value: i32 = (-1i32 << 31i32) - 1i32;
 
+pure fn min(x: i32, y: i32) -> i32 { if x < y { x } else { y } }
+pure fn max(x: i32, y: i32) -> i32 { if x > y { x } else { y } }
+
 pure fn add(x: i32, y: i32) -> i32 { x + y }
 pure fn sub(x: i32, y: i32) -> i32 { x - y }
 pure fn mul(x: i32, y: i32) -> i32 { x * y }

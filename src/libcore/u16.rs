@@ -3,6 +3,9 @@
 const min_value: u16 = 0u16;
 const max_value: u16 = 0u16 - 1u16;
 
+pure fn min(x: u16, y: u16) -> u16 { if x < y { x } else { y } }
+pure fn max(x: u16, y: u16) -> u16 { if x > y { x } else { y } }
+
 pure fn add(x: u16, y: u16) -> u16 { x + y }
 pure fn sub(x: u16, y: u16) -> u16 { x - y }
 pure fn mul(x: u16, y: u16) -> u16 { x * y }
