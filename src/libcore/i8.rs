@@ -3,6 +3,9 @@
 const min_value: i8 = -1i8 << 7i8;
 const max_value: i8 = (-1i8 << 7i8) - 1i8;
 
+pure fn min(x: i8, y: i8) -> i8 { if x < y { x } else { y } }
+pure fn max(x: i8, y: i8) -> i8 { if x > y { x } else { y } }
+
 pure fn add(x: i8, y: i8) -> i8 { x + y }
 pure fn sub(x: i8, y: i8) -> i8 { x - y }
 pure fn mul(x: i8, y: i8) -> i8 { x * y }

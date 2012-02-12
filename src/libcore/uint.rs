@@ -23,17 +23,17 @@ This is 2^wordsize - 1
 const max_value: uint = 0u - 1u;
 
 /*
-Function: max
-*/
-pure fn max(x: uint, y: uint) -> uint {
-    if x > y { x } else { y }
-}
-
-/*
 Function: min
 */
 pure fn min(x: uint, y: uint) -> uint {
     if x < y { x } else { y }
+}
+
+/*
+Function: max
+*/
+pure fn max(x: uint, y: uint) -> uint {
+    if x > y { x } else { y }
 }
 
 /* Function: add */

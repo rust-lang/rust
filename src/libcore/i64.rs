@@ -1,7 +1,10 @@
-#[doc = "Operations and constants constants for `i64`"];
+#[doc = "Operations and constants for `i64`"];
 
 const min_value: i64 = -1i64 << 63i64;
 const max_value: i64 = (-1i64 << 63i64) - 1i64;
+
+pure fn min(x: i64, y: i64) -> i64 { if x < y { x } else { y } }
+pure fn max(x: i64, y: i64) -> i64 { if x > y { x } else { y } }
 
 pure fn add(x: i64, y: i64) -> i64 { x + y }
 pure fn sub(x: i64, y: i64) -> i64 { x - y }

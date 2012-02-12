@@ -27,6 +27,9 @@ const max_value: int = (-1 << 31)-1;
 #[cfg(target_arch="x86_64")]
 const max_value: int = (-1 << 63)-1;
 
+pure fn min(x: int, y: int) -> int { if x < y { x } else { y } }
+pure fn max(x: int, y: int) -> int { if x > y { x } else { y } }
+
 /* Function: add */
 pure fn add(x: int, y: int) -> int { ret x + y; }
 
