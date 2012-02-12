@@ -17,6 +17,7 @@ export
    from_char,
    from_chars,
    from_cstr,
+   from_cstr_len,
    concat,
    connect,
 
@@ -203,6 +204,24 @@ unsafe fn from_cstr(cstr: sbuf) -> str {
     let curr = start;
     let i = 0u;
     while *curr != 0u8 {
+        vec::push(res, *curr);
+        i += 1u;
+        curr = ptr::offset(start, i);
+    }
+    ret from_bytes(res);
+}
+
+/*
+Function: from_cstr_len
+
+Create a Rust string from a C string of the given length
+*/
+unsafe fn from_cstr_len(cstr: sbuf, len: uint) -> str {
+    let res = [];
+    let start = cstr;
+    let curr = start;
+    let i = 0u;
+    while i < len {
         vec::push(res, *curr);
         i += 1u;
         curr = ptr::offset(start, i);
