@@ -202,7 +202,7 @@ fn expand_qquote<N: qq_helper>
         if (j < g_len && i == cx.gather[j].lo) {
             assert ch == '$';
             let repl = #fmt("$%u ", j);
-            state = skip(str::char_len(repl));
+            state = skip(str::len(repl));
             str2 += repl;
         }
         alt state {

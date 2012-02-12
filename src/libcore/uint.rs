@@ -256,7 +256,7 @@ fn to_str(num: uint, radix: uint) -> str {
         n /= radix;
     }
     let s1: str = "";
-    let len: uint = str::byte_len(s);
+    let len: uint = str::len_bytes(s);
     while len != 0u { len -= 1u; s1 += str::from_byte(s[len]); }
     ret s1;
 }
