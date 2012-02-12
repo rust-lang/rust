@@ -651,25 +651,27 @@ fn cmd_install(c: cargo) unsafe {
 
     if str::starts_with(target, "uuid:") {
         let uuid = rest(target, 5u);
-        let idx = str::index(uuid, '/' as u8);
-        if idx != -1 {
-            let source = str::unsafe::slice_bytes(uuid, 0u, idx as uint);
-            uuid = str::unsafe::slice_bytes(uuid, idx as uint + 1u,
-                                      str::byte_len(uuid));
-            install_uuid_specific(c, wd, source, uuid);
-        } else {
-            install_uuid(c, wd, uuid);
+        alt str::index(uuid, '/') {
+            option::some(idx) {
+               let source = str::slice(uuid, 0u, idx);
+               uuid = str::slice(uuid, idx + 1u, str::char_len(uuid));
+               install_uuid_specific(c, wd, source, uuid);
+            }
+            option::none {
+               install_uuid(c, wd, uuid);
+            }
         }
     } else {
         let name = target;
-        let idx = str::index(name, '/' as u8);
-        if idx != -1 {
-            let source = str::unsafe::slice_bytes(name, 0u, idx as uint);
-            name = str::unsafe::slice_bytes(name, idx as uint + 1u,
-                                      str::byte_len(name));
-            install_named_specific(c, wd, source, name);
-        } else {
-            install_named(c, wd, name);
+        alt str::index(name, '/') {
+            option::some(idx) {
+               let source = str::slice(name, 0u, idx);
+               name = str::slice(name, idx + 1u, str::char_len(name));
+               install_named_specific(c, wd, source, name);
+            }
+            option::none {
+               install_named(c, wd, name);
+            }
         }
     }
 }
