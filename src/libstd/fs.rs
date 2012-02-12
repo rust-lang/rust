@@ -32,6 +32,22 @@ A path or fragment of a filesystem path
 */
 type path = str;
 
+fn splitDirnameBasename (pp: path) -> {dirname: str, basename: str} {
+    let ii;
+    alt str::rindex(pp, os_fs::path_sep) {
+        option::some(xx) { ii = xx; }
+        option::none {
+            alt str::rindex(pp, os_fs::alt_path_sep) {
+                option::some(xx) { ii = xx; }
+                option::none { ret {dirname: ".", basename: pp}; }
+            }
+        }
+    }
+
+    ret {dirname: str::slice(pp, 0u, ii),
+         basename: str::slice(pp, ii + 1u, str::char_len(pp))};
+}
+
 /*
 Function: dirname
 
@@ -43,13 +59,8 @@ The dirname of "/usr/share" will be "/usr", but the dirname of
 
 If the path is not prefixed with a directory, then "." is returned.
 */
-fn dirname(p: path) -> path unsafe {
-    let i: int = str::rindex(p, os_fs::path_sep as u8);
-    if i == -1 {
-        i = str::rindex(p, os_fs::alt_path_sep as u8);
-        if i == -1 { ret "."; }
-    }
-    ret str::unsafe::slice_bytes(p, 0u, i as uint);
+fn dirname(pp: path) -> path {
+    ret splitDirnameBasename(pp).dirname;
 }
 
 /*
@@ -63,17 +74,9 @@ path separators in the path then the returned path is identical to
 the provided path. If an empty path is provided or the path ends
 with a path separator then an empty path is returned.
 */
-fn basename(p: path) -> path unsafe {
-    let i: int = str::rindex(p, os_fs::path_sep as u8);
-    if i == -1 {
-        i = str::rindex(p, os_fs::alt_path_sep as u8);
-        if i == -1 { ret p; }
-    }
-    let len = str::byte_len(p);
-    if (i + 1) as uint >= len { ret p; }
-    ret str::unsafe::slice_bytes(p, (i + 1) as uint, len);
+fn basename(pp: path) -> path {
+    ret splitDirnameBasename(pp).basename;
 }
-
 
 // FIXME: Need some typestate to avoid bounds check when len(pre) == 0
 /*

@@ -109,14 +109,16 @@ mod write {
     // Decides what to call an intermediate file, given the name of the output
     // and the extension to use.
     fn mk_intermediate_name(output_path: str, extension: str) -> str unsafe {
-        let dot_pos = str::index(output_path, '.' as u8);
-        let stem;
-        if dot_pos < 0 {
-            stem = output_path;
-        } else { stem = str::unsafe::slice_bytes(output_path, 0u,
-                                                 dot_pos as uint); }
+        let stem = alt str::index(output_path, '.') {
+                       option::some(dot_pos) {
+                           str::slice(output_path, 0u, dot_pos)
+                       }
+                       option::none { output_path }
+                   };
+
         ret stem + "." + extension;
     }
+
     fn run_passes(sess: session, llmod: ModuleRef, output: str) {
         let opts = sess.opts;
         if opts.time_llvm_passes { llvm::LLVMRustEnableTimePasses(); }
