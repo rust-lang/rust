@@ -67,8 +67,8 @@ fn unindent(s: str) -> str {
             if str::is_whitespace(line) {
                 line
             } else {
-                assert str::byte_len(line) >= min_indent;
-                str::slice(line, min_indent, str::char_len(line))
+                assert str::len_bytes(line) >= min_indent;
+                str::slice(line, min_indent, str::len(line))
             }
         };
         str::connect(unindented, "\n")
