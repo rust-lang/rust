@@ -25,7 +25,7 @@ enum method_origin {
     method_static(ast::def_id),
     // iface id, method num, param num, bound num
     method_param(ast::def_id, uint, uint, uint),
-    method_iface(uint),
+    method_iface(ast::def_id, uint),
 }
 type method_map = hashmap<ast::node_id, method_origin>;
 
@@ -556,12 +556,14 @@ fn ty_param_bounds(tcx: ty::ctxt, mode: mode, params: [ast::ty_param])
 }
 fn ty_of_method(tcx: ty::ctxt, mode: mode, m: @ast::method) -> ty::method {
     {ident: m.ident, tps: ty_param_bounds(tcx, mode, m.tps),
-     fty: ty_of_fn_decl(tcx, mode, ast::proto_bare, m.decl)}
+     fty: ty_of_fn_decl(tcx, mode, ast::proto_bare, m.decl),
+     purity: m.decl.purity}
 }
 fn ty_of_ty_method(tcx: ty::ctxt, mode: mode, m: ast::ty_method)
     -> ty::method {
     {ident: m.ident, tps: ty_param_bounds(tcx, mode, m.tps),
-     fty: ty_of_fn_decl(tcx, mode, ast::proto_bare, m.decl)}
+     fty: ty_of_fn_decl(tcx, mode, ast::proto_bare, m.decl),
+     purity: m.decl.purity}
 }
 
 // A convenience function to use a crate_ctxt to resolve names for
@@ -817,6 +819,12 @@ mod collect {
                         alt vec::find(my_methods,
                                       {|m| if_m.ident == m.mty.ident}) {
                           some({mty: m, id, span}) {
+                            if m.purity != if_m.purity {
+                                cx.tcx.sess.span_err(
+                                    span, "method `" + m.ident + "`'s purity \
+                                           not match the iface method's \
+                                           purity");
+                            }
                             let mt = compare_impl_method(
                                 cx.tcx, span, m, vec::len(tps), if_m, tys,
                                 selfty);
@@ -1536,30 +1544,39 @@ fn require_impure(sess: session, f_purity: ast::purity, sp: span) {
 
 fn require_pure_call(ccx: @crate_ctxt, caller_purity: ast::purity,
                      callee: @ast::expr, sp: span) {
-    alt caller_purity {
-      ast::unsafe_fn { ret; }
-      ast::impure_fn {
-        alt ccx.tcx.def_map.find(callee.id) {
-          some(ast::def_fn(_, ast::unsafe_fn)) {
-            ccx.tcx.sess.span_err(
-                sp,
-                "safe function calls function marked unsafe");
+    if caller_purity == ast::unsafe_fn { ret; }
+    let callee_purity = alt ccx.tcx.def_map.find(callee.id) {
+      some(ast::def_fn(_, p)) { p }
+      some(ast::def_variant(_, _)) { ast::pure_fn }
+      _ {
+        alt ccx.method_map.find(callee.id) {
+          some(method_static(did)) {
+            if did.crate == ast::local_crate {
+                alt ccx.tcx.items.get(did.node) {
+                  ast_map::node_method(m, _, _) { m.decl.purity }
+                  _ { fail; }
+                }
+            } else {
+                csearch::lookup_method_purity(ccx.tcx.sess.cstore, did)
+            }
           }
-          _ {
+          some(method_param(iid, n_m, _, _)) | some(method_iface(iid, n_m)) {
+            ty::iface_methods(ccx.tcx, iid)[n_m].purity
           }
-        }
-        ret;
-      }
-      ast::pure_fn {
-        alt ccx.tcx.def_map.find(callee.id) {
-          some(ast::def_fn(_, ast::pure_fn)) |
-          some(ast::def_variant(_, _)) { ret; }
-          _ {
-            ccx.tcx.sess.span_err
-                (sp, "pure function calls function not known to be pure");
-          }
+          none { ast::impure_fn }
         }
       }
+    };
+    alt (caller_purity, callee_purity) {
+      (ast::impure_fn, ast::unsafe_fn) {
+        ccx.tcx.sess.span_err(sp, "safe function calls function marked \
+                                   unsafe");
+      }
+      (ast::pure_fn, ast::unsafe_fn) | (ast::pure_fn, ast::impure_fn) {
+        ccx.tcx.sess.span_err(sp, "pure function calls function not \
+                                   known to be pure");
+      }
+      _ {}
     }
 }
 
@@ -1686,7 +1703,7 @@ fn lookup_method_inner(fcx: @fn_ctxt, expr: @ast::expr,
                 ret some({method_ty: fty,
                           n_tps: vec::len(*m.tps),
                           substs: tps,
-                          origin: method_iface(i),
+                          origin: method_iface(did, i),
                           self_sub: none});
             }
             i += 1u;
@@ -1875,12 +1892,12 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
     // A generic function for doing all of the checking for call expressions
     fn check_call_full(fcx: @fn_ctxt, sp: span, f: @ast::expr,
                        args: [@ast::expr], id: ast::node_id) -> bool {
+        let bot = check_call(fcx, sp, f, args);
         /* here we're kind of hosed, as f can be any expr
         need to restrict it to being an explicit expr_path if we're
         inside a pure function, and need an environment mapping from
         function name onto purity-designation */
         require_pure_call(fcx.ccx, fcx.purity, f, sp);
-        let bot = check_call(fcx, sp, f, args);
 
         // Pull the return type out of the type of the function.
         let fty = ty::expr_ty(fcx.ccx.tcx, f);

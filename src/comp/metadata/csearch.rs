@@ -9,6 +9,7 @@ import driver::session;
 export get_symbol;
 export get_type_param_count;
 export lookup_defs;
+export lookup_method_purity;
 export get_enum_variants;
 export get_impls_for_mod;
 export get_iface_methods;
@@ -33,6 +34,15 @@ fn lookup_defs(cstore: cstore::cstore, cnum: ast::crate_num,
         result += [decoder::lookup_def(c, data, def)];
     }
     ret result;
+}
+
+fn lookup_method_purity(cstore: cstore::cstore, did: ast::def_id)
+    -> ast::purity {
+    let cdata = cstore::get_crate_data(cstore, did.crate).data;
+    alt decoder::lookup_def(did.crate, cdata, did) {
+      ast::def_fn(_, p) { p }
+      _ { fail; }
+    }
 }
 
 fn resolve_path(cstore: cstore::cstore, cnum: ast::crate_num,

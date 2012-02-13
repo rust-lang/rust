@@ -311,6 +311,10 @@ fn encode_info_for_mod(ecx: @encode_ctxt, ebml_w: ebml::writer, md: _mod,
     ebml::end_tag(ebml_w);
 }
 
+fn purity_fn_family(p: purity) -> char {
+    alt p { unsafe_fn { 'u' } pure_fn { 'p' } impure_fn { 'f' } }
+}
+
 fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
                         &index: [entry<int>], path: ast_map::path) {
     let tcx = ecx.ccx.tcx;
@@ -327,12 +331,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
       item_fn(decl, tps, _) {
         ebml::start_tag(ebml_w, tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
-        encode_family(ebml_w,
-                      alt decl.purity {
-                        unsafe_fn { 'u' }
-                        pure_fn { 'p' }
-                        impure_fn { 'f' }
-                      } as u8);
+        encode_family(ebml_w, purity_fn_family(decl.purity) as u8);
         encode_type_param_bounds(ebml_w, ecx, tps);
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_symbol(ecx, ebml_w, item.id);
@@ -431,10 +430,9 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
             index += [{val: m.id, pos: ebml_w.writer.tell()}];
             ebml::start_tag(ebml_w, tag_items_data_item);
             encode_def_id(ebml_w, local_def(m.id));
-            encode_family(ebml_w, 'f' as u8);
+            encode_family(ebml_w, purity_fn_family(m.decl.purity) as u8);
             encode_type_param_bounds(ebml_w, ecx, tps + m.tps);
-            encode_type(ecx, ebml_w,
-                        node_id_to_type(tcx, m.id));
+            encode_type(ecx, ebml_w, node_id_to_type(tcx, m.id));
             encode_name(ebml_w, m.ident);
             encode_symbol(ecx, ebml_w, m.id);
             encode_path(ebml_w, impl_path, ast_map::path_name(m.ident));
@@ -454,6 +452,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
             encode_name(ebml_w, mty.ident);
             encode_type_param_bounds(ebml_w, ecx, ms[i].tps);
             encode_type(ecx, ebml_w, ty::mk_fn(tcx, mty.fty));
+            encode_family(ebml_w, purity_fn_family(mty.purity) as u8);
             ebml::end_tag(ebml_w);
             i += 1u;
         }

@@ -337,7 +337,12 @@ fn get_iface_methods(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
         let fty = alt ty::get(ty).struct { ty::ty_fn(f) { f }
           _ { tcx.sess.bug("get_iface_methods: id has non-function type");
         } };
-        result += [{ident: name, tps: bounds, fty: fty}];
+        result += [{ident: name, tps: bounds, fty: fty,
+                    purity: alt item_family(mth) as char {
+                      'u' { ast::unsafe_fn }
+                      'f' { ast::impure_fn }
+                      'p' { ast::pure_fn }
+                    }}];
     }
     @result
 }

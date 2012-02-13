@@ -88,8 +88,8 @@ fn trans_method_callee(bcx: @block_ctxt, callee_id: ast::node_id,
           }
         }
       }
-      typeck::method_iface(off) {
-        trans_iface_callee(bcx, callee_id, self, off)
+      typeck::method_iface(iid, off) {
+        trans_iface_callee(bcx, callee_id, self, iid, off)
       }
     }
 }
@@ -165,8 +165,8 @@ fn trans_monomorphized_callee(bcx: @block_ctxt, callee_id: ast::node_id,
                                 ast_util::local_def(mth.id),
                                 some((tys, sub_origins)));
       }
-      typeck::dict_iface(_) {
-        ret trans_iface_callee(bcx, callee_id, base, n_method);
+      typeck::dict_iface(iid) {
+        ret trans_iface_callee(bcx, callee_id, base, iid, n_method);
       }
       typeck::dict_param(n_param, n_bound) {
         fail "dict_param left in monomorphized function's dict substs";
@@ -186,7 +186,7 @@ fn trans_param_callee(bcx: @block_ctxt, callee_id: ast::node_id,
 
 // Method callee where the dict comes from a boxed iface
 fn trans_iface_callee(bcx: @block_ctxt, callee_id: ast::node_id,
-                      base: @ast::expr, n_method: uint)
+                      base: @ast::expr, iface_id: ast::def_id, n_method: uint)
     -> lval_maybe_callee {
     let {bcx, val} = trans_temp_expr(bcx, base);
     let dict = Load(bcx, PointerCast(bcx, GEPi(bcx, val, [0, 0]),
@@ -195,10 +195,6 @@ fn trans_iface_callee(bcx: @block_ctxt, callee_id: ast::node_id,
     // FIXME[impl] I doubt this is alignment-safe
     let self = PointerCast(bcx, GEPi(bcx, box, [0, abi::box_field_body]),
                            T_opaque_cbox_ptr(bcx_ccx(bcx)));
-    let iface_id = alt ty::get(expr_ty(bcx, base)).struct {
-        ty::ty_iface(did, _) { did }
-        _ { fail "base has non-iface type in trans_iface_callee"; }
-    };
     trans_vtable_callee(bcx, self, dict, callee_id, iface_id, n_method)
 }
 

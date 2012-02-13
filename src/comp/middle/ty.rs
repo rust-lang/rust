@@ -140,7 +140,10 @@ type field = {ident: ast::ident, mt: mt};
 
 type param_bounds = @[param_bound];
 
-type method = {ident: ast::ident, tps: @[param_bounds], fty: fn_ty};
+type method = {ident: ast::ident,
+               tps: @[param_bounds],
+               fty: fn_ty,
+               purity: ast::purity};
 
 type constr_table = hashmap<ast::node_id, [constr]>;
 

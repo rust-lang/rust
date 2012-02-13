@@ -274,21 +274,22 @@ fn parse_ty_fn(p: parser) -> ast::fn_decl {
     let constrs: [@ast::constr] = [];
     let (ret_style, ret_ty) = parse_ret_ty(p);
     ret {inputs: inputs.node, output: ret_ty,
-                           purity: ast::impure_fn, cf: ret_style,
-                           constraints: constrs};
+         purity: ast::impure_fn, cf: ret_style,
+         constraints: constrs};
 }
 
 fn parse_ty_methods(p: parser) -> [ast::ty_method] {
     parse_seq(token::LBRACE, token::RBRACE, seq_sep_none(), {|p|
         let attrs = parse_outer_attributes(p);
         let flo = p.span.lo;
-        expect_word(p, "fn");
+        let pur = parse_fn_purity(p);
         let ident = parse_method_name(p);
         let tps = parse_ty_params(p);
         let d = parse_ty_fn(p), fhi = p.last_span.hi;
         expect(p, token::SEMI);
-            {ident: ident, attrs: attrs, decl: d, tps: tps,
-                    span: ast_util::mk_sp(flo, fhi)}}, p).node
+        {ident: ident, attrs: attrs, decl: {purity: pur with d}, tps: tps,
+         span: ast_util::mk_sp(flo, fhi)}
+    }, p).node
 }
 
 fn parse_mt(p: parser) -> ast::mt {
@@ -1889,11 +1890,10 @@ fn parse_method_name(p: parser) -> ast::ident {
 
 fn parse_method(p: parser) -> @ast::method {
     let attrs = parse_outer_attributes(p);
-    let lo = p.span.lo;
-    expect_word(p, "fn");
+    let lo = p.span.lo, pur = parse_fn_purity(p);
     let ident = parse_method_name(p);
     let tps = parse_ty_params(p);
-    let decl = parse_fn_decl(p, ast::impure_fn);
+    let decl = parse_fn_decl(p, pur);
     let (inner_attrs, body) = parse_inner_attrs_and_block(p, true);
     let attrs = attrs + inner_attrs;
     @{ident: ident, attrs: attrs, tps: tps, decl: decl, body: body,
@@ -2109,17 +2109,16 @@ fn parse_item_native_fn(p: parser, attrs: [ast::attribute],
           span: ast_util::mk_sp(lo, hi)};
 }
 
+fn parse_fn_purity(p: parser) -> ast::purity {
+    if eat_word(p, "fn") { ast::impure_fn }
+    else if eat_word(p, "pure") { expect_word(p, "fn"); ast::pure_fn }
+    else if eat_word(p, "unsafe") { expect_word(p, "fn"); ast::unsafe_fn }
+    else { unexpected(p, p.token); }
+}
+
 fn parse_native_item(p: parser, attrs: [ast::attribute]) ->
    @ast::native_item {
-    if eat_word(p, "fn") {
-        ret parse_item_native_fn(p, attrs, ast::impure_fn);
-    } else if eat_word(p, "pure") {
-        expect_word(p, "fn");
-        ret parse_item_native_fn(p, attrs, ast::pure_fn);
-    } else if eat_word(p, "unsafe") {
-        expect_word(p, "fn");
-        ret parse_item_native_fn(p, attrs, ast::unsafe_fn);
-    } else { unexpected(p, p.token); }
+    parse_item_native_fn(p, attrs, parse_fn_purity(p))
 }
 
 fn parse_native_mod_items(p: parser, first_item_attrs: [ast::attribute]) ->
