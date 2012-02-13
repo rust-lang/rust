@@ -29,3 +29,8 @@ fn range(lo: i8, hi: i8, it: fn(i8)) {
     let i = lo;
     while i < hi { it(i); i += 1i8; }
 }
+
+#[doc = "Computes the bitwise complement"]
+fn compl(i: i8) -> i8 {
+    u8::compl(i as u8) as i8
+}

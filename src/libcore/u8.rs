@@ -64,6 +64,11 @@ fn range(lo: u8, hi: u8, it: fn(u8)) {
     while i < hi { it(i); i += 1u8; }
 }
 
+#[doc = "Computes the bitwise complement"]
+fn compl(i: u8) -> u8 {
+    max_value ^ i
+}
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;

@@ -29,3 +29,8 @@ fn range(lo: u16, hi: u16, it: fn(u16)) {
     let i = lo;
     while i < hi { it(i); i += 1u16; }
 }
+
+#[doc = "Computes the bitwise complement"]
+fn compl(i: u16) -> u16 {
+    max_value ^ i
+}

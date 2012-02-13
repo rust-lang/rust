@@ -274,7 +274,7 @@ Function: compl
 Computes the bitwise complement.
 */
 fn compl(i: uint) -> uint {
-    uint::max_value ^ i
+    max_value ^ i
 }
 
 #[cfg(test)]

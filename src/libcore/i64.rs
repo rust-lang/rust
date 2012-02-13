@@ -29,3 +29,8 @@ fn range(lo: i64, hi: i64, it: fn(i64)) {
     let i = lo;
     while i < hi { it(i); i += 1i64; }
 }
+
+#[doc = "Computes the bitwise complement"]
+fn compl(i: i64) -> i64 {
+    u64::compl(i as u64) as i64
+}

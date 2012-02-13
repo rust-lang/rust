@@ -186,6 +186,11 @@ fn pow(base: int, exponent: uint) -> int {
     ret acc;
 }
 
+#[doc = "Computes the bitwise complement"]
+fn compl(i: int) -> int {
+    uint::compl(i as uint) as int
+}
+
 #[test]
 fn test_from_str() {
     assert(from_str("0") == 0);

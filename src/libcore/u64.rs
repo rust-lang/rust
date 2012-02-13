@@ -134,3 +134,8 @@ fn from_str(buf: str, radix: u64) -> u64 {
     }
     fail;
 }
+
+#[doc = "Computes the bitwise complement"]
+fn compl(i: u64) -> u64 {
+    max_value ^ i
+}
