@@ -34,3 +34,8 @@ fn range(lo: i16, hi: i16, it: fn(i16)) {
 fn compl(i: i16) -> i16 {
     u16::compl(i as u16) as i16
 }
+
+#[doc = "Computes the absolute value"]
+fn abs(i: i16) -> i16 {
+    if negative(i) { -i } else { i }
+}

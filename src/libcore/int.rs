@@ -191,6 +191,11 @@ fn compl(i: int) -> int {
     uint::compl(i as uint) as int
 }
 
+#[doc = "Computes the absolute value"]
+fn abs(i: int) -> int {
+    if negative(i) { -i } else { i }
+}
+
 #[test]
 fn test_from_str() {
     assert(from_str("0") == 0);
