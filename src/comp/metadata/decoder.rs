@@ -79,9 +79,9 @@ fn lookup_item(item_id: int, data: @[u8]) -> ebml::doc {
     ret find_item(item_id, items);
 }
 
-fn item_family(item: ebml::doc) -> u8 {
+fn item_family(item: ebml::doc) -> char {
     let fam = ebml::get_doc(item, tag_items_data_item_family);
-    ret ebml::doc_as_u8(fam);
+    ebml::doc_as_u8(fam) as char
 }
 
 fn item_symbol(item: ebml::doc) -> str {
@@ -218,24 +218,22 @@ fn lookup_def(cnum: ast::crate_num, data: @[u8], did_: ast::def_id) ->
     let fam_ch = item_family(item);
     let did = {crate: cnum, node: did_.node};
     // We treat references to enums as references to types.
-    let def =
-        alt fam_ch as char {
-          'c' { ast::def_const(did) }
-          'u' { ast::def_fn(did, ast::unsafe_fn) }
-          'f' { ast::def_fn(did, ast::impure_fn) }
-          'p' { ast::def_fn(did, ast::pure_fn) }
-          'y' { ast::def_ty(did) }
-          't' { ast::def_ty(did) }
-          'm' { ast::def_mod(did) }
-          'n' { ast::def_native_mod(did) }
-          'v' {
-            let tid = variant_enum_id(item);
-            tid = {crate: cnum, node: tid.node};
-            ast::def_variant(tid, did)
-          }
-          'I' { ast::def_ty(did) }
-        };
-    ret def;
+    alt fam_ch {
+      'c' { ast::def_const(did) }
+      'u' { ast::def_fn(did, ast::unsafe_fn) }
+      'f' { ast::def_fn(did, ast::impure_fn) }
+      'p' { ast::def_fn(did, ast::pure_fn) }
+      'y' { ast::def_ty(did) }
+      't' { ast::def_ty(did) }
+      'm' { ast::def_mod(did) }
+      'n' { ast::def_native_mod(did) }
+      'v' {
+        let tid = variant_enum_id(item);
+        tid = {crate: cnum, node: tid.node};
+        ast::def_variant(tid, did)
+      }
+      'I' { ast::def_ty(did) }
+    }
 }
 
 fn get_type(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
@@ -338,7 +336,7 @@ fn get_iface_methods(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
           _ { tcx.sess.bug("get_iface_methods: id has non-function type");
         } };
         result += [{ident: name, tps: bounds, fty: fty,
-                    purity: alt item_family(mth) as char {
+                    purity: alt item_family(mth) {
                       'u' { ast::unsafe_fn }
                       'f' { ast::impure_fn }
                       'p' { ast::pure_fn }
@@ -347,15 +345,15 @@ fn get_iface_methods(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
     @result
 }
 
-fn family_has_type_params(fam_ch: u8) -> bool {
-    alt fam_ch as char {
+fn family_has_type_params(fam_ch: char) -> bool {
+    alt fam_ch {
       'c' | 'T' | 'm' | 'n' { false }
       'f' | 'u' | 'p' | 'F' | 'U' | 'P' | 'y' | 't' | 'v' | 'i' | 'I' { true }
     }
 }
 
-fn family_names_type(fam_ch: u8) -> bool {
-    alt fam_ch as char { 'y' | 't' | 'I' { true } _ { false } }
+fn family_names_type(fam_ch: char) -> bool {
+    alt fam_ch { 'y' | 't' | 'I' { true } _ { false } }
 }
 
 fn read_path(d: ebml::doc) -> {path: str, pos: uint} {
@@ -371,8 +369,8 @@ fn describe_def(items: ebml::doc, id: ast::def_id) -> str {
     ret item_family_to_str(item_family(find_item(id.node, items)));
 }
 
-fn item_family_to_str(fam: u8) -> str {
-    alt fam as char {
+fn item_family_to_str(fam: char) -> str {
+    alt fam {
       'c' { ret "const"; }
       'f' { ret "fn"; }
       'u' { ret "unsafe fn"; }

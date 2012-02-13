@@ -168,9 +168,9 @@ fn encode_reexport_paths(ebml_w: ebml::writer,
 
 
 // Item info table encoding
-fn encode_family(ebml_w: ebml::writer, c: u8) {
+fn encode_family(ebml_w: ebml::writer, c: char) {
     ebml::start_tag(ebml_w, tag_items_data_item_family);
-    ebml_w.writer.write([c]);
+    ebml_w.writer.write([c as u8]);
     ebml::end_tag(ebml_w);
 }
 
@@ -244,7 +244,7 @@ fn encode_enum_variant_info(ecx: @encode_ctxt, ebml_w: ebml::writer,
         index += [{val: variant.node.id, pos: ebml_w.writer.tell()}];
         ebml::start_tag(ebml_w, tag_items_data_item);
         encode_def_id(ebml_w, local_def(variant.node.id));
-        encode_family(ebml_w, 'v' as u8);
+        encode_family(ebml_w, 'v');
         encode_name(ebml_w, variant.node.name);
         encode_enum_id(ebml_w, local_def(id));
         encode_type(ecx, ebml_w,
@@ -292,7 +292,7 @@ fn encode_info_for_mod(ecx: @encode_ctxt, ebml_w: ebml::writer, md: _mod,
                        id: node_id, path: ast_map::path, name: ident) {
     ebml::start_tag(ebml_w, tag_items_data_item);
     encode_def_id(ebml_w, local_def(id));
-    encode_family(ebml_w, 'm' as u8);
+    encode_family(ebml_w, 'm');
     encode_name(ebml_w, name);
     alt ecx.ccx.impl_map.get(id) {
       list::cons(impls, @list::nil) {
@@ -322,7 +322,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
       item_const(_, _) {
         ebml::start_tag(ebml_w, tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
-        encode_family(ebml_w, 'c' as u8);
+        encode_family(ebml_w, 'c');
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_symbol(ecx, ebml_w, item.id);
         encode_path(ebml_w, path, ast_map::path_name(item.ident));
@@ -331,7 +331,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
       item_fn(decl, tps, _) {
         ebml::start_tag(ebml_w, tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
-        encode_family(ebml_w, purity_fn_family(decl.purity) as u8);
+        encode_family(ebml_w, purity_fn_family(decl.purity));
         encode_type_param_bounds(ebml_w, ecx, tps);
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_symbol(ecx, ebml_w, item.id);
@@ -344,7 +344,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
       item_native_mod(_) {
         ebml::start_tag(ebml_w, tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
-        encode_family(ebml_w, 'n' as u8);
+        encode_family(ebml_w, 'n');
         encode_name(ebml_w, item.ident);
         encode_path(ebml_w, path, ast_map::path_name(item.ident));
         ebml::end_tag(ebml_w);
@@ -352,7 +352,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
       item_ty(_, tps) {
         ebml::start_tag(ebml_w, tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
-        encode_family(ebml_w, 'y' as u8);
+        encode_family(ebml_w, 'y');
         encode_type_param_bounds(ebml_w, ecx, tps);
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_name(ebml_w, item.ident);
@@ -362,7 +362,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
       item_enum(variants, tps) {
         ebml::start_tag(ebml_w, tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
-        encode_family(ebml_w, 't' as u8);
+        encode_family(ebml_w, 't');
         encode_type_param_bounds(ebml_w, ecx, tps);
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_name(ebml_w, item.ident);
@@ -382,7 +382,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
 
         ebml::start_tag(ebml_w, tag_items_data_item);
         encode_def_id(ebml_w, local_def(ctor_id));
-        encode_family(ebml_w, 'y' as u8);
+        encode_family(ebml_w, 'y');
         encode_type_param_bounds(ebml_w, ecx, tps);
         encode_type(ecx, ebml_w, ty::ty_fn_ret(fn_ty));
         encode_name(ebml_w, item.ident);
@@ -393,7 +393,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         index += [{val: ctor_id, pos: ebml_w.writer.tell()}];
         ebml::start_tag(ebml_w, tag_items_data_item);
         encode_def_id(ebml_w, local_def(ctor_id));
-        encode_family(ebml_w, 'f' as u8);
+        encode_family(ebml_w, 'f');
         encode_type_param_bounds(ebml_w, ecx, tps);
         encode_type(ecx, ebml_w, fn_ty);
         encode_symbol(ecx, ebml_w, ctor_id);
@@ -403,7 +403,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
       item_impl(tps, ifce, _, methods) {
         ebml::start_tag(ebml_w, tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
-        encode_family(ebml_w, 'i' as u8);
+        encode_family(ebml_w, 'i');
         encode_type_param_bounds(ebml_w, ecx, tps);
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_name(ebml_w, item.ident);
@@ -430,7 +430,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
             index += [{val: m.id, pos: ebml_w.writer.tell()}];
             ebml::start_tag(ebml_w, tag_items_data_item);
             encode_def_id(ebml_w, local_def(m.id));
-            encode_family(ebml_w, purity_fn_family(m.decl.purity) as u8);
+            encode_family(ebml_w, purity_fn_family(m.decl.purity));
             encode_type_param_bounds(ebml_w, ecx, tps + m.tps);
             encode_type(ecx, ebml_w, node_id_to_type(tcx, m.id));
             encode_name(ebml_w, m.ident);
@@ -442,7 +442,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
       item_iface(tps, ms) {
         ebml::start_tag(ebml_w, tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
-        encode_family(ebml_w, 'I' as u8);
+        encode_family(ebml_w, 'I');
         encode_type_param_bounds(ebml_w, ecx, tps);
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_name(ebml_w, item.ident);
@@ -452,7 +452,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
             encode_name(ebml_w, mty.ident);
             encode_type_param_bounds(ebml_w, ecx, ms[i].tps);
             encode_type(ecx, ebml_w, ty::mk_fn(tcx, mty.fty));
-            encode_family(ebml_w, purity_fn_family(mty.purity) as u8);
+            encode_family(ebml_w, purity_fn_family(mty.purity));
             ebml::end_tag(ebml_w);
             i += 1u;
         }
@@ -467,13 +467,8 @@ fn encode_info_for_native_item(ecx: @encode_ctxt, ebml_w: ebml::writer,
     ebml::start_tag(ebml_w, tag_items_data_item);
     alt nitem.node {
       native_item_fn(fn_decl, tps) {
-        let letter = alt fn_decl.purity {
-          unsafe_fn { 'u' }
-          pure_fn { 'p' }   // this is currently impossible, but hey.
-          impure_fn { 'f' }
-        } as u8;
         encode_def_id(ebml_w, local_def(nitem.id));
-        encode_family(ebml_w, letter);
+        encode_family(ebml_w, purity_fn_family(fn_decl.purity));
         encode_type_param_bounds(ebml_w, ecx, tps);
         encode_type(ecx, ebml_w, node_id_to_type(ecx.ccx.tcx, nitem.id));
         encode_symbol(ecx, ebml_w, nitem.id);
