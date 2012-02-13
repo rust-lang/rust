@@ -57,6 +57,16 @@ fn filter<A,IA:iterable<A>>(self: IA, prd: fn@(A) -> bool, blk: fn(A)) {
     }
 }
 
+fn filter_map<A,B,IA:iterable<A>>(self: IA, cnv: fn@(A) -> option<B>,
+                                  blk: fn(B)) {
+    self.iter {|a|
+        alt cnv(a) {
+          some(b) { blk(b) }
+          none { }
+        }
+    }
+}
+
 fn map<A,B,IA:iterable<A>>(self: IA, cnv: fn@(A) -> B, blk: fn(B)) {
     self.iter {|a|
         let b = cnv(a);
@@ -186,6 +196,21 @@ fn test_filter_on_uint_range() {
 
     let l = to_list(bind filter(bind uint::range(0u, 10u, _), is_even, _));
     assert l == [0u, 2u, 4u, 6u, 8u];
+}
+
+#[test]
+fn test_filter_map() {
+    fn negativate_the_evens(&&i: int) -> option<int> {
+        if i % 2 == 0 {
+            some(-i)
+        } else {
+            none
+        }
+    }
+
+    let l = to_list(bind filter_map(
+        bind int::range(0, 5, _), negativate_the_evens, _));
+    assert l == [0, -2, -4];
 }
 
 #[test]
