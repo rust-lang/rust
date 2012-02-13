@@ -4465,15 +4465,19 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
     };
     alt item.node {
       ast::item_fn(decl, tps, body) {
-        alt ccx.item_ids.find(item.id) {
-          some(llfndecl) {
-            trans_fn(ccx, *path + [path_name(item.ident)], decl, body,
-                     llfndecl, no_self, tps, none, item.id);
-          }
+        let llfndecl = alt ccx.item_ids.find(item.id) {
+          some(llfndecl) { llfndecl }
           _ {
             ccx.sess.span_fatal(item.span,
                                 "unbound function item in trans_item");
           }
+        };
+        if decl.purity != ast::crust_fn  {
+            trans_fn(ccx, *path + [path_name(item.ident)], decl, body,
+                     llfndecl, no_self, tps, none, item.id);
+        } else {
+            native::trans_crust_fn(ccx, *path + [path_name(item.ident)],
+                                   decl, body, llfndecl, item.id);
         }
       }
       ast::item_impl(tps, _, _, ms) {
