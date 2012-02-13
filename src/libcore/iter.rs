@@ -77,7 +77,7 @@ fn foldr<A:copy,B,IA:iterable<A>>(
     self: IA, +b0: B, blk: fn(A, -B) -> B) -> B {
 
     let b <- b0;
-    reverse(self) {|a|
+    reversed(self) {|a|
         b = blk(a, b);
     }
     ret b;
@@ -88,7 +88,7 @@ fn to_list<A:copy,IA:iterable<A>>(self: IA) -> [A] {
 }
 
 // FIXME: This could be made more efficient with an riterable interface
-fn reverse<A:copy,IA:iterable<A>>(self: IA, blk: fn(A)) {
+fn reversed<A:copy,IA:iterable<A>>(self: IA, blk: fn(A)) {
     vec::riter(to_list(self), blk)
 }
 
@@ -247,8 +247,8 @@ fn test_max_empty() {
 }
 
 #[test]
-fn test_reverse() {
-    assert to_list(bind reverse([1, 2, 3], _)) == [3, 2, 1];
+fn test_reversed() {
+    assert to_list(bind reversed([1, 2, 3], _)) == [3, 2, 1];
 }
 
 #[test]
