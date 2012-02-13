@@ -920,7 +920,7 @@ fn find(haystack: str, needle: str) -> option<uint> {
 // Convert a byte position into a char position
 // within a given string
 fn b2c_pos(ss: str, bpos: uint) -> uint {
-   assert bpos < len_bytes(ss);
+   assert bpos == 0u || bpos < len_bytes(ss);
 
    let ii = 0u;
    let cpos = 0u;
@@ -1725,6 +1725,9 @@ mod tests {
     #[test]
     fn test_find_bytes() {
         // byte positions
+        assert (find_bytes("banana", "apple pie") == option::none);
+        assert (find_bytes("", "") == option::some(0u));
+
         let data = "ประเทศไทย中华Việt Nam";
         assert (find_bytes(data, "")     == option::some(0u));
         assert (find_bytes(data, "ประเ") == option::some( 0u));
@@ -1736,6 +1739,9 @@ mod tests {
     #[test]
     fn test_find() {
         // char positions
+        assert (find("banana", "apple pie") == option::none);
+        assert (find("", "") == option::some(0u));
+
         let data = "ประเทศไทย中华Việt Nam";
         assert (find(data, "")     == option::some(0u));
         assert (find(data, "ประเ") == option::some(0u));
