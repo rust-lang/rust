@@ -666,7 +666,8 @@ fn static_size_of_enum(cx: @crate_ctxt, t: ty::t)
         let max_size = 0u;
         let variants = ty::enum_variants(cx.tcx, tid);
         for variant: ty::variant_info in *variants {
-            let tup_ty = simplify_type(cx, ty::mk_tup(cx.tcx, variant.args));
+            let tup_ty = simplify_type(cx.tcx,
+                                       ty::mk_tup(cx.tcx, variant.args));
             // Perform any type parameter substitutions.
 
             tup_ty = ty::substitute_type_params(cx.tcx, subtys, tup_ty);
@@ -776,29 +777,26 @@ fn dynamic_metrics(cx: @block_ctxt, t: ty::t) -> metrics {
 // to have (a) the same size as the type that was passed in; (b) to be non-
 // recursive. This is done by replacing all boxes in a type with boxed unit
 // types.
-fn simplify_type(ccx: @crate_ctxt, typ: ty::t) -> ty::t {
-    fn simplifier(ccx: @crate_ctxt, typ: ty::t) -> ty::t {
+// This should reduce all pointers to some simple pointer type, to
+// ensure that we don't recurse endlessly when computing the size of a
+// nominal type that has pointers to itself in it.
+fn simplify_type(tcx: ty::ctxt, typ: ty::t) -> ty::t {
+    fn nilptr(tcx: ty::ctxt) -> ty::t {
+        ty::mk_ptr(tcx, {ty: ty::mk_nil(tcx), mut: ast::imm})
+    }
+    fn simplifier(tcx: ty::ctxt, typ: ty::t) -> ty::t {
         alt ty::get(typ).struct {
-          ty::ty_box(_) | ty::ty_opaque_box {
-            ret ty::mk_imm_box(ccx.tcx, ty::mk_nil(ccx.tcx));
-          }
-          ty::ty_uniq(_) {
-            ret ty::mk_imm_uniq(ccx.tcx, ty::mk_nil(ccx.tcx));
-          }
-          ty::ty_fn(_) {
-            ret ty::mk_tup(ccx.tcx,
-                           [ty::mk_imm_box(ccx.tcx, ty::mk_nil(ccx.tcx)),
-                            ty::mk_imm_box(ccx.tcx, ty::mk_nil(ccx.tcx))]);
-          }
+          ty::ty_box(_) | ty::ty_opaque_box | ty::ty_uniq(_) | ty::ty_vec(_) |
+          ty::ty_ptr(_) { nilptr(tcx) }
+          ty::ty_fn(_) { ty::mk_tup(tcx, [nilptr(tcx), nilptr(tcx)]) }
           ty::ty_res(_, sub, tps) {
-            let sub1 = ty::substitute_type_params(ccx.tcx, tps, sub);
-            ret ty::mk_tup(ccx.tcx,
-                           [ty::mk_int(ccx.tcx), simplify_type(ccx, sub1)]);
+            let sub1 = ty::substitute_type_params(tcx, tps, sub);
+            ty::mk_tup(tcx, [ty::mk_int(tcx), simplify_type(tcx, sub1)])
           }
-          _ { ret typ; }
+          _ { typ }
         }
     }
-    ret ty::fold_ty(ccx.tcx, ty::fm_general(bind simplifier(ccx, _)), typ);
+    ty::fold_ty(tcx, ty::fm_general(bind simplifier(tcx, _)), typ)
 }
 
 // Given a tag type `ty`, returns the offset of the payload.
