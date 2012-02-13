@@ -33,6 +33,12 @@ impl<A> of iterable<A> for option<A> {
     }
 }
 
+impl of iterable<char> for str {
+    fn iter(blk: fn(&&char)) {
+        str::chars_iter(self) { |ch| blk(ch) }
+    }
+}
+
 fn enumerate<A,IA:iterable<A>>(self: IA, blk: fn(uint, A)) {
     let i = 0u;
     self.iter {|a|
