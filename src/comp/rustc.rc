@@ -23,6 +23,7 @@ mod middle {
         mod closure;
         mod tvec;
         mod impl;
+        mod native;
     }
     mod ty;
     mod ast_map;
