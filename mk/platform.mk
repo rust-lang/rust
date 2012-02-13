@@ -38,6 +38,12 @@ ifneq ($(findstring freebsd,$(CFG_OSTYPE)),)
   CFG_DEF_SUFFIX := .bsd.def
   CFG_INSTALL_NAME =
   CFG_PERF_TOOL := /usr/bin/time
+
+  # FIXME (1825): We're deadlocking on FreeBSD
+  ifndef RUST_THREADS
+    RUST_THREADS=1
+    export RUST_THREADS
+  endif
 endif
 
 ifneq ($(findstring linux,$(CFG_OSTYPE)),)
