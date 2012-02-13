@@ -42,14 +42,14 @@ fn lookup_hash(d: ebml::doc, eq_fn: fn@([u8]) -> bool, hash: uint) ->
     let index = ebml::get_doc(d, tag_index);
     let table = ebml::get_doc(index, tag_index_table);
     let hash_pos = table.start + hash % 256u * 4u;
-    let pos = ebml::be_uint_from_bytes(d.data, hash_pos, 4u);
+    let pos = ebml::be_u64_from_bytes(d.data, hash_pos, 4u) as uint;
     let {tag:_, doc:bucket} = ebml::doc_at(d.data, pos);
     // Awkward logic because we can't ret from foreach yet
 
     let result: [ebml::doc] = [];
     let belt = tag_index_buckets_bucket_elt;
     ebml::tagged_docs(bucket, belt) {|elt|
-        let pos = ebml::be_uint_from_bytes(elt.data, elt.start, 4u);
+        let pos = ebml::be_u64_from_bytes(elt.data, elt.start, 4u) as uint;
         if eq_fn(vec::slice::<u8>(*elt.data, elt.start + 4u, elt.end)) {
             result += [ebml::doc_at(d.data, pos).doc];
         }
@@ -59,7 +59,7 @@ fn lookup_hash(d: ebml::doc, eq_fn: fn@([u8]) -> bool, hash: uint) ->
 
 fn maybe_find_item(item_id: int, items: ebml::doc) -> option<ebml::doc> {
     fn eq_item(bytes: [u8], item_id: int) -> bool {
-        ret ebml::be_uint_from_bytes(@bytes, 0u, 4u) as int == item_id;
+        ret ebml::be_u64_from_bytes(@bytes, 0u, 4u) as int == item_id;
     }
     let eqer = bind eq_item(_, item_id);
     let found = lookup_hash(items, eqer, hash_node_id(item_id));
@@ -81,7 +81,7 @@ fn lookup_item(item_id: int, data: @[u8]) -> ebml::doc {
 
 fn item_family(item: ebml::doc) -> u8 {
     let fam = ebml::get_doc(item, tag_items_data_item_family);
-    ret ebml::doc_as_uint(fam) as u8;
+    ret ebml::doc_as_u8(fam);
 }
 
 fn item_symbol(item: ebml::doc) -> str {
@@ -183,7 +183,7 @@ fn item_path(item_doc: ebml::doc) -> ast_map::path {
     let path_doc = ebml::get_doc(item_doc, tag_path);
 
     let len_doc = ebml::get_doc(path_doc, tag_path_len);
-    let len = ebml::doc_as_uint(len_doc);
+    let len = ebml::doc_as_vuint(len_doc);
 
     let result = [];
     vec::reserve(result, len);
@@ -355,7 +355,7 @@ fn family_names_type(fam_ch: u8) -> bool {
 
 fn read_path(d: ebml::doc) -> {path: str, pos: uint} {
     let desc = ebml::doc_data(d);
-    let pos = ebml::be_uint_from_bytes(@desc, 0u, 4u);
+    let pos = ebml::be_u64_from_bytes(@desc, 0u, 4u) as uint;
     let pathbytes = vec::slice::<u8>(desc, 4u, vec::len::<u8>(desc));
     let path = str::from_bytes(pathbytes);
     ret {path: path, pos: pos};

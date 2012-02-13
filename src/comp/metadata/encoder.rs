@@ -281,7 +281,7 @@ fn encode_path(ebml_w: ebml::writer,
 
     ebml_w.wr_tag(tag_path) {||
         ebml_w.wr_tag(tag_path_len) {||
-            ebml_w.wr_uint(vec::len(path) + 1u);
+            ebml_w.wr_vuint(vec::len(path) + 1u);
         }
         vec::iter(path) {|pe| encode_path_elt(ebml_w, pe); }
         encode_path_elt(ebml_w, name);

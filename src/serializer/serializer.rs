@@ -232,6 +232,7 @@ impl serialize_ctx for serialize_ctx {
                       tps: [ty::t]) -> ast_expr {
         let variants = ty::substd_enum_variants(self.tcx, id, tps);
 
+        let idx = 0u;
         let arms = vec::map(variants) {|variant|
             let item_path = ty::item_path(self.tcx, variant.id);
             let v_path = ast_map::path_to_str(item_path);
@@ -245,19 +246,22 @@ impl serialize_ctx for serialize_ctx {
                 }
             };
 
-            let v_ident = ast_map::path_to_str_with_sep(item_path, "_");
-            let v_const = #fmt["at_%s", v_ident];
+            let v_id = idx;
+            idx += 1u;
 
             #fmt["%s { \
-                    start_variant(cx, %s); \
-                    %s \
-                    end_variant(cx, %s); \
-                  }", v_pat, v_const, self.blk(stmts), v_const]
+                    s.emit_enum_variant(\"%s\", %uu, %uu) {||\
+                      %s \
+                    } \
+                  }", v_pat, v_path, v_id, n_args, self.blk(stmts)]
         };
 
-        #fmt["alt %s { \
-                %s \
-              }", v, str::connect(arms, "\n")]
+        let enum_name = ast_map::path_to_str(ty::item_path(self.tcx, id));
+        #fmt["s.emit_enum(\"%s\") {||\
+                alt %s { \
+                  %s \
+                }\
+              }", enum_name, v, str::connect(arms, "\n")]
     }
 
     fn serialize_arm(v_path: str, emit_fn: str, args: [ty::t])
