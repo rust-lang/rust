@@ -69,9 +69,8 @@ export
    // Searching
    index,
    rindex,
-   //find,
+   find,
    find_bytes,
-   find_chars,
    contains,
    starts_with,
    ends_with,
@@ -877,58 +876,40 @@ fn rindex(ss: str, cc: char) -> option<uint> {
     ret option::none;
 }
 
-/*
-Function: find
+//Function: find_bytes
+//
+// Find the char position of the first instance of one string
+// within another, or return option::none
+fn find_bytes(haystack: str, needle: str) -> option<uint> {
+    let haystack_len = len_bytes(haystack);
+    let needle_len   = len_bytes(needle);
 
-Finds the index of the first matching substring.
-Returns -1 if `haystack` does not contain `needle`.
+    if needle_len == 0u { ret option::some(0u); }
+    if needle_len > haystack_len { ret option::none; }
 
-Parameters:
-
-haystack - The string to look in
-needle - The string to look for
-
-Returns:
-
-The index of the first occurance of `needle`, or -1 if not found.
-
-FIXME: return an option<char position uint> instead
-*/
-fn find(haystack: str, needle: str) -> int {
-    let haystack_len: int = len_bytes(haystack) as int;
-    let needle_len: int = len_bytes(needle) as int;
-    if needle_len == 0 { ret 0; }
-    fn match_at(haystack: str, needle: str, i: int) -> bool {
-        let j: int = i;
-        for c: u8 in needle { if haystack[j] != c { ret false; } j += 1; }
+    fn match_at(haystack: str, needle: str, ii: uint) -> bool {
+        let jj = ii;
+        for c: u8 in needle { if haystack[jj] != c { ret false; } jj += 1u; }
         ret true;
     }
-    let i: int = 0;
-    while i <= haystack_len - needle_len {
-        if match_at(haystack, needle, i) { ret i; }
-        i += 1;
+
+    let ii = 0u;
+    while ii <= haystack_len - needle_len {
+        if match_at(haystack, needle, ii) { ret option::some(ii); }
+        ii += 1u;
     }
-    ret -1;
+
+    ret option::none;
 }
 
-// Function: find_chars
+// Function: find
 //
-// Find the character position of the first instance of the substring,
-// or return option::none
-//
-// FIXME: rename find_chars -> find,
-//               find -> find_bytes
-fn find_chars(hay: str, pin: str) -> option<uint> {
-   alt find_bytes(hay, pin) {
+// Find the char position of the first instance of one string
+// within another, or return option::none
+fn find(haystack: str, needle: str) -> option<uint> {
+   alt find_bytes(haystack, needle) {
       option::none { ret option::none; }
-      option::some(nn) { ret option::some(b2c_pos(hay, nn)); }
-   }
-}
-
-fn find_bytes(hay: str, pin: str) -> option<uint> {
-   alt find(hay, pin) {
-      -1 { ret option::none; }
-      nn { ret option::some(nn as uint); }
+      option::some(nn) { ret option::some(b2c_pos(haystack, nn)); }
    }
 }
 
@@ -1741,19 +1722,9 @@ mod tests {
 
     #[test]
     fn test_find_bytes() {
-        fn t(haystack: str, needle: str, i: int) {
-            let j: int = find(haystack, needle);
-            log(debug, "searched for " + needle);
-            log(debug, j);
-            assert (i == j);
-        }
-        t("this is a simple", "is a", 5);
-        t("this is a simple", "is z", -1);
-        t("this is a simple", "", 0);
-        t("this is a simple", "simple", 10);
-        t("this", "simple", -1);
-
+        // byte positions
         let data = "ประเทศไทย中华Việt Nam";
+        assert (find_bytes(data, "")     == option::some(0u));
         assert (find_bytes(data, "ประเ") == option::some( 0u));
         assert (find_bytes(data, "ะเ")   == option::some( 6u));
         assert (find_bytes(data, "中华") == option::some(27u));
@@ -1761,12 +1732,14 @@ mod tests {
     }
 
     #[test]
-    fn test_find_chars() {
+    fn test_find() {
+        // char positions
         let data = "ประเทศไทย中华Việt Nam";
-        assert (find_chars(data, "ประเ") == option::some(0u));
-        assert (find_chars(data, "ะเ")   == option::some(2u));
-        assert (find_chars(data, "中华") == option::some(9u));
-        assert (find_chars(data, "ไท华") == option::none);
+        assert (find(data, "")     == option::some(0u));
+        assert (find(data, "ประเ") == option::some(0u));
+        assert (find(data, "ะเ")   == option::some(2u));
+        assert (find(data, "中华") == option::some(9u));
+        assert (find(data, "ไท华") == option::none);
     }
 
     #[test]
