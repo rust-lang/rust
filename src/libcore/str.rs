@@ -69,7 +69,9 @@ export
    // Searching
    index,
    rindex,
-   find,
+   //find,
+   find_bytes,
+   find_chars,
    contains,
    starts_with,
    ends_with,
@@ -663,9 +665,10 @@ fn replace(s: str, from: str, to: str) : is_not_empty(from) -> str unsafe {
                      unsafe::slice_bytes(s, len_bytes(from), len_bytes(s)),
                                        from, to);
     } else {
-        let idx = find(s, from);
-        if idx == -1 {
-            ret s;
+        let idx;
+        alt find_bytes(s, from) {
+            option::some(x) { idx = x; }
+            option::none { ret s; }
         }
         let before = unsafe::slice_bytes(s, 0u, idx as uint);
         let after  = unsafe::slice_bytes(s, idx as uint + len_bytes(from),
@@ -916,9 +919,16 @@ fn find(haystack: str, needle: str) -> int {
 // FIXME: rename find_chars -> find,
 //               find -> find_bytes
 fn find_chars(hay: str, pin: str) -> option<uint> {
+   alt find_bytes(hay, pin) {
+      option::none { ret option::none; }
+      option::some(nn) { ret option::some(b2c_pos(hay, nn)); }
+   }
+}
+
+fn find_bytes(hay: str, pin: str) -> option<uint> {
    alt find(hay, pin) {
       -1 { ret option::none; }
-       n { ret option::some(b2c_pos(hay, n as uint)); }
+      nn { ret option::some(nn as uint); }
    }
 }
 
@@ -952,7 +962,7 @@ haystack - The string to look in
 needle - The string to look for
 */
 fn contains(haystack: str, needle: str) -> bool {
-    0 <= find(haystack, needle)
+    option::is_some(find_bytes(haystack, needle))
 }
 
 /*
@@ -1730,7 +1740,7 @@ mod tests {
     }
 
     #[test]
-    fn test_find() {
+    fn test_find_bytes() {
         fn t(haystack: str, needle: str, i: int) {
             let j: int = find(haystack, needle);
             log(debug, "searched for " + needle);
@@ -1743,12 +1753,11 @@ mod tests {
         t("this is a simple", "simple", 10);
         t("this", "simple", -1);
 
-        // FIXME: return option<char> position instead
         let data = "ประเทศไทย中华Việt Nam";
-        assert (find(data, "ประเ") ==  0);
-        assert (find(data, "ะเ")   ==  6); // byte position
-        assert (find(data, "中华") ==  27); // byte position
-        assert (find(data, "ไท华") == -1);
+        assert (find_bytes(data, "ประเ") == option::some( 0u));
+        assert (find_bytes(data, "ะเ")   == option::some( 6u));
+        assert (find_bytes(data, "中华") == option::some(27u));
+        assert (find_bytes(data, "ไท华") == option::none);
     }
 
     #[test]
