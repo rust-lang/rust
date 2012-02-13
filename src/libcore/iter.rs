@@ -65,16 +65,41 @@ fn flat_map<A,B,IA:iterable<A>,IB:iterable<B>>(
     }
 }
 
-fn foldl<A,B:copy,IA:iterable<A>>(self: IA, b0: B, blk: fn(B, A) -> B) -> B {
-    let b = b0;
+fn foldl<A,B,IA:iterable<A>>(self: IA, +b0: B, blk: fn(-B, A) -> B) -> B {
+    let b <- b0;
     self.iter {|a|
         b = blk(b, a);
     }
     ret b;
 }
 
+fn foldr<A:copy,B,IA:iterable<A>>(
+    self: IA, +b0: B, blk: fn(A, -B) -> B) -> B {
+
+    let b <- b0;
+    reverse(self) {|a|
+        b = blk(a, b);
+    }
+    ret b;
+}
+
 fn to_list<A:copy,IA:iterable<A>>(self: IA) -> [A] {
     foldl::<A,[A],IA>(self, [], {|r, a| r + [a]})
+}
+
+// FIXME: This could be made more efficient with an riterable interface
+fn reverse<A:copy,IA:iterable<A>>(self: IA, blk: fn(A)) {
+    vec::riter(to_list(self), blk)
+}
+
+fn count<A,IA:iterable<A>>(self: IA, x: A) -> uint {
+    foldl(self, 0u) {|count, value|
+        if value == x {
+            count + 1u
+        } else {
+            count
+        }
+    }
 }
 
 fn repeat(times: uint, blk: fn()) {
@@ -85,6 +110,35 @@ fn repeat(times: uint, blk: fn()) {
     }
 }
 
+fn min<A:copy,IA:iterable<A>>(self: IA) -> A {
+    alt foldl::<A,option<A>,IA>(self, none) {|a, b|
+        alt a {
+          some(a_) if a_ < b {
+            // FIXME: Not sure if this is successfully optimized to a move
+            a
+          }
+          _ { some(b) }
+        }
+    } {
+        some(val) { val }
+        none { fail "min called on empty iterator" }
+    }
+}
+
+fn max<A:copy,IA:iterable<A>>(self: IA) -> A {
+    alt foldl::<A,option<A>,IA>(self, none) {|a, b|
+        alt a {
+          some(a_) if a_ > b {
+            // FIXME: Not sure if this is successfully optimized to a move
+            a
+          }
+          _ { some(b) }
+        }
+    } {
+        some(val) { val }
+        none { fail "max called on empty iterator" }
+    }
+}
 
 #[test]
 fn test_enumerate() {
@@ -168,4 +222,45 @@ fn test_repeat() {
     assert c == [0u, 1u, 4u, 9u, 16u];
 }
 
+#[test]
+fn test_min() {
+    assert min([5, 4, 1, 2, 3]) == 1;
+}
 
+#[test]
+#[should_fail]
+#[ignore(cfg(target_os = "win32"))]
+fn test_min_empty() {
+    min::<int, [int]>([]);
+}
+
+#[test]
+fn test_max() {
+    assert max([1, 2, 4, 2, 3]) == 4;
+}
+
+#[test]
+#[should_fail]
+#[ignore(cfg(target_os = "win32"))]
+fn test_max_empty() {
+    max::<int, [int]>([]);
+}
+
+#[test]
+fn test_reverse() {
+    assert to_list(bind reverse([1, 2, 3], _)) == [3, 2, 1];
+}
+
+#[test]
+fn test_count() {
+    assert count([1, 2, 1, 2, 1], 1) == 3u;
+}
+
+#[test]
+fn test_foldr() {
+    fn sub(&&a: int, -b: int) -> int {
+        a - b
+    }
+    let sum = foldr([1, 2, 3, 4], 0, sub);
+    assert sum == -2;
+}
