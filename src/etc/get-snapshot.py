@@ -64,9 +64,6 @@ triple = sys.argv[1]
 snap = determine_curr_snapshot(triple)
 dl = os.path.join(download_dir_base, snap)
 url = download_url_base + "/" + snap
-# FIXME: Temporary until we have FreeBSD snapshots on the official server
-if "freebsd" in triple:
-  url = "http://plaslab.cs.nctu.edu.tw/~jyyou/rust" + "/" + snap
 print("determined most recent snapshot: " + snap)
 
 if (not os.path.exists(dl)):
