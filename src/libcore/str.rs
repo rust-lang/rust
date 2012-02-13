@@ -880,6 +880,8 @@ fn rindex(ss: str, cc: char) -> option<uint> {
 //
 // Find the char position of the first instance of one string
 // within another, or return option::none
+//
+// FIXME: Boyer-Moore should be significantly faster
 fn find_bytes(haystack: str, needle: str) -> option<uint> {
     let haystack_len = len_bytes(haystack);
     let needle_len   = len_bytes(needle);
