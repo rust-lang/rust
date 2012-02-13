@@ -137,7 +137,6 @@ fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
         // n.b.: safe to ignore copies, as if they are unused
         // then they are ignored, otherwise they will show up
         // as freevars in the body.
-
         vec::iter(cap_clause.moves) {|ci|
             clear_def_if_path(cx, cx.def_map.get(ci.id), true);
         }
@@ -203,13 +202,18 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
 fn visit_block(tp: block_type, cx: ctx, visit: fn()) {
     let local = @{type: tp, mutable second: false, mutable exits: []};
     cx.blocks = cons(local, @cx.blocks);
+    let start_current = cx.current;
     visit();
     local.second = true;
+    local.exits = [];
+    cx.current = start_current;
     visit();
     let cx_blocks = cx.blocks;
     check is_not_empty(cx_blocks);
     cx.blocks = tail(cx_blocks);
-    cx.current = join_branches(local.exits);
+    let branches = if tp == func { local.exits + [cx.current] }
+                   else { local.exits };
+    cx.current = join_branches(branches);
 }
 
 fn add_block_exit(cx: ctx, tp: block_type) -> bool {
