@@ -908,6 +908,39 @@ fn find(haystack: str, needle: str) -> int {
     ret -1;
 }
 
+// Function: find_chars
+//
+// Find the character position of the first instance of the substring,
+// or return option::none
+//
+// FIXME: rename find_chars -> find,
+//               find -> find_bytes
+fn find_chars(hay: str, pin: str) -> option<uint> {
+   alt find(hay, pin) {
+      -1 { ret option::none; }
+       n { ret option::some(b2c_pos(hay, n as uint)); }
+   }
+}
+
+// Function: b2c_pos
+//
+// Convert a byte position into a char position
+// within a given string
+fn b2c_pos(ss: str, bpos: uint) -> uint {
+   assert bpos < len_bytes(ss);
+
+   let ii = 0u;
+   let cpos = 0u;
+
+   while ii < bpos {
+      let sz = utf8_char_width(ss[ii]);
+      ii += sz;
+      cpos += 1u;
+   }
+
+   ret cpos;
+}
+
 /*
 Function: contains
 
@@ -1716,6 +1749,23 @@ mod tests {
         assert (find(data, "ะเ")   ==  6); // byte position
         assert (find(data, "中华") ==  27); // byte position
         assert (find(data, "ไท华") == -1);
+    }
+
+    #[test]
+    fn test_find_chars() {
+        let data = "ประเทศไทย中华Việt Nam";
+        assert (find_chars(data, "ประเ") == option::some(0u));
+        assert (find_chars(data, "ะเ")   == option::some(2u));
+        assert (find_chars(data, "中华") == option::some(9u));
+        assert (find_chars(data, "ไท华") == option::none);
+    }
+
+    #[test]
+    fn test_b2c_pos() {
+        let data = "ประเทศไทย中华Việt Nam";
+        assert 0u == b2c_pos(data, 0u);
+        assert 2u == b2c_pos(data, 6u);
+        assert 9u == b2c_pos(data, 27u);
     }
 
     #[test]
