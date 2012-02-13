@@ -7,7 +7,7 @@ import common::*;
 import build::*;
 import base::*;
 
-export link_name, trans_native_mod;
+export link_name, trans_native_mod, trans_crust_fn;
 
 fn link_name(i: @ast::native_item) -> str {
     alt attr::get_meta_item_value_str_by_name(i.attrs, "link_name") {
@@ -188,4 +188,9 @@ fn trans_native_mod(ccx: @crate_ctxt,
         }
       }
     }
+}
+
+fn trans_crust_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
+                  body: ast::blk, llfndecl: ValueRef, id: ast::node_id) {
+    trans_fn(ccx, path, decl, body, llfndecl, no_self, [], none, id)
 }
