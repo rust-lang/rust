@@ -932,12 +932,12 @@ Parameters:
 haystack - The string to look in
 needle - The string to look for
 */
-fn starts_with(haystack: str, needle: str) -> bool {
-    let haystack_len: uint = len(haystack);
-    let needle_len: uint = len(needle);
+fn starts_with(haystack: str, needle: str) -> bool unsafe {
+    let haystack_len: uint = len_bytes(haystack);
+    let needle_len: uint = len_bytes(needle);
     if needle_len == 0u { ret true; }
     if needle_len > haystack_len { ret false; }
-    ret eq(substr(haystack, 0u, needle_len), needle);
+    ret eq(unsafe::slice_bytes(haystack, 0u, needle_len), needle);
 }
 
 /*
