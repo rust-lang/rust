@@ -444,8 +444,18 @@ fn ty_of_item(tcx: ty::ctxt, mode: mode, it: @ast::item)
         // call to resolve any named types.
         let tpt = {
             let t0 = ast_ty_to_ty(tcx, mode, t);
-            {bounds: ty_param_bounds(tcx, mode, tps),
-             ty: ty::mk_with_id(tcx, t0, def_id)}
+            let t1 = {
+                // Do not associate a def id with a named, parameterized type
+                // like "foo<X>".  This is because otherwise ty_to_str will
+                // print the name as merely "foo", as it has no way to
+                // reconstruct the value of X.
+                if vec::is_empty(tps) {
+                    ty::mk_with_id(tcx, t0, def_id)
+                } else {
+                    t0
+                }
+            };
+            {bounds: ty_param_bounds(tcx, mode, tps), ty: t1}
         };
         tcx.tcache.insert(local_def(it.id), tpt);
         ret tpt;

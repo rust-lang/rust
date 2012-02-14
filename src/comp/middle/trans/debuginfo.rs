@@ -780,7 +780,7 @@ fn create_function(fcx: fn_ctxt) -> @metadata<subprogram_md> {
     let sp = option::get(fcx.span);
     log(debug, codemap::span_to_str(sp, cx.sess.codemap));
 
-    let (ident, ret_ty, id) = alt cx.ast_map.get(fcx.id) {
+    let (ident, ret_ty, id) = alt cx.tcx.items.get(fcx.id) {
       ast_map::node_item(item, _) {
         alt item.node {
           ast::item_fn(decl, _, _) | ast::item_res(decl, _, _, _, _) {

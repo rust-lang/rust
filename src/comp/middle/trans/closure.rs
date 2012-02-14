@@ -277,6 +277,7 @@ fn store_environment(
     let cbox_ty = tuplify_box_ty(tcx, cdata_ty);
     let cboxptr_ty = ty::mk_ptr(tcx, {ty:cbox_ty, mutbl:ast::m_imm});
     let llbox = cast_if_we_can(bcx, llbox, cboxptr_ty);
+    #debug["tuplify_box_ty = %s", ty_to_str(tcx, cbox_ty)];
 
     // If necessary, copy tydescs describing type parameters into the
     // appropriate slot in the closure.
@@ -298,8 +299,9 @@ fn store_environment(
     }
 
     // Copy expr values into boxed bindings.
-    // Silly check
     vec::iteri(bound_values) { |i, bv|
+        #debug["Copy %s into closure", ev_to_str(ccx, bv)];
+
         if (!ccx.sess.opts.no_asm_comments) {
             add_comment(bcx, #fmt("Copy %s into closure",
                                   ev_to_str(ccx, bv)));

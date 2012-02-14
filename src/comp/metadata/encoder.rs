@@ -2,8 +2,9 @@
 
 import std::{io, ebml, map, list};
 import io::writer_util;
-import ebml::writer_util;
+import ebml::writer;
 import syntax::ast::*;
+import syntax::print::pprust;
 import syntax::ast_util;
 import syntax::ast_util::local_def;
 import common::*;
@@ -13,25 +14,40 @@ import middle::ty::node_id_to_type;
 import middle::ast_map;
 import front::attr;
 import driver::session::session;
+import std::serialization::serializer;
 
 export encode_metadata;
 export encoded_ty;
+
+// used by astencode:
+export def_to_str;
+export encode_ctxt;
+export write_type;
+export encode_def_id;
 
 type abbrev_map = map::hashmap<ty::t, tyencode::ty_abbrev>;
 
 type encode_ctxt = {ccx: crate_ctxt, type_abbrevs: abbrev_map};
 
+fn should_inline(path: ast_map::path, item: @item) -> bool {
+    if item.ident == "iter" { // XXX
+        #debug["should_inline(%s::%s)? attrs=%s result=%b",
+               ast_map::path_to_str(path),
+               item.ident,
+               str::connect(vec::map(item.attrs, pprust::attr_to_str), ", "),
+               attr::attrs_contains_name(item.attrs, "inline")];
+    }
+
+    attr::attrs_contains_name(item.attrs, "inline")
+}
+
 // Path table encoding
 fn encode_name(ebml_w: ebml::writer, name: str) {
-    ebml_w.wr_tag(tag_paths_data_name) {||
-        ebml_w.wr_str(name);
-    }
+    ebml_w.wr_tagged_str(tag_paths_data_name, name);
 }
 
 fn encode_def_id(ebml_w: ebml::writer, id: def_id) {
-    ebml_w.wr_tag(tag_def_id) {||
-        ebml_w.wr_str(def_to_str(id));
-    }
+    ebml_w.wr_tagged_str(tag_def_id, def_to_str(id));
 }
 
 fn encode_named_def_id(ebml_w: ebml::writer, name: str, id: def_id) {
@@ -85,57 +101,57 @@ fn encode_module_item_paths(ebml_w: ebml::writer, module: _mod, path: [str],
           }
           item_mod(_mod) {
             add_to_index(ebml_w, path, index, it.ident);
-            ebml::start_tag(ebml_w, tag_paths_data_mod);
+            ebml_w.start_tag(tag_paths_data_mod);
             encode_name(ebml_w, it.ident);
             encode_def_id(ebml_w, local_def(it.id));
             encode_module_item_paths(ebml_w, _mod, path + [it.ident], index);
-            ebml::end_tag(ebml_w);
+            ebml_w.end_tag();
           }
           item_native_mod(nmod) {
             add_to_index(ebml_w, path, index, it.ident);
-            ebml::start_tag(ebml_w, tag_paths_data_mod);
+            ebml_w.start_tag(tag_paths_data_mod);
             encode_name(ebml_w, it.ident);
             encode_def_id(ebml_w, local_def(it.id));
             encode_native_module_item_paths(ebml_w, nmod, path + [it.ident],
                                             index);
-            ebml::end_tag(ebml_w);
+            ebml_w.end_tag();
           }
           item_ty(_, tps) {
             add_to_index(ebml_w, path, index, it.ident);
-            ebml::start_tag(ebml_w, tag_paths_data_item);
+            ebml_w.start_tag(tag_paths_data_item);
             encode_name(ebml_w, it.ident);
             encode_def_id(ebml_w, local_def(it.id));
-            ebml::end_tag(ebml_w);
+            ebml_w.end_tag();
           }
           item_res(_, tps, _, _, ctor_id) {
             add_to_index(ebml_w, path, index, it.ident);
-            ebml::start_tag(ebml_w, tag_paths_data_item);
+            ebml_w.start_tag(tag_paths_data_item);
             encode_name(ebml_w, it.ident);
             encode_def_id(ebml_w, local_def(ctor_id));
-            ebml::end_tag(ebml_w);
+            ebml_w.end_tag();
             add_to_index(ebml_w, path, index, it.ident);
-            ebml::start_tag(ebml_w, tag_paths_data_item);
+            ebml_w.start_tag(tag_paths_data_item);
             encode_name(ebml_w, it.ident);
             encode_def_id(ebml_w, local_def(it.id));
-            ebml::end_tag(ebml_w);
+            ebml_w.end_tag();
           }
           item_class(_,_,_,_,_) {
               fail "encode: implement item_class";
           }
           item_enum(variants, tps) {
             add_to_index(ebml_w, path, index, it.ident);
-            ebml::start_tag(ebml_w, tag_paths_data_item);
+            ebml_w.start_tag(tag_paths_data_item);
             encode_name(ebml_w, it.ident);
             encode_def_id(ebml_w, local_def(it.id));
-            ebml::end_tag(ebml_w);
+            ebml_w.end_tag();
             encode_enum_variant_paths(ebml_w, variants, path, index);
           }
           item_iface(_, _) {
             add_to_index(ebml_w, path, index, it.ident);
-            ebml::start_tag(ebml_w, tag_paths_data_item);
+            ebml_w.start_tag(tag_paths_data_item);
             encode_name(ebml_w, it.ident);
             encode_def_id(ebml_w, local_def(it.id));
-            ebml::end_tag(ebml_w);
+            ebml_w.end_tag();
           }
           item_impl(_, _, _, _) {}
         }
@@ -146,10 +162,10 @@ fn encode_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt, crate: @crate)
     -> [entry<str>] {
     let index: [entry<str>] = [];
     let path: [str] = [];
-    ebml::start_tag(ebml_w, tag_paths);
+    ebml_w.start_tag(tag_paths);
     encode_module_item_paths(ebml_w, crate.node.module, path, index);
     encode_reexport_paths(ebml_w, ecx, index);
-    ebml::end_tag(ebml_w);
+    ebml_w.end_tag();
     ret index;
 }
 
@@ -158,10 +174,10 @@ fn encode_reexport_paths(ebml_w: ebml::writer,
     ecx.ccx.exp_map.items {|path, defs|
         for def in *defs {
             index += [{val: path, pos: ebml_w.writer.tell()}];
-            ebml::start_tag(ebml_w, tag_paths_data_item);
+            ebml_w.start_tag(tag_paths_data_item);
             encode_name(ebml_w, path);
             encode_def_id(ebml_w, ast_util::def_id_of_def(def));
-            ebml::end_tag(ebml_w);
+            ebml_w.end_tag();
         }
     }
 }
@@ -169,9 +185,9 @@ fn encode_reexport_paths(ebml_w: ebml::writer,
 
 // Item info table encoding
 fn encode_family(ebml_w: ebml::writer, c: char) {
-    ebml::start_tag(ebml_w, tag_items_data_item_family);
+    ebml_w.start_tag(tag_items_data_item_family);
     ebml_w.writer.write([c as u8]);
-    ebml::end_tag(ebml_w);
+    ebml_w.end_tag();
 }
 
 fn def_to_str(did: def_id) -> str { ret #fmt["%d:%d", did.crate, did.node]; }
@@ -182,17 +198,17 @@ fn encode_type_param_bounds(ebml_w: ebml::writer, ecx: @encode_ctxt,
                         tcx: ecx.ccx.tcx,
                         abbrevs: tyencode::ac_use_abbrevs(ecx.type_abbrevs)};
     for param in params {
-        ebml::start_tag(ebml_w, tag_items_data_item_ty_param_bounds);
+        ebml_w.start_tag(tag_items_data_item_ty_param_bounds);
         let bs = ecx.ccx.tcx.ty_param_bounds.get(param.id);
         tyencode::enc_bounds(ebml_w.writer, ty_str_ctxt, bs);
-        ebml::end_tag(ebml_w);
+        ebml_w.end_tag();
     }
 }
 
 fn encode_variant_id(ebml_w: ebml::writer, vid: def_id) {
-    ebml::start_tag(ebml_w, tag_items_data_item_variant);
+    ebml_w.start_tag(tag_items_data_item_variant);
     ebml_w.writer.write(str::bytes(def_to_str(vid)));
-    ebml::end_tag(ebml_w);
+    ebml_w.end_tag();
 }
 
 fn write_type(ecx: @encode_ctxt, ebml_w: ebml::writer, typ: ty::t) {
@@ -204,33 +220,33 @@ fn write_type(ecx: @encode_ctxt, ebml_w: ebml::writer, typ: ty::t) {
 }
 
 fn encode_type(ecx: @encode_ctxt, ebml_w: ebml::writer, typ: ty::t) {
-    ebml::start_tag(ebml_w, tag_items_data_item_type);
+    ebml_w.start_tag(tag_items_data_item_type);
     write_type(ecx, ebml_w, typ);
-    ebml::end_tag(ebml_w);
+    ebml_w.end_tag();
 }
 
 fn encode_symbol(ecx: @encode_ctxt, ebml_w: ebml::writer, id: node_id) {
-    ebml::start_tag(ebml_w, tag_items_data_item_symbol);
+    ebml_w.start_tag(tag_items_data_item_symbol);
     ebml_w.writer.write(str::bytes(ecx.ccx.item_symbols.get(id)));
-    ebml::end_tag(ebml_w);
+    ebml_w.end_tag();
 }
 
 fn encode_discriminant(ecx: @encode_ctxt, ebml_w: ebml::writer, id: node_id) {
-    ebml::start_tag(ebml_w, tag_items_data_item_symbol);
+    ebml_w.start_tag(tag_items_data_item_symbol);
     ebml_w.writer.write(str::bytes(ecx.ccx.discrim_symbols.get(id)));
-    ebml::end_tag(ebml_w);
+    ebml_w.end_tag();
 }
 
 fn encode_disr_val(_ecx: @encode_ctxt, ebml_w: ebml::writer, disr_val: int) {
-    ebml::start_tag(ebml_w, tag_disr_val);
+    ebml_w.start_tag(tag_disr_val);
     ebml_w.writer.write(str::bytes(int::to_str(disr_val,10u)));
-    ebml::end_tag(ebml_w);
+    ebml_w.end_tag();
 }
 
 fn encode_enum_id(ebml_w: ebml::writer, id: def_id) {
-    ebml::start_tag(ebml_w, tag_items_data_item_enum_id);
+    ebml_w.start_tag(tag_items_data_item_enum_id);
     ebml_w.writer.write(str::bytes(def_to_str(id)));
-    ebml::end_tag(ebml_w);
+    ebml_w.end_tag();
 }
 
 fn encode_enum_variant_info(ecx: @encode_ctxt, ebml_w: ebml::writer,
@@ -242,7 +258,7 @@ fn encode_enum_variant_info(ecx: @encode_ctxt, ebml_w: ebml::writer,
     let vi = ty::enum_variants(ecx.ccx.tcx, {crate: local_crate, node: id});
     for variant: variant in variants {
         index += [{val: variant.node.id, pos: ebml_w.writer.tell()}];
-        ebml::start_tag(ebml_w, tag_items_data_item);
+        ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(variant.node.id));
         encode_family(ebml_w, 'v');
         encode_name(ebml_w, variant.node.name);
@@ -259,7 +275,7 @@ fn encode_enum_variant_info(ecx: @encode_ctxt, ebml_w: ebml::writer,
         }
         encode_type_param_bounds(ebml_w, ecx, ty_params);
         encode_path(ebml_w, path, ast_map::path_name(variant.node.name));
-        ebml::end_tag(ebml_w);
+        ebml_w.end_tag();
         disr_val += 1;
         i += 1;
     }
@@ -274,15 +290,11 @@ fn encode_path(ebml_w: ebml::writer,
           ast_map::path_name(name) { (tag_path_elt_name, name) }
         };
 
-        ebml_w.wr_tag(tag) {||
-            ebml_w.wr_str(name)
-        }
+        ebml_w.wr_tagged_str(tag, name);
     }
 
     ebml_w.wr_tag(tag_path) {||
-        ebml_w.wr_tag(tag_path_len) {||
-            ebml_w.wr_vuint(vec::len(path) + 1u);
-        }
+        ebml_w.wr_tagged_u32(tag_path_len, (vec::len(path) + 1u) as u32);
         vec::iter(path) {|pe| encode_path_elt(ebml_w, pe); }
         encode_path_elt(ebml_w, name);
     }
@@ -290,17 +302,15 @@ fn encode_path(ebml_w: ebml::writer,
 
 fn encode_info_for_mod(ecx: @encode_ctxt, ebml_w: ebml::writer, md: _mod,
                        id: node_id, path: ast_map::path, name: ident) {
-    ebml::start_tag(ebml_w, tag_items_data_item);
+    ebml_w.start_tag(tag_items_data_item);
     encode_def_id(ebml_w, local_def(id));
     encode_family(ebml_w, 'm');
     encode_name(ebml_w, name);
-    alt ecx.ccx.impl_map.get(id) {
+    alt ecx.ccx.maps.impl_map.get(id) {
       list::cons(impls, @list::nil) {
         for i in *impls {
             if ast_util::is_exported(i.ident, md) {
-                ebml::start_tag(ebml_w, tag_mod_impl);
-                ebml_w.writer.write(str::bytes(def_to_str(i.did)));
-                ebml::end_tag(ebml_w);
+                ebml_w.wr_tagged_str(tag_mod_impl, def_to_str(i.did));
             }
         }
       }
@@ -308,7 +318,7 @@ fn encode_info_for_mod(ecx: @encode_ctxt, ebml_w: ebml::writer, md: _mod,
              undocumented invariant"); }
     }
     encode_path(ebml_w, path, ast_map::path_mod(name));
-    ebml::end_tag(ebml_w);
+    ebml_w.end_tag();
 }
 
 fn purity_fn_family(p: purity) -> char {
@@ -325,47 +335,50 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
     let tcx = ecx.ccx.tcx;
     alt item.node {
       item_const(_, _) {
-        ebml::start_tag(ebml_w, tag_items_data_item);
+        ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
         encode_family(ebml_w, 'c');
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_symbol(ecx, ebml_w, item.id);
         encode_path(ebml_w, path, ast_map::path_name(item.ident));
-        ebml::end_tag(ebml_w);
+        ebml_w.end_tag();
       }
       item_fn(decl, tps, _) {
-        ebml::start_tag(ebml_w, tag_items_data_item);
+        ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
         encode_family(ebml_w, purity_fn_family(decl.purity));
         encode_type_param_bounds(ebml_w, ecx, tps);
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_symbol(ecx, ebml_w, item.id);
         encode_path(ebml_w, path, ast_map::path_name(item.ident));
-        ebml::end_tag(ebml_w);
+        if should_inline(path, item) {
+            astencode::encode_inlined_item(ecx, ebml_w, item);
+        }
+        ebml_w.end_tag();
       }
       item_mod(m) {
         encode_info_for_mod(ecx, ebml_w, m, item.id, path, item.ident);
       }
       item_native_mod(_) {
-        ebml::start_tag(ebml_w, tag_items_data_item);
+        ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
         encode_family(ebml_w, 'n');
         encode_name(ebml_w, item.ident);
         encode_path(ebml_w, path, ast_map::path_name(item.ident));
-        ebml::end_tag(ebml_w);
+        ebml_w.end_tag();
       }
       item_ty(_, tps) {
-        ebml::start_tag(ebml_w, tag_items_data_item);
+        ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
         encode_family(ebml_w, 'y');
         encode_type_param_bounds(ebml_w, ecx, tps);
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_name(ebml_w, item.ident);
         encode_path(ebml_w, path, ast_map::path_name(item.ident));
-        ebml::end_tag(ebml_w);
+        ebml_w.end_tag();
       }
       item_enum(variants, tps) {
-        ebml::start_tag(ebml_w, tag_items_data_item);
+        ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
         encode_family(ebml_w, 't');
         encode_type_param_bounds(ebml_w, ecx, tps);
@@ -375,7 +388,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
             encode_variant_id(ebml_w, local_def(v.node.id));
         }
         encode_path(ebml_w, path, ast_map::path_name(item.ident));
-        ebml::end_tag(ebml_w);
+        ebml_w.end_tag();
         encode_enum_variant_info(ecx, ebml_w, item.id, variants,
                                  path, index, tps);
       }
@@ -385,7 +398,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
       item_res(_, tps, _, _, ctor_id) {
         let fn_ty = node_id_to_type(tcx, ctor_id);
 
-        ebml::start_tag(ebml_w, tag_items_data_item);
+        ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(ctor_id));
         encode_family(ebml_w, 'y');
         encode_type_param_bounds(ebml_w, ecx, tps);
@@ -393,47 +406,47 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_name(ebml_w, item.ident);
         encode_symbol(ecx, ebml_w, item.id);
         encode_path(ebml_w, path, ast_map::path_name(item.ident));
-        ebml::end_tag(ebml_w);
+        ebml_w.end_tag();
 
         index += [{val: ctor_id, pos: ebml_w.writer.tell()}];
-        ebml::start_tag(ebml_w, tag_items_data_item);
+        ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(ctor_id));
         encode_family(ebml_w, 'f');
         encode_type_param_bounds(ebml_w, ecx, tps);
         encode_type(ecx, ebml_w, fn_ty);
         encode_symbol(ecx, ebml_w, ctor_id);
         encode_path(ebml_w, path, ast_map::path_name(item.ident));
-        ebml::end_tag(ebml_w);
+        ebml_w.end_tag();
       }
       item_impl(tps, ifce, _, methods) {
-        ebml::start_tag(ebml_w, tag_items_data_item);
+        ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
         encode_family(ebml_w, 'i');
         encode_type_param_bounds(ebml_w, ecx, tps);
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_name(ebml_w, item.ident);
         for m in methods {
-            ebml::start_tag(ebml_w, tag_item_method);
+            ebml_w.start_tag(tag_item_method);
             ebml_w.writer.write(str::bytes(def_to_str(local_def(m.id))));
-            ebml::end_tag(ebml_w);
+            ebml_w.end_tag();
         }
         alt ifce {
           some(_) {
             encode_symbol(ecx, ebml_w, item.id);
             let i_ty = ty::lookup_item_type(tcx, local_def(item.id)).ty;
-            ebml::start_tag(ebml_w, tag_impl_iface);
+            ebml_w.start_tag(tag_impl_iface);
             write_type(ecx, ebml_w, i_ty);
-            ebml::end_tag(ebml_w);
+            ebml_w.end_tag();
           }
           _ {}
         }
         encode_path(ebml_w, path, ast_map::path_name(item.ident));
-        ebml::end_tag(ebml_w);
+        ebml_w.end_tag();
 
         let impl_path = path + [ast_map::path_name(item.ident)];
         for m in methods {
             index += [{val: m.id, pos: ebml_w.writer.tell()}];
-            ebml::start_tag(ebml_w, tag_items_data_item);
+            ebml_w.start_tag(tag_items_data_item);
             encode_def_id(ebml_w, local_def(m.id));
             encode_family(ebml_w, purity_fn_family(m.decl.purity));
             encode_type_param_bounds(ebml_w, ecx, tps + m.tps);
@@ -441,11 +454,11 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
             encode_name(ebml_w, m.ident);
             encode_symbol(ecx, ebml_w, m.id);
             encode_path(ebml_w, impl_path, ast_map::path_name(m.ident));
-            ebml::end_tag(ebml_w);
+            ebml_w.end_tag();
         }
       }
       item_iface(tps, ms) {
-        ebml::start_tag(ebml_w, tag_items_data_item);
+        ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
         encode_family(ebml_w, 'I');
         encode_type_param_bounds(ebml_w, ecx, tps);
@@ -453,23 +466,23 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_name(ebml_w, item.ident);
         let i = 0u;
         for mty in *ty::iface_methods(tcx, local_def(item.id)) {
-            ebml::start_tag(ebml_w, tag_item_method);
+            ebml_w.start_tag(tag_item_method);
             encode_name(ebml_w, mty.ident);
             encode_type_param_bounds(ebml_w, ecx, ms[i].tps);
             encode_type(ecx, ebml_w, ty::mk_fn(tcx, mty.fty));
             encode_family(ebml_w, purity_fn_family(mty.purity));
-            ebml::end_tag(ebml_w);
+            ebml_w.end_tag();
             i += 1u;
         }
         encode_path(ebml_w, path, ast_map::path_name(item.ident));
-        ebml::end_tag(ebml_w);
+        ebml_w.end_tag();
       }
     }
 }
 
 fn encode_info_for_native_item(ecx: @encode_ctxt, ebml_w: ebml::writer,
                                nitem: @native_item, path: ast_map::path) {
-    ebml::start_tag(ebml_w, tag_items_data_item);
+    ebml_w.start_tag(tag_items_data_item);
     alt nitem.node {
       native_item_fn(fn_decl, tps) {
         encode_def_id(ebml_w, local_def(nitem.id));
@@ -480,16 +493,16 @@ fn encode_info_for_native_item(ecx: @encode_ctxt, ebml_w: ebml::writer,
         encode_path(ebml_w, path, ast_map::path_name(nitem.ident));
       }
     }
-    ebml::end_tag(ebml_w);
+    ebml_w.end_tag();
 }
 
 fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::writer,
                          crate_mod: _mod) -> [entry<int>] {
     let index: [entry<int>] = [];
-    ebml::start_tag(ebml_w, tag_items_data);
+    ebml_w.start_tag(tag_items_data);
     index += [{val: crate_node_id, pos: ebml_w.writer.tell()}];
     encode_info_for_mod(ecx, ebml_w, crate_mod, crate_node_id, [], "");
-    ecx.ccx.ast_map.items {|key, val|
+    ecx.ccx.tcx.items.items {|key, val|
         alt val {
           middle::ast_map::node_item(i, path) {
             index += [{val: key, pos: ebml_w.writer.tell()}];
@@ -502,7 +515,7 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::writer,
           _ { }
         }
     };
-    ebml::end_tag(ebml_w);
+    ebml_w.end_tag();
     ret index;
 }
 
@@ -528,25 +541,25 @@ fn create_index<T: copy>(index: [entry<T>], hash_fn: fn@(T) -> uint) ->
 fn encode_index<T>(ebml_w: ebml::writer, buckets: [@[entry<T>]],
                    write_fn: fn(io::writer, T)) {
     let writer = ebml_w.writer;
-    ebml::start_tag(ebml_w, tag_index);
+    ebml_w.start_tag(tag_index);
     let bucket_locs: [uint] = [];
-    ebml::start_tag(ebml_w, tag_index_buckets);
+    ebml_w.start_tag(tag_index_buckets);
     for bucket: @[entry<T>] in buckets {
         bucket_locs += [ebml_w.writer.tell()];
-        ebml::start_tag(ebml_w, tag_index_buckets_bucket);
+        ebml_w.start_tag(tag_index_buckets_bucket);
         for elt: entry<T> in *bucket {
-            ebml::start_tag(ebml_w, tag_index_buckets_bucket_elt);
+            ebml_w.start_tag(tag_index_buckets_bucket_elt);
             writer.write_be_uint(elt.pos, 4u);
             write_fn(writer, elt.val);
-            ebml::end_tag(ebml_w);
+            ebml_w.end_tag();
         }
-        ebml::end_tag(ebml_w);
+        ebml_w.end_tag();
     }
-    ebml::end_tag(ebml_w);
-    ebml::start_tag(ebml_w, tag_index_table);
+    ebml_w.end_tag();
+    ebml_w.start_tag(tag_index_table);
     for pos: uint in bucket_locs { writer.write_be_uint(pos, 4u); }
-    ebml::end_tag(ebml_w);
-    ebml::end_tag(ebml_w);
+    ebml_w.end_tag();
+    ebml_w.end_tag();
 }
 
 fn write_str(writer: io::writer, &&s: str) { writer.write_str(s); }
@@ -558,48 +571,48 @@ fn write_int(writer: io::writer, &&n: int) {
 fn encode_meta_item(ebml_w: ebml::writer, mi: meta_item) {
     alt mi.node {
       meta_word(name) {
-        ebml::start_tag(ebml_w, tag_meta_item_word);
-        ebml::start_tag(ebml_w, tag_meta_item_name);
+        ebml_w.start_tag(tag_meta_item_word);
+        ebml_w.start_tag(tag_meta_item_name);
         ebml_w.writer.write(str::bytes(name));
-        ebml::end_tag(ebml_w);
-        ebml::end_tag(ebml_w);
+        ebml_w.end_tag();
+        ebml_w.end_tag();
       }
       meta_name_value(name, value) {
         alt value.node {
           lit_str(value) {
-            ebml::start_tag(ebml_w, tag_meta_item_name_value);
-            ebml::start_tag(ebml_w, tag_meta_item_name);
+            ebml_w.start_tag(tag_meta_item_name_value);
+            ebml_w.start_tag(tag_meta_item_name);
             ebml_w.writer.write(str::bytes(name));
-            ebml::end_tag(ebml_w);
-            ebml::start_tag(ebml_w, tag_meta_item_value);
+            ebml_w.end_tag();
+            ebml_w.start_tag(tag_meta_item_value);
             ebml_w.writer.write(str::bytes(value));
-            ebml::end_tag(ebml_w);
-            ebml::end_tag(ebml_w);
+            ebml_w.end_tag();
+            ebml_w.end_tag();
           }
           _ {/* FIXME (#611) */ }
         }
       }
       meta_list(name, items) {
-        ebml::start_tag(ebml_w, tag_meta_item_list);
-        ebml::start_tag(ebml_w, tag_meta_item_name);
+        ebml_w.start_tag(tag_meta_item_list);
+        ebml_w.start_tag(tag_meta_item_name);
         ebml_w.writer.write(str::bytes(name));
-        ebml::end_tag(ebml_w);
+        ebml_w.end_tag();
         for inner_item: @meta_item in items {
             encode_meta_item(ebml_w, *inner_item);
         }
-        ebml::end_tag(ebml_w);
+        ebml_w.end_tag();
       }
     }
 }
 
 fn encode_attributes(ebml_w: ebml::writer, attrs: [attribute]) {
-    ebml::start_tag(ebml_w, tag_attributes);
+    ebml_w.start_tag(tag_attributes);
     for attr: attribute in attrs {
-        ebml::start_tag(ebml_w, tag_attribute);
+        ebml_w.start_tag(tag_attribute);
         encode_meta_item(ebml_w, attr.node.value);
-        ebml::end_tag(ebml_w);
+        ebml_w.end_tag();
     }
-    ebml::end_tag(ebml_w);
+    ebml_w.end_tag();
 }
 
 // So there's a special crate attribute called 'link' which defines the
@@ -687,19 +700,19 @@ fn encode_crate_deps(ebml_w: ebml::writer, cstore: cstore::cstore) {
     // that they are numbered 1 to n.
     // FIXME: This is not nearly enough to support correct versioning
     // but is enough to get transitive crate dependencies working.
-    ebml::start_tag(ebml_w, tag_crate_deps);
+    ebml_w.start_tag(tag_crate_deps);
     for cname: str in get_ordered_names(cstore) {
-        ebml::start_tag(ebml_w, tag_crate_dep);
+        ebml_w.start_tag(tag_crate_dep);
         ebml_w.writer.write(str::bytes(cname));
-        ebml::end_tag(ebml_w);
+        ebml_w.end_tag();
     }
-    ebml::end_tag(ebml_w);
+    ebml_w.end_tag();
 }
 
 fn encode_hash(ebml_w: ebml::writer, hash: str) {
-    ebml::start_tag(ebml_w, tag_crate_hash);
+    ebml_w.start_tag(tag_crate_hash);
     ebml_w.writer.write(str::bytes(hash));
-    ebml::end_tag(ebml_w);
+    ebml_w.end_tag();
 }
 
 fn encode_metadata(cx: crate_ctxt, crate: @crate) -> [u8] {
@@ -709,7 +722,7 @@ fn encode_metadata(cx: crate_ctxt, crate: @crate) -> [u8] {
 
     let buf = io::mk_mem_buffer();
     let buf_w = io::mem_buffer_writer(buf);
-    let ebml_w = ebml::create_writer(buf_w);
+    let ebml_w = ebml::mk_writer(buf_w);
 
     encode_hash(ebml_w, cx.link_meta.extras_hash);
 
@@ -719,18 +732,18 @@ fn encode_metadata(cx: crate_ctxt, crate: @crate) -> [u8] {
     encode_crate_deps(ebml_w, cx.sess.cstore);
 
     // Encode and index the paths.
-    ebml::start_tag(ebml_w, tag_paths);
+    ebml_w.start_tag(tag_paths);
     let paths_index = encode_item_paths(ebml_w, ecx, crate);
     let paths_buckets = create_index(paths_index, hash_path);
     encode_index(ebml_w, paths_buckets, write_str);
-    ebml::end_tag(ebml_w);
+    ebml_w.end_tag();
 
     // Encode and index the items.
-    ebml::start_tag(ebml_w, tag_items);
+    ebml_w.start_tag(tag_items);
     let items_index = encode_info_for_items(ecx, ebml_w, crate.node.module);
     let items_buckets = create_index(items_index, hash_node_id);
     encode_index(ebml_w, items_buckets, write_int);
-    ebml::end_tag(ebml_w);
+    ebml_w.end_tag();
 
     // Pad this, since something (LLVM, presumably) is cutting off the
     // remaining % 4 bytes.

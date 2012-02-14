@@ -129,6 +129,7 @@ export param_bound, param_bounds, bound_copy, bound_send, bound_iface;
 export param_bounds_to_kind;
 export default_arg_mode_for_ty;
 export item_path;
+export item_path_str;
 
 // Data types
 
@@ -2172,6 +2173,10 @@ fn substd_enum_variants(cx: ctxt, id: ast::def_id, tps: [ty::t])
 
         @{args: substd_args, ctor_ty: substd_ctor_ty with *variant_info}
     }
+}
+
+fn item_path_str(cx: ctxt, id: ast::def_id) -> str {
+    ast_map::path_to_str(item_path(cx, id))
 }
 
 fn item_path(cx: ctxt, id: ast::def_id) -> ast_map::path {

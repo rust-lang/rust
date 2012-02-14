@@ -12,7 +12,7 @@ export c_vec, four, tri, util;
 export bitv, deque, fun_treemap, list, map, smallintmap, sort, treemap, ufind;
 export rope;
 export ebml, dbg, getopts, json, rand, sha1, term, time;
-export test, tempfile;
+export test, tempfile, serialization;
 // FIXME: generic_os and os_fs shouldn't be exported
 export generic_os, os, os_fs;
 
@@ -111,5 +111,4 @@ mod os_fs;
 // indent-tabs-mode: nil
 // c-basic-offset: 4
 // buffer-file-coding-system: utf-8-unix
-// compile-command: "make -k -C .. 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
 // End:

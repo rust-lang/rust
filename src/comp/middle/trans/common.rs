@@ -19,6 +19,7 @@ import lib::llvm::{ModuleRef, ValueRef, TypeRef, BasicBlockRef, BuilderRef};
 import lib::llvm::{True, False, Bool};
 import metadata::csearch;
 import ast_map::path;
+import middle::inline::inline_map;
 
 type namegen = fn@(str) -> str;
 fn new_namegen() -> namegen {
@@ -63,6 +64,16 @@ type stats =
 
 resource BuilderRef_res(B: BuilderRef) { llvm::LLVMDisposeBuilder(B); }
 
+// Misc. auxiliary maps used in the crate_ctxt
+type maps = {
+    mutbl_map: middle::mutbl::mutbl_map,
+    copy_map: middle::alias::copy_map,
+    last_uses: middle::last_use::last_uses,
+    impl_map: middle::resolve::impl_map,
+    method_map: middle::typeck::method_map,
+    dict_map: middle::typeck::dict_map
+};
+
 // Crate context.  Every crate we compile has one of these.
 type crate_ctxt = @{
      sess: session::session,
@@ -72,7 +83,6 @@ type crate_ctxt = @{
      externs: hashmap<str, ValueRef>,
      intrinsics: hashmap<str, ValueRef>,
      item_ids: hashmap<ast::node_id, ValueRef>,
-     ast_map: ast_map::map,
      exp_map: resolve::exp_map,
      item_symbols: hashmap<ast::node_id, str>,
      mutable main_fn: option<ValueRef>,
@@ -91,12 +101,8 @@ type crate_ctxt = @{
      type_sha1s: hashmap<ty::t, str>,
      type_short_names: hashmap<ty::t, str>,
      tcx: ty::ctxt,
-     mutbl_map: mutbl::mutbl_map,
-     copy_map: alias::copy_map,
-     last_uses: last_use::last_uses,
-     impl_map: resolve::impl_map,
-     method_map: typeck::method_map,
-     dict_map: typeck::dict_map,
+     maps: maps,
+     inline_map: inline_map,
      stats: stats,
      upcalls: @upcall::upcalls,
      tydesc_type: TypeRef,

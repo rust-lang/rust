@@ -11,6 +11,7 @@ import syntax::codemap::span;
 export annotate_freevars;
 export freevar_map;
 export freevar_info;
+export freevar_entry;
 export get_freevars;
 export has_freevars;
 

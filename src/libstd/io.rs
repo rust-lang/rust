@@ -366,17 +366,39 @@ fn mk_file_writer(path: str, flags: [fileflag])
     }
 }
 
-fn uint_to_le_bytes(n: uint, size: uint) -> [u8] {
+fn u64_to_le_bytes(n: u64, size: uint) -> [u8] {
     let bytes: [u8] = [], i = size, n = n;
-    while i > 0u { bytes += [(n & 255u) as u8]; n >>= 8u; i -= 1u; }
+    while i > 0u {
+        bytes += [(n & 255_u64) as u8];
+        n >>= 8_u64;
+        i -= 1u;
+    }
     ret bytes;
 }
 
-fn uint_to_be_bytes(n: uint, size: uint) -> [u8] {
+fn u64_to_be_bytes(n: u64, size: uint) -> [u8] {
+    assert size <= 8u;
     let bytes: [u8] = [];
-    let i = (size - 1u) as int;
-    while i >= 0 { bytes += [(n >> ((i * 8) as uint) & 255u) as u8]; i -= 1; }
+    let i = size;
+    while i > 0u {
+        let shift = ((i - 1u) * 8u) as u64;
+        bytes += [(n >> shift) as u8];
+        i -= 1u;
+    }
     ret bytes;
+}
+
+fn u64_from_be_bytes(data: [u8], start: uint, size: uint) -> u64 {
+    let sz = size;
+    assert (sz <= 8u);
+    let val = 0_u64;
+    let pos = start;
+    while sz > 0u {
+        sz -= 1u;
+        val += (data[pos] as u64) << ((sz * 8u) as u64);
+        pos += 1u;
+    }
+    ret val;
 }
 
 impl writer_util for writer {
@@ -393,14 +415,36 @@ impl writer_util for writer {
     fn write_uint(n: uint) { self.write(str::bytes(uint::to_str(n, 10u))); }
 
     fn write_le_uint(n: uint, size: uint) {
-        self.write(uint_to_le_bytes(n, size));
+        self.write(u64_to_le_bytes(n as u64, size));
     }
     fn write_le_int(n: int, size: uint) {
-        self.write(uint_to_le_bytes(n as uint, size));
+        self.write(u64_to_le_bytes(n as u64, size));
     }
+
     fn write_be_uint(n: uint, size: uint) {
-        self.write(uint_to_be_bytes(n, size));
+        self.write(u64_to_be_bytes(n as u64, size));
     }
+    fn write_be_int(n: int, size: uint) {
+        self.write(u64_to_be_bytes(n as u64, size));
+    }
+
+    fn write_be_u64(n: u64) { self.write(u64_to_be_bytes(n, 8u)); }
+    fn write_be_u32(n: u32) { self.write(u64_to_be_bytes(n as u64, 4u)); }
+    fn write_be_u16(n: u16) { self.write(u64_to_be_bytes(n as u64, 2u)); }
+
+    fn write_be_i64(n: i64) { self.write(u64_to_be_bytes(n as u64, 8u)); }
+    fn write_be_i32(n: i32) { self.write(u64_to_be_bytes(n as u64, 4u)); }
+    fn write_be_i16(n: i16) { self.write(u64_to_be_bytes(n as u64, 2u)); }
+
+    fn write_le_u64(n: u64) { self.write(u64_to_le_bytes(n, 8u)); }
+    fn write_le_u32(n: u32) { self.write(u64_to_le_bytes(n as u64, 4u)); }
+    fn write_le_u16(n: u16) { self.write(u64_to_le_bytes(n as u64, 2u)); }
+
+    fn write_le_i64(n: i64) { self.write(u64_to_le_bytes(n as u64, 8u)); }
+    fn write_le_i32(n: i32) { self.write(u64_to_le_bytes(n as u64, 4u)); }
+    fn write_le_i16(n: i16) { self.write(u64_to_le_bytes(n as u64, 2u)); }
+
+    fn write_u8(n: u8) { self.write([n]) }
 }
 
 fn file_writer(path: str, flags: [fileflag]) -> result::t<writer, str> {

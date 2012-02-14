@@ -407,7 +407,6 @@ fn pop<T>(&v: [const T]) -> T unsafe {
     val
 }
 
-#[inline]
 /*
 Function: push
 

@@ -28,6 +28,7 @@ mod middle {
         mod shape;
         mod debuginfo;
     }
+    mod inline;
     mod ty;
     mod ast_map;
     mod resolve;
@@ -121,6 +122,8 @@ mod metadata {
     mod common;
     mod tyencode;
     mod tydecode;
+    mod astencode;
+    mod astencode_gen;
     mod encoder;
     mod decoder;
     mod creader;

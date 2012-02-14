@@ -585,7 +585,7 @@ fn make_phi_bindings(bcx: block, map: [exit_node],
     if success {
         // Copy references that the alias analysis considered unsafe
         ids.values {|node_id|
-            if bcx.ccx().copy_map.contains_key(node_id) {
+            if bcx.ccx().maps.copy_map.contains_key(node_id) {
                 let local = alt bcx.fcx.lllocals.find(node_id) {
                   some(local_mem(x)) { x }
                   _ { bcx.tcx().sess.bug("Someone \
@@ -675,7 +675,7 @@ fn bind_irrefutable_pat(bcx: block, pat: @ast::pat, val: ValueRef,
     alt pat.node {
       ast::pat_ident(_,inner) {
         if pat_is_variant(bcx.tcx().def_map, pat) { ret bcx; }
-        if make_copy || ccx.copy_map.contains_key(pat.id) {
+        if make_copy || ccx.maps.copy_map.contains_key(pat.id) {
             let ty = node_id_type(bcx, pat.id);
             let llty = type_of::type_of(ccx, ty);
             let alloc = alloca(bcx, llty);

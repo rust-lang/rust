@@ -134,7 +134,7 @@ fn trans_vtable_callee(bcx: block, env: callee_env, dict: ValueRef,
                                 static_tis: tis,
                                 tydescs: tydescs,
                                 param_bounds: method.tps,
-                                origins: ccx.dict_map.find(callee_id)});
+                                origins: ccx.maps.dict_map.find(callee_id)});
     }
     {bcx: bcx, val: mptr, kind: owned,
      env: env,
@@ -531,7 +531,7 @@ fn trans_cast(bcx: block, val: @ast::expr, id: ast::node_id, dest: dest)
     let result = get_dest_addr(dest);
     Store(bcx, box, PointerCast(bcx, GEPi(bcx, result, [0, 1]),
                                 T_ptr(val_ty(box))));
-    let {bcx, val: dict} = get_dict(bcx, ccx.dict_map.get(id)[0]);
+    let {bcx, val: dict} = get_dict(bcx, ccx.maps.dict_map.get(id)[0]);
     Store(bcx, dict, PointerCast(bcx, GEPi(bcx, result, [0, 0]),
                                  T_ptr(val_ty(dict))));
     bcx

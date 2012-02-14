@@ -19,6 +19,14 @@ fn path_name_i(idents: [ident]) -> str { str::connect(idents, "::") }
 
 fn local_def(id: node_id) -> def_id { ret {crate: local_crate, node: id}; }
 
+fn stmt_id(s: stmt) -> node_id {
+    alt s.node {
+      stmt_decl(_, id) { id }
+      stmt_expr(_, id) { id }
+      stmt_semi(_, id) { id }
+    }
+}
+
 fn variant_def_ids(d: def) -> {enm: def_id, var: def_id} {
     alt d { def_variant(enum_id, var_id) {
             ret {enm: enum_id, var: var_id}; }

@@ -89,6 +89,8 @@ fn stmt_to_str(s: ast::stmt) -> str { be to_str(s, print_stmt); }
 
 fn item_to_str(i: @ast::item) -> str { be to_str(i, print_item); }
 
+fn attr_to_str(i: ast::attribute) -> str { be to_str(i, print_attribute); }
+
 fn typarams_to_str(tps: [ast::ty_param]) -> str {
     be to_str(tps, print_type_params)
 }

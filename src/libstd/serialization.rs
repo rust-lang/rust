@@ -5,15 +5,25 @@ Support code for serialization.
 */
 
 import list::list;
-import ebml::writer_util;
+import ebml::writer;
 
 iface serializer {
     // Primitive types:
     fn emit_nil();
+    fn emit_uint(v: uint);
     fn emit_u64(v: u64);
+    fn emit_u32(v: u32);
+    fn emit_u16(v: u16);
+    fn emit_u8(v: u8);
+    fn emit_int(v: int);
     fn emit_i64(v: i64);
+    fn emit_i32(v: i32);
+    fn emit_i16(v: i16);
+    fn emit_i8(v: i8);
     fn emit_bool(v: bool);
+    fn emit_float(v: float);
     fn emit_f64(v: f64);
+    fn emit_f32(v: f32);
     fn emit_str(v: str);
 
     // Compound types:
@@ -33,11 +43,27 @@ iface serializer {
 iface deserializer {
     // Primitive types:
     fn read_nil() -> ();
+
+    fn read_uint() -> uint;
     fn read_u64() -> u64;
+    fn read_u32() -> u32;
+    fn read_u16() -> u16;
+    fn read_u8() -> u8;
+
+    fn read_int() -> int;
     fn read_i64() -> i64;
+    fn read_i32() -> i32;
+    fn read_i16() -> i16;
+    fn read_i8() -> i8;
+
+
     fn read_bool() -> bool;
-    fn read_f64() -> f64;
+
     fn read_str() -> str;
+
+    fn read_f64() -> f64;
+    fn read_f32() -> f32;
+    fn read_float() -> float;
 
     // Compound types:
     fn read_enum<T:copy>(name: str, f: fn() -> T) -> T;
@@ -54,8 +80,11 @@ iface deserializer {
 }
 
 enum ebml_serializer_tag {
-    es_u64, es_i64, es_bool,
+    es_uint, es_u64, es_u32, es_u16, es_u8,
+    es_int, es_i64, es_i32, es_i16, es_i8,
+    es_bool,
     es_str,
+    es_f64, es_f32, es_float,
     es_enum, es_enum_vid, es_enum_body,
     es_vec, es_vec_len, es_vec_elt
 }
@@ -63,38 +92,54 @@ enum ebml_serializer_tag {
 impl of serializer for ebml::writer {
     fn emit_nil() {}
 
-    fn emit_num(tag: ebml_serializer_tag, v: u64) {
-        self.wr_tag(tag as uint) {|| self.wr_vu64(v) }
+    // used internally to emit things like the vector length and so on
+    fn _emit_tagged_uint(t: ebml_serializer_tag, v: uint) {
+        assert v <= 0xFFFF_FFFF_u;
+        self.wr_tagged_u32(t as uint, v as u32);
     }
 
-    fn emit_u64(v: u64) { self.emit_num(es_u64, v) }
-    fn emit_i64(v: i64) { self.emit_num(es_i64, v as u64) }
-    fn emit_bool(v: bool) { self.emit_num(es_bool, v as u64) }
+    fn emit_uint(v: uint) { self.wr_tagged_u64(es_uint as uint, v as u64); }
+    fn emit_u64(v: u64) { self.wr_tagged_u64(es_u64 as uint, v); }
+    fn emit_u32(v: u32) { self.wr_tagged_u32(es_u32 as uint, v); }
+    fn emit_u16(v: u16) { self.wr_tagged_u16(es_u16 as uint, v); }
+    fn emit_u8(v: u8)   { self.wr_tagged_u8 (es_u8  as uint, v); }
+
+    fn emit_int(v: int) { self.wr_tagged_i64(es_int as uint, v as i64); }
+    fn emit_i64(v: i64) { self.wr_tagged_i64(es_i64 as uint, v); }
+    fn emit_i32(v: i32) { self.wr_tagged_i32(es_i32 as uint, v); }
+    fn emit_i16(v: i16) { self.wr_tagged_i16(es_i16 as uint, v); }
+    fn emit_i8(v: i8)   { self.wr_tagged_i8 (es_i8  as uint, v); }
+
+    fn emit_bool(v: bool) { self.wr_tagged_u8(es_bool as uint, v as u8) }
+
     fn emit_f64(_v: f64) { fail "TODO"; }
-    fn emit_str(v: str) { self.wr_tag(es_str as uint) {|| self.wr_str(v) } }
+    fn emit_f32(_v: f32) { fail "TODO"; }
+    fn emit_float(_v: float) { fail "TODO"; }
+
+    fn emit_str(v: str) { self.wr_tagged_str(es_str as uint, v) }
 
     fn emit_enum(_name: str, f: fn()) {
-        self.wr_tag(es_enum as uint) {|| f() }
+        self.wr_tag(es_enum as uint, f)
     }
     fn emit_enum_variant(_v_name: str, v_id: uint, _cnt: uint, f: fn()) {
-        self.emit_num(es_enum_vid, v_id as u64);
-        self.wr_tag(es_enum_body as uint) {|| f() }
+        self._emit_tagged_uint(es_enum_vid, v_id);
+        self.wr_tag(es_enum_body as uint, f)
     }
     fn emit_enum_variant_arg(_idx: uint, f: fn()) { f() }
 
     fn emit_vec(len: uint, f: fn()) {
         self.wr_tag(es_vec as uint) {||
-            self.emit_num(es_vec_len, len as u64);
+            self._emit_tagged_uint(es_vec_len, len);
             f()
         }
     }
 
     fn emit_vec_elt(_idx: uint, f: fn()) {
-        self.wr_tag(es_vec_elt as uint) {|| f() }
+        self.wr_tag(es_vec_elt as uint, f)
     }
 
     fn emit_vec_elt(_idx: uint, f: fn()) {
-        self.wr_tag(es_vec_elt as uint) {|| f() }
+        self.wr_tag(es_vec_elt as uint, f)
     }
 
     fn emit_box(f: fn()) { f() }
@@ -145,18 +190,45 @@ impl of deserializer for ebml_deserializer {
         ret r;
     }
 
-    fn next_u64(exp_tag: ebml_serializer_tag) -> u64 {
-        let r = ebml::doc_as_vu64(self.next_doc(exp_tag));
-        #debug["next_u64 exp_tag=%? result=%?", exp_tag, r];
-        ret r;
+    fn _next_uint(exp_tag: ebml_serializer_tag) -> uint {
+        let r = ebml::doc_as_u32(self.next_doc(exp_tag));
+        #debug["_next_uint exp_tag=%? result=%?", exp_tag, r];
+        ret r as uint;
     }
 
     fn read_nil() -> () { () }
-    fn read_u64() -> u64 { self.next_u64(es_u64) }
-    fn read_i64() -> i64 { self.next_u64(es_i64) as i64 }
-    fn read_bool() -> bool { self.next_u64(es_bool) as bool }
-    fn read_f64() -> f64 { fail "Float"; }
-    fn read_str() -> str { ebml::doc_str(self.next_doc(es_str)) }
+
+    fn read_u64() -> u64 { ebml::doc_as_u64(self.next_doc(es_u64)) }
+    fn read_u32() -> u32 { ebml::doc_as_u32(self.next_doc(es_u32)) }
+    fn read_u16() -> u16 { ebml::doc_as_u16(self.next_doc(es_u16)) }
+    fn read_u8 () -> u8  { ebml::doc_as_u8 (self.next_doc(es_u8 )) }
+    fn read_uint() -> uint {
+        let v = ebml::doc_as_u64(self.next_doc(es_uint));
+        if v > (uint::max_value as u64) {
+            fail #fmt["uint %? too large for this architecture", v];
+        }
+        ret v as uint;
+    }
+
+    fn read_i64() -> i64 { ebml::doc_as_u64(self.next_doc(es_i64)) as i64 }
+    fn read_i32() -> i32 { ebml::doc_as_u32(self.next_doc(es_i32)) as i32 }
+    fn read_i16() -> i16 { ebml::doc_as_u16(self.next_doc(es_i16)) as i16 }
+    fn read_i8 () -> i8  { ebml::doc_as_u8 (self.next_doc(es_i8 )) as i8  }
+    fn read_int() -> int {
+        let v = ebml::doc_as_u64(self.next_doc(es_int)) as i64;
+        if v > (int::max_value as i64) || v < (int::min_value as i64) {
+            fail #fmt["int %? out of range for this architecture", v];
+        }
+        ret v as int;
+    }
+
+    fn read_bool() -> bool { ebml::doc_as_u8(self.next_doc(es_bool)) as bool }
+
+    fn read_f64() -> f64 { fail "read_f64()"; }
+    fn read_f32() -> f32 { fail "read_f32()"; }
+    fn read_float() -> float { fail "read_float()"; }
+
+    fn read_str() -> str { ebml::doc_as_str(self.next_doc(es_str)) }
 
     // Compound types:
     fn read_enum<T:copy>(_name: str, f: fn() -> T) -> T {
@@ -164,7 +236,7 @@ impl of deserializer for ebml_deserializer {
     }
 
     fn read_enum_variant<T:copy>(f: fn(uint) -> T) -> T {
-        let idx = self.next_u64(es_enum_vid) as uint;
+        let idx = self._next_uint(es_enum_vid);
         self.push_doc(self.next_doc(es_enum_body)) {||
             f(idx)
         }
@@ -176,7 +248,7 @@ impl of deserializer for ebml_deserializer {
 
     fn read_vec<T:copy>(f: fn(uint) -> T) -> T {
         self.push_doc(self.next_doc(es_vec)) {||
-            let len = self.next_u64(es_vec_len) as uint;
+            let len = self._next_uint(es_vec_len);
             f(len)
         }
     }
@@ -207,6 +279,36 @@ impl of deserializer for ebml_deserializer {
 
     fn read_tup_elt<T:copy>(_idx: uint, f: fn() -> T) -> T {
         f()
+    }
+}
+
+// ___________________________________________________________________________
+// Helper routines
+//
+// These should eventually be coded as traits.
+
+impl serializer_helpers<S: serializer> for S {
+    fn emit_from_vec<T>(v: [T], f: fn(T)) {
+        self.emit_vec(vec::len(v)) {||
+            vec::iteri(v) {|i,e|
+                self.emit_vec_elt(i) {||
+                    f(e)
+                }
+            }
+        }
+    }
+}
+
+impl deserializer_helpers<D: deserializer> for D {
+    fn read_to_vec<T>(f: fn() -> T) -> [T] {
+        self.read_vec {|len|
+            let v = [];
+            vec::reserve(v, len);
+            uint::range(0u, len) {|i|
+                self.read_vec_elt(i) {|| v += [f()] }
+            }
+            v
+        }
     }
 }
 
@@ -257,7 +359,7 @@ fn test_option_int() {
     fn test_v(v: option<int>) {
         #debug["v == %?", v];
         let mbuf = io::mk_mem_buffer();
-        let ebml_w = ebml::create_writer(io::mem_buffer_writer(mbuf));
+        let ebml_w = ebml::mk_writer(io::mem_buffer_writer(mbuf));
         serialize_0(ebml_w, v);
         let ebml_doc = ebml::new_doc(@io::mem_buffer_buf(mbuf));
         let deser = mk_ebml_deserializer(ebml_doc);

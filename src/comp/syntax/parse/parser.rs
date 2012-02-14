@@ -2280,9 +2280,6 @@ fn fn_expr_lookahead(tok: token::token) -> bool {
 fn parse_item(p: parser, attrs: [ast::attribute]) -> option<@ast::item> {
     if eat_word(p, "const") {
         ret some(parse_item_const(p, attrs));
-    } else if eat_word(p, "inline") {
-        expect_word(p, "fn");
-        ret some(parse_item_fn(p, ast::impure_fn, attrs));
     } else if is_word(p, "fn") && !fn_expr_lookahead(p.look_ahead(1u)) {
         p.bump();
         ret some(parse_item_fn(p, ast::impure_fn, attrs));

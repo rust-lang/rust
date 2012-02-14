@@ -21,6 +21,7 @@ import driver::session;
 import session::session;
 import front::attr;
 import middle::freevars::*;
+import middle::inline::inline_map;
 import back::{link, abi, upcall};
 import syntax::{ast, ast_util, codemap};
 import ast_util::local_def;
@@ -57,6 +58,14 @@ enum dest {
     by_val(@mutable ValueRef),
     save_in(ValueRef),
     ignore,
+}
+
+fn dest_str(ccx: crate_ctxt, d: dest) -> str {
+    alt d {
+      by_val(v) { #fmt["by_val(%s)", val_str(ccx.tn, *v)] }
+      save_in(v) { #fmt["save_in(%s)", val_str(ccx.tn, v)] }
+      ignore { "ignore" }
+    }
 }
 
 fn empty_dest_cell() -> @mutable ValueRef {
@@ -1561,7 +1570,7 @@ fn trans_lit(cx: block, lit: ast::lit, dest: dest) -> block {
 fn trans_unary(bcx: block, op: ast::unop, e: @ast::expr,
                un_expr: @ast::expr, dest: dest) -> block {
     // Check for user-defined method call
-    alt bcx.ccx().method_map.find(un_expr.id) {
+    alt bcx.ccx().maps.method_map.find(un_expr.id) {
       some(origin) {
         let callee_id = ast_util::op_expr_callee_id(un_expr);
         let fty = node_id_type(bcx, callee_id);
@@ -1741,7 +1750,7 @@ fn trans_assign_op(bcx: block, ex: @ast::expr, op: ast::binop,
     assert (lhs_res.kind == owned);
 
     // A user-defined operator method
-    alt bcx.ccx().method_map.find(ex.id) {
+    alt bcx.ccx().maps.method_map.find(ex.id) {
       some(origin) {
         let callee_id = ast_util::op_expr_callee_id(ex);
         let fty = node_id_type(bcx, callee_id);
@@ -1852,7 +1861,7 @@ fn trans_lazy_binop(bcx: block, op: lazy_binop_ty, a: @ast::expr,
 fn trans_binary(bcx: block, op: ast::binop, lhs: @ast::expr,
                 rhs: @ast::expr, dest: dest, ex: @ast::expr) -> block {
     // User-defined operators
-    alt bcx.ccx().method_map.find(ex.id) {
+    alt bcx.ccx().maps.method_map.find(ex.id) {
       some(origin) {
         let callee_id = ast_util::op_expr_callee_id(ex);
         let fty = node_id_type(bcx, callee_id);
@@ -2110,8 +2119,29 @@ fn lval_static_fn(bcx: block, fn_id: ast::def_id, id: ast::node_id,
                   substs: option<([ty::t], typeck::dict_res)>)
     -> lval_maybe_callee {
     let ccx = bcx.ccx();
+    let tcx = ccx.tcx;
     let tys = node_id_type_params(bcx, id);
-    let tpt = ty::lookup_item_type(ccx.tcx, fn_id);
+    let tpt = ty::lookup_item_type(tcx, fn_id);
+
+    // Check whether this fn has an inlined copy and, if so, redirect fn_id to
+    // the local id of the inlined copy.
+    let fn_id = {
+        if fn_id.crate == ast::local_crate {
+            fn_id
+        } else {
+            alt ccx.inline_map.find(fn_id) {
+              none { fn_id }
+              some(item) {
+                #debug["Found inlined version of %s with id %d",
+                       ty::item_path_str(tcx, fn_id),
+                       item.id];
+                {crate: ast::local_crate,
+                 node: item.id}
+              }
+            }
+        }
+    };
+
     // The awkwardness below mostly stems from the fact that we're mixing
     // monomorphized and non-monomorphized functions at the moment. If
     // monomorphizing becomes the only approach, this'll be much simpler.
@@ -2126,7 +2156,7 @@ fn lval_static_fn(bcx: block, fn_id: ast::def_id, id: ast::node_id,
             } else { none }
           }
           none {
-            alt ccx.dict_map.find(id) {
+            alt ccx.maps.dict_map.find(id) {
               some(dicts) {
                 alt impl::resolve_dicts_in_fn_ctxt(bcx.fcx, dicts) {
                   some(dicts) { monomorphic_fn(ccx, fn_id, tys, some(dicts)) }
@@ -2146,6 +2176,7 @@ fn lval_static_fn(bcx: block, fn_id: ast::def_id, id: ast::node_id,
           none {}
         }
     }
+
     let val = if fn_id.crate == ast::local_crate {
         // Internal reference.
         assert (ccx.item_ids.contains_key(fn_id.node));
@@ -2181,7 +2212,7 @@ fn lval_static_fn(bcx: block, fn_id: ast::def_id, id: ast::node_id,
                             static_tis: tis,
                             tydescs: tydescs,
                             param_bounds: tpt.bounds,
-                            origins: ccx.dict_map.find(id)});
+                            origins: ccx.maps.dict_map.find(id)});
     }
     ret {bcx: bcx, val: val, kind: owned, env: null_env, generic: gen};
 }
@@ -2347,7 +2378,7 @@ fn trans_index(cx: block, ex: @ast::expr, base: @ast::expr,
 
 fn expr_is_lval(bcx: block, e: @ast::expr) -> bool {
     let ccx = bcx.ccx();
-    ty::expr_is_lval(ccx.method_map, e)
+    ty::expr_is_lval(ccx.maps.method_map, e)
 }
 
 fn trans_callee(bcx: block, e: @ast::expr) -> lval_maybe_callee {
@@ -2356,7 +2387,7 @@ fn trans_callee(bcx: block, e: @ast::expr) -> lval_maybe_callee {
       ast::expr_field(base, ident, _) {
         // Lval means this is a record field, so not a method
         if !expr_is_lval(bcx, e) {
-            alt bcx.ccx().method_map.find(e.id) {
+            alt bcx.ccx().maps.method_map.find(e.id) {
               some(origin) { // An impl method
                 ret impl::trans_method_callee(bcx, e.id, base, origin);
               }
@@ -2553,7 +2584,7 @@ fn trans_arg_expr(cx: block, arg: ty::arg, lldestty: TypeRef,
             val = do_spill_noroot(bcx, val);
             copied = true;
         }
-        if ccx.copy_map.contains_key(e.id) && lv.kind != temporary {
+        if ccx.maps.copy_map.contains_key(e.id) && lv.kind != temporary {
             if !copied {
                 let alloc = alloc_ty(bcx, e_ty);
                 bcx = copy_val(alloc.bcx, INIT, alloc.val,
@@ -2568,7 +2599,7 @@ fn trans_arg_expr(cx: block, arg: ty::arg, lldestty: TypeRef,
     } else if arg_mode == ast::by_copy || arg_mode == ast::by_move {
         let {bcx: cx, val: alloc} = alloc_ty(bcx, e_ty);
         let move_out = arg_mode == ast::by_move ||
-            ccx.last_uses.contains_key(e.id);
+            ccx.maps.last_uses.contains_key(e.id);
         bcx = cx;
         if lv.kind == temporary { revoke_clean(bcx, val); }
         if lv.kind == owned || !ty::type_is_immediate(e_ty) {
@@ -2983,7 +3014,11 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
     let tcx = bcx.tcx();
     debuginfo::update_source_pos(bcx, e.span);
 
-    #debug["trans_expr(%s,%?)", expr_to_str(e), dest];
+    #debug["trans_expr(e=%s,e.id=%d,dest=%s,ty=%s)",
+           expr_to_str(e),
+           e.id,
+           dest_str(bcx.ccx(), dest),
+           ty_to_str(tcx, expr_ty(bcx, e))];
 
     if expr_is_lval(bcx, e) {
         ret lval_to_dps(bcx, e, dest);
@@ -3056,7 +3091,7 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
       }
       ast::expr_index(base, idx) {
         // If it is here, it's not an lval, so this is a user-defined index op
-        let origin = bcx.ccx().method_map.get(e.id);
+        let origin = bcx.ccx().maps.method_map.get(e.id);
         let callee_id = ast_util::op_expr_callee_id(e);
         let fty = node_id_type(bcx, callee_id);
         ret trans_call_inner(bcx, fty, {|bcx|
@@ -3128,7 +3163,7 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
         assert kind == owned;
         ret store_temp_expr(bcx, DROP_EXISTING, addr, src_r,
                             expr_ty(bcx, src),
-                            bcx.ccx().last_uses.contains_key(src.id));
+                            bcx.ccx().maps.last_uses.contains_key(src.id));
       }
       ast::expr_move(dst, src) {
         // FIXME: calculate copy init-ness in typestate.
@@ -3164,7 +3199,7 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
 fn lval_to_dps(bcx: block, e: @ast::expr, dest: dest) -> block {
     let lv = trans_lval(bcx, e), ccx = bcx.ccx();
     let {bcx, val, kind} = lv;
-    let last_use = kind == owned && ccx.last_uses.contains_key(e.id);
+    let last_use = kind == owned && ccx.maps.last_uses.contains_key(e.id);
     let ty = expr_ty(bcx, e);
     alt dest {
       by_val(cell) {
@@ -3717,8 +3752,8 @@ fn alloc_local(cx: block, local: @ast::local) -> block {
     // Do not allocate space for locals that can be kept immediate.
     let ccx = cx.ccx();
     if option::is_some(simple_name) &&
-       !ccx.mutbl_map.contains_key(local.node.pat.id) &&
-       !ccx.last_uses.contains_key(local.node.pat.id) &&
+       !ccx.maps.mutbl_map.contains_key(local.node.pat.id) &&
+       !ccx.maps.last_uses.contains_key(local.node.pat.id) &&
        ty::type_is_immediate(t) {
         alt local.node.init {
           some({op: ast::init_assign, _}) { ret cx; }
@@ -4258,6 +4293,12 @@ fn trans_mod(ccx: crate_ctxt, m: ast::_mod) {
     for item in m.items { trans_item(ccx, *item); }
 }
 
+fn trans_inlined_items(ccx: crate_ctxt, inline_map: inline_map) {
+    inline_map.values {|item|
+        trans_item(ccx, *item)
+    }
+}
+
 fn get_pair_fn_ty(llpairty: TypeRef) -> TypeRef {
     // Bit of a kludge: pick the fn typeref out of the pair.
     ret struct_elt(llpairty, 0u);
@@ -4289,6 +4330,9 @@ fn register_fn_fuller(ccx: crate_ctxt, sp: span, path: path, _flav: str,
     let llfn: ValueRef = decl_fn(ccx.llmod, ps, cc, llfty);
     ccx.item_ids.insert(node_id, llfn);
     ccx.item_symbols.insert(node_id, ps);
+
+    #debug["register_fn_fuller created fn %s for item %d with path %s",
+           val_str(ccx.tn, llfn), node_id, ast_map::path_to_str(path)];
 
     let is_main = is_main_name(path) && !ccx.sess.building_library;
     if is_main { create_main_wrapper(ccx, sp, llfn, node_type); }
@@ -4519,6 +4563,13 @@ fn collect_items(ccx: crate_ctxt, crate: @ast::crate) {
     }));
 }
 
+fn collect_inlined_items(ccx: crate_ctxt, inline_map: inline::inline_map) {
+    let abi = @mutable none::<ast::native_abi>;
+    inline_map.values {|item|
+        collect_item(ccx, abi, item);
+    }
+}
+
 // The constant translation pass.
 fn trans_constant(ccx: crate_ctxt, it: @ast::item) {
     alt it.node {
@@ -4718,10 +4769,8 @@ fn write_abi_version(ccx: crate_ctxt) {
 }
 
 fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
-               output: str, emap: resolve::exp_map, amap: ast_map::map,
-               mutbl_map: mutbl::mutbl_map, copy_map: alias::copy_map,
-               last_uses: last_use::last_uses, impl_map: resolve::impl_map,
-               method_map: typeck::method_map, dict_map: typeck::dict_map)
+               output: str, emap: resolve::exp_map, maps: maps,
+               inline_map: inline::inline_map)
     -> (ModuleRef, link::link_meta) {
     let sha = std::sha1::mk_sha1();
     let link_meta = link::build_link_meta(sess, *crate, output, sha);
@@ -4769,6 +4818,7 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
     } else {
         option::none
     };
+
     let ccx =
         @{sess: sess,
           llmod: llmod,
@@ -4777,7 +4827,6 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           externs: new_str_hash::<ValueRef>(),
           intrinsics: intrinsics,
           item_ids: new_int_hash::<ValueRef>(),
-          ast_map: amap,
           exp_map: emap,
           item_symbols: new_int_hash::<str>(),
           mutable main_fn: none::<ValueRef>,
@@ -4796,12 +4845,8 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           type_sha1s: ty::new_ty_hash(),
           type_short_names: ty::new_ty_hash(),
           tcx: tcx,
-          mutbl_map: mutbl_map,
-          copy_map: copy_map,
-          last_uses: last_uses,
-          impl_map: impl_map,
-          method_map: method_map,
-          dict_map: dict_map,
+          maps: maps,
+          inline_map: inline_map,
           stats:
               {mutable n_static_tydescs: 0u,
                mutable n_derived_tydescs: 0u,
@@ -4823,8 +4868,10 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           dbg_cx: dbg_cx,
           mutable do_not_commit_warning_issued: false};
     collect_items(ccx, crate);
+    collect_inlined_items(ccx, inline_map);
     trans_constants(ccx, crate);
     trans_mod(ccx, crate.node.module);
+    trans_inlined_items(ccx, inline_map);
     fill_crate_map(ccx, crate_map);
     emit_tydescs(ccx);
     gen_shape_tables(ccx);
