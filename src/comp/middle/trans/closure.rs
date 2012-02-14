@@ -494,6 +494,7 @@ fn trans_bind_1(cx: @block_ctxt, outgoing_fty: ty::t,
                 f_res: lval_maybe_callee,
                 args: [option<@ast::expr>], pair_ty: ty::t,
                 dest: dest) -> @block_ctxt {
+    let ccx = bcx_ccx(cx);
     let bound: [@ast::expr] = [];
     for argopt: option<@ast::expr> in args {
         alt argopt { none { } some(e) { bound += [e]; } }
@@ -523,39 +524,37 @@ fn trans_bind_1(cx: @block_ctxt, outgoing_fty: ty::t,
                 }
             }
         }
-        lazily_emit_all_generic_info_tydesc_glues(bcx_ccx(cx), ginfo);
+        lazily_emit_all_generic_info_tydesc_glues(ccx, ginfo);
         (ginfo.item_type, tds, ginfo.param_bounds)
       }
       _ { (outgoing_fty, [], @[]) }
     };
 
-    if bound.len() == 0u && lltydescs.len() == 0u {
+    if bound.len() == 0u && lltydescs.len() == 0u &&
+       (f_res.env == null_env || f_res.env == is_closure) {
         // Trivial 'binding': just return the closure
         let lv = lval_maybe_callee_to_lval(f_res, pair_ty);
-        bcx = lv.bcx;
-        ret memmove_ty(bcx, get_dest_addr(dest), lv.val, pair_ty);
+        ret memmove_ty(lv.bcx, get_dest_addr(dest), lv.val, pair_ty);
     }
-    let closure = alt f_res.env {
-      null_env { none }
-      _ { let (_, cl) = maybe_add_env(cx, f_res); some(cl) }
-    };
-
-    // FIXME: should follow from a precondition on trans_bind_1
-    let ccx = bcx_ccx(cx);
-    check (type_has_static_size(ccx, outgoing_fty));
 
     // Arrange for the bound function to live in the first binding spot
     // if the function is not statically known.
-    let (env_vals, target_res) = alt closure {
-      some(cl) {
+    let (env_vals, target_info) = alt f_res.env {
+      null_env { ([], target_static(f_res.val)) }
+      is_closure {
         // Cast the function we are binding to be the type that the
         // closure will expect it to have. The type the closure knows
         // about has the type parameters substituted with the real types.
         let llclosurety = T_ptr(type_of(ccx, outgoing_fty));
-        let src_loc = PointerCast(bcx, cl, llclosurety);
-        ([env_copy(src_loc, pair_ty, owned)], none)
+        let src_loc = PointerCast(bcx, f_res.val, llclosurety);
+        ([env_copy(src_loc, pair_ty, owned)], target_closure)
       }
-      none { ([], some(f_res.val)) }
+      self_env(slf, slf_t) {
+        ([env_copy(slf, slf_t, owned)], target_self(f_res.val))
+      }
+      dict_env(_, _) {
+        ccx.sess.unimpl("binding of dynamic method calls");
+      }
     };
 
     // Actually construct the closure
@@ -567,7 +566,7 @@ fn trans_bind_1(cx: @block_ctxt, outgoing_fty: ty::t,
     // Make thunk
     let llthunk = trans_bind_thunk(
         cx.fcx.ccx, cx.fcx.path, pair_ty, outgoing_fty_real, args,
-        cdata_ty, *param_bounds, target_res);
+        cdata_ty, *param_bounds, target_info);
 
     // Fill the function pair
     fill_fn_pair(bcx, get_dest_addr(dest), llthunk.val, llbox);
@@ -722,6 +721,12 @@ fn make_opaque_cbox_free_glue(
     }
 }
 
+enum target_info {
+    target_closure,
+    target_static(ValueRef),
+    target_self(ValueRef),
+}
+
 // pth is cx.path
 fn trans_bind_thunk(ccx: @crate_ctxt,
                     path: path,
@@ -730,7 +735,7 @@ fn trans_bind_thunk(ccx: @crate_ctxt,
                     args: [option<@ast::expr>],
                     cdata_ty: ty::t,
                     param_bounds: [ty::param_bounds],
-                    target_fn: option<ValueRef>)
+                    target_info: target_info)
     -> {val: ValueRef, ty: TypeRef} {
 
     // If we supported constraints on record fields, we could make the
@@ -800,11 +805,11 @@ fn trans_bind_thunk(ccx: @crate_ctxt,
     // creating.  (In our running example, target is the function f.)  Pick
     // out the pointer to the target function from the environment. The
     // target function lives in the first binding spot.
-    let (lltargetfn, lltargetenv, starting_idx) = alt target_fn {
-      some(fptr) {
+    let (lltargetfn, lltargetenv, starting_idx) = alt target_info {
+      target_static(fptr) {
         (fptr, llvm::LLVMGetUndef(T_opaque_cbox_ptr(ccx)), 0)
       }
-      none {
+      target_closure {
         let {bcx: cx, val: pair} =
             GEP_tup_like(bcx, cdata_ty, llcdata,
                          [0, abi::closure_body_bindings, 0]);
@@ -814,6 +819,12 @@ fn trans_bind_thunk(ccx: @crate_ctxt,
             (cx, GEPi(cx, pair, [0, abi::fn_field_code]));
         bcx = cx;
         (lltargetfn, lltargetenv, 1)
+      }
+      target_self(fptr) {
+        let rs = GEP_tup_like(bcx, cdata_ty, llcdata,
+                              [0, abi::closure_body_bindings, 0]);
+        bcx = rs.bcx;
+        (fptr, PointerCast(bcx, rs.val, T_opaque_cbox_ptr(ccx)), 1)
       }
     };
 

@@ -2188,7 +2188,7 @@ type lval_result = {bcx: @block_ctxt, val: ValueRef, kind: lval_kind};
 enum callee_env {
     null_env,
     is_closure,
-    self_env(ValueRef),
+    self_env(ValueRef, ty::t),
     dict_env(ValueRef, ValueRef),
 }
 type lval_maybe_callee = {bcx: @block_ctxt,
@@ -2597,36 +2597,28 @@ fn trans_lval(cx: @block_ctxt, e: @ast::expr) -> lval_result {
     }
 }
 
-fn maybe_add_env(bcx: @block_ctxt, c: lval_maybe_callee)
-    -> (lval_kind, ValueRef) {
-    alt c.env {
-      is_closure { (c.kind, c.val) }
-      self_env(_) | dict_env(_, _) {
-        fail "Taking the value of a method does not work yet (issue #435)";
-      }
-      null_env {
-        let llfnty = llvm::LLVMGetElementType(val_ty(c.val));
-        (temporary, create_real_fn_pair(bcx, llfnty, c.val,
-                                        null_env_ptr(bcx)))
-      }
-    }
-}
-
 fn lval_maybe_callee_to_lval(c: lval_maybe_callee, ty: ty::t) -> lval_result {
-    alt c.generic {
-      generic_full(gi) {
+    let must_bind = alt c.generic { generic_full(_) { true } _ { false } } ||
+        alt c.env { self_env(_, _) | dict_env(_, _) { true } _ { false } };
+    if must_bind {
         let n_args = ty::ty_fn_args(ty).len();
-        let args = vec::init_elt(n_args, none::<@ast::expr>);
+        let args = vec::init_elt(n_args, none);
         let space = alloc_ty(c.bcx, ty);
         let bcx = closure::trans_bind_1(space.bcx, ty, c, args, ty,
                                               save_in(space.val));
         add_clean_temp(bcx, space.val, ty);
-        ret {bcx: bcx, val: space.val, kind: temporary};
-      }
-      _ {
-        let (kind, val) = maybe_add_env(c.bcx, c);
-        ret {bcx: c.bcx, val: val, kind: kind};
-      }
+        {bcx: bcx, val: space.val, kind: temporary}
+    } else {
+        alt c.env {
+          is_closure { {bcx: c.bcx, val: c.val, kind: c.kind} }
+          null_env {
+            let llfnty = llvm::LLVMGetElementType(val_ty(c.val));
+            let llfn = create_real_fn_pair(c.bcx, llfnty, c.val,
+                                           null_env_ptr(c.bcx));
+            {bcx: c.bcx, val: llfn, kind: temporary}
+          }
+          _ { fail; }
+        }
     }
 }
 
@@ -2762,7 +2754,7 @@ fn trans_arg_expr(cx: @block_ctxt, arg: ty::arg, lldestty: TypeRef,
         if arg_mode == ast::by_val && (lv.kind == owned || !imm) {
             val = Load(bcx, val);
         }
-        } else if arg_mode == ast::by_copy {
+    } else if arg_mode == ast::by_copy {
         let {bcx: cx, val: alloc} = alloc_ty(bcx, e_ty);
         let last_use = ccx.last_uses.contains_key(e.id);
         bcx = cx;
@@ -2926,16 +2918,21 @@ fn trans_call_inner(in_cx: @block_ctxt, fn_expr_ty: ty::t,
     let cx = new_scope_block_ctxt(in_cx, "call");
     Br(in_cx, cx.llbb);
     let f_res = get_callee(cx);
-    let bcx = f_res.bcx;
+    let bcx = f_res.bcx, ccx = bcx_ccx(cx);
 
     let faddr = f_res.val;
     let llenv, dict_param = none;
     alt f_res.env {
       null_env {
-        llenv = llvm::LLVMGetUndef(T_opaque_box_ptr(bcx_ccx(cx)));
+        llenv = llvm::LLVMGetUndef(T_opaque_box_ptr(ccx));
       }
-      self_env(e) { llenv = e; }
-      dict_env(dict, e) { llenv = e; dict_param = some(dict); }
+      self_env(e, _) {
+        llenv = PointerCast(bcx, e, T_opaque_box_ptr(ccx));
+      }
+      dict_env(dict, e) {
+        llenv = PointerCast(bcx, e, T_opaque_box_ptr(ccx));
+        dict_param = some(dict);
+      }
       is_closure {
         // It's a closure. Have to fetch the elements
         if f_res.kind == owned {
@@ -3306,7 +3303,9 @@ fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
         ret trans_call(bcx, f, args, e.id, dest);
       }
       ast::expr_field(_, _, _) {
-        fail "Taking the value of a method does not work yet (issue #435)";
+        let callee = trans_callee(bcx, e), ty = expr_ty(bcx, e);
+        let lv = lval_maybe_callee_to_lval(callee, ty);
+        ret memmove_ty(lv.bcx, get_dest_addr(dest), lv.val, ty);
       }
       ast::expr_index(base, idx) {
         // If it is here, it's not an lval, so this is a user-defined index op

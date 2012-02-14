@@ -1674,7 +1674,8 @@ fn lookup_method_inner(fcx: @fn_ctxt, expr: @ast::expr,
                 alt vec::position(*ifce_methods, {|m| m.ident == name}) {
                   some(pos) {
                     let m = ifce_methods[pos];
-                    ret some({method_ty: ty::mk_fn(tcx, m.fty),
+                    ret some({method_ty: ty::mk_fn(tcx, {proto: ast::proto_box
+                                                         with m.fty}),
                               n_tps: vec::len(*m.tps),
                               substs: tps,
                               origin: method_param(iid, pos, n, bound_n),
@@ -1694,7 +1695,7 @@ fn lookup_method_inner(fcx: @fn_ctxt, expr: @ast::expr,
         let i = 0u;
         for m in *ty::iface_methods(tcx, did) {
             if m.ident == name {
-                let fty = ty::mk_fn(tcx, m.fty);
+                let fty = ty::mk_fn(tcx, {proto: ast::proto_box with m.fty});
                 if ty::type_has_vars(fty) {
                     tcx.sess.span_fatal(
                         expr.span, "can not call a method that contains a \
@@ -1717,13 +1718,20 @@ fn lookup_method_inner(fcx: @fn_ctxt, expr: @ast::expr,
             alt tcx.items.get(did.node) {
               ast_map::node_method(m, _, _) {
                 let mt = ty_of_method(tcx, m_check, m);
-                ty::mk_fn(tcx, mt.fty)
+                ty::mk_fn(tcx, {proto: ast::proto_box with mt.fty})
               }
               _ {
                   tcx.sess.bug("Undocumented invariant in ty_from_did");
               }
             }
-        } else { csearch::get_type(tcx, did).ty }
+        } else {
+            alt ty::get(csearch::get_type(tcx, did).ty).struct {
+              ty::ty_fn(fty) {
+                ty::mk_fn(tcx, {proto: ast::proto_box with fty})
+              }
+              _ { fail; }
+            }
+        }
     }
 
     let result = none, complained = false;

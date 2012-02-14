@@ -63,11 +63,9 @@ fn trans_self_arg(bcx: @block_ctxt, base: @ast::expr) -> result {
     let tz = [], tr = [];
     let basety = expr_ty(bcx, base);
     let m_by_ref = ast::expl(ast::by_ref);
-    let {bcx, val} =
-        trans_arg_expr(bcx, {mode: m_by_ref, ty: basety},
-                       T_ptr(type_of_or_i8(bcx_ccx(bcx), basety)), tz,
-                       tr, base);
-    rslt(bcx, PointerCast(bcx, val, T_opaque_cbox_ptr(bcx_ccx(bcx))))
+    trans_arg_expr(bcx, {mode: m_by_ref, ty: basety},
+                   T_ptr(type_of_or_i8(bcx_ccx(bcx), basety)), tz,
+                   tr, base)
 }
 
 fn trans_method_callee(bcx: @block_ctxt, callee_id: ast::node_id,
@@ -100,7 +98,8 @@ fn trans_static_callee(bcx: @block_ctxt, callee_id: ast::node_id,
                        substs: option<([ty::t], typeck::dict_res)>)
     -> lval_maybe_callee {
     let {bcx, val} = trans_self_arg(bcx, base);
-    {env: self_env(val) with lval_static_fn(bcx, did, callee_id, substs)}
+    {env: self_env(val, node_id_type(bcx, base.id))
+     with lval_static_fn(bcx, did, callee_id, substs)}
 }
 
 fn wrapper_fn_ty(ccx: @crate_ctxt, dict_ty: TypeRef, fty: ty::t,
@@ -110,7 +109,7 @@ fn wrapper_fn_ty(ccx: @crate_ctxt, dict_ty: TypeRef, fty: ty::t,
     {ty: fty, llty: T_fn([dict_ty] + inputs, output)}
 }
 
-fn trans_vtable_callee(bcx: @block_ctxt, self: ValueRef, dict: ValueRef,
+fn trans_vtable_callee(bcx: @block_ctxt, env: callee_env, dict: ValueRef,
                        callee_id: ast::node_id, iface_id: ast::def_id,
                        n_method: uint) -> lval_maybe_callee {
     let bcx = bcx, ccx = bcx_ccx(bcx), tcx = ccx.tcx;
@@ -139,7 +138,7 @@ fn trans_vtable_callee(bcx: @block_ctxt, self: ValueRef, dict: ValueRef,
                                 origins: ccx.dict_map.find(callee_id)});
     }
     {bcx: bcx, val: mptr, kind: owned,
-     env: dict_env(dict, self),
+     env: env,
      generic: generic}
 }
 
@@ -181,7 +180,8 @@ fn trans_param_callee(bcx: @block_ctxt, callee_id: ast::node_id,
                       n_param: uint, n_bound: uint) -> lval_maybe_callee {
     let {bcx, val} = trans_self_arg(bcx, base);
     let dict = option::get(bcx.fcx.lltyparams[n_param].dicts)[n_bound];
-    trans_vtable_callee(bcx, val, dict, callee_id, iface_id, n_method)
+    trans_vtable_callee(bcx, dict_env(dict, val), dict,
+                        callee_id, iface_id, n_method)
 }
 
 // Method callee where the dict comes from a boxed iface
@@ -193,9 +193,9 @@ fn trans_iface_callee(bcx: @block_ctxt, callee_id: ast::node_id,
                                      T_ptr(T_ptr(T_dict()))));
     let box = Load(bcx, GEPi(bcx, val, [0, 1]));
     // FIXME[impl] I doubt this is alignment-safe
-    let self = PointerCast(bcx, GEPi(bcx, box, [0, abi::box_field_body]),
-                           T_opaque_cbox_ptr(bcx_ccx(bcx)));
-    trans_vtable_callee(bcx, self, dict, callee_id, iface_id, n_method)
+    let self = GEPi(bcx, box, [0, abi::box_field_body]);
+    trans_vtable_callee(bcx, dict_env(dict, self), dict,
+                        callee_id, iface_id, n_method)
 }
 
 fn llfn_arg_tys(ft: TypeRef) -> {inputs: [TypeRef], output: TypeRef} {
