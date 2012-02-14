@@ -418,6 +418,10 @@ fn configure(opts: options) -> cargo {
 
     if c.pgp {
         pgp::init(c.root);
+    } else {
+        warn("command \"gpg\" is not found");
+        warn("you have to install \"gpg\" from source " +
+             " or package manager to get it to work correctly");
     }
 
     c
@@ -436,8 +440,8 @@ fn test_one_crate(_c: cargo, _path: str, cf: str, _p: pkg) {
     let buildpath = fs::connect(_path, "/test");
     need_dir(buildpath);
     #debug("Testing: %s -> %s", cf, buildpath);
-    let p = run::program_output("rustc", ["--out-dir", buildpath, "--test",
-                                          cf]);
+    let p = run::program_output(rustc_sysroot(),
+                                ["--out-dir", buildpath, "--test", cf]);
     if p.status != 0 {
         error(#fmt["rustc failed: %d\n%s\n%s", p.status, p.err, p.out]);
         ret;
@@ -452,7 +456,8 @@ fn install_one_crate(c: cargo, _path: str, cf: str, _p: pkg) {
     let buildpath = fs::connect(_path, "/build");
     need_dir(buildpath);
     #debug("Installing: %s -> %s", cf, buildpath);
-    let p = run::program_output("rustc", ["--out-dir", buildpath, cf]);
+    let p = run::program_output(rustc_sysroot(),
+                                ["--out-dir", buildpath, cf]);
     if p.status != 0 {
         error(#fmt["rustc failed: %d\n%s\n%s", p.status, p.err, p.out]);
         ret;
@@ -470,6 +475,19 @@ fn install_one_crate(c: cargo, _path: str, cf: str, _p: pkg) {
             #debug("  lib: %s", ct);
             run::run_program("cp", [ct, c.libdir]);
         }
+    }
+}
+
+fn rustc_sysroot() -> str {
+    alt os::get_exe_path() {
+        some(_path) {
+            let path = [_path, "..", "bin", "rustc"];
+            check vec::is_not_empty(path);
+            let rustc = fs::normalize(fs::connect_many(path));
+            #debug("  rustc: %s", rustc);
+            rustc
+        }
+        none { "rustc" }
     }
 }
 
