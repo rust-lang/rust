@@ -3302,9 +3302,11 @@ fn trans_expr(bcx: @block_ctxt, e: @ast::expr, dest: dest) -> @block_ctxt {
       ast::expr_call(f, args, _) {
         ret trans_call(bcx, f, args, e.id, dest);
       }
-      ast::expr_field(_, _, _) {
+      ast::expr_field(base, _, _) {
+        if dest == ignore { ret trans_expr(bcx, base, ignore); }
         let callee = trans_callee(bcx, e), ty = expr_ty(bcx, e);
         let lv = lval_maybe_callee_to_lval(callee, ty);
+        revoke_clean(lv.bcx, lv.val);
         ret memmove_ty(lv.bcx, get_dest_addr(dest), lv.val, ty);
       }
       ast::expr_index(base, idx) {
