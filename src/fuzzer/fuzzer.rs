@@ -16,7 +16,7 @@ fn write_file(filename: str, content: str) {
 }
 
 fn contains(haystack: str, needle: str) -> bool {
-    str::find(haystack, needle) != -1
+    str::contains(haystack, needle)
 }
 
 fn find_rust_files(&files: [str], path: str) {

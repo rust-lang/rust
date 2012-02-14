@@ -269,28 +269,28 @@ fn pretty_print_input(sess: session, cfg: ast::crate_cfg, input: str,
 }
 
 fn get_os(triple: str) -> option<session::os> {
-    ret if str::find(triple, "win32") >= 0 ||
-               str::find(triple, "mingw32") >= 0 {
+    ret if str::contains(triple, "win32") ||
+               str::contains(triple, "mingw32") {
             some(session::os_win32)
-        } else if str::find(triple, "darwin") >= 0 {
+        } else if str::contains(triple, "darwin") {
             some(session::os_macos)
-        } else if str::find(triple, "linux") >= 0 {
+        } else if str::contains(triple, "linux") {
             some(session::os_linux)
-        } else if str::find(triple, "freebsd") >= 0 {
+        } else if str::contains(triple, "freebsd") {
             some(session::os_freebsd)
         } else { none };
 }
 
 fn get_arch(triple: str) -> option<session::arch> {
-    ret if str::find(triple, "i386") >= 0 || str::find(triple, "i486") >= 0 ||
-               str::find(triple, "i586") >= 0 ||
-               str::find(triple, "i686") >= 0 ||
-               str::find(triple, "i786") >= 0 {
+    ret if str::contains(triple, "i386") || str::contains(triple, "i486") ||
+               str::contains(triple, "i586") ||
+               str::contains(triple, "i686") ||
+               str::contains(triple, "i786") {
             some(session::arch_x86)
-        } else if str::find(triple, "x86_64") >= 0 {
+        } else if str::contains(triple, "x86_64") {
             some(session::arch_x86_64)
-        } else if str::find(triple, "arm") >= 0 ||
-                      str::find(triple, "xscale") >= 0 {
+        } else if str::contains(triple, "arm") ||
+                      str::contains(triple, "xscale") {
             some(session::arch_arm)
         } else { none };
 }

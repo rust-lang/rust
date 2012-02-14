@@ -70,6 +70,7 @@ export
    index,
    rindex,
    find,
+   find_bytes,
    contains,
    starts_with,
    ends_with,
@@ -661,9 +662,10 @@ fn replace(s: str, from: str, to: str) : is_not_empty(from) -> str unsafe {
                      unsafe::slice_bytes(s, len_bytes(from), len_bytes(s)),
                                        from, to);
     } else {
-        let idx = find(s, from);
-        if idx == -1 {
-            ret s;
+        let idx;
+        alt find_bytes(s, from) {
+            option::some(x) { idx = x; }
+            option::none { ret s; }
         }
         let before = unsafe::slice_bytes(s, 0u, idx as uint);
         let after  = unsafe::slice_bytes(s, idx as uint + len_bytes(from),
@@ -872,38 +874,62 @@ fn rindex(ss: str, cc: char) -> option<uint> {
     ret option::none;
 }
 
-/*
-Function: find
+//Function: find_bytes
+//
+// Find the char position of the first instance of one string
+// within another, or return option::none
+//
+// FIXME: Boyer-Moore should be significantly faster
+fn find_bytes(haystack: str, needle: str) -> option<uint> {
+    let haystack_len = len_bytes(haystack);
+    let needle_len   = len_bytes(needle);
 
-Finds the index of the first matching substring.
-Returns -1 if `haystack` does not contain `needle`.
+    if needle_len == 0u { ret option::some(0u); }
+    if needle_len > haystack_len { ret option::none; }
 
-Parameters:
-
-haystack - The string to look in
-needle - The string to look for
-
-Returns:
-
-The index of the first occurance of `needle`, or -1 if not found.
-
-FIXME: return an option<char position uint> instead
-*/
-fn find(haystack: str, needle: str) -> int {
-    let haystack_len: int = len_bytes(haystack) as int;
-    let needle_len: int = len_bytes(needle) as int;
-    if needle_len == 0 { ret 0; }
-    fn match_at(haystack: str, needle: str, i: int) -> bool {
-        let j: int = i;
-        for c: u8 in needle { if haystack[j] != c { ret false; } j += 1; }
+    fn match_at(haystack: str, needle: str, ii: uint) -> bool {
+        let jj = ii;
+        for c: u8 in needle { if haystack[jj] != c { ret false; } jj += 1u; }
         ret true;
     }
-    let i: int = 0;
-    while i <= haystack_len - needle_len {
-        if match_at(haystack, needle, i) { ret i; }
-        i += 1;
+
+    let ii = 0u;
+    while ii <= haystack_len - needle_len {
+        if match_at(haystack, needle, ii) { ret option::some(ii); }
+        ii += 1u;
     }
-    ret -1;
+
+    ret option::none;
+}
+
+// Function: find
+//
+// Find the char position of the first instance of one string
+// within another, or return option::none
+fn find(haystack: str, needle: str) -> option<uint> {
+   alt find_bytes(haystack, needle) {
+      option::none { ret option::none; }
+      option::some(nn) { ret option::some(b2c_pos(haystack, nn)); }
+   }
+}
+
+// Function: b2c_pos
+//
+// Convert a byte position into a char position
+// within a given string
+fn b2c_pos(ss: str, bpos: uint) -> uint {
+   assert bpos == 0u || bpos < len_bytes(ss);
+
+   let ii = 0u;
+   let cpos = 0u;
+
+   while ii < bpos {
+      let sz = utf8_char_width(ss[ii]);
+      ii += sz;
+      cpos += 1u;
+   }
+
+   ret cpos;
 }
 
 /*
@@ -917,7 +943,7 @@ haystack - The string to look in
 needle - The string to look for
 */
 fn contains(haystack: str, needle: str) -> bool {
-    0 <= find(haystack, needle)
+    option::is_some(find_bytes(haystack, needle))
 }
 
 /*
@@ -930,12 +956,12 @@ Parameters:
 haystack - The string to look in
 needle - The string to look for
 */
-fn starts_with(haystack: str, needle: str) -> bool {
-    let haystack_len: uint = len(haystack);
-    let needle_len: uint = len(needle);
+fn starts_with(haystack: str, needle: str) -> bool unsafe {
+    let haystack_len: uint = len_bytes(haystack);
+    let needle_len: uint = len_bytes(needle);
     if needle_len == 0u { ret true; }
     if needle_len > haystack_len { ret false; }
-    ret eq(substr(haystack, 0u, needle_len), needle);
+    ret eq(unsafe::slice_bytes(haystack, 0u, needle_len), needle);
 }
 
 /*
@@ -1695,25 +1721,39 @@ mod tests {
     }
 
     #[test]
-    fn test_find() {
-        fn t(haystack: str, needle: str, i: int) {
-            let j: int = find(haystack, needle);
-            log(debug, "searched for " + needle);
-            log(debug, j);
-            assert (i == j);
-        }
-        t("this is a simple", "is a", 5);
-        t("this is a simple", "is z", -1);
-        t("this is a simple", "", 0);
-        t("this is a simple", "simple", 10);
-        t("this", "simple", -1);
+    fn test_find_bytes() {
+        // byte positions
+        assert (find_bytes("banana", "apple pie") == option::none);
+        assert (find_bytes("", "") == option::some(0u));
 
-        // FIXME: return option<char> position instead
         let data = "ประเทศไทย中华Việt Nam";
-        assert (find(data, "ประเ") ==  0);
-        assert (find(data, "ะเ")   ==  6); // byte position
-        assert (find(data, "中华") ==  27); // byte position
-        assert (find(data, "ไท华") == -1);
+        assert (find_bytes(data, "")     == option::some(0u));
+        assert (find_bytes(data, "ประเ") == option::some( 0u));
+        assert (find_bytes(data, "ะเ")   == option::some( 6u));
+        assert (find_bytes(data, "中华") == option::some(27u));
+        assert (find_bytes(data, "ไท华") == option::none);
+    }
+
+    #[test]
+    fn test_find() {
+        // char positions
+        assert (find("banana", "apple pie") == option::none);
+        assert (find("", "") == option::some(0u));
+
+        let data = "ประเทศไทย中华Việt Nam";
+        assert (find(data, "")     == option::some(0u));
+        assert (find(data, "ประเ") == option::some(0u));
+        assert (find(data, "ะเ")   == option::some(2u));
+        assert (find(data, "中华") == option::some(9u));
+        assert (find(data, "ไท华") == option::none);
+    }
+
+    #[test]
+    fn test_b2c_pos() {
+        let data = "ประเทศไทย中华Việt Nam";
+        assert 0u == b2c_pos(data, 0u);
+        assert 2u == b2c_pos(data, 6u);
+        assert 9u == b2c_pos(data, 27u);
     }
 
     #[test]
