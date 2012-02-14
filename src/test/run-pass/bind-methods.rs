@@ -1,3 +1,5 @@
+// xfail-test
+
 iface foo {
     fn foo() -> int;
     fn bar(p: int) -> int;
