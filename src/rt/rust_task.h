@@ -231,6 +231,7 @@ rust_task::call_on_c_stack(void *args, void *fn_ptr) {
     // Too expensive to check
     // I(thread, on_rust_stack());
 
+    uintptr_t prev_rust_sp = next_rust_sp;
     next_rust_sp = get_sp();
 
     bool borrowed_a_c_stack = false;
@@ -251,6 +252,8 @@ rust_task::call_on_c_stack(void *args, void *fn_ptr) {
     if (borrowed_a_c_stack) {
         return_c_stack();
     }
+
+    next_rust_sp = prev_rust_sp;
 }
 
 inline void
@@ -259,11 +262,14 @@ rust_task::call_on_rust_stack(void *args, void *fn_ptr) {
     // I(thread, !on_rust_stack());
     I(thread, next_rust_sp);
 
+    uintptr_t prev_c_sp = next_c_sp;
     next_c_sp = get_sp();
 
     uintptr_t sp = sanitize_next_sp(next_rust_sp);
 
     __morestack(args, fn_ptr, sp);
+
+    next_c_sp = prev_c_sp;
 }
 
 inline void
