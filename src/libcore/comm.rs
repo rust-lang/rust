@@ -26,6 +26,7 @@ import task;
 
 export send;
 export recv;
+export peek;
 export chan::{};
 export port::{};
 
@@ -153,6 +154,11 @@ fn recv_<T: send>(p: *rust_port) -> T {
     ret res;
 }
 
+#[doc = "Returns true if there are messages available"]
+fn peek<T: send>(p: port<T>) -> bool {
+    rustrt::rust_port_size(***p) != 0u as ctypes::size_t
+}
+
 #[doc(
   brief = "Constructs a channel. The channel is bound to the \
            port used to construct it."
@@ -203,3 +209,13 @@ fn chan_chan() {
     recv(p);
 }
 
+#[test]
+fn test_peek() {
+    let po = port();
+    let ch = chan(po);
+    assert !peek(po);
+    send(ch, ());
+    assert peek(po);
+    recv(po);
+    assert !peek(po);
+}
