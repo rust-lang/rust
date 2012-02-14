@@ -28,6 +28,7 @@ type upcalls =
      dynastack_free: ValueRef,
      alloc_c_stack: ValueRef,
      call_shim_on_c_stack: ValueRef,
+     call_shim_on_rust_stack: ValueRef,
      rust_personality: ValueRef,
      reset_stack_limit: ValueRef};
 
@@ -106,6 +107,9 @@ fn declare_upcalls(targ_cfg: @session::config,
                 // arguments: void *args, void *fn_ptr
                 [T_ptr(T_i8()), T_ptr(T_i8())],
                 int_t),
+          call_shim_on_rust_stack:
+              d("call_shim_on_rust_stack",
+                [T_ptr(T_i8()), T_ptr(T_i8())], int_t),
           rust_personality:
               d("rust_personality", [], T_i32()),
           reset_stack_limit:

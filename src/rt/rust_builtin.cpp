@@ -657,8 +657,8 @@ rust_dbg_lock_signal(lock_and_signal *lock) {
 typedef void *(*dbg_callback)(void*);
 
 extern "C" CDECL void *
-rust_dbg_call(dbg_callback *cb, void *data) {
-    return (*cb)(data);
+rust_dbg_call(dbg_callback cb, void *data) {
+    return cb(data);
 }
 
 //
