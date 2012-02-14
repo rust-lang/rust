@@ -283,7 +283,7 @@ fn revoke_clean(cx: @block_ctxt, val: ValueRef) {
     sc_cx.cleanups =
         vec::slice(sc_cx.cleanups, 0u, found as uint) +
             vec::slice(sc_cx.cleanups, (found as uint) + 1u,
-                            vec::len(sc_cx.cleanups));
+                            sc_cx.cleanups.len());
     sc_cx.lpad_dirty = true;
     ret;
 }
@@ -495,7 +495,7 @@ fn T_size_t(targ_cfg: @session::config) -> TypeRef {
 
 fn T_fn(inputs: [TypeRef], output: TypeRef) -> TypeRef unsafe {
     ret llvm::LLVMFunctionType(output, to_ptr(inputs),
-                               vec::len::<TypeRef>(inputs) as unsigned,
+                               inputs.len() as unsigned,
                                False);
 }
 
@@ -508,7 +508,7 @@ fn T_ptr(t: TypeRef) -> TypeRef {
 }
 
 fn T_struct(elts: [TypeRef]) -> TypeRef unsafe {
-    ret llvm::LLVMStructType(to_ptr(elts), vec::len(elts) as unsigned, False);
+    ret llvm::LLVMStructType(to_ptr(elts), elts.len() as unsigned, False);
 }
 
 fn T_named_struct(name: str) -> TypeRef {
@@ -518,7 +518,7 @@ fn T_named_struct(name: str) -> TypeRef {
 
 fn set_struct_body(t: TypeRef, elts: [TypeRef]) unsafe {
     llvm::LLVMStructSetBody(t, to_ptr(elts),
-                            vec::len(elts) as unsigned, False);
+                            elts.len() as unsigned, False);
 }
 
 fn T_empty_struct() -> TypeRef { ret T_struct([]); }
@@ -790,28 +790,28 @@ fn C_zero_byte_arr(size: uint) -> ValueRef unsafe {
     let elts: [ValueRef] = [];
     while i < size { elts += [C_u8(0u)]; i += 1u; }
     ret llvm::LLVMConstArray(T_i8(), vec::to_ptr(elts),
-                             vec::len(elts) as unsigned);
+                             elts.len() as unsigned);
 }
 
 fn C_struct(elts: [ValueRef]) -> ValueRef unsafe {
-    ret llvm::LLVMConstStruct(vec::to_ptr(elts), vec::len(elts) as unsigned,
+    ret llvm::LLVMConstStruct(vec::to_ptr(elts), elts.len() as unsigned,
                               False);
 }
 
 fn C_named_struct(T: TypeRef, elts: [ValueRef]) -> ValueRef unsafe {
     ret llvm::LLVMConstNamedStruct(T, vec::to_ptr(elts),
-                                   vec::len(elts) as unsigned);
+                                   elts.len() as unsigned);
 }
 
 fn C_array(ty: TypeRef, elts: [ValueRef]) -> ValueRef unsafe {
     ret llvm::LLVMConstArray(ty, vec::to_ptr(elts),
-                             vec::len(elts) as unsigned);
+                             elts.len() as unsigned);
 }
 
 fn C_bytes(bytes: [u8]) -> ValueRef unsafe {
     ret llvm::LLVMConstString(
         unsafe::reinterpret_cast(vec::to_ptr(bytes)),
-        vec::len(bytes) as unsigned, False);
+        bytes.len() as unsigned, False);
 }
 
 fn C_shape(ccx: @crate_ctxt, bytes: [u8]) -> ValueRef {
@@ -835,7 +835,7 @@ pure fn valid_variant_index(ix: uint, cx: @block_ctxt, enum_id: ast::def_id,
     unchecked{
         let variant =
             ty::enum_variant_with_id(bcx_tcx(cx), enum_id, variant_id);
-        ix < vec::len(variant.args)
+        ix < variant.args.len()
     }
 }
 

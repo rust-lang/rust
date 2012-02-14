@@ -122,10 +122,10 @@ fn trans_vtable_callee(bcx: @block_ctxt, self: ValueRef, dict: ValueRef,
                              T_ptr(T_array(T_ptr(llfty), n_method + 1u)));
     let mptr = Load(bcx, GEPi(bcx, vtable, [0, n_method as int]));
     let generic = generic_none;
-    if vec::len(*method.tps) > 0u || ty::type_has_params(fty) {
+    if (*method.tps).len() > 0u || ty::type_has_params(fty) {
         let tydescs = [], tis = [];
         let tptys = node_id_type_params(bcx, callee_id);
-        for t in vec::tail_n(tptys, vec::len(tptys) - vec::len(*method.tps)) {
+        for t in vec::tail_n(tptys, tptys.len() - (*method.tps).len()) {
             let ti = none;
             let td = get_tydesc(bcx, t, true, ti).result;
             tis += [ti];
@@ -297,10 +297,10 @@ fn trans_impl_wrapper(ccx: @crate_ctxt, pt: path,
         }
     }
     let env_ty = T_ptr(T_struct([T_ptr(T_i8())] + extra_ptrs));
-    let n_extra_ptrs = vec::len(extra_ptrs);
+    let n_extra_ptrs = extra_ptrs.len();
 
     let wrap_args = [T_ptr(T_dict())] + vec::slice(real_args, 0u, 2u) +
-        vec::slice(real_args, 2u + vec::len(extra_ptrs), vec::len(real_args));
+        vec::slice(real_args, 2u + n_extra_ptrs, real_args.len());
     let llfn_ty = T_fn(wrap_args, real_ret);
     trans_wrapper(ccx, pt, llfn_ty, {|llfn, bcx|
         let dict = PointerCast(bcx, LLVMGetParam(llfn, 0 as c_uint), env_ty);
@@ -407,14 +407,14 @@ fn get_dict(bcx: @block_ctxt, origin: typeck::dict_origin) -> result {
             ret rslt(bcx, get_static_dict(bcx, origin));
         }
         let {bcx, ptrs} = get_dict_ptrs(bcx, origin);
-        let pty = T_ptr(T_i8()), dict_ty = T_array(pty, vec::len(ptrs));
+        let pty = T_ptr(T_i8()), dict_ty = T_array(pty, ptrs.len());
         let dict = alloca(bcx, dict_ty), i = 0;
         for ptr in ptrs {
             Store(bcx, PointerCast(bcx, ptr, pty), GEPi(bcx, dict, [0, i]));
             i += 1;
         }
         dict = Call(bcx, ccx.upcalls.intern_dict,
-                    [C_uint(ccx, vec::len(ptrs)),
+                    [C_uint(ccx, ptrs.len()),
                      PointerCast(bcx, dict, T_ptr(T_dict()))]);
         rslt(bcx, dict)
       }
@@ -431,7 +431,7 @@ fn dict_id(tcx: ty::ctxt, origin: typeck::dict_origin) -> dict_id {
     alt origin {
       typeck::dict_static(did, ts, origs) {
         let d_params = [], orig = 0u;
-        if vec::len(ts) == 0u { ret @{def: did, params: d_params}; }
+        if ts.len() == 0u { ret @{def: did, params: d_params}; }
         let impl_params = ty::lookup_item_type(tcx, did).bounds;
         vec::iter2(ts, *impl_params) {|t, bounds|
             d_params += [dict_param_ty(t)];

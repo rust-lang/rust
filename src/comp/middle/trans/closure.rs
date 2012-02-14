@@ -529,7 +529,7 @@ fn trans_bind_1(cx: @block_ctxt, outgoing_fty: ty::t,
       _ { (outgoing_fty, [], @[]) }
     };
 
-    if vec::len(bound) == 0u && vec::len(lltydescs) == 0u {
+    if bound.len() == 0u && lltydescs.len() == 0u {
         // Trivial 'binding': just return the closure
         let lv = lval_maybe_callee_to_lval(f_res, pair_ty);
         bcx = lv.bcx;

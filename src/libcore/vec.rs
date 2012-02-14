@@ -1088,6 +1088,9 @@ fn as_buf<E,T>(v: [const E], f: fn(*E) -> T) -> T unsafe {
     let buf = unsafe::to_ptr(v); f(buf)
 }
 
+impl vec_len<T> for [T] {
+    fn len() -> uint { len(self) }
+}
 
 /*
 Module: unsafe

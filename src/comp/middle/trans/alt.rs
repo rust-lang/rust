@@ -106,7 +106,7 @@ fn expand_nested_bindings(m: match, col: uint, val: ValueRef) -> match {
       alt br.pats[col].node {
           ast::pat_ident(name, some(inner)) {
             let pats = vec::slice(br.pats, 0u, col) + [inner] +
-                vec::slice(br.pats, col + 1u, vec::len(br.pats));
+                vec::slice(br.pats, col + 1u, br.pats.len());
             result += [@{pats: pats,
                         bound: br.bound + [{ident: path_to_ident(name),
                                 val: val}]
@@ -126,7 +126,7 @@ fn enter_match(m: match, col: uint, val: ValueRef, e: enter_pat) -> match {
         alt e(br.pats[col]) {
           some(sub) {
             let pats = sub + vec::slice(br.pats, 0u, col) +
-                vec::slice(br.pats, col + 1u, vec::len(br.pats));
+                vec::slice(br.pats, col + 1u, br.pats.len());
             let new_br = @{pats: pats,
                            bound: alt br.pats[col].node {
                              ast::pat_ident(name, none) {
@@ -197,7 +197,7 @@ fn enter_rec(m: match, col: uint, fields: [ast::ident], val: ValueRef) ->
             }
             ret some(pats);
           }
-          _ { ret some(vec::init_elt(vec::len(fields), dummy)); }
+          _ { ret some(vec::init_elt(fields.len(), dummy)); }
         }
     }
     ret enter_match(m, col, val, bind e(dummy, fields, _));
@@ -269,9 +269,9 @@ fn extract_variant_args(bcx: @block_ctxt, pat_id: ast::node_id,
     let blobptr = val;
     let variants = ty::enum_variants(ccx.tcx, vdefs.enm);
     let args = [];
-    let size =
-       vec::len(ty::enum_variant_with_id(ccx.tcx, vdefs.enm, vdefs.var).args);
-    if size > 0u && vec::len(*variants) != 1u {
+    let size = ty::enum_variant_with_id(ccx.tcx, vdefs.enm,
+                                        vdefs.var).args.len();
+    if size > 0u && (*variants).len() != 1u {
         let enumptr =
             PointerCast(bcx, val, T_opaque_enum_ptr(ccx));
         blobptr = GEPi(bcx, enumptr, [0, 1]);
@@ -343,7 +343,7 @@ fn pick_col(m: match) -> uint {
           _ { 0u }
         }
     }
-    let scores = vec::init_elt_mut(vec::len(m[0].pats), 0u);
+    let scores = vec::init_elt_mut(m[0].pats.len(), 0u);
     for br: match_branch in m {
         let i = 0u;
         for p: @ast::pat in br.pats { scores[i] += score(p); i += 1u; }
@@ -366,8 +366,8 @@ fn pick_col(m: match) -> uint {
 fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
                     &exits: [exit_node]) {
     let bcx = bcx;
-    if vec::len(m) == 0u { Br(bcx, f()); ret; }
-    if vec::len(m[0].pats) == 0u {
+    if m.len() == 0u { Br(bcx, f()); ret; }
+    if m[0].pats.len() == 0u {
         let data = m[0].data;
         alt data.guard {
           some(e) {
@@ -385,7 +385,7 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
             let next_cx = new_sub_block_ctxt(guard_cx, "submatch_next");
             let else_cx = new_sub_block_ctxt(guard_cx, "submatch_else");
             CondBr(guard_bcx, guard_val, next_cx.llbb, else_cx.llbb);
-            compile_submatch(else_cx, vec::slice(m, 1u, vec::len(m)), vals, f,
+            compile_submatch(else_cx, vec::slice(m, 1u, m.len()), vals, f,
                              exits);
             bcx = next_cx;
           }
@@ -408,7 +408,7 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
 
     let vals_left =
         vec::slice(vals, 0u, col) +
-            vec::slice(vals, col + 1u, vec::len(vals));
+            vec::slice(vals, col + 1u, vals.len());
     let ccx = bcx.fcx.ccx;
     let pat_id = 0;
     for br: match_branch in m {
@@ -419,7 +419,7 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
 
     let rec_fields = collect_record_fields(m, col);
     // Separate path for extracting and binding record fields
-    if vec::len(rec_fields) > 0u {
+    if rec_fields.len() > 0u {
         let rec_ty = node_id_type(bcx, pat_id);
         let fields = ty::get_fields(rec_ty);
         let rec_vals = [];
@@ -437,7 +437,7 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
     if any_tup_pat(m, col) {
         let tup_ty = node_id_type(bcx, pat_id);
         let n_tup_elts = alt ty::get(tup_ty).struct {
-          ty::ty_tup(elts) { vec::len(elts) }
+          ty::ty_tup(elts) { elts.len() }
           _ { ccx.sess.bug("Non-tuple type in tuple pattern"); }
         };
         let tup_vals = [], i = 0u;
@@ -473,10 +473,10 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
     enum branch_kind { no_branch, single, switch, compare, }
     let kind = no_branch;
     let test_val = val;
-    if vec::len(opts) > 0u {
+    if opts.len() > 0u {
         alt opts[0] {
           var(_, vdef) {
-            if vec::len(*ty::enum_variants(ccx.tcx, vdef.enm)) == 1u {
+            if (*ty::enum_variants(ccx.tcx, vdef.enm)).len() == 1u {
                 kind = single;
             } else {
                 let enumptr =
@@ -511,7 +511,7 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
         };
     let sw;
     if kind == switch {
-        sw = Switch(bcx, test_val, else_cx.llbb, vec::len(opts));
+        sw = Switch(bcx, test_val, else_cx.llbb, opts.len());
         // FIXME This statement is purely here as a work-around for a bug that
         // I expect to be the same as issue #951. If I remove it, sw ends up
         // holding a corrupted value (when the compiler is optimized).
@@ -573,7 +573,7 @@ fn compile_submatch(bcx: @block_ctxt, m: match, vals: [ValueRef], f: mk_fail,
         alt opt {
           var(_, vdef) {
             let args = extract_variant_args(opt_cx, pat_id, vdef, val);
-            size = vec::len(args.vals);
+            size = args.vals.len();
             unpacked = args.vals;
             opt_cx = args.bcx;
           }
@@ -607,7 +607,7 @@ fn make_phi_bindings(bcx: @block_ctxt, map: [exit_node],
                 }
             }
         }
-        if vec::len(vals) > 0u {
+        if vals.len() > 0u {
             let local = Phi(bcx, val_ty(vals[0]), vals, llbbs);
             bcx.fcx.lllocals.insert(node_id, local_mem(local));
         } else { success = false; }
@@ -728,7 +728,7 @@ fn bind_irrefutable_pat(bcx: @block_ctxt, pat: @ast::pat, val: ValueRef,
         }
       }
       ast::pat_enum(_, sub) {
-        if vec::len(sub) == 0u { ret bcx; }
+        if sub.len() == 0u { ret bcx; }
         let vdefs = ast_util::variant_def_ids(ccx.tcx.def_map.get(pat.id));
         let args = extract_variant_args(bcx, pat.id, vdefs, val);
         let i = 0;

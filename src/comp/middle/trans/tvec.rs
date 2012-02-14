@@ -110,7 +110,7 @@ fn trans_vec(bcx: @block_ctxt, args: [@ast::expr], id: ast::node_id,
          llunitsz: llunitsz,
          unit_ty: unit_ty,
          llunitty: llunitty} =
-        alloc(bcx, vec_ty, vec::len(args));
+        alloc(bcx, vec_ty, args.len());
 
     add_clean_free(bcx, vptr, true);
     // Store the individual elements.

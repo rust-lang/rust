@@ -162,7 +162,7 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
 
 fn type_of_enum(cx: @crate_ctxt, did: ast::def_id, t: ty::t)
     -> TypeRef {
-    let degen = vec::len(*ty::enum_variants(cx.tcx, did)) == 1u;
+    let degen = (*ty::enum_variants(cx.tcx, did)).len() == 1u;
     if check type_has_static_size(cx, t) {
         let size = static_size_of_enum(cx, t);
         if !degen { T_enum(cx, size) }
@@ -289,7 +289,7 @@ fn get_simple_extern_fn(cx: @block_ctxt,
 fn trans_native_call(cx: @block_ctxt, externs: hashmap<str, ValueRef>,
                      llmod: ModuleRef, name: str, args: [ValueRef]) ->
    ValueRef {
-    let n: int = vec::len::<ValueRef>(args) as int;
+    let n = args.len() as int;
     let llnative: ValueRef =
         get_simple_extern_fn(cx, externs, llmod, name, n);
     let call_args: [ValueRef] = [];
@@ -388,7 +388,7 @@ fn GEP_tup_like(bcx: @block_ctxt, t: ty::t, base: ValueRef, ixs: [int])
                    t: ty::t,
                    ixs: [int],
                    n: uint) -> (@block_ctxt, ValueRef, ty::t) {
-        if n == vec::len(ixs) {
+        if n == ixs.len() {
             ret (bcx, off, t);
         }
 
@@ -638,8 +638,8 @@ fn get_derived_tydesc(cx: @block_ctxt, t: ty::t, escapes: bool,
     // promising to do so itself.
     let n_params = ty::count_ty_params(bcx_tcx(bcx), t);
 
-    assert (n_params == vec::len::<uint>(tys.params));
-    assert (n_params == vec::len::<ValueRef>(tys.descs));
+    assert n_params == tys.params.len();
+    assert n_params == tys.descs.len();
 
     let llparamtydescs =
         alloca(bcx, T_array(T_ptr(bcx_ccx(bcx).tydesc_type), n_params + 1u));
@@ -687,7 +687,7 @@ fn get_tydesc(cx: @block_ctxt, t: ty::t, escapes: bool,
     // Is the supplied type a type param? If so, return the passed-in tydesc.
     alt ty::type_param(t) {
       some(id) {
-        if id < vec::len(cx.fcx.lltyparams) {
+        if id < cx.fcx.lltyparams.len() {
             ret {kind: tk_param,
                  result: rslt(cx, cx.fcx.lltyparams[id].desc)};
         } else {
@@ -821,7 +821,7 @@ fn make_generic_glue_inner(ccx: @crate_ctxt, t: ty::t,
         T_ptr(type_of(ccx, t))
     } else { T_ptr(T_i8()) };
 
-    let ty_param_count = vec::len(ty_params);
+    let ty_param_count = ty_params.len();
     let lltyparams = llvm::LLVMGetParam(llfn, 2u as c_uint);
     let load_env_bcx = new_raw_block_ctxt(fcx, fcx.llloadenv);
     let lltydescs = [mutable];
@@ -1072,7 +1072,7 @@ fn trans_res_drop(cx: @block_ctxt, rs: ValueRef, did: ast::def_id,
     // for type variables.
     let val_llty = lib::llvm::fn_ty_param_tys
         (llvm::LLVMGetElementType
-         (llvm::LLVMTypeOf(dtor_addr)))[vec::len(args)];
+         (llvm::LLVMTypeOf(dtor_addr)))[args.len()];
     let val_cast = BitCast(cx, val.val, val_llty);
     Call(cx, dtor_addr, args + [val_cast]);
 
@@ -1244,7 +1244,7 @@ fn iter_structural_ty(cx: @block_ctxt, av: ValueRef, t: ty::t,
     fn iter_variant(cx: @block_ctxt, a_tup: ValueRef,
                     variant: ty::variant_info, tps: [ty::t], tid: ast::def_id,
                     f: val_and_ty_fn) -> @block_ctxt {
-        if vec::len::<ty::t>(variant.args) == 0u { ret cx; }
+        if variant.args.len() == 0u { ret cx; }
         let fn_ty = variant.ctor_ty;
         let ccx = bcx_ccx(cx);
         let cx = cx;
@@ -1299,7 +1299,7 @@ fn iter_structural_ty(cx: @block_ctxt, av: ValueRef, t: ty::t,
       }
       ty::ty_enum(tid, tps) {
         let variants = ty::enum_variants(bcx_tcx(cx), tid);
-        let n_variants = vec::len(*variants);
+        let n_variants = (*variants).len();
 
         // Cast the enums to types we can GEP into.
         if n_variants == 1u {
@@ -1912,8 +1912,7 @@ fn autoderef(cx: @block_ctxt, v: ValueRef, t: ty::t) -> result_t {
           }
           ty::ty_enum(did, tps) {
             let variants = ty::enum_variants(ccx.tcx, did);
-            if vec::len(*variants) != 1u ||
-                   vec::len(variants[0].args) != 1u {
+            if (*variants).len() != 1u || variants[0].args.len() != 1u {
                 break;
             }
             t1 =
@@ -2278,7 +2277,7 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
         let this_tv = option::get(vec::find(*tvs, {|tv|
             tv.id.node == fn_id.node}));
         trans_enum_variant(ccx, enum_id.node, v, this_tv.disr_val,
-                           vec::len(*tvs) == 1u, [], psubsts, lldecl);
+                           (*tvs).len() == 1u, [], psubsts, lldecl);
       }
       ast_map::node_method(mth, impl_id, _) {
         let selfty = ty::node_id_to_type(ccx.tcx, impl_id);
@@ -2301,12 +2300,12 @@ fn lval_static_fn(bcx: @block_ctxt, fn_id: ast::def_id, id: ast::node_id,
     // monomorphized and non-monomorphized functions at the moment. If
     // monomorphizing becomes the only approach, this'll be much simpler.
     if ccx.sess.opts.monomorphize &&
-       (option::is_some(substs) || vec::len(tys) > 0u) &&
+       (option::is_some(substs) || tys.len() > 0u) &&
        fn_id.crate == ast::local_crate &&
        !vec::any(tys, {|t| ty::type_has_params(t)}) {
         let mono = alt substs {
           some((stys, dicts)) {
-            if (vec::len(stys) + vec::len(tys)) > 0u {
+            if (stys.len() + tys.len()) > 0u {
                 monomorphic_fn(ccx, fn_id, stys + tys, some(dicts))
             } else { none }
           }
@@ -2340,7 +2339,7 @@ fn lval_static_fn(bcx: @block_ctxt, fn_id: ast::def_id, id: ast::node_id,
         trans_external_path(bcx, fn_id, tpt)
     };
     let gen = generic_none, bcx = bcx;
-    if vec::len(tys) > 0u {
+    if tys.len() > 0u {
         let tydescs = [], tis = [];
         for t in tys {
             // TODO: Doesn't always escape.
@@ -2424,7 +2423,7 @@ fn trans_var(cx: @block_ctxt, def: ast::def, id: ast::node_id)
         ret lval_static_fn(cx, did, id, none);
       }
       ast::def_variant(tid, vid) {
-        if vec::len(ty::enum_variant_with_id(ccx.tcx, tid, vid).args) > 0u {
+        if ty::enum_variant_with_id(ccx.tcx, tid, vid).args.len() > 0u {
             // N-ary variant.
             ret lval_static_fn(cx, vid, id, none);
         } else {
@@ -2616,7 +2615,7 @@ fn maybe_add_env(bcx: @block_ctxt, c: lval_maybe_callee)
 fn lval_maybe_callee_to_lval(c: lval_maybe_callee, ty: ty::t) -> lval_result {
     alt c.generic {
       generic_full(gi) {
-        let n_args = vec::len(ty::ty_fn_args(ty));
+        let n_args = ty::ty_fn_args(ty).len();
         let args = vec::init_elt(n_args, none::<@ast::expr>);
         let space = alloc_ty(c.bcx, ty);
         let bcx = closure::trans_bind_1(space.bcx, ty, c, args, ty,
@@ -3877,10 +3876,8 @@ fn new_raw_block_ctxt(fcx: @fn_ctxt, llbb: BasicBlockRef) -> @block_ctxt {
 fn trans_block_cleanups(bcx: @block_ctxt, cleanup_cx: @block_ctxt) ->
    @block_ctxt {
     if bcx.unreachable { ret bcx; }
-    if cleanup_cx.kind == NON_SCOPE_BLOCK {
-        assert (vec::len::<cleanup>(cleanup_cx.cleanups) == 0u);
-    }
-    let i = vec::len::<cleanup>(cleanup_cx.cleanups), bcx = bcx;
+    let i = cleanup_cx.cleanups.len(), bcx = bcx;
+    if cleanup_cx.kind == NON_SCOPE_BLOCK { assert i == 0u; }
     while i > 0u {
         i -= 1u;
         let c = cleanup_cx.cleanups[i];
@@ -4535,7 +4532,7 @@ fn trans_native_mod(ccx: @crate_ctxt,
         let bcx = new_top_block_ctxt(fcx, none);
         let lltop = bcx.llbb;
         let llargbundle = llvm::LLVMGetParam(llshimfn, 0 as c_uint);
-        let i = 0u, n = vec::len(tys.arg_tys);
+        let i = 0u, n = tys.arg_tys.len();
         let llargvals = [];
         while i < n {
             let llargval = load_inbounds(bcx, llargbundle, [0, i as int]);
@@ -4573,7 +4570,7 @@ fn trans_native_mod(ccx: @crate_ctxt,
 
         // Allocate the struct and write the arguments into it.
         let llargbundle = alloca(bcx, tys.bundle_ty);
-        let i = 0u, n = vec::len(tys.arg_tys);
+        let i = 0u, n = tys.arg_tys.len();
         let implicit_args = 2u + num_tps; // ret + env
         while i < n {
             let llargval = llvm::LLVMGetParam(llwrapfn,
@@ -4608,7 +4605,7 @@ fn trans_native_mod(ccx: @crate_ctxt,
           alt ccx.item_ids.find(id) {
             some(llwrapfn) {
               let llshimfn = build_shim_fn(ccx, native_item, tys, cc);
-              build_wrap_fn(ccx, tys, vec::len(tps), llshimfn, llwrapfn);
+              build_wrap_fn(ccx, tys, tps.len(), llshimfn, llwrapfn);
             }
             none {
               ccx.sess.span_fatal(
@@ -4661,11 +4658,11 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
         trans_mod(ccx, m);
       }
       ast::item_enum(variants, tps) {
-        let degen = vec::len(variants) == 1u;
+        let degen = variants.len() == 1u;
         let vi = ty::enum_variants(ccx.tcx, local_def(item.id));
         let i = 0;
         for variant: ast::variant in variants {
-            if vec::len(variant.node.args) > 0u {
+            if variant.node.args.len() > 0u {
                 trans_enum_variant(ccx, item.id, variant,
                                    vi[i].disr_val, degen, tps,
                                    none, ccx.item_ids.get(variant.node.id));
@@ -4737,7 +4734,7 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
     let main_takes_argv =
         // invariant!
         alt ty::get(main_node_type).struct {
-          ty::ty_fn({inputs, _}) { vec::len(inputs) != 0u }
+          ty::ty_fn({inputs, _}) { inputs.len() != 0u }
           _ { ccx.sess.span_fatal(sp, "main has a non-function type"); }
         };
 
@@ -4800,7 +4797,7 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
                     llvm::LLVMGetParam(llfn, 1 as c_uint), crate_map];
         let result = unsafe {
             llvm::LLVMBuildCall(bld, start, vec::to_ptr(args),
-                                vec::len(args) as c_uint, noname())
+                                args.len() as c_uint, noname())
         };
         llvm::LLVMBuildRet(bld, result);
     }
@@ -4938,7 +4935,7 @@ fn collect_item(ccx: @crate_ctxt, abi: @mutable option<ast::native_abi>,
       }
       ast::item_enum(variants, tps) {
         for variant in variants {
-            if vec::len(variant.node.args) != 0u {
+            if variant.node.args.len() != 0u {
                 register_fn(ccx, i.span,
                             my_path + [path_name(variant.node.name)],
                             "enum", tps, variant.node.id);

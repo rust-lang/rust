@@ -43,7 +43,7 @@ fn AggregateRet(cx: @block_ctxt, RetVals: [ValueRef]) {
     cx.terminated = true;
     unsafe {
         llvm::LLVMBuildAggregateRet(B(cx), vec::to_ptr(RetVals),
-                                    vec::len(RetVals) as c_uint);
+                                    RetVals.len() as c_uint);
     }
 }
 
@@ -100,7 +100,7 @@ fn Invoke(cx: @block_ctxt, Fn: ValueRef, Args: [ValueRef],
                         ", ")];
     unsafe {
         llvm::LLVMBuildInvoke(B(cx), Fn, vec::to_ptr(Args),
-                              vec::len(Args) as c_uint, Then, Catch,
+                              Args.len() as c_uint, Then, Catch,
                               noname());
     }
 }
@@ -112,7 +112,7 @@ fn FastInvoke(cx: @block_ctxt, Fn: ValueRef, Args: [ValueRef],
     cx.terminated = true;
     unsafe {
         let v = llvm::LLVMBuildInvoke(B(cx), Fn, vec::to_ptr(Args),
-                                      vec::len(Args) as c_uint,
+                                      Args.len() as c_uint,
                                       Then, Catch, noname());
         lib::llvm::SetInstructionCallConv(v, lib::llvm::FastCallConv);
     }
@@ -330,7 +330,7 @@ fn GEP(cx: @block_ctxt, Pointer: ValueRef, Indices: [ValueRef]) -> ValueRef {
     if cx.unreachable { ret llvm::LLVMGetUndef(T_ptr(T_nil())); }
     unsafe {
         ret llvm::LLVMBuildGEP(B(cx), Pointer, vec::to_ptr(Indices),
-                               vec::len(Indices) as c_uint, noname());
+                               Indices.len() as c_uint, noname());
     }
 }
 
@@ -348,7 +348,7 @@ fn InBoundsGEP(cx: @block_ctxt, Pointer: ValueRef, Indices: [ValueRef]) ->
     unsafe {
         ret llvm::LLVMBuildInBoundsGEP(B(cx), Pointer,
                                        vec::to_ptr(Indices),
-                                       vec::len(Indices) as c_uint,
+                                       Indices.len() as c_uint,
                                        noname());
     }
 }
@@ -491,11 +491,11 @@ fn EmptyPhi(cx: @block_ctxt, Ty: TypeRef) -> ValueRef {
 fn Phi(cx: @block_ctxt, Ty: TypeRef, vals: [ValueRef], bbs: [BasicBlockRef])
    -> ValueRef {
     if cx.unreachable { ret llvm::LLVMGetUndef(Ty); }
-    assert (vec::len::<ValueRef>(vals) == vec::len::<BasicBlockRef>(bbs));
+    assert vals.len() == bbs.len();
     let phi = EmptyPhi(cx, Ty);
     unsafe {
         llvm::LLVMAddIncoming(phi, vec::to_ptr(vals), vec::to_ptr(bbs),
-                              vec::len(vals) as c_uint);
+                              vals.len() as c_uint);
         ret phi;
     }
 }
@@ -547,7 +547,7 @@ fn Call(cx: @block_ctxt, Fn: ValueRef, Args: [ValueRef]) -> ValueRef {
     if cx.unreachable { ret _UndefReturn(cx, Fn); }
     unsafe {
         ret llvm::LLVMBuildCall(B(cx), Fn, vec::to_ptr(Args),
-                                vec::len(Args) as c_uint, noname());
+                                Args.len() as c_uint, noname());
     }
 }
 
@@ -555,7 +555,7 @@ fn FastCall(cx: @block_ctxt, Fn: ValueRef, Args: [ValueRef]) -> ValueRef {
     if cx.unreachable { ret _UndefReturn(cx, Fn); }
     unsafe {
         let v = llvm::LLVMBuildCall(B(cx), Fn, vec::to_ptr(Args),
-                                    vec::len(Args) as c_uint, noname());
+                                    Args.len() as c_uint, noname());
         lib::llvm::SetInstructionCallConv(v, lib::llvm::FastCallConv);
         ret v;
     }
@@ -566,7 +566,7 @@ fn CallWithConv(cx: @block_ctxt, Fn: ValueRef, Args: [ValueRef],
     if cx.unreachable { ret _UndefReturn(cx, Fn); }
     unsafe {
         let v = llvm::LLVMBuildCall(B(cx), Fn, vec::to_ptr(Args),
-                                    vec::len(Args) as c_uint, noname());
+                                    Args.len() as c_uint, noname());
         lib::llvm::SetInstructionCallConv(v, Conv);
         ret v;
     }
@@ -642,7 +642,7 @@ fn Trap(cx: @block_ctxt) {
     let Args: [ValueRef] = [];
     unsafe {
         llvm::LLVMBuildCall(b, T, vec::to_ptr(Args),
-                            vec::len(Args) as c_uint, noname());
+                            Args.len() as c_uint, noname());
     }
 }
 
