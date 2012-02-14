@@ -1329,10 +1329,11 @@ resource file_desc(fd: int) {
 ~~~~
 
 This defines a type `file_desc` and a constructor of the same name,
-which takes an integer. Values of such a type can not be copied, and
-when they are destroyed (by going out of scope, or, when boxed, when
-their box is cleaned up), their body runs. In the example above, this
-would cause the given file descriptor to be closed.
+which takes an integer. The type has an associated destructor procedure,
+whose contents are specified by the block. Values of such a type can not
+be copied, and when they are destroyed (by going out of scope, or, when
+boxed, when their box is cleaned up), their body runs. In the example
+above, this would cause the given file descriptor to be closed.
 
 NOTE: We're considering alternative approaches for data types with
 destructors. Resources might go away in the future.
