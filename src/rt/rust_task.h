@@ -205,6 +205,7 @@ public:
 
     void call_on_c_stack(void *args, void *fn_ptr);
     void call_on_rust_stack(void *args, void *fn_ptr);
+    bool have_c_stack() { return c_stack != NULL; }
 };
 
 // This stuff is on the stack-switching fast path

@@ -98,7 +98,7 @@ private:
     stk_seg *cached_c_stack;
     stk_seg *extra_c_stack;
 
-    void prepare_c_stack();
+    void prepare_c_stack(rust_task *task);
     void unprepare_c_stack();
 
 public:

@@ -70,7 +70,7 @@ rust_task_thread::activate(rust_task *task) {
     task->ctx.next = &c_context;
     DLOG(this, task, "descheduling...");
     lock.unlock();
-    prepare_c_stack();
+    prepare_c_stack(task);
     task->ctx.swap(c_context);
     unprepare_c_stack();
     lock.lock();
@@ -367,9 +367,9 @@ rust_task_thread::exit() {
 // stack), because once we're on the Rust stack we won't have enough
 // room to do the allocation
 void
-rust_task_thread::prepare_c_stack() {
+rust_task_thread::prepare_c_stack(rust_task *task) {
     I(this, !extra_c_stack);
-    if (!cached_c_stack) {
+    if (!cached_c_stack && !task->have_c_stack()) {
         cached_c_stack = create_stack(kernel, C_STACK_SIZE);
         prepare_valgrind_stack(cached_c_stack);
     }
