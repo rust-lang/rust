@@ -4193,14 +4193,17 @@ fn copy_args_to_allocas(fcx: @fn_ctxt, bcx: @block_ctxt, args: [ast::arg],
 // Ties up the llstaticallocas -> llloadenv -> llderivedtydescs ->
 // lldynamicallocas -> lltop edges, and builds the return block.
 fn finish_fn(fcx: @fn_ctxt, lltop: BasicBlockRef) {
+    tie_up_header_blocks(fcx, lltop);
+    let ret_cx = new_raw_block_ctxt(fcx, fcx.llreturn);
+    trans_fn_cleanups(fcx, ret_cx);
+    RetVoid(ret_cx);
+}
+
+fn tie_up_header_blocks(fcx: @fn_ctxt, lltop: BasicBlockRef) {
     Br(new_raw_block_ctxt(fcx, fcx.llstaticallocas), fcx.llloadenv);
     Br(new_raw_block_ctxt(fcx, fcx.llloadenv), fcx.llderivedtydescs_first);
     Br(new_raw_block_ctxt(fcx, fcx.llderivedtydescs), fcx.lldynamicallocas);
     Br(new_raw_block_ctxt(fcx, fcx.lldynamicallocas), lltop);
-
-    let ret_cx = new_raw_block_ctxt(fcx, fcx.llreturn);
-    trans_fn_cleanups(fcx, ret_cx);
-    RetVoid(ret_cx);
 }
 
 enum self_arg { impl_self(ty::t), no_self, }
@@ -4552,13 +4555,20 @@ fn param_bounds(ccx: @crate_ctxt, tp: ast::ty_param) -> ty::param_bounds {
     ccx.tcx.ty_param_bounds.get(tp.id)
 }
 
-fn register_fn_full(ccx: @crate_ctxt, sp: span, path: path, _flav: str,
+fn register_fn_full(ccx: @crate_ctxt, sp: span, path: path, flav: str,
                     tps: [ast::ty_param], node_id: ast::node_id,
                     node_type: ty::t) {
     let llfty = type_of_fn_from_ty(ccx, node_type,
                                    vec::map(tps, {|p| param_bounds(ccx, p)}));
+    register_fn_fuller(ccx, sp, path, flav, node_id, node_type,
+                       lib::llvm::CCallConv, llfty);
+}
+
+fn register_fn_fuller(ccx: @crate_ctxt, sp: span, path: path, _flav: str,
+                      node_id: ast::node_id, node_type: ty::t,
+                      cc: lib::llvm::CallConv, llfty: TypeRef) {
     let ps: str = mangle_exported_name(ccx, path, node_type);
-    let llfn: ValueRef = decl_cdecl_fn(ccx.llmod, ps, llfty);
+    let llfn: ValueRef = decl_fn(ccx.llmod, ps, cc, llfty);
     ccx.item_ids.insert(node_id, llfn);
     ccx.item_symbols.insert(node_id, ps);
 
@@ -4747,9 +4757,13 @@ fn collect_item(ccx: @crate_ctxt, abi: @mutable option<ast::native_abi>,
           either::right(abi_) { *abi = option::some(abi_); }
         }
       }
-      ast::item_fn(_, tps, _) {
-        register_fn(ccx, i.span, my_path, "fn", tps,
-                    i.id);
+      ast::item_fn(decl, tps, _) {
+        if decl.purity != ast::crust_fn {
+            register_fn(ccx, i.span, my_path, "fn", tps,
+                        i.id);
+        } else {
+            native::register_crust_fn(ccx, i.span, my_path, i.id);
+        }
       }
       ast::item_impl(tps, _, _, methods) {
         let path = my_path + [path_name(int::str(i.id))];
