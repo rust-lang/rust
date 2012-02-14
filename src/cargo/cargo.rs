@@ -418,6 +418,10 @@ fn configure(opts: options) -> cargo {
 
     if c.pgp {
         pgp::init(c.root);
+    } else {
+        warn("command \"gpg\" is not found");
+        warn("you have to install \"gpg\" from source " +
+             " or package manager to get it to work correctly");
     }
 
     c
