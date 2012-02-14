@@ -568,10 +568,11 @@ fn link_binary(sess: session,
     // Converts a library file name into a cc -l argument
     fn unlib(config: @session::config, filename: str) -> str unsafe {
         let rmlib = fn@(filename: str) -> str {
+            let found = str::find_bytes(filename, "lib");
             if config.os == session::os_macos ||
                 (config.os == session::os_linux ||
                  config.os == session::os_freebsd) &&
-                str::find(filename, "lib") == 0 {
+                option::is_some(found) && option::get(found) == 0u {
                 ret str::unsafe::slice_bytes(filename, 3u,
                                str::len_bytes(filename));
             } else { ret filename; }

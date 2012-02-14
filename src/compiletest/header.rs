@@ -100,18 +100,21 @@ fn parse_pp_exact(line: str, testfile: str) -> option<str> {
 }
 
 fn parse_name_directive(line: str, directive: str) -> bool {
-    str::find(line, directive) >= 0
+    str::contains(line, directive)
 }
 
 fn parse_name_value_directive(line: str,
                               directive: str) -> option<str> unsafe {
     let keycolon = directive + ":";
-    if str::find(line, keycolon) >= 0 {
-        let colon = str::find(line, keycolon) as uint;
-        let value =
-            str::unsafe::slice_bytes(line, colon + str::len_bytes(keycolon),
-                       str::len_bytes(line));
-        #debug("%s: %s", directive,  value);
-        option::some(value)
-    } else { option::none }
+    alt str::find_bytes(line, keycolon) {
+        option::some(colon) {
+            let value =
+                str::unsafe::slice_bytes(line,
+                                         colon + str::len_bytes(keycolon),
+                                         str::len_bytes(line));
+            #debug("%s: %s", directive,  value);
+            option::some(value)
+        }
+        option::none { option::none }
+    }
 }

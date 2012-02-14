@@ -199,7 +199,7 @@ fn check_error_patterns(props: test_props,
     let next_err_idx = 0u;
     let next_err_pat = props.error_patterns[next_err_idx];
     for line: str in str::split_byte(procres.stderr, '\n' as u8) {
-        if str::find(line, next_err_pat) > 0 {
+        if str::contains(line, next_err_pat) {
             #debug("found error pattern %s", next_err_pat);
             next_err_idx += 1u;
             if next_err_idx == vec::len(props.error_patterns) {

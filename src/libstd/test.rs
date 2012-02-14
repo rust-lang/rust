@@ -258,7 +258,7 @@ fn filter_tests(opts: test_opts,
 
         fn filter_fn(test: test_desc, filter_str: str) ->
             option<test_desc> {
-            if str::find(test.name, filter_str) >= 0 {
+            if str::contains(test.name, filter_str) {
                 ret option::some(test);
             } else { ret option::none; }
         }
