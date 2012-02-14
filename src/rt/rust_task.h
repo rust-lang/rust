@@ -37,6 +37,7 @@ typedef unsigned long task_result;
 #define tr_failure 1
 
 struct spawn_args;
+struct cleanup_args;
 
 // std::lib::task::task_notification
 //
@@ -88,8 +89,6 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     // We use this to suppress the "killed" flag during calls to yield.
     bool unwinding;
 
-    // Indicates that the task was killed and needs to unwind
-    bool killed;
     bool propagate_failure;
 
     lock_and_signal lock;
@@ -107,6 +106,11 @@ rust_task : public kernel_owned<rust_task>, rust_cond
 
 private:
 
+    // Indicates that the task was killed and needs to unwind
+    bool killed;
+    // Indicates that we've called back into Rust from C
+    bool reentered_rust_stack;
+
     // The stack used for running C code, borrowed from the scheduler thread
     stk_seg *c_stack;
     uintptr_t next_c_sp;
@@ -123,6 +127,7 @@ private:
     void return_c_stack();
 
     friend void task_start_wrapper(spawn_args *a);
+    friend void cleanup_task(cleanup_args *a);
 
 public:
 
@@ -161,6 +166,10 @@ public:
 
     // Fail this task (assuming caller-on-stack is different task).
     void kill();
+
+    // Indicates that we've been killed and now is an apropriate
+    // time to fail as a result
+    bool must_fail_from_being_killed();
 
     // Fail self, assuming caller-on-stack is this task.
     void fail();
@@ -262,6 +271,9 @@ rust_task::call_on_rust_stack(void *args, void *fn_ptr) {
     // I(thread, !on_rust_stack());
     I(thread, next_rust_sp);
 
+    bool had_reentered_rust_stack = reentered_rust_stack;
+    reentered_rust_stack = true;
+
     uintptr_t prev_c_sp = next_c_sp;
     next_c_sp = get_sp();
 
@@ -270,6 +282,7 @@ rust_task::call_on_rust_stack(void *args, void *fn_ptr) {
     __morestack(args, fn_ptr, sp);
 
     next_c_sp = prev_c_sp;
+    reentered_rust_stack = had_reentered_rust_stack;
 }
 
 inline void

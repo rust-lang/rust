@@ -576,7 +576,7 @@ port_recv(uintptr_t *dptr, rust_port *port,
 
         // If this task has been killed then we're not going to bother
         // blocking, we have to unwind.
-        if (task->killed) {
+        if (task->must_fail_from_being_killed()) {
             *killed = true;
             return;
         }

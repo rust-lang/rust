@@ -84,11 +84,12 @@ rust_task::rust_task(rust_task_thread *thread, rust_task_list *state,
     local_region(&thread->srv->local_region),
     boxed(&local_region),
     unwinding(false),
-    killed(false),
     propagate_failure(true),
     dynastack(this),
     cc_counter(0),
     total_stack_sz(0),
+    killed(false),
+    reentered_rust_stack(false),
     c_stack(NULL),
     next_c_sp(0),
     next_rust_sp(0)
@@ -240,17 +241,22 @@ void rust_task::start()
     transition(&thread->newborn_tasks, &thread->running_tasks);
 }
 
+bool
+rust_task::must_fail_from_being_killed() {
+    return killed && !reentered_rust_stack;
+}
+
 // Only run this on the rust stack
 void
 rust_task::yield(bool *killed) {
-    if (this->killed) {
+    if (must_fail_from_being_killed()) {
         *killed = true;
     }
 
     // Return to the scheduler.
     ctx.next->swap(ctx);
 
-    if (this->killed) {
+    if (must_fail_from_being_killed()) {
         *killed = true;
     }
 }
