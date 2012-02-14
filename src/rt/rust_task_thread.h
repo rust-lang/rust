@@ -189,6 +189,7 @@ rust_task_thread::borrow_c_stack() {
         your_stack = cached_c_stack;
         cached_c_stack = NULL;
     }
+    prepare_valgrind_stack(your_stack);
     return your_stack;
 }
 
