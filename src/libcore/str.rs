@@ -9,6 +9,8 @@ for correctness, but some UTF-8 unsafe functions are also provided.
 For some heavy-duty uses, we recommend trying std::rope.
 */
 
+import option::{some, none};
+
 export
    // Creating a string
    from_bytes,
@@ -665,8 +667,8 @@ fn replace(s: str, from: str, to: str) : is_not_empty(from) -> str unsafe {
     } else {
         let idx;
         alt find_bytes(s, from) {
-            option::some(x) { idx = x; }
-            option::none { ret s; }
+            some(x) { idx = x; }
+            none { ret s; }
         }
         let before = unsafe::slice_bytes(s, 0u, idx as uint);
         let after  = unsafe::slice_bytes(s, idx as uint + len_bytes(from),
@@ -842,7 +844,7 @@ fn index(ss: str, cc: char) -> option<uint> {
 
         // found here?
         if ch == cc {
-            ret option::some(cii);
+            ret some(cii);
         }
 
         cii += 1u;
@@ -850,7 +852,7 @@ fn index(ss: str, cc: char) -> option<uint> {
     }
 
     // wasn't found
-    ret option::none;
+    ret none;
 }
 
 // Function: byte_index
@@ -880,12 +882,12 @@ fn rindex(ss: str, cc: char) -> option<uint> {
 
         // found here?
         if ch == cc {
-            ret option::some(cii);
+            ret some(cii);
         }
     }
 
     // wasn't found
-    ret option::none;
+    ret none;
 }
 
 //Function: find_bytes
@@ -898,8 +900,8 @@ fn find_bytes(haystack: str, needle: str) -> option<uint> {
     let haystack_len = len_bytes(haystack);
     let needle_len   = len_bytes(needle);
 
-    if needle_len == 0u { ret option::some(0u); }
-    if needle_len > haystack_len { ret option::none; }
+    if needle_len == 0u { ret some(0u); }
+    if needle_len > haystack_len { ret none; }
 
     fn match_at(haystack: str, needle: str, ii: uint) -> bool {
         let jj = ii;
@@ -909,11 +911,11 @@ fn find_bytes(haystack: str, needle: str) -> option<uint> {
 
     let ii = 0u;
     while ii <= haystack_len - needle_len {
-        if match_at(haystack, needle, ii) { ret option::some(ii); }
+        if match_at(haystack, needle, ii) { ret some(ii); }
         ii += 1u;
     }
 
-    ret option::none;
+    ret none;
 }
 
 // Function: find
@@ -922,8 +924,8 @@ fn find_bytes(haystack: str, needle: str) -> option<uint> {
 // within another, or return option::none
 fn find(haystack: str, needle: str) -> option<uint> {
    alt find_bytes(haystack, needle) {
-      option::none { ret option::none; }
-      option::some(nn) { ret option::some(b2c_pos(haystack, nn)); }
+      none { ret none; }
+      some(nn) { ret some(b2c_pos(haystack, nn)); }
    }
 }
 
@@ -1522,18 +1524,18 @@ mod tests {
 
     #[test]
     fn test_index() {
-        assert ( index("hello", 'h') == option::some(0u));
-        assert ( index("hello", 'e') == option::some(1u));
-        assert ( index("hello", 'o') == option::some(4u));
-        assert ( index("hello", 'z') == option::none);
+        assert ( index("hello", 'h') == some(0u));
+        assert ( index("hello", 'e') == some(1u));
+        assert ( index("hello", 'o') == some(4u));
+        assert ( index("hello", 'z') == none);
     }
 
     #[test]
     fn test_rindex() {
-        assert (rindex("hello", 'l') == option::some(3u));
-        assert (rindex("hello", 'o') == option::some(4u));
-        assert (rindex("hello", 'h') == option::some(0u));
-        assert (rindex("hello", 'z') == option::none);
+        assert (rindex("hello", 'l') == some(3u));
+        assert (rindex("hello", 'o') == some(4u));
+        assert (rindex("hello", 'h') == some(0u));
+        assert (rindex("hello", 'z') == none);
     }
 
     #[test]
@@ -1737,29 +1739,29 @@ mod tests {
     #[test]
     fn test_find_bytes() {
         // byte positions
-        assert (find_bytes("banana", "apple pie") == option::none);
-        assert (find_bytes("", "") == option::some(0u));
+        assert (find_bytes("banana", "apple pie") == none);
+        assert (find_bytes("", "") == some(0u));
 
         let data = "ประเทศไทย中华Việt Nam";
-        assert (find_bytes(data, "")     == option::some(0u));
-        assert (find_bytes(data, "ประเ") == option::some( 0u));
-        assert (find_bytes(data, "ะเ")   == option::some( 6u));
-        assert (find_bytes(data, "中华") == option::some(27u));
-        assert (find_bytes(data, "ไท华") == option::none);
+        assert (find_bytes(data, "")     == some(0u));
+        assert (find_bytes(data, "ประเ") == some( 0u));
+        assert (find_bytes(data, "ะเ")   == some( 6u));
+        assert (find_bytes(data, "中华") == some(27u));
+        assert (find_bytes(data, "ไท华") == none);
     }
 
     #[test]
     fn test_find() {
         // char positions
-        assert (find("banana", "apple pie") == option::none);
-        assert (find("", "") == option::some(0u));
+        assert (find("banana", "apple pie") == none);
+        assert (find("", "") == some(0u));
 
         let data = "ประเทศไทย中华Việt Nam";
-        assert (find(data, "")     == option::some(0u));
-        assert (find(data, "ประเ") == option::some(0u));
-        assert (find(data, "ะเ")   == option::some(2u));
-        assert (find(data, "中华") == option::some(9u));
-        assert (find(data, "ไท华") == option::none);
+        assert (find(data, "")     == some(0u));
+        assert (find(data, "ประเ") == some(0u));
+        assert (find(data, "ะเ")   == some(2u));
+        assert (find(data, "中华") == some(9u));
+        assert (find(data, "ไท华") == none);
     }
 
     #[test]
