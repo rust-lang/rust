@@ -1952,10 +1952,10 @@ for e: foo in v {
 
 ~~~~~~~~{.ebnf .gram}
 if_expr : "if" expr '{' block '}'
-          [ "else" else_tail ] ? ;
+          else_tail ? ;
 
 else_tail : "else" [ if_expr
-                   | '{' block '} ] ;
+                   | '{' block '}' ] ;
 ~~~~~~~~
 
 An `if` expression is a conditional branch in program control. The form of
