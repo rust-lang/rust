@@ -68,6 +68,7 @@ export
 
    // Searching
    index,
+   byte_index,
    rindex,
    find,
    find_bytes,
@@ -850,6 +851,19 @@ fn index(ss: str, cc: char) -> option<uint> {
 
     // wasn't found
     ret option::none;
+}
+
+// Function: byte_index
+//
+// Returns the index of the first matching byte
+// (as option some/none)
+fn byte_index(s: str, b: u8, start: uint) -> option<uint> {
+    let i = start, l = len_bytes(s);
+    while i < l {
+        if s[i] == b { ret some(i); }
+        i += 1u;
+    }
+    ret none;
 }
 
 // Function: rindex

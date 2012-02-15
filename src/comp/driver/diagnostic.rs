@@ -204,8 +204,7 @@ fn highlight_lines(cm: codemap::codemap, sp: span,
     // Print the offending lines
     for line: uint in display_lines {
         io::stderr().write_str(#fmt["%s:%u ", fm.name, line + 1u]);
-        let s = codemap::get_line(fm, line as int);
-        if !str::ends_with(s, "\n") { s += "\n"; }
+        let s = codemap::get_line(fm, line as int) + "\n";
         io::stderr().write_str(s);
     }
     if elided {

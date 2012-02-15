@@ -157,16 +157,11 @@ fn span_to_lines(sp: span, cm: codemap::codemap) -> @file_lines {
 
 fn get_line(fm: filemap, line: int) -> str unsafe {
     let begin: uint = fm.lines[line].byte - fm.start_pos.byte;
-    let end: uint;
-    if line as uint < vec::len(fm.lines) - 1u {
-        end = fm.lines[line + 1].byte - fm.start_pos.byte;
-        ret str::unsafe::slice_bytes(*fm.src, begin, end);
-    } else {
-        // If we're not done parsing the file, we're at the limit of what's
-        // parsed. If we just slice the rest of the string, we'll print out
-        // the remainder of the file, which is undesirable.
-        ret str::splitn_char(*fm.src, '\n', 1u)[0];
-    }
+    let end = alt str::byte_index(*fm.src, '\n' as u8, begin) {
+      some(e) { e }
+      none { str::len(*fm.src) }
+    };
+    str::unsafe::slice_bytes(*fm.src, begin, end)
 }
 
 fn lookup_byte_offset(cm: codemap::codemap, chpos: uint)
