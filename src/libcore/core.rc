@@ -80,9 +80,12 @@ mod math;
 mod cmath;
 mod sys;
 mod unsafe;
+mod logging;
+
+// Concurrency
 mod comm;
 mod task;
-mod logging;
+mod future;
 
 // Compiler support modules
 
