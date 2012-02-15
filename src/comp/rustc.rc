@@ -24,6 +24,7 @@ mod middle {
         mod tvec;
         mod impl;
         mod native;
+        mod shape;
     }
     mod ty;
     mod ast_map;
@@ -39,7 +40,6 @@ mod middle {
     mod block_use;
     mod kind;
     mod freevars;
-    mod shape;
     mod debuginfo;
     mod capture;
     mod pat_util;
