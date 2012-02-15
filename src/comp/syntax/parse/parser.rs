@@ -1372,6 +1372,8 @@ fn parse_do_while_expr(p: parser) -> @ast::expr {
 
 fn parse_alt_expr(p: parser) -> @ast::expr {
     let lo = p.last_span.lo;
+    let mode = if eat_word(p, "check") { ast::alt_check }
+               else { ast::alt_exhaustive };
     let discriminant = parse_expr(p);
     expect(p, token::LBRACE);
     let arms: [ast::arm] = [];
@@ -1384,7 +1386,7 @@ fn parse_alt_expr(p: parser) -> @ast::expr {
     }
     let hi = p.span.hi;
     p.bump();
-    ret mk_expr(p, lo, hi, ast::expr_alt(discriminant, arms));
+    ret mk_expr(p, lo, hi, ast::expr_alt(discriminant, arms, mode));
 }
 
 fn parse_expr(p: parser) -> @ast::expr {
@@ -1653,7 +1655,7 @@ fn expr_is_complete(p: parser, e: pexpr) -> bool {
 fn expr_requires_semi_to_be_stmt(e: @ast::expr) -> bool {
     alt e.node {
       ast::expr_if(_, _, _) | ast::expr_if_check(_, _, _)
-      | ast::expr_alt(_, _) | ast::expr_block(_)
+      | ast::expr_alt(_, _, _) | ast::expr_block(_)
       | ast::expr_do_while(_, _) | ast::expr_while(_, _)
       | ast::expr_for(_, _, _)
       | ast::expr_call(_, _, true) {

@@ -447,7 +447,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
         find_pre_post_loop(fcx, d, index, body, e.id);
       }
       expr_index(val, sub) { find_pre_post_exprs(fcx, [val, sub], e.id); }
-      expr_alt(ex, alts) {
+      expr_alt(ex, alts, _) {
         find_pre_post_expr(fcx, ex);
         fn do_an_alt(fcx: fn_ctxt, an_alt: arm) -> pre_and_post {
             alt an_alt.guard {

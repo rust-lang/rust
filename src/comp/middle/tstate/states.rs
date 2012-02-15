@@ -552,7 +552,7 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
       expr_index(val, sub) {
         ret find_pre_post_state_two(fcx, pres, val, sub, e.id, oper_pure);
       }
-      expr_alt(val, alts) {
+      expr_alt(val, alts, _) {
         let changed =
             set_prestate_ann(fcx.ccx, e.id, pres) |
                 find_pre_post_state_expr(fcx, pres, val);

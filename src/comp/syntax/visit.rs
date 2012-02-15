@@ -339,7 +339,7 @@ fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
         v.visit_block(b, e, v);
       }
       expr_do_while(b, x) { v.visit_block(b, e, v); v.visit_expr(x, e, v); }
-      expr_alt(x, arms) {
+      expr_alt(x, arms, _) {
         v.visit_expr(x, e, v);
         for a: arm in arms { v.visit_arm(a, e, v); }
       }

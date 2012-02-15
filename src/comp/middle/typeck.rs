@@ -2231,7 +2231,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
               check_block_no_value(fcx, body);
         write_ty(tcx, id, block_ty(tcx, body));
       }
-      ast::expr_alt(expr, arms) {
+      ast::expr_alt(expr, arms, _) {
         bot = check_expr(fcx, expr);
 
         // Typecheck the patterns first, so that we get types for all the

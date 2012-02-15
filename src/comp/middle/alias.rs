@@ -110,7 +110,7 @@ fn visit_expr(cx: @ctx, ex: @ast::expr, sc: scope, v: vt<scope>) {
         check_call(*cx, sc, f, args);
         handled = false;
       }
-      ast::expr_alt(input, arms) { check_alt(*cx, input, arms, sc, v); }
+      ast::expr_alt(input, arms, _) { check_alt(*cx, input, arms, sc, v); }
       ast::expr_for(decl, seq, blk) {
         v.visit_expr(seq, sc, v);
         check_loop(*cx, sc) {|| check_for(*cx, decl, seq, blk, sc, v); }

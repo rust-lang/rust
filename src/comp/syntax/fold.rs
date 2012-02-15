@@ -383,8 +383,8 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
           expr_do_while(blk, expr) {
             expr_do_while(fld.fold_block(blk), fld.fold_expr(expr))
           }
-          expr_alt(expr, arms) {
-            expr_alt(fld.fold_expr(expr), vec::map(arms, fld.fold_arm))
+          expr_alt(expr, arms, mode) {
+            expr_alt(fld.fold_expr(expr), vec::map(arms, fld.fold_arm), mode)
           }
           expr_fn(proto, decl, body, captures) {
               expr_fn(proto, fold_fn_decl(decl, fld),

@@ -215,6 +215,8 @@ enum expr_check_mode { claimed_expr, checked_expr, }
 
 type expr = {id: node_id, node: expr_, span: span};
 
+enum alt_mode { alt_check, alt_exhaustive, }
+
 enum expr_ {
     expr_vec([@expr], mutability),
     expr_rec([field], option<@expr>),
@@ -229,7 +231,7 @@ enum expr_ {
     expr_while(@expr, blk),
     expr_for(@local, @expr, blk),
     expr_do_while(blk, @expr),
-    expr_alt(@expr, [arm]),
+    expr_alt(@expr, [arm], alt_mode),
     expr_fn(proto, fn_decl, blk, @capture_clause),
     expr_fn_block(fn_decl, blk),
     expr_block(blk),

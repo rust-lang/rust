@@ -293,7 +293,7 @@ impl ast_output for ast_ctxt {
             }
           }
 
-          ast::expr_alt(cond, arms) {
+          ast::expr_alt(cond, arms, _) {
             self.tag(at_expr_node_alt) {||
                 self.blk(blk);
                 self.expr(cond);

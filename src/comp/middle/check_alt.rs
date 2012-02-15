@@ -21,19 +21,21 @@ fn check_crate(tcx: ty::ctxt, crate: @crate) {
 fn check_expr(tcx: ty::ctxt, ex: @expr, &&s: (), v: visit::vt<()>) {
     visit::visit_expr(ex, s, v);
     alt ex.node {
-        expr_alt(scrut, arms) {
-            check_arms(tcx, ex.span, scrut,
-                       pat_util::normalize_arms(tcx, arms));
+      expr_alt(scrut, arms, mode) {
+        let arms = pat_util::normalize_arms(tcx, arms);
+        check_arms(tcx, arms);
+        /* Check for exhaustiveness */
+        if mode == alt_exhaustive {
+            let arms = vec::concat(vec::filter_map(arms, unguarded_pat));
+            check_exhaustive(tcx, ex.span, expr_ty(tcx, scrut), arms);
         }
-        _ { }
+      }
+      _ { }
     }
 }
 
-fn check_arms(tcx: ty::ctxt, sp:span, scrut: @expr, arms: [arm]) {
+fn check_arms(tcx: ty::ctxt, arms: [arm]) {
     let i = 0;
-    let scrut_ty = expr_ty(tcx, scrut);
-    /* (Could both checks be done in a single pass?) */
-
     /* Check for unreachable patterns */
     for arm: arm in arms {
         for arm_pat: @pat in arm.pats {
@@ -55,11 +57,6 @@ fn check_arms(tcx: ty::ctxt, sp:span, scrut: @expr, arms: [arm]) {
         }
         i += 1;
     }
-
-    /* Check for exhaustiveness */
-
-    check_exhaustive(tcx, sp, scrut_ty,
-       vec::concat(vec::filter_map(arms, unguarded_pat)));
 }
 
 // Precondition: patterns have been normalized

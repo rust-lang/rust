@@ -88,7 +88,7 @@ fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
         v.visit_expr(coll, cx, v);
         visit_block(loop, cx) {|| visit::visit_block(blk, cx, v);}
       }
-      expr_alt(input, arms) {
+      expr_alt(input, arms, _) {
         v.visit_expr(input, cx, v);
         let before = cx.current, sets = [];
         for arm in arms {

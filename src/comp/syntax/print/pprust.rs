@@ -901,10 +901,11 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         word_space(s, "while");
         print_expr(s, expr);
       }
-      ast::expr_alt(expr, arms) {
+      ast::expr_alt(expr, arms, mode) {
         cbox(s, alt_indent_unit);
         ibox(s, 4u);
         word_nbsp(s, "alt");
+        if mode == ast::alt_check { word_nbsp(s, "check"); }
         print_maybe_parens_discrim(s, expr);
         space(s.s);
         bopen(s);
