@@ -594,6 +594,14 @@ port_recv(uintptr_t *dptr, rust_port *port,
 }
 
 extern "C" CDECL void
+rust_port_select(rust_port **dptr, rust_port **ports,
+                 size_t n_ports, uintptr_t *yield) {
+    rust_task *task = rust_task_thread::get_task();
+    rust_port_selector *selector = task->get_port_selector();
+    selector->select(task, dptr, ports, n_ports, yield);
+}
+
+extern "C" CDECL void
 rust_set_exit_status(intptr_t code) {
     rust_task *task = rust_task_thread::get_task();
     task->kernel->set_exit_status((int)code);

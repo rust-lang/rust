@@ -16,6 +16,7 @@
 #include "rust_obstack.h"
 #include "boxed_region.h"
 #include "rust_stack.h"
+#include "rust_port_selector.h"
 
 // Corresponds to the rust chan (currently _chan) type.
 struct chan_handle {
@@ -116,6 +117,8 @@ private:
     uintptr_t next_c_sp;
     uintptr_t next_rust_sp;
 
+    rust_port_selector port_selector;
+
     // Called when the atomic refcount reaches zero
     void delete_this();
 
@@ -206,6 +209,8 @@ public:
     void call_on_c_stack(void *args, void *fn_ptr);
     void call_on_rust_stack(void *args, void *fn_ptr);
     bool have_c_stack() { return c_stack != NULL; }
+
+    rust_port_selector *get_port_selector() { return &port_selector; }
 };
 
 // This stuff is on the stack-switching fast path

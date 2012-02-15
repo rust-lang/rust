@@ -1,6 +1,8 @@
 #ifndef RUST_PORT_H
 #define RUST_PORT_H
 
+#include "rust_internal.h"
+
 class rust_port : public kernel_owned<rust_port>, public rust_cond {
 public:
     RUST_REFCOUNTED(rust_port)
