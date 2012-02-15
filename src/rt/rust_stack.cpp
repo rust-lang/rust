@@ -3,6 +3,12 @@
 #include "vg/valgrind.h"
 #include "vg/memcheck.h"
 
+#ifdef _LP64
+const uintptr_t canary_value = 0xABCDABCDABCDABCD;
+#else
+const uintptr_t canary_value = 0xABCDABCD;
+#endif
+
 void
 register_valgrind_stack(stk_seg *stk) {
     stk->valgrind_id =
@@ -17,8 +23,7 @@ prepare_valgrind_stack(stk_seg *stk) {
     // old stack segments, since the act of popping the stack previously
     // caused valgrind to consider the whole thing inaccessible.
     size_t sz = stk->end - (uintptr_t)&stk->data[0];
-    VALGRIND_MAKE_MEM_UNDEFINED(stk->data + sizeof(stack_canary),
-                                sz - sizeof(stack_canary));
+    VALGRIND_MAKE_MEM_UNDEFINED(stk->data, sz);
 #endif
 }
 
@@ -29,12 +34,10 @@ deregister_valgrind_stack(stk_seg *stk) {
 
 void
 add_stack_canary(stk_seg *stk) {
-    memcpy(stk->data, stack_canary, sizeof(stack_canary));
-    assert(sizeof(stack_canary) == 16 && "Stack canary was not the expected size");
+    stk->canary = canary_value;
 }
 
 void
 check_stack_canary(stk_seg *stk) {
-    assert(!memcmp(stk->data, stack_canary, sizeof(stack_canary))
-      && "Somebody killed the canary");
+    assert(stk->canary == canary_value && "Somebody killed the canary");
 }

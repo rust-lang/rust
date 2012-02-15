@@ -10,14 +10,10 @@ struct stk_seg {
     uint32_t pad;
 #endif
 
+    uintptr_t canary;
+
     uint8_t data[];
 };
-
-// A value that goes at the end of the stack and must not be touched
-const uint8_t stack_canary[] = {0xAB, 0xCD, 0xAB, 0xCD,
-                                0xAB, 0xCD, 0xAB, 0xCD,
-                                0xAB, 0xCD, 0xAB, 0xCD,
-                                0xAB, 0xCD, 0xAB, 0xCD};
 
 // Used by create_stack
 void
@@ -34,7 +30,7 @@ add_stack_canary(stk_seg *stk);
 template <class T>
 stk_seg *
 create_stack(T allocer, size_t sz) {
-  size_t total_sz = sizeof(stk_seg) + sz + sizeof(stack_canary);
+  size_t total_sz = sizeof(stk_seg) + sz;
   stk_seg *stk = (stk_seg *)allocer->malloc(total_sz, "stack");
   memset(stk, 0, sizeof(stk_seg));
   stk->end = (uintptr_t) &stk->data[sz];
