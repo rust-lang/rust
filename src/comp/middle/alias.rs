@@ -112,7 +112,7 @@ fn visit_expr(cx: @ctx, ex: @ast::expr, sc: scope, v: vt<scope>) {
       }
       ast::expr_alt(input, arms, _) { check_alt(*cx, input, arms, sc, v); }
       ast::expr_for(decl, seq, blk) {
-        v.visit_expr(seq, sc, v);
+        visit_expr(cx, seq, sc, v);
         check_loop(*cx, sc) {|| check_for(*cx, decl, seq, blk, sc, v); }
       }
       ast::expr_path(pt) {
@@ -125,11 +125,13 @@ fn visit_expr(cx: @ctx, ex: @ast::expr, sc: scope, v: vt<scope>) {
         handled = false;
       }
       ast::expr_move(dest, src) {
-        check_assign(cx, dest, src, sc, v);
+        visit_expr(cx, src, sc, v);
+        check_lval(cx, dest, sc, v);
         check_lval(cx, src, sc, v);
       }
       ast::expr_assign(dest, src) | ast::expr_assign_op(_, dest, src) {
-        check_assign(cx, dest, src, sc, v);
+        visit_expr(cx, src, sc, v);
+        check_lval(cx, dest, sc, v);
       }
       ast::expr_if(c, then, els) { check_if(c, then, els, sc, v); }
       ast::expr_while(_, _) | ast::expr_do_while(_, _) {
@@ -153,6 +155,8 @@ fn visit_block(cx: @ctx, b: ast::blk, sc: scope, v: vt<scope>) {
                   some(init) {
                     if init.op == ast::init_move {
                         check_lval(cx, init.expr, sc, v);
+                    } else {
+                        visit_expr(cx, init.expr, sc, v);
                     }
                   }
                   none { }
@@ -354,7 +358,7 @@ fn check_alt(cx: ctx, input: @ast::expr, arms: [ast::arm], sc: scope,
         }
         *sc.invalid = orig_invalid;
         visit::visit_arm(a, {bs: new_bs with sc}, v);
-        all_invalid = append_invalid(all_invalid, *sc.invalid, orig_invalid);
+        all_invalid = join_invalid(all_invalid, *sc.invalid);
     }
     *sc.invalid = all_invalid;
 }
@@ -423,12 +427,6 @@ fn check_lval(cx: @ctx, dest: @ast::expr, sc: scope, v: vt<scope>) {
     }
 }
 
-fn check_assign(cx: @ctx, dest: @ast::expr, src: @ast::expr, sc: scope,
-                v: vt<scope>) {
-    visit_expr(cx, src, sc, v);
-    check_lval(cx, dest, sc, v);
-}
-
 fn check_if(c: @ast::expr, then: ast::blk, els: option<@ast::expr>,
             sc: scope, v: vt<scope>) {
     v.visit_expr(c, sc, v);
@@ -437,7 +435,7 @@ fn check_if(c: @ast::expr, then: ast::blk, els: option<@ast::expr>,
     let then_invalid = *sc.invalid;
     *sc.invalid = orig_invalid;
     visit::visit_expr_opt(els, sc, v);
-    *sc.invalid = append_invalid(*sc.invalid, then_invalid, orig_invalid);
+    *sc.invalid = join_invalid(*sc.invalid, then_invalid);
 }
 
 fn check_loop(cx: ctx, sc: scope, checker: fn()) {
@@ -672,24 +670,14 @@ fn find_invalid(id: node_id, lst: list<@invalid>)
     ret none;
 }
 
-fn append_invalid(dest: list<@invalid>, src: list<@invalid>,
-                  stop: list<@invalid>) -> list<@invalid> {
-    let cur = src, dest = dest;
-    while cur != stop {
-        alt cur {
-          list::cons(head, tail) {
-            if is_none(find_invalid(head.node_id, dest)) {
-                dest = list::cons(head, @dest);
-            }
-            cur = *tail;
-          }
-          list::nil {
-              fail "append_invalid: stop doesn't appear to be \
-                 a postfix of src";
-          }
-        }
+fn join_invalid(a: list<@invalid>, b: list<@invalid>) -> list<@invalid> {
+    let result = a;
+    list::iter(b) {|elt|
+        let found = false;
+        list::iter(a) {|e| if e == elt { found = true; } }
+        if !found { result = list::cons(elt, @result); }
     }
-    ret dest;
+    result
 }
 
 fn filter_invalid(src: list<@invalid>, bs: [binding]) -> list<@invalid> {

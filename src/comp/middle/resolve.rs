@@ -1378,13 +1378,13 @@ fn lookup_glob_in_mod(e: env, info: @indexed_mod, sp: span, id: ident,
     // absence takes the place of todo()
     if !info.glob_imported_names.contains_key(id) {
         info.glob_imported_names.insert(id, glob_resolving(sp));
-        let val = lookup_in_globs(e, info.glob_imports, sp, id,
-                                  // kludge
-                                  (if wanted_ns == ns_val(ns_a_enum)
-                                  { ns_val(ns_a_enum) }
-                                  else { ns_val(ns_any_value) }), dr);
-        let typ = lookup_in_globs(e, info.glob_imports, sp, id, ns_type, dr);
-        let md = lookup_in_globs(e, info.glob_imports, sp, id, ns_module, dr);
+        // kludge
+        let val_ns = if wanted_ns == ns_val(ns_a_enum) { ns_val(ns_a_enum) }
+                     else { ns_val(ns_any_value) };
+        let globs = info.glob_imports;
+        let val = lookup_in_globs(e, globs, sp, id, val_ns, dr);
+        let typ = lookup_in_globs(e, globs, sp, id, ns_type, dr);
+        let md = lookup_in_globs(e, globs, sp, id, ns_module, dr);
         info.glob_imported_names.insert(id, glob_resolved(val, typ, md));
     }
     alt info.glob_imported_names.get(id) {
