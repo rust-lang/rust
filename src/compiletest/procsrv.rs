@@ -68,7 +68,7 @@ fn run(lib_path: str, prog: str, args: [str],
     let count = 2;
     while count > 0 {
         let stream = comm::recv(p);
-        alt stream {
+        alt check stream {
             (1, s) {
                 outs = s;
             }

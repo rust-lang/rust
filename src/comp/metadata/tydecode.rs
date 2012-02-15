@@ -177,7 +177,7 @@ fn parse_proto(c: char) -> ast::proto {
 }
 
 fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
-    alt next(st) {
+    alt check next(st) {
       'n' { ret ty::mk_nil(st.tcx); }
       'z' { ret ty::mk_bot(st.tcx); }
       'b' { ret ty::mk_bool(st.tcx); }
@@ -185,7 +185,7 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
       'u' { ret ty::mk_uint(st.tcx); }
       'l' { ret ty::mk_float(st.tcx); }
       'M' {
-        alt next(st) {
+        alt check next(st) {
           'b' { ret ty::mk_mach_uint(st.tcx, ast::ty_u8); }
           'w' { ret ty::mk_mach_uint(st.tcx, ast::ty_u16); }
           'l' { ret ty::mk_mach_uint(st.tcx, ast::ty_u32); }
@@ -269,7 +269,7 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
       'Y' { ret ty::mk_type(st.tcx); }
       'y' { ret ty::mk_send_type(st.tcx); }
       'C' {
-        let ck = alt next(st) {
+        let ck = alt check next(st) {
           '&' { ty::ck_block }
           '@' { ty::ck_box }
           '~' { ty::ck_uniq }
@@ -355,7 +355,7 @@ fn parse_ty_fn(st: @pstate, conv: conv_did) -> ty::fn_ty {
     assert (next(st) == '[');
     let inputs: [ty::arg] = [];
     while peek(st) != ']' {
-        let mode = alt peek(st) {
+        let mode = alt check peek(st) {
           '&' { ast::by_mut_ref }
           '-' { ast::by_move }
           '+' { ast::by_copy }
@@ -405,7 +405,7 @@ fn parse_bounds_data(data: @[u8], start: uint,
 fn parse_bounds(st: @pstate, conv: conv_did) -> @[ty::param_bound] {
     let bounds = [];
     while true {
-        bounds += [alt next(st) {
+        bounds += [alt check next(st) {
           'S' { ty::bound_send }
           'C' { ty::bound_copy }
           'I' { ty::bound_iface(parse_ty(st, conv)) }

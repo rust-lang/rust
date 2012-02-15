@@ -2140,7 +2140,7 @@ mod tests {
     fn test_chars_iter() {
         let i = 0;
         chars_iter("x\u03c0y") {|ch|
-            alt i {
+            alt check i {
               0 { assert ch == 'x'; }
               1 { assert ch == '\u03c0'; }
               2 { assert ch == 'y'; }
@@ -2156,7 +2156,7 @@ mod tests {
         let i = 0;
 
         bytes_iter("xyz") {|bb|
-            alt i {
+            alt check i {
               0 { assert bb == 'x' as u8; }
               1 { assert bb == 'y' as u8; }
               2 { assert bb == 'z' as u8; }

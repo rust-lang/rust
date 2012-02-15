@@ -7,7 +7,7 @@ fn main() {
       6u to 7u { fail "shouldn't match range"; }
       _ {}
     }
-    alt 5u {
+    alt check 5u {
       1u { fail "should match non-first range"; }
       2u to 6u {}
     }

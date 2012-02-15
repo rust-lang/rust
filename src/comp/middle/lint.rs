@@ -40,7 +40,7 @@ fn time(do_it: bool, what: str, thunk: fn()) {
 fn merge_opts(attrs: [ast::attribute], cmd_opts: [(option, bool)]) ->
     [(option, bool)] {
     fn str_to_option(name: str) -> (option, bool) {
-        ret alt name {
+        ret alt check name {
           "ctypes" { (ctypes, true) }
           "no_ctypes" { (ctypes, false) }
         }

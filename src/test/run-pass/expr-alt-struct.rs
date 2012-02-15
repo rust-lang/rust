@@ -5,7 +5,7 @@
 
 // Tests for alt as expressions resulting in structural types
 fn test_rec() {
-    let rs = alt true { true { {i: 100} } };
+    let rs = alt check true { true { {i: 100} } };
     assert (rs == {i: 100});
 }
 

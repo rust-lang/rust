@@ -166,7 +166,7 @@ Function: from_str
 Parse logic value from `s`
 */
 pure fn from_str(s: str) -> t {
-    alt s {
+    alt check s {
       "none" { none }
       "false" { four::false }
       "true" { four::true }
@@ -181,7 +181,7 @@ Convert `v` into a string
 */
 pure fn to_str(v: t) -> str {
     // FIXME replace with consts as soon as that works
-    alt v {
+    alt check v {
       0u8 { "none" }
       1u8 { "true" }
       2u8 { "false" }
@@ -265,7 +265,7 @@ mod tests {
     }
 
     fn to_tup(v: four::t) -> (bool, bool) {
-        alt v {
+        alt check v {
           0u8 { (false, false) }
           1u8 { (false, true) }
           2u8 { (true, false) }

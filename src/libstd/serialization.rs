@@ -241,7 +241,7 @@ fn test_option_int() {
     fn deserialize_0<S: deserializer>(s: S) -> option<int> {
         s.read_enum("option") {||
             s.read_enum_variant {|i|
-                alt i {
+                alt check i {
                   0u { none }
                   1u {
                     let v0 = s.read_enum_variant_arg(0u) {||

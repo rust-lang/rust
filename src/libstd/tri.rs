@@ -137,7 +137,7 @@ Function: from_str
 Parse logic value from `s`
 */
 pure fn from_str(s: str) -> t {
-    alt s {
+    alt check s {
       "unknown" { unknown }
       "true" { tri::true }
       "false" { tri::false }
@@ -151,7 +151,7 @@ Convert `v` into a string
 */
 pure fn to_str(v: t) -> str {
     // FIXME replace with consts as soon as that works
-    alt v {
+    alt check v {
       0u8 { "unknown" }
       1u8 { "true" }
       2u8 { "false" }

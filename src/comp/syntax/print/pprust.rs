@@ -1023,7 +1023,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
       }
       ast::expr_be(result) { word_nbsp(s, "be"); print_expr(s, result); }
       ast::expr_log(lvl, lexp, expr) {
-        alt lvl {
+        alt check lvl {
           1 { word_nbsp(s, "log"); print_expr(s, expr); }
           0 { word_nbsp(s, "log_err"); print_expr(s, expr); }
           2 {

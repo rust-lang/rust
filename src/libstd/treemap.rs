@@ -52,8 +52,12 @@ fn insert<K: copy, V: copy>(m: treemap<K, V>, k: K, v: V) {
         // We have to name left and right individually, because
         // otherwise the alias checker complains.
         if k < kk {
-            alt m { @node(_, _, left, _) { insert(left, k, v); } }
-        } else { alt m { @node(_, _, _, right) { insert(right, k, v); } } }
+            alt check m { @node(_, _, left, _) { insert(left, k, v); } }
+        } else {
+            alt check m {
+              @node(_, _, _, right) { insert(right, k, v); }
+            }
+        }
       }
     }
 }

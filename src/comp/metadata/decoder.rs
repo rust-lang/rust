@@ -218,7 +218,7 @@ fn lookup_def(cnum: ast::crate_num, data: @[u8], did_: ast::def_id) ->
     let fam_ch = item_family(item);
     let did = {crate: cnum, node: did_.node};
     // We treat references to enums as references to types.
-    alt fam_ch {
+    alt check fam_ch {
       'c' { ast::def_const(did) }
       'u' { ast::def_fn(did, ast::unsafe_fn) }
       'f' { ast::def_fn(did, ast::impure_fn) }
@@ -336,7 +336,7 @@ fn get_iface_methods(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
           _ { tcx.sess.bug("get_iface_methods: id has non-function type");
         } };
         result += [{ident: name, tps: bounds, fty: fty,
-                    purity: alt item_family(mth) {
+                    purity: alt check item_family(mth) {
                       'u' { ast::unsafe_fn }
                       'f' { ast::impure_fn }
                       'p' { ast::pure_fn }
@@ -346,7 +346,7 @@ fn get_iface_methods(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
 }
 
 fn family_has_type_params(fam_ch: char) -> bool {
-    alt fam_ch {
+    alt check fam_ch {
       'c' | 'T' | 'm' | 'n' { false }
       'f' | 'u' | 'p' | 'F' | 'U' | 'P' | 'y' | 't' | 'v' | 'i' | 'I' { true }
     }
@@ -370,7 +370,7 @@ fn describe_def(items: ebml::doc, id: ast::def_id) -> str {
 }
 
 fn item_family_to_str(fam: char) -> str {
-    alt fam {
+    alt check fam {
       'c' { ret "const"; }
       'f' { ret "fn"; }
       'u' { ret "unsafe fn"; }
