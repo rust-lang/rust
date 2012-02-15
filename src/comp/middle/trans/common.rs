@@ -173,6 +173,9 @@ type fn_ctxt = {
     // The 'self' value currently in use in this function, if there
     // is one.
     mutable llself: option<val_self_pair>,
+    // The a value alloca'd for calls to upcalls.rust_personality. Used when
+    // outputting the resume instruction.
+    mutable personality: option<ValueRef>,
 
     // Maps arguments to allocas created for them in llallocas.
     llargs: hashmap<ast::node_id, local_val>,
@@ -225,11 +228,21 @@ enum cleanup {
     clean_temp(ValueRef, fn@(@block_ctxt) -> @block_ctxt),
 }
 
+// Used to remember and reuse existing cleanup paths
+// target: none means the path ends in an resume instruction
+type cleanup_path = {target: option<BasicBlockRef>,
+                     dest: BasicBlockRef};
+
+fn scope_clean_changed(cx: @block_ctxt) {
+    cx.cleanup_paths = [];
+    cx.landing_pad = none;
+}
+
 fn add_clean(cx: @block_ctxt, val: ValueRef, ty: ty::t) {
     if !ty::type_needs_drop(bcx_tcx(cx), ty) { ret; }
     let scope_cx = find_scope_cx(cx);
     scope_cx.cleanups += [clean(bind drop_ty(_, val, ty))];
-    scope_cx.lpad_dirty = true;
+    scope_clean_changed(scope_cx);
 }
 fn add_clean_temp(cx: @block_ctxt, val: ValueRef, ty: ty::t) {
     if !ty::type_needs_drop(bcx_tcx(cx), ty) { ret; }
@@ -244,20 +257,20 @@ fn add_clean_temp(cx: @block_ctxt, val: ValueRef, ty: ty::t) {
     let scope_cx = find_scope_cx(cx);
     scope_cx.cleanups +=
         [clean_temp(val, bind do_drop(_, val, ty))];
-    scope_cx.lpad_dirty = true;
+    scope_clean_changed(scope_cx);
 }
 fn add_clean_temp_mem(cx: @block_ctxt, val: ValueRef, ty: ty::t) {
     if !ty::type_needs_drop(bcx_tcx(cx), ty) { ret; }
     let scope_cx = find_scope_cx(cx);
     scope_cx.cleanups += [clean_temp(val, bind drop_ty(_, val, ty))];
-    scope_cx.lpad_dirty = true;
+    scope_clean_changed(scope_cx);
 }
 fn add_clean_free(cx: @block_ctxt, ptr: ValueRef, shared: bool) {
     let scope_cx = find_scope_cx(cx);
     let free_fn = if shared { bind base::trans_shared_free(_, ptr) }
                   else { bind base::trans_free(_, ptr) };
     scope_cx.cleanups += [clean_temp(ptr, free_fn)];
-    scope_cx.lpad_dirty = true;
+    scope_clean_changed(scope_cx);
 }
 
 // Note that this only works for temporaries. We should, at some point, move
@@ -284,7 +297,7 @@ fn revoke_clean(cx: @block_ctxt, val: ValueRef) {
         vec::slice(sc_cx.cleanups, 0u, found as uint) +
             vec::slice(sc_cx.cleanups, (found as uint) + 1u,
                             sc_cx.cleanups.len());
-    sc_cx.lpad_dirty = true;
+    scope_clean_changed(sc_cx);
     ret;
 }
 
@@ -323,7 +336,6 @@ enum block_kind {
     NON_SCOPE_BLOCK
 }
 
-
 // Basic block context.  We create a block context for each basic block
 // (single-entry, single-exit sequence of instructions) we generate from Rust
 // code.  Each basic block we generate is attached to a function, typically
@@ -348,9 +360,10 @@ type block_ctxt =
      mutable unreachable: bool,
      parent: block_parent,
      kind: block_kind,
+     // FIXME the next five fields should probably only appear in scope blocks
      mutable cleanups: [cleanup],
-     mutable lpad_dirty: bool,
-     mutable lpad: option<BasicBlockRef>,
+     mutable cleanup_paths: [cleanup_path],
+     mutable landing_pad: option<BasicBlockRef>,
      block_span: option<span>,
      fcx: @fn_ctxt};
 
@@ -383,13 +396,12 @@ fn struct_elt(llstructty: TypeRef, n: uint) -> TypeRef unsafe {
 }
 
 fn find_scope_cx(cx: @block_ctxt) -> @block_ctxt {
-    if cx.kind != NON_SCOPE_BLOCK { ret cx; }
-    alt cx.parent {
-      parent_some(b) { ret find_scope_cx(b); }
-      _ {
-          bcx_tcx(cx).sess.bug("find_scope_cx: empty scope");
-      }
+    let cur = cx;
+    while true {
+        if cur.kind != NON_SCOPE_BLOCK { break; }
+        cur = alt check cur.parent { parent_some(b) { b } };
     }
+    cur
 }
 
 // Accessors

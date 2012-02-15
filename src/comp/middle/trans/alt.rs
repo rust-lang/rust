@@ -691,14 +691,16 @@ fn trans_alt(cx: @block_ctxt, expr: @ast::expr, arms_: [ast::arm],
                                                   a.pats[0])) {
             let arm_dest = base::dup_for_join(dest);
             arm_dests += [arm_dest];
-            arm_cxs += [base::trans_block_dps(body_cx, a.body, arm_dest)];
+            let arm_cx = base::trans_block(body_cx, a.body, arm_dest);
+            arm_cx = base::trans_block_cleanups(arm_cx, body_cx);
+            arm_cxs += [arm_cx];
         }
         i += 1u;
     }
-    let after_cx = base::join_returns(cx, arm_cxs, arm_dests, dest);
-    after_cx = base::trans_block_cleanups(after_cx, alt_cx);
-    let next_cx = new_sub_block_ctxt(after_cx, "next");
-    Br(after_cx, next_cx.llbb);
+    let after_cx = base::join_returns(alt_cx, arm_cxs, arm_dests, dest);
+    let next_cx = new_sub_block_ctxt(cx, "next");
+    if after_cx.unreachable { Unreachable(next_cx); }
+    base::cleanup_and_Br(after_cx, alt_cx, next_cx.llbb);
     ret next_cx;
 }
 
