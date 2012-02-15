@@ -26,8 +26,11 @@ rust_port_selector::select(rust_task *task, rust_port **dptr,
     // block the task before any of them can try to send another
     // message.
 
+    // Start looking for ports from a different index each time.
+    size_t j = isaac_rand(&task->thread->rctx);
     for (size_t i = 0; i < n_ports; i++) {
-	rust_port *port = ports[i];
+	size_t k = (i + j) % n_ports;
+	rust_port *port = ports[k];
 	I(task->thread, port != NULL);
 
 	port->lock.lock();
@@ -50,7 +53,8 @@ rust_port_selector::select(rust_task *task, rust_port **dptr,
     }
 
     for (size_t i = 0; i < locks_taken; i++) {
-	rust_port *port = ports[i];
+	size_t k = (i + j) % n_ports;
+	rust_port *port = ports[k];
 	port->lock.unlock();
     }
 }
