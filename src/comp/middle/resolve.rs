@@ -1965,12 +1965,8 @@ fn find_impls_in_view_item(e: env, vi: @ast::view_item,
           todo(node_id, name, path, span, scopes) {
             resolve_import(e, local_def(node_id), name, *path, span,
                            scopes);
-            alt e.imports.get(id) {
+            alt check e.imports.get(id) {
               resolved(_, _, _, is, _, _) { act(is); }
-              _ {
-                  e.sess.bug("Undocumented invariant in \
-                    lookup_imported_impls");
-              }
             }
           }
           _ {}
@@ -2003,16 +1999,14 @@ fn find_impls_in_view_item(e: env, vi: @ast::view_item,
         }
       }
       ast::view_item_import_glob(ids, id) {
-          alt e.imports.get(id) {
-            is_glob(path, sc, sp) {
-              alt follow_import(e, sc, *path, sp) {
-                some(def) { find_impls_in_mod(e, def, impls, none); }
-                _ {}
-              }
+        alt check e.imports.get(id) {
+          is_glob(path, sc, sp) {
+            alt follow_import(e, sc, *path, sp) {
+              some(def) { find_impls_in_mod(e, def, impls, none); }
+              _ {}
             }
-            _ { e.sess.span_bug(vi.span, "Undocumented invariant in \
-                  find_impls_in_view_item"); }
           }
+        }
       }
       _ {}
     }

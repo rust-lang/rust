@@ -337,7 +337,7 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
             ty::mk_param(tcx, n, id)
           }
           ast::def_self(iface_id) {
-            alt tcx.items.get(iface_id.node) {
+            alt check tcx.items.get(iface_id.node) {
               ast_map::node_item(@{node: ast::item_iface(tps, _), _}, _) {
                 if vec::len(tps) != vec::len(path.node.types) {
                     tcx.sess.span_err(ast_ty.span, "incorrect number of type \
@@ -347,7 +347,6 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
                     ast_ty_to_ty(tcx, mode, ast_ty)
                 }))
               }
-              _ { fail; }
             }
           }
           _ {
@@ -780,13 +779,12 @@ mod collect {
         }
     }
     fn ensure_iface_methods(tcx: ty::ctxt, id: ast::node_id) {
-        alt tcx.items.get(id) {
+        alt check tcx.items.get(id) {
           ast_map::node_item(@{node: ast::item_iface(_, ms), _}, _) {
             ty::store_iface_methods(tcx, id, @vec::map(ms, {|m|
                 ty_of_ty_method(tcx, m_collect, m)
             }));
           }
-          _ { fail; }
         }
     }
     fn convert_class_item(_cx: @ctxt, _parent_ty: ty::t,
@@ -1564,9 +1562,8 @@ fn require_pure_call(ccx: @crate_ctxt, caller_purity: ast::purity,
         alt ccx.method_map.find(callee.id) {
           some(method_static(did)) {
             if did.crate == ast::local_crate {
-                alt ccx.tcx.items.get(did.node) {
+                alt check ccx.tcx.items.get(did.node) {
                   ast_map::node_method(m, _, _) { m.decl.purity }
-                  _ { fail; }
                 }
             } else {
                 csearch::lookup_method_purity(ccx.tcx.sess.cstore, did)
@@ -1608,13 +1605,10 @@ fn check_expr_with(fcx: @fn_ctxt, expr: @ast::expr, expected: ty::t) -> bool {
 
 fn impl_self_ty(tcx: ty::ctxt, did: ast::def_id) -> {n_tps: uint, ty: ty::t} {
     if did.crate == ast::local_crate {
-        alt tcx.items.get(did.node) {
+        alt check tcx.items.get(did.node) {
           ast_map::node_item(@{node: ast::item_impl(ts, _, st, _),
                                _}, _) {
             {n_tps: vec::len(ts), ty: ast_ty_to_ty(tcx, m_check, st)}
-          }
-          an_item {
-              tcx.sess.bug("Undocumented invariant in impl_self_ty");
           }
         }
     } else {
@@ -1678,9 +1672,8 @@ fn lookup_method_inner(fcx: @fn_ctxt, expr: @ast::expr,
         for bound in *tcx.ty_param_bounds.get(did.node) {
             alt bound {
               ty::bound_iface(t) {
-                let (iid, tps) = alt ty::get(t).struct {
+                let (iid, tps) = alt check ty::get(t).struct {
                   ty::ty_iface(i, tps) { (i, tps) }
-                  _ { fail; }
                 };
                 let ifce_methods = ty::iface_methods(tcx, iid);
                 alt vec::position(*ifce_methods, {|m| m.ident == name}) {
@@ -1727,21 +1720,17 @@ fn lookup_method_inner(fcx: @fn_ctxt, expr: @ast::expr,
 
     fn ty_from_did(tcx: ty::ctxt, did: ast::def_id) -> ty::t {
         if did.crate == ast::local_crate {
-            alt tcx.items.get(did.node) {
+            alt check tcx.items.get(did.node) {
               ast_map::node_method(m, _, _) {
                 let mt = ty_of_method(tcx, m_check, m);
                 ty::mk_fn(tcx, {proto: ast::proto_box with mt.fty})
               }
-              _ {
-                  tcx.sess.bug("Undocumented invariant in ty_from_did");
-              }
             }
         } else {
-            alt ty::get(csearch::get_type(tcx, did).ty).struct {
+            alt check ty::get(csearch::get_type(tcx, did).ty).struct {
               ty::ty_fn(fty) {
                 ty::mk_fn(tcx, {proto: ast::proto_box with fty})
               }
-              _ { fail; }
             }
         }
     }
@@ -2550,22 +2539,16 @@ fn check_decl_initializer(fcx: @fn_ctxt, nid: ast::node_id,
 fn check_decl_local(fcx: @fn_ctxt, local: @ast::local) -> bool {
     let bot = false;
 
-    alt fcx.locals.find(local.node.id) {
-      some(i) {
-        let t = ty::mk_var(fcx.ccx.tcx, i);
-        write_ty(fcx.ccx.tcx, local.node.id, t);
-        alt local.node.init {
-          some(init) {
-            bot = check_decl_initializer(fcx, local.node.id, init);
-          }
-          _ {/* fall through */ }
-        }
-        let id_map = pat_util::pat_id_map(fcx.ccx.tcx, local.node.pat);
-        check_pat(fcx, id_map, local.node.pat, t);
+    let t = ty::mk_var(fcx.ccx.tcx, fcx.locals.get(local.node.id));
+    write_ty(fcx.ccx.tcx, local.node.id, t);
+    alt local.node.init {
+      some(init) {
+        bot = check_decl_initializer(fcx, local.node.id, init);
       }
-      _ { fcx.ccx.tcx.sess.span_bug(local.span, "Undocumented invariant \
-            in check_decl_local");  }
+      _ {/* fall through */ }
     }
+    let id_map = pat_util::pat_id_map(fcx.ccx.tcx, local.node.pat);
+    check_pat(fcx, id_map, local.node.pat, t);
     ret bot;
 }
 
@@ -2985,10 +2968,8 @@ mod dict {
     fn lookup_dict(fcx: @fn_ctxt, isc: resolve::iscopes, sp: span,
                    ty: ty::t, iface_ty: ty::t) -> dict_origin {
         let tcx = fcx.ccx.tcx;
-        let (iface_id, iface_tps) = alt ty::get(iface_ty).struct {
+        let (iface_id, iface_tps) = alt check ty::get(iface_ty).struct {
             ty::ty_iface(did, tps) { (did, tps) }
-            _ { tcx.sess.span_bug(sp, "Undocumented invariant in lookup\
-                 _dict"); }
         };
         let ty = fixup_ty(fcx, sp, ty);
         alt ty::get(ty).struct {
@@ -2997,12 +2978,10 @@ mod dict {
             for bound in *tcx.ty_param_bounds.get(did.node) {
                 alt bound {
                   ty::bound_iface(ity) {
-                    alt ty::get(ity).struct {
+                    alt check ty::get(ity).struct {
                       ty::ty_iface(idid, _) {
                         if iface_id == idid { ret dict_param(n, n_bound); }
                       }
-                      _ { tcx.sess.span_bug(sp, "Undocumented invariant in \
-                           lookup_dict"); }
                     }
                     n_bound += 1u;
                   }
@@ -3020,11 +2999,8 @@ mod dict {
                 for im in *impls {
                     let match = alt ty::impl_iface(tcx, im.did) {
                       some(ity) {
-                        alt ty::get(ity).struct {
+                        alt check ty::get(ity).struct {
                           ty::ty_iface(id, _) { id == iface_id }
-                          // Bleah, abstract this
-                          _ { tcx.sess.span_bug(sp, "Undocumented invariant \
-                               in lookup_dict"); }
                         }
                       }
                       _ { false }
@@ -3086,14 +3062,10 @@ mod dict {
         let tcx = fcx.ccx.tcx;
         let ity = option::get(ty::impl_iface(tcx, impl_did));
         let iface_ty = ty::substitute_type_params(tcx, impl_tys, ity);
-        alt ty::get(iface_ty).struct {
+        alt check ty::get(iface_ty).struct {
           ty::ty_iface(_, tps) {
             vec::iter2(tps, iface_tys,
                        {|a, b| demand::simple(fcx, sp, a, b);});
-          }
-          _ {
-              tcx.sess.span_bug(sp, "Undocumented invariant in \
-                 connect_iface_tps");
           }
         }
     }

@@ -284,7 +284,7 @@ fn create_basic_type(cx: @crate_ctxt, t: ty::t, ty: ast::prim_ty, span: span)
       option::none {}
     }
 
-    let (name, (size, align), encoding) = alt ty {
+    let (name, (size, align), encoding) = alt check ty {
       ast::ty_bool {("bool", size_and_align_of::<bool>(), DW_ATE_boolean)}
       ast::ty_int(m) { alt m {
         ast::ty_char {("char", size_and_align_of::<char>(), DW_ATE_unsigned)}
@@ -306,7 +306,6 @@ fn create_basic_type(cx: @crate_ctxt, t: ty::t, ty: ast::prim_ty, span: span)
         ast::ty_f32 {("f32", size_and_align_of::<f32>(), DW_ATE_float)}
         ast::ty_f64 {("f64", size_and_align_of::<f64>(), DW_ATE_float)}
       }}
-      _ { fail; }
     };
 
     let fname = filename_from_span(cx, span);
@@ -511,9 +510,9 @@ fn create_vec(cx: @crate_ctxt, vec_t: ty::t, elem_t: ty::t,
 fn member_size_and_align(tcx: ty::ctxt, ty: @ast::ty) -> (int, int) {
     alt ty.node {
       ast::ty_path(_, id) {
-        alt tcx.def_map.get(id) {
+        alt check tcx.def_map.get(id) {
           ast::def_prim_ty(nty) {
-            alt nty {
+            alt check nty {
               ast::ty_bool { size_and_align_of::<bool>() }
               ast::ty_int(m) { alt m {
                 ast::ty_char { size_and_align_of::<char>() }
@@ -535,10 +534,8 @@ fn member_size_and_align(tcx: ty::ctxt, ty: @ast::ty) -> (int, int) {
                 ast::ty_f32 { size_and_align_of::<f32>() }
                 ast::ty_f64 { size_and_align_of::<f64>() }
               }}
-              _ { fail; }
             }
           }
-          _ { fail; }
         }
       }
       ast::ty_box(_) | ast::ty_uniq(_) {

@@ -395,7 +395,6 @@ mod tests {
           option_missing(_) { assert (ft == option_missing_); }
           option_duplicated(_) { assert (ft == option_duplicated_); }
           unexpected_argument(_) { assert (ft == unexpected_argument_); }
-          _ { fail; }
         }
     }
 
@@ -406,12 +405,11 @@ mod tests {
         let args = ["--test=20"];
         let opts = [reqopt("test")];
         let rs = getopts(args, opts);
-        alt rs {
+        alt check rs {
           ok(m) {
             assert (opt_present(m, "test"));
             assert (opt_str(m, "test") == "20");
           }
-          _ { fail; }
         }
     }
 

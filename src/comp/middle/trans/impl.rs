@@ -154,11 +154,10 @@ fn trans_monomorphized_callee(bcx: @block_ctxt, callee_id: ast::node_id,
                                    n_method, n_param, n_bound);
         }
         let mname = ty::iface_methods(tcx, iface_id)[n_method].ident;
-        let mth = alt tcx.items.get(impl_did.node) {
+        let mth = alt check tcx.items.get(impl_did.node) {
           ast_map::node_item(@{node: ast::item_impl(_, _, _, ms), _}, _) {
             option::get(vec::find(ms, {|m| m.ident == mname}))
           }
-          _ { fail; }
         };
         ret trans_static_callee(bcx, callee_id, base,
                                 ast_util::local_def(mth.id),

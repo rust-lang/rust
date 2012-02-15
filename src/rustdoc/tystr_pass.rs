@@ -45,15 +45,12 @@ fn fold_fn(
 
 fn get_fn_sig(srv: astsrv::srv, fn_id: doc::ast_id) -> option<str> {
     astsrv::exec(srv) {|ctxt|
-        alt ctxt.ast_map.get(fn_id) {
+        alt check ctxt.ast_map.get(fn_id) {
           ast_map::node_item(@{
             ident: ident,
             node: ast::item_fn(decl, _, blk), _
           }, _) {
             some(pprust::fun_to_str(decl, ident, []))
-          }
-          _ {
-            fail "get_fn_sig: undocumented invariant";
           }
         }
     }
@@ -83,13 +80,12 @@ fn merge_ret_ty(
 
 fn get_ret_ty(srv: astsrv::srv, fn_id: doc::ast_id) -> option<str> {
     astsrv::exec(srv) {|ctxt|
-        alt ctxt.ast_map.get(fn_id) {
+        alt check ctxt.ast_map.get(fn_id) {
           ast_map::node_item(@{
             node: ast::item_fn(decl, _, _), _
           }, _) {
             ret_ty_to_str(decl)
           }
-          _ { fail "get_ret_ty: undocumented invariant"; }
         }
     }
 }
@@ -133,7 +129,7 @@ fn merge_arg_tys(
 
 fn get_arg_tys(srv: astsrv::srv, fn_id: doc::ast_id) -> [(str, str)] {
     astsrv::exec(srv) {|ctxt|
-        alt ctxt.ast_map.get(fn_id) {
+        alt check ctxt.ast_map.get(fn_id) {
           ast_map::node_item(@{
             node: ast::item_fn(decl, _, _), _
           }, _) |
@@ -141,9 +137,6 @@ fn get_arg_tys(srv: astsrv::srv, fn_id: doc::ast_id) -> [(str, str)] {
             node: ast::item_res(decl, _, _, _, _), _
           }, _) {
             decl_arg_tys(decl)
-          }
-          _ {
-            fail "get_arg_tys: undocumented invariant";
           }
         }
     }
@@ -171,14 +164,11 @@ fn fold_const(
 
     {
         ty: some(astsrv::exec(srv) {|ctxt|
-            alt ctxt.ast_map.get(doc.id) {
+            alt check ctxt.ast_map.get(doc.id) {
               ast_map::node_item(@{
                 node: ast::item_const(ty, _), _
               }, _) {
                 pprust::ty_to_str(ty)
-              }
-              _ {
-                fail "fold_const: undocumented invariant";
               }
             }
         })
@@ -201,7 +191,7 @@ fn fold_enum(
     {
         variants: vec::map(doc.variants) {|variant|
             let sig = astsrv::exec(srv) {|ctxt|
-                alt ctxt.ast_map.get(doc.id) {
+                alt check ctxt.ast_map.get(doc.id) {
                   ast_map::node_item(@{
                     node: ast::item_enum(ast_variants, _), _
                   }, _) {
@@ -212,7 +202,6 @@ fn fold_enum(
 
                     pprust::variant_to_str(ast_variant)
                   }
-                  _ { fail "fold_enum: undocumented invariant"; }
                 }
             };
 
@@ -240,13 +229,12 @@ fn fold_res(
     {
         args: merge_arg_tys(srv, doc.id, doc.args),
         sig: some(astsrv::exec(srv) {|ctxt|
-            alt ctxt.ast_map.get(doc.id) {
+            alt check ctxt.ast_map.get(doc.id) {
               ast_map::node_item(@{
                 node: ast::item_res(decl, _, _, _, _), _
               }, _) {
                 pprust::res_to_str(decl, doc.name, [])
               }
-              _ { fail "fold_res: undocumented invariant"; }
             }
         })
         with doc
@@ -325,25 +313,23 @@ fn get_method_ret_ty(
           ast_map::node_item(@{
             node: ast::item_iface(_, methods), _
           }, _) {
-            alt vec::find(methods) {|method|
+            alt check vec::find(methods) {|method|
                 method.ident == method_name
             } {
                 some(method) {
                     ret_ty_to_str(method.decl)
                 }
-                _ { fail "get_method_ret_ty: undocumented invariant"; }
             }
           }
           ast_map::node_item(@{
             node: ast::item_impl(_, _, _, methods), _
           }, _) {
-            alt vec::find(methods) {|method|
+            alt check vec::find(methods) {|method|
                 method.ident == method_name
             } {
                 some(method) {
                     ret_ty_to_str(method.decl)
                 }
-                _ { fail "get_method_ret_ty: undocumented invariant"; }
             }
           }
           _ { fail }
@@ -357,32 +343,29 @@ fn get_method_sig(
     method_name: str
 ) -> option<str> {
     astsrv::exec(srv) {|ctxt|
-        alt ctxt.ast_map.get(item_id) {
+        alt check ctxt.ast_map.get(item_id) {
           ast_map::node_item(@{
             node: ast::item_iface(_, methods), _
           }, _) {
-            alt vec::find(methods) {|method|
+            alt check vec::find(methods) {|method|
                 method.ident == method_name
             } {
                 some(method) {
                     some(pprust::fun_to_str(method.decl, method.ident, []))
                 }
-                _ { fail "get_method_sig: undocumented invariant"; }
             }
           }
           ast_map::node_item(@{
             node: ast::item_impl(_, _, _, methods), _
           }, _) {
-            alt vec::find(methods) {|method|
+            alt check vec::find(methods) {|method|
                 method.ident == method_name
             } {
                 some(method) {
                     some(pprust::fun_to_str(method.decl, method.ident, []))
                 }
-                _ { fail "get_method_sig: undocumented invariant"; }
             }
           }
-          _ { fail "get_method_sig: undocumented invariant"; }
         }
     }
 }

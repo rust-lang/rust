@@ -2264,7 +2264,7 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
     ccx.monomorphized.insert(hash_id, {llfn: lldecl, fty: mono_ty});
 
     let psubsts = some({tys: substs, dicts: dicts, bounds: tpt.bounds});
-    alt map_node {
+    alt check map_node {
       ast_map::node_item(@{node: ast::item_fn(decl, _, body), _}, _) {
         trans_fn(ccx, pt, decl, body, lldecl, no_self, [],
                  psubsts, fn_id.node);
@@ -2285,7 +2285,6 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
         trans_fn(ccx, pt, mth.decl, mth.body, lldecl,
                  impl_self(selfty), [], psubsts, fn_id.node);
       }
-      _ { fail; }
     }
     some({llfn: lldecl, fty: mono_ty})
 }
@@ -2622,7 +2621,7 @@ fn lval_maybe_callee_to_lval(c: lval_maybe_callee, ty: ty::t) -> lval_result {
         add_clean_temp(bcx, space.val, ty);
         {bcx: bcx, val: space.val, kind: temporary}
     } else {
-        alt c.env {
+        alt check c.env {
           is_closure { {bcx: c.bcx, val: c.val, kind: c.kind} }
           null_env {
             let llfnty = llvm::LLVMGetElementType(val_ty(c.val));
@@ -2630,7 +2629,6 @@ fn lval_maybe_callee_to_lval(c: lval_maybe_callee, ty: ty::t) -> lval_result {
                                            null_env_ptr(c.bcx));
             {bcx: c.bcx, val: llfn, kind: temporary}
           }
-          _ { fail; }
         }
     }
 }
@@ -4462,9 +4460,8 @@ fn trans_const(cx: @crate_ctxt, e: @ast::expr, id: ast::node_id) {
 }
 
 fn trans_item(ccx: @crate_ctxt, item: ast::item) {
-    let path = alt ccx.tcx.items.get(item.id) {
+    let path = alt check ccx.tcx.items.get(item.id) {
       ast_map::node_item(_, p) { p }
-      _ { fail; }
     };
     alt item.node {
       ast::item_fn(decl, tps, body) {
@@ -4717,8 +4714,8 @@ fn collect_native_item(ccx: @crate_ctxt,
             // For true external functions: create a rust wrapper
             // and link to that.  The rust wrapper will handle
             // switching to the C stack.
-            let path = *alt ccx.tcx.items.get(i.id) {
-              ast_map::node_native_item(_, p) { p } _ { fail; }
+            let path = *alt check ccx.tcx.items.get(i.id) {
+              ast_map::node_native_item(_, p) { p }
             } + [path_name(i.ident)];
             register_fn(ccx, i.span, path, "native fn", tps, i.id);
           }
@@ -4729,8 +4726,8 @@ fn collect_native_item(ccx: @crate_ctxt,
 }
 
 fn item_path(ccx: @crate_ctxt, i: @ast::item) -> path {
-    *alt ccx.tcx.items.get(i.id) {
-      ast_map::node_item(_, p) { p } _ { fail; }
+    *alt check ccx.tcx.items.get(i.id) {
+      ast_map::node_item(_, p) { p }
     } + [path_name(i.ident)]
 }
 

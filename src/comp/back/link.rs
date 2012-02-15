@@ -203,12 +203,11 @@ mod write {
             let LLVMOptAggressive = 3 as c_int; // -O3
 
             let CodeGenOptLevel;
-            alt opts.optimize {
+            alt check opts.optimize {
               0u { CodeGenOptLevel = LLVMOptNone; }
               1u { CodeGenOptLevel = LLVMOptLess; }
               2u { CodeGenOptLevel = LLVMOptDefault; }
               3u { CodeGenOptLevel = LLVMOptAggressive; }
-              _ { fail; }
             }
 
             let FileType;

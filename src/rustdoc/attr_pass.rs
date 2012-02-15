@@ -243,7 +243,7 @@ fn fold_enum(
         desc: attrs.desc,
         variants: vec::map(doc.variants) {|variant|
             let attrs = astsrv::exec(srv) {|ctxt|
-                alt ctxt.ast_map.get(doc.id) {
+                alt check ctxt.ast_map.get(doc.id) {
                   ast_map::node_item(@{
                     node: ast::item_enum(ast_variants, _), _
                   }, _) {
@@ -254,7 +254,6 @@ fn fold_enum(
 
                     attr_parser::parse_variant(ast_variant.node.attrs)
                   }
-                  _ { fail "fold_enum: undocumented invariant"; }
                 }
             };
 
