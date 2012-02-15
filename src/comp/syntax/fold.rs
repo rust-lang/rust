@@ -337,7 +337,7 @@ fn wrap<T>(f: fn@(T, ast_fold) -> T)
 fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
     fn fold_field_(field: field, fld: ast_fold) -> field {
         ret {node:
-                 {mut: field.node.mut,
+                 {mutbl: field.node.mutbl,
                   ident: fld.fold_ident(field.node.ident),
                   expr: fld.fold_expr(field.node.expr)},
              span: field.span};
@@ -434,7 +434,7 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
 fn noop_fold_ty(t: ty_, fld: ast_fold) -> ty_ {
     let fold_mac = bind fold_mac_(_, fld);
     fn fold_mt(mt: mt, fld: ast_fold) -> mt {
-        {ty: fld.fold_ty(mt.ty), mut: mt.mut}
+        {ty: fld.fold_ty(mt.ty), mutbl: mt.mutbl}
     }
     fn fold_field(f: ty_field, fld: ast_fold) -> ty_field {
         {node: {ident: fld.fold_ident(f.node.ident),

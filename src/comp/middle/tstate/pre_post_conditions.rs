@@ -275,7 +275,7 @@ fn forget_args_moved_in(fcx: fn_ctxt, parent: @expr, modes: [mode],
     vec::iteri(modes) {|i,mode|
         alt ty::resolved_mode(fcx.ccx.tcx, mode) {
           by_move { forget_in_postcond(fcx, parent.id, operands[i].id); }
-          by_ref | by_val | by_mut_ref | by_copy { }
+          by_ref | by_val | by_mutbl_ref | by_copy { }
         }
     }
 }

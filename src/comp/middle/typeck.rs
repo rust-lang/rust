@@ -115,7 +115,7 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
                 fcx.ccx.tcx,
                 {
                     ty: ty::mk_mach_uint(fcx.ccx.tcx, ast::ty_u8),
-                    mut: ast::imm
+                    mutbl: ast::m_imm
                 })
         };
       }
@@ -259,7 +259,7 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
 
     tcx.ast_ty_to_ty_cache.insert(ast_ty, none::<ty::t>);
     fn ast_mt_to_mt(tcx: ty::ctxt, mode: mode, mt: ast::mt) -> ty::mt {
-        ret {ty: ast_ty_to_ty(tcx, mode, mt.ty), mut: mt.mut};
+        ret {ty: ast_ty_to_ty(tcx, mode, mt.ty), mutbl: mt.mutbl};
     }
     fn instantiate(tcx: ty::ctxt, sp: span, mode: mode,
                    id: ast::def_id, args: [@ast::ty]) -> ty::t {
@@ -2057,9 +2057,11 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         bot = check_expr(fcx, oper);
         let oper_t = expr_ty(tcx, oper);
         alt unop {
-          ast::box(mut) { oper_t = ty::mk_box(tcx, {ty: oper_t, mut: mut}); }
-          ast::uniq(mut) {
-            oper_t = ty::mk_uniq(tcx, {ty: oper_t, mut: mut});
+          ast::box(mutbl) {
+            oper_t = ty::mk_box(tcx, {ty: oper_t, mutbl: mutbl});
+          }
+          ast::uniq(mutbl) {
+            oper_t = ty::mk_uniq(tcx, {ty: oper_t, mutbl: mutbl});
           }
           ast::deref {
             alt structure_of(fcx, expr.span, oper_t) {
@@ -2358,10 +2360,10 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         }
         write_ty(tcx, id, t_1);
       }
-      ast::expr_vec(args, mut) {
+      ast::expr_vec(args, mutbl) {
         let t: ty::t = next_ty_var(fcx);
         for e: @ast::expr in args { bot |= check_expr_with(fcx, e, t); }
-        let typ = ty::mk_vec(tcx, {ty: t, mut: mut});
+        let typ = ty::mk_vec(tcx, {ty: t, mutbl: mutbl});
         write_ty(tcx, id, typ);
       }
       ast::expr_tup(elts) {
@@ -2381,7 +2383,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         for f: ast::field in fields {
             bot |= check_expr(fcx, f.node.expr);
             let expr_t = expr_ty(tcx, f.node.expr);
-            let expr_mt = {ty: expr_t, mut: f.node.mut};
+            let expr_mt = {ty: expr_t, mutbl: f.node.mutbl};
             // for the most precise error message,
             // should be f.node.expr.span, not f.span
             fields_t +=
@@ -2894,7 +2896,7 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
 fn arg_is_argv_ty(_tcx: ty::ctxt, a: ty::arg) -> bool {
     alt ty::get(a.ty).struct {
       ty::ty_vec(mt) {
-        if mt.mut != ast::imm { ret false; }
+        if mt.mutbl != ast::m_imm { ret false; }
         alt ty::get(mt.ty).struct {
           ty::ty_str { ret true; }
           _ { ret false; }

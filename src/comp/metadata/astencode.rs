@@ -483,28 +483,28 @@ impl ast_output for ast_ctxt {
                 self.tag(at_ty_bot) {||}
               }
 
-              ty_box({ty: ty, mut: m}) {
+              ty_box({ty: ty, mutbl: m}) {
                 self.tag(at_ty_box) {||
                     self.ty(ty);
                     self.mutbl(m);
                 }
               }
 
-              ty_uniq({ty: ty, mut: m}) {
+              ty_uniq({ty: ty, mutbl: m}) {
                 self.tag(at_ty_uniq) {||
                     self.ty(ty);
                     self.mutbl(m);
                 }
               }
 
-              ty_vec({ty: ty, mut: m}) {
+              ty_vec({ty: ty, mutbl: m}) {
                 self.tag(at_ty_vec) {||
                     self.ty(ty);
                     self.mutbl(m);
                 }
               }
 
-              ty_ptr({ty: ty, mut: m}) {
+              ty_ptr({ty: ty, mutbl: m}) {
                 self.tag(at_ty_ptr) {||
                     self.ty(ty);
                     self.mutbl(m);

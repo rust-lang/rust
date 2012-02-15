@@ -231,7 +231,7 @@ fn finish<T: qq_helper>
                                 [mk_str(cx,sp, loc.file.name),
                                  mk_uint(cx,sp, loc.line),
                                  mk_uint(cx,sp, loc.col)]),
-                        mk_unary(cx,sp, ast::box(ast::imm),
+                        mk_unary(cx,sp, ast::box(ast::m_imm),
                                  mk_str(cx,sp, str2)),
                         mk_access_(cx,sp,
                                    mk_access_(cx,sp, session_call(), "opts"),

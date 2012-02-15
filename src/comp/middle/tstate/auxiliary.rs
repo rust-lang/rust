@@ -1089,7 +1089,7 @@ fn callee_arg_init_ops(fcx: fn_ctxt, callee: node_id) -> [init_op] {
     vec::map(callee_modes(fcx, callee)) {|m|
         alt ty::resolved_mode(fcx.ccx.tcx, m) {
           by_move { init_move }
-          by_copy | by_ref | by_val | by_mut_ref { init_assign }
+          by_copy | by_ref | by_val | by_mutbl_ref { init_assign }
         }
     }
 }

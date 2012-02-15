@@ -311,11 +311,11 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
 fn parse_mt(st: @pstate, conv: conv_did) -> ty::mt {
     let m;
     alt peek(st) {
-      'm' { next(st); m = ast::mut; }
-      '?' { next(st); m = ast::maybe_mut; }
-      _ { m = ast::imm; }
+      'm' { next(st); m = ast::m_mutbl; }
+      '?' { next(st); m = ast::m_const; }
+      _ { m = ast::m_imm; }
     }
-    ret {ty: parse_ty(st, conv), mut: m};
+    ret {ty: parse_ty(st, conv), mutbl: m};
 }
 
 fn parse_def(st: @pstate, conv: conv_did) -> ast::def_id {
@@ -356,7 +356,7 @@ fn parse_ty_fn(st: @pstate, conv: conv_did) -> ty::fn_ty {
     let inputs: [ty::arg] = [];
     while peek(st) != ']' {
         let mode = alt check peek(st) {
-          '&' { ast::by_mut_ref }
+          '&' { ast::by_mutbl_ref }
           '-' { ast::by_move }
           '+' { ast::by_copy }
           '=' { ast::by_ref }

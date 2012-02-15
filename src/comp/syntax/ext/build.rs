@@ -61,7 +61,7 @@ fn mk_call(cx: ext_ctxt, sp: span, fn_path: [ast::ident],
 // e = expr, t = type
 fn mk_vec_e(cx: ext_ctxt, sp: span, exprs: [@ast::expr]) ->
    @ast::expr {
-    let vecexpr = ast::expr_vec(exprs, ast::imm);
+    let vecexpr = ast::expr_vec(exprs, ast::m_imm);
     ret @{id: cx.next_id(), node: vecexpr, span: sp};
 }
 fn mk_rec_e(cx: ext_ctxt, sp: span,
@@ -72,7 +72,7 @@ fn mk_rec_e(cx: ext_ctxt, sp: span,
         let ident = field.ident;
         let val = field.ex;
         let astfield =
-            {node: {mut: ast::imm, ident: ident, expr: val}, span: sp};
+            {node: {mutbl: ast::m_imm, ident: ident, expr: val}, span: sp};
         astfields += [astfield];
     }
     let recexpr = ast::expr_rec(astfields, option::none::<@ast::expr>);

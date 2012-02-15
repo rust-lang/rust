@@ -587,21 +587,21 @@ fn create_ty(_cx: @crate_ctxt, _t: ty::t, _ty: @ast::ty)
           ty::ty_float(t) { ast::ty_float(t) }
           ty::ty_uint(t) { ast::ty_uint(t) }
           ty::ty_box(mt) { ast::ty_box({ty: t_to_ty(cx, mt.ty, span),
-                                        mut: mt.mut}) }
+                                        mutbl: mt.mutbl}) }
           ty::ty_uniq(mt) { ast::ty_uniq({ty: t_to_ty(cx, mt.ty, span),
-                                          mut: mt.mut}) }
+                                          mutbl: mt.mutbl}) }
           ty::ty_rec(fields) {
             let fs = [];
             for field in fields {
                 fs += [{node: {ident: field.ident,
                                mt: {ty: t_to_ty(cx, field.mt.ty, span),
-                                    mut: field.mt.mut}},
+                                    mutbl: field.mt.mutbl}},
                         span: span}];
             }
             ast::ty_rec(fs)
           }
           ty::ty_vec(mt) { ast::ty_vec({ty: t_to_ty(cx, mt.ty, span),
-                                        mut: mt.mut}) }
+                                        mutbl: mt.mutbl}) }
           _ {
             cx.tcx.sess.span_bug(span, "t_to_ty: Can't handle this type");
           }

@@ -150,7 +150,7 @@ fn bad_expr_word_table() -> hashmap<str, ()> {
                  "export", "fail", "fn", "for", "if",  "iface", "impl",
                  "import", "let", "log", "mod", "mutable", "native", "pure",
                  "resource", "ret", "trait", "type", "unchecked", "unsafe",
-                 "while, crust"] {
+                 "while", "crust", "mut"] {
         words.insert(word, ());
     }
     words
@@ -293,18 +293,18 @@ fn parse_ty_methods(p: parser) -> [ast::ty_method] {
 }
 
 fn parse_mt(p: parser) -> ast::mt {
-    let mut = parse_mutability(p);
+    let mutbl = parse_mutability(p);
     let t = parse_ty(p, false);
-    ret {ty: t, mut: mut};
+    ret {ty: t, mutbl: mutbl};
 }
 
 fn parse_ty_field(p: parser) -> ast::ty_field {
     let lo = p.span.lo;
-    let mut = parse_mutability(p);
+    let mutbl = parse_mutability(p);
     let id = parse_ident(p);
     expect(p, token::COLON);
     let ty = parse_ty(p, false);
-    ret spanned(lo, ty.span.hi, {ident: id, mt: {ty: ty, mut: mut}});
+    ret spanned(lo, ty.span.hi, {ident: id, mt: {ty: ty, mutbl: mutbl}});
 }
 
 // if i is the jth ident in args, return j
@@ -486,7 +486,7 @@ fn parse_ty(p: parser, colons_before_params: bool) -> @ast::ty {
 
 fn parse_arg_mode(p: parser) -> ast::mode {
     if eat(p, token::BINOP(token::AND)) {
-        ast::expl(ast::by_mut_ref)
+        ast::expl(ast::by_mutbl_ref)
     } else if eat(p, token::BINOP(token::MINUS)) {
         ast::expl(ast::by_move)
     } else if eat(p, token::ANDAND) {
@@ -693,11 +693,13 @@ fn parse_path_and_ty_param_substs(p: parser, colons: bool) -> @ast::path {
 
 fn parse_mutability(p: parser) -> ast::mutability {
     if eat_word(p, "mutable") {
-        ast::mut
+        ast::m_mutbl
+    } else if eat_word(p, "mut") {
+        ast::m_mutbl
     } else if eat_word(p, "const") {
-        ast::maybe_mut
+        ast::m_const
     } else {
-        ast::imm
+        ast::m_imm
     }
 }
 
@@ -707,7 +709,7 @@ fn parse_field(p: parser, sep: token::token) -> ast::field {
     let i = parse_ident(p);
     expect(p, sep);
     let e = parse_expr(p);
-    ret spanned(lo, e.span.hi, {mut: m, ident: i, expr: e});
+    ret spanned(lo, e.span.hi, {mutbl: m, ident: i, expr: e});
 }
 
 fn mk_expr(p: parser, lo: uint, hi: uint, node: ast::expr_) -> @ast::expr {
@@ -786,7 +788,7 @@ fn parse_bottom_expr(p: parser) -> pexpr {
         ret mk_pexpr(p, lo, hi, ast::expr_tup(es));
     } else if p.token == token::LBRACE {
         p.bump();
-        if is_word(p, "mutable") ||
+        if is_word(p, "mut") || is_word(p, "mutable") ||
                is_plain_ident(p) && p.look_ahead(1u) == token::COLON {
             let fields = [parse_field(p, token::COLON)];
             let base = none;
@@ -832,11 +834,11 @@ fn parse_bottom_expr(p: parser) -> pexpr {
         ret pexpr(parse_block_expr(p, lo, ast::unsafe_blk));
     } else if p.token == token::LBRACKET {
         p.bump();
-        let mut = parse_mutability(p);
+        let mutbl = parse_mutability(p);
         let es =
             parse_seq_to_end(token::RBRACKET, seq_sep(token::COMMA),
                              parse_expr, p);
-        ex = ast::expr_vec(es, mut);
+        ex = ast::expr_vec(es, mutbl);
     } else if p.token == token::POUND_LT {
         p.bump();
         let ty = parse_ty(p, false);
@@ -971,7 +973,7 @@ fn parse_syntax_ext_naked(p: parser, lo: uint) -> @ast::expr {
             };
         let hi = es.span.hi;
         e = some(mk_expr(p, es.span.lo, hi,
-                         ast::expr_vec(es.node, ast::imm)));
+                         ast::expr_vec(es.node, ast::m_imm)));
     }
     let b = none;
     if p.token == token::LBRACE {
@@ -1578,6 +1580,9 @@ fn parse_local(p: parser, allow_init: bool) -> @ast::local {
 }
 
 fn parse_let(p: parser) -> @ast::decl {
+    if eat_word(p, "mut") {
+        /* TODO */
+    }
     let lo = p.span.lo;
     let locals = [parse_local(p, true)];
     while eat(p, token::COMMA) {
@@ -1587,10 +1592,10 @@ fn parse_let(p: parser) -> @ast::decl {
 }
 
 fn parse_instance_var(p:parser) -> ast::class_member {
-    let is_mut = ast::class_immutable;
+    let is_mutbl = ast::class_immutable;
     expect_word(p, "let");
-    if eat_word(p, "mutable") {
-            is_mut = ast::class_mutable;
+    if eat_word(p, "mut") || eat_word(p, "mutable") {
+            is_mutbl = ast::class_mutable;
     }
     if !is_plain_ident(p) {
         p.fatal("expecting ident");
@@ -1598,7 +1603,7 @@ fn parse_instance_var(p:parser) -> ast::class_member {
     let name = parse_ident(p);
     expect(p, token::COLON);
     let ty = parse_ty(p, false);
-    ret ast::instance_var(name, ty, is_mut, p.get_id());
+    ret ast::instance_var(name, ty, is_mutbl, p.get_id());
 }
 
 fn parse_stmt(p: parser, first_item_attrs: [ast::attribute]) -> @ast::stmt {

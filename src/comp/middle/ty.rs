@@ -147,7 +147,7 @@ type method = {ident: ast::ident,
 
 type constr_table = hashmap<ast::node_id, [constr]>;
 
-type mt = {ty: t, mut: ast::mutability};
+type mt = {ty: t, mutbl: ast::mutability};
 
 
 // Contains information needed to resolve types and (in the future) look up
@@ -423,15 +423,18 @@ fn mk_enum(cx: ctxt, did: ast::def_id, tys: [t]) -> t {
 
 fn mk_box(cx: ctxt, tm: mt) -> t { mk_t(cx, ty_box(tm)) }
 
-fn mk_imm_box(cx: ctxt, ty: t) -> t { mk_box(cx, {ty: ty, mut: ast::imm}) }
+fn mk_imm_box(cx: ctxt, ty: t) -> t { mk_box(cx, {ty: ty,
+                                                  mutbl: ast::m_imm}) }
 
 fn mk_uniq(cx: ctxt, tm: mt) -> t { mk_t(cx, ty_uniq(tm)) }
 
-fn mk_imm_uniq(cx: ctxt, ty: t) -> t { mk_uniq(cx, {ty: ty, mut: ast::imm}) }
+fn mk_imm_uniq(cx: ctxt, ty: t) -> t { mk_uniq(cx, {ty: ty,
+                                                    mutbl: ast::m_imm}) }
 
 fn mk_ptr(cx: ctxt, tm: mt) -> t { mk_t(cx, ty_ptr(tm)) }
 
-fn mk_mut_ptr(cx: ctxt, ty: t) -> t { mk_ptr(cx, {ty: ty, mut: ast::mut}) }
+fn mk_mut_ptr(cx: ctxt, ty: t) -> t { mk_ptr(cx, {ty: ty,
+                                                  mutbl: ast::m_mutbl}) }
 
 fn mk_vec(cx: ctxt, tm: mt) -> t { mk_t(cx, ty_vec(tm)) }
 
@@ -541,16 +544,16 @@ fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
       ty_str | ty_type | ty_send_type | ty_opaque_closure_ptr(_) |
       ty_opaque_box {}
       ty_box(tm) {
-        ty = mk_box(cx, {ty: fold_ty(cx, fld, tm.ty), mut: tm.mut});
+        ty = mk_box(cx, {ty: fold_ty(cx, fld, tm.ty), mutbl: tm.mutbl});
       }
       ty_uniq(tm) {
-        ty = mk_uniq(cx, {ty: fold_ty(cx, fld, tm.ty), mut: tm.mut});
+        ty = mk_uniq(cx, {ty: fold_ty(cx, fld, tm.ty), mutbl: tm.mutbl});
       }
       ty_ptr(tm) {
-        ty = mk_ptr(cx, {ty: fold_ty(cx, fld, tm.ty), mut: tm.mut});
+        ty = mk_ptr(cx, {ty: fold_ty(cx, fld, tm.ty), mutbl: tm.mutbl});
       }
       ty_vec(tm) {
-        ty = mk_vec(cx, {ty: fold_ty(cx, fld, tm.ty), mut: tm.mut});
+        ty = mk_vec(cx, {ty: fold_ty(cx, fld, tm.ty), mutbl: tm.mutbl});
       }
       ty_enum(tid, subtys) {
         ty = mk_enum(cx, tid, vec::map(subtys, {|t| fold_ty(cx, fld, t) }));
@@ -565,7 +568,7 @@ fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
         let new_fields: [field] = [];
         for fl: field in fields {
             let new_ty = fold_ty(cx, fld, fl.mt.ty);
-            let new_mt = {ty: new_ty, mut: fl.mt.mut};
+            let new_mt = {ty: new_ty, mutbl: fl.mt.mutbl};
             new_fields += [{ident: fl.ident, mt: new_mt}];
         }
         ty = mk_rec(cx, new_fields);
@@ -922,12 +925,11 @@ fn type_allows_implicit_copy(cx: ctxt, ty: t) -> bool {
         alt sty {
           ty_param(_, _) { true }
           ty_vec(mt) {
-            mt.mut != ast::imm
+            mt.mutbl != ast::m_imm
           }
           ty_rec(fields) {
             for field in fields {
-                if field.mt.mut !=
-                    ast::imm {
+                if field.mt.mutbl != ast::m_imm {
                     ret true;
                 }
             }
@@ -1665,7 +1667,7 @@ mod unify {
         // If you're unifying on something mutable then we have to
         // be invariant on the inner type
         let newvariance = alt expected {
-          ast::mut {
+          ast::m_mutbl {
             variance_transform(variance, invariant)
           }
           _ {
@@ -1675,11 +1677,11 @@ mod unify {
 
         if expected == actual { ret some((expected, newvariance)); }
         if variance == covariant {
-            if expected == ast::maybe_mut {
+            if expected == ast::m_const {
                 ret some((actual, newvariance));
             }
         } else if variance == contravariant {
-            if actual == ast::maybe_mut {
+            if actual == ast::m_const {
                 ret some((expected, newvariance));
             }
         }
@@ -1960,7 +1962,7 @@ mod unify {
             alt get(actual).struct {
               ty_box(actual_mt) {
                 let (mutt, var) = alt unify_mut(
-                    expected_mt.mut, actual_mt.mut, variance) {
+                    expected_mt.mutbl, actual_mt.mutbl, variance) {
                   none { ret ures_err(terr_box_mutability); }
                   some(mv) { mv }
                 };
@@ -1968,7 +1970,7 @@ mod unify {
                     cx, expected_mt.ty, actual_mt.ty, var);
                 alt result {
                   ures_ok(result_sub) {
-                    let mt = {ty: result_sub, mut: mutt};
+                    let mt = {ty: result_sub, mutbl: mutt};
                     ret ures_ok(mk_box(cx.tcx, mt));
                   }
                   _ { ret result; }
@@ -1981,7 +1983,7 @@ mod unify {
             alt get(actual).struct {
               ty_uniq(actual_mt) {
                 let (mutt, var) = alt unify_mut(
-                    expected_mt.mut, actual_mt.mut, variance) {
+                    expected_mt.mutbl, actual_mt.mutbl, variance) {
                   none { ret ures_err(terr_box_mutability); }
                   some(mv) { mv }
                 };
@@ -1989,7 +1991,7 @@ mod unify {
                     cx, expected_mt.ty, actual_mt.ty, var);
                 alt result {
                   ures_ok(result_mt) {
-                    let mt = {ty: result_mt, mut: mutt};
+                    let mt = {ty: result_mt, mutbl: mutt};
                     ret ures_ok(mk_uniq(cx.tcx, mt));
                   }
                   _ { ret result; }
@@ -2002,7 +2004,7 @@ mod unify {
             alt get(actual).struct {
               ty_vec(actual_mt) {
                 let (mutt, var) = alt unify_mut(
-                    expected_mt.mut, actual_mt.mut, variance) {
+                    expected_mt.mutbl, actual_mt.mutbl, variance) {
                   none { ret ures_err(terr_vec_mutability); }
                   some(mv) { mv }
                 };
@@ -2010,7 +2012,7 @@ mod unify {
                     cx, expected_mt.ty, actual_mt.ty, var);
                 alt result {
                   ures_ok(result_sub) {
-                    let mt = {ty: result_sub, mut: mutt};
+                    let mt = {ty: result_sub, mutbl: mutt};
                     ret ures_ok(mk_vec(cx.tcx, mt));
                   }
                   _ { ret result; }
@@ -2023,7 +2025,7 @@ mod unify {
             alt get(actual).struct {
               ty_ptr(actual_mt) {
                 let (mutt, var) = alt unify_mut(
-                    expected_mt.mut, actual_mt.mut, variance) {
+                    expected_mt.mutbl, actual_mt.mutbl, variance) {
                   none { ret ures_err(terr_vec_mutability); }
                   some(mv) { mv }
                 };
@@ -2031,7 +2033,7 @@ mod unify {
                     cx, expected_mt.ty, actual_mt.ty, var);
                 alt result {
                   ures_ok(result_sub) {
-                    let mt = {ty: result_sub, mut: mutt};
+                    let mt = {ty: result_sub, mutbl: mutt};
                     ret ures_ok(mk_ptr(cx.tcx, mt));
                   }
                   _ { ret result; }
@@ -2086,9 +2088,10 @@ mod unify {
                 while i < expected_len {
                     let expected_field = expected_fields[i];
                     let actual_field = actual_fields[i];
-                    let (mutt, var) = alt unify_mut(
-                        expected_field.mt.mut, actual_field.mt.mut, variance)
-                        {
+                    let u_mut = unify_mut(expected_field.mt.mutbl,
+                                          actual_field.mt.mutbl,
+                                          variance);
+                    let (mutt, var) = alt u_mut {
                       none { ret ures_err(terr_record_mutability); }
                       some(mv) { mv }
                     };
@@ -2103,7 +2106,7 @@ mod unify {
                                    actual_field.mt.ty, var);
                     alt result {
                       ures_ok(rty) {
-                        let mt = {ty: rty, mut: mutt};
+                        let mt = {ty: rty, mutbl: mutt};
                         result_fields += [{mt: mt with expected_field}];
                       }
                       _ { ret result; }

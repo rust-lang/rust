@@ -121,7 +121,7 @@ enum pat_ {
     pat_range(@expr, @expr),
 }
 
-enum mutability { mut, imm, maybe_mut, }
+enum mutability { m_mutbl, m_imm, m_const, }
 
 enum proto {
     proto_bare,    // native fn
@@ -173,7 +173,7 @@ enum inferable<T> {
 }
 
 // "resolved" mode: the real modes.
-enum rmode { by_ref, by_val, by_mut_ref, by_move, by_copy }
+enum rmode { by_ref, by_val, by_mutbl_ref, by_move, by_copy }
 
 // inferable mode.
 type mode = inferable<rmode>;
@@ -205,7 +205,7 @@ enum decl_ { decl_local([@local]), decl_item(@item), }
 
 type arm = {pats: [@pat], guard: option<@expr>, body: blk};
 
-type field_ = {mut: mutability, ident: ident, expr: @expr};
+type field_ = {mutbl: mutability, ident: ident, expr: @expr};
 
 type field = spanned<field_>;
 
@@ -316,7 +316,7 @@ enum lit_ {
 
 // NB: If you change this, you'll probably want to change the corresponding
 // type structure in middle/ty.rs as well.
-type mt = {ty: @ty, mut: mutability};
+type mt = {ty: @ty, mutbl: mutability};
 
 type ty_field_ = {ident: ident, mt: mt};
 

@@ -34,7 +34,7 @@ mod middle {
     mod check_alt;
     mod check_const;
     mod lint;
-    mod mut;
+    mod mutbl;
     mod alias;
     mod last_use;
     mod block_use;

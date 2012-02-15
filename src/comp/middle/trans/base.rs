@@ -3987,7 +3987,7 @@ fn alloc_local(cx: @block_ctxt, local: @ast::local) -> @block_ctxt {
     };
     // Do not allocate space for locals that can be kept immediate.
     let ccx = bcx_ccx(cx);
-    if is_simple && !ccx.mut_map.contains_key(local.node.pat.id) &&
+    if is_simple && !ccx.mutbl_map.contains_key(local.node.pat.id) &&
        !ccx.last_uses.contains_key(local.node.pat.id) &&
        ty::type_is_immediate(t) {
         alt local.node.init {
@@ -4166,7 +4166,7 @@ fn copy_args_to_allocas(fcx: @fn_ctxt, bcx: @block_ctxt, args: [ast::arg],
         let argval = alt fcx.llargs.get(id) { local_mem(v) { v }
                                               _ { epic_fail() } };
         alt ty::resolved_mode(tcx, arg.mode) {
-          ast::by_mut_ref { }
+          ast::by_mutbl_ref { }
           ast::by_move | ast::by_copy { add_clean(bcx, argval, arg.ty); }
           ast::by_val {
             if !ty::type_is_immediate(arg.ty) {
@@ -4598,7 +4598,7 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
         let unit_ty = ty::mk_str(ccx.tcx);
         let vecarg_ty: ty::arg =
             {mode: ast::expl(ast::by_val),
-             ty: ty::mk_vec(ccx.tcx, {ty: unit_ty, mut: ast::imm})};
+             ty: ty::mk_vec(ccx.tcx, {ty: unit_ty, mutbl: ast::m_imm})};
         // FIXME: mk_nil should have a postcondition
         let nt = ty::mk_nil(ccx.tcx);
         let llfty = type_of_fn(ccx, [vecarg_ty], nt, []);
@@ -5003,7 +5003,7 @@ fn write_abi_version(ccx: @crate_ctxt) {
 
 fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
                output: str, emap: resolve::exp_map, amap: ast_map::map,
-               mut_map: mut::mut_map, copy_map: alias::copy_map,
+               mutbl_map: mutbl::mutbl_map, copy_map: alias::copy_map,
                last_uses: last_use::last_uses, impl_map: resolve::impl_map,
                method_map: typeck::method_map, dict_map: typeck::dict_map)
     -> (ModuleRef, link::link_meta) {
@@ -5080,7 +5080,7 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           type_sha1s: ty::new_ty_hash(),
           type_short_names: ty::new_ty_hash(),
           tcx: tcx,
-          mut_map: mut_map,
+          mutbl_map: mutbl_map,
           copy_map: copy_map,
           last_uses: last_uses,
           impl_map: impl_map,

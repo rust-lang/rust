@@ -782,7 +782,7 @@ fn dynamic_metrics(cx: @block_ctxt, t: ty::t) -> metrics {
 // nominal type that has pointers to itself in it.
 fn simplify_type(tcx: ty::ctxt, typ: ty::t) -> ty::t {
     fn nilptr(tcx: ty::ctxt) -> ty::t {
-        ty::mk_ptr(tcx, {ty: ty::mk_nil(tcx), mut: ast::imm})
+        ty::mk_ptr(tcx, {ty: ty::mk_nil(tcx), mutbl: ast::m_imm})
     }
     fn simplifier(tcx: ty::ctxt, typ: ty::t) -> ty::t {
         alt ty::get(typ).struct {

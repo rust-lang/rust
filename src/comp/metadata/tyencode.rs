@@ -85,10 +85,10 @@ fn enc_ty(w: io::writer, cx: @ctxt, t: ty::t) {
     }
 }
 fn enc_mt(w: io::writer, cx: @ctxt, mt: ty::mt) {
-    alt mt.mut {
-      imm { }
-      mut { w.write_char('m'); }
-      maybe_mut { w.write_char('?'); }
+    alt mt.mutbl {
+      m_imm { }
+      m_mutbl { w.write_char('m'); }
+      m_const { w.write_char('?'); }
     }
     enc_ty(w, cx, mt.ty);
 }
@@ -215,7 +215,7 @@ fn enc_ty_fn(w: io::writer, cx: @ctxt, ft: ty::fn_ty) {
     w.write_char('[');
     for arg: ty::arg in ft.inputs {
         alt ty::resolved_mode(cx.tcx, arg.mode) {
-          by_mut_ref { w.write_char('&'); }
+          by_mutbl_ref { w.write_char('&'); }
           by_move { w.write_char('-'); }
           by_copy { w.write_char('+'); }
           by_ref { w.write_char('='); }

@@ -104,7 +104,7 @@ type crate_ctxt =
      type_sha1s: hashmap<ty::t, str>,
      type_short_names: hashmap<ty::t, str>,
      tcx: ty::ctxt,
-     mut_map: mut::mut_map,
+     mutbl_map: mutbl::mutbl_map,
      copy_map: alias::copy_map,
      last_uses: last_use::last_uses,
      impl_map: resolve::impl_map,
@@ -622,7 +622,7 @@ fn tuplify_box_ty(tcx: ty::ctxt, t: ty::t) -> ty::t {
 // descr is embedded in the box (ty::type vs ty::send_type).  This is useful
 // for unique closure boxes, hence the name "cbox_ty" (closure box type).
 fn tuplify_cbox_ty(tcx: ty::ctxt, t: ty::t, tydesc_t: ty::t) -> ty::t {
-    let ptr = ty::mk_ptr(tcx, {ty: ty::mk_nil(tcx), mut: ast::imm});
+    let ptr = ty::mk_ptr(tcx, {ty: ty::mk_nil(tcx), mutbl: ast::m_imm});
     ret ty::mk_tup(tcx, [ty::mk_uint(tcx), tydesc_t,
                          ptr, ptr,
                          t]);

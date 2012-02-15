@@ -50,8 +50,10 @@ fn common_exprs() -> [ast::expr] {
      dse(ast::expr_lit(@dsl(ast::lit_nil))),
      dse(ast::expr_lit(@dsl(ast::lit_bool(false)))),
      dse(ast::expr_lit(@dsl(ast::lit_bool(true)))),
-     dse(ast::expr_unary(ast::box(ast::imm), @dse(ast::expr_lit(@dsl(ast::lit_bool(true)))))),
-     dse(ast::expr_unary(ast::uniq(ast::imm), @dse(ast::expr_lit(@dsl(ast::lit_bool(true))))))
+     dse(ast::expr_unary(ast::box(ast::m_imm),
+                         @dse(ast::expr_lit(@dsl(ast::lit_bool(true)))))),
+     dse(ast::expr_unary(ast::uniq(ast::m_imm),
+                         @dse(ast::expr_lit(@dsl(ast::lit_bool(true))))))
     ]
 }
 

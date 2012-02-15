@@ -53,12 +53,11 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
         ret f.ident + ": " + mt_to_str(cx, f.mt);
     }
     fn mt_to_str(cx: ctxt, m: mt) -> str {
-        let mstr;
-        alt m.mut {
-          ast::mut { mstr = "mutable "; }
-          ast::imm { mstr = ""; }
-          ast::maybe_mut { mstr = "const "; }
-        }
+        let mstr = alt m.mutbl {
+          ast::m_mutbl { "mut " }
+          ast::m_imm { "" }
+          ast::m_const { "const " }
+        };
         ret mstr + ty_to_str(cx, m.ty);
     }
     fn parameterized(cx: ctxt, base: str, tps: [ty::t]) -> str {

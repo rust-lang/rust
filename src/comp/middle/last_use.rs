@@ -156,7 +156,7 @@ fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
               }
               _ {
                 alt ty::arg_mode(cx.tcx, arg_ts[i]) {
-                  by_mut_ref { clear_if_path(cx, arg, v, false); }
+                  by_mutbl_ref { clear_if_path(cx, arg, v, false); }
                   _ { v.visit_expr(arg, cx, v); }
                 }
               }
@@ -299,7 +299,7 @@ fn clear_def_if_path(cx: ctx, d: def, to: bool)
             clear_in_current(cx, def_id.node, to);
             some(def_id.node)
           }
-          by_ref | by_val | by_mut_ref {
+          by_ref | by_val | by_mutbl_ref {
             none
           }
         }

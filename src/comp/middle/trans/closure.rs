@@ -276,7 +276,7 @@ fn store_environment(
     // tuple.  This could be a ptr in uniq or a box or on stack,
     // whatever.
     let cbox_ty = tuplify_box_ty(tcx, cdata_ty);
-    let cboxptr_ty = ty::mk_ptr(tcx, {ty:cbox_ty, mut:ast::imm});
+    let cboxptr_ty = ty::mk_ptr(tcx, {ty:cbox_ty, mutbl:ast::m_imm});
     let llbox = cast_if_we_can(bcx, llbox, cboxptr_ty);
 
     // If necessary, copy tydescs describing type parameters into the
@@ -905,7 +905,7 @@ fn trans_bind_thunk(ccx: @crate_ctxt,
                 bcx = take_ty(bcx, alloc, out_arg.ty);
                 val = alloc;
               }
-              ast::by_ref | ast::by_mut_ref | ast::by_move { }
+              ast::by_ref | ast::by_mutbl_ref | ast::by_move { }
             }
 
             // If the type is parameterized, then we need to cast the
