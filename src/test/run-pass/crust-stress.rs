@@ -22,7 +22,7 @@ fn count(n: uint) -> uint {
 fn main() {
     iter::repeat(100u) {||
         task::spawn {||
-            count(5u);
+            assert count(5u) == 16u;
         };
     }
 }
