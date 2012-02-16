@@ -7,8 +7,8 @@ rust_port_selector::rust_port_selector()
 
 void
 rust_port_selector::select(rust_task *task, rust_port **dptr,
-			   rust_port **ports,
-			   size_t n_ports, uintptr_t *yield) {
+                           rust_port **ports,
+                           size_t n_ports, uintptr_t *yield) {
 
     I(task->thread, this->ports == NULL);
     I(task->thread, this->n_ports == 0);
@@ -29,33 +29,33 @@ rust_port_selector::select(rust_task *task, rust_port **dptr,
     // Start looking for ports from a different index each time.
     size_t j = isaac_rand(&task->thread->rctx);
     for (size_t i = 0; i < n_ports; i++) {
-	size_t k = (i + j) % n_ports;
-	rust_port *port = ports[k];
-	I(task->thread, port != NULL);
+        size_t k = (i + j) % n_ports;
+        rust_port *port = ports[k];
+        I(task->thread, port != NULL);
 
-	port->lock.lock();
-	locks_taken++;
+        port->lock.lock();
+        locks_taken++;
 
-	if (port->buffer.size() > 0) {
-	    *dptr = port;
-	    found_msg = true;
-	    break;
-	}
+        if (port->buffer.size() > 0) {
+            *dptr = port;
+            found_msg = true;
+            break;
+        }
     }
 
     if (!found_msg) {
-	this->ports = ports;
-	this->n_ports = n_ports;
-	I(task->thread, task->rendezvous_ptr == NULL);
-	task->rendezvous_ptr = (uintptr_t*)dptr;
-	*yield = true;
-	task->block(this, "waiting for select rendezvous");
+        this->ports = ports;
+        this->n_ports = n_ports;
+        I(task->thread, task->rendezvous_ptr == NULL);
+        task->rendezvous_ptr = (uintptr_t*)dptr;
+        *yield = true;
+        task->block(this, "waiting for select rendezvous");
     }
 
     for (size_t i = 0; i < locks_taken; i++) {
-	size_t k = (i + j) % n_ports;
-	rust_port *port = ports[k];
-	port->lock.unlock();
+        size_t k = (i + j) % n_ports;
+        rust_port *port = ports[k];
+        port->lock.unlock();
     }
 }
 
@@ -72,16 +72,16 @@ rust_port_selector::msg_sent_on(rust_port *port) {
     scoped_lock with(rendezvous_lock);
 
     if (task->blocked_on(this)) {
-	for (size_t i = 0; i < n_ports; i++) {
-	    if (port == ports[i]) {
-		// This was one of the ports we were waiting on
-		ports = NULL;
-		n_ports = 0;
-		*task->rendezvous_ptr = (uintptr_t) port;
-		task->rendezvous_ptr = NULL;
-		task->wakeup(this);
-		return;
-	    }
-	}
+        for (size_t i = 0; i < n_ports; i++) {
+            if (port == ports[i]) {
+                // This was one of the ports we were waiting on
+                ports = NULL;
+                n_ports = 0;
+                *task->rendezvous_ptr = (uintptr_t) port;
+                task->rendezvous_ptr = NULL;
+                task->wakeup(this);
+                return;
+            }
+        }
     }
 }
