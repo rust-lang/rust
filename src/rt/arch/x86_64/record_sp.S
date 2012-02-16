@@ -2,15 +2,18 @@
 
 #if defined(__APPLE__) || defined(_WIN32)
 #define RECORD_SP_LIMIT    _record_sp_limit
+#define GET_SP_LIMIT       _get_sp_limit
 #define GET_SP             _get_sp
 #define CHECK_STACK        _check_stack_alignment
 #else
 #define RECORD_SP_LIMIT    record_sp_limit
+#define GET_SP_LIMIT       get_sp_limit
 #define GET_SP             get_sp
 #define CHECK_STACK        check_stack_alignment
 #endif
 
 .globl RECORD_SP_LIMIT
+.globl GET_SP_LIMIT
 .globl GET_SP
 .globl CHECK_STACK
 
@@ -29,6 +32,21 @@ RECORD_SP_LIMIT:
 	ret
 #else
 RECORD_SP_LIMIT:
+	ret
+#endif
+
+#if defined(__linux__)
+GET_SP_LIMIT:
+	movq %fs:112, %rax
+	ret
+#elif defined(__APPLE__)
+GET_SP_LIMIT:
+	movq $0x60+90*8, %rsi
+	movq %gs:(%rsi), %rax
+	ret
+#elif defined(__FreeBSD__)
+GET_SP_LIMIT:
+	movq %fs:24, %rax
 	ret
 #endif
 
