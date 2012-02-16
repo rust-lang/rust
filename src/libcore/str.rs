@@ -71,6 +71,7 @@ export
    // Searching
    index,
    byte_index,
+   byte_index_from,
    rindex,
    find,
    find_bytes,
@@ -859,13 +860,19 @@ fn index(ss: str, cc: char) -> option<uint> {
 //
 // Returns the index of the first matching byte
 // (as option some/none)
-fn byte_index(s: str, b: u8, start: uint) -> option<uint> {
-    let i = start, l = len_bytes(s);
-    while i < l {
-        if s[i] == b { ret some(i); }
-        i += 1u;
-    }
-    ret none;
+fn byte_index(s: str, b: u8) -> option<uint> {
+    byte_index_from(s, b, 0u, len_bytes(s))
+}
+
+// Function: byte_index_from
+//
+// Returns the index of the first matching byte within the range [`start`,
+// `end`).
+// (as option some/none)
+fn byte_index_from(s: str, b: u8, start: uint, end: uint) -> option<uint> {
+    assert end <= len_bytes(s);
+
+    str::as_bytes(s) { |v| vec::position_from(v, start, end) { |x| x == b } }
 }
 
 // Function: rindex
