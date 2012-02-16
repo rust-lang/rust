@@ -60,12 +60,10 @@ fn trans_impl(ccx: @crate_ctxt, path: path, name: ast::ident,
 }
 
 fn trans_self_arg(bcx: @block_ctxt, base: @ast::expr) -> result {
-    let tz = [], tr = [];
     let basety = expr_ty(bcx, base);
     let m_by_ref = ast::expl(ast::by_ref);
     trans_arg_expr(bcx, {mode: m_by_ref, ty: basety},
-                   T_ptr(type_of_or_i8(bcx_ccx(bcx), basety)), tz,
-                   tr, base)
+                   T_ptr(type_of_or_i8(bcx_ccx(bcx), basety)), base)
 }
 
 fn trans_method_callee(bcx: @block_ctxt, callee_id: ast::node_id,

@@ -2731,9 +2731,7 @@ fn trans_cast(cx: @block_ctxt, e: @ast::expr, id: ast::node_id,
 }
 
 fn trans_arg_expr(cx: @block_ctxt, arg: ty::arg, lldestty: TypeRef,
-                  &to_zero: [{v: ValueRef, t: ty::t}],
-                  &to_revoke: [{v: ValueRef, t: ty::t}], e: @ast::expr) ->
-   result {
+                  e: @ast::expr) -> result {
     let ccx = bcx_ccx(cx);
     let e_ty = expr_ty(cx, e);
     let is_bot = ty::type_is_bot(e_ty);
@@ -2765,19 +2763,20 @@ fn trans_arg_expr(cx: @block_ctxt, arg: ty::arg, lldestty: TypeRef,
         if arg_mode == ast::by_val && (lv.kind == owned || !imm) {
             val = Load(bcx, val);
         }
-    } else if arg_mode == ast::by_copy {
+    } else if arg_mode == ast::by_copy || arg_mode == ast::by_move {
         let {bcx: cx, val: alloc} = alloc_ty(bcx, e_ty);
-        let last_use = ccx.last_uses.contains_key(e.id);
+        let move_out = arg_mode == ast::by_move ||
+            ccx.last_uses.contains_key(e.id);
         bcx = cx;
         if lv.kind == temporary { revoke_clean(bcx, val); }
         if lv.kind == owned || !ty::type_is_immediate(e_ty) {
             bcx = memmove_ty(bcx, alloc, val, e_ty);
-            if last_use && ty::type_needs_drop(ccx.tcx, e_ty) {
+            if move_out && ty::type_needs_drop(ccx.tcx, e_ty) {
                 bcx = zero_alloca(bcx, val, e_ty);
             }
         } else { Store(bcx, val, alloc); }
         val = alloc;
-        if lv.kind != temporary && !last_use {
+        if lv.kind != temporary && !move_out {
             bcx = take_ty(bcx, val, e_ty);
         }
     } else if ty::type_is_immediate(e_ty) && lv.kind != owned {
@@ -2788,15 +2787,6 @@ fn trans_arg_expr(cx: @block_ctxt, arg: ty::arg, lldestty: TypeRef,
 
     if !is_bot && arg.ty != e_ty || ty::type_has_params(arg.ty) {
         val = PointerCast(bcx, val, lldestty);
-    }
-
-    // Collect arg for later if it happens to be one we've moving out.
-    if arg_mode == ast::by_move {
-        if lv.kind == owned {
-            // Use actual ty, not declared ty -- anything else doesn't make
-            // sense if declared ty is a ty param
-            to_zero += [{v: lv.val, t: e_ty}];
-        } else { to_revoke += [{v: lv.val, t: e_ty}]; }
     }
     ret rslt(bcx, val);
 }
@@ -2813,15 +2803,11 @@ fn trans_args(cx: @block_ctxt, llenv: ValueRef,
               dest: dest)
    -> {bcx: @block_ctxt,
        args: [ValueRef],
-       retslot: ValueRef,
-       to_zero: [{v: ValueRef, t: ty::t}],
-       to_revoke: [{v: ValueRef, t: ty::t}]} {
+       retslot: ValueRef} {
 
     let args = ty::ty_fn_args(fn_ty);
     let llargs: [ValueRef] = [];
     let lltydescs: [ValueRef] = [];
-    let to_zero = [];
-    let to_revoke = [];
 
     let ccx = bcx_ccx(cx);
     let bcx = cx;
@@ -2899,17 +2885,14 @@ fn trans_args(cx: @block_ctxt, llenv: ValueRef,
     let arg_tys = type_of_explicit_args(ccx, args);
     let i = 0u;
     for e: @ast::expr in es {
-        let r = trans_arg_expr(bcx, args[i], arg_tys[i], to_zero, to_revoke,
-                               e);
+        let r = trans_arg_expr(bcx, args[i], arg_tys[i], e);
         bcx = r.bcx;
         llargs += [r.val];
         i += 1u;
     }
     ret {bcx: bcx,
          args: llargs,
-         retslot: llretslot,
-         to_zero: to_zero,
-         to_revoke: to_revoke};
+         retslot: llretslot};
 }
 
 fn trans_call(in_cx: @block_ctxt, f: @ast::expr,
@@ -2969,8 +2952,7 @@ fn trans_call_inner(in_cx: @block_ctxt, fn_expr_ty: ty::t,
        then one or more of the args has
        type _|_. Since that means it diverges, the code
        for the call itself is unreachable. */
-    bcx = invoke_full(bcx, faddr, llargs, args_res.to_zero,
-                      args_res.to_revoke);
+    bcx = invoke_full(bcx, faddr, llargs);
     alt dest {
       ignore {
         if llvm::LLVMIsUndef(llretslot) != lib::llvm::True {
@@ -2982,8 +2964,6 @@ fn trans_call_inner(in_cx: @block_ctxt, fn_expr_ty: ty::t,
         *cell = Load(bcx, llretslot);
       }
     }
-    // Forget about anything we moved out.
-    bcx = zero_and_revoke(bcx, args_res.to_zero, args_res.to_revoke);
 
     bcx = trans_block_cleanups(bcx, cx);
     let next_cx = new_sub_block_ctxt(in_cx, "next");
@@ -2994,65 +2974,43 @@ fn trans_call_inner(in_cx: @block_ctxt, fn_expr_ty: ty::t,
     ret next_cx;
 }
 
-fn zero_and_revoke(bcx: @block_ctxt,
-                   to_zero: [{v: ValueRef, t: ty::t}],
-                   to_revoke: [{v: ValueRef, t: ty::t}]) -> @block_ctxt {
-    let bcx = bcx;
-    for {v, t} in to_zero {
-        bcx = zero_alloca(bcx, v, t);
-    }
-    for {v, _} in to_revoke { revoke_clean(bcx, v); }
-    ret bcx;
-}
-
 fn invoke(bcx: @block_ctxt, llfn: ValueRef,
           llargs: [ValueRef]) -> @block_ctxt {
-    ret invoke_(bcx, llfn, llargs, [], [], Invoke);
+    ret invoke_(bcx, llfn, llargs, Invoke);
 }
 
-fn invoke_full(bcx: @block_ctxt, llfn: ValueRef, llargs: [ValueRef],
-               to_zero: [{v: ValueRef, t: ty::t}],
-               to_revoke: [{v: ValueRef, t: ty::t}]) -> @block_ctxt {
-    ret invoke_(bcx, llfn, llargs, to_zero, to_revoke, Invoke);
+fn invoke_full(bcx: @block_ctxt, llfn: ValueRef, llargs: [ValueRef])
+    -> @block_ctxt {
+    ret invoke_(bcx, llfn, llargs, Invoke);
 }
 
 fn invoke_(bcx: @block_ctxt, llfn: ValueRef, llargs: [ValueRef],
-           to_zero: [{v: ValueRef, t: ty::t}],
-           to_revoke: [{v: ValueRef, t: ty::t}],
            invoker: fn(@block_ctxt, ValueRef, [ValueRef],
                        BasicBlockRef, BasicBlockRef)) -> @block_ctxt {
     // FIXME: May be worth turning this into a plain call when there are no
     // cleanups to run
     if bcx.unreachable { ret bcx; }
     let normal_bcx = new_sub_block_ctxt(bcx, "normal return");
-    invoker(bcx, llfn, llargs, normal_bcx.llbb,
-            get_landing_pad(bcx, to_zero, to_revoke));
+    invoker(bcx, llfn, llargs, normal_bcx.llbb, get_landing_pad(bcx));
     ret normal_bcx;
 }
 
-fn get_landing_pad(bcx: @block_ctxt,
-                   to_zero: [{v: ValueRef, t: ty::t}],
-                   to_revoke: [{v: ValueRef, t: ty::t}]
-                  ) -> BasicBlockRef {
-    let have_zero_or_revoke = vec::is_not_empty(to_zero)
-        || vec::is_not_empty(to_revoke);
-    let scope_bcx = find_scope_for_lpad(bcx, have_zero_or_revoke);
-    if scope_bcx.lpad_dirty || have_zero_or_revoke {
+fn get_landing_pad(bcx: @block_ctxt) -> BasicBlockRef {
+    let scope_bcx = find_scope_for_lpad(bcx);
+    if scope_bcx.lpad_dirty {
         let unwind_bcx = new_sub_block_ctxt(bcx, "unwind");
-        trans_landing_pad(unwind_bcx, to_zero, to_revoke);
+        trans_landing_pad(unwind_bcx);
         scope_bcx.lpad = some(unwind_bcx.llbb);
-        scope_bcx.lpad_dirty = have_zero_or_revoke;
+        scope_bcx.lpad_dirty = false;
     }
     assert option::is_some(scope_bcx.lpad);
     ret option::get(scope_bcx.lpad);
 
-    fn find_scope_for_lpad(bcx: @block_ctxt,
-                           have_zero_or_revoke: bool) -> @block_ctxt {
+    fn find_scope_for_lpad(bcx: @block_ctxt) -> @block_ctxt {
         let scope_bcx = bcx;
         while true {
             scope_bcx = find_scope_cx(scope_bcx);
-            if vec::is_not_empty(scope_bcx.cleanups)
-                || have_zero_or_revoke {
+            if vec::is_not_empty(scope_bcx.cleanups) {
                 ret scope_bcx;
             } else {
                 scope_bcx = alt scope_bcx.parent {
@@ -3067,9 +3025,7 @@ fn get_landing_pad(bcx: @block_ctxt,
     }
 }
 
-fn trans_landing_pad(bcx: @block_ctxt,
-                     to_zero: [{v: ValueRef, t: ty::t}],
-                     to_revoke: [{v: ValueRef, t: ty::t}]) -> BasicBlockRef {
+fn trans_landing_pad(bcx: @block_ctxt) -> BasicBlockRef {
     // The landing pad return type (the type being propagated). Not sure what
     // this represents but it's determined by the personality function and
     // this is what the EH proposal example uses.
@@ -3095,7 +3051,7 @@ fn trans_landing_pad(bcx: @block_ctxt,
     // FIXME: This seems like a very naive and redundant way to generate the
     // landing pads, as we're re-generating all in-scope cleanups for each
     // function call. Probably good optimization opportunities here.
-    let bcx = zero_and_revoke(bcx, to_zero, to_revoke);
+    let bcx = bcx;
     let scope_cx = bcx;
     while true {
         scope_cx = find_scope_cx(scope_cx);
