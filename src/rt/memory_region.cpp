@@ -60,7 +60,6 @@ void memory_region::free(void *mem) {
 
 void *
 memory_region::realloc(void *mem, size_t orig_size) {
-    if (_synchronized) { _lock.lock(); }
     if (!mem) {
         add_alloc();
     }
@@ -79,6 +78,7 @@ memory_region::realloc(void *mem, size_t orig_size) {
 #   endif
 
 #   if RUSTRT_TRACK_ALLOCATIONS >= 2
+    if (_synchronized) { _lock.lock(); }
     if (_allocation_list[newMem->index] != alloc) {
         printf("at index %d, found %p, expected %p\n",
                alloc->index, _allocation_list[alloc->index], alloc);
@@ -91,9 +91,9 @@ memory_region::realloc(void *mem, size_t orig_size) {
         // printf("realloc: stored %p at index %d, replacing %p\n",
         //        newMem, index, mem);
     }
+    if (_synchronized) { _lock.unlock(); }
 #   endif
 
-    if (_synchronized) { _lock.unlock(); }
     return get_data(newMem);
 }
 
