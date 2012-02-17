@@ -29,7 +29,8 @@ fn top_moddoc_from_crate(
     crate: @ast::crate,
     default_name: str
 ) -> doc::moddoc {
-    moddoc_from_mod(crate.node.module, default_name, ast::crate_node_id)
+    moddoc_from_mod(mk_itemdoc(ast::crate_node_id, default_name),
+                    crate.node.module)
 }
 
 fn mk_itemdoc(id: ast::node_id, name: ast::ident) -> doc::itemdoc {
@@ -43,52 +44,52 @@ fn mk_itemdoc(id: ast::node_id, name: ast::ident) -> doc::itemdoc {
 }
 
 fn moddoc_from_mod(
-    module: ast::_mod,
-    name: ast::ident,
-    id: ast::node_id
+    itemdoc: doc::itemdoc,
+    module: ast::_mod
 ) -> doc::moddoc {
     {
-        item: mk_itemdoc(id, name),
+        item: itemdoc,
         items: ~vec::filter_map(module.items) {|item|
+            let itemdoc = mk_itemdoc(item.id, item.ident);
             alt item.node {
               ast::item_mod(m) {
                 some(doc::modtag(
-                    moddoc_from_mod(m, item.ident, item.id)
+                    moddoc_from_mod(itemdoc, m)
                 ))
               }
               ast::item_fn(decl, _, _) {
                 some(doc::fntag(
-                    fndoc_from_fn(decl, item.ident, item.id)
+                    fndoc_from_fn(itemdoc, decl)
                 ))
               }
               ast::item_const(_, _) {
                 some(doc::consttag(
-                    constdoc_from_const(item.ident, item.id)
+                    constdoc_from_const(itemdoc)
                 ))
               }
               ast::item_enum(variants, _) {
                 some(doc::enumtag(
-                    enumdoc_from_enum(item.ident, item.id, variants)
+                    enumdoc_from_enum(itemdoc, variants)
                 ))
               }
               ast::item_res(decl, _, _, _, _) {
                 some(doc::restag(
-                    resdoc_from_resource(decl, item.ident, item.id)
+                    resdoc_from_resource(itemdoc, decl)
                 ))
               }
               ast::item_iface(_, methods) {
                 some(doc::ifacetag(
-                    ifacedoc_from_iface(methods, item.ident, item.id)
+                    ifacedoc_from_iface(itemdoc, methods)
                 ))
               }
               ast::item_impl(_, _, _, methods) {
                 some(doc::impltag(
-                    impldoc_from_impl(methods, item.ident, item.id)
+                    impldoc_from_impl(itemdoc, methods)
                 ))
               }
               ast::item_ty(_, _) {
                 some(doc::tytag(
-                    tydoc_from_ty(item.ident, item.id)
+                    tydoc_from_ty(itemdoc)
                 ))
               }
               _ {
@@ -100,12 +101,11 @@ fn moddoc_from_mod(
 }
 
 fn fndoc_from_fn(
-    decl: ast::fn_decl,
-    name: ast::ident,
-    id: ast::node_id
+    itemdoc: doc::itemdoc,
+    decl: ast::fn_decl
 ) -> doc::fndoc {
     {
-        item: mk_itemdoc(id, name),
+        item: itemdoc,
         args: argdocs_from_args(decl.inputs),
         return: {
             desc: none,
@@ -138,12 +138,9 @@ fn argdoc_from_arg(arg: ast::arg) -> doc::argdoc {
     }
 }
 
-fn constdoc_from_const(
-    name: ast::ident,
-    id: ast::node_id
-) -> doc::constdoc {
+fn constdoc_from_const(itemdoc: doc::itemdoc) -> doc::constdoc {
     {
-        item: mk_itemdoc(id, name),
+        item: itemdoc,
         ty: none
     }
 }
@@ -156,12 +153,11 @@ fn should_extract_const_name_and_id() {
 }
 
 fn enumdoc_from_enum(
-    name: ast::ident,
-    id: ast::node_id,
+    itemdoc: doc::itemdoc,
     variants: [ast::variant]
 ) -> doc::enumdoc {
     {
-        item: mk_itemdoc(id, name),
+        item: itemdoc,
         variants: variantdocs_from_variants(variants)
     }
 }
@@ -194,12 +190,11 @@ fn should_extract_enum_variants() {
 }
 
 fn resdoc_from_resource(
-    decl: ast::fn_decl,
-    name: str,
-    id: ast::node_id
+    itemdoc: doc::itemdoc,
+    decl: ast::fn_decl
 ) -> doc::resdoc {
     {
-        item: mk_itemdoc(id, name),
+        item: itemdoc,
         args: argdocs_from_args(decl.inputs),
         sig: none
     }
@@ -219,12 +214,11 @@ fn should_extract_resource_args() {
 }
 
 fn ifacedoc_from_iface(
-    methods: [ast::ty_method],
-    name: str,
-    id: ast::node_id
+    itemdoc: doc::itemdoc,
+    methods: [ast::ty_method]
 ) -> doc::ifacedoc {
     {
-        item: mk_itemdoc(id, name),
+        item: itemdoc,
         methods: vec::map(methods) {|method|
             {
                 name: method.ident,
@@ -261,12 +255,11 @@ fn should_extract_iface_method_args() {
 }
 
 fn impldoc_from_impl(
-    methods: [@ast::method],
-    name: str,
-    id: ast::node_id
+    itemdoc: doc::itemdoc,
+    methods: [@ast::method]
 ) -> doc::impldoc {
     {
-        item: mk_itemdoc(id, name),
+        item: itemdoc,
         iface_ty: none,
         self_ty: none,
         methods: vec::map(methods) {|method|
@@ -311,11 +304,10 @@ fn should_extract_impl_method_args() {
 }
 
 fn tydoc_from_ty(
-    name: str,
-    id: ast::node_id
+    itemdoc: doc::itemdoc
 ) -> doc::tydoc {
     {
-        item: mk_itemdoc(id, name),
+        item: itemdoc,
         sig: none
     }
 }
