@@ -464,10 +464,6 @@ upcall_vec_push(rust_vec** vp, type_desc* elt_ty, void* elt) {
     copy_elements(task, elt_ty, &v->data[0] + v->fill,
                   elt, elt_ty->size);
     v->fill += elt_ty->size;
-
-
-    // Do the stack check to make sure this op, on the Rust stack, is behaving
-    task->check_stack_canary();
 }
 
 /**********************************************************************
