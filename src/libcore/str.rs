@@ -75,6 +75,7 @@ export
    rindex,
    find,
    find_bytes,
+   find_from_bytes,
    contains,
    starts_with,
    ends_with,
@@ -901,14 +902,24 @@ fn rindex(ss: str, cc: char) -> option<uint> {
 //
 // Find the char position of the first instance of one string
 // within another, or return option::none
+fn find_bytes(haystack: str, needle: str) -> option<uint> {
+    find_from_bytes(haystack, needle, 0u, len_bytes(haystack))
+}
+
+//Function: find_from_bytes
+//
+// Find the char position of the first instance of one string
+// within another, or return option::none
 //
 // FIXME: Boyer-Moore should be significantly faster
-fn find_bytes(haystack: str, needle: str) -> option<uint> {
-    let haystack_len = len_bytes(haystack);
-    let needle_len   = len_bytes(needle);
+fn find_from_bytes(haystack: str, needle: str, start: uint, end:uint)
+  -> option<uint> {
+    assert end <= len_bytes(haystack);
 
-    if needle_len == 0u { ret some(0u); }
-    if needle_len > haystack_len { ret none; }
+    let needle_len = len_bytes(needle);
+
+    if needle_len == 0u { ret some(start); }
+    if needle_len > end { ret none; }
 
     fn match_at(haystack: str, needle: str, ii: uint) -> bool {
         let jj = ii;
@@ -916,8 +927,8 @@ fn find_bytes(haystack: str, needle: str) -> option<uint> {
         ret true;
     }
 
-    let ii = 0u;
-    while ii <= haystack_len - needle_len {
+    let ii = start;
+    while ii <= end - needle_len {
         if match_at(haystack, needle, ii) { ret some(ii); }
         ii += 1u;
     }
@@ -1755,6 +1766,34 @@ mod tests {
         assert (find_bytes(data, "ะเ")   == some( 6u));
         assert (find_bytes(data, "中华") == some(27u));
         assert (find_bytes(data, "ไท华") == none);
+    }
+
+    #[test]
+    fn test_find_from_bytes() {
+        // byte positions
+        assert (find_from_bytes("", "", 0u, 0u) == some(0u));
+
+        let data = "abcabc";
+        assert find_from_bytes(data, "ab", 0u, 6u) == some(0u);
+        assert find_from_bytes(data, "ab", 2u, 6u) == some(3u);
+        assert find_from_bytes(data, "ab", 2u, 4u) == none;
+
+        let data = "ประเทศไทย中华Việt Nam";
+        data += data;
+        assert find_from_bytes(data, "", 0u, 43u) == some(0u);
+        assert find_from_bytes(data, "", 6u, 43u) == some(6u);
+
+        assert find_from_bytes(data, "ประ", 0u, 43u) == some( 0u);
+        assert find_from_bytes(data, "ทศไ", 0u, 43u) == some(12u);
+        assert find_from_bytes(data, "ย中", 0u, 43u) == some(24u);
+        assert find_from_bytes(data, "iệt", 0u, 43u) == some(34u);
+        assert find_from_bytes(data, "Nam", 0u, 43u) == some(40u);
+
+        assert find_from_bytes(data, "ประ", 43u, 86u) == some(43u);
+        assert find_from_bytes(data, "ทศไ", 43u, 86u) == some(55u);
+        assert find_from_bytes(data, "ย中", 43u, 86u) == some(67u);
+        assert find_from_bytes(data, "iệt", 43u, 86u) == some(77u);
+        assert find_from_bytes(data, "Nam", 43u, 86u) == some(83u);
     }
 
     #[test]
