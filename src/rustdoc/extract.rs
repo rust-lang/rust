@@ -101,6 +101,7 @@ fn fndoc_from_fn(
     {
         id: id,
         name: name,
+        path: [],
         brief: none,
         desc: none,
         args: argdocs_from_args(decl.inputs),
@@ -142,6 +143,7 @@ fn constdoc_from_const(
     {
         id: id,
         name: name,
+        path: [],
         brief: none,
         desc: none,
         ty: none
@@ -163,6 +165,7 @@ fn enumdoc_from_enum(
     {
         id: id,
         name: name,
+        path: [],
         brief: none,
         desc: none,
         variants: variantdocs_from_variants(variants)
@@ -204,6 +207,7 @@ fn resdoc_from_resource(
     {
         id: id,
         name: name,
+        path: [],
         brief: none,
         desc: none,
         args: argdocs_from_args(decl.inputs),
@@ -232,6 +236,7 @@ fn ifacedoc_from_iface(
     {
         id: id,
         name: name,
+        path: [],
         brief: none,
         desc: none,
         methods: vec::map(methods) {|method|
@@ -277,6 +282,7 @@ fn impldoc_from_impl(
     {
         id: id,
         name: name,
+        path: [],
         brief: none,
         desc: none,
         iface_ty: none,
@@ -329,6 +335,7 @@ fn tydoc_from_ty(
     {
         id: id,
         name: name,
+        path: [],
         brief: none,
         desc: none,
         sig: none

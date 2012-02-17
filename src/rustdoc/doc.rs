@@ -30,6 +30,7 @@ type moddoc = {
 type constdoc = {
     id: ast_id,
     name: str,
+    path: [str],
     brief: option<str>,
     desc: option<str>,
     ty: option<str>
@@ -38,6 +39,7 @@ type constdoc = {
 type fndoc = {
     id: ast_id,
     name: str,
+    path: [str],
     brief: option<str>,
     desc: option<str>,
     args: [argdoc],
@@ -60,6 +62,7 @@ type retdoc = {
 type enumdoc = {
     id: ast_id,
     name: str,
+    path: [str],
     brief: option<str>,
     desc: option<str>,
     variants: [variantdoc]
@@ -74,6 +77,7 @@ type variantdoc = {
 type resdoc = {
     id: ast_id,
     name: str,
+    path: [str],
     brief: option<str>,
     desc: option<str>,
     args: [argdoc],
@@ -83,6 +87,7 @@ type resdoc = {
 type ifacedoc = {
     id: ast_id,
     name: str,
+    path: [str],
     brief: option<str>,
     desc: option<str>,
     methods: [methoddoc]
@@ -101,6 +106,7 @@ type methoddoc = {
 type impldoc = {
     id: ast_id,
     name: str,
+    path: [str],
     brief: option<str>,
     desc: option<str>,
     iface_ty: option<str>,
@@ -111,6 +117,7 @@ type impldoc = {
 type tydoc = {
     id: ast_id,
     name: str,
+    path: [str],
     brief: option<str>,
     desc: option<str>,
     sig: option<str>
