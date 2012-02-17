@@ -112,3 +112,57 @@ rust_intrinsic_leak(void *retptr,
                     void *thing)
 {
 }
+
+extern "C" CDECL void *
+upcall_shared_realloc(void *ptr, size_t size);
+
+inline void reserve_vec_fast(rust_vec **vpp, size_t size) {
+    if (size > (*vpp)->alloc) {
+      size_t new_size = next_power_of_two(size);
+        size_t alloc_size = new_size + sizeof(rust_vec);
+        // Because this is called from an intrinsic we need to use
+        // the exported API
+        *vpp = (rust_vec*)upcall_shared_realloc(*vpp, alloc_size);
+        (*vpp)->alloc = new_size;
+    }
+}
+
+// Copy elements from one vector to another,
+// dealing with reference counts
+static inline void
+copy_elements(type_desc *elem_t,
+              void *pdst, void *psrc, size_t n) {
+    char *dst = (char *)pdst, *src = (char *)psrc;
+    memmove(dst, src, n);
+
+    // increment the refcount of each element of the vector
+    if (elem_t->take_glue) {
+        glue_fn *take_glue = elem_t->take_glue;
+        size_t elem_size = elem_t->size;
+        const type_desc **tydescs = elem_t->first_param;
+        for (char *p = dst; p < dst+n; p += elem_size) {
+            take_glue(NULL, NULL, tydescs, p);
+        }
+    }
+}
+
+// Because this is used so often, and it calls take glue that must run
+// on the rust stack, it is statically compiled into every crate.
+extern "C" CDECL void
+upcall_intrinsic_vec_push(rust_vec** vp,
+			  type_desc* elt_ty, void* elt) {
+
+    size_t new_sz = (*vp)->fill + elt_ty->size;
+    reserve_vec_fast(vp, new_sz);
+    rust_vec* v = *vp;
+    copy_elements(elt_ty, &v->data[0] + v->fill,
+                  elt, elt_ty->size);
+    v->fill += elt_ty->size;
+}
+
+// FIXME: Transational. Remove
+extern "C" CDECL void
+upcall_vec_push(rust_vec** vp,
+		type_desc* elt_ty, void* elt) {
+  upcall_intrinsic_vec_push(vp, elt_ty, elt);
+}

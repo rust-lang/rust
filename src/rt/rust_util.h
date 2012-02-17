@@ -189,17 +189,7 @@ inline void reserve_vec(rust_task* task, rust_vec** vpp, size_t size) {
     reserve_vec_exact(task, vpp, next_power_of_two(size));
 }
 
-// Call this when you don't already have a task pointer and it will
-// avoid hitting the TLS if it doesn't have to
-inline void reserve_vec_fast(rust_vec **vpp, size_t size) {
-    size_t new_size = next_power_of_two(size);
-    if (new_size > (*vpp)->alloc) {
-        rust_task *task = rust_task_thread::get_task();
-        size_t alloc_size = new_size + sizeof(rust_vec);
-        *vpp = (rust_vec*)task->kernel->realloc(*vpp, alloc_size);
-        (*vpp)->alloc = new_size;
-    }
-}
+extern "C" void *rust_realloc_shared(void * p, size_t size);
 
 typedef rust_vec rust_str;
 

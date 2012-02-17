@@ -2,7 +2,7 @@
 ; target datalayout = "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:32:64-f32:32:32-f64:32:64-v64:64:64-v128:128:128-a0:0:64-f80:32:32-n8:16:32-S128"
 target triple = "@CFG_TARGET_TRIPLE@"
 
-%struct.type_desc = type { %struct.type_desc**, i32, i32, void (i8*, i8*, %struct.type_desc**, i8*)*, void (i8*, i8*, %struct.type_desc**, i8*)*, void (i8*, i8*, %struct.type_desc**, i8*)*, i8*, void (i8*, i8*, %struct.type_desc**, i8*)*, void (i8*, i8*, %struct.type_desc**, i8*)*, i32, void (i8*, i8*, %struct.type_desc**, i8*, i8*, i8)*, i8*, %struct.rust_shape_tables*, i32, i32, %struct.UT_hash_handle, i32, [0 x %struct.type_desc*] }
+%struct.type_desc = type { %struct.type_desc**, i32, i32, void (i8*, i8*, %struct.type_desc**, i8*)*, void (i8*, i8*, %struct.type_desc**, i8*)*, void (i8*, i8*, %struct.type_desc**, i8*)*, i8*, void (i8*, i8*, %struct.type_desc**, i8*)*, void (i8*, i8*, %struct.type_desc**, i8*)*, i32, i8*, i8*, %struct.rust_shape_tables*, i32, i32, %struct.UT_hash_handle, i32, [0 x %struct.type_desc*] }
 %struct.rust_shape_tables = type { i8*, i8* }
 %struct.UT_hash_handle = type { %struct.UT_hash_table*, i8*, i8*, %struct.UT_hash_handle*, %struct.UT_hash_handle*, i8*, i32, i32 }
 %struct.UT_hash_table = type { %struct.UT_hash_bucket*, i32, i32, i32, %struct.UT_hash_handle*, i32, i32, i32, i32, i32 }
@@ -10,14 +10,14 @@ target triple = "@CFG_TARGET_TRIPLE@"
 %struct.rust_vec = type { i32, i32, [0 x i8] }
 %struct.rust_fn = type { i32*, %struct.rust_box* }
 %struct.rust_box = type opaque
-%struct.rust_task = type { %struct.rust_task_user, i32, [8 x i8], %class.context, %struct.stk_seg*, i32, %struct.rust_task_thread*, %class.rust_crate_cache*, %class.rust_kernel*, i8*, %class.rust_task_list*, %struct.rust_cond*, i8*, %struct.rust_task*, i32, i32, i32*, %class.memory_region, %class.boxed_region, i8, i8, i8, %class.lock_and_signal, %class.hash_map.4, %class.rust_obstack, i32, %"class.debug::task_debug_info", i32, [4 x i8] }
-%struct.rust_task_user = type { i32, i32, %struct.chan_handle, i32 }
+%struct.rust_task = type { i32, i32, i8, %struct.chan_handle, [12 x i8], %class.context, %struct.stk_seg*, i32, %class.rust_scheduler*, %struct.rust_task_thread*, %class.rust_crate_cache*, %class.rust_kernel*, i8*, %class.rust_task_list*, %struct.rust_cond*, i8*, %struct.rust_task*, i32, i32, i32*, %class.memory_region, %class.boxed_region, i8, i8, %class.lock_and_signal, %class.hash_map.3, %class.rust_obstack, i32, %"class.debug::task_debug_info", i32, i8, i8, %struct.stk_seg*, i32, i32, %class.rust_port_selector, [8 x i8] }
 %struct.chan_handle = type { i32, i32 }
 %class.context = type { %struct.registers_t, %class.context*, [12 x i8] }
 %struct.registers_t = type { i32, i32, i32, i32, i32, i32, i32, i32, i16, i16, i16, i16, i16, i16, i32, i32, [12 x i8] }
-%struct.stk_seg = type { %struct.stk_seg*, %struct.stk_seg*, i32, i32, i32, [0 x i8] }
-%struct.rust_task_thread = type { %class.rust_thread, i32, %class.rust_log, i32, %class.rust_srv*, i8*, %class.rust_task_list, %class.rust_task_list, %class.rust_task_list, %class.rust_task_list, %class.rust_crate_cache, %struct.randctx, %class.rust_kernel*, i32, i32, %class.lock_and_signal, i32, %union.pthread_attr_t, %struct.rust_env*, [12 x i8], %class.context, i8, [15 x i8] }
-%class.rust_thread = type { i32 (...)**, i8, i32 }
+%struct.stk_seg = type { %struct.stk_seg*, %struct.stk_seg*, i32, i32, i32, i32, [0 x i8] }
+%class.rust_scheduler = type opaque
+%struct.rust_task_thread = type { %class.rust_thread, i32, %class.rust_log, i32, %class.rust_srv*, i8*, %class.rust_task_list, %class.rust_task_list, %class.rust_task_list, %class.rust_task_list, %class.rust_crate_cache, %struct.randctx, %class.rust_kernel*, %class.rust_scheduler*, i32, i32, %class.lock_and_signal, i32, %union.pthread_attr_t, %struct.rust_env*, [8 x i8], %class.context, i8, %struct.stk_seg*, %struct.stk_seg*, [4 x i8] }
+%class.rust_thread = type { i32 (...)**, i32, i32 }
 %class.rust_log = type { i32 (...)**, %class.rust_srv*, %struct.rust_task_thread*, i8 }
 %class.rust_srv = type { i32 (...)**, %struct.rust_env*, %class.memory_region }
 %struct.rust_env = type { i32, i32, i32, i8*, i8, i8, i8* }
@@ -36,24 +36,30 @@ target triple = "@CFG_TARGET_TRIPLE@"
 %class.rust_crate_cache = type { %struct.type_desc*, %struct.rust_hashable_dict*, %struct.rust_task_thread*, i32 }
 %struct.rust_hashable_dict = type { %struct.UT_hash_handle, [0 x i8*] }
 %struct.randctx = type { i32, [256 x i32], [256 x i32], i32, i32, i32 }
-%class.rust_kernel = type { i32 (...)**, %class.memory_region, %class.rust_log, %class.rust_srv*, %class.lock_and_signal, %class.array_list.3, %struct.randctx, i32, %class.hash_map, i32, i32, i32, %struct.rust_env* }
-%class.array_list.3 = type { i32, %struct.rust_task_thread**, i32 }
+%class.rust_kernel = type { %class.memory_region, %class.rust_log, %class.rust_srv*, %class.lock_and_signal, i32, i32, %class.hash_map, %class.lock_and_signal, i32, %class.lock_and_signal, i32, i32, %"class.std::map", %struct.rust_env* }
 %class.hash_map = type { %"struct.hash_map<int, rust_task *>::map_entry"* }
 %"struct.hash_map<int, rust_task *>::map_entry" = type opaque
+%"class.std::map" = type { %"class.std::_Rb_tree" }
+%"class.std::_Rb_tree" = type { %"struct.std::_Rb_tree<int, std::pair<const int, rust_scheduler *>, std::_Select1st<std::pair<const int, rust_scheduler *> >, std::less<int>, std::allocator<std::pair<const int, rust_scheduler *> > >::_Rb_tree_impl" }
+%"struct.std::_Rb_tree<int, std::pair<const int, rust_scheduler *>, std::_Select1st<std::pair<const int, rust_scheduler *> >, std::less<int>, std::allocator<std::pair<const int, rust_scheduler *> > >::_Rb_tree_impl" = type { %"struct.std::less", %"struct.std::_Rb_tree_node_base", i32 }
+%"struct.std::less" = type { i8 }
+%"struct.std::_Rb_tree_node_base" = type { i32, %"struct.std::_Rb_tree_node_base"*, %"struct.std::_Rb_tree_node_base"*, %"struct.std::_Rb_tree_node_base"* }
 %union.pthread_attr_t = type { i32, [32 x i8] }
 %struct.rust_cond = type { i8 }
 %class.boxed_region = type { %class.memory_region*, %struct.rust_opaque_box* }
 %struct.rust_opaque_box = type { i32, %struct.type_desc*, %struct.rust_opaque_box*, %struct.rust_opaque_box* }
-%class.hash_map.4 = type { %"struct.hash_map<int, rust_port *>::map_entry"* }
+%class.hash_map.3 = type { %"struct.hash_map<int, rust_port *>::map_entry"* }
 %"struct.hash_map<int, rust_port *>::map_entry" = type opaque
 %class.rust_obstack = type { %struct.rust_obstack_chunk*, %struct.rust_task* }
 %struct.rust_obstack_chunk = type { %struct.rust_obstack_chunk*, i32, i32, i32, [0 x i8] }
-%"class.debug::task_debug_info" = type { %"class.std::map" }
-%"class.std::map" = type { %"class.std::_Rb_tree" }
-%"class.std::_Rb_tree" = type { %"struct.std::_Rb_tree<void *, std::pair<void *const, std::basic_string<char> >, std::_Select1st<std::pair<void *const, std::basic_string<char> > >, std::less<void *>, std::allocator<std::pair<void *const, std::basic_string<char> > > >::_Rb_tree_impl" }
-%"struct.std::_Rb_tree<void *, std::pair<void *const, std::basic_string<char> >, std::_Select1st<std::pair<void *const, std::basic_string<char> > >, std::less<void *>, std::allocator<std::pair<void *const, std::basic_string<char> > > >::_Rb_tree_impl" = type { %"struct.std::less", %"struct.std::_Rb_tree_node_base", i32 }
-%"struct.std::less" = type { i8 }
-%"struct.std::_Rb_tree_node_base" = type { i32, %"struct.std::_Rb_tree_node_base"*, %"struct.std::_Rb_tree_node_base"*, %"struct.std::_Rb_tree_node_base"* }
+%"class.debug::task_debug_info" = type { %"class.std::map.4" }
+%"class.std::map.4" = type { %"class.std::_Rb_tree.5" }
+%"class.std::_Rb_tree.5" = type { %"struct.std::_Rb_tree<void *, std::pair<void *const, std::basic_string<char> >, std::_Select1st<std::pair<void *const, std::basic_string<char> > >, std::less<void *>, std::allocator<std::pair<void *const, std::basic_string<char> > > >::_Rb_tree_impl" }
+%"struct.std::_Rb_tree<void *, std::pair<void *const, std::basic_string<char> >, std::_Select1st<std::pair<void *const, std::basic_string<char> > >, std::less<void *>, std::allocator<std::pair<void *const, std::basic_string<char> > > >::_Rb_tree_impl" = type { %"struct.std::less.9", %"struct.std::_Rb_tree_node_base", i32 }
+%"struct.std::less.9" = type { i8 }
+%class.rust_port_selector = type { %class.rust_port**, i32, %class.lock_and_signal }
+%class.rust_port = type { i32, i32, %class.rust_kernel*, %struct.rust_task*, i32, %class.circular_buffer, %class.lock_and_signal }
+%class.circular_buffer = type { %class.rust_kernel*, i32, i32, i32, i32, i8* }
 
 define void @rust_intrinsic_vec_len(i32* nocapture %retptr, i8* nocapture %env, %struct.type_desc* nocapture %ty, %struct.rust_vec** nocapture %vp) nounwind {
 entry:
@@ -121,26 +127,112 @@ entry:
 declare void @rust_task_yield(%struct.rust_task*, i8*)
 
 define void @rust_intrinsic_memmove(i8* nocapture %retptr, i8* nocapture %env, %struct.type_desc* nocapture %ty, i8* nocapture %dst, i8* nocapture %src, i32 %count) nounwind {
-  %1 = getelementptr inbounds %struct.type_desc* %ty, i32 0, i32 1
-  %2 = load i32* %1, align 4, !tbaa !3
-  %3 = mul i32 %2, %count
-  tail call void @llvm.memmove.p0i8.p0i8.i32(i8* %dst, i8* %src, i32 %3, i32 1, i1 false)
+entry:
+  %size = getelementptr inbounds %struct.type_desc* %ty, i32 0, i32 1
+  %0 = load i32* %size, align 4, !tbaa !3
+  %mul = mul i32 %0, %count
+  tail call void @llvm.memmove.p0i8.p0i8.i32(i8* %dst, i8* %src, i32 %mul, i32 1, i1 false)
   ret void
 }
 
 define void @rust_intrinsic_memcpy(i8* nocapture %retptr, i8* nocapture %env, %struct.type_desc* nocapture %ty, i8* nocapture %dst, i8* nocapture %src, i32 %count) nounwind {
-  %1 = getelementptr inbounds %struct.type_desc* %ty, i32 0, i32 1
-  %2 = load i32* %1, align 4, !tbaa !3
-  %3 = mul i32 %2, %count
-  tail call void @llvm.memcpy.p0i8.p0i8.i32(i8* %dst, i8* %src, i32 %3, i32 1, i1 false)
+entry:
+  %size = getelementptr inbounds %struct.type_desc* %ty, i32 0, i32 1
+  %0 = load i32* %size, align 4, !tbaa !3
+  %mul = mul i32 %0, %count
+  tail call void @llvm.memcpy.p0i8.p0i8.i32(i8* %dst, i8* %src, i32 %mul, i32 1, i1 false)
   ret void
 }
 
 declare void @llvm.memcpy.p0i8.p0i8.i32(i8* nocapture, i8* nocapture, i32, i32, i1) nounwind
 
 define void @rust_intrinsic_leak(i8* nocapture %retptr, i8* nocapture %env, %struct.type_desc* nocapture %ty, i8* nocapture %thing) nounwind readnone {
+entry:
   ret void
 }
+
+define void @upcall_intrinsic_vec_push(%struct.rust_vec** nocapture %vp, %struct.type_desc* nocapture %elt_ty, i8* nocapture %elt) {
+entry:
+  %0 = load %struct.rust_vec** %vp, align 4, !tbaa !0
+  %fill = getelementptr inbounds %struct.rust_vec* %0, i32 0, i32 0
+  %1 = load i32* %fill, align 4, !tbaa !3
+  %size = getelementptr inbounds %struct.type_desc* %elt_ty, i32 0, i32 1
+  %2 = load i32* %size, align 4, !tbaa !3
+  %add = add i32 %2, %1
+  %alloc.i = getelementptr inbounds %struct.rust_vec* %0, i32 0, i32 1
+  %3 = load i32* %alloc.i, align 4, !tbaa !3
+  %cmp.i = icmp ult i32 %3, %add
+  br i1 %cmp.i, label %if.then.i, label %_Z16reserve_vec_fastPP8rust_vecj.exit
+
+if.then.i:                                        ; preds = %entry
+  %sub.i.i = add i32 %add, -1
+  %shr.i.i = lshr i32 %sub.i.i, 1
+  %or.i.i = or i32 %shr.i.i, %sub.i.i
+  %shr1.i.i = lshr i32 %or.i.i, 2
+  %or2.i.i = or i32 %shr1.i.i, %or.i.i
+  %shr3.i.i = lshr i32 %or2.i.i, 4
+  %or4.i.i = or i32 %shr3.i.i, %or2.i.i
+  %shr5.i.i = lshr i32 %or4.i.i, 8
+  %or6.i.i = or i32 %shr5.i.i, %or4.i.i
+  %shr7.i.i = lshr i32 %or6.i.i, 16
+  %or8.i.i = or i32 %shr7.i.i, %or6.i.i
+  %add.i.i = add i32 %or8.i.i, 1
+  %add.i = add i32 %or8.i.i, 9
+  %4 = bitcast %struct.rust_vec* %0 to i8*
+  %call1.i = tail call i8* @upcall_shared_realloc(i8* %4, i32 %add.i)
+  %5 = bitcast i8* %call1.i to %struct.rust_vec*
+  store %struct.rust_vec* %5, %struct.rust_vec** %vp, align 4, !tbaa !0
+  %alloc2.i = getelementptr inbounds i8* %call1.i, i32 4
+  %6 = bitcast i8* %alloc2.i to i32*
+  store i32 %add.i.i, i32* %6, align 4, !tbaa !3
+  %.pr = load i32* %size, align 4
+  %fill1.phi.trans.insert = bitcast i8* %call1.i to i32*
+  %.pre = load i32* %fill1.phi.trans.insert, align 4, !tbaa !3
+  br label %_Z16reserve_vec_fastPP8rust_vecj.exit
+
+_Z16reserve_vec_fastPP8rust_vecj.exit:            ; preds = %entry, %if.then.i
+  %7 = phi i32 [ %1, %entry ], [ %.pre, %if.then.i ]
+  %8 = phi %struct.rust_vec* [ %0, %entry ], [ %5, %if.then.i ]
+  %9 = phi i32 [ %2, %entry ], [ %.pr, %if.then.i ]
+  %fill1 = getelementptr inbounds %struct.rust_vec* %8, i32 0, i32 0
+  %add.ptr = getelementptr inbounds %struct.rust_vec* %8, i32 0, i32 2, i32 %7
+  tail call void @llvm.memmove.p0i8.p0i8.i32(i8* %add.ptr, i8* %elt, i32 %9, i32 1, i1 false)
+  %take_glue.i = getelementptr inbounds %struct.type_desc* %elt_ty, i32 0, i32 3
+  %10 = load void (i8*, i8*, %struct.type_desc**, i8*)** %take_glue.i, align 4, !tbaa !0
+  %tobool.i = icmp eq void (i8*, i8*, %struct.type_desc**, i8*)* %10, null
+  br i1 %tobool.i, label %_ZL13copy_elementsP9type_descPvS1_j.exit, label %if.then.i6
+
+if.then.i6:                                       ; preds = %_Z16reserve_vec_fastPP8rust_vecj.exit
+  %11 = load i32* %size, align 4, !tbaa !3
+  %first_param.i = getelementptr inbounds %struct.type_desc* %elt_ty, i32 0, i32 0
+  %12 = load %struct.type_desc*** %first_param.i, align 4, !tbaa !0
+  %add.ptr.sum = add i32 %7, %9
+  %add.ptr.i = getelementptr inbounds %struct.rust_vec* %8, i32 0, i32 2, i32 %add.ptr.sum
+  %cmp4.i = icmp sgt i32 %9, 0
+  br i1 %cmp4.i, label %for.body.i, label %_ZL13copy_elementsP9type_descPvS1_j.exit
+
+for.body.i:                                       ; preds = %if.then.i6, %for.body.i
+  %p.05.i = phi i8* [ %add.ptr3.i, %for.body.i ], [ %add.ptr, %if.then.i6 ]
+  tail call void %10(i8* null, i8* null, %struct.type_desc** %12, i8* %p.05.i)
+  %add.ptr3.i = getelementptr inbounds i8* %p.05.i, i32 %11
+  %cmp.i7 = icmp ult i8* %add.ptr3.i, %add.ptr.i
+  br i1 %cmp.i7, label %for.body.i, label %_ZL13copy_elementsP9type_descPvS1_j.exit
+
+_ZL13copy_elementsP9type_descPvS1_j.exit:         ; preds = %for.body.i, %_Z16reserve_vec_fastPP8rust_vecj.exit, %if.then.i6
+  %13 = load i32* %size, align 4, !tbaa !3
+  %14 = load i32* %fill1, align 4, !tbaa !3
+  %add5 = add i32 %14, %13
+  store i32 %add5, i32* %fill1, align 4, !tbaa !3
+  ret void
+}
+
+define void @upcall_vec_push(%struct.rust_vec** nocapture %vp, %struct.type_desc* nocapture %elt_ty, i8* nocapture %elt) {
+entry:
+  tail call void @upcall_intrinsic_vec_push(%struct.rust_vec** %vp, %struct.type_desc* %elt_ty, i8* %elt)
+  ret void
+}
+
+declare i8* @upcall_shared_realloc(i8*, i32)
 
 !0 = metadata !{metadata !"any pointer", metadata !1}
 !1 = metadata !{metadata !"omnipotent char", metadata !2}

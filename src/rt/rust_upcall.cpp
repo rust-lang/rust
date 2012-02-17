@@ -270,6 +270,26 @@ upcall_shared_free(void* ptr) {
     UPCALL_SWITCH_STACK(&args, upcall_s_shared_free);
 }
 
+struct s_shared_realloc_args {
+    void *retval;
+    void *ptr;
+    size_t size;
+};
+
+extern "C" CDECL void
+upcall_s_shared_realloc(s_shared_realloc_args *args) {
+    rust_task *task = rust_task_thread::get_task();
+    LOG_UPCALL_ENTRY(task);
+    args->retval = task->kernel->realloc(args->ptr, args->size);
+}
+
+extern "C" CDECL void *
+upcall_shared_realloc(void *ptr, size_t size) {
+    s_shared_realloc_args args = {NULL, ptr, size};
+    UPCALL_SWITCH_STACK(&args, upcall_s_shared_realloc);
+    return args.retval;
+}
+
 /**********************************************************************
  * Called to deep copy a type descriptor onto the exchange heap.
  * Used when sending closures.  It's possible that we should have
@@ -431,36 +451,6 @@ upcall_vec_grow(rust_vec** vp, size_t new_sz) {
     UPCALL_SWITCH_STACK(&args, upcall_s_vec_grow);
 }
 
-// Copy elements from one vector to another,
-// dealing with reference counts
-static inline void
-copy_elements(type_desc *elem_t,
-              void *pdst, void *psrc, size_t n) {
-    char *dst = (char *)pdst, *src = (char *)psrc;
-    memmove(dst, src, n);
-
-    // increment the refcount of each element of the vector
-    if (elem_t->take_glue) {
-        glue_fn *take_glue = elem_t->take_glue;
-        size_t elem_size = elem_t->size;
-        const type_desc **tydescs = elem_t->first_param;
-        for (char *p = dst; p < dst+n; p += elem_size) {
-            take_glue(NULL, NULL, tydescs, p);
-        }
-    }
-}
-
-extern "C" CDECL void
-upcall_vec_push(rust_vec** vp, type_desc* elt_ty, void* elt) {
-    // NB: This runs entirely on the Rust stack because it invokes take glue
-
-    size_t new_sz = (*vp)->fill + elt_ty->size;
-    reserve_vec_fast(vp, new_sz);
-    rust_vec* v = *vp;
-    copy_elements(elt_ty, &v->data[0] + v->fill,
-                  elt, elt_ty->size);
-    v->fill += elt_ty->size;
-}
 
 /**********************************************************************
  * Returns a token that can be used to deallocate all of the allocated space

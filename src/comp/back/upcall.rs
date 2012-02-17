@@ -14,6 +14,7 @@ type upcalls =
      validate_box: ValueRef,
      shared_malloc: ValueRef,
      shared_free: ValueRef,
+     shared_realloc: ValueRef,
      mark: ValueRef,
      create_shared_type_desc: ValueRef,
      free_shared_type_desc: ValueRef,
@@ -36,15 +37,17 @@ fn declare_upcalls(targ_cfg: @session::config,
                    _tn: type_names,
                    tydesc_type: TypeRef,
                    llmod: ModuleRef) -> @upcalls {
-    fn decl(llmod: ModuleRef, name: str, tys: [TypeRef], rv: TypeRef) ->
+    fn decl(llmod: ModuleRef, prefix: str, name: str,
+            tys: [TypeRef], rv: TypeRef) ->
        ValueRef {
         let arg_tys: [TypeRef] = [];
         for t: TypeRef in tys { arg_tys += [t]; }
         let fn_ty = T_fn(arg_tys, rv);
-        ret base::decl_cdecl_fn(llmod, "upcall_" + name, fn_ty);
+        ret base::decl_cdecl_fn(llmod, prefix + name, fn_ty);
     }
-    let d = bind decl(llmod, _, _, _);
-    let dv = bind decl(llmod, _, _, T_void());
+    let d = bind decl(llmod, "upcall_", _, _, _);
+    let dv = bind decl(llmod, "upcall_", _, _, T_void());
+    let dvi = bind decl(llmod, "upcall_intrinsic_", _, _, T_void());
 
     let int_t = T_int(targ_cfg);
     let size_t = T_size_t(targ_cfg);
@@ -65,6 +68,9 @@ fn declare_upcalls(targ_cfg: @session::config,
                 T_ptr(T_i8())),
           shared_free:
               dv("shared_free", [T_ptr(T_i8())]),
+          shared_realloc:
+              d("shared_realloc", [T_ptr(T_i8()), size_t],
+                T_ptr(T_i8())),
           mark:
               d("mark", [T_ptr(T_i8())], int_t),
           create_shared_type_desc:
@@ -83,7 +89,7 @@ fn declare_upcalls(targ_cfg: @session::config,
           vec_grow:
               dv("vec_grow", [T_ptr(T_ptr(opaque_vec_t)), int_t]),
           vec_push:
-              dv("vec_push",
+              dvi("vec_push",
                 [T_ptr(T_ptr(opaque_vec_t)), T_ptr(tydesc_type),
                  T_ptr(T_i8())]),
           cmp_type:
