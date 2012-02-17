@@ -233,16 +233,17 @@ enum cleanup {
 type cleanup_path = {target: option<BasicBlockRef>,
                      dest: BasicBlockRef};
 
-fn scope_clean_changed(cx: @block_ctxt) {
-    cx.cleanup_paths = [];
-    cx.landing_pad = none;
+fn scope_clean_changed(info: scope_info) {
+    if info.cleanup_paths.len() > 0u { info.cleanup_paths = []; }
+    info.landing_pad = none;
 }
 
 fn add_clean(cx: @block_ctxt, val: ValueRef, ty: ty::t) {
     if !ty::type_needs_drop(bcx_tcx(cx), ty) { ret; }
-    let scope_cx = find_scope_cx(cx);
-    scope_cx.cleanups += [clean(bind drop_ty(_, val, ty))];
-    scope_clean_changed(scope_cx);
+    in_scope_cx(cx) {|info|
+        info.cleanups += [clean(bind drop_ty(_, val, ty))];
+        scope_clean_changed(info);
+    }
 }
 fn add_clean_temp(cx: @block_ctxt, val: ValueRef, ty: ty::t) {
     if !ty::type_needs_drop(bcx_tcx(cx), ty) { ret; }
@@ -254,23 +255,25 @@ fn add_clean_temp(cx: @block_ctxt, val: ValueRef, ty: ty::t) {
             ret drop_ty(bcx, val, ty);
         }
     }
-    let scope_cx = find_scope_cx(cx);
-    scope_cx.cleanups +=
-        [clean_temp(val, bind do_drop(_, val, ty))];
-    scope_clean_changed(scope_cx);
+    in_scope_cx(cx) {|info|
+        info.cleanups += [clean_temp(val, bind do_drop(_, val, ty))];
+        scope_clean_changed(info);
+    }
 }
 fn add_clean_temp_mem(cx: @block_ctxt, val: ValueRef, ty: ty::t) {
     if !ty::type_needs_drop(bcx_tcx(cx), ty) { ret; }
-    let scope_cx = find_scope_cx(cx);
-    scope_cx.cleanups += [clean_temp(val, bind drop_ty(_, val, ty))];
-    scope_clean_changed(scope_cx);
+    in_scope_cx(cx) {|info|
+        info.cleanups += [clean_temp(val, bind drop_ty(_, val, ty))];
+        scope_clean_changed(info);
+    }
 }
 fn add_clean_free(cx: @block_ctxt, ptr: ValueRef, shared: bool) {
-    let scope_cx = find_scope_cx(cx);
     let free_fn = if shared { bind base::trans_shared_free(_, ptr) }
                   else { bind base::trans_free(_, ptr) };
-    scope_cx.cleanups += [clean_temp(ptr, free_fn)];
-    scope_clean_changed(scope_cx);
+    in_scope_cx(cx) {|info|
+        info.cleanups += [clean_temp(ptr, free_fn)];
+        scope_clean_changed(info);
+    }
 }
 
 // Note that this only works for temporaries. We should, at some point, move
@@ -278,27 +281,22 @@ fn add_clean_free(cx: @block_ctxt, ptr: ValueRef, shared: bool) {
 // this will be more involved. For now, we simply zero out the local, and the
 // drop glue checks whether it is zero.
 fn revoke_clean(cx: @block_ctxt, val: ValueRef) {
-    let sc_cx = find_scope_cx(cx);
-    let found = -1;
-    let i = 0;
-    for c: cleanup in sc_cx.cleanups {
-        alt c {
-          clean_temp(v, _) {
-            if v as uint == val as uint { found = i; break; }
-          }
-          _ { }
+    in_scope_cx(cx) {|info|
+        let i = 0u;
+        for cu in info.cleanups {
+            alt cu {
+              clean_temp(v, _) if v == val {
+                info.cleanups =
+                    vec::slice(info.cleanups, 0u, i) +
+                    vec::slice(info.cleanups, i + 1u, info.cleanups.len());
+                scope_clean_changed(info);
+                ret;
+              }
+              _ {}
+            }
+            i += 1u;
         }
-        i += 1;
     }
-    // The value does not have a cleanup associated with it.
-    if found == -1 { ret; }
-    // We found the cleanup and remove it
-    sc_cx.cleanups =
-        vec::slice(sc_cx.cleanups, 0u, found as uint) +
-            vec::slice(sc_cx.cleanups, (found as uint) + 1u,
-                            sc_cx.cleanups.len());
-    scope_clean_changed(sc_cx);
-    ret;
 }
 
 fn get_res_dtor(ccx: @crate_ctxt, did: ast::def_id, inner_t: ty::t)
@@ -325,47 +323,53 @@ enum block_kind {
     // cleaned up. May correspond to an actual block in the language, but also
     // to an implicit scope, for example, calls introduce an implicit scope in
     // which the arguments are evaluated and cleaned up.
-    SCOPE_BLOCK,
-    // A basic block created from the body of a loop.  Contains pointers to
-    // which block to jump to in the case of "continue" or "break".
-    LOOP_SCOPE_BLOCK(option<@block_ctxt>, @block_ctxt),
+    scope_block(scope_info),
     // A non-scope block is a basic block created as a translation artifact
     // from translating code that expresses conditional logic rather than by
     // explicit { ... } block structure in the source language.  It's called a
     // non-scope block because it doesn't introduce a new variable scope.
-    NON_SCOPE_BLOCK
+    non_scope_block,
 }
+
+enum loop_cont { cont_self, cont_other(@block_ctxt), }
+
+type scope_info = {
+    is_loop: option<{cnt: loop_cont, brk: @block_ctxt}>,
+    // A list of functions that must be run at when leaving this
+    // block, cleaning up any variables that were introduced in the
+    // block.
+    mutable cleanups: [cleanup],
+    // Existing cleanup paths that may be reused, indexed by destination and
+    // cleared when the set of cleanups changes.
+    mutable cleanup_paths: [cleanup_path],
+    // Unwinding landing pad. Also cleared when cleanups change.
+    mutable landing_pad: option<BasicBlockRef>,
+};
 
 // Basic block context.  We create a block context for each basic block
 // (single-entry, single-exit sequence of instructions) we generate from Rust
 // code.  Each basic block we generate is attached to a function, typically
 // with many basic blocks per function.  All the basic blocks attached to a
 // function are organized as a directed graph.
-type block_ctxt =
+type block_ctxt = {
     // The BasicBlockRef returned from a call to
     // llvm::LLVMAppendBasicBlock(llfn, name), which adds a basic
     // block to the function pointed to by llfn.  We insert
     // instructions into that block by way of this block context.
     // The block pointing to this one in the function's digraph.
+    llbb: BasicBlockRef,
+    mutable terminated: bool,
+    mutable unreachable: bool,
+    parent: block_parent,
     // The 'kind' of basic block this is.
-    // A list of functions that run at the end of translating this
-    // block, cleaning up any variables that were introduced in the
-    // block and need to go out of scope at the end of it.
-    // The source span where this block comes from, for error
-    // reporting. FIXME this is not currently reliable
+    kind: block_kind,
+    // The source span where the block came from, if it is a block that
+    // actually appears in the source code.
+    block_span: option<span>,
     // The function context for the function to which this block is
     // attached.
-    {llbb: BasicBlockRef,
-     mutable terminated: bool,
-     mutable unreachable: bool,
-     parent: block_parent,
-     kind: block_kind,
-     // FIXME the next five fields should probably only appear in scope blocks
-     mutable cleanups: [cleanup],
-     mutable cleanup_paths: [cleanup_path],
-     mutable landing_pad: option<BasicBlockRef>,
-     block_span: option<span>,
-     fcx: @fn_ctxt};
+    fcx: @fn_ctxt
+};
 
 // FIXME: we should be able to use option<@block_parent> here but
 // the infinite-enum check in rustboot gets upset.
@@ -395,13 +399,15 @@ fn struct_elt(llstructty: TypeRef, n: uint) -> TypeRef unsafe {
     ret llvm::LLVMGetElementType(elt_tys[n]);
 }
 
-fn find_scope_cx(cx: @block_ctxt) -> @block_ctxt {
+fn in_scope_cx(cx: @block_ctxt, f: fn(scope_info)) {
     let cur = cx;
     while true {
-        if cur.kind != NON_SCOPE_BLOCK { break; }
+        alt cur.kind {
+          scope_block(info) { f(info); ret; }
+          _ {}
+        }
         cur = alt check cur.parent { parent_some(b) { b } };
     }
-    cur
 }
 
 // Accessors

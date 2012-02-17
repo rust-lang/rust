@@ -2108,7 +2108,7 @@ fn trans_for(cx: @block_ctxt, local: @ast::local, seq: @ast::expr,
              body: ast::blk, outer_next_cx: @block_ctxt) -> @block_ctxt {
         let next_cx = new_sub_block_ctxt(bcx, "next");
         let scope_cx =
-            new_loop_scope_block_ctxt(bcx, option::some(next_cx),
+            new_loop_scope_block_ctxt(bcx, cont_other(next_cx),
                                       outer_next_cx, "for loop scope",
                                       body.span);
         Br(bcx, scope_cx.llbb);
@@ -2138,7 +2138,7 @@ fn trans_for(cx: @block_ctxt, local: @ast::local, seq: @ast::expr,
 fn trans_while(cx: @block_ctxt, cond: @ast::expr, body: ast::blk)
     -> @block_ctxt {
     let next_cx = new_sub_block_ctxt(cx, "while next");
-    let cond_cx = new_loop_scope_block_ctxt(cx, none, next_cx,
+    let cond_cx = new_loop_scope_block_ctxt(cx, cont_self, next_cx,
                                             "while cond", body.span);
     let body_cx = new_scope_block_ctxt(cond_cx, "while loop body");
     Br(cx, cond_cx.llbb);
@@ -2154,7 +2154,7 @@ fn trans_do_while(cx: @block_ctxt, body: ast::blk, cond: @ast::expr) ->
     @block_ctxt {
     let next_cx = new_sub_block_ctxt(cx, "next");
     let body_cx =
-        new_loop_scope_block_ctxt(cx, option::none::<@block_ctxt>, next_cx,
+        new_loop_scope_block_ctxt(cx, cont_self, next_cx,
                                   "do-while loop body", body.span);
     let body_end = trans_block(body_cx, body, ignore);
     let cond_cx = new_scope_block_ctxt(body_cx, "do-while cond");
@@ -2995,27 +2995,32 @@ fn invoke_(bcx: @block_ctxt, llfn: ValueRef, llargs: [ValueRef],
 }
 
 fn get_landing_pad(bcx: @block_ctxt) -> BasicBlockRef {
-    fn find_scope_for_lpad(bcx: @block_ctxt) -> @block_ctxt {
-        let scope_bcx = bcx;
+    fn in_lpad_scope_cx(bcx: @block_ctxt, f: fn(scope_info)) {
+        let bcx = bcx;
         while true {
-            if vec::is_not_empty(scope_bcx.cleanups) { break; }
-            scope_bcx = alt scope_bcx.parent {
-              parent_some(b) { b }
-              parent_none { break; }
-            };
+            alt bcx.kind {
+              scope_block(info) {
+                if info.cleanups.len() > 0u || bcx.parent == parent_none {
+                    f(info); ret;
+                }
+              }
+              _ {}
+            }
+            bcx = alt check bcx.parent { parent_some(b) { b } };
         }
-        scope_bcx
     }
 
-    let scope_bcx = find_scope_for_lpad(bcx);
-    // If there is a valid landing pad still around, use it
-    alt scope_bcx.landing_pad {
-      some(target) { ret target; }
-      none {}
+    let cached = none, pad_bcx = bcx; // Guaranteed to be set below
+    in_lpad_scope_cx(bcx) {|info|
+        // If there is a valid landing pad still around, use it
+        alt info.landing_pad {
+          some(target) { cached = some(target); ret; }
+          none {}
+        }
+        pad_bcx = new_sub_block_ctxt(bcx, "unwind");
+        info.landing_pad = some(pad_bcx.llbb);
     }
-
-    let pad_bcx = new_sub_block_ctxt(bcx, "unwind");
-    scope_bcx.landing_pad = some(pad_bcx.llbb);
+    alt cached { some(b) { ret b; } none {} } // Can't return from block above
     // The landing pad return type (the type being propagated). Not sure what
     // this represents but it's determined by the personality function and
     // this is what the EH proposal example uses.
@@ -3573,13 +3578,13 @@ fn trans_break_cont(bcx: @block_ctxt, to_end: bool)
     let unwind = bcx, target = bcx;
     while true {
         alt unwind.kind {
-          LOOP_SCOPE_BLOCK(_cont, _break) {
+          scope_block({is_loop: some({cnt, brk}), _}) {
             target = if to_end {
-                _break
+                brk
             } else {
-                alt _cont {
-                  option::some(_cont) { _cont }
-                  _ { unwind }
+                alt cnt {
+                  cont_other(o) { o }
+                  cont_self { unwind }
                 }
             };
             break;
@@ -3738,16 +3743,14 @@ fn new_block_ctxt(cx: @fn_ctxt, parent: block_parent, kind: block_kind,
     if cx.ccx.sess.opts.save_temps || cx.ccx.sess.opts.debuginfo {
         s = cx.ccx.names(name);
     }
-    let llbb: BasicBlockRef =
-        str::as_buf(s, {|buf| llvm::LLVMAppendBasicBlock(cx.llfn, buf) });
+    let llbb: BasicBlockRef = str::as_buf(s, {|buf|
+        llvm::LLVMAppendBasicBlock(cx.llfn, buf)
+    });
     let bcx = @{llbb: llbb,
                 mutable terminated: false,
                 mutable unreachable: false,
                 parent: parent,
                 kind: kind,
-                mutable cleanups: [],
-                mutable cleanup_paths: [],
-                mutable landing_pad: none,
                 block_span: block_span,
                 fcx: cx};
     alt parent {
@@ -3759,34 +3762,43 @@ fn new_block_ctxt(cx: @fn_ctxt, parent: block_parent, kind: block_kind,
     ret bcx;
 }
 
+fn simple_scope_block() -> block_kind {
+    scope_block({is_loop: none, mutable cleanups: [],
+                 mutable cleanup_paths: [], mutable landing_pad: none})
+}
 
 // Use this when you're at the top block of a function or the like.
 fn new_top_block_ctxt(fcx: @fn_ctxt, sp: option<span>) -> @block_ctxt {
-    ret new_block_ctxt(fcx, parent_none, SCOPE_BLOCK, "function top level",
-                       sp);
+    ret new_block_ctxt(fcx, parent_none, simple_scope_block(),
+                       "function top level", sp);
 }
-
 
 // Use this when you're at a curly-brace or similar lexical scope.
 fn new_scope_block_ctxt(bcx: @block_ctxt, n: str) -> @block_ctxt {
-    ret new_block_ctxt(bcx.fcx, parent_some(bcx), SCOPE_BLOCK, n, none);
+    ret new_block_ctxt(bcx.fcx, parent_some(bcx), simple_scope_block(),
+                       n, none);
 }
 
 fn new_real_block_ctxt(bcx: @block_ctxt, n: str, sp: span) -> @block_ctxt {
-    ret new_block_ctxt(bcx.fcx, parent_some(bcx), SCOPE_BLOCK, n, some(sp));
+    ret new_block_ctxt(bcx.fcx, parent_some(bcx), simple_scope_block(),
+                       n, some(sp));
 }
 
-fn new_loop_scope_block_ctxt(bcx: @block_ctxt, _cont: option<@block_ctxt>,
+fn new_loop_scope_block_ctxt(bcx: @block_ctxt, _cont: loop_cont,
                              _break: @block_ctxt, n: str, sp: span)
     -> @block_ctxt {
-    ret new_block_ctxt(bcx.fcx, parent_some(bcx),
-                       LOOP_SCOPE_BLOCK(_cont, _break), n, some(sp));
+    ret new_block_ctxt(bcx.fcx, parent_some(bcx), scope_block({
+        is_loop: some({cnt: _cont, brk: _break}),
+        mutable cleanups: [],
+        mutable cleanup_paths: [],
+        mutable landing_pad: none
+    }), n, some(sp));
 }
 
 
 // Use this when you're making a general CFG BB within a scope.
 fn new_sub_block_ctxt(bcx: @block_ctxt, n: str) -> @block_ctxt {
-    ret new_block_ctxt(bcx.fcx, parent_some(bcx), NON_SCOPE_BLOCK, n, none);
+    ret new_block_ctxt(bcx.fcx, parent_some(bcx), non_scope_block, n, none);
 }
 
 fn new_raw_block_ctxt(fcx: @fn_ctxt, llbb: BasicBlockRef) -> @block_ctxt {
@@ -3794,10 +3806,7 @@ fn new_raw_block_ctxt(fcx: @fn_ctxt, llbb: BasicBlockRef) -> @block_ctxt {
           mutable terminated: false,
           mutable unreachable: false,
           parent: parent_none,
-          kind: NON_SCOPE_BLOCK,
-          mutable cleanups: [],
-          mutable cleanup_paths: [],
-          mutable landing_pad: none,
+          kind: non_scope_block,
           block_span: none,
           fcx: fcx};
 }
@@ -3813,13 +3822,13 @@ fn new_raw_block_ctxt(fcx: @fn_ctxt, llbb: BasicBlockRef) -> @block_ctxt {
 fn trans_block_cleanups(bcx: @block_ctxt, cleanup_cx: @block_ctxt) ->
    @block_ctxt {
     if bcx.unreachable { ret bcx; }
-    let i = cleanup_cx.cleanups.len(), bcx = bcx;
-    if cleanup_cx.kind == NON_SCOPE_BLOCK { assert i == 0u; }
-    while i > 0u {
-        i -= 1u;
-        alt cleanup_cx.cleanups[i] {
-          clean(cfn) | clean_temp(_, cfn) { bcx = cfn(bcx); }
+    let bcx = bcx;
+    alt check cleanup_cx.kind {
+      scope_block({cleanups, _}) {
+        vec::riter(cleanups) {|cu|
+            alt cu { clean(cfn) | clean_temp(_, cfn) { bcx = cfn(bcx); } }
         }
+      }
     }
     ret bcx;
 }
@@ -3831,9 +3840,9 @@ fn cleanup_and_leave(bcx: @block_ctxt, upto: option<BasicBlockRef>,
                      leave: option<BasicBlockRef>) {
     let cur = bcx, bcx = bcx;
     while true {
-        if cur.cleanups.len() > 0u {
-            assert cur.kind != NON_SCOPE_BLOCK;
-            for exists in cur.cleanup_paths {
+        alt cur.kind {
+          scope_block(info) if info.cleanups.len() > 0u {
+            for exists in info.cleanup_paths {
                 if exists.target == leave {
                     Br(bcx, exists.dest);
                     ret;
@@ -3841,8 +3850,10 @@ fn cleanup_and_leave(bcx: @block_ctxt, upto: option<BasicBlockRef>,
             }
             let sub_cx = new_sub_block_ctxt(bcx, "cleanup");
             Br(bcx, sub_cx.llbb);
-            cur.cleanup_paths += [{target: leave, dest: sub_cx.llbb}];
+            info.cleanup_paths += [{target: leave, dest: sub_cx.llbb}];
             bcx = trans_block_cleanups(sub_cx, cur);
+          }
+          _ {}
         }
         alt upto {
           some(bb) { if cur.llbb == bb { break; } }
@@ -3890,33 +3901,6 @@ fn block_locals(b: ast::blk, it: fn(@ast::local)) {
     }
 }
 
-fn llstaticallocas_block_ctxt(fcx: @fn_ctxt) -> @block_ctxt {
-    ret @{llbb: fcx.llstaticallocas,
-          mutable terminated: false,
-          mutable unreachable: false,
-          parent: parent_none,
-          kind: SCOPE_BLOCK,
-          mutable cleanups: [],
-          mutable cleanup_paths: [],
-          mutable landing_pad: none,
-          block_span: none,
-          fcx: fcx};
-}
-
-fn llderivedtydescs_block_ctxt(fcx: @fn_ctxt) -> @block_ctxt {
-    ret @{llbb: fcx.llderivedtydescs,
-          mutable terminated: false,
-          mutable unreachable: false,
-          parent: parent_none,
-          kind: SCOPE_BLOCK,
-          mutable cleanups: [],
-          mutable cleanup_paths: [],
-          mutable landing_pad: none,
-          block_span: none,
-          fcx: fcx};
-}
-
-
 fn alloc_ty(cx: @block_ctxt, t: ty::t) -> result {
     let bcx = cx, ccx = bcx_ccx(cx);
     let llty = type_of(ccx, t);
@@ -3927,7 +3911,8 @@ fn alloc_ty(cx: @block_ctxt, t: ty::t) -> result {
         // block_ctxt built on the llderivedtydescs block for the fn,
         // so that the size dominates the array_alloca that
         // comes next.
-        let n = size_of(llderivedtydescs_block_ctxt(bcx.fcx), t);
+        let n = size_of(new_raw_block_ctxt(cx.fcx, cx.fcx.llderivedtydescs),
+                        t);
         bcx.fcx.llderivedtydescs = n.bcx.llbb;
         PointerCast(bcx, dynastack_alloca(bcx, T_i8(), n.val, t), T_ptr(llty))
     };
