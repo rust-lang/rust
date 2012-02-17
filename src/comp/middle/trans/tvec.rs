@@ -211,8 +211,7 @@ fn trans_append_literal(bcx: @block_ctxt, vptrptr: ValueRef, vec_ty: ty::t,
     let ccx = bcx_ccx(bcx);
     let elt_ty = ty::sequence_element_type(bcx_tcx(bcx), vec_ty);
     let ti = none;
-    let {bcx: bcx, val: td} =
-        get_tydesc(bcx, elt_ty, false, ti).result;
+    let {bcx: bcx, val: td} = get_tydesc(bcx, elt_ty, false, ti);
     base::lazily_emit_tydesc_glue(ccx, abi::tydesc_field_take_glue, ti);
     let opaque_v = PointerCast(bcx, vptrptr,
                                T_ptr(T_ptr(ccx.opaque_vec_type)));

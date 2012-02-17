@@ -31,12 +31,6 @@ fn new_namegen() -> namegen {
 
 type derived_tydesc_info = {lltydesc: ValueRef, escapes: bool};
 
-enum tydesc_kind {
-    tk_static, // Static (monomorphic) type descriptor
-    tk_param, // Type parameter.
-    tk_derived, // Derived from a typaram or another derived tydesc.
-}
-
 type tydesc_info =
     {ty: ty::t,
      tydesc: ValueRef,

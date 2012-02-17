@@ -343,8 +343,7 @@ fn dynastack_alloca(cx: @block_ctxt, t: TypeRef, n: ValueRef, ty: ty::t) ->
                    C_uint(bcx_ccx(bcx), llsize_of_real(bcx_ccx(bcx), t)),
                    n);
 
-    let ti = none;
-    let lltydesc = get_tydesc(cx, ty, false, ti).result.val;
+    let lltydesc = get_tydesc_simple(cx, ty, false).val;
 
     let llresult = Call(dy_cx, dynastack_alloc, [llsz, lltydesc]);
     ret PointerCast(dy_cx, llresult, T_ptr(t));
@@ -531,7 +530,7 @@ fn trans_malloc_boxed_raw(bcx: @block_ctxt, t: ty::t,
     let llty = type_of(ccx, box_ptr);
 
     // Get the tydesc for the body:
-    let {bcx, val: lltydesc} = get_tydesc(bcx, t, true, static_ti).result;
+    let {bcx, val: lltydesc} = get_tydesc(bcx, t, true, static_ti);
     lazily_emit_all_tydesc_glue(ccx, static_ti);
 
     // Allocate space:
@@ -556,8 +555,7 @@ fn trans_malloc_boxed(bcx: @block_ctxt, t: ty::t) ->
 // tydesc if necessary.
 fn field_of_tydesc(cx: @block_ctxt, t: ty::t, escapes: bool, field: int) ->
    result {
-    let ti = none::<@tydesc_info>;
-    let tydesc = get_tydesc(cx, t, escapes, ti).result;
+    let tydesc = get_tydesc_simple(cx, t, escapes);
     ret rslt(tydesc.bcx,
              GEPi(tydesc.bcx, tydesc.val, [0, field]));
 }
@@ -678,36 +676,28 @@ fn get_derived_tydesc(cx: @block_ctxt, t: ty::t, escapes: bool,
     ret rslt(cx, v);
 }
 
-type get_tydesc_result = {kind: tydesc_kind, result: result};
+fn get_tydesc_simple(bcx: block, t: ty::t, escapes: bool) -> result {
+    let ti = none;
+    get_tydesc(bcx, t, escapes, ti)
+}
 
 fn get_tydesc(cx: @block_ctxt, t: ty::t, escapes: bool,
-              &static_ti: option<@tydesc_info>)
-   -> get_tydesc_result {
+              &static_ti: option<@tydesc_info>) -> result {
 
     // Is the supplied type a type param? If so, return the passed-in tydesc.
     alt ty::type_param(t) {
-      some(id) {
-        if id < cx.fcx.lltyparams.len() {
-            ret {kind: tk_param,
-                 result: rslt(cx, cx.fcx.lltyparams[id].desc)};
-        } else {
-            bcx_tcx(cx).sess.bug("Unbound typaram in get_tydesc: t = " +
-                                 ty_to_str(bcx_tcx(cx), t) + " ty_param = " +
-                                 uint::str(id));
-        }
-      }
+      some(id) { ret rslt(cx, cx.fcx.lltyparams[id].desc); }
       none {/* fall through */ }
     }
 
     // Does it contain a type param? If so, generate a derived tydesc.
     if ty::type_has_params(t) {
-        ret {kind: tk_derived,
-             result: get_derived_tydesc(cx, t, escapes, static_ti)};
+        ret get_derived_tydesc(cx, t, escapes, static_ti);
     }
     // Otherwise, generate a tydesc if necessary, and return it.
     let info = get_static_tydesc(bcx_ccx(cx), t, []);
     static_ti = some(info);
-    ret {kind: tk_static, result: rslt(cx, info.tydesc)};
+    ret rslt(cx, info.tydesc);
 }
 
 fn get_static_tydesc(ccx: @crate_ctxt, t: ty::t, ty_params: [uint])
@@ -1062,8 +1052,7 @@ fn trans_res_drop(cx: @block_ctxt, rs: ValueRef, did: ast::def_id,
     let dtor_addr = common::get_res_dtor(ccx, did, inner_t);
     let args = [cx.fcx.llretptr, null_env_ptr(cx)];
     for tp: ty::t in tps {
-        let ti: option<@tydesc_info> = none;
-        let td = get_tydesc(cx, tp, false, ti).result;
+        let td = get_tydesc_simple(cx, tp, false);
         args += [td.val];
         cx = td.bcx;
     }
@@ -1448,7 +1437,7 @@ fn call_tydesc_glue_full(cx: @block_ctxt, v: ValueRef, tydesc: ValueRef,
 fn call_tydesc_glue(cx: @block_ctxt, v: ValueRef, t: ty::t, field: int) ->
    @block_ctxt {
     let ti: option<@tydesc_info> = none::<@tydesc_info>;
-    let {bcx: bcx, val: td} = get_tydesc(cx, t, false, ti).result;
+    let {bcx: bcx, val: td} = get_tydesc(cx, t, false, ti);
     call_tydesc_glue_full(bcx, v, td, field, ti);
     ret bcx;
 }
@@ -1469,8 +1458,7 @@ fn call_cmp_glue(cx: @block_ctxt, lhs: ValueRef, rhs: ValueRef, t: ty::t,
 
     let llrawlhsptr = BitCast(bcx, lllhs, T_ptr(T_i8()));
     let llrawrhsptr = BitCast(bcx, llrhs, T_ptr(T_i8()));
-    let ti = none;
-    r = get_tydesc(bcx, t, false, ti).result;
+    r = get_tydesc_simple(bcx, t, false);
     let lltydesc = r.val;
     bcx = r.bcx;
     let lltydescs =
@@ -2356,7 +2344,7 @@ fn lval_static_fn(bcx: @block_ctxt, fn_id: ast::def_id, id: ast::node_id,
         for t in tys {
             // TODO: Doesn't always escape.
             let ti = none;
-            let td = get_tydesc(bcx, t, true, ti).result;
+            let td = get_tydesc(bcx, t, true, ti);
             tis += [ti];
             bcx = td.bcx;
             tydescs += [td.val];
@@ -3489,8 +3477,7 @@ fn trans_log(lvl: @ast::expr, cx: @block_ctxt, e: @ast::expr) -> @block_ctxt {
     let e_ty = expr_ty(cx, e);
     let log_bcx = sub.bcx;
 
-    let ti = none::<@tydesc_info>;
-    let r = get_tydesc(log_bcx, e_ty, false, ti).result;
+    let r = get_tydesc_simple(log_bcx, e_ty, false);
     log_bcx = r.bcx;
     let lltydesc = r.val;
 

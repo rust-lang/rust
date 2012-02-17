@@ -185,8 +185,7 @@ fn allocate_cbox(bcx: @block_ctxt,
                          &ti: option::t<@tydesc_info>) -> @block_ctxt {
         let ccx = bcx_ccx(bcx);
         let bound_tydesc = GEPi(bcx, box, [0, abi::box_field_tydesc]);
-        let {bcx, val: td} =
-            base::get_tydesc(bcx, cdata_ty, true, ti).result;
+        let {bcx, val: td} = base::get_tydesc(bcx, cdata_ty, true, ti);
         let td = Call(bcx, ccx.upcalls.create_shared_type_desc, [td]);
         Store(bcx, td, bound_tydesc);
         bcx

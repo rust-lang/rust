@@ -124,7 +124,7 @@ fn trans_vtable_callee(bcx: @block_ctxt, env: callee_env, dict: ValueRef,
         let tptys = node_id_type_params(bcx, callee_id);
         for t in vec::tail_n(tptys, tptys.len() - (*method.tps).len()) {
             let ti = none;
-            let td = get_tydesc(bcx, t, true, ti).result;
+            let td = get_tydesc(bcx, t, true, ti);
             tis += [ti];
             tydescs += [td.val];
             bcx = td.bcx;
@@ -489,9 +489,9 @@ fn get_dict_ptrs(bcx: @block_ctxt, origin: typeck::dict_origin)
       typeck::dict_static(impl_did, tys, sub_origins) {
         let impl_params = ty::lookup_item_type(ccx.tcx, impl_did).bounds;
         let ptrs = [get_vtable(ccx, impl_did)];
-        let origin = 0u, ti = none, bcx = bcx;
+        let origin = 0u, bcx = bcx;
         vec::iter2(*impl_params, tys) {|param, ty|
-            let rslt = get_tydesc(bcx, ty, true, ti).result;
+            let rslt = get_tydesc_simple(bcx, ty, true);
             ptrs += [rslt.val];
             bcx = rslt.bcx;
             for bound in *param {

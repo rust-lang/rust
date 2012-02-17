@@ -717,8 +717,7 @@ fn dynamic_metrics(cx: @block_ctxt, t: ty::t) -> metrics {
 
     alt ty::get(t).struct {
       ty::ty_param(p, _) {
-        let ti = none;
-        let {bcx, val: tydesc} = base::get_tydesc(cx, t, false, ti).result;
+        let {bcx, val: tydesc} = base::get_tydesc_simple(cx, t, false);
         let szptr = GEPi(bcx, tydesc, [0, abi::tydesc_field_size]);
         let aptr = GEPi(bcx, tydesc, [0, abi::tydesc_field_align]);
         {bcx: bcx, sz: Load(bcx, szptr), align: Load(bcx, aptr)}
