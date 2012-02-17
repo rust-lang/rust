@@ -450,35 +450,23 @@ copy_elements(rust_task *task, type_desc *elem_t,
     }
 }
 
-/**********************************************************************/
-
-struct s_vec_push_args {
-    rust_vec** vp;
-    type_desc* elt_ty;
-    void* elt;
-};
-
-extern "C" CDECL void
-upcall_s_vec_push(s_vec_push_args *args) {
-    rust_task *task = rust_task_thread::get_task();
-    LOG_UPCALL_ENTRY(task);
-    size_t new_sz = (*args->vp)->fill + args->elt_ty->size;
-    reserve_vec(task, args->vp, new_sz);
-    rust_vec* v = *args->vp;
-    copy_elements(task, args->elt_ty, &v->data[0] + v->fill, 
-                  args->elt, args->elt_ty->size);
-    v->fill += args->elt_ty->size;
-}
-
 extern "C" CDECL void
 upcall_vec_push(rust_vec** vp, type_desc* elt_ty, void* elt) {
-    // FIXME: Switching stacks here causes crashes, probably
-    // because this upcall calls take glue
-    s_vec_push_args args = {vp, elt_ty, elt};
-    upcall_s_vec_push(&args);
+    // NB: This runs entirely on the Rust stack because it invokes take glue
+
+    rust_task *task = rust_task_thread::get_task();
+
+    LOG_UPCALL_ENTRY(task);
+
+    size_t new_sz = (*vp)->fill + elt_ty->size;
+    reserve_vec(task, vp, new_sz);
+    rust_vec* v = *vp;
+    copy_elements(task, elt_ty, &v->data[0] + v->fill,
+                  elt, elt_ty->size);
+    v->fill += elt_ty->size;
+
 
     // Do the stack check to make sure this op, on the Rust stack, is behaving
-    rust_task *task = rust_task_thread::get_task();
     task->check_stack_canary();
 }
 
