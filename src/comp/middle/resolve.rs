@@ -19,7 +19,7 @@ import std::list::{list, nil, cons};
 import option::{is_none, is_some};
 import syntax::print::pprust::*;
 
-export resolve_crate;
+export resolve_crate, resolve_crate_reexports;
 export def_map, ext_map, exp_map, impl_map;
 export _impl, iscopes, method_info;
 
@@ -155,24 +155,7 @@ enum ns_value_type { ns_a_enum, ns_any_value, }
 
 fn resolve_crate(sess: session, amap: ast_map::map, crate: @ast::crate) ->
    {def_map: def_map, exp_map: exp_map, impl_map: impl_map} {
-    let e =
-        @{cstore: sess.cstore,
-          def_map: new_int_hash(),
-          ast_map: amap,
-          imports: new_int_hash(),
-          exp_map: new_str_hash(),
-          mod_map: new_int_hash(),
-          block_map: new_int_hash(),
-          ext_map: new_def_hash(),
-          impl_map: new_int_hash(),
-          impl_cache: new_def_hash(),
-          ext_cache: new_ext_hash(),
-          used_imports: {mutable track: false, mutable data:  []},
-          mutable reported: [],
-          mutable ignored_imports: [],
-          mutable current_tp: none,
-          mutable resolve_unexported: false,
-          sess: sess};
+    let e = create_env(sess, amap);
     map_crate(e, crate);
     resolve_imports(*e);
     check_exports(e);
@@ -185,6 +168,36 @@ fn resolve_crate(sess: session, amap: ast_map::map, crate: @ast::crate) ->
         check_unused_imports(e);
     }
     ret {def_map: e.def_map, exp_map: e.exp_map, impl_map: e.impl_map};
+}
+
+// Used by rustdoc
+fn resolve_crate_reexports(sess: session, amap: ast_map::map,
+                           crate: @ast::crate) -> exp_map {
+    let e = create_env(sess, amap);
+    map_crate(e, crate);
+    resolve_imports(*e);
+    check_exports(e);
+    ret e.exp_map;
+}
+
+fn create_env(sess: session, amap: ast_map::map) -> @env {
+    @{cstore: sess.cstore,
+      def_map: new_int_hash(),
+      ast_map: amap,
+      imports: new_int_hash(),
+      exp_map: new_str_hash(),
+      mod_map: new_int_hash(),
+      block_map: new_int_hash(),
+      ext_map: new_def_hash(),
+      impl_map: new_int_hash(),
+      impl_cache: new_def_hash(),
+      ext_cache: new_ext_hash(),
+      used_imports: {mutable track: false, mutable data:  []},
+      mutable reported: [],
+      mutable ignored_imports: [],
+      mutable current_tp: none,
+      mutable resolve_unexported: false,
+      sess: sess}
 }
 
 // Locate all modules and imports and index them, so that the next passes can

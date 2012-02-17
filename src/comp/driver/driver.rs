@@ -440,17 +440,27 @@ fn build_session_options(match: getopts::match,
 
 fn build_session(sopts: @session::options, input: str,
                  demitter: diagnostic::emitter) -> session {
+    let codemap = codemap::new_codemap();
+    let diagnostic_handler =
+        diagnostic::mk_handler(some(demitter));
+    let span_diagnostic_handler =
+        diagnostic::mk_span_handler(diagnostic_handler, codemap);
+    build_session_(sopts, input, codemap, demitter,
+                   span_diagnostic_handler)
+}
+
+fn build_session_(
+    sopts: @session::options, input: str,
+    codemap: codemap::codemap,
+    demitter: diagnostic::emitter,
+    span_diagnostic_handler: diagnostic::span_handler
+) -> session {
     let target_cfg = build_target_config(sopts, demitter);
     let cstore = cstore::mk_cstore();
     let filesearch = filesearch::mk_filesearch(
         sopts.maybe_sysroot,
         sopts.target_triple,
         sopts.addl_lib_search_paths);
-    let codemap = codemap::new_codemap();
-    let diagnostic_handler =
-        diagnostic::mk_handler(some(demitter));
-    let span_diagnostic_handler =
-        diagnostic::mk_span_handler(diagnostic_handler, codemap);
     @{targ_cfg: target_cfg,
       opts: sopts,
       cstore: cstore,
