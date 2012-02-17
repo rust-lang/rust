@@ -32,19 +32,23 @@ fn top_moddoc_from_crate(
     moddoc_from_mod(crate.node.module, default_name, ast::crate_node_id)
 }
 
+fn mk_itemdoc(id: ast::node_id, name: ast::ident) -> doc::itemdoc {
+    {
+        id: id,
+        name: name,
+        path: [],
+        brief: none,
+        desc: none,
+    }
+}
+
 fn moddoc_from_mod(
     module: ast::_mod,
     name: ast::ident,
     id: ast::node_id
 ) -> doc::moddoc {
     {
-        item: {
-            id: id,
-            name: name,
-            path: [],
-            brief: none,
-            desc: none,
-        },
+        item: mk_itemdoc(id, name),
         items: ~vec::filter_map(module.items) {|item|
             alt item.node {
               ast::item_mod(m) {
@@ -101,13 +105,7 @@ fn fndoc_from_fn(
     id: ast::node_id
 ) -> doc::fndoc {
     {
-        item: {
-            id: id,
-            name: name,
-            path: [],
-            brief: none,
-            desc: none,
-        },
+        item: mk_itemdoc(id, name),
         args: argdocs_from_args(decl.inputs),
         return: {
             desc: none,
@@ -145,13 +143,7 @@ fn constdoc_from_const(
     id: ast::node_id
 ) -> doc::constdoc {
     {
-        item: {
-            id: id,
-            name: name,
-            path: [],
-            brief: none,
-            desc: none,
-        },
+        item: mk_itemdoc(id, name),
         ty: none
     }
 }
@@ -169,13 +161,7 @@ fn enumdoc_from_enum(
     variants: [ast::variant]
 ) -> doc::enumdoc {
     {
-        item: {
-            id: id,
-            name: name,
-            path: [],
-            brief: none,
-            desc: none,
-        },
+        item: mk_itemdoc(id, name),
         variants: variantdocs_from_variants(variants)
     }
 }
@@ -213,13 +199,7 @@ fn resdoc_from_resource(
     id: ast::node_id
 ) -> doc::resdoc {
     {
-        item: {
-            id: id,
-            name: name,
-            path: [],
-            brief: none,
-            desc: none,
-        },
+        item: mk_itemdoc(id, name),
         args: argdocs_from_args(decl.inputs),
         sig: none
     }
@@ -244,13 +224,7 @@ fn ifacedoc_from_iface(
     id: ast::node_id
 ) -> doc::ifacedoc {
     {
-        item: {
-            id: id,
-            name: name,
-            path: [],
-            brief: none,
-            desc: none,
-        },
+        item: mk_itemdoc(id, name),
         methods: vec::map(methods) {|method|
             {
                 name: method.ident,
@@ -292,13 +266,7 @@ fn impldoc_from_impl(
     id: ast::node_id
 ) -> doc::impldoc {
     {
-        item: {
-            id: id,
-            name: name,
-            path: [],
-            brief: none,
-            desc: none,
-        },
+        item: mk_itemdoc(id, name),
         iface_ty: none,
         self_ty: none,
         methods: vec::map(methods) {|method|
@@ -347,13 +315,7 @@ fn tydoc_from_ty(
     id: ast::node_id
 ) -> doc::tydoc {
     {
-        item: {
-            id: id,
-            name: name,
-            path: [],
-            brief: none,
-            desc: none,
-        },
+        item: mk_itemdoc(id, name),
         sig: none
     }
 }
