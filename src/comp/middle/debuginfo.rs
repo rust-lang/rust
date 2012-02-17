@@ -224,7 +224,7 @@ fn line_from_span(cm: codemap::codemap, sp: span) -> uint {
     codemap::lookup_char_pos(cm, sp.lo).line
 }
 
-fn create_block(cx: @block_ctxt) -> @metadata<block_md> {
+fn create_block(cx: block) -> @metadata<block_md> {
     let cache = get_cache(bcx_ccx(cx));
     let cx = cx;
     while option::is_none(cx.block_span) {
@@ -677,7 +677,7 @@ fn create_var(type_tag: int, context: ValueRef, name: str, file: ValueRef,
     ret llmdnode(lldata);
 }
 
-fn create_local_var(bcx: @block_ctxt, local: @ast::local)
+fn create_local_var(bcx: block, local: @ast::local)
     -> @metadata<local_var_md> unsafe {
     let cx = bcx_ccx(bcx);
     let cache = get_cache(cx);
@@ -728,7 +728,7 @@ fn create_local_var(bcx: @block_ctxt, local: @ast::local)
     ret mdval;
 }
 
-fn create_arg(bcx: @block_ctxt, arg: ast::arg, sp: span)
+fn create_arg(bcx: block, arg: ast::arg, sp: span)
     -> @metadata<argument_md> unsafe {
     let fcx = bcx_fcx(bcx);
     let cx = fcx_ccx(fcx);
@@ -763,7 +763,7 @@ fn create_arg(bcx: @block_ctxt, arg: ast::arg, sp: span)
     ret mdval;
 }
 
-fn update_source_pos(cx: @block_ctxt, s: span) {
+fn update_source_pos(cx: block, s: span) {
     if !bcx_ccx(cx).sess.opts.debuginfo {
         ret;
     }

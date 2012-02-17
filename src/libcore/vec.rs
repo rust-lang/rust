@@ -186,11 +186,8 @@ pure fn head<T: copy>(v: [const T]) : is_not_empty(v) -> T { ret v[0]; }
 Function: tail
 
 Returns all but the first element of a vector
-
-Predicates:
-<is_not_empty> (v)
 */
-fn tail<T: copy>(v: [const T]) : is_not_empty(v) -> [T] {
+fn tail<T: copy>(v: [const T]) -> [T] {
     ret slice(v, 1u, len(v));
 }
 

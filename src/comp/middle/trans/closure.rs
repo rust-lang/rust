@@ -162,15 +162,15 @@ fn mk_closure_tys(tcx: ty::ctxt,
     ret (cdata_ty, bound_tys);
 }
 
-fn allocate_cbox(bcx: @block_ctxt,
+fn allocate_cbox(bcx: block,
                  ck: ty::closure_kind,
                  cdata_ty: ty::t)
-    -> (@block_ctxt, ValueRef, [ValueRef]) {
+    -> (block, ValueRef, [ValueRef]) {
 
     // let ccx = bcx_ccx(bcx);
     let ccx = bcx_ccx(bcx), tcx = ccx.tcx;
 
-    fn nuke_ref_count(bcx: @block_ctxt, box: ValueRef) {
+    fn nuke_ref_count(bcx: block, box: ValueRef) {
         // Initialize ref count to arbitrary value for debugging:
         let ccx = bcx_ccx(bcx);
         let box = PointerCast(bcx, box, T_opaque_box_ptr(ccx));
@@ -179,10 +179,10 @@ fn allocate_cbox(bcx: @block_ctxt,
         Store(bcx, rc, ref_cnt);
     }
 
-    fn store_uniq_tydesc(bcx: @block_ctxt,
+    fn store_uniq_tydesc(bcx: block,
                          cdata_ty: ty::t,
                          box: ValueRef,
-                         &ti: option::t<@tydesc_info>) -> @block_ctxt {
+                         &ti: option::t<@tydesc_info>) -> block {
         let ccx = bcx_ccx(bcx);
         let bound_tydesc = GEPi(bcx, box, [0, abi::box_field_tydesc]);
         let {bcx, val: td} = base::get_tydesc(bcx, cdata_ty, true, ti);
@@ -224,10 +224,10 @@ fn allocate_cbox(bcx: @block_ctxt,
 type closure_result = {
     llbox: ValueRef,     // llvalue of ptr to closure
     cdata_ty: ty::t,      // type of the closure data
-    bcx: @block_ctxt     // final bcx
+    bcx: block     // final bcx
 };
 
-fn cast_if_we_can(bcx: @block_ctxt, llbox: ValueRef, t: ty::t) -> ValueRef {
+fn cast_if_we_can(bcx: block, llbox: ValueRef, t: ty::t) -> ValueRef {
     let ccx = bcx_ccx(bcx);
     if check type_has_static_size(ccx, t) {
         let llty = type_of(ccx, t);
@@ -242,12 +242,12 @@ fn cast_if_we_can(bcx: @block_ctxt, llbox: ValueRef, t: ty::t) -> ValueRef {
 // heap allocated closure that copies the upvars into environment.
 // Otherwise, it is stack allocated and copies pointers to the upvars.
 fn store_environment(
-    bcx: @block_ctxt, lltyparams: [fn_ty_param],
+    bcx: block, lltyparams: [fn_ty_param],
     bound_values: [environment_value],
     ck: ty::closure_kind)
     -> closure_result {
 
-    fn maybe_clone_tydesc(bcx: @block_ctxt,
+    fn maybe_clone_tydesc(bcx: block,
                           ck: ty::closure_kind,
                           td: ValueRef) -> ValueRef {
         ret alt ck {
@@ -349,7 +349,7 @@ fn store_environment(
 
 // Given a context and a list of upvars, build a closure. This just
 // collects the upvars and packages them up for store_environment.
-fn build_closure(bcx0: @block_ctxt,
+fn build_closure(bcx0: block,
                  cap_vars: [capture::capture_var],
                  ck: ty::closure_kind)
     -> closure_result {
@@ -386,12 +386,12 @@ fn build_closure(bcx0: @block_ctxt,
 // Given an enclosing block context, a new function context, a closure type,
 // and a list of upvars, generate code to load and populate the environment
 // with the upvars and type descriptors.
-fn load_environment(enclosing_cx: @block_ctxt,
+fn load_environment(enclosing_cx: block,
                     fcx: @fn_ctxt,
                     cdata_ty: ty::t,
                     cap_vars: [capture::capture_var],
                     ck: ty::closure_kind) {
-    let bcx = new_raw_block_ctxt(fcx, fcx.llloadenv);
+    let bcx = raw_block(fcx, fcx.llloadenv);
 
     // Load a pointer to the closure data, skipping over the box header:
     let llcdata = base::opaque_box_body(bcx, cdata_ty, fcx.llenv);
@@ -440,14 +440,14 @@ fn load_environment(enclosing_cx: @block_ctxt,
     }
 }
 
-fn trans_expr_fn(bcx: @block_ctxt,
+fn trans_expr_fn(bcx: block,
                  proto: ast::proto,
                  decl: ast::fn_decl,
                  body: ast::blk,
                  sp: span,
                  id: ast::node_id,
                  cap_clause: ast::capture_clause,
-                 dest: dest) -> @block_ctxt {
+                 dest: dest) -> block {
     if dest == ignore { ret bcx; }
     let ccx = bcx_ccx(bcx), bcx = bcx;
     let fty = node_id_type(bcx, id);
@@ -482,17 +482,17 @@ fn trans_expr_fn(bcx: @block_ctxt,
     ret bcx;
 }
 
-fn trans_bind(cx: @block_ctxt, f: @ast::expr, args: [option<@ast::expr>],
-              id: ast::node_id, dest: dest) -> @block_ctxt {
+fn trans_bind(cx: block, f: @ast::expr, args: [option<@ast::expr>],
+              id: ast::node_id, dest: dest) -> block {
     let f_res = trans_callee(cx, f);
     ret trans_bind_1(cx, expr_ty(cx, f), f_res, args,
                      node_id_type(cx, id), dest);
 }
 
-fn trans_bind_1(cx: @block_ctxt, outgoing_fty: ty::t,
+fn trans_bind_1(cx: block, outgoing_fty: ty::t,
                 f_res: lval_maybe_callee,
                 args: [option<@ast::expr>], pair_ty: ty::t,
-                dest: dest) -> @block_ctxt {
+                dest: dest) -> block {
     let ccx = bcx_ccx(cx);
     let bound: [@ast::expr] = [];
     for argopt: option<@ast::expr> in args {
@@ -572,33 +572,19 @@ fn trans_bind_1(cx: @block_ctxt, outgoing_fty: ty::t,
     ret bcx;
 }
 
-fn make_null_test(
-    in_bcx: @block_ctxt,
-    ptr: ValueRef,
-    blk: fn(@block_ctxt) -> @block_ctxt)
-    -> @block_ctxt {
-    let not_null_bcx = new_sub_block_ctxt(in_bcx, "not null");
-    let next_bcx = new_sub_block_ctxt(in_bcx, "next");
-    let null_test = IsNull(in_bcx, ptr);
-    CondBr(in_bcx, null_test, next_bcx.llbb, not_null_bcx.llbb);
-    let not_null_bcx = blk(not_null_bcx);
-    Br(not_null_bcx, next_bcx.llbb);
-    ret next_bcx;
-}
-
 fn make_fn_glue(
-    cx: @block_ctxt,
+    cx: block,
     v: ValueRef,
     t: ty::t,
-    glue_fn: fn@(@block_ctxt, v: ValueRef, t: ty::t) -> @block_ctxt)
-    -> @block_ctxt {
+    glue_fn: fn@(block, v: ValueRef, t: ty::t) -> block)
+    -> block {
     let bcx = cx;
     let tcx = bcx_tcx(cx);
 
-    let fn_env = fn@(ck: ty::closure_kind) -> @block_ctxt {
+    let fn_env = fn@(ck: ty::closure_kind) -> block {
         let box_cell_v = GEPi(cx, v, [0, abi::fn_field_box]);
         let box_ptr_v = Load(cx, box_cell_v);
-        make_null_test(cx, box_ptr_v) {|bcx|
+        with_cond(cx, IsNotNull(cx, box_ptr_v)) {|bcx|
             let closure_ty = ty::mk_opaque_closure_ptr(tcx, ck);
             glue_fn(bcx, box_cell_v, closure_ty)
         }
@@ -615,10 +601,10 @@ fn make_fn_glue(
 }
 
 fn make_opaque_cbox_take_glue(
-    bcx: @block_ctxt,
+    bcx: block,
     ck: ty::closure_kind,
     cboxptr: ValueRef)     // ptr to ptr to the opaque closure
-    -> @block_ctxt {
+    -> block {
     // Easy cases:
     alt ck {
       ty::ck_block { ret bcx; }
@@ -631,7 +617,7 @@ fn make_opaque_cbox_take_glue(
     let tcx = bcx_tcx(bcx);
     let llopaquecboxty = T_opaque_box_ptr(ccx);
     let cbox_in = Load(bcx, cboxptr);
-    make_null_test(bcx, cbox_in) {|bcx|
+    with_cond(bcx, IsNotNull(bcx, cbox_in)) {|bcx|
         // Load the size from the type descr found in the cbox
         let cbox_in = PointerCast(bcx, cbox_in, llopaquecboxty);
         let tydescptr = GEPi(bcx, cbox_in, [0, abi::box_field_tydesc]);
@@ -663,10 +649,10 @@ fn make_opaque_cbox_take_glue(
 }
 
 fn make_opaque_cbox_drop_glue(
-    bcx: @block_ctxt,
+    bcx: block,
     ck: ty::closure_kind,
     cboxptr: ValueRef)     // ptr to the opaque closure
-    -> @block_ctxt {
+    -> block {
     alt ck {
       ty::ck_block { bcx }
       ty::ck_box {
@@ -681,10 +667,10 @@ fn make_opaque_cbox_drop_glue(
 }
 
 fn make_opaque_cbox_free_glue(
-    bcx: @block_ctxt,
+    bcx: block,
     ck: ty::closure_kind,
     cbox: ValueRef)     // ptr to the opaque closure
-    -> @block_ctxt {
+    -> block {
     alt ck {
       ty::ck_block { ret bcx; }
       ty::ck_box | ty::ck_uniq { /* hard cases: */ }
@@ -692,7 +678,7 @@ fn make_opaque_cbox_free_glue(
 
     let ccx = bcx_ccx(bcx);
     let tcx = bcx_tcx(bcx);
-    make_null_test(bcx, cbox) {|bcx|
+    with_cond(bcx, IsNotNull(bcx, cbox)) {|bcx|
         // Load the type descr found in the cbox
         let lltydescty = T_ptr(ccx.tydesc_type);
         let cbox = PointerCast(bcx, cbox, T_opaque_cbox_ptr(ccx));
@@ -783,13 +769,13 @@ fn trans_bind_thunk(ccx: @crate_ctxt,
     // Create a new function context and block context for the thunk, and hold
     // onto a pointer to the first block in the function for later use.
     let fcx = new_fn_ctxt(ccx, path, llthunk, none);
-    let bcx = new_top_block_ctxt(fcx, none);
+    let bcx = top_scope_block(fcx, none);
     let lltop = bcx.llbb;
     // Since we might need to construct derived tydescs that depend on
     // our bound tydescs, we need to load tydescs out of the environment
     // before derived tydescs are constructed. To do this, we load them
     // in the load_env block.
-    let l_bcx = new_raw_block_ctxt(fcx, fcx.llloadenv);
+    let l_bcx = raw_block(fcx, fcx.llloadenv);
 
     // The 'llenv' that will arrive in the thunk we're creating is an
     // environment that will contain the values of its arguments and a

@@ -54,10 +54,10 @@ fn c_stack_tys(ccx: @crate_ctxt,
     };
 }
 
-type shim_arg_builder = fn(bcx: @block_ctxt, tys: @c_stack_tys,
+type shim_arg_builder = fn(bcx: block, tys: @c_stack_tys,
                            llargbundle: ValueRef) -> [ValueRef];
 
-type shim_ret_builder = fn(bcx: @block_ctxt, tys: @c_stack_tys,
+type shim_ret_builder = fn(bcx: block, tys: @c_stack_tys,
                            llargbundle: ValueRef, llretval: ValueRef);
 
 fn build_shim_fn_(ccx: @crate_ctxt,
@@ -73,7 +73,7 @@ fn build_shim_fn_(ccx: @crate_ctxt,
 
     // Declare the body of the shim function:
     let fcx = new_fn_ctxt(ccx, [], llshimfn, none);
-    let bcx = new_top_block_ctxt(fcx, none);
+    let bcx = top_scope_block(fcx, none);
     let lltop = bcx.llbb;
     let llargbundle = llvm::LLVMGetParam(llshimfn, 0 as c_uint);
     let llargvals = arg_builder(bcx, tys, llargbundle);
@@ -90,11 +90,11 @@ fn build_shim_fn_(ccx: @crate_ctxt,
     ret llshimfn;
 }
 
-type wrap_arg_builder = fn(bcx: @block_ctxt, tys: @c_stack_tys,
+type wrap_arg_builder = fn(bcx: block, tys: @c_stack_tys,
                            llwrapfn: ValueRef,
                            llargbundle: ValueRef);
 
-type wrap_ret_builder = fn(bcx: @block_ctxt, tys: @c_stack_tys,
+type wrap_ret_builder = fn(bcx: block, tys: @c_stack_tys,
                            llargbundle: ValueRef);
 
 fn build_wrap_fn_(ccx: @crate_ctxt,
@@ -106,7 +106,7 @@ fn build_wrap_fn_(ccx: @crate_ctxt,
                   ret_builder: wrap_ret_builder) {
 
     let fcx = new_fn_ctxt(ccx, [], llwrapfn, none);
-    let bcx = new_top_block_ctxt(fcx, none);
+    let bcx = top_scope_block(fcx, none);
     let lltop = bcx.llbb;
 
     // Allocate the struct and write the arguments into it.
@@ -122,7 +122,7 @@ fn build_wrap_fn_(ccx: @crate_ctxt,
     tie_up_header_blocks(fcx, lltop);
 
     // Make sure our standard return block (that we didn't use) is terminated
-    let ret_cx = new_raw_block_ctxt(fcx, fcx.llreturn);
+    let ret_cx = raw_block(fcx, fcx.llreturn);
     Unreachable(ret_cx);
 }
 
@@ -168,7 +168,7 @@ fn trans_native_mod(ccx: @crate_ctxt,
                      tys: @c_stack_tys,
                      cc: lib::llvm::CallConv) -> ValueRef {
 
-        fn build_args(bcx: @block_ctxt, tys: @c_stack_tys,
+        fn build_args(bcx: block, tys: @c_stack_tys,
                       llargbundle: ValueRef) -> [ValueRef] {
             let llargvals = [];
             let i = 0u;
@@ -181,7 +181,7 @@ fn trans_native_mod(ccx: @crate_ctxt,
             ret llargvals;
         }
 
-        fn build_ret(bcx: @block_ctxt, tys: @c_stack_tys,
+        fn build_ret(bcx: block, tys: @c_stack_tys,
                      llargbundle: ValueRef, llretval: ValueRef)  {
             if tys.ret_def {
                 let n = vec::len(tys.arg_tys);
@@ -210,7 +210,7 @@ fn trans_native_mod(ccx: @crate_ctxt,
                      llshimfn: ValueRef,
                      llwrapfn: ValueRef) {
 
-        fn build_args(bcx: @block_ctxt, tys: @c_stack_tys,
+        fn build_args(bcx: block, tys: @c_stack_tys,
                       llwrapfn: ValueRef, llargbundle: ValueRef,
                       num_tps: uint) {
             let i = 0u, n = vec::len(tys.arg_tys);
@@ -226,7 +226,7 @@ fn trans_native_mod(ccx: @crate_ctxt,
             store_inbounds(bcx, llretptr, llargbundle, [0, n as int]);
         }
 
-        fn build_ret(bcx: @block_ctxt, _tys: @c_stack_tys,
+        fn build_ret(bcx: block, _tys: @c_stack_tys,
                      _llargbundle: ValueRef) {
             RetVoid(bcx);
         }
@@ -283,7 +283,7 @@ fn trans_crust_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
     fn build_shim_fn(ccx: @crate_ctxt, path: ast_map::path,
                      llrustfn: ValueRef, tys: @c_stack_tys) -> ValueRef {
 
-        fn build_args(bcx: @block_ctxt, tys: @c_stack_tys,
+        fn build_args(bcx: block, tys: @c_stack_tys,
                       llargbundle: ValueRef) -> [ValueRef] {
             let llargvals = [];
             let i = 0u;
@@ -300,7 +300,7 @@ fn trans_crust_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
             ret llargvals;
         }
 
-        fn build_ret(_bcx: @block_ctxt, _tys: @c_stack_tys,
+        fn build_ret(_bcx: block, _tys: @c_stack_tys,
                      _llargbundle: ValueRef, _llretval: ValueRef)  {
             // Nop. The return pointer in the Rust ABI function
             // is wired directly into the return slot in the shim struct
@@ -316,7 +316,7 @@ fn trans_crust_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
     fn build_wrap_fn(ccx: @crate_ctxt, llshimfn: ValueRef,
                      llwrapfn: ValueRef, tys: @c_stack_tys) {
 
-        fn build_args(bcx: @block_ctxt, tys: @c_stack_tys,
+        fn build_args(bcx: block, tys: @c_stack_tys,
                       llwrapfn: ValueRef, llargbundle: ValueRef) {
             let llretptr = alloca(bcx, tys.ret_ty);
             let i = 0u, n = vec::len(tys.arg_tys);
@@ -329,7 +329,7 @@ fn trans_crust_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
             store_inbounds(bcx, llretptr, llargbundle, [0, n as int]);
         }
 
-        fn build_ret(bcx: @block_ctxt, tys: @c_stack_tys,
+        fn build_ret(bcx: block, tys: @c_stack_tys,
                      llargbundle: ValueRef) {
             let n = vec::len(tys.arg_tys);
             let llretval = load_inbounds(bcx, llargbundle, [0, n as int]);

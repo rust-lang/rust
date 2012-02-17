@@ -218,8 +218,8 @@ fn warn_not_to_commit(ccx: @crate_ctxt, msg: str) {
 }
 
 enum cleanup {
-    clean(fn@(@block_ctxt) -> @block_ctxt),
-    clean_temp(ValueRef, fn@(@block_ctxt) -> @block_ctxt),
+    clean(fn@(block) -> block),
+    clean_temp(ValueRef, fn@(block) -> block),
 }
 
 // Used to remember and reuse existing cleanup paths
@@ -232,17 +232,17 @@ fn scope_clean_changed(info: scope_info) {
     info.landing_pad = none;
 }
 
-fn add_clean(cx: @block_ctxt, val: ValueRef, ty: ty::t) {
+fn add_clean(cx: block, val: ValueRef, ty: ty::t) {
     if !ty::type_needs_drop(bcx_tcx(cx), ty) { ret; }
     in_scope_cx(cx) {|info|
         info.cleanups += [clean(bind drop_ty(_, val, ty))];
         scope_clean_changed(info);
     }
 }
-fn add_clean_temp(cx: @block_ctxt, val: ValueRef, ty: ty::t) {
+fn add_clean_temp(cx: block, val: ValueRef, ty: ty::t) {
     if !ty::type_needs_drop(bcx_tcx(cx), ty) { ret; }
-    fn do_drop(bcx: @block_ctxt, val: ValueRef, ty: ty::t) ->
-       @block_ctxt {
+    fn do_drop(bcx: block, val: ValueRef, ty: ty::t) ->
+       block {
         if ty::type_is_immediate(ty) {
             ret base::drop_ty_immediate(bcx, val, ty);
         } else {
@@ -254,14 +254,14 @@ fn add_clean_temp(cx: @block_ctxt, val: ValueRef, ty: ty::t) {
         scope_clean_changed(info);
     }
 }
-fn add_clean_temp_mem(cx: @block_ctxt, val: ValueRef, ty: ty::t) {
+fn add_clean_temp_mem(cx: block, val: ValueRef, ty: ty::t) {
     if !ty::type_needs_drop(bcx_tcx(cx), ty) { ret; }
     in_scope_cx(cx) {|info|
         info.cleanups += [clean_temp(val, bind drop_ty(_, val, ty))];
         scope_clean_changed(info);
     }
 }
-fn add_clean_free(cx: @block_ctxt, ptr: ValueRef, shared: bool) {
+fn add_clean_free(cx: block, ptr: ValueRef, shared: bool) {
     let free_fn = if shared { bind base::trans_shared_free(_, ptr) }
                   else { bind base::trans_free(_, ptr) };
     in_scope_cx(cx) {|info|
@@ -274,7 +274,7 @@ fn add_clean_free(cx: @block_ctxt, ptr: ValueRef, shared: bool) {
 // to a system where we can also cancel the cleanup on local variables, but
 // this will be more involved. For now, we simply zero out the local, and the
 // drop glue checks whether it is zero.
-fn revoke_clean(cx: @block_ctxt, val: ValueRef) {
+fn revoke_clean(cx: block, val: ValueRef) {
     in_scope_cx(cx) {|info|
         let i = 0u;
         for cu in info.cleanups {
@@ -317,18 +317,18 @@ enum block_kind {
     // cleaned up. May correspond to an actual block in the language, but also
     // to an implicit scope, for example, calls introduce an implicit scope in
     // which the arguments are evaluated and cleaned up.
-    scope_block(scope_info),
+    block_scope(scope_info),
     // A non-scope block is a basic block created as a translation artifact
     // from translating code that expresses conditional logic rather than by
     // explicit { ... } block structure in the source language.  It's called a
     // non-scope block because it doesn't introduce a new variable scope.
-    non_scope_block,
+    block_non_scope,
 }
 
-enum loop_cont { cont_self, cont_other(@block_ctxt), }
+enum loop_cont { cont_self, cont_other(block), }
 
 type scope_info = {
-    is_loop: option<{cnt: loop_cont, brk: @block_ctxt}>,
+    is_loop: option<{cnt: loop_cont, brk: block}>,
     // A list of functions that must be run at when leaving this
     // block, cleaning up any variables that were introduced in the
     // block.
@@ -345,7 +345,7 @@ type scope_info = {
 // code.  Each basic block we generate is attached to a function, typically
 // with many basic blocks per function.  All the basic blocks attached to a
 // function are organized as a directed graph.
-type block_ctxt = {
+type block = @{
     // The BasicBlockRef returned from a call to
     // llvm::LLVMAppendBasicBlock(llfn, name), which adds a basic
     // block to the function pointed to by llfn.  We insert
@@ -359,7 +359,7 @@ type block_ctxt = {
     kind: block_kind,
     // The source span where the block came from, if it is a block that
     // actually appears in the source code.
-    block_span: option<span>,
+    mutable block_span: option<span>,
     // The function context for the function to which this block is
     // attached.
     fcx: @fn_ctxt
@@ -367,12 +367,12 @@ type block_ctxt = {
 
 // FIXME: we should be able to use option<@block_parent> here but
 // the infinite-enum check in rustboot gets upset.
-enum block_parent { parent_none, parent_some(@block_ctxt), }
+enum block_parent { parent_none, parent_some(block), }
 
-type result = {bcx: @block_ctxt, val: ValueRef};
-type result_t = {bcx: @block_ctxt, val: ValueRef, ty: ty::t};
+type result = {bcx: block, val: ValueRef};
+type result_t = {bcx: block, val: ValueRef, ty: ty::t};
 
-fn rslt(bcx: @block_ctxt, val: ValueRef) -> result {
+fn rslt(bcx: block, val: ValueRef) -> result {
     {bcx: bcx, val: val}
 }
 
@@ -393,23 +393,27 @@ fn struct_elt(llstructty: TypeRef, n: uint) -> TypeRef unsafe {
     ret llvm::LLVMGetElementType(elt_tys[n]);
 }
 
-fn in_scope_cx(cx: @block_ctxt, f: fn(scope_info)) {
+fn in_scope_cx(cx: block, f: fn(scope_info)) {
     let cur = cx;
     while true {
         alt cur.kind {
-          scope_block(info) { f(info); ret; }
+          block_scope(info) { f(info); ret; }
           _ {}
         }
-        cur = alt check cur.parent { parent_some(b) { b } };
+        cur = block_parent(cur);
     }
+}
+
+fn block_parent(cx: block) -> block {
+    alt check cx.parent { parent_some(b) { b } }
 }
 
 // Accessors
 // TODO: When we have overloading, simplify these names!
 
-pure fn bcx_tcx(bcx: @block_ctxt) -> ty::ctxt { ret bcx.fcx.ccx.tcx; }
-pure fn bcx_ccx(bcx: @block_ctxt) -> @crate_ctxt { ret bcx.fcx.ccx; }
-pure fn bcx_fcx(bcx: @block_ctxt) -> @fn_ctxt { ret bcx.fcx; }
+pure fn bcx_tcx(bcx: block) -> ty::ctxt { ret bcx.fcx.ccx.tcx; }
+pure fn bcx_ccx(bcx: block) -> @crate_ctxt { ret bcx.fcx.ccx; }
+pure fn bcx_fcx(bcx: block) -> @fn_ctxt { ret bcx.fcx; }
 pure fn fcx_ccx(fcx: @fn_ctxt) -> @crate_ctxt { ret fcx.ccx; }
 pure fn fcx_tcx(fcx: @fn_ctxt) -> ty::ctxt { ret fcx.ccx.tcx; }
 pure fn ccx_tcx(ccx: @crate_ctxt) -> ty::ctxt { ret ccx.tcx; }
@@ -838,7 +842,7 @@ fn C_shape(ccx: @crate_ctxt, bytes: [u8]) -> ValueRef {
 }
 
 
-pure fn valid_variant_index(ix: uint, cx: @block_ctxt, enum_id: ast::def_id,
+pure fn valid_variant_index(ix: uint, cx: block, enum_id: ast::def_id,
                             variant_id: ast::def_id) -> bool {
 
     // Handwaving: it's ok to pretend this code is referentially
@@ -882,17 +886,17 @@ fn hash_mono_id(&&mi: mono_id) -> uint {
     h
 }
 
-fn umax(cx: @block_ctxt, a: ValueRef, b: ValueRef) -> ValueRef {
+fn umax(cx: block, a: ValueRef, b: ValueRef) -> ValueRef {
     let cond = build::ICmp(cx, lib::llvm::IntULT, a, b);
     ret build::Select(cx, cond, b, a);
 }
 
-fn umin(cx: @block_ctxt, a: ValueRef, b: ValueRef) -> ValueRef {
+fn umin(cx: block, a: ValueRef, b: ValueRef) -> ValueRef {
     let cond = build::ICmp(cx, lib::llvm::IntULT, a, b);
     ret build::Select(cx, cond, a, b);
 }
 
-fn align_to(cx: @block_ctxt, off: ValueRef, align: ValueRef) -> ValueRef {
+fn align_to(cx: block, off: ValueRef, align: ValueRef) -> ValueRef {
     let mask = build::Sub(cx, align, C_int(bcx_ccx(cx), 1));
     let bumped = build::Add(cx, off, mask);
     ret build::And(cx, bumped, build::Not(cx, mask));
@@ -910,7 +914,7 @@ fn path_str(p: path) -> str {
     r
 }
 
-fn node_id_type(bcx: @block_ctxt, id: ast::node_id) -> ty::t {
+fn node_id_type(bcx: block, id: ast::node_id) -> ty::t {
     let tcx = bcx_tcx(bcx);
     let t = ty::node_id_to_type(tcx, id);
     alt bcx.fcx.param_substs {
@@ -918,10 +922,10 @@ fn node_id_type(bcx: @block_ctxt, id: ast::node_id) -> ty::t {
       _ { t }
     }
 }
-fn expr_ty(bcx: @block_ctxt, ex: @ast::expr) -> ty::t {
+fn expr_ty(bcx: block, ex: @ast::expr) -> ty::t {
     node_id_type(bcx, ex.id)
 }
-fn node_id_type_params(bcx: @block_ctxt, id: ast::node_id) -> [ty::t] {
+fn node_id_type_params(bcx: block, id: ast::node_id) -> [ty::t] {
     let tcx = bcx_tcx(bcx);
     let params = ty::node_id_to_type_params(tcx, id);
     alt bcx.fcx.param_substs {

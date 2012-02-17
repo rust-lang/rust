@@ -8,7 +8,7 @@ import driver::session::session;
 import trans::base;
 import middle::trans::common::{crate_ctxt, val_ty, C_bytes, C_int,
                                C_named_struct, C_struct, T_enum_variant,
-                               block_ctxt, result, rslt, bcx_ccx, bcx_tcx,
+                               block, result, rslt, bcx_ccx, bcx_tcx,
                                type_has_static_size, umax, umin, align_to,
                                tydesc_info};
 import back::abi;
@@ -593,19 +593,19 @@ fn gen_shape_tables(ccx: @crate_ctxt) {
 // compute sizeof / alignof
 
 type metrics = {
-    bcx: @block_ctxt,
+    bcx: block,
     sz: ValueRef,
     align: ValueRef
 };
 
 type tag_metrics = {
-    bcx: @block_ctxt,
+    bcx: block,
     sz: ValueRef,
     align: ValueRef,
     payload_align: ValueRef
 };
 
-fn size_of(bcx: @block_ctxt, t: ty::t) -> result {
+fn size_of(bcx: block, t: ty::t) -> result {
     let ccx = bcx_ccx(bcx);
     if check type_has_static_size(ccx, t) {
         rslt(bcx, llsize_of(ccx, base::type_of(ccx, t)))
@@ -615,7 +615,7 @@ fn size_of(bcx: @block_ctxt, t: ty::t) -> result {
     }
 }
 
-fn align_of(bcx: @block_ctxt, t: ty::t) -> result {
+fn align_of(bcx: block, t: ty::t) -> result {
     let ccx = bcx_ccx(bcx);
     if check type_has_static_size(ccx, t) {
         rslt(bcx, llalign_of(ccx, base::type_of(ccx, t)))
@@ -625,7 +625,7 @@ fn align_of(bcx: @block_ctxt, t: ty::t) -> result {
     }
 }
 
-fn metrics(bcx: @block_ctxt, t: ty::t) -> metrics {
+fn metrics(bcx: block, t: ty::t) -> metrics {
     let ccx = bcx_ccx(bcx);
     if check type_has_static_size(ccx, t) {
         let llty = base::type_of(ccx, t);
@@ -688,8 +688,8 @@ fn static_size_of_enum(cx: @crate_ctxt, t: ty::t)
     }
 }
 
-fn dynamic_metrics(cx: @block_ctxt, t: ty::t) -> metrics {
-    fn align_elements(cx: @block_ctxt, elts: [ty::t]) -> metrics {
+fn dynamic_metrics(cx: block, t: ty::t) -> metrics {
+    fn align_elements(cx: block, elts: [ty::t]) -> metrics {
         //
         // C padding rules:
         //
@@ -736,7 +736,7 @@ fn dynamic_metrics(cx: @block_ctxt, t: ty::t) -> metrics {
         let bcx = cx;
         let ccx = bcx_ccx(bcx);
 
-        let compute_max_variant_size = fn@(bcx: @block_ctxt) -> result {
+        let compute_max_variant_size = fn@(bcx: block) -> result {
             // Compute max(variant sizes).
             let bcx = bcx;
             let max_size: ValueRef = C_int(ccx, 0);
@@ -799,7 +799,7 @@ fn simplify_type(tcx: ty::ctxt, typ: ty::t) -> ty::t {
 }
 
 // Given a tag type `ty`, returns the offset of the payload.
-//fn tag_payload_offs(bcx: @block_ctxt, tag_id: ast::def_id, tps: [ty::t])
+//fn tag_payload_offs(bcx: block, tag_id: ast::def_id, tps: [ty::t])
 //    -> ValueRef {
 //    alt tag_kind(tag_id) {
 //      tk_unit | tk_enum | tk_newtype { C_int(bcx_ccx(bcx), 0) }

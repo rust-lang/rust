@@ -4,28 +4,28 @@ import lib::llvm::{ValueRef, TypeRef};
 import back::abi;
 import base::{call_memmove, trans_shared_malloc, type_of_or_i8,
                INIT, copy_val, load_if_immediate, get_tydesc,
-               new_sub_block_ctxt, do_spill_noroot,
+               sub_block, do_spill_noroot,
                dest};
 import shape::{llsize_of, size_of};
 import build::*;
 import common::*;
 
-fn get_fill(bcx: @block_ctxt, vptr: ValueRef) -> ValueRef {
+fn get_fill(bcx: block, vptr: ValueRef) -> ValueRef {
     Load(bcx, GEPi(bcx, vptr, [0, abi::vec_elt_fill]))
 }
-fn get_dataptr(bcx: @block_ctxt, vptr: ValueRef, unit_ty: TypeRef)
+fn get_dataptr(bcx: block, vptr: ValueRef, unit_ty: TypeRef)
     -> ValueRef {
     let ptr = GEPi(bcx, vptr, [0, abi::vec_elt_elems]);
     PointerCast(bcx, ptr, T_ptr(unit_ty))
 }
 
-fn pointer_add(bcx: @block_ctxt, ptr: ValueRef, bytes: ValueRef) -> ValueRef {
+fn pointer_add(bcx: block, ptr: ValueRef, bytes: ValueRef) -> ValueRef {
     let old_ty = val_ty(ptr);
     let bptr = PointerCast(bcx, ptr, T_ptr(T_i8()));
     ret PointerCast(bcx, InBoundsGEP(bcx, bptr, [bytes]), old_ty);
 }
 
-fn alloc_raw(bcx: @block_ctxt, fill: ValueRef, alloc: ValueRef) -> result {
+fn alloc_raw(bcx: block, fill: ValueRef, alloc: ValueRef) -> result {
     let ccx = bcx_ccx(bcx);
     let llvecty = ccx.opaque_vec_type;
     let vecsize = Add(bcx, alloc, llsize_of(ccx, llvecty));
@@ -37,13 +37,13 @@ fn alloc_raw(bcx: @block_ctxt, fill: ValueRef, alloc: ValueRef) -> result {
 }
 
 type alloc_result =
-    {bcx: @block_ctxt,
+    {bcx: block,
      val: ValueRef,
      unit_ty: ty::t,
      llunitsz: ValueRef,
      llunitty: TypeRef};
 
-fn alloc(bcx: @block_ctxt, vec_ty: ty::t, elts: uint) -> alloc_result {
+fn alloc(bcx: block, vec_ty: ty::t, elts: uint) -> alloc_result {
     let ccx = bcx_ccx(bcx);
     let unit_ty = ty::sequence_element_type(bcx_tcx(bcx), vec_ty);
     let llunitty = type_of_or_i8(ccx, unit_ty);
@@ -66,7 +66,7 @@ fn alloc(bcx: @block_ctxt, vec_ty: ty::t, elts: uint) -> alloc_result {
          llunitty: llunitty};
 }
 
-fn duplicate(bcx: @block_ctxt, vptr: ValueRef, vec_ty: ty::t) -> result {
+fn duplicate(bcx: block, vptr: ValueRef, vec_ty: ty::t) -> result {
     let ccx = bcx_ccx(bcx);
     let fill = get_fill(bcx, vptr);
     let size = Add(bcx, fill, llsize_of(ccx, ccx.opaque_vec_type));
@@ -80,23 +80,19 @@ fn duplicate(bcx: @block_ctxt, vptr: ValueRef, vec_ty: ty::t) -> result {
     }
     ret rslt(bcx, newptr);
 }
-fn make_free_glue(bcx: @block_ctxt, vptr: ValueRef, vec_ty: ty::t) ->
-   @block_ctxt {
-    let unit_ty = ty::sequence_element_type(bcx_tcx(bcx), vec_ty);
-    let drop_cx = new_sub_block_ctxt(bcx, "drop");
-    let next_cx = new_sub_block_ctxt(bcx, "next");
-    let null_test = IsNull(bcx, vptr);
-    CondBr(bcx, null_test, next_cx.llbb, drop_cx.llbb);
-    if ty::type_needs_drop(bcx_tcx(bcx), unit_ty) {
-        drop_cx = iter_vec(drop_cx, vptr, vec_ty, base::drop_ty);
+fn make_free_glue(bcx: block, vptr: ValueRef, vec_ty: ty::t) ->
+   block {
+    let tcx = bcx_tcx(bcx), unit_ty = ty::sequence_element_type(tcx, vec_ty);
+    base::with_cond(bcx, IsNotNull(bcx, vptr)) {|bcx|
+        let bcx = if ty::type_needs_drop(tcx, unit_ty) {
+            iter_vec(bcx, vptr, vec_ty, base::drop_ty)
+        } else { bcx };
+        base::trans_shared_free(bcx, vptr)
     }
-    drop_cx = base::trans_shared_free(drop_cx, vptr);
-    Br(drop_cx, next_cx.llbb);
-    ret next_cx;
 }
 
-fn trans_vec(bcx: @block_ctxt, args: [@ast::expr], id: ast::node_id,
-             dest: dest) -> @block_ctxt {
+fn trans_vec(bcx: block, args: [@ast::expr], id: ast::node_id,
+             dest: dest) -> block {
     let ccx = bcx_ccx(bcx), bcx = bcx;
     if dest == base::ignore {
         for arg in args {
@@ -129,7 +125,7 @@ fn trans_vec(bcx: @block_ctxt, args: [@ast::expr], id: ast::node_id,
     ret base::store_in_dest(bcx, vptr, dest);
 }
 
-fn trans_str(bcx: @block_ctxt, s: str, dest: dest) -> @block_ctxt {
+fn trans_str(bcx: block, s: str, dest: dest) -> block {
     let veclen = str::len_bytes(s) + 1u; // +1 for \0
     let {bcx: bcx, val: sptr, _} =
         alloc(bcx, ty::mk_str(bcx_tcx(bcx)), veclen);
@@ -142,8 +138,8 @@ fn trans_str(bcx: @block_ctxt, s: str, dest: dest) -> @block_ctxt {
     ret base::store_in_dest(bcx, sptr, dest);
 }
 
-fn trans_append(cx: @block_ctxt, vec_ty: ty::t, lhsptr: ValueRef,
-                rhs: ValueRef) -> @block_ctxt {
+fn trans_append(cx: block, vec_ty: ty::t, lhsptr: ValueRef,
+                rhs: ValueRef) -> block {
     // Cast to opaque interior vector types if necessary.
     let ccx = bcx_ccx(cx);
     let unit_ty = ty::sequence_element_type(bcx_tcx(cx), vec_ty);
@@ -206,8 +202,8 @@ fn trans_append(cx: @block_ctxt, vec_ty: ty::t, lhsptr: ValueRef,
     ret bcx;
 }
 
-fn trans_append_literal(bcx: @block_ctxt, vptrptr: ValueRef, vec_ty: ty::t,
-                        vals: [@ast::expr]) -> @block_ctxt {
+fn trans_append_literal(bcx: block, vptrptr: ValueRef, vec_ty: ty::t,
+                        vals: [@ast::expr]) -> block {
     let ccx = bcx_ccx(bcx);
     let elt_ty = ty::sequence_element_type(bcx_tcx(bcx), vec_ty);
     let ti = none;
@@ -227,8 +223,8 @@ fn trans_append_literal(bcx: @block_ctxt, vptrptr: ValueRef, vec_ty: ty::t,
     ret bcx;
 }
 
-fn trans_add(bcx: @block_ctxt, vec_ty: ty::t, lhs: ValueRef,
-             rhs: ValueRef, dest: dest) -> @block_ctxt {
+fn trans_add(bcx: block, vec_ty: ty::t, lhs: ValueRef,
+             rhs: ValueRef, dest: dest) -> block {
     let ccx = bcx_ccx(bcx);
     let strings = alt ty::get(vec_ty).struct {
       ty::ty_str { true }
@@ -247,8 +243,8 @@ fn trans_add(bcx: @block_ctxt, vec_ty: ty::t, lhs: ValueRef,
 
     let write_ptr_ptr = do_spill_noroot
         (bcx, get_dataptr(bcx, new_vec_ptr, llunitty));
-    let copy_fn = fn@(bcx: @block_ctxt, addr: ValueRef,
-                      _ty: ty::t) -> @block_ctxt {
+    let copy_fn = fn@(bcx: block, addr: ValueRef,
+                      _ty: ty::t) -> block {
         let ccx = bcx_ccx(bcx);
         let write_ptr = Load(bcx, write_ptr_ptr);
         let bcx = copy_val(bcx, INIT, write_ptr,
@@ -269,12 +265,12 @@ fn trans_add(bcx: @block_ctxt, vec_ty: ty::t, lhs: ValueRef,
     ret base::store_in_dest(bcx, new_vec_ptr, dest);
 }
 
-type val_and_ty_fn = fn@(@block_ctxt, ValueRef, ty::t) -> result;
+type val_and_ty_fn = fn@(block, ValueRef, ty::t) -> result;
 
-type iter_vec_block = fn(@block_ctxt, ValueRef, ty::t) -> @block_ctxt;
+type iter_vec_block = fn(block, ValueRef, ty::t) -> block;
 
-fn iter_vec_raw(bcx: @block_ctxt, vptr: ValueRef, vec_ty: ty::t,
-                fill: ValueRef, f: iter_vec_block) -> @block_ctxt {
+fn iter_vec_raw(bcx: block, vptr: ValueRef, vec_ty: ty::t,
+                fill: ValueRef, f: iter_vec_block) -> block {
     let ccx = bcx_ccx(bcx);
     let unit_ty = ty::sequence_element_type(bcx_tcx(bcx), vec_ty);
     let llunitty = type_of_or_i8(ccx, unit_ty);
@@ -288,13 +284,13 @@ fn iter_vec_raw(bcx: @block_ctxt, vptr: ValueRef, vec_ty: ty::t,
     let data_end_ptr = pointer_add(bcx, data_ptr, fill);
 
     // Now perform the iteration.
-    let header_cx = new_sub_block_ctxt(bcx, "iter_vec_loop_header");
+    let header_cx = sub_block(bcx, "iter_vec_loop_header");
     Br(bcx, header_cx.llbb);
     let data_ptr = Phi(header_cx, val_ty(data_ptr), [data_ptr], [bcx.llbb]);
     let not_yet_at_end =
         ICmp(header_cx, lib::llvm::IntULT, data_ptr, data_end_ptr);
-    let body_cx = new_sub_block_ctxt(header_cx, "iter_vec_loop_body");
-    let next_cx = new_sub_block_ctxt(header_cx, "iter_vec_next");
+    let body_cx = sub_block(header_cx, "iter_vec_loop_body");
+    let next_cx = sub_block(header_cx, "iter_vec_next");
     CondBr(header_cx, not_yet_at_end, body_cx.llbb, next_cx.llbb);
     body_cx = f(body_cx, data_ptr, unit_ty);
     let increment =
@@ -307,8 +303,8 @@ fn iter_vec_raw(bcx: @block_ctxt, vptr: ValueRef, vec_ty: ty::t,
     ret next_cx;
 }
 
-fn iter_vec(bcx: @block_ctxt, vptr: ValueRef, vec_ty: ty::t,
-            f: iter_vec_block) -> @block_ctxt {
+fn iter_vec(bcx: block, vptr: ValueRef, vec_ty: ty::t,
+            f: iter_vec_block) -> block {
     let ccx = bcx_ccx(bcx);
     let vptr = PointerCast(bcx, vptr, T_ptr(ccx.opaque_vec_type));
     ret iter_vec_raw(bcx, vptr, vec_ty, get_fill(bcx, vptr), f);

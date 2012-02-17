@@ -59,14 +59,14 @@ fn trans_impl(ccx: @crate_ctxt, path: path, name: ast::ident,
     }
 }
 
-fn trans_self_arg(bcx: @block_ctxt, base: @ast::expr) -> result {
+fn trans_self_arg(bcx: block, base: @ast::expr) -> result {
     let basety = expr_ty(bcx, base);
     let m_by_ref = ast::expl(ast::by_ref);
     trans_arg_expr(bcx, {mode: m_by_ref, ty: basety},
                    T_ptr(type_of_or_i8(bcx_ccx(bcx), basety)), base)
 }
 
-fn trans_method_callee(bcx: @block_ctxt, callee_id: ast::node_id,
+fn trans_method_callee(bcx: block, callee_id: ast::node_id,
                        self: @ast::expr, origin: typeck::method_origin)
     -> lval_maybe_callee {
     alt origin {
@@ -91,7 +91,7 @@ fn trans_method_callee(bcx: @block_ctxt, callee_id: ast::node_id,
 }
 
 // Method callee where the method is statically known
-fn trans_static_callee(bcx: @block_ctxt, callee_id: ast::node_id,
+fn trans_static_callee(bcx: block, callee_id: ast::node_id,
                        base: @ast::expr, did: ast::def_id,
                        substs: option<([ty::t], typeck::dict_res)>)
     -> lval_maybe_callee {
@@ -107,7 +107,7 @@ fn wrapper_fn_ty(ccx: @crate_ctxt, dict_ty: TypeRef, fty: ty::t,
     {ty: fty, llty: T_fn([dict_ty] + inputs, output)}
 }
 
-fn trans_vtable_callee(bcx: @block_ctxt, env: callee_env, dict: ValueRef,
+fn trans_vtable_callee(bcx: block, env: callee_env, dict: ValueRef,
                        callee_id: ast::node_id, iface_id: ast::def_id,
                        n_method: uint) -> lval_maybe_callee {
     let bcx = bcx, ccx = bcx_ccx(bcx), tcx = ccx.tcx;
@@ -140,7 +140,7 @@ fn trans_vtable_callee(bcx: @block_ctxt, env: callee_env, dict: ValueRef,
      generic: generic}
 }
 
-fn trans_monomorphized_callee(bcx: @block_ctxt, callee_id: ast::node_id,
+fn trans_monomorphized_callee(bcx: block, callee_id: ast::node_id,
                               base: @ast::expr, iface_id: ast::def_id,
                               n_method: uint, n_param: uint, n_bound: uint,
                               substs: param_substs) -> lval_maybe_callee {
@@ -172,7 +172,7 @@ fn trans_monomorphized_callee(bcx: @block_ctxt, callee_id: ast::node_id,
 
 
 // Method callee where the dict comes from a type param
-fn trans_param_callee(bcx: @block_ctxt, callee_id: ast::node_id,
+fn trans_param_callee(bcx: block, callee_id: ast::node_id,
                       base: @ast::expr, iface_id: ast::def_id, n_method: uint,
                       n_param: uint, n_bound: uint) -> lval_maybe_callee {
     let {bcx, val} = trans_self_arg(bcx, base);
@@ -182,7 +182,7 @@ fn trans_param_callee(bcx: @block_ctxt, callee_id: ast::node_id,
 }
 
 // Method callee where the dict comes from a boxed iface
-fn trans_iface_callee(bcx: @block_ctxt, callee_id: ast::node_id,
+fn trans_iface_callee(bcx: block, callee_id: ast::node_id,
                       base: @ast::expr, iface_id: ast::def_id, n_method: uint)
     -> lval_maybe_callee {
     let {bcx, val} = trans_temp_expr(bcx, base);
@@ -266,12 +266,12 @@ fn resolve_dicts_in_fn_ctxt(fcx: @fn_ctxt, dicts: typeck::dict_res)
 }
 
 fn trans_wrapper(ccx: @crate_ctxt, pt: path, llfty: TypeRef,
-                 fill: fn(ValueRef, @block_ctxt) -> @block_ctxt)
+                 fill: fn(ValueRef, block) -> block)
     -> ValueRef {
     let name = link::mangle_internal_name_by_path(ccx, pt);
     let llfn = decl_internal_cdecl_fn(ccx.llmod, name, llfty);
     let fcx = new_fn_ctxt(ccx, [], llfn, none);
-    let bcx = new_top_block_ctxt(fcx, none), lltop = bcx.llbb;
+    let bcx = top_scope_block(fcx, none), lltop = bcx.llbb;
     let bcx = fill(llfn, bcx);
     build_return(bcx);
     finish_fn(fcx, lltop);
@@ -396,7 +396,7 @@ fn dict_is_static(tcx: ty::ctxt, origin: typeck::dict_origin) -> bool {
     }
 }
 
-fn get_dict(bcx: @block_ctxt, origin: typeck::dict_origin) -> result {
+fn get_dict(bcx: block, origin: typeck::dict_origin) -> result {
     let ccx = bcx_ccx(bcx);
     alt origin {
       typeck::dict_static(impl_did, tys, sub_origins) {
@@ -453,7 +453,7 @@ fn dict_id(tcx: ty::ctxt, origin: typeck::dict_origin) -> dict_id {
     }
 }
 
-fn get_static_dict(bcx: @block_ctxt, origin: typeck::dict_origin)
+fn get_static_dict(bcx: block, origin: typeck::dict_origin)
     -> ValueRef {
     let ccx = bcx_ccx(bcx);
     let id = dict_id(ccx.tcx, origin);
@@ -474,8 +474,8 @@ fn get_static_dict(bcx: @block_ctxt, origin: typeck::dict_origin)
     cast
 }
 
-fn get_dict_ptrs(bcx: @block_ctxt, origin: typeck::dict_origin)
-    -> {bcx: @block_ctxt, ptrs: [ValueRef]} {
+fn get_dict_ptrs(bcx: block, origin: typeck::dict_origin)
+    -> {bcx: block, ptrs: [ValueRef]} {
     let ccx = bcx_ccx(bcx);
     fn get_vtable(ccx: @crate_ctxt, did: ast::def_id) -> ValueRef {
         if did.crate == ast::local_crate {
@@ -517,8 +517,8 @@ fn get_dict_ptrs(bcx: @block_ctxt, origin: typeck::dict_origin)
     }
 }
 
-fn trans_cast(bcx: @block_ctxt, val: @ast::expr, id: ast::node_id, dest: dest)
-    -> @block_ctxt {
+fn trans_cast(bcx: block, val: @ast::expr, id: ast::node_id, dest: dest)
+    -> block {
     if dest == ignore { ret trans_expr(bcx, val, ignore); }
     let ccx = bcx_ccx(bcx);
     let v_ty = expr_ty(bcx, val);
