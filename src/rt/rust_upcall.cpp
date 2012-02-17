@@ -456,8 +456,6 @@ upcall_vec_push(rust_vec** vp, type_desc* elt_ty, void* elt) {
 
     rust_task *task = rust_task_thread::get_task();
 
-    LOG_UPCALL_ENTRY(task);
-
     size_t new_sz = (*vp)->fill + elt_ty->size;
     reserve_vec(task, vp, new_sz);
     rust_vec* v = *vp;
