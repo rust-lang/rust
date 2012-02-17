@@ -414,10 +414,10 @@ $(foreach host,$(CFG_TARGET_TRIPLES), \
 # Fast-test rules
 ######################################################################
 
-GENERATED += tmp/$$(FT).rc tmp/$$(FT_DRIVER).rs
+GENERATED += tmp/$(FT).rc tmp/$(FT_DRIVER).rs
 
 tmp/$(FT).rc tmp/$(FT_DRIVER).rs: \
-		$(TEST_RPASS_SOURCES_STAGE2) \
+		$(RPASS_TESTS) \
 		$(S)src/etc/combine-tests.py
 	@$(call E, check: building combined stage2 test runner)
 	$(Q)$(S)src/etc/combine-tests.py
