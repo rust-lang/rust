@@ -178,8 +178,13 @@ ifdef CFG_WINDOWSY
   CFG_LIB_NAME=$(1).dll
   CFG_LIB_GLOB=$(1)-*.dll
   CFG_DEF_SUFFIX := .def
+ifdef MSYSTEM
   CFG_LDPATH :=$(CFG_LDPATH):$$PATH
   CFG_RUN=PATH="$(CFG_LDPATH):$(1)" $(2)
+else
+  CFG_LDPATH :=
+  CFG_RUN=$(2)
+endif
   CFG_RUN_TARG=$(call CFG_RUN,$(HLIB$(1)_H_$(CFG_HOST_TRIPLE)),$(2))
   CFG_RUN_TEST=$(call CFG_RUN,$(call CFG_TESTLIB,$(1),$(3)),$(1))
   CFG_LIBUV_LINK_FLAGS=-lWs2_32
