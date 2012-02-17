@@ -434,7 +434,7 @@ upcall_vec_grow(rust_vec** vp, size_t new_sz) {
 // Copy elements from one vector to another,
 // dealing with reference counts
 static inline void
-copy_elements(rust_task *task, type_desc *elem_t,
+copy_elements(type_desc *elem_t,
               void *pdst, void *psrc, size_t n) {
     char *dst = (char *)pdst, *src = (char *)psrc;
     memmove(dst, src, n);
@@ -454,12 +454,10 @@ extern "C" CDECL void
 upcall_vec_push(rust_vec** vp, type_desc* elt_ty, void* elt) {
     // NB: This runs entirely on the Rust stack because it invokes take glue
 
-    rust_task *task = rust_task_thread::get_task();
-
     size_t new_sz = (*vp)->fill + elt_ty->size;
-    reserve_vec(task, vp, new_sz);
+    reserve_vec_fast(vp, new_sz);
     rust_vec* v = *vp;
-    copy_elements(task, elt_ty, &v->data[0] + v->fill,
+    copy_elements(elt_ty, &v->data[0] + v->fill,
                   elt, elt_ty->size);
     v->fill += elt_ty->size;
 }
