@@ -2,6 +2,8 @@
  * Copyright 2011 Google Inc.
  */
 
+// Some utility interfaces
+import doc::item;
 import doc::util;
 
 #[doc = "A single operation on the document model"]
@@ -46,11 +48,10 @@ fn test_run_passes() {
     ) -> doc::cratedoc {
         {
             topmod: {
-                id: 0,
-                name: doc.topmod.name + "two",
-                path: [],
-                brief: none,
-                desc: none,
+                item: {
+                    name: doc.topmod.name() + "two"
+                    with doc.topmod.item
+                },
                 items: ~[]
             }
         }
@@ -61,11 +62,10 @@ fn test_run_passes() {
     ) -> doc::cratedoc {
         {
             topmod: {
-                id: 0,
-                name: doc.topmod.name + "three",
-                path: [],
-                brief: none,
-                desc: none,
+                item: {
+                    name: doc.topmod.name() + "three"
+                    with doc.topmod.item
+                },
                 items: ~[]
             }
         }
@@ -75,7 +75,7 @@ fn test_run_passes() {
     let passes = [pass1, pass2];
     let doc = extract::from_srv(srv, "one");
     let doc = run_passes(srv, doc, passes);
-    assert doc.topmod.name == "onetwothree";
+    assert doc.topmod.name() == "onetwothree";
 }
 
 fn main(argv: [str]) {

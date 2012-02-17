@@ -97,7 +97,7 @@ fn write_crate(
     ctxt: ctxt,
     doc: doc::cratedoc
 ) {
-    write_header(ctxt, h1, #fmt("Crate %s", doc.topmod.name));
+    write_header(ctxt, h1, #fmt("Crate %s", doc.topmod.name()));
     write_top_module(ctxt, doc.topmod);
 }
 
@@ -112,7 +112,7 @@ fn write_mod(
     ctxt: ctxt,
     moddoc: doc::moddoc
 ) {
-    let fullpath = str::connect(moddoc.path + [moddoc.name], "::");
+    let fullpath = str::connect(moddoc.path() + [moddoc.name()], "::");
     write_header(ctxt, h1, #fmt("Module `%s`", fullpath));
     write_mod_contents(ctxt, moddoc);
 }
@@ -127,8 +127,8 @@ fn write_mod_contents(
     ctxt: ctxt,
     doc: doc::moddoc
 ) {
-    write_brief(ctxt, doc.brief);
-    write_desc(ctxt, doc.desc);
+    write_brief(ctxt, doc.brief());
+    write_desc(ctxt, doc.desc());
 
     for itemtag in *doc.items {
         alt itemtag {
@@ -160,12 +160,12 @@ fn write_fn(
     ctxt: ctxt,
     doc: doc::fndoc
 ) {
-    write_header(ctxt, h2, #fmt("Function `%s`", doc.name));
+    write_header(ctxt, h2, #fmt("Function `%s`", doc.name()));
     write_fnlike(
         ctxt,
         doc.sig,
-        doc.brief,
-        doc.desc,
+        doc.brief(),
+        doc.desc(),
         doc.args,
         doc.return,
         doc.failure
@@ -424,10 +424,10 @@ fn write_const(
     ctxt: ctxt,
     doc: doc::constdoc
 ) {
-    write_header(ctxt, h2, #fmt("Const `%s`", doc.name));
+    write_header(ctxt, h2, #fmt("Const `%s`", doc.name()));
     write_sig(ctxt, doc.ty);
-    write_brief(ctxt, doc.brief);
-    write_desc(ctxt, doc.desc);
+    write_brief(ctxt, doc.brief());
+    write_desc(ctxt, doc.desc());
 }
 
 #[test]
@@ -448,9 +448,9 @@ fn write_enum(
     ctxt: ctxt,
     doc: doc::enumdoc
 ) {
-    write_header(ctxt, h2, #fmt("Enum `%s`", doc.name));
-    write_brief(ctxt, doc.brief);
-    write_desc(ctxt, doc.desc);
+    write_header(ctxt, h2, #fmt("Enum `%s`", doc.name()));
+    write_brief(ctxt, doc.brief());
+    write_desc(ctxt, doc.desc());
     write_variants(ctxt, doc.variants);
 }
 
@@ -530,10 +530,10 @@ fn should_write_variant_list_with_signatures() {
 }
 
 fn write_res(ctxt: ctxt, doc: doc::resdoc) {
-    write_header(ctxt, h2, #fmt("Resource `%s`", doc.name));
+    write_header(ctxt, h2, #fmt("Resource `%s`", doc.name()));
     write_sig(ctxt, doc.sig);
-    write_brief(ctxt, doc.brief);
-    write_desc(ctxt, doc.desc);
+    write_brief(ctxt, doc.brief());
+    write_desc(ctxt, doc.desc());
     write_args(ctxt, doc.args);
 }
 
@@ -557,9 +557,9 @@ fn should_write_resource_args() {
 }
 
 fn write_iface(ctxt: ctxt, doc: doc::ifacedoc) {
-    write_header(ctxt, h2, #fmt("Interface `%s`", doc.name));
-    write_brief(ctxt, doc.brief);
-    write_desc(ctxt, doc.desc);
+    write_header(ctxt, h2, #fmt("Interface `%s`", doc.name()));
+    write_brief(ctxt, doc.brief());
+    write_desc(ctxt, doc.desc());
     write_methods(ctxt, doc.methods);
 }
 
@@ -656,16 +656,16 @@ fn write_impl(ctxt: ctxt, doc: doc::impldoc) {
       some(iface_ty) {
         write_header(ctxt, h2,
                      #fmt("Implementation `%s` of `%s` for `%s`",
-                          doc.name, iface_ty, self_ty));
+                          doc.name(), iface_ty, self_ty));
       }
       none {
         write_header(ctxt, h2,
                      #fmt("Implementation `%s` for `%s`",
-                          doc.name, self_ty));
+                          doc.name(), self_ty));
       }
     }
-    write_brief(ctxt, doc.brief);
-    write_desc(ctxt, doc.desc);
+    write_brief(ctxt, doc.brief());
+    write_desc(ctxt, doc.desc());
     write_methods(ctxt, doc.methods);
 }
 
@@ -748,10 +748,10 @@ fn write_type(
     ctxt: ctxt,
     doc: doc::tydoc
 ) {
-    write_header(ctxt, h2, #fmt("Type `%s`", doc.name));
+    write_header(ctxt, h2, #fmt("Type `%s`", doc.name()));
     write_sig(ctxt, doc.sig);
-    write_brief(ctxt, doc.brief);
-    write_desc(ctxt, doc.desc);
+    write_brief(ctxt, doc.brief());
+    write_desc(ctxt, doc.desc());
 }
 
 #[test]

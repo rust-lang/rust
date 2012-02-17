@@ -108,8 +108,8 @@ fn fold_mod(
         with fold::default_seq_fold_mod(fold, doc)
     };
     fold.ctxt.have_docs =
-        doc.brief != none
-        || doc.desc != none
+        doc.brief() != none
+        || doc.desc() != none
         || vec::is_not_empty(*doc.items);
     ret doc;
 }
@@ -121,8 +121,8 @@ fn fold_fn(
     let doc = fold::default_seq_fold_fn(fold, doc);
 
     fold.ctxt.have_docs =
-        doc.brief != none
-        || doc.desc != none
+        doc.brief() != none
+        || doc.desc() != none
         || args_have_docs(doc.args)
         || doc.return.desc != none
         || doc.failure != none;
@@ -183,8 +183,8 @@ fn fold_const(
 ) -> doc::constdoc {
     let doc = fold::default_seq_fold_const(fold, doc);
     fold.ctxt.have_docs =
-        doc.brief != none
-        || doc.desc != none;
+        doc.brief() != none
+        || doc.desc() != none;
     ret doc;
 }
 
@@ -206,8 +206,8 @@ fn fold_enum(fold: fold::fold<ctxt>, doc: doc::enumdoc) -> doc::enumdoc {
         with fold::default_seq_fold_enum(fold, doc)
     };
     fold.ctxt.have_docs =
-        doc.brief != none
-        || doc.desc != none
+        doc.brief() != none
+        || doc.desc() != none
         || vec::is_not_empty(doc.variants);
     ret doc;
 }
@@ -234,8 +234,8 @@ fn fold_res(fold: fold::fold<ctxt>, doc: doc::resdoc) -> doc::resdoc {
     let doc = fold::default_seq_fold_res(fold, doc);
 
     fold.ctxt.have_docs =
-        doc.brief != none
-        || doc.desc != none
+        doc.brief() != none
+        || doc.desc() != none
         || args_have_docs(doc.args);
     ret doc;
 }
@@ -260,8 +260,8 @@ fn fold_iface(
     let doc = fold::default_seq_fold_iface(fold, doc);
 
     fold.ctxt.have_docs =
-        doc.brief != none
-        || doc.desc != none
+        doc.brief() != none
+        || doc.desc() != none
         || methods_have_docs(doc.methods);
     ret doc;
 }
@@ -314,8 +314,8 @@ fn fold_impl(
     let doc = fold::default_seq_fold_impl(fold, doc);
 
     fold.ctxt.have_docs =
-        doc.brief != none
-        || doc.desc != none
+        doc.brief() != none
+        || doc.desc() != none
         || methods_have_docs(doc.methods);
     ret doc;
 }
@@ -351,8 +351,8 @@ fn fold_type(
     let doc = fold::default_seq_fold_type(fold, doc);
 
     fold.ctxt.have_docs =
-        doc.brief != none
-        || doc.desc != none;
+        doc.brief() != none
+        || doc.desc() != none;
     ret doc;
 }
 

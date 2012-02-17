@@ -37,8 +37,11 @@ fn fold_mod(fold: fold::fold<op>, doc: doc::moddoc) -> doc::moddoc {
     let doc = fold::default_seq_fold_mod(fold, doc);
 
     {
-        brief: maybe_apply_op(fold.ctxt, doc.brief),
-        desc: maybe_apply_op(fold.ctxt, doc.desc)
+        item: {
+            brief: maybe_apply_op(fold.ctxt, doc.brief()),
+            desc: maybe_apply_op(fold.ctxt, doc.desc())
+            with doc.item
+        }
         with doc
     }
 }
@@ -47,8 +50,11 @@ fn fold_const(fold: fold::fold<op>, doc: doc::constdoc) -> doc::constdoc {
     let doc = fold::default_seq_fold_const(fold, doc);
 
     {
-        brief: maybe_apply_op(fold.ctxt, doc.brief),
-        desc: maybe_apply_op(fold.ctxt, doc.desc)
+        item: {
+            brief: maybe_apply_op(fold.ctxt, doc.brief()),
+            desc: maybe_apply_op(fold.ctxt, doc.desc())
+            with doc.item
+        }
         with doc
     }
 }
@@ -57,8 +63,11 @@ fn fold_fn(fold: fold::fold<op>, doc: doc::fndoc) -> doc::fndoc {
     let doc = fold::default_seq_fold_fn(fold, doc);
 
     {
-        brief: maybe_apply_op(fold.ctxt, doc.brief),
-        desc: maybe_apply_op(fold.ctxt, doc.desc),
+        item: {
+            brief: maybe_apply_op(fold.ctxt, doc.brief()),
+            desc: maybe_apply_op(fold.ctxt, doc.desc())
+            with doc.item
+        },
         args: vec::map(doc.args) {|doc|
             {
                 desc: maybe_apply_op(fold.ctxt, doc.desc)
@@ -76,8 +85,11 @@ fn fold_fn(fold: fold::fold<op>, doc: doc::fndoc) -> doc::fndoc {
 
 fn fold_enum(fold: fold::fold<op>, doc: doc::enumdoc) -> doc::enumdoc {
     {
-        brief: maybe_apply_op(fold.ctxt, doc.brief),
-        desc: maybe_apply_op(fold.ctxt, doc.desc),
+        item: {
+            brief: maybe_apply_op(fold.ctxt, doc.brief()),
+            desc: maybe_apply_op(fold.ctxt, doc.desc())
+            with doc.item
+        },
         variants: vec::map(doc.variants) {|variant|
             {
                 desc: maybe_apply_op(fold.ctxt, variant.desc)
@@ -90,8 +102,11 @@ fn fold_enum(fold: fold::fold<op>, doc: doc::enumdoc) -> doc::enumdoc {
 
 fn fold_res(fold: fold::fold<op>, doc: doc::resdoc) -> doc::resdoc {
     {
-        brief: maybe_apply_op(fold.ctxt, doc.brief),
-        desc: maybe_apply_op(fold.ctxt, doc.desc),
+        item: {
+            brief: maybe_apply_op(fold.ctxt, doc.brief()),
+            desc: maybe_apply_op(fold.ctxt, doc.desc())
+            with doc.item
+        },
         args: vec::map(doc.args) {|arg|
             {
                 desc: maybe_apply_op(fold.ctxt, arg.desc)
@@ -104,8 +119,11 @@ fn fold_res(fold: fold::fold<op>, doc: doc::resdoc) -> doc::resdoc {
 
 fn fold_iface(fold: fold::fold<op>, doc: doc::ifacedoc) -> doc::ifacedoc {
     {
-        brief: maybe_apply_op(fold.ctxt, doc.brief),
-        desc: maybe_apply_op(fold.ctxt, doc.desc),
+        item: {
+            brief: maybe_apply_op(fold.ctxt, doc.brief()),
+            desc: maybe_apply_op(fold.ctxt, doc.desc())
+            with doc.item
+        },
         methods: apply_to_methods(fold.ctxt, doc.methods)
         with doc
     }
@@ -134,8 +152,11 @@ fn apply_to_methods(op: op, docs: [doc::methoddoc]) -> [doc::methoddoc] {
 
 fn fold_impl(fold: fold::fold<op>, doc: doc::impldoc) -> doc::impldoc {
     {
-        brief: maybe_apply_op(fold.ctxt, doc.brief),
-        desc: maybe_apply_op(fold.ctxt, doc.desc),
+        item: {
+            brief: maybe_apply_op(fold.ctxt, doc.brief()),
+            desc: maybe_apply_op(fold.ctxt, doc.desc())
+            with doc.item
+        },
         methods: apply_to_methods(fold.ctxt, doc.methods)
         with doc
     }
@@ -143,8 +164,11 @@ fn fold_impl(fold: fold::fold<op>, doc: doc::impldoc) -> doc::impldoc {
 
 fn fold_type(fold: fold::fold<op>, doc: doc::tydoc) -> doc::tydoc {
     {
-        brief: maybe_apply_op(fold.ctxt, doc.brief),
-        desc: maybe_apply_op(fold.ctxt, doc.desc)
+        item: {
+            brief: maybe_apply_op(fold.ctxt, doc.brief()),
+            desc: maybe_apply_op(fold.ctxt, doc.desc())
+            with doc.item
+        }
         with doc
     }
 }
@@ -152,13 +176,13 @@ fn fold_type(fold: fold::fold<op>, doc: doc::tydoc) -> doc::tydoc {
 #[test]
 fn should_execute_op_on_enum_brief() {
     let doc = test::mk_doc("#[doc(brief = \" a \")] enum a { b }");
-    assert doc.topmod.enums()[0].brief == some("a");
+    assert doc.topmod.enums()[0].brief() == some("a");
 }
 
 #[test]
 fn should_execute_op_on_enum_desc() {
     let doc = test::mk_doc("#[doc(desc = \" a \")] enum a { b }");
-    assert doc.topmod.enums()[0].desc == some("a");
+    assert doc.topmod.enums()[0].desc() == some("a");
 }
 
 #[test]
@@ -170,13 +194,13 @@ fn should_execute_op_on_variant_desc() {
 #[test]
 fn should_execute_op_on_resource_brief() {
     let doc = test::mk_doc("#[doc(brief = \" a \")] resource r(a: bool) { }");
-    assert doc.topmod.resources()[0].brief == some("a");
+    assert doc.topmod.resources()[0].brief() == some("a");
 }
 
 #[test]
 fn should_execute_op_on_resource_desc() {
     let doc = test::mk_doc("#[doc(desc = \" a \")] resource r(a: bool) { }");
-    assert doc.topmod.resources()[0].desc == some("a");
+    assert doc.topmod.resources()[0].desc() == some("a");
 }
 
 #[test]
@@ -190,14 +214,14 @@ fn should_execute_op_on_resource_args() {
 fn should_execute_op_on_iface_brief() {
     let doc = test::mk_doc(
         "#[doc(brief = \" a \")] iface i { fn a(); }");
-    assert doc.topmod.ifaces()[0].brief == some("a");
+    assert doc.topmod.ifaces()[0].brief() == some("a");
 }
 
 #[test]
 fn should_execute_op_on_iface_desc() {
     let doc = test::mk_doc(
         "#[doc(desc = \" a \")] iface i { fn a(); }");
-    assert doc.topmod.ifaces()[0].desc == some("a");
+    assert doc.topmod.ifaces()[0].desc() == some("a");
 }
 
 #[test]
@@ -238,14 +262,14 @@ fn should_execute_op_on_iface_method_failure_condition() {
 fn should_execute_op_on_impl_brief() {
     let doc = test::mk_doc(
         "#[doc(brief = \" a \")] impl i for int { fn a() { } }");
-    assert doc.topmod.impls()[0].brief == some("a");
+    assert doc.topmod.impls()[0].brief() == some("a");
 }
 
 #[test]
 fn should_execute_op_on_impl_desc() {
     let doc = test::mk_doc(
         "#[doc(desc = \" a \")] impl i for int { fn a() { } }");
-    assert doc.topmod.impls()[0].desc == some("a");
+    assert doc.topmod.impls()[0].desc() == some("a");
 }
 
 #[test]
@@ -288,14 +312,14 @@ fn should_execute_op_on_impl_method_failure_condition() {
 fn should_execute_op_on_type_brief() {
     let doc = test::mk_doc(
         "#[doc(brief = \" a \")] type t = int;");
-    assert doc.topmod.types()[0].brief == some("a");
+    assert doc.topmod.types()[0].brief() == some("a");
 }
 
 #[test]
 fn should_execute_op_on_type_desc() {
     let doc = test::mk_doc(
         "#[doc(desc = \" a \")] type t = int;");
-    assert doc.topmod.types()[0].desc == some("a");
+    assert doc.topmod.types()[0].desc() == some("a");
 }
 
 #[cfg(test)]

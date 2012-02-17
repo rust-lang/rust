@@ -17,31 +17,27 @@ enum itemtag {
     tytag(tydoc)
 }
 
-type moddoc = {
+type itemdoc = {
     id: ast_id,
     name: str,
     path: [str],
     brief: option<str>,
     desc: option<str>,
+};
+
+type moddoc = {
+    item: itemdoc,
     // This box exists to break the structural recursion
     items: ~[itemtag]
 };
 
 type constdoc = {
-    id: ast_id,
-    name: str,
-    path: [str],
-    brief: option<str>,
-    desc: option<str>,
+    item: itemdoc,
     ty: option<str>
 };
 
 type fndoc = {
-    id: ast_id,
-    name: str,
-    path: [str],
-    brief: option<str>,
-    desc: option<str>,
+    item: itemdoc,
     args: [argdoc],
     return: retdoc,
     failure: option<str>,
@@ -60,11 +56,7 @@ type retdoc = {
 };
 
 type enumdoc = {
-    id: ast_id,
-    name: str,
-    path: [str],
-    brief: option<str>,
-    desc: option<str>,
+    item: itemdoc,
     variants: [variantdoc]
 };
 
@@ -75,21 +67,13 @@ type variantdoc = {
 };
 
 type resdoc = {
-    id: ast_id,
-    name: str,
-    path: [str],
-    brief: option<str>,
-    desc: option<str>,
+    item: itemdoc,
     args: [argdoc],
     sig: option<str>
 };
 
 type ifacedoc = {
-    id: ast_id,
-    name: str,
-    path: [str],
-    brief: option<str>,
-    desc: option<str>,
+    item: itemdoc,
     methods: [methoddoc]
 };
 
@@ -104,22 +88,14 @@ type methoddoc = {
 };
 
 type impldoc = {
-    id: ast_id,
-    name: str,
-    path: [str],
-    brief: option<str>,
-    desc: option<str>,
+    item: itemdoc,
     iface_ty: option<str>,
     self_ty: option<str>,
     methods: [methoddoc]
 };
 
 type tydoc = {
-    id: ast_id,
-    name: str,
-    path: [str],
-    brief: option<str>,
-    desc: option<str>,
+    item: itemdoc,
     sig: option<str>
 };
 
@@ -199,18 +175,75 @@ impl util for moddoc {
     }
 }
 
-#[doc = "Helper methods on itemtag"]
-impl util for itemtag {
-    fn name() -> str {
+iface item {
+    fn item() -> itemdoc;
+}
+
+impl of item for itemtag {
+    fn item() -> itemdoc {
         alt self {
-          doc::modtag({name, _}) { name }
-          doc::fntag({name, _}) { name }
-          doc::consttag({name, _}) { name }
-          doc::enumtag({name, _}) { name }
-          doc::restag({name, _}) { name }
-          doc::ifacetag({name, _}) { name }
-          doc::impltag({name, _}) { name }
-          doc::tytag({name, _}) { name }
+          doc::modtag(doc) { doc.item }
+          doc::fntag(doc) { doc.item }
+          doc::consttag(doc) { doc.item }
+          doc::enumtag(doc) { doc.item }
+          doc::restag(doc) { doc.item }
+          doc::ifacetag(doc) { doc.item }
+          doc::impltag(doc) { doc.item }
+          doc::tytag(doc) { doc.item }
         }
+    }
+}
+
+impl of item for moddoc {
+    fn item() -> itemdoc { self.item }
+}
+
+impl of item for fndoc {
+    fn item() -> itemdoc { self.item }
+}
+
+impl of item for constdoc {
+    fn item() -> itemdoc { self.item }
+}
+
+impl of item for enumdoc {
+    fn item() -> itemdoc { self.item }
+}
+
+impl of item for resdoc {
+    fn item() -> itemdoc { self.item }
+}
+
+impl of item for ifacedoc {
+    fn item() -> itemdoc { self.item }
+}
+
+impl of item for impldoc {
+    fn item() -> itemdoc { self.item }
+}
+
+impl of item for tydoc {
+    fn item() -> itemdoc { self.item }
+}
+
+impl util<A:item> for A {
+    fn id() -> ast_id {
+        self.item().id
+    }
+
+    fn name() -> str {
+        self.item().name
+    }
+
+    fn path() -> [str] {
+        self.item().path
+    }
+
+    fn brief() -> option<str> {
+        self.item().brief
+    }
+
+    fn desc() -> option<str> {
+        self.item().desc
     }
 }

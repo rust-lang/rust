@@ -36,9 +36,9 @@ fn fold_fn(
     let srv = fold.ctxt;
 
     {
-        args: merge_arg_tys(srv, doc.id, doc.args),
-        return: merge_ret_ty(srv, doc.id, doc.return),
-        sig: get_fn_sig(srv, doc.id)
+        args: merge_arg_tys(srv, doc.id(), doc.args),
+        return: merge_ret_ty(srv, doc.id(), doc.return),
+        sig: get_fn_sig(srv, doc.id())
         with doc
     }
 }
@@ -164,7 +164,7 @@ fn fold_const(
 
     {
         ty: some(astsrv::exec(srv) {|ctxt|
-            alt check ctxt.ast_map.get(doc.id) {
+            alt check ctxt.ast_map.get(doc.id()) {
               ast_map::node_item(@{
                 node: ast::item_const(ty, _), _
               }, _) {
@@ -191,7 +191,7 @@ fn fold_enum(
     {
         variants: vec::map(doc.variants) {|variant|
             let sig = astsrv::exec(srv) {|ctxt|
-                alt check ctxt.ast_map.get(doc.id) {
+                alt check ctxt.ast_map.get(doc.id()) {
                   ast_map::node_item(@{
                     node: ast::item_enum(ast_variants, _), _
                   }, _) {
@@ -227,13 +227,13 @@ fn fold_res(
     let srv = fold.ctxt;
 
     {
-        args: merge_arg_tys(srv, doc.id, doc.args),
+        args: merge_arg_tys(srv, doc.id(), doc.args),
         sig: some(astsrv::exec(srv) {|ctxt|
-            alt check ctxt.ast_map.get(doc.id) {
+            alt check ctxt.ast_map.get(doc.id()) {
               ast_map::node_item(@{
                 node: ast::item_res(decl, _, _, _, _), _
               }, _) {
-                pprust::res_to_str(decl, doc.name, [])
+                pprust::res_to_str(decl, doc.name(), [])
               }
             }
         })
@@ -258,7 +258,7 @@ fn fold_iface(
     doc: doc::ifacedoc
 ) -> doc::ifacedoc {
     {
-        methods: merge_methods(fold.ctxt, doc.id, doc.methods)
+        methods: merge_methods(fold.ctxt, doc.id(), doc.methods)
         with doc
     }
 }
@@ -456,7 +456,7 @@ fn fold_impl(
     let srv = fold.ctxt;
 
     let (iface_ty, self_ty) = astsrv::exec(srv) {|ctxt|
-        alt ctxt.ast_map.get(doc.id) {
+        alt ctxt.ast_map.get(doc.id()) {
           ast_map::node_item(@{
             node: ast::item_impl(_, iface_ty, self_ty, _), _
           }, _) {
@@ -472,7 +472,7 @@ fn fold_impl(
     {
         iface_ty: iface_ty,
         self_ty: self_ty,
-        methods: merge_methods(fold.ctxt, doc.id, doc.methods)
+        methods: merge_methods(fold.ctxt, doc.id(), doc.methods)
         with doc
     }
 }
@@ -530,7 +530,7 @@ fn fold_type(
 
     {
         sig: astsrv::exec(srv) {|ctxt|
-            alt ctxt.ast_map.get(doc.id) {
+            alt ctxt.ast_map.get(doc.id()) {
               ast_map::node_item(@{
                 ident: ident,
                 node: ast::item_ty(ty, params), _
