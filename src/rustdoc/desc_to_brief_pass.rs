@@ -18,99 +18,29 @@ fn run(
     doc: doc::cratedoc
 ) -> doc::cratedoc {
     let fold = fold::fold({
-        fold_mod: fold_mod,
-        fold_const: fold_const,
-        fold_fn: fold_fn,
-        fold_enum: fold_enum,
-        fold_res: fold_res,
+        fold_item: fold_item,
         fold_iface: fold_iface,
-        fold_impl: fold_impl,
-        fold_type: fold_type
+        fold_impl: fold_impl
         with *fold::default_seq_fold(())
     });
     fold.fold_crate(fold, doc)
 }
 
-fn fold_mod(fold: fold::fold<()>, doc: doc::moddoc) -> doc::moddoc {
-    let doc = fold::default_seq_fold_mod(fold, doc);
-    let (brief, desc) = modify(doc.brief(), doc.desc());
+fn fold_item(fold: fold::fold<()>, doc: doc::itemdoc) -> doc::itemdoc {
+    let doc = fold::default_seq_fold_item(fold, doc);
+    let (brief, desc) = modify(doc.brief, doc.desc);
 
     {
-        item: {
-            brief: brief,
-            desc: desc
-            with doc.item
-        }    
-        with doc
-    }
-}
-
-fn fold_const(fold: fold::fold<()>, doc: doc::constdoc) -> doc::constdoc {
-    let doc = fold::default_seq_fold_const(fold, doc);
-    let (brief, desc) = modify(doc.brief(), doc.desc());
-
-    {
-        item: {
-            brief: brief,
-            desc: desc
-            with doc.item
-        }
-        with doc
-    }
-}
-
-fn fold_fn(fold: fold::fold<()>, doc: doc::fndoc) -> doc::fndoc {
-    let doc = fold::default_seq_fold_fn(fold, doc);
-    let (brief, desc) = modify(doc.brief(), doc.desc());
-
-    {
-        item: {
-            brief: brief,
-            desc: desc
-            with doc.item
-        }
-        with doc
-    }
-}
-
-fn fold_enum(fold: fold::fold<()>, doc: doc::enumdoc) -> doc::enumdoc {
-    let doc = fold::default_seq_fold_enum(fold, doc);
-    let (brief, desc) = modify(doc.brief(), doc.desc());
-
-    {
-        item: {
-            brief: brief,
-            desc: desc
-            with doc.item
-        }
-        with doc
-    }
-}
-
-fn fold_res(fold: fold::fold<()>, doc: doc::resdoc) -> doc::resdoc {
-    let doc = fold::default_seq_fold_res(fold, doc);
-    let (brief, desc) = modify(doc.brief(), doc.desc());
-
-    {
-        item: {
-            brief: brief,
-            desc: desc
-            with doc.item
-        }
+        brief: brief,
+        desc: desc
         with doc
     }
 }
 
 fn fold_iface(fold: fold::fold<()>, doc: doc::ifacedoc) -> doc::ifacedoc {
     let doc =fold::default_seq_fold_iface(fold, doc);
-    let (brief, desc) = modify(doc.brief(), doc.desc());
 
     {
-        item: {
-            brief: brief,
-            desc: desc
-            with doc.item
-        },
         methods: vec::map(doc.methods) {|doc|
             let (brief, desc) = modify(doc.brief, doc.desc);
 
@@ -126,14 +56,8 @@ fn fold_iface(fold: fold::fold<()>, doc: doc::ifacedoc) -> doc::ifacedoc {
 
 fn fold_impl(fold: fold::fold<()>, doc: doc::impldoc) -> doc::impldoc {
     let doc =fold::default_seq_fold_impl(fold, doc);
-    let (brief, desc) = modify(doc.brief(), doc.desc());
 
     {
-        item: {
-            brief: brief,
-            desc: desc
-            with doc.item
-        },
         methods: vec::map(doc.methods) {|doc|
             let (brief, desc) = modify(doc.brief, doc.desc);
 
@@ -142,20 +66,6 @@ fn fold_impl(fold: fold::fold<()>, doc: doc::impldoc) -> doc::impldoc {
                 desc: desc
                 with doc
             }
-        }
-        with doc
-    }
-}
-
-fn fold_type(fold: fold::fold<()>, doc: doc::tydoc) -> doc::tydoc {
-    let doc = fold::default_seq_fold_type(fold, doc);
-    let (brief, desc) = modify(doc.brief(), doc.desc());
-
-    {
-        item: {
-            brief: brief,
-            desc: desc
-            with doc.item
         }
         with doc
     }
