@@ -16,14 +16,12 @@ fn run(
     op: op
 ) -> doc::cratedoc {
     let fold = fold::fold({
-        fold_mod: fold_mod,
-        fold_const: fold_const,
+        fold_item: fold_item,
         fold_fn: fold_fn,
         fold_enum: fold_enum,
         fold_res: fold_res,
         fold_iface: fold_iface,
-        fold_impl: fold_impl,
-        fold_type: fold_type
+        fold_impl: fold_impl
         with *fold::default_seq_fold(op)
     });
     fold.fold_crate(fold, doc)
@@ -33,28 +31,12 @@ fn maybe_apply_op(op: op, s: option<str>) -> option<str> {
     option::map(s) {|s| op(s) }
 }
 
-fn fold_mod(fold: fold::fold<op>, doc: doc::moddoc) -> doc::moddoc {
-    let doc = fold::default_seq_fold_mod(fold, doc);
+fn fold_item(fold: fold::fold<op>, doc: doc::itemdoc) -> doc::itemdoc {
+    let doc = fold::default_seq_fold_item(fold, doc);
 
     {
-        item: {
-            brief: maybe_apply_op(fold.ctxt, doc.brief()),
-            desc: maybe_apply_op(fold.ctxt, doc.desc())
-            with doc.item
-        }
-        with doc
-    }
-}
-
-fn fold_const(fold: fold::fold<op>, doc: doc::constdoc) -> doc::constdoc {
-    let doc = fold::default_seq_fold_const(fold, doc);
-
-    {
-        item: {
-            brief: maybe_apply_op(fold.ctxt, doc.brief()),
-            desc: maybe_apply_op(fold.ctxt, doc.desc())
-            with doc.item
-        }
+        brief: maybe_apply_op(fold.ctxt, doc.brief),
+        desc: maybe_apply_op(fold.ctxt, doc.desc)
         with doc
     }
 }
@@ -63,11 +45,6 @@ fn fold_fn(fold: fold::fold<op>, doc: doc::fndoc) -> doc::fndoc {
     let doc = fold::default_seq_fold_fn(fold, doc);
 
     {
-        item: {
-            brief: maybe_apply_op(fold.ctxt, doc.brief()),
-            desc: maybe_apply_op(fold.ctxt, doc.desc())
-            with doc.item
-        },
         args: vec::map(doc.args) {|doc|
             {
                 desc: maybe_apply_op(fold.ctxt, doc.desc)
@@ -84,12 +61,9 @@ fn fold_fn(fold: fold::fold<op>, doc: doc::fndoc) -> doc::fndoc {
 }
 
 fn fold_enum(fold: fold::fold<op>, doc: doc::enumdoc) -> doc::enumdoc {
+    let doc = fold::default_seq_fold_enum(fold, doc);
+
     {
-        item: {
-            brief: maybe_apply_op(fold.ctxt, doc.brief()),
-            desc: maybe_apply_op(fold.ctxt, doc.desc())
-            with doc.item
-        },
         variants: vec::map(doc.variants) {|variant|
             {
                 desc: maybe_apply_op(fold.ctxt, variant.desc)
@@ -101,12 +75,9 @@ fn fold_enum(fold: fold::fold<op>, doc: doc::enumdoc) -> doc::enumdoc {
 }
 
 fn fold_res(fold: fold::fold<op>, doc: doc::resdoc) -> doc::resdoc {
+    let doc = fold::default_seq_fold_res(fold, doc);
+
     {
-        item: {
-            brief: maybe_apply_op(fold.ctxt, doc.brief()),
-            desc: maybe_apply_op(fold.ctxt, doc.desc())
-            with doc.item
-        },
         args: vec::map(doc.args) {|arg|
             {
                 desc: maybe_apply_op(fold.ctxt, arg.desc)
@@ -118,12 +89,9 @@ fn fold_res(fold: fold::fold<op>, doc: doc::resdoc) -> doc::resdoc {
 }
 
 fn fold_iface(fold: fold::fold<op>, doc: doc::ifacedoc) -> doc::ifacedoc {
+    let doc = fold::default_seq_fold_iface(fold, doc);
+
     {
-        item: {
-            brief: maybe_apply_op(fold.ctxt, doc.brief()),
-            desc: maybe_apply_op(fold.ctxt, doc.desc())
-            with doc.item
-        },
         methods: apply_to_methods(fold.ctxt, doc.methods)
         with doc
     }
@@ -151,24 +119,10 @@ fn apply_to_methods(op: op, docs: [doc::methoddoc]) -> [doc::methoddoc] {
 }
 
 fn fold_impl(fold: fold::fold<op>, doc: doc::impldoc) -> doc::impldoc {
-    {
-        item: {
-            brief: maybe_apply_op(fold.ctxt, doc.brief()),
-            desc: maybe_apply_op(fold.ctxt, doc.desc())
-            with doc.item
-        },
-        methods: apply_to_methods(fold.ctxt, doc.methods)
-        with doc
-    }
-}
+    let doc = fold::default_seq_fold_impl(fold, doc);
 
-fn fold_type(fold: fold::fold<op>, doc: doc::tydoc) -> doc::tydoc {
     {
-        item: {
-            brief: maybe_apply_op(fold.ctxt, doc.brief()),
-            desc: maybe_apply_op(fold.ctxt, doc.desc())
-            with doc.item
-        }
+        methods: apply_to_methods(fold.ctxt, doc.methods)
         with doc
     }
 }
