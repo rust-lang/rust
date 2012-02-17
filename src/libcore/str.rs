@@ -1554,6 +1554,7 @@ mod tests {
 
     #[test]
     #[should_fail]
+    #[ignore(cfg(target_os = "win32"))]
     fn test_pop_char_fail() {
         let data = "";
         let _cc3 = pop_char(data);
