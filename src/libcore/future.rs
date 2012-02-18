@@ -15,6 +15,7 @@ export future;
 export future::{};
 export from_value;
 export from_port;
+export from_fn;
 export get;
 export with;
 export spawn;
@@ -23,7 +24,7 @@ import either = either::t;
 
 #[doc = "The future type"]
 enum future<A> = {
-    mutable v: either<@A, comm::port<A>>
+    mutable v: either<@A, fn@() -> A>
 };
 
 #[doc = "Methods on the `future` type"]
@@ -55,7 +56,7 @@ fn from_value<A>(+val: A) -> future<A> {
     })
 }
 
-fn from_port<A>(-port: comm::port<A>) -> future<A> {
+fn from_port<A:send>(-port: comm::port<A>) -> future<A> {
     #[doc = "
 
     Create a future from a port. The first time that the value is
@@ -64,29 +65,24 @@ fn from_port<A>(-port: comm::port<A>) -> future<A> {
 
     "];
 
+    from_fn {||
+        comm::recv(port)
+    }
+}
+
+fn from_fn<A>(f: fn@() -> A) -> future<A> {
+    #[doc = "
+
+    Create a future from a function. The first time that the value is
+    requested it will be retreived by calling the function.
+
+    Note that this function is a local function. It is not spawned into
+    another task.
+    "];
+
     future({
-        mutable v: either::right(port)
+        mutable v: either::right(f)
     })
-}
-
-fn get<A:send>(future: future<A>) -> A {
-    #[doc = "Get the value of the future"];
-
-    with(future) {|v| v }
-}
-
-fn with<A:send,B>(future: future<A>, blk: fn(A) -> B) -> B {
-    #[doc = "Work with the value without copying it"];
-
-    let v = alt future.v {
-      either::left(v) { v }
-      either::right(po) {
-        let v = @comm::recv(po);
-        future.v = either::left(v);
-        v
-      }
-    };
-    blk(*v)
 }
 
 fn spawn<A:send>(+blk: fn~() -> A) -> future<A> {
@@ -105,6 +101,26 @@ fn spawn<A:send>(+blk: fn~() -> A) -> future<A> {
     from_port(po)
 }
 
+fn get<A:copy>(future: future<A>) -> A {
+    #[doc = "Get the value of the future"];
+
+    with(future) {|v| v }
+}
+
+fn with<A,B>(future: future<A>, blk: fn(A) -> B) -> B {
+    #[doc = "Work with the value without copying it"];
+
+    let v = alt future.v {
+      either::left(v) { v }
+      either::right(f) {
+        let v = @f();
+        future.v = either::left(v);
+        v
+      }
+    };
+    blk(*v)
+}
+
 #[test]
 fn test_from_value() {
     let f = from_value("snail");
@@ -118,6 +134,13 @@ fn test_from_port() {
     comm::send(ch, "whale");
     let f = from_port(po);
     assert get(f) == "whale";
+}
+
+#[test]
+fn test_from_fn() {
+    let f = fn@() -> str { "brail" };
+    let f = from_fn(f);
+    assert get(f) == "brail";
 }
 
 #[test]
