@@ -393,18 +393,21 @@ rust_ptr_eq(type_desc *t, rust_box *a, rust_box *b) {
 #if defined(__WIN32__)
 extern "C" CDECL void
 get_time(uint32_t *sec, uint32_t *usec) {
-    rust_task *task = rust_task_thread::get_task();
-    SYSTEMTIME systemTime;
     FILETIME fileTime;
-    GetSystemTime(&systemTime);
-    if (!SystemTimeToFileTime(&systemTime, &fileTime)) {
-        task->fail();
-        return;
-    }
+    GetSystemTimeAsFileTime(&fileTime);
 
-    // FIXME: This is probably completely wrong.
-    *sec = fileTime.dwHighDateTime;
-    *usec = fileTime.dwLowDateTime;
+    // A FILETIME contains a 64-bit value representing the number of
+    // hectonanosecond (100-nanosecond) intervals since 1601-01-01T00:00:00Z.
+    // http://support.microsoft.com/kb/167296/en-us
+    ULARGE_INTEGER ul;
+    ul.LowPart = fileTime.dwLowDateTime;
+    ul.HighPart = fileTime.dwHighDateTime;
+    uint64_t ns_since_1601 = ul.QuadPart / 10;
+
+    const uint64_t NANOSECONDS_FROM_1601_TO_1970 = 11644473600000000u;
+    uint64_t ns_since_1970 = ns_since_1601 - NANOSECONDS_FROM_1601_TO_1970;
+    *sec = ns_since_1970 / 1000000;
+    *usec = ns_since_1970 % 1000000;
 }
 #else
 extern "C" CDECL void
@@ -417,7 +420,7 @@ get_time(uint32_t *sec, uint32_t *usec) {
 #endif
 
 extern "C" CDECL void
-nano_time(uint64_t *ns) {
+precise_time_ns(uint64_t *ns) {
     timer t;
     *ns = t.time_ns();
 }
