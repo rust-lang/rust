@@ -13,6 +13,8 @@ Benjamin Jackman <ben@jackman.biz>
 Brendan Eich <brendan@mozilla.org>
 Brian Anderson <banderson@mozilla.com>
 Chris Double <chris.double@double.co.nz>
+Chris Peterson <cpeterson@mozilla.com>
+Daniel Luz <dev@mernen.com>
 Dave Herman <dherman@mozilla.com>
 David Rajchenbach-Teller <dteller@mozilla.com>
 Donovan Preston <donovanpreston@gmail.com>
