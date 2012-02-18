@@ -1285,9 +1285,17 @@ fn lookup_in_mod(e: env, m: def, sp: span, name: ident, ns: namespace,
     }
 }
 
-fn found_view_item(e: env, id: node_id) -> def {
-    let cnum = cstore::get_use_stmt_cnum(e.cstore, id);
-    ret ast::def_mod({crate: cnum, node: ast::crate_node_id});
+fn found_view_item(e: env, id: node_id) -> option<def> {
+    alt cstore::find_use_stmt_cnum(e.cstore, id) {
+      some(cnum) {
+        some(ast::def_mod({crate: cnum, node: ast::crate_node_id}))
+      }
+      none {
+        // This can happen if we didn't load external crate info.
+        // Rustdoc depends on this.
+        none
+      }
+    }
 }
 
 fn lookup_import(e: env, defid: def_id, ns: namespace) -> option<def> {
@@ -1418,7 +1426,7 @@ fn lookup_in_mie(e: env, mie: mod_index_entry, ns: namespace) ->
    option<def> {
     alt mie {
       mie_view_item(_, id, _) {
-         if ns == ns_module { ret some(found_view_item(e, id)); }
+         if ns == ns_module { ret found_view_item(e, id); }
       }
       mie_import_ident(id, _) { ret lookup_import(e, local_def(id), ns); }
       mie_item(item) { ret found_def_item(item, ns); }

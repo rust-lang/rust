@@ -20,7 +20,7 @@ export get_used_libraries;
 export add_used_link_args;
 export get_used_link_args;
 export add_use_stmt_cnum;
-export get_use_stmt_cnum;
+export find_use_stmt_cnum;
 export get_dep_hashes;
 export get_path;
 
@@ -131,8 +131,9 @@ fn add_use_stmt_cnum(cstore: cstore, use_id: ast::node_id,
     p(cstore).use_crate_map.insert(use_id, cnum);
 }
 
-fn get_use_stmt_cnum(cstore: cstore, use_id: ast::node_id) -> ast::crate_num {
-    ret p(cstore).use_crate_map.get(use_id);
+fn find_use_stmt_cnum(cstore: cstore,
+                      use_id: ast::node_id) -> option<ast::crate_num> {
+    p(cstore).use_crate_map.find(use_id)
 }
 
 // returns hashes of crates directly used by this crate. Hashes are
