@@ -1936,7 +1936,7 @@ fn check_exports(e: @env) {
     fn check_enum_ok(e: @env, sp:span, id: ident, val: @indexed_mod)
         -> node_id {
         alt val.index.find(id) {
-           none { e.sess.span_fatal(sp, #fmt("error: undefined id %s\
+           none { e.sess.span_fatal(sp, #fmt("error: undefined id %s \
                          in an export", id)); }
            some(ms) {
              let maybe_id = list::find(ms) {|m|
