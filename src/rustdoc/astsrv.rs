@@ -221,8 +221,14 @@ fn srv_should_resolve_non_existant_imports() {
 }
 
 #[test]
-fn srv_sholud_resolve_non_existant_uses() {
+fn srv_should_resolve_non_existant_uses() {
     let source = "use forble; fn a() { }";
+    mk_srv_from_str(source);
+}
+
+#[test]
+fn should_ignore_external_import_paths_that_dont_exist() {
+    let source = "use forble; import forble::bippy;";
     mk_srv_from_str(source);
 }
 
