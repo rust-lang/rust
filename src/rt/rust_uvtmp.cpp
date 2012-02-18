@@ -57,6 +57,9 @@ struct timer_start_data {
 
 // UVTMP REWORK
 
+typedef void (*async_op_cb)(uv_loop_t* loop, void* data);
+typedef void (*rust_async_cb)(uint8_t* id_buf, void* loop_data);
+
 static void*
 current_kernel_malloc(size_t size, const char* tag) {
   return rust_task_thread::get_task()->malloc(size, tag);
@@ -68,6 +71,11 @@ current_kernel_free(void* ptr) {
   rust_task_thread::get_task()->free(ptr);
 }
 */
+#define RUST_UV_HANDLE_LEN 16
+struct async_data {
+	uint8_t id_buf[RUST_UV_HANDLE_LEN];
+	rust_async_cb cb;
+};
 
 extern "C" void*
 rust_uvtmp_uv_loop_new() {
@@ -79,11 +87,11 @@ rust_uvtmp_uv_loop_set_data(uv_loop_t* loop, void* data) {
     loop->data = data;
 }
 
-typedef void (*async_op_cb)(void* data);
-void native_async_op_cb(uv_async_t* handle, int status) {
+static void
+native_async_op_cb(uv_async_t* handle, int status) {
     async_op_cb cb = (async_op_cb)handle->data;
 	void* loop_data = handle->loop->data;
-	cb(loop_data);
+	cb(handle->loop, loop_data);
 }
 
 extern "C" void*
@@ -92,6 +100,8 @@ rust_uvtmp_uv_bind_op_cb(uv_loop_t* loop, async_op_cb cb) {
 		sizeof(uv_async_t),
 		"uv_async_t");
 	uv_async_init(loop, async, native_async_op_cb);
+	// decrement the ref count, so that our async bind
+	// does count towards keeping the loop alive
 	async->data = (void*)cb;
 	return async;
 }
@@ -103,6 +113,30 @@ extern "C" void rust_uvtmp_uv_run(uv_loop_t* loop) {
 extern "C" void
 rust_uvtmp_uv_async_send(uv_async_t* handle) {
     uv_async_send(handle);
+}
+
+static void
+native_async_cb(uv_async_t* handle, int status) {
+	async_data* handle_data = (async_data*)handle->data;
+	void* loop_data = handle->loop->data;
+	handle_data->cb(handle_data->id_buf, loop_data);
+}
+
+extern "C" void*
+rust_uvtmp_uv_async_init(uv_loop_t* loop, rust_async_cb cb,
+						 uint8_t* buf) {
+    uv_async_t* async = (uv_async_t*)current_kernel_malloc(
+		sizeof(uv_async_t),
+		"uv_async_t");
+	uv_async_init(loop, async, native_async_cb);
+	async_data* data = (async_data*)current_kernel_malloc(
+		sizeof(async_data),
+		"async_data");
+	memcpy(data->id_buf, buf, RUST_UV_HANDLE_LEN);
+	data->cb = cb;
+	async->data = data;
+
+	return async;
 }
 
 // UVTMP REWORK
