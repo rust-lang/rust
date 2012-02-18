@@ -9,25 +9,21 @@ import rustc::syntax::ast;
 import rustc::front::attr;
 import core::tuple;
 
-export crate_attrs, mod_attrs, fn_attrs, arg_attrs,
-       const_attrs, enum_attrs, variant_attrs, res_attrs,
-       iface_attrs, method_attrs, impl_attrs, type_attrs;
-export parse_crate, parse_mod, parse_fn, parse_const,
-       parse_enum, parse_variant, parse_res,
-       parse_iface, parse_method, parse_impl, parse_type;
+export crate_attrs, basic_attrs, fn_attrs, arg_attrs,
+       variant_attrs, res_attrs, method_attrs;
+export parse_crate, parse_basic, parse_fn,
+       parse_variant, parse_res, parse_method;
 
 type crate_attrs = {
     name: option<str>
 };
 
-type mod_attrs = {
+type basic_attrs = {
     brief: option<str>,
     desc: option<str>
 };
 
 type fn_attrs = {
-    brief: option<str>,
-    desc: option<str>,
     args: [arg_attrs],
     return: option<str>,
     failure: option<str>
@@ -38,42 +34,15 @@ type arg_attrs = {
     desc: str
 };
 
-type const_attrs = {
-    brief: option<str>,
-    desc: option<str>
-};
-
-type enum_attrs = {
-    brief: option<str>,
-    desc: option<str>
-};
-
 type variant_attrs = {
     desc: option<str>
 };
 
 type res_attrs = {
-    brief: option<str>,
-    desc: option<str>,
     args: [arg_attrs]
 };
 
-type iface_attrs = {
-    brief: option<str>,
-    desc: option<str>
-};
-
-type impl_attrs = {
-    brief: option<str>,
-    desc: option<str>
-};
-
 type method_attrs = fn_attrs;
-
-type type_attrs = {
-    brief: option<str>,
-    desc: option<str>
-};
 
 #[cfg(test)]
 mod test {
@@ -174,40 +143,36 @@ fn parse_basic(
     )
 }
 
-fn parse_mod(attrs: [ast::attribute]) -> mod_attrs {
-    parse_basic(attrs)
-}
-
 #[test]
-fn parse_mod_should_handle_undocumented_mods() {
+fn parse_basic_should_handle_undocumented_mods() {
     let source = "";
     let attrs = test::parse_attributes(source);
-    let attrs = parse_mod(attrs);
+    let attrs = parse_basic(attrs);
     assert attrs.brief == none;
     assert attrs.desc == none;
 }
 
 #[test]
-fn parse_mod_should_parse_simple_doc_attributes() {
+fn parse_basic_should_parse_simple_doc_attributes() {
     let source = "#[doc = \"basic\"]";
     let attrs = test::parse_attributes(source);
-    let attrs = parse_mod(attrs);
+    let attrs = parse_basic(attrs);
     assert attrs.desc == some("basic");
 }
 
 #[test]
-fn parse_mod_should_parse_the_brief_description() {
+fn parse_basic_should_parse_the_brief_description() {
     let source = "#[doc(brief = \"short\")]";
     let attrs = test::parse_attributes(source);
-    let attrs = parse_mod(attrs);
+    let attrs = parse_basic(attrs);
     assert attrs.brief == some("short");
 }
 
 #[test]
-fn parse_mod_should_parse_the_long_description() {
+fn parse_basic_should_parse_the_long_description() {
     let source = "#[doc(desc = \"description\")]";
     let attrs = test::parse_attributes(source);
-    let attrs = parse_mod(attrs);
+    let attrs = parse_basic(attrs);
     assert attrs.desc == some("description");
 }
 
@@ -246,37 +211,35 @@ fn parse_short_doc_or<T>(
     }
 }
 
-fn parse_fn(
-    attrs: [ast::attribute]
-) -> fn_attrs {
-
-    parse_short_doc_or(
-        attrs,
-        {|desc|
-            {
-                brief: none,
-                desc: desc,
-                args: [],
-                return: none,
-                failure: none
-            }
-        },
-        parse_fn_long_doc
-    )
+fn parse_long_doc<T>(
+    attrs: [ast::attribute],
+    parse_long: fn&(doc_items: [@ast::meta_item]) -> T
+) -> T {
+    alt doc_meta(attrs) {
+      some(meta) {
+        alt attr::get_meta_item_list(meta) {
+          some(list) {
+            parse_long(list)
+          }
+          none {
+            parse_long([])
+          }
+        }
+      }
+      none { parse_long([]) }
+    }
 }
 
-fn parse_fn_long_doc(
-    items: [@ast::meta_item],
-    brief: option<str>,
-    desc: option<str>
-) -> fn_attrs {
+fn parse_fn(attrs: [ast::attribute]) -> fn_attrs {
+    parse_long_doc(attrs, parse_fn_long_doc)
+}
+
+fn parse_fn_long_doc(items: [@ast::meta_item]) -> fn_attrs {
     let return = attr::meta_item_value_from_list(items, "return");
     let failure = attr::meta_item_value_from_list(items, "failure");
     let args = parse_args(items);
 
     {
-        brief: brief,
-        desc: desc,
         args: args,
         return: return,
         failure: failure
@@ -304,34 +267,8 @@ fn parse_fn_should_handle_undocumented_functions() {
     let source = "";
     let attrs = test::parse_attributes(source);
     let attrs = parse_fn(attrs);
-    assert attrs.brief == none;
-    assert attrs.desc == none;
     assert attrs.return == none;
     assert vec::len(attrs.args) == 0u;
-}
-
-#[test]
-fn parse_fn_should_parse_simple_doc_attributes() {
-    let source = "#[doc = \"basic\"]";
-    let attrs = test::parse_attributes(source);
-    let attrs = parse_fn(attrs);
-    assert attrs.desc == some("basic");
-}
-
-#[test]
-fn parse_fn_should_parse_the_brief_description() {
-    let source = "#[doc(brief = \"short\")]";
-    let attrs = test::parse_attributes(source);
-    let attrs = parse_fn(attrs);
-    assert attrs.brief == some("short");
-}
-
-#[test]
-fn parse_fn_should_parse_the_long_description() {
-    let source = "#[doc(desc = \"description\")]";
-    let attrs = test::parse_attributes(source);
-    let attrs = parse_fn(attrs);
-    assert attrs.desc == some("description");
 }
 
 #[test]
@@ -357,48 +294,6 @@ fn parse_fn_should_parse_failure_conditions() {
     let attrs = test::parse_attributes(source);
     let attrs = parse_fn(attrs);
     assert attrs.failure == some("it's the fail");
-}
-
-fn parse_const(attrs: [ast::attribute]) -> const_attrs {
-    parse_basic(attrs)
-}
-
-#[test]
-fn should_parse_const_short_doc() {
-    let source = "#[doc = \"description\"]";
-    let attrs = test::parse_attributes(source);
-    let attrs = parse_const(attrs);
-    assert attrs.desc == some("description");
-}
-
-#[test]
-fn should_parse_const_long_doc() {
-    let source = "#[doc(brief = \"a\", desc = \"b\")]";
-    let attrs = test::parse_attributes(source);
-    let attrs = parse_const(attrs);
-    assert attrs.brief == some("a");
-    assert attrs.desc == some("b");
-}
-
-fn parse_enum(attrs: [ast::attribute]) -> enum_attrs {
-    parse_basic(attrs)
-}
-
-#[test]
-fn should_parse_enum_short_doc() {
-    let source = "#[doc = \"description\"]";
-    let attrs = test::parse_attributes(source);
-    let attrs = parse_enum(attrs);
-    assert attrs.desc == some("description");
-}
-
-#[test]
-fn should_parse_enum_long_doc() {
-    let source = "#[doc(brief = \"a\", desc = \"b\")]";
-    let attrs = test::parse_attributes(source);
-    let attrs = parse_enum(attrs);
-    assert attrs.brief == some("a");
-    assert attrs.desc == some("b");
 }
 
 fn parse_variant(attrs: [ast::attribute]) -> variant_attrs {
@@ -446,50 +341,14 @@ fn should_parse_variant_long_doc() {
     assert attrs.desc == some("a");
 }
 
-fn parse_res(
-    attrs: [ast::attribute]
-) -> res_attrs {
-
-    parse_short_doc_or(
-        attrs,
-        {|desc|
-            {
-                brief: none,
-                desc: desc,
-                args: []
-            }
-        },
-        parse_res_long_doc
-    )
+fn parse_res(attrs: [ast::attribute]) -> res_attrs {
+    parse_long_doc(attrs, parse_res_long_doc)
 }
 
-fn parse_res_long_doc(
-    items: [@ast::meta_item],
-    brief: option<str>,
-    desc: option<str>
-) -> res_attrs {
+fn parse_res_long_doc(items: [@ast::meta_item]) -> res_attrs {
     {
-        brief: brief,
-        desc: desc,
         args: parse_args(items)
     }
-}
-
-#[test]
-fn should_parse_resource_short_desc() {
-    let source = "#[doc = \"a\"]";
-    let attrs = test::parse_attributes(source);
-    let attrs = parse_res(attrs);
-    assert attrs.desc == some("a");
-}
-
-#[test]
-fn should_parse_resource_long_desc() {
-    let source = "#[doc(brief = \"a\", desc = \"b\")]";
-    let attrs = test::parse_attributes(source);
-    let attrs = parse_res(attrs);
-    assert attrs.brief == some("a");
-    assert attrs.desc == some("b");
 }
 
 #[test]
@@ -501,18 +360,6 @@ fn shoulde_parse_resource_arg() {
     assert attrs.args[0].desc == "b";
 }
 
-fn parse_iface(attrs: [ast::attribute]) -> iface_attrs {
-    parse_basic(attrs)
-}
-
 fn parse_method(attrs: [ast::attribute]) -> method_attrs {
     parse_fn(attrs)
-}
-
-fn parse_impl(attrs: [ast::attribute]) -> impl_attrs {
-    parse_basic(attrs)
-}
-
-fn parse_type(attrs: [ast::attribute]) -> type_attrs {
-    parse_basic(attrs)
 }
