@@ -55,6 +55,58 @@ struct timer_start_data {
     chan_handle chan;
 };
 
+// UVTMP REWORK
+
+static void*
+current_kernel_malloc(size_t size, const char* tag) {
+  return rust_task_thread::get_task()->malloc(size, tag);
+}
+
+/*
+static void
+current_kernel_free(void* ptr) {
+  rust_task_thread::get_task()->free(ptr);
+}
+*/
+
+extern "C" void*
+rust_uvtmp_uv_loop_new() {
+    return (void*)uv_loop_new();
+}
+
+extern "C" void
+rust_uvtmp_uv_loop_set_data(uv_loop_t* loop, void* data) {
+    loop->data = data;
+}
+
+typedef void (*async_op_cb)(void* data);
+void native_async_op_cb(uv_async_t* handle, int status) {
+    async_op_cb cb = (async_op_cb)handle->data;
+	void* loop_data = handle->loop->data;
+	cb(loop_data);
+}
+
+extern "C" void*
+rust_uvtmp_uv_bind_op_cb(uv_loop_t* loop, async_op_cb cb) {
+    uv_async_t* async = (uv_async_t*)current_kernel_malloc(
+		sizeof(uv_async_t),
+		"uv_async_t");
+	uv_async_init(loop, async, native_async_op_cb);
+	async->data = (void*)cb;
+	return async;
+}
+
+extern "C" void rust_uvtmp_uv_run(uv_loop_t* loop) {
+	uv_run(loop);
+}
+
+extern "C" void
+rust_uvtmp_uv_async_send(uv_async_t* handle) {
+    uv_async_send(handle);
+}
+
+// UVTMP REWORK
+
 // FIXME: Copied from rust_builtins.cpp. Could bitrot easily
 static void
 send(rust_task *task, chan_handle chan, void *data) {
