@@ -409,13 +409,14 @@ fn pop<T>(&v: [const T]) -> T unsafe {
     val
 }
 
+#[inline]
 /*
 Function: push
 
-Append an element to a vector and return it
+Append an element to a vector
 */
 fn push<T: copy>(&v: [T], initval: T) {
-    grow(v, 1u, initval)
+    v += [initval];
 }
 
 // TODO: More.
