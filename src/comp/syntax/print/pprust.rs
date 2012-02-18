@@ -1333,6 +1333,44 @@ fn print_meta_item(s: ps, &&item: @ast::meta_item) {
     end(s);
 }
 
+fn print_simple_path(s: ps, path: ast::simple_path) {
+    let first = true;
+    for id in path {
+        if first { first = false; } else { word(s.s, "::"); }
+        word(s.s, id);
+    }
+}
+
+fn print_view_path(s: ps, &&vp: @ast::view_path) {
+    alt vp.node {
+      ast::view_path_simple(ident, path, _) {
+        if path[vec::len(*path)-1u] != ident {
+            word_space(s, ident);
+            word_space(s, "=");
+        }
+        print_simple_path(s, *path);
+      }
+
+      ast::view_path_glob(path, _) {
+        print_simple_path(s, *path);
+        word(s.s, "::*");
+      }
+
+      ast::view_path_list(path, idents, _) {
+        print_simple_path(s, *path);
+        word(s.s, "::{");
+        commasep(s, inconsistent, idents) {|s, w|
+            word(s.s, w.node.name)
+        }
+        word(s.s, "}");
+      }
+    }
+}
+
+fn print_view_paths(s: ps, vps: [@ast::view_path]) {
+    commasep(s, inconsistent, vps, print_view_path);
+}
+
 fn print_view_item(s: ps, item: @ast::view_item) {
     hardbreak_if_not_bol(s);
     maybe_print_comment(s, item.span.lo);
@@ -1346,59 +1384,20 @@ fn print_view_item(s: ps, item: @ast::view_item) {
             pclose(s);
         }
       }
-      ast::view_item_import(id, ids, _) {
+
+      ast::view_item_import(vps) {
         head(s, "import");
-        if !str::eq(id, ids[vec::len(*ids) - 1u]) {
-            word_space(s, id);
-            word_space(s, "=");
-        }
-        let first = true;
-        for elt: ast::ident in *ids {
-            if first { first = false; } else { word(s.s, "::"); }
-            word(s.s, elt);
-        }
+        print_view_paths(s, vps);
       }
-      ast::view_item_import_from(mod_path, idents, _) {
-        head(s, "import");
-        for elt: ast::ident in *mod_path { word(s.s, elt); word(s.s, "::"); }
-        word(s.s, "{");
-        commasep(s, inconsistent, idents,
-                 fn@(s: ps, w: ast::import_ident) { word(s.s, w.node.name) });
-        word(s.s, "}");
-      }
-      ast::view_item_import_glob(ids, _) {
-        head(s, "import");
-        let first = true;
-        for elt: ast::ident in *ids {
-            if first { first = false; } else { word(s.s, "::"); }
-            word(s.s, elt);
-        }
-        word(s.s, "::*");
-      }
-      ast::view_item_export(ids, _) {
+
+      ast::view_item_export(vps) {
         head(s, "export");
-        commasep(s, inconsistent, ids,
-                 fn@(s: ps, &&w: ast::ident) { word(s.s, w) });
-      }
-      ast::view_item_export_enum_none(id, _) {
-          head(s, "export");
-          word(s.s, id);
-          word(s.s, "::{}");
-      }
-      ast::view_item_export_enum_some(id, ids, _) {
-          head(s, "export");
-          word(s.s, id);
-          word(s.s, "::{");
-          commasep(s, inconsistent, ids, fn@(s:ps, &&w: ast::import_ident) {
-                  word(s.s, w.node.name) });
-          word(s.s, "}");
+        print_view_paths(s, vps);
       }
     }
     word(s.s, ";");
     end(s); // end inner head-block
-
     end(s); // end outer head-block
-
 }
 
 

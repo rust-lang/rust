@@ -441,26 +441,36 @@ type variant_ = {name: ident, attrs: [attribute], args: [variant_arg],
 
 type variant = spanned<variant_>;
 
-type view_item = spanned<view_item_>;
 
 // FIXME: May want to just use path here, which would allow things like
 // 'import ::foo'
 type simple_path = [ident];
 
-type import_ident_ = {name: ident, id: node_id};
+type path_list_ident_ = {name: ident, id: node_id};
+type path_list_ident = spanned<path_list_ident_>;
 
-type import_ident = spanned<import_ident_>;
+type view_path = spanned<view_path_>;
+enum view_path_ {
 
+    // quux = foo::bar::baz
+    //
+    // or just
+    //
+    // foo::bar::baz  (with 'baz =' implicitly on the left)
+    view_path_simple(ident, @simple_path, node_id),
+
+    // foo::bar::*
+    view_path_glob(@simple_path, node_id),
+
+    // foo::bar::{a,b,c}
+    view_path_list(@simple_path, [path_list_ident], node_id)
+}
+
+type view_item = spanned<view_item_>;
 enum view_item_ {
     view_item_use(ident, [@meta_item], node_id),
-    view_item_import(ident, @simple_path, node_id),
-    view_item_import_glob(@simple_path, node_id),
-    view_item_import_from(@simple_path, [import_ident], node_id),
-    view_item_export([ident], node_id),
-    // export foo::{}
-    view_item_export_enum_none(ident, node_id),
-    // export foo::{bar, baz, blat}
-    view_item_export_enum_some(ident, [import_ident], node_id)
+    view_item_import([@view_path]),
+    view_item_export([@view_path])
 }
 
 // Meta-data associated with an item

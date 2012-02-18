@@ -31,7 +31,8 @@ fn inject_libcore_ref(sess: session,
     let n2 = sess.next_node_id();
 
     let vi1 = spanned(ast::view_item_use("core", [], n1));
-    let vi2 = spanned(ast::view_item_import_glob(@["core"], n2));
+    let vp = spanned(ast::view_path_glob(@["core"], n2));
+    let vi2 = spanned(ast::view_item_import([vp]));
 
     let vis = [vi1, vi2] + crate.node.module.view_items;
 

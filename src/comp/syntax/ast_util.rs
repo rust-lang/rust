@@ -116,56 +116,63 @@ fn float_ty_to_str(t: float_ty) -> str {
 }
 
 fn is_exported(i: ident, m: _mod) -> bool {
-    let nonlocal = true;
+    let local = false;
     let parent_enum : option<ident> = none;
     for it: @item in m.items {
-        if it.ident == i { nonlocal = false; }
+        if it.ident == i { local = true; }
         alt it.node {
           item_enum(variants, _) {
             for v: variant in variants {
                 if v.node.name == i {
-                   nonlocal = false;
+                   local = true;
                    parent_enum = some(it.ident);
                 }
             }
           }
           _ { }
         }
-        if !nonlocal { break; }
+        if local { break; }
     }
-    let count = 0u;
+    let has_explicit_exports = false;
     for vi: @view_item in m.view_items {
         alt vi.node {
-          view_item_export(ids, _) {
-              // If any of ids is a enum, we want to consider
-              // all the variants to be exported
-            for id in ids {
-                if str::eq(i, id) { ret true; }
-                alt parent_enum {
-                    some(parent_enum_id) {
-                        if str::eq(id, parent_enum_id) { ret true; }
+          view_item_export(vps) {
+            has_explicit_exports = true;
+            for vp in vps {
+                alt vp.node {
+                  ast::view_path_simple(id, _, _) {
+                    if id == i { ret true; }
+                    alt parent_enum {
+                      some(parent_enum_id) {
+                        if id == parent_enum_id { ret true; }
+                      }
+                      _ {}
                     }
-                    _ { }
-                 }
+                  }
+
+                  ast::view_path_list(path, ids, _) {
+                    if vec::len(*path) == 1u {
+                        if i == path[0] { ret true; }
+                        for id in ids {
+                            if id.node.name == i { ret true; }
+                        }
+                    } else {
+                        fail "export of path-qualified list";
+                    }
+                  }
+
+                  // FIXME: glob-exports aren't supported yet.
+                  _ {}
+                }
             }
-            count += 1u;
           }
-          view_item_export_enum_none(id, _) {
-              if str::eq(i, id) { ret true; }
-              count += 1u;
-          }
-          view_item_export_enum_some(id, ids, _) {
-              if str::eq(i, id) { ret true; }
-              for id in ids { if str::eq(i, id.node.name) { ret true; } }
-              count += 1u;
-          }
-          _ {/* fall through */ }
+          _ {}
         }
     }
     // If there are no declared exports then
     // everything not imported is exported
-    // even if it's nonlocal (since it's explicit)
-    ret count == 0u && !nonlocal;
+    // even if it's local (since it's explicit)
+    ret !has_explicit_exports && local;
 }
 
 pure fn is_call_expr(e: @expr) -> bool {

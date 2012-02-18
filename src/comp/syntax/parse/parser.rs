@@ -202,7 +202,7 @@ fn parse_ident(p: parser) -> ast::ident {
     }
 }
 
-fn parse_import_ident(p: parser) -> ast::import_ident {
+fn parse_path_list_ident(p: parser) -> ast::path_list_ident {
     let lo = p.span.lo;
     let ident = parse_ident(p);
     let hi = p.span.hi;
@@ -2421,139 +2421,80 @@ fn parse_use(p: parser) -> ast::view_item_ {
     ret ast::view_item_use(ident, metadata, p.get_id());
 }
 
-fn parse_rest_import_name(p: parser, first: ast::ident,
-                          def_ident: option<ast::ident>) ->
-   ast::view_item_ {
-    let identifiers: [ast::ident] = [first];
-    let glob: bool = false;
-    let from_idents = option::none::<[ast::import_ident]>;
-    while true {
-        alt p.token {
-          token::SEMI { break; }
-          token::MOD_SEP {
-            if glob { p.fatal("cannot path into a glob"); }
-            if option::is_some(from_idents) {
-                p.fatal("cannot path into import list");
-            }
-            p.bump();
-          }
-          _ { p.fatal("expecting '::' or ';'"); }
-        }
-        alt p.token {
-          token::IDENT(_, _) { identifiers += [parse_ident(p)]; }
-
-
-
-
-
-          //the lexer can't tell the different kinds of stars apart ) :
-          token::BINOP(token::STAR) {
-            glob = true;
-            p.bump();
-          }
-
-
-
-
-
-          token::LBRACE {
-            let from_idents_ =
-                parse_seq(token::LBRACE, token::RBRACE, seq_sep(token::COMMA),
-                          parse_import_ident, p).node;
-            if vec::is_empty(from_idents_) {
-                p.fatal("at least one import is required");
-            }
-            from_idents = some(from_idents_);
-          }
-
-
-
-
-
-          _ {
-            p.fatal("expecting an identifier, or '*'");
-          }
-        }
-    }
-    alt def_ident {
-      some(i) {
-        if glob { p.fatal("globbed imports can't be renamed"); }
-        if option::is_some(from_idents) {
-            p.fatal("can't rename import list");
-        }
-        ret ast::view_item_import(i, @identifiers, p.get_id());
-      }
-      _ {
-        if glob {
-            ret ast::view_item_import_glob(@identifiers, p.get_id());
-        } else if option::is_some(from_idents) {
-            ret ast::view_item_import_from(@identifiers,
-                                           option::get(from_idents),
-                                           p.get_id());
-        } else {
-            let len = vec::len(identifiers);
-            ret ast::view_item_import(identifiers[len - 1u], @identifiers,
-                                      p.get_id());
-        }
-      }
-    }
-}
-
-fn parse_full_import_name(p: parser, def_ident: ast::ident) ->
-   ast::view_item_ {
+fn parse_view_path(p: parser) -> @ast::view_path {
+    let lo = p.span.lo;
+    let first_ident = parse_ident(p);
+    let path = [first_ident];
+    #debug("parsed view_path: %s", first_ident);
     alt p.token {
-      token::IDENT(i, _) {
+      token::EQ {
+        // x = foo::bar
         p.bump();
-        ret parse_rest_import_name(p, p.get_str(i), some(def_ident));
-      }
-      _ { p.fatal("expecting an identifier"); }
-    }
-}
-
-fn parse_import(p: parser) -> ast::view_item_ {
-    alt p.token {
-      token::IDENT(i, _) {
-        p.bump();
-        alt p.token {
-          token::EQ {
+        path = [parse_ident(p)];
+        while p.token == token::MOD_SEP {
             p.bump();
-            ret parse_full_import_name(p, p.get_str(i));
-          }
-          _ { ret parse_rest_import_name(p, p.get_str(i), none); }
+            let id = parse_ident(p);
+            path += [id];
+        }
+        let hi = p.span.hi;
+        ret @spanned(lo, hi,
+                     ast::view_path_simple(first_ident,
+                                           @path, p.get_id()));
+      }
+
+      token::MOD_SEP {
+        // foo::bar or foo::{a,b,c} or foo::*
+        while p.token == token::MOD_SEP {
+            p.bump();
+
+            alt p.token {
+
+              token::IDENT(i, _) {
+                p.bump();
+                path += [p.get_str(i)];
+              }
+
+              // foo::bar::{a,b,c}
+              token::LBRACE {
+                let idents =
+                    parse_seq(token::LBRACE, token::RBRACE,
+                              seq_sep(token::COMMA),
+                              parse_path_list_ident, p).node;
+                let hi = p.span.hi;
+                ret @spanned(lo, hi,
+                             ast::view_path_list(@path, idents,
+                                                 p.get_id()));
+              }
+
+              // foo::bar::*
+              token::BINOP(token::STAR) {
+                p.bump();
+                let hi = p.span.hi;
+                ret @spanned(lo, hi,
+                             ast::view_path_glob(@path,
+                                                 p.get_id()));
+              }
+
+              _ { break; }
+            }
         }
       }
-      _ { p.fatal("expecting an identifier"); }
+      _ { }
     }
+    let hi = p.span.hi;
+    let last = path[vec::len(path) - 1u];
+    ret @spanned(lo, hi,
+                 ast::view_path_simple(last, @path,
+                                       p.get_id()));
 }
 
-fn parse_enum_export(p:parser, tyname:ast::ident) -> ast::view_item_ {
-    let enumnames:[ast::import_ident] =
-        parse_seq(token::LBRACE, token::RBRACE,
-             seq_sep(token::COMMA), {|p| parse_import_ident(p) }, p).node;
-    let id = p.get_id();
-    if vec::is_empty(enumnames) {
-       ret ast::view_item_export_enum_none(tyname, id);
+fn parse_view_paths(p: parser) -> [@ast::view_path] {
+    let vp = [parse_view_path(p)];
+    while p.token == token::COMMA {
+        p.bump();
+        vp += [parse_view_path(p)];
     }
-    else {
-       ret ast::view_item_export_enum_some(tyname, enumnames, id);
-    }
-}
-
-fn parse_export(p: parser) -> ast::view_item_ {
-    let first = parse_ident(p);
-    alt p.token {
-       token::MOD_SEP {
-           p.bump();
-           ret parse_enum_export(p, first);
-       }
-       t {
-           if t == token::COMMA { p.bump(); }
-           let ids =
-               parse_seq_to_before_end(token::SEMI, seq_sep(token::COMMA),
-                                       parse_ident, p);
-           ret ast::view_item_export(vec::concat([[first], ids]), p.get_id());
-       }
-    }
+    ret vp;
 }
 
 fn parse_view_item(p: parser) -> @ast::view_item {
@@ -2562,8 +2503,12 @@ fn parse_view_item(p: parser) -> @ast::view_item {
         if eat_word(p, "use") {
             parse_use(p)
         } else if eat_word(p, "import") {
-            parse_import(p)
-        } else if eat_word(p, "export") { parse_export(p) } else { fail };
+            ast::view_item_import(parse_view_paths(p))
+        } else if eat_word(p, "export") {
+            ast::view_item_export(parse_view_paths(p))
+        } else {
+            fail
+    };
     let hi = p.span.lo;
     expect(p, token::SEMI);
     ret @spanned(lo, hi, the_item);
