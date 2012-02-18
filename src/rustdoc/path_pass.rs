@@ -15,15 +15,18 @@ fn run(srv: astsrv::srv, doc: doc::cratedoc) -> doc::cratedoc {
         mutable path: []
     };
     let fold = fold::fold({
-        fold_mod: fn~(
-            f: fold::fold<ctxt>,
-            d: doc::moddoc
-        ) -> doc::moddoc {
-            fold_mod(f, d)
-        }
+        fold_item: fold_item,
+        fold_mod: fold_mod
         with *fold::default_seq_fold(ctxt)
     });
     fold.fold_crate(fold, doc)
+}
+
+fn fold_item(fold: fold::fold<ctxt>, doc: doc::itemdoc) -> doc::itemdoc {
+    {
+        path: fold.ctxt.path
+        with doc
+    }
 }
 
 fn fold_mod(fold: fold::fold<ctxt>, doc: doc::moddoc) -> doc::moddoc {
@@ -32,11 +35,9 @@ fn fold_mod(fold: fold::fold<ctxt>, doc: doc::moddoc) -> doc::moddoc {
     if !is_topmod { vec::push(fold.ctxt.path, doc.name()); }
     let doc = fold::default_seq_fold_mod(fold, doc);
     if !is_topmod { vec::pop(fold.ctxt.path); }
+
     {
-        item: {
-            path: fold.ctxt.path
-            with doc.item
-        }
+        item: fold.fold_item(fold, doc.item)
         with doc
     }
 }
@@ -47,6 +48,16 @@ fn should_record_mod_paths() {
     let srv = astsrv::mk_srv_from_str(source);
     let doc = extract::from_srv(srv, "");
     let doc = run(srv, doc);
+    log(error, doc.topmod.mods()[0].mods()[0].mods()[0].path());
     assert doc.topmod.mods()[0].mods()[0].mods()[0].path() == ["a", "b"];
     assert doc.topmod.mods()[0].mods()[1].mods()[0].path() == ["a", "d"];
+}
+
+#[test]
+fn should_record_fn_paths() {
+    let source = "mod a { fn b() { } }";
+    let srv = astsrv::mk_srv_from_str(source);
+    let doc = extract::from_srv(srv, "");
+    let doc = run(srv, doc);
+    assert doc.topmod.mods()[0].fns()[0].path() == ["a"];
 }
