@@ -5,7 +5,7 @@ Module: time
 #[abi = "cdecl"]
 native mod rustrt {
     fn get_time(&sec: u32, &usec: u32);
-    fn nano_time(&ns: u64);
+    fn precise_time_ns(&ns: u64);
 }
 
 /*
@@ -34,7 +34,7 @@ Function: precise_time_ns
 Returns the current value of a high-resolution performance counter
 in nanoseconds since an unspecified epoch.
 */
-fn precise_time_ns() -> u64 { let ns = 0u64; rustrt::nano_time(ns); ret ns; }
+fn precise_time_ns() -> u64 { let ns = 0u64; rustrt::precise_time_ns(ns); ns }
 
 /*
 Function: precise_time_s

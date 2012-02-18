@@ -420,7 +420,7 @@ get_time(uint32_t *sec, uint32_t *usec) {
 #endif
 
 extern "C" CDECL void
-nano_time(uint64_t *ns) {
+precise_time_ns(uint64_t *ns) {
     timer t;
     *ns = t.time_ns();
 }
