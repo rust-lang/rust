@@ -9,6 +9,8 @@ for correctness, but some UTF-8 unsafe functions are also provided.
 For some heavy-duty uses, we recommend trying std::rope.
 */
 
+import option::{some, none};
+
 export
    // Creating a string
    from_bytes,
@@ -69,9 +71,11 @@ export
    // Searching
    index,
    byte_index,
+   byte_index_from,
    rindex,
    find,
    find_bytes,
+   find_from_bytes,
    contains,
    starts_with,
    ends_with,
@@ -665,8 +669,8 @@ fn replace(s: str, from: str, to: str) : is_not_empty(from) -> str unsafe {
     } else {
         let idx;
         alt find_bytes(s, from) {
-            option::some(x) { idx = x; }
-            option::none { ret s; }
+            some(x) { idx = x; }
+            none { ret s; }
         }
         let before = unsafe::slice_bytes(s, 0u, idx as uint);
         let after  = unsafe::slice_bytes(s, idx as uint + len_bytes(from),
@@ -842,7 +846,7 @@ fn index(ss: str, cc: char) -> option<uint> {
 
         // found here?
         if ch == cc {
-            ret option::some(cii);
+            ret some(cii);
         }
 
         cii += 1u;
@@ -850,20 +854,26 @@ fn index(ss: str, cc: char) -> option<uint> {
     }
 
     // wasn't found
-    ret option::none;
+    ret none;
 }
 
 // Function: byte_index
 //
 // Returns the index of the first matching byte
 // (as option some/none)
-fn byte_index(s: str, b: u8, start: uint) -> option<uint> {
-    let i = start, l = len_bytes(s);
-    while i < l {
-        if s[i] == b { ret some(i); }
-        i += 1u;
-    }
-    ret none;
+fn byte_index(s: str, b: u8) -> option<uint> {
+    byte_index_from(s, b, 0u, len_bytes(s))
+}
+
+// Function: byte_index_from
+//
+// Returns the index of the first matching byte within the range [`start`,
+// `end`).
+// (as option some/none)
+fn byte_index_from(s: str, b: u8, start: uint, end: uint) -> option<uint> {
+    assert end <= len_bytes(s);
+
+    str::as_bytes(s) { |v| vec::position_from(v, start, end) { |x| x == b } }
 }
 
 // Function: rindex
@@ -880,26 +890,36 @@ fn rindex(ss: str, cc: char) -> option<uint> {
 
         // found here?
         if ch == cc {
-            ret option::some(cii);
+            ret some(cii);
         }
     }
 
     // wasn't found
-    ret option::none;
+    ret none;
 }
 
 //Function: find_bytes
 //
 // Find the char position of the first instance of one string
 // within another, or return option::none
+fn find_bytes(haystack: str, needle: str) -> option<uint> {
+    find_from_bytes(haystack, needle, 0u, len_bytes(haystack))
+}
+
+//Function: find_from_bytes
+//
+// Find the char position of the first instance of one string
+// within another, or return option::none
 //
 // FIXME: Boyer-Moore should be significantly faster
-fn find_bytes(haystack: str, needle: str) -> option<uint> {
-    let haystack_len = len_bytes(haystack);
-    let needle_len   = len_bytes(needle);
+fn find_from_bytes(haystack: str, needle: str, start: uint, end:uint)
+  -> option<uint> {
+    assert end <= len_bytes(haystack);
 
-    if needle_len == 0u { ret option::some(0u); }
-    if needle_len > haystack_len { ret option::none; }
+    let needle_len = len_bytes(needle);
+
+    if needle_len == 0u { ret some(start); }
+    if needle_len > end { ret none; }
 
     fn match_at(haystack: str, needle: str, ii: uint) -> bool {
         let jj = ii;
@@ -907,13 +927,13 @@ fn find_bytes(haystack: str, needle: str) -> option<uint> {
         ret true;
     }
 
-    let ii = 0u;
-    while ii <= haystack_len - needle_len {
-        if match_at(haystack, needle, ii) { ret option::some(ii); }
+    let ii = start;
+    while ii <= end - needle_len {
+        if match_at(haystack, needle, ii) { ret some(ii); }
         ii += 1u;
     }
 
-    ret option::none;
+    ret none;
 }
 
 // Function: find
@@ -922,8 +942,8 @@ fn find_bytes(haystack: str, needle: str) -> option<uint> {
 // within another, or return option::none
 fn find(haystack: str, needle: str) -> option<uint> {
    alt find_bytes(haystack, needle) {
-      option::none { ret option::none; }
-      option::some(nn) { ret option::some(b2c_pos(haystack, nn)); }
+      none { ret none; }
+      some(nn) { ret some(b2c_pos(haystack, nn)); }
    }
 }
 
@@ -1522,18 +1542,18 @@ mod tests {
 
     #[test]
     fn test_index() {
-        assert ( index("hello", 'h') == option::some(0u));
-        assert ( index("hello", 'e') == option::some(1u));
-        assert ( index("hello", 'o') == option::some(4u));
-        assert ( index("hello", 'z') == option::none);
+        assert ( index("hello", 'h') == some(0u));
+        assert ( index("hello", 'e') == some(1u));
+        assert ( index("hello", 'o') == some(4u));
+        assert ( index("hello", 'z') == none);
     }
 
     #[test]
     fn test_rindex() {
-        assert (rindex("hello", 'l') == option::some(3u));
-        assert (rindex("hello", 'o') == option::some(4u));
-        assert (rindex("hello", 'h') == option::some(0u));
-        assert (rindex("hello", 'z') == option::none);
+        assert (rindex("hello", 'l') == some(3u));
+        assert (rindex("hello", 'o') == some(4u));
+        assert (rindex("hello", 'h') == some(0u));
+        assert (rindex("hello", 'z') == none);
     }
 
     #[test]
@@ -1738,29 +1758,57 @@ mod tests {
     #[test]
     fn test_find_bytes() {
         // byte positions
-        assert (find_bytes("banana", "apple pie") == option::none);
-        assert (find_bytes("", "") == option::some(0u));
+        assert (find_bytes("banana", "apple pie") == none);
+        assert (find_bytes("", "") == some(0u));
 
         let data = "ประเทศไทย中华Việt Nam";
-        assert (find_bytes(data, "")     == option::some(0u));
-        assert (find_bytes(data, "ประเ") == option::some( 0u));
-        assert (find_bytes(data, "ะเ")   == option::some( 6u));
-        assert (find_bytes(data, "中华") == option::some(27u));
-        assert (find_bytes(data, "ไท华") == option::none);
+        assert (find_bytes(data, "")     == some(0u));
+        assert (find_bytes(data, "ประเ") == some( 0u));
+        assert (find_bytes(data, "ะเ")   == some( 6u));
+        assert (find_bytes(data, "中华") == some(27u));
+        assert (find_bytes(data, "ไท华") == none);
+    }
+
+    #[test]
+    fn test_find_from_bytes() {
+        // byte positions
+        assert (find_from_bytes("", "", 0u, 0u) == some(0u));
+
+        let data = "abcabc";
+        assert find_from_bytes(data, "ab", 0u, 6u) == some(0u);
+        assert find_from_bytes(data, "ab", 2u, 6u) == some(3u);
+        assert find_from_bytes(data, "ab", 2u, 4u) == none;
+
+        let data = "ประเทศไทย中华Việt Nam";
+        data += data;
+        assert find_from_bytes(data, "", 0u, 43u) == some(0u);
+        assert find_from_bytes(data, "", 6u, 43u) == some(6u);
+
+        assert find_from_bytes(data, "ประ", 0u, 43u) == some( 0u);
+        assert find_from_bytes(data, "ทศไ", 0u, 43u) == some(12u);
+        assert find_from_bytes(data, "ย中", 0u, 43u) == some(24u);
+        assert find_from_bytes(data, "iệt", 0u, 43u) == some(34u);
+        assert find_from_bytes(data, "Nam", 0u, 43u) == some(40u);
+
+        assert find_from_bytes(data, "ประ", 43u, 86u) == some(43u);
+        assert find_from_bytes(data, "ทศไ", 43u, 86u) == some(55u);
+        assert find_from_bytes(data, "ย中", 43u, 86u) == some(67u);
+        assert find_from_bytes(data, "iệt", 43u, 86u) == some(77u);
+        assert find_from_bytes(data, "Nam", 43u, 86u) == some(83u);
     }
 
     #[test]
     fn test_find() {
         // char positions
-        assert (find("banana", "apple pie") == option::none);
-        assert (find("", "") == option::some(0u));
+        assert (find("banana", "apple pie") == none);
+        assert (find("", "") == some(0u));
 
         let data = "ประเทศไทย中华Việt Nam";
-        assert (find(data, "")     == option::some(0u));
-        assert (find(data, "ประเ") == option::some(0u));
-        assert (find(data, "ะเ")   == option::some(2u));
-        assert (find(data, "中华") == option::some(9u));
-        assert (find(data, "ไท华") == option::none);
+        assert (find(data, "")     == some(0u));
+        assert (find(data, "ประเ") == some(0u));
+        assert (find(data, "ะเ")   == some(2u));
+        assert (find(data, "中华") == some(9u));
+        assert (find(data, "ไท华") == none);
     }
 
     #[test]
