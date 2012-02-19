@@ -152,6 +152,7 @@ fn any<A, IA:iterable<A>>(self: IA, prd: fn(A) -> bool) -> bool {
 
 fn each<A, IA:iterable<A>>(self: IA, blk: fn(A)) {
    self.iter(blk);
+}
 
 fn min<A:copy,IA:iterable<A>>(self: IA) -> A {
     alt foldl::<A,option<A>,IA>(self, none) {|a, b|
