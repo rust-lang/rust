@@ -38,20 +38,20 @@ fn test00() {
 
     let i: int = 0;
 
-    let tasks = [];
+    let results = [];
     while i < number_of_tasks {
         i = i + 1;
-        tasks += [
-            task::spawn_joinable {|| test00_start(ch, i, number_of_messages);}
-        ];
+        let builder = task::mk_task_builder();
+        results += [task::future_result(builder)];
+        task::run(builder) {|| test00_start(ch, i, number_of_messages);}
     }
     let sum: int = 0;
-    for t in tasks {
+    for r in results {
         i = 0;
         while i < number_of_messages { sum += recv(po); i = i + 1; }
     }
 
-    for t in tasks { task::join(t); }
+    for r in results { future::get(r); }
 
     #debug("Completed: Final number is: ");
     assert (sum ==
@@ -123,14 +123,16 @@ fn test06() {
 
     let i: int = 0;
 
-    let tasks = [];
+    let results = [];
     while i < number_of_tasks {
         i = i + 1;
-        tasks += [task::spawn_joinable {|| test06_start(i);}];
+        let builder = task::mk_task_builder();
+        results += [task::future_result(builder)];
+        task::run(builder) {|| test06_start(i);};
     }
 
 
-    for t in tasks { task::join(t); }
+    for r in results { future::get(r); }
 }
 
 

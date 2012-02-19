@@ -4,10 +4,12 @@ import task;
 import task::*;
 
 fn main() {
-    let other = task::spawn_joinable {|| child(); };
+    let builder = task::mk_task_builder();
+    let result = task::future_result(builder);
+    task::run(builder) {|| child(); }
     #error("1");
     yield();
-    join(other);
+    future::get(result);
 }
 
 fn child() { #error("2"); }

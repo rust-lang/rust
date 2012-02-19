@@ -539,6 +539,11 @@ chan_id_send(type_desc *t, rust_task_id target_task_id,
     // FIXME: make sure this is thread-safe
     bool sent = false;
     rust_task *task = rust_task_thread::get_task();
+
+    LOG(task, comm, "chan_id_send task: 0x%" PRIxPTR
+        " port: 0x%" PRIxPTR, (uintptr_t) target_task_id,
+        (uintptr_t) target_port_id);
+
     rust_task *target_task = task->kernel->get_task_by_id(target_task_id);
     if(target_task) {
         rust_port *port = target_task->get_port_by_id(target_port_id);
@@ -547,8 +552,12 @@ chan_id_send(type_desc *t, rust_task_id target_task_id,
             scoped_lock with(target_task->lock);
             port->deref();
             sent = true;
+        } else {
+            LOG(task, comm, "didn't get the port");
         }
         target_task->deref();
+    } else {
+        LOG(task, comm, "didn't get the task");
     }
     return (uintptr_t)sent;
 }

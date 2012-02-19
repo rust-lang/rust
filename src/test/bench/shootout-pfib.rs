@@ -69,11 +69,13 @@ fn stress_task(&&id: int) {
 }
 
 fn stress(num_tasks: int) {
-    let tasks = [];
+    let results = [];
     range(0, num_tasks) {|i|
-        tasks += [task::spawn_joinable {|| stress_task(i); }];
+        let builder = task::mk_task_builder();
+        results += [task::future_result(builder)];
+        task::run(builder) {|| stress_task(i); }
     }
-    for t in tasks { task::join(t); }
+    for r in results { future::get(r); }
 }
 
 fn main(argv: [str]) {

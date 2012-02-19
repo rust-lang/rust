@@ -3,11 +3,12 @@ use std;
 import task;
 
 fn f() {
-    task::unsupervise();
     let a = @0;
     fail;
 }
 
 fn main() {
-    task::spawn {|| f(); };
+    let builder = task::mk_task_builder();
+    task::unsupervise(builder);
+    task::run(builder) {|| f(); }
 }

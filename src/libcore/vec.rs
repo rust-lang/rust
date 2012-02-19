@@ -1929,16 +1929,10 @@ mod tests {
     }
 
     #[test]
-    // FIXME: Windows can't undwind
+    #[should_fail]
     #[ignore(cfg(target_os = "win32"))]
     fn test_init_empty() {
-
-        let r = task::join(
-            task::spawn_joinable {||
-                task::unsupervise();
-                init::<int>([]);
-            });
-        assert r == task::tr_failure
+        init::<int>([]);
     }
 
     #[test]
