@@ -214,13 +214,22 @@ fn run_tests(opts: test_opts, tests: [test_desc],
 
     while done_idx < total {
         while wait_idx < concurrency && run_idx < total {
-            run_test(vec::shift(filtered_tests), ch);
+            let test = vec::shift(filtered_tests);
+            if concurrency == 1u {
+                // We are doing one test at a time so we can print the name
+                // of the test before we run it. Useful for debugging tests
+                // that hang forever.
+                callback(te_wait(test));
+            }
+            run_test(test, ch);
             wait_idx += 1u;
             run_idx += 1u;
         }
 
         let (test, result) = comm::recv(p);
-        callback(te_wait(test));
+        if concurrency != 1u {
+            callback(te_wait(test));
+        }
         callback(te_result(test, result));
         wait_idx -= 1u;
         done_idx += 1u;
