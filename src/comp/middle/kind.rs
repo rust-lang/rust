@@ -1,4 +1,3 @@
-import option::{some, none};
 import syntax::{visit, ast_util};
 import syntax::ast::*;
 import syntax::codemap::span;
@@ -60,7 +59,7 @@ fn check_crate(tcx: ty::ctxt, method_map: typeck::method_map,
 fn with_appropriate_checker(cx: ctx, id: node_id,
                             b: fn(fn@(ctx, ty::t, sp: span))) {
     let fty = ty::node_id_to_type(cx.tcx, id);
-    alt ty::ty_fn_proto(cx.tcx, fty) {
+    alt ty::ty_fn_proto(fty) {
       proto_uniq { b(check_send); }
       proto_box { b(check_copy); }
       proto_bare { b(check_none); }
@@ -110,7 +109,7 @@ fn check_fn_cap_clause(cx: ctx,
         let check_var = fn@(&&cap_item: @capture_item) {
             let cap_def = cx.tcx.def_map.get(cap_item.id);
             let cap_def_id = ast_util::def_id_of_def(cap_def).node;
-            if !vec::member(cap_def_id, freevar_ids) {
+            if !vec::contains(freevar_ids, cap_def_id) {
                 let ty = ty::node_id_to_type(cx.tcx, cap_def_id);
                 checker(cx, ty, cap_item.span);
             }
@@ -142,9 +141,10 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
           some(ex) {
             // All noncopyable fields must be overridden
             let t = ty::expr_ty(cx.tcx, ex);
-            let ty_fields = alt ty::struct(cx.tcx, t) { ty::ty_rec(f) { f }
-              _ { cx.tcx.sess.span_bug(ex.span,
-                     "Bad expr type in record"); } };
+            let ty_fields = alt ty::get(t).struct {
+              ty::ty_rec(f) { f }
+              _ { cx.tcx.sess.span_bug(ex.span, "Bad expr type in record"); }
+            };
             for tf in ty_fields {
                 if !vec::any(fields, {|f| f.node.ident == tf.ident}) &&
                     !ty::kind_can_be_copied(ty::type_kind(cx.tcx, tf.mt.ty)) {
@@ -164,8 +164,11 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
       }
       expr_call(f, args, _) {
         let i = 0u;
-        for arg_t in ty::ty_fn_args(cx.tcx, ty::expr_ty(cx.tcx, f)) {
-            alt arg_t.mode { by_copy { maybe_copy(cx, args[i]); } _ {} }
+        for arg_t in ty::ty_fn_args(ty::expr_ty(cx.tcx, f)) {
+            alt ty::arg_mode(cx.tcx, arg_t) {
+              by_copy { maybe_copy(cx, args[i]); }
+              by_ref | by_val | by_mutbl_ref | by_move { }
+            }
             i += 1u;
         }
       }
@@ -201,7 +204,7 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
 fn check_stmt(stmt: @stmt, cx: ctx, v: visit::vt<ctx>) {
     alt stmt.node {
       stmt_decl(@{node: decl_local(locals), _}, _) {
-        for (_, local) in locals {
+        for local in locals {
             alt local.node.init {
               some({op: init_assign, expr}) { maybe_copy(cx, expr); }
               _ {}
@@ -239,7 +242,7 @@ fn check_copy_ex(cx: ctx, ex: @expr, _warn: bool) {
         check_copy(cx, ty, ex.span);
         // FIXME turn this on again once vector types are no longer unique.
         // Right now, it is too annoying to be useful.
-        /* if warn && ty::type_is_unique(cx.tcx, ty) {
+        /* if warn && ty::type_is_unique(ty) {
             cx.tcx.sess.span_warn(ex.span, "copying a unique value");
         }*/
     }

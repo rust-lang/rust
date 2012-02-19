@@ -40,7 +40,7 @@ fn exported_things<T>(
     from_crate: fn(astsrv::srv, doc::moddoc) -> [T],
     from_mod: fn(astsrv::srv, doc::moddoc) -> [T]
 ) -> [T] {
-    if doc.id == ast::crate_node_id {
+    if doc.id() == ast::crate_node_id {
         from_crate(srv, doc)
     } else {
         from_mod(srv, doc)
@@ -58,7 +58,7 @@ fn exported_items_from_mod(
     srv: astsrv::srv,
     doc: doc::moddoc
 ) -> [doc::itemtag] {
-    exported_items_from(srv, doc, bind is_exported_from_mod(_, doc.id, _))
+    exported_items_from(srv, doc, bind is_exported_from_mod(_, doc.id(), _))
 }
 
 fn exported_items_from(

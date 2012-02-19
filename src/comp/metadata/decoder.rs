@@ -6,6 +6,7 @@ import syntax::{ast, ast_util};
 import driver::session::session;
 import front::attr;
 import middle::ty;
+import middle::ast_map;
 import common::*;
 import tydecode::{parse_ty_data, parse_def_id, parse_bounds_data};
 import syntax::print::pprust;
@@ -28,6 +29,7 @@ export get_crate_hash;
 export get_impls_for_mod;
 export get_iface_methods;
 export get_crate_module_paths;
+export get_item_path;
 
 // A function that takes a def_id relative to the crate being searched and
 // returns a def_id relative to the compilation environment, i.e. if we hit a
@@ -40,16 +42,16 @@ fn lookup_hash(d: ebml::doc, eq_fn: fn@([u8]) -> bool, hash: uint) ->
     let index = ebml::get_doc(d, tag_index);
     let table = ebml::get_doc(index, tag_index_table);
     let hash_pos = table.start + hash % 256u * 4u;
-    let pos = ebml::be_uint_from_bytes(d.data, hash_pos, 4u);
-    let bucket = ebml::doc_at(d.data, pos);
+    let pos = ebml::be_u64_from_bytes(d.data, hash_pos, 4u) as uint;
+    let {tag:_, doc:bucket} = ebml::doc_at(d.data, pos);
     // Awkward logic because we can't ret from foreach yet
 
     let result: [ebml::doc] = [];
     let belt = tag_index_buckets_bucket_elt;
     ebml::tagged_docs(bucket, belt) {|elt|
-        let pos = ebml::be_uint_from_bytes(elt.data, elt.start, 4u);
+        let pos = ebml::be_u64_from_bytes(elt.data, elt.start, 4u) as uint;
         if eq_fn(vec::slice::<u8>(*elt.data, elt.start + 4u, elt.end)) {
-            result += [ebml::doc_at(d.data, pos)];
+            result += [ebml::doc_at(d.data, pos).doc];
         }
     };
     ret result;
@@ -57,7 +59,7 @@ fn lookup_hash(d: ebml::doc, eq_fn: fn@([u8]) -> bool, hash: uint) ->
 
 fn maybe_find_item(item_id: int, items: ebml::doc) -> option<ebml::doc> {
     fn eq_item(bytes: [u8], item_id: int) -> bool {
-        ret ebml::be_uint_from_bytes(@bytes, 0u, 4u) as int == item_id;
+        ret ebml::be_u64_from_bytes(@bytes, 0u, 4u) as int == item_id;
     }
     let eqer = bind eq_item(_, item_id);
     let found = lookup_hash(items, eqer, hash_node_id(item_id));
@@ -77,9 +79,9 @@ fn lookup_item(item_id: int, data: @[u8]) -> ebml::doc {
     ret find_item(item_id, items);
 }
 
-fn item_family(item: ebml::doc) -> u8 {
+fn item_family(item: ebml::doc) -> char {
     let fam = ebml::get_doc(item, tag_items_data_item_family);
-    ret ebml::doc_as_uint(fam) as u8;
+    ebml::doc_as_u8(fam) as char
 }
 
 fn item_symbol(item: ebml::doc) -> str {
@@ -110,10 +112,11 @@ fn doc_type(doc: ebml::doc, tcx: ty::ctxt, cdata: cmd) -> ty::t {
     })
 }
 
-fn item_type(item: ebml::doc, tcx: ty::ctxt, cdata: cmd) -> ty::t {
+fn item_type(item_id: ast::def_id, item: ebml::doc,
+             tcx: ty::ctxt, cdata: cmd) -> ty::t {
     let t = doc_type(item, tcx, cdata);
     if family_names_type(item_family(item)) {
-        ty::mk_named(tcx, t, @item_name(item))
+        ty::mk_with_id(tcx, t, item_id)
     } else { t }
 }
 
@@ -176,6 +179,30 @@ fn resolve_path(path: [ast::ident], data: @[u8]) -> [ast::def_id] {
     ret result;
 }
 
+fn item_path(item_doc: ebml::doc) -> ast_map::path {
+    let path_doc = ebml::get_doc(item_doc, tag_path);
+
+    let len_doc = ebml::get_doc(path_doc, tag_path_len);
+    let len = ebml::doc_as_vuint(len_doc);
+
+    let result = [];
+    vec::reserve(result, len);
+
+    ebml::docs(path_doc) {|tag, elt_doc|
+        if tag == tag_path_elt_mod {
+            let str = ebml::doc_str(elt_doc);
+            result += [ast_map::path_mod(str)];
+        } else if tag == tag_path_elt_name {
+            let str = ebml::doc_str(elt_doc);
+            result += [ast_map::path_name(str)];
+        } else {
+            // ignore tag_path_len element
+        }
+    }
+
+    ret result;
+}
+
 fn item_name(item: ebml::doc) -> ast::ident {
     let name = ebml::get_doc(item, tag_paths_data_name);
     str::from_bytes(ebml::doc_data(name))
@@ -191,30 +218,28 @@ fn lookup_def(cnum: ast::crate_num, data: @[u8], did_: ast::def_id) ->
     let fam_ch = item_family(item);
     let did = {crate: cnum, node: did_.node};
     // We treat references to enums as references to types.
-    let def =
-        alt fam_ch as char {
-          'c' { ast::def_const(did) }
-          'u' { ast::def_fn(did, ast::unsafe_fn) }
-          'f' { ast::def_fn(did, ast::impure_fn) }
-          'p' { ast::def_fn(did, ast::pure_fn) }
-          'y' { ast::def_ty(did) }
-          't' { ast::def_ty(did) }
-          'm' { ast::def_mod(did) }
-          'n' { ast::def_native_mod(did) }
-          'v' {
-            let tid = variant_enum_id(item);
-            tid = {crate: cnum, node: tid.node};
-            ast::def_variant(tid, did)
-          }
-          'I' { ast::def_ty(did) }
-        };
-    ret def;
+    alt check fam_ch {
+      'c' { ast::def_const(did) }
+      'u' { ast::def_fn(did, ast::unsafe_fn) }
+      'f' { ast::def_fn(did, ast::impure_fn) }
+      'p' { ast::def_fn(did, ast::pure_fn) }
+      'y' { ast::def_ty(did) }
+      't' { ast::def_ty(did) }
+      'm' { ast::def_mod(did) }
+      'n' { ast::def_native_mod(did) }
+      'v' {
+        let tid = variant_enum_id(item);
+        tid = {crate: cnum, node: tid.node};
+        ast::def_variant(tid, did)
+      }
+      'I' { ast::def_ty(did) }
+    }
 }
 
 fn get_type(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
     -> ty::ty_param_bounds_and_ty {
     let item = lookup_item(id, cdata.data);
-    let t = item_type(item, tcx, cdata);
+    let t = item_type({crate: cdata.cnum, node: id}, item, tcx, cdata);
     let tp_bounds = if family_has_type_params(item_family(item)) {
         item_ty_param_bounds(item, tcx, cdata)
     } else { @[] };
@@ -234,6 +259,10 @@ fn get_symbol(data: @[u8], id: ast::node_id) -> str {
     ret item_symbol(lookup_item(id, data));
 }
 
+fn get_item_path(cdata: cmd, id: ast::node_id) -> ast_map::path {
+    item_path(lookup_item(id, cdata.data))
+}
+
 fn get_enum_variants(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
     -> [ty::variant_info] {
     let data = cdata.data;
@@ -244,10 +273,11 @@ fn get_enum_variants(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
     let disr_val = 0;
     for did: ast::def_id in variant_ids {
         let item = find_item(did.node, items);
-        let ctor_ty = item_type(item, tcx, cdata);
+        let ctor_ty = item_type({crate: cdata.cnum, node: id}, item,
+                                tcx, cdata);
         let name = item_name(item);
         let arg_tys: [ty::t] = [];
-        alt ty::struct(tcx, ctor_ty) {
+        alt ty::get(ctor_ty).struct {
           ty::ty_fn(f) {
             for a: ty::arg in f.inputs { arg_tys += [a.ty]; }
           }
@@ -286,7 +316,7 @@ fn get_impls_for_mod(cdata: cmd, m_id: ast::node_id,
         let did = translate_def_id(cdata, parse_def_id(ebml::doc_data(doc)));
         let item = lookup_item(did.node, data), nm = item_name(item);
         if alt name { some(n) { n == nm } none { true } } {
-            let base_tps = item_ty_param_count(doc);
+            let base_tps = item_ty_param_count(item);
             result += [@{did: did, ident: nm,
                          methods: item_impl_methods(cdata, item, base_tps)}];
         }
@@ -302,28 +332,33 @@ fn get_iface_methods(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
         let bounds = item_ty_param_bounds(mth, tcx, cdata);
         let name = item_name(mth);
         let ty = doc_type(mth, tcx, cdata);
-        let fty = alt ty::struct(tcx, ty) { ty::ty_fn(f) { f }
+        let fty = alt ty::get(ty).struct { ty::ty_fn(f) { f }
           _ { tcx.sess.bug("get_iface_methods: id has non-function type");
         } };
-        result += [{ident: name, tps: bounds, fty: fty}];
+        result += [{ident: name, tps: bounds, fty: fty,
+                    purity: alt check item_family(mth) {
+                      'u' { ast::unsafe_fn }
+                      'f' { ast::impure_fn }
+                      'p' { ast::pure_fn }
+                    }}];
     }
     @result
 }
 
-fn family_has_type_params(fam_ch: u8) -> bool {
-    alt fam_ch as char {
+fn family_has_type_params(fam_ch: char) -> bool {
+    alt check fam_ch {
       'c' | 'T' | 'm' | 'n' { false }
       'f' | 'u' | 'p' | 'F' | 'U' | 'P' | 'y' | 't' | 'v' | 'i' | 'I' { true }
     }
 }
 
-fn family_names_type(fam_ch: u8) -> bool {
-    alt fam_ch as char { 'y' | 't' | 'I' { true } _ { false } }
+fn family_names_type(fam_ch: char) -> bool {
+    alt fam_ch { 'y' | 't' | 'I' { true } _ { false } }
 }
 
 fn read_path(d: ebml::doc) -> {path: str, pos: uint} {
     let desc = ebml::doc_data(d);
-    let pos = ebml::be_uint_from_bytes(@desc, 0u, 4u);
+    let pos = ebml::be_u64_from_bytes(@desc, 0u, 4u) as uint;
     let pathbytes = vec::slice::<u8>(desc, 4u, vec::len::<u8>(desc));
     let path = str::from_bytes(pathbytes);
     ret {path: path, pos: pos};
@@ -334,8 +369,8 @@ fn describe_def(items: ebml::doc, id: ast::def_id) -> str {
     ret item_family_to_str(item_family(find_item(id.node, items)));
 }
 
-fn item_family_to_str(fam: u8) -> str {
-    alt fam as char {
+fn item_family_to_str(fam: char) -> str {
+    alt check fam {
       'c' { ret "const"; }
       'f' { ret "fn"; }
       'u' { ret "unsafe fn"; }
@@ -468,7 +503,7 @@ fn iter_crate_items(bytes: @[u8], proc: fn(str, ast::def_id)) {
         let et = tag_index_buckets_bucket_elt;
         ebml::tagged_docs(bucket, et) {|elt|
             let data = read_path(elt);
-            let def = ebml::doc_at(bytes, data.pos);
+            let {tag:_, doc:def} = ebml::doc_at(bytes, data.pos);
             let did_doc = ebml::get_doc(def, tag_def_id);
             let did = parse_def_id(ebml::doc_data(did_doc));
             proc(data.path, did);

@@ -41,16 +41,7 @@ command_line_args : public kernel_owned<command_line_args>
         LocalFree(wargv);
 #endif
 
-        args = (rust_vec *)
-            kernel->malloc(vec_size<rust_vec*>(argc),
-                           "command line arg interior");
-        args->fill = args->alloc = sizeof(rust_vec*) * argc;
-        for (int i = 0; i < argc; ++i) {
-            rust_str *str = make_str(kernel, argv[i],
-                                     strlen(argv[i]),
-                                     "command line arg");
-            ((rust_str**)&args->data)[i] = str;
-        }
+        args = make_str_vec(kernel, argc, argv);
     }
 
     ~command_line_args() {
@@ -87,8 +78,9 @@ rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map) {
     check_claims = env->check_claims;
 
     rust_srv *srv = new rust_srv(env);
-    rust_kernel *kernel = new rust_kernel(srv, env->num_sched_threads);
-    rust_scheduler *sched = kernel->get_default_scheduler();
+    rust_kernel *kernel = new rust_kernel(srv);
+    rust_sched_id sched_id = kernel->create_scheduler(env->num_sched_threads);
+    rust_scheduler *sched = kernel->get_scheduler_by_id(sched_id);
     rust_task_id root_id = sched->create_task(NULL, "main", MAIN_STACK_SIZE);
     rust_task *root_task = kernel->get_task_by_id(root_id);
     I(kernel, root_task != NULL);
@@ -107,7 +99,7 @@ rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map) {
     root_task->deref();
     root_task = NULL;
 
-    int ret = kernel->start_schedulers();
+    int ret = kernel->wait_for_schedulers();
     delete args;
     delete kernel;
     delete srv;

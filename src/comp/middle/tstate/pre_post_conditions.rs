@@ -1,7 +1,3 @@
-
-import core::{vec, option};
-import option::{none, some};
-
 import tstate::ann::*;
 import aux::*;
 import bitvectors::{bit_num, seq_preconds, seq_postconds,
@@ -60,7 +56,7 @@ fn find_pre_post_item(ccx: crate_ctxt, i: item) {
              ccx: ccx};
         find_pre_post_fn(fcx, body);
       }
-      item_class(_,_,_,_) {
+      item_class(_,_,_,_,_) {
           fail "find_pre_post_item: implement item_class";
       }
       item_impl(_, _, _, ms) { for m in ms { find_pre_post_method(ccx, m); } }
@@ -180,7 +176,7 @@ fn gen_if_local(fcx: fn_ctxt, lhs: @expr, rhs: @expr, larger_id: node_id,
     alt node_id_to_def(fcx.ccx, new_var) {
       some(d) {
         alt d {
-          def_local(d_id, _) {
+          def_local(d_id) {
             find_pre_post_expr(fcx, rhs);
             let p = expr_pp(fcx.ccx, rhs);
             set_pre_and_post(fcx.ccx, larger_id, p.precondition,
@@ -218,7 +214,7 @@ fn handle_update(fcx: fn_ctxt, parent: @expr, lhs: @expr, rhs: @expr,
             // pure and assign_op require the lhs to be init'd
             let df = node_id_to_def_strict(fcx.ccx.tcx, lhs.id);
             alt df {
-              def_local(d_id, _) {
+              def_local(d_id) {
                 let i =
                     bit_num(fcx,
                             ninit(d_id.node, path_to_ident(p)));
@@ -265,7 +261,7 @@ fn handle_var(fcx: fn_ctxt, rslt: pre_and_post, id: node_id, name: ident) {
 fn handle_var_def(fcx: fn_ctxt, rslt: pre_and_post, def: def, name: ident) {
     log(debug, ("handle_var_def: ", def, name));
     alt def {
-      def_local(d_id, _) | def_arg(d_id, _) {
+      def_local(d_id) | def_arg(d_id, _) {
         use_var(fcx, d_id.node);
         let i = bit_num(fcx, ninit(d_id.node, name));
         require_and_preserve(i, rslt);
@@ -276,12 +272,11 @@ fn handle_var_def(fcx: fn_ctxt, rslt: pre_and_post, def: def, name: ident) {
 
 fn forget_args_moved_in(fcx: fn_ctxt, parent: @expr, modes: [mode],
                         operands: [@expr]) {
-    let i = 0u;
-    for mode: mode in modes {
-        if mode == by_move {
-            forget_in_postcond(fcx, parent.id, operands[i].id);
+    vec::iteri(modes) {|i,mode|
+        alt ty::resolved_mode(fcx.ccx.tcx, mode) {
+          by_move { forget_in_postcond(fcx, parent.id, operands[i].id); }
+          by_ref | by_val | by_mutbl_ref | by_copy { }
         }
-        i += 1u;
     }
 }
 
@@ -452,7 +447,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
         find_pre_post_loop(fcx, d, index, body, e.id);
       }
       expr_index(val, sub) { find_pre_post_exprs(fcx, [val, sub], e.id); }
-      expr_alt(ex, alts) {
+      expr_alt(ex, alts, _) {
         find_pre_post_expr(fcx, ex);
         fn do_an_alt(fcx: fn_ctxt, an_alt: arm) -> pre_and_post {
             alt an_alt.guard {
@@ -550,7 +545,7 @@ fn find_pre_post_stmt(fcx: fn_ctxt, s: stmt) {
           decl_local(alocals) {
             let e_pp;
             let prev_pp = empty_pre_post(num_constraints(fcx.enclosing));
-            for (_, alocal) in alocals {
+            for alocal in alocals {
                 alt alocal.node.init {
                   some(an_init) {
                     /* LHS always becomes initialized,

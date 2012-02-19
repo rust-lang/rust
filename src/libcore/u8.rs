@@ -1,13 +1,8 @@
+#[doc = "Operations and constants for `u8`"];
+
 /*
 Module: u8
 */
-
-/*
-Const: max_value
-
-The maximum value of a u8.
-*/
-const max_value: u8 = 255u8;
 
 /*
 Const: min_value
@@ -15,6 +10,13 @@ Const: min_value
 The minumum value of a u8.
 */
 const min_value: u8 = 0u8;
+
+/*
+Const: max_value
+
+The maximum value of a u8.
+*/
+const max_value: u8 = 0u8 - 1u8;
 
 /* Function: add */
 pure fn add(x: u8, y: u8) -> u8 { ret x + y; }
@@ -49,6 +51,9 @@ pure fn ge(x: u8, y: u8) -> bool { ret x >= y; }
 /* Predicate: gt */
 pure fn gt(x: u8, y: u8) -> bool { ret x > y; }
 
+/* Predicate: is_ascii */
+pure fn is_ascii(x: u8) -> bool { ret 0u8 == x & 128u8; }
+
 /*
 Function: range
 
@@ -57,6 +62,11 @@ Iterate over the range [`lo`..`hi`)
 fn range(lo: u8, hi: u8, it: fn(u8)) {
     let i = lo;
     while i < hi { it(i); i += 1u8; }
+}
+
+#[doc = "Computes the bitwise complement"]
+fn compl(i: u8) -> u8 {
+    max_value ^ i
 }
 
 // Local Variables:

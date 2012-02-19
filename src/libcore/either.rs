@@ -113,7 +113,7 @@ pure fn is_left<T, U>(eith: t<T, U>) -> bool {
 }
 
 /*
-Function: is_left
+Function: is_right
 
 Checks whether the given value is a right
 */

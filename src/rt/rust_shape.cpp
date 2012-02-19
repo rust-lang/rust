@@ -264,7 +264,7 @@ private:
         result = sub.result;
     }
 
-    inline void walk_box_contents2(cmp &sub, ptr_pair &box_dp) {
+    inline void walk_box_contents2(cmp &sub) {
         sub.align = true;
         sub.walk();
         result = sub.result;
@@ -307,6 +307,15 @@ public:
         uint8_t *in_data_1)
     : data<cmp,ptr_pair>(in_task, in_align, in_sp, in_params, in_tables,
                          ptr_pair::make(in_data_0, in_data_1)),
+      result(0) {}
+
+    cmp(const cmp &other,
+        const uint8_t *in_sp,
+        const type_param *in_params,
+        const rust_shape_tables *in_tables,
+        ptr_pair &in_dp)
+    : data<cmp,ptr_pair>(other.task, other.align, in_sp, in_params, in_tables,
+                         in_dp),
       result(0) {}
 
     cmp(const cmp &other,

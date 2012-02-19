@@ -1,2 +1,2 @@
-// error-pattern:cannot path into a glob
+// error-pattern:expecting
 import foo::*::bar

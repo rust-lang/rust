@@ -38,6 +38,12 @@ ifneq ($(findstring freebsd,$(CFG_OSTYPE)),)
   CFG_DEF_SUFFIX := .bsd.def
   CFG_INSTALL_NAME =
   CFG_PERF_TOOL := /usr/bin/time
+
+  # FIXME (1825): We're deadlocking on FreeBSD
+  ifndef RUST_THREADS
+    RUST_THREADS=1
+    export RUST_THREADS
+  endif
 endif
 
 ifneq ($(findstring linux,$(CFG_OSTYPE)),)
@@ -99,6 +105,10 @@ ifneq ($(findstring darwin,$(CFG_OSTYPE)),)
   CFG_INSTALL_NAME = -Wl,-install_name,@rpath/$(1)
 endif
 
+# Hack: not sure how to test if a file exists in make other than this
+OS_SUPP = $(patsubst %,--suppressions=%,\
+	    $(wildcard $(CFG_SRC_DIR)src/etc/$(CFG_OSTYPE).supp*))
+
 ifneq ($(findstring mingw,$(CFG_OSTYPE)),)
   CFG_WINDOWSY := 1
 endif
@@ -154,7 +164,9 @@ ifdef CFG_UNIXY
   ifdef CFG_VALGRIND
     CFG_VALGRIND += --leak-check=full \
                     --error-exitcode=100 \
-                    --quiet --suppressions=$(CFG_SRC_DIR)src/etc/x86.supp
+                    --quiet \
+                    --suppressions=$(CFG_SRC_DIR)src/etc/x86.supp \
+                    $(OS_SUPP)
   endif
 endif
 
@@ -166,8 +178,13 @@ ifdef CFG_WINDOWSY
   CFG_LIB_NAME=$(1).dll
   CFG_LIB_GLOB=$(1)-*.dll
   CFG_DEF_SUFFIX := .def
+ifdef MSYSTEM
   CFG_LDPATH :=$(CFG_LDPATH):$$PATH
   CFG_RUN=PATH="$(CFG_LDPATH):$(1)" $(2)
+else
+  CFG_LDPATH :=
+  CFG_RUN=$(2)
+endif
   CFG_RUN_TARG=$(call CFG_RUN,$(HLIB$(1)_H_$(CFG_HOST_TRIPLE)),$(2))
   CFG_RUN_TEST=$(call CFG_RUN,$(call CFG_TESTLIB,$(1),$(3)),$(1))
   CFG_LIBUV_LINK_FLAGS=-lWs2_32

@@ -1,4 +1,3 @@
-import option;
 import std::map;
 import syntax::ast::*;
 import syntax::ast_util;
@@ -7,10 +6,25 @@ import syntax::{visit, codemap};
 enum path_elt { path_mod(str), path_name(str) }
 type path = [path_elt];
 
+fn path_to_str_with_sep(p: path, sep: str) -> str {
+    let strs = vec::map(p) {|e|
+        alt e {
+          path_mod(s) { s }
+          path_name(s) { s }
+        }
+    };
+    str::connect(strs, sep)
+}
+
+fn path_to_str(p: path) -> str {
+    path_to_str_with_sep(p, "::")
+}
+
 enum ast_node {
     node_item(@item, @path),
     node_native_item(@native_item, @path),
-    node_method(@method, @path),
+    node_method(@method, node_id, @path),
+    node_variant(variant, def_id, @path),
     node_expr(@expr),
     // Locals are numbered, because the alias analysis needs to know in which
     // order they are introduced.
@@ -68,11 +82,18 @@ fn map_item(i: @item, cx: ctx, v: vt) {
     cx.map.insert(i.id, node_item(i, @cx.path));
     alt i.node {
       item_impl(_, _, _, ms) {
-        for m in ms { cx.map.insert(m.id, node_method(m, @cx.path)); }
+        for m in ms { cx.map.insert(m.id, node_method(m, i.id, @cx.path)); }
       }
       item_res(_, _, _, dtor_id, ctor_id) {
         cx.map.insert(ctor_id, node_res_ctor(i));
         cx.map.insert(dtor_id, node_item(i, @cx.path));
+      }
+      item_enum(vs, _) {
+        for v in vs {
+            cx.map.insert(v.node.id, node_variant(
+                v, ast_util::local_def(i.id),
+                @(cx.path + [path_name(i.ident)])));
+        }
       }
       _ { }
     }

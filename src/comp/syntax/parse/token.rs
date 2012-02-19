@@ -1,6 +1,5 @@
 
 import util::interner;
-import core::{int, uint, str};
 import lexer::reader;
 
 type str_num = uint;
@@ -53,7 +52,6 @@ enum token {
     LBRACE,
     RBRACE,
     POUND,
-    POUND_LPAREN,
     POUND_LBRACE,
     POUND_LT,
 
@@ -128,7 +126,6 @@ fn to_str(r: reader, t: token) -> str {
       LBRACE { ret "{"; }
       RBRACE { ret "}"; }
       POUND { ret "#"; }
-      POUND_LPAREN { ret "#("; }
       POUND_LBRACE { ret "#{"; }
       POUND_LT { ret "#<"; }
 
@@ -142,7 +139,7 @@ fn to_str(r: reader, t: token) -> str {
         // FIXME: escape.
         let tmp = "'";
         str::push_char(tmp, c as char);
-        str::push_byte(tmp, '\'' as u8);
+        str::push_char(tmp, '\'');
         ret tmp;
       }
       LIT_INT(i, t) {

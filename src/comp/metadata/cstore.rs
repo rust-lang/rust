@@ -1,7 +1,6 @@
 // The crate store - a central repo for information collected about external
 // crates and libraries
 
-import core::{vec, str};
 import std::map;
 import syntax::ast;
 import util::common::*;
@@ -21,7 +20,7 @@ export get_used_libraries;
 export add_used_link_args;
 export get_used_link_args;
 export add_use_stmt_cnum;
-export get_use_stmt_cnum;
+export find_use_stmt_cnum;
 export get_dep_hashes;
 export get_path;
 
@@ -98,7 +97,7 @@ fn iter_crate_data(cstore: cstore, i: fn(ast::crate_num, crate_metadata)) {
 }
 
 fn add_used_crate_file(cstore: cstore, lib: str) {
-    if !vec::member(lib, p(cstore).used_crate_files) {
+    if !vec::contains(p(cstore).used_crate_files, lib) {
         p(cstore).used_crate_files += [lib];
     }
 }
@@ -110,7 +109,7 @@ fn get_used_crate_files(cstore: cstore) -> [str] {
 fn add_used_library(cstore: cstore, lib: str) -> bool {
     assert lib != "";
 
-    if vec::member(lib, p(cstore).used_libraries) { ret false; }
+    if vec::contains(p(cstore).used_libraries, lib) { ret false; }
     p(cstore).used_libraries += [lib];
     ret true;
 }
@@ -120,7 +119,7 @@ fn get_used_libraries(cstore: cstore) -> [str] {
 }
 
 fn add_used_link_args(cstore: cstore, args: str) {
-    p(cstore).used_link_args += str::split(args, ' ' as u8);
+    p(cstore).used_link_args += str::split_byte(args, ' ' as u8);
 }
 
 fn get_used_link_args(cstore: cstore) -> [str] {
@@ -132,8 +131,9 @@ fn add_use_stmt_cnum(cstore: cstore, use_id: ast::node_id,
     p(cstore).use_crate_map.insert(use_id, cnum);
 }
 
-fn get_use_stmt_cnum(cstore: cstore, use_id: ast::node_id) -> ast::crate_num {
-    ret p(cstore).use_crate_map.get(use_id);
+fn find_use_stmt_cnum(cstore: cstore,
+                      use_id: ast::node_id) -> option<ast::crate_num> {
+    p(cstore).use_crate_map.find(use_id)
 }
 
 // returns hashes of crates directly used by this crate. Hashes are

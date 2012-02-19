@@ -2,9 +2,6 @@
 #include "rust_internal.h"
 #include "rust_cc.h"
 
-#include "vg/valgrind.h"
-#include "vg/memcheck.h"
-
 #ifndef __WIN32__
 #include <execinfo.h>
 #endif
@@ -60,177 +57,16 @@
 #endif
 #endif
 
-// A value that goes at the end of the stack and must not be touched
-const uint8_t stack_canary[] = {0xAB, 0xCD, 0xAB, 0xCD,
-                                0xAB, 0xCD, 0xAB, 0xCD,
-                                0xAB, 0xCD, 0xAB, 0xCD,
-                                0xAB, 0xCD, 0xAB, 0xCD};
-
-static size_t
-get_next_stk_size(rust_task_thread *thread, rust_task *task,
-                  size_t min, size_t current, size_t requested) {
-    LOG(task, mem, "calculating new stack size for 0x%" PRIxPTR, task);
-    LOG(task, mem,
-        "min: %" PRIdPTR " current: %" PRIdPTR " requested: %" PRIdPTR,
-        min, current, requested);
-
-    // Allocate at least enough to accomodate the next frame
-    size_t sz = std::max(min, requested);
-
-    // And double the stack size each allocation
-    const size_t max = 1024 * 1024;
-    size_t next = std::min(max, current * 2);
-
-    sz = std::max(sz, next);
-
-    LOG(task, mem, "next stack size: %" PRIdPTR, sz);
-    I(thread, requested <= sz);
-    return sz;
-}
-
-// Task stack segments. Heap allocated and chained together.
-
-static void
-config_valgrind_stack(stk_seg *stk) {
-    stk->valgrind_id =
-        VALGRIND_STACK_REGISTER(&stk->data[0],
-                                stk->end);
-#ifndef NVALGRIND
-    // Establish that the stack is accessible.  This must be done when reusing
-    // old stack segments, since the act of popping the stack previously
-    // caused valgrind to consider the whole thing inaccessible.
-    size_t sz = stk->end - (uintptr_t)&stk->data[0];
-    VALGRIND_MAKE_MEM_UNDEFINED(stk->data + sizeof(stack_canary),
-                                sz - sizeof(stack_canary));
-#endif
-}
-
-static void
-unconfig_valgrind_stack(stk_seg *stk) {
-VALGRIND_STACK_DEREGISTER(stk->valgrind_id);
-}
-
-static void
-add_stack_canary(stk_seg *stk) {
-    memcpy(stk->data, stack_canary, sizeof(stack_canary));
-    assert(sizeof(stack_canary) == 16 && "Stack canary was not the expected size");
-}
-
-static void
-check_stack_canary(stk_seg *stk) {
-    assert(!memcmp(stk->data, stack_canary, sizeof(stack_canary))
-      && "Somebody killed the canary");
-}
-
-// The amount of stack in a segment available to Rust code
-static size_t
-user_stack_size(stk_seg *stk) {
-    return (size_t)(stk->end
-                    - (uintptr_t)&stk->data[0]
-                    - RED_ZONE_SIZE);
-}
-
-static void
-free_stk(rust_task *task, stk_seg *stk) {
-    LOGPTR(task->thread, "freeing stk segment", (uintptr_t)stk);
-    task->total_stack_sz -= user_stack_size(stk);
-    task->free(stk);
-}
-
-static stk_seg*
-new_stk(rust_task_thread *thread, rust_task *task, size_t requested_sz)
-{
-    LOG(task, mem, "creating new stack for task %" PRIxPTR, task);
-    if (task->stk) {
-        check_stack_canary(task->stk);
-    }
-
-    // The minimum stack size, in bytes, of a Rust stack, excluding red zone
-    size_t min_sz = thread->min_stack_size;
-
-    // Try to reuse an existing stack segment
-    if (task->stk != NULL && task->stk->prev != NULL) {
-        size_t prev_sz = user_stack_size(task->stk->prev);
-        if (min_sz <= prev_sz && requested_sz <= prev_sz) {
-            LOG(task, mem, "reusing existing stack");
-            task->stk = task->stk->prev;
-            A(thread, task->stk->prev == NULL, "Bogus stack ptr");
-            config_valgrind_stack(task->stk);
-            return task->stk;
-        } else {
-            LOG(task, mem, "existing stack is not big enough");
-            free_stk(task, task->stk->prev);
-            task->stk->prev = NULL;
-        }
-    }
-
-    // The size of the current stack segment, excluding red zone
-    size_t current_sz = 0;
-    if (task->stk != NULL) {
-        current_sz = user_stack_size(task->stk);
-    }
-    // The calculated size of the new stack, excluding red zone
-    size_t rust_stk_sz = get_next_stk_size(thread, task, min_sz,
-                                           current_sz, requested_sz);
-
-    if (task->total_stack_sz + rust_stk_sz > thread->env->max_stack_size) {
-        LOG_ERR(task, task, "task %" PRIxPTR " ran out of stack", task);
-        task->fail();
-    }
-
-    size_t sz = sizeof(stk_seg) + rust_stk_sz + RED_ZONE_SIZE;
-    stk_seg *stk = (stk_seg *)task->malloc(sz, "stack");
-    LOGPTR(task->thread, "new stk", (uintptr_t)stk);
-    memset(stk, 0, sizeof(stk_seg));
-    add_stack_canary(stk);
-    stk->prev = NULL;
-    stk->next = task->stk;
-    stk->end = (uintptr_t) &stk->data[rust_stk_sz + RED_ZONE_SIZE];
-    LOGPTR(task->thread, "stk end", stk->end);
-
-    task->stk = stk;
-    config_valgrind_stack(task->stk);
-    task->total_stack_sz += user_stack_size(stk);
-    return stk;
-}
-
-static void
-del_stk(rust_task *task, stk_seg *stk)
-{
-    assert(stk == task->stk && "Freeing stack segments out of order!");
-    check_stack_canary(stk);
-
-    task->stk = stk->next;
-
-    bool delete_stack = false;
-    if (task->stk != NULL) {
-        // Don't actually delete this stack. Save it to reuse later,
-        // preventing the pathological case where we repeatedly reallocate
-        // the stack for the next frame.
-        task->stk->prev = stk;
-    } else {
-        // This is the last stack, delete it.
-        delete_stack = true;
-    }
-
-    // Delete the previous previous stack
-    if (stk->prev != NULL) {
-        free_stk(task, stk->prev);
-        stk->prev = NULL;
-    }
-
-    unconfig_valgrind_stack(stk);
-    if (delete_stack) {
-        free_stk(task, stk);
-        A(task->thread, task->total_stack_sz == 0, "Stack size should be 0");
-    }
-}
+extern "C" CDECL void
+record_sp(void *limit);
 
 // Tasks
 rust_task::rust_task(rust_task_thread *thread, rust_task_list *state,
                      rust_task *spawner, const char *name,
                      size_t init_stack_sz) :
     ref_count(1),
+    id(0),
+    notify_enabled(false),
     stk(NULL),
     runtime_sp(0),
     sched(thread->sched),
@@ -248,27 +84,27 @@ rust_task::rust_task(rust_task_thread *thread, rust_task_list *state,
     local_region(&thread->srv->local_region),
     boxed(&local_region),
     unwinding(false),
-    killed(false),
     propagate_failure(true),
     dynastack(this),
     cc_counter(0),
-    total_stack_sz(0)
+    total_stack_sz(0),
+    killed(false),
+    reentered_rust_stack(false),
+    c_stack(NULL),
+    next_c_sp(0),
+    next_rust_sp(0)
 {
     LOGPTR(thread, "new task", (uintptr_t)this);
     DLOG(thread, task, "sizeof(task) = %d (0x%x)", sizeof *this, sizeof *this);
 
-    assert((void*)this == (void*)&user);
-
-    user.notify_enabled = 0;
-
-    stk = new_stk(thread, this, init_stack_sz);
-    user.rust_sp = stk->end;
+    new_stack(init_stack_sz);
     if (supervisor) {
         supervisor->ref();
     }
 }
 
-rust_task::~rust_task()
+void
+rust_task::delete_this()
 {
     I(thread, !thread->lock.lock_held_by_current_thread());
     I(thread, port_table.is_empty());
@@ -289,8 +125,10 @@ rust_task::~rust_task()
     // and no landing pads stopped to clean up.
     // FIXME: We should do this when the task exits, not in the destructor
     while (stk != NULL) {
-        del_stk(this, stk);
+        del_stack();
     }
+
+    thread->release_task(this);
 }
 
 struct spawn_args {
@@ -332,7 +170,6 @@ cleanup_task(cleanup_args *args) {
 }
 
 // This runs on the Rust stack
-extern "C" CDECL
 void task_start_wrapper(spawn_args *a)
 {
     rust_task *task = a->task;
@@ -346,7 +183,14 @@ void task_start_wrapper(spawn_args *a)
         A(task->thread, ex == task,
           "Expected this task to be thrown for unwinding");
         threw_exception = true;
+
+        if (task->c_stack) {
+            task->return_c_stack();
+        }
     }
+
+    // We should have returned any C stack by now
+    I(task->thread, task->c_stack == NULL);
 
     rust_opaque_box* env = a->envptr;
     if(env) {
@@ -360,7 +204,7 @@ void task_start_wrapper(spawn_args *a)
 
     // The cleanup work needs lots of stack
     cleanup_args ca = {a, threw_exception};
-    task->thread->c_context.call_shim_on_c_stack(&ca, (void*)cleanup_task);
+    task->call_on_c_stack(&ca, (void*)cleanup_task);
 
     task->ctx.next->swap(task->ctx);
 }
@@ -376,7 +220,7 @@ rust_task::start(spawn_fn spawnee_fn,
 
     I(thread, stk->data != NULL);
 
-    char *sp = (char *)user.rust_sp;
+    char *sp = (char *)stk->end;
 
     sp -= sizeof(spawn_args);
 
@@ -397,17 +241,22 @@ void rust_task::start()
     transition(&thread->newborn_tasks, &thread->running_tasks);
 }
 
+bool
+rust_task::must_fail_from_being_killed() {
+    return killed && !reentered_rust_stack;
+}
+
 // Only run this on the rust stack
 void
 rust_task::yield(bool *killed) {
-    if (this->killed) {
+    if (must_fail_from_being_killed()) {
         *killed = true;
     }
 
     // Return to the scheduler.
     ctx.next->swap(ctx);
 
-    if (this->killed) {
+    if (must_fail_from_being_killed()) {
         *killed = true;
     }
 }
@@ -652,14 +501,14 @@ rust_port *rust_task::get_port_by_id(rust_port_id id) {
 void
 rust_task::notify(bool success) {
     // FIXME (1078) Do this in rust code
-    if(user.notify_enabled) {
-        rust_task *target_task = kernel->get_task_by_id(user.notify_chan.task);
+    if(notify_enabled) {
+        rust_task *target_task = kernel->get_task_by_id(notify_chan.task);
         if (target_task) {
             rust_port *target_port =
-                target_task->get_port_by_id(user.notify_chan.port);
+                target_task->get_port_by_id(notify_chan.port);
             if(target_port) {
                 task_notification msg;
-                msg.id = user.id;
+                msg.id = id;
                 msg.result = !success ? tr_failure : tr_success;
 
                 target_port->send(&msg);
@@ -671,31 +520,150 @@ rust_task::notify(bool success) {
     }
 }
 
-extern "C" CDECL void
-record_sp(void *limit);
+size_t
+rust_task::get_next_stack_size(size_t min, size_t current, size_t requested) {
+    LOG(this, mem, "calculating new stack size for 0x%" PRIxPTR, this);
+    LOG(this, mem,
+        "min: %" PRIdPTR " current: %" PRIdPTR " requested: %" PRIdPTR,
+        min, current, requested);
+
+    // Allocate at least enough to accomodate the next frame
+    size_t sz = std::max(min, requested);
+
+    // And double the stack size each allocation
+    const size_t max = 1024 * 1024;
+    size_t next = std::min(max, current * 2);
+
+    sz = std::max(sz, next);
+
+    LOG(this, mem, "next stack size: %" PRIdPTR, sz);
+    I(thread, requested <= sz);
+    return sz;
+}
+
+// The amount of stack in a segment available to Rust code
+static size_t
+user_stack_size(stk_seg *stk) {
+    return (size_t)(stk->end
+                    - (uintptr_t)&stk->data[0]
+                    - RED_ZONE_SIZE);
+}
+
+void
+rust_task::free_stack(stk_seg *stk) {
+    LOGPTR(thread, "freeing stk segment", (uintptr_t)stk);
+    total_stack_sz -= user_stack_size(stk);
+    destroy_stack(this, stk);
+}
+
+void
+rust_task::new_stack(size_t requested_sz) {
+    LOG(this, mem, "creating new stack for task %" PRIxPTR, this);
+    if (stk) {
+        ::check_stack_canary(stk);
+    }
+
+    // The minimum stack size, in bytes, of a Rust stack, excluding red zone
+    size_t min_sz = thread->min_stack_size;
+
+    // Try to reuse an existing stack segment
+    if (stk != NULL && stk->prev != NULL) {
+        size_t prev_sz = user_stack_size(stk->prev);
+        if (min_sz <= prev_sz && requested_sz <= prev_sz) {
+            LOG(this, mem, "reusing existing stack");
+            stk = stk->prev;
+            A(thread, stk->prev == NULL, "Bogus stack ptr");
+            prepare_valgrind_stack(stk);
+            return;
+        } else {
+            LOG(this, mem, "existing stack is not big enough");
+            free_stack(stk->prev);
+            stk->prev = NULL;
+        }
+    }
+
+    // The size of the current stack segment, excluding red zone
+    size_t current_sz = 0;
+    if (stk != NULL) {
+        current_sz = user_stack_size(stk);
+    }
+    // The calculated size of the new stack, excluding red zone
+    size_t rust_stk_sz = get_next_stack_size(min_sz,
+                                             current_sz, requested_sz);
+
+    if (total_stack_sz + rust_stk_sz > thread->env->max_stack_size) {
+        LOG_ERR(this, task, "task %" PRIxPTR " ran out of stack", this);
+        fail();
+    }
+
+    size_t sz = rust_stk_sz + RED_ZONE_SIZE;
+    stk_seg *new_stk = create_stack(this, sz);
+    LOGPTR(thread, "new stk", (uintptr_t)new_stk);
+    new_stk->prev = NULL;
+    new_stk->next = stk;
+    LOGPTR(thread, "stk end", new_stk->end);
+
+    stk = new_stk;
+    prepare_valgrind_stack(stk);
+    total_stack_sz += user_stack_size(new_stk);
+}
+
+void
+rust_task::del_stack() {
+    stk_seg *old_stk = stk;
+    ::check_stack_canary(old_stk);
+
+    stk = old_stk->next;
+
+    bool delete_stack = false;
+    if (stk != NULL) {
+        // Don't actually delete this stack. Save it to reuse later,
+        // preventing the pathological case where we repeatedly reallocate
+        // the stack for the next frame.
+        stk->prev = old_stk;
+    } else {
+        // This is the last stack, delete it.
+        delete_stack = true;
+    }
+
+    // Delete the previous previous stack
+    if (old_stk->prev != NULL) {
+        free_stack(old_stk->prev);
+        old_stk->prev = NULL;
+    }
+
+    if (delete_stack) {
+        free_stack(old_stk);
+        A(thread, total_stack_sz == 0, "Stack size should be 0");
+    }
+}
 
 void *
-rust_task::new_stack(size_t stk_sz, void *args_addr, size_t args_sz) {
-
-    stk_seg *stk_seg = new_stk(thread, this, stk_sz + args_sz);
-    A(thread, stk_seg->end - (uintptr_t)stk_seg->data >= stk_sz + args_sz,
+rust_task::next_stack(size_t stk_sz, void *args_addr, size_t args_sz) {
+    new_stack(stk_sz + args_sz);
+    A(thread, stk->end - (uintptr_t)stk->data >= stk_sz + args_sz,
       "Did not receive enough stack");
-    uint8_t *new_sp = (uint8_t*)stk_seg->end;
+    uint8_t *new_sp = (uint8_t*)stk->end;
     // Push the function arguments to the new stack
     new_sp = align_down(new_sp - args_sz);
     memcpy(new_sp, args_addr, args_sz);
+    A(thread, rust_task_thread::get_task() == this,
+      "Recording the stack limit for the wrong thread");
     record_stack_limit();
     return new_sp;
 }
 
 void
-rust_task::del_stack() {
-    del_stk(this, stk);
+rust_task::prev_stack() {
+    del_stack();
+    A(thread, rust_task_thread::get_task() == this,
+      "Recording the stack limit for the wrong thread");
     record_stack_limit();
 }
 
 void
 rust_task::record_stack_limit() {
+    I(thread, stk);
     // The function prolog compares the amount of stack needed to the end of
     // the stack. As an optimization, when the frame size is less than 256
     // bytes, it will simply compare %esp to to the stack limit instead of
@@ -708,8 +676,6 @@ rust_task::record_stack_limit() {
       "Stack size must be greater than LIMIT_OFFSET");
     record_sp(stk->data + LIMIT_OFFSET + RED_ZONE_SIZE);
 }
-
-extern "C" uintptr_t get_sp();
 
 static bool
 sp_in_stk_seg(uintptr_t sp, stk_seg *stk) {
@@ -732,10 +698,21 @@ void
 rust_task::reset_stack_limit() {
     uintptr_t sp = get_sp();
     while (!sp_in_stk_seg(sp, stk)) {
-        del_stk(this, stk);
+        del_stack();
         A(thread, stk != NULL, "Failed to find the current stack");
     }
     record_stack_limit();
+}
+
+void
+rust_task::check_stack_canary() {
+    ::check_stack_canary(stk);
+}
+
+void
+rust_task::config_notify(chan_handle chan) {
+    notify_enabled = true;
+    notify_chan = chan;
 }
 
 /*
@@ -743,12 +720,18 @@ Returns true if we're currently running on the Rust stack
  */
 bool
 rust_task::on_rust_stack() {
-    return sp_in_stk_seg(get_sp(), stk);
-}
-
-void
-rust_task::check_stack_canary() {
-    ::check_stack_canary(stk);
+    uintptr_t sp = get_sp();
+    bool in_first_segment = sp_in_stk_seg(sp, stk);
+    if (in_first_segment) {
+        return true;
+    } else if (stk->next != NULL) {
+        // This happens only when calling the upcall to delete
+        // a stack segment
+        bool in_second_segment = sp_in_stk_seg(sp, stk->next);
+        return in_second_segment;
+    } else {
+        return false;
+    }
 }
 
 //

@@ -1,3 +1,9 @@
+// A workaround that makes INTPTR_MAX be visible
+#ifdef __FreeBSD__
+#define __STDC_LIMIT_MACROS 1
+#endif
+
+#include <vector>
 #include "rust_internal.h"
 #include "rust_util.h"
 #include "rust_scheduler.h"
@@ -7,17 +13,17 @@
 #define KLOG_ERR_(field, ...)                   \
     KLOG_LVL(this, field, log_err, __VA_ARGS__)
 
-rust_kernel::rust_kernel(rust_srv *srv, size_t num_threads) :
+rust_kernel::rust_kernel(rust_srv *srv) :
     _region(srv, true),
     _log(srv, NULL),
     srv(srv),
     live_tasks(0),
     max_task_id(0),
     rval(0),
+    live_schedulers(0),
+    max_sched_id(0),
     env(srv->env)
 {
-    sched = new (this, "rust_scheduler")
-        rust_scheduler(this, srv, num_threads);
 }
 
 void
@@ -41,10 +47,6 @@ rust_kernel::fatal(char const *fmt, ...) {
     va_end(args);
 }
 
-rust_kernel::~rust_kernel() {
-    delete sched;
-}
-
 void *
 rust_kernel::malloc(size_t size, const char *tag) {
     return _region.malloc(size, tag);
@@ -59,17 +61,67 @@ void rust_kernel::free(void *mem) {
     _region.free(mem);
 }
 
-int rust_kernel::start_schedulers()
-{
+rust_sched_id
+rust_kernel::create_scheduler(size_t num_threads) {
+    I(this, !sched_lock.lock_held_by_current_thread());
+    rust_sched_id id;
+    rust_scheduler *sched;
+    {
+        scoped_lock with(sched_lock);
+        id = max_sched_id++;
+        K(srv, id != INTPTR_MAX, "Hit the maximum scheduler id");
+        sched = new (this, "rust_scheduler")
+            rust_scheduler(this, srv, num_threads, id);
+        bool is_new = sched_table
+            .insert(std::pair<rust_sched_id, rust_scheduler*>(id, sched)).second;
+        A(this, is_new, "Reusing a sched id?");
+        live_schedulers++;
+    }
     sched->start_task_threads();
-    return rval;
+    return id;
 }
 
 rust_scheduler *
-rust_kernel::get_default_scheduler() {
-    return sched;
+rust_kernel::get_scheduler_by_id(rust_sched_id id) {
+    I(this, !sched_lock.lock_held_by_current_thread());
+    scoped_lock with(sched_lock);
+    sched_map::iterator iter = sched_table.find(id);
+    if (iter != sched_table.end()) {
+        return iter->second;
+    } else {
+        return NULL;
+    }
 }
 
+void
+rust_kernel::release_scheduler_id(rust_sched_id id) {
+    I(this, !sched_lock.lock_held_by_current_thread());
+    scoped_lock with(sched_lock);
+    sched_map::iterator iter = sched_table.find(id);
+    I(this, iter != sched_table.end());
+    rust_scheduler *sched = iter->second;
+    sched_table.erase(iter);
+    delete sched;
+    live_schedulers--;
+    if (live_schedulers == 0) {
+        // We're all done. Tell the main thread to continue
+        sched_lock.signal();
+    }
+}
+
+int
+rust_kernel::wait_for_schedulers()
+{
+    I(this, !sched_lock.lock_held_by_current_thread());
+    scoped_lock with(sched_lock);
+    // Schedulers could possibly have already exited
+    if (live_schedulers != 0) {
+        sched_lock.wait();
+    }
+    return rval;
+}
+
+// FIXME: Fix all these FIXMEs
 void
 rust_kernel::fail() {
     // FIXME: On windows we're getting "Application has requested the
@@ -79,7 +131,29 @@ rust_kernel::fail() {
 #if defined(__WIN32__)
     exit(rval);
 #endif
-    sched->kill_all_tasks();
+    // Copy the list of schedulers so that we don't hold the lock while
+    // running kill_all_tasks.
+    // FIXME: There's a lot that happens under kill_all_tasks, and I don't
+    // know that holding sched_lock here is ok, but we need to hold the
+    // sched lock to prevent the scheduler from being destroyed while
+    // we are using it. Probably we need to make rust_scheduler atomicly
+    // reference counted.
+    std::vector<rust_scheduler*> scheds;
+    {
+        scoped_lock with(sched_lock);
+        for (sched_map::iterator iter = sched_table.begin();
+             iter != sched_table.end(); iter++) {
+            scheds.push_back(iter->second);
+        }
+    }
+
+    // FIXME: This is not a foolproof way to kill all tasks while ensuring
+    // that no new tasks or schedulers are created in the meantime that
+    // keep the scheduler alive.
+    for (std::vector<rust_scheduler*>::iterator iter = scheds.begin();
+         iter != scheds.end(); iter++) {
+        (*iter)->kill_all_tasks();
+    }
 }
 
 void
@@ -87,12 +161,12 @@ rust_kernel::register_task(rust_task *task) {
     uintptr_t new_live_tasks;
     {
         scoped_lock with(task_lock);
-        task->user.id = max_task_id++;
-        task_table.put(task->user.id, task);
+        task->id = max_task_id++;
+        task_table.put(task->id, task);
         new_live_tasks = ++live_tasks;
     }
-    K(srv, task->user.id != INTPTR_MAX, "Hit the maximum task id");
-    KLOG_("Registered task %" PRIdPTR, task->user.id);
+    K(srv, task->id != INTPTR_MAX, "Hit the maximum task id");
+    KLOG_("Registered task %" PRIdPTR, task->id);
     KLOG_("Total outstanding tasks: %d", new_live_tasks);
 }
 
@@ -106,11 +180,6 @@ rust_kernel::release_task_id(rust_task_id id) {
         new_live_tasks = --live_tasks;
     }
     KLOG_("Total outstanding tasks: %d", new_live_tasks);
-    if (new_live_tasks == 0) {
-        // There are no more tasks and there never will be.
-        // Tell all the schedulers to exit.
-        sched->exit();
-    }
 }
 
 rust_task *
@@ -121,6 +190,7 @@ rust_kernel::get_task_by_id(rust_task_id id) {
     task_table.get(id, &task);
     if(task) {
         if(task->get_ref_count() == 0) {
+            // FIXME: I don't think this is possible.
             // this means the destructor is running, since the destructor
             // grabs the kernel lock to unregister the task. Pretend this
             // doesn't actually exist.

@@ -53,7 +53,7 @@ fn main() {
     let expr3 = #ast{2 - $(abc) + 7};
     check_pp(expr3,  pprust::print_expr, "2 - 23 + 7");
 
-    let expr4 = #ast{2 - $(#(3)) + 9};
+    let expr4 = #ast{2 - $(#ast{3}) + 9};
     check_pp(expr4,  pprust::print_expr, "2 - 3 + 9");
 
     let ty = #ast(ty){int};
@@ -76,6 +76,18 @@ fn main() {
 
     let pat = #ast(pat){some(_)};
     check_pp(pat, pprust::print_pat, "some(_)");
+
+    // issue #1785
+    let x = #ast{1};
+    let test1 = #ast{1+$(x)};
+    check_pp(test1, pprust::print_expr, "1 + 1");
+
+    let test2 = #ast{$(x)+1};
+    check_pp(test2, pprust::print_expr, "1 + 1");
+
+    let y = #ast{2};
+    let test3 = #ast{$(x) + $(y)};
+    check_pp(test3, pprust::print_expr, "1 + 2");
 }
 
 fn check_pp<T>(expr: T, f: fn(pprust::ps, T), expect: str) {

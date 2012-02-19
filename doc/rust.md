@@ -102,12 +102,12 @@ Productions](#special-unicode-productions).
 
 Some rules in the grammar -- notably [unary
 operators](#unary-operator-expressions), [binary
-operators](#binary-operator-expressions), [keywords](#keywords) and [reserved
-words](#reserved-words) -- are given in a simplified form: as a listing of a
-table of unquoted, printable whitespace-separated strings. These cases form a
-subset of the rules regarding the [token](#tokens) rule, and are assumed to be
-the result of a lexical-analysis phase feeding the parser, driven by a DFA,
-operating over the disjunction of all such string table entries.
+operators](#binary-operator-expressions), and [keywords](#keywords) --
+are given in a simplified form: as a listing of a table of unquoted,
+printable whitespace-separated strings. These cases form a subset of
+the rules regarding the [token](#tokens) rule, and are assumed to be
+the result of a lexical-analysis phase feeding the parser, driven by a
+DFA, operating over the disjunction of all such string table entries.
 
 When such a string enclosed in double-quotes (`"`) occurs inside the
 grammar, it is an implicit reference to a single member of such a string table
@@ -139,8 +139,7 @@ The `ident` production is any nonempty Unicode string of the following form:
    - The first character has property `XID_start`
    - The remaining characters have property `XID_continue`
 
-that does _not_ occur in the set of [keywords](#keywords) or [reserved
-words](#reserved-words).
+that does _not_ occur in the set of [keywords](#keywords).
 
 Note: `XID_start` and `XID_continue` as character properties cover the
 character ranges used to form the more familiar C and Java language-family
@@ -190,7 +189,7 @@ with any other legal whitespace element, such as a single space character.
 ## Tokens
 
 ~~~~~~~~ {.ebnf .gram}
-simple_token : keyword | reserved | unop | binop ;
+simple_token : keyword | unop | binop ;
 token : simple_token | ident | literal | symbol | whitespace token ;
 ~~~~~~~~
 
@@ -204,51 +203,31 @@ grammar as double-quoted strings. Other tokens have exact rules given.
 The keywords in [crate files](#crate-files) are the following strings:
 
 ~~~~~~~~ {.keyword}
-import export use mod dir
+import export use mod
 ~~~~~~~~
 
 The keywords in [source files](#source-files) are the following strings:
 
-*TODO* split these between type keywords and regular (value) keywords,
- and define two different `identifier` productions for the different
- contexts.
-
 ~~~~~~~~ {.keyword}
-alt any as assert
-be bind block bool break
-char check claim const cont
+alt assert
+be break
+check claim class const cont copy
 do
 else enum export
-f32 f64 fail false float fn for
-i16 i32 i64 i8 if iface impl import in int
+fail false fn for
+if iface impl import
 let log
 mod mutable
-native note
-of
-prove pure
+native
+pure
 resource ret
-self str syntax
 true type
-u16 u32 u64 u8 uint unchecked unsafe use
-vec
+unsafe use
 while
 ~~~~~~~~
 
 Any of these have special meaning in their respective grammars, and are
 excluded from the `ident` rule.
-
-### Reserved words
-
-The reserved words are the following strings:
-
-~~~~~~~~ {.reserved}
-m32 m64 m128
-f80 f16 f128
-class trait
-~~~~~~~~
-
-Any of these may have special meaning in future versions of the language, so
-are excluded from the `ident` rule.
 
 ### Literals
 
@@ -389,10 +368,6 @@ literal. There are three floating-point suffixes: `f` (for the base
 `float` type), `f32`, and `f64` (the 32-bit and 64-bit floating point
 types).
 
-A set of suffixes are also reserved to accommodate literal support for
-types corresponding to reserved tokens. The reserved suffixes are `f16`,
-`f80`, `f128`, `m`, `m32`, `m64` and `m128`.
-
 Examples of floating-point literals of various forms:
 
 ~~~~
@@ -421,8 +396,7 @@ Symbols are a general class of printable [token](#tokens) that play structural
 roles in a variety of grammar productions. They are catalogued here for
 completeness as the set of remaining miscellaneous printable tokens that do not
 otherwise appear as [unary operators](#unary-operator-expressions), [binary
-operators](#binary-operator-expressions), [keywords](#keywords) or [reserved
-words](#reserved-words).
+operators](#binary-operator-expressions), or [keywords](#keywords).
 
 
 ## Paths
@@ -1058,7 +1032,7 @@ accessed through the components `x` and `y`, and laid out in memory with the
 An _enumeration item_ simultaneously declares a new nominal
 [enumerated type](#enumerated-types) as well as a set of *constructors* that
 can be used to create or pattern-match values of the corresponding enumerated
-type. Note that `enum` previously was refered to as a `tag`, however this
+type. Note that `enum` previously was referred to as a `tag`, however this
 definition has been deprecated. While `tag` is no longer used, the two are 
 synonymous.
 
@@ -1431,9 +1405,9 @@ rec_expr : '{' ident ':' expr
 
 A _[record](#record-types) expression_ is one or more comma-separated
 name-value pairs enclosed by braces. A fieldname can be any identifier
-(including reserved words), and is separated from its value expression
-by a colon. To indicate that a field is mutable, the `mutable` keyword
-is written before its name.
+(including keywords), and is separated from its value expression by a
+colon. To indicate that a field is mutable, the `mutable` keyword is
+written before its name.
 
 ~~~~
 {x: 10f, y: 20f};
@@ -1648,7 +1622,7 @@ fn avg(v: [float]) -> float {
 ~~~~
 
 A cast is a *trivial cast* iff the type of the casted expression and the
-target type are identical after replacing all occurences of `int`, `uint`,
+target type are identical after replacing all occurrences of `int`, `uint`,
 `float` with their machine type equivalents of the target architecture in both
 types.
 
@@ -1978,10 +1952,10 @@ for e: foo in v {
 
 ~~~~~~~~{.ebnf .gram}
 if_expr : "if" expr '{' block '}'
-          [ "else" else_tail ] ? ;
+          else_tail ? ;
 
 else_tail : "else" [ if_expr
-                   | '{' block '} ] ;
+                   | '{' block '}' ] ;
 ~~~~~~~~
 
 An `if` expression is a conditional branch in program control. The form of
@@ -3157,7 +3131,7 @@ state. In this state it executes the statements of its entry function, and any
 functions called by the entry function.
 
 A task may transition from the *running* state to the *blocked* state any time
-it makes a blocking recieve call on a port, or attempts a rate-limited
+it makes a blocking receive call on a port, or attempts a rate-limited
 blocking send on a channel. When the communication expression can be completed
 -- when a message arrives at a sender, or a queue drains sufficiently to
 complete a rate-limited send -- then the blocked task will unblock and
@@ -3328,7 +3302,7 @@ As an example, to see all the logs generated by the compiler, you would set
 you would set it to `rustc::metadata::creader`. To see just error logging
 use `rustc=0`.
 
-Note that when compiling either `.rs` or `.rc` files that don't specifiy a
+Note that when compiling either `.rs` or `.rc` files that don't specify a
 crate name the crate is given a default name that matches the source file,
 with the extension removed. In that case, to turn on logging for a program
 compiled from, e.g. `helloworld.rs`, `RUST_LOG` should be set to `helloworld`.
@@ -3416,7 +3390,7 @@ have come and gone during the course of Rust's development:
 
 * The Newsqueak (1988), Alef (1995), and Limbo (1996) family. These
   languages were developed by Rob Pike, Phil Winterbottom, Sean Dorward and
-  others in their group at Bell labs Computing Sciences Reserch Center
+  others in their group at Bell labs Computing Sciences Research Center
   (Murray Hill, NJ, USA).
 
 * The Napier (1985) and Napier88 (1988) family. These languages were

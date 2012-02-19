@@ -1,5 +1,5 @@
 // -*- rust -*-
-// error-pattern: Non-exhaustive pattern
+// error-pattern: non-exhaustive patterns
 enum t { a(u), b }
 enum u { c, d }
 

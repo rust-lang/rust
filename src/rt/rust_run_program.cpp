@@ -1,5 +1,9 @@
 #include "rust_internal.h"
 
+#ifdef __APPLE__
+#include <crt_externs.h>
+#endif
+
 #if defined(__WIN32__)
 
 #include <process.h>
@@ -64,7 +68,10 @@ void append_arg(char *& buf, char const *arg, bool last) {
 }
 
 extern "C" CDECL int
-rust_run_program(const char* argv[], int in_fd, int out_fd, int err_fd) {
+rust_run_program(const char* argv[],
+                 void* envp,
+                 const char* dir,
+                 int in_fd, int out_fd, int err_fd) {
     STARTUPINFO si;
     ZeroMemory(&si, sizeof(STARTUPINFO));
     si.cb = sizeof(STARTUPINFO);
@@ -99,7 +106,7 @@ rust_run_program(const char* argv[], int in_fd, int out_fd, int err_fd) {
 
     PROCESS_INFORMATION pi;
     BOOL created = CreateProcess(NULL, cmd, NULL, NULL, TRUE,
-                                 0, NULL, NULL, &si, &pi);
+                                 0, envp, dir, &si, &pi);
 
     CloseHandle(si.hStdInput);
     CloseHandle(si.hStdOutput);
@@ -129,8 +136,15 @@ rust_process_wait(int proc) {
 #include <unistd.h>
 #include <termios.h>
 
+#ifdef __FreeBSD__
+extern char **environ;
+#endif
+
 extern "C" CDECL int
-rust_run_program(char* argv[], int in_fd, int out_fd, int err_fd) {
+rust_run_program(const char* argv[],
+                 void* envp,
+                 const char* dir,
+                 int in_fd, int out_fd, int err_fd) {
     int pid = fork();
     if (pid != 0) return pid;
 
@@ -143,7 +157,25 @@ rust_run_program(char* argv[], int in_fd, int out_fd, int err_fd) {
     if (err_fd) dup2(err_fd, 2);
     /* Close all other fds. */
     for (int fd = getdtablesize() - 1; fd >= 3; fd--) close(fd);
-    execvp(argv[0], argv);
+    if (dir) {
+        int result = chdir(dir);
+        // FIXME: need error handling
+        assert(!result && "chdir failed");
+    }
+
+#ifdef __APPLE__
+    if (envp) {
+        *_NSGetEnviron() = (char **)envp;
+    }
+    execvp(argv[0], (char * const *)argv);
+#elif __FreeBSD__
+    if (envp) { environ = (char **)envp; }
+    execvp(argv[0], (char * const *)argv);
+#else
+    if (!envp) { envp = environ; }
+    execvpe(argv[0], (char * const *)argv, (char * const *)envp);
+#endif
+
     exit(1);
 }
 

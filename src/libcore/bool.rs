@@ -60,9 +60,10 @@ pure fn is_false(v: t) -> bool { !v }
   brief = "Parse logic value from `s`"
 )]
 pure fn from_str(s: str) -> t {
-    alt s {
+    alt check s {
       "true" { true }
       "false" { false }
+      _ { fail "'" + s + "' is not a valid boolean string"; }
     }
 }
 

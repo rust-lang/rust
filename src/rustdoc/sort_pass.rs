@@ -45,10 +45,10 @@ fn test() {
     let srv = astsrv::mk_srv_from_str(source);
     let doc = extract::from_srv(srv, "");
     let doc = mk_pass(name_lteq)(srv, doc);
-    assert doc.topmod.mods()[0].name == "w";
+    assert doc.topmod.mods()[0].name() == "w";
     assert doc.topmod.mods()[1].items[0].name() == "x";
     assert doc.topmod.mods()[1].items[1].name() == "y";
-    assert doc.topmod.mods()[1].name == "z";
+    assert doc.topmod.mods()[1].name() == "z";
 }
 
 #[test]

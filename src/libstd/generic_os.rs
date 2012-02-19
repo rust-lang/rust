@@ -11,20 +11,22 @@ import core::option;
 // Wow, this is an ugly way to write doc comments
 
 #[cfg(bogus)]
-/*
-Function: getenv
-
-Get the value of an environment variable
-*/
+#[doc = "Get the value of an environment variable"]
 fn getenv(n: str) -> option<str> { }
 
 #[cfg(bogus)]
-/*
-Function: setenv
-
-Set the value of an environment variable
-*/
+#[doc = "Set the value of an environment variable"]
 fn setenv(n: str, v: str) { }
+
+fn env() -> [(str,str)] {
+    let pairs = [];
+    for p in os::rustrt::rust_env_pairs() {
+        let vs = str::splitn_char(p, '=', 1u);
+        assert vec::len(vs) == 2u;
+        pairs += [(vs[0], vs[1])];
+    }
+    ret pairs;
+}
 
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
@@ -97,21 +99,31 @@ fn setenv(n: str, v: str) {
 #[cfg(test)]
 mod tests {
 
+    fn make_rand_name() -> str {
+        import rand;
+        let rng: rand::rng = rand::mk_rng();
+        let n = "TEST" + rng.gen_str(10u);
+        assert option::is_none(getenv(n));
+        n
+    }
+
     #[test]
     #[ignore(reason = "fails periodically on mac")]
     fn test_setenv() {
-        // NB: Each test of setenv needs to use different variable names or
-        // the tests will not be threadsafe
-        setenv("NAME1", "VALUE");
-        assert (getenv("NAME1") == option::some("VALUE"));
+        let n = make_rand_name();
+        setenv(n, "VALUE");
+        assert getenv(n) == option::some("VALUE");
     }
 
     #[test]
     #[ignore(reason = "fails periodically on mac")]
     fn test_setenv_overwrite() {
-        setenv("NAME2", "1");
-        setenv("NAME2", "2");
-        assert (getenv("NAME2") == option::some("2"));
+        let n = make_rand_name();
+        setenv(n, "1");
+        setenv(n, "2");
+        assert getenv(n) == option::some("2");
+        setenv(n, "");
+        assert getenv(n) == option::some("");
     }
 
     // Windows GetEnvironmentVariable requires some extra work to make sure
@@ -122,9 +134,10 @@ mod tests {
         let s = "";
         let i = 0;
         while i < 100 { s += "aaaaaaaaaa"; i += 1; }
-        setenv("test_getenv_big", s);
+        let n = make_rand_name();
+        setenv(n, s);
         log(debug, s);
-        assert (getenv("test_getenv_big") == option::some(s));
+        assert getenv(n) == option::some(s);
     }
 
     #[test]
@@ -140,6 +153,32 @@ mod tests {
         } else {
             assert path[1] == ':' as u8;
         }
+    }
+
+    #[test]
+    fn test_env_getenv() {
+        let e = env();
+        assert vec::len(e) > 0u;
+        for (n, v) in e {
+            log(debug, n);
+            let v2 = getenv(n);
+            // MingW seems to set some funky environment variables like
+            // "=C:=C:\MinGW\msys\1.0\bin" and "!::=::\" that are returned
+            // from env() but not visible from getenv().
+            assert option::is_none(v2) || v2 == option::some(v);
+        }
+    }
+
+    #[test]
+    fn test_env_setenv() {
+        let n = make_rand_name();
+
+        let e = env();
+        setenv(n, "VALUE");
+        assert !vec::contains(e, (n, "VALUE"));
+
+        e = env();
+        assert vec::contains(e, (n, "VALUE"));
     }
 }
 

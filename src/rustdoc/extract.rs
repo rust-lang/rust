@@ -29,60 +29,67 @@ fn top_moddoc_from_crate(
     crate: @ast::crate,
     default_name: str
 ) -> doc::moddoc {
-    moddoc_from_mod(crate.node.module, default_name, ast::crate_node_id)
+    moddoc_from_mod(mk_itemdoc(ast::crate_node_id, default_name),
+                    crate.node.module)
 }
 
-fn moddoc_from_mod(
-    module: ast::_mod,
-    name: ast::ident,
-    id: ast::node_id
-) -> doc::moddoc {
+fn mk_itemdoc(id: ast::node_id, name: ast::ident) -> doc::itemdoc {
     {
         id: id,
         name: name,
         path: [],
         brief: none,
         desc: none,
+    }
+}
+
+fn moddoc_from_mod(
+    itemdoc: doc::itemdoc,
+    module: ast::_mod
+) -> doc::moddoc {
+    {
+        item: itemdoc,
         items: ~vec::filter_map(module.items) {|item|
+            let itemdoc = mk_itemdoc(item.id, item.ident);
             alt item.node {
               ast::item_mod(m) {
                 some(doc::modtag(
-                    moddoc_from_mod(m, item.ident, item.id)
+                    moddoc_from_mod(itemdoc, m)
                 ))
               }
               ast::item_fn(decl, _, _) {
                 some(doc::fntag(
-                    fndoc_from_fn(decl, item.ident, item.id)
+                    fndoc_from_fn(itemdoc, decl)
                 ))
               }
               ast::item_const(_, _) {
                 some(doc::consttag(
-                    constdoc_from_const(item.ident, item.id)
+                    constdoc_from_const(itemdoc)
                 ))
               }
               ast::item_enum(variants, _) {
                 some(doc::enumtag(
-                    enumdoc_from_enum(item.ident, item.id, variants)
+                    enumdoc_from_enum(itemdoc, variants)
                 ))
               }
               ast::item_res(decl, _, _, _, _) {
                 some(doc::restag(
-                    resdoc_from_resource(decl, item.ident, item.id)
+                    resdoc_from_resource(itemdoc, decl)
                 ))
               }
               ast::item_iface(_, methods) {
                 some(doc::ifacetag(
-                    ifacedoc_from_iface(methods, item.ident, item.id)
+                    ifacedoc_from_iface(itemdoc, methods)
                 ))
               }
               ast::item_impl(_, _, _, methods) {
                 some(doc::impltag(
-                    impldoc_from_impl(methods, item.ident, item.id)
+                    impldoc_from_impl(itemdoc, methods)
                 ))
               }
               ast::item_ty(_, _) {
                 some(doc::tytag(
-                    tydoc_from_ty(item.ident, item.id)
+                    tydoc_from_ty(itemdoc)
                 ))
               }
               _ {
@@ -94,15 +101,11 @@ fn moddoc_from_mod(
 }
 
 fn fndoc_from_fn(
-    decl: ast::fn_decl,
-    name: ast::ident,
-    id: ast::node_id
+    itemdoc: doc::itemdoc,
+    decl: ast::fn_decl
 ) -> doc::fndoc {
     {
-        id: id,
-        name: name,
-        brief: none,
-        desc: none,
+        item: itemdoc,
         args: argdocs_from_args(decl.inputs),
         return: {
             desc: none,
@@ -135,15 +138,9 @@ fn argdoc_from_arg(arg: ast::arg) -> doc::argdoc {
     }
 }
 
-fn constdoc_from_const(
-    name: ast::ident,
-    id: ast::node_id
-) -> doc::constdoc {
+fn constdoc_from_const(itemdoc: doc::itemdoc) -> doc::constdoc {
     {
-        id: id,
-        name: name,
-        brief: none,
-        desc: none,
+        item: itemdoc,
         ty: none
     }
 }
@@ -151,20 +148,16 @@ fn constdoc_from_const(
 #[test]
 fn should_extract_const_name_and_id() {
     let doc = test::mk_doc("const a: int = 0;");
-    assert doc.topmod.consts()[0].id != 0;
-    assert doc.topmod.consts()[0].name == "a";
+    assert doc.topmod.consts()[0].id() != 0;
+    assert doc.topmod.consts()[0].name() == "a";
 }
 
 fn enumdoc_from_enum(
-    name: ast::ident,
-    id: ast::node_id,
+    itemdoc: doc::itemdoc,
     variants: [ast::variant]
 ) -> doc::enumdoc {
     {
-        id: id,
-        name: name,
-        brief: none,
-        desc: none,
+        item: itemdoc,
         variants: variantdocs_from_variants(variants)
     }
 }
@@ -186,8 +179,8 @@ fn variantdoc_from_variant(variant: ast::variant) -> doc::variantdoc {
 #[test]
 fn should_extract_enums() {
     let doc = test::mk_doc("enum e { v }");
-    assert doc.topmod.enums()[0].id != 0;
-    assert doc.topmod.enums()[0].name == "e";
+    assert doc.topmod.enums()[0].id() != 0;
+    assert doc.topmod.enums()[0].name() == "e";
 }
 
 #[test]
@@ -197,15 +190,11 @@ fn should_extract_enum_variants() {
 }
 
 fn resdoc_from_resource(
-    decl: ast::fn_decl,
-    name: str,
-    id: ast::node_id
+    itemdoc: doc::itemdoc,
+    decl: ast::fn_decl
 ) -> doc::resdoc {
     {
-        id: id,
-        name: name,
-        brief: none,
-        desc: none,
+        item: itemdoc,
         args: argdocs_from_args(decl.inputs),
         sig: none
     }
@@ -214,8 +203,8 @@ fn resdoc_from_resource(
 #[test]
 fn should_extract_resources() {
     let doc = test::mk_doc("resource r(b: bool) { }");
-    assert doc.topmod.resources()[0].id != 0;
-    assert doc.topmod.resources()[0].name == "r";
+    assert doc.topmod.resources()[0].id() != 0;
+    assert doc.topmod.resources()[0].name() == "r";
 }
 
 #[test]
@@ -225,15 +214,11 @@ fn should_extract_resource_args() {
 }
 
 fn ifacedoc_from_iface(
-    methods: [ast::ty_method],
-    name: str,
-    id: ast::node_id
+    itemdoc: doc::itemdoc,
+    methods: [ast::ty_method]
 ) -> doc::ifacedoc {
     {
-        id: id,
-        name: name,
-        brief: none,
-        desc: none,
+        item: itemdoc,
         methods: vec::map(methods) {|method|
             {
                 name: method.ident,
@@ -254,7 +239,7 @@ fn ifacedoc_from_iface(
 #[test]
 fn should_extract_ifaces() {
     let doc = test::mk_doc("iface i { fn f(); }");
-    assert doc.topmod.ifaces()[0].name == "i";
+    assert doc.topmod.ifaces()[0].name() == "i";
 }
 
 #[test]
@@ -270,15 +255,11 @@ fn should_extract_iface_method_args() {
 }
 
 fn impldoc_from_impl(
-    methods: [@ast::method],
-    name: str,
-    id: ast::node_id
+    itemdoc: doc::itemdoc,
+    methods: [@ast::method]
 ) -> doc::impldoc {
     {
-        id: id,
-        name: name,
-        brief: none,
-        desc: none,
+        item: itemdoc,
         iface_ty: none,
         self_ty: none,
         methods: vec::map(methods) {|method|
@@ -301,13 +282,13 @@ fn impldoc_from_impl(
 #[test]
 fn should_extract_impls_with_names() {
     let doc = test::mk_doc("impl i for int { fn a() { } }");
-    assert doc.topmod.impls()[0].name == "i";
+    assert doc.topmod.impls()[0].name() == "i";
 }
 
 #[test]
 fn should_extract_impls_without_names() {
     let doc = test::mk_doc("impl of i for int { fn a() { } }");
-    assert doc.topmod.impls()[0].name == "i";
+    assert doc.topmod.impls()[0].name() == "i";
 }
 
 #[test]
@@ -323,14 +304,10 @@ fn should_extract_impl_method_args() {
 }
 
 fn tydoc_from_ty(
-    name: str,
-    id: ast::node_id
+    itemdoc: doc::itemdoc
 ) -> doc::tydoc {
     {
-        id: id,
-        name: name,
-        brief: none,
-        desc: none,
+        item: itemdoc,
         sig: none
     }
 }
@@ -338,7 +315,7 @@ fn tydoc_from_ty(
 #[test]
 fn should_extract_tys() {
     let doc = test::mk_doc("type a = int;");
-    assert doc.topmod.types()[0].name == "a";
+    assert doc.topmod.types()[0].name() == "a";
 }
 
 #[cfg(test)]
@@ -359,21 +336,21 @@ mod test {
     #[test]
     fn extract_mods() {
         let doc = mk_doc("mod a { mod b { } mod c { } }");
-        assert doc.topmod.mods()[0].name == "a";
-        assert doc.topmod.mods()[0].mods()[0].name == "b";
-        assert doc.topmod.mods()[0].mods()[1].name == "c";
+        assert doc.topmod.mods()[0].name() == "a";
+        assert doc.topmod.mods()[0].mods()[0].name() == "b";
+        assert doc.topmod.mods()[0].mods()[1].name() == "c";
     }
 
     #[test]
     fn extract_mods_deep() {
         let doc = mk_doc("mod a { mod b { mod c { } } }");
-        assert doc.topmod.mods()[0].mods()[0].mods()[0].name == "c";
+        assert doc.topmod.mods()[0].mods()[0].mods()[0].name() == "c";
     }
 
     #[test]
     fn extract_should_set_mod_ast_id() {
         let doc = mk_doc("mod a { }");
-        assert doc.topmod.mods()[0].id != 0;
+        assert doc.topmod.mods()[0].id() != 0;
     }
 
     #[test]
@@ -381,14 +358,14 @@ mod test {
         let doc = mk_doc(
             "fn a() { } \
              mod b { fn c() { } }");
-        assert doc.topmod.fns()[0].name == "a";
-        assert doc.topmod.mods()[0].fns()[0].name == "c";
+        assert doc.topmod.fns()[0].name() == "a";
+        assert doc.topmod.mods()[0].fns()[0].name() == "c";
     }
 
     #[test]
     fn extract_should_set_fn_ast_id() {
         let doc = mk_doc("fn a() { }");
-        assert doc.topmod.fns()[0].id != 0;
+        assert doc.topmod.fns()[0].id() != 0;
     }
 
     #[test]
@@ -396,7 +373,7 @@ mod test {
         let source = "";
         let ast = parse::from_str(source);
         let doc = extract(ast, "burp");
-        assert doc.topmod.name == "burp";
+        assert doc.topmod.name() == "burp";
     }
 
     #[test]
@@ -404,6 +381,6 @@ mod test {
         let source = "";
         let srv = astsrv::mk_srv_from_str(source);
         let doc = from_srv(srv, "name");
-        assert doc.topmod.name == "name";
+        assert doc.topmod.name() == "name";
     }
 }

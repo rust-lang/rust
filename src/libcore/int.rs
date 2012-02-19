@@ -1,6 +1,19 @@
+#[doc = "Operations and constants for `int`"];
+
 /*
 Module: int
 */
+
+/*
+Const: min_value
+
+The minumum value of an integer
+*/
+#[cfg(target_arch="x86")]
+const min_value: int = -1 << 31;
+
+#[cfg(target_arch="x86_64")]
+const min_value: int = -1 << 63;
 
 /*
 Const: max_value
@@ -14,16 +27,8 @@ const max_value: int = (-1 << 31)-1;
 #[cfg(target_arch="x86_64")]
 const max_value: int = (-1 << 63)-1;
 
-/*
-Const: min_value
-
-The minumum value of an integer
-*/
-#[cfg(target_arch="x86")]
-const min_value: int = -1 << 31;
-
-#[cfg(target_arch="x86_64")]
-const min_value: int = -1 << 63;
+pure fn min(x: int, y: int) -> int { if x < y { x } else { y } }
+pure fn max(x: int, y: int) -> int { if x > y { x } else { y } }
 
 /* Function: add */
 pure fn add(x: int, y: int) -> int { ret x + y; }
@@ -179,6 +184,16 @@ fn pow(base: int, exponent: uint) -> int {
       multiplier *= multiplier;
     }
     ret acc;
+}
+
+#[doc = "Computes the bitwise complement"]
+fn compl(i: int) -> int {
+    uint::compl(i as uint) as int
+}
+
+#[doc = "Computes the absolute value"]
+fn abs(i: int) -> int {
+    if negative(i) { -i } else { i }
 }
 
 #[test]

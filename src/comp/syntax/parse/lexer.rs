@@ -1,11 +1,8 @@
 
-import core::{vec, str, option, either};
 import std::io;
 import io::reader_util;
-import option::{some, none};
 import util::interner;
 import util::interner::intern;
-import codemap;
 import driver::diagnostic;
 
 type reader = @{
@@ -46,7 +43,13 @@ impl reader for reader {
             let next = str::char_range_at(*self.src, self.pos);
             self.pos = next.next;
             self.curr = next.ch;
-        } else { self.curr = -1 as char; }
+        } else {
+            if (self.curr != -1 as char) {
+                self.col += 1u;
+                self.chpos += 1u;
+                self.curr = -1 as char;
+            }
+        }
     }
     fn fatal(m: str) -> ! {
         self.span_diagnostic.span_fatal(
@@ -61,7 +64,7 @@ fn new_reader(cm: codemap::codemap,
               itr: @interner::interner<str>) -> reader {
     let r = @{cm: cm,
               span_diagnostic: span_diagnostic,
-              src: filemap.src, len: str::byte_len(*filemap.src),
+              src: filemap.src, len: str::len_bytes(*filemap.src),
               mutable col: 0u, mutable pos: 0u, mutable curr: -1 as char,
               mutable chpos: filemap.start_pos.ch, mutable strs: [],
               filemap: filemap, interner: itr};
@@ -152,15 +155,15 @@ fn scan_exponent(rdr: reader) -> option<str> {
     let c = rdr.curr;
     let rslt = "";
     if c == 'e' || c == 'E' {
-        str::push_byte(rslt, c as u8);
+        str::push_char(rslt, c);
         rdr.bump();
         c = rdr.curr;
         if c == '-' || c == '+' {
-            str::push_byte(rslt, c as u8);
+            str::push_char(rslt, c);
             rdr.bump();
         }
         let exponent = scan_digits(rdr, 10u);
-        if str::byte_len(exponent) > 0u {
+        if str::len_bytes(exponent) > 0u {
             ret some(rslt + exponent);
         } else { rdr.fatal("scan_exponent: bad fp literal"); }
     } else { ret none::<str>; }
@@ -173,7 +176,7 @@ fn scan_digits(rdr: reader, radix: uint) -> str {
         if c == '_' { rdr.bump(); cont; }
         alt char::maybe_digit(c) {
           some(d) if (d as uint) < radix {
-            str::push_byte(rslt, c as u8);
+            str::push_char(rslt, c);
             rdr.bump();
           }
           _ { break; }
@@ -223,6 +226,9 @@ fn scan_number(c: char, rdr: reader) -> token::token {
             tp = if signed { either::left(ast::ty_i64) }
                       else { either::right(ast::ty_u64) };
         }
+        if str::len_bytes(num_str) == 0u {
+            rdr.fatal("no valid digits found for number");
+        }
         let parsed = u64::from_str(num_str, base as u64);
         alt tp {
           either::left(t) { ret token::LIT_INT(parsed as i64, t); }
@@ -267,6 +273,9 @@ fn scan_number(c: char, rdr: reader) -> token::token {
         ret token::LIT_FLOAT(interner::intern(*rdr.interner, num_str),
                              ast::ty_f);
     } else {
+        if str::len_bytes(num_str) == 0u {
+            rdr.fatal("no valid digits found for number");
+        }
         let parsed = u64::from_str(num_str, base as u64);
         ret token::LIT_INT(parsed as i64, ast::ty_i);
     }
@@ -349,7 +358,6 @@ fn next_token_inner(rdr: reader) -> token::token {
       '#' {
         rdr.bump();
         if rdr.curr == '<' { rdr.bump(); ret token::POUND_LT; }
-        if rdr.curr == '(' { rdr.bump(); ret token::POUND_LPAREN; }
         if rdr.curr == '{' { rdr.bump(); ret token::POUND_LBRACE; }
         ret token::POUND;
       }
@@ -470,11 +478,11 @@ fn next_token_inner(rdr: reader) -> token::token {
                 let escaped = rdr.curr;
                 rdr.bump();
                 alt escaped {
-                  'n' { str::push_byte(accum_str, '\n' as u8); }
-                  'r' { str::push_byte(accum_str, '\r' as u8); }
-                  't' { str::push_byte(accum_str, '\t' as u8); }
-                  '\\' { str::push_byte(accum_str, '\\' as u8); }
-                  '"' { str::push_byte(accum_str, '"' as u8); }
+                  'n' { str::push_char(accum_str, '\n'); }
+                  'r' { str::push_char(accum_str, '\r'); }
+                  't' { str::push_char(accum_str, '\t'); }
+                  '\\' { str::push_char(accum_str, '\\'); }
+                  '"' { str::push_char(accum_str, '"'); }
                   '\n' { consume_whitespace(rdr); }
                   'x' {
                     str::push_char(accum_str, scan_numeric_escape(rdr, 2u));
@@ -602,8 +610,8 @@ fn trim_whitespace_prefix_and_push_line(&lines: [str],
                                         s: str, col: uint) unsafe {
     let s1;
     if all_whitespace(s, 0u, col) {
-        if col < str::byte_len(s) {
-            s1 = str::unsafe::slice_bytes(s, col, str::byte_len(s));
+        if col < str::len_bytes(s) {
+            s1 = str::unsafe::slice_bytes(s, col, str::len_bytes(s));
         } else { s1 = ""; }
     } else { s1 = s; }
     log(debug, "pushing line: " + s1);
@@ -643,7 +651,7 @@ fn read_block_comment(rdr: reader, code_to_the_left: bool) -> cmnt {
             }
         }
     }
-    if str::byte_len(curr_line) != 0u {
+    if str::len_bytes(curr_line) != 0u {
         trim_whitespace_prefix_and_push_line(lines, curr_line, col);
     }
     let style = if code_to_the_left { trailing } else { isolated };

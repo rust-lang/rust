@@ -1,4 +1,4 @@
-import core::ctypes::{c_int, c_uint};
+import ctypes::{c_int, c_uint};
 import driver::session;
 import session::session;
 import lib::llvm::llvm;
@@ -6,13 +6,8 @@ import front::attr;
 import middle::ty;
 import metadata::{encoder, cstore};
 import middle::trans::common::crate_ctxt;
-import str;
 import std::fs;
-import vec;
-import option;
 import std::run;
-import option::some;
-import option::none;
 import std::sha1::sha1;
 import syntax::ast;
 import syntax::print::pprust;
@@ -113,14 +108,17 @@ mod write {
 
     // Decides what to call an intermediate file, given the name of the output
     // and the extension to use.
-    fn mk_intermediate_name(output_path: str, extension: str) -> str {
-        let dot_pos = str::index(output_path, '.' as u8);
-        let stem;
-        if dot_pos < 0 {
-            stem = output_path;
-        } else { stem = str::substr(output_path, 0u, dot_pos as uint); }
+    fn mk_intermediate_name(output_path: str, extension: str) -> str unsafe {
+        let stem = alt str::index(output_path, '.') {
+                       option::some(dot_pos) {
+                           str::slice(output_path, 0u, dot_pos)
+                       }
+                       option::none { output_path }
+                   };
+
         ret stem + "." + extension;
     }
+
     fn run_passes(sess: session, llmod: ModuleRef, output: str) {
         let opts = sess.opts;
         if opts.time_llvm_passes { llvm::LLVMRustEnableTimePasses(); }
@@ -205,12 +203,11 @@ mod write {
             let LLVMOptAggressive = 3 as c_int; // -O3
 
             let CodeGenOptLevel;
-            alt opts.optimize {
+            alt check opts.optimize {
               0u { CodeGenOptLevel = LLVMOptNone; }
               1u { CodeGenOptLevel = LLVMOptLess; }
               2u { CodeGenOptLevel = LLVMOptDefault; }
               3u { CodeGenOptLevel = LLVMOptAggressive; }
-              _ { fail; }
             }
 
             let FileType;
@@ -398,7 +395,7 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
                               metas: provided_metas,
                               dep_hashes: [str]) -> str {
         fn len_and_str(s: str) -> str {
-            ret #fmt["%u_%s", str::byte_len(s), s];
+            ret #fmt["%u_%s", str::len_bytes(s), s];
         }
 
         fn len_and_str_lit(l: ast::lit) -> str {
@@ -443,7 +440,8 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
               none {
                 let name =
                     {
-                        let os = str::split(fs::basename(output), '.' as u8);
+                        let os = str::split_byte(
+                                   fs::basename(output), '.' as u8);
                         if (vec::len(os) < 2u) {
                             sess.fatal(#fmt("Output file name %s doesn't\
                               appear to have an extension", output));
@@ -479,8 +477,8 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
     ret {name: name, vers: vers, extras_hash: extras_hash};
 }
 
-fn truncated_sha1_result(sha: sha1) -> str {
-    ret str::substr(sha.result_str(), 0u, 16u);
+fn truncated_sha1_result(sha: sha1) -> str unsafe {
+    ret str::unsafe::slice_bytes(sha.result_str(), 0u, 16u);
 }
 
 
@@ -522,7 +520,7 @@ fn mangle(ss: path) -> str {
 
     for s in ss {
         alt s { path_name(s) | path_mod(s) {
-          n += #fmt["%u%s", str::byte_len(s), s];
+          n += #fmt["%u%s", str::len_bytes(s), s];
         } }
     }
     n += "E"; // End name-sequence.
@@ -561,24 +559,25 @@ fn mangle_internal_name_by_seq(ccx: @crate_ctxt, flav: str) -> str {
 }
 
 // If the user wants an exe generated we need to invoke
-// gcc to link the object file with some libs
+// cc to link the object file with some libs
 fn link_binary(sess: session,
                obj_filename: str,
                out_filename: str,
                lm: link_meta) {
-    // Converts a library file name into a gcc -l argument
+    // Converts a library file name into a cc -l argument
     fn unlib(config: @session::config, filename: str) -> str unsafe {
         let rmlib = fn@(filename: str) -> str {
+            let found = str::find_bytes(filename, "lib");
             if config.os == session::os_macos ||
                 (config.os == session::os_linux ||
                  config.os == session::os_freebsd) &&
-                str::find(filename, "lib") == 0 {
+                option::is_some(found) && option::get(found) == 0u {
                 ret str::unsafe::slice_bytes(filename, 3u,
-                               str::byte_len(filename));
+                               str::len_bytes(filename));
             } else { ret filename; }
         };
         fn rmext(filename: str) -> str {
-            let parts = str::split(filename, '.' as u8);
+            let parts = str::split_byte(filename, '.' as u8);
             vec::pop(parts);
             ret str::connect(parts, ".");
         }
@@ -608,11 +607,17 @@ fn link_binary(sess: session,
     // The location of crates will be determined as needed.
     let stage: str = "-L" + sess.filesearch.get_target_lib_path();
 
-    let prog: str = "gcc";
-    // The invocations of gcc share some flags across platforms
+    // In the future, FreeBSD will use clang as default compiler.
+    // It would be flexible to use cc (system's default C compiler)
+    // instead of hard-coded gcc.
+    // For win32, there is no cc command,
+    // so we add a condition to make it use gcc.
+    let cc_prog: str =
+        if sess.targ_cfg.os == session::os_win32 { "gcc" } else { "cc" };
+    // The invocations of cc share some flags across platforms
 
-    let gcc_args =
-        [stage] + sess.targ_cfg.target_strs.gcc_args +
+    let cc_args =
+        [stage] + sess.targ_cfg.target_strs.cc_args +
         ["-o", output, obj_filename];
 
     let lib_cmd;
@@ -624,47 +629,47 @@ fn link_binary(sess: session,
     let cstore = sess.cstore;
     for cratepath: str in cstore::get_used_crate_files(cstore) {
         if str::ends_with(cratepath, ".rlib") {
-            gcc_args += [cratepath];
+            cc_args += [cratepath];
             cont;
         }
         let cratepath = cratepath;
         let dir = fs::dirname(cratepath);
-        if dir != "" { gcc_args += ["-L" + dir]; }
+        if dir != "" { cc_args += ["-L" + dir]; }
         let libarg = unlib(sess.targ_cfg, fs::basename(cratepath));
-        gcc_args += ["-l" + libarg];
+        cc_args += ["-l" + libarg];
     }
 
     let ula = cstore::get_used_link_args(cstore);
-    for arg: str in ula { gcc_args += [arg]; }
+    for arg: str in ula { cc_args += [arg]; }
 
     let used_libs = cstore::get_used_libraries(cstore);
-    for l: str in used_libs { gcc_args += ["-l" + l]; }
+    for l: str in used_libs { cc_args += ["-l" + l]; }
 
     if sess.building_library {
-        gcc_args += [lib_cmd];
+        cc_args += [lib_cmd];
 
         // On mac we need to tell the linker to let this library
         // be rpathed
         if sess.targ_cfg.os == session::os_macos {
-            gcc_args += ["-Wl,-install_name,@rpath/"
+            cc_args += ["-Wl,-install_name,@rpath/"
                         + fs::basename(output)];
         }
     } else {
         // FIXME: why do we hardcode -lm?
-        gcc_args += ["-lm"];
+        cc_args += ["-lm"];
     }
 
     // Always want the runtime linked in
-    gcc_args += ["-lrustrt"];
+    cc_args += ["-lrustrt"];
 
     // On linux librt and libdl are an indirect dependencies via rustrt,
     // and binutils 2.22+ won't add them automatically
     if sess.targ_cfg.os == session::os_linux {
-        gcc_args += ["-lrt", "-ldl"];
+        cc_args += ["-lrt", "-ldl"];
     }
 
     if sess.targ_cfg.os == session::os_freebsd {
-        gcc_args += ["-lrt", "-L/usr/local/lib", "-lexecinfo",
+        cc_args += ["-lrt", "-L/usr/local/lib", "-lexecinfo",
                      "-L/usr/local/lib/gcc46",
                      "-L/usr/local/lib/gcc44", "-lstdc++",
                      "-Wl,-z,origin",
@@ -677,20 +682,22 @@ fn link_binary(sess: session,
     // understand how to unwind our __morestack frame, so we have to turn it
     // off. This has impacted some other projects like GHC.
     if sess.targ_cfg.os == session::os_macos {
-        gcc_args += ["-Wl,-no_compact_unwind"];
+        cc_args += ["-Wl,-no_compact_unwind"];
     }
 
     // Stack growth requires statically linking a __morestack function
-    gcc_args += ["-lmorestack"];
+    cc_args += ["-lmorestack"];
 
-    gcc_args += rpath::get_rpath_flags(sess, output);
+    cc_args += rpath::get_rpath_flags(sess, output);
 
-    #debug("gcc link args: %s", str::connect(gcc_args, " "));
-    // We run 'gcc' here
-    let prog = run::program_output(prog, gcc_args);
+    #debug("%s link args: %s", cc_prog, str::connect(cc_args, " "));
+    // We run 'cc' here
+    let prog = run::program_output(cc_prog, cc_args);
     if 0 != prog.status {
-        sess.err(#fmt["linking with gcc failed with code %d", prog.status]);
-        sess.note(#fmt["gcc arguments: %s", str::connect(gcc_args, " ")]);
+        sess.err(#fmt["linking with %s failed with code %d",
+                      cc_prog, prog.status]);
+        sess.note(#fmt["%s arguments: %s",
+                       cc_prog, str::connect(cc_args, " ")]);
         sess.note(prog.err + prog.out);
         sess.abort_if_errors();
     }

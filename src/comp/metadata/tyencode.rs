@@ -3,7 +3,6 @@
 import std::io;
 import io::writer_util;
 import std::map::hashmap;
-import option::{some, none};
 import syntax::ast::*;
 import driver::session::session;
 import middle::ty;
@@ -42,8 +41,7 @@ fn enc_ty(w: io::writer, cx: @ctxt, t: ty::t) {
           some(s) { *s }
           none {
             let buf = io::mk_mem_buffer();
-            enc_sty(io::mem_buffer_writer(buf), cx,
-                    ty::struct_raw(cx.tcx, t));
+            enc_sty(io::mem_buffer_writer(buf), cx, ty::get(t).struct);
             cx.tcx.short_names_cache.insert(t, @io::mem_buffer_str(buf));
             io::mem_buffer_str(buf)
           }
@@ -55,7 +53,15 @@ fn enc_ty(w: io::writer, cx: @ctxt, t: ty::t) {
           some(a) { w.write_str(*a.s); ret; }
           none {
             let pos = w.tell();
-            enc_sty(w, cx, ty::struct_raw(cx.tcx, t));
+            alt ty::type_def_id(t) {
+              some(def_id) {
+                w.write_char('"');
+                w.write_str(cx.ds(def_id));
+                w.write_char('|');
+              }
+              _ {}
+            }
+            enc_sty(w, cx, ty::get(t).struct);
             let end = w.tell();
             let len = end - pos;
             fn estimate_sz(u: uint) -> uint {
@@ -79,10 +85,10 @@ fn enc_ty(w: io::writer, cx: @ctxt, t: ty::t) {
     }
 }
 fn enc_mt(w: io::writer, cx: @ctxt, mt: ty::mt) {
-    alt mt.mut {
-      imm { }
-      mut { w.write_char('m'); }
-      maybe_mut { w.write_char('?'); }
+    alt mt.mutbl {
+      m_imm { }
+      m_mutbl { w.write_char('m'); }
+      m_const { w.write_char('?'); }
     }
     enc_ty(w, cx, mt.ty);
 }
@@ -169,6 +175,11 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
         w.write_char('|');
         w.write_str(uint::str(id));
       }
+      ty::ty_self(tps) {
+        w.write_str("s[");
+        for t in tps { enc_ty(w, cx, t); }
+        w.write_char(']');
+      }
       ty::ty_type { w.write_char('Y'); }
       ty::ty_send_type { w.write_char('y'); }
       ty::ty_opaque_closure_ptr(ty::ck_block) { w.write_str("C&"); }
@@ -180,13 +191,13 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
         for tc: @ty::type_constr in cs { enc_ty_constr(w, cx, tc); }
         w.write_char(']');
       }
-      ty::ty_named(t, name) {
-        if cx.abbrevs != ac_no_abbrevs {
-            w.write_char('"');
-            w.write_str(*name);
-            w.write_char('"');
-        }
-        enc_ty(w, cx, t);
+      ty::ty_opaque_box { w.write_char('B'); }
+      ty::ty_class(def, tys) {
+          w.write_str("c[");
+          w.write_str(cx.ds(def));
+          w.write_char('|');
+          for t: ty::t in tys { enc_ty(w, cx, t); }
+          w.write_char(']');
       }
     }
 }
@@ -203,16 +214,12 @@ fn enc_proto(w: io::writer, proto: proto) {
 fn enc_ty_fn(w: io::writer, cx: @ctxt, ft: ty::fn_ty) {
     w.write_char('[');
     for arg: ty::arg in ft.inputs {
-        alt arg.mode {
-          by_mut_ref { w.write_char('&'); }
+        alt ty::resolved_mode(cx.tcx, arg.mode) {
+          by_mutbl_ref { w.write_char('&'); }
           by_move { w.write_char('-'); }
           by_copy { w.write_char('+'); }
           by_ref { w.write_char('='); }
           by_val { w.write_char('#'); }
-          // tediously, this has to be there until there's a way
-          // to constraint post-typeck types not to contain a mode_infer
-          mode_infer { cx.tcx.sess.bug("enc_ty_fn: shouldn't see \
-            mode_infer"); }
         }
         enc_ty(w, cx, arg.ty);
     }

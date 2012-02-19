@@ -7,8 +7,16 @@
 #include "rust_scheduler.h"
 #include "sync/timer.h"
 
+#ifdef __APPLE__
+#include <crt_externs.h>
+#endif
+
 #if !defined(__WIN32__)
 #include <sys/time.h>
+#endif
+
+#ifdef __FreeBSD__
+extern char **environ;
 #endif
 
 extern "C" CDECL rust_str*
@@ -73,17 +81,47 @@ rust_getcwd() {
     return make_str(task->kernel, cbuf, strlen(cbuf), "rust_str(getcwd");
 }
 
-// TODO: Allow calling native functions that return double results.
-extern "C" CDECL
-void squareroot(double *input, double *output) {
-    *output = sqrt(*input);
+#if defined(__WIN32__)
+extern "C" CDECL rust_vec *
+rust_env_pairs() {
+    rust_task *task = rust_task_thread::get_task();
+    size_t envc = 0;
+    LPTCH ch = GetEnvironmentStringsA();
+    LPTCH c;
+    for (c = ch; *c; c += strlen(c) + 1) {
+        ++envc;
+    }
+    c = ch;
+    rust_vec *v = (rust_vec *)
+        task->kernel->malloc(vec_size<rust_vec*>(envc),
+                       "str vec interior");
+    v->fill = v->alloc = sizeof(rust_vec*) * envc;
+    for (size_t i = 0; i < envc; ++i) {
+        size_t n = strlen(c);
+        rust_str *str = make_str(task->kernel, c, n, "str");
+        ((rust_str**)&v->data)[i] = str;
+        c += n + 1;
+    }
+    if (ch) {
+        FreeEnvironmentStrings(ch);
+    }
+    return v;
 }
-
-extern "C" CDECL void
-leak(void *thing) {
-    // Do nothing. Call this with move-mode in order to say "Don't worry rust,
-    // I'll take care of this."
+#else
+extern "C" CDECL rust_vec *
+rust_env_pairs() {
+    rust_task *task = rust_task_thread::get_task();
+#ifdef __APPLE__
+    char **environ = *_NSGetEnviron();
+#endif
+    char **e = environ;
+    size_t envc = 0;
+    while (*e) {
+        ++envc; ++e;
+    }
+    return make_str_vec(task->kernel, envc, environ);
 }
+#endif
 
 extern "C" CDECL intptr_t
 refcount(intptr_t *v) {
@@ -102,7 +140,14 @@ extern "C" CDECL void
 vec_reserve_shared(type_desc* ty, rust_vec** vp,
                    size_t n_elts) {
     rust_task *task = rust_task_thread::get_task();
-    reserve_vec(task, vp, n_elts * ty->size);
+    reserve_vec_exact(task, vp, n_elts * ty->size);
+}
+
+extern "C" CDECL void
+str_reserve_shared(rust_vec** sp,
+                   size_t n_elts) {
+    rust_task *task = rust_task_thread::get_task();
+    reserve_vec_exact(task, sp, n_elts + 1);
 }
 
 /**
@@ -184,6 +229,7 @@ debug_opaque(type_desc *t, uint8_t *front) {
     }
 }
 
+// FIXME this no longer reflects the actual structure of boxes!
 struct rust_box {
     RUST_REFCOUNTED(rust_box)
 
@@ -347,18 +393,21 @@ rust_ptr_eq(type_desc *t, rust_box *a, rust_box *b) {
 #if defined(__WIN32__)
 extern "C" CDECL void
 get_time(uint32_t *sec, uint32_t *usec) {
-    rust_task *task = rust_task_thread::get_task();
-    SYSTEMTIME systemTime;
     FILETIME fileTime;
-    GetSystemTime(&systemTime);
-    if (!SystemTimeToFileTime(&systemTime, &fileTime)) {
-        task->fail();
-        return;
-    }
+    GetSystemTimeAsFileTime(&fileTime);
 
-    // FIXME: This is probably completely wrong.
-    *sec = fileTime.dwHighDateTime;
-    *usec = fileTime.dwLowDateTime;
+    // A FILETIME contains a 64-bit value representing the number of
+    // hectonanosecond (100-nanosecond) intervals since 1601-01-01T00:00:00Z.
+    // http://support.microsoft.com/kb/167296/en-us
+    ULARGE_INTEGER ul;
+    ul.LowPart = fileTime.dwLowDateTime;
+    ul.HighPart = fileTime.dwHighDateTime;
+    uint64_t ns_since_1601 = ul.QuadPart / 10;
+
+    const uint64_t NANOSECONDS_FROM_1601_TO_1970 = 11644473600000000u;
+    uint64_t ns_since_1970 = ns_since_1601 - NANOSECONDS_FROM_1601_TO_1970;
+    *sec = ns_since_1970 / 1000000;
+    *usec = ns_since_1970 % 1000000;
 }
 #else
 extern "C" CDECL void
@@ -371,34 +420,58 @@ get_time(uint32_t *sec, uint32_t *usec) {
 #endif
 
 extern "C" CDECL void
-nano_time(uint64_t *ns) {
+precise_time_ns(uint64_t *ns) {
     timer t;
     *ns = t.time_ns();
+}
+
+extern "C" CDECL rust_sched_id
+rust_get_sched_id() {
+    rust_task *task = rust_task_thread::get_task();
+    return task->sched->get_id();
+}
+
+extern "C" CDECL rust_sched_id
+rust_new_sched(uintptr_t threads) {
+    rust_task *task = rust_task_thread::get_task();
+    A(task->thread, threads > 0,
+      "Can't create a scheduler with no threads, silly!");
+    return task->kernel->create_scheduler(threads);
 }
 
 extern "C" CDECL rust_task_id
 get_task_id() {
     rust_task *task = rust_task_thread::get_task();
-    return task->user.id;
+    return task->id;
+}
+
+static rust_task_id
+new_task_common(rust_scheduler *sched, rust_task *parent) {
+    return sched->create_task(parent, NULL);
 }
 
 extern "C" CDECL rust_task_id
 new_task() {
     rust_task *task = rust_task_thread::get_task();
-    return task->sched->create_task(task, NULL);
+    return new_task_common(task->sched, task);
+}
+
+extern "C" CDECL rust_task_id
+rust_new_task_in_sched(rust_sched_id id) {
+    rust_task *task = rust_task_thread::get_task();
+    rust_scheduler *sched = task->kernel->get_scheduler_by_id(id);
+    // FIXME: What if we didn't get the scheduler?
+    return new_task_common(sched, task);
 }
 
 extern "C" CDECL void
-drop_task(rust_task *target) {
-    if(target) {
-        target->deref();
-    }
-}
-
-extern "C" CDECL rust_task *
-get_task_pointer(rust_task_id id) {
+rust_task_config_notify(rust_task_id task_id, chan_handle *chan) {
     rust_task *task = rust_task_thread::get_task();
-    return task->kernel->get_task_by_id(id);
+    rust_task *target = task->kernel->get_task_by_id(task_id);
+    A(task->thread, target != NULL,
+      "This function should only be called when we know the task exists");
+    target->config_notify(*chan);
+    target->deref();
 }
 
 extern "C" rust_task *
@@ -506,7 +579,7 @@ port_recv(uintptr_t *dptr, rust_port *port,
 
         // If this task has been killed then we're not going to bother
         // blocking, we have to unwind.
-        if (task->killed) {
+        if (task->must_fail_from_being_killed()) {
             *killed = true;
             return;
         }
@@ -521,6 +594,14 @@ port_recv(uintptr_t *dptr, rust_port *port,
     }
     *yield = true;
     return;
+}
+
+extern "C" CDECL void
+rust_port_select(rust_port **dptr, rust_port **ports,
+                 size_t n_ports, uintptr_t *yield) {
+    rust_task *task = rust_task_thread::get_task();
+    rust_port_selector *selector = task->get_port_selector();
+    selector->select(task, dptr, ports, n_ports, yield);
 }
 
 extern "C" CDECL void
@@ -542,6 +623,53 @@ extern "C" CDECL void
 rust_log_console_off() {
     rust_task *task = rust_task_thread::get_task();
     log_console_off(task->kernel->env);
+}
+
+extern "C" CDECL lock_and_signal *
+rust_dbg_lock_create() {
+    return new lock_and_signal();
+}
+
+extern "C" CDECL void
+rust_dbg_lock_destroy(lock_and_signal *lock) {
+    rust_task *task = rust_task_thread::get_task();
+    I(task->thread, lock);
+    delete lock;
+}
+
+extern "C" CDECL void
+rust_dbg_lock_lock(lock_and_signal *lock) {
+    rust_task *task = rust_task_thread::get_task();
+    I(task->thread, lock);
+    lock->lock();
+}
+
+extern "C" CDECL void
+rust_dbg_lock_unlock(lock_and_signal *lock) {
+    rust_task *task = rust_task_thread::get_task();
+    I(task->thread, lock);
+    lock->unlock();
+}
+
+extern "C" CDECL void
+rust_dbg_lock_wait(lock_and_signal *lock) {
+    rust_task *task = rust_task_thread::get_task();
+    I(task->thread, lock);
+    lock->wait();
+}
+
+extern "C" CDECL void
+rust_dbg_lock_signal(lock_and_signal *lock) {
+    rust_task *task = rust_task_thread::get_task();
+    I(task->thread, lock);
+    lock->signal();
+}
+
+typedef void *(*dbg_callback)(void*);
+
+extern "C" CDECL void *
+rust_dbg_call(dbg_callback cb, void *data) {
+    return cb(data);
 }
 
 //

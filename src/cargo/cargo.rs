@@ -5,7 +5,8 @@ use std;
 
 import rustc::syntax::{ast, codemap};
 import rustc::syntax::parse::parser;
-import rustc::util::filesearch::get_cargo_root;
+import rustc::util::filesearch::{get_cargo_root, get_cargo_root_nearest,
+                                 get_cargo_sysroot};
 import rustc::driver::diagnostic;
 
 import std::fs;
@@ -19,6 +20,8 @@ import std::run;
 import str;
 import std::tempfile;
 import vec;
+import std::getopts;
+import getopts::{optflag, optopt, opt_present};
 
 enum _src {
     /* Break cycles in package <-> source */
@@ -53,7 +56,7 @@ type cargo = {
     workdir: str,
     sourcedir: str,
     sources: map::hashmap<str, source>,
-    mutable test: bool
+    opts: options
 };
 
 type pkg = {
@@ -64,6 +67,18 @@ type pkg = {
     sigs: option<str>,
     crate_type: option<str>
 };
+
+type options = {
+    test: bool,
+    mode: mode,
+    free: [str],
+};
+
+enum mode { system_mode, user_mode, local_mode }
+
+fn opts() -> [getopts::opt] {
+    [optflag("g"), optflag("G"), optopt("mode"), optflag("test")]
+}
 
 fn info(msg: str) {
     io::stdout().write_line("info: " + msg);
@@ -159,10 +174,10 @@ fn print(s: str) {
 }
 
 fn rest(s: str, start: uint) -> str {
-    if (start >= str::char_len(s)) {
+    if (start >= str::len(s)) {
         ""
     } else {
-        str::slice(s, start, str::char_len(s))
+        str::slice(s, start, str::len(s))
     }
 }
 
@@ -322,10 +337,57 @@ fn load_source_packages(&c: cargo, &src: source) {
     };
 }
 
-fn configure() -> cargo {
-    let p = alt get_cargo_root() {
-      result::ok(p) { p }
-      result::err(e) { fail e }
+fn build_cargo_options(argv: [str]) -> options {
+    let match = alt getopts::getopts(argv, opts()) {
+        result::ok(m) { m }
+        result::err(f) {
+            fail #fmt["%s", getopts::fail_str(f)];
+        }
+    };
+
+    let test = opt_present(match, "test");
+    let mode = if opt_present(match, "G") {
+        if opt_present(match, "mode") { fail "--mode and -G both provided"; }
+        if opt_present(match, "g") { fail "-G and -g both provided"; }
+        system_mode
+    } else if opt_present(match, "g") {
+        if opt_present(match, "mode") { fail "--mode and -g both provided"; }
+        if opt_present(match, "G") { fail "-G and -g both provided"; }
+        user_mode
+    } else if opt_present(match, "mode") {
+        alt getopts::opt_str(match, "mode") {
+            "system" { system_mode }
+            "user" { user_mode }
+            "local" { local_mode }
+            _ { fail "argument to `mode` must be one of `system`" +
+                ", `user`, or `normal`";
+            }
+        }
+    } else {
+        local_mode
+    };
+
+    if mode == system_mode {
+        // FIXME: Per discussion on #1760, we need to think about how
+        // system mode works. It should install files to the normal
+        // sysroot paths, but it also needsd an area to place various
+        // cargo configuration and work files.
+        fail "system mode does not exist yet";
+    }
+
+    {test: test, mode: mode, free: match.free}
+}
+
+fn configure(opts: options) -> cargo {
+    let get_cargo_dir = alt opts.mode {
+        system_mode { get_cargo_sysroot }
+        user_mode { get_cargo_root }
+        local_mode { get_cargo_root_nearest }
+    };
+
+    let p = alt get_cargo_dir() {
+        result::ok(p) { p }
+        result::err(e) { fail e }
     };
 
     let sources = map::new_str_hash::<source>();
@@ -339,7 +401,7 @@ fn configure() -> cargo {
         workdir: fs::connect(p, "work"),
         sourcedir: fs::connect(p, "sources"),
         sources: sources,
-        mutable test: false
+        opts: opts
     };
 
     need_dir(c.root);
@@ -356,6 +418,10 @@ fn configure() -> cargo {
 
     if c.pgp {
         pgp::init(c.root);
+    } else {
+        warn("command \"gpg\" is not found");
+        warn("you have to install \"gpg\" from source " +
+             " or package manager to get it to work correctly");
     }
 
     c
@@ -374,8 +440,8 @@ fn test_one_crate(_c: cargo, _path: str, cf: str, _p: pkg) {
     let buildpath = fs::connect(_path, "/test");
     need_dir(buildpath);
     #debug("Testing: %s -> %s", cf, buildpath);
-    let p = run::program_output("rustc", ["--out-dir", buildpath, "--test",
-                                          cf]);
+    let p = run::program_output(rustc_sysroot(),
+                                ["--out-dir", buildpath, "--test", cf]);
     if p.status != 0 {
         error(#fmt["rustc failed: %d\n%s\n%s", p.status, p.err, p.out]);
         ret;
@@ -390,7 +456,8 @@ fn install_one_crate(c: cargo, _path: str, cf: str, _p: pkg) {
     let buildpath = fs::connect(_path, "/build");
     need_dir(buildpath);
     #debug("Installing: %s -> %s", cf, buildpath);
-    let p = run::program_output("rustc", ["--out-dir", buildpath, cf]);
+    let p = run::program_output(rustc_sysroot(),
+                                ["--out-dir", buildpath, cf]);
     if p.status != 0 {
         error(#fmt["rustc failed: %d\n%s\n%s", p.status, p.err, p.out]);
         ret;
@@ -408,6 +475,19 @@ fn install_one_crate(c: cargo, _path: str, cf: str, _p: pkg) {
             #debug("  lib: %s", ct);
             run::run_program("cp", [ct, c.libdir]);
         }
+    }
+}
+
+fn rustc_sysroot() -> str {
+    alt os::get_exe_path() {
+        some(_path) {
+            let path = [_path, "..", "bin", "rustc"];
+            check vec::is_not_empty(path);
+            let rustc = fs::normalize(fs::connect_many(path));
+            #debug("  rustc: %s", rustc);
+            rustc
+        }
+        none { "rustc" }
     }
 }
 
@@ -430,7 +510,7 @@ fn install_source(c: cargo, path: str) {
         alt p {
             none { cont; }
             some(_p) {
-                if c.test {
+                if c.opts.test {
                     test_one_crate(c, path, cf, _p);
                 }
                 install_one_crate(c, path, cf, _p);
@@ -573,19 +653,14 @@ fn install_named_specific(c: cargo, wd: str, src: str, name: str) {
     error("Can't find package " + src + "/" + name);
 }
 
-fn cmd_install(c: cargo, argv: [str]) unsafe {
+fn cmd_install(c: cargo) unsafe {
     // cargo install <pkg>
-    if vec::len(argv) < 3u {
+    if vec::len(c.opts.free) < 3u {
         cmd_usage();
         ret;
     }
 
-    let target = argv[2];
-    // TODO: getopts
-    if vec::len(argv) > 3u && argv[2] == "--test" {
-        c.test = true;
-        target = argv[3];
-    }
+    let target = c.opts.free[2];
 
     let wd = alt tempfile::mkdtemp(c.workdir + fs::path_sep(), "") {
         some(_wd) { _wd }
@@ -594,25 +669,27 @@ fn cmd_install(c: cargo, argv: [str]) unsafe {
 
     if str::starts_with(target, "uuid:") {
         let uuid = rest(target, 5u);
-        let idx = str::index(uuid, '/' as u8);
-        if idx != -1 {
-            let source = str::unsafe::slice_bytes(uuid, 0u, idx as uint);
-            uuid = str::unsafe::slice_bytes(uuid, idx as uint + 1u,
-                                      str::byte_len(uuid));
-            install_uuid_specific(c, wd, source, uuid);
-        } else {
-            install_uuid(c, wd, uuid);
+        alt str::index(uuid, '/') {
+            option::some(idx) {
+               let source = str::slice(uuid, 0u, idx);
+               uuid = str::slice(uuid, idx + 1u, str::len(uuid));
+               install_uuid_specific(c, wd, source, uuid);
+            }
+            option::none {
+               install_uuid(c, wd, uuid);
+            }
         }
     } else {
         let name = target;
-        let idx = str::index(name, '/' as u8);
-        if idx != -1 {
-            let source = str::unsafe::slice_bytes(name, 0u, idx as uint);
-            name = str::unsafe::slice_bytes(name, idx as uint + 1u,
-                                      str::byte_len(name));
-            install_named_specific(c, wd, source, name);
-        } else {
-            install_named(c, wd, name);
+        alt str::index(name, '/') {
+            option::some(idx) {
+               let source = str::slice(name, 0u, idx);
+               name = str::slice(name, idx + 1u, str::len(name));
+               install_named_specific(c, wd, source, name);
+            }
+            option::none {
+               install_named(c, wd, name);
+            }
         }
     }
 }
@@ -671,9 +748,9 @@ fn sync_one(c: cargo, name: str, src: source) {
     run::run_program("cp", [pkgfile, destpkgfile]);
 }
 
-fn cmd_sync(c: cargo, argv: [str]) {
-    if vec::len(argv) == 3u {
-        sync_one(c, argv[2], c.sources.get(argv[2]));
+fn cmd_sync(c: cargo) {
+    if vec::len(c.opts.free) == 3u {
+        sync_one(c, c.opts.free[2], c.sources.get(c.opts.free[2]));
     } else {
         cargo_suggestion(c, true, { || } );
         c.sources.items { |k, v|
@@ -709,6 +786,8 @@ fn cmd_init(c: cargo) {
     }
     info(#fmt["signature ok for sources.json"]);
     run::run_program("cp", [srcfile, destsrcfile]);
+
+    info(#fmt["Initialized .cargo in %s", c.root]);
 }
 
 fn print_pkg(s: source, p: package) {
@@ -721,25 +800,25 @@ fn print_pkg(s: source, p: package) {
         print("   >> " + p.description + "\n")
     }
 }
-fn cmd_list(c: cargo, argv: [str]) {
+fn cmd_list(c: cargo) {
     for_each_package(c, { |s, p|
-        if vec::len(argv) <= 2u || argv[2] == s.name {
+        if vec::len(c.opts.free) <= 2u || c.opts.free[2] == s.name {
             print_pkg(s, p);
         }
     });
 }
 
-fn cmd_search(c: cargo, argv: [str]) {
-    if vec::len(argv) < 3u {
+fn cmd_search(c: cargo) {
+    if vec::len(c.opts.free) < 3u {
         cmd_usage();
         ret;
     }
     let n = 0;
-    let name = argv[2];
-    let tags = vec::slice(argv, 3u, vec::len(argv));
+    let name = c.opts.free[2];
+    let tags = vec::slice(c.opts.free, 3u, vec::len(c.opts.free));
     for_each_package(c, { |s, p|
         if (str::contains(p.name, name) || name == "*") &&
-            vec::all(tags, { |t| vec::member(t, p.tags) }) {
+            vec::all(tags, { |t| vec::contains(p.tags, t) }) {
             print_pkg(s, p);
             n += 1;
         }
@@ -748,28 +827,46 @@ fn cmd_search(c: cargo, argv: [str]) {
 }
 
 fn cmd_usage() {
-    print("Usage: cargo <verb> [args...]");
-    print("  init                                          Set up ~/.cargo");
-    print("  install [--test] [source/]package-name        Install by name");
-    print("  install [--test] uuid:[source/]package-uuid   Install by uuid");
-    print("  list [source]                                 List packages");
-    print("  search <name | '*'> [tags...]                 Search packages");
-    print("  sync                                          Sync all sources");
-    print("  usage                                         This");
+    print("Usage: cargo <verb> [options] [args...]" +
+          "
+
+    init                                          Set up .cargo
+    install [--test] [source/]package-name        Install by name
+    install [--test] uuid:[source/]package-uuid   Install by uuid
+    list [source]                                 List packages
+    search <name | '*'> [tags...]                 Search packages
+    sync                                          Sync all sources
+    usage                                         This
+
+Options:
+
+    --mode=[system,user,local]   change mode as (system/user/local)
+    -g                           equivalent to --mode=user
+    -G                           equivalent to --mode=system
+
+NOTE:
+This command creates/uses local-level .cargo by default.
+To create/use user-level .cargo, use option -g/--mode=user.
+To create/use system-level .cargo, use option -G/--mode=system.
+");
 }
 
 fn main(argv: [str]) {
-    if vec::len(argv) < 2u {
+    let o = build_cargo_options(argv);
+
+    if vec::len(o.free) < 2u {
         cmd_usage();
         ret;
     }
-    let c = configure();
-    alt argv[1] {
+
+    let c = configure(o);
+
+    alt o.free[1] {
         "init" { cmd_init(c); }
-        "install" { cmd_install(c, argv); }
-        "list" { cmd_list(c, argv); }
-        "search" { cmd_search(c, argv); }
-        "sync" { cmd_sync(c, argv); }
+        "install" { cmd_install(c); }
+        "list" { cmd_list(c); }
+        "search" { cmd_search(c); }
+        "sync" { cmd_sync(c); }
         "usage" { cmd_usage(); }
         _ { cmd_usage(); }
     }

@@ -13,11 +13,15 @@ pthread_key_t rust_task_thread::task_key;
 DWORD rust_task_thread::task_key;
 #endif
 
+const size_t SCHED_STACK_SIZE = 1024*100;
+const size_t C_STACK_SIZE = 1024*1024;
+
 bool rust_task_thread::tls_initialized = false;
 
 rust_task_thread::rust_task_thread(rust_scheduler *sched,
                                    rust_srv *srv,
                                    int id) :
+    rust_thread(SCHED_STACK_SIZE),
     ref_count(1),
     _log(srv, this),
     log_lvl(log_debug),
@@ -34,7 +38,8 @@ rust_task_thread::rust_task_thread(rust_scheduler *sched,
     id(id),
     min_stack_size(kernel->env->min_stack_size),
     env(kernel->env),
-    should_exit(false)
+    should_exit(false),
+    cached_c_stack(NULL)
 {
     LOGPTR(this, "new dom", (uintptr_t)this);
     isaac_init(kernel, &rctx);
@@ -65,7 +70,9 @@ rust_task_thread::activate(rust_task *task) {
     task->ctx.next = &c_context;
     DLOG(this, task, "descheduling...");
     lock.unlock();
+    prepare_c_stack(task);
     task->ctx.swap(c_context);
+    unprepare_c_stack();
     lock.lock();
     DLOG(this, task, "task has returned");
 }
@@ -136,14 +143,28 @@ rust_task_thread::reap_dead_tasks() {
 
     for (size_t i = 0; i < dead_tasks_len; ++i) {
         rust_task *task = dead_tasks_copy[i];
-        if (task) {
-            kernel->release_task_id(task->user.id);
-            task->deref();
-        }
+        // Release the task from the kernel so nobody else can get at it
+        kernel->release_task_id(task->id);
+        // Deref the task, which may cause it to request us to release it
+        task->deref();
     }
     srv->free(dead_tasks_copy);
 
     lock.lock();
+}
+
+void
+rust_task_thread::release_task(rust_task *task) {
+    // Nobody should have a ref to the task at this point
+    I(this, task->get_ref_count() == 0);
+    // Kernel should not know about the task any more
+    I(this, kernel->get_task_by_id(task->id) == NULL);
+    // Now delete the task, which will require using this thread's
+    // memory region.
+    delete task;
+    // Now release the task from the scheduler, which may trigger this
+    // thread to exit
+    sched->release_task();
 }
 
 /**
@@ -235,11 +256,9 @@ rust_task_thread::start_main_loop() {
 
         DLOG(this, task,
              "activating task %s 0x%" PRIxPTR
-             ", sp=0x%" PRIxPTR
              ", state: %s",
              scheduled_task->name,
              (uintptr_t)scheduled_task,
-             scheduled_task->user.rust_sp,
              scheduled_task->state->name);
 
         place_task_in_tls(scheduled_task);
@@ -251,11 +270,10 @@ rust_task_thread::start_main_loop() {
 
         DLOG(this, task,
              "returned from task %s @0x%" PRIxPTR
-             " in state '%s', sp=0x%x, worker id=%d" PRIxPTR,
+             " in state '%s', worker id=%d" PRIxPTR,
              scheduled_task->name,
              (uintptr_t)scheduled_task,
              scheduled_task->state->name,
-             scheduled_task->user.rust_sp,
              id);
 
         reap_dead_tasks();
@@ -269,6 +287,12 @@ rust_task_thread::start_main_loop() {
     DLOG(this, dom, "finished main-loop %d", id);
 
     lock.unlock();
+
+    I(this, !extra_c_stack);
+    if (cached_c_stack) {
+        destroy_stack(kernel, cached_c_stack);
+        cached_c_stack = NULL;
+    }
 }
 
 rust_crate_cache *
@@ -291,11 +315,13 @@ rust_task_thread::create_task(rust_task *spawner, const char *name,
     }
 
     kernel->register_task(task);
-    return task->user.id;
+    return task->id;
 }
 
 void rust_task_thread::run() {
     this->start_main_loop();
+    detach();
+    sched->release_task_thread();
 }
 
 #ifndef _WIN32
@@ -312,16 +338,6 @@ rust_task_thread::place_task_in_tls(rust_task *task) {
     assert(!result && "Couldn't place the task in TLS!");
     task->record_stack_limit();
 }
-
-rust_task *
-rust_task_thread::get_task() {
-    if (!tls_initialized)
-        return NULL;
-    rust_task *task = reinterpret_cast<rust_task *>
-        (pthread_getspecific(task_key));
-    assert(task && "Couldn't get the task from TLS!");
-    return task;
-}
 #else
 void
 rust_task_thread::init_tls() {
@@ -336,15 +352,6 @@ rust_task_thread::place_task_in_tls(rust_task *task) {
     assert(result && "Couldn't place the task in TLS!");
     task->record_stack_limit();
 }
-
-rust_task *
-rust_task_thread::get_task() {
-    if (!tls_initialized)
-        return NULL;
-    rust_task *task = reinterpret_cast<rust_task *>(TlsGetValue(task_key));
-    assert(task && "Couldn't get the task from TLS!");
-    return task;
-}
 #endif
 
 void
@@ -353,6 +360,26 @@ rust_task_thread::exit() {
     scoped_lock with(lock);
     should_exit = true;
     lock.signal();
+}
+
+// Before activating each task, make sure we have a C stack available.
+// It needs to be allocated ahead of time (while we're on our own
+// stack), because once we're on the Rust stack we won't have enough
+// room to do the allocation
+void
+rust_task_thread::prepare_c_stack(rust_task *task) {
+    I(this, !extra_c_stack);
+    if (!cached_c_stack && !task->have_c_stack()) {
+        cached_c_stack = create_stack(kernel, C_STACK_SIZE);
+    }
+}
+
+void
+rust_task_thread::unprepare_c_stack() {
+    if (extra_c_stack) {
+        destroy_stack(kernel, extra_c_stack);
+        extra_c_stack = NULL;
+    }
 }
 
 //

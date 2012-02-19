@@ -79,7 +79,7 @@ A description of a possible option
 type opt = {name: name, hasarg: hasarg, occur: occur};
 
 fn mkname(nm: str) -> name {
-    ret if str::char_len(nm) == 1u {
+    ret if str::len(nm) == 1u {
             short(str::char_at(nm, 0u))
         } else { long(nm) };
 }
@@ -141,7 +141,7 @@ of matches and a vector of free strings.
 type match = {opts: [opt], vals: [mutable [optval]], free: [str]};
 
 fn is_arg(arg: str) -> bool {
-    ret str::byte_len(arg) > 1u && arg[0] == '-' as u8;
+    ret str::len_bytes(arg) > 1u && arg[0] == '-' as u8;
 }
 
 fn name_str(nm: name) -> str {
@@ -149,7 +149,7 @@ fn name_str(nm: name) -> str {
 }
 
 fn find_opt(opts: [opt], nm: name) -> option<uint> {
-    vec::position_pred(opts, { |opt| opt.name == nm })
+    vec::position(opts, { |opt| opt.name == nm })
 }
 
 /*
@@ -218,7 +218,7 @@ fn getopts(args: [str], opts: [opt]) -> result unsafe {
     let i = 0u;
     while i < l {
         let cur = args[i];
-        let curlen = str::byte_len(cur);
+        let curlen = str::len_bytes(cur);
         if !is_arg(cur) {
             free += [cur];
         } else if str::eq(cur, "--") {
@@ -230,16 +230,14 @@ fn getopts(args: [str], opts: [opt]) -> result unsafe {
             let i_arg = option::none::<str>;
             if cur[1] == '-' as u8 {
                 let tail = str::unsafe::slice_bytes(cur, 2u, curlen);
-                let eq = str::index(tail, '=' as u8);
-                if eq == -1 {
+                let tail_eq = str::splitn_char(tail, '=', 1u);
+                if vec::len(tail_eq) <= 1u {
                     names = [long(tail)];
                 } else {
                     names =
-                        [long(str::unsafe::slice_bytes(tail,0u,eq as uint))];
+                        [long(tail_eq[0])];
                     i_arg =
-                        option::some::<str>(str::unsafe::slice_bytes(tail,
-                                                       (eq as uint) + 1u,
-                                                       curlen - 2u));
+                        option::some::<str>(tail_eq[1]);
                 }
             } else {
                 let j = 1u;
@@ -397,7 +395,6 @@ mod tests {
           option_missing(_) { assert (ft == option_missing_); }
           option_duplicated(_) { assert (ft == option_duplicated_); }
           unexpected_argument(_) { assert (ft == unexpected_argument_); }
-          _ { fail; }
         }
     }
 
@@ -408,12 +405,11 @@ mod tests {
         let args = ["--test=20"];
         let opts = [reqopt("test")];
         let rs = getopts(args, opts);
-        alt rs {
+        alt check rs {
           ok(m) {
             assert (opt_present(m, "test"));
             assert (opt_str(m, "test") == "20");
           }
-          _ { fail; }
         }
     }
 

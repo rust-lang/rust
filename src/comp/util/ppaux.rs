@@ -1,37 +1,29 @@
-import core::{vec, str, int, option};
-import option::{none, some};
 import middle::ty;
 import middle::ty::*;
 import metadata::encoder;
 import syntax::print::pprust;
-import syntax::print::pprust::{path_to_str, constr_args_to_str, proto_to_str};
+import syntax::print::pprust::{path_to_str, constr_args_to_str, proto_to_str,
+                               mode_to_str};
 import syntax::{ast, ast_util};
 import middle::ast_map;
-
-fn mode_str(m: ast::mode) -> str {
-    alt m {
-      ast::by_ref { "&&" }
-      ast::by_val { "++" }
-      ast::by_mut_ref { "&" }
-      ast::by_move { "-" }
-      ast::by_copy { "+" }
-      _ { "" }
-    }
-}
+import driver::session::session;
 
 fn ty_to_str(cx: ctxt, typ: t) -> str {
     fn fn_input_to_str(cx: ctxt, input: {mode: ast::mode, ty: t}) ->
        str {
-        let modestr = alt input.mode {
-          ast::by_ref {
-            if ty::type_is_immediate(cx, input.ty) { "&&" } else { "" }
+        let {mode, ty} = input;
+        let modestr = alt canon_mode(cx, mode) {
+          ast::infer(_) { "" }
+          ast::expl(m) {
+            if !ty::type_has_vars(ty) &&
+                m == ty::default_arg_mode_for_ty(ty) {
+                ""
+            } else {
+                mode_to_str(ast::expl(m))
+            }
           }
-          ast::by_val {
-            if ty::type_is_immediate(cx, input.ty) { "" } else { "++" }
-          }
-          _ { mode_str(input.mode) }
         };
-        modestr + ty_to_str(cx, input.ty)
+        modestr + ty_to_str(cx, ty)
     }
     fn fn_to_str(cx: ctxt, proto: ast::proto, ident: option<ast::ident>,
                  inputs: [arg], output: t, cf: ast::ret_style,
@@ -43,7 +35,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
         for a: arg in inputs { strs += [fn_input_to_str(cx, a)]; }
         s += str::connect(strs, ", ");
         s += ")";
-        if struct(cx, output) != ty_nil {
+        if ty::get(output).struct != ty_nil {
             s += " -> ";
             alt cf {
               ast::noreturn { s += "!"; }
@@ -61,30 +53,36 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
         ret f.ident + ": " + mt_to_str(cx, f.mt);
     }
     fn mt_to_str(cx: ctxt, m: mt) -> str {
-        let mstr;
-        alt m.mut {
-          ast::mut { mstr = "mutable "; }
-          ast::imm { mstr = ""; }
-          ast::maybe_mut { mstr = "const "; }
-        }
+        let mstr = alt m.mutbl {
+          ast::m_mutbl { "mut " }
+          ast::m_imm { "" }
+          ast::m_const { "const " }
+        };
         ret mstr + ty_to_str(cx, m.ty);
     }
-    alt ty_name(cx, typ) {
-      some(cs) {
-        alt struct(cx, typ) {
-          ty_enum(_, tps) | ty_res(_, _, tps) {
-            if vec::len(tps) > 0u {
-                let strs = vec::map(tps, {|t| ty_to_str(cx, t)});
-                ret *cs + "<" + str::connect(strs, ",") + ">";
-            }
-          }
-          _ {}
+    fn parameterized(cx: ctxt, base: str, tps: [ty::t]) -> str {
+        if vec::len(tps) > 0u {
+            let strs = vec::map(tps, {|t| ty_to_str(cx, t)});
+            #fmt["%s<%s>", base, str::connect(strs, ",")]
+        } else {
+            base
         }
-        ret *cs;
-      }
-      _ { }
     }
-    ret alt struct(cx, typ) {
+
+    // if there is an id, print that instead of the structural type:
+    alt ty::type_def_id(typ) {
+      some(def_id) {
+        let cs = ast_map::path_to_str(ty::item_path(cx, def_id));
+        ret alt ty::get(typ).struct {
+          ty_enum(_, tps) | ty_res(_, _, tps) { parameterized(cx, cs, tps) }
+          _ { cs }
+        };
+      }
+      none { /* fallthrough */}
+    }
+
+    // pretty print the structural type representation:
+    ret alt ty::get(typ).struct {
       ty_nil { "()" }
       ty_bot { "_|_" }
       ty_bool { "bool" }
@@ -119,13 +117,21 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
       ty_param(id, _) {
         "'" + str::from_bytes([('a' as u8) + (id as u8)])
       }
+      ty_enum(did, tps) | ty_res(did, _, tps) {
+        // Not sure why, but under some circumstances enum or resource types
+        // do not have an associated id.  I didn't investigate enough to know
+        // if there is a good reason for this. - Niko, 2012-02-10
+        let path = ty::item_path(cx, did);
+        let base = ast_map::path_to_str(path);
+        parameterized(cx, base, tps)
+      }
       _ { ty_to_short_str(cx, typ) }
     }
 }
 
-fn ty_to_short_str(cx: ctxt, typ: t) -> str {
+fn ty_to_short_str(cx: ctxt, typ: t) -> str unsafe {
     let s = encoder::encoded_ty(cx, typ);
-    if str::byte_len(s) >= 32u { s = str::substr(s, 0u, 32u); }
+    if str::len_bytes(s) >= 32u { s = str::unsafe::slice_bytes(s, 0u, 32u); }
     ret s;
 }
 

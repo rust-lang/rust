@@ -1,3 +1,5 @@
+#[doc = "Operations and constants for `float`"];
+
 /*
 Module: float
 */
@@ -11,7 +13,7 @@ export is_zero, is_infinite, is_finite;
 export NaN, is_NaN, infinity, neg_infinity;
 export consts;
 export logarithm;
-export acos, asin, atan, atan2, cbrt, ceil, copysign, cos, cosh;
+export acos, asin, atan, atan2, cbrt, ceil, copysign, cos, cosh, floor;
 export erf, erfc, exp, expm1, exp2, abs, abs_sub;
 export mul_add, fmax, fmin, nextafter, frexp, hypot, ldexp;
 export lgamma, ln, log_radix, ln1p, log10, log2, ilog_radix;
@@ -126,7 +128,7 @@ fn from_str(num: str) -> float {
 
    let pos = 0u;                  //Current byte position in the string.
                                   //Used to walk the string in O(n).
-   let len = str::byte_len(num);  //Length of the string, in bytes.
+   let len = str::len_bytes(num);  //Length of the string, in bytes.
 
    if len == 0u { ret 0.; }
    let total = 0f;                //Accumulated result

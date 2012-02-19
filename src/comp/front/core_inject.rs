@@ -24,14 +24,15 @@ fn inject_libcore_ref(sess: session,
     fn spanned<T: copy>(x: T) -> @ast::spanned<T> {
         ret @{node: x,
               span: {lo: 0u, hi: 0u,
-                     expanded_from: codemap::os_none}};
+                     expn_info: option::none}};
     }
 
     let n1 = sess.next_node_id();
     let n2 = sess.next_node_id();
 
     let vi1 = spanned(ast::view_item_use("core", [], n1));
-    let vi2 = spanned(ast::view_item_import_glob(@["core"], n2));
+    let vp = spanned(ast::view_path_glob(@["core"], n2));
+    let vi2 = spanned(ast::view_item_import([vp]));
 
     let vis = [vi1, vi2] + crate.node.module.view_items;
 

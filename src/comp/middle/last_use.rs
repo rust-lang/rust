@@ -3,7 +3,6 @@ import syntax::ast::*;
 import syntax::codemap::span;
 import std::list::{is_not_empty, list, nil, cons, tail};
 import std::util::unreachable;
-import core::{vec, option};
 import std::list;
 
 // Last use analysis pass.
@@ -65,7 +64,7 @@ fn find_last_uses(c: @crate, def_map: resolve::def_map,
 }
 
 fn ex_is_blockish(cx: ctx, id: node_id) -> bool {
-    alt ty::struct(cx.tcx, ty::node_id_to_type(cx.tcx, id)) {
+    alt ty::get(ty::node_id_to_type(cx.tcx, id)).struct {
       ty::ty_fn({proto: p, _}) if is_blockish(p) { true }
       _ { false }
     }
@@ -89,7 +88,7 @@ fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
         v.visit_expr(coll, cx, v);
         visit_block(loop, cx) {|| visit::visit_block(blk, cx, v);}
       }
-      expr_alt(input, arms) {
+      expr_alt(input, arms, _) {
         v.visit_expr(input, cx, v);
         let before = cx.current, sets = [];
         for arm in arms {
@@ -138,7 +137,6 @@ fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
         // n.b.: safe to ignore copies, as if they are unused
         // then they are ignored, otherwise they will show up
         // as freevars in the body.
-
         vec::iter(cap_clause.moves) {|ci|
             clear_def_if_path(cx, cx.def_map.get(ci.id), true);
         }
@@ -147,7 +145,7 @@ fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
       expr_call(f, args, _) {
         v.visit_expr(f, cx, v);
         let i = 0u, fns = [];
-        let arg_ts = ty::ty_fn_args(cx.tcx, ty::expr_ty(cx.tcx, f));
+        let arg_ts = ty::ty_fn_args(ty::expr_ty(cx.tcx, f));
         for arg in args {
             alt arg.node {
               expr_fn(p, _, _, _) if is_blockish(p) {
@@ -157,8 +155,8 @@ fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
                 fns += [arg];
               }
               _ {
-                alt arg_ts[i].mode {
-                  by_mut_ref { clear_if_path(cx, arg, v, false); }
+                alt ty::arg_mode(cx.tcx, arg_ts[i]) {
+                  by_mutbl_ref { clear_if_path(cx, arg, v, false); }
                   _ { v.visit_expr(arg, cx, v); }
                 }
               }
@@ -175,7 +173,7 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
             sp: span, id: node_id,
             cx: ctx, v: visit::vt<ctx>) {
     let fty = ty::node_id_to_type(cx.tcx, id);
-    let proto = ty::ty_fn_proto(cx.tcx, fty);
+    let proto = ty::ty_fn_proto(fty);
     alt proto {
       proto_any | proto_block {
         visit_block(func, cx, {||
@@ -204,13 +202,18 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
 fn visit_block(tp: block_type, cx: ctx, visit: fn()) {
     let local = @{type: tp, mutable second: false, mutable exits: []};
     cx.blocks = cons(local, @cx.blocks);
+    let start_current = cx.current;
     visit();
     local.second = true;
+    local.exits = [];
+    cx.current = start_current;
     visit();
     let cx_blocks = cx.blocks;
     check is_not_empty(cx_blocks);
     cx.blocks = tail(cx_blocks);
-    cx.current = join_branches(local.exits);
+    let branches = if tp == func { local.exits + [cx.current] }
+                   else { local.exits };
+    cx.current = join_branches(branches);
 }
 
 fn add_block_exit(cx: ctx, tp: block_type) -> bool {
@@ -286,10 +289,20 @@ fn clear_in_current(cx: ctx, my_def: node_id, to: bool) {
 fn clear_def_if_path(cx: ctx, d: def, to: bool)
     -> option<node_id> {
     alt d {
-      def_local(def_id, let_copy) | def_arg(def_id, by_copy) |
-      def_arg(def_id, by_move) {
+      def_local(def_id) {
         clear_in_current(cx, def_id.node, to);
         some(def_id.node)
+      }
+      def_arg(def_id, m) {
+        alt ty::resolved_mode(cx.tcx, m) {
+          by_copy | by_move {
+            clear_in_current(cx, def_id.node, to);
+            some(def_id.node)
+          }
+          by_ref | by_val | by_mutbl_ref {
+            none
+          }
+        }
       }
       _ {
         none

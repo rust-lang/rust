@@ -7,7 +7,6 @@ import common::mode_run_pass;
 import common::mode_run_fail;
 import common::mode_compile_fail;
 import common::mode_pretty;
-import common::cx;
 import common::config;
 import header::load_props;
 import header::test_props;
@@ -15,23 +14,23 @@ import util::logv;
 
 export run;
 
-fn run(cx: cx, testfile: str) {
-    if cx.config.verbose {
+fn run(config: config, testfile: str) {
+    if config.verbose {
         // We're going to be dumping a lot of info. Start on a new line.
         io::stdout().write_str("\n\n");
     }
     #debug("running %s", testfile);
     let props = load_props(testfile);
-    alt cx.config.mode {
-      mode_compile_fail { run_cfail_test(cx, props, testfile); }
-      mode_run_fail { run_rfail_test(cx, props, testfile); }
-      mode_run_pass { run_rpass_test(cx, props, testfile); }
-      mode_pretty { run_pretty_test(cx, props, testfile); }
+    alt config.mode {
+      mode_compile_fail { run_cfail_test(config, props, testfile); }
+      mode_run_fail { run_rfail_test(config, props, testfile); }
+      mode_run_pass { run_rpass_test(config, props, testfile); }
+      mode_pretty { run_pretty_test(config, props, testfile); }
     }
 }
 
-fn run_cfail_test(cx: cx, props: test_props, testfile: str) {
-    let procres = compile_test(cx, props, testfile);
+fn run_cfail_test(config: config, props: test_props, testfile: str) {
+    let procres = compile_test(config, props, testfile);
 
     if procres.status == 0 {
         fatal_procres("compile-fail test compiled successfully!", procres);
@@ -50,12 +49,12 @@ fn run_cfail_test(cx: cx, props: test_props, testfile: str) {
     }
 }
 
-fn run_rfail_test(cx: cx, props: test_props, testfile: str) {
-    let procres = compile_test(cx, props, testfile);
+fn run_rfail_test(config: config, props: test_props, testfile: str) {
+    let procres = compile_test(config, props, testfile);
 
     if procres.status != 0 { fatal_procres("compilation failed!", procres); }
 
-    procres = exec_compiled_test(cx, props, testfile);
+    procres = exec_compiled_test(config, props, testfile);
 
     // The value our Makefile configures valgrind to return on failure
     const valgrind_err: int = 100;
@@ -78,21 +77,21 @@ fn check_correct_failure_status(procres: procres) {
     }
 }
 
-fn run_rpass_test(cx: cx, props: test_props, testfile: str) {
-    let procres = compile_test(cx, props, testfile);
+fn run_rpass_test(config: config, props: test_props, testfile: str) {
+    let procres = compile_test(config, props, testfile);
 
     if procres.status != 0 { fatal_procres("compilation failed!", procres); }
 
-    procres = exec_compiled_test(cx, props, testfile);
+    procres = exec_compiled_test(config, props, testfile);
 
 
     if procres.status != 0 { fatal_procres("test run failed!", procres); }
 }
 
-fn run_pretty_test(cx: cx, props: test_props, testfile: str) {
+fn run_pretty_test(config: config, props: test_props, testfile: str) {
     if option::is_some(props.pp_exact) {
-        logv(cx.config, "testing for exact pretty-printing");
-    } else { logv(cx.config, "testing for converging pretty-printing"); }
+        logv(config, "testing for exact pretty-printing");
+    } else { logv(config, "testing for converging pretty-printing"); }
 
     let rounds =
         alt props.pp_exact { option::some(_) { 1 } option::none { 2 } };
@@ -101,8 +100,8 @@ fn run_pretty_test(cx: cx, props: test_props, testfile: str) {
 
     let round = 0;
     while round < rounds {
-        logv(cx.config, #fmt["pretty-printing round %d", round]);
-        let procres = print_source(cx, testfile, srcs[round]);
+        logv(config, #fmt["pretty-printing round %d", round]);
+        let procres = print_source(config, testfile, srcs[round]);
 
         if procres.status != 0 {
             fatal_procres(#fmt["pretty-printing failed in round %d", round],
@@ -134,7 +133,7 @@ fn run_pretty_test(cx: cx, props: test_props, testfile: str) {
     compare_source(expected, actual);
 
     // Finally, let's make sure it actually appears to remain valid code
-    let procres = typecheck_source(cx, testfile, actual);
+    let procres = typecheck_source(config, testfile, actual);
 
     if procres.status != 0 {
         fatal_procres("pretty-printed source does not typecheck", procres);
@@ -142,9 +141,9 @@ fn run_pretty_test(cx: cx, props: test_props, testfile: str) {
 
     ret;
 
-    fn print_source(cx: cx, testfile: str, src: str) -> procres {
-        compose_and_run(cx, testfile, make_pp_args,
-                        cx.config.compile_lib_path, option::some(src))
+    fn print_source(config: config, testfile: str, src: str) -> procres {
+        compose_and_run(config, testfile, make_pp_args,
+                        config.compile_lib_path, option::some(src))
     }
 
     fn make_pp_args(config: config, _testfile: str) -> procargs {
@@ -173,9 +172,9 @@ actual:\n\
         }
     }
 
-    fn typecheck_source(cx: cx, testfile: str, src: str) -> procres {
-        compose_and_run(cx, testfile, make_typecheck_args,
-                        cx.config.compile_lib_path, option::some(src))
+    fn typecheck_source(config: config, testfile: str, src: str) -> procres {
+        compose_and_run(config, testfile, make_typecheck_args,
+                        config.compile_lib_path, option::some(src))
     }
 
     fn make_typecheck_args(config: config, _testfile: str) -> procargs {
@@ -199,8 +198,8 @@ fn check_error_patterns(props: test_props,
 
     let next_err_idx = 0u;
     let next_err_pat = props.error_patterns[next_err_idx];
-    for line: str in str::split(procres.stderr, '\n' as u8) {
-        if str::find(line, next_err_pat) > 0 {
+    for line: str in str::split_byte(procres.stderr, '\n' as u8) {
+        if str::contains(line, next_err_pat) {
             #debug("found error pattern %s", next_err_pat);
             next_err_idx += 1u;
             if next_err_idx == vec::len(props.error_patterns) {
@@ -246,7 +245,7 @@ fn check_expected_errors(expected_errors: [errors::expected_error],
     //    filename:line1:col1: line2:col2: *warning:* msg
     // where line1:col1: is the starting point, line2:col2:
     // is the ending point, and * represents ANSI color codes.
-    for line: str in str::split(procres.stderr, '\n' as u8) {
+    for line: str in str::split_byte(procres.stderr, '\n' as u8) {
         let was_expected = false;
         vec::iteri(expected_errors) {|i, ee|
             if !found_flags[i] {
@@ -286,22 +285,24 @@ type procargs = {prog: str, args: [str]};
 
 type procres = {status: int, stdout: str, stderr: str, cmdline: str};
 
-fn compile_test(cx: cx, props: test_props, testfile: str) -> procres {
-    compose_and_run(cx, testfile, bind make_compile_args(_, props, _),
-                    cx.config.compile_lib_path, option::none)
+fn compile_test(config: config, props: test_props,
+                testfile: str) -> procres {
+    compose_and_run(config, testfile, bind make_compile_args(_, props, _),
+                    config.compile_lib_path, option::none)
 }
 
-fn exec_compiled_test(cx: cx, props: test_props, testfile: str) -> procres {
-    compose_and_run(cx, testfile, bind make_run_args(_, props, _),
-                    cx.config.run_lib_path, option::none)
+fn exec_compiled_test(config: config, props: test_props,
+                      testfile: str) -> procres {
+    compose_and_run(config, testfile, bind make_run_args(_, props, _),
+                    config.run_lib_path, option::none)
 }
 
-fn compose_and_run(cx: cx, testfile: str,
+fn compose_and_run(config: config, testfile: str,
                    make_args: fn@(config, str) -> procargs, lib_path: str,
                    input: option<str>) -> procres {
-    let procargs = make_args(cx.config, testfile);
-    ret program_output(cx, testfile, lib_path, procargs.prog, procargs.args,
-                       input);
+    let procargs = make_args(config, testfile);
+    ret program_output(config, testfile, lib_path,
+                       procargs.prog, procargs.args, input);
 }
 
 fn make_compile_args(config: config, props: test_props, testfile: str) ->
@@ -349,21 +350,21 @@ fn split_maybe_args(argstr: option<str>) -> [str] {
     }
 
     alt argstr {
-      option::some(s) { rm_whitespace(str::split(s, ' ' as u8)) }
+      option::some(s) { rm_whitespace(str::split_byte(s, ' ' as u8)) }
       option::none { [] }
     }
 }
 
-fn program_output(cx: cx, testfile: str, lib_path: str, prog: str,
+fn program_output(config: config, testfile: str, lib_path: str, prog: str,
                   args: [str], input: option<str>) -> procres {
     let cmdline =
         {
             let cmdline = make_cmdline(lib_path, prog, args);
-            logv(cx.config, #fmt["executing %s", cmdline]);
+            logv(config, #fmt["executing %s", cmdline]);
             cmdline
         };
-    let res = procsrv::run(cx.procsrv, lib_path, prog, args, input);
-    dump_output(cx.config, testfile, res.out, res.err);
+    let res = procsrv::run(lib_path, prog, args, input);
+    dump_output(config, testfile, res.out, res.err);
     ret {status: res.status,
          stdout: res.out,
          stderr: res.err,
@@ -411,7 +412,7 @@ fn output_base_name(config: config, testfile: str) -> str {
     let base = config.build_base;
     let filename =
         {
-            let parts = str::split(fs::basename(testfile), '.' as u8);
+            let parts = str::split_byte(fs::basename(testfile), '.' as u8);
             parts = vec::slice(parts, 0u, vec::len(parts) - 1u);
             str::connect(parts, ".")
         };

@@ -1,6 +1,4 @@
-import core::{vec, option};
 import syntax::{ast, fold};
-import attr;
 
 export strip_unconfigured_items;
 export metas_in_cfg;

@@ -24,14 +24,16 @@ fn load_errors(testfile: str) -> [expected_error] {
 
 fn parse_expected(line_num: uint, line: str) -> [expected_error] unsafe {
     let error_tag = "//!";
-    let idx0 = str::find(line, error_tag);
-    if idx0 < 0 { ret []; }
-    let idx = (idx0 as uint) + str::byte_len(error_tag);
+    let idx;
+    alt str::find_bytes(line, error_tag) {
+         option::none { ret []; }
+         option::some(nn) { idx = (nn as uint) + str::len_bytes(error_tag); }
+    }
 
     // "//!^^^ kind msg" denotes a message expected
     // three lines above current line:
     let adjust_line = 0u;
-    let len = str::byte_len(line);
+    let len = str::len_bytes(line);
     while idx < len && line[idx] == ('^' as u8) {
         adjust_line += 1u;
         idx += 1u;

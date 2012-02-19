@@ -1,4 +1,3 @@
-import core::{vec, int, uint, option};
 import option::*;
 import pat_util::*;
 import syntax::ast::*;
@@ -492,14 +491,14 @@ fn new_crate_ctxt(cx: ty::ctxt) -> crate_ctxt {
  If it has a function type with a ! annotation,
 the answer is noreturn. */
 fn controlflow_expr(ccx: crate_ctxt, e: @expr) -> ret_style {
-    alt ty::struct(ccx.tcx, ty::node_id_to_type(ccx.tcx, e.id)) {
+    alt ty::get(ty::node_id_to_type(ccx.tcx, e.id)).struct {
       ty::ty_fn(f) { ret f.ret_style; }
       _ { ret return_val; }
     }
 }
 
 fn constraints_expr(cx: ty::ctxt, e: @expr) -> [@ty::constr] {
-    alt ty::struct(cx, ty::node_id_to_type(cx, e.id)) {
+    alt ty::get(ty::node_id_to_type(cx, e.id)).struct {
       ty::ty_fn(f) { ret f.constraints; }
       _ { ret []; }
     }
@@ -577,7 +576,7 @@ fn expr_to_constr_arg(tcx: ty::ctxt, e: @expr) -> @constr_arg_use {
     alt e.node {
       expr_path(p) {
         alt tcx.def_map.find(e.id) {
-          some(def_local(id, _)) | some(def_arg(id, _)) |
+          some(def_local(id)) | some(def_arg(id, _)) |
           some(def_binding(id)) | some(def_upvar(id, _, _)) {
             ret @respan(p.span,
                         carg_ident({ident: p.node.idents[0], node: id.node}));
@@ -787,7 +786,7 @@ enum if_ty { if_check, plain_if, }
 fn local_node_id_to_def_id_strict(fcx: fn_ctxt, sp: span, i: node_id) ->
    def_id {
     alt local_node_id_to_def(fcx, i) {
-      some(def_local(id, _)) | some(def_arg(id, _)) |
+      some(def_local(id)) | some(def_arg(id, _)) |
       some(def_upvar(id, _, _)) {
         ret id;
       }
@@ -811,7 +810,7 @@ fn local_node_id_to_def(fcx: fn_ctxt, i: node_id) -> option<def> {
 
 fn local_node_id_to_def_id(fcx: fn_ctxt, i: node_id) -> option<def_id> {
     alt local_node_id_to_def(fcx, i) {
-      some(def_local(id, _)) | some(def_arg(id, _)) | some(def_binding(id)) |
+      some(def_local(id)) | some(def_arg(id, _)) | some(def_binding(id)) |
       some(def_upvar(id, _, _)) {
         some(id)
       }
@@ -1063,18 +1062,16 @@ fn local_to_bindings(tcx: ty::ctxt, loc: @local) -> binding {
     {lhs: lhs, rhs: loc.node.init}
 }
 
-fn locals_to_bindings(tcx: ty::ctxt,
-                      locals: [(let_style, @local)]) -> [binding] {
+fn locals_to_bindings(tcx: ty::ctxt, locals: [@local]) -> [binding] {
     let rslt = [];
-    for (_, loc) in locals { rslt += [local_to_bindings(tcx, loc)]; }
+    for loc in locals { rslt += [local_to_bindings(tcx, loc)]; }
     ret rslt;
 }
 
 fn callee_modes(fcx: fn_ctxt, callee: node_id) -> [mode] {
-    let ty =
-        ty::type_autoderef(fcx.ccx.tcx,
-                           ty::node_id_to_type(fcx.ccx.tcx, callee));
-    alt ty::struct(fcx.ccx.tcx, ty) {
+    let ty = ty::type_autoderef(fcx.ccx.tcx,
+                                ty::node_id_to_type(fcx.ccx.tcx, callee));
+    alt ty::get(ty).struct {
       ty::ty_fn({inputs: args, _}) {
         let modes = [];
         for arg: ty::arg in args { modes += [arg.mode]; }
@@ -1089,10 +1086,12 @@ fn callee_modes(fcx: fn_ctxt, callee: node_id) -> [mode] {
 }
 
 fn callee_arg_init_ops(fcx: fn_ctxt, callee: node_id) -> [init_op] {
-    fn mode_to_op(m: mode) -> init_op {
-        alt m { by_move { init_move } _ { init_assign } }
+    vec::map(callee_modes(fcx, callee)) {|m|
+        alt ty::resolved_mode(fcx.ccx.tcx, m) {
+          by_move { init_move }
+          by_copy | by_ref | by_val | by_mutbl_ref { init_assign }
+        }
     }
-    vec::map(callee_modes(fcx, callee), mode_to_op)
 }
 
 fn anon_bindings(ops: [init_op], es: [@expr]) -> [binding] {

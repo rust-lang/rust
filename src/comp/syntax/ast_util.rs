@@ -7,7 +7,7 @@ fn respan<T: copy>(sp: span, t: T) -> spanned<T> {
 
 /* assuming that we're not in macro expansion */
 fn mk_sp(lo: uint, hi: uint) -> span {
-    ret {lo: lo, hi: hi, expanded_from: codemap::os_none};
+    ret {lo: lo, hi: hi, expn_info: none};
 }
 
 // make this a const, once the compiler supports it
@@ -28,9 +28,11 @@ fn variant_def_ids(d: def) -> {enm: def_id, var: def_id} {
 fn def_id_of_def(d: def) -> def_id {
     alt d {
       def_fn(id, _) | def_self(id) | def_mod(id) |
-      def_native_mod(id) | def_const(id) | def_arg(id, _) | def_local(id, _) |
+      def_native_mod(id) | def_const(id) | def_arg(id, _) | def_local(id) |
       def_variant(_, id) | def_ty(id) | def_ty_param(id, _) |
-      def_binding(id) | def_use(id) | def_upvar(id, _, _) { id }
+      def_binding(id) | def_use(id) | def_upvar(id, _, _) |
+      def_class(id) | def_class_field(_, id) | def_class_method(_, id) { id }
+      def_prim_ty(_) { fail; }
     }
 }
 
@@ -64,8 +66,8 @@ pure fn lazy_binop(b: binop) -> bool {
 
 fn unop_to_str(op: unop) -> str {
     alt op {
-      box(mt) { if mt == mut { ret "@mutable "; } ret "@"; }
-      uniq(mt) { if mt == mut { ret "~mutable "; } ret "~"; }
+      box(mt) { if mt == m_mutbl { ret "@mut "; } ret "@"; }
+      uniq(mt) { if mt == m_mutbl { ret "~mut "; } ret "~"; }
       deref { ret "*"; }
       not { ret "!"; }
       neg { ret "-"; }
@@ -114,56 +116,63 @@ fn float_ty_to_str(t: float_ty) -> str {
 }
 
 fn is_exported(i: ident, m: _mod) -> bool {
-    let nonlocal = true;
+    let local = false;
     let parent_enum : option<ident> = none;
     for it: @item in m.items {
-        if it.ident == i { nonlocal = false; }
+        if it.ident == i { local = true; }
         alt it.node {
           item_enum(variants, _) {
             for v: variant in variants {
                 if v.node.name == i {
-                   nonlocal = false;
+                   local = true;
                    parent_enum = some(it.ident);
                 }
             }
           }
           _ { }
         }
-        if !nonlocal { break; }
+        if local { break; }
     }
-    let count = 0u;
+    let has_explicit_exports = false;
     for vi: @view_item in m.view_items {
         alt vi.node {
-          view_item_export(ids, _) {
-              // If any of ids is a enum, we want to consider
-              // all the variants to be exported
-            for id in ids {
-                if str::eq(i, id) { ret true; }
-                alt parent_enum {
-                    some(parent_enum_id) {
-                        if str::eq(id, parent_enum_id) { ret true; }
+          view_item_export(vps) {
+            has_explicit_exports = true;
+            for vp in vps {
+                alt vp.node {
+                  ast::view_path_simple(id, _, _) {
+                    if id == i { ret true; }
+                    alt parent_enum {
+                      some(parent_enum_id) {
+                        if id == parent_enum_id { ret true; }
+                      }
+                      _ {}
                     }
-                    _ { }
-                 }
+                  }
+
+                  ast::view_path_list(path, ids, _) {
+                    if vec::len(*path) == 1u {
+                        if i == path[0] { ret true; }
+                        for id in ids {
+                            if id.node.name == i { ret true; }
+                        }
+                    } else {
+                        fail "export of path-qualified list";
+                    }
+                  }
+
+                  // FIXME: glob-exports aren't supported yet.
+                  _ {}
+                }
             }
-            count += 1u;
           }
-          view_item_export_enum_none(id, _) {
-              if str::eq(i, id) { ret true; }
-              count += 1u;
-          }
-          view_item_export_enum_some(id, ids, _) {
-              if str::eq(i, id) { ret true; }
-              for id in ids { if str::eq(i, id.node.name) { ret true; } }
-              count += 1u;
-          }
-          _ {/* fall through */ }
+          _ {}
         }
     }
     // If there are no declared exports then
     // everything not imported is exported
-    // even if it's nonlocal (since it's explicit)
-    ret count == 0u && !nonlocal;
+    // even if it's local (since it's explicit)
+    ret !has_explicit_exports && local;
 }
 
 pure fn is_call_expr(e: @expr) -> bool {
@@ -267,9 +276,9 @@ fn eval_const_expr(e: @expr) -> const_val {
               mul { const_uint(a * b) } div { const_uint(a / b) }
               rem { const_uint(a % b) } and | bitand { const_uint(a & b) }
               or | bitor { const_uint(a | b) } bitxor { const_uint(a ^ b) }
-              lsl { const_int(a << b as i64) }
-              lsr { const_int(a >> b as i64) }
-              asr { const_int(a >>> b as i64) }
+              lsl { const_int((a << b) as i64) }
+              lsr { const_int((a >> b) as i64) }
+              asr { const_int((a >>> b) as i64) }
               eq { fromb(a == b) } lt { fromb(a < b) }
               le { fromb(a <= b) } ne { fromb(a != b) }
               ge { fromb(a >= b) } gt { fromb(a > b) }
@@ -371,6 +380,13 @@ pure fn unguarded_pat(a: arm) -> option<[@pat]> {
 // operator is deferred to a user-supplied method. The parser is responsible
 // for reserving this id.
 fn op_expr_callee_id(e: @expr) -> node_id { e.id - 1 }
+
+pure fn class_item_ident(ci: @class_item) -> ident {
+    alt ci.node.decl {
+      instance_var(i,_,_,_) { i }
+      class_method(it) { it.ident }
+    }
+}
 
 // Local Variables:
 // mode: rust

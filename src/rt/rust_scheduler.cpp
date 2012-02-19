@@ -3,11 +3,15 @@
 
 rust_scheduler::rust_scheduler(rust_kernel *kernel,
 			       rust_srv *srv,
-			       size_t num_threads) :
+			       size_t num_threads,
+			       rust_sched_id id) :
     kernel(kernel),
     srv(srv),
     env(srv->env),
-    num_threads(num_threads)
+    live_threads(num_threads),
+    live_tasks(0),
+    num_threads(num_threads),
+    id(id)
 {
     isaac_init(kernel, &rctx);
     create_task_threads();
@@ -55,14 +59,14 @@ rust_scheduler::destroy_task_threads() {
 void
 rust_scheduler::start_task_threads()
 {
+    // Copy num_threads because it's possible for the last thread
+    // to terminate and have the kernel delete us before we
+    // hit the last check against num_threads, in which case
+    // we would be accessing invalid memory.
+    uintptr_t num_threads = this->num_threads;
     for(size_t i = 0; i < num_threads; ++i) {
         rust_task_thread *thread = threads[i];
         thread->start();
-    }
-
-    for(size_t i = 0; i < num_threads; ++i) {
-        rust_task_thread *thread = threads[i];
-        thread->join();
     }
 }
 
@@ -81,6 +85,7 @@ rust_scheduler::create_task(rust_task *spawner, const char *name,
     {
 	scoped_lock with(lock);
 	thread_no = isaac_rand(&rctx) % num_threads;
+	live_tasks++;
     }
     rust_task_thread *thread = threads[thread_no];
     return thread->create_task(spawner, name, init_stack_sz);
@@ -92,8 +97,27 @@ rust_scheduler::create_task(rust_task *spawner, const char *name) {
 }
 
 void
+rust_scheduler::release_task() {
+    bool need_exit = false;
+    {
+	scoped_lock with(lock);
+	live_tasks--;
+	if (live_tasks == 0) {
+	    need_exit = true;
+	}
+    }
+    if (need_exit) {
+	// There are no more tasks on this scheduler. Time to leave
+	exit();
+    }
+}
+
+void
 rust_scheduler::exit() {
-    for(size_t i = 0; i < num_threads; ++i) {
+    // Take a copy of num_threads. After the last thread exits this
+    // scheduler will get destroyed, and our fields will cease to exist.
+    size_t current_num_threads = num_threads;
+    for(size_t i = 0; i < current_num_threads; ++i) {
         threads[i]->exit();
     }
 }
@@ -101,4 +125,17 @@ rust_scheduler::exit() {
 size_t
 rust_scheduler::number_of_threads() {
     return num_threads;
+}
+
+void
+rust_scheduler::release_task_thread() {
+    I(this, !lock.lock_held_by_current_thread());
+    uintptr_t new_live_threads;
+    {
+	scoped_lock with(lock);
+	new_live_threads = --live_threads;
+    }
+    if (new_live_threads == 0) {
+	kernel->release_scheduler_id(id);
+    }
 }

@@ -29,8 +29,6 @@ struct registers_t {
   uint32_t eip;
 } __attribute__((aligned(16)));
 
-extern "C" void __morestack(void *args, void *fn_ptr, uintptr_t stack_ptr);
-
 class context {
 public:
   registers_t regs;
@@ -41,24 +39,6 @@ public:
 
   void swap(context &out);
   void call(void *f, void *arg, void *sp);
-  void call(void *f, void *sp);
-
-  // Note that this doesn't actually adjust esp. Instead, we adjust esp when
-  // we actually do the call. This is needed for exception safety -- if the
-  // function being called causes the task to fail, then we have to avoid
-  // leaking space on the C stack.
-  inline void *alloc_stack(size_t nbytes) {
-    uint32_t bot = regs.esp;
-    uint32_t top = align_down(bot - nbytes);
-
-    (void)VALGRIND_MAKE_MEM_UNDEFINED(top - 4, bot - top + 4);
-
-    return reinterpret_cast<void *>(top);
-  }
-
-  void call_shim_on_c_stack(void *args, void *fn_ptr) {
-      __morestack(args, fn_ptr, regs.esp);
-  }
 };
 
 #endif

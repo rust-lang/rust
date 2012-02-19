@@ -30,18 +30,34 @@ void rust_port::detach() {
 
 void rust_port::send(void *sptr) {
     I(task->thread, !lock.lock_held_by_current_thread());
-    scoped_lock with(lock);
+    bool did_rendezvous = false;
+    {
+        scoped_lock with(lock);
 
-    buffer.enqueue(sptr);
+        buffer.enqueue(sptr);
 
-    A(kernel, !buffer.is_empty(),
-      "rust_chan::transmit with nothing to send.");
+        A(kernel, !buffer.is_empty(),
+          "rust_chan::transmit with nothing to send.");
 
-    if (task->blocked_on(this)) {
-        KLOG(kernel, comm, "dequeued in rendezvous_ptr");
-        buffer.dequeue(task->rendezvous_ptr);
-        task->rendezvous_ptr = 0;
-        task->wakeup(this);
+        if (task->blocked_on(this)) {
+            KLOG(kernel, comm, "dequeued in rendezvous_ptr");
+            buffer.dequeue(task->rendezvous_ptr);
+            task->rendezvous_ptr = 0;
+            task->wakeup(this);
+            did_rendezvous = true;
+        }
+    }
+
+    if (!did_rendezvous) {
+        // If the task wasn't waiting specifically on this port,
+        // it may be waiting on a group of ports
+
+        rust_port_selector *port_selector = task->get_port_selector();
+        // This check is not definitive. The port selector will take a lock
+        // and check again whether the task is still blocked.
+        if (task->blocked_on(port_selector)) {
+            port_selector->msg_sent_on(this);
+        }
     }
 }
 

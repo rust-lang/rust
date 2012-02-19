@@ -178,14 +178,18 @@ inline size_t vec_size(size_t elems) {
     return sizeof(rust_vec) + sizeof(T) * elems;
 }
 
-inline void reserve_vec(rust_task* task, rust_vec** vpp, size_t size) {
+inline void reserve_vec_exact(rust_task* task, rust_vec** vpp, size_t size) {
     if (size > (*vpp)->alloc) {
-        size_t new_alloc = next_power_of_two(size);
-        *vpp = (rust_vec*)task->kernel->realloc(*vpp, new_alloc +
-                                                sizeof(rust_vec));
-        (*vpp)->alloc = new_alloc;
+        *vpp = (rust_vec*)task->kernel->realloc(*vpp, size + sizeof(rust_vec));
+        (*vpp)->alloc = size;
     }
 }
+
+inline void reserve_vec(rust_task* task, rust_vec** vpp, size_t size) {
+    reserve_vec_exact(task, vpp, next_power_of_two(size));
+}
+
+extern "C" void *rust_realloc_shared(void * p, size_t size);
 
 typedef rust_vec rust_str;
 
@@ -200,6 +204,21 @@ make_str(rust_kernel* kernel, const char* c, size_t strlen, const char* name) {
     memcpy(&str->data, c, strlen);
     str->data[strlen] = '\0';
     return str;
+}
+
+inline rust_vec *
+make_str_vec(rust_kernel* kernel, size_t nstrs, char **strs) {
+    rust_vec *v = (rust_vec *)
+        kernel->malloc(vec_size<rust_vec*>(nstrs),
+                       "str vec interior");
+    v->fill = v->alloc = sizeof(rust_vec*) * nstrs;
+    for (size_t i = 0; i < nstrs; ++i) {
+        rust_str *str = make_str(kernel, strs[i],
+                                 strlen(strs[i]),
+                                 "str");
+        ((rust_str**)&v->data)[i] = str;
+    }
+    return v;
 }
 
 //

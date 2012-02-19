@@ -193,10 +193,10 @@ fn mk_sha1() -> sha1 {
         if !st.computed { pad_msg(st); st.computed = true; }
         let rs: [u8] = [];
         for hpart: u32 in st.h {
-            let a = hpart >> 24u32 & 0xFFu32 as u8;
-            let b = hpart >> 16u32 & 0xFFu32 as u8;
-            let c = hpart >> 8u32 & 0xFFu32 as u8;
-            let d = hpart & 0xFFu32 as u8;
+            let a = (hpart >> 24u32 & 0xFFu32) as u8;
+            let b = (hpart >> 16u32 & 0xFFu32) as u8;
+            let c = (hpart >> 8u32 & 0xFFu32) as u8;
+            let d = (hpart & 0xFFu32) as u8;
             rs += [a, b, c, d];
         }
         ret rs;
@@ -238,14 +238,14 @@ fn mk_sha1() -> sha1 {
         }
 
         // Store the message length as the last 8 octets
-        st.msg_block[56] = st.len_high >> 24u32 & 0xFFu32 as u8;
-        st.msg_block[57] = st.len_high >> 16u32 & 0xFFu32 as u8;
-        st.msg_block[58] = st.len_high >> 8u32 & 0xFFu32 as u8;
-        st.msg_block[59] = st.len_high & 0xFFu32 as u8;
-        st.msg_block[60] = st.len_low >> 24u32 & 0xFFu32 as u8;
-        st.msg_block[61] = st.len_low >> 16u32 & 0xFFu32 as u8;
-        st.msg_block[62] = st.len_low >> 8u32 & 0xFFu32 as u8;
-        st.msg_block[63] = st.len_low & 0xFFu32 as u8;
+        st.msg_block[56] = (st.len_high >> 24u32 & 0xFFu32) as u8;
+        st.msg_block[57] = (st.len_high >> 16u32 & 0xFFu32) as u8;
+        st.msg_block[58] = (st.len_high >> 8u32 & 0xFFu32) as u8;
+        st.msg_block[59] = (st.len_high & 0xFFu32) as u8;
+        st.msg_block[60] = (st.len_low >> 24u32 & 0xFFu32) as u8;
+        st.msg_block[61] = (st.len_low >> 16u32 & 0xFFu32) as u8;
+        st.msg_block[62] = (st.len_low >> 8u32 & 0xFFu32) as u8;
+        st.msg_block[63] = (st.len_low & 0xFFu32) as u8;
         process_msg_block(st);
     }
 
@@ -291,7 +291,7 @@ fn mk_sha1() -> sha1 {
 mod tests {
 
     #[test]
-    fn test() {
+    fn test() unsafe {
         type test = {input: str, output: [u8]};
 
         fn a_million_letter_a() -> str {
@@ -368,11 +368,12 @@ mod tests {
 
         // Test that it works when accepting the message in pieces
         for t: test in tests {
-            let len = str::byte_len(t.input);
+            let len = str::len_bytes(t.input);
             let left = len;
             while left > 0u {
                 let take = (left + 1u) / 2u;
-                sh.input_str(str::substr(t.input, len - left, take));
+                sh.input_str(str::unsafe::slice_bytes(t.input, len - left,
+                             take + len - left));
                 left = left - take;
             }
             let out = sh.result();

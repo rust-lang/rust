@@ -5,7 +5,8 @@
 
 import option::{some,  none};
 import option = option::t;
-export option, some, none;
+import vec::vec_len;
+export option, some, none, vec_len;
 
 // Export the log levels as global constants. Higher levels mean
 // more-verbosity. Error is the bottom level, default logging level is

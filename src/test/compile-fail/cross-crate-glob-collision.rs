@@ -1,4 +1,4 @@
-// error-pattern:'member' is glob-imported from multiple different modules
+// error-pattern: is glob-imported from multiple different modules
 // issue #482
 
 use std;
@@ -7,7 +7,7 @@ import vec::*;
 import alternate_supplier::*;
 
 mod alternate_supplier {
-    fn member() { }
+    fn contains() { }
 }
 
-fn main() { member() }
+fn main() { contains() }

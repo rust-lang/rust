@@ -1,9 +1,6 @@
 
 import ast::*;
-import option;
-import option::{none, some};
 import codemap::span;
-
 
 // Context-passing AST walker. Each overridden visit method has full control
 // over what happens with its node, it can do its own traversal of the node's
@@ -55,7 +52,7 @@ type visitor<E> =
       visit_ty_params: fn@([ty_param], E, vt<E>),
       visit_constr: fn@(@path, span, node_id, E, vt<E>),
       visit_fn: fn@(fn_kind, fn_decl, blk, span, node_id, E, vt<E>),
-      visit_class_item: fn@(span, privacy, @class_member, E, vt<E>)};
+      visit_class_item: fn@(span, privacy, class_member, E, vt<E>)};
 
 fn default_visitor<E>() -> visitor<E> {
     ret @{visit_mod: bind visit_mod::<E>(_, _, _, _, _),
@@ -137,7 +134,7 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
                        m.id, e, v);
         }
       }
-      item_class(tps, members, ctor_decl, ctor_blk) {
+      item_class(tps, members, _, ctor_decl, ctor_blk) {
           v.visit_ty_params(tps, e, v);
           for m in members {
              v.visit_class_item(m.span, m.node.privacy, m.node.decl, e, v);
@@ -155,9 +152,9 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
     }
 }
 
-fn visit_class_item<E>(_s: span, _p: privacy, cm: @class_member,
+fn visit_class_item<E>(_s: span, _p: privacy, cm: class_member,
                        e:E, v:vt<E>) {
-    alt *cm {
+    alt cm {
         instance_var(ident, t, mt, id) {
             v.visit_ty(t, e, v);
         }
@@ -279,7 +276,7 @@ fn visit_stmt<E>(s: @stmt, e: E, v: vt<E>) {
 fn visit_decl<E>(d: @decl, e: E, v: vt<E>) {
     alt d.node {
       decl_local(locs) {
-        for (_, loc) in locs { v.visit_local(loc, e, v); }
+        for loc in locs { v.visit_local(loc, e, v); }
       }
       decl_item(it) { v.visit_item(it, e, v); }
     }
@@ -300,7 +297,6 @@ fn visit_mac<E>(m: mac, e: E, v: vt<E>) {
       ast::mac_embed_type(ty) { v.visit_ty(ty, e, v); }
       ast::mac_embed_block(blk) { v.visit_block(blk, e, v); }
       ast::mac_ellipsis { }
-      ast::mac_qq(_, e) { /* FIXME: maybe visit */ }
       ast::mac_aq(_, e) { /* FIXME: maybe visit */ }
       ast::mac_var(_) { }
     }
@@ -343,7 +339,7 @@ fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
         v.visit_block(b, e, v);
       }
       expr_do_while(b, x) { v.visit_block(b, e, v); v.visit_expr(x, e, v); }
-      expr_alt(x, arms) {
+      expr_alt(x, arms, _) {
         v.visit_expr(x, e, v);
         for a: arm in arms { v.visit_arm(a, e, v); }
       }
@@ -410,7 +406,7 @@ type simple_visitor =
       visit_ty_params: fn@([ty_param]),
       visit_constr: fn@(@path, span, node_id),
       visit_fn: fn@(fn_kind, fn_decl, blk, span, node_id),
-      visit_class_item: fn@(span, privacy, @class_member)};
+      visit_class_item: fn@(span, privacy, class_member)};
 
 fn simple_ignore_ty(_t: @ty) {}
 
@@ -431,7 +427,7 @@ fn default_simple_visitor() -> simple_visitor {
           visit_constr: fn@(_p: @path, _sp: span, _id: node_id) { },
           visit_fn: fn@(_fk: fn_kind, _d: fn_decl, _b: blk, _sp: span,
                         _id: node_id) { },
-          visit_class_item: fn@(_s: span, _p: privacy, _c: @class_member) {}
+          visit_class_item: fn@(_s: span, _p: privacy, _c: class_member) {}
          };
 }
 
@@ -506,8 +502,8 @@ fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
     } else {
         bind v_ty(v.visit_ty, _, _, _)
     };
-    fn v_class_item(f: fn@(span, privacy, @class_member),
-                    s:span, p:privacy, cm: @class_member, &&e: (),
+    fn v_class_item(f: fn@(span, privacy, class_member),
+                    s:span, p:privacy, cm: class_member, &&e: (),
                     v: vt<()>) {
         f(s, p, cm);
         visit_class_item(s, p, cm, e, v);

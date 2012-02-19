@@ -1,8 +1,6 @@
 import syntax::codemap::span;
 import ast::*;
 
-import core::{vec, option};
-
 export ast_fold_precursor;
 export ast_fold;
 export default_ast_fold;
@@ -144,7 +142,6 @@ fn fold_mac_(m: mac, fld: ast_fold) -> mac {
                mac_embed_type(ty) { mac_embed_type(fld.fold_ty(ty)) }
                mac_embed_block(blk) { mac_embed_block(fld.fold_block(blk)) }
                mac_ellipsis { mac_ellipsis }
-               mac_qq(_,_) { /* fixme */ m.node }
                mac_aq(_,_) { /* fixme */ m.node }
                mac_var(_) { /* fixme */ m.node }
              },
@@ -228,7 +225,7 @@ fn noop_fold_class_item(&&ci: @class_item, fld: ast_fold)
     @{node: {
       privacy:ci.node.privacy,
             decl:
-     @alt *ci.node.decl {
+      alt ci.node.decl {
         instance_var(ident, t, cm, id) {
             instance_var(ident, fld.fold_ty(t), cm, id)
         }
@@ -250,9 +247,10 @@ fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
           item_enum(variants, typms) {
             item_enum(vec::map(variants, fld.fold_variant), typms)
           }
-          item_class(typms, items, ctor_decl, ctor_body) {
+          item_class(typms, items, id, ctor_decl, ctor_body) {
               item_class(typms,
                          vec::map(items, fld.fold_class_item),
+                         id,
                          fold_fn_decl(ctor_decl, fld),
                          fld.fold_block(ctor_body))
           }
@@ -260,9 +258,7 @@ fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
             item_impl(tps, option::map(ifce, fld.fold_ty), fld.fold_ty(ty),
                       vec::map(methods, fld.fold_method))
           }
-          item_iface(tps, methods) {
-            item_iface(tps, methods)
-          }
+          item_iface(tps, methods) { item_iface(tps, methods) }
           item_res(decl, typms, body, did, cid) {
             item_res(fold_fn_decl(decl, fld), typms, fld.fold_block(body),
                      did, cid)
@@ -324,13 +320,10 @@ fn noop_fold_pat(p: pat_, fld: ast_fold) -> pat_ {
 }
 
 fn noop_fold_decl(d: decl_, fld: ast_fold) -> decl_ {
-    ret alt d {
-          decl_local(ls) {
-            decl_local(vec::map(ls, {|l| let (st, lc) = l;
-                                 (st, fld.fold_local(lc))}))
-          }
-          decl_item(it) { decl_item(fld.fold_item(it)) }
-        }
+    alt d {
+      decl_local(ls) { decl_local(vec::map(ls, fld.fold_local)) }
+      decl_item(it) { decl_item(fld.fold_item(it)) }
+    }
 }
 
 fn wrap<T>(f: fn@(T, ast_fold) -> T)
@@ -344,7 +337,7 @@ fn wrap<T>(f: fn@(T, ast_fold) -> T)
 fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
     fn fold_field_(field: field, fld: ast_fold) -> field {
         ret {node:
-                 {mut: field.node.mut,
+                 {mutbl: field.node.mutbl,
                   ident: fld.fold_ident(field.node.ident),
                   expr: fld.fold_expr(field.node.expr)},
              span: field.span};
@@ -390,8 +383,8 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
           expr_do_while(blk, expr) {
             expr_do_while(fld.fold_block(blk), fld.fold_expr(expr))
           }
-          expr_alt(expr, arms) {
-            expr_alt(fld.fold_expr(expr), vec::map(arms, fld.fold_arm))
+          expr_alt(expr, arms, mode) {
+            expr_alt(fld.fold_expr(expr), vec::map(arms, fld.fold_arm), mode)
           }
           expr_fn(proto, decl, body, captures) {
               expr_fn(proto, fold_fn_decl(decl, fld),
@@ -441,7 +434,7 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
 fn noop_fold_ty(t: ty_, fld: ast_fold) -> ty_ {
     let fold_mac = bind fold_mac_(_, fld);
     fn fold_mt(mt: mt, fld: ast_fold) -> mt {
-        {ty: fld.fold_ty(mt.ty), mut: mt.mut}
+        {ty: fld.fold_ty(mt.ty), mutbl: mt.mutbl}
     }
     fn fold_field(f: ty_field, fld: ast_fold) -> ty_field {
         {node: {ident: fld.fold_ident(f.node.ident),
@@ -449,8 +442,7 @@ fn noop_fold_ty(t: ty_, fld: ast_fold) -> ty_ {
          span: fld.new_span(f.span)}
     }
     alt t {
-      ty_nil | ty_bot | ty_bool | ty_str {t}
-      ty_int(_) | ty_uint(_) | ty_float(_) {t}
+      ty_nil | ty_bot {t}
       ty_box(mt) {ty_box(fold_mt(mt, fld))}
       ty_uniq(mt) {ty_uniq(fold_mt(mt, fld))}
       ty_vec(mt) {ty_vec(fold_mt(mt, fld))}
@@ -621,7 +613,7 @@ fn make_fold(afp: ast_fold_precursor) -> ast_fold {
         @{node:
          {privacy:ci.node.privacy,
                decl:
-        @alt *ci.node.decl {
+         alt ci.node.decl {
            instance_var(nm, t, mt, id) {
                instance_var(nm, f_ty(afp, f, t),
                                  mt, id)

@@ -3,11 +3,9 @@
 
 */
 
-import core::{int, vec, str, uint, option, unsafe};
-import core::ctypes::unsigned;
+import ctypes::unsigned;
 import vec::to_ptr;
 import std::map::hashmap;
-import option::some;
 import syntax::ast;
 import driver::session;
 import session::session;
@@ -33,12 +31,6 @@ fn new_namegen() -> namegen {
 
 type derived_tydesc_info = {lltydesc: ValueRef, escapes: bool};
 
-enum tydesc_kind {
-    tk_static, // Static (monomorphic) type descriptor
-    tk_param, // Type parameter.
-    tk_derived, // Derived from a typaram or another derived tydesc.
-}
-
 type tydesc_info =
     {ty: ty::t,
      tydesc: ValueRef,
@@ -47,7 +39,6 @@ type tydesc_info =
      mutable take_glue: option<ValueRef>,
      mutable drop_glue: option<ValueRef>,
      mutable free_glue: option<ValueRef>,
-     mutable cmp_glue: option<ValueRef>,
      ty_params: [uint]};
 
 /*
@@ -99,7 +90,7 @@ type crate_ctxt =
      consts: hashmap<ast::node_id, ValueRef>,
      tydescs: hashmap<ty::t, @tydesc_info>,
      dicts: hashmap<dict_id, ValueRef>,
-     monomorphized: hashmap<mono_id, ValueRef>,
+     monomorphized: hashmap<mono_id, {llfn: ValueRef, fty: ty::t}>,
      module_data: hashmap<str, ValueRef>,
      lltypes: hashmap<ty::t, TypeRef>,
      names: namegen,
@@ -107,7 +98,7 @@ type crate_ctxt =
      type_sha1s: hashmap<ty::t, str>,
      type_short_names: hashmap<ty::t, str>,
      tcx: ty::ctxt,
-     mut_map: mut::mut_map,
+     mutbl_map: mutbl::mutbl_map,
      copy_map: alias::copy_map,
      last_uses: last_use::last_uses,
      impl_map: resolve::impl_map,
@@ -132,6 +123,10 @@ type val_self_pair = {v: ValueRef, t: ty::t};
 enum local_val { local_mem(ValueRef), local_imm(ValueRef), }
 
 type fn_ty_param = {desc: ValueRef, dicts: option<[ValueRef]>};
+
+type param_substs = {tys: [ty::t],
+                     dicts: option<typeck::dict_res>,
+                     bounds: @[ty::param_bounds]};
 
 // Function context.  Every LLVM function we create will have one of
 // these.
@@ -172,6 +167,9 @@ type fn_ctxt = {
     // The 'self' value currently in use in this function, if there
     // is one.
     mutable llself: option<val_self_pair>,
+    // The a value alloca'd for calls to upcalls.rust_personality. Used when
+    // outputting the resume instruction.
+    mutable personality: option<ValueRef>,
 
     // Maps arguments to allocas created for them in llallocas.
     llargs: hashmap<ast::node_id, local_val>,
@@ -201,7 +199,7 @@ type fn_ctxt = {
 
     // If this function is being monomorphized, this contains the type
     // substitutions used.
-    param_substs: option<[ty::t]>,
+    param_substs: option<param_substs>,
 
     // The source span and nesting context where this function comes from, for
     // error reporting and symbol generation.
@@ -220,71 +218,79 @@ fn warn_not_to_commit(ccx: @crate_ctxt, msg: str) {
 }
 
 enum cleanup {
-    clean(fn@(@block_ctxt) -> @block_ctxt),
-    clean_temp(ValueRef, fn@(@block_ctxt) -> @block_ctxt),
+    clean(fn@(block) -> block),
+    clean_temp(ValueRef, fn@(block) -> block),
 }
 
-fn add_clean(cx: @block_ctxt, val: ValueRef, ty: ty::t) {
-    if !ty::type_needs_drop(bcx_tcx(cx), ty) { ret; }
-    let scope_cx = find_scope_cx(cx);
-    scope_cx.cleanups += [clean(bind drop_ty(_, val, ty))];
-    scope_cx.lpad_dirty = true;
+// Used to remember and reuse existing cleanup paths
+// target: none means the path ends in an resume instruction
+type cleanup_path = {target: option<BasicBlockRef>,
+                     dest: BasicBlockRef};
+
+fn scope_clean_changed(info: scope_info) {
+    if info.cleanup_paths.len() > 0u { info.cleanup_paths = []; }
+    info.landing_pad = none;
 }
-fn add_clean_temp(cx: @block_ctxt, val: ValueRef, ty: ty::t) {
+
+fn add_clean(cx: block, val: ValueRef, ty: ty::t) {
     if !ty::type_needs_drop(bcx_tcx(cx), ty) { ret; }
-    fn do_drop(bcx: @block_ctxt, val: ValueRef, ty: ty::t) ->
-       @block_ctxt {
-        if ty::type_is_immediate(bcx_tcx(bcx), ty) {
+    in_scope_cx(cx) {|info|
+        info.cleanups += [clean(bind drop_ty(_, val, ty))];
+        scope_clean_changed(info);
+    }
+}
+fn add_clean_temp(cx: block, val: ValueRef, ty: ty::t) {
+    if !ty::type_needs_drop(bcx_tcx(cx), ty) { ret; }
+    fn do_drop(bcx: block, val: ValueRef, ty: ty::t) ->
+       block {
+        if ty::type_is_immediate(ty) {
             ret base::drop_ty_immediate(bcx, val, ty);
         } else {
             ret drop_ty(bcx, val, ty);
         }
     }
-    let scope_cx = find_scope_cx(cx);
-    scope_cx.cleanups +=
-        [clean_temp(val, bind do_drop(_, val, ty))];
-    scope_cx.lpad_dirty = true;
+    in_scope_cx(cx) {|info|
+        info.cleanups += [clean_temp(val, bind do_drop(_, val, ty))];
+        scope_clean_changed(info);
+    }
 }
-fn add_clean_temp_mem(cx: @block_ctxt, val: ValueRef, ty: ty::t) {
+fn add_clean_temp_mem(cx: block, val: ValueRef, ty: ty::t) {
     if !ty::type_needs_drop(bcx_tcx(cx), ty) { ret; }
-    let scope_cx = find_scope_cx(cx);
-    scope_cx.cleanups += [clean_temp(val, bind drop_ty(_, val, ty))];
-    scope_cx.lpad_dirty = true;
+    in_scope_cx(cx) {|info|
+        info.cleanups += [clean_temp(val, bind drop_ty(_, val, ty))];
+        scope_clean_changed(info);
+    }
 }
-fn add_clean_free(cx: @block_ctxt, ptr: ValueRef, shared: bool) {
-    let scope_cx = find_scope_cx(cx);
+fn add_clean_free(cx: block, ptr: ValueRef, shared: bool) {
     let free_fn = if shared { bind base::trans_shared_free(_, ptr) }
                   else { bind base::trans_free(_, ptr) };
-    scope_cx.cleanups += [clean_temp(ptr, free_fn)];
-    scope_cx.lpad_dirty = true;
+    in_scope_cx(cx) {|info|
+        info.cleanups += [clean_temp(ptr, free_fn)];
+        scope_clean_changed(info);
+    }
 }
 
 // Note that this only works for temporaries. We should, at some point, move
 // to a system where we can also cancel the cleanup on local variables, but
 // this will be more involved. For now, we simply zero out the local, and the
 // drop glue checks whether it is zero.
-fn revoke_clean(cx: @block_ctxt, val: ValueRef) {
-    let sc_cx = find_scope_cx(cx);
-    let found = -1;
-    let i = 0;
-    for c: cleanup in sc_cx.cleanups {
-        alt c {
-          clean_temp(v, _) {
-            if v as uint == val as uint { found = i; break; }
-          }
-          _ { }
+fn revoke_clean(cx: block, val: ValueRef) {
+    in_scope_cx(cx) {|info|
+        let i = 0u;
+        for cu in info.cleanups {
+            alt cu {
+              clean_temp(v, _) if v == val {
+                info.cleanups =
+                    vec::slice(info.cleanups, 0u, i) +
+                    vec::slice(info.cleanups, i + 1u, info.cleanups.len());
+                scope_clean_changed(info);
+                ret;
+              }
+              _ {}
+            }
+            i += 1u;
         }
-        i += 1;
     }
-    // The value does not have a cleanup associated with it.
-    if found == -1 { ret; }
-    // We found the cleanup and remove it
-    sc_cx.cleanups =
-        vec::slice(sc_cx.cleanups, 0u, found as uint) +
-            vec::slice(sc_cx.cleanups, (found as uint) + 1u,
-                            vec::len(sc_cx.cleanups));
-    sc_cx.lpad_dirty = true;
-    ret;
 }
 
 fn get_res_dtor(ccx: @crate_ctxt, did: ast::def_id, inner_t: ty::t)
@@ -298,9 +304,8 @@ fn get_res_dtor(ccx: @crate_ctxt, did: ast::def_id, inner_t: ty::t)
 
     let param_bounds = ty::lookup_item_type(ccx.tcx, did).bounds;
     let nil_res = ty::mk_nil(ccx.tcx);
-    // FIXME: Silly check -- mk_nil should have a postcondition
-    check non_ty_var(ccx, nil_res);
-    let f_t = type_of_fn(ccx, [{mode: ast::by_ref, ty: inner_t}],
+    let fn_mode = ast::expl(ast::by_ref);
+    let f_t = type_of_fn(ccx, [{mode: fn_mode, ty: inner_t}],
                          nil_res, *param_bounds);
     ret base::get_extern_const(ccx.externs, ccx.llmod,
                                 csearch::get_symbol(ccx.sess.cstore,
@@ -312,56 +317,62 @@ enum block_kind {
     // cleaned up. May correspond to an actual block in the language, but also
     // to an implicit scope, for example, calls introduce an implicit scope in
     // which the arguments are evaluated and cleaned up.
-    SCOPE_BLOCK,
-    // A basic block created from the body of a loop.  Contains pointers to
-    // which block to jump to in the case of "continue" or "break".
-    LOOP_SCOPE_BLOCK(option<@block_ctxt>, @block_ctxt),
+    block_scope(scope_info),
     // A non-scope block is a basic block created as a translation artifact
     // from translating code that expresses conditional logic rather than by
     // explicit { ... } block structure in the source language.  It's called a
     // non-scope block because it doesn't introduce a new variable scope.
-    NON_SCOPE_BLOCK
+    block_non_scope,
 }
 
+enum loop_cont { cont_self, cont_other(block), }
+
+type scope_info = {
+    is_loop: option<{cnt: loop_cont, brk: block}>,
+    // A list of functions that must be run at when leaving this
+    // block, cleaning up any variables that were introduced in the
+    // block.
+    mutable cleanups: [cleanup],
+    // Existing cleanup paths that may be reused, indexed by destination and
+    // cleared when the set of cleanups changes.
+    mutable cleanup_paths: [cleanup_path],
+    // Unwinding landing pad. Also cleared when cleanups change.
+    mutable landing_pad: option<BasicBlockRef>,
+};
 
 // Basic block context.  We create a block context for each basic block
 // (single-entry, single-exit sequence of instructions) we generate from Rust
 // code.  Each basic block we generate is attached to a function, typically
 // with many basic blocks per function.  All the basic blocks attached to a
 // function are organized as a directed graph.
-type block_ctxt =
+type block = @{
     // The BasicBlockRef returned from a call to
     // llvm::LLVMAppendBasicBlock(llfn, name), which adds a basic
     // block to the function pointed to by llfn.  We insert
     // instructions into that block by way of this block context.
     // The block pointing to this one in the function's digraph.
+    llbb: BasicBlockRef,
+    mutable terminated: bool,
+    mutable unreachable: bool,
+    parent: block_parent,
     // The 'kind' of basic block this is.
-    // A list of functions that run at the end of translating this
-    // block, cleaning up any variables that were introduced in the
-    // block and need to go out of scope at the end of it.
-    // The source span where this block comes from, for error
-    // reporting. FIXME this is not currently reliable
+    kind: block_kind,
+    // The source span where the block came from, if it is a block that
+    // actually appears in the source code.
+    mutable block_span: option<span>,
     // The function context for the function to which this block is
     // attached.
-    {llbb: BasicBlockRef,
-     mutable terminated: bool,
-     mutable unreachable: bool,
-     parent: block_parent,
-     kind: block_kind,
-     mutable cleanups: [cleanup],
-     mutable lpad_dirty: bool,
-     mutable lpad: option<BasicBlockRef>,
-     block_span: option<span>,
-     fcx: @fn_ctxt};
+    fcx: @fn_ctxt
+};
 
 // FIXME: we should be able to use option<@block_parent> here but
 // the infinite-enum check in rustboot gets upset.
-enum block_parent { parent_none, parent_some(@block_ctxt), }
+enum block_parent { parent_none, parent_some(block), }
 
-type result = {bcx: @block_ctxt, val: ValueRef};
-type result_t = {bcx: @block_ctxt, val: ValueRef, ty: ty::t};
+type result = {bcx: block, val: ValueRef};
+type result_t = {bcx: block, val: ValueRef, ty: ty::t};
 
-fn rslt(bcx: @block_ctxt, val: ValueRef) -> result {
+fn rslt(bcx: block, val: ValueRef) -> result {
     {bcx: bcx, val: val}
 }
 
@@ -382,22 +393,27 @@ fn struct_elt(llstructty: TypeRef, n: uint) -> TypeRef unsafe {
     ret llvm::LLVMGetElementType(elt_tys[n]);
 }
 
-fn find_scope_cx(cx: @block_ctxt) -> @block_ctxt {
-    if cx.kind != NON_SCOPE_BLOCK { ret cx; }
-    alt cx.parent {
-      parent_some(b) { ret find_scope_cx(b); }
-      _ {
-          bcx_tcx(cx).sess.bug("find_scope_cx: empty scope");
-      }
+fn in_scope_cx(cx: block, f: fn(scope_info)) {
+    let cur = cx;
+    while true {
+        alt cur.kind {
+          block_scope(info) { f(info); ret; }
+          _ {}
+        }
+        cur = block_parent(cur);
     }
+}
+
+fn block_parent(cx: block) -> block {
+    alt check cx.parent { parent_some(b) { b } }
 }
 
 // Accessors
 // TODO: When we have overloading, simplify these names!
 
-pure fn bcx_tcx(bcx: @block_ctxt) -> ty::ctxt { ret bcx.fcx.ccx.tcx; }
-pure fn bcx_ccx(bcx: @block_ctxt) -> @crate_ctxt { ret bcx.fcx.ccx; }
-pure fn bcx_fcx(bcx: @block_ctxt) -> @fn_ctxt { ret bcx.fcx; }
+pure fn bcx_tcx(bcx: block) -> ty::ctxt { ret bcx.fcx.ccx.tcx; }
+pure fn bcx_ccx(bcx: block) -> @crate_ctxt { ret bcx.fcx.ccx; }
+pure fn bcx_fcx(bcx: block) -> @fn_ctxt { ret bcx.fcx; }
 pure fn fcx_ccx(fcx: @fn_ctxt) -> @crate_ctxt { ret fcx.ccx; }
 pure fn fcx_tcx(fcx: @fn_ctxt) -> ty::ctxt { ret fcx.ccx.tcx; }
 pure fn ccx_tcx(ccx: @crate_ctxt) -> ty::ctxt { ret ccx.tcx; }
@@ -495,7 +511,7 @@ fn T_size_t(targ_cfg: @session::config) -> TypeRef {
 
 fn T_fn(inputs: [TypeRef], output: TypeRef) -> TypeRef unsafe {
     ret llvm::LLVMFunctionType(output, to_ptr(inputs),
-                               vec::len::<TypeRef>(inputs) as unsigned,
+                               inputs.len() as unsigned,
                                False);
 }
 
@@ -508,7 +524,7 @@ fn T_ptr(t: TypeRef) -> TypeRef {
 }
 
 fn T_struct(elts: [TypeRef]) -> TypeRef unsafe {
-    ret llvm::LLVMStructType(to_ptr(elts), vec::len(elts) as unsigned, False);
+    ret llvm::LLVMStructType(to_ptr(elts), elts.len() as unsigned, False);
 }
 
 fn T_named_struct(name: str) -> TypeRef {
@@ -518,7 +534,7 @@ fn T_named_struct(name: str) -> TypeRef {
 
 fn set_struct_body(t: TypeRef, elts: [TypeRef]) unsafe {
     llvm::LLVMStructSetBody(t, to_ptr(elts),
-                            vec::len(elts) as unsigned, False);
+                            elts.len() as unsigned, False);
 }
 
 fn T_empty_struct() -> TypeRef { ret T_struct([]); }
@@ -571,14 +587,6 @@ fn T_glue_fn(cx: @crate_ctxt) -> TypeRef {
     ret t;
 }
 
-fn T_cmp_glue_fn(cx: @crate_ctxt) -> TypeRef {
-    let s = "cmp_glue_fn";
-    alt name_has_type(cx.tn, s) { some(t) { ret t; } _ {} }
-    let t = T_tydesc_field(cx, abi::tydesc_field_cmp_glue);
-    associate_type(cx.tn, s, t);
-    ret t;
-}
-
 fn T_tydesc(targ_cfg: @session::config) -> TypeRef {
     let tydesc = T_named_struct("tydesc");
     let tydescpp = T_ptr(T_ptr(tydesc));
@@ -586,15 +594,12 @@ fn T_tydesc(targ_cfg: @session::config) -> TypeRef {
     let glue_fn_ty =
         T_ptr(T_fn([T_ptr(T_nil()), T_ptr(T_nil()), tydescpp,
                     pvoid], T_void()));
-    let cmp_glue_fn_ty =
-        T_ptr(T_fn([T_ptr(T_i1()), T_ptr(tydesc), tydescpp,
-                    pvoid, pvoid, T_i8()], T_void()));
 
     let int_type = T_int(targ_cfg);
     let elems =
         [tydescpp, int_type, int_type,
          glue_fn_ty, glue_fn_ty, glue_fn_ty,
-         T_ptr(T_i8()), glue_fn_ty, glue_fn_ty, glue_fn_ty, cmp_glue_fn_ty,
+         T_ptr(T_i8()), glue_fn_ty, glue_fn_ty, glue_fn_ty, T_ptr(T_i8()),
          T_ptr(T_i8()), T_ptr(T_i8()), int_type, int_type];
     set_struct_body(tydesc, elems);
     ret tydesc;
@@ -633,7 +638,7 @@ fn tuplify_box_ty(tcx: ty::ctxt, t: ty::t) -> ty::t {
 // descr is embedded in the box (ty::type vs ty::send_type).  This is useful
 // for unique closure boxes, hence the name "cbox_ty" (closure box type).
 fn tuplify_cbox_ty(tcx: ty::ctxt, t: ty::t, tydesc_t: ty::t) -> ty::t {
-    let ptr = ty::mk_ptr(tcx, {ty: ty::mk_nil(tcx), mut: ast::imm});
+    let ptr = ty::mk_ptr(tcx, {ty: ty::mk_nil(tcx), mutbl: ast::m_imm});
     ret ty::mk_tup(tcx, [ty::mk_uint(tcx), tydesc_t,
                          ptr, ptr,
                          t]);
@@ -721,9 +726,8 @@ fn T_captured_tydescs(cx: @crate_ctxt, n: uint) -> TypeRef {
     ret T_struct(vec::init_elt::<TypeRef>(n, T_ptr(cx.tydesc_type)));
 }
 
-fn T_opaque_iface_ptr(cx: @crate_ctxt) -> TypeRef {
-    let tdptr = T_ptr(cx.tydesc_type);
-    T_ptr(T_box(cx, T_struct([tdptr, tdptr, T_i8()])))
+fn T_opaque_iface(cx: @crate_ctxt) -> TypeRef {
+    T_struct([T_ptr(cx.tydesc_type), T_opaque_box_ptr(cx)])
 }
 
 fn T_opaque_port_ptr() -> TypeRef { ret T_ptr(T_i8()); }
@@ -779,7 +783,7 @@ fn C_u8(i: uint) -> ValueRef { ret C_integral(T_i8(), i as u64, False); }
 // our boxed-and-length-annotated strings.
 fn C_cstr(cx: @crate_ctxt, s: str) -> ValueRef {
     let sc = str::as_buf(s) {|buf|
-        llvm::LLVMConstString(buf, str::byte_len(s) as unsigned, False)
+        llvm::LLVMConstString(buf, str::len_bytes(s) as unsigned, False)
     };
     let g =
         str::as_buf(cx.names("str"),
@@ -793,7 +797,7 @@ fn C_cstr(cx: @crate_ctxt, s: str) -> ValueRef {
 // Returns a Plain Old LLVM String:
 fn C_postr(s: str) -> ValueRef {
     ret str::as_buf(s) {|buf|
-        llvm::LLVMConstString(buf, str::byte_len(s) as unsigned, False)
+        llvm::LLVMConstString(buf, str::len_bytes(s) as unsigned, False)
     };
 }
 
@@ -802,28 +806,28 @@ fn C_zero_byte_arr(size: uint) -> ValueRef unsafe {
     let elts: [ValueRef] = [];
     while i < size { elts += [C_u8(0u)]; i += 1u; }
     ret llvm::LLVMConstArray(T_i8(), vec::to_ptr(elts),
-                             vec::len(elts) as unsigned);
+                             elts.len() as unsigned);
 }
 
 fn C_struct(elts: [ValueRef]) -> ValueRef unsafe {
-    ret llvm::LLVMConstStruct(vec::to_ptr(elts), vec::len(elts) as unsigned,
+    ret llvm::LLVMConstStruct(vec::to_ptr(elts), elts.len() as unsigned,
                               False);
 }
 
 fn C_named_struct(T: TypeRef, elts: [ValueRef]) -> ValueRef unsafe {
     ret llvm::LLVMConstNamedStruct(T, vec::to_ptr(elts),
-                                   vec::len(elts) as unsigned);
+                                   elts.len() as unsigned);
 }
 
 fn C_array(ty: TypeRef, elts: [ValueRef]) -> ValueRef unsafe {
     ret llvm::LLVMConstArray(ty, vec::to_ptr(elts),
-                             vec::len(elts) as unsigned);
+                             elts.len() as unsigned);
 }
 
 fn C_bytes(bytes: [u8]) -> ValueRef unsafe {
     ret llvm::LLVMConstString(
         unsafe::reinterpret_cast(vec::to_ptr(bytes)),
-        vec::len(bytes) as unsigned, False);
+        bytes.len() as unsigned, False);
 }
 
 fn C_shape(ccx: @crate_ctxt, bytes: [u8]) -> ValueRef {
@@ -838,7 +842,7 @@ fn C_shape(ccx: @crate_ctxt, bytes: [u8]) -> ValueRef {
 }
 
 
-pure fn valid_variant_index(ix: uint, cx: @block_ctxt, enum_id: ast::def_id,
+pure fn valid_variant_index(ix: uint, cx: block, enum_id: ast::def_id,
                             variant_id: ast::def_id) -> bool {
 
     // Handwaving: it's ok to pretend this code is referentially
@@ -847,29 +851,12 @@ pure fn valid_variant_index(ix: uint, cx: @block_ctxt, enum_id: ast::def_id,
     unchecked{
         let variant =
             ty::enum_variant_with_id(bcx_tcx(cx), enum_id, variant_id);
-        ix < vec::len(variant.args)
+        ix < variant.args.len()
     }
 }
 
 pure fn type_has_static_size(cx: @crate_ctxt, t: ty::t) -> bool {
     !ty::type_has_dynamic_size(cx.tcx, t)
-}
-
-pure fn non_ty_var(cx: @crate_ctxt, t: ty::t) -> bool {
-    let st = ty::struct(cx.tcx, t);
-    alt st {
-      ty::ty_var(_) { false }
-      _          { true }
-    }
-}
-
-pure fn returns_non_ty_var(cx: @crate_ctxt, t: ty::t) -> bool {
-    non_ty_var(cx, ty::ty_fn_ret(cx.tcx, t))
-}
-
-pure fn type_is_tup_like(cx: @block_ctxt, t: ty::t) -> bool {
-    let tcx = bcx_tcx(cx);
-    ty::type_is_tup_like(tcx, t)
 }
 
 // Used to identify cached dictionaries
@@ -884,33 +871,32 @@ fn hash_dict_id(&&dp: dict_id) -> uint {
         h = h << 2u;
         alt param {
           dict_param_dict(d) { h += hash_dict_id(d); }
-          dict_param_ty(t) { h += t; }
+          dict_param_ty(t) { h += ty::type_id(t); }
         }
     }
     h
 }
 
 // Used to identify cached monomorphized functions
-// FIXME[mono] don't count different boxes as different types
 type mono_id = @{def: ast::def_id, substs: [ty::t], dicts: [dict_id]};
 fn hash_mono_id(&&mi: mono_id) -> uint {
     let h = syntax::ast_util::hash_def_id(mi.def);
-    for ty in mi.substs { h = (h << 2u) + ty; }
+    for ty in mi.substs { h = (h << 2u) + ty::type_id(ty); }
     for dict in mi.dicts { h = (h << 2u) + hash_dict_id(dict); }
     h
 }
 
-fn umax(cx: @block_ctxt, a: ValueRef, b: ValueRef) -> ValueRef {
+fn umax(cx: block, a: ValueRef, b: ValueRef) -> ValueRef {
     let cond = build::ICmp(cx, lib::llvm::IntULT, a, b);
     ret build::Select(cx, cond, b, a);
 }
 
-fn umin(cx: @block_ctxt, a: ValueRef, b: ValueRef) -> ValueRef {
+fn umin(cx: block, a: ValueRef, b: ValueRef) -> ValueRef {
     let cond = build::ICmp(cx, lib::llvm::IntULT, a, b);
     ret build::Select(cx, cond, a, b);
 }
 
-fn align_to(cx: @block_ctxt, off: ValueRef, align: ValueRef) -> ValueRef {
+fn align_to(cx: block, off: ValueRef, align: ValueRef) -> ValueRef {
     let mask = build::Sub(cx, align, C_int(bcx_ccx(cx), 1));
     let bumped = build::Add(cx, off, mask);
     ret build::And(cx, bumped, build::Not(cx, mask));
@@ -928,16 +914,26 @@ fn path_str(p: path) -> str {
     r
 }
 
-fn node_id_type(bcx: @block_ctxt, id: ast::node_id) -> ty::t {
+fn node_id_type(bcx: block, id: ast::node_id) -> ty::t {
     let tcx = bcx_tcx(bcx);
     let t = ty::node_id_to_type(tcx, id);
     alt bcx.fcx.param_substs {
-      some(s) { ty::substitute_type_params(tcx, s, t) }
+      some(substs) { ty::substitute_type_params(tcx, substs.tys, t) }
       _ { t }
     }
 }
-fn expr_ty(bcx: @block_ctxt, ex: @ast::expr) -> ty::t {
+fn expr_ty(bcx: block, ex: @ast::expr) -> ty::t {
     node_id_type(bcx, ex.id)
+}
+fn node_id_type_params(bcx: block, id: ast::node_id) -> [ty::t] {
+    let tcx = bcx_tcx(bcx);
+    let params = ty::node_id_to_type_params(tcx, id);
+    alt bcx.fcx.param_substs {
+      some(substs) {
+        vec::map(params) {|t| ty::substitute_type_params(tcx, substs.tys, t) }
+      }
+      _ { params }
+    }
 }
 
 //

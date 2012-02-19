@@ -1,9 +1,7 @@
 use std;
 
 import codemap::span;
-import core::{vec, option};
 import std::map::{hashmap, new_str_hash};
-import option::{some, none};
 import driver::session::session;
 
 import base::*;
@@ -190,7 +188,7 @@ fn transcribe(cx: ext_ctxt, b: bindings, body: @expr) -> @expr {
     fn new_id(_old: node_id, cx: ext_ctxt) -> node_id { ret cx.next_id(); }
     fn new_span(cx: ext_ctxt, sp: span) -> span {
         /* this discards information in the case of macro-defining macros */
-        ret {lo: sp.lo, hi: sp.hi, expanded_from: cx.backtrace()};
+        ret {lo: sp.lo, hi: sp.hi, expn_info: cx.backtrace()};
     }
     let afp = default_ast_fold();
     let f_pre =
@@ -202,8 +200,8 @@ fn transcribe(cx: ext_ctxt, b: bindings, body: @expr) -> @expr {
          fold_block:
              bind transcribe_block(cx, b, idx_path, _, _, _, afp.fold_block),
          map_exprs: bind transcribe_exprs(cx, b, idx_path, _, _),
-         new_id: bind new_id(_, cx),
-         new_span: bind new_span(cx, _) with *afp};
+         new_id: bind new_id(_, cx)
+         with *afp};
     let f = make_fold(f_pre);
     let result = f.fold_expr(body);
     ret result;
@@ -587,7 +585,6 @@ fn p_t_s_r_mac(cx: ext_ctxt, mac: ast::mac, s: selector, b: binders) {
           none { no_des(cx, blk.span, "under `#{}`"); }
         }
       }
-      ast::mac_qq(_,_) { no_des(cx, mac.span, "quasiquotes"); }
       ast::mac_aq(_,_) { no_des(cx, mac.span, "antiquotes"); }
       ast::mac_var(_) { no_des(cx, mac.span, "antiquote variables"); }
     }
@@ -685,7 +682,7 @@ fn add_new_extension(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
     let clauses: [@clause] = [];
     for arg: @expr in args {
         alt arg.node {
-          expr_vec(elts, mut) {
+          expr_vec(elts, mutbl) {
             if vec::len(elts) != 2u {
                 cx.span_fatal((*arg).span,
                               "extension clause must consist of [" +
@@ -754,7 +751,7 @@ fn add_new_extension(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                                    "at least one clause")
                }
              },
-         ext: normal(ext)};
+         ext: normal({expander: ext, span: some(arg.span)})};
 
     fn generic_extension(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                          _body: ast::mac_body, clauses: [@clause]) -> @expr {

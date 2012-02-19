@@ -16,7 +16,7 @@ fn write_file(filename: str, content: str) {
 }
 
 fn contains(haystack: str, needle: str) -> bool {
-    str::find(haystack, needle) != -1
+    str::contains(haystack, needle)
 }
 
 fn find_rust_files(&files: [str], path: str) {
@@ -50,8 +50,10 @@ fn common_exprs() -> [ast::expr] {
      dse(ast::expr_lit(@dsl(ast::lit_nil))),
      dse(ast::expr_lit(@dsl(ast::lit_bool(false)))),
      dse(ast::expr_lit(@dsl(ast::lit_bool(true)))),
-     dse(ast::expr_unary(ast::box(ast::imm), @dse(ast::expr_lit(@dsl(ast::lit_bool(true)))))),
-     dse(ast::expr_unary(ast::uniq(ast::imm), @dse(ast::expr_lit(@dsl(ast::lit_bool(true))))))
+     dse(ast::expr_unary(ast::box(ast::m_imm),
+                         @dse(ast::expr_lit(@dsl(ast::lit_bool(true)))))),
+     dse(ast::expr_unary(ast::uniq(ast::m_imm),
+                         @dse(ast::expr_lit(@dsl(ast::lit_bool(true))))))
     ]
 }
 
@@ -69,7 +71,7 @@ pure fn safe_to_use_expr(e: ast::expr, tm: test_mode) -> bool {
           ast::expr_if(_, _, _) { false }
           ast::expr_if_check(_, _, _) { false }
           ast::expr_block(_) { false }
-          ast::expr_alt(_, _) { false }
+          ast::expr_alt(_, _, _) { false }
           ast::expr_for(_, _, _) { false }
           ast::expr_while(_, _) { false }
 
@@ -283,10 +285,9 @@ fn check_variants_T<T: copy>(
     }
 }
 
-fn last_part(filename: str) -> str unsafe {
-  let ix = str::rindex(filename, 47u8 /* '/' */);
-  assert ix >= 0;
-  str::unsafe::slice_bytes(filename, ix as uint + 1u, str::byte_len(filename) - 3u)
+fn last_part(filename: str) -> str {
+  let ix = option::get(str::rindex(filename, '/'));
+  str::slice(filename, ix + 1u, str::len(filename) - 3u)
 }
 
 enum happiness { passed, cleanly_rejected(str), known_bug(str), failed(str), }
@@ -334,7 +335,7 @@ fn removeDirIfExists(filename: str) {
 fn check_running(exe_filename: str) -> happiness {
     let p = std::run::program_output("/Users/jruderman/scripts/timed_run_rust_program.py", [exe_filename]);
     let comb = p.out + "\n" + p.err;
-    if str::byte_len(comb) > 1u {
+    if str::len_bytes(comb) > 1u {
         log(error, "comb comb comb: " + comb);
     }
 

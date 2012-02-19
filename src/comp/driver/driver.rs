@@ -10,11 +10,9 @@ import middle::{trans, resolve, freevars, kind, ty, typeck, fn_usage,
 import syntax::print::{pp, pprust};
 import util::{ppaux, filesearch};
 import back::link;
-import core::{option, str, int, result};
 import result::{ok, err};
 import std::{fs, io, getopts};
 import io::{reader_util, writer_util};
-import option::{some, none};
 import getopts::{optopt, optmulti, optflag, optflagopt, opt_present};
 import back::{x86, x86_64};
 
@@ -161,7 +159,7 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
          bind middle::tstate::ck::check_crate(ty_cx, crate));
     let mut_map =
         time(time_passes, "mutability checking",
-             bind middle::mut::check_crate(ty_cx, crate));
+             bind middle::mutbl::check_crate(ty_cx, crate));
     let (copy_map, ref_map) =
         time(time_passes, "alias checking",
              bind middle::alias::check_crate(ty_cx, crate));
@@ -271,28 +269,28 @@ fn pretty_print_input(sess: session, cfg: ast::crate_cfg, input: str,
 }
 
 fn get_os(triple: str) -> option<session::os> {
-    ret if str::find(triple, "win32") >= 0 ||
-               str::find(triple, "mingw32") >= 0 {
+    ret if str::contains(triple, "win32") ||
+               str::contains(triple, "mingw32") {
             some(session::os_win32)
-        } else if str::find(triple, "darwin") >= 0 {
+        } else if str::contains(triple, "darwin") {
             some(session::os_macos)
-        } else if str::find(triple, "linux") >= 0 {
+        } else if str::contains(triple, "linux") {
             some(session::os_linux)
-        } else if str::find(triple, "freebsd") >= 0 {
+        } else if str::contains(triple, "freebsd") {
             some(session::os_freebsd)
         } else { none };
 }
 
 fn get_arch(triple: str) -> option<session::arch> {
-    ret if str::find(triple, "i386") >= 0 || str::find(triple, "i486") >= 0 ||
-               str::find(triple, "i586") >= 0 ||
-               str::find(triple, "i686") >= 0 ||
-               str::find(triple, "i786") >= 0 {
+    ret if str::contains(triple, "i386") || str::contains(triple, "i486") ||
+               str::contains(triple, "i586") ||
+               str::contains(triple, "i686") ||
+               str::contains(triple, "i786") {
             some(session::arch_x86)
-        } else if str::find(triple, "x86_64") >= 0 {
+        } else if str::contains(triple, "x86_64") {
             some(session::arch_x86_64)
-        } else if str::find(triple, "arm") >= 0 ||
-                      str::find(triple, "xscale") >= 0 {
+        } else if str::contains(triple, "arm") ||
+                      str::contains(triple, "xscale") {
             some(session::arch_arm)
         } else { none };
 }
@@ -442,17 +440,27 @@ fn build_session_options(match: getopts::match,
 
 fn build_session(sopts: @session::options, input: str,
                  demitter: diagnostic::emitter) -> session {
+    let codemap = codemap::new_codemap();
+    let diagnostic_handler =
+        diagnostic::mk_handler(some(demitter));
+    let span_diagnostic_handler =
+        diagnostic::mk_span_handler(diagnostic_handler, codemap);
+    build_session_(sopts, input, codemap, demitter,
+                   span_diagnostic_handler)
+}
+
+fn build_session_(
+    sopts: @session::options, input: str,
+    codemap: codemap::codemap,
+    demitter: diagnostic::emitter,
+    span_diagnostic_handler: diagnostic::span_handler
+) -> session {
     let target_cfg = build_target_config(sopts, demitter);
     let cstore = cstore::mk_cstore();
     let filesearch = filesearch::mk_filesearch(
         sopts.maybe_sysroot,
         sopts.target_triple,
         sopts.addl_lib_search_paths);
-    let codemap = codemap::new_codemap();
-    let diagnostic_handler =
-        diagnostic::mk_handler(some(demitter));
-    let span_diagnostic_handler =
-        diagnostic::mk_span_handler(diagnostic_handler, codemap);
     @{targ_cfg: target_cfg,
       opts: sopts,
       cstore: cstore,

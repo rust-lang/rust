@@ -73,12 +73,6 @@ fn refcount<T>(t: @T) -> uint {
     ret rustrt::refcount::<T>(t);
 }
 
-// FIXME: There's a wrapper for this in the task module and this really
-// just belongs there
-fn unsupervise() -> () {
-    ret rustrt::unsupervise();
-}
-
 fn log_str<T>(t: T) -> str {
     rustrt::shape_log_str(get_type_desc::<T>(), t)
 }

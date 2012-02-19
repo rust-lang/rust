@@ -47,8 +47,7 @@ inline void
 call_upcall_on_c_stack(void *args, void *fn_ptr) {
     check_stack_alignment();
     rust_task *task = rust_task_thread::get_task();
-    rust_task_thread *thread = task->thread;
-    thread->c_context.call_shim_on_c_stack(args, fn_ptr);
+    task->call_on_c_stack(args, fn_ptr);
 }
 
 extern "C" void record_sp(void *limit);
@@ -69,15 +68,38 @@ upcall_call_shim_on_c_stack(void *args, void *fn_ptr) {
     // stack.
     record_sp(0);
 
-    rust_task_thread *thread = task->thread;
     try {
-        thread->c_context.call_shim_on_c_stack(args, fn_ptr);
+        task->call_on_c_stack(args, fn_ptr);
     } catch (...) {
-        A(thread, false, "Native code threw an exception");
+        LOG_ERR(task, task, "Native code threw an exception");
+        abort();
     }
 
-    task = rust_task_thread::get_task();
     task->record_stack_limit();
+}
+
+/*
+ * The opposite of above. Starts on a C stack and switches to the Rust
+ * stack. This is the only upcall that runs from the C stack.
+ */
+extern "C" CDECL void
+upcall_call_shim_on_rust_stack(void *args, void *fn_ptr) {
+    rust_task *task = rust_task_thread::get_task();
+
+    // FIXME: Because of the hack in the other function that disables the
+    // stack limit when entering the C stack, here we restore the stack limit
+    // again.
+    task->record_stack_limit();
+
+    try {
+        task->call_on_rust_stack(args, fn_ptr);
+    } catch (...) {
+        // We can't count on being able to unwind through arbitrary
+        // code. Our best option is to just fail hard.
+        LOG_ERR(task, task,
+                "Rust task failed after reentering the Rust stack");
+        abort();
+    }
 }
 
 /**********************************************************************/
@@ -248,6 +270,26 @@ upcall_shared_free(void* ptr) {
     UPCALL_SWITCH_STACK(&args, upcall_s_shared_free);
 }
 
+struct s_shared_realloc_args {
+    void *retval;
+    void *ptr;
+    size_t size;
+};
+
+extern "C" CDECL void
+upcall_s_shared_realloc(s_shared_realloc_args *args) {
+    rust_task *task = rust_task_thread::get_task();
+    LOG_UPCALL_ENTRY(task);
+    args->retval = task->kernel->realloc(args->ptr, args->size);
+}
+
+extern "C" CDECL void *
+upcall_shared_realloc(void *ptr, size_t size) {
+    s_shared_realloc_args args = {NULL, ptr, size};
+    UPCALL_SWITCH_STACK(&args, upcall_s_shared_realloc);
+    return args.retval;
+}
+
 /**********************************************************************
  * Called to deep copy a type descriptor onto the exchange heap.
  * Used when sending closures.  It's possible that we should have
@@ -409,56 +451,6 @@ upcall_vec_grow(rust_vec** vp, size_t new_sz) {
     UPCALL_SWITCH_STACK(&args, upcall_s_vec_grow);
 }
 
-// Copy elements from one vector to another,
-// dealing with reference counts
-static inline void
-copy_elements(rust_task *task, type_desc *elem_t,
-              void *pdst, void *psrc, size_t n) {
-    char *dst = (char *)pdst, *src = (char *)psrc;
-    memmove(dst, src, n);
-
-    // increment the refcount of each element of the vector
-    if (elem_t->take_glue) {
-        glue_fn *take_glue = elem_t->take_glue;
-        size_t elem_size = elem_t->size;
-        const type_desc **tydescs = elem_t->first_param;
-        for (char *p = dst; p < dst+n; p += elem_size) {
-            take_glue(NULL, NULL, tydescs, p);
-        }
-    }
-}
-
-/**********************************************************************/
-
-struct s_vec_push_args {
-    rust_vec** vp;
-    type_desc* elt_ty;
-    void* elt;
-};
-
-extern "C" CDECL void
-upcall_s_vec_push(s_vec_push_args *args) {
-    rust_task *task = rust_task_thread::get_task();
-    LOG_UPCALL_ENTRY(task);
-    size_t new_sz = (*args->vp)->fill + args->elt_ty->size;
-    reserve_vec(task, args->vp, new_sz);
-    rust_vec* v = *args->vp;
-    copy_elements(task, args->elt_ty, &v->data[0] + v->fill, 
-                  args->elt, args->elt_ty->size);
-    v->fill += args->elt_ty->size;
-}
-
-extern "C" CDECL void
-upcall_vec_push(rust_vec** vp, type_desc* elt_ty, void* elt) {
-    // FIXME: Switching stacks here causes crashes, probably
-    // because this upcall calls take glue
-    s_vec_push_args args = {vp, elt_ty, elt};
-    upcall_s_vec_push(&args);
-
-    // Do the stack check to make sure this op, on the Rust stack, is behaving
-    rust_task *task = rust_task_thread::get_task();
-    task->check_stack_canary();
-}
 
 /**********************************************************************
  * Returns a token that can be used to deallocate all of the allocated space
@@ -660,9 +652,9 @@ struct s_new_stack_args {
 extern "C" CDECL void
 upcall_s_new_stack(struct s_new_stack_args *args) {
     rust_task *task = rust_task_thread::get_task();
-    args->result = task->new_stack(args->stk_sz,
-                                   args->args_addr,
-                                   args->args_sz);
+    args->result = task->next_stack(args->stk_sz,
+                                    args->args_addr,
+                                    args->args_sz);
 }
 
 extern "C" CDECL void *
@@ -675,7 +667,7 @@ upcall_new_stack(size_t stk_sz, void *args_addr, size_t args_sz) {
 extern "C" CDECL void
 upcall_s_del_stack() {
     rust_task *task = rust_task_thread::get_task();
-    task->del_stack();
+    task->prev_stack();
 }
 
 extern "C" CDECL void

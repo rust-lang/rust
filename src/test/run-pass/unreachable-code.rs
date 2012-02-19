@@ -30,7 +30,7 @@ fn log_cont() { do { log(error, cont); } while false }
 fn ret_ret() -> int { ret (ret 2) + 3; }
 
 fn ret_guard() {
-    alt 2 {
+    alt check 2 {
       x if (ret) { x; }
     }
 }

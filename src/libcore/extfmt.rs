@@ -80,12 +80,12 @@ mod ct {
     enum piece { piece_string(str), piece_conv(conv), }
     type error_fn = fn@(str) -> ! ;
 
-    fn parse_fmt_string(s: str, error: error_fn) -> [piece] {
+    fn parse_fmt_string(s: str, error: error_fn) -> [piece] unsafe {
         let pieces: [piece] = [];
-        let lim = str::byte_len(s);
+        let lim = str::len_bytes(s);
         let buf = "";
         fn flush_buf(buf: str, &pieces: [piece]) -> str {
-            if str::byte_len(buf) > 0u {
+            if str::len_bytes(buf) > 0u {
                 let piece = piece_string(buf);
                 pieces += [piece];
             }
@@ -93,13 +93,13 @@ mod ct {
         }
         let i = 0u;
         while i < lim {
-            let curr = str::substr(s, i, 1u);
+            let curr = str::unsafe::slice_bytes(s, i, i+1u);
             if str::eq(curr, "%") {
                 i += 1u;
                 if i >= lim {
                     error("unterminated conversion at end of string");
                 }
-                let curr2 = str::substr(s, i, 1u);
+                let curr2 = str::unsafe::slice_bytes(s, i, i+1u);
                 if str::eq(curr2, "%") {
                     buf += curr2;
                     i += 1u;
@@ -119,7 +119,7 @@ mod ct {
         if i >= lim { ret none; }
         let c = s[i];
         if !('0' as u8 <= c && c <= '9' as u8) { ret option::none; }
-        let n = c - ('0' as u8) as uint;
+        let n = (c - ('0' as u8)) as uint;
         ret alt peek_num(s, i + 1u, lim) {
               none { some({num: n, next: i + 1u}) }
               some(next) {
@@ -164,28 +164,26 @@ mod ct {
         let noflags: [flag] = [];
         if i >= lim { ret {flags: noflags, next: i}; }
 
-        // FIXME: This recursion generates illegal instructions if the return
-        // value isn't boxed. Only started happening after the ivec conversion
         fn more_(f: flag, s: str, i: uint, lim: uint) ->
-           @{flags: [flag], next: uint} {
+           {flags: [flag], next: uint} {
             let next = parse_flags(s, i + 1u, lim);
             let rest = next.flags;
             let j = next.next;
             let curr: [flag] = [f];
-            ret @{flags: curr + rest, next: j};
+            ret {flags: curr + rest, next: j};
         }
         let more = bind more_(_, s, i, lim);
         let f = s[i];
         ret if f == '-' as u8 {
-                *more(flag_left_justify)
+                more(flag_left_justify)
             } else if f == '0' as u8 {
-                *more(flag_left_zero_pad)
+                more(flag_left_zero_pad)
             } else if f == ' ' as u8 {
-                *more(flag_space_for_sign)
+                more(flag_space_for_sign)
             } else if f == '+' as u8 {
-                *more(flag_sign_always)
+                more(flag_sign_always)
             } else if f == '#' as u8 {
-                *more(flag_alternate)
+                more(flag_alternate)
             } else { {flags: noflags, next: i} };
     }
     fn parse_count(s: str, i: uint, lim: uint) -> {count: count, next: uint} {
@@ -225,9 +223,9 @@ mod ct {
             } else { {count: count_implied, next: i} };
     }
     fn parse_type(s: str, i: uint, lim: uint, error: error_fn) ->
-       {ty: ty, next: uint} {
+       {ty: ty, next: uint} unsafe {
         if i >= lim { error("missing type in conversion"); }
-        let tstr = str::substr(s, i, 1u);
+        let tstr = str::unsafe::slice_bytes(s, i, i+1u);
         // TODO: Do we really want two signed types here?
         // How important is it to be printf compatible?
         let t =
@@ -319,16 +317,15 @@ mod rt {
     fn conv_char(cv: conv, c: char) -> str {
         ret pad(cv, str::from_char(c), pad_nozero);
     }
-    fn conv_str(cv: conv, s: str) -> str {
+    fn conv_str(cv: conv, s: str) -> str unsafe {
         // For strings, precision is the maximum characters
         // displayed
 
-        // FIXME: substr works on bytes, not chars!
         let unpadded =
             alt cv.precision {
               count_implied { s }
               count_is(max) {
-                if max as uint < str::char_len(s) {
+                if max as uint < str::len(s) {
                     str::substr(s, 0u, max as uint)
                 } else { s }
               }
@@ -371,7 +368,7 @@ mod rt {
                 ""
             } else {
                 let s = uint::to_str(num, radix);
-                let len = str::char_len(s);
+                let len = str::len(s);
                 if len < prec {
                     let diff = prec - len;
                     let pad = str_init_elt(diff, '0');
@@ -393,7 +390,7 @@ mod rt {
         ret str::from_bytes(svec);
     }
     enum pad_mode { pad_signed, pad_unsigned, pad_nozero, }
-    fn pad(cv: conv, s: str, mode: pad_mode) -> str {
+    fn pad(cv: conv, s: str, mode: pad_mode) -> str unsafe {
         let uwidth;
         alt cv.width {
           count_implied { ret s; }
@@ -403,7 +400,7 @@ mod rt {
             uwidth = width as uint;
           }
         }
-        let strlen = str::char_len(s);
+        let strlen = str::len(s);
         if uwidth <= strlen { ret s; }
         let padchar = ' ';
         let diff = uwidth - strlen;
@@ -436,13 +433,13 @@ mod rt {
         // zeros. It may make sense to convert zero padding to a precision
         // instead.
 
-        if signed && zero_padding && str::byte_len(s) > 0u {
+        if signed && zero_padding && str::len_bytes(s) > 0u {
             let head = s[0];
             if head == '+' as u8 || head == '-' as u8 || head == ' ' as u8 {
                 let headstr = str::from_bytes([head]);
                 // FIXME: not UTF-8 safe
-                let bytelen = str::byte_len(s);
-                let numpart = str::substr(s, 1u, bytelen - 1u);
+                let bytelen = str::len_bytes(s);
+                let numpart = str::unsafe::slice_bytes(s, 1u, bytelen);
                 ret headstr + padstr + numpart;
             }
         }

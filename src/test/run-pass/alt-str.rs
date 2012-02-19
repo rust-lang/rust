@@ -1,7 +1,7 @@
 // Issue #53
 
 fn main() {
-    alt "test" { "not-test" { fail; } "test" { } _ { fail; } }
+    alt check "test" { "not-test" { fail; } "test" { } _ { fail; } }
 
     enum t { tag1(str), tag2, }
 
@@ -13,9 +13,9 @@ fn main() {
       _ { fail; }
     }
 
-    let x = alt "a" { "a" { 1 } "b" { 2 } };
+    let x = alt check "a" { "a" { 1 } "b" { 2 } };
     assert (x == 1);
 
-    alt "a" { "a" { } "b" { } }
+    alt check "a" { "a" { } "b" { } }
 
 }

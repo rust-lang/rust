@@ -34,19 +34,15 @@ fn test_vec() {
 }
 
 fn test_str() {
-    // FIXME: re-enable this once strings are unique and sendable
-    /*
-        let po = comm::mk_port();
-        let ch = po.mk_chan();
-        let s0: str = "test";
-        send(ch, s0);
-        let s1: str;
-        s1 = po.recv();
-        assert (s1.(0) as u8 == 't' as u8);
-        assert (s1.(1) as u8 == 'e' as u8);
-        assert (s1.(2) as u8 == 's' as u8);
-        assert (s1.(3) as u8 == 't' as u8);
-    */
+    let po = port();
+    let ch = chan(po);
+    let s0 = "test";
+    send(ch, s0);
+    let s1 = recv(po);
+    assert (s1[0] == 't' as u8);
+    assert (s1[1] == 'e' as u8);
+    assert (s1[2] == 's' as u8);
+    assert (s1[3] == 't' as u8);
 }
 
 fn test_tag() {

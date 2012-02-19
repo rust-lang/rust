@@ -1,6 +1,8 @@
 #ifndef RUST_TASK_THREAD_H
 #define RUST_TASK_THREAD_H
 
+#include "sync/rust_thread.h"
+#include "rust_stack.h"
 #include "context.h"
 
 #ifndef _WIN32
@@ -91,6 +93,16 @@ struct rust_task_thread : public kernel_owned<rust_task_thread>,
 
     bool should_exit;
 
+private:
+
+    stk_seg *cached_c_stack;
+    stk_seg *extra_c_stack;
+
+    void prepare_c_stack(rust_task *task);
+    void unprepare_c_stack();
+
+public:
+
     // Only a pointer to 'name' is kept, so it must live as long as this
     // domain.
     rust_task_thread(rust_scheduler *sched, rust_srv *srv, int id);
@@ -122,14 +134,76 @@ struct rust_task_thread : public kernel_owned<rust_task_thread>,
 
     static rust_task *get_task();
 
+    // Called by each task when they are ready to be destroyed
+    void release_task(rust_task *task);
+
     // Tells the scheduler to exit it's scheduling loop and thread
     void exit();
+
+    // Called by tasks when they need a stack on which to run C code
+    stk_seg *borrow_c_stack();
+    void return_c_stack(stk_seg *stack);
 };
 
 inline rust_log &
 rust_task_thread::get_log() {
     return _log;
 }
+
+// This stuff is on the stack-switching fast path
+
+#ifndef __WIN32__
+
+inline rust_task *
+rust_task_thread::get_task() {
+    if (!tls_initialized)
+        return NULL;
+    rust_task *task = reinterpret_cast<rust_task *>
+        (pthread_getspecific(task_key));
+    assert(task && "Couldn't get the task from TLS!");
+    return task;
+}
+
+#else
+
+inline rust_task *
+rust_task_thread::get_task() {
+    if (!tls_initialized)
+        return NULL;
+    rust_task *task = reinterpret_cast<rust_task *>(TlsGetValue(task_key));
+    assert(task && "Couldn't get the task from TLS!");
+    return task;
+}
+
+#endif
+
+// NB: Runs on the Rust stack
+inline stk_seg *
+rust_task_thread::borrow_c_stack() {
+    I(this, cached_c_stack);
+    stk_seg *your_stack;
+    if (extra_c_stack) {
+        your_stack = extra_c_stack;
+        extra_c_stack = NULL;
+    } else {
+        your_stack = cached_c_stack;
+        cached_c_stack = NULL;
+    }
+    prepare_valgrind_stack(your_stack);
+    return your_stack;
+}
+
+// NB: Runs on the Rust stack
+inline void
+rust_task_thread::return_c_stack(stk_seg *stack) {
+    I(this, !extra_c_stack);
+    if (!cached_c_stack) {
+        cached_c_stack = stack;
+    } else {
+        extra_c_stack = stack;
+    }
+}
+
 
 //
 // Local Variables:

@@ -18,65 +18,16 @@ fn run(
     doc: doc::cratedoc
 ) -> doc::cratedoc {
     let fold = fold::fold({
-        fold_mod: fold_mod,
-        fold_const: fold_const,
-        fold_fn: fold_fn,
-        fold_enum: fold_enum,
-        fold_res: fold_res,
+        fold_item: fold_item,
         fold_iface: fold_iface,
-        fold_impl: fold_impl,
-        fold_type: fold_type
+        fold_impl: fold_impl
         with *fold::default_seq_fold(())
     });
     fold.fold_crate(fold, doc)
 }
 
-fn fold_mod(fold: fold::fold<()>, doc: doc::moddoc) -> doc::moddoc {
-    let doc = fold::default_seq_fold_mod(fold, doc);
-    let (brief, desc) = modify(doc.brief, doc.desc);
-
-    {
-        brief: brief,
-        desc: desc
-        with doc
-    }
-}
-
-fn fold_const(fold: fold::fold<()>, doc: doc::constdoc) -> doc::constdoc {
-    let doc = fold::default_seq_fold_const(fold, doc);
-    let (brief, desc) = modify(doc.brief, doc.desc);
-
-    {
-        brief: brief,
-        desc: desc
-        with doc
-    }
-}
-
-fn fold_fn(fold: fold::fold<()>, doc: doc::fndoc) -> doc::fndoc {
-    let doc = fold::default_seq_fold_fn(fold, doc);
-    let (brief, desc) = modify(doc.brief, doc.desc);
-
-    {
-        brief: brief,
-        desc: desc
-        with doc
-    }
-}
-
-fn fold_enum(fold: fold::fold<()>, doc: doc::enumdoc) -> doc::enumdoc {
-    let doc = fold::default_seq_fold_enum(fold, doc);
-    let (brief, desc) = modify(doc.brief, doc.desc);
-
-    {
-        brief: brief,
-        desc: desc
-        with doc
-    }
-}
-
-fn fold_res(fold: fold::fold<()>, doc: doc::resdoc) -> doc::resdoc {
-    let doc = fold::default_seq_fold_res(fold, doc);
+fn fold_item(fold: fold::fold<()>, doc: doc::itemdoc) -> doc::itemdoc {
+    let doc = fold::default_seq_fold_item(fold, doc);
     let (brief, desc) = modify(doc.brief, doc.desc);
 
     {
@@ -88,11 +39,8 @@ fn fold_res(fold: fold::fold<()>, doc: doc::resdoc) -> doc::resdoc {
 
 fn fold_iface(fold: fold::fold<()>, doc: doc::ifacedoc) -> doc::ifacedoc {
     let doc =fold::default_seq_fold_iface(fold, doc);
-    let (brief, desc) = modify(doc.brief, doc.desc);
 
     {
-        brief: brief,
-        desc: desc,
         methods: vec::map(doc.methods) {|doc|
             let (brief, desc) = modify(doc.brief, doc.desc);
 
@@ -108,11 +56,8 @@ fn fold_iface(fold: fold::fold<()>, doc: doc::ifacedoc) -> doc::ifacedoc {
 
 fn fold_impl(fold: fold::fold<()>, doc: doc::impldoc) -> doc::impldoc {
     let doc =fold::default_seq_fold_impl(fold, doc);
-    let (brief, desc) = modify(doc.brief, doc.desc);
 
     {
-        brief: brief,
-        desc: desc,
         methods: vec::map(doc.methods) {|doc|
             let (brief, desc) = modify(doc.brief, doc.desc);
 
@@ -126,58 +71,47 @@ fn fold_impl(fold: fold::fold<()>, doc: doc::impldoc) -> doc::impldoc {
     }
 }
 
-fn fold_type(fold: fold::fold<()>, doc: doc::tydoc) -> doc::tydoc {
-    let doc = fold::default_seq_fold_type(fold, doc);
-    let (brief, desc) = modify(doc.brief, doc.desc);
-
-    {
-        brief: brief,
-        desc: desc
-        with doc
-    }
-}
-
 #[test]
 fn should_promote_mod_desc() {
     let doc = test::mk_doc("#[doc(desc = \"desc\")] mod m { }");
-    assert doc.topmod.mods()[0].brief == some("desc");
-    assert doc.topmod.mods()[0].desc == none;
+    assert doc.topmod.mods()[0].brief() == some("desc");
+    assert doc.topmod.mods()[0].desc() == none;
 }
 
 #[test]
 fn should_promote_const_desc() {
     let doc = test::mk_doc("#[doc(desc = \"desc\")] const a: bool = true;");
-    assert doc.topmod.consts()[0].brief == some("desc");
-    assert doc.topmod.consts()[0].desc == none;
+    assert doc.topmod.consts()[0].brief() == some("desc");
+    assert doc.topmod.consts()[0].desc() == none;
 }
 
 #[test]
 fn should_promote_fn_desc() {
     let doc = test::mk_doc("#[doc(desc = \"desc\")] fn a() { }");
-    assert doc.topmod.fns()[0].brief == some("desc");
-    assert doc.topmod.fns()[0].desc == none;
+    assert doc.topmod.fns()[0].brief() == some("desc");
+    assert doc.topmod.fns()[0].desc() == none;
 }
 
 #[test]
 fn should_promote_enum_desc() {
     let doc = test::mk_doc("#[doc(desc = \"desc\")] enum a { b }");
-    assert doc.topmod.enums()[0].brief == some("desc");
-    assert doc.topmod.enums()[0].desc == none;
+    assert doc.topmod.enums()[0].brief() == some("desc");
+    assert doc.topmod.enums()[0].desc() == none;
 }
 
 #[test]
 fn should_promote_resource_desc() {
     let doc = test::mk_doc(
         "#[doc(desc = \"desc\")] resource r(a: bool) { }");
-    assert doc.topmod.resources()[0].brief == some("desc");
-    assert doc.topmod.resources()[0].desc == none;
+    assert doc.topmod.resources()[0].brief() == some("desc");
+    assert doc.topmod.resources()[0].desc() == none;
 }
 
 #[test]
 fn should_promote_iface_desc() {
     let doc = test::mk_doc("#[doc(desc = \"desc\")] iface i { fn a(); }");
-    assert doc.topmod.ifaces()[0].brief == some("desc");
-    assert doc.topmod.ifaces()[0].desc == none;
+    assert doc.topmod.ifaces()[0].brief() == some("desc");
+    assert doc.topmod.ifaces()[0].desc() == none;
 }
 
 #[test]
@@ -191,8 +125,8 @@ fn should_promote_iface_method_desc() {
 fn should_promote_impl_desc() {
     let doc = test::mk_doc(
         "#[doc(desc = \"desc\")] impl i for int { fn a() { } }");
-    assert doc.topmod.impls()[0].brief == some("desc");
-    assert doc.topmod.impls()[0].desc == none;
+    assert doc.topmod.impls()[0].brief() == some("desc");
+    assert doc.topmod.impls()[0].desc() == none;
 }
 
 #[test]
@@ -206,8 +140,8 @@ fn should_promote_impl_method_desc() {
 #[test]
 fn should_promote_type_desc() {
     let doc = test::mk_doc("#[doc(desc = \"desc\")] type t = int;");
-    assert doc.topmod.types()[0].brief == some("desc");
-    assert doc.topmod.types()[0].desc == none;
+    assert doc.topmod.types()[0].brief() == some("desc");
+    assert doc.topmod.types()[0].desc() == none;
 }
 
 #[cfg(test)]
@@ -240,7 +174,7 @@ fn parse_desc(desc: str) -> (option<str>, option<str>) {
 
     if check vec::is_not_empty(paras) {
         let maybe_brief = vec::head(paras);
-        if str::char_len(maybe_brief) <= max_brief_len {
+        if str::len(maybe_brief) <= max_brief_len {
             let desc_paras = vec::tail(paras);
             let desc = if vec::is_not_empty(desc_paras) {
                 some(str::connect(desc_paras, "\n\n"))

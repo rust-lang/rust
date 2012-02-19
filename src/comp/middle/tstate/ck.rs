@@ -3,11 +3,9 @@ import syntax::ast;
 import ast::{stmt, fn_ident, node_id, crate, return_val, noreturn, expr};
 import syntax::{visit, print};
 import syntax::codemap::span;
-import middle::ty::{type_is_nil, ret_ty_of_fn};
-import tstate::ann::{
-                     precond, prestate,
+import middle::ty;
+import tstate::ann::{precond, prestate,
                      implies, ann_precond, ann_prestate};
-import option;
 import aux::*;
 import syntax::print::pprust::ty_to_str;
 import bitvectors::*;
@@ -113,7 +111,8 @@ fn check_states_against_conditions(fcx: fn_ctxt,
     /* Check that the return value is initialized */
     let post = aux::block_poststate(fcx.ccx, f_body);
     if !promises(fcx, post, fcx.enclosing.i_return) &&
-       !type_is_nil(fcx.ccx.tcx, ret_ty_of_fn(fcx.ccx.tcx, id)) &&
+       !ty::type_is_nil(ty::ty_fn_ret(ty::node_id_to_type(
+           fcx.ccx.tcx, id))) &&
        f_decl.cf == return_val {
         fcx.ccx.tcx.sess.span_err(f_body.span,
                                   "In function " + fcx.name +

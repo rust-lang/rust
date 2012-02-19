@@ -59,10 +59,10 @@ impl reader_util for reader {
                     assert (next > -1);
                     assert (next & 192 == 128);
                     val <<= 6u;
-                    val += next & 63 as uint;
+                    val += (next & 63) as uint;
                 }
                 // See str::char_at
-                val += (b0 << (w + 1u as u8) as uint)
+                val += ((b0 << ((w + 1u) as u8)) as uint)
                     << (w - 1u) * 6u - w - 1u;
                 chars += [ val as char ];
             }
@@ -264,7 +264,7 @@ fn string_reader(s: str) -> reader {
 
 
 // Writing
-enum fileflag { append, create, truncate, none, }
+enum fileflag { append, create, truncate, no_flag, }
 
 // FIXME: Seekable really should be orthogonal.
 // FIXME: eventually u64
@@ -350,7 +350,7 @@ fn mk_file_writer(path: str, flags: [fileflag])
           append { fflags |= os::libc_constants::O_APPEND; }
           create { fflags |= os::libc_constants::O_CREAT; }
           truncate { fflags |= os::libc_constants::O_TRUNC; }
-          none { }
+          no_flag { }
         }
     }
     let fd = str::as_buf(path, {|pathbuf|
@@ -368,14 +368,14 @@ fn mk_file_writer(path: str, flags: [fileflag])
 
 fn uint_to_le_bytes(n: uint, size: uint) -> [u8] {
     let bytes: [u8] = [], i = size, n = n;
-    while i > 0u { bytes += [n & 255u as u8]; n >>= 8u; i -= 1u; }
+    while i > 0u { bytes += [(n & 255u) as u8]; n >>= 8u; i -= 1u; }
     ret bytes;
 }
 
 fn uint_to_be_bytes(n: uint, size: uint) -> [u8] {
     let bytes: [u8] = [];
-    let i = size - 1u as int;
-    while i >= 0 { bytes += [n >> (i * 8 as uint) & 255u as u8]; i -= 1; }
+    let i = (size - 1u) as int;
+    while i >= 0 { bytes += [(n >> ((i * 8) as uint) & 255u) as u8]; i -= 1; }
     ret bytes;
 }
 

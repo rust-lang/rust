@@ -1,3 +1,5 @@
+#[doc = "Operations and constants for `u32`"];
+
 /*
 Module: u32
 */
@@ -14,7 +16,10 @@ Const: max_value
 
 Return the maximal value for a u32
 */
-const max_value: u32 = 0xffff_ffffu32;
+const max_value: u32 = 0u32 - 1u32;
+
+pure fn min(x: u32, y: u32) -> u32 { if x < y { x } else { y } }
+pure fn max(x: u32, y: u32) -> u32 { if x > y { x } else { y } }
 
 /* Function: add */
 pure fn add(x: u32, y: u32) -> u32 { ret x + y; }
@@ -57,6 +62,11 @@ Iterate over the range [`lo`..`hi`)
 fn range(lo: u32, hi: u32, it: fn(u32)) {
     let i = lo;
     while i < hi { it(i); i += 1u32; }
+}
+
+#[doc = "Computes the bitwise complement"]
+fn compl(i: u32) -> u32 {
+    max_value ^ i
 }
 
 //

@@ -37,6 +37,12 @@ impl<A> of iterable<A> for option<A> {
     }
 }
 
+impl of iterable<char> for str {
+    fn iter(blk: fn(&&char)) {
+        str::chars_iter(self) { |ch| blk(ch) }
+    }
+}
+
 fn enumerate<A,IA:iterable<A>>(self: IA, blk: fn(uint, A)) {
     let i = 0u;
     self.iter {|a|
@@ -52,6 +58,16 @@ fn enumerate<A,IA:iterable<A>>(self: IA, blk: fn(uint, A)) {
 fn filter<A,IA:iterable<A>>(self: IA, prd: fn@(A) -> bool, blk: fn(A)) {
     self.iter {|a|
         if prd(a) { blk(a) }
+    }
+}
+
+fn filter_map<A,B,IA:iterable<A>>(self: IA, cnv: fn@(A) -> option<B>,
+                                  blk: fn(B)) {
+    self.iter {|a|
+        alt cnv(a) {
+          some(b) { blk(b) }
+          none { }
+        }
     }
 }
 
@@ -77,16 +93,41 @@ fn flat_map<A,B,IA:iterable<A>,IB:iterable<B>>(
     }
 }
 
-fn foldl<A,B:copy,IA:iterable<A>>(self: IA, b0: B, blk: fn(B, A) -> B) -> B {
-    let b = b0;
+fn foldl<A,B,IA:iterable<A>>(self: IA, +b0: B, blk: fn(-B, A) -> B) -> B {
+    let b <- b0;
     self.iter {|a|
         b = blk(b, a);
     }
     ret b;
 }
 
+fn foldr<A:copy,B,IA:iterable<A>>(
+    self: IA, +b0: B, blk: fn(A, -B) -> B) -> B {
+
+    let b <- b0;
+    reversed(self) {|a|
+        b = blk(a, b);
+    }
+    ret b;
+}
+
 fn to_list<A:copy,IA:iterable<A>>(self: IA) -> [A] {
     foldl::<A,[A],IA>(self, [], {|r, a| r + [a]})
+}
+
+// FIXME: This could be made more efficient with an riterable interface
+fn reversed<A:copy,IA:iterable<A>>(self: IA, blk: fn(A)) {
+    vec::riter(to_list(self), blk)
+}
+
+fn count<A,IA:iterable<A>>(self: IA, x: A) -> uint {
+    foldl(self, 0u) {|count, value|
+        if value == x {
+            count + 1u
+        } else {
+            count
+        }
+    }
 }
 
 fn repeat(times: uint, blk: fn()) {
@@ -111,6 +152,35 @@ fn any<A, IA:iterable<A>>(self: IA, prd: fn(A) -> bool) -> bool {
 
 fn each<A, IA:iterable<A>>(self: IA, blk: fn(A)) {
    self.iter(blk);
+
+fn min<A:copy,IA:iterable<A>>(self: IA) -> A {
+    alt foldl::<A,option<A>,IA>(self, none) {|a, b|
+        alt a {
+          some(a_) if a_ < b {
+            // FIXME: Not sure if this is successfully optimized to a move
+            a
+          }
+          _ { some(b) }
+        }
+    } {
+        some(val) { val }
+        none { fail "min called on empty iterator" }
+    }
+}
+
+fn max<A:copy,IA:iterable<A>>(self: IA) -> A {
+    alt foldl::<A,option<A>,IA>(self, none) {|a, b|
+        alt a {
+          some(a_) if a_ > b {
+            // FIXME: Not sure if this is successfully optimized to a move
+            a
+          }
+          _ { some(b) }
+        }
+    } {
+        some(val) { val }
+        none { fail "max called on empty iterator" }
+    }
 }
 
 #[test]
@@ -153,6 +223,21 @@ fn test_filter_on_uint_range() {
 
     let l = to_list(bind filter(bind uint::range(0u, 10u, _), is_even, _));
     assert l == [0u, 2u, 4u, 6u, 8u];
+}
+
+#[test]
+fn test_filter_map() {
+    fn negativate_the_evens(&&i: int) -> option<int> {
+        if i % 2 == 0 {
+            some(-i)
+        } else {
+            none
+        }
+    }
+
+    let l = to_list(bind filter_map(
+        bind int::range(0, 5, _), negativate_the_evens, _));
+    assert l == [0, -2, -4];
 }
 
 #[test]
@@ -258,4 +343,47 @@ fn test_str_any_calls() {
         unicode::general_category::Nd(c)
     };
     assert calls == 2u;
+}
+
+#[test]
+fn test_min() {
+    assert min([5, 4, 1, 2, 3]) == 1;
+}
+
+#[test]
+#[should_fail]
+#[ignore(cfg(target_os = "win32"))]
+fn test_min_empty() {
+    min::<int, [int]>([]);
+}
+
+#[test]
+fn test_max() {
+    assert max([1, 2, 4, 2, 3]) == 4;
+}
+
+#[test]
+#[should_fail]
+#[ignore(cfg(target_os = "win32"))]
+fn test_max_empty() {
+    max::<int, [int]>([]);
+}
+
+#[test]
+fn test_reversed() {
+    assert to_list(bind reversed([1, 2, 3], _)) == [3, 2, 1];
+}
+
+#[test]
+fn test_count() {
+    assert count([1, 2, 1, 2, 1], 1) == 3u;
+}
+
+#[test]
+fn test_foldr() {
+    fn sub(&&a: int, -b: int) -> int {
+        a - b
+    }
+    let sum = foldr([1, 2, 3, 4], 0, sub);
+    assert sum == -2;
 }

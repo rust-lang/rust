@@ -1,4 +1,3 @@
-import core::{vec, str, option};
 import str::sbuf;
 
 import ctypes::{c_int, c_uint, unsigned, longlong, ulonglong};

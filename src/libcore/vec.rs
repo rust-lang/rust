@@ -186,11 +186,8 @@ pure fn head<T: copy>(v: [const T]) : is_not_empty(v) -> T { ret v[0]; }
 Function: tail
 
 Returns all but the first element of a vector
-
-Predicates:
-<is_not_empty> (v)
 */
-fn tail<T: copy>(v: [const T]) : is_not_empty(v) -> [T] {
+fn tail<T: copy>(v: [const T]) -> [T] {
     ret slice(v, 1u, len(v));
 }
 
@@ -278,6 +275,110 @@ fn slice_mut<T: copy>(v: [const T], start: uint, end: uint) -> [mutable T] {
     ret result;
 }
 
+/*
+Function: split
+
+Split the vector `v` by applying each element against the predicate `f`.
+*/
+fn split<T: copy>(v: [T], f: fn(T) -> bool) -> [[T]] {
+    let ln = len(v);
+    if (ln == 0u) { ret [] }
+
+    let start = 0u;
+    let result = [];
+    while start < ln {
+        alt position_from(v, start, ln, f) {
+          none { break }
+          some(i) {
+            push(result, slice(v, start, i));
+            start = i + 1u;
+          }
+        }
+    }
+    push(result, slice(v, start, ln));
+    result
+}
+
+/*
+Function: splitn
+
+Split the vector `v` by applying each element against the predicate `f` up
+to `n` times.
+*/
+fn splitn<T: copy>(v: [T], n: uint, f: fn(T) -> bool) -> [[T]] {
+    let ln = len(v);
+    if (ln == 0u) { ret [] }
+
+    let start = 0u;
+    let count = n;
+    let result = [];
+    while start < ln && count > 0u {
+        alt position_from(v, start, ln, f) {
+          none { break }
+          some(i) {
+            push(result, slice(v, start, i));
+            // Make sure to skip the separator.
+            start = i + 1u;
+            count -= 1u;
+          }
+        }
+    }
+    push(result, slice(v, start, ln));
+    result
+}
+
+/*
+Function: rsplit
+
+Reverse split the vector `v` by applying each element against the predicate
+`f`.
+*/
+fn rsplit<T: copy>(v: [T], f: fn(T) -> bool) -> [[T]] {
+    let ln = len(v);
+    if (ln == 0u) { ret [] }
+
+    let end = ln;
+    let result = [];
+    while end > 0u {
+        alt rposition_from(v, 0u, end, f) {
+          none { break }
+          some(i) {
+            push(result, slice(v, i + 1u, end));
+            end = i;
+          }
+        }
+    }
+    push(result, slice(v, 0u, end));
+    reversed(result)
+}
+
+/*
+Function: rsplitn
+
+Reverse split the vector `v` by applying each element against the predicate
+`f` up to `n times.
+*/
+fn rsplitn<T: copy>(v: [T], n: uint, f: fn(T) -> bool) -> [[T]] {
+    let ln = len(v);
+    if (ln == 0u) { ret [] }
+
+    let end = ln;
+    let count = n;
+    let result = [];
+    while end > 0u && count > 0u {
+        alt rposition_from(v, 0u, end, f) {
+          none { break }
+          some(i) {
+            push(result, slice(v, i + 1u, end));
+            // Make sure to skip the separator.
+            end = i;
+            count -= 1u;
+          }
+        }
+    }
+    push(result, slice(v, 0u, end));
+    reversed(result)
+}
 
 // Mutators
 
@@ -308,13 +409,14 @@ fn pop<T>(&v: [const T]) -> T unsafe {
     val
 }
 
+#[inline]
 /*
 Function: push
 
-Append an element to a vector and return it
+Append an element to a vector
 */
 fn push<T: copy>(&v: [T], initval: T) {
-    grow(v, 1u, initval)
+    v += [initval];
 }
 
 // TODO: More.
@@ -487,6 +589,21 @@ fn concat<T: copy>(v: [const [const T]]) -> [T] {
 }
 
 /*
+Function: connect
+
+Concatenate a vector of vectors, placing a given separator between each
+*/
+fn connect<T: copy>(v: [const [const T]], sep: T) -> [T] {
+    let new: [T] = [];
+    let first = true;
+    for inner: [T] in v {
+        if first { first = false; } else { push(new, sep); }
+        new += inner;
+    }
+    ret new;
+}
+
+/*
 Function: foldl
 
 Reduce a vector from left to right
@@ -570,11 +687,11 @@ fn all2<T, U>(v0: [T], v1: [U], f: fn(T, U) -> bool) -> bool {
 }
 
 /*
-Function: member
+Function: contains
 
 Return true if a vector contains an element with the given value
 */
-fn member<T>(x: T, v: [T]) -> bool {
+fn contains<T>(v: [T], x: T) -> bool {
     for elt: T in v { if x == elt { ret true; } }
     ret false;
 }
@@ -584,7 +701,7 @@ Function: count
 
 Returns the number of elements that are equal to a given value
 */
-fn count<T>(x: T, v: [const T]) -> uint {
+fn count<T>(v: [const T], x: T) -> uint {
     let cnt = 0u;
     for elt: T in v { if x == elt { cnt += 1u; } }
     ret cnt;
@@ -593,19 +710,59 @@ fn count<T>(x: T, v: [const T]) -> uint {
 /*
 Function: find
 
-Search for an element that matches a given predicate
+Search for the first element that matches a given predicate
 
 Apply function `f` to each element of `v`, starting from the first.
 When function `f` returns true then an option containing the element
 is returned. If `f` matches no elements then none is returned.
 */
 fn find<T: copy>(v: [T], f: fn(T) -> bool) -> option<T> {
-    for elt: T in v { if f(elt) { ret some(elt); } }
-    ret none;
+    find_from(v, 0u, len(v), f)
 }
 
 /*
-Function: position
+Function: find_from
+
+Search for the first element that matches a given predicate within a range
+
+Apply function `f` to each element of `v` within the range [`start`, `end`).
+When function `f` returns true then an option containing the element
+is returned. If `f` matches no elements then none is returned.
+*/
+fn find_from<T: copy>(v: [T], start: uint, end: uint, f: fn(T) -> bool) ->
+  option<T> {
+    option::map(position_from(v, start, end, f)) { |i| v[i] }
+}
+
+/*
+Function: rfind
+
+Search for the last element that matches a given predicate
+
+Apply function `f` to each element of `v` in reverse order. When function `f`
+returns true then an option containing the element is returned. If `f`
+matches no elements then none is returned.
+*/
+fn rfind<T: copy>(v: [T], f: fn(T) -> bool) -> option<T> {
+    rfind_from(v, 0u, len(v), f)
+}
+
+/*
+Function: rfind_from
+
+Search for the last element that matches a given predicate within a range
+
+Apply function `f` to each element of `v` in reverse order within the range
+[`start`, `end`). When function `f` returns true then an option containing
+the element is returned. If `f` matches no elements then none is returned.
+*/
+fn rfind_from<T: copy>(v: [T], start: uint, end: uint, f: fn(T) -> bool) ->
+  option<T> {
+    option::map(rposition_from(v, start, end, f)) { |i| v[i] }
+}
+
+/*
+Function: position_elt
 
 Find the first index containing a matching value
 
@@ -614,20 +771,86 @@ Returns:
 option::some(uint) - The first index containing a matching value
 option::none - No elements matched
 */
-fn position<T>(x: T, v: [T]) -> option<uint> {
-    let i: uint = 0u;
-    while i < len(v) { if x == v[i] { ret some::<uint>(i); } i += 1u; }
+fn position_elt<T>(v: [T], x: T) -> option<uint> {
+    position(v) { |y| x == y }
+}
+
+/*
+Function: position
+
+Find the first index matching some predicate
+
+Apply function `f` to each element of `v`.  When function `f` returns true
+then an option containing the index is returned. If `f` matches no elements
+then none is returned.
+*/
+fn position<T>(v: [T], f: fn(T) -> bool) -> option<uint> {
+    position_from(v, 0u, len(v), f)
+}
+
+/*
+Function: position_from
+
+Find the first index matching some predicate within a range
+
+Apply function `f` to each element of `v` between the range [`start`, `end`).
+When function `f` returns true then an option containing the index is
+returned. If `f` matches no elements then none is returned.
+*/
+fn position_from<T>(v: [T], start: uint, end: uint, f: fn(T) -> bool) ->
+  option<uint> {
+    assert start <= end;
+    assert end <= len(v);
+    let i = start;
+    while i < end { if f(v[i]) { ret some::<uint>(i); } i += 1u; }
     ret none;
 }
 
 /*
-Function: position_pred
+Function: rposition_elt
 
-Find the first index for which the value matches some predicate
+Find the last index containing a matching value
+
+Returns:
+
+option::some(uint) - The last index containing a matching value
+option::none - No elements matched
 */
-fn position_pred<T>(v: [T], f: fn(T) -> bool) -> option<uint> {
-    let i: uint = 0u;
-    while i < len(v) { if f(v[i]) { ret some::<uint>(i); } i += 1u; }
+fn rposition_elt<T>(v: [T], x: T) -> option<uint> {
+    rposition(v) { |y| x == y }
+}
+
+/*
+Function: rposition
+
+Find the last index matching some predicate
+
+Apply function `f` to each element of `v` in reverse order.  When function
+`f` returns true then an option containing the index is returned. If `f`
+matches no elements then none is returned.
+*/
+fn rposition<T>(v: [T], f: fn(T) -> bool) -> option<uint> {
+    rposition_from(v, 0u, len(v), f)
+}
+
+/*
+Function: rposition_from
+
+Find the last index matching some predicate within a range
+
+Apply function `f` to each element of `v` in reverse order between the range
+[`start`, `end`). When function `f` returns true then an option containing
+the index is returned. If `f` matches no elements then none is returned.
+*/
+fn rposition_from<T>(v: [T], start: uint, end: uint, f: fn(T) -> bool) ->
+  option<uint> {
+    assert start <= end;
+    assert end <= len(v);
+    let i = end;
+    while i > start {
+        if f(v[i - 1u]) { ret some::<uint>(i - 1u); }
+        i -= 1u;
+    }
     ret none;
 }
 
@@ -851,6 +1074,21 @@ Function: to_ptr
 FIXME: We don't need this wrapper
 */
 unsafe fn to_ptr<T>(v: [T]) -> *T { ret unsafe::to_ptr(v); }
+
+/*
+Function: as_buf
+
+Work with the buffer of a vector. Allows for unsafe manipulation
+of vector contents, which is useful for native interop.
+
+*/
+fn as_buf<E,T>(v: [const E], f: fn(*E) -> T) -> T unsafe {
+    let buf = unsafe::to_ptr(v); f(buf)
+}
+
+impl vec_len<T> for [T] {
+    fn len() -> uint { len(self) }
+}
 
 /*
 Module: unsafe
@@ -1444,21 +1682,174 @@ mod tests {
     }
 
     #[test]
-    fn test_position() {
-        let v1: [int] = [1, 2, 3, 3, 2, 5];
-        assert (position(1, v1) == option::some::<uint>(0u));
-        assert (position(2, v1) == option::some::<uint>(1u));
-        assert (position(5, v1) == option::some::<uint>(5u));
-        assert (position(4, v1) == option::none::<uint>);
+    fn test_position_elt() {
+        assert position_elt([], 1) == none;
+
+        let v1 = [1, 2, 3, 3, 2, 5];
+        assert position_elt(v1, 1) == some(0u);
+        assert position_elt(v1, 2) == some(1u);
+        assert position_elt(v1, 5) == some(5u);
+        assert position_elt(v1, 4) == none;
     }
 
     #[test]
-    fn test_position_pred() {
+    fn test_position() {
         fn less_than_three(&&i: int) -> bool { ret i < 3; }
         fn is_eighteen(&&i: int) -> bool { ret i == 18; }
-        let v1: [int] = [5, 4, 3, 2, 1];
-        assert position_pred(v1, less_than_three) == option::some::<uint>(3u);
-        assert position_pred(v1, is_eighteen) == option::none::<uint>;
+
+        assert position([], less_than_three) == none;
+
+        let v1 = [5, 4, 3, 2, 1];
+        assert position(v1, less_than_three) == some(3u);
+        assert position(v1, is_eighteen) == none;
+    }
+
+    #[test]
+    fn test_position_from() {
+        assert position_from([], 0u, 0u, f) == none;
+
+        fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
+        let v = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
+
+        assert position_from(v, 0u, 0u, f) == none;
+        assert position_from(v, 0u, 1u, f) == none;
+        assert position_from(v, 0u, 2u, f) == some(1u);
+        assert position_from(v, 0u, 3u, f) == some(1u);
+        assert position_from(v, 0u, 4u, f) == some(1u);
+
+        assert position_from(v, 1u, 1u, f) == none;
+        assert position_from(v, 1u, 2u, f) == some(1u);
+        assert position_from(v, 1u, 3u, f) == some(1u);
+        assert position_from(v, 1u, 4u, f) == some(1u);
+
+        assert position_from(v, 2u, 2u, f) == none;
+        assert position_from(v, 2u, 3u, f) == none;
+        assert position_from(v, 2u, 4u, f) == some(3u);
+
+        assert position_from(v, 3u, 3u, f) == none;
+        assert position_from(v, 3u, 4u, f) == some(3u);
+
+        assert position_from(v, 4u, 4u, f) == none;
+    }
+
+    #[test]
+    fn test_find() {
+        assert find([], f) == none;
+
+        fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
+        fn g(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'd' }
+        let v = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
+
+        assert find(v, f) == some((1, 'b'));
+        assert find(v, g) == none;
+    }
+
+    #[test]
+    fn test_find_from() {
+        assert find_from([], 0u, 0u, f) == none;
+
+        fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
+        let v = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
+
+        assert find_from(v, 0u, 0u, f) == none;
+        assert find_from(v, 0u, 1u, f) == none;
+        assert find_from(v, 0u, 2u, f) == some((1, 'b'));
+        assert find_from(v, 0u, 3u, f) == some((1, 'b'));
+        assert find_from(v, 0u, 4u, f) == some((1, 'b'));
+
+        assert find_from(v, 1u, 1u, f) == none;
+        assert find_from(v, 1u, 2u, f) == some((1, 'b'));
+        assert find_from(v, 1u, 3u, f) == some((1, 'b'));
+        assert find_from(v, 1u, 4u, f) == some((1, 'b'));
+
+        assert find_from(v, 2u, 2u, f) == none;
+        assert find_from(v, 2u, 3u, f) == none;
+        assert find_from(v, 2u, 4u, f) == some((3, 'b'));
+
+        assert find_from(v, 3u, 3u, f) == none;
+        assert find_from(v, 3u, 4u, f) == some((3, 'b'));
+
+        assert find_from(v, 4u, 4u, f) == none;
+    }
+
+    #[test]
+    fn test_rposition() {
+        assert find([], f) == none;
+
+        fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
+        fn g(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'd' }
+        let v = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
+
+        assert position(v, f) == some(1u);
+        assert position(v, g) == none;
+    }
+
+    #[test]
+    fn test_rposition_from() {
+        assert rposition_from([], 0u, 0u, f) == none;
+
+        fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
+        let v = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
+
+        assert rposition_from(v, 0u, 0u, f) == none;
+        assert rposition_from(v, 0u, 1u, f) == none;
+        assert rposition_from(v, 0u, 2u, f) == some(1u);
+        assert rposition_from(v, 0u, 3u, f) == some(1u);
+        assert rposition_from(v, 0u, 4u, f) == some(3u);
+
+        assert rposition_from(v, 1u, 1u, f) == none;
+        assert rposition_from(v, 1u, 2u, f) == some(1u);
+        assert rposition_from(v, 1u, 3u, f) == some(1u);
+        assert rposition_from(v, 1u, 4u, f) == some(3u);
+
+        assert rposition_from(v, 2u, 2u, f) == none;
+        assert rposition_from(v, 2u, 3u, f) == none;
+        assert rposition_from(v, 2u, 4u, f) == some(3u);
+
+        assert rposition_from(v, 3u, 3u, f) == none;
+        assert rposition_from(v, 3u, 4u, f) == some(3u);
+
+        assert rposition_from(v, 4u, 4u, f) == none;
+    }
+
+    #[test]
+    fn test_rfind() {
+        assert rfind([], f) == none;
+
+        fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
+        fn g(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'd' }
+        let v = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
+
+        assert rfind(v, f) == some((3, 'b'));
+        assert rfind(v, g) == none;
+    }
+
+    #[test]
+    fn test_rfind_from() {
+        assert rfind_from([], 0u, 0u, f) == none;
+
+        fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
+        let v = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
+
+        assert rfind_from(v, 0u, 0u, f) == none;
+        assert rfind_from(v, 0u, 1u, f) == none;
+        assert rfind_from(v, 0u, 2u, f) == some((1, 'b'));
+        assert rfind_from(v, 0u, 3u, f) == some((1, 'b'));
+        assert rfind_from(v, 0u, 4u, f) == some((3, 'b'));
+
+        assert rfind_from(v, 1u, 1u, f) == none;
+        assert rfind_from(v, 1u, 2u, f) == some((1, 'b'));
+        assert rfind_from(v, 1u, 3u, f) == some((1, 'b'));
+        assert rfind_from(v, 1u, 4u, f) == some((3, 'b'));
+
+        assert rfind_from(v, 2u, 2u, f) == none;
+        assert rfind_from(v, 2u, 3u, f) == none;
+        assert rfind_from(v, 2u, 4u, f) == some((3, 'b'));
+
+        assert rfind_from(v, 3u, 3u, f) == none;
+        assert rfind_from(v, 3u, 4u, f) == some((3, 'b'));
+
+        assert rfind_from(v, 4u, 4u, f) == none;
     }
 
     #[test]
@@ -1496,6 +1887,48 @@ mod tests {
     }
 
     #[test]
+    fn test_split() {
+        fn f(&&x: int) -> bool { x == 3 }
+
+        assert split([], f) == [];
+        assert split([1, 2], f) == [[1, 2]];
+        assert split([3, 1, 2], f) == [[], [1, 2]];
+        assert split([1, 2, 3], f) == [[1, 2], []];
+        assert split([1, 2, 3, 4, 3, 5], f) == [[1, 2], [4], [5]];
+    }
+
+    #[test]
+    fn test_splitn() {
+        fn f(&&x: int) -> bool { x == 3 }
+
+        assert splitn([], 1u, f) == [];
+        assert splitn([1, 2], 1u, f) == [[1, 2]];
+        assert splitn([3, 1, 2], 1u, f) == [[], [1, 2]];
+        assert splitn([1, 2, 3], 1u, f) == [[1, 2], []];
+        assert splitn([1, 2, 3, 4, 3, 5], 1u, f) == [[1, 2], [4, 3, 5]];
+    }
+
+    #[test]
+    fn test_rsplit() {
+        fn f(&&x: int) -> bool { x == 3 }
+
+        assert rsplit([], f) == [];
+        assert rsplit([1, 2], f) == [[1, 2]];
+        assert rsplit([1, 2, 3], f) == [[1, 2], []];
+        assert rsplit([1, 2, 3, 4, 3, 5], f) == [[1, 2], [4], [5]];
+    }
+
+    #[test]
+    fn test_rsplitn() {
+        fn f(&&x: int) -> bool { x == 3 }
+
+        assert rsplitn([], 1u, f) == [];
+        assert rsplitn([1, 2], 1u, f) == [[1, 2]];
+        assert rsplitn([1, 2, 3], 1u, f) == [[1, 2], []];
+        assert rsplitn([1, 2, 3, 4, 3, 5], 1u, f) == [[1, 2, 3, 4], [5]];
+    }
+
+    #[test]
     // FIXME: Windows can't undwind
     #[ignore(cfg(target_os = "win32"))]
     fn test_init_empty() {
@@ -1511,6 +1944,13 @@ mod tests {
     #[test]
     fn test_concat() {
         assert concat([[1], [2,3]]) == [1, 2, 3];
+    }
+
+    #[test]
+    fn test_connect() {
+        assert connect([], 0) == [];
+        assert connect([[1], [2, 3]], 0) == [1, 0, 2, 3];
+        assert connect([[1], [2], [3]], 0) == [1, 0, 2, 0, 3];
     }
 
     #[test]

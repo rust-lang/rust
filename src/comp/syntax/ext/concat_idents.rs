@@ -1,4 +1,3 @@
-import option;
 import base::*;
 import syntax::ast;
 

@@ -106,6 +106,7 @@ fn fsync_fd(_fd: fd_t, _level: io::fsync::level) -> c_int {
 
 #[abi = "cdecl"]
 native mod rustrt {
+    fn rust_env_pairs() -> [str];
     fn rust_process_wait(handle: c_int) -> c_int;
     fn rust_getcwd() -> str;
 }

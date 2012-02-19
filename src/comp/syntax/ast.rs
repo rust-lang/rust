@@ -1,6 +1,5 @@
 // The Rust abstract syntax tree.
 
-import option;
 import codemap::{span, filename};
 
 type spanned<T> = {node: T, span: span};
@@ -39,13 +38,20 @@ enum def {
     def_native_mod(def_id),
     def_const(def_id),
     def_arg(def_id, mode),
-    def_local(def_id, let_style),
+    def_local(def_id),
     def_variant(def_id /* enum */, def_id /* variant */),
     def_ty(def_id),
+    def_prim_ty(prim_ty),
     def_ty_param(def_id, uint),
     def_binding(def_id),
     def_use(def_id),
     def_upvar(def_id, @def, node_id), // node_id == expr_fn or expr_fn_block
+    def_class(def_id),
+    // first def_id is for parent class
+    def_class_field(def_id, def_id),
+    // No purity allowed for now, I guess
+    // (simpler this way, b/c presumably methods read mutable state)
+    def_class_method(def_id, def_id)
 }
 
 // The set of meta_items that define the compilation environment of the crate,
@@ -115,7 +121,7 @@ enum pat_ {
     pat_range(@expr, @expr),
 }
 
-enum mutability { mut, imm, maybe_mut, }
+enum mutability { m_mutbl, m_imm, m_const, }
 
 enum proto {
     proto_bare,    // native fn
@@ -160,7 +166,17 @@ enum unop {
     deref, not, neg,
 }
 
-enum mode { by_ref, by_val, by_mut_ref, by_move, by_copy, mode_infer, }
+// Generally, after typeck you can get the inferred value
+// using ty::resolved_T(...).
+enum inferable<T> {
+    expl(T), infer(node_id)
+}
+
+// "resolved" mode: the real modes.
+enum rmode { by_ref, by_val, by_mutbl_ref, by_move, by_copy }
+
+// inferable mode.
+type mode = inferable<rmode>;
 
 type stmt = spanned<stmt_>;
 
@@ -185,13 +201,11 @@ type local = spanned<local_>;
 
 type decl = spanned<decl_>;
 
-enum let_style { let_copy, let_ref, }
-
-enum decl_ { decl_local([(let_style, @local)]), decl_item(@item), }
+enum decl_ { decl_local([@local]), decl_item(@item), }
 
 type arm = {pats: [@pat], guard: option<@expr>, body: blk};
 
-type field_ = {mut: mutability, ident: ident, expr: @expr};
+type field_ = {mutbl: mutability, ident: ident, expr: @expr};
 
 type field = spanned<field_>;
 
@@ -200,6 +214,8 @@ enum blk_check_mode { default_blk, unchecked_blk, unsafe_blk, }
 enum expr_check_mode { claimed_expr, checked_expr, }
 
 type expr = {id: node_id, node: expr_, span: span};
+
+enum alt_mode { alt_check, alt_exhaustive, }
 
 enum expr_ {
     expr_vec([@expr], mutability),
@@ -215,7 +231,7 @@ enum expr_ {
     expr_while(@expr, blk),
     expr_for(@local, @expr, blk),
     expr_do_while(blk, @expr),
-    expr_alt(@expr, [arm]),
+    expr_alt(@expr, [arm], alt_mode),
     expr_fn(proto, fn_decl, blk, @capture_clause),
     expr_fn_block(fn_decl, blk),
     expr_block(blk),
@@ -283,7 +299,6 @@ enum mac_ {
     mac_embed_block(blk),
     mac_ellipsis,
     // the span is used by the quoter/anti-quoter ...
-    mac_qq(span /* span of expr */, @expr), // quasi-quote
     mac_aq(span /* span of quote */, @expr), // anti-quote
     mac_var(uint)
 }
@@ -301,7 +316,7 @@ enum lit_ {
 
 // NB: If you change this, you'll probably want to change the corresponding
 // type structure in middle/ty.rs as well.
-type mt = {ty: @ty, mut: mutability};
+type mt = {ty: @ty, mutbl: mutability};
 
 type ty_field_ = {ident: ident, mt: mt};
 
@@ -318,20 +333,18 @@ enum float_ty { ty_f, ty_f32, ty_f64, }
 
 type ty = spanned<ty_>;
 
-enum ty_ {
-    ty_nil,
-    ty_bot, /* return type of ! functions and type of
-             ret/fail/break/cont. there is no syntax
-             for this type. */
-
-     /* bot represents the value of functions that don't return a value
-        locally to their context. in contrast, things like log that do
-        return, but don't return a meaningful value, have result type nil. */
-    ty_bool,
+// Not represented directly in the AST, referred to by name through a ty_path.
+enum prim_ty {
     ty_int(int_ty),
     ty_uint(uint_ty),
     ty_float(float_ty),
     ty_str,
+    ty_bool,
+}
+
+enum ty_ {
+    ty_nil,
+    ty_bot, /* bottom type */
     ty_box(mt),
     ty_uniq(mt),
     ty_vec(mt),
@@ -396,6 +409,7 @@ enum purity {
     pure_fn, // declared with "pure fn"
     unsafe_fn, // declared with "unsafe fn"
     impure_fn, // declared with "fn"
+    crust_fn, // declared with "crust fn"
 }
 
 enum ret_style {
@@ -427,26 +441,36 @@ type variant_ = {name: ident, attrs: [attribute], args: [variant_arg],
 
 type variant = spanned<variant_>;
 
-type view_item = spanned<view_item_>;
 
 // FIXME: May want to just use path here, which would allow things like
 // 'import ::foo'
 type simple_path = [ident];
 
-type import_ident_ = {name: ident, id: node_id};
+type path_list_ident_ = {name: ident, id: node_id};
+type path_list_ident = spanned<path_list_ident_>;
 
-type import_ident = spanned<import_ident_>;
+type view_path = spanned<view_path_>;
+enum view_path_ {
 
+    // quux = foo::bar::baz
+    //
+    // or just
+    //
+    // foo::bar::baz  (with 'baz =' implicitly on the left)
+    view_path_simple(ident, @simple_path, node_id),
+
+    // foo::bar::*
+    view_path_glob(@simple_path, node_id),
+
+    // foo::bar::{a,b,c}
+    view_path_list(@simple_path, [path_list_ident], node_id)
+}
+
+type view_item = spanned<view_item_>;
 enum view_item_ {
     view_item_use(ident, [@meta_item], node_id),
-    view_item_import(ident, @simple_path, node_id),
-    view_item_import_glob(@simple_path, node_id),
-    view_item_import_from(@simple_path, [import_ident], node_id),
-    view_item_export([ident], node_id),
-    // export foo::{}
-    view_item_export_enum_none(ident, node_id),
-    // export foo::{bar, baz, blat}
-    view_item_export_enum_some(ident, [import_ident], node_id)
+    view_item_import([@view_path]),
+    view_item_export([@view_path])
 }
 
 // Meta-data associated with an item
@@ -475,6 +499,7 @@ enum item_ {
     item_class([ty_param], /* ty params for class */
                [@class_item], /* methods, etc. */
                              /* (not including ctor) */
+               node_id,  /* ctor id */
                fn_decl, /* ctor decl */
                blk /* ctor body */
                ),
@@ -483,12 +508,15 @@ enum item_ {
               @ty /* self */, [@method]),
 }
 
-type class_item_ = {privacy: privacy, decl: @class_member};
+type class_item_ = {privacy: privacy, decl: class_member};
 type class_item = spanned<class_item_>;
 
 enum class_member {
     instance_var(ident, @ty, class_mutability, node_id),
-    class_method(@item)
+    class_method(@item) // FIXME: methods aren't allowed to be
+    // type-parametric.
+    // without constrained types, have to duplicate some stuff. or factor out
+    // item to separate out things with type params?
 }
 
 enum class_mutability { class_mutable, class_immutable }

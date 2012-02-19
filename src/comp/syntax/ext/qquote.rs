@@ -1,9 +1,7 @@
 import driver::session;
 
-import option::{none, some};
-
 import syntax::ast::{crate, expr_, mac_invoc,
-                     mac_qq, mac_aq, mac_var};
+                     mac_aq, mac_var};
 import syntax::fold::*;
 import syntax::visit::*;
 import syntax::ext::base::*;
@@ -147,19 +145,6 @@ fn expand_ast(ecx: ext_ctxt, _sp: span,
         }
     }
     let body = get_mac_body(ecx,_sp,body);
-    fn finish<T: qq_helper>(ecx: ext_ctxt, body: ast::mac_body_,
-                            f: fn (p: parser) -> T)
-        -> @ast::expr
-    {
-        let cm = ecx.session().parse_sess.cm;
-        let str = @codemap::span_to_snippet(body.span, cm);
-        let (fname, ss) = codemap::get_substr_info
-            (cm, body.span.lo, body.span.hi);
-        let node = parse_from_source_str
-            (f, fname, some(ss), str,
-             ecx.session().opts.cfg, ecx.session().parse_sess);
-        ret expand_qquote(ecx, node.span(), some(*str), node);
-    }
 
     ret alt what {
       "expr" {finish(ecx, body, parser::parse_expr)}
@@ -186,21 +171,27 @@ fn parse_item(p: parser) -> @ast::item {
     }
 }
 
-fn expand_qquote<N: qq_helper>
-    (ecx: ext_ctxt, sp: span, maybe_str: option::t<str>, node: N)
+fn finish<T: qq_helper>
+    (ecx: ext_ctxt, body: ast::mac_body_, f: fn (p: parser) -> T)
     -> @ast::expr
 {
-    let str = alt(maybe_str) {
-      some(s) {s}
-      none {codemap::span_to_snippet(sp, ecx.session().parse_sess.cm)}
-    };
+    let cm = ecx.session().parse_sess.cm;
+    let str = @codemap::span_to_snippet(body.span, cm);
+    let fname = codemap::mk_substr_filename(cm, body.span);
+    let node = parse_from_source_str
+        (f, fname, codemap::fss_internal(body.span), str,
+         ecx.session().opts.cfg, ecx.session().parse_sess);
+    let loc = codemap::lookup_char_pos(cm, body.span.lo);
+
+    let sp = node.span();
     let qcx = gather_anti_quotes(sp.lo, node);
     let cx = qcx;
-    let prev = 0u;
-    for {lo: lo, _} in cx.gather {
-        assert lo > prev;
-        prev = lo;
+
+    // assert that the vector is sorted by position:
+    uint::range(1u, vec::len(cx.gather)) {|i|
+        assert cx.gather[i-1u].lo < cx.gather[i].lo;
     }
+
     let str2 = "";
     enum state {active, skip(uint), blank};
     let state = active;
@@ -210,7 +201,7 @@ fn expand_qquote<N: qq_helper>
         if (j < g_len && i == cx.gather[j].lo) {
             assert ch == '$';
             let repl = #fmt("$%u ", j);
-            state = skip(str::char_len(repl));
+            state = skip(str::len(repl));
             str2 += repl;
         }
         alt state {
@@ -236,9 +227,13 @@ fn expand_qquote<N: qq_helper>
                        ["syntax", "parse", "parser",
                         "parse_from_source_str"],
                        [node.mk_parse_fn(cx,sp),
-                        mk_str(cx,sp, "<anon>"),
-                        mk_path(cx,sp, ["option","none"]),
-                        mk_unary(cx,sp, ast::box(ast::imm),
+                        mk_str(cx,sp, fname),
+                        mk_call(cx,sp,
+                                ["syntax","ext","qquote", "mk_file_substr"],
+                                [mk_str(cx,sp, loc.file.name),
+                                 mk_uint(cx,sp, loc.line),
+                                 mk_uint(cx,sp, loc.col)]),
+                        mk_unary(cx,sp, ast::box(ast::m_imm),
                                  mk_str(cx,sp, str2)),
                         mk_access_(cx,sp,
                                    mk_access_(cx,sp, session_call(), "opts"),
@@ -312,6 +307,10 @@ fn print_expr(expr: @ast::expr) {
     pprust::print_expr(pp, expr);
     pp::eof(pp.s);
     stdout.write_str("\n");
+}
+
+fn mk_file_substr(fname: str, line: uint, col: uint) -> codemap::file_substr {
+    codemap::fss_external({filename: fname, line: line, col: col})
 }
 
 // Local Variables:

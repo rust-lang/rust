@@ -35,8 +35,8 @@ define DEF_RUNTIME_TARGETS
 
 RUNTIME_CS_$(1) := \
               rt/sync/timer.cpp \
-              rt/sync/sync.cpp \
               rt/sync/lock_and_signal.cpp \
+              rt/sync/rust_thread.cpp \
               rt/rust.cpp \
               rt/rust_builtin.cpp \
               rt/rust_run_program.cpp \
@@ -45,12 +45,14 @@ RUNTIME_CS_$(1) := \
               rt/rust_task_thread.cpp \
               rt/rust_scheduler.cpp \
               rt/rust_task.cpp \
+              rt/rust_stack.cpp \
               rt/rust_task_list.cpp \
               rt/rust_port.cpp \
               rt/rust_upcall.cpp \
               rt/rust_uv.cpp \
               rt/rust_uvtmp.cpp \
               rt/rust_log.cpp \
+              rt/rust_port_selector.cpp \
               rt/circular_buffer.cpp \
               rt/isaac/randport.cpp \
               rt/rust_srv.cpp \
@@ -84,8 +86,10 @@ RUNTIME_HDR_$(1) := rt/globals.h \
                rt/rust_scheduler.h \
                rt/rust_shape.h \
                rt/rust_task.h \
+               rt/rust_stack.h \
                rt/rust_task_list.h \
                rt/rust_log.h \
+               rt/rust_port_selector.h \
                rt/circular_buffer.h \
                rt/util/array_list.h \
                rt/util/indexed_list.h \
@@ -95,6 +99,7 @@ RUNTIME_HDR_$(1) := rt/globals.h \
                rt/sync/timer.h \
                rt/sync/lock_and_signal.h \
                rt/sync/lock_free_queue.h \
+               rt/sync/rust_thread.h \
                rt/rust_srv.h \
                rt/rust_kernel.h \
                rt/memory_region.h \
@@ -115,10 +120,10 @@ else ifeq ($(CFG_OSTYPE), apple-darwin)
   LIBUV_OSTYPE_$(1) := mac
   LIBUV_LIB_$(1) := rt/$(1)/libuv/Release/libuv.a
 else ifeq ($(CFG_OSTYPE), unknown-freebsd)
-  LIBUV_OSTYPE_$(1) := freebsd
+  LIBUV_OSTYPE_$(1) := unix/freebsd
   LIBUV_LIB_$(1) := rt/$(1)/libuv/Release/obj.target/src/libuv/libuv.a
 else
-  LIBUV_OSTYPE_$(1) := unix
+  LIBUV_OSTYPE_$(1) := unix/linux
   LIBUV_LIB_$(1) := rt/$(1)/libuv/Release/obj.target/src/libuv/libuv.a
 endif
 
@@ -155,11 +160,18 @@ rt/$(1)/$(CFG_RUNTIME): $$(RUNTIME_OBJS_$(1)) $$(MKFILE_DEPS) \
 # FIXME: For some reason libuv's makefiles can't figure out the correct definition
 # of CC on the mingw I'm using, so we are explicitly using gcc. Also, we
 # have to list environment variables first on windows... mysterious
-$$(LIBUV_LIB_$(1)): $$(wildcard \
-                     $$(S)src/libuv/* \
-                     $$(S)src/libuv/*/* \
-                     $$(S)src/libuv/*/*/* \
-                     $$(S)src/libuv/*/*/*/*)
+
+ifdef CFG_ENABLE_FAST_MAKE
+LIBUV_DEPS := $$(S)/.gitmodules
+else
+LIBUV_DEPS := $$(wildcard \
+              $$(S)src/libuv/* \
+              $$(S)src/libuv/*/* \
+              $$(S)src/libuv/*/*/* \
+              $$(S)src/libuv/*/*/*/*)
+endif
+
+$$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS)
 	$$(Q)$$(MAKE) -C $$(S)mk/libuv/$$(LIBUV_ARCH_$(1))/$$(LIBUV_OSTYPE_$(1)) \
 		CFLAGS="$$(LIBUV_FLAGS_$$(HOST_$(1)))" \
         LDFLAGS="$$(LIBUV_FLAGS_$$(HOST_$(1)))" \

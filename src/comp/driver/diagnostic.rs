@@ -175,10 +175,12 @@ fn emit(cmsp: option<(codemap::codemap, span)>,
         msg: str, lvl: level) {
     alt cmsp {
       some((cm, sp)) {
+        let sp = codemap::adjust_span(cm,sp);
         let ss = codemap::span_to_str(sp, cm);
         let lines = codemap::span_to_lines(sp, cm);
         print_diagnostic(ss, lvl, msg);
         highlight_lines(cm, sp, lines);
+        print_macro_backtrace(cm, sp);
       }
       none {
         print_diagnostic("", lvl, msg);
@@ -202,14 +204,13 @@ fn highlight_lines(cm: codemap::codemap, sp: span,
     // Print the offending lines
     for line: uint in display_lines {
         io::stderr().write_str(#fmt["%s:%u ", fm.name, line + 1u]);
-        let s = codemap::get_line(fm, line as int);
-        if !str::ends_with(s, "\n") { s += "\n"; }
+        let s = codemap::get_line(fm, line as int) + "\n";
         io::stderr().write_str(s);
     }
     if elided {
         let last_line = display_lines[vec::len(display_lines) - 1u];
         let s = #fmt["%s:%u ", fm.name, last_line + 1u];
-        let indent = str::char_len(s);
+        let indent = str::len(s);
         let out = "";
         while indent > 0u { out += " "; indent -= 1u; }
         out += "...\n";
@@ -227,7 +228,7 @@ fn highlight_lines(cm: codemap::codemap, sp: span,
         while num > 0u { num /= 10u; digits += 1u; }
 
         // indent past |name:## | and the 0-offset column location
-        let left = str::char_len(fm.name) + digits + lo.col + 3u;
+        let left = str::len(fm.name) + digits + lo.col + 3u;
         let s = "";
         while left > 0u { str::push_char(s, ' '); left -= 1u; }
 
@@ -239,5 +240,17 @@ fn highlight_lines(cm: codemap::codemap, sp: span,
             while width > 0u { str::push_char(s, '~'); width -= 1u; }
         }
         io::stderr().write_str(s + "\n");
+    }
+}
+
+fn print_macro_backtrace(cm: codemap::codemap, sp: span) {
+    option::may (sp.expn_info) {|ei|
+        let ss = option::maybe("", ei.callie.span,
+                               bind codemap::span_to_str(_, cm));
+        print_diagnostic(ss, note,
+                         #fmt("in expansion of #%s", ei.callie.name));
+        let ss = codemap::span_to_str(ei.call_site, cm);
+        print_diagnostic(ss, note, "expansion site");
+        print_macro_backtrace(cm, ei.call_site);
     }
 }

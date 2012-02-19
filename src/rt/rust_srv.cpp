@@ -26,6 +26,10 @@ rust_srv::realloc(void *p, size_t bytes) {
 void
 rust_srv::log(char const *msg) {
     fprintf(stderr, "rust: %s\n", msg);
+    // FIXME: flushing each time is expensive, but at the moment
+    // necessary to get output through before a rust_task::fail
+    // call. This should be changed.
+    fflush(stderr);
 }
 
 void

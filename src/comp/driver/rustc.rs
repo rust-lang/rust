@@ -2,11 +2,9 @@ use std;
 use rustc;
 
 // -*- rust -*-
-import core::{option, str, vec, result};
 import result::{ok, err};
 import std::{io, getopts};
 import io::writer_util;
-import option::{some, none};
 import getopts::{opt_present};
 import rustc::driver::driver::*;
 import rustc::syntax::codemap;
@@ -15,7 +13,7 @@ import rustc::driver::diagnostic;
 fn version(argv0: str) {
     let vers = "unknown version";
     let env_vers = #env["CFG_VERSION"];
-    if str::byte_len(env_vers) != 0u { vers = env_vers; }
+    if str::len_bytes(env_vers) != 0u { vers = env_vers; }
     io::stdout().write_str(#fmt["%s %s\n", argv0, vers]);
     io::stdout().write_str(#fmt["host: %s\n", host_triple()]);
 }

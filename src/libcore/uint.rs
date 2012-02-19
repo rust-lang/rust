@@ -1,3 +1,5 @@
+#[doc = "Operations and constants for `uint`"];
+
 /*
 Module: uint
 */
@@ -19,6 +21,20 @@ Return the maximal value for an uint.
 This is 2^wordsize - 1
 */
 const max_value: uint = 0u - 1u;
+
+/*
+Function: min
+*/
+pure fn min(x: uint, y: uint) -> uint {
+    if x < y { x } else { y }
+}
+
+/*
+Function: max
+*/
+pure fn max(x: uint, y: uint) -> uint {
+    if x > y { x } else { y }
+}
 
 /* Function: add */
 pure fn add(x: uint, y: uint) -> uint { ret x + y; }
@@ -240,7 +256,7 @@ fn to_str(num: uint, radix: uint) -> str {
         n /= radix;
     }
     let s1: str = "";
-    let len: uint = str::byte_len(s);
+    let len: uint = str::len_bytes(s);
     while len != 0u { len -= 1u; s1 += str::from_byte(s[len]); }
     ret s1;
 }
@@ -251,6 +267,15 @@ Function: str
 Convert to a string
 */
 fn str(i: uint) -> str { ret to_str(i, 10u); }
+
+/*
+Function: compl
+
+Computes the bitwise complement.
+*/
+fn compl(i: uint) -> uint {
+    max_value ^ i
+}
 
 #[cfg(test)]
 mod tests {

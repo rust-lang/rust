@@ -1,2 +1,2 @@
-// error-pattern:cannot path into import list
+// error-pattern:expecting
 import foo::{bar}::baz

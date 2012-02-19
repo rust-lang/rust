@@ -7,7 +7,7 @@ fn main() {
     let a: int = direct(3); // direct
     let b: int = ho(direct); // indirect unbound
 
-    let c: int = ho(bind direct(_)); // indirect bound
+    let c: int = ho(direct(_)); // indirect bound
     assert (a == b);
     assert (b == c);
 }

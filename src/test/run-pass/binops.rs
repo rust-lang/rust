@@ -81,9 +81,19 @@ fn test_chan() {
     assert (ch1 == ch2);
 }
 
-fn test_ptr() {
-    // FIXME: Don't know what binops apply to pointers. Don't know how
-    // to make or use pointers
+fn test_ptr() unsafe {
+    let p1: *u8 = unsafe::reinterpret_cast(0);
+    let p2: *u8 = unsafe::reinterpret_cast(0);
+    let p3: *u8 = unsafe::reinterpret_cast(1);
+
+    assert p1 == p2;
+    assert p1 != p3;
+    assert p1 < p3;
+    assert p1 <= p3;
+    assert p3 > p1;
+    assert p3 >= p3;
+    assert p1 <= p2;
+    assert p1 >= p2;
 }
 
 fn test_task() {
@@ -121,13 +131,12 @@ fn test_fn() {
 #[nolink]
 native mod test {
     fn unsupervise();
+    fn get_task_id();
 }
 
-// FIXME (#1058): comparison of native fns
 fn test_native_fn() {
-    /*
-    assert (native_mod::last_os_error != native_mod::unsupervise);
-    */
+    assert test::unsupervise != test::get_task_id;
+    assert test::unsupervise == test::unsupervise;
 }
 
 fn main() {

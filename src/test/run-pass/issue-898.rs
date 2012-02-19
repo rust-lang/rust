@@ -7,5 +7,5 @@ fn log_if<T>(c: native fn(T)->bool, e: T) {
 }
 
 fn main() {
-    (bind log_if(even, _))(2);
+    (log_if(even, _))(2);
 }

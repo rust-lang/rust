@@ -4,7 +4,6 @@
  * should all get sucked into either the compiler syntax extension plugin
  * interface.
  */
-import core::{vec, option};
 import std::generic_os;
 import base::*;
 export expand_syntax_ext;

@@ -32,6 +32,22 @@ A path or fragment of a filesystem path
 */
 type path = str;
 
+fn splitDirnameBasename (pp: path) -> {dirname: str, basename: str} {
+    let ii;
+    alt str::rindex(pp, os_fs::path_sep) {
+        option::some(xx) { ii = xx; }
+        option::none {
+            alt str::rindex(pp, os_fs::alt_path_sep) {
+                option::some(xx) { ii = xx; }
+                option::none { ret {dirname: ".", basename: pp}; }
+            }
+        }
+    }
+
+    ret {dirname: str::slice(pp, 0u, ii),
+         basename: str::slice(pp, ii + 1u, str::len(pp))};
+}
+
 /*
 Function: dirname
 
@@ -43,13 +59,8 @@ The dirname of "/usr/share" will be "/usr", but the dirname of
 
 If the path is not prefixed with a directory, then "." is returned.
 */
-fn dirname(p: path) -> path {
-    let i: int = str::rindex(p, os_fs::path_sep as u8);
-    if i == -1 {
-        i = str::rindex(p, os_fs::alt_path_sep as u8);
-        if i == -1 { ret "."; }
-    }
-    ret str::substr(p, 0u, i as uint);
+fn dirname(pp: path) -> path {
+    ret splitDirnameBasename(pp).dirname;
 }
 
 /*
@@ -63,17 +74,9 @@ path separators in the path then the returned path is identical to
 the provided path. If an empty path is provided or the path ends
 with a path separator then an empty path is returned.
 */
-fn basename(p: path) -> path unsafe {
-    let i: int = str::rindex(p, os_fs::path_sep as u8);
-    if i == -1 {
-        i = str::rindex(p, os_fs::alt_path_sep as u8);
-        if i == -1 { ret p; }
-    }
-    let len = str::byte_len(p);
-    if i + 1 as uint >= len { ret p; }
-    ret str::unsafe::slice_bytes(p, i + 1 as uint, len);
+fn basename(pp: path) -> path {
+    ret splitDirnameBasename(pp).basename;
 }
-
 
 // FIXME: Need some typestate to avoid bounds check when len(pre) == 0
 /*
@@ -86,14 +89,14 @@ any leading path separator on `post`, and returns the concatenation of the two
 with a single path separator between them.
 */
 
-fn connect(pre: path, post: path) -> path {
+fn connect(pre: path, post: path) -> path unsafe {
     let pre_ = pre;
     let post_ = post;
     let sep = os_fs::path_sep as u8;
-    let pre_len = str::byte_len(pre);
-    let post_len = str::byte_len(post);
-    if pre_len > 1u && pre[pre_len-1u] == sep { str::pop_byte(pre_); }
-    if post_len > 1u && post[0] == sep { str::shift_byte(post_); }
+    let pre_len = str::len_bytes(pre);
+    let post_len = str::len_bytes(post);
+    if pre_len > 1u && pre[pre_len-1u] == sep { str::unsafe::pop_byte(pre_); }
+    if post_len > 1u && post[0] == sep { str::unsafe::shift_byte(post_); }
     ret pre_ + path_sep() + post_;
 }
 
@@ -121,10 +124,7 @@ Indicates whether a path represents a directory.
 */
 fn path_is_dir(p: path) -> bool {
     ret str::as_buf(p, {|buf|
-        // FIXME: instead of 0i32, ctypes::c_int
-        // should be used here. but it triggers
-        // a segv fault. Issue 1558
-        rustrt::rust_path_is_dir(buf) != 0i32
+        rustrt::rust_path_is_dir(buf) != 0 as ctypes::c_int
     });
 }
 
@@ -171,7 +171,7 @@ Lists the contents of a directory.
 */
 fn list_dir(p: path) -> [str] {
     let p = p;
-    let pl = str::byte_len(p);
+    let pl = str::len_bytes(p);
     if pl == 0u || p[pl - 1u] as char != os_fs::path_sep { p += path_sep(); }
     let full_paths: [str] = [];
     for filename: str in os_fs::list_dir(p) {
@@ -255,12 +255,16 @@ the first element of the returned vector will be the drive letter
 followed by a colon.
 */
 fn split(p: path) -> [path] {
-    let split1 = str::split(p, os_fs::path_sep as u8);
+    // FIXME: use UTF-8 safe str, and/or various other string formats
+    let split1 = str::split_byte(p, os_fs::path_sep as u8);
     let split2 = [];
     for s in split1 {
-        split2 += str::split(s, os_fs::alt_path_sep as u8);
+        split2 += str::split_byte(s, os_fs::alt_path_sep as u8);
     }
-    ret split2;
+
+    // filter out ""
+    let split3 = vec::filter(split2, {|seg| "" != seg});
+    ret split3;
 }
 
 /*
@@ -273,9 +277,10 @@ path includes directory components then they are included in the filename part
 of the result pair.
 */
 fn splitext(p: path) -> (str, str) {
+    // FIXME: use UTF-8 safe str, and/or various other string formats
     if str::is_empty(p) { ("", "") }
     else {
-        let parts = str::split(p, '.' as u8);
+        let parts = str::split_byte(p, '.' as u8);
         if vec::len(parts) > 1u {
             let base = str::connect(vec::init(parts), ".");
             let ext = "." + option::get(vec::last(parts));
@@ -332,7 +337,7 @@ fn normalize(p: path) -> path {
     let s = reabsolute(p, s);
     let s = reterminate(p, s);
 
-    let s = if str::byte_len(s) == 0u {
+    let s = if str::len_bytes(s) == 0u {
         "."
     } else {
         s
@@ -399,7 +404,7 @@ fn normalize(p: path) -> path {
     }
 
     fn reterminate(orig: path, new: path) -> path {
-        let last = orig[str::byte_len(orig) - 1u];
+        let last = orig[str::len_bytes(orig) - 1u];
         if last == os_fs::path_sep as u8
             || last == os_fs::path_sep as u8 {
             ret new + path_sep();

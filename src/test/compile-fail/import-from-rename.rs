@@ -1,4 +1,4 @@
-// error-pattern:can't rename import list
+// error-pattern:expecting
 
 import baz = foo::{bar};
 

@@ -1,4 +1,4 @@
-// error-pattern:globbed imports can't be renamed
+// error-pattern:expecting
 
 import baz = foo::*;
 

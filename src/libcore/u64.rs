@@ -1,3 +1,5 @@
+#[doc = "Operations and constants for `u64`"];
+
 /*
 Module: u64
 */
@@ -14,7 +16,10 @@ Const: max_value
 
 Return the maximal value for a u64
 */
-const max_value: u64 = 18446744073709551615u64;
+const max_value: u64 = 0u64 - 1u64;
+
+pure fn min(x: u64, y: u64) -> u64 { if x < y { x } else { y } }
+pure fn max(x: u64, y: u64) -> u64 { if x > y { x } else { y } }
 
 /* Function: add */
 pure fn add(x: u64, y: u64) -> u64 { ret x + y; }
@@ -113,11 +118,11 @@ Function: from_str
 Parse a string as an unsigned integer.
 */
 fn from_str(buf: str, radix: u64) -> u64 {
-    if str::byte_len(buf) == 0u {
+    if str::len_bytes(buf) == 0u {
         #error("parse_buf(): buf is empty");
         fail;
     }
-    let i = str::byte_len(buf) - 1u;
+    let i = str::len_bytes(buf) - 1u;
     let power = 1u64, n = 0u64;
     while true {
         let digit = char::to_digit(buf[i] as char) as u64;
@@ -128,4 +133,9 @@ fn from_str(buf: str, radix: u64) -> u64 {
         i -= 1u;
     }
     fail;
+}
+
+#[doc = "Computes the bitwise complement"]
+fn compl(i: u64) -> u64 {
+    max_value ^ i
 }

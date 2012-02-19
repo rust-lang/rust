@@ -21,14 +21,12 @@ fn run(
 ) -> doc::cratedoc {
     let fold = fold::fold({
         fold_crate: fold_crate,
-        fold_mod: fold_mod,
+        fold_item: fold_item,
         fold_fn: fold_fn,
-        fold_const: fold_const,
         fold_enum: fold_enum,
         fold_res: fold_res,
         fold_iface: fold_iface,
-        fold_impl: fold_impl,
-        fold_type: fold_type
+        fold_impl: fold_impl
         with *fold::default_seq_fold(srv)
     });
     fold.fold_crate(fold, doc)
@@ -49,7 +47,10 @@ fn fold_crate(
 
     {
         topmod: {
-            name: option::from_maybe(doc.topmod.name, attrs.name)
+            item: {
+                name: option::from_maybe(doc.topmod.name(), attrs.name)
+                with doc.topmod.item
+            }
             with doc.topmod
         }
     }
@@ -58,7 +59,31 @@ fn fold_crate(
 #[test]
 fn should_replace_top_module_name_with_crate_name() {
     let doc = test::mk_doc("#[link(name = \"bond\")];");
-    assert doc.topmod.name == "bond";
+    assert doc.topmod.name() == "bond";
+}
+
+fn fold_item(
+    fold: fold::fold<astsrv::srv>,
+    doc: doc::itemdoc
+) -> doc::itemdoc {
+
+    let srv = fold.ctxt;
+    let doc = fold::default_seq_fold_item(fold, doc);
+
+    let attrs = if doc.id == ast::crate_node_id {
+        // This is the top-level mod, use the crate attributes
+        astsrv::exec(srv) {|ctxt|
+            attr_parser::parse_basic(ctxt.ast.node.attrs)
+        }
+    } else {
+        parse_item_attrs(srv, doc.id, attr_parser::parse_basic)
+    };
+
+    {
+        brief: attrs.brief,
+        desc: attrs.desc
+        with doc
+    }
 }
 
 fn parse_item_attrs<T>(
@@ -76,41 +101,16 @@ fn parse_item_attrs<T>(
     }
 }
 
-fn fold_mod(fold: fold::fold<astsrv::srv>, doc: doc::moddoc) -> doc::moddoc {
-    let srv = fold.ctxt;
-    let attrs = if doc.id == ast::crate_node_id {
-        // This is the top-level mod, use the crate attributes
-        astsrv::exec(srv) {|ctxt|
-            attr_parser::parse_mod(ctxt.ast.node.attrs)
-        }
-    } else {
-        parse_item_attrs(srv, doc.id, attr_parser::parse_mod)
-    };
-    let doc = fold::default_seq_fold_mod(fold, doc);
-    ret merge_mod_attrs(doc, attrs);
-
-    fn merge_mod_attrs(
-        doc: doc::moddoc,
-        attrs: attr_parser::mod_attrs
-    ) -> doc::moddoc {
-        {
-            brief: attrs.brief,
-            desc: attrs.desc
-            with doc
-        }
-    }
-}
-
 #[test]
-fn fold_mod_should_extract_mod_attributes() {
+fn should_should_extract_mod_attributes() {
     let doc = test::mk_doc("#[doc = \"test\"] mod a { }");
-    assert doc.topmod.mods()[0].desc == some("test");
+    assert doc.topmod.mods()[0].desc() == some("test");
 }
 
 #[test]
-fn fold_mod_should_extract_top_mod_attributes() {
+fn should_extract_top_mod_attributes() {
     let doc = test::mk_doc("#[doc = \"test\"];");
-    assert doc.topmod.desc == some("test");
+    assert doc.topmod.desc() == some("test");
 }
 
 fn fold_fn(
@@ -120,7 +120,8 @@ fn fold_fn(
 
     let srv = fold.ctxt;
 
-    let attrs = parse_item_attrs(srv, doc.id, attr_parser::parse_fn);
+    let doc = fold::default_seq_fold_fn(fold, doc);
+    let attrs = parse_item_attrs(srv, doc.id(), attr_parser::parse_fn);
     ret merge_fn_attrs(doc, attrs);
 
     fn merge_fn_attrs(
@@ -128,8 +129,6 @@ fn fold_fn(
         attrs: attr_parser::fn_attrs
     ) -> doc::fndoc {
         ret {
-            brief: attrs.brief,
-            desc: attrs.desc,
             args: merge_arg_attrs(doc.args, attrs.args),
             return: merge_ret_attrs(doc.return, attrs.return),
             failure: attrs.failure
@@ -170,19 +169,19 @@ fn merge_ret_attrs(
 }
 
 #[test]
-fn fold_fn_should_extract_fn_attributes() {
+fn should_extract_fn_attributes() {
     let doc = test::mk_doc("#[doc = \"test\"] fn a() -> int { }");
-    assert doc.topmod.fns()[0].desc == some("test");
+    assert doc.topmod.fns()[0].desc() == some("test");
 }
 
 #[test]
-fn fold_fn_should_extract_arg_attributes() {
+fn should_extract_fn_arg_attributes() {
     let doc = test::mk_doc("#[doc(args(a = \"b\"))] fn c(a: bool) { }");
     assert doc.topmod.fns()[0].args[0].desc == some("b");
 }
 
 #[test]
-fn fold_fn_should_extract_return_attributes() {
+fn should_extract_fn_return_attributes() {
     let source = "#[doc(return = \"what\")] fn a() -> int { }";
     let srv = astsrv::mk_srv_from_str(source);
     let doc = extract::from_srv(srv, "");
@@ -193,7 +192,7 @@ fn fold_fn_should_extract_return_attributes() {
 }
 
 #[test]
-fn fold_fn_should_preserve_sig() {
+fn should_preserve_fn_sig() {
     let source = "fn a() -> int { }";
     let srv = astsrv::mk_srv_from_str(source);
     let doc = extract::from_srv(srv, "");
@@ -204,31 +203,17 @@ fn fold_fn_should_preserve_sig() {
 }
 
 #[test]
-fn fold_fn_should_extract_failure_conditions() {
+fn should_extract_fn_failure_conditions() {
     let doc = test::mk_doc("#[doc(failure = \"what\")] fn a() { }");
     assert doc.topmod.fns()[0].failure == some("what");
 }
 
-fn fold_const(
-    fold: fold::fold<astsrv::srv>,
-    doc: doc::constdoc
-) -> doc::constdoc {
-    let srv = fold.ctxt;
-    let attrs = parse_item_attrs(srv, doc.id, attr_parser::parse_const);
-
-    {
-        brief: attrs.brief,
-        desc: attrs.desc
-        with doc
-    }
-}
-
 #[test]
-fn fold_const_should_extract_docs() {
+fn should_extract_const_docs() {
     let doc = test::mk_doc("#[doc(brief = \"foo\", desc = \"bar\")]\
                             const a: bool = true;");
-    assert doc.topmod.consts()[0].brief == some("foo");
-    assert doc.topmod.consts()[0].desc == some("bar");
+    assert doc.topmod.consts()[0].brief() == some("foo");
+    assert doc.topmod.consts()[0].desc() == some("bar");
 }
 
 fn fold_enum(
@@ -236,14 +221,12 @@ fn fold_enum(
     doc: doc::enumdoc
 ) -> doc::enumdoc {
     let srv = fold.ctxt;
-    let attrs = parse_item_attrs(srv, doc.id, attr_parser::parse_enum);
+    let doc = fold::default_seq_fold_enum(fold, doc);
 
     {
-        brief: attrs.brief,
-        desc: attrs.desc,
         variants: vec::map(doc.variants) {|variant|
             let attrs = astsrv::exec(srv) {|ctxt|
-                alt ctxt.ast_map.get(doc.id) {
+                alt check ctxt.ast_map.get(doc.id()) {
                   ast_map::node_item(@{
                     node: ast::item_enum(ast_variants, _), _
                   }, _) {
@@ -254,7 +237,6 @@ fn fold_enum(
 
                     attr_parser::parse_variant(ast_variant.node.attrs)
                   }
-                  _ { fail "fold_enum: undocumented invariant"; }
                 }
             };
 
@@ -268,15 +250,15 @@ fn fold_enum(
 }
 
 #[test]
-fn fold_enum_should_extract_docs() {
+fn should_extract_enum_docs() {
     let doc = test::mk_doc("#[doc(brief = \"a\", desc = \"b\")]\
                             enum a { v }");
-    assert doc.topmod.enums()[0].brief == some("a");
-    assert doc.topmod.enums()[0].desc == some("b");
+    assert doc.topmod.enums()[0].brief() == some("a");
+    assert doc.topmod.enums()[0].desc() == some("b");
 }
 
 #[test]
-fn fold_enum_should_extract_variant_docs() {
+fn should_extract_variant_docs() {
     let doc = test::mk_doc("enum a { #[doc = \"c\"] v }");
     assert doc.topmod.enums()[0].variants[0].desc == some("c");
 }
@@ -287,11 +269,10 @@ fn fold_res(
 ) -> doc::resdoc {
 
     let srv = fold.ctxt;
-    let attrs = parse_item_attrs(srv, doc.id, attr_parser::parse_fn);
+    let doc = fold::default_seq_fold_res(fold, doc);
+    let attrs = parse_item_attrs(srv, doc.id(), attr_parser::parse_res);
 
     {
-        brief: attrs.brief,
-        desc: attrs.desc,
         args: vec::map(doc.args) {|doc|
             alt vec::find(attrs.args) {|attr|
                 attr.name == doc.name
@@ -310,15 +291,15 @@ fn fold_res(
 }
 
 #[test]
-fn fold_res_should_extract_docs() {
+fn should_extract_res_docs() {
     let doc = test::mk_doc("#[doc(brief = \"a\", desc = \"b\")]\
                             resource r(b: bool) { }");
-    assert doc.topmod.resources()[0].brief == some("a");
-    assert doc.topmod.resources()[0].desc == some("b");
+    assert doc.topmod.resources()[0].brief() == some("a");
+    assert doc.topmod.resources()[0].desc() == some("b");
 }
 
 #[test]
-fn fold_res_should_extract_arg_docs() {
+fn should_extract_res_arg_docs() {
     let doc = test::mk_doc("#[doc(args(a = \"b\"))]\
                             resource r(a: bool) { }");
     assert doc.topmod.resources()[0].args[0].name == "a";
@@ -331,12 +312,9 @@ fn fold_iface(
 ) -> doc::ifacedoc {
     let srv = fold.ctxt;
     let doc = fold::default_seq_fold_iface(fold, doc);
-    let attrs = parse_item_attrs(srv, doc.id, attr_parser::parse_iface);
 
     {
-        brief: attrs.brief,
-        desc: attrs.desc,
-        methods: merge_method_attrs(srv, doc.id, doc.methods)
+        methods: merge_method_attrs(srv, doc.id(), doc.methods)
         with doc
     }
 }
@@ -346,21 +324,31 @@ fn merge_method_attrs(
     item_id: doc::ast_id,
     docs: [doc::methoddoc]
 ) -> [doc::methoddoc] {
+
+    type method_attrs = (attr_parser::basic_attrs,
+                         attr_parser::method_attrs);
+
     // Create an assoc list from method name to attributes
-    let attrs = astsrv::exec(srv) {|ctxt|
+    let attrs: [(str, method_attrs)] = astsrv::exec(srv) {|ctxt|
         alt ctxt.ast_map.get(item_id) {
           ast_map::node_item(@{
             node: ast::item_iface(_, methods), _
           }, _) {
             vec::map(methods) {|method|
-                (method.ident, attr_parser::parse_method(method.attrs))
+                (method.ident,
+                 (attr_parser::parse_basic(method.attrs),
+                  attr_parser::parse_method(method.attrs)
+                 ))
             }
           }
           ast_map::node_item(@{
             node: ast::item_impl(_, _, _, methods), _
           }, _) {
             vec::map(methods) {|method|
-                (method.ident, attr_parser::parse_method(method.attrs))
+                (method.ident,
+                 (attr_parser::parse_basic(method.attrs),
+                  attr_parser::parse_method(method.attrs)
+                  ))
             }
           }
           _ { fail "unexpected item" }
@@ -369,14 +357,15 @@ fn merge_method_attrs(
 
     vec::map2(docs, attrs) {|doc, attrs|
         assert doc.name == tuple::first(attrs);
-        let attrs = tuple::second(attrs);
+        let basic_attrs = tuple::first(tuple::second(attrs));
+        let method_attrs = tuple::second(tuple::second(attrs));
 
         {
-            brief: attrs.brief,
-            desc: attrs.desc,
-            args: merge_arg_attrs(doc.args, attrs.args),
-            return: merge_ret_attrs(doc.return, attrs.return),
-            failure: attrs.failure
+            brief: basic_attrs.brief,
+            desc: basic_attrs.desc,
+            args: merge_arg_attrs(doc.args, method_attrs.args),
+            return: merge_ret_attrs(doc.return, method_attrs.return),
+            failure: method_attrs.failure
             with doc
         }
     }
@@ -385,7 +374,7 @@ fn merge_method_attrs(
 #[test]
 fn should_extract_iface_docs() {
     let doc = test::mk_doc("#[doc = \"whatever\"] iface i { fn a(); }");
-    assert doc.topmod.ifaces()[0].desc == some("whatever");
+    assert doc.topmod.ifaces()[0].desc() == some("whatever");
 }
 
 #[test]
@@ -414,12 +403,9 @@ fn fold_impl(
 ) -> doc::impldoc {
     let srv = fold.ctxt;
     let doc = fold::default_seq_fold_impl(fold, doc);
-    let attrs = parse_item_attrs(srv, doc.id, attr_parser::parse_impl);
 
     {
-        brief: attrs.brief,
-        desc: attrs.desc,
-        methods: merge_method_attrs(srv, doc.id, doc.methods)
+        methods: merge_method_attrs(srv, doc.id(), doc.methods)
         with doc
     }
 }
@@ -428,7 +414,7 @@ fn fold_impl(
 fn should_extract_impl_docs() {
     let doc = test::mk_doc(
         "#[doc = \"whatever\"] impl i for int { fn a() { } }");
-    assert doc.topmod.impls()[0].desc == some("whatever");
+    assert doc.topmod.impls()[0].desc() == some("whatever");
 }
 
 #[test]
@@ -450,28 +436,13 @@ fn should_extract_impl_method_docs() {
     assert doc.topmod.impls()[0].methods[0].failure == some("failure");
 }
 
-fn fold_type(
-    fold: fold::fold<astsrv::srv>,
-    doc: doc::tydoc
-) -> doc::tydoc {
-    let srv = fold.ctxt;
-    let doc = fold::default_seq_fold_type(fold, doc);
-    let attrs = parse_item_attrs(srv, doc.id, attr_parser::parse_type);
-
-    {
-        brief: attrs.brief,
-        desc: attrs.desc
-        with doc
-    }
-}
-
 #[test]
 fn should_extract_type_docs() {
     let doc = test::mk_doc(
         "#[doc(brief = \"brief\", desc = \"desc\")]\
          type t = int;");
-    assert doc.topmod.types()[0].brief == some("brief");
-    assert doc.topmod.types()[0].desc == some("desc");
+    assert doc.topmod.types()[0].brief() == some("brief");
+    assert doc.topmod.types()[0].desc() == some("desc");
 }
 
 #[cfg(test)]

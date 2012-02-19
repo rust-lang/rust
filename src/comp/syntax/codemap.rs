@@ -1,6 +1,3 @@
-import core::{vec, uint, str, option, result};
-import option::{some, none};
-
 type filename = str;
 
 type file_pos = {ch: uint, byte: uint};
@@ -11,8 +8,11 @@ type file_pos = {ch: uint, byte: uint};
  * compiler.
  */
 
-type file_substr_ = {lo: uint, hi: uint, col: uint, line: uint};
-type file_substr = option<file_substr_>;
+enum file_substr {
+    fss_none,
+    fss_internal(span),
+    fss_external({filename: str, line: uint, col: uint})
+}
 
 type filemap =
     @{name: filename, substr: file_substr, src: @str,
@@ -36,16 +36,14 @@ fn new_filemap_w_substr(filename: filename, substr: file_substr,
 fn new_filemap(filename: filename, src: @str,
                start_pos_ch: uint, start_pos_byte: uint)
     -> filemap {
-    ret new_filemap_w_substr(filename, none, src,
+    ret new_filemap_w_substr(filename, fss_none, src,
                              start_pos_ch, start_pos_byte);
 }
 
-fn get_substr_info(cm: codemap, lo: uint, hi: uint)
-    -> (filename, file_substr_)
+fn mk_substr_filename(cm: codemap, sp: span) -> str
 {
-    let pos = lookup_char_pos(cm, lo);
-    let name = #fmt("<%s:%u:%u>", pos.file.name, pos.line, pos.col);
-    ret (name, {lo: lo, hi: hi, col: pos.col, line: pos.line});
+    let pos = lookup_char_pos(cm, sp.lo);
+    ret #fmt("<%s:%u:%u>", pos.file.name, pos.line, pos.col);
 }
 
 fn next_line(file: filemap, chpos: uint, byte_pos: uint) {
@@ -92,38 +90,59 @@ fn lookup_byte_pos(map: codemap, pos: uint) -> loc {
     ret lookup_pos(map, pos, lookup);
 }
 
-enum opt_span {
-
-    //hack (as opposed to option), to make `span` compile
-    os_none,
-    os_some(@span),
+fn lookup_char_pos_adj(map: codemap, pos: uint)
+    -> {filename: str, line: uint, col: uint, file: option<filemap>}
+{
+    let loc = lookup_char_pos(map, pos);
+    alt (loc.file.substr) {
+      fss_none {
+        {filename: loc.file.name, line: loc.line, col: loc.col,
+         file: some(loc.file)}
+      }
+      fss_internal(sp) {
+        lookup_char_pos_adj(map, sp.lo + (pos - loc.file.start_pos.ch))
+      }
+      fss_external(eloc) {
+        {filename: eloc.filename,
+         line: eloc.line + loc.line - 1u,
+         col: if loc.line == 1u {eloc.col + loc.col} else {loc.col},
+         file: none}
+      }
+    }
 }
-type span = {lo: uint, hi: uint, expanded_from: opt_span};
+
+fn adjust_span(map: codemap, sp: span) -> span {
+    fn lookup(pos: file_pos) -> uint { ret pos.ch; }
+    let line = lookup_line(map, sp.lo, lookup);
+    alt (line.fm.substr) {
+      fss_none {sp}
+      fss_internal(s) {
+        adjust_span(map, {lo: s.lo + (sp.lo - line.fm.start_pos.ch),
+                          hi: s.lo + (sp.hi - line.fm.start_pos.ch),
+                          expn_info: sp.expn_info})}
+      fss_external(_) {sp}
+    }
+}
+
+enum expn_info_ {
+    expanded_from({call_site: span,
+                   callie: {name: str, span: option<span>}})
+}
+type expn_info = option<@expn_info_>;
+type span = {lo: uint, hi: uint, expn_info: expn_info};
+
+fn span_to_str_no_adj(sp: span, cm: codemap) -> str {
+    let lo = lookup_char_pos(cm, sp.lo);
+    let hi = lookup_char_pos(cm, sp.hi);
+    ret #fmt("%s:%u:%u: %u:%u", lo.file.name,
+             lo.line, lo.col, hi.line, hi.col)
+}
 
 fn span_to_str(sp: span, cm: codemap) -> str {
-    let cur = sp;
-    let res = "";
-    // FIXME: Should probably be doing pointer comparison on filemap
-    let prev_file = none;
-    while true {
-        let lo = lookup_char_pos(cm, cur.lo);
-        let hi = lookup_char_pos(cm, cur.hi);
-        res +=
-            #fmt["%s:%u:%u: %u:%u",
-                 if some(lo.file.name) == prev_file {
-                     "-"
-                 } else { lo.file.name }, lo.line, lo.col, hi.line, hi.col];
-        alt cur.expanded_from {
-          os_none { break; }
-          os_some(new_sp) {
-            cur = *new_sp;
-            prev_file = some(lo.file.name);
-            res += "<<";
-          }
-        }
-    }
-
-    ret res;
+    let lo = lookup_char_pos_adj(cm, sp.lo);
+    let hi = lookup_char_pos_adj(cm, sp.hi);
+    ret #fmt("%s:%u:%u: %u:%u", lo.filename,
+             lo.line, lo.col, hi.line, hi.col)
 }
 
 type file_lines = {file: filemap, lines: [uint]};
@@ -131,7 +150,6 @@ type file_lines = {file: filemap, lines: [uint]};
 fn span_to_lines(sp: span, cm: codemap::codemap) -> @file_lines {
     let lo = lookup_char_pos(cm, sp.lo);
     let hi = lookup_char_pos(cm, sp.hi);
-    // FIXME: Check for filemap?
     let lines = [];
     uint::range(lo.line - 1u, hi.line as uint) {|i| lines += [i]; };
     ret @{file: lo.file, lines: lines};
@@ -139,19 +157,12 @@ fn span_to_lines(sp: span, cm: codemap::codemap) -> @file_lines {
 
 fn get_line(fm: filemap, line: int) -> str unsafe {
     let begin: uint = fm.lines[line].byte - fm.start_pos.byte;
-    let end: uint;
-    if line as uint < vec::len(fm.lines) - 1u {
-        end = fm.lines[line + 1].byte - fm.start_pos.byte;
-    } else {
-        // If we're not done parsing the file, we're at the limit of what's
-        // parsed. If we just slice the rest of the string, we'll print out
-        // the remainder of the file, which is undesirable.
-        end = str::byte_len(*fm.src);
-        let rest = str::unsafe::slice_bytes(*fm.src, begin, end);
-        let newline = str::index(rest, '\n' as u8);
-        if newline != -1 { end = begin + (newline as uint); }
-    }
-    ret str::unsafe::slice_bytes(*fm.src, begin, end);
+    let end = alt str::byte_index_from(*fm.src, '\n' as u8, begin,
+                                  str::len(*fm.src)) {
+      some(e) { e }
+      none { str::len(*fm.src) }
+    };
+    str::unsafe::slice_bytes(*fm.src, begin, end)
 }
 
 fn lookup_byte_offset(cm: codemap::codemap, chpos: uint)
@@ -161,7 +172,7 @@ fn lookup_byte_offset(cm: codemap::codemap, chpos: uint)
     let {fm,line} = lookup_line(cm,chpos,lookup);
     let line_offset = fm.lines[line].byte - fm.start_pos.byte;
     let col = chpos - fm.lines[line].ch;
-    let col_offset = str::byte_len_range(*fm.src, line_offset, col);
+    let col_offset = str::substr_len_bytes(*fm.src, line_offset, col);
     ret {fm: fm, pos: line_offset + col_offset};
 }
 

@@ -2,7 +2,6 @@
 // variables that they contain.
 
 import syntax::print::pprust::path_to_str;
-import int;
 import std::map::*;
 import option::*;
 import syntax::{ast, ast_util, visit};

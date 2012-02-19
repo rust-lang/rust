@@ -1,5 +1,4 @@
 
-import core::{vec, str};
 import std::io;
 import io::writer_util;
 
@@ -492,7 +491,7 @@ fn end(p: printer) { p.pretty_print(END); }
 fn eof(p: printer) { p.pretty_print(EOF); }
 
 fn word(p: printer, wrd: str) {
-    p.pretty_print(STRING(wrd, str::char_len(wrd) as int));
+    p.pretty_print(STRING(wrd, str::len(wrd) as int));
 }
 
 fn huge_word(p: printer, wrd: str) {
