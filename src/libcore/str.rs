@@ -100,7 +100,7 @@ export
 
    unsafe;
 
-import iter::iterable;
+import str_chars::iterable_by_chars;
 
 #[abi = "cdecl"]
 native mod rustrt {
@@ -754,7 +754,6 @@ Function: map
 Apply a function to each character
 */
 fn map(ss: str, ff: fn(&&char) -> char) -> str {
-//    iter::map(ss, {|c| c}, ff);
     let result = "";
 
     chars_iter(ss, {|cc|

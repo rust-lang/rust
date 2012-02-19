@@ -13,7 +13,7 @@ middle of a line, and each of the following lines is indented.
 
 export mk_pass;
 
-import iter::iterable;
+import str_iter::iterable_by_chars;
 
 fn mk_pass() -> pass {
     desc_pass::mk_pass(unindent)

@@ -16,6 +16,8 @@ import std::io::*;
 
 import codemap::span;
 
+import str_iter::iterable_by_chars;
+
 type aq_ctxt = @{lo: uint,
                  mutable gather: [{lo: uint, hi: uint,
                                    e: @ast::expr,
@@ -204,7 +206,7 @@ fn expand_qquote<N: qq_helper>
     let state = active;
     let i = 0u, j = 0u;
     let g_len = vec::len(cx.gather);
-    str::chars_iter(str) {|ch|
+    iter::each() {|ch|
         if (j < g_len && i == cx.gather[j].lo) {
             assert ch == '$';
             let repl = #fmt("$%u ", j);

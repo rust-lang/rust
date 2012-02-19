@@ -1,5 +1,6 @@
+import str_chars::iterable_by_chars;
 export iterable, enumerate, filter, map, flat_map,
-       foldl, to_list, repeat, all, any;
+       foldl, to_list, repeat, all, any, each;
 
 iface iterable<A> {
     fn iter(blk: fn(A));
@@ -33,12 +34,6 @@ impl<A> of iterable<A> for [A] {
 impl<A> of iterable<A> for option<A> {
     fn iter(blk: fn(A)) {
         option::may(self, blk)
-    }
-}
-
-impl of iterable<char> for str {
-    fn iter(blk: fn(&&char)) {
-        str::chars_iter(self, blk)
     }
 }
 
@@ -112,6 +107,10 @@ fn all<A, IA:iterable<A>>(self: IA, prd: fn(A) -> bool) -> bool {
 
 fn any<A, IA:iterable<A>>(self: IA, prd: fn(A) -> bool) -> bool {
     !all(self, {|c| !prd(c) })
+}
+
+fn each<A, IA:iterable<A>>(self: IA, blk: fn(A)) {
+   self.iter(blk);
 }
 
 #[test]
