@@ -35,8 +35,9 @@ enum rust_port {}
 
 #[abi = "cdecl"]
 native mod rustrt {
+    fn get_task_id() -> task_id;
     fn chan_id_send<T: send>(t: *sys::type_desc,
-                            target_task: task::task, target_port: port_id,
+                            target_task: task_id, target_port: port_id,
                             data: T) -> ctypes::uintptr_t;
 
     fn new_port(unit_sz: ctypes::size_t) -> *rust_port;
@@ -58,6 +59,7 @@ native mod rusti {
     fn call_with_retptr<T: send>(&&f: fn@(*uint)) -> T;
 }
 
+type task_id = int;
 type port_id = int;
 
 // It's critical that this only have one variant, so it has a record
@@ -75,7 +77,7 @@ type port_id = int;
           over other channels."
 )]
 enum chan<T: send> {
-    chan_t(task::task, port_id)
+    chan_t(task_id, port_id)
 }
 
 resource port_ptr<T: send>(po: *rust_port) {
@@ -208,7 +210,7 @@ fn peek<T: send>(p: port<T>) -> bool {
            port used to construct it."
 )]
 fn chan<T: send>(p: port<T>) -> chan<T> {
-    chan_t(task::get_task(), rustrt::get_port_id(***p))
+    chan_t(rustrt::get_task_id(), rustrt::get_port_id(***p))
 }
 
 #[test]

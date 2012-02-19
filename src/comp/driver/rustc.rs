@@ -143,8 +143,6 @@ fn monitor(f: fn~(diagnostic::emitter)) {
 
     alt task::try  {||
 
-        task::unsupervise();
-
         // The 'diagnostics emitter'. Every error, warning, etc. should
         // go through this function.
         let demitter = fn@(cmsp: option<(codemap::codemap, codemap::span)>,

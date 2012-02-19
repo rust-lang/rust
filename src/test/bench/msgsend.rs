@@ -28,22 +28,28 @@ fn server(requests: comm::port<request>, responses: comm::chan<uint>) {
 }
 
 fn run(args: [str]) {
-    let server = task::spawn_connected(server);
+    let from_child = comm::port();
+    let to_parent = comm::chan(from_child);
+    let to_child = task::spawn_listener {|po|
+        server(po, to_parent);
+    };
     let size = uint::from_str(args[1]);
     let workers = uint::from_str(args[2]);
     let start = std::time::precise_time_s();
-    let to_child = server.to_child;
-    let worker_tasks = [];
+    let to_child = to_child;
+    let worker_results = [];
     uint::range(0u, workers) {|_i|
-        worker_tasks += [task::spawn_joinable {||
+        let builder = task::mk_task_builder();
+        worker_results += [task::future_result(builder)];
+        task::run(builder) {||
             uint::range(0u, size / workers) {|_i|
                 comm::send(to_child, bytes(100u));
             }
-        }];
+        };
     }
-    vec::iter(worker_tasks) {|t| task::join(t); }
-    comm::send(server.to_child, stop);
-    let result = comm::recv(server.from_child);
+    vec::iter(worker_results) {|r| future::get(r); }
+    comm::send(to_child, stop);
+    let result = comm::recv(from_child);
     let end = std::time::precise_time_s();
     let elapsed = end - start;
     std::io::stdout().write_str(#fmt("Count is %?\n", result));
