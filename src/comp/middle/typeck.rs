@@ -48,7 +48,16 @@ type crate_ctxt = {mutable self_infos: [self_info],
                    impl_map: resolve::impl_map,
                    method_map: method_map,
                    dict_map: dict_map,
+                   // Not at all sure it's right to put these here
+                   /* node_id for the class this fn is in --
+                      none if it's not in a class */
+                   enclosing_class_id: option<ast::node_id>,
+                   /* map from node_ids for enclosing-class
+                      vars and methods to types */
+                   enclosing_class: class_map,
                    tcx: ty::ctxt};
+
+type class_map = hashmap<ast::node_id, ty::t>;
 
 type fn_ctxt =
     // var_bindings, locals and next_var_id are shared
@@ -121,7 +130,6 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
       }
       ast::def_fn(id, _) | ast::def_const(id) |
       ast::def_variant(_, id) | ast::def_class(id)
-          | ast::def_class_method(_, id) | ast::def_class_field(_, id)
          { ret ty::lookup_item_type(fcx.ccx.tcx, id); }
       ast::def_binding(id) {
         assert (fcx.locals.contains_key(id.node));
@@ -134,6 +142,20 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
       ast::def_upvar(_, inner, _) {
         ret ty_param_bounds_and_ty_for_def(fcx, sp, *inner);
       }
+      ast::def_class_method(_, id) | ast::def_class_field(_, id) {
+          if id.crate != ast::local_crate {
+                  fcx.ccx.tcx.sess.span_fatal(sp,
+                                 "class method or field referred to \
+                                  out of scope");
+          }
+          alt fcx.ccx.enclosing_class.find(id.node) {
+             some(a_ty) { ret {bounds: @[], ty: a_ty}; }
+             _ { fcx.ccx.tcx.sess.span_fatal(sp,
+                                 "class method or field referred to \
+                                  out of scope"); }
+          }
+      }
+
       _ {
         // FIXME: handle other names.
         fcx.ccx.tcx.sess.unimpl("definition variant");
@@ -316,7 +338,11 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
         ty::mk_fn(tcx, ty_of_fn_decl(tcx, mode, proto, decl))
       }
       ast::ty_path(path, id) {
-        alt tcx.def_map.get(id) {
+        let a_def = alt tcx.def_map.find(id) {
+          none { tcx.sess.span_fatal(ast_ty.span, #fmt("unbound path %s",
+                                                   path_to_str(path))); }
+          some(d) { d }};
+        alt a_def {
           ast::def_ty(id) {
             instantiate(tcx, ast_ty.span, mode, id, path.node.types)
           }
@@ -348,6 +374,23 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
                 }))
               }
             }
+          }
+          ast::def_class(class_id) {
+              alt tcx.items.find(class_id.node) {
+                 some(ast_map::node_item(
+                  @{node: ast::item_class(tps, _, _, _, _), _}, _)) {
+                     if vec::len(tps) != vec::len(path.node.types) {
+                        tcx.sess.span_err(ast_ty.span, "incorrect number of \
+                           type parameters to object type");
+                     }
+                     ty::mk_class(tcx, class_id, vec::map(path.node.types,
+                        {|ast_ty| ast_ty_to_ty(tcx, mode, ast_ty)}))
+                 }
+                 _ {
+                     tcx.sess.span_bug(ast_ty.span, "class id is unbound \
+                       in items");
+                 }
+              }
           }
           _ {
             tcx.sess.span_fatal(ast_ty.span,
@@ -787,9 +830,20 @@ mod collect {
           }
         }
     }
-    fn convert_class_item(_cx: @ctxt, _parent_ty: ty::t,
-                          _ci: ast::class_member) {
-        /* TODO */
+    fn convert_class_item(cx: @ctxt, ci: ast::class_member) {
+        /* we want to do something here, b/c within the
+         scope of the class, it's ok to refer to fields &
+        methods unqualified */
+
+        /* they have these types *within the scope* of the
+         class. outside the class, it's done with expr_field */
+        alt ci {
+         ast::instance_var(_,t,_,id) {
+             let tt = ast_ty_to_ty(cx.tcx, m_collect, t);
+             write_ty(cx.tcx, id, tt);
+         }
+         ast::class_method(it) { convert(cx, it); }
+        }
     }
     fn convert(cx: @ctxt, it: @ast::item) {
         alt it.node {
@@ -890,16 +944,23 @@ mod collect {
             ensure_iface_methods(cx.tcx, it.id);
           }
           ast::item_class(tps, members, ctor_id, ctor_decl, ctor_block) {
-              let parent_ty = ty::lookup_item_type(cx.tcx, local_def(it.id));
+              // Write the class type
+              let {bounds,params} = mk_ty_params(cx.tcx, tps);
+              let class_ty = ty::mk_class(cx.tcx, local_def(it.id), params);
+              let tpt = {bounds: bounds, ty: class_ty};
+              cx.tcx.tcache.insert(local_def(it.id), tpt);
+              write_ty(cx.tcx, it.id, class_ty);
               // Write the ctor type
               let t_ctor = ty::mk_fn(cx.tcx,
                                      ty_of_fn_decl(cx.tcx, m_collect,
                                              ast::proto_any, ctor_decl));
               write_ty(cx.tcx, ctor_id, t_ctor);
+              cx.tcx.tcache.insert(local_def(ctor_id),
+                                   {bounds: bounds, ty: t_ctor});
               /* FIXME: check for proper public/privateness */
               // Write the type of each of the members
               for m in members {
-                 convert_class_item(cx, parent_ty.ty, m.node.decl);
+                 convert_class_item(cx, m.node.decl);
               }
           }
           _ {
@@ -2252,7 +2313,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
       }
       ast::expr_fn(proto, decl, body, captures) {
         check_expr_fn_with_unifier(fcx, expr, proto, decl, body,
-                                   unify, expected);
+                          unify, expected);
         capture::check_capture_clause(tcx, expr.id, proto, *captures);
       }
       ast::expr_fn_block(decl, body) {
@@ -2445,6 +2506,12 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
               }
               _ {}
             }
+          }
+          ty::ty_class(_id, _params) {
+              // TODO (classes)
+              tcx.sess.span_bug(expr.span,
+                  #fmt("can't check class field accesses yet: %s",
+                    ty_to_str(fcx.ccx.tcx, base_t)));
           }
           _ {}
         }
@@ -2874,6 +2941,30 @@ fn check_method(ccx: @crate_ctxt, method: @ast::method) {
     check_fn(ccx, ast::proto_bare, method.decl, method.body, method.id, none);
 }
 
+fn class_types(ccx: @crate_ctxt, members: [@ast::class_item]) -> class_map {
+    let rslt = new_int_hash::<ty::t>();
+    for m in members {
+      alt m.node.decl {
+         ast::instance_var(_,t,_,id) {
+           rslt.insert(id, ast_ty_to_ty(ccx.tcx, m_collect, t));
+         }
+         ast::class_method(it) {
+             rslt.insert(it.id, ty_of_item(ccx.tcx, m_collect, it).ty);
+         }
+      }
+    }
+    rslt
+}
+
+fn check_class_member(ccx: @crate_ctxt, cm: ast::class_member) {
+    alt cm {
+      ast::instance_var(_,t,_,_) { // ??? Not sure
+      }
+      // not right yet -- need a scope
+      ast::class_method(i) { check_item(ccx, i); }
+    }
+}
+
 fn check_item(ccx: @crate_ctxt, it: @ast::item) {
     alt it.node {
       ast::item_const(_, e) { check_const(ccx, it.span, e, it.id); }
@@ -2888,6 +2979,17 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
         ccx.self_infos += [self_impl(ast_ty_to_ty(ccx.tcx, m_check, ty))];
         for m in ms { check_method(ccx, m); }
         vec::pop(ccx.self_infos);
+      }
+      ast::item_class(tps, members, ctor_id, ctor_decl, ctor_body) {
+          let cid = some(it.id);
+          let members_info = class_types(ccx, members);
+          let class_ccx = @{enclosing_class_id:cid,
+                            enclosing_class:members_info with *ccx};
+          // typecheck the ctor
+          check_fn(class_ccx, ast::proto_bare, ctor_decl, ctor_body, ctor_id,
+                   none);
+          // typecheck the members
+          for m in members { check_class_member(class_ccx, m.node.decl); }
       }
       _ {/* nothing to do */ }
     }
@@ -3149,6 +3251,8 @@ fn check_crate(tcx: ty::ctxt, impl_map: resolve::impl_map,
                 impl_map: impl_map,
                 method_map: std::map::new_int_hash(),
                 dict_map: std::map::new_int_hash(),
+                enclosing_class_id: none,
+                enclosing_class: std::map::new_int_hash(),
                 tcx: tcx};
     let visit = visit::mk_simple_visitor(@{
         visit_item: bind check_item(ccx, _)

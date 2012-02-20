@@ -117,7 +117,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
       ty_param(id, _) {
         "'" + str::from_bytes([('a' as u8) + (id as u8)])
       }
-      ty_enum(did, tps) | ty_res(did, _, tps) {
+      ty_enum(did, tps) | ty_res(did, _, tps) | ty_class(did, tps) {
         // Not sure why, but under some circumstances enum or resource types
         // do not have an associated id.  I didn't investigate enough to know
         // if there is a good reason for this. - Niko, 2012-02-10

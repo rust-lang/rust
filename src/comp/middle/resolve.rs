@@ -151,7 +151,7 @@ enum dir { inside, outside, }
 // when looking up a variable name that's not yet in scope to check
 // if it's already bound to a enum.
 enum namespace { ns_val(ns_value_type), ns_type, ns_module, }
-enum ns_value_type { ns_a_enum, ns_any_value, }
+enum ns_value_type { ns_an_enum, ns_any_value, }
 
 fn resolve_crate(sess: session, amap: ast_map::map, crate: @ast::crate) ->
    {def_map: def_map, exp_map: exp_map, impl_map: impl_map} {
@@ -469,7 +469,7 @@ fn resolve_names(e: @env, c: @ast::crate) {
            variable a refers to a nullary enum. */
           ast::pat_ident(p, none) {
               alt lookup_in_scope(*e, sc, p.span, path_to_ident(p),
-                                    ns_val(ns_a_enum)) {
+                                    ns_val(ns_an_enum)) {
                 some(fnd@ast::def_variant(_,_)) {
                     e.def_map.insert(pat.id, fnd);
                 }
@@ -519,11 +519,16 @@ fn visit_item_with_scope(e: @env, i: @ast::item, sc: scopes, v: vt<scopes>) {
       }
       ast::item_class(tps, members, ctor_id, ctor_decl, ctor_block) {
         visit::visit_ty_params(tps, sc, v);
-        let ctor_scope = cons(scope_fn_expr(ctor_decl, ctor_id, tps), @sc);
+        let class_scope = cons(scope_item(i), @sc);
+        /* visit the constructor... */
+        visit_fn_with_scope(e, visit::fk_item_fn(i.ident, tps), ctor_decl,
+                            ctor_block, ctor_block.span, ctor_id,
+                            class_scope, v);
+        /* visit the items */
         for cm in members {
             alt cm.node.decl {
-              class_method(i) { visit_item_with_scope(e, i, ctor_scope, v); }
-              _ { } // instance var -- nothing to do
+              class_method(i) { visit_item_with_scope(e, i, class_scope, v); }
+              instance_var(_,t,_,_) { v.visit_ty(t, class_scope, v); }
             }
         }
       }
@@ -622,10 +627,10 @@ fn visit_local_with_scope(e: @env, loc: @local, sc:scopes, v:vt<scopes>) {
     // to enum foo, or is it binding a new name foo?)
     alt loc.node.pat.node {
       pat_ident(an_ident,_) {
-          // Be sure to pass ns_a_enum to lookup_in_scope so that
+          // Be sure to pass ns_an_enum to lookup_in_scope so that
           // if this is a name that's being shadowed, we don't die
           alt lookup_in_scope(*e, sc, loc.span,
-                 path_to_ident(an_ident), ns_val(ns_a_enum)) {
+                 path_to_ident(an_ident), ns_val(ns_an_enum)) {
               some(ast::def_variant(enum_id,variant_id)) {
                   // Declaration shadows a enum that's in scope.
                   // That's an error.
@@ -804,7 +809,7 @@ fn ns_name(ns: namespace) -> str {
       ns_val(v) {
           alt (v) {
               ns_any_value { "name" }
-              ns_a_enum    { "enum" }
+              ns_an_enum    { "enum" }
           }
       }
       ns_module { "modulename" }
@@ -1000,6 +1005,21 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
               ast::item_native_mod(m) {
                 ret lookup_in_local_native_mod(e, it.id, sp, name, ns);
               }
+              ast::item_class(tps, members, ctor_id, _, _) {
+                  if ns == ns_type {
+                    ret lookup_in_ty_params(e, name, tps);
+                  }
+                  if ns == ns_val(ns_any_value) && name == it.ident {
+                      ret some(ast::def_fn(local_def(ctor_id),
+                                           ast::impure_fn));
+                  }
+                  if ns == ns_val(ns_any_value) {
+                          ret lookup_in_class(local_def(it.id),
+                                              members, name);
+                  }
+                  // FIXME: AST allows other items to appear in a class,
+                  // but that might not be wise
+              }
               _ { }
             }
           }
@@ -1071,7 +1091,7 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
                             /* If we were looking for a enum, at this point
                                we know it's bound to a non-enum value, and
                                we can return none instead of failing */
-                            ns_a_enum { ret none; }
+                            ns_an_enum { ret none; }
                             _ { "attempted dynamic environment-capture" }
                           }
                       }
@@ -1146,6 +1166,29 @@ fn lookup_in_fn(e: env, name: ident, decl: ast::fn_decl,
     }
 }
 
+/* 
+   FIXME: not sure about this code. maybe this should be handled
+   using the mod_index stuff
+ */
+fn lookup_in_class(parent_id: def_id,
+                   members: [@class_item], name: ident)
+   -> option<def> {
+    for m in members {
+      alt m.node.decl {
+        instance_var(v_name,_,_,id) {
+            if v_name == name {
+              ret some(def_class_field(parent_id, local_def(id)));
+            }
+        }
+        class_method(i) {
+            if i.ident == name {
+              ret some(def_class_method(parent_id, local_def(i.id)));
+            }
+        }
+      }
+    }
+    ret none;
+}
 
 fn lookup_in_block(e: env, name: ident, sp: span, b: ast::blk_, pos: uint,
                    loc_pos: uint, ns: namespace) -> option<def> {
@@ -1430,7 +1473,7 @@ fn lookup_in_globs(e: env, globs: [glob_imp_def], sp: span, id: ident,
     if vec::len(matches) == 0u {
         ret none;
         }
-    else if vec::len(matches) == 1u || ns == ns_val(ns_a_enum) {
+    else if vec::len(matches) == 1u || ns == ns_val(ns_an_enum) {
         ret some(matches[0].def);
     } else {
         for match: glob_imp_def in matches {
@@ -1449,7 +1492,7 @@ fn lookup_glob_in_mod(e: env, info: @indexed_mod, sp: span, id: ident,
     if !info.glob_imported_names.contains_key(id) {
         info.glob_imported_names.insert(id, glob_resolving(sp));
         // kludge
-        let val_ns = if wanted_ns == ns_val(ns_a_enum) { ns_val(ns_a_enum) }
+        let val_ns = if wanted_ns == ns_val(ns_an_enum) { ns_val(ns_an_enum) }
                      else { ns_val(ns_any_value) };
         let globs = info.glob_imports;
         let val = lookup_in_globs(e, globs, sp, id, val_ns, dr);
@@ -1615,7 +1658,7 @@ fn index_nmod(md: ast::native_mod) -> mod_index {
 // External lookups
 fn ns_for_def(d: def) -> namespace {
     alt d {
-      ast::def_variant(_, _) { ns_val(ns_a_enum) }
+      ast::def_variant(_, _) { ns_val(ns_an_enum) }
       ast::def_fn(_, _) | ast::def_self(_) |
       ast::def_const(_) | ast::def_arg(_, _) | ast::def_local(_) |
       ast::def_upvar(_, _, _) |  ast::def_self(_) |
@@ -1632,7 +1675,7 @@ fn ns_for_def(d: def) -> namespace {
 // a enum
 fn ns_ok(wanted:namespace, actual:namespace) -> bool {
     alt actual {
-      ns_val(ns_a_enum) {
+      ns_val(ns_an_enum) {
         alt wanted {
           ns_val(_) { true }
           _ { false }

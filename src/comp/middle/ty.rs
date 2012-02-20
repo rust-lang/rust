@@ -2183,6 +2183,21 @@ mod unify {
               }
             }
           }
+          ty_class(expected_class, expected_tys) {
+              alt get(actual).struct {
+                ty_class(actual_class, actual_tys) {
+                    if expected_class != actual_class {
+                        ret ures_err(terr_mismatch);
+                    }
+                    ret unify_tps(cx, expected_tys, actual_tys, variance,
+                           {|tps|
+                            ures_ok(mk_class(cx.tcx, expected_class, tps))});
+                }
+                _ {
+                    ret ures_err(terr_mismatch);
+                }
+              }
+          }
           _ { cx.tcx.sess.bug("unify: unexpected type"); }
         }
     }
@@ -2478,13 +2493,11 @@ fn enum_variant_with_id(cx: ctxt, enum_id: ast::def_id,
 
 // If the given item is in an external crate, looks up its type and adds it to
 // the type cache. Returns the type parameters and type.
+// a precondition (did.crate != ast::local_crate) would be nice
 fn lookup_item_type(cx: ctxt, did: ast::def_id) -> ty_param_bounds_and_ty {
     alt cx.tcache.find(did) {
       some(tpt) { ret tpt; }
       none {
-          /* where do things get added to the cache?
-             Have to add class members */
-
         // The item is in this crate. The caller should have added it to the
         // type cache already
         assert did.crate != ast::local_crate;

@@ -1972,13 +1972,14 @@ fn parse_item_res(p: parser, attrs: [ast::attribute]) -> @ast::item {
 fn parse_item_class(p: parser, attrs: [ast::attribute]) -> @ast::item {
     let lo = p.last_span.lo;
     let class_name = parse_value_ident(p);
+    let class_path = ident_to_path(p.last_span, class_name);
     let ty_params = parse_ty_params(p);
     expect(p, token::LBRACE);
     let items: [@ast::class_item] = [];
     let ctor_id = p.get_id();
     let the_ctor : option<(ast::fn_decl, ast::blk)> = none;
     while p.token != token::RBRACE {
-       alt parse_class_item(p) {
+        alt parse_class_item(p, class_path) {
             ctor_decl(a_fn_decl, blk) {
                 the_ctor = some((a_fn_decl, blk));
             }
@@ -2015,10 +2016,14 @@ enum class_contents { ctor_decl(ast::fn_decl, ast::blk),
                       // none of these are a ctor decl
                       priv_decls([ast::class_member])}
 
-fn parse_class_item(p:parser) -> class_contents {
+    fn parse_class_item(p:parser, class_name:@ast::path) -> class_contents {
     if eat_word(p, "new") {
         // Can ctors have attrs?
-        let decl = parse_fn_decl(p, ast::impure_fn);
+            // result type is always the type of the class
+        let decl_ = parse_fn_decl(p, ast::impure_fn);
+        let decl = {output: @{node: ast::ty_path(class_name, p.get_id()),
+                                  span: decl_.output.span}
+                    with decl_};
         let body = parse_block(p);
         ret ctor_decl(decl, body);
     }
