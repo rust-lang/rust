@@ -43,6 +43,7 @@ lock_and_signal::lock_and_signal()
 #endif
 
 lock_and_signal::~lock_and_signal() {
+    assert(_holding_thread == INVALID_THREAD);
 #if defined(__WIN32__)
     CloseHandle(_event);
     DeleteCriticalSection(&_cs);
@@ -53,6 +54,7 @@ lock_and_signal::~lock_and_signal() {
 }
 
 void lock_and_signal::lock() {
+    assert(!lock_held_by_current_thread());
 #if defined(__WIN32__)
     EnterCriticalSection(&_cs);
     _holding_thread = GetCurrentThreadId();
@@ -63,6 +65,7 @@ void lock_and_signal::lock() {
 }
 
 void lock_and_signal::unlock() {
+    assert(lock_held_by_current_thread());
     _holding_thread = INVALID_THREAD;
 #if defined(__WIN32__)
     LeaveCriticalSection(&_cs);
@@ -81,9 +84,11 @@ void lock_and_signal::wait() {
     LeaveCriticalSection(&_cs);
     WaitForSingleObject(_event, INFINITE);
     EnterCriticalSection(&_cs);
+    assert(_holding_thread == INVALID_THREAD);
     _holding_thread = GetCurrentThreadId();
 #else
     CHECKED(pthread_cond_wait(&_cond, &_mutex));
+    assert(_holding_thread == INVALID_THREAD);
     _holding_thread = pthread_self();
 #endif
 }
