@@ -146,12 +146,15 @@ type env =
 // since export restrictions should only be applied for the former.
 enum dir { inside, outside, }
 
-// There are two types of ns_value enum: "definitely a enum";
-// and "any value". This is so that lookup can behave differently
-// when looking up a variable name that's not yet in scope to check
-// if it's already bound to a enum.
-enum namespace { ns_val(ns_value_type), ns_type, ns_module, }
-enum ns_value_type { ns_an_enum, ns_any_value, }
+// There are two types of ns_value enum: "definitely a enum"; and "enum or
+// other value". This is so that lookup can behave differently when looking up
+// a variable name that's not yet in scope to check if it's already bound to a
+// enum.
+enum namespace { ns_val(enumness), ns_type, ns_module, }
+enum enumness {
+    definite_enum,
+    value_or_enum
+}
 
 fn resolve_crate(sess: session, amap: ast_map::map, crate: @ast::crate) ->
    {def_map: def_map, exp_map: exp_map, impl_map: impl_map} {
@@ -372,7 +375,7 @@ fn check_unused_imports(e: @env) {
 
 fn resolve_capture_item(e: @env, sc: scopes, &&cap_item: @ast::capture_item) {
     let dcur = lookup_in_scope_strict(
-        *e, sc, cap_item.span, cap_item.name, ns_val(ns_any_value));
+        *e, sc, cap_item.span, cap_item.name, ns_val(value_or_enum));
     maybe_insert(e, cap_item.id, dcur);
 }
 
@@ -409,7 +412,7 @@ fn resolve_names(e: @env, c: @ast::crate) {
           ast::expr_path(p) {
             maybe_insert(e, exp.id,
                          lookup_path_strict(*e, sc, exp.span, p.node,
-                                            ns_val(ns_any_value)));
+                                            ns_val(value_or_enum)));
           }
           ast::expr_fn(_, _, _, cap_clause) {
             let rci = bind resolve_capture_item(e, sc, _);
@@ -446,14 +449,14 @@ fn resolve_names(e: @env, c: @ast::crate) {
     fn walk_constr(e: @env, p: @ast::path, sp: span, id: node_id, sc: scopes,
                    _v: vt<scopes>) {
         maybe_insert(e, id, lookup_path_strict(*e, sc,
-                         sp, p.node, ns_val(ns_any_value)));
+                         sp, p.node, ns_val(value_or_enum)));
     }
     fn walk_pat(e: @env, pat: @ast::pat, sc: scopes, v: vt<scopes>) {
         visit::visit_pat(pat, sc, v);
         alt pat.node {
           ast::pat_enum(p, _) {
             alt lookup_path_strict(*e, sc, p.span, p.node,
-                                           ns_val(ns_any_value)) {
+                                           ns_val(value_or_enum)) {
               some(fnd@ast::def_variant(_,_)) {
                 e.def_map.insert(pat.id, fnd);
               }
@@ -468,7 +471,7 @@ fn resolve_names(e: @env, c: @ast::crate) {
            variable a refers to a nullary enum. */
           ast::pat_ident(p, none) {
               alt lookup_in_scope(*e, sc, p.span, path_to_ident(p),
-                                    ns_val(ns_an_enum)) {
+                                    ns_val(definite_enum)) {
                 some(fnd@ast::def_variant(_,_)) {
                     e.def_map.insert(pat.id, fnd);
                 }
@@ -624,11 +627,11 @@ fn visit_local_with_scope(e: @env, loc: @local, sc:scopes, v:vt<scopes>) {
     // a single identifier unambiguous (does the pattern "foo" refer
     // to enum foo, or is it binding a new name foo?)
     alt loc.node.pat.node {
-      pat_ident(an_ident, _) {
-          // Be sure to pass ns_an_enum to lookup_in_scope so that
+      pat_ident(an_ident,_) {
+          // Be sure to pass definite_enum to lookup_in_scope so that
           // if this is a name that's being shadowed, we don't die
           alt lookup_in_scope(*e, sc, loc.span,
-                 path_to_ident(an_ident), ns_val(ns_an_enum)) {
+                 path_to_ident(an_ident), ns_val(definite_enum)) {
               some(ast::def_variant(enum_id,variant_id)) {
                   // Declaration shadows a enum that's in scope.
                   // That's an error.
@@ -676,7 +679,7 @@ fn follow_import(e: env, sc: scopes, path: [ident], sp: span) ->
 
 fn resolve_constr(e: @env, c: @ast::constr, sc: scopes, _v: vt<scopes>) {
     alt lookup_path_strict(*e, sc, c.span, c.node.path.node,
-                           ns_val(ns_any_value)) {
+                           ns_val(value_or_enum)) {
        some(d@ast::def_fn(_,ast::pure_fn)) {
          e.def_map.insert(c.node.id, d);
        }
@@ -694,7 +697,7 @@ fn resolve_import(e: env, defid: ast::def_id, name: ast::ident,
     fn register(e: env, id: node_id, cx: ctxt, sp: codemap::span,
                 name: ast::ident, lookup: fn(namespace) -> option<def>,
                 impls: [@_impl]) {
-        let val = lookup(ns_val(ns_any_value)), typ = lookup(ns_type),
+        let val = lookup(ns_val(value_or_enum)), typ = lookup(ns_type),
             md = lookup(ns_module);
         if is_none(val) && is_none(typ) && is_none(md) &&
            vec::len(impls) == 0u {
@@ -806,8 +809,8 @@ fn ns_name(ns: namespace) -> str {
       ns_type { "typename" }
       ns_val(v) {
           alt (v) {
-              ns_any_value { "name" }
-              ns_an_enum    { "enum" }
+              value_or_enum { "name" }
+              definite_enum    { "enum" }
           }
       }
       ns_module { "modulename" }
@@ -1007,11 +1010,11 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
                   if ns == ns_type {
                     ret lookup_in_ty_params(e, name, tps);
                   }
-                  if ns == ns_val(ns_any_value) && name == it.ident {
+                  if ns == ns_val(value_or_enum) && name == it.ident {
                       ret some(ast::def_fn(local_def(ctor_id),
                                            ast::impure_fn));
                   }
-                  if ns == ns_val(ns_any_value) {
+                  if ns == ns_val(value_or_enum) {
                           ret lookup_in_class(local_def(it.id),
                                               members, name);
                   }
@@ -1022,7 +1025,7 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
             }
           }
           scope_method(id, tps) {
-            if (name == "self" && ns == ns_val(ns_any_value)) {
+            if (name == "self" && ns == ns_val(value_or_enum)) {
                 ret some(ast::def_self(local_def(id)));
             } else if ns == ns_type {
                 ret lookup_in_ty_params(e, name, tps);
@@ -1044,7 +1047,7 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
             ret lookup_in_fn(e, name, decl, ty_params, ns);
           }
           scope_loop(local) {
-            if ns == ns_val(ns_any_value) {
+            if ns == ns_val(value_or_enum) {
                 alt lookup_in_pat(e, name, local.node.pat) {
                   some(did) { ret some(ast::def_binding(did)); }
                   _ { }
@@ -1055,7 +1058,7 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
             ret lookup_in_block(e, name, sp, b.node, *pos, *loc, ns);
           }
           scope_arm(a) {
-            if ns == ns_val(ns_any_value) {
+            if ns == ns_val(value_or_enum) {
                 alt lookup_in_pat(e, name, a.pats[0]) {
                   some(did) { ret some(ast::def_binding(did)); }
                   _ { ret none; }
@@ -1089,7 +1092,7 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
                             /* If we were looking for a enum, at this point
                                we know it's bound to a non-enum value, and
                                we can return none instead of failing */
-                            ns_an_enum { ret none; }
+                            definite_enum { ret none; }
                             _ { "attempted dynamic environment-capture" }
                           }
                       }
@@ -1150,7 +1153,7 @@ fn lookup_in_fn(e: env, name: ident, decl: ast::fn_decl,
                 ty_params: [ast::ty_param],
                 ns: namespace) -> option<def> {
     alt ns {
-      ns_val(ns_any_value) {
+      ns_val(value_or_enum) {
         for a: ast::arg in decl.inputs {
             if str::eq(a.ident, name) {
                 ret some(ast::def_arg(local_def(a.id), a.mode));
@@ -1202,7 +1205,7 @@ fn lookup_in_block(e: env, name: ident, sp: span, b: ast::blk_, pos: uint,
                     while j > 0u {
                         j -= 1u;
                         let loc = locs[j];
-                        if ns == ns_val(ns_any_value)
+                        if ns == ns_val(value_or_enum)
                                      && (i < pos || j < loc_pos) {
                             alt lookup_in_pat(e, name, loc.node.pat) {
                               some(did) {
@@ -1292,11 +1295,11 @@ fn lookup_in_block(e: env, name: ident, sp: span, b: ast::blk_, pos: uint,
 fn found_def_item(i: @ast::item, ns: namespace) -> option<def> {
     alt i.node {
       ast::item_const(_, _) {
-        if ns == ns_val(ns_any_value) {
+        if ns == ns_val(value_or_enum) {
             ret some(ast::def_const(local_def(i.id))); }
       }
       ast::item_fn(decl, _, _) {
-        if ns == ns_val(ns_any_value) {
+        if ns == ns_val(value_or_enum) {
             ret some(ast::def_fn(local_def(i.id), decl.purity));
         }
       }
@@ -1311,7 +1314,7 @@ fn found_def_item(i: @ast::item, ns: namespace) -> option<def> {
       }
       ast::item_res(_, _, _, _, ctor_id) {
         alt ns {
-          ns_val(ns_any_value) {
+          ns_val(value_or_enum) {
             ret some(ast::def_fn(local_def(ctor_id), ast::impure_fn));
           }
           ns_type { ret some(ast::def_ty(local_def(i.id))); }
@@ -1470,7 +1473,7 @@ fn lookup_in_globs(e: env, globs: [glob_imp_def], sp: span, id: ident,
     if vec::len(matches) == 0u {
         ret none;
         }
-    else if vec::len(matches) == 1u || ns == ns_val(ns_an_enum) {
+    else if vec::len(matches) == 1u || ns == ns_val(definite_enum) {
         ret some(matches[0].def);
     } else {
         for match: glob_imp_def in matches {
@@ -1489,8 +1492,11 @@ fn lookup_glob_in_mod(e: env, info: @indexed_mod, sp: span, id: ident,
     if !info.glob_imported_names.contains_key(id) {
         info.glob_imported_names.insert(id, glob_resolving(sp));
         // kludge
-        let val_ns = if wanted_ns == ns_val(ns_an_enum) { ns_val(ns_an_enum) }
-                     else { ns_val(ns_any_value) };
+        let val_ns = if wanted_ns == ns_val(definite_enum) {
+            ns_val(definite_enum)
+        } else {
+            ns_val(value_or_enum)
+        };
         let globs = info.glob_imports;
         let val = lookup_in_globs(e, globs, sp, id, val_ns, dr);
         let typ = lookup_in_globs(e, globs, sp, id, ns_type, dr);
@@ -1532,7 +1538,7 @@ fn lookup_in_mie(e: env, mie: mod_index_entry, ns: namespace) ->
       mie_native_item(native_item) {
         alt native_item.node {
           ast::native_item_fn(decl, _) {
-            if ns == ns_val(ns_any_value) {
+            if ns == ns_val(value_or_enum) {
                 ret some(ast::def_fn(local_def(native_item.id),
                                      decl.purity));
             }
@@ -1655,12 +1661,12 @@ fn index_nmod(md: ast::native_mod) -> mod_index {
 // External lookups
 fn ns_for_def(d: def) -> namespace {
     alt d {
-      ast::def_variant(_, _) { ns_val(ns_an_enum) }
+      ast::def_variant(_, _) { ns_val(definite_enum) }
       ast::def_fn(_, _) | ast::def_self(_) |
       ast::def_const(_) | ast::def_arg(_, _) | ast::def_local(_) |
       ast::def_upvar(_, _, _) |  ast::def_self(_) |
       ast::def_class_field(_,_) | ast::def_class_method(_,_)
-          { ns_val(ns_any_value) }
+          { ns_val(value_or_enum) }
       ast::def_mod(_) | ast::def_native_mod(_) { ns_module }
       ast::def_ty(_) | ast::def_binding(_) | ast::def_use(_) |
       ast::def_ty_param(_, _) | ast::def_prim_ty(_) | ast::def_class(_)
@@ -1672,7 +1678,7 @@ fn ns_for_def(d: def) -> namespace {
 // a enum
 fn ns_ok(wanted:namespace, actual:namespace) -> bool {
     alt actual {
-      ns_val(ns_an_enum) {
+      ns_val(definite_enum) {
         alt wanted {
           ns_val(_) { true }
           _ { false }
@@ -1720,7 +1726,7 @@ fn check_mod_name(e: env, name: ident, entries: list<mod_index_entry>) {
     while true {
         alt entries {
           cons(entry, rest) {
-            if !is_none(lookup_in_mie(e, entry, ns_val(ns_any_value))) {
+            if !is_none(lookup_in_mie(e, entry, ns_val(value_or_enum))) {
                 if saw_value {
                     dup(e, mie_span(entry), "", name);
                 } else { saw_value = true; }
@@ -1921,7 +1927,7 @@ fn check_exports(e: @env) {
         let lookup =
             bind lookup_glob_in_mod(*e, info, sp, ident, _, inside);
         let (m, v, t) = (lookup(ns_module),
-                         lookup(ns_val(ns_any_value)),
+                         lookup(ns_val(value_or_enum)),
                          lookup(ns_type));
         let full_path = path + ident;
         maybe_add_reexport(e, full_path, m);
