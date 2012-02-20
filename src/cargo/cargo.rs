@@ -346,39 +346,35 @@ fn build_cargo_options(argv: [str]) -> options {
     };
 
     let test = opt_present(match, "test");
-    let mode = if opt_present(match, "G") {
-        if opt_present(match, "mode") { fail "--mode and -G both provided"; }
-        if opt_present(match, "g") { fail "-G and -g both provided"; }
-        system_mode
-    } else if opt_present(match, "g") {
-        if opt_present(match, "mode") { fail "--mode and -g both provided"; }
-        if opt_present(match, "G") { fail "-G and -g both provided"; }
-        user_mode
-    } else if opt_present(match, "mode") {
-        alt getopts::opt_str(match, "mode") {
-            "system" { system_mode }
-            "user" { user_mode }
-            "local" { local_mode }
-            _ { fail "argument to `mode` must be one of `system`" +
-                ", `user`, or `normal`";
-            }
-        }
-    } else {
-        local_mode
-    };
+    let G = opt_present(match, "G");
+    let g = opt_present(match, "g");
+    let m = opt_present(match, "mode");
+    let is_install = vec::len(match.free) > 1u && match.free[1] == "install";
 
-    if mode == system_mode {
-        // FIXME: Per discussion on #1760, we need to think about how
-        // system mode works. It should install files to the normal
-        // sysroot paths, but it also needsd an area to place various
-        // cargo configuration and work files.
-        fail "system mode does not exist yet";
-    }
+    if G && g { fail "-G and -g both provided"; }
+    if g && m { fail "--mode and -g both provided"; }
+    if G && m { fail "--mode and -G both provided"; }
+
+    let mode = if is_install {
+        if G { system_mode }
+        else if g { user_mode }
+        else if m {
+            alt getopts::opt_str(match, "mode") {
+                "system" { system_mode }
+                "user" { user_mode }
+                "local" { local_mode }
+                _ { fail "argument to `mode` must be one of `system`" +
+                    ", `user`, or `local`";
+                }
+            }
+        } else { local_mode }
+    } else { system_mode };
 
     {test: test, mode: mode, free: match.free}
 }
 
 fn configure(opts: options) -> cargo {
+    let syscargo = result::get(get_cargo_sysroot());
     let get_cargo_dir = alt opts.mode {
         system_mode { get_cargo_sysroot }
         user_mode { get_cargo_root }
@@ -391,15 +387,15 @@ fn configure(opts: options) -> cargo {
     };
 
     let sources = map::new_str_hash::<source>();
-    try_parse_sources(fs::connect(p, "sources.json"), sources);
-    try_parse_sources(fs::connect(p, "local-sources.json"), sources);
+    try_parse_sources(fs::connect(syscargo, "sources.json"), sources);
+    try_parse_sources(fs::connect(syscargo, "local-sources.json"), sources);
     let c = {
         pgp: pgp::supported(),
         root: p,
         bindir: fs::connect(p, "bin"),
         libdir: fs::connect(p, "lib"),
         workdir: fs::connect(p, "work"),
-        sourcedir: fs::connect(p, "sources"),
+        sourcedir: fs::connect(syscargo, "sources"),
         sources: sources,
         opts: opts
     };
