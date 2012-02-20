@@ -6,7 +6,7 @@ use std;
 import rustc::syntax::{ast, codemap};
 import rustc::syntax::parse::parser;
 import rustc::util::filesearch::{get_cargo_root, get_cargo_root_nearest,
-                                 get_cargo_sysroot};
+                                 get_cargo_sysroot, libdir};
 import rustc::driver::diagnostic;
 
 import std::fs;
@@ -467,10 +467,31 @@ fn install_one_crate(c: cargo, _path: str, cf: str, _p: pkg) {
             #debug("  bin: %s", ct);
             // FIXME: need libstd fs::copy or something
             run::run_program("cp", [ct, c.bindir]);
+            if c.opts.mode == system_mode {
+                install_one_crate_to_sysroot(ct, "bin");
+            }
         } else {
             #debug("  lib: %s", ct);
             run::run_program("cp", [ct, c.libdir]);
+            if c.opts.mode == system_mode {
+                install_one_crate_to_sysroot(ct, libdir());
+            }
         }
+    }
+}
+
+fn install_one_crate_to_sysroot(ct: str, target: str) {
+    alt os::get_exe_path() {
+        some(_path) {
+            let path = [_path, "..", target];
+            check vec::is_not_empty(path);
+            let target_dir = fs::normalize(fs::connect_many(path));
+            let p = run::program_output("cp", [ct, target_dir]);
+            if p.status != 0 {
+                warn(#fmt["Copying %s to %s is failed", ct, target_dir]);
+            }
+        }
+        none { }
     }
 }
 
@@ -827,8 +848,8 @@ fn cmd_usage() {
           "
 
     init                                          Set up .cargo
-    install [--test] [source/]package-name        Install by name
-    install [--test] uuid:[source/]package-uuid   Install by uuid
+    install [options] [source/]package-name       Install by name
+    install [options] uuid:[source/]package-uuid  Install by uuid
     list [source]                                 List packages
     search <name | '*'> [tags...]                 Search packages
     sync                                          Sync all sources
@@ -836,14 +857,16 @@ fn cmd_usage() {
 
 Options:
 
+  cargo install
+
     --mode=[system,user,local]   change mode as (system/user/local)
     -g                           equivalent to --mode=user
     -G                           equivalent to --mode=system
 
 NOTE:
-This command creates/uses local-level .cargo by default.
-To create/use user-level .cargo, use option -g/--mode=user.
-To create/use system-level .cargo, use option -G/--mode=system.
+\"cargo install\" installs bin/libs to local-level .cargo by default.
+To install them into user-level .cargo,  use option -g/--mode=user.
+To install them into bin/lib on sysroot, use option -G/--mode=system.
 ");
 }
 
