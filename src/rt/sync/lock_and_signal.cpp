@@ -34,6 +34,7 @@ lock_and_signal::lock_and_signal()
 lock_and_signal::~lock_and_signal() {
 #if defined(__WIN32__)
     CloseHandle(_event);
+    DeleteCriticalSection(&_cs);
 #else
     CHECKED(pthread_cond_destroy(&_cond));
     CHECKED(pthread_mutex_destroy(&_mutex));
