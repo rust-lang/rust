@@ -209,7 +209,7 @@ fn structurally_resolved_type(fcx: @fn_ctxt, sp: span, tp: ty::t) -> ty::t {
 }
 
 
-// Returns the one-level-deep structure of the given type.f
+// Returns the one-level-deep structure of the given type.
 fn structure_of(fcx: @fn_ctxt, sp: span, typ: ty::t) -> ty::sty {
     ty::get(structurally_resolved_type(fcx, sp, typ)).struct
 }
@@ -1835,6 +1835,30 @@ fn lookup_method_inner(fcx: @fn_ctxt, expr: @ast::expr,
     result
 }
 
+fn lookup_field_ty(cx: ty::ctxt, items:[@ast::class_item],
+                   fieldname: ast::ident, sp: span)
+    -> ty::t {
+    for item in items {
+      // this is an access outside the class, so accessing a private
+      // field is an error
+        alt item.node.decl {
+          ast::instance_var(declname, t, _, _) if declname == fieldname {
+             alt item.node.privacy {
+                ast::priv {
+                    cx.sess.span_fatal(sp, "Accessed private field outside \
+                       its enclosing class");
+                }
+                ast::pub {
+                    ret ast_ty_to_ty(cx, m_check, t);
+                }
+             }
+          }
+          _ { /* do nothing */ }
+        }
+    }
+    cx.sess.span_fatal(sp, #fmt("Unbound field %s", fieldname));
+}
+
 fn check_expr_fn_with_unifier(fcx: @fn_ctxt,
                               expr: @ast::expr,
                               proto: ast::proto,
@@ -2507,11 +2531,29 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
               _ {}
             }
           }
-          ty::ty_class(_id, _params) {
-              // TODO (classes)
-              tcx.sess.span_bug(expr.span,
-                  #fmt("can't check class field accesses yet: %s",
-                    ty_to_str(fcx.ccx.tcx, base_t)));
+          ty::ty_class(base_id, _params) {
+              // (1) verify that the class id actually has a field called
+              // field
+              // For now, this code assumes the class is defined in the local
+              // crate
+              // TODO: handle field references to classes in external crate
+              let err = "Class ID is not bound to a class";
+              let field_ty = alt fcx.ccx.tcx.items.find(base_id.node) {
+                      some(ast_map::node_item(i,_)) {
+                          alt i.node {
+                             ast::item_class(_, items, _, _, _) {
+                                 lookup_field_ty(fcx.ccx.tcx, items, field,
+                                    expr.span)
+                             }
+                             _ { fcx.ccx.tcx.sess.span_bug(expr.span, err); }
+                          }
+                      }
+                      _ { fcx.ccx.tcx.sess.span_bug(expr.span, err); }
+              };
+              // (2) look up what field's type is, and return it
+              // TODO: actually instantiate any type params
+              write_ty(tcx, id, field_ty);
+              handled = true;
           }
           _ {}
         }
