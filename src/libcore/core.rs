@@ -3,7 +3,7 @@
 // Export type option as a synonym for option and export the some and none
 // enum constructors.
 
-import option::{some,  none};
+import option::{some, none};
 import option = option::t;
 import vec::vec_len;
 export option, some, none, vec_len;
