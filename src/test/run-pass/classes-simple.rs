@@ -1,4 +1,3 @@
-// xfail-test
 class cat {
   priv {
     let mutable meows : uint;
@@ -11,7 +10,7 @@ class cat {
 
 fn main() {
   let nyan : cat = cat(52u, 99);
-  let kitty = cat(1000u, 2); 
+  let kitty = cat(1000u, 2);
   log(debug, nyan.how_hungry);
   log(debug, kitty.how_hungry);
 }
