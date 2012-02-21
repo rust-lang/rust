@@ -74,7 +74,7 @@ fn llnull() -> ValueRef unsafe {
     unsafe::reinterpret_cast(ptr::null::<ValueRef>())
 }
 
-fn add_named_metadata(cx: @crate_ctxt, name: str, val: ValueRef) {
+fn add_named_metadata(cx: crate_ctxt, name: str, val: ValueRef) {
     str::as_buf(name, {|sbuf|
         llvm::LLVMAddNamedMetadataOperand(cx.llmod, sbuf,
                                           val)
@@ -155,7 +155,7 @@ fn cached_metadata<T: copy>(cache: metadata_cache, mdtag: int,
     ret option::none;
 }
 
-fn create_compile_unit(cx: @crate_ctxt, full_path: str)
+fn create_compile_unit(cx: crate_ctxt, full_path: str)
     -> @metadata<compile_unit_md> unsafe {
     let cache = get_cache(cx);
     let tg = CompileUnitTag;
@@ -194,11 +194,11 @@ fn create_compile_unit(cx: @crate_ctxt, full_path: str)
     ret mdval;
 }
 
-fn get_cache(cx: @crate_ctxt) -> metadata_cache {
+fn get_cache(cx: crate_ctxt) -> metadata_cache {
     option::get(cx.dbg_cx).llmetadata
 }
 
-fn create_file(cx: @crate_ctxt, full_path: str) -> @metadata<file_md> {
+fn create_file(cx: crate_ctxt, full_path: str) -> @metadata<file_md> {
     let cache = get_cache(cx);;
     let tg = FileDescriptorTag;
     alt cached_metadata::<@metadata<file_md>>(
@@ -274,7 +274,7 @@ fn size_and_align_of<T>() -> (int, int) {
     (sys::size_of::<T>() as int, sys::align_of::<T>() as int)
 }
 
-fn create_basic_type(cx: @crate_ctxt, t: ty::t, ty: ast::prim_ty, span: span)
+fn create_basic_type(cx: crate_ctxt, t: ty::t, ty: ast::prim_ty, span: span)
     -> @metadata<tydesc_md> {
     let cache = get_cache(cx);
     let tg = BasicTypeDescriptorTag;
@@ -328,7 +328,7 @@ fn create_basic_type(cx: @crate_ctxt, t: ty::t, ty: ast::prim_ty, span: span)
     ret mdval;
 }
 
-fn create_pointer_type(cx: @crate_ctxt, t: ty::t, span: span,
+fn create_pointer_type(cx: crate_ctxt, t: ty::t, span: span,
                        pointee: @metadata<tydesc_md>)
     -> @metadata<tydesc_md> {
     let tg = PointerTypeTag;
@@ -401,7 +401,7 @@ fn add_member(cx: @struct_ctxt, name: str, line: int, size: int, align: int,
     cx.total_size += size * 8;
 }
 
-fn create_record(cx: @crate_ctxt, t: ty::t, fields: [ast::ty_field],
+fn create_record(cx: crate_ctxt, t: ty::t, fields: [ast::ty_field],
                  span: span) -> @metadata<tydesc_md> {
     let fname = filename_from_span(cx, span);
     let file_node = create_file(cx, fname);
@@ -421,7 +421,7 @@ fn create_record(cx: @crate_ctxt, t: ty::t, fields: [ast::ty_field],
     ret mdval;
 }
 
-fn create_boxed_type(cx: @crate_ctxt, outer: ty::t, _inner: ty::t,
+fn create_boxed_type(cx: crate_ctxt, outer: ty::t, _inner: ty::t,
                      span: span, boxed: @metadata<tydesc_md>)
     -> @metadata<tydesc_md> {
     //let tg = StructureTypeTag;
@@ -480,7 +480,7 @@ fn create_composite_type(type_tag: int, name: str, file: ValueRef, line: int,
     ret llmdnode(lldata);
 }
 
-fn create_vec(cx: @crate_ctxt, vec_t: ty::t, elem_t: ty::t,
+fn create_vec(cx: crate_ctxt, vec_t: ty::t, elem_t: ty::t,
               vec_ty_span: codemap::span, elem_ty: @ast::ty)
     -> @metadata<tydesc_md> {
     let fname = filename_from_span(cx, vec_ty_span);
@@ -554,7 +554,7 @@ fn member_size_and_align(tcx: ty::ctxt, ty: @ast::ty) -> (int, int) {
     }
 }
 
-fn create_ty(_cx: @crate_ctxt, _t: ty::t, _ty: @ast::ty)
+fn create_ty(_cx: crate_ctxt, _t: ty::t, _ty: @ast::ty)
     -> @metadata<tydesc_md> {
     /*let cache = get_cache(cx);
     alt cached_metadata::<@metadata<tydesc_md>>(
@@ -576,7 +576,7 @@ fn create_ty(_cx: @crate_ctxt, _t: ty::t, _ty: @ast::ty)
 
     fail;
     /*
-    fn t_to_ty(cx: @crate_ctxt, t: ty::t, span: span) -> @ast::ty {
+    fn t_to_ty(cx: crate_ctxt, t: ty::t, span: span) -> @ast::ty {
         let ty = alt ty::get(t).struct {
           ty::ty_nil { ast::ty_nil }
           ty::ty_bot { ast::ty_bot }
@@ -658,7 +658,7 @@ fn create_ty(_cx: @crate_ctxt, _t: ty::t, _ty: @ast::ty)
     */
 }
 
-fn filename_from_span(cx: @crate_ctxt, sp: codemap::span) -> str {
+fn filename_from_span(cx: crate_ctxt, sp: codemap::span) -> str {
     codemap::lookup_char_pos(cx.sess.codemap, sp.lo).file.name
 }
 
@@ -772,7 +772,7 @@ fn update_source_pos(cx: block, s: span) {
     llvm::LLVMSetCurrentDebugLocation(trans::build::B(cx), dbgscope);
 }
 
-fn create_function(fcx: @fn_ctxt) -> @metadata<subprogram_md> {
+fn create_function(fcx: fn_ctxt) -> @metadata<subprogram_md> {
     let cx = fcx.ccx;
     let dbg_cx = option::get(cx.dbg_cx);
 

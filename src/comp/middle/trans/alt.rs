@@ -63,7 +63,7 @@ fn trans_opt(bcx: block, o: opt) -> opt_result {
     }
 }
 
-fn variant_opt(ccx: @crate_ctxt, pat_id: ast::node_id) -> opt {
+fn variant_opt(ccx: crate_ctxt, pat_id: ast::node_id) -> opt {
     let vdef = ast_util::variant_def_ids(ccx.tcx.def_map.get(pat_id));
     let variants = ty::enum_variants(ccx.tcx, vdef.enm);
     for v: ty::variant_info in *variants {
@@ -155,10 +155,10 @@ fn enter_default(m: match, col: uint, val: ValueRef) -> match {
     ret enter_match(m, col, val, e);
 }
 
-fn enter_opt(ccx: @crate_ctxt, m: match, opt: opt, col: uint, enum_size: uint,
+fn enter_opt(ccx: crate_ctxt, m: match, opt: opt, col: uint, enum_size: uint,
              val: ValueRef) -> match {
     let dummy = @{id: 0, node: ast::pat_wild, span: dummy_sp()};
-    fn e(ccx: @crate_ctxt, dummy: @ast::pat, opt: opt, size: uint,
+    fn e(ccx: crate_ctxt, dummy: @ast::pat, opt: opt, size: uint,
          p: @ast::pat) -> option<[@ast::pat]> {
         alt p.node {
           ast::pat_enum(ctor, subpats) {
@@ -235,7 +235,7 @@ fn enter_uniq(m: match, col: uint, val: ValueRef) -> match {
     ret enter_match(m, col, val, bind e(dummy, _));
 }
 
-fn get_options(ccx: @crate_ctxt, m: match, col: uint) -> [opt] {
+fn get_options(ccx: crate_ctxt, m: match, col: uint) -> [opt] {
     fn add_to_set(&set: [opt], val: opt) {
         for l: opt in set { if opt_eq(l, val) { ret; } }
         set += [val];

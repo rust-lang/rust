@@ -19,7 +19,7 @@ export encoded_ty;
 
 type abbrev_map = map::hashmap<ty::t, tyencode::ty_abbrev>;
 
-type encode_ctxt = {ccx: @crate_ctxt, type_abbrevs: abbrev_map};
+type encode_ctxt = {ccx: crate_ctxt, type_abbrevs: abbrev_map};
 
 // Path table encoding
 fn encode_name(ebml_w: ebml::writer, name: str) {
@@ -702,7 +702,7 @@ fn encode_hash(ebml_w: ebml::writer, hash: str) {
     ebml::end_tag(ebml_w);
 }
 
-fn encode_metadata(cx: @crate_ctxt, crate: @crate) -> [u8] {
+fn encode_metadata(cx: crate_ctxt, crate: @crate) -> [u8] {
 
     let abbrevs = ty::new_ty_hash();
     let ecx = @{ccx: cx, type_abbrevs: abbrevs};
