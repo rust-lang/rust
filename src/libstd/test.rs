@@ -316,13 +316,12 @@ fn run_test(+test: test_desc, monitor_ch: comm::chan<monitor_msg>) {
     task::spawn {||
 
         let testfn = test.fn;
-        let test_task = task::spawn_joinable {||
-            configure_test_task();
-            testfn();
-        };
-
-        let task_result = task::join(test_task);
-        let test_result = calc_result(test, task_result == task::tr_success);
+        let builder = task::mk_task_builder();
+        let result_future = task::future_result(builder);
+        task::unsupervise(builder);
+        task::run(builder, testfn);
+        let task_result = future::get(result_future);
+        let test_result = calc_result(test, task_result == task::success);
         comm::send(monitor_ch, (test, test_result));
     };
 }
@@ -335,13 +334,6 @@ fn calc_result(test: test_desc, task_succeeded: bool) -> test_result {
         if test.should_fail { tr_ok }
         else { tr_failed }
     }
-}
-
-// Call from within a test task to make sure it's set up correctly
-fn configure_test_task() {
-    // If this task fails we don't want that failure to propagate to the
-    // test runner or else we couldn't keep running tests
-    task::unsupervise();
 }
 
 #[cfg(test)]

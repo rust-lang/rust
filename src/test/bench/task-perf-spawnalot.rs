@@ -7,7 +7,7 @@ import str;
 fn f(&&n: uint) {
     let i = 0u;
     while i < n {
-        task::join(task::spawn_joinable {|| g(); });
+        task::try {|| g() };
         i += 1u;
     }
 }

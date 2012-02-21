@@ -8,7 +8,6 @@
 use std;
 
 import task;
-import task::join;
 import comm;
 import comm::chan;
 import comm::send;
@@ -18,21 +17,18 @@ import comm::recv;
 fn grandchild(c: chan<int>) { send(c, 42); }
 
 fn child(c: chan<int>) {
-    let _grandchild = task::spawn_joinable {|| grandchild(c); };
-    join(_grandchild);
+    task::spawn {|| grandchild(c); }
 }
 
 fn main() {
     let p = comm::port();
     let ch = chan(p);
 
-    let _child = task::spawn_joinable {|| child(ch); };
+    task::spawn {|| child(ch); }
 
     let x: int = recv(p);
 
     log(debug, x);
 
     assert (x == 42);
-
-    join(_child);
 }

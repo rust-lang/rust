@@ -7,7 +7,9 @@ fn start(&&task_number: int) { #debug("Started / Finished task."); }
 
 fn test00() {
     let i: int = 0;
-    let t = task::spawn_joinable {|| start(i); };
+    let builder = task::mk_task_builder();
+    let r = task::future_result(builder);
+    task::run(builder) {|| start(i); };
 
     // Sleep long enough for the task to finish.
     let i = 0;
@@ -17,7 +19,7 @@ fn test00() {
     }
 
     // Try joining tasks that have already finished.
-    task::join(t);
+    future::get(r);
 
     #debug("Joined task.");
 }
