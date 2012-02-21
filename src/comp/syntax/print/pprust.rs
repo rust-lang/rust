@@ -71,6 +71,10 @@ fn print_crate(cm: codemap, span_diagnostic: diagnostic::span_handler,
           mutable cur_lit: 0u,
           mutable boxes: boxes,
           ann: ann};
+    print_crate_(s, crate);
+}
+
+fn print_crate_(s: ps, &&crate: @ast::crate) {
     print_mod(s, crate.node.module, crate.node.attrs);
     print_remaining_comments(s);
     eof(s.s);

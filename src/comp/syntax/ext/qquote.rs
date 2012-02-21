@@ -30,6 +30,16 @@ iface qq_helper {
     fn mk_parse_fn(ext_ctxt,span) -> @ast::expr;
     fn get_fold_fn() -> str;
 }
+
+impl of qq_helper for @ast::crate {
+    fn span() -> span {self.span}
+    fn visit(cx: aq_ctxt, v: vt<aq_ctxt>) {visit_crate(*self, cx, v);}
+    fn extract_mac() -> option<ast::mac_> {fail}
+    fn mk_parse_fn(cx: ext_ctxt, sp: span) -> @ast::expr {
+        mk_path(cx, sp, ["syntax", "ext", "qquote", "parse_crate"])
+    }
+    fn get_fold_fn() -> str {"fold_crate"}
+}
 impl of qq_helper for @ast::expr {
     fn span() -> span {self.span}
     fn visit(cx: aq_ctxt, v: vt<aq_ctxt>) {visit_expr(self, cx, v);}
@@ -145,6 +155,7 @@ fn expand_ast(ecx: ext_ctxt, _sp: span,
     let body = get_mac_body(ecx,_sp,body);
 
     ret alt what {
+      "crate" {finish(ecx, body, parse_crate)}
       "expr" {finish(ecx, body, parser::parse_expr)}
       "ty" {finish(ecx, body, parse_ty)}
       "item" {finish(ecx, body, parse_item)}
@@ -152,6 +163,10 @@ fn expand_ast(ecx: ext_ctxt, _sp: span,
       "pat" {finish(ecx, body, parser::parse_pat)}
       _ {ecx.span_fatal(_sp, "unsupported ast type")}
     };
+}
+
+fn parse_crate(p: parser) -> @ast::crate {
+    parser::parse_crate_mod(p, [])
 }
 
 fn parse_ty(p: parser) -> @ast::ty {
@@ -264,6 +279,9 @@ fn replace<T>(node: T, repls: [fragment], ff: fn (ast_fold, T) -> T)
                                           aft.fold_ty)
                  with *aft};
     ret ff(make_fold(f_pre), node);
+}
+fn fold_crate(f: ast_fold, &&n: @ast::crate) -> @ast::crate {
+    @f.fold_crate(*n)
 }
 fn fold_expr(f: ast_fold, &&n: @ast::expr) -> @ast::expr {f.fold_expr(n)}
 fn fold_ty(f: ast_fold, &&n: @ast::ty) -> @ast::ty {f.fold_ty(n)}
