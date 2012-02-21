@@ -379,8 +379,9 @@ mod test {
     #[test]
     fn extract_from_seq_srv() {
         let source = "";
-        let srv = astsrv::from_str(source);
-        let doc = from_srv(srv, "name");
-        assert doc.topmod.name() == "name";
+        astsrv::from_str(source) {|srv|
+            let doc = from_srv(srv, "name");
+            assert doc.topmod.name() == "name";
+        }
     }
 }

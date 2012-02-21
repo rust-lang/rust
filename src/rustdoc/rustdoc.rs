@@ -71,11 +71,12 @@ fn test_run_passes() {
         }
     }
     let source = "";
-    let srv = astsrv::from_str(source);
-    let passes = [pass1, pass2];
-    let doc = extract::from_srv(srv, "one");
-    let doc = run_passes(srv, doc, passes);
-    assert doc.topmod.name() == "onetwothree";
+    astsrv::from_str(source) {|srv|
+        let passes = [pass1, pass2];
+        let doc = extract::from_srv(srv, "one");
+        let doc = run_passes(srv, doc, passes);
+        assert doc.topmod.name() == "onetwothree";
+    }
 }
 
 fn main(argv: [str]) {
@@ -93,22 +94,23 @@ fn main(argv: [str]) {
 fn run(source_file: str) {
 
     let default_name = source_file;
-    let srv = astsrv::from_file(source_file);
-    let doc = extract::from_srv(srv, default_name);
-    run_passes(srv, doc, [
-        prune_unexported_pass::mk_pass(),
-        tystr_pass::mk_pass(),
-        path_pass::mk_pass(),
-        attr_pass::mk_pass(),
-        prune_undoc_details_pass::mk_pass(),
-        // FIXME: This pass should be optional
-        // prune_undoc_items_pass::mk_pass(),
-        desc_to_brief_pass::mk_pass(),
-        trim_pass::mk_pass(),
-        unindent_pass::mk_pass(),
-        reexport_pass::mk_pass(),
-        sort_item_name_pass::mk_pass(),
-        sort_item_type_pass::mk_pass(),
-        markdown_pass::mk_pass {|f| f(std::io:: stdout()) }
-    ]);
+    astsrv::from_file(source_file) {|srv|
+        let doc = extract::from_srv(srv, default_name);
+        run_passes(srv, doc, [
+            prune_unexported_pass::mk_pass(),
+            tystr_pass::mk_pass(),
+            path_pass::mk_pass(),
+            attr_pass::mk_pass(),
+            prune_undoc_details_pass::mk_pass(),
+            // FIXME: This pass should be optional
+            // prune_undoc_items_pass::mk_pass(),
+            desc_to_brief_pass::mk_pass(),
+            trim_pass::mk_pass(),
+            unindent_pass::mk_pass(),
+            reexport_pass::mk_pass(),
+            sort_item_name_pass::mk_pass(),
+            sort_item_type_pass::mk_pass(),
+            markdown_pass::mk_pass {|f| f(std::io:: stdout()) }
+        ]);
+    }
 }

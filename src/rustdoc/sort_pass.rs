@@ -42,13 +42,14 @@ fn test() {
     }
 
     let source = "mod z { mod y { } fn x() { } } mod w { }";
-    let srv = astsrv::from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = mk_pass(name_lteq)(srv, doc);
-    assert doc.topmod.mods()[0].name() == "w";
-    assert doc.topmod.mods()[1].items[0].name() == "x";
-    assert doc.topmod.mods()[1].items[1].name() == "y";
-    assert doc.topmod.mods()[1].name() == "z";
+    astsrv::from_str(source) {|srv|
+        let doc = extract::from_srv(srv, "");
+        let doc = mk_pass(name_lteq)(srv, doc);
+        assert doc.topmod.mods()[0].name() == "w";
+        assert doc.topmod.mods()[1].items[0].name() == "x";
+        assert doc.topmod.mods()[1].items[1].name() == "y";
+        assert doc.topmod.mods()[1].name() == "z";
+    }
 }
 
 #[test]
@@ -58,12 +59,13 @@ fn should_be_stable() {
     }
 
     let source = "mod a { mod b { } } mod c { mod d { } }";
-    let srv = astsrv::from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = mk_pass(always_eq)(srv, doc);
-    assert doc.topmod.mods()[0].items[0].name() == "b";
-    assert doc.topmod.mods()[1].items[0].name() == "d";
-    let doc = mk_pass(always_eq)(srv, doc);
-    assert doc.topmod.mods()[0].items[0].name() == "b";
-    assert doc.topmod.mods()[1].items[0].name() == "d";
+    astsrv::from_str(source) {|srv|
+        let doc = extract::from_srv(srv, "");
+        let doc = mk_pass(always_eq)(srv, doc);
+        assert doc.topmod.mods()[0].items[0].name() == "b";
+        assert doc.topmod.mods()[1].items[0].name() == "d";
+        let doc = mk_pass(always_eq)(srv, doc);
+        assert doc.topmod.mods()[0].items[0].name() == "b";
+        assert doc.topmod.mods()[1].items[0].name() == "d";
+    }
 }

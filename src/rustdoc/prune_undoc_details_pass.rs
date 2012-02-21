@@ -64,12 +64,13 @@ fn should_elide_undocumented_arguments() {
 #[test]
 fn should_elide_undocumented_return_values() {
     let source = "#[doc = \"fonz\"] fn a() -> int { }";
-    let srv = astsrv::from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = tystr_pass::mk_pass()(srv, doc);
-    let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = run(srv, doc);
-    assert doc.topmod.fns()[0].return.ty == none;
+    astsrv::from_str(source) {|srv|
+        let doc = extract::from_srv(srv, "");
+        let doc = tystr_pass::mk_pass()(srv, doc);
+        let doc = attr_pass::mk_pass()(srv, doc);
+        let doc = run(srv, doc);
+        assert doc.topmod.fns()[0].return.ty == none;
+    }
 }
 
 fn fold_res(
@@ -154,9 +155,10 @@ fn should_elide_undocumented_impl_method_return_values() {
 #[cfg(test)]
 mod test {
     fn mk_doc(source: str) -> doc::cratedoc {
-        let srv = astsrv::from_str(source);
-        let doc = extract::from_srv(srv, "");
-        let doc = attr_pass::mk_pass()(srv, doc);
-        run(srv, doc)
+        astsrv::from_str(source) {|srv|
+            let doc = extract::from_srv(srv, "");
+            let doc = attr_pass::mk_pass()(srv, doc);
+            run(srv, doc)
+        }
     }
 }

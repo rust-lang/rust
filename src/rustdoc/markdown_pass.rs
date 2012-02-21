@@ -790,16 +790,17 @@ mod test {
     }
 
     fn create_doc_srv(source: str) -> (astsrv::srv, doc::cratedoc) {
-        let srv = astsrv::from_str(source);
-        let doc = extract::from_srv(srv, "");
-        #debug("doc (extract): %?", doc);
-        let doc = tystr_pass::mk_pass()(srv, doc);
-        #debug("doc (tystr): %?", doc);
-        let doc = path_pass::mk_pass()(srv, doc);
-        #debug("doc (path): %?", doc);
-        let doc = attr_pass::mk_pass()(srv, doc);
-        #debug("doc (attr): %?", doc);
-        (srv, doc)
+        astsrv::from_str(source) {|srv|
+            let doc = extract::from_srv(srv, "");
+            #debug("doc (extract): %?", doc);
+            let doc = tystr_pass::mk_pass()(srv, doc);
+            #debug("doc (tystr): %?", doc);
+            let doc = path_pass::mk_pass()(srv, doc);
+            #debug("doc (path): %?", doc);
+            let doc = attr_pass::mk_pass()(srv, doc);
+            #debug("doc (attr): %?", doc);
+            (srv, doc)
+        }
     }
 
     fn create_doc(source: str) -> doc::cratedoc {
@@ -836,11 +837,12 @@ mod test {
 
     #[test]
     fn write_markdown_should_write_crate_header() {
-        let srv = astsrv::from_str("");
-        let doc = extract::from_srv(srv, "belch");
-        let doc = attr_pass::mk_pass()(srv, doc);
-        let markdown = write_markdown_str(doc);
-        assert str::contains(markdown, "# Crate belch");
+        astsrv::from_str("") {|srv|
+            let doc = extract::from_srv(srv, "belch");
+            let doc = attr_pass::mk_pass()(srv, doc);
+            let markdown = write_markdown_str(doc);
+            assert str::contains(markdown, "# Crate belch");
+        }
     }
 
     #[test]

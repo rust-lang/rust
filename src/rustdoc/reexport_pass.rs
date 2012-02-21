@@ -289,14 +289,15 @@ fn should_duplicate_multiple_reexported_items() {
                   import a::b; import a::c; \
                   export b; export c; \
                   }";
-    let srv = astsrv::from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = path_pass::mk_pass()(srv, doc);
-    let doc = run(srv, doc);
-    // Reexports may not be in any specific order
-    let doc = sort_item_name_pass::mk_pass()(srv, doc);
-    assert doc.topmod.mods()[1].fns()[0].name() == "b";
-    assert doc.topmod.mods()[1].fns()[1].name() == "c";
+    astsrv::from_str(source) {|srv|
+        let doc = extract::from_srv(srv, "");
+        let doc = path_pass::mk_pass()(srv, doc);
+        let doc = run(srv, doc);
+        // Reexports may not be in any specific order
+        let doc = sort_item_name_pass::mk_pass()(srv, doc);
+        assert doc.topmod.mods()[1].fns()[0].name() == "b";
+        assert doc.topmod.mods()[1].fns()[1].name() == "c";
+    }
 }
 
 #[test]
@@ -310,9 +311,10 @@ fn should_rename_items_reexported_with_different_names() {
 #[cfg(test)]
 mod test {
     fn mk_doc(source: str) -> doc::cratedoc {
-        let srv = astsrv::from_str(source);
-        let doc = extract::from_srv(srv, "");
-        let doc = path_pass::mk_pass()(srv, doc);
-        run(srv, doc)
+        astsrv::from_str(source) {|srv|
+            let doc = extract::from_srv(srv, "");
+            let doc = path_pass::mk_pass()(srv, doc);
+            run(srv, doc)
+        }
     }
 }
