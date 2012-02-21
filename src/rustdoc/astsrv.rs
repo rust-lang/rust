@@ -21,7 +21,7 @@ import rustc::middle::resolve;
 
 export ctxt;
 export ctxt_handler;
-export srv;
+export srv::{};
 export from_str;
 export from_file;
 export exec;
@@ -34,31 +34,71 @@ type ctxt = {
 
 type srv_owner<T> = fn(srv: srv) -> T;
 type ctxt_handler<T> = fn~(ctxt: ctxt) -> T;
+type parser = fn~(session::session, str) -> @ast::crate;
 
-type srv = {
-    ctxt: ctxt
+enum msg {
+    handle_request(fn~(ctxt)),
+    exit
+}
+
+enum srv = {
+    ch: comm::chan<msg>
 };
 
 fn from_str<T>(source: str, owner: srv_owner<T>) -> T {
-    let (sess, ignore_errors) = build_session();
-
-    let srv = {
-        ctxt: build_ctxt(sess, parse::from_str_sess(sess, source),
-                         ignore_errors)
-    };
-
-    owner(srv)
+    run(owner, source, parse::from_str_sess)
 }
 
 fn from_file<T>(file: str, owner: srv_owner<T>) -> T {
+    run(owner, file, parse::from_file_sess)
+}
+
+fn run<T>(owner: srv_owner<T>, source: str, parse: parser) -> T {
+
+    let srv_ = srv({
+        ch: task::spawn_listener {|po|
+            act(po, source, parse);
+        }
+    });
+
+    let res = owner(srv_);
+    comm::send(srv_.ch, exit);
+    ret res;
+}
+
+fn act(po: comm::port<msg>, source: str, parse: parser) {
     let (sess, ignore_errors) = build_session();
 
-    let srv = {
-        ctxt: build_ctxt(sess, parse::from_file_sess(sess, file),
-                         ignore_errors)
-    };
+    let ctxt = build_ctxt(
+        sess,
+        parse(sess, source),
+        ignore_errors
+    );
 
-    owner(srv)
+    let keep_going = true;
+    while keep_going {
+        alt comm::recv(po) {
+          handle_request(f) {
+            f(ctxt);
+          }
+          exit {
+            keep_going = false;
+          }
+        }
+    }
+}
+
+fn exec<T:send>(
+    srv: srv,
+    +f: fn~(ctxt: ctxt) -> T
+) -> T {
+    let po = comm::port();
+    let ch = comm::chan(po);
+    let msg = handle_request(fn~[move f](ctxt: ctxt) {
+        comm::send(ch, f(ctxt))
+    });
+    comm::send(srv.ch, msg);
+    comm::recv(po)
 }
 
 fn build_ctxt(sess: session::session, ast: @ast::crate,
@@ -240,13 +280,6 @@ fn srv_should_resolve_non_existant_uses() {
 fn should_ignore_external_import_paths_that_dont_exist() {
     let source = "use forble; import forble::bippy;";
     from_str(source) {|_srv| }
-}
-
-fn exec<T:send>(
-    srv: srv,
-    f: fn~(ctxt: ctxt) -> T
-) -> T {
-    f(srv.ctxt)
 }
 
 #[test]
