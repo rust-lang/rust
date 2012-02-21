@@ -1166,7 +1166,7 @@ fn lookup_in_fn(e: env, name: ident, decl: ast::fn_decl,
     }
 }
 
-/* 
+/*
    FIXME: not sure about this code. maybe this should be handled
    using the mod_index stuff
  */
