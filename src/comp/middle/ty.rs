@@ -1359,17 +1359,14 @@ fn field_idx(id: ast::ident, fields: [field]) -> option<uint> {
 }
 
 fn get_field(rec_ty: t, id: ast::ident) -> field {
-    alt vec::find(get_fields(rec_ty), {|f| str::eq(f.ident, id) }) {
+    alt check vec::find(get_fields(rec_ty), {|f| str::eq(f.ident, id) }) {
       some(f) { f }
-      _ { fail #fmt("get_field: bad field id %s", id); }
     }
 }
 
-// TODO: could have a precondition instead of failing
 fn get_fields(rec_ty:t) -> [field] {
-    alt get(rec_ty).struct {
+    alt check get(rec_ty).struct {
       ty_rec(fields) { fields }
-      _ { fail "get_fields called on non-record type"; }
     }
 }
 
@@ -2080,14 +2077,11 @@ mod unify {
                     let err = terr_record_size(expected_len, actual_len);
                     ret ures_err(err);
                 }
-                // TODO: implement an iterator that can iterate over
-                // two arrays simultaneously.
 
-                let result_fields: [field] = [];
-                let i = 0u;
-                while i < expected_len {
-                    let expected_field = expected_fields[i];
-                    let actual_field = actual_fields[i];
+                let result_fields = [], i = 0u;
+                while i < actual_len {
+                    let expected_field = expected_fields[i],
+                        actual_field = actual_fields[i];
                     let u_mut = unify_mut(expected_field.mt.mutbl,
                                           actual_field.mt.mutbl,
                                           variance);
@@ -2127,19 +2121,13 @@ mod unify {
                     let err = terr_tuple_size(expected_len, actual_len);
                     ret ures_err(err);
                 }
-                // TODO: implement an iterator that can iterate over
-                // two arrays simultaneously.
 
-                let result_elems = [];
-                let i = 0u;
-                while i < expected_len {
-                    let expected_elem = expected_elems[i];
-                    let actual_elem = actual_elems[i];
-                    let result = unify_step(
-                        cx, expected_elem, actual_elem, variance);
-                    alt result {
+                let result_elems = [], i = 0u;
+                while i < actual_len {
+                    alt unify_step(cx, expected_elems[i], actual_elems[i],
+                                   variance) {
                       ures_ok(rty) { result_elems += [rty]; }
-                      _ { ret result; }
+                      r { ret r; }
                     }
                     i += 1u;
                 }
