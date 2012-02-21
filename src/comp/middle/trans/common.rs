@@ -20,9 +20,6 @@ import lib::llvm::{True, False, Bool};
 import metadata::csearch;
 import ast_map::path;
 
-// FIXME: These should probably be pulled in here too.
-import base::{type_of_fn, drop_ty};
-
 type namegen = fn@(str) -> str;
 fn new_namegen() -> namegen {
     let i = @mutable 0;
@@ -231,7 +228,7 @@ fn scope_clean_changed(info: scope_info) {
 fn add_clean(cx: block, val: ValueRef, ty: ty::t) {
     if !ty::type_needs_drop(cx.tcx(), ty) { ret; }
     in_scope_cx(cx) {|info|
-        info.cleanups += [clean(bind drop_ty(_, val, ty))];
+        info.cleanups += [clean(bind base::drop_ty(_, val, ty))];
         scope_clean_changed(info);
     }
 }
@@ -242,7 +239,7 @@ fn add_clean_temp(cx: block, val: ValueRef, ty: ty::t) {
         if ty::type_is_immediate(ty) {
             ret base::drop_ty_immediate(bcx, val, ty);
         } else {
-            ret drop_ty(bcx, val, ty);
+            ret base::drop_ty(bcx, val, ty);
         }
     }
     in_scope_cx(cx) {|info|
@@ -253,7 +250,7 @@ fn add_clean_temp(cx: block, val: ValueRef, ty: ty::t) {
 fn add_clean_temp_mem(cx: block, val: ValueRef, ty: ty::t) {
     if !ty::type_needs_drop(cx.tcx(), ty) { ret; }
     in_scope_cx(cx) {|info|
-        info.cleanups += [clean_temp(val, bind drop_ty(_, val, ty))];
+        info.cleanups += [clean_temp(val, bind base::drop_ty(_, val, ty))];
         scope_clean_changed(info);
     }
 }
@@ -301,8 +298,8 @@ fn get_res_dtor(ccx: crate_ctxt, did: ast::def_id, inner_t: ty::t)
     let param_bounds = ty::lookup_item_type(ccx.tcx, did).bounds;
     let nil_res = ty::mk_nil(ccx.tcx);
     let fn_mode = ast::expl(ast::by_ref);
-    let f_t = type_of_fn(ccx, [{mode: fn_mode, ty: inner_t}],
-                         nil_res, *param_bounds);
+    let f_t = type_of::type_of_fn(ccx, [{mode: fn_mode, ty: inner_t}],
+                                  nil_res, *param_bounds);
     ret base::get_extern_const(ccx.externs, ccx.llmod,
                                 csearch::get_symbol(ccx.sess.cstore,
                                                     did), f_t);

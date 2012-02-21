@@ -686,7 +686,7 @@ fn bind_irrefutable_pat(bcx: block, pat: @ast::pat, val: ValueRef,
       ast::pat_ident(_,inner) {
         if make_copy || ccx.copy_map.contains_key(pat.id) {
             let ty = node_id_type(bcx, pat.id);
-            let llty = type_of(ccx, ty);
+            let llty = type_of::type_of(ccx, ty);
             let alloc = alloca(bcx, llty);
             bcx = copy_val(bcx, INIT, alloc,
                                   load_if_immediate(bcx, val, ty), ty);

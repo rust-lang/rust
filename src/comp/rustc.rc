@@ -16,6 +16,7 @@ use std (name = "std",
 mod middle {
     mod trans {
         mod common;
+        mod type_of;
         mod build;
         mod base;
         mod alt;

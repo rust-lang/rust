@@ -1,6 +1,7 @@
 import ctypes::c_uint;
 import base::*;
 import common::*;
+import type_of::*;
 import build::*;
 import driver::session::session;
 import syntax::{ast, ast_util};

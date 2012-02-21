@@ -6,6 +6,8 @@ import lib::llvm::{ValueRef, TypeRef};
 import common::*;
 import build::*;
 import base::*;
+import type_of::*;
+import type_of::type_of; // Issue #1873
 import middle::freevars::{get_freevars, freevar_info};
 import back::abi;
 import syntax::codemap::span;

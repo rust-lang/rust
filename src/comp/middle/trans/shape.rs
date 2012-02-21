@@ -118,7 +118,7 @@ fn largest_variants(ccx: crate_ctxt, tag_id: ast::def_id) -> [uint] {
                 // when in fact it has minimum size sizeof(int).
                 bounded = false;
             } else {
-                let llty = base::type_of(ccx, elem_t);
+                let llty = type_of::type_of(ccx, elem_t);
                 min_size += llsize_of_real(ccx, llty);
                 min_align += llalign_of_real(ccx, llty);
             }
@@ -188,7 +188,7 @@ fn compute_static_enum_size(ccx: crate_ctxt, largest_variants: [uint],
         // We increment a "virtual data pointer" to compute the size.
         let lltys = [];
         for typ: ty::t in variants[vid].args {
-            lltys += [base::type_of(ccx, typ)];
+            lltys += [type_of::type_of(ccx, typ)];
         }
 
         let llty = trans::common::T_struct(lltys);
@@ -590,7 +590,7 @@ type tag_metrics = {
 fn size_of(bcx: block, t: ty::t) -> result {
     let ccx = bcx.ccx();
     if check type_has_static_size(ccx, t) {
-        rslt(bcx, llsize_of(ccx, base::type_of(ccx, t)))
+        rslt(bcx, llsize_of(ccx, type_of::type_of(ccx, t)))
     } else {
         let { bcx, sz, align: _ } = dynamic_metrics(bcx, t);
         rslt(bcx, sz)
@@ -600,7 +600,7 @@ fn size_of(bcx: block, t: ty::t) -> result {
 fn align_of(bcx: block, t: ty::t) -> result {
     let ccx = bcx.ccx();
     if check type_has_static_size(ccx, t) {
-        rslt(bcx, llalign_of(ccx, base::type_of(ccx, t)))
+        rslt(bcx, llalign_of(ccx, type_of::type_of(ccx, t)))
     } else {
         let { bcx, sz: _, align } = dynamic_metrics(bcx, t);
         rslt(bcx, align)
@@ -610,7 +610,7 @@ fn align_of(bcx: block, t: ty::t) -> result {
 fn metrics(bcx: block, t: ty::t) -> metrics {
     let ccx = bcx.ccx();
     if check type_has_static_size(ccx, t) {
-        let llty = base::type_of(ccx, t);
+        let llty = type_of::type_of(ccx, t);
         { bcx: bcx, sz: llsize_of(ccx, llty), align: llalign_of(ccx, llty) }
     } else {
         dynamic_metrics(bcx, t)
@@ -657,7 +657,7 @@ fn static_size_of_enum(cx: crate_ctxt, t: ty::t) -> uint {
             tup_ty = ty::substitute_type_params(cx.tcx, subtys, tup_ty);
             // Here we possibly do a recursive call.
             let this_size =
-                llsize_of_real(cx, base::type_of(cx, tup_ty));
+                llsize_of_real(cx, type_of::type_of(cx, tup_ty));
             if max_size < this_size { max_size = this_size; }
         }
         cx.enum_sizes.insert(t, max_size);

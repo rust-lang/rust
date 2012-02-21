@@ -8,6 +8,7 @@ import back::link;
 import common::*;
 import build::*;
 import base::*;
+import type_of::*;
 
 export link_name, trans_native_mod, register_crust_fn, trans_crust_fn;
 
@@ -31,7 +32,7 @@ fn c_arg_and_ret_lltys(ccx: crate_ctxt,
     alt ty::get(ty::node_id_to_type(ccx.tcx, id)).struct {
       ty::ty_fn({inputs: arg_tys, output: ret_ty, _}) {
         let llargtys = type_of_explicit_args(ccx, arg_tys);
-        let llretty = type_of(ccx, ret_ty);
+        let llretty = type_of::type_of(ccx, ret_ty);
         (llargtys, llretty, ret_ty)
       }
       _ { ccx.sess.bug("c_arg_and_ret_lltys called on non-function type"); }

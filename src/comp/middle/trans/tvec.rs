@@ -2,7 +2,7 @@ import syntax::ast;
 import driver::session::session;
 import lib::llvm::{ValueRef, TypeRef};
 import back::abi;
-import base::{call_memmove, trans_shared_malloc, type_of_or_i8,
+import base::{call_memmove, trans_shared_malloc,
                INIT, copy_val, load_if_immediate, get_tydesc,
                sub_block, do_spill_noroot,
                dest};
@@ -46,7 +46,7 @@ type alloc_result =
 fn alloc(bcx: block, vec_ty: ty::t, elts: uint) -> alloc_result {
     let ccx = bcx.ccx();
     let unit_ty = ty::sequence_element_type(bcx.tcx(), vec_ty);
-    let llunitty = type_of_or_i8(ccx, unit_ty);
+    let llunitty = type_of::type_of_or_i8(ccx, unit_ty);
     let llvecty = T_vec(ccx, llunitty);
     let {bcx: bcx, val: unit_sz} = size_of(bcx, unit_ty);
 
@@ -156,7 +156,7 @@ fn trans_append(cx: block, vec_ty: ty::t, lhsptr: ValueRef,
     };
 
     let {bcx: bcx, val: unit_sz} = size_of(cx, unit_ty);
-    let llunitty = type_of_or_i8(ccx, unit_ty);
+    let llunitty = type_of::type_of_or_i8(ccx, unit_ty);
 
     let lhs = Load(bcx, lhsptr);
     let self_append = ICmp(bcx, lib::llvm::IntEQ, lhs, rhs);
@@ -226,7 +226,7 @@ fn trans_add(bcx: block, vec_ty: ty::t, lhs: ValueRef,
       _ { false }
     };
     let unit_ty = ty::sequence_element_type(bcx.tcx(), vec_ty);
-    let llunitty = type_of_or_i8(ccx, unit_ty);
+    let llunitty = type_of::type_of_or_i8(ccx, unit_ty);
     let {bcx: bcx, val: llunitsz} = size_of(bcx, unit_ty);
 
     let lhs_fill = get_fill(bcx, lhs);
@@ -268,7 +268,7 @@ fn iter_vec_raw(bcx: block, vptr: ValueRef, vec_ty: ty::t,
                 fill: ValueRef, f: iter_vec_block) -> block {
     let ccx = bcx.ccx();
     let unit_ty = ty::sequence_element_type(bcx.tcx(), vec_ty);
-    let llunitty = type_of_or_i8(ccx, unit_ty);
+    let llunitty = type_of::type_of_or_i8(ccx, unit_ty);
     let {bcx: bcx, val: unit_sz} = size_of(bcx, unit_ty);
     let vptr = PointerCast(bcx, vptr, T_ptr(T_vec(ccx, llunitty)));
     let data_ptr = get_dataptr(bcx, vptr, llunitty);
