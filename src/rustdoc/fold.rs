@@ -11,6 +11,8 @@ export default_seq_fold_res;
 export default_seq_fold_iface;
 export default_seq_fold_impl;
 export default_seq_fold_type;
+export default_par_fold;
+export default_par_fold_mod;
 
 enum fold<T> = t<T>;
 
@@ -86,6 +88,22 @@ fn default_seq_fold<T:copy>(ctxt: T) -> fold<T> {
     )
 }
 
+fn default_par_fold<T:send>(ctxt: T) -> fold<T> {
+    mk_fold(
+        ctxt,
+        {|f, d| default_seq_fold_crate(f, d)},
+        {|f, d| default_seq_fold_item(f, d)},
+        {|f, d| default_par_fold_mod(f, d)},
+        {|f, d| default_seq_fold_fn(f, d)},
+        {|f, d| default_seq_fold_const(f, d)},
+        {|f, d| default_seq_fold_enum(f, d)},
+        {|f, d| default_seq_fold_res(f, d)},
+        {|f, d| default_seq_fold_iface(f, d)},
+        {|f, d| default_seq_fold_impl(f, d)},
+        {|f, d| default_seq_fold_type(f, d)}
+    )
+}
+
 fn default_seq_fold_crate<T>(
     fold: fold<T>,
     doc: doc::cratedoc
@@ -109,34 +127,51 @@ fn default_seq_fold_mod<T>(
     {
         item: fold.fold_item(fold, doc.item),
         items: ~vec::map(*doc.items) {|itemtag|
-            alt itemtag {
-              doc::modtag(moddoc) {
-                doc::modtag(fold.fold_mod(fold, moddoc))
-              }
-              doc::fntag(fndoc) {
-                doc::fntag(fold.fold_fn(fold, fndoc))
-              }
-              doc::consttag(constdoc) {
-                doc::consttag(fold.fold_const(fold, constdoc))
-              }
-              doc::enumtag(enumdoc) {
-                doc::enumtag(fold.fold_enum(fold, enumdoc))
-              }
-              doc::restag(resdoc) {
-                doc::restag(fold.fold_res(fold, resdoc))
-              }
-              doc::ifacetag(ifacedoc) {
-                doc::ifacetag(fold.fold_iface(fold, ifacedoc))
-              }
-              doc::impltag(impldoc) {
-                doc::impltag(fold.fold_impl(fold, impldoc))
-              }
-              doc::tytag(tydoc) {
-                doc::tytag(fold.fold_type(fold, tydoc))
-              }
-            }
+            fold_itemtag(fold, itemtag)
         }
         with doc
+    }
+}
+
+fn default_par_fold_mod<T:send>(
+    fold: fold<T>,
+    doc: doc::moddoc
+) -> doc::moddoc {
+    {
+        item: fold.fold_item(fold, doc.item),
+        items: ~util::parmap(*doc.items) {|itemtag|
+            fold_itemtag(fold, itemtag)
+        }
+        with doc
+    }
+}
+
+fn fold_itemtag<T>(fold: fold<T>, doc: doc::itemtag) -> doc::itemtag {
+    alt doc {
+      doc::modtag(moddoc) {
+        doc::modtag(fold.fold_mod(fold, moddoc))
+      }
+      doc::fntag(fndoc) {
+        doc::fntag(fold.fold_fn(fold, fndoc))
+      }
+      doc::consttag(constdoc) {
+        doc::consttag(fold.fold_const(fold, constdoc))
+      }
+      doc::enumtag(enumdoc) {
+        doc::enumtag(fold.fold_enum(fold, enumdoc))
+      }
+      doc::restag(resdoc) {
+        doc::restag(fold.fold_res(fold, resdoc))
+      }
+      doc::ifacetag(ifacedoc) {
+        doc::ifacetag(fold.fold_iface(fold, ifacedoc))
+      }
+      doc::impltag(impldoc) {
+        doc::impltag(fold.fold_impl(fold, impldoc))
+      }
+      doc::tytag(tydoc) {
+        doc::tytag(fold.fold_type(fold, tydoc))
+      }
     }
 }
 
@@ -236,6 +271,16 @@ fn default_fold_should_produce_same_enums() {
     let ast = parse::from_str(source);
     let doc = extract::extract(ast, "");
     let fld = default_seq_fold(());
+    let folded = fld.fold_crate(fld, doc);
+    assert doc == folded;
+}
+
+#[test]
+fn default_parallel_fold_should_produce_same_doc() {
+    let source = "mod a { fn b() { } mod c { fn d() { } } }";
+    let ast = parse::from_str(source);
+    let doc = extract::extract(ast, "");
+    let fld = default_par_fold(());
     let folded = fld.fold_crate(fld, doc);
     assert doc == folded;
 }
