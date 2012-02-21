@@ -139,8 +139,7 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
       ty::ty_iface(_, _) { T_opaque_iface(cx) }
       ty::ty_res(_, sub, tps) {
         let sub1 = ty::substitute_type_params(cx.tcx, tps, sub);
-        // FIXME #1184: Resource flag is larger than necessary
-        ret T_struct([cx.int_type, type_of(cx, sub1)]);
+        ret T_struct([T_i8(), type_of(cx, sub1)]);
       }
       ty::ty_param(_, _) { T_typaram(cx.tn) }
       ty::ty_send_type | ty::ty_type { T_ptr(cx.tydesc_type) }
@@ -1050,8 +1049,7 @@ fn trans_res_drop(bcx: block, rs: ValueRef, did: ast::def_id,
         Call(bcx, dtor_addr, args + [val_cast]);
 
         bcx = drop_ty(bcx, valptr, inner_t_s);
-        // FIXME #1184: Resource flag is larger than necessary
-        Store(bcx, C_int(ccx, 0), drop_flag);
+        Store(bcx, C_u8(0u), drop_flag);
         bcx
     }
 }
@@ -1479,9 +1477,10 @@ fn free_ty(cx: block, v: ValueRef, t: ty::t) -> block {
 
 fn call_memmove(cx: block, dst: ValueRef, src: ValueRef,
                 n_bytes: ValueRef) -> result {
-    // FIXME: Provide LLVM with better alignment information when the alignment
-    // is statically known (it must be nothing more than a constant int, or
-    // LLVM complains -- not even a constant element of a tydesc works).
+    // FIXME: Provide LLVM with better alignment information when the
+    // alignment is statically known (it must be nothing more than a constant
+    // int, or LLVM complains -- not even a constant element of a tydesc
+    // works).
 
     let ccx = cx.ccx();
     let key = alt ccx.sess.targ_cfg.arch {
@@ -1493,7 +1492,6 @@ fn call_memmove(cx: block, dst: ValueRef, src: ValueRef,
     let memmove = i.get(key);
     let src_ptr = PointerCast(cx, src, T_ptr(T_i8()));
     let dst_ptr = PointerCast(cx, dst, T_ptr(T_i8()));
-    // FIXME #1184: Resource flag is larger than necessary
     let size = IntCast(cx, n_bytes, ccx.int_type);
     let align = C_i32(1i32);
     let volatile = C_bool(false);
@@ -4114,7 +4112,8 @@ fn trans_res_ctor(ccx: @crate_ctxt, path: path, dtor: ast::fn_decl,
     let bcx = top_scope_block(fcx, none), lltop = bcx.llbb;
     let fty = node_id_type(bcx, ctor_id);
     let arg_t = ty::ty_fn_args(fty)[0].ty;
-    let tup_t = ty::mk_tup(ccx.tcx, [ty::mk_int(ccx.tcx), arg_t]);
+    let tup_t = ty::mk_tup(ccx.tcx, [ty::mk_mach_uint(ccx.tcx, ast::ty_u8),
+                                     arg_t]);
     let arg = alt fcx.llargs.find(dtor.inputs[0].id) {
       some(local_mem(x)) { x }
       _ { ccx.sess.bug("Someone forgot to document an invariant \
@@ -4130,8 +4129,7 @@ fn trans_res_ctor(ccx: @crate_ctxt, path: path, dtor: ast::fn_decl,
     bcx = memmove_ty(bcx, dst, arg, arg_t);
     let flag = GEP_tup_like(bcx, tup_t, llretptr, [0, 0]);
     bcx = flag.bcx;
-    // FIXME #1184: Resource flag is larger than necessary
-    let one = C_int(ccx, 1);
+    let one = C_u8(1u);
     Store(bcx, one, flag.val);
     build_return(bcx);
     finish_fn(fcx, lltop);
