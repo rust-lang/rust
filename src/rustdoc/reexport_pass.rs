@@ -31,8 +31,46 @@ fn run(srv: astsrv::srv, doc: doc::cratedoc) -> doc::cratedoc {
     merge_reexports(doc, path_map)
 }
 
+// Hash maps are not sendable so converting them back and forth
+// to association lists. Yuck.
+fn to_assoc_list<K:copy, V:copy>(
+    map: map::hashmap<K, V>
+) -> [(K, V)] {
+
+    let vec = [];
+    map.items {|k, v|
+        vec += [(k, v)];
+    }
+    ret vec;
+}
+
+fn from_assoc_list<K:copy, V:copy>(
+    list: [(K, V)],
+    new_hash: fn() -> map::hashmap<K, V>
+) -> map::hashmap<K, V> {
+
+    let map = new_hash();
+    vec::iter(list) {|elt|
+        let (k, v) = elt;
+        map.insert(k, v);
+    }
+    ret map;
+}
+
+fn from_def_assoc_list<V:copy>(
+    list: [(ast::def_id, V)]
+) -> map::hashmap<ast::def_id, V> {
+    from_assoc_list(list, bind common::new_def_hash())
+}
+
+fn from_str_assoc_list<V:copy>(
+    list: [(str, V)]
+) -> map::hashmap<str, V> {
+    from_assoc_list(list, bind map::new_str_hash())
+}
+
 fn build_reexport_def_set(srv: astsrv::srv) -> def_set {
-    astsrv::exec(srv) {|ctxt|
+    let assoc_list = astsrv::exec(srv) {|ctxt|
         let def_set = common::new_def_hash();
         ctxt.exp_map.items {|_path, defs|
             for def in *defs {
@@ -40,8 +78,10 @@ fn build_reexport_def_set(srv: astsrv::srv) -> def_set {
                 def_set.insert(def_id, ());
             }
         }
-        def_set
-    }
+        to_assoc_list(def_set)
+    };
+
+    from_def_assoc_list(assoc_list)
 }
 
 fn build_reexport_def_map(
@@ -85,38 +125,15 @@ fn build_reexport_def_map(
     }
 }
 
-fn to_assoc_list<V:copy>(
-    map: map::hashmap<ast::def_id, V>
-) -> [(ast::def_id, V)] {
-
-    let vec = [];
-    map.items {|k, v|
-        vec += [(k, v)];
-    }
-    ret vec;
-}
-
-fn from_assoc_list<V:copy>(
-    list: [(ast::def_id, V)]
-) -> map::hashmap<ast::def_id, V> {
-
-    let map = common::new_def_hash();
-    vec::iter(list) {|elt|
-        let (k, v) = elt;
-        map.insert(k, v);
-    }
-    ret map;
-}
-
 fn build_reexport_path_map(srv: astsrv::srv, -def_map: def_map) -> path_map {
 
     // This is real unfortunate. Lots of copying going on here
     let def_assoc_list = to_assoc_list(def_map);
     #debug("def_map: %?", def_assoc_list);
 
-    astsrv::exec(srv) {|ctxt|
+    let assoc_list = astsrv::exec(srv) {|ctxt|
 
-        let def_map = from_assoc_list(def_assoc_list);
+        let def_map = from_def_assoc_list(def_assoc_list);
         let path_map = map::new_str_hash();
 
         ctxt.exp_map.items {|path, defs|
@@ -149,8 +166,10 @@ fn build_reexport_path_map(srv: astsrv::srv, -def_map: def_map) -> path_map {
             }
         }
 
-        path_map
-    }
+        to_assoc_list(path_map)
+    };
+
+    from_str_assoc_list(assoc_list)
 }
 
 fn merge_reexports(

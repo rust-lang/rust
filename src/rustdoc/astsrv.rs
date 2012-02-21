@@ -232,7 +232,7 @@ fn should_ignore_external_import_paths_that_dont_exist() {
     mk_srv_from_str(source);
 }
 
-fn exec<T>(
+fn exec<T:send>(
     srv: srv,
     f: fn~(ctxt: ctxt) -> T
 ) -> T {

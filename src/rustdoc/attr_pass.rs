@@ -86,7 +86,7 @@ fn fold_item(
     }
 }
 
-fn parse_item_attrs<T>(
+fn parse_item_attrs<T:send>(
     srv: astsrv::srv,
     id: doc::ast_id,
     parse_attrs: fn~([ast::attribute]) -> T) -> T {
