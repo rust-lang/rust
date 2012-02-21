@@ -130,7 +130,7 @@ fn test_unwrap_resource() {
     {
         let x = r(i);
         let opt = some(x);
-        let y = unwrap(opt);
+        let _y = unwrap(opt);
     }
     assert *i == 1;
 }
