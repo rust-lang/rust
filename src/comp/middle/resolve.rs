@@ -225,6 +225,12 @@ fn iter_export_paths(vi: ast::view_item, f: fn(vp: @ast::view_path)) {
     }
 }
 
+fn iter_all_view_paths(vi: ast::view_item,
+                       f: fn(vp: @ast::view_path)) {
+    iter_import_paths(vi, f);
+    iter_export_paths(vi, f);
+}
+
 // Locate all modules and imports and index them, so that the next passes can
 // resolve through them.
 fn map_crate(e: @env, c: @ast::crate) {
@@ -284,9 +290,12 @@ fn map_crate(e: @env, c: @ast::crate) {
         }
     }
 
+    // Note: a glob export works as an implict import, along with a
+    // re-export of anything that was exported at the glob-target location.
+    // So we wind up reusing the glob-import machinery when looking at
+    // glob exports. They just do re-exporting in a later step.
     fn link_glob(e: @env, vi: @ast::view_item, sc: scopes, _v: vt<scopes>) {
-        iter_import_paths(*vi) { |vp|
-            //if it really is a glob import, that is
+        iter_all_view_paths(*vi) { |vp|
             alt vp.node {
               ast::view_path_glob(path, _) {
                 alt follow_import(*e, sc, *path, vp.span) {
@@ -335,7 +344,7 @@ fn map_crate(e: @env, c: @ast::crate) {
                        glob_imported_names: new_str_hash(),
                        path: ""});
 
-    // Next, assemble the links for globbed imports.
+    // Next, assemble the links for globbed imports and exports.
     let v_link_glob =
         @{visit_view_item: bind link_glob(e, _, _, _),
           visit_block: visit_block_with_scope,
