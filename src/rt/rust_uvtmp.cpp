@@ -59,7 +59,7 @@ struct timer_start_data {
 
 // crust fn pointers
 typedef void (*crust_async_op_cb)(uv_loop_t* loop, void* data);
-typedef void (*crust_async_cb)(uint8_t* id_buf, void* loop_data);
+typedef void (*crust_simple_cb)(uint8_t* id_buf, void* loop_data);
 typedef void (*crust_close_cb)(uint8_t* id_buf, void* handle,
 							  void* data);
 
@@ -68,7 +68,7 @@ typedef void (*crust_close_cb)(uint8_t* id_buf, void* handle,
 
 struct handle_data {
 	uint8_t id_buf[RUST_UV_HANDLE_LEN];
-	crust_async_cb cb;
+	crust_simple_cb cb;
 	crust_close_cb close_cb;
 };
 
@@ -84,6 +84,16 @@ current_kernel_free(void* ptr) {
   rust_task_thread::get_task()->kernel->free(ptr);
 }
 
+static handle_data*
+new_handle_data_from(uint8_t* buf, crust_simple_cb cb) {
+	handle_data* data = (handle_data*)current_kernel_malloc(
+		sizeof(handle_data),
+		"handle_data");
+	memcpy(data->id_buf, buf, RUST_UV_HANDLE_LEN);
+	data->cb = cb;
+	return data;
+}
+
 // libuv callback impls
 static void
 native_crust_async_op_cb(uv_async_t* handle, int status) {
@@ -94,6 +104,13 @@ native_crust_async_op_cb(uv_async_t* handle, int status) {
 
 static void
 native_async_cb(uv_async_t* handle, int status) {
+	handle_data* handle_d = (handle_data*)handle->data;
+	void* loop_data = handle->loop->data;
+	handle_d->cb(handle_d->id_buf, loop_data);
+}
+
+static void
+native_timer_cb(uv_timer_t* handle, int status) {
 	handle_data* handle_d = (handle_data*)handle->data;
 	void* loop_data = handle->loop->data;
 	handle_d->cb(handle_d->id_buf, loop_data);
@@ -173,25 +190,51 @@ rust_uvtmp_uv_close_async(uv_async_t* handle) {
 }
 
 extern "C" void
+rust_uvtmp_uv_close_timer(uv_async_t* handle) {
+  current_kernel_free(handle->data);
+  current_kernel_free(handle);
+}
+
+extern "C" void
 rust_uvtmp_uv_async_send(uv_async_t* handle) {
     uv_async_send(handle);
 }
 
 extern "C" void*
-rust_uvtmp_uv_async_init(uv_loop_t* loop, crust_async_cb cb,
+rust_uvtmp_uv_async_init(uv_loop_t* loop, crust_simple_cb cb,
 						 uint8_t* buf) {
 	uv_async_t* async = (uv_async_t*)current_kernel_malloc(
 		sizeof(uv_async_t),
 		"uv_async_t");
 	uv_async_init(loop, async, native_async_cb);
-	handle_data* data = (handle_data*)current_kernel_malloc(
-		sizeof(handle_data),
-		"handle_data");
-	memcpy(data->id_buf, buf, RUST_UV_HANDLE_LEN);
-	data->cb = cb;
+	handle_data* data = new_handle_data_from(buf, cb);
 	async->data = data;
 
 	return async;
+}
+
+extern "C" void*
+rust_uvtmp_uv_timer_init(uv_loop_t* loop, crust_simple_cb cb,
+						 uint8_t* buf) {
+	uv_timer_t* new_timer = (uv_timer_t*)current_kernel_malloc(
+		sizeof(uv_timer_t),
+		"uv_timer_t");
+	uv_timer_init(loop, new_timer);
+	handle_data* data = new_handle_data_from(buf, cb);
+	new_timer->data = data;
+
+	return new_timer;
+}
+
+extern "C" void
+rust_uvtmp_uv_timer_start(uv_timer_t* the_timer, uint32_t timeout,
+						  uint32_t repeat) {
+	uv_timer_start(the_timer, native_timer_cb, timeout, repeat);
+}
+
+extern "C" void
+rust_uvtmp_uv_timer_stop(uv_timer_t* the_timer) {
+  uv_timer_stop(the_timer); 
 }
 
 // UVTMP REWORK
