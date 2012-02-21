@@ -132,9 +132,8 @@ fn trans_str(bcx: block, s: str, dest: dest) -> block {
 
     let ccx = bcx.ccx();
     let llcstr = C_cstr(ccx, s);
-    let bcx =
-        call_memmove(bcx, get_dataptr(bcx, sptr, T_i8()), llcstr,
-                     C_uint(ccx, veclen)).bcx;
+    let bcx = call_memmove(bcx, get_dataptr(bcx, sptr, T_i8()), llcstr,
+                           C_uint(ccx, veclen)).bcx;
     ret base::store_in_dest(bcx, sptr, dest);
 }
 
@@ -151,13 +150,9 @@ fn trans_append(cx: block, vec_ty: ty::t, lhsptr: ValueRef,
             (PointerCast(cx, lhsptr, T_ptr(T_ptr(ccx.opaque_vec_type))),
              PointerCast(cx, rhs, T_ptr(ccx.opaque_vec_type)))
         };
-    let strings = alt ty::get(vec_ty).struct {
+    let strings = alt check ty::get(vec_ty).struct {
       ty::ty_str { true }
       ty::ty_vec(_) { false }
-      _ {
-          // precondition?
-          cx.tcx().sess.bug("Bad argument type in trans_append");
-      }
     };
 
     let {bcx: bcx, val: unit_sz} = size_of(cx, unit_ty);

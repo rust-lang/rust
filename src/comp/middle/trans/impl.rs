@@ -53,7 +53,7 @@ fn trans_impl(ccx: @crate_ctxt, path: path, name: ast::ident,
                      tps + m.tps, none, m.id);
           }
           _ {
-            ccx.tcx.sess.bug("Unbound id in trans_impl");
+            ccx.sess.bug("Unbound id in trans_impl");
           }
         }
     }
@@ -337,7 +337,7 @@ fn trans_impl_vtable(ccx: @crate_ctxt, pt: path,
                                target)
           }
           _ {
-            ccx.tcx.sess.span_bug(it.span, "No matching method \
+            ccx.sess.span_bug(it.span, "No matching method \
                in trans_impl_vtable");
           }
         }

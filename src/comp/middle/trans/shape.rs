@@ -118,11 +118,6 @@ fn largest_variants(ccx: @crate_ctxt, tag_id: ast::def_id) -> [uint] {
                 // when in fact it has minimum size sizeof(int).
                 bounded = false;
             } else {
-                // Could avoid this check: the constraint should
-                // follow from how elem_t doesn't contain params.
-                // (Could add a postcondition to type_contains_params,
-                // once we implement Issue #586.)
-                check (trans::common::type_has_static_size(ccx, elem_t));
                 let llty = base::type_of(ccx, elem_t);
                 min_size += llsize_of_real(ccx, llty);
                 min_align += llalign_of_real(ccx, llty);
@@ -176,11 +171,6 @@ fn largest_variants(ccx: @crate_ctxt, tag_id: ast::def_id) -> [uint] {
     ret result;
 }
 
-// Computes the static size of a enum, without using mk_tup(), which is
-// bad for performance.
-//
-// FIXME: Migrate trans over to use this.
-
 fn round_up(size: u16, align: u8) -> u16 {
     assert (align >= 1u8);
     let alignment = align as u16;
@@ -198,10 +188,6 @@ fn compute_static_enum_size(ccx: @crate_ctxt, largest_variants: [uint],
         // We increment a "virtual data pointer" to compute the size.
         let lltys = [];
         for typ: ty::t in variants[vid].args {
-            // FIXME: there should really be a postcondition
-            // on enum_variants that would obviate the need for
-            // this check. (Issue #586)
-            check (trans::common::type_has_static_size(ccx, typ));
             lltys += [base::type_of(ccx, typ)];
         }
 
@@ -439,7 +425,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint]) -> [u8] {
         s += shape_of(ccx, inner_t, ty_param_map);
       }
       ty::ty_var(_) | ty::ty_self(_) {
-        ccx.tcx.sess.bug("shape_of: unexpected type struct found");
+        ccx.sess.bug("shape_of: unexpected type struct found");
       }
     }
 
@@ -651,28 +637,25 @@ fn llalign_of(cx: @crate_ctxt, t: TypeRef) -> ValueRef {
                                False);
 }
 
+// Computes the static size of a enum, without using mk_tup(), which is
+// bad for performance.
+//
+// FIXME: Migrate trans over to use this.
+
 // Computes the size of the data part of a non-dynamically-sized enum.
-fn static_size_of_enum(cx: @crate_ctxt, t: ty::t)
-    : type_has_static_size(cx, t) -> uint {
+fn static_size_of_enum(cx: @crate_ctxt, t: ty::t) -> uint {
     if cx.enum_sizes.contains_key(t) { ret cx.enum_sizes.get(t); }
     alt ty::get(t).struct {
       ty::ty_enum(tid, subtys) {
         // Compute max(variant sizes).
-
         let max_size = 0u;
         let variants = ty::enum_variants(cx.tcx, tid);
         for variant: ty::variant_info in *variants {
             let tup_ty = simplify_type(cx.tcx,
                                        ty::mk_tup(cx.tcx, variant.args));
             // Perform any type parameter substitutions.
-
             tup_ty = ty::substitute_type_params(cx.tcx, subtys, tup_ty);
             // Here we possibly do a recursive call.
-
-            // FIXME: Avoid this check. Since the parent has static
-            // size, any field must as well. There should be a way to
-            // express that with constrained types.
-            check (type_has_static_size(cx, tup_ty));
             let this_size =
                 llsize_of_real(cx, base::type_of(cx, tup_ty));
             if max_size < this_size { max_size = this_size; }
@@ -680,7 +663,7 @@ fn static_size_of_enum(cx: @crate_ctxt, t: ty::t)
         cx.enum_sizes.insert(t, max_size);
         ret max_size;
       }
-      _ { cx.tcx.sess.bug("static_size_of_enum called on non-enum"); }
+      _ { cx.sess.bug("static_size_of_enum called on non-enum"); }
     }
 }
 
@@ -761,9 +744,7 @@ fn dynamic_metrics(cx: block, t: ty::t) -> metrics {
         { bcx: bcx, sz: sz, align: C_int(ccx, 1) }
       }
       _ {
-        // Precondition?
-        cx.tcx().sess.bug("dynamic_metrics: type has static \
-          size");
+        cx.tcx().sess.bug("dynamic_metrics: type has static size");
       }
     }
 }

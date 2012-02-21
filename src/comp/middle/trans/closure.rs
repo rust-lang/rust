@@ -718,17 +718,7 @@ fn trans_bind_thunk(ccx: @crate_ctxt,
                     param_bounds: [ty::param_bounds],
                     target_info: target_info)
     -> {val: ValueRef, ty: TypeRef} {
-
-    // If we supported constraints on record fields, we could make the
-    // constraints for this function:
-    /*
-    : returns_non_ty_var(outgoing_fty),
-      type_has_static_size(ccx, incoming_fty) ->
-    */
-    // but since we don't, we have to do the checks at the beginning.
     let tcx = ccx.tcx;
-    check type_has_static_size(ccx, incoming_fty);
-
     #debug["trans_bind_thunk[incoming_fty=%s,outgoing_fty=%s,\
             cdata_ty=%s,param_bounds=%?]",
            ty_to_str(tcx, incoming_fty),

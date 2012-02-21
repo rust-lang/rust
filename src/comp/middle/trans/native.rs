@@ -34,10 +34,7 @@ fn c_arg_and_ret_lltys(ccx: @crate_ctxt,
         let llretty = type_of(ccx, ret_ty);
         (llargtys, llretty, ret_ty)
       }
-      _ {
-          // Precondition?
-          ccx.tcx.sess.bug("c_arg_and_ret_lltys called on non-function type");
-      }
+      _ { ccx.sess.bug("c_arg_and_ret_lltys called on non-function type"); }
     }
 }
 

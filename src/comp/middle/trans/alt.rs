@@ -63,7 +63,6 @@ fn trans_opt(bcx: block, o: opt) -> opt_result {
     }
 }
 
-// FIXME: invariant -- pat_id is bound in the def_map?
 fn variant_opt(ccx: @crate_ctxt, pat_id: ast::node_id) -> opt {
     let vdef = ast_util::variant_def_ids(ccx.tcx.def_map.get(pat_id));
     let variants = ty::enum_variants(ccx.tcx, vdef.enm);
@@ -499,20 +498,13 @@ fn compile_submatch(bcx: block, m: match, vals: [ValueRef], f: mk_fail,
           _ { }
         }
     }
-    let else_cx =
-        alt kind {
-          no_branch | single { bcx }
-          _ { sub_block(bcx, "match_else") }
-        };
-    let sw;
-    if kind == switch {
-        sw = Switch(bcx, test_val, else_cx.llbb, opts.len());
-        // FIXME This statement is purely here as a work-around for a bug that
-        // I expect to be the same as issue #951. If I remove it, sw ends up
-        // holding a corrupted value (when the compiler is optimized).
-        // This can be removed after our next LLVM upgrade.
-        val_ty(sw);
-    } else { sw = C_int(ccx, 0); } // Placeholder for when not using a switch
+    let else_cx = alt kind {
+      no_branch | single { bcx }
+      _ { sub_block(bcx, "match_else") }
+    };
+    let sw = if kind == switch {
+        Switch(bcx, test_val, else_cx.llbb, opts.len())
+    } else { C_int(ccx, 0) }; // Placeholder for when not using a switch
 
      // Compile subtrees for each option
     for opt: opt in opts {
@@ -694,9 +686,6 @@ fn bind_irrefutable_pat(bcx: block, pat: @ast::pat, val: ValueRef,
       ast::pat_ident(_,inner) {
         if make_copy || ccx.copy_map.contains_key(pat.id) {
             let ty = node_id_type(bcx, pat.id);
-            // FIXME: Could constrain pat_bind to make this
-            // check unnecessary.
-            check (type_has_static_size(ccx, ty));
             let llty = type_of(ccx, ty);
             let alloc = alloca(bcx, llty);
             bcx = copy_val(bcx, INIT, alloc,

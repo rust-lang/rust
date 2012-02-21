@@ -186,10 +186,6 @@ fn type_of_ty_param_bounds_and_ty
         // fall through
       }
     }
-    // FIXME: could have a precondition on tpt, but that
-    // doesn't work right now because one predicate can't imply
-    // another
-    check type_has_static_size(ccx, t);
     type_of(ccx, t)
 }
 
@@ -523,7 +519,6 @@ fn trans_malloc_boxed_raw(bcx: block, t: ty::t,
     // Grab the TypeRef type of box_ptr, because that's what trans_raw_malloc
     // wants.
     let box_ptr = ty::mk_imm_box(bcx.tcx(), t);
-    check (type_has_static_size(ccx, box_ptr));
     let llty = type_of(ccx, box_ptr);
 
     // Get the tydesc for the body:
@@ -792,7 +787,6 @@ fn declare_generic_glue(ccx: @crate_ctxt, t: ty::t, llfnty: TypeRef,
     ret llfn;
 }
 
-// FIXME: was this causing the leak?
 fn make_generic_glue_inner(ccx: @crate_ctxt, t: ty::t,
                            llfn: ValueRef, helper: glue_helper,
                            ty_params: [uint]) -> ValueRef {
@@ -1218,7 +1212,6 @@ fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
                 j += 1u;
             }
           }
-          // Precondition?
           _ { cx.tcx().sess.bug("iter_variant: not a function type"); }
         }
         ret cx;
@@ -1460,7 +1453,6 @@ fn drop_ty_immediate(bcx: block, v: ValueRef, t: ty::t) -> block {
       ty::ty_box(_) | ty::ty_opaque_box {
         decr_refcnt_maybe_free(bcx, v, t)
       }
-      // Precondition?
       _ { bcx.tcx().sess.bug("drop_ty_immediate: non-box ty"); }
     }
 }
@@ -1608,9 +1600,8 @@ fn move_val(cx: block, action: copy_action, dst: ValueRef,
         revoke_clean(cx, src_val);
         ret cx;
     }
-    /* FIXME: suggests a type constraint */
     cx.sess().bug("unexpected type in trans::move_val: " +
-                             ty_to_str(tcx, t));
+                  ty_to_str(tcx, t));
 }
 
 fn store_temp_expr(cx: block, action: copy_action, dst: ValueRef,
@@ -1718,9 +1709,7 @@ fn trans_compare(cx: block, op: ast::binop, lhs: ValueRef,
       ast::eq | ast::ne { llop = C_u8(abi::cmp_glue_op_eq); }
       ast::lt | ast::ge { llop = C_u8(abi::cmp_glue_op_lt); }
       ast::le | ast::gt { llop = C_u8(abi::cmp_glue_op_le); }
-      // Precondition?
-      _ { cx.tcx().sess.bug("trans_compare got\
-              non-comparison-op"); }
+      _ { cx.tcx().sess.bug("trans_compare got non-comparison-op"); }
     }
 
     let rs = call_cmp_glue(cx, lhs, rhs, rhs_t, llop);
@@ -2000,7 +1989,6 @@ fn store_in_dest(bcx: block, val: ValueRef, dest: dest) -> block {
 fn get_dest_addr(dest: dest) -> ValueRef {
     alt dest {
        save_in(a) { a }
-       // Precondition?
        _ { fail "get_dest_addr: not a save_in"; }
     }
 }
@@ -2079,7 +2067,7 @@ fn trans_while(cx: block, cond: @ast::expr, body: ast::blk)
     -> block {
     let next_cx = sub_block(cx, "while next");
     let cond_cx = loop_scope_block(cx, cont_self, next_cx,
-                                            "while cond", body.span);
+                                   "while cond", body.span);
     let body_cx = scope_block(cond_cx, "while loop body");
     Br(cx, cond_cx.llbb);
     let cond_res = trans_temp_expr(cond_cx, cond);
@@ -2483,9 +2471,9 @@ fn trans_callee(bcx: block, e: @ast::expr) -> lval_maybe_callee {
               some(origin) { // An impl method
                 ret impl::trans_method_callee(bcx, e.id, base, origin);
               }
-              // Precondition?
-              _ { bcx.tcx().sess.span_bug(e.span, "trans_callee: weird\
-                    expr"); }
+              _ {
+                bcx.ccx().sess.span_bug(e.span, "trans_callee: weird expr");
+              }
             }
         }
       }
@@ -2515,7 +2503,7 @@ fn trans_lval(cx: block, e: @ast::expr) -> lval_result {
         let ccx = cx.ccx();
         let sub = trans_temp_expr(cx, base);
         let t = expr_ty(cx, base);
-        let val = alt ty::get(t).struct {
+        let val = alt check ty::get(t).struct {
           ty::ty_box(_) {
             GEPi(sub.bcx, sub.val, [0, abi::box_field_body])
           }
@@ -2524,18 +2512,12 @@ fn trans_lval(cx: block, e: @ast::expr) -> lval_result {
           }
           ty::ty_enum(_, _) {
             let ety = expr_ty(cx, e);
-            let ellty =
-                if check type_has_static_size(ccx, ety) {
+            let ellty = if check type_has_static_size(ccx, ety) {
                 T_ptr(type_of(ccx, ety))
             } else { T_typaram_ptr(ccx.tn) };
             PointerCast(sub.bcx, sub.val, ellty)
           }
           ty::ty_ptr(_) | ty::ty_uniq(_) { sub.val }
-          // Precondition?
-          _ {
-            cx.tcx().sess.span_bug(e.span, "trans_lval:\
-                                               Weird argument in deref");
-          }
         };
         ret lval_owned(sub.bcx, val);
       }
@@ -2602,9 +2584,6 @@ fn trans_cast(cx: block, e: @ast::expr, id: ast::node_id,
     let e_res = trans_temp_expr(cx, e);
     let ll_t_in = val_ty(e_res.val);
     let t_in = expr_ty(cx, e);
-    // Check should be avoidable because it's a cast.
-    // FIXME: Constrain types so as to avoid this check.
-    check (type_has_static_size(ccx, t_out));
     let ll_t_out = type_of(ccx, t_out);
 
     enum kind { pointer, integral, float, enum_, other, }
@@ -3210,11 +3189,6 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
         ret trans_ret(bcx, ex);
       }
       ast::expr_be(ex) {
-        // Ideally, the expr_be enum would have a precondition
-        // that is_call_expr(ex) -- but we don't support that
-        // yet
-        // FIXME
-        check (ast_util::is_call_expr(ex));
         ret trans_be(bcx, ex);
       }
       ast::expr_fail(expr) {
@@ -3526,9 +3500,7 @@ fn trans_ret(bcx: block, e: option<@ast::expr>) -> block {
 
 fn build_return(bcx: block) { Br(bcx, bcx.fcx.llreturn); }
 
-// fn trans_be(cx: &block, e: &@ast::expr) -> result {
-fn trans_be(cx: block, e: @ast::expr) : ast_util::is_call_expr(e) ->
-   block {
+fn trans_be(cx: block, e: @ast::expr) -> block {
     // FIXME: Turn this into a real tail call once
     // calling convention issues are settled
     ret trans_ret(cx, some(e));
@@ -4399,13 +4371,11 @@ fn trans_mod(ccx: @crate_ctxt, m: ast::_mod) {
 
 fn get_pair_fn_ty(llpairty: TypeRef) -> TypeRef {
     // Bit of a kludge: pick the fn typeref out of the pair.
-
     ret struct_elt(llpairty, 0u);
 }
 
 fn register_fn(ccx: @crate_ctxt, sp: span, path: path, flav: str,
                ty_params: [ast::ty_param], node_id: ast::node_id) {
-    // FIXME: pull this out
     let t = ty::node_id_to_type(ccx.tcx, node_id);
     register_fn_full(ccx, sp, path, flav, ty_params, node_id, t);
 }
@@ -4461,7 +4431,6 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
         let vecarg_ty: ty::arg =
             {mode: ast::expl(ast::by_val),
              ty: ty::mk_vec(ccx.tcx, {ty: unit_ty, mutbl: ast::m_imm})};
-        // FIXME: mk_nil should have a postcondition
         let nt = ty::mk_nil(ccx.tcx);
         let llfty = type_of_fn(ccx, [vecarg_ty], nt, []);
         let llfdecl = decl_fn(ccx.llmod, "_rust_main",
@@ -4600,10 +4569,7 @@ fn collect_item(ccx: @crate_ctxt, abi: @mutable option<ast::native_abi>,
       ast::item_const(_, _) {
         let typ = ty::node_id_to_type(ccx.tcx, i.id);
         let s = mangle_exported_name(ccx, my_path, typ);
-        // FIXME: Could follow from a constraint on types of const
-        // items
         let g = str::as_buf(s, {|buf|
-            check (type_has_static_size(ccx, typ));
             llvm::LLVMAddGlobal(ccx.llmod, type_of(ccx, typ), buf)
         });
         ccx.item_symbols.insert(i.id, s);
@@ -4639,7 +4605,6 @@ fn collect_item(ccx: @crate_ctxt, abi: @mutable option<ast::native_abi>,
         // ty_res, which would have to carry around two def_ids otherwise
         // -- one to identify the type, and one to find the dtor symbol.
         let t = ty::node_id_to_type(ccx.tcx, dtor_id);
-        // FIXME: how to get rid of this check?
         register_fn_full(ccx, i.span, my_path + [path_name("dtor")],
                          "res_dtor", tps, i.id, t);
       }

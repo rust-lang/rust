@@ -294,7 +294,7 @@ fn get_res_dtor(ccx: @crate_ctxt, did: ast::def_id, inner_t: ty::t)
     if did.crate == ast::local_crate {
         alt ccx.item_ids.find(did.node) {
           some(x) { ret x; }
-          _ { ccx.tcx.sess.bug("get_res_dtor: can't find resource dtor!"); }
+          _ { ccx.sess.bug("get_res_dtor: can't find resource dtor!"); }
         }
     }
 
@@ -364,8 +364,8 @@ type block = @{
 // First two args are retptr, env
 const first_tp_arg: uint = 2u;
 
-// FIXME: we should be able to use option<@block_parent> here but
-// the infinite-enum check in rustboot gets upset.
+// FIXME move blocks to a class once those are finished, and simply use
+// option<block> for this.
 enum block_parent { parent_none, parent_some(block), }
 
 type result = {bcx: block, val: ValueRef};

@@ -601,7 +601,7 @@ fn create_ty(_cx: @crate_ctxt, _t: ty::t, _ty: @ast::ty)
           ty::ty_vec(mt) { ast::ty_vec({ty: t_to_ty(cx, mt.ty, span),
                                         mutbl: mt.mutbl}) }
           _ {
-            cx.tcx.sess.span_bug(span, "t_to_ty: Can't handle this type");
+            cx.sess.span_bug(span, "t_to_ty: Can't handle this type");
           }
         };
         ret @{node: ty, span: span};
@@ -611,7 +611,7 @@ fn create_ty(_cx: @crate_ctxt, _t: ty::t, _ty: @ast::ty)
       ast::ty_box(mt) {
         let inner_t = alt ty::get(t).struct {
           ty::ty_box(boxed) { boxed.ty }
-          _ { cx.tcx.sess.span_bug(ty.span, "t_to_ty was incoherent"); }
+          _ { cx.sess.span_bug(ty.span, "t_to_ty was incoherent"); }
         };
         let md = create_ty(cx, inner_t, mt.ty);
         let box = create_boxed_type(cx, t, inner_t, ty.span, md);
@@ -622,7 +622,7 @@ fn create_ty(_cx: @crate_ctxt, _t: ty::t, _ty: @ast::ty)
         let inner_t = alt ty::get(t).struct {
           ty::ty_uniq(boxed) { boxed.ty }
           // Hoping we'll have a way to eliminate this check soon.
-          _ { cx.tcx.sess.span_bug(ty.span, "t_to_ty was incoherent"); }
+          _ { cx.sess.span_bug(ty.span, "t_to_ty was incoherent"); }
         };
         let md = create_ty(cx, inner_t, mt.ty);
         ret create_pointer_type(cx, t, ty.span, md);
