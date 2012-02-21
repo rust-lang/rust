@@ -1329,9 +1329,7 @@ fn escape_char(c: char) -> str {
       '\n' { "\\n" }
       '\t' { "\\t" }
       '\r' { "\\r" }
-      // FIXME: uncomment this when extfmt is moved to core
-      // in a snapshot.
-      // '\x00' to '\x1f' { #fmt["\\x%02x", c as uint] }
+      '\x00' to '\x1f' { #fmt["\\x%02x", c as uint] }
       v { from_char(c) }
     }
 }
@@ -2295,6 +2293,11 @@ mod tests {
         assert(escape("abc\\def") == "abc\\\\def");
         assert(escape("abc\ndef") == "abc\\ndef");
         assert(escape("abc\"def") == "abc\\\"def");
+    }
+
+    #[test]
+    fn test_escape_char() {
+        assert escape_char('\x1f') == "\\x1f";
     }
 
     #[test]
