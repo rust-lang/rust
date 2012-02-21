@@ -84,6 +84,57 @@ fn may<T>(opt: t<T>, f: fn(T)) {
     alt opt { none {/* nothing */ } some(t) { f(t); } }
 }
 
+/*
+Function: unwrap
+
+Moves a value out of an option type and returns it. Useful primarily
+for getting strings, vectors and unique pointers out of option types
+without copying them.
+*/
+fn unwrap<T>(-opt: t<T>) -> T unsafe {
+    let addr = alt opt {
+      some(x) { ptr::addr_of(x) }
+      none { fail "option none" }
+    };
+    let liberated_value = unsafe::reinterpret_cast(*addr);
+    unsafe::leak(opt);
+    ret liberated_value;
+}
+
+#[test]
+fn test_unwrap_ptr() {
+    let x = ~0;
+    let addr_x = ptr::addr_of(*x);
+    let opt = some(x);
+    let y = unwrap(opt);
+    let addr_y = ptr::addr_of(*y);
+    assert addr_x == addr_y;
+}
+
+#[test]
+fn test_unwrap_str() {
+    let x = "test";
+    let addr_x = str::as_buf(x) {|buf| ptr::addr_of(buf) };
+    let opt = some(x);
+    let y = unwrap(opt);
+    let addr_y = str::as_buf(y) {|buf| ptr::addr_of(buf) };
+    assert addr_x == addr_y;
+}
+
+#[test]
+fn test_unwrap_resource() {
+    resource r(i: @mutable int) {
+        *i += 1;
+    }
+    let i = @mutable 0;
+    {
+        let x = r(i);
+        let opt = some(x);
+        let y = unwrap(opt);
+    }
+    assert *i == 1;
+}
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;
