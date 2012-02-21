@@ -508,6 +508,19 @@ fn mem_buffer_buf(b: mem_buffer) -> [u8] { vec::from_mut(b.buf) }
 fn mem_buffer_str(b: mem_buffer) -> str {
    let b_ = vec::from_mut(b.buf);
    str::from_bytes(b_)
+
+fn with_str_writer(f: fn(writer)) -> str {
+    let buf = mk_mem_buffer();
+    let wr = mem_buffer_writer(buf);
+    f(wr);
+    io::mem_buffer_str(buf)
+}
+
+fn with_buf_writer(f: fn(writer)) -> [u8] {
+    let buf = mk_mem_buffer();
+    let wr = mem_buffer_writer(buf);
+    f(wr);
+    io::mem_buffer_buf(buf)
 }
 
 // Utility functions
