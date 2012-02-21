@@ -558,7 +558,7 @@ fn should_add_type_signatures() {
 #[cfg(test)]
 mod test {
     fn mk_doc(source: str) -> doc::cratedoc {
-        let srv = astsrv::mk_srv_from_str(source);
+        let srv = astsrv::from_str(source);
         let doc = extract::from_srv(srv, "");
         run(srv, doc)
     }

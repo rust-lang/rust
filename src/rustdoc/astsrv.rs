@@ -22,8 +22,8 @@ import rustc::middle::resolve;
 export ctxt;
 export ctxt_handler;
 export srv;
-export mk_srv_from_str;
-export mk_srv_from_file;
+export from_str;
+export from_file;
 export exec;
 
 type ctxt = {
@@ -38,7 +38,7 @@ type srv = {
     ctxt: ctxt
 };
 
-fn mk_srv_from_str(source: str) -> srv {
+fn from_str(source: str) -> srv {
     let (sess, ignore_errors) = build_session();
     {
         ctxt: build_ctxt(sess, parse::from_str_sess(sess, source),
@@ -46,7 +46,7 @@ fn mk_srv_from_str(source: str) -> srv {
     }
 }
 
-fn mk_srv_from_file(file: str) -> srv {
+fn from_file(file: str) -> srv {
     let (sess, ignore_errors) = build_session();
     {
         ctxt: build_ctxt(sess, parse::from_file_sess(sess, file),
@@ -172,7 +172,7 @@ fn build_error_handlers(
 #[test]
 fn should_prune_unconfigured_items() {
     let source = "#[cfg(shut_up_and_leave_me_alone)]fn a() { }";
-    let srv = mk_srv_from_str(source);
+    let srv = from_str(source);
     exec(srv) {|ctxt|
         assert vec::is_empty(ctxt.ast.node.module.items);
     }
@@ -181,7 +181,7 @@ fn should_prune_unconfigured_items() {
 #[test]
 fn srv_should_build_ast_map() {
     let source = "fn a() { }";
-    let srv = mk_srv_from_str(source);
+    let srv = from_str(source);
     exec(srv) {|ctxt|
         assert ctxt.ast_map.size() != 0u
     };
@@ -190,7 +190,7 @@ fn srv_should_build_ast_map() {
 #[test]
 fn srv_should_build_reexport_map() {
     let source = "import a::b; export b; mod a { mod b { } }";
-    let srv = mk_srv_from_str(source);
+    let srv = from_str(source);
     exec(srv) {|ctxt|
         assert ctxt.exp_map.size() != 0u
     };
@@ -202,14 +202,14 @@ fn srv_should_resolve_external_crates() {
                   fn f() -> std::sha1::sha1 {\
                   std::sha1::mk_sha1() }";
     // Just testing that resolve doesn't crash
-    mk_srv_from_str(source);
+    from_str(source);
 }
 
 #[test]
 fn srv_should_resolve_core_crate() {
     let source = "fn a() -> option { fail }";
     // Just testing that resolve doesn't crash
-    mk_srv_from_str(source);
+    from_str(source);
 }
 
 #[test]
@@ -217,19 +217,19 @@ fn srv_should_resolve_non_existant_imports() {
     // We want to ignore things we can't resolve. Shouldn't
     // need to be able to find external crates to create docs.
     let source = "import wooboo; fn a() { }";
-    mk_srv_from_str(source);
+    from_str(source);
 }
 
 #[test]
 fn srv_should_resolve_non_existant_uses() {
     let source = "use forble; fn a() { }";
-    mk_srv_from_str(source);
+    from_str(source);
 }
 
 #[test]
 fn should_ignore_external_import_paths_that_dont_exist() {
     let source = "use forble; import forble::bippy;";
-    mk_srv_from_str(source);
+    from_str(source);
 }
 
 fn exec<T:send>(
@@ -242,7 +242,7 @@ fn exec<T:send>(
 #[test]
 fn srv_should_return_request_result() {
     let source = "fn a() { }";
-    let srv = mk_srv_from_str(source);
+    let srv = from_str(source);
     let result = exec(srv) {|_ctxt| 1000};
     assert result == 1000;
 }

@@ -183,7 +183,7 @@ fn should_extract_fn_arg_attributes() {
 #[test]
 fn should_extract_fn_return_attributes() {
     let source = "#[doc(return = \"what\")] fn a() -> int { }";
-    let srv = astsrv::mk_srv_from_str(source);
+    let srv = astsrv::from_str(source);
     let doc = extract::from_srv(srv, "");
     let doc = tystr_pass::mk_pass()(srv, doc);
     let fold = fold::default_seq_fold(srv);
@@ -194,7 +194,7 @@ fn should_extract_fn_return_attributes() {
 #[test]
 fn should_preserve_fn_sig() {
     let source = "fn a() -> int { }";
-    let srv = astsrv::mk_srv_from_str(source);
+    let srv = astsrv::from_str(source);
     let doc = extract::from_srv(srv, "");
     let doc = tystr_pass::mk_pass()(srv, doc);
     let fold = fold::default_seq_fold(srv);
@@ -448,7 +448,7 @@ fn should_extract_type_docs() {
 #[cfg(test)]
 mod test {
     fn mk_doc(source: str) -> doc::cratedoc {
-        let srv = astsrv::mk_srv_from_str(source);
+        let srv = astsrv::from_str(source);
         let doc = extract::from_srv(srv, "");
         run(srv, doc)
     }

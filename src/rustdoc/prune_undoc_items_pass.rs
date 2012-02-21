@@ -365,7 +365,7 @@ fn should_elide_undocumented_types() {
 #[cfg(test)]
 mod test {
     fn mk_doc(source: str) -> doc::cratedoc {
-        let srv = astsrv::mk_srv_from_str(source);
+        let srv = astsrv::from_str(source);
         let doc = extract::from_srv(srv, "");
         let doc = attr_pass::mk_pass()(srv, doc);
         run(srv, doc)

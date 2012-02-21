@@ -289,7 +289,7 @@ fn should_duplicate_multiple_reexported_items() {
                   import a::b; import a::c; \
                   export b; export c; \
                   }";
-    let srv = astsrv::mk_srv_from_str(source);
+    let srv = astsrv::from_str(source);
     let doc = extract::from_srv(srv, "");
     let doc = path_pass::mk_pass()(srv, doc);
     let doc = run(srv, doc);
@@ -310,7 +310,7 @@ fn should_rename_items_reexported_with_different_names() {
 #[cfg(test)]
 mod test {
     fn mk_doc(source: str) -> doc::cratedoc {
-        let srv = astsrv::mk_srv_from_str(source);
+        let srv = astsrv::from_str(source);
         let doc = extract::from_srv(srv, "");
         let doc = path_pass::mk_pass()(srv, doc);
         run(srv, doc)

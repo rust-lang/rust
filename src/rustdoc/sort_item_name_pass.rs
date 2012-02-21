@@ -11,7 +11,7 @@ fn mk_pass() -> pass {
 #[test]
 fn test() {
     let source = "mod z { } fn y() { }";
-    let srv = astsrv::mk_srv_from_str(source);
+    let srv = astsrv::from_str(source);
     let doc = extract::from_srv(srv, "");
     let doc = mk_pass()(srv, doc);
     assert doc.topmod.items[0].name() == "y";

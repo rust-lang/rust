@@ -64,7 +64,7 @@ fn should_elide_undocumented_arguments() {
 #[test]
 fn should_elide_undocumented_return_values() {
     let source = "#[doc = \"fonz\"] fn a() -> int { }";
-    let srv = astsrv::mk_srv_from_str(source);
+    let srv = astsrv::from_str(source);
     let doc = extract::from_srv(srv, "");
     let doc = tystr_pass::mk_pass()(srv, doc);
     let doc = attr_pass::mk_pass()(srv, doc);
@@ -154,7 +154,7 @@ fn should_elide_undocumented_impl_method_return_values() {
 #[cfg(test)]
 mod test {
     fn mk_doc(source: str) -> doc::cratedoc {
-        let srv = astsrv::mk_srv_from_str(source);
+        let srv = astsrv::from_str(source);
         let doc = extract::from_srv(srv, "");
         let doc = attr_pass::mk_pass()(srv, doc);
         run(srv, doc)

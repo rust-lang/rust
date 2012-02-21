@@ -45,7 +45,7 @@ fn fold_mod(fold: fold::fold<ctxt>, doc: doc::moddoc) -> doc::moddoc {
 #[test]
 fn should_record_mod_paths() {
     let source = "mod a { mod b { mod c { } } mod d { mod e { } } }";
-    let srv = astsrv::mk_srv_from_str(source);
+    let srv = astsrv::from_str(source);
     let doc = extract::from_srv(srv, "");
     let doc = run(srv, doc);
     assert doc.topmod.mods()[0].mods()[0].mods()[0].path() == ["a", "b"];
@@ -55,7 +55,7 @@ fn should_record_mod_paths() {
 #[test]
 fn should_record_fn_paths() {
     let source = "mod a { fn b() { } }";
-    let srv = astsrv::mk_srv_from_str(source);
+    let srv = astsrv::from_str(source);
     let doc = extract::from_srv(srv, "");
     let doc = run(srv, doc);
     assert doc.topmod.mods()[0].fns()[0].path() == ["a"];
