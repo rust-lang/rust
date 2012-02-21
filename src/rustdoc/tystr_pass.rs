@@ -23,7 +23,7 @@ fn run(
         fold_iface: fold_iface,
         fold_impl: fold_impl,
         fold_type: fold_type
-        with *fold::default_seq_fold(srv)
+        with *fold::default_par_fold(srv)
     });
     fold.fold_crate(fold, doc)
 }

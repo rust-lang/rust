@@ -19,7 +19,7 @@ fn run(
 ) -> doc::cratedoc {
     let fold = fold::fold({
         fold_mod: fold_mod
-        with *fold::default_seq_fold(lteq)
+        with *fold::default_par_fold(lteq)
     });
     fold.fold_crate(fold, doc)
 }
@@ -28,7 +28,7 @@ fn fold_mod(
     fold: fold::fold<item_lteq>,
     doc: doc::moddoc
 ) -> doc::moddoc {
-    let doc = fold::default_seq_fold_mod(fold, doc);
+    let doc = fold::default_par_fold_mod(fold, doc);
     {
         items: ~sort::merge_sort(fold.ctxt, *doc.items)
         with doc

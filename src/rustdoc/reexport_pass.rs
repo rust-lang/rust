@@ -102,6 +102,7 @@ fn build_reexport_def_map(
         def_map: common::new_def_hash()
     };
 
+    // FIXME: Do a parallel fold
     let fold = fold::fold({
         fold_mod: fold_mod
         with *fold::default_seq_fold(ctxt)

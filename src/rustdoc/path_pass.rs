@@ -17,7 +17,7 @@ fn run(srv: astsrv::srv, doc: doc::cratedoc) -> doc::cratedoc {
     let fold = fold::fold({
         fold_item: fold_item,
         fold_mod: fold_mod
-        with *fold::default_seq_fold(ctxt)
+        with *fold::default_par_fold(ctxt)
     });
     fold.fold_crate(fold, doc)
 }
@@ -33,7 +33,7 @@ fn fold_mod(fold: fold::fold<ctxt>, doc: doc::moddoc) -> doc::moddoc {
     let is_topmod = doc.id() == rustc::syntax::ast::crate_node_id;
 
     if !is_topmod { vec::push(fold.ctxt.path, doc.name()); }
-    let doc = fold::default_seq_fold_mod(fold, doc);
+    let doc = fold::default_par_fold_mod(fold, doc);
     if !is_topmod { vec::pop(fold.ctxt.path); }
 
     {
