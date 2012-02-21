@@ -1,3 +1,4 @@
+// xfail-test
 class cat {
   priv {
     let mutable meows : uint;
