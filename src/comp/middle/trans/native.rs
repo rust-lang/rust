@@ -214,7 +214,7 @@ fn trans_native_mod(ccx: @crate_ctxt,
                       llwrapfn: ValueRef, llargbundle: ValueRef,
                       num_tps: uint) {
             let i = 0u, n = vec::len(tys.arg_tys);
-            let implicit_args = 2u + num_tps; // ret + env
+            let implicit_args = first_tp_arg + num_tps; // ret + env
             while i < n {
                 let llargval = llvm::LLVMGetParam(
                     llwrapfn,
@@ -290,7 +290,7 @@ fn trans_crust_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
             let n = vec::len(tys.arg_tys);
             let llretptr = load_inbounds(bcx, llargbundle, [0, n as int]);
             llargvals += [llretptr];
-            let llenvptr = C_null(T_opaque_box_ptr(bcx_ccx(bcx)));
+            let llenvptr = C_null(T_opaque_box_ptr(bcx.ccx()));
             llargvals += [llenvptr];
             while i < n {
                 let llargval = load_inbounds(bcx, llargbundle, [0, i as int]);

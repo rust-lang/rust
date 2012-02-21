@@ -6,11 +6,7 @@ import lib::llvm::{True, False, ModuleRef, TypeRef, ValueRef};
 import driver::session;
 import driver::session::session;
 import trans::base;
-import middle::trans::common::{crate_ctxt, val_ty, C_bytes, C_int,
-                               C_named_struct, C_struct, T_enum_variant,
-                               block, result, rslt, bcx_ccx, bcx_tcx,
-                               type_has_static_size, umax, umin, align_to,
-                               tydesc_info};
+import middle::trans::common::*;
 import back::abi;
 import middle::ty;
 import middle::ty::field;
@@ -102,12 +98,12 @@ fn mk_global(ccx: @crate_ctxt, name: str, llval: ValueRef, internal: bool) ->
 // alignment at least as large as any other variant of the enum. This is an
 // important performance optimization.
 //
-// TODO: Use this in dynamic_size_of() as well.
+// FIXME: Use this in dynamic_size_of() as well.
 
 fn largest_variants(ccx: @crate_ctxt, tag_id: ast::def_id) -> [uint] {
     // Compute the minimum and maximum size and alignment for each variant.
     //
-    // TODO: We could do better here; e.g. we know that any variant that
+    // FIXME: We could do better here; e.g. we know that any variant that
     // contains (T,T) must be as least as large as any variant that contains
     // just T.
     let ranges = [];
@@ -117,7 +113,7 @@ fn largest_variants(ccx: @crate_ctxt, tag_id: ast::def_id) -> [uint] {
         let {a: min_size, b: min_align} = {a: 0u, b: 0u};
         for elem_t: ty::t in variant.args {
             if ty::type_has_params(elem_t) {
-                // TODO: We could do better here; this causes us to
+                // FIXME: We could do better here; this causes us to
                 // conservatively assume that (int, T) has minimum size 0,
                 // when in fact it has minimum size sizeof(int).
                 bounded = false;
@@ -183,7 +179,7 @@ fn largest_variants(ccx: @crate_ctxt, tag_id: ast::def_id) -> [uint] {
 // Computes the static size of a enum, without using mk_tup(), which is
 // bad for performance.
 //
-// TODO: Migrate trans over to use this.
+// FIXME: Migrate trans over to use this.
 
 fn round_up(size: u16, align: u8) -> u16 {
     assert (align >= 1u8);
@@ -606,7 +602,7 @@ type tag_metrics = {
 };
 
 fn size_of(bcx: block, t: ty::t) -> result {
-    let ccx = bcx_ccx(bcx);
+    let ccx = bcx.ccx();
     if check type_has_static_size(ccx, t) {
         rslt(bcx, llsize_of(ccx, base::type_of(ccx, t)))
     } else {
@@ -616,7 +612,7 @@ fn size_of(bcx: block, t: ty::t) -> result {
 }
 
 fn align_of(bcx: block, t: ty::t) -> result {
-    let ccx = bcx_ccx(bcx);
+    let ccx = bcx.ccx();
     if check type_has_static_size(ccx, t) {
         rslt(bcx, llalign_of(ccx, base::type_of(ccx, t)))
     } else {
@@ -626,7 +622,7 @@ fn align_of(bcx: block, t: ty::t) -> result {
 }
 
 fn metrics(bcx: block, t: ty::t) -> metrics {
-    let ccx = bcx_ccx(bcx);
+    let ccx = bcx.ccx();
     if check type_has_static_size(ccx, t) {
         let llty = base::type_of(ccx, t);
         { bcx: bcx, sz: llsize_of(ccx, llty), align: llalign_of(ccx, llty) }
@@ -699,8 +695,8 @@ fn dynamic_metrics(cx: block, t: ty::t) -> metrics {
         //     is aligned to max alignment of interior.
         //
 
-        let off = C_int(bcx_ccx(cx), 0);
-        let max_align = C_int(bcx_ccx(cx), 1);
+        let off = C_int(cx.ccx(), 0);
+        let max_align = C_int(cx.ccx(), 1);
         let bcx = cx;
         for e: ty::t in elts {
             let elt_align = align_of(bcx, e);
@@ -734,17 +730,17 @@ fn dynamic_metrics(cx: block, t: ty::t) -> metrics {
       }
       ty::ty_enum(tid, tps) {
         let bcx = cx;
-        let ccx = bcx_ccx(bcx);
+        let ccx = bcx.ccx();
 
         let compute_max_variant_size = fn@(bcx: block) -> result {
             // Compute max(variant sizes).
             let bcx = bcx;
             let max_size: ValueRef = C_int(ccx, 0);
-            let variants = ty::enum_variants(bcx_tcx(bcx), tid);
+            let variants = ty::enum_variants(bcx.tcx(), tid);
             for variant: ty::variant_info in *variants {
                 // Perform type substitution on the raw argument types.
                 let tys = vec::map(variant.args) {|raw_ty|
-                    ty::substitute_type_params(bcx_tcx(cx), tps, raw_ty)
+                    ty::substitute_type_params(cx.tcx(), tps, raw_ty)
                 };
                 let rslt = align_elements(bcx, tys);
                 bcx = rslt.bcx;
@@ -766,7 +762,7 @@ fn dynamic_metrics(cx: block, t: ty::t) -> metrics {
       }
       _ {
         // Precondition?
-        bcx_tcx(cx).sess.bug("dynamic_metrics: type has static \
+        cx.tcx().sess.bug("dynamic_metrics: type has static \
           size");
       }
     }
@@ -802,7 +798,7 @@ fn simplify_type(tcx: ty::ctxt, typ: ty::t) -> ty::t {
 //fn tag_payload_offs(bcx: block, tag_id: ast::def_id, tps: [ty::t])
 //    -> ValueRef {
 //    alt tag_kind(tag_id) {
-//      tk_unit | tk_enum | tk_newtype { C_int(bcx_ccx(bcx), 0) }
+//      tk_unit | tk_enum | tk_newtype { C_int(bcx.ccx(), 0) }
 //      tk_complex {
 //        compute_tag_metrics(tag_id, tps)
 //      }

@@ -167,12 +167,11 @@ fn allocate_cbox(bcx: block,
                  cdata_ty: ty::t)
     -> (block, ValueRef, [ValueRef]) {
 
-    // let ccx = bcx_ccx(bcx);
-    let ccx = bcx_ccx(bcx), tcx = ccx.tcx;
+    let ccx = bcx.ccx(), tcx = ccx.tcx;
 
     fn nuke_ref_count(bcx: block, box: ValueRef) {
         // Initialize ref count to arbitrary value for debugging:
-        let ccx = bcx_ccx(bcx);
+        let ccx = bcx.ccx();
         let box = PointerCast(bcx, box, T_opaque_box_ptr(ccx));
         let ref_cnt = GEPi(bcx, box, [0, abi::box_field_refcnt]);
         let rc = C_int(ccx, 0x12345678);
@@ -183,7 +182,7 @@ fn allocate_cbox(bcx: block,
                          cdata_ty: ty::t,
                          box: ValueRef,
                          &ti: option::t<@tydesc_info>) -> block {
-        let ccx = bcx_ccx(bcx);
+        let ccx = bcx.ccx();
         let bound_tydesc = GEPi(bcx, box, [0, abi::box_field_tydesc]);
         let {bcx, val: td} = base::get_tydesc(bcx, cdata_ty, true, ti);
         let td = Call(bcx, ccx.upcalls.create_shared_type_desc, [td]);
@@ -228,7 +227,7 @@ type closure_result = {
 };
 
 fn cast_if_we_can(bcx: block, llbox: ValueRef, t: ty::t) -> ValueRef {
-    let ccx = bcx_ccx(bcx);
+    let ccx = bcx.ccx();
     if check type_has_static_size(ccx, t) {
         let llty = type_of(ccx, t);
         ret PointerCast(bcx, llbox, llty);
@@ -255,13 +254,12 @@ fn store_environment(
             td
           }
           ty::ck_uniq {
-            Call(bcx, bcx_ccx(bcx).upcalls.create_shared_type_desc, [td])
+            Call(bcx, bcx.ccx().upcalls.create_shared_type_desc, [td])
           }
         };
     }
 
-    let ccx = bcx_ccx(bcx);
-    let tcx = bcx_tcx(bcx);
+    let ccx = bcx.ccx(), tcx = ccx.tcx;
 
     // compute the shape of the closure
     let (cdata_ty, bound_tys) =
@@ -356,7 +354,7 @@ fn build_closure(bcx0: block,
     // If we need to, package up the iterator body to call
     let env_vals = [];
     let bcx = bcx0;
-    let tcx = bcx_tcx(bcx);
+    let tcx = bcx.tcx();
 
     // Package up the captured upvars
     vec::iter(cap_vars) { |cap_var|
@@ -449,7 +447,7 @@ fn trans_expr_fn(bcx: block,
                  cap_clause: ast::capture_clause,
                  dest: dest) -> block {
     if dest == ignore { ret bcx; }
-    let ccx = bcx_ccx(bcx), bcx = bcx;
+    let ccx = bcx.ccx(), bcx = bcx;
     let fty = node_id_type(bcx, id);
     let llfnty = type_of_fn_from_ty(ccx, fty, []);
     let sub_path = bcx.fcx.path + [path_name("anon")];
@@ -493,7 +491,7 @@ fn trans_bind_1(cx: block, outgoing_fty: ty::t,
                 f_res: lval_maybe_callee,
                 args: [option<@ast::expr>], pair_ty: ty::t,
                 dest: dest) -> block {
-    let ccx = bcx_ccx(cx);
+    let ccx = cx.ccx();
     let bound: [@ast::expr] = [];
     for argopt: option<@ast::expr> in args {
         alt argopt { none { } some(e) { bound += [e]; } }
@@ -579,7 +577,7 @@ fn make_fn_glue(
     glue_fn: fn@(block, v: ValueRef, t: ty::t) -> block)
     -> block {
     let bcx = cx;
-    let tcx = bcx_tcx(cx);
+    let tcx = cx.tcx();
 
     let fn_env = fn@(ck: ty::closure_kind) -> block {
         let box_cell_v = GEPi(cx, v, [0, abi::fn_field_box]);
@@ -613,8 +611,7 @@ fn make_opaque_cbox_take_glue(
     }
 
     // Hard case, a deep copy:
-    let ccx = bcx_ccx(bcx);
-    let tcx = bcx_tcx(bcx);
+    let ccx = bcx.ccx(), tcx = ccx.tcx;
     let llopaquecboxty = T_opaque_box_ptr(ccx);
     let cbox_in = Load(bcx, cboxptr);
     with_cond(bcx, IsNotNull(bcx, cbox_in)) {|bcx|
@@ -657,11 +654,11 @@ fn make_opaque_cbox_drop_glue(
       ty::ck_block { bcx }
       ty::ck_box {
         decr_refcnt_maybe_free(bcx, Load(bcx, cboxptr),
-                               ty::mk_opaque_closure_ptr(bcx_tcx(bcx), ck))
+                               ty::mk_opaque_closure_ptr(bcx.tcx(), ck))
       }
       ty::ck_uniq {
         free_ty(bcx, Load(bcx, cboxptr),
-                ty::mk_opaque_closure_ptr(bcx_tcx(bcx), ck))
+                ty::mk_opaque_closure_ptr(bcx.tcx(), ck))
       }
     }
 }
@@ -676,8 +673,7 @@ fn make_opaque_cbox_free_glue(
       ty::ck_box | ty::ck_uniq { /* hard cases: */ }
     }
 
-    let ccx = bcx_ccx(bcx);
-    let tcx = bcx_tcx(bcx);
+    let ccx = bcx.ccx(), tcx = ccx.tcx;
     with_cond(bcx, IsNotNull(bcx, cbox)) {|bcx|
         // Load the type descr found in the cbox
         let lltydescty = T_ptr(ccx.tydesc_type);
@@ -862,7 +858,7 @@ fn trans_bind_thunk(ccx: @crate_ctxt,
         fcx.lltyparams += [{desc: dsc, dicts: dicts}];
     }
 
-    let a: uint = 2u; // retptr, env come first
+    let a: uint = first_tp_arg; // retptr, env come first
     let b: int = starting_idx;
     let outgoing_arg_index: uint = 0u;
     let llout_arg_tys: [TypeRef] =

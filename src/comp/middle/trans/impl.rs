@@ -63,7 +63,7 @@ fn trans_self_arg(bcx: block, base: @ast::expr) -> result {
     let basety = expr_ty(bcx, base);
     let m_by_ref = ast::expl(ast::by_ref);
     trans_arg_expr(bcx, {mode: m_by_ref, ty: basety},
-                   T_ptr(type_of_or_i8(bcx_ccx(bcx), basety)), base)
+                   T_ptr(type_of_or_i8(bcx.ccx(), basety)), base)
 }
 
 fn trans_method_callee(bcx: block, callee_id: ast::node_id,
@@ -110,7 +110,7 @@ fn wrapper_fn_ty(ccx: @crate_ctxt, dict_ty: TypeRef, fty: ty::t,
 fn trans_vtable_callee(bcx: block, env: callee_env, dict: ValueRef,
                        callee_id: ast::node_id, iface_id: ast::def_id,
                        n_method: uint) -> lval_maybe_callee {
-    let bcx = bcx, ccx = bcx_ccx(bcx), tcx = ccx.tcx;
+    let bcx = bcx, ccx = bcx.ccx(), tcx = ccx.tcx;
     let method = ty::iface_methods(tcx, iface_id)[n_method];
     let {ty: fty, llty: llfty} =
         wrapper_fn_ty(ccx, val_ty(dict), node_id_type(bcx, callee_id),
@@ -146,7 +146,7 @@ fn trans_monomorphized_callee(bcx: block, callee_id: ast::node_id,
                               substs: param_substs) -> lval_maybe_callee {
     alt find_dict_in_fn_ctxt(substs, n_param, n_bound) {
       typeck::dict_static(impl_did, tys, sub_origins) {
-        let tcx = bcx_tcx(bcx);
+        let tcx = bcx.tcx();
         if impl_did.crate != ast::local_crate {
             ret trans_param_callee(bcx, callee_id, base, iface_id,
                                    n_method, n_param, n_bound);
@@ -296,8 +296,9 @@ fn trans_impl_wrapper(ccx: @crate_ctxt, pt: path,
     let env_ty = T_ptr(T_struct([T_ptr(T_i8())] + extra_ptrs));
     let n_extra_ptrs = extra_ptrs.len();
 
-    let wrap_args = [T_ptr(T_dict())] + vec::slice(real_args, 0u, 2u) +
-        vec::slice(real_args, 2u + n_extra_ptrs, real_args.len());
+    let wrap_args = [T_ptr(T_dict())] +
+        vec::slice(real_args, 0u, first_tp_arg) +
+        vec::slice(real_args, first_tp_arg + n_extra_ptrs, real_args.len());
     let llfn_ty = T_fn(wrap_args, real_ret);
     trans_wrapper(ccx, pt, llfn_ty, {|llfn, bcx|
         let dict = PointerCast(bcx, LLVMGetParam(llfn, 0 as c_uint), env_ty);
@@ -397,7 +398,7 @@ fn dict_is_static(tcx: ty::ctxt, origin: typeck::dict_origin) -> bool {
 }
 
 fn get_dict(bcx: block, origin: typeck::dict_origin) -> result {
-    let ccx = bcx_ccx(bcx);
+    let ccx = bcx.ccx();
     alt origin {
       typeck::dict_static(impl_did, tys, sub_origins) {
         if dict_is_static(ccx.tcx, origin) {
@@ -455,7 +456,7 @@ fn dict_id(tcx: ty::ctxt, origin: typeck::dict_origin) -> dict_id {
 
 fn get_static_dict(bcx: block, origin: typeck::dict_origin)
     -> ValueRef {
-    let ccx = bcx_ccx(bcx);
+    let ccx = bcx.ccx();
     let id = dict_id(ccx.tcx, origin);
     alt ccx.dicts.find(id) {
       some(d) { ret d; }
@@ -476,7 +477,7 @@ fn get_static_dict(bcx: block, origin: typeck::dict_origin)
 
 fn get_dict_ptrs(bcx: block, origin: typeck::dict_origin)
     -> {bcx: block, ptrs: [ValueRef]} {
-    let ccx = bcx_ccx(bcx);
+    let ccx = bcx.ccx();
     fn get_vtable(ccx: @crate_ctxt, did: ast::def_id) -> ValueRef {
         if did.crate == ast::local_crate {
             ccx.item_ids.get(did.node)
@@ -512,7 +513,7 @@ fn get_dict_ptrs(bcx: block, origin: typeck::dict_origin)
         {bcx: bcx, ptrs: [get_vtable(ccx, did)]}
       }
       _ {
-        bcx_tcx(bcx).sess.bug("Unexpected dict_param in get_dict_ptrs");
+        bcx.tcx().sess.bug("Unexpected dict_param in get_dict_ptrs");
       }
     }
 }
@@ -520,7 +521,7 @@ fn get_dict_ptrs(bcx: block, origin: typeck::dict_origin)
 fn trans_cast(bcx: block, val: @ast::expr, id: ast::node_id, dest: dest)
     -> block {
     if dest == ignore { ret trans_expr(bcx, val, ignore); }
-    let ccx = bcx_ccx(bcx);
+    let ccx = bcx.ccx();
     let v_ty = expr_ty(bcx, val);
     let {bcx, box, body} = trans_malloc_boxed(bcx, v_ty);
     add_clean_free(bcx, box, false);

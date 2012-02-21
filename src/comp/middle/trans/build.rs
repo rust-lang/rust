@@ -6,8 +6,7 @@ import codemap::span;
 import lib::llvm::{ValueRef, TypeRef, BasicBlockRef, BuilderRef, ModuleRef};
 import lib::llvm::{Opcode, IntPredicate, RealPredicate, True, False,
                    CallConv};
-import common::{block, T_ptr, T_nil, T_i8, T_i1, T_void,
-                T_fn, val_ty, bcx_ccx, C_i32, val_str};
+import common::*;
 
 fn B(cx: block) -> BuilderRef {
     let b = *cx.fcx.ccx.builder;
@@ -95,8 +94,8 @@ fn Invoke(cx: block, Fn: ValueRef, Args: [ValueRef],
     assert (!cx.terminated);
     cx.terminated = true;
     #debug["Invoke(%s with arguments (%s))",
-           val_str(bcx_ccx(cx).tn, Fn),
-           str::connect(vec::map(Args, {|a|val_str(bcx_ccx(cx).tn, a)}),
+           val_str(cx.ccx().tn, Fn),
+           str::connect(vec::map(Args, {|a|val_str(cx.ccx().tn, a)}),
                         ", ")];
     unsafe {
         llvm::LLVMBuildInvoke(B(cx), Fn, vec::to_ptr(Args),
@@ -518,7 +517,7 @@ fn _UndefReturn(cx: block, Fn: ValueRef) -> ValueRef {
 }
 
 fn add_span_comment(bcx: block, sp: span, text: str) {
-    let ccx = bcx_ccx(bcx);
+    let ccx = bcx.ccx();
     if (!ccx.sess.opts.no_asm_comments) {
         let s = text + " (" + codemap::span_to_str(sp, ccx.sess.codemap)
             + ")";
@@ -528,7 +527,7 @@ fn add_span_comment(bcx: block, sp: span, text: str) {
 }
 
 fn add_comment(bcx: block, text: str) {
-    let ccx = bcx_ccx(bcx);
+    let ccx = bcx.ccx();
     if (!ccx.sess.opts.no_asm_comments) {
         check str::is_not_empty("$");
         let sanitized = str::replace(text, "$", "");

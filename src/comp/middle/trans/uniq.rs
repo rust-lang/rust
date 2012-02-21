@@ -24,7 +24,7 @@ fn alloc_uniq(cx: block, uniq_ty: ty::t) -> result {
     bcx = r.bcx;
     let llsz = r.val;
 
-    let llptrty = T_ptr(type_of(bcx_ccx(bcx), contents_ty));
+    let llptrty = T_ptr(type_of(bcx.ccx(), contents_ty));
 
     r = trans_shared_malloc(bcx, llptrty, llsz);
     bcx = r.bcx;

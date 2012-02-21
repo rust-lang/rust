@@ -68,10 +68,6 @@ resource BuilderRef_res(B: BuilderRef) { llvm::LLVMDisposeBuilder(B); }
 
 // Crate context.  Every crate we compile has one of these.
 type crate_ctxt =
-    // A mapping from the def_id of each item in this crate to the address
-    // of the first instruction of the item's definition in the executable
-    // we're generating.
-    // TODO: hashmap<tup(tag_id,subtys), @tag_info>
     {sess: session::session,
      llmod: ModuleRef,
      td: target_data,
@@ -233,14 +229,14 @@ fn scope_clean_changed(info: scope_info) {
 }
 
 fn add_clean(cx: block, val: ValueRef, ty: ty::t) {
-    if !ty::type_needs_drop(bcx_tcx(cx), ty) { ret; }
+    if !ty::type_needs_drop(cx.tcx(), ty) { ret; }
     in_scope_cx(cx) {|info|
         info.cleanups += [clean(bind drop_ty(_, val, ty))];
         scope_clean_changed(info);
     }
 }
 fn add_clean_temp(cx: block, val: ValueRef, ty: ty::t) {
-    if !ty::type_needs_drop(bcx_tcx(cx), ty) { ret; }
+    if !ty::type_needs_drop(cx.tcx(), ty) { ret; }
     fn do_drop(bcx: block, val: ValueRef, ty: ty::t) ->
        block {
         if ty::type_is_immediate(ty) {
@@ -255,7 +251,7 @@ fn add_clean_temp(cx: block, val: ValueRef, ty: ty::t) {
     }
 }
 fn add_clean_temp_mem(cx: block, val: ValueRef, ty: ty::t) {
-    if !ty::type_needs_drop(bcx_tcx(cx), ty) { ret; }
+    if !ty::type_needs_drop(cx.tcx(), ty) { ret; }
     in_scope_cx(cx) {|info|
         info.cleanups += [clean_temp(val, bind drop_ty(_, val, ty))];
         scope_clean_changed(info);
@@ -365,6 +361,9 @@ type block = @{
     fcx: @fn_ctxt
 };
 
+// First two args are retptr, env
+const first_tp_arg: uint = 2u;
+
 // FIXME: we should be able to use option<@block_parent> here but
 // the infinite-enum check in rustboot gets upset.
 enum block_parent { parent_none, parent_some(block), }
@@ -409,14 +408,12 @@ fn block_parent(cx: block) -> block {
 }
 
 // Accessors
-// TODO: When we have overloading, simplify these names!
 
-pure fn bcx_tcx(bcx: block) -> ty::ctxt { ret bcx.fcx.ccx.tcx; }
-pure fn bcx_ccx(bcx: block) -> @crate_ctxt { ret bcx.fcx.ccx; }
-pure fn bcx_fcx(bcx: block) -> @fn_ctxt { ret bcx.fcx; }
-pure fn fcx_ccx(fcx: @fn_ctxt) -> @crate_ctxt { ret fcx.ccx; }
-pure fn fcx_tcx(fcx: @fn_ctxt) -> ty::ctxt { ret fcx.ccx.tcx; }
-pure fn ccx_tcx(ccx: @crate_ctxt) -> ty::ctxt { ret ccx.tcx; }
+impl bxc_cxs for block {
+    fn ccx() -> @crate_ctxt { self.fcx.ccx }
+    fn tcx() -> ty::ctxt { self.fcx.ccx.tcx }
+    fn sess() -> session { self.fcx.ccx.sess }
+}
 
 // LLVM type constructors.
 fn T_void() -> TypeRef {
@@ -611,7 +608,7 @@ fn T_array(t: TypeRef, n: uint) -> TypeRef {
 
 // Interior vector.
 //
-// TODO: Support user-defined vector sizes.
+// FIXME: Support user-defined vector sizes.
 fn T_vec2(targ_cfg: @session::config, t: TypeRef) -> TypeRef {
     ret T_struct([T_int(targ_cfg), // fill
                   T_int(targ_cfg), // alloc
@@ -850,7 +847,7 @@ pure fn valid_variant_index(ix: uint, cx: block, enum_id: ast::def_id,
     // change. (We're not adding new variants during trans.)
     unchecked{
         let variant =
-            ty::enum_variant_with_id(bcx_tcx(cx), enum_id, variant_id);
+            ty::enum_variant_with_id(cx.tcx(), enum_id, variant_id);
         ix < variant.args.len()
     }
 }
@@ -897,7 +894,7 @@ fn umin(cx: block, a: ValueRef, b: ValueRef) -> ValueRef {
 }
 
 fn align_to(cx: block, off: ValueRef, align: ValueRef) -> ValueRef {
-    let mask = build::Sub(cx, align, C_int(bcx_ccx(cx), 1));
+    let mask = build::Sub(cx, align, C_int(cx.ccx(), 1));
     let bumped = build::Add(cx, off, mask);
     ret build::And(cx, bumped, build::Not(cx, mask));
 }
@@ -915,7 +912,7 @@ fn path_str(p: path) -> str {
 }
 
 fn node_id_type(bcx: block, id: ast::node_id) -> ty::t {
-    let tcx = bcx_tcx(bcx);
+    let tcx = bcx.tcx();
     let t = ty::node_id_to_type(tcx, id);
     alt bcx.fcx.param_substs {
       some(substs) { ty::substitute_type_params(tcx, substs.tys, t) }
@@ -926,7 +923,7 @@ fn expr_ty(bcx: block, ex: @ast::expr) -> ty::t {
     node_id_type(bcx, ex.id)
 }
 fn node_id_type_params(bcx: block, id: ast::node_id) -> [ty::t] {
-    let tcx = bcx_tcx(bcx);
+    let tcx = bcx.tcx();
     let params = ty::node_id_to_type_params(tcx, id);
     alt bcx.fcx.param_substs {
       some(substs) {

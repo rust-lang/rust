@@ -38,12 +38,12 @@ enum opt_result {
     range_result(result, result),
 }
 fn trans_opt(bcx: block, o: opt) -> opt_result {
-    let ccx = bcx_ccx(bcx), bcx = bcx;
+    let ccx = bcx.ccx(), bcx = bcx;
     alt o {
       lit(l) {
         alt l.node {
           ast::expr_lit(@{node: ast::lit_str(s), _}) {
-            let strty = ty::mk_str(bcx_tcx(bcx));
+            let strty = ty::mk_str(bcx.tcx());
             let cell = empty_dest_cell();
             bcx = tvec::trans_str(bcx, s, by_val(cell));
             add_clean_temp(bcx, *cell, strty);
@@ -526,7 +526,7 @@ fn compile_submatch(bcx: block, m: match, vals: [ValueRef], f: mk_fail,
                 llvm::LLVMAddCase(sw, r.val, opt_cx.llbb);
                 bcx = r.bcx;
               }
-              _ { bcx_tcx(bcx).sess.bug("Someone forgot to\
+              _ { bcx.tcx().sess.bug("Someone forgot to\
                     document an invariant in compile_submatch"); }
             }
           }
@@ -599,10 +599,10 @@ fn make_phi_bindings(bcx: block, map: [exit_node],
     if success {
         // Copy references that the alias analysis considered unsafe
         ids.values {|node_id|
-            if bcx_ccx(bcx).copy_map.contains_key(node_id) {
+            if bcx.ccx().copy_map.contains_key(node_id) {
                 let local = alt bcx.fcx.lllocals.find(node_id) {
                   some(local_mem(x)) { x }
-                  _ { bcx_tcx(bcx).sess.bug("Someone \
+                  _ { bcx.tcx().sess.bug("Someone \
                         forgot to document an invariant in \
                         make_phi_bindings"); }
                 };
@@ -628,7 +628,7 @@ fn trans_alt(bcx: block, expr: @ast::expr, arms: [ast::arm],
 
 fn trans_alt_inner(scope_cx: block, expr: @ast::expr, arms: [ast::arm],
                    dest: dest) -> block {
-    let bcx = scope_cx, tcx = bcx_tcx(bcx);
+    let bcx = scope_cx, tcx = bcx.tcx();
     let bodies = [], match = [];
 
     let {bcx, val, _} = trans_temp_expr(bcx, expr);
@@ -690,7 +690,7 @@ fn bind_irrefutable_pat(bcx: block, pat: @ast::pat, val: ValueRef,
     let ccx = bcx.fcx.ccx, bcx = bcx;
 
     // Necessary since bind_irrefutable_pat is called outside trans_alt
-    alt normalize_pat(bcx_tcx(bcx), pat).node {
+    alt normalize_pat(bcx.tcx(), pat).node {
       ast::pat_ident(_,inner) {
         if make_copy || ccx.copy_map.contains_key(pat.id) {
             let ty = node_id_type(bcx, pat.id);
