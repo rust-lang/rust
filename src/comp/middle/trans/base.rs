@@ -481,12 +481,7 @@ fn GEP_enum(cx: block, llblobptr: ValueRef, enum_id: ast::def_id,
 // and a size indicating how much space we want malloc'd.
 fn trans_shared_malloc(cx: block, llptr_ty: TypeRef, llsize: ValueRef)
    -> result {
-    // FIXME: need a table to collect tydesc globals.
-
-    let tydesc = C_null(T_ptr(cx.ccx().tydesc_type));
-    let rval =
-        Call(cx, cx.ccx().upcalls.shared_malloc,
-             [llsize, tydesc]);
+    let rval = Call(cx, cx.ccx().upcalls.shared_malloc, [llsize]);
     ret rslt(cx, PointerCast(cx, rval, llptr_ty));
 }
 

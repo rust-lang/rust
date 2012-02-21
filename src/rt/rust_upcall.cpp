@@ -217,7 +217,6 @@ upcall_validate_box(rust_opaque_box* ptr) {
 struct s_shared_malloc_args {
     uintptr_t retval;
     size_t nbytes;
-    type_desc *td;
 };
 
 extern "C" CDECL void
@@ -225,21 +224,17 @@ upcall_s_shared_malloc(s_shared_malloc_args *args) {
     rust_task *task = rust_task_thread::get_task();
     LOG_UPCALL_ENTRY(task);
 
-    LOG(task, mem,
-        "upcall shared_malloc(%" PRIdPTR ", 0x%" PRIxPTR ")",
-        args->nbytes, args->td);
+    LOG(task, mem, "upcall shared_malloc(%" PRIdPTR ")", args->nbytes);
     void *p = task->kernel->malloc(args->nbytes, "shared malloc");
     memset(p, '\0', args->nbytes);
-    LOG(task, mem,
-        "upcall shared_malloc(%" PRIdPTR ", 0x%" PRIxPTR
-        ") = 0x%" PRIxPTR,
-        args->nbytes, args->td, (uintptr_t)p);
+    LOG(task, mem, "upcall shared_malloc(%" PRIdPTR ") = 0x%" PRIxPTR,
+        args->nbytes, (uintptr_t)p);
     args->retval = (uintptr_t) p;
 }
 
 extern "C" CDECL uintptr_t
-upcall_shared_malloc(size_t nbytes, type_desc *td) {
-    s_shared_malloc_args args = {0, nbytes, td};
+upcall_shared_malloc(size_t nbytes) {
+    s_shared_malloc_args args = {0, nbytes};
     UPCALL_SWITCH_STACK(&args, upcall_s_shared_malloc);
     return args.retval;
 }

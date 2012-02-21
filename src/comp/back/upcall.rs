@@ -57,20 +57,17 @@ fn declare_upcalls(targ_cfg: @session::config,
                              T_ptr(T_i8()),
                              size_t]),
           malloc:
-              d("malloc", [T_ptr(tydesc_type)],
-                T_ptr(T_i8())),
+              d("malloc", [T_ptr(tydesc_type)], T_ptr(T_i8())),
           free:
               dv("free", [T_ptr(T_i8())]),
           validate_box:
               dv("validate_box", [T_ptr(T_i8())]),
           shared_malloc:
-              d("shared_malloc", [size_t, T_ptr(tydesc_type)],
-                T_ptr(T_i8())),
+              d("shared_malloc", [size_t], T_ptr(T_i8())),
           shared_free:
               dv("shared_free", [T_ptr(T_i8())]),
           shared_realloc:
-              d("shared_realloc", [T_ptr(T_i8()), size_t],
-                T_ptr(T_i8())),
+              d("shared_realloc", [T_ptr(T_i8()), size_t], T_ptr(T_i8())),
           mark:
               d("mark", [T_ptr(T_i8())], int_t),
           create_shared_type_desc:
