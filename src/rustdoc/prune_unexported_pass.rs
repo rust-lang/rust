@@ -13,13 +13,13 @@ fn mk_pass() -> pass {
 fn run(srv: astsrv::srv, doc: doc::cratedoc) -> doc::cratedoc {
     let fold = fold::fold({
         fold_mod: fold_mod
-        with *fold::default_par_fold(srv)
+        with *fold::default_any_fold(srv)
     });
     fold.fold_crate(fold, doc)
 }
 
 fn fold_mod(fold: fold::fold<astsrv::srv>, doc: doc::moddoc) -> doc::moddoc {
-    let doc = fold::default_par_fold_mod(fold, doc);
+    let doc = fold::default_any_fold_mod(fold, doc);
     {
         items: ~exported_items(fold.ctxt, doc)
         with doc

@@ -13,6 +13,8 @@ export default_seq_fold_impl;
 export default_seq_fold_type;
 export default_par_fold;
 export default_par_fold_mod;
+export default_any_fold;
+export default_any_fold_mod;
 
 enum fold<T> = t<T>;
 
@@ -104,6 +106,12 @@ fn default_par_fold<T:send>(ctxt: T) -> fold<T> {
     )
 }
 
+// Just a convenient wrapper to convert back and forth between
+// parallel and sequential folds for perf testing
+fn default_any_fold<T:send>(ctxt: T) -> fold<T> {
+    default_par_fold(ctxt)
+}
+
 fn default_seq_fold_crate<T>(
     fold: fold<T>,
     doc: doc::cratedoc
@@ -144,6 +152,13 @@ fn default_par_fold_mod<T:send>(
         }
         with doc
     }
+}
+
+fn default_any_fold_mod<T:send>(
+    fold: fold<T>,
+    doc: doc::moddoc
+) -> doc::moddoc {
+    default_par_fold_mod(fold, doc)
 }
 
 fn fold_itemtag<T>(fold: fold<T>, doc: doc::itemtag) -> doc::itemtag {

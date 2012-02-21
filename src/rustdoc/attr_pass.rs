@@ -27,7 +27,7 @@ fn run(
         fold_res: fold_res,
         fold_iface: fold_iface,
         fold_impl: fold_impl
-        with *fold::default_par_fold(srv)
+        with *fold::default_any_fold(srv)
     });
     fold.fold_crate(fold, doc)
 }

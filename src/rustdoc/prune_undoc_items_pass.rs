@@ -26,7 +26,7 @@ fn run(
         fold_iface: fold_iface,
         fold_impl: fold_impl,
         fold_type: fold_type
-        with *fold::default_par_fold(ctxt)
+        with *fold::default_any_fold(ctxt)
     });
     fold.fold_crate(fold, doc)
 }
@@ -105,7 +105,7 @@ fn fold_mod(
               _ { some(itemtag) }
             }
         }
-        with fold::default_par_fold_mod(fold, doc)
+        with fold::default_any_fold_mod(fold, doc)
     };
     fold.ctxt.have_docs =
         doc.brief() != none
