@@ -109,7 +109,7 @@ fn default_par_fold<T:send>(ctxt: T) -> fold<T> {
 // Just a convenient wrapper to convert back and forth between
 // parallel and sequential folds for perf testing
 fn default_any_fold<T:send>(ctxt: T) -> fold<T> {
-    default_par_fold(ctxt)
+    default_seq_fold(ctxt)
 }
 
 fn default_seq_fold_crate<T>(
@@ -158,7 +158,7 @@ fn default_any_fold_mod<T:send>(
     fold: fold<T>,
     doc: doc::moddoc
 ) -> doc::moddoc {
-    default_par_fold_mod(fold, doc)
+    default_seq_fold_mod(fold, doc)
 }
 
 fn fold_itemtag<T>(fold: fold<T>, doc: doc::itemtag) -> doc::itemtag {
