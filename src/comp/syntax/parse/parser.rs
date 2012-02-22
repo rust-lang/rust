@@ -1581,7 +1581,7 @@ fn parse_local(p: parser, allow_init: bool) -> @ast::local {
 
 fn parse_let(p: parser) -> @ast::decl {
     if eat_word(p, "mut") {
-        /* TODO */
+        /* FIXME */
     }
     let lo = p.span.lo;
     let locals = [parse_local(p, true)];
@@ -2027,7 +2027,7 @@ enum class_contents { ctor_decl(ast::fn_decl, ast::blk),
         let body = parse_block(p);
         ret ctor_decl(decl, body);
     }
-    // TODO: refactor
+    // FIXME: refactor
     else if eat_word(p, "priv") {
             expect(p, token::LBRACE);
             let results = [];

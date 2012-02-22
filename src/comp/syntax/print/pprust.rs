@@ -8,7 +8,6 @@ import pp::{break_offset, word, printer,
 import driver::diagnostic;
 
 // The ps is stored here to prevent recursive type.
-// FIXME use a nominal enum instead
 enum ann_node {
     node_block(ps, ast::blk),
     node_item(ps, @ast::item),
@@ -357,7 +356,7 @@ fn print_type(s: ps, &&ty: @ast::ty) {
       ast::ty_constr(t, cs) {
         print_type(s, t);
         space(s.s);
-        word(s.s, ast_ty_constrs_str(cs));
+        word(s.s, constrs_str(cs, ty_constr_to_str));
       }
       ast::ty_mac(_) {
           fail "print_type doesn't know how to print a ty_mac";
@@ -482,7 +481,7 @@ fn print_item(s: ps, &&item: @ast::item) {
           print_block(s, ctor_body);
           for ci in items {
                   /*
-                     TODO: collect all private items and print them
+                     FIXME: collect all private items and print them
                      in a single "priv" section
                    */
              hardbreak_if_not_bol(s);
@@ -1249,7 +1248,10 @@ fn print_fn_args_and_ret(s: ps, decl: ast::fn_decl) {
     }
     commasep(s, inconsistent, decl.inputs, print_arg);
     pclose(s);
-    word(s.s, ast_fn_constrs_str(decl, decl.constraints));
+    word(s.s, constrs_str(decl.constraints, {|c|
+        ast_fn_constr_to_str(decl, c)
+    }));
+
     maybe_print_comment(s, decl.output.span.lo);
     if decl.output.node != ast::ty_nil {
         space_if_not_bol(s);
@@ -1479,7 +1481,7 @@ fn print_ty_fn(s: ps, opt_proto: option<ast::proto>,
         else { print_type(s, decl.output); }
         end(s);
     }
-    word(s.s, ast_ty_fn_constrs_str(decl.constraints));
+    word(s.s, constrs_str(decl.constraints, ast_ty_fn_constr_to_str));
     end(s);
 }
 
@@ -1684,8 +1686,6 @@ fn next_comment(s: ps) -> option<lexer::cmnt> {
     }
 }
 
-// Removing the aliases from the type of f in the next two functions
-// triggers memory corruption, but I haven't isolated the bug yet. FIXME
 fn constr_args_to_str<T>(f: fn@(T) -> str, args: [@ast::sp_constr_arg<T>]) ->
    str {
     let comma = false;
@@ -1712,41 +1712,36 @@ fn constr_arg_to_str<T>(f: fn@(T) -> str, c: ast::constr_arg_general_<T>) ->
 // (argh)
 fn uint_to_str(&&i: uint) -> str { ret uint::str(i); }
 
-fn ast_ty_fn_constr_to_str(c: @ast::constr) -> str {
+fn ast_ty_fn_constr_to_str(&&c: @ast::constr) -> str {
     ret path_to_str(c.node.path) +
             constr_args_to_str(uint_to_str, c.node.args);
 }
 
-// FIXME: fix repeated code
-fn ast_ty_fn_constrs_str(constrs: [@ast::constr]) -> str {
-    let s = "";
-    let colon = true;
-    for c: @ast::constr in constrs {
+fn ast_fn_constr_to_str(decl: ast::fn_decl, &&c: @ast::constr) -> str {
+    let arg_to_str = bind fn_arg_idx_to_str(decl, _);
+    ret path_to_str(c.node.path) +
+            constr_args_to_str(arg_to_str, c.node.args);
+}
+
+fn ty_constr_to_str(&&c: @ast::ty_constr) -> str {
+    fn ty_constr_path_to_str(&&p: @ast::path) -> str { "*." + path_to_str(p) }
+
+    ret path_to_str(c.node.path) +
+            constr_args_to_str::<@ast::path>(ty_constr_path_to_str,
+                                             c.node.args);
+}
+
+fn constrs_str<T>(constrs: [T], elt: fn(T) -> str) -> str {
+    let s = "", colon = true;
+    for c in constrs {
         if colon { s += " : "; colon = false; } else { s += ", "; }
-        s += ast_ty_fn_constr_to_str(c);
+        s += elt(c);
     }
     ret s;
 }
 
 fn fn_arg_idx_to_str(decl: ast::fn_decl, &&idx: uint) -> str {
     decl.inputs[idx].ident
-}
-
-fn ast_fn_constr_to_str(decl: ast::fn_decl, c: @ast::constr) -> str {
-    let arg_to_str = bind fn_arg_idx_to_str(decl, _);
-    ret path_to_str(c.node.path) +
-            constr_args_to_str(arg_to_str, c.node.args);
-}
-
-// FIXME: fix repeated code
-fn ast_fn_constrs_str(decl: ast::fn_decl, constrs: [@ast::constr]) -> str {
-    let s = "";
-    let colon = true;
-    for c: @ast::constr in constrs {
-        if colon { s += " : "; colon = false; } else { s += ", "; }
-        s += ast_fn_constr_to_str(decl, c);
-    }
-    ret s;
 }
 
 fn opt_proto_to_str(opt_p: option<ast::proto>) -> str {
@@ -1764,25 +1759,6 @@ fn proto_to_str(p: ast::proto) -> str {
       ast::proto_uniq { "fn~" }
       ast::proto_box { "fn@" }
     };
-}
-
-fn ty_constr_to_str(c: @ast::ty_constr) -> str {
-    fn ty_constr_path_to_str(&&p: @ast::path) -> str { "*." + path_to_str(p) }
-
-    ret path_to_str(c.node.path) +
-            constr_args_to_str::<@ast::path>(ty_constr_path_to_str,
-                                             c.node.args);
-}
-
-
-fn ast_ty_constrs_str(constrs: [@ast::ty_constr]) -> str {
-    let s = "";
-    let colon = true;
-    for c: @ast::ty_constr in constrs {
-        if colon { s += " : "; colon = false; } else { s += ", "; }
-        s += ty_constr_to_str(c);
-    }
-    ret s;
 }
 
 fn ends_in_lit_int(ex: @ast::expr) -> bool {
