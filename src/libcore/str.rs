@@ -394,6 +394,31 @@ fn substr(s: str, begin: uint, len: uint) -> str {
     ret slice_chars(s, begin, begin + len);
 }
 
+// Function: slice
+//
+// Return a slice of the given string from the byte range [`begin`..`end`)
+// or else fail when `begin` and `end` do not point to valid characters or
+// beyond the last character of the string
+fn slice(ss: str, begin: uint, end: uint) -> str {
+   alt maybe_slice(ss, begin, end) {
+      none     { fail "slice requires a valid start and end"; }
+      some(sli) { ret sli; }
+   }
+}
+
+// Function: maybe_slice
+//
+// Like slice, only returns an option<str>
+fn maybe_slice(ss: str, begin: uint, end: uint) -> option<str> unsafe {
+   let sli = unsafe::slice_bytes(ss, begin, end);
+
+   if is_utf8(bytes(sli)) {
+      ret some(sli);
+   } else {
+      ret none;
+   }
+}
+
 /*
 Function: slice_chars
 
@@ -1966,6 +1991,58 @@ mod tests {
 
         let d = "ไท华";
         assert (replace(data, d, repl) == data);
+    }
+
+    #[test]
+    fn test_slice() {
+        assert (eq("ab", slice("abc", 0u, 2u)));
+        assert (eq("bc", slice("abc", 1u, 3u)));
+        assert (eq("", slice("abc", 1u, 1u)));
+        assert (eq("\u65e5", slice("\u65e5\u672c", 0u, 3u)));
+
+        let data = "ประเทศไทย中华";
+        assert (eq("ป", slice(data, 0u, 3u)));
+        assert (eq("ร", slice(data, 3u, 6u)));
+        assert (eq("", slice(data, 1u, 1u)));
+        assert (eq("华", slice(data, 30u, 33u)));
+
+        fn a_million_letter_X() -> str {
+            let i = 0;
+            let rs = "";
+            while i < 100000 { rs += "华华华华华华华华华华"; i += 1; }
+            ret rs;
+        }
+        fn half_a_million_letter_X() -> str {
+            let i = 0;
+            let rs = "";
+            while i < 100000 { rs += "华华华华华"; i += 1; }
+            ret rs;
+        }
+        assert (eq(half_a_million_letter_X(),
+                        slice(a_million_letter_X(), 0u, (3u * 500000u))));
+    }
+
+    #[test]
+    fn test_maybe_slice() {
+       let ss = "中华Việt Nam";
+
+       assert none == maybe_slice(ss, 0u, 2u);
+       assert none == maybe_slice(ss, 1u, 3u);
+       assert none == maybe_slice(ss, 1u, 2u);
+       assert some("华") == maybe_slice(ss, 3u, 6u);
+       assert some("Việt Nam") == maybe_slice(ss, 6u, 16u);
+       assert none == maybe_slice(ss, 4u, 16u);
+
+       /* 0: 中
+          3: 华
+          6: V
+          7: i
+          8: ệ
+         11: t
+         12:
+         13: N
+         14: a
+         15: m */
     }
 
     #[test]
