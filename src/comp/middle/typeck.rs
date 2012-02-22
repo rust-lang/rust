@@ -1146,8 +1146,10 @@ mod writeback {
                                   typ) {
           fix_ok(new_type) { ret some(new_type); }
           fix_err(vid) {
-            fcx.ccx.tcx.sess.span_err(sp, "cannot determine a type \
-                                           for this expression");
+            if !fcx.ccx.tcx.sess.has_errors() {
+                fcx.ccx.tcx.sess.span_err(sp, "cannot determine a type \
+                                               for this expression");
+            }
             ret none;
           }
         }
@@ -2546,7 +2548,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                                field, ty_to_str(tcx, t_err)];
                 tcx.sess.span_err(expr.span, msg);
                 // NB: Adding a bogus type to allow typechecking to continue
-                write_ty(tcx, id, ty::mk_nil(tcx));
+                write_ty(tcx, id, next_ty_var(fcx));
               }
             }
         }
