@@ -325,7 +325,7 @@ mod rt {
             alt cv.precision {
               count_implied { s }
               count_is(max) {
-                if max as uint < str::len(s) {
+                if max as uint < str::len_chars(s) {
                     str::substr(s, 0u, max as uint)
                 } else { s }
               }
@@ -368,7 +368,7 @@ mod rt {
                 ""
             } else {
                 let s = uint::to_str(num, radix);
-                let len = str::len(s);
+                let len = str::len_chars(s);
                 if len < prec {
                     let diff = prec - len;
                     let pad = str_init_elt(diff, '0');
@@ -400,7 +400,7 @@ mod rt {
             uwidth = width as uint;
           }
         }
-        let strlen = str::len(s);
+        let strlen = str::len_chars(s);
         if uwidth <= strlen { ret s; }
         let padchar = ' ';
         let diff = uwidth - strlen;

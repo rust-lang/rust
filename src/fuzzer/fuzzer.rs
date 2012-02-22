@@ -287,7 +287,7 @@ fn check_variants_T<T: copy>(
 
 fn last_part(filename: str) -> str {
   let ix = option::get(str::rindex(filename, '/'));
-  str::slice(filename, ix + 1u, str::len(filename) - 3u)
+  str::slice(filename, ix + 1u, str::len_chars(filename) - 3u)
 }
 
 enum happiness { passed, cleanly_rejected(str), known_bug(str), failed(str), }

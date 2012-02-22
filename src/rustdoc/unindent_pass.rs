@@ -68,7 +68,7 @@ fn unindent(s: str) -> str {
                 line
             } else {
                 assert str::len_bytes(line) >= min_indent;
-                str::slice(line, min_indent, str::len(line))
+                str::slice(line, min_indent, str::len_chars(line))
             }
         };
         str::connect(unindented, "\n")

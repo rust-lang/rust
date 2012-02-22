@@ -77,7 +77,7 @@ fn mk_rng() -> rng {
             let i = 0u;
             while (i < len) {
                 let n = rustrt::rand_next(**self) as uint %
-                    str::len(charset);
+                    str::len_bytes(charset);
                 s = s + str::from_char(str::char_at(charset, n));
                 i += 1u;
             }
@@ -130,8 +130,8 @@ mod tests {
         log(debug, r.gen_str(10u));
         log(debug, r.gen_str(10u));
         log(debug, r.gen_str(10u));
-        assert(str::len(r.gen_str(10u)) == 10u);
-        assert(str::len(r.gen_str(16u)) == 16u);
+        assert(str::len_bytes(r.gen_str(10u)) == 10u);
+        assert(str::len_bytes(r.gen_str(16u)) == 16u);
     }
 }
 

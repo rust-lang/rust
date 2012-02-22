@@ -79,7 +79,7 @@ A description of a possible option
 type opt = {name: name, hasarg: hasarg, occur: occur};
 
 fn mkname(nm: str) -> name {
-    ret if str::len(nm) == 1u {
+    ret if str::len_bytes(nm) == 1u {
             short(str::char_at(nm, 0u))
         } else { long(nm) };
 }

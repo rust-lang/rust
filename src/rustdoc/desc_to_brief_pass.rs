@@ -175,7 +175,7 @@ fn parse_desc(desc: str) -> (option<str>, option<str>) {
 
     if check vec::is_not_empty(paras) {
         let maybe_brief = vec::head(paras);
-        if str::len(maybe_brief) <= max_brief_len {
+        if str::len_bytes(maybe_brief) <= max_brief_len {
             let desc_paras = vec::tail(paras);
             let desc = if vec::is_not_empty(desc_paras) {
                 some(str::connect(desc_paras, "\n\n"))
