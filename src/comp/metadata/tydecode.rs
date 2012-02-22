@@ -390,8 +390,8 @@ fn parse_def_id(buf: [u8]) -> ast::def_id {
     for b: u8 in crate_part { crate_part_vec += [b]; }
     for b: u8 in def_part { def_part_vec += [b]; }
 
-    let crate_num = uint::parse_buf(crate_part_vec, 10u) as int;
-    let def_num = uint::parse_buf(def_part_vec, 10u) as int;
+    let crate_num = option::get(uint::parse_buf(crate_part_vec, 10u)) as int;
+    let def_num = option::get(uint::parse_buf(def_part_vec, 10u)) as int;
     ret {crate: crate_num, node: def_num};
 }
 

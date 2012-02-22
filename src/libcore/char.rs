@@ -38,7 +38,7 @@ export is_alphabetic,
        is_lowercase, is_uppercase,
        is_whitespace, is_alphanumeric,
        is_ascii, is_digit,
-       to_digit, to_lower, to_upper, maybe_digit, cmp;
+       to_digit, to_lower, to_upper, cmp;
 
 import is_alphabetic = unicode::derived_property::Alphabetic;
 import is_XID_start = unicode::derived_property::XID_Start;
@@ -102,26 +102,18 @@ pure fn is_digit(c: char) -> bool {
            Safety note: This function fails if `c` is not a valid char",
   return = "If `c` is between '0' and '9', the corresponding value \
             between 0 and 9. If `c` is 'a' or 'A', 10. If `c` is \
-            'b' or 'B', 11, etc."
+            'b' or 'B', 11, etc. Returns none if the char does not \
+            refer to a digit in the given radix."
 )]
-pure fn to_digit(c: char) -> u8 unsafe {
-    alt maybe_digit(c) {
-      option::some(x) { x }
-      option::none { fail; }
-    }
-}
-
-#[doc(
-  brief = "Convert a char to the corresponding digit. Returns none when \
-           character is not a valid hexadecimal digit."
-)]
-pure fn maybe_digit(c: char) -> option<u8> {
-    alt c {
-      '0' to '9' { option::some(c as u8 - ('0' as u8)) }
-      'a' to 'z' { option::some(c as u8 + 10u8 - ('a' as u8)) }
-      'A' to 'Z' { option::some(c as u8 + 10u8 - ('A' as u8)) }
-      _ { option::none }
-    }
+pure fn to_digit(c: char, radix: uint) -> option<uint> {
+    let val = alt c {
+      '0' to '9' { c as uint - ('0' as uint) }
+      'a' to 'z' { c as uint + 10u - ('a' as uint) }
+      'A' to 'Z' { c as uint + 10u - ('A' as uint) }
+      _ { ret none; }
+    };
+    if val < radix { some(val) }
+    else { none }
 }
 
 /*
@@ -192,30 +184,19 @@ fn test_is_whitespace() {
 
 #[test]
 fn test_to_digit() {
-    assert (to_digit('0') == 0u8);
-    assert (to_digit('1') == 1u8);
-    assert (to_digit('2') == 2u8);
-    assert (to_digit('9') == 9u8);
-    assert (to_digit('a') == 10u8);
-    assert (to_digit('A') == 10u8);
-    assert (to_digit('b') == 11u8);
-    assert (to_digit('B') == 11u8);
-    assert (to_digit('z') == 35u8);
-    assert (to_digit('Z') == 35u8);
-}
+    assert to_digit('0', 10u) == some(0u);
+    assert to_digit('1', 2u) == some(1u);
+    assert to_digit('2', 3u) == some(2u);
+    assert to_digit('9', 10u) == some(9u);
+    assert to_digit('a', 16u) == some(10u);
+    assert to_digit('A', 16u) == some(10u);
+    assert to_digit('b', 16u) == some(11u);
+    assert to_digit('B', 16u) == some(11u);
+    assert to_digit('z', 36u) == some(35u);
+    assert to_digit('Z', 36u) == some(35u);
 
-#[test]
-#[should_fail]
-#[ignore(cfg(target_os = "win32"))]
-fn test_to_digit_fail_1() {
-    to_digit(' ');
-}
-
-#[test]
-#[should_fail]
-#[ignore(cfg(target_os = "win32"))]
-fn test_to_digit_fail_2() {
-    to_digit('$');
+    assert to_digit(' ', 10u) == none;
+    assert to_digit('$', 36u) == none;
 }
 
 #[test]

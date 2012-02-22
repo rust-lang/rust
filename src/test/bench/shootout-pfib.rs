@@ -90,7 +90,8 @@ fn main(argv: [str]) {
         if opts.stress {
             stress(2);
         } else {
-            let max = uint::parse_buf(str::bytes(argv[1]), 10u) as int;
+            let max = option::get(uint::parse_buf(str::bytes(argv[1]),
+                                                  10u)) as int;
 
             let num_trials = 10;
 

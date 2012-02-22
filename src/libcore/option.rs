@@ -41,6 +41,16 @@ fn map<T, U: copy>(opt: t<T>, f: fn(T) -> U) -> t<U> {
 }
 
 /*
+Function: chain
+
+Update an optional value by optionally running its content through a function
+that returns an option.
+*/
+fn chain<T, U>(opt: t<T>, f: fn(T) -> t<U>) -> t<U> {
+    alt opt { some(x) { f(x) } none { none } }
+}
+
+/*
 Function: is_none
 
 Returns true if the option equals none

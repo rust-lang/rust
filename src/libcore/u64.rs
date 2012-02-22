@@ -117,19 +117,17 @@ Function: from_str
 
 Parse a string as an unsigned integer.
 */
-fn from_str(buf: str, radix: u64) -> u64 {
-    if str::len_bytes(buf) == 0u {
-        #error("parse_buf(): buf is empty");
-        fail;
-    }
+fn from_str(buf: str, radix: u64) -> option<u64> {
+    if str::len_bytes(buf) == 0u { ret none; }
     let i = str::len_bytes(buf) - 1u;
     let power = 1u64, n = 0u64;
     while true {
-        let digit = char::to_digit(buf[i] as char) as u64;
-        if digit >= radix { fail; }
-        n += digit * power;
+        alt char::to_digit(buf[i] as char, radix) {
+          some(d) { n += d as u64 * power; }
+          none { ret none; }
+        }
         power *= radix;
-        if i == 0u { ret n; }
+        if i == 0u { ret some(n); }
         i -= 1u;
     }
     fail;

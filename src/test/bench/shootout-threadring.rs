@@ -38,11 +38,8 @@ fn roundtrip(id: int, p: comm::port<int>, ch: comm::chan<int>) {
 }
 
 fn main(args: [str]) {
-    let token = if vec::len(args) < 2u {
-        1000
-    } else {
-        int::from_str(args[1])
-    };
+    let token = if vec::len(args) < 2u { 1000 }
+                else { option::get(int::from_str(args[1])) };
 
     start(token);
 }

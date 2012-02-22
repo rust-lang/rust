@@ -33,8 +33,8 @@ fn run(args: [str]) {
     let to_child = task::spawn_listener {|po|
         server(po, to_parent);
     };
-    let size = uint::from_str(args[1]);
-    let workers = uint::from_str(args[2]);
+    let size = option::get(uint::from_str(args[1]));
+    let workers = option::get(uint::from_str(args[2]));
     let start = std::time::precise_time_s();
     let to_child = to_child;
     let worker_results = [];

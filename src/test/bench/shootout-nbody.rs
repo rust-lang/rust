@@ -15,7 +15,7 @@ native mod libc {
 
 fn main(args: [str]) {
     let n = if vec::len(args) == 2u {
-        int::from_str(args[1])
+        option::get(int::from_str(args[1]))
     } else {
         100000
     };

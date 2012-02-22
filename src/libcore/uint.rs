@@ -188,22 +188,18 @@ Failure:
 
 buf must not be empty
 */
-fn parse_buf(buf: [u8], radix: uint) -> uint {
-    if vec::len::<u8>(buf) == 0u {
-        #error("parse_buf(): buf is empty");
-        fail;
-    }
-    let i = vec::len::<u8>(buf) - 1u;
+fn parse_buf(buf: [u8], radix: uint) -> option<uint> {
+    if vec::len(buf) == 0u { ret none; }
+    let i = vec::len(buf) - 1u;
     let power = 1u;
     let n = 0u;
     while true {
-        let digit = char::to_digit(buf[i] as char);
-        if (digit as uint) >= radix {
-            fail;
+        alt char::to_digit(buf[i] as char, radix) {
+          some(d) { n += d * power; }
+          none { ret none; }
         }
-        n += (digit as uint) * power;
         power *= radix;
-        if i == 0u { ret n; }
+        if i == 0u { ret some(n); }
         i -= 1u;
     }
     fail;
@@ -213,12 +209,8 @@ fn parse_buf(buf: [u8], radix: uint) -> uint {
 Function: from_str
 
 Parse a string to an int
-
-Failure:
-
-s must not be empty
 */
-fn from_str(s: str) -> uint { parse_buf(str::bytes(s), 10u) }
+fn from_str(s: str) -> option<uint> { parse_buf(str::bytes(s), 10u) }
 
 /*
 Function: to_str
@@ -282,50 +274,29 @@ mod tests {
 
     #[test]
     fn test_from_str() {
-        assert (uint::from_str("0") == 0u);
-        assert (uint::from_str("3") == 3u);
-        assert (uint::from_str("10") == 10u);
-        assert (uint::from_str("123456789") == 123456789u);
-        assert (uint::from_str("00100") == 100u);
+        assert uint::from_str("0") == some(0u);
+        assert uint::from_str("3") == some(3u);
+        assert uint::from_str("10") == some(10u);
+        assert uint::from_str("123456789") == some(123456789u);
+        assert uint::from_str("00100") == some(100u);
+
+        assert uint::from_str("") == none;
+        assert uint::from_str(" ") == none;
+        assert uint::from_str("x") == none;
     }
 
-    #[test]
-    #[should_fail]
-    #[ignore(cfg(target_os = "win32"))]
-    fn test_from_str_fail_1() {
-        uint::from_str(" ");
-    }
-
-    #[test]
-    #[should_fail]
-    #[ignore(cfg(target_os = "win32"))]
-    fn test_from_str_fail_2() {
-        uint::from_str("x");
-    }
-
-    #[test]
+    #[Test]
     fn test_parse_buf() {
         import str::bytes;
-        assert (uint::parse_buf(bytes("123"), 10u) == 123u);
-        assert (uint::parse_buf(bytes("1001"), 2u) == 9u);
-        assert (uint::parse_buf(bytes("123"), 8u) == 83u);
-        assert (uint::parse_buf(bytes("123"), 16u) == 291u);
-        assert (uint::parse_buf(bytes("ffff"), 16u) == 65535u);
-        assert (uint::parse_buf(bytes("z"), 36u) == 35u);
-    }
+        assert uint::parse_buf(bytes("123"), 10u) == some(123u);
+        assert uint::parse_buf(bytes("1001"), 2u) == some(9u);
+        assert uint::parse_buf(bytes("123"), 8u) == some(83u);
+        assert uint::parse_buf(bytes("123"), 16u) == some(291u);
+        assert uint::parse_buf(bytes("ffff"), 16u) == some(65535u);
+        assert uint::parse_buf(bytes("z"), 36u) == some(35u);
 
-    #[test]
-    #[should_fail]
-    #[ignore(cfg(target_os = "win32"))]
-    fn test_parse_buf_fail_1() {
-        uint::parse_buf(str::bytes("Z"), 10u);
-    }
-
-    #[test]
-    #[should_fail]
-    #[ignore(cfg(target_os = "win32"))]
-    fn test_parse_buf_fail_2() {
-        uint::parse_buf(str::bytes("_"), 2u);
+        assert uint::parse_buf(str::bytes("Z"), 10u) == none;
+        assert uint::parse_buf(str::bytes("_"), 2u) == none;
     }
 
     #[test]

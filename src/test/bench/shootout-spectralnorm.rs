@@ -43,7 +43,7 @@ fn eval_AtA_times_u(u: [const float], AtAu: [mutable float]) {
 fn main(args: [str]) {
 
     let N = if vec::len(args) == 2u {
-        uint::from_str(args[1])
+        option::get(uint::from_str(args[1]))
     } else {
         1000u
     };

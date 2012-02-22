@@ -95,13 +95,8 @@ fn variant_enum_id(d: ebml::doc) -> ast::def_id {
 }
 
 fn variant_disr_val(d: ebml::doc) -> option<int> {
-    alt ebml::maybe_get_doc(d, tag_disr_val) {
-      some(val_doc) {
-        let val_buf = ebml::doc_data(val_doc);
-        let val = int::parse_buf(val_buf, 10u);
-        ret some(val);
-      }
-      _ { ret none;}
+    option::chain(ebml::maybe_get_doc(d, tag_disr_val)) {|val_doc|
+        int::parse_buf(ebml::doc_data(val_doc), 10u)
     }
 }
 

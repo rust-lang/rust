@@ -174,8 +174,8 @@ fn scan_digits(rdr: reader, radix: uint) -> str {
     while true {
         let c = rdr.curr;
         if c == '_' { rdr.bump(); cont; }
-        alt char::maybe_digit(c) {
-          some(d) if (d as uint) < radix {
+        alt char::to_digit(c, radix) {
+          some(d) {
             str::push_char(rslt, c);
             rdr.bump();
           }
@@ -229,7 +229,7 @@ fn scan_number(c: char, rdr: reader) -> token::token {
         if str::len_bytes(num_str) == 0u {
             rdr.fatal("no valid digits found for number");
         }
-        let parsed = u64::from_str(num_str, base as u64);
+        let parsed = option::get(u64::from_str(num_str, base as u64));
         alt tp {
           either::left(t) { ret token::LIT_INT(parsed as i64, t); }
           either::right(t) { ret token::LIT_UINT(parsed, t); }
@@ -276,7 +276,7 @@ fn scan_number(c: char, rdr: reader) -> token::token {
         if str::len_bytes(num_str) == 0u {
             rdr.fatal("no valid digits found for number");
         }
-        let parsed = u64::from_str(num_str, base as u64);
+        let parsed = option::get(u64::from_str(num_str, base as u64));
         ret token::LIT_INT(parsed as i64, ast::ty_i);
     }
 }

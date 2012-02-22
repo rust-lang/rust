@@ -103,17 +103,10 @@ Parameters:
 
 buf - A byte buffer
 radix - The base of the number
-
-Failure:
-
-buf must not be empty
 */
-fn parse_buf(buf: [u8], radix: uint) -> int {
-    if vec::len::<u8>(buf) == 0u {
-        #error("parse_buf(): buf is empty");
-        fail;
-    }
-    let i = vec::len::<u8>(buf) - 1u;
+fn parse_buf(buf: [u8], radix: uint) -> option<int> {
+    if vec::len(buf) == 0u { ret none; }
+    let i = vec::len(buf) - 1u;
     let start = 0u;
     let power = 1;
 
@@ -123,13 +116,12 @@ fn parse_buf(buf: [u8], radix: uint) -> int {
     }
     let n = 0;
     while true {
-        let digit = char::to_digit(buf[i] as char);
-        if (digit as uint) >= radix {
-            fail;
+        alt char::to_digit(buf[i] as char, radix) {
+          some(d) { n += (d as int) * power; }
+          none { ret none; }
         }
-        n += (digit as int) * power;
         power *= radix as int;
-        if i <= start { ret n; }
+        if i <= start { ret some(n); }
         i -= 1u;
     }
     fail;
@@ -139,12 +131,8 @@ fn parse_buf(buf: [u8], radix: uint) -> int {
 Function: from_str
 
 Parse a string to an int
-
-Failure:
-
-s must not be empty
 */
-fn from_str(s: str) -> int { parse_buf(str::bytes(s), 10u) }
+fn from_str(s: str) -> option<int> { parse_buf(str::bytes(s), 10u) }
 
 /*
 Function: to_str
@@ -198,67 +186,45 @@ fn abs(i: int) -> int {
 
 #[test]
 fn test_from_str() {
-    assert(from_str("0") == 0);
-    assert(from_str("3") == 3);
-    assert(from_str("10") == 10);
-    assert(from_str("123456789") == 123456789);
-    assert(from_str("00100") == 100);
+    assert from_str("0") == some(0);
+    assert from_str("3") == some(3);
+    assert from_str("10") == some(10);
+    assert from_str("123456789") == some(123456789);
+    assert from_str("00100") == some(100);
 
-    assert(from_str("-1") == -1);
-    assert(from_str("-3") == -3);
-    assert(from_str("-10") == -10);
-    assert(from_str("-123456789") == -123456789);
-    assert(from_str("-00100") == -100);
-}
+    assert from_str("-1") == some(-1);
+    assert from_str("-3") == some(-3);
+    assert from_str("-10") == some(-10);
+    assert from_str("-123456789") == some(-123456789);
+    assert from_str("-00100") == some(-100);
 
-#[test]
-#[should_fail]
-#[ignore(cfg(target_os = "win32"))]
-fn test_from_str_fail_1() {
-    from_str(" ");
-}
-
-#[test]
-#[should_fail]
-#[ignore(cfg(target_os = "win32"))]
-fn test_from_str_fail_2() {
-    from_str("x");
+    assert from_str(" ") == none;
+    assert from_str("x") == none;
 }
 
 #[test]
 fn test_parse_buf() {
     import str::bytes;
-    assert (parse_buf(bytes("123"), 10u) == 123);
-    assert (parse_buf(bytes("1001"), 2u) == 9);
-    assert (parse_buf(bytes("123"), 8u) == 83);
-    assert (parse_buf(bytes("123"), 16u) == 291);
-    assert (parse_buf(bytes("ffff"), 16u) == 65535);
-    assert (parse_buf(bytes("FFFF"), 16u) == 65535);
-    assert (parse_buf(bytes("z"), 36u) == 35);
-    assert (parse_buf(bytes("Z"), 36u) == 35);
+    assert parse_buf(bytes("123"), 10u) == some(123);
+    assert parse_buf(bytes("1001"), 2u) == some(9);
+    assert parse_buf(bytes("123"), 8u) == some(83);
+    assert parse_buf(bytes("123"), 16u) == some(291);
+    assert parse_buf(bytes("ffff"), 16u) == some(65535);
+    assert parse_buf(bytes("FFFF"), 16u) == some(65535);
+    assert parse_buf(bytes("z"), 36u) == some(35);
+    assert parse_buf(bytes("Z"), 36u) == some(35);
 
-    assert (parse_buf(bytes("-123"), 10u) == -123);
-    assert (parse_buf(bytes("-1001"), 2u) == -9);
-    assert (parse_buf(bytes("-123"), 8u) == -83);
-    assert (parse_buf(bytes("-123"), 16u) == -291);
-    assert (parse_buf(bytes("-ffff"), 16u) == -65535);
-    assert (parse_buf(bytes("-FFFF"), 16u) == -65535);
-    assert (parse_buf(bytes("-z"), 36u) == -35);
-    assert (parse_buf(bytes("-Z"), 36u) == -35);
-}
+    assert parse_buf(bytes("-123"), 10u) == some(-123);
+    assert parse_buf(bytes("-1001"), 2u) == some(-9);
+    assert parse_buf(bytes("-123"), 8u) == some(-83);
+    assert parse_buf(bytes("-123"), 16u) == some(-291);
+    assert parse_buf(bytes("-ffff"), 16u) == some(-65535);
+    assert parse_buf(bytes("-FFFF"), 16u) == some(-65535);
+    assert parse_buf(bytes("-z"), 36u) == some(-35);
+    assert parse_buf(bytes("-Z"), 36u) == some(-35);
 
-#[test]
-#[should_fail]
-#[ignore(cfg(target_os = "win32"))]
-fn test_parse_buf_fail_1() {
-    parse_buf(str::bytes("Z"), 35u);
-}
-
-#[test]
-#[should_fail]
-#[ignore(cfg(target_os = "win32"))]
-fn test_parse_buf_fail_2() {
-    parse_buf(str::bytes("-9"), 2u);
+    assert parse_buf(str::bytes("Z"), 35u) == none;
+    assert parse_buf(str::bytes("-9"), 2u) == none;
 }
 
 #[test]

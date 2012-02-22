@@ -122,28 +122,27 @@ Leading and trailing whitespace are ignored.
 
 Parameters:
 
-num - A string, possibly empty.
+num - A string
 
 Returns:
 
-<NaN> If the string did not represent a valid number.
-Otherwise, the floating-point number represented [num].
+none if the string did not represent a valid number.
+Otherwise, some(n) where n is the floating-point
+number represented by [num].
 */
-fn from_str(num: str) -> float {
-   let num = str::trim(num);
-
+fn from_str(num: str) -> option<float> {
    let pos = 0u;                  //Current byte position in the string.
                                   //Used to walk the string in O(n).
    let len = str::len_bytes(num);  //Length of the string, in bytes.
 
-   if len == 0u { ret 0.; }
+   if len == 0u { ret none; }
    let total = 0f;                //Accumulated result
    let c     = 'z';               //Latest char.
 
    //The string must start with one of the following characters.
    alt str::char_at(num, 0u) {
       '-' | '+' | '0' to '9' | '.' {}
-      _ { ret NaN; }
+      _ { ret none; }
    }
 
    //Determine if first char is '-'/'+'. Set [pos] and [neg] accordingly.
@@ -173,7 +172,7 @@ fn from_str(num: str) -> float {
            break;
          }
          _ {
-           ret NaN;
+           ret none;
          }
        }
    }
@@ -193,7 +192,7 @@ fn from_str(num: str) -> float {
                  break;
              }
              _ {
-                 ret NaN;
+                 ret none;
              }
          }
       }
@@ -238,17 +237,17 @@ fn from_str(num: str) -> float {
              total = total * multiplier;
           }
       } else {
-         ret NaN;
+         ret none;
       }
    }
 
    if(pos < len) {
-     ret NaN;
+     ret none;
    } else {
      if(neg) {
         total *= -1f;
      }
-     ret total;
+     ret some(total);
    }
 }
 
@@ -291,39 +290,36 @@ fn pow_uint_to_uint_as_float(x: uint, pow: uint) -> float {
 
 #[test]
 fn test_from_str() {
-   assert ( from_str("3") == 3. );
-   assert ( from_str("  3  ") == 3. );
-   assert ( from_str("3.14") == 3.14 );
-   assert ( from_str("+3.14") == 3.14 );
-   assert ( from_str("-3.14") == -3.14 );
-   assert ( from_str("2.5E10") == 25000000000. );
-   assert ( from_str("2.5e10") == 25000000000. );
-   assert ( from_str("25000000000.E-10") == 2.5 );
-   assert ( from_str("") == 0. );
-   assert ( from_str(".") == 0. );
-   assert ( from_str(".e1") == 0. );
-   assert ( from_str(".e-1") == 0. );
-   assert ( from_str("5.") == 5. );
-   assert ( from_str(".5") == 0.5 );
-   assert ( from_str("0.5") == 0.5 );
-   assert ( from_str("0.5 ") == 0.5 );
-   assert ( from_str(" 0.5 ") == 0.5 );
-   assert ( from_str(" -.5 ") == -0.5 );
-   assert ( from_str(" -.5 ") == -0.5 );
-   assert ( from_str(" -5 ") == -5. );
+   assert from_str("3") == some(3.);
+   assert from_str("3") == some(3.);
+   assert from_str("3.14") == some(3.14);
+   assert from_str("+3.14") == some(3.14);
+   assert from_str("-3.14") == some(-3.14);
+   assert from_str("2.5E10") == some(25000000000.);
+   assert from_str("2.5e10") == some(25000000000.);
+   assert from_str("25000000000.E-10") == some(2.5);
+   assert from_str(".") == some(0.);
+   assert from_str(".e1") == some(0.);
+   assert from_str(".e-1") == some(0.);
+   assert from_str("5.") == some(5.);
+   assert from_str(".5") == some(0.5);
+   assert from_str("0.5") == some(0.5);
+   assert from_str("0.5") == some(0.5);
+   assert from_str("0.5") == some(0.5);
+   assert from_str("-.5") == some(-0.5);
+   assert from_str("-.5") == some(-0.5);
+   assert from_str("-5") == some(-5.);
 
-   assert ( is_NaN(from_str("x")) );
-   assert ( from_str(" ") == 0. );
-   assert ( from_str("   ") == 0. );
-   assert ( from_str(" 0.5") == 0.5 );
-   assert ( from_str(" 0.5 ") == 0.5 );
-   assert ( from_str(" .1 ") == 0.1 );
-   assert ( is_NaN(from_str("e")) );
-   assert ( is_NaN(from_str("E")) );
-   assert ( is_NaN(from_str("E1")) );
-   assert ( is_NaN(from_str("1e1e1")) );
-   assert ( is_NaN(from_str("1e1.1")) );
-   assert ( is_NaN(from_str("1e1-1")) );
+   assert from_str("") == none;
+   assert from_str("x") == none;
+   assert from_str(" ") == none;
+   assert from_str("   ") == none;
+   assert from_str("e") == none;
+   assert from_str("E") == none;
+   assert from_str("E1") == none;
+   assert from_str("1e1e1") == none;
+   assert from_str("1e1.1") == none;
+   assert from_str("1e1-1") == none;
 }
 
 #[test]
