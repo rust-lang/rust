@@ -2117,8 +2117,17 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         let lhs_t = next_ty_var(fcx);
         bot = check_expr_with(fcx, lhs, lhs_t);
 
-        let rhs_bot = check_expr_with(fcx, rhs, lhs_t);
+        let rhs_bot = if !ast_util::is_shift_binop(binop) {
+            check_expr_with(fcx, rhs, lhs_t)
+        } else {
+            let rhs_bot = check_expr(fcx, rhs);
+            let rhs_t = expr_ty(tcx, rhs);
+            require_integral(fcx, rhs.span, rhs_t);
+            rhs_bot
+        };
+
         if !ast_util::lazy_binop(binop) { bot |= rhs_bot; }
+
         let result = check_binop(fcx, expr, lhs_t, binop, rhs);
         write_ty(tcx, id, result);
       }
@@ -2572,13 +2581,6 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         let base_t = do_autoderef(fcx, expr.span, raw_base_t);
         bot |= check_expr(fcx, idx);
         let idx_t = expr_ty(tcx, idx);
-        fn require_integral(fcx: @fn_ctxt, sp: span, t: ty::t) {
-            if !type_is_integral(fcx, sp, t) {
-                fcx.ccx.tcx.sess.span_err(sp, "mismatched types: expected \
-                                               `integer` but found `"
-                                  + ty_to_str(fcx.ccx.tcx, t) + "`");
-            }
-        }
         alt structure_of(fcx, expr.span, base_t) {
           ty::ty_vec(mt) {
             require_integral(fcx, idx.span, idx_t);
@@ -2610,6 +2612,14 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
 
     unify(fcx, expr.span, expected, expr_ty(tcx, expr));
     ret bot;
+}
+
+fn require_integral(fcx: @fn_ctxt, sp: span, t: ty::t) {
+    if !type_is_integral(fcx, sp, t) {
+        fcx.ccx.tcx.sess.span_err(sp, "mismatched types: expected \
+                                       `integer` but found `"
+                                  + ty_to_str(fcx.ccx.tcx, t) + "`");
+    }
 }
 
 fn next_ty_var_id(fcx: @fn_ctxt) -> int {

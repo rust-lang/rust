@@ -1641,6 +1641,44 @@ fn trans_compare(cx: block, op: ast::binop, lhs: ValueRef,
     }
 }
 
+fn cast_shift_expr_rhs(cx: block, op: ast::binop,
+                       lhs: ValueRef, rhs: ValueRef) -> ValueRef {
+    cast_shift_rhs(op, lhs, rhs,
+                   bind Trunc(cx, _, _), bind ZExt(cx, _, _))
+}
+
+fn cast_shift_const_rhs(op: ast::binop,
+                        lhs: ValueRef, rhs: ValueRef) -> ValueRef {
+    cast_shift_rhs(op, lhs, rhs,
+                   llvm::LLVMConstTrunc, llvm::LLVMConstZExt)
+}
+
+fn cast_shift_rhs(op: ast::binop,
+                  lhs: ValueRef, rhs: ValueRef,
+                  trunc: fn(ValueRef, TypeRef) -> ValueRef,
+                  zext: fn(ValueRef, TypeRef) -> ValueRef
+                 ) -> ValueRef {
+
+    // Shifts may have any size int on the rhs
+    if ast_util::is_shift_binop(op) {
+        let rhs_llty = val_ty(rhs);
+        let lhs_llty = val_ty(lhs);
+        let rhs_sz = llvm::LLVMGetIntTypeWidth(rhs_llty);
+        let lhs_sz = llvm::LLVMGetIntTypeWidth(lhs_llty);
+        if lhs_sz < rhs_sz {
+            trunc(rhs, lhs_llty)
+        } else if lhs_sz > rhs_sz {
+            // FIXME: If shifting by negative values becomes not undefined
+            // then this is wrong.
+            zext(rhs, lhs_llty)
+        } else {
+            rhs
+        }
+    } else {
+        rhs
+    }
+}
+
 // Important to get types for both lhs and rhs, because one might be _|_
 // and the other not.
 fn trans_eager_binop(cx: block, op: ast::binop, lhs: ValueRef,
@@ -1650,6 +1688,8 @@ fn trans_eager_binop(cx: block, op: ast::binop, lhs: ValueRef,
     let intype = lhs_t;
     if ty::type_is_bot(intype) { intype = rhs_t; }
     let is_float = ty::type_is_fp(intype);
+
+    let rhs = cast_shift_expr_rhs(cx, op, lhs, rhs);
 
     if op == ast::add && ty::type_is_sequence(intype) {
         ret tvec::trans_add(cx, intype, lhs, rhs, dest);
@@ -4059,6 +4099,9 @@ fn trans_const_expr(cx: crate_ctxt, e: @ast::expr) -> ValueRef {
       ast::expr_binary(b, e1, e2) {
         let te1 = trans_const_expr(cx, e1);
         let te2 = trans_const_expr(cx, e2);
+
+        let te2 = cast_shift_const_rhs(b, te1, te2);
+
         /* Neither type is bottom, and we expect them to be unified already,
          * so the following is safe. */
         let ty = ty::expr_ty(cx.tcx, e1);
