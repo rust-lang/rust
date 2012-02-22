@@ -376,7 +376,9 @@ fn build_closure(bcx0: block,
             env_vals += [env_move(lv.val, ty, lv.kind)];
           }
           capture::cap_drop {
+            assert lv.kind == owned;
             bcx = drop_ty(bcx, lv.val, ty);
+            bcx = zero_alloca(bcx, lv.val, ty);
           }
         }
     }
