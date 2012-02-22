@@ -85,8 +85,8 @@ export
    is_empty,
    is_not_empty,
    is_whitespace,
-   len_bytes,
-   len_chars, //len,
+   len, len_bytes,
+   len_chars,
 
    // Misc
    // FIXME: perhaps some more of this section shouldn't be exported?
