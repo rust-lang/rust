@@ -332,7 +332,7 @@ fn check_alt(cx: ctx, input: @ast::expr, arms: [ast::arm], sc: scope,
     for a: ast::arm in arms {
         let new_bs = sc.bs;
         let root_var = path_def_id(cx, root.ex);
-        let pat_id_map = pat_util::pat_id_map(cx.tcx, a.pats[0]);
+        let pat_id_map = pat_util::pat_id_map(cx.tcx.def_map, a.pats[0]);
         type info = {
             id: node_id,
             mutable unsafe_tys: [unsafe_ty],
@@ -596,13 +596,15 @@ fn pattern_roots(tcx: ty::ctxt, mutbl: option<unsafe_ty>, pat: @ast::pat)
     -> [pattern_root] {
     fn walk(tcx: ty::ctxt, mutbl: option<unsafe_ty>, pat: @ast::pat,
             &set: [pattern_root]) {
-        alt normalize_pat(tcx, pat).node {
-          ast::pat_wild | ast::pat_lit(_) | ast::pat_range(_, _) {}
-          ast::pat_ident(nm, sub) {
+        alt pat.node {
+          ast::pat_ident(nm, sub)
+          if !pat_util::pat_is_variant(tcx.def_map, pat) {
             set += [{id: pat.id, name: path_to_ident(nm), mutbl: mutbl,
                         span: pat.span}];
             alt sub { some(p) { walk(tcx, mutbl, p, set); } _ {} }
           }
+          ast::pat_wild | ast::pat_lit(_) | ast::pat_range(_, _) |
+          ast::pat_ident(_, _) {}
           ast::pat_enum(_, ps) | ast::pat_tup(ps) {
             for p in ps { walk(tcx, mutbl, p, set); }
           }

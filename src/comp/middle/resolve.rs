@@ -624,7 +624,7 @@ fn visit_local_with_scope(e: @env, loc: @local, sc:scopes, v:vt<scopes>) {
     // a single identifier unambiguous (does the pattern "foo" refer
     // to enum foo, or is it binding a new name foo?)
     alt loc.node.pat.node {
-      pat_ident(an_ident,_) {
+      pat_ident(an_ident, _) {
           // Be sure to pass ns_an_enum to lookup_in_scope so that
           // if this is a name that's being shadowed, we don't die
           alt lookup_in_scope(*e, sc, loc.span,
@@ -1139,8 +1139,7 @@ fn lookup_in_ty_params(e: env, name: ident, ty_params: [ast::ty_param])
 fn lookup_in_pat(e: env, name: ident, pat: @ast::pat) -> option<def_id> {
     let found = none;
 
-    pat_util::pat_bindings(normalize_pat_def_map(e.def_map, pat))
-     {|p_id, _sp, n|
+    pat_util::pat_bindings(e.def_map, pat) {|p_id, _sp, n|
         if str::eq(path_to_ident(n), name)
                     { found = some(local_def(p_id)); }
     };
@@ -1776,7 +1775,7 @@ fn check_item(e: @env, i: @ast::item, &&x: (), v: vt<()>) {
 }
 
 fn check_pat(e: @env, ch: checker, p: @ast::pat) {
-    pat_util::pat_bindings(normalize_pat_def_map(e.def_map, p)) {|_i, p_sp, n|
+    pat_util::pat_bindings(e.def_map, p) {|_i, p_sp, n|
        add_name(ch, p_sp, path_to_ident(n));
     };
 }
@@ -1823,13 +1822,12 @@ fn check_block(e: @env, b: ast::blk, &&x: (), v: vt<()>) {
               ast::decl_local(locs) {
                 let local_values = checker(*e, "value");
                 for loc in locs {
-                     pat_util::pat_bindings
-                        (normalize_pat_def_map(e.def_map, loc.node.pat))
-                            {|_i, p_sp, n|
-                            let ident = path_to_ident(n);
-                            add_name(local_values, p_sp, ident);
-                            check_name(values, p_sp, ident);
-                          };
+                     pat_util::pat_bindings(e.def_map, loc.node.pat)
+                         {|_i, p_sp, n|
+                         let ident = path_to_ident(n);
+                         add_name(local_values, p_sp, ident);
+                         check_name(values, p_sp, ident);
+                     };
                 }
               }
               ast::decl_item(it) {

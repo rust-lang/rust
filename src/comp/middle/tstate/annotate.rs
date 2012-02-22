@@ -22,17 +22,18 @@ fn collect_ids_stmt(s: @stmt, rs: @mutable [node_id]) {
     }
 }
 
-fn collect_ids_local(l: @local, rs: @mutable [node_id]) {
-    *rs += pat_binding_ids(l.node.pat);
+fn collect_ids_local(tcx: ty::ctxt, l: @local, rs: @mutable [node_id]) {
+    *rs += pat_binding_ids(tcx.def_map, l.node.pat);
 }
 
-fn node_ids_in_fn(body: blk, rs: @mutable [node_id]) {
+fn node_ids_in_fn(tcx: ty::ctxt, body: blk, rs: @mutable [node_id]) {
     let collect_ids =
         visit::mk_simple_visitor(@{visit_expr: bind collect_ids_expr(_, rs),
                                    visit_block: bind collect_ids_block(_, rs),
                                    visit_stmt: bind collect_ids_stmt(_, rs),
-                                   visit_local: bind collect_ids_local(_, rs)
-                                      with *visit::default_simple_visitor()});
+                                   visit_local:
+                                       bind collect_ids_local(tcx, _, rs)
+                                   with *visit::default_simple_visitor()});
     collect_ids.visit_block(body, (), collect_ids);
 }
 
@@ -45,7 +46,7 @@ fn init_vecs(ccx: crate_ctxt, node_ids: [node_id], len: uint) {
 
 fn visit_fn(ccx: crate_ctxt, num_constraints: uint, body: blk) {
     let node_ids: @mutable [node_id] = @mutable [];
-    node_ids_in_fn(body, node_ids);
+    node_ids_in_fn(ccx.tcx, body, node_ids);
     let node_id_vec = *node_ids;
     init_vecs(ccx, node_id_vec, num_constraints);
 }

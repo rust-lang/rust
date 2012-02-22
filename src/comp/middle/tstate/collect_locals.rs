@@ -12,8 +12,7 @@ import aux::*;
 type ctxt = {cs: @mutable [sp_constr], tcx: ty::ctxt};
 
 fn collect_local(loc: @local, cx: ctxt, v: visit::vt<ctxt>) {
-    pat_bindings(pat_util::normalize_pat(cx.tcx, loc.node.pat))
-     {|p_id, _s, id|
+    pat_bindings(cx.tcx.def_map, loc.node.pat) {|p_id, _s, id|
        *cx.cs += [respan(loc.span, ninit(p_id, path_to_ident(id)))];
     };
     visit::visit_local(loc, cx, v);

@@ -1338,12 +1338,15 @@ fn gather_locals(ccx: @crate_ctxt,
 
     // Add pattern bindings.
     let visit_pat = fn@(p: @ast::pat, &&e: (), v: visit::vt<()>) {
-        alt normalize_pat(ccx.tcx, p).node {
-              ast::pat_ident(_, _) { assign(p.id, none); }
-              _ {/* no-op */ }
-            }
-            visit::visit_pat(p, e, v);
-        };
+        alt p.node {
+          ast::pat_ident(_, _)
+          if !pat_util::pat_is_variant(ccx.tcx.def_map, p) {
+            assign(p.id, none);
+          }
+          _ {}
+        }
+        visit::visit_pat(p, e, v);
+    };
 
     // Don't descend into fns and items
     fn visit_fn<T>(_fk: visit::fn_kind, _decl: ast::fn_decl, _body: ast::blk,
@@ -1380,12 +1383,65 @@ fn valid_range_bounds(from: @ast::expr, to: @ast::expr) -> bool {
     ast_util::compare_lit_exprs(from, to) <= 0
 }
 
+fn check_pat_variant(fcx: @fn_ctxt, map: pat_util::pat_id_map,
+                     pat: @ast::pat, path: @ast::path, subpats: [@ast::pat],
+                     expected: ty::t) {
+    // Typecheck the path.
+    let tcx = fcx.ccx.tcx;
+    let v_def = lookup_def(fcx, path.span, pat.id);
+    let v_def_ids = ast_util::variant_def_ids(v_def);
+    let ctor_tpt = ty::lookup_item_type(tcx, v_def_ids.enm);
+    instantiate_path(fcx, path, ctor_tpt, pat.span, pat.id);
+
+    // Take the enum type params out of `expected`.
+    alt structure_of(fcx, pat.span, expected) {
+      ty::ty_enum(_, expected_tps) {
+        let ctor_ty = ty::node_id_to_type(tcx, pat.id);
+        demand::with_substs(fcx, pat.span, expected, ctor_ty,
+                            expected_tps);
+        // Get the number of arguments in this enum variant.
+        let arg_types = variant_arg_types(fcx.ccx, pat.span,
+                                          v_def_ids.var, expected_tps);
+        let subpats_len = subpats.len(), arg_len = arg_types.len();
+        if arg_len > 0u {
+            // N-ary variant.
+            if arg_len != subpats_len {
+                let s = #fmt["this pattern has %u field%s, but the \
+                              corresponding variant has %u field%s",
+                             subpats_len,
+                             if subpats_len == 1u { "" } else { "s" },
+                             arg_len,
+                             if arg_len == 1u { "" } else { "s" }];
+                tcx.sess.span_err(pat.span, s);
+            }
+
+            vec::iter2(subpats, arg_types) {|subpat, arg_ty|
+                check_pat(fcx, map, subpat, arg_ty);
+            }
+        } else if subpats_len > 0u {
+            tcx.sess.span_err
+                (pat.span, #fmt["this pattern has %u field%s, \
+                                 but the corresponding variant has no fields",
+                                subpats_len,
+                                if subpats_len == 1u { "" }
+                                else { "s" }]);
+        }
+      }
+      _ {
+        tcx.sess.span_err
+            (pat.span,
+             #fmt["mismatched types: expected enum but found `%s`",
+                  ty_to_str(tcx, expected)]);
+      }
+    }
+}
+
 // Pattern checking is top-down rather than bottom-up so that bindings get
 // their types immediately.
 fn check_pat(fcx: @fn_ctxt, map: pat_util::pat_id_map, pat: @ast::pat,
              expected: ty::t) {
     let tcx = fcx.ccx.tcx;
-    alt normalize_pat(tcx, pat).node {
+    alt pat.node {
       ast::pat_wild {
           alt structure_of(fcx, pat.span, expected) {
                   ty::ty_enum(_, expected_tps) {
@@ -1416,7 +1472,8 @@ fn check_pat(fcx: @fn_ctxt, map: pat_util::pat_id_map, pat: @ast::pat,
         }
         write_ty(tcx, pat.id, b_ty);
       }
-      ast::pat_ident(name, sub) {
+      ast::pat_ident(name, sub)
+      if !pat_util::pat_is_variant(tcx.def_map, pat) {
         let vid = lookup_local(fcx, pat.span, pat.id);
         let typ = ty::mk_var(tcx, vid);
         typ = demand::simple(fcx, pat.span, expected, typ);
@@ -1431,55 +1488,11 @@ fn check_pat(fcx: @fn_ctxt, map: pat_util::pat_id_map, pat: @ast::pat,
           _ {}
         }
       }
+      ast::pat_ident(path, _) {
+        check_pat_variant(fcx, map, pat, path, [], expected);
+      }
       ast::pat_enum(path, subpats) {
-        // Typecheck the path.
-        let v_def = lookup_def(fcx, path.span, pat.id);
-        let v_def_ids = ast_util::variant_def_ids(v_def);
-        let ctor_tpt = ty::lookup_item_type(tcx, v_def_ids.enm);
-        instantiate_path(fcx, path, ctor_tpt, pat.span, pat.id);
-
-        // Take the enum type params out of `expected`.
-        alt structure_of(fcx, pat.span, expected) {
-          ty::ty_enum(_, expected_tps) {
-            let ctor_ty = ty::node_id_to_type(tcx, pat.id);
-            demand::with_substs(fcx, pat.span, expected, ctor_ty,
-                                expected_tps);
-            // Get the number of arguments in this enum variant.
-            let arg_types = variant_arg_types(fcx.ccx, pat.span,
-                                              v_def_ids.var, expected_tps);
-            let subpats_len = subpats.len(), arg_len = arg_types.len();
-            if arg_len > 0u {
-                // N-ary variant.
-                if arg_len != subpats_len {
-                    let s = #fmt["this pattern has %u field%s, but the \
-                                  corresponding variant has %u field%s",
-                                 subpats_len,
-                                 if subpats_len == 1u { "" } else { "s" },
-                                 arg_len,
-                                 if arg_len == 1u { "" } else { "s" }];
-                    tcx.sess.span_err(pat.span, s);
-                }
-
-                vec::iter2(subpats, arg_types) {|subpat, arg_ty|
-                    check_pat(fcx, map, subpat, arg_ty);
-                }
-            } else if subpats_len > 0u {
-                tcx.sess.span_err
-                    (pat.span, #fmt["this pattern has %u field%s, \
-                                     but the corresponding \
-                                     variant has no fields",
-                                    subpats_len,
-                                    if subpats_len == 1u { "" }
-                                    else { "s" }]);
-            }
-          }
-          _ {
-            tcx.sess.span_err
-                (pat.span,
-                 #fmt["mismatched types: expected enum but found `%s`",
-                      ty_to_str(tcx, expected)]);
-          }
-        }
+        check_pat_variant(fcx, map, pat, path, subpats, expected);
       }
       ast::pat_rec(fields, etc) {
         let ex_fields;
@@ -2292,7 +2305,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         // bindings.
         let pattern_ty = ty::expr_ty(tcx, expr);
         for arm: ast::arm in arms {
-            let id_map = pat_util::pat_id_map(tcx, arm.pats[0]);
+            let id_map = pat_util::pat_id_map(tcx.def_map, arm.pats[0]);
             for p: @ast::pat in arm.pats {
                 check_pat(fcx, id_map, p, pattern_ty);
             }
@@ -2636,7 +2649,7 @@ fn check_decl_local(fcx: @fn_ctxt, local: @ast::local) -> bool {
       }
       _ {/* fall through */ }
     }
-    let id_map = pat_util::pat_id_map(fcx.ccx.tcx, local.node.pat);
+    let id_map = pat_util::pat_id_map(fcx.ccx.tcx.def_map, local.node.pat);
     check_pat(fcx, id_map, local.node.pat, t);
     ret bot;
 }

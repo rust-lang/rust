@@ -3670,13 +3670,14 @@ fn alloc_ty(cx: block, t: ty::t) -> result {
 
 fn alloc_local(cx: block, local: @ast::local) -> block {
     let t = node_id_type(cx, local.node.id);
-    let p = normalize_pat(cx.tcx(), local.node.pat);
-    let is_simple = alt p.node {
-      ast::pat_ident(_, none) { true } _ { false }
+    let simple_name = alt local.node.pat.node {
+      ast::pat_ident(pth, none) { some(path_to_ident(pth)) }
+      _ { none }
     };
     // Do not allocate space for locals that can be kept immediate.
     let ccx = cx.ccx();
-    if is_simple && !ccx.mutbl_map.contains_key(local.node.pat.id) &&
+    if option::is_some(simple_name) &&
+       !ccx.mutbl_map.contains_key(local.node.pat.id) &&
        !ccx.last_uses.contains_key(local.node.pat.id) &&
        ty::type_is_immediate(t) {
         alt local.node.init {
@@ -3684,19 +3685,16 @@ fn alloc_local(cx: block, local: @ast::local) -> block {
           _ {}
         }
     }
-    let r = alloc_ty(cx, t);
-    alt p.node {
-      ast::pat_ident(pth, none) {
-        if cx.sess().opts.debuginfo {
-            let _: () = str::as_buf(path_to_ident(pth), {|buf|
-                llvm::LLVMSetValueName(r.val, buf)
+    let {bcx, val} = alloc_ty(cx, t);
+    if cx.sess().opts.debuginfo {
+        option::may(simple_name) {|name|
+            str::as_buf(name, {|buf|
+                llvm::LLVMSetValueName(val, buf)
             });
         }
-      }
-      _ { }
     }
-    cx.fcx.lllocals.insert(local.node.id, local_mem(r.val));
-    ret r.bcx;
+    cx.fcx.lllocals.insert(local.node.id, local_mem(val));
+    ret bcx;
 }
 
 fn trans_block(bcx: block, b: ast::blk, dest: dest)

@@ -5,115 +5,66 @@ import syntax::fold;
 import syntax::fold::*;
 import syntax::codemap::span;
 
-export normalize_arms;
-export normalize_pat;
-export normalize_pat_def_map;
-export pat_binding_ids;
-export pat_bindings;
-export pat_id_map;
+export walk_pat;
+export pat_binding_ids, pat_bindings, pat_id_map;
+export pat_is_variant;
 export path_to_ident;
-
-fn normalize_pat_def_map(dm: resolve::def_map, p: @pat) -> @pat {
-  // have to do it the hard way b/c ast fold doesn't pass around
-  // node IDs. bother.
-  alt p.node {
-      pat_wild { p }
-      pat_ident(_, none) { normalize_one(dm, p) }
-      pat_ident(q, some(r)) {
-        @{node: pat_ident(q, some(normalize_pat_def_map(dm, r)))
-            with *p}
-      }
-      pat_enum(a_path, subs) {
-        @{node: pat_enum(a_path,
-           vec::map(subs, {|p| normalize_pat_def_map(dm, p)})) with *p}
-      }
-      pat_rec(field_pats, b) {
-        @{node: pat_rec(vec::map(field_pats,
-           {|fp| {pat: normalize_pat_def_map(dm, fp.pat) with fp}}), b)
-            with *p}
-      }
-      pat_tup(subs) {
-        @{node: pat_tup(vec::map(subs, {|p| normalize_pat_def_map(dm, p)}))
-            with *p}
-      }
-      pat_box(q) {
-        @{node: pat_box(normalize_pat_def_map(dm, q))
-            with *p}
-      }
-      pat_uniq(q) {
-        @{node: pat_uniq(normalize_pat_def_map(dm, q))
-            with *p}
-      }
-      pat_lit(_) { p }
-      pat_range(_,_) { p }
-    }
-}
-
-fn normalize_one(dm: resolve::def_map, p: @pat) -> @pat {
-    alt dm.find(p.id) {
-        some(d) {
-          alt p.node {
-              pat_ident(enum_path, _) { @{id: p.id,
-                    node: pat_enum(enum_path, []),
-                    span: p.span} }
-              _ { p }
-          }
-        }
-        none { p }
-    }
-}
-
-fn normalize_pat(tcx: ty::ctxt, p: @pat) -> @pat {
-  normalize_pat_def_map(tcx.def_map, p)
-}
-
-fn normalize_arms(tcx: ty::ctxt, arms:[arm]) -> [arm] {
-      vec::map(arms, {|a|
-            {pats:
-              vec::map(a.pats, {|p|
-                    pat_util::normalize_pat(tcx, p)})
-                with a}})
-}
 
 type pat_id_map = std::map::hashmap<str, node_id>;
 
 // This is used because same-named variables in alternative patterns need to
 // use the node_id of their namesake in the first pattern.
-fn pat_id_map(tcx: ty::ctxt, pat: @pat) -> pat_id_map {
-    let map = std::map::new_str_hash::<node_id>();
-    pat_bindings(normalize_pat(tcx, pat)) {|p_id, _s, n|
+fn pat_id_map(dm: resolve::def_map, pat: @pat) -> pat_id_map {
+    let map = std::map::new_str_hash();
+    pat_bindings(dm, pat) {|p_id, _s, n|
       map.insert(path_to_ident(n), p_id);
     };
     ret map;
 }
 
+fn pat_is_variant(dm: resolve::def_map, pat: @pat) -> bool {
+    alt pat.node {
+      pat_enum(_, _) { true }
+      pat_ident(_, none) {
+        alt dm.find(pat.id) {
+          some(def_variant(_, _)) { true }
+          _ { false }
+        }
+      }
+      _ { false }
+    }
+}
+
 // This does *not* normalize. The pattern should be already normalized
 // if you want to get a normalized pattern out of it.
 // Could return a constrained type in order to express that (future work)
-fn pat_bindings(pat: @pat, it: fn(node_id, span, @path)) {
-  alt pat.node {
-      pat_ident(pth, option::none) { it(pat.id, pat.span, pth); }
-      pat_ident(pth, option::some(sub)) { it(pat.id, pat.span, pth);
-        pat_bindings(sub, it); }
-      pat_enum(_, sub) { for p in sub { pat_bindings(p, it); } }
-      pat_rec(fields, _) { for f in fields { pat_bindings(f.pat, it); } }
-      pat_tup(elts) { for elt in elts { pat_bindings(elt, it); } }
-      pat_box(sub) { pat_bindings(sub, it); }
-      pat_uniq(sub) { pat_bindings(sub, it); }
-      pat_wild | pat_lit(_) | pat_range(_, _) { }
+fn pat_bindings(dm: resolve::def_map, pat: @pat,
+                it: fn(node_id, span, @path)) {
+    walk_pat(pat) {|p|
+        alt p.node {
+          pat_ident(pth, _) if !pat_is_variant(dm, p) {
+            it(p.id, p.span, pth);
+          }
+          _ {}
+        }
     }
 }
 
-fn pat_binding_ids(pat: @pat) -> [node_id] {
+fn walk_pat(pat: @pat, it: fn(@pat)) {
+    it(pat);
+    alt pat.node {
+      pat_ident(pth, some(p)) { walk_pat(p, it); }
+      pat_rec(fields, _) { for f in fields { walk_pat(f.pat, it); } }
+      pat_enum(_, s) | pat_tup(s) { for p in s { walk_pat(p, it); } }
+      pat_box(s) | pat_uniq(s) { walk_pat(s, it); }
+      pat_wild | pat_lit(_) | pat_range(_, _) | pat_ident(_, none) {}
+    }
+}
+
+fn pat_binding_ids(dm: resolve::def_map, pat: @pat) -> [node_id] {
     let found = [];
-    pat_bindings(pat) {|b_id, _sp, _pt| found += [b_id]; };
+    pat_bindings(dm, pat) {|b_id, _sp, _pt| found += [b_id]; };
     ret found;
 }
 
-fn path_to_ident(p: @path) -> ident {
-    alt vec::last(p.node.idents) {
-        none { // sigh
-          fail "Malformed path"; }
-      some(i) { ret i; }
-    }
-}
+fn path_to_ident(p: @path) -> ident { vec::last_total(p.node.idents) }

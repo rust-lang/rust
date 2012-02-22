@@ -686,12 +686,11 @@ fn create_local_var(bcx: block, local: @ast::local)
       option::none {}
     }
 
-    let name = path_to_ident(alt pat_util::normalize_pat(bcx.tcx(),
-                                           local.node.pat).node {
-      ast::pat_ident(ident, _) { ident /*XXX deal w/ optional node binding*/ }
-      _ { bcx.tcx().sess.span_bug(local.span, "create_local_var: \
-             weird pattern in local"); }
-     });
+    let name = alt local.node.pat.node {
+      ast::pat_ident(pth, _) { pat_util::path_to_ident(pth) }
+      // FIXME this should be handled
+      _ { fail "no single variable name for local"; }
+    };
     let loc = codemap::lookup_char_pos(cx.sess.codemap,
                                        local.span.lo);
     let ty = node_id_type(bcx, local.node.id);

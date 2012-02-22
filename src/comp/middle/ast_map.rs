@@ -62,19 +62,25 @@ fn map_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
     visit::visit_fn(fk, decl, body, sp, id, cx, v);
 }
 
-fn map_local(loc: @local, cx: ctx, v: vt) {
-    pat_util::pat_bindings(loc.node.pat) {|p_id, _s, _p|
-        cx.map.insert(p_id, node_local(cx.local_id));
-        cx.local_id += 1u;
+fn number_pat(cx: ctx, pat: @pat) {
+    pat_util::walk_pat(pat) {|p|
+        alt p.node {
+          pat_ident(_, _) {
+            cx.map.insert(p.id, node_local(cx.local_id));
+            cx.local_id += 1u;
+          }
+          _ {}
+        }
     };
+}
+
+fn map_local(loc: @local, cx: ctx, v: vt) {
+    number_pat(cx, loc.node.pat);
     visit::visit_local(loc, cx, v);
 }
 
 fn map_arm(arm: arm, cx: ctx, v: vt) {
-    pat_util::pat_bindings(arm.pats[0]) {|p_id, _s, _p|
-        cx.map.insert(p_id, node_local(cx.local_id));
-        cx.local_id += 1u;
-    };
+    number_pat(cx, arm.pats[0]);
     visit::visit_arm(arm, cx, v);
 }
 

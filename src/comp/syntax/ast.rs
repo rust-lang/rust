@@ -108,9 +108,6 @@ enum pat_ {
     // which it is. The resolver determines this, and
     // records this pattern's node_id in an auxiliary
     // set (of "pat_idents that refer to nullary enums")
-    // After the resolution phase, code should never pattern-
-    // match on a pat directly! Always call pat_util::normalize_pat --
-    // it turns any pat_idents that refer to nullary enums into pat_enums.
     pat_ident(@path, option<@pat>),
     pat_enum(@path, [@pat]),
     pat_rec([field_pat], bool),

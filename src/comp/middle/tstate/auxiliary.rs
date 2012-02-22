@@ -1056,7 +1056,7 @@ type binding = {lhs: [inst], rhs: option<initializer>};
 
 fn local_to_bindings(tcx: ty::ctxt, loc: @local) -> binding {
     let lhs = [];
-    pat_bindings(pat_util::normalize_pat(tcx, loc.node.pat)) {|p_id, _s, name|
+    pat_bindings(tcx.def_map, loc.node.pat) {|p_id, _s, name|
         lhs += [{ident: path_to_ident(name), node: p_id}];
     };
     {lhs: lhs, rhs: loc.node.init}

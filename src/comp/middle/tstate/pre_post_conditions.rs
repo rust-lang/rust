@@ -89,7 +89,7 @@ fn find_pre_post_loop(fcx: fn_ctxt, l: @local, index: @expr, body: blk,
                       id: node_id) {
     find_pre_post_expr(fcx, index);
     find_pre_post_block(fcx, body);
-    pat_bindings(normalize_pat(fcx.ccx.tcx, l.node.pat)) {|p_id, _s, n|
+    pat_bindings(fcx.ccx.tcx.def_map, l.node.pat) {|p_id, _s, n|
         let v_init = ninit(p_id, path_to_ident(n));
         relax_precond_block(fcx, bit_num(fcx, v_init) as node_id, body);
         // Hack: for-loop index variables are frequently ignored,
@@ -551,7 +551,8 @@ fn find_pre_post_stmt(fcx: fn_ctxt, s: stmt) {
                     /* LHS always becomes initialized,
                      whether or not this is a move */
                     find_pre_post_expr(fcx, an_init.expr);
-                    pat_bindings(alocal.node.pat) {|p_id, _s, _n|
+                    pat_bindings(fcx.ccx.tcx.def_map, alocal.node.pat)
+                        {|p_id, _s, _n|
                         copy_pre_post(fcx.ccx, p_id, an_init.expr);
                     };
                     /* Inherit ann from initializer, and add var being
@@ -564,7 +565,7 @@ fn find_pre_post_stmt(fcx: fn_ctxt, s: stmt) {
                       _ { }
                     }
 
-                    pat_bindings(normalize_pat(fcx.ccx.tcx, alocal.node.pat))
+                    pat_bindings(fcx.ccx.tcx.def_map, alocal.node.pat)
                         {|p_id, _s, n|
                         let ident = path_to_ident(n);
                         alt p {
@@ -592,7 +593,7 @@ fn find_pre_post_stmt(fcx: fn_ctxt, s: stmt) {
                                seq_preconds(fcx, [prev_pp, e_pp]));
                     /* Include the LHSs too, since those aren't in the
                      postconds of the RHSs themselves */
-                    pat_bindings(normalize_pat(fcx.ccx.tcx, alocal.node.pat))
+                    pat_bindings(fcx.ccx.tcx.def_map, alocal.node.pat)
                         {|pat_id, _s, n|
                             set_in_postcond(bit_num(fcx,
                                ninit(pat_id, path_to_ident(n))), prev_pp);
@@ -601,7 +602,8 @@ fn find_pre_post_stmt(fcx: fn_ctxt, s: stmt) {
                                    prev_pp.postcondition);
                   }
                   none {
-                      pat_bindings(alocal.node.pat) {|p_id, _s, _n|
+                    pat_bindings(fcx.ccx.tcx.def_map, alocal.node.pat)
+                        {|p_id, _s, _n|
                         clear_pp(node_id_to_ts_ann(fcx.ccx, p_id).conditions);
                     };
                     clear_pp(node_id_to_ts_ann(fcx.ccx, id).conditions);
