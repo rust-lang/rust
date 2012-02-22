@@ -1373,7 +1373,7 @@ mod tests {
         let sample = @"0123456789ABCDE";
         let r      = of_str(sample);
 
-        assert char_len(r) == str::len(*sample);
+        assert char_len(r) == str::len_chars(*sample);
         assert rope_to_string(r) == *sample;
     }
 
@@ -1384,7 +1384,7 @@ mod tests {
         while i < 10 { *buf = *buf + *buf; i+=1;}
         let sample = @*buf;
         let r      = of_str(sample);
-        assert char_len(r) == str::len(*sample);
+        assert char_len(r) == str::len_chars(*sample);
         assert rope_to_string(r) == *sample;
 
         let string_iter = 0u;
@@ -1427,7 +1427,7 @@ mod tests {
             }
         }
 
-        assert len == str::len(*sample);
+        assert len == str::len_chars(*sample);
     }
 
     #[test]

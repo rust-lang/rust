@@ -86,7 +86,7 @@ export
    is_not_empty,
    is_whitespace,
    len_bytes,
-   len_chars, len,
+   len_chars, //len,
 
    // Misc
    // FIXME: perhaps some more of this section shouldn't be exported?
@@ -529,7 +529,7 @@ fn split(ss: str, sepfn: fn(cc: char)->bool) -> [str] {
         }
     });
 
-    if len(accum) >= 0u || ends_with_sep {
+    if len_chars(accum) >= 0u || ends_with_sep {
         vv += [accum];
     }
 
@@ -601,7 +601,7 @@ separated by whitespace
 */
 fn words(ss: str) -> [str] {
     ret vec::filter( split(ss, {|cc| char::is_whitespace(cc)}),
-                     {|w| 0u < str::len(w)});
+                     {|w| 0u < str::len_chars(w)});
 }
 
 /*
@@ -611,7 +611,7 @@ Create a vector of substrings of size `nn`
 */
 fn windowed(nn: uint, ss: str) -> [str] {
     let ww = [];
-    let len = str::len(ss);
+    let len = str::len_chars(ss);
 
     assert 1u <= nn;
 
@@ -883,7 +883,7 @@ fn byte_index_from(s: str, b: u8, start: uint, end: uint) -> option<uint> {
 // (as option some/none)
 fn rindex(ss: str, cc: char) -> option<uint> {
     let bii = len_bytes(ss);
-    let cii = len(ss);
+    let cii = len_chars(ss);
     while bii > 0u {
         let {ch, prev} = char_range_at_reverse(ss, bii);
         cii -= 1u;
@@ -1008,8 +1008,8 @@ haystack - The string to look in
 needle - The string to look for
 */
 fn ends_with(haystack: str, needle: str) -> bool {
-    let haystack_len: uint = len(haystack);
-    let needle_len: uint = len(needle);
+    let haystack_len: uint = len_chars(haystack);
+    let needle_len: uint = len_chars(needle);
     ret if needle_len == 0u {
             true
         } else if needle_len > haystack_len {
@@ -1079,7 +1079,9 @@ fn len(s: str) -> uint {
     substr_len_chars(s, 0u, len_bytes(s))
 }
 
-fn len_chars(s: str) -> uint { len(s) }
+fn len_chars(s: str) -> uint {
+    substr_len_chars(s, 0u, len_bytes(s))
+}
 
 /*
 Section: Misc
@@ -1529,14 +1531,14 @@ mod tests {
         assert (len_bytes("\u2620") == 3u);
         assert (len_bytes("\U0001d11e") == 4u);
 
-        assert (len("") == 0u);
-        assert (len("hello world") == 11u);
-        assert (len("\x63") == 1u);
-        assert (len("\xa2") == 1u);
-        assert (len("\u03c0") == 1u);
-        assert (len("\u2620") == 1u);
-        assert (len("\U0001d11e") == 1u);
-        assert (len("ประเทศไทย中华Việt Nam") == 19u);
+        assert (len_chars("") == 0u);
+        assert (len_chars("hello world") == 11u);
+        assert (len_chars("\x63") == 1u);
+        assert (len_chars("\xa2") == 1u);
+        assert (len_chars("\u03c0") == 1u);
+        assert (len_chars("\u2620") == 1u);
+        assert (len_chars("\U0001d11e") == 1u);
+        assert (len_chars("ประเทศไทย中华Việt Nam") == 19u);
     }
 
     #[test]

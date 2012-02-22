@@ -45,7 +45,7 @@ fn splitDirnameBasename (pp: path) -> {dirname: str, basename: str} {
     }
 
     ret {dirname: str::slice(pp, 0u, ii),
-         basename: str::slice(pp, ii + 1u, str::len(pp))};
+         basename: str::slice(pp, ii + 1u, str::len_chars(pp))};
 }
 
 /*

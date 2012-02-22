@@ -204,7 +204,7 @@ fn head(s: ps, w: str) {
     // outer-box is consistent
     cbox(s, indent_unit);
     // head-box is inconsistent
-    ibox(s, str::len(w) + 1u);
+    ibox(s, str::len_bytes(w) + 1u);
     // keyword that starts the head
     word_nbsp(s, w);
 }
