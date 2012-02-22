@@ -64,6 +64,15 @@ pure fn lazy_binop(b: binop) -> bool {
     alt b { and { true } or { true } _ { false } }
 }
 
+pure fn is_shift_binop(b: binop) -> bool {
+    alt b {
+      lsl { true }
+      lsr { true }
+      asr { true }
+      _ { false }
+    }
+}
+
 fn unop_to_str(op: unop) -> str {
     alt op {
       box(mt) { if mt == m_mutbl { ret "@mut "; } ret "@"; }
