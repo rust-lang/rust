@@ -783,7 +783,7 @@ Function: chars_iter
 Iterate over the characters in a string
 */
 fn chars_iter(s: str, it: fn(&&char)) {
-    let pos = 0u, len = byte_len(s);
+    let pos = 0u, len = len_bytes(s);
     while (pos < len) {
         let {ch, next} = char_range_at(s, pos);
         pos = next;
