@@ -36,7 +36,7 @@ export
    bytes,
    chars,
    substr,
-   slice,
+   slice_chars,
    split,
    split_str,
    split_char,
@@ -391,11 +391,11 @@ Failure:
 If `begin` + `len` is is greater than the char length of the string
 */
 fn substr(s: str, begin: uint, len: uint) -> str {
-    ret slice(s, begin, begin + len);
+    ret slice_chars(s, begin, begin + len);
 }
 
 /*
-Function: slice
+Function: slice_chars
 
 Unicode-safe slice. Returns a slice of the given string containing
 the characters in the range [`begin`..`end`). `begin` and `end` are
@@ -408,7 +408,7 @@ Failure:
 
 FIXME: make faster by avoiding char conversion
 */
-fn slice(s: str, begin: uint, end: uint) -> str {
+fn slice_chars(s: str, begin: uint, end: uint) -> str {
     from_chars(vec::slice(chars(s), begin, end))
 }
 
@@ -617,7 +617,7 @@ fn windowed(nn: uint, ss: str) -> [str] {
 
     let ii = 0u;
     while ii+nn <= len {
-        let w = slice( ss, ii, ii+nn );
+        let w = slice_chars( ss, ii, ii+nn );
         vec::push(ww,w);
         ii += 1u;
     }
@@ -1969,17 +1969,17 @@ mod tests {
     }
 
     #[test]
-    fn test_slice() {
-        assert (eq("ab", slice("abc", 0u, 2u)));
-        assert (eq("bc", slice("abc", 1u, 3u)));
-        assert (eq("", slice("abc", 1u, 1u)));
-        assert (eq("\u65e5", slice("\u65e5\u672c", 0u, 1u)));
+    fn test_slice_chars() {
+        assert (eq("ab", slice_chars("abc", 0u, 2u)));
+        assert (eq("bc", slice_chars("abc", 1u, 3u)));
+        assert (eq("", slice_chars("abc", 1u, 1u)));
+        assert (eq("\u65e5", slice_chars("\u65e5\u672c", 0u, 1u)));
 
         let data = "ประเทศไทย中华";
-        assert (eq("ป", slice(data, 0u, 1u)));
-        assert (eq("ร", slice(data, 1u, 2u)));
-        assert (eq("华", slice(data, 10u, 11u)));
-        assert (eq("", slice(data, 1u, 1u)));
+        assert (eq("ป", slice_chars(data, 0u, 1u)));
+        assert (eq("ร", slice_chars(data, 1u, 2u)));
+        assert (eq("华", slice_chars(data, 10u, 11u)));
+        assert (eq("", slice_chars(data, 1u, 1u)));
 
         fn a_million_letter_X() -> str {
             let i = 0;
@@ -1994,7 +1994,7 @@ mod tests {
             ret rs;
         }
         assert (eq(half_a_million_letter_X(),
-                        slice(a_million_letter_X(), 0u, 500000u)));
+                        slice_chars(a_million_letter_X(), 0u, 500000u)));
     }
 
     #[test]

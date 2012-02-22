@@ -71,7 +71,7 @@ fn to_str(j: json) -> str {
 
 fn rest(s: str) -> str {
     assert(str::len_chars(s) >= 1u);
-    str::slice(s, 1u, str::len_chars(s))
+    str::slice_chars(s, 1u, str::len_chars(s))
 }
 
 fn from_str_str(s: str) -> (option<json>, str) {
@@ -99,7 +99,7 @@ fn from_str_str(s: str) -> (option<json>, str) {
             cont;
         } else if (c == '"') {
             ret (some(string(res)),
-                 str::slice(s, pos, str::len_chars(s)));
+                 str::slice_chars(s, pos, str::len_chars(s)));
         }
         res = res + str::from_char(c);
     }
@@ -200,12 +200,13 @@ fn from_str_float(s: str) -> (option<json>, str) {
             }
             '.' { break; }
             _ { ret (some(num(neg * res)),
-                     str::slice(s, opos, str::len_chars(s))); }
+                     str::slice_chars(s, opos, str::len_chars(s))); }
         }
     }
 
     if pos == len {
-        ret (some(num(neg * res)), str::slice(s, pos, str::len_chars(s)));
+        ret (some(num(neg * res)),
+             str::slice_chars(s, pos, str::len_chars(s)));
     }
 
     let dec = 1f;
@@ -220,17 +221,17 @@ fn from_str_float(s: str) -> (option<json>, str) {
                 res += (((c as int) - ('0' as int)) as float) * dec;
             }
             _ { ret (some(num(neg * res)),
-                     str::slice(s, opos, str::len_chars(s))); }
+                     str::slice_chars(s, opos, str::len_chars(s))); }
         }
     }
-    ret (some(num(neg * res)), str::slice(s, pos, str::len_chars(s)));
+    ret (some(num(neg * res)), str::slice_chars(s, pos, str::len_chars(s)));
 }
 
 fn from_str_bool(s: str) -> (option<json>, str) {
     if (str::starts_with(s, "true")) {
-        (some(boolean(true)), str::slice(s, 4u, str::len_chars(s)))
+        (some(boolean(true)), str::slice_chars(s, 4u, str::len_chars(s)))
     } else if (str::starts_with(s, "false")) {
-        (some(boolean(false)), str::slice(s, 5u, str::len_chars(s)))
+        (some(boolean(false)), str::slice_chars(s, 5u, str::len_chars(s)))
     } else {
         (none, s)
     }
@@ -238,7 +239,7 @@ fn from_str_bool(s: str) -> (option<json>, str) {
 
 fn from_str_null(s: str) -> (option<json>, str) {
     if (str::starts_with(s, "null")) {
-        (some(null), str::slice(s, 4u, str::len_chars(s)))
+        (some(null), str::slice_chars(s, 4u, str::len_chars(s)))
     } else {
         (none, s)
     }

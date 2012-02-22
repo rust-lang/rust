@@ -177,7 +177,7 @@ fn rest(s: str, start: uint) -> str {
     if (start >= str::len_chars(s)) {
         ""
     } else {
-        str::slice(s, start, str::len_chars(s))
+        str::slice_chars(s, start, str::len_chars(s))
     }
 }
 
@@ -688,8 +688,8 @@ fn cmd_install(c: cargo) unsafe {
         let uuid = rest(target, 5u);
         alt str::index_chars(uuid, '/') {
             option::some(idx) {
-               let source = str::slice(uuid, 0u, idx);
-               uuid = str::slice(uuid, idx + 1u, str::len_chars(uuid));
+               let source = str::slice_chars(uuid, 0u, idx);
+               uuid = str::slice_chars(uuid, idx + 1u, str::len_chars(uuid));
                install_uuid_specific(c, wd, source, uuid);
             }
             option::none {
@@ -700,8 +700,8 @@ fn cmd_install(c: cargo) unsafe {
         let name = target;
         alt str::index_chars(name, '/') {
             option::some(idx) {
-               let source = str::slice(name, 0u, idx);
-               name = str::slice(name, idx + 1u, str::len_chars(name));
+               let source = str::slice_chars(name, 0u, idx);
+               name = str::slice_chars(name, idx + 1u, str::len_chars(name));
                install_named_specific(c, wd, source, name);
             }
             option::none {
