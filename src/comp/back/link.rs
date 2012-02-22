@@ -111,7 +111,7 @@ mod write {
     fn mk_intermediate_name(output_path: str, extension: str) -> str unsafe {
         let stem = alt str::index_chars(output_path, '.') {
                        option::some(dot_pos) {
-                           str::slice(output_path, 0u, dot_pos)
+                           str::slice_chars(output_path, 0u, dot_pos)
                        }
                        option::none { output_path }
                    };
