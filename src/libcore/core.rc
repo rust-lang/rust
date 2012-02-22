@@ -38,6 +38,7 @@ export comm, task, future;
 export extfmt;
 export math, bessel;
 export tuple;
+export to_str;
 
 // Built-in-type support modules
 
@@ -73,6 +74,10 @@ mod option;
 mod result;
 mod tuple;
 mod iter;
+
+// Useful ifaces
+
+mod to_str;
 
 // Runtime and language-primitive support
 
