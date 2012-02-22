@@ -1074,10 +1074,8 @@ pure fn len_bytes(s: str) -> uint unsafe {
 // Function: len
 //
 // String length or size in characters.
-// (Synonym: len_chars)
-fn len(s: str) -> uint {
-    substr_len_chars(s, 0u, len_bytes(s))
-}
+// (Synonym: len_bytes)
+fn len(s: str) -> uint { len_bytes(s) }
 
 fn len_chars(s: str) -> uint {
     substr_len_chars(s, 0u, len_bytes(s))
