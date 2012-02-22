@@ -79,7 +79,8 @@ native mod rustrt {
     fn rust_uvtmp_uv_loop_set_data(
         loop: *ctypes::void,
         data: *uv_loop_data);
-    fn rust_uvtmp_uv_bind_op_cb(loop: *ctypes::void, cb: *u8) -> *ctypes::void;
+    fn rust_uvtmp_uv_bind_op_cb(loop: *ctypes::void, cb: *u8)
+        -> *ctypes::void;
     fn rust_uvtmp_uv_stop_op_cb(handle: *ctypes::void);
     fn rust_uvtmp_uv_run(loop_handle: *ctypes::void);
     fn rust_uvtmp_uv_close(handle: *ctypes::void, cb: *u8);
@@ -162,7 +163,6 @@ mod uv {
                 map::new_bytes_hash();
             let close_callbacks: map::map<[u8], fn~()> =
                 map::new_bytes_hash();
-            
             let async_cbs: map::map<[u8], fn~(uv_handle)> =
                 map::new_bytes_hash();
             let timer_cbs: map::map<[u8], fn~(uv_handle)> =
@@ -190,14 +190,14 @@ mod uv {
                         comm::send(rust_loop_chan, uv_end);
                     };
                   }
-                  
+
                   msg_run_in_bg {
                     task::spawn_sched(task::manual_threads(1u)) {||
                         // this call blocks
                         rustrt::rust_uvtmp_uv_run(loop_handle);
                     };
                   }
-                  
+
                   msg_close(handle, cb) {
                     let id = get_id_from_handle(handle);
                     close_callbacks.insert(id, cb);
@@ -228,7 +228,7 @@ mod uv {
                         cb();
                     };
                   }
-                  
+
                   msg_async_init(callback, after_cb) {
                     // create a new async handle
                     // with the id as the handle's
@@ -308,7 +308,7 @@ mod uv {
                     let the_timer = id_to_handle.get(id);
                     after_cb(the_timer);
                   }
-                  
+
                   uv_end() {
                     keep_going = false;
                   }
@@ -353,7 +353,7 @@ mod uv {
 
     fn close(h: uv_handle, cb: fn~()) {
         let loop_chan = get_loop_chan_from_handle(h);
-        comm::send(loop_chan, msg_close(h, cb)); 
+        comm::send(loop_chan, msg_close(h, cb));
     }
 
     fn timer_init(loop: uv_loop, after_cb: fn~(uv_handle)) {
@@ -403,7 +403,7 @@ mod uv {
         ret rand::mk_rng().gen_bytes(16u);
     }
     fn get_handle_id_from(buf: *u8) -> [u8] unsafe {
-        ret vec::unsafe::from_buf(buf, 16u); 
+        ret vec::unsafe::from_buf(buf, 16u);
     }
 
     fn get_loop_chan_from_data(data: *uv_loop_data)
@@ -475,7 +475,6 @@ mod uv {
                 rustrt::rust_uvtmp_uv_timer_stop(handle);
                 comm::send(loop_chan, uv_timer_stop(id, after_cb));
               }
-              
               _ { fail "unknown form of uv_operation received"; }
             }
             op_pending = comm::peek(op_port);
@@ -538,7 +537,7 @@ mod uv {
         // close cb
         process_close_common(id, data);
     }
-    
+
     crust fn process_close_timer(
         id_buf: *u8,
         handle_ptr: *ctypes::void,
@@ -549,7 +548,6 @@ mod uv {
         process_close_common(id, data);
     }
 
-    
 }
 
 #[test]
@@ -588,7 +586,7 @@ fn test_uvtmp_uv_timer() {
                 };
             };
         };
-    }; 
+    };
     uv::run(test_loop);
     assert comm::recv(exit_port);
 }
