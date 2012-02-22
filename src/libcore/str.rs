@@ -401,8 +401,8 @@ fn substr(s: str, begin: uint, len: uint) -> str {
 // beyond the last character of the string
 fn slice(ss: str, begin: uint, end: uint) -> str {
    alt maybe_slice(ss, begin, end) {
-      none     { fail "slice requires a valid start and end"; }
       some(sli) { ret sli; }
+      none      { fail "slice requires a valid start and end"; }
    }
 }
 
