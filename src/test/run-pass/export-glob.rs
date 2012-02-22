@@ -1,5 +1,7 @@
 // xfail-test
-// Export the enum variants, without the enum
+
+// Test that a glob-export functions as an explicit
+// named export when referenced from outside its scope.
 
 mod foo {
     export bar::*;
