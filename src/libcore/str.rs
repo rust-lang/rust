@@ -72,7 +72,7 @@ export
    index_chars,
    byte_index,
    byte_index_from,
-   rindex,
+   rindex_chars,
    find,
    find_bytes,
    find_from_bytes,
@@ -877,11 +877,11 @@ fn byte_index_from(s: str, b: u8, start: uint, end: uint) -> option<uint> {
     str::as_bytes(s) { |v| vec::position_from(v, start, end) { |x| x == b } }
 }
 
-// Function: rindex
+// Function: rindex_chars
 //
 // Returns the index of the first matching char
 // (as option some/none)
-fn rindex(ss: str, cc: char) -> option<uint> {
+fn rindex_chars(ss: str, cc: char) -> option<uint> {
     let bii = len_bytes(ss);
     let cii = len_chars(ss);
     while bii > 0u {
@@ -1546,11 +1546,11 @@ mod tests {
     }
 
     #[test]
-    fn test_rindex() {
-        assert (rindex("hello", 'l') == some(3u));
-        assert (rindex("hello", 'o') == some(4u));
-        assert (rindex("hello", 'h') == some(0u));
-        assert (rindex("hello", 'z') == none);
+    fn test_rindex_chars() {
+        assert (rindex_chars("hello", 'l') == some(3u));
+        assert (rindex_chars("hello", 'o') == some(4u));
+        assert (rindex_chars("hello", 'h') == some(0u));
+        assert (rindex_chars("hello", 'z') == none);
     }
 
     #[test]

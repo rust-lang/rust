@@ -286,7 +286,7 @@ fn check_variants_T<T: copy>(
 }
 
 fn last_part(filename: str) -> str {
-  let ix = option::get(str::rindex(filename, '/'));
+  let ix = option::get(str::rindex_chars(filename, '/'));
   str::slice(filename, ix + 1u, str::len_chars(filename) - 3u)
 }
 
