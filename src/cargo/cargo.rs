@@ -686,7 +686,7 @@ fn cmd_install(c: cargo) unsafe {
 
     if str::starts_with(target, "uuid:") {
         let uuid = rest(target, 5u);
-        alt str::index(uuid, '/') {
+        alt str::index_chars(uuid, '/') {
             option::some(idx) {
                let source = str::slice(uuid, 0u, idx);
                uuid = str::slice(uuid, idx + 1u, str::len_chars(uuid));
@@ -698,7 +698,7 @@ fn cmd_install(c: cargo) unsafe {
         }
     } else {
         let name = target;
-        alt str::index(name, '/') {
+        alt str::index_chars(name, '/') {
             option::some(idx) {
                let source = str::slice(name, 0u, idx);
                name = str::slice(name, idx + 1u, str::len_chars(name));

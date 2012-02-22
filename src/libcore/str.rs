@@ -69,7 +69,7 @@ export
    lines_iter,
 
    // Searching
-   index,
+   index_chars,
    byte_index,
    byte_index_from,
    rindex,
@@ -838,7 +838,7 @@ Section: Searching
 //
 // Returns the index of the first matching char
 // (as option some/none)
-fn index(ss: str, cc: char) -> option<uint> {
+fn index_chars(ss: str, cc: char) -> option<uint> {
     let bii = 0u;
     let cii = 0u;
     let len = len_bytes(ss);
@@ -1157,8 +1157,6 @@ Safety note:
 
 This function fails if `byte_offset` or `char_len` do not represent
 valid positions in `s`
-
-FIXME: rename to 'substr_len_bytes'
 */
 fn substr_len_bytes(s: str, byte_offset: uint, char_len: uint) -> uint {
     let i = byte_offset;
@@ -1540,11 +1538,11 @@ mod tests {
     }
 
     #[test]
-    fn test_index() {
-        assert ( index("hello", 'h') == some(0u));
-        assert ( index("hello", 'e') == some(1u));
-        assert ( index("hello", 'o') == some(4u));
-        assert ( index("hello", 'z') == none);
+    fn test_index_chars() {
+        assert ( index_chars("hello", 'h') == some(0u));
+        assert ( index_chars("hello", 'e') == some(1u));
+        assert ( index_chars("hello", 'o') == some(4u));
+        assert ( index_chars("hello", 'z') == none);
     }
 
     #[test]
