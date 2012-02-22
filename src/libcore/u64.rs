@@ -122,7 +122,7 @@ fn from_str(buf: str, radix: u64) -> option<u64> {
     let i = str::len_bytes(buf) - 1u;
     let power = 1u64, n = 0u64;
     while true {
-        alt char::to_digit(buf[i] as char, radix) {
+        alt char::to_digit(buf[i] as char, radix as uint) {
           some(d) { n += d as u64 * power; }
           none { ret none; }
         }
