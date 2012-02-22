@@ -681,9 +681,9 @@ fn resolve_constr(e: @env, c: @ast::constr, sc: scopes, _v: vt<scopes>) {
          e.def_map.insert(c.node.id, d);
        }
        _ {
-           e.sess.span_err(c.span,
-                           "Non-predicate in constraint: " +
-                           path_to_str(c.node.path));
+           let s = path_to_str(c.node.path);
+           e.sess.span_err(c.span, #fmt("%s is not declared pure. Try \
+             `pure fn %s` instead of `fn %s`.", s, s, s));
        }
     }
 }
