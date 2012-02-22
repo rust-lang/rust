@@ -104,7 +104,7 @@ endif
 # Extracting tests for docs
 ######################################################################
 
-EXTRACT_TESTS := $(CFG_PYTHON) $(S)src/etc/extract-tests.py
+EXTRACT_TESTS := "$(CFG_PYTHON)" $(S)src/etc/extract-tests.py
 
 define DEF_DOC_TEST_HOST
 
