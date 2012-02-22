@@ -180,7 +180,7 @@ Returns the first element of a vector
 Predicates:
 <is_not_empty> (v)
 */
-pure fn head<T: copy>(v: [const T]) : is_not_empty(v) -> T { ret v[0]; }
+pure fn head<T: copy>(v: [const T]) -> T { v[0] }
 
 /*
 Function: tail
@@ -240,9 +240,7 @@ Returns the last element of a non-empty vector `v`
 Predicates:
 <is_not_empty> (v)
 */
-pure fn last_total<T: copy>(v: [const T]) : is_not_empty(v) -> T {
-    ret v[len(v) - 1u];
-}
+pure fn last_total<T: copy>(v: [const T]) -> T { v[len(v) - 1u] }
 
 /*
 Function: slice
@@ -886,10 +884,10 @@ Preconditions:
 
 <same_length> (v, u)
 */
-fn zip<T: copy, U: copy>(v: [T], u: [U]) : same_length(v, u) -> [(T, U)] {
+fn zip<T: copy, U: copy>(v: [T], u: [U]) -> [(T, U)] {
     let zipped = [];
     let sz = len(v), i = 0u;
-    assert (sz == len(u));
+    assert sz == len(u);
     while i < sz { zipped += [(v[i], u[i])]; i += 1u; }
     ret zipped;
 }
@@ -940,7 +938,8 @@ Function: enum_chars
 
 Returns a vector containing a range of chars
 */
-fn enum_chars(start: u8, end: u8) : ::u8::le(start, end) -> [char] {
+fn enum_chars(start: u8, end: u8) -> [char] {
+    assert start < end;
     let i = start;
     let r = [];
     while i <= end { r += [i as char]; i += 1u as u8; }
@@ -953,7 +952,8 @@ Function: enum_uints
 
 Returns a vector containing a range of uints
 */
-fn enum_uints(start: uint, end: uint) : uint::le(start, end) -> [uint] {
+fn enum_uints(start: uint, end: uint) -> [uint] {
+    assert start < end;
     let i = start;
     let r = [];
     while i <= end { r += [i]; i += 1u; }
@@ -1329,18 +1329,15 @@ mod tests {
     #[test]
     fn test_head() {
         let a = [11, 12];
-        check (is_not_empty(a));
         assert (head(a) == 11);
     }
 
     #[test]
     fn test_tail() {
         let a = [11];
-        check (is_not_empty(a));
         assert (tail(a) == []);
 
         a = [11, 12];
-        check (is_not_empty(a));
         assert (tail(a) == [12]);
     }
 
@@ -1667,7 +1664,6 @@ mod tests {
         let v1 = [1, 2, 3];
         let v2 = [4, 5, 6];
 
-        check (same_length(v1, v2)); // Silly, but what else can we do?
         let z1 = zip(v1, v2);
 
         assert ((1, 4) == z1[0]);

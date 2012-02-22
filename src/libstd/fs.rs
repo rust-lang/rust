@@ -107,12 +107,11 @@ Connects a vector of path segments into a single path.
 
 Inserts path separators as needed.
 */
-fn connect_many(paths: [path]) : vec::is_not_empty(paths) -> path {
+fn connect_many(paths: [path]) -> path {
     ret if vec::len(paths) == 1u {
         paths[0]
     } else {
         let rest = vec::slice(paths, 1u, vec::len(paths));
-        check vec::is_not_empty(rest);
         connect(paths[0], connect_many(rest))
     }
 }

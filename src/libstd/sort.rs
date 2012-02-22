@@ -252,8 +252,6 @@ mod test_qsort {
 
         let immut_names = vec::from_mut(names);
 
-        // Silly, but what else can we do?
-        check (vec::same_length(expected, immut_names));
         let pairs = vec::zip(expected, immut_names);
         for (a, b) in pairs { #debug("%d %d", a, b); assert (a == b); }
     }

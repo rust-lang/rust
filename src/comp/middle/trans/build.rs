@@ -529,7 +529,6 @@ fn add_span_comment(bcx: block, sp: span, text: str) {
 fn add_comment(bcx: block, text: str) {
     let ccx = bcx.ccx();
     if (!ccx.sess.opts.no_asm_comments) {
-        check str::is_not_empty("$");
         let sanitized = str::replace(text, "$", "");
         let comment_text = "; " + sanitized;
         let asm = str::as_buf(comment_text, {|c|

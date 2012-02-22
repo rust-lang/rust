@@ -659,7 +659,8 @@ Returns:
 
 The original string with all occurances of `from` replaced with `to`
 */
-fn replace(s: str, from: str, to: str) : is_not_empty(from) -> str unsafe {
+fn replace(s: str, from: str, to: str) -> str unsafe {
+    assert is_not_empty(from);
     if len_bytes(s) == 0u {
         ret "";
     } else if starts_with(s, from) {
@@ -1922,12 +1923,10 @@ mod tests {
     #[test]
     fn test_replace() {
         let a = "a";
-        check (is_not_empty(a));
         assert (replace("", a, "b") == "");
         assert (replace("a", a, "b") == "b");
         assert (replace("ab", a, "b") == "bb");
         let test = "test";
-        check (is_not_empty(test));
         assert (replace(" test test ", test, "toast") == " toast toast ");
         assert (replace(" test test ", test, "") == "   ");
     }
@@ -1939,7 +1938,6 @@ mod tests {
 
         let a = "ประเ";
         let A = "دولة الكويتทศไทย中华";
-        check is_not_empty(a);
         assert (replace(data, a, repl) ==  A);
     }
 
@@ -1950,7 +1948,6 @@ mod tests {
 
         let b = "ะเ";
         let B = "ปรدولة الكويتทศไทย中华";
-        check is_not_empty(b);
         assert (replace(data, b,   repl) ==  B);
     }
 
@@ -1961,7 +1958,6 @@ mod tests {
 
         let c = "中华";
         let C = "ประเทศไทยدولة الكويت";
-        check is_not_empty(c);
         assert (replace(data, c, repl) ==  C);
     }
 
@@ -1971,7 +1967,6 @@ mod tests {
         let repl = "دولة الكويت";
 
         let d = "ไท华";
-        check is_not_empty(d);
         assert (replace(data, d, repl) == data);
     }
 

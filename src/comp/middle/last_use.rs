@@ -209,7 +209,6 @@ fn visit_block(tp: block_type, cx: ctx, visit: fn()) {
     cx.current = start_current;
     visit();
     let cx_blocks = cx.blocks;
-    check is_not_empty(cx_blocks);
     cx.blocks = tail(cx_blocks);
     let branches = if tp == func { local.exits + [cx.current] }
                    else { local.exits };

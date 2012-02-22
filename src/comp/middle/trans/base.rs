@@ -355,9 +355,10 @@ fn GEP_tup_like(bcx: block, t: ty::t, base: ValueRef, ixs: [int])
 // is meaningless, as it will be cast away.
 fn GEP_enum(cx: block, llblobptr: ValueRef, enum_id: ast::def_id,
            variant_id: ast::def_id, ty_substs: [ty::t],
-           ix: uint) : valid_variant_index(ix, cx, enum_id, variant_id) ->
-   result {
+           ix: uint) -> result {
     let variant = ty::enum_variant_with_id(cx.tcx(), enum_id, variant_id);
+    assert ix < variant.args.len();
+
     // Synthesize a tuple type so that GEP_tup_like() can work its magic.
     // Separately, store the type of the element we're interested in.
 
@@ -1119,7 +1120,6 @@ fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
             let j = 0u;
             let v_id = variant.id;
             for a: ty::arg in args {
-                check (valid_variant_index(j, cx, tid, v_id));
                 let rslt = GEP_enum(cx, a_tup, tid, v_id, tps, j);
                 let llfldp_a = rslt.val;
                 cx = rslt.bcx;
@@ -4031,7 +4031,6 @@ fn trans_enum_variant(ccx: crate_ctxt, enum_id: ast::node_id,
     let t_id = local_def(enum_id);
     let v_id = local_def(variant.node.id);
     for va: ast::variant_arg in variant.node.args {
-        check (valid_variant_index(i, bcx, t_id, v_id));
         let rslt = GEP_enum(bcx, llblobptr, t_id, v_id, ty_param_substs, i);
         bcx = rslt.bcx;
         let lldestptr = rslt.val;

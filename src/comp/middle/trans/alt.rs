@@ -278,7 +278,6 @@ fn extract_variant_args(bcx: block, pat_id: ast::node_id,
     let vdefs_tg = vdefs.enm;
     let vdefs_var = vdefs.var;
     while i < size {
-        check (valid_variant_index(i, bcx, vdefs_tg, vdefs_var));
         let r =
             // invariant needed:
             // how do we know it even makes sense to pass in ty_param_substs

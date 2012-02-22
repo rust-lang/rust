@@ -47,7 +47,6 @@ type test_desc = {
 // The default console test runner. It accepts the command line
 // arguments and a vector of test_descs (generated at compile time).
 fn test_main(args: [str], tests: [test_desc]) {
-    check (vec::is_not_empty(args));
     let opts =
         alt parse_opts(args) {
           either::left(o) { o }
@@ -61,8 +60,7 @@ type test_opts = {filter: option<str>, run_ignored: bool};
 type opt_res = either::t<test_opts, str>;
 
 // Parses command line arguments into test options
-fn parse_opts(args: [str]) : vec::is_not_empty(args) -> opt_res {
-
+fn parse_opts(args: [str]) -> opt_res {
     let args_ = vec::tail(args);
     let opts = [getopts::optflag("ignored")];
     let match =
@@ -407,7 +405,6 @@ mod tests {
     #[test]
     fn first_free_arg_should_be_a_filter() {
         let args = ["progname", "filter"];
-        check (vec::is_not_empty(args));
         let opts = alt parse_opts(args) { either::left(o) { o }
           _ { fail "Malformed arg in first_free_arg_should_be_a_filter"; } };
         assert (str::eq("filter", option::get(opts.filter)));
@@ -416,7 +413,6 @@ mod tests {
     #[test]
     fn parse_ignored_flag() {
         let args = ["progname", "filter", "--ignored"];
-        check (vec::is_not_empty(args));
         let opts = alt parse_opts(args) { either::left(o) { o }
           _ { fail "Malformed arg in parse_ignored_flag"; } };
         assert (opts.run_ignored);
@@ -469,12 +465,10 @@ mod tests {
          "test::ignored_tests_result_in_ignored", "test::parse_ignored_flag",
          "test::sort_tests"];
 
-    check (vec::same_length(expected, filtered));
     let pairs = vec::zip(expected, filtered);
 
-
     for (a, b) in pairs { assert (a == b.name); }
-    }
+}
 }
 
 

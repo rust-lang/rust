@@ -888,7 +888,6 @@ fn parse_bottom_expr(p: parser) -> pexpr {
         /* Should be a predicate (pure boolean function) applied to
            arguments that are all either slot variables or literals.
            but the typechecker enforces that. */
-
         let e = parse_expr(p);
         hi = e.span.hi;
         ex = ast::expr_check(ast::checked_expr, e);
