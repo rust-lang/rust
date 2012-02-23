@@ -126,7 +126,7 @@ fn trans_vec(bcx: block, args: [@ast::expr], id: ast::node_id,
 }
 
 fn trans_str(bcx: block, s: str, dest: dest) -> block {
-    let veclen = str::len_bytes(s) + 1u; // +1 for \0
+    let veclen = str::len(s) + 1u; // +1 for \0
     let {bcx: bcx, val: sptr, _} =
         alloc(bcx, ty::mk_str(bcx.tcx()), veclen);
 

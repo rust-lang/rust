@@ -27,13 +27,13 @@ fn parse_expected(line_num: uint, line: str) -> [expected_error] unsafe {
     let idx;
     alt str::find(line, error_tag) {
          option::none { ret []; }
-         option::some(nn) { idx = (nn as uint) + str::len_bytes(error_tag); }
+         option::some(nn) { idx = (nn as uint) + str::len(error_tag); }
     }
 
     // "//!^^^ kind msg" denotes a message expected
     // three lines above current line:
     let adjust_line = 0u;
-    let len = str::len_bytes(line);
+    let len = str::len(line);
     while idx < len && line[idx] == ('^' as u8) {
         adjust_line += 1u;
         idx += 1u;

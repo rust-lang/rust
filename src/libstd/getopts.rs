@@ -79,7 +79,7 @@ A description of a possible option
 type opt = {name: name, hasarg: hasarg, occur: occur};
 
 fn mkname(nm: str) -> name {
-    ret if str::len_bytes(nm) == 1u {
+    ret if str::len(nm) == 1u {
             short(str::char_at(nm, 0u))
         } else { long(nm) };
 }
@@ -141,7 +141,7 @@ of matches and a vector of free strings.
 type match = {opts: [opt], vals: [mutable [optval]], free: [str]};
 
 fn is_arg(arg: str) -> bool {
-    ret str::len_bytes(arg) > 1u && arg[0] == '-' as u8;
+    ret str::len(arg) > 1u && arg[0] == '-' as u8;
 }
 
 fn name_str(nm: name) -> str {
@@ -218,7 +218,7 @@ fn getopts(args: [str], opts: [opt]) -> result unsafe {
     let i = 0u;
     while i < l {
         let cur = args[i];
-        let curlen = str::len_bytes(cur);
+        let curlen = str::len(cur);
         if !is_arg(cur) {
             free += [cur];
         } else if str::eq(cur, "--") {

@@ -210,7 +210,7 @@ fn highlight_lines(cm: codemap::codemap, sp: span,
     if elided {
         let last_line = display_lines[vec::len(display_lines) - 1u];
         let s = #fmt["%s:%u ", fm.name, last_line + 1u];
-        let indent = str::len_bytes(s);
+        let indent = str::len(s);
         let out = "";
         while indent > 0u { out += " "; indent -= 1u; }
         out += "...\n";
@@ -228,7 +228,7 @@ fn highlight_lines(cm: codemap::codemap, sp: span,
         while num > 0u { num /= 10u; digits += 1u; }
 
         // indent past |name:## | and the 0-offset column location
-        let left = str::len_bytes(fm.name) + digits + lo.col + 3u;
+        let left = str::len(fm.name) + digits + lo.col + 3u;
         let s = "";
         while left > 0u { str::push_char(s, ' '); left -= 1u; }
 

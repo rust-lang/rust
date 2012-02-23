@@ -157,10 +157,9 @@ fn span_to_lines(sp: span, cm: codemap::codemap) -> @file_lines {
 
 fn get_line(fm: filemap, line: int) -> str unsafe {
     let begin: uint = fm.lines[line].byte - fm.start_pos.byte;
-    let end = alt str::index_from(*fm.src, '\n', begin,
-                                  str::len_bytes(*fm.src)) {
+    let end = alt str::index_from(*fm.src, '\n', begin, str::len(*fm.src)) {
       some(e) { e }
-      none { str::len_bytes(*fm.src) }
+      none { str::len(*fm.src) }
     };
     str::slice(*fm.src, begin, end)
 }

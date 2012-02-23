@@ -129,9 +129,9 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
     }
 }
 
-fn ty_to_short_str(cx: ctxt, typ: t) -> str unsafe {
+fn ty_to_short_str(cx: ctxt, typ: t) -> str {
     let s = encoder::encoded_ty(cx, typ);
-    if str::len_bytes(s) >= 32u { s = str::slice(s, 0u, 32u); }
+    if str::len(s) >= 32u { s = str::slice(s, 0u, 32u); }
     ret s;
 }
 

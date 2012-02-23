@@ -7,7 +7,7 @@ fn main() {
     let chs: [char] = ['e', 'é', '€', 0x10000 as char];
     let s: str = str::from_chars(chs);
 
-    assert (str::len_bytes(s) == 10u);
+    assert (str::len(s) == 10u);
     assert (str::len_chars(s) == 4u);
     assert (vec::len::<char>(str::chars(s)) == 4u);
     assert (str::eq(str::from_chars(str::chars(s)), s));

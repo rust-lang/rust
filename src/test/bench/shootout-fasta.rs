@@ -49,26 +49,26 @@ fn make_random_fasta(id: str, desc: str, genelist: [aminoacids], n: int) {
     uint::range(0u, n as uint) {|_i|
         str::push_char(op, select_random(myrandom_next(rng, 100u32),
                                          genelist));
-        if str::len_bytes(op) >= LINE_LENGTH() {
+        if str::len(op) >= LINE_LENGTH() {
             log(debug, op);
             op = "";
         }
     }
-    if str::len_bytes(op) > 0u { log(debug, op); }
+    if str::len(op) > 0u { log(debug, op); }
 }
 
 fn make_repeat_fasta(id: str, desc: str, s: str, n: int) unsafe {
     log(debug, ">" + id + " " + desc);
     let op: str = "";
-    let sl: uint = str::len_bytes(s);
+    let sl: uint = str::len(s);
     uint::range(0u, n as uint) {|i|
         str::unsafe::push_byte(op, s[i % sl]);
-        if str::len_bytes(op) >= LINE_LENGTH() {
+        if str::len(op) >= LINE_LENGTH() {
             log(debug, op);
             op = "";
         }
     }
-    if str::len_bytes(op) > 0u { log(debug, op); }
+    if str::len(op) > 0u { log(debug, op); }
 }
 
 fn acid(ch: char, prob: u32) -> aminoacids { ret {ch: ch, prob: prob}; }

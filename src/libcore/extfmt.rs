@@ -82,10 +82,10 @@ mod ct {
 
     fn parse_fmt_string(s: str, error: error_fn) -> [piece] unsafe {
         let pieces: [piece] = [];
-        let lim = str::len_bytes(s);
+        let lim = str::len(s);
         let buf = "";
         fn flush_buf(buf: str, &pieces: [piece]) -> str {
-            if str::len_bytes(buf) > 0u {
+            if str::len(buf) > 0u {
                 let piece = piece_string(buf);
                 pieces += [piece];
             }
@@ -433,12 +433,12 @@ mod rt {
         // zeros. It may make sense to convert zero padding to a precision
         // instead.
 
-        if signed && zero_padding && str::len_bytes(s) > 0u {
+        if signed && zero_padding && str::len(s) > 0u {
             let head = s[0];
             if head == '+' as u8 || head == '-' as u8 || head == ' ' as u8 {
                 let headstr = str::from_bytes([head]);
                 // FIXME: not UTF-8 safe
-                let bytelen = str::len_bytes(s);
+                let bytelen = str::len(s);
                 let numpart = str::slice(s, 1u, bytelen);
                 ret headstr + padstr + numpart;
             }
