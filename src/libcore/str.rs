@@ -72,8 +72,9 @@ export
    index_chars,
    byte_index,
    byte_index_from,
+   //rindex,
    rindex_chars,
-   find,
+   find_chars,
    find_bytes,
    find_from_bytes,
    contains,
@@ -861,7 +862,36 @@ Section: Searching
 
 // Function: index
 //
-// Returns the index of the first matching char
+// Returns the byte index of the first matching char
+// (as option some/none)
+fn index(ss: str, cc: char) -> option<uint> {
+    index_from(ss, cc, 0u, len_bytes(ss))
+}
+
+// Function: index_from
+//
+// Returns the byte index of the first matching char
+// (as option some/none), starting at `nn`
+fn index_from(ss: str, cc: char, start: uint, end: uint) -> option<uint> {
+    let bii = start;
+    while bii < end {
+        let {ch, next} = char_range_at(ss, bii);
+
+        // found here?
+        if ch == cc {
+            ret some(bii);
+        }
+
+        bii = next;
+    }
+
+    // wasn't found
+    ret none;
+}
+
+// Function: index_chars
+//
+// Returns the char index of the first matching char
 // (as option some/none)
 fn index_chars(ss: str, cc: char) -> option<uint> {
     let bii = 0u;
@@ -887,6 +917,7 @@ fn index_chars(ss: str, cc: char) -> option<uint> {
 //
 // Returns the index of the first matching byte
 // (as option some/none)
+// FIXME: delete
 fn byte_index(s: str, b: u8) -> option<uint> {
     byte_index_from(s, b, 0u, len_bytes(s))
 }
@@ -896,15 +927,36 @@ fn byte_index(s: str, b: u8) -> option<uint> {
 // Returns the index of the first matching byte within the range [`start`,
 // `end`).
 // (as option some/none)
+// FIXME: delete
 fn byte_index_from(s: str, b: u8, start: uint, end: uint) -> option<uint> {
     assert end <= len_bytes(s);
 
     str::as_bytes(s) { |v| vec::position_from(v, start, end) { |x| x == b } }
 }
 
+// Function: rindex
+//
+// Returns the byte index of the first matching char
+// (as option some/none)
+fn rindex(ss: str, cc: char) -> option<uint> {
+    let bii = len_bytes(ss);
+    while bii > 0u {
+        let {ch, prev} = char_range_at_reverse(ss, bii);
+        bii = prev;
+
+        // found here?
+        if ch == cc {
+            ret some(bii);
+        }
+    }
+
+    // wasn't found
+    ret none;
+}
+
 // Function: rindex_chars
 //
-// Returns the index of the first matching char
+// Returns the char index of the first matching char
 // (as option some/none)
 fn rindex_chars(ss: str, cc: char) -> option<uint> {
     let bii = len_bytes(ss);
@@ -926,7 +978,7 @@ fn rindex_chars(ss: str, cc: char) -> option<uint> {
 
 //Function: find_bytes
 //
-// Find the char position of the first instance of one string
+// Find the byte position of the first instance of one string
 // within another, or return option::none
 fn find_bytes(haystack: str, needle: str) -> option<uint> {
     find_from_bytes(haystack, needle, 0u, len_bytes(haystack))
@@ -934,7 +986,7 @@ fn find_bytes(haystack: str, needle: str) -> option<uint> {
 
 //Function: find_from_bytes
 //
-// Find the char position of the first instance of one string
+// Find the byte position of the first instance of one string
 // within another, or return option::none
 //
 // FIXME: Boyer-Moore should be significantly faster
@@ -962,11 +1014,11 @@ fn find_from_bytes(haystack: str, needle: str, start: uint, end:uint)
     ret none;
 }
 
-// Function: find
+// Function: find_chars
 //
 // Find the char position of the first instance of one string
 // within another, or return option::none
-fn find(haystack: str, needle: str) -> option<uint> {
+fn find_chars(haystack: str, needle: str) -> option<uint> {
    alt find_bytes(haystack, needle) {
       none { ret none; }
       some(nn) { ret some(b2c_pos(haystack, nn)); }
@@ -1571,6 +1623,15 @@ mod tests {
     }
 
     #[test]
+    fn test_rindex() {
+        assert rindex("hello", 'l') == some(3u);
+        assert rindex("hello", 'o') == some(4u);
+        assert rindex("hello", 'h') == some(0u);
+        assert rindex("hello", 'z') == none;
+        assert rindex("ประเทศไทย中华Việt Nam", '华') == some(30u);
+    }
+
+    #[test]
     fn test_rindex_chars() {
         assert (rindex_chars("hello", 'l') == some(3u));
         assert (rindex_chars("hello", 'o') == some(4u));
@@ -1820,17 +1881,17 @@ mod tests {
     }
 
     #[test]
-    fn test_find() {
+    fn test_find_chars() {
         // char positions
-        assert (find("banana", "apple pie") == none);
-        assert (find("", "") == some(0u));
+        assert (find_chars("banana", "apple pie") == none);
+        assert (find_chars("", "") == some(0u));
 
         let data = "ประเทศไทย中华Việt Nam";
-        assert (find(data, "")     == some(0u));
-        assert (find(data, "ประเ") == some(0u));
-        assert (find(data, "ะเ")   == some(2u));
-        assert (find(data, "中华") == some(9u));
-        assert (find(data, "ไท华") == none);
+        assert (find_chars(data, "")     == some(0u));
+        assert (find_chars(data, "ประเ") == some(0u));
+        assert (find_chars(data, "ะเ")   == some(2u));
+        assert (find_chars(data, "中华") == some(9u));
+        assert (find_chars(data, "ไท华") == none);
     }
 
     #[test]
