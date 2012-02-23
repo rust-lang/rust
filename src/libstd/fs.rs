@@ -34,18 +34,18 @@ type path = str;
 
 fn splitDirnameBasename (pp: path) -> {dirname: str, basename: str} {
     let ii;
-    alt str::rindex_chars(pp, os_fs::path_sep) {
+    alt str::rindex(pp, os_fs::path_sep) {
         option::some(xx) { ii = xx; }
         option::none {
-            alt str::rindex_chars(pp, os_fs::alt_path_sep) {
+            alt str::rindex(pp, os_fs::alt_path_sep) {
                 option::some(xx) { ii = xx; }
                 option::none { ret {dirname: ".", basename: pp}; }
             }
         }
     }
 
-    ret {dirname: str::slice_chars(pp, 0u, ii),
-         basename: str::slice_chars(pp, ii + 1u, str::len_chars(pp))};
+    ret {dirname: str::slice(pp, 0u, ii),
+         basename: str::slice(pp, ii + 1u, str::len_bytes(pp))};
 }
 
 /*
