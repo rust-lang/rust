@@ -56,10 +56,10 @@ fn should_write_modules_last() {
          fn d() { }"
     );
 
-    let idx_a = option::get(str::find_bytes(markdown, "# Module `a`"));
-    let idx_b = option::get(str::find_bytes(markdown, "## Function `b`"));
-    let idx_c = option::get(str::find_bytes(markdown, "# Module `c`"));
-    let idx_d = option::get(str::find_bytes(markdown, "## Function `d`"));
+    let idx_a = option::get(str::find(markdown, "# Module `a`"));
+    let idx_b = option::get(str::find(markdown, "## Function `b`"));
+    let idx_c = option::get(str::find(markdown, "# Module `c`"));
+    let idx_d = option::get(str::find(markdown, "## Function `d`"));
 
     assert idx_b < idx_d;
     assert idx_d < idx_a;

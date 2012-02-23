@@ -25,7 +25,7 @@ fn load_errors(testfile: str) -> [expected_error] {
 fn parse_expected(line_num: uint, line: str) -> [expected_error] unsafe {
     let error_tag = "//!";
     let idx;
-    alt str::find_bytes(line, error_tag) {
+    alt str::find(line, error_tag) {
          option::none { ret []; }
          option::some(nn) { idx = (nn as uint) + str::len_bytes(error_tag); }
     }
@@ -43,11 +43,11 @@ fn parse_expected(line_num: uint, line: str) -> [expected_error] unsafe {
     while idx < len && line[idx] == (' ' as u8) { idx += 1u; }
     let start_kind = idx;
     while idx < len && line[idx] != (' ' as u8) { idx += 1u; }
-    let kind = str::to_lower(str::unsafe::slice_bytes(line, start_kind, idx));
+    let kind = str::to_lower(str::slice(line, start_kind, idx));
 
     // Extract msg:
     while idx < len && line[idx] == (' ' as u8) { idx += 1u; }
-    let msg = str::unsafe::slice_bytes(line, idx, len);
+    let msg = str::slice(line, idx, len);
 
     #debug("line=%u kind=%s msg=%s", line_num - adjust_line, kind, msg);
 

@@ -478,7 +478,7 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
 }
 
 fn truncated_sha1_result(sha: sha1) -> str unsafe {
-    ret str::unsafe::slice_bytes(sha.result_str(), 0u, 16u);
+    ret str::slice(sha.result_str(), 0u, 16u);
 }
 
 
@@ -567,12 +567,12 @@ fn link_binary(sess: session,
     // Converts a library file name into a cc -l argument
     fn unlib(config: @session::config, filename: str) -> str unsafe {
         let rmlib = fn@(filename: str) -> str {
-            let found = str::find_bytes(filename, "lib");
+            let found = str::find(filename, "lib");
             if config.os == session::os_macos ||
                 (config.os == session::os_linux ||
                  config.os == session::os_freebsd) &&
                 option::is_some(found) && option::get(found) == 0u {
-                ret str::unsafe::slice_bytes(filename, 3u,
+                ret str::slice(filename, 3u,
                                str::len_bytes(filename));
             } else { ret filename; }
         };

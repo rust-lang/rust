@@ -1345,7 +1345,7 @@ mod tests {
             fn aux(str: @mutable str, node: @node::node) unsafe {
                 alt(*node) {
                   node::leaf(x) {
-                    *str += str::unsafe::slice_bytes(
+                    *str += str::slice(
                         *x.content, x.byte_offset,
                         x.byte_offset + x.byte_len);
                   }

@@ -162,7 +162,7 @@ fn get_line(fm: filemap, line: int) -> str unsafe {
       some(e) { e }
       none { str::len_bytes(*fm.src) }
     };
-    str::unsafe::slice_bytes(*fm.src, begin, end)
+    str::slice(*fm.src, begin, end)
 }
 
 fn lookup_byte_offset(cm: codemap::codemap, chpos: uint)

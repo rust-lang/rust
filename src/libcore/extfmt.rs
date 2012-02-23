@@ -93,13 +93,13 @@ mod ct {
         }
         let i = 0u;
         while i < lim {
-            let curr = str::unsafe::slice_bytes(s, i, i+1u);
+            let curr = str::slice(s, i, i+1u);
             if str::eq(curr, "%") {
                 i += 1u;
                 if i >= lim {
                     error("unterminated conversion at end of string");
                 }
-                let curr2 = str::unsafe::slice_bytes(s, i, i+1u);
+                let curr2 = str::slice(s, i, i+1u);
                 if str::eq(curr2, "%") {
                     buf += curr2;
                     i += 1u;
@@ -225,7 +225,7 @@ mod ct {
     fn parse_type(s: str, i: uint, lim: uint, error: error_fn) ->
        {ty: ty, next: uint} unsafe {
         if i >= lim { error("missing type in conversion"); }
-        let tstr = str::unsafe::slice_bytes(s, i, i+1u);
+        let tstr = str::slice(s, i, i+1u);
         // TODO: Do we really want two signed types here?
         // How important is it to be printf compatible?
         let t =
@@ -439,7 +439,7 @@ mod rt {
                 let headstr = str::from_bytes([head]);
                 // FIXME: not UTF-8 safe
                 let bytelen = str::len_bytes(s);
-                let numpart = str::unsafe::slice_bytes(s, 1u, bytelen);
+                let numpart = str::slice(s, 1u, bytelen);
                 ret headstr + padstr + numpart;
             }
         }
