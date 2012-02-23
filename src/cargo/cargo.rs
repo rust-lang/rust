@@ -174,10 +174,10 @@ fn print(s: str) {
 }
 
 fn rest(s: str, start: uint) -> str {
-    if (start >= str::len_bytes(s)) {
+    if (start >= str::len(s)) {
         ""
     } else {
-        str::slice(s, start, str::len_bytes(s))
+        str::slice(s, start, str::len(s))
     }
 }
 
@@ -689,7 +689,7 @@ fn cmd_install(c: cargo) unsafe {
         alt str::index(uuid, '/') {
             option::some(idx) {
                let source = str::slice(uuid, 0u, idx);
-               uuid = str::slice(uuid, idx + 1u, str::len_bytes(uuid));
+               uuid = str::slice(uuid, idx + 1u, str::len(uuid));
                install_uuid_specific(c, wd, source, uuid);
             }
             option::none {
@@ -701,7 +701,7 @@ fn cmd_install(c: cargo) unsafe {
         alt str::index(name, '/') {
             option::some(idx) {
                let source = str::slice(name, 0u, idx);
-               name = str::slice(name, idx + 1u, str::len_bytes(name));
+               name = str::slice(name, idx + 1u, str::len(name));
                install_named_specific(c, wd, source, name);
             }
             option::none {

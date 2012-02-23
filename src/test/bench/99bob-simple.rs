@@ -31,7 +31,7 @@ fn sub(t: str, n: int) -> str unsafe {
       1 { ns = "1 bottle"; }
       _ { ns = int::to_str(n, 10u) + " bottles"; }
     }
-    while i < str::len_bytes(t) {
+    while i < str::len(t) {
         if t[i] == '#' as u8 { b += ns; }
         else { str::unsafe::push_byte(b, t[i]); }
         i += 1u;

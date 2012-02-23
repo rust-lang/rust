@@ -133,7 +133,7 @@ number represented by [num].
 fn from_str(num: str) -> option<float> {
    let pos = 0u;                  //Current byte position in the string.
                                   //Used to walk the string in O(n).
-   let len = str::len_bytes(num);  //Length of the string, in bytes.
+   let len = str::len(num);  //Length of the string, in bytes.
 
    if len == 0u { ret none; }
    let total = 0f;                //Accumulated result

@@ -87,7 +87,7 @@ export
    is_empty,
    is_not_empty,
    is_whitespace,
-   len, len_bytes,
+   len,
    len_chars,
 
    // Misc
@@ -277,7 +277,7 @@ Failure:
 If the string does not contain any characters.
 */
 fn pop_char(&s: str) -> char unsafe {
-    let end = len_bytes(s);
+    let end = len(s);
     let {ch:ch, prev:end} = char_range_at_reverse(s, end);
     s = unsafe::slice_bytes(s, 0u, end);
     ret ch;
@@ -294,7 +294,7 @@ If the string does not contain any characters.
 */
 fn shift_char(&s: str) -> char unsafe {
     let r = char_range_at(s, 0u);
-    s = unsafe::slice_bytes(s, r.next, len_bytes(s));
+    s = unsafe::slice_bytes(s, r.next, len(s));
     ret r.ch;
 }
 
@@ -373,7 +373,7 @@ Convert a string to a vector of characters
 fn chars(s: str) -> [char] {
     let buf: [char] = [];
     let i = 0u;
-    let len = len_bytes(s);
+    let len = len(s);
     while i < len {
         let cur = char_range_at(s, i);
         buf += [cur.ch];
@@ -474,7 +474,7 @@ fn splitn_byte(ss: str, sep: u8, count: uint) -> [str] unsafe {
     assert u8::is_ascii(sep);
 
     let vv = [];
-    let start = 0u, current = 0u, len = len_bytes(ss);
+    let start = 0u, current = 0u, len = len(ss);
     let splits_done = 0u;
 
     while splits_done < count && current < len {
@@ -504,7 +504,7 @@ fn split_str(ss: str, sep: str) -> [str] unsafe {
     // unsafe is justified: we are splitting
     // UTF-8 with UTF-8, so the results will be OK
 
-    let sep_len = len_bytes(sep);
+    let sep_len = len(sep);
     assert sep_len > 0u;
     let vv = [];
     let start = 0u, start_match = 0u, current = 0u, matching = 0u;
@@ -581,7 +581,7 @@ up to `count` times
 fn splitn_char(ss: str, sep: char, count: uint) -> [str] unsafe {
 
    let vv = [];
-   let start = 0u, current = 0u, len = len_bytes(ss);
+   let start = 0u, current = 0u, len = len(ss);
    let splits_done = 0u;
 
    while splits_done < count && current < len {
@@ -688,11 +688,11 @@ The original string with all occurances of `from` replaced with `to`
 */
 fn replace(s: str, from: str, to: str) -> str unsafe {
     assert is_not_empty(from);
-    if len_bytes(s) == 0u {
+    if len(s) == 0u {
         ret "";
     } else if starts_with(s, from) {
         ret to + replace(
-                     unsafe::slice_bytes(s, len_bytes(from), len_bytes(s)),
+                     unsafe::slice_bytes(s, len(from), len(s)),
                                        from, to);
     } else {
         let idx;
@@ -701,8 +701,8 @@ fn replace(s: str, from: str, to: str) -> str unsafe {
             none { ret s; }
         }
         let before = unsafe::slice_bytes(s, 0u, idx as uint);
-        let after  = unsafe::slice_bytes(s, idx as uint + len_bytes(from),
-                                         len_bytes(s));
+        let after  = unsafe::slice_bytes(s, idx as uint + len(from),
+                                         len(s));
         ret before + to + replace(after, from, to);
     }
 }
@@ -761,7 +761,7 @@ Return true if a predicate matches all characters or
 if the string contains no characters
 */
 fn all(s: str, it: fn(char) -> bool) -> bool{
-    ret substr_all(s, 0u, len_bytes(s), it);
+    ret substr_all(s, 0u, len(s), it);
 }
 
 /*
@@ -781,7 +781,7 @@ Apply a function to each character
 */
 fn map(ss: str, ff: fn(char) -> char) -> str {
     let result = "";
-    reserve(result, len_bytes(ss));
+    reserve(result, len(ss));
 
     chars_iter(ss, {|cc|
         str::push_char(result, ff(cc));
@@ -797,7 +797,7 @@ Iterate over the bytes in a string
 */
 fn bytes_iter(ss: str, it: fn(u8)) {
     let pos = 0u;
-    let len = len_bytes(ss);
+    let len = len(ss);
 
     while (pos < len) {
         it(ss[pos]);
@@ -811,7 +811,7 @@ Function: chars_iter
 Iterate over the characters in a string
 */
 fn chars_iter(s: str, it: fn(char)) {
-    let pos = 0u, len = len_bytes(s);
+    let pos = 0u, len = len(s);
     while (pos < len) {
         let {ch, next} = char_range_at(s, pos);
         pos = next;
@@ -866,7 +866,7 @@ Section: Searching
 // Returns the byte index of the first matching char
 // (as option some/none)
 fn index(ss: str, cc: char) -> option<uint> {
-    index_from(ss, cc, 0u, len_bytes(ss))
+    index_from(ss, cc, 0u, len(ss))
 }
 
 // Function: index_from
@@ -897,7 +897,7 @@ fn index_from(ss: str, cc: char, start: uint, end: uint) -> option<uint> {
 fn index_chars(ss: str, cc: char) -> option<uint> {
     let bii = 0u;
     let cii = 0u;
-    let len = len_bytes(ss);
+    let len = len(ss);
     while bii < len {
         let {ch, next} = char_range_at(ss, bii);
 
@@ -920,7 +920,7 @@ fn index_chars(ss: str, cc: char) -> option<uint> {
 // (as option some/none)
 // FIXME: delete
 fn byte_index(s: str, b: u8) -> option<uint> {
-    byte_index_from(s, b, 0u, len_bytes(s))
+    byte_index_from(s, b, 0u, len(s))
 }
 
 // Function: byte_index_from
@@ -930,7 +930,7 @@ fn byte_index(s: str, b: u8) -> option<uint> {
 // (as option some/none)
 // FIXME: delete
 fn byte_index_from(s: str, b: u8, start: uint, end: uint) -> option<uint> {
-    assert end <= len_bytes(s);
+    assert end <= len(s);
 
     str::as_bytes(s) { |v| vec::position_from(v, start, end) { |x| x == b } }
 }
@@ -940,7 +940,7 @@ fn byte_index_from(s: str, b: u8, start: uint, end: uint) -> option<uint> {
 // Returns the byte index of the first matching char
 // (as option some/none)
 fn rindex(ss: str, cc: char) -> option<uint> {
-    let bii = len_bytes(ss);
+    let bii = len(ss);
     while bii > 0u {
         let {ch, prev} = char_range_at_reverse(ss, bii);
         bii = prev;
@@ -960,7 +960,7 @@ fn rindex(ss: str, cc: char) -> option<uint> {
 // Returns the char index of the first matching char
 // (as option some/none)
 fn rindex_chars(ss: str, cc: char) -> option<uint> {
-    let bii = len_bytes(ss);
+    let bii = len(ss);
     let cii = len_chars(ss);
     while bii > 0u {
         let {ch, prev} = char_range_at_reverse(ss, bii);
@@ -982,7 +982,7 @@ fn rindex_chars(ss: str, cc: char) -> option<uint> {
 // Find the byte position of the first instance of one string
 // within another, or return option::none
 fn find(haystack: str, needle: str) -> option<uint> {
-    find_from(haystack, needle, 0u, len_bytes(haystack))
+    find_from(haystack, needle, 0u, len(haystack))
 }
 
 //Function: find_from
@@ -993,9 +993,9 @@ fn find(haystack: str, needle: str) -> option<uint> {
 // FIXME: Boyer-Moore should be significantly faster
 fn find_from(haystack: str, needle: str, start: uint, end:uint)
   -> option<uint> {
-    assert end <= len_bytes(haystack);
+    assert end <= len(haystack);
 
-    let needle_len = len_bytes(needle);
+    let needle_len = len(needle);
 
     if needle_len == 0u { ret some(start); }
     if needle_len > end { ret none; }
@@ -1031,7 +1031,7 @@ fn find_chars(haystack: str, needle: str) -> option<uint> {
 // Convert a byte position into a char position
 // within a given string
 fn b2c_pos(ss: str, bpos: uint) -> uint {
-   assert bpos == 0u || bpos < len_bytes(ss);
+   assert bpos == 0u || bpos < len(ss);
 
    let ii = 0u;
    let cpos = 0u;
@@ -1070,8 +1070,8 @@ haystack - The string to look in
 needle - The string to look for
 */
 fn starts_with(haystack: str, needle: str) -> bool unsafe {
-    let haystack_len: uint = len_bytes(haystack);
-    let needle_len: uint = len_bytes(needle);
+    let haystack_len: uint = len(haystack);
+    let needle_len: uint = len(needle);
     if needle_len == 0u { ret true; }
     if needle_len > haystack_len { ret false; }
     ret eq(unsafe::slice_bytes(haystack, 0u, needle_len), needle);
@@ -1108,7 +1108,7 @@ Function: is_ascii
 Determines if a string contains only ASCII characters
 */
 fn is_ascii(s: str) -> bool {
-    let i: uint = len_bytes(s);
+    let i: uint = len(s);
     while i > 0u { i -= 1u; if !u8::is_ascii(s[i]) { ret false; } }
     ret true;
 }
@@ -1137,10 +1137,11 @@ fn is_whitespace(s: str) -> bool {
 }
 
 
-// Function: len_bytes
+// Function: len
 //
-// Returns the string length in bytes
-pure fn len_bytes(s: str) -> uint unsafe {
+// Returns the string length/size in bytes
+// not counting the null terminator
+pure fn len(s: str) -> uint unsafe {
     as_bytes(s) { |v|
         let vlen = vec::len(v);
         // There should always be a null terminator
@@ -1149,14 +1150,8 @@ pure fn len_bytes(s: str) -> uint unsafe {
     }
 }
 
-// Function: len
-//
-// String length or size in characters.
-// (Synonym: len_bytes)
-fn len(s: str) -> uint { len_bytes(s) }
-
 fn len_chars(s: str) -> uint {
-    substr_len_chars(s, 0u, len_bytes(s))
+    substr_len_chars(s, 0u, len(s))
 }
 
 /*
@@ -1277,7 +1272,7 @@ This function can be used to iterate over the unicode characters of a string.
 Example:
 > let s = "中华Việt Nam";
 > let i = 0u;
-> while i < str::len_bytes(s) {
+> while i < str::len(s) {
 >    let {ch, next} = str::char_range_at(s, i);
 >    std::io::println(#fmt("%u: %c",i,ch));
 >    i = next;
@@ -1517,7 +1512,7 @@ mod unsafe {
    unsafe fn slice_bytes(s: str, begin: uint, end: uint) -> str unsafe {
        // FIXME: Typestate precondition
        assert (begin <= end);
-       assert (end <= len_bytes(s));
+       assert (end <= len(s));
 
        let v = as_bytes(s) { |v| vec::slice(v, begin, end) };
        v += [0u8];
@@ -1534,7 +1529,7 @@ mod unsafe {
    unsafe fn slice_bytes_safe_range(s: str, begin: uint, end: uint)
        : uint::le(begin, end) -> str {
        // would need some magic to make this a precondition
-       assert (end <= len_bytes(s));
+       assert (end <= len(s));
        ret slice_bytes(s, begin, end);
    }
 
@@ -1556,7 +1551,7 @@ mod unsafe {
    //
    // Removes the last byte from a string and returns it.  (Not UTF-8 safe).
    unsafe fn pop_byte(&s: str) -> u8 unsafe {
-       let len = len_bytes(s);
+       let len = len(s);
        assert (len > 0u);
        let b = s[len - 1u];
        s = unsafe::slice_bytes(s, 0u, len - 1u);
@@ -1567,7 +1562,7 @@ mod unsafe {
    //
    // Removes the first byte from a string and returns it. (Not UTF-8 safe).
    unsafe fn shift_byte(&s: str) -> u8 unsafe {
-       let len = len_bytes(s);
+       let len = len(s);
        assert (len > 0u);
        let b = s[0];
        s = unsafe::slice_bytes(s, 1u, len);
@@ -1597,13 +1592,13 @@ mod tests {
 
     #[test]
     fn test_len() {
-        assert (len_bytes("") == 0u);
-        assert (len_bytes("hello world") == 11u);
-        assert (len_bytes("\x63") == 1u);
-        assert (len_bytes("\xa2") == 2u);
-        assert (len_bytes("\u03c0") == 2u);
-        assert (len_bytes("\u2620") == 3u);
-        assert (len_bytes("\U0001d11e") == 4u);
+        assert (len("") == 0u);
+        assert (len("hello world") == 11u);
+        assert (len("\x63") == 1u);
+        assert (len("\xa2") == 2u);
+        assert (len("\u03c0") == 2u);
+        assert (len("\u2620") == 3u);
+        assert (len("\U0001d11e") == 4u);
 
         assert (len_chars("") == 0u);
         assert (len_chars("hello world") == 11u);
@@ -1906,7 +1901,7 @@ mod tests {
     #[test]
     fn test_substr() {
         fn t(a: str, b: str, start: int) {
-            assert (eq(substr(a, start as uint, len_bytes(b)), b));
+            assert (eq(substr(a, start as uint, len(b)), b));
         }
         t("hello", "llo", 2);
         t("hello", "el", 1);
@@ -2285,7 +2280,7 @@ mod tests {
         let v: [u8] = bytes(s1);
         let s2: str = from_bytes(v);
         let i: uint = 0u;
-        let n1: uint = len_bytes(s1);
+        let n1: uint = len(s1);
         let n2: uint = vec::len::<u8>(v);
         assert (n1 == n2);
         while i < n1 {

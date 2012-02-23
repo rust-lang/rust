@@ -65,7 +65,7 @@ Performance notes:
 - the function runs in linear time.
  */
 fn of_str(str: @str) -> rope {
-    ret of_substr(str, 0u, str::len_bytes(*str));
+    ret of_substr(str, 0u, str::len(*str));
 }
 
 /*
@@ -93,7 +93,7 @@ Safety notes:
  */
 fn of_substr(str: @str, byte_offset: uint, byte_len: uint) -> rope {
     if byte_len == 0u { ret node::empty; }
-    if byte_offset + byte_len  > str::len_bytes(*str) { fail; }
+    if byte_offset + byte_len  > str::len(*str) { fail; }
     ret node::content(node::of_substr(str, byte_offset, byte_len));
 }
 
@@ -721,7 +721,7 @@ mod node {
     the length of `str`.
      */
     fn of_str(str: @str) -> @node {
-        ret of_substr(str, 0u, str::len_bytes(*str));
+        ret of_substr(str, 0u, str::len(*str));
     }
 
     /*
@@ -768,7 +768,7 @@ mod node {
     */
     fn of_substr_unsafer(str: @str, byte_start: uint, byte_len: uint,
                           char_len: uint) -> @node {
-        assert(byte_start + byte_len <= str::len_bytes(*str));
+        assert(byte_start + byte_len <= str::len(*str));
         let candidate = @leaf({
                 byte_offset: byte_start,
                 byte_len:    byte_len,
@@ -1388,7 +1388,7 @@ mod tests {
         assert rope_to_string(r) == *sample;
 
         let string_iter = 0u;
-        let string_len  = str::len_bytes(*sample);
+        let string_len  = str::len(*sample);
         let rope_iter   = iterator::char::start(r);
         let equal       = true;
         let pos         = 0u;
