@@ -2068,7 +2068,6 @@ fn parse_mod_items(p: parser, term: token::token,
     let initial_attrs = first_item_attrs;
     while p.token != term {
         let attrs = initial_attrs + parse_outer_attributes(p);
-        initial_attrs = [];
         #debug["parse_mod_items: parse_item(attrs=%?)", attrs];
         alt parse_item(p, attrs) {
           some(i) { items += [i]; }
@@ -2078,7 +2077,14 @@ fn parse_mod_items(p: parser, term: token::token,
           }
         }
         #debug["parse_mod_items: attrs=%?", attrs];
+        initial_attrs = [];
     }
+
+    if vec::is_not_empty(initial_attrs) {
+        // We parsed attributes for the first item but didn't find the item
+        p.fatal("expected item");
+    }
+
     ret {view_items: view_items, items: items};
 }
 
