@@ -93,7 +93,7 @@ export
    // Misc
    // FIXME: perhaps some more of this section shouldn't be exported?
    is_utf8,
-   substr_len_bytes,
+   substr_len,
    substr_len_chars,
    utf8_char_width,
    char_range_at,
@@ -912,27 +912,6 @@ fn index_chars(ss: str, cc: char) -> option<uint> {
 
     // wasn't found
     ret none;
-}
-
-// Function: byte_index
-//
-// Returns the index of the first matching byte
-// (as option some/none)
-// FIXME: delete
-fn byte_index(s: str, b: u8) -> option<uint> {
-    byte_index_from(s, b, 0u, len(s))
-}
-
-// Function: byte_index_from
-//
-// Returns the index of the first matching byte within the range [`start`,
-// `end`).
-// (as option some/none)
-// FIXME: delete
-fn byte_index_from(s: str, b: u8, start: uint, end: uint) -> option<uint> {
-    assert end <= len(s);
-
-    str::as_bytes(s) { |v| vec::position_from(v, start, end) { |x| x == b } }
 }
 
 // Function: rindex
