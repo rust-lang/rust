@@ -141,7 +141,7 @@ of matches and a vector of free strings.
 type match = {opts: [opt], vals: [mutable [optval]], free: [str]};
 
 fn is_arg(arg: str) -> bool {
-    ret str::len_bytes(arg) > 1u && arg[0] == '-' as u8;
+    ret str::len(arg) > 1u && arg[0] == '-' as u8;
 }
 
 fn name_str(nm: name) -> str {
@@ -218,7 +218,7 @@ fn getopts(args: [str], opts: [opt]) -> result unsafe {
     let i = 0u;
     while i < l {
         let cur = args[i];
-        let curlen = str::len_bytes(cur);
+        let curlen = str::len(cur);
         if !is_arg(cur) {
             free += [cur];
         } else if str::eq(cur, "--") {
@@ -229,7 +229,7 @@ fn getopts(args: [str], opts: [opt]) -> result unsafe {
             let names;
             let i_arg = option::none::<str>;
             if cur[1] == '-' as u8 {
-                let tail = str::unsafe::slice_bytes(cur, 2u, curlen);
+                let tail = str::slice(cur, 2u, curlen);
                 let tail_eq = str::splitn_char(tail, '=', 1u);
                 if vec::len(tail_eq) <= 1u {
                     names = [long(tail)];

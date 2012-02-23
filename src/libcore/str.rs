@@ -4,9 +4,9 @@ Module: str
 String manipulation
 
 Strings are a packed UTF-8 representation of text, stored as null terminated
-buffers of u8 bytes.  Strings should be considered by character,
-for correctness, but some UTF-8 unsafe functions are also provided.
-For some heavy-duty uses, we recommend trying std::rope.
+buffers of u8 bytes.  Strings should be indexed in bytes, for efficiency,
+but UTF-8 unsafe operations should be avoided.
+For some heavy-duty uses, try std::rope.
 */
 
 import option::{some, none};
@@ -37,6 +37,7 @@ export
    chars,
    substr,
    slice,
+   slice_chars,
    split,
    split_str,
    split_char,
@@ -69,13 +70,14 @@ export
    lines_iter,
 
    // Searching
+   //index_chars,
    index,
-   byte_index,
-   byte_index_from,
+   index_from,
    rindex,
+   //rindex_chars,
    find,
-   find_bytes,
-   find_from_bytes,
+   find_from,
+   find_chars,
    contains,
    starts_with,
    ends_with,
@@ -85,13 +87,13 @@ export
    is_empty,
    is_not_empty,
    is_whitespace,
-   len_bytes,
-   len_chars, len,
+   len,
+   len_chars,
 
    // Misc
    // FIXME: perhaps some more of this section shouldn't be exported?
    is_utf8,
-   substr_len_bytes,
+   substr_len,
    substr_len_chars,
    utf8_char_width,
    char_range_at,
@@ -275,7 +277,7 @@ Failure:
 If the string does not contain any characters.
 */
 fn pop_char(&s: str) -> char unsafe {
-    let end = len_bytes(s);
+    let end = len(s);
     let {ch:ch, prev:end} = char_range_at_reverse(s, end);
     s = unsafe::slice_bytes(s, 0u, end);
     ret ch;
@@ -292,7 +294,7 @@ If the string does not contain any characters.
 */
 fn shift_char(&s: str) -> char unsafe {
     let r = char_range_at(s, 0u);
-    s = unsafe::slice_bytes(s, r.next, len_bytes(s));
+    s = unsafe::slice_bytes(s, r.next, len(s));
     ret r.ch;
 }
 
@@ -371,7 +373,7 @@ Convert a string to a vector of characters
 fn chars(s: str) -> [char] {
     let buf: [char] = [];
     let i = 0u;
-    let len = len_bytes(s);
+    let len = len(s);
     while i < len {
         let cur = char_range_at(s, i);
         buf += [cur.ch];
@@ -383,7 +385,7 @@ fn chars(s: str) -> [char] {
 /*
 Function: substr
 
-Take a substring of another. Returns a string containing `len` chars
+Take a substring of another. Returns a string containing `len` bytes
 starting at char offset `begin`.
 
 Failure:
@@ -394,8 +396,33 @@ fn substr(s: str, begin: uint, len: uint) -> str {
     ret slice(s, begin, begin + len);
 }
 
+// Function: slice
+//
+// Return a slice of the given string from the byte range [`begin`..`end`)
+// or else fail when `begin` and `end` do not point to valid characters or
+// beyond the last character of the string
+fn slice(ss: str, begin: uint, end: uint) -> str {
+   alt maybe_slice(ss, begin, end) {
+      some(sli) { ret sli; }
+      none      { fail "slice requires a valid start and end"; }
+   }
+}
+
+// Function: maybe_slice
+//
+// Like slice, only returns an option<str>
+fn maybe_slice(ss: str, begin: uint, end: uint) -> option<str> unsafe {
+   let sli = unsafe::slice_bytes(ss, begin, end);
+
+   if is_utf8(bytes(sli)) {
+      ret some(sli);
+   } else {
+      ret none;
+   }
+}
+
 /*
-Function: slice
+Function: slice_chars
 
 Unicode-safe slice. Returns a slice of the given string containing
 the characters in the range [`begin`..`end`). `begin` and `end` are
@@ -407,8 +434,9 @@ Failure:
 - If end is greater than the character length of the string
 
 FIXME: make faster by avoiding char conversion
+FIXME: delete?
 */
-fn slice(s: str, begin: uint, end: uint) -> str {
+fn slice_chars(s: str, begin: uint, end: uint) -> str {
     from_chars(vec::slice(chars(s), begin, end))
 }
 
@@ -447,7 +475,7 @@ fn splitn_byte(ss: str, sep: u8, count: uint) -> [str] unsafe {
     assert u8::is_ascii(sep);
 
     let vv = [];
-    let start = 0u, current = 0u, len = len_bytes(ss);
+    let start = 0u, current = 0u, len = len(ss);
     let splits_done = 0u;
 
     while splits_done < count && current < len {
@@ -471,13 +499,13 @@ Splits a string into a vector of the substrings separated by a given string
 Note that this has recently been changed.  For example:
 >  assert ["", "XXX", "YYY", ""] == split_str(".XXX.YYY.", ".")
 
-FIXME: Boyer-Moore variation
+FIXME: Boyer-Moore should be faster
 */
 fn split_str(ss: str, sep: str) -> [str] unsafe {
     // unsafe is justified: we are splitting
     // UTF-8 with UTF-8, so the results will be OK
 
-    let sep_len = len_bytes(sep);
+    let sep_len = len(sep);
     assert sep_len > 0u;
     let vv = [];
     let start = 0u, start_match = 0u, current = 0u, matching = 0u;
@@ -529,7 +557,7 @@ fn split(ss: str, sepfn: fn(cc: char)->bool) -> [str] {
         }
     });
 
-    if len(accum) >= 0u || ends_with_sep {
+    if len_chars(accum) >= 0u || ends_with_sep {
         vv += [accum];
     }
 
@@ -554,7 +582,7 @@ up to `count` times
 fn splitn_char(ss: str, sep: char, count: uint) -> [str] unsafe {
 
    let vv = [];
-   let start = 0u, current = 0u, len = len_bytes(ss);
+   let start = 0u, current = 0u, len = len(ss);
    let splits_done = 0u;
 
    while splits_done < count && current < len {
@@ -601,7 +629,7 @@ separated by whitespace
 */
 fn words(ss: str) -> [str] {
     ret vec::filter( split(ss, {|cc| char::is_whitespace(cc)}),
-                     {|w| 0u < str::len(w)});
+                     {|w| 0u < str::len_chars(w)});
 }
 
 /*
@@ -611,13 +639,13 @@ Create a vector of substrings of size `nn`
 */
 fn windowed(nn: uint, ss: str) -> [str] {
     let ww = [];
-    let len = str::len(ss);
+    let len = str::len_chars(ss);
 
     assert 1u <= nn;
 
     let ii = 0u;
     while ii+nn <= len {
-        let w = slice( ss, ii, ii+nn );
+        let w = slice_chars( ss, ii, ii+nn );
         vec::push(ww,w);
         ii += 1u;
     }
@@ -643,7 +671,7 @@ fn to_upper(s: str) -> str {
     map(s, char::to_upper)
 }
 
-// FIXME: This is super-inefficient
+// FIXME: This is super-inefficient: stop the extra slicing copies
 /*
 Function: replace
 
@@ -661,21 +689,21 @@ The original string with all occurances of `from` replaced with `to`
 */
 fn replace(s: str, from: str, to: str) -> str unsafe {
     assert is_not_empty(from);
-    if len_bytes(s) == 0u {
+    if len(s) == 0u {
         ret "";
     } else if starts_with(s, from) {
         ret to + replace(
-                     unsafe::slice_bytes(s, len_bytes(from), len_bytes(s)),
+                     unsafe::slice_bytes(s, len(from), len(s)),
                                        from, to);
     } else {
         let idx;
-        alt find_bytes(s, from) {
+        alt find(s, from) {
             some(x) { idx = x; }
             none { ret s; }
         }
         let before = unsafe::slice_bytes(s, 0u, idx as uint);
-        let after  = unsafe::slice_bytes(s, idx as uint + len_bytes(from),
-                                         len_bytes(s));
+        let after  = unsafe::slice_bytes(s, idx as uint + len(from),
+                                         len(s));
         ret before + to + replace(after, from, to);
     }
 }
@@ -734,7 +762,7 @@ Return true if a predicate matches all characters or
 if the string contains no characters
 */
 fn all(s: str, it: fn(char) -> bool) -> bool{
-    ret substr_all(s, 0u, len_bytes(s), it);
+    ret substr_all(s, 0u, len(s), it);
 }
 
 /*
@@ -754,7 +782,7 @@ Apply a function to each character
 */
 fn map(ss: str, ff: fn(char) -> char) -> str {
     let result = "";
-    reserve(result, len_bytes(ss));
+    reserve(result, len(ss));
 
     chars_iter(ss, {|cc|
         str::push_char(result, ff(cc));
@@ -770,7 +798,7 @@ Iterate over the bytes in a string
 */
 fn bytes_iter(ss: str, it: fn(u8)) {
     let pos = 0u;
-    let len = len_bytes(ss);
+    let len = len(ss);
 
     while (pos < len) {
         it(ss[pos]);
@@ -784,7 +812,7 @@ Function: chars_iter
 Iterate over the characters in a string
 */
 fn chars_iter(s: str, it: fn(char)) {
-    let pos = 0u, len = len_bytes(s);
+    let pos = 0u, len = len(s);
     while (pos < len) {
         let {ch, next} = char_range_at(s, pos);
         pos = next;
@@ -836,12 +864,42 @@ Section: Searching
 
 // Function: index
 //
-// Returns the index of the first matching char
+// Returns the byte index of the first matching char
 // (as option some/none)
 fn index(ss: str, cc: char) -> option<uint> {
+    index_from(ss, cc, 0u, len(ss))
+}
+
+// Function: index_from
+//
+// Returns the byte index of the first matching char
+// (as option some/none), starting at `nn`
+fn index_from(ss: str, cc: char, start: uint, end: uint) -> option<uint> {
+    let bii = start;
+    while bii < end {
+        let {ch, next} = char_range_at(ss, bii);
+
+        // found here?
+        if ch == cc {
+            ret some(bii);
+        }
+
+        bii = next;
+    }
+
+    // wasn't found
+    ret none;
+}
+
+// Function: index_chars
+//
+// Returns the char index of the first matching char
+// (as option some/none)
+// FIXME: delete?
+fn index_chars(ss: str, cc: char) -> option<uint> {
     let bii = 0u;
     let cii = 0u;
-    let len = len_bytes(ss);
+    let len = len(ss);
     while bii < len {
         let {ch, next} = char_range_at(ss, bii);
 
@@ -858,32 +916,34 @@ fn index(ss: str, cc: char) -> option<uint> {
     ret none;
 }
 
-// Function: byte_index
-//
-// Returns the index of the first matching byte
-// (as option some/none)
-fn byte_index(s: str, b: u8) -> option<uint> {
-    byte_index_from(s, b, 0u, len_bytes(s))
-}
-
-// Function: byte_index_from
-//
-// Returns the index of the first matching byte within the range [`start`,
-// `end`).
-// (as option some/none)
-fn byte_index_from(s: str, b: u8, start: uint, end: uint) -> option<uint> {
-    assert end <= len_bytes(s);
-
-    str::as_bytes(s) { |v| vec::position_from(v, start, end) { |x| x == b } }
-}
-
 // Function: rindex
 //
-// Returns the index of the first matching char
+// Returns the byte index of the first matching char
 // (as option some/none)
 fn rindex(ss: str, cc: char) -> option<uint> {
-    let bii = len_bytes(ss);
-    let cii = len(ss);
+    let bii = len(ss);
+    while bii > 0u {
+        let {ch, prev} = char_range_at_reverse(ss, bii);
+        bii = prev;
+
+        // found here?
+        if ch == cc {
+            ret some(bii);
+        }
+    }
+
+    // wasn't found
+    ret none;
+}
+
+// Function: rindex_chars
+//
+// Returns the char index of the first matching char
+// (as option some/none)
+// FIXME: delete?
+fn rindex_chars(ss: str, cc: char) -> option<uint> {
+    let bii = len(ss);
+    let cii = len_chars(ss);
     while bii > 0u {
         let {ch, prev} = char_range_at_reverse(ss, bii);
         cii -= 1u;
@@ -899,25 +959,25 @@ fn rindex(ss: str, cc: char) -> option<uint> {
     ret none;
 }
 
-//Function: find_bytes
+//Function: find
 //
-// Find the char position of the first instance of one string
+// Find the byte position of the first instance of one string
 // within another, or return option::none
-fn find_bytes(haystack: str, needle: str) -> option<uint> {
-    find_from_bytes(haystack, needle, 0u, len_bytes(haystack))
+fn find(haystack: str, needle: str) -> option<uint> {
+    find_from(haystack, needle, 0u, len(haystack))
 }
 
-//Function: find_from_bytes
+//Function: find_from
 //
-// Find the char position of the first instance of one string
+// Find the byte position of the first instance of one string
 // within another, or return option::none
 //
 // FIXME: Boyer-Moore should be significantly faster
-fn find_from_bytes(haystack: str, needle: str, start: uint, end:uint)
+fn find_from(haystack: str, needle: str, start: uint, end:uint)
   -> option<uint> {
-    assert end <= len_bytes(haystack);
+    assert end <= len(haystack);
 
-    let needle_len = len_bytes(needle);
+    let needle_len = len(needle);
 
     if needle_len == 0u { ret some(start); }
     if needle_len > end { ret none; }
@@ -937,12 +997,13 @@ fn find_from_bytes(haystack: str, needle: str, start: uint, end:uint)
     ret none;
 }
 
-// Function: find
+// Function: find_chars
 //
 // Find the char position of the first instance of one string
 // within another, or return option::none
-fn find(haystack: str, needle: str) -> option<uint> {
-   alt find_bytes(haystack, needle) {
+// FIXME: delete?
+fn find_chars(haystack: str, needle: str) -> option<uint> {
+   alt find(haystack, needle) {
       none { ret none; }
       some(nn) { ret some(b2c_pos(haystack, nn)); }
    }
@@ -953,7 +1014,7 @@ fn find(haystack: str, needle: str) -> option<uint> {
 // Convert a byte position into a char position
 // within a given string
 fn b2c_pos(ss: str, bpos: uint) -> uint {
-   assert bpos == 0u || bpos < len_bytes(ss);
+   assert bpos == 0u || bpos < len(ss);
 
    let ii = 0u;
    let cpos = 0u;
@@ -978,7 +1039,7 @@ haystack - The string to look in
 needle - The string to look for
 */
 fn contains(haystack: str, needle: str) -> bool {
-    option::is_some(find_bytes(haystack, needle))
+    option::is_some(find(haystack, needle))
 }
 
 /*
@@ -992,8 +1053,8 @@ haystack - The string to look in
 needle - The string to look for
 */
 fn starts_with(haystack: str, needle: str) -> bool unsafe {
-    let haystack_len: uint = len_bytes(haystack);
-    let needle_len: uint = len_bytes(needle);
+    let haystack_len: uint = len(haystack);
+    let needle_len: uint = len(needle);
     if needle_len == 0u { ret true; }
     if needle_len > haystack_len { ret false; }
     ret eq(unsafe::slice_bytes(haystack, 0u, needle_len), needle);
@@ -1030,7 +1091,7 @@ Function: is_ascii
 Determines if a string contains only ASCII characters
 */
 fn is_ascii(s: str) -> bool {
-    let i: uint = len_bytes(s);
+    let i: uint = len(s);
     while i > 0u { i -= 1u; if !u8::is_ascii(s[i]) { ret false; } }
     ret true;
 }
@@ -1059,10 +1120,11 @@ fn is_whitespace(s: str) -> bool {
 }
 
 
-// Function: len_bytes
+// Function: len
 //
-// Returns the string length in bytes
-pure fn len_bytes(s: str) -> uint unsafe {
+// Returns the string length/size in bytes
+// not counting the null terminator
+pure fn len(s: str) -> uint unsafe {
     as_bytes(s) { |v|
         let vlen = vec::len(v);
         // There should always be a null terminator
@@ -1071,15 +1133,10 @@ pure fn len_bytes(s: str) -> uint unsafe {
     }
 }
 
-// Function: len
-//
-// String length or size in characters.
-// (Synonym: len_chars)
-fn len(s: str) -> uint {
-    substr_len_chars(s, 0u, len_bytes(s))
+// FIXME: delete?
+fn len_chars(s: str) -> uint {
+    substr_len_chars(s, 0u, len(s))
 }
-
-fn len_chars(s: str) -> uint { len(s) }
 
 /*
 Section: Misc
@@ -1125,6 +1182,8 @@ Safety note:
 - This function does not check whether the substring is valid.
 - This function fails if `byte_offset` or `byte_len` do not
  represent valid positions inside `s`
+
+FIXME: delete?
 */
 fn substr_len_chars(s: str, byte_start: uint, byte_len: uint) -> uint {
     let i         = byte_start;
@@ -1140,7 +1199,7 @@ fn substr_len_chars(s: str, byte_start: uint, byte_len: uint) -> uint {
 }
 
 /*
-Function: substr_len_bytes
+Function: substr_len
 
 As byte_len but for a substring
 
@@ -1157,10 +1216,8 @@ Safety note:
 
 This function fails if `byte_offset` or `char_len` do not represent
 valid positions in `s`
-
-FIXME: rename to 'substr_len_bytes'
 */
-fn substr_len_bytes(s: str, byte_offset: uint, char_len: uint) -> uint {
+fn substr_len(s: str, byte_offset: uint, char_len: uint) -> uint {
     let i = byte_offset;
     let chars = 0u;
     while chars < char_len {
@@ -1201,7 +1258,7 @@ This function can be used to iterate over the unicode characters of a string.
 Example:
 > let s = "中华Việt Nam";
 > let i = 0u;
-> while i < str::len_bytes(s) {
+> while i < str::len(s) {
 >    let {ch, next} = str::char_range_at(s, i);
 >    std::io::println(#fmt("%u: %c",i,ch));
 >    i = next;
@@ -1401,12 +1458,13 @@ fn reserve(&ss: str, nn: uint) {
 // These functions may create invalid UTF-8 strings and eat your baby.
 mod unsafe {
    export
+      // FIXME: stop exporting several of these
       from_bytes,
       from_byte,
       slice_bytes,
       slice_bytes_safe_range,
       push_byte,
-      push_bytes, // note: wasn't exported
+      push_bytes,
       pop_byte,
       shift_byte;
 
@@ -1439,9 +1497,8 @@ mod unsafe {
    - If end is greater than the length of the string.
    */
    unsafe fn slice_bytes(s: str, begin: uint, end: uint) -> str unsafe {
-       // FIXME: Typestate precondition
        assert (begin <= end);
-       assert (end <= len_bytes(s));
+       assert (end <= len(s));
 
        let v = as_bytes(s) { |v| vec::slice(v, begin, end) };
        v += [0u8];
@@ -1458,7 +1515,7 @@ mod unsafe {
    unsafe fn slice_bytes_safe_range(s: str, begin: uint, end: uint)
        : uint::le(begin, end) -> str {
        // would need some magic to make this a precondition
-       assert (end <= len_bytes(s));
+       assert (end <= len(s));
        ret slice_bytes(s, begin, end);
    }
 
@@ -1480,7 +1537,7 @@ mod unsafe {
    //
    // Removes the last byte from a string and returns it.  (Not UTF-8 safe).
    unsafe fn pop_byte(&s: str) -> u8 unsafe {
-       let len = len_bytes(s);
+       let len = len(s);
        assert (len > 0u);
        let b = s[len - 1u];
        s = unsafe::slice_bytes(s, 0u, len - 1u);
@@ -1491,7 +1548,7 @@ mod unsafe {
    //
    // Removes the first byte from a string and returns it. (Not UTF-8 safe).
    unsafe fn shift_byte(&s: str) -> u8 unsafe {
-       let len = len_bytes(s);
+       let len = len(s);
        assert (len > 0u);
        let b = s[0];
        s = unsafe::slice_bytes(s, 1u, len);
@@ -1521,38 +1578,47 @@ mod tests {
 
     #[test]
     fn test_len() {
-        assert (len_bytes("") == 0u);
-        assert (len_bytes("hello world") == 11u);
-        assert (len_bytes("\x63") == 1u);
-        assert (len_bytes("\xa2") == 2u);
-        assert (len_bytes("\u03c0") == 2u);
-        assert (len_bytes("\u2620") == 3u);
-        assert (len_bytes("\U0001d11e") == 4u);
-
         assert (len("") == 0u);
         assert (len("hello world") == 11u);
         assert (len("\x63") == 1u);
-        assert (len("\xa2") == 1u);
-        assert (len("\u03c0") == 1u);
-        assert (len("\u2620") == 1u);
-        assert (len("\U0001d11e") == 1u);
-        assert (len("ประเทศไทย中华Việt Nam") == 19u);
+        assert (len("\xa2") == 2u);
+        assert (len("\u03c0") == 2u);
+        assert (len("\u2620") == 3u);
+        assert (len("\U0001d11e") == 4u);
+
+        assert (len_chars("") == 0u);
+        assert (len_chars("hello world") == 11u);
+        assert (len_chars("\x63") == 1u);
+        assert (len_chars("\xa2") == 1u);
+        assert (len_chars("\u03c0") == 1u);
+        assert (len_chars("\u2620") == 1u);
+        assert (len_chars("\U0001d11e") == 1u);
+        assert (len_chars("ประเทศไทย中华Việt Nam") == 19u);
     }
 
     #[test]
-    fn test_index() {
-        assert ( index("hello", 'h') == some(0u));
-        assert ( index("hello", 'e') == some(1u));
-        assert ( index("hello", 'o') == some(4u));
-        assert ( index("hello", 'z') == none);
+    fn test_index_chars() {
+        assert ( index_chars("hello", 'h') == some(0u));
+        assert ( index_chars("hello", 'e') == some(1u));
+        assert ( index_chars("hello", 'o') == some(4u));
+        assert ( index_chars("hello", 'z') == none);
     }
 
     #[test]
     fn test_rindex() {
-        assert (rindex("hello", 'l') == some(3u));
-        assert (rindex("hello", 'o') == some(4u));
-        assert (rindex("hello", 'h') == some(0u));
-        assert (rindex("hello", 'z') == none);
+        assert rindex("hello", 'l') == some(3u);
+        assert rindex("hello", 'o') == some(4u);
+        assert rindex("hello", 'h') == some(0u);
+        assert rindex("hello", 'z') == none;
+        assert rindex("ประเทศไทย中华Việt Nam", '华') == some(30u);
+    }
+
+    #[test]
+    fn test_rindex_chars() {
+        assert (rindex_chars("hello", 'l') == some(3u));
+        assert (rindex_chars("hello", 'o') == some(4u));
+        assert (rindex_chars("hello", 'h') == some(0u));
+        assert (rindex_chars("hello", 'z') == none);
     }
 
     #[test]
@@ -1755,59 +1821,59 @@ mod tests {
     }
 
     #[test]
-    fn test_find_bytes() {
-        // byte positions
-        assert (find_bytes("banana", "apple pie") == none);
-        assert (find_bytes("", "") == some(0u));
-
-        let data = "ประเทศไทย中华Việt Nam";
-        assert (find_bytes(data, "")     == some(0u));
-        assert (find_bytes(data, "ประเ") == some( 0u));
-        assert (find_bytes(data, "ะเ")   == some( 6u));
-        assert (find_bytes(data, "中华") == some(27u));
-        assert (find_bytes(data, "ไท华") == none);
-    }
-
-    #[test]
-    fn test_find_from_bytes() {
-        // byte positions
-        assert (find_from_bytes("", "", 0u, 0u) == some(0u));
-
-        let data = "abcabc";
-        assert find_from_bytes(data, "ab", 0u, 6u) == some(0u);
-        assert find_from_bytes(data, "ab", 2u, 6u) == some(3u);
-        assert find_from_bytes(data, "ab", 2u, 4u) == none;
-
-        let data = "ประเทศไทย中华Việt Nam";
-        data += data;
-        assert find_from_bytes(data, "", 0u, 43u) == some(0u);
-        assert find_from_bytes(data, "", 6u, 43u) == some(6u);
-
-        assert find_from_bytes(data, "ประ", 0u, 43u) == some( 0u);
-        assert find_from_bytes(data, "ทศไ", 0u, 43u) == some(12u);
-        assert find_from_bytes(data, "ย中", 0u, 43u) == some(24u);
-        assert find_from_bytes(data, "iệt", 0u, 43u) == some(34u);
-        assert find_from_bytes(data, "Nam", 0u, 43u) == some(40u);
-
-        assert find_from_bytes(data, "ประ", 43u, 86u) == some(43u);
-        assert find_from_bytes(data, "ทศไ", 43u, 86u) == some(55u);
-        assert find_from_bytes(data, "ย中", 43u, 86u) == some(67u);
-        assert find_from_bytes(data, "iệt", 43u, 86u) == some(77u);
-        assert find_from_bytes(data, "Nam", 43u, 86u) == some(83u);
-    }
-
-    #[test]
     fn test_find() {
-        // char positions
+        // byte positions
         assert (find("banana", "apple pie") == none);
         assert (find("", "") == some(0u));
 
         let data = "ประเทศไทย中华Việt Nam";
         assert (find(data, "")     == some(0u));
-        assert (find(data, "ประเ") == some(0u));
-        assert (find(data, "ะเ")   == some(2u));
-        assert (find(data, "中华") == some(9u));
+        assert (find(data, "ประเ") == some( 0u));
+        assert (find(data, "ะเ")   == some( 6u));
+        assert (find(data, "中华") == some(27u));
         assert (find(data, "ไท华") == none);
+    }
+
+    #[test]
+    fn test_find_from() {
+        // byte positions
+        assert (find_from("", "", 0u, 0u) == some(0u));
+
+        let data = "abcabc";
+        assert find_from(data, "ab", 0u, 6u) == some(0u);
+        assert find_from(data, "ab", 2u, 6u) == some(3u);
+        assert find_from(data, "ab", 2u, 4u) == none;
+
+        let data = "ประเทศไทย中华Việt Nam";
+        data += data;
+        assert find_from(data, "", 0u, 43u) == some(0u);
+        assert find_from(data, "", 6u, 43u) == some(6u);
+
+        assert find_from(data, "ประ", 0u, 43u) == some( 0u);
+        assert find_from(data, "ทศไ", 0u, 43u) == some(12u);
+        assert find_from(data, "ย中", 0u, 43u) == some(24u);
+        assert find_from(data, "iệt", 0u, 43u) == some(34u);
+        assert find_from(data, "Nam", 0u, 43u) == some(40u);
+
+        assert find_from(data, "ประ", 43u, 86u) == some(43u);
+        assert find_from(data, "ทศไ", 43u, 86u) == some(55u);
+        assert find_from(data, "ย中", 43u, 86u) == some(67u);
+        assert find_from(data, "iệt", 43u, 86u) == some(77u);
+        assert find_from(data, "Nam", 43u, 86u) == some(83u);
+    }
+
+    #[test]
+    fn test_find_chars() {
+        // char positions
+        assert (find_chars("banana", "apple pie") == none);
+        assert (find_chars("", "") == some(0u));
+
+        let data = "ประเทศไทย中华Việt Nam";
+        assert (find_chars(data, "")     == some(0u));
+        assert (find_chars(data, "ประเ") == some(0u));
+        assert (find_chars(data, "ะเ")   == some(2u));
+        assert (find_chars(data, "中华") == some(9u));
+        assert (find_chars(data, "ไท华") == none);
     }
 
     #[test]
@@ -1821,13 +1887,13 @@ mod tests {
     #[test]
     fn test_substr() {
         fn t(a: str, b: str, start: int) {
-            assert (eq(substr(a, start as uint, len_bytes(b)), b));
+            assert (eq(substr(a, start as uint, len(b)), b));
         }
         t("hello", "llo", 2);
         t("hello", "el", 1);
 
         assert "ะเทศไท"
-            == substr("ประเทศไทย中华Việt Nam", 2u, 6u);
+            == substr("ประเทศไทย中华Việt Nam", 6u, 18u);
     }
 
     #[test]
@@ -1975,13 +2041,13 @@ mod tests {
         assert (eq("ab", slice("abc", 0u, 2u)));
         assert (eq("bc", slice("abc", 1u, 3u)));
         assert (eq("", slice("abc", 1u, 1u)));
-        assert (eq("\u65e5", slice("\u65e5\u672c", 0u, 1u)));
+        assert (eq("\u65e5", slice("\u65e5\u672c", 0u, 3u)));
 
         let data = "ประเทศไทย中华";
-        assert (eq("ป", slice(data, 0u, 1u)));
-        assert (eq("ร", slice(data, 1u, 2u)));
-        assert (eq("华", slice(data, 10u, 11u)));
+        assert (eq("ป", slice(data, 0u, 3u)));
+        assert (eq("ร", slice(data, 3u, 6u)));
         assert (eq("", slice(data, 1u, 1u)));
+        assert (eq("华", slice(data, 30u, 33u)));
 
         fn a_million_letter_X() -> str {
             let i = 0;
@@ -1996,7 +2062,59 @@ mod tests {
             ret rs;
         }
         assert (eq(half_a_million_letter_X(),
-                        slice(a_million_letter_X(), 0u, 500000u)));
+                        slice(a_million_letter_X(), 0u, (3u * 500000u))));
+    }
+
+    #[test]
+    fn test_maybe_slice() {
+       let ss = "中华Việt Nam";
+
+       assert none == maybe_slice(ss, 0u, 2u);
+       assert none == maybe_slice(ss, 1u, 3u);
+       assert none == maybe_slice(ss, 1u, 2u);
+       assert some("华") == maybe_slice(ss, 3u, 6u);
+       assert some("Việt Nam") == maybe_slice(ss, 6u, 16u);
+       assert none == maybe_slice(ss, 4u, 16u);
+
+       /* 0: 中
+          3: 华
+          6: V
+          7: i
+          8: ệ
+         11: t
+         12:
+         13: N
+         14: a
+         15: m */
+    }
+
+    #[test]
+    fn test_slice_chars() {
+        assert (eq("ab", slice_chars("abc", 0u, 2u)));
+        assert (eq("bc", slice_chars("abc", 1u, 3u)));
+        assert (eq("", slice_chars("abc", 1u, 1u)));
+        assert (eq("\u65e5", slice_chars("\u65e5\u672c", 0u, 1u)));
+
+        let data = "ประเทศไทย中华";
+        assert (eq("ป", slice_chars(data, 0u, 1u)));
+        assert (eq("ร", slice_chars(data, 1u, 2u)));
+        assert (eq("华", slice_chars(data, 10u, 11u)));
+        assert (eq("", slice_chars(data, 1u, 1u)));
+
+        fn a_million_letter_X() -> str {
+            let i = 0;
+            let rs = "";
+            while i < 100000 { rs += "华华华华华华华华华华"; i += 1; }
+            ret rs;
+        }
+        fn half_a_million_letter_X() -> str {
+            let i = 0;
+            let rs = "";
+            while i < 100000 { rs += "华华华华华"; i += 1; }
+            ret rs;
+        }
+        assert (eq(half_a_million_letter_X(),
+                        slice_chars(a_million_letter_X(), 0u, 500000u)));
     }
 
     #[test]
@@ -2148,7 +2266,7 @@ mod tests {
         let v: [u8] = bytes(s1);
         let s2: str = from_bytes(v);
         let i: uint = 0u;
-        let n1: uint = len_bytes(s1);
+        let n1: uint = len(s1);
         let n2: uint = vec::len::<u8>(v);
         assert (n1 == n2);
         while i < n1 {

@@ -82,10 +82,10 @@ mod ct {
 
     fn parse_fmt_string(s: str, error: error_fn) -> [piece] unsafe {
         let pieces: [piece] = [];
-        let lim = str::len_bytes(s);
+        let lim = str::len(s);
         let buf = "";
         fn flush_buf(buf: str, &pieces: [piece]) -> str {
-            if str::len_bytes(buf) > 0u {
+            if str::len(buf) > 0u {
                 let piece = piece_string(buf);
                 pieces += [piece];
             }
@@ -93,13 +93,13 @@ mod ct {
         }
         let i = 0u;
         while i < lim {
-            let curr = str::unsafe::slice_bytes(s, i, i+1u);
+            let curr = str::slice(s, i, i+1u);
             if str::eq(curr, "%") {
                 i += 1u;
                 if i >= lim {
                     error("unterminated conversion at end of string");
                 }
-                let curr2 = str::unsafe::slice_bytes(s, i, i+1u);
+                let curr2 = str::slice(s, i, i+1u);
                 if str::eq(curr2, "%") {
                     buf += curr2;
                     i += 1u;
@@ -225,7 +225,7 @@ mod ct {
     fn parse_type(s: str, i: uint, lim: uint, error: error_fn) ->
        {ty: ty, next: uint} unsafe {
         if i >= lim { error("missing type in conversion"); }
-        let tstr = str::unsafe::slice_bytes(s, i, i+1u);
+        let tstr = str::slice(s, i, i+1u);
         // TODO: Do we really want two signed types here?
         // How important is it to be printf compatible?
         let t =
@@ -325,7 +325,7 @@ mod rt {
             alt cv.precision {
               count_implied { s }
               count_is(max) {
-                if max as uint < str::len(s) {
+                if max as uint < str::len_chars(s) {
                     str::substr(s, 0u, max as uint)
                 } else { s }
               }
@@ -368,7 +368,7 @@ mod rt {
                 ""
             } else {
                 let s = uint::to_str(num, radix);
-                let len = str::len(s);
+                let len = str::len_chars(s);
                 if len < prec {
                     let diff = prec - len;
                     let pad = str_init_elt(diff, '0');
@@ -400,7 +400,7 @@ mod rt {
             uwidth = width as uint;
           }
         }
-        let strlen = str::len(s);
+        let strlen = str::len_chars(s);
         if uwidth <= strlen { ret s; }
         let padchar = ' ';
         let diff = uwidth - strlen;
@@ -433,13 +433,13 @@ mod rt {
         // zeros. It may make sense to convert zero padding to a precision
         // instead.
 
-        if signed && zero_padding && str::len_bytes(s) > 0u {
+        if signed && zero_padding && str::len(s) > 0u {
             let head = s[0];
             if head == '+' as u8 || head == '-' as u8 || head == ' ' as u8 {
                 let headstr = str::from_bytes([head]);
                 // FIXME: not UTF-8 safe
-                let bytelen = str::len_bytes(s);
-                let numpart = str::unsafe::slice_bytes(s, 1u, bytelen);
+                let bytelen = str::len(s);
+                let numpart = str::slice(s, 1u, bytelen);
                 ret headstr + padstr + numpart;
             }
         }

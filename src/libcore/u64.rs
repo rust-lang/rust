@@ -118,8 +118,8 @@ Function: from_str
 Parse a string as an unsigned integer.
 */
 fn from_str(buf: str, radix: u64) -> option<u64> {
-    if str::len_bytes(buf) == 0u { ret none; }
-    let i = str::len_bytes(buf) - 1u;
+    if str::len(buf) == 0u { ret none; }
+    let i = str::len(buf) - 1u;
     let power = 1u64, n = 0u64;
     while true {
         alt char::to_digit(buf[i] as char, radix as uint) {

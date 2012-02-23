@@ -368,11 +368,11 @@ mod tests {
 
         // Test that it works when accepting the message in pieces
         for t: test in tests {
-            let len = str::len_bytes(t.input);
+            let len = str::len(t.input);
             let left = len;
             while left > 0u {
                 let take = (left + 1u) / 2u;
-                sh.input_str(str::unsafe::slice_bytes(t.input, len - left,
+                sh.input_str(str::slice(t.input, len - left,
                              take + len - left));
                 left = left - take;
             }

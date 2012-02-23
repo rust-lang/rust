@@ -335,7 +335,7 @@ fn removeDirIfExists(filename: str) {
 fn check_running(exe_filename: str) -> happiness {
     let p = std::run::program_output("/Users/jruderman/scripts/timed_run_rust_program.py", [exe_filename]);
     let comb = p.out + "\n" + p.err;
-    if str::len_bytes(comb) > 1u {
+    if str::len(comb) > 1u {
         log(error, "comb comb comb: " + comb);
     }
 

@@ -76,7 +76,7 @@ fn rest(s: str) -> str {
 
 fn from_str_str(s: str) -> (option<json>, str) {
     let pos = 0u;
-    let len = str::len_bytes(s);
+    let len = str::len(s);
     let escape = false;
     let res = "";
 
@@ -172,7 +172,7 @@ fn from_str_dict(s: str) -> (option<json>, str) {
 
 fn from_str_float(s: str) -> (option<json>, str) {
     let pos = 0u;
-    let len = str::len_bytes(s);
+    let len = str::len(s);
     let res = 0f;
     let neg = 1f;
 
@@ -205,7 +205,8 @@ fn from_str_float(s: str) -> (option<json>, str) {
     }
 
     if pos == len {
-        ret (some(num(neg * res)), str::slice(s, pos, str::len(s)));
+        ret (some(num(neg * res)),
+             str::slice(s, pos, str::len(s)));
     }
 
     let dec = 1f;

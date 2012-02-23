@@ -395,7 +395,7 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
                               metas: provided_metas,
                               dep_hashes: [str]) -> str {
         fn len_and_str(s: str) -> str {
-            ret #fmt["%u_%s", str::len_bytes(s), s];
+            ret #fmt["%u_%s", str::len(s), s];
         }
 
         fn len_and_str_lit(l: ast::lit) -> str {
@@ -478,7 +478,7 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
 }
 
 fn truncated_sha1_result(sha: sha1) -> str unsafe {
-    ret str::unsafe::slice_bytes(sha.result_str(), 0u, 16u);
+    ret str::slice(sha.result_str(), 0u, 16u);
 }
 
 
@@ -520,7 +520,7 @@ fn mangle(ss: path) -> str {
 
     for s in ss {
         alt s { path_name(s) | path_mod(s) {
-          n += #fmt["%u%s", str::len_bytes(s), s];
+          n += #fmt["%u%s", str::len(s), s];
         } }
     }
     n += "E"; // End name-sequence.
@@ -567,13 +567,12 @@ fn link_binary(sess: session,
     // Converts a library file name into a cc -l argument
     fn unlib(config: @session::config, filename: str) -> str unsafe {
         let rmlib = fn@(filename: str) -> str {
-            let found = str::find_bytes(filename, "lib");
+            let found = str::find(filename, "lib");
             if config.os == session::os_macos ||
                 (config.os == session::os_linux ||
                  config.os == session::os_freebsd) &&
                 option::is_some(found) && option::get(found) == 0u {
-                ret str::unsafe::slice_bytes(filename, 3u,
-                               str::len_bytes(filename));
+                ret str::slice(filename, 3u, str::len(filename));
             } else { ret filename; }
         };
         fn rmext(filename: str) -> str {
