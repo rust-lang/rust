@@ -196,7 +196,6 @@ void task_start_wrapper(spawn_args *a)
     if(env) {
         // free the environment (which should be a unique closure).
         const type_desc *td = env->td;
-        LOG(task, task, "Freeing env %p with td %p", env, td);
         td->drop_glue(NULL, NULL, td->first_param, box_body(env));
         upcall_free_shared_type_desc(env->td);
         upcall_shared_free(env);
@@ -720,6 +719,11 @@ Returns true if we're currently running on the Rust stack
  */
 bool
 rust_task::on_rust_stack() {
+    if (stk == NULL) {
+        // This only happens during construction
+        return false;
+    }
+
     uintptr_t sp = get_sp();
     bool in_first_segment = sp_in_stk_seg(sp, stk);
     if (in_first_segment) {
