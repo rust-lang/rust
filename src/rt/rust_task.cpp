@@ -687,6 +687,23 @@ sp_in_stk_seg(uintptr_t sp, stk_seg *stk) {
     return (uintptr_t)stk->data <= sp && sp <= stk->end;
 }
 
+struct reset_args {
+    rust_task *task;
+    uintptr_t sp;
+};
+
+void
+reset_stack_limit_on_c_stack(reset_args *args) {
+    rust_task *task = args->task;
+    uintptr_t sp = args->sp;
+    while (!sp_in_stk_seg(sp, task->stk)) {
+        task->del_stack();
+        A(task->thread, task->stk != NULL,
+          "Failed to find the current stack");
+    }
+    task->record_stack_limit();
+}
+
 /*
 Called by landing pads during unwinding to figure out which
 stack segment we are currently running on, delete the others,
@@ -695,12 +712,12 @@ through __morestack).
  */
 void
 rust_task::reset_stack_limit() {
+    I(thread, on_rust_stack());
     uintptr_t sp = get_sp();
-    while (!sp_in_stk_seg(sp, stk)) {
-        del_stack();
-        A(thread, stk != NULL, "Failed to find the current stack");
-    }
-    record_stack_limit();
+    // Have to do the rest on the C stack because it involves
+    // freeing stack segments, logging, etc.
+    reset_args ra = {this, sp};
+    call_on_c_stack(&ra, (void*)reset_stack_limit_on_c_stack);
 }
 
 void
