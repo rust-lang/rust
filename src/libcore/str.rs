@@ -71,8 +71,10 @@ export
 
    // Searching
    index_chars,
-   byte_index,
-   byte_index_from,
+   index,
+   index_from,
+   //byte_index,
+   //byte_index_from,
    rindex,
    //rindex_chars,
    find_chars,
