@@ -607,6 +607,10 @@ fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
           cx.sess.fatal("Unsupported sort of type in fold_ty");
       }
     }
+    alt tb.o_def_id {
+      some(did) { ty = mk_t_with_id(cx, get(ty).struct, some(did)); }
+      _ {}
+    }
 
     // If this is a general type fold, then we need to run it now.
     alt fld { fm_general(folder) { ret folder(ty); } _ { ret ty; } }
