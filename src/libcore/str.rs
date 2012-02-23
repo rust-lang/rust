@@ -4,9 +4,9 @@ Module: str
 String manipulation
 
 Strings are a packed UTF-8 representation of text, stored as null terminated
-buffers of u8 bytes.  Strings should be considered by character,
-for correctness, but some UTF-8 unsafe functions are also provided.
-For some heavy-duty uses, we recommend trying std::rope.
+buffers of u8 bytes.  Strings should be indexed in bytes, for efficiency,
+but UTF-8 unsafe operations should be avoided.
+For some heavy-duty uses, try std::rope.
 */
 
 import option::{some, none};
@@ -434,6 +434,7 @@ Failure:
 - If end is greater than the character length of the string
 
 FIXME: make faster by avoiding char conversion
+FIXME: delete?
 */
 fn slice_chars(s: str, begin: uint, end: uint) -> str {
     from_chars(vec::slice(chars(s), begin, end))
@@ -498,7 +499,7 @@ Splits a string into a vector of the substrings separated by a given string
 Note that this has recently been changed.  For example:
 >  assert ["", "XXX", "YYY", ""] == split_str(".XXX.YYY.", ".")
 
-FIXME: Boyer-Moore variation
+FIXME: Boyer-Moore should be faster
 */
 fn split_str(ss: str, sep: str) -> [str] unsafe {
     // unsafe is justified: we are splitting
@@ -670,7 +671,7 @@ fn to_upper(s: str) -> str {
     map(s, char::to_upper)
 }
 
-// FIXME: This is super-inefficient
+// FIXME: This is super-inefficient: stop the extra slicing copies
 /*
 Function: replace
 
@@ -894,6 +895,7 @@ fn index_from(ss: str, cc: char, start: uint, end: uint) -> option<uint> {
 //
 // Returns the char index of the first matching char
 // (as option some/none)
+// FIXME: delete?
 fn index_chars(ss: str, cc: char) -> option<uint> {
     let bii = 0u;
     let cii = 0u;
@@ -938,6 +940,7 @@ fn rindex(ss: str, cc: char) -> option<uint> {
 //
 // Returns the char index of the first matching char
 // (as option some/none)
+// FIXME: delete?
 fn rindex_chars(ss: str, cc: char) -> option<uint> {
     let bii = len(ss);
     let cii = len_chars(ss);
@@ -998,6 +1001,7 @@ fn find_from(haystack: str, needle: str, start: uint, end:uint)
 //
 // Find the char position of the first instance of one string
 // within another, or return option::none
+// FIXME: delete?
 fn find_chars(haystack: str, needle: str) -> option<uint> {
    alt find(haystack, needle) {
       none { ret none; }
@@ -1065,8 +1069,8 @@ haystack - The string to look in
 needle - The string to look for
 */
 fn ends_with(haystack: str, needle: str) -> bool {
-    let haystack_len: uint = len_chars(haystack);
-    let needle_len: uint = len_chars(needle);
+    let haystack_len: uint = len(haystack);
+    let needle_len: uint = len(needle);
     ret if needle_len == 0u {
             true
         } else if needle_len > haystack_len {
@@ -1129,6 +1133,7 @@ pure fn len(s: str) -> uint unsafe {
     }
 }
 
+// FIXME: delete?
 fn len_chars(s: str) -> uint {
     substr_len_chars(s, 0u, len(s))
 }
@@ -1177,6 +1182,8 @@ Safety note:
 - This function does not check whether the substring is valid.
 - This function fails if `byte_offset` or `byte_len` do not
  represent valid positions inside `s`
+
+FIXME: delete?
 */
 fn substr_len_chars(s: str, byte_start: uint, byte_len: uint) -> uint {
     let i         = byte_start;
@@ -1451,12 +1458,13 @@ fn reserve(&ss: str, nn: uint) {
 // These functions may create invalid UTF-8 strings and eat your baby.
 mod unsafe {
    export
+      // FIXME: stop exporting several of these
       from_bytes,
       from_byte,
-      slice_bytes,            // FIXME: stop exporting
-      slice_bytes_safe_range, // FIXME: stop exporting
+      slice_bytes,
+      slice_bytes_safe_range,
       push_byte,
-      push_bytes, // note: wasn't exported
+      push_bytes,
       pop_byte,
       shift_byte;
 
@@ -1489,7 +1497,6 @@ mod unsafe {
    - If end is greater than the length of the string.
    */
    unsafe fn slice_bytes(s: str, begin: uint, end: uint) -> str unsafe {
-       // FIXME: Typestate precondition
        assert (begin <= end);
        assert (end <= len(s));
 
