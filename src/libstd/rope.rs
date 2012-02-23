@@ -795,7 +795,7 @@ mod node {
                     if i == 0u  { first_leaf_char_len }
                     else { hint_max_leaf_char_len };
                 let chunk_byte_len =
-                    str::substr_len_bytes(*str, offset, chunk_char_len);
+                    str::substr_len(*str, offset, chunk_char_len);
                 nodes[i] = @leaf({
                     byte_offset: offset,
                     byte_len:    chunk_byte_len,
@@ -1059,9 +1059,9 @@ mod node {
                     ret node;
                 }
                 let byte_offset =
-                    str::substr_len_bytes(*x.content, 0u, char_offset);
+                    str::substr_len(*x.content, 0u, char_offset);
                 let byte_len    =
-                    str::substr_len_bytes(*x.content, byte_offset, char_len);
+                    str::substr_len(*x.content, byte_offset, char_len);
                 ret @leaf({byte_offset: byte_offset,
                            byte_len:    byte_len,
                            char_len:    char_len,
