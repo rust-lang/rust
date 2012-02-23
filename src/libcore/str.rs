@@ -70,11 +70,9 @@ export
    lines_iter,
 
    // Searching
-   index_chars,
+   //index_chars,
    index,
    index_from,
-   //byte_index,
-   //byte_index_from,
    rindex,
    //rindex_chars,
    find_chars,
