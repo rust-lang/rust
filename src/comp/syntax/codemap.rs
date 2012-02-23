@@ -176,16 +176,16 @@ fn lookup_byte_offset(cm: codemap::codemap, chpos: uint)
 }
 
 fn span_to_snippet(sp: span, cm: codemap::codemap) -> str {
-    let begin = lookup_byte_offset(cm,sp.lo);
-    let end   = lookup_byte_offset(cm,sp.hi);
+    let begin = lookup_byte_offset(cm, sp.lo);
+    let end = lookup_byte_offset(cm, sp.hi);
     assert begin.fm == end.fm;
-    ret str::slice_chars(*begin.fm.src, begin.pos, end.pos);
+    ret str::slice(*begin.fm.src, begin.pos, end.pos);
 }
 
 fn get_snippet(cm: codemap::codemap, fidx: uint, lo: uint, hi: uint) -> str
 {
     let fm = cm.files[fidx];
-    ret str::slice_chars(*fm.src, lo, hi)
+    ret str::slice(*fm.src, lo, hi)
 }
 
 fn get_filemap(cm: codemap, filename: str) -> filemap {

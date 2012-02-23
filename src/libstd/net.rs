@@ -49,7 +49,7 @@ Failure:
 String must be a valid IPv4 address
 */
 fn parse_addr(ip: str) -> ip_addr {
-    let parts = vec::map(str::split_byte(ip, "."[0]), {|s|
+    let parts = vec::map(str::split_char(ip, '.'), {|s|
         alt uint::from_str(s) {
           some(n) if n <= 255u { n }
           _ { fail "Invalid IP Address part." }

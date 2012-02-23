@@ -121,8 +121,8 @@ fn get_relative_to(abs1: fs::path, abs2: fs::path) -> fs::path {
            abs1, abs2);
     let normal1 = fs::normalize(abs1);
     let normal2 = fs::normalize(abs2);
-    let split1 = str::split_byte(normal1, os_fs::path_sep as u8);
-    let split2 = str::split_byte(normal2, os_fs::path_sep as u8);
+    let split1 = str::split_char(normal1, os_fs::path_sep);
+    let split2 = str::split_char(normal2, os_fs::path_sep);
     let len1 = vec::len(split1);
     let len2 = vec::len(split2);
     assert len1 > 0u;

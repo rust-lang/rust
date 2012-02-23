@@ -440,8 +440,7 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
               none {
                 let name =
                     {
-                        let os = str::split_byte(
-                                   fs::basename(output), '.' as u8);
+                        let os = str::split_char(fs::basename(output), '.');
                         if (vec::len(os) < 2u) {
                             sess.fatal(#fmt("Output file name %s doesn't\
                               appear to have an extension", output));
@@ -576,7 +575,7 @@ fn link_binary(sess: session,
             } else { ret filename; }
         };
         fn rmext(filename: str) -> str {
-            let parts = str::split_byte(filename, '.' as u8);
+            let parts = str::split_char(filename, '.');
             vec::pop(parts);
             ret str::connect(parts, ".");
         }
