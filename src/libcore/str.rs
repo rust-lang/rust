@@ -9,8 +9,6 @@ but UTF-8 unsafe operations should be avoided.
 For some heavy-duty uses, try std::rope.
 */
 
-import option::{some, none};
-
 export
    // Creating a string
    from_bytes,
@@ -276,10 +274,10 @@ Remove the final character from a string and return it.
 Failure:
 If the string does not contain any characters.
 */
-fn pop_char(&s: str) -> char unsafe {
+fn pop_char(&s: str) -> char {
     let end = len(s);
-    let {ch:ch, prev:end} = char_range_at_reverse(s, end);
-    s = unsafe::slice_bytes(s, 0u, end);
+    let {ch, prev} = char_range_at_reverse(s, end);
+    unsafe { unsafe::set_len(s, prev); }
     ret ch;
 }
 
@@ -1125,12 +1123,8 @@ fn is_whitespace(s: str) -> bool {
 // Returns the string length/size in bytes
 // not counting the null terminator
 pure fn len(s: str) -> uint unsafe {
-    as_bytes(s) { |v|
-        let vlen = vec::len(v);
-        // There should always be a null terminator
-        assert (vlen > 0u);
-        vlen - 1u
-    }
+    let repr: *vec::unsafe::vec_repr = ::unsafe::reinterpret_cast(s);
+    (*repr).fill - 1u
 }
 
 // FIXME: delete?
@@ -1466,7 +1460,8 @@ mod unsafe {
       push_byte,
       push_bytes,
       pop_byte,
-      shift_byte;
+      shift_byte,
+      set_len;
 
    // Function: unsafe::from_bytes
    //
@@ -1540,7 +1535,7 @@ mod unsafe {
        let len = len(s);
        assert (len > 0u);
        let b = s[len - 1u];
-       s = unsafe::slice_bytes(s, 0u, len - 1u);
+       set_len(s, len - 1u);
        ret b;
    }
 
@@ -1554,7 +1549,13 @@ mod unsafe {
        s = unsafe::slice_bytes(s, 1u, len);
        ret b;
    }
-
+    
+    unsafe fn set_len(&v: str, new_len: uint) {
+        let repr: *vec::unsafe::vec_repr = ::unsafe::reinterpret_cast(v);
+        (*repr).fill = new_len + 1u;
+        let null = ptr::mut_offset(ptr::mut_addr_of((*repr).data), new_len);
+        *null = 0u8;
+    }
 }
 
 
