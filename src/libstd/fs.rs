@@ -33,19 +33,15 @@ A path or fragment of a filesystem path
 type path = str;
 
 fn splitDirnameBasename (pp: path) -> {dirname: str, basename: str} {
-    let ii;
-    alt str::rindex(pp, os_fs::path_sep) {
-        option::some(xx) { ii = xx; }
-        option::none {
-            alt str::rindex(pp, os_fs::alt_path_sep) {
-                option::some(xx) { ii = xx; }
-                option::none { ret {dirname: ".", basename: pp}; }
-            }
-        }
+    alt str::rfind(pp, {|ch|
+        ch == os_fs::path_sep || ch == os_fs::alt_path_sep
+    }) {
+      some(i) {
+        {dirname: str::slice(pp, 0u, i),
+         basename: str::slice(pp, i + 1u, str::len(pp))}
+      }
+      none { {dirname: ".", basename: pp} }
     }
-
-    ret {dirname: str::slice(pp, 0u, ii),
-         basename: str::slice(pp, ii + 1u, str::len(pp))};
 }
 
 /*

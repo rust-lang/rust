@@ -44,7 +44,6 @@ export
    to_lower,
    to_upper,
    replace,
-   escape,
 
    // Comparing strings
    eq,
@@ -52,8 +51,8 @@ export
    hash,
 
    // Iterating through strings
-   all,
-   any,
+   all, any,
+   all_between, any_between,
    map,
    bytes_iter,
    chars_iter,
@@ -63,14 +62,11 @@ export
    lines_iter,
 
    // Searching
-   //index_chars,
-   index,
-   index_from,
-   rindex,
-   //rindex_chars,
-   find,
-   find_from,
-   find_chars,
+   find, find_from, find_between,
+   rfind, rfind_from, rfind_between,
+   find_char, find_char_from, find_char_between,
+   rfind_char, rfind_char_from, rfind_char_between,
+   find_str, find_str_from, find_str_between,
    contains,
    starts_with,
    ends_with,
@@ -81,27 +77,21 @@ export
    is_not_empty,
    is_whitespace,
    len,
-   len_chars,
+   char_len,
 
    // Misc
-   // FIXME: perhaps some more of this section shouldn't be exported?
    is_utf8,
-   substr_len,
-   substr_len_chars,
+   count_chars, count_bytes,
    utf8_char_width,
    char_range_at,
    is_char_boundary,
    char_at,
-   substr_all,
-   escape_char,
    as_bytes,
    as_buf,
-   //buf,
    sbuf,
    reserve,
 
    unsafe;
-
 
 
 #[abi = "cdecl"]
@@ -303,18 +293,14 @@ Function: trim_left
 
 Returns a string with leading whitespace removed.
 */
-fn trim_left(s: str) -> str {
-    fn count_whities(s: [char]) -> uint {
-        let i = 0u;
-        while i < vec::len(s) {
-            if !char::is_whitespace(s[i]) { break; }
-            i += 1u;
-        }
-        ret i;
+fn trim_left(+s: str) -> str {
+    alt find(s, {|c| !char::is_whitespace(c)}) {
+      none { "" }
+      some(first) {
+        if first == 0u { s }
+        else unsafe { unsafe::slice_bytes(s, first, len(s)) }
+      }
     }
-    let chars = chars(s);
-    let whities = count_whities(chars);
-    ret from_chars(vec::slice(chars, whities, vec::len(chars)));
 }
 
 /*
@@ -322,18 +308,15 @@ Function: trim_right
 
 Returns a string with trailing whitespace removed.
 */
-fn trim_right(s: str) -> str {
-    fn count_whities(s: [char]) -> uint {
-        let i = vec::len(s);
-        while 0u < i {
-            if !char::is_whitespace(s[i - 1u]) { break; }
-            i -= 1u;
-        }
-        ret i;
+fn trim_right(+s: str) -> str {
+    alt rfind(s, {|c| !char::is_whitespace(c)}) {
+      none { "" }
+      some(last) {
+        let {next, _} = char_range_at(s, last);
+        if next == len(s) { s }
+        else unsafe { unsafe::slice_bytes(s, 0u, next) }
+      }
     }
-    let chars = chars(s);
-    let whities = count_whities(chars);
-    ret from_chars(vec::slice(chars, 0u, whities));
 }
 
 /*
@@ -341,8 +324,7 @@ Function: trim
 
 Returns a string with leading and trailing whitespace removed
 */
-fn trim(s: str) -> str { trim_left(trim_right(s)) }
-
+fn trim(+s: str) -> str { trim_left(trim_right(s)) }
 
 /*
 Section: Transforming strings
@@ -376,15 +358,11 @@ fn chars(s: str) -> [char] {
 /*
 Function: substr
 
-Take a substring of another. Returns a string containing `len` bytes
-starting at char offset `begin`.
-
-Failure:
-
-If `begin` + `len` is is greater than the char length of the string
+Take a substring of another. Returns a string containing `n`
+characters starting at byte offset `begin`.
 */
-fn substr(s: str, begin: uint, len: uint) -> str {
-    ret slice(s, begin, begin + len);
+fn substr(s: str, begin: uint, n: uint) -> str {
+    slice(s, begin, begin + count_bytes(s, begin, n))
 }
 
 // Function: slice
@@ -634,17 +612,6 @@ fn replace(s: str, from: str, to: str) -> str unsafe {
 }
 
 /*
-Function: escape
-
-Escapes special characters inside the string, making it safe for transfer.
-*/
-fn escape(s: str) -> str {
-    let r = "";
-    chars_iter(s) { |c| r += escape_char(c) };
-    r
-}
-
-/*
 Section: Comparing strings
 */
 
@@ -670,7 +637,6 @@ String hash function
 fn hash(&&s: str) -> uint {
     // djb hash.
     // FIXME: replace with murmur.
-
     let u: uint = 5381u;
     for c: u8 in s { u *= 33u; u += c as uint; }
     ret u;
@@ -686,8 +652,8 @@ Function: all
 Return true if a predicate matches all characters or
 if the string contains no characters
 */
-fn all(s: str, it: fn(char) -> bool) -> bool{
-    ret substr_all(s, 0u, len(s), it);
+fn all(s: str, it: fn(char) -> bool) -> bool {
+    all_between(s, 0u, len(s), it)
 }
 
 /*
@@ -697,7 +663,7 @@ Return true if a predicate matches any character
 (and false if it matches none or there are no characters)
 */
 fn any(ss: str, pred: fn(char) -> bool) -> bool {
-   !all(ss, {|cc| !pred(cc)})
+    !all(ss, {|cc| !pred(cc)})
 }
 
 /*
@@ -708,12 +674,8 @@ Apply a function to each character
 fn map(ss: str, ff: fn(char) -> char) -> str {
     let result = "";
     reserve(result, len(ss));
-
-    chars_iter(ss, {|cc|
-        str::push_char(result, ff(cc));
-    });
-
-    ret result;
+    chars_iter(ss) {|cc| str::push_char(result, ff(cc));}
+    result
 }
 
 /*
@@ -787,170 +749,190 @@ fn lines_iter(ss: str, ff: fn(&&str)) {
 Section: Searching
 */
 
-// Function: index
+// Function: find_char
 //
 // Returns the byte index of the first matching char
 // (as option some/none)
-fn index(ss: str, cc: char) -> option<uint> {
-    index_from(ss, cc, 0u, len(ss))
+fn find_char(s: str, c: char) -> option<uint> {
+    find_char_between(s, c, 0u, len(s))
 }
 
-// Function: index_from
+// Function: find_char_from
 //
 // Returns the byte index of the first matching char
-// (as option some/none), starting at `nn`
-fn index_from(ss: str, cc: char, start: uint, end: uint) -> option<uint> {
-    let bii = start;
-    while bii < end {
-        let {ch, next} = char_range_at(ss, bii);
-
-        // found here?
-        if ch == cc {
-            ret some(bii);
-        }
-
-        bii = next;
-    }
-
-    // wasn't found
-    ret none;
+// (as option some/none), starting from `start`
+fn find_char_from(s: str, c: char, from: uint) -> option<uint> {
+    find_char_between(s, c, from, len(s))
 }
 
-// Function: index_chars
-//
-// Returns the char index of the first matching char
-// (as option some/none)
-// FIXME: delete?
-fn index_chars(ss: str, cc: char) -> option<uint> {
-    let bii = 0u;
-    let cii = 0u;
-    let len = len(ss);
-    while bii < len {
-        let {ch, next} = char_range_at(ss, bii);
-
-        // found here?
-        if ch == cc {
-            ret some(cii);
-        }
-
-        cii += 1u;
-        bii = next;
-    }
-
-    // wasn't found
-    ret none;
-}
-
-// Function: rindex
+// Function: find_char_between
 //
 // Returns the byte index of the first matching char
-// (as option some/none)
-fn rindex(ss: str, cc: char) -> option<uint> {
-    let bii = len(ss);
-    while bii > 0u {
-        let {ch, prev} = char_range_at_reverse(ss, bii);
-        bii = prev;
-
-        // found here?
-        if ch == cc {
-            ret some(bii);
+// (as option some/none), between `start` and `end`
+fn find_char_between(s: str, c: char, start: uint, end: uint)
+    -> option<uint> {
+    if c < 128u as char {
+        assert start <= end;
+        assert end <= len(s);
+        let i = start, b = c as u8;
+        while i < end {
+            if s[i] == b { ret some(i); }
+            i += 1u;
         }
+        ret none;
+    } else {
+        find_between(s, start, end, {|x| x == c})
     }
-
-    // wasn't found
-    ret none;
 }
 
-// Function: rindex_chars
+// Function: rfind_char
 //
-// Returns the char index of the first matching char
+// Returns the byte index of the last matching char
 // (as option some/none)
-// FIXME: delete?
-fn rindex_chars(ss: str, cc: char) -> option<uint> {
-    let bii = len(ss);
-    let cii = len_chars(ss);
-    while bii > 0u {
-        let {ch, prev} = char_range_at_reverse(ss, bii);
-        cii -= 1u;
-        bii = prev;
+fn rfind_char(s: str, c: char) -> option<uint> {
+    rfind_char_between(s, c, len(s), 0u)
+}
 
-        // found here?
-        if ch == cc {
-            ret some(cii);
+// Function: rfind_char_from
+//
+// Returns the byte index of the last matching char
+// (as option some/none), starting from `start`
+fn rfind_char_from(s: str, c: char, start: uint) -> option<uint> {
+    rfind_char_between(s, c, start, 0u)
+}
+
+// Function: rfind_char_between
+//
+// Returns the byte index of the last matching char (as option
+// some/none), between from `start` and `end` (start must be greater
+// than or equal to end)
+fn rfind_char_between(s: str, c: char, start: uint, end: uint)
+    -> option<uint> {
+    if c < 128u as char {
+        assert start >= end;
+        assert start <= len(s);
+        let i = start, b = c as u8;
+        while i > end {
+            i -= 1u;
+            if s[i] == b { ret some(i); }
         }
+        ret none;
+    } else {
+        rfind_between(s, start, end, {|x| x == c})
     }
+}
 
-    // wasn't found
+// Function: find
+//
+// Returns, as an option, the first character that passes the given
+// predicate
+fn find(s: str, f: fn(char) -> bool) -> option<uint> {
+    find_between(s, 0u, len(s), f)
+}
+
+// Function: find_from
+//
+// Returns, as an option, the first character that passes the given
+// predicate, starting at byte offset `start`
+fn find_from(s: str, start: uint, f: fn(char) -> bool) -> option<uint> {
+    find_between(s, start, len(s), f)
+}
+
+// Function: find_between
+//
+// Returns, as an option, the first character that passes the given
+// predicate, between byte offsets `start` and `end`
+fn find_between(s: str, start: uint, end: uint, f: fn(char) -> bool)
+    -> option<uint> {
+    assert start <= end;
+    assert end <= len(s);
+    assert is_char_boundary(s, start);
+    let i = start;
+    while i < end {
+        let {ch, next} = char_range_at(s, i);
+        if f(ch) { ret some(i); }
+        i = next;
+    }
     ret none;
 }
 
-//Function: find
+// Function: rfind
+//
+// Returns, as an option, the last character in the string that passes
+// the given predicate
+fn rfind(s: str, f: fn(char) -> bool) -> option<uint> {
+    rfind_between(s, len(s), 0u, f)
+}
+
+// Function: rfind_from
+//
+// Returns, as an option, the last character that passes the given
+// predicate, up until byte offset `start`
+fn rfind_from(s: str, start: uint, f: fn(char) -> bool) -> option<uint> {
+    rfind_between(s, start, 0u, f)
+}
+
+// Function: rfind_between
+//
+// Returns, as an option, the last character that passes the given
+// predicate, between byte offsets `start` and `end` (`start` must be
+// greater than or equal to `end`)
+fn rfind_between(s: str, start: uint, end: uint, f: fn(char) -> bool)
+    -> option<uint> {
+    assert start >= end;
+    assert start <= len(s);
+    assert is_char_boundary(s, start);
+    let i = start;
+    while i > end {
+        let {ch, prev} = char_range_at_reverse(s, i);
+        if f(ch) { ret some(prev); }
+        i = prev;
+    }
+    ret none;
+}
+
+// Utility used by various searching functions
+fn match_at(haystack: str, needle: str, at: uint) -> bool {
+    let i = at;
+    for c in needle { if haystack[i] != c { ret false; } i += 1u; }
+    ret true;
+}
+
+//Function: find_str
 //
 // Find the byte position of the first instance of one string
 // within another, or return option::none
-fn find(haystack: str, needle: str) -> option<uint> {
-    find_from(haystack, needle, 0u, len(haystack))
+fn find_str(haystack: str, needle: str) -> option<uint> {
+    find_str_between(haystack, needle, 0u, len(haystack))
 }
 
-//Function: find_from
+//Function: find_str_from
 //
 // Find the byte position of the first instance of one string
 // within another, or return option::none
-//
-// FIXME: Boyer-Moore should be significantly faster
-fn find_from(haystack: str, needle: str, start: uint, end:uint)
+fn find_str_from(haystack: str, needle: str, start: uint)
   -> option<uint> {
+    find_str_between(haystack, needle, start, len(haystack))
+}
+
+//Function: find_str_between
+//
+// Find the byte position of the first instance of one string
+// within another, or return option::none
+fn find_str_between(haystack: str, needle: str, start: uint, end:uint)
+  -> option<uint> {
+    // FIXME: Boyer-Moore should be significantly faster
     assert end <= len(haystack);
-
     let needle_len = len(needle);
-
     if needle_len == 0u { ret some(start); }
     if needle_len > end { ret none; }
 
-    fn match_at(haystack: str, needle: str, ii: uint) -> bool {
-        let jj = ii;
-        for c: u8 in needle { if haystack[jj] != c { ret false; } jj += 1u; }
-        ret true;
+    let i = start, e = end - needle_len;
+    while i <= e {
+        if match_at(haystack, needle, i) { ret some(i); }
+        i += 1u;
     }
-
-    let ii = start;
-    while ii <= end - needle_len {
-        if match_at(haystack, needle, ii) { ret some(ii); }
-        ii += 1u;
-    }
-
     ret none;
-}
-
-// Function: find_chars
-//
-// Find the char position of the first instance of one string
-// within another, or return option::none
-// FIXME: delete?
-fn find_chars(haystack: str, needle: str) -> option<uint> {
-   alt find(haystack, needle) {
-      none { ret none; }
-      some(nn) { ret some(b2c_pos(haystack, nn)); }
-   }
-}
-
-// Function: b2c_pos
-//
-// Convert a byte position into a char position
-// within a given string
-fn b2c_pos(ss: str, bpos: uint) -> uint {
-   assert bpos == 0u || bpos < len(ss);
-
-   let ii = 0u;
-   let cpos = 0u;
-
-   while ii < bpos {
-      let sz = utf8_char_width(ss[ii]);
-      ii += sz;
-      cpos += 1u;
-   }
-
-   ret cpos;
 }
 
 /*
@@ -964,7 +946,7 @@ haystack - The string to look in
 needle - The string to look for
 */
 fn contains(haystack: str, needle: str) -> bool {
-    option::is_some(find(haystack, needle))
+    option::is_some(find_str(haystack, needle))
 }
 
 /*
@@ -978,11 +960,10 @@ haystack - The string to look in
 needle - The string to look for
 */
 fn starts_with(haystack: str, needle: str) -> bool unsafe {
-    let haystack_len: uint = len(haystack);
-    let needle_len: uint = len(needle);
-    if needle_len == 0u { ret true; }
-    if needle_len > haystack_len { ret false; }
-    ret eq(unsafe::slice_bytes(haystack, 0u, needle_len), needle);
+    let haystack_len = len(haystack), needle_len = len(needle);
+    if needle_len == 0u { true }
+    else if needle_len > haystack_len { false }
+    else { match_at(haystack, needle, 0u) }
 }
 
 /*
@@ -994,16 +975,10 @@ haystack - The string to look in
 needle - The string to look for
 */
 fn ends_with(haystack: str, needle: str) -> bool {
-    let haystack_len: uint = len(haystack);
-    let needle_len: uint = len(needle);
-    ret if needle_len == 0u {
-            true
-        } else if needle_len > haystack_len {
-            false
-        } else {
-            eq(substr(haystack, haystack_len - needle_len, needle_len),
-               needle)
-        };
+    let haystack_len = len(haystack), needle_len = len(needle);
+    if needle_len == 0u { true }
+    else if needle_len > haystack_len { false }
+    else { match_at(haystack, needle, haystack_len - needle_len) }
 }
 
 /*
@@ -1054,10 +1029,10 @@ pure fn len(s: str) -> uint unsafe {
     (*repr).fill - 1u
 }
 
-// FIXME: delete?
-fn len_chars(s: str) -> uint {
-    substr_len_chars(s, 0u, len(s))
-}
+// Function: char_len
+//
+// Returns the number of characters that a string holds
+fn char_len(s: str) -> uint { count_chars(s, 0u, len(s)) }
 
 /*
 Section: Misc
@@ -1086,68 +1061,44 @@ fn is_utf8(v: [u8]) -> bool {
 }
 
 /*
-Function: substr_len_chars
+Function: count_chars
 
 As char_len but for a slice of a string
 
 Parameters:
  s           - A valid string
- byte_start  - The position inside `s` where to start counting in bytes.
- byte_len    - The number of bytes of `s` to take into account.
+ start       - The position inside `s` where to start counting in bytes.
+ end         - The position where to stop counting
 
 Returns:
- The number of Unicode characters in `s` in
-segment [byte_start, byte_start+len( .
-
-Safety note:
-- This function does not check whether the substring is valid.
-- This function fails if `byte_offset` or `byte_len` do not
- represent valid positions inside `s`
-
-FIXME: delete?
+ The number of Unicode characters in `s` between the given indices.
 */
-fn substr_len_chars(s: str, byte_start: uint, byte_len: uint) -> uint {
-    let i         = byte_start;
-    let byte_stop = i + byte_len;
-    let len   = 0u;
-    while i < byte_stop {
-        let chsize = utf8_char_width(s[i]);
-        assert (chsize > 0u);
+fn count_chars(s: str, start: uint, end: uint) -> uint {
+    assert is_char_boundary(s, start);
+    assert is_char_boundary(s, end);
+    let i = start, len = 0u;
+    while i < end {
+        let {next, _} = char_range_at(s, i);
         len += 1u;
-        i += chsize;
+        i = next;
     }
     ret len;
 }
 
-/*
-Function: substr_len
-
-As byte_len but for a substring
-
-Parameters:
-s - A string
-byte_offset - The byte offset at which to start in the string
-char_len    - The number of chars (not bytes!) in the range
-
-Returns:
-The number of bytes in the substring starting at `byte_offset` and
-containing `char_len` chars.
-
-Safety note:
-
-This function fails if `byte_offset` or `char_len` do not represent
-valid positions in `s`
-*/
-fn substr_len(s: str, byte_offset: uint, char_len: uint) -> uint {
-    let i = byte_offset;
-    let chars = 0u;
-    while chars < char_len {
-        let chsize = utf8_char_width(s[i]);
-        assert (chsize > 0u);
-        i += chsize;
-        chars += 1u;
+// Function count_bytes
+//
+// Counts the number of bytes taken by the `n` in `s` starting from
+// `start`.
+fn count_bytes(s: str, start: uint, n: uint) -> uint {
+    assert is_char_boundary(s, start);
+    let end = start, cnt = n, l = len(s);
+    while cnt > 0u {
+        assert end < l;
+        let {next, _} = char_range_at(s, end);
+        cnt -= 1u;
+        end = next;
     }
-    ret i - byte_offset;
+    end - start
 }
 
 /*
@@ -1159,15 +1110,25 @@ Given a first byte, determine how many bytes are in this UTF-8 character
 pure fn utf8_char_width(b: u8) -> uint {
     let byte: uint = b as uint;
     if byte < 128u { ret 1u; }
-    if byte < 192u {
-        ret 0u; // Not a valid start byte
-
-    }
+    // Not a valid start byte
+    if byte < 192u { ret 0u; }
     if byte < 224u { ret 2u; }
     if byte < 240u { ret 3u; }
     if byte < 248u { ret 4u; }
     if byte < 252u { ret 5u; }
     ret 6u;
+}
+
+/*
+Function is_char_boundary
+
+Returns false if the index points into the middle of a multi-byte
+character sequence.
+*/
+pure fn is_char_boundary(s: str, index: uint) -> bool {
+    if index == len(s) { ret true; }
+    let b = s[index];
+    ret b < 128u8 || b >= 192u8;
 }
 
 /*
@@ -1236,18 +1197,6 @@ fn char_range_at(s: str, i: uint) -> {ch: char, next: uint} {
 }
 
 /*
-Function is_char_boundary
-
-Returns false if the index points into the middle of a multi-byte
-character sequence.
-*/
-pure fn is_char_boundary(s: str, index: uint) -> bool {
-    if index == len(s) { ret true; }
-    let b = s[index];
-    ret b < 128u8 || b >= 192u8;
-}
-
-/*
 Function: char_at
 
 Pluck a character out of a string
@@ -1274,14 +1223,14 @@ fn char_range_at_reverse(ss: str, start: uint) -> {ch: char, prev: uint} {
 }
 
 /*
-Function: substr_all
+Function: all_between
 
 Loop through a substring, char by char
 
 Parameters:
 s           - A string to traverse. It may be empty.
-byte_offset - The byte offset at which to start in the string.
-byte_len    - The number of bytes to traverse in the string
+start       - The byte offset at which to start in the string.
+end         - The end of the range to traverse
 it          - A block to execute with each consecutive character of `s`.
 Return `true` to continue, `false` to stop.
 
@@ -1295,34 +1244,19 @@ Safety note:
 - This function fails if `byte_offset` or `byte_len` do not
  represent valid positions inside `s`
  */
-fn substr_all(s: str, byte_offset: uint, byte_len: uint,
-              it: fn(char) -> bool) -> bool {
-   let i = byte_offset;
-   let result = true;
-   while i < byte_len {
-      let {ch, next} = char_range_at(s, i);
-      if !it(ch) {result = false; break;}
-      i = next;
-   }
-   ret result;
+fn all_between(s: str, start: uint, end: uint, it: fn(char) -> bool) -> bool {
+    assert is_char_boundary(s, start);
+    let i = start;
+    while i < end {
+        let {ch, next} = char_range_at(s, i);
+        if !it(ch) { ret false; }
+        i = next;
+    }
+    ret true;
 }
 
-
-/*
-Function: escape_char
-
-Escapes a single character.
-*/
-fn escape_char(c: char) -> str {
-    alt c {
-      '"' { "\\\"" }
-      '\\' { "\\\\" }
-      '\n' { "\\n" }
-      '\t' { "\\t" }
-      '\r' { "\\r" }
-      '\x00' to '\x1f' { #fmt["\\x%02x", c as uint] }
-      v { from_char(c) }
-    }
+fn any_between(s: str, start: uint, end: uint, it: fn(char) -> bool) -> bool {
+    !all_between(s, start, end, {|c| !it(c)})
 }
 
 // UTF-8 tags and ranges
@@ -1395,7 +1329,6 @@ mod unsafe {
       from_bytes,
       from_byte,
       slice_bytes,
-      slice_bytes_safe_range,
       push_byte,
       push_bytes,
       pop_byte,
@@ -1441,18 +1374,6 @@ mod unsafe {
        ret s;
    }
 
-   /*
-   Function: slice_bytes_safe_range
-
-   Like slice_bytes, with a precondition
-   */
-   unsafe fn slice_bytes_safe_range(s: str, begin: uint, end: uint)
-       : uint::le(begin, end) -> str {
-       // would need some magic to make this a precondition
-       assert (end <= len(s));
-       ret slice_bytes(s, begin, end);
-   }
-
    // Function: push_byte
    //
    // Appends a byte to a string. (Not UTF-8 safe).
@@ -1488,7 +1409,7 @@ mod unsafe {
        s = unsafe::slice_bytes(s, 1u, len);
        ret b;
    }
-    
+
     unsafe fn set_len(&v: str, new_len: uint) {
         let repr: *vec::unsafe::vec_repr = ::unsafe::reinterpret_cast(v);
         (*repr).fill = new_len + 1u;
@@ -1526,39 +1447,23 @@ mod tests {
         assert (len("\u2620") == 3u);
         assert (len("\U0001d11e") == 4u);
 
-        assert (len_chars("") == 0u);
-        assert (len_chars("hello world") == 11u);
-        assert (len_chars("\x63") == 1u);
-        assert (len_chars("\xa2") == 1u);
-        assert (len_chars("\u03c0") == 1u);
-        assert (len_chars("\u2620") == 1u);
-        assert (len_chars("\U0001d11e") == 1u);
-        assert (len_chars("ประเทศไทย中华Việt Nam") == 19u);
+        assert (char_len("") == 0u);
+        assert (char_len("hello world") == 11u);
+        assert (char_len("\x63") == 1u);
+        assert (char_len("\xa2") == 1u);
+        assert (char_len("\u03c0") == 1u);
+        assert (char_len("\u2620") == 1u);
+        assert (char_len("\U0001d11e") == 1u);
+        assert (char_len("ประเทศไทย中华Việt Nam") == 19u);
     }
 
     #[test]
-    fn test_index_chars() {
-        assert ( index_chars("hello", 'h') == some(0u));
-        assert ( index_chars("hello", 'e') == some(1u));
-        assert ( index_chars("hello", 'o') == some(4u));
-        assert ( index_chars("hello", 'z') == none);
-    }
-
-    #[test]
-    fn test_rindex() {
-        assert rindex("hello", 'l') == some(3u);
-        assert rindex("hello", 'o') == some(4u);
-        assert rindex("hello", 'h') == some(0u);
-        assert rindex("hello", 'z') == none;
-        assert rindex("ประเทศไทย中华Việt Nam", '华') == some(30u);
-    }
-
-    #[test]
-    fn test_rindex_chars() {
-        assert (rindex_chars("hello", 'l') == some(3u));
-        assert (rindex_chars("hello", 'o') == some(4u));
-        assert (rindex_chars("hello", 'h') == some(0u));
-        assert (rindex_chars("hello", 'z') == none);
+    fn test_rfind_char() {
+        assert rfind_char("hello", 'l') == some(3u);
+        assert rfind_char("hello", 'o') == some(4u);
+        assert rfind_char("hello", 'h') == some(0u);
+        assert rfind_char("hello", 'z') == none;
+        assert rfind_char("ประเทศไทย中华Việt Nam", '华') == some(30u);
     }
 
     #[test]
@@ -1752,67 +1657,45 @@ mod tests {
     }
 
     #[test]
-    fn test_find() {
+    fn test_find_str() {
         // byte positions
-        assert (find("banana", "apple pie") == none);
-        assert (find("", "") == some(0u));
+        assert find_str("banana", "apple pie") == none;
+        assert find_str("", "") == some(0u);
 
         let data = "ประเทศไทย中华Việt Nam";
-        assert (find(data, "")     == some(0u));
-        assert (find(data, "ประเ") == some( 0u));
-        assert (find(data, "ะเ")   == some( 6u));
-        assert (find(data, "中华") == some(27u));
-        assert (find(data, "ไท华") == none);
+        assert find_str(data, "")     == some(0u);
+        assert find_str(data, "ประเ") == some( 0u);
+        assert find_str(data, "ะเ")   == some( 6u);
+        assert find_str(data, "中华") == some(27u);
+        assert find_str(data, "ไท华") == none;
     }
 
     #[test]
-    fn test_find_from() {
+    fn test_find_str_between() {
         // byte positions
-        assert (find_from("", "", 0u, 0u) == some(0u));
+        assert find_str_between("", "", 0u, 0u) == some(0u);
 
         let data = "abcabc";
-        assert find_from(data, "ab", 0u, 6u) == some(0u);
-        assert find_from(data, "ab", 2u, 6u) == some(3u);
-        assert find_from(data, "ab", 2u, 4u) == none;
+        assert find_str_between(data, "ab", 0u, 6u) == some(0u);
+        assert find_str_between(data, "ab", 2u, 6u) == some(3u);
+        assert find_str_between(data, "ab", 2u, 4u) == none;
 
         let data = "ประเทศไทย中华Việt Nam";
         data += data;
-        assert find_from(data, "", 0u, 43u) == some(0u);
-        assert find_from(data, "", 6u, 43u) == some(6u);
+        assert find_str_between(data, "", 0u, 43u) == some(0u);
+        assert find_str_between(data, "", 6u, 43u) == some(6u);
 
-        assert find_from(data, "ประ", 0u, 43u) == some( 0u);
-        assert find_from(data, "ทศไ", 0u, 43u) == some(12u);
-        assert find_from(data, "ย中", 0u, 43u) == some(24u);
-        assert find_from(data, "iệt", 0u, 43u) == some(34u);
-        assert find_from(data, "Nam", 0u, 43u) == some(40u);
+        assert find_str_between(data, "ประ", 0u, 43u) == some( 0u);
+        assert find_str_between(data, "ทศไ", 0u, 43u) == some(12u);
+        assert find_str_between(data, "ย中", 0u, 43u) == some(24u);
+        assert find_str_between(data, "iệt", 0u, 43u) == some(34u);
+        assert find_str_between(data, "Nam", 0u, 43u) == some(40u);
 
-        assert find_from(data, "ประ", 43u, 86u) == some(43u);
-        assert find_from(data, "ทศไ", 43u, 86u) == some(55u);
-        assert find_from(data, "ย中", 43u, 86u) == some(67u);
-        assert find_from(data, "iệt", 43u, 86u) == some(77u);
-        assert find_from(data, "Nam", 43u, 86u) == some(83u);
-    }
-
-    #[test]
-    fn test_find_chars() {
-        // char positions
-        assert (find_chars("banana", "apple pie") == none);
-        assert (find_chars("", "") == some(0u));
-
-        let data = "ประเทศไทย中华Việt Nam";
-        assert (find_chars(data, "")     == some(0u));
-        assert (find_chars(data, "ประเ") == some(0u));
-        assert (find_chars(data, "ะเ")   == some(2u));
-        assert (find_chars(data, "中华") == some(9u));
-        assert (find_chars(data, "ไท华") == none);
-    }
-
-    #[test]
-    fn test_b2c_pos() {
-        let data = "ประเทศไทย中华Việt Nam";
-        assert 0u == b2c_pos(data, 0u);
-        assert 2u == b2c_pos(data, 6u);
-        assert 9u == b2c_pos(data, 27u);
+        assert find_str_between(data, "ประ", 43u, 86u) == some(43u);
+        assert find_str_between(data, "ทศไ", 43u, 86u) == some(55u);
+        assert find_str_between(data, "ย中", 43u, 86u) == some(67u);
+        assert find_str_between(data, "iệt", 43u, 86u) == some(77u);
+        assert find_str_between(data, "Nam", 43u, 86u) == some(83u);
     }
 
     #[test]
@@ -1822,9 +1705,7 @@ mod tests {
         }
         t("hello", "llo", 2);
         t("hello", "el", 1);
-
-        assert "ะเทศไท"
-            == substr("ประเทศไทย中华Việt Nam", 6u, 18u);
+        assert "ะเทศไท" == substr("ประเทศไทย中华Việt Nam", 6u, 6u);
     }
 
     #[test]
@@ -2310,19 +2191,6 @@ mod tests {
             }
             ii += 1;
         }
-    }
-
-    #[test]
-    fn test_escape() {
-        assert(escape("abcdef") == "abcdef");
-        assert(escape("abc\\def") == "abc\\\\def");
-        assert(escape("abc\ndef") == "abc\\ndef");
-        assert(escape("abc\"def") == "abc\\\"def");
-    }
-
-    #[test]
-    fn test_escape_char() {
-        assert escape_char('\x1f') == "\\x1f";
     }
 
     #[test]

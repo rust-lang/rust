@@ -282,7 +282,7 @@ mod test {
         astsrv::from_str(source) {|srv|
             let doc = extract::from_srv(srv, "");
             let doc = attr_pass::mk_pass()(srv, doc);
-            mk_pass(str::trim)(srv, doc)
+            mk_pass({|s| str::trim(s)})(srv, doc)
         }
     }
 }

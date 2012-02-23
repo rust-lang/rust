@@ -320,16 +320,14 @@ mod rt {
     fn conv_str(cv: conv, s: str) -> str unsafe {
         // For strings, precision is the maximum characters
         // displayed
-
-        let unpadded =
-            alt cv.precision {
-              count_implied { s }
-              count_is(max) {
-                if max as uint < str::len_chars(s) {
-                    str::substr(s, 0u, max as uint)
-                } else { s }
-              }
-            };
+        let unpadded = alt cv.precision {
+          count_implied { s }
+          count_is(max) {
+            if max as uint < str::char_len(s) {
+                str::substr(s, 0u, max as uint)
+            } else { s }
+          }
+        };
         ret pad(cv, unpadded, pad_nozero);
     }
     fn conv_float(cv: conv, f: float) -> str {
@@ -368,7 +366,7 @@ mod rt {
                 ""
             } else {
                 let s = uint::to_str(num, radix);
-                let len = str::len_chars(s);
+                let len = str::char_len(s);
                 if len < prec {
                     let diff = prec - len;
                     let pad = str_init_elt(diff, '0');
@@ -400,7 +398,7 @@ mod rt {
             uwidth = width as uint;
           }
         }
-        let strlen = str::len_chars(s);
+        let strlen = str::char_len(s);
         if uwidth <= strlen { ret s; }
         let padchar = ' ';
         let diff = uwidth - strlen;

@@ -214,7 +214,7 @@ fn finish<T: qq_helper>
         if (j < g_len && i == cx.gather[j].lo) {
             assert ch == '$';
             let repl = #fmt("$%u ", j);
-            state = skip(str::len_chars(repl));
+            state = skip(str::char_len(repl));
             str2 += repl;
         }
         alt state {

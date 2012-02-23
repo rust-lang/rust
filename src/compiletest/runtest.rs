@@ -198,7 +198,7 @@ fn check_error_patterns(props: test_props,
 
     let next_err_idx = 0u;
     let next_err_pat = props.error_patterns[next_err_idx];
-    for line: str in str::split_byte(procres.stderr, '\n' as u8) {
+    for line: str in str::split_char(procres.stderr, '\n') {
         if str::contains(line, next_err_pat) {
             #debug("found error pattern %s", next_err_pat);
             next_err_idx += 1u;
@@ -245,7 +245,7 @@ fn check_expected_errors(expected_errors: [errors::expected_error],
     //    filename:line1:col1: line2:col2: *warning:* msg
     // where line1:col1: is the starting point, line2:col2:
     // is the ending point, and * represents ANSI color codes.
-    for line: str in str::split_byte(procres.stderr, '\n' as u8) {
+    for line: str in str::split_char(procres.stderr, '\n') {
         let was_expected = false;
         vec::iteri(expected_errors) {|i, ee|
             if !found_flags[i] {
@@ -350,7 +350,7 @@ fn split_maybe_args(argstr: option<str>) -> [str] {
     }
 
     alt argstr {
-      option::some(s) { rm_whitespace(str::split_byte(s, ' ' as u8)) }
+      option::some(s) { rm_whitespace(str::split_char(s, ' ')) }
       option::none { [] }
     }
 }
@@ -410,12 +410,10 @@ fn make_out_name(config: config, testfile: str, extension: str) -> str {
 
 fn output_base_name(config: config, testfile: str) -> str {
     let base = config.build_base;
-    let filename =
-        {
-            let parts = str::split_byte(fs::basename(testfile), '.' as u8);
-            parts = vec::slice(parts, 0u, vec::len(parts) - 1u);
-            str::connect(parts, ".")
-        };
+    let filename = {
+        let parts = str::split_char(fs::basename(testfile), '.');
+        str::connect(vec::slice(parts, 0u, vec::len(parts) - 1u), ".")
+    };
     #fmt["%s%s.%s", base, filename, config.stage_id]
 }
 

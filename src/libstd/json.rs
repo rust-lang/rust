@@ -3,10 +3,6 @@
 
 import float;
 import map;
-import core::option;
-import option::{some, none};
-import str;
-import vec;
 
 export json;
 export to_str;

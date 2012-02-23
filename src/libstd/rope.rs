@@ -743,7 +743,7 @@ mod node {
      */
     fn of_substr(str: @str, byte_start: uint, byte_len: uint) -> @node {
         ret of_substr_unsafer(str, byte_start, byte_len,
-                  str::substr_len_chars(*str, byte_start, byte_len));
+                              str::count_chars(*str, byte_start, byte_len));
     }
 
     /*
@@ -795,7 +795,7 @@ mod node {
                     if i == 0u  { first_leaf_char_len }
                     else { hint_max_leaf_char_len };
                 let chunk_byte_len =
-                    str::substr_len(*str, offset, chunk_char_len);
+                    str::count_bytes(*str, offset, chunk_char_len);
                 nodes[i] = @leaf({
                     byte_offset: offset,
                     byte_len:    chunk_byte_len,
@@ -998,7 +998,7 @@ mod node {
             alt(*node) {
               node::leaf(x) {
                 let char_len =
-                    str::substr_len_chars(*x.content, byte_offset, byte_len);
+                    str::count_chars(*x.content, byte_offset, byte_len);
                 ret @leaf({byte_offset: byte_offset,
                                 byte_len:    byte_len,
                                 char_len:    char_len,
@@ -1059,9 +1059,9 @@ mod node {
                     ret node;
                 }
                 let byte_offset =
-                    str::substr_len(*x.content, 0u, char_offset);
+                    str::count_bytes(*x.content, 0u, char_offset);
                 let byte_len    =
-                    str::substr_len(*x.content, byte_offset, char_len);
+                    str::count_bytes(*x.content, byte_offset, char_len);
                 ret @leaf({byte_offset: byte_offset,
                            byte_len:    byte_len,
                            char_len:    char_len,
@@ -1138,9 +1138,9 @@ mod node {
 
     fn loop_chars(node: @node, it: fn(char) -> bool) -> bool {
         ret loop_leaves(node, {|leaf|
-            ret str::substr_all(*leaf.content,
-                                    leaf.byte_offset,
-                                    leaf.byte_len, it)
+            ret str::all_between(*leaf.content,
+                                 leaf.byte_offset,
+                                 leaf.byte_len, it)
         })
     }
 
@@ -1373,7 +1373,7 @@ mod tests {
         let sample = @"0123456789ABCDE";
         let r      = of_str(sample);
 
-        assert char_len(r) == str::len_chars(*sample);
+        assert char_len(r) == str::char_len(*sample);
         assert rope_to_string(r) == *sample;
     }
 
@@ -1384,7 +1384,7 @@ mod tests {
         while i < 10 { *buf = *buf + *buf; i+=1;}
         let sample = @*buf;
         let r      = of_str(sample);
-        assert char_len(r) == str::len_chars(*sample);
+        assert char_len(r) == str::char_len(*sample);
         assert rope_to_string(r) == *sample;
 
         let string_iter = 0u;
@@ -1427,7 +1427,7 @@ mod tests {
             }
         }
 
-        assert len == str::len_chars(*sample);
+        assert len == str::char_len(*sample);
     }
 
     #[test]

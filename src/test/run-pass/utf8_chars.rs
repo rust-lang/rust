@@ -8,8 +8,8 @@ fn main() {
     let s: str = str::from_chars(chs);
 
     assert (str::len(s) == 10u);
-    assert (str::len_chars(s) == 4u);
-    assert (vec::len::<char>(str::chars(s)) == 4u);
+    assert (str::char_len(s) == 4u);
+    assert (vec::len(str::chars(s)) == 4u);
     assert (str::eq(str::from_chars(str::chars(s)), s));
     assert (str::char_at(s, 0u) == 'e');
     assert (str::char_at(s, 1u) == 'é');

@@ -109,13 +109,10 @@ mod write {
     // Decides what to call an intermediate file, given the name of the output
     // and the extension to use.
     fn mk_intermediate_name(output_path: str, extension: str) -> str unsafe {
-        let stem = alt str::index(output_path, '.') {
-                       option::some(dot_pos) {
-                           str::slice(output_path, 0u, dot_pos)
-                       }
-                       option::none { output_path }
-                   };
-
+        let stem = alt str::find_char(output_path, '.') {
+          some(dot_pos) { str::slice(output_path, 0u, dot_pos) }
+          none { output_path }
+        };
         ret stem + "." + extension;
     }
 
@@ -566,7 +563,7 @@ fn link_binary(sess: session,
     // Converts a library file name into a cc -l argument
     fn unlib(config: @session::config, filename: str) -> str unsafe {
         let rmlib = fn@(filename: str) -> str {
-            let found = str::find(filename, "lib");
+            let found = str::find_str(filename, "lib");
             if config.os == session::os_macos ||
                 (config.os == session::os_linux ||
                  config.os == session::os_freebsd) &&
