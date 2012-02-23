@@ -37,7 +37,7 @@ export
    slice,
    split, splitn, split_nonempty,
    split_char, splitn_char, split_char_nonempty,
-   split_str,
+   split_str, split_str_nonempty,
    lines,
    lines_any,
    words,
@@ -494,21 +494,11 @@ fn split_inner(s: str, sepfn: fn(cc: char) -> bool, count: uint,
     result
 }
 
-/*
-Function: split_str
-
-Splits a string into a vector of the substrings separated by a given string
-
-Note that this has recently been changed.  For example:
->  assert ["", "XXX", "YYY", ""] == split_str(".XXX.YYY.", ".")
-
-FIXME: Boyer-Moore should be faster
-*/
-fn split_str(s: str, sep: str) -> [str] unsafe {
+// FIXME use Boyer-Moore
+fn iter_matches(s: str, sep: str, f: fn(uint, uint)) {
     let sep_len = len(sep), l = len(s);
     assert sep_len > 0u;
-    let result = [], i = 0u, start = 0u;
-    let match_start = 0u, match_i = 0u;
+    let i = 0u, match_start = 0u, match_i = 0u;
 
     while i < l {
         if s[i] == sep[match_i] {
@@ -516,9 +506,8 @@ fn split_str(s: str, sep: str) -> [str] unsafe {
             match_i += 1u;
             // Found a match
             if match_i == sep_len {
-                result += [unsafe::slice_bytes(s, start, match_start)];
+                f(match_start, i + 1u);
                 match_i = 0u;
-                start = i + 1u;
             }
             i += 1u;
         } else {
@@ -531,7 +520,40 @@ fn split_str(s: str, sep: str) -> [str] unsafe {
             }
         }
     }
-    result += [unsafe::slice_bytes(s, start, l)];
+}
+
+fn iter_between_matches(s: str, sep: str, f: fn(uint, uint)) {
+    let last_end = 0u;
+    iter_matches(s, sep) {|from, to|
+        f(last_end, from);
+        last_end = to;
+    }
+    f(last_end, len(s));
+}
+
+/*
+Function: split_str
+
+Splits a string into a vector of the substrings separated by a given string
+
+Note that this has recently been changed.  For example:
+>  assert ["", "XXX", "YYY", ""] == split_str(".XXX.YYY.", ".")
+*/
+fn split_str(s: str, sep: str) -> [str] {
+    let result = [];
+    iter_between_matches(s, sep) {|from, to|
+        unsafe { result += [unsafe::slice_bytes(s, from, to)]; }
+    }
+    result
+}
+
+fn split_str_nonempty(s: str, sep: str) -> [str] {
+    let result = [];
+    iter_between_matches(s, sep) {|from, to|
+        if to > from {
+            unsafe { result += [unsafe::slice_bytes(s, from, to)]; }
+        }
+    }
     result
 }
 
@@ -587,7 +609,6 @@ fn to_upper(s: str) -> str {
     map(s, char::to_upper)
 }
 
-// FIXME: This is super-inefficient: stop the extra slicing copies
 /*
 Function: replace
 
@@ -604,24 +625,12 @@ Returns:
 The original string with all occurances of `from` replaced with `to`
 */
 fn replace(s: str, from: str, to: str) -> str unsafe {
-    assert is_not_empty(from);
-    if len(s) == 0u {
-        ret "";
-    } else if starts_with(s, from) {
-        ret to + replace(
-                     unsafe::slice_bytes(s, len(from), len(s)),
-                                       from, to);
-    } else {
-        let idx;
-        alt find(s, from) {
-            some(x) { idx = x; }
-            none { ret s; }
-        }
-        let before = unsafe::slice_bytes(s, 0u, idx as uint);
-        let after  = unsafe::slice_bytes(s, idx as uint + len(from),
-                                         len(s));
-        ret before + to + replace(after, from, to);
+    let result = "", first = true;
+    iter_between_matches(s, from) {|start, end|
+        if first { first = false; } else { result += to; }
+        unsafe { result += unsafe::slice_bytes(s, start, end); }
     }
+    result
 }
 
 /*
@@ -1911,12 +1920,12 @@ mod tests {
     #[test]
     fn test_replace() {
         let a = "a";
-        assert (replace("", a, "b") == "");
-        assert (replace("a", a, "b") == "b");
-        assert (replace("ab", a, "b") == "bb");
+        assert replace("", a, "b") == "";
+        assert replace("a", a, "b") == "b";
+        assert replace("ab", a, "b") == "bb";
         let test = "test";
-        assert (replace(" test test ", test, "toast") == " toast toast ");
-        assert (replace(" test test ", test, "") == "   ");
+        assert replace(" test test ", test, "toast") == " toast toast ";
+        assert replace(" test test ", test, "") == "   ";
     }
 
     #[test]
