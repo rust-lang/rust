@@ -24,7 +24,7 @@ impl reader for reader {
     fn get_str_from(start: uint) -> str unsafe {
         // I'm pretty skeptical about this subtraction. What if there's a
         // multi-byte character before the mark?
-        ret str::unsafe::slice_bytes(*self.src, start - 1u, self.pos - 1u);
+        ret str::slice(*self.src, start - 1u, self.pos - 1u);
     }
     fn next() -> char {
         if self.pos < self.len {
@@ -611,7 +611,7 @@ fn trim_whitespace_prefix_and_push_line(&lines: [str],
     let s1;
     if all_whitespace(s, 0u, col) {
         if col < str::len_bytes(s) {
-            s1 = str::unsafe::slice_bytes(s, col, str::len_bytes(s));
+            s1 = str::slice(s, col, str::len_bytes(s));
         } else { s1 = ""; }
     } else { s1 = s; }
     log(debug, "pushing line: " + s1);
