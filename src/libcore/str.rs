@@ -1192,7 +1192,7 @@ fn substr_len_chars(s: str, byte_start: uint, byte_len: uint) -> uint {
 }
 
 /*
-Function: substr_len_bytes
+Function: substr_len
 
 As byte_len but for a substring
 
@@ -1210,7 +1210,7 @@ Safety note:
 This function fails if `byte_offset` or `char_len` do not represent
 valid positions in `s`
 */
-fn substr_len_bytes(s: str, byte_offset: uint, char_len: uint) -> uint {
+fn substr_len(s: str, byte_offset: uint, char_len: uint) -> uint {
     let i = byte_offset;
     let chars = 0u;
     while chars < char_len {
