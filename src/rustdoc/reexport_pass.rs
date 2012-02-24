@@ -104,7 +104,8 @@ fn build_reexport_def_map(
 
     // FIXME: Do a parallel fold
     let fold = fold::fold({
-        fold_mod: fold_mod
+        fold_mod: fold_mod,
+        fold_nmod: fold_nmod
         with *fold::default_seq_fold(ctxt)
     });
 
@@ -119,6 +120,19 @@ fn build_reexport_def_map(
             let def_id = ast_util::local_def(item.id());
             if fold.ctxt.def_set.contains_key(def_id) {
                 fold.ctxt.def_map.insert(def_id, item);
+            }
+        }
+
+        ret doc;
+    }
+
+    fn fold_nmod(fold: fold::fold<ctxt>, doc: doc::nmoddoc) -> doc::nmoddoc {
+        let doc = fold::default_seq_fold_nmod(fold, doc);
+
+        for fndoc in doc.fns {
+            let def_id = ast_util::local_def(fndoc.id());
+            if fold.ctxt.def_set.contains_key(def_id) {
+                fold.ctxt.def_map.insert(def_id, doc::fntag(fndoc));
             }
         }
 
@@ -296,6 +310,14 @@ fn should_mark_reepxorts_as_such() {
                   mod c { import a::b; export b; }";
     let doc = test::mk_doc(source);
     assert doc.topmod.mods()[1].fns()[0].item.reexport == true;
+}
+
+#[test]
+fn should_duplicate_reexported_native_fns() {
+    let source = "native mod a { fn b(); } \
+                  mod c { import a::b; export b; }";
+    let doc = test::mk_doc(source);
+    assert doc.topmod.mods()[0].fns()[0].name() == "b";
 }
 
 #[test]
