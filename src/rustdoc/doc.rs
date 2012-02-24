@@ -37,7 +37,7 @@ type moddoc = {
 
 type nmoddoc = {
     item: itemdoc,
-    fns: ~[fndoc]
+    fns: [fndoc]
 };
 
 type constdoc = {
@@ -115,6 +115,15 @@ impl util for moddoc {
         vec::filter_map(*self.items) {|itemtag|
             alt itemtag {
               modtag(moddoc) { some(moddoc) }
+              _ { none }
+            }
+        }
+    }
+
+    fn nmods() -> [nmoddoc] {
+        vec::filter_map(*self.items) {|itemtag|
+            alt itemtag {
+              nmodtag(nmoddoc) { some(nmoddoc) }
               _ { none }
             }
         }

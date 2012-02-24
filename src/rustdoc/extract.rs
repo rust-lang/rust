@@ -57,6 +57,11 @@ fn moddoc_from_mod(
                     moddoc_from_mod(itemdoc, m)
                 ))
               }
+              ast::item_native_mod(nm) {
+                some(doc::nmodtag(
+                    nmoddoc_from_mod(itemdoc, nm)
+                ))
+              }
               ast::item_fn(decl, _, _) {
                 some(doc::fntag(
                     fndoc_from_fn(itemdoc, decl)
@@ -94,6 +99,23 @@ fn moddoc_from_mod(
               }
               _ {
                 none
+              }
+            }
+        }
+    }
+}
+
+fn nmoddoc_from_mod(
+    itemdoc: doc::itemdoc,
+    module: ast::native_mod
+) -> doc::nmoddoc {
+    {
+        item: itemdoc,
+        fns: vec::map(module.items) {|item|
+            let itemdoc = mk_itemdoc(item.id, item.ident);
+            alt item.node {
+              ast::native_item_fn(decl, _) {
+                fndoc_from_fn(itemdoc, decl)
               }
             }
         }
@@ -339,6 +361,18 @@ mod test {
         assert doc.topmod.mods()[0].name() == "a";
         assert doc.topmod.mods()[0].mods()[0].name() == "b";
         assert doc.topmod.mods()[0].mods()[1].name() == "c";
+    }
+
+    #[test]
+    fn extract_native_mods() {
+        let doc = mk_doc("native mod a { }");
+        assert doc.topmod.nmods()[0].name() == "a";
+    }
+
+    #[test]
+    fn extract_fns_from_native_mods() {
+        let doc = mk_doc("native mod a { fn a(); }");
+        assert doc.topmod.nmods()[0].fns[0].name() == "a";
     }
 
     #[test]

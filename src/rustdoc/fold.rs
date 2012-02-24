@@ -154,7 +154,7 @@ fn default_seq_fold_nmod<T>(
 ) -> doc::nmoddoc {
     {
         item: fold.fold_item(fold, doc.item),
-        fns: ~vec::map(*doc.fns) {|fndoc|
+        fns: vec::map(doc.fns) {|fndoc|
             fold.fold_fn(fold, fndoc)
         }
         with doc
