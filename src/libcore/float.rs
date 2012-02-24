@@ -19,6 +19,7 @@ export mul_add, fmax, fmin, nextafter, frexp, hypot, ldexp;
 export lgamma, ln, log_radix, ln1p, log10, log2, ilog_radix;
 export modf, pow, round, sin, sinh, sqrt, tan, tanh, tgamma, trunc;
 export signbit;
+export pow_with_uint;
 
 // export when m_float == c_double
 
@@ -55,7 +56,7 @@ fn to_str_common(num: float, digits: uint, exact: bool) -> str {
     if (frac < epsilon && !exact) || digits == 0u { ret accum; }
     accum += ".";
     let i = digits;
-    let epsilon = 1. / pow_uint_to_uint_as_float(10u, i);
+    let epsilon = 1. / pow_with_uint(10u, i);
     while i > 0u && (frac >= epsilon || exact) {
         frac *= 10.0;
         epsilon *= 10.0;
@@ -228,7 +229,7 @@ fn from_str(num: str) -> option<float> {
              }
              pos = char_range.next;
           }
-          let multiplier = pow_uint_to_uint_as_float(10u, exponent);
+          let multiplier = pow_with_uint(10u, exponent);
               //Note: not [int::pow], otherwise, we'll quickly
               //end up with a nice overflow
           if neg_exponent {
@@ -256,7 +257,7 @@ fn from_str(num: str) -> option<float> {
  */
 
 /*
-Function: pow_uint_to_uint_as_float
+Function: pow_with_uint
 
 Compute the exponentiation of an integer by another integer as a float.
 
@@ -267,8 +268,8 @@ pow - The exponent.
 Returns:
 <NaN> of both `x` and `pow` are `0u`, otherwise `x^pow`.
 */
-fn pow_uint_to_uint_as_float(x: uint, pow: uint) -> float {
-   if x == 0u {
+fn pow_with_uint(base: uint, pow: uint) -> float {
+   if base == 0u {
       if pow == 0u {
         ret NaN;
       }
@@ -276,7 +277,7 @@ fn pow_uint_to_uint_as_float(x: uint, pow: uint) -> float {
    }
    let my_pow     = pow;
    let total      = 1f;
-   let multiplier = x as float;
+   let multiplier = base as float;
    while (my_pow > 0u) {
      if my_pow % 2u == 1u {
        total = total * multiplier;
