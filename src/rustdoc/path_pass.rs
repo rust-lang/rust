@@ -47,7 +47,11 @@ fn fold_nmod(fold: fold::fold<ctxt>, doc: doc::nmoddoc) -> doc::nmoddoc {
     vec::push(fold.ctxt.path, doc.name());
     let doc = fold::default_seq_fold_nmod(fold, doc);
     vec::pop(fold.ctxt.path);
-    ret doc;
+
+    {
+        item: fold.fold_item(fold, doc.item)
+        with doc
+    }
 }
 
 #[test]
@@ -68,6 +72,16 @@ fn should_record_fn_paths() {
         let doc = extract::from_srv(srv, "");
         let doc = run(srv, doc);
         assert doc.topmod.mods()[0].fns()[0].path() == ["a"];
+    }
+}
+
+#[test]
+fn should_record_native_mod_paths() {
+    let source = "mod a { native mod b { } }";
+    astsrv::from_str(source) {|srv|
+        let doc = extract::from_srv(srv, "");
+        let doc = run(srv, doc);
+        assert doc.topmod.mods()[0].nmods()[0].path() == ["a"];
     }
 }
 

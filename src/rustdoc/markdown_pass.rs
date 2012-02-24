@@ -158,6 +158,9 @@ fn should_write_crate_description() {
 }
 
 fn write_nmod(ctxt: ctxt, doc: doc::nmoddoc) {
+    let fullpath = str::connect(doc.path() + [doc.name()], "::");
+    write_header(ctxt, h1, #fmt("Native module `%s`", fullpath));
+
     write_brief(ctxt, doc.brief());
     write_desc(ctxt, doc.desc());
 
@@ -169,6 +172,8 @@ fn write_nmod(ctxt: ctxt, doc: doc::nmoddoc) {
 #[test]
 fn should_write_native_mods() {
     let markdown = test::render("#[doc = \"test\"] native mod a { }");
+    log(error, markdown);
+    assert str::contains(markdown, "Native module `a`");
     assert str::contains(markdown, "test");
 }
 
