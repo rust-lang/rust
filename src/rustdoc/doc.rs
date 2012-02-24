@@ -11,6 +11,7 @@ type cratedoc = {
 
 enum itemtag {
     modtag(moddoc),
+    nmodtag(nmoddoc),
     consttag(constdoc),
     fntag(fndoc),
     enumtag(enumdoc),
@@ -32,6 +33,11 @@ type moddoc = {
     item: itemdoc,
     // This box exists to break the structural recursion
     items: ~[itemtag]
+};
+
+type nmoddoc = {
+    item: itemdoc,
+    fns: ~[fndoc]
 };
 
 type constdoc = {
@@ -186,6 +192,7 @@ impl of item for itemtag {
     fn item() -> itemdoc {
         alt self {
           doc::modtag(doc) { doc.item }
+          doc::nmodtag(doc) { doc.item }
           doc::fntag(doc) { doc.item }
           doc::consttag(doc) { doc.item }
           doc::enumtag(doc) { doc.item }
@@ -198,6 +205,10 @@ impl of item for itemtag {
 }
 
 impl of item for moddoc {
+    fn item() -> itemdoc { self.item }
+}
+
+impl of item for nmoddoc {
     fn item() -> itemdoc { self.item }
 }
 

@@ -133,6 +133,7 @@ fn write_mod_contents(
     for itemtag in *doc.items {
         alt itemtag {
           doc::modtag(moddoc) { write_mod(ctxt, moddoc) }
+          doc::nmodtag(_) { fail }
           doc::fntag(fndoc) { write_fn(ctxt, fndoc) }
           doc::consttag(constdoc) { write_const(ctxt, constdoc) }
           doc::enumtag(enumdoc) { write_enum(ctxt, enumdoc) }

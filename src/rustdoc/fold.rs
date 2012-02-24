@@ -4,6 +4,7 @@ export default_seq_fold;
 export default_seq_fold_crate;
 export default_seq_fold_item;
 export default_seq_fold_mod;
+export default_seq_fold_nmod;
 export default_seq_fold_fn;
 export default_seq_fold_const;
 export default_seq_fold_enum;
@@ -21,6 +22,7 @@ enum fold<T> = t<T>;
 type fold_crate<T> = fn~(fold: fold<T>, doc: doc::cratedoc) -> doc::cratedoc;
 type fold_item<T> = fn~(fold: fold<T>, doc: doc::itemdoc) -> doc::itemdoc;
 type fold_mod<T> = fn~(fold: fold<T>, doc: doc::moddoc) -> doc::moddoc;
+type fold_nmod<T> = fn~(fold: fold<T>, doc: doc::nmoddoc) -> doc::nmoddoc;
 type fold_fn<T> = fn~(fold: fold<T>, doc: doc::fndoc) -> doc::fndoc;
 type fold_const<T> = fn~(fold: fold<T>, doc: doc::constdoc) -> doc::constdoc;
 type fold_enum<T> = fn~(fold: fold<T>, doc: doc::enumdoc) -> doc::enumdoc;
@@ -34,6 +36,7 @@ type t<T> = {
     fold_crate: fold_crate<T>,
     fold_item: fold_item<T>,
     fold_mod: fold_mod<T>,
+    fold_nmod: fold_nmod<T>,
     fold_fn: fold_fn<T>,
     fold_const: fold_const<T>,
     fold_enum: fold_enum<T>,
@@ -51,6 +54,7 @@ fn mk_fold<T:copy>(
     fold_crate: fold_crate<T>,
     fold_item: fold_item<T>,
     fold_mod: fold_mod<T>,
+    fold_nmod: fold_nmod<T>,
     fold_fn: fold_fn<T>,
     fold_const: fold_const<T>,
     fold_enum: fold_enum<T>,
@@ -64,6 +68,7 @@ fn mk_fold<T:copy>(
         fold_crate: fold_crate,
         fold_item: fold_item,
         fold_mod: fold_mod,
+        fold_nmod: fold_nmod,
         fold_fn: fold_fn,
         fold_const: fold_const,
         fold_enum: fold_enum,
@@ -80,6 +85,7 @@ fn default_seq_fold<T:copy>(ctxt: T) -> fold<T> {
         {|f, d| default_seq_fold_crate(f, d)},
         {|f, d| default_seq_fold_item(f, d)},
         {|f, d| default_seq_fold_mod(f, d)},
+        {|f, d| default_seq_fold_nmod(f, d)},
         {|f, d| default_seq_fold_fn(f, d)},
         {|f, d| default_seq_fold_const(f, d)},
         {|f, d| default_seq_fold_enum(f, d)},
@@ -96,6 +102,7 @@ fn default_par_fold<T:send>(ctxt: T) -> fold<T> {
         {|f, d| default_seq_fold_crate(f, d)},
         {|f, d| default_seq_fold_item(f, d)},
         {|f, d| default_par_fold_mod(f, d)},
+        {|f, d| default_seq_fold_nmod(f, d)},
         {|f, d| default_seq_fold_fn(f, d)},
         {|f, d| default_seq_fold_const(f, d)},
         {|f, d| default_seq_fold_enum(f, d)},
@@ -141,6 +148,19 @@ fn default_seq_fold_mod<T>(
     }
 }
 
+fn default_seq_fold_nmod<T>(
+    fold: fold<T>,
+    doc: doc::nmoddoc
+) -> doc::nmoddoc {
+    {
+        item: fold.fold_item(fold, doc.item),
+        fns: ~vec::map(*doc.fns) {|fndoc|
+            fold.fold_fn(fold, fndoc)
+        }
+        with doc
+    }
+}
+
 fn default_par_fold_mod<T:send>(
     fold: fold<T>,
     doc: doc::moddoc
@@ -165,6 +185,9 @@ fn fold_itemtag<T>(fold: fold<T>, doc: doc::itemtag) -> doc::itemtag {
     alt doc {
       doc::modtag(moddoc) {
         doc::modtag(fold.fold_mod(fold, moddoc))
+      }
+      doc::nmodtag(nmoddoc) {
+        doc::nmodtag(fold.fold_nmod(fold, nmoddoc))
       }
       doc::fntag(fndoc) {
         doc::fntag(fold.fold_fn(fold, fndoc))

@@ -227,6 +227,7 @@ fn merge_reexports(
                 with doc
             })
           }
+          doc::nmodtag(_) { fail }
           doc::consttag(doc @ {item, _}) {
             doc::consttag({
                 item: rename(item, name)
