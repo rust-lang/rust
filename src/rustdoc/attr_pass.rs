@@ -93,6 +93,7 @@ fn parse_item_attrs<T:send>(
     astsrv::exec(srv) {|ctxt|
         let attrs = alt ctxt.ast_map.get(id) {
           ast_map::node_item(item, _) { item.attrs }
+          ast_map::node_native_item(item, _) { item.attrs }
           _ {
             fail "parse_item_attrs: not an item";
           }
@@ -111,6 +112,18 @@ fn should_should_extract_mod_attributes() {
 fn should_extract_top_mod_attributes() {
     let doc = test::mk_doc("#[doc = \"test\"];");
     assert doc.topmod.desc() == some("test");
+}
+
+#[test]
+fn should_extract_native_mod_attributes() {
+    let doc = test::mk_doc("#[doc = \"test\"] native mod a { }");
+    assert doc.topmod.nmods()[0].desc() == some("test");
+}
+
+#[test]
+fn should_extract_native_fn_attributes() {
+    let doc = test::mk_doc("native mod a { #[doc = \"test\"] fn a(); }");
+    assert doc.topmod.nmods()[0].fns[0].desc() == some("test");
 }
 
 fn fold_fn(
