@@ -149,7 +149,7 @@ cleanup_task(cleanup_args *args) {
     bool threw_exception = args->threw_exception;
     rust_task *task = a->task;
 
-    cc::do_cc(task);
+    cc::do_final_cc(task);
 
     task->die();
 

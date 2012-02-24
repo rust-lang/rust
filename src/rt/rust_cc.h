@@ -9,6 +9,10 @@ struct rust_task;
 namespace cc {
 
 void do_cc(rust_task *task);
+
+// performs a cycle coll then asserts that there is nothing left
+void do_final_cc(rust_task *task);
+
 void maybe_cc(rust_task *task);
 
 }   // end namespace cc
