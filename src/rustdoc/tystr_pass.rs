@@ -48,7 +48,11 @@ fn get_fn_sig(srv: astsrv::srv, fn_id: doc::ast_id) -> option<str> {
         alt check ctxt.ast_map.get(fn_id) {
           ast_map::node_item(@{
             ident: ident,
-            node: ast::item_fn(decl, _, blk), _
+            node: ast::item_fn(decl, _, _), _
+          }, _) |
+          ast_map::node_native_item(@{
+            ident: ident,
+            node: ast::native_item_fn(decl, _), _
           }, _) {
             some(pprust::fun_to_str(decl, ident, []))
           }
@@ -60,6 +64,12 @@ fn get_fn_sig(srv: astsrv::srv, fn_id: doc::ast_id) -> option<str> {
 fn should_add_fn_sig() {
     let doc = test::mk_doc("fn a() -> int { }");
     assert doc.topmod.fns()[0].sig == some("fn a() -> int");
+}
+
+#[test]
+fn should_add_native_fn_sig() {
+    let doc = test::mk_doc("native mod a { fn a() -> int; }");
+    assert doc.topmod.nmods()[0].fns[0].sig == some("fn a() -> int");
 }
 
 fn merge_ret_ty(
@@ -83,6 +93,9 @@ fn get_ret_ty(srv: astsrv::srv, fn_id: doc::ast_id) -> option<str> {
         alt check ctxt.ast_map.get(fn_id) {
           ast_map::node_item(@{
             node: ast::item_fn(decl, _, _), _
+          }, _) |
+          ast_map::node_native_item(@{
+            node: ast::native_item_fn(decl, _), _
           }, _) {
             ret_ty_to_str(decl)
           }
@@ -111,6 +124,12 @@ fn should_not_add_nil_ret_type() {
     assert doc.topmod.fns()[0].return.ty == none;
 }
 
+#[test]
+fn should_add_native_fn_ret_types() {
+    let doc = test::mk_doc("native mod a { fn a() -> int; }");
+    assert doc.topmod.nmods()[0].fns[0].return.ty == some("int");
+}
+
 fn merge_arg_tys(
     srv: astsrv::srv,
     fn_id: doc::ast_id,
@@ -135,6 +154,9 @@ fn get_arg_tys(srv: astsrv::srv, fn_id: doc::ast_id) -> [(str, str)] {
           }, _) |
           ast_map::node_item(@{
             node: ast::item_res(decl, _, _, _, _), _
+          }, _) |
+          ast_map::node_native_item(@{
+            node: ast::native_item_fn(decl, _), _
           }, _) {
             decl_arg_tys(decl)
           }
@@ -154,6 +176,12 @@ fn should_add_arg_types() {
     let fn_ = doc.topmod.fns()[0];
     assert fn_.args[0].ty == some("int");
     assert fn_.args[1].ty == some("bool");
+}
+
+#[test]
+fn should_add_native_fn_arg_types() {
+    let doc = test::mk_doc("native mod a { fn a(b: int); }");
+    assert doc.topmod.nmods()[0].fns[0].args[0].ty == some("int");
 }
 
 fn fold_const(
