@@ -1,5 +1,3 @@
-// xfail-test
-
 // Test that a glob-export functions as an explicit
 // named export when referenced from outside its scope.
 
