@@ -16,7 +16,8 @@ fn run(srv: astsrv::srv, doc: doc::cratedoc) -> doc::cratedoc {
     };
     let fold = fold::fold({
         fold_item: fold_item,
-        fold_mod: fold_mod
+        fold_mod: fold_mod,
+        fold_nmod: fold_nmod
         with *fold::default_any_fold(ctxt)
     });
     fold.fold_crate(fold, doc)
@@ -42,6 +43,13 @@ fn fold_mod(fold: fold::fold<ctxt>, doc: doc::moddoc) -> doc::moddoc {
     }
 }
 
+fn fold_nmod(fold: fold::fold<ctxt>, doc: doc::nmoddoc) -> doc::nmoddoc {
+    vec::push(fold.ctxt.path, doc.name());
+    let doc = fold::default_seq_fold_nmod(fold, doc);
+    vec::pop(fold.ctxt.path);
+    ret doc;
+}
+
 #[test]
 fn should_record_mod_paths() {
     let source = "mod a { mod b { mod c { } } mod d { mod e { } } }";
@@ -60,5 +68,15 @@ fn should_record_fn_paths() {
         let doc = extract::from_srv(srv, "");
         let doc = run(srv, doc);
         assert doc.topmod.mods()[0].fns()[0].path() == ["a"];
+    }
+}
+
+#[test]
+fn should_record_native_fn_paths() {
+    let source = "native mod a { fn b(); }";
+    astsrv::from_str(source) {|srv|
+        let doc = extract::from_srv(srv, "");
+        let doc = run(srv, doc);
+        assert doc.topmod.nmods()[0].fns[0].path() == ["a"];
     }
 }
