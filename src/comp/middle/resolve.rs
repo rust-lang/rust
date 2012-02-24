@@ -2021,7 +2021,13 @@ fn check_exports(e: @env) {
         alt def {
           some(def) {
             alt e.exp_map.find(path) {
-              some(v) { *v += [def]; }
+              some(v) {
+                // If there are multiple reexports of the same def
+                // using the same path, then we only need one copy
+                if !vec::contains(*v, def) {
+                    *v += [def];
+                }
+              }
               none { e.exp_map.insert(path, @mutable [def]); }
             }
           }

@@ -144,7 +144,6 @@ fn build_reexport_path_map(srv: astsrv::srv, -def_map: def_map) -> path_map {
             let name = option::get(vec::last(path));
 
             let reexportdocs = [];
-
             for def in *defs {
                 let def_id = ast_util::def_id_of_def(def);
                 alt def_map.find(def_id) {
@@ -335,6 +334,18 @@ fn should_reexport_in_topmod() {
                   }";
     let doc = mk_doc(source);
     assert doc.topmod.enums()[0].name() == "option";
+}
+
+#[test]
+fn should_not_reexport_multiple_times() {
+    let source = "import option = option::t; \
+                  export option; \
+                  export option; \
+                  mod option { \
+                  enum t { none, some } \
+                  }";
+    let doc = test::mk_doc(source);
+    assert vec::len(doc.topmod.enums()) == 1u;
 }
 
 #[cfg(test)]
