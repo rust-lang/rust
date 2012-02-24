@@ -380,3 +380,10 @@
    ...
    fun:uv_loop_delete
 }
+
+{
+   lock-check-not-a-race-i-am-fairly-sure-but-not-100-percent-positive
+   Helgrind:Race
+   fun:_ZN15lock_and_signal27lock_held_by_current_threadEv
+   ...
+}
