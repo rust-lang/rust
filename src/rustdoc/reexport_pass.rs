@@ -188,7 +188,16 @@ fn merge_reexports(
     fn fold_mod(fold: fold::fold<path_map>, doc: doc::moddoc) -> doc::moddoc {
         let doc = fold::default_seq_fold_mod(fold, doc);
 
-        let path = doc.path() + [doc.name()];
+        let is_topmod = doc.id() == rustc::syntax::ast::crate_node_id;
+
+        // In the case of the top mod, it really doesn't have a name;
+        // the name we have here is actually the crate name
+        let path = if is_topmod {
+            doc.path()
+        } else {
+            doc.path() + [doc.name()]
+        };
+
         let new_items = get_new_items(path, fold.ctxt);
         #debug("merging into %?: %?", path, new_items);
 
@@ -307,6 +316,25 @@ fn should_rename_items_reexported_with_different_names() {
                   mod c { import x = a::b; export x; }";
     let doc = test::mk_doc(source);
     assert doc.topmod.mods()[1].fns()[0].name() == "x";
+}
+
+#[test]
+fn should_reexport_in_topmod() {
+    fn mk_doc(source: str) -> doc::cratedoc {
+        astsrv::from_str(source) {|srv|
+            let doc = extract::from_srv(srv, "core");
+            let doc = path_pass::mk_pass()(srv, doc);
+            run(srv, doc)
+        }
+    }
+    let source = "import option::{some, none}; \
+                  import option = option::t; \
+                  export option, some, none; \
+                  mod option { \
+                  enum t { some, none } \
+                  }";
+    let doc = mk_doc(source);
+    assert doc.topmod.enums()[0].name() == "option";
 }
 
 #[cfg(test)]
