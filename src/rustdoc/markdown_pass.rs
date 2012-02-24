@@ -133,7 +133,7 @@ fn write_mod_contents(
     for itemtag in doc.items {
         alt itemtag {
           doc::modtag(moddoc) { write_mod(ctxt, moddoc) }
-          doc::nmodtag(_) { fail }
+          doc::nmodtag(nmoddoc) { write_nmod(ctxt, nmoddoc) }
           doc::fntag(fndoc) { write_fn(ctxt, fndoc) }
           doc::consttag(constdoc) { write_const(ctxt, constdoc) }
           doc::enumtag(enumdoc) { write_enum(ctxt, enumdoc) }
@@ -155,6 +155,27 @@ fn should_write_crate_brief_description() {
 fn should_write_crate_description() {
     let markdown = test::render("#[doc = \"this is the crate\"];");
     assert str::contains(markdown, "this is the crate");
+}
+
+fn write_nmod(ctxt: ctxt, doc: doc::nmoddoc) {
+    write_brief(ctxt, doc.brief());
+    write_desc(ctxt, doc.desc());
+
+    for fndoc in doc.fns {
+        write_fn(ctxt, fndoc);
+    }
+}
+
+#[test]
+fn should_write_native_mods() {
+    let markdown = test::render("#[doc = \"test\"] native mod a { }");
+    assert str::contains(markdown, "test");
+}
+
+#[test]
+fn should_write_native_fns() {
+    let markdown = test::render("native mod a { #[doc = \"test\"] fn a(); }");
+    assert str::contains(markdown, "test");
 }
 
 fn write_fn(
