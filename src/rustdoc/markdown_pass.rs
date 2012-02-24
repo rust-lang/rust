@@ -130,7 +130,7 @@ fn write_mod_contents(
     write_brief(ctxt, doc.brief());
     write_desc(ctxt, doc.desc());
 
-    for itemtag in *doc.items {
+    for itemtag in doc.items {
         alt itemtag {
           doc::modtag(moddoc) { write_mod(ctxt, moddoc) }
           doc::nmodtag(_) { fail }
@@ -229,7 +229,7 @@ fn should_correctly_indent_fn_signature() {
     let doc = test::create_doc("fn a() { }");
     let doc = {
         topmod: {
-            items: ~[doc::fntag({
+            items: [doc::fntag({
                 sig: some("line 1\nline 2")
                 with doc.topmod.fns()[0]
             })]

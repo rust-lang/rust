@@ -31,8 +31,7 @@ type itemdoc = {
 
 type moddoc = {
     item: itemdoc,
-    // This box exists to break the structural recursion
-    items: ~[itemtag]
+    items: [itemtag]
 };
 
 type nmoddoc = {
@@ -112,7 +111,7 @@ type tydoc = {
 impl util for moddoc {
 
     fn mods() -> [moddoc] {
-        vec::filter_map(*self.items) {|itemtag|
+        vec::filter_map(self.items) {|itemtag|
             alt itemtag {
               modtag(moddoc) { some(moddoc) }
               _ { none }
@@ -121,7 +120,7 @@ impl util for moddoc {
     }
 
     fn nmods() -> [nmoddoc] {
-        vec::filter_map(*self.items) {|itemtag|
+        vec::filter_map(self.items) {|itemtag|
             alt itemtag {
               nmodtag(nmoddoc) { some(nmoddoc) }
               _ { none }
@@ -130,7 +129,7 @@ impl util for moddoc {
     }
 
     fn fns() -> [fndoc] {
-        vec::filter_map(*self.items) {|itemtag|
+        vec::filter_map(self.items) {|itemtag|
             alt itemtag {
               fntag(fndoc) { some(fndoc) }
               _ { none }
@@ -139,7 +138,7 @@ impl util for moddoc {
     }
 
     fn consts() -> [constdoc] {
-        vec::filter_map(*self.items) {|itemtag|
+        vec::filter_map(self.items) {|itemtag|
             alt itemtag {
               consttag(constdoc) { some(constdoc) }
               _ { none }
@@ -148,7 +147,7 @@ impl util for moddoc {
     }
 
     fn enums() -> [enumdoc] {
-        vec::filter_map(*self.items) {|itemtag|
+        vec::filter_map(self.items) {|itemtag|
             alt itemtag {
               enumtag(enumdoc) { some(enumdoc) }
               _ { none }
@@ -157,7 +156,7 @@ impl util for moddoc {
     }
 
     fn resources() -> [resdoc] {
-        vec::filter_map(*self.items) {|itemtag|
+        vec::filter_map(self.items) {|itemtag|
             alt itemtag {
               restag(resdoc) { some(resdoc) }
               _ { none }
@@ -166,7 +165,7 @@ impl util for moddoc {
     }
 
     fn ifaces() -> [ifacedoc] {
-        vec::filter_map(*self.items) {|itemtag|
+        vec::filter_map(self.items) {|itemtag|
             alt itemtag {
               ifacetag(ifacedoc) { some(ifacedoc) }
               _ { none }
@@ -175,7 +174,7 @@ impl util for moddoc {
     }
 
     fn impls() -> [impldoc] {
-        vec::filter_map(*self.items) {|itemtag|
+        vec::filter_map(self.items) {|itemtag|
             alt itemtag {
               impltag(impldoc) { some(impldoc) }
               _ { none }
@@ -184,7 +183,7 @@ impl util for moddoc {
     }
 
     fn types() -> [tydoc] {
-        vec::filter_map(*self.items) {|itemtag|
+        vec::filter_map(self.items) {|itemtag|
             alt itemtag {
               tytag(tydoc) { some(tydoc) }
               _ { none }

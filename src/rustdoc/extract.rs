@@ -49,7 +49,7 @@ fn moddoc_from_mod(
 ) -> doc::moddoc {
     {
         item: itemdoc,
-        items: ~vec::filter_map(module.items) {|item|
+        items: vec::filter_map(module.items) {|item|
             let itemdoc = mk_itemdoc(item.id, item.ident);
             alt item.node {
               ast::item_mod(m) {

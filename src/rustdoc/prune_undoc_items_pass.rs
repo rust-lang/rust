@@ -36,7 +36,7 @@ fn fold_mod(
     doc: doc::moddoc
 ) -> doc::moddoc {
     let doc = {
-        items: ~vec::filter_map(*doc.items) {|itemtag|
+        items: vec::filter_map(doc.items) {|itemtag|
             alt itemtag {
               doc::modtag(moddoc) {
                 let doc = fold.fold_mod(fold, moddoc);
@@ -110,7 +110,7 @@ fn fold_mod(
     fold.ctxt.have_docs =
         doc.brief() != none
         || doc.desc() != none
-        || vec::is_not_empty(*doc.items);
+        || vec::is_not_empty(doc.items);
     ret doc;
 }
 

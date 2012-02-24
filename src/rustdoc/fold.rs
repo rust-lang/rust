@@ -141,7 +141,7 @@ fn default_seq_fold_mod<T>(
 ) -> doc::moddoc {
     {
         item: fold.fold_item(fold, doc.item),
-        items: ~vec::map(*doc.items) {|itemtag|
+        items: vec::map(doc.items) {|itemtag|
             fold_itemtag(fold, itemtag)
         }
         with doc
@@ -167,7 +167,7 @@ fn default_par_fold_mod<T:send>(
 ) -> doc::moddoc {
     {
         item: fold.fold_item(fold, doc.item),
-        items: ~util::parmap(*doc.items) {|itemtag|
+        items: util::parmap(doc.items) {|itemtag|
             fold_itemtag(fold, itemtag)
         }
         with doc

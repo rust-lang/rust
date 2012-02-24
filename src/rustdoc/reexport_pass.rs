@@ -115,7 +115,7 @@ fn build_reexport_def_map(
     fn fold_mod(fold: fold::fold<ctxt>, doc: doc::moddoc) -> doc::moddoc {
         let doc = fold::default_seq_fold_mod(fold, doc);
 
-        for item in *doc.items {
+        for item in doc.items {
             let def_id = ast_util::local_def(item.id());
             if fold.ctxt.def_set.contains_key(def_id) {
                 fold.ctxt.def_map.insert(def_id, item);
@@ -201,7 +201,7 @@ fn merge_reexports(
         #debug("merging into %?: %?", path, new_items);
 
         {
-            items: ~(*doc.items + new_items)
+            items: (doc.items + new_items)
             with doc
         }
     }
