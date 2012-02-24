@@ -27,6 +27,8 @@ type itemdoc = {
     path: [str],
     brief: option<str>,
     desc: option<str>,
+    // Indicates that this node is a reexport of a different item
+    reexport: bool
 };
 
 type moddoc = {

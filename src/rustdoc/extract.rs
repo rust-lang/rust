@@ -40,6 +40,7 @@ fn mk_itemdoc(id: ast::node_id, name: ast::ident) -> doc::itemdoc {
         path: [],
         brief: none,
         desc: none,
+        reexport: false
     }
 }
 

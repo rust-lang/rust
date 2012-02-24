@@ -97,6 +97,7 @@ fn run(source_file: str) {
     astsrv::from_file(source_file) {|srv|
         let doc = extract::from_srv(srv, default_name);
         run_passes(srv, doc, [
+            reexport_pass::mk_pass(),
             prune_unexported_pass::mk_pass(),
             tystr_pass::mk_pass(),
             path_pass::mk_pass(),
@@ -107,7 +108,6 @@ fn run(source_file: str) {
             desc_to_brief_pass::mk_pass(),
             trim_pass::mk_pass(),
             unindent_pass::mk_pass(),
-            reexport_pass::mk_pass(),
             sort_item_name_pass::mk_pass(),
             sort_item_type_pass::mk_pass(),
             markdown_pass::mk_pass {|f| f(std::io:: stdout()) }

@@ -212,70 +212,71 @@ fn merge_reexports(
           some(name_docs) {
             vec::foldl([], name_docs) {|v, name_doc|
                 let (name, doc) = name_doc;
-                v + [rename_doc(doc, name)]
+                v + [reexport_doc(doc, name)]
             }
           }
           none { [] }
         }
     }
 
-    fn rename_doc(doc: doc::itemtag, name: str) -> doc::itemtag {
+    fn reexport_doc(doc: doc::itemtag, name: str) -> doc::itemtag {
         alt doc {
           doc::modtag(doc @ {item, _}) {
             doc::modtag({
-                item: rename(item, name)
+                item: reexport(item, name)
                 with doc
             })
           }
           doc::nmodtag(_) { fail }
           doc::consttag(doc @ {item, _}) {
             doc::consttag({
-                item: rename(item, name)
+                item: reexport(item, name)
                 with doc
             })
           }
           doc::fntag(doc @ {item, _}) {
             doc::fntag({
-                item: rename(item, name)
+                item: reexport(item, name)
                 with doc
             })
           }
           doc::enumtag(doc @ {item, _}) {
             doc::enumtag({
-                item: rename(item, name)
+                item: reexport(item, name)
                 with doc
             })
           }
           doc::restag(doc @ {item, _}) {
             doc::restag({
-                item: rename(item, name)
+                item: reexport(item, name)
                 with doc
             })
           }
           doc::ifacetag(doc @ {item, _}) {
             doc::ifacetag({
-                item: rename(item, name)
+                item: reexport(item, name)
                 with doc
             })
           }
           doc::impltag(doc @ {item, _}) {
             doc::impltag({
-                item: rename(item, name)
+                item: reexport(item, name)
                 with doc
             })
           }
           doc::tytag(doc @ {item, _}) {
             doc::tytag({
-                item: rename(item, name)
+                item: reexport(item, name)
                 with doc
             })
           }
         }
     }
 
-    fn rename(doc: doc::itemdoc, name: str) -> doc::itemdoc {
+    fn reexport(doc: doc::itemdoc, name: str) -> doc::itemdoc {
         {
-            name: name
+            name: name,
+            reexport: true
             with doc
         }
     }
@@ -287,6 +288,14 @@ fn should_duplicate_reexported_items() {
                   mod c { import a::b; export b; }";
     let doc = test::mk_doc(source);
     assert doc.topmod.mods()[1].fns()[0].name() == "b";
+}
+
+#[test]
+fn should_mark_reepxorts_as_such() {
+    let source = "mod a { export b; fn b() { } } \
+                  mod c { import a::b; export b; }";
+    let doc = test::mk_doc(source);
+    assert doc.topmod.mods()[1].fns()[0].item.reexport == true;
 }
 
 #[test]

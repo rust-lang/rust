@@ -77,7 +77,8 @@ fn exported_items_from(
           }
           _ { itemtag }
         };
-        if is_exported(srv, itemtag.name()) {
+
+        if itemtag.item().reexport || is_exported(srv, itemtag.name()) {
             some(itemtag)
         } else {
             none
@@ -224,6 +225,21 @@ fn should_prune_unexported_impls_from_top_mod() {
 fn should_prune_unexported_types() {
     let doc = test::mk_doc("export a; mod a { } type b = int;");
     assert vec::is_empty(doc.topmod.types());
+}
+
+#[test]
+fn should_not_prune_reexports() {
+    fn mk_doc(source: str) -> doc::cratedoc {
+        astsrv::from_str(source) {|srv|
+            let doc = extract::from_srv(srv, "");
+            let doc = reexport_pass::mk_pass()(srv, doc);
+            run(srv, doc)
+        }
+    }
+    let doc = mk_doc("import a::b; \
+                      export b; \
+                      mod a { fn b() { } }");
+    assert vec::is_not_empty(doc.topmod.fns());
 }
 
 #[cfg(test)]
