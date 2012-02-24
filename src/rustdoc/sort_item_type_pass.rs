@@ -14,7 +14,7 @@ fn mk_pass() -> pass {
               doc::impltag(_) { 5 }
               doc::fntag(_) { 6 }
               doc::modtag(_) { 7 }
-              _ { fail }
+              doc::nmodtag(_) { 8 }
             }
         }
 
@@ -26,6 +26,7 @@ fn mk_pass() -> pass {
 fn test() {
     let source =
         "mod imod { } \
+         native mod inmod { } \
          const iconst: int = 0; \
          fn ifn() { } \
          enum ienum { ivar } \
@@ -44,5 +45,6 @@ fn test() {
         assert doc.topmod.items[5].name() == "iimpl";
         assert doc.topmod.items[6].name() == "ifn";
         assert doc.topmod.items[7].name() == "imod";
+        assert doc.topmod.items[8].name() == "inmod";
     }
 }
