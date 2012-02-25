@@ -3066,6 +3066,19 @@ fn check_main_fn_ty(tcx: ty::ctxt, main_id: ast::node_id, main_span: span) {
     alt ty::get(main_t).struct {
       ty::ty_fn({proto: ast::proto_bare, inputs, output,
                  ret_style: ast::return_val, constraints}) {
+        alt tcx.items.find(main_id) {
+         some(ast_map::node_item(it,_)) {
+             alt it.node {
+               ast::item_fn(_,ps,_) if vec::is_not_empty(ps) {
+                  tcx.sess.span_err(main_span,
+                    "main function is not allowed to have type parameters");
+                  ret;
+               }
+               _ {}
+             }
+         }
+         _ {}
+        }
         let ok = vec::len(constraints) == 0u;
         ok &= ty::type_is_nil(output);
         let num_args = vec::len(inputs);
