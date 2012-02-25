@@ -8,7 +8,8 @@ enum uv_operation {
     op_close(uv_handle, *ctypes::void),
     op_timer_init([u8]),
     op_timer_start([u8], *ctypes::void, u32, u32),
-    op_timer_stop([u8], *ctypes::void, fn~(uv_handle))
+    op_timer_stop([u8], *ctypes::void, fn~(uv_handle)),
+    op_teardown(*ctypes::void)
 }
 
 enum uv_handle {
@@ -34,7 +35,8 @@ enum uv_msg {
     uv_timer_init([u8], *ctypes::void),
     uv_timer_call([u8]),
     uv_timer_stop([u8], fn~(uv_handle)),
-    uv_end()
+    uv_end(),
+    uv_teardown_check()
 }
 
 type uv_loop_data = {
@@ -148,11 +150,13 @@ fn loop_new() -> uv_loop unsafe {
                 // loop process any pending operations
                 // once its up and running
                 task::spawn_sched(task::manual_threads(1u)) {||
+                    // make sure we didn't start the loop
+                    // without the user registering handles
+                    comm::send(rust_loop_chan, uv_teardown_check);
                     // this call blocks
                     rustrt::rust_uv_run(loop_handle);
                     // when we're done, msg the
                     // end chan
-                    rustrt::rust_uv_stop_op_cb(op_handle);
                     comm::send(end_chan, true);
                     comm::send(rust_loop_chan, uv_end);
                 };
@@ -160,6 +164,8 @@ fn loop_new() -> uv_loop unsafe {
 
               msg_run_in_bg {
                 task::spawn_sched(task::manual_threads(1u)) {||
+                    // see note above
+                    comm::send(rust_loop_chan, uv_teardown_check);
                     // this call blocks
                     rustrt::rust_uv_run(loop_handle);
                 };
@@ -194,6 +200,9 @@ fn loop_new() -> uv_loop unsafe {
                 task::spawn {||
                     cb();
                 };
+                // ask the rust loop to check and see if there
+                // are no more user-registered handles
+                comm::send(rust_loop_chan, uv_teardown_check);
               }
 
               msg_async_init(callback, after_cb) {
@@ -202,6 +211,7 @@ fn loop_new() -> uv_loop unsafe {
                 // data and save the callback for
                 // invocation on msg_async_send
                 let id = gen_handle_id();
+                handles.insert(id, ptr::null());
                 async_cbs.insert(id, callback);
                 after_cbs.insert(id, after_cb);
                 let op = op_async_init(id);
@@ -235,6 +245,7 @@ fn loop_new() -> uv_loop unsafe {
 
               msg_timer_init(after_cb) {
                 let id = gen_handle_id();
+                handles.insert(id, ptr::null());
                 after_cbs.insert(id, after_cb);
                 let op = op_timer_init(id);
                 pass_to_libuv(op_handle, operation_chan, op);
@@ -274,6 +285,18 @@ fn loop_new() -> uv_loop unsafe {
               uv_timer_stop(id, after_cb) {
                 let the_timer = id_to_handle.get(id);
                 after_cb(the_timer);
+              }
+
+              uv_teardown_check() {
+                // here we're checking if there are no user-registered
+                // handles (and the loop is running), if this is the
+                // case, then we need to unregister the op_handle via
+                // a uv_close() call, thus allowing libuv to return
+                // on its own.
+                if (handles.size() == 0u) {
+                    let op = op_teardown(op_handle);
+                    pass_to_libuv(op_handle, operation_chan, op);
+                }
               }
 
               uv_end() {
@@ -442,6 +465,12 @@ crust fn process_operation(
             rustrt::rust_uv_timer_stop(handle);
             comm::send(loop_chan, uv_timer_stop(id, after_cb));
           }
+          op_teardown(op_handle) {
+            // this is the last msg that'll be processed by
+            // this fn, in the current lifetime of the handle's
+            // uv_loop_t
+            rustrt::rust_uv_stop_op_cb(op_handle);
+          }
           _ { fail "unknown form of uv_operation received"; }
         }
         op_pending = comm::peek(op_port);
@@ -536,7 +565,8 @@ fn test_uv_simple_async() {
         async_send(new_async);
     });
     run(test_loop);
-    assert comm::recv(exit_port);
+    let result = comm::recv(exit_port);
+    assert result;
 }
 
 #[test]

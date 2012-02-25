@@ -68,10 +68,8 @@ native_close_cb(uv_handle_t* handle) {
 
 static void
 native_close_op_cb(uv_handle_t* op_handle) {
-  uv_loop_t* loop = op_handle->loop;
   current_kernel_free(op_handle);
-  loop->data = 0; // a ptr to some stack-allocated rust mem
-  uv_loop_delete(loop);
+  // uv_run() should return after this..
 }
 
 // native fns bound in rust
@@ -94,25 +92,13 @@ rust_uv_bind_op_cb(uv_loop_t* loop, crust_async_op_cb cb) {
 	async->data = (void*)cb;
 	// decrement the ref count, so that our async bind
 	// doesn't count towards keeping the loop alive
-	uv_unref(loop);
+	//uv_unref(loop);
 	return async;
 }
 
 extern "C" void
 rust_uv_stop_op_cb(uv_handle_t* op_handle) {
-  /*  // this is a hack to get libuv to cleanup a
-  // handle that was made to not prevent the loop
-  // from exiting via uv_unref().
-  uv_ref(op_handle->loop);
   uv_close(op_handle, native_close_op_cb);
-  uv_run(op_handle->loop); // this should process the handle's
-                           // close event and then return
-						   */
-  // the above code is supposed to work to cleanly close
-  // a handler that was uv_unref()'d. but it causes much spew
-  // instead. this is the ugly/quick way to deal w/ it for now.
-  uv_close(op_handle, native_close_op_cb);
-  native_close_op_cb(op_handle);
 }
 
 extern "C" void
