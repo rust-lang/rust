@@ -21,7 +21,7 @@ fn contains(haystack: str, needle: str) -> bool {
 
 fn find_rust_files(&files: [str], path: str) {
     if str::ends_with(path, ".rs") && !contains(path, "utf8") {
-        // ignoring "utf8" tests: https://github.com/graydon/rust/pull/1470 ?
+        // ignoring "utf8" tests because something is broken
         files += [path];
     } else if fs::path_is_dir(path)
         && !contains(path, "compile-fail")
@@ -75,10 +75,10 @@ pure fn safe_to_use_expr(e: ast::expr, tm: test_mode) -> bool {
           ast::expr_for(_, _, _) { false }
           ast::expr_while(_, _) { false }
 
-          // https://github.com/graydon/rust/issues/955
+          // https://github.com/mozilla/rust/issues/955
           ast::expr_do_while(_, _) { false }
 
-          // https://github.com/graydon/rust/issues/929
+          // https://github.com/mozilla/rust/issues/929
           ast::expr_cast(_, _) { false }
           ast::expr_assert(_) { false }
           ast::expr_binary(_, _, _) { false }
@@ -88,17 +88,17 @@ pure fn safe_to_use_expr(e: ast::expr, tm: test_mode) -> bool {
           ast::expr_fail(option::none) { false }
           ast::expr_ret(option::none) { false }
 
-          // https://github.com/graydon/rust/issues/953
+          // https://github.com/mozilla/rust/issues/953
           ast::expr_fail(option::some(_)) { false }
 
-          // https://github.com/graydon/rust/issues/927
+          // https://github.com/mozilla/rust/issues/927
           //ast::expr_assert(_) { false }
           ast::expr_check(_, _) { false }
 
-          // https://github.com/graydon/rust/issues/928
+          // https://github.com/mozilla/rust/issues/928
           //ast::expr_cast(_, _) { false }
 
-          // https://github.com/graydon/rust/issues/1458
+          // https://github.com/mozilla/rust/issues/1458
           ast::expr_call(_, _, _) { false }
 
           _ { true }
@@ -110,7 +110,7 @@ pure fn safe_to_use_expr(e: ast::expr, tm: test_mode) -> bool {
 
 fn safe_to_steal_ty(t: @ast::ty, tm: test_mode) -> bool {
     alt t.node {
-        // https://github.com/graydon/rust/issues/971
+        // https://github.com/mozilla/rust/issues/971
         ast::ty_constr(_, _) { false }
 
         // Other restrictions happen to be the same.
@@ -118,7 +118,7 @@ fn safe_to_steal_ty(t: @ast::ty, tm: test_mode) -> bool {
     }
 }
 
-// Not type-parameterized: https://github.com/graydon/rust/issues/898
+// Not type-parameterized: https://github.com/mozilla/rust/issues/898 (FIXED)
 fn stash_expr_if(c: fn@(@ast::expr, test_mode)->bool,
                  es: @mutable [ast::expr],
                  e: @ast::expr,
@@ -154,7 +154,7 @@ fn steal(crate: ast::crate, tm: test_mode) -> stolen_stuff {
 
 fn safe_to_replace_expr(e: ast::expr_, _tm: test_mode) -> bool {
     alt e {
-      // https://github.com/graydon/rust/issues/652
+      // https://github.com/mozilla/rust/issues/652
       ast::expr_if(_, _, _) { false }
       ast::expr_block(_) { false }
 
@@ -344,19 +344,18 @@ fn check_running(exe_filename: str) -> happiness {
     } else if contains(comb, "leaked memory in rust main loop") {
         // might also use exit code 134
         //failed("Leaked")
-        known_bug("https://github.com/graydon/rust/issues/910")
+        known_bug("https://github.com/mozilla/rust/issues/910")
     } else if contains(comb, "src/rt/") {
         failed("Mentioned src/rt/")
     } else if contains(comb, "malloc") {
-        //failed("Mentioned malloc")
-        known_bug("https://github.com/graydon/rust/issues/1461")
+        failed("Mentioned malloc")
     } else {
         alt p.status {
             0         { passed }
             100       { cleanly_rejected("running: explicit fail") }
             101 | 247 { cleanly_rejected("running: timed out") }
-            245 | 246 | 138 | 252 { known_bug("https://github.com/graydon/rust/issues/1466") }
-            136 | 248 { known_bug("SIGFPE - https://github.com/graydon/rust/issues/944") }
+            245 | 246 | 138 | 252 { known_bug("https://github.com/mozilla/rust/issues/1466") }
+            136 | 248 { known_bug("SIGFPE - https://github.com/mozilla/rust/issues/944") }
             rc        { failed("Rust program ran but exited with status " + int::str(rc)) }
         }
     }
@@ -369,36 +368,20 @@ fn check_compiling(filename: str) -> happiness {
 
     //#error("Status: %d", p.status);
     if p.err != "" {
-        if contains(p.err, "Ptr must be a pointer to Val type") {
-            known_bug("https://github.com/graydon/rust/issues/897")
-        } else if contains(p.err, "Assertion failed: ((i >= FTy->getNumParams() || FTy->getParamType(i) == Args[i]->getType()) && \"Calling a function with a bad signature!\"), function init") {
-            known_bug("https://github.com/graydon/rust/issues/1459")
+        if false {
+            known_bug("...")
         } else {
             log(error, "Stderr: " + p.err);
             failed("Unfamiliar error message")
         }
     } else if p.status == 0 {
         passed
-    } else if contains(p.out, "Out of stack space, sorry") {
-        known_bug("Recursive types - https://github.com/graydon/rust/issues/742")
     } else if contains(p.out, "Assertion") && contains(p.out, "failed") {
         log(error, "Stdout: " + p.out);
         failed("Looks like an llvm assertion failure")
 
-    } else if contains(p.out, "upcall fail 'option none'") {
-        known_bug("https://github.com/graydon/rust/issues/1463")
-    } else if contains(p.out, "upcall fail 'non-exhaustive match failure', ../src/comp/middle/typeck.rs:1554") {
-        known_bug("https://github.com/graydon/rust/issues/1462")
-    } else if contains(p.out, "upcall fail 'Assertion cx.fcx.llupvars.contains_key(did.node) failed'") {
-        known_bug("https://github.com/graydon/rust/issues/1467")
     } else if contains(p.out, "Taking the value of a method does not work yet (issue #435)") {
-        known_bug("https://github.com/graydon/rust/issues/435")
-    } else if contains(p.out, "internal compiler error bit_num: asked for pred constraint, found an init constraint") {
-        known_bug("https://github.com/graydon/rust/issues/933")
-    } else if contains(p.out, "internal compiler error") && contains(p.out, "called on non-fn type") {
-        known_bug("https://github.com/graydon/rust/issues/1460")
-    } else if contains(p.out, "internal compiler error fail called with unsupported type _|_") {
-        known_bug("https://github.com/graydon/rust/issues/1465")
+        known_bug("https://github.com/mozilla/rust/issues/435")
     } else if contains(p.out, "internal compiler error unimplemented") {
         known_bug("Something unimplemented")
     } else if contains(p.out, "internal compiler error") {
@@ -455,7 +438,6 @@ fn has_raw_pointers(c: ast::crate) -> bool {
 fn content_is_dangerous_to_run(code: str) -> bool {
     let dangerous_patterns =
         ["xfail-test",
-         "-> !",    // https://github.com/graydon/rust/issues/897
          "import",  // espeically fs, run
          "native",
          "unsafe",
@@ -467,12 +449,7 @@ fn content_is_dangerous_to_run(code: str) -> bool {
 
 fn content_is_dangerous_to_compile(code: str) -> bool {
     let dangerous_patterns =
-        ["xfail-test",
-         "-> !",    // https://github.com/graydon/rust/issues/897
-         "enum",     // typeck hang with ty variants:   https://github.com/graydon/rust/issues/742 (from dup #900)
-         "with",    // tstate hang with expr variants: https://github.com/graydon/rust/issues/948
-         "import comm" // mysterious hang: https://github.com/graydon/rust/issues/1464
-         ];
+        ["xfail-test"];
 
     for p: str in dangerous_patterns { if contains(code, p) { ret true; } }
     ret false;
@@ -486,7 +463,7 @@ fn content_might_not_converge(code: str) -> bool {
          "spawn",      // precedence issues?
          "bind",       // precedence issues?
          " be ",       // don't want to replace its child with a non-call: "Non-call expression in tail call"
-         "\n\n\n\n\n"  // https://github.com/graydon/rust/issues/850
+         "\n\n\n\n\n"  // https://github.com/mozilla/rust/issues/850
         ];
 
     for p: str in confusing_patterns { if contains(code, p) { ret true; } }
@@ -541,7 +518,7 @@ fn check_convergence(files: [str]) {
             let s = @result::get(io::read_whole_file_str(file));
             if !content_might_not_converge(*s) {
                 #error("pp converge: %s", file);
-                // Change from 7u to 2u once https://github.com/graydon/rust/issues/850 is fixed
+                // Change from 7u to 2u once https://github.com/mozilla/rust/issues/850 is fixed
                 check_roundtrip_convergence(s, 7u);
             }
         }
