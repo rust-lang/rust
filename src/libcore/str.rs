@@ -57,6 +57,7 @@ export
    map,
    bytes_iter,
    chars_iter,
+   chars_iteri,
    split_char_iter,
    splitn_char_iter,
    words_iter,
@@ -582,13 +583,19 @@ fn bytes_iter(ss: str, it: fn(u8)) {
 }
 
 #[doc = "Iterate over the characters in a string"]
-fn chars_iter(s: str, it: fn(char)) {
+fn chars_iter(ss: str, it: fn(char)) {
+    chars_iteri(ss, {|_ii, ch| it(ch)})
+}
+
+#[doc = "Iterate over the characters in a string"]
+fn chars_iteri(ss: str, it: fn(uint,char)) {
     let mut pos = 0u;
     let len = len(s);
+
     while (pos < len) {
-        let {ch, next} = char_range_at(s, pos);
+        let {ch, next} = char_range_at(ss, pos);
+        it(pos, ch);
         pos = next;
-        it(ch);
     }
 }
 
