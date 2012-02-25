@@ -404,7 +404,7 @@ fn parse_and_print(code: @str) -> str {
     let handler = diagnostic::mk_handler(none);
     let sess = @{
         cm: cm,
-        mutable next_id: 0,
+        mutable next_id: 1,
         span_diagnostic: diagnostic::mk_span_handler(handler, cm),
         mutable chpos: 0u,
         mutable byte_pos: 0u
@@ -548,7 +548,7 @@ fn check_variants(files: [str], cx: context) {
         let handler = diagnostic::mk_handler(none);
         let sess = @{
             cm: cm,
-            mutable next_id: 0,
+            mutable next_id: 1,
             span_diagnostic: diagnostic::mk_span_handler(handler, cm),
             mutable chpos: 0u,
             mutable byte_pos: 0u
