@@ -63,8 +63,16 @@ fn trans_impl(ccx: crate_ctxt, path: path, name: ast::ident,
 fn trans_self_arg(bcx: block, base: @ast::expr) -> result {
     let basety = expr_ty(bcx, base);
     let m_by_ref = ast::expl(ast::by_ref);
-    trans_arg_expr(bcx, {mode: m_by_ref, ty: basety},
-                   T_ptr(type_of_or_i8(bcx.ccx(), basety)), base)
+    let temp_cleanups = [];
+    let result = trans_arg_expr(bcx, {mode: m_by_ref, ty: basety},
+                                T_ptr(type_of_or_i8(bcx.ccx(), basety)), base,
+                                temp_cleanups);
+
+    // by-ref self argument should not require cleanup in the case of
+    // other arguments failing:
+    assert temp_cleanups == [];
+
+    ret result;
 }
 
 fn trans_method_callee(bcx: block, callee_id: ast::node_id,

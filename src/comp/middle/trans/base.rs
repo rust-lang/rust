@@ -2563,8 +2563,10 @@ fn trans_cast(cx: block, e: @ast::expr, id: ast::node_id,
     ret store_in_dest(e_res.bcx, newval, dest);
 }
 
-fn trans_arg_expr(cx: block, arg: ty::arg, lldestty: TypeRef,
-                  e: @ast::expr) -> result {
+// temp_cleanups: cleanups that should run only if failure occurs before the
+// call takes place:
+fn trans_arg_expr(cx: block, arg: ty::arg, lldestty: TypeRef, e: @ast::expr,
+                  &temp_cleanups: [ValueRef]) -> result {
     let ccx = cx.ccx();
     let e_ty = expr_ty(cx, e);
     let is_bot = ty::type_is_bot(e_ty);
@@ -2612,6 +2614,11 @@ fn trans_arg_expr(cx: block, arg: ty::arg, lldestty: TypeRef,
         if lv.kind != temporary && !move_out {
             bcx = take_ty(bcx, val, e_ty);
         }
+
+        // In the event that failure occurs before the call actually
+        // happens, have to cleanup this copy:
+        add_clean_temp_mem(bcx, val, e_ty);
+        temp_cleanups += [val];
     } else if ty::type_is_immediate(e_ty) && lv.kind != owned {
         let r = do_spill(bcx, val, e_ty);
         val = r.val;
@@ -2638,6 +2645,7 @@ fn trans_args(cx: block, llenv: ValueRef,
        args: [ValueRef],
        retslot: ValueRef} {
 
+    let temp_cleanups = [];
     let args = ty::ty_fn_args(fn_ty);
     let llargs: [ValueRef] = [];
     let lltydescs: [ValueRef] = [];
@@ -2718,11 +2726,19 @@ fn trans_args(cx: block, llenv: ValueRef,
     let arg_tys = type_of_explicit_args(ccx, args);
     let i = 0u;
     for e: @ast::expr in es {
-        let r = trans_arg_expr(bcx, args[i], arg_tys[i], e);
+        let r = trans_arg_expr(bcx, args[i], arg_tys[i], e, temp_cleanups);
         bcx = r.bcx;
         llargs += [r.val];
         i += 1u;
     }
+
+    // now that all arguments have been successfully built, we can revoke any
+    // temporary cleanups, as they are only needed if argument construction
+    // should fail (for example, cleanup of copy mode args).
+    vec::iter(temp_cleanups) {|c|
+        revoke_clean(bcx, c)
+    }
+
     ret {bcx: bcx,
          args: llargs,
          retslot: llretslot};
