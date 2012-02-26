@@ -869,6 +869,9 @@ fn permute<T: copy>(v: [T], put: fn([T])) {
   }
 }
 
+// Function: windowed
+//
+// Return all sub-vectors of size `nn`
 fn windowed <TT: copy> (nn: uint, xx: [const TT]) -> [[TT]] {
    let mut ww = [];
 
@@ -884,6 +887,26 @@ fn windowed <TT: copy> (nn: uint, xx: [const TT]) -> [[TT]] {
    });
 
    ret ww;
+}
+
+#[doc = "
+Return true if the first vector ends with the second
+(including if the second is [])
+"]
+fn ends_with <TT> (vvv: [TT], vv: [TT]) -> bool {
+    let lll = vec::len(vvv);
+    let ll  = vec::len(vv);
+
+    if lll < ll { ret false; }
+
+    let delta = lll - ll;
+    let res = true;
+
+    vec::riteri(vv) {|ii, elem|
+        if elem != vvv[delta + ii] { res = false; }
+    }
+
+    ret res;
 }
 
 #[doc = "
@@ -1759,6 +1782,18 @@ mod tests {
         let mut x = [1, 2, 3];
         unshift(x, 0);
         assert x == [0, 1, 2, 3];
+    }
+
+    #[test]
+    fn test_ends_with() {
+        assert true  == ends_with([7,7,7,0,1,2], [0,1,2]);
+        assert false == ends_with([7,7,7,0,1,2,7], [0,1,2]);
+        assert true  == ends_with([0,1,2], [0,1,2]);
+        assert false == ends_with([0,1,2], [0,1,2,3]);
+        assert true  == ends_with([0,1,2], []);
+        let empty : [uint] = []; // just feed a type into this thing
+        assert true  == ends_with(empty, empty);
+        assert false == ends_with([],[0,1,2,3]);
     }
 }
 
