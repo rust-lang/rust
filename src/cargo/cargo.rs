@@ -9,6 +9,7 @@ import rustc::util::filesearch::{get_cargo_root, get_cargo_root_nearest,
                                  get_cargo_sysroot, libdir};
 import rustc::driver::diagnostic;
 
+import result::{ok, err};
 import std::fs;
 import std::io;
 import io::writer_util;
@@ -225,15 +226,15 @@ fn parse_source(name: str, j: json::json) -> source {
 fn try_parse_sources(filename: str, sources: map::hashmap<str, source>) {
     if !fs::path_exists(filename)  { ret; }
     let c = io::read_whole_file_str(filename);
-    let j = json::from_str(result::get(c));
-    alt j {
-        some(json::dict(_j)) {
-            _j.items { |k, v|
+    alt json::from_str(result::get(c)) {
+        ok(json::dict(j)) {
+            j.items { |k, v|
                 sources.insert(k, parse_source(k, v));
                 #debug("source: %s", k);
             }
         }
-        _ { fail "malformed sources.json"; }
+        ok(_) { fail "malformed sources.json"; }
+        err(e) { fail #fmt("%s:%u:%u: %s", filename, e.line, e.col, e.msg); }
     }
 }
 
@@ -278,7 +279,7 @@ fn load_one_source_package(&src: source, p: map::hashmap<str, json::json>) {
     let tags = [];
     alt p.find("tags") {
         some(json::list(js)) {
-            for j in *js {
+            for j in js {
                 alt j {
                     json::string(_j) { vec::grow(tags, 1u, _j); }
                     _ { }
@@ -316,10 +317,9 @@ fn load_source_packages(&c: cargo, &src: source) {
     let pkgfile = fs::connect(dir, "packages.json");
     if !fs::path_exists(pkgfile) { ret; }
     let pkgstr = io::read_whole_file_str(pkgfile);
-    let j = json::from_str(result::get(pkgstr));
-    alt j {
-        some(json::list(js)) {
-            for _j: json::json in *js {
+    alt json::from_str(result::get(pkgstr)) {
+        ok(json::list(js)) {
+            for _j: json::json in js {
                 alt _j {
                     json::dict(_p) {
                         load_one_source_package(src, _p);
@@ -331,8 +331,12 @@ fn load_source_packages(&c: cargo, &src: source) {
                 }
             }
         }
-        _ {
-            warn("Malformed source json: " + src.name);
+        ok(_) {
+            warn("Malformed source json: " + src.name +
+                 "(packages is not a list)");
+        }
+        err(e) {
+            warn(#fmt("%s:%u:%u: %s", src.name, e.line, e.col, e.msg));
         }
     };
 }
