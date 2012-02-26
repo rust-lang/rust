@@ -81,6 +81,7 @@ upcall_new_stack
 upcall_del_stack
 upcall_reset_stack_limit
 rust_uv_loop_new
+rust_uv_loop_delete
 rust_uv_loop_set_data
 rust_uv_bind_op_cb
 rust_uv_stop_op_cb
