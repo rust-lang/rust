@@ -2,7 +2,8 @@
 #include "uv.h"
 
 // crust fn pointers
-typedef void (*crust_async_op_cb)(uv_loop_t* loop, void* data);
+typedef void (*crust_async_op_cb)(uv_loop_t* loop, void* data,
+								  uv_async_t* op_handle);
 typedef void (*crust_simple_cb)(uint8_t* id_buf, void* loop_data);
 typedef void (*crust_close_cb)(uint8_t* id_buf, void* handle,
 							  void* data);
@@ -43,7 +44,7 @@ static void
 native_crust_async_op_cb(uv_async_t* handle, int status) {
     crust_async_op_cb cb = (crust_async_op_cb)handle->data;
 	void* loop_data = handle->loop->data;
-	cb(handle->loop, loop_data);
+	cb(handle->loop, loop_data, handle);
 }
 
 static void
@@ -76,6 +77,11 @@ native_close_op_cb(uv_handle_t* op_handle) {
 extern "C" void*
 rust_uv_loop_new() {
     return (void*)uv_loop_new();
+}
+
+extern "C" void
+rust_uv_loop_delete(uv_loop_t* loop) {
+    uv_loop_delete(loop);
 }
 
 extern "C" void

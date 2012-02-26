@@ -1,5 +1,6 @@
-export loop_new, run, close, run_in_bg, async_init, async_send,
-       timer_init, timer_start, timer_stop;
+export loop_new, loop_delete, run, close, run_in_bg;
+export async_init, async_send;
+export timer_init, timer_start, timer_stop;
 
 // these are processed solely in the
 // process_operation() crust fn below
@@ -44,11 +45,14 @@ type uv_loop_data = {
     rust_loop_chan: comm::chan<uv_msg>
 };
 
-type uv_loop = comm::chan<uv_msg>;
+enum uv_loop {
+    uv_loop_new(comm::chan<uv_msg>, *ctypes::void)
+}
 
 #[nolink]
 native mod rustrt {
     fn rust_uv_loop_new() -> *ctypes::void;
+    fn rust_uv_loop_delete(loop: *ctypes::void);
     fn rust_uv_loop_set_data(
         loop: *ctypes::void,
         data: *uv_loop_data);
@@ -103,7 +107,8 @@ fn loop_new() -> uv_loop unsafe {
         let rust_loop_chan =
             comm::chan::<uv_msg>(rust_loop_port);
         // let the task-spawner return
-        comm::send(ret_recv_chan, copy(rust_loop_chan));
+        let user_uv_loop = uv_loop_new(rust_loop_chan, loop_handle);
+        comm::send(ret_recv_chan, copy(user_uv_loop));
 
         // create our "special" async handle that will
         // allow all operations against libuv to be
@@ -225,7 +230,7 @@ fn loop_new() -> uv_loop unsafe {
                 handles.insert(id, async_handle);
                 let after_cb = after_cbs.get(id);
                 after_cbs.remove(id);
-                let async = uv_async(id, rust_loop_chan);
+                let async = uv_async(id, user_uv_loop);
                 id_to_handle.insert(id, copy(async));
                 task::spawn {||
                     after_cb(async);
@@ -239,7 +244,8 @@ fn loop_new() -> uv_loop unsafe {
               uv_async_send(id) {
                 let async_cb = async_cbs.get(id);
                 task::spawn {||
-                    async_cb(uv_async(id, rust_loop_chan));
+                    let the_loop = user_uv_loop;
+                    async_cb(uv_async(id, the_loop));
                 };
               }
 
@@ -254,7 +260,7 @@ fn loop_new() -> uv_loop unsafe {
                 handles.insert(id, handle);
                 let after_cb = after_cbs.get(id);
                 after_cbs.remove(id);
-                let new_timer = uv_timer(id, rust_loop_chan);
+                let new_timer = uv_timer(id, user_uv_loop);
                 id_to_handle.insert(id, copy(new_timer));
                 task::spawn {||
                     after_cb(new_timer);
@@ -310,15 +316,22 @@ fn loop_new() -> uv_loop unsafe {
     ret comm::recv(ret_recv_port);
 }
 
+fn loop_delete(loop: uv_loop) {
+    let loop_ptr = get_loop_ptr_from_uv_loop(loop);
+    rustrt::rust_uv_loop_delete(loop_ptr);
+}
+
 fn run(loop: uv_loop) {
     let end_port = comm::port::<bool>();
     let end_chan = comm::chan::<bool>(end_port);
-    comm::send(loop, msg_run(end_chan));
+    let loop_chan = get_loop_chan_from_uv_loop(loop);
+    comm::send(loop_chan, msg_run(end_chan));
     comm::recv(end_port);
 }
 
 fn run_in_bg(loop: uv_loop) {
-    comm::send(loop, msg_run_in_bg);
+    let loop_chan = get_loop_chan_from_uv_loop(loop);
+    comm::send(loop_chan, msg_run_in_bg);
 }
 
 fn async_init (
@@ -326,13 +339,15 @@ fn async_init (
     async_cb: fn~(uv_handle),
     after_cb: fn~(uv_handle)) {
     let msg = msg_async_init(async_cb, after_cb);
-    comm::send(loop, msg);
+    let loop_chan = get_loop_chan_from_uv_loop(loop);
+    comm::send(loop_chan, msg);
 }
 
 fn async_send(async: uv_handle) {
     alt async {
       uv_async(id, loop) {
-        comm::send(loop, msg_async_send(id));
+        let loop_chan = get_loop_chan_from_uv_loop(loop);
+        comm::send(loop_chan, msg_async_send(id));
       }
       _ {
         fail "attempting to call async_send() with a" +
@@ -348,14 +363,16 @@ fn close(h: uv_handle, cb: fn~()) {
 
 fn timer_init(loop: uv_loop, after_cb: fn~(uv_handle)) {
     let msg = msg_timer_init(after_cb);
-    comm::send(loop, msg);
+    let loop_chan = get_loop_chan_from_uv_loop(loop);
+    comm::send(loop_chan, msg);
 }
 
 fn timer_start(the_timer: uv_handle, timeout: u32, repeat:u32,
                timer_cb: fn~(uv_handle)) {
     alt the_timer {
-      uv_timer(id, loop_chan) {
+      uv_timer(id, loop) {
         let msg = msg_timer_start(id, timeout, repeat, timer_cb);
+        let loop_chan = get_loop_chan_from_uv_loop(loop);
         comm::send(loop_chan, msg);
       }
       _ {
@@ -367,7 +384,8 @@ fn timer_start(the_timer: uv_handle, timeout: u32, repeat:u32,
 
 fn timer_stop(the_timer: uv_handle, after_cb: fn~(uv_handle)) {
     alt the_timer {
-      uv_timer(id, loop_chan) {
+      uv_timer(id, loop) {
+        let loop_chan = get_loop_chan_from_uv_loop(loop);
         let msg = msg_timer_stop(id, after_cb);
         comm::send(loop_chan, msg);
       }
@@ -397,19 +415,35 @@ fn get_handle_id_from(buf: *u8) -> [u8] unsafe {
 }
 
 fn get_loop_chan_from_data(data: *uv_loop_data)
-        -> uv_loop unsafe {
+        -> comm::chan<uv_msg> unsafe {
     ret (*data).rust_loop_chan;
 }
 
 fn get_loop_chan_from_handle(handle: uv_handle)
-    -> uv_loop {
+    -> comm::chan<uv_msg> {
     alt handle {
       uv_async(id,loop) | uv_timer(id,loop) {
-        ret loop;
+        let loop_chan = get_loop_chan_from_uv_loop(loop);
+        ret loop_chan;
       }
       _ {
         fail "unknown form of uv_handle for get_loop_chan_from "
              + " handle";
+      }
+    }
+}
+
+fn get_loop_ptr_from_uv_loop(loop: uv_loop) -> *ctypes::void {
+    alt loop {
+      uv_loop_new(loop_chan, loop_ptr) {
+        ret loop_ptr;
+      }
+    }
+}
+fn get_loop_chan_from_uv_loop(loop: uv_loop) -> comm::chan<uv_msg> {
+    alt loop {
+      uv_loop_new(loop_chan, loop_ptr) {
+        ret loop_chan;
       }
     }
 }
@@ -548,41 +582,44 @@ crust fn process_close_timer(
 #[test]
 fn test_uv_new_loop_no_handles() {
     let test_loop = uv::loop_new();
-    run(test_loop); // this should return immediately
+    uv::run(test_loop); // this should return immediately
                     // since there aren't any handles..
+    uv::loop_delete(test_loop);
 }
 
 #[test]
 fn test_uv_simple_async() {
-    let test_loop = loop_new();
+    let test_loop = uv::loop_new();
     let exit_port = comm::port::<bool>();
     let exit_chan = comm::chan::<bool>(exit_port);
-    async_init(test_loop, {|new_async|
-        close(new_async) {||
+    uv::async_init(test_loop, {|new_async|
+        uv::close(new_async) {||
             comm::send(exit_chan, true);
         };
     }, {|new_async|
-        async_send(new_async);
+        uv::async_send(new_async);
     });
-    run(test_loop);
+    uv::run(test_loop);
     let result = comm::recv(exit_port);
     assert result;
+    uv::loop_delete(test_loop);
 }
 
 #[test]
 fn test_uv_timer() {
-    let test_loop = loop_new();
+    let test_loop = uv::loop_new();
     let exit_port = comm::port::<bool>();
     let exit_chan = comm::chan::<bool>(exit_port);
-    timer_init(test_loop) {|new_timer|
-        timer_start(new_timer, 1u32, 0u32) {|started_timer|
-            timer_stop(started_timer) {|stopped_timer|
-                close(stopped_timer) {||
+    uv::timer_init(test_loop) {|new_timer|
+        uv::timer_start(new_timer, 1u32, 0u32) {|started_timer|
+            uv::timer_stop(started_timer) {|stopped_timer|
+                uv::close(stopped_timer) {||
                     comm::send(exit_chan, true);
                 };
             };
         };
     };
-    run(test_loop);
+    uv::run(test_loop);
     assert comm::recv(exit_port);
+    uv::loop_delete(test_loop);
 }
