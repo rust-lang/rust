@@ -86,7 +86,7 @@ fn loop_new() -> uv_loop unsafe {
     let ret_recv_chan: comm::chan<uv_loop> =
         comm::chan(ret_recv_port);
 
-    task::spawn_sched(task::manual_threads(4u)) {||
+    task::spawn_sched(task::manual_threads(1u)) {||
         // our beloved uv_loop_t ptr
         let loop_handle = rustrt::
             rust_uv_loop_new();
