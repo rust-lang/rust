@@ -42,12 +42,13 @@ fn fold_item(fold: fold::fold<op>, doc: doc::itemdoc) -> doc::itemdoc {
 }
 
 fn fold_fn(fold: fold::fold<op>, doc: doc::fndoc) -> doc::fndoc {
+    let fold_ctxt = fold.ctxt;
     let doc = fold::default_seq_fold_fn(fold, doc);
 
     {
         args: par::anymap(doc.args) {|doc|
             {
-                desc: maybe_apply_op(fold.ctxt, doc.desc)
+                desc: maybe_apply_op(fold_ctxt, doc.desc)
                 with doc
             }
         },
@@ -61,12 +62,13 @@ fn fold_fn(fold: fold::fold<op>, doc: doc::fndoc) -> doc::fndoc {
 }
 
 fn fold_enum(fold: fold::fold<op>, doc: doc::enumdoc) -> doc::enumdoc {
+    let fold_ctxt = fold.ctxt;
     let doc = fold::default_seq_fold_enum(fold, doc);
 
     {
         variants: par::anymap(doc.variants) {|variant|
             {
-                desc: maybe_apply_op(fold.ctxt, variant.desc)
+                desc: maybe_apply_op(fold_ctxt, variant.desc)
                 with variant
             }
         }
@@ -75,12 +77,13 @@ fn fold_enum(fold: fold::fold<op>, doc: doc::enumdoc) -> doc::enumdoc {
 }
 
 fn fold_res(fold: fold::fold<op>, doc: doc::resdoc) -> doc::resdoc {
+    let fold_ctxt = fold.ctxt;
     let doc = fold::default_seq_fold_res(fold, doc);
 
     {
         args: par::anymap(doc.args) {|arg|
             {
-                desc: maybe_apply_op(fold.ctxt, arg.desc)
+                desc: maybe_apply_op(fold_ctxt, arg.desc)
                 with arg
             }
         }

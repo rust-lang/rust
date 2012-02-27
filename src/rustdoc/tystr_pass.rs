@@ -214,12 +214,13 @@ fn fold_enum(
     fold: fold::fold<astsrv::srv>,
     doc: doc::enumdoc
 ) -> doc::enumdoc {
+    let doc_id = doc.id();
     let srv = fold.ctxt;
 
     {
         variants: par::anymap(doc.variants) {|variant|
             let sig = astsrv::exec(srv) {|ctxt|
-                alt check ctxt.ast_map.get(doc.id()) {
+                alt check ctxt.ast_map.get(doc_id) {
                   ast_map::node_item(@{
                     node: ast::item_enum(ast_variants, _), _
                   }, _) {

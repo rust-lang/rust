@@ -154,7 +154,7 @@ fn merge_arg_attrs(
     docs: [doc::argdoc],
     attrs: [attr_parser::arg_attrs]
 ) -> [doc::argdoc] {
-    par::anymap(docs) {|doc|
+    par::seqmap(docs) {|doc|
         alt vec::find(attrs) {|attr|
             attr.name == doc.name
         } {
@@ -235,13 +235,15 @@ fn fold_enum(
     fold: fold::fold<astsrv::srv>,
     doc: doc::enumdoc
 ) -> doc::enumdoc {
+
     let srv = fold.ctxt;
+    let doc_id = doc.id();
     let doc = fold::default_seq_fold_enum(fold, doc);
 
     {
         variants: par::anymap(doc.variants) {|variant|
             let attrs = astsrv::exec(srv) {|ctxt|
-                alt check ctxt.ast_map.get(doc.id()) {
+                alt check ctxt.ast_map.get(doc_id) {
                   ast_map::node_item(@{
                     node: ast::item_enum(ast_variants, _), _
                   }, _) {
@@ -288,7 +290,7 @@ fn fold_res(
     let attrs = parse_item_attrs(srv, doc.id(), attr_parser::parse_res);
 
     {
-        args: par::anymap(doc.args) {|doc|
+        args: par::seqmap(doc.args) {|doc|
             alt vec::find(attrs.args) {|attr|
                 attr.name == doc.name
             } {

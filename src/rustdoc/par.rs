@@ -1,6 +1,6 @@
 export anymap, seqmap, parmap;
 
-fn anymap<T:send, U:send>(v: [T], f: fn(T) -> U) -> [U] {
+fn anymap<T:send, U:send>(v: [T], f: fn~(T) -> U) -> [U] {
     seqmap(v, f)
 }
 
