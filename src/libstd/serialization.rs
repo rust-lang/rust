@@ -7,6 +7,10 @@ Support code for serialization.
 import list::list;
 import ebml::writer;
 
+// Set to true to generate more debugging in EBML serialization.
+// Totally lame approach.
+const debug: bool = true;
+
 iface serializer {
     // Primitive types:
     fn emit_nil();
@@ -86,7 +90,9 @@ enum ebml_serializer_tag {
     es_str,
     es_f64, es_f32, es_float,
     es_enum, es_enum_vid, es_enum_body,
-    es_vec, es_vec_len, es_vec_elt
+    es_vec, es_vec_len, es_vec_elt,
+
+    es_label // Used only when debugging
 }
 
 impl of serializer for ebml::writer {
@@ -96,6 +102,16 @@ impl of serializer for ebml::writer {
     fn _emit_tagged_uint(t: ebml_serializer_tag, v: uint) {
         assert v <= 0xFFFF_FFFF_u;
         self.wr_tagged_u32(t as uint, v as u32);
+    }
+
+    fn _emit_label(label: str) {
+        // There are various strings that we have access to, such as
+        // the name of a record field, which do not actually appear in
+        // the serialized EBML (normally).  This is just for
+        // efficiency.  When debugging, though, we can emit such
+        // labels and then they will be checked by deserializer to
+        // try and check failures more quickly.
+        if debug { self.wr_tagged_str(es_label as uint, label) }
     }
 
     fn emit_uint(v: uint) { self.wr_tagged_u64(es_uint as uint, v as u64); }
@@ -118,7 +134,8 @@ impl of serializer for ebml::writer {
 
     fn emit_str(v: str) { self.wr_tagged_str(es_str as uint, v) }
 
-    fn emit_enum(_name: str, f: fn()) {
+    fn emit_enum(name: str, f: fn()) {
+        self._emit_label(name);
         self.wr_tag(es_enum as uint, f)
     }
     fn emit_enum_variant(_v_name: str, v_id: uint, _cnt: uint, f: fn()) {
@@ -138,14 +155,13 @@ impl of serializer for ebml::writer {
         self.wr_tag(es_vec_elt as uint, f)
     }
 
-    fn emit_vec_elt(_idx: uint, f: fn()) {
-        self.wr_tag(es_vec_elt as uint, f)
-    }
-
     fn emit_box(f: fn()) { f() }
     fn emit_uniq(f: fn()) { f() }
     fn emit_rec(f: fn()) { f() }
-    fn emit_rec_field(_f_name: str, _f_idx: uint, f: fn()) { f() }
+    fn emit_rec_field(f_name: str, _f_idx: uint, f: fn()) {
+        self._emit_label(f_name);
+        f()
+    }
     fn emit_tup(_sz: uint, f: fn()) { f() }
     fn emit_tup_elt(_idx: uint, f: fn()) { f() }
 }
@@ -158,7 +174,22 @@ fn mk_ebml_deserializer(d: ebml::doc) -> ebml_deserializer {
 }
 
 impl of deserializer for ebml_deserializer {
+    fn _check_label(lbl: str) {
+        if self.pos < self.parent.end {
+            let {tag: r_tag, doc: r_doc} =
+                ebml::doc_at(self.parent.data, self.pos);
+            if r_tag == (es_label as uint) {
+                self.pos = r_doc.end;
+                let str = ebml::doc_as_str(r_doc);
+                if lbl != str {
+                    fail #fmt["Expected label %s but found %s", lbl, str];
+                }
+            }
+        }
+    }
+
     fn next_doc(exp_tag: ebml_serializer_tag) -> ebml::doc {
+        #debug[". next_doc(exp_tag=%?)", exp_tag];
         if self.pos >= self.parent.end {
             fail "no more documents in current node!";
         }
@@ -231,53 +262,68 @@ impl of deserializer for ebml_deserializer {
     fn read_str() -> str { ebml::doc_as_str(self.next_doc(es_str)) }
 
     // Compound types:
-    fn read_enum<T:copy>(_name: str, f: fn() -> T) -> T {
+    fn read_enum<T:copy>(name: str, f: fn() -> T) -> T {
+        #debug["read_enum(%s)", name];
+        self._check_label(name);
         self.push_doc(self.next_doc(es_enum), f)
     }
 
     fn read_enum_variant<T:copy>(f: fn(uint) -> T) -> T {
+        #debug["read_enum_variant()"];
         let idx = self._next_uint(es_enum_vid);
+        #debug["  idx=%u", idx];
         self.push_doc(self.next_doc(es_enum_body)) {||
             f(idx)
         }
     }
 
-    fn read_enum_variant_arg<T:copy>(_idx: uint, f: fn() -> T) -> T {
+    fn read_enum_variant_arg<T:copy>(idx: uint, f: fn() -> T) -> T {
+        #debug["read_enum_variant_arg(idx=%u)", idx];
         f()
     }
 
     fn read_vec<T:copy>(f: fn(uint) -> T) -> T {
+        #debug["read_vec()"];
         self.push_doc(self.next_doc(es_vec)) {||
             let len = self._next_uint(es_vec_len);
+            #debug["  len=%u", len];
             f(len)
         }
     }
 
-    fn read_vec_elt<T:copy>(_idx: uint, f: fn() -> T) -> T {
+    fn read_vec_elt<T:copy>(idx: uint, f: fn() -> T) -> T {
+        #debug["read_vec_elt(idx=%u)", idx];
         self.push_doc(self.next_doc(es_vec_elt), f)
     }
 
     fn read_box<T:copy>(f: fn() -> T) -> T {
+        #debug["read_box()"];
         f()
     }
 
     fn read_uniq<T:copy>(f: fn() -> T) -> T {
+        #debug["read_uniq()"];
         f()
     }
 
     fn read_rec<T:copy>(f: fn() -> T) -> T {
+        #debug["read_rec()"];
         f()
     }
 
-    fn read_rec_field<T:copy>(_f_name: str, _f_idx: uint, f: fn() -> T) -> T {
+    fn read_rec_field<T:copy>(f_name: str, f_idx: uint, f: fn() -> T) -> T {
+        #debug["read_rec_field(%s, idx=%u)", f_name, f_idx];
+        self._check_label(f_name);
         f()
     }
 
-    fn read_tup<T:copy>(_sz: uint, f: fn() -> T) -> T {
+    fn read_tup<T:copy>(sz: uint, f: fn() -> T) -> T {
+        #debug["read_tup(sz=%u)", sz];
         f()
     }
 
-    fn read_tup_elt<T:copy>(_idx: uint, f: fn() -> T) -> T {
+    fn read_tup_elt<T:copy>(idx: uint, f: fn() -> T) -> T {
+        #debug["read_tup_elt(idx=%u)", idx];
         f()
     }
 }
