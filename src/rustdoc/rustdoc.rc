@@ -12,6 +12,7 @@
 use std;
 use rustc;
 
+mod config;
 mod parse;
 mod extract;
 mod attr_parser;
