@@ -153,7 +153,7 @@ fn default_any_fold_mod<T:send>(
 ) -> doc::moddoc {
     {
         item: fold.fold_item(fold, doc.item),
-        items: util::anymap(doc.items) {|itemtag|
+        items: par::anymap(doc.items) {|itemtag|
             fold_itemtag(fold, itemtag)
         }
         with doc
@@ -166,7 +166,7 @@ fn default_seq_fold_mod<T>(
 ) -> doc::moddoc {
     {
         item: fold.fold_item(fold, doc.item),
-        items: util::seqmap(doc.items) {|itemtag|
+        items: par::seqmap(doc.items) {|itemtag|
             fold_itemtag(fold, itemtag)
         }
         with doc
@@ -179,7 +179,7 @@ fn default_par_fold_mod<T:send>(
 ) -> doc::moddoc {
     {
         item: fold.fold_item(fold, doc.item),
-        items: util::parmap(doc.items) {|itemtag|
+        items: par::parmap(doc.items) {|itemtag|
             fold_itemtag(fold, itemtag)
         }
         with doc
@@ -192,7 +192,7 @@ fn default_any_fold_nmod<T:send>(
 ) -> doc::nmoddoc {
     {
         item: fold.fold_item(fold, doc.item),
-        fns: util::anymap(doc.fns) {|fndoc|
+        fns: par::anymap(doc.fns) {|fndoc|
             fold.fold_fn(fold, fndoc)
         }
         with doc
@@ -205,7 +205,7 @@ fn default_seq_fold_nmod<T>(
 ) -> doc::nmoddoc {
     {
         item: fold.fold_item(fold, doc.item),
-        fns: util::seqmap(doc.fns) {|fndoc|
+        fns: par::seqmap(doc.fns) {|fndoc|
             fold.fold_fn(fold, fndoc)
         }
         with doc
@@ -218,7 +218,7 @@ fn default_par_fold_nmod<T:send>(
 ) -> doc::nmoddoc {
     {
         item: fold.fold_item(fold, doc.item),
-        fns: util::parmap(doc.fns) {|fndoc|
+        fns: par::parmap(doc.fns) {|fndoc|
             fold.fold_fn(fold, fndoc)
         }
         with doc

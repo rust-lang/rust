@@ -105,7 +105,7 @@ fn fold_iface(
 }
 
 fn prune_methods(docs: [doc::methoddoc]) -> [doc::methoddoc] {
-    util::anymap(docs) {|doc|
+    par::anymap(docs) {|doc|
         {
             args: prune_args(doc.args),
             return: prune_return(doc.return)

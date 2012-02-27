@@ -112,7 +112,7 @@ fn nmoddoc_from_mod(
 ) -> doc::nmoddoc {
     {
         item: itemdoc,
-        fns: util::seqmap(module.items) {|item|
+        fns: par::seqmap(module.items) {|item|
             let itemdoc = mk_itemdoc(item.id, item.ident);
             alt item.node {
               ast::native_item_fn(decl, _) {
@@ -150,7 +150,7 @@ fn should_extract_fn_args() {
 }
 
 fn argdocs_from_args(args: [ast::arg]) -> [doc::argdoc] {
-    util::seqmap(args, argdoc_from_arg)
+    par::seqmap(args, argdoc_from_arg)
 }
 
 fn argdoc_from_arg(arg: ast::arg) -> doc::argdoc {
@@ -188,7 +188,7 @@ fn enumdoc_from_enum(
 fn variantdocs_from_variants(
     variants: [ast::variant]
 ) -> [doc::variantdoc] {
-    util::seqmap(variants, variantdoc_from_variant)
+    par::seqmap(variants, variantdoc_from_variant)
 }
 
 fn variantdoc_from_variant(variant: ast::variant) -> doc::variantdoc {
@@ -242,7 +242,7 @@ fn ifacedoc_from_iface(
 ) -> doc::ifacedoc {
     {
         item: itemdoc,
-        methods: util::seqmap(methods) {|method|
+        methods: par::seqmap(methods) {|method|
             {
                 name: method.ident,
                 brief: none,
@@ -285,7 +285,7 @@ fn impldoc_from_impl(
         item: itemdoc,
         iface_ty: none,
         self_ty: none,
-        methods: util::seqmap(methods) {|method|
+        methods: par::seqmap(methods) {|method|
             {
                 name: method.ident,
                 brief: none,

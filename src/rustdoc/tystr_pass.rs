@@ -165,7 +165,7 @@ fn get_arg_tys(srv: astsrv::srv, fn_id: doc::ast_id) -> [(str, str)] {
 }
 
 fn decl_arg_tys(decl: ast::fn_decl) -> [(str, str)] {
-    util::seqmap(decl.inputs) {|arg|
+    par::seqmap(decl.inputs) {|arg|
         (arg.ident, pprust::ty_to_str(arg.ty))
     }
 }
@@ -217,7 +217,7 @@ fn fold_enum(
     let srv = fold.ctxt;
 
     {
-        variants: util::anymap(doc.variants) {|variant|
+        variants: par::anymap(doc.variants) {|variant|
             let sig = astsrv::exec(srv) {|ctxt|
                 alt check ctxt.ast_map.get(doc.id()) {
                   ast_map::node_item(@{
@@ -296,7 +296,7 @@ fn merge_methods(
     item_id: doc::ast_id,
     docs: [doc::methoddoc]
 ) -> [doc::methoddoc] {
-    util::anymap(docs) {|doc|
+    par::anymap(docs) {|doc|
         {
             args: merge_method_arg_tys(
                 srv,
