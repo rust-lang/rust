@@ -130,40 +130,6 @@ template <typename T> struct task_owned {
     }
 };
 
-template<class T>
-class smart_ptr {
-    T *p;
-
-public:
-    smart_ptr() : p(NULL) {};
-    smart_ptr(T *p) : p(p) { if(p) { p->ref(); } }
-    smart_ptr(const smart_ptr &sp) : p(sp.p) {
-        if(p) { p->ref(); }
-    }
-
-    ~smart_ptr() {
-        if(p) {
-            p->deref();
-        }
-    }
-
-    T *operator=(T* p) {
-        if(this->p) {
-            this->p->deref();
-        }
-        if(p) {
-            p->ref();
-        }
-        this->p = p;
-
-        return p;
-    }
-
-    T *operator->() const { return p; };
-
-    operator T*() const { return p; }
-};
-
 template <typename T> struct kernel_owned {
     inline void *operator new(size_t size, rust_kernel *kernel,
                               const char *tag);
