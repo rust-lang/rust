@@ -98,8 +98,6 @@ inline void reserve_vec(rust_task* task, rust_vec** vpp, size_t size) {
     reserve_vec_exact(task, vpp, next_power_of_two(size));
 }
 
-extern "C" void *rust_realloc_shared(void * p, size_t size);
-
 typedef rust_vec rust_str;
 
 inline rust_str *
