@@ -352,7 +352,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_symbol(ecx, ebml_w, item.id);
         encode_path(ebml_w, path, ast_map::path_name(item.ident));
         if should_inline(path, item) {
-            astencode::encode_inlined_item(ecx, ebml_w, item);
+            astencode::encode_inlined_item(ecx, ebml_w, path, item);
         }
         ebml_w.end_tag();
       }

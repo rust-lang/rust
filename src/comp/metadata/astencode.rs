@@ -56,13 +56,21 @@ iface tr {
 
 fn encode_inlined_item(ecx: @e::encode_ctxt,
                        ebml_w: ebml::writer,
+                       path: ast_map::path,
                        item: @ast::item) {
+    #debug["> Encoding inlined item: %s::%s (%u)",
+           ast_map::path_to_str(path),
+           item.ident,
+           ebml_w.writer.tell()];
     let id_range = compute_id_range(item);
     ebml_w.wr_tag(c::tag_ast as uint) {||
         encode_id_range(ebml_w, id_range);
         encode_ast(ebml_w, item);
         encode_side_tables_for_item(ecx, ebml_w, item);
     }
+    #debug["< Encoded inlined item: %s (%u)",
+           ast_map::path_to_str(path),
+           ebml_w.writer.tell()];
 }
 
 fn decode_inlined_item(cdata: cstore::crate_metadata,
@@ -74,6 +82,7 @@ fn decode_inlined_item(cdata: cstore::crate_metadata,
     alt par_doc.opt_child(c::tag_ast) {
       none { none }
       some(ast_doc) {
+        #debug["> Decoding inlined item: %s", ast_map::path_to_str(path)];
         let from_id_range = decode_id_range(ast_doc);
         let to_id_range = reserve_id_range(dcx.tcx.sess, from_id_range);
         let xcx = @{dcx: dcx,
@@ -81,8 +90,10 @@ fn decode_inlined_item(cdata: cstore::crate_metadata,
                     to_id_range: to_id_range};
         let raw_item = decode_ast(ast_doc);
         let item = renumber_ast(xcx, raw_item);
+        #debug[">> Item named: %s", item.ident];
         ast_map::map_decoded_item(dcx.tcx.items, path, item);
         decode_side_tables(xcx, ast_doc);
+        #debug["< Decoded inlined item: %s", ast_map::path_to_str(path)];
         some(item)
       }
     }
@@ -629,7 +640,7 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
             ebml_w.id(id);
             ebml_w.tag(c::tag_table_val) {||
                 ebml_w.emit_from_vec(*fv) {|fv_entry|
-                    encode_def(ebml_w, fv_entry.def);
+                    encode_freevar_entry(ebml_w, *fv_entry)
                 }
             }
         }
@@ -759,7 +770,7 @@ fn decode_side_tables(xcx: extended_decode_ctxt,
         let id0 = entry_doc[c::tag_table_id].as_int();
         let id = xcx.tr_id(id0);
 
-        #debug["side table document with tag 0x%x found for id %d (orig %d)",
+        #debug[">> Side table document with tag 0x%x found for id %d (orig %d)",
                tag, id, id0];
 
         if tag == (c::tag_table_mutbl as uint) {
@@ -803,6 +814,8 @@ fn decode_side_tables(xcx: extended_decode_ctxt,
                     #fmt["Unknown tag found in side tables: %x", tag]);
             }
         }
+
+        #debug[">< Side table doc loaded"];
     }
 }
 
