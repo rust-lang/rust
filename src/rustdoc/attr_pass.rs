@@ -199,7 +199,7 @@ fn should_extract_fn_return_attributes() {
     astsrv::from_str(source) {|srv|
         let doc = extract::from_srv(srv, "");
         let doc = tystr_pass::mk_pass()(srv, doc);
-        let fold = fold::default_seq_fold(srv);
+        let fold = fold::default_any_fold(srv);
         let doc = fold_fn(fold, doc.topmod.fns()[0]);
         assert doc.return.desc == some("what");
     }
@@ -211,7 +211,7 @@ fn should_preserve_fn_sig() {
     astsrv::from_str(source) {|srv|
         let doc = extract::from_srv(srv, "");
         let doc = tystr_pass::mk_pass()(srv, doc);
-        let fold = fold::default_seq_fold(srv);
+        let fold = fold::default_any_fold(srv);
         let doc = fold_fn(fold, doc.topmod.fns()[0]);
         assert doc.sig == some("fn a() -> int");
     }
