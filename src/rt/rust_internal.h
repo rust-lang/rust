@@ -152,34 +152,6 @@ template <typename T> struct region_owned {
 
 struct rust_cond { };
 
-// Helper class used regularly elsewhere.
-
-template <typename T> class ptr_vec : public task_owned<ptr_vec<T> > {
-    static const size_t INIT_SIZE = 8;
-    rust_task *task;
-    size_t alloc;
-    size_t fill;
-    T **data;
-public:
-    ptr_vec(rust_task *task);
-    ~ptr_vec();
-
-    size_t length() {
-        return fill;
-    }
-
-    bool is_empty() {
-        return fill == 0;
-    }
-
-    T *& operator[](size_t offset);
-    void push(T *p);
-    T *pop();
-    T *peek();
-    void trim(size_t fill);
-    void swap_delete(T* p);
-};
-
 #include "memory_region.h"
 #include "rust_srv.h"
 #include "rust_log.h"
