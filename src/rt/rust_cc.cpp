@@ -80,9 +80,6 @@ class irc : public shape::data<irc,shape::ptr> {
             return;     // There can't be any outbound pointers from this.
 
         std::pair<uint8_t *,uint8_t *> data_range(get_vec_data_range(dp));
-        if (data_range.second - data_range.first > 100000)
-            abort();    // FIXME: Temporary sanity check.
-
         irc sub(*this, data_range.first);
         shape::ptr data_end = sub.end_dp = data_range.second;
         while (sub.dp < data_end) {
