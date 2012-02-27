@@ -1,4 +1,12 @@
-export parmap;
+export anymap, seqmap, parmap;
+
+fn anymap<T:send, U:send>(v: [T], f: fn(T) -> U) -> [U] {
+    seqmap(v, f)
+}
+
+fn seqmap<T, U>(v: [T], f: fn(T) -> U) -> [U] {
+    vec::map(v, f)
+}
 
 fn parmap<T:send, U:send>(v: [T], f: fn~(T) -> U) -> [U] unsafe {
     let futures = vec::map(v) {|elt|

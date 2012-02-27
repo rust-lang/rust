@@ -79,6 +79,23 @@ fn mk_fold<T:copy>(
     })
 }
 
+fn default_any_fold<T:send>(ctxt: T) -> fold<T> {
+    mk_fold(
+        ctxt,
+        {|f, d| default_seq_fold_crate(f, d)},
+        {|f, d| default_seq_fold_item(f, d)},
+        {|f, d| default_any_fold_mod(f, d)},
+        {|f, d| default_seq_fold_nmod(f, d)},
+        {|f, d| default_seq_fold_fn(f, d)},
+        {|f, d| default_seq_fold_const(f, d)},
+        {|f, d| default_seq_fold_enum(f, d)},
+        {|f, d| default_seq_fold_res(f, d)},
+        {|f, d| default_seq_fold_iface(f, d)},
+        {|f, d| default_seq_fold_impl(f, d)},
+        {|f, d| default_seq_fold_type(f, d)}
+    )
+}
+
 fn default_seq_fold<T:copy>(ctxt: T) -> fold<T> {
     mk_fold(
         ctxt,
@@ -113,12 +130,6 @@ fn default_par_fold<T:send>(ctxt: T) -> fold<T> {
     )
 }
 
-// Just a convenient wrapper to convert back and forth between
-// parallel and sequential folds for perf testing
-fn default_any_fold<T:send>(ctxt: T) -> fold<T> {
-    default_seq_fold(ctxt)
-}
-
 fn default_seq_fold_crate<T>(
     fold: fold<T>,
     doc: doc::cratedoc
@@ -135,27 +146,27 @@ fn default_seq_fold_item<T>(
     doc
 }
 
-fn default_seq_fold_mod<T>(
+fn default_any_fold_mod<T:send>(
     fold: fold<T>,
     doc: doc::moddoc
 ) -> doc::moddoc {
     {
         item: fold.fold_item(fold, doc.item),
-        items: vec::map(doc.items) {|itemtag|
+        items: util::anymap(doc.items) {|itemtag|
             fold_itemtag(fold, itemtag)
         }
         with doc
     }
 }
 
-fn default_seq_fold_nmod<T>(
+fn default_seq_fold_mod<T>(
     fold: fold<T>,
-    doc: doc::nmoddoc
-) -> doc::nmoddoc {
+    doc: doc::moddoc
+) -> doc::moddoc {
     {
         item: fold.fold_item(fold, doc.item),
-        fns: vec::map(doc.fns) {|fndoc|
-            fold.fold_fn(fold, fndoc)
+        items: util::seqmap(doc.items) {|itemtag|
+            fold_itemtag(fold, itemtag)
         }
         with doc
     }
@@ -174,11 +185,17 @@ fn default_par_fold_mod<T:send>(
     }
 }
 
-fn default_any_fold_mod<T:send>(
+fn default_seq_fold_nmod<T>(
     fold: fold<T>,
-    doc: doc::moddoc
-) -> doc::moddoc {
-    default_seq_fold_mod(fold, doc)
+    doc: doc::nmoddoc
+) -> doc::nmoddoc {
+    {
+        item: fold.fold_item(fold, doc.item),
+        fns: vec::map(doc.fns) {|fndoc|
+            fold.fold_fn(fold, fndoc)
+        }
+        with doc
+    }
 }
 
 fn fold_itemtag<T>(fold: fold<T>, doc: doc::itemtag) -> doc::itemtag {
