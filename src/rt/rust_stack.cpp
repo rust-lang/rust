@@ -41,3 +41,20 @@ void
 check_stack_canary(stk_seg *stk) {
     assert(stk->canary == canary_value && "Somebody killed the canary");
 }
+
+stk_seg *
+create_stack(memory_region *region, size_t sz) {
+    size_t total_sz = sizeof(stk_seg) + sz;
+    stk_seg *stk = (stk_seg *)region->malloc(total_sz, "stack", false);
+    memset(stk, 0, sizeof(stk_seg));
+    stk->end = (uintptr_t) &stk->data[sz];
+    add_stack_canary(stk);
+    register_valgrind_stack(stk);
+    return stk;
+}
+
+void
+destroy_stack(memory_region *region, stk_seg *stk) {
+    deregister_valgrind_stack(stk);
+    region->free(stk);
+}

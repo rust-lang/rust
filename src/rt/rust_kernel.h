@@ -59,6 +59,7 @@ public:
     void *malloc(size_t size, const char *tag);
     void *realloc(void *mem, size_t size);
     void free(void *mem);
+    memory_region *region() { return &_region; }
 
     void fail();
 

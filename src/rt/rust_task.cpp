@@ -552,7 +552,7 @@ void
 rust_task::free_stack(stk_seg *stk) {
     LOGPTR(thread, "freeing stk segment", (uintptr_t)stk);
     total_stack_sz -= user_stack_size(stk);
-    destroy_stack(this, stk);
+    destroy_stack(&local_region, stk);
 }
 
 void
@@ -596,7 +596,7 @@ rust_task::new_stack(size_t requested_sz) {
     }
 
     size_t sz = rust_stk_sz + RED_ZONE_SIZE;
-    stk_seg *new_stk = create_stack(this, sz);
+    stk_seg *new_stk = create_stack(&local_region, sz);
     LOGPTR(thread, "new stk", (uintptr_t)new_stk);
     new_stk->prev = NULL;
     new_stk->next = stk;
