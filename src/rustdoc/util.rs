@@ -1,13 +1,17 @@
 export parmap;
 
-fn parmap<T:send, U:send>(v: [T], f: fn~(T) -> U) -> [U] {
+fn parmap<T:send, U:send>(v: [T], f: fn~(T) -> U) -> [U] unsafe {
     let futures = vec::map(v) {|elt|
-        future::spawn {||
-            f(elt)
+        let po = comm::port();
+        let ch = comm::chan(po);
+        let addr = ptr::addr_of(elt);
+        task::spawn {||
+            comm::send(ch, f(*addr));
         }
+        po
     };
     vec::map(futures) {|future|
-        future::get(future)
+        comm::recv(future)
     }
 }
 
