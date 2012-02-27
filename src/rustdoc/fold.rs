@@ -1,5 +1,4 @@
 export fold;
-export fold_crate, fold_mod, fold_fn;
 export default_seq_fold;
 export default_seq_fold_crate;
 export default_seq_fold_item;
