@@ -3,6 +3,7 @@
 #define RUST_KERNEL_H
 
 #include <map>
+#include <vector>
 #include "memory_region.h"
 #include "rust_log.h"
 
@@ -36,14 +37,15 @@ private:
     lock_and_signal rval_lock;
     int rval;
 
-    // Protects live_schedulers, max_sched_id and sched_table
+    // Protects max_sched_id and sched_table, join_list
     lock_and_signal sched_lock;
-    // Tracks the number of schedulers currently running.
-    // When this hits 0 we will signal the sched_lock and the
-    // kernel will terminate.
-    uintptr_t live_schedulers;
+    // The next scheduler id
     rust_sched_id max_sched_id;
+    // A map from scheduler ids to schedulers. When this is empty
+    // the kernel terminates
     sched_map sched_table;
+    // A list of scheduler ids that are ready to exit
+    std::vector<rust_sched_id> join_list;
 
 public:
 
