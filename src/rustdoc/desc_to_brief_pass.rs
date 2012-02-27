@@ -41,7 +41,7 @@ fn fold_iface(fold: fold::fold<()>, doc: doc::ifacedoc) -> doc::ifacedoc {
     let doc =fold::default_seq_fold_iface(fold, doc);
 
     {
-        methods: vec::map(doc.methods) {|doc|
+        methods: util::anymap(doc.methods) {|doc|
             let (brief, desc) = modify(doc.brief, doc.desc);
 
             {
@@ -58,7 +58,7 @@ fn fold_impl(fold: fold::fold<()>, doc: doc::impldoc) -> doc::impldoc {
     let doc =fold::default_seq_fold_impl(fold, doc);
 
     {
-        methods: vec::map(doc.methods) {|doc|
+        methods: util::anymap(doc.methods) {|doc|
             let (brief, desc) = modify(doc.brief, doc.desc);
 
             {

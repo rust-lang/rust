@@ -228,7 +228,7 @@ fn write_sig(ctxt: ctxt, sig: option<str>) {
 
 fn code_block_indent(s: str) -> str {
     let lines = str::lines_any(s);
-    let indented = vec::map(lines, { |line| #fmt("    %s", line) });
+    let indented = util::anymap(lines, { |line| #fmt("    %s", line) });
     str::connect(indented, "\n")
 }
 

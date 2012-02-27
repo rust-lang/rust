@@ -45,7 +45,7 @@ fn fold_fn(fold: fold::fold<op>, doc: doc::fndoc) -> doc::fndoc {
     let doc = fold::default_seq_fold_fn(fold, doc);
 
     {
-        args: vec::map(doc.args) {|doc|
+        args: util::anymap(doc.args) {|doc|
             {
                 desc: maybe_apply_op(fold.ctxt, doc.desc)
                 with doc
@@ -64,7 +64,7 @@ fn fold_enum(fold: fold::fold<op>, doc: doc::enumdoc) -> doc::enumdoc {
     let doc = fold::default_seq_fold_enum(fold, doc);
 
     {
-        variants: vec::map(doc.variants) {|variant|
+        variants: util::anymap(doc.variants) {|variant|
             {
                 desc: maybe_apply_op(fold.ctxt, variant.desc)
                 with variant
@@ -78,7 +78,7 @@ fn fold_res(fold: fold::fold<op>, doc: doc::resdoc) -> doc::resdoc {
     let doc = fold::default_seq_fold_res(fold, doc);
 
     {
-        args: vec::map(doc.args) {|arg|
+        args: util::anymap(doc.args) {|arg|
             {
                 desc: maybe_apply_op(fold.ctxt, arg.desc)
                 with arg
@@ -98,11 +98,11 @@ fn fold_iface(fold: fold::fold<op>, doc: doc::ifacedoc) -> doc::ifacedoc {
 }
 
 fn apply_to_methods(op: op, docs: [doc::methoddoc]) -> [doc::methoddoc] {
-    vec::map(docs) {|doc|
+    util::anymap(docs) {|doc|
         {
             brief: maybe_apply_op(op, doc.brief),
             desc: maybe_apply_op(op, doc.desc),
-            args: vec::map(doc.args) {|doc|
+            args: util::anymap(doc.args) {|doc|
                 {
                     desc: maybe_apply_op(op, doc.desc)
                     with doc

@@ -154,7 +154,7 @@ fn merge_arg_attrs(
     docs: [doc::argdoc],
     attrs: [attr_parser::arg_attrs]
 ) -> [doc::argdoc] {
-    vec::map(docs) {|doc|
+    util::anymap(docs) {|doc|
         alt vec::find(attrs) {|attr|
             attr.name == doc.name
         } {
@@ -239,7 +239,7 @@ fn fold_enum(
     let doc = fold::default_seq_fold_enum(fold, doc);
 
     {
-        variants: vec::map(doc.variants) {|variant|
+        variants: util::anymap(doc.variants) {|variant|
             let attrs = astsrv::exec(srv) {|ctxt|
                 alt check ctxt.ast_map.get(doc.id()) {
                   ast_map::node_item(@{
@@ -288,7 +288,7 @@ fn fold_res(
     let attrs = parse_item_attrs(srv, doc.id(), attr_parser::parse_res);
 
     {
-        args: vec::map(doc.args) {|doc|
+        args: util::anymap(doc.args) {|doc|
             alt vec::find(attrs.args) {|attr|
                 attr.name == doc.name
             } {
@@ -349,7 +349,7 @@ fn merge_method_attrs(
           ast_map::node_item(@{
             node: ast::item_iface(_, methods), _
           }, _) {
-            vec::map(methods) {|method|
+            util::seqmap(methods) {|method|
                 (method.ident,
                  (attr_parser::parse_basic(method.attrs),
                   attr_parser::parse_method(method.attrs)
@@ -359,7 +359,7 @@ fn merge_method_attrs(
           ast_map::node_item(@{
             node: ast::item_impl(_, _, _, methods), _
           }, _) {
-            vec::map(methods) {|method|
+            util::seqmap(methods) {|method|
                 (method.ident,
                  (attr_parser::parse_basic(method.attrs),
                   attr_parser::parse_method(method.attrs)
