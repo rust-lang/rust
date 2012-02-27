@@ -14,8 +14,10 @@ export default_seq_fold_impl;
 export default_seq_fold_type;
 export default_par_fold;
 export default_par_fold_mod;
+export default_par_fold_nmod;
 export default_any_fold;
 export default_any_fold_mod;
+export default_any_fold_nmod;
 
 enum fold<T> = t<T>;
 
@@ -85,7 +87,7 @@ fn default_any_fold<T:send>(ctxt: T) -> fold<T> {
         {|f, d| default_seq_fold_crate(f, d)},
         {|f, d| default_seq_fold_item(f, d)},
         {|f, d| default_any_fold_mod(f, d)},
-        {|f, d| default_seq_fold_nmod(f, d)},
+        {|f, d| default_any_fold_nmod(f, d)},
         {|f, d| default_seq_fold_fn(f, d)},
         {|f, d| default_seq_fold_const(f, d)},
         {|f, d| default_seq_fold_enum(f, d)},
@@ -119,7 +121,7 @@ fn default_par_fold<T:send>(ctxt: T) -> fold<T> {
         {|f, d| default_seq_fold_crate(f, d)},
         {|f, d| default_seq_fold_item(f, d)},
         {|f, d| default_par_fold_mod(f, d)},
-        {|f, d| default_seq_fold_nmod(f, d)},
+        {|f, d| default_par_fold_nmod(f, d)},
         {|f, d| default_seq_fold_fn(f, d)},
         {|f, d| default_seq_fold_const(f, d)},
         {|f, d| default_seq_fold_enum(f, d)},
@@ -185,13 +187,39 @@ fn default_par_fold_mod<T:send>(
     }
 }
 
+fn default_any_fold_nmod<T:send>(
+    fold: fold<T>,
+    doc: doc::nmoddoc
+) -> doc::nmoddoc {
+    {
+        item: fold.fold_item(fold, doc.item),
+        fns: util::anymap(doc.fns) {|fndoc|
+            fold.fold_fn(fold, fndoc)
+        }
+        with doc
+    }
+}
+
 fn default_seq_fold_nmod<T>(
     fold: fold<T>,
     doc: doc::nmoddoc
 ) -> doc::nmoddoc {
     {
         item: fold.fold_item(fold, doc.item),
-        fns: vec::map(doc.fns) {|fndoc|
+        fns: util::seqmap(doc.fns) {|fndoc|
+            fold.fold_fn(fold, fndoc)
+        }
+        with doc
+    }
+}
+
+fn default_par_fold_nmod<T:send>(
+    fold: fold<T>,
+    doc: doc::nmoddoc
+) -> doc::nmoddoc {
+    {
+        item: fold.fold_item(fold, doc.item),
+        fns: util::parmap(doc.fns) {|fndoc|
             fold.fold_fn(fold, fndoc)
         }
         with doc
