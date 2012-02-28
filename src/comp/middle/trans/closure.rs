@@ -362,6 +362,7 @@ fn build_closure(bcx0: block,
 
     // Package up the captured upvars
     vec::iter(cap_vars) { |cap_var|
+        #debug["Building closure: captured variable %?", cap_var];
         let lv = trans_local_var(bcx, cap_var.def);
         let nid = ast_util::def_id_of_def(cap_var.def).node;
         let ty = node_id_type(bcx, nid);

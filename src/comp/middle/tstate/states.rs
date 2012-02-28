@@ -246,9 +246,8 @@ fn gen_if_local(fcx: fn_ctxt, p: poststate, e: @expr) -> bool {
     alt e.node {
       expr_path(pth) {
         alt fcx.ccx.tcx.def_map.find(e.id) {
-          some(def_local(loc)) {
-            ret set_in_poststate_ident(fcx, loc.node,
-                                       path_to_ident(pth), p);
+          some(def_local(nid)) {
+            ret set_in_poststate_ident(fcx, nid, path_to_ident(pth), p);
           }
           _ { ret false; }
         }

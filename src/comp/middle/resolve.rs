@@ -1019,7 +1019,7 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
               ast::item_iface(tps, _) {
                 if ns == ns_type {
                     if name == "self" {
-                        ret some(def_self(local_def(it.id)));
+                        ret some(def_self(it.id));
                     }
                     ret lookup_in_ty_params(e, name, tps);
                 }
@@ -1050,7 +1050,7 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
           }
           scope_method(id, tps) {
             if (name == "self" && ns == ns_val(value_or_enum)) {
-                ret some(ast::def_self(local_def(id)));
+                ret some(ast::def_self(id));
             } else if ns == ns_type {
                 ret lookup_in_ty_params(e, name, tps);
             }
@@ -1073,7 +1073,7 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
           scope_loop(local) {
             if ns == ns_val(value_or_enum) {
                 alt lookup_in_pat(e, name, local.node.pat) {
-                  some(did) { ret some(ast::def_binding(did)); }
+                  some(nid) { ret some(ast::def_binding(nid)); }
                   _ { }
                 }
             }
@@ -1084,7 +1084,7 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
           scope_arm(a) {
             if ns == ns_val(value_or_enum) {
                 alt lookup_in_pat(e, name, a.pats[0]) {
-                  some(did) { ret some(ast::def_binding(did)); }
+                  some(nid) { ret some(ast::def_binding(nid)); }
                   _ { ret none; }
                 }
             }
@@ -1127,8 +1127,10 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
                     let i = vec::len(closing);
                     while i > 0u {
                         i -= 1u;
-                        df = ast::def_upvar(def_id_of_def(df), @df,
-                                            closing[i]);
+                        #debug["name=%s df=%?", name, df];
+                        assert def_is_local(df) || def_is_self(df);
+                        let df_id = def_id_of_def(df).node;
+                        df = ast::def_upvar(df_id, @df, closing[i]);
                     }
                 }
                 ret some(df);
@@ -1163,12 +1165,12 @@ fn lookup_in_ty_params(e: env, name: ident, ty_params: [ast::ty_param])
     ret none;
 }
 
-fn lookup_in_pat(e: env, name: ident, pat: @ast::pat) -> option<def_id> {
+fn lookup_in_pat(e: env, name: ident, pat: @ast::pat) -> option<node_id> {
     let found = none;
 
     pat_util::pat_bindings(e.def_map, pat) {|p_id, _sp, n|
         if str::eq(path_to_ident(n), name)
-                    { found = some(local_def(p_id)); }
+                    { found = some(p_id); }
     };
     ret found;
 }
@@ -1180,7 +1182,7 @@ fn lookup_in_fn(e: env, name: ident, decl: ast::fn_decl,
       ns_val(value_or_enum) {
         for a: ast::arg in decl.inputs {
             if str::eq(a.ident, name) {
-                ret some(ast::def_arg(local_def(a.id), a.mode));
+                ret some(ast::def_arg(a.id, a.mode));
             }
         }
         ret none;
@@ -1233,8 +1235,8 @@ fn lookup_in_block(e: env, name: ident, sp: span, b: ast::blk_, pos: uint,
                         if ns == ns_val(value_or_enum)
                                      && (i < pos || j < loc_pos) {
                             alt lookup_in_pat(e, name, loc.node.pat) {
-                              some(did) {
-                                ret some(ast::def_local(did));
+                              some(nid) {
+                                ret some(ast::def_local(nid));
                               }
                               _ { }
                             }

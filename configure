@@ -670,5 +670,6 @@ rm -f config.mk.bak
 
 msg
 copy ${CFG_SRC_DIR}Makefile.in ./Makefile
+chmod u-w Makefile # it is generated, make it read-only
 
 step_msg "complete"

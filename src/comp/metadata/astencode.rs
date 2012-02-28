@@ -354,24 +354,22 @@ impl of tr for ast::def {
     fn tr(xcx: extended_decode_ctxt) -> ast::def {
         alt self {
           ast::def_fn(did, p) { ast::def_fn(did.tr(xcx), p) }
-          ast::def_self(did) { ast::def_self(did.tr(xcx)) }
+          ast::def_self(nid) { ast::def_self(xcx.tr_id(nid)) }
           ast::def_mod(did) { ast::def_mod(did.tr(xcx)) }
           ast::def_native_mod(did) { ast::def_native_mod(did.tr(xcx)) }
           ast::def_const(did) { ast::def_const(did.tr(xcx)) }
-          ast::def_arg(did, m) { ast::def_arg(did.tr_intern(xcx), m) }
-          ast::def_local(did) { ast::def_local(did.tr_intern(xcx)) }
+          ast::def_arg(nid, m) { ast::def_arg(xcx.tr_id(nid), m) }
+          ast::def_local(nid) { ast::def_local(xcx.tr_id(nid)) }
           ast::def_variant(e_did, v_did) {
             ast::def_variant(e_did.tr(xcx), v_did.tr(xcx))
           }
           ast::def_ty(did) { ast::def_ty(did.tr(xcx)) }
           ast::def_prim_ty(p) { ast::def_prim_ty(p) }
           ast::def_ty_param(did, v) { ast::def_ty_param(did.tr(xcx), v) }
-          ast::def_binding(did) { ast::def_binding(did.tr(xcx)) }
+          ast::def_binding(nid) { ast::def_binding(xcx.tr_id(nid)) }
           ast::def_use(did) { ast::def_use(did.tr(xcx)) }
-          ast::def_upvar(did, def, node_id) {
-            ast::def_upvar(did.tr_intern(xcx),
-                           @(*def).tr(xcx),
-                           xcx.tr_id(node_id))
+          ast::def_upvar(nid1, def, nid2) {
+            ast::def_upvar(xcx.tr_id(nid1), @(*def).tr(xcx), xcx.tr_id(nid2))
           }
           ast::def_class(did) {
             ast::def_class(did.tr(xcx))

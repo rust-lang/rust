@@ -176,13 +176,13 @@ fn gen_if_local(fcx: fn_ctxt, lhs: @expr, rhs: @expr, larger_id: node_id,
     alt node_id_to_def(fcx.ccx, new_var) {
       some(d) {
         alt d {
-          def_local(d_id) {
+          def_local(nid) {
             find_pre_post_expr(fcx, rhs);
             let p = expr_pp(fcx.ccx, rhs);
             set_pre_and_post(fcx.ccx, larger_id, p.precondition,
                              p.postcondition);
             gen(fcx, larger_id,
-                ninit(d_id.node, path_to_ident(pth)));
+                ninit(nid, path_to_ident(pth)));
           }
           _ { find_pre_post_exprs(fcx, [lhs, rhs], larger_id); }
         }
@@ -214,10 +214,8 @@ fn handle_update(fcx: fn_ctxt, parent: @expr, lhs: @expr, rhs: @expr,
             // pure and assign_op require the lhs to be init'd
             let df = node_id_to_def_strict(fcx.ccx.tcx, lhs.id);
             alt df {
-              def_local(d_id) {
-                let i =
-                    bit_num(fcx,
-                            ninit(d_id.node, path_to_ident(p)));
+              def_local(nid) {
+                let i = bit_num(fcx, ninit(nid, path_to_ident(p)));
                 require_and_preserve(i, expr_pp(fcx.ccx, lhs));
               }
               _ { }
@@ -261,9 +259,9 @@ fn handle_var(fcx: fn_ctxt, rslt: pre_and_post, id: node_id, name: ident) {
 fn handle_var_def(fcx: fn_ctxt, rslt: pre_and_post, def: def, name: ident) {
     log(debug, ("handle_var_def: ", def, name));
     alt def {
-      def_local(d_id) | def_arg(d_id, _) {
-        use_var(fcx, d_id.node);
-        let i = bit_num(fcx, ninit(d_id.node, name));
+      def_local(nid) | def_arg(nid, _) {
+        use_var(fcx, nid);
+        let i = bit_num(fcx, ninit(nid, name));
         require_and_preserve(i, rslt);
       }
       _ {/* nothing to check */ }

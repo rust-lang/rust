@@ -177,9 +177,10 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
                 last_uses: last_uses, impl_map: impl_map,
                 method_map: method_map, dict_map: dict_map};
 
+    let ienbld = sess.opts.inline;
     let inline_map =
         time(time_passes, "inline",
-             bind inline::instantiate_inlines(ty_cx, maps, crate));
+             bind inline::instantiate_inlines(ienbld, ty_cx, maps, crate));
 
     let (llmod, link_meta) =
         time(time_passes, "translation",
@@ -363,6 +364,7 @@ fn build_session_options(match: getopts::match,
         lint_opts += [(lint::ctypes, false)];
     }
     let monomorphize = opt_present(match, "monomorphize");
+    let inline = opt_present(match, "inline");
 
     let output_type =
         if parse_only || no_trans {
@@ -441,6 +443,7 @@ fn build_session_options(match: getopts::match,
           no_trans: no_trans,
           no_asm_comments: no_asm_comments,
           monomorphize: monomorphize,
+          inline: inline,
           warn_unused_imports: warn_unused_imports};
     ret sopts;
 }
@@ -511,6 +514,7 @@ fn opts() -> [getopts::opt] {
          optflag("no-verify"),
          optflag("no-lint-ctypes"),
          optflag("monomorphize"),
+         optflag("inline"),
          optmulti("cfg"), optflag("test"),
          optflag("lib"), optflag("bin"), optflag("static"), optflag("gc"),
          optflag("no-asm-comments"),

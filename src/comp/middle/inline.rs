@@ -18,7 +18,8 @@ enum ctxt = {
     mutable to_process: [@ast::item]
 };
 
-fn instantiate_inlines(tcx: ty::ctxt,
+fn instantiate_inlines(enabled: bool,
+                       tcx: ty::ctxt,
                        maps: maps,
                        crate: @ast::crate) -> inline_map {
     let vt = visit::mk_vt(@{
@@ -31,7 +32,7 @@ fn instantiate_inlines(tcx: ty::ctxt,
     let inline_map = ast_util::new_def_id_hash();
     let cx = ctxt({tcx: tcx, maps: maps,
                    inline_map: inline_map, mutable to_process: []});
-    visit::visit_crate(*crate, cx, vt);
+    if enabled { visit::visit_crate(*crate, cx, vt); }
     while !vec::is_empty(cx.to_process) {
         let to_process = [];
         to_process <-> cx.to_process;

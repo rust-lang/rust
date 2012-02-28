@@ -576,10 +576,10 @@ fn expr_to_constr_arg(tcx: ty::ctxt, e: @expr) -> @constr_arg_use {
     alt e.node {
       expr_path(p) {
         alt tcx.def_map.find(e.id) {
-          some(def_local(id)) | some(def_arg(id, _)) |
-          some(def_binding(id)) | some(def_upvar(id, _, _)) {
+          some(def_local(nid)) | some(def_arg(nid, _)) |
+          some(def_binding(nid)) | some(def_upvar(nid, _, _)) {
             ret @respan(p.span,
-                        carg_ident({ident: p.node.idents[0], node: id.node}));
+                        carg_ident({ident: p.node.idents[0], node: nid}));
           }
           some(what) {
               tcx.sess.span_bug(e.span,
@@ -786,9 +786,9 @@ enum if_ty { if_check, plain_if, }
 fn local_node_id_to_def_id_strict(fcx: fn_ctxt, sp: span, i: node_id) ->
    def_id {
     alt local_node_id_to_def(fcx, i) {
-      some(def_local(id)) | some(def_arg(id, _)) |
-      some(def_upvar(id, _, _)) {
-        ret id;
+      some(def_local(nid)) | some(def_arg(nid, _)) |
+      some(def_upvar(nid, _, _)) {
+        ret local_def(nid);
       }
       some(_) {
         fcx.ccx.tcx.sess.span_fatal(sp,
@@ -810,9 +810,9 @@ fn local_node_id_to_def(fcx: fn_ctxt, i: node_id) -> option<def> {
 
 fn local_node_id_to_def_id(fcx: fn_ctxt, i: node_id) -> option<def_id> {
     alt local_node_id_to_def(fcx, i) {
-      some(def_local(id)) | some(def_arg(id, _)) | some(def_binding(id)) |
-      some(def_upvar(id, _, _)) {
-        some(id)
+      some(def_local(nid)) | some(def_arg(nid, _)) | some(def_binding(nid)) |
+      some(def_upvar(nid, _, _)) {
+        some(local_def(nid))
       }
       _ { none }
     }

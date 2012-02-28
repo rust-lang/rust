@@ -2245,19 +2245,19 @@ fn trans_local_var(cx: block, def: ast::def) -> local_var_result {
         }
     }
     alt def {
-      ast::def_upvar(did, _, _) {
-        assert (cx.fcx.llupvars.contains_key(did.node));
-        ret { val: cx.fcx.llupvars.get(did.node), kind: owned };
+      ast::def_upvar(nid, _, _) {
+        assert (cx.fcx.llupvars.contains_key(nid));
+        ret { val: cx.fcx.llupvars.get(nid), kind: owned };
       }
-      ast::def_arg(did, _) {
-        assert (cx.fcx.llargs.contains_key(did.node));
-        ret take_local(cx.fcx.llargs, did.node);
+      ast::def_arg(nid, _) {
+        assert (cx.fcx.llargs.contains_key(nid));
+        ret take_local(cx.fcx.llargs, nid);
       }
-      ast::def_local(did) | ast::def_binding(did) {
-        assert (cx.fcx.lllocals.contains_key(did.node));
-        ret take_local(cx.fcx.lllocals, did.node);
+      ast::def_local(nid) | ast::def_binding(nid) {
+        assert (cx.fcx.lllocals.contains_key(nid));
+        ret take_local(cx.fcx.lllocals, nid);
       }
-      ast::def_self(did) {
+      ast::def_self(nid) {
         let slf = option::get(cx.fcx.llself);
         let ptr = PointerCast(cx, slf.v,
                               T_ptr(type_of_or_i8(cx.ccx(), slf.t)));

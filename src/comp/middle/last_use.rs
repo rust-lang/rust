@@ -288,15 +288,15 @@ fn clear_in_current(cx: ctx, my_def: node_id, to: bool) {
 fn clear_def_if_path(cx: ctx, d: def, to: bool)
     -> option<node_id> {
     alt d {
-      def_local(def_id) {
-        clear_in_current(cx, def_id.node, to);
-        some(def_id.node)
+      def_local(nid) {
+        clear_in_current(cx, nid, to);
+        some(nid)
       }
-      def_arg(def_id, m) {
+      def_arg(nid, m) {
         alt ty::resolved_mode(cx.tcx, m) {
           by_copy | by_move {
-            clear_in_current(cx, def_id.node, to);
-            some(def_id.node)
+            clear_in_current(cx, nid, to);
+            some(nid)
           }
           by_ref | by_val | by_mutbl_ref {
             none

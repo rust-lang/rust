@@ -96,14 +96,14 @@ fn lookup_def(fcx: @fn_ctxt, sp: span, id: ast::node_id) -> ast::def {
 fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
    ty_param_bounds_and_ty {
     alt defn {
-      ast::def_arg(id, _) {
-        assert (fcx.locals.contains_key(id.node));
-        let typ = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, sp, id.node));
+      ast::def_arg(nid, _) {
+        assert (fcx.locals.contains_key(nid));
+        let typ = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, sp, nid));
         ret {bounds: @[], ty: typ};
       }
-      ast::def_local(id) {
-        assert (fcx.locals.contains_key(id.node));
-        let typ = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, sp, id.node));
+      ast::def_local(nid) {
+        assert (fcx.locals.contains_key(nid));
+        let typ = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, sp, nid));
         ret {bounds: @[], ty: typ};
       }
       ast::def_self(id) {
@@ -131,9 +131,9 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
       ast::def_fn(id, _) | ast::def_const(id) |
       ast::def_variant(_, id) | ast::def_class(id)
          { ret ty::lookup_item_type(fcx.ccx.tcx, id); }
-      ast::def_binding(id) {
-        assert (fcx.locals.contains_key(id.node));
-        let typ = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, sp, id.node));
+      ast::def_binding(nid) {
+        assert (fcx.locals.contains_key(nid));
+        let typ = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, sp, nid));
         ret {bounds: @[], ty: typ};
       }
       ast::def_ty(_) | ast::def_prim_ty(_) {
@@ -360,7 +360,7 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
             ty::mk_param(tcx, n, id)
           }
           ast::def_self(iface_id) {
-            alt check tcx.items.get(iface_id.node) {
+            alt check tcx.items.get(iface_id) {
               ast_map::node_item(@{node: ast::item_iface(tps, _), _}, _) {
                 if vec::len(tps) != vec::len(path.node.types) {
                     tcx.sess.span_err(ast_ty.span, "incorrect number of type \
@@ -2912,8 +2912,7 @@ fn check_constraints(fcx: @fn_ctxt, cs: [@ast::constr], args: [ast::arg]) {
                               fcx.ccx.tcx.sess.next_node_id();
                           fcx.ccx.tcx.def_map.insert
                               (arg_occ_node_id,
-                               ast::def_arg(local_def(args[i].id),
-                                            args[i].mode));
+                               ast::def_arg(args[i].id, args[i].mode));
                           {id: arg_occ_node_id,
                            node: ast::expr_path(@respan(a.span, p)),
                            span: a.span}

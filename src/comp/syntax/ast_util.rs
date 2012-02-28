@@ -35,11 +35,17 @@ fn variant_def_ids(d: def) -> {enm: def_id, var: def_id} {
 
 fn def_id_of_def(d: def) -> def_id {
     alt d {
-      def_fn(id, _) | def_self(id) | def_mod(id) |
-      def_native_mod(id) | def_const(id) | def_arg(id, _) | def_local(id) |
+      def_fn(id, _) | def_mod(id) |
+      def_native_mod(id) | def_const(id) |
       def_variant(_, id) | def_ty(id) | def_ty_param(id, _) |
-      def_binding(id) | def_use(id) | def_upvar(id, _, _) |
+      def_use(id) |
       def_class(id) | def_class_field(_, id) | def_class_method(_, id) { id }
+
+      def_self(id) | def_arg(id, _) | def_local(id) |
+      def_upvar(id, _, _) | def_binding(id) {
+        local_def(id)
+      }
+
       def_prim_ty(_) { fail; }
     }
 }
