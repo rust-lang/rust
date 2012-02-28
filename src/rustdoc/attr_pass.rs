@@ -12,7 +12,10 @@ import rustc::middle::ast_map;
 export mk_pass;
 
 fn mk_pass() -> pass {
-    run
+    {
+        name: "attr",
+        f: run
+    }
 }
 
 fn run(
@@ -198,7 +201,7 @@ fn should_extract_fn_return_attributes() {
     let source = "#[doc(return = \"what\")] fn a() -> int { }";
     astsrv::from_str(source) {|srv|
         let doc = extract::from_srv(srv, "");
-        let doc = tystr_pass::mk_pass()(srv, doc);
+        let doc = tystr_pass::mk_pass().f(srv, doc);
         let fold = fold::default_any_fold(srv);
         let doc = fold_fn(fold, doc.topmod.fns()[0]);
         assert doc.return.desc == some("what");
@@ -210,7 +213,7 @@ fn should_preserve_fn_sig() {
     let source = "fn a() -> int { }";
     astsrv::from_str(source) {|srv|
         let doc = extract::from_srv(srv, "");
-        let doc = tystr_pass::mk_pass()(srv, doc);
+        let doc = tystr_pass::mk_pass().f(srv, doc);
         let fold = fold::default_any_fold(srv);
         let doc = fold_fn(fold, doc.topmod.fns()[0]);
         assert doc.sig == some("fn a() -> int");

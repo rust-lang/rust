@@ -3,8 +3,11 @@
 export mk_pass;
 
 fn mk_pass(op: fn~(str) -> str) -> pass {
-    fn~(srv: astsrv::srv, doc: doc::cratedoc) -> doc::cratedoc {
-        run(srv, doc, op)
+    {
+        name: "desc",
+        f: fn~(srv: astsrv::srv, doc: doc::cratedoc) -> doc::cratedoc {
+            run(srv, doc, op)
+        }
     }
 }
 
@@ -284,8 +287,8 @@ mod test {
     fn mk_doc(source: str) -> doc::cratedoc {
         astsrv::from_str(source) {|srv|
             let doc = extract::from_srv(srv, "");
-            let doc = attr_pass::mk_pass()(srv, doc);
-            mk_pass({|s| str::trim(s)})(srv, doc)
+            let doc = attr_pass::mk_pass().f(srv, doc);
+            mk_pass({|s| str::trim(s)}).f(srv, doc)
         }
     }
 }

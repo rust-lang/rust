@@ -8,7 +8,10 @@ import rustc::middle::ast_map;
 export mk_pass;
 
 fn mk_pass() -> pass {
-    run
+    {
+        name: "tystr",
+        f: run
+    }
 }
 
 fn run(

@@ -2,7 +2,12 @@
 
 export mk_pass;
 
-fn mk_pass() -> pass { run }
+fn mk_pass() -> pass {
+    {
+        name: "path",
+        f: run
+    }
+}
 
 type ctxt = {
     srv: astsrv::srv,

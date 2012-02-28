@@ -4,7 +4,10 @@
 export mk_pass;
 
 fn mk_pass() -> pass {
-    run
+    {
+        name: "prune_undoc_details",
+        f: run
+    }
 }
 
 fn run(
@@ -66,8 +69,8 @@ fn should_elide_undocumented_return_values() {
     let source = "#[doc = \"fonz\"] fn a() -> int { }";
     astsrv::from_str(source) {|srv|
         let doc = extract::from_srv(srv, "");
-        let doc = tystr_pass::mk_pass()(srv, doc);
-        let doc = attr_pass::mk_pass()(srv, doc);
+        let doc = tystr_pass::mk_pass().f(srv, doc);
+        let doc = attr_pass::mk_pass().f(srv, doc);
         let doc = run(srv, doc);
         assert doc.topmod.fns()[0].return.ty == none;
     }
@@ -157,7 +160,7 @@ mod test {
     fn mk_doc(source: str) -> doc::cratedoc {
         astsrv::from_str(source) {|srv|
             let doc = extract::from_srv(srv, "");
-            let doc = attr_pass::mk_pass()(srv, doc);
+            let doc = attr_pass::mk_pass().f(srv, doc);
             run(srv, doc)
         }
     }

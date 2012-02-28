@@ -8,7 +8,10 @@ import rustc::util::common;
 export mk_pass;
 
 fn mk_pass() -> pass {
-    run
+    {
+        name: "reexport",
+        f: run
+    }
 }
 
 type def_set = map::set<ast::def_id>;
@@ -332,10 +335,10 @@ fn should_duplicate_multiple_reexported_items() {
                   }";
     astsrv::from_str(source) {|srv|
         let doc = extract::from_srv(srv, "");
-        let doc = path_pass::mk_pass()(srv, doc);
+        let doc = path_pass::mk_pass().f(srv, doc);
         let doc = run(srv, doc);
         // Reexports may not be in any specific order
-        let doc = sort_item_name_pass::mk_pass()(srv, doc);
+        let doc = sort_item_name_pass::mk_pass().f(srv, doc);
         assert doc.topmod.mods()[1].fns()[0].name() == "b";
         assert doc.topmod.mods()[1].fns()[1].name() == "c";
     }
@@ -354,7 +357,7 @@ fn should_reexport_in_topmod() {
     fn mk_doc(source: str) -> doc::cratedoc {
         astsrv::from_str(source) {|srv|
             let doc = extract::from_srv(srv, "core");
-            let doc = path_pass::mk_pass()(srv, doc);
+            let doc = path_pass::mk_pass().f(srv, doc);
             run(srv, doc)
         }
     }
@@ -385,7 +388,7 @@ mod test {
     fn mk_doc(source: str) -> doc::cratedoc {
         astsrv::from_str(source) {|srv|
             let doc = extract::from_srv(srv, "");
-            let doc = path_pass::mk_pass()(srv, doc);
+            let doc = path_pass::mk_pass().f(srv, doc);
             run(srv, doc)
         }
     }

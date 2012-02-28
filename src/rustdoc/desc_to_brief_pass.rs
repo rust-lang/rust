@@ -10,7 +10,10 @@ is interpreted as the brief description.
 export mk_pass;
 
 fn mk_pass() -> pass {
-    run
+    {
+        name: "desc_to_brief",
+        f: run
+    }
 }
 
 fn run(
@@ -149,7 +152,7 @@ mod test {
     fn mk_doc(source: str) -> doc::cratedoc {
         astsrv::from_str(source) {|srv|
             let doc = extract::from_srv(srv, "");
-            let doc = attr_pass::mk_pass()(srv, doc);
+            let doc = attr_pass::mk_pass().f(srv, doc);
             run(srv, doc)
         }
     }

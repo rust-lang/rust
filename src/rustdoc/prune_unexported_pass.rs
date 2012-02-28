@@ -7,7 +7,10 @@ import rustc::middle::ast_map;
 export mk_pass;
 
 fn mk_pass() -> pass {
-    run
+    {
+        name: "prune_unexperted",
+        f: run
+    }
 }
 
 fn run(srv: astsrv::srv, doc: doc::cratedoc) -> doc::cratedoc {
@@ -232,7 +235,7 @@ fn should_not_prune_reexports() {
     fn mk_doc(source: str) -> doc::cratedoc {
         astsrv::from_str(source) {|srv|
             let doc = extract::from_srv(srv, "");
-            let doc = reexport_pass::mk_pass()(srv, doc);
+            let doc = reexport_pass::mk_pass().f(srv, doc);
             run(srv, doc)
         }
     }

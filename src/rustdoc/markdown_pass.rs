@@ -11,7 +11,7 @@ export mk_pass;
 fn mk_pass(
     give_writer: fn~(fn(io::writer))
 ) -> pass {
-    fn~(
+    let f = fn~(
         srv: astsrv::srv,
         doc: doc::cratedoc
     ) -> doc::cratedoc {
@@ -32,11 +32,18 @@ fn mk_pass(
             // Sort the items so mods come last. All mods will be
             // output at the same header level so sorting mods last
             // makes the headers come out nested correctly.
-            let sorted_doc = sort_pass::mk_pass(mods_last)(srv, doc);
+            let sorted_doc = sort_pass::mk_pass(
+                "mods last", mods_last
+            ).f(srv, doc);
 
             write_markdown(sorted_doc, writer);
         }
         doc
+    };
+
+    {
+        name: "markdown",
+        f: f
     }
 }
 
@@ -820,11 +827,11 @@ mod test {
         astsrv::from_str(source) {|srv|
             let doc = extract::from_srv(srv, "");
             #debug("doc (extract): %?", doc);
-            let doc = tystr_pass::mk_pass()(srv, doc);
+            let doc = tystr_pass::mk_pass().f(srv, doc);
             #debug("doc (tystr): %?", doc);
-            let doc = path_pass::mk_pass()(srv, doc);
+            let doc = path_pass::mk_pass().f(srv, doc);
             #debug("doc (path): %?", doc);
-            let doc = attr_pass::mk_pass()(srv, doc);
+            let doc = attr_pass::mk_pass().f(srv, doc);
             #debug("doc (attr): %?", doc);
             (srv, doc)
         }
@@ -858,7 +865,7 @@ mod test {
             let result = io::mem_buffer_str(buffer);
             comm::send(chan, result);
         };
-        pass(srv, doc);
+        pass.f(srv, doc);
         ret comm::recv(port);
     }
 
@@ -866,7 +873,7 @@ mod test {
     fn write_markdown_should_write_crate_header() {
         astsrv::from_str("") {|srv|
             let doc = extract::from_srv(srv, "belch");
-            let doc = attr_pass::mk_pass()(srv, doc);
+            let doc = attr_pass::mk_pass().f(srv, doc);
             let markdown = write_markdown_str(doc);
             assert str::contains(markdown, "# Crate belch");
         }

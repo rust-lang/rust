@@ -7,7 +7,10 @@ import doc::item;
 import doc::util;
 
 #[doc = "A single operation on the document model"]
-type pass = fn~(srv: astsrv::srv, doc: doc::cratedoc) -> doc::cratedoc;
+type pass = {
+    name: str,
+    f: fn~(srv: astsrv::srv, doc: doc::cratedoc) -> doc::cratedoc
+};
 
 fn run_passes(
     srv: astsrv::srv,
@@ -36,7 +39,9 @@ fn run_passes(
         log(debug, #fmt("pass #%d", passno));
         passno += 1;
         log(debug, doc);
-        pass(srv, doc)
+        time(pass.name) {||
+            pass.f(srv, doc)
+        }
     }
 }
 
@@ -72,7 +77,16 @@ fn test_run_passes() {
     }
     let source = "";
     astsrv::from_str(source) {|srv|
-        let passes = [pass1, pass2];
+        let passes = [
+            {
+                name: "",
+                f: pass1
+            },
+            {
+                name: "",
+                f: pass2
+            }
+        ];
         let doc = extract::from_srv(srv, "one");
         let doc = run_passes(srv, doc, passes);
         assert doc.topmod.name() == "onetwothree";
@@ -90,12 +104,25 @@ fn main(argv: [str]) {
     run(source_file);
 }
 
+fn time<T>(what: str, f: fn() -> T) -> T {
+    let start = std::time::precise_time_s();
+    let rv = f();
+    let end = std::time::precise_time_s();
+    #info("time: %3.3f s    %s", end - start, what);
+    ret rv;
+}
+
 #[doc = "Runs rustdoc over the given file"]
 fn run(source_file: str) {
 
     let default_name = source_file;
     astsrv::from_file(source_file) {|srv|
-        let doc = extract::from_srv(srv, default_name);
+        time("wait") {||
+            astsrv::exec(srv) {|_ctxt| () }
+        };
+        let doc = time("extract") {||
+            extract::from_srv(srv, default_name)
+        };
         run_passes(srv, doc, [
             reexport_pass::mk_pass(),
             prune_unexported_pass::mk_pass(),

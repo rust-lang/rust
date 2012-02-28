@@ -3,7 +3,7 @@
 export mk_pass;
 
 fn mk_pass() -> pass {
-    sort_pass::mk_pass { |item1, item2|
+    sort_pass::mk_pass("sort_item_type") { |item1, item2|
         fn score(item: doc::itemtag) -> int {
             alt item {
               doc::consttag(_) { 0 }
@@ -36,7 +36,7 @@ fn test() {
          type itype = int;";
     astsrv::from_str(source) {|srv|
         let doc = extract::from_srv(srv, "");
-        let doc = mk_pass()(srv, doc);
+        let doc = mk_pass().f(srv, doc);
         assert doc.topmod.items[0].name() == "iconst";
         assert doc.topmod.items[1].name() == "itype";
         assert doc.topmod.items[2].name() == "ienum";
