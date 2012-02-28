@@ -3,7 +3,7 @@ Module: sort
 
 Sorting methods
 */
-import vec::{len, slice};
+import vec::len;
 
 export merge_sort;
 export quick_sort;
@@ -21,29 +21,41 @@ Has worst case O(n log n) performance, best case O(n), but
 is not space efficient. This is a stable sort.
 */
 fn merge_sort<T: copy>(le: le<T>, v: [const T]) -> [T] {
+    type slice = (uint, uint);
+
+    ret merge_sort_(le, v, (0u, len(v)));
+
+    fn merge_sort_<T: copy>(le: le<T>, v: [const T], slice: slice) -> [T] {
+        let begin = tuple::first(slice);
+        let end = tuple::second(slice);
+
+        let v_len = end - begin;
+        if v_len == 0u { ret []; }
+        if v_len == 1u { ret [v[begin]]; }
+
+        let mid = v_len / 2u + begin;
+        let a = (begin, mid);
+        let b = (mid, end);
+        ret merge(le, merge_sort_(le, v, a), merge_sort_(le, v, b));
+    }
+
     fn merge<T: copy>(le: le<T>, a: [T], b: [T]) -> [T] {
-        let rs: [T] = [];
-        let a_len: uint = len::<T>(a);
-        let a_ix: uint = 0u;
-        let b_len: uint = len::<T>(b);
-        let b_ix: uint = 0u;
+        let rs = [];
+        vec::reserve(rs, len(a) + len(b));
+        let a_len = len(a);
+        let a_ix = 0u;
+        let b_len = len(b);
+        let b_ix = 0u;
         while a_ix < a_len && b_ix < b_len {
             if le(a[a_ix], b[b_ix]) {
                 rs += [a[a_ix]];
                 a_ix += 1u;
             } else { rs += [b[b_ix]]; b_ix += 1u; }
         }
-        rs += slice::<T>(a, a_ix, a_len);
-        rs += slice::<T>(b, b_ix, b_len);
+        rs += vec::slice(a, a_ix, a_len);
+        rs += vec::slice(b, b_ix, b_len);
         ret rs;
     }
-    let v_len: uint = len::<T>(v);
-    if v_len == 0u { ret []; }
-    if v_len == 1u { ret [v[0]]; }
-    let mid: uint = v_len / 2u;
-    let a: [T] = slice::<T>(v, 0u, mid);
-    let b: [T] = slice::<T>(v, mid, v_len);
-    ret merge::<T>(le, merge_sort::<T>(le, a), merge_sort::<T>(le, b));
 }
 
 fn part<T: copy>(compare_func: le<T>, arr: [mutable T], left: uint,
