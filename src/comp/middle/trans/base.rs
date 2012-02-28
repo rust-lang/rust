@@ -1286,6 +1286,7 @@ fn lazily_emit_tydesc_glue(ccx: crate_ctxt, field: int,
 fn call_tydesc_glue_full(cx: block, v: ValueRef, tydesc: ValueRef,
                          field: int, static_ti: option<@tydesc_info>) {
     lazily_emit_tydesc_glue(cx.ccx(), field, static_ti);
+    if cx.unreachable { ret; }
 
     let static_glue_fn = none;
     alt static_ti {
