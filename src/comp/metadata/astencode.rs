@@ -13,13 +13,10 @@ import std::serialization::deserializer;
 import std::serialization::serializer_helpers;
 import std::serialization::deserializer_helpers;
 import middle::trans::common::maps;
-import middle::ty;
-import middle::typeck;
+import middle::{ty, typeck, last_use, ast_map};
 import middle::typeck::method_origin;
 import middle::typeck::dict_res;
 import middle::typeck::dict_origin;
-import middle::ast_map;
-import driver::session;
 import driver::session::session;
 import middle::freevars::freevar_entry;
 import c = common;
@@ -248,7 +245,7 @@ fn decode_id_range(par_doc: ebml::doc) -> id_range {
     }
 }
 
-fn reserve_id_range(sess: session::session,
+fn reserve_id_range(sess: session,
                     from_id_range: id_range) -> id_range {
     // Handle the case of an empty range:
     if empty(from_id_range) { ret from_id_range; }
@@ -781,7 +778,7 @@ fn decode_side_tables(xcx: extended_decode_ctxt,
         } else if tag == (c::tag_table_copy as uint) {
             dcx.maps.copy_map.insert(id, ());
         } else if tag == (c::tag_table_last_use as uint) {
-            dcx.maps.last_uses.insert(id, ());
+            dcx.maps.last_uses.insert(id, last_use::is_last_use);
         } else {
             let val_doc = entry_doc[c::tag_table_val];
             let val_dsr = serialization::mk_ebml_deserializer(val_doc);

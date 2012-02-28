@@ -8,7 +8,6 @@ import build::*;
 import base::*;
 import type_of::*;
 import type_of::type_of; // Issue #1873
-import middle::freevars::{get_freevars, freevar_info};
 import back::abi;
 import syntax::codemap::span;
 import syntax::print::pprust::expr_to_str;
@@ -353,12 +352,11 @@ fn store_environment(
 // collects the upvars and packages them up for store_environment.
 fn build_closure(bcx0: block,
                  cap_vars: [capture::capture_var],
-                 ck: ty::closure_kind)
-    -> closure_result {
+                 ck: ty::closure_kind,
+                 id: ast::node_id) -> closure_result {
     // If we need to, package up the iterator body to call
     let env_vals = [];
-    let bcx = bcx0;
-    let tcx = bcx.tcx();
+    let bcx = bcx0, ccx = bcx.ccx(), tcx = ccx.tcx;
 
     // Package up the captured upvars
     vec::iter(cap_vars) { |cap_var|
@@ -373,7 +371,12 @@ fn build_closure(bcx0: block,
             env_vals += [env_ref(lv.val, ty, lv.kind)];
           }
           capture::cap_copy {
-            env_vals += [env_copy(lv.val, ty, lv.kind)];
+            let mv = alt check ccx.maps.last_uses.find(id) {
+              none { false }
+              some(last_use::closes_over(vars)) { vec::contains(vars, nid) }
+            };
+            if mv { env_vals += [env_move(lv.val, ty, lv.kind)]; }
+            else { env_vals += [env_copy(lv.val, ty, lv.kind)]; }
           }
           capture::cap_move {
             env_vals += [env_move(lv.val, ty, lv.kind)];
@@ -465,7 +468,7 @@ fn trans_expr_fn(bcx: block,
     let trans_closure_env = fn@(ck: ty::closure_kind) -> ValueRef {
         let cap_vars = capture::compute_capture_vars(
             ccx.tcx, id, proto, cap_clause);
-        let {llbox, cdata_ty, bcx} = build_closure(bcx, cap_vars, ck);
+        let {llbox, cdata_ty, bcx} = build_closure(bcx, cap_vars, ck, id);
         trans_closure(ccx, sub_path, decl, body, llfn, no_self, [],
                       bcx.fcx.param_substs, id, {|fcx|
             load_environment(bcx, fcx, cdata_ty, cap_vars, ck);

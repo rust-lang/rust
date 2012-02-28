@@ -1303,33 +1303,33 @@ fn gather_locals(ccx: @crate_ctxt,
                  body: ast::blk,
                  id: ast::node_id,
                  old_fcx: option<@fn_ctxt>) -> gather_result {
-    let {vb: vb, locals: locals, nvi: nvi} =
-        alt old_fcx {
-          none {
-            {vb: ty::unify::mk_var_bindings(),
-             locals: new_int_hash::<int>(),
-             nvi: @mutable 0}
-          }
-          some(fcx) {
-            {vb: fcx.var_bindings,
-             locals: fcx.locals,
-             nvi: fcx.next_var_id}
-          }
-        };
+    let {vb: vb, locals: locals, nvi: nvi} = alt old_fcx {
+      none {
+        {vb: ty::unify::mk_var_bindings(),
+         locals: new_int_hash::<int>(),
+         nvi: @mutable 0}
+      }
+      some(fcx) {
+        {vb: fcx.var_bindings,
+         locals: fcx.locals,
+         nvi: fcx.next_var_id}
+      }
+    };
     let tcx = ccx.tcx;
 
     let next_var_id = fn@() -> int { let rv = *nvi; *nvi += 1; ret rv; };
+
     let assign = fn@(nid: ast::node_id, ty_opt: option<ty::t>) {
-            let var_id = next_var_id();
-            locals.insert(nid, var_id);
-            alt ty_opt {
-              none {/* nothing to do */ }
-              some(typ) {
-                ty::unify::unify(ty::mk_var(tcx, var_id), typ,
-                                 ty::unify::in_bindings(vb), tcx);
-              }
-            }
-        };
+        let var_id = next_var_id();
+        locals.insert(nid, var_id);
+        alt ty_opt {
+          none {/* nothing to do */ }
+          some(typ) {
+            ty::unify::unify(ty::mk_var(tcx, var_id), typ,
+                             ty::unify::in_bindings(vb), tcx);
+          }
+        }
+    };
 
     // Add formal parameters.
     let args = ty::ty_fn_args(ty::node_id_to_type(ccx.tcx, id));
@@ -1341,10 +1341,10 @@ fn gather_locals(ccx: @crate_ctxt,
 
     // Add explicitly-declared locals.
     let visit_local = fn@(local: @ast::local, &&e: (), v: visit::vt<()>) {
-            let local_ty = ast_ty_to_ty_crate_infer(ccx, local.node.ty);
-            assign(local.node.id, local_ty);
-            visit::visit_local(local, e, v);
-        };
+        let local_ty = ast_ty_to_ty_crate_infer(ccx, local.node.ty);
+        assign(local.node.id, local_ty);
+        visit::visit_local(local, e, v);
+    };
 
     // Add pattern bindings.
     let visit_pat = fn@(p: @ast::pat, &&e: (), v: visit::vt<()>) {

@@ -20,7 +20,6 @@ import std::map::{new_int_hash, new_str_hash};
 import driver::session;
 import session::session;
 import front::attr;
-import middle::freevars::*;
 import middle::inline::inline_map;
 import back::{link, abi, upcall};
 import syntax::{ast, ast_util, codemap};

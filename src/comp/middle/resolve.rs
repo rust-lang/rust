@@ -1,4 +1,3 @@
-
 import syntax::{ast, ast_util, codemap};
 import syntax::ast::*;
 import ast::{ident, fn_ident, def, def_id, node_id};
@@ -512,7 +511,6 @@ fn resolve_names(e: @env, c: @ast::crate) {
 
 // Visit helper functions
 fn visit_item_with_scope(e: @env, i: @ast::item, sc: scopes, v: vt<scopes>) {
-
     // Some magic here. Items with the !resolve_unexported attribute
     // cause us to consider every name to be exported when resolving their
     // contents. This is used to allow the test runner to run unexported
@@ -978,6 +976,7 @@ fn def_is_ty_arg(d: def) -> bool {
 
 fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
    -> option<def> {
+
     fn in_scope(e: env, sp: span, name: ident, s: scope, ns: namespace) ->
        option<def> {
         alt s {

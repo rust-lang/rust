@@ -24,15 +24,26 @@ import std::list;
 // (by `break` or conditionals), and for handling loops.
 
 // Marks expr_paths that are last uses.
-type last_uses = std::map::hashmap<node_id, ()>;
+enum is_last_use {
+    is_last_use,
+    has_last_use,
+    closes_over([node_id]),
+}
+type last_uses = std::map::hashmap<node_id, is_last_use>;
 
 enum seen { unset, seen(node_id), }
 enum block_type { func, loop, }
 
-type set = [{def: node_id, exprs: list<node_id>}];
+enum use { var_use(node_id), close_over(node_id), }
+type set = [{def: node_id, uses: list<use>}];
 type bl = @{type: block_type, mutable second: bool, mutable exits: [set]};
 
-type ctx = {last_uses: std::map::hashmap<node_id, bool>,
+enum use_id { path(node_id), close(node_id, node_id) }
+fn hash_use_id(id: use_id) -> uint {
+    (alt id { path(i) { i } close(i, j) { (i << 10) + j } }) as uint
+}
+
+type ctx = {last_uses: std::map::hashmap<use_id, bool>,
             def_map: resolve::def_map,
             ref_map: alias::ref_map,
             tcx: ty::ctxt,
@@ -43,9 +54,10 @@ type ctx = {last_uses: std::map::hashmap<node_id, bool>,
 fn find_last_uses(c: @crate, def_map: resolve::def_map,
                   ref_map: alias::ref_map, tcx: ty::ctxt) -> last_uses {
     let v = visit::mk_vt(@{visit_expr: visit_expr,
+                           visit_stmt: visit_stmt,
                            visit_fn: visit_fn
                            with *visit::default_visitor()});
-    let cx = {last_uses: std::map::new_int_hash(),
+    let cx = {last_uses: std::map::mk_hashmap(hash_use_id, {|a, b| a == b}),
               def_map: def_map,
               ref_map: ref_map,
               tcx: tcx,
@@ -54,20 +66,24 @@ fn find_last_uses(c: @crate, def_map: resolve::def_map,
     visit::visit_crate(*c, cx, v);
     let mini_table = std::map::new_int_hash();
     cx.last_uses.items {|key, val|
-        if val {
-            mini_table.insert(key, ());
-            let def_node = ast_util::def_id_of_def(def_map.get(key)).node;
-            mini_table.insert(def_node, ());
+        if !val { ret; }
+        alt key {
+          path(id) {
+            mini_table.insert(id, is_last_use);
+            let def_node = ast_util::def_id_of_def(def_map.get(id)).node;
+            mini_table.insert(def_node, has_last_use);
+          }
+          close(fn_id, local_id) {
+            mini_table.insert(local_id, has_last_use);
+            let known = alt check mini_table.find(fn_id) {
+              some(closes_over(ids)) { ids }
+              none { [] }
+            };
+            mini_table.insert(fn_id, closes_over(known + [local_id]));
+          }
         }
     }
     ret mini_table;
-}
-
-fn ex_is_blockish(cx: ctx, id: node_id) -> bool {
-    alt ty::get(ty::node_id_to_type(cx.tcx, id)).struct {
-      ty::ty_fn({proto: p, _}) if is_blockish(p) { true }
-      _ { false }
-    }
 }
 
 fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
@@ -107,15 +123,17 @@ fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
         cx.current = join_branches([cur, cx.current]);
       }
       expr_path(_) {
-        let my_def = ast_util::def_id_of_def(cx.def_map.get(ex.id)).node;
-        alt cx.ref_map.find(my_def) {
-          option::some(root_id) { clear_in_current(cx, root_id, false); }
+        let my_def = cx.def_map.get(ex.id);
+        let my_def_id = ast_util::def_id_of_def(my_def).node;
+        alt cx.ref_map.find(my_def_id) {
+          option::some(root_id) {
+            clear_in_current(cx, root_id, false);
+          }
           _ {
-            alt clear_if_path(cx, ex, v, false) {
-              option::some(my_def) {
-                cx.current += [{def: my_def, exprs: cons(ex.id, @nil)}];
-              }
-              _ {}
+            option::may(def_is_owned_local(cx, my_def)) {|nid|
+                clear_in_current(cx, nid, false);
+                cx.current += [{def: nid,
+                                uses: cons(var_use(ex.id), @nil)}];
             }
           }
         }
@@ -138,7 +156,7 @@ fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
         // then they are ignored, otherwise they will show up
         // as freevars in the body.
         vec::iter(cap_clause.moves) {|ci|
-            clear_def_if_path(cx, cx.def_map.get(ci.id), true);
+            clear_def_if_local(cx, cx.def_map.get(ci.id), false);
         }
         visit::visit_expr(ex, cx, v);
       }
@@ -148,10 +166,8 @@ fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
         let arg_ts = ty::ty_fn_args(ty::expr_ty(cx.tcx, f));
         for arg in args {
             alt arg.node {
-              expr_fn(p, _, _, _) if is_blockish(p) {
-                fns += [arg];
-              }
-              expr_fn_block(_, _) if ex_is_blockish(cx, arg.id) {
+              expr_fn(_, _, _, _) | expr_fn_block(_, _)
+              if is_blockish(ty::ty_fn_proto(arg_ts[i].ty)) {
                 fns += [arg];
               }
               _ {
@@ -169,6 +185,26 @@ fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
     }
 }
 
+fn visit_stmt(s: @stmt, cx: ctx, v: visit::vt<ctx>) {
+    alt s.node {
+      stmt_decl(@{node: decl_local(ls), _}, _) {
+        shadow_in_current(cx, {|id|
+            for local in ls {
+                let found = false;
+                pat_util::pat_bindings(cx.tcx.def_map, local.node.pat,
+                                       {|pid, _a, _b|
+                    if pid == id { found = true; }
+                });
+                if found { ret true; }
+            }
+            false
+        });
+      }
+      _ {}
+    }
+    visit::visit_stmt(s, cx, v);
+}
+
 fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
             sp: span, id: node_id,
             cx: ctx, v: visit::vt<ctx>) {
@@ -177,6 +213,10 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
     alt proto {
       proto_any | proto_block {
         visit_block(func, cx, {||
+            shadow_in_current(cx, {|id|
+                for arg in decl.inputs { if arg.id == id { ret true; } }
+                false
+            });
             visit::visit_fn(fk, decl, body, sp, id, cx, v);
         });
       }
@@ -184,17 +224,22 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
         alt cx.tcx.freevars.find(id) {
           some(vars) {
             for v in *vars {
-                clear_in_current(cx, ast_util::def_id_of_def(v.def).node,
-                                 false);
+                option::may(def_is_owned_local(cx, v.def)) {|nid|
+                    clear_in_current(cx, nid, false);
+                    cx.current += [{def: nid,
+                                    uses: cons(close_over(id), @nil)}];
+                }
             }
           }
           _ {}
         }
-        let old = nil;
-        cx.blocks <-> old;
+        let old_cur = [], old_blocks = nil;
+        cx.blocks <-> old_blocks;
+        cx.current <-> old_cur;
         visit::visit_fn(fk, decl, body, sp, id, cx, v);
-        cx.blocks <-> old;
+        cx.blocks <-> old_blocks;
         leave_fn(cx);
+        cx.current <-> old_cur;
       }
     }
 }
@@ -202,17 +247,14 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
 fn visit_block(tp: block_type, cx: ctx, visit: fn()) {
     let local = @{type: tp, mutable second: false, mutable exits: []};
     cx.blocks = cons(local, @cx.blocks);
-    let start_current = cx.current;
     visit();
     local.second = true;
     local.exits = [];
-    cx.current = start_current;
     visit();
     let cx_blocks = cx.blocks;
     cx.blocks = tail(cx_blocks);
-    let branches = if tp == func { local.exits + [cx.current] }
-                   else { local.exits };
-    cx.current = join_branches(branches);
+    local.exits += [cx.current];
+    cx.current = join_branches(local.exits);
 }
 
 fn add_block_exit(cx: ctx, tp: block_type) -> bool {
@@ -240,20 +282,20 @@ fn join_branches(branches: [set]) -> set {
     let found: set = [], i = 0u, l = vec::len(branches);
     for set in branches {
         i += 1u;
-        for {def, exprs} in set {
+        for {def, uses} in set {
             if !vec::any(found, {|v| v.def == def}) {
-                let j = i, nne = exprs;
+                let j = i, nne = uses;
                 while j < l {
-                    for {def: d2, exprs} in branches[j] {
+                    for {def: d2, uses} in branches[j] {
                         if d2 == def {
-                            list::iter(exprs) {|e|
+                            list::iter(uses) {|e|
                                 if !list::has(nne, e) { nne = cons(e, @nne); }
                             }
                         }
                     }
                     j += 1u;
                 }
-                found += [{def: def, exprs: nne}];
+                found += [{def: def, uses: nne}];
             }
         }
     }
@@ -261,61 +303,71 @@ fn join_branches(branches: [set]) -> set {
 }
 
 fn leave_fn(cx: ctx) {
-    for {def, exprs} in cx.current {
-        list::iter(exprs) {|ex_id|
-            if !cx.last_uses.contains_key(ex_id) {
-                cx.last_uses.insert(ex_id, true);
+    for {def, uses} in cx.current {
+        list::iter(uses) {|use|
+            let key = alt use {
+              var_use(pth_id) { path(pth_id) }
+              close_over(fn_id) { close(fn_id, def) }
+            };
+            if !cx.last_uses.contains_key(key) {
+                cx.last_uses.insert(key, true);
             }
         }
     }
 }
 
+fn shadow_in_current(cx: ctx, p: fn(node_id) -> bool) {
+    let out = [];
+    cx.current <-> out;
+    for e in out { if !p(e.def) { cx.current += [e]; } }
+}
+
 fn clear_in_current(cx: ctx, my_def: node_id, to: bool) {
-    for {def, exprs} in cx.current {
+    for {def, uses} in cx.current {
         if def == my_def {
-            list::iter(exprs) {|expr|
-                if !to || !cx.last_uses.contains_key(expr) {
-                     cx.last_uses.insert(expr, to);
+            list::iter(uses) {|use|
+                let key = alt use {
+                  var_use(pth_id) { path(pth_id) }
+                  close_over(fn_id) { close(fn_id, def) }
+                };
+                if !to || !cx.last_uses.contains_key(key) {
+                    cx.last_uses.insert(key, to);
                 }
             }
-            cx.current = vec::filter(copy cx.current,
-                                     {|x| x.def != my_def});
+            cx.current = vec::filter(copy cx.current, {|x| x.def != my_def});
             break;
         }
     }
 }
 
-fn clear_def_if_path(cx: ctx, d: def, to: bool)
-    -> option<node_id> {
+fn def_is_owned_local(cx: ctx, d: def) -> option<node_id> {
     alt d {
-      def_local(nid) {
-        clear_in_current(cx, nid, to);
-        some(nid)
-      }
-      def_arg(nid, m) {
+      def_local(id) { some(id) }
+      def_arg(id, m) {
         alt ty::resolved_mode(cx.tcx, m) {
-          by_copy | by_move {
-            clear_in_current(cx, nid, to);
-            some(nid)
-          }
-          by_ref | by_val | by_mutbl_ref {
-            none
-          }
+          by_copy | by_move { some(id) }
+          by_ref | by_val | by_mutbl_ref { none }
         }
       }
-      _ {
-        none
+      def_upvar(_, d, fn_id) {
+        if is_blockish(ty::ty_fn_proto(ty::node_id_to_type(cx.tcx, fn_id))) {
+            def_is_owned_local(cx, *d)
+        } else { none }
       }
+      _ { none }
     }
 }
 
-fn clear_if_path(cx: ctx, ex: @expr, v: visit::vt<ctx>, to: bool)
-    -> option<node_id> {
+fn clear_def_if_local(cx: ctx, d: def, to: bool) {
+    alt def_is_owned_local(cx, d) {
+      some(nid) { clear_in_current(cx, nid, to); }
+      _ {}
+    }
+}
+
+fn clear_if_path(cx: ctx, ex: @expr, v: visit::vt<ctx>, to: bool) {
     alt ex.node {
-      expr_path(_) {
-        ret clear_def_if_path(cx, cx.def_map.get(ex.id), to);
-      }
+      expr_path(_) { clear_def_if_local(cx, cx.def_map.get(ex.id), to); }
       _ { v.visit_expr(ex, cx, v); }
     }
-    ret option::none;
 }
