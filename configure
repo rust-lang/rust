@@ -41,9 +41,26 @@ make_dir() {
     fi
 }
 
-copy() {
-    msg "cp $1 $2"
-    cp $1 $2
+copy_if_changed() {
+    if cmp -s $1 $2
+    then
+        msg "leaving $2 unchanged"
+    else
+        msg "cp $1 $2"
+        cp $1 $2
+        chmod u-w $1 # make copied artifact read-only
+    fi
+}
+
+move_if_changed() {
+    if cmp -s $1 $2
+    then
+        msg "leaving $2 unchanged"
+    else
+        msg "mv $1 $2"
+        mv $1 $2
+        chmod u-w $1 # make moved artifact read-only
+    fi
 }
 
 putvar() {
@@ -56,7 +73,7 @@ putvar() {
     else
         printf "configure: %-20s := %s\n" $1 "$T"
     fi
-    printf "%-20s := %s\n" $1 "$T" >>config.mk
+    printf "%-20s := %s\n" $1 "$T" >>config.tmp
 }
 
 probe() {
@@ -158,6 +175,7 @@ opt() {
 
 
 msg "looking for configure programs"
+need_cmd cmp
 need_cmd mkdir
 need_cmd printf
 need_cmd cut
@@ -250,8 +268,8 @@ then
     echo "Options:"
     echo ""
 else
-    msg "recreating config.mk"
-    echo '' >config.mk
+    msg "recreating config.tmp"
+    echo '' >config.tmp
 
     step_msg "processing $CFG_SELF args"
 fi
@@ -665,11 +683,12 @@ done
 
 # Munge any paths that appear in config.mk back to posix-y
 perl -i.bak -p -e 's@ ([a-zA-Z]):[/\\]@ /\1/@go;' \
-               -e 's@\\@/@go;' config.mk
-rm -f config.mk.bak
+               -e 's@\\@/@go;' config.tmp
+rm -f config.tmp.bak
 
 msg
-copy ${CFG_SRC_DIR}Makefile.in ./Makefile
-chmod u-w Makefile # it is generated, make it read-only
+copy_if_changed ${CFG_SRC_DIR}Makefile.in ./Makefile
+move_if_changed config.tmp config.mk
+rm -f config.tmp
 
 step_msg "complete"
