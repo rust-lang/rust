@@ -4583,6 +4583,13 @@ fn collect_inlined_items(ccx: crate_ctxt, inline_map: inline::inline_map) {
     let abi = @mutable none::<ast::native_abi>;
     inline_map.values {|item|
         collect_item(ccx, abi, item);
+
+        alt item.node {
+          ast::item_fn(_, _, _) {
+            set_always_inline(ccx.item_ids.get(item.id));
+          }
+          _ { /* fallthrough */ }
+        }
     }
 }
 

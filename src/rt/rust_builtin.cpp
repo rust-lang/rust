@@ -6,6 +6,7 @@
 #include "rust_util.h"
 #include "rust_scheduler.h"
 #include "sync/timer.h"
+#include "rust_abi.h"
 
 #ifdef __APPLE__
 #include <crt_externs.h>
@@ -679,6 +680,11 @@ typedef void *(*dbg_callback)(void*);
 extern "C" CDECL void *
 rust_dbg_call(dbg_callback cb, void *data) {
     return cb(data);
+}
+
+extern "C" CDECL void *
+rust_frame_address() {
+    return __builtin_frame_address(1);
 }
 
 //

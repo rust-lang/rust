@@ -101,3 +101,4 @@ rust_dbg_lock_unlock
 rust_dbg_lock_wait
 rust_dbg_lock_signal
 rust_dbg_call
+rust_frame_address
