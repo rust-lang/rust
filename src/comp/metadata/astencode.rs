@@ -134,7 +134,7 @@ fn visit_ids(item: @ast::item, vfn: fn@(ast::node_id)) {
         },
 
         visit_item: fn@(i: @ast::item) {
-            vfn(i.id)
+            vfn(i.id);
         },
 
         visit_local: fn@(l: @ast::local) {
@@ -772,7 +772,8 @@ fn decode_side_tables(xcx: extended_decode_ctxt,
         let id0 = entry_doc[c::tag_table_id].as_int();
         let id = xcx.tr_id(id0);
 
-        #debug[">> Side table document with tag 0x%x found for id %d (orig %d)",
+        #debug[">> Side table document with tag 0x%x \
+                found for id %d (orig %d)",
                tag, id, id0];
 
         if tag == (c::tag_table_mutbl as uint) {

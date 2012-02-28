@@ -179,7 +179,7 @@ actual:\n\
 
     fn make_typecheck_args(config: config, _testfile: str) -> procargs {
         let prog = config.rustc_path;
-        let args = ["-", "--no-trans", "--lib"];
+        let args = ["-", "--no-trans", "--lib", "-L", config.build_base];
         args += split_maybe_args(config.rustcflags);
         ret {prog: prog, args: args};
     }
@@ -287,7 +287,16 @@ type procres = {status: int, stdout: str, stderr: str, cmdline: str};
 
 fn compile_test(config: config, props: test_props,
                 testfile: str) -> procres {
-    compose_and_run(config, testfile, bind make_compile_args(_, props, _),
+    vec::iter(props.aux_builds) {|rel_ab|
+        let abs_ab = fs::connect(config.aux_base, rel_ab);
+        compose_and_run(config, abs_ab,
+                        make_compile_args(_, props, ["--lib"],
+                                          make_lib_name, _),
+                        config.compile_lib_path, option::none);
+    }
+
+    compose_and_run(config, testfile,
+                    make_compile_args(_, props, [], make_exe_name, _),
                     config.compile_lib_path, option::none)
 }
 
@@ -305,13 +314,21 @@ fn compose_and_run(config: config, testfile: str,
                        procargs.prog, procargs.args, input);
 }
 
-fn make_compile_args(config: config, props: test_props, testfile: str) ->
+fn make_compile_args(config: config, props: test_props, extras: [str],
+                     xform: fn(config, str) -> str, testfile: str) ->
    procargs {
     let prog = config.rustc_path;
-    let args = [testfile, "-o", make_exe_name(config, testfile)];
+    let args = [testfile, "-o", xform(config, testfile),
+                "-L", config.build_base] + extras;
     args += split_maybe_args(config.rustcflags);
     args += split_maybe_args(props.compile_flags);
     ret {prog: prog, args: args};
+}
+
+fn make_lib_name(config: config, testfile: str) -> str {
+    // what we return here is not particularly important, as it
+    // happens; rustc ignores everything except for the directory.
+    output_base_name(config, testfile)
 }
 
 fn make_exe_name(config: config, testfile: str) -> str {

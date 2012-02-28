@@ -17,12 +17,15 @@ type test_props = {
     compile_flags: option<str>,
     // If present, the name of a file that this test should match when
     // pretty-printed
-    pp_exact: option<str>
+    pp_exact: option<str>,
+    // Modules from aux directory that should be compiled
+    aux_builds: [str]
 };
 
 // Load any test directives embedded in the file
 fn load_props(testfile: str) -> test_props {
     let error_patterns = [];
+    let aux_builds = [];
     let compile_flags = option::none;
     let pp_exact = option::none;
     iter_header(testfile) {|ln|
@@ -38,11 +41,16 @@ fn load_props(testfile: str) -> test_props {
         if option::is_none(pp_exact) {
             pp_exact = parse_pp_exact(ln, testfile);
         }
+
+        option::may(parse_aux_build(ln)) {|ab|
+            aux_builds += [ab];
+        }
     };
     ret {
         error_patterns: error_patterns,
         compile_flags: compile_flags,
-        pp_exact: pp_exact
+        pp_exact: pp_exact,
+        aux_builds: aux_builds
     };
 }
 
@@ -80,6 +88,10 @@ fn iter_header(testfile: str, it: fn(str)) {
 
 fn parse_error_pattern(line: str) -> option<str> {
     parse_name_value_directive(line, "error-pattern")
+}
+
+fn parse_aux_build(line: str) -> option<str> {
+    parse_name_value_directive(line, "aux-build")
 }
 
 fn parse_compile_flags(line: str) -> option<str> {
