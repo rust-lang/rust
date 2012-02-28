@@ -81,6 +81,7 @@ mod to_str;
 
 // Runtime and language-primitive support
 
+mod libc;
 mod ctypes;
 mod math;
 mod cmath;

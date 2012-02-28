@@ -1149,12 +1149,6 @@ mod u8 {
     export lt, le, eq, ne, ge, gt;
     export hash;
 
-    #[nolink]
-    #[abi = "cdecl"]
-    native mod libc {
-        fn memcmp(s1: *u8, s2: *u8, n: ctypes::size_t) -> ctypes::c_int;
-    }
-
     /*
     Function cmp
 
@@ -1164,7 +1158,8 @@ mod u8 {
         let a_len = len(a);
         let b_len = len(b);
         let n = math::min(a_len, b_len) as ctypes::size_t;
-        let r = libc::memcmp(to_ptr(a), to_ptr(b), n) as int;
+        let r = libc::memcmp(to_ptr(a) as *libc::c_void,
+                             to_ptr(b) as *libc::c_void, n) as int;
 
         if r != 0 { r } else {
             if a_len == b_len {
