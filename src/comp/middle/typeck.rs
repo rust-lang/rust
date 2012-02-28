@@ -1756,7 +1756,6 @@ fn lookup_method_inner(fcx: @fn_ctxt, expr: @ast::expr,
               _ {}
             }
         }
-        ret none;
       }
       ty::ty_iface(did, tps) {
         let i = 0u;
@@ -3158,7 +3157,7 @@ mod dict {
                 }
             }
           }
-          ty::ty_iface(did, _) {
+          ty::ty_iface(did, _) if iface_id == did {
             ret dict_iface(did);
           }
           _ {
