@@ -968,6 +968,7 @@ Iterates over vector `v` and, for each element, calls function `f` with the
 element's value.
 
 */
+#[inline]
 fn iter<T>(v: [const T], f: fn(T)) {
     iteri(v) { |_i, v| f(v) }
 }
