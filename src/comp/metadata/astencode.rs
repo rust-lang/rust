@@ -185,7 +185,7 @@ fn visit_ids(item: @ast::item, vfn: fn@(ast::node_id)) {
             vfn(id);
         },
 
-        visit_fn: fn@(fk: visit::fn_kind, _d: ast::fn_decl,
+        visit_fn: fn@(fk: visit::fn_kind, d: ast::fn_decl,
                       _b: ast::blk, _sp: span, id: ast::node_id) {
             vfn(id);
 
@@ -198,6 +198,10 @@ fn visit_ids(item: @ast::item, vfn: fn@(ast::node_id)) {
               visit::fk_anon(_) |
               visit::fk_fn_block {
               }
+            }
+
+            vec::iter(d.inputs) {|arg|
+                vfn(arg.id)
             }
         },
 
