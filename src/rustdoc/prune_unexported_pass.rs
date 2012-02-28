@@ -8,7 +8,7 @@ export mk_pass;
 
 fn mk_pass() -> pass {
     {
-        name: "prune_unexperted",
+        name: "prune_unexported",
         f: run
     }
 }

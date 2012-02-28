@@ -117,7 +117,7 @@ fn run(source_file: str) {
 
     let default_name = source_file;
     astsrv::from_file(source_file) {|srv|
-        time("wait") {||
+        time("wait_ast") {||
             astsrv::exec(srv) {|_ctxt| () }
         };
         let doc = time("extract") {||

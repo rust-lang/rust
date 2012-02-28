@@ -2,9 +2,9 @@
 
 export mk_pass;
 
-fn mk_pass(op: fn~(str) -> str) -> pass {
+fn mk_pass(name: str, op: fn~(str) -> str) -> pass {
     {
-        name: "desc",
+        name: name,
         f: fn~(srv: astsrv::srv, doc: doc::cratedoc) -> doc::cratedoc {
             run(srv, doc, op)
         }
