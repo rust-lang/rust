@@ -588,6 +588,7 @@ fn test_uv_new_loop_no_handles() {
 }
 
 #[test]
+#[ignore(cfg(target_os = "freebsd"))]
 fn test_uv_simple_async() {
     let test_loop = uv::loop_new();
     let exit_port = comm::port::<bool>();
@@ -606,6 +607,7 @@ fn test_uv_simple_async() {
 }
 
 #[test]
+#[ignore(cfg(target_os = "freebsd"))]
 fn test_uv_timer() {
     let test_loop = uv::loop_new();
     let exit_port = comm::port::<bool>();
