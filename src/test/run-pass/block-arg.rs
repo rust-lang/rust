@@ -1,5 +1,4 @@
 // Check usage and precedence of block arguments in expressions:
-// xfail-test
 fn main() {
     let v = [-1f, 0f, 1f, 2f, 3f];
 

@@ -124,7 +124,6 @@ fn trans_vtable_callee(bcx: block, env: callee_env, dict: ValueRef,
     let method_ty = ty::mk_fn(tcx, method.fty);
     let {ty: fty, llty: llfty} =
         wrapper_fn_ty(ccx, val_ty(dict), method_ty, method.tps);
-        // node_id_type(bcx, callee_id),
     let vtable = PointerCast(bcx, Load(bcx, GEPi(bcx, dict, [0, 0])),
                              T_ptr(T_array(T_ptr(llfty), n_method + 1u)));
     let mptr = Load(bcx, GEPi(bcx, vtable, [0, n_method as int]));
