@@ -1,4 +1,3 @@
-import str_chars::iterable_by_chars;
 export iterable, enumerate, filter, map, flat_map,
        foldl, to_list, repeat, all, any, each;
 
@@ -71,14 +70,6 @@ fn map<A,B,IA:iterable<A>>(self: IA, cnv: fn@(A) -> B, blk: fn(B)) {
         blk(b);
     }
 }
-
-//fn real_map<A, B, IA:iterable<A>, IB:iterable<B>>
-//           (self: IA, cnv: fn@(A) -> B, blk: fn(B), new: IB) {
-//    self.iter {|a|
-//        new = new.append(blk(cnv(a)));
-//    }
-//    ret new;
-//}
 
 fn flat_map<A,B,IA:iterable<A>,IB:iterable<B>>(
     self: IA, cnv: fn@(A) -> IB, blk: fn(B)) {
@@ -273,71 +264,6 @@ fn test_repeat() {
     };
     #debug["c = %?", c];
     assert c == [0u, 1u, 4u, 9u, 16u];
-}
-
-#[test]
-fn test_str_char_iter() {
-    let i = 0u;
-    "፩፪፫".iter {|&&c: char|
-        alt i {
-          0u { assert '፩' == c }
-          1u { assert '፪' == c }
-          2u { assert '፫' == c }
-        }
-        i += 1u;
-    }
-}
-
-#[test]
-fn test_str_all() {
-    assert true == all("፩፪፫") {|&&c|
-        unicode::general_category::No(c)
-    };
-    assert false == all("፩፪፫") {|&&c|
-        unicode::general_category::Lu(c)
-    };
-    assert false == all("፩፪3") {|&&c|
-        unicode::general_category::No(c)
-    };
-    assert true == all("") {|&&c|
-        unicode::general_category::Lu(c)
-    };
-}
-
-#[test]
-fn test_str_all_calls() {
-    let calls: uint = 0u;
-    assert false == all("፩2፫") {|&&c|
-        calls += 1u;
-        unicode::general_category::No(c)
-    };
-    assert calls == 2u;
-}
-
-#[test]
-fn test_str_any() {
-    assert true == any("፩፪፫") {|&&c|
-        unicode::general_category::No(c)
-    };
-    assert false == any("፩፪፫") {|&&c|
-        unicode::general_category::Lu(c)
-    };
-    assert true == any("1፪፫") {|&&c|
-        unicode::general_category::No(c)
-    };
-    assert false == any("") {|&&c|
-        unicode::general_category::Lu(c)
-    };
-}
-
-#[test]
-fn test_str_any_calls() {
-    let calls: uint = 0u;
-    assert true == any("፩2፫") {|&&c|
-        calls += 1u;
-        unicode::general_category::Nd(c)
-    };
-    assert calls == 2u;
 }
 
 #[test]

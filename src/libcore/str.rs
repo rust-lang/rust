@@ -10,6 +10,8 @@ For some heavy-duty uses, we recommend trying std::rope.
 */
 
 import option::{some, none};
+import iter::iterable;
+import str::chars::iterable;
 
 export
    // Creating a string
@@ -57,17 +59,6 @@ export
    le,
    hash,
 
-   // Iterating through strings
-   //all,
-   //any,
-   map,
-   bytes_iter,
-   chars_iter,
-   split_char_iter,
-   splitn_char_iter,
-   words_iter,
-   lines_iter,
-
    // Searching
    index,
    byte_index,
@@ -105,8 +96,6 @@ export
    reserve,
 
    unsafe;
-
-import str_chars::iterable_by_chars;
 
 #[abi = "cdecl"]
 native mod rustrt {
@@ -424,7 +413,7 @@ fn split_byte(ss: str, sep: u8) -> [str] unsafe {
     let vv = [];
     let start = 0u, current = 0u;
 
-    str::bytes_iter(ss) {|cc|
+    bytes_iter(ss) {|cc|
         if sep == cc {
             vec::push(vv, str::unsafe::slice_bytes(ss, start, current));
             start = current + 1u;
@@ -482,7 +471,7 @@ fn split_str(ss: str, sep: str) -> [str] unsafe {
     let vv = [];
     let start = 0u, start_match = 0u, current = 0u, matching = 0u;
 
-    str::bytes_iter(ss) {|cc|
+    bytes_iter(ss) {|cc|
         if sep[matching] == cc {
             matching += 1u;
         } else {
@@ -727,31 +716,11 @@ Section: Iterating through strings
 */
 
 /*
-Function: all
-
-Return true if a predicate matches all characters or
-if the string contains no characters
-*/
-//fn all(s: str, it: fn(&&char) -> bool) -> bool{
-//    ret substr_all(s, 0u, byte_len(s), it);
-//}
-
-/*
-Function: any
-
-Return true if a predicate matches any character
-(and false if it matches none or there are no characters)
-*/
-//fn any(ss: str, pred: fn(char) -> bool) -> bool {
-//   !all(ss, {|cc| !pred(cc)})
-//}
-
-/*
 Function: map
 
 Apply a function to each character
 */
-fn map(ss: str, ff: fn(&&char) -> char) -> str {
+fn map(ss: str, ff: fn(char) -> char) -> str {
     let result = "";
     reserve(result, len_bytes(ss));
 
@@ -789,44 +758,6 @@ fn chars_iter(s: str, it: fn(&&char)) {
         pos = next;
         it(ch);
     }
-}
-
-/*
-Function: split_char_iter
-
-Apply a function to each substring after splitting
-by character
-*/
-fn split_char_iter(ss: str, cc: char, ff: fn(&&str)) {
-   vec::iter(split_char(ss, cc), ff)
-}
-
-/*
-Function: splitn_char_iter
-
-Apply a function to each substring after splitting
-by character, up to `count` times
-*/
-fn splitn_char_iter(ss: str, sep: char, count: uint, ff: fn(&&str)) unsafe {
-   vec::iter(splitn_char(ss, sep, count), ff)
-}
-
-/*
-Function: words_iter
-
-Apply a function to each word
-*/
-fn words_iter(ss: str, ff: fn(&&str)) {
-    vec::iter(words(ss), ff)
-}
-
-/*
-Function: lines_iter
-
-Apply a function to each lines (by '\n')
-*/
-fn lines_iter(ss: str, ff: fn(&&str)) {
-    vec::iter(lines(ss), ff)
 }
 
 /*
@@ -1054,7 +985,7 @@ Function: is_whitespace
 Returns true if the string contains only whitespace
 */
 fn is_whitespace(s: str) -> bool {
-    ret iter::all(s, char::is_whitespace);
+    ret iter::all(s, {|&&ch| char::is_whitespace(ch) });
 }
 
 
@@ -1501,6 +1432,202 @@ mod unsafe {
 
 }
 
+mod bytes {
+    export iterable;
+    impl iterable of iterable<u8> for str {
+        fn iter(blk: fn(&&u8)) {
+            let pos = 0u;
+            let len = str::len_bytes(self);
+
+            while (pos < len) {
+                blk(self[pos]);
+                pos += 1u;
+            }
+        }
+    }
+
+    #[test]
+    fn test_str_byte_iter() {
+        let i = 0u;
+        "፩፪፫".iter {|&&b: u8|
+            alt i {
+              0u { assert 0xe1_u8 == b }
+              1u { assert 0x8d_u8 == b }
+              2u { assert 0xa9_u8 == b }
+              3u { assert 0xe1_u8 == b }
+              4u { assert 0x8d_u8 == b }
+              5u { assert 0xaa_u8 == b }
+              6u { assert 0xe1_u8 == b }
+              7u { assert 0x8d_u8 == b }
+              8u { assert 0xab_u8 == b }
+              9u { assert 0x00_u8 == b }
+              _ { fail; }
+            }
+            i += 1u;
+        }
+    }
+}
+
+mod chars {
+    export iterable;
+    impl iterable of iterable<char> for str {
+        fn iter(blk: fn(&&char)) {
+            let pos = 0u, len = str::len_bytes(self);
+            while (pos < len) {
+                let {ch, next} = str::char_range_at(self, pos);
+                pos = next;
+                blk(ch);
+            }
+        }
+    }
+
+    #[test]
+    fn test_str_char_iter() {
+        let i = 0u;
+        "፩፪፫".iter {|&&c: char|
+            alt i {
+              0u { assert '፩' == c }
+              1u { assert '፪' == c }
+              2u { assert '፫' == c }
+              _ { fail; }
+            }
+            i += 1u;
+        }
+    }
+
+    #[test]
+    fn test_str_all() {
+        assert true == iter::all("፩፪፫") {|&&c|
+            unicode::general_category::No(c)
+        };
+        assert false == iter::all("፩፪፫") {|&&c|
+            unicode::general_category::Lu(c)
+        };
+        assert false == iter::all("፩፪3") {|&&c|
+            unicode::general_category::No(c)
+        };
+        assert true == iter::all("") {|&&c|
+            unicode::general_category::Lu(c)
+        };
+    }
+
+    #[test]
+    fn test_str_all_calls() {
+        let calls: uint = 0u;
+        assert false == iter::all("፩2፫") {|&&c|
+            calls += 1u;
+            unicode::general_category::No(c)
+        };
+        assert calls == 2u;
+    }
+
+    #[test]
+    fn test_str_any() {
+        assert true == iter::any("፩፪፫") {|&&c|
+            unicode::general_category::No(c)
+        };
+        assert false == iter::any("፩፪፫") {|&&c|
+            unicode::general_category::Lu(c)
+        };
+        assert true == iter::any("1፪፫") {|&&c|
+            unicode::general_category::No(c)
+        };
+        assert false == iter::any("") {|&&c|
+            unicode::general_category::Lu(c)
+        };
+    }
+
+    #[test]
+    fn test_str_any_calls() {
+        let calls: uint = 0u;
+        assert true == iter::any("፩2፫") {|&&c|
+            calls += 1u;
+            unicode::general_category::Nd(c)
+        };
+        assert calls == 2u;
+    }
+}
+
+mod words {
+    export iterable;
+    impl iterable of iterable<str> for str {
+        fn iter(blk: fn(&&str)) {
+            let buf = "", buflen = 0u, pos = 0u, len = str::len_bytes(self);
+            while (pos < len) {
+                let {ch, next} = str::char_range_at(self, pos);
+                if (!char::is_whitespace(ch)) {
+                    buf += str::from_char(ch);
+                    buflen += 1u;
+                } else if (buflen > 0u) {
+                    blk(buf);
+                    buf = "";
+                    buflen = 0u;
+                }
+                pos = next;
+            }
+        }
+    }
+
+    #[test]
+    fn test_words_iter() {
+        let data = "\nMary had a little lamb.\nLittle lamb\n";
+
+        let ii = 0;
+
+        data.iter {|ww|
+            alt ii {
+              0 { assert "Mary"   == ww; }
+              1 { assert "had"    == ww; }
+              2 { assert "a"      == ww; }
+              3 { assert "little" == ww; }
+              4 { assert "lamb." == ww; }
+              _ { () }
+            }
+            ii += 1;
+        }
+
+        "".iter {|_x| fail; } // should not fail
+    }
+}
+
+mod lines {
+    export iterable;
+    impl iterable of iterable<str> for str {
+        fn iter(blk: fn(&&str)) {
+            let buf = "", buflen = 0u, pos = 0u, len = str::len_bytes(self);
+            while (pos < len) {
+                let {ch, next} = str::char_range_at(self, pos);
+                if (ch != '\n') {
+                    buf += str::from_char(ch);
+                    buflen += 1u;
+                } else {
+                    blk(buf);
+                    buf = "";
+                    buflen = 0u;
+                }
+                pos = next;
+            }
+        }
+    }
+
+    #[test]
+    fn test_lines_iter() {
+        let lf = "\nMary had a little lamb\nLittle lamb\n";
+
+        let ii = 0;
+
+        lf.iter {|x|
+            alt ii {
+                0 { assert "" == x; }
+                1 { assert "Mary had a little lamb" == x; }
+                2 { assert "Little lamb" == x; }
+                3 { assert "" == x; }
+                _ { () }
+            }
+            ii += 1;
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -2217,79 +2344,6 @@ mod tests {
     }
 
     #[test]
-    fn test_split_char_iter() {
-        let data = "\nMary had a little lamb\nLittle lamb\n";
-
-        let ii = 0;
-
-        split_char_iter(data, ' ') {|xx|
-            alt ii {
-              0 { assert "\nMary" == xx; }
-              1 { assert "had"    == xx; }
-              2 { assert "a"      == xx; }
-              3 { assert "little" == xx; }
-              _ { () }
-            }
-            ii += 1;
-        }
-    }
-
-    #[test]
-    fn test_splitn_char_iter() {
-        let data = "\nMary had a little lamb\nLittle lamb\n";
-
-        let ii = 0;
-
-        splitn_char_iter(data, ' ', 2u) {|xx|
-            alt ii {
-              0 { assert "\nMary" == xx; }
-              1 { assert "had"    == xx; }
-              2 { assert "a little lamb\nLittle lamb\n" == xx; }
-              _ { () }
-            }
-            ii += 1;
-        }
-    }
-
-    #[test]
-    fn test_words_iter() {
-        let data = "\nMary had a little lamb\nLittle lamb\n";
-
-        let ii = 0;
-
-        words_iter(data) {|ww|
-            alt ii {
-              0 { assert "Mary"   == ww; }
-              1 { assert "had"    == ww; }
-              2 { assert "a"      == ww; }
-              3 { assert "little" == ww; }
-              _ { () }
-            }
-            ii += 1;
-        }
-
-        words_iter("") {|_x| fail; } // should not fail
-    }
-
-    #[test]
-    fn test_lines_iter () {
-        let lf = "\nMary had a little lamb\nLittle lamb\n";
-
-        let ii = 0;
-
-        lines_iter(lf) {|x|
-            alt ii {
-                0 { assert "" == x; }
-                1 { assert "Mary had a little lamb" == x; }
-                2 { assert "Little lamb" == x; }
-                3 { assert "" == x; }
-                _ { () }
-            }
-            ii += 1;
-        }
-    }
-
-    #[test]
     fn test_escape() {
         assert(escape("abcdef") == "abcdef");
         assert(escape("abc\\def") == "abc\\\\def");
@@ -2305,20 +2359,20 @@ mod tests {
 
     #[test]
     fn test_all() {
-        assert true  == iter::all("", char::is_uppercase);
-        assert false == iter::all("ymca", char::is_uppercase);
-        assert true  == iter::all("YMCA", char::is_uppercase);
-        assert false == iter::all("yMCA", char::is_uppercase);
-        assert false == iter::all("YMCy", char::is_uppercase);
+        assert true  == iter::all("", {|&&ch| char::is_uppercase(ch) });
+        assert false == iter::all("ymca", {|&&ch| char::is_uppercase(ch) });
+        assert true  == iter::all("YMCA", {|&&ch| char::is_uppercase(ch) });
+        assert false == iter::all("yMCA", {|&&ch| char::is_uppercase(ch) });
+        assert false == iter::all("YMCy", {|&&ch| char::is_uppercase(ch) });
     }
 
     #[test]
     fn test_any() {
-        assert false  == iter::any("", char::is_uppercase);
-        assert false == iter::any("ymca", char::is_uppercase);
-        assert true  == iter::any("YMCA", char::is_uppercase);
-        assert true == iter::any("yMCA", char::is_uppercase);
-        assert true == iter::any("Ymcy", char::is_uppercase);
+        assert false  == iter::any("", {|&&ch| char::is_uppercase(ch) });
+        assert false == iter::any("ymca", {|&&ch| char::is_uppercase(ch) });
+        assert true  == iter::any("YMCA", {|&&ch| char::is_uppercase(ch) });
+        assert true == iter::any("yMCA", {|&&ch| char::is_uppercase(ch) });
+        assert true == iter::any("Ymcy", {|&&ch| char::is_uppercase(ch) });
     }
 
     #[test]

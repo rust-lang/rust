@@ -2,6 +2,7 @@ use std;
 
 import std::fs;
 import std::run;
+import str::lines::iterable;
 
 fn gpg(args: [str]) -> { status: int, out: str, err: str } {
     ret run::program_output("gpg", args);
@@ -94,10 +95,5 @@ fn verify(root: str, data: str, sig: str, keyfp: str) -> bool {
     let p = gpg(["--homedir", path, "--with-fingerprint", "--verify", sig,
                  data]);
     let res = "Primary key fingerprint: " + keyfp;
-    for line in str::split_byte(p.err, '\n' as u8) {
-        if line == res {
-            ret true;
-        }
-    }
-    ret false;
+    ret iter::any(p.err) {|&&line| line == res };
 }

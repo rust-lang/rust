@@ -43,13 +43,13 @@ export is_alphabetic,
 import is_alphabetic = unicode::derived_property::Alphabetic;
 import is_XID_start = unicode::derived_property::XID_Start;
 import is_XID_continue = unicode::derived_property::XID_Continue;
-
+import str::chars::iterable;
 
 #[doc(
   brief = "Indicates whether a character is in lower case, defined \
            in terms of the Unicode General Category 'Ll'."
 )]
-pure fn is_lowercase(&&c: char) -> bool {
+pure fn is_lowercase(c: char) -> bool {
     ret unicode::general_category::Ll(c);
 }
 
@@ -57,7 +57,7 @@ pure fn is_lowercase(&&c: char) -> bool {
   brief = "Indicates whether a character is in upper case, defined \
            in terms of the Unicode General Category 'Lu'."
 )]
-pure fn is_uppercase(&&c: char) -> bool {
+pure fn is_uppercase(c: char) -> bool {
     ret unicode::general_category::Lu(c);
 }
 
@@ -66,7 +66,7 @@ pure fn is_uppercase(&&c: char) -> bool {
            terms of the Unicode General Categories 'Zs', 'Zl', 'Zp' \
            additional 'Cc'-category control codes in the range [0x09, 0x0d]"
 )]
-pure fn is_whitespace(&&c: char) -> bool {
+pure fn is_whitespace(c: char) -> bool {
     ret ('\x09' <= c && c <= '\x0d')
         || unicode::general_category::Zs(c)
         || unicode::general_category::Zl(c)
@@ -78,7 +78,7 @@ pure fn is_whitespace(&&c: char) -> bool {
             in terms of the Unicode General Categories 'Nd', \
             'Nl', 'No' and the Derived Core Property 'Alphabetic'."
 )]
-pure fn is_alphanumeric(&&c: char) -> bool {
+pure fn is_alphanumeric(c: char) -> bool {
     ret unicode::derived_property::Alphabetic(c) ||
         unicode::general_category::Nd(c) ||
         unicode::general_category::Nl(c) ||
@@ -115,7 +115,7 @@ pure fn to_digit(&&c: char) -> u8 unsafe {
   brief = "Convert a char to the corresponding digit. Returns none when \
            character is not a valid hexadecimal digit."
 )]
-pure fn maybe_digit(&&c: char) -> option<u8> {
+pure fn maybe_digit(c: char) -> option<u8> {
     alt c {
       '0' to '9' { option::some(c as u8 - ('0' as u8)) }
       'a' to 'z' { option::some(c as u8 + 10u8 - ('a' as u8)) }
@@ -130,7 +130,7 @@ pure fn maybe_digit(&&c: char) -> option<u8> {
 #[doc(
   brief = "Convert a char to the corresponding lower case."
 )]
-pure fn to_lower(&&c: char) -> char {
+pure fn to_lower(c: char) -> char {
     alt c {
       'A' to 'Z' { ((c as u8) + 32u8) as char }
       _ { c }
@@ -143,7 +143,7 @@ pure fn to_lower(&&c: char) -> char {
 #[doc(
   brief = "Convert a char to the corresponding upper case."
 )]
-pure fn to_upper(&&c: char) -> char {
+pure fn to_upper(c: char) -> char {
     alt c {
       'a' to 'z' { ((c as u8) - 32u8) as char }
       _ { c }
@@ -236,8 +236,8 @@ fn test_to_upper() {
 
 #[test]
 fn test_is_ascii() unsafe {
-   assert str::all("banana", char::is_ascii);
-   assert ! str::all("ประเทศไทย中华Việt Nam", char::is_ascii);
+   assert iter::all("banana", {|&&ch| char::is_ascii(ch) });
+   assert ! iter::all("ประเทศไทย中华Việt Nam", {|&&ch| char::is_ascii(ch) });
 }
 
 #[test]
