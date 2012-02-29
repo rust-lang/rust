@@ -47,8 +47,8 @@ copy_if_changed() {
         msg "leaving $2 unchanged"
     else
         msg "cp $1 $2"
-        cp $1 $2
-        chmod u-w $1 # make copied artifact read-only
+        cp -f $1 $2
+        chmod u-w $2 # make copied artifact read-only
     fi
 }
 
@@ -58,8 +58,8 @@ move_if_changed() {
         msg "leaving $2 unchanged"
     else
         msg "mv $1 $2"
-        mv $1 $2
-        chmod u-w $1 # make moved artifact read-only
+        mv -f $1 $2
+        chmod u-w $2 # make moved artifact read-only
     fi
 }
 
