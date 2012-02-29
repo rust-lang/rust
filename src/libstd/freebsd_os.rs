@@ -62,6 +62,7 @@ native mod libc {
     fn mkdir(path: str::sbuf, mode: c_int) -> c_int;
     fn rmdir(path: str::sbuf) -> c_int;
     fn chdir(path: str::sbuf) -> c_int;
+    fn unlink(path: str::sbuf) -> c_int;
 
     fn sysctl(name: *c_int, namelen: c_uint,
               oldp: *u8, &oldlenp: size_t,
