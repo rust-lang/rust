@@ -93,20 +93,22 @@ fn test_run_passes() {
     }
 }
 
-fn main(argv: [str]) {
+fn main(args: [str]) {
 
-    if vec::contains(argv, "-h") {
+    if vec::contains(args, "-h") {
         config::usage();
         ret;
     }
 
-    if vec::len(argv) != 2u {
-        std::io::println(#fmt("usage: %s <input>", argv[0]));
+    let config = alt config::parse_config(args) {
+      result::ok(config) { config }
+      result::err(err) {
+        std::io::println(#fmt("error: %s", err));
         ret;
-    }
+      }
+    };
 
-    let source_file = argv[1];
-    run(source_file);
+    run(config.input_crate);
 }
 
 fn time<T>(what: str, f: fn() -> T) -> T {
