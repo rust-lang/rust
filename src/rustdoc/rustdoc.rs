@@ -95,6 +95,11 @@ fn test_run_passes() {
 
 fn main(argv: [str]) {
 
+    if vec::contains(argv, "-h") {
+        config::usage();
+        ret;
+    }
+
     if vec::len(argv) != 2u {
         std::io::println(#fmt("usage: %s <input>", argv[0]));
         ret;

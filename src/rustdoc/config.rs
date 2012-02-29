@@ -4,6 +4,7 @@ export output_format::{};
 export output_style::{};
 export config;
 export parse_config;
+export usage;
 
 #[doc = "The type of document to output"]
 enum output_format {
@@ -34,18 +35,32 @@ fn opt_output_dir() -> str { "output-dir" }
 fn opt_output_format() -> str { "output-format" }
 fn opt_output_style() -> str { "output-style" }
 fn opt_pandoc_cmd() -> str { "pandoc-cmd" }
+fn opt_help() -> str { "h" }
 
 fn opts() -> [(getopts::opt, str)] {
     [
         (getopts::optopt(opt_output_dir()),
-         "put documents here"),
+         "--output-dir <val>     put documents here"),
         (getopts::optopt(opt_output_format()),
-         "either 'markdown' or 'html'"),
+         "--output-format <val>  either 'markdown' or 'html'"),
         (getopts::optopt(opt_output_style()),
-         "either 'doc-per-crate' or 'doc-per-mod'"),
+         "--output-style <val>   either 'doc-per-crate' or 'doc-per-mod'"),
         (getopts::optopt(opt_pandoc_cmd()),
-         "the command for running pandoc")
+         "--pandoc-cmd <val>     the command for running pandoc"),
+        (getopts::optflag(opt_help()),
+         "-h                     print help")
     ]
+}
+
+fn usage() {
+    import std::io::println;
+
+    println("Usage: rustdoc [options] <cratefile>\n");
+    println("Options:\n");
+    for opt in opts() {
+        println(#fmt("    %s", tuple::second(opt)));
+    }
+    println("");
 }
 
 fn default_config(input_crate: str) -> config {
