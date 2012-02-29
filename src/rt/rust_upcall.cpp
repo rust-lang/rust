@@ -100,6 +100,9 @@ upcall_call_shim_on_rust_stack(void *args, void *fn_ptr) {
                 "Rust task failed after reentering the Rust stack");
         abort();
     }
+
+    // FIXME: As above
+    record_sp(0);
 }
 
 /**********************************************************************/
