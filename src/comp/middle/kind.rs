@@ -70,7 +70,7 @@ fn with_appropriate_checker(cx: ctx, id: node_id,
 // Check that the free variables used in a shared/sendable closure conform
 // to the copy/move kind bounds. Then recursively check the function body.
 fn check_fn(fk: visit::fn_kind, decl: fn_decl, body: blk, sp: span,
-            id: node_id, cx: ctx, v: visit::vt<ctx>) {
+            fn_id: node_id, cx: ctx, v: visit::vt<ctx>) {
 
     // n.b.: This could be the body of either a fn decl or a fn expr.  In the
     // former case, the prototype will be proto_bare and no check occurs.  In
@@ -82,15 +82,22 @@ fn check_fn(fk: visit::fn_kind, decl: fn_decl, body: blk, sp: span,
     // "future-proof" to do it this way, as check_fn_body() is supposed to be
     // the common flow point for all functions that appear in the AST.
 
-    with_appropriate_checker(cx, id) { |checker|
-        for @{def, span} in *freevars::get_freevars(cx.tcx, id) {
+    with_appropriate_checker(cx, fn_id) { |checker|
+        for @{def, span} in *freevars::get_freevars(cx.tcx, fn_id) {
             let id = ast_util::def_id_of_def(def).node;
+            if checker == check_copy {
+                let last_uses = alt check cx.last_uses.find(fn_id) {
+                  some(last_use::closes_over(vars)) { vars }
+                  none { [] }
+                };
+                if option::is_some(vec::position_elt(last_uses, id)) { cont; }
+            }                    
             let ty = ty::node_id_to_type(cx.tcx, id);
             checker(cx, ty, span);
         }
     }
 
-    visit::visit_fn(fk, decl, body, sp, id, cx, v);
+    visit::visit_fn(fk, decl, body, sp, fn_id, cx, v);
 }
 
 fn check_fn_cap_clause(cx: ctx,
