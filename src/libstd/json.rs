@@ -154,6 +154,8 @@ impl parser for parser {
     fn parse() -> result::t<json, error> {
         alt self.parse_value() {
           ok(value) {
+            // Skip trailing whitespaces.
+            self.parse_whitespace();
             // Make sure there is no trailing characters.
             if self.eof() {
                 ok(value)
@@ -627,6 +629,9 @@ mod tests {
         assert from_str("null") == ok(null);
         assert from_str("true") == ok(boolean(true));
         assert from_str("false") == ok(boolean(false));
+        assert from_str(" null ") == ok(null);
+        assert from_str(" true ") == ok(boolean(true));
+        assert from_str(" false ") == ok(boolean(false));
     }
 
     #[test]
@@ -654,6 +659,7 @@ mod tests {
         assert from_str("0.4e5") == ok(num(0.4e5f));
         assert from_str("0.4e+15") == ok(num(0.4e15f));
         assert from_str("0.4e-01") == ok(num(0.4e-01f));
+        assert from_str(" 3 ") == ok(num(3f));
     }
 
     #[test]
@@ -670,6 +676,7 @@ mod tests {
         assert from_str("\"\\n\"") == ok(string("\n"));
         assert from_str("\"\\r\"") == ok(string("\r"));
         assert from_str("\"\\t\"") == ok(string("\t"));
+        assert from_str(" \"foo\" ") == ok(string("foo"));
     }
 
     #[test]
@@ -691,6 +698,7 @@ mod tests {
         assert from_str("[ false ]") == ok(list([boolean(false)]));
         assert from_str("[null]") == ok(list([null]));
         assert from_str("[3, 1]") == ok(list([num(3f), num(1f)]));
+        assert from_str("\n[3, 2]\n") == ok(list([num(3f), num(2f)]));
         assert from_str("[2, [4, 1]]") ==
                ok(list([num(2f), list([num(4f), num(1f)])]));
     }
@@ -726,6 +734,8 @@ mod tests {
                   mk_dict([("a", num(3.0f))]));
 
         assert eq(result::get(from_str("{ \"a\": null, \"b\" : true }")),
+                  mk_dict([("a", null), ("b", boolean(true))]));
+        assert eq(result::get(from_str("\n{ \"a\": null, \"b\" : true }\n")),
                   mk_dict([("a", null), ("b", boolean(true))]));
         assert eq(result::get(from_str("{\"a\" : 1.0 ,\"b\": [ true ]}")),
                   mk_dict([
