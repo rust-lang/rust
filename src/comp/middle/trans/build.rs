@@ -41,7 +41,7 @@ fn AggregateRet(cx: block, RetVals: [ValueRef]) {
     assert (!cx.terminated);
     cx.terminated = true;
     unsafe {
-        llvm::LLVMBuildAggregateRet(B(cx), vec::to_ptr(RetVals),
+        llvm::LLVMBuildAggregateRet(B(cx), vec::unsafe::to_ptr(RetVals),
                                     RetVals.len() as c_uint);
     }
 }
@@ -98,7 +98,7 @@ fn Invoke(cx: block, Fn: ValueRef, Args: [ValueRef],
            str::connect(vec::map(Args, {|a|val_str(cx.ccx().tn, a)}),
                         ", ")];
     unsafe {
-        llvm::LLVMBuildInvoke(B(cx), Fn, vec::to_ptr(Args),
+        llvm::LLVMBuildInvoke(B(cx), Fn, vec::unsafe::to_ptr(Args),
                               Args.len() as c_uint, Then, Catch,
                               noname());
     }
@@ -110,7 +110,7 @@ fn FastInvoke(cx: block, Fn: ValueRef, Args: [ValueRef],
     assert (!cx.terminated);
     cx.terminated = true;
     unsafe {
-        let v = llvm::LLVMBuildInvoke(B(cx), Fn, vec::to_ptr(Args),
+        let v = llvm::LLVMBuildInvoke(B(cx), Fn, vec::unsafe::to_ptr(Args),
                                       Args.len() as c_uint,
                                       Then, Catch, noname());
         lib::llvm::SetInstructionCallConv(v, lib::llvm::FastCallConv);
@@ -331,7 +331,7 @@ fn Store(cx: block, Val: ValueRef, Ptr: ValueRef) {
 fn GEP(cx: block, Pointer: ValueRef, Indices: [ValueRef]) -> ValueRef {
     if cx.unreachable { ret llvm::LLVMGetUndef(T_ptr(T_nil())); }
     unsafe {
-        ret llvm::LLVMBuildGEP(B(cx), Pointer, vec::to_ptr(Indices),
+        ret llvm::LLVMBuildGEP(B(cx), Pointer, vec::unsafe::to_ptr(Indices),
                                Indices.len() as c_uint, noname());
     }
 }
@@ -349,7 +349,7 @@ fn InBoundsGEP(cx: block, Pointer: ValueRef, Indices: [ValueRef]) ->
     if cx.unreachable { ret llvm::LLVMGetUndef(T_ptr(T_nil())); }
     unsafe {
         ret llvm::LLVMBuildInBoundsGEP(B(cx), Pointer,
-                                       vec::to_ptr(Indices),
+                                       vec::unsafe::to_ptr(Indices),
                                        Indices.len() as c_uint,
                                        noname());
     }
@@ -496,7 +496,8 @@ fn Phi(cx: block, Ty: TypeRef, vals: [ValueRef], bbs: [BasicBlockRef])
     assert vals.len() == bbs.len();
     let phi = EmptyPhi(cx, Ty);
     unsafe {
-        llvm::LLVMAddIncoming(phi, vec::to_ptr(vals), vec::to_ptr(bbs),
+        llvm::LLVMAddIncoming(phi, vec::unsafe::to_ptr(vals),
+                              vec::unsafe::to_ptr(bbs),
                               vals.len() as c_uint);
         ret phi;
     }
@@ -547,7 +548,7 @@ fn add_comment(bcx: block, text: str) {
 fn Call(cx: block, Fn: ValueRef, Args: [ValueRef]) -> ValueRef {
     if cx.unreachable { ret _UndefReturn(cx, Fn); }
     unsafe {
-        ret llvm::LLVMBuildCall(B(cx), Fn, vec::to_ptr(Args),
+        ret llvm::LLVMBuildCall(B(cx), Fn, vec::unsafe::to_ptr(Args),
                                 Args.len() as c_uint, noname());
     }
 }
@@ -555,7 +556,7 @@ fn Call(cx: block, Fn: ValueRef, Args: [ValueRef]) -> ValueRef {
 fn FastCall(cx: block, Fn: ValueRef, Args: [ValueRef]) -> ValueRef {
     if cx.unreachable { ret _UndefReturn(cx, Fn); }
     unsafe {
-        let v = llvm::LLVMBuildCall(B(cx), Fn, vec::to_ptr(Args),
+        let v = llvm::LLVMBuildCall(B(cx), Fn, vec::unsafe::to_ptr(Args),
                                     Args.len() as c_uint, noname());
         lib::llvm::SetInstructionCallConv(v, lib::llvm::FastCallConv);
         ret v;
@@ -566,7 +567,7 @@ fn CallWithConv(cx: block, Fn: ValueRef, Args: [ValueRef],
                 Conv: CallConv) -> ValueRef {
     if cx.unreachable { ret _UndefReturn(cx, Fn); }
     unsafe {
-        let v = llvm::LLVMBuildCall(B(cx), Fn, vec::to_ptr(Args),
+        let v = llvm::LLVMBuildCall(B(cx), Fn, vec::unsafe::to_ptr(Args),
                                     Args.len() as c_uint, noname());
         lib::llvm::SetInstructionCallConv(v, Conv);
         ret v;
@@ -642,7 +643,7 @@ fn Trap(cx: block) {
     assert (T as int != 0);
     let Args: [ValueRef] = [];
     unsafe {
-        llvm::LLVMBuildCall(b, T, vec::to_ptr(Args),
+        llvm::LLVMBuildCall(b, T, vec::unsafe::to_ptr(Args),
                             Args.len() as c_uint, noname());
     }
 }

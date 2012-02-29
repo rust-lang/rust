@@ -4428,7 +4428,7 @@ fn create_main_wrapper(ccx: crate_ctxt, sp: span, main_llfn: ValueRef,
         let args = [rust_main, llvm::LLVMGetParam(llfn, 0 as c_uint),
                     llvm::LLVMGetParam(llfn, 1 as c_uint), crate_map];
         let result = unsafe {
-            llvm::LLVMBuildCall(bld, start, vec::to_ptr(args),
+            llvm::LLVMBuildCall(bld, start, vec::unsafe::to_ptr(args),
                                 args.len() as c_uint, noname())
         };
         llvm::LLVMBuildRet(bld, result);

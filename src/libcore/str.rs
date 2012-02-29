@@ -2017,7 +2017,7 @@ mod tests {
     #[test]
     fn test_from_cstr() unsafe {
         let a = [65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 0u8];
-        let b = vec::to_ptr(a);
+        let b = vec::unsafe::to_ptr(a);
         let c = from_cstr(b);
         assert (c == "AAAAAAA");
     }
@@ -2025,7 +2025,7 @@ mod tests {
     #[test]
     fn test_from_cstr_len() unsafe {
         let a = [65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 0u8];
-        let b = vec::to_ptr(a);
+        let b = vec::unsafe::to_ptr(a);
         let c = from_cstr_len(b, 3u);
         assert (c == "AAA");
     }

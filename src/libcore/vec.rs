@@ -1069,13 +1069,6 @@ fn windowed <TT: copy> (nn: uint, xx: [TT]) -> [[TT]] {
 }
 
 /*
-Function: to_ptr
-
-FIXME: We don't need this wrapper
-*/
-unsafe fn to_ptr<T>(v: [T]) -> *T { ret unsafe::to_ptr(v); }
-
-/*
 Function: as_buf
 
 Work with the buffer of a vector. Allows for unsafe manipulation
@@ -1159,8 +1152,8 @@ mod u8 {
         let a_len = len(a);
         let b_len = len(b);
         let n = math::min(a_len, b_len) as ctypes::size_t;
-        let r = libc::memcmp(to_ptr(a) as *libc::c_void,
-                             to_ptr(b) as *libc::c_void, n) as int;
+        let r = libc::memcmp(unsafe::to_ptr(a) as *libc::c_void,
+                             unsafe::to_ptr(b) as *libc::c_void, n) as int;
 
         if r != 0 { r } else {
             if a_len == b_len {
@@ -1253,7 +1246,7 @@ mod tests {
     fn test_unsafe_ptrs() unsafe {
         // Test on-stack copy-from-buf.
         let a = [1, 2, 3];
-        let ptr = to_ptr(a);
+        let ptr = unsafe::to_ptr(a);
         let b = unsafe::from_buf(ptr, 3u);
         assert (len(b) == 3u);
         assert (b[0] == 1);
@@ -1262,7 +1255,7 @@ mod tests {
 
         // Test on-heap copy-from-buf.
         let c = [1, 2, 3, 4, 5];
-        ptr = to_ptr(c);
+        ptr = unsafe::to_ptr(c);
         let d = unsafe::from_buf(ptr, 5u);
         assert (len(d) == 5u);
         assert (d[0] == 1);

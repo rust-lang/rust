@@ -4,7 +4,7 @@
 */
 
 import ctypes::unsigned;
-import vec::to_ptr;
+import vec::unsafe::to_ptr;
 import std::map::hashmap;
 import syntax::ast;
 import driver::session;
@@ -805,28 +805,28 @@ fn C_zero_byte_arr(size: uint) -> ValueRef unsafe {
     let i = 0u;
     let elts: [ValueRef] = [];
     while i < size { elts += [C_u8(0u)]; i += 1u; }
-    ret llvm::LLVMConstArray(T_i8(), vec::to_ptr(elts),
+    ret llvm::LLVMConstArray(T_i8(), vec::unsafe::to_ptr(elts),
                              elts.len() as unsigned);
 }
 
 fn C_struct(elts: [ValueRef]) -> ValueRef unsafe {
-    ret llvm::LLVMConstStruct(vec::to_ptr(elts), elts.len() as unsigned,
-                              False);
+    ret llvm::LLVMConstStruct(vec::unsafe::to_ptr(elts),
+                              elts.len() as unsigned, False);
 }
 
 fn C_named_struct(T: TypeRef, elts: [ValueRef]) -> ValueRef unsafe {
-    ret llvm::LLVMConstNamedStruct(T, vec::to_ptr(elts),
+    ret llvm::LLVMConstNamedStruct(T, vec::unsafe::to_ptr(elts),
                                    elts.len() as unsigned);
 }
 
 fn C_array(ty: TypeRef, elts: [ValueRef]) -> ValueRef unsafe {
-    ret llvm::LLVMConstArray(ty, vec::to_ptr(elts),
+    ret llvm::LLVMConstArray(ty, vec::unsafe::to_ptr(elts),
                              elts.len() as unsigned);
 }
 
 fn C_bytes(bytes: [u8]) -> ValueRef unsafe {
     ret llvm::LLVMConstString(
-        unsafe::reinterpret_cast(vec::to_ptr(bytes)),
+        unsafe::reinterpret_cast(vec::unsafe::to_ptr(bytes)),
         bytes.len() as unsigned, False);
 }
 
