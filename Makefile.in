@@ -183,12 +183,12 @@ STDLIB_INPUTS := $(wildcard $(addprefix $(S)src/libstd/,          \
 # rustc crate variables
 ######################################################################
 
-COMPILER_CRATE := $(S)src/comp/rustc.rc
-COMPILER_INPUTS := $(filter-out $(S)src/comp/driver/rustc.rs,     \
-                       $(wildcard $(addprefix $(S)src/comp/,      \
+COMPILER_CRATE := $(S)src/rustc/rustc.rc
+COMPILER_INPUTS := $(filter-out $(S)src/rustc/driver/rustc.rs,     \
+                       $(wildcard $(addprefix $(S)src/rustc/,      \
                            rustc.rc *.rs */*.rs */*/*.rs)))
 
-RUSTC_INPUTS := $(S)src/comp/driver/rustc.rs
+RUSTC_INPUTS := $(S)src/rustc/driver/rustc.rs
 
 ######################################################################
 # LLVM macros

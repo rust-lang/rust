@@ -4,7 +4,7 @@ ifdef PPFILES
 else
   PP_INPUTS = $(wildcard $(addprefix $(S)src/libcore/,*.rs */*.rs)) \
               $(wildcard $(addprefix $(S)src/libstd/,*.rs */*.rs)) \
-              $(wildcard $(addprefix $(S)src/comp/,*.rs */*.rs */*/*.rs)) \
+              $(wildcard $(addprefix $(S)src/rustc/,*.rs */*.rs */*/*.rs)) \
               $(wildcard $(S)src/test/*/*.rs    \
                          $(S)src/test/*/*/*.rs) \
               $(wildcard $(S)src/fuzzer/*.rs)   \
