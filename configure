@@ -390,7 +390,7 @@ fi
 
 if [ ! -z "$CFG_PERF" ]
 then
-    HAVE_PERF_LOGFD=`$CFG_PERF stat --log-fd 2>&1 | grep -q 'unknown option'`
+    HAVE_PERF_LOGFD=`$CFG_PERF stat --log-fd 2>&1 | grep 'unknown option'`
     if [ -z "$HAVE_PERF_LOGFD" ];
     then
         CFG_PERF_WITH_LOGFD=1
