@@ -10,7 +10,10 @@ is interpreted as the brief description.
 export mk_pass;
 
 fn mk_pass() -> pass {
-    run
+    {
+        name: "desc_to_brief",
+        f: run
+    }
 }
 
 fn run(
@@ -21,7 +24,7 @@ fn run(
         fold_item: fold_item,
         fold_iface: fold_iface,
         fold_impl: fold_impl
-        with *fold::default_seq_fold(())
+        with *fold::default_any_fold(())
     });
     fold.fold_crate(fold, doc)
 }
@@ -41,7 +44,7 @@ fn fold_iface(fold: fold::fold<()>, doc: doc::ifacedoc) -> doc::ifacedoc {
     let doc =fold::default_seq_fold_iface(fold, doc);
 
     {
-        methods: vec::map(doc.methods) {|doc|
+        methods: par::anymap(doc.methods) {|doc|
             let (brief, desc) = modify(doc.brief, doc.desc);
 
             {
@@ -58,7 +61,7 @@ fn fold_impl(fold: fold::fold<()>, doc: doc::impldoc) -> doc::impldoc {
     let doc =fold::default_seq_fold_impl(fold, doc);
 
     {
-        methods: vec::map(doc.methods) {|doc|
+        methods: par::anymap(doc.methods) {|doc|
             let (brief, desc) = modify(doc.brief, doc.desc);
 
             {
@@ -147,10 +150,11 @@ fn should_promote_type_desc() {
 #[cfg(test)]
 mod test {
     fn mk_doc(source: str) -> doc::cratedoc {
-        let srv = astsrv::mk_srv_from_str(source);
-        let doc = extract::from_srv(srv, "");
-        let doc = attr_pass::mk_pass()(srv, doc);
-        run(srv, doc)
+        astsrv::from_str(source) {|srv|
+            let doc = extract::from_srv(srv, "");
+            let doc = attr_pass::mk_pass().f(srv, doc);
+            run(srv, doc)
+        }
     }
 }
 

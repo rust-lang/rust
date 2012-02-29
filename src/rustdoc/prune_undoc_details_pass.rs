@@ -4,7 +4,10 @@
 export mk_pass;
 
 fn mk_pass() -> pass {
-    run
+    {
+        name: "prune_undoc_details",
+        f: run
+    }
 }
 
 fn run(
@@ -16,7 +19,7 @@ fn run(
         fold_res: fold_res,
         fold_iface: fold_iface,
         fold_impl: fold_impl
-        with *fold::default_seq_fold(())
+        with *fold::default_any_fold(())
     });
     fold.fold_crate(fold, doc)
 }
@@ -64,12 +67,13 @@ fn should_elide_undocumented_arguments() {
 #[test]
 fn should_elide_undocumented_return_values() {
     let source = "#[doc = \"fonz\"] fn a() -> int { }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = tystr_pass::mk_pass()(srv, doc);
-    let doc = attr_pass::mk_pass()(srv, doc);
-    let doc = run(srv, doc);
-    assert doc.topmod.fns()[0].return.ty == none;
+    astsrv::from_str(source) {|srv|
+        let doc = extract::from_srv(srv, "");
+        let doc = tystr_pass::mk_pass().f(srv, doc);
+        let doc = attr_pass::mk_pass().f(srv, doc);
+        let doc = run(srv, doc);
+        assert doc.topmod.fns()[0].return.ty == none;
+    }
 }
 
 fn fold_res(
@@ -104,7 +108,7 @@ fn fold_iface(
 }
 
 fn prune_methods(docs: [doc::methoddoc]) -> [doc::methoddoc] {
-    vec::map(docs) {|doc|
+    par::anymap(docs) {|doc|
         {
             args: prune_args(doc.args),
             return: prune_return(doc.return)
@@ -154,9 +158,10 @@ fn should_elide_undocumented_impl_method_return_values() {
 #[cfg(test)]
 mod test {
     fn mk_doc(source: str) -> doc::cratedoc {
-        let srv = astsrv::mk_srv_from_str(source);
-        let doc = extract::from_srv(srv, "");
-        let doc = attr_pass::mk_pass()(srv, doc);
-        run(srv, doc)
+        astsrv::from_str(source) {|srv|
+            let doc = extract::from_srv(srv, "");
+            let doc = attr_pass::mk_pass().f(srv, doc);
+            run(srv, doc)
+        }
     }
 }

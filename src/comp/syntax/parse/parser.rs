@@ -888,7 +888,6 @@ fn parse_bottom_expr(p: parser) -> pexpr {
         /* Should be a predicate (pure boolean function) applied to
            arguments that are all either slot variables or literals.
            but the typechecker enforces that. */
-
         let e = parse_expr(p);
         hi = e.span.hi;
         ex = ast::expr_check(ast::checked_expr, e);
@@ -1581,7 +1580,7 @@ fn parse_local(p: parser, allow_init: bool) -> @ast::local {
 
 fn parse_let(p: parser) -> @ast::decl {
     if eat_word(p, "mut") {
-        /* TODO */
+        /* FIXME */
     }
     let lo = p.span.lo;
     let locals = [parse_local(p, true)];
@@ -1972,13 +1971,14 @@ fn parse_item_res(p: parser, attrs: [ast::attribute]) -> @ast::item {
 fn parse_item_class(p: parser, attrs: [ast::attribute]) -> @ast::item {
     let lo = p.last_span.lo;
     let class_name = parse_value_ident(p);
+    let class_path = ident_to_path(p.last_span, class_name);
     let ty_params = parse_ty_params(p);
     expect(p, token::LBRACE);
     let items: [@ast::class_item] = [];
     let ctor_id = p.get_id();
     let the_ctor : option<(ast::fn_decl, ast::blk)> = none;
     while p.token != token::RBRACE {
-       alt parse_class_item(p) {
+        alt parse_class_item(p, class_path) {
             ctor_decl(a_fn_decl, blk) {
                 the_ctor = some((a_fn_decl, blk));
             }
@@ -2015,14 +2015,18 @@ enum class_contents { ctor_decl(ast::fn_decl, ast::blk),
                       // none of these are a ctor decl
                       priv_decls([ast::class_member])}
 
-fn parse_class_item(p:parser) -> class_contents {
+    fn parse_class_item(p:parser, class_name:@ast::path) -> class_contents {
     if eat_word(p, "new") {
         // Can ctors have attrs?
-        let decl = parse_fn_decl(p, ast::impure_fn);
+            // result type is always the type of the class
+        let decl_ = parse_fn_decl(p, ast::impure_fn);
+        let decl = {output: @{node: ast::ty_path(class_name, p.get_id()),
+                                  span: decl_.output.span}
+                    with decl_};
         let body = parse_block(p);
         ret ctor_decl(decl, body);
     }
-    // TODO: refactor
+    // FIXME: refactor
     else if eat_word(p, "priv") {
             expect(p, token::LBRACE);
             let results = [];
@@ -2064,7 +2068,6 @@ fn parse_mod_items(p: parser, term: token::token,
     let initial_attrs = first_item_attrs;
     while p.token != term {
         let attrs = initial_attrs + parse_outer_attributes(p);
-        initial_attrs = [];
         #debug["parse_mod_items: parse_item(attrs=%?)", attrs];
         alt parse_item(p, attrs) {
           some(i) { items += [i]; }
@@ -2074,7 +2077,14 @@ fn parse_mod_items(p: parser, term: token::token,
           }
         }
         #debug["parse_mod_items: attrs=%?", attrs];
+        initial_attrs = [];
     }
+
+    if vec::is_not_empty(initial_attrs) {
+        // We parsed attributes for the first item but didn't find the item
+        p.fatal("expected item");
+    }
+
     ret {view_items: view_items, items: items};
 }
 
@@ -2270,9 +2280,6 @@ fn fn_expr_lookahead(tok: token::token) -> bool {
 fn parse_item(p: parser, attrs: [ast::attribute]) -> option<@ast::item> {
     if eat_word(p, "const") {
         ret some(parse_item_const(p, attrs));
-    } else if eat_word(p, "inline") {
-        expect_word(p, "fn");
-        ret some(parse_item_fn(p, ast::impure_fn, attrs));
     } else if is_word(p, "fn") && !fn_expr_lookahead(p.look_ahead(1u)) {
         p.bump();
         ret some(parse_item_fn(p, ast::impure_fn, attrs));

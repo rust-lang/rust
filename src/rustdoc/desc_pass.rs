@@ -2,9 +2,12 @@
 
 export mk_pass;
 
-fn mk_pass(op: fn~(str) -> str) -> pass {
-    fn~(srv: astsrv::srv, doc: doc::cratedoc) -> doc::cratedoc {
-        run(srv, doc, op)
+fn mk_pass(name: str, op: fn~(str) -> str) -> pass {
+    {
+        name: name,
+        f: fn~(srv: astsrv::srv, doc: doc::cratedoc) -> doc::cratedoc {
+            run(srv, doc, op)
+        }
     }
 }
 
@@ -22,7 +25,7 @@ fn run(
         fold_res: fold_res,
         fold_iface: fold_iface,
         fold_impl: fold_impl
-        with *fold::default_seq_fold(op)
+        with *fold::default_any_fold(op)
     });
     fold.fold_crate(fold, doc)
 }
@@ -42,12 +45,13 @@ fn fold_item(fold: fold::fold<op>, doc: doc::itemdoc) -> doc::itemdoc {
 }
 
 fn fold_fn(fold: fold::fold<op>, doc: doc::fndoc) -> doc::fndoc {
+    let fold_ctxt = fold.ctxt;
     let doc = fold::default_seq_fold_fn(fold, doc);
 
     {
-        args: vec::map(doc.args) {|doc|
+        args: par::anymap(doc.args) {|doc|
             {
-                desc: maybe_apply_op(fold.ctxt, doc.desc)
+                desc: maybe_apply_op(fold_ctxt, doc.desc)
                 with doc
             }
         },
@@ -61,12 +65,13 @@ fn fold_fn(fold: fold::fold<op>, doc: doc::fndoc) -> doc::fndoc {
 }
 
 fn fold_enum(fold: fold::fold<op>, doc: doc::enumdoc) -> doc::enumdoc {
+    let fold_ctxt = fold.ctxt;
     let doc = fold::default_seq_fold_enum(fold, doc);
 
     {
-        variants: vec::map(doc.variants) {|variant|
+        variants: par::anymap(doc.variants) {|variant|
             {
-                desc: maybe_apply_op(fold.ctxt, variant.desc)
+                desc: maybe_apply_op(fold_ctxt, variant.desc)
                 with variant
             }
         }
@@ -75,12 +80,13 @@ fn fold_enum(fold: fold::fold<op>, doc: doc::enumdoc) -> doc::enumdoc {
 }
 
 fn fold_res(fold: fold::fold<op>, doc: doc::resdoc) -> doc::resdoc {
+    let fold_ctxt = fold.ctxt;
     let doc = fold::default_seq_fold_res(fold, doc);
 
     {
-        args: vec::map(doc.args) {|arg|
+        args: par::anymap(doc.args) {|arg|
             {
-                desc: maybe_apply_op(fold.ctxt, arg.desc)
+                desc: maybe_apply_op(fold_ctxt, arg.desc)
                 with arg
             }
         }
@@ -98,11 +104,11 @@ fn fold_iface(fold: fold::fold<op>, doc: doc::ifacedoc) -> doc::ifacedoc {
 }
 
 fn apply_to_methods(op: op, docs: [doc::methoddoc]) -> [doc::methoddoc] {
-    vec::map(docs) {|doc|
+    par::anymap(docs) {|doc|
         {
             brief: maybe_apply_op(op, doc.brief),
             desc: maybe_apply_op(op, doc.desc),
-            args: vec::map(doc.args) {|doc|
+            args: par::anymap(doc.args) {|doc|
                 {
                     desc: maybe_apply_op(op, doc.desc)
                     with doc
@@ -279,9 +285,10 @@ fn should_execute_op_on_type_desc() {
 #[cfg(test)]
 mod test {
     fn mk_doc(source: str) -> doc::cratedoc {
-        let srv = astsrv::mk_srv_from_str(source);
-        let doc = extract::from_srv(srv, "");
-        let doc = attr_pass::mk_pass()(srv, doc);
-        mk_pass(str::trim)(srv, doc)
+        astsrv::from_str(source) {|srv|
+            let doc = extract::from_srv(srv, "");
+            let doc = attr_pass::mk_pass().f(srv, doc);
+            mk_pass("", {|s| str::trim(s)}).f(srv, doc)
+        }
     }
 }

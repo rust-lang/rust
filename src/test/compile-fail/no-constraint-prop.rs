@@ -1,6 +1,7 @@
 // error-pattern:Unsatisfied precondition constraint (for example, uint::le
 
 fn main() unsafe {
+    fn foo(_a: uint, _b: uint) : uint::le(_a, _b) {}
     let a: uint = 1u;
     let b: uint = 4u;
     let c: uint = 5u;
@@ -13,5 +14,5 @@ fn main() unsafe {
     // the next statement, since it's not true in the
     // prestate.
     let d <- a;
-    log(debug, str::unsafe::slice_bytes_safe_range("kitties", b, d));
+    log(debug, foo(b, d));
 }

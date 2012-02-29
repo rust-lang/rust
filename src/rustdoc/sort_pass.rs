@@ -6,9 +6,12 @@ export item_lteq, mk_pass;
 
 type item_lteq = fn~(doc::itemtag, doc::itemtag) -> bool;
 
-fn mk_pass(lteq: item_lteq) -> pass {
-    fn~(srv: astsrv::srv, doc: doc::cratedoc) -> doc::cratedoc {
-        run(srv, doc, lteq)
+fn mk_pass(name: str, lteq: item_lteq) -> pass {
+    {
+        name: name,
+        f: fn~(srv: astsrv::srv, doc: doc::cratedoc) -> doc::cratedoc {
+            run(srv, doc, lteq)
+        }
     }
 }
 
@@ -19,7 +22,7 @@ fn run(
 ) -> doc::cratedoc {
     let fold = fold::fold({
         fold_mod: fold_mod
-        with *fold::default_seq_fold(lteq)
+        with *fold::default_any_fold(lteq)
     });
     fold.fold_crate(fold, doc)
 }
@@ -28,9 +31,9 @@ fn fold_mod(
     fold: fold::fold<item_lteq>,
     doc: doc::moddoc
 ) -> doc::moddoc {
-    let doc = fold::default_seq_fold_mod(fold, doc);
+    let doc = fold::default_any_fold_mod(fold, doc);
     {
-        items: ~sort::merge_sort(fold.ctxt, *doc.items)
+        items: sort::merge_sort(fold.ctxt, doc.items)
         with doc
     }
 }
@@ -42,13 +45,14 @@ fn test() {
     }
 
     let source = "mod z { mod y { } fn x() { } } mod w { }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = mk_pass(name_lteq)(srv, doc);
-    assert doc.topmod.mods()[0].name() == "w";
-    assert doc.topmod.mods()[1].items[0].name() == "x";
-    assert doc.topmod.mods()[1].items[1].name() == "y";
-    assert doc.topmod.mods()[1].name() == "z";
+    astsrv::from_str(source) {|srv|
+        let doc = extract::from_srv(srv, "");
+        let doc = mk_pass("", name_lteq).f(srv, doc);
+        assert doc.topmod.mods()[0].name() == "w";
+        assert doc.topmod.mods()[1].items[0].name() == "x";
+        assert doc.topmod.mods()[1].items[1].name() == "y";
+        assert doc.topmod.mods()[1].name() == "z";
+    }
 }
 
 #[test]
@@ -58,12 +62,13 @@ fn should_be_stable() {
     }
 
     let source = "mod a { mod b { } } mod c { mod d { } }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = mk_pass(always_eq)(srv, doc);
-    assert doc.topmod.mods()[0].items[0].name() == "b";
-    assert doc.topmod.mods()[1].items[0].name() == "d";
-    let doc = mk_pass(always_eq)(srv, doc);
-    assert doc.topmod.mods()[0].items[0].name() == "b";
-    assert doc.topmod.mods()[1].items[0].name() == "d";
+    astsrv::from_str(source) {|srv|
+        let doc = extract::from_srv(srv, "");
+        let doc = mk_pass("", always_eq).f(srv, doc);
+        assert doc.topmod.mods()[0].items[0].name() == "b";
+        assert doc.topmod.mods()[1].items[0].name() == "d";
+        let doc = mk_pass("", always_eq).f(srv, doc);
+        assert doc.topmod.mods()[0].items[0].name() == "b";
+        assert doc.topmod.mods()[1].items[0].name() == "d";
+    }
 }

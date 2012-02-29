@@ -179,7 +179,7 @@ actual:\n\
 
     fn make_typecheck_args(config: config, _testfile: str) -> procargs {
         let prog = config.rustc_path;
-        let args = ["-", "--no-trans", "--lib"];
+        let args = ["-", "--no-trans", "--lib", "-L", config.build_base];
         args += split_maybe_args(config.rustcflags);
         ret {prog: prog, args: args};
     }
@@ -198,7 +198,7 @@ fn check_error_patterns(props: test_props,
 
     let next_err_idx = 0u;
     let next_err_pat = props.error_patterns[next_err_idx];
-    for line: str in str::split_byte(procres.stderr, '\n' as u8) {
+    for line: str in str::split_char(procres.stderr, '\n') {
         if str::contains(line, next_err_pat) {
             #debug("found error pattern %s", next_err_pat);
             next_err_idx += 1u;
@@ -245,7 +245,7 @@ fn check_expected_errors(expected_errors: [errors::expected_error],
     //    filename:line1:col1: line2:col2: *warning:* msg
     // where line1:col1: is the starting point, line2:col2:
     // is the ending point, and * represents ANSI color codes.
-    for line: str in str::split_byte(procres.stderr, '\n' as u8) {
+    for line: str in str::split_char(procres.stderr, '\n') {
         let was_expected = false;
         vec::iteri(expected_errors) {|i, ee|
             if !found_flags[i] {
@@ -287,7 +287,16 @@ type procres = {status: int, stdout: str, stderr: str, cmdline: str};
 
 fn compile_test(config: config, props: test_props,
                 testfile: str) -> procres {
-    compose_and_run(config, testfile, bind make_compile_args(_, props, _),
+    vec::iter(props.aux_builds) {|rel_ab|
+        let abs_ab = fs::connect(config.aux_base, rel_ab);
+        compose_and_run(config, abs_ab,
+                        make_compile_args(_, props, ["--lib"],
+                                          make_lib_name, _),
+                        config.compile_lib_path, option::none);
+    }
+
+    compose_and_run(config, testfile,
+                    make_compile_args(_, props, [], make_exe_name, _),
                     config.compile_lib_path, option::none)
 }
 
@@ -305,13 +314,21 @@ fn compose_and_run(config: config, testfile: str,
                        procargs.prog, procargs.args, input);
 }
 
-fn make_compile_args(config: config, props: test_props, testfile: str) ->
+fn make_compile_args(config: config, props: test_props, extras: [str],
+                     xform: fn(config, str) -> str, testfile: str) ->
    procargs {
     let prog = config.rustc_path;
-    let args = [testfile, "-o", make_exe_name(config, testfile)];
+    let args = [testfile, "-o", xform(config, testfile),
+                "-L", config.build_base] + extras;
     args += split_maybe_args(config.rustcflags);
     args += split_maybe_args(props.compile_flags);
     ret {prog: prog, args: args};
+}
+
+fn make_lib_name(config: config, testfile: str) -> str {
+    // what we return here is not particularly important, as it
+    // happens; rustc ignores everything except for the directory.
+    output_base_name(config, testfile)
 }
 
 fn make_exe_name(config: config, testfile: str) -> str {
@@ -350,7 +367,7 @@ fn split_maybe_args(argstr: option<str>) -> [str] {
     }
 
     alt argstr {
-      option::some(s) { rm_whitespace(str::split_byte(s, ' ' as u8)) }
+      option::some(s) { rm_whitespace(str::split_char(s, ' ')) }
       option::none { [] }
     }
 }
@@ -410,12 +427,10 @@ fn make_out_name(config: config, testfile: str, extension: str) -> str {
 
 fn output_base_name(config: config, testfile: str) -> str {
     let base = config.build_base;
-    let filename =
-        {
-            let parts = str::split_byte(fs::basename(testfile), '.' as u8);
-            parts = vec::slice(parts, 0u, vec::len(parts) - 1u);
-            str::connect(parts, ".")
-        };
+    let filename = {
+        let parts = str::split_char(fs::basename(testfile), '.');
+        str::connect(vec::slice(parts, 0u, vec::len(parts) - 1u), ".")
+    };
     #fmt["%s%s.%s", base, filename, config.stage_id]
 }
 

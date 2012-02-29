@@ -16,8 +16,8 @@
 // The amount of extra space at the end of each stack segment, available
 // to the rt, compiler and dynamic linker for running small functions
 // FIXME: We want this to be 128 but need to slim the red zone calls down
-#define RZ_LINUX_32 (1024*20)
-#define RZ_LINUX_64 (1024*20)
+#define RZ_LINUX_32 (1024*2)
+#define RZ_LINUX_64 (1024*2)
 #define RZ_MAC_32   (1024*20)
 #define RZ_MAC_64   (1024*20)
 #define RZ_WIN_32   (1024*20)
@@ -149,7 +149,7 @@ cleanup_task(cleanup_args *args) {
     bool threw_exception = args->threw_exception;
     rust_task *task = a->task;
 
-    cc::do_cc(task);
+    cc::do_final_cc(task);
 
     task->die();
 
@@ -196,7 +196,6 @@ void task_start_wrapper(spawn_args *a)
     if(env) {
         // free the environment (which should be a unique closure).
         const type_desc *td = env->td;
-        LOG(task, task, "Freeing env %p with td %p", env, td);
         td->drop_glue(NULL, NULL, td->first_param, box_body(env));
         upcall_free_shared_type_desc(env->td);
         upcall_shared_free(env);
@@ -553,7 +552,7 @@ void
 rust_task::free_stack(stk_seg *stk) {
     LOGPTR(thread, "freeing stk segment", (uintptr_t)stk);
     total_stack_sz -= user_stack_size(stk);
-    destroy_stack(this, stk);
+    destroy_stack(&local_region, stk);
 }
 
 void
@@ -597,7 +596,7 @@ rust_task::new_stack(size_t requested_sz) {
     }
 
     size_t sz = rust_stk_sz + RED_ZONE_SIZE;
-    stk_seg *new_stk = create_stack(this, sz);
+    stk_seg *new_stk = create_stack(&local_region, sz);
     LOGPTR(thread, "new stk", (uintptr_t)new_stk);
     new_stk->prev = NULL;
     new_stk->next = stk;
@@ -688,6 +687,23 @@ sp_in_stk_seg(uintptr_t sp, stk_seg *stk) {
     return (uintptr_t)stk->data <= sp && sp <= stk->end;
 }
 
+struct reset_args {
+    rust_task *task;
+    uintptr_t sp;
+};
+
+void
+reset_stack_limit_on_c_stack(reset_args *args) {
+    rust_task *task = args->task;
+    uintptr_t sp = args->sp;
+    while (!sp_in_stk_seg(sp, task->stk)) {
+        task->del_stack();
+        A(task->thread, task->stk != NULL,
+          "Failed to find the current stack");
+    }
+    task->record_stack_limit();
+}
+
 /*
 Called by landing pads during unwinding to figure out which
 stack segment we are currently running on, delete the others,
@@ -696,12 +712,12 @@ through __morestack).
  */
 void
 rust_task::reset_stack_limit() {
+    I(thread, on_rust_stack());
     uintptr_t sp = get_sp();
-    while (!sp_in_stk_seg(sp, stk)) {
-        del_stack();
-        A(thread, stk != NULL, "Failed to find the current stack");
-    }
-    record_stack_limit();
+    // Have to do the rest on the C stack because it involves
+    // freeing stack segments, logging, etc.
+    reset_args ra = {this, sp};
+    call_on_c_stack(&ra, (void*)reset_stack_limit_on_c_stack);
 }
 
 void
@@ -720,6 +736,11 @@ Returns true if we're currently running on the Rust stack
  */
 bool
 rust_task::on_rust_stack() {
+    if (stk == NULL) {
+        // This only happens during construction
+        return false;
+    }
+
     uintptr_t sp = get_sp();
     bool in_first_segment = sp_in_stk_seg(sp, stk);
     if (in_first_segment) {

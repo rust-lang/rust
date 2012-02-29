@@ -6,10 +6,30 @@
 import core::option;
 import option::{some, none};
 
+export doc;
+
+export new_doc;
+export doc_at;
+export maybe_get_doc;
+export get_doc;
+export docs;
+export tagged_docs;
+export doc_data;
+export doc_as_str;
+export doc_as_u8;
+export doc_as_u16;
+export doc_as_u32;
+export doc_as_u64;
+export doc_as_i8;
+export doc_as_i16;
+export doc_as_i32;
+export doc_as_i64;
+export writer;
+export mk_writer;
+
 type ebml_tag = {id: uint, size: uint};
 
 type ebml_state = {ebml_tag: ebml_tag, tag_pos: uint, data_pos: uint};
-
 
 // TODO: When we have module renaming, make "reader" and "writer" separate
 // modules within this file.
@@ -19,34 +39,28 @@ type doc = {data: @[u8], start: uint, end: uint};
 
 type tagged_doc = {tag: uint, doc: doc};
 
-fn vu64_at(data: [u8], start: uint) -> {val: u64, next: uint} {
+fn vuint_at(data: [u8], start: uint) -> {val: uint, next: uint} {
     let a = data[start];
     if a & 0x80u8 != 0u8 {
-        ret {val: (a & 0x7fu8) as u64, next: start + 1u};
+        ret {val: (a & 0x7fu8) as uint, next: start + 1u};
     }
     if a & 0x40u8 != 0u8 {
-        ret {val: ((a & 0x3fu8) as u64) << 8u64 |
-                 (data[start + 1u] as u64),
+        ret {val: ((a & 0x3fu8) as uint) << 8u |
+                 (data[start + 1u] as uint),
              next: start + 2u};
     } else if a & 0x20u8 != 0u8 {
-        ret {val: ((a & 0x1fu8) as u64) << 16u64 |
-                 (data[start + 1u] as u64) << 8u64 |
-                 (data[start + 2u] as u64),
+        ret {val: ((a & 0x1fu8) as uint) << 16u |
+                 (data[start + 1u] as uint) << 8u |
+                 (data[start + 2u] as uint),
              next: start + 3u};
     } else if a & 0x10u8 != 0u8 {
-        ret {val: ((a & 0x0fu8) as u64) << 24u64 |
-                 (data[start + 1u] as u64) << 16u64 |
-                 (data[start + 2u] as u64) << 8u64 |
-                 (data[start + 3u] as u64),
+        ret {val: ((a & 0x0fu8) as uint) << 24u |
+                 (data[start + 1u] as uint) << 16u |
+                 (data[start + 2u] as uint) << 8u |
+                 (data[start + 3u] as uint),
              next: start + 4u};
     } else { #error("vint too big"); fail; }
 }
-
-fn vuint_at(data: [u8], start: uint) -> {val: uint, next: uint} {
-    let {val, next} = vu64_at(data, start);
-    ret {val: val as uint, next: next};
-}
-
 
 fn new_doc(data: @[u8]) -> doc {
     ret {data: data, start: 0u, end: vec::len::<u8>(*data)};
@@ -77,7 +91,7 @@ fn get_doc(d: doc, tg: uint) -> doc {
     alt maybe_get_doc(d, tg) {
       some(d) { ret d; }
       none {
-        #error("failed to find block with enum %u", tg);
+        #error("failed to find block with tag %u", tg);
         fail;
       }
     }
@@ -107,111 +121,144 @@ fn tagged_docs(d: doc, tg: uint, it: fn(doc)) {
 
 fn doc_data(d: doc) -> [u8] { ret vec::slice::<u8>(*d.data, d.start, d.end); }
 
-fn doc_str(d: doc) -> str { ret str::from_bytes(doc_data(d)); }
-
-fn be_u64_from_bytes(data: @[u8], start: uint, size: uint) -> u64 {
-    let sz = size;
-    assert (sz <= 4u);
-    let val = 0_u64;
-    let pos = start;
-    while sz > 0u {
-        sz -= 1u;
-        val += (data[pos] as u64) << ((sz * 8u) as u64);
-        pos += 1u;
-    }
-    ret val;
-}
+fn doc_as_str(d: doc) -> str { ret str::from_bytes(doc_data(d)); }
 
 fn doc_as_u8(d: doc) -> u8 {
     assert d.end == d.start + 1u;
     ret (*d.data)[d.start];
 }
 
-fn doc_as_vu64(d: doc) -> u64 {
-    ret vu64_at(*d.data, d.start).val;
+fn doc_as_u16(d: doc) -> u16 {
+    assert d.end == d.start + 2u;
+    ret io::u64_from_be_bytes(*d.data, d.start, 2u) as u16;
 }
 
-fn doc_as_vuint(d: doc) -> uint {
-    ret vuint_at(*d.data, d.start).val;
+fn doc_as_u32(d: doc) -> u32 {
+    assert d.end == d.start + 4u;
+    ret io::u64_from_be_bytes(*d.data, d.start, 4u) as u32;
 }
+
+fn doc_as_u64(d: doc) -> u64 {
+    assert d.end == d.start + 8u;
+    ret io::u64_from_be_bytes(*d.data, d.start, 8u);
+}
+
+fn doc_as_i8(d: doc) -> i8 { doc_as_u8(d) as i8 }
+fn doc_as_i16(d: doc) -> i16 { doc_as_u16(d) as i16 }
+fn doc_as_i32(d: doc) -> i32 { doc_as_u32(d) as i32 }
+fn doc_as_i64(d: doc) -> i64 { doc_as_u64(d) as i64 }
 
 // ebml writing
 type writer = {writer: io::writer, mutable size_positions: [uint]};
 
-fn write_sized_vu64(w: io::writer, n: u64, size: uint) {
+fn write_sized_vuint(w: io::writer, n: uint, size: uint) {
     let buf: [u8];
     alt size {
       1u { buf = [0x80u8 | (n as u8)]; }
-      2u { buf = [0x40u8 | ((n >> 8_u64) as u8), n as u8]; }
+      2u { buf = [0x40u8 | ((n >> 8_u) as u8), n as u8]; }
       3u {
-        buf = [0x20u8 | ((n >> 16_u64) as u8), (n >> 8_u64) as u8,
+        buf = [0x20u8 | ((n >> 16_u) as u8), (n >> 8_u) as u8,
                n as u8];
       }
       4u {
-        buf = [0x10u8 | ((n >> 24_u64) as u8), (n >> 16_u64) as u8,
-               (n >> 8_u64) as u8, n as u8];
+        buf = [0x10u8 | ((n >> 24_u) as u8), (n >> 16_u) as u8,
+               (n >> 8_u) as u8, n as u8];
       }
-      _ { #error("vint to write too big"); fail; }
+      _ { fail #fmt("vint to write too big: %?", n); }
     }
     w.write(buf);
 }
 
-fn write_vu64(w: io::writer, n: u64) {
-    if n < 0x7f_u64 { write_sized_vu64(w, n, 1u); ret; }
-    if n < 0x4000_u64 { write_sized_vu64(w, n, 2u); ret; }
-    if n < 0x200000_u64 { write_sized_vu64(w, n, 3u); ret; }
-    if n < 0x10000000_u64 { write_sized_vu64(w, n, 4u); ret; }
-    #error("vint to write too big");
-    fail;
+fn write_vuint(w: io::writer, n: uint) {
+    if n < 0x7f_u { write_sized_vuint(w, n, 1u); ret; }
+    if n < 0x4000_u { write_sized_vuint(w, n, 2u); ret; }
+    if n < 0x200000_u { write_sized_vuint(w, n, 3u); ret; }
+    if n < 0x10000000_u { write_sized_vuint(w, n, 4u); ret; }
+    fail #fmt("vint to write too big: %?", n);
 }
 
-fn create_writer(w: io::writer) -> writer {
+fn mk_writer(w: io::writer) -> writer {
     let size_positions: [uint] = [];
     ret {writer: w, mutable size_positions: size_positions};
 }
 
-
 // TODO: Provide a function to write the standard ebml header.
-fn start_tag(w: writer, tag_id: uint) {
-    #debug["Start tag %u", tag_id];
+impl writer for writer {
+    fn start_tag(tag_id: uint) {
+        #debug["Start tag %u", tag_id];
 
-    // Write the enum ID:
-    write_vu64(w.writer, tag_id as u64);
+        // Write the enum ID:
+        write_vuint(self.writer, tag_id);
 
-    // Write a placeholder four-byte size.
-    w.size_positions += [w.writer.tell()];
-    let zeroes: [u8] = [0u8, 0u8, 0u8, 0u8];
-    w.writer.write(zeroes);
-}
+        // Write a placeholder four-byte size.
+        self.size_positions += [self.writer.tell()];
+        let zeroes: [u8] = [0u8, 0u8, 0u8, 0u8];
+        self.writer.write(zeroes);
+    }
 
-fn end_tag(w: writer) {
-    let last_size_pos = vec::pop::<uint>(w.size_positions);
-    let cur_pos = w.writer.tell();
-    w.writer.seek(last_size_pos as int, io::seek_set);
-    let size = (cur_pos - last_size_pos - 4u);
-    write_sized_vu64(w.writer, size as u64, 4u);
-    w.writer.seek(cur_pos as int, io::seek_set);
+    fn end_tag() {
+        let last_size_pos = vec::pop::<uint>(self.size_positions);
+        let cur_pos = self.writer.tell();
+        self.writer.seek(last_size_pos as int, io::seek_set);
+        let size = (cur_pos - last_size_pos - 4u);
+        write_sized_vuint(self.writer, size, 4u);
+        self.writer.seek(cur_pos as int, io::seek_set);
 
-    #debug["End tag (size = %u)", size];
-}
+        #debug["End tag (size = %u)", size];
+    }
 
-impl writer_util for writer {
     fn wr_tag(tag_id: uint, blk: fn()) {
-        start_tag(self, tag_id);
+        self.start_tag(tag_id);
         blk();
-        end_tag(self);
+        self.end_tag();
     }
 
-    fn wr_vu64(id: u64) {
-        #debug["Write u64 0x%02x%02x",
-               (id >> 32u64) as uint,
-               (id & 0xFFFFFFFFu64) as uint];
-        write_vu64(self.writer, id);
+    fn wr_tagged_bytes(tag_id: uint, b: [u8]) {
+        write_vuint(self.writer, tag_id);
+        write_vuint(self.writer, vec::len(b));
+        self.writer.write(b);
     }
 
-    fn wr_vuint(id: uint) {
-        #debug["Write uint: %u", id];
-        write_vu64(self.writer, id as u64);
+    fn wr_tagged_u64(tag_id: uint, v: u64) {
+        self.wr_tagged_bytes(tag_id, io::u64_to_be_bytes(v, 8u));
+    }
+
+    fn wr_tagged_u32(tag_id: uint, v: u32) {
+        self.wr_tagged_bytes(tag_id, io::u64_to_be_bytes(v as u64, 4u));
+    }
+
+    fn wr_tagged_u16(tag_id: uint, v: u16) {
+        self.wr_tagged_bytes(tag_id, io::u64_to_be_bytes(v as u64, 2u));
+    }
+
+    fn wr_tagged_u8(tag_id: uint, v: u8) {
+        self.wr_tagged_bytes(tag_id, [v]);
+    }
+
+    fn wr_tagged_i64(tag_id: uint, v: i64) {
+        self.wr_tagged_bytes(tag_id, io::u64_to_be_bytes(v as u64, 8u));
+    }
+
+    fn wr_tagged_i32(tag_id: uint, v: i32) {
+        self.wr_tagged_bytes(tag_id, io::u64_to_be_bytes(v as u64, 4u));
+    }
+
+    fn wr_tagged_i16(tag_id: uint, v: i16) {
+        self.wr_tagged_bytes(tag_id, io::u64_to_be_bytes(v as u64, 2u));
+    }
+
+    fn wr_tagged_i8(tag_id: uint, v: i8) {
+        self.wr_tagged_bytes(tag_id, [v as u8]);
+    }
+
+    fn wr_tagged_str(tag_id: uint, v: str) {
+        // Lame: can't use str::as_bytes() here because the resulting
+        // vector is NULL-terminated.  Annoyingly, the underlying
+        // writer interface doesn't permit us to write a slice of a
+        // vector.  We need first-class slices, I think.
+
+        // str::as_bytes(v) {|b| self.wr_tagged_bytes(tag_id, b); }
+        self.wr_tagged_bytes(tag_id, str::bytes(v));
     }
 
     fn wr_bytes(b: [u8]) {

@@ -6,8 +6,7 @@ import codemap::span;
 import lib::llvm::{ValueRef, TypeRef, BasicBlockRef, BuilderRef, ModuleRef};
 import lib::llvm::{Opcode, IntPredicate, RealPredicate, True, False,
                    CallConv};
-import common::{block, T_ptr, T_nil, T_i8, T_i1, T_void,
-                T_fn, val_ty, bcx_ccx, C_i32, val_str};
+import common::*;
 
 fn B(cx: block) -> BuilderRef {
     let b = *cx.fcx.ccx.builder;
@@ -42,7 +41,7 @@ fn AggregateRet(cx: block, RetVals: [ValueRef]) {
     assert (!cx.terminated);
     cx.terminated = true;
     unsafe {
-        llvm::LLVMBuildAggregateRet(B(cx), vec::to_ptr(RetVals),
+        llvm::LLVMBuildAggregateRet(B(cx), vec::unsafe::to_ptr(RetVals),
                                     RetVals.len() as c_uint);
     }
 }
@@ -95,11 +94,11 @@ fn Invoke(cx: block, Fn: ValueRef, Args: [ValueRef],
     assert (!cx.terminated);
     cx.terminated = true;
     #debug["Invoke(%s with arguments (%s))",
-           val_str(bcx_ccx(cx).tn, Fn),
-           str::connect(vec::map(Args, {|a|val_str(bcx_ccx(cx).tn, a)}),
+           val_str(cx.ccx().tn, Fn),
+           str::connect(vec::map(Args, {|a|val_str(cx.ccx().tn, a)}),
                         ", ")];
     unsafe {
-        llvm::LLVMBuildInvoke(B(cx), Fn, vec::to_ptr(Args),
+        llvm::LLVMBuildInvoke(B(cx), Fn, vec::unsafe::to_ptr(Args),
                               Args.len() as c_uint, Then, Catch,
                               noname());
     }
@@ -111,7 +110,7 @@ fn FastInvoke(cx: block, Fn: ValueRef, Args: [ValueRef],
     assert (!cx.terminated);
     cx.terminated = true;
     unsafe {
-        let v = llvm::LLVMBuildInvoke(B(cx), Fn, vec::to_ptr(Args),
+        let v = llvm::LLVMBuildInvoke(B(cx), Fn, vec::unsafe::to_ptr(Args),
                                       Args.len() as c_uint,
                                       Then, Catch, noname());
         lib::llvm::SetInstructionCallConv(v, lib::llvm::FastCallConv);
@@ -323,13 +322,16 @@ fn Load(cx: block, PointerVal: ValueRef) -> ValueRef {
 
 fn Store(cx: block, Val: ValueRef, Ptr: ValueRef) {
     if cx.unreachable { ret; }
+    #debug["Store %s -> %s",
+           val_str(cx.ccx().tn, Val),
+           val_str(cx.ccx().tn, Ptr)];
     llvm::LLVMBuildStore(B(cx), Val, Ptr);
 }
 
 fn GEP(cx: block, Pointer: ValueRef, Indices: [ValueRef]) -> ValueRef {
     if cx.unreachable { ret llvm::LLVMGetUndef(T_ptr(T_nil())); }
     unsafe {
-        ret llvm::LLVMBuildGEP(B(cx), Pointer, vec::to_ptr(Indices),
+        ret llvm::LLVMBuildGEP(B(cx), Pointer, vec::unsafe::to_ptr(Indices),
                                Indices.len() as c_uint, noname());
     }
 }
@@ -347,7 +349,7 @@ fn InBoundsGEP(cx: block, Pointer: ValueRef, Indices: [ValueRef]) ->
     if cx.unreachable { ret llvm::LLVMGetUndef(T_ptr(T_nil())); }
     unsafe {
         ret llvm::LLVMBuildInBoundsGEP(B(cx), Pointer,
-                                       vec::to_ptr(Indices),
+                                       vec::unsafe::to_ptr(Indices),
                                        Indices.len() as c_uint,
                                        noname());
     }
@@ -494,7 +496,8 @@ fn Phi(cx: block, Ty: TypeRef, vals: [ValueRef], bbs: [BasicBlockRef])
     assert vals.len() == bbs.len();
     let phi = EmptyPhi(cx, Ty);
     unsafe {
-        llvm::LLVMAddIncoming(phi, vec::to_ptr(vals), vec::to_ptr(bbs),
+        llvm::LLVMAddIncoming(phi, vec::unsafe::to_ptr(vals),
+                              vec::unsafe::to_ptr(bbs),
                               vals.len() as c_uint);
         ret phi;
     }
@@ -518,7 +521,7 @@ fn _UndefReturn(cx: block, Fn: ValueRef) -> ValueRef {
 }
 
 fn add_span_comment(bcx: block, sp: span, text: str) {
-    let ccx = bcx_ccx(bcx);
+    let ccx = bcx.ccx();
     if (!ccx.sess.opts.no_asm_comments) {
         let s = text + " (" + codemap::span_to_str(sp, ccx.sess.codemap)
             + ")";
@@ -528,9 +531,8 @@ fn add_span_comment(bcx: block, sp: span, text: str) {
 }
 
 fn add_comment(bcx: block, text: str) {
-    let ccx = bcx_ccx(bcx);
+    let ccx = bcx.ccx();
     if (!ccx.sess.opts.no_asm_comments) {
-        check str::is_not_empty("$");
         let sanitized = str::replace(text, "$", "");
         let comment_text = "; " + sanitized;
         let asm = str::as_buf(comment_text, {|c|
@@ -546,7 +548,7 @@ fn add_comment(bcx: block, text: str) {
 fn Call(cx: block, Fn: ValueRef, Args: [ValueRef]) -> ValueRef {
     if cx.unreachable { ret _UndefReturn(cx, Fn); }
     unsafe {
-        ret llvm::LLVMBuildCall(B(cx), Fn, vec::to_ptr(Args),
+        ret llvm::LLVMBuildCall(B(cx), Fn, vec::unsafe::to_ptr(Args),
                                 Args.len() as c_uint, noname());
     }
 }
@@ -554,7 +556,7 @@ fn Call(cx: block, Fn: ValueRef, Args: [ValueRef]) -> ValueRef {
 fn FastCall(cx: block, Fn: ValueRef, Args: [ValueRef]) -> ValueRef {
     if cx.unreachable { ret _UndefReturn(cx, Fn); }
     unsafe {
-        let v = llvm::LLVMBuildCall(B(cx), Fn, vec::to_ptr(Args),
+        let v = llvm::LLVMBuildCall(B(cx), Fn, vec::unsafe::to_ptr(Args),
                                     Args.len() as c_uint, noname());
         lib::llvm::SetInstructionCallConv(v, lib::llvm::FastCallConv);
         ret v;
@@ -565,7 +567,7 @@ fn CallWithConv(cx: block, Fn: ValueRef, Args: [ValueRef],
                 Conv: CallConv) -> ValueRef {
     if cx.unreachable { ret _UndefReturn(cx, Fn); }
     unsafe {
-        let v = llvm::LLVMBuildCall(B(cx), Fn, vec::to_ptr(Args),
+        let v = llvm::LLVMBuildCall(B(cx), Fn, vec::unsafe::to_ptr(Args),
                                     Args.len() as c_uint, noname());
         lib::llvm::SetInstructionCallConv(v, Conv);
         ret v;
@@ -641,7 +643,7 @@ fn Trap(cx: block) {
     assert (T as int != 0);
     let Args: [ValueRef] = [];
     unsafe {
-        llvm::LLVMBuildCall(b, T, vec::to_ptr(Args),
+        llvm::LLVMBuildCall(b, T, vec::unsafe::to_ptr(Args),
                             Args.len() as c_uint, noname());
     }
 }

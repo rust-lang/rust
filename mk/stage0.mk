@@ -4,7 +4,9 @@ $(HBIN0_H_$(CFG_HOST_TRIPLE))/rustc$(X):		\
 		$(S)src/snapshots.txt					\
 		$(S)src/etc/get-snapshot.py $(MKFILE_DEPS)
 	@$(call E, fetch: $@)
-	$(Q)$(S)src/etc/get-snapshot.py $(CFG_HOST_TRIPLE)
+#   Note: the variable "SNAPSHOT_FILE" is generally not set, and so
+#   we generally only pass one argument to this script.  
+	$(Q)$(S)src/etc/get-snapshot.py $(CFG_HOST_TRIPLE) $(SNAPSHOT_FILE)
 	$(Q)touch $@
 
 # Host libs will be extracted by the above rule

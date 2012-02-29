@@ -11,7 +11,7 @@ export mk_pass;
 fn mk_pass(
     give_writer: fn~(fn(io::writer))
 ) -> pass {
-    fn~(
+    let f = fn~(
         srv: astsrv::srv,
         doc: doc::cratedoc
     ) -> doc::cratedoc {
@@ -32,11 +32,18 @@ fn mk_pass(
             // Sort the items so mods come last. All mods will be
             // output at the same header level so sorting mods last
             // makes the headers come out nested correctly.
-            let sorted_doc = sort_pass::mk_pass(mods_last)(srv, doc);
+            let sorted_doc = sort_pass::mk_pass(
+                "mods last", mods_last
+            ).f(srv, doc);
 
             write_markdown(sorted_doc, writer);
         }
         doc
+    };
+
+    {
+        name: "markdown",
+        f: f
     }
 }
 
@@ -56,10 +63,10 @@ fn should_write_modules_last() {
          fn d() { }"
     );
 
-    let idx_a = option::get(str::find_bytes(markdown, "# Module `a`"));
-    let idx_b = option::get(str::find_bytes(markdown, "## Function `b`"));
-    let idx_c = option::get(str::find_bytes(markdown, "# Module `c`"));
-    let idx_d = option::get(str::find_bytes(markdown, "## Function `d`"));
+    let idx_a = option::get(str::find_str(markdown, "# Module `a`"));
+    let idx_b = option::get(str::find_str(markdown, "## Function `b`"));
+    let idx_c = option::get(str::find_str(markdown, "# Module `c`"));
+    let idx_d = option::get(str::find_str(markdown, "## Function `d`"));
 
     assert idx_b < idx_d;
     assert idx_d < idx_a;
@@ -130,9 +137,10 @@ fn write_mod_contents(
     write_brief(ctxt, doc.brief());
     write_desc(ctxt, doc.desc());
 
-    for itemtag in *doc.items {
+    for itemtag in doc.items {
         alt itemtag {
           doc::modtag(moddoc) { write_mod(ctxt, moddoc) }
+          doc::nmodtag(nmoddoc) { write_nmod(ctxt, nmoddoc) }
           doc::fntag(fndoc) { write_fn(ctxt, fndoc) }
           doc::consttag(constdoc) { write_const(ctxt, constdoc) }
           doc::enumtag(enumdoc) { write_enum(ctxt, enumdoc) }
@@ -154,6 +162,32 @@ fn should_write_crate_brief_description() {
 fn should_write_crate_description() {
     let markdown = test::render("#[doc = \"this is the crate\"];");
     assert str::contains(markdown, "this is the crate");
+}
+
+fn write_nmod(ctxt: ctxt, doc: doc::nmoddoc) {
+    let fullpath = str::connect(doc.path() + [doc.name()], "::");
+    write_header(ctxt, h1, #fmt("Native module `%s`", fullpath));
+
+    write_brief(ctxt, doc.brief());
+    write_desc(ctxt, doc.desc());
+
+    for fndoc in doc.fns {
+        write_fn(ctxt, fndoc);
+    }
+}
+
+#[test]
+fn should_write_native_mods() {
+    let markdown = test::render("#[doc = \"test\"] native mod a { }");
+    log(error, markdown);
+    assert str::contains(markdown, "Native module `a`");
+    assert str::contains(markdown, "test");
+}
+
+#[test]
+fn should_write_native_fns() {
+    let markdown = test::render("native mod a { #[doc = \"test\"] fn a(); }");
+    assert str::contains(markdown, "test");
 }
 
 fn write_fn(
@@ -201,7 +235,7 @@ fn write_sig(ctxt: ctxt, sig: option<str>) {
 
 fn code_block_indent(s: str) -> str {
     let lines = str::lines_any(s);
-    let indented = vec::map(lines, { |line| #fmt("    %s", line) });
+    let indented = par::seqmap(lines, { |line| #fmt("    %s", line) });
     str::connect(indented, "\n")
 }
 
@@ -228,7 +262,7 @@ fn should_correctly_indent_fn_signature() {
     let doc = test::create_doc("fn a() { }");
     let doc = {
         topmod: {
-            items: ~[doc::fntag({
+            items: [doc::fntag({
                 sig: some("line 1\nline 2")
                 with doc.topmod.fns()[0]
             })]
@@ -790,16 +824,17 @@ mod test {
     }
 
     fn create_doc_srv(source: str) -> (astsrv::srv, doc::cratedoc) {
-        let srv = astsrv::mk_srv_from_str(source);
-        let doc = extract::from_srv(srv, "");
-        #debug("doc (extract): %?", doc);
-        let doc = tystr_pass::mk_pass()(srv, doc);
-        #debug("doc (tystr): %?", doc);
-        let doc = path_pass::mk_pass()(srv, doc);
-        #debug("doc (path): %?", doc);
-        let doc = attr_pass::mk_pass()(srv, doc);
-        #debug("doc (attr): %?", doc);
-        (srv, doc)
+        astsrv::from_str(source) {|srv|
+            let doc = extract::from_srv(srv, "");
+            #debug("doc (extract): %?", doc);
+            let doc = tystr_pass::mk_pass().f(srv, doc);
+            #debug("doc (tystr): %?", doc);
+            let doc = path_pass::mk_pass().f(srv, doc);
+            #debug("doc (path): %?", doc);
+            let doc = attr_pass::mk_pass().f(srv, doc);
+            #debug("doc (attr): %?", doc);
+            (srv, doc)
+        }
     }
 
     fn create_doc(source: str) -> doc::cratedoc {
@@ -830,17 +865,18 @@ mod test {
             let result = io::mem_buffer_str(buffer);
             comm::send(chan, result);
         };
-        pass(srv, doc);
+        pass.f(srv, doc);
         ret comm::recv(port);
     }
 
     #[test]
     fn write_markdown_should_write_crate_header() {
-        let srv = astsrv::mk_srv_from_str("");
-        let doc = extract::from_srv(srv, "belch");
-        let doc = attr_pass::mk_pass()(srv, doc);
-        let markdown = write_markdown_str(doc);
-        assert str::contains(markdown, "# Crate belch");
+        astsrv::from_str("") {|srv|
+            let doc = extract::from_srv(srv, "belch");
+            let doc = attr_pass::mk_pass().f(srv, doc);
+            let markdown = write_markdown_str(doc);
+            assert str::contains(markdown, "# Crate belch");
+        }
     }
 
     #[test]

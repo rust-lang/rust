@@ -119,7 +119,7 @@ fn get_used_libraries(cstore: cstore) -> [str] {
 }
 
 fn add_used_link_args(cstore: cstore, args: str) {
-    p(cstore).used_link_args += str::split_byte(args, ' ' as u8);
+    p(cstore).used_link_args += str::split_char(args, ' ');
 }
 
 fn get_used_link_args(cstore: cstore) -> [str] {

@@ -1,5 +1,5 @@
 // -*- rust -*-
-// error-pattern: Non-predicate in constraint: lt
+// error-pattern: lt is not declared pure
 
 fn f(a: int, b: int) : lt(a, b) { }
 

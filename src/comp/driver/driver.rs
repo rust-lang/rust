@@ -6,7 +6,7 @@ import syntax::parse::{parser};
 import syntax::{ast, codemap};
 import front::attr;
 import middle::{trans, resolve, freevars, kind, ty, typeck, fn_usage,
-                last_use, lint};
+                last_use, lint, inline};
 import syntax::print::{pp, pprust};
 import util::{ppaux, filesearch};
 import back::link;
@@ -157,7 +157,7 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
          bind middle::check_alt::check_crate(ty_cx, crate));
     time(time_passes, "typestate checking",
          bind middle::tstate::ck::check_crate(ty_cx, crate));
-    let mut_map =
+    let mutbl_map =
         time(time_passes, "mutability checking",
              bind middle::mutbl::check_crate(ty_cx, crate));
     let (copy_map, ref_map) =
@@ -173,12 +173,20 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
     if upto == cu_no_trans { ret {crate: crate, tcx: some(ty_cx)}; }
     let outputs = option::get(outputs);
 
+    let maps = {mutbl_map: mutbl_map, copy_map: copy_map,
+                last_uses: last_uses, impl_map: impl_map,
+                method_map: method_map, dict_map: dict_map};
+
+    let ienbld = sess.opts.inline;
+    let inline_map =
+        time(time_passes, "inline",
+             bind inline::instantiate_inlines(ienbld, ty_cx, maps, crate));
+
     let (llmod, link_meta) =
         time(time_passes, "translation",
              bind trans::base::trans_crate(
-                 sess, crate, ty_cx, outputs.obj_filename, exp_map, ast_map,
-                 mut_map, copy_map, last_uses, impl_map, method_map,
-                 dict_map));
+                 sess, crate, ty_cx, outputs.obj_filename,
+                 exp_map, maps, inline_map));
     time(time_passes, "LLVM passes",
          bind link::write::run_passes(sess, llmod, outputs.obj_filename));
 
@@ -356,6 +364,7 @@ fn build_session_options(match: getopts::match,
         lint_opts += [(lint::ctypes, false)];
     }
     let monomorphize = opt_present(match, "monomorphize");
+    let inline = opt_present(match, "inline");
 
     let output_type =
         if parse_only || no_trans {
@@ -434,6 +443,7 @@ fn build_session_options(match: getopts::match,
           no_trans: no_trans,
           no_asm_comments: no_asm_comments,
           monomorphize: monomorphize,
+          inline: inline,
           warn_unused_imports: warn_unused_imports};
     ret sopts;
 }
@@ -504,6 +514,7 @@ fn opts() -> [getopts::opt] {
          optflag("no-verify"),
          optflag("no-lint-ctypes"),
          optflag("monomorphize"),
+         optflag("inline"),
          optmulti("cfg"), optflag("test"),
          optflag("lib"), optflag("bin"), optflag("static"), optflag("gc"),
          optflag("no-asm-comments"),

@@ -172,6 +172,16 @@ fn visit_expr(cx: @ctx, ex: @expr, &&e: (), v: visit::vt<()>) {
       expr_assign(dest, src) | expr_assign_op(_, dest, src) {
         check_lval(cx, dest, msg_assign);
       }
+      expr_fn(_, _, _, cap) {
+        for moved in cap.moves {
+            let def = cx.tcx.def_map.get(moved.id);
+            alt is_immutable_def(cx, def) {
+              some(name) { mk_err(cx, moved.span, msg_move_out, moved.name); }
+              _ { }
+            }
+            cx.mutbl_map.insert(ast_util::def_id_of_def(def).node, ());
+        }
+      }
       _ { }
     }
     visit::visit_expr(ex, e, v);

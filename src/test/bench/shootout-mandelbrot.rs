@@ -136,36 +136,21 @@ fn writer(path: str, writech: comm::chan<comm::chan<line>>, size: uint)
     }
 }
 
-fn main(argv: [str])
-{
-    let size = if vec::len(argv) < 2_u {
-        80u
-    }
-    else {
-        uint::from_str(argv[1])
-    };
-    let yieldevery = if vec::len(argv) < 3_u {
-        10_u
-    }
-    else {
-        uint::from_str(argv[2])
-    };
-    let path = if vec::len(argv) < 4_u {
-        ""
-    }
-    else {
-        argv[3]
-    };
+fn main(argv: [str]) {
+    let size = if vec::len(argv) < 2_u { 80u }
+    else { option::get(uint::from_str(argv[1])) };
+    let yieldevery = if vec::len(argv) < 3_u { 10_u }
+    else { option::get(uint::from_str(argv[2])) };
+    let path = if vec::len(argv) < 4_u { "" }
+    else { argv[3] };
     let writep = comm::port();
     let writech = comm::chan(writep);
-    task::spawn {
-        || writer(path, writech, size);
+    task::spawn {||
+        writer(path, writech, size);
     };
     let ch = comm::recv(writep);
-    uint::range(0_u, size) {
-        |j| task::spawn {
-            || chanmb(j, size, ch);
-        };
+    uint::range(0_u, size) {|j|
+        task::spawn {|| chanmb(j, size, ch);};
         if j % yieldevery == 0_u {
             #debug("Y %u", j);
             task::yield();

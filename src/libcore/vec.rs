@@ -180,7 +180,7 @@ Returns the first element of a vector
 Predicates:
 <is_not_empty> (v)
 */
-pure fn head<T: copy>(v: [const T]) : is_not_empty(v) -> T { ret v[0]; }
+pure fn head<T: copy>(v: [const T]) -> T { v[0] }
 
 /*
 Function: tail
@@ -240,9 +240,7 @@ Returns the last element of a non-empty vector `v`
 Predicates:
 <is_not_empty> (v)
 */
-pure fn last_total<T: copy>(v: [const T]) : is_not_empty(v) -> T {
-    ret v[len(v) - 1u];
-}
+pure fn last_total<T: copy>(v: [const T]) -> T { v[len(v) - 1u] }
 
 /*
 Function: slice
@@ -409,7 +407,6 @@ fn pop<T>(&v: [const T]) -> T unsafe {
     val
 }
 
-#[inline]
 /*
 Function: push
 
@@ -886,10 +883,10 @@ Preconditions:
 
 <same_length> (v, u)
 */
-fn zip<T: copy, U: copy>(v: [T], u: [U]) : same_length(v, u) -> [(T, U)] {
+fn zip<T: copy, U: copy>(v: [T], u: [U]) -> [(T, U)] {
     let zipped = [];
     let sz = len(v), i = 0u;
-    assert (sz == len(u));
+    assert sz == len(u);
     while i < sz { zipped += [(v[i], u[i])]; i += 1u; }
     ret zipped;
 }
@@ -940,7 +937,8 @@ Function: enum_chars
 
 Returns a vector containing a range of chars
 */
-fn enum_chars(start: u8, end: u8) : ::u8::le(start, end) -> [char] {
+fn enum_chars(start: u8, end: u8) -> [char] {
+    assert start < end;
     let i = start;
     let r = [];
     while i <= end { r += [i as char]; i += 1u as u8; }
@@ -953,7 +951,8 @@ Function: enum_uints
 
 Returns a vector containing a range of uints
 */
-fn enum_uints(start: uint, end: uint) : uint::le(start, end) -> [uint] {
+fn enum_uints(start: uint, end: uint) -> [uint] {
+    assert start < end;
     let i = start;
     let r = [];
     while i <= end { r += [i]; i += 1u; }
@@ -969,6 +968,7 @@ Iterates over vector `v` and, for each element, calls function `f` with the
 element's value.
 
 */
+#[inline]
 fn iter<T>(v: [const T], f: fn(T)) {
     iteri(v) { |_i, v| f(v) }
 }
@@ -1069,13 +1069,6 @@ fn windowed <TT: copy> (nn: uint, xx: [TT]) -> [[TT]] {
 }
 
 /*
-Function: to_ptr
-
-FIXME: We don't need this wrapper
-*/
-unsafe fn to_ptr<T>(v: [T]) -> *T { ret unsafe::to_ptr(v); }
-
-/*
 Function: as_buf
 
 Work with the buffer of a vector. Allows for unsafe manipulation
@@ -1150,12 +1143,6 @@ mod u8 {
     export lt, le, eq, ne, ge, gt;
     export hash;
 
-    #[nolink]
-    #[abi = "cdecl"]
-    native mod libc {
-        fn memcmp(s1: *u8, s2: *u8, n: ctypes::size_t) -> ctypes::c_int;
-    }
-
     /*
     Function cmp
 
@@ -1165,7 +1152,8 @@ mod u8 {
         let a_len = len(a);
         let b_len = len(b);
         let n = math::min(a_len, b_len) as ctypes::size_t;
-        let r = libc::memcmp(to_ptr(a), to_ptr(b), n) as int;
+        let r = libc::memcmp(unsafe::to_ptr(a) as *libc::c_void,
+                             unsafe::to_ptr(b) as *libc::c_void, n) as int;
 
         if r != 0 { r } else {
             if a_len == b_len {
@@ -1258,7 +1246,7 @@ mod tests {
     fn test_unsafe_ptrs() unsafe {
         // Test on-stack copy-from-buf.
         let a = [1, 2, 3];
-        let ptr = to_ptr(a);
+        let ptr = unsafe::to_ptr(a);
         let b = unsafe::from_buf(ptr, 3u);
         assert (len(b) == 3u);
         assert (b[0] == 1);
@@ -1267,7 +1255,7 @@ mod tests {
 
         // Test on-heap copy-from-buf.
         let c = [1, 2, 3, 4, 5];
-        ptr = to_ptr(c);
+        ptr = unsafe::to_ptr(c);
         let d = unsafe::from_buf(ptr, 5u);
         assert (len(d) == 5u);
         assert (d[0] == 1);
@@ -1329,18 +1317,15 @@ mod tests {
     #[test]
     fn test_head() {
         let a = [11, 12];
-        check (is_not_empty(a));
         assert (head(a) == 11);
     }
 
     #[test]
     fn test_tail() {
         let a = [11];
-        check (is_not_empty(a));
         assert (tail(a) == []);
 
         a = [11, 12];
-        check (is_not_empty(a));
         assert (tail(a) == [12]);
     }
 
@@ -1667,7 +1652,6 @@ mod tests {
         let v1 = [1, 2, 3];
         let v2 = [4, 5, 6];
 
-        check (same_length(v1, v2)); // Silly, but what else can we do?
         let z1 = zip(v1, v2);
 
         assert ((1, 4) == z1[0]);
@@ -1929,16 +1913,10 @@ mod tests {
     }
 
     #[test]
-    // FIXME: Windows can't undwind
+    #[should_fail]
     #[ignore(cfg(target_os = "win32"))]
     fn test_init_empty() {
-
-        let r = task::join(
-            task::spawn_joinable {||
-                task::unsupervise();
-                init::<int>([]);
-            });
-        assert r == task::tr_failure
+        init::<int>([]);
     }
 
     #[test]

@@ -33,11 +33,11 @@ fn read_grid(f: io::reader) -> grid_t {
 
     let g = vec::init_fn(10u, {|_i| vec::init_elt_mut(10u, 0 as u8) });
     while !f.eof() {
-        let comps = str::split_byte(str::trim(f.read_line()), ',' as u8);
+        let comps = str::split_char(str::trim(f.read_line()), ',');
         if vec::len(comps) >= 3u {
-            let row     = uint::from_str(comps[0]) as u8;
-            let col     = uint::from_str(comps[1]) as u8;
-            g[row][col] = uint::from_str(comps[2]) as u8;
+            let row     = option::get(uint::from_str(comps[0])) as u8;
+            let col     = option::get(uint::from_str(comps[1])) as u8;
+            g[row][col] = option::get(uint::from_str(comps[2])) as u8;
         }
     }
     ret grid_ctor(g);

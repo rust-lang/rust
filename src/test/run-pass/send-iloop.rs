@@ -9,7 +9,6 @@ fn die() {
 }
 
 fn iloop() {
-    task::unsupervise();
     task::spawn {|| die(); };
     let p = comm::port::<()>();
     let c = comm::chan(p);
@@ -23,6 +22,8 @@ fn iloop() {
 
 fn main() {
     uint::range(0u, 16u) {|_i|
-        task::spawn {|| iloop(); };
+        let builder = task::mk_task_builder();
+        task::unsupervise(builder);
+        task::run(builder) {|| iloop(); }
     }
 }

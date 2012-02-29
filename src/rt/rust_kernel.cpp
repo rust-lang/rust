@@ -20,7 +20,6 @@ rust_kernel::rust_kernel(rust_srv *srv) :
     live_tasks(0),
     max_task_id(0),
     rval(0),
-    live_schedulers(0),
     max_sched_id(0),
     env(srv->env)
 {
@@ -75,7 +74,6 @@ rust_kernel::create_scheduler(size_t num_threads) {
         bool is_new = sched_table
             .insert(std::pair<rust_sched_id, rust_scheduler*>(id, sched)).second;
         A(this, is_new, "Reusing a sched id?");
-        live_schedulers++;
     }
     sched->start_task_threads();
     return id;
@@ -97,26 +95,38 @@ void
 rust_kernel::release_scheduler_id(rust_sched_id id) {
     I(this, !sched_lock.lock_held_by_current_thread());
     scoped_lock with(sched_lock);
-    sched_map::iterator iter = sched_table.find(id);
-    I(this, iter != sched_table.end());
-    rust_scheduler *sched = iter->second;
-    sched_table.erase(iter);
-    delete sched;
-    live_schedulers--;
-    if (live_schedulers == 0) {
-        // We're all done. Tell the main thread to continue
-        sched_lock.signal();
-    }
+    // This list will most likely only ever have a single element in it, but
+    // it's an actual list because we could potentially get here multiple
+    // times before the main thread ever calls wait_for_schedulers()
+    join_list.push_back(id);
+    sched_lock.signal();
 }
 
+/*
+Called on the main thread to wait for the kernel to exit. This function is
+also used to join on every terminating scheduler thread, so that we can be
+sure they have completely exited before the process exits.  If we don't join
+them then we can see valgrind errors due to un-freed pthread memory.
+ */
 int
 rust_kernel::wait_for_schedulers()
 {
     I(this, !sched_lock.lock_held_by_current_thread());
     scoped_lock with(sched_lock);
-    // Schedulers could possibly have already exited
-    if (live_schedulers != 0) {
-        sched_lock.wait();
+    while (!sched_table.empty()) {
+        while (!join_list.empty()) {
+            rust_sched_id id = join_list.back();
+            join_list.pop_back();
+            sched_map::iterator iter = sched_table.find(id);
+            I(this, iter != sched_table.end());
+            rust_scheduler *sched = iter->second;
+            sched_table.erase(iter);
+            sched->join_task_threads();
+            delete sched;
+        }
+        if (!sched_table.empty()) {
+            sched_lock.wait();
+        }
     }
     return rval;
 }

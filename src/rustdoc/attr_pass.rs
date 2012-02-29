@@ -12,7 +12,10 @@ import rustc::middle::ast_map;
 export mk_pass;
 
 fn mk_pass() -> pass {
-    run
+    {
+        name: "attr",
+        f: run
+    }
 }
 
 fn run(
@@ -27,7 +30,7 @@ fn run(
         fold_res: fold_res,
         fold_iface: fold_iface,
         fold_impl: fold_impl
-        with *fold::default_seq_fold(srv)
+        with *fold::default_any_fold(srv)
     });
     fold.fold_crate(fold, doc)
 }
@@ -86,13 +89,14 @@ fn fold_item(
     }
 }
 
-fn parse_item_attrs<T>(
+fn parse_item_attrs<T:send>(
     srv: astsrv::srv,
     id: doc::ast_id,
     parse_attrs: fn~([ast::attribute]) -> T) -> T {
     astsrv::exec(srv) {|ctxt|
         let attrs = alt ctxt.ast_map.get(id) {
           ast_map::node_item(item, _) { item.attrs }
+          ast_map::node_native_item(item, _) { item.attrs }
           _ {
             fail "parse_item_attrs: not an item";
           }
@@ -111,6 +115,18 @@ fn should_should_extract_mod_attributes() {
 fn should_extract_top_mod_attributes() {
     let doc = test::mk_doc("#[doc = \"test\"];");
     assert doc.topmod.desc() == some("test");
+}
+
+#[test]
+fn should_extract_native_mod_attributes() {
+    let doc = test::mk_doc("#[doc = \"test\"] native mod a { }");
+    assert doc.topmod.nmods()[0].desc() == some("test");
+}
+
+#[test]
+fn should_extract_native_fn_attributes() {
+    let doc = test::mk_doc("native mod a { #[doc = \"test\"] fn a(); }");
+    assert doc.topmod.nmods()[0].fns[0].desc() == some("test");
 }
 
 fn fold_fn(
@@ -141,7 +157,7 @@ fn merge_arg_attrs(
     docs: [doc::argdoc],
     attrs: [attr_parser::arg_attrs]
 ) -> [doc::argdoc] {
-    vec::map(docs) {|doc|
+    par::seqmap(docs) {|doc|
         alt vec::find(attrs) {|attr|
             attr.name == doc.name
         } {
@@ -183,23 +199,25 @@ fn should_extract_fn_arg_attributes() {
 #[test]
 fn should_extract_fn_return_attributes() {
     let source = "#[doc(return = \"what\")] fn a() -> int { }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = tystr_pass::mk_pass()(srv, doc);
-    let fold = fold::default_seq_fold(srv);
-    let doc = fold_fn(fold, doc.topmod.fns()[0]);
-    assert doc.return.desc == some("what");
+    astsrv::from_str(source) {|srv|
+        let doc = extract::from_srv(srv, "");
+        let doc = tystr_pass::mk_pass().f(srv, doc);
+        let fold = fold::default_any_fold(srv);
+        let doc = fold_fn(fold, doc.topmod.fns()[0]);
+        assert doc.return.desc == some("what");
+    }
 }
 
 #[test]
 fn should_preserve_fn_sig() {
     let source = "fn a() -> int { }";
-    let srv = astsrv::mk_srv_from_str(source);
-    let doc = extract::from_srv(srv, "");
-    let doc = tystr_pass::mk_pass()(srv, doc);
-    let fold = fold::default_seq_fold(srv);
-    let doc = fold_fn(fold, doc.topmod.fns()[0]);
-    assert doc.sig == some("fn a() -> int");
+    astsrv::from_str(source) {|srv|
+        let doc = extract::from_srv(srv, "");
+        let doc = tystr_pass::mk_pass().f(srv, doc);
+        let fold = fold::default_any_fold(srv);
+        let doc = fold_fn(fold, doc.topmod.fns()[0]);
+        assert doc.sig == some("fn a() -> int");
+    }
 }
 
 #[test]
@@ -220,13 +238,15 @@ fn fold_enum(
     fold: fold::fold<astsrv::srv>,
     doc: doc::enumdoc
 ) -> doc::enumdoc {
+
     let srv = fold.ctxt;
+    let doc_id = doc.id();
     let doc = fold::default_seq_fold_enum(fold, doc);
 
     {
-        variants: vec::map(doc.variants) {|variant|
+        variants: par::anymap(doc.variants) {|variant|
             let attrs = astsrv::exec(srv) {|ctxt|
-                alt check ctxt.ast_map.get(doc.id()) {
+                alt check ctxt.ast_map.get(doc_id) {
                   ast_map::node_item(@{
                     node: ast::item_enum(ast_variants, _), _
                   }, _) {
@@ -273,7 +293,7 @@ fn fold_res(
     let attrs = parse_item_attrs(srv, doc.id(), attr_parser::parse_res);
 
     {
-        args: vec::map(doc.args) {|doc|
+        args: par::seqmap(doc.args) {|doc|
             alt vec::find(attrs.args) {|attr|
                 attr.name == doc.name
             } {
@@ -334,7 +354,7 @@ fn merge_method_attrs(
           ast_map::node_item(@{
             node: ast::item_iface(_, methods), _
           }, _) {
-            vec::map(methods) {|method|
+            par::seqmap(methods) {|method|
                 (method.ident,
                  (attr_parser::parse_basic(method.attrs),
                   attr_parser::parse_method(method.attrs)
@@ -344,7 +364,7 @@ fn merge_method_attrs(
           ast_map::node_item(@{
             node: ast::item_impl(_, _, _, methods), _
           }, _) {
-            vec::map(methods) {|method|
+            par::seqmap(methods) {|method|
                 (method.ident,
                  (attr_parser::parse_basic(method.attrs),
                   attr_parser::parse_method(method.attrs)
@@ -448,8 +468,9 @@ fn should_extract_type_docs() {
 #[cfg(test)]
 mod test {
     fn mk_doc(source: str) -> doc::cratedoc {
-        let srv = astsrv::mk_srv_from_str(source);
-        let doc = extract::from_srv(srv, "");
-        run(srv, doc)
+        astsrv::from_str(source) {|srv|
+            let doc = extract::from_srv(srv, "");
+            run(srv, doc)
+        }
     }
 }

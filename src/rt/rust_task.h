@@ -39,6 +39,7 @@ typedef unsigned long task_result;
 
 struct spawn_args;
 struct cleanup_args;
+struct reset_args;
 
 // std::lib::task::task_notification
 //
@@ -131,6 +132,7 @@ private:
 
     friend void task_start_wrapper(spawn_args *a);
     friend void cleanup_task(cleanup_args *a);
+    friend void reset_stack_limit_on_c_stack(reset_args *a);
 
 public:
 

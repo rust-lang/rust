@@ -56,7 +56,8 @@ type serialize_ctx = {
     crate: @ast::crate,
     tcx: ty::ctxt,
 
-    tyfns: hashmap<ty::t, str>,
+    serialize_tyfns: hashmap<ty::t, str>,
+    deserialize_tyfns: hashmap<ty::t, str>,
     mutable item_fns: [ast_item],
     mutable constants: [str]
 
@@ -84,17 +85,8 @@ fn lookup(_mod: ast::_mod, idx: uint, names: [str]) -> @ast::item {
 }
 
 impl serialize_ctx for serialize_ctx {
-    // fn session() -> parser::parse_sess { self.psess }
-
     fn add_item(item: ast_item) {
         self.item_fns += [item];
-    }
-
-    fn mk_serialize_named_item_fn(name: str) -> str {
-        let names = str::split_str(name, "::");
-        let item = lookup(self.crate.node.module, 0u, names);
-        let def_id = {crate: ast::local_crate, node: item.id};
-        self.mk_serialize_item_fn(def_id, [])
     }
 
     fn tp_map(ty_params: [ast::ty_param], tps: [ty::t]) -> tp_map {
@@ -123,10 +115,51 @@ impl serialize_ctx for serialize_ctx {
         };
     }
 
-    fn mk_serialize_item_fn(id: ast::def_id,
-                            tps: [ty::t]) -> str {
-        let item_ty = self.instantiate(id, tps);
-        self.mk_serialize_ty_fn(item_ty)
+    fn memoize(map: hashmap<ty::t, str>, base_name: str,
+               ty0: ty::t, mk_fn: fn(str)) -> str {
+        // check for existing function
+        alt map.find(ty0) {
+          some(name) { ret name; }
+          none { /* fallthrough */ }
+        }
+
+        // define the name and insert into the hashtable
+        // in case of recursive calls:
+        let id = map.size();
+        let name = #fmt["%s_%u", base_name, id];
+        map.insert(ty0, name);
+        mk_fn(name);
+        ret name;
+    }
+
+    fn exec_named_item_fn(name: str, f: fn(ty::t) -> str) -> str {
+        let names = str::split_str(name, "::");
+        let item = lookup(self.crate.node.module, 0u, names);
+        let def_id = {crate: ast::local_crate, node: item.id};
+        let item_ty = self.instantiate(def_id, []);
+        f(item_ty)
+    }
+}
+
+impl serialize_methods for serialize_ctx {
+    // fn session() -> parser::parse_sess { self.psess }
+
+    fn mk_serialize_named_item_fn(name: str) -> str {
+        self.exec_named_item_fn(name) {|item_ty|
+            let fname = self.mk_serialize_ty_fn(item_ty);
+
+            let ty_str = ppaux::ty_to_str(self.tcx, item_ty);
+            check str::is_not_empty("::");
+            let namep = str::replace(name, "::", "_");
+            let item = #fmt["fn serialize_%s\
+                                 <S:std::serialization::serializer>\n\
+                                 (s: S, v: %s) {\n\
+                                   %s(s, v);\n\
+                                 }", namep, ty_str, fname];
+            self.add_item(item);
+
+            fname
+        }
     }
 
     fn blk(stmts: [ast_stmt]) -> ast_blk {
@@ -145,59 +178,75 @@ impl serialize_ctx for serialize_ctx {
     // Returns an AST fragment that names this function.
     fn serialize_ty(ty0: ty::t, v: ast_expr) -> ast_expr {
         let fname = self.mk_serialize_ty_fn(ty0);
-        #fmt["%s(cx, %s)", fname, v]
+        let ty0_str = ppaux::ty_to_str(self.tcx, ty0);
+        #fmt["/*%s*/ %s(s, %s)", ty0_str, fname, v]
     }
 
     fn mk_serialize_ty_fn(ty0: ty::t) -> str {
-        // check for existing function
-        alt self.tyfns.find(ty0) {
-          some(name) { ret name; }
-          none { /* fallthrough */ }
+        self.memoize(self.serialize_tyfns, "serialize", ty0) {|name|
+            self.mk_serialize_ty_fn0(ty0, name)
         }
+    }
 
-        // define the name and insert into the hashtable
-        // in case of recursive calls:
-        let id = self.tyfns.size();
+    fn mk_serialize_ty_fn0(ty0: ty::t, name: str) {
         let ty0_str = ppaux::ty_to_str(self.tcx, ty0);
-        #debug["ty0_str = %s / ty0 = %?", ty0_str, ty0];
-        let name = #fmt["serialize_%u /*%s*/", id, ty0_str];
-        self.tyfns.insert(ty0, name);
         let v = "v";
 
         let body_node = alt ty::get(ty0).struct {
           ty::ty_nil | ty::ty_bot { "()" }
-          ty::ty_int(_) { #fmt["s.emit_i64(%s as i64)", v] }
-          ty::ty_uint(_) { #fmt["s.emit_u64(%s as u64)", v] }
-          ty::ty_float(_) { #fmt["s.emit_f64(%s as f64)", v] }
-          ty::ty_bool { #fmt["s.emit_bool(%s)", v] }
-          ty::ty_str { #fmt["s.emit_str(%s)", v] }
+
+          ty::ty_int(ast::ty_i)   { #fmt["\ns.emit_int(%s)\n", v] }
+          ty::ty_int(ast::ty_i64) { #fmt["\ns.emit_i64(%s)\n", v] }
+          ty::ty_int(ast::ty_i32) { #fmt["\ns.emit_i32(%s)\n", v] }
+          ty::ty_int(ast::ty_i16) { #fmt["\ns.emit_i16(%s)\n", v] }
+          ty::ty_int(ast::ty_i8)  { #fmt["\ns.emit_i8(%s)\n", v]  }
+
+          ty::ty_int(ast::ty_char) { #fmt["\ns.emit_i8(%s as i8)\n", v] }
+
+          ty::ty_uint(ast::ty_u)   { #fmt["\ns.emit_uint(%s)\n", v] }
+          ty::ty_uint(ast::ty_u64) { #fmt["\ns.emit_u64(%s)\n", v] }
+          ty::ty_uint(ast::ty_u32) { #fmt["\ns.emit_u32(%s)\n", v] }
+          ty::ty_uint(ast::ty_u16) { #fmt["\ns.emit_u16(%s)\n", v] }
+          ty::ty_uint(ast::ty_u8)  { #fmt["\ns.emit_u8(%s)\n", v]  }
+
+          ty::ty_float(ast::ty_f64) { #fmt["\ns.emit_f64(%s)\n", v] }
+          ty::ty_float(ast::ty_f32) { #fmt["\ns.emit_f32(%s)\n", v] }
+          ty::ty_float(ast::ty_f)   { #fmt["\ns.emit_float(%s)\n", v] }
+
+          ty::ty_bool { #fmt["\ns.emit_bool(%s)\n", v] }
+
+          ty::ty_str { #fmt["\ns.emit_str(%s)\n", v] }
+
           ty::ty_enum(def_id, tps) { self.serialize_enum(v, def_id, tps) }
           ty::ty_box(mt) {
-            let s = self.serialize_ty(mt.ty, #fmt["*%s", v]);
-            #fmt["s.emit_box({||%s})", s]
+            let s = self.serialize_ty(mt.ty, #fmt["\n*%s\n", v]);
+            #fmt["\ns.emit_box({||%s})\n", s]
           }
           ty::ty_uniq(mt) {
-            let s = self.serialize_ty(mt.ty, #fmt["*%s", v]);
-            #fmt["s.emit_uniq({||%s})", s]
+            let s = self.serialize_ty(mt.ty, #fmt["\n*%s\n", v]);
+            #fmt["\ns.emit_uniq({||%s})\n", s]
           }
           ty::ty_vec(mt) {
-            let selem = self.serialize_ty(mt.ty, "i");
-            #fmt["s.emit_vec(vec::len(v), {|| \
-                  uint::range(0, vec::len(v), {|i| \
-                  s.emit_vec_elt(i, {||\
-                  %s;\
-                  })})})", selem]
+            let selem = self.serialize_ty(mt.ty, "e");
+            #fmt["\ns.emit_vec(vec::len(v), {||\n\
+                    vec::iteri(v, {|i, e|\n\
+                      s.emit_vec_elt(i, {||\n\
+                          %s\n\
+                  })})})\n", selem]
           }
           ty::ty_class(_, _) {
             fail "TODO--implement class";
           }
           ty::ty_rec(fields) {
-            let stmts = vec::map(fields) {|field|
+            let stmts = vec::init_fn(vec::len(fields)) {|i|
+                let field = fields[i];
                 let f_name = field.ident;
                 let f_ty = field.mt.ty;
-                self.serialize_ty(f_ty, #fmt["%s.%s", v, f_name])
+                let efld = self.serialize_ty(f_ty, #fmt["\n%s.%s\n", v, f_name]);
+                #fmt["\ns.emit_rec_field(\"%s\", %uu, {||%s})\n",
+                     f_name, i, efld]
             };
-            #fmt["s.emit_rec({||%s})", self.blk_expr(stmts)]
+            #fmt["\ns.emit_rec({||%s})\n", self.blk_expr(stmts)]
           }
           ty::ty_tup(tys) {
             let (pat, stmts) = self.serialize_arm("", "emit_tup_elt", tys);
@@ -219,12 +268,13 @@ impl serialize_ctx for serialize_ctx {
           }
         };
 
-        let item = #fmt["fn %s<S:std::serialization::serializer>\
-                            (s: S, v: %s) {\
-                             %s;\
-                         }", name, ty0_str, body_node];
+        let item = #fmt["/*%s*/ fn %s\n\
+                         <S:std::serialization::serializer>\n\
+                            (s: S,\n\
+                            v: %s) {\n\
+                             %s;\n\
+                         }", ty0_str, name, ty0_str, body_node];
         self.add_item(item);
-        ret name;
     }
 
     fn serialize_enum(v: ast_expr,
@@ -249,19 +299,19 @@ impl serialize_ctx for serialize_ctx {
             let v_id = idx;
             idx += 1u;
 
-            #fmt["%s { \
-                    s.emit_enum_variant(\"%s\", %uu, %uu) {||\
-                      %s \
-                    } \
+            #fmt["%s {\n\
+                    s.emit_enum_variant(\"%s\", %uu, %uu, {||\n\
+                      %s\n\
+                    })\n\
                   }", v_pat, v_path, v_id, n_args, self.blk(stmts)]
         };
 
         let enum_name = ast_map::path_to_str(ty::item_path(self.tcx, id));
-        #fmt["s.emit_enum(\"%s\") {||\
-                alt %s { \
-                  %s \
-                }\
-              }", enum_name, v, str::connect(arms, "\n")]
+        #fmt["\ns.emit_enum(\"%s\", {||\n\
+                alt %s {\n\
+                  %s\n\
+                }\n\
+              })\n", enum_name, v, str::connect(arms, "\n")]
     }
 
     fn serialize_arm(v_path: str, emit_fn: str, args: [ty::t])
@@ -269,14 +319,174 @@ impl serialize_ctx for serialize_ctx {
         let n_args = vec::len(args);
         let arg_nms = vec::init_fn(n_args) {|i| #fmt["v%u", i] };
         let v_pat =
-            #fmt["%s(%s)", v_path, str::connect(arg_nms, ", ")];
+            #fmt["\n%s(%s)\n", v_path, str::connect(arg_nms, ",")];
         let stmts = vec::init_fn(n_args) {|i|
             let arg_ty = args[i];
             let serialize_expr =
                 self.serialize_ty(arg_ty, arg_nms[i]);
-            #fmt["s.%s(%uu, {|| %s })", emit_fn, i, serialize_expr]
+            #fmt["\ns.%s(%uu, {||\n%s\n})\n", emit_fn, i, serialize_expr]
         };
         (v_pat, stmts)
+    }
+}
+
+impl deserialize_methods for serialize_ctx {
+    fn mk_deserialize_named_item_fn(name: str) -> str {
+        self.exec_named_item_fn(name) {|item_ty|
+            let fname = self.mk_deserialize_ty_fn(item_ty);
+
+            let ty_str = ppaux::ty_to_str(self.tcx, item_ty);
+            check str::is_not_empty("::");
+            let namep = str::replace(name, "::", "_");
+            let item = #fmt["fn deserialize_%s\
+                                 <S:std::serialization::deserializer>\n\
+                                 (s: S) -> %s {\n\
+                                   %s(s)\
+                                 }", namep, ty_str, fname];
+            self.add_item(item);
+
+            fname
+        }
+    }
+
+    // Generates a function to serialize the given type.
+    // Returns an AST fragment that names this function.
+    fn deserialize_ty(ty0: ty::t) -> ast_expr {
+        let fname = self.mk_deserialize_ty_fn(ty0);
+        let ty0_str = ppaux::ty_to_str(self.tcx, ty0);
+        #fmt["\n/*%s*/ %s(s)\n", ty0_str, fname]
+    }
+
+    fn mk_deserialize_ty_fn(ty0: ty::t) -> str {
+        self.memoize(self.deserialize_tyfns, "deserialize", ty0) {|name|
+            self.mk_deserialize_ty_fn0(ty0, name)
+        }
+    }
+
+    fn mk_deserialize_ty_fn0(ty0: ty::t, name: str) {
+        let ty0_str = ppaux::ty_to_str(self.tcx, ty0);
+        let body_node = alt ty::get(ty0).struct {
+          ty::ty_nil | ty::ty_bot { "()" }
+
+          ty::ty_int(ast::ty_i)   { #fmt["s.read_int()"] }
+          ty::ty_int(ast::ty_i64) { #fmt["s.read_i64()"] }
+          ty::ty_int(ast::ty_i32) { #fmt["s.read_i32()"] }
+          ty::ty_int(ast::ty_i16) { #fmt["s.read_i16()"] }
+          ty::ty_int(ast::ty_i8)  { #fmt["s.read_i8()"]  }
+
+          ty::ty_int(ast::ty_char) { #fmt["s.read_char()"] }
+
+          ty::ty_uint(ast::ty_u)   { #fmt["s.read_uint()"] }
+          ty::ty_uint(ast::ty_u64) { #fmt["s.read_u64()"] }
+          ty::ty_uint(ast::ty_u32) { #fmt["s.read_u32()"] }
+          ty::ty_uint(ast::ty_u16) { #fmt["s.read_u16()"] }
+          ty::ty_uint(ast::ty_u8)  { #fmt["s.read_u8()"]  }
+
+          ty::ty_float(ast::ty_f64) { #fmt["s.read_f64()"] }
+          ty::ty_float(ast::ty_f32) { #fmt["s.read_f32()"] }
+          ty::ty_float(ast::ty_f)   { #fmt["s.read_float()"] }
+
+          ty::ty_bool { #fmt["s.read_bool()"] }
+
+          ty::ty_str { #fmt["s.read_str()"] }
+
+          ty::ty_enum(def_id, tps) { self.deserialize_enum(def_id, tps) }
+          ty::ty_box(mt) {
+            let s = self.deserialize_ty(mt.ty);
+            #fmt["\ns.read_box({||@%s})\n", s]
+          }
+          ty::ty_uniq(mt) {
+            let s = self.deserialize_ty(mt.ty);
+            #fmt["\ns.read_uniq({||~%s})\n", s]
+          }
+          ty::ty_vec(mt) {
+            let selem = self.deserialize_ty(mt.ty);
+            #fmt["s.read_vec({|len|\n\
+                    vec::init_fn(len, {|i|\n\
+                      s.read_vec_elt(i, {||\n\
+                        %s\n\
+                  })})})", selem]
+          }
+          ty::ty_class(_, _) {
+            fail "TODO--implement class";
+          }
+          ty::ty_rec(fields) {
+            let i = 0u;
+            let flds = vec::map(fields) {|field|
+                let f_name = field.ident;
+                let f_ty = field.mt.ty;
+                let rfld = self.deserialize_ty(f_ty);
+                let idx = i;
+                i += 1u;
+                #fmt["\n%s: s.read_rec_field(\"%s\", %uu, {||\n%s\n})\n",
+                     f_name, f_name, idx, rfld]
+            };
+            #fmt["\ns.read_rec({||{\n%s\n}})\n", str::connect(flds, ",")]
+          }
+          ty::ty_tup(tys) {
+            let rexpr = self.deserialize_arm("", "read_tup_elt", tys);
+            #fmt["\ns.read_tup(%uu, {||\n%s\n})\n", vec::len(tys), rexpr]
+          }
+          ty::ty_constr(t, _) {
+            self.deserialize_ty(t)
+          }
+          ty::ty_ptr(_) |
+          ty::ty_fn(_) |
+          ty::ty_iface(_, _) |
+          ty::ty_res(_, _, _) |
+          ty::ty_var(_) | ty::ty_param(_, _) |
+          ty::ty_self(_) | ty::ty_type | ty::ty_send_type |
+          ty::ty_opaque_closure_ptr(_) | ty::ty_opaque_box {
+            fail #fmt["Unhandled type %s", ty0_str]
+          }
+        };
+
+        let item = #fmt["/*%s*/\n\
+                         fn %s\n\
+                         <S:std::serialization::deserializer>(s: S)\n\
+                         -> %s {\n\
+                             %s\n\
+                         }", ty0_str, name, ty0_str, body_node];
+        self.add_item(item);
+    }
+
+    fn deserialize_enum(id: ast::def_id,
+                        tps: [ty::t]) -> ast_expr {
+        let variants = ty::substd_enum_variants(self.tcx, id, tps);
+
+        let arms = vec::init_fn(vec::len(variants)) {|v_id|
+            let variant = variants[v_id];
+            let item_path = ty::item_path(self.tcx, variant.id);
+            let v_path = ast_map::path_to_str(item_path);
+            let n_args = vec::len(variant.args);
+            let rexpr = {
+                if n_args == 0u {
+                    #fmt["\n%s\n", v_path]
+                } else {
+                    self.deserialize_arm(v_path, "read_enum_variant_arg",
+                                         variant.args)
+                }
+            };
+
+            #fmt["\n%uu { %s }\n", v_id, rexpr]
+        };
+
+        let enum_name = ast_map::path_to_str(ty::item_path(self.tcx, id));
+        #fmt["s.read_enum(\"%s\", {||\n\
+                s.read_enum_variant({|v_id|\n\
+                  alt check v_id {\n\
+                    %s\n\
+                  }\n\
+                })})", enum_name, str::connect(arms, "\n")]
+    }
+
+    fn deserialize_arm(v_path: str, read_fn: str, args: [ty::t])
+        -> ast_expr {
+        let exprs = vec::init_fn(vec::len(args)) {|i|
+            let rexpr = self.deserialize_ty(args[i]);
+            #fmt["\ns.%s(%uu, {||%s})\n", read_fn, i, rexpr]
+        };
+        #fmt["\n%s(%s)\n", v_path, str::connect(exprs, ",")]
     }
 }
 
@@ -294,13 +504,15 @@ fn main(argv: [str]) {
         // };
         {crate: crate,
          tcx: tcx,
-         tyfns: ty::new_ty_hash::<str>(),
+         serialize_tyfns: ty::new_ty_hash::<str>(),
+         deserialize_tyfns: ty::new_ty_hash::<str>(),
          mutable item_fns: [],
          mutable constants: []}
     };
 
     vec::iter(roots) {|root|
         sctx.mk_serialize_named_item_fn(root);
+        sctx.mk_deserialize_named_item_fn(root);
     }
 
     let stdout = io::stdout();

@@ -8,7 +8,10 @@ import rustc::middle::ast_map;
 export mk_pass;
 
 fn mk_pass() -> pass {
-    run
+    {
+        name: "tystr",
+        f: run
+    }
 }
 
 fn run(
@@ -23,7 +26,7 @@ fn run(
         fold_iface: fold_iface,
         fold_impl: fold_impl,
         fold_type: fold_type
-        with *fold::default_seq_fold(srv)
+        with *fold::default_any_fold(srv)
     });
     fold.fold_crate(fold, doc)
 }
@@ -48,7 +51,11 @@ fn get_fn_sig(srv: astsrv::srv, fn_id: doc::ast_id) -> option<str> {
         alt check ctxt.ast_map.get(fn_id) {
           ast_map::node_item(@{
             ident: ident,
-            node: ast::item_fn(decl, _, blk), _
+            node: ast::item_fn(decl, _, _), _
+          }, _) |
+          ast_map::node_native_item(@{
+            ident: ident,
+            node: ast::native_item_fn(decl, _), _
           }, _) {
             some(pprust::fun_to_str(decl, ident, []))
           }
@@ -60,6 +67,12 @@ fn get_fn_sig(srv: astsrv::srv, fn_id: doc::ast_id) -> option<str> {
 fn should_add_fn_sig() {
     let doc = test::mk_doc("fn a() -> int { }");
     assert doc.topmod.fns()[0].sig == some("fn a() -> int");
+}
+
+#[test]
+fn should_add_native_fn_sig() {
+    let doc = test::mk_doc("native mod a { fn a() -> int; }");
+    assert doc.topmod.nmods()[0].fns[0].sig == some("fn a() -> int");
 }
 
 fn merge_ret_ty(
@@ -83,6 +96,9 @@ fn get_ret_ty(srv: astsrv::srv, fn_id: doc::ast_id) -> option<str> {
         alt check ctxt.ast_map.get(fn_id) {
           ast_map::node_item(@{
             node: ast::item_fn(decl, _, _), _
+          }, _) |
+          ast_map::node_native_item(@{
+            node: ast::native_item_fn(decl, _), _
           }, _) {
             ret_ty_to_str(decl)
           }
@@ -111,6 +127,12 @@ fn should_not_add_nil_ret_type() {
     assert doc.topmod.fns()[0].return.ty == none;
 }
 
+#[test]
+fn should_add_native_fn_ret_types() {
+    let doc = test::mk_doc("native mod a { fn a() -> int; }");
+    assert doc.topmod.nmods()[0].fns[0].return.ty == some("int");
+}
+
 fn merge_arg_tys(
     srv: astsrv::srv,
     fn_id: doc::ast_id,
@@ -135,6 +157,9 @@ fn get_arg_tys(srv: astsrv::srv, fn_id: doc::ast_id) -> [(str, str)] {
           }, _) |
           ast_map::node_item(@{
             node: ast::item_res(decl, _, _, _, _), _
+          }, _) |
+          ast_map::node_native_item(@{
+            node: ast::native_item_fn(decl, _), _
           }, _) {
             decl_arg_tys(decl)
           }
@@ -143,7 +168,7 @@ fn get_arg_tys(srv: astsrv::srv, fn_id: doc::ast_id) -> [(str, str)] {
 }
 
 fn decl_arg_tys(decl: ast::fn_decl) -> [(str, str)] {
-    vec::map(decl.inputs) {|arg|
+    par::seqmap(decl.inputs) {|arg|
         (arg.ident, pprust::ty_to_str(arg.ty))
     }
 }
@@ -154,6 +179,12 @@ fn should_add_arg_types() {
     let fn_ = doc.topmod.fns()[0];
     assert fn_.args[0].ty == some("int");
     assert fn_.args[1].ty == some("bool");
+}
+
+#[test]
+fn should_add_native_fn_arg_types() {
+    let doc = test::mk_doc("native mod a { fn a(b: int); }");
+    assert doc.topmod.nmods()[0].fns[0].args[0].ty == some("int");
 }
 
 fn fold_const(
@@ -186,12 +217,13 @@ fn fold_enum(
     fold: fold::fold<astsrv::srv>,
     doc: doc::enumdoc
 ) -> doc::enumdoc {
+    let doc_id = doc.id();
     let srv = fold.ctxt;
 
     {
-        variants: vec::map(doc.variants) {|variant|
+        variants: par::anymap(doc.variants) {|variant|
             let sig = astsrv::exec(srv) {|ctxt|
-                alt check ctxt.ast_map.get(doc.id()) {
+                alt check ctxt.ast_map.get(doc_id) {
                   ast_map::node_item(@{
                     node: ast::item_enum(ast_variants, _), _
                   }, _) {
@@ -268,7 +300,7 @@ fn merge_methods(
     item_id: doc::ast_id,
     docs: [doc::methoddoc]
 ) -> [doc::methoddoc] {
-    vec::map(docs) {|doc|
+    par::anymap(docs) {|doc|
         {
             args: merge_method_arg_tys(
                 srv,
@@ -558,8 +590,9 @@ fn should_add_type_signatures() {
 #[cfg(test)]
 mod test {
     fn mk_doc(source: str) -> doc::cratedoc {
-        let srv = astsrv::mk_srv_from_str(source);
-        let doc = extract::from_srv(srv, "");
-        run(srv, doc)
+        astsrv::from_str(source) {|srv|
+            let doc = extract::from_srv(srv, "");
+            run(srv, doc)
+        }
     }
 }

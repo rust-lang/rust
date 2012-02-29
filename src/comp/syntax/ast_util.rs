@@ -19,6 +19,14 @@ fn path_name_i(idents: [ident]) -> str { str::connect(idents, "::") }
 
 fn local_def(id: node_id) -> def_id { ret {crate: local_crate, node: id}; }
 
+fn stmt_id(s: stmt) -> node_id {
+    alt s.node {
+      stmt_decl(_, id) { id }
+      stmt_expr(_, id) { id }
+      stmt_semi(_, id) { id }
+    }
+}
+
 fn variant_def_ids(d: def) -> {enm: def_id, var: def_id} {
     alt d { def_variant(enum_id, var_id) {
             ret {enm: enum_id, var: var_id}; }
@@ -27,11 +35,17 @@ fn variant_def_ids(d: def) -> {enm: def_id, var: def_id} {
 
 fn def_id_of_def(d: def) -> def_id {
     alt d {
-      def_fn(id, _) | def_self(id) | def_mod(id) |
-      def_native_mod(id) | def_const(id) | def_arg(id, _) | def_local(id) |
+      def_fn(id, _) | def_mod(id) |
+      def_native_mod(id) | def_const(id) |
       def_variant(_, id) | def_ty(id) | def_ty_param(id, _) |
-      def_binding(id) | def_use(id) | def_upvar(id, _, _) |
+      def_use(id) |
       def_class(id) | def_class_field(_, id) | def_class_method(_, id) { id }
+
+      def_self(id) | def_arg(id, _) | def_local(id) |
+      def_upvar(id, _, _) | def_binding(id) {
+        local_def(id)
+      }
+
       def_prim_ty(_) { fail; }
     }
 }
@@ -62,6 +76,15 @@ fn binop_to_str(op: binop) -> str {
 
 pure fn lazy_binop(b: binop) -> bool {
     alt b { and { true } or { true } _ { false } }
+}
+
+pure fn is_shift_binop(b: binop) -> bool {
+    alt b {
+      lsl { true }
+      lsr { true }
+      asr { true }
+      _ { false }
+    }
 }
 
 fn unop_to_str(op: unop) -> str {
@@ -301,7 +324,7 @@ fn lit_to_const(lit: @lit) -> const_val {
       lit_str(s) { const_str(s) }
       lit_int(n, _) { const_int(n) }
       lit_uint(n, _) { const_uint(n) }
-      lit_float(n, _) { const_float(float::from_str(n)) }
+      lit_float(n, _) { const_float(option::get(float::from_str(n))) }
       lit_nil { const_int(0i64) }
       lit_bool(b) { const_int(b as i64) }
     }

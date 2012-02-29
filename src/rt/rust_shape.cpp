@@ -447,10 +447,19 @@ log::walk_string2(const std::pair<ptr,ptr> &data) {
     ptr subdp = data.first;
     while (subdp < data.second) {
         char ch = *subdp;
-        if (isprint(ch))
-            out << ch;
-        else if (ch)
-            out << "\\x" << std::setw(2) << std::setfill('0') << (int)ch;
+        switch(ch) {
+        case '\n': out << "\\n"; break;
+        case '\r': out << "\\r"; break;
+        case '\t': out << "\\t"; break;
+        case '\\': out << "\\\\"; break;
+        case '"': out << "\\\""; break;
+        default:
+            if (isprint(ch)) {
+                out << ch;
+            } else if (ch) {
+                out << "\\x" << std::setw(2) << std::setfill('0') << (int)ch;
+            }
+        }
         ++subdp;
     }
 

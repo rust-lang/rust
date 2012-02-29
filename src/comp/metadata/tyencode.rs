@@ -14,6 +14,7 @@ export ac_no_abbrevs;
 export ac_use_abbrevs;
 export enc_ty;
 export enc_bounds;
+export enc_mode;
 
 type ctxt =
     // Def -> str Callback:
@@ -211,16 +212,20 @@ fn enc_proto(w: io::writer, proto: proto) {
     }
 }
 
+fn enc_mode(w: io::writer, cx: @ctxt, m: mode) {
+    alt ty::resolved_mode(cx.tcx, m) {
+      by_mutbl_ref { w.write_char('&'); }
+      by_move { w.write_char('-'); }
+      by_copy { w.write_char('+'); }
+      by_ref { w.write_char('='); }
+      by_val { w.write_char('#'); }
+    }
+}
+
 fn enc_ty_fn(w: io::writer, cx: @ctxt, ft: ty::fn_ty) {
     w.write_char('[');
     for arg: ty::arg in ft.inputs {
-        alt ty::resolved_mode(cx.tcx, arg.mode) {
-          by_mutbl_ref { w.write_char('&'); }
-          by_move { w.write_char('-'); }
-          by_copy { w.write_char('+'); }
-          by_ref { w.write_char('='); }
-          by_val { w.write_char('#'); }
-        }
+        enc_mode(w, cx, arg.mode);
         enc_ty(w, cx, arg.ty);
     }
     w.write_char(']');

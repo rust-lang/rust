@@ -157,28 +157,25 @@ fn span_to_lines(sp: span, cm: codemap::codemap) -> @file_lines {
 
 fn get_line(fm: filemap, line: int) -> str unsafe {
     let begin: uint = fm.lines[line].byte - fm.start_pos.byte;
-    let end = alt str::byte_index_from(*fm.src, '\n' as u8, begin,
-                                  str::len(*fm.src)) {
+    let end = alt str::find_char_from(*fm.src, '\n', begin) {
       some(e) { e }
       none { str::len(*fm.src) }
     };
-    str::unsafe::slice_bytes(*fm.src, begin, end)
+    str::slice(*fm.src, begin, end)
 }
 
 fn lookup_byte_offset(cm: codemap::codemap, chpos: uint)
-    -> {fm: filemap, pos: uint}
-{
-    fn lookup(pos: file_pos) -> uint { ret pos.ch; }
-    let {fm,line} = lookup_line(cm,chpos,lookup);
+    -> {fm: filemap, pos: uint} {
+    let {fm, line} = lookup_line(cm, chpos, {|pos| pos.ch});
     let line_offset = fm.lines[line].byte - fm.start_pos.byte;
     let col = chpos - fm.lines[line].ch;
-    let col_offset = str::substr_len_bytes(*fm.src, line_offset, col);
-    ret {fm: fm, pos: line_offset + col_offset};
+    let col_offset = str::count_bytes(*fm.src, line_offset, col);
+    {fm: fm, pos: line_offset + col_offset}
 }
 
 fn span_to_snippet(sp: span, cm: codemap::codemap) -> str {
-    let begin = lookup_byte_offset(cm,sp.lo);
-    let end   = lookup_byte_offset(cm,sp.hi);
+    let begin = lookup_byte_offset(cm, sp.lo);
+    let end = lookup_byte_offset(cm, sp.hi);
     assert begin.fm == end.fm;
     ret str::slice(*begin.fm.src, begin.pos, end.pos);
 }

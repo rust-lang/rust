@@ -12,6 +12,7 @@
 #include <set>
 #include <vector>
 #include <stdint.h>
+#include <ios>
 
 // The number of allocations Rust code performs before performing cycle
 // collection.
@@ -19,6 +20,8 @@
 
 // defined in rust_upcall.cpp:
 void upcall_s_free_shared_type_desc(type_desc *td);
+
+using namespace std;
 
 namespace cc {
 
@@ -77,9 +80,6 @@ class irc : public shape::data<irc,shape::ptr> {
             return;     // There can't be any outbound pointers from this.
 
         std::pair<uint8_t *,uint8_t *> data_range(get_vec_data_range(dp));
-        if (data_range.second - data_range.first > 100000)
-            abort();    // FIXME: Temporary sanity check.
-
         irc sub(*this, data_range.first);
         shape::ptr data_end = sub.end_dp = data_range.second;
         while (sub.dp < data_end) {
@@ -657,6 +657,25 @@ do_cc(rust_task *task) {
     mark::do_mark(task, roots, marked);
 
     sweep::do_sweep(task, marked);
+}
+
+void
+do_final_cc(rust_task *task) {
+    do_cc(task);
+
+    boxed_region *boxed = &task->boxed;
+    for (rust_opaque_box *box = boxed->first_live_alloc();
+         box != NULL;
+         box = box->next) {
+        cerr << "Unreclaimed object found at " << (void*) box << ": ";
+        const type_desc *td = box->td;
+        shape::arena arena;
+        shape::type_param *params = shape::type_param::from_tydesc(td, arena);
+        shape::log log(task, true, td->shape, params, td->shape_tables,
+                       (uint8_t*)box_body(box), cerr);
+        log.walk();
+        cerr << "\n";
+    }
 }
 
 void

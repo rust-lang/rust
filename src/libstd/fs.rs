@@ -33,19 +33,15 @@ A path or fragment of a filesystem path
 type path = str;
 
 fn splitDirnameBasename (pp: path) -> {dirname: str, basename: str} {
-    let ii;
-    alt str::rindex(pp, os_fs::path_sep) {
-        option::some(xx) { ii = xx; }
-        option::none {
-            alt str::rindex(pp, os_fs::alt_path_sep) {
-                option::some(xx) { ii = xx; }
-                option::none { ret {dirname: ".", basename: pp}; }
-            }
-        }
+    alt str::rfind(pp, {|ch|
+        ch == os_fs::path_sep || ch == os_fs::alt_path_sep
+    }) {
+      some(i) {
+        {dirname: str::slice(pp, 0u, i),
+         basename: str::slice(pp, i + 1u, str::len(pp))}
+      }
+      none { {dirname: ".", basename: pp} }
     }
-
-    ret {dirname: str::slice(pp, 0u, ii),
-         basename: str::slice(pp, ii + 1u, str::len(pp))};
 }
 
 /*
@@ -93,8 +89,8 @@ fn connect(pre: path, post: path) -> path unsafe {
     let pre_ = pre;
     let post_ = post;
     let sep = os_fs::path_sep as u8;
-    let pre_len = str::len_bytes(pre);
-    let post_len = str::len_bytes(post);
+    let pre_len  = str::len(pre);
+    let post_len = str::len(post);
     if pre_len > 1u && pre[pre_len-1u] == sep { str::unsafe::pop_byte(pre_); }
     if post_len > 1u && post[0] == sep { str::unsafe::shift_byte(post_); }
     ret pre_ + path_sep() + post_;
@@ -107,12 +103,11 @@ Connects a vector of path segments into a single path.
 
 Inserts path separators as needed.
 */
-fn connect_many(paths: [path]) : vec::is_not_empty(paths) -> path {
+fn connect_many(paths: [path]) -> path {
     ret if vec::len(paths) == 1u {
         paths[0]
     } else {
         let rest = vec::slice(paths, 1u, vec::len(paths));
-        check vec::is_not_empty(rest);
         connect(paths[0], connect_many(rest))
     }
 }
@@ -171,7 +166,7 @@ Lists the contents of a directory.
 */
 fn list_dir(p: path) -> [str] {
     let p = p;
-    let pl = str::len_bytes(p);
+    let pl = str::len(p);
     if pl == 0u || p[pl - 1u] as char != os_fs::path_sep { p += path_sep(); }
     let full_paths: [str] = [];
     for filename: str in os_fs::list_dir(p) {
@@ -255,16 +250,9 @@ the first element of the returned vector will be the drive letter
 followed by a colon.
 */
 fn split(p: path) -> [path] {
-    // FIXME: use UTF-8 safe str, and/or various other string formats
-    let split1 = str::split_byte(p, os_fs::path_sep as u8);
-    let split2 = [];
-    for s in split1 {
-        split2 += str::split_byte(s, os_fs::alt_path_sep as u8);
-    }
-
-    // filter out ""
-    let split3 = vec::filter(split2, {|seg| "" != seg});
-    ret split3;
+    str::split_nonempty(p, {|c|
+        c == os_fs::path_sep || c == os_fs::alt_path_sep
+    })
 }
 
 /*
@@ -277,13 +265,12 @@ path includes directory components then they are included in the filename part
 of the result pair.
 */
 fn splitext(p: path) -> (str, str) {
-    // FIXME: use UTF-8 safe str, and/or various other string formats
     if str::is_empty(p) { ("", "") }
     else {
-        let parts = str::split_byte(p, '.' as u8);
+        let parts = str::split_char(p, '.');
         if vec::len(parts) > 1u {
             let base = str::connect(vec::init(parts), ".");
-            let ext = "." + option::get(vec::last(parts));
+            let ext = "." + vec::last_total(parts);
 
             fn is_dotfile(base: str) -> bool {
                 str::is_empty(base)
@@ -337,7 +324,7 @@ fn normalize(p: path) -> path {
     let s = reabsolute(p, s);
     let s = reterminate(p, s);
 
-    let s = if str::len_bytes(s) == 0u {
+    let s = if str::len(s) == 0u {
         "."
     } else {
         s
@@ -404,7 +391,7 @@ fn normalize(p: path) -> path {
     }
 
     fn reterminate(orig: path, new: path) -> path {
-        let last = orig[str::len_bytes(orig) - 1u];
+        let last = orig[str::len(orig) - 1u];
         if last == os_fs::path_sep as u8
             || last == os_fs::path_sep as u8 {
             ret new + path_sep();

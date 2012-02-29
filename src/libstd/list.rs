@@ -140,11 +140,8 @@ Function: head
 
 Returns the first element of a list
 */
-pure fn head<T: copy>(ls: list<T>) : is_not_empty(ls) -> T {
-    alt ls {
-        cons(hd, _) { ret hd; }
-        nil { fail "list empty" }
-    }
+pure fn head<T: copy>(ls: list<T>) -> T {
+    alt check ls { cons(hd, _) { hd } }
 }
 
 /*
@@ -205,15 +202,12 @@ mod tests {
     fn test_from_vec() {
         let l = from_vec([0, 1, 2]);
 
-        check is_not_empty(l);
         assert (head(l) == 0);
 
         let tail_l = tail(l);
-        check is_not_empty(tail_l);
         assert (head(tail_l) == 1);
 
         let tail_tail_l = tail(tail_l);
-        check is_not_empty(tail_tail_l);
         assert (head(tail_tail_l) == 2);
     }
 
@@ -227,15 +221,12 @@ mod tests {
     fn test_from_vec_mut() {
         let l = from_vec([mutable 0, 1, 2]);
 
-        check is_not_empty(l);
         assert (head(l) == 0);
 
         let tail_l = tail(l);
-        check is_not_empty(tail_l);
         assert (head(tail_l) == 1);
 
         let tail_tail_l = tail(tail_l);
-        check is_not_empty(tail_tail_l);
         assert (head(tail_tail_l) == 2);
     }
 

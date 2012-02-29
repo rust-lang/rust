@@ -33,19 +33,21 @@ type ty_param = {ident: ident, id: node_id, bounds: @[ty_param_bound]};
 
 enum def {
     def_fn(def_id, purity),
-    def_self(def_id),
+    def_self(node_id),
     def_mod(def_id),
     def_native_mod(def_id),
     def_const(def_id),
-    def_arg(def_id, mode),
-    def_local(def_id),
+    def_arg(node_id, mode),
+    def_local(node_id),
     def_variant(def_id /* enum */, def_id /* variant */),
     def_ty(def_id),
     def_prim_ty(prim_ty),
     def_ty_param(def_id, uint),
-    def_binding(def_id),
+    def_binding(node_id),
     def_use(def_id),
-    def_upvar(def_id, @def, node_id), // node_id == expr_fn or expr_fn_block
+    def_upvar(node_id /* local id of closed over var */,
+              @def    /* closed over def */,
+              node_id /* expr node that creates the closure */),
     def_class(def_id),
     // first def_id is for parent class
     def_class_field(def_id, def_id),
@@ -108,9 +110,6 @@ enum pat_ {
     // which it is. The resolver determines this, and
     // records this pattern's node_id in an auxiliary
     // set (of "pat_idents that refer to nullary enums")
-    // After the resolution phase, code should never pattern-
-    // match on a pat directly! Always call pat_util::normalize_pat --
-    // it turns any pat_idents that refer to nullary enums into pat_enums.
     pat_ident(@path, option<@pat>),
     pat_enum(@path, [@pat]),
     pat_rec([field_pat], bool),

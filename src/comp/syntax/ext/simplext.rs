@@ -459,7 +459,7 @@ fn p_t_s_rec(cx: ext_ctxt, m: matchable, s: selector, b: binders) {
               }
             }
           }
-          /* TODO: handle embedded types and blocks, at least */
+          /* FIXME: handle embedded types and blocks, at least */
           expr_mac(mac) {
             p_t_s_r_mac(cx, mac, s, b);
           }

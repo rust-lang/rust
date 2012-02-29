@@ -10,7 +10,7 @@ is interpreted as the brief description.
 export mk_pass;
 
 fn mk_pass() -> pass {
-    desc_pass::mk_pass(str::trim)
+    desc_pass::mk_pass("trim", {|s| str::trim(s)})
 }
 
 #[test]
@@ -61,9 +61,10 @@ fn should_trim_failure_conditions() {
 #[cfg(test)]
 mod test {
     fn mk_doc(source: str) -> doc::cratedoc {
-        let srv = astsrv::mk_srv_from_str(source);
-        let doc = extract::from_srv(srv, "");
-        let doc = attr_pass::mk_pass()(srv, doc);
-        mk_pass()(srv, doc)
+        astsrv::from_str(source) {|srv|
+            let doc = extract::from_srv(srv, "");
+            let doc = attr_pass::mk_pass().f(srv, doc);
+            mk_pass().f(srv, doc)
+        }
     }
 }

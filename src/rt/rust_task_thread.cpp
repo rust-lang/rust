@@ -290,7 +290,7 @@ rust_task_thread::start_main_loop() {
 
     I(this, !extra_c_stack);
     if (cached_c_stack) {
-        destroy_stack(kernel, cached_c_stack);
+        destroy_stack(kernel->region(), cached_c_stack);
         cached_c_stack = NULL;
     }
 }
@@ -320,7 +320,6 @@ rust_task_thread::create_task(rust_task *spawner, const char *name,
 
 void rust_task_thread::run() {
     this->start_main_loop();
-    detach();
     sched->release_task_thread();
 }
 
@@ -370,14 +369,15 @@ void
 rust_task_thread::prepare_c_stack(rust_task *task) {
     I(this, !extra_c_stack);
     if (!cached_c_stack && !task->have_c_stack()) {
-        cached_c_stack = create_stack(kernel, C_STACK_SIZE);
+        cached_c_stack = create_stack(kernel->region(), C_STACK_SIZE);
+        prepare_valgrind_stack(cached_c_stack);
     }
 }
 
 void
 rust_task_thread::unprepare_c_stack() {
     if (extra_c_stack) {
-        destroy_stack(kernel, extra_c_stack);
+        destroy_stack(kernel->region(), extra_c_stack);
         extra_c_stack = NULL;
     }
 }

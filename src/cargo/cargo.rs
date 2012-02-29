@@ -6,9 +6,10 @@ use std;
 import rustc::syntax::{ast, codemap};
 import rustc::syntax::parse::parser;
 import rustc::util::filesearch::{get_cargo_root, get_cargo_root_nearest,
-                                 get_cargo_sysroot};
+                                 get_cargo_sysroot, libdir};
 import rustc::driver::diagnostic;
 
+import result::{ok, err};
 import std::fs;
 import std::io;
 import io::writer_util;
@@ -225,15 +226,15 @@ fn parse_source(name: str, j: json::json) -> source {
 fn try_parse_sources(filename: str, sources: map::hashmap<str, source>) {
     if !fs::path_exists(filename)  { ret; }
     let c = io::read_whole_file_str(filename);
-    let j = json::from_str(result::get(c));
-    alt j {
-        some(json::dict(_j)) {
-            _j.items { |k, v|
+    alt json::from_str(result::get(c)) {
+        ok(json::dict(j)) {
+            j.items { |k, v|
                 sources.insert(k, parse_source(k, v));
                 #debug("source: %s", k);
             }
         }
-        _ { fail "malformed sources.json"; }
+        ok(_) { fail "malformed sources.json"; }
+        err(e) { fail #fmt("%s:%u:%u: %s", filename, e.line, e.col, e.msg); }
     }
 }
 
@@ -278,7 +279,7 @@ fn load_one_source_package(&src: source, p: map::hashmap<str, json::json>) {
     let tags = [];
     alt p.find("tags") {
         some(json::list(js)) {
-            for j in *js {
+            for j in js {
                 alt j {
                     json::string(_j) { vec::grow(tags, 1u, _j); }
                     _ { }
@@ -316,10 +317,9 @@ fn load_source_packages(&c: cargo, &src: source) {
     let pkgfile = fs::connect(dir, "packages.json");
     if !fs::path_exists(pkgfile) { ret; }
     let pkgstr = io::read_whole_file_str(pkgfile);
-    let j = json::from_str(result::get(pkgstr));
-    alt j {
-        some(json::list(js)) {
-            for _j: json::json in *js {
+    alt json::from_str(result::get(pkgstr)) {
+        ok(json::list(js)) {
+            for _j: json::json in js {
                 alt _j {
                     json::dict(_p) {
                         load_one_source_package(src, _p);
@@ -331,8 +331,12 @@ fn load_source_packages(&c: cargo, &src: source) {
                 }
             }
         }
-        _ {
-            warn("Malformed source json: " + src.name);
+        ok(_) {
+            warn("Malformed source json: " + src.name +
+                 "(packages is not a list)");
+        }
+        err(e) {
+            warn(#fmt("%s:%u:%u: %s", src.name, e.line, e.col, e.msg));
         }
     };
 }
@@ -346,39 +350,35 @@ fn build_cargo_options(argv: [str]) -> options {
     };
 
     let test = opt_present(match, "test");
-    let mode = if opt_present(match, "G") {
-        if opt_present(match, "mode") { fail "--mode and -G both provided"; }
-        if opt_present(match, "g") { fail "-G and -g both provided"; }
-        system_mode
-    } else if opt_present(match, "g") {
-        if opt_present(match, "mode") { fail "--mode and -g both provided"; }
-        if opt_present(match, "G") { fail "-G and -g both provided"; }
-        user_mode
-    } else if opt_present(match, "mode") {
-        alt getopts::opt_str(match, "mode") {
-            "system" { system_mode }
-            "user" { user_mode }
-            "local" { local_mode }
-            _ { fail "argument to `mode` must be one of `system`" +
-                ", `user`, or `normal`";
-            }
-        }
-    } else {
-        local_mode
-    };
+    let G = opt_present(match, "G");
+    let g = opt_present(match, "g");
+    let m = opt_present(match, "mode");
+    let is_install = vec::len(match.free) > 1u && match.free[1] == "install";
 
-    if mode == system_mode {
-        // FIXME: Per discussion on #1760, we need to think about how
-        // system mode works. It should install files to the normal
-        // sysroot paths, but it also needsd an area to place various
-        // cargo configuration and work files.
-        fail "system mode does not exist yet";
-    }
+    if G && g { fail "-G and -g both provided"; }
+    if g && m { fail "--mode and -g both provided"; }
+    if G && m { fail "--mode and -G both provided"; }
+
+    let mode = if is_install {
+        if G { system_mode }
+        else if g { user_mode }
+        else if m {
+            alt getopts::opt_str(match, "mode") {
+                "system" { system_mode }
+                "user" { user_mode }
+                "local" { local_mode }
+                _ { fail "argument to `mode` must be one of `system`" +
+                    ", `user`, or `local`";
+                }
+            }
+        } else { local_mode }
+    } else { system_mode };
 
     {test: test, mode: mode, free: match.free}
 }
 
 fn configure(opts: options) -> cargo {
+    let syscargo = result::get(get_cargo_sysroot());
     let get_cargo_dir = alt opts.mode {
         system_mode { get_cargo_sysroot }
         user_mode { get_cargo_root }
@@ -391,15 +391,15 @@ fn configure(opts: options) -> cargo {
     };
 
     let sources = map::new_str_hash::<source>();
-    try_parse_sources(fs::connect(p, "sources.json"), sources);
-    try_parse_sources(fs::connect(p, "local-sources.json"), sources);
+    try_parse_sources(fs::connect(syscargo, "sources.json"), sources);
+    try_parse_sources(fs::connect(syscargo, "local-sources.json"), sources);
     let c = {
         pgp: pgp::supported(),
         root: p,
         bindir: fs::connect(p, "bin"),
         libdir: fs::connect(p, "lib"),
         workdir: fs::connect(p, "work"),
-        sourcedir: fs::connect(p, "sources"),
+        sourcedir: fs::connect(syscargo, "sources"),
         sources: sources,
         opts: opts
     };
@@ -471,10 +471,31 @@ fn install_one_crate(c: cargo, _path: str, cf: str, _p: pkg) {
             #debug("  bin: %s", ct);
             // FIXME: need libstd fs::copy or something
             run::run_program("cp", [ct, c.bindir]);
+            if c.opts.mode == system_mode {
+                install_one_crate_to_sysroot(ct, "bin");
+            }
         } else {
             #debug("  lib: %s", ct);
             run::run_program("cp", [ct, c.libdir]);
+            if c.opts.mode == system_mode {
+                install_one_crate_to_sysroot(ct, libdir());
+            }
         }
+    }
+}
+
+fn install_one_crate_to_sysroot(ct: str, target: str) {
+    alt os::get_exe_path() {
+        some(_path) {
+            let path = [_path, "..", target];
+            check vec::is_not_empty(path);
+            let target_dir = fs::normalize(fs::connect_many(path));
+            let p = run::program_output("cp", [ct, target_dir]);
+            if p.status != 0 {
+                warn(#fmt["Copying %s to %s is failed", ct, target_dir]);
+            }
+        }
+        none { }
     }
 }
 
@@ -669,7 +690,7 @@ fn cmd_install(c: cargo) unsafe {
 
     if str::starts_with(target, "uuid:") {
         let uuid = rest(target, 5u);
-        alt str::index(uuid, '/') {
+        alt str::find_char(uuid, '/') {
             option::some(idx) {
                let source = str::slice(uuid, 0u, idx);
                uuid = str::slice(uuid, idx + 1u, str::len(uuid));
@@ -681,7 +702,7 @@ fn cmd_install(c: cargo) unsafe {
         }
     } else {
         let name = target;
-        alt str::index(name, '/') {
+        alt str::find_char(name, '/') {
             option::some(idx) {
                let source = str::slice(name, 0u, idx);
                name = str::slice(name, idx + 1u, str::len(name));
@@ -831,8 +852,8 @@ fn cmd_usage() {
           "
 
     init                                          Set up .cargo
-    install [--test] [source/]package-name        Install by name
-    install [--test] uuid:[source/]package-uuid   Install by uuid
+    install [options] [source/]package-name       Install by name
+    install [options] uuid:[source/]package-uuid  Install by uuid
     list [source]                                 List packages
     search <name | '*'> [tags...]                 Search packages
     sync                                          Sync all sources
@@ -840,14 +861,16 @@ fn cmd_usage() {
 
 Options:
 
+  cargo install
+
     --mode=[system,user,local]   change mode as (system/user/local)
     -g                           equivalent to --mode=user
     -G                           equivalent to --mode=system
 
 NOTE:
-This command creates/uses local-level .cargo by default.
-To create/use user-level .cargo, use option -g/--mode=user.
-To create/use system-level .cargo, use option -G/--mode=system.
+\"cargo install\" installs bin/libs to local-level .cargo by default.
+To install them into user-level .cargo,  use option -g/--mode=user.
+To install them into bin/lib on sysroot, use option -G/--mode=system.
 ");
 }
 

@@ -224,8 +224,7 @@ fn find_pre_post_state_loop(fcx: fn_ctxt, pres: prestate, l: @local,
     // Make sure the index vars are considered initialized
     // in the body
     let index_post = tritv_clone(expr_poststate(fcx.ccx, index));
-    pat_bindings(pat_util::normalize_pat(fcx.ccx.tcx, l.node.pat))
-      {|p_id, _s, n|
+    pat_bindings(fcx.ccx.tcx.def_map, l.node.pat) {|p_id, _s, n|
        set_in_poststate_ident(fcx, p_id, path_to_ident(n), index_post);
     };
 
@@ -247,9 +246,8 @@ fn gen_if_local(fcx: fn_ctxt, p: poststate, e: @expr) -> bool {
     alt e.node {
       expr_path(pth) {
         alt fcx.ccx.tcx.def_map.find(e.id) {
-          some(def_local(loc)) {
-            ret set_in_poststate_ident(fcx, loc.node,
-                                       path_to_ident(pth), p);
+          some(def_local(nid)) {
+            ret set_in_poststate_ident(fcx, nid, path_to_ident(pth), p);
           }
           _ { ret false; }
         }

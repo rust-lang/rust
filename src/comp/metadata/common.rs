@@ -76,6 +76,30 @@ const tag_path_len: uint = 0x41u;
 const tag_path_elt_mod: uint = 0x42u;
 const tag_path_elt_name: uint = 0x43u;
 
+// used to encode crate_ctxt side tables
+enum astencode_tag { // Reserves 0x50 -- 0x6f
+    tag_ast = 0x50,
+
+    tag_tree = 0x51,
+
+    tag_id_range = 0x52,
+
+    tag_table = 0x53,
+    tag_table_id = 0x54,
+    tag_table_val = 0x55,
+    tag_table_def = 0x56,
+    tag_table_node_type = 0x57,
+    tag_table_node_type_subst = 0x58,
+    tag_table_freevars = 0x59,
+    tag_table_tcache,
+    tag_table_param_bounds,
+    tag_table_inferred_modes,
+    tag_table_mutbl,
+    tag_table_copy,
+    tag_table_last_use,
+    tag_table_method_map,
+    tag_table_dict_map
+}
 
 // djb's cdb hashes.
 fn hash_node_id(&&node_id: int) -> uint { ret 177573u ^ (node_id as uint); }

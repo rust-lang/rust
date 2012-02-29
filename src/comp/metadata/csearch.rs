@@ -5,6 +5,7 @@ import syntax::ast_util;
 import middle::{ty, ast_map};
 import option::{some, none};
 import driver::session;
+import middle::trans::common::maps;
 
 export get_symbol;
 export get_type_param_count;
@@ -16,6 +17,7 @@ export get_iface_methods;
 export get_type;
 export get_impl_iface;
 export get_item_path;
+export maybe_get_item_ast;
 
 fn get_symbol(cstore: cstore::cstore, def: ast::def_id) -> str {
     let cdata = cstore::get_crate_data(cstore, def.crate).data;
@@ -71,6 +73,16 @@ fn get_item_path(tcx: ty::ctxt, def: ast::def_id) -> ast_map::path {
     let cdata = cstore::get_crate_data(cstore, def.crate);
     let path = decoder::get_item_path(cdata, def.node);
     [ast_map::path_mod(cdata.name)] + path
+}
+
+// Finds the AST for this item in the crate metadata, if any.  If the item was
+// not marked for inlining, then the AST will not be present and hence none
+// will be returned.
+fn maybe_get_item_ast(tcx: ty::ctxt, maps: maps, def: ast::def_id)
+    -> option<@ast::item> {
+    let cstore = tcx.sess.cstore;
+    let cdata = cstore::get_crate_data(cstore, def.crate);
+    decoder::maybe_get_item_ast(cdata, tcx, maps, def.node)
 }
 
 fn get_enum_variants(tcx: ty::ctxt, def: ast::def_id) -> [ty::variant_info] {

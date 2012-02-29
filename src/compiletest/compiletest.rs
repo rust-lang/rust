@@ -35,7 +35,8 @@ fn parse_config(args: [str]) -> config {
     let opts =
         [getopts::reqopt("compile-lib-path"), getopts::reqopt("run-lib-path"),
          getopts::reqopt("rustc-path"), getopts::reqopt("src-base"),
-         getopts::reqopt("build-base"), getopts::reqopt("stage-id"),
+         getopts::reqopt("build-base"), getopts::reqopt("aux-base"),
+         getopts::reqopt("stage-id"),
          getopts::reqopt("mode"), getopts::optflag("ignored"),
          getopts::optopt("runtool"), getopts::optopt("rustcflags"),
          getopts::optflag("verbose")];
@@ -53,6 +54,7 @@ fn parse_config(args: [str]) -> config {
          rustc_path: getopts::opt_str(match, "rustc-path"),
          src_base: getopts::opt_str(match, "src-base"),
          build_base: getopts::opt_str(match, "build-base"),
+         aux_base: getopts::opt_str(match, "aux-base"),
          stage_id: getopts::opt_str(match, "stage-id"),
          mode: str_mode(getopts::opt_str(match, "mode")),
          run_ignored: getopts::opt_present(match, "ignored"),

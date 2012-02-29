@@ -7,21 +7,24 @@ import rustc::middle::ast_map;
 export mk_pass;
 
 fn mk_pass() -> pass {
-    run
+    {
+        name: "prune_unexported",
+        f: run
+    }
 }
 
 fn run(srv: astsrv::srv, doc: doc::cratedoc) -> doc::cratedoc {
     let fold = fold::fold({
         fold_mod: fold_mod
-        with *fold::default_seq_fold(srv)
+        with *fold::default_any_fold(srv)
     });
     fold.fold_crate(fold, doc)
 }
 
 fn fold_mod(fold: fold::fold<astsrv::srv>, doc: doc::moddoc) -> doc::moddoc {
-    let doc = fold::default_seq_fold_mod(fold, doc);
+    let doc = fold::default_any_fold_mod(fold, doc);
     {
-        items: ~exported_items(fold.ctxt, doc)
+        items: exported_items(fold.ctxt, doc)
         with doc
     }
 }
@@ -66,7 +69,7 @@ fn exported_items_from(
     doc: doc::moddoc,
     is_exported: fn(astsrv::srv, str) -> bool
 ) -> [doc::itemtag] {
-    vec::filter_map(*doc.items) { |itemtag|
+    vec::filter_map(doc.items) { |itemtag|
         let itemtag = alt itemtag {
           doc::enumtag(enumdoc) {
             // Also need to check variant exportedness
@@ -77,7 +80,8 @@ fn exported_items_from(
           }
           _ { itemtag }
         };
-        if is_exported(srv, itemtag.name()) {
+
+        if itemtag.item().reexport || is_exported(srv, itemtag.name()) {
             some(itemtag)
         } else {
             none
@@ -226,11 +230,27 @@ fn should_prune_unexported_types() {
     assert vec::is_empty(doc.topmod.types());
 }
 
+#[test]
+fn should_not_prune_reexports() {
+    fn mk_doc(source: str) -> doc::cratedoc {
+        astsrv::from_str(source) {|srv|
+            let doc = extract::from_srv(srv, "");
+            let doc = reexport_pass::mk_pass().f(srv, doc);
+            run(srv, doc)
+        }
+    }
+    let doc = mk_doc("import a::b; \
+                      export b; \
+                      mod a { fn b() { } }");
+    assert vec::is_not_empty(doc.topmod.fns());
+}
+
 #[cfg(test)]
 mod test {
     fn mk_doc(source: str) -> doc::cratedoc {
-        let srv = astsrv::mk_srv_from_str(source);
-        let doc = extract::from_srv(srv, "");
-        run(srv, doc)
+        astsrv::from_str(source) {|srv|
+            let doc = extract::from_srv(srv, "");
+            run(srv, doc)
+        }
     }
 }

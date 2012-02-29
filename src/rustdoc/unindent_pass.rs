@@ -14,7 +14,7 @@ middle of a line, and each of the following lines is indented.
 export mk_pass;
 
 fn mk_pass() -> pass {
-    desc_pass::mk_pass(unindent)
+    desc_pass::mk_pass("unindent", unindent)
 }
 
 fn unindent(s: str) -> str {
@@ -63,11 +63,11 @@ fn unindent(s: str) -> str {
 
     if check vec::is_not_empty(lines) {
         let unindented = [str::trim(vec::head(lines))]
-            + vec::map(vec::tail(lines)) {|line|
+            + par::anymap(vec::tail(lines)) {|line|
             if str::is_whitespace(line) {
                 line
             } else {
-                assert str::len_bytes(line) >= min_indent;
+                assert str::len(line) >= min_indent;
                 str::slice(line, min_indent, str::len(line))
             }
         };

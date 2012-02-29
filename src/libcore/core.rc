@@ -33,10 +33,12 @@ export uint, u8, u16, u32, u64;
 export float, f32, f64;
 export box, char, str, ptr, vec, bool;
 export either, option, result, iter;
-export ctypes, sys, unsafe, comm, task, logging;
+export ctypes, sys, unsafe, logging;
+export comm, task, future;
 export extfmt;
 export math, bessel;
 export tuple;
+export to_str;
 
 // Built-in-type support modules
 
@@ -73,8 +75,13 @@ mod result;
 mod tuple;
 mod iter;
 
+// Useful ifaces
+
+mod to_str;
+
 // Runtime and language-primitive support
 
+mod libc;
 mod ctypes;
 mod math;
 mod cmath;

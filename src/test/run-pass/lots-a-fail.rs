@@ -9,12 +9,13 @@ fn die() {
 }
 
 fn iloop() {
-    task::unsupervise();
     task::spawn {|| die(); };
 }
 
 fn main() {
     uint::range(0u, 100u) {|_i|
-        task::spawn {|| iloop(); };
+        let builder = task::mk_task_builder();
+        task::unsupervise(builder);
+        task::run(builder) {|| iloop(); };
     }
 }

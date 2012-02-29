@@ -48,8 +48,6 @@ fn mk_filesearch(maybe_sysroot: option<fs::path>,
                   result::ok(p) { [p] }
                   result::err(p) { [] }
                 }
-                + [fs::connect(fs::connect(self.sysroot, ".cargo"),
-                               libdir())]
         }
         fn get_target_lib_path() -> fs::path {
             make_target_lib_path(self.sysroot, self.target_triple)
@@ -91,7 +89,6 @@ fn relative_target_lib_path(target_triple: str) -> [fs::path] {
 fn make_target_lib_path(sysroot: fs::path,
                         target_triple: str) -> fs::path {
     let path = [sysroot] + relative_target_lib_path(target_triple);
-    check vec::is_not_empty(path);
     let path = fs::connect_many(path);
     ret path;
 }
@@ -113,7 +110,8 @@ fn get_sysroot(maybe_sysroot: option<fs::path>) -> fs::path {
 }
 
 fn get_cargo_sysroot() -> result::t<fs::path, str> {
-    result::ok(fs::connect(get_default_sysroot(),  ".cargo"))
+    let path = [get_default_sysroot(), libdir(), "cargo"];
+    result::ok(fs::connect_many(path))
 }
 
 fn get_cargo_root() -> result::t<fs::path, str> {

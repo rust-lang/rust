@@ -12,6 +12,7 @@
 use std;
 use rustc;
 
+mod config;
 mod parse;
 mod extract;
 mod attr_parser;
@@ -33,3 +34,5 @@ mod demo;
 mod sort_pass;
 mod sort_item_name_pass;
 mod sort_item_type_pass;
+mod reexport_pass;
+mod par;

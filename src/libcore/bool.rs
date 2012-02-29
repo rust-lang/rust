@@ -59,11 +59,11 @@ pure fn is_false(v: t) -> bool { !v }
 #[doc(
   brief = "Parse logic value from `s`"
 )]
-pure fn from_str(s: str) -> t {
+pure fn from_str(s: str) -> option<t> {
     alt check s {
-      "true" { true }
-      "false" { false }
-      _ { fail "'" + s + "' is not a valid boolean string"; }
+      "true" { some(true) }
+      "false" { some(false) }
+      _ { none }
     }
 }
 
@@ -89,7 +89,7 @@ pure fn to_bit(v: t) -> u8 { if v { 1u8 } else { 0u8 } }
 #[test]
 fn test_bool_from_str() {
     all_values { |v|
-        assert v == from_str(bool::to_str(v))
+        assert some(v) == from_str(bool::to_str(v))
     }
 }
 

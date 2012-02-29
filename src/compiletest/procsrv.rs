@@ -54,11 +54,11 @@ fn run(lib_path: str, prog: str, args: [str],
     writeclose(pipe_in.out, input);
     let p = comm::port();
     let ch = comm::chan(p);
-    task::spawn_sched(1u) {||
+    task::spawn_sched(task::single_threaded) {||
         let errput = readclose(pipe_err.in);
         comm::send(ch, (2, errput));
     };
-    task::spawn_sched(1u) {||
+    task::spawn_sched(task::single_threaded) {||
         let output = readclose(pipe_out.in);
         comm::send(ch, (1, output));
     };

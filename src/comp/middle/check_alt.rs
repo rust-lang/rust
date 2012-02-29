@@ -10,11 +10,11 @@ import middle::ty;
 import middle::ty::*;
 
 fn check_crate(tcx: ty::ctxt, crate: @crate) {
-    let v =
-        @{visit_expr: bind check_expr(tcx, _, _, _),
-          visit_local: bind check_local(tcx, _, _, _)
-             with *visit::default_visitor::<()>()};
-    visit::visit_crate(*crate, (), visit::mk_vt(v));
+    visit::visit_crate(*crate, (), visit::mk_vt(@{
+        visit_expr: bind check_expr(tcx, _, _, _),
+        visit_local: bind check_local(tcx, _, _, _)
+        with *visit::default_visitor::<()>()
+    }));
     tcx.sess.abort_if_errors();
 }
 
@@ -22,7 +22,6 @@ fn check_expr(tcx: ty::ctxt, ex: @expr, &&s: (), v: visit::vt<()>) {
     visit::visit_expr(ex, s, v);
     alt ex.node {
       expr_alt(scrut, arms, mode) {
-        let arms = pat_util::normalize_arms(tcx, arms);
         check_arms(tcx, arms);
         /* Check for exhaustiveness */
         if mode == alt_exhaustive {
@@ -66,8 +65,6 @@ fn raw_pat(p: @pat) -> @pat {
     }
 }
 
-// Precondition: patterns have been normalized
-// (not checked statically yet)
 fn check_exhaustive(tcx: ty::ctxt, sp: span, pats: [@pat]) {
     if pats.len() == 0u {
         tcx.sess.span_err(sp, "non-exhaustive patterns");
@@ -216,11 +213,13 @@ fn pattern_supersedes(tcx: ty::ctxt, a: @pat, b: @pat) -> bool {
 
     alt a.node {
       pat_ident(_, some(p)) { pattern_supersedes(tcx, p, b) }
-      pat_wild | pat_ident(_, none) { true }
-      pat_lit(la) {
-        alt b.node {
-          pat_lit(lb) { lit_expr_eq(la, lb) }
-          _ { false }
+      pat_wild { true }
+      pat_ident(_, none) {
+        let opt_def_a = tcx.def_map.find(a.id);
+        alt opt_def_a {
+          some(def_variant(_, _)) { opt_def_a == tcx.def_map.find(b.id) }
+          // This is a binding
+          _ { true }
         }
       }
       pat_enum(va, suba) {
@@ -256,6 +255,12 @@ fn pattern_supersedes(tcx: ty::ctxt, a: @pat, b: @pat) -> bool {
           _ { pattern_supersedes(tcx, suba, b) }
         }
       }
+      pat_lit(la) {
+        alt b.node {
+          pat_lit(lb) { lit_expr_eq(la, lb) }
+          _ { false }
+        }
+      }
       pat_range(begina, enda) {
         alt b.node {
           pat_lit(lb) {
@@ -281,12 +286,19 @@ fn check_local(tcx: ty::ctxt, loc: @local, &&s: (), v: visit::vt<()>) {
 }
 
 fn is_refutable(tcx: ty::ctxt, pat: @pat) -> bool {
-    alt normalize_pat(tcx, pat).node {
+    alt tcx.def_map.find(pat.id) {
+      some(def_variant(enum_id, var_id)) {
+        if vec::len(*ty::enum_variants(tcx, enum_id)) != 1u { ret true; }
+      }
+      _ {}
+    }
+
+    alt pat.node {
       pat_box(sub) | pat_uniq(sub) | pat_ident(_, some(sub)) {
         is_refutable(tcx, sub)
       }
       pat_wild | pat_ident(_, none) { false }
-      pat_lit(_) { true }
+      pat_lit(_) | pat_range(_, _) { true }
       pat_rec(fields, _) {
         for it: field_pat in fields {
             if is_refutable(tcx, it.pat) { ret true; }
@@ -298,12 +310,9 @@ fn is_refutable(tcx: ty::ctxt, pat: @pat) -> bool {
         false
       }
       pat_enum(_, args) {
-        let vdef = variant_def_ids(tcx.def_map.get(pat.id));
-        if vec::len(*ty::enum_variants(tcx, vdef.enm)) != 1u { ret true; }
         for p: @pat in args { if is_refutable(tcx, p) { ret true; } }
         false
       }
-      pat_range(_, _) { true }
     }
 }
 

@@ -6,7 +6,8 @@ import lib::llvm::{ValueRef, TypeRef};
 import common::*;
 import build::*;
 import base::*;
-import middle::freevars::{get_freevars, freevar_info};
+import type_of::*;
+import type_of::type_of; // Issue #1873
 import back::abi;
 import syntax::codemap::span;
 import syntax::print::pprust::expr_to_str;
@@ -101,7 +102,7 @@ enum environment_value {
     env_ref(ValueRef, ty::t, lval_kind),
 }
 
-fn ev_to_str(ccx: @crate_ctxt, ev: environment_value) -> str {
+fn ev_to_str(ccx: crate_ctxt, ev: environment_value) -> str {
     alt ev {
       env_expr(ex, _) { expr_to_str(ex) }
       env_copy(v, t, lk) { #fmt("copy(%s,%s)", val_str(ccx.tn, v),
@@ -167,12 +168,11 @@ fn allocate_cbox(bcx: block,
                  cdata_ty: ty::t)
     -> (block, ValueRef, [ValueRef]) {
 
-    // let ccx = bcx_ccx(bcx);
-    let ccx = bcx_ccx(bcx), tcx = ccx.tcx;
+    let ccx = bcx.ccx(), tcx = ccx.tcx;
 
     fn nuke_ref_count(bcx: block, box: ValueRef) {
         // Initialize ref count to arbitrary value for debugging:
-        let ccx = bcx_ccx(bcx);
+        let ccx = bcx.ccx();
         let box = PointerCast(bcx, box, T_opaque_box_ptr(ccx));
         let ref_cnt = GEPi(bcx, box, [0, abi::box_field_refcnt]);
         let rc = C_int(ccx, 0x12345678);
@@ -183,7 +183,7 @@ fn allocate_cbox(bcx: block,
                          cdata_ty: ty::t,
                          box: ValueRef,
                          &ti: option::t<@tydesc_info>) -> block {
-        let ccx = bcx_ccx(bcx);
+        let ccx = bcx.ccx();
         let bound_tydesc = GEPi(bcx, box, [0, abi::box_field_tydesc]);
         let {bcx, val: td} = base::get_tydesc(bcx, cdata_ty, true, ti);
         let td = Call(bcx, ccx.upcalls.create_shared_type_desc, [td]);
@@ -228,7 +228,7 @@ type closure_result = {
 };
 
 fn cast_if_we_can(bcx: block, llbox: ValueRef, t: ty::t) -> ValueRef {
-    let ccx = bcx_ccx(bcx);
+    let ccx = bcx.ccx();
     if check type_has_static_size(ccx, t) {
         let llty = type_of(ccx, t);
         ret PointerCast(bcx, llbox, llty);
@@ -255,13 +255,12 @@ fn store_environment(
             td
           }
           ty::ck_uniq {
-            Call(bcx, bcx_ccx(bcx).upcalls.create_shared_type_desc, [td])
+            Call(bcx, bcx.ccx().upcalls.create_shared_type_desc, [td])
           }
         };
     }
 
-    let ccx = bcx_ccx(bcx);
-    let tcx = bcx_tcx(bcx);
+    let ccx = bcx.ccx(), tcx = ccx.tcx;
 
     // compute the shape of the closure
     let (cdata_ty, bound_tys) =
@@ -277,6 +276,7 @@ fn store_environment(
     let cbox_ty = tuplify_box_ty(tcx, cdata_ty);
     let cboxptr_ty = ty::mk_ptr(tcx, {ty:cbox_ty, mutbl:ast::m_imm});
     let llbox = cast_if_we_can(bcx, llbox, cboxptr_ty);
+    #debug["tuplify_box_ty = %s", ty_to_str(tcx, cbox_ty)];
 
     // If necessary, copy tydescs describing type parameters into the
     // appropriate slot in the closure.
@@ -298,8 +298,9 @@ fn store_environment(
     }
 
     // Copy expr values into boxed bindings.
-    // Silly check
     vec::iteri(bound_values) { |i, bv|
+        #debug["Copy %s into closure", ev_to_str(ccx, bv)];
+
         if (!ccx.sess.opts.no_asm_comments) {
             add_comment(bcx, #fmt("Copy %s into closure",
                                   ev_to_str(ccx, bv)));
@@ -351,15 +352,15 @@ fn store_environment(
 // collects the upvars and packages them up for store_environment.
 fn build_closure(bcx0: block,
                  cap_vars: [capture::capture_var],
-                 ck: ty::closure_kind)
-    -> closure_result {
+                 ck: ty::closure_kind,
+                 id: ast::node_id) -> closure_result {
     // If we need to, package up the iterator body to call
     let env_vals = [];
-    let bcx = bcx0;
-    let tcx = bcx_tcx(bcx);
+    let bcx = bcx0, ccx = bcx.ccx(), tcx = ccx.tcx;
 
     // Package up the captured upvars
     vec::iter(cap_vars) { |cap_var|
+        #debug["Building closure: captured variable %?", cap_var];
         let lv = trans_local_var(bcx, cap_var.def);
         let nid = ast_util::def_id_of_def(cap_var.def).node;
         let ty = node_id_type(bcx, nid);
@@ -370,13 +371,20 @@ fn build_closure(bcx0: block,
             env_vals += [env_ref(lv.val, ty, lv.kind)];
           }
           capture::cap_copy {
-            env_vals += [env_copy(lv.val, ty, lv.kind)];
+            let mv = alt check ccx.maps.last_uses.find(id) {
+              none { false }
+              some(last_use::closes_over(vars)) { vec::contains(vars, nid) }
+            };
+            if mv { env_vals += [env_move(lv.val, ty, lv.kind)]; }
+            else { env_vals += [env_copy(lv.val, ty, lv.kind)]; }
           }
           capture::cap_move {
             env_vals += [env_move(lv.val, ty, lv.kind)];
           }
           capture::cap_drop {
+            assert lv.kind == owned;
             bcx = drop_ty(bcx, lv.val, ty);
+            bcx = zero_alloca(bcx, lv.val, ty);
           }
         }
     }
@@ -387,7 +395,7 @@ fn build_closure(bcx0: block,
 // and a list of upvars, generate code to load and populate the environment
 // with the upvars and type descriptors.
 fn load_environment(enclosing_cx: block,
-                    fcx: @fn_ctxt,
+                    fcx: fn_ctxt,
                     cdata_ty: ty::t,
                     cap_vars: [capture::capture_var],
                     ck: ty::closure_kind) {
@@ -449,7 +457,7 @@ fn trans_expr_fn(bcx: block,
                  cap_clause: ast::capture_clause,
                  dest: dest) -> block {
     if dest == ignore { ret bcx; }
-    let ccx = bcx_ccx(bcx), bcx = bcx;
+    let ccx = bcx.ccx(), bcx = bcx;
     let fty = node_id_type(bcx, id);
     let llfnty = type_of_fn_from_ty(ccx, fty, []);
     let sub_path = bcx.fcx.path + [path_name("anon")];
@@ -460,7 +468,7 @@ fn trans_expr_fn(bcx: block,
     let trans_closure_env = fn@(ck: ty::closure_kind) -> ValueRef {
         let cap_vars = capture::compute_capture_vars(
             ccx.tcx, id, proto, cap_clause);
-        let {llbox, cdata_ty, bcx} = build_closure(bcx, cap_vars, ck);
+        let {llbox, cdata_ty, bcx} = build_closure(bcx, cap_vars, ck, id);
         trans_closure(ccx, sub_path, decl, body, llfn, no_self, [],
                       bcx.fcx.param_substs, id, {|fcx|
             load_environment(bcx, fcx, cdata_ty, cap_vars, ck);
@@ -493,7 +501,7 @@ fn trans_bind_1(cx: block, outgoing_fty: ty::t,
                 f_res: lval_maybe_callee,
                 args: [option<@ast::expr>], pair_ty: ty::t,
                 dest: dest) -> block {
-    let ccx = bcx_ccx(cx);
+    let ccx = cx.ccx();
     let bound: [@ast::expr] = [];
     for argopt: option<@ast::expr> in args {
         alt argopt { none { } some(e) { bound += [e]; } }
@@ -579,7 +587,7 @@ fn make_fn_glue(
     glue_fn: fn@(block, v: ValueRef, t: ty::t) -> block)
     -> block {
     let bcx = cx;
-    let tcx = bcx_tcx(cx);
+    let tcx = cx.tcx();
 
     let fn_env = fn@(ck: ty::closure_kind) -> block {
         let box_cell_v = GEPi(cx, v, [0, abi::fn_field_box]);
@@ -613,8 +621,7 @@ fn make_opaque_cbox_take_glue(
     }
 
     // Hard case, a deep copy:
-    let ccx = bcx_ccx(bcx);
-    let tcx = bcx_tcx(bcx);
+    let ccx = bcx.ccx(), tcx = ccx.tcx;
     let llopaquecboxty = T_opaque_box_ptr(ccx);
     let cbox_in = Load(bcx, cboxptr);
     with_cond(bcx, IsNotNull(bcx, cbox_in)) {|bcx|
@@ -630,7 +637,7 @@ fn make_opaque_cbox_take_glue(
 
         // Allocate memory, update original ptr, and copy existing data
         let malloc = ccx.upcalls.shared_malloc;
-        let cbox_out = Call(bcx, malloc, [sz, tydesc]);
+        let cbox_out = Call(bcx, malloc, [sz]);
         let cbox_out = PointerCast(bcx, cbox_out, llopaquecboxty);
         let {bcx, val: _} = call_memmove(bcx, cbox_out, cbox_in, sz);
         Store(bcx, cbox_out, cboxptr);
@@ -657,11 +664,11 @@ fn make_opaque_cbox_drop_glue(
       ty::ck_block { bcx }
       ty::ck_box {
         decr_refcnt_maybe_free(bcx, Load(bcx, cboxptr),
-                               ty::mk_opaque_closure_ptr(bcx_tcx(bcx), ck))
+                               ty::mk_opaque_closure_ptr(bcx.tcx(), ck))
       }
       ty::ck_uniq {
         free_ty(bcx, Load(bcx, cboxptr),
-                ty::mk_opaque_closure_ptr(bcx_tcx(bcx), ck))
+                ty::mk_opaque_closure_ptr(bcx.tcx(), ck))
       }
     }
 }
@@ -676,8 +683,7 @@ fn make_opaque_cbox_free_glue(
       ty::ck_box | ty::ck_uniq { /* hard cases: */ }
     }
 
-    let ccx = bcx_ccx(bcx);
-    let tcx = bcx_tcx(bcx);
+    let ccx = bcx.ccx(), tcx = ccx.tcx;
     with_cond(bcx, IsNotNull(bcx, cbox)) {|bcx|
         // Load the type descr found in the cbox
         let lltydescty = T_ptr(ccx.tydesc_type);
@@ -713,7 +719,7 @@ enum target_info {
 }
 
 // pth is cx.path
-fn trans_bind_thunk(ccx: @crate_ctxt,
+fn trans_bind_thunk(ccx: crate_ctxt,
                     path: path,
                     incoming_fty: ty::t,
                     outgoing_fty: ty::t,
@@ -722,17 +728,7 @@ fn trans_bind_thunk(ccx: @crate_ctxt,
                     param_bounds: [ty::param_bounds],
                     target_info: target_info)
     -> {val: ValueRef, ty: TypeRef} {
-
-    // If we supported constraints on record fields, we could make the
-    // constraints for this function:
-    /*
-    : returns_non_ty_var(outgoing_fty),
-      type_has_static_size(ccx, incoming_fty) ->
-    */
-    // but since we don't, we have to do the checks at the beginning.
     let tcx = ccx.tcx;
-    check type_has_static_size(ccx, incoming_fty);
-
     #debug["trans_bind_thunk[incoming_fty=%s,outgoing_fty=%s,\
             cdata_ty=%s,param_bounds=%?]",
            ty_to_str(tcx, incoming_fty),
@@ -862,7 +858,7 @@ fn trans_bind_thunk(ccx: @crate_ctxt,
         fcx.lltyparams += [{desc: dsc, dicts: dicts}];
     }
 
-    let a: uint = 2u; // retptr, env come first
+    let a: uint = first_tp_arg; // retptr, env come first
     let b: int = starting_idx;
     let outgoing_arg_index: uint = 0u;
     let llout_arg_tys: [TypeRef] =

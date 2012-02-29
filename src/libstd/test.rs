@@ -47,7 +47,6 @@ type test_desc = {
 // The default console test runner. It accepts the command line
 // arguments and a vector of test_descs (generated at compile time).
 fn test_main(args: [str], tests: [test_desc]) {
-    check (vec::is_not_empty(args));
     let opts =
         alt parse_opts(args) {
           either::left(o) { o }
@@ -61,8 +60,7 @@ type test_opts = {filter: option<str>, run_ignored: bool};
 type opt_res = either::t<test_opts, str>;
 
 // Parses command line arguments into test options
-fn parse_opts(args: [str]) : vec::is_not_empty(args) -> opt_res {
-
+fn parse_opts(args: [str]) -> opt_res {
     let args_ = vec::tail(args);
     let opts = [getopts::optflag("ignored")];
     let match =
@@ -316,13 +314,12 @@ fn run_test(+test: test_desc, monitor_ch: comm::chan<monitor_msg>) {
     task::spawn {||
 
         let testfn = test.fn;
-        let test_task = task::spawn_joinable {||
-            configure_test_task();
-            testfn();
-        };
-
-        let task_result = task::join(test_task);
-        let test_result = calc_result(test, task_result == task::tr_success);
+        let builder = task::mk_task_builder();
+        let result_future = task::future_result(builder);
+        task::unsupervise(builder);
+        task::run(builder, testfn);
+        let task_result = future::get(result_future);
+        let test_result = calc_result(test, task_result == task::success);
         comm::send(monitor_ch, (test, test_result));
     };
 }
@@ -335,13 +332,6 @@ fn calc_result(test: test_desc, task_succeeded: bool) -> test_result {
         if test.should_fail { tr_ok }
         else { tr_failed }
     }
-}
-
-// Call from within a test task to make sure it's set up correctly
-fn configure_test_task() {
-    // If this task fails we don't want that failure to propagate to the
-    // test runner or else we couldn't keep running tests
-    task::unsupervise();
 }
 
 #[cfg(test)]
@@ -415,7 +405,6 @@ mod tests {
     #[test]
     fn first_free_arg_should_be_a_filter() {
         let args = ["progname", "filter"];
-        check (vec::is_not_empty(args));
         let opts = alt parse_opts(args) { either::left(o) { o }
           _ { fail "Malformed arg in first_free_arg_should_be_a_filter"; } };
         assert (str::eq("filter", option::get(opts.filter)));
@@ -424,7 +413,6 @@ mod tests {
     #[test]
     fn parse_ignored_flag() {
         let args = ["progname", "filter", "--ignored"];
-        check (vec::is_not_empty(args));
         let opts = alt parse_opts(args) { either::left(o) { o }
           _ { fail "Malformed arg in parse_ignored_flag"; } };
         assert (opts.run_ignored);
@@ -477,12 +465,10 @@ mod tests {
          "test::ignored_tests_result_in_ignored", "test::parse_ignored_flag",
          "test::sort_tests"];
 
-    check (vec::same_length(expected, filtered));
     let pairs = vec::zip(expected, filtered);
 
-
     for (a, b) in pairs { assert (a == b.name); }
-    }
+}
 }
 
 

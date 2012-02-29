@@ -40,6 +40,7 @@ fn mk_itemdoc(id: ast::node_id, name: ast::ident) -> doc::itemdoc {
         path: [],
         brief: none,
         desc: none,
+        reexport: false
     }
 }
 
@@ -49,12 +50,17 @@ fn moddoc_from_mod(
 ) -> doc::moddoc {
     {
         item: itemdoc,
-        items: ~vec::filter_map(module.items) {|item|
+        items: vec::filter_map(module.items) {|item|
             let itemdoc = mk_itemdoc(item.id, item.ident);
             alt item.node {
               ast::item_mod(m) {
                 some(doc::modtag(
                     moddoc_from_mod(itemdoc, m)
+                ))
+              }
+              ast::item_native_mod(nm) {
+                some(doc::nmodtag(
+                    nmoddoc_from_mod(itemdoc, nm)
                 ))
               }
               ast::item_fn(decl, _, _) {
@@ -100,6 +106,23 @@ fn moddoc_from_mod(
     }
 }
 
+fn nmoddoc_from_mod(
+    itemdoc: doc::itemdoc,
+    module: ast::native_mod
+) -> doc::nmoddoc {
+    {
+        item: itemdoc,
+        fns: par::seqmap(module.items) {|item|
+            let itemdoc = mk_itemdoc(item.id, item.ident);
+            alt item.node {
+              ast::native_item_fn(decl, _) {
+                fndoc_from_fn(itemdoc, decl)
+              }
+            }
+        }
+    }
+}
+
 fn fndoc_from_fn(
     itemdoc: doc::itemdoc,
     decl: ast::fn_decl
@@ -127,7 +150,7 @@ fn should_extract_fn_args() {
 }
 
 fn argdocs_from_args(args: [ast::arg]) -> [doc::argdoc] {
-    vec::map(args, argdoc_from_arg)
+    par::seqmap(args, argdoc_from_arg)
 }
 
 fn argdoc_from_arg(arg: ast::arg) -> doc::argdoc {
@@ -165,7 +188,7 @@ fn enumdoc_from_enum(
 fn variantdocs_from_variants(
     variants: [ast::variant]
 ) -> [doc::variantdoc] {
-    vec::map(variants, variantdoc_from_variant)
+    par::seqmap(variants, variantdoc_from_variant)
 }
 
 fn variantdoc_from_variant(variant: ast::variant) -> doc::variantdoc {
@@ -219,7 +242,7 @@ fn ifacedoc_from_iface(
 ) -> doc::ifacedoc {
     {
         item: itemdoc,
-        methods: vec::map(methods) {|method|
+        methods: par::seqmap(methods) {|method|
             {
                 name: method.ident,
                 brief: none,
@@ -262,7 +285,7 @@ fn impldoc_from_impl(
         item: itemdoc,
         iface_ty: none,
         self_ty: none,
-        methods: vec::map(methods) {|method|
+        methods: par::seqmap(methods) {|method|
             {
                 name: method.ident,
                 brief: none,
@@ -342,6 +365,18 @@ mod test {
     }
 
     #[test]
+    fn extract_native_mods() {
+        let doc = mk_doc("native mod a { }");
+        assert doc.topmod.nmods()[0].name() == "a";
+    }
+
+    #[test]
+    fn extract_fns_from_native_mods() {
+        let doc = mk_doc("native mod a { fn a(); }");
+        assert doc.topmod.nmods()[0].fns[0].name() == "a";
+    }
+
+    #[test]
     fn extract_mods_deep() {
         let doc = mk_doc("mod a { mod b { mod c { } } }");
         assert doc.topmod.mods()[0].mods()[0].mods()[0].name() == "c";
@@ -379,8 +414,9 @@ mod test {
     #[test]
     fn extract_from_seq_srv() {
         let source = "";
-        let srv = astsrv::mk_srv_from_str(source);
-        let doc = from_srv(srv, "name");
-        assert doc.topmod.name() == "name";
+        astsrv::from_str(source) {|srv|
+            let doc = from_srv(srv, "name");
+            assert doc.topmod.name() == "name";
+        }
     }
 }

@@ -1,5 +1,4 @@
 use std;
-import int;
 
 enum tree { nil, node(~tree, ~tree, int), }
 
@@ -21,7 +20,7 @@ fn bottom_up_tree(item: int, depth: int) -> ~tree {
 
 fn main(args: [str]) {
     let n = if vec::len(args) == 2u {
-        int::from_str(args[1])
+        option::get(int::from_str(args[1]))
     } else {
         8
     };

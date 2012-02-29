@@ -2,12 +2,16 @@
 
 type ast_id = int;
 
+// FIXME: We currently give topmod the name of the crate.  There would
+// probably be fewer special cases if the crate had its own name and
+// topmod's name was the empty string.
 type cratedoc = {
     topmod: moddoc,
 };
 
 enum itemtag {
     modtag(moddoc),
+    nmodtag(nmoddoc),
     consttag(constdoc),
     fntag(fndoc),
     enumtag(enumdoc),
@@ -23,12 +27,18 @@ type itemdoc = {
     path: [str],
     brief: option<str>,
     desc: option<str>,
+    // Indicates that this node is a reexport of a different item
+    reexport: bool
 };
 
 type moddoc = {
     item: itemdoc,
-    // This box exists to break the structural recursion
-    items: ~[itemtag]
+    items: [itemtag]
+};
+
+type nmoddoc = {
+    item: itemdoc,
+    fns: [fndoc]
 };
 
 type constdoc = {
@@ -103,7 +113,7 @@ type tydoc = {
 impl util for moddoc {
 
     fn mods() -> [moddoc] {
-        vec::filter_map(*self.items) {|itemtag|
+        vec::filter_map(self.items) {|itemtag|
             alt itemtag {
               modtag(moddoc) { some(moddoc) }
               _ { none }
@@ -111,8 +121,17 @@ impl util for moddoc {
         }
     }
 
+    fn nmods() -> [nmoddoc] {
+        vec::filter_map(self.items) {|itemtag|
+            alt itemtag {
+              nmodtag(nmoddoc) { some(nmoddoc) }
+              _ { none }
+            }
+        }
+    }
+
     fn fns() -> [fndoc] {
-        vec::filter_map(*self.items) {|itemtag|
+        vec::filter_map(self.items) {|itemtag|
             alt itemtag {
               fntag(fndoc) { some(fndoc) }
               _ { none }
@@ -121,7 +140,7 @@ impl util for moddoc {
     }
 
     fn consts() -> [constdoc] {
-        vec::filter_map(*self.items) {|itemtag|
+        vec::filter_map(self.items) {|itemtag|
             alt itemtag {
               consttag(constdoc) { some(constdoc) }
               _ { none }
@@ -130,7 +149,7 @@ impl util for moddoc {
     }
 
     fn enums() -> [enumdoc] {
-        vec::filter_map(*self.items) {|itemtag|
+        vec::filter_map(self.items) {|itemtag|
             alt itemtag {
               enumtag(enumdoc) { some(enumdoc) }
               _ { none }
@@ -139,7 +158,7 @@ impl util for moddoc {
     }
 
     fn resources() -> [resdoc] {
-        vec::filter_map(*self.items) {|itemtag|
+        vec::filter_map(self.items) {|itemtag|
             alt itemtag {
               restag(resdoc) { some(resdoc) }
               _ { none }
@@ -148,7 +167,7 @@ impl util for moddoc {
     }
 
     fn ifaces() -> [ifacedoc] {
-        vec::filter_map(*self.items) {|itemtag|
+        vec::filter_map(self.items) {|itemtag|
             alt itemtag {
               ifacetag(ifacedoc) { some(ifacedoc) }
               _ { none }
@@ -157,7 +176,7 @@ impl util for moddoc {
     }
 
     fn impls() -> [impldoc] {
-        vec::filter_map(*self.items) {|itemtag|
+        vec::filter_map(self.items) {|itemtag|
             alt itemtag {
               impltag(impldoc) { some(impldoc) }
               _ { none }
@@ -166,7 +185,7 @@ impl util for moddoc {
     }
 
     fn types() -> [tydoc] {
-        vec::filter_map(*self.items) {|itemtag|
+        vec::filter_map(self.items) {|itemtag|
             alt itemtag {
               tytag(tydoc) { some(tydoc) }
               _ { none }
@@ -183,6 +202,7 @@ impl of item for itemtag {
     fn item() -> itemdoc {
         alt self {
           doc::modtag(doc) { doc.item }
+          doc::nmodtag(doc) { doc.item }
           doc::fntag(doc) { doc.item }
           doc::consttag(doc) { doc.item }
           doc::enumtag(doc) { doc.item }
@@ -195,6 +215,10 @@ impl of item for itemtag {
 }
 
 impl of item for moddoc {
+    fn item() -> itemdoc { self.item }
+}
+
+impl of item for nmoddoc {
     fn item() -> itemdoc { self.item }
 }
 

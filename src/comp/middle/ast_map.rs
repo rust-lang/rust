@@ -37,11 +37,8 @@ type map = std::map::map<node_id, ast_node>;
 type ctx = {map: map, mutable path: path, mutable local_id: uint};
 type vt = visit::vt<ctx>;
 
-fn map_crate(c: crate) -> map {
-    let cx = {map: std::map::new_int_hash(),
-              mutable path: [],
-              mutable local_id: 0u};
-    visit::visit_crate(c, cx, visit::mk_vt(@{
+fn mk_ast_map_visitor() -> vt {
+    ret visit::mk_vt(@{
         visit_item: map_item,
         visit_native_item: map_native_item,
         visit_expr: map_expr,
@@ -49,8 +46,31 @@ fn map_crate(c: crate) -> map {
         visit_local: map_local,
         visit_arm: map_arm
         with *visit::default_visitor()
-    }));
+    });
+}
+
+fn map_crate(c: crate) -> map {
+    let cx = {map: std::map::new_int_hash(),
+              mutable path: [],
+              mutable local_id: 0u};
+    visit::visit_crate(c, cx, mk_ast_map_visitor());
     ret cx.map;
+}
+
+// Used for items loaded from external crate that are being inlined into this
+// crate:
+fn map_decoded_item(map: map, path: path, i: @item) {
+    // I believe it is ok for the local IDs of inlined items from other crates
+    // to overlap with the local ids from this crate, so just generate the ids
+    // starting from 0.  (In particular, I think these ids are only used in
+    // alias analysis, which we will not be running on the inlined items, and
+    // even if we did I think it only needs an ordering between local
+    // variables that are simultaneously in scope).
+    let cx = {map: map,
+              mutable path: path,
+              mutable local_id: 0u};
+    let v = mk_ast_map_visitor();
+    v.visit_item(i, cx, v);
 }
 
 fn map_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
@@ -62,19 +82,25 @@ fn map_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
     visit::visit_fn(fk, decl, body, sp, id, cx, v);
 }
 
-fn map_local(loc: @local, cx: ctx, v: vt) {
-    pat_util::pat_bindings(loc.node.pat) {|p_id, _s, _p|
-        cx.map.insert(p_id, node_local(cx.local_id));
-        cx.local_id += 1u;
+fn number_pat(cx: ctx, pat: @pat) {
+    pat_util::walk_pat(pat) {|p|
+        alt p.node {
+          pat_ident(_, _) {
+            cx.map.insert(p.id, node_local(cx.local_id));
+            cx.local_id += 1u;
+          }
+          _ {}
+        }
     };
+}
+
+fn map_local(loc: @local, cx: ctx, v: vt) {
+    number_pat(cx, loc.node.pat);
     visit::visit_local(loc, cx, v);
 }
 
 fn map_arm(arm: arm, cx: ctx, v: vt) {
-    pat_util::pat_bindings(arm.pats[0]) {|p_id, _s, _p|
-        cx.map.insert(p_id, node_local(cx.local_id));
-        cx.local_id += 1u;
-    };
+    number_pat(cx, arm.pats[0]);
     visit::visit_arm(arm, cx, v);
 }
 

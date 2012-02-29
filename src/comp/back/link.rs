@@ -109,13 +109,10 @@ mod write {
     // Decides what to call an intermediate file, given the name of the output
     // and the extension to use.
     fn mk_intermediate_name(output_path: str, extension: str) -> str unsafe {
-        let stem = alt str::index(output_path, '.') {
-                       option::some(dot_pos) {
-                           str::slice(output_path, 0u, dot_pos)
-                       }
-                       option::none { output_path }
-                   };
-
+        let stem = alt str::find_char(output_path, '.') {
+          some(dot_pos) { str::slice(output_path, 0u, dot_pos) }
+          none { output_path }
+        };
         ret stem + "." + extension;
     }
 
@@ -395,7 +392,7 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
                               metas: provided_metas,
                               dep_hashes: [str]) -> str {
         fn len_and_str(s: str) -> str {
-            ret #fmt["%u_%s", str::len_bytes(s), s];
+            ret #fmt["%u_%s", str::len(s), s];
         }
 
         fn len_and_str_lit(l: ast::lit) -> str {
@@ -440,8 +437,7 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
               none {
                 let name =
                     {
-                        let os = str::split_byte(
-                                   fs::basename(output), '.' as u8);
+                        let os = str::split_char(fs::basename(output), '.');
                         if (vec::len(os) < 2u) {
                             sess.fatal(#fmt("Output file name %s doesn't\
                               appear to have an extension", output));
@@ -478,7 +474,7 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
 }
 
 fn truncated_sha1_result(sha: sha1) -> str unsafe {
-    ret str::unsafe::slice_bytes(sha.result_str(), 0u, 16u);
+    ret str::slice(sha.result_str(), 0u, 16u);
 }
 
 
@@ -501,7 +497,7 @@ fn symbol_hash(tcx: ty::ctxt, sha: sha1, t: ty::t, link_meta: link_meta) ->
     ret "_" + hash;
 }
 
-fn get_symbol_hash(ccx: @crate_ctxt, t: ty::t) -> str {
+fn get_symbol_hash(ccx: crate_ctxt, t: ty::t) -> str {
     let hash = "";
     alt ccx.type_sha1s.find(t) {
       some(h) { hash = h; }
@@ -520,7 +516,7 @@ fn mangle(ss: path) -> str {
 
     for s in ss {
         alt s { path_name(s) | path_mod(s) {
-          n += #fmt["%u%s", str::len_bytes(s), s];
+          n += #fmt["%u%s", str::len(s), s];
         } }
     }
     n += "E"; // End name-sequence.
@@ -533,28 +529,28 @@ fn exported_name(path: path, hash: str, _vers: str) -> str {
 
 }
 
-fn mangle_exported_name(ccx: @crate_ctxt, path: path, t: ty::t) -> str {
+fn mangle_exported_name(ccx: crate_ctxt, path: path, t: ty::t) -> str {
     let hash = get_symbol_hash(ccx, t);
     ret exported_name(path, hash, ccx.link_meta.vers);
 }
 
-fn mangle_internal_name_by_type_only(ccx: @crate_ctxt, t: ty::t, name: str) ->
+fn mangle_internal_name_by_type_only(ccx: crate_ctxt, t: ty::t, name: str) ->
    str {
     let s = util::ppaux::ty_to_short_str(ccx.tcx, t);
     let hash = get_symbol_hash(ccx, t);
     ret mangle([path_name(name), path_name(s), path_name(hash)]);
 }
 
-fn mangle_internal_name_by_path_and_seq(ccx: @crate_ctxt, path: path,
+fn mangle_internal_name_by_path_and_seq(ccx: crate_ctxt, path: path,
                                         flav: str) -> str {
     ret mangle(path + [path_name(ccx.names(flav))]);
 }
 
-fn mangle_internal_name_by_path(_ccx: @crate_ctxt, path: path) -> str {
+fn mangle_internal_name_by_path(_ccx: crate_ctxt, path: path) -> str {
     ret mangle(path);
 }
 
-fn mangle_internal_name_by_seq(ccx: @crate_ctxt, flav: str) -> str {
+fn mangle_internal_name_by_seq(ccx: crate_ctxt, flav: str) -> str {
     ret ccx.names(flav);
 }
 
@@ -567,17 +563,16 @@ fn link_binary(sess: session,
     // Converts a library file name into a cc -l argument
     fn unlib(config: @session::config, filename: str) -> str unsafe {
         let rmlib = fn@(filename: str) -> str {
-            let found = str::find_bytes(filename, "lib");
+            let found = str::find_str(filename, "lib");
             if config.os == session::os_macos ||
                 (config.os == session::os_linux ||
                  config.os == session::os_freebsd) &&
                 option::is_some(found) && option::get(found) == 0u {
-                ret str::unsafe::slice_bytes(filename, 3u,
-                               str::len_bytes(filename));
+                ret str::slice(filename, 3u, str::len(filename));
             } else { ret filename; }
         };
         fn rmext(filename: str) -> str {
-            let parts = str::split_byte(filename, '.' as u8);
+            let parts = str::split_char(filename, '.');
             vec::pop(parts);
             ret str::connect(parts, ".");
         }
