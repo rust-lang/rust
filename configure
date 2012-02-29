@@ -173,7 +173,6 @@ opt() {
      fi
 }
 
-
 msg "looking for configure programs"
 need_cmd cmp
 need_cmd mkdir
@@ -482,138 +481,168 @@ then
 fi
 
 # Have to be in the top of src directory for this
-cd ${CFG_SRC_DIR}
-
 if [ -z $CFG_DISABLE_MANAGE_SUBMODULES ]
 then
-msg "git: submodule sync"
-"${CFG_GIT}" submodule sync --quiet
-SUBMODULE_STATUS=$("${CFG_GIT}" submodule status)
-NEED_INIT_COUNT=$(echo "$SUBMODULE_STATUS" | grep -c "^-")
-NEED_UPDATE_COUNT=$(echo "$SUBMODULE_STATUS" | grep -c "^+")
-NEED_INIT=$(test $NEED_INIT_COUNT -gt 0)$?
-NEED_UPDATE=$(test "($NEED_INIT)" -o "$NEED_UPDATE_COUNT" -gt 0)$?
-else
-NEED_INIT=
-NEED_UPDATE=
+    cd ${CFG_SRC_DIR}
+    msg "git: submodule sync"
+    "${CFG_GIT}" submodule sync --quiet
+    SUBMODULES=$("${CFG_GIT}" submodule status | awk '{print $2}')
+    for s in $SUBMODULES
+    do
+        msg "git: submodule status ${s}"
+        status=$("${CFG_GIT}" submodule status ${s} | awk '{print $1}')
+        case ${status} in
+            -*)
+                msg "${s} is not initialized, initializing"
+                "${CFG_GIT}" submodule init --quiet ${s}
+                need_ok "git failed"
+                msg "${s} updating"
+                "${CFG_GIT}" submodule update --quiet ${s}
+                need_ok "git failed"
+                ;;
+            +*)
+                msg "${s} is not up to date, updating"
+                "${CFG_GIT}" submodule update --quiet ${s}
+                need_ok "git failed"
+                ;;
+            *)
+                msg "${s} is clean"
+                ;;
+        esac
+    done
+    cd ${CFG_BUILD_DIR}
 fi
 
-if [ $NEED_INIT ]
-then
-    msg "git: submodule init"
-    "${CFG_GIT}" submodule init --quiet
-    need_ok "git failed"
-fi
-
-if [ $NEED_UPDATE ]
-then
-    msg "git: submodule update"
-    "${CFG_GIT}" submodule update --quiet
-    need_ok "git failed"
-fi
-
-cd ${CFG_BUILD_DIR}
-
-
-# Configure llvm. Here we go...
+# Configure llvm, only if necessary
+step_msg "looking at LLVM"
 CFG_LLVM_SRC_DIR=${CFG_SRC_DIR}src/llvm
-
 for t in $CFG_TARGET_TRIPLES
 do
+    do_reconfigure=1
+
     if [ -z $CFG_LLVM_ROOT ]
     then
-	step_msg "configuring LLVM for $t"
-
-	LLVM_BUILD_DIR=$CFG_BUILD_DIR/llvm/$t
-
-	LLVM_TARGETS="--enable-targets=x86,x86_64"
-	LLVM_BUILD="--build=$t"
-	LLVM_HOST="--host=$t"
-	LLVM_TARGET="--target=$t"
-
-    if [ ! -z "$CFG_DISABLE_OPTIMIZE_LLVM" ]
-    then
-        LLVM_DBG_OPTS=""
-        # Just use LLVM straight from its build directory to
-        # avoid 'make install' time
-	    LLVM_INST_DIR=$LLVM_BUILD_DIR/Debug+Asserts
+        LLVM_BUILD_DIR=$CFG_BUILD_DIR/llvm/$t
+        if [ ! -z "$CFG_DISABLE_OPTIMIZE_LLVM" ]
+        then
+            LLVM_DBG_OPTS=""
+            # Just use LLVM straight from its build directory to
+            # avoid 'make install' time
+            LLVM_INST_DIR=$LLVM_BUILD_DIR/Debug+Asserts
+        else
+            LLVM_DBG_OPTS="--enable-optimized"
+            LLVM_INST_DIR=$LLVM_BUILD_DIR/Release+Asserts
+        fi
     else
-        LLVM_DBG_OPTS="--enable-optimized"
-	    LLVM_INST_DIR=$LLVM_BUILD_DIR/Release+Asserts
-    fi
-	# Disable unused LLVM features
-	LLVM_OPTS="$LLVM_DBG_OPTS --disable-docs --disable-jit --enable-bindings=none --disable-threads --disable-pthreads"
-
-	if [ "$CFG_C_COMPILER" = "clang" ]
-	then
-	    LLVM_CXX_32="clang++ -m32"
-	    LLVM_CC_32="clang -m32"
-
-	    LLVM_CXX_64="clang++"
-	    LLVM_CC_64="clang"
-	else
-	    LLVM_CXX_32="g++ -m32"
-	    LLVM_CC_32="gcc -m32"
-
-	    LLVM_CXX_64="g++"
-	    LLVM_CC_64="gcc"
-	fi
-
-	LLVM_CFLAGS_32="-m32"
-	LLVM_CXXFLAGS_32="-m32"
-	LLVM_LDFLAGS_32="-m32"
-
-	LLVM_CFLAGS_64=""
-	LLVM_CXXFLAGS_64=""
-	LLVM_LDFLAGS_64=""
-
-	if echo $t | grep x86_64
-	then
-	    LLVM_CXX=$LLVM_CXX_64
-	    LLVM_CC=$LLVM_CC_64
-	    LLVM_CFLAGS=$LLVM_CFLAGS_64
-	    LLVM_CXXFLAGS=$LLVM_CXXFLAGS_64
-	    LLVM_LDFLAGS=$LLVM_LDFLAGS_64
-	else
-	    LLVM_CXX=$LLVM_CXX_32
-	    LLVM_CC=$LLVM_CC_32
-	    LLVM_CFLAGS=$LLVM_CFLAGS_32
-	    LLVM_CXXFLAGS=$LLVM_CXXFLAGS_32
-	    LLVM_LDFLAGS=$LLVM_LDFLAGS_32
-	fi
-
-	CXX=$LLVM_CXX
-	CC=$LLVM_CC
-	CFLAGS=$LLVM_CFLAGS
-	CXXFLAGS=$LLVM_CXXFLAGS
-	LDFLAGS=$LLVM_LDFLAGS
-
-	LLVM_FLAGS="$LLVM_TARGETS $LLVM_OPTS $LLVM_BUILD $LLVM_HOST $LLVM_TARGET"
-
-	msg "configuring LLVM with:"
-	msg "$LLVM_FLAGS"
-
-	export CXX
-	export CC
-	export CFLAGS
-	export CXXFLAGS
-	export LDFLAGS
-
-	cd $LLVM_BUILD_DIR
-	case $CFG_SRC_DIR in
-	    /* | [a-z]:* | [A-Z]:*)
-		${CFG_LLVM_SRC_DIR}/configure $LLVM_FLAGS
-		;;
-	    *)
-		${CFG_BUILD_DIR}/${CFG_LLVM_SRC_DIR}/configure $LLVM_FLAGS
-		;;
-	esac
-    need_ok "LLVM configure failed"
-	cd $CFG_BUILD_DIR
-    else
-	LLVM_BUILD_DIR=
+        msg "not reconfiguring LLVM, external LLVM root"
         # The user is using their own LLVM
-	LLVM_INST_DIR=$CFG_LLVM_ROOT
+        LLVM_BUILD_DIR=
+        LLVM_INST_DIR=$CFG_LLVM_ROOT
+        do_reconfigure=0
+    fi
+
+
+    if [ ${do_reconfigure} -ne 0 ]
+    then
+    # because git is hilarious, it might have put the module index
+    # in a couple places.
+        index1="${CFG_SRC_DIR}.git/modules/src/llvm/index"
+        index2="${CFG_SRC_DIR}src/llvm/.git/index"
+        for index in ${index1} ${index2}
+        do
+            config_status="${CFG_BUILD_DIR}/llvm/$t/config.status"
+            if test -e ${index} -a \
+                    -e ${config_status} -a \
+                    ${config_status} -nt ${index}
+            then
+                msg "not reconfiguring LLVM, config.status is fresh"
+                do_reconfigure=0
+            fi
+        done
+    fi
+
+    if [ ${do_reconfigure} -ne 0 ]
+    then
+        msg "configuring LLVM for $t"
+
+        LLVM_TARGETS="--enable-targets=x86,x86_64"
+        LLVM_BUILD="--build=$t"
+        LLVM_HOST="--host=$t"
+        LLVM_TARGET="--target=$t"
+
+        # Disable unused LLVM features
+        LLVM_OPTS="$LLVM_DBG_OPTS --disable-docs --disable-jit \
+                   --enable-bindings=none --disable-threads \
+                   --disable-pthreads"
+
+        if [ "$CFG_C_COMPILER" = "clang" ]
+        then
+            LLVM_CXX_32="clang++ -m32"
+            LLVM_CC_32="clang -m32"
+
+            LLVM_CXX_64="clang++"
+            LLVM_CC_64="clang"
+        else
+            LLVM_CXX_32="g++ -m32"
+            LLVM_CC_32="gcc -m32"
+
+            LLVM_CXX_64="g++"
+            LLVM_CC_64="gcc"
+        fi
+
+        LLVM_CFLAGS_32="-m32"
+        LLVM_CXXFLAGS_32="-m32"
+        LLVM_LDFLAGS_32="-m32"
+
+        LLVM_CFLAGS_64=""
+        LLVM_CXXFLAGS_64=""
+        LLVM_LDFLAGS_64=""
+
+        if echo $t | grep -q x86_64
+        then
+            LLVM_CXX=$LLVM_CXX_64
+            LLVM_CC=$LLVM_CC_64
+            LLVM_CFLAGS=$LLVM_CFLAGS_64
+            LLVM_CXXFLAGS=$LLVM_CXXFLAGS_64
+            LLVM_LDFLAGS=$LLVM_LDFLAGS_64
+        else
+            LLVM_CXX=$LLVM_CXX_32
+            LLVM_CC=$LLVM_CC_32
+            LLVM_CFLAGS=$LLVM_CFLAGS_32
+            LLVM_CXXFLAGS=$LLVM_CXXFLAGS_32
+            LLVM_LDFLAGS=$LLVM_LDFLAGS_32
+        fi
+
+        CXX=$LLVM_CXX
+        CC=$LLVM_CC
+        CFLAGS=$LLVM_CFLAGS
+        CXXFLAGS=$LLVM_CXXFLAGS
+        LDFLAGS=$LLVM_LDFLAGS
+
+        LLVM_FLAGS="$LLVM_TARGETS $LLVM_OPTS $LLVM_BUILD \
+                        $LLVM_HOST $LLVM_TARGET"
+
+        msg "configuring LLVM with:"
+        msg "$LLVM_FLAGS"
+
+        export CXX
+        export CC
+        export CFLAGS
+        export CXXFLAGS
+        export LDFLAGS
+
+        cd $LLVM_BUILD_DIR
+        case $CFG_SRC_DIR in
+            /* | [a-z]:* | [A-Z]:*)
+                ${CFG_LLVM_SRC_DIR}/configure $LLVM_FLAGS
+                ;;
+            *)
+                ${CFG_BUILD_DIR}/${CFG_LLVM_SRC_DIR}/configure \
+                    $LLVM_FLAGS
+                ;;
+        esac
+        need_ok "LLVM configure failed"
+        cd $CFG_BUILD_DIR
     fi
 
     # Construct variables for LLVM build and install directories for
