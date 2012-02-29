@@ -392,6 +392,7 @@ impl parser for parser {
 
         if self.ch == ']' {
             self.bump();
+            self.parse_whitespace();
             ret ok(list(values));
         }
 
@@ -406,7 +407,11 @@ impl parser for parser {
 
             alt self.ch {
               ',' { self.bump(); }
-              ']' { self.bump(); ret ok(list(values)); }
+              ']' {
+                  self.bump();
+                  self.parse_whitespace();
+                  ret ok(list(values));
+              }
               _ { ret self.error("expecting ',' or ']'"); }
             }
         }
@@ -422,6 +427,7 @@ impl parser for parser {
 
         if self.ch == '}' {
           self.bump();
+          self.parse_whitespace();
           ret ok(dict(values));
         }
 
@@ -453,7 +459,11 @@ impl parser for parser {
 
             alt self.ch {
               ',' { self.bump(); }
-              '}' { self.bump(); ret ok(dict(values)); }
+              '}' {
+                  self.bump();
+                  self.parse_whitespace();
+                  ret ok(dict(values));
+              }
               _ {
                   if self.eof() { break; }
                   ret self.error("expecting ',' or '}'");
@@ -691,6 +701,7 @@ mod tests {
         assert from_str("[ false ]") == ok(list([boolean(false)]));
         assert from_str("[null]") == ok(list([null]));
         assert from_str("[3, 1]") == ok(list([num(3f), num(1f)]));
+        assert from_str("\n[3, 2]\n") == ok(list([num(3f), num(2f)]));
         assert from_str("[2, [4, 1]]") ==
                ok(list([num(2f), list([num(4f), num(1f)])]));
     }
@@ -726,6 +737,8 @@ mod tests {
                   mk_dict([("a", num(3.0f))]));
 
         assert eq(result::get(from_str("{ \"a\": null, \"b\" : true }")),
+                  mk_dict([("a", null), ("b", boolean(true))]));
+        assert eq(result::get(from_str("\n{ \"a\": null, \"b\" : true }\n")),
                   mk_dict([("a", null), ("b", boolean(true))]));
         assert eq(result::get(from_str("{\"a\" : 1.0 ,\"b\": [ true ]}")),
                   mk_dict([
