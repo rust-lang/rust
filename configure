@@ -198,7 +198,7 @@ if [ $CFG_OSTYPE = Darwin -a $CFG_CPUTYPE = i386 ]
 then
     # Darwin's `uname -s` lies and always returns i386. We have to use sysctl
     # instead.
-    if sysctl hw.optional.x86_64 | grep ': 1'
+    if sysctl hw.optional.x86_64 | grep -q ': 1'
     then
         CFG_CPUTYPE=x86_64
     fi
@@ -391,7 +391,7 @@ fi
 
 if [ ! -z "$CFG_PERF" ]
 then
-    HAVE_PERF_LOGFD=`$CFG_PERF stat --log-fd 2>&1 | grep 'unknown option'`
+    HAVE_PERF_LOGFD=`$CFG_PERF stat --log-fd 2>&1 | grep -q 'unknown option'`
     if [ -z "$HAVE_PERF_LOGFD" ];
     then
         CFG_PERF_WITH_LOGFD=1
