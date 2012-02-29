@@ -532,7 +532,8 @@ fn noop_fold_path(&&p: path_, fld: ast_fold) -> path_ {
 }
 
 fn noop_fold_local(l: local_, fld: ast_fold) -> local_ {
-    ret {ty: fld.fold_ty(l.ty),
+    ret {is_mutbl: l.is_mutbl,
+         ty: fld.fold_ty(l.ty),
          pat: fld.fold_pat(l.pat),
          init:
              alt l.init {

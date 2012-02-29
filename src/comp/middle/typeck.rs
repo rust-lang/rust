@@ -101,7 +101,7 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
         let typ = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, sp, nid));
         ret {bounds: @[], ty: typ};
       }
-      ast::def_local(nid) {
+      ast::def_local(nid, _) {
         assert (fcx.locals.contains_key(nid));
         let typ = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, sp, nid));
         ret {bounds: @[], ty: typ};

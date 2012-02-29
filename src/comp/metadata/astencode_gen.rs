@@ -1956,18 +1956,20 @@ fn serialize_114<S: std::serialization::serializer>(s: S,
 fn serialize_106<S: std::serialization::serializer>(s: S,
                                                     v: syntax::ast::local_) {
 
-    s.emit_rec(/*@syntax::ast::ty*//*@syntax::ast::pat*/
+    s.emit_rec(/*bool*//*@syntax::ast::ty*//*@syntax::ast::pat*/
                /*core::option::t<syntax::ast::initializer>*/
                /*syntax::ast::node_id*/
                {||
                    {
-                       s.emit_rec_field("ty", 0u,
+                       s.emit_rec_field("is_mutbl", 0u,
+                                        {|| serialize_18(s, v.is_mutbl) });
+                       s.emit_rec_field("ty", 1u,
                                         {|| serialize_29(s, v.ty) });
-                       s.emit_rec_field("pat", 1u,
+                       s.emit_rec_field("pat", 2u,
                                         {|| serialize_107(s, v.pat) });
-                       s.emit_rec_field("init", 2u,
+                       s.emit_rec_field("init", 3u,
                                         {|| serialize_114(s, v.init) });
-                       s.emit_rec_field("id", 3u, {|| serialize_27(s, v.id) })
+                       s.emit_rec_field("id", 4u, {|| serialize_27(s, v.id) })
                    }
                });
 }
@@ -5974,6 +5976,8 @@ fn deserialize_106<S: std::serialization::deserializer>(s: S) ->
     s.read_rec(
 
 
+               /*bool*/
+
                /*@syntax::ast::ty*/
 
                /*@syntax::ast::pat*/
@@ -5983,13 +5987,16 @@ fn deserialize_106<S: std::serialization::deserializer>(s: S) ->
                /*syntax::ast::node_id*/
 
                {||
-                   {ty: s.read_rec_field("ty", 0u, {|| deserialize_29(s) }),
+                   {is_mutbl:
+                        s.read_rec_field("is_mutbl", 0u,
+                                         {|| deserialize_18(s) }),
+                    ty: s.read_rec_field("ty", 1u, {|| deserialize_29(s) }),
                     pat:
-                        s.read_rec_field("pat", 1u, {|| deserialize_107(s) }),
+                        s.read_rec_field("pat", 2u, {|| deserialize_107(s) }),
                     init:
-                        s.read_rec_field("init", 2u,
+                        s.read_rec_field("init", 3u,
                                          {|| deserialize_114(s) }),
-                    id: s.read_rec_field("id", 3u, {|| deserialize_27(s) }),}
+                    id: s.read_rec_field("id", 4u, {|| deserialize_27(s) }),}
                })
 }
 /*syntax::ast::local*/
@@ -8015,7 +8022,7 @@ fn serialize_161<S: std::serialization::serializer>(s: S,
                 /*syntax::ast::def_id*/
                 /*syntax::ast::node_id*/
                 /*syntax::ast::mode<syntax::ast::rmode>*/
-                /*syntax::ast::node_id*/
+                /*syntax::ast::node_id*//*bool*/
                 /*syntax::ast::def_id*//*syntax::ast::def_id*/
                 /*syntax::ast::def_id*/
                 /*syntax::ast::prim_ty*/
@@ -8112,14 +8119,19 @@ fn serialize_161<S: std::serialization::serializer>(s: S,
                                                 }
                                             })
                       }
-                      syntax::ast::def_local(v0) {
-                        s.emit_enum_variant("syntax::ast::def_local", 6u, 1u,
+                      syntax::ast::def_local(v0, v1) {
+                        s.emit_enum_variant("syntax::ast::def_local", 6u, 2u,
                                             {||
                                                 {
                                                     s.emit_enum_variant_arg(0u,
                                                                             {||
                                                                                 serialize_27(s,
                                                                                              v0)
+                                                                            });
+                                                    s.emit_enum_variant_arg(1u,
+                                                                            {||
+                                                                                serialize_18(s,
+                                                                                             v1)
                                                                             })
                                                 }
                                             })
@@ -8378,7 +8390,7 @@ fn deserialize_161<S: std::serialization::deserializer>(s: S) ->
                 /*syntax::ast::node_id*/
                 /*syntax::ast::mode<syntax::ast::rmode>*/
 
-                /*syntax::ast::node_id*/
+                /*syntax::ast::node_id*//*bool*/
 
                 /*syntax::ast::def_id*//*syntax::ast::def_id*/
 
@@ -8451,6 +8463,10 @@ fn deserialize_161<S: std::serialization::deserializer>(s: S) ->
                                                 syntax::ast::def_local(s.read_enum_variant_arg(0u,
                                                                                                {||
                                                                                                    deserialize_27(s)
+                                                                                               }),
+                                                                       s.read_enum_variant_arg(1u,
+                                                                                               {||
+                                                                                                   deserialize_18(s)
                                                                                                }))
                                               }
                                               7u {

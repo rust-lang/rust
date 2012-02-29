@@ -298,6 +298,15 @@ fn is_immutable_def(cx: @ctx, def: def) -> option<str> {
           _ { some("upvar") }
         };
       }
+
+      // Note: we should *always* allow all local variables to be assigned
+      // here and then guarantee in the typestate pass that immutable local
+      // variables are assigned at most once.  But this requires a new kind of
+      // propagation (def. not assigned), so I didn't do that.
+      def_local(_, false) if cx.tcx.sess.opts.enforce_mut_vars {
+        some("immutable local variable")
+      }
+
       def_binding(_) { some("binding") }
       _ { none }
     }

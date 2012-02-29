@@ -47,7 +47,8 @@ type options =
      no_asm_comments: bool,
      monomorphize: bool,
      inline: bool,
-     warn_unused_imports: bool};
+     warn_unused_imports: bool,
+     enforce_mut_vars: bool};
 
 type crate_metadata = {name: str, data: [u8]};
 

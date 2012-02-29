@@ -38,7 +38,7 @@ enum def {
     def_native_mod(def_id),
     def_const(def_id),
     def_arg(node_id, mode),
-    def_local(node_id),
+    def_local(node_id, bool /* is_mutbl */),
     def_variant(def_id /* enum */, def_id /* variant */),
     def_ty(def_id),
     def_prim_ty(prim_ty),
@@ -194,7 +194,8 @@ enum init_op { init_assign, init_move, }
 type initializer = {op: init_op, expr: @expr};
 
 type local_ =  // FIXME: should really be a refinement on pat
-    {ty: @ty, pat: @pat, init: option<initializer>, id: node_id};
+    {is_mutbl: bool, ty: @ty, pat: @pat,
+     init: option<initializer>, id: node_id};
 
 type local = spanned<local_>;
 

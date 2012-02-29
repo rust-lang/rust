@@ -1346,7 +1346,7 @@ fn parse_else_expr(p: parser) -> @ast::expr {
 
 fn parse_for_expr(p: parser) -> @ast::expr {
     let lo = p.last_span.lo;
-    let decl = parse_local(p, false);
+    let decl = parse_local(p, false, false);
     expect_word(p, "in");
     let seq = parse_expr(p);
     let body = parse_block_no_value(p);
@@ -1568,24 +1568,24 @@ fn parse_pat(p: parser) -> @ast::pat {
     ret @{id: p.get_id(), node: pat, span: ast_util::mk_sp(lo, hi)};
 }
 
-fn parse_local(p: parser, allow_init: bool) -> @ast::local {
+fn parse_local(p: parser, is_mutbl: bool,
+               allow_init: bool) -> @ast::local {
     let lo = p.span.lo;
     let pat = parse_pat(p);
     let ty = @spanned(lo, lo, ast::ty_infer);
     if eat(p, token::COLON) { ty = parse_ty(p, false); }
     let init = if allow_init { parse_initializer(p) } else { none };
     ret @spanned(lo, p.last_span.hi,
-                 {ty: ty, pat: pat, init: init, id: p.get_id()});
+                 {is_mutbl: is_mutbl, ty: ty, pat: pat,
+                  init: init, id: p.get_id()});
 }
 
 fn parse_let(p: parser) -> @ast::decl {
-    if eat_word(p, "mut") {
-        /* FIXME */
-    }
+    let is_mutbl = eat_word(p, "mut");
     let lo = p.span.lo;
-    let locals = [parse_local(p, true)];
+    let locals = [parse_local(p, is_mutbl, true)];
     while eat(p, token::COMMA) {
-        locals += [parse_local(p, true)];
+        locals += [parse_local(p, is_mutbl, true)];
     }
     ret @spanned(lo, p.last_span.hi, ast::decl_local(locals));
 }

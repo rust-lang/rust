@@ -146,7 +146,8 @@ fn build_session() -> (session::session, @mutable bool) {
         no_asm_comments: false,
         monomorphize: false,
         inline: false,
-        warn_unused_imports: false
+        warn_unused_imports: false,
+        enforce_mut_vars: false
     };
 
     let codemap = codemap::new_codemap();

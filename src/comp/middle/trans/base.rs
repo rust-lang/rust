@@ -2253,7 +2253,7 @@ fn trans_local_var(cx: block, def: ast::def) -> local_var_result {
         assert (cx.fcx.llargs.contains_key(nid));
         ret take_local(cx.fcx.llargs, nid);
       }
-      ast::def_local(nid) | ast::def_binding(nid) {
+      ast::def_local(nid, _) | ast::def_binding(nid) {
         assert (cx.fcx.lllocals.contains_key(nid));
         ret take_local(cx.fcx.lllocals, nid);
       }

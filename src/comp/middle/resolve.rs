@@ -957,7 +957,7 @@ fn scope_closes(sc: scope) -> option<node_id> {
 
 fn def_is_local(d: def) -> bool {
     alt d {
-      ast::def_arg(_, _) | ast::def_local(_) | ast::def_binding(_) |
+      ast::def_arg(_, _) | ast::def_local(_, _) | ast::def_binding(_) |
       ast::def_upvar(_, _, _) { true }
       _ { false }
     }
@@ -1235,7 +1235,8 @@ fn lookup_in_block(e: env, name: ident, sp: span, b: ast::blk_, pos: uint,
                                      && (i < pos || j < loc_pos) {
                             alt lookup_in_pat(e, name, loc.node.pat) {
                               some(nid) {
-                                ret some(ast::def_local(nid));
+                                ret some(ast::def_local(nid,
+                                                        loc.node.is_mutbl));
                               }
                               _ { }
                             }
@@ -1702,7 +1703,7 @@ fn ns_for_def(d: def) -> namespace {
     alt d {
       ast::def_variant(_, _) { ns_val(definite_enum) }
       ast::def_fn(_, _) | ast::def_self(_) |
-      ast::def_const(_) | ast::def_arg(_, _) | ast::def_local(_) |
+      ast::def_const(_) | ast::def_arg(_, _) | ast::def_local(_, _) |
       ast::def_upvar(_, _, _) |  ast::def_self(_) |
       ast::def_class_field(_,_) | ast::def_class_method(_,_)
           { ns_val(value_or_enum) }

@@ -421,6 +421,7 @@ fn build_session_options(match: getopts::match,
     let cfg = parse_cfgspecs(getopts::opt_strs(match, "cfg"));
     let test = opt_present(match, "test");
     let warn_unused_imports = opt_present(match, "warn-unused-imports");
+    let enforce_mut_vars = opt_present(match, "enforce-mut-vars");
     let sopts: @session::options =
         @{crate_type: crate_type,
           static: static,
@@ -444,7 +445,8 @@ fn build_session_options(match: getopts::match,
           no_asm_comments: no_asm_comments,
           monomorphize: monomorphize,
           inline: inline,
-          warn_unused_imports: warn_unused_imports};
+          warn_unused_imports: warn_unused_imports,
+          enforce_mut_vars: enforce_mut_vars};
     ret sopts;
 }
 
@@ -518,7 +520,8 @@ fn opts() -> [getopts::opt] {
          optmulti("cfg"), optflag("test"),
          optflag("lib"), optflag("bin"), optflag("static"), optflag("gc"),
          optflag("no-asm-comments"),
-         optflag("warn-unused-imports")];
+         optflag("warn-unused-imports"),
+         optflag("enforce-mut-vars")];
 }
 
 type output_filenames = @{out_filename: str, obj_filename:str};

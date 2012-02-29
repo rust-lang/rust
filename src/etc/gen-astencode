@@ -1,24 +1,25 @@
 #!/bin/sh
 
+function msg {
+        echo ""
+        echo ""
+        echo "****************************************"
+        echo "* Processing errors encountered        *"
+        echo "*                                      *"
+        echo "* Dummy versions of the AST encoder    *"
+        echo "* have been left in astencode_gen.rs.  *"
+        echo "* Fix the compilation errors and rerun *"
+        echo "* this script to generate the real     *"
+        echo "* versions.                            *"
+        echo "****************************************"
+}
+
 M=src/comp/metadata
 GEN_TYPES="syntax::ast::item syntax::ast::def middle::typeck::method_origin \
            middle::freevars::freevar_entry syntax::ast::def_id"
 
 # Find serializer tool:
 for S in build/*/stage1/bin/serializer; do
-
-    if [ ! -x "$S" ]; then
-        echo "serializer excutable not found; try 'make serializer'"
-        exit 1
-    fi
-
-    # Find rustc:
-    D=$(dirname "$S")
-    R="${D}/../../stage0/bin/rustc"
-    if [ ! -x "$R" ]; then
-        echo "rustc not found or not executable at path '$R'"
-        exit 1
-    fi
 
     echo "Generating src/comp/metadata/astencode_gen.rs"
 
@@ -33,20 +34,25 @@ for S in build/*/stage1/bin/serializer; do
           >> $M/astencode_gen.rs
     done
 
+    # Find rustc and serializer:
+    D=$(dirname "$S")
+    R="${D}/../../stage0/bin/rustc"
+    if [ ! -x "$R" ]; then
+        echo "rustc not found or not executable at path '$R'"
+        msg
+        exit 1
+    fi
+
+    if [ ! -x "$S" ]; then
+        echo "serializer excutable not found; try 'make serializer'"
+        msg
+        exit 1
+    fi
+
     # Generate the real code into a temporary file.
     if ! "$S" src/comp/rustc.rc $GEN_TYPES > tmp.$$.rs
     then
-        echo ""
-        echo ""
-        echo "****************************************"
-        echo "* Compilation errors encountered       *"
-        echo "*                                      *"
-        echo "* Dummy versions of the AST encoder    *"
-        echo "* have been left in astencode_gen.rs.  *"
-        echo "* Fix the compilation errors and rerun *"
-        echo "* this script to generate the real     *"
-        echo "* versions.                            *"
-        echo "****************************************"
+        msg
         rm tmp.$$.rs
         exit 1
     fi

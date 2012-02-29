@@ -342,7 +342,7 @@ fn clear_in_current(cx: ctx, my_def: node_id, to: bool) {
 
 fn def_is_owned_local(cx: ctx, d: def) -> option<node_id> {
     alt d {
-      def_local(id) { some(id) }
+      def_local(id, _) { some(id) }
       def_arg(id, m) {
         alt ty::resolved_mode(cx.tcx, m) {
           by_copy | by_move { some(id) }
