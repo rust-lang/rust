@@ -741,7 +741,9 @@ fn make_generic_glue_inner(ccx: crate_ctxt, t: ty::t,
         p += 1u;
     }
 
-    fcx.lltyparams = vec::map_mut(lltydescs, {|d| {desc: d, dicts: none}});
+    fcx.lltyparams = vec::map(vec::from_mut(lltydescs), {|d|
+        {desc: d, dicts: none}
+    });
 
     let bcx = top_scope_block(fcx, none);
     let lltop = bcx.llbb;

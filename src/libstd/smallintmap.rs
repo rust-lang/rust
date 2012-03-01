@@ -73,7 +73,7 @@ fn contains_key<T: copy>(m: smallintmap<T>, key: uint) -> bool {
 // FIXME: Are these really useful?
 
 fn truncate<T: copy>(m: smallintmap<T>, len: uint) {
-    m.v = vec::slice_mut::<option<T>>(m.v, 0u, len);
+    m.v = vec::to_mut(vec::slice::<option<T>>(m.v, 0u, len));
 }
 
 fn max_key<T>(m: smallintmap<T>) -> uint {
