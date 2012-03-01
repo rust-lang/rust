@@ -1,12 +1,37 @@
 #[doc = "Generate markdown from a document tree"];
 
-import std::io;
-import std::io::writer_util;
-
 export mk_pass;
 
 fn mk_pass(config: config::config) -> pass {
-    mk_pass_(config, {|f| f(std::io::stdout()) })
+    mk_pass_(config, stdout_writer)
+}
+
+enum writeinstr {
+    write(str),
+    done
+}
+
+type writer = fn~(writeinstr);
+
+impl writer for writer {
+    fn write_str(str: str) {
+        self(write(str));
+    }
+
+    fn write_line(str: str) {
+        self.write_str(str + "\n");
+    }
+
+    fn write_done() {
+        self(done)
+    }
+}
+
+fn stdout_writer(instr: writeinstr) {
+    alt instr {
+      write(str) { std::io::println(str); }
+      done { }
+    }
 }
 
 // FIXME: This is a really convoluted interface to work around trying
@@ -14,10 +39,10 @@ fn mk_pass(config: config::config) -> pass {
 // what was written afterward
 fn mk_pass_(
     config: config::config,
-    give_writer: fn~(fn(io::writer))
+    writer: writer
 ) -> pass {
     let f = fn~(srv: astsrv::srv, doc: doc::cratedoc) -> doc::cratedoc {
-        run(srv, doc, config, give_writer)
+        run(srv, doc, config, writer)
     };
 
     {
@@ -30,7 +55,7 @@ fn run(
     srv: astsrv::srv,
     doc: doc::cratedoc,
     _config: config::config,
-    give_writer: fn~(fn(io::writer))
+    writer: writer
 ) -> doc::cratedoc {
 
     fn mods_last(item1: doc::itemtag, item2: doc::itemtag) -> bool {
@@ -45,17 +70,16 @@ fn run(
         lteq
     }
 
-    give_writer {|writer|
-        // Sort the items so mods come last. All mods will be
-        // output at the same header level so sorting mods last
-        // makes the headers come out nested correctly.
-        let sorted_doc = sort_pass::mk_pass(
-            "mods last", mods_last
-        ).f(srv, doc);
+    // Sort the items so mods come last. All mods will be
+    // output at the same header level so sorting mods last
+    // makes the headers come out nested correctly.
+    let sorted_doc = sort_pass::mk_pass(
+        "mods last", mods_last
+    ).f(srv, doc);
 
-        write_markdown(sorted_doc, writer);
-    }
-    doc
+    write_markdown(sorted_doc, writer);
+
+    ret doc;
 }
 
 #[test]
@@ -85,18 +109,19 @@ fn should_write_modules_last() {
 }
 
 type ctxt = {
-    w: io::writer
+    w: writer
 };
 
 fn write_markdown(
     doc: doc::cratedoc,
-    writer: io::writer
+    writer: writer
 ) {
     let ctxt = {
         w: writer
     };
 
     write_crate(ctxt, doc);
+    ctxt.w.write_done();
 }
 
 enum hlvl {
@@ -853,31 +878,45 @@ mod test {
         doc
     }
 
+    fn writer_future() -> (writer, future::future<str>) {
+        let port = comm::port();
+        let chan = comm::chan(port);
+        let writer = fn~(instr: writeinstr) {
+            comm::send(chan, copy instr);
+        };
+        let future = future::from_fn {||
+            let res = "";
+            while true {
+                alt comm::recv(port) {
+                  write(s) { res += s }
+                  done { break }
+                }
+            }
+            res
+        };
+        (writer, future)
+    }
+
     fn write_markdown_str(
         doc: doc::cratedoc
     ) -> str {
-        let buffer = io::mk_mem_buffer();
-        let writer = io::mem_buffer_writer(buffer);
+        let (writer, future) = writer_future();
         write_markdown(doc, writer);
-        ret io::mem_buffer_str(buffer);
+        ret future::get(future);
     }
 
     fn write_markdown_str_srv(
         srv: astsrv::srv,
         doc: doc::cratedoc
     ) -> str {
-        let port = comm::port();
-        let chan = comm::chan(port);
-
-        let pass = mk_pass_(config::default_config("")) {|f|
-            let buffer = io::mk_mem_buffer();
-            let writer = io::mem_buffer_writer(buffer);
-            f(writer);
-            let result = io::mem_buffer_str(buffer);
-            comm::send(chan, result);
+        let config = {
+            output_style: config::doc_per_crate
+            with config::default_config("")
         };
+        let (writer, future) = writer_future();
+        let pass = mk_pass_(config, writer);
         pass.f(srv, doc);
-        ret comm::recv(port);
+        ret future::get(future);
     }
 
     #[test]
