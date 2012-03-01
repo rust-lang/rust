@@ -270,7 +270,7 @@ fn with_bytes_reader_between<t>(bytes: [u8], start: uint, end: uint,
     f(bytes_reader_between(bytes, start, end))
 }
 
-fn string_reader(s: str) -> reader {
+fn str_reader(s: str) -> reader {
     bytes_reader(str::bytes(s))
 }
 
@@ -662,7 +662,7 @@ mod tests {
 
     #[test]
     fn test_readchars_empty() {
-        let inp : io::reader = io::string_reader("");
+        let inp : io::reader = io::str_reader("");
         let res : [char] = inp.read_chars(128u);
         assert(vec::len(res) == 0u);
     }
@@ -677,7 +677,7 @@ mod tests {
             29983, 38152, 30340, 27748,
             21273, 20999, 32905, 27748];
         fn check_read_ln(len : uint, s: str, ivals: [int]) {
-            let inp : io::reader = io::string_reader(s);
+            let inp : io::reader = io::str_reader(s);
             let res : [char] = inp.read_chars(len);
             if (len <= vec::len(ivals)) {
                 assert(vec::len(res) == len);
@@ -696,14 +696,14 @@ mod tests {
 
     #[test]
     fn test_readchar() {
-        let inp : io::reader = io::string_reader("生");
+        let inp : io::reader = io::str_reader("生");
         let res : char = inp.read_char();
         assert(res as int == 29983);
     }
 
     #[test]
     fn test_readchar_empty() {
-        let inp : io::reader = io::string_reader("");
+        let inp : io::reader = io::str_reader("");
         let res : char = inp.read_char();
         assert(res as int == -1);
     }

@@ -268,7 +268,7 @@ fn check_variants_T<T: copy>(
                         diagnostic::mk_span_handler(handler, codemap),
                         crate2,
                         filename,
-                        io::string_reader(""), _,
+                        io::str_reader(""), _,
                         pprust::no_ann()));
                 alt cx.mode {
                   tm_converge {
@@ -416,7 +416,7 @@ fn parse_and_print(code: @str) -> str {
                                         sess.span_diagnostic,
                                         crate,
                                         filename,
-                                        io::string_reader(*code), _,
+                                        io::str_reader(*code), _,
                                         pprust::no_ann()));
 }
 
@@ -562,7 +562,7 @@ fn check_variants(files: [str], cx: context) {
                                                sess.span_diagnostic,
                                                crate,
                                                file,
-                                               io::string_reader(*s), _,
+                                               io::str_reader(*s), _,
                                                pprust::no_ann())));
         check_variants_of_ast(*crate, sess.cm, file, cx);
     }
