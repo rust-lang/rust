@@ -31,6 +31,8 @@ import syntax::print::pprust;
 
 export encode_inlined_item;
 export decode_inlined_item;
+export encode_inlined_method;
+export decode_inlined_method;
 
 type decode_ctxt = @{
     cdata: cstore::crate_metadata,
@@ -49,25 +51,36 @@ iface tr {
 }
 
 // ______________________________________________________________________
-// Enumerating the IDs which appear in an AST
+// Top-level methods.
+
+// The type inline_fn should be a type that can represent both methods
+// and top-level items. As it happens, the type ast::method is perfect
+// for this purpose, but I use this typedef just to keep clear when
+// the thing may not, in fact, be an actual method in the AST but
+// rather some sort of function.
+enum inline_fn = @ast::method;
 
 fn encode_inlined_item(ecx: @e::encode_ctxt,
                        ebml_w: ebml::writer,
                        path: ast_map::path,
                        item: @ast::item) {
-    #debug["> Encoding inlined item: %s::%s (%u)",
-           ast_map::path_to_str(path),
-           item.ident,
-           ebml_w.writer.tell()];
-    let id_range = compute_id_range(item);
-    ebml_w.wr_tag(c::tag_ast as uint) {||
-        encode_id_range(ebml_w, id_range);
-        encode_ast(ebml_w, item);
-        encode_side_tables_for_item(ecx, ebml_w, item);
-    }
-    #debug["< Encoded inlined item: %s (%u)",
-           ast_map::path_to_str(path),
-           ebml_w.writer.tell()];
+    let ifn = inline_fn(alt item.node {
+      ast::item_fn(decl, tps, body) {
+          @{ident: item.ident,
+            attrs: item.attrs,
+            tps: tps,
+            decl: decl,
+            body: body,
+            id: item.id,
+            span: item.span}
+      }
+
+      _ {
+          ecx.ccx.sess.span_bug(item.span, "Cannot inline non-function")
+      }
+    });
+
+    encode_inlined_fn(ecx, ebml_w, path, ifn);
 }
 
 fn decode_inlined_item(cdata: cstore::crate_metadata,
@@ -75,23 +88,88 @@ fn decode_inlined_item(cdata: cstore::crate_metadata,
                        maps: maps,
                        path: ast_map::path,
                        par_doc: ebml::doc) -> option<@ast::item> {
+    let oifn = decode_inlined_fn(cdata, tcx, maps, path, par_doc);
+    option::map(oifn) {|ifn|
+        let item = @{ident: ifn.ident,
+                     attrs: ifn.attrs,
+                     id: ifn.id,
+                     node: ast::item_fn(ifn.decl, ifn.tps, ifn.body),
+                     span: ifn.span};
+        ast_map::map_decoded_item(tcx.items, path, item);
+        item
+    }
+}
+
+fn encode_inlined_method(ecx: @e::encode_ctxt,
+                         ebml_w: ebml::writer,
+                         path: ast_map::path,
+                         mthd: @ast::method) {
+    encode_inlined_fn(ecx, ebml_w, path, inline_fn(mthd))
+}
+
+fn decode_inlined_method(cdata: cstore::crate_metadata,
+                         tcx: ty::ctxt,
+                         maps: maps,
+                         path: ast_map::path,
+                         par_doc: ebml::doc) -> option<@ast::method> {
+    let oifn = decode_inlined_fn(cdata, tcx, maps, path, par_doc);
+    option::map(oifn) {|ifn|
+        ast_map::map_decoded_method(tcx.items, path, *ifn);
+        *ifn
+    }
+}
+
+fn encode_inlined_fn(ecx: @e::encode_ctxt,
+                     ebml_w: ebml::writer,
+                     path: ast_map::path,
+                     ifn: inline_fn) {
+
+    #debug["> Encoding inlined item: %s::%s (%u)",
+           ast_map::path_to_str(path),
+           ifn.ident,
+           ebml_w.writer.tell()];
+
+    let id_range = compute_id_range(ifn);
+    ebml_w.wr_tag(c::tag_ast as uint) {||
+        encode_id_range(ebml_w, id_range);
+        encode_ast(ebml_w, ifn);
+        encode_side_tables_for_ifn(ecx, ebml_w, ifn);
+    }
+
+    #debug["< Encoded inlined fn: %s::%s (%u)",
+           ast_map::path_to_str(path),
+           ifn.ident,
+           ebml_w.writer.tell()];
+}
+
+// Decodes the inlined function and associated side tables.  Does
+// *not* insert the function into the ast_map, since the correct way
+// to do this depends on whether this is an inlined item or method;
+// therefore, you ought to be invoking decode_inlined_item() or
+// decode_inlined_method() and not this helper function.
+fn decode_inlined_fn(cdata: cstore::crate_metadata,
+                     tcx: ty::ctxt,
+                     maps: maps,
+                     path: ast_map::path,
+                     par_doc: ebml::doc) -> option<inline_fn> {
     let dcx = @{cdata: cdata, tcx: tcx, maps: maps};
     alt par_doc.opt_child(c::tag_ast) {
       none { none }
       some(ast_doc) {
-        #debug["> Decoding inlined item: %s", ast_map::path_to_str(path)];
+        #debug["> Decoding inlined fn: %s", ast_map::path_to_str(path)];
         let from_id_range = decode_id_range(ast_doc);
         let to_id_range = reserve_id_range(dcx.tcx.sess, from_id_range);
         let xcx = @{dcx: dcx,
                     from_id_range: from_id_range,
                     to_id_range: to_id_range};
-        let raw_item = decode_ast(ast_doc);
-        let item = renumber_ast(xcx, raw_item);
-        #debug[">> Item named: %s", item.ident];
-        ast_map::map_decoded_item(dcx.tcx.items, path, item);
+        let raw_ifn = decode_ast(ast_doc);
+        let ifn = renumber_ast(xcx, raw_ifn);
+        #debug["Fn named: %s", ifn.ident];
         decode_side_tables(xcx, ast_doc);
-        #debug["< Decoded inlined item: %s", ast_map::path_to_str(path)];
-        some(item)
+        #debug["< Decoded inlined fn: %s::%s",
+               ast_map::path_to_str(path),
+               ifn.ident];
+        some(ifn)
       }
     }
 }
@@ -105,7 +183,7 @@ fn empty(range: id_range) -> bool {
     range.min >= range.max
 }
 
-fn visit_ids(item: @ast::item, vfn: fn@(ast::node_id)) {
+fn visit_ids(ifn: inline_fn, vfn: fn@(ast::node_id)) {
     let visitor = visit::mk_simple_visitor(@{
         visit_mod: fn@(_m: ast::_mod, _sp: span, id: ast::node_id) {
             vfn(id)
@@ -214,13 +292,13 @@ fn visit_ids(item: @ast::item, vfn: fn@(ast::node_id)) {
         }
     });
 
-    visitor.visit_item(item, (), visitor);
+    visit::visit_method_helper(*ifn, (), visitor);
 }
 
-fn compute_id_range(item: @ast::item) -> id_range {
+fn compute_id_range(ifn: inline_fn) -> id_range {
     let min = @mutable int::max_value;
     let max = @mutable int::min_value;
-    visit_ids(item) {|id|
+    visit_ids(ifn) {|id|
         *min = int::min(*min, id);
         *max = int::max(*max, id + 1);
     }
@@ -317,25 +395,25 @@ impl deserializer_helpers<D: serialization::deserializer> for D {
 // We also have to adjust the spans: for now we just insert a dummy span,
 // but eventually we should add entries to the local codemap as required.
 
-fn encode_ast(ebml_w: ebml::writer, item: @ast::item) {
+fn encode_ast(ebml_w: ebml::writer, ifn: inline_fn) {
     ebml_w.wr_tag(c::tag_tree as uint) {||
-        astencode_gen::serialize_syntax_ast_item(ebml_w, *item);
+        astencode_gen::serialize_syntax_ast_method(ebml_w, **ifn)
     }
 }
 
-fn decode_ast(par_doc: ebml::doc) -> @ast::item {
+fn decode_ast(par_doc: ebml::doc) -> inline_fn {
     let chi_doc = par_doc[c::tag_tree];
     let d = serialization::mk_ebml_deserializer(chi_doc);
-    @astencode_gen::deserialize_syntax_ast_item(d)
+    inline_fn(@astencode_gen::deserialize_syntax_ast_method(d))
 }
 
-fn renumber_ast(xcx: extended_decode_ctxt, item: @ast::item) -> @ast::item {
+fn renumber_ast(xcx: extended_decode_ctxt, ifn: inline_fn) -> inline_fn {
     let fld = fold::make_fold({
         new_id: xcx.tr_id(_),
         new_span: xcx.tr_span(_)
         with *fold::default_ast_fold()
     });
-    fld.fold_item(item)
+    inline_fn(fld.fold_method(*ifn))
 }
 
 // ______________________________________________________________________
@@ -586,11 +664,11 @@ impl writer for ebml::writer {
     }
 }
 
-fn encode_side_tables_for_item(ecx: @e::encode_ctxt,
-                               ebml_w: ebml::writer,
-                               item: @ast::item) {
+fn encode_side_tables_for_ifn(ecx: @e::encode_ctxt,
+                              ebml_w: ebml::writer,
+                              ifn: inline_fn) {
     ebml_w.wr_tag(c::tag_table as uint) {||
-        visit_ids(item, fn@(id: ast::node_id) {
+        visit_ids(ifn, fn@(id: ast::node_id) {
             // Note: this will cause a copy of ebml_w, which is bad as
             // it has mutable fields.  But I believe it's harmless since
             // we generate balanced EBML.
@@ -820,7 +898,21 @@ fn decode_side_tables(xcx: extended_decode_ctxt,
 }
 
 // ______________________________________________________________________
-// Testing
+// Testing of astencode_gen
+
+#[cfg(test)]
+fn encode_item_ast(ebml_w: ebml::writer, item: @ast::item) {
+    ebml_w.wr_tag(c::tag_tree as uint) {||
+        astencode_gen::serialize_syntax_ast_item(ebml_w, *item);
+    }
+}
+
+#[cfg(test)]
+fn decode_item_ast(par_doc: ebml::doc) -> @ast::item {
+    let chi_doc = par_doc[c::tag_tree];
+    let d = serialization::mk_ebml_deserializer(chi_doc);
+    @astencode_gen::deserialize_syntax_ast_item(d)
+}
 
 #[cfg(test)]
 fn new_parse_sess() -> parser::parse_sess {
@@ -864,9 +956,9 @@ fn roundtrip(in_item: @ast::item) {
     #debug["in_item = %s", pprust::item_to_str(in_item)];
     let mbuf = io::mk_mem_buffer();
     let ebml_w = ebml::mk_writer(io::mem_buffer_writer(mbuf));
-    encode_ast(ebml_w, in_item);
+    encode_item_ast(ebml_w, in_item);
     let ebml_doc = ebml::new_doc(@io::mem_buffer_buf(mbuf));
-    let out_item = decode_ast(ebml_doc);
+    let out_item = decode_item_ast(ebml_doc);
     #debug["out_item = %s", pprust::item_to_str(out_item)];
     assert in_item == out_item;
 }

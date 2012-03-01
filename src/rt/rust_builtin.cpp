@@ -682,11 +682,6 @@ rust_dbg_call(dbg_callback cb, void *data) {
     return cb(data);
 }
 
-extern "C" CDECL void *
-rust_frame_address() {
-    return __builtin_frame_address(1);
-}
-
 //
 // Local Variables:
 // mode: C++

@@ -289,10 +289,15 @@ fn compile_test(config: config, props: test_props,
                 testfile: str) -> procres {
     vec::iter(props.aux_builds) {|rel_ab|
         let abs_ab = fs::connect(config.aux_base, rel_ab);
-        compose_and_run(config, abs_ab,
-                        make_compile_args(_, props, ["--lib"],
-                                          make_lib_name, _),
-                        config.compile_lib_path, option::none);
+        let auxres = compose_and_run(config, abs_ab,
+                                     make_compile_args(_, props, ["--lib"],
+                                                       make_lib_name, _),
+                                     config.compile_lib_path, option::none);
+        if auxres.status != 0 {
+            fatal_procres(
+                #fmt["auxiliary build of %s failed to compile: ", abs_ab],
+                auxres);
+        }
     }
 
     compose_and_run(config, testfile,

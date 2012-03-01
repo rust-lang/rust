@@ -20,12 +20,15 @@ native mod rustrt {
     fn unsupervise();
     fn shape_log_str<T>(t: *sys::type_desc, data: T) -> str;
     fn rust_set_exit_status(code: ctypes::intptr_t);
-    fn rust_frame_address() -> ctypes::uintptr_t;
 }
 
 #[abi = "rust-intrinsic"]
 native mod rusti {
     fn get_type_desc<T>() -> *type_desc;
+
+    // Invokes __builtin_frame_address().
+    // See <http://gcc.gnu.org/onlinedocs/gcc/Return-Address.html>.
+    fn frame_address(n: ctypes::c_uint) -> ctypes::uintptr_t;
 }
 
 /*
@@ -76,10 +79,6 @@ fn refcount<T>(t: @T) -> uint {
 
 fn log_str<T>(t: T) -> str {
     rustrt::shape_log_str(get_type_desc::<T>(), t)
-}
-
-fn frame_address() -> uint {
-    rustrt::rust_frame_address()
 }
 
 #[doc(

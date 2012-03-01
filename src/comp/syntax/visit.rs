@@ -130,8 +130,7 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
         alt ifce { some(ty) { v.visit_ty(ty, e, v); } _ {} }
         v.visit_ty(ty, e, v);
         for m in methods {
-            v.visit_fn(fk_method(m.ident, m.tps), m.decl, m.body, m.span,
-                       m.id, e, v);
+            visit_method_helper(m, e, v)
         }
       }
       item_class(tps, members, _, ctor_decl, ctor_blk) {
@@ -250,6 +249,15 @@ fn visit_fn_decl<E>(fd: fn_decl, e: E, v: vt<E>) {
         v.visit_constr(c.node.path, c.span, c.node.id, e, v);
     }
     v.visit_ty(fd.output, e, v);
+}
+
+// Note: there is no visit_method() method in the visitor, instead override
+// visit_fn() and check for fk_method().  I named this visit_method_helper()
+// because it is not a default impl of any method, though I doubt that really
+// clarifies anything. - Niko
+fn visit_method_helper<E>(m: @method, e: E, v: vt<E>) {
+    v.visit_fn(fk_method(m.ident, m.tps), m.decl, m.body, m.span,
+               m.id, e, v);
 }
 
 fn visit_fn<E>(fk: fn_kind, decl: fn_decl, body: blk, _sp: span,

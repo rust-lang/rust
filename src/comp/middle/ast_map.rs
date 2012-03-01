@@ -73,6 +73,15 @@ fn map_decoded_item(map: map, path: path, i: @item) {
     v.visit_item(i, cx, v);
 }
 
+fn map_decoded_method(map: map, path: path, m: @method) {
+    // As above.
+    let cx = {map: map,
+              mutable path: path,
+              mutable local_id: 0u};
+    let v = mk_ast_map_visitor();
+    visit::visit_method_helper(m, cx, v);
+}
+
 fn map_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
           sp: codemap::span, id: node_id, cx: ctx, v: vt) {
     for a in decl.inputs {

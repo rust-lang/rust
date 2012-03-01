@@ -8748,3 +8748,12 @@ fn deserialize_syntax_ast_def_id<S: std::serialization::deserializer>(s: S) ->
    syntax::ast::def_id {
     deserialize_162(s)
 }
+fn serialize_syntax_ast_method<S: std::serialization::serializer>(s: S,
+                                                                  v:
+                                                                      syntax::ast::method) {
+    serialize_160(s, v);
+}
+fn deserialize_syntax_ast_method<S: std::serialization::deserializer>(s: S) ->
+   syntax::ast::method {
+    deserialize_160(s)
+}
