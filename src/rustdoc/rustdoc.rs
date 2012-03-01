@@ -108,7 +108,7 @@ fn main(args: [str]) {
       }
     };
 
-    run(config.input_crate);
+    run(config);
 }
 
 fn time<T>(what: str, f: fn() -> T) -> T {
@@ -120,14 +120,15 @@ fn time<T>(what: str, f: fn() -> T) -> T {
 }
 
 #[doc = "Runs rustdoc over the given file"]
-fn run(source_file: str) {
+fn run(config: config::config) {
 
-    let default_name = source_file;
+    let source_file = config.input_crate;
     astsrv::from_file(source_file) {|srv|
         time("wait_ast") {||
             astsrv::exec(srv) {|_ctxt| () }
         };
         let doc = time("extract") {||
+            let default_name = source_file;
             extract::from_srv(srv, default_name)
         };
         run_passes(srv, doc, [
@@ -144,7 +145,7 @@ fn run(source_file: str) {
             unindent_pass::mk_pass(),
             sort_item_name_pass::mk_pass(),
             sort_item_type_pass::mk_pass(),
-            markdown_pass::mk_pass {|f| f(std::io:: stdout()) }
+            markdown_pass::mk_pass(config)
         ]);
     }
 }

@@ -5,46 +5,57 @@ import std::io::writer_util;
 
 export mk_pass;
 
+fn mk_pass(config: config::config) -> pass {
+    mk_pass_(config, {|f| f(std::io::stdout()) })
+}
+
 // FIXME: This is a really convoluted interface to work around trying
 // to get a writer into a unique closure and then being able to test
 // what was written afterward
-fn mk_pass(
+fn mk_pass_(
+    config: config::config,
     give_writer: fn~(fn(io::writer))
 ) -> pass {
-    let f = fn~(
-        srv: astsrv::srv,
-        doc: doc::cratedoc
-    ) -> doc::cratedoc {
-
-        fn mods_last(item1: doc::itemtag, item2: doc::itemtag) -> bool {
-            fn is_mod(item: doc::itemtag) -> bool {
-                alt item {
-                  doc::modtag(_) { true }
-                  _ { false }
-                }
-            }
-
-            let lteq = !is_mod(item1) || is_mod(item2);
-            lteq
-        }
-
-        give_writer {|writer|
-            // Sort the items so mods come last. All mods will be
-            // output at the same header level so sorting mods last
-            // makes the headers come out nested correctly.
-            let sorted_doc = sort_pass::mk_pass(
-                "mods last", mods_last
-            ).f(srv, doc);
-
-            write_markdown(sorted_doc, writer);
-        }
-        doc
+    let f = fn~(srv: astsrv::srv, doc: doc::cratedoc) -> doc::cratedoc {
+        run(srv, doc, config, give_writer)
     };
 
     {
         name: "markdown",
         f: f
     }
+}
+
+fn run(
+    srv: astsrv::srv,
+    doc: doc::cratedoc,
+    _config: config::config,
+    give_writer: fn~(fn(io::writer))
+) -> doc::cratedoc {
+
+    fn mods_last(item1: doc::itemtag, item2: doc::itemtag) -> bool {
+        fn is_mod(item: doc::itemtag) -> bool {
+            alt item {
+              doc::modtag(_) { true }
+              _ { false }
+            }
+        }
+
+        let lteq = !is_mod(item1) || is_mod(item2);
+        lteq
+    }
+
+    give_writer {|writer|
+        // Sort the items so mods come last. All mods will be
+        // output at the same header level so sorting mods last
+        // makes the headers come out nested correctly.
+        let sorted_doc = sort_pass::mk_pass(
+            "mods last", mods_last
+        ).f(srv, doc);
+
+        write_markdown(sorted_doc, writer);
+    }
+    doc
 }
 
 #[test]
@@ -858,7 +869,7 @@ mod test {
         let port = comm::port();
         let chan = comm::chan(port);
 
-        let pass = mk_pass {|f|
+        let pass = mk_pass_(config::default_config("")) {|f|
             let buffer = io::mk_mem_buffer();
             let writer = io::mem_buffer_writer(buffer);
             f(writer);

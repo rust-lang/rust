@@ -3,6 +3,7 @@ import std::getopts;
 export output_format::{};
 export output_style::{};
 export config;
+export default_config;
 export parse_config;
 export usage;
 
