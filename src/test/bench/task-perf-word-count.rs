@@ -21,7 +21,7 @@ import comm::recv;
 import comm::send;
 
 fn map(input: str, emit: map_reduce::putter) {
-    let f = io::string_reader(input);
+    let f = io::str_reader(input);
 
 
     while true {
