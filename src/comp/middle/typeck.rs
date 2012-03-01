@@ -420,11 +420,11 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
 
 fn ty_of_item(tcx: ty::ctxt, mode: mode, it: @ast::item)
     -> ty::ty_param_bounds_and_ty {
-    alt tcx.tcache.find(local_def(it.id)) {
+    let def_id = local_def(it.id);
+    alt tcx.tcache.find(def_id) {
       some(tpt) { ret tpt; }
       _ {}
     }
-    let def_id = {crate: ast::local_crate, node: it.id};
     alt it.node {
       ast::item_const(t, _) {
         let typ = ast_ty_to_ty(tcx, mode, t);
@@ -917,9 +917,10 @@ mod collect {
           }
           ast::item_res(decl, tps, _, dtor_id, ctor_id) {
             let {bounds, params} = mk_ty_params(tcx, tps);
+            let def_id = local_def(it.id);
             let t_arg = ty_of_arg(tcx, m_collect, decl.inputs[0]);
-            let t_res = ty::mk_res(tcx, local_def(it.id), t_arg.ty,
-                                   params);
+            let t_res = ty::mk_res(tcx, def_id, t_arg.ty, params);
+            let t_res = ty::mk_with_id(tcx, t_res, def_id);
             let t_ctor = ty::mk_fn(tcx, {
                 proto: ast::proto_box,
                 inputs: [{mode: ast::expl(ast::by_copy) with t_arg}],
@@ -934,7 +935,8 @@ mod collect {
             write_ty(tcx, it.id, t_res);
             write_ty(tcx, ctor_id, t_ctor);
             tcx.tcache.insert(local_def(ctor_id),
-                                 {bounds: bounds, ty: t_ctor});
+                              {bounds: bounds, ty: t_ctor});
+            tcx.tcache.insert(def_id, {bounds: bounds, ty: t_res});
             write_ty(tcx, dtor_id, t_dtor);
           }
           ast::item_iface(_, ms) {
