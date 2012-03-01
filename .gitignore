@@ -78,3 +78,4 @@ rust.tex
 keywords.md
 x86_64-apple-darwin/
 doc/core/
+tmp.*.rs
