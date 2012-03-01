@@ -52,7 +52,7 @@ Predicate: same_length
 
 Returns true if two vectors have the same length
 */
-pure fn same_length<T, U>(xs: [T], ys: [U]) -> bool {
+pure fn same_length<T, U>(xs: [const T], ys: [const U]) -> bool {
     vec::len(xs) == vec::len(ys)
 }
 
@@ -278,7 +278,7 @@ Function: split
 
 Split the vector `v` by applying each element against the predicate `f`.
 */
-fn split<T: copy>(v: [T], f: fn(T) -> bool) -> [[T]] {
+fn split<T: copy>(v: [const T], f: fn(T) -> bool) -> [[T]] {
     let ln = len(v);
     if (ln == 0u) { ret [] }
 
@@ -303,7 +303,7 @@ Function: splitn
 Split the vector `v` by applying each element against the predicate `f` up
 to `n` times.
 */
-fn splitn<T: copy>(v: [T], n: uint, f: fn(T) -> bool) -> [[T]] {
+fn splitn<T: copy>(v: [const T], n: uint, f: fn(T) -> bool) -> [[T]] {
     let ln = len(v);
     if (ln == 0u) { ret [] }
 
@@ -331,7 +331,7 @@ Function: rsplit
 Reverse split the vector `v` by applying each element against the predicate
 `f`.
 */
-fn rsplit<T: copy>(v: [T], f: fn(T) -> bool) -> [[T]] {
+fn rsplit<T: copy>(v: [const T], f: fn(T) -> bool) -> [[T]] {
     let ln = len(v);
     if (ln == 0u) { ret [] }
 
@@ -356,7 +356,7 @@ Function: rsplitn
 Reverse split the vector `v` by applying each element against the predicate
 `f` up to `n times.
 */
-fn rsplitn<T: copy>(v: [T], n: uint, f: fn(T) -> bool) -> [[T]] {
+fn rsplitn<T: copy>(v: [const T], n: uint, f: fn(T) -> bool) -> [[T]] {
     let ln = len(v);
     if (ln == 0u) { ret [] }
 
@@ -412,7 +412,7 @@ Function: push
 
 Append an element to a vector
 */
-fn push<T: copy>(&v: [T], initval: T) {
+fn push<T: copy>(&v: [const T], initval: T) {
     v += [initval];
 }
 
@@ -432,7 +432,7 @@ v - The vector to grow
 n - The number of elements to add
 initval - The value for the new elements
 */
-fn grow<T: copy>(&v: [T], n: uint, initval: T) {
+fn grow<T: copy>(&v: [const T], n: uint, initval: T) {
     reserve(v, next_power_of_two(len(v) + n));
     let i: uint = 0u;
     while i < n { v += [initval]; i += 1u; }
@@ -471,7 +471,7 @@ v - The vector to grow
 n - The number of elements to add
 init_op - A function to call to retreive each appended element's value
 */
-fn grow_fn<T>(&v: [T], n: uint, op: init_op<T>) {
+fn grow_fn<T>(&v: [const T], n: uint, op: init_op<T>) {
     reserve(v, next_power_of_two(len(v) + n));
     let i: uint = 0u;
     while i < n { v += [op(i)]; i += 1u; }
@@ -527,7 +527,8 @@ Function: map2
 
 Apply a function to each pair of elements and return the results
 */
-fn map2<T: copy, U: copy, V>(v0: [T], v1: [U], f: fn(T, U) -> V) -> [V] {
+fn map2<T: copy, U: copy, V>(v0: [const T], v1: [const U],
+                             f: fn(T, U) -> V) -> [V] {
     let v0_len = len(v0);
     if v0_len != len(v1) { fail; }
     let u: [V] = [];
@@ -645,7 +646,7 @@ Return true if a predicate matches any elements in both vectors.
 
 If the vectors contains no elements then false is returned.
 */
-fn any2<T, U>(v0: [T], v1: [U], f: fn(T, U) -> bool) -> bool {
+fn any2<T, U>(v0: [const T], v1: [U], f: fn(T, U) -> bool) -> bool {
     let v0_len = len(v0);
     let v1_len = len(v1);
     let i = 0u;
@@ -675,7 +676,7 @@ Return true if a predicate matches all elements in both vectors.
 
 If the vectors are not the same size then false is returned.
 */
-fn all2<T, U>(v0: [T], v1: [U], f: fn(T, U) -> bool) -> bool {
+fn all2<T, U>(v0: [const T], v1: [const U], f: fn(T, U) -> bool) -> bool {
     let v0_len = len(v0);
     if v0_len != len(v1) { ret false; }
     let i = 0u;
@@ -688,7 +689,7 @@ Function: contains
 
 Return true if a vector contains an element with the given value
 */
-fn contains<T>(v: [T], x: T) -> bool {
+fn contains<T>(v: [const T], x: T) -> bool {
     for elt: T in v { if x == elt { ret true; } }
     ret false;
 }
@@ -713,7 +714,7 @@ Apply function `f` to each element of `v`, starting from the first.
 When function `f` returns true then an option containing the element
 is returned. If `f` matches no elements then none is returned.
 */
-fn find<T: copy>(v: [T], f: fn(T) -> bool) -> option<T> {
+fn find<T: copy>(v: [const T], f: fn(T) -> bool) -> option<T> {
     find_from(v, 0u, len(v), f)
 }
 
@@ -726,8 +727,8 @@ Apply function `f` to each element of `v` within the range [`start`, `end`).
 When function `f` returns true then an option containing the element
 is returned. If `f` matches no elements then none is returned.
 */
-fn find_from<T: copy>(v: [T], start: uint, end: uint, f: fn(T) -> bool) ->
-  option<T> {
+fn find_from<T: copy>(v: [const T], start: uint, end: uint,
+                      f: fn(T) -> bool) -> option<T> {
     option::map(position_from(v, start, end, f)) { |i| v[i] }
 }
 
@@ -740,7 +741,7 @@ Apply function `f` to each element of `v` in reverse order. When function `f`
 returns true then an option containing the element is returned. If `f`
 matches no elements then none is returned.
 */
-fn rfind<T: copy>(v: [T], f: fn(T) -> bool) -> option<T> {
+fn rfind<T: copy>(v: [const T], f: fn(T) -> bool) -> option<T> {
     rfind_from(v, 0u, len(v), f)
 }
 
@@ -753,8 +754,8 @@ Apply function `f` to each element of `v` in reverse order within the range
 [`start`, `end`). When function `f` returns true then an option containing
 the element is returned. If `f` matches no elements then none is returned.
 */
-fn rfind_from<T: copy>(v: [T], start: uint, end: uint, f: fn(T) -> bool) ->
-  option<T> {
+fn rfind_from<T: copy>(v: [const T], start: uint, end: uint,
+                       f: fn(T) -> bool) -> option<T> {
     option::map(rposition_from(v, start, end, f)) { |i| v[i] }
 }
 
@@ -768,7 +769,7 @@ Returns:
 option::some(uint) - The first index containing a matching value
 option::none - No elements matched
 */
-fn position_elt<T>(v: [T], x: T) -> option<uint> {
+fn position_elt<T>(v: [const T], x: T) -> option<uint> {
     position(v) { |y| x == y }
 }
 
@@ -781,7 +782,7 @@ Apply function `f` to each element of `v`.  When function `f` returns true
 then an option containing the index is returned. If `f` matches no elements
 then none is returned.
 */
-fn position<T>(v: [T], f: fn(T) -> bool) -> option<uint> {
+fn position<T>(v: [const T], f: fn(T) -> bool) -> option<uint> {
     position_from(v, 0u, len(v), f)
 }
 
@@ -794,8 +795,8 @@ Apply function `f` to each element of `v` between the range [`start`, `end`).
 When function `f` returns true then an option containing the index is
 returned. If `f` matches no elements then none is returned.
 */
-fn position_from<T>(v: [T], start: uint, end: uint, f: fn(T) -> bool) ->
-  option<uint> {
+fn position_from<T>(v: [const T], start: uint, end: uint,
+                    f: fn(T) -> bool) -> option<uint> {
     assert start <= end;
     assert end <= len(v);
     let i = start;
@@ -813,7 +814,7 @@ Returns:
 option::some(uint) - The last index containing a matching value
 option::none - No elements matched
 */
-fn rposition_elt<T>(v: [T], x: T) -> option<uint> {
+fn rposition_elt<T>(v: [const T], x: T) -> option<uint> {
     rposition(v) { |y| x == y }
 }
 
@@ -826,7 +827,7 @@ Apply function `f` to each element of `v` in reverse order.  When function
 `f` returns true then an option containing the index is returned. If `f`
 matches no elements then none is returned.
 */
-fn rposition<T>(v: [T], f: fn(T) -> bool) -> option<uint> {
+fn rposition<T>(v: [const T], f: fn(T) -> bool) -> option<uint> {
     rposition_from(v, 0u, len(v), f)
 }
 
@@ -839,8 +840,8 @@ Apply function `f` to each element of `v` in reverse order between the range
 [`start`, `end`). When function `f` returns true then an option containing
 the index is returned. If `f` matches no elements then none is returned.
 */
-fn rposition_from<T>(v: [T], start: uint, end: uint, f: fn(T) -> bool) ->
-  option<uint> {
+fn rposition_from<T>(v: [const T], start: uint, end: uint,
+                     f: fn(T) -> bool) -> option<uint> {
     assert start <= end;
     assert end <= len(v);
     let i = end;
@@ -865,7 +866,7 @@ vector contains the first element of the i-th tuple of the input vector,
 and the i-th element of the second vector contains the second element
 of the i-th tuple of the input vector.
 */
-fn unzip<T: copy, U: copy>(v: [(T, U)]) -> ([T], [U]) {
+fn unzip<T: copy, U: copy>(v: [const (T, U)]) -> ([T], [U]) {
     let as = [], bs = [];
     for (a, b) in v { as += [a]; bs += [b]; }
     ret (as, bs);
@@ -883,7 +884,7 @@ Preconditions:
 
 <same_length> (v, u)
 */
-fn zip<T: copy, U: copy>(v: [T], u: [U]) -> [(T, U)] {
+fn zip<T: copy, U: copy>(v: [const T], u: [const U]) -> [(T, U)] {
     let zipped = [];
     let sz = len(v), i = 0u;
     assert sz == len(u);
@@ -979,7 +980,7 @@ Function: iter2
 Iterates over two vectors in parallel
 
 */
-fn iter2<U, T>(v: [U], v2: [T], f: fn(U, T)) {
+fn iter2<U, T>(v: [ U], v2: [const T], f: fn(U, T)) {
     let i = 0;
     for elt in v { f(elt, v2[i]); i += 1; }
 }
@@ -1036,7 +1037,7 @@ is sorted then the permutations are lexicographically sorted).
 The total number of permutations produced is `len(v)!`.  If `v` contains
 repeated elements, then some permutations are repeated.
 */
-fn permute<T: copy>(v: [const T], put: fn([T])) {
+fn permute<T: copy>(v: [T], put: fn([T])) {
   let ln = len(v);
   if ln == 0u {
     put([]);
@@ -1051,7 +1052,7 @@ fn permute<T: copy>(v: [const T], put: fn([T])) {
   }
 }
 
-fn windowed <TT: copy> (nn: uint, xx: [TT]) -> [[TT]] {
+fn windowed <TT: copy> (nn: uint, xx: [const TT]) -> [[TT]] {
    let ww = [];
 
    assert 1u <= nn;
