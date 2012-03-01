@@ -31,7 +31,9 @@ enum grid_t { grid_ctor(grid), }
 fn read_grid(f: io::reader) -> grid_t {
     assert f.read_line() == "9,9"; /* assert first line is exactly "9,9" */
 
-    let g = vec::init_fn(10u, {|_i| vec::init_elt_mut(10u, 0 as u8) });
+    let g = vec::init_fn(10u, {|_i|
+        vec::to_mut(vec::init_elt(10u, 0 as u8))
+    });
     while !f.eof() {
         let comps = str::split_char(str::trim(f.read_line()), ',');
         if vec::len(comps) >= 3u {
@@ -129,7 +131,9 @@ fn write_grid(f: io::writer, g: grid_t) {
 fn main(args: [str]) {
     let grid = if vec::len(args) == 1u {
         // FIXME create sudoku inline since nested vec consts dont work yet
-        let g = vec::init_fn(10u, {|_i| vec::init_elt_mut(10u, 0 as u8) });
+        let g = vec::init_fn(10u, {|_i|
+            vec::to_mut(vec::init_elt(10u, 0 as u8))
+        });
         g[0][1] = 4u8;
         g[0][3] = 6u8;
         g[0][7] = 3u8;

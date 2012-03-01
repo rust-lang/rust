@@ -294,7 +294,7 @@ fn get_fn_info(ccx: crate_ctxt, id: node_id) -> fn_info {
 fn add_node(ccx: crate_ctxt, i: node_id, a: ts_ann) {
     let sz = vec::len(*ccx.node_anns);
     if sz <= i as uint {
-        vec::grow_mut(*ccx.node_anns, (i as uint) - sz + 1u, empty_ann(0u));
+        vec::grow(*ccx.node_anns, (i as uint) - sz + 1u, empty_ann(0u));
     }
     ccx.node_anns[i] = a;
 }

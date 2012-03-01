@@ -101,9 +101,9 @@ fn mk_printer(out: io::writer, linewidth: uint) -> printer {
     // fall behind.
     let n: uint = 3u * linewidth;
     #debug("mk_printer %u", linewidth);
-    let token: [mutable token] = vec::init_elt_mut(n, EOF);
-    let size: [mutable int] = vec::init_elt_mut(n, 0);
-    let scan_stack: [mutable uint] = vec::init_elt_mut(n, 0u);
+    let token: [mutable token] = vec::to_mut(vec::init_elt(n, EOF));
+    let size: [mutable int] = vec::to_mut(vec::init_elt(n, 0));
+    let scan_stack: [mutable uint] = vec::to_mut(vec::init_elt(n, 0u));
     let print_stack: [print_stack_elt] = [];
     @{out: out,
       buf_len: n,

@@ -337,7 +337,7 @@ fn pick_col(m: match) -> uint {
           _ { 0u }
         }
     }
-    let scores = vec::init_elt_mut(m[0].pats.len(), 0u);
+    let scores = vec::to_mut(vec::init_elt(m[0].pats.len(), 0u));
     for br: match_branch in m {
         let i = 0u;
         for p: @ast::pat in br.pats { scores[i] += score(p); i += 1u; }

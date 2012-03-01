@@ -96,23 +96,6 @@ fn init_fn<T>(n_elts: uint, op: init_op<T>) -> [T] {
     ret v;
 }
 
-// TODO: Remove me once we have slots.
-/*
-Function: init_fn_mut
-
-Creates and initializes a mutable vector.
-
-Creates a mutable vector of size `n_elts` and initializes the elements to
-the value returned by the function `op`.
-*/
-fn init_fn_mut<T>(n_elts: uint, op: init_op<T>) -> [mutable T] {
-    let v = [mutable];
-    reserve(v, n_elts);
-    let i: uint = 0u;
-    while i < n_elts { v += [mutable op(i)]; i += 1u; }
-    ret v;
-}
-
 /*
 Function: init_elt
 
@@ -129,27 +112,10 @@ fn init_elt<T: copy>(n_elts: uint, t: T) -> [T] {
     ret v;
 }
 
-// TODO: Remove me once we have slots.
-/*
-Function: init_elt_mut
-
-Creates and initializes a mutable vector.
-
-Creates a mutable vector of size `n_elts` and initializes the elements
-to the value `t`.
-*/
-fn init_elt_mut<T: copy>(n_elts: uint, t: T) -> [mutable T] {
-    let v = [mutable];
-    reserve(v, n_elts);
-    let i: uint = 0u;
-    while i < n_elts { v += [mutable t]; i += 1u; }
-    ret v;
-}
-
 // FIXME: Possible typestate postcondition:
 // len(result) == len(v) (needs issue #586)
 /*
-Function: to_mut
+
 
 Produces a mutable vector from an immutable vector.
 */
@@ -254,22 +220,6 @@ fn slice<T: copy>(v: [const T], start: uint, end: uint) -> [T] {
     reserve(result, end - start);
     let i = start;
     while i < end { result += [v[i]]; i += 1u; }
-    ret result;
-}
-
-// TODO: Remove me once we have slots.
-/*
-Function: slice_mut
-
-Returns a copy of the elements from [`start`..`end`) from `v`.
-*/
-fn slice_mut<T: copy>(v: [const T], start: uint, end: uint) -> [mutable T] {
-    assert (start <= end);
-    assert (end <= len(v));
-    let result = [mutable];
-    reserve(result, end - start);
-    let i = start;
-    while i < end { result += [mutable v[i]]; i += 1u; }
     ret result;
 }
 
@@ -438,25 +388,6 @@ fn grow<T: copy>(&v: [const T], n: uint, initval: T) {
     while i < n { v += [initval]; i += 1u; }
 }
 
-// TODO: Remove me once we have slots.
-// FIXME: Can't grow take a [const T]
-/*
-Function: grow_mut
-
-Expands a vector in place, initializing the new elements to a given value
-
-Parameters:
-
-v - The vector to grow
-n - The number of elements to add
-initval - The value for the new elements
-*/
-fn grow_mut<T: copy>(&v: [mutable T], n: uint, initval: T) {
-    reserve(v, next_power_of_two(len(v) + n));
-    let i: uint = 0u;
-    while i < n { v += [mutable initval]; i += 1u; }
-}
-
 /*
 Function: grow_fn
 
@@ -488,7 +419,7 @@ of the vector, expands the vector by replicating `initval` to fill the
 intervening space.
 */
 fn grow_set<T: copy>(&v: [mutable T], index: uint, initval: T, val: T) {
-    if index >= len(v) { grow_mut(v, index - len(v) + 1u, initval); }
+    if index >= len(v) { grow(v, index - len(v) + 1u, initval); }
     v[index] = val;
 }
 
@@ -504,21 +435,6 @@ fn map<T, U>(v: [T], f: fn(T) -> U) -> [U] {
     let result = [];
     reserve(result, len(v));
     for elem: T in v { result += [f(elem)]; }
-    ret result;
-}
-
-/*
-Function: map_mut
-
-Apply a function to each element of a mutable vector and return the results
-*/
-fn map_mut<T: copy, U>(v: [const T], f: fn(T) -> U) -> [U] {
-    let result = [];
-    reserve(result, len(v));
-    for elem: T in v {
-        // copy satisfies alias checker
-        result += [f(copy elem)];
-    }
     ret result;
 }
 
@@ -1948,6 +1864,24 @@ mod tests {
     #[ignore(cfg(target_os = "win32"))]
     fn test_windowed_() {
         let _x = windowed (0u, [1u,2u,3u,4u,5u,6u]);
+    }
+
+    #[test]
+    fn to_mut_no_copy() unsafe {
+        let x = [1, 2, 3];
+        let addr = unsafe::to_ptr(x);
+        let x_mut = to_mut(x);
+        let addr_mut = unsafe::to_ptr(x_mut);
+        assert addr == addr_mut;
+    }
+
+    #[test]
+    fn from_mut_no_copy() unsafe {
+        let x = [mut 1, 2, 3];
+        let addr = unsafe::to_ptr(x);
+        let x_imm = from_mut(x);
+        let addr_imm = unsafe::to_ptr(x_imm);
+        assert addr == addr_imm;
     }
 }
 
