@@ -190,8 +190,8 @@ fn find_pre_post_state_call(fcx: fn_ctxt, pres: prestate, a: @expr,
                                         %u exprs vs. %u ops",
                                        vec::len(bs), vec::len(ops)]);
     }
-    ret find_pre_post_state_exprs(fcx, expr_poststate(fcx.ccx, a), id, ops,
-                                  bs, cf) || changed;
+    ret find_pre_post_state_exprs(fcx, pres, id, ops,
+                                   bs, cf) || changed;
 }
 
 fn find_pre_post_state_exprs(fcx: fn_ctxt, pres: prestate, id: node_id,
