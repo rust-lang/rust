@@ -123,9 +123,6 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
       }
       ty_enum(did, tps) | ty_res(did, _, tps) | ty_iface(did, tps) |
       ty_class(did, tps) {
-        // Not sure why, but under some circumstances enum or resource types
-        // do not have an associated id.  I didn't investigate enough to know
-        // if there is a good reason for this. - Niko, 2012-02-10
         let path = ty::item_path(cx, did);
         let base = ast_map::path_to_str(path);
         parameterized(cx, base, tps)

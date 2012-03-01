@@ -463,10 +463,7 @@ fn ty_of_item(tcx: ty::ctxt, mode: mode, it: @ast::item)
       ast::item_res(decl, tps, _, _, _) {
         let {bounds, params} = mk_ty_params(tcx, tps);
         let t_arg = ty_of_arg(tcx, mode, decl.inputs[0]);
-        let t = {
-            let t0 = ty::mk_res(tcx, local_def(it.id), t_arg.ty, params);
-            ty::mk_with_id(tcx, t0, def_id)
-        };
+        let t = ty::mk_res(tcx, local_def(it.id), t_arg.ty, params);
         let t_res = {bounds: bounds, ty: t};
         tcx.tcache.insert(local_def(it.id), t_res);
         ret t_res;
@@ -474,20 +471,14 @@ fn ty_of_item(tcx: ty::ctxt, mode: mode, it: @ast::item)
       ast::item_enum(_, tps) {
         // Create a new generic polytype.
         let {bounds, params} = mk_ty_params(tcx, tps);
-        let t = {
-            let t0 = ty::mk_enum(tcx, local_def(it.id), params);
-            ty::mk_with_id(tcx, t0, def_id)
-        };
+        let t = ty::mk_enum(tcx, local_def(it.id), params);
         let tpt = {bounds: bounds, ty: t};
         tcx.tcache.insert(local_def(it.id), tpt);
         ret tpt;
       }
       ast::item_iface(tps, ms) {
         let {bounds, params} = mk_ty_params(tcx, tps);
-        let t = {
-            let t0 = ty::mk_iface(tcx, local_def(it.id), params);
-            ty::mk_with_id(tcx, t0, def_id)
-        };
+        let t = ty::mk_iface(tcx, local_def(it.id), params);
         let tpt = {bounds: bounds, ty: t};
         tcx.tcache.insert(local_def(it.id), tpt);
         ret tpt;
@@ -920,7 +911,6 @@ mod collect {
             let def_id = local_def(it.id);
             let t_arg = ty_of_arg(tcx, m_collect, decl.inputs[0]);
             let t_res = ty::mk_res(tcx, def_id, t_arg.ty, params);
-            let t_res = ty::mk_with_id(tcx, t_res, def_id);
             let t_ctor = ty::mk_fn(tcx, {
                 proto: ast::proto_box,
                 inputs: [{mode: ast::expl(ast::by_copy) with t_arg}],
