@@ -272,8 +272,10 @@ fn pretty_print_input(sess: session, cfg: ast::crate_cfg, input: str,
       ppm_expanded | ppm_normal {}
     }
     let src = codemap::get_filemap(sess.codemap, input).src;
-    pprust::print_crate(sess.codemap, sess.span_diagnostic, crate, input,
-                        io::str_reader(*src), io::stdout(), ann);
+    io::with_str_reader(*src) { |rdr|
+        pprust::print_crate(sess.codemap, sess.span_diagnostic, crate, input,
+                            rdr, io::stdout(), ann);
+    }
 }
 
 fn get_os(triple: str) -> option<session::os> {
