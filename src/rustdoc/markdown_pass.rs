@@ -3,7 +3,7 @@
 export mk_pass;
 
 fn mk_pass(config: config::config) -> pass {
-    mk_pass_(config, stdout_writer)
+    mk_pass_(config, markdown_writer(config))
 }
 
 enum writeinstr {
@@ -11,7 +11,7 @@ enum writeinstr {
     done
 }
 
-type writer = fn~(writeinstr);
+type writer = fn~(+writeinstr);
 
 impl writer for writer {
     fn write_str(str: str) {
@@ -27,11 +27,51 @@ impl writer for writer {
     }
 }
 
-fn stdout_writer(instr: writeinstr) {
-    alt instr {
-      write(str) { std::io::println(str); }
-      done { }
+fn markdown_writer(config: config::config) -> writer {
+    let filename = make_filename(config);
+    let ch = task::spawn_listener {|po: comm::port<writeinstr>|
+        let markdown = "";
+        let keep_going = true;
+        while keep_going {
+            alt comm::recv(po) {
+              write(s) { markdown += s; }
+              done { keep_going = false; }
+            }
+        }
+        write_file(filename, markdown);
+    };
+
+    fn~(+instr: writeinstr) {
+        comm::send(ch, instr);
     }
+}
+
+fn make_filename(config: config::config) -> str {
+    import std::fs;
+    let cratefile = fs::basename(config.input_crate);
+    let cratename = tuple::first(fs::splitext(cratefile));
+    fs::connect(config.output_dir, cratename + ".md")
+}
+
+fn write_file(path: str, s: str) {
+    import std::io;
+    import std::io::writer_util;
+
+    alt io::file_writer(path, [io::create, io::truncate]) {
+      result::ok(writer) {
+        writer.write_str(s);
+      }
+      result::err(e) { fail e }
+    }
+}
+
+#[test]
+fn should_use_markdown_file_name_based_off_crate() {
+    let config = {
+        output_dir: "output/dir"
+        with config::default_config("input/test.rc")
+    };
+    assert make_filename(config) == "output/dir/test.md";
 }
 
 // FIXME: This is a really convoluted interface to work around trying
@@ -881,7 +921,7 @@ mod test {
     fn writer_future() -> (writer, future::future<str>) {
         let port = comm::port();
         let chan = comm::chan(port);
-        let writer = fn~(instr: writeinstr) {
+        let writer = fn~(+instr: writeinstr) {
             comm::send(chan, copy instr);
         };
         let future = future::from_fn {||
