@@ -18,6 +18,7 @@ mod extract;
 mod attr_parser;
 mod doc;
 mod markdown_pass;
+mod markdown_writer;
 mod fold;
 mod path_pass;
 mod attr_pass;
