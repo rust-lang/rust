@@ -32,7 +32,7 @@ A path or fragment of a filesystem path
 */
 type path = str;
 
-fn splitDirnameBasename (pp: path) -> {dirname: str, basename: str} {
+fn split_dirname_basename (pp: path) -> {dirname: str, basename: str} {
     alt str::rfind(pp, {|ch|
         ch == os_fs::path_sep || ch == os_fs::alt_path_sep
     }) {
@@ -56,7 +56,7 @@ The dirname of "/usr/share" will be "/usr", but the dirname of
 If the path is not prefixed with a directory, then "." is returned.
 */
 fn dirname(pp: path) -> path {
-    ret splitDirnameBasename(pp).dirname;
+    ret split_dirname_basename(pp).dirname;
 }
 
 /*
@@ -71,7 +71,7 @@ the provided path. If an empty path is provided or the path ends
 with a path separator then an empty path is returned.
 */
 fn basename(pp: path) -> path {
-    ret splitDirnameBasename(pp).basename;
+    ret split_dirname_basename(pp).basename;
 }
 
 // FIXME: Need some typestate to avoid bounds check when len(pre) == 0
