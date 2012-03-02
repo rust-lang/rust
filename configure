@@ -274,7 +274,8 @@ else
 fi
 
 opt sharedstd 1 "build libstd as a shared library"
-opt valgrind 1 "run tests with valgrind"
+opt valgrind 1 "run tests with valgrind (memcheck by default)"
+opt helgrind 0 "run tests with helgrind instead of memcheck"
 opt docs     1 "build documentation"
 opt optimize 1 "build optimized rust code"
 opt optimize-cxx 1 "build optimized C++ code"

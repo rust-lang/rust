@@ -162,11 +162,16 @@ ifdef CFG_UNIXY
     endif
   endif
   ifdef CFG_VALGRIND
-    CFG_VALGRIND += --leak-check=full \
-                    --error-exitcode=100 \
+    CFG_VALGRIND += --error-exitcode=100 \
                     --quiet \
                     --suppressions=$(CFG_SRC_DIR)src/etc/x86.supp \
                     $(OS_SUPP)
+    ifdef CFG_ENABLE_HELGRIND
+      CFG_VALGRIND += --tool=helgrind
+    else
+      CFG_VALGRIND += --tool=memcheck \
+                      --leak-check=full
+    endif
   endif
 endif
 
