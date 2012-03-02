@@ -11,10 +11,13 @@ type syntax_expander = {
 type macro_def = {ident: str, ext: syntax_extension};
 type macro_definer =
     fn@(ext_ctxt, span, ast::mac_arg, ast::mac_body) -> macro_def;
+type item_decorator =
+    fn@(ext_ctxt, span, ast::meta_item, [@ast::item]) -> [@ast::item];
 
 enum syntax_extension {
     normal(syntax_expander),
     macro_defining(macro_definer),
+    item_decorator(item_decorator),
 }
 
 // A temporary hard-coded map of methods for expanding syntax extension

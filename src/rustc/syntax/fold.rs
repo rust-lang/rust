@@ -13,6 +13,7 @@ export noop_fold_mod;
 export noop_fold_ty;
 export noop_fold_block;
 export wrap;
+export fold_ty_param;
 
 type ast_fold = @mutable a_f;
 

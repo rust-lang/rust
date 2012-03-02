@@ -87,6 +87,7 @@ mod syntax {
         mod concat_idents;
         mod ident_to_str;
         mod log_syntax;
+        mod auto_serialize;
     }
     mod print {
         mod pprust;

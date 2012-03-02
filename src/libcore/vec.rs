@@ -405,7 +405,15 @@ fn map<T, U>(v: [T], f: fn(T) -> U) -> [U] {
     ret result;
 }
 
+fn flat_map<T, U>(v: [T], f: fn(T) -> [U]) -> [U] {
+    let result = [];
+    for elem: T in v { result += f(elem); }
+    ret result;
+}
+
 #[doc = "
+Function: map2
+
 Apply a function to each pair of elements and return the results
 "]
 fn map2<T: copy, U: copy, V>(v0: [const T], v1: [const U],
