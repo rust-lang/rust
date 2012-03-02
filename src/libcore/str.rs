@@ -81,6 +81,10 @@ export
 
    // Misc
    is_utf8,
+   is_utf16,
+   to_utf16,
+   from_utf16,
+   utf16_chars,
    count_chars, count_bytes,
    utf8_char_width,
    char_range_at,
@@ -1059,6 +1063,83 @@ fn is_utf8(v: [u8]) -> bool {
     }
     ret true;
 }
+
+
+fn is_utf16(v: [u16]) -> bool {
+    let len = v.len();
+    let i = 0u;
+    while (i < len) {
+        let u = v[i];
+
+        if  u <= 0xD7FF_u16 || u >= 0xE000_u16 {
+            i += 1u;
+
+        } else {
+            if i+1u < len { ret false; }
+            let u2 = v[i+1u];
+            if u < 0xD7FF_u16 || u > 0xDBFF_u16 { ret false; }
+            if u2 < 0xDC00_u16 || u2 > 0xDFFF_u16 { ret false; }
+            i += 2u;
+        }
+    }
+    ret true;
+}
+
+
+fn to_utf16(s: str) -> [u16] {
+    let u = [];
+    chars_iter(s) {|cch|
+        // Arithmetic with u32 literals is easier on the eyes than chars.
+        let ch = cch as u32;
+
+        if (ch & 0xFFFF_u32) == ch {
+            // The BMP falls through (assuming non-surrogate, as it should)
+            assert ch <= 0xD7FF_u32 || ch >= 0xE000_u32;
+            u += [ch as u16]
+        } else {
+            // Supplementary planes break into surrogates.
+            assert ch >= 0x1_0000_u32 && ch <= 0x10_FFFF_u32;
+            ch -= 0x1_0000_u32;
+            let w1 = 0xD800_u16 | ((ch >> 10) as u16);
+            let w2 = 0xDC00_u16 | ((ch as u16) & 0x3FF_u16);
+            u += [w1, w2]
+        }
+    }
+    ret u;
+}
+
+fn utf16_chars(v: [u16], f: fn(char)) {
+    let len = v.len();
+    let i = 0u;
+    while (i < len) {
+        let u = v[i];
+
+        if  u <= 0xD7FF_u16 || u >= 0xE000_u16 {
+            f(u as char);
+            i += 1u;
+
+        } else {
+            let u2 = v[i+1u];
+            assert u >= 0xD800_u16 && u <= 0xDBFF_u16;
+            assert u2 >= 0xDC00_u16 && u2 <= 0xDFFF_u16;
+            let c = (u - 0xD800_u16) as char;
+            c = c << 10;
+            c |= (u2 - 0xDC00_u16) as char;
+            c |= 0x1_0000_u32 as char;
+            f(c);
+            i += 2u;
+        }
+    }
+}
+
+
+fn from_utf16(v: [u16]) -> str {
+    let buf = "";
+    reserve(buf, v.len());
+    utf16_chars(v) {|ch| push_char(buf, ch); }
+    ret buf;
+}
+
 
 /*
 Function: count_chars
@@ -2222,5 +2303,52 @@ mod tests {
         let ss = "ศไทย中华Việt Nam";
         assert ['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m']
             == chars(ss);
+    }
+
+    #[test]
+    fn test_utf16() {
+        let pairs =
+            [("𐍅𐌿𐌻𐍆𐌹𐌻𐌰\n",
+              [0xd800_u16, 0xdf45_u16, 0xd800_u16, 0xdf3f_u16,
+               0xd800_u16, 0xdf3b_u16, 0xd800_u16, 0xdf46_u16,
+               0xd800_u16, 0xdf39_u16, 0xd800_u16, 0xdf3b_u16,
+               0xd800_u16, 0xdf30_u16, 0x000a_u16]),
+
+             ("𐐒𐑉𐐮𐑀𐐲𐑋 𐐏𐐲𐑍\n",
+              [0xd801_u16, 0xdc12_u16, 0xd801_u16,
+               0xdc49_u16, 0xd801_u16, 0xdc2e_u16, 0xd801_u16,
+               0xdc40_u16, 0xd801_u16, 0xdc32_u16, 0xd801_u16,
+               0xdc4b_u16, 0x0020_u16, 0xd801_u16, 0xdc0f_u16,
+               0xd801_u16, 0xdc32_u16, 0xd801_u16, 0xdc4d_u16,
+               0x000a_u16]),
+
+             ("𐌀𐌖𐌋𐌄𐌑𐌉·𐌌𐌄𐌕𐌄𐌋𐌉𐌑\n",
+              [0xd800_u16, 0xdf00_u16, 0xd800_u16, 0xdf16_u16,
+               0xd800_u16, 0xdf0b_u16, 0xd800_u16, 0xdf04_u16,
+               0xd800_u16, 0xdf11_u16, 0xd800_u16, 0xdf09_u16,
+               0x00b7_u16, 0xd800_u16, 0xdf0c_u16, 0xd800_u16,
+               0xdf04_u16, 0xd800_u16, 0xdf15_u16, 0xd800_u16,
+               0xdf04_u16, 0xd800_u16, 0xdf0b_u16, 0xd800_u16,
+               0xdf09_u16, 0xd800_u16, 0xdf11_u16, 0x000a_u16 ]),
+
+             ("𐒋𐒘𐒈𐒑𐒛𐒒 𐒕𐒓 𐒈𐒚𐒍 𐒏𐒜𐒒𐒖𐒆 𐒕𐒆\n",
+              [0xd801_u16, 0xdc8b_u16, 0xd801_u16, 0xdc98_u16,
+               0xd801_u16, 0xdc88_u16, 0xd801_u16, 0xdc91_u16,
+               0xd801_u16, 0xdc9b_u16, 0xd801_u16, 0xdc92_u16,
+               0x0020_u16, 0xd801_u16, 0xdc95_u16, 0xd801_u16,
+               0xdc93_u16, 0x0020_u16, 0xd801_u16, 0xdc88_u16,
+               0xd801_u16, 0xdc9a_u16, 0xd801_u16, 0xdc8d_u16,
+               0x0020_u16, 0xd801_u16, 0xdc8f_u16, 0xd801_u16,
+               0xdc9c_u16, 0xd801_u16, 0xdc92_u16, 0xd801_u16,
+               0xdc96_u16, 0xd801_u16, 0xdc86_u16, 0x0020_u16,
+               0xd801_u16, 0xdc95_u16, 0xd801_u16, 0xdc86_u16,
+               0x000a_u16 ]) ];
+
+        for (s, u) in pairs {
+            assert to_utf16(s) == u;
+            assert from_utf16(u) == s;
+            assert from_utf16(to_utf16(s)) == s;
+            assert to_utf16(from_utf16(u)) == u;
+        }
     }
 }
