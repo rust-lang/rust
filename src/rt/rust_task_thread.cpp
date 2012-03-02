@@ -23,22 +23,22 @@ rust_task_thread::rust_task_thread(rust_scheduler *sched,
                                    int id) :
     rust_thread(SCHED_STACK_SIZE),
     _log(srv, this),
-    log_lvl(log_debug),
+    cache(this),
+    id(id),
+    should_exit(false),
+    cached_c_stack(NULL),
+    kernel(sched->kernel),
+    sched(sched),
     srv(srv),
-    // TODO: calculate a per scheduler name.
-    name("main"),
     newborn_tasks(this, "newborn"),
     running_tasks(this, "running"),
     blocked_tasks(this, "blocked"),
     dead_tasks(this, "dead"),
-    cache(this),
-    kernel(sched->kernel),
-    sched(sched),
-    id(id),
+    log_lvl(log_debug),
     min_stack_size(kernel->env->min_stack_size),
     env(kernel->env),
-    should_exit(false),
-    cached_c_stack(NULL)
+    // TODO: calculate a per scheduler name.
+    name("main")
 {
     LOGPTR(this, "new dom", (uintptr_t)this);
     isaac_init(kernel, &rctx);

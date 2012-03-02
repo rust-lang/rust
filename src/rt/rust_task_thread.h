@@ -45,38 +45,13 @@ public:
 struct rust_task_thread : public kernel_owned<rust_task_thread>,
                         rust_thread
 {
+private:
 
     // Fields known only by the runtime:
     rust_log _log;
 
-    // NB: this is used to filter *runtime-originating* debug
-    // logging, on a per-scheduler basis. It's not likely what
-    // you want to expose to the user in terms of per-task
-    // or per-module logging control. By default all schedulers
-    // are set to debug-level logging here, and filtered by
-    // runtime category using the pseudo-modules ::rt::foo.
-    uint32_t log_lvl;
-
-    rust_srv *srv;
-    const char *const name;
-
-    rust_task_list newborn_tasks;
-    rust_task_list running_tasks;
-    rust_task_list blocked_tasks;
-    rust_task_list dead_tasks;
-
     rust_crate_cache cache;
-
-    randctx rctx;
-
-    rust_kernel *kernel;
-    rust_scheduler *sched;
-    int32_t list_index;
-
     const int id;
-
-    lock_and_signal lock;
-    size_t min_stack_size;
 
 #ifndef __WIN32__
     pthread_attr_t attr;
@@ -86,13 +61,9 @@ struct rust_task_thread : public kernel_owned<rust_task_thread>,
 #endif
 
     static bool tls_initialized;
-
-    rust_env *env;
     context c_context;
 
     bool should_exit;
-
-private:
 
     stk_seg *cached_c_stack;
     stk_seg *extra_c_stack;
@@ -101,6 +72,32 @@ private:
     void unprepare_c_stack();
 
 public:
+    rust_kernel *kernel;
+    rust_scheduler *sched;
+    rust_srv *srv;
+
+    lock_and_signal lock;
+
+    rust_task_list newborn_tasks;
+    rust_task_list running_tasks;
+    rust_task_list blocked_tasks;
+    rust_task_list dead_tasks;
+
+    // NB: this is used to filter *runtime-originating* debug
+    // logging, on a per-scheduler basis. It's not likely what
+    // you want to expose to the user in terms of per-task
+    // or per-module logging control. By default all schedulers
+    // are set to debug-level logging here, and filtered by
+    // runtime category using the pseudo-modules ::rt::foo.
+    uint32_t log_lvl;
+
+    size_t min_stack_size;
+    rust_env *env;
+
+    randctx rctx;
+
+    int32_t list_index;
+    const char *const name;
 
     // Only a pointer to 'name' is kept, so it must live as long as this
     // domain.
