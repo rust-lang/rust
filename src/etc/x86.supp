@@ -382,8 +382,29 @@
 }
 
 {
-   probably-threadsafe-access-outside-of-lock
+   lock_and_signal-probably-threadsafe-access-outside-of-lock
    Helgrind:Race
    fun:_ZN15lock_and_signal27lock_held_by_current_threadEv
    ...
 }  
+
+{
+   lock_and_signal-probably-threadsafe-access-outside-of-lock2
+   Helgrind:Race
+   fun:_ZN15lock_and_signal6unlockEv
+   ...
+}
+
+{
+   lock_and_signal-probably-threadsafe-access-outside-of-lock3
+   Helgrind:Race
+   fun:_ZN15lock_and_signal4lockEv
+   ...
+}
+
+{
+   lock_and_signal-probably-threadsafe-access-outside-of-lock4
+   Helgrind:Race
+   fun:_ZN15lock_and_signal4waitEv
+   ...
+}
