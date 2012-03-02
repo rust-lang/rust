@@ -4,6 +4,7 @@ import markdown_writer::writer;
 import markdown_writer::writer_util;
 
 export mk_pass;
+export header_kind, header_name, header_text;
 
 fn mk_pass(config: config::config) -> pass {
     mk_pass_(config, markdown_writer::make_writer(config))
@@ -116,57 +117,71 @@ fn write_header_(ctxt: ctxt, lvl: hlvl, title: str) {
     ctxt.w.write_line("");
 }
 
-fn header_text(doc: doc::itemtag) -> str {
-    let fullpath = str::connect(doc.path() + [doc.name()], "::");
+fn header_kind(doc: doc::itemtag) -> str {
     alt doc {
       doc::modtag(_) {
         if doc.id() == rustc::syntax::ast::crate_node_id {
-            header_text_("Crate", doc.name())
+            "Crate"
         } else {
-            header_text_("Module", fullpath)
+            "Module"
         }
       }
       doc::nmodtag(_) {
-        header_text_("Native module", fullpath)
+        "Native module"
       }
       doc::fntag(_) {
-        header_text_("Function", doc.name())
+        "Function"
       }
       doc::consttag(_) {
-        header_text_("Const", doc.name())
+        "Const"
       }
       doc::enumtag(_) {
-        header_text_("Enum", doc.name())
+        "Enum"
       }
       doc::restag(_) {
-        header_text_("Resource", doc.name())
+        "Resource"
       }
       doc::ifacetag(_) {
-        header_text_("Interface", doc.name())
+        "Interface"
+      }
+      doc::impltag(doc) {
+        "Implementation"
+      }
+      doc::tytag(_) {
+        "Type"
+      }
+    }
+}
+
+fn header_name(doc: doc::itemtag) -> str {
+    let fullpath = str::connect(doc.path() + [doc.name()], "::");
+    alt doc {
+      doc::modtag(_) if doc.id() != rustc::syntax::ast::crate_node_id {
+        fullpath
+      }
+      doc::nmodtag(_) {
+        fullpath
       }
       doc::impltag(doc) {
         assert option::is_some(doc.self_ty);
         let self_ty = option::get(doc.self_ty);
         alt doc.iface_ty {
           some(iface_ty) {
-            header_text_(
-                "Implementation",
-                #fmt("%s of %s for %s",
-                     doc.name(), iface_ty, self_ty)
-            )
+            #fmt("%s of %s for %s", doc.name(), iface_ty, self_ty)
           }
           none {
-            header_text_(
-                "Implementation",
-                #fmt("%s for %s", doc.name(), self_ty)
-            )
+            #fmt("%s for %s", doc.name(), self_ty)
           }
         }
       }
-      doc::tytag(_) {
-        header_text_("Type", doc.name())
+      _ {
+        doc.name()
       }
     }
+}
+
+fn header_text(doc: doc::itemtag) -> str {
+    header_text_(header_kind(doc), header_name(doc))
 }
 
 fn header_text_(kind: str, name: str) -> str {
