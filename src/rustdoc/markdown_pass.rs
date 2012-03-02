@@ -250,7 +250,6 @@ fn write_nmod(ctxt: ctxt, doc: doc::nmoddoc) {
 #[test]
 fn should_write_native_mods() {
     let markdown = test::render("#[doc = \"test\"] native mod a { }");
-    log(error, markdown);
     assert str::contains(markdown, "Native module `a`");
     assert str::contains(markdown, "test");
 }
@@ -764,7 +763,6 @@ fn write_impl(ctxt: ctxt, doc: doc::impldoc) {
 #[test]
 fn should_write_impl_header() {
     let markdown = test::render("impl i for int { fn a() { } }");
-    log(error, markdown);
     assert str::contains(markdown, "## Implementation `i for int`");
 }
 
