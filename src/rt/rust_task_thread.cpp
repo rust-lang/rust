@@ -247,7 +247,8 @@ rust_task_thread::start_main_loop() {
                  "all tasks are blocked, scheduler id %d yielding ...",
                  id);
             lock.wait();
-            reap_dead_tasks();
+            A(this, dead_tasks.length() == 0,
+              "Tasks should only die after running");
             DLOG(this, task,
                  "scheduler %d resuming ...", id);
             continue;
