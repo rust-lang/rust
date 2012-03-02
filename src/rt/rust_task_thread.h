@@ -47,6 +47,8 @@ struct rust_task_thread : public kernel_owned<rust_task_thread>,
 {
 private:
 
+    lock_and_signal lock;
+
     // Fields known only by the runtime:
     rust_log _log;
 
@@ -75,8 +77,6 @@ public:
     rust_kernel *kernel;
     rust_scheduler *sched;
     rust_srv *srv;
-
-    lock_and_signal lock;
 
     rust_task_list newborn_tasks;
     rust_task_list running_tasks;

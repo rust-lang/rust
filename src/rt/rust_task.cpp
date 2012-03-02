@@ -107,8 +107,6 @@ rust_task::rust_task(rust_task_thread *thread, rust_task_list *state,
 void
 rust_task::delete_this()
 {
-    I(thread, !thread->lock.lock_held_by_current_thread());
-
     {
         scoped_lock with (lock);
         I(thread, port_table.is_empty());
