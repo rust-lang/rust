@@ -449,6 +449,27 @@ fn homedir() -> option<path> {
     }
 }
 
+/*
+Function: remove_file
+
+Deletes an existing file.
+*/
+fn remove_file(p: path) -> bool {
+    ret unlink(p);
+
+    #[cfg(target_os = "win32")]
+    fn unlink(p: path) -> bool {
+        ret str::as_buf(p, {|buf| os::kernel32::DeleteFileA(buf)});
+    }
+
+    #[cfg(target_os = "linux")]
+    #[cfg(target_os = "macos")]
+    #[cfg(target_os = "freebsd")]
+    fn unlink(_p: path) -> bool {
+        ret str::as_buf(_p, {|buf| os::libc::unlink(buf) == 0i32 });
+    }
+}
+
 #[cfg(test)]
 mod tests {
     #[test]

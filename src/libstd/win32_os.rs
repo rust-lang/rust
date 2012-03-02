@@ -62,6 +62,7 @@ native mod kernel32 {
                         lpSecurityAttributes: LPSECURITY_ATTRIBUTES) -> bool;
     fn RemoveDirectoryA(lpPathName: LPCTSTR) -> bool;
     fn SetCurrentDirectoryA(lpPathName: LPCTSTR) -> bool;
+    fn DeleteFileA(lpFileName: LPCTSTR) -> bool;
 }
 
 // FIXME turn into constants
