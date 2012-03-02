@@ -1,3 +1,4 @@
+// xfail-fast - check-fast doesn't understand aux-build
 // aux-build:cci_no_inline_lib.rs
 
 use std;
