@@ -320,6 +320,14 @@ fn purity_fn_family(p: purity) -> char {
 
 fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
                         &index: [entry<int>], path: ast_map::path) {
+
+    fn should_inline(attrs: [attribute]) -> bool {
+        alt attr::find_inline_attr(attrs) {
+          attr::ia_none { false }
+          attr::ia_hint | attr::ia_always { true }
+        }
+    }
+
     let tcx = ecx.ccx.tcx;
     alt item.node {
       item_const(_, _) {
@@ -339,7 +347,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_symbol(ecx, ebml_w, item.id);
         encode_path(ebml_w, path, ast_map::path_name(item.ident));
-        if attr::should_inline(item.attrs) {
+        if should_inline(item.attrs) {
             astencode::encode_inlined_item(ecx, ebml_w, path, ii_item(item));
         }
         ebml_w.end_tag();
@@ -442,7 +450,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
             encode_name(ebml_w, m.ident);
             encode_symbol(ecx, ebml_w, m.id);
             encode_path(ebml_w, impl_path, ast_map::path_name(m.ident));
-            if attr::should_inline(m.attrs) {
+            if should_inline(m.attrs) {
                 astencode::encode_inlined_item(
                     ecx, ebml_w, impl_path,
                     ii_method(local_def(item.id), m));

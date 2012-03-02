@@ -654,8 +654,18 @@ fn set_inline_hint(f: ValueRef) {
 fn set_inline_hint_if_appr(ccx: crate_ctxt,
                            attrs: [ast::attribute],
                            id: ast::node_id) {
-    if attr::should_inline(attrs) {
-        set_inline_hint(ccx.item_ids.get(id));
+    alt attr::find_inline_attr(attrs) {
+      attr::ia_hint {
+        #debug["Setting inline mode for %s to 'hint'",
+               ty::item_path_str(ccx.tcx, ast_util::local_def(id))];
+        set_inline_hint(ccx.item_ids.get(id))
+      }
+      attr::ia_always {
+        #debug["Setting inline mode for %s to 'always'",
+               ty::item_path_str(ccx.tcx, ast_util::local_def(id))];
+        set_always_inline(ccx.item_ids.get(id))
+      }
+      attr::ia_none { /* fallthrough */ }
     }
 }
 
@@ -4724,6 +4734,7 @@ fn collect_item(ccx: crate_ctxt, abi: @mutable option<ast::native_abi>,
       }
       ast::item_res(_, tps, _, dtor_id, ctor_id) {
         register_fn(ccx, i.span, my_path, "res_ctor", tps, ctor_id);
+
         // Note that the destructor is associated with the item's id, not
         // the dtor_id. This is a bit counter-intuitive, but simplifies
         // ty_res, which would have to carry around two def_ids otherwise
@@ -4731,6 +4742,10 @@ fn collect_item(ccx: crate_ctxt, abi: @mutable option<ast::native_abi>,
         let t = ty::node_id_to_type(ccx.tcx, dtor_id);
         register_fn_full(ccx, i.span, my_path + [path_name("dtor")],
                          "res_dtor", param_bounds(ccx, tps), i.id, t);
+
+        // give hints that resource ctors/dtors ought to be inlined
+        set_inline_hint(ccx.item_ids.get(ctor_id));
+        set_inline_hint(ccx.item_ids.get(i.id));
       }
       ast::item_enum(variants, tps) {
         for variant in variants {

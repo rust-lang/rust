@@ -7,7 +7,8 @@ import driver::session::session;
 export attr_meta;
 export attr_metas;
 export find_linkage_metas;
-export should_inline;
+export inline_attr;
+export find_inline_attr;
 export find_attrs_by_name;
 export attrs_contains_name;
 export find_meta_items_by_name;
@@ -44,9 +45,28 @@ fn find_linkage_metas(attrs: [ast::attribute]) -> [@ast::meta_item] {
     ret metas;
 }
 
+enum inline_attr {
+    ia_none,
+    ia_hint,
+    ia_always
+}
+
 // True if something like #[inline] is found in the list of attrs.
-fn should_inline(attrs: [ast::attribute]) -> bool {
-    attr::attrs_contains_name(attrs, "inline")
+fn find_inline_attr(attrs: [ast::attribute]) -> inline_attr {
+    // TODO---validate the usage of #[inline] and #[inline(always)]
+    vec::foldl(ia_none, attrs) {|ia,attr|
+        alt attr.node.value.node {
+          ast::meta_word("inline") { ia_hint }
+          ast::meta_list("inline", items) {
+            if !vec::is_empty(find_meta_items_by_name(items, "always")) {
+                ia_always
+            } else {
+                ia_hint
+            }
+          }
+          _ { ia }
+        }
+    }
 }
 
 // Search a list of attributes and return only those with a specific name
