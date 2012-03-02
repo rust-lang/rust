@@ -105,17 +105,79 @@ enum hlvl {
     h3 = 3
 }
 
-fn write_header(ctxt: ctxt, lvl: hlvl, title: str) {
+fn write_header(ctxt: ctxt, lvl: hlvl, doc: doc::itemtag) {
+    let text = header_text(doc);
+    write_header_(ctxt, lvl, text);
+}
+
+fn write_header_(ctxt: ctxt, lvl: hlvl, title: str) {
     let hashes = str::from_chars(vec::init_elt(lvl as uint, '#'));
     ctxt.w.write_line(#fmt("%s %s", hashes, title));
     ctxt.w.write_line("");
+}
+
+fn header_text(doc: doc::itemtag) -> str {
+    let fullpath = str::connect(doc.path() + [doc.name()], "::");
+    alt doc {
+      doc::modtag(_) {
+        if doc.id() == rustc::syntax::ast::crate_node_id {
+            header_text_("Crate", doc.name())
+        } else {
+            header_text_("Module", fullpath)
+        }
+      }
+      doc::nmodtag(_) {
+        header_text_("Native module", fullpath)
+      }
+      doc::fntag(_) {
+        header_text_("Function", doc.name())
+      }
+      doc::consttag(_) {
+        header_text_("Const", doc.name())
+      }
+      doc::enumtag(_) {
+        header_text_("Enum", doc.name())
+      }
+      doc::restag(_) {
+        header_text_("Resource", doc.name())
+      }
+      doc::ifacetag(_) {
+        header_text_("Interface", doc.name())
+      }
+      doc::impltag(doc) {
+        assert option::is_some(doc.self_ty);
+        let self_ty = option::get(doc.self_ty);
+        alt doc.iface_ty {
+          some(iface_ty) {
+            header_text_(
+                "Implementation",
+                #fmt("%s of %s for %s",
+                     doc.name(), iface_ty, self_ty)
+            )
+          }
+          none {
+            header_text_(
+                "Implementation",
+                #fmt("%s for %s", doc.name(), self_ty)
+            )
+          }
+        }
+      }
+      doc::tytag(_) {
+        header_text_("Type", doc.name())
+      }
+    }
+}
+
+fn header_text_(kind: str, name: str) -> str {
+    #fmt("%s `%s`", kind, name)
 }
 
 fn write_crate(
     ctxt: ctxt,
     doc: doc::cratedoc
 ) {
-    write_header(ctxt, h1, #fmt("Crate %s", doc.topmod.name()));
+    write_header(ctxt, h1, doc::modtag(doc.topmod));
     write_top_module(ctxt, doc.topmod);
 }
 
@@ -130,8 +192,7 @@ fn write_mod(
     ctxt: ctxt,
     moddoc: doc::moddoc
 ) {
-    let fullpath = str::connect(moddoc.path() + [moddoc.name()], "::");
-    write_header(ctxt, h1, #fmt("Module `%s`", fullpath));
+    write_header(ctxt, h1, doc::modtag(moddoc));
     write_mod_contents(ctxt, moddoc);
 }
 
@@ -176,8 +237,7 @@ fn should_write_crate_description() {
 }
 
 fn write_nmod(ctxt: ctxt, doc: doc::nmoddoc) {
-    let fullpath = str::connect(doc.path() + [doc.name()], "::");
-    write_header(ctxt, h1, #fmt("Native module `%s`", fullpath));
+    write_header(ctxt, h1, doc::nmodtag(doc));
 
     write_brief(ctxt, doc.brief());
     write_desc(ctxt, doc.desc());
@@ -205,7 +265,7 @@ fn write_fn(
     ctxt: ctxt,
     doc: doc::fndoc
 ) {
-    write_header(ctxt, h2, #fmt("Function `%s`", doc.name()));
+    write_header(ctxt, h2, doc::fntag(doc));
     write_fnlike(
         ctxt,
         doc.sig,
@@ -469,7 +529,7 @@ fn write_const(
     ctxt: ctxt,
     doc: doc::constdoc
 ) {
-    write_header(ctxt, h2, #fmt("Const `%s`", doc.name()));
+    write_header(ctxt, h2, doc::consttag(doc));
     write_sig(ctxt, doc.ty);
     write_brief(ctxt, doc.brief());
     write_desc(ctxt, doc.desc());
@@ -493,7 +553,7 @@ fn write_enum(
     ctxt: ctxt,
     doc: doc::enumdoc
 ) {
-    write_header(ctxt, h2, #fmt("Enum `%s`", doc.name()));
+    write_header(ctxt, h2, doc::enumtag(doc));
     write_brief(ctxt, doc.brief());
     write_desc(ctxt, doc.desc());
     write_variants(ctxt, doc.variants);
@@ -575,7 +635,7 @@ fn should_write_variant_list_with_signatures() {
 }
 
 fn write_res(ctxt: ctxt, doc: doc::resdoc) {
-    write_header(ctxt, h2, #fmt("Resource `%s`", doc.name()));
+    write_header(ctxt, h2, doc::restag(doc));
     write_sig(ctxt, doc.sig);
     write_brief(ctxt, doc.brief());
     write_desc(ctxt, doc.desc());
@@ -602,7 +662,7 @@ fn should_write_resource_args() {
 }
 
 fn write_iface(ctxt: ctxt, doc: doc::ifacedoc) {
-    write_header(ctxt, h2, #fmt("Interface `%s`", doc.name()));
+    write_header(ctxt, h2, doc::ifacetag(doc));
     write_brief(ctxt, doc.brief());
     write_desc(ctxt, doc.desc());
     write_methods(ctxt, doc.methods);
@@ -613,7 +673,7 @@ fn write_methods(ctxt: ctxt, docs: [doc::methoddoc]) {
 }
 
 fn write_method(ctxt: ctxt, doc: doc::methoddoc) {
-    write_header(ctxt, h3, #fmt("Method `%s`", doc.name));
+    write_header_(ctxt, h3, header_text_("Method", doc.name));
     write_fnlike(
         ctxt,
         doc.sig,
@@ -695,20 +755,7 @@ fn should_write_iface_method_failure_conditions() {
 }
 
 fn write_impl(ctxt: ctxt, doc: doc::impldoc) {
-    assert option::is_some(doc.self_ty);
-    let self_ty = option::get(doc.self_ty);
-    alt doc.iface_ty {
-      some(iface_ty) {
-        write_header(ctxt, h2,
-                     #fmt("Implementation `%s` of `%s` for `%s`",
-                          doc.name(), iface_ty, self_ty));
-      }
-      none {
-        write_header(ctxt, h2,
-                     #fmt("Implementation `%s` for `%s`",
-                          doc.name(), self_ty));
-      }
-    }
+    write_header(ctxt, h2, doc::impltag(doc));
     write_brief(ctxt, doc.brief());
     write_desc(ctxt, doc.desc());
     write_methods(ctxt, doc.methods);
@@ -717,13 +764,14 @@ fn write_impl(ctxt: ctxt, doc: doc::impldoc) {
 #[test]
 fn should_write_impl_header() {
     let markdown = test::render("impl i for int { fn a() { } }");
-    assert str::contains(markdown, "## Implementation `i` for `int`");
+    log(error, markdown);
+    assert str::contains(markdown, "## Implementation `i for int`");
 }
 
 #[test]
 fn should_write_impl_header_with_iface() {
     let markdown = test::render("impl i of j for int { fn a() { } }");
-    assert str::contains(markdown, "## Implementation `i` of `j` for `int`");
+    assert str::contains(markdown, "## Implementation `i of j for int`");
 }
 
 #[test]
@@ -793,7 +841,7 @@ fn write_type(
     ctxt: ctxt,
     doc: doc::tydoc
 ) {
-    write_header(ctxt, h2, #fmt("Type `%s`", doc.name()));
+    write_header(ctxt, h2, doc::tytag(doc));
     write_sig(ctxt, doc.sig);
     write_brief(ctxt, doc.brief());
     write_desc(ctxt, doc.desc());
@@ -881,7 +929,7 @@ mod test {
             let doc = extract::from_srv(srv, "belch");
             let doc = attr_pass::mk_pass().f(srv, doc);
             let markdown = write_markdown_str(doc);
-            assert str::contains(markdown, "# Crate belch");
+            assert str::contains(markdown, "# Crate `belch`");
         }
     }
 
