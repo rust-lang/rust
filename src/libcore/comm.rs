@@ -46,8 +46,7 @@ native mod rustrt {
     fn get_port_id(po: *rust_port) -> port_id;
     fn rust_port_size(po: *rust_port) -> ctypes::size_t;
     fn port_recv(dptr: *uint, po: *rust_port,
-                 yield: *ctypes::uintptr_t,
-                 killed: *ctypes::uintptr_t);
+                 yield: *ctypes::uintptr_t);
     fn rust_port_select(dptr: **rust_port, ports: **rust_port,
                         n_ports: ctypes::size_t,
                         yield: *ctypes::uintptr_t);
@@ -142,20 +141,18 @@ fn recv_<T: send>(p: *rust_port) -> T {
     // that will grab the value of the return pointer, then call this
     // function, which we will then use to call the runtime.
     fn recv(dptr: *uint, port: *rust_port,
-            yield: *ctypes::uintptr_t,
-            killed: *ctypes::uintptr_t) unsafe {
-        rustrt::port_recv(dptr, port, yield, killed);
+            yield: *ctypes::uintptr_t) unsafe {
+        rustrt::port_recv(dptr, port, yield);
     }
     let yield = 0u;
     let yieldp = ptr::addr_of(yield);
-    let killed = 0u;
-    let killedp = ptr::addr_of(killed);
-    let res = rusti::call_with_retptr(bind recv(_, p, yieldp, killedp));
-    if killed != 0u {
-        fail "killed";
-    }
+    let res = rusti::call_with_retptr(bind recv(_, p, yieldp));
     if yield != 0u {
         // Data isn't available yet, so res has not been initialized.
+        task::yield();
+    } else {
+        // In the absense of compiler-generated preemption points
+        // this is a good place to yield
         task::yield();
     }
     ret res;
@@ -185,6 +182,10 @@ fn select2<A: send, B: send>(
 
     if yield != 0u {
         // Wait for data
+        task::yield();
+    } else {
+        // As in recv, this is a good place to yield anyway until
+        // the compiler generates yield calls
         task::yield();
     }
 

@@ -543,10 +543,8 @@ rust_task_yield(rust_task *task, bool *killed) {
 }
 
 extern "C" CDECL void
-port_recv(uintptr_t *dptr, rust_port *port,
-          uintptr_t *yield, uintptr_t *killed) {
+port_recv(uintptr_t *dptr, rust_port *port, uintptr_t *yield) {
     *yield = false;
-    *killed = false;
     rust_task *task = rust_task_thread::get_task();
     {
         scoped_lock with(port->lock);
@@ -556,13 +554,6 @@ port_recv(uintptr_t *dptr, rust_port *port,
             (uintptr_t) port, (uintptr_t) dptr, port->unit_sz);
 
         if (port->receive(dptr)) {
-            return;
-        }
-
-        // If this task has been killed then we're not going to bother
-        // blocking, we have to unwind.
-        if (task->must_fail_from_being_killed()) {
-            *killed = true;
             return;
         }
 
