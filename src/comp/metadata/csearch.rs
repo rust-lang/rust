@@ -79,7 +79,7 @@ fn get_item_path(tcx: ty::ctxt, def: ast::def_id) -> ast_map::path {
 // not marked for inlining, then the AST will not be present and hence none
 // will be returned.
 fn maybe_get_item_ast(tcx: ty::ctxt, maps: maps, def: ast::def_id)
-    -> option<@ast::item> {
+    -> option<ast::inlined_item> {
     let cstore = tcx.sess.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
     decoder::maybe_get_item_ast(cdata, tcx, maps, def.node)

@@ -1,6 +1,7 @@
 import std::map;
 import syntax::ast::*;
 import syntax::ast_util;
+import syntax::ast_util::inlined_item_methods;
 import syntax::{visit, codemap};
 
 enum path_elt { path_mod(str), path_name(str) }
@@ -23,7 +24,7 @@ fn path_to_str(p: path) -> str {
 enum ast_node {
     node_item(@item, @path),
     node_native_item(@native_item, @path),
-    node_method(@method, node_id, @path),
+    node_method(@method, def_id, @path),
     node_variant(variant, def_id, @path),
     node_expr(@expr),
     // Locals are numbered, because the alias analysis needs to know in which
@@ -59,7 +60,7 @@ fn map_crate(c: crate) -> map {
 
 // Used for items loaded from external crate that are being inlined into this
 // crate:
-fn map_decoded_item(map: map, path: path, i: @item) {
+fn map_decoded_item(map: map, path: path, ii: inlined_item) {
     // I believe it is ok for the local IDs of inlined items from other crates
     // to overlap with the local ids from this crate, so just generate the ids
     // starting from 0.  (In particular, I think these ids are only used in
@@ -70,16 +71,7 @@ fn map_decoded_item(map: map, path: path, i: @item) {
               mutable path: path,
               mutable local_id: 0u};
     let v = mk_ast_map_visitor();
-    v.visit_item(i, cx, v);
-}
-
-fn map_decoded_method(map: map, path: path, m: @method) {
-    // As above.
-    let cx = {map: map,
-              mutable path: path,
-              mutable local_id: 0u};
-    let v = mk_ast_map_visitor();
-    visit::visit_method_helper(m, cx, v);
+    ii.accept(cx, v);
 }
 
 fn map_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
@@ -117,7 +109,8 @@ fn map_item(i: @item, cx: ctx, v: vt) {
     cx.map.insert(i.id, node_item(i, @cx.path));
     alt i.node {
       item_impl(_, _, _, ms) {
-        for m in ms { cx.map.insert(m.id, node_method(m, i.id, @cx.path)); }
+        let implid = ast_util::local_def(i.id);
+        for m in ms { cx.map.insert(m.id, node_method(m, implid, @cx.path)); }
       }
       item_res(_, _, _, dtor_id, ctor_id) {
         cx.map.insert(ctor_id, node_res_ctor(i));

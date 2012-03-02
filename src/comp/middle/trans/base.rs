@@ -23,6 +23,7 @@ import front::attr;
 import middle::inline::inline_map;
 import back::{link, abi, upcall};
 import syntax::{ast, ast_util, codemap};
+import ast_util::inlined_item_methods;
 import ast_util::local_def;
 import syntax::visit;
 import syntax::codemap::span;
@@ -2105,8 +2106,8 @@ fn monomorphic_fn(ccx: crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
         trans_enum_variant(ccx, enum_id.node, v, this_tv.disr_val,
                            (*tvs).len() == 1u, [], psubsts, lldecl);
       }
-      ast_map::node_method(mth, impl_id, _) {
-        let selfty = ty::node_id_to_type(ccx.tcx, impl_id);
+      ast_map::node_method(mth, impl_def_id, _) {
+        let selfty = ty::lookup_item_type(ccx.tcx, impl_def_id).ty;
         let selfty = ty::substitute_type_params(ccx.tcx, substs, selfty);
         trans_fn(ccx, pt, mth.decl, mth.body, lldecl,
                  impl_self(selfty), [], psubsts, fn_id.node);
@@ -2131,12 +2132,12 @@ fn lval_static_fn(bcx: block, fn_id: ast::def_id, id: ast::node_id,
         } else {
             alt ccx.inline_map.find(fn_id) {
               none { fn_id }
-              some(item) {
+              some(ii) {
                 #debug["Found inlined version of %s with id %d",
                        ty::item_path_str(tcx, fn_id),
-                       item.id];
+                       ii.id()];
                 {crate: ast::local_crate,
-                 node: item.id}
+                 node: ii.id()}
               }
             }
         }
@@ -3882,8 +3883,10 @@ fn new_fn_ctxt(ccx: crate_ctxt, path: path, llfndecl: ValueRef,
 // spaces that have been created for them (by code in the llallocas field of
 // the function's fn_ctxt).  create_llargs_for_fn_args populates the llargs
 // field of the fn_ctxt with
-fn create_llargs_for_fn_args(cx: fn_ctxt, ty_self: self_arg,
-                             args: [ast::arg], ty_params: [ast::ty_param]) {
+fn create_llargs_for_fn_args(cx: fn_ctxt,
+                             ty_self: self_arg,
+                             args: [ast::arg],
+                             tps_bounds: [ty::param_bounds]) {
     // Skip the implicit arguments 0, and 1.
     let arg_n = first_tp_arg;
     alt ty_self {
@@ -3892,11 +3895,11 @@ fn create_llargs_for_fn_args(cx: fn_ctxt, ty_self: self_arg,
       }
       no_self {}
     }
-    for tp in ty_params {
+    for bounds in tps_bounds {
         let lltydesc = llvm::LLVMGetParam(cx.llfn, arg_n as c_uint);
         let dicts = none;
         arg_n += 1u;
-        for bound in *cx.ccx.tcx.ty_param_bounds.get(tp.id) {
+        for bound in *bounds {
             alt bound {
               ty::bound_iface(_) {
                 let dict = llvm::LLVMGetParam(cx.llfn, arg_n as c_uint);
@@ -3983,7 +3986,8 @@ enum self_arg { impl_self(ty::t), no_self, }
 // returned.
 fn trans_closure(ccx: crate_ctxt, path: path, decl: ast::fn_decl,
                  body: ast::blk, llfndecl: ValueRef,
-                 ty_self: self_arg, ty_params: [ast::ty_param],
+                 ty_self: self_arg,
+                 tps_bounds: [ty::param_bounds],
                  param_substs: option<param_substs>,
                  id: ast::node_id, maybe_load_env: fn(fn_ctxt)) {
     set_uwtable(llfndecl);
@@ -3991,7 +3995,7 @@ fn trans_closure(ccx: crate_ctxt, path: path, decl: ast::fn_decl,
     // Set up arguments to the function.
     let fcx = new_fn_ctxt_w_id(ccx, path, llfndecl, id, param_substs,
                                some(body.span));
-    create_llargs_for_fn_args(fcx, ty_self, decl.inputs, ty_params);
+    create_llargs_for_fn_args(fcx, ty_self, decl.inputs, tps_bounds);
 
     // Create the first basic block in the function and keep a handle on it to
     //  pass to finish_fn later.
@@ -4023,15 +4027,20 @@ fn trans_closure(ccx: crate_ctxt, path: path, decl: ast::fn_decl,
 
 // trans_fn: creates an LLVM function corresponding to a source language
 // function.
-fn trans_fn(ccx: crate_ctxt, path: path, decl: ast::fn_decl,
-            body: ast::blk, llfndecl: ValueRef, ty_self: self_arg,
-            ty_params: [ast::ty_param], param_substs: option<param_substs>,
+fn trans_fn(ccx: crate_ctxt,
+            path: path,
+            decl: ast::fn_decl,
+            body: ast::blk,
+            llfndecl: ValueRef,
+            ty_self: self_arg,
+            tps_bounds: [ty::param_bounds],
+            param_substs: option<param_substs>,
             id: ast::node_id) {
     let do_time = ccx.sess.opts.stats;
     let start = if do_time { time::get_time() }
                 else { {sec: 0u32, usec: 0u32} };
     trans_closure(ccx, path, decl, body, llfndecl, ty_self,
-                  ty_params, param_substs, id, {|fcx|
+                  tps_bounds, param_substs, id, {|fcx|
         if ccx.sess.opts.extra_debuginfo {
             debuginfo::create_function(fcx);
         }
@@ -4043,12 +4052,12 @@ fn trans_fn(ccx: crate_ctxt, path: path, decl: ast::fn_decl,
 }
 
 fn trans_res_ctor(ccx: crate_ctxt, path: path, dtor: ast::fn_decl,
-                  ctor_id: ast::node_id, ty_params: [ast::ty_param],
+                  ctor_id: ast::node_id, tps_bounds: [ty::param_bounds],
                   param_substs: option<param_substs>, llfndecl: ValueRef) {
     // Create a function for the constructor
     let fcx = new_fn_ctxt_w_id(ccx, path, llfndecl, ctor_id,
                                param_substs, none);
-    create_llargs_for_fn_args(fcx, no_self, dtor.inputs, ty_params);
+    create_llargs_for_fn_args(fcx, no_self, dtor.inputs, tps_bounds);
     let bcx = top_scope_block(fcx, none), lltop = bcx.llbb;
     let fty = node_id_type(bcx, ctor_id);
     let arg_t = ty::ty_fn_args(fty)[0].ty;
@@ -4091,7 +4100,8 @@ fn trans_enum_variant(ccx: crate_ctxt, enum_id: ast::node_id,
     }
     let fcx = new_fn_ctxt_w_id(ccx, [], llfndecl, variant.node.id,
                                param_substs, none);
-    create_llargs_for_fn_args(fcx, no_self, fn_args, ty_params);
+    create_llargs_for_fn_args(fcx, no_self, fn_args,
+                              param_bounds(ccx, ty_params));
     let ty_param_substs = alt param_substs {
       some(substs) { substs.tys }
       none {
@@ -4248,7 +4258,8 @@ fn trans_item(ccx: crate_ctxt, item: ast::item) {
         };
         if decl.purity != ast::crust_fn  {
             trans_fn(ccx, *path + [path_name(item.ident)], decl, body,
-                     llfndecl, no_self, tps, none, item.id);
+                     llfndecl, no_self, param_bounds(ccx, tps),
+                     none, item.id);
         } else {
             native::trans_crust_fn(ccx, *path + [path_name(item.ident)],
                                    decl, body, llfndecl, item.id);
@@ -4259,13 +4270,15 @@ fn trans_item(ccx: crate_ctxt, item: ast::item) {
       }
       ast::item_res(decl, tps, body, dtor_id, ctor_id) {
         let llctor_decl = ccx.item_ids.get(ctor_id);
-        trans_res_ctor(ccx, *path, decl, ctor_id, tps, none, llctor_decl);
+        trans_res_ctor(ccx, *path, decl, ctor_id,
+                       param_bounds(ccx, tps), none, llctor_decl);
 
         // Create a function for the destructor
         alt ccx.item_ids.find(item.id) {
           some(lldtor_decl) {
             trans_fn(ccx, *path + [path_name(item.ident)], decl, body,
-                     lldtor_decl, no_self, tps, none, dtor_id);
+                     lldtor_decl, no_self, param_bounds(ccx, tps),
+                     none, dtor_id);
           }
           _ {
             ccx.sess.span_fatal(item.span, "unbound dtor in trans_item");
@@ -4309,9 +4322,34 @@ fn trans_mod(ccx: crate_ctxt, m: ast::_mod) {
     for item in m.items { trans_item(ccx, *item); }
 }
 
+fn compute_ii_method_info(ccx: crate_ctxt,
+                          impl_did: ast::def_id,
+                          m: @ast::method,
+                          f: fn(ty::t, [ty::param_bounds], ast_map::path)) {
+    let {bounds: impl_bnds, ty: impl_ty} =
+        ty::lookup_item_type(ccx.tcx, impl_did);
+    let m_bounds = *impl_bnds + param_bounds(ccx, m.tps);
+    let impl_path = ty::item_path(ccx.tcx, impl_did);
+    let m_path = impl_path + [path_name(m.ident)];
+    f(impl_ty, m_bounds, m_path);
+}
+
 fn trans_inlined_items(ccx: crate_ctxt, inline_map: inline_map) {
-    inline_map.values {|item|
-        trans_item(ccx, *item)
+    inline_map.values {|ii|
+        alt ii {
+          ast::ii_item(item) {
+            trans_item(ccx, *item)
+          }
+          ast::ii_method(impl_did, m) {
+            compute_ii_method_info(ccx, impl_did, m) {
+                |impl_ty, m_bounds, m_path|
+                let llfndecl = ccx.item_ids.get(m.id);
+                trans_fn(ccx, m_path, m.decl, m.body,
+                         llfndecl, impl_self(impl_ty), m_bounds,
+                         none, m.id);
+            }
+          }
+        }
     }
 }
 
@@ -4323,18 +4361,18 @@ fn get_pair_fn_ty(llpairty: TypeRef) -> TypeRef {
 fn register_fn(ccx: crate_ctxt, sp: span, path: path, flav: str,
                ty_params: [ast::ty_param], node_id: ast::node_id) {
     let t = ty::node_id_to_type(ccx.tcx, node_id);
-    register_fn_full(ccx, sp, path, flav, ty_params, node_id, t);
+    let bnds = param_bounds(ccx, ty_params);
+    register_fn_full(ccx, sp, path, flav, bnds, node_id, t);
 }
 
-fn param_bounds(ccx: crate_ctxt, tp: ast::ty_param) -> ty::param_bounds {
-    ccx.tcx.ty_param_bounds.get(tp.id)
+fn param_bounds(ccx: crate_ctxt, tps: [ast::ty_param]) -> [ty::param_bounds] {
+    vec::map(tps) {|tp| ccx.tcx.ty_param_bounds.get(tp.id) }
 }
 
 fn register_fn_full(ccx: crate_ctxt, sp: span, path: path, flav: str,
-                    tps: [ast::ty_param], node_id: ast::node_id,
+                    bnds: [ty::param_bounds], node_id: ast::node_id,
                     node_type: ty::t) {
-    let llfty = type_of_fn_from_ty(ccx, node_type,
-                                   vec::map(tps, {|p| param_bounds(ccx, p)}));
+    let llfty = type_of_fn_from_ty(ccx, node_type, bnds);
     register_fn_fuller(ccx, sp, path, flav, node_id, node_type,
                        lib::llvm::CCallConv, llfty);
 }
@@ -4480,8 +4518,7 @@ fn collect_native_item(ccx: crate_ctxt,
             // For intrinsics: link the function directly to the intrinsic
             // function itself.
             let fn_type = type_of_fn_from_ty(
-                ccx, node_type,
-                vec::map(tps, {|p| param_bounds(ccx, p)}));
+                ccx, node_type, param_bounds(ccx, tps));
             let ri_name = "rust_intrinsic_" + native::link_name(i);
             let llnativefn = get_extern_fn(
                 ccx.externs, ccx.llmod, ri_name,
@@ -4555,7 +4592,7 @@ fn collect_item(ccx: crate_ctxt, abi: @mutable option<ast::native_abi>,
         // -- one to identify the type, and one to find the dtor symbol.
         let t = ty::node_id_to_type(ccx.tcx, dtor_id);
         register_fn_full(ccx, i.span, my_path + [path_name("dtor")],
-                         "res_dtor", tps, i.id, t);
+                         "res_dtor", param_bounds(ccx, tps), i.id, t);
       }
       ast::item_enum(variants, tps) {
         for variant in variants {
@@ -4581,14 +4618,26 @@ fn collect_items(ccx: crate_ctxt, crate: @ast::crate) {
 
 fn collect_inlined_items(ccx: crate_ctxt, inline_map: inline::inline_map) {
     let abi = @mutable none::<ast::native_abi>;
-    inline_map.values {|item|
-        collect_item(ccx, abi, item);
-
-        alt item.node {
-          ast::item_fn(_, _, _) {
-            set_always_inline(ccx.item_ids.get(item.id));
+    inline_map.values {|ii|
+        alt ii {
+          ast::ii_item(item) {
+            collect_item(ccx, abi, item);
+            alt item.node {
+              ast::item_fn(_, _, _) {
+                set_always_inline(ccx.item_ids.get(item.id));
+              }
+              _ { /* fallthrough */ }
+            }
           }
-          _ { /* fallthrough */ }
+
+          ast::ii_method(impl_did, m) {
+            compute_ii_method_info(ccx, impl_did, m) {
+                |_impl_ty, m_bounds, m_path|
+                let mthd_ty = ty::node_id_to_type(ccx.tcx, m.id);
+                register_fn_full(ccx, m.span, m_path, "impl_method",
+                                 m_bounds, m.id, mthd_ty);
+            }
+          }
         }
     }
 }

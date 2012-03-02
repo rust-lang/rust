@@ -8748,12 +8748,84 @@ fn deserialize_syntax_ast_def_id<S: std::serialization::deserializer>(s: S) ->
    syntax::ast::def_id {
     deserialize_162(s)
 }
-fn serialize_syntax_ast_method<S: std::serialization::serializer>(s: S,
-                                                                  v:
-                                                                      syntax::ast::method) {
-    serialize_160(s, v);
+/*syntax::ast::inlined_item*/
+fn serialize_168<S: std::serialization::serializer>(s: S,
+                                                    v:
+                                                        syntax::ast::inlined_item) {
+    s.emit_enum("syntax::ast::inlined_item",
+                /*@syntax::ast::item*/
+                /*syntax::ast::def_id*//*@syntax::ast::method*/
+                {||
+                    alt v {
+                      syntax::ast::ii_item(v0) {
+                        s.emit_enum_variant("syntax::ast::ii_item", 0u, 1u,
+                                            {||
+                                                {
+                                                    s.emit_enum_variant_arg(0u,
+                                                                            {||
+                                                                                serialize_117(s,
+                                                                                              v0)
+                                                                            })
+                                                }
+                                            })
+                      }
+                      syntax::ast::ii_method(v0, v1) {
+                        s.emit_enum_variant("syntax::ast::ii_method", 1u, 2u,
+                                            {||
+                                                {
+                                                    s.emit_enum_variant_arg(0u,
+                                                                            {||
+                                                                                serialize_162(s,
+                                                                                              v0)
+                                                                            });
+                                                    s.emit_enum_variant_arg(1u,
+                                                                            {||
+                                                                                serialize_159(s,
+                                                                                              v1)
+                                                                            })
+                                                }
+                                            })
+                      }
+                    }
+                });
 }
-fn deserialize_syntax_ast_method<S: std::serialization::deserializer>(s: S) ->
-   syntax::ast::method {
-    deserialize_160(s)
+fn serialize_syntax_ast_inlined_item<S: std::serialization::serializer>(s: S,
+                                                                        v:
+                                                                            syntax::ast::inlined_item) {
+    serialize_168(s, v);
+}
+/*syntax::ast::inlined_item*/
+fn deserialize_168<S: std::serialization::deserializer>(s: S) ->
+   syntax::ast::inlined_item {
+    s.read_enum("syntax::ast::inlined_item",
+                /*@syntax::ast::item*/
+
+                /*syntax::ast::def_id*//*@syntax::ast::method*/
+                {||
+                    s.read_enum_variant({|v_id|
+                                            alt check v_id {
+                                              0u {
+                                                syntax::ast::ii_item(s.read_enum_variant_arg(0u,
+                                                                                             {||
+                                                                                                 deserialize_117(s)
+                                                                                             }))
+                                              }
+                                              1u {
+                                                syntax::ast::ii_method(s.read_enum_variant_arg(0u,
+                                                                                               {||
+                                                                                                   deserialize_162(s)
+                                                                                               }),
+                                                                       s.read_enum_variant_arg(1u,
+                                                                                               {||
+                                                                                                   deserialize_159(s)
+                                                                                               }))
+                                              }
+                                            }
+                                        })
+                })
+}
+fn deserialize_syntax_ast_inlined_item<S: std::serialization::deserializer>(s:
+                                                                                S)
+   -> syntax::ast::inlined_item {
+    deserialize_168(s)
 }

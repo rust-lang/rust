@@ -411,6 +411,29 @@ pure fn class_item_ident(ci: @class_item) -> ident {
     }
 }
 
+impl inlined_item_methods for inlined_item {
+    fn ident() -> ident {
+        alt self {
+          ii_item(i) { i.ident }
+          ii_method(_, m) { m.ident }
+        }
+    }
+
+    fn id() -> ast::node_id {
+        alt self {
+          ii_item(i) { i.id }
+          ii_method(_, m) { m.id }
+        }
+    }
+
+    fn accept<E>(e: E, v: visit::vt<E>) {
+        alt self {
+          ii_item(i) { v.visit_item(i, e, v) }
+          ii_method(_, m) { visit::visit_method_helper(m, e, v) }
+        }
+    }
+}
+
 // Local Variables:
 // mode: rust
 // fill-column: 78;

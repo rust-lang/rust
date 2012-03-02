@@ -750,7 +750,6 @@ fn make_fold(afp: ast_fold_precursor) -> ast_fold {
     ret result;
 }
 
-
 //
 // Local Variables:
 // mode: rust

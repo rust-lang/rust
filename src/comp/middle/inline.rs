@@ -1,6 +1,7 @@
 import std::map::hashmap;
 import syntax::ast;
 import syntax::ast_util;
+import syntax::ast_util::inlined_item_methods;
 import syntax::visit;
 import middle::typeck::method_map;
 import middle::trans::common::maps;
@@ -9,13 +10,13 @@ import metadata::csearch;
 export inline_map;
 export instantiate_inlines;
 
-type inline_map = hashmap<ast::def_id, @ast::item>;
+type inline_map = hashmap<ast::def_id, ast::inlined_item>;
 
 enum ctxt = {
     tcx: ty::ctxt,
     maps: maps,
     inline_map: inline_map,
-    mutable to_process: [@ast::item]
+    mut to_process: [ast::inlined_item]
 };
 
 fn instantiate_inlines(enabled: bool,
@@ -37,7 +38,9 @@ fn instantiate_inlines(enabled: bool,
         let to_process = [];
         to_process <-> cx.to_process;
         #debug["Recursively looking at inlined items"];
-        vec::iter(to_process, {|i| visit::visit_item(i, cx, vt)});
+        vec::iter(to_process) {|ii|
+            ii.accept(cx, vt);
+        }
     }
     ret inline_map;
 }
@@ -78,20 +81,20 @@ impl methods for ctxt {
             #debug["No AST attached to def %s",
                    ty::item_path_str(self.tcx, did)];
           }
-          some(item) { /* Found an AST, add to table: */
+          some(ii) { /* Found an AST, add to table: */
             #debug["Inlining def %s", ty::item_path_str(self.tcx, did)];
-            self.to_process += [item];
-            self.inline_map.insert(did, item);
+            self.to_process += [ii];
+            self.inline_map.insert(did, ii);
           }
         }
     }
 
-    fn maybe_enqueue_impl_method(_origin: typeck::method_origin) {
-        // alt method_origin {
-        //   method_static(did) { self.maybe_enqueue_fn(did); }
-        //   method_param(_, _, _, _) | method_iface(_, _) {
-        //     /* fallthrough */
-        //   }
-        // }
+    fn maybe_enqueue_impl_method(method_origin: typeck::method_origin) {
+        alt method_origin {
+          typeck::method_static(did) { self.maybe_enqueue_fn(did); }
+          typeck::method_param(_, _, _, _) | typeck::method_iface(_, _) {
+            /* fallthrough */
+          }
+        }
     }
 }

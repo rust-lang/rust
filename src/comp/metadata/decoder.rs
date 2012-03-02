@@ -264,7 +264,7 @@ fn get_item_path(cdata: cmd, id: ast::node_id) -> ast_map::path {
 }
 
 fn maybe_get_item_ast(cdata: cmd, tcx: ty::ctxt, maps: maps,
-                      id: ast::node_id) -> option<@ast::item> {
+                      id: ast::node_id) -> option<ast::inlined_item> {
     let item_doc = lookup_item(id, cdata.data);
     let path = vec::init(item_path(item_doc));
     astencode::decode_inlined_item(cdata, tcx, maps, path, item_doc)

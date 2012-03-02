@@ -49,9 +49,10 @@ fn trans_impl(ccx: crate_ctxt, path: path, name: ast::ident,
     for m in methods {
         alt ccx.item_ids.find(m.id) {
           some(llfn) {
+            let m_bounds = param_bounds(ccx, tps + m.tps);
             trans_fn(ccx, sub_path + [path_name(m.ident)], m.decl, m.body,
                      llfn, impl_self(ty::node_id_to_type(ccx.tcx, id)),
-                     tps + m.tps, none, m.id);
+                     m_bounds, none, m.id);
           }
           _ {
             ccx.sess.bug("Unbound id in trans_impl");
@@ -337,13 +338,13 @@ fn trans_impl_vtable(ccx: crate_ctxt, pt: path,
                      tps: [ast::ty_param], it: @ast::item) {
     let new_pt = pt + [path_name(it.ident), path_name(int::str(it.id)),
                        path_name("wrap")];
-    let extra_tps = vec::map(tps, {|p| param_bounds(ccx, p)});
+    let extra_tps = param_bounds(ccx, tps);
     let ptrs = vec::map(*ty::iface_methods(ccx.tcx, iface_id), {|im|
         alt vec::find(ms, {|m| m.ident == im.ident}) {
           some(m) {
             let target = ccx.item_ids.get(m.id);
-            trans_impl_wrapper(ccx, new_pt + [path_name(m.ident)], extra_tps,
-                               target)
+            trans_impl_wrapper(ccx, new_pt + [path_name(m.ident)],
+                               extra_tps, target)
           }
           _ {
             ccx.sess.span_bug(it.span, "No matching method \

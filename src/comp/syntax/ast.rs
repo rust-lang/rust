@@ -534,6 +534,14 @@ enum native_item_ {
     native_item_fn(fn_decl, [ty_param]),
 }
 
+// The data we save and restore about an inlined item or method.  This is not
+// part of the AST that we parse from a file, but it becomes part of the tree
+// that we trans.
+enum inlined_item {
+    ii_item(@item),
+    ii_method(def_id /* impl id */, @method)
+}
+
 //
 // Local Variables:
 // mode: rust
