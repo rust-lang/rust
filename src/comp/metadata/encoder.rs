@@ -29,16 +29,8 @@ type abbrev_map = map::hashmap<ty::t, tyencode::ty_abbrev>;
 
 type encode_ctxt = {ccx: crate_ctxt, type_abbrevs: abbrev_map};
 
-fn should_inline(path: ast_map::path, item: @item) -> bool {
-    if item.ident == "iter" { // XXX
-        #debug["should_inline(%s::%s)? attrs=%s result=%b",
-               ast_map::path_to_str(path),
-               item.ident,
-               str::connect(vec::map(item.attrs, pprust::attr_to_str), ", "),
-               attr::attrs_contains_name(item.attrs, "inline")];
-    }
-
-    attr::attrs_contains_name(item.attrs, "inline")
+fn should_inline(_path: ast_map::path, attrs: [attribute]) -> bool {
+    attr::attrs_contains_name(attrs, "inline")
 }
 
 // Path table encoding
@@ -351,7 +343,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_symbol(ecx, ebml_w, item.id);
         encode_path(ebml_w, path, ast_map::path_name(item.ident));
-        if should_inline(path, item) {
+        if should_inline(path, item.attrs) {
             astencode::encode_inlined_item(ecx, ebml_w, path, ii_item(item));
         }
         ebml_w.end_tag();
@@ -454,6 +446,11 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
             encode_name(ebml_w, m.ident);
             encode_symbol(ecx, ebml_w, m.id);
             encode_path(ebml_w, impl_path, ast_map::path_name(m.ident));
+            if should_inline(path, m.attrs) {
+                astencode::encode_inlined_item(
+                    ecx, ebml_w, impl_path,
+                    ii_method(local_def(item.id), m));
+            }
             ebml_w.end_tag();
         }
       }
