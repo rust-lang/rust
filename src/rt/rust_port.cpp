@@ -63,14 +63,32 @@ void rust_port::send(void *sptr) {
     }
 }
 
-bool rust_port::receive(void *dptr) {
-    I(task->thread, lock.lock_held_by_current_thread());
+void rust_port::receive(void *dptr, uintptr_t *yield) {
+    I(task->thread, !lock.lock_held_by_current_thread());
+
+    LOG(task, comm, "port: 0x%" PRIxPTR ", dptr: 0x%" PRIxPTR
+        ", size: 0x%" PRIxPTR,
+        (uintptr_t) this, (uintptr_t) dptr, unit_sz);
+
+    scoped_lock with(lock);
+
+    *yield = false;
+
     if (buffer.is_empty() == false) {
         buffer.dequeue(dptr);
         LOG(task, comm, "<=== read data ===");
-        return true;
+        return;
     }
-    return false;
+
+    // No data was buffered on any incoming channel, so block this task on
+    // the port. Remember the rendezvous location so that any sender task
+    // can write to it before waking up this task.
+
+    LOG(task, comm, "<=== waiting for rendezvous data ===");
+    task->rendezvous_ptr = (uintptr_t*) dptr;
+    task->block(this, "waiting for rendezvous data");
+
+    *yield = true;
 }
 
 size_t rust_port::size() {

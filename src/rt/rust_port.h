@@ -20,7 +20,7 @@ public:
     ~rust_port();
     void log_state();
     void send(void *sptr);
-    bool receive(void *dptr);
+    void receive(void *dptr, uintptr_t *yield);
     size_t size();
     void detach();
 };
