@@ -122,33 +122,26 @@ rust_task_thread::number_of_live_tasks() {
 void
 rust_task_thread::reap_dead_tasks() {
     I(this, lock.lock_held_by_current_thread());
+
     if (dead_tasks.length() == 0) {
         return;
     }
 
-    // First make a copy of the dead_task list with the lock held
-    size_t dead_tasks_len = dead_tasks.length();
-    rust_task **dead_tasks_copy = (rust_task**)
-        srv->malloc(sizeof(rust_task*) * dead_tasks_len);
-    for (size_t i = 0; i < dead_tasks_len; ++i) {
-        dead_tasks_copy[i] = dead_tasks.pop_value();
-    }
+    A(this, dead_tasks.length() == 1,
+      "Only one task should die during a single turn of the event loop");
 
-    // Now unlock again because we have to actually free the dead tasks,
-    // and that may end up wanting to lock the kernel lock. We have
-    // a kernel lock -> scheduler lock locking order that we need
-    // to maintain.
+    // First make a copy of the dead_task list with the lock held
+    rust_task *dead_task = dead_tasks.pop_value();
+
+    // Dereferencing the task will probably cause it to be released
+    // from the scheduler, which may end up trying to take this lock
     lock.unlock();
 
-    for (size_t i = 0; i < dead_tasks_len; ++i) {
-        rust_task *task = dead_tasks_copy[i];
-        // Release the task from the kernel so nobody else can get at it
-        kernel->release_task_id(task->id);
-        task->delete_all_stacks();
-        // Deref the task, which may cause it to request us to release it
-        task->deref();
-    }
-    srv->free(dead_tasks_copy);
+    // Release the task from the kernel so nobody else can get at it
+    kernel->release_task_id(dead_task->id);
+    dead_task->delete_all_stacks();
+    // Deref the task, which may cause it to request us to release it
+    dead_task->deref();
 
     lock.lock();
 }
