@@ -7,6 +7,7 @@ import driver::session::session;
 export attr_meta;
 export attr_metas;
 export find_linkage_metas;
+export should_inline;
 export find_attrs_by_name;
 export attrs_contains_name;
 export find_meta_items_by_name;
@@ -41,6 +42,11 @@ fn find_linkage_metas(attrs: [ast::attribute]) -> [@ast::meta_item] {
         }
     }
     ret metas;
+}
+
+// True if something like #[inline] is found in the list of attrs.
+fn should_inline(attrs: [ast::attribute]) -> bool {
+    attr::attrs_contains_name(attrs, "inline")
 }
 
 // Search a list of attributes and return only those with a specific name

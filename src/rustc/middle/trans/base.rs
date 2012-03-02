@@ -646,6 +646,19 @@ fn set_uwtable(f: ValueRef) {
                               0u as c_uint);
 }
 
+fn set_inline_hint(f: ValueRef) {
+    llvm::LLVMAddFunctionAttr(f, lib::llvm::InlineHintAttribute as c_uint,
+                              0u as c_uint);
+}
+
+fn set_inline_hint_if_appr(ccx: crate_ctxt,
+                           attrs: [ast::attribute],
+                           id: ast::node_id) {
+    if attr::should_inline(attrs) {
+        set_inline_hint(ccx.item_ids.get(id));
+    }
+}
+
 fn set_always_inline(f: ValueRef) {
     llvm::LLVMAddFunctionAttr(f, lib::llvm::AlwaysInlineAttribute as c_uint,
                               0u as c_uint);
@@ -4696,6 +4709,8 @@ fn collect_item(ccx: crate_ctxt, abi: @mutable option<ast::native_abi>,
         } else {
             native::register_crust_fn(ccx, i.span, my_path, i.id);
         }
+
+        set_inline_hint_if_appr(ccx, i.attrs, i.id);
       }
       ast::item_impl(tps, _, _, methods) {
         let path = my_path + [path_name(int::str(i.id))];
@@ -4703,6 +4718,8 @@ fn collect_item(ccx: crate_ctxt, abi: @mutable option<ast::native_abi>,
             register_fn(ccx, i.span,
                         path + [path_name(m.ident)],
                         "impl_method", tps + m.tps, m.id);
+
+            set_inline_hint_if_appr(ccx, m.attrs, m.id);
         }
       }
       ast::item_res(_, tps, _, dtor_id, ctor_id) {
@@ -4749,12 +4766,6 @@ fn collect_inlined_items(ccx: crate_ctxt, inline_map: inline::inline_map) {
         alt ii {
           ast::ii_item(item) {
             collect_item(ccx, abi, item);
-            alt item.node {
-              ast::item_fn(_, _, _) {
-                set_always_inline(ccx.item_ids.get(item.id));
-              }
-              _ { /* fallthrough */ }
-            }
           }
 
           ast::ii_method(impl_did, m) {
@@ -4763,6 +4774,7 @@ fn collect_inlined_items(ccx: crate_ctxt, inline_map: inline::inline_map) {
                 let mthd_ty = ty::node_id_to_type(ccx.tcx, m.id);
                 register_fn_full(ccx, m.span, m_path, "impl_method",
                                  m_bounds, m.id, mthd_ty);
+                set_inline_hint_if_appr(ccx, m.attrs, m.id);
             }
           }
         }

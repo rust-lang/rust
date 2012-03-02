@@ -29,10 +29,6 @@ type abbrev_map = map::hashmap<ty::t, tyencode::ty_abbrev>;
 
 type encode_ctxt = {ccx: crate_ctxt, type_abbrevs: abbrev_map};
 
-fn should_inline(_path: ast_map::path, attrs: [attribute]) -> bool {
-    attr::attrs_contains_name(attrs, "inline")
-}
-
 // Path table encoding
 fn encode_name(ebml_w: ebml::writer, name: str) {
     ebml_w.wr_tagged_str(tag_paths_data_name, name);
@@ -343,7 +339,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_symbol(ecx, ebml_w, item.id);
         encode_path(ebml_w, path, ast_map::path_name(item.ident));
-        if should_inline(path, item.attrs) {
+        if attr::should_inline(item.attrs) {
             astencode::encode_inlined_item(ecx, ebml_w, path, ii_item(item));
         }
         ebml_w.end_tag();
@@ -446,7 +442,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
             encode_name(ebml_w, m.ident);
             encode_symbol(ecx, ebml_w, m.id);
             encode_path(ebml_w, impl_path, ast_map::path_name(m.ident));
-            if should_inline(path, m.attrs) {
+            if attr::should_inline(m.attrs) {
                 astencode::encode_inlined_item(
                     ecx, ebml_w, impl_path,
                     ii_method(local_def(item.id), m));
