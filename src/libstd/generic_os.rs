@@ -66,7 +66,7 @@ fn getenv(n: str) -> option<str> {
             str::as_buf(n,
                         {|nbuf|
                             unsafe {
-                            let vbuf = vec::to_ptr(v);
+                            let vbuf = vec::unsafe::to_ptr(v);
                             os::kernel32::GetEnvironmentVariableA(nbuf, vbuf,
                                                                   nsize)
                         }
