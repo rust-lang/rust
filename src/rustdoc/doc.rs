@@ -33,7 +33,8 @@ type itemdoc = {
 
 type moddoc = {
     item: itemdoc,
-    items: [itemtag]
+    items: [itemtag],
+    index: option<index>
 };
 
 type nmoddoc = {
@@ -107,6 +108,29 @@ type impldoc = {
 type tydoc = {
     item: itemdoc,
     sig: option<str>
+};
+
+type index = {
+    entries: [index_entry]
+};
+
+#[doc = "
+
+A single entry in an index
+
+Fields:
+
+* kind - The type of thing being indexed, e.g. 'Module'
+* name - The name of the thing
+* brief - A description
+* link - A format-specific string representing the link target
+
+"]
+type index_entry = {
+    kind: str,
+    name: str,
+    brief: str,
+    link: str
 };
 
 #[doc = "Some helper methods on moddoc, mostly for testing"]

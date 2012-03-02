@@ -57,7 +57,8 @@ fn test_run_passes() {
                     name: doc.topmod.name() + "two"
                     with doc.topmod.item
                 },
-                items: []
+                items: [],
+                index: none
             }
         }
     }
@@ -71,7 +72,8 @@ fn test_run_passes() {
                     name: doc.topmod.name() + "three"
                     with doc.topmod.item
                 },
-                items: []
+                items: [],
+                index: none
             }
         }
     }
