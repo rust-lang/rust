@@ -50,7 +50,6 @@ fn pandoc_writer(config: config::config) -> writer {
 
     let pandoc_args = [
         "--standalone",
-        "--toc",
         "--section-divs",
         "--from=markdown",
         "--to=html",
