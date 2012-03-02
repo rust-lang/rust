@@ -22,7 +22,6 @@ rust_task_thread::rust_task_thread(rust_scheduler *sched,
                                    rust_srv *srv,
                                    int id) :
     rust_thread(SCHED_STACK_SIZE),
-    ref_count(1),
     _log(srv, this),
     log_lvl(log_debug),
     srv(srv),

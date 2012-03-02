@@ -45,7 +45,6 @@ public:
 struct rust_task_thread : public kernel_owned<rust_task_thread>,
                         rust_thread
 {
-    RUST_REFCOUNTED(rust_task_thread)
 
     // Fields known only by the runtime:
     rust_log _log;
