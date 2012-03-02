@@ -144,6 +144,7 @@ rust_task_thread::reap_dead_tasks() {
         rust_task *task = dead_tasks_copy[i];
         // Release the task from the kernel so nobody else can get at it
         kernel->release_task_id(task->id);
+        task->delete_all_stacks();
         // Deref the task, which may cause it to request us to release it
         task->deref();
     }

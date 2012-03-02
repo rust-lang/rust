@@ -121,13 +121,6 @@ rust_task::delete_this()
     I(thread, ref_count == 0); // ||
     //   (ref_count == 1 && this == sched->root_task));
 
-    // Delete all the stacks. There may be more than one if the task failed
-    // and no landing pads stopped to clean up.
-    // FIXME: We should do this when the task exits, not in the destructor
-    while (stk != NULL) {
-        del_stack();
-    }
-
     thread->release_task(this);
 }
 
@@ -723,6 +716,16 @@ rust_task::reset_stack_limit() {
 void
 rust_task::check_stack_canary() {
     ::check_stack_canary(stk);
+}
+
+void
+rust_task::delete_all_stacks() {
+    I(thread, !on_rust_stack());
+    // Delete all the stacks. There may be more than one if the task failed
+    // and no landing pads stopped to clean up.
+    while (stk != NULL) {
+        del_stack();
+    }
 }
 
 void
