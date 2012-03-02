@@ -147,7 +147,6 @@ fn run(config: config::config) {
             unindent_pass::mk_pass(),
             sort_item_name_pass::mk_pass(),
             sort_item_type_pass::mk_pass(),
-            markdown_index_pass::mk_pass(),
             markdown_pass::mk_pass(config)
         ]);
     }
