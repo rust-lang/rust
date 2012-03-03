@@ -68,8 +68,6 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     // Fields known only to the runtime.
     rust_kernel *kernel;
     const char *const name;
-    rust_cond *cond;
-    const char *cond_name;
     int32_t list_index;
 
     rust_port_id next_port_id;
@@ -106,8 +104,11 @@ rust_task : public kernel_owned<rust_task>, rust_cond
 
 private:
 
+    // Protects state, cond, cond_name
     lock_and_signal state_lock;
     rust_task_list *state;
+    rust_cond *cond;
+    const char *cond_name;
 
     // Protects the killed flag
     lock_and_signal kill_lock;
@@ -162,7 +163,8 @@ public:
     void *realloc(void *data, size_t sz);
     void free(void *p);
 
-    void transition(rust_task_list *src, rust_task_list *dst);
+    void transition(rust_task_list *src, rust_task_list *dst,
+                    rust_cond *cond, const char* cond_name);
 
     void block(rust_cond *on, const char* name);
     void wakeup(rust_cond *from);
@@ -222,6 +224,8 @@ public:
     rust_port_selector *get_port_selector() { return &port_selector; }
 
     rust_task_list *get_state() { return state; }
+    rust_cond *get_cond() { return cond; }
+    const char *get_cond_name() { return cond_name; }
 };
 
 // This stuff is on the stack-switching fast path

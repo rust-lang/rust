@@ -209,7 +209,8 @@ rust_task_thread::log_state() {
             log(NULL, log_debug, "\t task: %s @0x%" PRIxPTR ", blocked on: 0x%"
                 PRIxPTR " '%s'",
                 blocked_tasks[i]->name, blocked_tasks[i],
-                blocked_tasks[i]->cond, blocked_tasks[i]->cond_name);
+                blocked_tasks[i]->get_cond(),
+                blocked_tasks[i]->get_cond_name());
         }
     }
 
