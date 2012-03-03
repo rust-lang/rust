@@ -12,8 +12,8 @@ fn mk_pass() -> pass {
 
 fn run(
     _srv: astsrv::srv,
-    doc: doc::cratedoc
-) -> doc::cratedoc {
+    doc: doc::doc
+) -> doc::doc {
     let fold = fold::fold({
         fold_fn: fold_fn,
         fold_res: fold_res,
@@ -21,7 +21,7 @@ fn run(
         fold_impl: fold_impl
         with *fold::default_any_fold(())
     });
-    fold.fold_crate(fold, doc)
+    fold.fold_doc(fold, doc)
 }
 
 fn fold_fn(
@@ -61,7 +61,7 @@ fn prune_return(doc: doc::retdoc) -> doc::retdoc {
 #[test]
 fn should_elide_undocumented_arguments() {
     let doc = test::mk_doc("#[doc = \"hey\"] fn a(b: int) { }");
-    assert vec::is_empty(doc.topmod.fns()[0].args);
+    assert vec::is_empty(doc.cratemod().fns()[0].args);
 }
 
 #[test]
@@ -72,7 +72,7 @@ fn should_elide_undocumented_return_values() {
         let doc = tystr_pass::mk_pass().f(srv, doc);
         let doc = attr_pass::mk_pass().f(srv, doc);
         let doc = run(srv, doc);
-        assert doc.topmod.fns()[0].return.ty == none;
+        assert doc.cratemod().fns()[0].return.ty == none;
     }
 }
 
@@ -92,7 +92,7 @@ fn fold_res(
 fn should_elide_undocumented_resource_args() {
     let doc = test::mk_doc("#[doc = \"drunk\"]\
                             resource r(a: bool) { }");
-    assert vec::is_empty(doc.topmod.resources()[0].args);
+    assert vec::is_empty(doc.cratemod().resources()[0].args);
 }
 
 fn fold_iface(
@@ -120,13 +120,13 @@ fn prune_methods(docs: [doc::methoddoc]) -> [doc::methoddoc] {
 #[test]
 fn should_elide_undocumented_iface_method_args() {
     let doc = test::mk_doc("#[doc = \"hey\"] iface i { fn a(); }");
-    assert vec::is_empty(doc.topmod.ifaces()[0].methods[0].args);
+    assert vec::is_empty(doc.cratemod().ifaces()[0].methods[0].args);
 }
 
 #[test]
 fn should_elide_undocumented_iface_method_return_values() {
     let doc = test::mk_doc("#[doc = \"hey\"] iface i { fn a() -> int; }");
-    assert doc.topmod.ifaces()[0].methods[0].return.ty == none;
+    assert doc.cratemod().ifaces()[0].methods[0].return.ty == none;
 }
 
 fn fold_impl(
@@ -145,19 +145,19 @@ fn fold_impl(
 fn should_elide_undocumented_impl_method_args() {
     let doc = test::mk_doc(
         "#[doc = \"hey\"] impl i for int { fn a(b: bool) { } }");
-    assert vec::is_empty(doc.topmod.impls()[0].methods[0].args);
+    assert vec::is_empty(doc.cratemod().impls()[0].methods[0].args);
 }
 
 #[test]
 fn should_elide_undocumented_impl_method_return_values() {
     let doc = test::mk_doc(
         "#[doc = \"hey\"] impl i for int { fn a() -> int { } }");
-    assert doc.topmod.impls()[0].methods[0].return.ty == none;
+    assert doc.cratemod().impls()[0].methods[0].return.ty == none;
 }
 
 #[cfg(test)]
 mod test {
-    fn mk_doc(source: str) -> doc::cratedoc {
+    fn mk_doc(source: str) -> doc::doc {
         astsrv::from_str(source) {|srv|
             let doc = extract::from_srv(srv, "");
             let doc = attr_pass::mk_pass().f(srv, doc);

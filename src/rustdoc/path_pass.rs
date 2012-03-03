@@ -14,7 +14,7 @@ type ctxt = {
     mutable path: [str]
 };
 
-fn run(srv: astsrv::srv, doc: doc::cratedoc) -> doc::cratedoc {
+fn run(srv: astsrv::srv, doc: doc::doc) -> doc::doc {
     let ctxt = {
         srv: srv,
         mutable path: []
@@ -25,7 +25,7 @@ fn run(srv: astsrv::srv, doc: doc::cratedoc) -> doc::cratedoc {
         fold_nmod: fold_nmod
         with *fold::default_any_fold(ctxt)
     });
-    fold.fold_crate(fold, doc)
+    fold.fold_doc(fold, doc)
 }
 
 fn fold_item(fold: fold::fold<ctxt>, doc: doc::itemdoc) -> doc::itemdoc {
@@ -65,8 +65,10 @@ fn should_record_mod_paths() {
     astsrv::from_str(source) {|srv|
         let doc = extract::from_srv(srv, "");
         let doc = run(srv, doc);
-        assert doc.topmod.mods()[0].mods()[0].mods()[0].path() == ["a", "b"];
-        assert doc.topmod.mods()[0].mods()[1].mods()[0].path() == ["a", "d"];
+        assert doc.cratemod().mods()[0].mods()[0].mods()[0].path()
+            == ["a", "b"];
+        assert doc.cratemod().mods()[0].mods()[1].mods()[0].path()
+            == ["a", "d"];
     }
 }
 
@@ -76,7 +78,7 @@ fn should_record_fn_paths() {
     astsrv::from_str(source) {|srv|
         let doc = extract::from_srv(srv, "");
         let doc = run(srv, doc);
-        assert doc.topmod.mods()[0].fns()[0].path() == ["a"];
+        assert doc.cratemod().mods()[0].fns()[0].path() == ["a"];
     }
 }
 
@@ -86,7 +88,7 @@ fn should_record_native_mod_paths() {
     astsrv::from_str(source) {|srv|
         let doc = extract::from_srv(srv, "");
         let doc = run(srv, doc);
-        assert doc.topmod.mods()[0].nmods()[0].path() == ["a"];
+        assert doc.cratemod().mods()[0].nmods()[0].path() == ["a"];
     }
 }
 
@@ -96,6 +98,6 @@ fn should_record_native_fn_paths() {
     astsrv::from_str(source) {|srv|
         let doc = extract::from_srv(srv, "");
         let doc = run(srv, doc);
-        assert doc.topmod.nmods()[0].fns[0].path() == ["a"];
+        assert doc.cratemod().nmods()[0].fns[0].path() == ["a"];
     }
 }

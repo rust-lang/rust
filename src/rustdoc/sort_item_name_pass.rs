@@ -14,7 +14,7 @@ fn test() {
     astsrv::from_str(source) {|srv|
         let doc = extract::from_srv(srv, "");
         let doc = mk_pass().f(srv, doc);
-        assert doc.topmod.items[0].name() == "y";
-        assert doc.topmod.items[1].name() == "z";
+        assert doc.cratemod().items[0].name() == "y";
+        assert doc.cratemod().items[1].name() == "z";
     }
 }

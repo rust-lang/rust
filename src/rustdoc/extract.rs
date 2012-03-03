@@ -7,7 +7,7 @@ export from_srv, extract;
 fn from_srv(
     srv: astsrv::srv,
     default_name: str
-) -> doc::cratedoc {
+) -> doc::doc {
 
     #[doc = "Use the AST service to create a document tree"];
 
@@ -19,9 +19,13 @@ fn from_srv(
 fn extract(
     crate: @ast::crate,
     default_name: str
-) -> doc::cratedoc {
+) -> doc::doc {
     {
-        topmod: top_moddoc_from_crate(crate, default_name),
+        pages: [
+            doc::cratepage({
+                topmod: top_moddoc_from_crate(crate, default_name),
+            })
+        ]
     }
 }
 
@@ -145,7 +149,7 @@ fn should_extract_fn_args() {
     let source = "fn a(b: int, c: int) { }";
     let ast = parse::from_str(source);
     let doc = extract(ast, "");
-    let fn_ = doc.topmod.fns()[0];
+    let fn_ = doc.cratemod().fns()[0];
     assert fn_.args[0].name == "b";
     assert fn_.args[1].name == "c";
 }
@@ -172,8 +176,8 @@ fn constdoc_from_const(itemdoc: doc::itemdoc) -> doc::constdoc {
 #[test]
 fn should_extract_const_name_and_id() {
     let doc = test::mk_doc("const a: int = 0;");
-    assert doc.topmod.consts()[0].id() != 0;
-    assert doc.topmod.consts()[0].name() == "a";
+    assert doc.cratemod().consts()[0].id() != 0;
+    assert doc.cratemod().consts()[0].name() == "a";
 }
 
 fn enumdoc_from_enum(
@@ -203,14 +207,14 @@ fn variantdoc_from_variant(variant: ast::variant) -> doc::variantdoc {
 #[test]
 fn should_extract_enums() {
     let doc = test::mk_doc("enum e { v }");
-    assert doc.topmod.enums()[0].id() != 0;
-    assert doc.topmod.enums()[0].name() == "e";
+    assert doc.cratemod().enums()[0].id() != 0;
+    assert doc.cratemod().enums()[0].name() == "e";
 }
 
 #[test]
 fn should_extract_enum_variants() {
     let doc = test::mk_doc("enum e { v }");
-    assert doc.topmod.enums()[0].variants[0].name == "v";
+    assert doc.cratemod().enums()[0].variants[0].name == "v";
 }
 
 fn resdoc_from_resource(
@@ -227,14 +231,14 @@ fn resdoc_from_resource(
 #[test]
 fn should_extract_resources() {
     let doc = test::mk_doc("resource r(b: bool) { }");
-    assert doc.topmod.resources()[0].id() != 0;
-    assert doc.topmod.resources()[0].name() == "r";
+    assert doc.cratemod().resources()[0].id() != 0;
+    assert doc.cratemod().resources()[0].name() == "r";
 }
 
 #[test]
 fn should_extract_resource_args() {
     let doc = test::mk_doc("resource r(b: bool) { }");
-    assert doc.topmod.resources()[0].args[0].name == "b";
+    assert doc.cratemod().resources()[0].args[0].name == "b";
 }
 
 fn ifacedoc_from_iface(
@@ -263,19 +267,19 @@ fn ifacedoc_from_iface(
 #[test]
 fn should_extract_ifaces() {
     let doc = test::mk_doc("iface i { fn f(); }");
-    assert doc.topmod.ifaces()[0].name() == "i";
+    assert doc.cratemod().ifaces()[0].name() == "i";
 }
 
 #[test]
 fn should_extract_iface_methods() {
     let doc = test::mk_doc("iface i { fn f(); }");
-    assert doc.topmod.ifaces()[0].methods[0].name == "f";
+    assert doc.cratemod().ifaces()[0].methods[0].name == "f";
 }
 
 #[test]
 fn should_extract_iface_method_args() {
     let doc = test::mk_doc("iface i { fn f(a: bool); }");
-    assert doc.topmod.ifaces()[0].methods[0].args[0].name == "a";
+    assert doc.cratemod().ifaces()[0].methods[0].args[0].name == "a";
 }
 
 fn impldoc_from_impl(
@@ -306,25 +310,25 @@ fn impldoc_from_impl(
 #[test]
 fn should_extract_impls_with_names() {
     let doc = test::mk_doc("impl i for int { fn a() { } }");
-    assert doc.topmod.impls()[0].name() == "i";
+    assert doc.cratemod().impls()[0].name() == "i";
 }
 
 #[test]
 fn should_extract_impls_without_names() {
     let doc = test::mk_doc("impl of i for int { fn a() { } }");
-    assert doc.topmod.impls()[0].name() == "i";
+    assert doc.cratemod().impls()[0].name() == "i";
 }
 
 #[test]
 fn should_extract_impl_methods() {
     let doc = test::mk_doc("impl i for int { fn f() { } }");
-    assert doc.topmod.impls()[0].methods[0].name == "f";
+    assert doc.cratemod().impls()[0].methods[0].name == "f";
 }
 
 #[test]
 fn should_extract_impl_method_args() {
     let doc = test::mk_doc("impl i for int { fn f(a: bool) { } }");
-    assert doc.topmod.impls()[0].methods[0].args[0].name == "a";
+    assert doc.cratemod().impls()[0].methods[0].args[0].name == "a";
 }
 
 fn tydoc_from_ty(
@@ -339,13 +343,13 @@ fn tydoc_from_ty(
 #[test]
 fn should_extract_tys() {
     let doc = test::mk_doc("type a = int;");
-    assert doc.topmod.types()[0].name() == "a";
+    assert doc.cratemod().types()[0].name() == "a";
 }
 
 #[cfg(test)]
 mod test {
 
-    fn mk_doc(source: str) -> doc::cratedoc {
+    fn mk_doc(source: str) -> doc::doc {
         let ast = parse::from_str(source);
         extract(ast, "")
     }
@@ -353,40 +357,40 @@ mod test {
     #[test]
     fn extract_empty_crate() {
         let doc = mk_doc("");
-        assert vec::is_empty(doc.topmod.mods());
-        assert vec::is_empty(doc.topmod.fns());
+        assert vec::is_empty(doc.cratemod().mods());
+        assert vec::is_empty(doc.cratemod().fns());
     }
 
     #[test]
     fn extract_mods() {
         let doc = mk_doc("mod a { mod b { } mod c { } }");
-        assert doc.topmod.mods()[0].name() == "a";
-        assert doc.topmod.mods()[0].mods()[0].name() == "b";
-        assert doc.topmod.mods()[0].mods()[1].name() == "c";
+        assert doc.cratemod().mods()[0].name() == "a";
+        assert doc.cratemod().mods()[0].mods()[0].name() == "b";
+        assert doc.cratemod().mods()[0].mods()[1].name() == "c";
     }
 
     #[test]
     fn extract_native_mods() {
         let doc = mk_doc("native mod a { }");
-        assert doc.topmod.nmods()[0].name() == "a";
+        assert doc.cratemod().nmods()[0].name() == "a";
     }
 
     #[test]
     fn extract_fns_from_native_mods() {
         let doc = mk_doc("native mod a { fn a(); }");
-        assert doc.topmod.nmods()[0].fns[0].name() == "a";
+        assert doc.cratemod().nmods()[0].fns[0].name() == "a";
     }
 
     #[test]
     fn extract_mods_deep() {
         let doc = mk_doc("mod a { mod b { mod c { } } }");
-        assert doc.topmod.mods()[0].mods()[0].mods()[0].name() == "c";
+        assert doc.cratemod().mods()[0].mods()[0].mods()[0].name() == "c";
     }
 
     #[test]
     fn extract_should_set_mod_ast_id() {
         let doc = mk_doc("mod a { }");
-        assert doc.topmod.mods()[0].id() != 0;
+        assert doc.cratemod().mods()[0].id() != 0;
     }
 
     #[test]
@@ -394,14 +398,14 @@ mod test {
         let doc = mk_doc(
             "fn a() { } \
              mod b { fn c() { } }");
-        assert doc.topmod.fns()[0].name() == "a";
-        assert doc.topmod.mods()[0].fns()[0].name() == "c";
+        assert doc.cratemod().fns()[0].name() == "a";
+        assert doc.cratemod().mods()[0].fns()[0].name() == "c";
     }
 
     #[test]
     fn extract_should_set_fn_ast_id() {
         let doc = mk_doc("fn a() { }");
-        assert doc.topmod.fns()[0].id() != 0;
+        assert doc.cratemod().fns()[0].id() != 0;
     }
 
     #[test]
@@ -409,7 +413,7 @@ mod test {
         let source = "";
         let ast = parse::from_str(source);
         let doc = extract(ast, "burp");
-        assert doc.topmod.name() == "burp";
+        assert doc.cratemod().name() == "burp";
     }
 
     #[test]
@@ -417,7 +421,7 @@ mod test {
         let source = "";
         astsrv::from_str(source) {|srv|
             let doc = from_srv(srv, "name");
-            assert doc.topmod.name() == "name";
+            assert doc.cratemod().name() == "name";
         }
     }
 }

@@ -9,14 +9,14 @@ import doc::util;
 #[doc = "A single operation on the document model"]
 type pass = {
     name: str,
-    f: fn~(srv: astsrv::srv, doc: doc::cratedoc) -> doc::cratedoc
+    f: fn~(srv: astsrv::srv, doc: doc::doc) -> doc::doc
 };
 
 fn run_passes(
     srv: astsrv::srv,
-    doc: doc::cratedoc,
+    doc: doc::doc,
     passes: [pass]
-) -> doc::cratedoc {
+) -> doc::doc {
 
     #[doc(
         brief =
@@ -49,32 +49,40 @@ fn run_passes(
 fn test_run_passes() {
     fn pass1(
         _srv: astsrv::srv,
-        doc: doc::cratedoc
-    ) -> doc::cratedoc {
+        doc: doc::doc
+    ) -> doc::doc {
         {
-            topmod: {
-                item: {
-                    name: doc.topmod.name() + "two"
-                    with doc.topmod.item
-                },
-                items: [],
-                index: none
-            }
+            pages: [
+                doc::cratepage({
+                    topmod: {
+                        item: {
+                            name: doc.cratemod().name() + "two"
+                            with doc.cratemod().item
+                        },
+                        items: [],
+                        index: none
+                    }
+                })
+            ]
         }
     }
     fn pass2(
         _srv: astsrv::srv,
-        doc: doc::cratedoc
-    ) -> doc::cratedoc {
+        doc: doc::doc
+    ) -> doc::doc {
         {
-            topmod: {
-                item: {
-                    name: doc.topmod.name() + "three"
-                    with doc.topmod.item
-                },
-                items: [],
-                index: none
-            }
+            pages: [
+                doc::cratepage({
+                    topmod: {
+                        item: {
+                            name: doc.cratemod().name() + "three"
+                            with doc.cratemod().item
+                        },
+                        items: [],
+                        index: none
+                    }
+                })
+            ]
         }
     }
     let source = "";
@@ -91,7 +99,7 @@ fn test_run_passes() {
         ];
         let doc = extract::from_srv(srv, "one");
         let doc = run_passes(srv, doc, passes);
-        assert doc.topmod.name() == "onetwothree";
+        assert doc.cratemod().name() == "onetwothree";
     }
 }
 

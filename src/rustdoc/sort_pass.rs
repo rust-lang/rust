@@ -9,7 +9,7 @@ type item_lteq = fn~(doc::itemtag, doc::itemtag) -> bool;
 fn mk_pass(name: str, lteq: item_lteq) -> pass {
     {
         name: name,
-        f: fn~(srv: astsrv::srv, doc: doc::cratedoc) -> doc::cratedoc {
+        f: fn~(srv: astsrv::srv, doc: doc::doc) -> doc::doc {
             run(srv, doc, lteq)
         }
     }
@@ -17,14 +17,14 @@ fn mk_pass(name: str, lteq: item_lteq) -> pass {
 
 fn run(
     _srv: astsrv::srv,
-    doc: doc::cratedoc,
+    doc: doc::doc,
     lteq: item_lteq
-) -> doc::cratedoc {
+) -> doc::doc {
     let fold = fold::fold({
         fold_mod: fold_mod
         with *fold::default_any_fold(lteq)
     });
-    fold.fold_crate(fold, doc)
+    fold.fold_doc(fold, doc)
 }
 
 fn fold_mod(
@@ -48,10 +48,10 @@ fn test() {
     astsrv::from_str(source) {|srv|
         let doc = extract::from_srv(srv, "");
         let doc = mk_pass("", name_lteq).f(srv, doc);
-        assert doc.topmod.mods()[0].name() == "w";
-        assert doc.topmod.mods()[1].items[0].name() == "x";
-        assert doc.topmod.mods()[1].items[1].name() == "y";
-        assert doc.topmod.mods()[1].name() == "z";
+        assert doc.cratemod().mods()[0].name() == "w";
+        assert doc.cratemod().mods()[1].items[0].name() == "x";
+        assert doc.cratemod().mods()[1].items[1].name() == "y";
+        assert doc.cratemod().mods()[1].name() == "z";
     }
 }
 
@@ -65,10 +65,10 @@ fn should_be_stable() {
     astsrv::from_str(source) {|srv|
         let doc = extract::from_srv(srv, "");
         let doc = mk_pass("", always_eq).f(srv, doc);
-        assert doc.topmod.mods()[0].items[0].name() == "b";
-        assert doc.topmod.mods()[1].items[0].name() == "d";
+        assert doc.cratemod().mods()[0].items[0].name() == "b";
+        assert doc.cratemod().mods()[1].items[0].name() == "d";
         let doc = mk_pass("", always_eq).f(srv, doc);
-        assert doc.topmod.mods()[0].items[0].name() == "b";
-        assert doc.topmod.mods()[1].items[0].name() == "d";
+        assert doc.cratemod().mods()[0].items[0].name() == "b";
+        assert doc.cratemod().mods()[1].items[0].name() == "d";
     }
 }

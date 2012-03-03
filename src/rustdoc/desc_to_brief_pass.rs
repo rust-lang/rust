@@ -18,15 +18,15 @@ fn mk_pass() -> pass {
 
 fn run(
     _srv: astsrv::srv,
-    doc: doc::cratedoc
-) -> doc::cratedoc {
+    doc: doc::doc
+) -> doc::doc {
     let fold = fold::fold({
         fold_item: fold_item,
         fold_iface: fold_iface,
         fold_impl: fold_impl
         with *fold::default_any_fold(())
     });
-    fold.fold_crate(fold, doc)
+    fold.fold_doc(fold, doc)
 }
 
 fn fold_item(fold: fold::fold<()>, doc: doc::itemdoc) -> doc::itemdoc {
@@ -77,79 +77,79 @@ fn fold_impl(fold: fold::fold<()>, doc: doc::impldoc) -> doc::impldoc {
 #[test]
 fn should_promote_mod_desc() {
     let doc = test::mk_doc("#[doc(desc = \"desc\")] mod m { }");
-    assert doc.topmod.mods()[0].brief() == some("desc");
-    assert doc.topmod.mods()[0].desc() == none;
+    assert doc.cratemod().mods()[0].brief() == some("desc");
+    assert doc.cratemod().mods()[0].desc() == none;
 }
 
 #[test]
 fn should_promote_const_desc() {
     let doc = test::mk_doc("#[doc(desc = \"desc\")] const a: bool = true;");
-    assert doc.topmod.consts()[0].brief() == some("desc");
-    assert doc.topmod.consts()[0].desc() == none;
+    assert doc.cratemod().consts()[0].brief() == some("desc");
+    assert doc.cratemod().consts()[0].desc() == none;
 }
 
 #[test]
 fn should_promote_fn_desc() {
     let doc = test::mk_doc("#[doc(desc = \"desc\")] fn a() { }");
-    assert doc.topmod.fns()[0].brief() == some("desc");
-    assert doc.topmod.fns()[0].desc() == none;
+    assert doc.cratemod().fns()[0].brief() == some("desc");
+    assert doc.cratemod().fns()[0].desc() == none;
 }
 
 #[test]
 fn should_promote_enum_desc() {
     let doc = test::mk_doc("#[doc(desc = \"desc\")] enum a { b }");
-    assert doc.topmod.enums()[0].brief() == some("desc");
-    assert doc.topmod.enums()[0].desc() == none;
+    assert doc.cratemod().enums()[0].brief() == some("desc");
+    assert doc.cratemod().enums()[0].desc() == none;
 }
 
 #[test]
 fn should_promote_resource_desc() {
     let doc = test::mk_doc(
         "#[doc(desc = \"desc\")] resource r(a: bool) { }");
-    assert doc.topmod.resources()[0].brief() == some("desc");
-    assert doc.topmod.resources()[0].desc() == none;
+    assert doc.cratemod().resources()[0].brief() == some("desc");
+    assert doc.cratemod().resources()[0].desc() == none;
 }
 
 #[test]
 fn should_promote_iface_desc() {
     let doc = test::mk_doc("#[doc(desc = \"desc\")] iface i { fn a(); }");
-    assert doc.topmod.ifaces()[0].brief() == some("desc");
-    assert doc.topmod.ifaces()[0].desc() == none;
+    assert doc.cratemod().ifaces()[0].brief() == some("desc");
+    assert doc.cratemod().ifaces()[0].desc() == none;
 }
 
 #[test]
 fn should_promote_iface_method_desc() {
     let doc = test::mk_doc("iface i { #[doc(desc = \"desc\")] fn a(); }");
-    assert doc.topmod.ifaces()[0].methods[0].brief == some("desc");
-    assert doc.topmod.ifaces()[0].methods[0].desc == none;
+    assert doc.cratemod().ifaces()[0].methods[0].brief == some("desc");
+    assert doc.cratemod().ifaces()[0].methods[0].desc == none;
 }
 
 #[test]
 fn should_promote_impl_desc() {
     let doc = test::mk_doc(
         "#[doc(desc = \"desc\")] impl i for int { fn a() { } }");
-    assert doc.topmod.impls()[0].brief() == some("desc");
-    assert doc.topmod.impls()[0].desc() == none;
+    assert doc.cratemod().impls()[0].brief() == some("desc");
+    assert doc.cratemod().impls()[0].desc() == none;
 }
 
 #[test]
 fn should_promote_impl_method_desc() {
     let doc = test::mk_doc(
         "impl i for int { #[doc(desc = \"desc\")] fn a() { } }");
-    assert doc.topmod.impls()[0].methods[0].brief == some("desc");
-    assert doc.topmod.impls()[0].methods[0].desc == none;
+    assert doc.cratemod().impls()[0].methods[0].brief == some("desc");
+    assert doc.cratemod().impls()[0].methods[0].desc == none;
 }
 
 #[test]
 fn should_promote_type_desc() {
     let doc = test::mk_doc("#[doc(desc = \"desc\")] type t = int;");
-    assert doc.topmod.types()[0].brief() == some("desc");
-    assert doc.topmod.types()[0].desc() == none;
+    assert doc.cratemod().types()[0].brief() == some("desc");
+    assert doc.cratemod().types()[0].desc() == none;
 }
 
 #[cfg(test)]
 mod test {
-    fn mk_doc(source: str) -> doc::cratedoc {
+    fn mk_doc(source: str) -> doc::doc {
         astsrv::from_str(source) {|srv|
             let doc = extract::from_srv(srv, "");
             let doc = attr_pass::mk_pass().f(srv, doc);

@@ -5,7 +5,7 @@ export mk_pass;
 fn mk_pass(name: str, op: fn~(str) -> str) -> pass {
     {
         name: name,
-        f: fn~(srv: astsrv::srv, doc: doc::cratedoc) -> doc::cratedoc {
+        f: fn~(srv: astsrv::srv, doc: doc::doc) -> doc::doc {
             run(srv, doc, op)
         }
     }
@@ -15,9 +15,9 @@ type op = fn~(str) -> str;
 
 fn run(
     _srv: astsrv::srv,
-    doc: doc::cratedoc,
+    doc: doc::doc,
     op: op
-) -> doc::cratedoc {
+) -> doc::doc {
     let fold = fold::fold({
         fold_item: fold_item,
         fold_fn: fold_fn,
@@ -27,7 +27,7 @@ fn run(
         fold_impl: fold_impl
         with *fold::default_any_fold(op)
     });
-    fold.fold_crate(fold, doc)
+    fold.fold_doc(fold, doc)
 }
 
 fn maybe_apply_op(op: op, s: option<str>) -> option<str> {
@@ -136,135 +136,135 @@ fn fold_impl(fold: fold::fold<op>, doc: doc::impldoc) -> doc::impldoc {
 #[test]
 fn should_execute_op_on_enum_brief() {
     let doc = test::mk_doc("#[doc(brief = \" a \")] enum a { b }");
-    assert doc.topmod.enums()[0].brief() == some("a");
+    assert doc.cratemod().enums()[0].brief() == some("a");
 }
 
 #[test]
 fn should_execute_op_on_enum_desc() {
     let doc = test::mk_doc("#[doc(desc = \" a \")] enum a { b }");
-    assert doc.topmod.enums()[0].desc() == some("a");
+    assert doc.cratemod().enums()[0].desc() == some("a");
 }
 
 #[test]
 fn should_execute_op_on_variant_desc() {
     let doc = test::mk_doc("enum a { #[doc = \" a \"] b }");
-    assert doc.topmod.enums()[0].variants[0].desc == some("a");
+    assert doc.cratemod().enums()[0].variants[0].desc == some("a");
 }
 
 #[test]
 fn should_execute_op_on_resource_brief() {
     let doc = test::mk_doc("#[doc(brief = \" a \")] resource r(a: bool) { }");
-    assert doc.topmod.resources()[0].brief() == some("a");
+    assert doc.cratemod().resources()[0].brief() == some("a");
 }
 
 #[test]
 fn should_execute_op_on_resource_desc() {
     let doc = test::mk_doc("#[doc(desc = \" a \")] resource r(a: bool) { }");
-    assert doc.topmod.resources()[0].desc() == some("a");
+    assert doc.cratemod().resources()[0].desc() == some("a");
 }
 
 #[test]
 fn should_execute_op_on_resource_args() {
     let doc = test::mk_doc(
         "#[doc(args(a = \" a \"))] resource r(a: bool) { }");
-    assert doc.topmod.resources()[0].args[0].desc == some("a");
+    assert doc.cratemod().resources()[0].args[0].desc == some("a");
 }
 
 #[test]
 fn should_execute_op_on_iface_brief() {
     let doc = test::mk_doc(
         "#[doc(brief = \" a \")] iface i { fn a(); }");
-    assert doc.topmod.ifaces()[0].brief() == some("a");
+    assert doc.cratemod().ifaces()[0].brief() == some("a");
 }
 
 #[test]
 fn should_execute_op_on_iface_desc() {
     let doc = test::mk_doc(
         "#[doc(desc = \" a \")] iface i { fn a(); }");
-    assert doc.topmod.ifaces()[0].desc() == some("a");
+    assert doc.cratemod().ifaces()[0].desc() == some("a");
 }
 
 #[test]
 fn should_execute_op_on_iface_method_brief() {
     let doc = test::mk_doc(
         "iface i { #[doc(brief = \" a \")] fn a(); }");
-    assert doc.topmod.ifaces()[0].methods[0].brief == some("a");
+    assert doc.cratemod().ifaces()[0].methods[0].brief == some("a");
 }
 
 #[test]
 fn should_execute_op_on_iface_method_desc() {
     let doc = test::mk_doc(
         "iface i { #[doc(desc = \" a \")] fn a(); }");
-    assert doc.topmod.ifaces()[0].methods[0].desc == some("a");
+    assert doc.cratemod().ifaces()[0].methods[0].desc == some("a");
 }
 
 #[test]
 fn should_execute_op_on_iface_method_args() {
     let doc = test::mk_doc(
         "iface i { #[doc(args(a = \" a \"))] fn a(a: bool); }");
-    assert doc.topmod.ifaces()[0].methods[0].args[0].desc == some("a");
+    assert doc.cratemod().ifaces()[0].methods[0].args[0].desc == some("a");
 }
 
 #[test]
 fn should_execute_op_on_iface_method_return() {
     let doc = test::mk_doc(
         "iface i { #[doc(return = \" a \")] fn a() -> int; }");
-    assert doc.topmod.ifaces()[0].methods[0].return.desc == some("a");
+    assert doc.cratemod().ifaces()[0].methods[0].return.desc == some("a");
 }
 
 #[test]
 fn should_execute_op_on_iface_method_failure_condition() {
     let doc = test::mk_doc("iface i { #[doc(failure = \" a \")] fn a(); }");
-    assert doc.topmod.ifaces()[0].methods[0].failure == some("a");
+    assert doc.cratemod().ifaces()[0].methods[0].failure == some("a");
 }
 
 #[test]
 fn should_execute_op_on_impl_brief() {
     let doc = test::mk_doc(
         "#[doc(brief = \" a \")] impl i for int { fn a() { } }");
-    assert doc.topmod.impls()[0].brief() == some("a");
+    assert doc.cratemod().impls()[0].brief() == some("a");
 }
 
 #[test]
 fn should_execute_op_on_impl_desc() {
     let doc = test::mk_doc(
         "#[doc(desc = \" a \")] impl i for int { fn a() { } }");
-    assert doc.topmod.impls()[0].desc() == some("a");
+    assert doc.cratemod().impls()[0].desc() == some("a");
 }
 
 #[test]
 fn should_execute_op_on_impl_method_brief() {
     let doc = test::mk_doc(
         "impl i for int { #[doc(brief = \" a \")] fn a() { } }");
-    assert doc.topmod.impls()[0].methods[0].brief == some("a");
+    assert doc.cratemod().impls()[0].methods[0].brief == some("a");
 }
 
 #[test]
 fn should_execute_op_on_impl_method_desc() {
     let doc = test::mk_doc(
         "impl i for int { #[doc(desc = \" a \")] fn a() { } }");
-    assert doc.topmod.impls()[0].methods[0].desc == some("a");
+    assert doc.cratemod().impls()[0].methods[0].desc == some("a");
 }
 
 #[test]
 fn should_execute_op_on_impl_method_args() {
     let doc = test::mk_doc(
         "impl i for int { #[doc(args(a = \" a \"))] fn a(a: bool) { } }");
-    assert doc.topmod.impls()[0].methods[0].args[0].desc == some("a");
+    assert doc.cratemod().impls()[0].methods[0].args[0].desc == some("a");
 }
 
 #[test]
 fn should_execute_op_on_impl_method_return() {
     let doc = test::mk_doc(
         "impl i for int { #[doc(return = \" a \")] fn a() -> int { fail } }");
-    assert doc.topmod.impls()[0].methods[0].return.desc == some("a");
+    assert doc.cratemod().impls()[0].methods[0].return.desc == some("a");
 }
 
 #[test]
 fn should_execute_op_on_impl_method_failure_condition() {
     let doc = test::mk_doc(
         "impl i for int { #[doc(failure = \" a \")] fn a() { } }");
-    assert doc.topmod.impls()[0].methods[0].failure == some("a");
+    assert doc.cratemod().impls()[0].methods[0].failure == some("a");
 }
 
 
@@ -272,19 +272,19 @@ fn should_execute_op_on_impl_method_failure_condition() {
 fn should_execute_op_on_type_brief() {
     let doc = test::mk_doc(
         "#[doc(brief = \" a \")] type t = int;");
-    assert doc.topmod.types()[0].brief() == some("a");
+    assert doc.cratemod().types()[0].brief() == some("a");
 }
 
 #[test]
 fn should_execute_op_on_type_desc() {
     let doc = test::mk_doc(
         "#[doc(desc = \" a \")] type t = int;");
-    assert doc.topmod.types()[0].desc() == some("a");
+    assert doc.cratemod().types()[0].desc() == some("a");
 }
 
 #[cfg(test)]
 mod test {
-    fn mk_doc(source: str) -> doc::cratedoc {
+    fn mk_doc(source: str) -> doc::doc {
         astsrv::from_str(source) {|srv|
             let doc = extract::from_srv(srv, "");
             let doc = attr_pass::mk_pass().f(srv, doc);

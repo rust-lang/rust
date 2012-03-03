@@ -16,8 +16,8 @@ fn mk_pass() -> pass {
 
 fn run(
     srv: astsrv::srv,
-    doc: doc::cratedoc
-) -> doc::cratedoc {
+    doc: doc::doc
+) -> doc::doc {
     let fold = fold::fold({
         fold_fn: fold_fn,
         fold_const: fold_const,
@@ -28,7 +28,7 @@ fn run(
         fold_type: fold_type
         with *fold::default_any_fold(srv)
     });
-    fold.fold_crate(fold, doc)
+    fold.fold_doc(fold, doc)
 }
 
 fn fold_fn(
@@ -66,13 +66,13 @@ fn get_fn_sig(srv: astsrv::srv, fn_id: doc::ast_id) -> option<str> {
 #[test]
 fn should_add_fn_sig() {
     let doc = test::mk_doc("fn a() -> int { }");
-    assert doc.topmod.fns()[0].sig == some("fn a() -> int");
+    assert doc.cratemod().fns()[0].sig == some("fn a() -> int");
 }
 
 #[test]
 fn should_add_native_fn_sig() {
     let doc = test::mk_doc("native mod a { fn a() -> int; }");
-    assert doc.topmod.nmods()[0].fns[0].sig == some("fn a() -> int");
+    assert doc.cratemod().nmods()[0].fns[0].sig == some("fn a() -> int");
 }
 
 fn merge_ret_ty(
@@ -118,19 +118,19 @@ fn ret_ty_to_str(decl: ast::fn_decl) -> option<str> {
 #[test]
 fn should_add_fn_ret_types() {
     let doc = test::mk_doc("fn a() -> int { }");
-    assert doc.topmod.fns()[0].return.ty == some("int");
+    assert doc.cratemod().fns()[0].return.ty == some("int");
 }
 
 #[test]
 fn should_not_add_nil_ret_type() {
     let doc = test::mk_doc("fn a() { }");
-    assert doc.topmod.fns()[0].return.ty == none;
+    assert doc.cratemod().fns()[0].return.ty == none;
 }
 
 #[test]
 fn should_add_native_fn_ret_types() {
     let doc = test::mk_doc("native mod a { fn a() -> int; }");
-    assert doc.topmod.nmods()[0].fns[0].return.ty == some("int");
+    assert doc.cratemod().nmods()[0].fns[0].return.ty == some("int");
 }
 
 fn merge_arg_tys(
@@ -176,7 +176,7 @@ fn decl_arg_tys(decl: ast::fn_decl) -> [(str, str)] {
 #[test]
 fn should_add_arg_types() {
     let doc = test::mk_doc("fn a(b: int, c: bool) { }");
-    let fn_ = doc.topmod.fns()[0];
+    let fn_ = doc.cratemod().fns()[0];
     assert fn_.args[0].ty == some("int");
     assert fn_.args[1].ty == some("bool");
 }
@@ -184,7 +184,7 @@ fn should_add_arg_types() {
 #[test]
 fn should_add_native_fn_arg_types() {
     let doc = test::mk_doc("native mod a { fn a(b: int); }");
-    assert doc.topmod.nmods()[0].fns[0].args[0].ty == some("int");
+    assert doc.cratemod().nmods()[0].fns[0].args[0].ty == some("int");
 }
 
 fn fold_const(
@@ -210,7 +210,7 @@ fn fold_const(
 #[test]
 fn should_add_const_types() {
     let doc = test::mk_doc("const a: bool = true;");
-    assert doc.topmod.consts()[0].ty == some("bool");
+    assert doc.cratemod().consts()[0].ty == some("bool");
 }
 
 fn fold_enum(
@@ -249,7 +249,7 @@ fn fold_enum(
 #[test]
 fn should_add_variant_sigs() {
     let doc = test::mk_doc("enum a { b(int) }");
-    assert doc.topmod.enums()[0].variants[0].sig == some("b(int)");
+    assert doc.cratemod().enums()[0].variants[0].sig == some("b(int)");
 }
 
 fn fold_res(
@@ -276,13 +276,13 @@ fn fold_res(
 #[test]
 fn should_add_resource_sigs() {
     let doc = test::mk_doc("resource r(b: bool) { }");
-    assert doc.topmod.resources()[0].sig == some("resource r(b: bool)");
+    assert doc.cratemod().resources()[0].sig == some("resource r(b: bool)");
 }
 
 #[test]
 fn should_add_resource_arg_tys() {
     let doc = test::mk_doc("resource r(a: bool) { }");
-    assert doc.topmod.resources()[0].args[0].ty == some("bool");
+    assert doc.cratemod().resources()[0].args[0].ty == some("bool");
 }
 
 fn fold_iface(
@@ -457,25 +457,25 @@ fn get_method_arg_tys(
 #[test]
 fn should_add_iface_method_sigs() {
     let doc = test::mk_doc("iface i { fn a() -> int; }");
-    assert doc.topmod.ifaces()[0].methods[0].sig == some("fn a() -> int");
+    assert doc.cratemod().ifaces()[0].methods[0].sig == some("fn a() -> int");
 }
 
 #[test]
 fn should_add_iface_method_ret_types() {
     let doc = test::mk_doc("iface i { fn a() -> int; }");
-    assert doc.topmod.ifaces()[0].methods[0].return.ty == some("int");
+    assert doc.cratemod().ifaces()[0].methods[0].return.ty == some("int");
 }
 
 #[test]
 fn should_not_add_iface_method_nil_ret_type() {
     let doc = test::mk_doc("iface i { fn a(); }");
-    assert doc.topmod.ifaces()[0].methods[0].return.ty == none;
+    assert doc.cratemod().ifaces()[0].methods[0].return.ty == none;
 }
 
 #[test]
 fn should_add_iface_method_arg_types() {
     let doc = test::mk_doc("iface i { fn a(b: int, c: bool); }");
-    let fn_ = doc.topmod.ifaces()[0].methods[0];
+    let fn_ = doc.cratemod().ifaces()[0].methods[0];
     assert fn_.args[0].ty == some("int");
     assert fn_.args[1].ty == some("bool");
 }
@@ -512,43 +512,43 @@ fn fold_impl(
 #[test]
 fn should_add_impl_iface_ty() {
     let doc = test::mk_doc("impl i of j for int { fn a() { } }");
-    assert doc.topmod.impls()[0].iface_ty == some("j");
+    assert doc.cratemod().impls()[0].iface_ty == some("j");
 }
 
 #[test]
 fn should_not_add_impl_iface_ty_if_none() {
     let doc = test::mk_doc("impl i for int { fn a() { } }");
-    assert doc.topmod.impls()[0].iface_ty == none;
+    assert doc.cratemod().impls()[0].iface_ty == none;
 }
 
 #[test]
 fn should_add_impl_self_ty() {
     let doc = test::mk_doc("impl i for int { fn a() { } }");
-    assert doc.topmod.impls()[0].self_ty == some("int");
+    assert doc.cratemod().impls()[0].self_ty == some("int");
 }
 
 #[test]
 fn should_add_impl_method_sigs() {
     let doc = test::mk_doc("impl i for int { fn a() -> int { fail } }");
-    assert doc.topmod.impls()[0].methods[0].sig == some("fn a() -> int");
+    assert doc.cratemod().impls()[0].methods[0].sig == some("fn a() -> int");
 }
 
 #[test]
 fn should_add_impl_method_ret_types() {
     let doc = test::mk_doc("impl i for int { fn a() -> int { fail } }");
-    assert doc.topmod.impls()[0].methods[0].return.ty == some("int");
+    assert doc.cratemod().impls()[0].methods[0].return.ty == some("int");
 }
 
 #[test]
 fn should_not_add_impl_method_nil_ret_type() {
     let doc = test::mk_doc("impl i for int { fn a() { } }");
-    assert doc.topmod.impls()[0].methods[0].return.ty == none;
+    assert doc.cratemod().impls()[0].methods[0].return.ty == none;
 }
 
 #[test]
 fn should_add_impl_method_arg_types() {
     let doc = test::mk_doc("impl i for int { fn a(b: int, c: bool) { } }");
-    let fn_ = doc.topmod.impls()[0].methods[0];
+    let fn_ = doc.cratemod().impls()[0].methods[0];
     assert fn_.args[0].ty == some("int");
     assert fn_.args[1].ty == some("bool");
 }
@@ -584,12 +584,12 @@ fn fold_type(
 #[test]
 fn should_add_type_signatures() {
     let doc = test::mk_doc("type t<T> = int;");
-    assert doc.topmod.types()[0].sig == some("type t<T> = int");
+    assert doc.cratemod().types()[0].sig == some("type t<T> = int");
 }
 
 #[cfg(test)]
 mod test {
-    fn mk_doc(source: str) -> doc::cratedoc {
+    fn mk_doc(source: str) -> doc::doc {
         astsrv::from_str(source) {|srv|
             let doc = extract::from_srv(srv, "");
             run(srv, doc)

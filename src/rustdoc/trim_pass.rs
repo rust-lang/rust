@@ -18,8 +18,8 @@ fn should_trim_mod() {
     let doc = test::mk_doc("#[doc(brief = \"\nbrief\n\", \
                             desc = \"\ndesc\n\")] \
                             mod m { }");
-    assert doc.topmod.mods()[0].brief() == some("brief");
-    assert doc.topmod.mods()[0].desc() == some("desc");
+    assert doc.cratemod().mods()[0].brief() == some("brief");
+    assert doc.cratemod().mods()[0].desc() == some("desc");
 }
 
 #[test]
@@ -27,8 +27,8 @@ fn should_trim_const() {
     let doc = test::mk_doc("#[doc(brief = \"\nbrief\n\", \
                             desc = \"\ndesc\n\")] \
                             const a: bool = true;");
-    assert doc.topmod.consts()[0].brief() == some("brief");
-    assert doc.topmod.consts()[0].desc() == some("desc");
+    assert doc.cratemod().consts()[0].brief() == some("brief");
+    assert doc.cratemod().consts()[0].desc() == some("desc");
 }
 
 #[test]
@@ -36,31 +36,31 @@ fn should_trim_fn() {
     let doc = test::mk_doc("#[doc(brief = \"\nbrief\n\", \
                             desc = \"\ndesc\n\")] \
                             fn a() { }");
-    assert doc.topmod.fns()[0].brief() == some("brief");
-    assert doc.topmod.fns()[0].desc() == some("desc");
+    assert doc.cratemod().fns()[0].brief() == some("brief");
+    assert doc.cratemod().fns()[0].desc() == some("desc");
 }
 
 #[test]
 fn should_trim_args() {
     let doc = test::mk_doc("#[doc(args(a = \"\na\n\"))] fn a(a: int) { }");
-    assert doc.topmod.fns()[0].args[0].desc == some("a");
+    assert doc.cratemod().fns()[0].args[0].desc == some("a");
 }
 
 #[test]
 fn should_trim_ret() {
     let doc = test::mk_doc("#[doc(return = \"\na\n\")] fn a() -> int { }");
-    assert doc.topmod.fns()[0].return.desc == some("a");
+    assert doc.cratemod().fns()[0].return.desc == some("a");
 }
 
 #[test]
 fn should_trim_failure_conditions() {
     let doc = test::mk_doc("#[doc(failure = \"\na\n\")] fn a() -> int { }");
-    assert doc.topmod.fns()[0].failure == some("a");
+    assert doc.cratemod().fns()[0].failure == some("a");
 }
 
 #[cfg(test)]
 mod test {
-    fn mk_doc(source: str) -> doc::cratedoc {
+    fn mk_doc(source: str) -> doc::doc {
         astsrv::from_str(source) {|srv|
             let doc = extract::from_srv(srv, "");
             let doc = attr_pass::mk_pass().f(srv, doc);

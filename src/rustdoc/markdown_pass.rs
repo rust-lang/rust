@@ -17,7 +17,7 @@ fn mk_pass_(
     config: config::config,
     writer: writer
 ) -> pass {
-    let f = fn~(srv: astsrv::srv, doc: doc::cratedoc) -> doc::cratedoc {
+    let f = fn~(srv: astsrv::srv, doc: doc::doc) -> doc::doc {
         run(srv, doc, config, writer)
     };
 
@@ -29,10 +29,10 @@ fn mk_pass_(
 
 fn run(
     srv: astsrv::srv,
-    doc: doc::cratedoc,
+    doc: doc::doc,
     _config: config::config,
     writer: writer
-) -> doc::cratedoc {
+) -> doc::doc {
 
     fn mods_last(item1: doc::itemtag, item2: doc::itemtag) -> bool {
         fn is_mod(item: doc::itemtag) -> bool {
@@ -89,14 +89,14 @@ type ctxt = {
 };
 
 fn write_markdown(
-    doc: doc::cratedoc,
+    doc: doc::doc,
     writer: writer
 ) {
     let ctxt = {
         w: writer
     };
 
-    write_crate(ctxt, doc);
+    write_crate(ctxt, doc.cratedoc());
     ctxt.w.write_done();
 }
 
@@ -378,14 +378,18 @@ fn should_insert_blank_line_after_fn_signature() {
 fn should_correctly_indent_fn_signature() {
     let doc = test::create_doc("fn a() { }");
     let doc = {
-        topmod: {
-            items: [doc::fntag({
-                sig: some("line 1\nline 2")
-                with doc.topmod.fns()[0]
-            })]
-            with doc.topmod
-        }
-        with doc
+        pages: [
+            doc::cratepage({
+                topmod: {
+                    items: [doc::fntag({
+                        sig: some("line 1\nline 2")
+                        with doc.cratemod().fns()[0]
+                    })]
+                    with doc.cratemod()
+                }
+                with doc.cratedoc()
+            })
+        ]
     };
     let markdown = test::write_markdown_str(doc);
     assert str::contains(markdown, "    line 1\n    line 2");
@@ -927,7 +931,7 @@ mod test {
         markdown
     }
 
-    fn create_doc_srv(source: str) -> (astsrv::srv, doc::cratedoc) {
+    fn create_doc_srv(source: str) -> (astsrv::srv, doc::doc) {
         astsrv::from_str(source) {|srv|
             let doc = extract::from_srv(srv, "");
             #debug("doc (extract): %?", doc);
@@ -943,13 +947,13 @@ mod test {
         }
     }
 
-    fn create_doc(source: str) -> doc::cratedoc {
+    fn create_doc(source: str) -> doc::doc {
         let (_, doc) = create_doc_srv(source);
         doc
     }
 
     fn write_markdown_str(
-        doc: doc::cratedoc
+        doc: doc::doc
     ) -> str {
         let (writer, future) = markdown_writer::future_writer();
         write_markdown(doc, writer);
@@ -958,7 +962,7 @@ mod test {
 
     fn write_markdown_str_srv(
         srv: astsrv::srv,
-        doc: doc::cratedoc
+        doc: doc::doc
     ) -> str {
         let config = {
             output_style: config::doc_per_crate

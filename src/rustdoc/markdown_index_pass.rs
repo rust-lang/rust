@@ -9,12 +9,12 @@ fn mk_pass() -> pass {
     }
 }
 
-fn run(_srv: astsrv::srv, doc: doc::cratedoc) -> doc::cratedoc {
+fn run(_srv: astsrv::srv, doc: doc::doc) -> doc::doc {
     let fold = fold::fold({
         fold_mod: fold_mod
             with *fold::default_any_fold(())
     });
-    fold.fold_crate(fold, doc)
+    fold.fold_doc(fold, doc)
 }
 
 fn fold_mod(fold: fold::fold<()>, doc: doc::moddoc) -> doc::moddoc {
@@ -68,12 +68,12 @@ fn pandoc_header_id(header: str) -> str {
 #[test]
 fn should_index_mod_contents() {
     let doc = test::mk_doc("mod a { } fn b() { }");
-    assert option::get(doc.topmod.index).entries[0] == {
+    assert option::get(doc.cratemod().index).entries[0] == {
         kind: "Module",
         name: "a",
         link: "module-a"
     };
-    assert option::get(doc.topmod.index).entries[1] == {
+    assert option::get(doc.cratemod().index).entries[1] == {
         kind: "Function",
         name: "b",
         link: "function-b"
@@ -82,7 +82,7 @@ fn should_index_mod_contents() {
 
 #[cfg(test)]
 mod test {
-    fn mk_doc(source: str) -> doc::cratedoc {
+    fn mk_doc(source: str) -> doc::doc {
         astsrv::from_str(source) {|srv|
             let doc = extract::from_srv(srv, "");
             let doc = path_pass::mk_pass().f(srv, doc);

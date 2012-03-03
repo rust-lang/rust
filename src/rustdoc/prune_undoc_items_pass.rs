@@ -15,8 +15,8 @@ type ctxt = {
 
 fn run(
     _srv: astsrv::srv,
-    doc: doc::cratedoc
-) -> doc::cratedoc {
+    doc: doc::doc
+) -> doc::doc {
     let ctxt = {
         mutable have_docs: true
     };
@@ -31,7 +31,7 @@ fn run(
         fold_type: fold_type
         with *fold::default_any_fold(ctxt)
     });
-    fold.fold_crate(fold, doc)
+    fold.fold_doc(fold, doc)
 }
 
 fn fold_mod(
@@ -141,43 +141,43 @@ fn args_have_docs(docs: [doc::argdoc]) -> bool {
 #[test]
 fn should_elide_fns_with_undocumented_arguments() {
     let doc = test::mk_doc("fn a(a: int) { }");
-    assert vec::is_empty(doc.topmod.fns());
+    assert vec::is_empty(doc.cratemod().fns());
 }
 
 #[test]
 fn should_not_elide_fns_with_documented_arguments() {
     let doc = test::mk_doc("#[doc(args(a = \"b\"))] fn a(a: int) { }");
-    assert vec::is_not_empty(doc.topmod.fns());
+    assert vec::is_not_empty(doc.cratemod().fns());
 }
 
 #[test]
 fn should_not_elide_fns_with_documented_failure_conditions() {
     let doc = test::mk_doc("#[doc(failure = \"yup\")] fn a() { }");
-    assert vec::is_not_empty(doc.topmod.fns());
+    assert vec::is_not_empty(doc.cratemod().fns());
 }
 
 #[test]
 fn should_elide_undocumented_mods() {
     let doc = test::mk_doc("mod a { }");
-    assert vec::is_empty(doc.topmod.mods());
+    assert vec::is_empty(doc.cratemod().mods());
 }
 
 #[test]
 fn should_not_elide_undocument_mods_with_documented_mods() {
     let doc = test::mk_doc("mod a { #[doc = \"b\"] mod b { } }");
-    assert vec::is_not_empty(doc.topmod.mods());
+    assert vec::is_not_empty(doc.cratemod().mods());
 }
 
 #[test]
 fn should_not_elide_undocument_mods_with_documented_fns() {
     let doc = test::mk_doc("mod a { #[doc = \"b\"] fn b() { } }");
-    assert vec::is_not_empty(doc.topmod.mods());
+    assert vec::is_not_empty(doc.cratemod().mods());
 }
 
 #[test]
 fn should_elide_undocumented_fns() {
     let doc = test::mk_doc("fn a() { }");
-    assert vec::is_empty(doc.topmod.fns());
+    assert vec::is_empty(doc.cratemod().fns());
 }
 
 fn fold_const(
@@ -194,7 +194,7 @@ fn fold_const(
 #[test]
 fn should_elide_undocumented_consts() {
     let doc = test::mk_doc("const a: bool = true;");
-    assert vec::is_empty(doc.topmod.consts());
+    assert vec::is_empty(doc.cratemod().consts());
 }
 
 fn fold_enum(fold: fold::fold<ctxt>, doc: doc::enumdoc) -> doc::enumdoc {
@@ -218,19 +218,19 @@ fn fold_enum(fold: fold::fold<ctxt>, doc: doc::enumdoc) -> doc::enumdoc {
 #[test]
 fn should_elide_undocumented_enums() {
     let doc = test::mk_doc("enum a { b }");
-    assert vec::is_empty(doc.topmod.enums());
+    assert vec::is_empty(doc.cratemod().enums());
 }
 
 #[test]
 fn should_elide_undocumented_variants() {
     let doc = test::mk_doc("#[doc = \"a\"] enum a { b }");
-    assert vec::is_empty(doc.topmod.enums()[0].variants);
+    assert vec::is_empty(doc.cratemod().enums()[0].variants);
 }
 
 #[test]
 fn should_not_elide_enums_with_documented_variants() {
     let doc = test::mk_doc("enum a { #[doc = \"a\"] b }");
-    assert vec::is_not_empty(doc.topmod.enums());
+    assert vec::is_not_empty(doc.cratemod().enums());
 }
 
 fn fold_res(fold: fold::fold<ctxt>, doc: doc::resdoc) -> doc::resdoc {
@@ -246,14 +246,14 @@ fn fold_res(fold: fold::fold<ctxt>, doc: doc::resdoc) -> doc::resdoc {
 #[test]
 fn should_elide_undocumented_resources() {
     let doc = test::mk_doc("resource r(a: bool) { }");
-    assert vec::is_empty(doc.topmod.resources());
+    assert vec::is_empty(doc.cratemod().resources());
 }
 
 #[test]
 fn should_not_elide_resources_with_documented_args() {
     let doc = test::mk_doc("#[doc(args(a = \"drunk\"))]\
                             resource r(a: bool) { }");
-    assert vec::is_not_empty(doc.topmod.resources());
+    assert vec::is_not_empty(doc.cratemod().resources());
 }
 
 fn fold_iface(
@@ -283,31 +283,31 @@ fn methods_have_docs(docs: [doc::methoddoc]) -> bool {
 #[test]
 fn should_elide_undocumented_ifaces() {
     let doc = test::mk_doc("iface i { fn a(); }");
-    assert vec::is_empty(doc.topmod.ifaces());
+    assert vec::is_empty(doc.cratemod().ifaces());
 }
 
 #[test]
 fn should_not_elide_documented_ifaces() {
     let doc = test::mk_doc("#[doc = \"hey\"] iface i { fn a(); }");
-    assert vec::is_not_empty(doc.topmod.ifaces());
+    assert vec::is_not_empty(doc.cratemod().ifaces());
 }
 
 #[test]
 fn should_elide_ifaces_with_undocumented_args() {
     let doc = test::mk_doc("iface i { fn a(b: bool); }");
-    assert vec::is_empty(doc.topmod.ifaces());
+    assert vec::is_empty(doc.cratemod().ifaces());
 }
 
 #[test]
 fn should_not_elide_ifaces_with_documented_methods() {
     let doc = test::mk_doc("iface i { #[doc = \"hey\"] fn a(); }");
-    assert vec::is_not_empty(doc.topmod.ifaces());
+    assert vec::is_not_empty(doc.cratemod().ifaces());
 }
 
 #[test]
 fn should_not_elide_undocumented_iface_methods() {
     let doc = test::mk_doc("#[doc = \"hey\"] iface i { fn a(); }");
-    assert vec::is_not_empty(doc.topmod.ifaces()[0].methods);
+    assert vec::is_not_empty(doc.cratemod().ifaces()[0].methods);
 }
 
 fn fold_impl(
@@ -326,25 +326,25 @@ fn fold_impl(
 #[test]
 fn should_elide_undocumented_impls() {
     let doc = test::mk_doc("impl i for int { fn a() { } }");
-    assert vec::is_empty(doc.topmod.impls());
+    assert vec::is_empty(doc.cratemod().impls());
 }
 
 #[test]
 fn should_not_elide_documented_impls() {
     let doc = test::mk_doc("#[doc = \"hey\"] impl i for int { fn a() { } }");
-    assert vec::is_not_empty(doc.topmod.impls());
+    assert vec::is_not_empty(doc.cratemod().impls());
 }
 
 #[test]
 fn should_not_elide_impls_with_documented_methods() {
     let doc = test::mk_doc("impl i for int { #[doc = \"hey\"] fn a() { } }");
-    assert vec::is_not_empty(doc.topmod.impls());
+    assert vec::is_not_empty(doc.cratemod().impls());
 }
 
 #[test]
 fn should_not_elide_undocumented_impl_methods() {
     let doc = test::mk_doc("#[doc = \"hey\"] impl i for int { fn a() { } }");
-    assert vec::is_not_empty(doc.topmod.impls()[0].methods);
+    assert vec::is_not_empty(doc.cratemod().impls()[0].methods);
 }
 
 fn fold_type(
@@ -362,12 +362,12 @@ fn fold_type(
 #[test]
 fn should_elide_undocumented_types() {
     let doc = test::mk_doc("type t = int;");
-    assert vec::is_empty(doc.topmod.types());
+    assert vec::is_empty(doc.cratemod().types());
 }
 
 #[cfg(test)]
 mod test {
-    fn mk_doc(source: str) -> doc::cratedoc {
+    fn mk_doc(source: str) -> doc::doc {
         astsrv::from_str(source) {|srv|
             let doc = extract::from_srv(srv, "");
             let doc = attr_pass::mk_pass().f(srv, doc);

@@ -2,6 +2,15 @@
 
 type ast_id = int;
 
+type doc = {
+    pages: [page]
+};
+
+enum page {
+    cratepage(cratedoc),
+    itempage(itemtag)
+}
+
 // FIXME: We currently give topmod the name of the crate.  There would
 // probably be fewer special cases if the crate had its own name and
 // topmod's name was the empty string.
@@ -130,6 +139,21 @@ type index_entry = {
     name: str,
     link: str
 };
+
+impl util for doc {
+    fn cratedoc() -> cratedoc {
+        option::get(vec::foldl(none, self.pages) {|_m, page|
+            alt page {
+              doc::cratepage(doc) { some(doc) }
+              _ { none }
+            }
+        })
+    }
+
+    fn cratemod() -> moddoc {
+        self.cratedoc().topmod
+    }
+}
 
 #[doc = "Some helper methods on moddoc, mostly for testing"]
 impl util for moddoc {
