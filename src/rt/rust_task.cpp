@@ -481,7 +481,7 @@ rust_port_id rust_task::register_port(rust_port *port) {
 }
 
 void rust_task::release_port(rust_port_id id) {
-    I(thread, port_lock.lock_held_by_current_thread());
+    scoped_lock with(port_lock);
     port_table.remove(id);
 }
 
