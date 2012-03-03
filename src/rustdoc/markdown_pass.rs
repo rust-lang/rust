@@ -258,7 +258,7 @@ fn write_index(ctxt: ctxt, index: doc::index) {
     if vec::is_empty(index.entries) {
         ret;
     }
-    
+
     for entry in index.entries {
         let header = header_text_(entry.kind, entry.name);
         let id = entry.link;
