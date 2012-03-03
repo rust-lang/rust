@@ -436,3 +436,28 @@
    fun:_ZN18rust_port_selector6selectEP9rust_taskPP9rust_portS4_mPm
    ...
 }
+
+{
+   libunwind-surely-this-is-ok
+   Helgrind:Race
+   ...
+   fun:_Unwind_RaiseException
+   fun:__cxa_throw
+   ...
+}
+
+{
+   libunwind-surely-this-is-ok2
+   Helgrind:Race
+   ...
+   fun:_Unwind_Resume
+   ...
+}
+
+{
+   libunwind-surely-this-is-ok3
+   Helgrind:Race
+   fun:_Unwind_SetGR
+   fun:__gxx_personality_v0
+   ...
+}
