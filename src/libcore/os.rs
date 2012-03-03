@@ -144,7 +144,7 @@ fn dll_filename(base: str) -> str {
 
 fn self_exe_path() -> option<path> unsafe {
     let bufsize = 1023u;
-    let buf = vec::init_elt_mut(bufsize, 0u8 as c_char);
+    let buf = vec::to_mut(vec::init_elt(bufsize, 0u8 as c_char));
     // FIXME: This does not handle the case where the buffer is too small
     ret vec::as_mut_buf(buf) {|pbuf|
         if load_self(pbuf as *mutable c_char, bufsize as c_uint) {
