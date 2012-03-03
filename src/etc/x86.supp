@@ -408,3 +408,22 @@
    fun:_ZN15lock_and_signal4waitEv
    ...
 }
+
+{
+   uv-async-send-does-racy-things
+   Helgrind:Race
+   fun:pipecb
+   fun:ev_invoke_pending
+   fun:ev_run
+   fun:uv_run
+   ...
+}
+
+{
+   uv-loop-init-does-some-checks-that-are-not-lock-protected
+   Helgrind:Race
+   fun:loop_init
+   fun:ev_loop_new
+   fun:uv_loop_new
+   ...
+}
