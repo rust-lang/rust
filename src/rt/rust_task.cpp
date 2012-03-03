@@ -421,8 +421,6 @@ rust_task::transition(rust_task_list *src, rust_task_list *dst) {
 
 void
 rust_task::block(rust_cond *on, const char* name) {
-    I(thread, !lock.lock_held_by_current_thread());
-    scoped_lock with(lock);
     LOG(this, task, "Blocking on 0x%" PRIxPTR ", cond: 0x%" PRIxPTR,
                          (uintptr_t) on, (uintptr_t) cond);
     A(thread, cond == NULL, "Cannot block an already blocked task.");
@@ -435,8 +433,6 @@ rust_task::block(rust_cond *on, const char* name) {
 
 void
 rust_task::wakeup(rust_cond *from) {
-    I(thread, !lock.lock_held_by_current_thread());
-    scoped_lock with(lock);
     A(thread, cond != NULL, "Cannot wake up unblocked task.");
     LOG(this, task, "Blocked on 0x%" PRIxPTR " woken up on 0x%" PRIxPTR,
                         (uintptr_t) cond, (uintptr_t) from);
@@ -449,8 +445,6 @@ rust_task::wakeup(rust_cond *from) {
 
 void
 rust_task::die() {
-    I(thread, !lock.lock_held_by_current_thread());
-    scoped_lock with(lock);
     transition(&thread->running_tasks, &thread->dead_tasks);
 }
 
