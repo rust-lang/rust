@@ -319,6 +319,29 @@ rust_task_thread::create_task(rust_task *spawner, const char *name,
     return task->id;
 }
 
+void 
+rust_task_thread::transition(rust_task *task,
+                             rust_task_list *src, rust_task_list *dst,
+                             rust_cond *cond, const char* cond_name) {
+    bool unlock = false;
+    if(!lock.lock_held_by_current_thread()) {
+        unlock = true;
+        lock.lock();
+    }
+    DLOG(this, task,
+         "task %s " PTR " state change '%s' -> '%s' while in '%s'",
+         name, (uintptr_t)this, src->name, dst->name,
+         task->get_state()->name);
+    I(this, task->get_state() == src);
+    src->remove(task);
+    dst->append(task);
+    task->set_state(dst, cond, cond_name);
+
+    lock.signal();
+    if(unlock)
+        lock.unlock();
+}
+
 void rust_task_thread::run() {
     this->start_main_loop();
     sched->release_task_thread();

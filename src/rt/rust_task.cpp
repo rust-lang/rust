@@ -401,26 +401,16 @@ rust_task::free(void *p)
 void
 rust_task::transition(rust_task_list *src, rust_task_list *dst,
                       rust_cond *cond, const char* cond_name) {
-    bool unlock = false;
-    if(!thread->lock.lock_held_by_current_thread()) {
-        unlock = true;
-        thread->lock.lock();
-    }
-    DLOG(thread, task,
-         "task %s " PTR " state change '%s' -> '%s' while in '%s'",
-         name, (uintptr_t)this, src->name, dst->name, state->name);
-    I(thread, state == src);
-    src->remove(this);
-    dst->append(this);
-    {
-        scoped_lock with(state_lock);
-        state = dst;
-        this->cond = cond;
-        this->cond_name = cond_name;
-    }
-    thread->lock.signal();
-    if(unlock)
-        thread->lock.unlock();
+    thread->transition(this, src, dst, cond, cond_name);
+}
+
+void
+rust_task::set_state(rust_task_list *state,
+                     rust_cond *cond, const char* cond_name) {
+    scoped_lock with(state_lock);
+    this->state = state;
+    this->cond = cond;
+    this->cond_name = cond_name;
 }
 
 void
