@@ -55,6 +55,7 @@ native mod libc {
     fn mkdir(s: str::sbuf, mode: c_int) -> c_int;
     fn rmdir(s: str::sbuf) -> c_int;
     fn chdir(s: str::sbuf) -> c_int;
+    fn unlink(path: str::sbuf) -> c_int;
 
     // FIXME: Needs varags
     fn fcntl(fd: fd_t, cmd: c_int) -> c_int;

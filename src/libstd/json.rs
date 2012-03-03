@@ -490,7 +490,7 @@ Function: from_str
 Deserializes a json value from a string.
 */
 fn from_str(s: str) -> result::t<json, error> {
-    from_reader(io::string_reader(s))
+    io::with_str_reader(s, from_reader)
 }
 
 /*

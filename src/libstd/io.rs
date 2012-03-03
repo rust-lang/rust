@@ -227,11 +227,11 @@ fn file_reader(path: str) -> result::t<reader, str> {
 // Byte buffer readers
 
 // TODO: const u8, but this fails with rustboot.
-type byte_buf = {buf: [u8], mutable pos: uint};
+type byte_buf = {buf: [u8], mutable pos: uint, len: uint};
 
 impl of reader for byte_buf {
     fn read_bytes(len: uint) -> [u8] {
-        let rest = vec::len(self.buf) - self.pos;
+        let rest = self.len - self.pos;
         let to_read = len;
         if rest < to_read { to_read = rest; }
         let range = vec::slice(self.buf, self.pos, self.pos + to_read);
@@ -239,29 +239,46 @@ impl of reader for byte_buf {
         ret range;
     }
     fn read_byte() -> int {
-        if self.pos == vec::len(self.buf) { ret -1; }
+        if self.pos == self.len { ret -1; }
         let b = self.buf[self.pos];
         self.pos += 1u;
         ret b as int;
     }
     fn unread_byte(_byte: int) { #error("TODO: unread_byte"); fail; }
-    fn eof() -> bool { self.pos == vec::len(self.buf) }
+    fn eof() -> bool { self.pos == self.len }
     fn seek(offset: int, whence: seek_style) {
         let pos = self.pos;
-        let len = vec::len(self.buf);
-        self.pos = seek_in_buf(offset, pos, len, whence);
+        self.pos = seek_in_buf(offset, pos, self.len, whence);
     }
     fn tell() -> uint { self.pos }
 }
 
 fn bytes_reader(bytes: [u8]) -> reader {
-    {buf: bytes, mutable pos: 0u} as reader
+    bytes_reader_between(bytes, 0u, vec::len(bytes))
 }
 
-fn string_reader(s: str) -> reader {
+fn bytes_reader_between(bytes: [u8], start: uint, end: uint) -> reader {
+    {buf: bytes, mutable pos: start, len: end} as reader
+}
+
+fn with_bytes_reader<t>(bytes: [u8], f: fn(reader) -> t) -> t {
+    f(bytes_reader(bytes))
+}
+
+fn with_bytes_reader_between<t>(bytes: [u8], start: uint, end: uint,
+                                f: fn(reader) -> t) -> t {
+    f(bytes_reader_between(bytes, start, end))
+}
+
+fn str_reader(s: str) -> reader {
     bytes_reader(str::bytes(s))
 }
 
+fn with_str_reader<T>(s: str, f: fn(reader) -> T) -> T {
+    str::as_bytes(s) { |bytes|
+        with_bytes_reader_between(bytes, 0u, str::len(s), f)
+    }
+}
 
 // Writing
 enum fileflag { append, create, truncate, no_flag, }
@@ -645,7 +662,7 @@ mod tests {
 
     #[test]
     fn test_readchars_empty() {
-        let inp : io::reader = io::string_reader("");
+        let inp : io::reader = io::str_reader("");
         let res : [char] = inp.read_chars(128u);
         assert(vec::len(res) == 0u);
     }
@@ -660,7 +677,7 @@ mod tests {
             29983, 38152, 30340, 27748,
             21273, 20999, 32905, 27748];
         fn check_read_ln(len : uint, s: str, ivals: [int]) {
-            let inp : io::reader = io::string_reader(s);
+            let inp : io::reader = io::str_reader(s);
             let res : [char] = inp.read_chars(len);
             if (len <= vec::len(ivals)) {
                 assert(vec::len(res) == len);
@@ -679,14 +696,14 @@ mod tests {
 
     #[test]
     fn test_readchar() {
-        let inp : io::reader = io::string_reader("生");
+        let inp : io::reader = io::str_reader("生");
         let res : char = inp.read_char();
         assert(res as int == 29983);
     }
 
     #[test]
     fn test_readchar_empty() {
-        let inp : io::reader = io::string_reader("");
+        let inp : io::reader = io::str_reader("");
         let res : char = inp.read_char();
         assert(res as int == -1);
     }

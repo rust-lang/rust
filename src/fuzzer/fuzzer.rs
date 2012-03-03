@@ -268,7 +268,7 @@ fn check_variants_T<T: copy>(
                         diagnostic::mk_span_handler(handler, codemap),
                         crate2,
                         filename,
-                        io::string_reader(""), _,
+                        io::str_reader(""), _,
                         pprust::no_ann()));
                 alt cx.mode {
                   tm_converge {
@@ -412,12 +412,14 @@ fn parse_and_print(code: @str) -> str {
     write_file(filename, *code);
     let crate = parser::parse_crate_from_source_str(
         filename, code, [], sess);
-    ret as_str(bind pprust::print_crate(sess.cm,
+    io::with_str_reader(*code) { |rdr|
+        as_str(bind pprust::print_crate(sess.cm,
                                         sess.span_diagnostic,
                                         crate,
                                         filename,
-                                        io::string_reader(*code), _,
-                                        pprust::no_ann()));
+                                        rdr, _,
+                                        pprust::no_ann()))
+    }
 }
 
 fn has_raw_pointers(c: ast::crate) -> bool {
@@ -557,13 +559,15 @@ fn check_variants(files: [str], cx: context) {
             parser::parse_crate_from_source_str(
                 file,
                 s, [], sess);
-        #error("%s",
-               as_str(bind pprust::print_crate(sess.cm,
-                                               sess.span_diagnostic,
-                                               crate,
-                                               file,
-                                               io::string_reader(*s), _,
-                                               pprust::no_ann())));
+        io::with_str_reader(*s) { |rdr|
+            #error("%s",
+                   as_str(bind pprust::print_crate(sess.cm,
+                                                   sess.span_diagnostic,
+                                                   crate,
+                                                   file,
+                                                   rdr, _,
+                                                   pprust::no_ann())));
+        }
         check_variants_of_ast(*crate, sess.cm, file, cx);
     }
 }
