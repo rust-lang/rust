@@ -164,7 +164,7 @@ fn self_exe_path() -> option<path> unsafe {
                    KERN_PROC as c_int,
                    KERN_PROC_PATHNAME as c_int, -1 as c_int];
         ret sysctl(vec::unsafe::to_ptr(mib), vec::len(mib) as c_uint,
-                   pth as *mutable c_void, ptr::mut_addr_of(plen),
+                   pth as *mutable c_void, ptr::mut_addr_of(plen as size_t),
                    ptr::null(), 0u as size_t)
             == (0 as c_int);
     }
