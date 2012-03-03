@@ -223,6 +223,9 @@ fn write_mod_contents(
 ) {
     write_brief(ctxt, doc.brief());
     write_desc(ctxt, doc.desc());
+    if option::is_some(doc.index) {
+        write_index(ctxt, option::get(doc.index));
+    }
 
     for itemtag in doc.items {
         alt itemtag {
@@ -249,6 +252,35 @@ fn should_write_crate_brief_description() {
 fn should_write_crate_description() {
     let markdown = test::render("#[doc = \"this is the crate\"];");
     assert str::contains(markdown, "this is the crate");
+}
+
+fn write_index(ctxt: ctxt, index: doc::index) {
+    if vec::is_empty(index.entries) {
+        ret;
+    }
+    
+    for entry in index.entries {
+        let header = header_text_(entry.kind, entry.name);
+        let id = entry.link;
+        ctxt.w.write_line(#fmt("* [%s](#%s)", header, id));
+    }
+    ctxt.w.write_line("");
+}
+
+#[test]
+fn should_write_index() {
+    let markdown = test::render("mod a { } mod b { }");
+    assert str::contains(
+        markdown,
+        "\n\n* [Module `a`](#module-a)\n\
+         * [Module `b`](#module-b)\n\n"
+    );
+}
+
+#[test]
+fn should_not_write_index_if_no_entries() {
+    let markdown = test::render("");
+    assert !str::contains(markdown, "\n\n\n");
 }
 
 fn write_nmod(ctxt: ctxt, doc: doc::nmoddoc) {
@@ -905,6 +937,8 @@ mod test {
             #debug("doc (path): %?", doc);
             let doc = attr_pass::mk_pass().f(srv, doc);
             #debug("doc (attr): %?", doc);
+            let doc = markdown_index_pass::mk_pass().f(srv, doc);
+            #debug("doc (index): %?", doc);
             (srv, doc)
         }
     }
