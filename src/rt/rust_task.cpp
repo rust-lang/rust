@@ -108,7 +108,12 @@ void
 rust_task::delete_this()
 {
     I(thread, !thread->lock.lock_held_by_current_thread());
-    I(thread, port_table.is_empty());
+
+    {
+        scoped_lock with (lock);
+        I(thread, port_table.is_empty());
+    }
+
     DLOG(thread, task, "~rust_task %s @0x%" PRIxPTR ", refcnt=%d",
          name, (uintptr_t)this, ref_count);
 
