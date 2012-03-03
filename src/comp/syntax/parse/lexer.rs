@@ -307,8 +307,15 @@ fn next_token(rdr: reader) -> {tok: token::token, chpos: uint, bpos: uint} {
 fn next_token_inner(rdr: reader) -> token::token {
     let accum_str = "";
     let c = rdr.curr;
-    if char::is_XID_start(c) || c == '_' {
-        while char::is_XID_continue(c) {
+    if (c >= 'a' && c <= 'z')
+        || (c >= 'A' && c <= 'Z')
+        || c == '_'
+        || (c > 'z' && char::is_XID_start(c)) {
+        while (c >= 'a' && c <= 'z')
+            || (c >= 'A' && c <= 'Z')
+            || (c >= '0' && c <= '9')
+            || c == '_'
+            || (c > 'z' && char::is_XID_continue(c)) {
             str::push_char(accum_str, c);
             rdr.bump();
             c = rdr.curr;
