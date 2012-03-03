@@ -72,6 +72,9 @@ fn get_item_path(tcx: ty::ctxt, def: ast::def_id) -> ast_map::path {
     let cstore = tcx.sess.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
     let path = decoder::get_item_path(cdata, def.node);
+
+    // FIXME #1920: This path is not always correct if the crate is not linked
+    // into the root namespace.
     [ast_map::path_mod(cdata.name)] + path
 }
 

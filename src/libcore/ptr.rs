@@ -32,6 +32,7 @@ Function: offset
 
 Calculate the offset from a pointer
 */
+#[inline(always)]
 fn offset<T>(ptr: *T, count: uint) -> *T {
     ret rusti::ptr_offset(ptr, count);
 }

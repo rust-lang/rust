@@ -78,6 +78,7 @@ Function: len
 
 Returns the length of a vector
 */
+#[inline(always)]
 pure fn len<T>(v: [const T]) -> uint { unchecked { rusti::vec_len(v) } }
 
 /*
@@ -885,9 +886,17 @@ Iterates over vector `v` and, for each element, calls function `f` with the
 element's value.
 
 */
-#[inline]
+#[inline(always)]
 fn iter<T>(v: [const T], f: fn(T)) {
-    iteri(v) { |_i, v| f(v) }
+    unsafe {
+        let mut n = vec::len(v);
+        let mut p = unsafe::to_ptr(v);
+        while n > 0u {
+            f(*p);
+            p = ptr::offset(p, 1u);
+            n -= 1u;
+        }
+    }
 }
 
 /*
@@ -896,6 +905,7 @@ Function: iter2
 Iterates over two vectors in parallel
 
 */
+#[inline]
 fn iter2<U, T>(v: [ U], v2: [const T], f: fn(U, T)) {
     let i = 0;
     for elt in v { f(elt, v2[i]); i += 1; }
@@ -909,6 +919,7 @@ Iterates over a vector's elements and indexes
 Iterates over vector `v` and, for each element, calls function `f` with the
 element's value and index.
 */
+#[inline(always)]
 fn iteri<T>(v: [const T], f: fn(uint, T)) {
     let i = 0u, l = len(v);
     while i < l { f(i, v[i]); i += 1u; }
@@ -1001,6 +1012,7 @@ fn as_mut_buf<E,T>(v: [mutable E], f: fn(*mutable E) -> T) -> T unsafe {
 }
 
 impl vec_len<T> for [T] {
+    #[inline(always)]
     fn len() -> uint { len(self) }
 }
 
@@ -1020,6 +1032,7 @@ mod unsafe {
     ptr - An unsafe pointer to a buffer of `T`
     elts - The number of elements in the buffer
     */
+    #[inline(always)]
     unsafe fn from_buf<T>(ptr: *T, elts: uint) -> [T] {
         ret rustrt::vec_from_buf_shared(sys::get_type_desc::<T>(),
                                         ptr, elts);
@@ -1034,6 +1047,7 @@ mod unsafe {
     modifing its buffers, so it is up to the caller to ensure that
     the vector is actually the specified size.
     */
+    #[inline(always)]
     unsafe fn set_len<T>(&v: [const T], new_len: uint) {
         let repr: **vec_repr = ::unsafe::reinterpret_cast(addr_of(v));
         (**repr).fill = new_len * sys::size_of::<T>();
@@ -1050,6 +1064,7 @@ mod unsafe {
     Modifying the vector may cause its buffer to be reallocated, which
     would also make any pointers to it invalid.
     */
+    #[inline(always)]
     unsafe fn to_ptr<T>(v: [const T]) -> *T {
         let repr: **vec_repr = ::unsafe::reinterpret_cast(addr_of(v));
         ret ::unsafe::reinterpret_cast(addr_of((**repr).data));
