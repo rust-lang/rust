@@ -77,7 +77,6 @@ rust_task::rust_task(rust_task_thread *thread, rust_task_list *state,
     state(state),
     cond(NULL),
     cond_name("none"),
-    supervisor(spawner),
     list_index(-1),
     next_port_id(0),
     rendezvous_ptr(0),
@@ -92,7 +91,8 @@ rust_task::rust_task(rust_task_thread *thread, rust_task_list *state,
     reentered_rust_stack(false),
     c_stack(NULL),
     next_c_sp(0),
-    next_rust_sp(0)
+    next_rust_sp(0),
+    supervisor(spawner)
 {
     LOGPTR(thread, "new task", (uintptr_t)this);
     DLOG(thread, task, "sizeof(task) = %d (0x%x)", sizeof *this, sizeof *this);
@@ -103,6 +103,7 @@ rust_task::rust_task(rust_task_thread *thread, rust_task_list *state,
     }
 }
 
+// NB: This does not always run on the task's scheduler thread
 void
 rust_task::delete_this()
 {
@@ -112,8 +113,11 @@ rust_task::delete_this()
          name, (uintptr_t)this, ref_count);
 
     // FIXME: We should do this when the task exits, not in the destructor
-    if (supervisor) {
-        supervisor->deref();
+    {
+        scoped_lock with(supervisor_lock);
+        if (supervisor) {
+            supervisor->deref();
+        }
     }
 
     /* FIXME: tighten this up, there are some more
@@ -302,6 +306,7 @@ rust_task::conclude_failure() {
 
 void
 rust_task::fail_parent() {
+    scoped_lock with(supervisor_lock);
     if (supervisor) {
         DLOG(thread, task,
              "task %s @0x%" PRIxPTR
@@ -317,6 +322,7 @@ rust_task::fail_parent() {
 void
 rust_task::unsupervise()
 {
+    scoped_lock with(supervisor_lock);
     if (supervisor) {
         DLOG(thread, task,
              "task %s @0x%" PRIxPTR

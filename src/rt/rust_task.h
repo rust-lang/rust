@@ -71,7 +71,6 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     rust_task_list *state;
     rust_cond *cond;
     const char *cond_name;
-    rust_task *supervisor;     // Parent-link for failure propagation.
     int32_t list_index;
 
     rust_port_id next_port_id;
@@ -119,6 +118,9 @@ private:
     uintptr_t next_rust_sp;
 
     rust_port_selector port_selector;
+
+    lock_and_signal supervisor_lock;
+    rust_task *supervisor;     // Parent-link for failure propagation.
 
     // Called when the atomic refcount reaches zero
     void delete_this();
