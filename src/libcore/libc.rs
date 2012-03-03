@@ -5,7 +5,8 @@
 //   - ISO 9899:1990 ('C95', 'ANSI C', 'Standard C'), NA1, 1995.
 //   - ISO 9899:1999 ('C99' or 'C9x').
 //   - ISO 9945:1988 / IEEE 1003.1-1988 ('POSIX.1').
-//   - ISO 9945:2008 / IEEE 1003.1-2008 ('POSIX:2008').
+//   - ISO 9945:2001 / IEEE 1003.1-2001 ('POSIX:2001', 'SUSv3').
+//   - ISO 9945:2008 / IEEE 1003.1-2008 ('POSIX:2008', 'SUSv4').
 //
 // Despite having several names each, these are *reasonably* coherent
 // point-in-time, list-of-definition sorts of specs. You can get each under a
@@ -17,9 +18,18 @@
 // platforms.
 //
 // We therefore wind up dividing our module-space up (mostly for the sake of
-// sanity while editing) into definitions common-to-all (held in modules named
-// c95, c99, posix88, and posix08) and definitions that appear only on *some*
-// platforms (named 'extra').
+// sanity while editing, filling-in-details and eliminating duplication) into
+// definitions common-to-all (held in modules named c95, c99, posix88, posix01
+// and posix08) and definitions that appear only on *some* platforms (named
+// 'extra'). This would be things like significant OSX foundation kit, or
+// win32 library kernel32.dll, or various fancy glibc, linux or BSD
+// extensions.
+//
+// In addition to the per-platform 'extra' modules, we define a module of
+// "common BSD" libc routines that never quite made it into POSIX but show up
+// in multiple derived systems. This is the 4.4BSD r2 / 1995 release, the
+// final one from Berkeley after the lawsuits died down and the CSRG
+// dissolved.
 //
 
 // Initial glob-exports mean that all the contents of all the modules
@@ -28,14 +38,25 @@
 // FIXME: change these to glob-exports when sufficiently supported.
 
 import types::common::c95::*;
+import types::common::c99::*;
 import types::common::posix88::*;
+import types::common::posix01::*;
+import types::common::posix08::*;
+import types::common::bsd44::*;
 import types::os::arch::c95::*;
 import types::os::arch::c99::*;
 import types::os::arch::posix88::*;
+import types::os::arch::posix01::*;
+import types::os::arch::posix08::*;
+import types::os::arch::bsd44::*;
 import types::os::arch::extra::*;
 
 import consts::os::c95::*;
+import consts::os::c99::*;
 import consts::os::posix88::*;
+import consts::os::posix01::*;
+import consts::os::posix08::*;
+import consts::os::bsd44::*;
 import consts::os::extra::*;
 
 import funcs::c95::ctype::*;
@@ -48,6 +69,18 @@ import funcs::posix88::stdio::*;
 import funcs::posix88::fcntl::*;
 import funcs::posix88::dirent::*;
 import funcs::posix88::unistd::*;
+
+import funcs::posix01::unistd::*;
+import funcs::posix08::unistd::*;
+
+import funcs::bsd44::*;
+import funcs::extra::*;
+
+// FIXME: remove these 3 exports (and their uses next door in os::) when
+// export globs work. They provide access (for now) for os:: to dig around in
+// the rest of the platform-specific definitions.
+
+export types, funcs, consts;
 
 // Explicit export lists for the intersection (provided here) mean that
 // you can write more-platform-agnostic code if you stick to just these
@@ -76,7 +109,7 @@ export strcpy, strncpy, strcat, strncat, strcmp, strncmp, strcoll, strchr,
        strxfrm, memcpy, memmove, memcmp, memchr, memset;
 
 export chmod, mkdir;
-export popen, pclose;
+export popen, pclose, fdopen;
 export open, creat;
 export access, chdir, close, dup, dup2, execv, execve, execvp, getcwd,
        getpid, isatty, lseek, pipe, read, rmdir, unlink, write;
@@ -95,11 +128,14 @@ mod types {
             enum FILE {}
             enum fpos_t {}
         }
-
+        mod c99 { }
         mod posix88 {
             enum DIR {}
             enum dirent {}
         }
+        mod posix01 { }
+        mod posix08 { }
+        mod bsd44 { }
     }
 
     // Standard types that are scalar but vary by OS and arch.
@@ -122,6 +158,7 @@ mod types {
                 type ptrdiff_t = i32;
                 type clock_t = i32;
                 type time_t = i32;
+                type wchar_t = i32;
             }
             mod c99 {
                 type c_longlong = i64;
@@ -140,6 +177,9 @@ mod types {
                 type mode_t = u32;
                 type ssize_t = i32;
             }
+            mod posix01 { }
+            mod posix08 { }
+            mod bsd44 { }
             mod extra {
             }
         }
@@ -160,6 +200,7 @@ mod types {
                 type ptrdiff_t = i64;
                 type clock_t = i64;
                 type time_t = i64;
+                type wchar_t = i32;
             }
             mod c99 {
                 type c_longlong = i64;
@@ -178,6 +219,9 @@ mod types {
                 type mode_t = u32;
                 type ssize_t = i64;
             }
+            mod posix01 { }
+            mod posix08 { }
+            mod bsd44 { }
             mod extra {
             }
         }
@@ -201,6 +245,7 @@ mod types {
                 type ptrdiff_t = i64;
                 type clock_t = i32;
                 type time_t = i64;
+                type wchar_t = i32;
             }
             mod c99 {
                 type c_longlong = i64;
@@ -219,6 +264,9 @@ mod types {
                 type mode_t = u16;
                 type ssize_t = i64;
             }
+            mod posix01 { }
+            mod posix08 { }
+            mod bsd44 { }
             mod extra {
             }
         }
@@ -242,6 +290,7 @@ mod types {
                 type ptrdiff_t = i32;
                 type clock_t = i32;
                 type time_t = i32;
+                type wchar_t = u16;
             }
             mod c99 {
                 type c_longlong = i64;
@@ -258,7 +307,39 @@ mod types {
                 type mode_t = u16;
                 type ssize_t = i32;
             }
+            mod posix01 { }
+            mod posix08 { }
+            mod bsd44 { }
             mod extra {
+                type BOOL = c_int;
+                type BYTE = u8;
+                type CCHAR = c_char;
+                type CHAR = c_char;
+
+                type DWORD = c_ulong;
+                type DWORDLONG = c_ulonglong;
+
+                type HANDLE = LPVOID;
+                type HMODULE = c_uint;
+
+                type LONG_PTR = c_long;
+
+                type LPCWSTR = *WCHAR;
+                type LPCSTR = *CHAR;
+
+                type LPWSTR = *mutable WCHAR;
+                type LPSTR = *mutable CHAR;
+
+                // Not really, but opaque to us.
+                type LPSECURITY_ATTRIBUTES = LPVOID;
+
+                type LPVOID = *mutable c_void;
+                type LPWORD = *mutable WORD;
+
+                type LRESULT = LONG_PTR;
+                type PBOOL = *mutable BOOL;
+                type WCHAR = wchar_t;
+                type WORD = u16;
             }
         }
     }
@@ -281,6 +362,7 @@ mod types {
                 type ptrdiff_t = i32;
                 type clock_t = u32;
                 type time_t = i32;
+                type wchar_t = i32;
             }
             mod c99 {
                 type c_longlong = i64;
@@ -299,6 +381,9 @@ mod types {
                 type mode_t = u16;
                 type ssize_t = i32;
             }
+            mod posix01 { }
+            mod posix08 { }
+            mod bsd44 { }
             mod extra {
             }
         }
@@ -319,6 +404,7 @@ mod types {
                 type ptrdiff_t = i64;
                 type clock_t = u64;
                 type time_t = i64;
+                type wchar_t = i32;
             }
             mod c99 {
                 type c_longlong = i64;
@@ -337,6 +423,9 @@ mod types {
                 type mode_t = u16;
                 type ssize_t = i64;
             }
+            mod posix01 { }
+            mod posix08 { }
+            mod bsd44 { }
             mod extra {
             }
         }
@@ -367,6 +456,7 @@ mod consts {
             const L_tmpnam : uint = 16_u;
             const TMP_MAX : uint = 32767_u;
         }
+        mod c99 { }
         mod posix88 {
             const O_RDONLY : int = 0;
             const O_WRONLY : int = 1;
@@ -396,9 +486,13 @@ mod consts {
             const STDIN_FILENO : int = 0;
             const STDOUT_FILENO : int = 1;
         }
+        mod posix01 { }
+        mod posix08 { }
+        mod bsd44 { }
         mod extra {
             const O_TEXT : int = 16384;
             const O_BINARY : int = 32768;
+            const O_NOINHERIT: int = 128;
         }
     }
 
@@ -422,6 +516,7 @@ mod consts {
             const L_tmpnam : uint = 20_u;
             const TMP_MAX : uint = 238328_u;
         }
+        mod c99 { }
         mod posix88 {
             const O_RDONLY : int = 0;
             const O_WRONLY : int = 1;
@@ -452,6 +547,9 @@ mod consts {
             const F_TLOCK : int = 2;
             const F_ULOCK : int = 0;
         }
+        mod posix01 { }
+        mod posix08 { }
+        mod bsd44 { }
         mod extra {
             const O_RSYNC : int = 1052672;
             const O_DSYNC : int = 4096;
@@ -478,6 +576,7 @@ mod consts {
             const L_tmpnam : uint = 1024_u;
             const TMP_MAX : uint = 308915776_u;
         }
+        mod c99 { }
         mod posix88 {
             const O_RDONLY : int = 0;
             const O_WRONLY : int = 1;
@@ -511,8 +610,14 @@ mod consts {
             const F_TLOCK : int = 2;
             const F_ULOCK : int = 0;
         }
+        mod posix01 { }
+        mod posix08 { }
+        mod bsd44 { }
         mod extra {
             const O_SYNC : int = 128;
+            const CTL_KERN: int = 1;
+            const KERN_PROC: int = 14;
+            const KERN_PROC_PATHNAME: int = 12;
         }
     }
 
@@ -535,6 +640,7 @@ mod consts {
             const L_tmpnam : uint = 1024_u;
             const TMP_MAX : uint = 308915776_u;
         }
+        mod c99 { }
         mod posix88 {
             const O_RDONLY : int = 0;
             const O_WRONLY : int = 1;
@@ -568,9 +674,13 @@ mod consts {
             const F_TLOCK : int = 2;
             const F_ULOCK : int = 0;
         }
+        mod posix01 { }
+        mod posix08 { }
+        mod bsd44 { }
         mod extra {
             const O_DSYNC : int = 4194304;
             const O_SYNC : int = 128;
+            const F_FULLFSYNC : int = 51;
         }
     }
 }
@@ -725,6 +835,9 @@ mod funcs {
 
             #[link_name = "_pclose"]
             fn pclose(stream: *FILE) -> c_int;
+
+            #[link_name = "_fdopen"]
+            fn fdopen(fd: c_int, mode: *c_char) -> *FILE;
         }
 
         #[nolink]
@@ -765,7 +878,8 @@ mod funcs {
             fn execv(prog: *c_char, argv: **c_char) -> intptr_t;
 
             #[link_name = "_execve"]
-            fn execve(prog: *c_char, argv: **c_char, envp: **c_char) -> c_int;
+            fn execve(prog: *c_char, argv: **c_char,
+                      envp: **c_char) -> c_int;
 
             #[link_name = "_execvp"]
             fn execvp(c: *c_char, argv: **c_char) -> c_int;
@@ -786,7 +900,8 @@ mod funcs {
             fn lseek(fd: c_int, offset: c_long, origin: c_int) -> c_long;
 
             #[link_name = "_pipe"]
-            fn pipe(fds: *c_int, psize: c_uint, textmode: c_int) -> c_int;
+            fn pipe(fds: *mutable c_int, psize: c_uint,
+                    textmode: c_int) -> c_int;
 
             #[link_name = "_read"]
             fn read(fd: c_int, buf: *c_void, count: c_uint) -> c_int;
@@ -823,6 +938,7 @@ mod funcs {
         native mod stdio {
             fn popen(command: *c_char, mode: *c_char) -> *FILE;
             fn pclose(stream: *FILE) -> c_int;
+            fn fdopen(fd: c_int, mode: *c_char) -> *FILE;
         }
 
         #[nolink]
@@ -875,7 +991,7 @@ mod funcs {
             fn lseek(fd: c_int, offset: off_t, whence: c_int) -> off_t;
             fn pathconf(path: *c_char, name: c_int) -> c_long;
             fn pause() -> c_int;
-            fn pipe(fds: *c_int) -> c_int;
+            fn pipe(fds: *mutable c_int) -> c_int;
             fn read(fd: c_int, buf: *c_void, count: size_t) -> ssize_t;
             fn rmdir(path: *c_char) -> c_int;
             fn setgid(gid: gid_t) -> c_int;
@@ -890,7 +1006,101 @@ mod funcs {
             fn write(fd: c_int, buf: *c_void, count: size_t) -> ssize_t;
         }
     }
+
+    #[cfg(target_os = "linux")]
+    #[cfg(target_os = "macos")]
+    #[cfg(target_os = "freebsd")]
+    mod posix01 {
+
+        #[nolink]
+        #[abi = "cdecl"]
+        native mod unistd {
+            fn readlink(path: *c_char, buf: *mutable c_char,
+                        bufsz: size_t) -> ssize_t;
+
+            fn setenv(name: *c_char, val: *c_char,
+                      overwrite: c_int) -> c_int;
+            fn unsetenv(name: *c_char) -> c_int;
+            fn putenv(string: *c_char) -> c_int;
+        }
+    }
+
+    #[cfg(target_os = "win32")]
+    mod posix01 {
+        #[nolink]
+        native mod unistd { }
+    }
+
+
+    #[cfg(target_os = "win32")]
+    #[cfg(target_os = "linux")]
+    #[cfg(target_os = "macos")]
+    #[cfg(target_os = "freebsd")]
+    mod posix08 {
+        #[nolink]
+        native mod unistd { }
+    }
+
+
+    #[cfg(target_os = "macos")]
+    #[cfg(target_os = "freebsd")]
+    #[nolink]
+    #[abi = "cdecl"]
+    native mod bsd44 {
+
+        fn sysctl(name: *c_int, namelen: c_uint,
+                  oldp: *mutable c_void, oldlenp: *mutable size_t,
+                  newp: *c_void, newlen: size_t) -> c_int;
+
+        fn sysctlbyname(name: *c_char,
+                        oldp: *mutable c_void, oldlenp: *mutable size_t,
+                        newp: *c_void, newlen: size_t) -> c_int;
+
+        fn sysctlnametomib(name: *c_char, mibp: *mutable c_int,
+                           sizep: *mutable size_t) -> c_int;
+    }
+
+
+    #[cfg(target_os = "linux")]
+    #[cfg(target_os = "win32")]
+    mod bsd44 {
+    }
+
+
+    #[cfg(target_os = "macos")]
+    #[nolink]
+    #[abi = "cdecl"]
+    native mod extra {
+        fn _NSGetExecutablePath(buf: *mutable c_char,
+                                bufsize: *mutable u32) -> c_int;
+    }
+
+    #[cfg(target_os = "freebsd")]
+    mod extra { }
+
+    #[cfg(target_os = "linux")]
+    mod extra { }
+
+
+    #[cfg(target_os = "win32")]
     mod extra {
+        import types::os::arch::extra::*;
+
+        #[abi = "stdcall"]
+        native mod kernel32 {
+            fn GetEnvironmentVariableA(n: LPCSTR,
+                                       v: LPSTR,
+                                       nsize: DWORD) -> DWORD;
+            fn SetEnvironmentVariableA(n: LPCSTR, v: LPCSTR) -> BOOL;
+            fn GetModuleFileNameA(hModule: HMODULE,
+                                  lpFilename: LPSTR,
+                                  nSize: DWORD) -> DWORD;
+            fn CreateDirectoryA(lpPathName: LPCSTR,
+                                lpSecurityAttributes:
+                                LPSECURITY_ATTRIBUTES) -> BOOL;
+            fn RemoveDirectoryA(lpPathName: LPCSTR) -> BOOL;
+            fn SetCurrentDirectoryA(lpPathName: LPCSTR) -> BOOL;
+        }
     }
 }
 

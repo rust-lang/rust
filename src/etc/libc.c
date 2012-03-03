@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
+#include <wchar.h>
 
 /* c99 */
 #include <inttypes.h>
@@ -52,6 +53,8 @@ void c95_types() {
 
   put_type("clock_t", clock_t);
   put_type("time_t", time_t);
+
+  put_type("wchar_t", wchar_t);
 
   printf("    }\n");
 }

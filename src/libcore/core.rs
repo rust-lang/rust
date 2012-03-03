@@ -1,12 +1,12 @@
 // Top-level, visible-everywhere definitions.
 
-// Export type option as a synonym for option and export the some and none
-// enum constructors.
+// Export various ubiquitous types, constructors, methods.
 
 import option::{some, none};
 import option = option::t;
+import path = path::path;
 import vec::vec_len;
-export option, some, none, vec_len;
+export path, option, some, none, vec_len;
 
 // Export the log levels as global constants. Higher levels mean
 // more-verbosity. Error is the bottom level, default logging level is

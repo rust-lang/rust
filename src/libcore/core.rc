@@ -82,6 +82,12 @@ mod to_str;
 // Runtime and language-primitive support
 
 mod libc;
+
+// Rename when transition done.
+#[path = "os.rs"]
+mod new_os;
+mod path;
+
 mod ctypes;
 mod math;
 mod cmath;

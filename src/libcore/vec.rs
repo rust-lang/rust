@@ -996,6 +996,10 @@ fn as_buf<E,T>(v: [const E], f: fn(*E) -> T) -> T unsafe {
     let buf = unsafe::to_ptr(v); f(buf)
 }
 
+fn as_mut_buf<E,T>(v: [mutable E], f: fn(*mutable E) -> T) -> T unsafe {
+    let buf = unsafe::to_ptr(v) as *mutable E; f(buf)
+}
+
 impl vec_len<T> for [T] {
     fn len() -> uint { len(self) }
 }

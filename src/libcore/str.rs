@@ -1390,7 +1390,7 @@ fn as_buf<T>(s: str, f: fn(sbuf) -> T) -> T unsafe {
 /*
 Type: sbuf
 
-An unsafe buffer of bytes. Corresponds to a C char pointer.
+An unsafe buffer of bytes.
 */
 type sbuf = *u8;
 
