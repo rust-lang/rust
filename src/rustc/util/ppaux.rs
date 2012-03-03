@@ -74,7 +74,10 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
       some(def_id) {
         let cs = ast_map::path_to_str(ty::item_path(cx, def_id));
         ret alt ty::get(typ).struct {
-          ty_enum(_, tps) | ty_res(_, _, tps) { parameterized(cx, cs, tps) }
+          ty_enum(_, tps) | ty_res(_, _, tps) | ty_iface(_, tps) |
+          ty_class(_, tps) {
+            parameterized(cx, cs, tps)
+          }
           _ { cs }
         };
       }
@@ -94,6 +97,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
       ty_float(ast::ty_f) { "float" }
       ty_float(t) { ast_util::float_ty_to_str(t) }
       ty_str { "str" }
+      ty_self(ts) { parameterized(cx, "self", ts) }
       ty_box(tm) { "@" + mt_to_str(cx, tm) }
       ty_uniq(tm) { "~" + mt_to_str(cx, tm) }
       ty_ptr(tm) { "*" + mt_to_str(cx, tm) }
@@ -117,7 +121,8 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
       ty_param(id, _) {
         "'" + str::from_bytes([('a' as u8) + (id as u8)])
       }
-      ty_enum(did, tps) | ty_res(did, _, tps) | ty_class(did, tps) {
+      ty_enum(did, tps) | ty_res(did, _, tps) | ty_iface(did, tps) |
+      ty_class(did, tps) {
         // Not sure why, but under some circumstances enum or resource types
         // do not have an associated id.  I didn't investigate enough to know
         // if there is a good reason for this. - Niko, 2012-02-10
