@@ -427,3 +427,12 @@
    fun:uv_loop_new
    ...
 }
+
+{
+   random-locking-order-but-it-only-happens-in-a-single-thread-at-a-time-I-polled-2-other-people-and-they-thought-it-was-prabably-ok
+   Helgrind:LockOrder
+   fun:pthread_mutex_lock
+   fun:_ZN15lock_and_signal4lockEv
+   fun:_ZN18rust_port_selector6selectEP9rust_taskPP9rust_portS4_mPm
+   ...
+}
