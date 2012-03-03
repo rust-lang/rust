@@ -107,6 +107,8 @@ rust_task : public kernel_owned<rust_task>, rust_cond
 
 private:
 
+    // Protects the killed flag
+    lock_and_signal kill_lock;
     // Indicates that the task was killed and needs to unwind
     bool killed;
     // Indicates that we've called back into Rust from C

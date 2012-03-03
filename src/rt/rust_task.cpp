@@ -155,9 +155,12 @@ cleanup_task(cleanup_args *args) {
 
     task->die();
 
-    if (task->killed && !threw_exception) {
-        LOG(task, task, "Task killed during termination");
-        threw_exception = true;
+    {
+        scoped_lock with(task->kill_lock);
+        if (task->killed && !threw_exception) {
+            LOG(task, task, "Task killed during termination");
+            threw_exception = true;
+        }
     }
 
     task->notify(!threw_exception);
@@ -244,6 +247,7 @@ void rust_task::start()
 
 bool
 rust_task::must_fail_from_being_killed() {
+    scoped_lock with(kill_lock);
     return killed && !reentered_rust_stack;
 }
 
@@ -275,7 +279,10 @@ rust_task::kill() {
     // If you want to fail yourself you do self->fail().
     LOG(this, task, "killing task %s @0x%" PRIxPTR, name, this);
     // When the task next goes to yield or resume it will fail
-    killed = true;
+    {
+        scoped_lock with(kill_lock);
+        killed = true;
+    }
     // Unblock the task so it can unwind.
     unblock();
 
