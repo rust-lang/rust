@@ -74,7 +74,6 @@ rust_task::rust_task(rust_task_thread *thread, rust_task_list *state,
     cache(NULL),
     kernel(thread->kernel),
     name(name),
-    state(state),
     cond(NULL),
     cond_name("none"),
     list_index(-1),
@@ -87,6 +86,7 @@ rust_task::rust_task(rust_task_thread *thread, rust_task_list *state,
     dynastack(this),
     cc_counter(0),
     total_stack_sz(0),
+    state(state),
     killed(false),
     reentered_rust_stack(false),
     c_stack(NULL),
@@ -355,12 +355,14 @@ rust_task::get_frame_glue_fns(uintptr_t fp) {
 bool
 rust_task::running()
 {
+    scoped_lock with(state_lock);
     return state == &thread->running_tasks;
 }
 
 bool
 rust_task::blocked()
 {
+    scoped_lock with(state_lock);
     return state == &thread->blocked_tasks;
 }
 
@@ -373,6 +375,7 @@ rust_task::blocked_on(rust_cond *on)
 bool
 rust_task::dead()
 {
+    scoped_lock with(state_lock);
     return state == &thread->dead_tasks;
 }
 
@@ -407,7 +410,10 @@ rust_task::transition(rust_task_list *src, rust_task_list *dst) {
     I(thread, state == src);
     src->remove(this);
     dst->append(this);
-    state = dst;
+    {
+        scoped_lock with(state_lock);
+        state = dst;
+    }
     thread->lock.signal();
     if(unlock)
         thread->lock.unlock();

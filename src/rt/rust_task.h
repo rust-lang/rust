@@ -68,7 +68,6 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     // Fields known only to the runtime.
     rust_kernel *kernel;
     const char *const name;
-    rust_task_list *state;
     rust_cond *cond;
     const char *cond_name;
     int32_t list_index;
@@ -106,6 +105,9 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     size_t total_stack_sz;
 
 private:
+
+    lock_and_signal state_lock;
+    rust_task_list *state;
 
     // Protects the killed flag
     lock_and_signal kill_lock;
@@ -218,6 +220,8 @@ public:
     bool have_c_stack() { return c_stack != NULL; }
 
     rust_port_selector *get_port_selector() { return &port_selector; }
+
+    rust_task_list *get_state() { return state; }
 };
 
 // This stuff is on the stack-switching fast path

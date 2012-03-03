@@ -259,7 +259,7 @@ rust_task_thread::start_main_loop() {
              ", state: %s",
              scheduled_task->name,
              (uintptr_t)scheduled_task,
-             scheduled_task->state->name);
+             scheduled_task->get_state()->name);
 
         place_task_in_tls(scheduled_task);
 
@@ -273,7 +273,7 @@ rust_task_thread::start_main_loop() {
              " in state '%s', worker id=%d" PRIxPTR,
              scheduled_task->name,
              (uintptr_t)scheduled_task,
-             scheduled_task->state->name,
+             scheduled_task->get_state()->name,
              id);
 
         reap_dead_tasks();
