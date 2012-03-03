@@ -21,8 +21,8 @@ rust_port::~rust_port() {
 }
 
 void rust_port::detach() {
-    I(task->thread, !task->lock.lock_held_by_current_thread());
-    scoped_lock with(task->lock);
+    I(task->thread, !task->port_lock.lock_held_by_current_thread());
+    scoped_lock with(task->port_lock);
     {
         task->release_port(id);
     }

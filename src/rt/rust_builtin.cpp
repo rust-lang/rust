@@ -489,7 +489,7 @@ rust_port_detach(rust_port *port) {
     // FIXME: Busy waiting until we're the only ref
     bool done = false;
     while (!done) {
-        scoped_lock with(task->lock);
+        scoped_lock with(task->port_lock);
         done = port->ref_count == 1;
     }
 }
@@ -528,7 +528,7 @@ chan_id_send(type_desc *t, rust_task_id target_task_id,
         rust_port *port = target_task->get_port_by_id(target_port_id);
         if(port) {
             port->send(sptr);
-            scoped_lock with(target_task->lock);
+            scoped_lock with(target_task->port_lock);
             port->deref();
             sent = true;
         } else {

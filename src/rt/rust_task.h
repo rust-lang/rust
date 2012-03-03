@@ -89,8 +89,8 @@ rust_task : public kernel_owned<rust_task>, rust_cond
 
     bool propagate_failure;
 
-    lock_and_signal lock;
-
+    // Protects port_table
+    lock_and_signal port_lock;
     hash_map<rust_port_id, rust_port *> port_table;
 
     rust_obstack dynastack;

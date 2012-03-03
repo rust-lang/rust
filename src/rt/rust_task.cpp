@@ -108,7 +108,7 @@ void
 rust_task::delete_this()
 {
     {
-        scoped_lock with (lock);
+        scoped_lock with (port_lock);
         I(thread, port_table.is_empty());
     }
 
@@ -471,8 +471,8 @@ rust_task::calloc(size_t size, const char *tag) {
 }
 
 rust_port_id rust_task::register_port(rust_port *port) {
-    I(thread, !lock.lock_held_by_current_thread());
-    scoped_lock with(lock);
+    I(thread, !port_lock.lock_held_by_current_thread());
+    scoped_lock with(port_lock);
 
     rust_port_id id = next_port_id++;
     A(thread, id != INTPTR_MAX, "Hit the maximum port id");
@@ -481,13 +481,13 @@ rust_port_id rust_task::register_port(rust_port *port) {
 }
 
 void rust_task::release_port(rust_port_id id) {
-    I(thread, lock.lock_held_by_current_thread());
+    I(thread, port_lock.lock_held_by_current_thread());
     port_table.remove(id);
 }
 
 rust_port *rust_task::get_port_by_id(rust_port_id id) {
-    I(thread, !lock.lock_held_by_current_thread());
-    scoped_lock with(lock);
+    I(thread, !port_lock.lock_held_by_current_thread());
+    scoped_lock with(port_lock);
     rust_port *port = NULL;
     port_table.get(id, &port);
     if (port) {
@@ -510,7 +510,7 @@ rust_task::notify(bool success) {
                 msg.result = !success ? tr_failure : tr_success;
 
                 target_port->send(&msg);
-                scoped_lock with(target_task->lock);
+                scoped_lock with(target_task->port_lock);
                 target_port->deref();
             }
             target_task->deref();
