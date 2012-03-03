@@ -6,6 +6,7 @@ struct rust_env {
     bool check_claims;
     bool detailed_leaks;
     char* rust_seed;
+    bool poison_on_free;
 };
 
 rust_env* load_env();
