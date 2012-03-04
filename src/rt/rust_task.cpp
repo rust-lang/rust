@@ -571,7 +571,6 @@ rust_task::new_stack(size_t requested_sz) {
             LOG(this, mem, "reusing existing stack");
             stk = stk->prev;
             A(thread, stk->prev == NULL, "Bogus stack ptr");
-            prepare_valgrind_stack(stk);
             return;
         } else {
             LOG(this, mem, "existing stack is not big enough");
@@ -637,12 +636,29 @@ rust_task::del_stack() {
 
 void *
 rust_task::next_stack(size_t stk_sz, void *args_addr, size_t args_sz) {
+    stk_seg *maybe_next_stack = NULL;
+    if (stk != NULL) {
+        maybe_next_stack = stk->prev;
+    }
+
     new_stack(stk_sz + args_sz);
     A(thread, stk->end - (uintptr_t)stk->data >= stk_sz + args_sz,
       "Did not receive enough stack");
     uint8_t *new_sp = (uint8_t*)stk->end;
     // Push the function arguments to the new stack
     new_sp = align_down(new_sp - args_sz);
+
+    // When reusing a stack segment we need to tell valgrind that this area of
+    // memory is accessible before writing to it, because the act of popping
+    // the stack previously made all of the stack inaccessible.
+    if (maybe_next_stack == stk) {
+        // I don't know exactly where the region ends that valgrind needs us
+        // to mark accessible. On x86_64 these extra bytes aren't needed, but
+        // on i386 we get errors without.
+        int fudge_bytes = 16;
+        reuse_valgrind_stack(stk, new_sp - fudge_bytes);
+    }
+
     memcpy(new_sp, args_addr, args_sz);
     A(thread, rust_task_thread::get_task() == this,
       "Recording the stack limit for the wrong thread");
