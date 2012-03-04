@@ -88,6 +88,11 @@ void rust_port::receive(void *dptr, uintptr_t *yield) {
     task->rendezvous_ptr = (uintptr_t*) dptr;
     task->block(this, "waiting for rendezvous data");
 
+    // Blocking the task might fail if the task has already been killed, but
+    // in the event of both failure and success the task needs to yield. On
+    // success, it yields and waits to be unblocked. On failure it yields and
+    // is then fails the task.
+
     *yield = true;
 }
 

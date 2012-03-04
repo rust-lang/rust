@@ -140,6 +140,8 @@ private:
     void transition(rust_task_list *src, rust_task_list *dst,
                     rust_cond *cond, const char* cond_name);
 
+    bool must_fail_from_being_killed_unlocked();
+
     friend void task_start_wrapper(spawn_args *a);
     friend void cleanup_task(cleanup_args *a);
     friend void reset_stack_limit_on_c_stack(reset_args *a);
@@ -169,10 +171,9 @@ public:
     void set_state(rust_task_list *state,
                    rust_cond *cond, const char* cond_name);
 
-    void block(rust_cond *on, const char* name);
+    bool block(rust_cond *on, const char* name);
     void wakeup(rust_cond *from);
     void die();
-    void unblock();
 
     // Print a backtrace, if the "bt" logging option is on.
     void backtrace();

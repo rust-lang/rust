@@ -246,6 +246,12 @@ void rust_task::start()
 bool
 rust_task::must_fail_from_being_killed() {
     scoped_lock with(kill_lock);
+    return must_fail_from_being_killed_unlocked();
+}
+
+bool
+rust_task::must_fail_from_being_killed_unlocked() {
+    I(thread, kill_lock.lock_held_by_current_thread());
     return killed && !reentered_rust_stack;
 }
 
@@ -253,6 +259,7 @@ rust_task::must_fail_from_being_killed() {
 void
 rust_task::yield(bool *killed) {
     if (must_fail_from_being_killed()) {
+        I(thread, !blocked());
         *killed = true;
     }
 
@@ -266,10 +273,11 @@ rust_task::yield(bool *killed) {
 
 void
 rust_task::kill() {
+    scoped_lock with(kill_lock);
+
     if (dead()) {
         // Task is already dead, can't kill what's already dead.
         fail_parent();
-        return;
     }
 
     // Note the distinction here: kill() is when you're in an upcall
@@ -277,15 +285,14 @@ rust_task::kill() {
     // If you want to fail yourself you do self->fail().
     LOG(this, task, "killing task %s @0x%" PRIxPTR, name, this);
     // When the task next goes to yield or resume it will fail
-    {
-        scoped_lock with(kill_lock);
-        killed = true;
-    }
+    killed = true;
     // Unblock the task so it can unwind.
-    unblock();
+
+    if (blocked()) {
+        wakeup(cond);
+    }
 
     LOG(this, task, "preparing to unwind task: 0x%" PRIxPTR, this);
-    // run_on_resume(rust_unwind_glue);
 }
 
 extern "C" CDECL
@@ -324,7 +331,6 @@ rust_task::fail_parent() {
              name, this, supervisor->name, supervisor);
         supervisor->kill();
     }
-    // FIXME: implement unwinding again.
     if (NULL == supervisor && propagate_failure)
         thread->fail();
 }
@@ -411,14 +417,23 @@ rust_task::set_state(rust_task_list *state,
     this->cond_name = cond_name;
 }
 
-void
+bool
 rust_task::block(rust_cond *on, const char* name) {
+    scoped_lock with(kill_lock);
+
+    if (must_fail_from_being_killed_unlocked()) {
+        // We're already going to die. Don't block. Tell the task to fail
+        return false;
+    }
+
     LOG(this, task, "Blocking on 0x%" PRIxPTR ", cond: 0x%" PRIxPTR,
                          (uintptr_t) on, (uintptr_t) cond);
     A(thread, cond == NULL, "Cannot block an already blocked task.");
     A(thread, on != NULL, "Cannot block on a NULL object.");
 
     transition(&thread->running_tasks, &thread->blocked_tasks, on, name);
+
+    return true;
 }
 
 void
@@ -434,15 +449,6 @@ rust_task::wakeup(rust_cond *from) {
 void
 rust_task::die() {
     transition(&thread->running_tasks, &thread->dead_tasks, NULL, "none");
-}
-
-void
-rust_task::unblock() {
-    if (blocked()) {
-        // FIXME: What if another thread unblocks the task between when
-        // we checked and here?
-        wakeup(cond);
-    }
 }
 
 rust_crate_cache *

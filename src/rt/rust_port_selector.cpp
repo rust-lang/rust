@@ -48,8 +48,14 @@ rust_port_selector::select(rust_task *task, rust_port **dptr,
         this->n_ports = n_ports;
         I(task->thread, task->rendezvous_ptr == NULL);
         task->rendezvous_ptr = (uintptr_t*)dptr;
-        *yield = true;
         task->block(this, "waiting for select rendezvous");
+
+	// Blocking the task might fail if the task has already been
+	// killed, but in the event of both failure and success the
+	// task needs to yield. On success, it yields and waits to be
+	// unblocked. On failure it yields and is then fails the task.
+
+        *yield = true;
     }
 
     for (size_t i = 0; i < locks_taken; i++) {

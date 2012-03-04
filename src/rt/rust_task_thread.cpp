@@ -2,6 +2,7 @@
 #include <stdarg.h>
 #include <cassert>
 #include <pthread.h>
+#include <vector>
 #include "rust_internal.h"
 #include "rust_util.h"
 #include "globals.h"
@@ -95,19 +96,27 @@ rust_task_thread::fail() {
 
 void
 rust_task_thread::kill_all_tasks() {
-    I(this, !lock.lock_held_by_current_thread());
-    scoped_lock with(lock);
+    std::vector<rust_task*> all_tasks;
 
-    for (size_t i = 0; i < running_tasks.length(); i++) {
-        // We don't want the failure of these tasks to propagate back
-        // to the kernel again since we're already failing everything
-        running_tasks[i]->unsupervise();
-        running_tasks[i]->kill();
+    {
+        scoped_lock with(lock);
+
+        for (size_t i = 0; i < running_tasks.length(); i++) {
+            all_tasks.push_back(running_tasks[i]);
+        }
+
+        for (size_t i = 0; i < blocked_tasks.length(); i++) {
+            all_tasks.push_back(blocked_tasks[i]);
+        }
     }
 
-    for (size_t i = 0; i < blocked_tasks.length(); i++) {
-        blocked_tasks[i]->unsupervise();
-        blocked_tasks[i]->kill();
+    while (!all_tasks.empty()) {
+        rust_task *task = all_tasks.back();
+        all_tasks.pop_back();
+        // We don't want the failure of these tasks to propagate back
+        // to the kernel again since we're already failing everything
+        task->unsupervise();
+        task->kill();
     }
 }
 
