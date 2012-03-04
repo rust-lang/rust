@@ -602,7 +602,6 @@ rust_task::new_stack(size_t requested_sz) {
     LOGPTR(thread, "stk end", new_stk->end);
 
     stk = new_stk;
-    prepare_valgrind_stack(stk);
     total_stack_sz += user_stack_size(new_stk);
 }
 
