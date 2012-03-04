@@ -2,13 +2,14 @@
 
 import markdown_writer::writer;
 import markdown_writer::writer_util;
+import markdown_writer::writer_factory;
 
 export mk_pass;
 export header_kind, header_name, header_text;
 
-fn mk_pass(writer: writer) -> pass {
+fn mk_pass(writer_factory: writer_factory) -> pass {
     let f = fn~(srv: astsrv::srv, doc: doc::doc) -> doc::doc {
-        run(srv, doc, writer)
+        run(srv, doc, writer_factory)
     };
 
     {
@@ -20,7 +21,7 @@ fn mk_pass(writer: writer) -> pass {
 fn run(
     srv: astsrv::srv,
     doc: doc::doc,
-    writer: writer
+    writer_factory: writer_factory
 ) -> doc::doc {
 
     fn mods_last(item1: doc::itemtag, item2: doc::itemtag) -> bool {
@@ -42,7 +43,7 @@ fn run(
         "mods last", mods_last
     ).f(srv, doc);
 
-    write_markdown(sorted_doc, writer);
+    write_markdown(sorted_doc, writer_factory);
 
     ret doc;
 }
@@ -79,10 +80,10 @@ type ctxt = {
 
 fn write_markdown(
     doc: doc::doc,
-    writer: writer
+    writer_factory: writer_factory
 ) {
     let ctxt = {
-        w: writer
+        w: writer_factory(doc::cratepage(doc.cratedoc()))
     };
 
     write_crate(ctxt, doc.cratedoc());
@@ -944,23 +945,19 @@ mod test {
     fn write_markdown_str(
         doc: doc::doc
     ) -> str {
-        let (writer, future) = markdown_writer::future_writer();
-        write_markdown(doc, writer);
-        ret future::get(future);
+        let (writer_factory, po) = markdown_writer::future_writer_factory();
+        write_markdown(doc, writer_factory);
+        ret tuple::second(comm::recv(po));
     }
 
     fn write_markdown_str_srv(
         srv: astsrv::srv,
         doc: doc::doc
     ) -> str {
-        let config = {
-            output_style: config::doc_per_crate
-            with config::default_config("")
-        };
-        let (writer, future) = markdown_writer::future_writer();
-        let pass = mk_pass(writer);
+        let (writer_factory, po) = markdown_writer::future_writer_factory();
+        let pass = mk_pass(writer_factory);
         pass.f(srv, doc);
-        ret future::get(future);
+        ret tuple::second(comm::recv(po));
     }
 
     #[test]

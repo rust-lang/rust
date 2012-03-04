@@ -157,7 +157,7 @@ fn run(config: config::config) {
             sort_item_type_pass::mk_pass(),
             markdown_index_pass::mk_pass(),
             markdown_pass::mk_pass(
-                markdown_writer::make_writer(config)
+                markdown_writer::make_writer_factory(config)
             )
         ]);
     }

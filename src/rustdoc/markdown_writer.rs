@@ -1,8 +1,9 @@
 export writeinstr;
 export writer;
+export writer_factory;
 export writer_util;
-export make_writer;
-export future_writer;
+export make_writer_factory;
+export future_writer_factory;
 
 enum writeinstr {
     write(str),
@@ -10,6 +11,7 @@ enum writeinstr {
 }
 
 type writer = fn~(+writeinstr);
+type writer_factory = fn~(page: doc::page) -> writer;
 
 impl writer_util for writer {
     fn write_str(str: str) {
@@ -25,28 +27,46 @@ impl writer_util for writer {
     }
 }
 
-fn make_writer(config: config::config) -> writer {
+fn make_writer_factory(config: config::config) -> writer_factory {
     alt config.output_format {
       config::markdown {
-        markdown_writer(config)
+        markdown_writer_factory(config)
       }
       config::pandoc_html {
-        pandoc_writer(config)
+        pandoc_writer_factory(config)
       }
     }
 }
 
-fn markdown_writer(config: config::config) -> writer {
-    let filename = make_filename(config, "md");
+fn markdown_writer_factory(config: config::config) -> writer_factory {
+    fn~(page: doc::page) -> writer {
+        markdown_writer(config, page)
+    }
+}
+
+fn pandoc_writer_factory(config: config::config) -> writer_factory {
+    fn~(page: doc::page) -> writer {
+        pandoc_writer(config, page)
+    }
+}
+
+fn markdown_writer(
+    config: config::config,
+    page: doc::page
+) -> writer {
+    let filename = make_filename(config, "md", page);
     generic_writer {|markdown|
         write_file(filename, markdown);
     }
 }
 
-fn pandoc_writer(config: config::config) -> writer {
+fn pandoc_writer(
+    config: config::config,
+    page: doc::page
+) -> writer {
     assert option::is_some(config.pandoc_cmd);
     let pandoc_cmd = option::get(config.pandoc_cmd);
-    let filename = make_filename(config, "html");
+    let filename = make_filename(config, "html", page);
 
     let pandoc_args = [
         "--standalone",
@@ -109,7 +129,11 @@ fn generic_writer(process: fn~(markdown: str)) -> writer {
     }
 }
 
-fn make_filename(config: config::config, ext: str) -> str {
+fn make_filename(
+    config: config::config,
+    ext: str,
+    _page: doc::page
+) -> str {
     import std::fs;
     let cratefile = fs::basename(config.input_crate);
     let cratename = tuple::first(fs::splitext(cratefile));
@@ -134,7 +158,37 @@ fn should_use_markdown_file_name_based_off_crate() {
         output_dir: "output/dir"
         with config::default_config("input/test.rc")
     };
-    assert make_filename(config, "md") == "output/dir/test.md";
+    let doc = test::mk_doc("");
+    let page = doc::cratepage(doc.cratedoc());
+    assert make_filename(config, "md", page) == "output/dir/test.md";
+}
+
+#[cfg(test)]
+mod test {
+    fn mk_doc(source: str) -> doc::doc {
+        astsrv::from_str(source) {|srv|
+            extract::from_srv(srv, "")
+        }
+    }
+}
+
+fn future_writer_factory(
+) -> (writer_factory, comm::port<(doc::page, str)>) {
+    let markdown_po = comm::port();
+    let markdown_ch = comm::chan(markdown_po);
+    let writer_factory = fn~(page: doc::page) -> writer {
+        let writer_po = comm::port();
+        let writer_ch = comm::chan(writer_po);
+        task::spawn {||
+            let (writer, future) = future_writer();
+            comm::send(writer_ch, writer);
+            let s = future::get(future);
+            comm::send(markdown_ch, (page, s));
+        }
+        comm::recv(writer_po)
+    };
+
+    (writer_factory, markdown_po)
 }
 
 fn future_writer() -> (writer, future::future<str>) {
