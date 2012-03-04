@@ -73,10 +73,8 @@ fn pandoc_writer(config: config::config) -> writer {
             pandoc_cmd, pandoc_args, none, none,
             pipe_in.in, pipe_out.out, pipe_err.out);
 
-        if pid != -1 as ctypes::pid_t {
-            let writer = io::fd_writer(pipe_in.out, false);
-            writer.write_str(markdown);
-        }
+        let writer = io::fd_writer(pipe_in.out, false);
+        writer.write_str(markdown);
 
         os::close(pipe_in.in);
         os::close(pipe_out.out);
@@ -84,10 +82,6 @@ fn pandoc_writer(config: config::config) -> writer {
         os::close(pipe_in.out);
         os::close(pipe_out.in);
         os::close(pipe_err.in);
-
-        if pid == -1 as ctypes::pid_t {
-            fail "failed to run pandoc";
-        }
 
         let status = run::waitpid(pid);
         #debug("pandoc result: %i", status);
