@@ -6,19 +6,9 @@ import markdown_writer::writer_util;
 export mk_pass;
 export header_kind, header_name, header_text;
 
-fn mk_pass(config: config::config) -> pass {
-    mk_pass_(config, markdown_writer::make_writer(config))
-}
-
-// FIXME: This is a really convoluted interface to work around trying
-// to get a writer into a unique closure and then being able to test
-// what was written afterward
-fn mk_pass_(
-    config: config::config,
-    writer: writer
-) -> pass {
+fn mk_pass(writer: writer) -> pass {
     let f = fn~(srv: astsrv::srv, doc: doc::doc) -> doc::doc {
-        run(srv, doc, config, writer)
+        run(srv, doc, writer)
     };
 
     {
@@ -30,7 +20,6 @@ fn mk_pass_(
 fn run(
     srv: astsrv::srv,
     doc: doc::doc,
-    _config: config::config,
     writer: writer
 ) -> doc::doc {
 
@@ -969,7 +958,7 @@ mod test {
             with config::default_config("")
         };
         let (writer, future) = markdown_writer::future_writer();
-        let pass = mk_pass_(config, writer);
+        let pass = mk_pass(writer);
         pass.f(srv, doc);
         ret future::get(future);
     }
