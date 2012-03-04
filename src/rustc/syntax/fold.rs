@@ -269,12 +269,14 @@ fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
             item_enum(vec::map(variants, fld.fold_variant),
                       fold_ty_params(typms, fld))
           }
-          item_class(typms, items, id, ctor_decl, ctor_body) {
-              item_class(fold_ty_params(typms, fld),
+          item_class(typms, items, ctor) {
+              let ctor_body = fld.fold_block(ctor.node.body);
+              let ctor_decl = fold_fn_decl(ctor.node.dec, fld);
+              item_class(typms,
                          vec::map(items, fld.fold_class_item),
-                         id,
-                         fold_fn_decl(ctor_decl, fld),
-                         fld.fold_block(ctor_body))
+                         {node: {body: ctor_body,
+                                     dec: ctor_decl with ctor.node}
+                             with ctor})
           }
           item_impl(tps, ifce, ty, methods) {
             item_impl(tps, option::map(ifce, fld.fold_ty), fld.fold_ty(ty),

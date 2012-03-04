@@ -196,6 +196,10 @@ type fn_ctxt = @{
     // a user-defined function.
     id: ast::node_id,
 
+    // The expr for the "self" object (only if this function corresponds
+    // to a class constructor function)
+    self_id: option<@ast::expr>,
+
     // If this function is being monomorphized, this contains the type
     // substitutions used.
     param_substs: option<param_substs>,

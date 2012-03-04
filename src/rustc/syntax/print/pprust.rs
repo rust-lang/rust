@@ -471,22 +471,24 @@ fn print_item(s: ps, &&item: @ast::item) {
             bclose(s, item.span);
         }
       }
-      ast::item_class(tps,items,_,ctor_decl,ctor_body) {
+      ast::item_class(tps,items,ctor) {
           head(s, "class");
           word_nbsp(s, item.ident);
           print_type_params(s, tps);
           bopen(s);
           hardbreak_if_not_bol(s);
+          maybe_print_comment(s, ctor.span.lo);
           head(s, "new");
-          print_fn_args_and_ret(s, ctor_decl);
+          print_fn_args_and_ret(s, ctor.node.dec);
           space(s.s);
-          print_block(s, ctor_body);
+          print_block(s, ctor.node.body);
           for ci in items {
                   /*
                      FIXME: collect all private items and print them
                      in a single "priv" section
                    */
              hardbreak_if_not_bol(s);
+             maybe_print_comment(s, ci.span.lo);
              alt ci.node.privacy {
                 ast::priv {
                     head(s, "priv");
@@ -516,6 +518,7 @@ fn print_item(s: ps, &&item: @ast::item) {
                  _ {}
              }
           }
+          bclose(s, item.span);
        }
       ast::item_impl(tps, ifce, ty, methods) {
         head(s, "impl");

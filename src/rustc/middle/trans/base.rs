@@ -49,6 +49,8 @@ import type_of::*;
 import type_of::type_of; // Issue #1873
 import ast_map::{path, path_mod, path_name};
 
+import std::smallintmap;
+
 // Destinations
 
 // These are passed around by the code generating functions to track the
@@ -1208,6 +1210,15 @@ fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
         }
         ret next_cx;
       }
+      ty::ty_class(did, tps) {
+          // a class is like a record type
+        let i: int = 0;
+        for fld: ty::field in ty::class_items_as_fields(cx.tcx(), did) {
+            let {bcx: bcx, val: llfld_a} = GEP_tup_like(cx, t, av, [0, i]);
+            cx = f(bcx, llfld_a, fld.mt.ty);
+            i += 1;
+        }
+      }
       _ { cx.sess().unimpl("type in iter_structural_ty"); }
     }
     ret cx;
@@ -2096,7 +2107,7 @@ fn monomorphic_fn(ccx: crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
     alt check map_node {
       ast_map::node_item(@{node: ast::item_fn(decl, _, body), _}, _) {
         trans_fn(ccx, pt, decl, body, lldecl, no_self, [],
-                 psubsts, fn_id.node);
+                 psubsts, fn_id.node, none);
       }
       ast_map::node_item(@{node: ast::item_res(decl, _, _, _, _), _}, _) {
         trans_res_ctor(ccx, pt, decl, fn_id.node, [], psubsts, lldecl);
@@ -2112,7 +2123,7 @@ fn monomorphic_fn(ccx: crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
         let selfty = ty::lookup_item_type(ccx.tcx, impl_def_id).ty;
         let selfty = ty::substitute_type_params(ccx.tcx, substs, selfty);
         trans_fn(ccx, pt, mth.decl, mth.body, lldecl,
-                 impl_self(selfty), [], psubsts, fn_id.node);
+                 impl_self(selfty), [], psubsts, fn_id.node, none);
       }
     }
     some({llfn: lldecl, fty: mono_ty})
@@ -2267,17 +2278,26 @@ fn trans_local_var(cx: block, def: ast::def) -> local_var_result {
         ret {val: ptr, kind: owned};
       }
       _ {
-        cx.sess().unimpl("unsupported def type in trans_local_def");
+        cx.sess().unimpl(#fmt("unsupported def type in trans_local_def: %?",
+                              def));
       }
     }
 }
 
-fn trans_path(cx: block, id: ast::node_id)
+// The third argument (path) ends up getting used when the id
+// refers to a field within the enclosing class, since the name
+// gets turned into a record field name.
+fn trans_path(cx: block, id: ast::node_id, path: @ast::path)
     -> lval_maybe_callee {
-    ret trans_var(cx, cx.tcx().def_map.get(id), id);
+    alt cx.tcx().def_map.find(id) {
+      none { cx.sess().bug("trans_path: unbound node ID"); }
+      some(df) {
+          ret trans_var(cx, df, id, path);
+      }
+    }
 }
 
-fn trans_var(cx: block, def: ast::def, id: ast::node_id)
+fn trans_var(cx: block, def: ast::def, id: ast::node_id, path: @ast::path)
     -> lval_maybe_callee {
     let ccx = cx.ccx();
     alt def {
@@ -2313,6 +2333,18 @@ fn trans_var(cx: block, def: ast::def, id: ast::node_id)
             ret lval_no_env(cx, load_if_immediate(cx, val, tp), owned_imm);
         }
       }
+      ast::def_class_field(parent, did) {
+          // base is implicitly "Self"
+          alt cx.fcx.self_id {
+            some(slf) {
+                let {bcx, val, kind} = trans_rec_field(cx, slf,
+                    // TODO: only supporting local objects for now
+                                          path_to_ident(path));
+                ret lval_no_env(bcx, val, kind);
+            }
+            _ { cx.sess().bug("unbound self param in class"); }
+          }
+     }
       _ {
         let loc = trans_local_var(cx, def);
         ret lval_no_env(cx, loc.val, loc.kind);
@@ -2326,6 +2358,7 @@ fn trans_rec_field(bcx: block, base: @ast::expr,
     let {bcx, val, ty} = autoderef(bcx, val, expr_ty(bcx, base));
     let fields = alt ty::get(ty).struct {
             ty::ty_rec(fs) { fs }
+            ty::ty_class(did,_) { ty::class_items_as_fields(bcx.tcx(), did) }
             // Constraint?
             _ { bcx.tcx().sess.span_bug(base.span, "trans_rec_field:\
                  base expr has non-record type"); }
@@ -2386,7 +2419,7 @@ fn expr_is_lval(bcx: block, e: @ast::expr) -> bool {
 
 fn trans_callee(bcx: block, e: @ast::expr) -> lval_maybe_callee {
     alt e.node {
-      ast::expr_path(_) { ret trans_path(bcx, e.id); }
+      ast::expr_path(path) { ret trans_path(bcx, e.id, path); }
       ast::expr_field(base, ident, _) {
         // Lval means this is a record field, so not a method
         if !expr_is_lval(bcx, e) {
@@ -2412,8 +2445,8 @@ fn trans_callee(bcx: block, e: @ast::expr) -> lval_maybe_callee {
 // immediate).
 fn trans_lval(cx: block, e: @ast::expr) -> lval_result {
     alt e.node {
-      ast::expr_path(_) {
-        let v = trans_path(cx, e.id);
+      ast::expr_path(p) {
+          let v = trans_path(cx, e.id, p);
         ret lval_maybe_callee_to_lval(v, expr_ty(cx, e));
       }
       ast::expr_field(base, ident, _) {
@@ -3839,6 +3872,7 @@ fn mk_standard_basic_blocks(llfn: ValueRef) ->
 //  - trans_args
 fn new_fn_ctxt_w_id(ccx: crate_ctxt, path: path,
                     llfndecl: ValueRef, id: ast::node_id,
+                    maybe_self_id: option<@ast::expr>,
                     param_substs: option<param_substs>,
                     sp: option<span>) -> fn_ctxt {
     let llbbs = mk_standard_basic_blocks(llfndecl);
@@ -3860,6 +3894,7 @@ fn new_fn_ctxt_w_id(ccx: crate_ctxt, path: path,
           mutable lltyparams: [],
           derived_tydescs: ty::new_ty_hash(),
           id: id,
+          self_id: maybe_self_id,
           param_substs: param_substs,
           span: sp,
           path: path,
@@ -3868,7 +3903,7 @@ fn new_fn_ctxt_w_id(ccx: crate_ctxt, path: path,
 
 fn new_fn_ctxt(ccx: crate_ctxt, path: path, llfndecl: ValueRef,
                sp: option<span>) -> fn_ctxt {
-    ret new_fn_ctxt_w_id(ccx, path, llfndecl, -1, none, sp);
+    ret new_fn_ctxt_w_id(ccx, path, llfndecl, -1, none, none, sp);
 }
 
 // NB: must keep 4 fns in sync:
@@ -3991,12 +4026,13 @@ fn trans_closure(ccx: crate_ctxt, path: path, decl: ast::fn_decl,
                  ty_self: self_arg,
                  tps_bounds: [ty::param_bounds],
                  param_substs: option<param_substs>,
-                 id: ast::node_id, maybe_load_env: fn(fn_ctxt)) {
+                 id: ast::node_id, maybe_self_id: option<@ast::expr>,
+                 maybe_load_env: fn(fn_ctxt)) {
     set_uwtable(llfndecl);
 
     // Set up arguments to the function.
-    let fcx = new_fn_ctxt_w_id(ccx, path, llfndecl, id, param_substs,
-                               some(body.span));
+            let fcx = new_fn_ctxt_w_id(ccx, path, llfndecl, id, maybe_self_id,
+                  param_substs, some(body.span));
     create_llargs_for_fn_args(fcx, ty_self, decl.inputs, tps_bounds);
 
     // Create the first basic block in the function and keep a handle on it to
@@ -4014,9 +4050,14 @@ fn trans_closure(ccx: crate_ctxt, path: path, decl: ast::fn_decl,
     // translation calls that don't have a return value (trans_crate,
     // trans_mod, trans_item, et cetera) and those that do
     // (trans_block, trans_expr, et cetera).
-    if option::is_none(body.node.expr) ||
+
+    if option::is_none(maybe_self_id) // hack --
+       /* avoids the need for special cases to assign a type to
+          the constructor body (since it has no explicit return) */
+      &&
+      (option::is_none(body.node.expr) ||
        ty::type_is_bot(block_ty) ||
-       ty::type_is_nil(block_ty) {
+       ty::type_is_nil(block_ty))  {
         bcx = trans_block(bcx, body, ignore);
     } else {
         bcx = trans_block(bcx, body, save_in(fcx.llretptr));
@@ -4037,12 +4078,13 @@ fn trans_fn(ccx: crate_ctxt,
             ty_self: self_arg,
             tps_bounds: [ty::param_bounds],
             param_substs: option<param_substs>,
-            id: ast::node_id) {
+            id: ast::node_id,
+            maybe_self_id: option<@ast::expr>) {
     let do_time = ccx.sess.opts.stats;
     let start = if do_time { time::get_time() }
                 else { {sec: 0u32, usec: 0u32} };
     trans_closure(ccx, path, decl, body, llfndecl, ty_self,
-                  tps_bounds, param_substs, id, {|fcx|
+                  tps_bounds, param_substs, id, maybe_self_id, {|fcx|
         if ccx.sess.opts.extra_debuginfo {
             debuginfo::create_function(fcx);
         }
@@ -4058,7 +4100,7 @@ fn trans_res_ctor(ccx: crate_ctxt, path: path, dtor: ast::fn_decl,
                   param_substs: option<param_substs>, llfndecl: ValueRef) {
     // Create a function for the constructor
     let fcx = new_fn_ctxt_w_id(ccx, path, llfndecl, ctor_id,
-                               param_substs, none);
+                               none, param_substs, none);
     create_llargs_for_fn_args(fcx, no_self, dtor.inputs, tps_bounds);
     let bcx = top_scope_block(fcx, none), lltop = bcx.llbb;
     let fty = node_id_type(bcx, ctor_id);
@@ -4100,7 +4142,7 @@ fn trans_enum_variant(ccx: crate_ctxt, enum_id: ast::node_id,
                      ident: "arg" + uint::to_str(i, 10u),
                      id: varg.id}];
     }
-    let fcx = new_fn_ctxt_w_id(ccx, [], llfndecl, variant.node.id,
+    let fcx = new_fn_ctxt_w_id(ccx, [], llfndecl, variant.node.id, none,
                                param_substs, none);
     create_llargs_for_fn_args(fcx, no_self, fn_args,
                               param_bounds(ccx, ty_params));
@@ -4261,7 +4303,7 @@ fn trans_item(ccx: crate_ctxt, item: ast::item) {
         if decl.purity != ast::crust_fn  {
             trans_fn(ccx, *path + [path_name(item.ident)], decl, body,
                      llfndecl, no_self, param_bounds(ccx, tps),
-                     none, item.id);
+                     none, item.id, none);
         } else {
             native::trans_crust_fn(ccx, *path + [path_name(item.ident)],
                                    decl, body, llfndecl, item.id);
@@ -4280,7 +4322,7 @@ fn trans_item(ccx: crate_ctxt, item: ast::item) {
           some(lldtor_decl) {
             trans_fn(ccx, *path + [path_name(item.ident)], decl, body,
                      lldtor_decl, no_self, param_bounds(ccx, tps),
-                     none, dtor_id);
+                     none, dtor_id, none);
           }
           _ {
             ccx.sess.span_fatal(item.span, "unbound dtor in trans_item");
@@ -4310,6 +4352,83 @@ fn trans_item(ccx: crate_ctxt, item: ast::item) {
           either::left(msg) { ccx.sess.span_fatal(item.span, msg) }
         };
         native::trans_native_mod(ccx, native_mod, abi);
+      }
+      ast::item_class(tps, items, ctor) {
+          alt ccx.item_ids.find(ctor.node.id) {
+             some(llctor_decl) {
+             // Translate the ctor
+             // First, add a preamble that
+             // generates a new name, obj:
+             // let obj = { ... } (uninit record fields)
+                 let sess = ccx.sess;
+                 let rslt_path_ = {global: false,
+                                   idents: ["obj"],
+                                   types: []}; // ??
+                 let rslt_path = @{node: rslt_path_,
+                                  span: ctor.node.body.span};
+                 let rslt_id : ast::node_id = sess.next_node_id();
+                 let rslt_pat : @ast::pat =
+                     @{id: sess.next_node_id(),
+                       node: ast::pat_ident(rslt_path, none),
+                       span: ctor.node.body.span};
+                 // Set up obj's type
+                 let rslt_ast_ty : @ast::ty = @{node: ast::ty_infer,
+                                    span: ctor.node.body.span};
+                 // kludgy
+                 let ty_args = [], i = 0u;
+                 for tp in tps {
+                   ty_args += [ty::mk_param(ccx.tcx, i,
+                                            local_def(tps[i].id))];
+                 }
+                 let rslt_ty =  ty::mk_class(ccx.tcx,
+                                                  local_def(item.id),
+                                             ty_args);
+                 // Set up a local for obj
+                 let rslt_loc_ : ast::local_ = {is_mutbl: true,
+                                  ty: rslt_ast_ty, // ???
+                                  pat: rslt_pat,
+                                  init: none::<ast::initializer>,
+                                  id: rslt_id};
+                 // Register a type for obj
+                 smallintmap::insert(*ccx.tcx.node_types,
+                                     rslt_loc_.id as uint, rslt_ty);
+                 // Create the decl statement that initializers obj
+                 let rslt_loc : @ast::local =
+                     @{node: rslt_loc_, span: ctor.node.body.span};
+                 let rslt_decl_ : ast::decl_ = ast::decl_local([rslt_loc]);
+                 let rslt_decl : @ast::decl
+                     = @{node: rslt_decl_, span: ctor.node.body.span};
+                 let prologue : @ast::stmt = @{node: ast::stmt_decl(rslt_decl,
+                                                     sess.next_node_id()),
+                                              span: ctor.node.body.span};
+                 let rslt_node_id = sess.next_node_id();
+                 ccx.tcx.def_map.insert(rslt_node_id,
+                          ast::def_local(rslt_loc_.id, true));
+                 // And give the statement a type
+                 smallintmap::insert(*ccx.tcx.node_types,
+                                     rslt_node_id as uint, rslt_ty);
+                 // The result expression of the constructor is now a
+                 // reference to obj
+                 let rslt_expr : @ast::expr =
+                     @{id: rslt_node_id,
+                       node: ast::expr_path(rslt_path),
+                       span: ctor.node.body.span};
+                 let ctor_body_new : ast::blk_ = {stmts: [prologue]
+                                      + ctor.node.body.node.stmts,
+                                       expr: some(rslt_expr)
+                                     with ctor.node.body.node};
+                 let ctor_body__ : ast::blk = {node: ctor_body_new
+                                                with ctor.node.body};
+             trans_fn(ccx, *path + [path_name(item.ident)], ctor.node.dec,
+                      ctor_body__, llctor_decl, no_self,
+                      param_bounds(ccx, tps), none, ctor.node.id,
+                      some(rslt_expr));
+             // TODO: translate methods!
+             }
+             _ {
+               ccx.sess.span_bug(item.span, "unbound ctor in trans_item");
+             }
+          }
       }
       _ {/* fall through */ }
     }
@@ -4348,7 +4467,7 @@ fn trans_inlined_items(ccx: crate_ctxt, inline_map: inline_map) {
                 let llfndecl = ccx.item_ids.get(m.id);
                 trans_fn(ccx, m_path, m.decl, m.body,
                          llfndecl, impl_self(impl_ty), m_bounds,
-                         none, m.id);
+                         none, m.id, none);
             }
           }
         }
@@ -4604,6 +4723,12 @@ fn collect_item(ccx: crate_ctxt, abi: @mutable option<ast::native_abi>,
                             "enum", tps, variant.node.id);
             }
         }
+      }
+      ast::item_class(tps,_,ctor) {
+          // Register the ctor
+          let t = ty::node_id_to_type(ccx.tcx, ctor.node.id);
+          register_fn_full(ccx, i.span, my_path, "ctor",
+                           param_bounds(ccx, tps), ctor.node.id, t);
       }
       _ { }
     }

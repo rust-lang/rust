@@ -3783,8 +3783,39 @@ fn serialize_148<S: std::serialization::serializer>(s: S,
                               })
                });
 }
-/*syntax::ast::ty_method*/
+/*syntax::ast::class_ctor_*/
 fn serialize_156<S: std::serialization::serializer>(s: S,
+                                                    v:
+                                                        syntax::ast::class_ctor_) {
+    s.emit_rec(/*syntax::ast::node_id*//*syntax::ast::fn_decl*/
+               /*syntax::ast::blk*/
+               {||
+                   {
+                       s.emit_rec_field("id", 0u,
+                                        {|| serialize_27(s, v.id) });
+                       s.emit_rec_field("dec", 1u,
+                                        {|| serialize_38(s, v.dec) });
+                       s.emit_rec_field("body", 2u,
+                                        {|| serialize_81(s, v.body) })
+                   }
+               });
+}
+/*syntax::ast::class_ctor*/
+fn serialize_155<S: std::serialization::serializer>(s: S,
+                                                    v:
+                                                        syntax::ast::class_ctor) {
+    s.emit_rec(/*syntax::ast::class_ctor_*//*syntax::codemap::span*/
+               {||
+                   {
+                       s.emit_rec_field("node", 0u,
+                                        {|| serialize_156(s, v.node) });
+                       s.emit_rec_field("span", 1u,
+                                        {|| serialize_19(s, v.span) })
+                   }
+               });
+}
+/*syntax::ast::ty_method*/
+fn serialize_158<S: std::serialization::serializer>(s: S,
                                                     v:
                                                         syntax::ast::ty_method) {
     s.emit_rec(/*syntax::ast::ident*//*[syntax::ast::attribute]*/
@@ -3806,19 +3837,19 @@ fn serialize_156<S: std::serialization::serializer>(s: S,
                });
 }
 /*[syntax::ast::ty_method]*/
-fn serialize_155<S: std::serialization::serializer>(s: S,
+fn serialize_157<S: std::serialization::serializer>(s: S,
                                                     v:
                                                         [syntax::ast::ty_method]) {
     s.emit_vec(vec::len(v), /*syntax::ast::ty_method*/
                {||
                    vec::iteri(v,
                               {|i, e|
-                                  s.emit_vec_elt(i, {|| serialize_156(s, e) })
+                                  s.emit_vec_elt(i, {|| serialize_158(s, e) })
                               })
                });
 }
 /*core::option::t<@syntax::ast::ty>*/
-fn serialize_157<S: std::serialization::serializer>(s: S,
+fn serialize_159<S: std::serialization::serializer>(s: S,
                                                     v:
                                                         core::option::t<@syntax::ast::ty>) {
     s.emit_enum("core::option::t",
@@ -3846,7 +3877,7 @@ fn serialize_157<S: std::serialization::serializer>(s: S,
                 });
 }
 /*syntax::ast::method*/
-fn serialize_160<S: std::serialization::serializer>(s: S,
+fn serialize_162<S: std::serialization::serializer>(s: S,
                                                     v: syntax::ast::method) {
 
     s.emit_rec(/*syntax::ast::ident*//*[syntax::ast::attribute]*/
@@ -3873,20 +3904,20 @@ fn serialize_160<S: std::serialization::serializer>(s: S,
                });
 }
 /*@syntax::ast::method*/
-fn serialize_159<S: std::serialization::serializer>(s: S,
+fn serialize_161<S: std::serialization::serializer>(s: S,
                                                     v: @syntax::ast::method) {
 
-    s.emit_box(/*syntax::ast::method*/{|| serialize_160(s, *v) });
+    s.emit_box(/*syntax::ast::method*/{|| serialize_162(s, *v) });
 }
 /*[@syntax::ast::method]*/
-fn serialize_158<S: std::serialization::serializer>(s: S,
+fn serialize_160<S: std::serialization::serializer>(s: S,
                                                     v:
                                                         [@syntax::ast::method]) {
     s.emit_vec(vec::len(v), /*@syntax::ast::method*/
                {||
                    vec::iteri(v,
                               {|i, e|
-                                  s.emit_vec_elt(i, {|| serialize_159(s, e) })
+                                  s.emit_vec_elt(i, {|| serialize_161(s, e) })
                               })
                });
 }
@@ -3906,8 +3937,7 @@ fn serialize_28<S: std::serialization::serializer>(s: S,
                 /*syntax::ast::blk*//*syntax::ast::node_id*/
                 /*syntax::ast::node_id*/
                 /*[syntax::ast::ty_param]*//*[@syntax::ast::class_item]*/
-                /*syntax::ast::node_id*//*syntax::ast::fn_decl*/
-                /*syntax::ast::blk*/
+                /*syntax::ast::class_ctor*/
                 /*[syntax::ast::ty_param]*//*[syntax::ast::ty_method]*/
                 /*[syntax::ast::ty_param]*/
                 /*core::option::t<@syntax::ast::ty>*//*@syntax::ast::ty*/
@@ -4044,8 +4074,8 @@ fn serialize_28<S: std::serialization::serializer>(s: S,
                                                 }
                                             })
                       }
-                      syntax::ast::item_class(v0, v1, v2, v3, v4) {
-                        s.emit_enum_variant("syntax::ast::item_class", 7u, 5u,
+                      syntax::ast::item_class(v0, v1, v2) {
+                        s.emit_enum_variant("syntax::ast::item_class", 7u, 3u,
                                             {||
                                                 {
                                                     s.emit_enum_variant_arg(0u,
@@ -4060,18 +4090,8 @@ fn serialize_28<S: std::serialization::serializer>(s: S,
                                                                             });
                                                     s.emit_enum_variant_arg(2u,
                                                                             {||
-                                                                                serialize_27(s,
-                                                                                             v2)
-                                                                            });
-                                                    s.emit_enum_variant_arg(3u,
-                                                                            {||
-                                                                                serialize_38(s,
-                                                                                             v3)
-                                                                            });
-                                                    s.emit_enum_variant_arg(4u,
-                                                                            {||
-                                                                                serialize_81(s,
-                                                                                             v4)
+                                                                                serialize_155(s,
+                                                                                              v2)
                                                                             })
                                                 }
                                             })
@@ -4087,7 +4107,7 @@ fn serialize_28<S: std::serialization::serializer>(s: S,
                                                                             });
                                                     s.emit_enum_variant_arg(1u,
                                                                             {||
-                                                                                serialize_155(s,
+                                                                                serialize_157(s,
                                                                                               v1)
                                                                             })
                                                 }
@@ -4104,7 +4124,7 @@ fn serialize_28<S: std::serialization::serializer>(s: S,
                                                                             });
                                                     s.emit_enum_variant_arg(1u,
                                                                             {||
-                                                                                serialize_157(s,
+                                                                                serialize_159(s,
                                                                                               v1)
                                                                             });
                                                     s.emit_enum_variant_arg(2u,
@@ -4114,7 +4134,7 @@ fn serialize_28<S: std::serialization::serializer>(s: S,
                                                                             });
                                                     s.emit_enum_variant_arg(3u,
                                                                             {||
-                                                                                serialize_158(s,
+                                                                                serialize_160(s,
                                                                                               v3)
                                                                             })
                                                 }
@@ -7599,8 +7619,51 @@ fn deserialize_148<S: std::serialization::deserializer>(s: S) ->
                                 })
                })
 }
-/*syntax::ast::ty_method*/
+/*syntax::ast::class_ctor_*/
 fn deserialize_156<S: std::serialization::deserializer>(s: S) ->
+   syntax::ast::class_ctor_ {
+
+    s.read_rec(
+
+
+               /*syntax::ast::node_id*/
+
+               /*syntax::ast::fn_decl*/
+
+               /*syntax::ast::blk*/
+
+               {||
+                   {id: s.read_rec_field("id", 0u, {|| deserialize_27(s) }),
+                    dec: s.read_rec_field("dec", 1u, {|| deserialize_38(s) }),
+                    body:
+                        s.read_rec_field("body", 2u,
+                                         {|| deserialize_81(s) }),}
+               })
+
+}
+/*syntax::ast::class_ctor*/
+fn deserialize_155<S: std::serialization::deserializer>(s: S) ->
+   syntax::ast::class_ctor {
+
+    s.read_rec(
+
+
+               /*syntax::ast::class_ctor_*/
+
+               /*syntax::codemap::span*/
+
+               {||
+                   {node:
+                        s.read_rec_field("node", 0u,
+                                         {|| deserialize_156(s) }),
+                    span:
+                        s.read_rec_field("span", 1u,
+                                         {|| deserialize_19(s) }),}
+               })
+
+}
+/*syntax::ast::ty_method*/
+fn deserialize_158<S: std::serialization::deserializer>(s: S) ->
    syntax::ast::ty_method {
 
     s.read_rec(
@@ -7632,7 +7695,7 @@ fn deserialize_156<S: std::serialization::deserializer>(s: S) ->
 
 }
 /*[syntax::ast::ty_method]*/
-fn deserialize_155<S: std::serialization::deserializer>(s: S) ->
+fn deserialize_157<S: std::serialization::deserializer>(s: S) ->
    [syntax::ast::ty_method] {
     s.read_vec(
 
@@ -7641,12 +7704,12 @@ fn deserialize_155<S: std::serialization::deserializer>(s: S) ->
                    vec::init_fn(len,
                                 {|i|
                                     s.read_vec_elt(i,
-                                                   {|| deserialize_156(s) })
+                                                   {|| deserialize_158(s) })
                                 })
                })
 }
 /*core::option::t<@syntax::ast::ty>*/
-fn deserialize_157<S: std::serialization::deserializer>(s: S) ->
+fn deserialize_159<S: std::serialization::deserializer>(s: S) ->
    core::option::t<@syntax::ast::ty> {
     s.read_enum("core::option::t",
 
@@ -7667,7 +7730,7 @@ fn deserialize_157<S: std::serialization::deserializer>(s: S) ->
                 })
 }
 /*syntax::ast::method*/
-fn deserialize_160<S: std::serialization::deserializer>(s: S) ->
+fn deserialize_162<S: std::serialization::deserializer>(s: S) ->
    syntax::ast::method {
 
     s.read_rec(
@@ -7706,14 +7769,14 @@ fn deserialize_160<S: std::serialization::deserializer>(s: S) ->
 
 }
 /*@syntax::ast::method*/
-fn deserialize_159<S: std::serialization::deserializer>(s: S) ->
+fn deserialize_161<S: std::serialization::deserializer>(s: S) ->
    @syntax::ast::method {
 
-    s.read_box(/*syntax::ast::method*/{|| @deserialize_160(s) })
+    s.read_box(/*syntax::ast::method*/{|| @deserialize_162(s) })
 
 }
 /*[@syntax::ast::method]*/
-fn deserialize_158<S: std::serialization::deserializer>(s: S) ->
+fn deserialize_160<S: std::serialization::deserializer>(s: S) ->
    [@syntax::ast::method] {
     s.read_vec(
 
@@ -7722,7 +7785,7 @@ fn deserialize_158<S: std::serialization::deserializer>(s: S) ->
                    vec::init_fn(len,
                                 {|i|
                                     s.read_vec_elt(i,
-                                                   {|| deserialize_159(s) })
+                                                   {|| deserialize_161(s) })
                                 })
                })
 }
@@ -7748,8 +7811,7 @@ fn deserialize_28<S: std::serialization::deserializer>(s: S) ->
                 /*syntax::ast::node_id*/
 
                 /*[syntax::ast::ty_param]*//*[@syntax::ast::class_item]*/
-                /*syntax::ast::node_id*//*syntax::ast::fn_decl*/
-                /*syntax::ast::blk*/
+                /*syntax::ast::class_ctor*/
 
                 /*[syntax::ast::ty_param]*//*[syntax::ast::ty_method]*/
 
@@ -7848,15 +7910,7 @@ fn deserialize_28<S: std::serialization::deserializer>(s: S) ->
                                                                                                 }),
                                                                         s.read_enum_variant_arg(2u,
                                                                                                 {||
-                                                                                                    deserialize_27(s)
-                                                                                                }),
-                                                                        s.read_enum_variant_arg(3u,
-                                                                                                {||
-                                                                                                    deserialize_38(s)
-                                                                                                }),
-                                                                        s.read_enum_variant_arg(4u,
-                                                                                                {||
-                                                                                                    deserialize_81(s)
+                                                                                                    deserialize_155(s)
                                                                                                 }))
                                               }
                                               8u {
@@ -7866,7 +7920,7 @@ fn deserialize_28<S: std::serialization::deserializer>(s: S) ->
                                                                                                 }),
                                                                         s.read_enum_variant_arg(1u,
                                                                                                 {||
-                                                                                                    deserialize_155(s)
+                                                                                                    deserialize_157(s)
                                                                                                 }))
                                               }
                                               9u {
@@ -7876,7 +7930,7 @@ fn deserialize_28<S: std::serialization::deserializer>(s: S) ->
                                                                                                }),
                                                                        s.read_enum_variant_arg(1u,
                                                                                                {||
-                                                                                                   deserialize_157(s)
+                                                                                                   deserialize_159(s)
                                                                                                }),
                                                                        s.read_enum_variant_arg(2u,
                                                                                                {||
@@ -7884,7 +7938,7 @@ fn deserialize_28<S: std::serialization::deserializer>(s: S) ->
                                                                                                }),
                                                                        s.read_enum_variant_arg(3u,
                                                                                                {||
-                                                                                                   deserialize_158(s)
+                                                                                                   deserialize_160(s)
                                                                                                }))
                                               }
                                             }
@@ -7927,27 +7981,27 @@ fn deserialize_syntax_ast_item<S: std::serialization::deserializer>(s: S) ->
     deserialize_0(s)
 }
 /*syntax::ast::crate_num*/
-fn serialize_163<S: std::serialization::serializer>(s: S,
+fn serialize_165<S: std::serialization::serializer>(s: S,
                                                     v:
                                                         syntax::ast::crate_num) {
     s.emit_int(v);
 }
 /*syntax::ast::def_id*/
-fn serialize_162<S: std::serialization::serializer>(s: S,
+fn serialize_164<S: std::serialization::serializer>(s: S,
                                                     v: syntax::ast::def_id) {
 
     s.emit_rec(/*syntax::ast::crate_num*//*syntax::ast::node_id*/
                {||
                    {
                        s.emit_rec_field("crate", 0u,
-                                        {|| serialize_163(s, v.crate) });
+                                        {|| serialize_165(s, v.crate) });
                        s.emit_rec_field("node", 1u,
                                         {|| serialize_27(s, v.node) })
                    }
                });
 }
 /*syntax::ast::prim_ty*/
-fn serialize_164<S: std::serialization::serializer>(s: S,
+fn serialize_166<S: std::serialization::serializer>(s: S,
                                                     v: syntax::ast::prim_ty) {
 
     s.emit_enum("syntax::ast::prim_ty",
@@ -8005,13 +8059,13 @@ fn serialize_164<S: std::serialization::serializer>(s: S,
                 });
 }
 /*@syntax::ast::def*/
-fn serialize_165<S: std::serialization::serializer>(s: S,
+fn serialize_167<S: std::serialization::serializer>(s: S,
                                                     v: @syntax::ast::def) {
 
-    s.emit_box(/*syntax::ast::def*/{|| serialize_161(s, *v) });
+    s.emit_box(/*syntax::ast::def*/{|| serialize_163(s, *v) });
 }
 /*syntax::ast::def*/
-fn serialize_161<S: std::serialization::serializer>(s: S,
+fn serialize_163<S: std::serialization::serializer>(s: S,
                                                     v: syntax::ast::def) {
 
     s.emit_enum("syntax::ast::def",
@@ -8042,7 +8096,7 @@ fn serialize_161<S: std::serialization::serializer>(s: S,
                                                 {
                                                     s.emit_enum_variant_arg(0u,
                                                                             {||
-                                                                                serialize_162(s,
+                                                                                serialize_164(s,
                                                                                               v0)
                                                                             });
                                                     s.emit_enum_variant_arg(1u,
@@ -8071,7 +8125,7 @@ fn serialize_161<S: std::serialization::serializer>(s: S,
                                                 {
                                                     s.emit_enum_variant_arg(0u,
                                                                             {||
-                                                                                serialize_162(s,
+                                                                                serialize_164(s,
                                                                                               v0)
                                                                             })
                                                 }
@@ -8084,7 +8138,7 @@ fn serialize_161<S: std::serialization::serializer>(s: S,
                                                 {
                                                     s.emit_enum_variant_arg(0u,
                                                                             {||
-                                                                                serialize_162(s,
+                                                                                serialize_164(s,
                                                                                               v0)
                                                                             })
                                                 }
@@ -8096,7 +8150,7 @@ fn serialize_161<S: std::serialization::serializer>(s: S,
                                                 {
                                                     s.emit_enum_variant_arg(0u,
                                                                             {||
-                                                                                serialize_162(s,
+                                                                                serialize_164(s,
                                                                                               v0)
                                                                             })
                                                 }
@@ -8143,12 +8197,12 @@ fn serialize_161<S: std::serialization::serializer>(s: S,
                                                 {
                                                     s.emit_enum_variant_arg(0u,
                                                                             {||
-                                                                                serialize_162(s,
+                                                                                serialize_164(s,
                                                                                               v0)
                                                                             });
                                                     s.emit_enum_variant_arg(1u,
                                                                             {||
-                                                                                serialize_162(s,
+                                                                                serialize_164(s,
                                                                                               v1)
                                                                             })
                                                 }
@@ -8160,7 +8214,7 @@ fn serialize_161<S: std::serialization::serializer>(s: S,
                                                 {
                                                     s.emit_enum_variant_arg(0u,
                                                                             {||
-                                                                                serialize_162(s,
+                                                                                serialize_164(s,
                                                                                               v0)
                                                                             })
                                                 }
@@ -8173,7 +8227,7 @@ fn serialize_161<S: std::serialization::serializer>(s: S,
                                                 {
                                                     s.emit_enum_variant_arg(0u,
                                                                             {||
-                                                                                serialize_164(s,
+                                                                                serialize_166(s,
                                                                                               v0)
                                                                             })
                                                 }
@@ -8186,7 +8240,7 @@ fn serialize_161<S: std::serialization::serializer>(s: S,
                                                 {
                                                     s.emit_enum_variant_arg(0u,
                                                                             {||
-                                                                                serialize_162(s,
+                                                                                serialize_164(s,
                                                                                               v0)
                                                                             });
                                                     s.emit_enum_variant_arg(1u,
@@ -8216,7 +8270,7 @@ fn serialize_161<S: std::serialization::serializer>(s: S,
                                                 {
                                                     s.emit_enum_variant_arg(0u,
                                                                             {||
-                                                                                serialize_162(s,
+                                                                                serialize_164(s,
                                                                                               v0)
                                                                             })
                                                 }
@@ -8233,7 +8287,7 @@ fn serialize_161<S: std::serialization::serializer>(s: S,
                                                                             });
                                                     s.emit_enum_variant_arg(1u,
                                                                             {||
-                                                                                serialize_165(s,
+                                                                                serialize_167(s,
                                                                                               v1)
                                                                             });
                                                     s.emit_enum_variant_arg(2u,
@@ -8250,7 +8304,7 @@ fn serialize_161<S: std::serialization::serializer>(s: S,
                                                 {
                                                     s.emit_enum_variant_arg(0u,
                                                                             {||
-                                                                                serialize_162(s,
+                                                                                serialize_164(s,
                                                                                               v0)
                                                                             })
                                                 }
@@ -8263,12 +8317,12 @@ fn serialize_161<S: std::serialization::serializer>(s: S,
                                                 {
                                                     s.emit_enum_variant_arg(0u,
                                                                             {||
-                                                                                serialize_162(s,
+                                                                                serialize_164(s,
                                                                                               v0)
                                                                             });
                                                     s.emit_enum_variant_arg(1u,
                                                                             {||
-                                                                                serialize_162(s,
+                                                                                serialize_164(s,
                                                                                               v1)
                                                                             })
                                                 }
@@ -8281,12 +8335,12 @@ fn serialize_161<S: std::serialization::serializer>(s: S,
                                                 {
                                                     s.emit_enum_variant_arg(0u,
                                                                             {||
-                                                                                serialize_162(s,
+                                                                                serialize_164(s,
                                                                                               v0)
                                                                             });
                                                     s.emit_enum_variant_arg(1u,
                                                                             {||
-                                                                                serialize_162(s,
+                                                                                serialize_164(s,
                                                                                               v1)
                                                                             })
                                                 }
@@ -8298,15 +8352,15 @@ fn serialize_161<S: std::serialization::serializer>(s: S,
 fn serialize_syntax_ast_def<S: std::serialization::serializer>(s: S,
                                                                v:
                                                                    syntax::ast::def) {
-    serialize_161(s, v);
+    serialize_163(s, v);
 }
 /*syntax::ast::crate_num*/
-fn deserialize_163<S: std::serialization::deserializer>(s: S) ->
+fn deserialize_165<S: std::serialization::deserializer>(s: S) ->
    syntax::ast::crate_num {
     s.read_int()
 }
 /*syntax::ast::def_id*/
-fn deserialize_162<S: std::serialization::deserializer>(s: S) ->
+fn deserialize_164<S: std::serialization::deserializer>(s: S) ->
    syntax::ast::def_id {
 
     s.read_rec(
@@ -8319,7 +8373,7 @@ fn deserialize_162<S: std::serialization::deserializer>(s: S) ->
                {||
                    {crate:
                         s.read_rec_field("crate", 0u,
-                                         {|| deserialize_163(s) }),
+                                         {|| deserialize_165(s) }),
                     node:
                         s.read_rec_field("node", 1u,
                                          {|| deserialize_27(s) }),}
@@ -8327,7 +8381,7 @@ fn deserialize_162<S: std::serialization::deserializer>(s: S) ->
 
 }
 /*syntax::ast::prim_ty*/
-fn deserialize_164<S: std::serialization::deserializer>(s: S) ->
+fn deserialize_166<S: std::serialization::deserializer>(s: S) ->
    syntax::ast::prim_ty {
     s.read_enum("syntax::ast::prim_ty",
                 /*syntax::ast::int_ty*/
@@ -8367,14 +8421,14 @@ fn deserialize_164<S: std::serialization::deserializer>(s: S) ->
                 })
 }
 /*@syntax::ast::def*/
-fn deserialize_165<S: std::serialization::deserializer>(s: S) ->
+fn deserialize_167<S: std::serialization::deserializer>(s: S) ->
    @syntax::ast::def {
 
-    s.read_box(/*syntax::ast::def*/{|| @deserialize_161(s) })
+    s.read_box(/*syntax::ast::def*/{|| @deserialize_163(s) })
 
 }
 /*syntax::ast::def*/
-fn deserialize_161<S: std::serialization::deserializer>(s: S) ->
+fn deserialize_163<S: std::serialization::deserializer>(s: S) ->
    syntax::ast::def {
     s.read_enum("syntax::ast::def",
                 /*syntax::ast::def_id*//*syntax::ast::purity*/
@@ -8418,7 +8472,7 @@ fn deserialize_161<S: std::serialization::deserializer>(s: S) ->
                                               0u {
                                                 syntax::ast::def_fn(s.read_enum_variant_arg(0u,
                                                                                             {||
-                                                                                                deserialize_162(s)
+                                                                                                deserialize_164(s)
                                                                                             }),
                                                                     s.read_enum_variant_arg(1u,
                                                                                             {||
@@ -8434,19 +8488,19 @@ fn deserialize_161<S: std::serialization::deserializer>(s: S) ->
                                               2u {
                                                 syntax::ast::def_mod(s.read_enum_variant_arg(0u,
                                                                                              {||
-                                                                                                 deserialize_162(s)
+                                                                                                 deserialize_164(s)
                                                                                              }))
                                               }
                                               3u {
                                                 syntax::ast::def_native_mod(s.read_enum_variant_arg(0u,
                                                                                                     {||
-                                                                                                        deserialize_162(s)
+                                                                                                        deserialize_164(s)
                                                                                                     }))
                                               }
                                               4u {
                                                 syntax::ast::def_const(s.read_enum_variant_arg(0u,
                                                                                                {||
-                                                                                                   deserialize_162(s)
+                                                                                                   deserialize_164(s)
                                                                                                }))
                                               }
                                               5u {
@@ -8472,29 +8526,29 @@ fn deserialize_161<S: std::serialization::deserializer>(s: S) ->
                                               7u {
                                                 syntax::ast::def_variant(s.read_enum_variant_arg(0u,
                                                                                                  {||
-                                                                                                     deserialize_162(s)
+                                                                                                     deserialize_164(s)
                                                                                                  }),
                                                                          s.read_enum_variant_arg(1u,
                                                                                                  {||
-                                                                                                     deserialize_162(s)
+                                                                                                     deserialize_164(s)
                                                                                                  }))
                                               }
                                               8u {
                                                 syntax::ast::def_ty(s.read_enum_variant_arg(0u,
                                                                                             {||
-                                                                                                deserialize_162(s)
+                                                                                                deserialize_164(s)
                                                                                             }))
                                               }
                                               9u {
                                                 syntax::ast::def_prim_ty(s.read_enum_variant_arg(0u,
                                                                                                  {||
-                                                                                                     deserialize_164(s)
+                                                                                                     deserialize_166(s)
                                                                                                  }))
                                               }
                                               10u {
                                                 syntax::ast::def_ty_param(s.read_enum_variant_arg(0u,
                                                                                                   {||
-                                                                                                      deserialize_162(s)
+                                                                                                      deserialize_164(s)
                                                                                                   }),
                                                                           s.read_enum_variant_arg(1u,
                                                                                                   {||
@@ -8510,7 +8564,7 @@ fn deserialize_161<S: std::serialization::deserializer>(s: S) ->
                                               12u {
                                                 syntax::ast::def_use(s.read_enum_variant_arg(0u,
                                                                                              {||
-                                                                                                 deserialize_162(s)
+                                                                                                 deserialize_164(s)
                                                                                              }))
                                               }
                                               13u {
@@ -8520,7 +8574,7 @@ fn deserialize_161<S: std::serialization::deserializer>(s: S) ->
                                                                                                }),
                                                                        s.read_enum_variant_arg(1u,
                                                                                                {||
-                                                                                                   deserialize_165(s)
+                                                                                                   deserialize_167(s)
                                                                                                }),
                                                                        s.read_enum_variant_arg(2u,
                                                                                                {||
@@ -8530,27 +8584,27 @@ fn deserialize_161<S: std::serialization::deserializer>(s: S) ->
                                               14u {
                                                 syntax::ast::def_class(s.read_enum_variant_arg(0u,
                                                                                                {||
-                                                                                                   deserialize_162(s)
+                                                                                                   deserialize_164(s)
                                                                                                }))
                                               }
                                               15u {
                                                 syntax::ast::def_class_field(s.read_enum_variant_arg(0u,
                                                                                                      {||
-                                                                                                         deserialize_162(s)
+                                                                                                         deserialize_164(s)
                                                                                                      }),
                                                                              s.read_enum_variant_arg(1u,
                                                                                                      {||
-                                                                                                         deserialize_162(s)
+                                                                                                         deserialize_164(s)
                                                                                                      }))
                                               }
                                               16u {
                                                 syntax::ast::def_class_method(s.read_enum_variant_arg(0u,
                                                                                                       {||
-                                                                                                          deserialize_162(s)
+                                                                                                          deserialize_164(s)
                                                                                                       }),
                                                                               s.read_enum_variant_arg(1u,
                                                                                                       {||
-                                                                                                          deserialize_162(s)
+                                                                                                          deserialize_164(s)
                                                                                                       }))
                                               }
                                             }
@@ -8559,10 +8613,10 @@ fn deserialize_161<S: std::serialization::deserializer>(s: S) ->
 }
 fn deserialize_syntax_ast_def<S: std::serialization::deserializer>(s: S) ->
    syntax::ast::def {
-    deserialize_161(s)
+    deserialize_163(s)
 }
 /*middle::typeck::method_origin*/
-fn serialize_166<S: std::serialization::serializer>(s: S,
+fn serialize_168<S: std::serialization::serializer>(s: S,
                                                     v:
                                                         middle::typeck::method_origin) {
     s.emit_enum("middle::typeck::method_origin",
@@ -8578,7 +8632,7 @@ fn serialize_166<S: std::serialization::serializer>(s: S,
                                                 {
                                                     s.emit_enum_variant_arg(0u,
                                                                             {||
-                                                                                serialize_162(s,
+                                                                                serialize_164(s,
                                                                                               v0)
                                                                             })
                                                 }
@@ -8591,7 +8645,7 @@ fn serialize_166<S: std::serialization::serializer>(s: S,
                                                 {
                                                     s.emit_enum_variant_arg(0u,
                                                                             {||
-                                                                                serialize_162(s,
+                                                                                serialize_164(s,
                                                                                               v0)
                                                                             });
                                                     s.emit_enum_variant_arg(1u,
@@ -8619,7 +8673,7 @@ fn serialize_166<S: std::serialization::serializer>(s: S,
                                                 {
                                                     s.emit_enum_variant_arg(0u,
                                                                             {||
-                                                                                serialize_162(s,
+                                                                                serialize_164(s,
                                                                                               v0)
                                                                             });
                                                     s.emit_enum_variant_arg(1u,
@@ -8637,10 +8691,10 @@ fn serialize_middle_typeck_method_origin<S: std::serialization::serializer>(s:
                                                                                 S,
                                                                             v:
                                                                                 middle::typeck::method_origin) {
-    serialize_166(s, v);
+    serialize_168(s, v);
 }
 /*middle::typeck::method_origin*/
-fn deserialize_166<S: std::serialization::deserializer>(s: S) ->
+fn deserialize_168<S: std::serialization::deserializer>(s: S) ->
    middle::typeck::method_origin {
     s.read_enum("middle::typeck::method_origin",
                 /*syntax::ast::def_id*/
@@ -8654,13 +8708,13 @@ fn deserialize_166<S: std::serialization::deserializer>(s: S) ->
                                               0u {
                                                 middle::typeck::method_static(s.read_enum_variant_arg(0u,
                                                                                                       {||
-                                                                                                          deserialize_162(s)
+                                                                                                          deserialize_164(s)
                                                                                                       }))
                                               }
                                               1u {
                                                 middle::typeck::method_param(s.read_enum_variant_arg(0u,
                                                                                                      {||
-                                                                                                         deserialize_162(s)
+                                                                                                         deserialize_164(s)
                                                                                                      }),
                                                                              s.read_enum_variant_arg(1u,
                                                                                                      {||
@@ -8678,7 +8732,7 @@ fn deserialize_166<S: std::serialization::deserializer>(s: S) ->
                                               2u {
                                                 middle::typeck::method_iface(s.read_enum_variant_arg(0u,
                                                                                                      {||
-                                                                                                         deserialize_162(s)
+                                                                                                         deserialize_164(s)
                                                                                                      }),
                                                                              s.read_enum_variant_arg(1u,
                                                                                                      {||
@@ -8692,17 +8746,17 @@ fn deserialize_166<S: std::serialization::deserializer>(s: S) ->
 fn deserialize_middle_typeck_method_origin<S: std::serialization::deserializer>(s:
                                                                                     S)
    -> middle::typeck::method_origin {
-    deserialize_166(s)
+    deserialize_168(s)
 }
 /*middle::freevars::freevar_entry*/
-fn serialize_167<S: std::serialization::serializer>(s: S,
+fn serialize_169<S: std::serialization::serializer>(s: S,
                                                     v:
                                                         middle::freevars::freevar_entry) {
     s.emit_rec(/*syntax::ast::def*//*syntax::codemap::span*/
                {||
                    {
                        s.emit_rec_field("def", 0u,
-                                        {|| serialize_161(s, v.def) });
+                                        {|| serialize_163(s, v.def) });
                        s.emit_rec_field("span", 1u,
                                         {|| serialize_19(s, v.span) })
                    }
@@ -8712,10 +8766,10 @@ fn serialize_middle_freevars_freevar_entry<S: std::serialization::serializer>(s:
                                                                                   S,
                                                                               v:
                                                                                   middle::freevars::freevar_entry) {
-    serialize_167(s, v);
+    serialize_169(s, v);
 }
 /*middle::freevars::freevar_entry*/
-fn deserialize_167<S: std::serialization::deserializer>(s: S) ->
+fn deserialize_169<S: std::serialization::deserializer>(s: S) ->
    middle::freevars::freevar_entry {
 
     s.read_rec(
@@ -8727,7 +8781,7 @@ fn deserialize_167<S: std::serialization::deserializer>(s: S) ->
 
                {||
                    {def:
-                        s.read_rec_field("def", 0u, {|| deserialize_161(s) }),
+                        s.read_rec_field("def", 0u, {|| deserialize_163(s) }),
                     span:
                         s.read_rec_field("span", 1u,
                                          {|| deserialize_19(s) }),}
@@ -8737,19 +8791,19 @@ fn deserialize_167<S: std::serialization::deserializer>(s: S) ->
 fn deserialize_middle_freevars_freevar_entry<S: std::serialization::deserializer>(s:
                                                                                       S)
    -> middle::freevars::freevar_entry {
-    deserialize_167(s)
+    deserialize_169(s)
 }
 fn serialize_syntax_ast_def_id<S: std::serialization::serializer>(s: S,
                                                                   v:
                                                                       syntax::ast::def_id) {
-    serialize_162(s, v);
+    serialize_164(s, v);
 }
 fn deserialize_syntax_ast_def_id<S: std::serialization::deserializer>(s: S) ->
    syntax::ast::def_id {
-    deserialize_162(s)
+    deserialize_164(s)
 }
 /*syntax::ast::inlined_item*/
-fn serialize_168<S: std::serialization::serializer>(s: S,
+fn serialize_170<S: std::serialization::serializer>(s: S,
                                                     v:
                                                         syntax::ast::inlined_item) {
     s.emit_enum("syntax::ast::inlined_item",
@@ -8775,12 +8829,12 @@ fn serialize_168<S: std::serialization::serializer>(s: S,
                                                 {
                                                     s.emit_enum_variant_arg(0u,
                                                                             {||
-                                                                                serialize_162(s,
+                                                                                serialize_164(s,
                                                                                               v0)
                                                                             });
                                                     s.emit_enum_variant_arg(1u,
                                                                             {||
-                                                                                serialize_159(s,
+                                                                                serialize_161(s,
                                                                                               v1)
                                                                             })
                                                 }
@@ -8792,10 +8846,10 @@ fn serialize_168<S: std::serialization::serializer>(s: S,
 fn serialize_syntax_ast_inlined_item<S: std::serialization::serializer>(s: S,
                                                                         v:
                                                                             syntax::ast::inlined_item) {
-    serialize_168(s, v);
+    serialize_170(s, v);
 }
 /*syntax::ast::inlined_item*/
-fn deserialize_168<S: std::serialization::deserializer>(s: S) ->
+fn deserialize_170<S: std::serialization::deserializer>(s: S) ->
    syntax::ast::inlined_item {
     s.read_enum("syntax::ast::inlined_item",
                 /*@syntax::ast::item*/
@@ -8813,11 +8867,11 @@ fn deserialize_168<S: std::serialization::deserializer>(s: S) ->
                                               1u {
                                                 syntax::ast::ii_method(s.read_enum_variant_arg(0u,
                                                                                                {||
-                                                                                                   deserialize_162(s)
+                                                                                                   deserialize_164(s)
                                                                                                }),
                                                                        s.read_enum_variant_arg(1u,
                                                                                                {||
-                                                                                                   deserialize_159(s)
+                                                                                                   deserialize_161(s)
                                                                                                }))
                                               }
                                             }
@@ -8827,5 +8881,5 @@ fn deserialize_168<S: std::serialization::deserializer>(s: S) ->
 fn deserialize_syntax_ast_inlined_item<S: std::serialization::deserializer>(s:
                                                                                 S)
    -> syntax::ast::inlined_item {
-    deserialize_168(s)
+    deserialize_170(s)
 }

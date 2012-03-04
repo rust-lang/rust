@@ -2,6 +2,9 @@ import common::*;
 import lib::llvm::{TypeRef};
 import syntax::ast;
 import lib::llvm::llvm;
+import driver::session::session;
+
+import ty::*;
 
 fn type_of_explicit_args(cx: crate_ctxt, inputs: [ty::arg]) -> [TypeRef] {
     vec::map(inputs) {|arg|
@@ -102,8 +105,25 @@ fn type_of(cx: crate_ctxt, t: ty::t) -> TypeRef {
       }
       ty::ty_opaque_closure_ptr(_) { T_opaque_box_ptr(cx) }
       ty::ty_constr(subt,_) { type_of(cx, subt) }
-
-      _ { fail "type_of not implemented for this kind of type"; }
+      ty::ty_class(did, _) {
+        let tys: [TypeRef] = [];
+        // TODO: only handles local classes
+        let cls_items = lookup_class_items(cx.tcx, did);
+        for ci in cls_items {
+            // only instance vars are record fields at runtime
+            alt ci.node.decl {
+                ast::instance_var(_,_,_,_) {
+                  let fty = type_of(cx, class_item_type(cx.tcx, ci));
+                  tys += [fty];
+                }
+                _ {}
+            }
+        }
+        T_struct(tys)
+      }
+      ty::ty_self(_) { cx.tcx.sess.unimpl("type_of: ty_self \
+                         not implemented"); }
+      ty::ty_var(_) { cx.tcx.sess.bug("type_of shouldn't see a ty_var"); }
     };
     cx.lltypes.insert(t, llty);
     ret llty;

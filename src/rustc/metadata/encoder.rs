@@ -127,7 +127,7 @@ fn encode_module_item_paths(ebml_w: ebml::writer, module: _mod, path: [str],
             encode_def_id(ebml_w, local_def(it.id));
             ebml_w.end_tag();
           }
-          item_class(_,_,_,_,_) {
+          item_class(_,_,_) {
               fail "encode: implement item_class";
           }
           item_enum(variants, tps) {
@@ -384,7 +384,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_enum_variant_info(ecx, ebml_w, item.id, variants,
                                  path, index, tps);
       }
-      item_class(_,_,_,_,_) {
+      item_class(_,_,_) {
           fail "encode: implement item_class";
       }
       item_res(_, tps, _, _, ctor_id) {

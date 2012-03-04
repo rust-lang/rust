@@ -9,9 +9,6 @@ type ident = str;
 // Functions may or may not have names.
 type fn_ident = option<ident>;
 
-// FIXME: with typestate constraint, could say
-// idents and types are the same length, and are
-// non-empty
 type path_ = {global: bool, idents: [ident], types: [@ty]};
 
 type path = spanned<path_>;
@@ -499,9 +496,7 @@ enum item_ {
     item_class([ty_param], /* ty params for class */
                [@class_item], /* methods, etc. */
                              /* (not including ctor) */
-               node_id,  /* ctor id */
-               fn_decl, /* ctor decl */
-               blk /* ctor body */
+               class_ctor
                ),
     item_iface([ty_param], [ty_method]),
     item_impl([ty_param], option<@ty> /* iface */,
@@ -522,6 +517,11 @@ enum class_member {
 enum class_mutability { class_mutable, class_immutable }
 
 enum privacy { priv, pub }
+
+type class_ctor = spanned<class_ctor_>;
+type class_ctor_ = {id: node_id,
+                    dec: fn_decl,
+                    body: blk};
 
 type native_item =
     {ident: ident,

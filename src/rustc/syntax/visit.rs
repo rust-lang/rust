@@ -133,13 +133,13 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
             visit_method_helper(m, e, v)
         }
       }
-      item_class(tps, members, _, ctor_decl, ctor_blk) {
+      item_class(tps, members, ctor) {
           v.visit_ty_params(tps, e, v);
           for m in members {
              v.visit_class_item(m.span, m.node.privacy, m.node.decl, e, v);
           }
-          visit_fn_decl(ctor_decl, e, v);
-          v.visit_block(ctor_blk, e, v);
+          visit_fn_decl(ctor.node.dec, e, v);
+          v.visit_block(ctor.node.body, e, v);
       }
       item_iface(tps, methods) {
         v.visit_ty_params(tps, e, v);

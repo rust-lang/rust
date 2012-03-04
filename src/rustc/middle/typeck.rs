@@ -10,7 +10,7 @@ import pat_util::*;
 import middle::ty;
 import middle::ty::{node_id_to_type, arg, block_ty,
                     expr_ty, field, node_type_table, mk_nil,
-                    ty_param_bounds_and_ty};
+                    ty_param_bounds_and_ty, lookup_class_items};
 import util::ppaux::ty_to_str;
 import middle::ty::unify::{ures_ok, ures_err, fix_ok, fix_err};
 import std::smallintmap;
@@ -375,7 +375,7 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
           ast::def_class(class_id) {
               alt tcx.items.find(class_id.node) {
                  some(ast_map::node_item(
-                  @{node: ast::item_class(tps, _, _, _, _), _}, _)) {
+                  @{node: ast::item_class(tps, _, _), _}, _)) {
                      if vec::len(tps) != vec::len(path.node.types) {
                         tcx.sess.span_err(ast_ty.span, "incorrect number of \
                            type parameters to object type");
@@ -492,7 +492,7 @@ fn ty_of_item(tcx: ty::ctxt, mode: mode, it: @ast::item)
         tcx.tcache.insert(local_def(it.id), tpt);
         ret tpt;
       }
-      ast::item_class(tps,_,_,_,_) {
+      ast::item_class(tps,_,_) {
           let {bounds,params} = mk_ty_params(tcx, tps);
           let t = ty::mk_class(tcx, local_def(it.id), params);
           let tpt = {bounds: bounds, ty: t};
@@ -944,7 +944,7 @@ mod collect {
             write_ty(tcx, it.id, tpt.ty);
             ensure_iface_methods(tcx, it.id);
           }
-          ast::item_class(tps, members, ctor_id, ctor_decl, ctor_block) {
+          ast::item_class(tps, members, ctor) {
               // Write the class type
               let {bounds,params} = mk_ty_params(tcx, tps);
               let class_ty = ty::mk_class(tcx, local_def(it.id), params);
@@ -954,9 +954,9 @@ mod collect {
               // Write the ctor type
               let t_ctor = ty::mk_fn(tcx,
                                      ty_of_fn_decl(tcx, m_collect,
-                                             ast::proto_any, ctor_decl));
-              write_ty(tcx, ctor_id, t_ctor);
-              tcx.tcache.insert(local_def(ctor_id),
+                                             ast::proto_any, ctor.node.dec));
+              write_ty(tcx, ctor.node.id, t_ctor);
+              tcx.tcache.insert(local_def(ctor.node.id),
                                    {bounds: bounds, ty: t_ctor});
               /* FIXME: check for proper public/privateness */
               // Write the type of each of the members
@@ -2549,19 +2549,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
               // For now, this code assumes the class is defined in the local
               // crate
               // FIXME: handle field references to classes in external crate
-              let err = "Class ID is not bound to a class";
-              let field_ty = alt fcx.ccx.tcx.items.find(base_id.node) {
-                      some(ast_map::node_item(i,_)) {
-                          alt i.node {
-                             ast::item_class(_, items, _, _, _) {
-                                 lookup_field_ty(fcx.ccx.tcx, items, field,
-                                    expr.span)
-                             }
-                             _ { fcx.ccx.tcx.sess.span_bug(expr.span, err); }
-                          }
-                      }
-                      _ { fcx.ccx.tcx.sess.span_bug(expr.span, err); }
-              };
+              let cls_items = lookup_class_items(tcx, base_id);
+              let field_ty = lookup_field_ty(fcx.ccx.tcx, cls_items, field,
+                                             expr.span);
               // (2) look up what field's type is, and return it
               // FIXME: actually instantiate any type params
               write_ty(tcx, id, field_ty);
@@ -3034,14 +3024,14 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
         for m in ms { check_method(ccx, m); }
         vec::pop(ccx.self_infos);
       }
-      ast::item_class(tps, members, ctor_id, ctor_decl, ctor_body) {
+      ast::item_class(tps, members, ctor) {
           let cid = some(it.id);
           let members_info = class_types(ccx, members);
           let class_ccx = @{enclosing_class_id:cid,
                             enclosing_class:members_info with *ccx};
           // typecheck the ctor
-          check_fn(class_ccx, ast::proto_bare, ctor_decl, ctor_body, ctor_id,
-                   none);
+          check_fn(class_ccx, ast::proto_bare, ctor.node.dec,
+                   ctor.node.body, ctor.node.id, none);
           // typecheck the members
           for m in members { check_class_member(class_ccx, m.node.decl); }
       }

@@ -52,7 +52,7 @@ fn trans_impl(ccx: crate_ctxt, path: path, name: ast::ident,
             let m_bounds = param_bounds(ccx, tps + m.tps);
             trans_fn(ccx, sub_path + [path_name(m.ident)], m.decl, m.body,
                      llfn, impl_self(ty::node_id_to_type(ccx.tcx, id)),
-                     m_bounds, none, m.id);
+                     m_bounds, none, m.id, none);
           }
           _ {
             ccx.sess.bug("Unbound id in trans_impl");

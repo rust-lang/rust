@@ -541,12 +541,12 @@ fn visit_item_with_scope(e: @env, i: @ast::item, sc: scopes, v: vt<scopes>) {
             v.visit_ty(m.decl.output, msc, v);
         }
       }
-      ast::item_class(tps, members, ctor_id, ctor_decl, ctor_block) {
+      ast::item_class(tps, members, ctor) {
         visit::visit_ty_params(tps, sc, v);
         let class_scope = cons(scope_item(i), @sc);
         /* visit the constructor... */
-        visit_fn_with_scope(e, visit::fk_item_fn(i.ident, tps), ctor_decl,
-                            ctor_block, ctor_block.span, ctor_id,
+        visit_fn_with_scope(e, visit::fk_item_fn(i.ident, tps), ctor.node.dec,
+                            ctor.node.body, ctor.span, ctor.node.id,
                             class_scope, v);
         /* visit the items */
         for cm in members {
@@ -1029,12 +1029,12 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
               ast::item_native_mod(m) {
                 ret lookup_in_local_native_mod(e, it.id, sp, name, ns);
               }
-              ast::item_class(tps, members, ctor_id, _, _) {
+              ast::item_class(tps, members, ctor) {
                   if ns == ns_type {
                     ret lookup_in_ty_params(e, name, tps);
                   }
                   if ns == ns_val(value_or_enum) && name == it.ident {
-                      ret some(ast::def_fn(local_def(ctor_id),
+                      ret some(ast::def_fn(local_def(ctor.node.id),
                                            ast::impure_fn));
                   }
                   if ns == ns_val(value_or_enum) {
@@ -1359,7 +1359,7 @@ fn found_def_item(i: @ast::item, ns: namespace) -> option<def> {
           _ { }
         }
       }
-      ast::item_class(_, _, _, _, _) {
+      ast::item_class(_, _, _) {
           if ns == ns_type {
             ret some(ast::def_class(local_def(i.id)));
           }
@@ -1664,16 +1664,16 @@ fn index_mod(md: ast::_mod) -> mod_index {
                 variant_idx += 1u;
             }
           }
-          ast::item_class(tps, items, ctor_id, ctor_decl, ctor_body) {
+          ast::item_class(tps, items, ctor) {
               // add the class name itself
               add_to_index(index, it.ident, mie_item(it));
               // add the constructor decl
               add_to_index(index, it.ident,
                            mie_item(@{ident: it.ident, attrs: [],
-                                       id: ctor_id,
-                                       node:
-                                         item_fn(ctor_decl, tps, ctor_body),
-                                       span: ctor_body.span}));
+                            id: ctor.node.id,
+                            node:
+                              item_fn(ctor.node.dec, tps, ctor.node.body),
+                            span: ctor.node.body.span}));
               // add the members
               for ci in items {
                  add_to_index(index, class_item_ident(ci),

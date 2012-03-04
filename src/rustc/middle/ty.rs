@@ -18,6 +18,8 @@ export arg;
 export args_eq;
 export ast_constr_to_constr;
 export block_ty;
+export class_item_type;
+export class_items_as_fields;
 export constr;
 export constr_general;
 export constr_table;
@@ -37,6 +39,7 @@ export fm_general;
 export get_element_type;
 export is_binopable;
 export is_pred_ty;
+export lookup_class_items;
 export lookup_item_type;
 export method;
 export method_idx;
@@ -628,7 +631,7 @@ fn type_is_bool(ty: t) -> bool { get(ty).struct == ty_bool }
 
 fn type_is_structural(ty: t) -> bool {
     alt get(ty).struct {
-      ty_rec(_) | ty_tup(_) | ty_enum(_, _) | ty_fn(_) |
+      ty_rec(_) | ty_class(_,_) | ty_tup(_) | ty_enum(_, _) | ty_fn(_) |
       ty_iface(_, _) | ty_res(_, _, _) { true }
       _ { false }
     }
@@ -1228,7 +1231,10 @@ fn constrs_eq(cs: [@constr], ds: [@constr]) -> bool {
 }
 
 fn node_id_to_type(cx: ctxt, id: ast::node_id) -> t {
-    smallintmap::get(*cx.node_types, id as uint)
+    alt smallintmap::find(*cx.node_types, id as uint) {
+       some(t) { t }
+       none { cx.sess.bug(#fmt("node_id_to_type: unbound node ID %?", id)); }
+    }
 }
 
 fn node_id_to_type_params(cx: ctxt, id: ast::node_id) -> [t] {
@@ -2289,6 +2295,54 @@ fn lookup_item_type(cx: ctxt, did: ast::def_id) -> ty_param_bounds_and_ty {
         cx.tcache.insert(did, tyt);
         ret tyt;
       }
+    }
+}
+
+// Look up the list of items for a given class (in the item map).
+// Fails if the id is not bound to a class.
+fn lookup_class_items(cx: ctxt, did: ast::def_id) -> [@class_item] {
+    alt cx.items.find(did.node) {
+       some(ast_map::node_item(i,_)) {
+           alt i.node {
+              ast::item_class(_, items, _) {
+                  items
+              }
+              _ { cx.sess.bug("class ID bound to non-class"); }
+           }
+       }
+       _ { cx.sess.bug("class ID not bound to an item"); }
+    }
+}
+
+// Return a list of fields corresponding to the class's items
+// (as if the class was a record). trans uses this
+fn class_items_as_fields(cx:ctxt, did: ast::def_id) -> [field] {
+    let rslt = [];
+    for ci in lookup_class_items(cx, did) {
+       rslt += [alt ci.node.decl {
+         instance_var(i, _, _, id) {
+             // consider all instance vars mutable, because the
+             // constructor may mutate all vars
+             {ident: i, mt: {ty: node_id_to_type(cx, id),
+                         mutbl: m_mutbl}}
+         }
+         class_method(it) {
+             {ident:it.ident, mt: {ty: node_id_to_type(cx, it.id),
+                               mutbl: m_const}}
+         }
+       }];
+    }
+    rslt
+}
+
+// Looks up the type for a given class item. Must be called
+// post-typechecking.
+fn class_item_type(cx: ctxt, ci: @ast::class_item) -> t {
+    alt ci.node.decl {
+       ast::instance_var(_,_,_,id) { node_id_to_type(cx, id) }
+       // TODO: only works for local classes
+       ast::class_method(it) { lookup_item_type(cx,
+                                 ast_util::local_def(it.id)).ty }
     }
 }
 
