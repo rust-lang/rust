@@ -516,7 +516,6 @@ rust_task::notify(bool success) {
                 msg.result = !success ? tr_failure : tr_success;
 
                 target_port->send(&msg);
-                scoped_lock with(target_task->port_lock);
                 target_port->deref();
             }
             target_task->deref();

@@ -69,7 +69,6 @@ void
 rust_port_selector::msg_sent_on(rust_port *port) {
     rust_task *task = port->task;
 
-    I(task->thread, !task->port_lock.lock_held_by_current_thread());
     I(task->thread, !port->lock.lock_held_by_current_thread());
     I(task->thread, !rendezvous_lock.lock_held_by_current_thread());
 

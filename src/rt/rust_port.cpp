@@ -25,8 +25,7 @@ void rust_port::detach() {
     // FIXME: Busy waiting until we're the only ref
     bool done = false;
     while (!done) {
-        scoped_lock with(task->port_lock);
-        done = ref_count == 1;
+        done = get_ref_count() == 1;
     }
 }
 

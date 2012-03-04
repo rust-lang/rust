@@ -5,7 +5,7 @@
 
 class rust_port : public kernel_owned<rust_port>, public rust_cond {
 public:
-    RUST_REFCOUNTED(rust_port)
+    RUST_ATOMIC_REFCOUNT();
 
     rust_port_id id;
 
@@ -18,6 +18,8 @@ public:
 
     rust_port(rust_task *task, size_t unit_sz);
     ~rust_port();
+    void delete_this() { delete this; }
+
     void log_state();
     void send(void *sptr);
     void receive(void *dptr, uintptr_t *yield);

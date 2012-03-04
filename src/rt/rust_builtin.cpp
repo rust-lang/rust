@@ -492,7 +492,7 @@ extern "C" CDECL void
 del_port(rust_port *port) {
     rust_task *task = rust_task_thread::get_task();
     LOG(task, comm, "del_port(0x%" PRIxPTR ")", (uintptr_t) port);
-    A(task->thread, port->ref_count == 1, "Expected port ref_count == 1");
+    A(task->thread, port->get_ref_count() == 1, "Expected port ref_count == 1");
     port->deref();
 }
 
@@ -522,7 +522,6 @@ chan_id_send(type_desc *t, rust_task_id target_task_id,
         rust_port *port = target_task->get_port_by_id(target_port_id);
         if(port) {
             port->send(sptr);
-            scoped_lock with(target_task->port_lock);
             port->deref();
             sent = true;
         } else {

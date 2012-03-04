@@ -89,10 +89,6 @@ rust_task : public kernel_owned<rust_task>, rust_cond
 
     bool propagate_failure;
 
-    // Protects port_table
-    lock_and_signal port_lock;
-    hash_map<rust_port_id, rust_port *> port_table;
-
     rust_obstack dynastack;
 
     uint32_t cc_counter;
@@ -103,6 +99,10 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     size_t total_stack_sz;
 
 private:
+
+    // Protects port_table
+    lock_and_signal port_lock;
+    hash_map<rust_port_id, rust_port *> port_table;
 
     // Protects state, cond, cond_name
     lock_and_signal state_lock;
