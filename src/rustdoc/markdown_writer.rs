@@ -54,7 +54,7 @@ fn markdown_writer(
     config: config::config,
     page: doc::page
 ) -> writer {
-    let filename = make_filename(config, "md", page);
+    let filename = make_filename(config, page);
     generic_writer {|markdown|
         write_file(filename, markdown);
     }
@@ -66,7 +66,7 @@ fn pandoc_writer(
 ) -> writer {
     assert option::is_some(config.pandoc_cmd);
     let pandoc_cmd = option::get(config.pandoc_cmd);
-    let filename = make_filename(config, "html", page);
+    let filename = make_filename(config, page);
 
     let pandoc_args = [
         "--standalone",
@@ -131,13 +131,85 @@ fn generic_writer(process: fn~(markdown: str)) -> writer {
 
 fn make_filename(
     config: config::config,
-    ext: str,
-    _page: doc::page
+    page: doc::page
 ) -> str {
     import std::fs;
-    let cratefile = fs::basename(config.input_crate);
-    let cratename = tuple::first(fs::splitext(cratefile));
-    fs::connect(config.output_dir, cratename + "." + ext)
+
+    let filename = {
+        alt page {
+          doc::cratepage(doc) {
+            if config.output_format == config::pandoc_html &&
+                config.output_style == config::doc_per_mod {
+                "index"
+            } else {
+                assert doc.topmod.name() != "";
+                doc.topmod.name()
+            }
+          }
+          doc::itempage(doc) {
+            str::connect(doc.path() + [doc.name()], "_")
+          }
+        }
+    };
+    let ext = alt config.output_format {
+      config::markdown { "md" }
+      config::pandoc_html { "html" }
+    };
+    fs::connect(config.output_dir, filename + "." + ext)
+}
+
+#[test]
+fn should_use_markdown_file_name_based_off_crate() {
+    let config = {
+        output_dir: "output/dir",
+        output_format: config::markdown,
+        output_style: config::doc_per_crate
+        with config::default_config("input/test.rc")
+    };
+    let doc = test::mk_doc("test", "");
+    let page = doc::cratepage(doc.cratedoc());
+    let filename = make_filename(config, page);
+    assert filename == "output/dir/test.md";
+}
+
+#[test]
+fn should_name_html_crate_file_name_index_html_when_doc_per_mod() {
+    let config = {
+        output_dir: "output/dir",
+        output_format: config::pandoc_html,
+        output_style: config::doc_per_mod
+        with config::default_config("input/test.rc")
+    };
+    let doc = test::mk_doc("", "");
+    let page = doc::cratepage(doc.cratedoc());
+    let filename = make_filename(config, page);
+    assert filename == "output/dir/index.html";
+}
+
+#[test]
+fn should_name_mod_file_names_by_path() {
+    let config = {
+        output_dir: "output/dir",
+        output_format: config::pandoc_html,
+        output_style: config::doc_per_mod
+        with config::default_config("input/test.rc")
+    };
+    let doc = test::mk_doc("", "mod a { mod b { } }");
+    let modb = doc.cratemod().mods()[0].mods()[0];
+    let page = doc::itempage(doc::modtag(modb));
+    let filename = make_filename(config, page);
+    assert  filename == "output/dir/a_b.html";
+}
+
+#[cfg(test)]
+mod test {
+    fn mk_doc(name: str, source: str) -> doc::doc {
+        astsrv::from_str(source) {|srv|
+            let doc = extract::from_srv(srv, name);
+            let doc = path_pass::mk_pass().f(srv, doc);
+            doc
+        }
+    }
 }
 
 fn write_file(path: str, s: str) {
@@ -149,26 +221,6 @@ fn write_file(path: str, s: str) {
         writer.write_str(s);
       }
       result::err(e) { fail e }
-    }
-}
-
-#[test]
-fn should_use_markdown_file_name_based_off_crate() {
-    let config = {
-        output_dir: "output/dir"
-        with config::default_config("input/test.rc")
-    };
-    let doc = test::mk_doc("");
-    let page = doc::cratepage(doc.cratedoc());
-    assert make_filename(config, "md", page) == "output/dir/test.md";
-}
-
-#[cfg(test)]
-mod test {
-    fn mk_doc(source: str) -> doc::doc {
-        astsrv::from_str(source) {|srv|
-            extract::from_srv(srv, "")
-        }
     }
 }
 
