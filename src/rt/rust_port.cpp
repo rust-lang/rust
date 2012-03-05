@@ -44,13 +44,6 @@ void rust_port::begin_detach(uintptr_t *yield) {
 }
 
 void rust_port::end_detach() {
-    // FIXME: For some reason, on rare occasion we can get here without
-    // actually having the ref count go to 0. Possibly related to #1923
-    bool done = false;
-    while (!done) {
-        done = get_ref_count() == 0;
-    }
-
     // Just take the lock to make sure that the thread that signaled
     // the detach_cond isn't still holding it
     scoped_lock with(detach_lock);

@@ -35,7 +35,6 @@ rust_list_files
 rust_log_console_on
 rust_log_console_off
 rust_port_begin_detach
-rust_port_end_detach
 rust_port_size
 rust_process_wait
 rust_ptr_eq

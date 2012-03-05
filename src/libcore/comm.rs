@@ -44,7 +44,6 @@ native mod rustrt {
     fn del_port(po: *rust_port);
     fn rust_port_begin_detach(po: *rust_port,
                               yield: *ctypes::uintptr_t);
-    fn rust_port_end_detach(po: *rust_port);
     fn get_port_id(po: *rust_port) -> port_id;
     fn rust_port_size(po: *rust_port) -> ctypes::size_t;
     fn port_recv(dptr: *uint, po: *rust_port,
@@ -93,7 +92,6 @@ resource port_ptr<T: send>(po: *rust_port) {
         // in a bogus state.
         task::yield();
     }
-    rustrt::rust_port_end_detach(po);
 
     // Drain the port so that all the still-enqueued items get dropped
     while rustrt::rust_port_size(po) > 0u {

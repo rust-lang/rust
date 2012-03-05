@@ -29,6 +29,16 @@ public:
     static T decrement(T &address) {
         return __sync_sub_and_fetch(&address, 1);
     }
+
+    template <class T>
+    static T read(T *address) {
+        return __sync_add_and_fetch(address, 0);
+    }
+
+    template <class T>
+    static T read(T &address) {
+        return __sync_add_and_fetch(&address, 0);
+    }
 };
 
 #endif /* SYNC_H */

@@ -113,11 +113,7 @@ public:                                                                    \
        assert(old > 0);                                                    \
    }                                                                       \
    void deref() { if(0 == sync::decrement(ref_count)) { delete_this(); } } \
-   intptr_t get_ref_count() {                                              \
-      sync::increment(ref_count);                                          \
-      intptr_t current = sync::decrement(ref_count);                       \
-      return current;                                                      \
-   }
+   intptr_t get_ref_count() { return sync::read(ref_count); }
 
 template <typename T> struct task_owned {
     inline void *operator new(size_t size, rust_task *task, const char *tag);
