@@ -1018,10 +1018,22 @@ mod funcs {
             fn readlink(path: *c_char, buf: *mutable c_char,
                         bufsz: size_t) -> ssize_t;
 
+            fn fsync(fd: c_int) -> c_int;
+
+            #[cfg(target_os = "linux")]
+            fn fdatasync(fd: c_int) -> c_int;
+
             fn setenv(name: *c_char, val: *c_char,
                       overwrite: c_int) -> c_int;
             fn unsetenv(name: *c_char) -> c_int;
             fn putenv(string: *c_char) -> c_int;
+        }
+
+        #[nolink]
+        #[abi = "cdecl"]
+        native mod wait {
+            fn waitpid(pid: pid_t, status: *mutable c_int,
+                       options: c_int) -> pid_t;
         }
     }
 
@@ -1098,8 +1110,16 @@ mod funcs {
             fn CreateDirectoryA(lpPathName: LPCSTR,
                                 lpSecurityAttributes:
                                 LPSECURITY_ATTRIBUTES) -> BOOL;
+            fn DeleteFileA(lpPathName: LPCSTR) -> BOOL;
             fn RemoveDirectoryA(lpPathName: LPCSTR) -> BOOL;
             fn SetCurrentDirectoryA(lpPathName: LPCSTR) -> BOOL;
+        }
+
+        #[abi = "cdecl"]
+        #[nolink]
+        native mod msvcrt {
+            #[link_name = "_commit"]
+            fn commit(fd: c_int) -> c_int;
         }
     }
 }

@@ -14,7 +14,7 @@
 // facts of which OS the user is on -- they should be given the opportunity
 // to write OS-ignorant code by default.
 
-import libc::{c_char, c_void, c_int, c_uint, size_t, mode_t, FILE};
+import libc::{c_char, c_void, c_int, c_uint, size_t, mode_t, pid_t, FILE};
 import libc::{close, fclose};
 
 import getcwd = rustrt::rust_getcwd;
@@ -32,6 +32,7 @@ native mod rustrt {
     fn rust_path_is_dir(path: str::sbuf) -> c_int;
     fn rust_path_exists(path: str::sbuf) -> c_int;
     fn rust_list_files(path: str) -> [str];
+    fn rust_process_wait(handle: c_int) -> c_int;
 }
 
 
@@ -95,6 +96,77 @@ fn fdopen(fd: c_int) -> *FILE {
     };
 }
 
+
+// fsync related
+
+enum fsync_level {
+    // whatever fsync does on that platform
+    fsync,
+
+    // fdatasync on linux, similiar or more on other platforms
+    fdatasync,
+
+    // full fsync
+    //
+    // You must additionally sync the parent directory as well!
+    fullfsync,
+}
+
+#[cfg(target_os = "win32")]
+fn fsync_fd(fd: c_int, _level: fsync_level) -> c_int {
+    import libc::funcs::extra::msvcrt::*;
+    ret commit(fd);
+}
+
+#[cfg(target_os = "linux")]
+fn fsync_fd(fd: c_int, level: fsync_level) -> c_int {
+    import libc::funcs::posix01::unistd::*;
+    alt level {
+      fsync | fullfsync { ret fsync(fd); }
+      fdatasync { ret fdatasync(fd); }
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn fsync_fd(fd: c_int, level: fsync_level) -> c_int {
+    import libc::consts::os::extra::*;
+    import libc::funcs::posix88::fcntl::*;
+    import libc::funcs::posix01::unistd::*;
+    alt level {
+      fsync { ret fsync(fd); }
+      _ {
+        // According to man fnctl, the ok retval is only specified to be !=-1
+        if (fcntl(F_FULLFSYNC as c_int, fd) == -1 as c_int)
+            { ret -1 as c_int; }
+        else
+            { ret 0 as c_int; }
+      }
+    }
+}
+
+#[cfg(target_os = "freebsd")]
+fn fsync_fd(fd: c_int, _l: fsync_level) -> c_int {
+    import libc::funcs::posix01::unistd::*;
+    ret fsync(fd);
+}
+
+
+#[cfg(target_os = "win32")]
+fn waitpid(pid: pid_t) -> c_int {
+    ret rustrt::rust_process_wait(pid);
+}
+
+#[cfg(target_os = "linux")]
+#[cfg(target_os = "freebsd")]
+#[cfg(target_os = "macos")]
+fn waitpid(pid: pid_t) -> c_int {
+    import libc::funcs::posix01::wait::*;
+    let status = 0 as c_int;
+
+    assert (waitpid(pid, ptr::mut_addr_of(status),
+                    0 as c_int) != (-1 as c_int));
+    ret status;
+}
 
 
 #[cfg(target_os = "linux")]
@@ -402,6 +474,34 @@ fn change_dir(p: path) -> bool {
     fn chdir(p: path) -> bool {
         ret as_c_charp(p) {|buf|
             libc::chdir(buf) == (0 as c_int)
+        };
+    }
+}
+
+/*
+Function: remove_file
+
+Deletes an existing file.
+*/
+fn remove_file(p: path) -> bool {
+    ret unlink(p);
+
+    #[cfg(target_os = "win32")]
+    fn unlink(p: path) -> bool {
+        // FIXME: remove imports when export globs work properly.
+        import libc::funcs::extra::kernel32;
+        import libc::types::os::arch::extra::*;
+        ret as_c_charp(p) {|buf|
+            kernel32::DeleteFileA(buf) != (0 as BOOL)
+        };
+    }
+
+    #[cfg(target_os = "linux")]
+    #[cfg(target_os = "macos")]
+    #[cfg(target_os = "freebsd")]
+    fn unlink(p: path) -> bool {
+        ret as_c_charp(p) {|buf|
+            libc::unlink(buf) == (0 as c_int)
         };
     }
 }
