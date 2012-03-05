@@ -6,8 +6,6 @@ rust_srv::rust_srv(rust_env *env) :
     local_region(this, false) {
 }
 
-rust_srv::~rust_srv() {}
-
 void
 rust_srv::free(void *p) {
     ::free(p);

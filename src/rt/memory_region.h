@@ -60,7 +60,7 @@ public:
     void *calloc(size_t size, const char *tag);
     void *realloc(void *mem, size_t size);
     void free(void *mem);
-    virtual ~memory_region();
+    ~memory_region();
  };
 
 inline void *operator new(size_t size, memory_region &region,
