@@ -2071,7 +2071,7 @@ fn check_exports(e: @env) {
     fn check_enum_ok(e: @env, sp:span, id: ident, _mod: @indexed_mod)
         -> node_id {
         alt _mod.index.find(id) {
-           none { e.sess.span_fatal(sp, #fmt("error: undefined id %s \
+           none { e.sess.span_fatal(sp, #fmt("undefined id %s \
                          in an export", id)); }
            some(ms) {
              let maybe_id = list::find(ms) {|m|
@@ -2087,7 +2087,7 @@ fn check_exports(e: @env) {
              };
              alt maybe_id {
                 some(an_id) { ret an_id; }
-                _ { e.sess.span_fatal(sp, #fmt("error: %s does not refer \
+                _ { e.sess.span_fatal(sp, #fmt("%s does not refer \
                           to an enumeration", id)); }
              }
          }
