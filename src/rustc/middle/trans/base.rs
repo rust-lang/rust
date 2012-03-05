@@ -288,7 +288,7 @@ fn mk_obstack_token(ccx: crate_ctxt, fcx: fn_ctxt) ->
 // return type, use bump_ptr().
 fn ptr_offs(bcx: block, base: ValueRef, sz: ValueRef) -> ValueRef {
     let raw = PointerCast(bcx, base, T_ptr(T_i8()));
-    GEP(bcx, raw, [sz])
+    InBoundsGEP(bcx, raw, [sz])
 }
 
 // Increment a pointer by a given amount and then cast it to be a pointer
@@ -2402,12 +2402,12 @@ fn trans_index(cx: block, ex: @ast::expr, base: @ast::expr,
         trans_fail(bcx, some(ex.span), "bounds check")
     };
     let elt = if check type_has_static_size(ccx, unit_ty) {
-        let elt_1 = GEP(bcx, body, [ix_val]);
+        let elt_1 = InBoundsGEP(bcx, body, [ix_val]);
         let llunitty = type_of(ccx, unit_ty);
         PointerCast(bcx, elt_1, T_ptr(llunitty))
     } else {
         body = PointerCast(bcx, body, T_ptr(T_i8()));
-        GEP(bcx, body, [scaled_ix])
+        InBoundsGEP(bcx, body, [scaled_ix])
     };
     ret lval_owned(bcx, elt);
 }
