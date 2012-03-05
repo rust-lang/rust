@@ -2,7 +2,6 @@ chan_id_send
 check_claims
 debug_box
 debug_fn
-debug_obj
 debug_opaque
 del_port
 debug_ptrcast

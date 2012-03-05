@@ -274,25 +274,6 @@ struct rust_fn {
     void *env;
 };
 
-struct rust_closure {
-    type_desc *tydesc;
-    uint32_t target_0;
-    uint32_t target_1;
-    uint32_t bindings[0];
-
-    uint8_t *get_bindings() const { return (uint8_t *)bindings; }
-};
-
-struct rust_obj_box {
-    type_desc *tydesc;
-
-    uint8_t *get_bindings() const { return (uint8_t *)this; }
-};
-
-struct rust_vtable {
-    CDECL void (*dtor)(void *rv, rust_task *task, rust_obj obj);
-};
-
 struct rust_obj {
     rust_vtable *vtable;
     void *box;

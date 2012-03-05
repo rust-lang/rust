@@ -268,28 +268,6 @@ debug_tag(type_desc *t, rust_tag *tag) {
             tag->variant[i]);
 }
 
-struct rust_obj {
-    uintptr_t *vtbl;
-    rust_box *body;
-};
-
-extern "C" CDECL void
-debug_obj(type_desc *t, rust_obj *obj, size_t nmethods, size_t nbytes) {
-    rust_task *task = rust_task_thread::get_task();
-
-    LOG(task, stdlib, "debug_obj with %" PRIdPTR " methods", nmethods);
-    debug_tydesc_helper(t);
-    LOG(task, stdlib, "  vtbl at 0x%" PRIxPTR, obj->vtbl);
-    LOG(task, stdlib, "  body at 0x%" PRIxPTR, obj->body);
-
-    for (uintptr_t *p = obj->vtbl; p < obj->vtbl + nmethods; ++p)
-        LOG(task, stdlib, "  vtbl word: 0x%" PRIxPTR, *p);
-
-    for (uintptr_t i = 0; i < nbytes; ++i)
-        LOG(task, stdlib, "  body byte %" PRIdPTR ": 0x%" PRIxPTR,
-            i, obj->body->data[i]);
-}
-
 struct rust_fn {
     uintptr_t *thunk;
     rust_box *closure;

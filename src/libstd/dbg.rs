@@ -14,8 +14,6 @@ native mod rustrt {
     fn debug_opaque<T>(td: *sys::type_desc, x: T);
     fn debug_box<T>(td: *sys::type_desc, x: @T);
     fn debug_tag<T>(td: *sys::type_desc, x: T);
-    fn debug_obj<T>(td: *sys::type_desc, x: T,
-                    nmethods: ctypes::size_t, nbytes: ctypes::size_t);
     fn debug_fn<T>(td: *sys::type_desc, x: T);
     fn debug_ptrcast<T, U>(td: *sys::type_desc, x: @T) -> @U;
 }
@@ -34,20 +32,6 @@ fn debug_box<T>(x: @T) {
 
 fn debug_tag<T>(x: T) {
     rustrt::debug_tag::<T>(sys::get_type_desc::<T>(), x);
-}
-
-
-/**
- * `nmethods` is the number of methods we expect the object to have.  The
- * runtime will print this many words of the obj vtbl).
- *
- * `nbytes` is the number of bytes of body data we expect the object to have.
- * The runtime will print this many bytes of the obj body.  You probably want
- * this to at least be 4u, since an implicit captured tydesc pointer sits in
- * the front of any obj's data tuple.x
- */
-fn debug_obj<T>(x: T, nmethods: uint, nbytes: uint) {
-    rustrt::debug_obj::<T>(sys::get_type_desc::<T>(), x, nmethods, nbytes);
 }
 
 fn debug_fn<T>(x: T) {
