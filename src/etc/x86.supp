@@ -438,6 +438,25 @@
 }
 
 {
+   random-locking-order-but-it-only-happens-in-a-single-thread-at-a-time-I-polled-2-other-people-and-they-thought-it-was-prabably-ok
+   Helgrind:LockOrder
+   fun:pthread_mutex_lock
+   fun:pthread_mutex_lock
+   fun:_ZN15lock_and_signal4lockEv
+   fun:_ZN18rust_port_selector6selectEP9rust_taskPP9rust_portS4_mPm
+   ...
+}
+
+{
+   random-locking-order-but-it-only-happens-in-a-single-thread-at-a-time-I-polled-2-other-people-and-they-thought-it-was-prabably-ok-i686
+   Helgrind:LockOrder
+   fun:pthread_mutex_lock
+   fun:pthread_mutex_lock
+   fun:_ZN15lock_and_signal4lockEv
+   fun:_ZN18rust_port_selector6selectEP9rust_taskPP9rust_portS4_jPj
+}
+
+{
    libunwind-surely-this-is-ok
    Helgrind:Race
    ...
