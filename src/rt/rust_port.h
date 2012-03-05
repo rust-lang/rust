@@ -3,6 +3,8 @@
 
 #include "rust_internal.h"
 
+class port_detach_cond : public rust_cond { };
+
 class rust_port : public kernel_owned<rust_port>, public rust_cond {
 public:
     RUST_ATOMIC_REFCOUNT();
@@ -16,15 +18,23 @@ public:
 
     lock_and_signal lock;
 
+private:
+    // Protects blocking and signaling on detach_cond
+    lock_and_signal detach_lock;
+    port_detach_cond detach_cond;
+
+public:
     rust_port(rust_task *task, size_t unit_sz);
     ~rust_port();
-    void delete_this() { delete this; }
+    void delete_this();
 
     void log_state();
     void send(void *sptr);
     void receive(void *dptr, uintptr_t *yield);
     size_t size();
-    void detach();
+
+    void begin_detach(uintptr_t *yield);
+    void end_detach();
 };
 
 //

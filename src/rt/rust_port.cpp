@@ -20,13 +20,40 @@ rust_port::~rust_port() {
     task->deref();
 }
 
-void rust_port::detach() {
+void rust_port::delete_this() {
+    scoped_lock with(detach_lock);
+
+    if (task->blocked_on(&detach_cond)) {
+        // The port owner is waiting for the port to be detached
+        task->wakeup(&detach_cond);
+    }
+}
+
+void rust_port::begin_detach(uintptr_t *yield) {
+    *yield = false;
+
     task->release_port(id);
-    // FIXME: Busy waiting until we're the only ref
+
+    deref();
+
+    scoped_lock with(detach_lock);
+    if (get_ref_count() != 0) {
+        task->block(&detach_cond, "waiting for port detach");
+        *yield = true;
+    }
+}
+
+void rust_port::end_detach() {
+    // FIXME: For some reason, on rare occasion we can get here without
+    // actually having the ref count go to 0. Possibly related to #1923
     bool done = false;
     while (!done) {
-        done = get_ref_count() == 1;
+        done = get_ref_count() == 0;
     }
+
+    // Just take the lock to make sure that the thread that signaled
+    // the detach_cond isn't still holding it
+    scoped_lock with(detach_lock);
 }
 
 void rust_port::send(void *sptr) {

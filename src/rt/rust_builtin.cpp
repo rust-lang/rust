@@ -482,18 +482,23 @@ new_port(size_t unit_sz) {
 }
 
 extern "C" CDECL void
-rust_port_detach(rust_port *port) {
+rust_port_begin_detach(rust_port *port, uintptr_t *yield) {
     rust_task *task = rust_task_thread::get_task();
     LOG(task, comm, "rust_port_detach(0x%" PRIxPTR ")", (uintptr_t) port);
-    port->detach();
+    port->begin_detach(yield);
+}
+
+extern "C" CDECL void
+rust_port_end_detach(rust_port *port) {
+    port->end_detach();
 }
 
 extern "C" CDECL void
 del_port(rust_port *port) {
     rust_task *task = rust_task_thread::get_task();
     LOG(task, comm, "del_port(0x%" PRIxPTR ")", (uintptr_t) port);
-    A(task->thread, port->get_ref_count() == 1, "Expected port ref_count == 1");
-    port->deref();
+    A(task->thread, port->get_ref_count() == 0, "Expected port ref_count == 0");
+    delete port;
 }
 
 extern "C" CDECL size_t

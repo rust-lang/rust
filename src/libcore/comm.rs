@@ -42,7 +42,9 @@ native mod rustrt {
 
     fn new_port(unit_sz: ctypes::size_t) -> *rust_port;
     fn del_port(po: *rust_port);
-    fn rust_port_detach(po: *rust_port);
+    fn rust_port_begin_detach(po: *rust_port,
+                              yield: *ctypes::uintptr_t);
+    fn rust_port_end_detach(po: *rust_port);
     fn get_port_id(po: *rust_port) -> port_id;
     fn rust_port_size(po: *rust_port) -> ctypes::size_t;
     fn port_recv(dptr: *uint, po: *rust_port,
@@ -82,7 +84,17 @@ enum chan<T: send> {
 resource port_ptr<T: send>(po: *rust_port) {
     // Once the port is detached it's guaranteed not to receive further
     // messages
-    rustrt::rust_port_detach(po);
+    let yield = 0u;
+    let yieldp = ptr::addr_of(yield);
+    rustrt::rust_port_begin_detach(po, yieldp);
+    if yield != 0u {
+        // Need to wait for the port to be detached
+        // FIXME: If this fails then we're going to leave our port
+        // in a bogus state.
+        task::yield();
+    }
+    rustrt::rust_port_end_detach(po);
+
     // Drain the port so that all the still-enqueued items get dropped
     while rustrt::rust_port_size(po) > 0u {
         // FIXME: For some reason if we don't assign to something here
