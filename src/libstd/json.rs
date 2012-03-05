@@ -7,6 +7,7 @@ import io::{reader_util, writer_util};
 import map;
 
 export json;
+export error;
 export to_writer;
 export to_str;
 export from_reader;
