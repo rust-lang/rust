@@ -24,7 +24,7 @@ enum output_type {
     output_type_exe,
 }
 
-fn llvm_err(sess: session, msg: str) unsafe {
+fn llvm_err(sess: session, msg: str) -> ! unsafe {
     let buf = llvm::LLVMRustGetLastError();
     if buf == ptr::null() {
         sess.fatal(msg);
@@ -46,7 +46,6 @@ fn load_intrinsics_bc(sess: session) -> option<ModuleRef> {
                                    });
     if membuf as uint == 0u {
         llvm_err(sess, "installation problem: couldn't open " + path);
-        fail;
     }
     let llintrinsicsmod = llvm::LLVMRustParseBitcode(membuf);
     llvm::LLVMDisposeMemoryBuffer(membuf);
@@ -70,7 +69,6 @@ fn load_intrinsics_ll(sess: session) -> ModuleRef {
                                         });
     if llintrinsicsmod as uint == 0u {
         llvm_err(sess, "couldn't parse intrinsics.ll");
-        fail;
     }
     ret llintrinsicsmod;
 }
@@ -93,7 +91,6 @@ fn link_intrinsics(sess: session, llmod: ModuleRef) {
     llvm::LLVMDisposeModule(llintrinsicsmod);
     if linkres == False {
         llvm_err(sess, "couldn't link the module with the intrinsics");
-        fail;
     }
 }
 
