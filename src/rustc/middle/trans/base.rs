@@ -20,7 +20,6 @@ import std::map::{new_int_hash, new_str_hash};
 import driver::session;
 import session::session;
 import front::attr;
-import middle::inline::inline_map;
 import back::{link, abi, upcall};
 import syntax::{ast, ast_util, codemap};
 import ast_util::inlined_item_methods;
@@ -651,20 +650,11 @@ fn set_inline_hint(f: ValueRef) {
                               0u as c_uint);
 }
 
-fn set_inline_hint_if_appr(ccx: crate_ctxt,
-                           attrs: [ast::attribute],
-                           id: ast::node_id) {
+fn set_inline_hint_if_appr(attrs: [ast::attribute],
+                           llfn: ValueRef) {
     alt attr::find_inline_attr(attrs) {
-      attr::ia_hint {
-        #debug["Setting inline mode for %s to 'hint'",
-               ty::item_path_str(ccx.tcx, ast_util::local_def(id))];
-        set_inline_hint(ccx.item_ids.get(id))
-      }
-      attr::ia_always {
-        #debug["Setting inline mode for %s to 'always'",
-               ty::item_path_str(ccx.tcx, ast_util::local_def(id))];
-        set_always_inline(ccx.item_ids.get(id))
-      }
+      attr::ia_hint { set_inline_hint(llfn); }
+      attr::ia_always { set_always_inline(llfn); }
       attr::ia_none { /* fallthrough */ }
     }
 }
@@ -2152,6 +2142,40 @@ fn monomorphic_fn(ccx: crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
     some({llfn: lldecl, fty: mono_ty})
 }
 
+// FIXME[mono] Only actually translate things that are not generic
+fn maybe_instantiate_inline(ccx: crate_ctxt, fn_id: ast::def_id)
+    -> ast::def_id {
+    alt ccx.external.find(fn_id) {
+      some(some(node_id)) { local_def(node_id) } // Already inline
+      some(none) { fn_id } // Not inlinable
+      none { // Not seen yet
+        alt csearch::maybe_get_item_ast(ccx.tcx, ccx.maps, fn_id) {
+          none { ccx.external.insert(fn_id, none); fn_id }
+          some(ast::ii_item(item)) {
+            ccx.external.insert(fn_id, some(item.id));
+            collect_item(ccx, @mutable none, item);
+            trans_item(ccx, *item);
+            local_def(item.id)
+          }
+          some(ast::ii_method(impl_did, mth)) {
+            ccx.external.insert(fn_id, some(mth.id));
+            compute_ii_method_info(ccx, impl_did, mth) {|ty, bounds, path|
+                let mth_ty = ty::node_id_to_type(ccx.tcx, mth.id);
+                let llfn = register_fn_full(ccx, mth.span, path,
+                                            "impl_method", bounds,
+                                            mth.id, mth_ty);
+                set_inline_hint_if_appr(mth.attrs, llfn);
+                trans_fn(ccx, path, mth.decl, mth.body,
+                         llfn, impl_self(ty), bounds,
+                         none, mth.id, none);
+            }
+            local_def(mth.id)
+          }
+        }
+      }
+    }
+}
+
 fn lval_static_fn(bcx: block, fn_id: ast::def_id, id: ast::node_id,
                   substs: option<([ty::t], typeck::dict_res)>)
     -> lval_maybe_callee {
@@ -2162,22 +2186,9 @@ fn lval_static_fn(bcx: block, fn_id: ast::def_id, id: ast::node_id,
 
     // Check whether this fn has an inlined copy and, if so, redirect fn_id to
     // the local id of the inlined copy.
-    let fn_id = {
-        if fn_id.crate == ast::local_crate {
-            fn_id
-        } else {
-            alt ccx.inline_map.find(fn_id) {
-              none { fn_id }
-              some(ii) {
-                #debug["Found inlined version of %s with id %d",
-                       ty::item_path_str(tcx, fn_id),
-                       ii.id()];
-                {crate: ast::local_crate,
-                 node: ii.id()}
-              }
-            }
-        }
-    };
+    let fn_id = if fn_id.crate != ast::local_crate && ccx.sess.opts.inline {
+        maybe_instantiate_inline(ccx, fn_id)
+    } else { fn_id };
 
     // The awkwardness below mostly stems from the fact that we're mixing
     // monomorphized and non-monomorphized functions at the moment. If
@@ -4478,35 +4489,17 @@ fn compute_ii_method_info(ccx: crate_ctxt,
     f(impl_ty, m_bounds, m_path);
 }
 
-fn trans_inlined_items(ccx: crate_ctxt, inline_map: inline_map) {
-    inline_map.values {|ii|
-        alt ii {
-          ast::ii_item(item) {
-            trans_item(ccx, *item)
-          }
-          ast::ii_method(impl_did, m) {
-            compute_ii_method_info(ccx, impl_did, m) {
-                |impl_ty, m_bounds, m_path|
-                let llfndecl = ccx.item_ids.get(m.id);
-                trans_fn(ccx, m_path, m.decl, m.body,
-                         llfndecl, impl_self(impl_ty), m_bounds,
-                         none, m.id, none);
-            }
-          }
-        }
-    }
-}
-
 fn get_pair_fn_ty(llpairty: TypeRef) -> TypeRef {
     // Bit of a kludge: pick the fn typeref out of the pair.
     ret struct_elt(llpairty, 0u);
 }
 
 fn register_fn(ccx: crate_ctxt, sp: span, path: path, flav: str,
-               ty_params: [ast::ty_param], node_id: ast::node_id) {
+               ty_params: [ast::ty_param], node_id: ast::node_id)
+    -> ValueRef {
     let t = ty::node_id_to_type(ccx.tcx, node_id);
     let bnds = param_bounds(ccx, ty_params);
-    register_fn_full(ccx, sp, path, flav, bnds, node_id, t);
+    register_fn_full(ccx, sp, path, flav, bnds, node_id, t)
 }
 
 fn param_bounds(ccx: crate_ctxt, tps: [ast::ty_param]) -> [ty::param_bounds] {
@@ -4515,15 +4508,15 @@ fn param_bounds(ccx: crate_ctxt, tps: [ast::ty_param]) -> [ty::param_bounds] {
 
 fn register_fn_full(ccx: crate_ctxt, sp: span, path: path, flav: str,
                     bnds: [ty::param_bounds], node_id: ast::node_id,
-                    node_type: ty::t) {
+                    node_type: ty::t) -> ValueRef {
     let llfty = type_of_fn_from_ty(ccx, node_type, bnds);
     register_fn_fuller(ccx, sp, path, flav, node_id, node_type,
-                       lib::llvm::CCallConv, llfty);
+                       lib::llvm::CCallConv, llfty)
 }
 
 fn register_fn_fuller(ccx: crate_ctxt, sp: span, path: path, _flav: str,
                       node_id: ast::node_id, node_type: ty::t,
-                      cc: lib::llvm::CallConv, llfty: TypeRef) {
+                      cc: lib::llvm::CallConv, llfty: TypeRef) -> ValueRef {
     let ps: str = mangle_exported_name(ccx, path, node_type);
     let llfn: ValueRef = decl_fn(ccx.llmod, ps, cc, llfty);
     ccx.item_ids.insert(node_id, llfn);
@@ -4534,6 +4527,7 @@ fn register_fn_fuller(ccx: crate_ctxt, sp: span, path: path, _flav: str,
 
     let is_main = is_main_name(path) && !ccx.sess.building_library;
     if is_main { create_main_wrapper(ccx, sp, llfn, node_type); }
+    llfn
 }
 
 // Create a _rust_main(args: [str]) function which will be called from the
@@ -4713,39 +4707,39 @@ fn collect_item(ccx: crate_ctxt, abi: @mutable option<ast::native_abi>,
         }
       }
       ast::item_fn(decl, tps, _) {
-        if decl.purity != ast::crust_fn {
-            register_fn(ccx, i.span, my_path, "fn", tps,
-                        i.id);
+        let llfn = if decl.purity != ast::crust_fn {
+            register_fn(ccx, i.span, my_path, "fn", tps, i.id)
         } else {
-            native::register_crust_fn(ccx, i.span, my_path, i.id);
-        }
+            native::register_crust_fn(ccx, i.span, my_path, i.id)
+        };
 
-        set_inline_hint_if_appr(ccx, i.attrs, i.id);
+        set_inline_hint_if_appr(i.attrs, llfn);
       }
       ast::item_impl(tps, _, _, methods) {
         let path = my_path + [path_name(int::str(i.id))];
         for m in methods {
-            register_fn(ccx, i.span,
-                        path + [path_name(m.ident)],
-                        "impl_method", tps + m.tps, m.id);
-
-            set_inline_hint_if_appr(ccx, m.attrs, m.id);
+            let llm  = register_fn(ccx, i.span,
+                                   path + [path_name(m.ident)],
+                                   "impl_method", tps + m.tps, m.id);
+            set_inline_hint_if_appr(m.attrs, llm);
         }
       }
       ast::item_res(_, tps, _, dtor_id, ctor_id) {
-        register_fn(ccx, i.span, my_path, "res_ctor", tps, ctor_id);
+        let llctor = register_fn(ccx, i.span, my_path, "res_ctor", tps,
+                                 ctor_id);
 
         // Note that the destructor is associated with the item's id, not
         // the dtor_id. This is a bit counter-intuitive, but simplifies
         // ty_res, which would have to carry around two def_ids otherwise
         // -- one to identify the type, and one to find the dtor symbol.
         let t = ty::node_id_to_type(ccx.tcx, dtor_id);
-        register_fn_full(ccx, i.span, my_path + [path_name("dtor")],
-                         "res_dtor", param_bounds(ccx, tps), i.id, t);
+        let lldtor = register_fn_full(ccx, i.span, my_path +
+                                      [path_name("dtor")], "res_dtor",
+                                      param_bounds(ccx, tps), i.id, t);
 
         // give hints that resource ctors/dtors ought to be inlined
-        set_inline_hint(ccx.item_ids.get(ctor_id));
-        set_inline_hint(ccx.item_ids.get(i.id));
+        set_inline_hint(llctor);
+        set_inline_hint(lldtor);
       }
       ast::item_enum(variants, tps) {
         for variant in variants {
@@ -4767,33 +4761,12 @@ fn collect_item(ccx: crate_ctxt, abi: @mutable option<ast::native_abi>,
 }
 
 fn collect_items(ccx: crate_ctxt, crate: @ast::crate) {
-    let abi = @mutable none::<ast::native_abi>;
+    let abi = @mutable none;
     visit::visit_crate(*crate, (), visit::mk_simple_visitor(@{
         visit_native_item: bind collect_native_item(ccx, abi, _),
         visit_item: bind collect_item(ccx, abi, _)
         with *visit::default_simple_visitor()
     }));
-}
-
-fn collect_inlined_items(ccx: crate_ctxt, inline_map: inline::inline_map) {
-    let abi = @mutable none::<ast::native_abi>;
-    inline_map.values {|ii|
-        alt ii {
-          ast::ii_item(item) {
-            collect_item(ccx, abi, item);
-          }
-
-          ast::ii_method(impl_did, m) {
-            compute_ii_method_info(ccx, impl_did, m) {
-                |_impl_ty, m_bounds, m_path|
-                let mthd_ty = ty::node_id_to_type(ccx.tcx, m.id);
-                register_fn_full(ccx, m.span, m_path, "impl_method",
-                                 m_bounds, m.id, mthd_ty);
-                set_inline_hint_if_appr(ccx, m.attrs, m.id);
-            }
-          }
-        }
-    }
 }
 
 // The constant translation pass.
@@ -4995,8 +4968,7 @@ fn write_abi_version(ccx: crate_ctxt) {
 }
 
 fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
-               output: str, emap: resolve::exp_map, maps: maps,
-               inline_map: inline::inline_map)
+               output: str, emap: resolve::exp_map, maps: maps)
     -> (ModuleRef, link::link_meta) {
     let sha = std::sha1::mk_sha1();
     let link_meta = link::build_link_meta(sess, *crate, output, sha);
@@ -5063,6 +5035,7 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           consts: new_int_hash::<ValueRef>(),
           tydescs: ty::new_ty_hash(),
           dicts: map::mk_hashmap(hash_dict_id, {|a, b| a == b}),
+          external: util::common::new_def_hash(),
           monomorphized: map::mk_hashmap(hash_mono_id, {|a, b| a == b}),
           module_data: new_str_hash::<ValueRef>(),
           lltypes: ty::new_ty_hash(),
@@ -5072,7 +5045,6 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           type_short_names: ty::new_ty_hash(),
           tcx: tcx,
           maps: maps,
-          inline_map: inline_map,
           stats:
               {mutable n_static_tydescs: 0u,
                mutable n_derived_tydescs: 0u,
@@ -5094,10 +5066,8 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           dbg_cx: dbg_cx,
           mutable do_not_commit_warning_issued: false};
     collect_items(ccx, crate);
-    collect_inlined_items(ccx, inline_map);
     trans_constants(ccx, crate);
     trans_mod(ccx, crate.node.module);
-    trans_inlined_items(ccx, inline_map);
     fill_crate_map(ccx, crate_map);
     emit_tydescs(ccx);
     gen_shape_tables(ccx);

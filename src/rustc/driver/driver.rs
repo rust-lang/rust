@@ -6,7 +6,7 @@ import syntax::parse::{parser};
 import syntax::{ast, codemap};
 import front::attr;
 import middle::{trans, resolve, freevars, kind, ty, typeck, fn_usage,
-                last_use, lint, inline};
+                last_use, lint};
 import syntax::print::{pp, pprust};
 import util::{ppaux, filesearch};
 import back::link;
@@ -177,16 +177,11 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
                 last_uses: last_uses, impl_map: impl_map,
                 method_map: method_map, dict_map: dict_map};
 
-    let ienbld = sess.opts.inline;
-    let inline_map =
-        time(time_passes, "inline",
-             bind inline::instantiate_inlines(ienbld, ty_cx, maps, crate));
-
     let (llmod, link_meta) =
         time(time_passes, "translation",
              bind trans::base::trans_crate(
                  sess, crate, ty_cx, outputs.obj_filename,
-                 exp_map, maps, inline_map));
+                 exp_map, maps));
     time(time_passes, "LLVM passes",
          bind link::write::run_passes(sess, llmod, outputs.obj_filename));
 

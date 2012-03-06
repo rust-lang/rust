@@ -28,7 +28,6 @@ mod middle {
         mod shape;
         mod debuginfo;
     }
-    mod inline;
     mod ty;
     mod ast_map;
     mod resolve;

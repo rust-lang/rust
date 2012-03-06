@@ -19,7 +19,6 @@ import lib::llvm::{ModuleRef, ValueRef, TypeRef, BasicBlockRef, BuilderRef};
 import lib::llvm::{True, False, Bool};
 import metadata::csearch;
 import ast_map::path;
-import middle::inline::inline_map;
 
 type namegen = fn@(str) -> str;
 fn new_namegen() -> namegen {
@@ -93,6 +92,9 @@ type crate_ctxt = @{
      consts: hashmap<ast::node_id, ValueRef>,
      tydescs: hashmap<ty::t, @tydesc_info>,
      dicts: hashmap<dict_id, ValueRef>,
+     // Track mapping of external ids to local items imported for inlining
+     external: hashmap<ast::def_id, option<ast::node_id>>,
+     // Cache instances of monomorphized functions
      monomorphized: hashmap<mono_id, {llfn: ValueRef, fty: ty::t}>,
      module_data: hashmap<str, ValueRef>,
      lltypes: hashmap<ty::t, TypeRef>,
@@ -102,7 +104,6 @@ type crate_ctxt = @{
      type_short_names: hashmap<ty::t, str>,
      tcx: ty::ctxt,
      maps: maps,
-     inline_map: inline_map,
      stats: stats,
      upcalls: @upcall::upcalls,
      tydesc_type: TypeRef,

@@ -351,10 +351,11 @@ fn trans_crust_fn(ccx: crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
 }
 
 fn register_crust_fn(ccx: crate_ctxt, sp: span,
-                     path: ast_map::path, node_id: ast::node_id) {
+                     path: ast_map::path, node_id: ast::node_id)
+    -> ValueRef {
     let t = ty::node_id_to_type(ccx.tcx, node_id);
     let (llargtys, llretty, _) = c_arg_and_ret_lltys(ccx, node_id);
     let llfty = T_fn(llargtys, llretty);
     register_fn_fuller(ccx, sp, path, "crust fn", node_id,
-                       t, lib::llvm::CCallConv, llfty);
+                       t, lib::llvm::CCallConv, llfty)
 }
