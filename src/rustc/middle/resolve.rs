@@ -8,7 +8,7 @@ import front::attr;
 import metadata::{csearch, cstore};
 import driver::session::session;
 import util::common::*;
-import std::map::{new_int_hash, new_str_hash};
+import std::map::{new_int_hash, new_str_hash, mk_hashmap};
 import syntax::codemap::span;
 import syntax::visit;
 import visit::vt;
@@ -117,16 +117,18 @@ type indexed_mod = {
 
 type def_map = hashmap<node_id, def>;
 type ext_map = hashmap<def_id, [ident]>;
-type exp_map = hashmap<str, @mutable [def]>;
 type impl_map = hashmap<node_id, iscopes>;
 type impl_cache = hashmap<def_id, option<@[@_impl]>>;
+
+type exp = {reexp: bool, id: def_id};
+type exp_map = hashmap<node_id, [exp]>;
 
 type env =
     {cstore: cstore::cstore,
      def_map: def_map,
      ast_map: ast_map::map,
      imports: hashmap<ast::node_id, import_state>,
-     exp_map: exp_map,
+     mutable exp_map: exp_map,
      mod_map: hashmap<ast::node_id, @indexed_mod>,
      block_map: hashmap<ast::node_id, [glob_imp_def]>,
      ext_map: ext_map,
@@ -188,7 +190,7 @@ fn create_env(sess: session, amap: ast_map::map) -> @env {
       def_map: new_int_hash(),
       ast_map: amap,
       imports: new_int_hash(),
-      exp_map: new_str_hash(),
+      mutable exp_map: new_int_hash(),
       mod_map: new_int_hash(),
       block_map: new_int_hash(),
       ext_map: new_def_hash(),
@@ -2005,63 +2007,59 @@ fn check_exports(e: @env) {
 
 
 
-    fn lookup_glob_any(e: @env, info: @indexed_mod, sp: span, path: str,
-                       ident: ident) -> bool {
-        let lookup =
-            bind lookup_glob_in_mod(*e, info, sp, ident, _, inside);
-        let (m, v, t) = (lookup(ns_module),
-                         lookup(ns_val(value_or_enum)),
-                         lookup(ns_type));
-        let full_path = path + ident;
-        maybe_add_reexport(e, full_path, m);
-        maybe_add_reexport(e, full_path, v);
-        maybe_add_reexport(e, full_path, t);
+    fn lookup_glob_any(e: @env, info: @indexed_mod, sp: span,
+                       ident: ident, export_id: node_id) -> bool {
+        let m = lookup_glob_in_mod(*e, info, sp, ident, ns_module, inside);
+        let v = lookup_glob_in_mod(*e, info, sp, ident, ns_val(value_or_enum),
+                                   inside);
+        let t = lookup_glob_in_mod(*e, info, sp, ident, ns_type, inside);
+        maybe_add_reexport(e, export_id, m);
+        maybe_add_reexport(e, export_id, v);
+        maybe_add_reexport(e, export_id, t);
         is_some(m) || is_some(v) || is_some(t)
     }
 
-    fn maybe_add_reexport(e: @env, path: str, def: option<def>) {
-        alt def {
-          some(def) {
-            alt e.exp_map.find(path) {
-              some(v) {
-                // If there are multiple reexports of the same def
-                // using the same path, then we only need one copy
-                if !vec::contains(*v, def) {
-                    *v += [def];
-                }
-              }
-              none { e.exp_map.insert(path, @mutable [def]); }
-            }
-          }
-          _ {}
+
+    fn maybe_add_reexport(e: @env, export_id: node_id, def: option<def>) {
+        option::may(def) {|def|
+            add_export(e, export_id, def_id_of_def(def), true);
         }
+    }
+    fn add_export(e: @env, export_id: node_id, target_id: def_id,
+                  reexp: bool) {
+        let found = alt e.exp_map.find(export_id) {
+          some(f) { f } none { [] }
+        };
+        e.exp_map.insert(export_id, found + [{reexp: reexp, id: target_id}]);
     }
 
     fn check_export(e: @env, ident: str, _mod: @indexed_mod,
-                    vi: @view_item) {
+                    export_id: node_id, vi: @view_item) {
         let found_something = false;
-        let full_path = _mod.path + ident;
         if _mod.index.contains_key(ident) {
             found_something = true;
             let xs = _mod.index.get(ident);
             list::iter(xs) {|x|
                 alt x {
                   mie_import_ident(id, _) {
-                    alt e.imports.get(id) {
+                    alt check e.imports.get(id) {
                       resolved(v, t, m, _, rid, _) {
-                        maybe_add_reexport(e, full_path, v);
-                        maybe_add_reexport(e, full_path, t);
-                        maybe_add_reexport(e, full_path, m);
+                        maybe_add_reexport(e, export_id, v);
+                        maybe_add_reexport(e, export_id, t);
+                        maybe_add_reexport(e, export_id, m);
                       }
-                      _ { }
                     }
+                  }
+                  mie_item(@{id, _}) | mie_native_item(@{id, _}) |
+                  mie_enum_variant(_, _, id, _) {
+                    add_export(e, export_id, local_def(id), false);
                   }
                   _ { }
                 }
             }
         }
-        found_something |= lookup_glob_any(e, _mod, vi.span,
-                                           _mod.path, ident);
+        found_something |= lookup_glob_any(e, _mod, vi.span, ident,
+                                           export_id);
         if !found_something {
             e.sess.span_warn(vi.span,
                              #fmt("exported item %s is not defined", ident));
@@ -2071,64 +2069,54 @@ fn check_exports(e: @env) {
     fn check_enum_ok(e: @env, sp:span, id: ident, _mod: @indexed_mod)
         -> node_id {
         alt _mod.index.find(id) {
-           none { e.sess.span_fatal(sp, #fmt("undefined id %s \
-                         in an export", id)); }
-           some(ms) {
-             let maybe_id = list::find(ms) {|m|
-                  alt m {
-                     mie_item(an_item) {
-                      alt an_item.node {
-                          item_enum(_,_) { /* OK */ some(an_item.id) }
-                          _ { none }
-                      }
-                     }
-                     _ { none }
-               }
-             };
-             alt maybe_id {
-                some(an_id) { ret an_id; }
-                _ { e.sess.span_fatal(sp, #fmt("%s does not refer \
-                          to an enumeration", id)); }
-             }
-         }
-      }
+          none {
+            e.sess.span_fatal(sp, #fmt("undefined id %s in an export", id));
+          }
+          some(ms) {
+            let maybe_id = list::find(ms) {|m|
+                alt m {
+                  mie_item(@{node: item_enum(_, _), id, _}) { some(id) }
+                  _ { none }
+                }
+            };
+            alt maybe_id {
+              some(an_id) { an_id }
+              _ { e.sess.span_fatal(sp, #fmt("%s does not refer \
+                                              to an enumeration", id)); }
+            }
+          }
+        }
     }
 
-    fn check_export_enum_list(e: @env, _mod: @indexed_mod,
+    fn check_export_enum_list(e: @env, export_id: node_id, _mod: @indexed_mod,
                               span: codemap::span, id: ast::ident,
                               ids: [ast::path_list_ident]) {
-        if vec::len(ids) == 0u {
-            let _ = check_enum_ok(e, span, id, _mod);
-        } else {
-            let parent_id = check_enum_ok(e, span, id, _mod);
-            for variant_id in ids {
-                alt _mod.index.find(variant_id.node.name) {
-                  some(ms) {
-                    list::iter(ms) {|m|
-                        alt m {
-                          mie_enum_variant(_, _, actual_parent_id, _) {
-                            if actual_parent_id != parent_id {
-                                let msg = #fmt("variant %s \
-                                                doesn't belong to enum %s",
-                                               variant_id.node.name,
-                                               id);
-                                e.sess.span_err(span, msg);
-                            }
-                          }
-                          _ {
-                            e.sess.span_err(span,
-                                            #fmt("%s is not a variant",
-                                                 variant_id.node.name));
-                          }
+        let parent_id = check_enum_ok(e, span, id, _mod);
+        add_export(e, export_id, local_def(parent_id), false);
+        for variant_id in ids {
+            let found = false;
+            alt _mod.index.find(variant_id.node.name) {
+              some(ms) {
+                list::iter(ms) {|m|
+                    alt m {
+                      mie_enum_variant(_, _, actual_parent_id, _) {
+                        found = true;
+                        if actual_parent_id != parent_id {
+                            e.sess.span_err(
+                                span, #fmt("variant %s doesn't belong to \
+                                            enum %s",
+                                           variant_id.node.name, id));
                         }
+                      }
+                      _ {}
                     }
-                  }
-                  _ {
-                    e.sess.span_err(span,
-                                    #fmt("%s is not a variant",
-                                         variant_id.node.name));
-                  }
                 }
+              }
+              _ {}
+            }
+            if !found {
+                e.sess.span_err(span, #fmt("%s is not a variant",
+                                           variant_id.node.name));
             }
         }
     }
@@ -2141,17 +2129,17 @@ fn check_exports(e: @env) {
             for vi in m.view_items {
                 iter_export_paths(*vi) { |vp|
                     alt vp.node {
-                      ast::view_path_simple(ident, _, _) {
-                        check_export(e, ident, _mod, vi);
+                      ast::view_path_simple(ident, _, id) {
+                        check_export(e, ident, _mod, id, vi);
                       }
-                      ast::view_path_list(path, ids, _) {
+                      ast::view_path_list(path, ids, node_id) {
                         let id = if vec::len(*path) == 1u {
                             path[0]
                         } else {
-                            e.sess.span_fatal(vp.span,
-                                            #fmt("bad export name-list"))
+                            e.sess.span_fatal(vp.span, "bad export name-list")
                         };
-                        check_export_enum_list(e, _mod, vp.span, id, ids);
+                        check_export_enum_list(e, node_id, _mod, vp.span, id,
+                                               ids);
                       }
                       ast::view_path_glob(_, node_id) {
                         glob_is_re_exported.insert(node_id, ());
@@ -2162,18 +2150,14 @@ fn check_exports(e: @env) {
             // Now follow the export-glob links and fill in the
             // globbed_exports and exp_map lists.
             for glob in _mod.glob_imports {
-                alt check glob.path.node {
-                  ast::view_path_glob(path, node_id) {
-                    if ! glob_is_re_exported.contains_key(node_id) {
-                        cont;
-                    }
-                  }
-                }
+                let id = alt check glob.path.node {
+                  ast::view_path_glob(_, node_id) { node_id }
+                };
+                if ! glob_is_re_exported.contains_key(id) { cont; }
                 iter_mod(*e, glob.def,
                          glob.path.span, outside) {|ident, def|
-                    let full_path = _mod.path + ident;
                     _mod.globbed_exports += [ident];
-                    maybe_add_reexport(e, full_path, some(def));
+                    maybe_add_reexport(e, id, some(def));
                 }
             }
           }

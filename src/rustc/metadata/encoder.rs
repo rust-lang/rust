@@ -159,12 +159,17 @@ fn encode_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt, crate: @crate)
 
 fn encode_reexport_paths(ebml_w: ebml::writer,
                          ecx: @encode_ctxt, &index: [entry<str>]) {
-    ecx.ccx.exp_map.items {|path, defs|
-        for def in *defs {
+    let tcx = ecx.ccx.tcx;
+    ecx.ccx.exp_map.items {|exp_id, defs|
+        for def in defs {
+            if !def.reexp { cont; }
+            let path = alt check tcx.items.get(exp_id) {
+              ast_map::node_export(_, path) { ast_map::path_to_str(*path) }
+            };
             index += [{val: path, pos: ebml_w.writer.tell()}];
             ebml_w.start_tag(tag_paths_data_item);
             encode_name(ebml_w, path);
-            encode_def_id(ebml_w, ast_util::def_id_of_def(def));
+            encode_def_id(ebml_w, def.id);
             ebml_w.end_tag();
         }
     }

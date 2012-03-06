@@ -4,6 +4,7 @@ import std::map;
 import rustc::syntax::ast;
 import rustc::syntax::ast_util;
 import rustc::util::common;
+import rustc::middle::ast_map;
 
 export mk_pass;
 
@@ -75,10 +76,11 @@ fn from_str_assoc_list<V:copy>(
 fn build_reexport_def_set(srv: astsrv::srv) -> def_set {
     let assoc_list = astsrv::exec(srv) {|ctxt|
         let def_set = common::new_def_hash();
-        ctxt.exp_map.items {|_path, defs|
-            for def in *defs {
-                let def_id = ast_util::def_id_of_def(def);
-                def_set.insert(def_id, ());
+        ctxt.exp_map.items {|_id, defs|
+            for def in defs {
+                if def.reexp {
+                    def_set.insert(def.id, ());
+                }
             }
         }
         to_assoc_list(def_set)
@@ -154,29 +156,32 @@ fn build_reexport_path_map(srv: astsrv::srv, -def_map: def_map) -> path_map {
         let def_map = from_def_assoc_list(def_assoc_list);
         let path_map = map::new_str_hash();
 
-        ctxt.exp_map.items {|path, defs|
-
-            let path = str::split_str(path, "::");
-            let modpath = str::connect(vec::init(path), "::");
-            let name = option::get(vec::last(path));
+        ctxt.exp_map.items {|exp_id, defs|
+            let path = alt check ctxt.ast_map.get(exp_id) {
+              ast_map::node_export(_, path) { path }
+            };
+            let name = alt check vec::last_total(*path) {
+              ast_map::path_name(nm) { nm }
+            };
+            let modpath = ast_map::path_to_str(vec::init(*path));
 
             let reexportdocs = [];
-            for def in *defs {
-                let def_id = ast_util::def_id_of_def(def);
-                alt def_map.find(def_id) {
+            for def in defs {
+                if !def.reexp { cont; }
+                alt def_map.find(def.id) {
                   some(itemtag) {
                     reexportdocs += [(name, itemtag)];
                   }
-                  none { }
+                  _ {}
                 }
             }
 
-            if vec::is_not_empty(reexportdocs) {
-                let prevdocs = alt path_map.find(modpath) {
-                  some(docs) { docs }
-                  none { [] }
-                };
-                let reexportdocs = prevdocs + reexportdocs;
+            if reexportdocs.len() > 0u {
+                option::may(path_map.find(modpath)) {|docs|
+                    reexportdocs = docs + vec::filter(reexportdocs, {|x|
+                        !vec::contains(docs, x)
+                    });
+                }
                 path_map.insert(modpath, reexportdocs);
                 #debug("path_map entry: %? - %?",
                        modpath, (name, reexportdocs));

@@ -27,6 +27,7 @@ enum ast_node {
     node_method(@method, def_id /* impl did */, @path /* path to the impl */),
     node_variant(variant, def_id, @path),
     node_expr(@expr),
+    node_export(@view_path, @path),
     // Locals are numbered, because the alias analysis needs to know in which
     // order they are introduced.
     node_arg(arg, uint),
@@ -38,6 +39,10 @@ type map = std::map::map<node_id, ast_node>;
 type ctx = {map: map, mutable path: path, mutable local_id: uint};
 type vt = visit::vt<ctx>;
 
+fn extend(cx: ctx, elt: str) -> @path {
+    @(cx.path + [path_name(elt)])
+}
+
 fn mk_ast_map_visitor() -> vt {
     ret visit::mk_vt(@{
         visit_item: map_item,
@@ -45,7 +50,8 @@ fn mk_ast_map_visitor() -> vt {
         visit_expr: map_expr,
         visit_fn: map_fn,
         visit_local: map_local,
-        visit_arm: map_arm
+        visit_arm: map_arm,
+        visit_view_item: map_view_item
         with *visit::default_visitor()
     });
 }
@@ -140,18 +146,36 @@ fn map_item(i: @item, cx: ctx, v: vt) {
       item_enum(vs, _) {
         for v in vs {
             cx.map.insert(v.node.id, node_variant(
-                v, ast_util::local_def(i.id),
-                @(cx.path + [path_name(i.ident)])));
+                v, ast_util::local_def(i.id), extend(cx, i.ident)));
         }
       }
       _ { }
     }
     alt i.node {
-      item_mod(_) | item_native_mod(_) { cx.path += [path_mod(i.ident)]; }
+      item_mod(_) | item_native_mod(_) {
+        cx.path += [path_mod(i.ident)];
+      }
       _ { cx.path += [path_name(i.ident)]; }
     }
     visit::visit_item(i, cx, v);
     vec::pop(cx.path);
+}
+
+fn map_view_item(vi: @view_item, cx: ctx, _v: vt) {
+    alt vi.node {
+      view_item_export(vps) {
+        for vp in vps {
+            let (id, name) = alt vp.node {
+              view_path_simple(nm, _, id) { (id, nm) }
+              view_path_glob(pth, id) | view_path_list(pth, _, id) {
+                (id, vec::last_total(*pth))
+              }
+            };
+            cx.map.insert(id, node_export(vp, extend(cx, name)));
+        }
+      }
+      _ {}
+    }
 }
 
 fn map_native_item(i: @native_item, cx: ctx, v: vt) {
