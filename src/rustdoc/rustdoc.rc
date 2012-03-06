@@ -38,3 +38,4 @@ mod sort_item_name_pass;
 mod sort_item_type_pass;
 mod reexport_pass;
 mod par;
+mod page_pass;

@@ -240,6 +240,90 @@ impl util for moddoc {
     }
 }
 
+impl util for [page] {
+
+    fn mods() -> [moddoc] {
+        vec::filter_map(self) {|page|
+            alt page {
+              itempage(modtag(moddoc)) { some(moddoc) }
+              _ { none }
+            }
+        }
+    }
+
+    fn nmods() -> [nmoddoc] {
+        vec::filter_map(self) {|page|
+            alt page {
+              itempage(nmodtag(nmoddoc)) { some(nmoddoc) }
+              _ { none }
+            }
+        }
+    }
+
+    fn fns() -> [fndoc] {
+        vec::filter_map(self) {|page|
+            alt page {
+              itempage(fntag(fndoc)) { some(fndoc) }
+              _ { none }
+            }
+        }
+    }
+
+    fn consts() -> [constdoc] {
+        vec::filter_map(self) {|page|
+            alt page {
+              itempage(consttag(constdoc)) { some(constdoc) }
+              _ { none }
+            }
+        }
+    }
+
+    fn enums() -> [enumdoc] {
+        vec::filter_map(self) {|page|
+            alt page {
+              itempage(enumtag(enumdoc)) { some(enumdoc) }
+              _ { none }
+            }
+        }
+    }
+
+    fn resources() -> [resdoc] {
+        vec::filter_map(self) {|page|
+            alt page {
+              itempage(restag(resdoc)) { some(resdoc) }
+              _ { none }
+            }
+        }
+    }
+
+    fn ifaces() -> [ifacedoc] {
+        vec::filter_map(self) {|page|
+            alt page {
+              itempage(ifacetag(ifacedoc)) { some(ifacedoc) }
+              _ { none }
+            }
+        }
+    }
+
+    fn impls() -> [impldoc] {
+        vec::filter_map(self) {|page|
+            alt page {
+              itempage(impltag(impldoc)) { some(impldoc) }
+              _ { none }
+            }
+        }
+    }
+
+    fn types() -> [tydoc] {
+        vec::filter_map(self) {|page|
+            alt page {
+              itempage(tytag(tydoc)) { some(tydoc) }
+              _ { none }
+            }
+        }
+    }
+}
+
 iface item {
     fn item() -> itemdoc;
 }
