@@ -283,7 +283,7 @@ fn write_index(ctxt: ctxt, index: doc::index) {
     for entry in index.entries {
         let header = header_text_(entry.kind, entry.name);
         let id = entry.link;
-        ctxt.w.write_line(#fmt("* [%s](#%s)", header, id));
+        ctxt.w.write_line(#fmt("* [%s](%s)", header, id));
     }
     ctxt.w.write_line("");
 }
@@ -954,6 +954,12 @@ mod test {
 
     fn create_doc_srv(source: str) -> (astsrv::srv, doc::doc) {
         astsrv::from_str(source) {|srv|
+
+            let config = {
+                output_style: config::doc_per_crate
+                with config::default_config("whatever")
+            };
+
             let doc = extract::from_srv(srv, "");
             #debug("doc (extract): %?", doc);
             let doc = tystr_pass::mk_pass().f(srv, doc);
@@ -962,7 +968,7 @@ mod test {
             #debug("doc (path): %?", doc);
             let doc = attr_pass::mk_pass().f(srv, doc);
             #debug("doc (attr): %?", doc);
-            let doc = markdown_index_pass::mk_pass().f(srv, doc);
+            let doc = markdown_index_pass::mk_pass(config).f(srv, doc);
             #debug("doc (index): %?", doc);
             (srv, doc)
         }

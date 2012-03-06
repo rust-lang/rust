@@ -4,6 +4,7 @@ export writer_factory;
 export writer_util;
 export make_writer_factory;
 export future_writer_factory;
+export make_filename;
 
 enum writeinstr {
     write(str),
@@ -54,7 +55,7 @@ fn markdown_writer(
     config: config::config,
     page: doc::page
 ) -> writer {
-    let filename = make_filename(config, page);
+    let filename = make_local_filename(config, page);
     generic_writer {|markdown|
         write_file(filename, markdown);
     }
@@ -66,7 +67,7 @@ fn pandoc_writer(
 ) -> writer {
     assert option::is_some(config.pandoc_cmd);
     let pandoc_cmd = option::get(config.pandoc_cmd);
-    let filename = make_filename(config, page);
+    let filename = make_local_filename(config, page);
 
     let pandoc_args = [
         "--standalone",
@@ -159,12 +160,18 @@ fn generic_writer(process: fn~(markdown: str)) -> writer {
     }
 }
 
+fn make_local_filename(
+    config: config::config,
+    page: doc::page
+) -> str {
+    let filename = make_filename(config, page);
+    std::fs::connect(config.output_dir, filename)
+}
+
 fn make_filename(
     config: config::config,
     page: doc::page
 ) -> str {
-    import std::fs;
-
     let filename = {
         alt page {
           doc::cratepage(doc) {
@@ -185,7 +192,8 @@ fn make_filename(
       config::markdown { "md" }
       config::pandoc_html { "html" }
     };
-    fs::connect(config.output_dir, filename + "." + ext)
+
+    filename + "." + ext
 }
 
 #[test]
@@ -198,7 +206,7 @@ fn should_use_markdown_file_name_based_off_crate() {
     };
     let doc = test::mk_doc("test", "");
     let page = doc::cratepage(doc.cratedoc());
-    let filename = make_filename(config, page);
+    let filename = make_local_filename(config, page);
     assert filename == "output/dir/test.md";
 }
 
@@ -212,7 +220,7 @@ fn should_name_html_crate_file_name_index_html_when_doc_per_mod() {
     };
     let doc = test::mk_doc("", "");
     let page = doc::cratepage(doc.cratedoc());
-    let filename = make_filename(config, page);
+    let filename = make_local_filename(config, page);
     assert filename == "output/dir/index.html";
 }
 
@@ -227,7 +235,7 @@ fn should_name_mod_file_names_by_path() {
     let doc = test::mk_doc("", "mod a { mod b { } }");
     let modb = doc.cratemod().mods()[0].mods()[0];
     let page = doc::itempage(doc::modtag(modb));
-    let filename = make_filename(config, page);
+    let filename = make_local_filename(config, page);
     assert  filename == "output/dir/a_b.html";
 }
 
