@@ -128,6 +128,7 @@ mod metadata {
     mod creader;
     mod cstore;
     mod csearch;
+    mod reachable;
 }
 
 mod driver {

@@ -27,7 +27,9 @@ export encode_def_id;
 
 type abbrev_map = map::hashmap<ty::t, tyencode::ty_abbrev>;
 
-type encode_ctxt = {ccx: crate_ctxt, type_abbrevs: abbrev_map};
+type encode_ctxt = {ccx: crate_ctxt,
+                    type_abbrevs: abbrev_map,
+                    reachable: reachable::map};
 
 // Path table encoding
 fn encode_name(ebml_w: ebml::writer, name: str) {
@@ -73,11 +75,11 @@ fn encode_native_module_item_paths(ebml_w: ebml::writer, nmod: native_mod,
     }
 }
 
-fn encode_module_item_paths(ebml_w: ebml::writer, module: _mod, path: [str],
-                            &index: [entry<str>]) {
+fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
+                            module: _mod, path: [str], &index: [entry<str>]) {
     // FIXME factor out add_to_index/start/encode_name/encode_def_id/end ops
     for it: @item in module.items {
-        if !ast_util::is_exported(it.ident, module) { cont; }
+        if !ecx.reachable.contains_key(it.id) { cont; }
         alt it.node {
           item_const(_, _) {
             add_to_index(ebml_w, path, index, it.ident);
@@ -92,7 +94,8 @@ fn encode_module_item_paths(ebml_w: ebml::writer, module: _mod, path: [str],
             ebml_w.start_tag(tag_paths_data_mod);
             encode_name(ebml_w, it.ident);
             encode_def_id(ebml_w, local_def(it.id));
-            encode_module_item_paths(ebml_w, _mod, path + [it.ident], index);
+            encode_module_item_paths(ebml_w, ecx, _mod, path + [it.ident],
+                                     index);
             ebml_w.end_tag();
           }
           item_native_mod(nmod) {
@@ -151,7 +154,7 @@ fn encode_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt, crate: @crate)
     let index: [entry<str>] = [];
     let path: [str] = [];
     ebml_w.start_tag(tag_paths);
-    encode_module_item_paths(ebml_w, crate.node.module, path, index);
+    encode_module_item_paths(ebml_w, ecx, crate.node.module, path, index);
     encode_reexport_paths(ebml_w, ecx, index);
     ebml_w.end_tag();
     ret index;
@@ -334,6 +337,12 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
     }
 
     let tcx = ecx.ccx.tcx;
+    let must_write = alt item.node {
+      item_enum(_, _) | item_res(_, _, _, _, _) { true }
+      _ { false }
+    };
+    if !must_write && !ecx.reachable.contains_key(item.id) { ret; }
+
     alt item.node {
       item_const(_, _) {
         ebml_w.start_tag(tag_items_data_item);
@@ -488,6 +497,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
 
 fn encode_info_for_native_item(ecx: @encode_ctxt, ebml_w: ebml::writer,
                                nitem: @native_item, path: ast_map::path) {
+    if !ecx.reachable.contains_key(nitem.id) { ret; }
     ebml_w.start_tag(tag_items_data_item);
     alt nitem.node {
       native_item_fn(fn_decl, tps) {
@@ -723,8 +733,11 @@ fn encode_hash(ebml_w: ebml::writer, hash: str) {
 
 fn encode_metadata(cx: crate_ctxt, crate: @crate) -> [u8] {
 
+    let reachable = reachable::find_reachable(cx, crate.node.module);
     let abbrevs = ty::new_ty_hash();
-    let ecx = @{ccx: cx, type_abbrevs: abbrevs};
+    let ecx = @{ccx: cx,
+                type_abbrevs: abbrevs,
+                reachable: reachable};
 
     let buf = io::mk_mem_buffer();
     let buf_w = io::mem_buffer_writer(buf);
