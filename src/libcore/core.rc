@@ -33,7 +33,7 @@ export uint, u8, u16, u32, u64;
 export float, f32, f64;
 export box, char, str, ptr, vec, bool;
 export either, option, result, iter;
-export ctypes, sys, unsafe, logging;
+export libc, os, ctypes, sys, unsafe, logging;
 export comm, task, future;
 export extfmt;
 export math, bessel;
@@ -82,10 +82,7 @@ mod to_str;
 // Runtime and language-primitive support
 
 mod libc;
-
-// Rename when transition done.
-#[path = "os.rs"]
-mod new_os;
+mod os;
 mod path;
 
 mod ctypes;

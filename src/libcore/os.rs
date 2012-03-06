@@ -542,8 +542,6 @@ mod consts {
 #[cfg(test)]
 mod tests {
 
-    import os = new_os;
-
     #[test]
     fn test() {
         assert (!path::path_is_absolute("test-path"));
