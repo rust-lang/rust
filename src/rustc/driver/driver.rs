@@ -196,7 +196,7 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
 
     if stop_after_codegen { ret {crate: crate, tcx: some(ty_cx)}; }
 
-    time(time_passes, "Linking",
+    time(time_passes, "linking",
          bind link::link_binary(sess, outputs.obj_filename,
                                 outputs.out_filename, link_meta));
     ret {crate: crate, tcx: some(ty_cx)};
