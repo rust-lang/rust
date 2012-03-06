@@ -44,6 +44,10 @@ void rust_port::begin_detach(uintptr_t *yield) {
 }
 
 void rust_port::end_detach() {
+    // FIXME: For some reason we can sometimes get here without the
+    // refcount decreasing to 0. This is definitely a bug
+    while (get_ref_count() != 0) { }
+
     // Just take the lock to make sure that the thread that signaled
     // the detach_cond isn't still holding it
     scoped_lock with(detach_lock);

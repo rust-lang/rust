@@ -489,11 +489,15 @@ rust_port_begin_detach(rust_port *port, uintptr_t *yield) {
 }
 
 extern "C" CDECL void
+rust_port_end_detach(rust_port *port) {
+    port->end_detach();
+}
+
+extern "C" CDECL void
 del_port(rust_port *port) {
     rust_task *task = rust_task_thread::get_task();
     LOG(task, comm, "del_port(0x%" PRIxPTR ")", (uintptr_t) port);
     A(task->thread, port->get_ref_count() == 0, "Expected port ref_count == 0");
-    port->end_detach();
     delete port;
 }
 
