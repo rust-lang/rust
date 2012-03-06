@@ -304,7 +304,7 @@ fn map_crate(e: @env, c: @ast::crate) {
         }
     }
 
-    // Note: a glob export works as an implict import, along with a
+    // Note: a glob export works as an implicit import, along with a
     // re-export of anything that was exported at the glob-target location.
     // So we wind up reusing the glob-import machinery when looking at
     // glob exports. They just do re-exporting in a later step.

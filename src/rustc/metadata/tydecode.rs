@@ -7,7 +7,7 @@ import syntax::ast_util::respan;
 import middle::ty;
 import std::map::hashmap;
 
-export parse_ty_data, parse_def_id;
+export parse_ty_data, parse_def_id, parse_ident;
 export parse_bounds_data;
 
 // Compact string representation for ty::t values. API ty_str &
@@ -303,6 +303,17 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
         ty::mk_with_id(st.tcx, inner, def)
       }
       'B' { ty::mk_opaque_box(st.tcx) }
+      'a' {
+          #debug("saw a class");
+          assert (next(st) == '[');
+          #debug("saw a [");
+          let did = parse_def(st, conv);
+          #debug("parsed a def_id %?", did);
+          let params: [ty::t] = [];
+          while peek(st) != ']' { params += [parse_ty(st, conv)]; }
+          assert (next(st) == ']');
+          ret ty::mk_class(st.tcx, did, params);
+      }
       c { #error("unexpected char in type string: %c", c); fail;}
     }
 }
@@ -387,8 +398,18 @@ fn parse_def_id(buf: [u8]) -> ast::def_id {
     for b: u8 in crate_part { crate_part_vec += [b]; }
     for b: u8 in def_part { def_part_vec += [b]; }
 
-    let crate_num = option::get(uint::parse_buf(crate_part_vec, 10u)) as int;
-    let def_num = option::get(uint::parse_buf(def_part_vec, 10u)) as int;
+    let crate_num = alt uint::parse_buf(crate_part_vec, 10u) {
+       some(cn) { cn as int }
+       none { fail (#fmt("internal error: parse_def_id: error parsing %? \
+                         as crate",
+                         crate_part_vec)); }
+    };
+    let def_num = alt uint::parse_buf(def_part_vec, 10u) {
+       some(dn) { dn as int }
+       none { fail (#fmt("internal error: parse_def_id: error parsing %? \
+                         as id",
+                         def_part_vec)); }
+    };
     ret {crate: crate_num, node: def_num};
 }
 

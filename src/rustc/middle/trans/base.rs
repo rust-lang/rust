@@ -1886,7 +1886,7 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, real_substs: [ty::t],
              must_cast: true,
              intrinsic: abi == ast::native_abi_rust_intrinsic};
       }
-      ast_map::node_ctor(i) {
+      ast_map::node_ctor(i, _) {
         alt check ccx.tcx.items.get(i.id) {
           ast_map::node_item(i, pt) { (pt, i.ident) }
         }
@@ -1926,7 +1926,7 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, real_substs: [ty::t],
         trans_fn(ccx, pt, mth.decl, mth.body, lldecl,
                  impl_self(selfty), psubsts, fn_id.node, none);
       }
-      ast_map::node_ctor(i) {
+      ast_map::node_ctor(i, _) {
         alt check i.node {
           ast::item_res(decl, _, _, _, _) {
             set_inline_hint(lldecl);
@@ -4378,7 +4378,7 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
           ast_map::node_native_item(ni, _, pth) {
             native::decl_native_fn(ccx, ni, *pth + [path_name(ni.ident)])
           }
-          ast_map::node_ctor(i) {
+          ast_map::node_ctor(i, _) {
             alt check i.node {
               ast::item_res(_, _, _, _, _) {
                 let my_path = item_path(ccx, i);

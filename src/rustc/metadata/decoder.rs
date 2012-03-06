@@ -9,11 +9,13 @@ import front::attr;
 import middle::ty;
 import middle::ast_map;
 import common::*;
-import tydecode::{parse_ty_data, parse_def_id, parse_bounds_data};
+import tydecode::{parse_ty_data, parse_def_id, parse_bounds_data,
+        parse_ident};
 import syntax::print::pprust;
 import cmd=cstore::crate_metadata;
 import middle::trans::common::maps;
 
+export get_class_items;
 export get_symbol;
 export get_enum_variants;
 export get_type;
@@ -84,7 +86,10 @@ fn find_item(item_id: int, items: ebml::doc) -> ebml::doc {
 // to the item data.
 fn lookup_item(item_id: int, data: @[u8]) -> ebml::doc {
     let items = ebml::get_doc(ebml::doc(data), tag_items);
-    ret find_item(item_id, items);
+    alt maybe_find_item(item_id, items) {
+       none { fail(#fmt("lookup_item: id not found: %d", item_id)); }
+       some(d) { d }
+    }
 }
 
 fn item_family(item: ebml::doc) -> char {
@@ -103,6 +108,11 @@ fn item_parent_item(d: ebml::doc) -> option<ast::def_id> {
         found = some(parse_def_id(ebml::doc_data(did)));
     }
     found
+}
+
+fn class_field_id(d: ebml::doc) -> ast::def_id {
+    let tagdoc = ebml::get_doc(d, tag_def_id);
+    ret parse_def_id(ebml::doc_data(tagdoc));
 }
 
 fn variant_disr_val(d: ebml::doc) -> option<int> {
@@ -178,6 +188,7 @@ fn resolve_path(path: [ast::ident], data: @[u8]) -> [ast::def_id] {
     let paths = ebml::get_doc(md, tag_paths);
     let eqer = bind eq_item(_, s);
     let result: [ast::def_id] = [];
+    #debug("resolve_path: looking up %s", s);
     for doc: ebml::doc in lookup_hash(paths, eqer, hash_path(s)) {
         let did_doc = ebml::get_doc(doc, tag_def_id);
         result += [parse_def_id(ebml::doc_data(did_doc))];
@@ -226,6 +237,7 @@ fn lookup_def(cnum: ast::crate_num, data: @[u8], did_: ast::def_id) ->
     // We treat references to enums as references to types.
     alt check fam_ch {
       'c' { ast::def_const(did) }
+      'C' { ast::def_class(did) }
       'u' { ast::def_fn(did, ast::unsafe_fn) }
       'f' { ast::def_fn(did, ast::impure_fn) }
       'p' { ast::def_fn(did, ast::pure_fn) }
@@ -393,10 +405,48 @@ fn get_iface_methods(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
     @result
 }
 
+/*
+  FIXME
+  This is not working. metadata is broken -- fields get encoded correctly,
+  but not decoded. look at this code, see what it's actually writing out
+  also see what "data" is
+ */
+fn get_class_items(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
+    -> [@ty::class_item_ty] {
+    let data = cdata.data;
+    let item = lookup_item(id, data), result = [];
+    #debug("get_class_items: %s", item_name(item));
+    #debug("item: %?", item);
+    // right tag?
+    ebml::tagged_docs(item, tag_items_class_member) {|an_item|
+        let fam = item_family(an_item);
+        let decl = alt check fam {
+                'g' {
+                    let name = item_name(an_item);
+                    #debug("why hello there! %s", name);
+                    let ty = doc_type(an_item, tcx, cdata);
+                    let did = class_field_id(an_item);
+                    {ident: name,
+                     id: did.node,
+                     contents: ty::var_ty(ty)}
+                }
+                _ {
+                    fail; // FIXME
+                }
+        };
+        result += [@decl];
+    }
+    result
+}
+
+
+
 fn family_has_type_params(fam_ch: char) -> bool {
     alt check fam_ch {
-      'c' | 'T' | 'm' | 'n' { false }
-      'f' | 'u' | 'p' | 'F' | 'U' | 'P' | 'y' | 't' | 'v' | 'i' | 'I' { true }
+      'c' | 'T' | 'm' | 'n' | 'g' | 'h' { false }
+      'f' | 'u' | 'p' | 'F' | 'U' | 'P' | 'y' | 't' | 'v' | 'i' | 'I' | 'C'
+          | 'a'
+          { true }
     }
 }
 
@@ -434,6 +484,7 @@ fn item_family_to_str(fam: char) -> str {
       'v' { ret "enum"; }
       'i' { ret "impl"; }
       'I' { ret "iface"; }
+      'C' { ret "class"; }
     }
 }
 

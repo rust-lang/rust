@@ -35,7 +35,7 @@ enum ast_node {
     // order they are introduced.
     node_arg(arg, uint),
     node_local(uint),
-    node_ctor(@item),
+    node_ctor(@item, @path),
     node_block(blk),
 }
 
@@ -154,7 +154,7 @@ fn map_item(i: @item, cx: ctx, v: vt) {
         }
       }
       item_res(_, _, _, dtor_id, ctor_id) {
-        cx.map.insert(ctor_id, node_ctor(i));
+        cx.map.insert(ctor_id, node_ctor(i, item_path));
         cx.map.insert(dtor_id, node_item(i, item_path));
       }
       item_enum(vs, _) {
@@ -173,7 +173,7 @@ fn map_item(i: @item, cx: ctx, v: vt) {
         }
       }
       item_class(_, _, ctor) {
-        cx.map.insert(ctor.node.id, node_ctor(i));
+          cx.map.insert(ctor.node.id, node_ctor(i, item_path));
       }
       _ { }
     }

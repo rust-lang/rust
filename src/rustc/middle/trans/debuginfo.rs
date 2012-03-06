@@ -746,7 +746,7 @@ fn create_function(fcx: fn_ctxt) -> @metadata<subprogram_md> {
       ast_map::node_method(method, _, _) {
           (method.ident, method.decl.output, method.id)
       }
-      ast_map::node_ctor(item) {
+      ast_map::node_ctor(item, _) {
         alt item.node {
             ast::item_res(decl, _, _, _, ctor_id) {
               (item.ident, decl.output, ctor_id)

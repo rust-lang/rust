@@ -76,6 +76,23 @@ fn encode_native_module_item_paths(ebml_w: ebml::writer, nmod: native_mod,
     }
 }
 
+fn encode_class_item_paths(ebml_w: ebml::writer,
+     items: [@class_item], path: [str], &index: [entry<str>]) {
+    for it in items {
+       alt it.node.privacy {
+          priv { cont; }
+          pub {
+              let (id, ident) = alt it.node.decl {
+                      instance_var(v, _, _, vid) { (vid, v) }
+                      class_method(it) { (it.id, it.ident) }
+              };
+              add_to_index(ebml_w, path, index, ident);
+              encode_named_def_id(ebml_w, ident, local_def(id));
+          }
+       }
+    }
+}
+
 fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
                             module: _mod, path: [str], &index: [entry<str>]) {
     // FIXME factor out add_to_index/start/encode_name/encode_def_id/end ops
@@ -128,8 +145,20 @@ fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
             encode_def_id(ebml_w, local_def(it.id));
             ebml_w.end_tag();
           }
-          item_class(_,_,_) {
-              fail "encode: implement item_class";
+          item_class(tps,items,ctor) {
+              add_to_index(ebml_w, path, index, it.ident);
+              ebml_w.start_tag(tag_paths_data_item);
+              encode_name(ebml_w, it.ident);
+              encode_def_id(ebml_w, local_def(it.id));
+              ebml_w.end_tag();
+              ebml_w.start_tag(tag_paths);
+              /* a bit confused -- adding the same ident twice
+               (once for class, once for ctor) */
+              add_to_index(ebml_w, path, index, it.ident);
+              encode_named_def_id(ebml_w, it.ident, local_def(ctor.node.id));
+              encode_class_item_paths(ebml_w, items, path + [it.ident],
+                                      index);
+              ebml_w.end_tag();
           }
           item_enum(variants, tps) {
             add_to_index(ebml_w, path, index, it.ident);
@@ -312,11 +341,78 @@ fn encode_info_for_mod(ecx: @encode_ctxt, ebml_w: ebml::writer, md: _mod,
             }
         }
       }
-      _ { ecx.ccx.tcx.sess.bug("encode_info_for_mod: \
-             undocumented invariant"); }
+      _ { ecx.ccx.tcx.sess.bug(#fmt("encode_info_for_mod: empty impl_map \
+            entry for %?", path)); }
     }
     encode_path(ebml_w, path, ast_map::path_mod(name));
     ebml_w.end_tag();
+}
+
+fn encode_info_for_class(ecx: @encode_ctxt, ebml_w: ebml::writer,
+                         id: node_id, path: ast_map::path, name: ident,
+                         tps: [ty_param], items: [@class_item]) {
+    let tcx = ecx.ccx.tcx;
+    encode_def_id(ebml_w, local_def(id));
+    encode_family(ebml_w, 'C');
+    encode_type_param_bounds(ebml_w, ecx, tps);
+    encode_type(ecx, ebml_w, node_id_to_type(tcx, id));
+    encode_name(ebml_w, name);
+
+    for ci in items {
+      alt ci.node.privacy {
+        pub {
+            ebml_w.start_tag(tag_items_class_member); // ???
+            alt ci.node.decl {
+               instance_var(nm, _, _, id) {
+                   #debug("encode_info_for_class: doing %s", nm);
+                   encode_family(ebml_w, 'g');
+                   encode_name(ebml_w, nm);
+                   encode_type(ecx, ebml_w, node_id_to_type(tcx, id));
+                   /* TODO: mutability */
+                   encode_def_id(ebml_w, local_def(id));
+               }
+               class_method(it) {
+                   encode_family(ebml_w, 'h');
+                   encode_name(ebml_w, it.ident);
+                   alt it.node {
+                      item_fn(fdecl, tps, _) {
+                          encode_info_for_fn(ecx, ebml_w, it.id, it.ident,
+                                             path, none, tps, fdecl);
+                      }
+                      _ { fail; /* TODO */ }
+                   }
+               }
+            }
+            ebml_w.end_tag();
+        }
+        priv {
+            /* don't export it, then! */
+        }
+      }
+    }
+}
+
+fn encode_info_for_fn(ecx: @encode_ctxt, ebml_w: ebml::writer,
+                      id: node_id, ident: ident, path: ast_map::path,
+                      item: option<@item>, tps: [ty_param], decl: fn_decl) {
+        ebml_w.start_tag(tag_items_data_item);
+        encode_def_id(ebml_w, local_def(id));
+        encode_family(ebml_w, purity_fn_family(decl.purity));
+        encode_type_param_bounds(ebml_w, ecx, tps);
+        let its_ty = node_id_to_type(ecx.ccx.tcx, id);
+        #debug("fn name = %s ty = %s", ident,
+               util::ppaux::ty_to_str(ecx.ccx.tcx, its_ty));
+        encode_type(ecx, ebml_w, its_ty);
+        encode_path(ebml_w, path, ast_map::path_name(ident));
+        alt item {
+           some(it) {
+             astencode::encode_inlined_item(ecx, ebml_w, path, ii_item(it));
+           }
+           none {
+             encode_symbol(ecx, ebml_w, id);
+           }
+        }
+        ebml_w.end_tag();
 }
 
 fn purity_fn_family(p: purity) -> char {
@@ -404,8 +500,13 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_enum_variant_info(ecx, ebml_w, item.id, variants,
                                  path, index, tps);
       }
-      item_class(_,_,_) {
-          fail "encode: implement item_class";
+      item_class(tps,items,_) {
+          /* We're not forgetting about the ctor here! It gets
+           encoded elsewhere */
+          ebml_w.start_tag(tag_items_data_item);
+         encode_info_for_class(ecx, ebml_w, item.id, path, item.ident,
+                               tps, items);
+         ebml_w.end_tag();
       }
       item_res(_, tps, _, _, ctor_id) {
         let fn_ty = node_id_to_type(tcx, ctor_id);
@@ -539,6 +640,21 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::writer,
               ast_map::node_item(_, pt) {
                 encode_info_for_item(ecx, ebml_w, i, index, *pt);
               }
+          /* TODO: encode info for class items! */
+          /* encode ctor, then encode items */
+          ast_map::node_ctor(i, path) {
+            alt i.node {
+               item_class(tps, _, ctor) {
+                   #debug("class, encoding a fn: %d", ctor.node.id);
+                   /* this is assuming that ctors aren't inlined...
+                      probably shouldn't assume that */
+                   encode_info_for_fn(ecx, ebml_w, ctor.node.id, i.ident,
+                                      *path, none, tps, ctor.node.dec)
+               }
+               _ { /* TODO: should handle item_res, probably */ }
+            }
+          }
+
             }
         },
         visit_native_item: {|ni, cx, v|

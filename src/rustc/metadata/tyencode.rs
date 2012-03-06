@@ -214,10 +214,15 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
       }
       ty::ty_opaque_box { w.write_char('B'); }
       ty::ty_class(def, tys) {
-          w.write_str("c[");
-          w.write_str(cx.ds(def));
-          w.write_char('|');
+          #debug("~~~~ %s", "a[");
+          w.write_str("a[");
+          let s = cx.ds(def);
+          #debug("~~~~ %s", s);
+          w.write_str(s);
+          #debug("~~~~ %s", "|");
+          w.write_str("|");
           for t: ty::t in tys { enc_ty(w, cx, t); }
+          #debug("~~~~ %s", "]");
           w.write_char(']');
       }
     }

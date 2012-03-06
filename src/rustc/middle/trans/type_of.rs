@@ -83,13 +83,12 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
       ty::ty_constr(subt,_) { type_of(cx, subt) }
       ty::ty_class(did, _) {
         let tys: [TypeRef] = [];
-        // TODO: only handles local classes
-        let cls_items = lookup_class_items(cx.tcx, did);
+        let cls_items = lookup_class_item_tys(cx.tcx, did);
         for ci in cls_items {
             // only instance vars are record fields at runtime
-            alt ci.node.decl {
-                ast::instance_var(_,_,_,_) {
-                  let fty = type_of(cx, class_item_type(cx.tcx, ci));
+            alt ci.contents {
+                var_ty(t) {
+                  let fty = type_of(cx, t);
                   tys += [fty];
                 }
                 _ {}

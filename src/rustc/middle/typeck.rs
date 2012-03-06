@@ -11,7 +11,7 @@ import pat_util::*;
 import middle::ty;
 import middle::ty::{node_id_to_type, arg, block_ty,
                     expr_ty, field, node_type_table, mk_nil,
-                    ty_param_bounds_and_ty, lookup_class_items};
+                    ty_param_bounds_and_ty, lookup_class_item_tys};
 import util::ppaux::ty_to_str;
 import std::smallintmap;
 import std::map::{hashmap, int_hash};
@@ -419,29 +419,29 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
                   }
                 }
               }
-              ast::def_class(class_id) {
-                  alt tcx.items.find(class_id.node) {
-                     some(ast_map::node_item(
-                      @{node: ast::item_class(tps, _, _), _}, _)) {
-                         if vec::len(tps) != vec::len(path.node.types) {
-                            tcx.sess.span_err(ast_ty.span, "incorrect number \
-                               of type parameters to object type");
-                         }
-                         ty::mk_class(tcx, class_id,
-                                      vec::map(path.node.types, {|ast_ty|
-                                                    do_ast_ty_to_ty(tcx,
-                                                                    use_site,
-                                                                    mode,
-                                                                    ast_ty)
-                                               }))
+             ast::def_class(class_id) {
+              if class_id.crate == ast::local_crate {
+                 alt tcx.items.find(class_id.node) {
+                   some(ast_map::node_item(
+                     @{node: ast::item_class(tps, _, _), _}, _)) {
+                        if vec::len(tps) != vec::len(path.node.types) {
+                          tcx.sess.span_err(ast_ty.span, "incorrect number \
+                            of type parameters to object type");
+                        }
+                        ty::mk_class(tcx, class_id, vec::map(path.node.types,
+                          {|ast_ty| ast_ty_to_ty(tcx, mode, ast_ty)}))
                      }
-                     _ {
-                         tcx.sess.span_bug(ast_ty.span, "class id is unbound \
-                           in items");
-                     }
-                  }
+                   _ {
+                      tcx.sess.span_bug(ast_ty.span, #fmt("class id is \
+                        unbound in items"));
+                   }
+                }
               }
-              _ {
+              else {
+                  getter(tcx, use_site, mode, class_id).ty
+              }
+             }
+             _ {
                 tcx.sess.span_fatal(ast_ty.span,
                                     "found type name used as a variable");
               }
@@ -1003,18 +1003,15 @@ mod collect {
           }
           ast::item_class(tps, members, ctor) {
               // Write the class type
-              let {bounds,params} = mk_ty_params(tcx, tps);
-              let class_ty = ty::mk_class(tcx, local_def(it.id), params);
-              let tpt = {bounds: bounds, ty: class_ty};
-              tcx.tcache.insert(local_def(it.id), tpt);
-              write_ty(tcx, it.id, class_ty);
+              let tpt = ty_of_item(tcx, m_collect, it);
+              write_ty(tcx, it.id, tpt.ty);
               // Write the ctor type
               let t_ctor = ty::mk_fn(tcx,
                                      ty_of_fn_decl(tcx, m_collect,
                                              ast::proto_any, ctor.node.dec));
               write_ty(tcx, ctor.node.id, t_ctor);
               tcx.tcache.insert(local_def(ctor.node.id),
-                                   {bounds: bounds, ty: t_ctor});
+                                   {bounds: tpt.bounds, ty: t_ctor});
               /* FIXME: check for proper public/privateness */
               // Write the type of each of the members
               for m in members {
@@ -1941,25 +1938,16 @@ fn lookup_method_inner(fcx: @fn_ctxt, expr: @ast::expr,
     result
 }
 
-fn lookup_field_ty(cx: ty::ctxt, items:[@ast::class_item],
+// problem -- class_item_ty should really be only used for internal stuff.
+// or should have a privacy field.
+fn lookup_field_ty(cx: ty::ctxt, items:[@ty::class_item_ty],
                    fieldname: ast::ident, sp: span)
     -> ty::t {
     for item in items {
-      // this is an access outside the class, so accessing a private
-      // field is an error
-        alt item.node.decl {
-          ast::instance_var(declname, t, _, _) if declname == fieldname {
-             alt item.node.privacy {
-                ast::priv {
-                    cx.sess.span_fatal(sp, "accessed private field outside \
-                       its enclosing class");
-                }
-                ast::pub {
-                    ret ast_ty_to_ty(cx, m_check, t);
-                }
-             }
-          }
-          _ { /* do nothing */ }
+            #debug("%s $$$ %s", fieldname, item.ident);
+        alt item.contents {
+          ty::var_ty(t) if item.ident == fieldname { ret t; }
+          _ { }
         }
     }
     cx.sess.span_fatal(sp, #fmt("unbound field %s", fieldname));
@@ -2763,10 +2751,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
           ty::ty_class(base_id, _params) {
               // (1) verify that the class id actually has a field called
               // field
-              // For now, this code assumes the class is defined in the local
-              // crate
-              // FIXME: handle field references to classes in external crate
-              let cls_items = lookup_class_items(tcx, base_id);
+              let cls_items = lookup_class_item_tys(tcx, base_id);
               let field_ty = lookup_field_ty(fcx.ccx.tcx, cls_items, field,
                                              expr.span);
               // (2) look up what field's type is, and return it

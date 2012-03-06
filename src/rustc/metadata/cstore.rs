@@ -162,10 +162,9 @@ fn get_dep_hashes(cstore: cstore) -> [str] {
 }
 
 fn get_path(cstore: cstore, d: ast::def_id) -> [str] {
-    alt p(cstore).mod_path_map.find(d) {
-      option::some(ds) { str::split_str(ds, "::") }
-      option::none { [] }
-    }
+    // let f = bind str::split_str(_, "::");
+    option::maybe([], p(cstore).mod_path_map.find(d),
+                  {|ds| str::split_str(ds, "::")})
 }
 // Local Variables:
 // mode: rust

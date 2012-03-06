@@ -9,6 +9,7 @@ import middle::trans::common::maps;
 import std::map::hashmap;
 
 export get_symbol;
+export get_class_items;
 export get_type_param_count;
 export lookup_defs;
 export lookup_method_purity;
@@ -35,6 +36,7 @@ fn get_type_param_count(cstore: cstore::cstore, def: ast::def_id) -> uint {
 fn lookup_defs(cstore: cstore::cstore, cnum: ast::crate_num,
                path: [ast::ident]) -> [ast::def] {
     let result = [];
+    #debug("lookup_defs: path = %? cnum = %?", path, cnum);
     for (c, data, def) in resolve_path(cstore, cnum, path) {
         result += [decoder::lookup_def(c, data, def)];
     }
@@ -114,6 +116,12 @@ fn get_iface_methods(tcx: ty::ctxt, def: ast::def_id) -> @[ty::method] {
     let cstore = tcx.sess.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
     decoder::get_iface_methods(cdata, def.node, tcx)
+}
+
+fn get_class_items(tcx: ty::ctxt, def: ast::def_id) -> [@ty::class_item_ty] {
+    let cstore = tcx.sess.cstore;
+    let cdata = cstore::get_crate_data(cstore, def.crate);
+    decoder::get_class_items(cdata, def.node, tcx)
 }
 
 fn get_type(tcx: ty::ctxt, def: ast::def_id) -> ty::ty_param_bounds_and_ty {

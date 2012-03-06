@@ -67,7 +67,7 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
       ast_map::node_method(@{body, _}, _, _) {
         handle_body(cx, body);
       }
-      ast_map::node_ctor(@{node: item_res(_, _, _, _, _), _}) |
+      ast_map::node_ctor(@{node: item_res(_, _, _, _, _), _},_) |
       ast_map::node_variant(_, _, _) {
         uint::range(0u, n_tps) {|n| cx.uses[n] |= use_repr;}
       }
@@ -76,7 +76,7 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
             uint::range(0u, n_tps) {|n| cx.uses[n] |= use_tydesc;}
         }
       }
-      ast_map::node_ctor(@{node: item_class(_, _, ctor), _}) {
+      ast_map::node_ctor(@{node: item_class(_, _, ctor), _}, _) {
         ccx.sess.unimpl("type uses in class constructor");
       }
     }
