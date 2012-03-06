@@ -69,7 +69,7 @@ export
    find_char, find_char_from, find_char_between,
    rfind_char, rfind_char_from, rfind_char_between,
    find_str, find_str_from, find_str_between,
-   findn_str,
+   findn_str, findn_str_between,
    contains,
    starts_with,
    ends_with,
@@ -2057,10 +2057,10 @@ mod tests {
         assert find_str_between("donatello", "don", 0u, 9u) == some(0u);
         assert find_str_between("don", "donatello", 0u, 3u) == none;
 
-        let data0 = "abcabc";
-        assert find_str_between(data0, "ab", 0u, 6u) == some(0u);
-        assert find_str_between(data0, "ab", 2u, 6u) == some(3u);
-        assert find_str_between(data0, "ab", 2u, 4u) == none;
+        let data = "abcabc";
+        assert find_str_between(data, "ab", 0u, 6u) == some(0u);
+        assert find_str_between(data, "ab", 2u, 6u) == some(3u);
+        assert find_str_between(data, "ab", 2u, 4u) == none;
     }
 
     #[test]
@@ -2081,6 +2081,14 @@ mod tests {
         assert find_str_between(data, "ย中", 43u, 86u) == some(67u);
         assert find_str_between(data, "iệt", 43u, 86u) == some(77u);
         assert find_str_between(data, "Nam", 43u, 86u) == some(83u);
+    }
+
+    #[test]
+    fn test_findn_str_between() {
+        let data = "abcabc";
+        assert findn_str_between(data, "ab", 2u, 0u, 6u) == [0u, 3u];
+        assert findn_str_between(data, "ab", 1u, 0u, 6u) == [0u];
+        assert findn_str_between(data, "ax", 1u, 0u, 6u) == [];
     }
 
     #[test]
