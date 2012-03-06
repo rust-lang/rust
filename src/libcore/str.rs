@@ -1202,7 +1202,7 @@ Returns true if one string contains another
 * needle - The string to look for
 "]
 fn contains(haystack: str, needle: str) -> bool {
-    option::is_some(find_str_between(haystack, needle, 0u, len(haystack)))
+    option::is_some(find_str(haystack, needle))
 }
 
 #[doc = "
@@ -2039,7 +2039,6 @@ mod tests {
 
     #[test]
     fn test_find_str() {
-        // byte positions
         assert find_str("banana", "apple pie") == none;
         assert find_str("", "") == some(0u);
 
@@ -2052,16 +2051,12 @@ mod tests {
     }
 
     #[test]
-    fn test_find_str_between() {
+    fn test_find_str_between_ascii() {
         assert find_str_between("", "", 0u, 0u) == some(0u);
         assert find_str_between("", "pow", 0u, 0u) == none;
         assert find_str_between("donatello", "don", 0u, 9u) == some(0u);
-      //assert find_str_between("don", "donatello", 0u, 10u) == none; //was OK
-        assert find_str_between("don", "donatello", 0u, 3u) == none; //OK
-    }
+        assert find_str_between("don", "donatello", 0u, 3u) == none;
 
-    #[test]
-    fn test_find_str_between_ascii() {
         let data0 = "abcabc";
         assert find_str_between(data0, "ab", 0u, 6u) == some(0u);
         assert find_str_between(data0, "ab", 2u, 6u) == some(3u);
