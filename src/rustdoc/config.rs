@@ -74,14 +74,33 @@ fn default_config(input_crate: str) -> config {
     }
 }
 
+type program_output = fn~(str, [str]) -> {status: int, out: str, err: str};
+
+fn mock_program_output(_prog: str, _args: [str]) -> {
+    status: int, out: str, err: str
+} {
+    {
+        status: 0,
+        out: "",
+        err: ""
+    }
+}
+
 fn parse_config(args: [str]) -> result::t<config, str> {
+    parse_config_(args, std::run::program_output)
+}
+
+fn parse_config_(
+    args: [str],
+    program_output: program_output
+) -> result::t<config, str> {
     let args = vec::tail(args);
     let opts = tuple::first(vec::unzip(opts()));
     alt getopts::getopts(args, opts) {
         result::ok(match) {
             if vec::len(match.free) == 1u {
                 let input_crate = vec::head(match.free);
-                config_from_opts(input_crate, match)
+                config_from_opts(input_crate, match, program_output)
             } else if vec::is_empty(match.free) {
                 result::err("no crates specified")
             } else {
@@ -96,7 +115,8 @@ fn parse_config(args: [str]) -> result::t<config, str> {
 
 fn config_from_opts(
     input_crate: str,
-    match: getopts::match
+    match: getopts::match,
+    program_output: program_output
 ) -> result::t<config, str> {
 
     let config = default_config(input_crate);
@@ -133,7 +153,8 @@ fn config_from_opts(
     };
     let result = result::chain(result) {|config|
         let pandoc_cmd = getopts::opt_maybe_str(match, opt_pandoc_cmd());
-        let pandoc_cmd = maybe_find_pandoc(config, pandoc_cmd);
+        let pandoc_cmd = maybe_find_pandoc(
+            config, pandoc_cmd, program_output);
         result::chain(pandoc_cmd) {|pandoc_cmd|
             result::ok({
                 pandoc_cmd: pandoc_cmd
@@ -161,38 +182,97 @@ fn parse_output_style(output_style: str) -> result::t<output_style, str> {
 }
 
 fn maybe_find_pandoc(
-    _config: config,
-    maybe_pandoc_cmd: option<str>
+    config: config,
+    maybe_pandoc_cmd: option<str>,
+    program_output: program_output
 ) -> result::t<option<str>, str> {
-    // FIXME: When we actually need pandoc then look for it first
-    // on the path, then in cabal; test to make sure pandoc works
-    alt maybe_pandoc_cmd {
-      some(pandoc_cmd) { result::ok(some(pandoc_cmd)) }
-      none { result::ok(some("pandoc")) }
+    if config.output_format != pandoc_html {
+        ret result::ok(maybe_pandoc_cmd);
+    }
+
+    let possible_pandocs = alt maybe_pandoc_cmd {
+      some(pandoc_cmd) { [pandoc_cmd] }
+      none {
+        // FIXME (1936): Need to be able to expand ~ to look in .cabal
+        ["pandoc"]
+      }
+    };
+
+    let pandoc = vec::find(possible_pandocs) {|pandoc|
+        let output = program_output(pandoc, ["--version"]);
+        #debug("testing pandoc cmd %s: %?", pandoc, output);
+        output.status == 0
+    };
+
+    if option::is_some(pandoc) {
+        result::ok(pandoc)
+    } else {
+        result::err("couldn't find pandoc")
+    }
+}
+
+#[test]
+fn should_find_pandoc() {
+    let config = {
+        output_format: pandoc_html
+        with default_config("test")
+    };
+    let mock_program_output = fn~(_prog: str, _args: [str]) -> {
+        status: int, out: str, err: str
+    } {
+        {
+            status: 0, out: "pandoc 1.8.2.1", err: ""
+        }
+    };
+    let result = maybe_find_pandoc(config, none, mock_program_output);
+    assert result == result::ok(some("pandoc"));
+}
+
+#[test]
+fn should_error_with_no_pandoc() {
+    let config = {
+        output_format: pandoc_html
+        with default_config("test")
+    };
+    let mock_program_output = fn~(_prog: str, _args: [str]) -> {
+        status: int, out: str, err: str
+    } {
+        {
+            status: 1, out: "", err: ""
+        }
+    };
+    let result = maybe_find_pandoc(config, none, mock_program_output);
+    assert result == result::err("couldn't find pandoc");
+}
+
+#[cfg(test)]
+mod test {
+    fn parse_config(args: [str]) -> result::t<config, str> {
+        parse_config_(args, mock_program_output)
     }
 }
 
 #[test]
 fn should_error_with_no_crates() {
-    let config = parse_config(["rustdoc"]);
+    let config = test::parse_config(["rustdoc"]);
     assert result::get_err(config) == "no crates specified";
 }
 
 #[test]
 fn should_error_with_multiple_crates() {
-    let config = parse_config(["rustdoc", "crate1.rc", "crate2.rc"]);
+    let config = test::parse_config(["rustdoc", "crate1.rc", "crate2.rc"]);
     assert result::get_err(config) == "multiple crates specified";
 }
 
 #[test]
 fn should_set_output_dir_to_cwd_if_not_provided() {
-    let config = parse_config(["rustdoc", "crate.rc"]);
+    let config = test::parse_config(["rustdoc", "crate.rc"]);
     assert result::get(config).output_dir == ".";
 }
 
 #[test]
 fn should_set_output_dir_if_provided() {
-    let config = parse_config([
+    let config = test::parse_config([
         "rustdoc", "crate.rc", "--output-dir", "snuggles"
     ]);
     assert result::get(config).output_dir == "snuggles";
@@ -200,13 +280,13 @@ fn should_set_output_dir_if_provided() {
 
 #[test]
 fn should_set_output_format_to_pandoc_html_if_not_provided() {
-    let config = parse_config(["rustdoc", "crate.rc"]);
+    let config = test::parse_config(["rustdoc", "crate.rc"]);
     assert result::get(config).output_format == pandoc_html;
 }
 
 #[test]
 fn should_set_output_format_to_markdown_if_requested() {
-    let config = parse_config([
+    let config = test::parse_config([
         "rustdoc", "crate.rc", "--output-format", "markdown"
     ]);
     assert result::get(config).output_format == markdown;
@@ -214,7 +294,7 @@ fn should_set_output_format_to_markdown_if_requested() {
 
 #[test]
 fn should_set_output_format_to_pandoc_html_if_requested() {
-    let config = parse_config([
+    let config = test::parse_config([
         "rustdoc", "crate.rc", "--output-format", "html"
     ]);
     assert result::get(config).output_format == pandoc_html;
@@ -222,7 +302,7 @@ fn should_set_output_format_to_pandoc_html_if_requested() {
 
 #[test]
 fn should_error_on_bogus_format() {
-    let config = parse_config([
+    let config = test::parse_config([
         "rustdoc", "crate.rc", "--output-format", "bogus"
     ]);
     assert result::get_err(config) == "unknown output format 'bogus'";
@@ -230,13 +310,13 @@ fn should_error_on_bogus_format() {
 
 #[test]
 fn should_set_output_style_to_doc_per_mod_by_default() {
-    let config = parse_config(["rustdoc", "crate.rc"]);
+    let config = test::parse_config(["rustdoc", "crate.rc"]);
     assert result::get(config).output_style == doc_per_mod;
 }
 
 #[test]
 fn should_set_output_style_to_one_doc_if_requested() {
-    let config = parse_config([
+    let config = test::parse_config([
         "rustdoc", "crate.rc", "--output-style", "doc-per-crate"
     ]);
     assert result::get(config).output_style == doc_per_crate;
@@ -244,7 +324,7 @@ fn should_set_output_style_to_one_doc_if_requested() {
 
 #[test]
 fn should_set_output_style_to_doc_per_mod_if_requested() {
-    let config = parse_config([
+    let config = test::parse_config([
         "rustdoc", "crate.rc", "--output-style", "doc-per-mod"
     ]);
     assert result::get(config).output_style == doc_per_mod;
@@ -252,7 +332,7 @@ fn should_set_output_style_to_doc_per_mod_if_requested() {
 
 #[test]
 fn should_error_on_bogus_output_style() {
-    let config = parse_config([
+    let config = test::parse_config([
         "rustdoc", "crate.rc", "--output-style", "bogus"
     ]);
     assert result::get_err(config) == "unknown output style 'bogus'";
@@ -260,7 +340,7 @@ fn should_error_on_bogus_output_style() {
 
 #[test]
 fn should_set_pandoc_command_if_requested() {
-    let config = parse_config([
+    let config = test::parse_config([
         "rustdoc", "crate.rc", "--pandoc-cmd", "panda-bear-doc"
     ]);
     assert result::get(config).pandoc_cmd == some("panda-bear-doc");
@@ -268,6 +348,6 @@ fn should_set_pandoc_command_if_requested() {
 
 #[test]
 fn should_set_pandoc_command_when_using_pandoc() {
-    let config = parse_config(["rustdoc", "crate.rc"]);
+    let config = test::parse_config(["rustdoc", "crate.rc"]);
     assert result::get(config).pandoc_cmd == some("pandoc");
 }
