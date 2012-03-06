@@ -82,12 +82,12 @@ fn write_markdown(
     doc: doc::doc,
     writer_factory: writer_factory
 ) {
-    for page in doc.pages {
+    par::anymap(doc.pages) {|page|
         let ctxt = {
             w: writer_factory(page)
         };
-        write_page(ctxt, page);
-    }
+        write_page(ctxt, page)
+    };
 }
 
 fn write_page(ctxt: ctxt, page: doc::page) {
