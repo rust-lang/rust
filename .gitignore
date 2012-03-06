@@ -48,7 +48,6 @@
 .project
 .valgrindrc
 lexer.ml
-rustboot
 TAGS
 version.ml
 version.texi
