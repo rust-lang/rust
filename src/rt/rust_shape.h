@@ -274,12 +274,6 @@ struct rust_fn {
     void *env;
 };
 
-struct rust_obj {
-    rust_vtable *vtable;
-    void *box;
-};
-
-
 // Type parameters
 
 class type_param {
