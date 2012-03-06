@@ -2186,7 +2186,7 @@ fn lval_static_fn(bcx: block, fn_id: ast::def_id, id: ast::node_id,
 
     // Check whether this fn has an inlined copy and, if so, redirect fn_id to
     // the local id of the inlined copy.
-    let fn_id = if fn_id.crate != ast::local_crate && ccx.sess.opts.inline {
+    let fn_id = if fn_id.crate != ast::local_crate {
         maybe_instantiate_inline(ccx, fn_id)
     } else { fn_id };
 

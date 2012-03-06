@@ -255,7 +255,7 @@ CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) :=						\
         --rustc-path $$(HBIN$(1)_H_$(3))/rustc$$(X)			\
         --aux-base $$(S)src/test/auxiliary/                 \
         --stage-id stage$(1)-$(2)							\
-        --rustcflags "$$(CFG_RUSTC_FLAGS) --target=$(2) --inline"	\
+        --rustcflags "$$(CFG_RUSTC_FLAGS) --target=$(2)"	\
         $$(CTEST_TESTARGS)
 
 CFAIL_ARGS$(1)-T-$(2)-H-$(3) :=					\

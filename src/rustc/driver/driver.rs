@@ -361,7 +361,6 @@ fn build_session_options(match: getopts::match,
         lint_opts += [(lint::ctypes, false)];
     }
     let monomorphize = opt_present(match, "monomorphize");
-    let inline = opt_present(match, "inline");
 
     let output_type =
         if parse_only || no_trans {
@@ -441,7 +440,6 @@ fn build_session_options(match: getopts::match,
           no_trans: no_trans,
           no_asm_comments: no_asm_comments,
           monomorphize: monomorphize,
-          inline: inline,
           warn_unused_imports: warn_unused_imports,
           enforce_mut_vars: enforce_mut_vars};
     ret sopts;
@@ -513,7 +511,6 @@ fn opts() -> [getopts::opt] {
          optflag("no-verify"),
          optflag("no-lint-ctypes"),
          optflag("monomorphize"),
-         optflag("inline"),
          optmulti("cfg"), optflag("test"),
          optflag("lib"), optflag("bin"), optflag("static"), optflag("gc"),
          optflag("no-asm-comments"),
