@@ -497,7 +497,6 @@ extern "C" CDECL void
 del_port(rust_port *port) {
     rust_task *task = rust_task_thread::get_task();
     LOG(task, comm, "del_port(0x%" PRIxPTR ")", (uintptr_t) port);
-    A(task->thread, port->get_ref_count() == 0, "Expected port ref_count == 0");
     delete port;
 }
 
