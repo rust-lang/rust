@@ -1,7 +1,3 @@
-/* rustdoc: rust -> markdown translator
- * Copyright 2011 Google Inc.
- */
-
 // Some utility interfaces
 import doc::item;
 import doc::util;
