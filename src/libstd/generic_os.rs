@@ -80,7 +80,7 @@ fn getenv(n: str) -> option<str> {
             ret option::some(str::from_bytes(v)); // UTF-8 or fail
         } else { nsize = res; }
     }
-    fail;
+    util::unreachable();
 }
 
 #[cfg(target_os = "win32")]
