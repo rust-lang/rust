@@ -100,15 +100,38 @@ fn pandoc_writer(
         os::close(pipe_out.out);
         os::close(pipe_err.out);
         os::close(pipe_in.out);
-        os::close(pipe_out.in);
-        os::close(pipe_err.in);
+
+        let stdout = result::get(task::try {||
+            readclose(pipe_out.in)
+        });
+        let stderr = result::get(task::try {||
+            readclose(pipe_err.in)
+        });
 
         let status = run::waitpid(pid);
         #debug("pandoc result: %i", status);
         if status != 0 {
+            #error("pandoc-out: %s", stdout);
+            #error("pandoc-err: %s", stderr);
             fail "pandoc failed";
         }
     }
+}
+
+fn readclose(fd: ctypes::fd_t) -> str {
+    import std::os;
+    import std::io;
+
+    // Copied from run::program_output
+    let file = os::fd_FILE(fd);
+    let reader = io::FILE_reader(file, false);
+    let buf = "";
+    while !reader.eof() {
+        let bytes = reader.read_bytes(4096u);
+        buf += str::from_bytes(bytes);
+    }
+    os::fclose(file);
+    ret buf;
 }
 
 fn generic_writer(process: fn~(markdown: str)) -> writer {
