@@ -82,12 +82,39 @@ fn write_markdown(
     doc: doc::doc,
     writer_factory: writer_factory
 ) {
-    let ctxt = {
-        w: writer_factory(doc::cratepage(doc.cratedoc()))
-    };
+    for page in doc.pages {
+        let ctxt = {
+            w: writer_factory(page)
+        };
+        write_page(ctxt, page);
+    }
+}
 
-    write_crate(ctxt, doc.cratedoc());
+fn write_page(ctxt: ctxt, page: doc::page) {
+    alt page {
+      doc::cratepage(doc) {
+        write_crate(ctxt, doc);
+      }
+      doc::itempage(doc) {
+        write_item(ctxt, doc);
+      }
+    }
     ctxt.w.write_done();
+}
+
+#[test]
+fn should_request_new_writer_for_each_page() {
+    // This port will send us a (page, str) pair for every writer
+    // that was created
+    let (writer_factory, po) = markdown_writer::future_writer_factory();
+    let (srv, doc) = test::create_doc_srv("mod a { }");
+    // Split the document up into pages
+    let doc = page_pass::mk_pass(config::doc_per_mod).f(srv, doc);
+    write_markdown(doc, writer_factory);
+    // We expect two pages to have been written
+    iter::repeat(2u) {||
+        comm::recv(po);
+    }
 }
 
 enum hlvl {
@@ -218,17 +245,21 @@ fn write_mod_contents(
     }
 
     for itemtag in doc.items {
-        alt itemtag {
-          doc::modtag(moddoc) { write_mod(ctxt, moddoc) }
-          doc::nmodtag(nmoddoc) { write_nmod(ctxt, nmoddoc) }
-          doc::fntag(fndoc) { write_fn(ctxt, fndoc) }
-          doc::consttag(constdoc) { write_const(ctxt, constdoc) }
-          doc::enumtag(enumdoc) { write_enum(ctxt, enumdoc) }
-          doc::restag(resdoc) { write_res(ctxt, resdoc) }
-          doc::ifacetag(ifacedoc) { write_iface(ctxt, ifacedoc) }
-          doc::impltag(impldoc) { write_impl(ctxt, impldoc) }
-          doc::tytag(tydoc) { write_type(ctxt, tydoc) }
-        }
+        write_item(ctxt, itemtag);
+    }
+}
+
+fn write_item(ctxt: ctxt, doc: doc::itemtag) {
+    alt doc {
+      doc::modtag(moddoc) { write_mod(ctxt, moddoc) }
+      doc::nmodtag(nmoddoc) { write_nmod(ctxt, nmoddoc) }
+      doc::fntag(fndoc) { write_fn(ctxt, fndoc) }
+      doc::consttag(constdoc) { write_const(ctxt, constdoc) }
+      doc::enumtag(enumdoc) { write_enum(ctxt, enumdoc) }
+      doc::restag(resdoc) { write_res(ctxt, resdoc) }
+      doc::ifacetag(ifacedoc) { write_iface(ctxt, ifacedoc) }
+      doc::impltag(impldoc) { write_impl(ctxt, impldoc) }
+      doc::tytag(tydoc) { write_type(ctxt, tydoc) }
     }
 }
 
