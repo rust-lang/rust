@@ -312,7 +312,7 @@ fn future_task(builder: task_builder) -> future::future<task> {
     let po = comm::port();
     let ch = comm::chan(po);
     add_wrapper(builder) {|body|
-        fn~[move body]() {
+        fn~() {
             comm::send(ch, get_task());
             body();
         }
@@ -347,12 +347,12 @@ fn run_listener<A:send>(-builder: task_builder,
     let setup_po = comm::port();
     let setup_ch = comm::chan(setup_po);
 
-    run(builder, fn~[move f]() {
+    run(builder) {||
         let po = comm::port();
         let ch = comm::chan(po);
         comm::send(setup_ch, ch);
         f(po);
-    });
+    }
 
     comm::recv(setup_po)
 }
@@ -451,9 +451,9 @@ fn try<T:send>(+f: fn~() -> T) -> result::t<T,()> {
     let builder = mk_task_builder();
     unsupervise(builder);
     let result = future_result(builder);
-    run(builder, fn~[move f]() {
+    run(builder) {||
         comm::send(ch, f());
-    });
+    }
     alt future::get(result) {
       success { result::ok(comm::recv(po)) }
       failure { result::err(()) }
@@ -506,7 +506,7 @@ fn spawn_raw(opts: task_opts, +f: fn~()) unsafe {
         // was designed to let the child unsupervise itself, when what
         // we actually want is for parents to unsupervise new
         // children.
-        fn~[move f]() {
+        fn~() {
             rustrt::unsupervise();
             f();
         }
@@ -852,10 +852,10 @@ fn avoid_copying_the_body(spawnfn: fn(+fn~())) {
     let x = ~1;
     let x_in_parent = ptr::addr_of(*x) as uint;
 
-    spawnfn(fn~[move x]() {
+    spawnfn {||
         let x_in_child = ptr::addr_of(*x) as uint;
         comm::send(ch, x_in_child);
-    });
+    }
 
     let x_in_child = comm::recv(p);
     assert x_in_parent == x_in_child;
@@ -879,9 +879,9 @@ fn test_avoid_copying_the_body_spawn_listener() {
 fn test_avoid_copying_the_body_run() {
     avoid_copying_the_body {|f|
         let builder = mk_task_builder();
-        run(builder, fn~[move f]() {
+        run(builder) {||
             f();
-        });
+        }
     }
 }
 
@@ -889,7 +889,7 @@ fn test_avoid_copying_the_body_run() {
 fn test_avoid_copying_the_body_run_listener() {
     avoid_copying_the_body {|f|
         let builder = mk_task_builder();
-        run_listener(builder,fn~[move f](_po: comm::port<int>) {
+        run_listener(builder, fn~[move f](_po: comm::port<int>) {
             f();
         });
     }
@@ -898,9 +898,9 @@ fn test_avoid_copying_the_body_run_listener() {
 #[test]
 fn test_avoid_copying_the_body_try() {
     avoid_copying_the_body {|f|
-        try(fn~[move f]() {
-            f();
-        });
+        try {||
+            f()
+        };
     }
 }
 
@@ -909,9 +909,9 @@ fn test_avoid_copying_the_body_future_task() {
     avoid_copying_the_body {|f|
         let builder = mk_task_builder();
         future_task(builder);
-        run(builder, fn~[move f]() {
+        run(builder) {||
             f();
-        });
+        }
     }
 }
 
@@ -920,8 +920,8 @@ fn test_avoid_copying_the_body_unsupervise() {
     avoid_copying_the_body {|f|
         let builder = mk_task_builder();
         unsupervise(builder);
-        run(builder, fn~[move f]() {
+        run(builder) {||
             f();
-        });
+        }
     }
 }
