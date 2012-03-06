@@ -1036,7 +1036,7 @@ fn do_autoderef(fcx: @fn_ctxt, sp: span, t: ty::t) -> ty::t {
           _ { ret t1; }
         }
     }
-    fail;
+    std::util::unreachable();
 }
 
 fn resolve_type_vars_if_possible(fcx: @fn_ctxt, typ: ty::t) -> ty::t {

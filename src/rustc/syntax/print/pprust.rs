@@ -1418,7 +1418,7 @@ fn operator_prec(op: ast::binop) -> int {
     for spec: parse::parser::op_spec in *parse::parser::prec_table() {
         if spec.op == op { ret spec.prec; }
     }
-    fail;
+    std::util::unreachable();
 }
 
 fn need_parens(expr: @ast::expr, outer_prec: int) -> bool {
