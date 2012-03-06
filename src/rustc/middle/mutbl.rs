@@ -98,7 +98,7 @@ fn expr_root(tcx: ty::ctxt, ex: @expr, autoderef: bool) ->
                     is_mutbl = mt.mutbl == m_mutbl;
                     ptr = true;
                   }
-                  _ { tcx.sess.span_bug(base.span, "Ill-typed base \
+                  _ { tcx.sess.span_bug(base.span, "ill-typed base \
                         expression in deref"); }
                 }
                 ds += [@{mutbl: is_mutbl, kind: unbox(ptr && is_mutbl),

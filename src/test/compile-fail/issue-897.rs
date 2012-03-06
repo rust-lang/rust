@@ -1,3 +1,3 @@
-// error-pattern: In non-returning function f, some control paths may return
+// error-pattern:in non-returning function f, some control paths may return
 fn f() -> ! { ret 42; fail; }
 fn main() { }

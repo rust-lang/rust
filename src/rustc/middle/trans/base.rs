@@ -1957,7 +1957,7 @@ fn trans_if(cx: block, cond: @ast::expr, thn: ast::blk,
             trans_block(else_cx, blk, else_dest)
           }
           // would be nice to have a constraint on ifs
-          _ { cx.tcx().sess.bug("Strange alternative in if"); }
+          _ { cx.tcx().sess.bug("strange alternative in if"); }
         }
       }
       _ { else_cx }
@@ -2119,7 +2119,7 @@ fn monomorphic_fn(ccx: crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
       ast_map::node_method(m, _, pt) { (pt, m.ident) }
       // We can't monomorphize native functions
       ast_map::node_native_item(_, _) { ret none; }
-      _ { fail "Unexpected node type"; }
+      _ { fail "unexpected node type"; }
     };
     let pt = *pt + [path_name(ccx.names(name))];
     let s = mangle_exported_name(ccx, pt, mono_ty);
@@ -2614,10 +2614,10 @@ fn trans_cast(cx: block, e: @ast::expr, id: ast::node_id,
               integral {int_cast(e_res.bcx, ll_t_out,
                                   val_ty(lldiscrim_a), lldiscrim_a, true)}
               float {SIToFP(e_res.bcx, lldiscrim_a, ll_t_out)}
-              _ { ccx.sess.bug("Translating unsupported cast.") }
+              _ { ccx.sess.bug("translating unsupported cast.") }
             }
           }
-          _ { ccx.sess.bug("Translating unsupported cast.") }
+          _ { ccx.sess.bug("translating unsupported cast.") }
         };
     ret store_in_dest(e_res.bcx, newval, dest);
 }
@@ -3139,7 +3139,7 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
                 bcx, proto, decl, body, e.span, e.id, cap_clause, dest);
           }
           _ {
-            fail "Type of fn block is not a function!";
+            fail "type of fn block is not a function!";
           }
         }
       }
@@ -3993,7 +3993,7 @@ fn copy_args_to_allocas(fcx: fn_ctxt, bcx: block, args: [ast::arg],
     let tcx = bcx.tcx();
     let arg_n: uint = 0u, bcx = bcx;
     let epic_fail = fn@() -> ! {
-        tcx.sess.bug("Someone forgot\
+        tcx.sess.bug("someone forgot\
                 to document an invariant in copy_args_to_allocas!");
     };
     for arg in arg_tys {
@@ -4306,7 +4306,7 @@ fn trans_const(cx: crate_ctxt, e: @ast::expr, id: ast::node_id) {
         llvm::LLVMSetInitializer(g, v);
         llvm::LLVMSetGlobalConstant(g, True);
       }
-      _ { cx.sess.span_fatal(e.span, "Unbound const in trans_const"); }
+      _ { cx.sess.span_bug(e.span, "unbound const in trans_const"); }
     }
 }
 
@@ -4319,7 +4319,7 @@ fn trans_item(ccx: crate_ctxt, item: ast::item) {
         let llfndecl = alt ccx.item_ids.find(item.id) {
           some(llfndecl) { llfndecl }
           _ {
-            ccx.sess.span_fatal(item.span,
+            ccx.sess.span_bug(item.span,
                                 "unbound function item in trans_item");
           }
         };

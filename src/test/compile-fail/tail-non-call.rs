@@ -1,4 +1,4 @@
-// error-pattern: Non-call expression in tail call
+// error-pattern:non-call expression in tail call
 
 fn f() -> int {
   let x = 1;

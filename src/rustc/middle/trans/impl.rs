@@ -55,7 +55,7 @@ fn trans_impl(ccx: crate_ctxt, path: path, name: ast::ident,
                      m_bounds, none, m.id, none);
           }
           _ {
-            ccx.sess.bug("Unbound id in trans_impl");
+            ccx.sess.bug("unbound id in trans_impl");
           }
         }
     }
@@ -347,7 +347,7 @@ fn trans_impl_vtable(ccx: crate_ctxt, pt: path,
                                extra_tps, target)
           }
           _ {
-            ccx.sess.span_bug(it.span, "No matching method \
+            ccx.sess.span_bug(it.span, "no matching method \
                in trans_impl_vtable");
           }
         }
@@ -459,7 +459,7 @@ fn dict_id(tcx: ty::ctxt, origin: typeck::dict_origin) -> dict_id {
         @{def: did, params: []}
       }
       _ {
-        tcx.sess.bug("Unexpected dict_param in dict_id");
+        tcx.sess.bug("unexpected dict_param in dict_id");
       }
     }
 }
@@ -523,7 +523,7 @@ fn get_dict_ptrs(bcx: block, origin: typeck::dict_origin)
         {bcx: bcx, ptrs: [get_vtable(ccx, did)]}
       }
       _ {
-        bcx.tcx().sess.bug("Unexpected dict_param in get_dict_ptrs");
+        bcx.tcx().sess.bug("unexpected dict_param in get_dict_ptrs");
       }
     }
 }

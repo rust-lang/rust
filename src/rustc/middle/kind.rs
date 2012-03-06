@@ -150,7 +150,7 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
             let t = ty::expr_ty(cx.tcx, ex);
             let ty_fields = alt ty::get(t).struct {
               ty::ty_rec(f) { f }
-              _ { cx.tcx.sess.span_bug(ex.span, "Bad expr type in record"); }
+              _ { cx.tcx.sess.span_bug(ex.span, "bad expr type in record"); }
             };
             for tf in ty_fields {
                 if !vec::any(fields, {|f| f.node.ident == tf.ident}) &&

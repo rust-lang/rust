@@ -96,7 +96,7 @@ fn list_file_metadata(sess: session::session, path: str, out: io::writer) {
     alt get_metadata_section(sess, path) {
       option::some(bytes) { decoder::list_crate_metadata(bytes, out); }
       option::none {
-        out.write_str("Could not find metadata in " + path + ".\n");
+        out.write_str("could not find metadata in " + path + ".\n");
       }
     }
 }

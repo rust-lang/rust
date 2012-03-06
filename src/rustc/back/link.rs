@@ -439,7 +439,7 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
                     {
                         let os = str::split_char(fs::basename(output), '.');
                         if (vec::len(os) < 2u) {
-                            sess.fatal(#fmt("Output file name %s doesn't\
+                            sess.fatal(#fmt("output file name %s doesn't\
                               appear to have an extension", output));
                         }
                         vec::pop(os);

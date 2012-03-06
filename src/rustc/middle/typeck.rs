@@ -262,7 +262,7 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
                     ty_of_native_item(tcx, mode, native_item)
                   }
                   _ {
-                    tcx.sess.bug("Unexpected sort of item in ast_ty_to_ty");
+                    tcx.sess.bug("unexpected sort of item in ast_ty_to_ty");
                   }
                 }
             }
@@ -293,7 +293,7 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
         // The typedef is type-parametric. Do the type substitution.
         let param_bindings: [ty::t] = [];
         if vec::len(args) != vec::len(*ty_param_bounds_and_ty.bounds) {
-            tcx.sess.span_fatal(sp, "Wrong number of type arguments for a \
+            tcx.sess.span_fatal(sp, "wrong number of type arguments for a \
                                      polymorphic type");
         }
         for ast_ty: @ast::ty in args {
@@ -1611,7 +1611,7 @@ fn require_impure(sess: session, f_purity: ast::purity, sp: span) {
       ast::unsafe_fn { ret; }
       ast::impure_fn | ast::crust_fn { ret; }
       ast::pure_fn {
-        sess.span_err(sp, "Found impure expression in pure function decl");
+        sess.span_err(sp, "found impure expression in pure function decl");
       }
     }
 }
@@ -1847,7 +1847,7 @@ fn lookup_field_ty(cx: ty::ctxt, items:[@ast::class_item],
           ast::instance_var(declname, t, _, _) if declname == fieldname {
              alt item.node.privacy {
                 ast::priv {
-                    cx.sess.span_fatal(sp, "Accessed private field outside \
+                    cx.sess.span_fatal(sp, "accessed private field outside \
                        its enclosing class");
                 }
                 ast::pub {
@@ -1858,7 +1858,7 @@ fn lookup_field_ty(cx: ty::ctxt, items:[@ast::class_item],
           _ { /* do nothing */ }
         }
     }
-    cx.sess.span_fatal(sp, #fmt("Unbound field %s", fieldname));
+    cx.sess.span_fatal(sp, #fmt("unbound field %s", fieldname));
 }
 
 fn check_expr_fn_with_unifier(fcx: @fn_ctxt,
@@ -2843,20 +2843,20 @@ fn check_pred_expr(fcx: @fn_ctxt, e: @ast::expr) -> bool {
               }
               _ {
                 fcx.ccx.tcx.sess.span_err(operator.span,
-                                            "Impure function as operator \
+                                            "impure function as operator \
                                              in constraint");
               }
             }
             for operand: @ast::expr in operands {
                 if !ast_util::is_constraint_arg(operand) {
                     let s =
-                        "Constraint args must be slot variables or literals";
+                        "constraint args must be slot variables or literals";
                     fcx.ccx.tcx.sess.span_err(e.span, s);
                 }
             }
           }
           _ {
-            let s = "In a constraint, expected the \
+            let s = "in a constraint, expected the \
                      constraint name to be an explicit name";
             fcx.ccx.tcx.sess.span_err(e.span, s);
           }

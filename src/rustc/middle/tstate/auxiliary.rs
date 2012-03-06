@@ -596,7 +596,7 @@ fn expr_to_constr_arg(tcx: ty::ctxt, e: @expr) -> @constr_arg_use {
       expr_lit(l) { ret @respan(e.span, carg_lit(l)); }
       _ {
         tcx.sess.span_fatal(e.span,
-                            "Arguments to constrained functions must be " +
+                            "arguments to constrained functions must be " +
                                 "literals or local variables");
       }
     }
@@ -619,16 +619,13 @@ fn expr_to_constr(tcx: ty::ctxt, e: @expr) -> sp_constr {
                              exprs_to_constr_args(tcx, args)));
           }
           _ {
-            tcx.sess.span_fatal(operator.span,
-                                "Internal error: " +
-                                    " ill-formed operator \
-                                            in predicate");
+            tcx.sess.span_bug(operator.span,
+                              "ill-formed operator in predicate");
           }
         }
       }
       _ {
-        tcx.sess.span_fatal(e.span,
-                            "Internal error: " + " ill-formed predicate");
+        tcx.sess.span_bug(e.span, "ill-formed predicate");
       }
     }
 }
@@ -656,7 +653,7 @@ fn substitute_arg(cx: ty::ctxt, actuals: [@expr], a: @constr_arg) ->
         if i < num_actuals {
             ret expr_to_constr_arg(cx, actuals[i]);
         } else {
-            cx.sess.span_fatal(a.span, "Constraint argument out of bounds");
+            cx.sess.span_fatal(a.span, "constraint argument out of bounds");
         }
       }
       carg_base { ret @respan(a.span, carg_base); }
@@ -1029,7 +1026,7 @@ fn args_to_constr_args(tcx: ty::ctxt, args: [arg],
                                          node: args[i].id})
                          } else {
                              tcx.sess.span_bug(a.span,
-                                               "Index out of bounds in \
+                                               "index out of bounds in \
                   constraint arg");
                          }
                        }

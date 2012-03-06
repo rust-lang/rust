@@ -325,7 +325,7 @@ fn store_environment(
             bcx = base::copy_val(bcx, INIT, bound_data, val, ty);
           }
           env_copy(_, _, temporary) {
-            fail "Cannot capture temporary upvar";
+            fail "cannot capture temporary upvar";
           }
           env_move(val, ty, kind) {
             let src = {bcx:bcx, val:val, kind:kind};
@@ -339,7 +339,7 @@ fn store_environment(
             Store(bcx, addr, bound_data);
           }
           env_ref(_, _, temporary) {
-            fail "Cannot capture temporary upvar";
+            fail "cannot capture temporary upvar";
           }
         }
     }

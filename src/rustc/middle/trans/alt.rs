@@ -428,7 +428,7 @@ fn compile_submatch(bcx: block, m: match, vals: [ValueRef], f: mk_fail,
         let tup_ty = node_id_type(bcx, pat_id);
         let n_tup_elts = alt ty::get(tup_ty).struct {
           ty::ty_tup(elts) { elts.len() }
-          _ { ccx.sess.bug("Non-tuple type in tuple pattern"); }
+          _ { ccx.sess.bug("non-tuple type in tuple pattern"); }
         };
         let tup_vals = [], i = 0u;
         while i < n_tup_elts {
@@ -588,7 +588,7 @@ fn make_phi_bindings(bcx: block, map: [exit_node],
             if bcx.ccx().maps.copy_map.contains_key(node_id) {
                 let local = alt bcx.fcx.lllocals.find(node_id) {
                   some(local_mem(x)) { x }
-                  _ { bcx.tcx().sess.bug("Someone \
+                  _ { bcx.tcx().sess.bug("someone \
                         forgot to document an invariant in \
                         make_phi_bindings"); }
                 };

@@ -40,7 +40,7 @@ fn check_capture_clause(tcx: ty::ctxt,
         if !vec::any(*freevars, {|fv| fv.def == cap_def}) {
             tcx.sess.span_warn(
                 cap_item.span,
-                #fmt("Captured variable '%s' not used in closure",
+                #fmt("captured variable '%s' not used in closure",
                      cap_item.name));
         }
 
@@ -48,7 +48,7 @@ fn check_capture_clause(tcx: ty::ctxt,
         if !seen_defs.insert(cap_def_id, ()) {
             tcx.sess.span_err(
                 cap_item.span,
-                #fmt("Variable '%s' captured more than once",
+                #fmt("variable '%s' captured more than once",
                      cap_item.name));
         }
     };
@@ -58,7 +58,7 @@ fn check_capture_clause(tcx: ty::ctxt,
           ast::def_upvar(_, _, _) {
             tcx.sess.span_err(
                 cap_item.span,
-                #fmt("Upvars (like '%s') cannot be moved into a closure",
+                #fmt("upvars (like '%s') cannot be moved into a closure",
                      cap_item.name));
           }
           _ {}
@@ -70,7 +70,7 @@ fn check_capture_clause(tcx: ty::ctxt,
             let cap_item0 = vec::head(v);
             tcx.sess.span_err(
                 cap_item0.span,
-                "Cannot capture values explicitly with a block closure");
+                "cannot capture values explicitly with a block closure");
         }
     };
 

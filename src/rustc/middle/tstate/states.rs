@@ -17,7 +17,7 @@ fn forbid_upvar(fcx: fn_ctxt, rhs_id: node_id, sp: span, t: oper_type) {
         alt local_node_id_to_def(fcx, rhs_id) {
           some(def_upvar(_, _, _)) {
             fcx.ccx.tcx.sess.span_err(sp,
-                                      "Tried to deinitialize a variable \
+                                      "tried to deinitialize a variable \
               declared in a different scope");
           }
           _ { }

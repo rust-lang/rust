@@ -312,7 +312,7 @@ fn parse_ty_field(p: parser) -> ast::ty_field {
 fn ident_index(p: parser, args: [ast::arg], i: ast::ident) -> uint {
     let j = 0u;
     for a: ast::arg in args { if a.ident == i { ret j; } j += 1u; }
-    p.fatal("Unbound variable " + i + " in constraint arg");
+    p.fatal("unbound variable `" + i + "` in constraint arg");
 }
 
 fn parse_type_constr_arg(p: parser) -> @ast::ty_constr_arg {
@@ -918,7 +918,7 @@ fn parse_bottom_expr(p: parser) -> pexpr {
         if /*check*/ast_util::is_call_expr(e) {
             hi = e.span.hi;
             ex = ast::expr_be(e);
-        } else { p.fatal("Non-call expression in tail call"); }
+        } else { p.fatal("non-call expression in tail call"); }
     } else if eat_word(p, "copy") {
         let e = parse_expr(p);
         ex = ast::expr_copy(e);
@@ -2008,7 +2008,9 @@ fn parse_item_class(p: parser, attrs: [ast::attribute]) -> @ast::item {
        /*
          Is it strange for the parser to check this?
        */
-       none { /* parse error */ fail "Class with no ctor"; }
+       none {
+         p.fatal("class with no ctor");
+       }
     }
 }
 

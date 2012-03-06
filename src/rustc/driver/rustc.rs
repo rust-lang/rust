@@ -93,9 +93,9 @@ fn run_compiler(args: [str], demitter: diagnostic::emitter) {
         ret;
     }
     let ifile = alt vec::len(match.free) {
-      0u { early_error(demitter, "No input filename given.") }
+      0u { early_error(demitter, "o input filename given") }
       1u { match.free[0] }
-      _ { early_error(demitter, "Multiple input filenames provided.") }
+      _ { early_error(demitter, "multiple input filenames provided") }
     };
 
     let sopts = build_session_options(match, demitter);

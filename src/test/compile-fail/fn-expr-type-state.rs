@@ -1,4 +1,4 @@
-// error-pattern:Unsatisfied precondition
+// error-pattern:unsatisfied precondition
 
 fn main() {
     // Typestate should work even in a fn@. we should reject this program.

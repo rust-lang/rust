@@ -309,12 +309,12 @@ fn build_target_config(sopts: @session::options,
                        demitter: diagnostic::emitter) -> @session::config {
     let os = alt get_os(sopts.target_triple) {
       some(os) { os }
-      none { early_error(demitter, "Unknown operating system!") }
+      none { early_error(demitter, "unknown operating system") }
     };
     let arch = alt get_arch(sopts.target_triple) {
       some(arch) { arch }
       none { early_error(demitter,
-                          "Unknown architecture! " + sopts.target_triple) }
+                          "unknown architecture: " + sopts.target_triple) }
     };
     let (int_type, uint_type, float_type) = alt arch {
       session::arch_x86 {(ast::ty_i32, ast::ty_u32, ast::ty_f64)}
@@ -607,7 +607,7 @@ fn build_output_filenames(ifile: str,
         }
 
         if odir != none {
-            sess.warn("Ignoring --out-dir flag due to -o flag.");
+            sess.warn("ignoring --out-dir flag due to -o flag.");
         }
       }
     }

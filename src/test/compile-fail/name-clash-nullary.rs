@@ -1,4 +1,4 @@
-// error-pattern:Declaration of none shadows
+// error-pattern:declaration of `none` shadows
 import option::*;
 
 fn main() {

@@ -608,7 +608,7 @@ fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
           ty = mk_constr(cx, fold_ty(cx, fld, subty), cs);
       }
       _ {
-          cx.sess.fatal("Unsupported sort of type in fold_ty");
+          cx.sess.bug("unsupported sort of type in fold_ty");
       }
     }
     alt tb.o_def_id {
@@ -868,7 +868,7 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
           param_bounds_to_kind(cx.ty_param_bounds.get(did.node))
       }
       ty_constr(t, _) { type_kind(cx, t) }
-      _ { cx.sess.bug("Bad type in type_kind"); }
+      _ { cx.sess.bug("bad type in type_kind"); }
     };
 
     cx.kind_cache.insert(ty, result);
@@ -1408,11 +1408,11 @@ fn occurs_check_fails(tcx: ctxt, sp: option<span>, vid: int, rt: t) ->
             // assertion later on that the type doesn't contain
             // variables, so in this case we have to be sure to die.
             tcx.sess.span_fatal
-                (s, "Type inference failed because I \
+                (s, "type inference failed because I \
                      could not find a type\n that's both of the form "
                  + ty_to_str(tcx, mk_var(tcx, vid)) +
                  " and of the form " + ty_to_str(tcx, rt) +
-                 ". Such a type would have to be infinitely large.");
+                 " - such a type would have to be infinitely large.");
           }
           _ { ret true; }
         }
@@ -1533,7 +1533,7 @@ mod unify {
              variance: variance) -> union_result {
         let vb = alt cx.st {
             in_bindings(vb) { vb }
-            _ { cx.tcx.sess.bug("Someone forgot to document an invariant \
+            _ { cx.tcx.sess.bug("someone forgot to document an invariant \
                          in union"); }
         };
         ufind::grow(vb.sets, math::max(set_a, set_b) + 1u);
@@ -2113,12 +2113,12 @@ fn type_err_to_str(err: type_err) -> str {
                 mode_to_str(a_mode);
       }
       terr_constr_len(e_len, a_len) {
-        ret "Expected a type with " + uint::str(e_len) +
+        ret "expected a type with " + uint::str(e_len) +
                 " constraints, but found one with " + uint::str(a_len) +
                 " constraints";
       }
       terr_constr_mismatch(e_constr, a_constr) {
-        ret "Expected a type with constraint " + ty_constr_to_str(e_constr) +
+        ret "expected a type with constraint " + ty_constr_to_str(e_constr) +
                 " but found one with constraint " +
                 ty_constr_to_str(a_constr);
       }
@@ -2438,7 +2438,7 @@ fn ast_constr_to_constr<T>(tcx: ctxt, c: @ast::constr_general<T>) ->
       }
       _ {
         tcx.sess.span_fatal(c.span,
-                            "Predicate " + path_to_str(c.node.path) +
+                            "predicate " + path_to_str(c.node.path) +
                             " is unbound or bound to a non-function or an \
             impure function");
       }

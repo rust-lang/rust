@@ -51,12 +51,12 @@ fn check_states_expr(e: @expr, fcx: fn_ctxt, v: visit::vt<fn_ctxt>) {
         let s = "";
         let diff = first_difference_string(fcx, prec, pres);
         s +=
-            "Unsatisfied precondition constraint (for example, " + diff +
+            "unsatisfied precondition constraint (for example, " + diff +
                 ") for expression:\n";
         s += syntax::print::pprust::expr_to_str(e);
-        s += "\nPrecondition:\n";
+        s += "\nprecondition:\n";
         s += tritv_to_str(fcx, prec);
-        s += "\nPrestate:\n";
+        s += "\nprestate:\n";
         s += tritv_to_str(fcx, pres);
         fcx.ccx.tcx.sess.span_fatal(e.span, s);
     }
@@ -81,12 +81,12 @@ fn check_states_stmt(s: @stmt, fcx: fn_ctxt, v: visit::vt<fn_ctxt>) {
         let ss = "";
         let diff = first_difference_string(fcx, prec, pres);
         ss +=
-            "Unsatisfied precondition constraint (for example, " + diff +
+            "unsatisfied precondition constraint (for example, " + diff +
                 ") for statement:\n";
         ss += syntax::print::pprust::stmt_to_str(*s);
-        ss += "\nPrecondition:\n";
+        ss += "\nprecondition:\n";
         ss += tritv_to_str(fcx, prec);
-        ss += "\nPrestate: \n";
+        ss += "\nprestate: \n";
         ss += tritv_to_str(fcx, pres);
         fcx.ccx.tcx.sess.span_fatal(s.span, ss);
     }
@@ -115,7 +115,7 @@ fn check_states_against_conditions(fcx: fn_ctxt,
            fcx.ccx.tcx, id))) &&
        f_decl.cf == return_val {
         fcx.ccx.tcx.sess.span_err(f_body.span,
-                                  "In function " + fcx.name +
+                                  "in function " + fcx.name +
                                       ", not all control paths \
                                         return a value");
         fcx.ccx.tcx.sess.span_fatal(f_decl.output.span,
@@ -129,7 +129,7 @@ fn check_states_against_conditions(fcx: fn_ctxt,
 
         if !promises(fcx, post, fcx.enclosing.i_diverge) {
             fcx.ccx.tcx.sess.span_fatal(f_body.span,
-                                        "In non-returning function " +
+                                        "in non-returning function " +
                                         fcx.name +
                                         ", some control paths may \
                                          return to the caller");

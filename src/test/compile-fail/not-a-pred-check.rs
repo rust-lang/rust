@@ -1,5 +1,5 @@
 // -*- rust -*-
-// error-pattern: Impure function as operator
+// error-pattern:impure function as operator
 
 fn f(q: int) -> bool { ret true; }
 

@@ -1,4 +1,4 @@
-// error-pattern: Unsatisfied precondition constraint (for example, init(i
+// error-pattern:unsatisfied precondition constraint (for example, init(i
 
 fn main() {
     let i: int;

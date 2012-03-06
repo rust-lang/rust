@@ -823,7 +823,7 @@ fn decode_side_tables(xcx: extended_decode_ctxt,
                                          val_dsr.read_dict_res(xcx));
             } else {
                 xcx.dcx.tcx.sess.bug(
-                    #fmt["Unknown tag found in side tables: %x", tag]);
+                    #fmt["unknown tag found in side tables: %x", tag]);
             }
         }
 

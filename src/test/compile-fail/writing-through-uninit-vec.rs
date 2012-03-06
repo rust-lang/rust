@@ -1,4 +1,4 @@
-// error-pattern: Unsatisfied precondition constraint
+// error-pattern:unsatisfied precondition constraint
 
 fn test() { let w: [int]; w[5] = 0; }
 

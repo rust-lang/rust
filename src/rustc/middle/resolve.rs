@@ -329,7 +329,7 @@ fn map_crate(e: @env, c: @ast::crate) {
                         e.mod_map.get(ast::crate_node_id).glob_imports
                             += [glob];
                       }
-                      _ { e.sess.span_bug(vi.span, "Unexpected scope in a \
+                      _ { e.sess.span_bug(vi.span, "unexpected scope in a \
                                                     glob import"); }
                     }
                   }
@@ -376,7 +376,7 @@ fn resolve_imports(e: env) {
             resolve_import(e, local_def(node_id), name, *path, span, scopes);
           }
           resolved(_, _, _, _, _, _) | is_glob(_, _, _) { }
-          _ { e.sess.bug("Shouldn't see a resolving in resolve_imports"); }
+          _ { e.sess.bug("shouldn't see a resolving in resolve_imports"); }
         }
     };
     e.used_imports.track = false;
@@ -658,7 +658,7 @@ fn visit_local_with_scope(e: @env, loc: @local, sc:scopes, v:vt<scopes>) {
                   // Declaration shadows a enum that's in scope.
                   // That's an error.
                   e.sess.span_err(loc.span,
-                    #fmt("Declaration of %s shadows a enum that's in scope",
+                    #fmt("declaration of `%s` shadows a enum that's in scope",
                          path_to_ident(an_ident)));
                   }
               _ {}
@@ -1324,7 +1324,7 @@ fn lookup_in_block(e: env, name: ident, sp: span, b: ast::blk_, pos: uint,
                 }
             }
           }
-          _ { e.sess.span_bug(vi.span, "Unexpected view_item in block"); }
+          _ { e.sess.span_bug(vi.span, "unexpected view_item in block"); }
         }
     }
     ret none;

@@ -1,4 +1,4 @@
-// error-pattern: Unsatisfied precondition constraint (for example, even(y
+// error-pattern:unsatisfied precondition constraint (for example, even(y
 
 fn print_even(y: int) : even(y) { log(debug, y); }
 
