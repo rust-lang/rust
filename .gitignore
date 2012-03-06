@@ -49,7 +49,6 @@
 .valgrindrc
 lexer.ml
 rustboot
-rustc
 TAGS
 version.ml
 version.texi
