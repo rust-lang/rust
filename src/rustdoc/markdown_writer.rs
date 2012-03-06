@@ -101,12 +101,19 @@ fn pandoc_writer(
         os::close(pipe_err.out);
         os::close(pipe_in.out);
 
-        let stdout = result::get(task::try {||
-            readclose(pipe_out.in)
-        });
-        let stderr = result::get(task::try {||
-            readclose(pipe_err.in)
-        });
+        let stdout_po = comm::port();
+        let stdout_ch = comm::chan(stdout_po);
+        task::spawn_sched(task::single_threaded) {||
+            comm::send(stdout_ch, readclose(pipe_out.in));
+        }
+        let stdout = comm::recv(stdout_po);
+
+        let stderr_po = comm::port();
+        let stderr_ch = comm::chan(stderr_po);
+        task::spawn_sched(task::single_threaded) {||
+            comm::send(stderr_ch, readclose(pipe_err.in));
+        }
+        let stderr = comm::recv(stderr_po);
 
         let status = run::waitpid(pid);
         #debug("pandoc result: %i", status);
