@@ -1445,15 +1445,7 @@ fn check_pat(fcx: @fn_ctxt, map: pat_util::pat_id_map, pat: @ast::pat,
     let tcx = fcx.ccx.tcx;
     alt pat.node {
       ast::pat_wild {
-          alt structure_of(fcx, pat.span, expected) {
-                  ty::ty_enum(_, expected_tps) {
-                    write_ty_substs(tcx, pat.id, expected,
-                                    expected_tps);
-                  }
-                  _ {
-                    write_ty(tcx, pat.id, expected);
-                  }
-              }
+        write_ty(tcx, pat.id, expected);
       }
       ast::pat_lit(lt) {
         check_expr_with(fcx, lt, expected);

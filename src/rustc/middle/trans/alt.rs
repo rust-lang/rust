@@ -258,9 +258,9 @@ fn extract_variant_args(bcx: block, pat_id: ast::node_id,
                         vdefs: {enm: def_id, var: def_id}, val: ValueRef) ->
    {vals: [ValueRef], bcx: block} {
     let ccx = bcx.fcx.ccx, bcx = bcx;
-    // invariant:
-    // pat_id must have the same length ty_param_substs as vdefs?
-    let ty_param_substs = node_id_type_params(bcx, pat_id);
+    let enum_ty_substs = alt check ty::get(node_id_type(bcx, pat_id)).struct {
+      ty::ty_enum(id, tps) { assert id == vdefs.enm; tps }
+    };
     let blobptr = val;
     let variants = ty::enum_variants(ccx.tcx, vdefs.enm);
     let args = [];
@@ -275,12 +275,8 @@ fn extract_variant_args(bcx: block, pat_id: ast::node_id,
     let vdefs_tg = vdefs.enm;
     let vdefs_var = vdefs.var;
     while i < size {
-        let r =
-            // invariant needed:
-            // how do we know it even makes sense to pass in ty_param_substs
-            // here? What if it's [] and the enum type has variables in it?
-            GEP_enum(bcx, blobptr, vdefs_tg, vdefs_var,
-                            ty_param_substs, i);
+        let r = GEP_enum(bcx, blobptr, vdefs_tg, vdefs_var,
+                         enum_ty_substs, i);
         bcx = r.bcx;
         args += [r.val];
         i += 1u;
