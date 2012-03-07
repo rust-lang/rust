@@ -283,7 +283,12 @@ fn write_index(ctxt: ctxt, index: doc::index) {
     for entry in index.entries {
         let header = header_text_(entry.kind, entry.name);
         let id = entry.link;
-        ctxt.w.write_line(#fmt("* [%s](%s)", header, id));
+        if option::is_some(entry.brief) {
+            ctxt.w.write_line(#fmt("* [%s](%s) - %s",
+                                   header, id, option::get(entry.brief)));
+        } else {
+            ctxt.w.write_line(#fmt("* [%s](%s)", header, id));
+        }
     }
     ctxt.w.write_line("");
 }
@@ -296,6 +301,12 @@ fn should_write_index() {
         "\n\n* [Module `a`](#module-a)\n\
          * [Module `b`](#module-b)\n\n"
     );
+}
+
+#[test]
+fn should_write_index_brief() {
+    let markdown = test::render("#[doc(brief = \"test\")] mod a { }");
+    assert str::contains(markdown, "(#module-a) - test\n");
 }
 
 #[test]

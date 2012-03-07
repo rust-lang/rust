@@ -131,12 +131,14 @@ Fields:
 
 * kind - The type of thing being indexed, e.g. 'Module'
 * name - The name of the thing
+* brief - The brief description
 * link - A format-specific string representing the link target
 
 "]
 type index_entry = {
     kind: str,
     name: str,
+    brief: option<str>,
     link: str
 };
 
