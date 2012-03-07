@@ -82,6 +82,9 @@ endif
 ifdef SAVE_TEMPS
   CFG_RUSTC_FLAGS += --save-temps
 endif
+ifdef ENFORCE_MUT_VARS
+  CFG_RUSTC_FLAGS += --enforce-mut-vars
+endif
 ifdef TIME_PASSES
   CFG_RUSTC_FLAGS += --time-passes
 endif
