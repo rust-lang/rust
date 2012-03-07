@@ -1047,7 +1047,7 @@ Function: is_utf8
 
 Determines if a vector of bytes contains valid UTF-8
 */
-fn is_utf8(v: [u8]) -> bool {
+fn is_utf8(v: [const u8]) -> bool {
     let i = 0u;
     let total = vec::len::<u8>(v);
     while i < total {
@@ -1065,7 +1065,7 @@ fn is_utf8(v: [u8]) -> bool {
 }
 
 
-fn is_utf16(v: [u16]) -> bool {
+fn is_utf16(v: [const u16]) -> bool {
     let len = v.len();
     let i = 0u;
     while (i < len) {
@@ -1108,10 +1108,10 @@ fn to_utf16(s: str) -> [u16] {
     ret u;
 }
 
-fn utf16_chars(v: [u16], f: fn(char)) {
+fn utf16_chars(v: [const u16], f: fn(char)) {
     let len = v.len();
     let i = 0u;
-    while (i < len) {
+    while (i < len && v[i] != 0u16) {
         let u = v[i];
 
         if  u <= 0xD7FF_u16 || u >= 0xE000_u16 {
@@ -1133,7 +1133,7 @@ fn utf16_chars(v: [u16], f: fn(char)) {
 }
 
 
-fn from_utf16(v: [u16]) -> str {
+fn from_utf16(v: [const u16]) -> str {
     let buf = "";
     reserve(buf, v.len());
     utf16_chars(v) {|ch| push_char(buf, ch); }

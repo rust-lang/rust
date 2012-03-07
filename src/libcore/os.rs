@@ -50,7 +50,17 @@ fn as_c_charp<T>(s: str, f: fn(*c_char) -> T) -> T {
     str::as_buf(s) {|b| f(b as *c_char) }
 }
 
-// FIXME: UTF-16-ify this and revive win32 Unicode variant.
+fn as_utf16_p<T>(s: str, f: fn(*u16) -> T) -> T {
+    let t = str::to_utf16(s);
+    // "null terminate"
+    t += [0u16];
+    vec::as_buf(t, f)
+}
+
+
+#[cfg(target_os = "linux")]
+#[cfg(target_os = "macos")]
+#[cfg(target_os = "freebsd")]
 fn getenv(n: str) -> option<str> unsafe {
     let s = as_c_charp(n, libc::getenv);
     ret if unsafe::reinterpret_cast(s) == 0 {
@@ -60,6 +70,27 @@ fn getenv(n: str) -> option<str> unsafe {
             option::some::<str>(str::from_cstr(s))
         };
 }
+
+#[cfg(target_os = "win32")]
+fn getenv(n: str) -> option<str> unsafe {
+    import libc::types::os::arch::extra::*;
+    import libc::funcs::extra::kernel32;
+    as_utf16_p(n) {|u|
+        let bufsize = 1023u;
+        let buf = vec::to_mut(vec::init_elt(bufsize, 0u16));
+        vec::as_mut_buf(buf) {|b|
+            let k = kernel32::GetEnvironmentVariableW(u, b,
+                                                      bufsize as DWORD);
+            if k != (0 as DWORD) {
+                let sub = vec::slice(buf, 0u, k as uint);
+                option::some::<str>(str::from_utf16(sub))
+            } else {
+                option::none::<str>
+            }
+        }
+    }
+}
+
 
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
@@ -78,13 +109,12 @@ fn setenv(n: str, v: str) {
 
 
 #[cfg(target_os = "win32")]
-// FIXME: UTF-16-ify this and switch to the W version.
 fn setenv(n: str, v: str) {
     // FIXME: remove imports when export globs work properly.
     import libc::funcs::extra::kernel32;
-    as_c_charp(n) {|nbuf|
-        as_c_charp(v) {|vbuf|
-            kernel32::SetEnvironmentVariableA(nbuf, vbuf);
+    as_utf16_p(n) {|nbuf|
+        as_utf16_p(v) {|vbuf|
+            kernel32::SetEnvironmentVariableW(nbuf, vbuf);
         }
     }
 }

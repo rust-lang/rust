@@ -1100,10 +1100,11 @@ mod funcs {
 
         #[abi = "stdcall"]
         native mod kernel32 {
-            fn GetEnvironmentVariableA(n: LPCSTR,
-                                       v: LPSTR,
+            fn GetEnvironmentVariableW(n: LPCWSTR,
+                                       v: LPWSTR,
                                        nsize: DWORD) -> DWORD;
-            fn SetEnvironmentVariableA(n: LPCSTR, v: LPCSTR) -> BOOL;
+            fn SetEnvironmentVariableW(n: LPCWSTR, v: LPCWSTR) -> BOOL;
+
             fn GetModuleFileNameA(hModule: HMODULE,
                                   lpFilename: LPSTR,
                                   nSize: DWORD) -> DWORD;
