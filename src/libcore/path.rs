@@ -1,8 +1,4 @@
-/*
-Module: path
-
-Path data type and helper functions.
-*/
+#[doc = "Path data type and helper functions"]
 
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
@@ -18,14 +14,12 @@ mod consts {
     const alt_path_sep: char = '\\';
 }
 
-/*
-Function: path_is_absolute
-
+#[doc = "
 Indicates whether a path is absolute.
 
-A path is considered absolute if it begins at the filesystem root ("/") or,
+A path is considered absolute if it begins at the filesystem root (\"/\") or,
 on Windows, begins with a drive letter.
-*/
+"]
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
 #[cfg(target_os = "linux")]
@@ -43,19 +37,11 @@ fn path_is_absolute(p: str) -> bool {
 
 
 
-/*
-Function: path_sep
-
-Get the default path separator for the host platform
-*/
+#[doc = "Get the default path separator for the host platform"]
 fn path_sep() -> str { ret str::from_char(consts::path_sep); }
 
 // FIXME: This type should probably be constrained
-/*
-Type: path
-
-A path or fragment of a filesystem path
-*/
+#[doc = "A path or fragment of a filesystem path"]
 type path = str;
 
 fn split_dirname_basename (pp: path) -> {dirname: str, basename: str} {
@@ -70,47 +56,40 @@ fn split_dirname_basename (pp: path) -> {dirname: str, basename: str} {
     }
 }
 
-/*
-Function: dirname
-
+#[doc = "
 Get the directory portion of a path
 
 Returns all of the path up to, but excluding, the final path separator.
-The dirname of "/usr/share" will be "/usr", but the dirname of
-"/usr/share/" is "/usr/share".
+The dirname of \"/usr/share\" will be \"/usr\", but the dirname of
+\"/usr/share/\" is \"/usr/share\".
 
-If the path is not prefixed with a directory, then "." is returned.
-*/
+If the path is not prefixed with a directory, then \".\" is returned.
+"]
 fn dirname(pp: path) -> path {
     ret split_dirname_basename(pp).dirname;
 }
 
-/*
-Function: basename
-
+#[doc = "
 Get the file name portion of a path
 
 Returns the portion of the path after the final path separator.
-The basename of "/usr/share" will be "share". If there are no
+The basename of \"/usr/share\" will be \"share\". If there are no
 path separators in the path then the returned path is identical to
 the provided path. If an empty path is provided or the path ends
 with a path separator then an empty path is returned.
-*/
+"]
 fn basename(pp: path) -> path {
     ret split_dirname_basename(pp).basename;
 }
 
 // FIXME: Need some typestate to avoid bounds check when len(pre) == 0
-/*
-Function: connect
-
+#[doc = "
 Connects to path segments
 
 Given paths `pre` and `post, removes any trailing path separator on `pre` and
 any leading path separator on `post`, and returns the concatenation of the two
 with a single path separator between them.
-*/
-
+"]
 fn connect(pre: path, post: path) -> path unsafe {
     let mut pre_ = pre;
     let mut post_ = post;
@@ -122,13 +101,11 @@ fn connect(pre: path, post: path) -> path unsafe {
     ret pre_ + path_sep() + post_;
 }
 
-/*
-Function: connect_many
-
+#[doc = "
 Connects a vector of path segments into a single path.
 
 Inserts path separators as needed.
-*/
+"]
 fn connect_many(paths: [path]) -> path {
     ret if vec::len(paths) == 1u {
         paths[0]
@@ -138,31 +115,29 @@ fn connect_many(paths: [path]) -> path {
     }
 }
 
-/*
-Function: split
-
+#[doc = "
 Split a path into it's individual components
 
 Splits a given path by path separators and returns a vector containing
 each piece of the path. On Windows, if the path is absolute then
 the first element of the returned vector will be the drive letter
 followed by a colon.
-*/
+"]
 fn split(p: path) -> [path] {
     str::split_nonempty(p, {|c|
         c == consts::path_sep || c == consts::alt_path_sep
     })
 }
 
-/*
-Function: splitext
+#[doc = "
+Split a path into the part before the extension and the extension
 
 Split a path into a pair of strings with the first element being the filename
 without the extension and the second being either empty or the file extension
 including the period. Leading periods in the basename are ignored.  If the
 path includes directory components then they are included in the filename part
 of the result pair.
-*/
+"]
 fn splitext(p: path) -> (str, str) {
     if str::is_empty(p) { ("", "") }
     else {
@@ -204,13 +179,11 @@ fn splitext(p: path) -> (str, str) {
     }
 }
 
-/*
-Function: normalize
-
-Removes extra "." and ".." entries from paths.
+#[doc = "
+Removes extra '.' and '..' entries from paths
 
 Does not follow symbolic links.
-*/
+"]
 fn normalize(p: path) -> path {
     let s = split(p);
     let s = strip_dots(s);

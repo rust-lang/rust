@@ -1,3 +1,5 @@
+#[doc(hidden)];
+
 /*
 Syntax Extension: fmt
 

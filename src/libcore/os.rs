@@ -1,18 +1,20 @@
-// Higher-level interfaces to libc::* functions and operating system services.
-//
-// In general these take and return rust types, use rust idioms (enums,
-// closures, vectors) rather than C idioms, and do more extensive safety
-// checks.
-//
-// This module is not meant to only contain 1:1 mappings to libc entries; any
-// os-interface code that is reasonably useful and broadly applicable can go
-// here. Including utility routines that merely build on other os code.
-//
-// We assume the general case is that users do not care, and do not want to
-// be made to care, which operating system they are on. While they may want
-// to special case various special cases -- and so we will not _hide_ the
-// facts of which OS the user is on -- they should be given the opportunity
-// to write OS-ignorant code by default.
+#[doc = "
+Higher-level interfaces to libc::* functions and operating system services.
+
+In general these take and return rust types, use rust idioms (enums,
+closures, vectors) rather than C idioms, and do more extensive safety
+checks.
+
+This module is not meant to only contain 1:1 mappings to libc entries; any
+os-interface code that is reasonably useful and broadly applicable can go
+here. Including utility routines that merely build on other os code.
+
+We assume the general case is that users do not care, and do not want to
+be made to care, which operating system they are on. While they may want
+to special case various special cases -- and so we will not _hide_ the
+facts of which OS the user is on -- they should be given the opportunity
+to write OS-ignorant code by default.
+"];
 
 import libc::{c_char, c_void, c_int, c_uint, size_t, ssize_t,
               mode_t, pid_t, FILE};
@@ -327,21 +329,19 @@ fn self_exe_path() -> option<path> {
 }
 
 
-/*
-Function: homedir
-
+#[doc = "
 Returns the path to the user's home directory, if known.
 
-On Unix, returns the value of the "HOME" environment variable if it is set and
+On Unix, returns the value of the 'HOME' environment variable if it is set and
 not equal to the empty string.
 
-On Windows, returns the value of the "HOME" environment variable if it is set
+On Windows, returns the value of the 'HOME' environment variable if it is set
 and not equal to the empty string. Otherwise, returns the value of the
-"USERPROFILE" environment variable if it is set and not equal to the empty
+'USERPROFILE' environment variable if it is set and not equal to the empty
 string.
 
 Otherwise, homedir returns option::none.
-*/
+"]
 fn homedir() -> option<path> {
     ret alt getenv("HOME") {
         some(p) {
@@ -377,22 +377,14 @@ fn homedir() -> option<path> {
 
 
 
-/*
-Function: path_is_dir
-
-Indicates whether a path represents a directory.
-*/
+#[doc = "Indicates whether a path represents a directory"]
 fn path_is_dir(p: path) -> bool {
     str::as_buf(p) {|buf|
         rustrt::rust_path_is_dir(buf) != 0 as c_int
     }
 }
 
-/*
-Function: path_exists
-
-Indicates whether a path exists.
-*/
+#[doc = "Indicates whether a path exists"]
 fn path_exists(p: path) -> bool {
     str::as_buf(p) {|buf|
         rustrt::rust_path_exists(buf) != 0 as c_int
@@ -401,15 +393,13 @@ fn path_exists(p: path) -> bool {
 
 // FIXME: under Windows, we should prepend the current drive letter to paths
 // that start with a slash.
-/*
-Function: make_absolute
-
+#[doc = "
 Convert a relative path to an absolute path
 
 If the given path is relative, return it prepended with the current working
 directory. If the given path is already an absolute path, return it
 as is.
-*/
+"]
 // NB: this is here rather than in path because it is a form of environment
 // querying; what it does depends on the process working directory, not just
 // the input paths.
@@ -422,11 +412,7 @@ fn make_absolute(p: path) -> path {
 }
 
 
-/*
-Function: make_dir
-
-Creates a directory at the specified path.
-*/
+#[doc = "Creates a directory at the specified path"]
 fn make_dir(p: path, mode: c_int) -> bool {
     ret mkdir(p, mode);
 
@@ -453,11 +439,7 @@ fn make_dir(p: path, mode: c_int) -> bool {
     }
 }
 
-/*
-Function: list_dir
-
-Lists the contents of a directory.
-*/
+#[doc = "Lists the contents of a directory"]
 fn list_dir(p: path) -> [str] {
 
     #[cfg(target_os = "linux")]
@@ -485,11 +467,7 @@ fn list_dir(p: path) -> [str] {
     ret full_paths;
 }
 
-/*
-Function: remove_dir
-
-Removes a directory at the specified path.
-*/
+#[doc = "Removes a directory at the specified path"]
 fn remove_dir(p: path) -> bool {
    ret rmdir(p);
 
@@ -538,11 +516,7 @@ fn change_dir(p: path) -> bool {
     }
 }
 
-/*
-Function: remove_file
-
-Deletes an existing file.
-*/
+#[doc = "Deletes an existing file"]
 fn remove_file(p: path) -> bool {
     ret unlink(p);
 

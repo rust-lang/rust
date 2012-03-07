@@ -1,158 +1,103 @@
 #[doc = "Operations and constants for `uint`"];
 
-/*
-Module: uint
-*/
-
-/*
-Const: min_value
-
-Return the minimal value for an uint.
-
-This is always 0
-*/
 const min_value: uint = 0u;
-
-/*
-Const: max_value
-
-Return the maximal value for an uint.
-
-This is 2^wordsize - 1
-*/
 const max_value: uint = 0u - 1u;
 
-/*
-Function: min
-*/
-pure fn min(x: uint, y: uint) -> uint {
-    if x < y { x } else { y }
-}
+pure fn min(x: uint, y: uint) -> uint { if x < y { x } else { y } }
+pure fn max(x: uint, y: uint) -> uint { if x > y { x } else { y } }
 
-/*
-Function: max
-*/
-pure fn max(x: uint, y: uint) -> uint {
-    if x > y { x } else { y }
-}
-
-/* Function: add */
 pure fn add(x: uint, y: uint) -> uint { ret x + y; }
-
-/* Function: sub */
 pure fn sub(x: uint, y: uint) -> uint { ret x - y; }
-
-/* Function: mul */
 pure fn mul(x: uint, y: uint) -> uint { ret x * y; }
-
-/* Function: div */
 pure fn div(x: uint, y: uint) -> uint { ret x / y; }
 
-/* Function: div_ceil
+pure fn rem(x: uint, y: uint) -> uint { ret x % y; }
+pure fn lt(x: uint, y: uint) -> bool { ret x < y; }
+pure fn le(x: uint, y: uint) -> bool { ret x <= y; }
+pure fn eq(x: uint, y: uint) -> bool { ret x == y; }
+pure fn ne(x: uint, y: uint) -> bool { ret x != y; }
+pure fn ge(x: uint, y: uint) -> bool { ret x >= y; }
+pure fn gt(x: uint, y: uint) -> bool { ret x > y; }
 
-   Divide two numbers, return the result, rounded up.
 
-   Parameters:
-   x - an integer
-   y - an integer distinct from 0u
+#[doc = "
+Divide two numbers, return the result, rounded up.
 
-   Return:
-    The smallest integer `q` such that `x/y <= q`.
-*/
+# Arguments
+
+* x - an integer
+* y - an integer distinct from 0u
+
+# Return value
+
+The smallest integer `q` such that `x/y <= q`.
+"]
 pure fn div_ceil(x: uint, y: uint) -> uint {
     let div = div(x, y);
     if x % y == 0u { ret div;}
     else { ret div + 1u; }
 }
 
-/* Function: div_ceil
+#[doc = "
+Divide two numbers, return the result, rounded to the closest integer.
 
-   Divide two numbers, return the result, rounded to the closest integer.
+# Arguments
 
-   Parameters:
-   x - an integer
-   y - an integer distinct from 0u
+* x - an integer
+* y - an integer distinct from 0u
 
-   Return:
-    The integer `q` closest to `x/y`.
-*/
+# Return value
+
+The integer `q` closest to `x/y`.
+"]
 pure fn div_round(x: uint, y: uint) -> uint {
     let div = div(x, y);
     if x % y * 2u  < y { ret div;}
     else { ret div + 1u; }
 }
 
-/* Function: div_ceil
+#[doc = "
+Divide two numbers, return the result, rounded down.
 
-   Divide two numbers, return the result, rounded down.
+Note: This is the same function as `div`.
 
-   Parameters:
-   x - an integer
-   y - an integer distinct from 0u
+# Arguments
 
-   Note: This is the same function as `div`.
+* x - an integer
+* y - an integer distinct from 0u
 
-   Return:
-    The smallest integer `q` such that `x/y <= q`. This
-   is either `x/y` or `x/y + 1`.
-*/
+# Return value
+
+The smallest integer `q` such that `x/y <= q`. This
+is either `x/y` or `x/y + 1`.
+"]
 pure fn div_floor(x: uint, y: uint) -> uint { ret x / y; }
 
-/* Function: rem */
-pure fn rem(x: uint, y: uint) -> uint { ret x % y; }
-
-/* Predicate: lt */
-pure fn lt(x: uint, y: uint) -> bool { ret x < y; }
-
-/* Predicate: le */
-pure fn le(x: uint, y: uint) -> bool { ret x <= y; }
-
-/* Predicate: eq */
-pure fn eq(x: uint, y: uint) -> bool { ret x == y; }
-
-/* Predicate: ne */
-pure fn ne(x: uint, y: uint) -> bool { ret x != y; }
-
-/* Predicate: ge */
-pure fn ge(x: uint, y: uint) -> bool { ret x >= y; }
-
-/* Predicate: gt */
-pure fn gt(x: uint, y: uint) -> bool { ret x > y; }
-
-/*
-Function: hash
-
-Produce a uint suitable for use in a hash table
-*/
+#[doc = "Produce a uint suitable for use in a hash table"]
 fn hash(x: uint) -> uint { ret x; }
 
-/*
-Function: range
-
-Iterate over the range [`lo`..`hi`)
-*/
+#[doc = "Iterate over the range [`lo`..`hi`)"]
 #[inline(always)]
 fn range(lo: uint, hi: uint, it: fn(uint)) {
     let mut i = lo;
     while i < hi { it(i); i += 1u; }
 }
 
-/*
-Function: iterate
-
+#[doc = "
 Iterate over the range [`lo`..`hi`), or stop when requested
 
-Parameters:
-lo - The integer at which to start the loop (included)
-hi - The integer at which to stop the loop (excluded)
-it - A block to execute with each consecutive integer of the range.
-Return `true` to continue, `false` to stop.
+# Arguments
 
-Returns:
+* lo - The integer at which to start the loop (included)
+* hi - The integer at which to stop the loop (excluded)
+* it - A block to execute with each consecutive integer of the range.
+       Return `true` to continue, `false` to stop.
+
+# Return value
 
 `true` If execution proceeded correctly, `false` if it was interrupted,
 that is if `it` returned `false` at any point.
-*/
+"]
 fn iterate(lo: uint, hi: uint, it: fn(uint) -> bool) -> bool {
     let mut i = lo;
     while i < hi {
@@ -162,11 +107,7 @@ fn iterate(lo: uint, hi: uint, it: fn(uint) -> bool) -> bool {
     ret true;
 }
 
-/*
-Function: next_power_of_two
-
-Returns the smallest power of 2 greater than or equal to `n`
-*/
+#[doc = "Returns the smallest power of 2 greater than or equal to `n`"]
 fn next_power_of_two(n: uint) -> uint {
     let halfbits: uint = sys::size_of::<uint>() * 4u;
     let mut tmp: uint = n - 1u;
@@ -175,20 +116,18 @@ fn next_power_of_two(n: uint) -> uint {
     ret tmp + 1u;
 }
 
-/*
-Function: parse_buf
-
+#[doc = "
 Parse a buffer of bytes
 
-Parameters:
+# Arguments
 
-buf - A byte buffer
-radix - The base of the number
+* buf - A byte buffer
+* radix - The base of the number
 
-Failure:
+# Failure
 
-buf must not be empty
-*/
+`buf` must not be empty
+"]
 fn parse_buf(buf: [u8], radix: uint) -> option<uint> {
     if vec::len(buf) == 0u { ret none; }
     let mut i = vec::len(buf) - 1u;
@@ -206,18 +145,10 @@ fn parse_buf(buf: [u8], radix: uint) -> option<uint> {
     fail;
 }
 
-/*
-Function: from_str
-
-Parse a string to an int
-*/
+#[doc = "Parse a string to an int"]
 fn from_str(s: str) -> option<uint> { parse_buf(str::bytes(s), 10u) }
 
-/*
-Function: to_str
-
-Convert to a string in a given base
-*/
+#[doc = "Convert to a string in a given base"]
 fn to_str(num: uint, radix: uint) -> str {
     let mut n = num;
     assert (0u < radix && radix <= 16u);
@@ -254,18 +185,10 @@ fn to_str(num: uint, radix: uint) -> str {
     ret s1;
 }
 
-/*
-Function: str
-
-Convert to a string
-*/
+#[doc = "Convert to a string"]
 fn str(i: uint) -> str { ret to_str(i, 10u); }
 
-/*
-Function: compl
-
-Computes the bitwise complement.
-*/
+#[doc = "Computes the bitwise complement"]
 fn compl(i: uint) -> uint {
     max_value ^ i
 }

@@ -1,8 +1,5 @@
-/*
-Module: sys
+#[doc = "Misc low level stuff"]
 
-Misc low level stuff
-*/
 enum type_desc = {
     first_param: **ctypes::c_int,
     size: ctypes::size_t,
@@ -31,48 +28,32 @@ native mod rusti {
     fn frame_address(n: ctypes::c_uint) -> ctypes::uintptr_t;
 }
 
-/*
-Function: get_type_desc
+#[doc = "
+Returns a pointer to a type descriptor.
 
-Returns a pointer to a type descriptor. Useful for calling certain
-function in the Rust runtime or otherwise performing dark magick.
-*/
+Useful for calling certain function in the Rust runtime or otherwise
+performing dark magick.
+"]
 fn get_type_desc<T>() -> *type_desc {
     ret rusti::get_type_desc::<T>();
 }
 
-/*
-Function: last_os_error
-
-Get a string representing the platform-dependent last error
-*/
+#[doc = "Get a string representing the platform-dependent last error"]
 fn last_os_error() -> str {
     rustrt::last_os_error()
 }
 
-/*
-Function: size_of
-
-Returns the size of a type
-*/
+#[doc = "Returns the size of a type"]
 fn size_of<T>() -> uint unsafe {
     ret (*get_type_desc::<T>()).size;
 }
 
-/*
-Function: align_of
-
-Returns the alignment of a type
-*/
+#[doc = "Returns the alignment of a type"]
 fn align_of<T>() -> uint unsafe {
     ret (*get_type_desc::<T>()).align;
 }
 
-/*
-Function: refcount
-
-Returns the refcount of a shared box
-*/
+#[doc = "Returns the refcount of a shared box"]
 fn refcount<T>(t: @T) -> uint {
     ret rustrt::refcount::<T>(t);
 }
@@ -81,14 +62,14 @@ fn log_str<T>(t: T) -> str {
     rustrt::shape_log_str(get_type_desc::<T>(), t)
 }
 
-#[doc(
-    brief = "Sets the process exit code",
-    desc = "Sets the exit code returned by the process if all supervised \
-            tasks terminate successfully (without failing). If the current \
-            root task fails and is supervised by the scheduler then any \
-            user-specified exit status is ignored and the process exits \
-            with the default failure status."
-)]
+#[doc = "
+Sets the process exit code
+
+Sets the exit code returned by the process if all supervised tasks terminate
+successfully (without failing). If the current root task fails and is
+supervised by the scheduler then any user-specified exit status is ignored and
+the process exits with the default failure status
+"]
 fn set_exit_status(code: int) {
     rustrt::rust_set_exit_status(code as ctypes::intptr_t);
 }

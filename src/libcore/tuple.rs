@@ -1,7 +1,3 @@
-/*
-Module: tuple
-*/
-
 fn first<T:copy, U:copy>(pair: (T, U)) -> T {
     let (t, _) = pair;
     ret t;

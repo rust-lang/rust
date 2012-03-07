@@ -1,8 +1,5 @@
-/*
-Module: ptr
+#[doc = "Unsafe pointer utility functions"]
 
-Unsafe pointer utility functions
-*/
 #[abi = "rust-intrinsic"]
 native mod rusti {
     fn addr_of<T>(val: T) -> *T;
@@ -11,70 +8,50 @@ native mod rusti {
     fn memmove<T>(dst: *T, src: *T, count: ctypes::uintptr_t);
 }
 
-/*
-Function: addr_of
-
-Get an unsafe pointer to a value
-*/
+#[doc = "Get an unsafe pointer to a value"]
 #[inline(always)]
 fn addr_of<T>(val: T) -> *T { ret rusti::addr_of(val); }
 
-/*
-Function: mut_addr_of
-
-Get an unsafe mutable pointer to a value
-*/
+#[doc = "Get an unsafe mutable pointer to a value"]
 #[inline(always)]
 fn mut_addr_of<T>(val: T) -> *mutable T unsafe {
     ret unsafe::reinterpret_cast(rusti::addr_of(val));
 }
 
-/*
-Function: offset
-
-Calculate the offset from a pointer
-*/
+#[doc = "Calculate the offset from a pointer"]
 #[inline(always)]
 fn offset<T>(ptr: *T, count: uint) -> *T {
     ret rusti::ptr_offset(ptr, count);
 }
 
-/*
-Function: mut_offset
-
-Calculate the offset from a mutable pointer
-*/
+#[doc = "Calculate the offset from a mutable pointer"]
 #[inline(always)]
 fn mut_offset<T>(ptr: *mutable T, count: uint) -> *mutable T {
     ret rusti::ptr_offset(ptr as *T, count) as *mutable T;
 }
 
 
-/*
-Function: null
-
-Create an unsafe null pointer
-*/
+#[doc = "Create an unsafe null pointer"]
 #[inline(always)]
 fn null<T>() -> *T unsafe { ret unsafe::reinterpret_cast(0u); }
 
-/*
-Function: memcpy
+#[doc = "
+Copies data from one location to another
 
-Copies data from one src to dst that is not overlapping each other.
-Count is the number of elements to copy and not the number of bytes.
-*/
+Copies `count` elements (not bytes) from `src` to `dst`. The source
+and destination may not overlap.
+"]
 #[inline(always)]
 unsafe fn memcpy<T>(dst: *T, src: *T, count: uint) {
     rusti::memcpy(dst, src, count);
 }
 
-/*
-Function: memmove
+#[doc = "
+Copies data from one location to another
 
-Copies data from one src to dst, overlap between the two pointers may occur.
-Count is the number of elements to copy and not the number of bytes.
-*/
+Copies `count` elements (not bytes) from `src` to `dst`. The source
+and destination may overlap.
+"]
 #[inline(always)]
 unsafe fn memmove<T>(dst: *T, src: *T, count: uint)  {
     rusti::memmove(dst, src, count);

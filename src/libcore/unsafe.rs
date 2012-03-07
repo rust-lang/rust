@@ -1,8 +1,4 @@
-/*
-Module: unsafe
-
-Unsafe operations
-*/
+#[doc = "Unsafe operations"];
 
 export reinterpret_cast, leak;
 
@@ -12,11 +8,9 @@ native mod rusti {
     fn leak<T>(-thing: T);
 }
 
-/*
-Function: reinterpret_cast
-
+#[doc = "
 Casts the value at `src` to U. The two types must have the same length.
-*/
+"]
 #[inline(always)]
 unsafe fn reinterpret_cast<T, U>(src: T) -> U {
     let t1 = sys::get_type_desc::<T>();
@@ -27,16 +21,14 @@ unsafe fn reinterpret_cast<T, U>(src: T) -> U {
     ret rusti::cast(src);
 }
 
-/*
-Function: leak
-
-Move `thing` into the void.
+#[doc ="
+Move a thing into the void
 
 The leak function will take ownership of the provided value but neglect
 to run any required cleanup or memory-management operations on it. This
 can be used for various acts of magick, particularly when using
 reinterpret_cast on managed pointer types.
-*/
+"]
 #[inline(always)]
 unsafe fn leak<T>(-thing: T) { rusti::leak(thing); }
 

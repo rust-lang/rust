@@ -10,9 +10,8 @@
 // Don't link to core. We are core.
 #[no_core];
 
-#[doc(
-    brief = "The Rust core library",
-    desc = "
+#[doc = "
+The Rust core library
 
 The core library provides functionality that is closely tied to the Rust
 built-in types and runtime services, or that is used in nearly every
@@ -24,9 +23,8 @@ as though the user had written the following:
     use core;
     import core::*;
 
-This behavior can be disabled with the `no_core` crate attribute."
-
-)];
+This behavior can be disabled with the `no_core` crate attribute.
+"];
 
 export int, i8, i16, i32, i64;
 export uint, u8, u16, u32, u64;

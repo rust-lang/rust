@@ -1,5 +1,4 @@
 #[doc = "
-
 Task management.
 
 An executing Rust program consists of a tree of tasks, each with their own
@@ -14,12 +13,13 @@ process.
 
 Tasks may execute in parallel and are scheduled automatically by the runtime.
 
-Example:
+# Example
 
-    spawn {||
-        log(error, \"Hello, World!\");
-    }
-
+~~~
+spawn {||
+    log(error, \"Hello, World!\");
+}
+~~~
 "];
 
 export task;
@@ -58,7 +58,6 @@ export get_task;
 enum task = task_id;
 
 #[doc = "
-
 Indicates the manner in which a task exited.
 
 A task that completes without failing and whose supervised children complete
@@ -66,18 +65,13 @@ without failing is considered to exit successfully.
 
 FIXME: This description does not indicate the current behavior for linked
 failure.
-
 "]
 enum task_result {
     success,
     failure,
 }
 
-#[doc = "
-
-A message type for notifying of task lifecycle events
-
-"]
+#[doc = "A message type for notifying of task lifecycle events"]
 enum notification {
     #[doc = "Sent when a task exits with the task handle and result"]
     exit(task, task_result)
@@ -96,10 +90,9 @@ enum sched_mode {
 }
 
 #[doc = "
-
 Scheduler configuration options
 
-Fields:
+# Fields
 
 * sched_mode - The operating mode of the scheduler
 
@@ -110,7 +103,6 @@ Fields:
     appropriate for running code written in languages like C. By default these
     native stacks have unspecified size, but with this option their size can
     be precisely specified.
-
 "]
 type sched_opts = {
     mode: sched_mode,
@@ -118,10 +110,9 @@ type sched_opts = {
 };
 
 #[doc = "
-
 Task configuration options
 
-Fields:
+# Fields
 
 * supervise - Do not propagate failure to the parent task
 
@@ -152,11 +143,9 @@ type task_opts = {
 };
 
 #[doc = "
-
 The task builder type.
 
 Provides detailed control over the properties and behavior of new tasks.
-
 "]
 // NB: Builders are designed to be single-use because they do stateful
 // things that get weird when reusing - e.g. if you create a result future
@@ -176,12 +165,10 @@ enum task_builder = {
 
 fn default_task_opts() -> task_opts {
     #[doc = "
-
     The default task options
 
     By default all tasks are supervised by their parent, are spawned
     into the same scheduler, and do not post lifecycle notifications.
-
     "];
 
     {
@@ -211,7 +198,6 @@ fn get_opts(builder: task_builder) -> task_opts {
 
 fn set_opts(builder: task_builder, opts: task_opts) {
     #[doc = "
-
     Set the task_opts associated with a task_builder
 
     To update a single option use a pattern like the following:
@@ -220,7 +206,6 @@ fn set_opts(builder: task_builder, opts: task_opts) {
             supervise: false
             with get_opts(builder)
         });
-
     "];
 
     builder.opts = opts;
@@ -228,7 +213,6 @@ fn set_opts(builder: task_builder, opts: task_opts) {
 
 fn add_wrapper(builder: task_builder, gen_body: fn@(+fn~()) -> fn~()) {
     #[doc = "
-
     Add a wrapper to the body of the spawned task.
 
     Before the task is spawned it is passed through a 'body generator'
@@ -239,7 +223,6 @@ fn add_wrapper(builder: task_builder, gen_body: fn@(+fn~()) -> fn~()) {
     This function augments the current body generator with a new body
     generator by applying the task body which results from the
     existing body generator to the new body generator.
-
     "];
 
     let prev_gen_body = builder.gen_body;
@@ -249,20 +232,18 @@ fn add_wrapper(builder: task_builder, gen_body: fn@(+fn~()) -> fn~()) {
 }
 
 fn run(-builder: task_builder, +f: fn~()) {
-    #[doc(desc = "
-
+    #[doc = "
     Creates and exucutes a new child task
 
     Sets up a new task with its own call stack and schedules it to run
     the provided unique closure. The task has the properties and behavior
     specified by `builder`.
 
-    ", failure = "
+    # Failure
 
     When spawning into a new scheduler, the number of threads requested
     must be greater than zero.
-
-    ")];
+    "];
 
     let body = builder.gen_body(f);
     spawn_raw(builder.opts, body);
@@ -273,7 +254,6 @@ fn run(-builder: task_builder, +f: fn~()) {
 
 fn future_result(builder: task_builder) -> future::future<task_result> {
     #[doc = "
-
     Get a future representing the exit status of the task.
 
     Taking the value of the future will block until the child task terminates.
@@ -283,7 +263,6 @@ fn future_result(builder: task_builder) -> future::future<task_result> {
     builder. If additional tasks are spawned with the same builder
     then a new result future must be obtained prior to spawning each
     task.
-
     "];
 
     // FIXME (1087, 1857): Once linked failure and notification are
@@ -332,7 +311,6 @@ fn unsupervise(builder: task_builder) {
 fn run_listener<A:send>(-builder: task_builder,
                         +f: fn~(comm::port<A>)) -> comm::chan<A> {
     #[doc = "
-
     Runs a new task while providing a channel from the parent to the child
 
     Sets up a communication channel from the current task to the new
@@ -362,7 +340,6 @@ fn run_listener<A:send>(-builder: task_builder,
 
 fn spawn(+f: fn~()) {
     #[doc = "
-
     Creates and exucutes a new child task
 
     Sets up a new task with its own call stack and schedules it to run
@@ -376,7 +353,6 @@ fn spawn(+f: fn~()) {
 
 fn spawn_listener<A:send>(+f: fn~(comm::port<A>)) -> comm::chan<A> {
     #[doc = "
-
     Runs a new task while providing a channel from the parent to the child
 
     Sets up a communication channel from the current task to the new
@@ -399,27 +375,24 @@ fn spawn_listener<A:send>(+f: fn~(comm::port<A>)) -> comm::chan<A> {
         // Likewise, the parent has both a 'po' and 'ch'
 
     This function is equivalent to `run_listener(mk_task_builder(), f)`.
-
     "];
 
     run_listener(mk_task_builder(), f)
 }
 
 fn spawn_sched(mode: sched_mode, +f: fn~()) {
-    #[doc(desc = "
-
+    #[doc = "
     Creates a new scheduler and executes a task on it
 
     Tasks subsequently spawned by that task will also execute on
     the new scheduler. When there are no more tasks to execute the
     scheduler terminates.
 
-    ", failure = "
+    # Failure
 
     In manual threads mode the number of threads requested must be
     greater than zero.
-
-    ")];
+    "];
 
     let mut builder = mk_task_builder();
     set_opts(builder, {
@@ -433,18 +406,16 @@ fn spawn_sched(mode: sched_mode, +f: fn~()) {
 }
 
 fn try<T:send>(+f: fn~() -> T) -> result::t<T,()> {
-    #[doc(desc = "
-
+    #[doc = "
     Execute a function in another task and return either the return value
     of the function or result::err.
 
-    ", return = "
+    # Return value
 
     If the function executed successfully then try returns result::ok
     containing the value returned by the function. If the function fails
     then try returns result::err containing nil.
-
-    ")];
+    "];
 
     let po = comm::port();
     let ch = comm::chan(po);

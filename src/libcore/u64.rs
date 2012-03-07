@@ -1,74 +1,31 @@
 #[doc = "Operations and constants for `u64`"];
 
-/*
-Module: u64
-*/
-
-/*
-Const: min_value
-
-Return the minimal value for a u64
-*/
 const min_value: u64 = 0u64;
-
-/*
-Const: max_value
-
-Return the maximal value for a u64
-*/
 const max_value: u64 = 0u64 - 1u64;
 
 pure fn min(x: u64, y: u64) -> u64 { if x < y { x } else { y } }
 pure fn max(x: u64, y: u64) -> u64 { if x > y { x } else { y } }
 
-/* Function: add */
 pure fn add(x: u64, y: u64) -> u64 { ret x + y; }
-
-/* Function: sub */
 pure fn sub(x: u64, y: u64) -> u64 { ret x - y; }
-
-/* Function: mul */
 pure fn mul(x: u64, y: u64) -> u64 { ret x * y; }
-
-/* Function: div */
 pure fn div(x: u64, y: u64) -> u64 { ret x / y; }
-
-/* Function: rem */
 pure fn rem(x: u64, y: u64) -> u64 { ret x % y; }
 
-/* Predicate: lt */
 pure fn lt(x: u64, y: u64) -> bool { ret x < y; }
-
-/* Predicate: le */
 pure fn le(x: u64, y: u64) -> bool { ret x <= y; }
-
-/* Predicate: eq */
 pure fn eq(x: u64, y: u64) -> bool { ret x == y; }
-
-/* Predicate: ne */
 pure fn ne(x: u64, y: u64) -> bool { ret x != y; }
-
-/* Predicate: ge */
 pure fn ge(x: u64, y: u64) -> bool { ret x >= y; }
-
-/* Predicate: gt */
 pure fn gt(x: u64, y: u64) -> bool { ret x > y; }
 
-/*
-Function: range
-
-Iterate over the range [`lo`..`hi`)
-*/
+#[doc = "Iterate over the range [`lo`..`hi`)"]
 fn range(lo: u64, hi: u64, it: fn(u64)) {
     let mut i = lo;
     while i < hi { it(i); i += 1u64; }
 }
 
-/*
-Function: to_str
-
-Convert to a string in a given base
-*/
+#[doc = "Convert to a string in a given base"]
 fn to_str(n: u64, radix: uint) -> str {
     assert (0u < radix && radix <= 16u);
 
@@ -105,18 +62,10 @@ fn to_str(n: u64, radix: uint) -> str {
     ret s;
 }
 
-/*
-Function: str
-
-Convert to a string
-*/
+#[doc = "Convert to a string"]
 fn str(n: u64) -> str { ret to_str(n, 10u); }
 
-/*
-Function: from_str
-
-Parse a string as an unsigned integer.
-*/
+#[doc = "Parse a string as an unsigned integer."]
 fn from_str(buf: str, radix: u64) -> option<u64> {
     if str::len(buf) == 0u { ret none; }
     let mut i = str::len(buf) - 1u;

@@ -1,19 +1,13 @@
-// Generic functions that have been defined for all numeric types
-//
-// (may very well go away again soon)
+#[doc = "
+Generic functions that have been defined for all numeric types
 
-/*
-Function: min
+(may very well go away again soon)
+"];
 
-Returns the minimum of two values
-*/
+#[doc = "Returns the minimum of two values"]
 pure fn min<T: copy>(x: T, y: T) -> T { if x < y { x } else { y} }
 
-/*
-Function: max
-
-Returns the maximum of two values
-*/
+#[doc = "Returns the maximum of two values"]
 pure fn max<T: copy>(x: T, y: T) -> T { if x < y { y } else { x } }
 
 #[test]

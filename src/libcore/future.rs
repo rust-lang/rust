@@ -1,14 +1,14 @@
 #[doc = "
-
 A type representing values that may be computed concurrently and
 operations for working with them.
 
-Example:
+# Example
 
-> let delayed_fib = future::spawn {|| fib(5000) };
-> make_a_sandwitch();
-> io::println(#fmt(\"fib(5000) = %?\", delayed_fib.get()))
-
+~~~
+let delayed_fib = future::spawn {|| fib(5000) };
+make_a_sandwitch();
+io::println(#fmt(\"fib(5000) = %?\", delayed_fib.get()))
+~~~
 "];
 
 export future;
@@ -45,10 +45,10 @@ impl future<A:send> for future<A> {
 
 fn from_value<A>(+val: A) -> future<A> {
     #[doc = "
+    Create a future from a value
 
-    Create a future from a value. The value is immediately available
-    and calling `get` later will not block.
-
+    The value is immediately available and calling `get` later will
+    not block.
     "];
 
     future({
@@ -58,11 +58,10 @@ fn from_value<A>(+val: A) -> future<A> {
 
 fn from_port<A:send>(-port: comm::port<A>) -> future<A> {
     #[doc = "
+    Create a future from a port
 
-    Create a future from a port. The first time that the value is
-    requested the task will block waiting for the result to be
-    received on the port.
-
+    The first time that the value is requested the task will block
+    waiting for the result to be received on the port.
     "];
 
     from_fn {||
@@ -72,12 +71,11 @@ fn from_port<A:send>(-port: comm::port<A>) -> future<A> {
 
 fn from_fn<A>(f: fn@() -> A) -> future<A> {
     #[doc = "
+    Create a future from a function.
 
-    Create a future from a function. The first time that the value is
-    requested it will be retreived by calling the function.
-
-    Note that this function is a local function. It is not spawned into
-    another task.
+    The first time that the value is requested it will be retreived by
+    calling the function.  Note that this function is a local
+    function. It is not spawned into another task.
     "];
 
     future({
@@ -87,10 +85,10 @@ fn from_fn<A>(f: fn@() -> A) -> future<A> {
 
 fn spawn<A:send>(+blk: fn~() -> A) -> future<A> {
     #[doc = "
+    Create a future from a unique closure.
 
-    Create a future from a unique closure. The closure will be run
-    in a new task and its result used as the value of the future.
-
+    The closure will be run in a new task and its result used as the
+    value of the future.
     "];
 
     let mut po = comm::port();

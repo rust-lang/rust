@@ -1,9 +1,5 @@
 #[doc = "Operations and constants for `float`"];
 
-/*
-Module: float
-*/
-
 // FIXME find out why these have to be exported explicitly
 
 export to_str_common, to_str_exact, to_str, from_str;
@@ -36,17 +32,15 @@ type t = float;
  * Section: String Conversions
  */
 
-/*
-Function: to_str_common
-
+#[doc = "
 Converts a float to a string
 
-Parameters:
+# Arguments
 
-num - The float value
-digits - The number of significant digits
-exact - Whether to enforce the exact number of significant digits
-*/
+* num - The float value
+* digits - The number of significant digits
+* exact - Whether to enforce the exact number of significant digits
+"]
 fn to_str_common(num: float, digits: uint, exact: bool) -> str {
     if is_NaN(num) { ret "NaN"; }
     let mut (num, accum) = if num < 0.0 { (-num, "-") } else { (num, "") };
@@ -69,17 +63,15 @@ fn to_str_common(num: float, digits: uint, exact: bool) -> str {
 
 }
 
-/*
-Function: to_str
+#[doc = "
+Converts a float to a string with exactly the number of
+provided significant digits
 
-Converts a float to a string with exactly the number of provided significant
-digits
+# Arguments
 
-Parameters:
-
-num - The float value
-digits - The number of significant digits
-*/
+* num - The float value
+* digits - The number of significant digits
+"]
 fn to_str_exact(num: float, digits: uint) -> str {
     to_str_common(num, digits, true)
 }
@@ -90,47 +82,45 @@ fn test_to_str_exact_do_decimal() {
     assert s == "5.0000";
 }
 
-/*
-Function: to_str
 
-Converts a float to a string with a maximum number of significant digits
+#[doc = "
+Converts a float to a string with a maximum number of
+significant digits
 
-Parameters:
+# Arguments
 
-num - The float value
-digits - The number of significant digits
-*/
+* num - The float value
+* digits - The number of significant digits
+"]
 fn to_str(num: float, digits: uint) -> str {
     to_str_common(num, digits, false)
 }
 
-/*
-Function: from_str
-
+#[doc = "
 Convert a string to a float
 
 This function accepts strings such as
-* "3.14"
-* "+3.14", equivalent to "3.14"
-* "-3.14"
-* "2.5E10", or equivalently, "2.5e10"
-* "2.5E-10"
-* "", or, equivalently, "." (understood as 0)
-* "5."
-* ".5", or, equivalently,  "0.5"
+
+* '3.14'
+* '+3.14', equivalent to '3.14'
+* '-3.14'
+* '2.5E10', or equivalently, '2.5e10'
+* '2.5E-10'
+* '', or, equivalently, '.' (understood as 0)
+* '5.'
+* '.5', or, equivalently,  '0.5'
 
 Leading and trailing whitespace are ignored.
 
-Parameters:
+# Arguments
 
-num - A string
+* num - A string
 
-Returns:
+# Return value
 
-none if the string did not represent a valid number.
-Otherwise, some(n) where n is the floating-point
-number represented by [num].
-*/
+`none` if the string did not represent a valid number.  Otherwise, `some(n)`
+where `n` is the floating-point number represented by `[num]`.
+"]
 fn from_str(num: str) -> option<float> {
    let mut pos = 0u;               //Current byte position in the string.
                                    //Used to walk the string in O(n).
@@ -256,18 +246,18 @@ fn from_str(num: str) -> option<float> {
  * Section: Arithmetics
  */
 
-/*
-Function: pow_with_uint
+#[doc = "
+Compute the exponentiation of an integer by another integer as a float
 
-Compute the exponentiation of an integer by another integer as a float.
+# Arguments
 
-Parameters:
-x - The base.
-pow - The exponent.
+* x - The base
+* pow - The exponent
 
-Returns:
-<NaN> of both `x` and `pow` are `0u`, otherwise `x^pow`.
-*/
+# Return value
+
+`NaN` if both `x` and `pow` are `0u`, otherwise `x^pow`
+"]
 fn pow_with_uint(base: uint, pow: uint) -> float {
    if base == 0u {
       if pow == 0u {
