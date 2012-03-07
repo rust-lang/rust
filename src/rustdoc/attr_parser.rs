@@ -13,6 +13,7 @@ export crate_attrs, basic_attrs, fn_attrs, arg_attrs,
        variant_attrs, res_attrs, method_attrs;
 export parse_crate, parse_basic, parse_fn,
        parse_variant, parse_res, parse_method;
+export parse_hidden;
 
 type crate_attrs = {
     name: option<str>
@@ -362,4 +363,29 @@ fn shoulde_parse_resource_arg() {
 
 fn parse_method(attrs: [ast::attribute]) -> method_attrs {
     parse_fn(attrs)
+}
+
+fn parse_hidden(attrs: [ast::attribute]) -> bool {
+    parse_short_doc_or(
+        attrs,
+        {|_desc| false },
+        {|metas, _brief, _desc|
+            let hiddens = attr::find_meta_items_by_name(metas, "hidden");
+            vec::is_not_empty(hiddens)
+        }
+    )
+}
+
+#[test]
+fn shoulde_parse_hidden_attribute() {
+    let source = "#[doc(hidden)]";
+    let attrs = test::parse_attributes(source);
+    assert parse_hidden(attrs) == true;
+}
+
+#[test]
+fn shoulde_not_parse_non_hidden_attribute() {
+    let source = "#[doc = \"\"]";
+    let attrs = test::parse_attributes(source);
+    assert parse_hidden(attrs) == false;
 }
