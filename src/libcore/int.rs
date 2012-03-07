@@ -90,7 +90,7 @@ Function: range
 Iterate over the range [`lo`..`hi`)
 */
 fn range(lo: int, hi: int, it: fn(int)) {
-    let i = lo;
+    let mut i = lo;
     while i < hi { it(i); i += 1; }
 }
 
@@ -106,15 +106,15 @@ radix - The base of the number
 */
 fn parse_buf(buf: [u8], radix: uint) -> option<int> {
     if vec::len(buf) == 0u { ret none; }
-    let i = vec::len(buf) - 1u;
-    let start = 0u;
-    let power = 1;
+    let mut i = vec::len(buf) - 1u;
+    let mut start = 0u;
+    let mut power = 1;
 
     if buf[0] == ('-' as u8) {
         power = -1;
         start = 1u;
     }
-    let n = 0;
+    let mut n = 0;
     while true {
         alt char::to_digit(buf[i] as char, radix) {
           some(d) { n += (d as int) * power; }
@@ -161,9 +161,9 @@ Returns `base` raised to the power of `exponent`
 fn pow(base: int, exponent: uint) -> int {
     if exponent == 0u { ret 1; } //Not mathemtically true if [base == 0]
     if base     == 0  { ret 0; }
-    let my_pow  = exponent;
-    let acc     = 1;
-    let multiplier = base;
+    let mut my_pow  = exponent;
+    let mut acc     = 1;
+    let mut multiplier = base;
     while(my_pow > 0u) {
       if my_pow % 2u == 1u {
          acc *= multiplier;

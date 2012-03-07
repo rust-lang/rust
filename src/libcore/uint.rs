@@ -133,7 +133,7 @@ Iterate over the range [`lo`..`hi`)
 */
 #[inline(always)]
 fn range(lo: uint, hi: uint, it: fn(uint)) {
-    let i = lo;
+    let mut i = lo;
     while i < hi { it(i); i += 1u; }
 }
 
@@ -154,7 +154,7 @@ Returns:
 that is if `it` returned `false` at any point.
 */
 fn loop(lo: uint, hi: uint, it: fn(uint) -> bool) -> bool {
-    let i = lo;
+    let mut i = lo;
     while i < hi {
         if (!it(i)) { ret false; }
         i += 1u;
@@ -169,8 +169,8 @@ Returns the smallest power of 2 greater than or equal to `n`
 */
 fn next_power_of_two(n: uint) -> uint {
     let halfbits: uint = sys::size_of::<uint>() * 4u;
-    let tmp: uint = n - 1u;
-    let shift: uint = 1u;
+    let mut tmp: uint = n - 1u;
+    let mut shift: uint = 1u;
     while shift <= halfbits { tmp |= tmp >> shift; shift <<= 1u; }
     ret tmp + 1u;
 }
@@ -191,9 +191,9 @@ buf must not be empty
 */
 fn parse_buf(buf: [u8], radix: uint) -> option<uint> {
     if vec::len(buf) == 0u { ret none; }
-    let i = vec::len(buf) - 1u;
-    let power = 1u;
-    let n = 0u;
+    let mut i = vec::len(buf) - 1u;
+    let mut power = 1u;
+    let mut n = 0u;
     while true {
         alt char::to_digit(buf[i] as char, radix) {
           some(d) { n += d * power; }
@@ -219,7 +219,7 @@ Function: to_str
 Convert to a string in a given base
 */
 fn to_str(num: uint, radix: uint) -> str {
-    let n = num;
+    let mut n = num;
     assert (0u < radix && radix <= 16u);
     fn digit(n: uint) -> char {
         ret alt n {
@@ -243,13 +243,13 @@ fn to_str(num: uint, radix: uint) -> str {
             };
     }
     if n == 0u { ret "0"; }
-    let s: str = "";
+    let mut s: str = "";
     while n != 0u {
         s += str::from_byte(digit(n % radix) as u8);
         n /= radix;
     }
-    let s1: str = "";
-    let len: uint = str::len(s);
+    let mut s1: str = "";
+    let mut len: uint = str::len(s);
     while len != 0u { len -= 1u; s1 += str::from_byte(s[len]); }
     ret s1;
 }

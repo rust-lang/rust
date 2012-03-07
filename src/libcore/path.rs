@@ -112,8 +112,8 @@ with a single path separator between them.
 */
 
 fn connect(pre: path, post: path) -> path unsafe {
-    let pre_ = pre;
-    let post_ = post;
+    let mut pre_ = pre;
+    let mut post_ = post;
     let sep = consts::path_sep as u8;
     let pre_len  = str::len(pre);
     let post_len = str::len(post);
@@ -246,9 +246,9 @@ fn normalize(p: path) -> path {
             ret [];
         }
 
-        let t = [];
-        let i = vec::len(s);
-        let skip = 0;
+        let mut t = [];
+        let mut i = vec::len(s);
+        let mut skip = 0;
         do {
             i -= 1u;
             if s[i] == ".." {
@@ -261,7 +261,7 @@ fn normalize(p: path) -> path {
                 }
             }
         } while i != 0u;
-        let t = vec::reversed(t);
+        let mut t = vec::reversed(t);
         while skip > 0 {
             t += [".."];
             skip -= 1;

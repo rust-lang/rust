@@ -37,7 +37,7 @@ impl <A: to_str copy, B: to_str copy, C: to_str copy> of to_str for (A, B, C){
 
 impl <A: to_str> of to_str for [A] {
     fn to_str() -> str {
-        let acc = "[", first = true;
+        let mut acc = "[", first = true;
         for elt in self {
             if first { first = false; }
             else { acc += ", "; }

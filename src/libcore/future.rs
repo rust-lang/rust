@@ -93,7 +93,7 @@ fn spawn<A:send>(+blk: fn~() -> A) -> future<A> {
 
     "];
 
-    let po = comm::port();
+    let mut po = comm::port();
     let ch = comm::chan(po);
     task::spawn {||
         comm::send(ch, blk())

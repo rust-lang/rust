@@ -309,7 +309,7 @@ fn future_result(builder: task_builder) -> future::future<task_result> {
 fn future_task(builder: task_builder) -> future::future<task> {
     #[doc = "Get a future representing the handle to the new task"];
 
-    let po = comm::port();
+    let mut po = comm::port();
     let ch = comm::chan(po);
     add_wrapper(builder) {|body|
         fn~() {
@@ -349,7 +349,7 @@ fn run_listener<A:send>(-builder: task_builder,
 
     run(builder) {||
         let po = comm::port();
-        let ch = comm::chan(po);
+        let mut ch = comm::chan(po);
         comm::send(setup_ch, ch);
         f(po);
     }
@@ -421,7 +421,7 @@ fn spawn_sched(mode: sched_mode, +f: fn~()) {
 
     ")];
 
-    let builder = mk_task_builder();
+    let mut builder = mk_task_builder();
     set_opts(builder, {
         sched: some({
             mode: mode,
@@ -448,7 +448,7 @@ fn try<T:send>(+f: fn~() -> T) -> result::t<T,()> {
 
     let po = comm::port();
     let ch = comm::chan(po);
-    let builder = mk_task_builder();
+    let mut builder = mk_task_builder();
     unsupervise(builder);
     let result = future_result(builder);
     run(builder) {||
@@ -467,7 +467,7 @@ fn yield() {
     #[doc = "Yield control to the task scheduler"];
 
     let task_ = rustrt::rust_get_task();
-    let killed = false;
+    let mut killed = false;
     rusti::task_yield(task_, killed);
     if killed && !failing() {
         fail "killed";
@@ -499,7 +499,7 @@ type rust_closure = ctypes::void;
 
 fn spawn_raw(opts: task_opts, +f: fn~()) unsafe {
 
-    let f = if opts.supervise {
+    let mut f = if opts.supervise {
         f
     } else {
         // FIXME: The runtime supervision API is weird here because it

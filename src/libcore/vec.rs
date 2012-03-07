@@ -90,9 +90,9 @@ Creates an immutable vector of size `n_elts` and initializes the elements
 to the value returned by the function `op`.
 */
 fn init_fn<T>(n_elts: uint, op: init_op<T>) -> [T] {
-    let v = [];
+    let mut v = [];
     reserve(v, n_elts);
-    let i: uint = 0u;
+    let mut i: uint = 0u;
     while i < n_elts { v += [op(i)]; i += 1u; }
     ret v;
 }
@@ -106,9 +106,9 @@ Creates an immutable vector of size `n_elts` and initializes the elements
 to the value `t`.
 */
 fn init_elt<T: copy>(n_elts: uint, t: T) -> [T] {
-    let v = [];
+    let mut v = [];
     reserve(v, n_elts);
-    let i: uint = 0u;
+    let mut i: uint = 0u;
     while i < n_elts { v += [t]; i += 1u; }
     ret v;
 }
@@ -217,9 +217,9 @@ Returns a copy of the elements from [`start`..`end`) from `v`.
 fn slice<T: copy>(v: [const T], start: uint, end: uint) -> [T] {
     assert (start <= end);
     assert (end <= len(v));
-    let result = [];
+    let mut result = [];
     reserve(result, end - start);
-    let i = start;
+    let mut i = start;
     while i < end { result += [v[i]]; i += 1u; }
     ret result;
 }
@@ -233,8 +233,8 @@ fn split<T: copy>(v: [const T], f: fn(T) -> bool) -> [[T]] {
     let ln = len(v);
     if (ln == 0u) { ret [] }
 
-    let start = 0u;
-    let result = [];
+    let mut start = 0u;
+    let mut result = [];
     while start < ln {
         alt position_from(v, start, ln, f) {
           none { break }
@@ -258,9 +258,9 @@ fn splitn<T: copy>(v: [const T], n: uint, f: fn(T) -> bool) -> [[T]] {
     let ln = len(v);
     if (ln == 0u) { ret [] }
 
-    let start = 0u;
-    let count = n;
-    let result = [];
+    let mut start = 0u;
+    let mut count = n;
+    let mut result = [];
     while start < ln && count > 0u {
         alt position_from(v, start, ln, f) {
           none { break }
@@ -286,8 +286,8 @@ fn rsplit<T: copy>(v: [const T], f: fn(T) -> bool) -> [[T]] {
     let ln = len(v);
     if (ln == 0u) { ret [] }
 
-    let end = ln;
-    let result = [];
+    let mut end = ln;
+    let mut result = [];
     while end > 0u {
         alt rposition_from(v, 0u, end, f) {
           none { break }
@@ -311,9 +311,9 @@ fn rsplitn<T: copy>(v: [const T], n: uint, f: fn(T) -> bool) -> [[T]] {
     let ln = len(v);
     if (ln == 0u) { ret [] }
 
-    let end = ln;
-    let count = n;
-    let result = [];
+    let mut end = ln;
+    let mut count = n;
+    let mut result = [];
     while end > 0u && count > 0u {
         alt rposition_from(v, 0u, end, f) {
           none { break }
@@ -385,7 +385,7 @@ initval - The value for the new elements
 */
 fn grow<T: copy>(&v: [const T], n: uint, initval: T) {
     reserve(v, next_power_of_two(len(v) + n));
-    let i: uint = 0u;
+    let mut i: uint = 0u;
     while i < n { v += [initval]; i += 1u; }
 }
 
@@ -405,7 +405,7 @@ init_op - A function to call to retreive each appended element's value
 */
 fn grow_fn<T>(&v: [const T], n: uint, op: init_op<T>) {
     reserve(v, next_power_of_two(len(v) + n));
-    let i: uint = 0u;
+    let mut i: uint = 0u;
     while i < n { v += [op(i)]; i += 1u; }
 }
 
@@ -433,7 +433,7 @@ Function: map
 Apply a function to each element of a vector and return the results
 */
 fn map<T, U>(v: [T], f: fn(T) -> U) -> [U] {
-    let result = [];
+    let mut result = [];
     reserve(result, len(v));
     for elem: T in v { result += [f(elem)]; }
     ret result;
@@ -448,8 +448,8 @@ fn map2<T: copy, U: copy, V>(v0: [const T], v1: [const U],
                              f: fn(T, U) -> V) -> [V] {
     let v0_len = len(v0);
     if v0_len != len(v1) { fail; }
-    let u: [V] = [];
-    let i = 0u;
+    let mut u: [V] = [];
+    let mut i = 0u;
     while i < v0_len { u += [f(copy v0[i], copy v1[i])]; i += 1u; }
     ret u;
 }
@@ -464,7 +464,7 @@ the resulting vector.
 */
 fn filter_map<T: copy, U: copy>(v: [const T], f: fn(T) -> option<U>)
     -> [U] {
-    let result = [];
+    let mut result = [];
     for elem: T in v {
         alt f(copy elem) {
           none {/* no-op */ }
@@ -484,7 +484,7 @@ Apply function `f` to each element of `v` and return a vector containing
 only those elements for which `f` returned true.
 */
 fn filter<T: copy>(v: [T], f: fn(T) -> bool) -> [T] {
-    let result = [];
+    let mut result = [];
     for elem: T in v {
         if f(elem) { result += [elem]; }
     }
@@ -498,7 +498,7 @@ Concatenate a vector of vectors. Flattens a vector of vectors of T into
 a single vector of T.
 */
 fn concat<T: copy>(v: [const [const T]]) -> [T] {
-    let new: [T] = [];
+    let mut new: [T] = [];
     for inner: [T] in v { new += inner; }
     ret new;
 }
@@ -509,8 +509,8 @@ Function: connect
 Concatenate a vector of vectors, placing a given separator between each
 */
 fn connect<T: copy>(v: [const [const T]], sep: T) -> [T] {
-    let new: [T] = [];
-    let first = true;
+    let mut new: [T] = [];
+    let mut first = true;
     for inner: [T] in v {
         if first { first = false; } else { push(new, sep); }
         new += inner;
@@ -524,7 +524,7 @@ Function: foldl
 Reduce a vector from left to right
 */
 fn foldl<T: copy, U>(z: T, v: [const U], p: fn(T, U) -> T) -> T {
-    let accum = z;
+    let mut accum = z;
     iter(v) { |elt|
         accum = p(accum, elt);
     }
@@ -537,7 +537,7 @@ Function: foldr
 Reduce a vector from right to left
 */
 fn foldr<T, U: copy>(v: [const T], z: U, p: fn(T, U) -> U) -> U {
-    let accum = z;
+    let mut accum = z;
     riter(v) { |elt|
         accum = p(elt, accum);
     }
@@ -566,7 +566,7 @@ If the vectors contains no elements then false is returned.
 fn any2<T, U>(v0: [const T], v1: [U], f: fn(T, U) -> bool) -> bool {
     let v0_len = len(v0);
     let v1_len = len(v1);
-    let i = 0u;
+    let mut i = 0u;
     while i < v0_len && i < v1_len {
         if f(v0[i], v1[i]) { ret true; };
         i += 1u;
@@ -596,7 +596,7 @@ If the vectors are not the same size then false is returned.
 fn all2<T, U>(v0: [const T], v1: [const U], f: fn(T, U) -> bool) -> bool {
     let v0_len = len(v0);
     if v0_len != len(v1) { ret false; }
-    let i = 0u;
+    let mut i = 0u;
     while i < v0_len { if !f(v0[i], v1[i]) { ret false; }; i += 1u; }
     ret true;
 }
@@ -617,7 +617,7 @@ Function: count
 Returns the number of elements that are equal to a given value
 */
 fn count<T>(v: [const T], x: T) -> uint {
-    let cnt = 0u;
+    let mut cnt = 0u;
     for elt: T in v { if x == elt { cnt += 1u; } }
     ret cnt;
 }
@@ -716,7 +716,7 @@ fn position_from<T>(v: [const T], start: uint, end: uint,
                     f: fn(T) -> bool) -> option<uint> {
     assert start <= end;
     assert end <= len(v);
-    let i = start;
+    let mut i = start;
     while i < end { if f(v[i]) { ret some::<uint>(i); } i += 1u; }
     ret none;
 }
@@ -761,7 +761,7 @@ fn rposition_from<T>(v: [const T], start: uint, end: uint,
                      f: fn(T) -> bool) -> option<uint> {
     assert start <= end;
     assert end <= len(v);
-    let i = end;
+    let mut i = end;
     while i > start {
         if f(v[i - 1u]) { ret some::<uint>(i - 1u); }
         i -= 1u;
@@ -784,7 +784,7 @@ and the i-th element of the second vector contains the second element
 of the i-th tuple of the input vector.
 */
 fn unzip<T: copy, U: copy>(v: [const (T, U)]) -> ([T], [U]) {
-    let as = [], bs = [];
+    let mut as = [], bs = [];
     for (a, b) in v { as += [a]; bs += [b]; }
     ret (as, bs);
 }
@@ -802,8 +802,9 @@ Preconditions:
 <same_length> (v, u)
 */
 fn zip<T: copy, U: copy>(v: [const T], u: [const U]) -> [(T, U)] {
-    let zipped = [];
-    let sz = len(v), i = 0u;
+    let mut zipped = [];
+    let sz = len(v);
+    let mut i = 0u;
     assert sz == len(u);
     while i < sz { zipped += [(v[i], u[i])]; i += 1u; }
     ret zipped;
@@ -829,7 +830,7 @@ Function: reverse
 Reverse the order of elements in a vector, in place
 */
 fn reverse<T>(v: [mutable T]) {
-    let i: uint = 0u;
+    let mut i: uint = 0u;
     let ln = len::<T>(v);
     while i < ln / 2u { v[i] <-> v[ln - i - 1u]; i += 1u; }
 }
@@ -841,8 +842,8 @@ Function: reversed
 Returns a vector with the order of elements reversed
 */
 fn reversed<T: copy>(v: [const T]) -> [T] {
-    let rs: [T] = [];
-    let i = len::<T>(v);
+    let mut rs: [T] = [];
+    let mut i = len::<T>(v);
     if i == 0u { ret rs; } else { i -= 1u; }
     while i != 0u { rs += [v[i]]; i -= 1u; }
     rs += [v[0]];
@@ -857,8 +858,8 @@ Returns a vector containing a range of chars
 */
 fn enum_chars(start: u8, end: u8) -> [char] {
     assert start < end;
-    let i = start;
-    let r = [];
+    let mut i = start;
+    let mut r = [];
     while i <= end { r += [i as char]; i += 1u as u8; }
     ret r;
 }
@@ -871,8 +872,8 @@ Returns a vector containing a range of uints
 */
 fn enum_uints(start: uint, end: uint) -> [uint] {
     assert start < end;
-    let i = start;
-    let r = [];
+    let mut i = start;
+    let mut r = [];
     while i <= end { r += [i]; i += 1u; }
     ret r;
 }
@@ -907,7 +908,7 @@ Iterates over two vectors in parallel
 */
 #[inline]
 fn iter2<U, T>(v: [ U], v2: [const T], f: fn(U, T)) {
-    let i = 0;
+    let mut i = 0;
     for elt in v { f(elt, v2[i]); i += 1; }
 }
 
@@ -921,7 +922,8 @@ element's value and index.
 */
 #[inline(always)]
 fn iteri<T>(v: [const T], f: fn(uint, T)) {
-    let i = 0u, l = len(v);
+    let mut i = 0u;
+    let l = len(v);
     while i < l { f(i, v[i]); i += 1u; }
 }
 
@@ -947,7 +949,7 @@ Iterates over vector `v` and, for each element, calls function `f` with the
 element's value and index.
 */
 fn riteri<T>(v: [const T], f: fn(uint, T)) {
-    let i = len(v);
+    let mut i = len(v);
     while 0u < i {
         i -= 1u;
         f(i, v[i]);
@@ -969,7 +971,7 @@ fn permute<T: copy>(v: [T], put: fn([T])) {
   if ln == 0u {
     put([]);
   } else {
-    let i = 0u;
+    let mut i = 0u;
     while i < ln {
       let elt = v[i];
       let rest = slice(v, 0u, i) + slice(v, i+1u, ln);
@@ -980,7 +982,7 @@ fn permute<T: copy>(v: [T], put: fn([T])) {
 }
 
 fn windowed <TT: copy> (nn: uint, xx: [const TT]) -> [[TT]] {
-   let ww = [];
+   let mut ww = [];
 
    assert 1u <= nn;
 
@@ -1153,7 +1155,7 @@ mod u8 {
         // djb hash.
         // FIXME: replace with murmur.
 
-        let u: uint = 5381u;
+        let mut u: uint = 5381u;
         vec::iter(s, { |c| u *= 33u; u += c as uint; });
         ret u;
     }

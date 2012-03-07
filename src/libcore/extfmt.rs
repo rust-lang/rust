@@ -81,9 +81,9 @@ mod ct {
     type error_fn = fn@(str) -> ! ;
 
     fn parse_fmt_string(s: str, error: error_fn) -> [piece] unsafe {
-        let pieces: [piece] = [];
+        let mut pieces: [piece] = [];
         let lim = str::len(s);
-        let buf = "";
+        let mut buf = "";
         fn flush_buf(buf: str, &pieces: [piece]) -> str {
             if str::len(buf) > 0u {
                 let piece = piece_string(buf);
@@ -91,7 +91,7 @@ mod ct {
             }
             ret "";
         }
-        let i = 0u;
+        let mut i = 0u;
         while i < lim {
             let curr = str::slice(s, i, i+1u);
             if str::eq(curr, "%") {
@@ -285,7 +285,7 @@ mod rt {
     fn conv_int(cv: conv, i: int) -> str {
         let radix = 10u;
         let prec = get_int_precision(cv);
-        let s = int_to_str_prec(i, radix, prec);
+        let mut s = int_to_str_prec(i, radix, prec);
         if 0 <= i {
             if have_flag(cv.flags, flag_sign_always) {
                 s = "+" + s;
@@ -335,7 +335,7 @@ mod rt {
               count_is(c) { (float::to_str_exact, c as uint) }
               count_implied { (float::to_str, 6u) }
         };
-        let s = to_str(f, digits);
+        let mut s = to_str(f, digits);
         if 0.0 <= f {
             if have_flag(cv.flags, flag_sign_always) {
                 s = "+" + s;
@@ -389,42 +389,38 @@ mod rt {
     }
     enum pad_mode { pad_signed, pad_unsigned, pad_nozero, }
     fn pad(cv: conv, s: str, mode: pad_mode) -> str unsafe {
-        let uwidth;
-        alt cv.width {
+        let uwidth = alt cv.width {
           count_implied { ret s; }
           count_is(width) {
             // FIXME: Maybe width should be uint
-
-            uwidth = width as uint;
+            width as uint
           }
-        }
+        };
         let strlen = str::char_len(s);
         if uwidth <= strlen { ret s; }
-        let padchar = ' ';
+        let mut padchar = ' ';
         let diff = uwidth - strlen;
         if have_flag(cv.flags, flag_left_justify) {
             let padstr = str_init_elt(diff, padchar);
             ret s + padstr;
         }
-        let might_zero_pad = false;
-        let signed = false;
-        alt mode {
-          pad_nozero {
-            // fallthrough
-
-          }
-          pad_signed { might_zero_pad = true; signed = true; }
-          pad_unsigned { might_zero_pad = true; }
-        }
+        let {might_zero_pad, signed} = alt mode {
+          pad_nozero {   {might_zero_pad:false, signed:false} }
+          pad_signed {   {might_zero_pad:true,  signed:true } }
+          pad_unsigned { {might_zero_pad:true,  signed:false} }
+        };
         fn have_precision(cv: conv) -> bool {
             ret alt cv.precision { count_implied { false } _ { true } };
         }
-        let zero_padding = false;
-        if might_zero_pad && have_flag(cv.flags, flag_left_zero_pad) &&
-               !have_precision(cv) {
-            padchar = '0';
-            zero_padding = true;
-        }
+        let zero_padding = {
+            if might_zero_pad && have_flag(cv.flags, flag_left_zero_pad) &&
+                !have_precision(cv) {
+                padchar = '0';
+                true
+            } else {
+                false
+            }
+        };
         let padstr = str_init_elt(diff, padchar);
         // This is completely heinous. If we have a signed value then
         // potentially rip apart the intermediate result and insert some

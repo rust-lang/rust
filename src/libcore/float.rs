@@ -49,14 +49,14 @@ exact - Whether to enforce the exact number of significant digits
 */
 fn to_str_common(num: float, digits: uint, exact: bool) -> str {
     if is_NaN(num) { ret "NaN"; }
-    let (num, accum) = if num < 0.0 { (-num, "-") } else { (num, "") };
+    let mut (num, accum) = if num < 0.0 { (-num, "-") } else { (num, "") };
     let trunc = num as uint;
-    let frac = num - (trunc as float);
+    let mut frac = num - (trunc as float);
     accum += uint::str(trunc);
     if (frac < epsilon && !exact) || digits == 0u { ret accum; }
     accum += ".";
-    let i = digits;
-    let epsilon = 1. / pow_with_uint(10u, i);
+    let mut i = digits;
+    let mut epsilon = 1. / pow_with_uint(10u, i);
     while i > 0u && (frac >= epsilon || exact) {
         frac *= 10.0;
         epsilon *= 10.0;
@@ -132,13 +132,13 @@ Otherwise, some(n) where n is the floating-point
 number represented by [num].
 */
 fn from_str(num: str) -> option<float> {
-   let pos = 0u;                  //Current byte position in the string.
-                                  //Used to walk the string in O(n).
-   let len = str::len(num);  //Length of the string, in bytes.
+   let mut pos = 0u;               //Current byte position in the string.
+                                   //Used to walk the string in O(n).
+   let len = str::len(num);        //Length of the string, in bytes.
 
    if len == 0u { ret none; }
-   let total = 0f;                //Accumulated result
-   let c     = 'z';               //Latest char.
+   let mut total = 0f;             //Accumulated result
+   let mut c     = 'z';            //Latest char.
 
    //The string must start with one of the following characters.
    alt str::char_at(num, 0u) {
@@ -147,7 +147,7 @@ fn from_str(num: str) -> option<float> {
    }
 
    //Determine if first char is '-'/'+'. Set [pos] and [neg] accordingly.
-   let neg = false;               //Sign of the result
+   let mut neg = false;               //Sign of the result
    alt str::char_at(num, 0u) {
       '-' {
           neg = true;
@@ -179,7 +179,7 @@ fn from_str(num: str) -> option<float> {
    }
 
    if c == '.' {//Examine decimal part
-      let decimal = 1f;
+      let mut decimal = 1f;
       while(pos < len) {
          let char_range = str::char_range_at(num, pos);
          c = char_range.ch;
@@ -200,8 +200,8 @@ fn from_str(num: str) -> option<float> {
    }
 
    if (c == 'e') | (c == 'E') {//Examine exponent
-      let exponent = 0u;
-      let neg_exponent = false;
+      let mut exponent = 0u;
+      let mut neg_exponent = false;
       if(pos < len) {
           let char_range = str::char_range_at(num, pos);
           c   = char_range.ch;
@@ -275,9 +275,9 @@ fn pow_with_uint(base: uint, pow: uint) -> float {
       }
        ret 0.;
    }
-   let my_pow     = pow;
-   let total      = 1f;
-   let multiplier = base as float;
+   let mut my_pow     = pow;
+   let mut total      = 1f;
+   let mut multiplier = base as float;
    while (my_pow > 0u) {
      if my_pow % 2u == 1u {
        total = total * multiplier;

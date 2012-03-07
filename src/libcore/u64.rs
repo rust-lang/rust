@@ -60,7 +60,7 @@ Function: range
 Iterate over the range [`lo`..`hi`)
 */
 fn range(lo: u64, hi: u64, it: fn(u64)) {
-    let i = lo;
+    let mut i = lo;
     while i < hi { it(i); i += 1u64; }
 }
 
@@ -98,9 +98,9 @@ fn to_str(n: u64, radix: uint) -> str {
 
     if n == 0u64 { ret "0"; }
 
-    let s = "";
+    let mut s = "";
 
-    let n = n;
+    let mut n = n;
     while n > 0u64 { s = digit(n % r64) + s; n /= r64; }
     ret s;
 }
@@ -119,8 +119,8 @@ Parse a string as an unsigned integer.
 */
 fn from_str(buf: str, radix: u64) -> option<u64> {
     if str::len(buf) == 0u { ret none; }
-    let i = str::len(buf) - 1u;
-    let power = 1u64, n = 0u64;
+    let mut i = str::len(buf) - 1u;
+    let mut power = 1u64, n = 0u64;
     while true {
         alt char::to_digit(buf[i] as char, radix as uint) {
           some(d) { n += d as u64 * power; }

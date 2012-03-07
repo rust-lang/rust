@@ -26,7 +26,7 @@ pure fn nonnegative(x: i8) -> bool { x >= 0i8 }
 
 #[doc = "Iterate over the range [`lo`..`hi`)"]
 fn range(lo: i8, hi: i8, it: fn(i8)) {
-    let i = lo;
+    let mut i = lo;
     while i < hi { it(i); i += 1i8; }
 }
 

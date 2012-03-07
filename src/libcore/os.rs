@@ -41,7 +41,7 @@ native mod rustrt {
 
 
 fn env() -> [(str,str)] {
-    let pairs = [];
+    let mut pairs = [];
     for p in rustrt::rust_env_pairs() {
         let vs = str::splitn_char(p, '=', 1u);
         assert vec::len(vs) == 2u;
@@ -87,7 +87,7 @@ mod win32 {
     }
 
     fn as_utf16_p<T>(s: str, f: fn(*u16) -> T) -> T {
-        let t = str::to_utf16(s);
+        let mut t = str::to_utf16(s);
         // Null terminate before passing on.
         t += [0u16];
         vec::as_buf(t, f)
@@ -468,13 +468,13 @@ fn list_dir(p: path) -> [str] {
     #[cfg(target_os = "win32")]
     fn star() -> str { "*" }
 
-    let p = p;
+    let mut p = p;
     let pl = str::len(p);
     if pl == 0u || (p[pl - 1u] as char != path::consts::path_sep
                     && p[pl - 1u] as char != path::consts::alt_path_sep) {
         p += path::path_sep();
     }
-    let full_paths: [str] = [];
+    let mut full_paths: [str] = [];
     for filename: str in rustrt::rust_list_files(p + star()) {
         if !str::eq(filename, ".") {
             if !str::eq(filename, "..") {

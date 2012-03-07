@@ -60,7 +60,7 @@ Function: range
 Iterate over the range [`lo`..`hi`)
 */
 fn range(lo: u8, hi: u8, it: fn(u8)) {
-    let i = lo;
+    let mut i = lo;
     while i < hi { it(i); i += 1u8; }
 }
 

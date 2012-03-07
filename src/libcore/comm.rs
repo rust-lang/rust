@@ -180,7 +180,7 @@ fn select2<A: send, B: send>(
         rustrt::rust_port_select(dptr, ports, n_ports, yield)
     }
 
-    let ports = [];
+    let mut ports = [];
     ports += [***p_a, ***p_b];
     let n_ports = 2 as ctypes::size_t;
     let yield = 0u;
