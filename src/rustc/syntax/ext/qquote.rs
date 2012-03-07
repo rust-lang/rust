@@ -103,6 +103,9 @@ fn gather_anti_quotes<N: qq_helper>(lo: uint, node: N) -> aq_ctxt
               with *default_visitor()};
     let cx = @{lo:lo, mutable gather: []};
     node.visit(cx, mk_vt(v));
+    // FIXME: Maybe this is an overkill (merge_sort), it might be better
+    //   to just keep the gather array in sorted order ...
+    cx.gather = std::sort::merge_sort({|a,b| a.lo < b.lo}, copy cx.gather);
     ret cx;
 }
 
@@ -200,9 +203,11 @@ fn finish<T: qq_helper>
     let qcx = gather_anti_quotes(sp.lo, node);
     let cx = qcx;
 
-    // assert that the vector is sorted by position:
     uint::range(1u, vec::len(cx.gather)) {|i|
         assert cx.gather[i-1u].lo < cx.gather[i].lo;
+        // ^^ check that the vector is sorted
+        assert cx.gather[i-1u].hi <= cx.gather[i].lo;
+        // ^^ check that the spans are non-overlapping
     }
 
     let str2 = "";
