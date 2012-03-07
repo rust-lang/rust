@@ -2163,10 +2163,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                 require_unsafe(tcx.sess, fcx.purity, expr.span);
               }
               _ {
-                tcx.sess.span_err(expr.span,
-                                    "dereferencing non-" +
-                                        "dereferenceable type: " +
-                                        ty_to_str(tcx, oper_t));
+                  tcx.sess.span_err(expr.span,
+                      #fmt("Type %s cannot be dereferenced",
+                           ty_to_str(tcx, oper_t)));
               }
             }
           }
