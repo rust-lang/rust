@@ -149,7 +149,6 @@ fn run(config: config::config) {
             desc_to_brief_pass::mk_pass(),
             trim_pass::mk_pass(),
             unindent_pass::mk_pass(),
-            html_escape_pass::mk_pass(),
             sort_item_name_pass::mk_pass(),
             sort_item_type_pass::mk_pass(),
             markdown_index_pass::mk_pass(config),
