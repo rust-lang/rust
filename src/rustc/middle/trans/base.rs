@@ -2146,18 +2146,31 @@ fn monomorphic_fn(ccx: crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
 fn maybe_instantiate_inline(ccx: crate_ctxt, fn_id: ast::def_id)
     -> ast::def_id {
     alt ccx.external.find(fn_id) {
-      some(some(node_id)) { local_def(node_id) } // Already inline
+      some(some(node_id)) {
+        // Already inline
+        #debug["maybe_instantiate_inline(%s): already inline as node id %d",
+               ty::item_path_str(ccx.tcx, fn_id), node_id];
+        local_def(node_id)
+      }
       some(none) { fn_id } // Not inlinable
       none { // Not seen yet
         alt csearch::maybe_get_item_ast(ccx.tcx, ccx.maps, fn_id) {
           none { ccx.external.insert(fn_id, none); fn_id }
           some(ast::ii_item(item)) {
+            #debug["maybe_instantiate_inline(%s): inlining to local id %d",
+                   ty::item_path_str(ccx.tcx, fn_id),
+                   item.id];
             ccx.external.insert(fn_id, some(item.id));
             collect_item(ccx, @mutable none, item);
             trans_item(ccx, *item);
             local_def(item.id)
           }
           some(ast::ii_method(impl_did, mth)) {
+            #debug["maybe_instantiate_inline(%s): \
+                    inlining method of %s to %d",
+                   ty::item_path_str(ccx.tcx, fn_id),
+                   ty::item_path_str(ccx.tcx, impl_did),
+                   mth.id];
             ccx.external.insert(fn_id, some(mth.id));
             compute_ii_method_info(ccx, impl_did, mth) {|ty, bounds, path|
                 let mth_ty = ty::node_id_to_type(ccx.tcx, mth.id);
@@ -3586,7 +3599,7 @@ fn zero_alloca(cx: block, llptr: ValueRef, t: ty::t)
 }
 
 fn trans_stmt(cx: block, s: ast::stmt) -> block {
-    #debug["trans_expr(%s)", stmt_to_str(s)];
+    #debug["trans_stmt(%s)", stmt_to_str(s)];
 
     if (!cx.sess().opts.no_asm_comments) {
         add_span_comment(cx, s.span, stmt_to_str(s));
@@ -4330,8 +4343,10 @@ fn trans_item(ccx: crate_ctxt, item: ast::item) {
         let llfndecl = alt ccx.item_ids.find(item.id) {
           some(llfndecl) { llfndecl }
           _ {
-            ccx.sess.span_bug(item.span,
-                                "unbound function item in trans_item");
+            ccx.sess.span_bug(
+                item.span,
+                #fmt["unbound function item %s in trans_item",
+                     ast_map::path_to_str(*path)]);
           }
         };
         if decl.purity != ast::crust_fn  {

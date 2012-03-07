@@ -11,6 +11,7 @@ export noop_fold_expr;
 export noop_fold_pat;
 export noop_fold_mod;
 export noop_fold_ty;
+export noop_fold_block;
 export wrap;
 
 type ast_fold = @mutable a_f;

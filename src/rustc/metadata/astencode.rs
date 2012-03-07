@@ -63,7 +63,7 @@ fn encode_inlined_item(ecx: @e::encode_ctxt,
     let id_range = compute_id_range(ii);
     ebml_w.wr_tag(c::tag_ast as uint) {||
         encode_id_range(ebml_w, id_range);
-        encode_ast(ebml_w, ii);
+        encode_ast(ebml_w, simplify_ast(ii));
         encode_side_tables_for_ii(ecx, ebml_w, ii);
     }
 
@@ -323,6 +323,44 @@ impl deserializer_helpers<D: serialization::deserializer> for D {
 fn encode_ast(ebml_w: ebml::writer, item: ast::inlined_item) {
     ebml_w.wr_tag(c::tag_tree as uint) {||
         astencode_gen::serialize_syntax_ast_inlined_item(ebml_w, item)
+    }
+}
+
+// Produces a simplified copy of the AST which does not include things
+// that we do not need to or do not want to export.  For example, we
+// do not include any nested items: if these nested items are to be
+// inlined, their AST will be exported separately (this only makes
+// sense because, in Rust, nested items are independent except for
+// their visibility).
+//
+// As it happens, trans relies on the fact that we do not export
+// nested items, as otherwise it would get confused when translating
+// inlined items.
+fn simplify_ast(ii: ast::inlined_item) -> ast::inlined_item {
+    fn drop_nested_items(blk: ast::blk_, fld: fold::ast_fold) -> ast::blk_ {
+        let stmts_sans_items = vec::filter(blk.stmts) {|stmt|
+            alt stmt.node {
+              ast::stmt_expr(_, _) | ast::stmt_semi(_, _) |
+              ast::stmt_decl(@{node: ast::decl_local(_), span: _}, _) { true }
+              ast::stmt_decl(@{node: ast::decl_item(_), span: _}, _) { false }
+            }
+        };
+        let blk_sans_items = { stmts: stmts_sans_items with blk };
+        fold::noop_fold_block(blk_sans_items, fld)
+    }
+
+    let fld = fold::make_fold({
+        fold_block: fold::wrap(drop_nested_items)
+        with *fold::default_ast_fold()
+    });
+
+    alt ii {
+      ast::ii_item(i) {
+        ast::ii_item(fld.fold_item(i))
+      }
+      ast::ii_method(d, m) {
+        ast::ii_method(d, fld.fold_method(m))
+      }
     }
 }
 
@@ -922,4 +960,27 @@ fn test_more() {
             ret z;
         }
     });
+}
+
+#[test]
+fn test_simplification() {
+    let ext_cx = mk_ctxt();
+    let item_in = ast::ii_item(#ast(item) {
+        fn new_int_alist<B: copy>() -> alist<int, B> {
+            fn eq_int(&&a: int, &&b: int) -> bool { a == b }
+            ret {eq_fn: eq_int, mut data: []};
+        }
+    });
+    let item_out = simplify_ast(item_in);
+    let item_exp = ast::ii_item(#ast(item) {
+        fn new_int_alist<B: copy>() -> alist<int, B> {
+            ret {eq_fn: eq_int, mut data: []};
+        }
+    });
+    alt (item_out, item_exp) {
+      (ast::ii_item(item_out), ast::ii_item(item_exp)) {
+        assert pprust::item_to_str(item_out) == pprust::item_to_str(item_exp);
+      }
+      _ { fail; }
+    }
 }
