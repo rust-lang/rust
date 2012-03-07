@@ -80,9 +80,13 @@ fn pandoc_header_id(header: str) -> str {
     let header = maybe_use_section_id(header);
     ret header;
 
-    fn remove_formatting(s: str) -> str { s }
-    fn remove_punctuation(s: str) -> str {
+    fn remove_formatting(s: str) -> str {
         str::replace(s, "`", "")
+    }
+    fn remove_punctuation(s: str) -> str {
+        let s = str::replace(s, "<", "");
+        let s = str::replace(s, ">", "");
+        ret s;
     }
     fn replace_with_hyphens(s: str) -> str {
         str::replace(s, " ", "-")
@@ -90,6 +94,11 @@ fn pandoc_header_id(header: str) -> str {
     fn convert_to_lowercase(s: str) -> str { str::to_lower(s) }
     fn remove_up_to_first_letter(s: str) -> str { s }
     fn maybe_use_section_id(s: str) -> str { s }
+}
+
+#[test]
+fn should_remove_brackets_from_headers() {
+    assert pandoc_header_id("impl foo of bar<A>") == "impl-foo-of-bara";
 }
 
 #[test]
