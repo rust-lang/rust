@@ -442,9 +442,11 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
             ebml_w.end_tag();
         }
         alt ifce {
-          some(_) {
+          some(t) {
             encode_symbol(ecx, ebml_w, item.id);
-            let i_ty = ty::lookup_item_type(tcx, local_def(item.id)).ty;
+            let i_ty = alt check t.node {
+              ty_path(_, id) { ty::node_id_to_type(tcx, id) }
+            };
             ebml_w.start_tag(tag_impl_iface);
             write_type(ecx, ebml_w, i_ty);
             ebml_w.end_tag();

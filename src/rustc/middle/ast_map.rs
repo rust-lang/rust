@@ -132,6 +132,8 @@ fn map_arm(arm: arm, cx: ctx, v: vt) {
 fn map_method(impl_did: def_id, impl_path: @path,
               m: @method, cx: ctx) {
     cx.map.insert(m.id, node_method(m, impl_did, impl_path));
+    cx.map.insert(m.self_id, node_local(cx.local_id));
+    cx.local_id += 1u;
 }
 
 fn map_item(i: @item, cx: ctx, v: vt) {

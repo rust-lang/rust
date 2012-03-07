@@ -2136,7 +2136,7 @@ fn monomorphic_fn(ccx: crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
                            (*tvs).len() == 1u, [], psubsts, lldecl);
       }
       ast_map::node_method(mth, impl_def_id, _) {
-        let selfty = ty::lookup_item_type(ccx.tcx, impl_def_id).ty;
+        let selfty = ty::node_id_to_type(ccx.tcx, mth.self_id);
         let selfty = ty::substitute_type_params(ccx.tcx, substs, selfty);
         trans_fn(ccx, pt, mth.decl, mth.body, lldecl,
                  impl_self(selfty), [], psubsts, fn_id.node, none);
@@ -2315,7 +2315,7 @@ fn trans_local_var(cx: block, def: ast::def) -> local_var_result {
         assert (cx.fcx.lllocals.contains_key(nid));
         ret take_local(cx.fcx.lllocals, nid);
       }
-      ast::def_self(nid) {
+      ast::def_self(_) {
         let slf = option::get(cx.fcx.llself);
         let ptr = PointerCast(cx, slf.v,
                               T_ptr(type_of_or_i8(cx.ccx(), slf.t)));
@@ -4343,7 +4343,7 @@ fn trans_item(ccx: crate_ctxt, item: ast::item) {
         }
       }
       ast::item_impl(tps, _, _, ms) {
-        impl::trans_impl(ccx, *path, item.ident, ms, item.id, tps);
+        impl::trans_impl(ccx, *path, item.ident, ms, tps);
       }
       ast::item_res(decl, tps, body, dtor_id, ctor_id) {
         let llctor_decl = get_item_val(ccx, ctor_id);

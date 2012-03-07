@@ -530,8 +530,8 @@ fn visit_item_with_scope(e: @env, i: @ast::item, sc: scopes, v: vt<scopes>) {
         v.visit_ty(sty, sc, v);
         for m in methods {
             v.visit_ty_params(m.tps, sc, v);
-            let msc = cons(scope_method(i.id, tps + m.tps), @sc);
-            v.visit_fn(visit::fk_method(m.ident, []),
+            let msc = cons(scope_method(m.self_id, tps + m.tps), @sc);
+            v.visit_fn(visit::fk_method(m.ident, [], m),
                        m.decl, m.body, m.span, m.id, msc, v);
         }
       }
@@ -590,7 +590,7 @@ fn visit_fn_with_scope(e: @env, fk: visit::fn_kind, decl: ast::fn_decl,
     for c: @ast::constr in decl.constraints { resolve_constr(e, c, sc, v); }
     let scope = alt fk {
       visit::fk_item_fn(_, tps) | visit::fk_res(_, tps) |
-      visit::fk_method(_, tps) { scope_bare_fn(decl, id, tps) }
+      visit::fk_method(_, tps, _) { scope_bare_fn(decl, id, tps) }
       visit::fk_anon(ast::proto_bare) { scope_bare_fn(decl, id, []) }
       visit::fk_anon(_) | visit::fk_fn_block { scope_fn_expr(decl, id, []) }
     };

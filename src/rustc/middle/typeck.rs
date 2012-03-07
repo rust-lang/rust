@@ -106,7 +106,7 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
         let typ = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, sp, nid));
         ret {bounds: @[], ty: typ};
       }
-      ast::def_self(id) {
+      ast::def_self(_) {
         alt get_self_info(fcx.ccx) {
           some(self_impl(impl_t)) {
             ret {bounds: @[], ty: impl_t};
@@ -362,8 +362,8 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
             }
             ty::mk_param(tcx, n, id)
           }
-          ast::def_self(iface_id) {
-            alt check tcx.items.get(iface_id) {
+          ast::def_self(self_id) {
+            alt check tcx.items.get(self_id) {
               ast_map::node_item(@{node: ast::item_iface(tps, _), _}, _) {
                 if vec::len(tps) != vec::len(path.node.types) {
                     tcx.sess.span_err(ast_ty.span, "incorrect number of type \
@@ -850,7 +850,12 @@ mod collect {
           ast::item_impl(tps, ifce, selfty, ms) {
             let i_bounds = ty_param_bounds(tcx, m_collect, tps);
             let my_methods = [];
+            let selfty = ast_ty_to_ty(tcx, m_collect, selfty);
+            write_ty(tcx, it.id, selfty);
+            tcx.tcache.insert(local_def(it.id), {bounds: i_bounds,
+                                                 ty: selfty});
             for m in ms {
+                write_ty(tcx, m.self_id, selfty);
                 let bounds = ty_param_bounds(tcx, m_collect, m.tps);
                 let mty = ty_of_method(tcx, m_collect, m);
                 my_methods += [{mty: mty, id: m.id, span: m.span}];
@@ -860,15 +865,15 @@ mod collect {
                                       ty: fty});
                 write_ty(tcx, m.id, fty);
             }
-            let selfty = ast_ty_to_ty(tcx, m_collect, selfty);
-            write_ty(tcx, it.id, selfty);
             alt ifce {
               some(t) {
                 let iface_ty = ast_ty_to_ty(tcx, m_collect, t);
-                tcx.tcache.insert(local_def(it.id),
-                                     {bounds: i_bounds, ty: iface_ty});
                 alt ty::get(iface_ty).struct {
                   ty::ty_iface(did, tys) {
+                    // Store the iface type in the type node
+                    alt check t.node {
+                      ast::ty_path(_, t_id) { write_ty(tcx, t_id, iface_ty); }
+                    }
                     if did.crate == ast::local_crate {
                         ensure_iface_methods(tcx, did.node);
                     }
@@ -906,11 +911,7 @@ mod collect {
                   }
                 }
               }
-              _ {
-                // Store the bounds with a nil type.
-                tcx.tcache.insert(local_def(it.id), {bounds: i_bounds,
-                                                     ty: ty::mk_nil(tcx)});
-              }
+              _ {}
             }
           }
           ast::item_res(decl, tps, _, dtor_id, ctor_id) {
@@ -1665,8 +1666,8 @@ fn impl_self_ty(tcx: ty::ctxt, did: ast::def_id) -> {n_tps: uint, ty: ty::t} {
           }
         }
     } else {
-        let tpt = csearch::get_type(tcx, did);
-        {n_tps: vec::len(*tpt.bounds), ty: tpt.ty}
+        let ity = ty::lookup_item_type(tcx, did);
+        {n_tps: vec::len(*ity.bounds), ty: ity.ty}
     }
 }
 

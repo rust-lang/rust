@@ -2157,8 +2157,13 @@ fn iface_methods(cx: ctxt, id: ast::def_id) -> @[method] {
 
 fn impl_iface(cx: ctxt, id: ast::def_id) -> option<t> {
     if id.crate == ast::local_crate {
-        let t = cx.tcache.get(id).ty;
-        if get(t).struct == ty_nil { none } else { some(t) }
+        alt cx.items.get(id.node) {
+          ast_map::node_item(@{node: ast::item_impl(
+              _, some(@{node: ast::ty_path(_, id), _}), _, _), _}, _) {
+            some(node_id_to_type(cx, id))
+          }
+          _ { none }
+        }
     } else {
         csearch::get_impl_iface(cx, id)
     }

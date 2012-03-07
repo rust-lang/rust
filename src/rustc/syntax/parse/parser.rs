@@ -1931,7 +1931,8 @@ fn parse_method(p: parser) -> @ast::method {
     let (inner_attrs, body) = parse_inner_attrs_and_block(p, true);
     let attrs = attrs + inner_attrs;
     @{ident: ident, attrs: attrs, tps: tps, decl: decl, body: body,
-      id: p.get_id(), span: ast_util::mk_sp(lo, body.span.hi)}
+      id: p.get_id(), span: ast_util::mk_sp(lo, body.span.hi),
+      self_id: p.get_id()}
 }
 
 fn parse_item_iface(p: parser, attrs: [ast::attribute]) -> @ast::item {

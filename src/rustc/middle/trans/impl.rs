@@ -44,14 +44,13 @@ import std::map::hashmap;
 // are referenced (ccx.method_map and ccx.dict_map).
 
 fn trans_impl(ccx: crate_ctxt, path: path, name: ast::ident,
-              methods: [@ast::method], id: ast::node_id,
-              tps: [ast::ty_param]) {
+              methods: [@ast::method], tps: [ast::ty_param]) {
     let sub_path = path + [path_name(name)];
     for m in methods {
         let llfn = get_item_val(ccx, m.id);
         let m_bounds = param_bounds(ccx, tps + m.tps);
         trans_fn(ccx, sub_path + [path_name(m.ident)], m.decl, m.body,
-                 llfn, impl_self(ty::node_id_to_type(ccx.tcx, id)),
+                 llfn, impl_self(ty::node_id_to_type(ccx.tcx, m.self_id)),
                  m_bounds, none, m.id, none);
     }
 }

@@ -3938,7 +3938,7 @@ fn serialize_163<S: std::serialization::serializer>(s: S,
     s.emit_rec(/*syntax::ast::ident*//*[syntax::ast::attribute]*/
                /*[syntax::ast::ty_param]*//*syntax::ast::fn_decl*/
                /*syntax::ast::blk*//*syntax::ast::node_id*/
-               /*syntax::codemap::span*/
+               /*syntax::codemap::span*//*syntax::ast::node_id*/
                {||
                    {
                        s.emit_rec_field("ident", 0u,
@@ -3954,7 +3954,9 @@ fn serialize_163<S: std::serialization::serializer>(s: S,
                        s.emit_rec_field("id", 5u,
                                         {|| serialize_27(s, v.id) });
                        s.emit_rec_field("span", 6u,
-                                        {|| serialize_19(s, v.span) })
+                                        {|| serialize_19(s, v.span) });
+                       s.emit_rec_field("self_id", 7u,
+                                        {|| serialize_27(s, v.self_id) })
                    }
                });
 }
@@ -7845,6 +7847,8 @@ fn deserialize_163<S: std::serialization::deserializer>(s: S) ->
 
                /*syntax::codemap::span*/
 
+               /*syntax::ast::node_id*/
+
                {||
                    {ident:
                         s.read_rec_field("ident", 0u, {|| deserialize_1(s) }),
@@ -7858,8 +7862,10 @@ fn deserialize_163<S: std::serialization::deserializer>(s: S) ->
                         s.read_rec_field("body", 4u, {|| deserialize_82(s) }),
                     id: s.read_rec_field("id", 5u, {|| deserialize_27(s) }),
                     span:
-                        s.read_rec_field("span", 6u,
-                                         {|| deserialize_19(s) }),}
+                        s.read_rec_field("span", 6u, {|| deserialize_19(s) }),
+                    self_id:
+                        s.read_rec_field("self_id", 7u,
+                                         {|| deserialize_27(s) }),}
                })
 
 }
@@ -8165,7 +8171,7 @@ fn serialize_164<S: std::serialization::serializer>(s: S,
 
     s.emit_enum("syntax::ast::def",
                 /*syntax::ast::def_id*//*syntax::ast::purity*/
-                /*syntax::ast::node_id*/
+                /*syntax::ast::def_id*/
                 /*syntax::ast::def_id*/
                 /*syntax::ast::def_id*/
                 /*syntax::ast::def_id*/
@@ -8528,7 +8534,7 @@ fn deserialize_164<S: std::serialization::deserializer>(s: S) ->
     s.read_enum("syntax::ast::def",
                 /*syntax::ast::def_id*//*syntax::ast::purity*/
 
-                /*syntax::ast::node_id*/
+                /*syntax::ast::def_id*/
 
                 /*syntax::ast::def_id*/
 

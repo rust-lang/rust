@@ -301,7 +301,8 @@ fn noop_fold_method(&&m: @method, fld: ast_fold) -> @method {
           decl: fold_fn_decl(m.decl, fld),
           body: fld.fold_block(m.body),
           id: fld.new_id(m.id),
-          span: fld.new_span(m.span)};
+          span: fld.new_span(m.span),
+          self_id: fld.new_id(m.self_id)};
 }
 
 

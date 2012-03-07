@@ -14,7 +14,7 @@ enum vt<E> { mk_vt(visitor<E>), }
 
 enum fn_kind {
     fk_item_fn(ident, [ty_param]), //< an item declared with fn()
-    fk_method(ident, [ty_param]),
+    fk_method(ident, [ty_param], @method),
     fk_res(ident, [ty_param]),
     fk_anon(proto),  //< an anonymous function like fn@(...)
     fk_fn_block,     //< a block {||...}
@@ -22,14 +22,14 @@ enum fn_kind {
 
 fn name_of_fn(fk: fn_kind) -> ident {
     alt fk {
-      fk_item_fn(name, _) | fk_method(name, _) | fk_res(name, _) { name }
+      fk_item_fn(name, _) | fk_method(name, _, _) | fk_res(name, _) { name }
       fk_anon(_) | fk_fn_block { "anon" }
     }
 }
 
 fn tps_of_fn(fk: fn_kind) -> [ty_param] {
     alt fk {
-      fk_item_fn(_, tps) | fk_method(_, tps) | fk_res(_, tps) { tps }
+      fk_item_fn(_, tps) | fk_method(_, tps, _) | fk_res(_, tps) { tps }
       fk_anon(_) | fk_fn_block { [] }
     }
 }
@@ -256,7 +256,7 @@ fn visit_fn_decl<E>(fd: fn_decl, e: E, v: vt<E>) {
 // because it is not a default impl of any method, though I doubt that really
 // clarifies anything. - Niko
 fn visit_method_helper<E>(m: @method, e: E, v: vt<E>) {
-    v.visit_fn(fk_method(m.ident, m.tps), m.decl, m.body, m.span,
+    v.visit_fn(fk_method(m.ident, m.tps, m), m.decl, m.body, m.span,
                m.id, e, v);
 }
 

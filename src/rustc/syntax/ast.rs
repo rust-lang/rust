@@ -424,7 +424,7 @@ enum ret_style {
 
 type method = {ident: ident, attrs: [attribute],
                tps: [ty_param], decl: fn_decl, body: blk,
-               id: node_id, span: span};
+               id: node_id, span: span, self_id: node_id};
 
 type _mod = {view_items: [@view_item], items: [@item]};
 

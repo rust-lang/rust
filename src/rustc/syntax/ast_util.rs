@@ -41,7 +41,7 @@ fn def_id_of_def(d: def) -> def_id {
       def_use(id) |
       def_class(id) | def_class_field(_, id) | def_class_method(_, id) { id }
 
-      def_self(id) | def_arg(id, _) | def_local(id, _) |
+      def_arg(id, _) | def_local(id, _) | def_self(id) |
       def_upvar(id, _, _) | def_binding(id) {
         local_def(id)
       }
