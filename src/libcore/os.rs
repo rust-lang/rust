@@ -14,8 +14,12 @@
 // facts of which OS the user is on -- they should be given the opportunity
 // to write OS-ignorant code by default.
 
-import libc::{c_char, c_void, c_int, c_uint, size_t, mode_t, pid_t, FILE};
+import libc::{c_char, c_void, c_int, c_uint, size_t, ssize_t,
+              mode_t, pid_t, FILE};
 import libc::{close, fclose};
+
+import option::{some, none};
+import option = option::t;
 
 import getcwd = rustrt::rust_getcwd;
 import consts::*;
@@ -46,15 +50,48 @@ fn env() -> [(str,str)] {
     ret pairs;
 }
 
+const tmpbuf_sz : uint = 1000u;
+
 fn as_c_charp<T>(s: str, f: fn(*c_char) -> T) -> T {
     str::as_buf(s) {|b| f(b as *c_char) }
 }
 
-fn as_utf16_p<T>(s: str, f: fn(*u16) -> T) -> T {
-    let t = str::to_utf16(s);
-    // "null terminate"
-    t += [0u16];
-    vec::as_buf(t, f)
+fn fill_charp_buf(f: fn(*mutable c_char, size_t) -> bool)
+    -> option<str> {
+    let buf = vec::to_mut(vec::init_elt(tmpbuf_sz, 0u8 as c_char));
+    vec::as_mut_buf(buf) { |b|
+        if f(b, tmpbuf_sz as size_t) {
+            some(str::from_cstr(b as str::sbuf))
+        } else {
+            none
+        }
+    }
+}
+
+#[cfg(target_os = "win32")]
+mod win32 {
+    import dword = libc::types::os::arch::extra::DWORD;
+
+    fn fill_utf16_buf_and_decode(f: fn(*mutable u16, dword) -> dword)
+        -> option<str> {
+        let buf = vec::to_mut(vec::init_elt(tmpbuf_sz, 0u16));
+        vec::as_mut_buf(buf) {|b|
+            let k : dword = f(b, tmpbuf_sz as dword);
+            if k == (0 as dword) {
+                none
+            } else {
+                let sub = vec::slice(buf, 0u, k as uint);
+                option::some::<str>(str::from_utf16(sub))
+            }
+        }
+    }
+
+    fn as_utf16_p<T>(s: str, f: fn(*u16) -> T) -> T {
+        let t = str::to_utf16(s);
+        // Null terminate before passing on.
+        t += [0u16];
+        vec::as_buf(t, f)
+    }
 }
 
 
@@ -74,19 +111,11 @@ fn getenv(n: str) -> option<str> unsafe {
 #[cfg(target_os = "win32")]
 fn getenv(n: str) -> option<str> unsafe {
     import libc::types::os::arch::extra::*;
-    import libc::funcs::extra::kernel32;
+    import libc::funcs::extra::kernel32::*;
+    import win32::*;
     as_utf16_p(n) {|u|
-        let bufsize = 1023u;
-        let buf = vec::to_mut(vec::init_elt(bufsize, 0u16));
-        vec::as_mut_buf(buf) {|b|
-            let k = kernel32::GetEnvironmentVariableW(u, b,
-                                                      bufsize as DWORD);
-            if k != (0 as DWORD) {
-                let sub = vec::slice(buf, 0u, k as uint);
-                option::some::<str>(str::from_utf16(sub))
-            } else {
-                option::none::<str>
-            }
+        fill_utf16_buf_and_decode() {|buf, sz|
+            GetEnvironmentVariableW(u, buf, sz)
         }
     }
 }
@@ -99,7 +128,6 @@ fn setenv(n: str, v: str) {
 
     // FIXME: remove this when export globs work properly.
     import libc::funcs::posix01::unistd::setenv;
-
     as_c_charp(n) {|nbuf|
         as_c_charp(v) {|vbuf|
             setenv(nbuf, vbuf, 1i32);
@@ -111,10 +139,11 @@ fn setenv(n: str, v: str) {
 #[cfg(target_os = "win32")]
 fn setenv(n: str, v: str) {
     // FIXME: remove imports when export globs work properly.
-    import libc::funcs::extra::kernel32;
+    import libc::funcs::extra::kernel32::*;
+    import win32::*;
     as_utf16_p(n) {|nbuf|
         as_utf16_p(v) {|vbuf|
-            kernel32::SetEnvironmentVariableW(nbuf, vbuf);
+            SetEnvironmentVariableW(nbuf, vbuf);
         }
     }
 }
@@ -244,59 +273,57 @@ fn dll_filename(base: str) -> str {
     fn pre() -> str { "" }
 }
 
-fn self_exe_path() -> option<path> unsafe {
-    let bufsize = 1023u;
-    let buf = vec::to_mut(vec::init_elt(bufsize, 0u8 as c_char));
-    // FIXME: This does not handle the case where the buffer is too small
-    ret vec::as_mut_buf(buf) {|pbuf|
-        if load_self(pbuf as *mutable c_char, bufsize as c_uint) {
-            let path = str::from_cstr(pbuf as str::sbuf);
-            option::some(path::dirname(path) + path::path_sep())
-        } else {
-            option::none
-        }
-    };
+
+fn self_exe_path() -> option<path> {
 
     #[cfg(target_os = "freebsd")]
-    unsafe fn load_self(pth: *mutable c_char, plen: c_uint) -> bool {
-        // FIXME: remove imports when export globs work properly.
+    fn load_self() -> option<path> unsafe {
         import libc::funcs::bsd44::*;
         import libc::consts::os::extra::*;
-        let mib = [CTL_KERN as c_int,
-                   KERN_PROC as c_int,
-                   KERN_PROC_PATHNAME as c_int, -1 as c_int];
-        ret sysctl(vec::unsafe::to_ptr(mib), vec::len(mib) as c_uint,
-                   pth as *mutable c_void, ptr::mut_addr_of(plen as size_t),
-                   ptr::null(), 0u as size_t)
-            == (0 as c_int);
+        fill_charp_buf() {|buf, sz|
+            let mib = [CTL_KERN as c_int,
+                       KERN_PROC as c_int,
+                       KERN_PROC_PATHNAME as c_int, -1 as c_int];
+            sysctl(vec::unsafe::to_ptr(mib), vec::len(mib) as c_uint,
+                   buf as *mutable c_void, ptr::mut_addr_of(sz),
+                   ptr::null(), 0u as size_t) != (0 as c_int)
+        }
     }
 
     #[cfg(target_os = "linux")]
-    unsafe fn load_self(pth: *mutable c_char, plen: c_uint) -> bool {
-        // FIXME: remove imports when export globs work properly.
+    fn load_self() -> option<path> unsafe {
         import libc::funcs::posix01::unistd::readlink;
-        as_c_charp("/proc/self/exe") { |proc_self_buf|
-            ret readlink(proc_self_buf, pth, plen as size_t) != -1;
+        fill_charp_buf() {|buf, sz|
+            as_c_charp("/proc/self/exe") { |proc_self_buf|
+                readlink(proc_self_buf, buf, sz) != (-1 as ssize_t)
+            }
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    fn load_self() -> option<path> unsafe {
+        // FIXME: remove imports when export globs work properly.
+        import libc::funcs::extra::*;
+        fill_charp_buf() {|buf, sz|
+            _NSGetExecutablePath(buf, ptr::mut_addr_of(sz as u32))
+                == (0 as c_int)
         }
     }
 
     #[cfg(target_os = "win32")]
-    unsafe fn load_self(pth: *mutable c_char, plen: c_uint) -> bool {
+    fn load_self() -> option<path> unsafe {
         // FIXME: remove imports when export globs work properly.
         import libc::types::os::arch::extra::*;
-        import libc::funcs::extra::kernel32;
-        ret kernel32::GetModuleFileNameA(0u, pth, plen) != (0 as DWORD);
+        import libc::funcs::extra::kernel32::*;
+        import win32::*;
+        fill_utf16_buf_and_decode() {|buf, sz|
+            GetModuleFileNameW(0u, buf, sz)
+        }
     }
 
-    #[cfg(target_os = "macos")]
-    unsafe fn load_self(pth: *mutable c_char, plen: c_uint) -> bool {
-        // FIXME: remove imports when export globs work properly.
-        import libc::funcs::extra::*;
-        let mplen = plen;
-        ret _NSGetExecutablePath(pth, ptr::mut_addr_of(mplen))
-            == (0 as c_int);
+    option::map(load_self()) {|pth|
+        path::dirname(pth) + path::path_sep()
     }
-
 }
 
 
@@ -356,9 +383,9 @@ Function: path_is_dir
 Indicates whether a path represents a directory.
 */
 fn path_is_dir(p: path) -> bool {
-    ret str::as_buf(p, {|buf|
+    str::as_buf(p) {|buf|
         rustrt::rust_path_is_dir(buf) != 0 as c_int
-    });
+    }
 }
 
 /*
@@ -367,9 +394,9 @@ Function: path_exists
 Indicates whether a path exists.
 */
 fn path_exists(p: path) -> bool {
-    ret str::as_buf(p, {|buf|
+    str::as_buf(p) {|buf|
         rustrt::rust_path_exists(buf) != 0 as c_int
-    });
+    }
 }
 
 // FIXME: under Windows, we should prepend the current drive letter to paths
@@ -404,24 +431,25 @@ fn make_dir(p: path, mode: c_int) -> bool {
     ret mkdir(p, mode);
 
     #[cfg(target_os = "win32")]
-    fn mkdir(_p: path, _mode: c_int) -> bool unsafe {
+    fn mkdir(p: path, _mode: c_int) -> bool unsafe {
+        // FIXME: remove imports when export globs work properly.
+        import libc::types::os::arch::extra::*;
+        import libc::funcs::extra::kernel32::*;
+        import win32::*;
         // FIXME: turn mode into something useful?
-        ret as_c_charp(_p, {|buf|
-            // FIXME: remove imports when export globs work properly.
-            import libc::types::os::arch::extra::*;
-            import libc::funcs::extra::kernel32;
-            kernel32::CreateDirectoryA(
-                buf, unsafe::reinterpret_cast(0)) != (0 as BOOL)
-        });
+        as_utf16_p(p) {|buf|
+            CreateDirectoryW(buf, unsafe::reinterpret_cast(0))
+                != (0 as BOOL)
+        }
     }
 
     #[cfg(target_os = "linux")]
     #[cfg(target_os = "macos")]
     #[cfg(target_os = "freebsd")]
     fn mkdir(p: path, mode: c_int) -> bool {
-        ret as_c_charp(p) {|c|
+        as_c_charp(p) {|c|
             libc::mkdir(c, mode as mode_t) == (0 as c_int)
-        };
+        }
     }
 }
 
@@ -468,10 +496,11 @@ fn remove_dir(p: path) -> bool {
     #[cfg(target_os = "win32")]
     fn rmdir(p: path) -> bool {
         // FIXME: remove imports when export globs work properly.
-        import libc::funcs::extra::kernel32;
+        import libc::funcs::extra::kernel32::*;
         import libc::types::os::arch::extra::*;
-        ret as_c_charp(p) {|buf|
-            kernel32::RemoveDirectoryA(buf) != (0 as BOOL)
+        import win32::*;
+        ret as_utf16_p(p) {|buf|
+            RemoveDirectoryW(buf) != (0 as BOOL)
         };
     }
 
@@ -491,10 +520,11 @@ fn change_dir(p: path) -> bool {
     #[cfg(target_os = "win32")]
     fn chdir(p: path) -> bool {
         // FIXME: remove imports when export globs work properly.
-        import libc::funcs::extra::kernel32;
+        import libc::funcs::extra::kernel32::*;
         import libc::types::os::arch::extra::*;
-        ret as_c_charp(p) {|buf|
-            kernel32::SetCurrentDirectoryA(buf) != (0 as BOOL)
+        import win32::*;
+        ret as_utf16_p(p) {|buf|
+            SetCurrentDirectoryW(buf) != (0 as BOOL)
         };
     }
 
@@ -519,10 +549,11 @@ fn remove_file(p: path) -> bool {
     #[cfg(target_os = "win32")]
     fn unlink(p: path) -> bool {
         // FIXME: remove imports when export globs work properly.
-        import libc::funcs::extra::kernel32;
+        import libc::funcs::extra::kernel32::*;
         import libc::types::os::arch::extra::*;
-        ret as_c_charp(p) {|buf|
-            kernel32::DeleteFileA(buf) != (0 as BOOL)
+        import win32::*;
+        ret as_utf16_p(p) {|buf|
+            DeleteFileW(buf) != (0 as BOOL)
         };
     }
 

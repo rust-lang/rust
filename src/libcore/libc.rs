@@ -493,6 +493,9 @@ mod consts {
             const O_TEXT : int = 16384;
             const O_BINARY : int = 32768;
             const O_NOINHERIT: int = 128;
+
+            const ERROR_SUCCESS : int = 0;
+            const ERROR_INSUFFICIENT_BUFFER : int = 122;
         }
     }
 
@@ -1105,15 +1108,17 @@ mod funcs {
                                        nsize: DWORD) -> DWORD;
             fn SetEnvironmentVariableW(n: LPCWSTR, v: LPCWSTR) -> BOOL;
 
-            fn GetModuleFileNameA(hModule: HMODULE,
-                                  lpFilename: LPSTR,
+            fn GetModuleFileNameW(hModule: HMODULE,
+                                  lpFilename: LPWSTR,
                                   nSize: DWORD) -> DWORD;
-            fn CreateDirectoryA(lpPathName: LPCSTR,
+            fn CreateDirectoryW(lpPathName: LPCWSTR,
                                 lpSecurityAttributes:
                                 LPSECURITY_ATTRIBUTES) -> BOOL;
-            fn DeleteFileA(lpPathName: LPCSTR) -> BOOL;
-            fn RemoveDirectoryA(lpPathName: LPCSTR) -> BOOL;
-            fn SetCurrentDirectoryA(lpPathName: LPCSTR) -> BOOL;
+            fn DeleteFileW(lpPathName: LPCWSTR) -> BOOL;
+            fn RemoveDirectoryW(lpPathName: LPCWSTR) -> BOOL;
+            fn SetCurrentDirectoryW(lpPathName: LPCWSTR) -> BOOL;
+
+            fn GetLastError() -> DWORD;
         }
 
         #[abi = "cdecl"]
