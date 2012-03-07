@@ -328,7 +328,7 @@ fn purity_fn_family(p: purity) -> char {
 }
 
 fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
-                        &index: [entry<int>], path: ast_map::path) {
+                        &index: [entry<int>], path: ast_map::path) -> bool {
 
     fn should_inline(attrs: [attribute]) -> bool {
         alt attr::find_inline_attr(attrs) {
@@ -342,7 +342,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
       item_enum(_, _) | item_res(_, _, _, _, _) { true }
       _ { false }
     };
-    if !must_write && !ecx.reachable.contains_key(item.id) { ret; }
+    if !must_write && !ecx.reachable.contains_key(item.id) { ret false; }
 
     alt item.node {
       item_const(_, _) {
@@ -494,11 +494,13 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         ebml_w.end_tag();
       }
     }
+    ret true;
 }
 
 fn encode_info_for_native_item(ecx: @encode_ctxt, ebml_w: ebml::writer,
-                               nitem: @native_item, path: ast_map::path) {
-    if !ecx.reachable.contains_key(nitem.id) { ret; }
+                               nitem: @native_item, path: ast_map::path)
+    -> bool {
+    if !ecx.reachable.contains_key(nitem.id) { ret false; }
     ebml_w.start_tag(tag_items_data_item);
     alt nitem.node {
       native_item_fn(fn_decl, tps) {
@@ -511,6 +513,7 @@ fn encode_info_for_native_item(ecx: @encode_ctxt, ebml_w: ebml::writer,
       }
     }
     ebml_w.end_tag();
+    ret true;
 }
 
 fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::writer,
@@ -520,17 +523,17 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::writer,
     index += [{val: crate_node_id, pos: ebml_w.writer.tell()}];
     encode_info_for_mod(ecx, ebml_w, crate_mod, crate_node_id, [], "");
     ecx.ccx.tcx.items.items {|key, val|
-        alt val {
+        let where = ebml_w.writer.tell();
+        let written = alt val {
           middle::ast_map::node_item(i, path) {
-            index += [{val: key, pos: ebml_w.writer.tell()}];
-            encode_info_for_item(ecx, ebml_w, i, index, *path);
+            encode_info_for_item(ecx, ebml_w, i, index, *path)
           }
-          middle::ast_map::node_native_item(i, path) {
-            index += [{val: key, pos: ebml_w.writer.tell()}];
-            encode_info_for_native_item(ecx, ebml_w, i, *path);
+          middle::ast_map::node_native_item(i, _, path) {
+            encode_info_for_native_item(ecx, ebml_w, i, *path)
           }
-          _ { }
-        }
+          _ { false }
+        };
+        if written { index += [{val: key, pos: where}]; }
     };
     ebml_w.end_tag();
     ret index;

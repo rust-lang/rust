@@ -109,7 +109,7 @@ fn build_ctxt(sess: session::session, ast: @ast::crate,
 
     let ast = config::strip_unconfigured_items(ast);
     let ast = front::test::modify_for_testing(sess, ast);
-    let ast_map = ast_map::map_crate(*ast);
+    let ast_map = ast_map::map_crate(sess, *ast);
     *ignore_errors = true;
     let exp_map = resolve::resolve_crate_reexports(sess, ast_map, ast);
     *ignore_errors = false;

@@ -2157,7 +2157,8 @@ fn iface_methods(cx: ctxt, id: ast::def_id) -> @[method] {
 
 fn impl_iface(cx: ctxt, id: ast::def_id) -> option<t> {
     if id.crate == ast::local_crate {
-        option::map(cx.tcache.find(id), {|it| it.ty})
+        let t = cx.tcache.get(id).ty;
+        if get(t).struct == ty_nil { none } else { some(t) }
     } else {
         csearch::get_impl_iface(cx, id)
     }
@@ -2203,7 +2204,7 @@ fn item_path(cx: ctxt, id: ast::def_id) -> ast_map::path {
             *path + [item_elt]
           }
 
-          ast_map::node_native_item(nitem, path) {
+          ast_map::node_native_item(nitem, _, path) {
             *path + [ast_map::path_name(nitem.ident)]
           }
 
@@ -2216,7 +2217,7 @@ fn item_path(cx: ctxt, id: ast::def_id) -> ast_map::path {
           }
 
           ast_map::node_expr(_) | ast_map::node_arg(_, _) |
-          ast_map::node_local(_) | ast_map::node_res_ctor(_) |
+          ast_map::node_local(_) | ast_map::node_ctor(_) |
           ast_map::node_export(_, _) {
             cx.sess.bug(#fmt["cannot find item_path for node %?", node]);
           }

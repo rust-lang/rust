@@ -48,17 +48,11 @@ fn trans_impl(ccx: crate_ctxt, path: path, name: ast::ident,
               tps: [ast::ty_param]) {
     let sub_path = path + [path_name(name)];
     for m in methods {
-        alt ccx.item_ids.find(m.id) {
-          some(llfn) {
-            let m_bounds = param_bounds(ccx, tps + m.tps);
-            trans_fn(ccx, sub_path + [path_name(m.ident)], m.decl, m.body,
-                     llfn, impl_self(ty::node_id_to_type(ccx.tcx, id)),
-                     m_bounds, none, m.id, none);
-          }
-          _ {
-            ccx.sess.bug("unbound id in trans_impl");
-          }
-        }
+        let llfn = get_item_val(ccx, m.id);
+        let m_bounds = param_bounds(ccx, tps + m.tps);
+        trans_fn(ccx, sub_path + [path_name(m.ident)], m.decl, m.body,
+                 llfn, impl_self(ty::node_id_to_type(ccx.tcx, id)),
+                 m_bounds, none, m.id, none);
     }
 }
 
@@ -222,7 +216,7 @@ fn trans_vtable(ccx: crate_ctxt, id: ast::node_id, name: str,
     });
     llvm::LLVMSetInitializer(vt_gvar, tbl);
     llvm::LLVMSetGlobalConstant(vt_gvar, lib::llvm::True);
-    ccx.item_ids.insert(id, vt_gvar);
+    ccx.item_vals.insert(id, vt_gvar);
     ccx.item_symbols.insert(id, name);
 }
 
@@ -343,13 +337,12 @@ fn trans_impl_vtable(ccx: crate_ctxt, pt: path,
     let ptrs = vec::map(*ty::iface_methods(ccx.tcx, iface_id), {|im|
         alt vec::find(ms, {|m| m.ident == im.ident}) {
           some(m) {
-            let target = ccx.item_ids.get(m.id);
             trans_impl_wrapper(ccx, new_pt + [path_name(m.ident)],
-                               extra_tps, target)
+                               extra_tps, get_item_val(ccx, m.id))
           }
           _ {
             ccx.sess.span_bug(it.span, "no matching method \
-               in trans_impl_vtable");
+                                        in trans_impl_vtable");
           }
         }
     });
@@ -491,7 +484,7 @@ fn get_dict_ptrs(bcx: block, origin: typeck::dict_origin)
     let ccx = bcx.ccx();
     fn get_vtable(ccx: crate_ctxt, did: ast::def_id) -> ValueRef {
         if did.crate == ast::local_crate {
-            ccx.item_ids.get(did.node)
+            get_item_val(ccx, did.node)
         } else {
             let name = csearch::get_symbol(ccx.sess.cstore, did);
             get_extern_const(ccx.externs, ccx.llmod, name, T_ptr(T_i8()))

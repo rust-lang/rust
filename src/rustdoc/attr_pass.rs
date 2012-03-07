@@ -97,7 +97,7 @@ fn parse_item_attrs<T:send>(
     astsrv::exec(srv) {|ctxt|
         let attrs = alt ctxt.ast_map.get(id) {
           ast_map::node_item(item, _) { item.attrs }
-          ast_map::node_native_item(item, _) { item.attrs }
+          ast_map::node_native_item(item, _, _) { item.attrs }
           _ {
             fail "parse_item_attrs: not an item";
           }

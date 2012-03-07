@@ -57,7 +57,7 @@ fn get_fn_sig(srv: astsrv::srv, fn_id: doc::ast_id) -> option<str> {
           ast_map::node_native_item(@{
             ident: ident,
             node: ast::native_item_fn(decl, _), _
-          }, _) {
+          }, _, _) {
             some(pprust::fun_to_str(decl, ident, []))
           }
         }
@@ -100,7 +100,7 @@ fn get_ret_ty(srv: astsrv::srv, fn_id: doc::ast_id) -> option<str> {
           }, _) |
           ast_map::node_native_item(@{
             node: ast::native_item_fn(decl, _), _
-          }, _) {
+          }, _, _) {
             ret_ty_to_str(decl)
           }
         }
@@ -161,7 +161,7 @@ fn get_arg_tys(srv: astsrv::srv, fn_id: doc::ast_id) -> [(str, str)] {
           }, _) |
           ast_map::node_native_item(@{
             node: ast::native_item_fn(decl, _), _
-          }, _) {
+          }, _, _) {
             decl_arg_tys(decl)
           }
         }

@@ -81,7 +81,7 @@ type crate_ctxt = @{
      tn: type_names,
      externs: hashmap<str, ValueRef>,
      intrinsics: hashmap<str, ValueRef>,
-     item_ids: hashmap<ast::node_id, ValueRef>,
+     item_vals: hashmap<ast::node_id, ValueRef>,
      exp_map: resolve::exp_map,
      item_symbols: hashmap<ast::node_id, str>,
      mutable main_fn: option<ValueRef>,
@@ -89,7 +89,6 @@ type crate_ctxt = @{
      enum_sizes: hashmap<ty::t, uint>,
      discrims: hashmap<ast::def_id, ValueRef>,
      discrim_symbols: hashmap<ast::node_id, str>,
-     consts: hashmap<ast::node_id, ValueRef>,
      tydescs: hashmap<ty::t, @tydesc_info>,
      dicts: hashmap<dict_id, ValueRef>,
      // Track mapping of external ids to local items imported for inlining
@@ -300,10 +299,7 @@ fn revoke_clean(cx: block, val: ValueRef) {
 fn get_res_dtor(ccx: crate_ctxt, did: ast::def_id, inner_t: ty::t)
    -> ValueRef {
     if did.crate == ast::local_crate {
-        alt ccx.item_ids.find(did.node) {
-          some(x) { ret x; }
-          _ { ccx.sess.bug("get_res_dtor: can't find resource dtor!"); }
-        }
+        ret base::get_item_val(ccx, did.node);
     }
 
     let param_bounds = ty::lookup_item_type(ccx.tcx, did).bounds;

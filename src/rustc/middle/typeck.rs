@@ -258,7 +258,7 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
                   some(ast_map::node_item(item, _)) {
                     ty_of_item(tcx, mode, item)
                   }
-                  some(ast_map::node_native_item(native_item, _)) {
+                  some(ast_map::node_native_item(native_item, _, _)) {
                     ty_of_native_item(tcx, mode, native_item)
                   }
                   _ {
@@ -906,7 +906,11 @@ mod collect {
                   }
                 }
               }
-              _ {}
+              _ {
+                // Store the bounds with a nil type.
+                tcx.tcache.insert(local_def(it.id), {bounds: i_bounds,
+                                                     ty: ty::mk_nil(tcx)});
+              }
             }
           }
           ast::item_res(decl, tps, _, dtor_id, ctor_id) {

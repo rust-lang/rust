@@ -4,6 +4,8 @@ import syntax::ast::*;
 import syntax::ast_util;
 import syntax::ast_util::inlined_item_methods;
 import syntax::{visit, codemap};
+import driver::session::session;
+import front::attr;
 
 enum path_elt { path_mod(str), path_name(str) }
 type path = [path_elt];
@@ -24,20 +26,21 @@ fn path_to_str(p: path) -> str {
 
 enum ast_node {
     node_item(@item, @path),
-    node_native_item(@native_item, @path),
+    node_native_item(@native_item, native_abi, @path),
     node_method(@method, def_id /* impl did */, @path /* path to the impl */),
-    node_variant(variant, def_id, @path),
+    node_variant(variant, @item, @path),
     node_expr(@expr),
     node_export(@view_path, @path),
     // Locals are numbered, because the alias analysis needs to know in which
     // order they are introduced.
     node_arg(arg, uint),
     node_local(uint),
-    node_res_ctor(@item),
+    node_ctor(@item),
 }
 
 type map = std::map::hashmap<node_id, ast_node>;
-type ctx = {map: map, mutable path: path, mutable local_id: uint};
+type ctx = {map: map, mutable path: path,
+            mutable local_id: uint, sess: session};
 type vt = visit::vt<ctx>;
 
 fn extend(cx: ctx, elt: str) -> @path {
@@ -47,7 +50,6 @@ fn extend(cx: ctx, elt: str) -> @path {
 fn mk_ast_map_visitor() -> vt {
     ret visit::mk_vt(@{
         visit_item: map_item,
-        visit_native_item: map_native_item,
         visit_expr: map_expr,
         visit_fn: map_fn,
         visit_local: map_local,
@@ -57,10 +59,11 @@ fn mk_ast_map_visitor() -> vt {
     });
 }
 
-fn map_crate(c: crate) -> map {
+fn map_crate(sess: session, c: crate) -> map {
     let cx = {map: std::map::new_int_hash(),
               mutable path: [],
-              mutable local_id: 0u};
+              mutable local_id: 0u,
+              sess: sess};
     visit::visit_crate(c, cx, mk_ast_map_visitor());
     ret cx.map;
 }
@@ -68,7 +71,7 @@ fn map_crate(c: crate) -> map {
 // Used for items loaded from external crate that are being inlined into this
 // crate.  The `path` should be the path to the item but should not include
 // the item itself.
-fn map_decoded_item(map: map, path: path, ii: inlined_item) {
+fn map_decoded_item(sess: session, map: map, path: path, ii: inlined_item) {
     // I believe it is ok for the local IDs of inlined items from other crates
     // to overlap with the local ids from this crate, so just generate the ids
     // starting from 0.  (In particular, I think these ids are only used in
@@ -77,7 +80,8 @@ fn map_decoded_item(map: map, path: path, ii: inlined_item) {
     // variables that are simultaneously in scope).
     let cx = {map: map,
               mutable path: path,
-              mutable local_id: 0u};
+              mutable local_id: 0u,
+              sess: sess};
     let v = mk_ast_map_visitor();
 
     // methods get added to the AST map when their impl is visited.  Since we
@@ -86,7 +90,7 @@ fn map_decoded_item(map: map, path: path, ii: inlined_item) {
     alt ii {
       ii_item(i) { /* fallthrough */ }
       ii_method(impl_did, m) {
-        map_method(impl_did, @vec::init(path), m, cx);
+        map_method(impl_did, @path, m, cx);
       }
     }
 
@@ -137,18 +141,30 @@ fn map_item(i: @item, cx: ctx, v: vt) {
       item_impl(_, _, _, ms) {
         let impl_did = ast_util::local_def(i.id);
         for m in ms {
-            map_method(impl_did, item_path, m, cx);
+            map_method(impl_did, extend(cx, i.ident), m, cx);
         }
       }
       item_res(_, _, _, dtor_id, ctor_id) {
-        cx.map.insert(ctor_id, node_res_ctor(i));
+        cx.map.insert(ctor_id, node_ctor(i));
         cx.map.insert(dtor_id, node_item(i, item_path));
       }
       item_enum(vs, _) {
         for v in vs {
             cx.map.insert(v.node.id, node_variant(
-                v, ast_util::local_def(i.id), extend(cx, i.ident)));
+                v, i, extend(cx, i.ident)));
         }
+      }
+      item_native_mod(nm) {
+        let abi = alt attr::native_abi(i.attrs) {
+          either::left(msg) { cx.sess.span_fatal(i.span, msg); }
+          either::right(abi) { abi }
+        };
+        for nitem in nm.items {
+            cx.map.insert(nitem.id, node_native_item(nitem, abi, @cx.path));
+        }
+      }
+      item_class(_, _, ctor) {
+        cx.map.insert(ctor.node.id, node_ctor(i));
       }
       _ { }
     }
@@ -177,11 +193,6 @@ fn map_view_item(vi: @view_item, cx: ctx, _v: vt) {
       }
       _ {}
     }
-}
-
-fn map_native_item(i: @native_item, cx: ctx, v: vt) {
-    cx.map.insert(i.id, node_native_item(i, @cx.path));
-    visit::visit_native_item(i, cx, v);
 }
 
 fn map_expr(ex: @expr, cx: ctx, v: vt) {

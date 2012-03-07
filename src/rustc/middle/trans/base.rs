@@ -2111,7 +2111,7 @@ fn monomorphic_fn(ccx: crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
       ast_map::node_variant(v, _, pt) { (pt, v.node.name) }
       ast_map::node_method(m, _, pt) { (pt, m.ident) }
       // We can't monomorphize native functions
-      ast_map::node_native_item(_, _) { ret none; }
+      ast_map::node_native_item(_, _, _) { ret none; }
       _ { fail "unexpected node type"; }
     };
     let pt = *pt + [path_name(ccx.names(name))];
@@ -2128,11 +2128,11 @@ fn monomorphic_fn(ccx: crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
       ast_map::node_item(@{node: ast::item_res(decl, _, _, _, _), _}, _) {
         trans_res_ctor(ccx, pt, decl, fn_id.node, [], psubsts, lldecl);
       }
-      ast_map::node_variant(v, enum_id, _) {
-        let tvs = ty::enum_variants(ccx.tcx, enum_id);
+      ast_map::node_variant(v, enum_item, _) {
+        let tvs = ty::enum_variants(ccx.tcx, local_def(enum_item.id));
         let this_tv = option::get(vec::find(*tvs, {|tv|
             tv.id.node == fn_id.node}));
-        trans_enum_variant(ccx, enum_id.node, v, this_tv.disr_val,
+        trans_enum_variant(ccx, enum_item.id, v, this_tv.disr_val,
                            (*tvs).len() == 1u, [], psubsts, lldecl);
       }
       ast_map::node_method(mth, impl_def_id, _) {
@@ -2164,7 +2164,6 @@ fn maybe_instantiate_inline(ccx: crate_ctxt, fn_id: ast::def_id)
                    ty::item_path_str(ccx.tcx, fn_id),
                    item.id];
             ccx.external.insert(fn_id, some(item.id));
-            collect_item(ccx, @mutable none, item);
             trans_item(ccx, *item);
             local_def(item.id)
           }
@@ -2176,11 +2175,7 @@ fn maybe_instantiate_inline(ccx: crate_ctxt, fn_id: ast::def_id)
                    mth.id];
             ccx.external.insert(fn_id, some(mth.id));
             compute_ii_method_info(ccx, impl_did, mth) {|ty, bounds, path|
-                let mth_ty = ty::node_id_to_type(ccx.tcx, mth.id);
-                let llfn = register_fn_full(ccx, mth.span, path,
-                                            "impl_method", bounds,
-                                            mth.id, mth_ty);
-                set_inline_hint_if_appr(mth.attrs, llfn);
+                let llfn = get_item_val(ccx, mth.id);
                 trans_fn(ccx, path, mth.decl, mth.body,
                          llfn, impl_self(ty), bounds,
                          none, mth.id, none);
@@ -2243,8 +2238,7 @@ fn lval_static_fn(bcx: block, fn_id: ast::def_id, id: ast::node_id,
 
     let val = if fn_id.crate == ast::local_crate {
         // Internal reference.
-        assert (ccx.item_ids.contains_key(fn_id.node));
-        ccx.item_ids.get(fn_id.node)
+        get_item_val(ccx, fn_id.node)
     } else {
         // External reference.
         trans_external_path(bcx, fn_id, tpt)
@@ -2375,8 +2369,7 @@ fn trans_var(cx: block, def: ast::def, id: ast::node_id, path: @ast::path)
       }
       ast::def_const(did) {
         if did.crate == ast::local_crate {
-            assert (ccx.consts.contains_key(did.node));
-            ret lval_no_env(cx, ccx.consts.get(did.node), owned);
+            ret lval_no_env(cx, get_item_val(ccx, did.node), owned);
         } else {
             let tp = node_id_type(cx, id);
             let val = trans_external_path(cx, did, {bounds: @[], ty: tp});
@@ -4323,19 +4316,14 @@ fn trans_const_expr(cx: crate_ctxt, e: @ast::expr) -> ValueRef {
     }
 }
 
-fn trans_const(cx: crate_ctxt, e: @ast::expr, id: ast::node_id) {
-    let v = trans_const_expr(cx, e);
+fn trans_const(ccx: crate_ctxt, e: @ast::expr, id: ast::node_id) {
+    let v = trans_const_expr(ccx, e);
 
     // The scalars come back as 1st class LLVM vals
     // which we have to stick into global constants.
-
-    alt cx.consts.find(id) {
-      some(g) {
-        llvm::LLVMSetInitializer(g, v);
-        llvm::LLVMSetGlobalConstant(g, True);
-      }
-      _ { cx.sess.span_bug(e.span, "unbound const in trans_const"); }
-    }
+    let g = get_item_val(ccx, id);
+    llvm::LLVMSetInitializer(g, v);
+    llvm::LLVMSetGlobalConstant(g, True);
 }
 
 fn trans_item(ccx: crate_ctxt, item: ast::item) {
@@ -4344,15 +4332,7 @@ fn trans_item(ccx: crate_ctxt, item: ast::item) {
     };
     alt item.node {
       ast::item_fn(decl, tps, body) {
-        let llfndecl = alt ccx.item_ids.find(item.id) {
-          some(llfndecl) { llfndecl }
-          _ {
-            ccx.sess.span_bug(
-                item.span,
-                #fmt["unbound function item %s in trans_item",
-                     ast_map::path_to_str(*path)]);
-          }
-        };
+        let llfndecl = get_item_val(ccx, item.id);
         if decl.purity != ast::crust_fn  {
             trans_fn(ccx, *path + [path_name(item.ident)], decl, body,
                      llfndecl, no_self, param_bounds(ccx, tps),
@@ -4366,21 +4346,15 @@ fn trans_item(ccx: crate_ctxt, item: ast::item) {
         impl::trans_impl(ccx, *path, item.ident, ms, item.id, tps);
       }
       ast::item_res(decl, tps, body, dtor_id, ctor_id) {
-        let llctor_decl = ccx.item_ids.get(ctor_id);
+        let llctor_decl = get_item_val(ccx, ctor_id);
         trans_res_ctor(ccx, *path, decl, ctor_id,
                        param_bounds(ccx, tps), none, llctor_decl);
 
         // Create a function for the destructor
-        alt ccx.item_ids.find(item.id) {
-          some(lldtor_decl) {
-            trans_fn(ccx, *path + [path_name(item.ident)], decl, body,
-                     lldtor_decl, no_self, param_bounds(ccx, tps),
-                     none, dtor_id, none);
-          }
-          _ {
-            ccx.sess.span_fatal(item.span, "unbound dtor in trans_item");
-          }
-        }
+        let lldtor_decl = get_item_val(ccx, item.id);
+        trans_fn(ccx, *path + [path_name(item.ident)], decl, body,
+                 lldtor_decl, no_self, param_bounds(ccx, tps),
+                 none, dtor_id, none);
       }
       ast::item_mod(m) {
         trans_mod(ccx, m);
@@ -4393,7 +4367,7 @@ fn trans_item(ccx: crate_ctxt, item: ast::item) {
             if variant.node.args.len() > 0u {
                 trans_enum_variant(ccx, item.id, variant,
                                    vi[i].disr_val, degen, tps,
-                                   none, ccx.item_ids.get(variant.node.id));
+                                   none, get_item_val(ccx, variant.node.id));
             }
             i += 1;
         }
@@ -4407,81 +4381,74 @@ fn trans_item(ccx: crate_ctxt, item: ast::item) {
         native::trans_native_mod(ccx, native_mod, abi);
       }
       ast::item_class(tps, items, ctor) {
-          alt ccx.item_ids.find(ctor.node.id) {
-             some(llctor_decl) {
-             // Translate the ctor
-             // First, add a preamble that
-             // generates a new name, obj:
-             // let obj = { ... } (uninit record fields)
-                 let sess = ccx.sess;
-                 let rslt_path_ = {global: false,
-                                   idents: ["obj"],
-                                   types: []}; // ??
-                 let rslt_path = @{node: rslt_path_,
-                                  span: ctor.node.body.span};
-                 let rslt_id : ast::node_id = sess.next_node_id();
-                 let rslt_pat : @ast::pat =
-                     @{id: sess.next_node_id(),
-                       node: ast::pat_ident(rslt_path, none),
-                       span: ctor.node.body.span};
-                 // Set up obj's type
-                 let rslt_ast_ty : @ast::ty = @{node: ast::ty_infer,
-                                    span: ctor.node.body.span};
-                 // kludgy
-                 let ty_args = [], i = 0u;
-                 for tp in tps {
-                   ty_args += [ty::mk_param(ccx.tcx, i,
-                                            local_def(tps[i].id))];
-                 }
-                 let rslt_ty =  ty::mk_class(ccx.tcx,
-                                                  local_def(item.id),
-                                             ty_args);
-                 // Set up a local for obj
-                 let rslt_loc_ : ast::local_ = {is_mutbl: true,
-                                  ty: rslt_ast_ty, // ???
-                                  pat: rslt_pat,
-                                  init: none::<ast::initializer>,
-                                  id: rslt_id};
-                 // Register a type for obj
-                 smallintmap::insert(*ccx.tcx.node_types,
-                                     rslt_loc_.id as uint, rslt_ty);
-                 // Create the decl statement that initializers obj
-                 let rslt_loc : @ast::local =
-                     @{node: rslt_loc_, span: ctor.node.body.span};
-                 let rslt_decl_ : ast::decl_ = ast::decl_local([rslt_loc]);
-                 let rslt_decl : @ast::decl
-                     = @{node: rslt_decl_, span: ctor.node.body.span};
-                 let prologue : @ast::stmt = @{node: ast::stmt_decl(rslt_decl,
-                                                     sess.next_node_id()),
-                                              span: ctor.node.body.span};
-                 let rslt_node_id = sess.next_node_id();
-                 ccx.tcx.def_map.insert(rslt_node_id,
-                          ast::def_local(rslt_loc_.id, true));
-                 // And give the statement a type
-                 smallintmap::insert(*ccx.tcx.node_types,
-                                     rslt_node_id as uint, rslt_ty);
-                 // The result expression of the constructor is now a
-                 // reference to obj
-                 let rslt_expr : @ast::expr =
-                     @{id: rslt_node_id,
-                       node: ast::expr_path(rslt_path),
-                       span: ctor.node.body.span};
-                 let ctor_body_new : ast::blk_ = {stmts: [prologue]
-                                      + ctor.node.body.node.stmts,
-                                       expr: some(rslt_expr)
-                                     with ctor.node.body.node};
-                 let ctor_body__ : ast::blk = {node: ctor_body_new
-                                                with ctor.node.body};
-             trans_fn(ccx, *path + [path_name(item.ident)], ctor.node.dec,
-                      ctor_body__, llctor_decl, no_self,
-                      param_bounds(ccx, tps), none, ctor.node.id,
-                      some(rslt_expr));
-             // TODO: translate methods!
-             }
-             _ {
-               ccx.sess.span_bug(item.span, "unbound ctor in trans_item");
-             }
-          }
+        let llctor_decl = get_item_val(ccx, ctor.node.id);
+        // Translate the ctor
+        // First, add a preamble that
+        // generates a new name, obj:
+        // let obj = { ... } (uninit record fields)
+        let rslt_path_ = {global: false,
+                          idents: ["obj"],
+                          types: []}; // ??
+        let rslt_path = @{node: rslt_path_,
+                          span: ctor.node.body.span};
+        let rslt_id : ast::node_id = ccx.sess.next_node_id();
+        let rslt_pat : @ast::pat =
+            @{id: ccx.sess.next_node_id(),
+              node: ast::pat_ident(rslt_path, none),
+              span: ctor.node.body.span};
+        // Set up obj's type
+        let rslt_ast_ty : @ast::ty = @{node: ast::ty_infer,
+                                       span: ctor.node.body.span};
+        // kludgy
+        let ty_args = [], i = 0u;
+        for tp in tps {
+            ty_args += [ty::mk_param(ccx.tcx, i,
+                                     local_def(tps[i].id))];
+        }
+        let rslt_ty =  ty::mk_class(ccx.tcx,
+                                    local_def(item.id),
+                                    ty_args);
+        // Set up a local for obj
+        let rslt_loc_ : ast::local_ = {is_mutbl: true,
+                                       ty: rslt_ast_ty, // ???
+                                       pat: rslt_pat,
+                                       init: none::<ast::initializer>,
+                                       id: rslt_id};
+        // Register a type for obj
+        smallintmap::insert(*ccx.tcx.node_types,
+                            rslt_loc_.id as uint, rslt_ty);
+        // Create the decl statement that initializers obj
+        let rslt_loc : @ast::local =
+            @{node: rslt_loc_, span: ctor.node.body.span};
+        let rslt_decl_ : ast::decl_ = ast::decl_local([rslt_loc]);
+        let rslt_decl : @ast::decl
+            = @{node: rslt_decl_, span: ctor.node.body.span};
+        let prologue = @{node: ast::stmt_decl(rslt_decl,
+                                              ccx.sess.next_node_id()),
+                         span: ctor.node.body.span};
+        let rslt_node_id = ccx.sess.next_node_id();
+        ccx.tcx.def_map.insert(rslt_node_id,
+                               ast::def_local(rslt_loc_.id, true));
+        // And give the statement a type
+        smallintmap::insert(*ccx.tcx.node_types,
+                            rslt_node_id as uint, rslt_ty);
+        // The result expression of the constructor is now a
+        // reference to obj
+        let rslt_expr : @ast::expr =
+            @{id: rslt_node_id,
+              node: ast::expr_path(rslt_path),
+              span: ctor.node.body.span};
+        let ctor_body_new : ast::blk_ = {stmts: [prologue]
+                                             + ctor.node.body.node.stmts,
+                                         expr: some(rslt_expr)
+                                         with ctor.node.body.node};
+        let ctor_body__ : ast::blk = {node: ctor_body_new
+                                      with ctor.node.body};
+        trans_fn(ccx, *path + [path_name(item.ident)], ctor.node.dec,
+                 ctor_body__, llctor_decl, no_self,
+                 param_bounds(ccx, tps), none, ctor.node.id,
+                 some(rslt_expr));
+        // TODO: translate methods!
       }
       _ {/* fall through */ }
     }
@@ -4538,7 +4505,6 @@ fn register_fn_fuller(ccx: crate_ctxt, sp: span, path: path, _flav: str,
                       cc: lib::llvm::CallConv, llfty: TypeRef) -> ValueRef {
     let ps: str = mangle_exported_name(ccx, path, node_type);
     let llfn: ValueRef = decl_fn(ccx.llmod, ps, cc, llfty);
-    ccx.item_ids.insert(node_id, llfn);
     ccx.item_symbols.insert(node_id, ps);
 
     #debug["register_fn_fuller created fn %s for item %d with path %s",
@@ -4649,143 +4615,94 @@ fn fill_fn_pair(bcx: block, pair: ValueRef, llfn: ValueRef,
     Store(bcx, llenvblobptr, env_cell);
 }
 
-fn collect_native_item(ccx: crate_ctxt,
-                       abi: @mutable option<ast::native_abi>,
-                       i: @ast::native_item) {
-    alt i.node {
-      ast::native_item_fn(_, tps) {
-        let id = i.id;
-        let node_type = ty::node_id_to_type(ccx.tcx, id);
-        let fn_abi =
-            alt attr::get_meta_item_value_str_by_name(i.attrs, "abi") {
-            option::none {
-                // if abi isn't specified for this function, inherit from
-                  // its enclosing native module
-                  option::get(*abi)
-              }
-                _ {
-                    alt attr::native_abi(i.attrs) {
-                      either::right(abi_) { abi_ }
-                      either::left(msg) { ccx.sess.span_fatal(i.span, msg) }
-                    }
-                }
-            };
-        alt fn_abi {
-          ast::native_abi_rust_intrinsic {
-            // For intrinsics: link the function directly to the intrinsic
-            // function itself.
-            let fn_type = type_of_fn_from_ty(
-                ccx, node_type, param_bounds(ccx, tps));
-            let ri_name = "rust_intrinsic_" + native::link_name(i);
-            let llnativefn = get_extern_fn(
-                ccx.externs, ccx.llmod, ri_name,
-                lib::llvm::CCallConv, fn_type);
-            ccx.item_ids.insert(id, llnativefn);
-            ccx.item_symbols.insert(id, ri_name);
-          }
-
-          ast::native_abi_cdecl | ast::native_abi_stdcall {
-            // For true external functions: create a rust wrapper
-            // and link to that.  The rust wrapper will handle
-            // switching to the C stack.
-            let path = *alt check ccx.tcx.items.get(i.id) {
-              ast_map::node_native_item(_, p) { p }
-            } + [path_name(i.ident)];
-            register_fn(ccx, i.span, path, "native fn", tps, i.id);
-          }
-        }
-      }
-      _ { }
-    }
-}
-
 fn item_path(ccx: crate_ctxt, i: @ast::item) -> path {
     *alt check ccx.tcx.items.get(i.id) {
       ast_map::node_item(_, p) { p }
     } + [path_name(i.ident)]
 }
 
-fn collect_item(ccx: crate_ctxt, abi: @mutable option<ast::native_abi>,
-                i: @ast::item) {
-    let my_path = item_path(ccx, i);
-    alt i.node {
-      ast::item_const(_, _) {
-        let typ = ty::node_id_to_type(ccx.tcx, i.id);
-        let s = mangle_exported_name(ccx, my_path, typ);
-        let g = str::as_buf(s, {|buf|
-            llvm::LLVMAddGlobal(ccx.llmod, type_of(ccx, typ), buf)
-        });
-        ccx.item_symbols.insert(i.id, s);
-        ccx.consts.insert(i.id, g);
-      }
-      ast::item_native_mod(native_mod) {
-        // Propagate the native ABI down to collect_native_item(),
-        alt attr::native_abi(i.attrs) {
-          either::left(msg) { ccx.sess.span_fatal(i.span, msg); }
-          either::right(abi_) { *abi = option::some(abi_); }
-        }
-      }
-      ast::item_fn(decl, tps, _) {
-        let llfn = if decl.purity != ast::crust_fn {
-            register_fn(ccx, i.span, my_path, "fn", tps, i.id)
-        } else {
-            native::register_crust_fn(ccx, i.span, my_path, i.id)
-        };
-
-        set_inline_hint_if_appr(i.attrs, llfn);
-      }
-      ast::item_impl(tps, _, _, methods) {
-        let path = my_path + [path_name(int::str(i.id))];
-        for m in methods {
-            let llm  = register_fn(ccx, i.span,
-                                   path + [path_name(m.ident)],
-                                   "impl_method", tps + m.tps, m.id);
-            set_inline_hint_if_appr(m.attrs, llm);
-        }
-      }
-      ast::item_res(_, tps, _, dtor_id, ctor_id) {
-        let llctor = register_fn(ccx, i.span, my_path, "res_ctor", tps,
-                                 ctor_id);
-
-        // Note that the destructor is associated with the item's id, not
-        // the dtor_id. This is a bit counter-intuitive, but simplifies
-        // ty_res, which would have to carry around two def_ids otherwise
-        // -- one to identify the type, and one to find the dtor symbol.
-        let t = ty::node_id_to_type(ccx.tcx, dtor_id);
-        let lldtor = register_fn_full(ccx, i.span, my_path +
-                                      [path_name("dtor")], "res_dtor",
-                                      param_bounds(ccx, tps), i.id, t);
-
-        // give hints that resource ctors/dtors ought to be inlined
-        set_inline_hint(llctor);
-        set_inline_hint(lldtor);
-      }
-      ast::item_enum(variants, tps) {
-        for variant in variants {
-            if variant.node.args.len() != 0u {
-                register_fn(ccx, i.span,
-                            my_path + [path_name(variant.node.name)],
-                            "enum", tps, variant.node.id);
+fn get_item_val(ccx: crate_ctxt, id: ast::node_id) -> ValueRef {
+    alt ccx.item_vals.find(id) {
+      some(v) { v }
+      none {
+        let val = alt check ccx.tcx.items.get(id) {
+          ast_map::node_item(i, pth) {
+            let my_path = *pth + [path_name(i.ident)];
+            alt check i.node {
+              ast::item_const(_, _) {
+                let typ = ty::node_id_to_type(ccx.tcx, i.id);
+                let s = mangle_exported_name(ccx, my_path, typ);
+                let g = str::as_buf(s, {|buf|
+                    llvm::LLVMAddGlobal(ccx.llmod, type_of(ccx, typ), buf)
+                });
+                ccx.item_symbols.insert(i.id, s);
+                g
+              }
+              ast::item_fn(decl, tps, _) {
+                let llfn = if decl.purity != ast::crust_fn {
+                    register_fn(ccx, i.span, my_path, "fn", tps, i.id)
+                } else {
+                    native::register_crust_fn(ccx, i.span, my_path, i.id)
+                };
+                set_inline_hint_if_appr(i.attrs, llfn);
+                llfn
+              }
+              ast::item_res(_, tps, _, dtor_id, _) {
+                // Note that the destructor is associated with the item's id,
+                // not the dtor_id. This is a bit counter-intuitive, but
+                // simplifies ty_res, which would have to carry around two
+                // def_ids otherwise -- one to identify the type, and one to
+                // find the dtor symbol.
+                let t = ty::node_id_to_type(ccx.tcx, dtor_id);
+                register_fn_full(ccx, i.span, my_path + [path_name("dtor")],
+                                 "res_dtor", param_bounds(ccx, tps), i.id, t)
+              }
             }
-        }
+          }
+          ast_map::node_method(m, impl_id, pth) {
+            let mty = ty::node_id_to_type(ccx.tcx, id);
+            let impl_tps = *ty::lookup_item_type(ccx.tcx, impl_id).bounds;
+            let pth = *pth + [path_name(int::str(impl_id.node)),
+                              path_name(m.ident)];
+            let llfn = register_fn_full(ccx, m.span, pth, "impl_method",
+                                        impl_tps + param_bounds(ccx, m.tps),
+                                        id, mty);
+            set_inline_hint_if_appr(m.attrs, llfn);
+            llfn
+          }
+          ast_map::node_native_item(ni, _, pth) {
+            native::decl_native_fn(ccx, ni, *pth + [path_name(ni.ident)])
+          }
+          ast_map::node_ctor(i) {
+            alt check i.node {
+              ast::item_res(_, tps, _, _, _) {
+                let my_path = item_path(ccx, i);
+                let llctor = register_fn(ccx, i.span, my_path, "res_ctor",
+                                         tps, id);
+                set_inline_hint(llctor);
+                llctor
+              }
+              ast::item_class(tps, _, ctor) {
+                register_fn(ccx, i.span, item_path(ccx, i), "ctor", tps, id)
+              }
+            }
+          }
+          ast_map::node_variant(v, enm, pth) {
+            assert v.node.args.len() != 0u;
+            let pth = *pth + [path_name(enm.ident), path_name(v.node.name)];
+            let llfn = alt check enm.node {
+              ast::item_enum(_, tps) {
+                register_fn(ccx, v.span, pth, "enum", tps, id)
+              }
+            };
+            set_inline_hint(llfn);
+            llfn
+          }
+        };
+        ccx.item_vals.insert(id, val);
+        val
       }
-      ast::item_class(tps,_,ctor) {
-          // Register the ctor
-          let t = ty::node_id_to_type(ccx.tcx, ctor.node.id);
-          register_fn_full(ccx, i.span, my_path, "ctor",
-                           param_bounds(ccx, tps), ctor.node.id, t);
-      }
-      _ { }
     }
-}
-
-fn collect_items(ccx: crate_ctxt, crate: @ast::crate) {
-    let abi = @mutable none;
-    visit::visit_crate(*crate, (), visit::mk_simple_visitor(@{
-        visit_native_item: bind collect_native_item(ccx, abi, _),
-        visit_item: bind collect_item(ccx, abi, _)
-        with *visit::default_simple_visitor()
-    }));
 }
 
 // The constant translation pass.
@@ -5043,7 +4960,7 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           tn: tn,
           externs: new_str_hash::<ValueRef>(),
           intrinsics: intrinsics,
-          item_ids: new_int_hash::<ValueRef>(),
+          item_vals: new_int_hash::<ValueRef>(),
           exp_map: emap,
           item_symbols: new_int_hash::<str>(),
           mutable main_fn: none::<ValueRef>,
@@ -5051,7 +4968,6 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           enum_sizes: ty::new_ty_hash(),
           discrims: ast_util::new_def_id_hash::<ValueRef>(),
           discrim_symbols: new_int_hash::<str>(),
-          consts: new_int_hash::<ValueRef>(),
           tydescs: ty::new_ty_hash(),
           dicts: map::mk_hashmap(hash_dict_id, {|a, b| a == b}),
           external: util::common::new_def_hash(),
@@ -5084,7 +5000,6 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           crate_map: crate_map,
           dbg_cx: dbg_cx,
           mutable do_not_commit_warning_issued: false};
-    collect_items(ccx, crate);
     trans_constants(ccx, crate);
     trans_mod(ccx, crate.node.module);
     fill_crate_map(ccx, crate_map);

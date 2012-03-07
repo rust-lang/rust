@@ -11,7 +11,8 @@ import base::*;
 import type_of::*;
 import std::map::hashmap;
 
-export link_name, trans_native_mod, register_crust_fn, trans_crust_fn;
+export link_name, trans_native_mod, register_crust_fn, trans_crust_fn,
+       decl_native_fn;
 
 fn link_name(i: @ast::native_item) -> str {
     alt attr::get_meta_item_value_str_by_name(i.attrs, "link_name") {
@@ -238,7 +239,10 @@ fn trans_native_mod(ccx: crate_ctxt,
 
     let cc = lib::llvm::CCallConv;
     alt abi {
-      ast::native_abi_rust_intrinsic { ret; }
+      ast::native_abi_rust_intrinsic {
+        for item in native_mod.items { get_item_val(ccx, item.id); }
+        ret;
+      }
       ast::native_abi_cdecl { cc = lib::llvm::CCallConv; }
       ast::native_abi_stdcall { cc = lib::llvm::X86StdcallCallConv; }
     }
@@ -248,17 +252,9 @@ fn trans_native_mod(ccx: crate_ctxt,
         ast::native_item_fn(fn_decl, tps) {
           let id = native_item.id;
           let tys = c_stack_tys(ccx, id);
-          alt ccx.item_ids.find(id) {
-            some(llwrapfn) {
-              let llshimfn = build_shim_fn(ccx, native_item, tys, cc);
-              build_wrap_fn(ccx, tys, vec::len(tps), llshimfn, llwrapfn);
-            }
-            none {
-              ccx.sess.span_bug(
-                  native_item.span,
-                  "unbound function item in trans_native_mod");
-            }
-          }
+          let llwrapfn = get_item_val(ccx, id);
+          let llshimfn = build_shim_fn(ccx, native_item, tys, cc);
+          build_wrap_fn(ccx, tys, vec::len(tps), llshimfn, llwrapfn);
         }
       }
     }
@@ -359,4 +355,49 @@ fn register_crust_fn(ccx: crate_ctxt, sp: span,
     let llfty = T_fn(llargtys, llretty);
     register_fn_fuller(ccx, sp, path, "crust fn", node_id,
                        t, lib::llvm::CCallConv, llfty)
+}
+
+fn abi_of_native_fn(ccx: crate_ctxt, i: @ast::native_item)
+    -> ast::native_abi {
+    alt attr::get_meta_item_value_str_by_name(i.attrs, "abi") {
+      none {
+        alt check ccx.tcx.items.get(i.id) {
+          ast_map::node_native_item(_, abi, _) { abi }
+        }
+      }
+      some(_) {
+        alt attr::native_abi(i.attrs) {
+          either::right(abi) { abi }
+          either::left(msg) { ccx.sess.span_fatal(i.span, msg); }
+        }
+      }
+    }
+}
+
+fn decl_native_fn(ccx: crate_ctxt, i: @ast::native_item,
+                  pth: ast_map::path) -> ValueRef {
+    alt i.node {
+      ast::native_item_fn(_, tps) {
+        let node_type = ty::node_id_to_type(ccx.tcx, i.id);
+        alt abi_of_native_fn(ccx, i) {
+          ast::native_abi_rust_intrinsic {
+            // For intrinsics: link the function directly to the intrinsic
+            // function itself.
+            let fn_type = type_of_fn_from_ty(
+                ccx, node_type, param_bounds(ccx, tps));
+            let ri_name = "rust_intrinsic_" + native::link_name(i);
+            ccx.item_symbols.insert(i.id, ri_name);
+            get_extern_fn(ccx.externs, ccx.llmod, ri_name,
+                          lib::llvm::CCallConv, fn_type)
+          }
+
+          ast::native_abi_cdecl | ast::native_abi_stdcall {
+            // For true external functions: create a rust wrapper
+            // and link to that.  The rust wrapper will handle
+            // switching to the C stack.
+            register_fn(ccx, i.span, pth, "native fn", tps, i.id)
+          }
+        }
+      }
+    }
 }

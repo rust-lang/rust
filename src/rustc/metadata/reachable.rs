@@ -58,7 +58,7 @@ fn traverse_def_id(cx: ctx, did: def_id) {
     alt cx.ccx.tcx.items.get(did.node) {
       ast_map::node_item(item, _) { traverse_public_item(cx, item); }
       ast_map::node_method(_, impl_id, _) { traverse_def_id(cx, impl_id); }
-      ast_map::node_native_item(item, _) { cx.rmap.insert(item.id, ()); }
+      ast_map::node_native_item(item, _, _) { cx.rmap.insert(item.id, ()); }
       ast_map::node_variant(v, _, _) { cx.rmap.insert(v.node.id, ()); }
       _ {}
     }
