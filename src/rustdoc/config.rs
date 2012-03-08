@@ -193,8 +193,12 @@ fn maybe_find_pandoc(
     let possible_pandocs = alt maybe_pandoc_cmd {
       some(pandoc_cmd) { [pandoc_cmd] }
       none {
-        // FIXME (1936): Need to be able to expand ~ to look in .cabal
-        ["pandoc"]
+        ["pandoc"] + alt os::homedir() {
+          some(dir) {
+            [path::connect(dir, ".cabal/bin/pandoc")]
+          }
+          none { [] }
+        }
       }
     };
 
