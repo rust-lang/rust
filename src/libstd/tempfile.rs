@@ -1,17 +1,10 @@
-/*
-Module: tempfile
-
-Temporary files and directories
-*/
+#[doc = "Temporary files and directories"];
 
 import core::option;
 import fs;
 import option::{none, some};
 import rand;
 
-/*
-Function: mkdtemp
-*/
 fn mkdtemp(prefix: str, suffix: str) -> option<str> {
     let r = rand::mk_rng();
     let i = 0u;

@@ -1,8 +1,4 @@
-/*
-Module: rand
-
-Random number generation
-*/
+#[doc = "Random number generation"]
 
 enum rctx {}
 
@@ -13,52 +9,24 @@ native mod rustrt {
     fn rand_free(c: *rctx);
 }
 
-/* Section: Types */
-
-/*
-Obj: rng
-
-A random number generator
-*/
+#[doc = "A random number generator"]
 iface rng {
-    /*
-    Method: next
-
-    Return the next random integer
-    */
+    #[doc = "Return the next random integer"]
     fn next() -> u32;
 
-    /*
-    Method: next_float
-
-    Return the next random float
-    */
+    #[doc = "Return the next random float"]
     fn next_float() -> float;
 
-    /*
-    Method: gen_str
-
-    Return a random string composed of A-Z, a-z, 0-9.
-    */
+    #[doc = "Return a random string composed of A-Z, a-z, 0-9."]
     fn gen_str(len: uint) -> str;
 
-    /*
-    Method: gen_bytes
-
-    Return a random byte string.
-    */
+    #[doc = "Return a random byte string."]
     fn gen_bytes(len: uint) -> [u8];
 }
 
 resource rand_res(c: *rctx) { rustrt::rand_free(c); }
 
-/* Section: Operations */
-
-/*
-Function: mk_rng
-
-Create a random number generator
-*/
+#[doc = "Create a random number generator"]
 fn mk_rng() -> rng {
     impl of rng for @rand_res {
         fn next() -> u32 { ret rustrt::rand_next(**self); }

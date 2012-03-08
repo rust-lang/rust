@@ -1,7 +1,4 @@
-/*
-Module: rope
-
-
+#[doc = "
 High-level text containers.
 
 Ropes are a high-level representation of text that offers
@@ -18,79 +15,70 @@ structure of ropes makes them suitable as a form of index to speed-up
 access to Unicode characters by index in long chunks of text.
 
 The following operations are algorithmically faster in ropes:
-- extracting a subrope is logarithmic (linear in strings);
-- appending/prepending is near-constant time (linear in strings);
-- concatenation is near-constant time (linear in strings);
-- char length is constant-time (linear in strings);
-- access to a character by index is logarithmic (linear in strings);
- */
+
+* extracting a subrope is logarithmic (linear in strings);
+* appending/prepending is near-constant time (linear in strings);
+* concatenation is near-constant time (linear in strings);
+* char length is constant-time (linear in strings);
+* access to a character by index is logarithmic (linear in strings);
+"];
 
 
-/*
- Type: rope
-
- The type of ropes.
- */
+#[doc = "The type of ropes."]
 type rope = node::root;
 
 /*
  Section: Creating a rope
  */
 
-/*
- Function:empty
-
- Create an empty rope
- */
+#[doc = "Create an empty rope"]
 fn empty() -> rope {
    ret node::empty;
 }
 
-/*
- Function: of_str
+#[doc = "
+Adopt a string as a rope.
 
- Adopt a string as a rope.
+# Arguments
 
- Parameters:
+* str - A valid string.
 
-str - A valid string.
-
- Returns:
+# Return value
 
 A rope representing the same string as `str`. Depending of the length
 of `str`, this rope may be empty, flat or complex.
 
-Performance notes:
-- this operation does not copy the string;
-- the function runs in linear time.
- */
+# Performance notes
+
+* this operation does not copy the string;
+* the function runs in linear time.
+"]
 fn of_str(str: @str) -> rope {
     ret of_substr(str, 0u, str::len(*str));
 }
 
-/*
-Function: of_substr
-
+#[doc = "
 As `of_str` but for a substring.
 
-Performance note:
-- this operation does not copy the substring.
+# Arguments
+* byte_offset - The offset of `str` at which the rope starts.
+* byte_len - The number of bytes of `str` to use.
 
-Parameters:
+# Return value
 
-byte_offset - The offset of `str` at which the rope starts.
-byte_len    - The number of bytes of `str` to use.
+A rope representing the same string as `str::substr(str, byte_offset,
+byte_len)`.  Depending on `byte_len`, this rope may be empty, flat or
+complex.
 
-Returns:
+# Performance note
 
-A rope representing the same string as
-`str::substr(str, byte_offset, byte_len)`.
-Depending on `byte_len`, this rope may be empty, flat or complex.
+This operation does not copy the substring.
 
-Safety notes:
-- this function does _not_ check the validity of the substring;
-- this function fails if `byte_offset` or `byte_len` do not match `str`.
- */
+# Safety notes
+
+* this function does _not_ check the validity of the substring;
+* this function fails if `byte_offset` or `byte_len` do not match `str`.
+"]
 fn of_substr(str: @str, byte_offset: uint, byte_len: uint) -> rope {
     if byte_len == 0u { ret node::empty; }
     if byte_offset + byte_len  > str::len(*str) { fail; }
@@ -101,59 +89,49 @@ fn of_substr(str: @str, byte_offset: uint, byte_len: uint) -> rope {
 Section: Adding things to a rope
  */
 
-/*
-Function: append_char
-
+#[doc = "
 Add one char to the end of the rope
 
-Performance note:
-- this function executes in near-constant time
- */
+# Performance note
+
+* this function executes in near-constant time
+"]
 fn append_char(rope: rope, char: char) -> rope {
     ret append_str(rope, @str::from_chars([char]));
 }
 
-/*
-Function: append_str
-
+#[doc = "
 Add one string to the end of the rope
 
-Performance note:
-- this function executes in near-linear time
- */
+# Performance note
+
+* this function executes in near-linear time
+"]
 fn append_str(rope: rope, str: @str) -> rope {
     ret append_rope(rope, of_str(str))
 }
 
-/*
-Function: prepend_char
-
+#[doc = "
 Add one char to the beginning of the rope
 
-Performance note:
-- this function executes in near-constant time
- */
+# Performance note
+* this function executes in near-constant time
+"]
 fn prepend_char(rope: rope, char: char) -> rope {
     ret prepend_str(rope, @str::from_chars([char]));
 }
 
-/*
-Function: prepend_str
-
+#[doc = "
 Add one string to the beginning of the rope
 
-Performance note:
-- this function executes in near-linear time
- */
+# Performance note
+* this function executes in near-linear time
+"]
 fn prepend_str(rope: rope, str: @str) -> rope {
     ret append_rope(of_str(str), rope)
 }
 
-/*
-Function: append_rope
-
-Concatenate two ropes
- */
+#[doc = "Concatenate two ropes"]
 fn append_rope(left: rope, right: rope) -> rope {
    alt(left) {
      node::empty { ret right; }
@@ -168,15 +146,13 @@ fn append_rope(left: rope, right: rope) -> rope {
    }
 }
 
-/*
-Function: concat
-
+#[doc = "
 Concatenate many ropes.
 
 If the ropes are balanced initially and have the same height, the resulting
 rope remains balanced. However, this function does not take any further
 measure to ensure that the result is balanced.
- */
+"]
 fn concat(v: [rope]) -> rope {
     //Copy `v` into a mutable vector
     let len   = vec::len(v);
@@ -209,19 +185,17 @@ Section: Keeping ropes healthy
  */
 
 
-/*
-Function: bal
-
+#[doc = "
 Balance a rope.
 
-Returns:
+# Return value
 
 A copy of the rope in which small nodes have been grouped in memory,
 and with a reduced height.
 
 If you perform numerous rope concatenations, it is generally a good idea
 to rebalance your rope at some point, before using it for other purposes.
- */
+"]
 fn bal(rope:rope) -> rope {
     alt(rope) {
       node::empty { ret rope }
@@ -239,19 +213,19 @@ Section: Transforming ropes
  */
 
 
-/*
-Function: sub_chars
-
+#[doc = "
 Extract a subrope from a rope.
 
-Performance note:
-- on a balanced rope, this operation takes algorithmic time;
-- this operation does not involve any copying
+# Performance note
 
-Safety note:
-- this function fails if char_offset/char_len do not represent
-valid positions in rope
- */
+* on a balanced rope, this operation takes algorithmic time;
+* this operation does not involve any copying
+
+# Safety note
+
+* this function fails if char_offset/char_len do not represent
+  valid positions in rope
+"]
 fn sub_chars(rope: rope, char_offset: uint, char_len: uint) -> rope {
     if char_len == 0u { ret node::empty; }
     alt(rope) {
@@ -265,19 +239,19 @@ fn sub_chars(rope: rope, char_offset: uint, char_len: uint) -> rope {
     }
 }
 
-/*
-Function:sub_bytes
-
+#[doc = "
 Extract a subrope from a rope.
 
-Performance note:
-- on a balanced rope, this operation takes algorithmic time;
-- this operation does not involve any copying
+# Performance note
 
-Safety note:
-- this function fails if byte_offset/byte_len do not represent
-valid positions in rope
- */
+* on a balanced rope, this operation takes algorithmic time;
+* this operation does not involve any copying
+
+# Safety note
+
+* this function fails if byte_offset/byte_len do not represent
+  valid positions in rope
+"]
 fn sub_bytes(rope: rope, byte_offset: uint, byte_len: uint) -> rope {
     if byte_len == 0u { ret node::empty; }
     alt(rope) {
@@ -295,18 +269,16 @@ fn sub_bytes(rope: rope, byte_offset: uint, byte_len: uint) -> rope {
 Section: Comparing ropes
  */
 
-/*
-Function: cmp
-
+#[doc = "
 Compare two ropes by Unicode lexicographical order.
 
 This function compares only the contents of the rope, not their structure.
 
-Returns:
+# Return value
 
 A negative value if `left < right`, 0 if eq(left, right) or a positive
 value if `left > right`
-*/
+"]
 fn cmp(left: rope, right: rope) -> int {
     alt((left, right)) {
       (node::empty, node::empty) { ret 0; }
@@ -318,78 +290,70 @@ fn cmp(left: rope, right: rope) -> int {
     }
 }
 
-/*
-Function: eq
-
-Returns:
-
- `true` if both ropes have the same content (regardless of their structure),
-`false` otherwise
-*/
+#[doc = "
+Returns `true` if both ropes have the same content (regardless of
+their structure), `false` otherwise
+"]
 fn eq(left: rope, right: rope) -> bool {
     ret cmp(left, right) == 0;
 }
 
-/*
-Function: le
+#[doc = "
+# Arguments
 
-Parameters
-  left - an arbitrary rope
-  right - an arbitrary rope
+* left - an arbitrary rope
+* right - an arbitrary rope
 
-Returns:
+# Return value
 
- `true` if `left <= right` in lexicographical order (regardless of their
+`true` if `left <= right` in lexicographical order (regardless of their
 structure), `false` otherwise
-*/
+"]
 fn le(left: rope, right: rope) -> bool {
     ret cmp(left, right) <= 0;
 }
 
-/*
-Function: lt
+#[doc = "
+# Arguments
 
-Parameters
-  left - an arbitrary rope
-  right - an arbitrary rope
+* left - an arbitrary rope
+* right - an arbitrary rope
 
-Returns:
+# Return value
 
- `true` if `left < right` in lexicographical order (regardless of their
+`true` if `left < right` in lexicographical order (regardless of their
 structure), `false` otherwise
-*/
+"]
 fn lt(left: rope, right: rope) -> bool {
     ret cmp(left, right) < 0;
 }
 
-/*
-Function: ge
+#[doc = "
+# Arguments
 
-Parameters
-  left - an arbitrary rope
-  right - an arbitrary rope
+* left - an arbitrary rope
+* right - an arbitrary rope
 
-Returns:
+# Return value
 
  `true` if `left >= right` in lexicographical order (regardless of their
 structure), `false` otherwise
-*/
+"]
 fn ge(left: rope, right: rope) -> bool {
     ret cmp(left, right) >= 0;
 }
 
-/*
-Function: gt
+#[doc = "
+# Arguments
 
-Parameters
-  left - an arbitrary rope
-  right - an arbitrary rope
+* left - an arbitrary rope
+* right - an arbitrary rope
 
-Returns:
+# Return value
 
- `true` if `left > right` in lexicographical order (regardless of their
+`true` if `left > right` in lexicographical order (regardless of their
 structure), `false` otherwise
-*/
+"]
 fn gt(left: rope, right: rope) -> bool {
     ret cmp(left, right) > 0;
 }
@@ -398,9 +362,7 @@ fn gt(left: rope, right: rope) -> bool {
 Section: Iterating
  */
 
-/*
-Function: loop_chars
-
+#[doc = "
 Loop through a rope, char by char
 
 While other mechanisms are available, this is generally the best manner
@@ -409,16 +371,17 @@ loop that iterates through the contents string by string (e.g. to print
 the contents of the rope or output it to the system), however,
 you should rather use `traverse_components`.
 
-Parameters:
-rope - A rope to traverse. It may be empty.
-it - A block to execute with each consecutive character of the rope.
-Return `true` to continue, `false` to stop.
+# Arguments
 
-Returns:
+* rope - A rope to traverse. It may be empty.
+* it - A block to execute with each consecutive character of the rope.
+       Return `true` to continue, `false` to stop.
+
+# Return value
 
 `true` If execution proceeded correctly, `false` if it was interrupted,
 that is if `it` returned `false` at any point.
- */
+"]
 fn loop_chars(rope: rope, it: fn(char) -> bool) -> bool {
    alt(rope) {
       node::empty { ret true }
@@ -426,15 +389,13 @@ fn loop_chars(rope: rope, it: fn(char) -> bool) -> bool {
    }
 }
 
-/*
-Function: iter_chars
-
+#[doc = "
 Loop through a rope, char by char, until the end.
 
-Parameters:
-rope - A rope to traverse. It may be empty
-it - A block to execute with each consecutive character of the rope.
- */
+# Arguments
+* rope - A rope to traverse. It may be empty
+* it - A block to execute with each consecutive character of the rope.
+"]
 fn iter_chars(rope: rope, it: fn(char)) {
     loop_chars(rope) {|x|
         it(x);
@@ -442,9 +403,7 @@ fn iter_chars(rope: rope, it: fn(char)) {
     };
 }
 
-/*
-Function: loop_leaves
-
+#[doc ="
 Loop through a rope, string by string
 
 While other mechanisms are available, this is generally the best manner of
@@ -455,17 +414,17 @@ a file, etc.. If you prefer a loop that iterates through the contents
 char by char (e.g. to search for a char), however, you should rather
 use `traverse`.
 
-Parameters:
+# Arguments
 
-rope - A rope to traverse. It may be empty
-it - A block to execute with each consecutive string component of the rope.
-Return `true` to continue, `false` to stop
+* rope - A rope to traverse. It may be empty
+* it - A block to execute with each consecutive string component of the rope.
+       Return `true` to continue, `false` to stop
 
-Returns:
+# Return value
 
 `true` If execution proceeded correctly, `false` if it was interrupted,
 that is if `it` returned `false` at any point.
- */
+"]
 fn loop_leaves(rope: rope, it: fn(node::leaf) -> bool) -> bool{
    alt(rope) {
       node::empty { ret true }
@@ -502,15 +461,17 @@ mod iterator {
  Section: Rope properties
  */
 
-/*
- Function: height
+#[doc ="
+Returns the height of the rope.
 
- Returns: The height of the rope, i.e. a bound on the number of
-operations which must be performed during a character access before
-finding the leaf in which a character is contained.
+The height of the rope is a bound on the number of operations which
+must be performed during a character access before finding the leaf in
+which a character is contained.
 
- Performance note: Constant time.
-*/
+# Performance note
+
+Constant time.
+"]
 fn height(rope: rope) -> uint {
    alt(rope) {
       node::empty    { ret 0u; }
@@ -520,13 +481,13 @@ fn height(rope: rope) -> uint {
 
 
 
-/*
- Function: char_len
+#[doc ="
+The number of character in the rope
 
- Returns: The number of character in the rope
+# Performance note
 
- Performance note: Constant time.
- */
+Constant time.
+"]
 pure fn char_len(rope: rope) -> uint {
    alt(rope) {
      node::empty           { ret 0u; }
@@ -534,14 +495,13 @@ pure fn char_len(rope: rope) -> uint {
    }
 }
 
-/*
- Function: char_len
+#[doc = "
+The number of bytes in the rope
 
- Returns: The number of bytes in the rope
+# Performance note
 
- Performance note: Constant time.
- FIXME: char or byte?
- */
+Constant time.
+"]
 pure fn byte_len(rope: rope) -> uint {
    alt(rope) {
      node::empty           { ret 0u; }
@@ -549,21 +509,22 @@ pure fn byte_len(rope: rope) -> uint {
    }
 }
 
-/*
- Function: char_at
+#[doc = "
+The character at position `pos`
 
- Parameters:
-  pos - A position in the rope
+# Arguments
 
- Returns: The character at position `pos`
+* pos - A position in the rope
 
- Safety notes: The function will fail if `pos`
- is not a valid position in the rope.
+# Safety notes
 
- Performance note: This function executes in a time
- proportional to the height of the rope + the (bounded)
- length of the largest leaf.
- */
+The function will fail if `pos` is not a valid position in the rope.
+
+# Performance note
+
+This function executes in a time proportional to the height of the
+rope + the (bounded) length of the largest leaf.
+"]
 fn char_at(rope: rope, pos: uint) -> char {
    alt(rope) {
       node::empty { fail }
@@ -577,140 +538,84 @@ fn char_at(rope: rope, pos: uint) -> char {
 */
 mod node {
 
-    /*
-     Enum: node::root
-
-     Implementation of type `rope`
-
-     Constants:
-       empty   - An empty rope
-       content - A non-empty rope
-    */
+    #[doc = "Implementation of type `rope`"]
     enum root {
+        #[doc = "An empty rope"]
         empty,
+        #[doc = "A non-empty rope"]
         content(@node),
     }
 
-    /*
-     Struct: node::leaf
+    #[doc = "
+    A text component in a rope.
 
-     A text component in a rope.
+    This is actually a slice in a rope, so as to ensure maximal sharing.
 
-     This is actually a slice in a rope, so as to ensure maximal sharing.
-    */
+    # Fields
+
+    * byte_offset = The number of bytes skippen in `content`
+    * byte_len - The number of bytes of `content` to use
+    * char_len - The number of chars in the leaf.
+    * content - Contents of the leaf.
+
+        Note that we can have `char_len < str::char_len(content)`, if
+        this leaf is only a subset of the string. Also note that the
+        string can be shared between several ropes, e.g. for indexing
+        purposes.
+    "]
     type leaf = {
-
-    /*
-     Field: byte_offset
-
-     The number of bytes skipped in `content`
-    */
-    byte_offset: uint,
-
-    /*
-     Field: byte_len
-
-     The number of bytes of `content` to use
-    */
-    byte_len:    uint,
-
-    /*
-     Field: char_len
-
-
-     The number of chars in the leaf.
-    */
-    char_len:   uint,
-
-    /*
-    Field: content
-
-    Contents of the leaf.
-
-    Note that we can have `char_len < str::char_len(content)`, if this
-    leaf is only a subset of the string. Also note that the string
-    can be shared between several ropes, e.g. for indexing purposes.
-    */
-    content:    @str
+        byte_offset: uint,
+        byte_len:    uint,
+        char_len:   uint,
+        content:    @str
     };
 
+    #[doc = "
+    A node obtained from the concatenation of two other nodes
 
-    /*
-     Struct node::concat
+    # Fields
 
-     A node obtained from the concatenation of two other nodes
-    */
-    type concat = {
-
-        /*
-        Field: left
-
-        The node containing the beginning of the text.
-        */
-        left:     @node,//TODO: Perhaps a `vec` instead of `left`/`right`
-
-        /*
-        Field: right
-
-        The node containing the end of the text.
-        */
-        right:    @node,
-
-        /*
-        Field: char_len
-
-        The number of chars contained in all leaves of this node.
-        */
-        char_len: uint,
-
-        /*
-        Field: byte_len
-
-        The number of bytes in the subrope.
+    * left - The node containing the beginning of the text.
+    * right - The node containing the end of the text.
+    * char_len - The number of chars contained in all leaves of this node.
+    * byte_len - The number of bytes in the subrope.
 
         Used to pre-allocate the correct amount of storage for serialization.
-        */
+
+    * height - Height of the subrope.
+
+        Used for rebalancing and to allocate stacks for traversals.
+    "]
+    type concat = {
+        left:     @node,//TODO: Perhaps a `vec` instead of `left`/`right`
+        right:    @node,
+        char_len: uint,
         byte_len: uint,
-
-        /*
-        Field: height
-
-        Height of the subrope.
-
-        Used for rebalancing and to allocate stacks for
-        traversals.
-        */
         height:   uint
     };
 
-    /*
-    Enum: node::node
-
-    leaf - A leaf consisting in a `str`
-    concat - The concatenation of two ropes
-    */
     enum node {
+        #[doc = "A leaf consisting in a `str`"]
         leaf(leaf),
+        #[doc = "The concatenation of two ropes"]
         concat(concat),
     }
 
-    /*
+    #[doc = "
     The maximal number of chars that _should_ be permitted in a single node.
 
     This is not a strict value
-     */
+    "]
     const hint_max_leaf_char_len: uint = 256u;
 
-    /*
+    #[doc = "
     The maximal height that _should_ be permitted in a tree.
 
     This is not a strict value
-     */
+    "]
     const hint_max_node_height:   uint = 16u;
 
-    /*
-    Function: of_str
-
+    #[doc = "
     Adopt a string as a node.
 
     If the string is longer than `max_leaf_char_len`, it is
@@ -719,53 +624,54 @@ mod node {
 
     Performance note: The complexity of this function is linear in
     the length of `str`.
-     */
+    "]
     fn of_str(str: @str) -> @node {
         ret of_substr(str, 0u, str::len(*str));
     }
 
-    /*
-    Function: of_substr
-
+    #[doc ="
     Adopt a slice of a string as a node.
 
     If the slice is longer than `max_leaf_char_len`, it is logically split
     between as many leaves as necessary. Regardless, the string itself
     is not copied
 
-    Parameters:
-    byte_start - The byte offset where the slice of `str` starts.
-    byte_len   - The number of bytes from `str` to use.
+    # Arguments
 
-    Safety note:
-    - Behavior is undefined if `byte_start` or `byte_len` do not represent
-     valid positions in `str`
-     */
+    * byte_start - The byte offset where the slice of `str` starts.
+    * byte_len   - The number of bytes from `str` to use.
+
+    # Safety note
+
+    Behavior is undefined if `byte_start` or `byte_len` do not represent
+    valid positions in `str`
+    "]
     fn of_substr(str: @str, byte_start: uint, byte_len: uint) -> @node {
         ret of_substr_unsafer(str, byte_start, byte_len,
                               str::count_chars(*str, byte_start, byte_len));
     }
 
-    /*
-    Function: of_substr_unsafer
-
+    #[doc = "
     Adopt a slice of a string as a node.
 
     If the slice is longer than `max_leaf_char_len`, it is logically split
     between as many leaves as necessary. Regardless, the string itself
     is not copied
 
-    byte_start - The byte offset where the slice of `str` starts.
-    byte_len   - The number of bytes from `str` to use.
-    char_len   - The number of chars in `str` in the interval
-          [byte_start, byte_start+byte_len(
+    # Arguments
 
-    Safety note:
-    - Behavior is undefined if `byte_start` or `byte_len` do not represent
-     valid positions in `str`
-    - Behavior is undefined if `char_len` does not accurately represent the
-     number of chars between byte_start and byte_start+byte_len
-    */
+    * byte_start - The byte offset where the slice of `str` starts.
+    * byte_len - The number of bytes from `str` to use.
+    * char_len - The number of chars in `str` in the interval
+                 [byte_start, byte_start+byte_len(
+
+    # Safety notes
+
+    * Behavior is undefined if `byte_start` or `byte_len` do not represent
+      valid positions in `str`
+    * Behavior is undefined if `char_len` does not accurately represent the
+      number of chars between byte_start and byte_start+byte_len
+    "]
     fn of_substr_unsafer(str: @str, byte_start: uint, byte_len: uint,
                           char_len: uint) -> @node {
         assert(byte_start + byte_len <= str::len(*str));
@@ -838,16 +744,14 @@ mod node {
         }
     }
 
-
-    /*
-    Function: tree_from_forest_destructive
-
+    #[doc ="
     Concatenate a forest of nodes into one tree.
 
-    Parameters:
-    forest - The forest. This vector is progressively rewritten during
-    execution and should be discarded as meaningless afterwards.
-    */
+    # Arguments
+
+    * forest - The forest. This vector is progressively rewritten during
+               execution and should be discarded as meaningless afterwards.
+    "]
     fn tree_from_forest_destructive(forest: [mutable @node]) -> @node {
         let i = 0u;
         let len = vec::len(forest);
@@ -917,13 +821,13 @@ mod node {
         ret str;
     }
 
-    /*
-    Function: flatten
-
+    #[doc ="
     Replace a subtree by a single leaf with the same contents.
 
-    Performance note: This function executes in linear time.
-     */
+    * Performance note
+
+    This function executes in linear time.
+    "]
     fn flatten(node: @node) -> @node unsafe {
         alt(*node) {
           leaf(_) { ret node }
@@ -938,21 +842,21 @@ mod node {
         }
     }
 
-    /*
-    Function: bal
-
+    #[doc ="
     Balance a node.
 
-    Algorithm:
-    - if the node height is smaller than `hint_max_node_height`, do nothing
-    - otherwise, gather all leaves as a forest, rebuild a balanced node,
-         concatenating small leaves along the way
+    # Algorithm
 
-    Returns:
-    - `option::none` if no transformation happened
-    - `option::some(x)` otherwise, in which case `x` has the same contents
+    * if the node height is smaller than `hint_max_node_height`, do nothing
+    * otherwise, gather all leaves as a forest, rebuild a balanced node,
+      concatenating small leaves along the way
+
+    # Return value
+
+    * `option::none` if no transformation happened
+    * `option::some(x)` otherwise, in which case `x` has the same contents
        as `node` bot lower height and/or fragmentation.
-    */
+    "]
     fn bal(node: @node) -> option<@node> {
         if height(node) < hint_max_node_height { ret option::none; }
         //1. Gather all leaves as a forest
@@ -970,24 +874,25 @@ mod node {
 
     }
 
-    /*
-    Function: sub_bytes
-
+    #[doc ="
     Compute the subnode of a node.
 
-    Parameters:
-    node        - A node
-    byte_offset - A byte offset in `node`
-    byte_len    - The number of bytes to return
+    # Arguments
 
-    Performance notes:
-    - this function performs no copying;
-    - this function executes in a time proportional to the height of `node`.
+    * node        - A node
+    * byte_offset - A byte offset in `node`
+    * byte_len    - The number of bytes to return
 
-    Safety notes:
-    - this function fails if `byte_offset` or `byte_len` do not represent
+    # Performance notes
+
+    * this function performs no copying;
+    * this function executes in a time proportional to the height of `node`.
+
+    # Safety notes
+
+    This function fails if `byte_offset` or `byte_len` do not represent
     valid positions in `node`.
-    */
+    "]
     fn sub_bytes(node: @node, byte_offset: uint, byte_len: uint) -> @node {
         let node        = node;
         let byte_offset = byte_offset;
@@ -1031,24 +936,25 @@ mod node {
         core::unreachable();
     }
 
-    /*
-    Function: sub_chars
-
+    #[doc ="
     Compute the subnode of a node.
 
-    Parameters:
-    node        - A node
-    char_offset - A char offset in `node`
-    char_len    - The number of chars to return
+    # Arguments
 
-    Performance notes:
-    - this function performs no copying;
-    - this function executes in a time proportional to the height of `node`.
+    * node        - A node
+    * char_offset - A char offset in `node`
+    * char_len    - The number of chars to return
 
-    Safety notes:
-    - this function fails if `char_offset` or `char_len` do not represent
+    # Performance notes
+
+    * this function performs no copying;
+    * this function executes in a time proportional to the height of `node`.
+
+    # Safety notes
+
+    This function fails if `char_offset` or `char_len` do not represent
     valid positions in `node`.
-    */
+    "]
     fn sub_chars(node: @node, char_offset: uint, char_len: uint) -> @node {
         let node        = node;
         let char_offset = char_offset;
@@ -1144,22 +1050,20 @@ mod node {
         })
     }
 
-    /*
-    Function: loop_leaves
-
+    #[doc ="
     Loop through a node, leaf by leaf
 
-    Parameters:
+    # Arguments
 
-    rope - A node to traverse.
-    it - A block to execute with each consecutive leaf of the node.
-    Return `true` to continue, `false` to stop
+    * rope - A node to traverse.
+    * it - A block to execute with each consecutive leaf of the node.
+           Return `true` to continue, `false` to stop
 
-    Returns:
+    # Arguments
 
     `true` If execution proceeded correctly, `false` if it was interrupted,
     that is if `it` returned `false` at any point.
-    */
+    "]
     fn loop_leaves(node: @node, it: fn(leaf) -> bool) -> bool{
         let current = node;
         while true {
@@ -1179,21 +1083,23 @@ mod node {
         core::unreachable();
     }
 
-    /*
-    Function: char_at
+    #[doc ="
+    # Arguments
 
-    Parameters:
-    pos - A position in the rope
+    * pos - A position in the rope
 
-    Returns: The character at position `pos`
+    # Return value
 
-    Safety notes: The function will fail if `pos`
-    is not a valid position in the rope.
+    The character at position `pos`
+
+    # Safety notes
+
+    The function will fail if `pos` is not a valid position in the rope.
 
     Performance note: This function executes in a time
     proportional to the height of the rope + the (bounded)
     length of the largest leaf.
-    */
+    "]
     fn char_at(node: @node, pos: uint) -> char {
         let node    = node;
         let pos     = pos;

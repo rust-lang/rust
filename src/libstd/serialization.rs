@@ -1,8 +1,4 @@
-/*
-Module: serialization
-
-Support code for serialization.
-*/
+#[doc = "Support code for serialization."];
 
 import list::list;
 import ebml::writer;

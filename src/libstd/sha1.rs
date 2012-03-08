@@ -1,18 +1,16 @@
-/*
-Module: sha1
-
+#[doc ="
 An implementation of the SHA-1 cryptographic hash.
 
-First create a <sha1> object using the <mk_sha1> constructor, then
-feed it input using the <input> or <input_str> methods, which may be
+First create a `sha1` object using the `mk_sha1` constructor, then
+feed it input using the `input` or `input_str` methods, which may be
 called any number of times.
 
 After the entire input has been fed to the hash read the result using
-the <result> or <result_str> methods.
+the `result` or `result_str` methods.
 
-The <sha1> object may be reused to create multiple hashes by calling
-the <reset> method.
-*/
+The `sha1` object may be reused to create multiple hashes by calling
+the `reset` method.
+"];
 
 /*
  * A SHA-1 implementation derived from Paul E. Jones's reference
@@ -22,49 +20,25 @@ the <reset> method.
 export sha1;
 export mk_sha1;
 
-/* Section: Types */
-
-/*
-Iface: sha1
-
-The SHA-1 interface
-*/
+#[doc = "The SHA-1 interface"]
 iface sha1 {
-    /*
-    Method: input
-
-    Provide message input as bytes
-    */
+    #[doc = "Provide message input as bytes"]
     fn input([u8]);
-    /*
-    Method: input_str
-
-    Provide message input as string
-    */
+    #[doc = "Provide message input as string"]
     fn input_str(str);
-    /*
-    Method: result
-
+    #[doc = "
     Read the digest as a vector of 20 bytes. After calling this no further
     input may be provided until reset is called.
-    */
+    "]
     fn result() -> [u8];
-    /*
-    Method: result_str
-
+    #[doc = "
     Read the digest as a hex string. After calling this no further
     input may be provided until reset is called.
-    */
+    "]
     fn result_str() -> str;
-    /*
-    Method: reset
-
-    Reset the SHA-1 state for reuse
-    */
+    #[doc = "Reset the SHA-1 state for reuse"]
     fn reset();
 }
-
-/* Section: Operations */
 
 // Some unexported constants
 const digest_buf_len: uint = 5u;
@@ -76,11 +50,7 @@ const k2: u32 = 0x8F1BBCDCu32;
 const k3: u32 = 0xCA62C1D6u32;
 
 
-/*
-Function: mk_sha1
-
-Construct a <sha1> object
-*/
+#[doc = "Construct a `sha` object"]
 fn mk_sha1() -> sha1 {
     type sha1state =
         {h: [mutable u32],

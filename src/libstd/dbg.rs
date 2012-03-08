@@ -1,12 +1,4 @@
-
-
-
-/**
- * Unsafe debugging functions for inspecting values.
- *
- * Your RUST_LOG environment variable must contain "stdlib" for any debug
- * logging.
- */
+#[doc = "Unsafe debugging functions for inspecting values."];
 
 #[abi = "cdecl"]
 native mod rustrt {

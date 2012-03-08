@@ -1,6 +1,4 @@
-/*
-Module: c_vec
-
+#[doc = "
 Library to interface with chunks of memory allocated in C.
 
 It is often desirable to safely interface with memory allocated from C,
@@ -25,8 +23,7 @@ itself around, the c_vec could be garbage collected, and the memory within
 could be destroyed.  There are legitimate uses for the pointer elimination
 form -- for instance, to pass memory back into C -- but great care must be
 taken to ensure that a reference to the c_vec::t is still held if needed.
-
- */
+"];
 
 export t;
 export create, create_with_dtor;
@@ -34,14 +31,12 @@ export get, set;
 export len;
 export ptr;
 
-/*
- Type: t
+#[doc = "
+The type representing a native chunk of memory
 
- The type representing a native chunk of memory.  Wrapped in a enum for
- opacity; FIXME #818 when it is possible to have truly opaque types, this
- should be revisited.
- */
-
+Wrapped in a enum for opacity; FIXME #818 when it is possible to have
+truly opaque types, this should be revisited.
+"]
 enum t<T> {
     t({ base: *mutable T, len: uint, rsrc: @dtor_res})
 }
@@ -57,16 +52,14 @@ resource dtor_res(dtor: option<fn@()>) {
  Section: Introduction forms
  */
 
-/*
-Function: create
-
+#[doc = "
 Create a c_vec::t from a native buffer with a given length.
 
-Parameters:
+# Arguments
 
-base - A native pointer to a buffer
-len - The number of elements in the buffer
-*/
+* base - A native pointer to a buffer
+* len - The number of elements in the buffer
+"]
 unsafe fn create<T>(base: *mutable T, len: uint) -> t<T> {
     ret t({base: base,
            len: len,
@@ -74,19 +67,17 @@ unsafe fn create<T>(base: *mutable T, len: uint) -> t<T> {
           });
 }
 
-/*
-Function: create_with_dtor
-
+#[doc = "
 Create a c_vec::t from a native buffer, with a given length,
 and a function to run upon destruction.
 
-Parameters:
+# Arguments
 
-base - A native pointer to a buffer
-len - The number of elements in the buffer
-dtor - A function to run when the value is destructed, useful
-       for freeing the buffer, etc.
-*/
+* base - A native pointer to a buffer
+* len - The number of elements in the buffer
+* dtor - A function to run when the value is destructed, useful
+         for freeing the buffer, etc.
+"]
 unsafe fn create_with_dtor<T>(base: *mutable T, len: uint, dtor: fn@())
   -> t<T> {
     ret t({base: base,
@@ -99,29 +90,21 @@ unsafe fn create_with_dtor<T>(base: *mutable T, len: uint, dtor: fn@())
  Section: Operations
  */
 
-/*
-Function: get
-
+#[doc = "
 Retrieves an element at a given index
 
-Failure:
-
-If `ofs` is greater or equal to the length of the vector
-*/
+Fails if `ofs` is greater or equal to the length of the vector
+"]
 fn get<T: copy>(t: t<T>, ofs: uint) -> T {
     assert ofs < len(t);
     ret unsafe { *ptr::mut_offset((*t).base, ofs) };
 }
 
-/*
-Function: set
-
+#[doc = "
 Sets the value of an element at a given index
 
-Failure:
-
-If `ofs` is greater or equal to the length of the vector
-*/
+Fails if `ofs` is greater or equal to the length of the vector
+"]
 fn set<T: copy>(t: t<T>, ofs: uint, v: T) {
     assert ofs < len(t);
     unsafe { *ptr::mut_offset((*t).base, ofs) = v };
@@ -131,20 +114,12 @@ fn set<T: copy>(t: t<T>, ofs: uint, v: T) {
  Section: Elimination forms
  */
 
-/*
-Function: len
-
-Returns the length of the vector
-*/
+#[doc = "Returns the length of the vector"]
 fn len<T>(t: t<T>) -> uint {
     ret (*t).len;
 }
 
-/*
-Function: ptr
-
-Returns a pointer to the first element of the vector
-*/
+#[doc = "Returns a pointer to the first element of the vector"]
 unsafe fn ptr<T>(t: t<T>) -> *mutable T {
     ret (*t).base;
 }

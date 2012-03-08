@@ -1,3 +1,5 @@
+#[doc(hidden)];
+
 // Support code for rustc's built in test runner generator. Currently,
 // none of this is meant for users. It is intended to support the
 // simplest interface possible for representing and running tests

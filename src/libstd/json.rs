@@ -1,6 +1,8 @@
 // Rust JSON serialization library
 // Copyright (c) 2011 Google Inc.
 
+#[doc = "json serialization"];
+
 import result::{ok, err};
 import io;
 import io::{reader_util, writer_util};
@@ -22,23 +24,13 @@ export list;
 export dict;
 export null;
 
-/*
-Tag: json
-
-Represents a json value.
-*/
+#[doc = "Represents a json value"]
 enum json {
-    /* Variant: num */
     num(float),
-    /* Variant: string */
     string(str),
-    /* Variant: boolean */
     boolean(bool),
-    /* Variant: list */
     list([json]),
-    /* Variant: dict */
     dict(map::hashmap<str,json>),
-    /* Variant: null */
     null,
 }
 
@@ -48,11 +40,7 @@ type error = {
     msg: str,
 };
 
-/*
-Function: to_writer
-
-Serializes a json value into a io::writer.
-*/
+#[doc = "Serializes a json value into a io::writer"]
 fn to_writer(wr: io::writer, j: json) {
     alt j {
       num(n) { wr.write_str(float::to_str(n, 6u)); }
@@ -114,11 +102,7 @@ fn to_writer(wr: io::writer, j: json) {
     }
 }
 
-/*
-Function: to_str
-
-Serializes a json value into a string.
-*/
+#[doc = "Serializes a json value into a string"]
 fn to_str(j: json) -> str {
     io::with_str_writer { |wr| to_writer(wr, j) }
 }
@@ -469,12 +453,7 @@ impl parser for parser {
     }
 }
 
-/*
-Function: from_reader
-
-Deserializes a json value from an io::reader.
-*/
-
+#[doc = "Deserializes a json value from an io::reader"]
 fn from_reader(rdr: io::reader) -> result::t<json, error> {
     let parser = {
         rdr: rdr,
@@ -486,20 +465,12 @@ fn from_reader(rdr: io::reader) -> result::t<json, error> {
     parser.parse()
 }
 
-/*
-Function: from_str
-
-Deserializes a json value from a string.
-*/
+#[doc = "Deserializes a json value from a string"]
 fn from_str(s: str) -> result::t<json, error> {
     io::with_str_reader(s, from_reader)
 }
 
-/*
-Function: eq
-
-Test if two json values are equal.
-*/
+#[doc = "Test if two json values are equal"]
 fn eq(value0: json, value1: json) -> bool {
     alt (value0, value1) {
       (num(f0), num(f1)) { f0 == f1 }

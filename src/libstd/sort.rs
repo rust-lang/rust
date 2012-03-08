@@ -1,25 +1,18 @@
-/*
-Module: sort
-
-Sorting methods
-*/
+#[doc = "Sorting methods"];
 import vec::len;
 
 export merge_sort;
 export quick_sort;
 export quick_sort3;
 
-/* Type: le */
 type le<T> = fn(T, T) -> bool;
 
-/*
-Function: merge_sort
-
+#[doc = "
 Merge sort. Returns a new vector containing the sorted list.
 
 Has worst case O(n log n) performance, best case O(n), but
 is not space efficient. This is a stable sort.
-*/
+"]
 fn merge_sort<T: copy>(le: le<T>, v: [const T]) -> [T] {
     type slice = (uint, uint);
 
@@ -88,14 +81,12 @@ fn qsort<T: copy>(compare_func: le<T>, arr: [mutable T], left: uint,
     }
 }
 
-/*
-Function: quick_sort
-
+#[doc = "
 Quicksort. Sorts a mutable vector in place.
 
 Has worst case O(n^2) performance, average case O(n log n).
 This is an unstable sort.
-*/
+"]
 fn quick_sort<T: copy>(compare_func: le<T>, arr: [mutable T]) {
     if len::<T>(arr) == 0u { ret; }
     qsort::<T>(compare_func, arr, 0u, len::<T>(arr) - 1u);
@@ -150,18 +141,16 @@ fn qsort3<T: copy>(compare_func_lt: le<T>, compare_func_eq: le<T>,
 }
 
 // FIXME: This should take lt and eq types
-/*
-Function: quick_sort3
-
+#[doc = "
 Fancy quicksort. Sorts a mutable vector in place.
 
-Based on algorithm presented by Sedgewick and Bentley
-<http://www.cs.princeton.edu/~rs/talks/QuicksortIsOptimal.pdf>.
+Based on algorithm presented by [Sedgewick and Bentley]
+(http://www.cs.princeton.edu/~rs/talks/QuicksortIsOptimal.pdf).
 According to these slides this is the algorithm of choice for
 'randomly ordered keys, abstract compare' & 'small number of key values'.
 
 This is an unstable sort.
-*/
+"]
 fn quick_sort3<T: copy>(compare_func_lt: le<T>, compare_func_eq: le<T>,
                        arr: [mutable T]) {
     if len::<T>(arr) == 0u { ret; }

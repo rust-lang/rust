@@ -1,8 +1,4 @@
-/*
-Module: run
-
-Process spawning
-*/
+#[doc ="Process spawning"];
 import option::{some, none};
 import str::sbuf;
 import ctypes::{fd_t, pid_t, void};
@@ -21,87 +17,51 @@ native mod rustrt {
         -> pid_t;
 }
 
-/* Section: Types */
-
-/*
-Iface: program
-
-A value representing a child process
-*/
+#[doc ="A value representing a child process"]
 iface program {
-    /*
-    Method: get_id
-
-    Returns the process id of the program
-    */
+    #[doc ="Returns the process id of the program"]
     fn get_id() -> pid_t;
 
-    /*
-    Method: input
-
-    Returns an io::writer that can be used to write to stdin
-    */
+    #[doc ="Returns an io::writer that can be used to write to stdin"]
     fn input() -> io::writer;
 
-    /*
-    Method: output
-
-    Returns an io::reader that can be used to read from stdout
-    */
+    #[doc ="Returns an io::reader that can be used to read from stdout"]
     fn output() -> io::reader;
 
-    /*
-    Method: err
-
-    Returns an io::reader that can be used to read from stderr
-    */
+    #[doc ="Returns an io::reader that can be used to read from stderr"]
     fn err() -> io::reader;
 
-    /*
-    Method: close_input
-
-    Closes the handle to the child processes standard input
-    */
+    #[doc = "Closes the handle to the child processes standard input"]
     fn close_input();
 
-    /*
-    Method: finish
-
+    #[doc = "
     Waits for the child process to terminate. Closes the handle
     to stdin if necessary.
-    */
+    "]
     fn finish() -> int;
 
-    /*
-    Method: destroy
-
-    Closes open handles
-    */
+    #[doc ="Closes open handles"]
     fn destroy();
 }
 
 
-/* Section: Operations */
-
-/*
-Function: spawn_process
-
+#[doc = "
 Run a program, providing stdin, stdout and stderr handles
 
-Parameters:
+# Arguments
 
-prog - The path to an executable
-args - Vector of arguments to pass to the child process
-env - optional env-modification for child
-dir - optional dir to run child in (default current dir)
-in_fd - A file descriptor for the child to use as std input
-out_fd - A file descriptor for the child to use as std output
-err_fd - A file descriptor for the child to use as std error
+* prog - The path to an executable
+* args - Vector of arguments to pass to the child process
+* env - optional env-modification for child
+* dir - optional dir to run child in (default current dir)
+* in_fd - A file descriptor for the child to use as std input
+* out_fd - A file descriptor for the child to use as std output
+* err_fd - A file descriptor for the child to use as std error
 
-Returns:
+# Return value
 
 The process id of the spawned process
-*/
+"]
 fn spawn_process(prog: str, args: [str],
                  env: option<[(str,str)]>,
                  dir: option<str>,
@@ -188,43 +148,39 @@ fn with_dirp<T>(d: option<str>,
     }
 }
 
-/*
-Function: run_program
-
+#[doc ="
 Spawns a process and waits for it to terminate
 
-Parameters:
+# Arguments
 
-prog - The path to an executable
-args - Vector of arguments to pass to the child process
+* prog - The path to an executable
+* args - Vector of arguments to pass to the child process
 
-Returns:
+# Return value
 
 The process id
-*/
+"]
 fn run_program(prog: str, args: [str]) -> int {
     ret waitpid(spawn_process(prog, args, none, none,
                               0i32, 0i32, 0i32));
 }
 
-/*
-Function: start_program
-
+#[doc ="
 Spawns a process and returns a program
 
 The returned value is a boxed resource containing a <program> object that can
 be used for sending and recieving data over the standard file descriptors.
 The resource will ensure that file descriptors are closed properly.
 
-Parameters:
+# Arguments
 
-prog - The path to an executable
-args - Vector of arguments to pass to the child process
+* prog - The path to an executable
+* args - Vector of arguments to pass to the child process
 
-Returns:
+# Return value
 
 A boxed resource of <program>
-*/
+"]
 fn start_program(prog: str, args: [str]) -> program {
     let pipe_input = os::pipe();
     let pipe_output = os::pipe();
@@ -291,22 +247,20 @@ fn read_all(rd: io::reader) -> str {
     ret buf;
 }
 
-/*
-Function: program_output
-
+#[doc ="
 Spawns a process, waits for it to exit, and returns the exit code, and
 contents of stdout and stderr.
 
-Parameters:
+# Arguments
 
-prog - The path to an executable
-args - Vector of arguments to pass to the child process
+* prog - The path to an executable
+* args - Vector of arguments to pass to the child process
 
-Returns:
+# Return value
 
 A record, {status: int, out: str, err: str} containing the exit code,
 the contents of stdout and the contents of stderr.
-*/
+"]
 fn program_output(prog: str, args: [str]) ->
    {status: int, out: str, err: str} {
     let pr = start_program(prog, args);
@@ -316,11 +270,7 @@ fn program_output(prog: str, args: [str]) ->
     ret {status: pr.finish(), out: out, err: err};
 }
 
-/*
-Function: waitpid
-
-Waits for a process to exit and returns the exit code
-*/
+#[doc ="Waits for a process to exit and returns the exit code"]
 fn waitpid(pid: pid_t) -> int {
     ret waitpid_os(pid);
 

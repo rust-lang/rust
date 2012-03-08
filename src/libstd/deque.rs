@@ -1,40 +1,18 @@
+#[doc = "A deque. Untested as of yet. Likely buggy"];
+
 import option::{some, none};
 
-/*
-Module: deque
-
-A deque.  Untested as of yet.  Likely buggy.
-*/
-
-/*
-Iface: t
-*/
 iface t<T> {
-    // Method: size
     fn size() -> uint;
-    // Method: add_front
     fn add_front(T);
-    // Method: add_back
     fn add_back(T);
-    // Method: pop_front
     fn pop_front() -> T;
-    // Method: pop_back
     fn pop_back() -> T;
-    // Method: peek_front
     fn peek_front() -> T;
-    // Method: peek_back
     fn peek_back() -> T;
-    // Method: get
     fn get(int) -> T;
 }
 
-/*
-Section: Functions
-*/
-
-/*
-Function: create
-*/
 // FIXME eventually, a proper datatype plus an exported impl would be
 // preferrable
 fn create<T: copy>() -> t<T> {
