@@ -136,8 +136,7 @@ fn fndoc_from_fn(
         item: itemdoc,
         args: argdocs_from_args(decl.inputs),
         return: {
-            desc: none,
-            ty: none
+            desc: none
         },
         failure: none,
         sig: none
@@ -253,8 +252,7 @@ fn ifacedoc_from_iface(
                 desc: none,
                 args: argdocs_from_args(method.decl.inputs),
                 return: {
-                    desc: none,
-                    ty: none
+                    desc: none
                 },
                 failure: none,
                 sig: none
@@ -296,8 +294,7 @@ fn impldoc_from_impl(
                 desc: none,
                 args: argdocs_from_args(method.decl.inputs),
                 return: {
-                    desc: none,
-                    ty: none
+                    desc: none
                 },
                 failure: none,
                 sig: none

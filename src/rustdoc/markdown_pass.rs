@@ -531,19 +531,10 @@ fn write_return(
     ctxt: ctxt,
     doc: doc::retdoc
 ) {
-    alt doc.ty {
-      some(ty) {
-        ctxt.w.write_str(#fmt("Returns `%s`", ty));
-        alt doc.desc {
-          some(d) {
-            ctxt.w.write_line(#fmt(" - %s", d));
-            ctxt.w.write_line("");
-          }
-          none {
-            ctxt.w.write_line("");
-            ctxt.w.write_line("");
-          }
-        }
+    alt doc.desc {
+      some(d) {
+        ctxt.w.write_line(#fmt("Returns - %s", d));
+        ctxt.w.write_line("");
       }
       none { }
     }
@@ -551,17 +542,18 @@ fn write_return(
 
 #[test]
 fn should_write_return_type_on_new_line() {
-    let markdown = test::render("fn a() -> int { }");
-    assert str::contains(markdown, "\nReturns `int`");
+    let markdown = test::render(
+        "#[doc(return = \"test\")] fn a() -> int { }");
+    assert str::contains(markdown, "\nReturns - test");
 }
 
 #[test]
 fn should_write_blank_line_between_return_type_and_next_header() {
     let markdown = test::render(
-        "fn a() -> int { } \
+        "#[doc(return = \"test\")] fn a() -> int { } \
          fn b() -> int { }"
     );
-    assert str::contains(markdown, "Returns `int`\n\n##");
+    assert str::contains(markdown, "Returns - test\n\n##");
 }
 
 #[test]
@@ -576,14 +568,6 @@ fn should_write_blank_line_after_return_description() {
         "#[doc(return = \"blorp\")] fn a() -> int { }"
     );
     assert str::contains(markdown, "blorp\n\n");
-}
-
-#[test]
-fn should_write_return_description_on_same_line_as_type() {
-    let markdown = test::render(
-        "#[doc(return = \"blorp\")] fn a() -> int { }"
-    );
-    assert str::contains(markdown, "Returns `int` - blorp");
 }
 
 fn write_failure(ctxt: ctxt, str: option<str>) {
@@ -823,8 +807,8 @@ fn should_not_write_iface_method_arguments_if_none() {
 #[test]
 fn should_write_iface_method_return_info() {
     let markdown = test::render(
-        "iface a { fn a() -> int; }");
-    assert str::contains(markdown, "Returns `int`");
+        "iface a { #[doc(return = \"test\")] fn a() -> int; }");
+    assert str::contains(markdown, "Returns - test");
 }
 
 #[test]
@@ -905,8 +889,8 @@ fn should_not_write_impl_method_arguments_if_none() {
 #[test]
 fn should_write_impl_method_return_info() {
     let markdown = test::render(
-        "impl a for int { fn a() -> int { } }");
-    assert str::contains(markdown, "Returns `int`");
+        "impl a for int { #[doc(return = \"test\")] fn a() -> int { } }");
+    assert str::contains(markdown, "Returns - test");
 }
 
 #[test]

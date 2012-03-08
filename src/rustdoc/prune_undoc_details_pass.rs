@@ -31,8 +31,7 @@ fn fold_fn(
     let doc = fold::default_seq_fold_fn(fold, doc);
 
     {
-        args: prune_args(doc.args),
-        return: prune_return(doc.return)
+        args: prune_args(doc.args)
         with doc
     }
 }
@@ -47,33 +46,10 @@ fn prune_args(docs: [doc::argdoc]) -> [doc::argdoc] {
     }
 }
 
-fn prune_return(doc: doc::retdoc) -> doc::retdoc {
-    {
-        ty: if option::is_some(doc.desc) {
-            doc.ty
-        } else {
-            none
-        }
-        with doc
-    }
-}
-
 #[test]
 fn should_elide_undocumented_arguments() {
     let doc = test::mk_doc("#[doc = \"hey\"] fn a(b: int) { }");
     assert vec::is_empty(doc.cratemod().fns()[0].args);
-}
-
-#[test]
-fn should_elide_undocumented_return_values() {
-    let source = "#[doc = \"fonz\"] fn a() -> int { }";
-    astsrv::from_str(source) {|srv|
-        let doc = extract::from_srv(srv, "");
-        let doc = tystr_pass::mk_pass().f(srv, doc);
-        let doc = attr_pass::mk_pass().f(srv, doc);
-        let doc = run(srv, doc);
-        assert doc.cratemod().fns()[0].return.ty == none;
-    }
 }
 
 fn fold_res(
@@ -110,8 +86,7 @@ fn fold_iface(
 fn prune_methods(docs: [doc::methoddoc]) -> [doc::methoddoc] {
     par::anymap(docs) {|doc|
         {
-            args: prune_args(doc.args),
-            return: prune_return(doc.return)
+            args: prune_args(doc.args)
             with doc
         }
     }
@@ -121,12 +96,6 @@ fn prune_methods(docs: [doc::methoddoc]) -> [doc::methoddoc] {
 fn should_elide_undocumented_iface_method_args() {
     let doc = test::mk_doc("#[doc = \"hey\"] iface i { fn a(); }");
     assert vec::is_empty(doc.cratemod().ifaces()[0].methods[0].args);
-}
-
-#[test]
-fn should_elide_undocumented_iface_method_return_values() {
-    let doc = test::mk_doc("#[doc = \"hey\"] iface i { fn a() -> int; }");
-    assert doc.cratemod().ifaces()[0].methods[0].return.ty == none;
 }
 
 fn fold_impl(
@@ -146,13 +115,6 @@ fn should_elide_undocumented_impl_method_args() {
     let doc = test::mk_doc(
         "#[doc = \"hey\"] impl i for int { fn a(b: bool) { } }");
     assert vec::is_empty(doc.cratemod().impls()[0].methods[0].args);
-}
-
-#[test]
-fn should_elide_undocumented_impl_method_return_values() {
-    let doc = test::mk_doc(
-        "#[doc = \"hey\"] impl i for int { fn a() -> int { } }");
-    assert doc.cratemod().impls()[0].methods[0].return.ty == none;
 }
 
 #[cfg(test)]

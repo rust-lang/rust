@@ -70,8 +70,7 @@ type argdoc = {
 };
 
 type retdoc = {
-    desc: option<str>,
-    ty: option<str>
+    desc: option<str>
 };
 
 type enumdoc = {
