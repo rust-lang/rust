@@ -1,6 +1,7 @@
 // Functions dealing with attributes and meta_items
 
 import std::map;
+import std::map::hashmap;
 import syntax::{ast, ast_util};
 import driver::session::session;
 

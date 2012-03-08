@@ -2,6 +2,7 @@ import syntax::ast::*;
 import syntax::visit;
 import syntax::ast_util;
 import driver::session::session;
+import std::map::hashmap;
 
 enum deref_t { unbox(bool), field, index, }
 

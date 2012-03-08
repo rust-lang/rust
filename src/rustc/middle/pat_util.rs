@@ -4,6 +4,7 @@ import syntax::ast_util::respan;
 import syntax::fold;
 import syntax::fold::*;
 import syntax::codemap::span;
+import std::map::hashmap;
 
 export walk_pat;
 export pat_binding_ids, pat_bindings, pat_id_map;

@@ -1,6 +1,7 @@
 import syntax::{ast, ast_util};
 import driver::session::session;
 import std::map;
+import std::map::hashmap;
 
 export capture_mode;
 export capture_var;

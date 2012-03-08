@@ -14,6 +14,7 @@ import collect_locals::mk_f_to_fn_info;
 import pre_post_conditions::fn_pre_post;
 import states::find_pre_post_state_fn;
 import driver::session::session;
+import std::map::hashmap;
 
 fn check_unused_vars(fcx: fn_ctxt) {
 

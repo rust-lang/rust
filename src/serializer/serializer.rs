@@ -50,7 +50,7 @@ type ast_pat = str;
 type ast_ty = str;
 type ast_item = str;
 
-type tp_map = map<ast::node_id, ty::t>;
+type tp_map = hashmap<ast::node_id, ty::t>;
 
 type serialize_ctx = {
     crate: @ast::crate,

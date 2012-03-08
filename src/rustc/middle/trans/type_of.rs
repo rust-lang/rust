@@ -3,6 +3,7 @@ import lib::llvm::{TypeRef};
 import syntax::ast;
 import lib::llvm::llvm;
 import driver::session::session;
+import std::map::hashmap;
 
 import ty::*;
 

@@ -14,6 +14,7 @@
 
 use std;
 import std::io::writer_util;
+import std::map::hashmap;
 
 type cmplx = {re: f64, im: f64};
 type line = {i: uint, b: [u8]};

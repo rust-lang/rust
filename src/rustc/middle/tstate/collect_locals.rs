@@ -8,6 +8,7 @@ import syntax::codemap::span;
 import syntax::ast_util::respan;
 import driver::session::session;
 import aux::*;
+import std::map::hashmap;
 
 type ctxt = {cs: @mutable [sp_constr], tcx: ty::ctxt};
 

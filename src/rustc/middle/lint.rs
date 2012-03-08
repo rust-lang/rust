@@ -3,6 +3,7 @@ import middle::ty::ctxt;
 import syntax::{ast, visit};
 import front::attr;
 import std::io;
+import std::map::hashmap;
 import io::writer_util;
 
 enum option {
