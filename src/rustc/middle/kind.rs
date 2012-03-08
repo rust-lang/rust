@@ -3,7 +3,6 @@ import syntax::ast::*;
 import syntax::codemap::span;
 import ty::{kind, kind_copyable, kind_sendable, kind_noncopyable};
 import driver::session::session;
-import std::map::hashmap;
 
 // Kind analysis pass. There are three kinds:
 //

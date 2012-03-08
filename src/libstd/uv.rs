@@ -1,4 +1,3 @@
-import map::hashmap;
 export loop_new, loop_delete, run, close, run_in_bg;
 export async_init, async_send;
 export timer_init, timer_start, timer_stop;
@@ -130,17 +129,17 @@ fn loop_new() -> uv_loop unsafe {
             process_operation);
 
         // all state goes here
-        let handles: map::hashmap<[u8], *ctypes::void> =
+        let handles: map::map<[u8], *ctypes::void> =
             map::new_bytes_hash();
-        let id_to_handle: map::hashmap<[u8], uv_handle> =
+        let id_to_handle: map::map<[u8], uv_handle> =
             map::new_bytes_hash();
-        let after_cbs: map::hashmap<[u8], fn~(uv_handle)> =
+        let after_cbs: map::map<[u8], fn~(uv_handle)> =
             map::new_bytes_hash();
-        let close_callbacks: map::hashmap<[u8], fn~()> =
+        let close_callbacks: map::map<[u8], fn~()> =
             map::new_bytes_hash();
-        let async_cbs: map::hashmap<[u8], fn~(uv_handle)> =
+        let async_cbs: map::map<[u8], fn~(uv_handle)> =
             map::new_bytes_hash();
-        let timer_cbs: map::hashmap<[u8], fn~(uv_handle)> =
+        let timer_cbs: map::map<[u8], fn~(uv_handle)> =
             map::new_bytes_hash();
 
         // the main loop that this task blocks on.

@@ -1,4 +1,3 @@
-import std::map::hashmap;
 import syntax::ast;
 import syntax::visit;
 import syntax::print::pprust::expr_to_str;

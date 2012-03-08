@@ -1,5 +1,4 @@
 import std::{os, fs, os_fs, map};
-import std::map::hashmap;
 import metadata::cstore;
 import driver::session;
 import util::filesearch;

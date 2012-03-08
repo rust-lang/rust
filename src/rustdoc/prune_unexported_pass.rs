@@ -3,7 +3,6 @@
 import rustc::syntax::ast;
 import rustc::syntax::ast_util;
 import rustc::middle::ast_map;
-import std::map::hashmap;
 
 export mk_pass;
 

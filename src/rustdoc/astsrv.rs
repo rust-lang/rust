@@ -7,7 +7,6 @@
      Rustdoc from its non-sendableness."
 )];
 
-import std::map::hashmap;
 import rustc::driver::session;
 import rustc::driver::driver;
 import rustc::driver::diagnostic;

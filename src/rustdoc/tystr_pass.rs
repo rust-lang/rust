@@ -4,7 +4,6 @@
 import rustc::syntax::ast;
 import rustc::syntax::print::pprust;
 import rustc::middle::ast_map;
-import std::map::hashmap;
 
 export mk_pass;
 

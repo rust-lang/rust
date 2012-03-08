@@ -5,7 +5,6 @@ import result::{ok, err};
 import io;
 import io::{reader_util, writer_util};
 import map;
-import map::hashmap;
 
 export json;
 export error;
@@ -37,7 +36,7 @@ enum json {
     /* Variant: list */
     list([json]),
     /* Variant: dict */
-    dict(map::hashmap<str,json>),
+    dict(map::map<str,json>),
     /* Variant: null */
     null,
 }

@@ -4,7 +4,6 @@ import syntax::codemap::span;
 import std::list::{is_not_empty, list, nil, cons, tail};
 import std::util::unreachable;
 import std::list;
-import std::map::hashmap;
 
 // Last use analysis pass.
 //

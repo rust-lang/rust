@@ -8,7 +8,6 @@ import syntax::visit;
 import driver::session::session;
 import middle::ty;
 import middle::ty::*;
-import std::map::hashmap;
 
 fn check_crate(tcx: ty::ctxt, crate: @crate) {
     visit::visit_crate(*crate, (), visit::mk_vt(@{

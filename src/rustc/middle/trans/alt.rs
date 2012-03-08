@@ -12,7 +12,6 @@ import syntax::codemap::span;
 import syntax::print::pprust::pat_to_str;
 import back::abi;
 import resolve::def_map;
-import std::map::hashmap;
 
 import common::*;
 

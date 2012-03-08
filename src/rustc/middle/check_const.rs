@@ -1,7 +1,6 @@
 import syntax::ast::*;
 import syntax::{visit, ast_util};
 import driver::session::session;
-import std::map::hashmap;
 
 fn check_crate(sess: session, crate: @crate, method_map: typeck::method_map) {
     visit::visit_crate(*crate, false, visit::mk_vt(@{

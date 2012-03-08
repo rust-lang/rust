@@ -11,7 +11,6 @@ import lib::llvm::llvm;
 import lib::llvm::{ValueRef, TypeRef};
 import lib::llvm::llvm::LLVMGetParam;
 import ast_map::{path, path_mod, path_name};
-import std::map::hashmap;
 
 // Translation functionality related to impls and ifaces
 //

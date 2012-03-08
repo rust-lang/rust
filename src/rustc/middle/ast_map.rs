@@ -1,5 +1,4 @@
 import std::map;
-import std::map::hashmap;
 import syntax::ast::*;
 import syntax::ast_util;
 import syntax::ast_util::inlined_item_methods;
@@ -36,7 +35,7 @@ enum ast_node {
     node_res_ctor(@item),
 }
 
-type map = std::map::hashmap<node_id, ast_node>;
+type map = std::map::map<node_id, ast_node>;
 type ctx = {map: map, mutable path: path, mutable local_id: uint};
 type vt = visit::vt<ctx>;
 

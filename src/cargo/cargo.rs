@@ -16,7 +16,6 @@ import io::writer_util;
 import std::json;
 import result;
 import std::map;
-import std::map::hashmap;
 import std::os;
 import std::run;
 import str;

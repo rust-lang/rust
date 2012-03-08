@@ -12,7 +12,6 @@ import option::none;
 import str;
 import vec;
 import std::map;
-import std::map::hashmap;
 import task;
 import comm::chan;
 import comm::port;

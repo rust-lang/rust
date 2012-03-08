@@ -9,7 +9,6 @@ import common::*;
 import build::*;
 import base::*;
 import type_of::*;
-import std::map::hashmap;
 
 export link_name, trans_native_mod, register_crust_fn, trans_crust_fn;
 

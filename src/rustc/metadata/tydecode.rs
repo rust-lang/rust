@@ -5,7 +5,6 @@ import syntax::ast::*;
 import syntax::ast_util;
 import syntax::ast_util::respan;
 import middle::ty;
-import std::map::hashmap;
 
 export parse_ty_data, parse_def_id;
 export parse_bounds_data;

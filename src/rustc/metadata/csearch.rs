@@ -6,7 +6,6 @@ import middle::{ty, ast_map};
 import option::{some, none};
 import driver::session;
 import middle::trans::common::maps;
-import std::map::hashmap;
 
 export get_symbol;
 export get_type_param_count;
