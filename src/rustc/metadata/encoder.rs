@@ -1,6 +1,7 @@
 // Metadata encoding
 
 import std::{io, ebml, map, list};
+import std::map::hashmap;
 import io::writer_util;
 import ebml::writer;
 import syntax::ast::*;

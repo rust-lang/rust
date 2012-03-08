@@ -1,6 +1,7 @@
 #[doc = "Finds docs for reexported items and duplicates them"];
 
 import std::map;
+import std::map::hashmap;
 import rustc::syntax::ast;
 import rustc::syntax::ast_util;
 import rustc::util::common;

@@ -13,6 +13,7 @@ import util::common::{new_def_hash, log_expr, field_exprs,
                       has_nonlocal_exits, log_stmt};
 import syntax::codemap::span;
 import driver::session::session;
+import std::map::hashmap;
 
 fn find_pre_post_mod(_m: _mod) -> _mod {
     #debug("implement find_pre_post_mod!");

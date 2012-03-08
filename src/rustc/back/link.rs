@@ -7,6 +7,7 @@ import middle::ty;
 import metadata::{encoder, cstore};
 import middle::trans::common::crate_ctxt;
 import std::fs;
+import std::map::hashmap;
 import std::run;
 import std::sha1::sha1;
 import syntax::ast;

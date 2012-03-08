@@ -2,6 +2,7 @@
 // crates and libraries
 
 import std::map;
+import std::map::hashmap;
 import syntax::ast;
 import util::common::*;
 

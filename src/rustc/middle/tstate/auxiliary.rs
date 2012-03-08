@@ -4,7 +4,7 @@ import syntax::ast::*;
 import syntax::ast_util::*;
 import syntax::{visit, codemap};
 import codemap::span;
-import std::map::{new_int_hash};
+import std::map::{hashmap, new_int_hash};
 import syntax::print::pprust::path_to_str;
 import tstate::ann::{pre_and_post, pre_and_post_state, empty_ann, prestate,
                      poststate, precond, postcond,

@@ -10,6 +10,7 @@ import syntax::codemap::span;
 import middle::ty::{expr_ty, type_is_bot};
 import util::common::*;
 import driver::session::session;
+import std::map::hashmap;
 
 fn forbid_upvar(fcx: fn_ctxt, rhs_id: node_id, sp: span, t: oper_type) {
     alt t {

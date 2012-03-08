@@ -2,6 +2,7 @@
 
 use std;
 import std::map;
+import std::map::hashmap;
 import uint;
 
 fn main() {

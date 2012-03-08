@@ -10,10 +10,11 @@ import syntax::ast::*;
 import syntax::visit;
 import syntax::ast_util::def_id_of_def;
 import front::attr;
+import std::map::hashmap;
 
 export map, find_reachable;
 
-type map = std::map::map<node_id, ()>;
+type map = std::map::hashmap<node_id, ()>;
 
 type ctx = {ccx: middle::trans::common::crate_ctxt,
             rmap: map};

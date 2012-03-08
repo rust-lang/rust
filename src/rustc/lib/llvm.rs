@@ -1,4 +1,5 @@
 import str::sbuf;
+import std::map::hashmap;
 
 import ctypes::{c_int, c_uint, unsigned, longlong, ulonglong};
 

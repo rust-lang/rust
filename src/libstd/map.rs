@@ -4,6 +4,10 @@ Module: map
 A map type
 */
 
+import chained::hashmap;
+export hashmap, hashfn, eqfn, set, map, chained, mk_hashmap, new_str_hash;
+export new_bytes_hash, new_int_hash, new_uint_hash, set_add;
+
 /* Section: Types */
 
 /*
@@ -23,14 +27,13 @@ Equality
 type eqfn<K> = fn@(K, K) -> bool;
 
 /*
-Type: hashset
+Type: set
 
-A convenience type to treat a map as a set
+A convenience type to treat a hashmap as a set
 */
-type set<K> = map<K, ()>;
+type set<K> = hashmap<K, ()>;
 
-// Temporary alias to make migration easier
-type hashmap<K, V> = map<K, V>;
+type hashmap<K, V> = chained::t<K, V>;
 
 /*
 IFace: map
@@ -103,8 +106,7 @@ iface map<K: copy, V: copy> {
 }
 
 // FIXME: package this up and export it as a datatype usable for
-// external code that doesn't want to pay the cost of a box and vtable
-// lookups.
+// external code that doesn't want to pay the cost of a box.
 mod chained {
     type entry<K, V> = {
         hash: uint,
@@ -118,8 +120,8 @@ mod chained {
         absent
     }
 
-    type t<K, V> = {
-        mutable size: uint,
+    type t<K, V> = @{
+        mutable count: uint,
         mutable chains: [mutable chain<K,V>],
         hasher: hashfn<K>,
         eqer: eqfn<K>
@@ -185,7 +187,7 @@ mod chained {
         let hash = tbl.hasher(k);
         alt search_tbl(tbl, k, hash) {
           not_found {
-            tbl.size += 1u;
+            tbl.count += 1u;
             let idx = hash % vec::len(tbl.chains);
             let old_chain = tbl.chains[idx];
             tbl.chains[idx] = present(@{
@@ -229,13 +231,13 @@ mod chained {
           }
 
           found_first(idx, entry) {
-            tbl.size -= 1u;
+            tbl.count -= 1u;
             tbl.chains[idx] = entry.next;
             ret core::option::some(entry.value);
           }
 
           found_after(eprev, entry) {
-            tbl.size -= 1u;
+            tbl.count -= 1u;
             eprev.next = entry.next;
             ret core::option::some(entry.value);
           }
@@ -291,12 +293,12 @@ mod chained {
         }
     }
 
-    impl <K: copy, V: copy> of map<K, V> for t<K, V> {
-        fn size() -> uint { self.size }
+    impl hashmap<K: copy, V: copy> of map<K, V> for t<K, V> {
+        fn size() -> uint { self.count }
 
         fn insert(k: K, v: V) -> bool {
             let nchains = vec::len(self.chains);
-            let load = {num: (self.size + 1u) as int, den: nchains as int};
+            let load = {num: (self.count + 1u) as int, den: nchains as int};
             // Structural consts would be nice. This is a const 3/4
             // load factor that we compare against.
             if !util::rational_leq(load, {num:3, den:4}) { rehash(self); }
@@ -318,13 +320,13 @@ mod chained {
         fn values(blk: fn(V)) { items(self) { |_k, v| blk(v) } }
     }
 
-    fn mk<K: copy, V: copy>(hasher: hashfn<K>, eqer: eqfn<K>) -> map<K,V> {
+    fn mk<K: copy, V: copy>(hasher: hashfn<K>, eqer: eqfn<K>) -> t<K,V> {
         let initial_capacity: uint = 32u; // 2^5
-        let slf: t<K, V> = {mutable size: 0u,
-                            mutable chains: chains(initial_capacity),
-                            hasher: hasher,
-                            eqer: eqer};
-        slf as map::<K, V>
+        let slf: t<K, V> = @{mutable count: 0u,
+                             mutable chains: chains(initial_capacity),
+                             hasher: hasher,
+                             eqer: eqer};
+        slf
     }
 }
 
@@ -339,7 +341,7 @@ hasher - The hash function for key type K
 eqer - The equality function for key type K
 */
 fn mk_hashmap<K: copy, V: copy>(hasher: hashfn<K>, eqer: eqfn<K>)
-    -> map<K, V> {
+        -> hashmap<K, V> {
     chained::mk(hasher, eqer)
 }
 
@@ -348,7 +350,7 @@ Function: new_str_hash
 
 Construct a hashmap for string keys
 */
-fn new_str_hash<V: copy>() -> map<str, V> {
+fn new_str_hash<V: copy>() -> hashmap<str, V> {
     ret mk_hashmap(str::hash, str::eq);
 }
 
@@ -357,7 +359,7 @@ Function: new_bytes_hash
 
 Construct a hashmap for byte string keys
 */
-fn new_bytes_hash<V: copy>() -> map<[u8], V> {
+fn new_bytes_hash<V: copy>() -> hashmap<[u8], V> {
     ret mk_hashmap(vec::u8::hash, vec::u8::eq);
 }
 
@@ -366,7 +368,7 @@ Function: new_int_hash
 
 Construct a hashmap for int keys
 */
-fn new_int_hash<V: copy>() -> map<int, V> {
+fn new_int_hash<V: copy>() -> hashmap<int, V> {
     fn hash_int(&&x: int) -> uint { int::hash(x) }
     fn eq_int(&&a: int, &&b: int) -> bool { ret a == b; }
     ret mk_hashmap(hash_int, eq_int);
@@ -377,7 +379,7 @@ Function: new_uint_hash
 
 Construct a hashmap for uint keys
 */
-fn new_uint_hash<V: copy>() -> map<uint, V> {
+fn new_uint_hash<V: copy>() -> hashmap<uint, V> {
     fn hash_uint(&&x: uint) -> uint { uint::hash(x) }
     fn eq_uint(&&a: uint, &&b: uint) -> bool { ret a == b; }
     ret mk_hashmap(hash_uint, eq_uint);

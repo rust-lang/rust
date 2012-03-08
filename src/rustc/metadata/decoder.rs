@@ -1,6 +1,7 @@
 // Decoding metadata from a single crate's metadata
 
 import std::{ebml, map, io};
+import std::map::hashmap;
 import io::writer_util;
 import syntax::{ast, ast_util};
 import driver::session::session;

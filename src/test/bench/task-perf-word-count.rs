@@ -13,6 +13,7 @@ use std;
 import option = option;
 import option::{some, none};
 import std::{map, io, time};
+import std::map::hashmap;
 import io::reader_util;
 
 import comm::chan;
