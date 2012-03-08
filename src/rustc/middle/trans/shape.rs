@@ -59,6 +59,7 @@ const shape_bare_fn: u8 = 27u8;
 const shape_tydesc: u8 = 28u8;
 const shape_send_tydesc: u8 = 29u8;
 const shape_class: u8 = 30u8;
+const shape_rptr: u8 = 31u8;
 
 fn hash_res_info(ri: res_info) -> uint {
     let h = 5381u;
@@ -384,6 +385,10 @@ fn shape_of(ccx: crate_ctxt, t: ty::t, ty_param_map: [uint]) -> [u8] {
       }
       ty::ty_iface(_, _) { s += [shape_box_fn]; }
       ty::ty_class(_, _) { s += [shape_class]; }
+      ty::ty_rptr(_, tm) {
+        s += [shape_rptr];
+        add_substr(s, shape_of(ccx, tm.ty, ty_param_map));
+      }
       ty::ty_res(did, raw_subt, tps) {
         let subt = ty::substitute_type_params(ccx.tcx, tps, raw_subt);
         let ri = {did: did, t: subt};

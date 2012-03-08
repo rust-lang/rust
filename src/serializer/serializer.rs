@@ -258,6 +258,7 @@ impl serialize_methods for serialize_ctx {
             self.serialize_ty(t, v)
           }
           ty::ty_ptr(_) |
+          ty::ty_rptr(_,_) |
           ty::ty_fn(_) |
           ty::ty_iface(_, _) |
           ty::ty_res(_, _, _) |
@@ -431,6 +432,7 @@ impl deserialize_methods for serialize_ctx {
             self.deserialize_ty(t)
           }
           ty::ty_ptr(_) |
+          ty::ty_rptr(_,_) |
           ty::ty_fn(_) |
           ty::ty_iface(_, _) |
           ty::ty_res(_, _, _) |

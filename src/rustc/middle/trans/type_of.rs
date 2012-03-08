@@ -78,7 +78,12 @@ fn type_of(cx: crate_ctxt, t: ty::t) -> TypeRef {
       }
       ty::ty_ptr(mt) {
         let mt_ty = mt.ty;
-        T_ptr(type_of(cx, mt_ty)) }
+        T_ptr(type_of(cx, mt_ty))
+      }
+      ty::ty_rptr(_, mt) {
+        let mt_ty = mt.ty;
+        T_ptr(type_of(cx, mt_ty))
+      }
       ty::ty_rec(fields) {
         let tys: [TypeRef] = [];
         for f: ty::field in fields {

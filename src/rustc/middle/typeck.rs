@@ -319,8 +319,8 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
       ast::ty_ptr(mt) {
         ty::mk_ptr(tcx, ast_mt_to_mt(tcx, mode, mt))
       }
-      ast::ty_rptr(_,_) {
-        fail "TODO: regions";
+      ast::ty_rptr(_, mt) {
+        ty::mk_rptr(tcx, ty::re_block(0), ast_mt_to_mt(tcx, mode, mt))
       }
       ast::ty_tup(fields) {
         let flds = vec::map(fields, bind ast_ty_to_ty(tcx, mode, _));

@@ -78,6 +78,7 @@ export ty_iface, mk_iface;
 export ty_res, mk_res;
 export ty_param, mk_param;
 export ty_ptr, mk_ptr, mk_mut_ptr, type_is_unsafe_ptr;
+export ty_rptr, mk_rptr;
 export ty_rec, mk_rec;
 export ty_enum, mk_enum, type_is_enum;
 export ty_tup, mk_tup;
@@ -87,6 +88,7 @@ export ty_uint, mk_uint, mk_mach_uint;
 export ty_uniq, mk_uniq, mk_imm_uniq, type_is_unique_box;
 export ty_var, mk_var;
 export ty_self, mk_self;
+export region, re_named, re_caller, re_block;
 export get, type_has_params, type_has_vars, type_id;
 export same_type;
 export ty_var_id;
@@ -218,6 +220,12 @@ type fn_ty = {proto: ast::proto,
               ret_style: ret_style,
               constraints: [@constr]};
 
+enum region {
+    re_named(def_id),
+    re_caller(def_id),
+    re_block(node_id)
+}
+
 // NB: If you change this, you'll probably want to change the corresponding
 // AST structure in front/ast::rs as well.
 enum sty {
@@ -233,6 +241,7 @@ enum sty {
     ty_uniq(mt),
     ty_vec(mt),
     ty_ptr(mt),
+    ty_rptr(region, mt),
     ty_rec([field]),
     ty_fn(fn_ty),
     ty_iface(def_id, [t]),
@@ -369,7 +378,7 @@ fn mk_t_with_id(cx: ctxt, st: sty, o_def_id: option<ast::def_id>) -> t {
       ty_enum(_, tys) | ty_iface(_, tys) | ty_class(_, tys) {
         for tt in tys { derive_flags(has_params, has_vars, tt); }
       }
-      ty_box(m) | ty_uniq(m) | ty_vec(m) | ty_ptr(m) {
+      ty_box(m) | ty_uniq(m) | ty_vec(m) | ty_ptr(m) | ty_rptr(_, m) {
         derive_flags(has_params, has_vars, m.ty);
       }
       ty_rec(flds) {
@@ -438,6 +447,8 @@ fn mk_imm_uniq(cx: ctxt, ty: t) -> t { mk_uniq(cx, {ty: ty,
 
 fn mk_ptr(cx: ctxt, tm: mt) -> t { mk_t(cx, ty_ptr(tm)) }
 
+fn mk_rptr(cx: ctxt, r: region, tm: mt) -> t { mk_t(cx, ty_rptr(r, tm)) }
+
 fn mk_mut_ptr(cx: ctxt, ty: t) -> t { mk_ptr(cx, {ty: ty,
                                                   mutbl: ast::m_mutbl}) }
 
@@ -505,7 +516,9 @@ fn walk_ty(cx: ctxt, ty: t, f: fn(t)) {
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
       ty_str | ty_send_type | ty_type | ty_opaque_box |
       ty_opaque_closure_ptr(_) | ty_var(_) | ty_param(_, _) {}
-      ty_box(tm) | ty_vec(tm) | ty_ptr(tm) { walk_ty(cx, tm.ty, f); }
+      ty_box(tm) | ty_vec(tm) | ty_ptr(tm) | ty_rptr(_, tm) {
+        walk_ty(cx, tm.ty, f);
+      }
       ty_enum(_, subtys) | ty_iface(_, subtys) | ty_class(_, subtys)
        | ty_self(subtys) {
         for subty: t in subtys { walk_ty(cx, subty, f); }
@@ -1112,6 +1125,13 @@ fn hash_type_structure(st: sty) -> uint {
         }
         h
     }
+    fn hash_region(r: region) -> uint {
+        alt r {
+          re_named(_)   { 1u }
+          re_caller(_)  { 2u }
+          re_block(_)   { 3u }
+        }
+    }
     alt st {
       ty_nil { 0u } ty_bool { 1u }
       ty_int(t) {
@@ -1158,6 +1178,10 @@ fn hash_type_structure(st: sty) -> uint {
       ty_type { 32u }
       ty_bot { 34u }
       ty_ptr(mt) { hash_subty(35u, mt.ty) }
+      ty_rptr(region, mt) {
+        let h = (46u << 2u) + hash_region(region);
+        hash_subty(h, mt.ty)
+      }
       ty_res(did, sub, tps) {
         let h = hash_subty(hash_def(18u, did), sub);
         hash_subtys(h, tps)
