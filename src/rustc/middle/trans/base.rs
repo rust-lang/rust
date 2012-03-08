@@ -1646,7 +1646,13 @@ fn trans_unary(bcx: block, op: ast::unop, e: @ast::expr,
                                trans_unary()");
       }
       ast::addr_of {
-        bcx.sess().bug("TODO pcwalton");
+        // FIXME: This is wrong.
+        let {bcx, val, kind} = trans_temp_lval(bcx, e);
+        if kind != owned {
+            bcx.sess().span_bug(e.span,
+                                "can't take the address of an rvalue");
+        }
+        ret store_in_dest(bcx, val, dest);
       }
     }
 }
@@ -2516,7 +2522,7 @@ fn trans_lval(cx: block, e: @ast::expr) -> lval_result {
             } else { T_typaram_ptr(ccx.tn) };
             PointerCast(sub.bcx, sub.val, ellty)
           }
-          ty::ty_ptr(_) | ty::ty_uniq(_) { sub.val }
+          ty::ty_ptr(_) | ty::ty_uniq(_) | ty::ty_rptr(_,_) { sub.val }
         };
         ret lval_owned(sub.bcx, val);
       }

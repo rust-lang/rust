@@ -272,6 +272,7 @@ enum type_err {
     terr_ret_style_mismatch(ast::ret_style, ast::ret_style),
     terr_box_mutability,
     terr_ptr_mutability,
+    terr_ref_mutability,
     terr_vec_mutability,
     terr_tuple_size(uint, uint),
     terr_record_size(uint, uint),
@@ -569,6 +570,9 @@ fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
       }
       ty_ptr(tm) {
         ty = mk_ptr(cx, {ty: fold_ty(cx, fld, tm.ty), mutbl: tm.mutbl});
+      }
+      ty_rptr(r, tm) {
+        ty = mk_rptr(cx, r, {ty: fold_ty(cx, fld, tm.ty), mutbl: tm.mutbl});
       }
       ty_vec(tm) {
         ty = mk_vec(cx, {ty: fold_ty(cx, fld, tm.ty), mutbl: tm.mutbl});
@@ -1940,6 +1944,11 @@ mod unify {
           (ty_ptr(e_mt), ty_ptr(a_mt)) {
             unify_mt(cx, e_mt, a_mt, variance, terr_ptr_mutability, mk_ptr)
           }
+          (ty_rptr(e_region, e_mt), ty_rptr(a_region, a_mt)) {
+            // TODO: Unify regions. Take covariance/invariance into account.
+            unify_mt(cx, e_mt, a_mt, variance, terr_ref_mutability,
+                     bind mk_rptr(_, re_block(0), _))
+          }
           (ty_res(e_id, e_inner, e_tps), ty_res(a_id, a_inner, a_tps))
           if e_id == a_id {
             alt unify_step(cx, e_inner, a_inner, variance) {
@@ -2116,6 +2125,7 @@ fn type_err_to_str(err: type_err) -> str {
       terr_box_mutability { ret "boxed values differ in mutability"; }
       terr_vec_mutability { ret "vectors differ in mutability"; }
       terr_ptr_mutability { ret "pointers differ in mutability"; }
+      terr_ref_mutability { ret "references differ in mutability"; }
       terr_tuple_size(e_sz, a_sz) {
         ret "expected a tuple with " + uint::to_str(e_sz, 10u) +
                 " elements but found one with " + uint::to_str(a_sz, 10u) +

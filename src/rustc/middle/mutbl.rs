@@ -95,7 +95,7 @@ fn expr_root(tcx: ty::ctxt, ex: @expr, autoderef: bool) ->
                   ty::ty_uniq(mt) { is_mutbl = mt.mutbl == m_mutbl; }
                   ty::ty_res(_, _, _) { }
                   ty::ty_enum(_, _) { }
-                  ty::ty_ptr(mt) {
+                  ty::ty_ptr(mt) | ty::ty_rptr(_, mt) {
                     is_mutbl = mt.mutbl == m_mutbl;
                     ptr = true;
                   }
