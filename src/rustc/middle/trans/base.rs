@@ -864,17 +864,8 @@ fn get_res_dtor(ccx: @crate_ctxt, did: ast::def_id, substs: [ty::t])
     let did = if did.crate != ast::local_crate && substs.len() > 0u {
         maybe_instantiate_inline(ccx, did)
     } else { did };
-    if did.crate == ast::local_crate {
-        option::get(monomorphic_fn(ccx, did, substs, none))
-    } else {
-        assert substs.len() == 0u;
-        let nil = ty::mk_nil(ccx.tcx);
-        let arg = {mode: ast::expl(ast::by_ref),
-                   ty: ty::mk_mut_ptr(ccx.tcx, nil)};
-        let f_t = type_of::type_of_fn(ccx, [arg], nil, 0u);
-        get_extern_const(ccx.externs, ccx.llmod,
-                         csearch::get_symbol(ccx.sess.cstore, did), f_t)
-    }
+    assert did.crate == ast::local_crate;
+    option::get(monomorphic_fn(ccx, did, substs, none))
 }
 
 fn trans_res_drop(bcx: block, rs: ValueRef, did: ast::def_id,
@@ -2094,22 +2085,34 @@ fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id)
       }
       some(none) { fn_id } // Not inlinable
       none { // Not seen yet
-        alt csearch::maybe_get_item_ast(ccx.tcx, ccx.maps, fn_id) {
-          none { ccx.external.insert(fn_id, none); fn_id }
-          some(ast::ii_item(item)) {
-            #debug["maybe_instantiate_inline(%s): inlining to local id %d",
-                   ty::item_path_str(ccx.tcx, fn_id),
-                   item.id];
+        alt check csearch::maybe_get_item_ast(ccx.tcx, ccx.maps, fn_id) {
+          csearch::not_found {
+            ccx.external.insert(fn_id, none);
+            fn_id
+          }
+          csearch::found(ast::ii_item(item)) {
             ccx.external.insert(fn_id, some(item.id));
             trans_item(ccx, *item);
             local_def(item.id)
           }
-          some(ast::ii_method(impl_did, mth)) {
-            #debug["maybe_instantiate_inline(%s): \
-                    inlining method of %s to %d",
-                   ty::item_path_str(ccx.tcx, fn_id),
-                   ty::item_path_str(ccx.tcx, impl_did),
-                   mth.id];
+          csearch::found_parent(parent_id, ast::ii_item(item)) {
+            ccx.external.insert(parent_id, some(item.id));
+            let my_id = 0;
+            alt check item.node {
+              ast::item_enum(_, _) {
+                let vs_here = ty::enum_variants(ccx.tcx, local_def(item.id));
+                let vs_there = ty::enum_variants(ccx.tcx, parent_id);
+                vec::iter2(*vs_here, *vs_there) {|here, there|
+                    if there.id == fn_id { my_id = here.id.node; }
+                    ccx.external.insert(there.id, some(here.id.node));
+                }
+              }
+              ast::item_res(_, _, _, _, ctor_id) { my_id = ctor_id; }
+            }
+            trans_item(ccx, *item);
+            local_def(my_id)
+          }
+          csearch::found(ast::ii_method(impl_did, mth)) {
             ccx.external.insert(fn_id, some(mth.id));
             compute_ii_method_info(ccx, impl_did, mth) {|ty, bounds, path|
                 if bounds.len() == 0u {
@@ -2143,8 +2146,7 @@ fn lval_static_fn(bcx: block, fn_id: ast::def_id, id: ast::node_id,
     // monomorphized and non-monomorphized functions at the moment. If
     // monomorphizing becomes the only approach, this'll be much simpler.
     if (option::is_some(substs) || tys.len() > 0u) &&
-       fn_id.crate == ast::local_crate &&
-       !vec::any(tys, {|t| ty::type_has_params(t)}) {
+       fn_id.crate == ast::local_crate {
         let mono = alt substs {
           some((stys, vtables)) {
             if (stys.len() + tys.len()) > 0u {

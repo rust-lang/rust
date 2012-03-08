@@ -28,7 +28,7 @@ const tag_items_data_item_symbol: uint = 0x0du;
 
 const tag_items_data_item_variant: uint = 0x0eu;
 
-const tag_items_data_item_enum_id: uint = 0x0fu;
+const tag_items_data_parent_item: uint = 0x0fu;
 
 const tag_index: uint = 0x11u;
 
@@ -61,6 +61,8 @@ const tag_crate_deps: uint = 0x25u;
 const tag_crate_dep: uint = 0x26u;
 
 const tag_crate_hash: uint = 0x28u;
+
+const tag_parent_item: uint = 0x29u;
 
 const tag_mod_impl: uint = 0x30u;
 

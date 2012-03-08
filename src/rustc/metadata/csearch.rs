@@ -19,7 +19,7 @@ export get_type;
 export get_impl_iface;
 export get_impl_method;
 export get_item_path;
-export maybe_get_item_ast;
+export maybe_get_item_ast, found_ast, found, found_parent, not_found;
 
 fn get_symbol(cstore: cstore::cstore, def: ast::def_id) -> str {
     let cdata = cstore::get_crate_data(cstore, def.crate).data;
@@ -80,11 +80,17 @@ fn get_item_path(tcx: ty::ctxt, def: ast::def_id) -> ast_map::path {
     [ast_map::path_mod(cdata.name)] + path
 }
 
+enum found_ast {
+    found(ast::inlined_item),
+    found_parent(ast::def_id, ast::inlined_item),
+    not_found,
+}
+
 // Finds the AST for this item in the crate metadata, if any.  If the item was
 // not marked for inlining, then the AST will not be present and hence none
 // will be returned.
 fn maybe_get_item_ast(tcx: ty::ctxt, maps: maps, def: ast::def_id)
-    -> option<ast::inlined_item> {
+    -> found_ast {
     let cstore = tcx.sess.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
     decoder::maybe_get_item_ast(cdata, tcx, maps, def.node)

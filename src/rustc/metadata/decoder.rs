@@ -96,9 +96,12 @@ fn item_symbol(item: ebml::doc) -> str {
     ret str::from_bytes(ebml::doc_data(sym));
 }
 
-fn variant_enum_id(d: ebml::doc) -> ast::def_id {
-    let tagdoc = ebml::get_doc(d, tag_items_data_item_enum_id);
-    ret parse_def_id(ebml::doc_data(tagdoc));
+fn item_parent_item(d: ebml::doc) -> option<ast::def_id> {
+    let found = none;
+    ebml::tagged_docs(d, tag_items_data_parent_item) {|did|
+        found = some(parse_def_id(ebml::doc_data(did)));
+    }
+    found
 }
 
 fn variant_disr_val(d: ebml::doc) -> option<int> {
@@ -230,7 +233,7 @@ fn lookup_def(cnum: ast::crate_num, data: @[u8], did_: ast::def_id) ->
       'm' { ast::def_mod(did) }
       'n' { ast::def_native_mod(did) }
       'v' {
-        let tid = variant_enum_id(item);
+        let tid = option::get(item_parent_item(item));
         tid = {crate: cnum, node: tid.node};
         ast::def_variant(tid, did)
       }
@@ -278,10 +281,26 @@ fn get_item_path(cdata: cmd, id: ast::node_id) -> ast_map::path {
 }
 
 fn maybe_get_item_ast(cdata: cmd, tcx: ty::ctxt, maps: maps,
-                      id: ast::node_id) -> option<ast::inlined_item> {
+                      id: ast::node_id) -> csearch::found_ast {
     let item_doc = lookup_item(id, cdata.data);
     let path = vec::init(item_path(item_doc));
-    astencode::decode_inlined_item(cdata, tcx, maps, path, item_doc)
+    alt astencode::decode_inlined_item(cdata, tcx, maps, path, item_doc) {
+      some(ii) { csearch::found(ii) }
+      none {
+        alt item_parent_item(item_doc) {
+          some(did) {
+            let did = translate_def_id(cdata, did);
+            let parent_item = lookup_item(did.node, cdata.data);
+            alt astencode::decode_inlined_item(cdata, tcx, maps, path,
+                                               parent_item) {
+              some(ii) { csearch::found_parent(did, ii) }
+              none { csearch::not_found }
+            }
+          }
+          none { csearch::not_found }
+        }
+      }
+    }
 }
 
 fn get_enum_variants(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)

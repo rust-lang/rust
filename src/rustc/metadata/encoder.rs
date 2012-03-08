@@ -241,8 +241,8 @@ fn encode_disr_val(_ecx: @encode_ctxt, ebml_w: ebml::writer, disr_val: int) {
     ebml_w.end_tag();
 }
 
-fn encode_enum_id(ebml_w: ebml::writer, id: def_id) {
-    ebml_w.start_tag(tag_items_data_item_enum_id);
+fn encode_parent_item(ebml_w: ebml::writer, id: def_id) {
+    ebml_w.start_tag(tag_items_data_parent_item);
     ebml_w.writer.write(str::bytes(def_to_str(id)));
     ebml_w.end_tag();
 }
@@ -260,7 +260,7 @@ fn encode_enum_variant_info(ecx: @encode_ctxt, ebml_w: ebml::writer,
         encode_def_id(ebml_w, local_def(variant.node.id));
         encode_family(ebml_w, 'v');
         encode_name(ebml_w, variant.node.name);
-        encode_enum_id(ebml_w, local_def(id));
+        encode_parent_item(ebml_w, local_def(id));
         encode_type(ecx, ebml_w,
                     node_id_to_type(ecx.ccx.tcx, variant.node.id));
         if vec::len(variant.node.args) > 0u && ty_params.len() == 0u {
@@ -397,6 +397,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         for v: variant in variants {
             encode_variant_id(ebml_w, local_def(v.node.id));
         }
+        astencode::encode_inlined_item(ecx, ebml_w, path, ii_item(item));
         encode_path(ebml_w, path, ast_map::path_name(item.ident));
         ebml_w.end_tag();
         encode_enum_variant_info(ecx, ebml_w, item.id, variants,
@@ -414,11 +415,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_type_param_bounds(ebml_w, ecx, tps);
         encode_type(ecx, ebml_w, ty::ty_fn_ret(fn_ty));
         encode_name(ebml_w, item.ident);
-        if tps.len() == 0u {
-            encode_symbol(ecx, ebml_w, item.id);
-        } else {
-            astencode::encode_inlined_item(ecx, ebml_w, path, ii_item(item));
-        }
+        astencode::encode_inlined_item(ecx, ebml_w, path, ii_item(item));
         encode_path(ebml_w, path, ast_map::path_name(item.ident));
         ebml_w.end_tag();
 
@@ -428,9 +425,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_family(ebml_w, 'f');
         encode_type_param_bounds(ebml_w, ecx, tps);
         encode_type(ecx, ebml_w, fn_ty);
-        if tps.len() == 0u {
-            encode_symbol(ecx, ebml_w, ctor_id);
-        }
+        encode_parent_item(ebml_w, local_def(item.id));
         encode_path(ebml_w, path, ast_map::path_name(item.ident));
         ebml_w.end_tag();
       }
