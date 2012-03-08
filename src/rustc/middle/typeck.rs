@@ -2170,6 +2170,13 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                 oper_t = inner.ty;
                 require_unsafe(tcx.sess, fcx.purity, expr.span);
               }
+              ty::ty_rptr(_, inner) {
+                // FIXME: This shouldn't be unsafe for now, but we enforce it
+                // for now to safeguard the language until we're properly
+                // typechecking regions.
+                oper_t = inner.ty;
+                require_unsafe(tcx.sess, fcx.purity, expr.span);
+              }
               _ {
                   tcx.sess.span_err(expr.span,
                       #fmt("Type %s cannot be dereferenced",
