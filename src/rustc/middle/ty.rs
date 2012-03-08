@@ -246,7 +246,7 @@ enum sty {
 
     ty_type, // type_desc*
     ty_send_type, // type_desc* that has been cloned into exchange heap
-    ty_opaque_box, // used by monomorphizer to represend any @ box
+    ty_opaque_box, // used by monomorphizer to represent any @ box
     ty_constr(t, [@type_constr]),
     ty_opaque_closure_ptr(closure_kind), // ptr to env for fn, fn@, fn~
 }
