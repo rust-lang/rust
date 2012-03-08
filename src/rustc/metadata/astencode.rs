@@ -471,6 +471,10 @@ impl helper for serialization::ebml_deserializer {
         let fv = astencode_gen::deserialize_middle_typeck_method_origin(self);
         fv.tr(xcx)
     }
+    fn read_is_last_use(xcx: extended_decode_ctxt) -> last_use::is_last_use {
+        let lu = astencode_gen::deserialize_middle_last_use_is_last_use(self);
+        lu.tr(xcx)
+    }
 }
 
 impl of tr for method_origin {
@@ -484,6 +488,17 @@ impl of tr for method_origin {
           }
           typeck::method_iface(did, m) {
             typeck::method_iface(did.tr(xcx), m)
+          }
+        }
+    }
+}
+
+impl of tr for last_use::is_last_use {
+    fn tr(xcx: extended_decode_ctxt) -> last_use::is_last_use {
+        alt self {
+          last_use::is_last_use | last_use::has_last_use { self }
+          last_use::closes_over(ids) {
+            last_use::closes_over(vec::map(ids, {|id| xcx.tr_id(id)}))
           }
         }
     }
@@ -743,9 +758,12 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
         }
     }
 
-    option::may(ccx.maps.last_uses.find(id)) {|_m|
+    option::may(ccx.maps.last_uses.find(id)) {|m|
         ebml_w.tag(c::tag_table_last_use) {||
             ebml_w.id(id);
+            ebml_w.tag(c::tag_table_val) {||
+               astencode_gen::serialize_middle_last_use_is_last_use(ebml_w, m)
+            }
         }
     }
 
@@ -830,8 +848,6 @@ fn decode_side_tables(xcx: extended_decode_ctxt,
             dcx.maps.mutbl_map.insert(id, ());
         } else if tag == (c::tag_table_copy as uint) {
             dcx.maps.copy_map.insert(id, ());
-        } else if tag == (c::tag_table_last_use as uint) {
-            dcx.maps.last_uses.insert(id, last_use::is_last_use);
         } else {
             let val_doc = entry_doc[c::tag_table_val];
             let val_dsr = serialization::mk_ebml_deserializer(val_doc);
@@ -856,6 +872,8 @@ fn decode_side_tables(xcx: extended_decode_ctxt,
             } else if tag == (c::tag_table_param_bounds as uint) {
                 let bounds = val_dsr.read_bounds(xcx);
                 dcx.tcx.ty_param_bounds.insert(id, bounds);
+            } else if tag == (c::tag_table_last_use as uint) {
+                dcx.maps.last_uses.insert(id, val_dsr.read_is_last_use(xcx));
             } else if tag == (c::tag_table_method_map as uint) {
                 dcx.maps.method_map.insert(id,
                                            val_dsr.read_method_origin(xcx));

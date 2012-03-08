@@ -8984,3 +8984,101 @@ fn deserialize_syntax_ast_inlined_item<S: std::serialization::deserializer>(s:
    -> syntax::ast::inlined_item {
     deserialize_171(s)
 }
+/*[syntax::ast::node_id]*/
+fn serialize_172<S: std::serialization::serializer>(s: S,
+                                                    v:
+                                                        [syntax::ast::node_id]) {
+    s.emit_vec(vec::len(v), /*syntax::ast::node_id*/
+               {||
+                   vec::iteri(v,
+                              {|i, e|
+                                  s.emit_vec_elt(i, {|| serialize_27(s, e) })
+                              })
+               });
+}
+/*middle::last_use::is_last_use*/
+fn serialize_173<S: std::serialization::serializer>(s: S,
+                                                    v:
+                                                        middle::last_use::is_last_use) {
+    s.emit_enum("middle::last_use::is_last_use",
+
+
+                /*[syntax::ast::node_id]*/
+                {||
+                    alt v {
+                      middle::last_use::is_last_use {
+                        s.emit_enum_variant("middle::last_use::is_last_use",
+                                            0u, 0u, {|| })
+                      }
+                      middle::last_use::has_last_use {
+                        s.emit_enum_variant("middle::last_use::has_last_use",
+                                            1u, 0u, {|| })
+                      }
+                      middle::last_use::closes_over(v0) {
+                        s.emit_enum_variant("middle::last_use::closes_over",
+                                            2u, 1u,
+                                            {||
+                                                {
+                                                    s.emit_enum_variant_arg(0u,
+                                                                            {||
+                                                                                serialize_172(s,
+                                                                                              v0)
+                                                                            })
+                                                }
+                                            })
+                      }
+                    }
+                });
+}
+fn serialize_middle_last_use_is_last_use<S: std::serialization::serializer>(s:
+                                                                                S,
+                                                                            v:
+                                                                                middle::last_use::is_last_use) {
+    serialize_173(s, v);
+}
+/*[syntax::ast::node_id]*/
+fn deserialize_172<S: std::serialization::deserializer>(s: S) ->
+   [syntax::ast::node_id] {
+    s.read_vec(
+
+               /*syntax::ast::node_id*/
+               {|len|
+                   vec::init_fn(len,
+                                {|i|
+                                    s.read_vec_elt(i, {|| deserialize_27(s) })
+                                })
+               })
+}
+/*middle::last_use::is_last_use*/
+fn deserialize_173<S: std::serialization::deserializer>(s: S) ->
+   middle::last_use::is_last_use {
+    s.read_enum("middle::last_use::is_last_use",
+
+
+
+
+                /*[syntax::ast::node_id]*/
+                {||
+                    s.read_enum_variant({|v_id|
+                                            alt check v_id {
+                                              0u {
+                                                middle::last_use::is_last_use
+                                              }
+                                              1u {
+                                                middle::last_use::has_last_use
+                                              }
+                                              2u {
+                                                middle::last_use::closes_over(s.read_enum_variant_arg(0u,
+                                                                                                      {||
+                                                                                                          deserialize_172(s)
+                                                                                                      }))
+                                              }
+                                            }
+                                        })
+                })
+}
+fn deserialize_middle_last_use_is_last_use<S: std::serialization::deserializer>(s:
+                                                                                    S)
+   -> middle::last_use::is_last_use {
+    deserialize_173(s)
+}

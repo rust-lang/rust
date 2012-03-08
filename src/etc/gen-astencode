@@ -17,7 +17,7 @@ function msg {
 M=src/rustc/metadata
 GEN_TYPES="syntax::ast::item syntax::ast::def middle::typeck::method_origin \
            middle::freevars::freevar_entry syntax::ast::def_id
-           syntax::ast::inlined_item"
+           syntax::ast::inlined_item middle::last_use::is_last_use"
 
 BUILD_DIR=$1
 if test $BUILD_DIR == ""; then
