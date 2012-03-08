@@ -486,11 +486,9 @@ fn write_args(
 }
 
 fn write_arg(ctxt: ctxt, arg: doc::argdoc) {
-    assert option::is_some(arg.ty);
     ctxt.w.write_str(#fmt(
-        "* `%s`: `%s`",
-        arg.name,
-        option::get(arg.ty)
+        "* `%s`",
+        arg.name
     ));
     alt arg.desc {
       some(desc) {
@@ -509,8 +507,8 @@ fn should_write_argument_list() {
         markdown,
         "Arguments:\n\
          \n\
-         * `b`: `int`\n\
-         * `c`: `int`\n\
+         * `b`\n\
+         * `c`\n\
          \n"
     );
 }
@@ -526,7 +524,7 @@ fn should_not_write_arguments_if_none() {
 fn should_write_argument_description() {
     let source = "#[doc(args(a = \"milk\"))] fn f(a: bool) { }";
     let markdown = test::render(source);
-    assert str::contains(markdown, "`a`: `bool` - milk");
+    assert str::contains(markdown, "`a` - milk");
 }
 
 fn write_return(
@@ -740,7 +738,7 @@ fn should_write_resource_signature() {
 fn should_write_resource_args() {
     let markdown = test::render("#[doc(args(a = \"b\"))]\
                                  resource r(a: bool) { }");
-    assert str::contains(markdown, "Arguments:\n\n* `a`: `bool` - b");
+    assert str::contains(markdown, "Arguments:\n\n* `a` - b");
 }
 
 fn write_iface(ctxt: ctxt, doc: doc::ifacedoc) {
@@ -812,7 +810,7 @@ fn should_write_iface_method_argument_header() {
 fn should_write_iface_method_arguments() {
     let markdown = test::render(
         "iface a { fn a(b: int); }");
-    assert str::contains(markdown, "* `b`: `int`\n");
+    assert str::contains(markdown, "* `b`\n");
 }
 
 #[test]
@@ -894,7 +892,7 @@ fn should_write_impl_method_argument_header() {
 fn should_write_impl_method_arguments() {
     let markdown = test::render(
         "impl a for int { fn a(b: int) { } }");
-    assert str::contains(markdown, "* `b`: `int`\n");
+    assert str::contains(markdown, "* `b`\n");
 }
 
 #[test]

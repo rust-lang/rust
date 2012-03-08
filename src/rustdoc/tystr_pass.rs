@@ -40,7 +40,6 @@ fn fold_fn(
     let srv = fold.ctxt;
 
     {
-        args: merge_arg_tys(srv, doc.id(), doc.args),
         return: merge_ret_ty(srv, doc.id(), doc.return),
         sig: get_fn_sig(srv, doc.id())
         with doc
@@ -134,22 +133,6 @@ fn should_add_native_fn_ret_types() {
     assert doc.cratemod().nmods()[0].fns[0].return.ty == some("int");
 }
 
-fn merge_arg_tys(
-    srv: astsrv::srv,
-    fn_id: doc::ast_id,
-    args: [doc::argdoc]
-) -> [doc::argdoc] {
-    let tys = get_arg_tys(srv, fn_id);
-    vec::map2(args, tys) {|arg, ty|
-        // Sanity check that we're talking about the same args
-        assert arg.name == tuple::first(ty);
-        {
-            ty: some(tuple::second(ty))
-            with arg
-        }
-    }
-}
-
 fn get_arg_tys(srv: astsrv::srv, fn_id: doc::ast_id) -> [(str, str)] {
     astsrv::exec(srv) {|ctxt|
         alt check ctxt.ast_map.get(fn_id) {
@@ -172,20 +155,6 @@ fn decl_arg_tys(decl: ast::fn_decl) -> [(str, str)] {
     par::seqmap(decl.inputs) {|arg|
         (arg.ident, pprust::ty_to_str(arg.ty))
     }
-}
-
-#[test]
-fn should_add_arg_types() {
-    let doc = test::mk_doc("fn a(b: int, c: bool) { }");
-    let fn_ = doc.cratemod().fns()[0];
-    assert fn_.args[0].ty == some("int");
-    assert fn_.args[1].ty == some("bool");
-}
-
-#[test]
-fn should_add_native_fn_arg_types() {
-    let doc = test::mk_doc("native mod a { fn a(b: int); }");
-    assert doc.cratemod().nmods()[0].fns[0].args[0].ty == some("int");
 }
 
 fn fold_const(
@@ -260,7 +229,6 @@ fn fold_res(
     let srv = fold.ctxt;
 
     {
-        args: merge_arg_tys(srv, doc.id(), doc.args),
         sig: some(astsrv::exec(srv) {|ctxt|
             alt check ctxt.ast_map.get(doc.id()) {
               ast_map::node_item(@{
@@ -280,12 +248,6 @@ fn should_add_resource_sigs() {
     assert doc.cratemod().resources()[0].sig == some("resource r(b: bool)");
 }
 
-#[test]
-fn should_add_resource_arg_tys() {
-    let doc = test::mk_doc("resource r(a: bool) { }");
-    assert doc.cratemod().resources()[0].args[0].ty == some("bool");
-}
-
 fn fold_iface(
     fold: fold::fold<astsrv::srv>,
     doc: doc::ifacedoc
@@ -303,11 +265,6 @@ fn merge_methods(
 ) -> [doc::methoddoc] {
     par::anymap(docs) {|doc|
         {
-            args: merge_method_arg_tys(
-                srv,
-                item_id,
-                doc.args,
-                doc.name),
             return: merge_method_ret_ty(
                 srv,
                 item_id,
@@ -403,58 +360,6 @@ fn get_method_sig(
     }
 }
 
-fn merge_method_arg_tys(
-    srv: astsrv::srv,
-    item_id: doc::ast_id,
-    args: [doc::argdoc],
-    method_name: str
-) -> [doc::argdoc] {
-    let tys = get_method_arg_tys(srv, item_id, method_name);
-    vec::map2(args, tys) {|arg, ty|
-        assert arg.name == tuple::first(ty);
-        {
-            ty: some(tuple::second(ty))
-            with arg
-        }
-    }
-}
-
-fn get_method_arg_tys(
-    srv: astsrv::srv,
-    item_id: doc::ast_id,
-    method_name: str
-) -> [(str, str)] {
-    astsrv::exec(srv) {|ctxt|
-        alt ctxt.ast_map.get(item_id) {
-          ast_map::node_item(@{
-            node: ast::item_iface(_, methods), _
-          }, _) {
-            alt vec::find(methods) {|method|
-                method.ident == method_name
-            } {
-                some(method) {
-                    decl_arg_tys(method.decl)
-                }
-                _ { fail "get_method_arg_tys: expected method"; }
-            }
-          }
-          ast_map::node_item(@{
-            node: ast::item_impl(_, _, _, methods), _
-          }, _) {
-            alt vec::find(methods) {|method|
-                method.ident == method_name
-            } {
-                some(method) {
-                    decl_arg_tys(method.decl)
-                }
-                _ { fail "get_method_arg_tys: expected method"; }
-            }
-          }
-          _ { fail }
-        }
-    }
-}
-
 #[test]
 fn should_add_iface_method_sigs() {
     let doc = test::mk_doc("iface i { fn a() -> int; }");
@@ -471,14 +376,6 @@ fn should_add_iface_method_ret_types() {
 fn should_not_add_iface_method_nil_ret_type() {
     let doc = test::mk_doc("iface i { fn a(); }");
     assert doc.cratemod().ifaces()[0].methods[0].return.ty == none;
-}
-
-#[test]
-fn should_add_iface_method_arg_types() {
-    let doc = test::mk_doc("iface i { fn a(b: int, c: bool); }");
-    let fn_ = doc.cratemod().ifaces()[0].methods[0];
-    assert fn_.args[0].ty == some("int");
-    assert fn_.args[1].ty == some("bool");
 }
 
 fn fold_impl(
@@ -544,14 +441,6 @@ fn should_add_impl_method_ret_types() {
 fn should_not_add_impl_method_nil_ret_type() {
     let doc = test::mk_doc("impl i for int { fn a() { } }");
     assert doc.cratemod().impls()[0].methods[0].return.ty == none;
-}
-
-#[test]
-fn should_add_impl_method_arg_types() {
-    let doc = test::mk_doc("impl i for int { fn a(b: int, c: bool) { } }");
-    let fn_ = doc.cratemod().impls()[0].methods[0];
-    assert fn_.args[0].ty == some("int");
-    assert fn_.args[1].ty == some("bool");
 }
 
 fn fold_type(

@@ -66,8 +66,7 @@ type fndoc = {
 
 type argdoc = {
     name: str,
-    desc: option<str>,
-    ty: option<str>
+    desc: option<str>
 };
 
 type retdoc = {
