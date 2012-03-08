@@ -171,6 +171,7 @@ fn visit_ty<E>(t: @ty, e: E, v: vt<E>) {
       ty_uniq(mt) { v.visit_ty(mt.ty, e, v); }
       ty_vec(mt) { v.visit_ty(mt.ty, e, v); }
       ty_ptr(mt) { v.visit_ty(mt.ty, e, v); }
+      ty_rptr(_, mt) { v.visit_ty(mt.ty, e, v); }
       ty_rec(flds) {
         for f: ty_field in flds { v.visit_ty(f.node.mt.ty, e, v); }
       }
