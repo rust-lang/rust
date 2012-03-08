@@ -2186,6 +2186,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                 oper_t = check_user_unop(fcx, "-", "unary-", expr, oper_t);
             }
           }
+          ast::addr_of {
+            tcx.sess.bug("TODO pcwalton");
+          }
         }
         write_ty(tcx, id, oper_t);
       }

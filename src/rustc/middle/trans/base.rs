@@ -1645,6 +1645,9 @@ fn trans_unary(bcx: block, op: ast::unop, e: @ast::expr,
                                translated using trans_lval(), not \
                                trans_unary()");
       }
+      ast::addr_of {
+        bcx.sess().bug("TODO pcwalton");
+      }
     }
 }
 
@@ -4305,7 +4308,8 @@ fn trans_const_expr(cx: crate_ctxt, e: @ast::expr) -> ValueRef {
         ret alt u {
           ast::box(_)  |
           ast::uniq(_) |
-          ast::deref  { cx.sess.span_bug(e.span,
+          ast::deref   |
+          ast::addr_of { cx.sess.span_bug(e.span,
                            "bad unop type in trans_const_expr"); }
           ast::not    { llvm::LLVMConstNot(te) }
           ast::neg    {

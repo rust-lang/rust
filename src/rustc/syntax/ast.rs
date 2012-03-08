@@ -159,7 +159,7 @@ enum binop {
 enum unop {
     box(mutability),
     uniq(mutability),
-    deref, not, neg,
+    deref, not, neg, addr_of
 }
 
 // Generally, after typeck you can get the inferred value

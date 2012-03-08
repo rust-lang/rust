@@ -1393,6 +1393,7 @@ fn serialize_81<S: std::serialization::serializer>(s: S,
                 /*syntax::ast::mutability*/
 
 
+
                 {||
                     alt v {
                       syntax::ast::box(v0) {
@@ -1428,6 +1429,10 @@ fn serialize_81<S: std::serialization::serializer>(s: S,
                       }
                       syntax::ast::neg {
                         s.emit_enum_variant("syntax::ast::neg", 4u, 0u, {|| })
+                      }
+                      syntax::ast::addr_of {
+                        s.emit_enum_variant("syntax::ast::addr_of", 5u, 0u,
+                                            {|| })
                       }
                     }
                 });
@@ -5543,6 +5548,8 @@ fn deserialize_81<S: std::serialization::deserializer>(s: S) ->
 
 
 
+
+
                 {||
                     s.read_enum_variant({|v_id|
                                             alt check v_id {
@@ -5561,6 +5568,7 @@ fn deserialize_81<S: std::serialization::deserializer>(s: S) ->
                                               2u { syntax::ast::deref }
                                               3u { syntax::ast::not }
                                               4u { syntax::ast::neg }
+                                              5u { syntax::ast::addr_of }
                                             }
                                         })
                 })

@@ -94,6 +94,7 @@ fn unop_to_str(op: unop) -> str {
       deref { ret "*"; }
       not { ret "!"; }
       neg { ret "-"; }
+      addr_of { ret "&"; }
     }
 }
 
