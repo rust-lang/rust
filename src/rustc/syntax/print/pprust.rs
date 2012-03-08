@@ -332,6 +332,7 @@ fn print_type(s: ps, &&ty: @ast::ty) {
         word(s.s, "]");
       }
       ast::ty_ptr(mt) { word(s.s, "*"); print_mt(s, mt); }
+      ast::ty_rptr(region, mt) { fail "TODO"; }
       ast::ty_rec(fields) {
         word(s.s, "{");
         fn print_field(s: ps, f: ast::ty_field) {

@@ -339,6 +339,12 @@ enum prim_ty {
     ty_bool,
 }
 
+enum region {
+    re_inferred,
+    re_named(ident),
+    re_self
+}
+
 enum ty_ {
     ty_nil,
     ty_bot, /* bottom type */
@@ -346,6 +352,7 @@ enum ty_ {
     ty_uniq(mt),
     ty_vec(mt),
     ty_ptr(mt),
+    ty_rptr(region, mt),
     ty_rec([ty_field]),
     ty_fn(proto, fn_decl),
     ty_tup([@ty]),

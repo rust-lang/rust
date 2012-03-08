@@ -479,6 +479,7 @@ fn noop_fold_ty(t: ty_, fld: ast_fold) -> ty_ {
       ty_uniq(mt) {ty_uniq(fold_mt(mt, fld))}
       ty_vec(mt) {ty_vec(fold_mt(mt, fld))}
       ty_ptr(mt) {ty_ptr(fold_mt(mt, fld))}
+      ty_rptr(region, mt) {ty_rptr(region, fold_mt(mt, fld))}
       ty_rec(fields) {ty_rec(vec::map(fields) {|f| fold_field(f, fld)})}
       ty_fn(proto, decl) {ty_fn(proto, fold_fn_decl(decl, fld))}
       ty_tup(tys) {ty_tup(vec::map(tys) {|ty| fld.fold_ty(ty)})}
