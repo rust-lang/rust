@@ -170,7 +170,7 @@ fn splitext(p: path) -> (str, str) {
         if vec::len(parts) > 1u {
             let base = str::connect(vec::init(parts), ".");
             // We just checked that parts is non-empty, so this is safe
-            let ext = "." + vec::last_unsafe(parts);
+            let ext = "." + vec::last(parts);
 
             fn is_dotfile(base: str) -> bool {
                 str::is_empty(base)

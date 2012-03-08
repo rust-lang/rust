@@ -144,7 +144,7 @@ fn find_library_crate(sess: session::session, ident: ast::ident,
     let crate_name =
         {
             let name_items = attr::find_meta_items_by_name(metas, "name");
-            alt vec::last(name_items) {
+            alt vec::last_opt(name_items) {
               some(i) {
                 alt attr::get_meta_item_value_str(i) {
                   some(n) { n }

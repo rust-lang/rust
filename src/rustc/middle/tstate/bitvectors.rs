@@ -183,7 +183,7 @@ fn kill_poststate(fcx: fn_ctxt, id: node_id, c: tsconstr) -> bool {
 fn clear_in_poststate_expr(fcx: fn_ctxt, e: @expr, t: poststate) {
     alt e.node {
       expr_path(p) {
-        alt vec::last(p.node.idents) {
+        alt vec::last_opt(p.node.idents) {
           some(i) {
             alt local_node_id_to_def(fcx, e.id) {
               some(def_local(nid, _)) {

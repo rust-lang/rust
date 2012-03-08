@@ -187,27 +187,24 @@ fn init<T: copy>(v: [const T]) -> [T] {
 /*
 Function: last
 
-Returns the last element of a vector
-
-Returns:
-
-An option containing the last element of `v` if `v` is not empty, or
-none if `v` is empty.
-*/
-pure fn last<T: copy>(v: [const T]) -> option<T> {
-    if len(v) == 0u { ret none; }
-    ret some(v[len(v) - 1u]);
-}
-
-/*
-Function: last_unsafe
-
 Returns the last element of a `v`, failing if the vector is empty.
 
 */
-pure fn last_unsafe<T: copy>(v: [const T]) -> T {
+pure fn last<T: copy>(v: [const T]) -> T {
     if len(v) == 0u { fail "last_unsafe: empty vector" }
     v[len(v) - 1u]
+}
+
+/*
+Function: last_opt
+
+Returns some(x) where `x` is the last element of a vector `v`,
+or none if the vector is empty.
+
+*/
+pure fn last_opt<T: copy>(v: [const T]) -> option<T> {
+    if len(v) == 0u { ret none; }
+    some(v[len(v) - 1u])
 }
 
 /*
@@ -1270,11 +1267,11 @@ mod tests {
 
     #[test]
     fn test_last() {
-        let n = last([]);
+        let n = last_opt([]);
         assert (n == none);
-        n = last([1, 2, 3]);
+        n = last_opt([1, 2, 3]);
         assert (n == some(3));
-        n = last([1, 2, 3, 4, 5]);
+        n = last_opt([1, 2, 3, 4, 5]);
         assert (n == some(5));
     }
 

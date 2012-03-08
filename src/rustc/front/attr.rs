@@ -256,7 +256,7 @@ fn meta_item_from_list(
     name: str
 ) -> option<@ast::meta_item> {
     let items = attr::find_meta_items_by_name(items, name);
-    vec::last(items)
+    vec::last_opt(items)
 }
 
 fn meta_item_value_from_list(

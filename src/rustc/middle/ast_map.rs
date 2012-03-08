@@ -189,7 +189,7 @@ fn map_view_item(vi: @view_item, cx: ctx, _v: vt) {
               view_path_glob(pth, id) | view_path_list(pth, _, id) {
                   // should be a constraint on the type
                 assert (vec::is_not_empty(*pth));
-                (id, vec::last_unsafe(*pth))
+                (id, vec::last(*pth))
               }
             };
             cx.map.insert(id, node_export(vp, extend(cx, name)));

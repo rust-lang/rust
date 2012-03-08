@@ -406,7 +406,7 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
                                                     init_assign),
                                       exs, return_val);
 
-        let base_pres = alt vec::last(exs) { none { pres }
+        let base_pres = alt vec::last_opt(exs) { none { pres }
                           some(f) { expr_poststate(fcx.ccx, f) }};
         option::may(maybe_base, {|base|
             changed |= find_pre_post_state_expr(fcx, base_pres, base) |

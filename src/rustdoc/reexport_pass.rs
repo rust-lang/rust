@@ -163,7 +163,7 @@ fn build_reexport_path_map(srv: astsrv::srv, -def_map: def_map) -> path_map {
             };
           // should be a constraint on the node_export constructor
           // that guarantees path is non-empty
-            let name = alt check vec::last_unsafe(*path) {
+            let name = alt check vec::last(*path) {
               ast_map::path_name(nm) { nm }
             };
             let modpath = ast_map::path_to_str(vec::init(*path));

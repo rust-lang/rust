@@ -2642,7 +2642,7 @@ fn bind_params(fcx: @fn_ctxt, tp: ty::t, count: uint)
 }
 
 fn get_self_info(ccx: @crate_ctxt) -> option<self_info> {
-    ret vec::last(ccx.self_infos);
+    ret vec::last_opt(ccx.self_infos);
 }
 
 fn check_decl_initializer(fcx: @fn_ctxt, nid: ast::node_id,
