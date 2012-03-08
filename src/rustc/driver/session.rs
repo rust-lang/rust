@@ -45,7 +45,6 @@ type options =
      parse_only: bool,
      no_trans: bool,
      no_asm_comments: bool,
-     monomorphize: bool,
      warn_unused_imports: bool,
      enforce_mut_vars: bool};
 

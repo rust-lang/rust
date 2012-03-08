@@ -2229,8 +2229,7 @@ fn lval_static_fn(bcx: block, fn_id: ast::def_id, id: ast::node_id,
     // The awkwardness below mostly stems from the fact that we're mixing
     // monomorphized and non-monomorphized functions at the moment. If
     // monomorphizing becomes the only approach, this'll be much simpler.
-    if ccx.sess.opts.monomorphize &&
-       (option::is_some(substs) || tys.len() > 0u) &&
+    if (option::is_some(substs) || tys.len() > 0u) &&
        fn_id.crate == ast::local_crate &&
        !vec::any(tys, {|t| ty::type_has_params(t)}) {
         let mono = alt substs {

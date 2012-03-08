@@ -366,7 +366,6 @@ fn build_session_options(match: getopts::match,
     if opt_present(match, "no-lint-ctypes") {
         lint_opts += [(lint::ctypes, false)];
     }
-    let monomorphize = opt_present(match, "monomorphize");
 
     let output_type =
         if parse_only || no_trans {
@@ -445,7 +444,6 @@ fn build_session_options(match: getopts::match,
           parse_only: parse_only,
           no_trans: no_trans,
           no_asm_comments: no_asm_comments,
-          monomorphize: monomorphize,
           warn_unused_imports: warn_unused_imports,
           enforce_mut_vars: enforce_mut_vars};
     ret sopts;
@@ -520,7 +518,6 @@ fn opts() -> [getopts::opt] {
          optflag("time-passes"), optflag("time-llvm-passes"),
          optflag("no-verify"),
          optflag("no-lint-ctypes"),
-         optflag("monomorphize"),
          optmulti("cfg"), optflag("test"),
          optflag("lib"), optflag("bin"), optflag("static"), optflag("gc"),
          optflag("no-asm-comments"),

@@ -145,7 +145,6 @@ fn build_session() -> (session::session, @mutable bool) {
         parse_only: false,
         no_trans: false,
         no_asm_comments: false,
-        monomorphize: false,
         warn_unused_imports: false,
         enforce_mut_vars: false
     };
