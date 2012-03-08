@@ -76,7 +76,7 @@ fn trans_static_callee(bcx: block, callee_id: ast::node_id,
 
 fn wrapper_fn_ty(ccx: @crate_ctxt, vtable_ty: TypeRef, fty: ty::t,
                  tps: @[ty::param_bounds]) -> {ty: ty::t, llty: TypeRef} {
-    let bare_fn_ty = type_of_fn_from_ty(ccx, fty, *tps);
+    let bare_fn_ty = type_of_fn_from_ty(ccx, fty, (*tps).len());
     let {inputs, output} = llfn_arg_tys(bare_fn_ty);
     {ty: fty, llty: T_fn([vtable_ty] + inputs, output)}
 }
@@ -86,13 +86,11 @@ fn trans_vtable_callee(bcx: block, env: callee_env, vtable: ValueRef,
     -> lval_maybe_callee {
     let bcx = bcx, ccx = bcx.ccx();
     let fty = node_id_type(bcx, callee_id);
-    let llfty = type_of::type_of_fn_from_ty(ccx, fty, []);
+    let llfty = type_of::type_of_fn_from_ty(ccx, fty, 0u);
     let vtable = PointerCast(bcx, vtable,
                              T_ptr(T_array(T_ptr(llfty), n_method + 1u)));
     let mptr = Load(bcx, GEPi(bcx, vtable, [0, n_method as int]));
-    {bcx: bcx, val: mptr, kind: owned,
-     env: env,
-     generic: generic_none}
+    {bcx: bcx, val: mptr, kind: owned, env: env, tds: none}
 }
 
 fn method_with_name(ccx: @crate_ctxt, impl_id: ast::def_id,
@@ -243,10 +241,10 @@ fn make_impl_vtable(ccx: @crate_ctxt, impl_id: ast::def_id, substs: [ty::t],
         let fty = ty::substitute_type_params(tcx, substs,
                                              ty::mk_fn(tcx, im.fty));
         if (*im.tps).len() > 0u || ty::type_has_vars(fty) {
-            C_null(type_of_fn_from_ty(ccx, fty, []))
+            C_null(type_of_fn_from_ty(ccx, fty, 0u))
         } else {
             let m_id = method_with_name(ccx, impl_id, im.ident);
-            option::get(monomorphic_fn(ccx, m_id, substs, some(vtables))).llfn
+            option::get(monomorphic_fn(ccx, m_id, substs, some(vtables)))
         }
     }))
 }

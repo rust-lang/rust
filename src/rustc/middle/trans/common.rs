@@ -93,7 +93,7 @@ type crate_ctxt = {
      // Track mapping of external ids to local items imported for inlining
      external: hashmap<ast::def_id, option<ast::node_id>>,
      // Cache instances of monomorphized functions
-     monomorphized: hashmap<mono_id, {llfn: ValueRef, fty: ty::t}>,
+     monomorphized: hashmap<mono_id, ValueRef>,
      // Cache generated vtables
      vtables: hashmap<mono_id, ValueRef>,
      module_data: hashmap<str, ValueRef>,
@@ -180,6 +180,7 @@ type fn_ctxt = @{
     llupvars: hashmap<ast::node_id, ValueRef>,
 
     // A vector of incoming type descriptors and their associated vtables.
+    // Currently only used by glue functions
     mutable lltyparams: [fn_ty_param],
 
     // Derived tydescs are tydescs created at runtime, for types that
@@ -307,7 +308,7 @@ fn get_res_dtor(ccx: @crate_ctxt, did: ast::def_id, inner_t: ty::t)
     let nil_res = ty::mk_nil(ccx.tcx);
     let fn_mode = ast::expl(ast::by_ref);
     let f_t = type_of::type_of_fn(ccx, [{mode: fn_mode, ty: inner_t}],
-                                  nil_res, *param_bounds);
+                                  nil_res, (*param_bounds).len());
     ret base::get_extern_const(ccx.externs, ccx.llmod,
                                 csearch::get_symbol(ccx.sess.cstore,
                                                     did), f_t);
@@ -542,9 +543,9 @@ fn set_struct_body(t: TypeRef, elts: [TypeRef]) unsafe {
 fn T_empty_struct() -> TypeRef { ret T_struct([]); }
 
 // A vtable is, in reality, a vtable pointer followed by zero or more pointers
-// to tydescs and other vtables that it closes over. But the types and number
-// of those are rarely known to the code that needs to manipulate them, so
-// they are described by this opaque type.
+// to tydescs and other vtables that it closes over. But the types and number of
+// those are rarely known to the code that needs to manipulate them, so they
+// are described by this opaque type.
 fn T_vtable() -> TypeRef { T_array(T_ptr(T_i8()), 1u) }
 
 fn T_task(targ_cfg: @session::config) -> TypeRef {

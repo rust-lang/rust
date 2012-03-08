@@ -19,7 +19,7 @@ fn type_of_explicit_args(cx: @crate_ctxt, inputs: [ty::arg]) -> [TypeRef] {
 }
 
 fn type_of_fn(cx: @crate_ctxt, inputs: [ty::arg],
-              output: ty::t, params: [ty::param_bounds]) -> TypeRef {
+              output: ty::t, n_ty_params: uint) -> TypeRef {
     let atys: [TypeRef] = [];
 
     // Arg 0: Output pointer.
@@ -29,14 +29,10 @@ fn type_of_fn(cx: @crate_ctxt, inputs: [ty::arg],
     atys += [T_opaque_box_ptr(cx)];
 
     // Args >2: ty params, if not acquired via capture...
-    for bounds in params {
+    let i = 0u;
+    while i < n_ty_params {
         atys += [T_ptr(cx.tydesc_type)];
-        for bound in *bounds {
-            alt bound {
-              ty::bound_iface(_) { atys += [T_ptr(T_vtable())]; }
-              _ {}
-            }
-        }
+        i += 1u;
     }
     // ... then explicit args.
     atys += type_of_explicit_args(cx, inputs);
@@ -44,9 +40,9 @@ fn type_of_fn(cx: @crate_ctxt, inputs: [ty::arg],
 }
 
 // Given a function type and a count of ty params, construct an llvm type
-fn type_of_fn_from_ty(cx: @crate_ctxt, fty: ty::t,
-                      param_bounds: [ty::param_bounds]) -> TypeRef {
-    type_of_fn(cx, ty::ty_fn_args(fty), ty::ty_fn_ret(fty), param_bounds)
+fn type_of_fn_from_ty(cx: @crate_ctxt, fty: ty::t, n_ty_params: uint)
+    -> TypeRef {
+    type_of_fn(cx, ty::ty_fn_args(fty), ty::ty_fn_ret(fty), n_ty_params)
 }
 
 fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
@@ -93,7 +89,7 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
         T_struct(tys)
       }
       ty::ty_fn(_) {
-        T_fn_pair(cx, type_of_fn_from_ty(cx, t, []))
+        T_fn_pair(cx, type_of_fn_from_ty(cx, t, 0u))
       }
       ty::ty_iface(_, _) { T_opaque_iface(cx) }
       ty::ty_res(_, sub, tps) {
@@ -155,7 +151,7 @@ fn type_of_ty_param_bounds_and_ty
     let t = tpt.ty;
     alt ty::get(t).struct {
       ty::ty_fn(_) {
-        ret type_of_fn_from_ty(ccx, t, *tpt.bounds);
+        ret type_of_fn_from_ty(ccx, t, (*tpt.bounds).len());
       }
       _ {
         // fall through

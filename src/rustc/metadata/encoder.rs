@@ -429,7 +429,9 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_family(ebml_w, 'f');
         encode_type_param_bounds(ebml_w, ecx, tps);
         encode_type(ecx, ebml_w, fn_ty);
-        encode_symbol(ecx, ebml_w, ctor_id);
+        if tps.len() == 0u {
+            encode_symbol(ecx, ebml_w, ctor_id);
+        }
         encode_path(ebml_w, path, ast_map::path_name(item.ident));
         ebml_w.end_tag();
       }
@@ -447,7 +449,6 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         }
         alt ifce {
           some(t) {
-            encode_symbol(ecx, ebml_w, item.id);
             let i_ty = alt check t.node {
               ty_path(_, id) { ty::node_id_to_type(tcx, id) }
             };

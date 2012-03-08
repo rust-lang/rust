@@ -270,7 +270,7 @@ fn dynastack_alloca(cx: block, t: TypeRef, n: ValueRef, ty: ty::t) ->
                    C_uint(bcx.ccx(), llsize_of_real(bcx.ccx(), t)),
                    n);
 
-    let lltydesc = get_tydesc_simple(cx, ty, false).val;
+    let lltydesc = get_tydesc_simple(cx, ty).val;
 
     let llresult = Call(dy_cx, dynastack_alloc, [llsz, lltydesc]);
     ret PointerCast(dy_cx, llresult, T_ptr(t));
@@ -450,7 +450,7 @@ fn trans_malloc_boxed_raw(bcx: block, t: ty::t,
     let llty = type_of(ccx, box_ptr);
 
     // Get the tydesc for the body:
-    let {bcx, val: lltydesc} = get_tydesc(bcx, t, true, static_ti);
+    let {bcx, val: lltydesc} = get_tydesc(bcx, t, static_ti);
     lazily_emit_all_tydesc_glue(ccx, static_ti);
 
     // Allocate space:
@@ -469,37 +469,6 @@ fn trans_malloc_boxed(bcx: block, t: ty::t) ->
 }
 
 // Type descriptor and type glue stuff
-
-// Given a type and a field index into its corresponding type descriptor,
-// returns an LLVM ValueRef of that field from the tydesc, generating the
-// tydesc if necessary.
-fn field_of_tydesc(cx: block, t: ty::t, escapes: bool, field: int) ->
-   result {
-    let tydesc = get_tydesc_simple(cx, t, escapes);
-    ret rslt(tydesc.bcx,
-             GEPi(tydesc.bcx, tydesc.val, [0, field]));
-}
-
-// Given a type containing ty params, build a vector containing a ValueRef for
-// each of the ty params it uses (from the current frame) and a vector of the
-// indices of the ty params present in the type. This is used solely for
-// constructing derived tydescs.
-fn linearize_ty_params(cx: block, t: ty::t) ->
-   {params: [uint], descs: [ValueRef]} {
-    let param_vals = [], param_defs = [];
-    ty::walk_ty(cx.tcx(), t) {|t|
-        alt ty::get(t).struct {
-          ty::ty_param(pid, _) {
-            if !vec::any(param_defs, {|d| d == pid}) {
-                param_vals += [cx.fcx.lltyparams[pid].desc];
-                param_defs += [pid];
-            }
-          }
-          _ { }
-        }
-    }
-    ret {params: param_defs, descs: param_vals};
-}
 
 fn trans_stack_local_derived_tydesc(cx: block, llsz: ValueRef,
                                     llalign: ValueRef, llroottydesc: ValueRef,
@@ -527,93 +496,16 @@ fn trans_stack_local_derived_tydesc(cx: block, llsz: ValueRef,
     ret llmyroottydesc;
 }
 
-fn get_derived_tydesc(cx: block, t: ty::t, escapes: bool,
-                      &static_ti: option<@tydesc_info>) -> result {
-    alt cx.fcx.derived_tydescs.find(t) {
-      some(info) {
-        // If the tydesc escapes in this context, the cached derived
-        // tydesc also has to be one that was marked as escaping.
-        if !(escapes && !info.escapes) {
-            ret rslt(cx, info.lltydesc);
-        }
-      }
-      none {/* fall through */ }
-    }
-
-    cx.ccx().stats.n_derived_tydescs += 1u;
-    let bcx = raw_block(cx.fcx, cx.fcx.llderivedtydescs);
-    let tys = linearize_ty_params(bcx, t);
-    let root_ti = get_static_tydesc(bcx.ccx(), t, tys.params);
-    static_ti = some(root_ti);
-    lazily_emit_all_tydesc_glue(cx.ccx(), static_ti);
-    let root = root_ti.tydesc;
-    let sz = size_of(bcx, t);
-    bcx = sz.bcx;
-    let align = align_of(bcx, t);
-    bcx = align.bcx;
-
-    // Store the captured type descriptors in an alloca if the caller isn't
-    // promising to do so itself.
-    let n_params = ty::count_ty_params(bcx.tcx(), t);
-
-    assert n_params == tys.params.len();
-    assert n_params == tys.descs.len();
-
-    let llparamtydescs =
-        alloca(bcx, T_array(T_ptr(bcx.ccx().tydesc_type), n_params + 1u));
-    let i = 0;
-
-    // If the type descriptor escapes, we need to add in the root as
-    // the first parameter, because upcall_get_type_desc() expects it.
-    if escapes {
-        Store(bcx, root, GEPi(bcx, llparamtydescs, [0, 0]));
-        i += 1;
-    }
-
-    for td: ValueRef in tys.descs {
-        Store(bcx, td, GEPi(bcx, llparamtydescs, [0, i]));
-        i += 1;
-    }
-
-    let llfirstparam =
-        PointerCast(bcx, llparamtydescs,
-                    T_ptr(T_ptr(bcx.ccx().tydesc_type)));
-
-    let v;
-    if escapes {
-        let ccx = bcx.ccx();
-        let td_val =
-            Call(bcx, ccx.upcalls.get_type_desc,
-                 [C_null(T_ptr(T_nil())), sz.val,
-                  align.val, C_uint(ccx, 1u + n_params), llfirstparam,
-                  C_uint(ccx, 0u)]);
-        v = td_val;
-    } else {
-        v = trans_stack_local_derived_tydesc(bcx, sz.val, align.val, root,
-                                             llfirstparam, n_params);
-    }
-    bcx.fcx.derived_tydescs.insert(t, {lltydesc: v, escapes: escapes});
-    ret rslt(cx, v);
-}
-
-fn get_tydesc_simple(bcx: block, t: ty::t, escapes: bool) -> result {
+fn get_tydesc_simple(bcx: block, t: ty::t) -> result {
     let ti = none;
-    get_tydesc(bcx, t, escapes, ti)
+    get_tydesc(bcx, t, ti)
 }
 
-fn get_tydesc(cx: block, t: ty::t, escapes: bool,
+fn get_tydesc(cx: block, t: ty::t,
               &static_ti: option<@tydesc_info>) -> result {
 
-    // Is the supplied type a type param? If so, return the passed-in tydesc.
-    alt ty::type_param(t) {
-      some(id) { ret rslt(cx, cx.fcx.lltyparams[id].desc); }
-      none {/* fall through */ }
-    }
-
-    // Does it contain a type param? If so, generate a derived tydesc.
-    if ty::type_has_params(t) {
-        ret get_derived_tydesc(cx, t, escapes, static_ti);
-    }
+    // FIXME[mono]
+    assert !ty::type_has_params(t);
     // Otherwise, generate a tydesc if necessary, and return it.
     let info = get_static_tydesc(cx.ccx(), t, []);
     static_ti = some(info);
@@ -980,7 +872,7 @@ fn trans_res_drop(bcx: block, rs: ValueRef, did: ast::def_id,
         let dtor_addr = common::get_res_dtor(ccx, did, inner_t);
         let args = [bcx.fcx.llretptr, null_env_ptr(bcx)];
         for tp in tps {
-            let td = get_tydesc_simple(bcx, tp, false);
+            let td = get_tydesc_simple(bcx, tp);
             args += [td.val];
             bcx = td.bcx;
         }
@@ -1244,13 +1136,6 @@ fn lazily_emit_all_tydesc_glue(ccx: @crate_ctxt,
     lazily_emit_tydesc_glue(ccx, abi::tydesc_field_free_glue, static_ti);
 }
 
-fn lazily_emit_all_generic_info_tydesc_glues(ccx: @crate_ctxt,
-                                             gi: generic_info) {
-    for ti: option<@tydesc_info> in gi.static_tis {
-        lazily_emit_all_tydesc_glue(ccx, ti);
-    }
-}
-
 fn lazily_emit_tydesc_glue(ccx: @crate_ctxt, field: int,
                            static_ti: option<@tydesc_info>) {
     alt static_ti {
@@ -1349,7 +1234,7 @@ fn call_tydesc_glue_full(cx: block, v: ValueRef, tydesc: ValueRef,
 fn call_tydesc_glue(cx: block, v: ValueRef, t: ty::t, field: int) ->
    block {
     let ti: option<@tydesc_info> = none::<@tydesc_info>;
-    let {bcx: bcx, val: td} = get_tydesc(cx, t, false, ti);
+    let {bcx: bcx, val: td} = get_tydesc(cx, t, ti);
     call_tydesc_glue_full(bcx, v, td, field, ti);
     ret bcx;
 }
@@ -1370,7 +1255,7 @@ fn call_cmp_glue(cx: block, lhs: ValueRef, rhs: ValueRef, t: ty::t,
 
     let llrawlhsptr = BitCast(bcx, lllhs, T_ptr(T_i8()));
     let llrawrhsptr = BitCast(bcx, llrhs, T_ptr(T_i8()));
-    r = get_tydesc_simple(bcx, t, false);
+    r = get_tydesc_simple(bcx, t);
     let lltydesc = r.val;
     bcx = r.bcx;
     let lltydescs =
@@ -2047,18 +1932,6 @@ fn trans_loop(cx:block, body: ast::blk) -> block {
     ret next_cx;
 }
 
-type generic_info = {item_type: ty::t,
-                     static_tis: [option<@tydesc_info>],
-                     tydescs: [ValueRef],
-                     param_bounds: @[ty::param_bounds],
-                     origins: option<typeck::vtable_res>};
-
-enum generic_callee {
-    generic_full(generic_info),
-    generic_mono(ty::t),
-    generic_none,
-}
-
 enum lval_kind {
     temporary, //< Temporary value passed by value if of immediate type
     owned,     //< Non-temporary value passed by pointer
@@ -2075,7 +1948,7 @@ type lval_maybe_callee = {bcx: block,
                           val: ValueRef,
                           kind: lval_kind,
                           env: callee_env,
-                          generic: generic_callee};
+                          tds: option<[ValueRef]>};
 
 fn null_env_ptr(bcx: block) -> ValueRef {
     C_null(T_opaque_box_ptr(bcx.ccx()))
@@ -2094,8 +1967,7 @@ fn lval_temp(bcx: block, val: ValueRef) -> lval_result {
 
 fn lval_no_env(bcx: block, val: ValueRef, kind: lval_kind)
     -> lval_maybe_callee {
-    ret {bcx: bcx, val: val, kind: kind, env: is_closure,
-         generic: generic_none};
+    ret {bcx: bcx, val: val, kind: kind, env: is_closure, tds: none};
 }
 
 fn trans_external_path(cx: block, did: ast::def_id,
@@ -2108,7 +1980,7 @@ fn trans_external_path(cx: block, did: ast::def_id,
 
 fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
                   vtables: option<typeck::vtable_res>)
-    -> option<{llfn: ValueRef, fty: ty::t}> {
+    -> option<ValueRef> {
     let substs = vec::map(substs, {|t|
         alt ty::get(t).struct {
           ty::ty_box(mt) { ty::mk_opaque_box(ccx.tcx) }
@@ -2126,7 +1998,7 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
 
     let tpt = ty::lookup_item_type(ccx.tcx, fn_id);
     let mono_ty = ty::substitute_type_params(ccx.tcx, substs, tpt.ty);
-    let llfty = type_of_fn_from_ty(ccx, mono_ty, []);
+    let llfty = type_of_fn_from_ty(ccx, mono_ty, 0u);
 
     let map_node = ccx.tcx.items.get(fn_id.node);
     // Get the path so that we can create a symbol
@@ -2146,7 +2018,7 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
     let pt = *pt + [path_name(ccx.names(name))];
     let s = mangle_exported_name(ccx, pt, mono_ty);
     let lldecl = decl_cdecl_fn(ccx.llmod, s, llfty);
-    ccx.monomorphized.insert(hash_id, {llfn: lldecl, fty: mono_ty});
+    ccx.monomorphized.insert(hash_id, lldecl);
 
     let psubsts = some({tys: substs, vtables: vtables, bounds: tpt.bounds});
     alt check map_node {
@@ -2182,10 +2054,9 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
         }
       }
     }
-    some({llfn: lldecl, fty: mono_ty})
+    some(lldecl)
 }
 
-// FIXME[mono] Only actually translate things that are not generic
 fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id)
     -> ast::def_id {
     alt ccx.external.find(fn_id) {
@@ -2266,10 +2137,12 @@ fn lval_static_fn(bcx: block, fn_id: ast::def_id, id: ast::node_id,
           }
         };
         alt mono {
-          some({llfn, fty}) {
-            ret {bcx: bcx, val: llfn,
+          some(llfn) {
+            let cast = PointerCast(bcx, llfn, T_ptr(type_of_fn_from_ty(
+                ccx, node_id_type(bcx, id), 0u)));
+            ret {bcx: bcx, val: cast,
                  kind: owned, env: null_env,
-                 generic: generic_mono(fty)};
+                 tds: none};
           }
           none {}
         }
@@ -2295,23 +2168,22 @@ fn lval_static_fn(bcx: block, fn_id: ast::def_id, id: ast::node_id,
         }
     }
 
-    let gen = generic_none, bcx = bcx;
+    let tds = none, bcx = bcx;
+    // FIXME[mono] ensure this is a native function
     if tys.len() > 0u {
-        let tydescs = [], tis = [];
+        val = PointerCast(bcx, val, T_ptr(type_of_fn_from_ty(
+            ccx, node_id_type(bcx, id), tys.len())));
+        let tydescs = [];
         for t in tys {
             let ti = none;
-            let td = get_tydesc(bcx, t, true, ti);
-            tis += [ti];
+            let td = get_tydesc(bcx, t, ti);
+            lazily_emit_all_tydesc_glue(ccx, ti);
             bcx = td.bcx;
             tydescs += [td.val];
         }
-        gen = generic_full({item_type: tpt.ty,
-                            static_tis: tis,
-                            tydescs: tydescs,
-                            param_bounds: tpt.bounds,
-                            origins: ccx.maps.vtable_map.find(id)});
+        tds = some(tydescs);
     }
-    ret {bcx: bcx, val: val, kind: owned, env: null_env, generic: gen};
+    ret {bcx: bcx, val: val, kind: owned, env: null_env, tds: tds};
 }
 
 fn lookup_discriminant(ccx: @crate_ctxt, vid: ast::def_id) -> ValueRef {
@@ -2564,7 +2436,7 @@ fn trans_lval(cx: block, e: @ast::expr) -> lval_result {
 }
 
 fn lval_maybe_callee_to_lval(c: lval_maybe_callee, ty: ty::t) -> lval_result {
-    let must_bind = alt c.generic { generic_full(_) { true } _ { false } } ||
+    let must_bind = option::is_some(c.tds) ||
         alt c.env { self_env(_, _) { true } _ { false } };
     if must_bind {
         let n_args = ty::ty_fn_args(ty).len();
@@ -2761,7 +2633,7 @@ fn trans_arg_expr(cx: block, arg: ty::arg, lldestty: TypeRef, e: @ast::expr,
 //  - new_fn_ctxt
 //  - trans_args
 fn trans_args(cx: block, llenv: ValueRef,
-              gen: generic_callee, es: [@ast::expr], fn_ty: ty::t,
+              tds: option<[ValueRef]>, es: [@ast::expr], fn_ty: ty::t,
               dest: dest)
    -> {bcx: block,
        args: [ValueRef],
@@ -2770,54 +2642,40 @@ fn trans_args(cx: block, llenv: ValueRef,
     let temp_cleanups = [];
     let args = ty::ty_fn_args(fn_ty);
     let llargs: [ValueRef] = [];
-    let lltydescs: [ValueRef] = [];
 
     let ccx = cx.ccx();
     let bcx = cx;
 
-    let retty = ty::ty_fn_ret(fn_ty), full_retty = retty;
-    alt gen {
-      generic_full(g) { fail; }
-      generic_mono(t) {
-        args = ty::ty_fn_args(t);
-        retty = ty::ty_fn_ret(t);
-      }
-      _ { }
-    }
+    let retty = ty::ty_fn_ret(fn_ty);
     // Arg 0: Output pointer.
     let llretslot = alt dest {
       ignore {
         if ty::type_is_nil(retty) {
             llvm::LLVMGetUndef(T_ptr(T_nil()))
         } else {
-            let {bcx: cx, val} = alloc_ty(bcx, full_retty);
+            let {bcx: cx, val} = alloc_ty(bcx, retty);
             bcx = cx;
             val
         }
       }
       save_in(dst) { dst }
       by_val(_) {
-          let {bcx: cx, val} = alloc_ty(bcx, full_retty);
+          let {bcx: cx, val} = alloc_ty(bcx, retty);
           bcx = cx;
           val
       }
     };
 
-    if retty != full_retty || ty::type_has_params(retty) {
-        // It's possible that the callee has some generic-ness somewhere in
-        // its return value -- say a method signature within an obj or a fn
-        // type deep in a structure -- which the caller has a concrete view
-        // of. If so, cast the caller's view of the restlot to the callee's
-        // view, for the sake of making a type-compatible call.
-        let llretty = T_ptr(type_of(ccx, retty));
-        llargs += [PointerCast(cx, llretslot, llretty)];
-    } else { llargs += [llretslot]; }
+    llargs += [llretslot];
 
     // Arg 1: Env (closure-bindings / self value)
     llargs += [llenv];
 
     // Args >2: ty_params ...
-    llargs += lltydescs;
+    alt tds {
+      some(tds) { llargs += tds; }
+      none {}
+    }
 
     // ... then explicit args.
 
@@ -2883,7 +2741,7 @@ fn trans_call_inner(in_cx: block, fn_expr_ty: ty::t,
 
         let ret_ty = node_id_type(bcx, id);
         let args_res =
-            trans_args(bcx, llenv, f_res.generic, args, fn_expr_ty, dest);
+            trans_args(bcx, llenv, f_res.tds, args, fn_expr_ty, dest);
         bcx = args_res.bcx;
         let llargs = args_res.args;
         let llretslot = args_res.retslot;
@@ -3418,7 +3276,7 @@ fn trans_log(lvl: @ast::expr, bcx: block, e: @ast::expr) -> block {
         with_scope(bcx, "log") {|bcx|
             let {bcx, val, _} = trans_temp_expr(bcx, e);
             let e_ty = expr_ty(bcx, e);
-            let {bcx, val: tydesc} = get_tydesc_simple(bcx, e_ty, false);
+            let {bcx, val: tydesc} = get_tydesc_simple(bcx, e_ty);
             // Call the polymorphic log function.
             let {bcx, val} = spill_if_immediate(bcx, val, e_ty);
             let val = PointerCast(bcx, val, T_ptr(T_i8()));
@@ -4376,6 +4234,15 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
             let llfndecl = get_item_val(ccx, item.id);
             trans_fn(ccx, *path + [path_name(item.ident)], decl, body,
                      llfndecl, no_self, none, item.id, none);
+        } else {
+            for stmt in body.node.stmts {
+                alt stmt.node {
+                  ast::stmt_decl(@{node: ast::decl_item(i), _}, _) {
+                    trans_item(ccx, *i);
+                  }
+                  _ {}
+                }
+            }
         }
       }
       ast::item_impl(tps, _, _, ms) {
@@ -4400,8 +4267,8 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
             let vi = ty::enum_variants(ccx.tcx, local_def(item.id));
             let i = 0;
             for variant: ast::variant in variants {
-                let llfn = get_item_val(ccx, variant.node.id);
                 if variant.node.args.len() > 0u {
+                    let llfn = get_item_val(ccx, variant.node.id);
                     trans_enum_variant(ccx, item.id, variant,
                                        vi[i].disr_val, degen,
                                        none, llfn);
@@ -4535,7 +4402,7 @@ fn param_bounds(ccx: @crate_ctxt, tps: [ast::ty_param])
 fn register_fn_full(ccx: @crate_ctxt, sp: span, path: path, flav: str,
                     bnds: [ty::param_bounds], node_id: ast::node_id,
                     node_type: ty::t) -> ValueRef {
-    let llfty = type_of_fn_from_ty(ccx, node_type, bnds);
+    let llfty = type_of_fn_from_ty(ccx, node_type, bnds.len());
     register_fn_fuller(ccx, sp, path, flav, node_id, node_type,
                        lib::llvm::CCallConv, llfty)
 }
@@ -4582,7 +4449,7 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
             {mode: ast::expl(ast::by_val),
              ty: ty::mk_vec(ccx.tcx, {ty: unit_ty, mutbl: ast::m_imm})};
         let nt = ty::mk_nil(ccx.tcx);
-        let llfty = type_of_fn(ccx, [vecarg_ty], nt, []);
+        let llfty = type_of_fn(ccx, [vecarg_ty], nt, 0u);
         let llfdecl = decl_fn(ccx.llmod, "_rust_main",
                               lib::llvm::CCallConv, llfty);
 

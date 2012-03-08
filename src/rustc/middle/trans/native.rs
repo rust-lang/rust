@@ -269,7 +269,7 @@ fn trans_crust_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
         let t = ty::node_id_to_type(ccx.tcx, id);
         let ps = link::mangle_internal_name_by_path(
             ccx, path + [ast_map::path_name("__rust_abi")]);
-        let llty = type_of_fn_from_ty(ccx, t, []);
+        let llty = type_of_fn_from_ty(ccx, t, 0u);
         let llfndecl = decl_internal_cdecl_fn(ccx.llmod, ps, llty);
         trans_fn(ccx, path, decl, body, llfndecl, no_self, none, id,
                  none);
@@ -383,8 +383,7 @@ fn decl_native_fn(ccx: @crate_ctxt, i: @ast::native_item,
           ast::native_abi_rust_intrinsic {
             // For intrinsics: link the function directly to the intrinsic
             // function itself.
-            let fn_type = type_of_fn_from_ty(
-                ccx, node_type, param_bounds(ccx, tps));
+            let fn_type = type_of_fn_from_ty(ccx, node_type, tps.len());
             let ri_name = "rust_intrinsic_" + native::link_name(i);
             ccx.item_symbols.insert(i.id, ri_name);
             get_extern_fn(ccx.externs, ccx.llmod, ri_name,
