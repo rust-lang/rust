@@ -527,9 +527,9 @@ fn set_struct_body(t: TypeRef, elts: [TypeRef]) unsafe {
 fn T_empty_struct() -> TypeRef { ret T_struct([]); }
 
 // A vtable is, in reality, a vtable pointer followed by zero or more pointers
-// to tydescs and other vtables that it closes over. But the types and number of
-// those are rarely known to the code that needs to manipulate them, so they
-// are described by this opaque type.
+// to tydescs and other vtables that it closes over. But the types and number
+// of those are rarely known to the code that needs to manipulate them, so
+// they are described by this opaque type.
 fn T_vtable() -> TypeRef { T_array(T_ptr(T_i8()), 1u) }
 
 fn T_task(targ_cfg: @session::config) -> TypeRef {
