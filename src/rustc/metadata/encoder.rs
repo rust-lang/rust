@@ -80,7 +80,8 @@ fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
                             module: _mod, path: [str], &index: [entry<str>]) {
     // FIXME factor out add_to_index/start/encode_name/encode_def_id/end ops
     for it: @item in module.items {
-        if !ecx.reachable.contains_key(it.id) { cont; }
+        if !ecx.reachable.contains_key(it.id) ||
+           !ast_util::is_exported(it.ident, module) { cont; }
         alt it.node {
           item_const(_, _) {
             add_to_index(ebml_w, path, index, it.ident);
@@ -362,7 +363,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_symbol(ecx, ebml_w, item.id);
         encode_path(ebml_w, path, ast_map::path_name(item.ident));
-        if should_inline(item.attrs) {
+        if tps.len() > 0u || should_inline(item.attrs) {
             astencode::encode_inlined_item(ecx, ebml_w, path, ii_item(item));
         }
         ebml_w.end_tag();
