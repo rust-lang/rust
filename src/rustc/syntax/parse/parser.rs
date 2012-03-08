@@ -1127,6 +1127,12 @@ fn parse_prefix_expr(p: parser) -> pexpr {
             hi = e.span.hi;
             ex = ast::expr_unary(ast::deref, e);
           }
+          token::AND {
+            p.bump();
+            let e = to_expr(parse_prefix_expr(p));
+            hi = e.span.hi;
+            ex = ast::expr_unary(ast::addr_of, e);
+          }
           _ { ret parse_dot_or_call_expr(p); }
         }
       }
