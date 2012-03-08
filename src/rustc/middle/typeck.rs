@@ -1849,6 +1849,10 @@ fn lookup_method_inner(fcx: @fn_ctxt, expr: @ast::expr,
                     tcx.sess.span_fatal(
                         expr.span, "can not call a method that contains a \
                                     self type through a boxed iface");
+                } else if (*m.tps).len() > 0u {
+                    tcx.sess.span_fatal(
+                        expr.span, "can not call a generic method through a \
+                                    boxed iface");
                 }
                 ret some({method_ty: fty,
                           n_tps: vec::len(*m.tps),
