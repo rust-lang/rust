@@ -44,6 +44,36 @@ fn take_my_order_please(
     fail;
 }
 
+fn take_my_order_now(
+    _waitress: waitress,
+    _order: [omnomnomy]
+) -> uint {
+
+    #[doc(
+        desc = "OMG would you take my order already?",
+        args(_waitress = "The waitress that you want to bother",
+             _order = "The order vector. It should be filled with food."),
+        return = "
+
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed
+        nec molestie nisl. Duis massa risus, pharetra a scelerisque a,
+        molestie eu velit. Donec mattis ligula at ante imperdiet ut
+        dapibus mauris malesuada.
+
+        Sed gravida nisi a metus elementum sit amet hendrerit dolor
+        bibendum. Aenean sit amet neque massa, sed tempus tortor. Sed
+        ut lobortis enim. Proin a mauris quis nunc fermentum ultrices
+        eget a erat. Mauris in lectus vitae metus sodales
+        auctor. Morbi nunc quam, ultricies at venenatis non,
+        pellentesque ac dui.
+
+        ",
+        failure = "This function is full of fail"
+    )];
+
+    fail;
+}
+
 mod fortress_of_solitude {
     #[doc(
         brief = "Superman's vacation home",
