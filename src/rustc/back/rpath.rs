@@ -106,7 +106,7 @@ fn get_rpath_relative_to_output(os: session::os,
         session::os_linux { "$ORIGIN" + fs::path_sep() }
         session::os_freebsd { "$ORIGIN" + fs::path_sep() }
         session::os_macos { "@executable_path" + fs::path_sep() }
-        session::os_win32 { std::util::unreachable(); }
+        session::os_win32 { core::unreachable(); }
     };
 
     prefix + get_relative_to(

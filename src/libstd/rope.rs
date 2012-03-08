@@ -1028,7 +1028,7 @@ mod node {
               }
             }
         }
-        util::unreachable();
+        core::unreachable();
     }
 
     /*
@@ -1092,7 +1092,7 @@ mod node {
               }
             }
         }
-        util::unreachable();
+        core::unreachable();
     }
 
     fn concat2(left: @node, right: @node) -> @node {
@@ -1176,7 +1176,7 @@ mod node {
               }
             }
         }
-        util::unreachable();
+        core::unreachable();
     }
 
     /*
@@ -1209,7 +1209,7 @@ mod node {
               }
             }
         }
-        util::unreachable();
+        core::unreachable();
     }
 
     mod leaf_iterator {
@@ -1248,7 +1248,7 @@ mod node {
                   }
                 }
             }
-            util::unreachable();
+            core::unreachable();
         }
     }
 
@@ -1292,7 +1292,7 @@ mod node {
                   }
                 }
             }
-            util::unreachable();
+            core::unreachable();
         }
 
         fn get_current_or_next_leaf(it: t) -> option<leaf> {

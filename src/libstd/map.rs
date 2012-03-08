@@ -158,7 +158,7 @@ mod chained {
               }
             }
         }
-        util::unreachable();
+        core::unreachable();
     }
 
     fn search_tbl<K: copy, V: copy>(

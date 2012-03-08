@@ -2,7 +2,7 @@ import syntax::{visit, ast_util};
 import syntax::ast::*;
 import syntax::codemap::span;
 import std::list::{is_not_empty, list, nil, cons, tail};
-import std::util::unreachable;
+import core::unreachable;
 import std::list;
 import std::map::hashmap;
 

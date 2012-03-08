@@ -6,7 +6,7 @@ import option::{some, none};
 import option = option::t;
 import path = path::path;
 import vec::vec_len;
-export path, option, some, none, vec_len;
+export path, option, some, none, vec_len, unreachable;
 
 // Export the log levels as global constants. Higher levels mean
 // more-verbosity. Error is the bottom level, default logging level is
@@ -39,3 +39,15 @@ mod std {
     use std;
     import std::test;
 }
+
+/*
+Function: unreachable
+
+A standard function to use to indicate unreachable code. Because the
+function is guaranteed to fail typestate will correctly identify
+any code paths following the appearance of this function as unreachable.
+*/
+fn unreachable() -> ! {
+    fail "Internal error: entered unreachable code";
+}
+

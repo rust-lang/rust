@@ -6,7 +6,7 @@ import syntax::visit;
 import visit::vt;
 import std::list;
 import std::map::hashmap;
-import std::util::unreachable;
+import core::unreachable;
 import option::is_none;
 import list::list;
 import driver::session::session;

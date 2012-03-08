@@ -71,7 +71,7 @@ fn variant_opt(tcx: ty::ctxt, pat_id: ast::node_id) -> opt {
     for v: ty::variant_info in *variants {
         if vdef.var == v.id { ret var(v.disr_val, vdef); }
     }
-    std::util::unreachable();
+    core::unreachable();
 }
 
 type bind_map = [{ident: ast::ident, val: ValueRef}];

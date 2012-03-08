@@ -861,7 +861,7 @@ fn unresolved_err(e: env, cx: ctxt, sp: span, name: ident, kind: str) {
               _ { ret none; }
             }
         }
-        std::util::unreachable()
+        core::unreachable()
     }
     let path = name;
     alt cx {

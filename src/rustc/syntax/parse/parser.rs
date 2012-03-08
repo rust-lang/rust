@@ -1321,7 +1321,7 @@ fn parse_capture_clause(p: parser) -> @ast::capture_clause {
               _ { ret res; }
             }
         }
-        std::util::unreachable();
+        core::unreachable();
     }
 
     let copies = [];
