@@ -757,7 +757,7 @@ fn make_generic_glue_inner(ccx: @crate_ctxt, t: ty::t,
     }
 
     fcx.lltyparams = vec::map(vec::from_mut(lltydescs), {|d|
-        {desc: d, dicts: none}
+        {desc: d, vtables: none}
     });
 
     let bcx = top_scope_block(fcx, none);
@@ -2051,7 +2051,7 @@ type generic_info = {item_type: ty::t,
                      static_tis: [option<@tydesc_info>],
                      tydescs: [ValueRef],
                      param_bounds: @[ty::param_bounds],
-                     origins: option<typeck::dict_res>};
+                     origins: option<typeck::vtable_res>};
 
 enum generic_callee {
     generic_full(generic_info),
@@ -2107,7 +2107,7 @@ fn trans_external_path(cx: block, did: ast::def_id,
 }
 
 fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
-                  dicts: option<typeck::dict_res>)
+                  vtables: option<typeck::vtable_res>)
     -> option<{llfn: ValueRef, fty: ty::t}> {
     let substs = vec::map(substs, {|t|
         alt ty::get(t).struct {
@@ -2115,9 +2115,9 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
           _ { t }
         }
     });
-    let hash_id = @{def: fn_id, substs: substs, dicts: alt dicts {
-      some(os) { some_dicts(vec::map(*os, impl::vtable_id)) }
-      none { no_dicts }
+    let hash_id = @{def: fn_id, substs: substs, vtables: alt vtables {
+      some(os) { some_vts(vec::map(*os, impl::vtable_id)) }
+      none { no_vts }
     }};
     alt ccx.monomorphized.find(hash_id) {
       some(val) { ret some(val); }
@@ -2148,7 +2148,7 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
     let lldecl = decl_cdecl_fn(ccx.llmod, s, llfty);
     ccx.monomorphized.insert(hash_id, {llfn: lldecl, fty: mono_ty});
 
-    let psubsts = some({tys: substs, dicts: dicts, bounds: tpt.bounds});
+    let psubsts = some({tys: substs, vtables: vtables, bounds: tpt.bounds});
     alt check map_node {
       ast_map::node_item(i@@{node: ast::item_fn(decl, _, body), _}, _) {
         set_inline_hint_if_appr(i.attrs, lldecl);
@@ -2229,7 +2229,7 @@ fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id)
 }
 
 fn lval_static_fn(bcx: block, fn_id: ast::def_id, id: ast::node_id,
-                  substs: option<([ty::t], typeck::dict_res)>)
+                  substs: option<([ty::t], typeck::vtable_res)>)
     -> lval_maybe_callee {
     let ccx = bcx.ccx();
     let tcx = ccx.tcx;
@@ -2249,16 +2249,17 @@ fn lval_static_fn(bcx: block, fn_id: ast::def_id, id: ast::node_id,
        fn_id.crate == ast::local_crate &&
        !vec::any(tys, {|t| ty::type_has_params(t)}) {
         let mono = alt substs {
-          some((stys, dicts)) {
+          some((stys, vtables)) {
             if (stys.len() + tys.len()) > 0u {
-                monomorphic_fn(ccx, fn_id, stys + tys, some(dicts))
+                monomorphic_fn(ccx, fn_id, stys + tys, some(vtables))
             } else { none }
           }
           none {
-            alt ccx.maps.dict_map.find(id) {
-              some(dicts) {
-                let rdicts = impl::resolve_vtables_in_fn_ctxt(bcx.fcx, dicts);
-                monomorphic_fn(ccx, fn_id, tys, some(rdicts))
+            alt ccx.maps.vtable_map.find(id) {
+              some(vtables) {
+                let rvtables = impl::resolve_vtables_in_fn_ctxt(
+                    bcx.fcx, vtables);
+                monomorphic_fn(ccx, fn_id, tys, some(rvtables))
               }
               none { monomorphic_fn(ccx, fn_id, tys, none) }
             }
@@ -2308,7 +2309,7 @@ fn lval_static_fn(bcx: block, fn_id: ast::def_id, id: ast::node_id,
                             static_tis: tis,
                             tydescs: tydescs,
                             param_bounds: tpt.bounds,
-                            origins: ccx.maps.dict_map.find(id)});
+                            origins: ccx.maps.vtable_map.find(id)});
     }
     ret {bcx: bcx, val: val, kind: owned, env: null_env, generic: gen};
 }
@@ -2925,9 +2926,11 @@ fn invoke_(bcx: block, llfn: ValueRef, llargs: [ValueRef],
     // cleanups to run
     if bcx.unreachable { ret bcx; }
     let normal_bcx = sub_block(bcx, "normal return");
-    /*std::io::println("fn: " + lib::llvm::type_to_str(bcx.ccx().tn, val_ty(llfn)));
+    /*std::io::println("fn: " + lib::llvm::type_to_str(bcx.ccx().tn,
+                     val_ty(llfn)));
     for a in llargs {
-        std::io::println(" a: " + lib::llvm::type_to_str(bcx.ccx().tn, val_ty(a)));
+        std::io::println(" a: " + lib::llvm::type_to_str(bcx.ccx().tn,
+                         val_ty(a)));
     }*/
     invoker(bcx, llfn, llargs, normal_bcx.llbb, get_landing_pad(bcx));
     ret normal_bcx;
@@ -4001,22 +4004,22 @@ fn create_llargs_for_fn_args(cx: fn_ctxt,
     }
     for bounds in tps_bounds {
         let lltydesc = llvm::LLVMGetParam(cx.llfn, arg_n as c_uint);
-        let dicts = none;
+        let vtables = none;
         arg_n += 1u;
         for bound in *bounds {
             alt bound {
               ty::bound_iface(_) {
-                let dict = llvm::LLVMGetParam(cx.llfn, arg_n as c_uint);
+                let vtable = llvm::LLVMGetParam(cx.llfn, arg_n as c_uint);
                 arg_n += 1u;
-                dicts = some(alt dicts {
-                    none { [dict] }
-                    some(ds) { ds + [dict] }
+                vtables = some(alt vtables {
+                    none { [vtable] }
+                    some(ds) { ds + [vtable] }
                 });
               }
               _ {}
             }
         }
-        cx.lltyparams += [{desc: lltydesc, dicts: dicts}];
+        cx.lltyparams += [{desc: lltydesc, vtables: vtables}];
     }
 
     // Populate the llargs field of the function context with the ValueRefs

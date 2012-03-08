@@ -67,27 +67,27 @@ fn trans_method_callee(bcx: block, callee_id: ast::node_id,
 // Method callee where the method is statically known
 fn trans_static_callee(bcx: block, callee_id: ast::node_id,
                        base: @ast::expr, did: ast::def_id,
-                       substs: option<([ty::t], typeck::dict_res)>)
+                       substs: option<([ty::t], typeck::vtable_res)>)
     -> lval_maybe_callee {
     let {bcx, val} = trans_self_arg(bcx, base);
     {env: self_env(val, node_id_type(bcx, base.id))
      with lval_static_fn(bcx, did, callee_id, substs)}
 }
 
-fn wrapper_fn_ty(ccx: @crate_ctxt, dict_ty: TypeRef, fty: ty::t,
+fn wrapper_fn_ty(ccx: @crate_ctxt, vtable_ty: TypeRef, fty: ty::t,
                  tps: @[ty::param_bounds]) -> {ty: ty::t, llty: TypeRef} {
     let bare_fn_ty = type_of_fn_from_ty(ccx, fty, *tps);
     let {inputs, output} = llfn_arg_tys(bare_fn_ty);
-    {ty: fty, llty: T_fn([dict_ty] + inputs, output)}
+    {ty: fty, llty: T_fn([vtable_ty] + inputs, output)}
 }
 
-fn trans_vtable_callee(bcx: block, env: callee_env, dict: ValueRef,
+fn trans_vtable_callee(bcx: block, env: callee_env, vtable: ValueRef,
                        callee_id: ast::node_id, n_method: uint)
     -> lval_maybe_callee {
-    let bcx = bcx, ccx = bcx.ccx(), tcx = ccx.tcx;
+    let bcx = bcx, ccx = bcx.ccx();
     let fty = node_id_type(bcx, callee_id);
     let llfty = type_of::type_of_fn_from_ty(ccx, fty, []);
-    let vtable = PointerCast(bcx, dict,
+    let vtable = PointerCast(bcx, vtable,
                              T_ptr(T_array(T_ptr(llfty), n_method + 1u)));
     let mptr = Load(bcx, GEPi(bcx, vtable, [0, n_method as int]));
     {bcx: bcx, val: mptr, kind: owned,
@@ -112,34 +112,34 @@ fn trans_monomorphized_callee(bcx: block, callee_id: ast::node_id,
                               base: @ast::expr, iface_id: ast::def_id,
                               n_method: uint, n_param: uint, n_bound: uint,
                               substs: param_substs) -> lval_maybe_callee {
-    alt find_dict_in_fn_ctxt(substs, n_param, n_bound) {
-      typeck::dict_static(impl_did, tys, sub_origins) {
+    alt find_vtable_in_fn_ctxt(substs, n_param, n_bound) {
+      typeck::vtable_static(impl_did, tys, sub_origins) {
         let tcx = bcx.tcx();
         let mname = ty::iface_methods(tcx, iface_id)[n_method].ident;
         let mth_id = method_with_name(bcx.ccx(), impl_did, mname);
         ret trans_static_callee(bcx, callee_id, base, mth_id,
                                 some((tys, sub_origins)));
       }
-      typeck::dict_iface(iid, tps) {
+      typeck::vtable_iface(iid, tps) {
         ret trans_iface_callee(bcx, base, callee_id, n_method);
       }
-      typeck::dict_param(n_param, n_bound) {
-        fail "dict_param left in monomorphized function's dict substs";
+      typeck::vtable_param(n_param, n_bound) {
+        fail "vtable_param left in monomorphized function's vtable substs";
       }
     }
 }
 
-// Method callee where the dict comes from a boxed iface
+// Method callee where the vtable comes from a boxed iface
 fn trans_iface_callee(bcx: block, base: @ast::expr,
                       callee_id: ast::node_id, n_method: uint)
     -> lval_maybe_callee {
     let {bcx, val} = trans_temp_expr(bcx, base);
-    let dict = Load(bcx, PointerCast(bcx, GEPi(bcx, val, [0, 0]),
-                                     T_ptr(T_ptr(T_dict()))));
+    let vtable = Load(bcx, PointerCast(bcx, GEPi(bcx, val, [0, 0]),
+                                     T_ptr(T_ptr(T_vtable()))));
     let box = Load(bcx, GEPi(bcx, val, [0, 1]));
     // FIXME[impl] I doubt this is alignment-safe
     let self = GEPi(bcx, box, [0, abi::box_field_body]);
-    trans_vtable_callee(bcx, self_env(self, expr_ty(bcx, base)), dict,
+    trans_vtable_callee(bcx, self_env(self, expr_ty(bcx, base)), vtable,
                         callee_id, n_method)
 }
 
@@ -151,30 +151,30 @@ fn llfn_arg_tys(ft: TypeRef) -> {inputs: [TypeRef], output: TypeRef} {
     {inputs: args, output: out_ty}
 }
 
-fn find_dict_in_fn_ctxt(ps: param_substs, n_param: uint, n_bound: uint)
-    -> typeck::dict_origin {
-    let dict_off = n_bound, i = 0u;
-    // Dicts are stored in a flat array, finding the right one is
+fn find_vtable_in_fn_ctxt(ps: param_substs, n_param: uint, n_bound: uint)
+    -> typeck::vtable_origin {
+    let vtable_off = n_bound, i = 0u;
+    // Vtables are stored in a flat array, finding the right one is
     // somewhat awkward
     for bounds in *ps.bounds {
         i += 1u;
         if i >= n_param { break; }
         for bound in *bounds {
-            alt bound { ty::bound_iface(_) { dict_off += 1u; } _ {} }
+            alt bound { ty::bound_iface(_) { vtable_off += 1u; } _ {} }
         }
     }
-    option::get(ps.dicts)[dict_off]
+    option::get(ps.vtables)[vtable_off]
 }
 
-fn resolve_vtables_in_fn_ctxt(fcx: fn_ctxt, vts: typeck::dict_res)
-    -> typeck::dict_res {
+fn resolve_vtables_in_fn_ctxt(fcx: fn_ctxt, vts: typeck::vtable_res)
+    -> typeck::vtable_res {
     @vec::map(*vts, {|d| resolve_vtable_in_fn_ctxt(fcx, d)})
 }
 
-fn resolve_vtable_in_fn_ctxt(fcx: fn_ctxt, vt: typeck::dict_origin)
-    -> typeck::dict_origin {
+fn resolve_vtable_in_fn_ctxt(fcx: fn_ctxt, vt: typeck::vtable_origin)
+    -> typeck::vtable_origin {
     alt vt {
-      typeck::dict_static(iid, tys, sub) {
+      typeck::vtable_static(iid, tys, sub) {
         let tys = alt fcx.param_substs {
           some(substs) {
             vec::map(tys, {|t|
@@ -183,12 +183,12 @@ fn resolve_vtable_in_fn_ctxt(fcx: fn_ctxt, vt: typeck::dict_origin)
           }
           _ { tys }
         };
-        typeck::dict_static(iid, tys, resolve_vtables_in_fn_ctxt(fcx, sub))
+        typeck::vtable_static(iid, tys, resolve_vtables_in_fn_ctxt(fcx, sub))
       }
-      typeck::dict_param(n_param, n_bound) {
+      typeck::vtable_param(n_param, n_bound) {
         alt check fcx.param_substs {
           some(substs) {
-            find_dict_in_fn_ctxt(substs, n_param, n_bound)
+            find_vtable_in_fn_ctxt(substs, n_param, n_bound)
           }
         }
       }
@@ -196,28 +196,28 @@ fn resolve_vtable_in_fn_ctxt(fcx: fn_ctxt, vt: typeck::dict_origin)
     }
 }
 
-fn vtable_id(origin: typeck::dict_origin) -> mono_id {
+fn vtable_id(origin: typeck::vtable_origin) -> mono_id {
     alt check origin {
-      typeck::dict_static(impl_id, substs, sub_dicts) {
+      typeck::vtable_static(impl_id, substs, sub_vtables) {
         @{def: impl_id, substs: substs,
-          dicts: if (*sub_dicts).len() == 0u { no_dicts }
-                 else { some_dicts(vec::map(*sub_dicts, vtable_id)) } }
+          vtables: if (*sub_vtables).len() == 0u { no_vts }
+                 else { some_vts(vec::map(*sub_vtables, vtable_id)) } }
       }
-      typeck::dict_iface(iface_id, substs) {
-        @{def: iface_id, substs: substs, dicts: no_dicts}
+      typeck::vtable_iface(iface_id, substs) {
+        @{def: iface_id, substs: substs, vtables: no_vts}
       }
     }
 }
 
-fn get_vtable(ccx: @crate_ctxt, origin: typeck::dict_origin)
+fn get_vtable(ccx: @crate_ctxt, origin: typeck::vtable_origin)
     -> ValueRef {
     let hash_id = vtable_id(origin);
     alt ccx.vtables.find(hash_id) {
       some(val) { val }
       none {
         alt check origin {
-          typeck::dict_static(id, substs, sub_dicts) {
-            make_impl_vtable(ccx, id, substs, sub_dicts)
+          typeck::vtable_static(id, substs, sub_vtables) {
+            make_impl_vtable(ccx, id, substs, sub_vtables)
           }
         }
       }
@@ -236,7 +236,7 @@ fn make_vtable(ccx: @crate_ctxt, ptrs: [ValueRef]) -> ValueRef {
 }
 
 fn make_impl_vtable(ccx: @crate_ctxt, impl_id: ast::def_id, substs: [ty::t],
-                    dicts: typeck::dict_res) -> ValueRef {
+                    vtables: typeck::vtable_res) -> ValueRef {
     let tcx = ccx.tcx;
     let ifce_id = ty::ty_to_def_id(option::get(ty::impl_iface(tcx, impl_id)));
     make_vtable(ccx, vec::map(*ty::iface_methods(tcx, ifce_id), {|im|
@@ -246,7 +246,7 @@ fn make_impl_vtable(ccx: @crate_ctxt, impl_id: ast::def_id, substs: [ty::t],
             C_null(type_of_fn_from_ty(ccx, fty, []))
         } else {
             let m_id = method_with_name(ccx, impl_id, im.ident);
-            option::get(monomorphic_fn(ccx, m_id, substs, some(dicts))).llfn
+            option::get(monomorphic_fn(ccx, m_id, substs, some(vtables))).llfn
         }
     }))
 }
@@ -410,7 +410,7 @@ fn trans_cast(bcx: block, val: @ast::expr, id: ast::node_id, dest: dest)
     let result = get_dest_addr(dest);
     Store(bcx, box, PointerCast(bcx, GEPi(bcx, result, [0, 1]),
                                 T_ptr(val_ty(box))));
-    let orig = ccx.maps.dict_map.get(id)[0];
+    let orig = ccx.maps.vtable_map.get(id)[0];
     let orig = resolve_vtable_in_fn_ctxt(bcx.fcx, orig);
     let vtable = get_vtable(bcx.ccx(), orig);
     Store(bcx, vtable, PointerCast(bcx, GEPi(bcx, result, [0, 0]),

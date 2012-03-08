@@ -18,7 +18,8 @@ import syntax::print::pprust::*;
 
 export check_crate;
 export method_map, method_origin, method_static, method_param, method_iface;
-export dict_map, dict_res, dict_origin, dict_static, dict_param, dict_iface;
+export vtable_map, vtable_res, vtable_origin, vtable_static, vtable_param,
+       vtable_iface;
 
 enum method_origin {
     method_static(ast::def_id),
@@ -29,14 +30,14 @@ enum method_origin {
 type method_map = hashmap<ast::node_id, method_origin>;
 
 // Resolutions for bounds of all parameters, left to right, for a given path.
-type dict_res = @[dict_origin];
-enum dict_origin {
-    dict_static(ast::def_id, [ty::t], dict_res),
+type vtable_res = @[vtable_origin];
+enum vtable_origin {
+    vtable_static(ast::def_id, [ty::t], vtable_res),
     // Param number, bound number
-    dict_param(uint, uint),
-    dict_iface(ast::def_id, [ty::t]),
+    vtable_param(uint, uint),
+    vtable_iface(ast::def_id, [ty::t]),
 }
-type dict_map = hashmap<ast::node_id, dict_res>;
+type vtable_map = hashmap<ast::node_id, vtable_res>;
 
 type ty_table = hashmap<ast::def_id, ty::t>;
 
@@ -46,7 +47,7 @@ enum self_info { self_impl(ty::t) }
 type crate_ctxt = {mutable self_infos: [self_info],
                    impl_map: resolve::impl_map,
                    method_map: method_map,
-                   dict_map: dict_map,
+                   vtable_map: vtable_map,
                    // Not at all sure it's right to put these here
                    /* node_id for the class this fn is in --
                       none if it's not in a class */
@@ -3186,7 +3187,7 @@ fn check_fn(ccx: @crate_ctxt,
     // If we have an enclosing function scope, our type variables will be
     // resolved when the enclosing scope finishes up.
     if option::is_none(old_fcx) {
-        dict::resolve_in_block(fcx, body);
+        vtable::resolve_in_block(fcx, body);
         writeback::resolve_type_vars_in_block(fcx, body);
     }
 }
@@ -3309,7 +3310,7 @@ fn check_for_main_fn(tcx: ty::ctxt, crate: @ast::crate) {
     }
 }
 
-mod dict {
+mod vtable {
     fn has_iface_bounds(tps: [ty::param_bounds]) -> bool {
         vec::any(tps, {|bs|
             vec::any(*bs, {|b|
@@ -3318,16 +3319,16 @@ mod dict {
         })
     }
 
-    fn lookup_dicts(fcx: @fn_ctxt, isc: resolve::iscopes, sp: span,
+    fn lookup_vtables(fcx: @fn_ctxt, isc: resolve::iscopes, sp: span,
                     bounds: @[ty::param_bounds], tys: [ty::t])
-        -> dict_res {
+        -> vtable_res {
         let tcx = fcx.ccx.tcx, result = [], i = 0u;
         for ty in tys {
             for bound in *bounds[i] {
                 alt bound {
                   ty::bound_iface(i_ty) {
                     let i_ty = ty::substitute_type_params(tcx, tys, i_ty);
-                    result += [lookup_dict(fcx, isc, sp, ty, i_ty)];
+                    result += [lookup_vtable(fcx, isc, sp, ty, i_ty)];
                   }
                   _ {}
                 }
@@ -3337,8 +3338,8 @@ mod dict {
         @result
     }
 
-    fn lookup_dict(fcx: @fn_ctxt, isc: resolve::iscopes, sp: span,
-                   ty: ty::t, iface_ty: ty::t) -> dict_origin {
+    fn lookup_vtable(fcx: @fn_ctxt, isc: resolve::iscopes, sp: span,
+                   ty: ty::t, iface_ty: ty::t) -> vtable_origin {
         let tcx = fcx.ccx.tcx;
         let (iface_id, iface_tps) = alt check ty::get(iface_ty).struct {
             ty::ty_iface(did, tps) { (did, tps) }
@@ -3352,7 +3353,7 @@ mod dict {
                   ty::bound_iface(ity) {
                     alt check ty::get(ity).struct {
                       ty::ty_iface(idid, _) {
-                        if iface_id == idid { ret dict_param(n, n_bound); }
+                        if iface_id == idid { ret vtable_param(n, n_bound); }
                       }
                     }
                     n_bound += 1u;
@@ -3362,7 +3363,7 @@ mod dict {
             }
           }
           ty::ty_iface(did, tps) if iface_id == did {
-            ret dict_iface(did, tps);
+            ret vtable_iface(did, tps);
           }
           _ {
             let found = none;
@@ -3394,9 +3395,9 @@ mod dict {
                                                   im.did);
                                 let params = vec::map(vars, {|t|
                                     fixup_ty(fcx, sp, t)});
-                                let subres = lookup_dicts(fcx, isc, sp, im_bs,
-                                                          params);
-                                found = some(dict_static(im.did, params,
+                                let subres = lookup_vtables(fcx, isc, sp,
+                                                            im_bs, params);
+                                found = some(vtable_static(im.did, params,
                                                          subres));
                             }
                           }
@@ -3452,7 +3453,7 @@ mod dict {
                 let item_ty = ty::lookup_item_type(cx.tcx, did);
                 if has_iface_bounds(*item_ty.bounds) {
                     let impls = cx.impl_map.get(ex.id);
-                    cx.dict_map.insert(ex.id, lookup_dicts(
+                    cx.vtable_map.insert(ex.id, lookup_vtables(
                         fcx, impls, ex.span, item_ty.bounds, ts));
                 }
               }
@@ -3473,7 +3474,7 @@ mod dict {
                     };
                     let ts = ty::node_id_to_type_params(cx.tcx, callee_id);
                     let iscs = cx.impl_map.get(ex.id);
-                    cx.dict_map.insert(callee_id, lookup_dicts(
+                    cx.vtable_map.insert(callee_id, lookup_vtables(
                         fcx, iscs, ex.span, bounds, ts));
                 }
               }
@@ -3485,9 +3486,9 @@ mod dict {
             alt ty::get(target_ty).struct {
               ty::ty_iface(_, _) {
                 let impls = cx.impl_map.get(ex.id);
-                let dict = lookup_dict(fcx, impls, ex.span,
+                let vtable = lookup_vtable(fcx, impls, ex.span,
                                        expr_ty(cx.tcx, src), target_ty);
-                cx.dict_map.insert(ex.id, @[dict]);
+                cx.vtable_map.insert(ex.id, @[vtable]);
               }
               _ {}
             }
@@ -3512,13 +3513,13 @@ mod dict {
 }
 
 fn check_crate(tcx: ty::ctxt, impl_map: resolve::impl_map,
-               crate: @ast::crate) -> (method_map, dict_map) {
+               crate: @ast::crate) -> (method_map, vtable_map) {
     collect::collect_item_types(tcx, crate);
 
     let ccx = @{mutable self_infos: [],
                 impl_map: impl_map,
                 method_map: std::map::int_hash(),
-                dict_map: std::map::int_hash(),
+                vtable_map: std::map::int_hash(),
                 enclosing_class_id: none,
                 enclosing_class: std::map::int_hash(),
                 tcx: tcx};
@@ -3529,7 +3530,7 @@ fn check_crate(tcx: ty::ctxt, impl_map: resolve::impl_map,
     visit::visit_crate(*crate, (), visit);
     check_for_main_fn(tcx, crate);
     tcx.sess.abort_if_errors();
-    (ccx.method_map, ccx.dict_map)
+    (ccx.method_map, ccx.vtable_map)
 }
 //
 // Local Variables:

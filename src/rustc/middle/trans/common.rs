@@ -70,7 +70,7 @@ type maps = {
     last_uses: middle::last_use::last_uses,
     impl_map: middle::resolve::impl_map,
     method_map: middle::typeck::method_map,
-    dict_map: middle::typeck::dict_map
+    vtable_map: middle::typeck::vtable_map
 };
 
 // Crate context.  Every crate we compile has one of these.
@@ -122,10 +122,10 @@ type val_self_pair = {v: ValueRef, t: ty::t};
 
 enum local_val { local_mem(ValueRef), local_imm(ValueRef), }
 
-type fn_ty_param = {desc: ValueRef, dicts: option<[ValueRef]>};
+type fn_ty_param = {desc: ValueRef, vtables: option<[ValueRef]>};
 
 type param_substs = {tys: [ty::t],
-                     dicts: option<typeck::dict_res>,
+                     vtables: option<typeck::vtable_res>,
                      bounds: @[ty::param_bounds]};
 
 // Function context.  Every LLVM function we create will have one of
@@ -179,7 +179,7 @@ type fn_ctxt = @{
     // Same as above, but for closure upvars
     llupvars: hashmap<ast::node_id, ValueRef>,
 
-    // A vector of incoming type descriptors and their associated iface dicts.
+    // A vector of incoming type descriptors and their associated vtables.
     mutable lltyparams: [fn_ty_param],
 
     // Derived tydescs are tydescs created at runtime, for types that
@@ -541,11 +541,11 @@ fn set_struct_body(t: TypeRef, elts: [TypeRef]) unsafe {
 
 fn T_empty_struct() -> TypeRef { ret T_struct([]); }
 
-// A dict is, in reality, a vtable pointer followed by zero or more pointers
-// to tydescs and other dicts that it closes over. But the types and number of
-// those are rarely known to the code that needs to manipulate them, so they
-// are described by this opaque type.
-fn T_dict() -> TypeRef { T_array(T_ptr(T_i8()), 1u) }
+// A vtable is, in reality, a vtable pointer followed by zero or more pointers
+// to tydescs and other vtables that it closes over. But the types and number
+// of those are rarely known to the code that needs to manipulate them, so
+// they are described by this opaque type.
+fn T_vtable() -> TypeRef { T_array(T_ptr(T_i8()), 1u) }
 
 fn T_task(targ_cfg: @session::config) -> TypeRef {
     let t = T_named_struct("task");
@@ -848,14 +848,14 @@ pure fn type_has_static_size(cx: @crate_ctxt, t: ty::t) -> bool {
 }
 
 // Used to identify cached monomorphized functions
-enum mono_dicts { some_dicts([mono_id]), no_dicts }
-type mono_id = @{def: ast::def_id, substs: [ty::t], dicts: mono_dicts};
+enum mono_vtables { some_vts([mono_id]), no_vts }
+type mono_id = @{def: ast::def_id, substs: [ty::t], vtables: mono_vtables};
 fn hash_mono_id(&&mi: mono_id) -> uint {
     let h = syntax::ast_util::hash_def_id(mi.def);
     for ty in mi.substs { h = (h << 2u) + ty::type_id(ty); }
-    alt mi.dicts {
-      some_dicts(ds) { for d in ds { h = (h << 2u) + hash_mono_id(d); } }
-      _ {}
+    alt mi.vtables {
+      some_vts(ds) { for d in ds { h = (h << 2u) + hash_mono_id(d); } }
+      no_vts {}
     }
     h
 }

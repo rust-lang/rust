@@ -17,8 +17,8 @@ import std::smallintmap::map;
 import middle::trans::common::maps;
 import middle::{ty, typeck, last_use, ast_map};
 import middle::typeck::method_origin;
-import middle::typeck::dict_res;
-import middle::typeck::dict_origin;
+import middle::typeck::vtable_res;
+import middle::typeck::vtable_origin;
 import driver::session::session;
 import middle::freevars::freevar_entry;
 import c = common;
@@ -506,27 +506,27 @@ impl of tr for last_use::is_last_use {
 }
 
 // ______________________________________________________________________
-// Encoding and decoding dict_res
+// Encoding and decoding vtable_res
 
-fn encode_dict_res(ecx: @e::encode_ctxt,
+fn encode_vtable_res(ecx: @e::encode_ctxt,
                    ebml_w: ebml::writer,
-                   dr: typeck::dict_res) {
+                   dr: typeck::vtable_res) {
     // can't autogenerate this code because automatic serialization of
     // ty::t doesn't work, and there is no way (atm) to have
     // hand-written serialization routines combine with auto-generated
     // ones.  perhaps we should fix this.
-    ebml_w.emit_from_vec(*dr) {|dict_origin|
-        encode_dict_origin(ecx, ebml_w, dict_origin)
+    ebml_w.emit_from_vec(*dr) {|vtable_origin|
+        encode_vtable_origin(ecx, ebml_w, vtable_origin)
     }
 }
 
-fn encode_dict_origin(ecx: @e::encode_ctxt,
+fn encode_vtable_origin(ecx: @e::encode_ctxt,
                       ebml_w: ebml::writer,
-                      dict_origin: typeck::dict_origin) {
-    ebml_w.emit_enum("dict_origin") {||
-        alt dict_origin {
-          typeck::dict_static(def_id, tys, dict_res) {
-            ebml_w.emit_enum_variant("dict_static", 0u, 3u) {||
+                      vtable_origin: typeck::vtable_origin) {
+    ebml_w.emit_enum("vtable_origin") {||
+        alt vtable_origin {
+          typeck::vtable_static(def_id, tys, vtable_res) {
+            ebml_w.emit_enum_variant("vtable_static", 0u, 3u) {||
                 ebml_w.emit_enum_variant_arg(0u) {||
                     ebml_w.emit_def_id(def_id)
                 }
@@ -534,12 +534,12 @@ fn encode_dict_origin(ecx: @e::encode_ctxt,
                     ebml_w.emit_tys(ecx, tys);
                 }
                 ebml_w.emit_enum_variant_arg(2u) {||
-                    encode_dict_res(ecx, ebml_w, dict_res);
+                    encode_vtable_res(ecx, ebml_w, vtable_res);
                 }
             }
           }
-          typeck::dict_param(pn, bn) {
-            ebml_w.emit_enum_variant("dict_param", 1u, 2u) {||
+          typeck::vtable_param(pn, bn) {
+            ebml_w.emit_enum_variant("vtable_param", 1u, 2u) {||
                 ebml_w.emit_enum_variant_arg(0u) {||
                     ebml_w.emit_uint(pn);
                 }
@@ -548,8 +548,8 @@ fn encode_dict_origin(ecx: @e::encode_ctxt,
                 }
             }
           }
-          typeck::dict_iface(def_id, tys) {
-            ebml_w.emit_enum_variant("dict_iface", 1u, 3u) {||
+          typeck::vtable_iface(def_id, tys) {
+            ebml_w.emit_enum_variant("vtable_iface", 1u, 3u) {||
                 ebml_w.emit_enum_variant_arg(0u) {||
                     ebml_w.emit_def_id(def_id)
                 }
@@ -564,16 +564,17 @@ fn encode_dict_origin(ecx: @e::encode_ctxt,
 }
 
 impl helpers for ebml::ebml_deserializer {
-    fn read_dict_res(xcx: extended_decode_ctxt) -> typeck::dict_res {
-        @self.read_to_vec {|| self.read_dict_origin(xcx) }
+    fn read_vtable_res(xcx: extended_decode_ctxt) -> typeck::vtable_res {
+        @self.read_to_vec {|| self.read_vtable_origin(xcx) }
     }
 
-    fn read_dict_origin(xcx: extended_decode_ctxt) -> typeck::dict_origin {
-        self.read_enum("dict_origin") {||
+    fn read_vtable_origin(xcx: extended_decode_ctxt)
+        -> typeck::vtable_origin {
+        self.read_enum("vtable_origin") {||
             self.read_enum_variant {|i|
                 alt check i {
                   0u {
-                    typeck::dict_static(
+                    typeck::vtable_static(
                         self.read_enum_variant_arg(0u) {||
                             self.read_def_id(xcx)
                         },
@@ -581,12 +582,12 @@ impl helpers for ebml::ebml_deserializer {
                             self.read_tys(xcx)
                         },
                         self.read_enum_variant_arg(2u) {||
-                            self.read_dict_res(xcx)
+                            self.read_vtable_res(xcx)
                         }
                     )
                   }
                   1u {
-                    typeck::dict_param(
+                    typeck::vtable_param(
                         self.read_enum_variant_arg(0u) {||
                             self.read_uint()
                         },
@@ -596,7 +597,7 @@ impl helpers for ebml::ebml_deserializer {
                     )
                   }
                   2u {
-                    typeck::dict_iface(
+                    typeck::vtable_iface(
                         self.read_enum_variant_arg(0u) {||
                             self.read_def_id(xcx)
                         },
@@ -786,11 +787,11 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
         }
     }
 
-    option::may(ccx.maps.dict_map.find(id)) {|dr|
-        ebml_w.tag(c::tag_table_dict_map) {||
+    option::may(ccx.maps.vtable_map.find(id)) {|dr|
+        ebml_w.tag(c::tag_table_vtable_map) {||
             ebml_w.id(id);
             ebml_w.tag(c::tag_table_val) {||
-                encode_dict_res(ecx, ebml_w, dr);
+                encode_vtable_res(ecx, ebml_w, dr);
             }
         }
     }
@@ -883,9 +884,9 @@ fn decode_side_tables(xcx: extended_decode_ctxt,
             } else if tag == (c::tag_table_method_map as uint) {
                 dcx.maps.method_map.insert(id,
                                            val_dsr.read_method_origin(xcx));
-            } else if tag == (c::tag_table_dict_map as uint) {
-                dcx.maps.dict_map.insert(id,
-                                         val_dsr.read_dict_res(xcx));
+            } else if tag == (c::tag_table_vtable_map as uint) {
+                dcx.maps.vtable_map.insert(id,
+                                         val_dsr.read_vtable_res(xcx));
             } else {
                 xcx.dcx.tcx.sess.bug(
                     #fmt["unknown tag found in side tables: %x", tag]);

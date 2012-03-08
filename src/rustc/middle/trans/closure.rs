@@ -142,8 +142,8 @@ fn mk_closure_tys(tcx: ty::ctxt,
     let param_ptrs = [];
     for tp in ty_params {
         param_ptrs += [tydesc_ty];
-        option::may(tp.dicts) {|dicts|
-            for dict in dicts { param_ptrs += [tydesc_ty]; }
+        option::may(tp.vtables) {|vtables|
+            for vtable in vtables { param_ptrs += [tydesc_ty]; }
         }
     }
 
@@ -289,9 +289,9 @@ fn store_environment(
         let cloned_td = maybe_clone_tydesc(bcx, ck, tp.desc);
         Store(bcx, cloned_td, GEPi(bcx, ty_params_slot, [0, off]));
         off += 1;
-        option::may(tp.dicts, {|dicts|
-            for dict in dicts {
-                let cast = PointerCast(bcx, dict, val_ty(cloned_td));
+        option::may(tp.vtables, {|vtables|
+            for vtable in vtables {
+                let cast = PointerCast(bcx, vtable, val_ty(cloned_td));
                 Store(bcx, cast, GEPi(bcx, ty_params_slot, [0, off]));
                 off += 1;
             }
@@ -414,16 +414,16 @@ fn load_environment(enclosing_cx: block,
     for tp in copy enclosing_cx.fcx.lltyparams {
         let tydesc = Load(bcx, GEPi(bcx, lltydescs, [0, off]));
         off += 1;
-        let dicts = option::map(tp.dicts, {|dicts|
+        let vtables = option::map(tp.vtables, {|vtables|
             let rslt = [];
-            for dict in dicts {
-                let dict = Load(bcx, GEPi(bcx, lltydescs, [0, off]));
-                rslt += [PointerCast(bcx, dict, T_ptr(T_dict()))];
+            for vtable in vtables {
+                let vtable = Load(bcx, GEPi(bcx, lltydescs, [0, off]));
+                rslt += [PointerCast(bcx, vtable, T_ptr(T_vtable()))];
                 off += 1;
             }
             rslt
         });
-        fcx.lltyparams += [{desc: tydesc, dicts: dicts}];
+        fcx.lltyparams += [{desc: tydesc, vtables: vtables}];
     }
 
     // Populate the upvars from the environment.
@@ -545,7 +545,7 @@ fn trans_bind_1(cx: block, outgoing_fty: ty::t,
 
     // Actually construct the closure
     let {llbox, cdata_ty, bcx} = store_environment(
-        bcx, vec::map(lltydescs, {|d| {desc: d, dicts: none}}),
+        bcx, vec::map(lltydescs, {|d| {desc: d, vtables: none}}),
         env_vals + vec::map(bound, {|x| env_expr(x, expr_ty(bcx, x))}),
         ty::ck_box);
 
@@ -816,25 +816,25 @@ fn trans_bind_thunk(ccx: @crate_ctxt,
     let off = 0;
     for param in param_bounds {
         let dsc = Load(l_bcx, GEPi(l_bcx, param_record, [0, off])),
-            dicts = none;
+            vtables = none;
         llargs += [dsc];
         off += 1;
         for bound in *param {
             alt bound {
               ty::bound_iface(_) {
-                let dict = Load(l_bcx, GEPi(l_bcx, param_record, [0, off]));
-                dict = PointerCast(l_bcx, dict, T_ptr(T_dict()));
-                llargs += [dict];
+                let vtable = Load(l_bcx, GEPi(l_bcx, param_record, [0, off]));
+                vtable = PointerCast(l_bcx, vtable, T_ptr(T_vtable()));
+                llargs += [vtable];
                 off += 1;
-                dicts = some(alt dicts {
-                  none { [dict] }
-                  some(ds) { ds + [dict] }
+                vtables = some(alt vtables {
+                  none { [vtable] }
+                  some(ds) { ds + [vtable] }
                 });
               }
               _ {}
             }
         }
-        fcx.lltyparams += [{desc: dsc, dicts: dicts}];
+        fcx.lltyparams += [{desc: dsc, vtables: vtables}];
     }
 
     let a: uint = first_tp_arg; // retptr, env come first

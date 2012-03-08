@@ -144,7 +144,7 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
         time(time_passes, "region resolution",
              bind middle::region::resolve_crate(sess, def_map, crate));
     let ty_cx = ty::mk_ctxt(sess, def_map, ast_map, freevars, region_map);
-    let (method_map, dict_map) =
+    let (method_map, vtable_map) =
         time(time_passes, "typechecking",
              bind typeck::check_crate(ty_cx, impl_map, crate));
     time(time_passes, "const checking",
@@ -181,7 +181,7 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
 
     let maps = {mutbl_map: mutbl_map, copy_map: copy_map,
                 last_uses: last_uses, impl_map: impl_map,
-                method_map: method_map, dict_map: dict_map};
+                method_map: method_map, vtable_map: vtable_map};
 
     let (llmod, link_meta) =
         time(time_passes, "translation",

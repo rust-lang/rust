@@ -33,7 +33,7 @@ fn type_of_fn(cx: @crate_ctxt, inputs: [ty::arg],
         atys += [T_ptr(cx.tydesc_type)];
         for bound in *bounds {
             alt bound {
-              ty::bound_iface(_) { atys += [T_ptr(T_dict())]; }
+              ty::bound_iface(_) { atys += [T_ptr(T_vtable())]; }
               _ {}
             }
         }

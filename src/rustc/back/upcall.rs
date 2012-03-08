@@ -2,7 +2,7 @@
 import driver::session;
 import middle::trans::base;
 import middle::trans::common::{T_fn, T_i1, T_i8, T_i32,
-                               T_int, T_nil, T_dict,
+                               T_int, T_nil,
                                T_opaque_vec, T_ptr,
                                T_size_t, T_void};
 import lib::llvm::{type_names, ModuleRef, ValueRef, TypeRef};
@@ -19,7 +19,6 @@ type upcalls =
      create_shared_type_desc: ValueRef,
      free_shared_type_desc: ValueRef,
      get_type_desc: ValueRef,
-     intern_dict: ValueRef,
      vec_grow: ValueRef,
      vec_push: ValueRef,
      cmp_type: ValueRef,
@@ -81,8 +80,6 @@ fn declare_upcalls(targ_cfg: @session::config,
                  size_t, size_t,
                  T_ptr(T_ptr(tydesc_type)), int_t],
                 T_ptr(tydesc_type)),
-          intern_dict:
-              d("intern_dict", [size_t, T_ptr(T_dict())], T_ptr(T_dict())),
           vec_grow:
               dv("vec_grow", [T_ptr(T_ptr(opaque_vec_t)), int_t]),
           vec_push:

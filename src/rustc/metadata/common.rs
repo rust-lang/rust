@@ -98,7 +98,7 @@ enum astencode_tag { // Reserves 0x50 -- 0x6f
     tag_table_copy,
     tag_table_last_use,
     tag_table_method_map,
-    tag_table_dict_map
+    tag_table_vtable_map
 }
 
 // djb's cdb hashes.
