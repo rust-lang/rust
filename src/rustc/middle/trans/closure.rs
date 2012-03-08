@@ -515,26 +515,7 @@ fn trans_bind_1(cx: block, outgoing_fty: ty::t,
 
     // Figure out which tydescs we need to pass, if any.
     let (outgoing_fty_real, lltydescs, param_bounds) = alt f_res.generic {
-      generic_full(ginfo) {
-        let tds = [], orig = 0u;
-        vec::iter2(ginfo.tydescs, *ginfo.param_bounds) {|td, bounds|
-            tds += [td];
-            for bound in *bounds {
-                alt bound {
-                  ty::bound_iface(_) {
-                    let dict = impl::get_dict(
-                        bcx, option::get(ginfo.origins)[orig]);
-                    tds += [PointerCast(bcx, dict.val, val_ty(td))];
-                    orig += 1u;
-                    bcx = dict.bcx;
-                  }
-                  _ {}
-                }
-            }
-        }
-        lazily_emit_all_generic_info_tydesc_glues(ccx, ginfo);
-        (ginfo.item_type, tds, ginfo.param_bounds)
-      }
+      generic_full(ginfo) { fail; }
       _ { (outgoing_fty, [], @[]) }
     };
 
@@ -559,9 +540,6 @@ fn trans_bind_1(cx: block, outgoing_fty: ty::t,
       }
       self_env(slf, slf_t) {
         ([env_copy(slf, slf_t, owned)], target_self(f_res.val))
-      }
-      dict_env(_, _) {
-        ccx.sess.unimpl("binding of dynamic method calls");
       }
     };
 

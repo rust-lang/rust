@@ -258,7 +258,7 @@ fn get_impl_iface(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
 }
 
 fn get_impl_method(cdata: cmd, id: ast::node_id, name: str) -> ast::def_id {
-    let items = ebml::get_doc(ebml::new_doc(cdata.data), tag_items);
+    let items = ebml::get_doc(ebml::doc(cdata.data), tag_items);
     let found = none;
     ebml::tagged_docs(find_item(id, items), tag_item_method) {|mid|
         let m_did = parse_def_id(ebml::doc_data(mid));

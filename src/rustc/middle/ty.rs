@@ -92,6 +92,7 @@ export region, re_named, re_caller, re_block, re_inferred;
 export get, type_has_params, type_has_vars, type_has_rptrs, type_id;
 export same_type;
 export ty_var_id;
+export ty_to_def_id;
 export ty_fn_args;
 export type_constr;
 export kind, kind_sendable, kind_copyable, kind_noncopyable;
@@ -2287,6 +2288,14 @@ fn impl_iface(cx: ctxt, id: ast::def_id) -> option<t> {
         }
     } else {
         csearch::get_impl_iface(cx, id)
+    }
+}
+
+fn ty_to_def_id(ty: t) -> ast::def_id {
+    alt check get(ty).struct {
+      ty_iface(id, _) | ty_class(id, _) | ty_res(id, _, _) | ty_enum(id, _) {
+        id
+      }
     }
 }
 

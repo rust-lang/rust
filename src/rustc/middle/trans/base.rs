@@ -2070,7 +2070,6 @@ enum callee_env {
     null_env,
     is_closure,
     self_env(ValueRef, ty::t),
-    dict_env(ValueRef, ValueRef),
 }
 type lval_maybe_callee = {bcx: block,
                           val: ValueRef,
@@ -2117,8 +2116,8 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
         }
     });
     let hash_id = @{def: fn_id, substs: substs, dicts: alt dicts {
-      some(os) { vec::map(*os, {|o| impl::dict_id(ccx.tcx, o)}) }
-      none { [] }
+      some(os) { some_dicts(vec::map(*os, impl::vtable_id)) }
+      none { no_dicts }
     }};
     alt ccx.monomorphized.find(hash_id) {
       some(val) { ret some(val); }
@@ -2258,10 +2257,8 @@ fn lval_static_fn(bcx: block, fn_id: ast::def_id, id: ast::node_id,
           none {
             alt ccx.maps.dict_map.find(id) {
               some(dicts) {
-                alt impl::resolve_dicts_in_fn_ctxt(bcx.fcx, dicts) {
-                  some(dicts) { monomorphic_fn(ccx, fn_id, tys, some(dicts)) }
-                  none { none }
-                }
+                let rdicts = impl::resolve_vtables_in_fn_ctxt(bcx.fcx, dicts);
+                monomorphic_fn(ccx, fn_id, tys, some(rdicts))
               }
               none { monomorphic_fn(ccx, fn_id, tys, none) }
             }
@@ -2567,7 +2564,7 @@ fn trans_lval(cx: block, e: @ast::expr) -> lval_result {
 
 fn lval_maybe_callee_to_lval(c: lval_maybe_callee, ty: ty::t) -> lval_result {
     let must_bind = alt c.generic { generic_full(_) { true } _ { false } } ||
-        alt c.env { self_env(_, _) | dict_env(_, _) { true } _ { false } };
+        alt c.env { self_env(_, _) { true } _ { false } };
     if must_bind {
         let n_args = ty::ty_fn_args(ty).len();
         let args = vec::from_elem(n_args, none);
@@ -2779,28 +2776,7 @@ fn trans_args(cx: block, llenv: ValueRef,
 
     let retty = ty::ty_fn_ret(fn_ty), full_retty = retty;
     alt gen {
-      generic_full(g) {
-        lazily_emit_all_generic_info_tydesc_glues(ccx, g);
-        let i = 0u, n_orig = 0u;
-        for param in *g.param_bounds {
-            lltydescs += [g.tydescs[i]];
-            for bound in *param {
-                alt bound {
-                  ty::bound_iface(_) {
-                    let res = impl::get_dict(
-                        bcx, option::get(g.origins)[n_orig]);
-                    lltydescs += [res.val];
-                    bcx = res.bcx;
-                    n_orig += 1u;
-                  }
-                  _ {}
-                }
-            }
-            i += 1u;
-        }
-        args = ty::ty_fn_args(g.item_type);
-        retty = ty::ty_fn_ret(g.item_type);
-      }
+      generic_full(g) { fail; }
       generic_mono(t) {
         args = ty::ty_fn_args(t);
         retty = ty::ty_fn_ret(t);
@@ -2884,17 +2860,12 @@ fn trans_call_inner(in_cx: block, fn_expr_ty: ty::t,
         let bcx = f_res.bcx, ccx = cx.ccx();
 
         let faddr = f_res.val;
-        let llenv, dict_param = none;
-        alt f_res.env {
+        let llenv = alt f_res.env {
           null_env {
-            llenv = llvm::LLVMGetUndef(T_opaque_box_ptr(ccx));
+            llvm::LLVMGetUndef(T_opaque_box_ptr(ccx))
           }
           self_env(e, _) {
-            llenv = PointerCast(bcx, e, T_opaque_box_ptr(ccx));
-          }
-          dict_env(dict, e) {
-            llenv = PointerCast(bcx, e, T_opaque_box_ptr(ccx));
-            dict_param = some(dict);
+            PointerCast(bcx, e, T_opaque_box_ptr(ccx))
           }
           is_closure {
             // It's a closure. Have to fetch the elements
@@ -2905,16 +2876,15 @@ fn trans_call_inner(in_cx: block, fn_expr_ty: ty::t,
             faddr = GEPi(bcx, pair, [0, abi::fn_field_code]);
             faddr = Load(bcx, faddr);
             let llclosure = GEPi(bcx, pair, [0, abi::fn_field_box]);
-            llenv = Load(bcx, llclosure);
+            Load(bcx, llclosure)
           }
-        }
+        };
 
         let ret_ty = node_id_type(bcx, id);
         let args_res =
             trans_args(bcx, llenv, f_res.generic, args, fn_expr_ty, dest);
         bcx = args_res.bcx;
         let llargs = args_res.args;
-        option::may(dict_param) {|dict| llargs = [dict] + llargs}
         let llretslot = args_res.retslot;
 
         /* If the block is terminated,
@@ -2955,6 +2925,10 @@ fn invoke_(bcx: block, llfn: ValueRef, llargs: [ValueRef],
     // cleanups to run
     if bcx.unreachable { ret bcx; }
     let normal_bcx = sub_block(bcx, "normal return");
+    /*std::io::println("fn: " + lib::llvm::type_to_str(bcx.ccx().tn, val_ty(llfn)));
+    for a in llargs {
+        std::io::println(" a: " + lib::llvm::type_to_str(bcx.ccx().tn, val_ty(a)));
+    }*/
     invoker(bcx, llfn, llargs, normal_bcx.llbb, get_landing_pad(bcx));
     ret normal_bcx;
 }
@@ -4791,16 +4765,6 @@ fn trans_constant(ccx: @crate_ctxt, it: @ast::item) {
             i += 1;
         }
       }
-      ast::item_impl(tps, some(@{node: ast::ty_path(_, id), _}), _, ms) {
-        let i_did = ast_util::def_id_of_def(ccx.tcx.def_map.get(id));
-        impl::trans_impl_vtable(ccx, item_path(ccx, it), i_did, ms, tps, it);
-      }
-      ast::item_iface(_, _) {
-        if !vec::any(*ty::iface_methods(ccx.tcx, local_def(it.id)), {|m|
-            ty::type_has_vars(ty::mk_fn(ccx.tcx, m.fty))}) {
-            impl::trans_iface_vtable(ccx, item_path(ccx, it), it);
-        }
-      }
       _ { }
     }
 }
@@ -5032,9 +4996,9 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           discrims: ast_util::new_def_id_hash::<ValueRef>(),
           discrim_symbols: int_hash::<str>(),
           tydescs: ty::new_ty_hash(),
-          dicts: map::hashmap(hash_dict_id, {|a, b| a == b}),
           external: util::common::new_def_hash(),
           monomorphized: map::hashmap(hash_mono_id, {|a, b| a == b}),
+          vtables: map::hashmap(hash_mono_id, {|a, b| a == b}),
           module_data: str_hash::<ValueRef>(),
           lltypes: ty::new_ty_hash(),
           names: new_namegen(),

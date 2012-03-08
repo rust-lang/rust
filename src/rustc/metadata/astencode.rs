@@ -548,10 +548,13 @@ fn encode_dict_origin(ecx: @e::encode_ctxt,
                 }
             }
           }
-          typeck::dict_iface(def_id) {
+          typeck::dict_iface(def_id, tys) {
             ebml_w.emit_enum_variant("dict_iface", 1u, 3u) {||
                 ebml_w.emit_enum_variant_arg(0u) {||
                     ebml_w.emit_def_id(def_id)
+                }
+                ebml_w.emit_enum_variant_arg(1u) {||
+                    ebml_w.emit_tys(ecx, tys);
                 }
             }
           }
@@ -596,6 +599,9 @@ impl helpers for ebml::ebml_deserializer {
                     typeck::dict_iface(
                         self.read_enum_variant_arg(0u) {||
                             self.read_def_id(xcx)
+                        },
+                        self.read_enum_variant_arg(1u) {||
+                            self.read_tys(xcx)
                         }
                     )
                   }

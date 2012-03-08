@@ -34,7 +34,7 @@ enum dict_origin {
     dict_static(ast::def_id, [ty::t], dict_res),
     // Param number, bound number
     dict_param(uint, uint),
-    dict_iface(ast::def_id),
+    dict_iface(ast::def_id, [ty::t]),
 }
 type dict_map = hashmap<ast::node_id, dict_res>;
 
@@ -3361,8 +3361,8 @@ mod dict {
                 }
             }
           }
-          ty::ty_iface(did, _) if iface_id == did {
-            ret dict_iface(did);
+          ty::ty_iface(did, tps) if iface_id == did {
+            ret dict_iface(did, tps);
           }
           _ {
             let found = none;

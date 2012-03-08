@@ -90,11 +90,12 @@ type crate_ctxt = {
      discrims: hashmap<ast::def_id, ValueRef>,
      discrim_symbols: hashmap<ast::node_id, str>,
      tydescs: hashmap<ty::t, @tydesc_info>,
-     dicts: hashmap<dict_id, ValueRef>,
      // Track mapping of external ids to local items imported for inlining
      external: hashmap<ast::def_id, option<ast::node_id>>,
      // Cache instances of monomorphized functions
      monomorphized: hashmap<mono_id, {llfn: ValueRef, fty: ty::t}>,
+     // Cache generated vtables
+     vtables: hashmap<mono_id, ValueRef>,
      module_data: hashmap<str, ValueRef>,
      lltypes: hashmap<ty::t, TypeRef>,
      names: namegen,
@@ -846,30 +847,16 @@ pure fn type_has_static_size(cx: @crate_ctxt, t: ty::t) -> bool {
     !ty::type_has_dynamic_size(cx.tcx, t)
 }
 
-// Used to identify cached dictionaries
-enum dict_param {
-    dict_param_dict(dict_id),
-    dict_param_ty(ty::t),
-}
-type dict_id = @{def: ast::def_id, params: [dict_param]};
-fn hash_dict_id(&&dp: dict_id) -> uint {
-    let h = syntax::ast_util::hash_def_id(dp.def);
-    for param in dp.params {
-        h = h << 2u;
-        alt param {
-          dict_param_dict(d) { h += hash_dict_id(d); }
-          dict_param_ty(t) { h += ty::type_id(t); }
-        }
-    }
-    h
-}
-
 // Used to identify cached monomorphized functions
-type mono_id = @{def: ast::def_id, substs: [ty::t], dicts: [dict_id]};
+enum mono_dicts { some_dicts([mono_id]), no_dicts }
+type mono_id = @{def: ast::def_id, substs: [ty::t], dicts: mono_dicts};
 fn hash_mono_id(&&mi: mono_id) -> uint {
     let h = syntax::ast_util::hash_def_id(mi.def);
     for ty in mi.substs { h = (h << 2u) + ty::type_id(ty); }
-    for dict in mi.dicts { h = (h << 2u) + hash_dict_id(dict); }
+    alt mi.dicts {
+      some_dicts(ds) { for d in ds { h = (h << 2u) + hash_mono_id(d); } }
+      _ {}
+    }
     h
 }
 
