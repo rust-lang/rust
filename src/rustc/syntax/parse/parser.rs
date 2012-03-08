@@ -416,6 +416,21 @@ fn parse_ret_ty(p: parser) -> (ast::ret_style, @ast::ty) {
     }
 }
 
+fn parse_region(p: parser) -> ast::region {
+    alt p.token {
+        token::IDENT(sid, _) if p.look_ahead(1u) == token::DOT {
+            let string = p.get_str(sid);
+            p.bump(); p.bump();
+            if string == "self" {
+                ast::re_self
+            } else {
+                ast::re_named(string)
+            }
+        }
+        _ { ast::re_inferred }
+    }
+}
+
 fn parse_ty(p: parser, colons_before_params: bool) -> @ast::ty {
     let lo = p.span.lo;
 
@@ -467,6 +482,11 @@ fn parse_ty(p: parser, colons_before_params: bool) -> @ast::ty {
         let t = ast::ty_vec(parse_mt(p));
         expect(p, token::RBRACKET);
         t
+    } else if p.token == token::BINOP(token::AND) {
+        p.bump();
+        let region = parse_region(p);
+        let mt = parse_mt(p);
+        ast::ty_rptr(region, mt)
     } else if eat_word(p, "fn") {
         let proto = parse_fn_ty_proto(p);
         alt proto {
