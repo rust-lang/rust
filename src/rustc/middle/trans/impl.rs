@@ -46,13 +46,15 @@ import std::map::hashmap;
 
 fn trans_impl(ccx: @crate_ctxt, path: path, name: ast::ident,
               methods: [@ast::method], tps: [ast::ty_param]) {
+    if tps.len() > 0u { ret; }
     let sub_path = path + [path_name(name)];
     for m in methods {
-        let llfn = get_item_val(ccx, m.id);
-        let m_bounds = param_bounds(ccx, tps + m.tps);
-        trans_fn(ccx, sub_path + [path_name(m.ident)], m.decl, m.body,
-                 llfn, impl_self(ty::node_id_to_type(ccx.tcx, m.self_id)),
-                 m_bounds, none, m.id, none);
+        if m.tps.len() == 0u {
+            let llfn = get_item_val(ccx, m.id);
+            trans_fn(ccx, sub_path + [path_name(m.ident)], m.decl, m.body,
+                     llfn, impl_self(ty::node_id_to_type(ccx.tcx, m.self_id)),
+                     none, m.id, none);
+        }
     }
 }
 
@@ -335,6 +337,7 @@ fn trans_impl_wrapper(ccx: @crate_ctxt, pt: path,
 fn trans_impl_vtable(ccx: @crate_ctxt, pt: path,
                      iface_id: ast::def_id, ms: [@ast::method],
                      tps: [ast::ty_param], it: @ast::item) {
+    if tps.len() > 0u { ret; }
     let new_pt = pt + [path_name(it.ident), path_name(int::str(it.id)),
                        path_name("wrap")];
     let extra_tps = param_bounds(ccx, tps);

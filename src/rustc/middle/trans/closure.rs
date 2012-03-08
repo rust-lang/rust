@@ -470,7 +470,7 @@ fn trans_expr_fn(bcx: block,
         let cap_vars = capture::compute_capture_vars(
             ccx.tcx, id, proto, cap_clause);
         let {llbox, cdata_ty, bcx} = build_closure(bcx, cap_vars, ck, id);
-        trans_closure(ccx, sub_path, decl, body, llfn, no_self, [],
+        trans_closure(ccx, sub_path, decl, body, llfn, no_self,
                       bcx.fcx.param_substs, id, none, {|fcx|
             load_environment(bcx, fcx, cdata_ty, cap_vars, ck);
         });
@@ -482,7 +482,7 @@ fn trans_expr_fn(bcx: block,
       ast::proto_box { trans_closure_env(ty::ck_box) }
       ast::proto_uniq { trans_closure_env(ty::ck_uniq) }
       ast::proto_bare {
-        trans_closure(ccx, sub_path, decl, body, llfn, no_self, [], none,
+        trans_closure(ccx, sub_path, decl, body, llfn, no_self, none,
                       id, none, {|_fcx|});
         C_null(T_opaque_box_ptr(ccx))
       }

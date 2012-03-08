@@ -263,7 +263,7 @@ fn encode_enum_variant_info(ecx: @encode_ctxt, ebml_w: ebml::writer,
         encode_enum_id(ebml_w, local_def(id));
         encode_type(ecx, ebml_w,
                     node_id_to_type(ecx.ccx.tcx, variant.node.id));
-        if vec::len::<variant_arg>(variant.node.args) > 0u {
+        if vec::len(variant.node.args) > 0u && ty_params.len() == 0u {
             encode_symbol(ecx, ebml_w, variant.node.id);
         }
         encode_discriminant(ecx, ebml_w, variant.node.id);
@@ -361,10 +361,11 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_family(ebml_w, purity_fn_family(decl.purity));
         encode_type_param_bounds(ebml_w, ecx, tps);
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
-        encode_symbol(ecx, ebml_w, item.id);
         encode_path(ebml_w, path, ast_map::path_name(item.ident));
         if tps.len() > 0u || should_inline(item.attrs) {
             astencode::encode_inlined_item(ecx, ebml_w, path, ii_item(item));
+        } else {
+            encode_symbol(ecx, ebml_w, item.id);
         }
         ebml_w.end_tag();
       }
@@ -416,7 +417,9 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_type_param_bounds(ebml_w, ecx, tps);
         encode_type(ecx, ebml_w, ty::ty_fn_ret(fn_ty));
         encode_name(ebml_w, item.ident);
-        encode_symbol(ecx, ebml_w, item.id);
+        if tps.len() == 0u {
+            encode_symbol(ecx, ebml_w, item.id);
+        }
         encode_path(ebml_w, path, ast_map::path_name(item.ident));
         ebml_w.end_tag();
 
@@ -466,12 +469,13 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
             encode_type_param_bounds(ebml_w, ecx, tps + m.tps);
             encode_type(ecx, ebml_w, node_id_to_type(tcx, m.id));
             encode_name(ebml_w, m.ident);
-            encode_symbol(ecx, ebml_w, m.id);
             encode_path(ebml_w, impl_path, ast_map::path_name(m.ident));
             if tps.len() > 0u || m.tps.len() > 0u || should_inline(m.attrs) {
                 astencode::encode_inlined_item(
                     ecx, ebml_w, impl_path,
                     ii_method(local_def(item.id), m));
+            } else {
+                encode_symbol(ecx, ebml_w, m.id);
             }
             ebml_w.end_tag();
         }

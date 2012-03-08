@@ -2153,8 +2153,8 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
     alt check map_node {
       ast_map::node_item(i@@{node: ast::item_fn(decl, _, body), _}, _) {
         set_inline_hint_if_appr(i.attrs, lldecl);
-        trans_fn(ccx, pt, decl, body, lldecl, no_self, [],
-                 psubsts, fn_id.node, none);
+        trans_fn(ccx, pt, decl, body, lldecl, no_self, psubsts, fn_id.node,
+                 none);
       }
       ast_map::node_variant(v, enum_item, _) {
         let tvs = ty::enum_variants(ccx.tcx, local_def(enum_item.id));
@@ -2162,20 +2162,20 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
             tv.id.node == fn_id.node}));
         set_inline_hint(lldecl);
         trans_enum_variant(ccx, enum_item.id, v, this_tv.disr_val,
-                           (*tvs).len() == 1u, [], psubsts, lldecl);
+                           (*tvs).len() == 1u, psubsts, lldecl);
       }
       ast_map::node_method(mth, impl_def_id, _) {
         set_inline_hint_if_appr(mth.attrs, lldecl);
         let selfty = ty::node_id_to_type(ccx.tcx, mth.self_id);
         let selfty = ty::substitute_type_params(ccx.tcx, substs, selfty);
         trans_fn(ccx, pt, mth.decl, mth.body, lldecl,
-                 impl_self(selfty), [], psubsts, fn_id.node, none);
+                 impl_self(selfty), psubsts, fn_id.node, none);
       }
       ast_map::node_ctor(i) {
         alt check ccx.tcx.items.get(i.id) {
           ast_map::node_item(@{node: ast::item_res(decl, _, _, _, _), _}, _) {
             set_inline_hint(lldecl);
-            trans_res_ctor(ccx, pt, decl, fn_id.node, [], psubsts, lldecl);
+            trans_res_ctor(ccx, pt, decl, fn_id.node, psubsts, lldecl);
           }
           ast_map::node_item(@{node: ast::item_class(_, _, ctor), _}, _) {
             ccx.sess.unimpl("monomorphic class constructor");
@@ -2216,10 +2216,11 @@ fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id)
                    mth.id];
             ccx.external.insert(fn_id, some(mth.id));
             compute_ii_method_info(ccx, impl_did, mth) {|ty, bounds, path|
-                let llfn = get_item_val(ccx, mth.id);
-                trans_fn(ccx, path, mth.decl, mth.body,
-                         llfn, impl_self(ty), bounds,
-                         none, mth.id, none);
+                if bounds.len() == 0u {
+                    let llfn = get_item_val(ccx, mth.id);
+                    trans_fn(ccx, path, mth.decl, mth.body,
+                             llfn, impl_self(ty), none, mth.id, none);
+                }
             }
             local_def(mth.id)
           }
@@ -4116,7 +4117,6 @@ enum self_arg { impl_self(ty::t), no_self, }
 fn trans_closure(ccx: @crate_ctxt, path: path, decl: ast::fn_decl,
                  body: ast::blk, llfndecl: ValueRef,
                  ty_self: self_arg,
-                 tps_bounds: [ty::param_bounds],
                  param_substs: option<param_substs>,
                  id: ast::node_id, maybe_self_id: option<@ast::expr>,
                  maybe_load_env: fn(fn_ctxt)) {
@@ -4125,7 +4125,7 @@ fn trans_closure(ccx: @crate_ctxt, path: path, decl: ast::fn_decl,
     // Set up arguments to the function.
             let fcx = new_fn_ctxt_w_id(ccx, path, llfndecl, id, maybe_self_id,
                   param_substs, some(body.span));
-    create_llargs_for_fn_args(fcx, ty_self, decl.inputs, tps_bounds);
+    create_llargs_for_fn_args(fcx, ty_self, decl.inputs, []);
 
     // Create the first basic block in the function and keep a handle on it to
     //  pass to finish_fn later.
@@ -4168,7 +4168,6 @@ fn trans_fn(ccx: @crate_ctxt,
             body: ast::blk,
             llfndecl: ValueRef,
             ty_self: self_arg,
-            tps_bounds: [ty::param_bounds],
             param_substs: option<param_substs>,
             id: ast::node_id,
             maybe_self_id: option<@ast::expr>) {
@@ -4176,7 +4175,7 @@ fn trans_fn(ccx: @crate_ctxt,
     let start = if do_time { time::get_time() }
                 else { {sec: 0u32, usec: 0u32} };
     trans_closure(ccx, path, decl, body, llfndecl, ty_self,
-                  tps_bounds, param_substs, id, maybe_self_id, {|fcx|
+                  param_substs, id, maybe_self_id, {|fcx|
         if ccx.sess.opts.extra_debuginfo {
             debuginfo::create_function(fcx);
         }
@@ -4188,12 +4187,12 @@ fn trans_fn(ccx: @crate_ctxt,
 }
 
 fn trans_res_ctor(ccx: @crate_ctxt, path: path, dtor: ast::fn_decl,
-                  ctor_id: ast::node_id, tps_bounds: [ty::param_bounds],
+                  ctor_id: ast::node_id,
                   param_substs: option<param_substs>, llfndecl: ValueRef) {
     // Create a function for the constructor
     let fcx = new_fn_ctxt_w_id(ccx, path, llfndecl, ctor_id,
                                none, param_substs, none);
-    create_llargs_for_fn_args(fcx, no_self, dtor.inputs, tps_bounds);
+    create_llargs_for_fn_args(fcx, no_self, dtor.inputs, []);
     let bcx = top_scope_block(fcx, none), lltop = bcx.llbb;
     let fty = node_id_type(bcx, ctor_id);
     let arg_t = ty::ty_fn_args(fty)[0].ty;
@@ -4223,7 +4222,6 @@ fn trans_res_ctor(ccx: @crate_ctxt, path: path, dtor: ast::fn_decl,
 
 fn trans_enum_variant(ccx: @crate_ctxt, enum_id: ast::node_id,
                       variant: ast::variant, disr: int, is_degen: bool,
-                      ty_params: [ast::ty_param],
                       param_substs: option<param_substs>,
                       llfndecl: ValueRef) {
     // Translate variant arguments to function arguments.
@@ -4236,17 +4234,10 @@ fn trans_enum_variant(ccx: @crate_ctxt, enum_id: ast::node_id,
     }
     let fcx = new_fn_ctxt_w_id(ccx, [], llfndecl, variant.node.id, none,
                                param_substs, none);
-    create_llargs_for_fn_args(fcx, no_self, fn_args,
-                              param_bounds(ccx, ty_params));
+    create_llargs_for_fn_args(fcx, no_self, fn_args, []);
     let ty_param_substs = alt param_substs {
       some(substs) { substs.tys }
-      none {
-        let i = 0u;
-        vec::map(ty_params, {|tp|
-            i += 1u;
-            ty::mk_param(ccx.tcx, i - 1u, local_def(tp.id))
-        })
-      }
+      none { [] }
     };
     let bcx = top_scope_block(fcx, none), lltop = bcx.llbb;
     let arg_tys = ty::ty_fn_args(node_id_type(bcx, variant.node.id));
@@ -4400,44 +4391,46 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
     };
     alt item.node {
       ast::item_fn(decl, tps, body) {
-        let llfndecl = get_item_val(ccx, item.id);
-        if decl.purity != ast::crust_fn  {
-            trans_fn(ccx, *path + [path_name(item.ident)], decl, body,
-                     llfndecl, no_self, param_bounds(ccx, tps),
-                     none, item.id, none);
-        } else {
+        if decl.purity == ast::crust_fn  {
+            let llfndecl = get_item_val(ccx, item.id);
             native::trans_crust_fn(ccx, *path + [path_name(item.ident)],
                                    decl, body, llfndecl, item.id);
+        } else if tps.len() == 0u {
+            let llfndecl = get_item_val(ccx, item.id);
+            trans_fn(ccx, *path + [path_name(item.ident)], decl, body,
+                     llfndecl, no_self, none, item.id, none);
         }
       }
       ast::item_impl(tps, _, _, ms) {
         impl::trans_impl(ccx, *path, item.ident, ms, tps);
       }
       ast::item_res(decl, tps, body, dtor_id, ctor_id) {
-        let llctor_decl = get_item_val(ccx, ctor_id);
-        trans_res_ctor(ccx, *path, decl, ctor_id,
-                       param_bounds(ccx, tps), none, llctor_decl);
+        if tps.len() == 0u {
+            let llctor_decl = get_item_val(ccx, ctor_id);
+            trans_res_ctor(ccx, *path, decl, ctor_id, none, llctor_decl);
 
-        // Create a function for the destructor
-        let lldtor_decl = get_item_val(ccx, item.id);
-        trans_fn(ccx, *path + [path_name(item.ident)], decl, body,
-                 lldtor_decl, no_self, param_bounds(ccx, tps),
-                 none, dtor_id, none);
+            let lldtor_decl = get_item_val(ccx, item.id);
+            trans_fn(ccx, *path + [path_name(item.ident)], decl, body,
+                     lldtor_decl, no_self, none, dtor_id, none);
+        }
       }
       ast::item_mod(m) {
         trans_mod(ccx, m);
       }
       ast::item_enum(variants, tps) {
-        let degen = variants.len() == 1u;
-        let vi = ty::enum_variants(ccx.tcx, local_def(item.id));
-        let i = 0;
-        for variant: ast::variant in variants {
-            if variant.node.args.len() > 0u {
-                trans_enum_variant(ccx, item.id, variant,
-                                   vi[i].disr_val, degen, tps,
-                                   none, get_item_val(ccx, variant.node.id));
+        if tps.len() == 0u {
+            let degen = variants.len() == 1u;
+            let vi = ty::enum_variants(ccx.tcx, local_def(item.id));
+            let i = 0;
+            for variant: ast::variant in variants {
+                let llfn = get_item_val(ccx, variant.node.id);
+                if variant.node.args.len() > 0u {
+                    trans_enum_variant(ccx, item.id, variant,
+                                       vi[i].disr_val, degen,
+                                       none, llfn);
+                }
+                i += 1;
             }
-            i += 1;
         }
       }
       ast::item_const(_, expr) { trans_const(ccx, expr, item.id); }
@@ -4516,8 +4509,7 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
                                       with ctor.node.body};
         trans_fn(ccx, *path + [path_name(item.ident)], ctor.node.dec,
                  ctor_body__, llctor_decl, no_self,
-                 param_bounds(ccx, tps), none, ctor.node.id,
-                 some(rslt_expr));
+                 none, ctor.node.id, some(rslt_expr));
         // TODO: translate methods!
       }
       _ {/* fall through */ }
