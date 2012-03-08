@@ -68,4 +68,7 @@ fn pat_binding_ids(dm: resolve::def_map, pat: @pat) -> [node_id] {
     ret found;
 }
 
-fn path_to_ident(p: @path) -> ident { vec::last_total(p.node.idents) }
+fn path_to_ident(p: @path) -> ident {
+  assert (vec::is_not_empty(p.node.idents)); // should be a constraint on path
+  vec::last_unsafe(p.node.idents)
+}

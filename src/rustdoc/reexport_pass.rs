@@ -161,7 +161,9 @@ fn build_reexport_path_map(srv: astsrv::srv, -def_map: def_map) -> path_map {
             let path = alt check ctxt.ast_map.get(exp_id) {
               ast_map::node_export(_, path) { path }
             };
-            let name = alt check vec::last_total(*path) {
+          // should be a constraint on the node_export constructor
+          // that guarantees path is non-empty
+            let name = alt check vec::last_unsafe(*path) {
               ast_map::path_name(nm) { nm }
             };
             let modpath = ast_map::path_to_str(vec::init(*path));

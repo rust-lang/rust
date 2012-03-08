@@ -187,7 +187,9 @@ fn map_view_item(vi: @view_item, cx: ctx, _v: vt) {
             let (id, name) = alt vp.node {
               view_path_simple(nm, _, id) { (id, nm) }
               view_path_glob(pth, id) | view_path_list(pth, _, id) {
-                (id, vec::last_total(*pth))
+                  // should be a constraint on the type
+                assert (vec::is_not_empty(*pth));
+                (id, vec::last_unsafe(*pth))
               }
             };
             cx.map.insert(id, node_export(vp, extend(cx, name)));

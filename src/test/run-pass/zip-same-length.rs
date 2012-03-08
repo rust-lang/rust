@@ -19,5 +19,5 @@ fn main() {
 
     check (is_not_empty(ps));
     assert (head(ps) == ('a', 1u));
-    assert (last_total(ps) == (j as char, 10u));
+    assert (last_unsafe(ps) == (j as char, 10u));
 }

@@ -200,14 +200,15 @@ pure fn last<T: copy>(v: [const T]) -> option<T> {
 }
 
 /*
-Function: last_total
+Function: last_unsafe
 
-Returns the last element of a non-empty vector `v`
+Returns the last element of a `v`, failing if the vector is empty.
 
-Predicates:
-<is_not_empty> (v)
 */
-pure fn last_total<T: copy>(v: [const T]) -> T { v[len(v) - 1u] }
+pure fn last_unsafe<T: copy>(v: [const T]) -> T {
+    if len(v) == 0u { fail "last_unsafe: empty vector" }
+    v[len(v) - 1u]
+}
 
 /*
 Function: slice
