@@ -2137,6 +2137,11 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
       ast_map::node_method(m, _, pt) { (pt, m.ident) }
       // We can't monomorphize native functions
       ast_map::node_native_item(_, _, _) { ret none; }
+      ast_map::node_ctor(i) {
+        alt check ccx.tcx.items.get(i.id) {
+          ast_map::node_item(i, pt) { (pt, i.ident) }
+        }
+      }
       _ { fail "unexpected node type"; }
     };
     let pt = *pt + [path_name(ccx.names(name))];
@@ -2146,25 +2151,36 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
 
     let psubsts = some({tys: substs, dicts: dicts, bounds: tpt.bounds});
     alt check map_node {
-      ast_map::node_item(@{node: ast::item_fn(decl, _, body), _}, _) {
+      ast_map::node_item(i@@{node: ast::item_fn(decl, _, body), _}, _) {
+        set_inline_hint_if_appr(i.attrs, lldecl);
         trans_fn(ccx, pt, decl, body, lldecl, no_self, [],
                  psubsts, fn_id.node, none);
-      }
-      ast_map::node_item(@{node: ast::item_res(decl, _, _, _, _), _}, _) {
-        trans_res_ctor(ccx, pt, decl, fn_id.node, [], psubsts, lldecl);
       }
       ast_map::node_variant(v, enum_item, _) {
         let tvs = ty::enum_variants(ccx.tcx, local_def(enum_item.id));
         let this_tv = option::get(vec::find(*tvs, {|tv|
             tv.id.node == fn_id.node}));
+        set_inline_hint(lldecl);
         trans_enum_variant(ccx, enum_item.id, v, this_tv.disr_val,
                            (*tvs).len() == 1u, [], psubsts, lldecl);
       }
       ast_map::node_method(mth, impl_def_id, _) {
+        set_inline_hint_if_appr(mth.attrs, lldecl);
         let selfty = ty::node_id_to_type(ccx.tcx, mth.self_id);
         let selfty = ty::substitute_type_params(ccx.tcx, substs, selfty);
         trans_fn(ccx, pt, mth.decl, mth.body, lldecl,
                  impl_self(selfty), [], psubsts, fn_id.node, none);
+      }
+      ast_map::node_ctor(i) {
+        alt check ccx.tcx.items.get(i.id) {
+          ast_map::node_item(@{node: ast::item_res(decl, _, _, _, _), _}, _) {
+            set_inline_hint(lldecl);
+            trans_res_ctor(ccx, pt, decl, fn_id.node, [], psubsts, lldecl);
+          }
+          ast_map::node_item(@{node: ast::item_class(_, _, ctor), _}, _) {
+            ccx.sess.unimpl("monomorphic class constructor");
+          }
+        }
       }
     }
     some({llfn: lldecl, fty: mono_ty})
@@ -4433,6 +4449,7 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
         native::trans_native_mod(ccx, native_mod, abi);
       }
       ast::item_class(tps, items, ctor) {
+        // FIXME factor our ctor translation, call from monomorphic_fn
         let llctor_decl = get_item_val(ccx, ctor.node.id);
         // Translate the ctor
         // First, add a preamble that
