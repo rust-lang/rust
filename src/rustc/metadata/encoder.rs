@@ -339,10 +339,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
     }
 
     let tcx = ecx.ccx.tcx;
-    let must_write = alt item.node {
-      item_enum(_, _) | item_res(_, _, _, _, _) { true }
-      _ { false }
-    };
+    let must_write = alt item.node { item_enum(_, _) { true } _ { false } };
     if !must_write && !ecx.reachable.contains_key(item.id) { ret false; }
 
     alt item.node {
@@ -419,6 +416,8 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_name(ebml_w, item.ident);
         if tps.len() == 0u {
             encode_symbol(ecx, ebml_w, item.id);
+        } else {
+            astencode::encode_inlined_item(ecx, ebml_w, path, ii_item(item));
         }
         encode_path(ebml_w, path, ast_map::path_name(item.ident));
         ebml_w.end_tag();
@@ -533,7 +532,7 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::writer,
     ecx.ccx.tcx.items.items {|key, val|
         let where = ebml_w.writer.tell();
         let written = alt val {
-          middle::ast_map::node_item(i, path) {
+          middle::ast_map::node_item(i, path) if i.id == key {
             encode_info_for_item(ecx, ebml_w, i, index, *path)
           }
           middle::ast_map::node_native_item(i, _, path) {

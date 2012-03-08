@@ -21,7 +21,7 @@ import std::map::hashmap;
 
 import ty_ctxt = middle::ty::ctxt;
 
-type res_info = {did: ast::def_id, t: ty::t};
+type res_info = {did: ast::def_id, tps: [ty::t]};
 
 type ctxt =
     {mutable next_tag_id: u16,
@@ -67,13 +67,11 @@ fn hash_res_info(ri: res_info) -> uint {
     h += ri.did.crate as uint;
     h *= 33u;
     h += ri.did.node as uint;
-    h *= 33u;
-    h += ty::type_id(ri.t);
+    for t in ri.tps {
+        h *= 33u;
+        h += ty::type_id(t);
+    }
     ret h;
-}
-
-fn eq_res_info(a: res_info, b: res_info) -> bool {
-    ret a.did.crate == b.did.crate && a.did.node == b.did.node && a.t == b.t;
 }
 
 fn mk_global(ccx: @crate_ctxt, name: str, llval: ValueRef, internal: bool) ->
@@ -278,7 +276,7 @@ fn mk_ctxt(llmod: ModuleRef) -> ctxt {
          pad: 0u16,
          tag_id_to_index: common::new_def_hash(),
          mutable tag_order: [],
-         resources: interner::mk(hash_res_info, eq_res_info),
+         resources: interner::mk(hash_res_info, {|a, b| a == b}),
          llshapetablesty: llshapetablesty,
          llshapetables: llshapetables};
 }
@@ -391,7 +389,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint]) -> [u8] {
       }
       ty::ty_res(did, raw_subt, tps) {
         let subt = ty::substitute_type_params(ccx.tcx, tps, raw_subt);
-        let ri = {did: did, t: subt};
+        let ri = {did: did, tps: tps};
         let id = interner::intern(ccx.shape_cx.resources, ri);
 
         s += [shape_res];
@@ -553,7 +551,7 @@ fn gen_resource_shapes(ccx: @crate_ctxt) -> ValueRef {
     let len = interner::len(ccx.shape_cx.resources);
     while i < len {
         let ri = interner::get(ccx.shape_cx.resources, i);
-        dtors += [trans::common::get_res_dtor(ccx, ri.did, ri.t)];
+        dtors += [trans::base::get_res_dtor(ccx, ri.did, ri.tps)];
         i += 1u;
     }
 

@@ -7,7 +7,7 @@
 
 import middle::{resolve, ast_map, typeck};
 import syntax::ast::*;
-import syntax::visit;
+import syntax::{visit, ast_util};
 import syntax::ast_util::def_id_of_def;
 import front::attr;
 import std::map::hashmap;
@@ -22,7 +22,9 @@ type ctx = {ccx: @middle::trans::common::crate_ctxt,
 fn find_reachable(ccx: @middle::trans::common::crate_ctxt, crate_mod: _mod)
     -> map {
     let rmap = std::map::int_hash();
-    traverse_public_mod({ccx: ccx, rmap: rmap}, crate_mod);
+    let cx = {ccx: ccx, rmap: rmap};
+    traverse_public_mod(cx, crate_mod);
+    traverse_all_resources(cx, crate_mod);
     rmap
 }
 
@@ -121,6 +123,20 @@ fn traverse_inline_body(cx: ctx, body: blk) {
     visit::visit_block(body, cx, visit::mk_vt(@{
         visit_expr: traverse_expr,
         visit_item: traverse_item
+        with *visit::default_visitor()
+    }));
+}
+
+fn traverse_all_resources(cx: ctx, crate_mod: _mod) {
+    visit::visit_mod(crate_mod, ast_util::dummy_sp(), 0, cx, visit::mk_vt(@{
+        visit_expr: {|_e, _cx, _v|},
+        visit_item: {|i, cx, v|
+            visit::visit_item(i, cx, v);
+            alt i.node {
+              item_res(_, _, _, _, _) { traverse_public_item(cx, i); }
+              _ {}
+            }
+        }
         with *visit::default_visitor()
     }));
 }

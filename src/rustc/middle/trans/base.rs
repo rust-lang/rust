@@ -859,6 +859,24 @@ fn make_drop_glue(bcx: block, v0: ValueRef, t: ty::t) {
     build_return(bcx);
 }
 
+fn get_res_dtor(ccx: @crate_ctxt, did: ast::def_id, substs: [ty::t])
+   -> ValueRef {
+    let did = if did.crate != ast::local_crate && substs.len() > 0u {
+        maybe_instantiate_inline(ccx, did)
+    } else { did };
+    if did.crate == ast::local_crate {
+        option::get(monomorphic_fn(ccx, did, substs, none))
+    } else {
+        assert substs.len() == 0u;
+        let nil = ty::mk_nil(ccx.tcx);
+        let arg = {mode: ast::expl(ast::by_ref),
+                   ty: ty::mk_mut_ptr(ccx.tcx, nil)};
+        let f_t = type_of::type_of_fn(ccx, [arg], nil, 0u);
+        get_extern_const(ccx.externs, ccx.llmod,
+                         csearch::get_symbol(ccx.sess.cstore, did), f_t)
+    }
+}
+
 fn trans_res_drop(bcx: block, rs: ValueRef, did: ast::def_id,
                   inner_t: ty::t, tps: [ty::t]) -> block {
     let ccx = bcx.ccx();
@@ -869,16 +887,11 @@ fn trans_res_drop(bcx: block, rs: ValueRef, did: ast::def_id,
     with_cond(bcx, IsNotNull(bcx, Load(bcx, drop_flag))) {|bcx|
         let {bcx, val: valptr} = GEP_tup_like(bcx, tup_ty, rs, [0, 1]);
         // Find and call the actual destructor.
-        let dtor_addr = common::get_res_dtor(ccx, did, inner_t);
+        let dtor_addr = get_res_dtor(ccx, did, tps);
         let args = [bcx.fcx.llretptr, null_env_ptr(bcx)];
-        for tp in tps {
-            let td = get_tydesc_simple(bcx, tp);
-            args += [td.val];
-            bcx = td.bcx;
-        }
         // Kludge to work around the fact that we know the precise type of the
-        // value here, but the dtor expects a type that still has opaque
-        // pointers for type variables.
+        // value here, but the dtor expects a type that might have opaque
+        // boxes and such.
         let val_llty = lib::llvm::fn_ty_param_tys
             (llvm::LLVMGetElementType
              (llvm::LLVMTypeOf(dtor_addr)))[args.len()];
@@ -1997,13 +2010,20 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
     }
 
     let tpt = ty::lookup_item_type(ccx.tcx, fn_id);
-    let mono_ty = ty::substitute_type_params(ccx.tcx, substs, tpt.ty);
-    let llfty = type_of_fn_from_ty(ccx, mono_ty, 0u);
+    let item_ty = tpt.ty;
 
     let map_node = ccx.tcx.items.get(fn_id.node);
     // Get the path so that we can create a symbol
     let (pt, name) = alt map_node {
-      ast_map::node_item(i, pt) { (pt, i.ident) }
+      ast_map::node_item(i, pt) {
+        alt i.node {
+          ast::item_res(_, _, _, dtor_id, _) {
+            item_ty = ty::node_id_to_type(ccx.tcx, dtor_id);
+          }
+          _ {}
+        }
+        (pt, i.ident)
+      }
       ast_map::node_variant(v, _, pt) { (pt, v.node.name) }
       ast_map::node_method(m, _, pt) { (pt, m.ident) }
       // We can't monomorphize native functions
@@ -2015,6 +2035,9 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
       }
       _ { fail "unexpected node type"; }
     };
+    let mono_ty = ty::substitute_type_params(ccx.tcx, substs, item_ty);
+    let llfty = type_of_fn_from_ty(ccx, mono_ty, 0u);
+
     let pt = *pt + [path_name(ccx.names(name))];
     let s = mangle_exported_name(ccx, pt, mono_ty);
     let lldecl = decl_cdecl_fn(ccx.llmod, s, llfty);
@@ -2026,6 +2049,9 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
         set_inline_hint_if_appr(i.attrs, lldecl);
         trans_fn(ccx, pt, decl, body, lldecl, no_self, psubsts, fn_id.node,
                  none);
+      }
+      ast_map::node_item(@{node: ast::item_res(d, _, body, d_id, _), _}, _) {
+        trans_fn(ccx, pt, d, body, lldecl, no_self, psubsts, d_id, none);
       }
       ast_map::node_variant(v, enum_item, _) {
         let tvs = ty::enum_variants(ccx.tcx, local_def(enum_item.id));

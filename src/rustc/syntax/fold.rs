@@ -289,8 +289,8 @@ fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
             item_res(fold_fn_decl(decl, fld),
                      fold_ty_params(typms, fld),
                      fld.fold_block(body),
-                     did,
-                     cid)
+                     fld.new_id(did),
+                     fld.new_id(cid))
           }
         };
 }

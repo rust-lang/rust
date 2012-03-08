@@ -135,6 +135,10 @@ fn visit_ids(item: ast::inlined_item, vfn: fn@(ast::node_id)) {
 
         visit_item: fn@(i: @ast::item) {
             vfn(i.id);
+            alt i.node {
+              ast::item_res(_, _, _, d_id, c_id) { vfn(d_id); vfn(c_id); }
+              _ {}
+            }
         },
 
         visit_local: fn@(l: @ast::local) {

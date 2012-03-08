@@ -298,22 +298,6 @@ fn revoke_clean(cx: block, val: ValueRef) {
     }
 }
 
-fn get_res_dtor(ccx: @crate_ctxt, did: ast::def_id, inner_t: ty::t)
-   -> ValueRef {
-    if did.crate == ast::local_crate {
-        ret base::get_item_val(ccx, did.node);
-    }
-
-    let param_bounds = ty::lookup_item_type(ccx.tcx, did).bounds;
-    let nil_res = ty::mk_nil(ccx.tcx);
-    let fn_mode = ast::expl(ast::by_ref);
-    let f_t = type_of::type_of_fn(ccx, [{mode: fn_mode, ty: inner_t}],
-                                  nil_res, (*param_bounds).len());
-    ret base::get_extern_const(ccx.externs, ccx.llmod,
-                                csearch::get_symbol(ccx.sess.cstore,
-                                                    did), f_t);
-}
-
 enum block_kind {
     // A scope at the end of which temporary values created inside of it are
     // cleaned up. May correspond to an actual block in the language, but also
