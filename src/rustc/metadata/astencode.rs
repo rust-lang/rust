@@ -671,7 +671,6 @@ fn encode_side_tables_for_ii(ecx: @e::encode_ctxt,
 fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
                              ebml_w: ebml::writer,
                              id: ast::node_id) {
-
     let ccx = ecx.ccx;
     let tcx = ccx.tcx;
 

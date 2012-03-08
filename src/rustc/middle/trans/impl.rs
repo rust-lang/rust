@@ -4,7 +4,8 @@ import common::*;
 import type_of::*;
 import build::*;
 import driver::session::session;
-import syntax::{ast, ast_util};
+import syntax::ast;
+import syntax::ast_util::local_def;
 import metadata::csearch;
 import back::{link, abi};
 import lib::llvm::llvm;
@@ -144,6 +145,19 @@ fn trans_vtable_callee(bcx: block, env: callee_env, dict: ValueRef,
      generic: generic}
 }
 
+fn method_with_name(ccx: crate_ctxt, impl_id: ast::def_id,
+                    name: ast::ident) -> ast::def_id {
+    if impl_id.crate == ast::local_crate {
+        alt check ccx.tcx.items.get(impl_id.node) {
+          ast_map::node_item(@{node: ast::item_impl(_, _, _, ms), _}, _) {
+            local_def(option::get(vec::find(ms, {|m| m.ident == name})).id)
+          }
+        }
+    } else {
+        csearch::get_impl_method(ccx.sess.cstore, impl_id, name)
+    }
+}
+
 fn trans_monomorphized_callee(bcx: block, callee_id: ast::node_id,
                               base: @ast::expr, iface_id: ast::def_id,
                               n_method: uint, n_param: uint, n_bound: uint,
@@ -151,18 +165,9 @@ fn trans_monomorphized_callee(bcx: block, callee_id: ast::node_id,
     alt find_dict_in_fn_ctxt(substs, n_param, n_bound) {
       typeck::dict_static(impl_did, tys, sub_origins) {
         let tcx = bcx.tcx();
-        if impl_did.crate != ast::local_crate {
-            ret trans_param_callee(bcx, callee_id, base, iface_id,
-                                   n_method, n_param, n_bound);
-        }
         let mname = ty::iface_methods(tcx, iface_id)[n_method].ident;
-        let mth = alt check tcx.items.get(impl_did.node) {
-          ast_map::node_item(@{node: ast::item_impl(_, _, _, ms), _}, _) {
-            option::get(vec::find(ms, {|m| m.ident == mname}))
-          }
-        };
-        ret trans_static_callee(bcx, callee_id, base,
-                                ast_util::local_def(mth.id),
+        let mth_id = method_with_name(bcx.ccx(), impl_did, mname);
+        ret trans_static_callee(bcx, callee_id, base, mth_id,
                                 some((tys, sub_origins)));
       }
       typeck::dict_iface(iid) {
@@ -378,7 +383,7 @@ fn trans_iface_wrapper(ccx: @crate_ctxt, pt: path, m: ty::method,
 
 fn trans_iface_vtable(ccx: @crate_ctxt, pt: path, it: @ast::item) {
     let new_pt = pt + [path_name(it.ident), path_name(int::str(it.id))];
-    let i_did = ast_util::local_def(it.id), i = 0u;
+    let i_did = local_def(it.id), i = 0u;
     let ptrs = vec::map(*ty::iface_methods(ccx.tcx, i_did), {|m|
         let w = trans_iface_wrapper(ccx, new_pt + [path_name(m.ident)], m, i);
         i += 1u;

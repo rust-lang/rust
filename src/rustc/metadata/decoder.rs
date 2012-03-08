@@ -19,6 +19,7 @@ export get_enum_variants;
 export get_type;
 export get_type_param_count;
 export get_impl_iface;
+export get_impl_method;
 export lookup_def;
 export lookup_item_name;
 export get_impl_iface;
@@ -254,6 +255,18 @@ fn get_type_param_count(data: @[u8], id: ast::node_id) -> uint {
 fn get_impl_iface(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
     -> option<ty::t> {
     item_impl_iface(lookup_item(id, cdata.data), tcx, cdata)
+}
+
+fn get_impl_method(cdata: cmd, id: ast::node_id, name: str) -> ast::def_id {
+    let items = ebml::get_doc(ebml::new_doc(cdata.data), tag_items);
+    let found = none;
+    ebml::tagged_docs(find_item(id, items), tag_item_method) {|mid|
+        let m_did = parse_def_id(ebml::doc_data(mid));
+        if item_name(find_item(m_did.node, items)) == name {
+            found = some(translate_def_id(cdata, m_did));
+        }
+    }
+    option::get(found)
 }
 
 fn get_symbol(data: @[u8], id: ast::node_id) -> str {

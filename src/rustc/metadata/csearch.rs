@@ -17,6 +17,7 @@ export get_impls_for_mod;
 export get_iface_methods;
 export get_type;
 export get_impl_iface;
+export get_impl_method;
 export get_item_path;
 export maybe_get_item_ast;
 
@@ -119,6 +120,12 @@ fn get_impl_iface(tcx: ty::ctxt, def: ast::def_id)
     let cstore = tcx.sess.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
     decoder::get_impl_iface(cdata, def.node, tcx)
+}
+
+fn get_impl_method(cstore: cstore::cstore, def: ast::def_id, mname: str)
+    -> ast::def_id {
+    let cdata = cstore::get_crate_data(cstore, def.crate);
+    decoder::get_impl_method(cdata, def.node, mname)
 }
 
 // Local Variables:

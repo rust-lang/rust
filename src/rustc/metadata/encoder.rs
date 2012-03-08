@@ -468,7 +468,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
             encode_name(ebml_w, m.ident);
             encode_symbol(ecx, ebml_w, m.id);
             encode_path(ebml_w, impl_path, ast_map::path_name(m.ident));
-            if should_inline(m.attrs) {
+            if tps.len() > 0u || m.tps.len() > 0u || should_inline(m.attrs) {
                 astencode::encode_inlined_item(
                     ecx, ebml_w, impl_path,
                     ii_method(local_def(item.id), m));
