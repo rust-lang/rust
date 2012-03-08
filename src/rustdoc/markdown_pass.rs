@@ -533,7 +533,7 @@ fn write_return(
 ) {
     alt doc.desc {
       some(d) {
-        ctxt.w.write_line(#fmt("Returns - %s", d));
+        ctxt.w.write_line(#fmt("Return value: %s", d));
         ctxt.w.write_line("");
       }
       none { }
@@ -544,7 +544,7 @@ fn write_return(
 fn should_write_return_type_on_new_line() {
     let markdown = test::render(
         "#[doc(return = \"test\")] fn a() -> int { }");
-    assert str::contains(markdown, "\nReturns - test");
+    assert str::contains(markdown, "\nReturn value: test");
 }
 
 #[test]
@@ -553,13 +553,13 @@ fn should_write_blank_line_between_return_type_and_next_header() {
         "#[doc(return = \"test\")] fn a() -> int { } \
          fn b() -> int { }"
     );
-    assert str::contains(markdown, "Returns - test\n\n##");
+    assert str::contains(markdown, "Return value: test\n\n##");
 }
 
 #[test]
 fn should_not_write_return_type_when_there_is_none() {
     let markdown = test::render("fn a() { }");
-    assert !str::contains(markdown, "Returns");
+    assert !str::contains(markdown, "Return value");
 }
 
 #[test]
@@ -808,7 +808,7 @@ fn should_not_write_iface_method_arguments_if_none() {
 fn should_write_iface_method_return_info() {
     let markdown = test::render(
         "iface a { #[doc(return = \"test\")] fn a() -> int; }");
-    assert str::contains(markdown, "Returns - test");
+    assert str::contains(markdown, "Return value: test");
 }
 
 #[test]
@@ -890,7 +890,7 @@ fn should_not_write_impl_method_arguments_if_none() {
 fn should_write_impl_method_return_info() {
     let markdown = test::render(
         "impl a for int { #[doc(return = \"test\")] fn a() -> int { } }");
-    assert str::contains(markdown, "Returns - test");
+    assert str::contains(markdown, "Return value: test");
 }
 
 #[test]
