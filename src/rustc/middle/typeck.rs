@@ -2192,7 +2192,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
             }
           }
           ast::addr_of {
-            tcx.sess.bug("TODO pcwalton");
+            // FIXME: This is incorrect. Infer the proper region.
+            let tm = { ty: oper_t, mutbl: ast::m_imm };
+            oper_t = ty::mk_rptr(tcx, ty::re_block(0), tm);
           }
         }
         write_ty(tcx, id, oper_t);
