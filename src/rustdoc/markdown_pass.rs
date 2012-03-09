@@ -57,7 +57,6 @@ fn should_write_modules_last() {
     types of items, or else the header nesting will end up wrong, with
     modules appearing to contain items that they do not.
     */
-
     let markdown = test::render(
         "mod a { }\
          fn b() { }\
