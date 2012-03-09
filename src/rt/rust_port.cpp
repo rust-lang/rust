@@ -106,6 +106,7 @@ void rust_port::receive(void *dptr, uintptr_t *yield) {
         LOG(task, comm, "<=== read data ===");
         return;
     }
+    memset(dptr, 0, buffer.unit_sz);
 
     // No data was buffered on any incoming channel, so block this task on
     // the port. Remember the rendezvous location so that any sender task
