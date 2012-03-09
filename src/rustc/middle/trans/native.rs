@@ -206,15 +206,13 @@ fn trans_native_mod(ccx: @crate_ctxt,
 
     fn build_wrap_fn(ccx: @crate_ctxt,
                      tys: @c_stack_tys,
-                     num_tps: uint,
                      llshimfn: ValueRef,
                      llwrapfn: ValueRef) {
 
         fn build_args(bcx: block, tys: @c_stack_tys,
-                      llwrapfn: ValueRef, llargbundle: ValueRef,
-                      num_tps: uint) {
+                      llwrapfn: ValueRef, llargbundle: ValueRef) {
             let i = 0u, n = vec::len(tys.arg_tys);
-            let implicit_args = first_tp_arg + num_tps; // ret + env
+            let implicit_args = first_real_arg; // ret + env
             while i < n {
                 let llargval = llvm::LLVMGetParam(
                     llwrapfn,
@@ -233,8 +231,7 @@ fn trans_native_mod(ccx: @crate_ctxt,
 
         build_wrap_fn_(ccx, tys, llshimfn, llwrapfn,
                        ccx.upcalls.call_shim_on_c_stack,
-                       bind build_args(_, _ ,_ , _, num_tps),
-                       build_ret);
+                       build_args, build_ret);
     }
 
     let cc = lib::llvm::CCallConv;
@@ -249,12 +246,12 @@ fn trans_native_mod(ccx: @crate_ctxt,
 
     for native_item in native_mod.items {
       alt native_item.node {
-        ast::native_item_fn(fn_decl, tps) {
+        ast::native_item_fn(fn_decl, _) {
           let id = native_item.id;
           let tys = c_stack_tys(ccx, id);
           let llwrapfn = get_item_val(ccx, id);
           let llshimfn = build_shim_fn(ccx, native_item, tys, cc);
-          build_wrap_fn(ccx, tys, vec::len(tps), llshimfn, llwrapfn);
+          build_wrap_fn(ccx, tys, llshimfn, llwrapfn);
         }
       }
     }
@@ -269,7 +266,7 @@ fn trans_crust_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
         let t = ty::node_id_to_type(ccx.tcx, id);
         let ps = link::mangle_internal_name_by_path(
             ccx, path + [ast_map::path_name("__rust_abi")]);
-        let llty = type_of_fn_from_ty(ccx, t, 0u);
+        let llty = type_of_fn_from_ty(ccx, t);
         let llfndecl = decl_internal_cdecl_fn(ccx.llmod, ps, llty);
         trans_fn(ccx, path, decl, body, llfndecl, no_self, none, id,
                  none);
@@ -377,13 +374,13 @@ fn abi_of_native_fn(ccx: @crate_ctxt, i: @ast::native_item)
 fn decl_native_fn(ccx: @crate_ctxt, i: @ast::native_item,
                   pth: ast_map::path) -> ValueRef {
     alt i.node {
-      ast::native_item_fn(_, tps) {
+      ast::native_item_fn(_, _) {
         let node_type = ty::node_id_to_type(ccx.tcx, i.id);
         alt abi_of_native_fn(ccx, i) {
           ast::native_abi_rust_intrinsic {
             // For intrinsics: link the function directly to the intrinsic
             // function itself.
-            let fn_type = type_of_fn_from_ty(ccx, node_type, tps.len());
+            let fn_type = type_of_fn_from_ty(ccx, node_type);
             let ri_name = "rust_intrinsic_" + native::link_name(i);
             ccx.item_symbols.insert(i.id, ri_name);
             get_extern_fn(ccx.externs, ccx.llmod, ri_name,
@@ -394,7 +391,7 @@ fn decl_native_fn(ccx: @crate_ctxt, i: @ast::native_item,
             // For true external functions: create a rust wrapper
             // and link to that.  The rust wrapper will handle
             // switching to the C stack.
-            register_fn(ccx, i.span, pth, "native fn", tps, i.id)
+            register_fn(ccx, i.span, pth, "native fn", i.id)
           }
         }
       }

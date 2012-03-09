@@ -18,8 +18,7 @@ fn type_of_explicit_args(cx: @crate_ctxt, inputs: [ty::arg]) -> [TypeRef] {
     }
 }
 
-fn type_of_fn(cx: @crate_ctxt, inputs: [ty::arg],
-              output: ty::t, n_ty_params: uint) -> TypeRef {
+fn type_of_fn(cx: @crate_ctxt, inputs: [ty::arg], output: ty::t) -> TypeRef {
     let atys: [TypeRef] = [];
 
     // Arg 0: Output pointer.
@@ -28,21 +27,14 @@ fn type_of_fn(cx: @crate_ctxt, inputs: [ty::arg],
     // Arg 1: Environment
     atys += [T_opaque_box_ptr(cx)];
 
-    // Args >2: ty params, if not acquired via capture...
-    let i = 0u;
-    while i < n_ty_params {
-        atys += [T_ptr(cx.tydesc_type)];
-        i += 1u;
-    }
     // ... then explicit args.
     atys += type_of_explicit_args(cx, inputs);
     ret T_fn(atys, llvm::LLVMVoidType());
 }
 
 // Given a function type and a count of ty params, construct an llvm type
-fn type_of_fn_from_ty(cx: @crate_ctxt, fty: ty::t, n_ty_params: uint)
-    -> TypeRef {
-    type_of_fn(cx, ty::ty_fn_args(fty), ty::ty_fn_ret(fty), n_ty_params)
+fn type_of_fn_from_ty(cx: @crate_ctxt, fty: ty::t) -> TypeRef {
+    type_of_fn(cx, ty::ty_fn_args(fty), ty::ty_fn_ret(fty))
 }
 
 fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
@@ -89,7 +81,7 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
         T_struct(tys)
       }
       ty::ty_fn(_) {
-        T_fn_pair(cx, type_of_fn_from_ty(cx, t, 0u))
+        T_fn_pair(cx, type_of_fn_from_ty(cx, t))
       }
       ty::ty_iface(_, _) { T_opaque_iface(cx) }
       ty::ty_res(_, sub, tps) {
@@ -144,20 +136,6 @@ fn type_of_enum(cx: @crate_ctxt, did: ast::def_id, t: ty::t)
         if degen { T_struct([T_enum_variant(cx)]) }
         else { T_opaque_enum(cx) }
     }
-}
-
-fn type_of_ty_param_bounds_and_ty
-    (ccx: @crate_ctxt, tpt: ty::ty_param_bounds_and_ty) -> TypeRef {
-    let t = tpt.ty;
-    alt ty::get(t).struct {
-      ty::ty_fn(_) {
-        ret type_of_fn_from_ty(ccx, t, (*tpt.bounds).len());
-      }
-      _ {
-        // fall through
-      }
-    }
-    type_of(ccx, t)
 }
 
 fn type_of_or_i8(ccx: @crate_ctxt, typ: ty::t) -> TypeRef {

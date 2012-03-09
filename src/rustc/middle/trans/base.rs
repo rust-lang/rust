@@ -865,7 +865,7 @@ fn get_res_dtor(ccx: @crate_ctxt, did: ast::def_id, substs: [ty::t])
         maybe_instantiate_inline(ccx, did)
     } else { did };
     assert did.crate == ast::local_crate;
-    option::get(monomorphic_fn(ccx, did, substs, none))
+    monomorphic_fn(ccx, did, substs, none)
 }
 
 fn trans_res_drop(bcx: block, rs: ValueRef, did: ast::def_id,
@@ -1951,8 +1951,7 @@ enum callee_env {
 type lval_maybe_callee = {bcx: block,
                           val: ValueRef,
                           kind: lval_kind,
-                          env: callee_env,
-                          tds: option<[ValueRef]>};
+                          env: callee_env};
 
 fn null_env_ptr(bcx: block) -> ValueRef {
     C_null(T_opaque_box_ptr(bcx.ccx()))
@@ -1971,20 +1970,21 @@ fn lval_temp(bcx: block, val: ValueRef) -> lval_result {
 
 fn lval_no_env(bcx: block, val: ValueRef, kind: lval_kind)
     -> lval_maybe_callee {
-    ret {bcx: bcx, val: val, kind: kind, env: is_closure, tds: none};
+    ret {bcx: bcx, val: val, kind: kind, env: is_closure};
 }
 
-fn trans_external_path(cx: block, did: ast::def_id,
-                       tpt: ty::ty_param_bounds_and_ty) -> ValueRef {
-    let ccx = cx.fcx.ccx;
+fn trans_external_path(ccx: @crate_ctxt, did: ast::def_id, t: ty::t)
+    -> ValueRef {
     let name = csearch::get_symbol(ccx.sess.cstore, did);
-    ret get_extern_const(ccx.externs, ccx.llmod, name,
-                         type_of_ty_param_bounds_and_ty(ccx, tpt));
+    let llty = alt ty::get(t).struct {
+      ty::ty_fn(_) { type_of_fn_from_ty(ccx, t) }
+      _ { type_of(ccx, t) }
+    };
+    ret get_extern_const(ccx.externs, ccx.llmod, name, llty);
 }
 
 fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
-                  vtables: option<typeck::vtable_res>)
-    -> option<ValueRef> {
+                  vtables: option<typeck::vtable_res>) -> ValueRef {
     let substs = vec::map(substs, {|t|
         alt ty::get(t).struct {
           ty::ty_box(mt) { ty::mk_opaque_box(ccx.tcx) }
@@ -1996,7 +1996,7 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
       none { no_vts }
     }};
     alt ccx.monomorphized.find(hash_id) {
-      some(val) { ret some(val); }
+      some(val) { ret val; }
       none {}
     }
 
@@ -2017,8 +2017,10 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
       }
       ast_map::node_variant(v, _, pt) { (pt, v.node.name) }
       ast_map::node_method(m, _, pt) { (pt, m.ident) }
-      // We can't monomorphize native functions
-      ast_map::node_native_item(_, _, _) { ret none; }
+      ast_map::node_native_item(_, _, _) {
+        // Natives don't have to be monomorphized.
+        ret get_item_val(ccx, fn_id.node);
+      }
       ast_map::node_ctor(i) {
         alt check ccx.tcx.items.get(i.id) {
           ast_map::node_item(i, pt) { (pt, i.ident) }
@@ -2027,7 +2029,7 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
       _ { fail "unexpected node type"; }
     };
     let mono_ty = ty::substitute_type_params(ccx.tcx, substs, item_ty);
-    let llfty = type_of_fn_from_ty(ccx, mono_ty, 0u);
+    let llfty = type_of_fn_from_ty(ccx, mono_ty);
 
     let pt = *pt + [path_name(ccx.names(name))];
     let s = mangle_exported_name(ccx, pt, mono_ty);
@@ -2071,7 +2073,7 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
         }
       }
     }
-    some(lldecl)
+    lldecl
 }
 
 fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id)
@@ -2142,39 +2144,18 @@ fn lval_static_fn(bcx: block, fn_id: ast::def_id, id: ast::node_id,
         maybe_instantiate_inline(ccx, fn_id)
     } else { fn_id };
 
-    // The awkwardness below mostly stems from the fact that we're mixing
-    // monomorphized and non-monomorphized functions at the moment. If
-    // monomorphizing becomes the only approach, this'll be much simpler.
     if fn_id.crate == ast::local_crate {
-        let mono = alt substs {
-          some((stys, vtables)) {
-            if stys.len() > 0u {
-                monomorphic_fn(ccx, fn_id, stys, some(vtables))
-            } else { none }
-          }
-          none {
-            alt ccx.maps.vtable_map.find(id) {
-              some(vtables) {
-                let rvtables = impl::resolve_vtables_in_fn_ctxt(
-                    bcx.fcx, vtables);
-                monomorphic_fn(ccx, fn_id, tys, some(rvtables))
-              }
-              none {
-                if tys.len() == 0u { none }
-                else { monomorphic_fn(ccx, fn_id, tys, none) }
-              }
-            }
-          }
+        let (tys, vtables) = alt substs {
+          some((tys, vts)) { (tys, some(vts)) }
+          none { (tys, option::map(ccx.maps.vtable_map.find(id), {|vts|
+                           impl::resolve_vtables_in_fn_ctxt(bcx.fcx, vts)})) }
         };
-        alt mono {
-          some(llfn) {
-            let cast = PointerCast(bcx, llfn, T_ptr(type_of_fn_from_ty(
-                ccx, node_id_type(bcx, id), 0u)));
+        if tys.len() > 0u {
+            let val = monomorphic_fn(ccx, fn_id, tys, vtables);
+            let cast = PointerCast(bcx, val, T_ptr(type_of_fn_from_ty(
+                ccx, node_id_type(bcx, id))));
             ret {bcx: bcx, val: cast,
-                 kind: owned, env: null_env,
-                 tds: none};
-          }
-          none {}
+                 kind: owned, env: null_env};
         }
     }
 
@@ -2183,8 +2164,14 @@ fn lval_static_fn(bcx: block, fn_id: ast::def_id, id: ast::node_id,
         get_item_val(ccx, fn_id.node)
     } else {
         // External reference.
-        trans_external_path(bcx, fn_id, tpt)
+        trans_external_path(ccx, fn_id, tpt.ty)
     };
+    if tys.len() > 0u {
+        // This is supposed to be an external native function.
+        // Unfortunately, I found no easy/cheap way to assert that.
+        val = PointerCast(bcx, val, T_ptr(type_of_fn_from_ty(
+            ccx, node_id_type(bcx, id))));
+    }
 
     // FIXME: Need to support external crust functions
     if fn_id.crate == ast::local_crate {
@@ -2198,22 +2185,7 @@ fn lval_static_fn(bcx: block, fn_id: ast::def_id, id: ast::node_id,
         }
     }
 
-    let tds = none, bcx = bcx;
-    // FIXME[mono] ensure this is a native function
-    if tys.len() > 0u {
-        val = PointerCast(bcx, val, T_ptr(type_of_fn_from_ty(
-            ccx, node_id_type(bcx, id), tys.len())));
-        let tydescs = [];
-        for t in tys {
-            let ti = none;
-            let td = get_tydesc(bcx, t, ti);
-            lazily_emit_all_tydesc_glue(ccx, ti);
-            bcx = td.bcx;
-            tydescs += [td.val];
-        }
-        tds = some(tydescs);
-    }
-    ret {bcx: bcx, val: val, kind: owned, env: null_env, tds: tds};
+    ret {bcx: bcx, val: val, kind: owned, env: null_env};
 }
 
 fn lookup_discriminant(ccx: @crate_ctxt, vid: ast::def_id) -> ValueRef {
@@ -2313,7 +2285,7 @@ fn trans_var(cx: block, def: ast::def, id: ast::node_id, path: @ast::path)
             ret lval_no_env(cx, get_item_val(ccx, did.node), owned);
         } else {
             let tp = node_id_type(cx, id);
-            let val = trans_external_path(cx, did, {bounds: @[], ty: tp});
+            let val = trans_external_path(ccx, did, tp);
             ret lval_no_env(cx, load_if_immediate(cx, val, tp), owned_imm);
         }
       }
@@ -2466,8 +2438,7 @@ fn trans_lval(cx: block, e: @ast::expr) -> lval_result {
 }
 
 fn lval_maybe_callee_to_lval(c: lval_maybe_callee, ty: ty::t) -> lval_result {
-    let must_bind = option::is_some(c.tds) ||
-        alt c.env { self_env(_, _) { true } _ { false } };
+    let must_bind = alt c.env { self_env(_, _) { true } _ { false } };
     if must_bind {
         let n_args = ty::ty_fn_args(ty).len();
         let args = vec::from_elem(n_args, none);
@@ -2662,12 +2633,10 @@ fn trans_arg_expr(cx: block, arg: ty::arg, lldestty: TypeRef, e: @ast::expr,
 //  - create_llargs_for_fn_args.
 //  - new_fn_ctxt
 //  - trans_args
-fn trans_args(cx: block, llenv: ValueRef,
-              tds: option<[ValueRef]>, es: [@ast::expr], fn_ty: ty::t,
-              dest: dest)
-   -> {bcx: block,
-       args: [ValueRef],
-       retslot: ValueRef} {
+fn trans_args(cx: block, llenv: ValueRef, es: [@ast::expr], fn_ty: ty::t,
+              dest: dest) -> {bcx: block,
+                              args: [ValueRef],
+                              retslot: ValueRef} {
 
     let temp_cleanups = [];
     let args = ty::ty_fn_args(fn_ty);
@@ -2700,12 +2669,6 @@ fn trans_args(cx: block, llenv: ValueRef,
 
     // Arg 1: Env (closure-bindings / self value)
     llargs += [llenv];
-
-    // Args >2: ty_params ...
-    alt tds {
-      some(tds) { llargs += tds; }
-      none {}
-    }
 
     // ... then explicit args.
 
@@ -2770,8 +2733,7 @@ fn trans_call_inner(in_cx: block, fn_expr_ty: ty::t,
         };
 
         let ret_ty = node_id_type(bcx, id);
-        let args_res =
-            trans_args(bcx, llenv, f_res.tds, args, fn_expr_ty, dest);
+        let args_res = trans_args(bcx, llenv, args, fn_expr_ty, dest);
         bcx = args_res.bcx;
         let llargs = args_res.args;
         let llretslot = args_res.retslot;
@@ -3883,7 +3845,7 @@ fn create_llargs_for_fn_args(cx: fn_ctxt,
                              args: [ast::arg],
                              tps_bounds: [ty::param_bounds]) {
     // Skip the implicit arguments 0, and 1.
-    let arg_n = first_tp_arg;
+    let arg_n = first_real_arg;
     alt ty_self {
       impl_self(tt) {
         cx.llself = some({v: cx.llenv, t: tt});
@@ -4417,11 +4379,9 @@ fn get_pair_fn_ty(llpairty: TypeRef) -> TypeRef {
 }
 
 fn register_fn(ccx: @crate_ctxt, sp: span, path: path, flav: str,
-               ty_params: [ast::ty_param], node_id: ast::node_id)
-    -> ValueRef {
+               node_id: ast::node_id) -> ValueRef {
     let t = ty::node_id_to_type(ccx.tcx, node_id);
-    let bnds = param_bounds(ccx, ty_params);
-    register_fn_full(ccx, sp, path, flav, bnds, node_id, t)
+    register_fn_full(ccx, sp, path, flav, node_id, t)
 }
 
 fn param_bounds(ccx: @crate_ctxt, tps: [ast::ty_param])
@@ -4430,9 +4390,8 @@ fn param_bounds(ccx: @crate_ctxt, tps: [ast::ty_param])
 }
 
 fn register_fn_full(ccx: @crate_ctxt, sp: span, path: path, flav: str,
-                    bnds: [ty::param_bounds], node_id: ast::node_id,
-                    node_type: ty::t) -> ValueRef {
-    let llfty = type_of_fn_from_ty(ccx, node_type, bnds.len());
+                    node_id: ast::node_id, node_type: ty::t) -> ValueRef {
+    let llfty = type_of_fn_from_ty(ccx, node_type);
     register_fn_fuller(ccx, sp, path, flav, node_id, node_type,
                        lib::llvm::CCallConv, llfty)
 }
@@ -4479,7 +4438,7 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
             {mode: ast::expl(ast::by_val),
              ty: ty::mk_vec(ccx.tcx, {ty: unit_ty, mutbl: ast::m_imm})};
         let nt = ty::mk_nil(ccx.tcx);
-        let llfty = type_of_fn(ccx, [vecarg_ty], nt, 0u);
+        let llfty = type_of_fn(ccx, [vecarg_ty], nt);
         let llfdecl = decl_fn(ccx.llmod, "_rust_main",
                               lib::llvm::CCallConv, llfty);
 
@@ -4575,16 +4534,16 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
                 ccx.item_symbols.insert(i.id, s);
                 g
               }
-              ast::item_fn(decl, tps, _) {
+              ast::item_fn(decl, _, _) {
                 let llfn = if decl.purity != ast::crust_fn {
-                    register_fn(ccx, i.span, my_path, "fn", tps, i.id)
+                    register_fn(ccx, i.span, my_path, "fn", i.id)
                 } else {
                     native::register_crust_fn(ccx, i.span, my_path, i.id)
                 };
                 set_inline_hint_if_appr(i.attrs, llfn);
                 llfn
               }
-              ast::item_res(_, tps, _, dtor_id, _) {
+              ast::item_res(_, _, _, dtor_id, _) {
                 // Note that the destructor is associated with the item's id,
                 // not the dtor_id. This is a bit counter-intuitive, but
                 // simplifies ty_res, which would have to carry around two
@@ -4592,17 +4551,15 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
                 // find the dtor symbol.
                 let t = ty::node_id_to_type(ccx.tcx, dtor_id);
                 register_fn_full(ccx, i.span, my_path + [path_name("dtor")],
-                                 "res_dtor", param_bounds(ccx, tps), i.id, t)
+                                 "res_dtor", i.id, t)
               }
             }
           }
           ast_map::node_method(m, impl_id, pth) {
             let mty = ty::node_id_to_type(ccx.tcx, id);
-            let impl_tps = *ty::lookup_item_type(ccx.tcx, impl_id).bounds;
             let pth = *pth + [path_name(int::str(impl_id.node)),
                               path_name(m.ident)];
             let llfn = register_fn_full(ccx, m.span, pth, "impl_method",
-                                        impl_tps + param_bounds(ccx, m.tps),
                                         id, mty);
             set_inline_hint_if_appr(m.attrs, llfn);
             llfn
@@ -4612,15 +4569,15 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
           }
           ast_map::node_ctor(i) {
             alt check i.node {
-              ast::item_res(_, tps, _, _, _) {
+              ast::item_res(_, _, _, _, _) {
                 let my_path = item_path(ccx, i);
                 let llctor = register_fn(ccx, i.span, my_path, "res_ctor",
-                                         tps, id);
+                                         id);
                 set_inline_hint(llctor);
                 llctor
               }
-              ast::item_class(tps, _, ctor) {
-                register_fn(ccx, i.span, item_path(ccx, i), "ctor", tps, id)
+              ast::item_class(_, _, ctor) {
+                register_fn(ccx, i.span, item_path(ccx, i), "ctor", id)
               }
             }
           }
@@ -4628,8 +4585,8 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
             assert v.node.args.len() != 0u;
             let pth = *pth + [path_name(enm.ident), path_name(v.node.name)];
             let llfn = alt check enm.node {
-              ast::item_enum(_, tps) {
-                register_fn(ccx, v.span, pth, "enum", tps, id)
+              ast::item_enum(_, _) {
+                register_fn(ccx, v.span, pth, "enum", id)
               }
             };
             set_inline_hint(llfn);

@@ -74,23 +74,16 @@ fn trans_static_callee(bcx: block, callee_id: ast::node_id,
      with lval_static_fn(bcx, did, callee_id, substs)}
 }
 
-fn wrapper_fn_ty(ccx: @crate_ctxt, vtable_ty: TypeRef, fty: ty::t,
-                 tps: @[ty::param_bounds]) -> {ty: ty::t, llty: TypeRef} {
-    let bare_fn_ty = type_of_fn_from_ty(ccx, fty, (*tps).len());
-    let {inputs, output} = llfn_arg_tys(bare_fn_ty);
-    {ty: fty, llty: T_fn([vtable_ty] + inputs, output)}
-}
-
 fn trans_vtable_callee(bcx: block, env: callee_env, vtable: ValueRef,
                        callee_id: ast::node_id, n_method: uint)
     -> lval_maybe_callee {
     let bcx = bcx, ccx = bcx.ccx();
     let fty = node_id_type(bcx, callee_id);
-    let llfty = type_of::type_of_fn_from_ty(ccx, fty, 0u);
+    let llfty = type_of::type_of_fn_from_ty(ccx, fty);
     let vtable = PointerCast(bcx, vtable,
                              T_ptr(T_array(T_ptr(llfty), n_method + 1u)));
     let mptr = Load(bcx, GEPi(bcx, vtable, [0, n_method as int]));
-    {bcx: bcx, val: mptr, kind: owned, env: env, tds: none}
+    {bcx: bcx, val: mptr, kind: owned, env: env}
 }
 
 fn method_with_name(ccx: @crate_ctxt, impl_id: ast::def_id,
@@ -106,7 +99,7 @@ fn method_with_name(ccx: @crate_ctxt, impl_id: ast::def_id,
     }
 }
 
-fn method_ty_param_count(ccx: crate_ctxt, m_id: ast::def_id) -> uint {
+fn method_ty_param_count(ccx: @crate_ctxt, m_id: ast::def_id) -> uint {
     if m_id.crate == ast::local_crate {
         alt check ccx.tcx.items.get(m_id.node) {
           ast_map::node_method(m, _, _) { vec::len(m.tps) }
@@ -128,7 +121,7 @@ fn trans_monomorphized_callee(bcx: block, callee_id: ast::node_id,
         let n_m_tps = method_ty_param_count(ccx, mth_id);
         let node_substs = node_id_type_params(bcx, callee_id);
         let ty_substs = impl_substs +
-            vec::tail_n(node_substs, node_substs.len() - n_m_tps);
+            vec::tailn(node_substs, node_substs.len() - n_m_tps);
         ret trans_static_callee(bcx, callee_id, base, mth_id,
                                 some((ty_substs, sub_origins)));
       }
@@ -255,160 +248,13 @@ fn make_impl_vtable(ccx: @crate_ctxt, impl_id: ast::def_id, substs: [ty::t],
         let fty = ty::substitute_type_params(tcx, substs,
                                              ty::mk_fn(tcx, im.fty));
         if (*im.tps).len() > 0u || ty::type_has_vars(fty) {
-            C_null(type_of_fn_from_ty(ccx, fty, 0u))
+            C_null(type_of_fn_from_ty(ccx, fty))
         } else {
             let m_id = method_with_name(ccx, impl_id, im.ident);
-            option::get(monomorphic_fn(ccx, m_id, substs, some(vtables)))
+            monomorphic_fn(ccx, m_id, substs, some(vtables))
         }
     }))
 }
-
-/*
-fn make_iface_vtable(ccx: @crate_ctxt, pt: path, it: @ast::item) {
-    let new_pt = pt + [path_name(it.ident), path_name(int::str(it.id))];
-    let i_did = local_def(it.id), i = 0u;
-    let ptrs = vec::map(*ty::iface_methods(ccx.tcx, i_did), {|m|
-        let w = trans_iface_wrapper(ccx, new_pt + [path_name(m.ident)], m, i);
-        i += 1u;
-        w
-    });
-    let s = link::mangle_internal_name_by_path(
-        ccx, new_pt + [path_name("!vtable")]);
-    trans_vtable(ccx, it.id, s, ptrs);
-}
-
-fn dict_is_static(tcx: ty::ctxt, origin: typeck::dict_origin) -> bool {
-    alt origin {
-      typeck::dict_static(_, ts, origs) {
-        vec::all(ts, {|t| !ty::type_has_params(t)}) &&
-        vec::all(*origs, {|o| dict_is_static(tcx, o)})
-      }
-      typeck::dict_iface(_) { true }
-      _ { false }
-    }
-}
-
-fn get_dict(bcx: block, origin: typeck::dict_origin) -> result {
-    let ccx = bcx.ccx();
-    alt origin {
-      typeck::dict_static(impl_did, tys, sub_origins) {
-        if dict_is_static(ccx.tcx, origin) {
-            ret rslt(bcx, get_static_dict(bcx, origin));
-        }
-        let {bcx, ptrs} = get_dict_ptrs(bcx, origin);
-        let pty = T_ptr(T_i8()), dict_ty = T_array(pty, ptrs.len());
-        let dict = alloca(bcx, dict_ty), i = 0;
-        for ptr in ptrs {
-            Store(bcx, PointerCast(bcx, ptr, pty), GEPi(bcx, dict, [0, i]));
-            i += 1;
-        }
-        dict = Call(bcx, ccx.upcalls.intern_dict,
-                    [C_uint(ccx, ptrs.len()),
-                     PointerCast(bcx, dict, T_ptr(T_dict()))]);
-        rslt(bcx, dict)
-      }
-      typeck::dict_param(n_param, n_bound) {
-        rslt(bcx, option::get(bcx.fcx.lltyparams[n_param].dicts)[n_bound])
-      }
-      typeck::dict_iface(did) {
-        ret rslt(bcx, get_static_dict(bcx, origin));
-      }
-    }
-}
-
-fn dict_id(tcx: ty::ctxt, origin: typeck::dict_origin) -> dict_id {
-    alt origin {
-      typeck::dict_static(did, ts, origs) {
-        let d_params = [], orig = 0u;
-        if ts.len() == 0u { ret @{def: did, params: d_params}; }
-        let impl_params = ty::lookup_item_type(tcx, did).bounds;
-        vec::iter2(ts, *impl_params) {|t, bounds|
-            d_params += [dict_param_ty(t)];
-            for bound in *bounds {
-                alt bound {
-                  ty::bound_iface(_) {
-                    d_params += [dict_param_dict(dict_id(tcx, origs[orig]))];
-                    orig += 1u;
-                  }
-                  _ {}
-                }
-            }
-        }
-        @{def: did, params: d_params}
-      }
-      typeck::dict_iface(did) {
-        @{def: did, params: []}
-      }
-      _ {
-        tcx.sess.bug("unexpected dict_param in dict_id");
-      }
-    }
-}
-
-fn get_static_dict(bcx: block, origin: typeck::dict_origin)
-    -> ValueRef {
-    let ccx = bcx.ccx();
-    let id = dict_id(ccx.tcx, origin);
-    alt ccx.dicts.find(id) {
-      some(d) { ret d; }
-      none {}
-    }
-    let ptrs = C_struct(get_dict_ptrs(bcx, origin).ptrs);
-    let name = ccx.names("dict");
-    let gvar = str::as_c_str(name, {|buf|
-        llvm::LLVMAddGlobal(ccx.llmod, val_ty(ptrs), buf)
-    });
-    llvm::LLVMSetGlobalConstant(gvar, lib::llvm::True);
-    llvm::LLVMSetInitializer(gvar, ptrs);
-    lib::llvm::SetLinkage(gvar, lib::llvm::InternalLinkage);
-    let cast = llvm::LLVMConstPointerCast(gvar, T_ptr(T_dict()));
-    ccx.dicts.insert(id, cast);
-    cast
-}
-
-fn get_dict_ptrs(bcx: block, origin: typeck::dict_origin)
-    -> {bcx: block, ptrs: [ValueRef]} {
-    let ccx = bcx.ccx();
-    fn get_vtable(ccx: @crate_ctxt, did: ast::def_id) -> ValueRef {
-        if did.crate == ast::local_crate {
-            get_item_val(ccx, did.node)
-        } else {
-            let name = csearch::get_symbol(ccx.sess.cstore, did);
-            get_extern_const(ccx.externs, ccx.llmod, name, T_ptr(T_i8()))
-        }
-    }
-    alt origin {
-      typeck::dict_static(impl_did, tys, sub_origins) {
-        let impl_params = ty::lookup_item_type(ccx.tcx, impl_did).bounds;
-        let ptrs = [get_vtable(ccx, impl_did)];
-        let origin = 0u, bcx = bcx;
-        vec::iter2(*impl_params, tys) {|param, ty|
-            let rslt = get_tydesc_simple(bcx, ty, true);
-            ptrs += [rslt.val];
-            bcx = rslt.bcx;
-            for bound in *param {
-                alt bound {
-                  ty::bound_iface(_) {
-                    let res = get_dict(bcx, sub_origins[origin]);
-                    ptrs += [res.val];
-                    bcx = res.bcx;
-                    origin += 1u;
-                  }
-                  _ {}
-                }
-            }
-        }
-        {bcx: bcx, ptrs: ptrs}
-      }
-      typeck::dict_iface(did) {
-        {bcx: bcx, ptrs: [get_vtable(ccx, did)]}
-      }
-      _ {
-        bcx.tcx().sess.bug("unexpected dict_param in get_dict_ptrs");
-      }
-    }
-}
-}*/
 
 fn trans_cast(bcx: block, val: @ast::expr, id: ast::node_id, dest: dest)
     -> block {

@@ -352,7 +352,7 @@ type block = @{
 };
 
 // First two args are retptr, env
-const first_tp_arg: uint = 2u;
+const first_real_arg: uint = 2u;
 
 // FIXME move blocks to a class once those are finished, and simply use
 // option<block> for this.
