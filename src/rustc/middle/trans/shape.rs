@@ -10,13 +10,13 @@ import middle::trans::common::*;
 import back::abi;
 import middle::ty;
 import middle::ty::field;
+import middle::ty::ty_ops;
 import syntax::ast;
 import syntax::ast_util::dummy_sp;
 import syntax::util::interner;
 import util::common;
 import trans::build::{Load, Store, Add, GEPi};
 import syntax::codemap::span;
-
 import std::map::hashmap;
 
 import ty_ctxt = middle::ty::ctxt;
@@ -405,7 +405,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint]) -> [u8] {
       ty::ty_fn({proto: ast::proto_bare, _}) { [shape_bare_fn] }
       ty::ty_opaque_closure_ptr(_) { [shape_opaque_closure_ptr] }
       ty::ty_constr(inner_t, _) { shape_of(ccx, inner_t, ty_param_map) }
-      ty::ty_var(_) | ty::ty_self(_) {
+      ty::ty_self(_) {
         ccx.sess.bug("shape_of: unexpected type struct found");
       }
     }
@@ -635,7 +635,7 @@ fn simplify_type(tcx: ty::ctxt, typ: ty::t) -> ty::t {
           _ { typ }
         }
     }
-    ty::fold_ty(tcx, ty::fm_general(bind simplifier(tcx, _)), typ)
+    ty::fold(tcx, typ) {|t| simplifier(tcx, t) }
 }
 
 // Given a tag type `ty`, returns the offset of the payload.

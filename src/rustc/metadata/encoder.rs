@@ -11,7 +11,7 @@ import syntax::ast_util::local_def;
 import common::*;
 import middle::trans::common::crate_ctxt;
 import middle::ty;
-import middle::ty::node_id_to_type;
+import middle::ty::{node_id_to_type, ty_ops};
 import middle::ast_map;
 import front::attr;
 import driver::session::session;

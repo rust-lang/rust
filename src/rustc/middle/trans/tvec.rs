@@ -9,6 +9,7 @@ import base::{call_memmove, trans_shared_malloc,
 import shape::llsize_of;
 import build::*;
 import common::*;
+import ty::ty_ops;
 
 fn get_fill(bcx: block, vptr: ValueRef) -> ValueRef {
     Load(bcx, GEPi(bcx, vptr, [0, abi::vec_elt_fill]))

@@ -98,7 +98,13 @@ fn chain<T, U: copy, V: copy>(res: result<T, V>, op: fn(T) -> result<U, V>)
 // deforested) style because I have found that, in practice, this is
 // the most concise way to do things.  That means that they do not not
 // terminate with a call to `ok(v)` but rather `nxt(v)`.  If you would
-// like to just get the result, just pass in `ok` as `nxt`.
+// like to just get the result, just pass in `ok1` as `nxt`.
+
+#[doc = "An annoying helper function for bridging argument modes when
+using deforested functions."]
+fn ok1<T:copy,U>(x: T) -> result<T,U> {
+    ok(x)
+}
 
 #[doc = "
 Maps each element in the vector `ts` using the operation `op`.  Should an
@@ -118,7 +124,7 @@ checking for overflow:
     }
 
 Note: if you have to combine a deforested style transform with map,
-you should use `ok` for the `nxt` operation, as shown here (this is an
+you should use `ok1` for the `nxt` operation, as shown here (this is an
 alternate version of the previous example where the
 `inc_conditionally()` routine is deforested):
 
@@ -127,7 +133,7 @@ alternate version of the previous example where the
         if x == uint::max_value { ret err(\"overflow\"); }
         else { ret nxt(x+1u); }
     }
-    map([1u, 2u, 3u], inc_conditionally(_, ok)) {|incd|
+    map([1u, 2u, 3u], inc_conditionally(_, ok1)) {|incd|
         assert incd == [2u, 3u, 4u];
     }
 "]

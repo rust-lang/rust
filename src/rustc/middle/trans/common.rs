@@ -19,6 +19,7 @@ import lib::llvm::{ModuleRef, ValueRef, TypeRef, BasicBlockRef, BuilderRef};
 import lib::llvm::{True, False, Bool};
 import metadata::csearch;
 import ast_map::path;
+import ty::ty_ops;
 
 type namegen = fn@(str) -> str;
 fn new_namegen() -> namegen {

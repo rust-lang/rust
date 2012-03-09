@@ -21,7 +21,7 @@ fn fn_usage_expr(expr: @ast::expr,
             alt ctx.tcx.def_map.find(expr.id) {
               some(ast::def_fn(_, ast::unsafe_fn)) {
                 log(error, ("expr=", expr_to_str(expr)));
-                ctx.tcx.sess.span_fatal(
+                ctx.tcx.sess.span_err(
                     expr.span,
                     "unsafe functions can only be called");
               }
@@ -33,7 +33,7 @@ fn fn_usage_expr(expr: @ast::expr,
             && ty::expr_has_ty_params(ctx.tcx, expr) {
             alt ty::get(ty::expr_ty(ctx.tcx, expr)).struct {
               ty::ty_fn({proto: ast::proto_bare, _}) {
-                ctx.tcx.sess.span_fatal(
+                ctx.tcx.sess.span_err(
                     expr.span,
                     "generic bare functions can only be called or bound");
               }

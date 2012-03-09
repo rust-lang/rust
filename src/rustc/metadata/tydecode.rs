@@ -5,6 +5,7 @@ import syntax::ast::*;
 import syntax::ast_util;
 import syntax::ast_util::respan;
 import middle::ty;
+import middle::ty::ty_ops;
 import std::map::hashmap;
 
 export parse_ty_data, parse_def_id, parse_ident;
@@ -265,7 +266,6 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
         st.pos = st.pos + 1u;
         ret ty::mk_res(st.tcx, def, inner, params);
       }
-      'X' { ret ty::mk_var(st.tcx, parse_int(st)); }
       'Y' { ret ty::mk_type(st.tcx); }
       'C' {
         let ck = alt check next(st) {

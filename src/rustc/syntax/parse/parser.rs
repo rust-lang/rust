@@ -1628,10 +1628,15 @@ fn parse_local(p: parser, is_mutbl: bool,
                allow_init: bool) -> @ast::local {
     let lo = p.span.lo;
     let pat = parse_pat(p);
-    let ty = @{id: p.get_id(),
-               node: ast::ty_infer,
-               span: ast_util::mk_sp(lo, lo)};
-    if eat(p, token::COLON) { ty = parse_ty(p, false); }
+    let ty = {
+        if eat(p, token::COLON) {
+            parse_ty(p, false)
+        } else {
+            @{id: p.get_id(),
+              node: ast::ty_infer,
+              span: ast_util::mk_sp(lo, lo)}
+        }
+    };
     let init = if allow_init { parse_initializer(p) } else { none };
     ret @spanned(lo, p.last_span.hi,
                  {is_mutbl: is_mutbl, ty: ty, pat: pat,
@@ -1895,19 +1900,23 @@ fn parse_fn_decl(p: parser, purity: ast::purity)
 }
 
 fn parse_fn_block_decl(p: parser) -> ast::fn_decl {
-    let inputs = if eat(p, token::OROR) {
-                     []
-                 } else {
-                     parse_seq(token::BINOP(token::OR),
-                               token::BINOP(token::OR),
-                               seq_sep(token::COMMA),
-                               parse_fn_block_arg, p).node
-                 };
-    let output = if eat(p, token::RARROW) {
-                     parse_ty(p, false)
-                 } else {
-                     @{id: p.get_id(), node: ast::ty_infer, span: p.span}
-                 };
+    let inputs = {
+        if eat(p, token::OROR) {
+            []
+        } else {
+            parse_seq(token::BINOP(token::OR),
+                      token::BINOP(token::OR),
+                      seq_sep(token::COMMA),
+                      parse_fn_block_arg, p).node
+        }
+    };
+    let output = {
+        if eat(p, token::RARROW) {
+            parse_ty(p, false)
+        } else {
+            @{id: p.get_id(), node: ast::ty_infer, span: p.span}
+        }
+    };
     ret {inputs: inputs,
          output: output,
          purity: ast::impure_fn,

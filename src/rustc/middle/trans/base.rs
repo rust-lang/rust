@@ -40,6 +40,7 @@ import link::{mangle_internal_name_by_type_only,
               mangle_exported_name};
 import metadata::{csearch, cstore};
 import util::ppaux::{ty_to_str, ty_to_short_str};
+import ty::ty_ops;
 
 import common::*;
 import build::*;

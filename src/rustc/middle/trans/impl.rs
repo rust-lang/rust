@@ -13,6 +13,7 @@ import lib::llvm::{ValueRef, TypeRef};
 import lib::llvm::llvm::LLVMGetParam;
 import ast_map::{path, path_mod, path_name};
 import std::map::hashmap;
+import ty::ty_ops;
 
 fn trans_impl(ccx: @crate_ctxt, path: path, name: ast::ident,
               methods: [@ast::method], tps: [ast::ty_param]) {
@@ -238,7 +239,7 @@ fn make_impl_vtable(ccx: @crate_ctxt, impl_id: ast::def_id, substs: [ty::t],
     make_vtable(ccx, vec::map(*ty::iface_methods(tcx, ifce_id), {|im|
         let fty = ty::substitute_type_params(tcx, substs,
                                              ty::mk_fn(tcx, im.fty));
-        if (*im.tps).len() > 0u || ty::type_has_vars(fty) {
+        if (*im.tps).len() > 0u || ty::type_has_self(fty) {
             C_null(T_ptr(T_nil()))
         } else {
             let m_id = method_with_name(ccx, impl_id, im.ident);

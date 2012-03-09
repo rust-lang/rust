@@ -1,6 +1,7 @@
 import std::map;
 import std::map::hashmap;
 import syntax::ast::*;
+import syntax::print::pprust;
 import syntax::ast_util;
 import syntax::ast_util::inlined_item_methods;
 import syntax::{visit, codemap};
@@ -24,6 +25,14 @@ fn path_to_str(p: path) -> str {
     path_to_str_with_sep(p, "::")
 }
 
+fn path_ident_to_str(p: path, i: ident) -> str {
+    if vec::is_empty(p) {
+        i
+    } else {
+        #fmt["%s::%s", path_to_str(p), i]
+    }
+}
+
 enum ast_node {
     node_item(@item, @path),
     node_native_item(@native_item, native_abi, @path),
@@ -43,6 +52,49 @@ type map = std::map::hashmap<node_id, ast_node>;
 type ctx = {map: map, mutable path: path,
             mutable local_id: uint, sess: session};
 type vt = visit::vt<ctx>;
+
+fn node_str(map: map, id: node_id) -> str {
+    alt map.find(id) {
+      none {
+        #fmt["unknown node (id=%d)", id]
+      }
+      some(node_item(item, path)) {
+        #fmt["item %s (id=%?)", path_ident_to_str(*path, item.ident), id]
+      }
+      some(node_native_item(item, abi, path)) {
+        #fmt["native item %s with abi %? (id=%?)",
+             path_ident_to_str(*path, item.ident), abi, id]
+      }
+      some(node_method(m, impl_did, path)) {
+        #fmt["method %s in %s (id=%?)",
+             m.ident, path_to_str(*path), id]
+      }
+      some(node_variant(variant, def_id, path)) {
+        #fmt["variant %s in %s (id=%?)",
+             variant.node.name, path_to_str(*path), id]
+      }
+      some(node_expr(expr)) {
+        #fmt["expr %s (id=%?)",
+             pprust::expr_to_str(expr), id]
+      }
+      some(node_export(_, path)) {
+        #fmt["export %s (id=%?)", // FIXME: add more info here
+             path_to_str(*path), id]
+      }
+      some(node_arg(_, _)) { // FIXME: add more info here
+        #fmt["arg (id=%?)", id]
+      }
+      some(node_local(_)) { // FIXME: add more info here
+        #fmt["local (id=%?)", id]
+      }
+      some(node_ctor(_, _)) { // FIXME: add more info here
+        #fmt["node_ctor (id=%?)", id]
+      }
+      some(node_block(_)) {
+        #fmt["block"]
+      }
+    }
+}
 
 fn extend(cx: ctx, elt: str) -> @path {
     @(cx.path + [path_name(elt)])

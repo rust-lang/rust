@@ -14,6 +14,7 @@ import tydecode::{parse_ty_data, parse_def_id, parse_bounds_data,
 import syntax::print::pprust;
 import cmd=cstore::crate_metadata;
 import middle::trans::common::maps;
+import ty::ty_ops;
 
 export get_class_items;
 export get_symbol;

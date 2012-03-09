@@ -11,6 +11,7 @@ import metadata::csearch;
 import util::common::*;
 import util::ppaux::region_to_str;
 import util::ppaux::ty_to_str;
+import util::ppaux::ty_i_to_str;
 import util::ppaux::ty_constr_to_str;
 import syntax::print::pprust::*;
 
@@ -32,15 +33,13 @@ export expr_has_ty_params;
 export expr_ty;
 export expr_ty_params_and_ty;
 export expr_is_lval;
-export fold_ty;
+export fold, fold_rptr;
 export field;
 export field_idx;
 export get_field;
 export get_fields;
-export fm_general, fm_rptr;
 export get_element_type;
 export is_binopable;
-export is_pred_ty;
 export lookup_class_item_tys;
 export lookup_item_type;
 export method;
@@ -55,27 +54,30 @@ export sequence_element_type;
 export sort_methods;
 export stmt_node_id;
 export sty;
-export substitute_type_params;
+export substitute_type_params, substitute_type_params_i;
 export t;
 export new_ty_hash;
 export enum_variants, substd_enum_variants;
 export iface_methods, store_iface_methods, impl_iface;
 export enum_variant_with_id;
-export ty_param_bounds_and_ty;
-export ty_bool, mk_bool, type_is_bool;
+export ty_ops;
+export ty_param_bounds_and_ty, ty_param_bounds_and_ty_i;
+export ty_bool, mk_bool, type_is_bool, sty_is_bool;
 export ty_bot, mk_bot, type_is_bot;
-export ty_box, mk_box, mk_imm_box, type_is_box, type_is_boxed;
+export ty_box, mk_box, mk_imm_box;
+export type_is_box, type_is_boxed;
 export ty_constr, mk_constr;
 export ty_opaque_closure_ptr, mk_opaque_closure_ptr;
 export ty_opaque_box, mk_opaque_box;
 export ty_constr_arg;
-export ty_float, mk_float, mk_mach_float, type_is_fp;
+export ty_float, mk_float, mk_mach_float;
+export type_is_fp;
 export ty_fn, fn_ty, mk_fn;
 export ty_fn_proto, ty_fn_ret, ty_fn_ret_style;
 export ty_int, mk_int, mk_mach_int, mk_char;
 export ty_str, mk_str, type_is_str;
 export ty_vec, mk_vec, type_is_vec;
-export ty_nil, mk_nil, type_is_nil;
+export ty_nil, mk_nil, type_is_nil, sty_is_nil;
 export ty_iface, mk_iface;
 export ty_res, mk_res;
 export ty_param, mk_param;
@@ -87,25 +89,25 @@ export ty_tup, mk_tup;
 export ty_type, mk_type;
 export ty_uint, mk_uint, mk_mach_uint;
 export ty_uniq, mk_uniq, mk_imm_uniq, type_is_unique_box;
-export ty_var, mk_var;
+export ty_var_i, mk_var;
 export ty_self, mk_self;
 export region, re_named, re_caller, re_block, re_inferred;
-export get, type_has_params, type_has_vars, type_has_rptrs, type_id;
-export same_type;
-export ty_var_id;
+export get, type_has_rptrs, type_id;
+export type_has_self, ty_i_has_self;
+export type_has_params, ty_i_has_params;
 export ty_to_def_id;
 export ty_fn_args;
 export type_constr;
 export kind, kind_sendable, kind_copyable, kind_noncopyable;
 export kind_can_be_copied, kind_can_be_sent, proto_kind, kind_lteq, type_kind;
-export type_err;
-export type_err_to_str;
+export type_err, resolve_err;
+export type_err_to_str, resolve_err_to_str;
 export type_needs_drop;
 export type_allows_implicit_copy;
-export type_is_integral;
-export type_is_numeric;
+export type_is_integral, sty_is_integral;
+export type_is_numeric, sty_is_numeric;
 export type_is_pod;
-export type_is_scalar;
+export type_is_scalar, sty_is_scalar;
 export type_is_immediate;
 export type_is_sequence;
 export type_is_signed;
@@ -113,7 +115,7 @@ export type_is_structural;
 export type_is_copyable;
 export type_is_tup_like;
 export type_is_unique;
-export type_is_c_like_enum;
+export type_is_c_like_enum, sty_is_c_like_enum;
 export type_structurally_contains;
 export type_structurally_contains_uniques;
 export type_autoderef;
@@ -125,8 +127,7 @@ export unify_mode;
 export set_default_mode;
 export unify;
 export variant_info;
-export walk_ty, maybe_walk_ty;
-export occurs_check;
+export walk_ty, walk_ty_i, maybe_walk_ty;
 export closure_kind;
 export ck_block;
 export ck_box;
@@ -136,50 +137,162 @@ export param_bounds_to_kind;
 export default_arg_mode_for_ty;
 export item_path;
 export item_path_str;
-export ast_ty_to_ty_cache_entry;
-export atttce_unresolved, atttce_resolved, atttce_has_regions;
+
+export var_bindings;
+export t_i;
+export sty_i, ty_var_i;
+export arg_i;
+export field_i;
+export class_contents_ty_i;
+export class_item_ty_i;
+export param_bounds_i;
+export param_bound_i;
+export method_i;
+export mt_i;
+export sty_i;
+export fn_ty_i;
+
+export sty_base;
+export arg_base;
+export field_base;
+export class_contents_ty_base;
+export class_item_ty_base;
+export param_bounds_base;
+export param_bound_base;
+export method_base;
+export mt_base;
+export fn_ty_base;
+
+export ty_to_ty_i, ty_to_ty_i_subst;
 
 // Data types
+//
+// To accommodate inference, the types are defined in two "layers".  The base
+// layer (e.g., `sty_base`) is parameterized by a type variable T, which
+// defines a reference to a type.  Typically, you will the type alias `sty`
+// which is defined as `sty_base<t>`, where `t` is an entry in the type table.
+// During inference, however, we use the infer family of types (e.g.,
+// `sty_i`), defined with `T` equal to `t_i`.  `t_i` allows for
+// both concrete types but also type variables.
 
 // Note: after typeck, you should use resolved_mode() to convert this mode
 // into an rmode, which will take into account the results of mode inference.
-type arg = {mode: ast::mode, ty: t};
+type arg_base<T> = {mode: ast::mode, ty: T};
 
-type field = {ident: ast::ident, mt: mt};
+type field_base<T> = {ident: ast::ident, mt: mt_base<T>};
 
-type param_bounds = @[param_bound];
+type param_bounds_base<T> = @[param_bound_base<T>];
 
-type method = {ident: ast::ident,
-               tps: @[param_bounds],
-               fty: fn_ty,
-               purity: ast::purity};
+enum param_bound_base<T> {
+    bound_copy,
+    bound_send,
+    bound_iface(T),
+}
+
+type method_base<T> = {ident: ast::ident,
+                       tps: @[param_bounds_base<T>],
+                       fty: fn_ty_base<T>,
+                       purity: ast::purity};
 
 type constr_table = hashmap<ast::node_id, [constr]>;
 
-type mt = {ty: t, mutbl: ast::mutability};
+type mt_base<T> = {ty: T, mutbl: ast::mutability};
 
-type class_item_ty = {
+type class_item_ty_base<T> = {
   ident: ident,
   id: node_id,
   contents: class_contents_ty
 };
 
-enum class_contents_ty {
-  var_ty(t),   // FIXME: need mutability, too
+enum class_contents_ty_base<T> {
+  var_ty(T),   // FIXME: need mutability, too
   method_ty(fn_decl)
 }
+
+type fn_ty_base<T> = {proto: ast::proto,
+                      inputs: [arg_base<T>],
+                      output: T,
+                      ret_style: ret_style,
+                      constraints: [@constr]};
+
+enum region {
+    re_named(def_id),
+    re_caller(def_id),
+    re_self(def_id),
+    re_block(node_id),
+    re_inferred         /* currently unresolved (for typedefs) */
+}
+
+// NB: If you change this, you'll probably want to change the corresponding
+// AST structure in front/ast::rs as well.
+enum sty_base<T> {
+    ty_nil,
+    ty_bot,
+    ty_bool,
+    ty_int(ast::int_ty),
+    ty_uint(ast::uint_ty),
+    ty_float(ast::float_ty),
+    ty_str,
+    ty_enum(def_id, [T]),
+    ty_box(mt_base<T>),
+    ty_uniq(mt_base<T>),
+    ty_vec(mt_base<T>),
+    ty_ptr(mt_base<T>),
+    ty_rptr(region, mt_base<T>),
+    ty_rec([field_base<T>]),
+    ty_fn(fn_ty_base<T>),
+    ty_iface(def_id, [T]),
+    ty_class(def_id, [T]),
+    ty_res(def_id, T, [T]),
+    ty_tup([T]),
+
+    ty_param(uint, def_id), // type parameter
+    ty_self([T]), // interface method self type
+
+    ty_type, // type_desc*
+    ty_opaque_box, // used by monomorphizer to represend any @ box
+    ty_constr(T, [@type_constr]),
+    ty_opaque_closure_ptr(closure_kind), // ptr to env for fn, fn@, fn~
+}
+
+enum t_i_box {
+    ty_var_i(int), // var index relative to in-scope set of var_bindings
+    sty_i(sty_i)
+}
+type t_i = @t_i_box;
+type arg_i = arg_base<t_i>;
+type field_i = field_base<t_i>;
+type param_bounds_i = param_bounds_base<t_i>;
+type param_bound_i = param_bound_base<t_i>;
+type method_i = method_base<t_i>;
+type mt_i = mt_base<t_i>;
+type fn_ty_i = fn_ty_base<t_i>;
+type sty_i = sty_base<t_i>;
+type class_item_ty_i = class_item_ty_base<t_i>;
+type class_contents_ty_i = class_contents_ty_base<t_i>;
+
+type arg = arg_base<t>;
+type field = field_base<t>;
+type param_bounds = param_bounds_base<t>;
+type param_bound = param_bound_base<t>;
+type method = method_base<t>;
+type mt = mt_base<t>;
+type fn_ty = fn_ty_base<t>;
+type sty = sty_base<t>;
+type class_item_ty = class_item_ty_base<t>;
+type class_contents_ty = class_contents_ty_base<t>;
+
+// In the middle end, constraints have a def_id attached, referring
+// to the definition of the operator in the constraint.
+type constr_general<ARG> = spanned<constr_general_<ARG, def_id>>;
+type type_constr = constr_general<@path>;
+type constr = constr_general<uint>;
 
 // Contains information needed to resolve types and (in the future) look up
 // the types of AST nodes.
 type creader_cache = hashmap<{cnum: int, pos: uint, len: uint}, t>;
 
 type intern_key = {struct: sty, o_def_id: option<ast::def_id>};
-
-enum ast_ty_to_ty_cache_entry {
-    atttce_unresolved,  /* not resolved yet */
-    atttce_resolved(t), /* resolved to a type, irrespective of region */
-    atttce_has_regions  /* has regions; cannot be cached */
-}
 
 type ctxt =
     @{interner: hashmap<intern_key, t_box>,
@@ -196,17 +309,33 @@ type ctxt =
       short_names_cache: hashmap<t, @str>,
       needs_drop_cache: hashmap<t, bool>,
       kind_cache: hashmap<t, kind>,
-      ast_ty_to_ty_cache: hashmap<@ast::ty, ast_ty_to_ty_cache_entry>,
       enum_var_cache: hashmap<def_id, @[variant_info]>,
       iface_method_cache: hashmap<def_id, @[method]>,
       ty_param_bounds: hashmap<ast::node_id, param_bounds>,
       inferred_modes: hashmap<ast::node_id, ast::mode>};
 
+type var_bindings =
+    {tcx: ctxt,
+     sets: ufind::ufind,
+     node_types: hashmap<node_id, t_i>,
+     node_type_substs: hashmap<node_id, [t_i]>,
+     var_types: smallintmap::smallintmap<sty_i>};
+
+fn var_bindings(tcx: ctxt) -> @var_bindings {
+    ret @{tcx: tcx,
+          sets: ufind::make(),
+          node_types: map::int_hash(),
+          node_type_substs: map::int_hash(),
+          var_types: smallintmap::mk()};
+}
+
+type t_flags = {has_params: bool,
+                has_self: bool,
+                has_rptrs: bool};
+
 type t_box = @{struct: sty,
                id: uint,
-               has_params: bool,
-               has_vars: bool,
-               has_rptrs: bool,
+               t_flags: t_flags,
                o_def_id: option<ast::def_id>};
 
 // To reduce refcounting cost, we're representing types as unsafe pointers
@@ -224,9 +353,11 @@ pure fn get(t: t) -> t_box unsafe {
     t3
 }
 
-fn type_has_params(t: t) -> bool { get(t).has_params }
-fn type_has_vars(t: t) -> bool { get(t).has_vars }
-fn type_has_rptrs(t: t) -> bool { get(t).has_rptrs }
+fn ty_i_has_params(t: t_i) -> bool { flags_for_t_i(t).has_params }
+fn type_has_params(t: t) -> bool { get(t).t_flags.has_params }
+fn ty_i_has_self(t: t_i) -> bool { flags_for_t_i(t).has_self }
+fn type_has_self(t: t) -> bool { get(t).t_flags.has_self }
+fn type_has_rptrs(t: t) -> bool { get(t).t_flags.has_rptrs }
 fn type_def_id(t: t) -> option<ast::def_id> { get(t).o_def_id }
 fn type_id(t: t) -> uint { get(t).id }
 
@@ -236,58 +367,10 @@ enum closure_kind {
     ck_uniq,
 }
 
-type fn_ty = {proto: ast::proto,
-              inputs: [arg],
-              output: t,
-              ret_style: ret_style,
-              constraints: [@constr]};
-
-enum region {
-    re_named(def_id),
-    re_caller(def_id),
-    re_self(def_id),
-    re_block(node_id),
-    re_inferred         /* currently unresolved (for typedefs) */
+enum resolve_err {
+    rerr_unresolved_var(int),
+    rerr_cyclic_var(int)
 }
-
-// NB: If you change this, you'll probably want to change the corresponding
-// AST structure in front/ast::rs as well.
-enum sty {
-    ty_nil,
-    ty_bot,
-    ty_bool,
-    ty_int(ast::int_ty),
-    ty_uint(ast::uint_ty),
-    ty_float(ast::float_ty),
-    ty_str,
-    ty_enum(def_id, [t]),
-    ty_box(mt),
-    ty_uniq(mt),
-    ty_vec(mt),
-    ty_ptr(mt),
-    ty_rptr(region, mt),
-    ty_rec([field]),
-    ty_fn(fn_ty),
-    ty_iface(def_id, [t]),
-    ty_class(def_id, [t]),
-    ty_res(def_id, t, [t]),
-    ty_tup([t]),
-
-    ty_var(int), // type variable during typechecking
-    ty_param(uint, def_id), // type parameter
-    ty_self([t]), // interface method self type
-
-    ty_type, // type_desc*
-    ty_opaque_box, // used by monomorphizer to represent any @ box
-    ty_constr(t, [@type_constr]),
-    ty_opaque_closure_ptr(closure_kind), // ptr to env for fn, fn@, fn~
-}
-
-// In the middle end, constraints have a def_id attached, referring
-// to the definition of the operator in the constraint.
-type constr_general<ARG> = spanned<constr_general_<ARG, def_id>>;
-type type_constr = constr_general<@path>;
-type constr = constr_general<uint>;
 
 // Data structures used in type unification
 enum type_err {
@@ -307,12 +390,7 @@ enum type_err {
     terr_constr_len(uint, uint),
     terr_constr_mismatch(@type_constr, @type_constr),
     terr_regions_differ(bool /* variance */, region, region),
-}
-
-enum param_bound {
-    bound_copy,
-    bound_send,
-    bound_iface(t),
+    terr_cyclic_type
 }
 
 fn param_bounds_to_kind(bounds: param_bounds) -> kind {
@@ -330,6 +408,8 @@ fn param_bounds_to_kind(bounds: param_bounds) -> kind {
 }
 
 type ty_param_bounds_and_ty = {bounds: @[param_bounds], ty: t};
+
+type ty_param_bounds_and_ty_i = {bounds: @[param_bounds_i], ty: t_i};
 
 type type_cache = hashmap<ast::def_id, ty_param_bounds_and_ty>;
 
@@ -372,8 +452,6 @@ fn mk_ctxt(s: session::session, dm: resolve::def_map, amap: ast_map::map,
       short_names_cache: new_ty_hash(),
       needs_drop_cache: new_ty_hash(),
       kind_cache: new_ty_hash(),
-      ast_ty_to_ty_cache: map::hashmap(
-          ast_util::hash_ty, ast_util::eq_ty),
       enum_var_cache: new_def_hash(),
       iface_method_cache: new_def_hash(),
       ty_param_bounds: map::int_hash(),
@@ -384,6 +462,86 @@ fn mk_ctxt(s: session::session, dm: resolve::def_map, amap: ast_map::map,
 // Type constructors
 fn mk_t(cx: ctxt, st: sty) -> t { mk_t_with_id(cx, st, none) }
 
+fn flags_for_sty_base<T>(sty: sty_base<T>,
+                         t_flags: fn(T) -> t_flags) -> t_flags {
+    let has_params = false;
+    let has_self = false;
+    let has_rptrs = false;
+
+    fn derive_flags<T>(&has_params: bool,
+                       &has_self: bool,
+                       &has_rptrs: bool,
+                       t: T,
+                       t_flags: fn(T) -> t_flags) {
+        let f = t_flags(t);
+        has_params = has_params || f.has_params;
+        has_rptrs = has_rptrs || f.has_rptrs;
+        has_self = has_self || f.has_self;
+    }
+
+    alt sty {
+      ty_nil | ty_bot | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
+      ty_str | ty_type | ty_opaque_closure_ptr(_) | ty_opaque_box {
+      }
+      ty_self(_) {
+        has_self = true;
+      }
+      ty_param(_, _) {
+        has_params = true;
+      }
+      ty_enum(_, tys) | ty_iface(_, tys) | ty_class(_, tys) {
+        for tt in tys {
+            derive_flags(has_params, has_self, has_rptrs, tt, t_flags);
+        }
+      }
+      ty_box(m) | ty_uniq(m) | ty_vec(m) | ty_ptr(m) {
+        derive_flags(has_params, has_self, has_rptrs, m.ty, t_flags);
+      }
+      ty_rptr(_, m) {
+        has_rptrs = true;
+        derive_flags(has_params, has_self, has_rptrs, m.ty, t_flags);
+      }
+      ty_rec(flds) {
+        for f in flds {
+          derive_flags(has_params, has_self, has_rptrs, f.mt.ty, t_flags);
+        }
+      }
+      ty_tup(ts) {
+        for tt in ts {
+            derive_flags(has_params, has_self, has_rptrs, tt, t_flags);
+        }
+      }
+      ty_fn(f) {
+        for a in f.inputs {
+            derive_flags(has_params, has_self, has_rptrs, a.ty, t_flags);
+        }
+        derive_flags(has_params, has_self, has_rptrs, f.output, t_flags);
+      }
+      ty_res(_, tt, tps) {
+        derive_flags(has_params, has_self, has_rptrs, tt, t_flags);
+        for tt in tps {
+            derive_flags(has_params, has_self, has_rptrs, tt, t_flags);
+        }
+      }
+      ty_constr(tt, _) {
+        derive_flags(has_params, has_self, has_rptrs, tt, t_flags);
+      }
+    }
+
+    ret {has_params: has_params, has_self: has_self, has_rptrs: has_rptrs};
+}
+
+fn flags_for_sty(st: sty) -> t_flags {
+    flags_for_sty_base(st) {|t| get(t).t_flags }
+}
+
+fn flags_for_t_i(&&t: t_i) -> t_flags {
+    alt *t {
+      ty_var_i(_) { {has_params: false, has_self: false, has_rptrs: false} }
+      sty_i(st) { flags_for_sty_base(st, flags_for_t_i(_)) }
+    }
+}
+
 // Interns a type/name combination, stores the resulting box in cx.interner,
 // and returns the box as cast to an unsafe ptr (see comments for t above).
 fn mk_t_with_id(cx: ctxt, st: sty, o_def_id: option<ast::def_id>) -> t {
@@ -392,159 +550,118 @@ fn mk_t_with_id(cx: ctxt, st: sty, o_def_id: option<ast::def_id>) -> t {
       some(t) { unsafe { ret unsafe::reinterpret_cast(t); } }
       _ {}
     }
-    let has_params = false, has_vars = false, has_rptrs = false;
-    fn derive_flags(&has_params: bool, &has_vars: bool, &has_rptrs: bool,
-                    tt: t) {
-        let t = get(tt);
-        has_params |= t.has_params;
-        has_vars |= t.has_vars;
-        has_rptrs |= t.has_rptrs;
-    }
-    alt st {
-      ty_nil | ty_bot | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
-      ty_str | ty_type | ty_opaque_closure_ptr(_) |
-      ty_opaque_box {}
-      ty_param(_, _) { has_params = true; }
-      ty_var(_) | ty_self(_) { has_vars = true; }
-      ty_enum(_, tys) | ty_iface(_, tys) | ty_class(_, tys) {
-        for tt in tys { derive_flags(has_params, has_vars, has_rptrs, tt); }
-      }
-      ty_box(m) | ty_uniq(m) | ty_vec(m) | ty_ptr(m) {
-        derive_flags(has_params, has_vars, has_rptrs, m.ty);
-      }
-      ty_rptr(_, m) {
-        has_rptrs = true;
-        derive_flags(has_params, has_vars, has_rptrs, m.ty);
-      }
-      ty_rec(flds) {
-        for f in flds {
-          derive_flags(has_params, has_vars, has_rptrs, f.mt.ty);
-        }
-      }
-      ty_tup(ts) {
-        for tt in ts { derive_flags(has_params, has_vars, has_rptrs, tt); }
-      }
-      ty_fn(f) {
-        for a in f.inputs {
-          derive_flags(has_params, has_vars, has_rptrs, a.ty);
-        }
-        derive_flags(has_params, has_vars, has_rptrs, f.output);
-      }
-      ty_res(_, tt, tps) {
-        derive_flags(has_params, has_vars, has_rptrs, tt);
-        for tt in tps { derive_flags(has_params, has_vars, has_rptrs, tt); }
-      }
-      ty_constr(tt, _) {
-        derive_flags(has_params, has_vars, has_rptrs, tt);
-      }
-    }
+    let t_flags = flags_for_sty(st);
     let t = @{struct: st,
               id: cx.next_id,
-              has_params: has_params,
-              has_vars: has_vars,
-              has_rptrs: has_rptrs,
+              t_flags: t_flags,
               o_def_id: o_def_id};
     cx.interner.insert(key, t);
     cx.next_id += 1u;
     unsafe { unsafe::reinterpret_cast(t) }
 }
 
-fn mk_nil(cx: ctxt) -> t { mk_t(cx, ty_nil) }
+fn mk_nil<T:copy,C:ty_ops<T>>(cx: C) -> T { cx.mk(ty_nil) }
 
-fn mk_bot(cx: ctxt) -> t { mk_t(cx, ty_bot) }
+fn mk_bot<T:copy,C:ty_ops<T>>(cx: C) -> T { cx.mk(ty_bot) }
 
-fn mk_bool(cx: ctxt) -> t { mk_t(cx, ty_bool) }
+fn mk_bool<T:copy,C:ty_ops<T>>(cx: C) -> T { cx.mk(ty_bool) }
 
-fn mk_int(cx: ctxt) -> t { mk_t(cx, ty_int(ast::ty_i)) }
+fn mk_int<T:copy,C:ty_ops<T>>(cx: C) -> T { cx.mk(ty_int(ast::ty_i)) }
 
-fn mk_float(cx: ctxt) -> t { mk_t(cx, ty_float(ast::ty_f)) }
+fn mk_float<T:copy,C:ty_ops<T>>(cx: C) -> T { cx.mk(ty_float(ast::ty_f)) }
 
-fn mk_uint(cx: ctxt) -> t { mk_t(cx, ty_uint(ast::ty_u)) }
+fn mk_uint<T:copy,C:ty_ops<T>>(cx: C) -> T { cx.mk(ty_uint(ast::ty_u)) }
 
-fn mk_mach_int(cx: ctxt, tm: ast::int_ty) -> t { mk_t(cx, ty_int(tm)) }
+fn mk_mach_int<T:copy,C:ty_ops<T>>(cx: C, tm: ast::int_ty) -> T { cx.mk(ty_int(tm)) }
 
-fn mk_mach_uint(cx: ctxt, tm: ast::uint_ty) -> t { mk_t(cx, ty_uint(tm)) }
+fn mk_mach_uint<T:copy,C:ty_ops<T>>(cx: C, tm: ast::uint_ty) -> T { cx.mk(ty_uint(tm)) }
 
-fn mk_mach_float(cx: ctxt, tm: ast::float_ty) -> t { mk_t(cx, ty_float(tm)) }
+fn mk_mach_float<T:copy,C:ty_ops<T>>(cx: C, tm: ast::float_ty) -> T { cx.mk(ty_float(tm)) }
 
-fn mk_char(cx: ctxt) -> t { mk_t(cx, ty_int(ast::ty_char)) }
+fn mk_char<T:copy,C:ty_ops<T>>(cx: C) -> T { cx.mk(ty_int(ast::ty_char)) }
 
-fn mk_str(cx: ctxt) -> t { mk_t(cx, ty_str) }
+fn mk_str<T:copy,C:ty_ops<T>>(cx: C) -> T { cx.mk(ty_str) }
 
-fn mk_enum(cx: ctxt, did: ast::def_id, tys: [t]) -> t {
-    mk_t(cx, ty_enum(did, tys))
+fn mk_enum<T:copy,C:ty_ops<T>>(cx: C, did: ast::def_id, tys: [T]) -> T {
+    cx.mk(ty_enum(did, tys))
 }
 
-fn mk_box(cx: ctxt, tm: mt) -> t { mk_t(cx, ty_box(tm)) }
+fn mk_box<T:copy,C:ty_ops<T>>(cx: C, tm: mt_base<T>) -> T { cx.mk(ty_box(tm)) }
 
-fn mk_imm_box(cx: ctxt, ty: t) -> t { mk_box(cx, {ty: ty,
-                                                  mutbl: ast::m_imm}) }
+fn mk_imm_box<T:copy,C:ty_ops<T>>(cx: C, ty: T) -> T { mk_box(cx, {ty: ty,
+                                                              mutbl: ast::m_imm}) }
 
-fn mk_uniq(cx: ctxt, tm: mt) -> t { mk_t(cx, ty_uniq(tm)) }
+fn mk_uniq<T:copy,C:ty_ops<T>>(cx: C, tm: mt_base<T>) -> T { cx.mk(ty_uniq(tm)) }
 
-fn mk_imm_uniq(cx: ctxt, ty: t) -> t { mk_uniq(cx, {ty: ty,
-                                                    mutbl: ast::m_imm}) }
+fn mk_imm_uniq<T:copy,C:ty_ops<T>>(cx: C, ty: T) -> T { mk_uniq(cx, {ty: ty,
+                                                                mutbl: ast::m_imm}) }
 
-fn mk_ptr(cx: ctxt, tm: mt) -> t { mk_t(cx, ty_ptr(tm)) }
+fn mk_ptr<T:copy,C:ty_ops<T>>(cx: C, tm: mt_base<T>) -> T {
+    cx.mk(ty_ptr(tm))
+}
 
-fn mk_rptr(cx: ctxt, r: region, tm: mt) -> t { mk_t(cx, ty_rptr(r, tm)) }
+fn mk_rptr<T:copy,C:ty_ops<T>>(cx: C, r: region, tm: mt_base<T>) -> T {
+    cx.mk(ty_rptr(r, tm))
+}
 
-fn mk_mut_ptr(cx: ctxt, ty: t) -> t { mk_ptr(cx, {ty: ty,
-                                                  mutbl: ast::m_mutbl}) }
+fn mk_mut_ptr<T:copy,C:ty_ops<T>>(cx: C, ty: T) -> T { mk_ptr(cx, {ty: ty,
+                                                              mutbl: ast::m_mutbl}) }
 
-fn mk_nil_ptr(cx: ctxt) -> t {
+fn mk_nil_ptr<T:copy,C:ty_ops<T>>(cx: C) -> T {
     mk_ptr(cx, {ty: mk_nil(cx), mutbl: ast::m_imm})
 }
 
-fn mk_vec(cx: ctxt, tm: mt) -> t { mk_t(cx, ty_vec(tm)) }
+fn mk_vec<T:copy,C:ty_ops<T>>(cx: C, tm: mt_base<T>) -> T { cx.mk(ty_vec(tm)) }
 
-fn mk_rec(cx: ctxt, fs: [field]) -> t { mk_t(cx, ty_rec(fs)) }
+fn mk_rec<T:copy,C:ty_ops<T>>(cx: C, fs: [field_base<T>]) -> T { cx.mk(ty_rec(fs)) }
 
-fn mk_constr(cx: ctxt, t: t, cs: [@type_constr]) -> t {
-    mk_t(cx, ty_constr(t, cs))
+fn mk_constr<T:copy,C:ty_ops<T>>(cx: C, t: T, cs: [@type_constr]) -> T {
+    cx.mk(ty_constr(t, cs))
 }
 
-fn mk_tup(cx: ctxt, ts: [t]) -> t { mk_t(cx, ty_tup(ts)) }
+fn mk_tup<T:copy,C:ty_ops<T>>(cx: C, ts: [T]) -> T { cx.mk(ty_tup(ts)) }
 
-fn mk_fn(cx: ctxt, fty: fn_ty) -> t { mk_t(cx, ty_fn(fty)) }
+fn mk_fn<T:copy,C:ty_ops<T>>(cx: C, fty: fn_ty_base<T>) -> T { cx.mk(ty_fn(fty)) }
 
-fn mk_iface(cx: ctxt, did: ast::def_id, tys: [t]) -> t {
-    mk_t(cx, ty_iface(did, tys))
+fn mk_iface<T:copy,C:ty_ops<T>>(cx: C, did: ast::def_id, tys: [T]) -> T {
+    cx.mk(ty_iface(did, tys))
 }
 
-fn mk_class(cx: ctxt, class_id: ast::def_id, tys: [t]) -> t {
-    mk_t(cx, ty_class(class_id, tys))
+fn mk_class<T:copy,C:ty_ops<T>>(cx: C, class_id: ast::def_id, tys: [T]) -> T {
+    cx.mk(ty_class(class_id, tys))
 }
 
-fn mk_res(cx: ctxt, did: ast::def_id, inner: t, tps: [t]) -> t {
-    mk_t(cx, ty_res(did, inner, tps))
+fn mk_res<T:copy,C:ty_ops<T>>(cx: C, did: ast::def_id, inner: T, tps: [T]) -> T {
+    cx.mk(ty_res(did, inner, tps))
 }
 
-fn mk_var(cx: ctxt, v: int) -> t { mk_t(cx, ty_var(v)) }
+fn mk_var(v: int) -> t_i { @ty_var_i(v) }
 
-fn mk_self(cx: ctxt, tps: [t]) -> t { mk_t(cx, ty_self(tps)) }
+fn mk_self<T:copy,C:ty_ops<T>>(cx: C, tps: [T]) -> T { cx.mk(ty_self(tps)) }
 
-fn mk_param(cx: ctxt, n: uint, k: def_id) -> t { mk_t(cx, ty_param(n, k)) }
+fn mk_param<T:copy,C:ty_ops<T>>(cx: C, n: uint, k: def_id) -> T { cx.mk(ty_param(n, k)) }
 
-fn mk_type(cx: ctxt) -> t { mk_t(cx, ty_type) }
+fn mk_type<T:copy,C:ty_ops<T>>(cx: C) -> T { cx.mk(ty_type) }
 
-fn mk_opaque_closure_ptr(cx: ctxt, ck: closure_kind) -> t {
-    mk_t(cx, ty_opaque_closure_ptr(ck))
+fn mk_opaque_closure_ptr<T:copy,C:ty_ops<T>>(cx: C, ck: closure_kind) -> T {
+    cx.mk(ty_opaque_closure_ptr(ck))
 }
 
-fn mk_opaque_box(cx: ctxt) -> t { mk_t(cx, ty_opaque_box) }
+fn mk_opaque_box<T:copy,C:ty_ops<T>>(cx: C) -> T { cx.mk(ty_opaque_box) }
 
 fn mk_with_id(cx: ctxt, base: t, def_id: ast::def_id) -> t {
     mk_t_with_id(cx, get(base).struct, some(def_id))
 }
 
 // Converts s to its machine type equivalent
-pure fn mach_sty(cfg: @session::config, t: t) -> sty {
-    alt get(t).struct {
+pure fn mach_sty<T:copy>(
+    cfg: @session::config, t: sty_base<T>) -> sty_base<T> {
+
+    alt t {
       ty_int(ast::ty_i) { ty_int(cfg.int_type) }
       ty_uint(ast::ty_u) { ty_uint(cfg.uint_type) }
       ty_float(ast::ty_f) { ty_float(cfg.float_type) }
-      s { s }
+      _ { t }
     }
 }
 
@@ -554,144 +671,299 @@ fn default_arg_mode_for_ty(ty: ty::t) -> ast::rmode {
 }
 
 fn walk_ty(ty: t, f: fn(t)) {
-    maybe_walk_ty(ty, {|t| f(t); true});
+    f(ty);
+    walk_sty_base(get(ty).struct) {|t|
+        walk_ty(t, f)
+    }
 }
 
 fn maybe_walk_ty(ty: t, f: fn(t) -> bool) {
     if !f(ty) { ret; }
-    alt get(ty).struct {
+    walk_sty_base(get(ty).struct) {|t|
+        maybe_walk_ty(t, f)
+    }
+}
+
+fn walk_sty_base<T>(sty: sty_base<T>, walkf: fn(T)) {
+    alt sty {
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
       ty_str | ty_type | ty_opaque_box |
-      ty_opaque_closure_ptr(_) | ty_var(_) | ty_param(_, _) {}
+      ty_opaque_closure_ptr(_) | ty_param(_, _) {}
       ty_box(tm) | ty_vec(tm) | ty_ptr(tm) | ty_rptr(_, tm) {
-        maybe_walk_ty(tm.ty, f);
+        walkf(tm.ty);
       }
       ty_enum(_, subtys) | ty_iface(_, subtys) | ty_class(_, subtys)
-       | ty_self(subtys) {
-        for subty: t in subtys { maybe_walk_ty(subty, f); }
+      | ty_self(subtys) {
+        for subty in subtys { walkf(subty); }
       }
       ty_rec(fields) {
-        for fl: field in fields { maybe_walk_ty(fl.mt.ty, f); }
+        for fl in fields { walkf(fl.mt.ty); }
       }
-      ty_tup(ts) { for tt in ts { maybe_walk_ty(tt, f); } }
+      ty_tup(ts) { for tt in ts { walkf(tt); } }
       ty_fn(ft) {
-        for a: arg in ft.inputs { maybe_walk_ty(a.ty, f); }
-        maybe_walk_ty(ft.output, f);
+        for a in ft.inputs { walkf(a.ty); }
+        walkf(ft.output);
       }
       ty_res(_, sub, tps) {
-        maybe_walk_ty(sub, f);
-        for tp: t in tps { maybe_walk_ty(tp, f); }
+        walkf(sub);
+        for tp in tps { walkf(tp); }
       }
-      ty_constr(sub, _) { maybe_walk_ty(sub, f); }
-      ty_uniq(tm) { maybe_walk_ty(tm.ty, f); }
+      ty_constr(sub, _) { walkf(sub); }
+      ty_uniq(tm) { walkf(tm.ty); }
     }
 }
 
-enum fold_mode {
-    fm_var(fn@(int) -> t),
-    fm_param(fn@(uint, def_id) -> t),
-    fm_rptr(fn@(region) -> region),
-    fm_general(fn@(t) -> t),
+fn walk_ty_i(cx: ctxt, &&ty: t_i, f: fn(t_i)) {
+    alt *ty {
+      ty_var_i(_) { }
+      sty_i(sty) { walk_sty_base(sty) {|t| walk_ty_i(cx, t, f) } }
+    }
 }
 
-fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
-    let ty = ty_0;
+// The base for all folding operations.  This is written in a "result monad"
+// style so that errors can be propagated if necessary.  I chose not to
+// "deforest" this version though.  If you wish to write a folding routine
+// which cannot fail, then use `fold_sty_base()` below, which presents
+// a friendlier interface.
+fn fold_sty_base_err<T:copy,U:copy,E:copy>(
+    sty: sty_base<T>,
+    fold_t: fn(T) -> result<U,E>) -> result<sty_base<U>,E> {
+    import result::{chain, ok, map};
 
-    let tb = get(ty);
-    alt fld {
-      fm_var(_) { if !tb.has_vars { ret ty; } }
-      fm_param(_) { if !tb.has_params { ret ty; } }
-      fm_rptr(_) { if !tb.has_rptrs { ret ty; } }
-      fm_general(_) {/* no fast path */ }
+    fn fold_mt<T:copy,U:copy,E:copy>(
+        mt: mt_base<T>,
+        fold_t: fn(T) -> result<U,E>) -> result<mt_base<U>,E> {
+
+        chain(fold_t(mt.ty)) {|t|
+            ok({ty: t, mutbl: mt.mutbl})
+        }
     }
 
-    alt tb.struct {
-      ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
-      ty_str | ty_type | ty_opaque_closure_ptr(_) |
-      ty_opaque_box {}
-      ty_box(tm) {
-        ty = mk_box(cx, {ty: fold_ty(cx, fld, tm.ty), mutbl: tm.mutbl});
+    fn fold_f<T:copy,U:copy,E:copy>(
+        fld: field_base<T>,
+        fold_t: fn(T) -> result<U,E>) -> result<field_base<U>,E> {
+
+        chain(fold_mt(fld.mt, fold_t)) {|fld_mt|
+            ok({ident: fld.ident, mt: fld_mt})
+        }
+    }
+
+    fn fold_arg<T:copy,U:copy,E:copy>(
+        arg: arg_base<T>,
+        fold_t: fn(T) -> result<U,E>) -> result<arg_base<U>,E> {
+
+        chain(fold_t(arg.ty)) {|arg_ty|
+            ok({mode: arg.mode, ty: arg_ty})
+        }
+    }
+
+    alt sty {
+      ty_nil { ok(ty_nil) }
+      ty_bot { ok(ty_bot) }
+      ty_bool { ok(ty_bool) }
+      ty_int(i) { ok(ty_int(i)) }
+      ty_uint(i) { ok(ty_uint(i)) }
+      ty_float(i) { ok(ty_float(i)) }
+      ty_str { ok(ty_str) }
+      ty_type { ok(ty_type) }
+      ty_opaque_closure_ptr(c) { ok(ty_opaque_closure_ptr(c)) }
+      ty_opaque_box { ok(ty_opaque_box) }
+      ty_box(mt) {
+        chain(fold_mt(mt, fold_t)) {|mt|
+            ok(ty_box(mt))
+        }
       }
-      ty_uniq(tm) {
-        ty = mk_uniq(cx, {ty: fold_ty(cx, fld, tm.ty), mutbl: tm.mutbl});
+      ty_uniq(mt) {
+        chain(fold_mt(mt, fold_t)) {|mt|
+            ok(ty_uniq(mt))
+        }
       }
-      ty_ptr(tm) {
-        ty = mk_ptr(cx, {ty: fold_ty(cx, fld, tm.ty), mutbl: tm.mutbl});
+      ty_vec(mt) {
+        chain(fold_mt(mt, fold_t)) {|mt|
+            ok(ty_vec(mt))
+        }
       }
-      ty_vec(tm) {
-        ty = mk_vec(cx, {ty: fold_ty(cx, fld, tm.ty), mutbl: tm.mutbl});
+      ty_ptr(mt) {
+        chain(fold_mt(mt, fold_t)) {|mt|
+            ok(ty_ptr(mt))
+        }
       }
       ty_enum(tid, subtys) {
-        ty = mk_enum(cx, tid, vec::map(subtys, {|t| fold_ty(cx, fld, t) }));
+        map(subtys, fold_t) {|subtys|
+            ok(ty_enum(tid, subtys))
+        }
       }
-      ty_iface(did, subtys) {
-        ty = mk_iface(cx, did, vec::map(subtys, {|t| fold_ty(cx, fld, t) }));
+      ty_iface(tid, subtys) {
+        map(subtys, fold_t) {|subtys|
+            ok(ty_iface(tid, subtys))
+        }
+      }
+      ty_class(did, subtys) {
+        map(subtys, fold_t) {|subtys|
+            ok(ty_class(did, subtys))
+        }
       }
       ty_self(subtys) {
-        ty = mk_self(cx, vec::map(subtys, {|t| fold_ty(cx, fld, t) }));
+        map(subtys, fold_t) {|subtys|
+            ok(ty_self(subtys))
+        }
       }
       ty_rec(fields) {
-        let new_fields: [field] = [];
-        for fl: field in fields {
-            let new_ty = fold_ty(cx, fld, fl.mt.ty);
-            let new_mt = {ty: new_ty, mutbl: fl.mt.mutbl};
-            new_fields += [{ident: fl.ident, mt: new_mt}];
+        map(fields, {|f| fold_f(f, fold_t)}) {|fields|
+            ok(ty_rec(fields))
         }
-        ty = mk_rec(cx, new_fields);
       }
       ty_tup(ts) {
-        let new_ts = [];
-        for tt in ts { new_ts += [fold_ty(cx, fld, tt)]; }
-        ty = mk_tup(cx, new_ts);
+        map(ts, fold_t) {|ts|
+            ok(ty_tup(ts))
+        }
       }
       ty_fn(f) {
-        let new_args: [arg] = [];
-        for a: arg in f.inputs {
-            let new_ty = fold_ty(cx, fld, a.ty);
-            new_args += [{mode: a.mode, ty: new_ty}];
+        map(f.inputs, {|a| fold_arg(a, fold_t)}) {|inputs|
+            chain(fold_t(f.output)) {|output|
+                ok(ty_fn({proto: f.proto,
+                          inputs: inputs,
+                          output: output,
+                          ret_style: f.ret_style,
+                          constraints: f.constraints}))
+            }
         }
-        ty = mk_fn(cx, {inputs: new_args,
-                        output: fold_ty(cx, fld, f.output)
-                        with f});
       }
       ty_res(did, subty, tps) {
-        let new_tps = [];
-        for tp: t in tps { new_tps += [fold_ty(cx, fld, tp)]; }
-        ty = mk_res(cx, did, fold_ty(cx, fld, subty), new_tps);
-      }
-      ty_var(id) {
-        alt fld { fm_var(folder) { ty = folder(id); } _ {/* no-op */ } }
+        chain(fold_t(subty)) {|subty|
+            map(tps, fold_t) {|tps|
+                ok(ty_res(did, subty, tps))
+            }
+        }
       }
       ty_param(id, did) {
-        alt fld { fm_param(folder) { ty = folder(id, did); } _ {} }
+        ok(ty_param(id, did))
       }
-      ty_rptr(r, tm) {
-        let region = alt fld { fm_rptr(folder) { folder(r) } _ { r } };
-        ty = mk_rptr(cx, region,
-                     {ty: fold_ty(cx, fld, tm.ty), mutbl: tm.mutbl});
+      ty_rptr(r, mt) {
+        chain(fold_mt(mt, fold_t)) {|mt|
+            ok(ty_rptr(r, mt))
+        }
       }
       ty_constr(subty, cs) {
-          ty = mk_constr(cx, fold_ty(cx, fld, subty), cs);
-      }
-      _ {
-          cx.sess.bug("unsupported sort of type in fold_ty");
+        chain(fold_t(subty)) {|subty|
+            ok(ty_constr(subty, cs))
+        }
       }
     }
-    alt tb.o_def_id {
-      some(did) { ty = mk_t_with_id(cx, get(ty).struct, some(did)); }
-      _ {}
-    }
-
-    // If this is a general type fold, then we need to run it now.
-    alt fld { fm_general(folder) { ret folder(ty); } _ { ret ty; } }
 }
 
+iface ty_ops<T> {
+    fn tcx() -> ctxt;
+    fn no_rptrs(t: T) -> bool;
+    fn if_struct<R:copy>(t: T, r0: R, op: fn(sty_base<T>) -> R) -> R;
+    fn mk(s: sty_base<T>) -> T;
+    fn swap_T(t: T, s: sty_base<T>) -> T;
+    fn to_str(t: T) -> str;
+    fn sess() -> session::session;
+}
+
+impl of ty_ops<t> for ctxt {
+    fn tcx() -> ctxt { self }
+
+    fn no_rptrs(&&t: t) -> bool { !get(t).t_flags.has_rptrs }
+
+    fn if_struct<R:copy>(&&t: t, _r0: R, op: fn(sty_base<t>) -> R) -> R {
+        op(get(t).struct)
+    }
+
+    fn mk(s: sty_base<t>) -> t {
+        mk_t(self, s)
+    }
+
+    fn swap_T(&&t: t, s: sty_base<t>) -> t {
+        mk_t_with_id(self, s, get(t).o_def_id)
+    }
+
+    fn to_str(&&t: t) -> str {
+        ty_to_str(self, t)
+    }
+
+    fn sess() -> session::session {
+        self.sess
+    }
+}
+
+impl of ty_ops<t_i> for @var_bindings {
+    fn tcx() -> ctxt { self.tcx }
+
+    fn no_rptrs(&&_t: t_i) -> bool { false } // no cheap way to check
+
+    fn if_struct<R:copy>(&&t: t_i, r0: R, op: fn(sty_base<t_i>) -> R) -> R {
+        alt *t {
+          ty_var_i(_) { r0 }
+          sty_i(s) { op(s) }
+        }
+    }
+
+    fn mk(s: sty_base<t_i>) -> t_i {
+        @sty_i(s)
+    }
+
+    fn swap_T(&&_t: t_i, s: sty_base<t_i>) -> t_i {
+        self.mk(s)
+    }
+
+    fn to_str(&&t: t_i) -> str {
+        ty_i_to_str(self, t)
+    }
+
+    fn sess() -> session::session {
+        self.tcx.sess
+    }
+}
+
+// Friendlier version of `fold_sty_base_err` for the case where the fold
+// cannot fail.
+fn fold_sty_base<T:copy,U:copy>(
+    sty: sty_base<T>,
+    fold_t: fn(T) -> U) -> sty_base<U> {
+
+    result::get(fold_sty_base_err(sty) {|t|
+        result::ok::<U,type_err>(
+            fold_t(t))
+    })
+}
+
+fn fold<T:copy,C:ty_ops<T>>(
+    cx: C, t0: T, f: fn(T) -> T) -> T {
+
+    let t1 = cx.if_struct(t0, t0) {|sty|
+        cx.mk(
+            fold_sty_base(sty, {|t| fold(cx, t, f) }))
+    };
+    f(t1)
+}
+
+fn fold_rptr<T:copy,C:ty_ops<T>>(
+    cx: C, t0: T, f: fn(region) -> region) -> T {
+
+    if cx.no_rptrs(t0) { ret t0; }
+
+    fold(cx, t0) {|t|
+        cx.if_struct(t, t) {|sty|
+            let sty1 = alt sty {
+              ty_rptr(r, rt) { ty_rptr(f(r), rt) }
+              _ { sty }
+            };
+            cx.mk(sty1)
+        }
+    }
+}
 
 // Type utilities
 
 fn type_is_nil(ty: t) -> bool { get(ty).struct == ty_nil }
 
+fn sty_is_nil<T>(sty: sty_base<T>) -> bool { sty == ty_nil }
+
 fn type_is_bot(ty: t) -> bool { get(ty).struct == ty_bot }
+
+fn sty_is_bool<T>(sty: sty_base<T>) -> bool { sty == ty_bool }
 
 fn type_is_bool(ty: t) -> bool { get(ty).struct == ty_bool }
 
@@ -740,11 +1012,15 @@ fn get_element_type(ty: t, i: uint) -> t {
     }
 }
 
-pure fn type_is_box(ty: t) -> bool {
-    alt get(ty).struct {
+pure fn sty_is_box<T>(sty: sty_base<T>) -> bool {
+    alt sty {
       ty_box(_) { ret true; }
       _ { ret false; }
     }
+}
+
+pure fn type_is_box(ty: t) -> bool {
+    sty_is_box(get(ty).struct)
 }
 
 pure fn type_is_boxed(ty: t) -> bool {
@@ -785,12 +1061,16 @@ pure fn type_is_unique(ty: t) -> bool {
     }
 }
 
-pure fn type_is_scalar(ty: t) -> bool {
-    alt get(ty).struct {
+pure fn sty_is_scalar<T>(ty: sty_base<T>) -> bool {
+    alt ty {
       ty_nil | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
       ty_type | ty_ptr(_) | ty_rptr(_, _) { true }
       _ { false }
     }
+}
+
+pure fn type_is_scalar(ty: t) -> bool {
+    sty_is_scalar(get(ty).struct)
 }
 
 // FIXME maybe inline this for speed?
@@ -1010,18 +1290,37 @@ fn type_structurally_contains_uniques(cx: ctxt, ty: t) -> bool {
     });
 }
 
-fn type_is_integral(ty: t) -> bool {
-    alt get(ty).struct {
+fn sty_is_integral<T>(ty: sty_base<T>) -> bool {
+    alt ty {
       ty_int(_) | ty_uint(_) | ty_bool { true }
       _ { false }
     }
 }
 
-fn type_is_fp(ty: t) -> bool {
-    alt get(ty).struct {
+fn struct_test(ty: t_i, pfn: fn(sty_base<t_i>) -> bool) -> bool {
+    alt *ty {
+      ty_var_i(_) { false }
+      sty_i(sty) { pfn(sty) }
+    }
+}
+
+fn type_is_integral(ty: t) -> bool {
+    sty_is_integral(get(ty).struct)
+}
+
+fn sty_is_fp<T>(ty: sty_base<T>) -> bool {
+    alt ty {
       ty_float(_) { true }
       _ { false }
     }
+}
+
+fn type_is_fp(ty: t) -> bool {
+    sty_is_fp(get(ty).struct)
+}
+
+fn sty_is_numeric<T>(sty: sty_base<T>) -> bool {
+    ret sty_is_integral(sty) || sty_is_fp(sty);
 }
 
 fn type_is_numeric(ty: t) -> bool {
@@ -1084,10 +1383,8 @@ fn type_is_enum(ty: t) -> bool {
     }
 }
 
-// Whether a type is enum like, that is a enum type with only nullary
-// constructors
-fn type_is_c_like_enum(cx: ctxt, ty: t) -> bool {
-    alt get(ty).struct {
+fn sty_is_c_like_enum<T>(cx: ctxt, ty: sty_base<T>) -> bool {
+    alt ty {
       ty_enum(did, tps) {
         let variants = enum_variants(cx, did);
         let some_n_ary = vec::any(*variants, {|v| vec::len(v.args) > 0u});
@@ -1097,22 +1394,18 @@ fn type_is_c_like_enum(cx: ctxt, ty: t) -> bool {
     }
 }
 
+// Whether a type is enum like, that is a enum type with only nullary
+// constructors
+fn type_is_c_like_enum(cx: ctxt, ty: t) -> bool {
+    sty_is_c_like_enum(cx, get(ty).struct)
+}
+
 fn type_param(ty: t) -> option<uint> {
     alt get(ty).struct {
       ty_param(id, _) { ret some(id); }
       _ {/* fall through */ }
     }
     ret none;
-}
-
-// Returns a vec of all the type variables
-// occurring in t. It may contain duplicates.
-fn vars_in_type(ty: t) -> [int] {
-    let rslt = [];
-    walk_ty(ty) {|ty|
-        alt get(ty).struct { ty_var(v) { rslt += [v]; } _ { } }
-    }
-    rslt
 }
 
 fn type_autoderef(cx: ctxt, t: t) -> t {
@@ -1207,7 +1500,6 @@ fn hash_type_structure(st: sty) -> uint {
         for a in f.inputs { h = hash_subty(h, a.ty); }
         hash_subty(h, f.output)
       }
-      ty_var(v) { hash_uint(30u, v as uint) }
       ty_param(pid, did) { hash_def(hash_uint(31u, pid), did) }
       ty_self(ts) {
         let h = 28u;
@@ -1295,7 +1587,8 @@ fn constrs_eq(cs: [@constr], ds: [@constr]) -> bool {
 fn node_id_to_type(cx: ctxt, id: ast::node_id) -> t {
     alt smallintmap::find(*cx.node_types, id as uint) {
        some(t) { t }
-       none { cx.sess.bug(#fmt("node_id_to_type: unbound node ID %?", id)); }
+       none { cx.sess.bug(#fmt("node_id_to_type: no type for node %s",
+                               ast_map::node_str(cx.items, id))); }
     }
 }
 
@@ -1346,20 +1639,6 @@ fn is_fn_ty(fty: t) -> bool {
     }
 }
 
-// Just checks whether it's a fn that returns bool,
-// not its purity.
-fn is_pred_ty(fty: t) -> bool {
-    is_fn_ty(fty) && type_is_bool(ty_fn_ret(fty))
-}
-
-fn ty_var_id(typ: t) -> int {
-    alt get(typ).struct {
-      ty_var(vid) { ret vid; }
-      _ { #error("ty_var_id called on non-var ty"); fail; }
-    }
-}
-
-
 // Type accessors for AST nodes
 fn block_ty(cx: ctxt, b: ast::blk) -> t {
     ret node_id_to_type(cx, b.node.id);
@@ -1371,7 +1650,6 @@ fn block_ty(cx: ctxt, b: ast::blk) -> t {
 fn pat_ty(cx: ctxt, pat: @ast::pat) -> t {
     ret node_id_to_type(cx, pat.id);
 }
-
 
 // Returns the type of an expression as a monotype.
 //
@@ -1410,7 +1688,7 @@ fn stmt_node_id(s: @ast::stmt) -> ast::node_id {
     }
 }
 
-fn field_idx(id: ast::ident, fields: [field]) -> option<uint> {
+fn field_idx<T>(id: ast::ident, fields: [field_base<T>]) -> option<uint> {
     let i = 0u;
     for f in fields { if f.ident == id { ret some(i); } i += 1u; }
     ret none;
@@ -1439,24 +1717,6 @@ fn sort_methods(meths: [method]) -> [method] {
         ret str::le(a.ident, b.ident);
     }
     ret std::sort::merge_sort(bind method_lteq(_, _), meths);
-}
-
-fn occurs_check(tcx: ctxt, sp: span, vid: int, rt: t) {
-    // Fast path
-    if !type_has_vars(rt) { ret; }
-
-    // Occurs check!
-    if vec::contains(vars_in_type(rt), vid) {
-            // Maybe this should be span_err -- however, there's an
-            // assertion later on that the type doesn't contain
-            // variables, so in this case we have to be sure to die.
-            tcx.sess.span_fatal
-                (sp, "type inference failed because I \
-                     could not find a type\n that's both of the form "
-                 + ty_to_str(tcx, mk_var(tcx, vid)) +
-                 " and of the form " + ty_to_str(tcx, rt) +
-                 " - such a type would have to be infinitely large.");
-    }
 }
 
 // Maintains a little union-set tree for inferred modes.  `canon()` returns
@@ -1530,73 +1790,73 @@ fn set_default_mode(cx: ctxt, m: ast::mode, m_def: ast::rmode) {
     }
 }
 
+fn ty_to_ty_i(tcx: ctxt, t: t) -> t_i {
+    fn ty_to_sty_i(tcx: ctxt, t: t) -> sty_i {
+        fold_sty_base(get(t).struct, {|t| ty_to_ty_i(tcx, t)})
+    }
+
+    @sty_i(ty_to_sty_i(tcx, t))
+}
+
+fn ty_to_ty_i_subst(tcx: ctxt, t: t, substs: [t_i]) -> t_i {
+    alt get(t).struct {
+      ty_param(idx, _) {
+        substs[idx]
+      }
+      sty {
+        @sty_i(fold_sty_base(sty) {|t1|
+            ty_to_ty_i_subst(tcx, t1, substs)
+        })
+      }
+    }
+}
+
 // Type unification via Robinson's algorithm (Robinson 1965). Implemented as
 // described in Hoder and Voronkov:
 //
 //     http://www.cs.man.ac.uk/~hoderk/ubench/unification_full.pdf
 mod unify {
-    import result::{result, ok, err, chain, map, map2};
+    import result::{result, ok, ok1, err, chain, map, map2};
+    import std::list;
 
-    export fixup_vars;
-    export mk_var_bindings;
-    export resolve_type_structure;
+    export resolve_type;
     export resolve_type_var;
     export unify;
-    export var_bindings;
-    export precise, in_bindings;
+    export get_var_binding;
+    export uctxt;
 
     type ures<T> = result<T,type_err>;
 
     // in case of failure, value is the idx of an unresolved type var
-    type fres<T> = result<T,int>;
-
-    type var_bindings =
-        {sets: ufind::ufind, types: smallintmap::smallintmap<t>};
-
-    enum unify_style {
-        precise,
-        in_bindings(@var_bindings),
-    }
-    type uctxt = {st: unify_style, tcx: ctxt};
-
-    fn mk_var_bindings() -> @var_bindings {
-        ret @{sets: ufind::make(), types: smallintmap::mk::<t>()};
-    }
+    type fres<T> = result<T,resolve_err>;
 
     // Unifies two sets.
     fn union<T:copy>(
-        cx: @uctxt, set_a: uint, set_b: uint,
+        vb: @var_bindings, set_a: uint, set_b: uint,
         variance: variance, nxt: fn() -> ures<T>) -> ures<T> {
 
-        let vb = alt cx.st {
-            in_bindings(vb) { vb }
-            _ { cx.tcx.sess.bug("someone forgot to document an invariant \
-                         in union"); }
-        };
         ufind::grow(vb.sets, uint::max(set_a, set_b) + 1u);
         let root_a = ufind::find(vb.sets, set_a);
         let root_b = ufind::find(vb.sets, set_b);
 
-        let replace_type = (
-            fn@(vb: @var_bindings, t: t) {
-                ufind::union(vb.sets, set_a, set_b);
-                let root_c: uint = ufind::find(vb.sets, set_a);
-                smallintmap::insert::<t>(vb.types, root_c, t);
-            }
-        );
+        let replace_type = fn@(vb: @var_bindings, t: sty_i) {
+            ufind::union(vb.sets, set_a, set_b);
+            let root_c: uint = ufind::find(vb.sets, set_a);
+            smallintmap::insert(vb.var_types, root_c, t);
+        };
 
-        alt smallintmap::find(vb.types, root_a) {
+        alt smallintmap::find(vb.var_types, root_a) {
           none {
-            alt smallintmap::find(vb.types, root_b) {
+            alt smallintmap::find(vb.var_types, root_b) {
               none { ufind::union(vb.sets, set_a, set_b); ret nxt(); }
               some(t_b) { replace_type(vb, t_b); ret nxt(); }
             }
           }
           some(t_a) {
-            alt smallintmap::find(vb.types, root_b) {
+            alt smallintmap::find(vb.var_types, root_b) {
               none { replace_type(vb, t_a); ret nxt(); }
               some(t_b) {
-                ret unify_step(cx, t_a, t_b, variance) {|t_c|
+                ret unify_sty(vb, t_a, t_b, variance) {|t_c|
                     replace_type(vb, t_c);
                     nxt()
                 };
@@ -1607,33 +1867,108 @@ mod unify {
     }
 
     fn record_var_binding<T:copy>(
-        cx: @uctxt, key: int,
-        typ: t, variance: variance,
-        nxt: fn(t) -> ures<T>) -> ures<T> {
+        vb: @var_bindings, key: int,
+        typ: sty_i, variance: variance,
+        nxt: fn(&&t_i) -> ures<T>) -> ures<T> {
 
-        let vb = alt check cx.st { in_bindings(vb) { vb } };
         ufind::grow(vb.sets, (key as uint) + 1u);
         let root = ufind::find(vb.sets, key as uint);
-        let result_type = typ;
-        alt smallintmap::find(vb.types, root) {
+        alt smallintmap::find(vb.var_types, root) {
           some(old_type) {
-            alt unify_step(cx, old_type, typ, variance, {|v| ok(v)}) {
-              ok(unified_type) { result_type = unified_type; }
-              err(e) { ret err(e); }
+            alt unify_sty(vb, old_type, typ, variance, ok1(_)) {
+              err(e) {
+                ret err(e);
+              }
+              ok(unified_type) {
+                smallintmap::insert(vb.var_types, root, unified_type);
+                ret nxt(@ty_var_i(key));
+              }
             }
           }
-          none {/* fall through */ }
+          none {
+            smallintmap::insert(vb.var_types, root, typ);
+            ret nxt(@ty_var_i(key));
+          }
         }
-        smallintmap::insert(vb.types, root, result_type);
-        ret nxt(mk_var(cx.tcx, key));
+    }
+
+    fn get_var_binding<T>(vb: @var_bindings, vid: int,
+                          unbound: fn(int) -> T,
+                          bound: fn(sty_i) -> T) -> T {
+        if vid as uint >= ufind::set_count(vb.sets) {
+            ret unbound(vid);
+        }
+        let root_id = ufind::find(vb.sets, vid as uint);
+        #debug["vid=%d root_id=%?", vid, root_id];
+        alt smallintmap::find(vb.var_types, root_id) {
+          none { ret unbound(vid); }
+          some(rt) { ret bound(rt); }
+        }
+    }
+
+    iface uctxt<T> {
+        fn tcx() -> ctxt;
+        fn unify_step<R:copy>(
+            expected: T, actual: T, variance: variance,
+            nxt: fn(T) -> ures<R>) -> ures<R>;
+    }
+
+    impl of uctxt<t_i> for @var_bindings {
+        fn tcx() -> ctxt { self.tcx }
+
+        fn unify_step<R:copy>(
+            expected: t_i, actual: t_i, variance: variance,
+            nxt: fn(&&t_i) -> ures<R>) -> ures<R> {
+
+            alt (*expected, *actual) {
+              (ty_var_i(e_id), ty_var_i(a_id)) {
+                union(self, e_id as uint, a_id as uint, variance) {||
+                    nxt(actual)
+                }
+              }
+              (sty_i(e), ty_var_i(a_id)) {
+                let v = variance_transform(variance, contravariant);
+                record_var_binding(self, a_id, e, v, nxt)
+              }
+              (ty_var_i(e_id), sty_i(a)) {
+                let v = variance_transform(variance, covariant);
+                record_var_binding(self, e_id, a, v, nxt)
+              }
+              (sty_i(e), sty_i(a)) {
+                unify_sty(self, e, a, variance) {|r|
+                    nxt(@sty_i(r))
+                }
+              }
+            }
+        }
+    }
+
+    impl of uctxt<t> for ctxt {
+        fn tcx() -> ctxt { self }
+
+        fn unify_step<R:copy>(
+            expected: t, actual: t, variance: variance,
+            nxt: fn(&&t) -> ures<R>) -> ures<R> {
+
+            if expected == actual { ret nxt(expected); } // fast path
+
+            unify_sty(self, get(expected).struct,
+                      get(actual).struct, variance) {|sty|
+                nxt(mk_t(self, sty))
+            }
+        }
+    }
+
+    fn unify<T:copy,U:uctxt<T>>(cx: U, expected: T, actual: T) -> ures<T> {
+        ret cx.unify_step(expected, actual, covariant, ok1(_));
     }
 
     // Simple structural type comparison.
-    fn struct_cmp<T:copy>(
-        cx: @uctxt, expected: t, actual: t,
-        nxt: fn(t) -> ures<T>) -> ures<T> {
+    fn struct_cmp<T:copy,U:uctxt<T>,R:copy>(
+        cx: U, expected: sty_base<T>, actual: sty_base<T>,
+        nxt: fn(&&sty_base<T>) -> ures<R>) -> ures<R> {
 
-        let tcx = cx.tcx;
+        let tcx = cx.tcx();
         let cfg = tcx.sess.targ_cfg;
         if mach_sty(cfg, expected) == mach_sty(cfg, actual) {
             ret nxt(expected);
@@ -1643,60 +1978,51 @@ mod unify {
 
     // Right now this just checks that the lists of constraints are
     // pairwise equal.
-    fn unify_constrs<T:copy>(
+    fn unify_constrs<R:copy>(
         expected: [@type_constr],
         actual: [@type_constr],
-        nxt: fn([@type_constr]) -> ures<T>) -> ures<T> {
+        nxt: fn([@type_constr]) -> ures<R>) -> ures<R> {
 
         if check vec::same_length(expected, actual) {
             map2(expected, actual,
-                 {|e,a| unify_constr(e, a, {|v| ok(v)})}, nxt)
+                 {|e,a| unify_constr(e, a, ok1(_))}, nxt)
         } else {
             ret err(terr_constr_len(expected.len(), actual.len()));
         }
     }
 
-    fn unify_constr<T:copy>(
-        expected: @type_constr,
-        actual_constr: @type_constr,
-        nxt: fn(@type_constr) -> ures<T>) -> ures<T> {
+    fn unify_constr<R:copy>(
+        e_constr: @type_constr,
+        a_constr: @type_constr,
+        nxt: fn(&&@type_constr) -> ures<R>) -> ures<R> {
 
-        let err_res = err(terr_constr_mismatch(expected, actual_constr));
-        if expected.node.id != actual_constr.node.id { ret err_res; }
-        let expected_arg_len = vec::len(expected.node.args);
-        let actual_arg_len = vec::len(actual_constr.node.args);
-        if expected_arg_len != actual_arg_len { ret err_res; }
-        let i = 0u;
-        let actual;
-        for a: @ty_constr_arg in expected.node.args {
-            actual = actual_constr.node.args[i];
-            alt a.node {
-              carg_base {
-                alt actual.node { carg_base { } _ { ret err_res; } }
-              }
-              carg_lit(l) {
-                alt actual.node {
-                  carg_lit(m) { if l != m { ret err_res; } }
-                  _ { ret err_res; }
-                }
-              }
-              carg_ident(p) {
-                alt actual.node {
-                  carg_ident(q) { if p.node != q.node { ret err_res; } }
-                  _ { ret err_res; }
-                }
-              }
-            }
-            i += 1u;
+        if e_constr.node.id != a_constr.node.id {
+            ret err(terr_constr_mismatch(e_constr, a_constr));
         }
-        ret nxt(expected);
+        let e_args = e_constr.node.args;
+        let a_args = a_constr.node.args;
+        if check vec::same_length(e_args, a_args) {
+            let check_arg = fn@(&&e_arg: @ty_constr_arg,
+                                &&a_arg: @ty_constr_arg) -> ures<()> {
+                if e_arg.node != a_arg.node {
+                    ret err(terr_constr_mismatch(e_constr, a_constr));
+                } else {
+                    ret ok(());
+                }
+            };
+            map2(e_args, a_args, check_arg) {|_i|
+                ret nxt(e_constr);
+            }
+        } else {
+            ret err(terr_constr_mismatch(e_constr, a_constr));
+        }
     }
 
     // Unifies two mutability flags.
-    fn unify_mut<T:copy>(
+    fn unify_mut<R:copy>(
         expected: ast::mutability, actual: ast::mutability,
         variance: variance, mut_err: type_err,
-        nxt: fn(ast::mutability, variance) -> ures<T>) -> ures<T> {
+        nxt: fn(ast::mutability, variance) -> ures<R>) -> ures<R> {
 
         // If you're unifying on something mutable then we have to
         // be invariant on the inner type
@@ -1724,9 +2050,9 @@ mod unify {
         ret err(mut_err);
     }
 
-    fn unify_fn_proto<T:copy>(
+    fn unify_fn_proto<R:copy>(
         e_proto: ast::proto, a_proto: ast::proto, variance: variance,
-        nxt: fn(ast::proto) -> ures<T>) -> ures<T> {
+        nxt: fn(ast::proto) -> ures<R>) -> ures<R> {
 
         // Prototypes form a diamond-shaped partial order:
         //
@@ -1756,39 +2082,38 @@ mod unify {
         };
     }
 
-    fn unify_arg<T:copy>(
-        cx: @uctxt, e_arg: arg, a_arg: arg,
-        variance: variance,
-        nxt: fn(arg) -> ures<T>) -> ures<T> {
+    fn unify_arg<T:copy,U:uctxt<T>,R:copy>(
+        cx: U, e_arg: arg_base<T>, a_arg: arg_base<T>,
+        variance: variance, nxt: fn(arg_base<T>) -> ures<R>) -> ures<R> {
 
         // Unify the result modes.
-        chain(unify_mode(cx.tcx, e_arg.mode, a_arg.mode)) {|mode|
-            unify_step(cx, e_arg.ty, a_arg.ty, variance) {|ty|
+        chain(unify_mode(cx.tcx(), e_arg.mode, a_arg.mode)) {|mode|
+            cx.unify_step(e_arg.ty, a_arg.ty, variance) {|ty|
                 nxt({mode: mode, ty: ty})
             }
         }
     }
 
-    fn unify_args<T:copy>(
-        cx: @uctxt, e_args: [arg], a_args: [arg],
-        variance: variance, nxt: fn([arg]) -> ures<T>) -> ures<T> {
+    fn unify_args<T:copy,U:uctxt<T>,R:copy>(
+        cx: U, e_args: [arg_base<T>], a_args: [arg_base<T>],
+        variance: variance, nxt: fn([arg_base<T>]) -> ures<R>) -> ures<R> {
 
         if check vec::same_length(e_args, a_args) {
             // The variance changes (flips basically) when descending
             // into arguments of function types
             let variance = variance_transform(variance, contravariant);
             map2(e_args, a_args,
-                 {|e,a| unify_arg(cx, e, a, variance, {|v| ok(v)})},
+                 {|e,a| unify_arg(cx, e, a, variance, ok1(_))},
                  nxt)
         } else {
             ret err(terr_arg_count);
         }
     }
 
-    fn unify_ret_style<T:copy>(
+    fn unify_ret_style<R:copy>(
         e_ret_style: ret_style,
         a_ret_style: ret_style,
-        nxt: fn(ret_style) -> ures<T>) -> ures<T> {
+        nxt: fn(ret_style) -> ures<R>) -> ures<R> {
 
         if a_ret_style != ast::noreturn && a_ret_style != e_ret_style {
             /* even though typestate checking is mostly
@@ -1802,39 +2127,275 @@ mod unify {
         }
     }
 
-    fn unify_fn<T:copy>(
-        cx: @uctxt, e_f: fn_ty, a_f: fn_ty, variance: variance,
-        nxt: fn(t) -> ures<T>) -> ures<T> {
+    fn unify_fn<T:copy,U:uctxt<T>,R:copy>(
+        cx: U, e_f: fn_ty_base<T>, a_f: fn_ty_base<T>, variance: variance,
+        nxt: fn(&&fn_ty_base<T>) -> ures<R>) -> ures<R> {
 
         unify_fn_proto(e_f.proto, a_f.proto, variance) {|proto|
             unify_ret_style(e_f.ret_style, a_f.ret_style) {|rs|
                 unify_args(cx, e_f.inputs, a_f.inputs, variance) {|args|
-                    unify_step(cx, e_f.output, a_f.output, variance) {|rty|
+                    cx.unify_step(e_f.output, a_f.output, variance) {|rty|
                         let cs = e_f.constraints; // FIXME: Unify?
-                        nxt(mk_fn(cx.tcx, {proto: proto,
-                                           inputs: args,
-                                           output: rty,
-                                           ret_style: rs,
-                                           constraints: cs}))
+                        nxt({proto: proto,
+                             inputs: args,
+                             output: rty,
+                             ret_style: rs,
+                             constraints: cs})
                     }
                 }
             }
         }
     }
 
-    // If the given type is a variable, returns the structure of that type.
-    fn resolve_type_structure(vb: @var_bindings, typ: t) -> fres<t> {
-        alt get(typ).struct {
-          ty_var(vid) {
-            if vid as uint >= ufind::set_count(vb.sets) { ret err(vid); }
-            let root_id = ufind::find(vb.sets, vid as uint);
-            alt smallintmap::find::<t>(vb.types, root_id) {
-              none { ret err(vid); }
-              some(rt) { ret ok(rt); }
+    fn unify_tys<T:copy,U:uctxt<T>,R:copy>(
+        cx: U, expected_tps: [T], actual_tps: [T],
+        variance: variance, nxt: fn([T]) -> ures<R>)
+        : vec::same_length(expected_tps, actual_tps)
+        -> ures<R> {
+
+        map2(expected_tps, actual_tps,
+             {|e,a| cx.unify_step(e, a, variance, ok1(_))},
+             nxt)
+    }
+
+    fn unify_tps<T:copy,U:uctxt<T>,R:copy>(
+        cx: U, expected_tps: [T], actual_tps: [T],
+        variance: variance, nxt: fn([T]) -> ures<R>)
+        -> ures<R> {
+
+        if check vec::same_length(expected_tps, actual_tps) {
+            unify_tys(cx, expected_tps, actual_tps, variance, nxt)
+        } else {
+            err(terr_ty_param_size(expected_tps.len(),
+                                   actual_tps.len()))
+        }
+    }
+
+    fn unify_mt<T:copy,U:uctxt<T>,R:copy>(
+        cx: U, e_mt: mt_base<T>, a_mt: mt_base<T>, variance: variance,
+        mut_err: type_err, nxt: fn(mt_base<T>) -> ures<R>) -> ures<R> {
+
+        unify_mut(e_mt.mutbl, a_mt.mutbl, variance, mut_err) {|mutbl,var|
+            cx.unify_step(e_mt.ty, a_mt.ty, var) {|ty|
+                nxt({ty: ty, mutbl: mutbl})
+            }
+        }
+    }
+
+    fn unify_regions<T:copy,U:uctxt<T>,R:copy>(
+        cx: U, e_region: region, a_region: region,
+        variance: variance, nxt: fn(region) -> ures<R>) -> ures<R> {
+
+        let sub, super;
+        alt variance {
+            covariant { super = e_region; sub = a_region; }
+            contravariant { super = a_region; sub = e_region; }
+            invariant {
+              ret if e_region == a_region {
+                  nxt(e_region)
+              } else {
+                  err(terr_regions_differ(true, e_region, a_region))
+              };
+            }
+        }
+
+        if sub == ty::re_inferred || super == ty::re_inferred {
+            ret if sub == super {
+                nxt(super)
+            } else {
+                err(terr_regions_differ(true, super, sub))
+            };
+        }
+
+        // Outer regions are subtypes of inner regions. (This is somewhat
+        // surprising!)
+        let superscope = region::region_to_scope(cx.tcx().region_map, super);
+        let subscope = region::region_to_scope(cx.tcx().region_map, sub);
+        if region::scope_contains(cx.tcx().region_map, subscope, superscope) {
+            ret nxt(super);
+        }
+        ret err(terr_regions_differ(false, sub, super));
+    }
+
+    fn unify_field<T:copy,U:uctxt<T>,R:copy>(
+        cx: U, e_field: field_base<T>, a_field: field_base<T>,
+        variance: variance, nxt: fn(field_base<T>) -> ures<R>) -> ures<R> {
+
+        if e_field.ident != a_field.ident {
+            ret err(terr_record_fields(e_field.ident,
+                                       a_field.ident));
+        }
+
+        unify_mt(cx, e_field.mt, a_field.mt, variance,
+                 terr_record_mutability) {|mt|
+            nxt({ident: e_field.ident, mt: mt})
+        }
+    }
+
+    fn unify_sty<T:copy,U:uctxt<T>,R:copy>(
+        cx: U, expected: sty_base<T>, actual: sty_base<T>,
+        variance: variance, nxt: fn(&&sty_base<T>) -> ures<R>) -> ures<R> {
+
+        alt (expected, actual) { // induces copies, uncool.
+          (_, ty_bot) { nxt(expected) }
+          (ty_bot, _) { nxt(actual) }
+          (ty_nil, _) | (ty_bool, _) | (ty_int(_), _) | (ty_uint(_), _) |
+          (ty_float(_), _) | (ty_str, _) {
+            struct_cmp(cx, expected, actual, nxt)
+          }
+          (ty_param(e_n, _), ty_param(a_n, _)) if e_n == a_n {
+            nxt(expected)
+          }
+          (ty_enum(e_id, e_tps), ty_enum(a_id, a_tps)) if e_id == a_id {
+            unify_tps(cx, e_tps, a_tps, variance) {|tps|
+                nxt(ty_enum(e_id, tps))
             }
           }
-          _ { ret ok(typ); }
+          (ty_iface(e_id, e_tps), ty_iface(a_id, a_tps)) if e_id == a_id {
+            unify_tps(cx, e_tps, a_tps, variance) {|tps|
+                nxt(ty_iface(e_id, tps))
+            }
+          }
+          (ty_class(e_id, e_tps), ty_class(a_id, a_tps)) if e_id == a_id {
+            unify_tps(cx, e_tps, a_tps, variance) {|tps|
+                nxt(ty_class(e_id, tps))
+            }
+          }
+          (ty_box(e_mt), ty_box(a_mt)) {
+            unify_mt(cx, e_mt, a_mt, variance, terr_box_mutability,
+                     {|mt| nxt(ty_box(mt))})
+          }
+          (ty_uniq(e_mt), ty_uniq(a_mt)) {
+            unify_mt(cx, e_mt, a_mt, variance, terr_box_mutability,
+                     {|mt| nxt(ty_uniq(mt))})
+          }
+          (ty_vec(e_mt), ty_vec(a_mt)) {
+            unify_mt(cx, e_mt, a_mt, variance, terr_vec_mutability,
+                     {|mt| nxt(ty_vec(mt))})
+          }
+          (ty_ptr(e_mt), ty_ptr(a_mt)) {
+            unify_mt(cx, e_mt, a_mt, variance, terr_ptr_mutability,
+                     {|mt| nxt(ty_ptr(mt))})
+          }
+          (ty_rptr(e_region, e_mt), ty_rptr(a_region, a_mt)) {
+            unify_regions::<T,U,R>(cx, e_region, a_region, variance) {|r|
+                unify_mt(cx, e_mt, a_mt, variance, terr_ref_mutability,
+                         {|mt| nxt(ty_rptr(r, mt))})
+            }
+          }
+          (ty_res(e_id, e_inner, e_tps), ty_res(a_id, a_inner, a_tps))
+          if e_id == a_id {
+            cx.unify_step(e_inner, a_inner, variance) {|t|
+                unify_tps(cx, e_tps, a_tps, variance) {|tps|
+                    nxt(ty_res(a_id, t, tps))
+                }
+            }
+          }
+          (ty_rec(e_fields), ty_rec(a_fields)) {
+              if check vec::same_length(e_fields, a_fields) {
+                  map2(e_fields, a_fields,
+                       {|e,a| unify_field(cx, e, a, variance, ok1(_))},
+                       {|fields| nxt(ty_rec(fields))})
+              } else {
+                  ret err(terr_record_size(e_fields.len(),
+                                           a_fields.len()));
+              }
+          }
+          (ty_tup(e_elems), ty_tup(a_elems)) {
+            if check vec::same_length(e_elems, a_elems) {
+                unify_tys(cx, e_elems, a_elems, variance) {|elems|
+                    nxt(ty_tup(elems))
+                }
+            } else {
+                err(terr_tuple_size(e_elems.len(), a_elems.len()))
+            }
+          }
+          (ty_fn(e_fty), ty_fn(a_fty)) {
+            unify_fn(cx, e_fty, a_fty, variance) {|fty|
+                nxt(ty_fn(fty))
+            }
+          }
+          (ty_constr(e_t, e_constrs), ty_constr(a_t, a_constrs)) {
+            // unify the base types...
+            cx.unify_step(e_t, a_t, variance) {|rty|
+                // FIXME: probably too restrictive --
+                // requires the constraints to be syntactically equal
+                unify_constrs(e_constrs, a_constrs) {|constrs|
+                    nxt(ty_constr(rty, constrs))
+                }
+            }
+          }
+          /*NDM
+          (ty_constr(e_t, e_constrs), _) {
+            // If the actual type is *not* a constrained type,
+            // then we go ahead and just ignore the constraints on
+            // the expected type. typestate handles the rest.
+            cx.unify_step(e_t, sty_i(actual), variance) {|e_t|
+                // FIXME--is it ok to assign this type? seems a bit risky.
+                nxt(ty_constr(e_t, e_constrs))
+            }
+          }
+          */
+          _ { err(terr_mismatch) }
         }
+    }
+
+    fn refresh_var<T>(vb: @var_bindings, vid: int) -> t_i {
+        get_var_binding(
+            vb, vid,
+            /* if unbound: */ {|vid| @ty_var_i(vid)},
+            /* if bound:   */ {|s| @sty_i(s) })
+    }
+
+    type resolve_ctxt = {
+        vb: @var_bindings,
+        vars_seen: @list::list<int>
+    };
+
+    fn resolve_sty<T:copy>(
+        rc: resolve_ctxt, t: sty_i,
+        nxt: fn(&&sty_base<t>) -> fres<T>) -> fres<T> {
+
+        chain(fold_sty_base_err(t, resolve_t(rc, _, ok1(_))), nxt)
+    }
+
+    fn resolve_t<T:copy>(
+        rc: resolve_ctxt, &&t: t_i, nxt: fn(&&t) -> fres<T>) -> fres<T> {
+
+        alt *t {
+          ty_var_i(vid) {
+            if list::has(*rc.vars_seen, vid) {
+                err(rerr_cyclic_var(vid))
+            } else {
+                get_var_binding(
+                    rc.vb, vid,
+
+                    // if unbound:
+                    {|vid| err(rerr_unresolved_var(vid))},
+
+                    // if bound:
+                    {|sty|
+                        let rc1 = {vars_seen: @list::cons(vid, rc.vars_seen)
+                                   with rc};
+                        resolve_sty(rc1, sty) {|sty|
+                            nxt(mk_t(rc.vb.tcx, sty))
+                        }
+                    })
+            }
+          }
+
+          sty_i(sty) {
+            resolve_sty(rc, sty) {|sty|
+                nxt(mk_t(rc.vb.tcx, sty))
+            }
+          }
+        }
+    }
+
+    // If the given type is a variable, returns the structure of that type.
+    fn resolve_type(vb: @var_bindings, t: t_i) -> fres<t> {
+        let rc = {vb: vb, vars_seen: @list::nil};
+        resolve_t(rc, t, ok1(_))
     }
 
     // Specifies the allowable subtyping between expected and actual types
@@ -1879,216 +2440,7 @@ mod unify {
         }
     }
 
-    fn unify_tys<T:copy>(
-        cx: @uctxt, expected_tps: [t], actual_tps: [t],
-        variance: variance, nxt: fn([t]) -> ures<T>)
-        : vec::same_length(expected_tps, actual_tps)
-        -> ures<T> {
-
-        map2(expected_tps, actual_tps,
-             {|e,a| unify_step(cx, e, a, variance, {|v| ok(v)})},
-             nxt)
-    }
-
-    fn unify_tps<T:copy>(
-        cx: @uctxt, expected_tps: [t], actual_tps: [t],
-        variance: variance, nxt: fn([t]) -> ures<T>)
-        -> ures<T> {
-
-        if check vec::same_length(expected_tps, actual_tps) {
-            map2(expected_tps, actual_tps,
-                 {|e,a| unify_step(cx, e, a, variance, {|v| ok(v)})},
-                 nxt)
-        } else {
-            err(terr_ty_param_size(expected_tps.len(),
-                                   actual_tps.len()))
-        }
-    }
-
-    fn unify_mt<T:copy>(
-        cx: @uctxt, e_mt: mt, a_mt: mt, variance: variance,
-        mut_err: type_err,
-        nxt: fn(mt) -> ures<T>) -> ures<T> {
-        unify_mut(e_mt.mutbl, a_mt.mutbl, variance, mut_err) {|mutbl,var|
-            unify_step(cx, e_mt.ty, a_mt.ty, var) {|ty|
-                nxt({ty: ty, mutbl: mutbl})
-            }
-        }
-    }
-
-    fn unify_regions<T:copy>(
-        cx: @uctxt, e_region: region, a_region: region,
-        variance: variance,
-        nxt: fn(region) -> ures<T>) -> ures<T> {
-        let sub, super;
-        alt variance {
-            covariant { super = e_region; sub = a_region; }
-            contravariant { super = a_region; sub = e_region; }
-            invariant {
-              ret if e_region == a_region {
-                  nxt(e_region)
-              } else {
-                  err(terr_regions_differ(true, e_region, a_region))
-              };
-            }
-        }
-
-        if sub == ty::re_inferred || super == ty::re_inferred {
-            ret if sub == super {
-                nxt(super)
-            } else {
-                err(terr_regions_differ(true, super, sub))
-            };
-        }
-
-        // Outer regions are subtypes of inner regions. (This is somewhat
-        // surprising!)
-        let superscope = region::region_to_scope(cx.tcx.region_map, super);
-        let subscope = region::region_to_scope(cx.tcx.region_map, sub);
-        if region::scope_contains(cx.tcx.region_map, subscope, superscope) {
-            ret nxt(super);
-        }
-        ret err(terr_regions_differ(false, sub, super));
-    }
-
-    fn unify_field<T:copy>(
-        cx: @uctxt, e_field: field, a_field: field,
-        variance: variance,
-        nxt: fn(field) -> ures<T>) -> ures<T> {
-
-        if e_field.ident != a_field.ident {
-            ret err(terr_record_fields(e_field.ident,
-                                       a_field.ident));
-        }
-
-        unify_mt(cx, e_field.mt, a_field.mt, variance,
-                 terr_record_mutability) {|mt|
-            nxt({ident: e_field.ident, mt: mt})
-        }
-    }
-
-    fn unify_step<T:copy>(
-        cx: @uctxt, expected: t, actual: t,
-        variance: variance, nxt: fn(t) -> ures<T>) -> ures<T> {
-
-        // Fast path.
-        if expected == actual { ret nxt(expected); }
-
-        alt (get(expected).struct, get(actual).struct) {
-          (ty_var(e_id), ty_var(a_id)) {
-            union(cx, e_id as uint, a_id as uint, variance) {||
-                nxt(actual)
-            }
-          }
-          (_, ty_var(a_id)) {
-            let v = variance_transform(variance, contravariant);
-            record_var_binding(cx, a_id, expected, v, nxt)
-          }
-          (ty_var(e_id), _) {
-            let v = variance_transform(variance, covariant);
-            record_var_binding(cx, e_id, actual, v, nxt)
-          }
-          (_, ty_bot) { nxt(expected) }
-          (ty_bot, _) { nxt(actual) }
-          (ty_nil, _) | (ty_bool, _) | (ty_int(_), _) | (ty_uint(_), _) |
-          (ty_float(_), _) | (ty_str, _) {
-            struct_cmp(cx, expected, actual, nxt)
-          }
-          (ty_param(e_n, _), ty_param(a_n, _)) if e_n == a_n {
-            nxt(expected)
-          }
-          (ty_enum(e_id, e_tps), ty_enum(a_id, a_tps)) if e_id == a_id {
-            unify_tps(cx, e_tps, a_tps, variance) {|tps|
-                nxt(mk_enum(cx.tcx, e_id, tps))
-            }
-          }
-          (ty_iface(e_id, e_tps), ty_iface(a_id, a_tps)) if e_id == a_id {
-            unify_tps(cx, e_tps, a_tps, variance) {|tps|
-                nxt(mk_iface(cx.tcx, e_id, tps))
-            }
-          }
-          (ty_class(e_id, e_tps), ty_class(a_id, a_tps)) if e_id == a_id {
-            unify_tps(cx, e_tps, a_tps, variance) {|tps|
-                nxt(mk_class(cx.tcx, e_id, tps))
-            }
-          }
-          (ty_box(e_mt), ty_box(a_mt)) {
-            unify_mt(cx, e_mt, a_mt, variance, terr_box_mutability,
-                     {|mt| nxt(mk_box(cx.tcx, mt))})
-          }
-          (ty_uniq(e_mt), ty_uniq(a_mt)) {
-            unify_mt(cx, e_mt, a_mt, variance, terr_box_mutability,
-                     {|mt| nxt(mk_uniq(cx.tcx, mt))})
-          }
-          (ty_vec(e_mt), ty_vec(a_mt)) {
-            unify_mt(cx, e_mt, a_mt, variance, terr_vec_mutability,
-                     {|mt| nxt(mk_vec(cx.tcx, mt))})
-          }
-          (ty_ptr(e_mt), ty_ptr(a_mt)) {
-            unify_mt(cx, e_mt, a_mt, variance, terr_ptr_mutability,
-                     {|mt| nxt(mk_ptr(cx.tcx, mt))})
-          }
-          (ty_rptr(e_region, e_mt), ty_rptr(a_region, a_mt)) {
-            unify_regions(cx, e_region, a_region, variance) {|r|
-                unify_mt(cx, e_mt, a_mt, variance, terr_ref_mutability,
-                         {|mt| nxt(mk_rptr(cx.tcx, r, mt))})
-            }
-          }
-          (ty_res(e_id, e_inner, e_tps), ty_res(a_id, a_inner, a_tps))
-          if e_id == a_id {
-              unify_step(cx, e_inner, a_inner, variance) {|t|
-                  unify_tps(cx, e_tps, a_tps, variance) {|tps|
-                      nxt(mk_res(cx.tcx, a_id, t, tps))
-                  }
-              }
-          }
-          (ty_rec(e_fields), ty_rec(a_fields)) {
-              if check vec::same_length(e_fields, a_fields) {
-                  map2(e_fields, a_fields,
-                       {|e,a| unify_field(cx, e, a, variance, {|v| ok(v)})},
-                       {|fields| nxt(mk_rec(cx.tcx, fields))})
-              } else {
-                  ret err(terr_record_size(e_fields.len(),
-                                           a_fields.len()));
-              }
-          }
-          (ty_tup(e_elems), ty_tup(a_elems)) {
-            if check vec::same_length(e_elems, a_elems) {
-                unify_tys(cx, e_elems, a_elems, variance) {|elems|
-                    nxt(mk_tup(cx.tcx, elems))
-                }
-            } else {
-                err(terr_tuple_size(e_elems.len(), a_elems.len()))
-            }
-          }
-          (ty_fn(e_fty), ty_fn(a_fty)) {
-            unify_fn(cx, e_fty, a_fty, variance, nxt)
-          }
-          (ty_constr(e_t, e_constrs), ty_constr(a_t, a_constrs)) {
-            // unify the base types...
-            unify_step(cx, e_t, a_t, variance) {|rty|
-                // FIXME: probably too restrictive --
-                // requires the constraints to be syntactically equal
-                unify_constrs(e_constrs, a_constrs) {|constrs|
-                    nxt(mk_constr(cx.tcx, rty, constrs))
-                }
-            }
-          }
-          (ty_constr(e_t, _), _) {
-            // If the actual type is *not* a constrained type,
-            // then we go ahead and just ignore the constraints on
-            // the expected type. typestate handles the rest.
-            unify_step(cx, e_t, actual, variance, nxt)
-          }
-          _ { err(terr_mismatch) }
-        }
-    }
-    fn unify(expected: t, actual: t, st: unify_style,
-             tcx: ctxt) -> ures<t> {
-        let cx = @{st: st, tcx: tcx};
-        ret unify_step(cx, expected, actual, covariant, {|v| ok(v)});
-    }
-    fn dump_var_bindings(tcx: ctxt, vb: @var_bindings) {
+    fn dump_var_bindings(vb: @var_bindings) {
         let i = 0u;
         while i < vec::len::<ufind::node>(vb.sets.nodes) {
             let sets = "";
@@ -2098,77 +2450,24 @@ mod unify {
                 j += 1u;
             }
             let typespec;
-            alt smallintmap::find::<t>(vb.types, i) {
+            alt smallintmap::find(vb.var_types, i) {
               none { typespec = ""; }
-              some(typ) { typespec = " =" + ty_to_str(tcx, typ); }
+              some(typ) { typespec = " =" + ty_i_to_str(vb, @sty_i(typ)); }
             }
             #error("set %u:%s%s", i, typespec, sets);
             i += 1u;
         }
     }
 
-    // Fixups and substitutions
-    //    Takes an optional span - complain about occurs check violations
-    //    iff the span is present (so that if we already know we're going
-    //    to error anyway, we don't complain)
-    fn fixup_vars(tcx: ctxt, sp: option<span>, vb: @var_bindings,
-                  typ: t) -> fres<t> {
-        fn subst_vars(tcx: ctxt, sp: option<span>, vb: @var_bindings,
-                      unresolved: @mutable option<int>,
-                      vars_seen: std::list::list<int>, vid: int) -> t {
-            // Should really return a fixup_result instead of a t, but fold_ty
-            // doesn't allow returning anything but a t.
-            if vid as uint >= ufind::set_count(vb.sets) {
-                *unresolved = some(vid);
-                ret mk_var(tcx, vid);
-            }
-            let root_id = ufind::find(vb.sets, vid as uint);
-            alt smallintmap::find::<t>(vb.types, root_id) {
-              none { *unresolved = some(vid); ret mk_var(tcx, vid); }
-              some(rt) {
-                let give_up = false;
-                std::list::iter(vars_seen) {|v|
-                    if v == vid {
-                        give_up = true;
-                        option::may(sp) {|sp|
-                            tcx.sess.span_fatal(
-                                sp, "can not instantiate infinite type");
-                        }
-                    }
-                }
-                // Return the type unchanged, so we can error out
-                // downstream
-                if give_up { ret rt; }
-                ret fold_ty(tcx, fm_var(bind subst_vars(
-                    tcx, sp, vb, unresolved, std::list::cons(vid, @vars_seen),
-                    _)), rt);
-              }
-            }
-        }
-        let unresolved = @mutable none::<int>;
-        let rty = fold_ty(tcx, fm_var(bind subst_vars(
-            tcx, sp, vb, unresolved, std::list::nil, _)), typ);
-        let ur = *unresolved;
-        alt ur {
-          none { ret ok(rty); }
-          some(var_id) { ret err(var_id); }
-        }
-    }
-    fn resolve_type_var(tcx: ctxt, sp: option<span>, vb: @var_bindings,
-                        vid: int) -> fres<t> {
-        if vid as uint >= ufind::set_count(vb.sets) { ret err(vid); }
-        let root_id = ufind::find(vb.sets, vid as uint);
-        alt smallintmap::find::<t>(vb.types, root_id) {
-          none { ret err(vid); }
-          some(rt) { ret fixup_vars(tcx, sp, vb, rt); }
-        }
+    fn resolve_type_var(vb: @var_bindings, vid: int) -> fres<t> {
+        resolve_type(vb, @ty_var_i(vid))
     }
 }
 
-fn same_type(cx: ctxt, a: t, b: t) -> bool {
-    alt unify::unify(a, b, unify::precise, cx) {
-      result::ok(_) { true }
-      result::err(_) { false }
+fn resolve_err_to_str(err: resolve_err) -> str {
+    alt err {
+      rerr_unresolved_var(_) { ret "type variable unresolved"; }
+      rerr_cyclic_var(_) { ret "type of infinite size"; }
     }
 }
 
@@ -2234,6 +2533,9 @@ fn type_err_to_str(cx: ctxt, err: type_err) -> str {
                  region_to_str(cx, subregion),
                  region_to_str(cx, superregion));
       }
+      terr_cyclic_type {
+        ret "cyclic type of infinite size";
+      }
     }
 }
 
@@ -2241,8 +2543,24 @@ fn type_err_to_str(cx: ctxt, err: type_err) -> str {
 // substitions.
 fn substitute_type_params(cx: ctxt, substs: [ty::t], typ: t) -> t {
     if !type_has_params(typ) { ret typ; }
+
     // Precondition? idx < vec::len(substs)
-    fold_ty(cx, fm_param({|idx, _id| substs[idx]}), typ)
+    if !get(typ).t_flags.has_params { ret typ; }
+    fold(cx, typ) {|t|
+        alt get(t).struct {
+          ty_param(i, d) { substs[i] }
+          _ { t }
+        }
+    }
+}
+
+fn substitute_type_params_i(vb: @var_bindings, substs: [ty::t_i], &&typ: t_i) -> t_i {
+    fold(vb, typ) {|t|
+        alt *t {
+          sty_i(ty_param(idx, _id)) { substs[idx] }
+          _ { t }
+        }
+    }
 }
 
 fn def_has_ty_params(def: ast::def) -> bool {
@@ -2499,7 +2817,7 @@ fn class_items_as_fields(cx:ctxt, did: ast::def_id) -> [field] {
     rslt
 }
 
-fn is_binopable(_cx: ctxt, ty: t, op: ast::binop) -> bool {
+fn is_binopable<T>(_cx: ctxt, ty: sty_base<T>, op: ast::binop) -> bool {
     const tycat_other: int = 0;
     const tycat_bool: int = 1;
     const tycat_int: int = 2;
@@ -2542,8 +2860,8 @@ fn is_binopable(_cx: ctxt, ty: t, op: ast::binop) -> bool {
         }
     }
 
-    fn tycat(ty: t) -> int {
-        alt get(ty).struct {
+    fn tycat<T>(ty: sty_base<T>) -> int {
+        alt ty {
           ty_bool { tycat_bool }
           ty_int(_) { tycat_int }
           ty_uint(_) { tycat_int }

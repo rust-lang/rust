@@ -38,9 +38,6 @@ fn type_of_fn_from_ty(cx: @crate_ctxt, fty: ty::t) -> TypeRef {
 }
 
 fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
-    assert !ty::type_has_vars(t);
-    // Check the cache.
-
     if cx.lltypes.contains_key(t) { ret cx.lltypes.get(t); }
     let llty = alt ty::get(t).struct {
       ty::ty_nil | ty::ty_bot { T_nil() }
@@ -87,18 +84,17 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
         for ci in cls_items {
             // only instance vars are record fields at runtime
             alt ci.contents {
-                var_ty(t) {
-                  let fty = type_of(cx, t);
-                  tys += [fty];
-                }
-                _ {}
+              var_ty(t) {
+                let fty = type_of(cx, t);
+                tys += [fty];
+              }
+              _ {}
             }
         }
         T_struct(tys)
       }
       ty::ty_self(_) { cx.tcx.sess.unimpl("type_of: ty_self \
                          not implemented"); }
-      ty::ty_var(_) { cx.tcx.sess.bug("type_of shouldn't see a ty_var"); }
     };
     cx.lltypes.insert(t, llty);
     ret llty;

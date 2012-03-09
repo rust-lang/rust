@@ -18,6 +18,7 @@ import util::ppaux::ty_to_str;
 import ast_map::{path, path_mod, path_name};
 import driver::session::session;
 import std::map::hashmap;
+import ty::ty_ops;
 
 // ___Good to know (tm)__________________________________________________
 //

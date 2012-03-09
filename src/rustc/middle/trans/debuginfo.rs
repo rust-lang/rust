@@ -11,6 +11,7 @@ import ast::ty;
 import pat_util::*;
 import util::ppaux::ty_to_str;
 import driver::session::session;
+import ty::ty_ops;
 
 export create_local_var;
 export create_function;
