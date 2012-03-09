@@ -424,7 +424,7 @@ fn parse_region(p: parser) -> ast::region {
             if string == "self" {
                 ast::re_self
             } else {
-                ast::re_named({ ident: string, id: p.get_id()})
+                ast::re_named(string)
             }
         }
         _ { ast::re_inferred }

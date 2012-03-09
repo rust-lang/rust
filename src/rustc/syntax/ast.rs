@@ -28,8 +28,6 @@ enum ty_param_bound {
 
 type ty_param = {ident: ident, id: node_id, bounds: @[ty_param_bound]};
 
-type region_param = {ident: ident, id: node_id};
-
 enum def {
     def_fn(def_id, purity),
     def_self(node_id),
@@ -52,8 +50,7 @@ enum def {
     def_class_field(def_id, def_id),
     // No purity allowed for now, I guess
     // (simpler this way, b/c presumably methods read mutable state)
-    def_class_method(def_id, def_id),
-    def_region_param(def_id),
+    def_class_method(def_id, def_id)
 }
 
 // The set of meta_items that define the compilation environment of the crate,
@@ -345,7 +342,7 @@ enum prim_ty {
 
 enum region {
     re_inferred,
-    re_named(region_param),
+    re_named(ident),
     re_self
 }
 

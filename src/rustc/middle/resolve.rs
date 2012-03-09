@@ -1711,8 +1711,7 @@ fn ns_for_def(d: def) -> namespace {
           { ns_val(value_or_enum) }
       ast::def_mod(_) | ast::def_native_mod(_) { ns_module }
       ast::def_ty(_) | ast::def_binding(_) | ast::def_use(_) |
-      ast::def_ty_param(_, _) | ast::def_prim_ty(_) | ast::def_class(_) |
-      ast::def_region_param(_)
+      ast::def_ty_param(_, _) | ast::def_prim_ty(_) | ast::def_class(_)
       { ns_type }
     }
 }
