@@ -1165,10 +1165,8 @@ fn boyer_moore_unmatched_chars(needle: str) -> [uint] {
     let len = str::len(needle);
     let mm  = vec::to_mut(vec::init_elt(255u, len));
 
+    assert 0u < len;
     let mut jj = len - 1u; // drop the last byte
-
-    //assert 0u <= jj;
-    //assert       jj < str::len(needle);
 
     // from last-1 to first
     while jj > 0u {
@@ -1193,7 +1191,6 @@ fn boyer_moore_matching_suffixes(needle_str: str) -> [uint] {
     let needle = str::bytes(needle_str);
 
     let len   = vec::len(needle);
-    //assert 0u < len;
 
     // initialize len chars to len
     let mm  = vec::to_mut(vec::init_elt(len, len));
