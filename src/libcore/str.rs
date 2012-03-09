@@ -928,6 +928,8 @@ fn rfind_between(s: str, start: uint, end: uint, f: fn(char) -> bool)
 }
 
 // Utility used by various searching functions
+// Returns true if the whole needle is present in the haystack
+// beginning at haystack[at]
 fn match_at(haystack: str, needle: str, at: uint) -> bool {
     let mut i = at;
     for c in needle { if haystack[i] != c { ret false; } i += 1u; }
@@ -1190,38 +1192,55 @@ fn boyer_moore_unmatched_chars(needle: str) -> [uint] {
 fn boyer_moore_matching_suffixes(needle_str: str) -> [uint] {
     let needle = str::bytes(needle_str);
 
-    let len   = vec::len(needle);
+    let len = vec::len(needle);
 
     // initialize len chars to len
-    let mm  = vec::to_mut(vec::init_elt(len, len));
+    let mm = vec::to_mut(vec::init_elt(len, len));
+
+    let range_ends_with = fn@(vvv0: uint, vvv1: uint,
+                             vv0:  uint, vv1:  uint) -> bool {
+        // needle: [u8]
+
+        let shortLen = vv1 - vv0;
+
+        let mut iii = vvv1 - shortLen;
+        let mut ii = vv0;
+
+        while ii < vv1 {
+            if needle[ii] != needle[iii] { ret false; }
+            ii += 1u;
+            iii += 1u;
+        }
+
+        ret true;
+    };
 
     // step to larger suffixes
     let mut sii = 0u;
     while sii < len {
 
         // tail of the needle we seek
-        let suffix      = vec::slice(needle, len - sii,      len);
-        let suffix_plus = vec::slice(needle, len - sii - 1u, len);
-        let slen = vec::len(suffix);
+        //let suffix      = vec::slice(needle, len - sii,      len);
+        //let suffix_plus = vec::slice(needle, len - sii - 1u, len);
 
         // step to smaller prefixes
-        let mut pii = len - 1u;
-        while pii > 0u {
+        let mut pii = len;
+        while 0u < pii {
+            pii -= 1u;
 
             // a prefix of the needle
-            let prefix = vec::slice(needle, 0u, pii);
-            let plen = vec::len(prefix);
+            //let prefix = vec::slice(needle, 0u, pii); // 0 -> pii
 
             // if suffix fully matched, or
             // prefix is bigger than suffix: only tail matched
             // (which we might jump to)
             if
-                (plen <= slen
-                 && vec::ends_with(suffix, prefix))
+                (pii <= sii
+                 && range_ends_with(len-sii, len, 0u, pii))
             ||
-                (slen < plen
-                 && vec::ends_with(prefix, suffix)
-                 && !vec::ends_with(prefix, suffix_plus))
+                (sii < pii
+                 && range_ends_with(0u, pii, len-sii, len)
+                 && needle[pii - sii -1u] != needle[len-sii - 1u])
             {
                 // if we haven't set it yet, set it now
                 // (besides default)
@@ -1229,8 +1248,6 @@ fn boyer_moore_matching_suffixes(needle_str: str) -> [uint] {
                     mm[sii] = len-pii;
                 }
             }
-
-            pii -= 1u;
         }
 
         // if it hasn't been set, there was no matching prefix,
