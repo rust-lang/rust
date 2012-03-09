@@ -316,7 +316,7 @@ fn print_native_mod(s: ps, nmod: ast::native_mod, attrs: [ast::attribute]) {
 fn print_region(s: ps, region: ast::region) {
     alt region {
       ast::re_inferred { /* no-op */ }
-      ast::re_named(name) { word(s.s, name); word(s.s, "."); }
+      ast::re_named(name) { word(s.s, name.ident); word(s.s, "."); }
       ast::re_self { word(s.s, "self"); word(s.s, "."); }
     }
 }
