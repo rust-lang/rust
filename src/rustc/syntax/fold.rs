@@ -402,6 +402,7 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
           expr_unary(binop, ohs) { expr_unary(binop, fld.fold_expr(ohs)) }
           expr_lit(_) { e }
           expr_cast(expr, ty) { expr_cast(fld.fold_expr(expr), ty) }
+          expr_addr_of(m, ohs) { expr_addr_of(m, fld.fold_expr(ohs)) }
           expr_if(cond, tr, fl) {
             expr_if(fld.fold_expr(cond), fld.fold_block(tr),
                     option::map(fl, fld.fold_expr))

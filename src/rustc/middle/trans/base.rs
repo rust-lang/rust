@@ -1645,16 +1645,17 @@ fn trans_unary(bcx: block, op: ast::unop, e: @ast::expr,
                                translated using trans_lval(), not \
                                trans_unary()");
       }
-      ast::addr_of {
-        // FIXME: This is wrong.
-        let {bcx, val, kind} = trans_temp_lval(bcx, e);
-        if kind != owned {
-            bcx.sess().span_bug(e.span,
-                                "can't take the address of an rvalue");
-        }
-        ret store_in_dest(bcx, val, dest);
-      }
     }
+}
+
+fn trans_addr_of(cx: block, e: @ast::expr, dest: dest) -> block {
+    // FIXME: This is wrong.
+    let {bcx, val, kind} = trans_temp_lval(cx, e);
+    if kind != owned {
+        bcx.sess().span_bug(e.span,
+                            "can't take the address of an rvalue");
+    }
+    ret store_in_dest(bcx, val, dest);
 }
 
 fn trans_compare(cx: block, op: ast::binop, lhs: ValueRef,
@@ -3151,6 +3152,7 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
         assert op != ast::deref; // lvals are handled above
         ret trans_unary(bcx, op, x, e, dest);
       }
+      ast::expr_addr_of(_, x) { ret trans_addr_of(bcx, x, dest); }
       ast::expr_fn(proto, decl, body, cap_clause) {
         ret closure::trans_expr_fn(
             bcx, proto, decl, body, e.span, e.id, *cap_clause, dest);
@@ -4307,8 +4309,7 @@ fn trans_const_expr(cx: crate_ctxt, e: @ast::expr) -> ValueRef {
         ret alt u {
           ast::box(_)  |
           ast::uniq(_) |
-          ast::deref   |
-          ast::addr_of { cx.sess.span_bug(e.span,
+          ast::deref   { cx.sess.span_bug(e.span,
                            "bad unop type in trans_const_expr"); }
           ast::not    { llvm::LLVMConstNot(te) }
           ast::neg    {

@@ -331,6 +331,7 @@ fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
       expr_unary(_, a) { v.visit_expr(a, e, v); }
       expr_lit(_) { }
       expr_cast(x, t) { v.visit_expr(x, e, v); v.visit_ty(t, e, v); }
+      expr_addr_of(_, x) { v.visit_expr(x, e, v); }
       expr_if(x, b, eo) {
         v.visit_expr(x, e, v);
         v.visit_block(b, e, v);

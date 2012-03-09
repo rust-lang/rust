@@ -877,6 +877,10 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         word(s.s, ast_util::unop_to_str(op));
         print_op_maybe_parens(s, expr, parse::parser::unop_prec);
       }
+      ast::expr_addr_of(m, expr) {
+        print_mutability(s, m);
+        print_expr(s, expr);
+      }
       ast::expr_lit(lit) { print_literal(s, lit); }
       ast::expr_cast(expr, ty) {
         print_op_maybe_parens(s, expr, parse::parser::as_prec);

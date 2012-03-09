@@ -409,6 +409,10 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
         find_pre_post_expr(fcx, operand);
         copy_pre_post(fcx.ccx, e.id, operand);
       }
+      expr_addr_of(_, operand) {
+        find_pre_post_expr(fcx, operand);
+        copy_pre_post(fcx.ccx, e.id, operand);
+      }
       expr_cast(operand, _) {
         find_pre_post_expr(fcx, operand);
         copy_pre_post(fcx.ccx, e.id, operand);

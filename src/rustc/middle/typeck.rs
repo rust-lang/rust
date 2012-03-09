@@ -2198,13 +2198,16 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                 oper_t = check_user_unop(fcx, "-", "unary-", expr, oper_t);
             }
           }
-          ast::addr_of {
-            // FIXME: This is incorrect. Infer the proper region.
-            let tm = { ty: oper_t, mutbl: ast::m_imm };
-            oper_t = ty::mk_rptr(tcx, ty::re_block(0), tm);
-          }
         }
         write_ty(tcx, id, oper_t);
+      }
+      ast::expr_addr_of(mutbl, oper) {
+        bot = check_expr(fcx, oper);
+        let oper_t = expr_ty(tcx, oper);
+
+        // FIXME: This is incorrect. Infer the proper region.
+        let tm = { ty: oper_t, mutbl: mutbl };
+        oper_t = ty::mk_rptr(tcx, ty::re_block(0), tm);
       }
       ast::expr_path(pth) {
         let defn = lookup_def(fcx, pth.span, id);

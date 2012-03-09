@@ -587,6 +587,9 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
       expr_unary(_, operand) {
         ret find_pre_post_state_sub(fcx, pres, operand, e.id, none);
       }
+      expr_addr_of(_, operand) {
+        ret find_pre_post_state_sub(fcx, pres, operand, e.id, none);
+      }
       expr_cast(operand, _) {
         ret find_pre_post_state_sub(fcx, pres, operand, e.id, none);
       }

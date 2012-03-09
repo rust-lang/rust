@@ -1393,7 +1393,6 @@ fn serialize_81<S: std::serialization::serializer>(s: S,
                 /*syntax::ast::mutability*/
 
 
-
                 {||
                     alt v {
                       syntax::ast::box(v0) {
@@ -1429,10 +1428,6 @@ fn serialize_81<S: std::serialization::serializer>(s: S,
                       }
                       syntax::ast::neg {
                         s.emit_enum_variant("syntax::ast::neg", 4u, 0u, {|| })
-                      }
-                      syntax::ast::addr_of {
-                        s.emit_enum_variant("syntax::ast::addr_of", 5u, 0u,
-                                            {|| })
                       }
                     }
                 });
@@ -2426,6 +2421,7 @@ fn serialize_73<S: std::serialization::serializer>(s: S,
                 /*[@syntax::ast::ty]*/
                 /*@syntax::ast::expr*//*@syntax::ast::expr*/
                 /*@syntax::ast::path*/
+                /*syntax::ast::mutability*//*@syntax::ast::expr*/
                 /*core::option::t<@syntax::ast::expr>*/
 
 
@@ -2893,8 +2889,26 @@ fn serialize_73<S: std::serialization::serializer>(s: S,
                                                 }
                                             })
                       }
+                      syntax::ast::expr_addr_of(v0, v1) {
+                        s.emit_enum_variant("syntax::ast::expr_addr_of", 25u,
+                                            2u,
+                                            {||
+                                                {
+                                                    s.emit_enum_variant_arg(0u,
+                                                                            {||
+                                                                                serialize_33(s,
+                                                                                             v0)
+                                                                            });
+                                                    s.emit_enum_variant_arg(1u,
+                                                                            {||
+                                                                                serialize_71(s,
+                                                                                             v1)
+                                                                            })
+                                                }
+                                            })
+                      }
                       syntax::ast::expr_fail(v0) {
-                        s.emit_enum_variant("syntax::ast::expr_fail", 25u, 1u,
+                        s.emit_enum_variant("syntax::ast::expr_fail", 26u, 1u,
                                             {||
                                                 {
                                                     s.emit_enum_variant_arg(0u,
@@ -2906,15 +2920,15 @@ fn serialize_73<S: std::serialization::serializer>(s: S,
                                             })
                       }
                       syntax::ast::expr_break {
-                        s.emit_enum_variant("syntax::ast::expr_break", 26u,
+                        s.emit_enum_variant("syntax::ast::expr_break", 27u,
                                             0u, {|| })
                       }
                       syntax::ast::expr_cont {
-                        s.emit_enum_variant("syntax::ast::expr_cont", 27u, 0u,
+                        s.emit_enum_variant("syntax::ast::expr_cont", 28u, 0u,
                                             {|| })
                       }
                       syntax::ast::expr_ret(v0) {
-                        s.emit_enum_variant("syntax::ast::expr_ret", 28u, 1u,
+                        s.emit_enum_variant("syntax::ast::expr_ret", 29u, 1u,
                                             {||
                                                 {
                                                     s.emit_enum_variant_arg(0u,
@@ -2926,7 +2940,7 @@ fn serialize_73<S: std::serialization::serializer>(s: S,
                                             })
                       }
                       syntax::ast::expr_be(v0) {
-                        s.emit_enum_variant("syntax::ast::expr_be", 29u, 1u,
+                        s.emit_enum_variant("syntax::ast::expr_be", 30u, 1u,
                                             {||
                                                 {
                                                     s.emit_enum_variant_arg(0u,
@@ -2938,7 +2952,7 @@ fn serialize_73<S: std::serialization::serializer>(s: S,
                                             })
                       }
                       syntax::ast::expr_log(v0, v1, v2) {
-                        s.emit_enum_variant("syntax::ast::expr_log", 30u, 3u,
+                        s.emit_enum_variant("syntax::ast::expr_log", 31u, 3u,
                                             {||
                                                 {
                                                     s.emit_enum_variant_arg(0u,
@@ -2960,7 +2974,7 @@ fn serialize_73<S: std::serialization::serializer>(s: S,
                                             })
                       }
                       syntax::ast::expr_assert(v0) {
-                        s.emit_enum_variant("syntax::ast::expr_assert", 31u,
+                        s.emit_enum_variant("syntax::ast::expr_assert", 32u,
                                             1u,
                                             {||
                                                 {
@@ -2973,7 +2987,7 @@ fn serialize_73<S: std::serialization::serializer>(s: S,
                                             })
                       }
                       syntax::ast::expr_check(v0, v1) {
-                        s.emit_enum_variant("syntax::ast::expr_check", 32u,
+                        s.emit_enum_variant("syntax::ast::expr_check", 33u,
                                             2u,
                                             {||
                                                 {
@@ -2991,7 +3005,7 @@ fn serialize_73<S: std::serialization::serializer>(s: S,
                                             })
                       }
                       syntax::ast::expr_if_check(v0, v1, v2) {
-                        s.emit_enum_variant("syntax::ast::expr_if_check", 33u,
+                        s.emit_enum_variant("syntax::ast::expr_if_check", 34u,
                                             3u,
                                             {||
                                                 {
@@ -3014,7 +3028,7 @@ fn serialize_73<S: std::serialization::serializer>(s: S,
                                             })
                       }
                       syntax::ast::expr_mac(v0) {
-                        s.emit_enum_variant("syntax::ast::expr_mac", 34u, 1u,
+                        s.emit_enum_variant("syntax::ast::expr_mac", 35u, 1u,
                                             {||
                                                 {
                                                     s.emit_enum_variant_arg(0u,
@@ -5550,8 +5564,6 @@ fn deserialize_81<S: std::serialization::deserializer>(s: S) ->
 
 
 
-
-
                 {||
                     s.read_enum_variant({|v_id|
                                             alt check v_id {
@@ -5570,7 +5582,6 @@ fn deserialize_81<S: std::serialization::deserializer>(s: S) ->
                                               2u { syntax::ast::deref }
                                               3u { syntax::ast::not }
                                               4u { syntax::ast::neg }
-                                              5u { syntax::ast::addr_of }
                                             }
                                         })
                 })
@@ -6580,6 +6591,8 @@ fn deserialize_73<S: std::serialization::deserializer>(s: S) ->
 
                 /*@syntax::ast::path*/
 
+                /*syntax::ast::mutability*//*@syntax::ast::expr*/
+
                 /*core::option::t<@syntax::ast::expr>*/
 
 
@@ -6870,26 +6883,36 @@ fn deserialize_73<S: std::serialization::deserializer>(s: S) ->
                                                                                                }))
                                               }
                                               25u {
+                                                syntax::ast::expr_addr_of(s.read_enum_variant_arg(0u,
+                                                                                                  {||
+                                                                                                      deserialize_33(s)
+                                                                                                  }),
+                                                                          s.read_enum_variant_arg(1u,
+                                                                                                  {||
+                                                                                                      deserialize_71(s)
+                                                                                                  }))
+                                              }
+                                              26u {
                                                 syntax::ast::expr_fail(s.read_enum_variant_arg(0u,
                                                                                                {||
                                                                                                    deserialize_78(s)
                                                                                                }))
                                               }
-                                              26u { syntax::ast::expr_break }
-                                              27u { syntax::ast::expr_cont }
-                                              28u {
+                                              27u { syntax::ast::expr_break }
+                                              28u { syntax::ast::expr_cont }
+                                              29u {
                                                 syntax::ast::expr_ret(s.read_enum_variant_arg(0u,
                                                                                               {||
                                                                                                   deserialize_78(s)
                                                                                               }))
                                               }
-                                              29u {
+                                              30u {
                                                 syntax::ast::expr_be(s.read_enum_variant_arg(0u,
                                                                                              {||
                                                                                                  deserialize_71(s)
                                                                                              }))
                                               }
-                                              30u {
+                                              31u {
                                                 syntax::ast::expr_log(s.read_enum_variant_arg(0u,
                                                                                               {||
                                                                                                   deserialize_128(s)
@@ -6903,13 +6926,13 @@ fn deserialize_73<S: std::serialization::deserializer>(s: S) ->
                                                                                                   deserialize_71(s)
                                                                                               }))
                                               }
-                                              31u {
+                                              32u {
                                                 syntax::ast::expr_assert(s.read_enum_variant_arg(0u,
                                                                                                  {||
                                                                                                      deserialize_71(s)
                                                                                                  }))
                                               }
-                                              32u {
+                                              33u {
                                                 syntax::ast::expr_check(s.read_enum_variant_arg(0u,
                                                                                                 {||
                                                                                                     deserialize_129(s)
@@ -6919,7 +6942,7 @@ fn deserialize_73<S: std::serialization::deserializer>(s: S) ->
                                                                                                     deserialize_71(s)
                                                                                                 }))
                                               }
-                                              33u {
+                                              34u {
                                                 syntax::ast::expr_if_check(s.read_enum_variant_arg(0u,
                                                                                                    {||
                                                                                                        deserialize_71(s)
@@ -6933,7 +6956,7 @@ fn deserialize_73<S: std::serialization::deserializer>(s: S) ->
                                                                                                        deserialize_78(s)
                                                                                                    }))
                                               }
-                                              34u {
+                                              35u {
                                                 syntax::ast::expr_mac(s.read_enum_variant_arg(0u,
                                                                                               {||
                                                                                                   deserialize_68(s)
@@ -8171,7 +8194,7 @@ fn serialize_164<S: std::serialization::serializer>(s: S,
 
     s.emit_enum("syntax::ast::def",
                 /*syntax::ast::def_id*//*syntax::ast::purity*/
-                /*syntax::ast::def_id*/
+                /*syntax::ast::node_id*/
                 /*syntax::ast::def_id*/
                 /*syntax::ast::def_id*/
                 /*syntax::ast::def_id*/
@@ -8534,7 +8557,7 @@ fn deserialize_164<S: std::serialization::deserializer>(s: S) ->
     s.read_enum("syntax::ast::def",
                 /*syntax::ast::def_id*//*syntax::ast::purity*/
 
-                /*syntax::ast::def_id*/
+                /*syntax::ast::node_id*/
 
                 /*syntax::ast::def_id*/
 
@@ -8985,7 +9008,7 @@ fn deserialize_syntax_ast_inlined_item<S: std::serialization::deserializer>(s:
     deserialize_171(s)
 }
 /*[syntax::ast::node_id]*/
-fn serialize_172<S: std::serialization::serializer>(s: S,
+fn serialize_173<S: std::serialization::serializer>(s: S,
                                                     v:
                                                         [syntax::ast::node_id]) {
     s.emit_vec(vec::len(v), /*syntax::ast::node_id*/
@@ -8997,7 +9020,7 @@ fn serialize_172<S: std::serialization::serializer>(s: S,
                });
 }
 /*middle::last_use::is_last_use*/
-fn serialize_173<S: std::serialization::serializer>(s: S,
+fn serialize_172<S: std::serialization::serializer>(s: S,
                                                     v:
                                                         middle::last_use::is_last_use) {
     s.emit_enum("middle::last_use::is_last_use",
@@ -9021,7 +9044,7 @@ fn serialize_173<S: std::serialization::serializer>(s: S,
                                                 {
                                                     s.emit_enum_variant_arg(0u,
                                                                             {||
-                                                                                serialize_172(s,
+                                                                                serialize_173(s,
                                                                                               v0)
                                                                             })
                                                 }
@@ -9034,10 +9057,10 @@ fn serialize_middle_last_use_is_last_use<S: std::serialization::serializer>(s:
                                                                                 S,
                                                                             v:
                                                                                 middle::last_use::is_last_use) {
-    serialize_173(s, v);
+    serialize_172(s, v);
 }
 /*[syntax::ast::node_id]*/
-fn deserialize_172<S: std::serialization::deserializer>(s: S) ->
+fn deserialize_173<S: std::serialization::deserializer>(s: S) ->
    [syntax::ast::node_id] {
     s.read_vec(
 
@@ -9050,7 +9073,7 @@ fn deserialize_172<S: std::serialization::deserializer>(s: S) ->
                })
 }
 /*middle::last_use::is_last_use*/
-fn deserialize_173<S: std::serialization::deserializer>(s: S) ->
+fn deserialize_172<S: std::serialization::deserializer>(s: S) ->
    middle::last_use::is_last_use {
     s.read_enum("middle::last_use::is_last_use",
 
@@ -9070,7 +9093,7 @@ fn deserialize_173<S: std::serialization::deserializer>(s: S) ->
                                               2u {
                                                 middle::last_use::closes_over(s.read_enum_variant_arg(0u,
                                                                                                       {||
-                                                                                                          deserialize_172(s)
+                                                                                                          deserialize_173(s)
                                                                                                       }))
                                               }
                                             }
@@ -9080,5 +9103,5 @@ fn deserialize_173<S: std::serialization::deserializer>(s: S) ->
 fn deserialize_middle_last_use_is_last_use<S: std::serialization::deserializer>(s:
                                                                                     S)
    -> middle::last_use::is_last_use {
-    deserialize_173(s)
+    deserialize_172(s)
 }

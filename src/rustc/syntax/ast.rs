@@ -159,7 +159,7 @@ enum binop {
 enum unop {
     box(mutability),
     uniq(mutability),
-    deref, not, neg, addr_of
+    deref, not, neg
 }
 
 // Generally, after typeck you can get the inferred value
@@ -245,6 +245,7 @@ enum expr_ {
     expr_field(@expr, ident, [@ty]),
     expr_index(@expr, @expr),
     expr_path(@path),
+    expr_addr_of(mutability, @expr),
     expr_fail(option<@expr>),
     expr_break,
     expr_cont,
