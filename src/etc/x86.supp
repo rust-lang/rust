@@ -23,6 +23,14 @@
 }
 
 {
+   linux-dl-prob
+   Memcheck:Param
+   read(buf)
+   ...
+   fun:_dl_map_object
+}
+
+{
    mac-dyld-oddity
    Memcheck:Cond
    fun:_ZN4dyld5_mainEPK12macho_headermiPPKcS5_S5_
