@@ -2671,9 +2671,8 @@ fn trans_arg_expr(cx: block, arg: ty::arg, lldestty: TypeRef, e: @ast::expr,
 //  - new_fn_ctxt
 //  - trans_args
 fn trans_args(cx: block, llenv: ValueRef, es: [@ast::expr], fn_ty: ty::t,
-              dest: dest) -> {bcx: block,
-                              args: [ValueRef],
-                              retslot: ValueRef} {
+              dest: dest, generic_intrinsic: bool)
+    -> {bcx: block, args: [ValueRef], retslot: ValueRef} {
 
     let temp_cleanups = [];
     let args = ty::ty_fn_args(fn_ty);
@@ -2686,7 +2685,7 @@ fn trans_args(cx: block, llenv: ValueRef, es: [@ast::expr], fn_ty: ty::t,
     // Arg 0: Output pointer.
     let llretslot = alt dest {
       ignore {
-        if ty::type_is_nil(retty) {
+        if ty::type_is_nil(retty) && !generic_intrinsic {
             llvm::LLVMGetUndef(T_ptr(T_nil()))
         } else {
             let {bcx: cx, val} = alloc_ty(bcx, retty);
@@ -2770,7 +2769,8 @@ fn trans_call_inner(in_cx: block, fn_expr_ty: ty::t,
         };
 
         let ret_ty = node_id_type(bcx, id);
-        let args_res = trans_args(bcx, llenv, args, fn_expr_ty, dest);
+        let args_res = trans_args(bcx, llenv, args, fn_expr_ty, dest,
+                                  option::is_some(f_res.tds));
         bcx = args_res.bcx;
         let llargs = args_res.args;
         option::may(f_res.tds) {|vals|
