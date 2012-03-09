@@ -39,8 +39,18 @@ fn fold_item(fold: fold::fold<op>, doc: doc::itemdoc) -> doc::itemdoc {
 
     {
         brief: maybe_apply_op(fold.ctxt, doc.brief),
-        desc: maybe_apply_op(fold.ctxt, doc.desc)
+        desc: maybe_apply_op(fold.ctxt, doc.desc),
+        sections: apply_to_sections(fold.ctxt, doc.sections)
         with doc
+    }
+}
+
+fn apply_to_sections(op: op, sections: [doc::section]) -> [doc::section] {
+    par::anymap(sections) {|section|
+        {
+            header: op(section.header),
+            body: op(section.body)
+        }
     }
 }
 
@@ -108,6 +118,7 @@ fn apply_to_methods(op: op, docs: [doc::methoddoc]) -> [doc::methoddoc] {
         {
             brief: maybe_apply_op(op, doc.brief),
             desc: maybe_apply_op(op, doc.desc),
+            sections: apply_to_sections(op, doc.sections),
             args: par::anymap(doc.args) {|doc|
                 {
                     desc: maybe_apply_op(op, doc.desc)
@@ -282,12 +293,79 @@ fn should_execute_op_on_type_desc() {
     assert doc.cratemod().types()[0].desc() == some("a");
 }
 
+#[test]
+fn should_execute_on_item_section_headers() {
+    let doc = test::mk_doc(
+        "#[doc = \"\
+         #    Header    \n\
+         Body\"]\
+         fn a() { }");
+    assert doc.cratemod().fns()[0].sections()[0].header == "Header";
+}
+
+#[test]
+fn should_execute_on_item_section_bodies() {
+    let doc = test::mk_doc(
+        "#[doc = \"\
+         # Header\n\
+         Body      \"]\
+         fn a() { }");
+    assert doc.cratemod().fns()[0].sections()[0].body == "Body";
+}
+
+#[test]
+fn should_execute_on_iface_method_section_headers() {
+    let doc = test::mk_doc(
+        "iface i {
+         #[doc = \"\
+         # Header    \n\
+         Body\"]\
+         fn a(); }");
+    assert doc.cratemod().ifaces()[0].methods[0].sections[0].header
+        == "Header";
+}
+
+#[test]
+fn should_execute_on_iface_method_section_bodies() {
+    let doc = test::mk_doc(
+        "iface i {
+         #[doc = \"\
+         # Header\n\
+         Body     \"]\
+         fn a(); }");
+    assert doc.cratemod().ifaces()[0].methods[0].sections[0].body == "Body";
+}
+
+#[test]
+fn should_execute_on_impl_method_section_headers() {
+    let doc = test::mk_doc(
+        "impl i for bool {
+         #[doc = \"\
+         # Header   \n\
+         Body\"]\
+         fn a() { } }");
+    assert doc.cratemod().impls()[0].methods[0].sections[0].header
+        == "Header";
+}
+
+#[test]
+fn should_execute_on_impl_method_section_bodies() {
+    let doc = test::mk_doc(
+        "impl i for bool {
+         #[doc = \"\
+         # Header\n\
+         Body    \"]\
+         fn a() { } }");
+    assert doc.cratemod().impls()[0].methods[0].sections[0].body == "Body";
+}
+
 #[cfg(test)]
 mod test {
     fn mk_doc(source: str) -> doc::doc {
         astsrv::from_str(source) {|srv|
             let doc = extract::from_srv(srv, "");
             let doc = attr_pass::mk_pass().f(srv, doc);
+            let doc = sectionalize_pass::mk_pass().f(srv, doc);
             mk_pass("", {|s| str::trim(s)}).f(srv, doc)
         }
     }

@@ -11,6 +11,15 @@ enum page {
     itempage(itemtag)
 }
 
+#[doc = "
+Most rustdocs can be parsed into 'sections' according to their markdown
+headers
+"]
+type section = {
+    header: str,
+    body: str
+};
+
 // FIXME: We currently give topmod the name of the crate.  There would
 // probably be fewer special cases if the crate had its own name and
 // topmod's name was the empty string.
@@ -36,6 +45,7 @@ type itemdoc = {
     path: [str],
     brief: option<str>,
     desc: option<str>,
+    sections: [section],
     // Indicates that this node is a reexport of a different item
     reexport: bool
 };
@@ -99,6 +109,7 @@ type methoddoc = {
     name: str,
     brief: option<str>,
     desc: option<str>,
+    sections: [section],
     args: [argdoc],
     return: retdoc,
     failure: option<str>,
@@ -399,5 +410,9 @@ impl util<A:item> for A {
 
     fn desc() -> option<str> {
         self.item().desc
+    }
+
+    fn sections() -> [section] {
+        self.item().sections
     }
 }

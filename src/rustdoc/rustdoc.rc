@@ -40,3 +40,4 @@ mod sort_item_type_pass;
 mod reexport_pass;
 mod par;
 mod page_pass;
+mod sectionalize_pass;

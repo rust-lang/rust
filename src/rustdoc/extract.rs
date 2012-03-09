@@ -44,6 +44,7 @@ fn mk_itemdoc(id: ast::node_id, name: ast::ident) -> doc::itemdoc {
         path: [],
         brief: none,
         desc: none,
+        sections: [],
         reexport: false
     }
 }
@@ -250,6 +251,7 @@ fn ifacedoc_from_iface(
                 name: method.ident,
                 brief: none,
                 desc: none,
+                sections: [],
                 args: argdocs_from_args(method.decl.inputs),
                 return: {
                     desc: none
@@ -292,6 +294,7 @@ fn impldoc_from_impl(
                 name: method.ident,
                 brief: none,
                 desc: none,
+                sections: [],
                 args: argdocs_from_args(method.decl.inputs),
                 return: {
                     desc: none
