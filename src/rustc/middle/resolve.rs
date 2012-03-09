@@ -1713,6 +1713,7 @@ fn ns_for_def(d: def) -> namespace {
       ast::def_ty(_) | ast::def_binding(_) | ast::def_use(_) |
       ast::def_ty_param(_, _) | ast::def_prim_ty(_) | ast::def_class(_)
       { ns_type }
+      ast::def_region(_) { fail "regions are not handled by this pass" }
     }
 }
 

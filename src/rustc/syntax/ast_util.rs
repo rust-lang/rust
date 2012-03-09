@@ -42,7 +42,7 @@ fn def_id_of_def(d: def) -> def_id {
       def_class(id) | def_class_field(_, id) | def_class_method(_, id) { id }
 
       def_arg(id, _) | def_local(id, _) | def_self(id) |
-      def_upvar(id, _, _) | def_binding(id) {
+      def_upvar(id, _, _) | def_binding(id) | def_region(id) {
         local_def(id)
       }
 

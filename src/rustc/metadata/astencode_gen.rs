@@ -8212,6 +8212,7 @@ fn serialize_164<S: std::serialization::serializer>(s: S,
                 /*syntax::ast::def_id*/
                 /*syntax::ast::def_id*//*syntax::ast::def_id*/
                 /*syntax::ast::def_id*//*syntax::ast::def_id*/
+                /*syntax::ast::node_id*/
                 {||
                     alt v {
                       syntax::ast::def_fn(v0, v1) {
@@ -8470,6 +8471,19 @@ fn serialize_164<S: std::serialization::serializer>(s: S,
                                                 }
                                             })
                       }
+                      syntax::ast::def_region(v0) {
+                        s.emit_enum_variant("syntax::ast::def_region", 17u,
+                                            1u,
+                                            {||
+                                                {
+                                                    s.emit_enum_variant_arg(0u,
+                                                                            {||
+                                                                                serialize_27(s,
+                                                                                             v0)
+                                                                            })
+                                                }
+                                            })
+                      }
                     }
                 });
 }
@@ -8590,6 +8604,8 @@ fn deserialize_164<S: std::serialization::deserializer>(s: S) ->
                 /*syntax::ast::def_id*//*syntax::ast::def_id*/
 
                 /*syntax::ast::def_id*//*syntax::ast::def_id*/
+
+                /*syntax::ast::node_id*/
                 {||
                     s.read_enum_variant({|v_id|
                                             alt check v_id {
@@ -8730,6 +8746,12 @@ fn deserialize_164<S: std::serialization::deserializer>(s: S) ->
                                                                                                       {||
                                                                                                           deserialize_165(s)
                                                                                                       }))
+                                              }
+                                              17u {
+                                                syntax::ast::def_region(s.read_enum_variant_arg(0u,
+                                                                                                {||
+                                                                                                    deserialize_27(s)
+                                                                                                }))
                                               }
                                             }
                                         })

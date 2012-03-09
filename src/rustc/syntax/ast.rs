@@ -50,7 +50,8 @@ enum def {
     def_class_field(def_id, def_id),
     // No purity allowed for now, I guess
     // (simpler this way, b/c presumably methods read mutable state)
-    def_class_method(def_id, def_id)
+    def_class_method(def_id, def_id),
+    def_region(node_id)
 }
 
 // The set of meta_items that define the compilation environment of the crate,
