@@ -865,7 +865,7 @@ fn get_res_dtor(ccx: @crate_ctxt, did: ast::def_id, substs: [ty::t])
         maybe_instantiate_inline(ccx, did)
     } else { did };
     assert did.crate == ast::local_crate;
-    monomorphic_fn(ccx, did, substs, none)
+    monomorphic_fn(ccx, did, substs, none).val
 }
 
 fn trans_res_drop(bcx: block, rs: ValueRef, did: ast::def_id,
@@ -1951,7 +1951,9 @@ enum callee_env {
 type lval_maybe_callee = {bcx: block,
                           val: ValueRef,
                           kind: lval_kind,
-                          env: callee_env};
+                          env: callee_env,
+                          // Tydescs to pass. Only used to call intrinsics
+                          tds: option<[ValueRef]>};
 
 fn null_env_ptr(bcx: block) -> ValueRef {
     C_null(T_opaque_box_ptr(bcx.ccx()))
@@ -1970,7 +1972,7 @@ fn lval_temp(bcx: block, val: ValueRef) -> lval_result {
 
 fn lval_no_env(bcx: block, val: ValueRef, kind: lval_kind)
     -> lval_maybe_callee {
-    ret {bcx: bcx, val: val, kind: kind, env: is_closure};
+    ret {bcx: bcx, val: val, kind: kind, env: is_closure, tds: none};
 }
 
 fn trans_external_path(ccx: @crate_ctxt, did: ast::def_id, t: ty::t)
@@ -1984,10 +1986,12 @@ fn trans_external_path(ccx: @crate_ctxt, did: ast::def_id, t: ty::t)
 }
 
 fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
-                  vtables: option<typeck::vtable_res>) -> ValueRef {
+                  vtables: option<typeck::vtable_res>)
+    -> {val: ValueRef, must_cast: bool, intrinsic: bool} {
+    let mut must_cast = false;
     let substs = vec::map(substs, {|t|
         alt ty::get(t).struct {
-          ty::ty_box(mt) { ty::mk_opaque_box(ccx.tcx) }
+          ty::ty_box(mt) { must_cast = true; ty::mk_opaque_box(ccx.tcx) }
           _ { t }
         }
     });
@@ -1996,7 +2000,7 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
       none { no_vts }
     }};
     alt ccx.monomorphized.find(hash_id) {
-      some(val) { ret val; }
+      some(val) { ret {val: val, must_cast: must_cast, intrinsic: false}; }
       none {}
     }
 
@@ -2017,9 +2021,11 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
       }
       ast_map::node_variant(v, _, pt) { (pt, v.node.name) }
       ast_map::node_method(m, _, pt) { (pt, m.ident) }
-      ast_map::node_native_item(_, _, _) {
+      ast_map::node_native_item(_, abi, _) {
         // Natives don't have to be monomorphized.
-        ret get_item_val(ccx, fn_id.node);
+        ret {val: get_item_val(ccx, fn_id.node),
+             must_cast: true,
+             intrinsic: abi == ast::native_abi_rust_intrinsic};
       }
       ast_map::node_ctor(i) {
         alt check ccx.tcx.items.get(i.id) {
@@ -2073,7 +2079,7 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
         }
       }
     }
-    lldecl
+    {val: lldecl, must_cast: must_cast, intrinsic: false}
 }
 
 fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id)
@@ -2130,11 +2136,20 @@ fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id)
     }
 }
 
+fn add_tydesc_params(ccx: crate_ctxt, llfty: TypeRef, n: uint) -> TypeRef {
+    let out_ty = llvm::LLVMGetReturnType(llfty);
+    let n_args = llvm::LLVMCountParamTypes(llfty);
+    let args = vec::init_elt(n_args as uint, 0 as TypeRef);
+    unsafe { llvm::LLVMGetParamTypes(llfty, vec::unsafe::to_ptr(args)); }
+    T_fn(vec::slice(args, 0u, first_real_arg) +
+         vec::init_elt(n, T_ptr(ccx.tydesc_type)) +
+         vec::tail_n(args, first_real_arg), out_ty)
+}
+
 fn lval_static_fn(bcx: block, fn_id: ast::def_id, id: ast::node_id,
                   substs: option<([ty::t], typeck::vtable_res)>)
     -> lval_maybe_callee {
-    let ccx = bcx.ccx();
-    let tcx = ccx.tcx;
+    let bcx = bcx, ccx = bcx.ccx(), tcx = ccx.tcx;
     let tys = node_id_type_params(bcx, id);
     let tpt = ty::lookup_item_type(tcx, fn_id);
 
@@ -2151,11 +2166,24 @@ fn lval_static_fn(bcx: block, fn_id: ast::def_id, id: ast::node_id,
                            impl::resolve_vtables_in_fn_ctxt(bcx.fcx, vts)})) }
         };
         if tys.len() > 0u {
-            let val = monomorphic_fn(ccx, fn_id, tys, vtables);
-            let cast = PointerCast(bcx, val, T_ptr(type_of_fn_from_ty(
-                ccx, node_id_type(bcx, id))));
-            ret {bcx: bcx, val: cast,
-                 kind: owned, env: null_env};
+            let {val, must_cast, intrinsic} = monomorphic_fn(ccx, fn_id, tys,
+                                                             vtables);
+            let tds = none;
+            if intrinsic {
+                tds = some(vec::map(tys, {|t|
+                    let ti = none, td_res = get_tydesc(bcx, t, ti);
+                    bcx = td_res.bcx;
+                    lazily_emit_all_tydesc_glue(ccx, ti);
+                    td_res.val
+                }));
+                let llfty = type_of_fn_from_ty(ccx, node_id_type(bcx, id));
+                val = PointerCast(bcx, val, T_ptr(add_tydesc_params(
+                    ccx, llfty, tys.len())));
+            } else if must_cast {
+                val = PointerCast(bcx, val, T_ptr(type_of_fn_from_ty(
+                    ccx, node_id_type(bcx, id))));
+            }
+            ret {bcx: bcx, val: val, kind: owned, env: null_env, tds: tds};
         }
     }
 
@@ -2185,7 +2213,7 @@ fn lval_static_fn(bcx: block, fn_id: ast::def_id, id: ast::node_id,
         }
     }
 
-    ret {bcx: bcx, val: val, kind: owned, env: null_env};
+    ret {bcx: bcx, val: val, kind: owned, env: null_env, tds: none};
 }
 
 fn lookup_discriminant(ccx: @crate_ctxt, vid: ast::def_id) -> ValueRef {
@@ -2736,6 +2764,11 @@ fn trans_call_inner(in_cx: block, fn_expr_ty: ty::t,
         let args_res = trans_args(bcx, llenv, args, fn_expr_ty, dest);
         bcx = args_res.bcx;
         let llargs = args_res.args;
+        option::may(f_res.tds) {|vals|
+            llargs = vec::slice(llargs, 0u, first_real_arg) + vals +
+                vec::tail_n(llargs, first_real_arg);
+        }
+
         let llretslot = args_res.retslot;
 
         /* If the block is terminated,

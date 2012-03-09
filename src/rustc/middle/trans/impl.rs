@@ -83,7 +83,7 @@ fn trans_vtable_callee(bcx: block, env: callee_env, vtable: ValueRef,
     let vtable = PointerCast(bcx, vtable,
                              T_ptr(T_array(T_ptr(llfty), n_method + 1u)));
     let mptr = Load(bcx, GEPi(bcx, vtable, [0, n_method as int]));
-    {bcx: bcx, val: mptr, kind: owned, env: env}
+    {bcx: bcx, val: mptr, kind: owned, env: env, tds: none}
 }
 
 fn method_with_name(ccx: @crate_ctxt, impl_id: ast::def_id,
@@ -146,14 +146,6 @@ fn trans_iface_callee(bcx: block, base: @ast::expr,
     let self = GEPi(bcx, box, [0, abi::box_field_body]);
     trans_vtable_callee(bcx, self_env(self, expr_ty(bcx, base)), vtable,
                         callee_id, n_method)
-}
-
-fn llfn_arg_tys(ft: TypeRef) -> {inputs: [TypeRef], output: TypeRef} {
-    let out_ty = llvm::LLVMGetReturnType(ft);
-    let n_args = llvm::LLVMCountParamTypes(ft);
-    let args = vec::from_elem(n_args as uint, 0 as TypeRef);
-    unsafe { llvm::LLVMGetParamTypes(ft, vec::unsafe::to_ptr(args)); }
-    {inputs: args, output: out_ty}
 }
 
 fn find_vtable_in_fn_ctxt(ps: param_substs, n_param: uint, n_bound: uint)
@@ -251,7 +243,7 @@ fn make_impl_vtable(ccx: @crate_ctxt, impl_id: ast::def_id, substs: [ty::t],
             C_null(type_of_fn_from_ty(ccx, fty))
         } else {
             let m_id = method_with_name(ccx, impl_id, im.ident);
-            monomorphic_fn(ccx, m_id, substs, some(vtables))
+            monomorphic_fn(ccx, m_id, substs, some(vtables)).val
         }
     }))
 }
