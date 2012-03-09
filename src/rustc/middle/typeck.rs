@@ -2208,6 +2208,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         // FIXME: This is incorrect. Infer the proper region.
         let tm = { ty: oper_t, mutbl: mutbl };
         oper_t = ty::mk_rptr(tcx, ty::re_block(0), tm);
+        write_ty(tcx, id, oper_t);
       }
       ast::expr_path(pth) {
         let defn = lookup_def(fcx, pth.span, id);
