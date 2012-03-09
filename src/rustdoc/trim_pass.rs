@@ -10,7 +10,7 @@ is interpreted as the brief description.
 export mk_pass;
 
 fn mk_pass() -> pass {
-    desc_pass::mk_pass("trim", {|s| str::trim(s)})
+    text_pass::mk_pass("trim", {|s| str::trim(s)})
 }
 
 #[test]
