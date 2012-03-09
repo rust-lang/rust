@@ -313,6 +313,14 @@ fn print_native_mod(s: ps, nmod: ast::native_mod, attrs: [ast::attribute]) {
     for item: @ast::native_item in nmod.items { print_native_item(s, item); }
 }
 
+fn print_region(s: ps, region: ast::region) {
+    alt region {
+      ast::re_inferred { /* no-op */ }
+      ast::re_named(name) { word(s.s, name); word(s.s, "."); }
+      ast::re_self { word(s.s, "self"); word(s.s, "."); }
+    }
+}
+
 fn print_type(s: ps, &&ty: @ast::ty) {
     maybe_print_comment(s, ty.span.lo);
     ibox(s, 0u);
@@ -332,7 +340,11 @@ fn print_type(s: ps, &&ty: @ast::ty) {
         word(s.s, "]");
       }
       ast::ty_ptr(mt) { word(s.s, "*"); print_mt(s, mt); }
-      ast::ty_rptr(region, mt) { fail "TODO"; }
+      ast::ty_rptr(region, mt) {
+        word(s.s, "&");
+        print_region(s, region);
+        print_mt(s, mt);
+      }
       ast::ty_rec(fields) {
         word(s.s, "{");
         fn print_field(s: ps, f: ast::ty_field) {
@@ -878,6 +890,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         print_op_maybe_parens(s, expr, parse::parser::unop_prec);
       }
       ast::expr_addr_of(m, expr) {
+        word(s.s, "&");
         print_mutability(s, m);
         print_expr(s, expr);
       }
