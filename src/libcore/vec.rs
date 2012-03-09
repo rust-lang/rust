@@ -900,7 +900,7 @@ fn ends_with <TT> (vvv: [TT], vv: [TT]) -> bool {
     if lll < ll { ret false; }
 
     let delta = lll - ll;
-    let res = true;
+    let mut res = true;
 
     vec::riteri(vv) {|ii, elem|
         if elem != vvv[delta + ii] { res = false; }

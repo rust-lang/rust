@@ -69,7 +69,10 @@ export
    find_char, find_char_from, find_char_between,
    rfind_char, rfind_char_from, rfind_char_between,
    find_str, find_str_from, find_str_between,
-   findn_str, findn_str_between,
+   findn_str,
+   findn_str_between,
+   simple_search,      // temp, called by findn_str_between
+   boyer_moore_search, // temp, called by findn_str_between
    contains,
    starts_with,
    ends_with,
@@ -572,7 +575,7 @@ fn chars_iter(ss: str, it: fn(char)) {
 #[doc = "Iterate over the characters in a string"]
 fn chars_iteri(ss: str, it: fn(uint,char)) {
     let mut pos = 0u;
-    let len = len(s);
+    let len = len(ss);
 
     while (pos < len) {
         let {ch, next} = char_range_at(ss, pos);
@@ -1021,11 +1024,63 @@ fn findn_str_between (haystack: str, needle: str,
 
 // Returns up to `nn` byte positions of matched substrings
 // between `start` and `end`
+// (using a naive search algorithm)
+fn simple_search (haystack: str, needle: str,
+                      nn: uint,
+                      start: uint, end: uint) -> [uint] {
+    let mut results = [];
+
+    let nlen = str::len(needle);
+
+    assert start <= end;
+    assert end <= str::len(haystack);
+    let hlen = end - start;
+
+    // empty needle
+    if nlen == 0u {
+        ret [start];
+    }
+
+    // haystack empty, or smaller than needle
+    if hlen == 0u || hlen < nlen {
+        ret [];
+    }
+
+    let mut ii = start, match_start = 0u, match_i = 0u;
+
+    while ii < end {
+        if haystack[ii] == needle[match_i] {
+            if match_i == 0u { match_start = ii; }
+            match_i += 1u;
+            // Found a match
+            if match_i == nlen {
+                vec::push(results, match_start);
+                match_i = 0u;
+
+                if vec::len(results) >= nn { ret results; }
+            }
+            ii += 1u;
+        } else {
+            // Failed match, backtrack
+            if match_i > 0u {
+                match_i = 0u;
+                ii = match_start + 1u;
+            } else {
+                ii += 1u;
+            }
+        }
+    }
+
+    ret results;
+}
+
+// Returns up to `nn` byte positions of matched substrings
+// between `start` and `end`
 // (using Boyer-Moore)
 fn boyer_moore_search (haystack: str, needle: str,
                       nn: uint,
                       start: uint, end: uint) -> [uint] {
-    let results = [];
+    let mut results = [];
 
     let nlen = str::len(needle);
 
@@ -1066,12 +1121,12 @@ fn boyer_moore_search (haystack: str, needle: str,
     };
 
     // step up through the haystack
-    let outerii = start;
+    let mut outerii = start;
     while outerii + nlen <= end {
 
         // step back through needle
         // (checking outer range again)
-        let windowii = nlen;
+        let mut windowii = nlen;
         while 0u < windowii {
 
             windowii -= 1u;
@@ -1110,7 +1165,7 @@ fn boyer_moore_unmatched_chars(needle: str) -> [uint] {
     let len = str::len(needle);
     let mm  = vec::to_mut(vec::init_elt(255u, len));
 
-    let jj = len - 1u; // drop the last byte
+    let mut jj = len - 1u; // drop the last byte
 
     //assert 0u <= jj;
     //assert       jj < str::len(needle);
@@ -1144,7 +1199,7 @@ fn boyer_moore_matching_suffixes(needle_str: str) -> [uint] {
     let mm  = vec::to_mut(vec::init_elt(len, len));
 
     // step to larger suffixes
-    let sii = 0u;
+    let mut sii = 0u;
     while sii < len {
 
         // tail of the needle we seek
@@ -1153,7 +1208,7 @@ fn boyer_moore_matching_suffixes(needle_str: str) -> [uint] {
         let slen = vec::len(suffix);
 
         // step to smaller prefixes
-        let pii = len - 1u;
+        let mut pii = len - 1u;
         while pii > 0u {
 
             // a prefix of the needle
