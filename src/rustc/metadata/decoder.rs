@@ -34,6 +34,7 @@ export get_iface_methods;
 export get_crate_module_paths;
 export get_item_path;
 export maybe_get_item_ast;
+export item_is_intrinsic;
 
 // Used internally by astencode:
 export translate_def_id;
@@ -270,6 +271,13 @@ fn get_impl_method(cdata: cmd, id: ast::node_id, name: str) -> ast::def_id {
         }
     }
     option::get(found)
+}
+
+fn item_is_intrinsic(cdata: cmd, id: ast::node_id) -> bool {
+    let intrinsic = false;
+    ebml::tagged_docs(lookup_item(id, cdata.data), tag_item_is_intrinsic,
+                      {|_i| intrinsic = true;});
+    intrinsic
 }
 
 fn get_symbol(data: @[u8], id: ast::node_id) -> str {

@@ -2136,21 +2136,44 @@ fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id)
     }
 }
 
-fn add_tydesc_params(ccx: crate_ctxt, llfty: TypeRef, n: uint) -> TypeRef {
-    let out_ty = llvm::LLVMGetReturnType(llfty);
-    let n_args = llvm::LLVMCountParamTypes(llfty);
-    let args = vec::init_elt(n_args as uint, 0 as TypeRef);
-    unsafe { llvm::LLVMGetParamTypes(llfty, vec::unsafe::to_ptr(args)); }
-    T_fn(vec::slice(args, 0u, first_real_arg) +
-         vec::init_elt(n, T_ptr(ccx.tydesc_type)) +
-         vec::tail_n(args, first_real_arg), out_ty)
+fn lval_intrinsic_fn(bcx: block, val: ValueRef, tys: [ty::t],
+                     id: ast::node_id) -> lval_maybe_callee {
+    fn add_tydesc_params(ccx: @crate_ctxt, llfty: TypeRef, n: uint)
+        -> TypeRef {
+        let out_ty = llvm::LLVMGetReturnType(llfty);
+        let n_args = llvm::LLVMCountParamTypes(llfty);
+        let args = vec::from_elem(n_args as uint, 0 as TypeRef);
+        unsafe { llvm::LLVMGetParamTypes(llfty, vec::unsafe::to_ptr(args)); }
+        T_fn(vec::slice(args, 0u, first_real_arg) +
+             vec::from_elem(n, T_ptr(ccx.tydesc_type)) +
+             vec::tailn(args, first_real_arg), out_ty)
+    }
+
+    let bcx = bcx, ccx = bcx.ccx();
+    let tds = vec::map(tys, {|t|
+        let ti = none, td_res = get_tydesc(bcx, t, ti);
+        bcx = td_res.bcx;
+        lazily_emit_all_tydesc_glue(ccx, ti);
+        td_res.val
+    });
+    let llfty = type_of_fn_from_ty(ccx, node_id_type(bcx, id));
+    let val = PointerCast(bcx, val, T_ptr(add_tydesc_params(
+        ccx, llfty, tys.len())));
+    {bcx: bcx, val: val, kind: owned, env: null_env, tds: some(tds)}
 }
 
-fn lval_static_fn(bcx: block, fn_id: ast::def_id, id: ast::node_id,
-                  substs: option<([ty::t], typeck::vtable_res)>)
+fn lval_static_fn(bcx: block, fn_id: ast::def_id, id: ast::node_id)
     -> lval_maybe_callee {
-    let bcx = bcx, ccx = bcx.ccx(), tcx = ccx.tcx;
-    let tys = node_id_type_params(bcx, id);
+    let vts = option::map(bcx.ccx().maps.vtable_map.find(id), {|vts|
+        impl::resolve_vtables_in_fn_ctxt(bcx.fcx, vts)
+    });
+    lval_static_fn_inner(bcx, fn_id, id, node_id_type_params(bcx, id), vts)
+}
+
+fn lval_static_fn_inner(bcx: block, fn_id: ast::def_id, id: ast::node_id,
+                        tys: [ty::t], vtables: option<typeck::vtable_res>)
+    -> lval_maybe_callee {
+    let ccx = bcx.ccx(), tcx = ccx.tcx;
     let tpt = ty::lookup_item_type(tcx, fn_id);
 
     // Check whether this fn has an inlined copy and, if so, redirect fn_id to
@@ -2159,32 +2182,15 @@ fn lval_static_fn(bcx: block, fn_id: ast::def_id, id: ast::node_id,
         maybe_instantiate_inline(ccx, fn_id)
     } else { fn_id };
 
-    if fn_id.crate == ast::local_crate {
-        let (tys, vtables) = alt substs {
-          some((tys, vts)) { (tys, some(vts)) }
-          none { (tys, option::map(ccx.maps.vtable_map.find(id), {|vts|
-                           impl::resolve_vtables_in_fn_ctxt(bcx.fcx, vts)})) }
-        };
-        if tys.len() > 0u {
-            let {val, must_cast, intrinsic} = monomorphic_fn(ccx, fn_id, tys,
-                                                             vtables);
-            let tds = none;
-            if intrinsic {
-                tds = some(vec::map(tys, {|t|
-                    let ti = none, td_res = get_tydesc(bcx, t, ti);
-                    bcx = td_res.bcx;
-                    lazily_emit_all_tydesc_glue(ccx, ti);
-                    td_res.val
-                }));
-                let llfty = type_of_fn_from_ty(ccx, node_id_type(bcx, id));
-                val = PointerCast(bcx, val, T_ptr(add_tydesc_params(
-                    ccx, llfty, tys.len())));
-            } else if must_cast {
-                val = PointerCast(bcx, val, T_ptr(type_of_fn_from_ty(
-                    ccx, node_id_type(bcx, id))));
-            }
-            ret {bcx: bcx, val: val, kind: owned, env: null_env, tds: tds};
+    if fn_id.crate == ast::local_crate && tys.len() > 0u {
+        let {val, must_cast, intrinsic} = monomorphic_fn(ccx, fn_id, tys,
+                                                         vtables);
+        if intrinsic { ret lval_intrinsic_fn(bcx, val, tys, id); }
+        if must_cast {
+            val = PointerCast(bcx, val, T_ptr(type_of_fn_from_ty(
+                ccx, node_id_type(bcx, id))));
         }
+        ret {bcx: bcx, val: val, kind: owned, env: null_env, tds: none};
     }
 
     let val = if fn_id.crate == ast::local_crate {
@@ -2197,6 +2203,9 @@ fn lval_static_fn(bcx: block, fn_id: ast::def_id, id: ast::node_id,
     if tys.len() > 0u {
         // This is supposed to be an external native function.
         // Unfortunately, I found no easy/cheap way to assert that.
+        if csearch::item_is_intrinsic(ccx.sess.cstore, fn_id) {
+            ret lval_intrinsic_fn(bcx, val, tys, id);
+        }
         val = PointerCast(bcx, val, T_ptr(type_of_fn_from_ty(
             ccx, node_id_type(bcx, id))));
     }
@@ -2287,12 +2296,12 @@ fn trans_var(cx: block, def: ast::def, id: ast::node_id, path: @ast::path)
     let ccx = cx.ccx();
     alt def {
       ast::def_fn(did, _) {
-        ret lval_static_fn(cx, did, id, none);
+        ret lval_static_fn(cx, did, id);
       }
       ast::def_variant(tid, vid) {
         if ty::enum_variant_with_id(ccx.tcx, tid, vid).args.len() > 0u {
             // N-ary variant.
-            ret lval_static_fn(cx, vid, id, none);
+            ret lval_static_fn(cx, vid, id);
         } else {
             // Nullary variant.
             let enum_ty = node_id_type(cx, id);
@@ -2766,7 +2775,7 @@ fn trans_call_inner(in_cx: block, fn_expr_ty: ty::t,
         let llargs = args_res.args;
         option::may(f_res.tds) {|vals|
             llargs = vec::slice(llargs, 0u, first_real_arg) + vals +
-                vec::tail_n(llargs, first_real_arg);
+                vec::tailn(llargs, first_real_arg);
         }
 
         let llretslot = args_res.retslot;

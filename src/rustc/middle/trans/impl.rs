@@ -48,7 +48,9 @@ fn trans_method_callee(bcx: block, callee_id: ast::node_id,
     -> lval_maybe_callee {
     alt origin {
       typeck::method_static(did) {
-        trans_static_callee(bcx, callee_id, self, did, none)
+        let {bcx, val} = trans_self_arg(bcx, self);
+        {env: self_env(val, node_id_type(bcx, self.id))
+         with lval_static_fn(bcx, did, callee_id)}
       }
       typeck::method_param(iid, off, p, b) {
         alt check bcx.fcx.param_substs {
@@ -62,16 +64,6 @@ fn trans_method_callee(bcx: block, callee_id: ast::node_id,
         trans_iface_callee(bcx, self, callee_id, off)
       }
     }
-}
-
-// Method callee where the method is statically known
-fn trans_static_callee(bcx: block, callee_id: ast::node_id,
-                       base: @ast::expr, did: ast::def_id,
-                       substs: option<([ty::t], typeck::vtable_res)>)
-    -> lval_maybe_callee {
-    let {bcx, val} = trans_self_arg(bcx, base);
-    {env: self_env(val, node_id_type(bcx, base.id))
-     with lval_static_fn(bcx, did, callee_id, substs)}
 }
 
 fn trans_vtable_callee(bcx: block, env: callee_env, vtable: ValueRef,
@@ -122,11 +114,13 @@ fn trans_monomorphized_callee(bcx: block, callee_id: ast::node_id,
         let node_substs = node_id_type_params(bcx, callee_id);
         let ty_substs = impl_substs +
             vec::tailn(node_substs, node_substs.len() - n_m_tps);
-        ret trans_static_callee(bcx, callee_id, base, mth_id,
-                                some((ty_substs, sub_origins)));
+        let {bcx, val} = trans_self_arg(bcx, base);
+        {env: self_env(val, node_id_type(bcx, base.id))
+         with lval_static_fn_inner(bcx, mth_id, callee_id, ty_substs,
+                                   some(sub_origins))}
       }
       typeck::vtable_iface(iid, tps) {
-        ret trans_iface_callee(bcx, base, callee_id, n_method);
+        trans_iface_callee(bcx, base, callee_id, n_method)
       }
       typeck::vtable_param(n_param, n_bound) {
         fail "vtable_param left in monomorphized function's vtable substs";

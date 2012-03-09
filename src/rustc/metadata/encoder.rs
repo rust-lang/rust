@@ -502,7 +502,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
 fn encode_info_for_native_item(ecx: @encode_ctxt, ebml_w: ebml::writer,
                                nitem: @native_item,
                                index: @mutable [entry<int>],
-                               path: ast_map::path) {
+                               path: ast_map::path, abi: native_abi) {
     if !ecx.reachable.contains_key(nitem.id) { ret; }
     *index += [{val: nitem.id, pos: ebml_w.writer.tell()}];
 
@@ -512,6 +512,10 @@ fn encode_info_for_native_item(ecx: @encode_ctxt, ebml_w: ebml::writer,
         encode_def_id(ebml_w, local_def(nitem.id));
         encode_family(ebml_w, purity_fn_family(fn_decl.purity));
         encode_type_param_bounds(ebml_w, ecx, tps);
+        if abi == native_abi_rust_intrinsic {
+            ebml_w.start_tag(tag_item_is_intrinsic);
+            ebml_w.end_tag();
+        }
         encode_type(ecx, ebml_w, node_id_to_type(ecx.ccx.tcx, nitem.id));
         encode_symbol(ecx, ebml_w, nitem.id);
         encode_path(ebml_w, path, ast_map::path_name(nitem.ident));
@@ -531,17 +535,19 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::writer,
         visit_expr: {|_e, _cx, _v|},
         visit_item: {|i, cx, v|
             visit::visit_item(i, cx, v);
-            let path = alt check ecx.ccx.tcx.items.get(i.id) {
-              ast_map::node_item(_, pt) { pt }
-            };
-            encode_info_for_item(ecx, ebml_w, i, index, *path);
+            alt check ecx.ccx.tcx.items.get(i.id) {
+              ast_map::node_item(_, pt) {
+                encode_info_for_item(ecx, ebml_w, i, index, *pt);
+              }
+            }
         },
         visit_native_item: {|ni, cx, v|
             visit::visit_native_item(ni, cx, v);
-            let path = alt check ecx.ccx.tcx.items.get(ni.id) {
-              ast_map::node_native_item(_, _, pt) { pt }
-            };
-            encode_info_for_native_item(ecx, ebml_w, ni, index, *path);
+            alt check ecx.ccx.tcx.items.get(ni.id) {
+              ast_map::node_native_item(_, abi, pt) {
+                encode_info_for_native_item(ecx, ebml_w, ni, index, *pt, abi);
+              }
+            }
         }
         with *visit::default_visitor()
     }));
