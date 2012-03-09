@@ -1102,24 +1102,25 @@ fn boyer_moore_search (haystack: str, needle: str,
 
     // generate the tables
     let ct = boyer_moore_unmatched_chars(needle);
-    let pt = boyer_moore_matching_suffixes(needle);
+    //let pt = boyer_moore_matching_suffixes(needle);
 
     // query both tables based on position
     // within the needle and character in haystack
     let getShift = fn@(pos: uint, ch: u8) -> uint {
         let matchedSoFar = nlen - 1u - pos;
         let rawCharShift = ct[ch as uint];
-        let prefShift    = pt[matchedSoFar];
+//        let prefShift    = pt[matchedSoFar];
 
         if rawCharShift >= matchedSoFar {
            let adjCharShift = rawCharShift - matchedSoFar;
 
-           if adjCharShift > prefShift {
+//           if adjCharShift > prefShift {
                ret adjCharShift;
-           }
+//           }
         }
 
-        ret prefShift;
+//        ret prefShift;
+        ret 1u;
     };
 
     // step up through the haystack
