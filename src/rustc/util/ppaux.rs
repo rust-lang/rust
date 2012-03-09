@@ -68,6 +68,13 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
             base
         }
     }
+    fn region_to_str(_cx: ctxt, r: region) -> str {
+        alt r {
+          re_named(_)   { "<name>."   }     // TODO: include name
+          re_caller(_)  { "<caller>." }
+          re_block(_)   { "<block>."  }     // TODO: include line number
+        }
+    }
 
     // if there is an id, print that instead of the structural type:
     alt ty::type_def_id(typ) {
@@ -101,6 +108,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
       ty_box(tm) { "@" + mt_to_str(cx, tm) }
       ty_uniq(tm) { "~" + mt_to_str(cx, tm) }
       ty_ptr(tm) { "*" + mt_to_str(cx, tm) }
+      ty_rptr(r, tm) { "&" + region_to_str(cx, r) + mt_to_str(cx, tm) }
       ty_vec(tm) { "[" + mt_to_str(cx, tm) + "]" }
       ty_type { "type" }
       ty_rec(elems) {
