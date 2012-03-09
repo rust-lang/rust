@@ -739,7 +739,7 @@ pure fn type_is_unique(ty: t) -> bool {
 pure fn type_is_scalar(ty: t) -> bool {
     alt get(ty).struct {
       ty_nil | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
-      ty_send_type | ty_type | ty_ptr(_) { true }
+      ty_send_type | ty_type | ty_ptr(_) | ty_rptr(_, _) { true }
       _ { false }
     }
 }
@@ -760,7 +760,7 @@ fn type_needs_drop(cx: ctxt, ty: t) -> bool {
     let result = alt get(ty).struct {
       // scalar types
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
-      ty_type | ty_ptr(_) { false }
+      ty_type | ty_ptr(_) | ty_rptr(_, _) { false }
       ty_rec(flds) {
         for f in flds { if type_needs_drop(cx, f.mt.ty) { accum = true; } }
         accum
@@ -852,6 +852,7 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
       // Those with refcounts-to-inner raise pinned to shared,
       // lower unique to shared. Therefore just set result to shared.
       ty_box(_) | ty_iface(_, _) | ty_opaque_box { kind_copyable }
+      ty_rptr(_, _) { kind_copyable }
       // Boxes and unique pointers raise pinned to shared.
       ty_vec(tm) | ty_uniq(tm) { type_kind(cx, tm.ty) }
       // Records lower to the lowest of their members.
@@ -1012,7 +1013,7 @@ fn type_is_pod(cx: ctxt, ty: t) -> bool {
       ty_send_type | ty_type | ty_ptr(_) { result = true; }
       // Boxed types
       ty_str | ty_box(_) | ty_uniq(_) | ty_vec(_) | ty_fn(_) |
-      ty_iface(_, _) | ty_opaque_box { result = false; }
+      ty_iface(_, _) | ty_rptr(_,_) | ty_opaque_box { result = false; }
       // Structural types
       ty_enum(did, tps) {
         let variants = enum_variants(cx, did);
