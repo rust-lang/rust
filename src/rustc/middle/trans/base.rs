@@ -2145,12 +2145,11 @@ fn lval_static_fn(bcx: block, fn_id: ast::def_id, id: ast::node_id,
     // The awkwardness below mostly stems from the fact that we're mixing
     // monomorphized and non-monomorphized functions at the moment. If
     // monomorphizing becomes the only approach, this'll be much simpler.
-    if (option::is_some(substs) || tys.len() > 0u) &&
-       fn_id.crate == ast::local_crate {
+    if fn_id.crate == ast::local_crate {
         let mono = alt substs {
           some((stys, vtables)) {
-            if (stys.len() + tys.len()) > 0u {
-                monomorphic_fn(ccx, fn_id, stys + tys, some(vtables))
+            if stys.len() > 0u {
+                monomorphic_fn(ccx, fn_id, stys, some(vtables))
             } else { none }
           }
           none {
@@ -2160,7 +2159,10 @@ fn lval_static_fn(bcx: block, fn_id: ast::def_id, id: ast::node_id,
                     bcx.fcx, vtables);
                 monomorphic_fn(ccx, fn_id, tys, some(rvtables))
               }
-              none { monomorphic_fn(ccx, fn_id, tys, none) }
+              none {
+                if tys.len() == 0u { none }
+                else { monomorphic_fn(ccx, fn_id, tys, none) }
+              }
             }
           }
         };

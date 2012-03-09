@@ -106,17 +106,31 @@ fn method_with_name(ccx: @crate_ctxt, impl_id: ast::def_id,
     }
 }
 
+fn method_ty_param_count(ccx: crate_ctxt, m_id: ast::def_id) -> uint {
+    if m_id.crate == ast::local_crate {
+        alt check ccx.tcx.items.get(m_id.node) {
+          ast_map::node_method(m, _, _) { vec::len(m.tps) }
+        }
+    } else {
+        csearch::get_type_param_count(ccx.sess.cstore, m_id)
+    }
+}
+
 fn trans_monomorphized_callee(bcx: block, callee_id: ast::node_id,
                               base: @ast::expr, iface_id: ast::def_id,
                               n_method: uint, n_param: uint, n_bound: uint,
                               substs: param_substs) -> lval_maybe_callee {
     alt find_vtable_in_fn_ctxt(substs, n_param, n_bound) {
-      typeck::vtable_static(impl_did, tys, sub_origins) {
-        let tcx = bcx.tcx();
-        let mname = ty::iface_methods(tcx, iface_id)[n_method].ident;
+      typeck::vtable_static(impl_did, impl_substs, sub_origins) {
+        let ccx = bcx.ccx();
+        let mname = ty::iface_methods(ccx.tcx, iface_id)[n_method].ident;
         let mth_id = method_with_name(bcx.ccx(), impl_did, mname);
+        let n_m_tps = method_ty_param_count(ccx, mth_id);
+        let node_substs = node_id_type_params(bcx, callee_id);
+        let ty_substs = impl_substs +
+            vec::tail_n(node_substs, node_substs.len() - n_m_tps);
         ret trans_static_callee(bcx, callee_id, base, mth_id,
-                                some((tys, sub_origins)));
+                                some((ty_substs, sub_origins)));
       }
       typeck::vtable_iface(iid, tps) {
         ret trans_iface_callee(bcx, base, callee_id, n_method);
@@ -155,11 +169,11 @@ fn find_vtable_in_fn_ctxt(ps: param_substs, n_param: uint, n_bound: uint)
     // Vtables are stored in a flat array, finding the right one is
     // somewhat awkward
     for bounds in *ps.bounds {
-        i += 1u;
         if i >= n_param { break; }
         for bound in *bounds {
             alt bound { ty::bound_iface(_) { vtable_off += 1u; } _ {} }
         }
+        i += 1u;
     }
     option::get(ps.vtables)[vtable_off]
 }
