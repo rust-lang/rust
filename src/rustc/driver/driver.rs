@@ -163,6 +163,8 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
     let mutbl_map =
         time(time_passes, "mutability checking",
              bind middle::mutbl::check_crate(ty_cx, crate));
+    time(time_passes, "region checking",
+         bind middle::regionck::check_crate(ty_cx, crate));
     let (copy_map, ref_map) =
         time(time_passes, "alias checking",
              bind middle::alias::check_crate(ty_cx, crate));
