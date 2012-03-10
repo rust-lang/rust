@@ -241,40 +241,11 @@ fn should_write_full_path_to_mod() {
 
 fn write_common(
     ctxt: ctxt,
-    brief: option<str>,
     desc: option<str>,
     sections: [doc::section]
 ) {
-    write_brief(ctxt, brief);
     write_desc(ctxt, desc);
     write_sections(ctxt, sections);
-}
-
-fn write_brief(
-    ctxt: ctxt,
-    brief: option<str>
-) {
-    alt brief {
-      some(brief) {
-        ctxt.w.write_line(brief);
-        ctxt.w.write_line("");
-      }
-      none { }
-    }
-}
-
-#[test]
-fn should_leave_blank_line_after_brief() {
-    let markdown = test::render("#[doc(brief = \"brief\")] fn a() { }");
-    assert str::contains(markdown, "brief\n\n");
-}
-
-#[test]
-fn should_leave_blank_line_between_brief_and_desc() {
-    let markdown = test::render(
-        "#[doc(brief = \"brief\", desc = \"desc\")] fn a() { }"
-    );
-    assert str::contains(markdown, "brief\n\ndesc");
 }
 
 fn write_desc(
@@ -316,7 +287,7 @@ fn write_mod_contents(
     ctxt: ctxt,
     doc: doc::moddoc
 ) {
-    write_common(ctxt, doc.brief(), doc.desc(), doc.sections());
+    write_common(ctxt, doc.desc(), doc.sections());
     if option::is_some(doc.index) {
         write_index(ctxt, option::get(doc.index));
     }
@@ -338,12 +309,6 @@ fn write_item(ctxt: ctxt, doc: doc::itemtag) {
       doc::impltag(impldoc) { write_impl(ctxt, impldoc) }
       doc::tytag(tydoc) { write_type(ctxt, tydoc) }
     }
-}
-
-#[test]
-fn should_write_crate_brief_description() {
-    let markdown = test::render("#[doc(brief = \"this is the crate\")];");
-    assert str::contains(markdown, "this is the crate");
 }
 
 #[test]
@@ -394,7 +359,7 @@ fn should_not_write_index_if_no_entries() {
 
 fn write_nmod(ctxt: ctxt, doc: doc::nmoddoc) {
     write_header(ctxt, h1, doc::nmodtag(doc));
-    write_common(ctxt, doc.brief(), doc.desc(), doc.sections());
+    write_common(ctxt, doc.desc(), doc.sections());
 
     for fndoc in doc.fns {
         write_fn(ctxt, fndoc);
@@ -422,7 +387,6 @@ fn write_fn(
     write_fnlike(
         ctxt,
         doc.sig,
-        doc.brief(),
         doc.desc(),
         doc.sections()
     );
@@ -431,12 +395,11 @@ fn write_fn(
 fn write_fnlike(
     ctxt: ctxt,
     sig: option<str>,
-    brief: option<str>,
     desc: option<str>,
     sections: [doc::section]
 ) {
     write_sig(ctxt, sig);
-    write_common(ctxt, brief, desc, sections);
+    write_common(ctxt, desc, sections);
 }
 
 fn write_sig(ctxt: ctxt, sig: option<str>) {
@@ -496,7 +459,7 @@ fn should_correctly_indent_fn_signature() {
 
 #[test]
 fn should_leave_blank_line_between_fn_header_and_sig() {
-    let markdown = test::render("#[doc(brief = \"brief\")] fn a() { }");
+    let markdown = test::render("fn a() { }");
     assert str::contains(markdown, "Function `a`\n\n    fn a()");
 }
 
@@ -506,7 +469,7 @@ fn write_const(
 ) {
     write_header(ctxt, h2, doc::consttag(doc));
     write_sig(ctxt, doc.sig);
-    write_common(ctxt, doc.brief(), doc.desc(), doc.sections());
+    write_common(ctxt, doc.desc(), doc.sections());
 }
 
 #[test]
@@ -518,9 +481,9 @@ fn should_write_const_header() {
 #[test]
 fn should_write_const_description() {
     let markdown = test::render(
-        "#[doc(brief = \"a\", desc = \"b\")]\
+        "#[doc = \"b\"]\
          const a: bool = true;");
-    assert str::contains(markdown, "\n\na\n\nb\n\n");
+    assert str::contains(markdown, "\n\nb\n\n");
 }
 
 fn write_enum(
@@ -528,7 +491,7 @@ fn write_enum(
     doc: doc::enumdoc
 ) {
     write_header(ctxt, h2, doc::enumtag(doc));
-    write_common(ctxt, doc.brief(), doc.desc(), doc.sections());
+    write_common(ctxt, doc.desc(), doc.sections());
     write_variants(ctxt, doc.variants);
 }
 
@@ -541,8 +504,8 @@ fn should_write_enum_header() {
 #[test]
 fn should_write_enum_description() {
     let markdown = test::render(
-        "#[doc(brief = \"a\", desc = \"b\")] enum a { b }");
-    assert str::contains(markdown, "\n\na\n\nb\n\n");
+        "#[doc = \"b\"] enum a { b }");
+    assert str::contains(markdown, "\n\nb\n\n");
 }
 
 fn write_variants(
@@ -610,7 +573,7 @@ fn should_write_variant_list_with_signatures() {
 fn write_res(ctxt: ctxt, doc: doc::resdoc) {
     write_header(ctxt, h2, doc::restag(doc));
     write_sig(ctxt, doc.sig);
-    write_common(ctxt, doc.brief(), doc.desc(), doc.sections());
+    write_common(ctxt, doc.desc(), doc.sections());
 }
 
 #[test]
@@ -627,7 +590,7 @@ fn should_write_resource_signature() {
 
 fn write_iface(ctxt: ctxt, doc: doc::ifacedoc) {
     write_header(ctxt, h2, doc::ifacetag(doc));
-    write_common(ctxt, doc.brief(), doc.desc(), doc.sections());
+    write_common(ctxt, doc.desc(), doc.sections());
     write_methods(ctxt, doc.methods);
 }
 
@@ -640,7 +603,6 @@ fn write_method(ctxt: ctxt, doc: doc::methoddoc) {
     write_fnlike(
         ctxt,
         doc.sig,
-        doc.brief,
         doc.desc,
         doc.sections
     );
@@ -650,13 +612,6 @@ fn write_method(ctxt: ctxt, doc: doc::methoddoc) {
 fn should_write_iface_header() {
     let markdown = test::render("iface i { fn a(); }");
     assert str::contains(markdown, "## Interface `i`");
-}
-
-#[test]
-fn should_write_iface_brief() {
-    let markdown = test::render(
-        "#[doc(brief = \"brief\")] iface i { fn a(); }");
-    assert str::contains(markdown, "brief");
 }
 
 #[test]
@@ -682,7 +637,7 @@ fn should_write_iface_method_signature() {
 
 fn write_impl(ctxt: ctxt, doc: doc::impldoc) {
     write_header(ctxt, h2, doc::impltag(doc));
-    write_common(ctxt, doc.brief(), doc.desc(), doc.sections());
+    write_common(ctxt, doc.desc(), doc.sections());
     write_methods(ctxt, doc.methods);
 }
 
@@ -696,13 +651,6 @@ fn should_write_impl_header() {
 fn should_write_impl_header_with_iface() {
     let markdown = test::render("impl i of j for int { fn a() { } }");
     assert str::contains(markdown, "## Implementation `i of j for int`");
-}
-
-#[test]
-fn should_write_impl_brief() {
-    let markdown = test::render(
-        "#[doc(brief = \"brief\")] impl i for int { fn a() { } }");
-    assert str::contains(markdown, "brief");
 }
 
 #[test]
@@ -732,20 +680,13 @@ fn write_type(
 ) {
     write_header(ctxt, h2, doc::tytag(doc));
     write_sig(ctxt, doc.sig);
-    write_common(ctxt, doc.brief(), doc.desc(), doc.sections());
+    write_common(ctxt, doc.desc(), doc.sections());
 }
 
 #[test]
 fn should_write_type_header() {
     let markdown = test::render("type t = int;");
     assert str::contains(markdown, "## Type `t`");
-}
-
-#[test]
-fn should_write_type_brief() {
-    let markdown = test::render(
-        "#[doc(brief = \"brief\")] type t = int;");
-    assert str::contains(markdown, "\n\nbrief\n\n");
 }
 
 #[test]
