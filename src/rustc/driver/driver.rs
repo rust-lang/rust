@@ -140,7 +140,10 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
     let freevars =
         time(time_passes, "freevar finding",
              bind freevars::annotate_freevars(def_map, crate));
-    let ty_cx = ty::mk_ctxt(sess, def_map, ast_map, freevars);
+    let region_map =
+        time(time_passes, "region resolution",
+             bind middle::region::resolve_crate(sess, crate));
+    let ty_cx = ty::mk_ctxt(sess, def_map, ast_map, freevars, region_map);
     let (method_map, dict_map) =
         time(time_passes, "typechecking",
              bind typeck::check_crate(ty_cx, impl_map, crate));

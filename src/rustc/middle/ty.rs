@@ -167,6 +167,7 @@ type ctxt =
       mutable next_id: uint,
       sess: session::session,
       def_map: resolve::def_map,
+      region_map: @middle::region::region_map,
       node_types: node_type_table,
       node_type_substs: hashmap<node_id, [t]>,
       items: ast_map::map,
@@ -327,7 +328,8 @@ fn new_ty_hash<V: copy>() -> map::hashmap<t, V> {
 }
 
 fn mk_ctxt(s: session::session, dm: resolve::def_map, amap: ast_map::map,
-           freevars: freevars::freevar_map) -> ctxt {
+           freevars: freevars::freevar_map,
+           region_map: @middle::region::region_map) -> ctxt {
     let interner = map::mk_hashmap({|&&k: intern_key|
         hash_type_structure(k.struct) +
             option::maybe(0u, k.o_def_id, ast_util::hash_def_id)
@@ -336,6 +338,7 @@ fn mk_ctxt(s: session::session, dm: resolve::def_map, amap: ast_map::map,
       mutable next_id: 0u,
       sess: s,
       def_map: dm,
+      region_map: region_map,
       node_types: @smallintmap::mk(),
       node_type_substs: map::new_int_hash(),
       items: amap,

@@ -44,6 +44,7 @@ mod middle {
     mod freevars;
     mod capture;
     mod pat_util;
+    mod region;
 
     mod tstate {
         mod ck;
