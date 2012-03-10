@@ -1,4 +1,13 @@
-#[doc = "Misc low level stuff"]
+#[doc = "Misc low level stuff"];
+
+export type_desc;
+export get_type_desc;
+export last_os_error;
+export size_of;
+export align_of;
+export refcount;
+export log_str;
+export set_exit_status;
 
 enum type_desc = {
     first_param: **ctypes::c_int,

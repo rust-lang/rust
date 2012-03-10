@@ -1,4 +1,13 @@
-#[doc = "Unsafe pointer utility functions"]
+#[doc = "Unsafe pointer utility functions"];
+
+export addr_of;
+export mut_addr_of;
+export offset;
+export mut_offset;
+export null;
+export memcpy;
+export memmove;
+
 
 #[abi = "rust-intrinsic"]
 native mod rusti {

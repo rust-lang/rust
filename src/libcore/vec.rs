@@ -2,6 +2,77 @@ import option::{some, none};
 import uint::next_power_of_two;
 import ptr::addr_of;
 
+export init_op;
+export is_empty;
+export is_not_empty;
+export same_length;
+export reserve;
+export len;
+export init_fn;
+export init_elt;
+export to_mut;
+export from_mut;
+export head;
+export tail;
+export tail_n;
+export init;
+export last;
+export last_opt;
+export slice;
+export split;
+export splitn;
+export rsplit;
+export rsplitn;
+export shift;
+export pop;
+export push;
+export grow;
+export grow_fn;
+export grow_set;
+export map;
+export map2;
+export filter_map;
+export filter;
+export concat;
+export connect;
+export foldl;
+export foldr;
+export any;
+export any2;
+export all;
+export all2;
+export contains;
+export count;
+export find;
+export find_from;
+export rfind;
+export rfind_from;
+export position_elt;
+export position;
+export position_from;
+export position_elt;
+export rposition;
+export rposition_from;
+export unzip;
+export zip;
+export swap;
+export reverse;
+export reversed;
+export enum_chars;
+export enum_uints;
+export iter;
+export iter2;
+export iteri;
+export riter;
+export riteri;
+export permute;
+export windowed;
+export as_buf;
+export as_mut_buf;
+export vec_len;
+export unsafe;
+export u8;
+
 #[abi = "rust-intrinsic"]
 native mod rusti {
     fn vec_len<T>(&&v: [const T]) -> ctypes::size_t;
@@ -808,6 +879,7 @@ impl vec_len<T> for [T] {
 }
 
 mod unsafe {
+    // FIXME: This should have crate visibility
     type vec_repr = {mutable fill: uint, mutable alloc: uint, data: u8};
 
     #[doc = "
