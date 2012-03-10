@@ -869,9 +869,7 @@ fn permute<T: copy>(v: [T], put: fn([T])) {
   }
 }
 
-// Function: windowed
-//
-// Return all sub-vectors of size `nn`
+#[doc = "Return all sub-vectors of size `nn`"]
 fn windowed <TT: copy> (nn: uint, xx: [const TT]) -> [[TT]] {
    let mut ww = [];
 

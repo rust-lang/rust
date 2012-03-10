@@ -1006,27 +1006,28 @@ fn find_str_between(haystack: str, needle: str, start: uint, end:uint)
     }
 }
 
-// Function: findn_str
-//
-// Returns up to `nn` byte positions of matched substrings
+#[doc = "Returns up to `nn` byte positions of matched substrings"]
 fn findn_str(haystack: str, needle: str, nn: uint) -> [uint] {
     findn_str_between(haystack, needle, nn, 0u, str::len(haystack))
 }
 
-// Function: findn_str_between
-//
-// Returns up to `nn` byte positions of matched substrings
-// between `start` and `end`
+#[doc = "
+Returns up to `nn` byte positions of matched substrings
+between `start` and `end`
+"]
 fn findn_str_between (haystack: str, needle: str,
                       nn: uint,
                       start: uint, end: uint) -> [uint] {
 
     boyer_moore_search(haystack, needle, nn, start, end)
+    //simple_search(haystack, needle, nn, start, end)
 }
 
-// Returns up to `nn` byte positions of matched substrings
-// between `start` and `end`
-// (using a naive search algorithm)
+#[doc = "
+Returns up to `nn` byte positions of matched substrings
+between `start` and `end`
+(using a naive search algorithm)
+"]
 fn simple_search (haystack: str, needle: str,
                       nn: uint,
                       start: uint, end: uint) -> [uint] {
@@ -1076,9 +1077,11 @@ fn simple_search (haystack: str, needle: str,
     ret results;
 }
 
-// Returns up to `nn` byte positions of matched substrings
-// between `start` and `end`
-// (using Boyer-Moore)
+#[doc = "
+Returns up to `nn` byte positions of matched substrings
+between `start` and `end`
+(using Boyer-Moore)
+"]
 fn boyer_moore_search (haystack: str, needle: str,
                       nn: uint,
                       start: uint, end: uint) -> [uint] {
@@ -1102,25 +1105,24 @@ fn boyer_moore_search (haystack: str, needle: str,
 
     // generate the tables
     let ct = boyer_moore_unmatched_chars(needle);
-    //let pt = boyer_moore_matching_suffixes(needle);
+    let pt = boyer_moore_matching_suffixes(needle);
 
     // query both tables based on position
     // within the needle and character in haystack
     let getShift = fn@(pos: uint, ch: u8) -> uint {
         let matchedSoFar = nlen - 1u - pos;
         let rawCharShift = ct[ch as uint];
-//        let prefShift    = pt[matchedSoFar];
+        let prefShift    = pt[matchedSoFar];
 
         if rawCharShift >= matchedSoFar {
            let adjCharShift = rawCharShift - matchedSoFar;
 
-//           if adjCharShift > prefShift {
+           if adjCharShift > prefShift {
                ret adjCharShift;
-//           }
+           }
         }
 
-//        ret prefShift;
-        ret 1u;
+        ret prefShift;
     };
 
     // step up through the haystack
@@ -1166,7 +1168,7 @@ fn boyer_moore_search (haystack: str, needle: str,
 // (a.k.a. the bad-character table)
 fn boyer_moore_unmatched_chars(needle: str) -> [uint] {
     let len = str::len(needle);
-    let mm  = vec::to_mut(vec::init_elt(255u, len));
+    let mm  = vec::to_mut(vec::from_elem(255u, len));
 
     assert 0u < len;
     let mut jj = len - 1u; // drop the last byte
@@ -1196,69 +1198,86 @@ fn boyer_moore_matching_suffixes(needle_str: str) -> [uint] {
     let len = vec::len(needle);
 
     // initialize len chars to len
-    let mm = vec::to_mut(vec::init_elt(len, len));
+    let mm = vec::to_mut(vec::from_elem(len, len));
 
-    let range_ends_with = fn@(vvv0: uint, vvv1: uint,
-                             vv0:  uint, vv1:  uint) -> bool {
-        // needle: [u8]
-
-        let shortLen = vv1 - vv0;
-
-        let mut iii = vvv1 - shortLen;
-        let mut ii = vv0;
-
-        while ii < vv1 {
-            if needle[ii] != needle[iii] { ret false; }
+    // is the suffix from here a prefix of the needle?
+    let is_prefix = fn@(pos: uint) -> bool {
+        let suffixlen = len - pos;
+        let mut ii = 0u;
+        while ii < suffixlen {
+            if needle[ii] != needle[pos + ii] { ret false; }
             ii += 1u;
-            iii += 1u;
         }
-
         ret true;
     };
 
-    // step to larger suffixes
-    let mut sii = 0u;
-    while sii < len {
+    // if this is the end of a suffix of the word, how long is it?
+    let longest_suffix = fn@(pos: uint) -> uint {
+        let mut jj = 0u;
 
-        // tail of the needle we seek
-        //let suffix      = vec::slice(needle, len - sii,      len);
-        //let suffix_plus = vec::slice(needle, len - sii - 1u, len);
+        // count up while matching larger suffixes with this prefix
+        while needle[pos - jj] == needle[len - 1u - jj]
+              && jj < pos
+        {
+            jj += 1u;
 
-        // step to smaller prefixes
-        let mut pii = len;
-        while 0u < pii {
-            pii -= 1u;
-
-            // a prefix of the needle
-            //let prefix = vec::slice(needle, 0u, pii); // 0 -> pii
-
-            // if suffix fully matched, or
-            // prefix is bigger than suffix: only tail matched
-            // (which we might jump to)
-            if
-                (pii <= sii
-                 && range_ends_with(len-sii, len, 0u, pii))
-            ||
-                (sii < pii
-                 && range_ends_with(0u, pii, len-sii, len)
-                 && needle[pii - sii -1u] != needle[len-sii - 1u])
-            {
-                // if we haven't set it yet, set it now
-                // (besides default)
-                if mm[sii] == len {
-                    mm[sii] = len-pii;
-                }
-            }
+            assert pos    >= jj;
+            assert len-1u >= jj;
         }
 
-        // if it hasn't been set, there was no matching prefix,
-        // so set it now
-        if mm[sii] == len {
-            mm[sii] = len-pii;
+        ret jj;
+    };
+
+
+    // step to smaller prefixes
+    // for the case where each suffix could contain a prefix of the needle
+    // i.e., suffix ends with prefix?
+    let mut pii = len;
+    let mut last_prefix_index = len - 1u;
+    while 0u < pii {
+        pii -= 1u;
+
+        // FIXME: possible +1 issue
+
+        // find if each possible suffix is a prefix
+        if is_prefix(pii + 1u) { last_prefix_index = pii + 1u; };
+        ////log(error, "pref idx ->");
+        ////log(error, last_prefix_index);
+
+        ////log(error, "prefix(pii..len):");
+        ////log(error, str::from_bytes(vec::slice(needle, pii, len)));
+        //mm[pii] = last_prefix_index + len - 1u - pii;
+        mm[len - 1u - pii] = last_prefix_index;
+    }
+
+
+    ////log(error, mm);
+
+    // step to larger suffixes
+    // for the case where each suffix could be part of the needle
+    // i.e., prefix ends with suffix?
+    let mut sii = 0u;
+    while sii < len {
+        let slen = longest_suffix(sii);
+        assert sii >= slen;
+
+        if needle[sii - slen] != needle[len - 1u - slen] {
+            ////log(error, "suffix(len-1-slen)");
+            ////log(error, str::from_bytes(vec::slice(needle,len-slen, len)));
+
+            ////log(error, "sii:");
+            ////log(error, sii);
+
+            ////log(error, "slen:");
+            ////log(error, slen);
+
+            mm[slen] = len - 1u - sii;
         }
 
         sii += 1u;
     }
+
+    ////log(error, mm);
 
     ret vec::from_mut(mm);
 }
