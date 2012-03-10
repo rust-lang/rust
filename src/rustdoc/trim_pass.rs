@@ -40,24 +40,6 @@ fn should_trim_fn() {
     assert doc.cratemod().fns()[0].desc() == some("desc");
 }
 
-#[test]
-fn should_trim_args() {
-    let doc = test::mk_doc("#[doc(args(a = \"\na\n\"))] fn a(a: int) { }");
-    assert doc.cratemod().fns()[0].args[0].desc == some("a");
-}
-
-#[test]
-fn should_trim_ret() {
-    let doc = test::mk_doc("#[doc(return = \"\na\n\")] fn a() -> int { }");
-    assert doc.cratemod().fns()[0].return.desc == some("a");
-}
-
-#[test]
-fn should_trim_failure_conditions() {
-    let doc = test::mk_doc("#[doc(failure = \"\na\n\")] fn a() -> int { }");
-    assert doc.cratemod().fns()[0].failure == some("a");
-}
-
 #[cfg(test)]
 mod test {
     fn mk_doc(source: str) -> doc::doc {

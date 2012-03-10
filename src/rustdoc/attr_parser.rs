@@ -9,10 +9,8 @@ import rustc::syntax::ast;
 import rustc::front::attr;
 import core::tuple;
 
-export crate_attrs, basic_attrs, fn_attrs, arg_attrs,
-       variant_attrs, res_attrs, method_attrs;
-export parse_crate, parse_basic, parse_fn,
-       parse_variant, parse_res, parse_method;
+export crate_attrs, basic_attrs, variant_attrs;
+export parse_crate, parse_basic, parse_variant;
 export parse_hidden;
 
 type crate_attrs = {
@@ -24,26 +22,9 @@ type basic_attrs = {
     desc: option<str>
 };
 
-type fn_attrs = {
-    args: [arg_attrs],
-    return: option<str>,
-    failure: option<str>
-};
-
-type arg_attrs = {
-    name: str,
-    desc: str
-};
-
 type variant_attrs = {
     desc: option<str>
 };
-
-type res_attrs = {
-    args: [arg_attrs]
-};
-
-type method_attrs = fn_attrs;
 
 #[cfg(test)]
 mod test {
@@ -231,72 +212,6 @@ fn parse_long_doc<T>(
     }
 }
 
-fn parse_fn(attrs: [ast::attribute]) -> fn_attrs {
-    parse_long_doc(attrs, parse_fn_long_doc)
-}
-
-fn parse_fn_long_doc(items: [@ast::meta_item]) -> fn_attrs {
-    let return = attr::meta_item_value_from_list(items, "return");
-    let failure = attr::meta_item_value_from_list(items, "failure");
-    let args = parse_args(items);
-
-    {
-        args: args,
-        return: return,
-        failure: failure
-    }
-}
-
-fn parse_args(items: [@ast::meta_item]) -> [arg_attrs] {
-    alt attr::meta_item_list_from_list(items, "args") {
-      some(items) {
-        vec::filter_map(items) {|item|
-            option::map(attr::name_value_str_pair(item)) { |pair|
-                {
-                    name: tuple::first(pair),
-                    desc: tuple::second(pair)
-                }
-            }
-        }
-      }
-      none { [] }
-    }
-}
-
-#[test]
-fn parse_fn_should_handle_undocumented_functions() {
-    let source = "";
-    let attrs = test::parse_attributes(source);
-    let attrs = parse_fn(attrs);
-    assert attrs.return == none;
-    assert vec::len(attrs.args) == 0u;
-}
-
-#[test]
-fn parse_fn_should_parse_the_return_value_description() {
-    let source = "#[doc(return = \"return value\")]";
-    let attrs = test::parse_attributes(source);
-    let attrs = parse_fn(attrs);
-    assert attrs.return == some("return value");
-}
-
-#[test]
-fn parse_fn_should_parse_the_argument_descriptions() {
-    let source = "#[doc(args(a = \"arg a\", b = \"arg b\"))]";
-    let attrs = test::parse_attributes(source);
-    let attrs = parse_fn(attrs);
-    assert attrs.args[0] == {name: "a", desc: "arg a"};
-    assert attrs.args[1] == {name: "b", desc: "arg b"};
-}
-
-#[test]
-fn parse_fn_should_parse_failure_conditions() {
-    let source = "#[doc(failure = \"it's the fail\")]";
-    let attrs = test::parse_attributes(source);
-    let attrs = parse_fn(attrs);
-    assert attrs.failure == some("it's the fail");
-}
-
 fn parse_variant(attrs: [ast::attribute]) -> variant_attrs {
     parse_short_doc_or(
         attrs,
@@ -340,29 +255,6 @@ fn should_parse_variant_long_doc() {
     let attrs = test::parse_attributes(source);
     let attrs = parse_variant(attrs);
     assert attrs.desc == some("a");
-}
-
-fn parse_res(attrs: [ast::attribute]) -> res_attrs {
-    parse_long_doc(attrs, parse_res_long_doc)
-}
-
-fn parse_res_long_doc(items: [@ast::meta_item]) -> res_attrs {
-    {
-        args: parse_args(items)
-    }
-}
-
-#[test]
-fn shoulde_parse_resource_arg() {
-    let source = "#[doc(args(a = \"b\"))]";
-    let attrs = test::parse_attributes(source);
-    let attrs = parse_res(attrs);
-    assert attrs.args[0].name == "a";
-    assert attrs.args[0].desc == "b";
-}
-
-fn parse_method(attrs: [ast::attribute]) -> method_attrs {
-    parse_fn(attrs)
 }
 
 fn parse_hidden(attrs: [ast::attribute]) -> bool {

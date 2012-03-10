@@ -81,7 +81,7 @@ fn fold_const(
     let srv = fold.ctxt;
 
     {
-        ty: some(astsrv::exec(srv) {|ctxt|
+        sig: some(astsrv::exec(srv) {|ctxt|
             alt check ctxt.ast_map.get(doc.id()) {
               ast_map::node_item(@{
                 node: ast::item_const(ty, _), _
@@ -97,7 +97,7 @@ fn fold_const(
 #[test]
 fn should_add_const_types() {
     let doc = test::mk_doc("const a: bool = true;");
-    assert doc.cratemod().consts()[0].ty == some("bool");
+    assert doc.cratemod().consts()[0].sig == some("bool");
 }
 
 fn fold_enum(
