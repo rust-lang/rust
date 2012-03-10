@@ -98,13 +98,13 @@ fn fold_impl(fold: fold::fold<op>, doc: doc::impldoc) -> doc::impldoc {
 
 #[test]
 fn should_execute_op_on_enum_brief() {
-    let doc = test::mk_doc("#[doc(brief = \" a \")] enum a { b }");
+    let doc = test::mk_doc("#[doc = \" a \"] enum a { b }");
     assert doc.cratemod().enums()[0].brief() == some("a");
 }
 
 #[test]
 fn should_execute_op_on_enum_desc() {
-    let doc = test::mk_doc("#[doc(desc = \" a \")] enum a { b }");
+    let doc = test::mk_doc("#[doc = \" a \"] enum a { b }");
     assert doc.cratemod().enums()[0].desc() == some("a");
 }
 
@@ -116,83 +116,83 @@ fn should_execute_op_on_variant_desc() {
 
 #[test]
 fn should_execute_op_on_resource_brief() {
-    let doc = test::mk_doc("#[doc(brief = \" a \")] resource r(a: bool) { }");
+    let doc = test::mk_doc("#[doc = \" a \"] resource r(a: bool) { }");
     assert doc.cratemod().resources()[0].brief() == some("a");
 }
 
 #[test]
 fn should_execute_op_on_resource_desc() {
-    let doc = test::mk_doc("#[doc(desc = \" a \")] resource r(a: bool) { }");
+    let doc = test::mk_doc("#[doc = \" a \"] resource r(a: bool) { }");
     assert doc.cratemod().resources()[0].desc() == some("a");
 }
 
 #[test]
 fn should_execute_op_on_iface_brief() {
     let doc = test::mk_doc(
-        "#[doc(brief = \" a \")] iface i { fn a(); }");
+        "#[doc = \" a \"] iface i { fn a(); }");
     assert doc.cratemod().ifaces()[0].brief() == some("a");
 }
 
 #[test]
 fn should_execute_op_on_iface_desc() {
     let doc = test::mk_doc(
-        "#[doc(desc = \" a \")] iface i { fn a(); }");
+        "#[doc = \" a \"] iface i { fn a(); }");
     assert doc.cratemod().ifaces()[0].desc() == some("a");
 }
 
 #[test]
 fn should_execute_op_on_iface_method_brief() {
     let doc = test::mk_doc(
-        "iface i { #[doc(brief = \" a \")] fn a(); }");
+        "iface i { #[doc = \" a \"] fn a(); }");
     assert doc.cratemod().ifaces()[0].methods[0].brief == some("a");
 }
 
 #[test]
 fn should_execute_op_on_iface_method_desc() {
     let doc = test::mk_doc(
-        "iface i { #[doc(desc = \" a \")] fn a(); }");
+        "iface i { #[doc = \" a \"] fn a(); }");
     assert doc.cratemod().ifaces()[0].methods[0].desc == some("a");
 }
 
 #[test]
 fn should_execute_op_on_impl_brief() {
     let doc = test::mk_doc(
-        "#[doc(brief = \" a \")] impl i for int { fn a() { } }");
+        "#[doc = \" a \"] impl i for int { fn a() { } }");
     assert doc.cratemod().impls()[0].brief() == some("a");
 }
 
 #[test]
 fn should_execute_op_on_impl_desc() {
     let doc = test::mk_doc(
-        "#[doc(desc = \" a \")] impl i for int { fn a() { } }");
+        "#[doc = \" a \"] impl i for int { fn a() { } }");
     assert doc.cratemod().impls()[0].desc() == some("a");
 }
 
 #[test]
 fn should_execute_op_on_impl_method_brief() {
     let doc = test::mk_doc(
-        "impl i for int { #[doc(brief = \" a \")] fn a() { } }");
+        "impl i for int { #[doc = \" a \"] fn a() { } }");
     assert doc.cratemod().impls()[0].methods[0].brief == some("a");
 }
 
 #[test]
 fn should_execute_op_on_impl_method_desc() {
     let doc = test::mk_doc(
-        "impl i for int { #[doc(desc = \" a \")] fn a() { } }");
+        "impl i for int { #[doc = \" a \"] fn a() { } }");
     assert doc.cratemod().impls()[0].methods[0].desc == some("a");
 }
 
 #[test]
 fn should_execute_op_on_type_brief() {
     let doc = test::mk_doc(
-        "#[doc(brief = \" a \")] type t = int;");
+        "#[doc = \" a \"] type t = int;");
     assert doc.cratemod().types()[0].brief() == some("a");
 }
 
 #[test]
 fn should_execute_op_on_type_desc() {
     let doc = test::mk_doc(
-        "#[doc(desc = \" a \")] type t = int;");
+        "#[doc = \" a \"] type t = int;");
     assert doc.cratemod().types()[0].desc() == some("a");
 }
 
@@ -268,6 +268,7 @@ mod test {
         astsrv::from_str(source) {|srv|
             let doc = extract::from_srv(srv, "");
             let doc = attr_pass::mk_pass().f(srv, doc);
+            let doc = desc_to_brief_pass::mk_pass().f(srv, doc);
             let doc = sectionalize_pass::mk_pass().f(srv, doc);
             mk_pass("", {|s| str::trim(s)}).f(srv, doc)
         }

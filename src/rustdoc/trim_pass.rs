@@ -14,30 +14,10 @@ fn mk_pass() -> pass {
 }
 
 #[test]
-fn should_trim_mod() {
-    let doc = test::mk_doc("#[doc(brief = \"\nbrief\n\", \
-                            desc = \"\ndesc\n\")] \
+fn should_trim_text() {
+    let doc = test::mk_doc("#[doc = \" desc \"] \
                             mod m { }");
-    assert doc.cratemod().mods()[0].brief() == some("brief");
     assert doc.cratemod().mods()[0].desc() == some("desc");
-}
-
-#[test]
-fn should_trim_const() {
-    let doc = test::mk_doc("#[doc(brief = \"\nbrief\n\", \
-                            desc = \"\ndesc\n\")] \
-                            const a: bool = true;");
-    assert doc.cratemod().consts()[0].brief() == some("brief");
-    assert doc.cratemod().consts()[0].desc() == some("desc");
-}
-
-#[test]
-fn should_trim_fn() {
-    let doc = test::mk_doc("#[doc(brief = \"\nbrief\n\", \
-                            desc = \"\ndesc\n\")] \
-                            fn a() { }");
-    assert doc.cratemod().fns()[0].brief() == some("brief");
-    assert doc.cratemod().fns()[0].desc() == some("desc");
 }
 
 #[cfg(test)]

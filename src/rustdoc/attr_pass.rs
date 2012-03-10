@@ -72,18 +72,17 @@ fn fold_item(
     let srv = fold.ctxt;
     let doc = fold::default_seq_fold_item(fold, doc);
 
-    let attrs = if doc.id == ast::crate_node_id {
+    let desc = if doc.id == ast::crate_node_id {
         // This is the top-level mod, use the crate attributes
         astsrv::exec(srv) {|ctxt|
-            attr_parser::parse_basic(ctxt.ast.node.attrs)
+            attr_parser::parse_desc(ctxt.ast.node.attrs)
         }
     } else {
-        parse_item_attrs(srv, doc.id, attr_parser::parse_basic)
+        parse_item_attrs(srv, doc.id, attr_parser::parse_desc)
     };
 
     {
-        brief: attrs.brief,
-        desc: attrs.desc
+        desc: desc
         with doc
     }
 }
@@ -134,14 +133,6 @@ fn should_extract_fn_attributes() {
     assert doc.cratemod().fns()[0].desc() == some("test");
 }
 
-#[test]
-fn should_extract_const_docs() {
-    let doc = test::mk_doc("#[doc(brief = \"foo\", desc = \"bar\")]\
-                            const a: bool = true;");
-    assert doc.cratemod().consts()[0].brief() == some("foo");
-    assert doc.cratemod().consts()[0].desc() == some("bar");
-}
-
 fn fold_enum(
     fold: fold::fold<astsrv::srv>,
     doc: doc::enumdoc
@@ -153,7 +144,7 @@ fn fold_enum(
 
     {
         variants: par::anymap(doc.variants) {|variant|
-            let attrs = astsrv::exec(srv) {|ctxt|
+            let desc = astsrv::exec(srv) {|ctxt|
                 alt check ctxt.ast_map.get(doc_id) {
                   ast_map::node_item(@{
                     node: ast::item_enum(ast_variants, _), _
@@ -163,13 +154,13 @@ fn fold_enum(
                             v.node.name == variant.name
                         });
 
-                    attr_parser::parse_variant(ast_variant.node.attrs)
+                    attr_parser::parse_desc(ast_variant.node.attrs)
                   }
                 }
             };
 
             {
-                desc: attrs.desc
+                desc: desc
                 with variant
             }
         }
@@ -179,9 +170,8 @@ fn fold_enum(
 
 #[test]
 fn should_extract_enum_docs() {
-    let doc = test::mk_doc("#[doc(brief = \"a\", desc = \"b\")]\
+    let doc = test::mk_doc("#[doc = \"b\"]\
                             enum a { v }");
-    assert doc.cratemod().enums()[0].brief() == some("a");
     assert doc.cratemod().enums()[0].desc() == some("b");
 }
 
@@ -211,20 +201,20 @@ fn merge_method_attrs(
 ) -> [doc::methoddoc] {
 
     // Create an assoc list from method name to attributes
-    let attrs: [(str, attr_parser::basic_attrs)] = astsrv::exec(srv) {|ctxt|
+    let attrs: [(str, option<str>)] = astsrv::exec(srv) {|ctxt|
         alt ctxt.ast_map.get(item_id) {
           ast_map::node_item(@{
             node: ast::item_iface(_, methods), _
           }, _) {
             par::seqmap(methods) {|method|
-                (method.ident, attr_parser::parse_basic(method.attrs))
+                (method.ident, attr_parser::parse_desc(method.attrs))
             }
           }
           ast_map::node_item(@{
             node: ast::item_impl(_, _, _, methods), _
           }, _) {
             par::seqmap(methods) {|method|
-                (method.ident, attr_parser::parse_basic(method.attrs))
+                (method.ident, attr_parser::parse_desc(method.attrs))
             }
           }
           _ { fail "unexpected item" }
@@ -233,11 +223,10 @@ fn merge_method_attrs(
 
     vec::map2(docs, attrs) {|doc, attrs|
         assert doc.name == tuple::first(attrs);
-        let basic_attrs = tuple::second(attrs);
+        let desc = tuple::second(attrs);
 
         {
-            brief: basic_attrs.brief,
-            desc: basic_attrs.desc
+            desc: desc
             with doc
         }
     }
@@ -288,15 +277,6 @@ fn should_extract_impl_method_docs() {
          fn f(a: bool) -> bool { }\
          }");
     assert doc.cratemod().impls()[0].methods[0].desc == some("desc");
-}
-
-#[test]
-fn should_extract_type_docs() {
-    let doc = test::mk_doc(
-        "#[doc(brief = \"brief\", desc = \"desc\")]\
-         type t = int;");
-    assert doc.cratemod().types()[0].brief() == some("brief");
-    assert doc.cratemod().types()[0].desc() == some("desc");
 }
 
 #[cfg(test)]

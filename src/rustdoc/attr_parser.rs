@@ -9,21 +9,12 @@ import rustc::syntax::ast;
 import rustc::front::attr;
 import core::tuple;
 
-export crate_attrs, basic_attrs, variant_attrs;
-export parse_crate, parse_basic, parse_variant;
+export crate_attrs;
+export parse_crate, parse_desc;
 export parse_hidden;
 
 type crate_attrs = {
     name: option<str>
-};
-
-type basic_attrs = {
-    brief: option<str>,
-    desc: option<str>
-};
-
-type variant_attrs = {
-    desc: option<str>
 };
 
 #[cfg(test)]
@@ -102,170 +93,44 @@ fn should_not_extract_crate_name_if_no_name_value_in_link_attribute() {
     assert attrs.name == none;
 }
 
-fn parse_basic(
-    attrs: [ast::attribute]
-) -> {
-    brief: option<str>,
-    desc: option<str>
-} {
-    parse_short_doc_or(
-        attrs,
-        {|desc|
-            {
-                brief: none,
-                desc: desc
-            }
-        },
-        {|_items, brief, desc|
-            {
-                brief: brief,
-                desc: desc
-            }
-        }
-    )
+fn parse_desc(attrs: [ast::attribute]) -> option<str> {
+    alt doc_meta(attrs) {
+      some(meta) {
+        attr::get_meta_item_value_str(meta)
+      }
+      none { none }
+    }
 }
 
 #[test]
-fn parse_basic_should_handle_undocumented_mods() {
+fn parse_desc_should_handle_undocumented_mods() {
     let source = "";
     let attrs = test::parse_attributes(source);
-    let attrs = parse_basic(attrs);
-    assert attrs.brief == none;
-    assert attrs.desc == none;
+    let attrs = parse_desc(attrs);
+    assert attrs == none;
 }
 
 #[test]
-fn parse_basic_should_parse_simple_doc_attributes() {
+fn parse_desc_should_parse_simple_doc_attributes() {
     let source = "#[doc = \"basic\"]";
     let attrs = test::parse_attributes(source);
-    let attrs = parse_basic(attrs);
-    assert attrs.desc == some("basic");
-}
-
-#[test]
-fn parse_basic_should_parse_the_brief_description() {
-    let source = "#[doc(brief = \"short\")]";
-    let attrs = test::parse_attributes(source);
-    let attrs = parse_basic(attrs);
-    assert attrs.brief == some("short");
-}
-
-#[test]
-fn parse_basic_should_parse_the_long_description() {
-    let source = "#[doc(desc = \"description\")]";
-    let attrs = test::parse_attributes(source);
-    let attrs = parse_basic(attrs);
-    assert attrs.desc == some("description");
-}
-
-fn parse_short_doc_or<T>(
-    attrs: [ast::attribute],
-    handle_short: fn&(
-        short_desc: option<str>
-    ) -> T,
-    parse_long: fn&(
-        doc_items: [@ast::meta_item],
-        brief: option<str>,
-        desc: option<str>
-    ) -> T
-) -> T {
-    alt doc_meta(attrs) {
-      some(meta) {
-        alt attr::get_meta_item_value_str(meta) {
-          some(desc) { handle_short(some(desc)) }
-          none {
-            alt attr::get_meta_item_list(meta) {
-              some(list) {
-                let brief = attr::meta_item_value_from_list(list, "brief");
-                let desc = attr::meta_item_value_from_list(list, "desc");
-                parse_long(list, brief, desc)
-              }
-              none {
-                handle_short(none)
-              }
-            }
-          }
-        }
-      }
-      none {
-        handle_short(none)
-      }
-    }
-}
-
-fn parse_long_doc<T>(
-    attrs: [ast::attribute],
-    parse_long: fn&(doc_items: [@ast::meta_item]) -> T
-) -> T {
-    alt doc_meta(attrs) {
-      some(meta) {
-        alt attr::get_meta_item_list(meta) {
-          some(list) {
-            parse_long(list)
-          }
-          none {
-            parse_long([])
-          }
-        }
-      }
-      none { parse_long([]) }
-    }
-}
-
-fn parse_variant(attrs: [ast::attribute]) -> variant_attrs {
-    parse_short_doc_or(
-        attrs,
-        {|desc|
-            {
-                desc: desc
-            }
-        },
-        {|_items, brief, desc|
-            if option::is_some(brief) && option::is_some(desc) {
-                // FIXME: Warn about dropping brief description
-            }
-
-            {
-                // Prefer desc over brief
-                desc: option::maybe(brief, desc, {|s| some(s) })
-            }
-        }
-    )
-}
-
-#[test]
-fn should_parse_variant_short_doc() {
-    let source = "#[doc = \"a\"]";
-    let attrs = test::parse_attributes(source);
-    let attrs = parse_variant(attrs);
-    assert attrs.desc == some("a");
-}
-
-#[test]
-fn should_parse_variant_brief_doc() {
-    let source = "#[doc(brief = \"a\")]";
-    let attrs = test::parse_attributes(source);
-    let attrs = parse_variant(attrs);
-    assert attrs.desc == some("a");
-}
-
-#[test]
-fn should_parse_variant_long_doc() {
-    let source = "#[doc(desc = \"a\")]";
-    let attrs = test::parse_attributes(source);
-    let attrs = parse_variant(attrs);
-    assert attrs.desc == some("a");
+    let attrs = parse_desc(attrs);
+    assert attrs == some("basic");
 }
 
 fn parse_hidden(attrs: [ast::attribute]) -> bool {
-    parse_short_doc_or(
-        attrs,
-        {|_desc| false },
-        {|metas, _brief, _desc|
+    alt doc_meta(attrs) {
+      some(meta) {
+        alt attr::get_meta_item_list(meta) {
+          some(metas) {
             let hiddens = attr::find_meta_items_by_name(metas, "hidden");
             vec::is_not_empty(hiddens)
+          }
+          none { false }
         }
-    )
+      }
+      none { false }
+    }
 }
 
 #[test]

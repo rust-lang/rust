@@ -347,7 +347,7 @@ fn should_write_index() {
 
 #[test]
 fn should_write_index_brief() {
-    let markdown = test::render("#[doc(brief = \"test\")] mod a { }");
+    let markdown = test::render("#[doc = \"test\"] mod a { }");
     assert str::contains(markdown, "(#module-a) - test\n");
 }
 
@@ -617,7 +617,7 @@ fn should_write_iface_header() {
 #[test]
 fn should_write_iface_desc() {
     let markdown = test::render(
-        "#[doc(desc = \"desc\")] iface i { fn a(); }");
+        "#[doc = \"desc\"] iface i { fn a(); }");
     assert str::contains(markdown, "desc");
 }
 
@@ -656,7 +656,7 @@ fn should_write_impl_header_with_iface() {
 #[test]
 fn should_write_impl_desc() {
     let markdown = test::render(
-        "#[doc(desc = \"desc\")] impl i for int { fn a() { } }");
+        "#[doc = \"desc\"] impl i for int { fn a() { } }");
     assert str::contains(markdown, "desc");
 }
 
@@ -692,7 +692,7 @@ fn should_write_type_header() {
 #[test]
 fn should_write_type_desc() {
     let markdown = test::render(
-        "#[doc(desc = \"desc\")] type t = int;");
+        "#[doc = \"desc\"] type t = int;");
     assert str::contains(markdown, "\n\ndesc\n\n");
 }
 
@@ -727,6 +727,8 @@ mod test {
             #debug("doc (path): %?", doc);
             let doc = attr_pass::mk_pass().f(srv, doc);
             #debug("doc (attr): %?", doc);
+            let doc = desc_to_brief_pass::mk_pass().f(srv, doc);
+            #debug("doc (desc_to_brief): %?", doc);
             let doc = unindent_pass::mk_pass().f(srv, doc);
             #debug("doc (unindent): %?", doc);
             let doc = sectionalize_pass::mk_pass().f(srv, doc);
