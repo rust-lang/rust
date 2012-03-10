@@ -2385,8 +2385,7 @@ The argument to `task::spawn()` is a [unique
 closure](#unique-closures) of type `fn~()`, meaning that it takes no
 arguments and generates no return value. The effect of `task::spawn()`
 is to fire up a child task that will execute the closure in parallel
-with the creator. The result is a task id, here stored into the
-variable `child_task`.
+with the creator.
 
 ## Ports and channels
 
@@ -2402,10 +2401,10 @@ in parallel.  We might write something like:
 # fn some_other_expensive_computation() {}
 let port = comm::port::<int>();
 let chan = comm::chan::<int>(port);
-let child_task = task::spawn {||
+task::spawn {||
     let result = some_expensive_computation();
     comm::send(chan, result);
-};
+}
 some_other_expensive_computation();
 let result = comm::recv(port);
 ~~~~
@@ -2433,10 +2432,10 @@ The next statement actually spawns the child:
 # fn some_expensive_computation() -> int { 42 }
 # let port = comm::port::<int>();
 # let chan = comm::chan::<int>(port);
-let child_task = task::spawn {||
+task::spawn {||
     let result = some_expensive_computation();
     comm::send(chan, result);
-};
+}
 ~~~~
 
 This child will perform the expensive computation send the result
