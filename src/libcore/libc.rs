@@ -86,7 +86,7 @@ export types, funcs, consts;
 // you can write more-platform-agnostic code if you stick to just these
 // symbols.
 
-export c_double, c_void, FILE, fpos_t;
+export c_float, c_double, c_void, FILE, fpos_t;
 export DIR, dirent;
 export c_char, c_schar, c_uchar;
 export c_short, c_ushort, c_int, c_uint, c_long, c_ulong;
@@ -123,7 +123,6 @@ mod types {
     // Standard types that are opaque or common, so are not per-target.
     mod common {
         mod c95 {
-            type c_double = float;
             enum c_void {}
             enum FILE {}
             enum fpos_t {}
@@ -154,6 +153,8 @@ mod types {
                 type c_uint = u32;
                 type c_long = i32;
                 type c_ulong = u32;
+                type c_float = f32;
+                type c_double = f64;
                 type size_t = u32;
                 type ptrdiff_t = i32;
                 type clock_t = i32;
@@ -196,6 +197,8 @@ mod types {
                 type c_uint = u32;
                 type c_long = i64;
                 type c_ulong = u64;
+                type c_float = f32;
+                type c_double = f64;
                 type size_t = u64;
                 type ptrdiff_t = i64;
                 type clock_t = i64;
@@ -241,6 +244,8 @@ mod types {
                 type c_uint = u32;
                 type c_long = i64;
                 type c_ulong = u64;
+                type c_float = f32;
+                type c_double = f64;
                 type size_t = u64;
                 type ptrdiff_t = i64;
                 type clock_t = i32;
@@ -286,6 +291,8 @@ mod types {
                 type c_uint = u32;
                 type c_long = i32;
                 type c_ulong = u32;
+                type c_float = f32;
+                type c_double = f64;
                 type size_t = u32;
                 type ptrdiff_t = i32;
                 type clock_t = i32;
@@ -358,6 +365,8 @@ mod types {
                 type c_uint = u32;
                 type c_long = i32;
                 type c_ulong = u32;
+                type c_float = f32;
+                type c_double = f64;
                 type size_t = u32;
                 type ptrdiff_t = i32;
                 type clock_t = u32;
@@ -400,6 +409,8 @@ mod types {
                 type c_uint = u32;
                 type c_long = i64;
                 type c_ulong = u64;
+                type c_float = f32;
+                type c_double = f64;
                 type size_t = u64;
                 type ptrdiff_t = i64;
                 type clock_t = u64;
@@ -841,6 +852,9 @@ mod funcs {
 
             #[link_name = "_fdopen"]
             fn fdopen(fd: c_int, mode: *c_char) -> *FILE;
+
+            #[link_name = "_fileno"]
+            fn fileno(stream: *FILE) -> c_int;
         }
 
         #[nolink]
@@ -942,6 +956,7 @@ mod funcs {
             fn popen(command: *c_char, mode: *c_char) -> *FILE;
             fn pclose(stream: *FILE) -> c_int;
             fn fdopen(fd: c_int, mode: *c_char) -> *FILE;
+            fn fileno(stream: *FILE) -> c_int;
         }
 
         #[nolink]

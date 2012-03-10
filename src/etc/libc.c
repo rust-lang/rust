@@ -26,6 +26,9 @@
 #define put_type(N,T) \
         printf("        type %s = %c%d;\n", N, S(T), B(T))
 
+#define put_ftype(N,T) \
+        printf("        type %s = f%d;\n", N, B(T))
+
 #define CT(T) ((((T)-1)<0) ? "int" : "uint")
 #define CS(T) ((((T)-1)<0) ? "" : "_u")
 #define put_const(N,T)                            \
@@ -47,6 +50,9 @@ void c95_types() {
 
   put_type("c_long", long);
   put_type("c_ulong", unsigned long);
+
+  put_ftype("c_float", float);
+  put_ftype("c_double", double);
 
   put_type("size_t", size_t);
   put_type("ptrdiff_t", ptrdiff_t);

@@ -24,7 +24,7 @@ import option = option::t;
 import getcwd = rustrt::rust_getcwd;
 import consts::*;
 
-export close, fclose;
+export close, fclose, fsync_fd;
 export env, getenv, setenv, fdopen, pipe;
 export getcwd, dll_filename, self_exe_path;
 export exe_suffix, dll_suffix, sysname;
