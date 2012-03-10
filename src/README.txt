@@ -2,7 +2,7 @@ This is preliminary version of the Rust compiler.
 
 Source layout:
 
-comp/              The self-hosted compiler
+rustc/             The self-hosted compiler
 
 cargo/             The package manager
 

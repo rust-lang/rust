@@ -145,7 +145,7 @@ fn should_index_mod_contents_multi_page() {
 fn should_add_brief_desc_to_index() {
     let doc = test::mk_doc(
         config::doc_per_mod,
-        "#[doc(brief = \"test\")] mod a { }"
+        "#[doc = \"test\"] mod a { }"
     );
     assert option::get(doc.cratemod().index).entries[0].brief == some("test");
 }
@@ -160,6 +160,7 @@ mod test {
             };
             let doc = extract::from_srv(srv, "");
             let doc = attr_pass::mk_pass().f(srv, doc);
+            let doc = desc_to_brief_pass::mk_pass().f(srv, doc);
             let doc = path_pass::mk_pass().f(srv, doc);
             run(srv, doc, config)
         }

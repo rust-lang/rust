@@ -44,6 +44,7 @@ fn mk_itemdoc(id: ast::node_id, name: ast::ident) -> doc::itemdoc {
         path: [],
         brief: none,
         desc: none,
+        sections: [],
         reexport: false
     }
 }
@@ -67,9 +68,9 @@ fn moddoc_from_mod(
                     nmoddoc_from_mod(itemdoc, nm)
                 ))
               }
-              ast::item_fn(decl, _, _) {
+              ast::item_fn(_, _, _) {
                 some(doc::fntag(
-                    fndoc_from_fn(itemdoc, decl)
+                    fndoc_from_fn(itemdoc)
                 ))
               }
               ast::item_const(_, _) {
@@ -82,9 +83,9 @@ fn moddoc_from_mod(
                     enumdoc_from_enum(itemdoc, variants)
                 ))
               }
-              ast::item_res(decl, _, _, _, _) {
+              ast::item_res(_, _, _, _, _) {
                 some(doc::restag(
-                    resdoc_from_resource(itemdoc, decl)
+                    resdoc_from_resource(itemdoc)
                 ))
               }
               ast::item_iface(_, methods) {
@@ -120,54 +121,25 @@ fn nmoddoc_from_mod(
         fns: par::seqmap(module.items) {|item|
             let itemdoc = mk_itemdoc(item.id, item.ident);
             alt item.node {
-              ast::native_item_fn(decl, _) {
-                fndoc_from_fn(itemdoc, decl)
+              ast::native_item_fn(_, _) {
+                fndoc_from_fn(itemdoc)
               }
             }
         }
     }
 }
 
-fn fndoc_from_fn(
-    itemdoc: doc::itemdoc,
-    decl: ast::fn_decl
-) -> doc::fndoc {
+fn fndoc_from_fn(itemdoc: doc::itemdoc) -> doc::fndoc {
     {
         item: itemdoc,
-        args: argdocs_from_args(decl.inputs),
-        return: {
-            desc: none
-        },
-        failure: none,
         sig: none
-    }
-}
-
-#[test]
-fn should_extract_fn_args() {
-    let source = "fn a(b: int, c: int) { }";
-    let ast = parse::from_str(source);
-    let doc = extract(ast, "");
-    let fn_ = doc.cratemod().fns()[0];
-    assert fn_.args[0].name == "b";
-    assert fn_.args[1].name == "c";
-}
-
-fn argdocs_from_args(args: [ast::arg]) -> [doc::argdoc] {
-    par::seqmap(args, argdoc_from_arg)
-}
-
-fn argdoc_from_arg(arg: ast::arg) -> doc::argdoc {
-    {
-        name: arg.ident,
-        desc: none
     }
 }
 
 fn constdoc_from_const(itemdoc: doc::itemdoc) -> doc::constdoc {
     {
         item: itemdoc,
-        ty: none
+        sig: none
     }
 }
 
@@ -215,13 +187,9 @@ fn should_extract_enum_variants() {
     assert doc.cratemod().enums()[0].variants[0].name == "v";
 }
 
-fn resdoc_from_resource(
-    itemdoc: doc::itemdoc,
-    decl: ast::fn_decl
-) -> doc::resdoc {
+fn resdoc_from_resource(itemdoc: doc::itemdoc) -> doc::resdoc {
     {
         item: itemdoc,
-        args: argdocs_from_args(decl.inputs),
         sig: none
     }
 }
@@ -231,12 +199,6 @@ fn should_extract_resources() {
     let doc = test::mk_doc("resource r(b: bool) { }");
     assert doc.cratemod().resources()[0].id() != 0;
     assert doc.cratemod().resources()[0].name() == "r";
-}
-
-#[test]
-fn should_extract_resource_args() {
-    let doc = test::mk_doc("resource r(b: bool) { }");
-    assert doc.cratemod().resources()[0].args[0].name == "b";
 }
 
 fn ifacedoc_from_iface(
@@ -250,11 +212,7 @@ fn ifacedoc_from_iface(
                 name: method.ident,
                 brief: none,
                 desc: none,
-                args: argdocs_from_args(method.decl.inputs),
-                return: {
-                    desc: none
-                },
-                failure: none,
+                sections: [],
                 sig: none
             }
         }
@@ -273,12 +231,6 @@ fn should_extract_iface_methods() {
     assert doc.cratemod().ifaces()[0].methods[0].name == "f";
 }
 
-#[test]
-fn should_extract_iface_method_args() {
-    let doc = test::mk_doc("iface i { fn f(a: bool); }");
-    assert doc.cratemod().ifaces()[0].methods[0].args[0].name == "a";
-}
-
 fn impldoc_from_impl(
     itemdoc: doc::itemdoc,
     methods: [@ast::method]
@@ -292,11 +244,7 @@ fn impldoc_from_impl(
                 name: method.ident,
                 brief: none,
                 desc: none,
-                args: argdocs_from_args(method.decl.inputs),
-                return: {
-                    desc: none
-                },
-                failure: none,
+                sections: [],
                 sig: none
             }
         }
@@ -319,12 +267,6 @@ fn should_extract_impls_without_names() {
 fn should_extract_impl_methods() {
     let doc = test::mk_doc("impl i for int { fn f() { } }");
     assert doc.cratemod().impls()[0].methods[0].name == "f";
-}
-
-#[test]
-fn should_extract_impl_method_args() {
-    let doc = test::mk_doc("impl i for int { fn f(a: bool) { } }");
-    assert doc.cratemod().impls()[0].methods[0].args[0].name == "a";
 }
 
 fn tydoc_from_ty(

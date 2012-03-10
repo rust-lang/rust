@@ -120,7 +120,8 @@ fn should_request_new_writer_for_each_page() {
 enum hlvl {
     h1 = 1,
     h2 = 2,
-    h3 = 3
+    h3 = 3,
+    h4 = 4
 }
 
 fn write_header(ctxt: ctxt, lvl: hlvl, doc: doc::itemtag) {
@@ -238,12 +239,55 @@ fn should_write_full_path_to_mod() {
     assert str::contains(markdown, "# Module `a::b::c`");
 }
 
+fn write_common(
+    ctxt: ctxt,
+    desc: option<str>,
+    sections: [doc::section]
+) {
+    write_desc(ctxt, desc);
+    write_sections(ctxt, sections);
+}
+
+fn write_desc(
+    ctxt: ctxt,
+    desc: option<str>
+) {
+    alt desc {
+        some(desc) {
+            ctxt.w.write_line(desc);
+            ctxt.w.write_line("");
+        }
+        none { }
+    }
+}
+
+fn write_sections(ctxt: ctxt, sections: [doc::section]) {
+    vec::iter(sections) {|section|
+        write_section(ctxt, section);
+    }
+}
+
+fn write_section(ctxt: ctxt, section: doc::section) {
+    write_header_(ctxt, h4, section.header);
+    ctxt.w.write_line(section.body);
+    ctxt.w.write_line("");
+}
+
+#[test]
+fn should_write_sections() {
+    let markdown = test::render(
+        "#[doc = \"\
+         # Header\n\
+         Body\"]\
+         mod a { }");
+    assert str::contains(markdown, "#### Header\n\nBody\n\n");
+}
+
 fn write_mod_contents(
     ctxt: ctxt,
     doc: doc::moddoc
 ) {
-    write_brief(ctxt, doc.brief());
-    write_desc(ctxt, doc.desc());
+    write_common(ctxt, doc.desc(), doc.sections());
     if option::is_some(doc.index) {
         write_index(ctxt, option::get(doc.index));
     }
@@ -265,12 +309,6 @@ fn write_item(ctxt: ctxt, doc: doc::itemtag) {
       doc::impltag(impldoc) { write_impl(ctxt, impldoc) }
       doc::tytag(tydoc) { write_type(ctxt, tydoc) }
     }
-}
-
-#[test]
-fn should_write_crate_brief_description() {
-    let markdown = test::render("#[doc(brief = \"this is the crate\")];");
-    assert str::contains(markdown, "this is the crate");
 }
 
 #[test]
@@ -309,7 +347,7 @@ fn should_write_index() {
 
 #[test]
 fn should_write_index_brief() {
-    let markdown = test::render("#[doc(brief = \"test\")] mod a { }");
+    let markdown = test::render("#[doc = \"test\"] mod a { }");
     assert str::contains(markdown, "(#module-a) - test\n");
 }
 
@@ -321,9 +359,7 @@ fn should_not_write_index_if_no_entries() {
 
 fn write_nmod(ctxt: ctxt, doc: doc::nmoddoc) {
     write_header(ctxt, h1, doc::nmodtag(doc));
-
-    write_brief(ctxt, doc.brief());
-    write_desc(ctxt, doc.desc());
+    write_common(ctxt, doc.desc(), doc.sections());
 
     for fndoc in doc.fns {
         write_fn(ctxt, fndoc);
@@ -351,29 +387,19 @@ fn write_fn(
     write_fnlike(
         ctxt,
         doc.sig,
-        doc.brief(),
         doc.desc(),
-        doc.args,
-        doc.return,
-        doc.failure
+        doc.sections()
     );
 }
 
 fn write_fnlike(
     ctxt: ctxt,
     sig: option<str>,
-    brief: option<str>,
     desc: option<str>,
-    args: [doc::argdoc],
-    return: doc::retdoc,
-    failure: option<str>
+    sections: [doc::section]
 ) {
     write_sig(ctxt, sig);
-    write_brief(ctxt, brief);
-    write_desc(ctxt, desc);
-    write_args(ctxt, args);
-    write_return(ctxt, return);
-    write_failure(ctxt, failure);
+    write_common(ctxt, desc, sections);
 }
 
 fn write_sig(ctxt: ctxt, sig: option<str>) {
@@ -433,167 +459,8 @@ fn should_correctly_indent_fn_signature() {
 
 #[test]
 fn should_leave_blank_line_between_fn_header_and_sig() {
-    let markdown = test::render("#[doc(brief = \"brief\")] fn a() { }");
-    assert str::contains(markdown, "Function `a`\n\n    fn a()");
-}
-
-fn write_brief(
-    ctxt: ctxt,
-    brief: option<str>
-) {
-    alt brief {
-      some(brief) {
-        ctxt.w.write_line(brief);
-        ctxt.w.write_line("");
-      }
-      none { }
-    }
-}
-
-#[test]
-fn should_leave_blank_line_after_brief() {
-    let markdown = test::render("#[doc(brief = \"brief\")] fn a() { }");
-    assert str::contains(markdown, "brief\n\n");
-}
-
-#[test]
-fn should_leave_blank_line_between_brief_and_desc() {
-    let markdown = test::render(
-        "#[doc(brief = \"brief\", desc = \"desc\")] fn a() { }"
-    );
-    assert str::contains(markdown, "brief\n\ndesc");
-}
-
-fn write_desc(
-    ctxt: ctxt,
-    desc: option<str>
-) {
-    alt desc {
-        some(desc) {
-            ctxt.w.write_line(desc);
-            ctxt.w.write_line("");
-        }
-        none { }
-    }
-}
-
-fn write_args(
-    ctxt: ctxt,
-    args: [doc::argdoc]
-) {
-    if vec::is_not_empty(args) {
-        write_lead(ctxt, "Arguments");
-        ctxt.w.write_line("");
-        ctxt.w.write_line("");
-        vec::iter(args) {|arg| write_arg(ctxt, arg) };
-        ctxt.w.write_line("");
-    }
-}
-
-fn write_arg(ctxt: ctxt, arg: doc::argdoc) {
-    ctxt.w.write_str(#fmt(
-        "* `%s`",
-        arg.name
-    ));
-    alt arg.desc {
-      some(desc) {
-        ctxt.w.write_str(#fmt(" - %s", desc));
-      }
-      none { }
-    }
-    ctxt.w.write_line("");
-}
-
-#[test]
-fn should_write_argument_list() {
-    let source = "fn a(b: int, c: int) { }";
-    let markdown = test::render(source);
-    assert str::contains(
-        markdown,
-        "__Arguments__: \n\
-         \n\
-         * `b`\n\
-         * `c`\n\
-         \n"
-    );
-}
-
-#[test]
-fn should_not_write_arguments_if_none() {
-    let source = "fn a() { } fn b() { }";
-    let markdown = test::render(source);
-    assert !str::contains(markdown, "Arguments");
-}
-
-#[test]
-fn should_write_argument_description() {
-    let source = "#[doc(args(a = \"milk\"))] fn f(a: bool) { }";
-    let markdown = test::render(source);
-    assert str::contains(markdown, "`a` - milk");
-}
-
-fn write_return(
-    ctxt: ctxt,
-    doc: doc::retdoc
-) {
-    alt doc.desc {
-      some(d) {
-        write_lead(ctxt, "Return value");
-        ctxt.w.write_line(d);
-        ctxt.w.write_line("");
-      }
-      none { }
-    }
-}
-
-#[test]
-fn should_write_return_type_on_new_line() {
-    let markdown = test::render(
-        "#[doc(return = \"test\")] fn a() -> int { }");
-    assert str::contains(markdown, "\n__Return value__: test");
-}
-
-#[test]
-fn should_write_blank_line_between_return_type_and_next_header() {
-    let markdown = test::render(
-        "#[doc(return = \"test\")] fn a() -> int { } \
-         fn b() -> int { }"
-    );
-    assert str::contains(markdown, "__Return value__: test\n\n##");
-}
-
-#[test]
-fn should_not_write_return_type_when_there_is_none() {
     let markdown = test::render("fn a() { }");
-    assert !str::contains(markdown, "Return value");
-}
-
-#[test]
-fn should_write_blank_line_after_return_description() {
-    let markdown = test::render(
-        "#[doc(return = \"blorp\")] fn a() -> int { }"
-    );
-    assert str::contains(markdown, "blorp\n\n");
-}
-
-fn write_failure(ctxt: ctxt, str: option<str>) {
-    alt str {
-      some(str) {
-        write_lead(ctxt, "Failure conditions");
-        ctxt.w.write_line(str);
-        ctxt.w.write_line("");
-      }
-      none { }
-    }
-}
-
-#[test]
-fn should_write_failure_conditions() {
-    let markdown = test::render(
-        "#[doc(failure = \"it's the fail\")] fn a () { }");
-    assert str::contains(
-        markdown,
-        "\n\n__Failure conditions__: it's the fail\n\n");
+    assert str::contains(markdown, "Function `a`\n\n    fn a()");
 }
 
 fn write_const(
@@ -601,9 +468,8 @@ fn write_const(
     doc: doc::constdoc
 ) {
     write_header(ctxt, h2, doc::consttag(doc));
-    write_sig(ctxt, doc.ty);
-    write_brief(ctxt, doc.brief());
-    write_desc(ctxt, doc.desc());
+    write_sig(ctxt, doc.sig);
+    write_common(ctxt, doc.desc(), doc.sections());
 }
 
 #[test]
@@ -615,9 +481,9 @@ fn should_write_const_header() {
 #[test]
 fn should_write_const_description() {
     let markdown = test::render(
-        "#[doc(brief = \"a\", desc = \"b\")]\
+        "#[doc = \"b\"]\
          const a: bool = true;");
-    assert str::contains(markdown, "\n\na\n\nb\n\n");
+    assert str::contains(markdown, "\n\nb\n\n");
 }
 
 fn write_enum(
@@ -625,8 +491,7 @@ fn write_enum(
     doc: doc::enumdoc
 ) {
     write_header(ctxt, h2, doc::enumtag(doc));
-    write_brief(ctxt, doc.brief());
-    write_desc(ctxt, doc.desc());
+    write_common(ctxt, doc.desc(), doc.sections());
     write_variants(ctxt, doc.variants);
 }
 
@@ -639,8 +504,8 @@ fn should_write_enum_header() {
 #[test]
 fn should_write_enum_description() {
     let markdown = test::render(
-        "#[doc(brief = \"a\", desc = \"b\")] enum a { b }");
-    assert str::contains(markdown, "\n\na\n\nb\n\n");
+        "#[doc = \"b\"] enum a { b }");
+    assert str::contains(markdown, "\n\nb\n\n");
 }
 
 fn write_variants(
@@ -651,8 +516,7 @@ fn write_variants(
         ret;
     }
 
-    ctxt.w.write_line("Variants:");
-    ctxt.w.write_line("");
+    write_header_(ctxt, h4, "Variants");
 
     vec::iter(docs, {|variant| write_variant(ctxt, variant) });
 
@@ -680,7 +544,7 @@ fn should_write_variant_list() {
          #[doc = \"test\"] c }");
     assert str::contains(
         markdown,
-        "\n\nVariants:\n\
+        "\n\n#### Variants\n\
          \n* `b` - test\
          \n* `c` - test\n\n");
 }
@@ -690,7 +554,7 @@ fn should_write_variant_list_without_descs() {
     let markdown = test::render("enum a { b, c }");
     assert str::contains(
         markdown,
-        "\n\nVariants:\n\
+        "\n\n#### Variants\n\
          \n* `b`\
          \n* `c`\n\n");
 }
@@ -700,7 +564,7 @@ fn should_write_variant_list_with_signatures() {
     let markdown = test::render("enum a { b(int), #[doc = \"a\"] c(int) }");
     assert str::contains(
         markdown,
-        "\n\nVariants:\n\
+        "\n\n#### Variants\n\
          \n* `b(int)`\
          \n* `c(int)` - a\n\n");
 }
@@ -708,9 +572,7 @@ fn should_write_variant_list_with_signatures() {
 fn write_res(ctxt: ctxt, doc: doc::resdoc) {
     write_header(ctxt, h2, doc::restag(doc));
     write_sig(ctxt, doc.sig);
-    write_brief(ctxt, doc.brief());
-    write_desc(ctxt, doc.desc());
-    write_args(ctxt, doc.args);
+    write_common(ctxt, doc.desc(), doc.sections());
 }
 
 #[test]
@@ -725,17 +587,9 @@ fn should_write_resource_signature() {
     assert str::contains(markdown, "\n    resource r(a: bool)\n");
 }
 
-#[test]
-fn should_write_resource_args() {
-    let markdown = test::render("#[doc(args(a = \"b\"))]\
-                                 resource r(a: bool) { }");
-    assert str::contains(markdown, "__Arguments__: \n\n* `a` - b");
-}
-
 fn write_iface(ctxt: ctxt, doc: doc::ifacedoc) {
     write_header(ctxt, h2, doc::ifacetag(doc));
-    write_brief(ctxt, doc.brief());
-    write_desc(ctxt, doc.desc());
+    write_common(ctxt, doc.desc(), doc.sections());
     write_methods(ctxt, doc.methods);
 }
 
@@ -748,11 +602,8 @@ fn write_method(ctxt: ctxt, doc: doc::methoddoc) {
     write_fnlike(
         ctxt,
         doc.sig,
-        doc.brief,
         doc.desc,
-        doc.args,
-        doc.return,
-        doc.failure
+        doc.sections
     );
 }
 
@@ -763,16 +614,9 @@ fn should_write_iface_header() {
 }
 
 #[test]
-fn should_write_iface_brief() {
-    let markdown = test::render(
-        "#[doc(brief = \"brief\")] iface i { fn a(); }");
-    assert str::contains(markdown, "brief");
-}
-
-#[test]
 fn should_write_iface_desc() {
     let markdown = test::render(
-        "#[doc(desc = \"desc\")] iface i { fn a(); }");
+        "#[doc = \"desc\"] iface i { fn a(); }");
     assert str::contains(markdown, "desc");
 }
 
@@ -790,45 +634,9 @@ fn should_write_iface_method_signature() {
     assert str::contains(markdown, "\n    fn a()");
 }
 
-#[test]
-fn should_write_iface_method_argument_header() {
-    let markdown = test::render(
-        "iface a { fn a(b: int); }");
-    assert str::contains(markdown, "\n\n__Arguments__: \n\n");
-}
-
-#[test]
-fn should_write_iface_method_arguments() {
-    let markdown = test::render(
-        "iface a { fn a(b: int); }");
-    assert str::contains(markdown, "* `b`\n");
-}
-
-#[test]
-fn should_not_write_iface_method_arguments_if_none() {
-    let markdown = test::render(
-        "iface a { fn a(); }");
-    assert !str::contains(markdown, "Arguments");
-}
-
-#[test]
-fn should_write_iface_method_return_info() {
-    let markdown = test::render(
-        "iface a { #[doc(return = \"test\")] fn a() -> int; }");
-    assert str::contains(markdown, "__Return value__: test");
-}
-
-#[test]
-fn should_write_iface_method_failure_conditions() {
-    let markdown = test::render(
-        "iface a { #[doc(failure = \"nuked\")] fn a(); }");
-    assert str::contains(markdown, "__Failure conditions__: nuked");
-}
-
 fn write_impl(ctxt: ctxt, doc: doc::impldoc) {
     write_header(ctxt, h2, doc::impltag(doc));
-    write_brief(ctxt, doc.brief());
-    write_desc(ctxt, doc.desc());
+    write_common(ctxt, doc.desc(), doc.sections());
     write_methods(ctxt, doc.methods);
 }
 
@@ -845,16 +653,9 @@ fn should_write_impl_header_with_iface() {
 }
 
 #[test]
-fn should_write_impl_brief() {
-    let markdown = test::render(
-        "#[doc(brief = \"brief\")] impl i for int { fn a() { } }");
-    assert str::contains(markdown, "brief");
-}
-
-#[test]
 fn should_write_impl_desc() {
     let markdown = test::render(
-        "#[doc(desc = \"desc\")] impl i for int { fn a() { } }");
+        "#[doc = \"desc\"] impl i for int { fn a() { } }");
     assert str::contains(markdown, "desc");
 }
 
@@ -872,49 +673,13 @@ fn should_write_impl_method_signature() {
     assert str::contains(markdown, "\n    fn a()");
 }
 
-#[test]
-fn should_write_impl_method_argument_header() {
-    let markdown = test::render(
-        "impl a for int { fn a(b: int) { } }");
-    assert str::contains(markdown, "\n\n__Arguments__: \n\n");
-}
-
-#[test]
-fn should_write_impl_method_arguments() {
-    let markdown = test::render(
-        "impl a for int { fn a(b: int) { } }");
-    assert str::contains(markdown, "* `b`\n");
-}
-
-#[test]
-fn should_not_write_impl_method_arguments_if_none() {
-    let markdown = test::render(
-        "impl a for int { fn a() { } }");
-    assert !str::contains(markdown, "Arguments");
-}
-
-#[test]
-fn should_write_impl_method_return_info() {
-    let markdown = test::render(
-        "impl a for int { #[doc(return = \"test\")] fn a() -> int { } }");
-    assert str::contains(markdown, "__Return value__: test");
-}
-
-#[test]
-fn should_write_impl_method_failure_conditions() {
-    let markdown = test::render(
-        "impl a for int { #[doc(failure = \"nuked\")] fn a() { } }");
-    assert str::contains(markdown, "__Failure conditions__: nuked");
-}
-
 fn write_type(
     ctxt: ctxt,
     doc: doc::tydoc
 ) {
     write_header(ctxt, h2, doc::tytag(doc));
     write_sig(ctxt, doc.sig);
-    write_brief(ctxt, doc.brief());
-    write_desc(ctxt, doc.desc());
+    write_common(ctxt, doc.desc(), doc.sections());
 }
 
 #[test]
@@ -924,16 +689,9 @@ fn should_write_type_header() {
 }
 
 #[test]
-fn should_write_type_brief() {
-    let markdown = test::render(
-        "#[doc(brief = \"brief\")] type t = int;");
-    assert str::contains(markdown, "\n\nbrief\n\n");
-}
-
-#[test]
 fn should_write_type_desc() {
     let markdown = test::render(
-        "#[doc(desc = \"desc\")] type t = int;");
+        "#[doc = \"desc\"] type t = int;");
     assert str::contains(markdown, "\n\ndesc\n\n");
 }
 
@@ -968,6 +726,14 @@ mod test {
             #debug("doc (path): %?", doc);
             let doc = attr_pass::mk_pass().f(srv, doc);
             #debug("doc (attr): %?", doc);
+            let doc = desc_to_brief_pass::mk_pass().f(srv, doc);
+            #debug("doc (desc_to_brief): %?", doc);
+            let doc = unindent_pass::mk_pass().f(srv, doc);
+            #debug("doc (unindent): %?", doc);
+            let doc = sectionalize_pass::mk_pass().f(srv, doc);
+            #debug("doc (trim): %?", doc);
+            let doc = trim_pass::mk_pass().f(srv, doc);
+            #debug("doc (sectionalize): %?", doc);
             let doc = markdown_index_pass::mk_pass(config).f(srv, doc);
             #debug("doc (index): %?", doc);
             (srv, doc)

@@ -31,11 +31,9 @@ fn run(
 
 fn fold_item(fold: fold::fold<()>, doc: doc::itemdoc) -> doc::itemdoc {
     let doc = fold::default_seq_fold_item(fold, doc);
-    let (brief, desc) = modify(doc.brief, doc.desc);
 
     {
-        brief: brief,
-        desc: desc
+        brief: extract(doc.desc)
         with doc
     }
 }
@@ -45,11 +43,8 @@ fn fold_iface(fold: fold::fold<()>, doc: doc::ifacedoc) -> doc::ifacedoc {
 
     {
         methods: par::anymap(doc.methods) {|doc|
-            let (brief, desc) = modify(doc.brief, doc.desc);
-
             {
-                brief: brief,
-                desc: desc
+                brief: extract(doc.desc)
                 with doc
             }
         }
@@ -62,11 +57,8 @@ fn fold_impl(fold: fold::fold<()>, doc: doc::impldoc) -> doc::impldoc {
 
     {
         methods: par::anymap(doc.methods) {|doc|
-            let (brief, desc) = modify(doc.brief, doc.desc);
-
             {
-                brief: brief,
-                desc: desc
+                brief: extract(doc.desc)
                 with doc
             }
         }
@@ -75,76 +67,22 @@ fn fold_impl(fold: fold::fold<()>, doc: doc::impldoc) -> doc::impldoc {
 }
 
 #[test]
-fn should_promote_mod_desc() {
-    let doc = test::mk_doc("#[doc(desc = \"desc\")] mod m { }");
+fn should_promote_desc() {
+    let doc = test::mk_doc("#[doc = \"desc\"] mod m { }");
     assert doc.cratemod().mods()[0].brief() == some("desc");
-    assert doc.cratemod().mods()[0].desc() == none;
-}
-
-#[test]
-fn should_promote_const_desc() {
-    let doc = test::mk_doc("#[doc(desc = \"desc\")] const a: bool = true;");
-    assert doc.cratemod().consts()[0].brief() == some("desc");
-    assert doc.cratemod().consts()[0].desc() == none;
-}
-
-#[test]
-fn should_promote_fn_desc() {
-    let doc = test::mk_doc("#[doc(desc = \"desc\")] fn a() { }");
-    assert doc.cratemod().fns()[0].brief() == some("desc");
-    assert doc.cratemod().fns()[0].desc() == none;
-}
-
-#[test]
-fn should_promote_enum_desc() {
-    let doc = test::mk_doc("#[doc(desc = \"desc\")] enum a { b }");
-    assert doc.cratemod().enums()[0].brief() == some("desc");
-    assert doc.cratemod().enums()[0].desc() == none;
-}
-
-#[test]
-fn should_promote_resource_desc() {
-    let doc = test::mk_doc(
-        "#[doc(desc = \"desc\")] resource r(a: bool) { }");
-    assert doc.cratemod().resources()[0].brief() == some("desc");
-    assert doc.cratemod().resources()[0].desc() == none;
-}
-
-#[test]
-fn should_promote_iface_desc() {
-    let doc = test::mk_doc("#[doc(desc = \"desc\")] iface i { fn a(); }");
-    assert doc.cratemod().ifaces()[0].brief() == some("desc");
-    assert doc.cratemod().ifaces()[0].desc() == none;
 }
 
 #[test]
 fn should_promote_iface_method_desc() {
-    let doc = test::mk_doc("iface i { #[doc(desc = \"desc\")] fn a(); }");
+    let doc = test::mk_doc("iface i { #[doc = \"desc\"] fn a(); }");
     assert doc.cratemod().ifaces()[0].methods[0].brief == some("desc");
-    assert doc.cratemod().ifaces()[0].methods[0].desc == none;
-}
-
-#[test]
-fn should_promote_impl_desc() {
-    let doc = test::mk_doc(
-        "#[doc(desc = \"desc\")] impl i for int { fn a() { } }");
-    assert doc.cratemod().impls()[0].brief() == some("desc");
-    assert doc.cratemod().impls()[0].desc() == none;
 }
 
 #[test]
 fn should_promote_impl_method_desc() {
     let doc = test::mk_doc(
-        "impl i for int { #[doc(desc = \"desc\")] fn a() { } }");
+        "impl i for int { #[doc = \"desc\"] fn a() { } }");
     assert doc.cratemod().impls()[0].methods[0].brief == some("desc");
-    assert doc.cratemod().impls()[0].methods[0].desc == none;
-}
-
-#[test]
-fn should_promote_type_desc() {
-    let doc = test::mk_doc("#[doc(desc = \"desc\")] type t = int;");
-    assert doc.cratemod().types()[0].brief() == some("desc");
-    assert doc.cratemod().types()[0].desc() == none;
 }
 
 #[cfg(test)]
@@ -158,40 +96,42 @@ mod test {
     }
 }
 
-fn modify(
-    brief: option<str>,
-    desc: option<str>
-) -> (option<str>, option<str>) {
-
-    if option::is_some(brief) || option::is_none(desc) {
-        ret (brief, desc);
+fn extract(desc: option<str>) -> option<str> {
+    if option::is_none(desc) {
+        ret none
     }
 
     parse_desc(option::get(desc))
 }
 
-fn parse_desc(desc: str) -> (option<str>, option<str>) {
+fn parse_desc(desc: str) -> option<str> {
 
     const max_brief_len: uint = 120u;
 
-    let paras = paragraphs(desc);
-
-    if check vec::is_not_empty(paras) {
-        let maybe_brief = vec::head(paras);
-        if str::len(maybe_brief) <= max_brief_len {
-            let desc_paras = vec::tail(paras);
-            let desc = if vec::is_not_empty(desc_paras) {
-                some(str::connect(desc_paras, "\n\n"))
-            } else {
-                none
-            };
-            (some(maybe_brief), desc)
+    alt first_sentence(desc) {
+      some(first_sentence) {
+        if str::len(first_sentence) <= max_brief_len {
+            some(first_sentence)
         } else {
-            (none, some(desc))
+            none
         }
-    } else {
-        (none, none)
+      }
+      none { none }
     }
+}
+
+fn first_sentence(s: str) -> option<str> {
+    let paras = paragraphs(s);
+    if vec::is_not_empty(paras) {
+        let first = vec::head(sentences(vec::head(paras)));
+        some(str::replace(first, "\n", " "))
+    } else {
+        none
+    }
+}
+
+fn sentences(s: str) -> [str] {
+    str::split_char(s, '.')
 }
 
 fn paragraphs(s: str) -> [str] {
@@ -244,42 +184,36 @@ fn test_paragraphs_2() {
 
 #[test]
 fn should_promote_short_descs() {
-    let brief = none;
     let desc = some("desc");
-    let (newbrief, newdesc) = modify(brief, desc);
-    assert newbrief == desc;
-    assert newdesc == none;
+    let brief = extract(desc);
+    assert brief == desc;
 }
 
 #[test]
 fn should_not_promote_long_descs() {
-    let brief = none;
     let desc = some("Warkworth Castle is a ruined medieval building
-in the town of the same name in the English county of Northumberland.
-The town and castle occupy a loop of the River Coquet, less than a mile
+in the town of the same name in the English county of Northumberland,
+and the town and castle occupy a loop of the River Coquet, less than a mile
 from England's north-east coast. When the castle was founded is uncertain,
 but traditionally its construction has been ascribed to Prince Henry of
 Scotland in the mid 12th century, although it may have been built by
 King Henry II of England when he took control of England'snorthern
 counties.");
-    let (newbrief, _) = modify(brief, desc);
-    assert newbrief == none;
+    let brief = extract(desc);
+    assert brief == none;
 }
 
 #[test]
-fn should_not_promote_descs_over_brief() {
-    let brief = some("brief");
-    let desc = some("desc");
-    let (newbrief, newdesc) = modify(brief, desc);
-    assert newbrief == brief;
-    assert newdesc == desc;
-}
-
-#[test]
-fn should_extract_brief_from_desc() {
-    let brief = none;
-    let desc = some("brief\n\ndesc");
-    let (newbrief, newdesc) = modify(brief, desc);
-    assert newbrief == some("brief");
-    assert newdesc == some("desc");
+fn should_promote_first_sentence() {
+    let desc = some("Warkworth Castle is a ruined medieval building
+in the town. of the same name in the English county of Northumberland,
+and the town and castle occupy a loop of the River Coquet, less than a mile
+from England's north-east coast. When the castle was founded is uncertain,
+but traditionally its construction has been ascribed to Prince Henry of
+Scotland in the mid 12th century, although it may have been built by
+King Henry II of England when he took control of England'snorthern
+counties.");
+    let brief = extract(desc);
+    assert brief == some(
+        "Warkworth Castle is a ruined medieval building in the town");
 }

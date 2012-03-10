@@ -11,6 +11,15 @@ enum page {
     itempage(itemtag)
 }
 
+#[doc = "
+Most rustdocs can be parsed into 'sections' according to their markdown
+headers
+"]
+type section = {
+    header: str,
+    body: str
+};
+
 // FIXME: We currently give topmod the name of the crate.  There would
 // probably be fewer special cases if the crate had its own name and
 // topmod's name was the empty string.
@@ -36,8 +45,14 @@ type itemdoc = {
     path: [str],
     brief: option<str>,
     desc: option<str>,
+    sections: [section],
     // Indicates that this node is a reexport of a different item
     reexport: bool
+};
+
+type simpleitemdoc = {
+    item: itemdoc,
+    sig: option<str>
 };
 
 type moddoc = {
@@ -51,27 +66,9 @@ type nmoddoc = {
     fns: [fndoc]
 };
 
-type constdoc = {
-    item: itemdoc,
-    ty: option<str>
-};
+type constdoc = simpleitemdoc;
 
-type fndoc = {
-    item: itemdoc,
-    args: [argdoc],
-    return: retdoc,
-    failure: option<str>,
-    sig: option<str>
-};
-
-type argdoc = {
-    name: str,
-    desc: option<str>
-};
-
-type retdoc = {
-    desc: option<str>
-};
+type fndoc = simpleitemdoc;
 
 type enumdoc = {
     item: itemdoc,
@@ -84,11 +81,7 @@ type variantdoc = {
     sig: option<str>
 };
 
-type resdoc = {
-    item: itemdoc,
-    args: [argdoc],
-    sig: option<str>
-};
+type resdoc = simpleitemdoc;
 
 type ifacedoc = {
     item: itemdoc,
@@ -99,9 +92,7 @@ type methoddoc = {
     name: str,
     brief: option<str>,
     desc: option<str>,
-    args: [argdoc],
-    return: retdoc,
-    failure: option<str>,
+    sections: [section],
     sig: option<str>
 };
 
@@ -112,10 +103,7 @@ type impldoc = {
     methods: [methoddoc]
 };
 
-type tydoc = {
-    item: itemdoc,
-    sig: option<str>
-};
+type tydoc = simpleitemdoc;
 
 type index = {
     entries: [index_entry]
@@ -344,6 +332,10 @@ impl of item for itemtag {
     }
 }
 
+impl of item for simpleitemdoc {
+    fn item() -> itemdoc { self.item }
+}
+
 impl of item for moddoc {
     fn item() -> itemdoc { self.item }
 }
@@ -352,19 +344,7 @@ impl of item for nmoddoc {
     fn item() -> itemdoc { self.item }
 }
 
-impl of item for fndoc {
-    fn item() -> itemdoc { self.item }
-}
-
-impl of item for constdoc {
-    fn item() -> itemdoc { self.item }
-}
-
 impl of item for enumdoc {
-    fn item() -> itemdoc { self.item }
-}
-
-impl of item for resdoc {
     fn item() -> itemdoc { self.item }
 }
 
@@ -373,10 +353,6 @@ impl of item for ifacedoc {
 }
 
 impl of item for impldoc {
-    fn item() -> itemdoc { self.item }
-}
-
-impl of item for tydoc {
     fn item() -> itemdoc { self.item }
 }
 
@@ -399,5 +375,9 @@ impl util<A:item> for A {
 
     fn desc() -> option<str> {
         self.item().desc
+    }
+
+    fn sections() -> [section] {
+        self.item().sections
     }
 }
