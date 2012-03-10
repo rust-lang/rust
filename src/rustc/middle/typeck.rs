@@ -757,7 +757,7 @@ fn fixup_self_in_method_ty(cx: ty::ctxt, mty: ty::t, m_substs: [ty::t],
                         let method_n_tps =
                             (vec::len(m_substs) - vec::len(tps)) as int;
                         if method_n_tps > 0 {
-                            substs += vec::tail_n(m_substs, vec::len(m_substs)
+                            substs += vec::tailn(m_substs, vec::len(m_substs)
                                                   - (method_n_tps as uint));
                         }
                         // And then instantiate the self type using all those.

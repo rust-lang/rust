@@ -126,7 +126,7 @@ fn trans_vtable_callee(bcx: block, env: callee_env, dict: ValueRef,
     if (*method.tps).len() > 0u || ty::type_has_params(fty) {
         let tydescs = [], tis = [];
         let tptys = node_id_type_params(bcx, callee_id);
-        for t in vec::tail_n(tptys, tptys.len() - (*method.tps).len()) {
+        for t in vec::tailn(tptys, tptys.len() - (*method.tps).len()) {
             let ti = none;
             let td = get_tydesc(bcx, t, true, ti);
             tis += [ti];

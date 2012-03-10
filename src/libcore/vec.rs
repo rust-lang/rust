@@ -14,7 +14,7 @@ export to_mut;
 export from_mut;
 export head;
 export tail;
-export tail_n;
+export tailn;
 export init;
 export last;
 export last_opt;
@@ -180,7 +180,7 @@ fn tail<T: copy>(v: [const T]) -> [T] {
 }
 
 #[doc = "Returns all but the first `n` elements of a vector"]
-fn tail_n<T: copy>(v: [const T], n: uint) -> [T] {
+fn tailn<T: copy>(v: [const T], n: uint) -> [T] {
     slice(v, n, len(v))
 }
 
