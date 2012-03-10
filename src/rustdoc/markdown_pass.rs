@@ -120,7 +120,8 @@ fn should_request_new_writer_for_each_page() {
 enum hlvl {
     h1 = 1,
     h2 = 2,
-    h3 = 3
+    h3 = 3,
+    h4 = 4
 }
 
 fn write_header(ctxt: ctxt, lvl: hlvl, doc: doc::itemtag) {
@@ -238,12 +239,84 @@ fn should_write_full_path_to_mod() {
     assert str::contains(markdown, "# Module `a::b::c`");
 }
 
+fn write_common(
+    ctxt: ctxt,
+    brief: option<str>,
+    desc: option<str>,
+    sections: [doc::section]
+) {
+    write_brief(ctxt, brief);
+    write_desc(ctxt, desc);
+    write_sections(ctxt, sections);
+}
+
+fn write_brief(
+    ctxt: ctxt,
+    brief: option<str>
+) {
+    alt brief {
+      some(brief) {
+        ctxt.w.write_line(brief);
+        ctxt.w.write_line("");
+      }
+      none { }
+    }
+}
+
+#[test]
+fn should_leave_blank_line_after_brief() {
+    let markdown = test::render("#[doc(brief = \"brief\")] fn a() { }");
+    assert str::contains(markdown, "brief\n\n");
+}
+
+#[test]
+fn should_leave_blank_line_between_brief_and_desc() {
+    let markdown = test::render(
+        "#[doc(brief = \"brief\", desc = \"desc\")] fn a() { }"
+    );
+    assert str::contains(markdown, "brief\n\ndesc");
+}
+
+fn write_desc(
+    ctxt: ctxt,
+    desc: option<str>
+) {
+    alt desc {
+        some(desc) {
+            ctxt.w.write_line(desc);
+            ctxt.w.write_line("");
+        }
+        none { }
+    }
+}
+
+fn write_sections(ctxt: ctxt, sections: [doc::section]) {
+    vec::iter(sections) {|section|
+        write_section(ctxt, section);
+    }
+}
+
+fn write_section(ctxt: ctxt, section: doc::section) {
+    write_header_(ctxt, h4, section.header);
+    ctxt.w.write_line(section.body);
+    ctxt.w.write_line("");
+}
+
+#[test]
+fn should_write_sections() {
+    let markdown = test::render(
+        "#[doc = \"\
+         # Header\n\
+         Body\"]\
+         mod a { }");
+    assert str::contains(markdown, "#### Header\n\nBody\n\n");
+}
+
 fn write_mod_contents(
     ctxt: ctxt,
     doc: doc::moddoc
 ) {
-    write_brief(ctxt, doc.brief());
-    write_desc(ctxt, doc.desc());
+    write_common(ctxt, doc.brief(), doc.desc(), doc.sections());
     if option::is_some(doc.index) {
         write_index(ctxt, option::get(doc.index));
     }
@@ -321,9 +394,7 @@ fn should_not_write_index_if_no_entries() {
 
 fn write_nmod(ctxt: ctxt, doc: doc::nmoddoc) {
     write_header(ctxt, h1, doc::nmodtag(doc));
-
-    write_brief(ctxt, doc.brief());
-    write_desc(ctxt, doc.desc());
+    write_common(ctxt, doc.brief(), doc.desc(), doc.sections());
 
     for fndoc in doc.fns {
         write_fn(ctxt, fndoc);
@@ -353,6 +424,7 @@ fn write_fn(
         doc.sig,
         doc.brief(),
         doc.desc(),
+        doc.sections(),
         doc.args,
         doc.return,
         doc.failure
@@ -364,13 +436,13 @@ fn write_fnlike(
     sig: option<str>,
     brief: option<str>,
     desc: option<str>,
+    sections: [doc::section],
     args: [doc::argdoc],
     return: doc::retdoc,
     failure: option<str>
 ) {
     write_sig(ctxt, sig);
-    write_brief(ctxt, brief);
-    write_desc(ctxt, desc);
+    write_common(ctxt, brief, desc, sections);
     write_args(ctxt, args);
     write_return(ctxt, return);
     write_failure(ctxt, failure);
@@ -435,46 +507,6 @@ fn should_correctly_indent_fn_signature() {
 fn should_leave_blank_line_between_fn_header_and_sig() {
     let markdown = test::render("#[doc(brief = \"brief\")] fn a() { }");
     assert str::contains(markdown, "Function `a`\n\n    fn a()");
-}
-
-fn write_brief(
-    ctxt: ctxt,
-    brief: option<str>
-) {
-    alt brief {
-      some(brief) {
-        ctxt.w.write_line(brief);
-        ctxt.w.write_line("");
-      }
-      none { }
-    }
-}
-
-#[test]
-fn should_leave_blank_line_after_brief() {
-    let markdown = test::render("#[doc(brief = \"brief\")] fn a() { }");
-    assert str::contains(markdown, "brief\n\n");
-}
-
-#[test]
-fn should_leave_blank_line_between_brief_and_desc() {
-    let markdown = test::render(
-        "#[doc(brief = \"brief\", desc = \"desc\")] fn a() { }"
-    );
-    assert str::contains(markdown, "brief\n\ndesc");
-}
-
-fn write_desc(
-    ctxt: ctxt,
-    desc: option<str>
-) {
-    alt desc {
-        some(desc) {
-            ctxt.w.write_line(desc);
-            ctxt.w.write_line("");
-        }
-        none { }
-    }
 }
 
 fn write_args(
@@ -602,8 +634,7 @@ fn write_const(
 ) {
     write_header(ctxt, h2, doc::consttag(doc));
     write_sig(ctxt, doc.ty);
-    write_brief(ctxt, doc.brief());
-    write_desc(ctxt, doc.desc());
+    write_common(ctxt, doc.brief(), doc.desc(), doc.sections());
 }
 
 #[test]
@@ -625,8 +656,7 @@ fn write_enum(
     doc: doc::enumdoc
 ) {
     write_header(ctxt, h2, doc::enumtag(doc));
-    write_brief(ctxt, doc.brief());
-    write_desc(ctxt, doc.desc());
+    write_common(ctxt, doc.brief(), doc.desc(), doc.sections());
     write_variants(ctxt, doc.variants);
 }
 
@@ -708,8 +738,7 @@ fn should_write_variant_list_with_signatures() {
 fn write_res(ctxt: ctxt, doc: doc::resdoc) {
     write_header(ctxt, h2, doc::restag(doc));
     write_sig(ctxt, doc.sig);
-    write_brief(ctxt, doc.brief());
-    write_desc(ctxt, doc.desc());
+    write_common(ctxt, doc.brief(), doc.desc(), doc.sections());
     write_args(ctxt, doc.args);
 }
 
@@ -734,8 +763,7 @@ fn should_write_resource_args() {
 
 fn write_iface(ctxt: ctxt, doc: doc::ifacedoc) {
     write_header(ctxt, h2, doc::ifacetag(doc));
-    write_brief(ctxt, doc.brief());
-    write_desc(ctxt, doc.desc());
+    write_common(ctxt, doc.brief(), doc.desc(), doc.sections());
     write_methods(ctxt, doc.methods);
 }
 
@@ -750,6 +778,7 @@ fn write_method(ctxt: ctxt, doc: doc::methoddoc) {
         doc.sig,
         doc.brief,
         doc.desc,
+        doc.sections,
         doc.args,
         doc.return,
         doc.failure
@@ -827,8 +856,7 @@ fn should_write_iface_method_failure_conditions() {
 
 fn write_impl(ctxt: ctxt, doc: doc::impldoc) {
     write_header(ctxt, h2, doc::impltag(doc));
-    write_brief(ctxt, doc.brief());
-    write_desc(ctxt, doc.desc());
+    write_common(ctxt, doc.brief(), doc.desc(), doc.sections());
     write_methods(ctxt, doc.methods);
 }
 
@@ -913,8 +941,7 @@ fn write_type(
 ) {
     write_header(ctxt, h2, doc::tytag(doc));
     write_sig(ctxt, doc.sig);
-    write_brief(ctxt, doc.brief());
-    write_desc(ctxt, doc.desc());
+    write_common(ctxt, doc.brief(), doc.desc(), doc.sections());
 }
 
 #[test]
@@ -968,6 +995,12 @@ mod test {
             #debug("doc (path): %?", doc);
             let doc = attr_pass::mk_pass().f(srv, doc);
             #debug("doc (attr): %?", doc);
+            let doc = unindent_pass::mk_pass().f(srv, doc);
+            #debug("doc (unindent): %?", doc);
+            let doc = sectionalize_pass::mk_pass().f(srv, doc);
+            #debug("doc (trim): %?", doc);
+            let doc = trim_pass::mk_pass().f(srv, doc);
+            #debug("doc (sectionalize): %?", doc);
             let doc = markdown_index_pass::mk_pass(config).f(srv, doc);
             #debug("doc (index): %?", doc);
             (srv, doc)
