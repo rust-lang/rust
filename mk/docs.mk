@@ -13,7 +13,7 @@ ifeq ($(CFG_PANDOC),)
 else
 
 DOCS += doc/rust.html
-doc/rust.html: rust.md doc/version.md doc/keywords.md
+doc/rust.html: rust.md doc/version.md doc/keywords.md $(S)doc/rust.css
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_PANDOC) \
          --standalone --toc \
@@ -66,7 +66,7 @@ doc/rust.pdf: doc/rust.tex
   else
 
 DOCS += doc/tutorial.html
-doc/tutorial.html: $(S)doc/tutorial.md
+doc/tutorial.html: $(S)doc/tutorial.md $(S)doc/rust.css
 	@$(call E, cp: $(S)doc/rust.css)
 	-$(Q)cp -a $(S)doc/rust.css doc/ 2> /dev/null
 	@$(call E, pandoc: $@)
