@@ -516,8 +516,7 @@ fn write_variants(
         ret;
     }
 
-    ctxt.w.write_line("Variants:");
-    ctxt.w.write_line("");
+    write_header_(ctxt, h4, "Variants");
 
     vec::iter(docs, {|variant| write_variant(ctxt, variant) });
 
@@ -545,7 +544,7 @@ fn should_write_variant_list() {
          #[doc = \"test\"] c }");
     assert str::contains(
         markdown,
-        "\n\nVariants:\n\
+        "\n\n#### Variants\n\
          \n* `b` - test\
          \n* `c` - test\n\n");
 }
@@ -555,7 +554,7 @@ fn should_write_variant_list_without_descs() {
     let markdown = test::render("enum a { b, c }");
     assert str::contains(
         markdown,
-        "\n\nVariants:\n\
+        "\n\n#### Variants\n\
          \n* `b`\
          \n* `c`\n\n");
 }
@@ -565,7 +564,7 @@ fn should_write_variant_list_with_signatures() {
     let markdown = test::render("enum a { b(int), #[doc = \"a\"] c(int) }");
     assert str::contains(
         markdown,
-        "\n\nVariants:\n\
+        "\n\n#### Variants\n\
          \n* `b(int)`\
          \n* `c(int)` - a\n\n");
 }
