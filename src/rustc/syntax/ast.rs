@@ -341,7 +341,9 @@ enum prim_ty {
     ty_bool,
 }
 
-enum region {
+type region = {id: node_id, node: region_};
+
+enum region_ {
     re_inferred,
     re_named(ident),
     re_self

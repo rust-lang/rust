@@ -417,7 +417,7 @@ fn parse_ret_ty(p: parser) -> (ast::ret_style, @ast::ty) {
 }
 
 fn parse_region(p: parser) -> ast::region {
-    alt p.token {
+    let region_ = alt p.token {
         token::IDENT(sid, _) if p.look_ahead(1u) == token::DOT {
             let string = p.get_str(sid);
             p.bump(); p.bump();
@@ -428,7 +428,8 @@ fn parse_region(p: parser) -> ast::region {
             }
         }
         _ { ast::re_inferred }
-    }
+    };
+    ret {id: p.get_id(), node: region_};
 }
 
 fn parse_ty(p: parser, colons_before_params: bool) -> @ast::ty {
