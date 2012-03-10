@@ -319,7 +319,6 @@ probe CFG_LLVM_CONFIG      llvm-config
 probe CFG_VALGRIND         valgrind
 probe CFG_PERF             perf
 probe CFG_ISCC             iscc
-probe CFG_NATURALDOCS      NaturalDocs naturaldocs
 probe CFG_LLNEXTGEN        LLnextgen
 probe CFG_PANDOC           pandoc
 probe CFG_PDFLATEX         pdflatex
@@ -413,7 +412,6 @@ step_msg "making directories"
 
 for i in \
     doc doc/core doc/std \
-    nd nd/core nd/std \
     dl tmp
 do
     make_dir $i
