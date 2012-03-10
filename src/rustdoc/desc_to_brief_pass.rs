@@ -108,18 +108,30 @@ fn parse_desc(desc: str) -> option<str> {
 
     const max_brief_len: uint = 120u;
 
-    let paras = paragraphs(desc);
-
-    if check vec::is_not_empty(paras) {
-        let maybe_brief = vec::head(paras);
-        if str::len(maybe_brief) <= max_brief_len {
-            some(maybe_brief)
+    alt first_sentence(desc) {
+      some(first_sentence) {
+        if str::len(first_sentence) <= max_brief_len {
+            some(first_sentence)
         } else {
             none
         }
+      }
+      none { none }
+    }
+}
+
+fn first_sentence(s: str) -> option<str> {
+    let paras = paragraphs(s);
+    if vec::is_not_empty(paras) {
+        let first = vec::head(sentences(vec::head(paras)));
+        some(str::replace(first, "\n", " "))
     } else {
         none
     }
+}
+
+fn sentences(s: str) -> [str] {
+    str::split_char(s, '.')
 }
 
 fn paragraphs(s: str) -> [str] {
@@ -180,8 +192,8 @@ fn should_promote_short_descs() {
 #[test]
 fn should_not_promote_long_descs() {
     let desc = some("Warkworth Castle is a ruined medieval building
-in the town of the same name in the English county of Northumberland.
-The town and castle occupy a loop of the River Coquet, less than a mile
+in the town of the same name in the English county of Northumberland,
+and the town and castle occupy a loop of the River Coquet, less than a mile
 from England's north-east coast. When the castle was founded is uncertain,
 but traditionally its construction has been ascribed to Prince Henry of
 Scotland in the mid 12th century, although it may have been built by
@@ -189,4 +201,19 @@ King Henry II of England when he took control of England'snorthern
 counties.");
     let brief = extract(desc);
     assert brief == none;
+}
+
+#[test]
+fn should_promote_first_sentence() {
+    let desc = some("Warkworth Castle is a ruined medieval building
+in the town. of the same name in the English county of Northumberland,
+and the town and castle occupy a loop of the River Coquet, less than a mile
+from England's north-east coast. When the castle was founded is uncertain,
+but traditionally its construction has been ascribed to Prince Henry of
+Scotland in the mid 12th century, although it may have been built by
+King Henry II of England when he took control of England'snorthern
+counties.");
+    let brief = extract(desc);
+    assert brief == some(
+        "Warkworth Castle is a ruined medieval building in the town");
 }
