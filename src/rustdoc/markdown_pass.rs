@@ -135,10 +135,6 @@ fn write_header_(ctxt: ctxt, lvl: hlvl, title: str) {
     ctxt.w.write_line("");
 }
 
-fn write_lead(ctxt: ctxt, title: str) {
-    ctxt.w.write_str(#fmt("__%s__: ", title))
-}
-
 fn header_kind(doc: doc::itemtag) -> str {
     alt doc {
       doc::modtag(_) {
