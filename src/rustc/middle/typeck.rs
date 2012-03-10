@@ -2323,6 +2323,10 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
               check_block_no_value(fcx, body);
         write_ty(tcx, id, block_ty(tcx, body));
       }
+      ast::expr_loop(body) {
+          check_block_no_value(fcx, body);
+          write_ty(tcx, id, ty::mk_nil(tcx));
+      }
       ast::expr_alt(expr, arms, _) {
         bot = check_expr(fcx, expr);
 
@@ -2613,7 +2617,6 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
           }
         }
       }
-      _ { tcx.sess.unimpl("expr type in typeck::check_expr"); }
     }
     if bot { write_ty(tcx, expr.id, ty::mk_bot(tcx)); }
 

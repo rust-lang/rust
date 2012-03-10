@@ -2029,6 +2029,17 @@ fn trans_do_while(cx: block, body: ast::blk, cond: @ast::expr) ->
     ret next_cx;
 }
 
+fn trans_loop(cx:block, body: ast::blk) -> block {
+    let next_cx = sub_block(cx, "next");
+    let body_cx =
+        loop_scope_block(cx, cont_self, next_cx,
+                                  "infinite loop body", body.span);
+    let body_end = trans_block(body_cx, body, ignore);
+    cleanup_and_Br(body_end, body_cx, body_cx.llbb);
+    Br(cx, body_cx.llbb);
+    ret next_cx;
+}
+
 type generic_info = {item_type: ty::t,
                      static_tis: [option<@tydesc_info>],
                      tydescs: [ValueRef],
@@ -3255,6 +3266,10 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
         assert dest == ignore;
         ret trans_while(bcx, cond, body);
       }
+      ast::expr_loop(body) {
+        assert dest == ignore;
+        ret trans_loop(bcx, body);
+      }
       ast::expr_do_while(body, cond) {
         assert dest == ignore;
         ret trans_do_while(bcx, body, cond);
@@ -3293,7 +3308,7 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
         assert dest == ignore;
         ret trans_assign_op(bcx, e, op, dst, src);
       }
-      _ { bcx.tcx().sess.span_bug(e.span, "trans_expr reached\
+      _ { bcx.tcx().sess.span_bug(e.span, "trans_expr reached \
              fall-through case"); }
 
     }

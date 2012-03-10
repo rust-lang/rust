@@ -146,11 +146,11 @@ fn new_parser(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader,
 fn bad_expr_word_table() -> hashmap<str, ()> {
     let words = new_str_hash();
     for word in ["alt", "assert", "be", "break", "check", "claim",
-                 "class", "const", "cont", "copy", "do", "else", "enum",
-                 "export", "fail", "fn", "for", "if",  "iface", "impl",
-                 "import", "let", "log", "mod", "mutable", "native", "pure",
-                 "resource", "ret", "trait", "type", "unchecked", "unsafe",
-                 "while", "crust", "mut"] {
+                 "class", "const", "cont", "copy", "crust", "do", "else",
+                 "enum", "export", "fail", "fn", "for", "if",  "iface",
+                 "impl", "import", "let", "log", "loop", "mod", "mut",
+                 "mutable", "native", "pure", "resource", "ret", "trait",
+                 "type", "unchecked", "unsafe", "while"] {
         words.insert(word, ());
     }
     words
@@ -839,6 +839,8 @@ fn parse_bottom_expr(p: parser) -> pexpr {
         ret pexpr(parse_while_expr(p));
     } else if eat_word(p, "do") {
         ret pexpr(parse_do_while_expr(p));
+    } else if eat_word(p, "loop") {
+        ret pexpr(parse_loop_expr(p));
     } else if eat_word(p, "alt") {
         ret pexpr(parse_alt_expr(p));
     } else if eat_word(p, "fn") {
@@ -1399,6 +1401,13 @@ fn parse_do_while_expr(p: parser) -> @ast::expr {
     ret mk_expr(p, lo, hi, ast::expr_do_while(body, cond));
 }
 
+fn parse_loop_expr(p: parser) -> @ast::expr {
+    let lo = p.last_span.lo;
+    let body = parse_block_no_value(p);
+    let hi = body.span.hi;
+    ret mk_expr(p, lo, hi, ast::expr_loop(body));
+}
+
 fn parse_alt_expr(p: parser) -> @ast::expr {
     let lo = p.last_span.lo;
     let mode = if eat_word(p, "check") { ast::alt_check }
@@ -1691,7 +1700,7 @@ fn expr_requires_semi_to_be_stmt(e: @ast::expr) -> bool {
       ast::expr_if(_, _, _) | ast::expr_if_check(_, _, _)
       | ast::expr_alt(_, _, _) | ast::expr_block(_)
       | ast::expr_do_while(_, _) | ast::expr_while(_, _)
-      | ast::expr_for(_, _, _)
+      | ast::expr_loop(_) | ast::expr_for(_, _, _)
       | ast::expr_call(_, _, true) {
         false
       }

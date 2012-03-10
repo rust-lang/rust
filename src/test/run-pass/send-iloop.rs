@@ -12,7 +12,7 @@ fn iloop() {
     task::spawn {|| die(); };
     let p = comm::port::<()>();
     let c = comm::chan(p);
-    while true {
+    loop {
         // Sending and receiving here because these actions yield,
         // at which point our child can kill us
         comm::send(c, ());

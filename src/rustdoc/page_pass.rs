@@ -43,7 +43,7 @@ type page_chan = comm::chan<option<doc::page>>;
 
 fn make_doc_from_pages(page_port: page_port) -> doc::doc {
     let mut pages = [];
-    while true {
+    loop {
         let val = comm::recv(page_port);
         if option::is_some(val) {
             pages += [option::unwrap(val)];

@@ -289,7 +289,7 @@ fn future_writer() -> (writer, future::future<str>) {
     };
     let future = future::from_fn {||
         let res = "";
-        while true {
+        loop {
             alt comm::recv(port) {
               write(s) { res += s }
               done { break }

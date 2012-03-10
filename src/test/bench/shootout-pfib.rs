@@ -60,7 +60,7 @@ fn parse_opts(argv: [str]) -> config {
 
 fn stress_task(&&id: int) {
     let i = 0;
-    while true {
+    loop {
         let n = 15;
         assert (fib(n) == fib(n));
         i += 1;

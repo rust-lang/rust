@@ -354,7 +354,6 @@ fn find_pre_post_state_cap_clause(fcx: fn_ctxt, e_id: node_id,
 fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
     let num_constrs = num_constraints(fcx.enclosing);
 
-
     alt e.node {
       expr_vec(elts, _) {
         ret find_pre_post_state_exprs(fcx, pres, e.id,
@@ -489,8 +488,6 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
         */
         let loop_pres =
             intersect_states(block_poststate(fcx.ccx, body), pres);
-        // aux::log_tritv_err(fcx, loop_pres);
-        // #error("---------------");
 
         let changed =
             set_prestate_ann(fcx.ccx, e.id, loop_pres) |
@@ -544,6 +541,21 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
                                   expr_poststate(fcx.ccx, test));
         }
         ret changed;
+      }
+      expr_loop(body) {
+        let loop_pres =
+            intersect_states(block_poststate(fcx.ccx, body), pres);
+        let changed = set_prestate_ann(fcx.ccx, e.id, loop_pres)
+              | find_pre_post_state_block(fcx, loop_pres, body);
+        /* conservative approximation: if a loop contains a break
+           or cont, we assume nothing about the poststate */
+        /* which is still unsound -- see [Break-unsound] */
+        if has_nonlocal_exits(body) {
+            ret changed | set_poststate_ann(fcx.ccx, e.id, pres);
+        } else {
+            ret changed | set_poststate_ann(fcx.ccx, e.id,
+                             block_poststate(fcx.ccx, body));
+        }
       }
       expr_for(d, index, body) {
         ret find_pre_post_state_loop(fcx, pres, d, index, body, e.id);

@@ -6,7 +6,7 @@ fn starve_main(alive: chan<int>) {
     alive <| 1;
     #debug("starving main");
     let i: int = 0;
-    while true { i += 1; }
+    loop { i += 1; }
 }
 
 fn main() {

@@ -138,7 +138,7 @@ fn range(lo: uint, hi: uint, it: fn(uint)) {
 }
 
 /*
-Function: loop
+Function: iterate
 
 Iterate over the range [`lo`..`hi`), or stop when requested
 
@@ -153,7 +153,7 @@ Returns:
 `true` If execution proceeded correctly, `false` if it was interrupted,
 that is if `it` returned `false` at any point.
 */
-fn loop(lo: uint, hi: uint, it: fn(uint) -> bool) -> bool {
+fn iterate(lo: uint, hi: uint, it: fn(uint) -> bool) -> bool {
     let mut i = lo;
     while i < hi {
         if (!it(i)) { ret false; }

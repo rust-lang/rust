@@ -446,6 +446,19 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
                                        expr_pp(fcx.ccx, test)]),
                          loop_postcond);
       }
+      expr_loop(body) {
+        find_pre_post_block(fcx, body);
+        /* Infinite loop: if control passes it, everything is true. */
+        let loop_postcond = false_postcond(num_local_vars);
+        /* Conservative approximation: if the body has any nonlocal exits,
+         the poststate is blank since we don't know what parts of it
+          execute. */
+        if has_nonlocal_exits(body) {
+            loop_postcond = empty_poststate(num_local_vars);
+        }
+        set_pre_and_post(fcx.ccx, e.id, block_precond(fcx.ccx, body),
+                         loop_postcond);
+      }
       expr_for(d, index, body) {
         find_pre_post_loop(fcx, d, index, body, e.id);
       }

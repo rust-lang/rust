@@ -15,7 +15,7 @@ fn f(c: comm::_chan<int>) {
     comm::send(c, 1);
 
 
-    while true {
+    loop {
         // spin waiting for the parent to kill us.
         #debug("child waiting to die...");
 

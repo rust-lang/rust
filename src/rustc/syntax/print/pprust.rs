@@ -913,6 +913,11 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         space(s.s);
         print_block(s, blk);
       }
+      ast::expr_loop(blk) {
+        head(s, "loop");
+        space(s.s);
+        print_block(s, blk);
+      }
       ast::expr_for(decl, expr, blk) {
         head(s, "for");
         print_for_decl(s, decl, expr);

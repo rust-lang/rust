@@ -25,7 +25,7 @@ fn map(input: str, emit: map_reduce::putter) {
     let f = io::str_reader(input);
 
 
-    while true {
+    loop {
         alt read_word(f) { some(w) { emit(w, 1); } none { break; } }
     }
 }
@@ -33,7 +33,7 @@ fn map(input: str, emit: map_reduce::putter) {
 fn reduce(_word: str, get: map_reduce::getter) {
     let count = 0;
 
-    while true { alt get() { some(_) { count += 1; } none { break; } } }
+    loop { alt get() { some(_) { count += 1; } none { break; } } }
 }
 
 mod map_reduce {

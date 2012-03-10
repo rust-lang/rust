@@ -380,7 +380,7 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
     let fold_mac = bind fold_mac_(_, fld);
 
     ret alt e {
-            expr_vec(exprs, mutt) {
+          expr_vec(exprs, mutt) {
             expr_vec(fld.map_exprs(fld.fold_expr, exprs), mutt)
           }
           expr_rec(fields, maybe_expr) {
@@ -416,6 +416,9 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
           }
           expr_do_while(blk, expr) {
             expr_do_while(fld.fold_block(blk), fld.fold_expr(expr))
+          }
+          expr_loop(body) {
+              expr_loop(fld.fold_block(body))
           }
           expr_alt(expr, arms, mode) {
             expr_alt(fld.fold_expr(expr), vec::map(arms, fld.fold_arm), mode)

@@ -229,6 +229,10 @@ enum expr_ {
     expr_while(@expr, blk),
     expr_for(@local, @expr, blk),
     expr_do_while(blk, @expr),
+    /* Conditionless loop (can be exited with break, cont, ret, or fail)
+       Same semantics as while(true) { body }, but typestate knows that the
+       (implicit) condition is always true. */
+    expr_loop(blk),
     expr_alt(@expr, [arm], alt_mode),
     expr_fn(proto, fn_decl, blk, @capture_clause),
     expr_fn_block(fn_decl, blk),

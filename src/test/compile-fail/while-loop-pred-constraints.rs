@@ -9,8 +9,8 @@ fn main() {
     let y: int = 42;
     let x: int = 1;
     check (even(y));
-    while true {
+    loop {
         print_even(y);
-        while true { while true { while true { y += x; } } }
+        loop { loop { loop { y += x; } } }
     }
 }

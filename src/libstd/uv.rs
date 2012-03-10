@@ -53,11 +53,11 @@ enum uv_loop {
 #[nolink]
 native mod rustrt {
     fn rust_uv_loop_new() -> *ctypes::void;
-    fn rust_uv_loop_delete(loop: *ctypes::void);
+    fn rust_uv_loop_delete(lp: *ctypes::void);
     fn rust_uv_loop_set_data(
-        loop: *ctypes::void,
+        lp: *ctypes::void,
         data: *uv_loop_data);
-    fn rust_uv_bind_op_cb(loop: *ctypes::void, cb: *u8)
+    fn rust_uv_bind_op_cb(lp: *ctypes::void, cb: *u8)
         -> *ctypes::void;
     fn rust_uv_stop_op_cb(handle: *ctypes::void);
     fn rust_uv_run(loop_handle: *ctypes::void);
@@ -317,37 +317,37 @@ fn loop_new() -> uv_loop unsafe {
     ret comm::recv(ret_recv_port);
 }
 
-fn loop_delete(loop: uv_loop) {
-    let loop_ptr = get_loop_ptr_from_uv_loop(loop);
+fn loop_delete(lp: uv_loop) {
+    let loop_ptr = get_loop_ptr_from_uv_loop(lp);
     rustrt::rust_uv_loop_delete(loop_ptr);
 }
 
-fn run(loop: uv_loop) {
+fn run(lp: uv_loop) {
     let end_port = comm::port::<bool>();
     let end_chan = comm::chan::<bool>(end_port);
-    let loop_chan = get_loop_chan_from_uv_loop(loop);
+    let loop_chan = get_loop_chan_from_uv_loop(lp);
     comm::send(loop_chan, msg_run(end_chan));
     comm::recv(end_port);
 }
 
-fn run_in_bg(loop: uv_loop) {
-    let loop_chan = get_loop_chan_from_uv_loop(loop);
+fn run_in_bg(lp: uv_loop) {
+    let loop_chan = get_loop_chan_from_uv_loop(lp);
     comm::send(loop_chan, msg_run_in_bg);
 }
 
 fn async_init (
-    loop: uv_loop,
+    lp: uv_loop,
     async_cb: fn~(uv_handle),
     after_cb: fn~(uv_handle)) {
     let msg = msg_async_init(async_cb, after_cb);
-    let loop_chan = get_loop_chan_from_uv_loop(loop);
+    let loop_chan = get_loop_chan_from_uv_loop(lp);
     comm::send(loop_chan, msg);
 }
 
 fn async_send(async: uv_handle) {
     alt async {
-      uv_async(id, loop) {
-        let loop_chan = get_loop_chan_from_uv_loop(loop);
+      uv_async(id, lp) {
+        let loop_chan = get_loop_chan_from_uv_loop(lp);
         comm::send(loop_chan, msg_async_send(id));
       }
       _ {
@@ -362,18 +362,18 @@ fn close(h: uv_handle, cb: fn~()) {
     comm::send(loop_chan, msg_close(h, cb));
 }
 
-fn timer_init(loop: uv_loop, after_cb: fn~(uv_handle)) {
+fn timer_init(lp: uv_loop, after_cb: fn~(uv_handle)) {
     let msg = msg_timer_init(after_cb);
-    let loop_chan = get_loop_chan_from_uv_loop(loop);
+    let loop_chan = get_loop_chan_from_uv_loop(lp);
     comm::send(loop_chan, msg);
 }
 
 fn timer_start(the_timer: uv_handle, timeout: u32, repeat:u32,
                timer_cb: fn~(uv_handle)) {
     alt the_timer {
-      uv_timer(id, loop) {
+      uv_timer(id, lp) {
         let msg = msg_timer_start(id, timeout, repeat, timer_cb);
-        let loop_chan = get_loop_chan_from_uv_loop(loop);
+        let loop_chan = get_loop_chan_from_uv_loop(lp);
         comm::send(loop_chan, msg);
       }
       _ {
@@ -385,8 +385,8 @@ fn timer_start(the_timer: uv_handle, timeout: u32, repeat:u32,
 
 fn timer_stop(the_timer: uv_handle, after_cb: fn~(uv_handle)) {
     alt the_timer {
-      uv_timer(id, loop) {
-        let loop_chan = get_loop_chan_from_uv_loop(loop);
+      uv_timer(id, lp) {
+        let loop_chan = get_loop_chan_from_uv_loop(lp);
         let msg = msg_timer_stop(id, after_cb);
         comm::send(loop_chan, msg);
       }
@@ -423,8 +423,8 @@ fn get_loop_chan_from_data(data: *uv_loop_data)
 fn get_loop_chan_from_handle(handle: uv_handle)
     -> comm::chan<uv_msg> {
     alt handle {
-      uv_async(id,loop) | uv_timer(id,loop) {
-        let loop_chan = get_loop_chan_from_uv_loop(loop);
+      uv_async(id,lp) | uv_timer(id,lp) {
+        let loop_chan = get_loop_chan_from_uv_loop(lp);
         ret loop_chan;
       }
       _ {
@@ -434,15 +434,15 @@ fn get_loop_chan_from_handle(handle: uv_handle)
     }
 }
 
-fn get_loop_ptr_from_uv_loop(loop: uv_loop) -> *ctypes::void {
-    alt loop {
+fn get_loop_ptr_from_uv_loop(lp: uv_loop) -> *ctypes::void {
+    alt lp {
       uv_loop_new(loop_chan, loop_ptr) {
         ret loop_ptr;
       }
     }
 }
-fn get_loop_chan_from_uv_loop(loop: uv_loop) -> comm::chan<uv_msg> {
-    alt loop {
+fn get_loop_chan_from_uv_loop(lp: uv_loop) -> comm::chan<uv_msg> {
+    alt lp {
       uv_loop_new(loop_chan, loop_ptr) {
         ret loop_chan;
       }
@@ -451,7 +451,7 @@ fn get_loop_chan_from_uv_loop(loop: uv_loop) -> comm::chan<uv_msg> {
 
 fn get_id_from_handle(handle: uv_handle) -> [u8] {
     alt handle {
-      uv_async(id,loop) | uv_timer(id,loop) {
+      uv_async(id,lp) | uv_timer(id,lp) {
         ret id;
       }
       _ {
@@ -462,7 +462,7 @@ fn get_id_from_handle(handle: uv_handle) -> [u8] {
 
 // crust
 crust fn process_operation(
-        loop: *ctypes::void,
+        lp: *ctypes::void,
         data: *uv_loop_data) unsafe {
     let op_port = (*data).operation_port;
     let loop_chan = get_loop_chan_from_data(data);
@@ -472,7 +472,7 @@ crust fn process_operation(
           op_async_init(id) {
             let id_ptr = vec::unsafe::to_ptr(id);
             let async_handle = rustrt::rust_uv_async_init(
-                loop,
+                lp,
                 process_async_send,
                 id_ptr);
             comm::send(loop_chan, uv_async_init(
@@ -485,7 +485,7 @@ crust fn process_operation(
           op_timer_init(id) {
             let id_ptr = vec::unsafe::to_ptr(id);
             let timer_handle = rustrt::rust_uv_timer_init(
-                loop,
+                lp,
                 process_timer_call,
                 id_ptr);
             comm::send(loop_chan, uv_timer_init(
@@ -515,12 +515,12 @@ crust fn process_operation(
 fn handle_op_close(handle: uv_handle, handle_ptr: *ctypes::void) {
     // it's just like im doing C
     alt handle {
-      uv_async(id, loop) {
+      uv_async(id, lp) {
         let cb = process_close_async;
         rustrt::rust_uv_close(
             handle_ptr, cb);
       }
-      uv_timer(id, loop) {
+      uv_timer(id, lp) {
         let cb = process_close_timer;
         rustrt::rust_uv_close(
             handle_ptr, cb);

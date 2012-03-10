@@ -17,7 +17,7 @@ fn main() {
 
     // Check that no false positives are found in loops.
     let q = ~40, p = 10;
-    while true {
+    loop {
         let i = q;
         p += *i;
         if p > 100 { break; }

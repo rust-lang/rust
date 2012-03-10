@@ -55,7 +55,7 @@ fn canttouchthis() -> uint {
 }
 
 fn angrydome() {
-    while true { if break { } }
+    loop { if break { } }
     let i = 0;
     do  { i += 1; if i == 1 { alt cont { _ { } } } } while false
 }

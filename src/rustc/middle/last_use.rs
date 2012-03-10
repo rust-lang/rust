@@ -33,7 +33,7 @@ enum is_last_use {
 type last_uses = std::map::hashmap<node_id, is_last_use>;
 
 enum seen { unset, seen(node_id), }
-enum block_type { func, loop, }
+enum block_type { func, lp, }
 
 enum use { var_use(node_id), close_over(node_id), }
 type set = [{def: node_id, uses: list<use>}];
@@ -97,13 +97,13 @@ fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
         visit::visit_expr_opt(oexpr, cx, v);
         leave_fn(cx);
       }
-      expr_break { add_block_exit(cx, loop); }
-      expr_while(_, _) | expr_do_while(_, _) {
-        visit_block(loop, cx) {|| visit::visit_expr(ex, cx, v);}
+      expr_break { add_block_exit(cx, lp); }
+      expr_while(_, _) | expr_do_while(_, _) | expr_loop(_) {
+        visit_block(lp, cx) {|| visit::visit_expr(ex, cx, v);}
       }
       expr_for(_, coll, blk) {
         v.visit_expr(coll, cx, v);
-        visit_block(loop, cx) {|| visit::visit_block(blk, cx, v);}
+        visit_block(lp, cx) {|| visit::visit_block(blk, cx, v);}
       }
       expr_alt(input, arms, _) {
         v.visit_expr(input, cx, v);

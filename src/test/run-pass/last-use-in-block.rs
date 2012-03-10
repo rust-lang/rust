@@ -1,6 +1,6 @@
 // Issue #1818
 
-fn loop<T>(s: str, f: fn(str) -> T) -> T {
+fn lp<T>(s: str, f: fn(str) -> T) -> T {
     while false {
         let r = f(s);
         ret r;

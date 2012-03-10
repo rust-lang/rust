@@ -3,11 +3,11 @@ fn main() {
 
     let y: int = 42;
     let x: int;
-    while true {
+    loop {
         log(debug, y);
-        while true {
-            while true {
-                while true { x <- y; }
+        loop {
+            loop {
+                loop { x <- y; }
             }
         }
     }
