@@ -58,8 +58,6 @@ export zip;
 export swap;
 export reverse;
 export reversed;
-export enum_chars;
-export enum_uints;
 export iter;
 export iter2;
 export iteri;
@@ -732,26 +730,6 @@ fn reversed<T: copy>(v: [const T]) -> [T] {
     while i != 0u { rs += [v[i]]; i -= 1u; }
     rs += [v[0]];
     ret rs;
-}
-
-// FIXME: Seems like this should take char params. Maybe belongs in char
-#[doc = "Returns a vector containing a range of chars"]
-fn enum_chars(start: u8, end: u8) -> [char] {
-    assert start < end;
-    let mut i = start;
-    let mut r = [];
-    while i <= end { r += [i as char]; i += 1u as u8; }
-    ret r;
-}
-
-// FIXME: Probably belongs in uint. Compare to uint::range
-#[doc = "Returns a vector containing a range of uints"]
-fn enum_uints(start: uint, end: uint) -> [uint] {
-    assert start < end;
-    let mut i = start;
-    let mut r = [];
-    while i <= end { r += [i]; i += 1u; }
-    ret r;
 }
 
 #[doc = "
