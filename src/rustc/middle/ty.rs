@@ -125,7 +125,7 @@ export set_default_mode;
 export unify;
 export variant_info;
 export walk_ty;
-export occurs_check_fails;
+export occurs_check;
 export closure_kind;
 export ck_block;
 export ck_box;
@@ -1088,7 +1088,7 @@ fn vars_in_type(cx: ctxt, ty: t) -> [int] {
 
 fn type_autoderef(cx: ctxt, t: t) -> t {
     let t1 = t;
-    while true {
+    loop {
         alt get(t1).struct {
           ty_box(mt) | ty_uniq(mt) { t1 = mt.ty; }
           ty_res(_, inner, tps) {
@@ -1427,28 +1427,22 @@ fn sort_methods(meths: [method]) -> [method] {
     ret std::sort::merge_sort(bind method_lteq(_, _), meths);
 }
 
-fn occurs_check_fails(tcx: ctxt, sp: option<span>, vid: int, rt: t) ->
-   bool {
+fn occurs_check(tcx: ctxt, sp: span, vid: int, rt: t) {
     // Fast path
-    if !type_has_vars(rt) { ret false; }
+    if !type_has_vars(rt) { ret; }
 
     // Occurs check!
     if vec::contains(vars_in_type(tcx, rt), vid) {
-        alt sp {
-          some(s) {
             // Maybe this should be span_err -- however, there's an
             // assertion later on that the type doesn't contain
             // variables, so in this case we have to be sure to die.
             tcx.sess.span_fatal
-                (s, "type inference failed because I \
+                (sp, "type inference failed because I \
                      could not find a type\n that's both of the form "
                  + ty_to_str(tcx, mk_var(tcx, vid)) +
                  " and of the form " + ty_to_str(tcx, rt) +
                  " - such a type would have to be infinitely large.");
-          }
-          _ { ret true; }
-        }
-    } else { ret false; }
+    }
 }
 
 // Maintains a little union-set tree for inferred modes.  `canon()` returns

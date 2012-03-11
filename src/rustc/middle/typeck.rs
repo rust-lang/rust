@@ -1005,15 +1005,13 @@ mod unify {
 // instead of ty::struct.
 fn do_autoderef(fcx: @fn_ctxt, sp: span, t: ty::t) -> ty::t {
     let t1 = t;
-    while true {
+    loop {
         alt structure_of(fcx, sp, t1) {
           ty::ty_box(inner) | ty::ty_uniq(inner) {
             alt ty::get(t1).struct {
               ty::ty_var(v1) {
-                if ty::occurs_check_fails(fcx.ccx.tcx, some(sp), v1,
-                                          ty::mk_box(fcx.ccx.tcx, inner)) {
-                    break;
-                }
+                ty::occurs_check(fcx.ccx.tcx, sp, v1,
+                                 ty::mk_box(fcx.ccx.tcx, inner));
               }
               _ { }
             }
@@ -1033,8 +1031,7 @@ fn do_autoderef(fcx: @fn_ctxt, sp: span, t: ty::t) -> ty::t {
           }
           _ { ret t1; }
         }
-    }
-    core::unreachable();
+    };
 }
 
 fn resolve_type_vars_if_possible(fcx: @fn_ctxt, typ: ty::t) -> ty::t {
@@ -2326,6 +2323,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
       ast::expr_loop(body) {
           check_block_no_value(fcx, body);
           write_ty(tcx, id, ty::mk_nil(tcx));
+          bot = !may_break(body);
       }
       ast::expr_alt(expr, arms, _) {
         bot = check_expr(fcx, expr);
