@@ -96,7 +96,7 @@ mod chained {
         e_root: @entry<K,V>) -> search_result<K,V> {
         let e0 = e_root;
         let comp = 1u;   // for logging
-        while true {
+        loop {
             alt e0.next {
               absent {
                 #debug("search_tbl: absent, comp %u, hash %u, idx %u",
@@ -115,8 +115,7 @@ mod chained {
                 }
               }
             }
-        }
-        core::unreachable();
+        };
     }
 
     fn search_tbl<K: copy, V: copy>(
@@ -209,7 +208,7 @@ mod chained {
     fn foreach_entry<K: copy, V: copy>(chain0: chain<K,V>,
                                      blk: fn(@entry<K,V>)) {
         let chain = chain0;
-        while true {
+        loop {
             alt chain {
               absent { ret; }
               present(entry) {

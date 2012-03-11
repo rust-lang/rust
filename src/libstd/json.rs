@@ -383,23 +383,23 @@ impl parser for parser {
             ret ok(list(values));
         }
 
-        while true {
+        loop {
             alt self.parse_value() {
               ok(v) { vec::push(values, v); }
               e { ret e; }
             }
 
             self.parse_whitespace();
-            if self.eof() { break; }
+            if self.eof() {
+                ret self.error("EOF while parsing list");
+            }
 
             alt self.ch {
               ',' { self.bump(); }
               ']' { self.bump(); ret ok(list(values)); }
               _ { ret self.error("expecting ',' or ']'"); }
             }
-        }
-
-        ret self.error("EOF while parsing list");
+        };
     }
 
     fn parse_object() -> result::t<json, error> {

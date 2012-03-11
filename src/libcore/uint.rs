@@ -133,7 +133,7 @@ fn parse_buf(buf: [u8], radix: uint) -> option<uint> {
     let mut i = vec::len(buf) - 1u;
     let mut power = 1u;
     let mut n = 0u;
-    while true {
+    loop {
         alt char::to_digit(buf[i] as char, radix) {
           some(d) { n += d * power; }
           none { ret none; }
@@ -141,8 +141,7 @@ fn parse_buf(buf: [u8], radix: uint) -> option<uint> {
         power *= radix;
         if i == 0u { ret some(n); }
         i -= 1u;
-    }
-    fail;
+    };
 }
 
 #[doc = "Parse a string to an int"]

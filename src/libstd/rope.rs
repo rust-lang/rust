@@ -800,7 +800,7 @@ mod node {
         let buf = vec::to_mut(vec::init_elt(byte_len(node), 0u8));
         let offset = 0u;//Current position in the buffer
         let it = leaf_iterator::start(node);
-        while true {
+        loop {
             alt(leaf_iterator::next(it)) {
               option::none { break; }
               option::some(x) {
@@ -862,7 +862,7 @@ mod node {
         //1. Gather all leaves as a forest
         let forest = [mutable];
         let it = leaf_iterator::start(node);
-        while true {
+        loop {
             alt (leaf_iterator::next(it)) {
               option::none   { break; }
               option::some(x) { forest += [mutable @leaf(x)]; }
@@ -896,7 +896,7 @@ mod node {
     fn sub_bytes(node: @node, byte_offset: uint, byte_len: uint) -> @node {
         let node        = node;
         let byte_offset = byte_offset;
-        while true {
+        loop {
             if byte_offset == 0u && byte_len == node::byte_len(node) {
                 ret node;
             }
@@ -932,8 +932,7 @@ mod node {
                 }
               }
             }
-        }
-        core::unreachable();
+        };
     }
 
     #[doc ="
@@ -958,7 +957,7 @@ mod node {
     fn sub_chars(node: @node, char_offset: uint, char_len: uint) -> @node {
         let node        = node;
         let char_offset = char_offset;
-        while true {
+        loop {
             alt(*node) {
               node::leaf(x) {
                 if char_offset == 0u && char_len == x.char_len {
@@ -997,8 +996,7 @@ mod node {
                 }
               }
             }
-        }
-        core::unreachable();
+        };
     }
 
     fn concat2(left: @node, right: @node) -> @node {
@@ -1066,7 +1064,7 @@ mod node {
     "]
     fn loop_leaves(node: @node, it: fn(leaf) -> bool) -> bool{
         let current = node;
-        while true {
+        loop {
             alt(*current) {
               leaf(x) {
                 ret it(x);
@@ -1079,8 +1077,7 @@ mod node {
                 }
               }
             }
-        }
-        core::unreachable();
+        };
     }
 
     #[doc ="
@@ -1103,7 +1100,7 @@ mod node {
     fn char_at(node: @node, pos: uint) -> char {
         let node    = node;
         let pos     = pos;
-        while true {
+        loop {
             alt *node {
               leaf(x) {
                 ret str::char_at(*x.content, pos);
@@ -1114,8 +1111,7 @@ mod node {
                        else { pos -= left_len; right };
               }
             }
-        }
-        core::unreachable();
+        };
     }
 
     mod leaf_iterator {
@@ -1139,7 +1135,7 @@ mod node {
 
         fn next(it: t) -> option<leaf> {
             if it.stackpos < 0 { ret option::none; }
-            while true {
+            loop {
                 let current = it.stack[it.stackpos];
                 it.stackpos -= 1;
                 alt(*current) {
@@ -1153,8 +1149,7 @@ mod node {
                     ret option::some(x);
                   }
                 }
-            }
-            core::unreachable();
+            };
         }
     }
 
@@ -1182,7 +1177,7 @@ mod node {
         }
 
         fn next(it: t) -> option<char> {
-            while true {
+            loop {
                 alt(get_current_or_next_leaf(it)) {
                   option::none { ret option::none; }
                   option::some(_) {
@@ -1197,8 +1192,7 @@ mod node {
                     }
                   }
                 }
-            }
-            core::unreachable();
+            };
         }
 
         fn get_current_or_next_leaf(it: t) -> option<leaf> {
@@ -1326,7 +1320,7 @@ mod tests {
 
         let len = 0u;
         let it  = iterator::char::start(r);
-        while true {
+        loop {
             alt(node::char_iterator::next(it)) {
               option::none { break; }
               option::some(_) { len += 1u; }

@@ -100,7 +100,7 @@ fn qsort3<T: copy>(compare_func_lt: le<T>, compare_func_eq: le<T>,
     let j: int = right;
     let p: int = i;
     let q: int = j;
-    while true {
+    loop {
         i += 1;
         while compare_func_lt(copy arr[i], v) { i += 1; }
         j -= 1;

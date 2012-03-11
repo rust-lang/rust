@@ -1829,7 +1829,7 @@ fn autoderef(cx: block, v: ValueRef, t: ty::t) -> result_t {
     let v1: ValueRef = v;
     let t1: ty::t = t;
     let ccx = cx.ccx();
-    while true {
+    loop {
         alt ty::get(t1).struct {
           ty::ty_box(mt) {
             let body = GEPi(cx, v1, [0, abi::box_field_body]);
@@ -2935,7 +2935,7 @@ fn invoke_(bcx: block, llfn: ValueRef, llargs: [ValueRef],
 fn get_landing_pad(bcx: block) -> BasicBlockRef {
     fn in_lpad_scope_cx(bcx: block, f: fn(scope_info)) {
         let bcx = bcx;
-        while true {
+        loop {
             alt bcx.kind {
               block_scope(info) {
                 if info.cleanups.len() > 0u || bcx.parent == parent_none {
@@ -3493,7 +3493,7 @@ fn trans_break_cont(bcx: block, to_end: bool)
     -> block {
     // Locate closest loop block, outputting cleanup as we go.
     let unwind = bcx, target = bcx;
-    while true {
+    loop {
         alt unwind.kind {
           block_scope({is_loop: some({cnt, brk}), _}) {
             target = if to_end {
@@ -3748,7 +3748,7 @@ fn trans_block_cleanups(bcx: block, cleanup_cx: block) ->
 fn cleanup_and_leave(bcx: block, upto: option<BasicBlockRef>,
                      leave: option<BasicBlockRef>) {
     let cur = bcx, bcx = bcx;
-    while true {
+    loop {
         alt cur.kind {
           block_scope(info) if info.cleanups.len() > 0u {
             for exists in info.cleanup_paths {

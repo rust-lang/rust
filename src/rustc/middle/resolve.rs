@@ -677,7 +677,7 @@ fn follow_import(e: env, sc: scopes, path: [ident], sp: span) ->
     let path_len = vec::len(path);
     let dcur = lookup_in_scope_strict(e, sc, sp, path[0], ns_module);
     let i = 1u;
-    while true {
+    loop {
        alt dcur {
           some(dcur_def) {
             if i == path_len { break; }
@@ -790,7 +790,7 @@ fn resolve_import(e: env, defid: ast::def_id, name: ast::ident,
           }
           some(dcur_) {
             let dcur = dcur_, i = 1u;
-            while true {
+            loop {
                 if i == n_idents - 1u {
                     let impls = [];
                     find_impls_in_mod(e, dcur, impls, some(end_id));
@@ -846,7 +846,7 @@ enum ctxt { in_mod(def), in_scope(scopes), }
 fn unresolved_err(e: env, cx: ctxt, sp: span, name: ident, kind: str) {
     fn find_fn_or_mod_scope(sc: scopes) -> option<scope> {
         let sc = sc;
-        while true {
+        loop {
             alt sc {
               cons(cur, rest) {
                 alt cur {
@@ -860,8 +860,7 @@ fn unresolved_err(e: env, cx: ctxt, sp: span, name: ident, kind: str) {
               }
               _ { ret none; }
             }
-        }
-        core::unreachable()
+        };
     }
     let path = name;
     alt cx {
@@ -1098,7 +1097,7 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
     // Used to determine whether self is in scope
     let left_fn_level2 = false;
     let sc = sc;
-    while true {
+    loop {
         alt copy sc {
           nil { ret none; }
           cons(hd, tl) {
@@ -1150,8 +1149,7 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace)
             sc = *tl;
           }
         }
-    }
-    e.sess.bug("reached unreachable code in lookup_in_scope"); // sigh
+    };
 }
 
 fn lookup_in_ty_params(e: env, name: ident, ty_params: [ast::ty_param])
@@ -1766,7 +1764,7 @@ fn check_mod_name(e: env, name: ident, entries: list<mod_index_entry>) {
     fn dup(e: env, sp: span, word: str, name: ident) {
         e.sess.span_fatal(sp, "duplicate definition of " + word + name);
     }
-    while true {
+    loop {
         alt entries {
           cons(entry, rest) {
             if !is_none(lookup_in_mie(e, entry, ns_val(value_or_enum))) {

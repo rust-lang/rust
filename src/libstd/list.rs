@@ -43,27 +43,25 @@ is returned. If `f` matches no elements then none is returned.
 fn find<T: copy, U: copy>(ls: list<T>, f: fn(T) -> option<U>)
     -> option<U> {
     let ls = ls;
-    while true {
+    loop {
         alt ls {
           cons(hd, tl) {
             alt f(hd) { none { ls = *tl; } some(rs) { ret some(rs); } }
           }
-          nil { break; }
+          nil { ret none; }
         }
-    }
-    ret none;
+    };
 }
 
 #[doc = "Returns true if a list contains an element with the given value"]
 fn has<T: copy>(ls: list<T>, elt: T) -> bool {
     let ls = ls;
-    while true {
+    loop {
         alt ls {
           cons(hd, tl) { if elt == hd { ret true; } else { ls = *tl; } }
-          nil { break; }
+          nil { ret false; }
         }
-    }
-    ret false;
+    };
 }
 
 #[doc = "Returns true if the list is empty"]
@@ -113,7 +111,7 @@ fn iter<T>(l: list<T>, f: fn(T)) {
       cons(hd, tl) {
         f(hd);
         let cur = tl;
-        while true {
+        loop {
             alt *cur {
               cons(hd, tl) {
                 f(hd);

@@ -70,7 +70,7 @@ fn from_str(buf: str, radix: u64) -> option<u64> {
     if str::len(buf) == 0u { ret none; }
     let mut i = str::len(buf) - 1u;
     let mut power = 1u64, n = 0u64;
-    while true {
+    loop {
         alt char::to_digit(buf[i] as char, radix as uint) {
           some(d) { n += d as u64 * power; }
           none { ret none; }
@@ -78,8 +78,7 @@ fn from_str(buf: str, radix: u64) -> option<u64> {
         power *= radix;
         if i == 0u { ret some(n); }
         i -= 1u;
-    }
-    fail;
+    };
 }
 
 #[doc = "Computes the bitwise complement"]

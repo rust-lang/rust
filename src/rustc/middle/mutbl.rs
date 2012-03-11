@@ -16,7 +16,7 @@ fn expr_root(tcx: ty::ctxt, ex: @expr, autoderef: bool) ->
    {ex: @expr, ds: @[deref]} {
     fn maybe_auto_unbox(tcx: ty::ctxt, t: ty::t) -> {t: ty::t, ds: [deref]} {
         let ds = [], t = t;
-        while true {
+        loop {
             alt ty::get(t).struct {
               ty::ty_box(mt) {
                 ds += [@{mutbl: mt.mutbl == m_mutbl,
@@ -49,7 +49,7 @@ fn expr_root(tcx: ty::ctxt, ex: @expr, autoderef: bool) ->
         ret {t: t, ds: ds};
     }
     let ds: [deref] = [], ex = ex;
-    while true {
+    loop {
         alt copy ex.node {
           expr_field(base, ident, _) {
             let auto_unbox = maybe_auto_unbox(tcx, ty::expr_ty(tcx, base));

@@ -96,7 +96,7 @@ fn parse_path(st: @pstate) -> @ast::path {
     let idents: [ast::ident] = [];
     fn is_last(c: char) -> bool { ret c == '(' || c == ':'; }
     idents += [parse_ident_(st, is_last)];
-    while true {
+    loop {
         alt peek(st) {
           ':' { next(st); next(st); }
           c {
@@ -106,8 +106,7 @@ fn parse_path(st: @pstate) -> @ast::path {
             } else { idents += [parse_ident_(st, is_last)]; }
           }
         }
-    }
-    fail "parse_path: ill-formed path";
+    };
 }
 
 fn parse_constr_arg(st: @pstate) -> ast::fn_constr_arg {
@@ -328,28 +327,26 @@ fn parse_def(st: @pstate, conv: conv_did) -> ast::def_id {
 
 fn parse_int(st: @pstate) -> int {
     let n = 0;
-    while true {
+    loop {
         let cur = peek(st);
-        if cur < '0' || cur > '9' { break; }
+        if cur < '0' || cur > '9' { ret n; }
         st.pos = st.pos + 1u;
         n *= 10;
         n += (cur as int) - ('0' as int);
-    }
-    ret n;
+    };
 }
 
 fn parse_hex(st: @pstate) -> uint {
     let n = 0u;
-    while true {
+    loop {
         let cur = peek(st);
-        if (cur < '0' || cur > '9') && (cur < 'a' || cur > 'f') { break; }
+        if (cur < '0' || cur > '9') && (cur < 'a' || cur > 'f') { ret n; }
         st.pos = st.pos + 1u;
         n *= 16u;
         if '0' <= cur && cur <= '9' {
             n += (cur as uint) - ('0' as uint);
         } else { n += 10u + (cur as uint) - ('a' as uint); }
-    }
-    ret n;
+    };
 }
 
 fn parse_ty_fn(st: @pstate, conv: conv_did) -> ty::fn_ty {
@@ -405,7 +402,7 @@ fn parse_bounds_data(data: @[u8], start: uint,
 
 fn parse_bounds(st: @pstate, conv: conv_did) -> @[ty::param_bound] {
     let bounds = [];
-    while true {
+    loop {
         bounds += [alt check next(st) {
           'S' { ty::bound_send }
           'C' { ty::bound_copy }

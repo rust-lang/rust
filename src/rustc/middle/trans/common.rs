@@ -398,7 +398,7 @@ fn struct_elt(llstructty: TypeRef, n: uint) -> TypeRef unsafe {
 
 fn in_scope_cx(cx: block, f: fn(scope_info)) {
     let cur = cx;
-    while true {
+    loop {
         alt cur.kind {
           block_scope(info) { f(info); ret; }
           _ {}

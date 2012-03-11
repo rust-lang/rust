@@ -367,12 +367,11 @@ fn parse_constrs<T: copy>(pser: fn(parser) -> @ast::constr_general<T>,
                          p: parser) ->
    [@ast::constr_general<T>] {
     let constrs: [@ast::constr_general<T>] = [];
-    while true {
+    loop {
         let constr = pser(p);
         constrs += [constr];
-        if p.token == token::COMMA { p.bump(); } else { break; }
-    }
-    constrs
+        if p.token == token::COMMA { p.bump(); } else { ret constrs; }
+    };
 }
 
 fn parse_type_constraints(p: parser) -> [@ast::ty_constr] {
@@ -1030,7 +1029,7 @@ fn parse_dot_or_call_expr_with(p: parser, e0: pexpr) -> pexpr {
     let e = e0;
     let lo = e.span.lo;
     let hi = e.span.hi;
-    while true {
+    loop {
         // expr.f
         if eat(p, token::DOT) {
             alt p.token {
@@ -1310,7 +1309,7 @@ fn parse_capture_clause(p: parser) -> @ast::capture_clause {
 
     fn eat_ident_list(p: parser) -> [@ast::capture_item] {
         let res = [];
-        while true {
+        loop {
             alt p.token {
               token::IDENT(_, _) {
                 let id = p.get_id();
@@ -1324,8 +1323,7 @@ fn parse_capture_clause(p: parser) -> @ast::capture_clause {
 
               _ { ret res; }
             }
-        }
-        core::unreachable();
+        };
     }
 
     let copies = [];
@@ -1471,11 +1469,10 @@ fn parse_initializer(p: parser) -> option<ast::initializer> {
 
 fn parse_pats(p: parser) -> [@ast::pat] {
     let pats = [];
-    while true {
+    loop {
         pats += [parse_pat(p)];
-        if p.token == token::BINOP(token::OR) { p.bump(); } else { break; }
-    }
-    ret pats;
+        if p.token == token::BINOP(token::OR) { p.bump(); } else { ret pats; }
+    };
 }
 
 fn parse_pat(p: parser) -> @ast::pat {

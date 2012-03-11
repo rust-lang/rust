@@ -171,7 +171,7 @@ fn scan_exponent(rdr: reader) -> option<str> {
 
 fn scan_digits(rdr: reader, radix: uint) -> str {
     let rslt = "";
-    while true {
+    loop {
         let c = rdr.curr;
         if c == '_' { rdr.bump(); cont; }
         alt char::to_digit(c, radix) {
@@ -179,10 +179,9 @@ fn scan_digits(rdr: reader, radix: uint) -> str {
             str::push_char(rslt, c);
             rdr.bump();
           }
-          _ { break; }
+          _ { ret rslt; }
         }
-    }
-    ret rslt;
+    };
 }
 
 fn scan_number(c: char, rdr: reader) -> token::token {
@@ -711,7 +710,7 @@ fn gather_comments_and_literals(cm: codemap::codemap,
     let literals: [lit] = [];
     let first_read: bool = true;
     while !rdr.is_eof() {
-        while true {
+        loop {
             let code_to_the_left = !first_read;
             consume_non_eol_whitespace(rdr);
             if rdr.curr == '\n' {

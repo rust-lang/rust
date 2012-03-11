@@ -661,16 +661,15 @@ fn unsafe_set(from: option<unsafe_ty>) -> [unsafe_ty] {
 fn find_invalid(id: node_id, lst: list<@invalid>)
     -> option<@invalid> {
     let cur = lst;
-    while true {
+    loop {
         alt cur {
-          list::nil { break; }
+          list::nil { ret none; }
           list::cons(head, tail) {
             if head.node_id == id { ret some(head); }
             cur = *tail;
           }
         }
-    }
-    ret none;
+    };
 }
 
 fn join_invalid(a: list<@invalid>, b: list<@invalid>) -> list<@invalid> {

@@ -59,7 +59,7 @@ fn setenv(n: str, v: str) {
 #[cfg(target_os = "win32")]
 fn getenv(n: str) -> option<str> {
     let nsize = 256u;
-    while true {
+    loop {
         let v: [u8] = [];
         vec::reserve(v, nsize);
         let res =
@@ -80,7 +80,6 @@ fn getenv(n: str) -> option<str> {
             ret option::some(str::from_bytes(v)); // UTF-8 or fail
         } else { nsize = res; }
     }
-    core::unreachable();
 }
 
 #[cfg(target_os = "win32")]
