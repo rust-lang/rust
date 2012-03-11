@@ -550,7 +550,9 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
         /* conservative approximation: if a loop contains a break
            or cont, we assume nothing about the poststate */
         /* which is still unsound -- see [Break-unsound] */
-        if has_nonlocal_exits(body) {
+        if may_break(body) {
+                /* Only do this if there are *breaks* not conts.
+                 An infinite loop with conts is still an infinite loop. */
             ret changed | set_poststate_ann(fcx.ccx, e.id, pres);
         } else {
             ret changed | set_poststate_ann(fcx.ccx, e.id,

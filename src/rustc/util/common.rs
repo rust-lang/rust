@@ -83,6 +83,22 @@ fn has_nonlocal_exits(b: ast::blk) -> bool {
     ret *has_exits;
 }
 
+/* FIXME: copy/paste, yuck */
+fn may_break(b: ast::blk) -> bool {
+    let has_exits = @mutable false;
+    fn visit_expr(flag: @mutable bool, e: @ast::expr) {
+        alt e.node {
+          ast::expr_break { *flag = true; }
+          _ { }
+        }
+    }
+    let v =
+        visit::mk_simple_visitor(@{visit_expr: bind visit_expr(has_exits, _)
+                                      with *visit::default_simple_visitor()});
+    visit::visit_block(b, (), v);
+    ret *has_exits;
+}
+
 fn local_rhs_span(l: @ast::local, def: span) -> span {
     alt l.node.init { some(i) { ret i.expr.span; } _ { ret def; } }
 }
