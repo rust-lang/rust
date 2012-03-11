@@ -292,10 +292,9 @@ fn future_writer() -> (writer, future::future<str>) {
         loop {
             alt comm::recv(port) {
               write(s) { res += s }
-              done { break }
+              done { ret res; }
             }
-        }
-        res
+        };
     };
     (writer, future)
 }
