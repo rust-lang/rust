@@ -23,9 +23,6 @@ type upcalls =
      vec_push: ValueRef,
      cmp_type: ValueRef,
      log_type: ValueRef,
-     dynastack_mark: ValueRef,
-     dynastack_alloc: ValueRef,
-     dynastack_free: ValueRef,
      alloc_c_stack: ValueRef,
      call_shim_on_c_stack: ValueRef,
      call_shim_on_rust_stack: ValueRef,
@@ -93,13 +90,6 @@ fn declare_upcalls(targ_cfg: @session::config,
                   T_i8()]),
           log_type:
               dv("log_type", [T_ptr(tydesc_type), T_ptr(T_i8()), T_i32()]),
-          dynastack_mark:
-              d("dynastack_mark", [], T_ptr(T_i8())),
-          dynastack_alloc:
-              d("dynastack_alloc_2", [size_t, T_ptr(tydesc_type)],
-                T_ptr(T_i8())),
-          dynastack_free:
-              dv("dynastack_free", [T_ptr(T_i8())]),
           alloc_c_stack:
               d("alloc_c_stack", [size_t], T_ptr(T_i8())),
           call_shim_on_c_stack:

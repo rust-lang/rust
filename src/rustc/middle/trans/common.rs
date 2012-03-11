@@ -159,8 +159,6 @@ type fn_ctxt = @{
     // information computed from derived tydescs.
     mutable lldynamicallocas: BasicBlockRef,
     mutable llreturn: BasicBlockRef,
-    // The token used to clear the dynamic allocas at the end of this frame.
-    mutable llobstacktoken: option<ValueRef>,
     // The 'self' value currently in use in this function, if there
     // is one.
     mutable llself: option<val_self_pair>,

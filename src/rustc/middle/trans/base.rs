@@ -253,35 +253,6 @@ fn alloca(cx: block, t: TypeRef) -> ValueRef {
     ret Alloca(raw_block(cx.fcx, cx.fcx.llstaticallocas), t);
 }
 
-fn dynastack_alloca(cx: block, t: TypeRef, n: ValueRef, ty: ty::t) ->
-   ValueRef {
-    if cx.unreachable { ret llvm::LLVMGetUndef(T_ptr(t)); }
-    let bcx = cx;
-    let dy_cx = raw_block(cx.fcx, cx.fcx.lldynamicallocas);
-    alt cx.fcx.llobstacktoken {
-      none {
-        cx.fcx.llobstacktoken = some(mk_obstack_token(cx.ccx(), cx.fcx));
-      }
-      some(_) {/* no-op */ }
-    }
-
-    let dynastack_alloc = bcx.ccx().upcalls.dynastack_alloc;
-    let llsz = Mul(dy_cx,
-                   C_uint(bcx.ccx(), llsize_of_real(bcx.ccx(), t)),
-                   n);
-
-    let lltydesc = get_tydesc_simple(cx, ty).val;
-
-    let llresult = Call(dy_cx, dynastack_alloc, [llsz, lltydesc]);
-    ret PointerCast(dy_cx, llresult, T_ptr(t));
-}
-
-fn mk_obstack_token(ccx: @crate_ctxt, fcx: fn_ctxt) ->
-   ValueRef {
-    let cx = raw_block(fcx, fcx.lldynamicallocas);
-    ret Call(cx, ccx.upcalls.dynastack_mark, []);
-}
-
 // Given a pointer p, returns a pointer sz(p) (i.e., inc'd by sz bytes).
 // The type of the returned pointer is always i8*.  If you care about the
 // return type, use bump_ptr().
@@ -3686,12 +3657,6 @@ fn with_cond(bcx: block, val: ValueRef, f: fn(block) -> block) -> block {
     next_cx
 }
 
-fn trans_fn_cleanups(fcx: fn_ctxt, cx: block) {
-    option::may(fcx.llobstacktoken) {|lltoken|
-        Call(cx, fcx.ccx.upcalls.dynastack_free, [lltoken]);
-    }
-}
-
 fn block_locals(b: ast::blk, it: fn(@ast::local)) {
     for s: @ast::stmt in b.node.stmts {
         alt s.node {
@@ -3711,18 +3676,8 @@ fn block_locals(b: ast::blk, it: fn(@ast::local)) {
 fn alloc_ty(cx: block, t: ty::t) -> result {
     let bcx = cx, ccx = cx.ccx();
     let llty = type_of(ccx, t);
-    let val = if type_has_static_size(ccx, t) {
-        alloca(bcx, llty)
-    } else {
-        // NB: we have to run this particular 'size_of' in a
-        // block built on the llderivedtydescs block for the fn,
-        // so that the size dominates the array_alloca that
-        // comes next.
-        let n = size_of(raw_block(cx.fcx, cx.fcx.llderivedtydescs),
-                        t);
-        bcx.fcx.llderivedtydescs = n.bcx.llbb;
-        PointerCast(bcx, dynastack_alloca(bcx, T_i8(), n.val, t), T_ptr(llty))
-    };
+    assert type_has_static_size(ccx, t);
+    let val = alloca(bcx, llty);
 
     // NB: since we've pushed all size calculations in this
     // function up to the alloca block, we actually return the
@@ -3824,7 +3779,6 @@ fn new_fn_ctxt_w_id(ccx: @crate_ctxt, path: path,
           mutable llderivedtydescs: llbbs.dt,
           mutable lldynamicallocas: llbbs.da,
           mutable llreturn: llbbs.rt,
-          mutable llobstacktoken: none::<ValueRef>,
           mutable llself: none,
           mutable personality: none,
           llargs: int_hash::<local_val>(),
@@ -3923,7 +3877,6 @@ fn copy_args_to_allocas(fcx: fn_ctxt, bcx: block, args: [ast::arg],
 fn finish_fn(fcx: fn_ctxt, lltop: BasicBlockRef) {
     tie_up_header_blocks(fcx, lltop);
     let ret_cx = raw_block(fcx, fcx.llreturn);
-    trans_fn_cleanups(fcx, ret_cx);
     RetVoid(ret_cx);
 }
 
