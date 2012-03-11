@@ -420,6 +420,7 @@ fn write_nmod(ctxt: ctxt, doc: doc::nmoddoc) {
     write_common(ctxt, doc.desc(), doc.sections());
 
     for fndoc in doc.fns {
+        write_item_header(ctxt, doc::fntag(fndoc));
         write_fn(ctxt, fndoc);
     }
 }
@@ -435,6 +436,12 @@ fn should_write_native_mods() {
 fn should_write_native_fns() {
     let markdown = test::render("native mod a { #[doc = \"test\"] fn a(); }");
     assert str::contains(markdown, "test");
+}
+
+#[test]
+fn should_write_native_fn_headers() {
+    let markdown = test::render("native mod a { #[doc = \"test\"] fn a(); }");
+    assert str::contains(markdown, "## Function `a`");
 }
 
 fn write_fn(
