@@ -10,20 +10,36 @@ import std::map;
 import std::map::hashmap;
 
 type region_map = {
+    /* Mapping from a block to its parent block, if there is one. */
     parent_blocks: hashmap<ast::node_id,ast::node_id>,
-    ast_type_to_region: hashmap<ast::node_id,ty::region>
+    /* Mapping from a region type in the AST to its resolved region. */
+    ast_type_to_region: hashmap<ast::node_id,ty::region>,
+    /* Mapping from a local variable to its containing block. */
+    local_blocks: hashmap<ast::node_id,ast::node_id>
 };
 
+/* Represents the type of the most immediate parent node. */
 enum parent {
     pa_item(ast::node_id),
     pa_block(ast::node_id),
+    pa_alt,
     pa_crate
 }
 
 type ctxt = {
     sess: session,
+    def_map: resolve::def_map,
     region_map: @region_map,
     names_in_scope: hashmap<str,ast::def_id>,
+
+    /*
+     * A list of local IDs that will be parented to the next block we traverse.
+     * This is used when resolving `alt` statements. Since we see the pattern
+     * before the associated block, upon seeing a pattern we must parent all the
+     * bindings in that pattern to the next block we see.
+     */
+    mut queued_locals: [ast::node_id],
+
     parent: parent
 };
 
@@ -44,6 +60,12 @@ fn resolve_ty(ty: @ast::ty, cx: ctxt, visitor: visit::vt<ctxt>) {
                         pa_block(block_id) {
                             region = ty::re_block(block_id);
                         }
+                        pa_alt {
+                            // FIXME: Need a design decision here.
+                            cx.sess.span_bug(ty.span,
+                                             "what does & in an alt " +
+                                             "resolve to?");
+                        }
                         pa_crate {
                             cx.sess.span_bug(ty.span,
                                              "region type outside item");
@@ -59,7 +81,7 @@ fn resolve_ty(ty: @ast::ty, cx: ctxt, visitor: visit::vt<ctxt>) {
                         none {
                             alt cx.parent {
                                 pa_item(_) { /* ok; fall through */ }
-                                pa_block(_) {
+                                pa_block(_) | pa_alt {
                                     cx.sess.span_err(ty.span,
                                                      "unknown region `" +
                                                      ident + "`");
@@ -89,6 +111,12 @@ fn resolve_ty(ty: @ast::ty, cx: ctxt, visitor: visit::vt<ctxt>) {
                         pa_block(block_id) {
                             region = ty::re_block(block_id);
                         }
+                        pa_alt {
+                            // FIXME: Need a design decision here.
+                            cx.sess.span_bug(ty.span,
+                                             "what does &self. in an alt " +
+                                             "resolve to?");
+                        }
                         pa_crate {
                             cx.sess.span_bug(ty.span,
                                              "region type outside item");
@@ -108,15 +136,58 @@ fn resolve_ty(ty: @ast::ty, cx: ctxt, visitor: visit::vt<ctxt>) {
 
 fn resolve_block(blk: ast::blk, cx: ctxt, visitor: visit::vt<ctxt>) {
     alt cx.parent {
-        pa_item(_) { /* no-op */ }
+        pa_item(_) | pa_alt { /* no-op */ }
         pa_block(parent_block_id) {
             cx.region_map.parent_blocks.insert(blk.node.id, parent_block_id);
         }
         pa_crate { cx.sess.span_bug(blk.span, "block outside item?!"); }
     }
 
-    let new_cx: ctxt = {parent: pa_block(blk.node.id) with cx};
+    // Resolve queued locals to this block.
+    for local_id in cx.queued_locals {
+        cx.region_map.local_blocks.insert(local_id, blk.node.id);
+    }
+
+    let new_cx: ctxt = {parent: pa_block(blk.node.id),
+                        mut queued_locals: [] with cx};
     visit::visit_block(blk, new_cx, visitor);
+}
+
+fn resolve_arm(arm: ast::arm, cx: ctxt, visitor: visit::vt<ctxt>) {
+    let new_cx: ctxt = {parent: pa_alt,
+                        mut queued_locals: [] with cx};
+    visit::visit_arm(arm, new_cx, visitor);
+}
+
+fn resolve_pat(pat: @ast::pat, cx: ctxt, visitor: visit::vt<ctxt>) {
+    alt pat.node {
+        ast::pat_ident(path, _) {
+            let defn_opt = cx.def_map.find(pat.id);
+            alt defn_opt {
+                some(ast::def_variant(_,_)) {
+                    /* Nothing to do; this names a variant. */
+                }
+                _ {
+                    /*
+                     * This names a local. Enqueue it or bind it to the containing
+                     * block, depending on whether we're in an alt or not.
+                     */
+                    alt cx.parent {
+                        pa_block(block_id) {
+                            cx.region_map.local_blocks.insert(pat.id, block_id);
+                        }
+                        pa_alt {
+                            vec::push(cx.queued_locals, pat.id);
+                        }
+                        _ { cx.sess.span_bug(pat.span, "unexpected parent"); }
+                    }
+                }
+            }
+        }
+        _ { /* no-op */ }
+    }
+
+    visit::visit_pat(pat, cx, visitor);
 }
 
 fn resolve_item(item: @ast::item, cx: ctxt, visitor: visit::vt<ctxt>) {
@@ -127,16 +198,22 @@ fn resolve_item(item: @ast::item, cx: ctxt, visitor: visit::vt<ctxt>) {
     visit::visit_item(item, new_cx, visitor);
 }
 
-fn resolve_crate(sess: session, crate: @ast::crate) -> @region_map {
+fn resolve_crate(sess: session, def_map: resolve::def_map, crate: @ast::crate)
+        -> @region_map {
     let cx: ctxt = {sess: sess,
+                    def_map: def_map,
                     region_map: @{parent_blocks: map::new_int_hash(),
-                                  ast_type_to_region: map::new_int_hash()},
+                                  ast_type_to_region: map::new_int_hash(),
+                                  local_blocks: map::new_int_hash()},
                     names_in_scope: map::new_str_hash(),
+                    mut queued_locals: [],
                     parent: pa_crate};
     let visitor = visit::mk_vt(@{
         visit_block: resolve_block,
         visit_item: resolve_item,
-        visit_ty: resolve_ty
+        visit_ty: resolve_ty,
+        visit_arm: resolve_arm,
+        visit_pat: resolve_pat
         with *visit::default_visitor()
     });
     visit::visit_crate(*crate, cx, visitor);
