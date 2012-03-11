@@ -416,8 +416,20 @@ fn should_not_write_index_if_no_entries() {
     assert !str::contains(markdown, "\n\n\n");
 }
 
+#[test]
+fn should_write_index_for_native_mods() {
+    let markdown = test::render("native mod a { fn a(); }");
+    assert str::contains(
+        markdown,
+        "\n\n* [Function `a`](#function-a)\n\n"
+    );
+}
+
 fn write_nmod(ctxt: ctxt, doc: doc::nmoddoc) {
     write_common(ctxt, doc.desc(), doc.sections());
+    if option::is_some(doc.index) {
+        write_index(ctxt, option::get(doc.index));
+    }
 
     for fndoc in doc.fns {
         write_item_header(ctxt, doc::fntag(fndoc));

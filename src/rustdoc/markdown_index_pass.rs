@@ -17,8 +17,9 @@ fn run(
     config: config::config
 ) -> doc::doc {
     let fold = fold::fold({
-        fold_mod: fold_mod
-            with *fold::default_any_fold(config)
+        fold_mod: fold_mod,
+        fold_nmod: fold_nmod
+        with *fold::default_any_fold(config)
     });
     fold.fold_doc(fold, doc)
 }
@@ -31,18 +32,42 @@ fn fold_mod(
     let doc = fold::default_any_fold_mod(fold, doc);
 
     {
-        index: some(build_index(doc, fold.ctxt))
+        index: some(build_mod_index(doc, fold.ctxt))
         with doc
     }
 }
 
-fn build_index(
+fn fold_nmod(
+    fold: fold::fold<config::config>,
+    doc: doc::nmoddoc
+) -> doc::nmoddoc {
+
+    let doc = fold::default_any_fold_nmod(fold, doc);
+
+    {
+        index: some(build_nmod_index(doc, fold.ctxt))
+        with doc
+    }
+}
+
+fn build_mod_index(
     doc: doc::moddoc,
     config: config::config
 ) -> doc::index {
     {
-        entries: par::anymap(doc.items) {|item|
-            item_to_entry(item, config)
+        entries: par::anymap(doc.items) {|doc|
+            item_to_entry(doc, config)
+        }
+    }
+}
+
+fn build_nmod_index(
+    doc: doc::nmoddoc,
+    config: config::config
+) -> doc::index {
+    {
+        entries: par::anymap(doc.fns) {|doc|
+            item_to_entry(doc::fntag(doc), config)
         }
     }
 }
@@ -170,6 +195,20 @@ fn should_add_brief_desc_to_index() {
         "#[doc = \"test\"] mod a { }"
     );
     assert option::get(doc.cratemod().index).entries[0].brief == some("test");
+}
+
+#[test]
+fn should_index_native_mod_contents() {
+    let doc = test::mk_doc(
+        config::doc_per_crate,
+        "native mod a { fn b(); }"
+    );
+    assert option::get(doc.cratemod().nmods()[0].index).entries[0] == {
+        kind: "Function",
+        name: "b",
+        brief: none,
+        link: "#function-b"
+    };
 }
 
 #[cfg(test)]

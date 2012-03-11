@@ -125,7 +125,8 @@ fn nmoddoc_from_mod(
                 fndoc_from_fn(itemdoc)
               }
             }
-        }
+        },
+        index: none
     }
 }
 

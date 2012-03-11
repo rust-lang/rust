@@ -63,7 +63,8 @@ type moddoc = {
 
 type nmoddoc = {
     item: itemdoc,
-    fns: [fndoc]
+    fns: [fndoc],
+    index: option<index>
 };
 
 type constdoc = simpleitemdoc;
