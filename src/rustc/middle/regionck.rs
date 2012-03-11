@@ -8,6 +8,14 @@ import middle::ty;
 import std::map::hashmap;
 import syntax::{ast, visit};
 
+// An "extended region", which includes the ordinarily-unnamed reference-
+// counted heap and exchange heap regions. This is used to detect borrowing.
+enum region_ext {
+    re_rc,
+    re_exheap,
+    re_region(ty::region)
+}
+
 type ctxt = {
     tcx: ty::ctxt,
     enclosing_block: option<ast::node_id>

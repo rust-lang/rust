@@ -1848,6 +1848,45 @@ fn lookup_field_ty(cx: ty::ctxt, items:[@ast::class_item],
     cx.sess.span_fatal(sp, #fmt("unbound field %s", fieldname));
 }
 
+/*
+ * Returns the region that the value named by the given expression lives in.
+ * If the expression is not an lvalue, reports an error and returns the block
+ * region.
+ *
+ * Note that borrowing is not detected here, because we would have to
+ * immediately structurally resolve too many types otherwise. Thus the
+ * reference-counted heap and exchange heap regions will be reported as block
+ * regions instead. This is cleaned up in the region checking pass.
+ */
+fn region_of(fcx: @fn_ctxt, expr: @ast::expr) -> ty::region {
+    alt expr.node {
+        ast::expr_path(path) {
+            let defn = lookup_def(fcx, path.span, expr.id);
+            alt defn {
+                ast::def_local(local_id, _) |
+                ast::def_upvar(local_id, _, _) {
+                    let local_blocks = fcx.ccx.tcx.region_map.local_blocks;
+                    let local_block_id = local_blocks.get(local_id);
+                    ret ty::re_block(local_block_id);
+                }
+                _ {
+                    fcx.ccx.tcx.sess.span_unimpl(expr.span,
+                                                 "immortal region");
+                }
+            }
+        }
+        ast::expr_field(base, _, _) | ast::expr_index(base, _) |
+                ast::expr_unary(ast::deref, base) {
+            fcx.ccx.tcx.sess.span_unimpl(expr.span, "regions of field, " +
+                                         "index, or deref operations");
+        }
+        _ {
+            fcx.ccx.tcx.sess.span_err(expr.span, "not an lvalue");
+            ret ty::re_block(0);
+        }
+    }
+}
+
 fn check_expr_fn_with_unifier(fcx: @fn_ctxt,
                               expr: @ast::expr,
                               proto: ast::proto,
@@ -2202,9 +2241,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         bot = check_expr(fcx, oper);
         let oper_t = expr_ty(tcx, oper);
 
-        // FIXME: This is incorrect. Infer the proper region.
+        let region = region_of(fcx, oper);
         let tm = { ty: oper_t, mutbl: mutbl };
-        oper_t = ty::mk_rptr(tcx, ty::re_block(0), tm);
+        oper_t = ty::mk_rptr(tcx, region, tm);
         write_ty(tcx, id, oper_t);
       }
       ast::expr_path(pth) {
