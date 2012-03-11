@@ -1,5 +1,3 @@
-// xfail-test
-// runs forever for some reason -- investigating
 fn main() {
   let i = 0u;
   loop {
@@ -12,6 +10,9 @@ fn main() {
   assert (i == 10u);
   let is_even = false;
   loop {
+    if i == 21u {
+        break;
+    }
     log(error, "b");
     is_even = false;
     i += 1u;
@@ -19,17 +20,14 @@ fn main() {
         cont;
     }
     is_even = true;
-    if i == 21u {
-        break;
-    }
   }
   assert !is_even;
   loop {
     log(error, "c");
-    is_even = false;
     if i == 22u {
         break;
     }
+    is_even = false;
     i += 1u;
     if i % 2u != 0u {
         cont;
