@@ -758,7 +758,6 @@ fn sync_one(c: cargo, name: str, src: source) {
             if !r {
                 warn(#fmt["signature verification failed for source %s",
                           name]);
-                ret;
             } else {
                 info(#fmt["signature ok for source %s", name]);
             }
@@ -804,9 +803,9 @@ fn cmd_init(c: cargo) {
     let r = pgp::verify(c.root, srcfile, sigfile, pgp::signing_key_fp());
     if !r {
         warn(#fmt["signature verification failed for sources.json"]);
-        ret;
+    } else {
+        info(#fmt["signature ok for sources.json"]);
     }
-    info(#fmt["signature ok for sources.json"]);
     run::run_program("cp", [srcfile, destsrcfile]);
 
     info(#fmt["Initialized .cargo in %s", c.root]);
