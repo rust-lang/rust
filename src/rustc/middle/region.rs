@@ -33,10 +33,10 @@ type ctxt = {
     names_in_scope: hashmap<str,ast::def_id>,
 
     /*
-     * A list of local IDs that will be parented to the next block we traverse.
-     * This is used when resolving `alt` statements. Since we see the pattern
-     * before the associated block, upon seeing a pattern we must parent all the
-     * bindings in that pattern to the next block we see.
+     * A list of local IDs that will be parented to the next block we
+     * traverse. This is used when resolving `alt` statements. Since we see
+     * the pattern before the associated block, upon seeing a pattern we must
+     * parent all the bindings in that pattern to the next block we see.
      */
     mut queued_locals: [ast::node_id],
 
@@ -183,12 +183,14 @@ fn resolve_pat(pat: @ast::pat, cx: ctxt, visitor: visit::vt<ctxt>) {
                 }
                 _ {
                     /*
-                     * This names a local. Enqueue it or bind it to the containing
-                     * block, depending on whether we're in an alt or not.
+                     * This names a local. Enqueue it or bind it to the
+                     * containing block, depending on whether we're in an alt
+                     * or not.
                      */
                     alt cx.parent {
                         pa_block(block_id) {
-                            cx.region_map.local_blocks.insert(pat.id, block_id);
+                            let local_blocks = cx.region_map.local_blocks;
+                            local_blocks.insert(pat.id, block_id);
                         }
                         pa_alt {
                             vec::push(cx.queued_locals, pat.id);
