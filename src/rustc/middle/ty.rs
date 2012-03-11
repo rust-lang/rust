@@ -283,6 +283,7 @@ enum type_err {
     terr_mode_mismatch(mode, mode),
     terr_constr_len(uint, uint),
     terr_constr_mismatch(@type_constr, @type_constr),
+    terr_regions_differ,
 }
 
 enum param_bound {
@@ -1885,6 +1886,45 @@ mod unify {
           }
         }
     }
+    fn unify_regions(cx: @uctxt, e_region: region, a_region: region,
+                     variance: variance) -> option<region> {
+        let sub, super;
+        alt variance {
+            covariant { super = e_region; sub = a_region; }
+            contravariant { super = a_region; sub = e_region; }
+            invariant {
+                ret if e_region == a_region { some(e_region) } else { none };
+            }
+        }
+
+        alt (super, sub) {
+            (re_caller(_), re_caller(_)) {
+                // FIXME: This is wrong w/r/t nested functions.
+                ret some(super);
+            }
+            (re_caller(_), re_named(_)) | (re_named(_), re_caller(_)) {
+                ret none;
+            }
+            (re_named(a), re_named(b)) {
+                ret if a == b { some(super) } else { none }
+            }
+            (re_caller(_), re_block(_)) | (re_named(_), re_block(_)) {
+                // FIXME: This is wrong w/r/t nested functions.
+                ret some(super);
+            }
+            (re_block(_), re_caller(_)) | (re_block(_), re_named(_)) {
+                ret none;
+            }
+            (re_block(superblock), re_block(subblock)) {
+                if region::block_contains(cx.tcx.region_map, superblock,
+                                          subblock) {
+                    ret some(super);
+                } else {
+                    ret none;
+                }
+            }
+        }
+    }
 
     fn unify_step(cx: @uctxt, expected: t, actual: t,
                   variance: variance) -> result {
@@ -1943,9 +1983,13 @@ mod unify {
             unify_mt(cx, e_mt, a_mt, variance, terr_ptr_mutability, mk_ptr)
           }
           (ty_rptr(e_region, e_mt), ty_rptr(a_region, a_mt)) {
-            // TODO: Unify regions. Take covariance/invariance into account.
-            unify_mt(cx, e_mt, a_mt, variance, terr_ref_mutability,
-                     bind mk_rptr(_, re_block(0), _))
+            alt unify_regions(cx, e_region, a_region, variance) {
+                none { ures_err(terr_regions_differ) }
+                some(r_region) {
+                    unify_mt(cx, e_mt, a_mt, variance, terr_ref_mutability,
+                             bind mk_rptr(_, r_region, _))
+                }
+            }
           }
           (ty_res(e_id, e_inner, e_tps), ty_res(a_id, a_inner, a_tps))
           if e_id == a_id {
@@ -2153,6 +2197,9 @@ fn type_err_to_str(err: type_err) -> str {
         ret "expected a type with constraint " + ty_constr_to_str(e_constr) +
                 " but found one with constraint " +
                 ty_constr_to_str(a_constr);
+      }
+      terr_regions_differ {
+        ret "inconsistent pointer lifetimes"
       }
     }
 }

@@ -43,6 +43,20 @@ type ctxt = {
     parent: parent
 };
 
+// Returns true if `subblock` is equal to or is lexically nested inside
+// `superblock` and false otherwise.
+fn block_contains(region_map: @region_map, superblock: ast::node_id,
+                  subblock: ast::node_id) -> bool {
+    let subblock = subblock;
+    while superblock != subblock {
+        alt region_map.parent_blocks.find(subblock) {
+            none { ret false; }
+            some(blk) { subblock = blk; }
+        }
+    }
+    ret true;
+}
+
 fn resolve_ty(ty: @ast::ty, cx: ctxt, visitor: visit::vt<ctxt>) {
     alt ty.node {
         ast::ty_rptr({id: region_id, node: node}, _) {
