@@ -11,6 +11,6 @@ fn main() {
     check (even(y));
     loop {
         print_even(y);
-        loop { loop { loop { y += x; } } }
+        while true { while true { while true { y += x; } } }
     }
 }

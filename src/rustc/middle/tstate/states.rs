@@ -554,7 +554,7 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
             ret changed | set_poststate_ann(fcx.ccx, e.id, pres);
         } else {
             ret changed | set_poststate_ann(fcx.ccx, e.id,
-                             block_poststate(fcx.ccx, body));
+                                            false_postcond(num_constrs));
         }
       }
       expr_for(d, index, body) {
