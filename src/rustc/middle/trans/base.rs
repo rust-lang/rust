@@ -507,18 +507,17 @@ fn get_tydesc(cx: block, t: ty::t,
     // FIXME[mono]
     assert !ty::type_has_params(t);
     // Otherwise, generate a tydesc if necessary, and return it.
-    let info = get_static_tydesc(cx.ccx(), t, []);
+    let info = get_static_tydesc(cx.ccx(), t);
     static_ti = some(info);
     ret rslt(cx, info.tydesc);
 }
 
-fn get_static_tydesc(ccx: @crate_ctxt, t: ty::t, ty_params: [uint])
-    -> @tydesc_info {
+fn get_static_tydesc(ccx: @crate_ctxt, t: ty::t) -> @tydesc_info {
     alt ccx.tydescs.find(t) {
       some(info) { ret info; }
       none {
         ccx.stats.n_static_tydescs += 1u;
-        let info = declare_tydesc(ccx, t, ty_params);
+        let info = declare_tydesc(ccx, t);
         ccx.tydescs.insert(t, info);
         ret info;
       }
@@ -569,8 +568,7 @@ fn set_glue_inlining(f: ValueRef, t: ty::t) {
 
 
 // Generates the declaration for (but doesn't emit) a type descriptor.
-fn declare_tydesc(ccx: @crate_ctxt, t: ty::t, ty_params: [uint])
-    -> @tydesc_info {
+fn declare_tydesc(ccx: @crate_ctxt, t: ty::t) -> @tydesc_info {
     log(debug, "+++ declare_tydesc " + ty_to_str(ccx.tcx, t));
     let llsize;
     let llalign;
@@ -600,8 +598,7 @@ fn declare_tydesc(ccx: @crate_ctxt, t: ty::t, ty_params: [uint])
           align: llalign,
           mutable take_glue: none,
           mutable drop_glue: none,
-          mutable free_glue: none,
-          ty_params: ty_params};
+          mutable free_glue: none};
     log(debug, "--- declare_tydesc " + ty_to_str(ccx.tcx, t));
     ret info;
 }
@@ -622,8 +619,7 @@ fn declare_generic_glue(ccx: @crate_ctxt, t: ty::t, llfnty: TypeRef,
 }
 
 fn make_generic_glue_inner(ccx: @crate_ctxt, t: ty::t,
-                           llfn: ValueRef, helper: glue_helper,
-                           ty_params: [uint]) -> ValueRef {
+                           llfn: ValueRef, helper: glue_helper) -> ValueRef {
     let fcx = new_fn_ctxt(ccx, [], llfn, none);
     lib::llvm::SetLinkage(llfn, lib::llvm::InternalLinkage);
     ccx.stats.n_glues_created += 1u;
@@ -636,22 +632,6 @@ fn make_generic_glue_inner(ccx: @crate_ctxt, t: ty::t,
         T_ptr(type_of(ccx, t))
     } else { T_ptr(T_i8()) };
 
-    let ty_param_count = ty_params.len();
-    let lltyparams = llvm::LLVMGetParam(llfn, 2u as c_uint);
-    let load_env_bcx = raw_block(fcx, fcx.llloadenv);
-    let lltydescs = [mutable];
-    let p = 0u;
-    while p < ty_param_count {
-        let llparam = GEPi(load_env_bcx, lltyparams, [p as int]);
-        llparam = Load(load_env_bcx, llparam);
-        vec::grow_set(lltydescs, ty_params[p], 0 as ValueRef, llparam);
-        p += 1u;
-    }
-
-    fcx.lltyparams = vec::map(vec::from_mut(lltydescs), {|d|
-        {desc: d, vtables: none}
-    });
-
     let bcx = top_scope_block(fcx, none);
     let lltop = bcx.llbb;
     let llrawptr0 = llvm::LLVMGetParam(llfn, 3u as c_uint);
@@ -662,14 +642,14 @@ fn make_generic_glue_inner(ccx: @crate_ctxt, t: ty::t,
 }
 
 fn make_generic_glue(ccx: @crate_ctxt, t: ty::t, llfn: ValueRef,
-                     helper: glue_helper, ty_params: [uint], name: str)
+                     helper: glue_helper, name: str)
     -> ValueRef {
     if !ccx.sess.opts.stats {
-        ret make_generic_glue_inner(ccx, t, llfn, helper, ty_params);
+        ret make_generic_glue_inner(ccx, t, llfn, helper);
     }
 
     let start = time::get_time();
-    let llval = make_generic_glue_inner(ccx, t, llfn, helper, ty_params);
+    let llval = make_generic_glue_inner(ccx, t, llfn, helper);
     let end = time::get_time();
     log_fn_time(ccx, "glue " + name + " " + ty_to_short_str(ccx.tcx, t),
                 start, end);
@@ -696,7 +676,7 @@ fn emit_tydescs(ccx: @crate_ctxt) {
               some(v) { ccx.stats.n_real_glues += 1u; v }
             };
 
-        let shape = shape_of(ccx, key, ti.ty_params);
+        let shape = shape_of(ccx, key, []);
         let shape_tables =
             llvm::LLVMConstPointerCast(ccx.shape_cx.llshapetables,
                                        T_ptr(T_i8()));
@@ -1155,8 +1135,7 @@ fn lazily_emit_tydesc_glue(ccx: @crate_ctxt, field: int,
                     (ccx, ti.ty, T_glue_fn(ccx), "take");
                 ti.take_glue = some(glue_fn);
                 make_generic_glue(ccx, ti.ty, glue_fn,
-                                  make_take_glue,
-                                  ti.ty_params, "take");
+                                  make_take_glue, "take");
                 #debug("--- lazily_emit_tydesc_glue TAKE %s",
                        ty_to_str(ccx.tcx, ti.ty));
               }
@@ -1171,8 +1150,7 @@ fn lazily_emit_tydesc_glue(ccx: @crate_ctxt, field: int,
                     declare_generic_glue(ccx, ti.ty, T_glue_fn(ccx), "drop");
                 ti.drop_glue = some(glue_fn);
                 make_generic_glue(ccx, ti.ty, glue_fn,
-                                  make_drop_glue,
-                                  ti.ty_params, "drop");
+                                  make_drop_glue, "drop");
                 #debug("--- lazily_emit_tydesc_glue DROP %s",
                        ty_to_str(ccx.tcx, ti.ty));
               }
@@ -1187,8 +1165,7 @@ fn lazily_emit_tydesc_glue(ccx: @crate_ctxt, field: int,
                     declare_generic_glue(ccx, ti.ty, T_glue_fn(ccx), "free");
                 ti.free_glue = some(glue_fn);
                 make_generic_glue(ccx, ti.ty, glue_fn,
-                                  make_free_glue,
-                                  ti.ty_params, "free");
+                                  make_free_glue, "free");
                 #debug("--- lazily_emit_tydesc_glue FREE %s",
                        ty_to_str(ccx.tcx, ti.ty));
               }
@@ -3853,7 +3830,6 @@ fn new_fn_ctxt_w_id(ccx: @crate_ctxt, path: path,
           llargs: int_hash::<local_val>(),
           lllocals: int_hash::<local_val>(),
           llupvars: int_hash::<ValueRef>(),
-          mutable lltyparams: [],
           derived_tydescs: ty::new_ty_hash(),
           id: id,
           self_id: maybe_self_id,
@@ -3884,8 +3860,7 @@ fn new_fn_ctxt(ccx: @crate_ctxt, path: path, llfndecl: ValueRef,
 // field of the fn_ctxt with
 fn create_llargs_for_fn_args(cx: fn_ctxt,
                              ty_self: self_arg,
-                             args: [ast::arg],
-                             tps_bounds: [ty::param_bounds]) {
+                             args: [ast::arg]) {
     // Skip the implicit arguments 0, and 1.
     let arg_n = first_real_arg;
     alt ty_self {
@@ -3893,25 +3868,6 @@ fn create_llargs_for_fn_args(cx: fn_ctxt,
         cx.llself = some({v: cx.llenv, t: tt});
       }
       no_self {}
-    }
-    for bounds in tps_bounds {
-        let lltydesc = llvm::LLVMGetParam(cx.llfn, arg_n as c_uint);
-        let vtables = none;
-        arg_n += 1u;
-        for bound in *bounds {
-            alt bound {
-              ty::bound_iface(_) {
-                let vtable = llvm::LLVMGetParam(cx.llfn, arg_n as c_uint);
-                arg_n += 1u;
-                vtables = some(alt vtables {
-                    none { [vtable] }
-                    some(ds) { ds + [vtable] }
-                });
-              }
-              _ {}
-            }
-        }
-        cx.lltyparams += [{desc: lltydesc, vtables: vtables}];
     }
 
     // Populate the llargs field of the function context with the ValueRefs
@@ -3994,7 +3950,7 @@ fn trans_closure(ccx: @crate_ctxt, path: path, decl: ast::fn_decl,
     // Set up arguments to the function.
             let fcx = new_fn_ctxt_w_id(ccx, path, llfndecl, id, maybe_self_id,
                   param_substs, some(body.span));
-    create_llargs_for_fn_args(fcx, ty_self, decl.inputs, []);
+    create_llargs_for_fn_args(fcx, ty_self, decl.inputs);
 
     // Create the first basic block in the function and keep a handle on it to
     //  pass to finish_fn later.
@@ -4061,7 +4017,7 @@ fn trans_res_ctor(ccx: @crate_ctxt, path: path, dtor: ast::fn_decl,
     // Create a function for the constructor
     let fcx = new_fn_ctxt_w_id(ccx, path, llfndecl, ctor_id,
                                none, param_substs, none);
-    create_llargs_for_fn_args(fcx, no_self, dtor.inputs, []);
+    create_llargs_for_fn_args(fcx, no_self, dtor.inputs);
     let bcx = top_scope_block(fcx, none), lltop = bcx.llbb;
     let fty = node_id_type(bcx, ctor_id);
     let arg_t = ty::ty_fn_args(fty)[0].ty;
@@ -4103,7 +4059,7 @@ fn trans_enum_variant(ccx: @crate_ctxt, enum_id: ast::node_id,
     }
     let fcx = new_fn_ctxt_w_id(ccx, [], llfndecl, variant.node.id, none,
                                param_substs, none);
-    create_llargs_for_fn_args(fcx, no_self, fn_args, []);
+    create_llargs_for_fn_args(fcx, no_self, fn_args);
     let ty_param_substs = alt param_substs {
       some(substs) { substs.tys }
       none { [] }

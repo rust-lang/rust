@@ -35,8 +35,7 @@ type tydesc_info =
      align: ValueRef,
      mutable take_glue: option<ValueRef>,
      mutable drop_glue: option<ValueRef>,
-     mutable free_glue: option<ValueRef>,
-     ty_params: [uint]};
+     mutable free_glue: option<ValueRef>};
 
 /*
  * A note on nomenclature of linking: "upcall", "extern" and "native".
@@ -122,8 +121,6 @@ type val_self_pair = {v: ValueRef, t: ty::t};
 
 enum local_val { local_mem(ValueRef), local_imm(ValueRef), }
 
-type fn_ty_param = {desc: ValueRef, vtables: option<[ValueRef]>};
-
 type param_substs = {tys: [ty::t],
                      vtables: option<typeck::vtable_res>,
                      bounds: @[ty::param_bounds]};
@@ -178,10 +175,6 @@ type fn_ctxt = @{
     lllocals: hashmap<ast::node_id, local_val>,
     // Same as above, but for closure upvars
     llupvars: hashmap<ast::node_id, ValueRef>,
-
-    // A vector of incoming type descriptors and their associated vtables.
-    // Currently only used by glue functions
-    mutable lltyparams: [fn_ty_param],
 
     // Derived tydescs are tydescs created at runtime, for types that
     // involve type parameters inside type constructors.  For example,
