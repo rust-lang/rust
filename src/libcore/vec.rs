@@ -753,10 +753,26 @@ element's value.
 "]
 #[inline(always)]
 fn iter<T>(v: [const T], f: fn(T)) {
+    iter_between(v, 0u, vec::len(v), f)
+}
+
+/*
+Function: iter_between
+
+Iterates over a vector
+
+Iterates over vector `v` and, for each element, calls function `f` with the
+element's value.
+
+*/
+#[inline(always)]
+fn iter_between<T>(v: [const T], start: uint, end: uint, f: fn(T)) {
+    assert start <= end;
+    assert end <= vec::len(v);
     unsafe {
-        let mut n = vec::len(v);
-        let mut p = unsafe::to_ptr(v);
-        while n > 0u {
+        let mut n = end;
+        let mut p = ptr::offset(unsafe::to_ptr(v), start);
+        while n > start {
             f(*p);
             p = ptr::offset(p, 1u);
             n -= 1u;
