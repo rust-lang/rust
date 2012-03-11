@@ -7,8 +7,8 @@ pure fn even(y: int) -> bool { true }
 fn main() {
     let y: int = 42;
     check (even(y));
-    do  {
+    loop {
         print_even(y);
         do  { do  { do  { y += 1; } while false } while false } while false
-    } while true
+    }
 }
