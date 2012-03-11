@@ -52,7 +52,8 @@ fn item_to_entry(
     config: config::config
 ) -> doc::index_entry {
     let link = alt doc {
-      doc::modtag(_) if config.output_style == config::doc_per_mod {
+      doc::modtag(_) | doc::nmodtag(_)
+      if config.output_style == config::doc_per_mod {
         markdown_writer::make_filename(config, doc::itempage(doc))
       }
       _ {
@@ -145,6 +146,20 @@ fn should_index_mod_contents_multi_page() {
         name: "b",
         brief: none,
         link: "#function-b"
+    };
+}
+
+#[test]
+fn should_index_native_mod_pages() {
+    let doc = test::mk_doc(
+        config::doc_per_mod,
+        "native mod a { }"
+    );
+    assert option::get(doc.cratemod().index).entries[0] == {
+        kind: "Native module",
+        name: "a",
+        brief: none,
+        link: "a.html"
     };
 }
 

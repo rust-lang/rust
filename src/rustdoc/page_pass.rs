@@ -59,7 +59,8 @@ fn make_doc_from_pages(page_port: page_port) -> doc::doc {
 fn find_pages(doc: doc::doc, page_chan: page_chan) {
     let fold = fold::fold({
         fold_crate: fold_crate,
-        fold_mod: fold_mod
+        fold_mod: fold_mod,
+        fold_nmod: fold_nmod
         with *fold::default_any_fold(page_chan)
     });
     fold.fold_doc(fold, doc);
@@ -106,11 +107,22 @@ fn strip_mod(doc: doc::moddoc) -> doc::moddoc {
         items: vec::filter(doc.items) {|item|
             alt item {
               doc::modtag(_) { false }
+              doc::nmodtag(_) { false }
               _ { true }
             }
         }
         with doc
     }
+}
+
+fn fold_nmod(
+    fold: fold::fold<page_chan>,
+    doc: doc::nmoddoc
+) -> doc::nmoddoc {
+    let doc = fold::default_seq_fold_nmod(fold, doc);
+    let page = doc::itempage(doc::nmodtag(doc));
+    comm::send(fold.ctxt, some(page));
+    ret doc;
 }
 
 #[test]
@@ -132,6 +144,18 @@ fn should_make_a_page_for_every_mod() {
 fn should_remove_mods_from_containing_mods() {
     let doc = test::mk_doc("mod a { }");
     assert vec::is_empty(doc.cratemod().mods());
+}
+
+#[test]
+fn should_make_a_page_for_every_native_mod() {
+    let doc = test::mk_doc("native mod a { }");
+    assert doc.pages.nmods()[0].name() == "a";
+}
+
+#[test]
+fn should_remove_native_mods_from_containing_mods() {
+    let doc = test::mk_doc("native mod a { }");
+    assert vec::is_empty(doc.cratemod().nmods());
 }
 
 #[cfg(test)]
