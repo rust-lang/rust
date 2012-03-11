@@ -57,7 +57,7 @@ fn unindent(s: str) -> str {
                     false
                 }
             };
-            math::min(min_indent, spaces)
+            uint::min(min_indent, spaces)
         }
     };
 

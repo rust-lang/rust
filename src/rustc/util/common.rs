@@ -1,4 +1,3 @@
-import math::{max, min};
 import std::map::hashmap;
 import syntax::ast;
 import ast::{ty, pat};

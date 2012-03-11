@@ -1568,7 +1568,7 @@ mod unify {
             _ { cx.tcx.sess.bug("someone forgot to document an invariant \
                          in union"); }
         };
-        ufind::grow(vb.sets, math::max(set_a, set_b) + 1u);
+        ufind::grow(vb.sets, uint::max(set_a, set_b) + 1u);
         let root_a = ufind::find(vb.sets, set_a);
         let root_b = ufind::find(vb.sets, set_b);
 

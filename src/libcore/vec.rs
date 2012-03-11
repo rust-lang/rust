@@ -912,7 +912,7 @@ mod u8 {
     pure fn cmp(&&a: [u8], &&b: [u8]) -> int unsafe {
         let a_len = len(a);
         let b_len = len(b);
-        let n = math::min(a_len, b_len) as ctypes::size_t;
+        let n = uint::min(a_len, b_len) as ctypes::size_t;
         let r = libc::memcmp(unsafe::to_ptr(a) as *libc::c_void,
                              unsafe::to_ptr(b) as *libc::c_void, n) as int;
 

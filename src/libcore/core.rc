@@ -34,7 +34,7 @@ export either, option, result, iter;
 export libc, os, ctypes, sys, unsafe, logging;
 export comm, task, future;
 export extfmt;
-export math, bessel;
+export bessel;
 export tuple;
 export to_str;
 
@@ -84,7 +84,6 @@ mod os;
 mod path;
 
 mod ctypes;
-mod math;
 mod cmath;
 mod sys;
 mod unsafe;
