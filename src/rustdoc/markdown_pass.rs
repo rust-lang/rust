@@ -91,12 +91,15 @@ fn write_markdown(
 }
 
 fn write_page(ctxt: ctxt, page: doc::page) {
+    write_title(ctxt, page);
     alt page {
       doc::cratepage(doc) {
         write_crate(ctxt, doc);
       }
       doc::itempage(doc) {
-        write_item(ctxt, doc);
+        // We don't write a header for item's pages because their
+        // header in the html output is created by the page title
+        write_item_no_header(ctxt, doc);
       }
     }
     ctxt.w.write_done();
@@ -114,6 +117,45 @@ fn should_request_new_writer_for_each_page() {
     // We expect two pages to have been written
     iter::repeat(2u) {||
         comm::recv(po);
+    }
+}
+
+fn write_title(ctxt: ctxt, page: doc::page) {
+    ctxt.w.write_line(#fmt("%% %s", make_title(page)));
+    ctxt.w.write_line("");
+}
+
+fn make_title(page: doc::page) -> str {
+    let item = alt page {
+      doc::cratepage(cratedoc) {
+        doc::modtag(cratedoc.topmod)
+      }
+      doc::itempage(itemtag) {
+        itemtag
+      }
+    };
+    let title = markdown_pass::header_text(item);
+    let title = str::replace(title, "`", "");
+    ret title;
+}
+
+#[test]
+fn should_write_title_for_each_page() {
+    let (writer_factory, po) = markdown_writer::future_writer_factory();
+    let (srv, doc) = test::create_doc_srv(
+        "#[link(name = \"core\")]; mod a { }");
+    let doc = page_pass::mk_pass(config::doc_per_mod).f(srv, doc);
+    write_markdown(doc, writer_factory);
+    iter::repeat(2u) {||
+        let (page, markdown) = comm::recv(po);
+        alt page {
+          doc::cratepage(_) {
+            assert str::contains(markdown, "% Crate core");
+          }
+          doc::itempage(_) {
+            assert str::contains(markdown, "% Module a");
+          }
+        }
     }
 }
 
@@ -210,7 +252,6 @@ fn write_crate(
     ctxt: ctxt,
     doc: doc::cratedoc
 ) {
-    write_header(ctxt, h1, doc::modtag(doc.topmod));
     write_top_module(ctxt, doc.topmod);
 }
 
@@ -225,7 +266,6 @@ fn write_mod(
     ctxt: ctxt,
     moddoc: doc::moddoc
 ) {
-    write_header(ctxt, h1, doc::modtag(moddoc));
     write_mod_contents(ctxt, moddoc);
 }
 
@@ -294,6 +334,18 @@ fn write_mod_contents(
 }
 
 fn write_item(ctxt: ctxt, doc: doc::itemtag) {
+    write_item_(ctxt, doc, true);
+}
+
+fn write_item_no_header(ctxt: ctxt, doc: doc::itemtag) {
+    write_item_(ctxt, doc, false);
+}
+
+fn write_item_(ctxt: ctxt, doc: doc::itemtag, write_header: bool) {
+    if write_header {
+        write_item_header(ctxt, doc);
+    }
+
     alt doc {
       doc::modtag(moddoc) { write_mod(ctxt, moddoc) }
       doc::nmodtag(nmoddoc) { write_nmod(ctxt, nmoddoc) }
@@ -304,6 +356,17 @@ fn write_item(ctxt: ctxt, doc: doc::itemtag) {
       doc::ifacetag(ifacedoc) { write_iface(ctxt, ifacedoc) }
       doc::impltag(impldoc) { write_impl(ctxt, impldoc) }
       doc::tytag(tydoc) { write_type(ctxt, tydoc) }
+    }
+}
+
+fn write_item_header(ctxt: ctxt, doc: doc::itemtag) {
+    write_header(ctxt, item_header_lvl(doc), doc);
+}
+
+fn item_header_lvl(doc: doc::itemtag) -> hlvl {
+    alt doc {
+      doc::modtag(_) | doc::nmodtag(_) { h1 }
+      _ { h2 }
     }
 }
 
@@ -354,7 +417,6 @@ fn should_not_write_index_if_no_entries() {
 }
 
 fn write_nmod(ctxt: ctxt, doc: doc::nmoddoc) {
-    write_header(ctxt, h1, doc::nmodtag(doc));
     write_common(ctxt, doc.desc(), doc.sections());
 
     for fndoc in doc.fns {
@@ -379,7 +441,6 @@ fn write_fn(
     ctxt: ctxt,
     doc: doc::fndoc
 ) {
-    write_header(ctxt, h2, doc::fntag(doc));
     write_fnlike(
         ctxt,
         doc.sig,
@@ -463,7 +524,6 @@ fn write_const(
     ctxt: ctxt,
     doc: doc::constdoc
 ) {
-    write_header(ctxt, h2, doc::consttag(doc));
     write_sig(ctxt, doc.sig);
     write_common(ctxt, doc.desc(), doc.sections());
 }
@@ -486,7 +546,6 @@ fn write_enum(
     ctxt: ctxt,
     doc: doc::enumdoc
 ) {
-    write_header(ctxt, h2, doc::enumtag(doc));
     write_common(ctxt, doc.desc(), doc.sections());
     write_variants(ctxt, doc.variants);
 }
@@ -566,7 +625,6 @@ fn should_write_variant_list_with_signatures() {
 }
 
 fn write_res(ctxt: ctxt, doc: doc::resdoc) {
-    write_header(ctxt, h2, doc::restag(doc));
     write_sig(ctxt, doc.sig);
     write_common(ctxt, doc.desc(), doc.sections());
 }
@@ -584,7 +642,6 @@ fn should_write_resource_signature() {
 }
 
 fn write_iface(ctxt: ctxt, doc: doc::ifacedoc) {
-    write_header(ctxt, h2, doc::ifacetag(doc));
     write_common(ctxt, doc.desc(), doc.sections());
     write_methods(ctxt, doc.methods);
 }
@@ -631,7 +688,6 @@ fn should_write_iface_method_signature() {
 }
 
 fn write_impl(ctxt: ctxt, doc: doc::impldoc) {
-    write_header(ctxt, h2, doc::impltag(doc));
     write_common(ctxt, doc.desc(), doc.sections());
     write_methods(ctxt, doc.methods);
 }
@@ -673,7 +729,6 @@ fn write_type(
     ctxt: ctxt,
     doc: doc::tydoc
 ) {
-    write_header(ctxt, h2, doc::tytag(doc));
     write_sig(ctxt, doc.sig);
     write_common(ctxt, doc.desc(), doc.sections());
 }
@@ -757,16 +812,6 @@ mod test {
         let pass = mk_pass(writer_factory);
         pass.f(srv, doc);
         ret tuple::second(comm::recv(po));
-    }
-
-    #[test]
-    fn write_markdown_should_write_crate_header() {
-        astsrv::from_str("") {|srv|
-            let doc = extract::from_srv(srv, "belch");
-            let doc = attr_pass::mk_pass().f(srv, doc);
-            let markdown = write_markdown_str(doc);
-            assert str::contains(markdown, "# Crate `belch`");
-        }
     }
 
     #[test]
