@@ -10,8 +10,8 @@ pure fn add(x: uint, y: uint) -> uint { ret x + y; }
 pure fn sub(x: uint, y: uint) -> uint { ret x - y; }
 pure fn mul(x: uint, y: uint) -> uint { ret x * y; }
 pure fn div(x: uint, y: uint) -> uint { ret x / y; }
-
 pure fn rem(x: uint, y: uint) -> uint { ret x % y; }
+
 pure fn lt(x: uint, y: uint) -> bool { ret x < y; }
 pure fn le(x: uint, y: uint) -> bool { ret x <= y; }
 pure fn eq(x: uint, y: uint) -> bool { ret x == y; }
