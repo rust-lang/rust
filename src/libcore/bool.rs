@@ -1,46 +1,46 @@
 // -*- rust -*-
 
-#[doc = "Classic Boolean logic reified as ADT"];
+#[doc = "Boolean logic"];
 
-export t;
 export not, and, or, xor, implies;
 export eq, ne, is_true, is_false;
 export from_str, to_str, all_values, to_bit;
 
-#[doc = "The type of boolean logic values"]
-type t = bool;
-
-#[doc = "Negation/Inverse"]
-pure fn not(v: t) -> t { !v }
+#[doc = "Negation / inverse"]
+pure fn not(v: bool) -> bool { !v }
 
 #[doc = "Conjunction"]
-pure fn and(a: t, b: t) -> t { a && b }
+pure fn and(a: bool, b: bool) -> bool { a && b }
 
 #[doc = "Disjunction"]
-pure fn or(a: t, b: t) -> t { a || b }
+pure fn or(a: bool, b: bool) -> bool { a || b }
 
-#[doc = "Exclusive or, i.e. `or(and(a, not(b)), and(not(a), b))`"]
-pure fn xor(a: t, b: t) -> t { (a && !b) || (!a && b) }
+#[doc = "
+Exclusive or
+
+Identical to `or(and(a, not(b)), and(not(a), b))`
+"]
+pure fn xor(a: bool, b: bool) -> bool { (a && !b) || (!a && b) }
 
 #[doc = "Implication in the logic, i.e. from `a` follows `b`"]
-pure fn implies(a: t, b: t) -> t { !a || b }
+pure fn implies(a: bool, b: bool) -> bool { !a || b }
 
 #[doc = "
 true if truth values `a` and `b` are indistinguishable in the logic
 "]
-pure fn eq(a: t, b: t) -> bool { a == b }
+pure fn eq(a: bool, b: bool) -> bool { a == b }
 
 #[doc = "true if truth values `a` and `b` are distinguishable in the logic"]
-pure fn ne(a: t, b: t) -> bool { a != b }
+pure fn ne(a: bool, b: bool) -> bool { a != b }
 
 #[doc = "true if `v` represents truth in the logic"]
-pure fn is_true(v: t) -> bool { v }
+pure fn is_true(v: bool) -> bool { v }
 
 #[doc = "true if `v` represents falsehood in the logic"]
-pure fn is_false(v: t) -> bool { !v }
+pure fn is_false(v: bool) -> bool { !v }
 
 #[doc = "Parse logic value from `s`"]
-pure fn from_str(s: str) -> option<t> {
+pure fn from_str(s: str) -> option<bool> {
     alt check s {
       "true" { some(true) }
       "false" { some(false) }
@@ -49,19 +49,19 @@ pure fn from_str(s: str) -> option<t> {
 }
 
 #[doc = "Convert `v` into a string"]
-pure fn to_str(v: t) -> str { if v { "true" } else { "false" } }
+pure fn to_str(v: bool) -> str { if v { "true" } else { "false" } }
 
 #[doc = "
 Iterates over all truth values by passing them to `blk` in an unspecified
 order
 "]
-fn all_values(blk: fn(v: t)) {
+fn all_values(blk: fn(v: bool)) {
     blk(true);
     blk(false);
 }
 
 #[doc = "converts truth value to an 8 bit byte"]
-pure fn to_bit(v: t) -> u8 { if v { 1u8 } else { 0u8 } }
+pure fn to_bit(v: bool) -> u8 { if v { 1u8 } else { 0u8 } }
 
 #[test]
 fn test_bool_from_str() {
