@@ -44,11 +44,9 @@ fn check_expr(expr: @ast::expr, cx: ctxt, visitor: visit::vt<ctxt>) {
                                 referent_block_id =
                                     parent_blocks.get(referent_block_id);
                             } else {
-                                // TODO: Enable this.
-
-                                //cx.tcx.sess.span_err(expr.span,
-                                //                     "reference escapes " +
-                                //                     "its block");
+                                cx.tcx.sess.span_err(expr.span,
+                                                     "reference escapes " +
+                                                     "its block");
                                 break;
                             }
                         }
