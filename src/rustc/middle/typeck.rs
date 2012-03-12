@@ -3122,10 +3122,11 @@ fn check_main_fn_ty(tcx: ty::ctxt, main_id: ast::node_id, main_span: span) {
         ok &= num_args == 0u || num_args == 1u &&
               arg_is_argv_ty(tcx, inputs[0]);
         if !ok {
-            tcx.sess.span_err(main_span,
-                              "wrong type in main function: found `" +
-                                  ty_to_str(tcx, main_t) + "`");
-        }
+                tcx.sess.span_err(main_span,
+                   #fmt("Wrong type in main function: found `%s`, \
+                   expecting `native fn([str]) -> ()` or `native fn() -> ()`",
+                         ty_to_str(tcx, main_t)));
+         }
       }
       _ {
         tcx.sess.span_bug(main_span,
