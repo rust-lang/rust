@@ -334,7 +334,7 @@ enum uint_ty { ty_u, ty_u8, ty_u16, ty_u32, ty_u64, }
 
 enum float_ty { ty_f, ty_f32, ty_f64, }
 
-type ty = {id: node_id, node: ty_, span: span};
+type ty = spanned<ty_>;
 
 // Not represented directly in the AST, referred to by name through a ty_path.
 enum prim_ty {

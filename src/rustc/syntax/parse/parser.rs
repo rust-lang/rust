@@ -385,11 +385,7 @@ fn parse_ty_postfix(orig_t: ast::ty_, p: parser, colons_before_params: bool,
         expect(p, token::LT);
     } else if !colons_before_params && p.token == token::LT {
         p.bump();
-    } else {
-        ret @{id: p.get_id(),
-              node: orig_t,
-              span: ast_util::mk_sp(lo, p.last_span.hi)};
-    }
+    } else { ret @spanned(lo, p.last_span.hi, orig_t); }
 
     // If we're here, we have explicit type parameter instantiation.
     let seq = parse_seq_to_gt(some(token::COMMA), {|p| parse_ty(p, false)},
@@ -397,12 +393,11 @@ fn parse_ty_postfix(orig_t: ast::ty_, p: parser, colons_before_params: bool,
 
     alt orig_t {
       ast::ty_path(pth, ann) {
-        ret @{id: p.get_id(),
-              node: ast::ty_path(@spanned(lo, p.last_span.hi,
-                                          {global: pth.node.global,
-                                           idents: pth.node.idents,
-                                           types: seq}), ann),
-              span: ast_util::mk_sp(lo, p.last_span.hi)};
+        ret @spanned(lo, p.last_span.hi,
+                     ast::ty_path(@spanned(lo, p.last_span.hi,
+                                           {global: pth.node.global,
+                                            idents: pth.node.idents,
+                                            types: seq}), ann));
       }
       _ { p.fatal("type parameter instantiation only allowed for paths"); }
     }
@@ -412,17 +407,11 @@ fn parse_ret_ty(p: parser) -> (ast::ret_style, @ast::ty) {
     ret if eat(p, token::RARROW) {
         let lo = p.span.lo;
         if eat(p, token::NOT) {
-            (ast::noreturn, @{id: p.get_id(),
-                              node: ast::ty_bot,
-                              span: ast_util::mk_sp(lo, p.last_span.hi)})
-        } else {
-            (ast::return_val, parse_ty(p, false))
-        }
+            (ast::noreturn, @spanned(lo, p.last_span.hi, ast::ty_bot))
+        } else { (ast::return_val, parse_ty(p, false)) }
     } else {
         let pos = p.span.lo;
-        (ast::return_val, @{id: p.get_id(),
-                            node: ast::ty_nil,
-                            span: ast_util::mk_sp(pos, pos)})
+        (ast::return_val, @spanned(pos, pos, ast::ty_nil))
     }
 }
 
@@ -446,11 +435,8 @@ fn parse_ty(p: parser, colons_before_params: bool) -> @ast::ty {
     let lo = p.span.lo;
 
     alt have_dollar(p) {
-      some(e) {
-        ret @{id: p.get_id(),
-              node: ast::ty_mac(spanned(lo, p.span.hi, e)),
-              span: ast_util::mk_sp(lo, p.span.hi)};
-      }
+      some(e) {ret @spanned(lo, p.span.hi,
+                            ast::ty_mac(spanned(lo, p.span.hi, e)))}
       none {}
     }
 
@@ -489,10 +475,7 @@ fn parse_ty(p: parser, colons_before_params: bool) -> @ast::ty {
         let t = ast::ty_rec(elems.node);
         if p.token == token::COLON {
             p.bump();
-            ast::ty_constr(@{id: p.get_id(),
-                             node: t,
-                             span: ast_util::mk_sp(lo, hi)},
-                           parse_type_constraints(p))
+            ast::ty_constr(@spanned(lo, hi, t), parse_type_constraints(p))
         } else { t }
     } else if p.token == token::LBRACKET {
         expect(p, token::LBRACKET);
@@ -551,9 +534,7 @@ fn parse_fn_block_arg(p: parser) -> ast::arg {
     let t = if eat(p, token::COLON) {
                 parse_ty(p, false)
             } else {
-                @{id: p.get_id(),
-                  node: ast::ty_infer,
-                  span: ast_util::mk_sp(p.span.lo, p.span.hi)}
+                @spanned(p.span.lo, p.span.hi, ast::ty_infer)
             };
     ret {mode: m, ty: t, ident: i, id: p.get_id()};
 }
@@ -1625,9 +1606,7 @@ fn parse_local(p: parser, is_mutbl: bool,
                allow_init: bool) -> @ast::local {
     let lo = p.span.lo;
     let pat = parse_pat(p);
-    let ty = @{id: p.get_id(),
-               node: ast::ty_infer,
-               span: ast_util::mk_sp(lo, lo)};
+    let ty = @spanned(lo, lo, ast::ty_infer);
     if eat(p, token::COLON) { ty = parse_ty(p, false); }
     let init = if allow_init { parse_initializer(p) } else { none };
     ret @spanned(lo, p.last_span.hi,
@@ -1903,7 +1882,7 @@ fn parse_fn_block_decl(p: parser) -> ast::fn_decl {
     let output = if eat(p, token::RARROW) {
                      parse_ty(p, false)
                  } else {
-                     @{id: p.get_id(), node: ast::ty_infer, span: p.span}
+                     @spanned(p.span.lo, p.span.hi, ast::ty_infer)
                  };
     ret {inputs: inputs,
          output: output,
@@ -1978,7 +1957,7 @@ fn parse_item_iface(p: parser, attrs: [ast::attribute]) -> @ast::item {
 fn parse_item_impl(p: parser, attrs: [ast::attribute]) -> @ast::item {
     let lo = p.last_span.lo;
     fn wrap_path(p: parser, pt: @ast::path) -> @ast::ty {
-        @{id: p.get_id(), node: ast::ty_path(pt, p.get_id()), span: pt.span}
+        @{node: ast::ty_path(pt, p.get_id()), span: pt.span}
     }
     let (ident, tps) = if !is_word(p, "of") {
         if p.token == token::LT { (none, parse_ty_params(p)) }
@@ -2017,9 +1996,7 @@ fn parse_item_res(p: parser, attrs: [ast::attribute]) -> @ast::item {
         {inputs:
              [{mode: ast::expl(ast::by_ref), ty: t,
                ident: arg_ident, id: p.get_id()}],
-         output: @{id: p.get_id(),
-                   node: ast::ty_nil,
-                   span: ast_util::mk_sp(lo, lo)},
+         output: @spanned(lo, lo, ast::ty_nil),
          purity: ast::impure_fn,
          cf: ast::return_val,
          constraints: []};
@@ -2089,9 +2066,8 @@ enum class_contents { ctor_decl(ast::fn_decl, ast::blk, codemap::span),
         // Can ctors have attrs?
             // result type is always the type of the class
         let decl_ = parse_fn_decl(p, ast::impure_fn);
-        let decl = {output: @{id: p.get_id(),
-                              node: ast::ty_path(class_name, p.get_id()),
-                              span: decl_.output.span}
+        let decl = {output: @{node: ast::ty_path(class_name, p.get_id()),
+                                  span: decl_.output.span}
                     with decl_};
         let body = parse_block(p);
         ret ctor_decl(decl, body, ast_util::mk_sp(lo, p.last_span.hi));
