@@ -22,33 +22,37 @@ type ctxt = {
 };
 
 fn check_expr(expr: @ast::expr, cx: ctxt, visitor: visit::vt<ctxt>) {
-    ty::walk_ty(cx.tcx, ty::expr_ty(cx.tcx, expr)) { |t|
-        alt ty::get(t).struct {
-            ty::ty_rptr(region, _) {
-                alt region {
-                    ty::re_named(_) | ty::re_caller(_) { /* ok */ }
-                    ty::re_block(rbi) {
-                        let referent_block_id = rbi;
-                        let enclosing_block_id = alt cx.enclosing_block {
-                            none {
-                                cx.tcx.sess.span_bug(expr.span, "block " +
-                                                     "region type outside " +
-                                                     "a block?!");
+    let t = ty::expr_ty(cx.tcx, expr);
+    if ty::type_has_rptrs(t) {
+        ty::walk_ty(cx.tcx, t) { |t|
+            alt ty::get(t).struct {
+                ty::ty_rptr(region, _) {
+                    alt region {
+                        ty::re_named(_) | ty::re_caller(_) { /* ok */ }
+                        ty::re_block(rbi) {
+                            let referent_block_id = rbi;
+                            let enclosing_block_id = alt cx.enclosing_block {
+                                none {
+                                    cx.tcx.sess.span_bug(expr.span,
+                                                         "block region " +
+                                                         "type outside a " +
+                                                         "block?!");
+                                }
+                                some(eb) { eb }
+                            };
+
+                            if !region::scope_contains(cx.tcx.region_map,
+                                                       referent_block_id,
+                                                       enclosing_block_id) {
+
+                                cx.tcx.sess.span_err(expr.span, "reference " +
+                                                     "escapes its block");
                             }
-                            some(eb) { eb }
-                        };
-
-                        if !region::scope_contains(cx.tcx.region_map,
-                                                   referent_block_id,
-                                                   enclosing_block_id) {
-
-                            cx.tcx.sess.span_err(expr.span, "reference " +
-                                                 "escapes its block");
                         }
                     }
                 }
+                _ { /* no-op */ }
             }
-            _ { /* no-op */ }
         }
     }
 

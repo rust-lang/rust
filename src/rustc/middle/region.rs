@@ -6,6 +6,8 @@
 import driver::session::session;
 import middle::ty;
 import syntax::{ast, visit};
+import util::common::new_def_hash;
+
 import std::map;
 import std::map::hashmap;
 
@@ -27,6 +29,8 @@ type region_map = {
     ast_type_to_region: hashmap<ast::node_id,ty::region>,
     /* Mapping from a local variable to its containing block. */
     local_blocks: hashmap<ast::node_id,ast::node_id>,
+    /* Mapping from a region name to its function. */
+    region_name_to_fn: hashmap<ast::def_id,ast::node_id>,
 };
 
 type ctxt = {
@@ -105,9 +109,15 @@ fn resolve_ty(ty: @ast::ty, cx: ctxt, visitor: visit::vt<ctxt>) {
                     alt cx.names_in_scope.find(ident) {
                         some(def_id) { region = ty::re_named(def_id); }
                         none {
+                            let def_id = {crate: ast::local_crate,
+                                          node: region_id};
+                            cx.names_in_scope.insert(ident, def_id);
+                            region = ty::re_named(def_id);
+
                             alt cx.parent {
-                                pa_item(_) | pa_nested_fn(_) {
-                                    /* ok; fall through */
+                                pa_item(fn_id) | pa_nested_fn(fn_id) {
+                                    let rf = cx.region_map.region_name_to_fn;
+                                    rf.insert(def_id, fn_id);
                                 }
                                 pa_block(_) {
                                     cx.sess.span_err(ty.span,
@@ -120,11 +130,6 @@ fn resolve_ty(ty: @ast::ty, cx: ctxt, visitor: visit::vt<ctxt>) {
                                                      "level?!");
                                 }
                             }
-
-                            let def_id = {crate: ast::local_crate,
-                                          node: region_id};
-                            cx.names_in_scope.insert(ident, def_id);
-                            region = ty::re_named(def_id);
                         }
                     }
                 }
@@ -256,7 +261,8 @@ fn resolve_crate(sess: session, def_map: resolve::def_map, crate: @ast::crate)
                     def_map: def_map,
                     region_map: @{parents: map::new_int_hash(),
                                   ast_type_to_region: map::new_int_hash(),
-                                  local_blocks: map::new_int_hash()},
+                                  local_blocks: map::new_int_hash(),
+                                  region_name_to_fn: new_def_hash()},
                     names_in_scope: map::new_str_hash(),
                     mut queued_locals: [],
                     parent: pa_crate,

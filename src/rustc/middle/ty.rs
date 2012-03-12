@@ -89,7 +89,7 @@ export ty_uniq, mk_uniq, mk_imm_uniq, type_is_unique_box;
 export ty_var, mk_var;
 export ty_self, mk_self;
 export region, re_named, re_caller, re_block;
-export get, type_has_params, type_has_vars, type_id;
+export get, type_has_params, type_has_vars, type_has_rptrs, type_id;
 export same_type;
 export ty_var_id;
 export ty_fn_args;
@@ -187,6 +187,7 @@ type t_box = @{struct: sty,
                id: uint,
                has_params: bool,
                has_vars: bool,
+               has_rptrs: bool,
                o_def_id: option<ast::def_id>};
 
 // To reduce refcounting cost, we're representing types as unsafe pointers
@@ -206,6 +207,7 @@ pure fn get(t: t) -> t_box unsafe {
 
 fn type_has_params(t: t) -> bool { get(t).has_params }
 fn type_has_vars(t: t) -> bool { get(t).has_vars }
+fn type_has_rptrs(t: t) -> bool { get(t).has_rptrs }
 fn type_def_id(t: t) -> option<ast::def_id> { get(t).o_def_id }
 fn type_id(t: t) -> uint { get(t).id }
 
@@ -368,11 +370,13 @@ fn mk_t_with_id(cx: ctxt, st: sty, o_def_id: option<ast::def_id>) -> t {
       some(t) { unsafe { ret unsafe::reinterpret_cast(t); } }
       _ {}
     }
-    let has_params = false, has_vars = false;
-    fn derive_flags(&has_params: bool, &has_vars: bool, tt: t) {
+    let has_params = false, has_vars = false, has_rptrs = false;
+    fn derive_flags(&has_params: bool, &has_vars: bool, &has_rptrs: bool,
+                    tt: t) {
         let t = get(tt);
         has_params |= t.has_params;
         has_vars |= t.has_vars;
+        has_rptrs |= t.has_rptrs;
     }
     alt st {
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
@@ -381,33 +385,42 @@ fn mk_t_with_id(cx: ctxt, st: sty, o_def_id: option<ast::def_id>) -> t {
       ty_param(_, _) { has_params = true; }
       ty_var(_) | ty_self(_) { has_vars = true; }
       ty_enum(_, tys) | ty_iface(_, tys) | ty_class(_, tys) {
-        for tt in tys { derive_flags(has_params, has_vars, tt); }
+        for tt in tys { derive_flags(has_params, has_vars, has_rptrs, tt); }
       }
-      ty_box(m) | ty_uniq(m) | ty_vec(m) | ty_ptr(m) | ty_rptr(_, m) {
-        derive_flags(has_params, has_vars, m.ty);
+      ty_box(m) | ty_uniq(m) | ty_vec(m) | ty_ptr(m) {
+        derive_flags(has_params, has_vars, has_rptrs, m.ty);
+      }
+      ty_rptr(_, m) {
+        has_rptrs = true;
+        derive_flags(has_params, has_vars, has_rptrs, m.ty);
       }
       ty_rec(flds) {
-        for f in flds { derive_flags(has_params, has_vars, f.mt.ty); }
+        for f in flds {
+          derive_flags(has_params, has_vars, has_rptrs, f.mt.ty);
+        }
       }
       ty_tup(ts) {
-        for tt in ts { derive_flags(has_params, has_vars, tt); }
+        for tt in ts { derive_flags(has_params, has_vars, has_rptrs, tt); }
       }
       ty_fn(f) {
-        for a in f.inputs { derive_flags(has_params, has_vars, a.ty); }
-        derive_flags(has_params, has_vars, f.output);
+        for a in f.inputs {
+          derive_flags(has_params, has_vars, has_rptrs, a.ty);
+        }
+        derive_flags(has_params, has_vars, has_rptrs, f.output);
       }
       ty_res(_, tt, tps) {
-        derive_flags(has_params, has_vars, tt);
-        for tt in tps { derive_flags(has_params, has_vars, tt); }
+        derive_flags(has_params, has_vars, has_rptrs, tt);
+        for tt in tps { derive_flags(has_params, has_vars, has_rptrs, tt); }
       }
       ty_constr(tt, _) {
-        derive_flags(has_params, has_vars, tt);
+        derive_flags(has_params, has_vars, has_rptrs, tt);
       }
     }
     let t = @{struct: st,
               id: cx.next_id,
               has_params: has_params,
               has_vars: has_vars,
+              has_rptrs: has_rptrs,
               o_def_id: o_def_id};
     cx.interner.insert(key, t);
     cx.next_id += 1u;
