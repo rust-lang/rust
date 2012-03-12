@@ -38,17 +38,12 @@ fn check_expr(expr: @ast::expr, cx: ctxt, visitor: visit::vt<ctxt>) {
                             some(eb) { eb }
                         };
 
-                        let parent_blocks = cx.tcx.region_map.parent_blocks;
-                        while enclosing_block_id != referent_block_id {
-                            if parent_blocks.contains_key(referent_block_id) {
-                                referent_block_id =
-                                    parent_blocks.get(referent_block_id);
-                            } else {
-                                cx.tcx.sess.span_err(expr.span,
-                                                     "reference escapes " +
-                                                     "its block");
-                                break;
-                            }
+                        if !region::scope_contains(cx.tcx.region_map,
+                                                   referent_block_id,
+                                                   enclosing_block_id) {
+
+                            cx.tcx.sess.span_err(expr.span, "reference " +
+                                                 "escapes its block");
                         }
                     }
                 }

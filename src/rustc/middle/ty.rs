@@ -1897,33 +1897,14 @@ mod unify {
             }
         }
 
-        alt (super, sub) {
-            (re_caller(_), re_caller(_)) {
-                // FIXME: This is wrong w/r/t nested functions.
-                ret some(super);
-            }
-            (re_caller(_), re_named(_)) | (re_named(_), re_caller(_)) {
-                ret none;
-            }
-            (re_named(a), re_named(b)) {
-                ret if a == b { some(super) } else { none }
-            }
-            (re_caller(_), re_block(_)) | (re_named(_), re_block(_)) {
-                // FIXME: This is wrong w/r/t nested functions.
-                ret some(super);
-            }
-            (re_block(_), re_caller(_)) | (re_block(_), re_named(_)) {
-                ret none;
-            }
-            (re_block(superblock), re_block(subblock)) {
-                if region::block_contains(cx.tcx.region_map, superblock,
-                                          subblock) {
-                    ret some(super);
-                } else {
-                    ret none;
-                }
-            }
+        // Outer regions are subtypes of inner regions. (This is somewhat
+        // surprising!)
+        let superscope = region::region_to_scope(cx.tcx.region_map, super);
+        let subscope = region::region_to_scope(cx.tcx.region_map, sub);
+        if region::scope_contains(cx.tcx.region_map, subscope, superscope) {
+            ret some(super);
         }
+        ret none;
     }
 
     fn unify_step(cx: @uctxt, expected: t, actual: t,
