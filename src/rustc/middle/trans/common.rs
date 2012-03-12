@@ -26,8 +26,6 @@ fn new_namegen() -> namegen {
     ret fn@(prefix: str) -> str { *i += 1; prefix + int::str(*i) };
 }
 
-type derived_tydesc_info = {lltydesc: ValueRef, escapes: bool};
-
 type tydesc_info =
     {ty: ty::t,
      tydesc: ValueRef,
@@ -54,7 +52,6 @@ type tydesc_info =
  */
 type stats =
     {mutable n_static_tydescs: uint,
-     mutable n_derived_tydescs: uint,
      mutable n_glues_created: uint,
      mutable n_null_glues: uint,
      mutable n_real_glues: uint,
@@ -150,14 +147,6 @@ type fn_ctxt = @{
     // (LLVM requires that arguments be copied to local allocas before
     // allowing most any operation to be performed on them.)
     mutable llloadenv: BasicBlockRef,
-    // The first and last block containing derived tydescs received from the
-    // runtime. See description of derived_tydescs, below.
-    mutable llderivedtydescs_first: BasicBlockRef,
-    mutable llderivedtydescs: BasicBlockRef,
-    // A block for all of the dynamically sized allocas.  This must be
-    // after llderivedtydescs, because these sometimes depend on
-    // information computed from derived tydescs.
-    mutable lldynamicallocas: BasicBlockRef,
     mutable llreturn: BasicBlockRef,
     // The 'self' value currently in use in this function, if there
     // is one.
@@ -173,17 +162,6 @@ type fn_ctxt = @{
     lllocals: hashmap<ast::node_id, local_val>,
     // Same as above, but for closure upvars
     llupvars: hashmap<ast::node_id, ValueRef>,
-
-    // Derived tydescs are tydescs created at runtime, for types that
-    // involve type parameters inside type constructors.  For example,
-    // suppose a function parameterized by T creates a vector of type
-    // [T].  The function doesn't know what T is until runtime, and
-    // the function's caller knows T but doesn't know that a vector is
-    // involved.  So a tydesc for [T] can't be created until runtime,
-    // when information about both "[T]" and "T" are available.  When
-    // such a tydesc is created, we cache it in the derived_tydescs
-    // table for the next time that such a tydesc is needed.
-    derived_tydescs: hashmap<ty::t, derived_tydesc_info>,
 
     // The node_id of the function, or -1 if it doesn't correspond to
     // a user-defined function.
@@ -819,10 +797,6 @@ fn C_shape(ccx: @crate_ctxt, bytes: [u8]) -> ValueRef {
     ret llvm::LLVMConstPointerCast(llglobal, T_ptr(T_i8()));
 }
 
-pure fn type_has_static_size(cx: @crate_ctxt, t: ty::t) -> bool {
-    !ty::type_has_dynamic_size(cx.tcx, t)
-}
-
 // Used to identify cached monomorphized functions
 enum mono_vtables { some_vts([mono_id]), no_vts }
 type mono_id = @{def: ast::def_id, substs: [ty::t], vtables: mono_vtables};
@@ -869,7 +843,7 @@ fn node_id_type(bcx: block, id: ast::node_id) -> ty::t {
     let t = ty::node_id_to_type(tcx, id);
     alt bcx.fcx.param_substs {
       some(substs) { ty::substitute_type_params(tcx, substs.tys, t) }
-      _ { t }
+      _ { assert !ty::type_has_params(t); t }
     }
 }
 fn expr_ty(bcx: block, ex: @ast::expr) -> ty::t {

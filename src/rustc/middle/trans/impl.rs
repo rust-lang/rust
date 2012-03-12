@@ -33,8 +33,8 @@ fn trans_self_arg(bcx: block, base: @ast::expr) -> result {
     let m_by_ref = ast::expl(ast::by_ref);
     let temp_cleanups = [];
     let result = trans_arg_expr(bcx, {mode: m_by_ref, ty: basety},
-                                T_ptr(type_of_or_i8(bcx.ccx(), basety)), base,
-                                temp_cleanups);
+                                T_ptr(type_of::type_of(bcx.ccx(), basety)),
+                                base, temp_cleanups);
 
     // by-ref self argument should not require cleanup in the case of
     // other arguments failing:

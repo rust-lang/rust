@@ -15,7 +15,6 @@ import back::link::{
     mangle_internal_name_by_path,
     mangle_internal_name_by_path_and_seq};
 import util::ppaux::ty_to_str;
-import shape::{size_of};
 import ast_map::{path, path_mod, path_name};
 import driver::session::session;
 import std::map::hashmap;
@@ -215,16 +214,6 @@ type closure_result = {
     bcx: block     // final bcx
 };
 
-fn cast_if_we_can(bcx: block, llbox: ValueRef, t: ty::t) -> ValueRef {
-    let ccx = bcx.ccx();
-    if check type_has_static_size(ccx, t) {
-        let llty = type_of(ccx, t);
-        ret PointerCast(bcx, llbox, llty);
-    } else {
-        ret llbox;
-    }
-}
-
 // Given a block context and a list of tydescs and values to bind
 // construct a closure out of them. If copying is true, it is a
 // heap allocated closure that copies the upvars into environment.
@@ -261,7 +250,8 @@ fn store_environment(bcx: block,
     // whatever.
     let cbox_ty = tuplify_box_ty(tcx, cdata_ty);
     let cboxptr_ty = ty::mk_ptr(tcx, {ty:cbox_ty, mutbl:ast::m_imm});
-    let llbox = cast_if_we_can(bcx, llbox, cboxptr_ty);
+
+    let llbox = PointerCast(bcx, llbox, type_of(ccx, cboxptr_ty));
     #debug["tuplify_box_ty = %s", ty_to_str(tcx, cbox_ty)];
 
     // Copy expr values into boxed bindings.
@@ -717,32 +707,17 @@ fn trans_bind_thunk(ccx: @crate_ctxt,
     // And then, pick out the target function's own environment.  That's what
     // we'll use as the environment the thunk gets.
 
-    // Get f's return type, which will also be the return type of the entire
-    // bind expression.
-    let outgoing_ret_ty = ty::ty_fn_ret(outgoing_fty);
-
     // Get the types of the arguments to f.
     let outgoing_args = ty::ty_fn_args(outgoing_fty);
 
-    // The 'llretptr' that will arrive in the thunk we're creating also needs
-    // to be the correct type.  Cast it to f's return type, if necessary.
-    let llretptr = fcx.llretptr;
-    if ty::type_has_params(outgoing_ret_ty) {
-        let llretty = type_of(ccx, outgoing_ret_ty);
-        llretptr = PointerCast(bcx, llretptr, T_ptr(llretty));
-    }
-
     // Set up the three implicit arguments to the thunk.
-    let llargs: [ValueRef] = [llretptr, lltargetenv];
+    let llargs: [ValueRef] = [fcx.llretptr, lltargetenv];
 
     let a: uint = first_real_arg; // retptr, env come first
     let b: int = starting_idx;
     let outgoing_arg_index: uint = 0u;
-    let llout_arg_tys: [TypeRef] =
-        type_of_explicit_args(ccx, outgoing_args);
     for arg: option<@ast::expr> in args {
         let out_arg = outgoing_args[outgoing_arg_index];
-        let llout_arg_ty = llout_arg_tys[outgoing_arg_index];
         alt arg {
           // Arg provided at binding time; thunk copies it from
           // closure.
@@ -762,23 +737,13 @@ fn trans_bind_thunk(ccx: @crate_ctxt,
               }
               ast::by_ref | ast::by_mutbl_ref | ast::by_move { }
             }
-
-            // If the type is parameterized, then we need to cast the
-            // type we actually have to the parameterized out type.
-            if ty::type_has_params(out_arg.ty) {
-                val = PointerCast(bcx, val, llout_arg_ty);
-            }
             llargs += [val];
             b += 1;
           }
 
           // Arg will be provided when the thunk is invoked.
           none {
-            let arg: ValueRef = llvm::LLVMGetParam(llthunk, a as c_uint);
-            if ty::type_has_params(out_arg.ty) {
-                arg = PointerCast(bcx, arg, llout_arg_ty);
-            }
-            llargs += [arg];
+            llargs += [llvm::LLVMGetParam(llthunk, a as c_uint)];
             a += 1u;
           }
         }

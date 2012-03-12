@@ -96,8 +96,6 @@ fn mk_global(ccx: @crate_ctxt, name: str, llval: ValueRef, internal: bool) ->
 // Computes a set of variants of a enum that are guaranteed to have size and
 // alignment at least as large as any other variant of the enum. This is an
 // important performance optimization.
-//
-// FIXME: Use this in dynamic_size_of() as well.
 
 fn largest_variants(ccx: @crate_ctxt, tag_id: ast::def_id) -> [uint] {
     // Compute the minimum and maximum size and alignment for each variant.
@@ -109,7 +107,7 @@ fn largest_variants(ccx: @crate_ctxt, tag_id: ast::def_id) -> [uint] {
     let variants = ty::enum_variants(ccx.tcx, tag_id);
     for variant: ty::variant_info in *variants {
         let bounded = true;
-        let {a: min_size, b: min_align} = {a: 0u, b: 0u};
+        let min_size = 0u, min_align = 0u;
         for elem_t: ty::t in variant.args {
             if ty::type_has_params(elem_t) {
                 // FIXME: We could do better here; this causes us to
@@ -179,7 +177,7 @@ fn round_up(size: u16, align: u8) -> u16 {
 type size_align = {size: u16, align: u8};
 
 fn compute_static_enum_size(ccx: @crate_ctxt, largest_variants: [uint],
-                           did: ast::def_id) -> size_align {
+                            did: ast::def_id) -> size_align {
     let max_size = 0u16;
     let max_align = 1u8;
     let variants = ty::enum_variants(ccx.tcx, did);
@@ -293,44 +291,37 @@ fn add_substr(&dest: [u8], src: [u8]) {
 }
 
 fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint]) -> [u8] {
-    let s = [];
-
     alt ty::get(t).struct {
       ty::ty_nil | ty::ty_bool | ty::ty_uint(ast::ty_u8) |
-      ty::ty_bot { s += [shape_u8]; }
-      ty::ty_int(ast::ty_i) { s += [s_int(ccx.tcx)]; }
-      ty::ty_float(ast::ty_f) { s += [s_float(ccx.tcx)]; }
-      ty::ty_uint(ast::ty_u) | ty::ty_ptr(_) { s += [s_uint(ccx.tcx)]; }
-      ty::ty_type { s += [s_tydesc(ccx.tcx)]; }
-      ty::ty_send_type { s += [s_send_tydesc(ccx.tcx)]; }
-      ty::ty_int(ast::ty_i8) { s += [shape_i8]; }
-      ty::ty_uint(ast::ty_u16) { s += [shape_u16]; }
-      ty::ty_int(ast::ty_i16) { s += [shape_i16]; }
-      ty::ty_uint(ast::ty_u32) { s += [shape_u32]; }
-      ty::ty_int(ast::ty_i32) | ty::ty_int(ast::ty_char) {s += [shape_i32];}
-      ty::ty_uint(ast::ty_u64) { s += [shape_u64]; }
-      ty::ty_int(ast::ty_i64) { s += [shape_i64]; }
-      ty::ty_float(ast::ty_f32) { s += [shape_f32]; }
-      ty::ty_float(ast::ty_f64) { s += [shape_f64]; }
+      ty::ty_bot { [shape_u8] }
+      ty::ty_int(ast::ty_i) { [s_int(ccx.tcx)] }
+      ty::ty_float(ast::ty_f) { [s_float(ccx.tcx)] }
+      ty::ty_uint(ast::ty_u) | ty::ty_ptr(_) { [s_uint(ccx.tcx)] }
+      ty::ty_type { [s_tydesc(ccx.tcx)] }
+      ty::ty_send_type { [s_send_tydesc(ccx.tcx)] }
+      ty::ty_int(ast::ty_i8) { [shape_i8] }
+      ty::ty_uint(ast::ty_u16) { [shape_u16] }
+      ty::ty_int(ast::ty_i16) { [shape_i16] }
+      ty::ty_uint(ast::ty_u32) { [shape_u32] }
+      ty::ty_int(ast::ty_i32) | ty::ty_int(ast::ty_char) { [shape_i32] }
+      ty::ty_uint(ast::ty_u64) { [shape_u64] }
+      ty::ty_int(ast::ty_i64) { [shape_i64] }
+      ty::ty_float(ast::ty_f32) { [shape_f32] }
+      ty::ty_float(ast::ty_f64) { [shape_f64] }
       ty::ty_str {
-        s += [shape_vec];
+        let s = [shape_vec];
         add_bool(s, true); // type is POD
         let unit_ty = ty::mk_mach_uint(ccx.tcx, ast::ty_u8);
         add_substr(s, shape_of(ccx, unit_ty, ty_param_map));
+        s
       }
       ty::ty_enum(did, tps) {
         alt enum_kind(ccx, did) {
-          tk_unit {
-            // FIXME: For now we do this.
-            s += [s_variant_enum_t(ccx.tcx)];
-          }
-          tk_enum { s += [s_variant_enum_t(ccx.tcx)]; }
+          // FIXME: For now we do this.
+          tk_unit { [s_variant_enum_t(ccx.tcx)] }
+          tk_enum { [s_variant_enum_t(ccx.tcx)] }
           tk_newtype | tk_complex {
-            s += [shape_enum];
-
-            let sub = [];
-
-            let id;
+            let s = [shape_enum], id;
             alt ccx.shape_cx.tag_id_to_index.find(did) {
               none {
                 id = ccx.shape_cx.next_tag_id;
@@ -340,99 +331,85 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint]) -> [u8] {
               }
               some(existing_id) { id = existing_id; }
             }
-            add_u16(sub, id as u16);
+            add_u16(s, id as u16);
 
-            add_u16(sub, vec::len(tps) as u16);
+            add_u16(s, vec::len(tps) as u16);
             for tp: ty::t in tps {
                 let subshape = shape_of(ccx, tp, ty_param_map);
-                add_u16(sub, vec::len(subshape) as u16);
-                sub += subshape;
+                add_u16(s, vec::len(subshape) as u16);
+                s += subshape;
             }
-
-            s += sub;
+            s
           }
         }
       }
-      ty::ty_box(_) | ty::ty_opaque_box {
-        s += [shape_box];
-      }
+      ty::ty_box(_) | ty::ty_opaque_box { [shape_box] }
       ty::ty_uniq(mt) {
-        s += [shape_uniq];
+        let s = [shape_uniq];
         add_substr(s, shape_of(ccx, mt.ty, ty_param_map));
+        s
       }
       ty::ty_vec(mt) {
-        s += [shape_vec];
+        let s = [shape_vec];
         add_bool(s, ty::type_is_pod(ccx.tcx, mt.ty));
         add_substr(s, shape_of(ccx, mt.ty, ty_param_map));
+        s
       }
       ty::ty_rec(fields) {
-        s += [shape_struct];
-        let sub = [];
+        let s = [shape_struct], sub = [];
         for f: field in fields {
             sub += shape_of(ccx, f.mt.ty, ty_param_map);
         }
         add_substr(s, sub);
+        s
       }
       ty::ty_tup(elts) {
-        s += [shape_struct];
-        let sub = [];
+        let s = [shape_struct], sub = [];
         for elt in elts {
             sub += shape_of(ccx, elt, ty_param_map);
         }
         add_substr(s, sub);
+        s
       }
-      ty::ty_iface(_, _) { s += [shape_box_fn]; }
-      ty::ty_class(_, _) { s += [shape_class]; }
+      ty::ty_iface(_, _) { [shape_box_fn] }
+      ty::ty_class(_, _) { [shape_class] }
       ty::ty_rptr(_, tm) {
-        s += [shape_rptr];
+        let s = [shape_rptr];
         add_substr(s, shape_of(ccx, tm.ty, ty_param_map));
+        s
       }
       ty::ty_res(did, raw_subt, tps) {
         let subt = ty::substitute_type_params(ccx.tcx, tps, raw_subt);
         let ri = {did: did, tps: tps};
         let id = interner::intern(ccx.shape_cx.resources, ri);
 
-        s += [shape_res];
+        let s = [shape_res];
         add_u16(s, id as u16);
         add_u16(s, vec::len(tps) as u16);
         for tp: ty::t in tps {
             add_substr(s, shape_of(ccx, tp, ty_param_map));
         }
         add_substr(s, shape_of(ccx, subt, ty_param_map));
-
+        s
       }
       ty::ty_param(n, _) {
         // Find the type parameter in the parameter list.
         alt vec::position_elt(ty_param_map, n) {
-          some(i) { s += [shape_var, i as u8]; }
+          some(i) { [shape_var, i as u8] }
           none { fail "ty param not found in ty_param_map"; }
         }
       }
-      ty::ty_fn({proto: ast::proto_box, _}) {
-        s += [shape_box_fn];
-      }
-      ty::ty_fn({proto: ast::proto_uniq, _}) {
-        s += [shape_uniq_fn];
-      }
+      ty::ty_fn({proto: ast::proto_box, _}) { [shape_box_fn] }
+      ty::ty_fn({proto: ast::proto_uniq, _}) { [shape_uniq_fn] }
       ty::ty_fn({proto: ast::proto_block, _}) |
-      ty::ty_fn({proto: ast::proto_any, _}) {
-        s += [shape_stack_fn];
-      }
-      ty::ty_fn({proto: ast::proto_bare, _}) {
-        s += [shape_bare_fn];
-      }
-      ty::ty_opaque_closure_ptr(_) {
-        s += [shape_opaque_closure_ptr];
-      }
-      ty::ty_constr(inner_t, _) {
-        s += shape_of(ccx, inner_t, ty_param_map);
-      }
+      ty::ty_fn({proto: ast::proto_any, _}) { [shape_stack_fn] }
+      ty::ty_fn({proto: ast::proto_bare, _}) { [shape_bare_fn] }
+      ty::ty_opaque_closure_ptr(_) { [shape_opaque_closure_ptr] }
+      ty::ty_constr(inner_t, _) { shape_of(ccx, inner_t, ty_param_map) }
       ty::ty_var(_) | ty::ty_self(_) {
         ccx.sess.bug("shape_of: unexpected type struct found");
       }
     }
-
-    ret s;
 }
 
 // FIXME: We might discover other variants as we traverse these. Handle this.
@@ -510,19 +487,15 @@ fn gen_enum_shapes(ccx: @crate_ctxt) -> ValueRef {
         for v: uint in lv { add_u16(lv_table, v as u16); }
 
         // Determine whether the enum has dynamic size.
-        let dynamic = false;
-        for variant: ty::variant_info in *variants {
-            for typ: ty::t in variant.args {
-                if ty::type_has_dynamic_size(ccx.tcx, typ) { dynamic = true; }
-            }
-        }
+        let dynamic = vec::any(*variants, {|v|
+            vec::any(v.args, {|t| ty::type_has_params(t)})
+        });
 
         // If we can, write in the static size and alignment of the enum.
         // Otherwise, write a placeholder.
-        let size_align;
-        if dynamic {
-            size_align = {size: 0u16, align: 0u8};
-        } else { size_align = compute_static_enum_size(ccx, lv, did); }
+        let size_align = if dynamic { {size: 0u16, align: 0u8} }
+                         else { compute_static_enum_size(ccx, lv, did) };
+        // Write in the static size and alignment of the enum.
         add_u16(info, size_align.size);
         info += [size_align.align];
 
@@ -590,36 +563,6 @@ type tag_metrics = {
     payload_align: ValueRef
 };
 
-fn size_of(bcx: block, t: ty::t) -> result {
-    let ccx = bcx.ccx();
-    if check type_has_static_size(ccx, t) {
-        rslt(bcx, llsize_of(ccx, type_of::type_of(ccx, t)))
-    } else {
-        let { bcx, sz, align: _ } = dynamic_metrics(bcx, t);
-        rslt(bcx, sz)
-    }
-}
-
-fn align_of(bcx: block, t: ty::t) -> result {
-    let ccx = bcx.ccx();
-    if check type_has_static_size(ccx, t) {
-        rslt(bcx, llalign_of(ccx, type_of::type_of(ccx, t)))
-    } else {
-        let { bcx, sz: _, align } = dynamic_metrics(bcx, t);
-        rslt(bcx, align)
-    }
-}
-
-fn metrics(bcx: block, t: ty::t) -> metrics {
-    let ccx = bcx.ccx();
-    if check type_has_static_size(ccx, t) {
-        let llty = type_of::type_of(ccx, t);
-        { bcx: bcx, sz: llsize_of(ccx, llty), align: llalign_of(ccx, llty) }
-    } else {
-        dynamic_metrics(bcx, t)
-    }
-}
-
 // Returns the real size of the given type for the current target.
 fn llsize_of_real(cx: @crate_ctxt, t: TypeRef) -> uint {
     ret llvm::LLVMStoreSizeOfType(cx.td.lltd, t) as uint;
@@ -645,7 +588,7 @@ fn llalign_of(cx: @crate_ctxt, t: TypeRef) -> ValueRef {
 //
 // FIXME: Migrate trans over to use this.
 
-// Computes the size of the data part of a non-dynamically-sized enum.
+// Computes the size of the data part of an enum.
 fn static_size_of_enum(cx: @crate_ctxt, t: ty::t) -> uint {
     if cx.enum_sizes.contains_key(t) { ret cx.enum_sizes.get(t); }
     alt ty::get(t).struct {
@@ -667,88 +610,6 @@ fn static_size_of_enum(cx: @crate_ctxt, t: ty::t) -> uint {
         ret max_size;
       }
       _ { cx.sess.bug("static_size_of_enum called on non-enum"); }
-    }
-}
-
-fn dynamic_metrics(cx: block, t: ty::t) -> metrics {
-    fn align_elements(cx: block, elts: [ty::t]) -> metrics {
-        //
-        // C padding rules:
-        //
-        //
-        //   - Pad after each element so that next element is aligned.
-        //   - Pad after final structure member so that whole structure
-        //     is aligned to max alignment of interior.
-        //
-
-        let off = C_int(cx.ccx(), 0);
-        let max_align = C_int(cx.ccx(), 1);
-        let bcx = cx;
-        for e: ty::t in elts {
-            let elt_align = align_of(bcx, e);
-            bcx = elt_align.bcx;
-            let elt_size = size_of(bcx, e);
-            bcx = elt_size.bcx;
-            let aligned_off = align_to(bcx, off, elt_align.val);
-            off = Add(bcx, aligned_off, elt_size.val);
-            max_align = umax(bcx, max_align, elt_align.val);
-        }
-        off = align_to(bcx, off, max_align);
-        ret { bcx: bcx, sz: off, align: max_align };
-    }
-
-    alt ty::get(t).struct {
-      ty::ty_param(p, _) {
-        let {bcx, val: tydesc} = base::get_tydesc_simple(cx, t);
-        let szptr = GEPi(bcx, tydesc, [0, abi::tydesc_field_size]);
-        let aptr = GEPi(bcx, tydesc, [0, abi::tydesc_field_align]);
-        {bcx: bcx, sz: Load(bcx, szptr), align: Load(bcx, aptr)}
-      }
-      ty::ty_rec(flds) {
-        let tys: [ty::t] = [];
-        for f: ty::field in flds { tys += [f.mt.ty]; }
-        align_elements(cx, tys)
-      }
-      ty::ty_tup(elts) {
-        let tys = [];
-        for tp in elts { tys += [tp]; }
-        align_elements(cx, tys)
-      }
-      ty::ty_enum(tid, tps) {
-        let bcx = cx;
-        let ccx = bcx.ccx();
-
-        let compute_max_variant_size = fn@(bcx: block) -> result {
-            // Compute max(variant sizes).
-            let bcx = bcx;
-            let max_size: ValueRef = C_int(ccx, 0);
-            let variants = ty::enum_variants(bcx.tcx(), tid);
-            for variant: ty::variant_info in *variants {
-                // Perform type substitution on the raw argument types.
-                let tys = vec::map(variant.args) {|raw_ty|
-                    ty::substitute_type_params(cx.tcx(), tps, raw_ty)
-                };
-                let rslt = align_elements(bcx, tys);
-                bcx = rslt.bcx;
-                max_size = umax(bcx, rslt.sz, max_size);
-            }
-            rslt(bcx, max_size)
-        };
-
-        let {bcx, val: sz} = alt enum_kind(ccx, tid) {
-          tk_unit | tk_enum { rslt(bcx, llsize_of(ccx, T_enum_variant(ccx))) }
-          tk_newtype { compute_max_variant_size(bcx) }
-          tk_complex {
-            let {bcx, val} = compute_max_variant_size(bcx);
-            rslt(bcx, Add(bcx, val, llsize_of(ccx, T_enum_variant(ccx))))
-          }
-        };
-
-        { bcx: bcx, sz: sz, align: C_int(ccx, 1) }
-      }
-      _ {
-        cx.tcx().sess.bug("dynamic_metrics: type has static size");
-      }
     }
 }
 

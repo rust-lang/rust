@@ -50,28 +50,12 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
       ty::ty_float(t) { T_float_ty(cx, t) }
       ty::ty_str { T_ptr(T_vec(cx, T_i8())) }
       ty::ty_enum(did, _) { type_of_enum(cx, did, t) }
-      ty::ty_box(mt) {
-        let mt_ty = mt.ty;
-        T_ptr(T_box(cx, type_of(cx, mt_ty))) }
+      ty::ty_box(mt) { T_ptr(T_box(cx, type_of(cx, mt.ty))) }
       ty::ty_opaque_box { T_ptr(T_box(cx, T_i8())) }
-      ty::ty_uniq(mt) {
-        let mt_ty = mt.ty;
-        T_ptr(type_of(cx, mt_ty)) }
-      ty::ty_vec(mt) {
-        let mt_ty = mt.ty;
-        if ty::type_has_dynamic_size(cx.tcx, mt_ty) {
-            T_ptr(cx.opaque_vec_type)
-        } else {
-            T_ptr(T_vec(cx, type_of(cx, mt_ty))) }
-      }
-      ty::ty_ptr(mt) {
-        let mt_ty = mt.ty;
-        T_ptr(type_of(cx, mt_ty))
-      }
-      ty::ty_rptr(_, mt) {
-        let mt_ty = mt.ty;
-        T_ptr(type_of(cx, mt_ty))
-      }
+      ty::ty_uniq(mt) { T_ptr(type_of(cx, mt.ty)) }
+      ty::ty_vec(mt) { T_ptr(T_vec(cx, type_of(cx, mt.ty))) }
+      ty::ty_ptr(mt) { T_ptr(type_of(cx, mt.ty)) }
+      ty::ty_rptr(_, mt) { T_ptr(type_of(cx, mt.ty)) }
       ty::ty_rec(fields) {
         let tys: [TypeRef] = [];
         for f: ty::field in fields {
@@ -80,9 +64,7 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
         }
         T_struct(tys)
       }
-      ty::ty_fn(_) {
-        T_fn_pair(cx, type_of_fn_from_ty(cx, t))
-      }
+      ty::ty_fn(_) { T_fn_pair(cx, type_of_fn_from_ty(cx, t)) }
       ty::ty_iface(_, _) { T_opaque_iface(cx) }
       ty::ty_res(_, sub, tps) {
         let sub1 = ty::substitute_type_params(cx.tcx, tps, sub);
@@ -126,20 +108,8 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
 fn type_of_enum(cx: @crate_ctxt, did: ast::def_id, t: ty::t)
     -> TypeRef {
     let degen = (*ty::enum_variants(cx.tcx, did)).len() == 1u;
-    if check type_has_static_size(cx, t) {
-        let size = shape::static_size_of_enum(cx, t);
-        if !degen { T_enum(cx, size) }
-        else if size == 0u { T_struct([T_enum_variant(cx)]) }
-        else { T_array(T_i8(), size) }
-    }
-    else {
-        if degen { T_struct([T_enum_variant(cx)]) }
-        else { T_opaque_enum(cx) }
-    }
-}
-
-fn type_of_or_i8(ccx: @crate_ctxt, typ: ty::t) -> TypeRef {
-    if check type_has_static_size(ccx, typ) {
-        type_of(ccx, typ)
-    } else { T_i8() }
+    let size = shape::static_size_of_enum(cx, t);
+    if !degen { T_enum(cx, size) }
+    else if size == 0u { T_struct([T_enum_variant(cx)]) }
+    else { T_array(T_i8(), size) }
 }

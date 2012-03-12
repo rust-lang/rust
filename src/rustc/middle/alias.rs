@@ -76,19 +76,10 @@ fn check_crate(tcx: ty::ctxt, crate: @ast::crate) -> (copy_map, ref_map) {
 }
 
 fn visit_fn(cx: @ctx, _fk: visit::fn_kind, decl: ast::fn_decl,
-            body: ast::blk, sp: span,
+            body: ast::blk, _sp: span,
             id: ast::node_id, sc: scope, v: vt<scope>) {
     visit::visit_fn_decl(decl, sc, v);
     let fty = ty::node_id_to_type(cx.tcx, id);
-    let args = ty::ty_fn_args(fty);
-    for arg in args {
-        alt ty::resolved_mode(cx.tcx, arg.mode) {
-          ast::by_val if ty::type_has_dynamic_size(cx.tcx, arg.ty) {
-            err(*cx, sp, "can not pass a dynamically-sized type by value");
-          }
-          _ { /* fallthrough */ }
-        }
-    }
 
     // Blocks need to obey any restrictions from the enclosing scope, and may
     // be called multiple times.

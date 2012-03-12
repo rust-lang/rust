@@ -99,7 +99,6 @@ export kind, kind_sendable, kind_copyable, kind_noncopyable;
 export kind_can_be_copied, kind_can_be_sent, proto_kind, kind_lteq, type_kind;
 export type_err;
 export type_err_to_str;
-export type_has_dynamic_size;
 export type_needs_drop;
 export type_allows_implicit_copy;
 export type_is_integral;
@@ -957,23 +956,6 @@ fn type_structurally_contains(cx: ctxt, ty: t, test: fn(sty) -> bool) ->
         ret type_structurally_contains(cx, sty, test);
       }
       _ { ret false; }
-    }
-}
-
-pure fn type_has_dynamic_size(cx: ctxt, ty: t) -> bool unchecked {
-    /* type_structurally_contains can't be declared pure
-    because it takes a function argument. But it should be
-    referentially transparent, since a given type's size should
-    never change once it's created.
-    (It would be interesting to think about how to make such properties
-    actually checkable. It seems to me like a lot of properties
-    that the type context tracks about types should be immutable.)
-    */
-    type_has_params(ty) && type_structurally_contains(cx, ty) {|sty|
-        alt sty {
-          ty_param(_, _) { true }
-          _ { false }
-        }
     }
 }
 
@@ -2250,6 +2232,7 @@ fn type_err_to_str(err: type_err) -> str {
 // Replaces type parameters in the given type using the given list of
 // substitions.
 fn substitute_type_params(cx: ctxt, substs: [ty::t], typ: t) -> t {
+    if !type_has_params(typ) { ret typ; }
     // Precondition? idx < vec::len(substs)
     fold_ty(cx, fm_param({|idx, _id| substs[idx]}), typ)
 }

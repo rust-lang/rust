@@ -267,10 +267,8 @@ fn bump_ptr(bcx: block, t: ty::t, base: ValueRef, sz: ValueRef) ->
    ValueRef {
     let ccx = bcx.ccx();
     let bumped = ptr_offs(bcx, base, sz);
-    if check type_has_static_size(ccx, t) {
-        let typ = T_ptr(type_of(ccx, t));
-        PointerCast(bcx, bumped, typ)
-    } else { bumped }
+    let typ = T_ptr(type_of(ccx, t));
+    PointerCast(bcx, bumped, typ)
 }
 
 // Replacement for the LLVM 'GEP' instruction when field indexing into a enum.
@@ -310,11 +308,7 @@ fn opaque_box_body(bcx: block,
     let ccx = bcx.ccx();
     let boxptr = PointerCast(bcx, boxptr, T_ptr(T_box_header(ccx)));
     let bodyptr = GEPi(bcx, boxptr, [1]);
-    if check type_has_static_size(ccx, body_t) {
-        PointerCast(bcx, bodyptr, T_ptr(type_of(ccx, body_t)))
-    } else {
-        PointerCast(bcx, bodyptr, T_ptr(T_i8()))
-    }
+    PointerCast(bcx, bodyptr, T_ptr(type_of(ccx, body_t)))
 }
 
 // trans_malloc_boxed_raw: expects an unboxed type and returns a pointer to
@@ -350,32 +344,6 @@ fn trans_malloc_boxed(bcx: block, t: ty::t) ->
 
 // Type descriptor and type glue stuff
 
-fn trans_stack_local_derived_tydesc(cx: block, llsz: ValueRef,
-                                    llalign: ValueRef, llroottydesc: ValueRef,
-                                    llfirstparam: ValueRef, n_params: uint)
-    -> ValueRef {
-    let llmyroottydesc = alloca(cx, cx.ccx().tydesc_type);
-
-    // By convention, desc 0 is the root descriptor.
-    let llroottydesc = Load(cx, llroottydesc);
-    Store(cx, llroottydesc, llmyroottydesc);
-
-    // Store a pointer to the rest of the descriptors.
-    let ccx = cx.ccx();
-    store_inbounds(cx, llfirstparam, llmyroottydesc,
-                   [0, abi::tydesc_field_first_param]);
-    store_inbounds(cx, C_uint(ccx, n_params), llmyroottydesc,
-                   [0, abi::tydesc_field_n_params]);
-    store_inbounds(cx, llsz, llmyroottydesc,
-                   [0, abi::tydesc_field_size]);
-    store_inbounds(cx, llalign, llmyroottydesc,
-                   [0, abi::tydesc_field_align]);
-    // FIXME legacy field, can be dropped
-    store_inbounds(cx, C_uint(ccx, 0u), llmyroottydesc,
-                   [0, abi::tydesc_field_obj_params]);
-    ret llmyroottydesc;
-}
-
 fn get_tydesc_simple(bcx: block, t: ty::t) -> result {
     let ti = none;
     get_tydesc(bcx, t, ti)
@@ -383,8 +351,6 @@ fn get_tydesc_simple(bcx: block, t: ty::t) -> result {
 
 fn get_tydesc(cx: block, t: ty::t,
               &static_ti: option<@tydesc_info>) -> result {
-
-    // FIXME[mono]
     assert !ty::type_has_params(t);
     // Otherwise, generate a tydesc if necessary, and return it.
     let info = get_static_tydesc(cx.ccx(), t);
@@ -452,17 +418,9 @@ fn declare_tydesc(ccx: @crate_ctxt, t: ty::t) -> @tydesc_info {
     log(debug, "+++ declare_tydesc " + ty_to_str(ccx.tcx, t));
     let llsize;
     let llalign;
-    if check type_has_static_size(ccx, t) {
-        let llty = type_of(ccx, t);
-        llsize = llsize_of(ccx, llty);
-        llalign = llalign_of(ccx, llty);
-    } else {
-        // These will be overwritten as the derived tydesc is generated, so
-        // we create placeholder values.
-
-        llsize = C_int(ccx, 0);
-        llalign = C_int(ccx, 0);
-    }
+    let llty = type_of(ccx, t);
+    llsize = llsize_of(ccx, llty);
+    llalign = llalign_of(ccx, llty);
     let name;
     if ccx.sess.opts.debuginfo {
         name = mangle_internal_name_by_type_only(ccx, t, "tydesc");
@@ -508,9 +466,7 @@ fn make_generic_glue_inner(ccx: @crate_ctxt, t: ty::t,
     // the caller has no idea if it's dealing with something that can be
     // passed by value.
 
-    let llty = if check type_has_static_size(ccx, t) {
-        T_ptr(type_of(ccx, t))
-    } else { T_ptr(T_i8()) };
+    let llty = T_ptr(type_of(ccx, t));
 
     let bcx = top_scope_block(fcx, none);
     let lltop = bcx.llbb;
@@ -1200,17 +1156,12 @@ fn call_memmove(cx: block, dst: ValueRef, src: ValueRef,
 fn memmove_ty(bcx: block, dst: ValueRef, src: ValueRef, t: ty::t) ->
     block {
     let ccx = bcx.ccx();
-    if check type_has_static_size(ccx, t) {
-        if ty::type_is_structural(t) {
-            let llsz = llsize_of(ccx, type_of(ccx, t));
-            ret call_memmove(bcx, dst, src, llsz).bcx;
-        }
-        Store(bcx, Load(bcx, src), dst);
-        ret bcx;
+    if ty::type_is_structural(t) {
+        let llsz = llsize_of(ccx, type_of(ccx, t));
+        ret call_memmove(bcx, dst, src, llsz).bcx;
     }
-
-    let {bcx, val: llsz} = size_of(bcx, t);
-    ret call_memmove(bcx, dst, src, llsz).bcx;
+    Store(bcx, Load(bcx, src), dst);
+    ret bcx;
 }
 
 enum copy_action { INIT, DROP_EXISTING, }
@@ -1372,10 +1323,8 @@ fn trans_unary(bcx: block, op: ast::unop, e: @ast::expr,
         // make enums work, since enums have a different LLVM type depending
         // on whether they're boxed or not
         let ccx = bcx.ccx();
-        if check type_has_static_size(ccx, e_ty) {
-            let llety = T_ptr(type_of(ccx, e_ty));
-            body = PointerCast(bcx, body, llety);
-        }
+        let llety = T_ptr(type_of(ccx, e_ty));
+        body = PointerCast(bcx, body, llety);
         bcx = trans_expr_save_in(bcx, e, body);
         revoke_clean(bcx, box);
         ret store_in_dest(bcx, box, dest);
@@ -1583,10 +1532,8 @@ fn autoderef(cx: block, v: ValueRef, t: ty::t) -> result_t {
             // to cast this pointer, since statically-sized enum types have
             // different types depending on whether they're behind a box
             // or not.
-            if check type_has_static_size(ccx, t1) {
-                let llty = type_of(ccx, t1);
-                v1 = PointerCast(cx, body, T_ptr(llty));
-            } else { v1 = body; }
+            let llty = type_of(ccx, t1);
+            v1 = PointerCast(cx, body, T_ptr(llty));
           }
           ty::ty_uniq(_) {
             let derefed = uniq::autoderef(v1, t1);
@@ -1608,9 +1555,7 @@ fn autoderef(cx: block, v: ValueRef, t: ty::t) -> result_t {
             }
             t1 =
                 ty::substitute_type_params(ccx.tcx, tps, variants[0].args[0]);
-            if check type_has_static_size(ccx, t1) {
-                v1 = PointerCast(cx, v1, T_ptr(type_of(ccx, t1)));
-            } else { } // FIXME: typestate hack
+            v1 = PointerCast(cx, v1, T_ptr(type_of(ccx, t1)));
           }
           _ { break; }
         }
@@ -1724,7 +1669,7 @@ fn trans_for(cx: block, local: @ast::local, seq: @ast::expr,
                                         body.span);
         Br(bcx, scope_cx.llbb);
         let curr = PointerCast(bcx, curr,
-                               T_ptr(type_of_or_i8(bcx.ccx(), t)));
+                               T_ptr(type_of(bcx.ccx(), t)));
         let bcx = alt::bind_irrefutable_pat(scope_cx, local.node.pat,
                                                   curr, false);
         bcx = trans_block(bcx, body, ignore);
@@ -2122,7 +2067,7 @@ fn trans_local_var(cx: block, def: ast::def) -> local_var_result {
       ast::def_self(_) {
         let slf = option::get(cx.fcx.llself);
         let ptr = PointerCast(cx, slf.v,
-                              T_ptr(type_of_or_i8(cx.ccx(), slf.t)));
+                              T_ptr(type_of(cx.ccx(), slf.t)));
         ret {val: ptr, kind: owned};
       }
       _ {
@@ -2236,27 +2181,20 @@ fn trans_index(cx: block, ex: @ast::expr, base: @ast::expr,
     } else { ix_val = ix.val; }
 
     let unit_ty = node_id_type(cx, ex.id);
-    let unit_sz = size_of(bcx, unit_ty);
-    bcx = unit_sz.bcx;
-    maybe_name_value(cx.ccx(), unit_sz.val, "unit_sz");
-    let scaled_ix = Mul(bcx, ix_val, unit_sz.val);
+    let llunitty = type_of(ccx, unit_ty);
+    let unit_sz = llsize_of(ccx, llunitty);
+    maybe_name_value(cx.ccx(), unit_sz, "unit_sz");
+    let scaled_ix = Mul(bcx, ix_val, unit_sz);
     maybe_name_value(cx.ccx(), scaled_ix, "scaled_ix");
     let lim = tvec::get_fill(bcx, v);
-    let body = tvec::get_dataptr(bcx, v, type_of_or_i8(ccx, unit_ty));
+    let body = tvec::get_dataptr(bcx, v, type_of(ccx, unit_ty));
     let bounds_check = ICmp(bcx, lib::llvm::IntUGE, scaled_ix, lim);
     bcx = with_cond(bcx, bounds_check) {|bcx|
         // fail: bad bounds check.
         trans_fail(bcx, some(ex.span), "bounds check")
     };
-    let elt = if check type_has_static_size(ccx, unit_ty) {
-        let elt_1 = InBoundsGEP(bcx, body, [ix_val]);
-        let llunitty = type_of(ccx, unit_ty);
-        PointerCast(bcx, elt_1, T_ptr(llunitty))
-    } else {
-        body = PointerCast(bcx, body, T_ptr(T_i8()));
-        InBoundsGEP(bcx, body, [scaled_ix])
-    };
-    ret lval_owned(bcx, elt);
+    let elt = InBoundsGEP(bcx, body, [ix_val]);
+    ret lval_owned(bcx, PointerCast(bcx, elt, T_ptr(llunitty)));
 }
 
 fn expr_is_lval(bcx: block, e: @ast::expr) -> bool {
@@ -2315,9 +2253,7 @@ fn trans_lval(cx: block, e: @ast::expr) -> lval_result {
           }
           ty::ty_enum(_, _) {
             let ety = expr_ty(cx, e);
-            let ellty = if check type_has_static_size(ccx, ety) {
-                T_ptr(type_of(ccx, ety))
-            } else { T_typaram_ptr(ccx.tn) };
+            let ellty = T_ptr(type_of(ccx, ety));
             PointerCast(sub.bcx, sub.val, ellty)
           }
           ty::ty_ptr(_) | ty::ty_uniq(_) | ty::ty_rptr(_,_) { sub.val }
@@ -3194,7 +3130,7 @@ fn trans_fail_expr(bcx: block, sp_opt: option<span>,
 
         if ty::type_is_str(e_ty) {
             let data = tvec::get_dataptr(
-                bcx, expr_res.val, type_of_or_i8(
+                bcx, expr_res.val, type_of(
                     ccx, ty::mk_mach_uint(tcx, ast::ty_u8)));
             ret trans_fail_value(bcx, sp_opt, data);
         } else if bcx.unreachable || ty::type_is_bot(e_ty) {
@@ -3345,23 +3281,8 @@ fn zero_alloca(cx: block, llptr: ValueRef, t: ty::t)
     -> block {
     let bcx = cx;
     let ccx = cx.ccx();
-    if check type_has_static_size(ccx, t) {
-        let llty = type_of(ccx, t);
-        Store(bcx, C_null(llty), llptr);
-    } else {
-        let key = alt ccx.sess.targ_cfg.arch {
-          session::arch_x86 | session::arch_arm { "llvm.memset.p0i8.i32" }
-          session::arch_x86_64 { "llvm.memset.p0i8.i64" }
-        };
-        let i = ccx.intrinsics;
-        let memset = i.get(key);
-        let dst_ptr = PointerCast(cx, llptr, T_ptr(T_i8()));
-        let size = size_of(cx, t);
-        bcx = size.bcx;
-        let align = C_i32(1i32); // cannot use computed value here.
-        let volatile = C_bool(false);
-        Call(cx, memset, [dst_ptr, C_u8(0u), size.val, align, volatile]);
-    }
+    let llty = type_of(ccx, t);
+    Store(bcx, C_null(llty), llptr);
     ret bcx;
 }
 
@@ -3580,7 +3501,7 @@ fn block_locals(b: ast::blk, it: fn(@ast::local)) {
 fn alloc_ty(cx: block, t: ty::t) -> result {
     let bcx = cx, ccx = cx.ccx();
     let llty = type_of(ccx, t);
-    assert type_has_static_size(ccx, t);
+    assert !ty::type_has_params(t);
     let val = alloca(bcx, llty);
 
     // NB: since we've pushed all size calculations in this
@@ -3641,24 +3562,15 @@ fn trans_block(bcx: block, b: ast::blk, dest: dest)
     ret bcx;
 }
 
-// Creates the standard quartet of basic blocks: static allocas, copy args,
-// derived tydescs, and dynamic allocas.
+// Creates the standard set of basic blocks for a function
 fn mk_standard_basic_blocks(llfn: ValueRef) ->
-   {sa: BasicBlockRef,
-    ca: BasicBlockRef,
-    dt: BasicBlockRef,
-    da: BasicBlockRef,
-    rt: BasicBlockRef} {
-    ret {sa: str::as_c_str("static_allocas", {|buf|
-                 llvm::LLVMAppendBasicBlock(llfn, buf) }),
-         ca: str::as_c_str("load_env", {|buf|
-                 llvm::LLVMAppendBasicBlock(llfn, buf) }),
-         dt: str::as_c_str("derived_tydescs", {|buf|
-                 llvm::LLVMAppendBasicBlock(llfn, buf) }),
-         da: str::as_c_str("dynamic_allocas", {|buf|
-                 llvm::LLVMAppendBasicBlock(llfn, buf) }),
-         rt: str::as_c_str("return", {|buf|
-                 llvm::LLVMAppendBasicBlock(llfn, buf) })};
+   {sa: BasicBlockRef, ca: BasicBlockRef, rt: BasicBlockRef} {
+    {sa: str::as_c_str("static_allocas", {|buf|
+        llvm::LLVMAppendBasicBlock(llfn, buf) }),
+     ca: str::as_c_str("load_env", {|buf|
+         llvm::LLVMAppendBasicBlock(llfn, buf) }),
+     rt: str::as_c_str("return", {|buf|
+         llvm::LLVMAppendBasicBlock(llfn, buf) })}
 }
 
 
@@ -3679,16 +3591,12 @@ fn new_fn_ctxt_w_id(ccx: @crate_ctxt, path: path,
           llretptr: llvm::LLVMGetParam(llfndecl, 0u as c_uint),
           mutable llstaticallocas: llbbs.sa,
           mutable llloadenv: llbbs.ca,
-          mutable llderivedtydescs_first: llbbs.dt,
-          mutable llderivedtydescs: llbbs.dt,
-          mutable lldynamicallocas: llbbs.da,
           mutable llreturn: llbbs.rt,
           mutable llself: none,
           mutable personality: none,
           llargs: int_hash::<local_val>(),
           lllocals: int_hash::<local_val>(),
           llupvars: int_hash::<ValueRef>(),
-          derived_tydescs: ty::new_ty_hash(),
           id: id,
           self_id: maybe_self_id,
           param_substs: param_substs,
@@ -3776,8 +3684,8 @@ fn copy_args_to_allocas(fcx: fn_ctxt, bcx: block, args: [ast::arg],
     ret bcx;
 }
 
-// Ties up the llstaticallocas -> llloadenv -> llderivedtydescs ->
-// lldynamicallocas -> lltop edges, and builds the return block.
+// Ties up the llstaticallocas -> llloadenv -> lltop edges,
+// and builds the return block.
 fn finish_fn(fcx: fn_ctxt, lltop: BasicBlockRef) {
     tie_up_header_blocks(fcx, lltop);
     let ret_cx = raw_block(fcx, fcx.llreturn);
@@ -3786,9 +3694,7 @@ fn finish_fn(fcx: fn_ctxt, lltop: BasicBlockRef) {
 
 fn tie_up_header_blocks(fcx: fn_ctxt, lltop: BasicBlockRef) {
     Br(raw_block(fcx, fcx.llstaticallocas), fcx.llloadenv);
-    Br(raw_block(fcx, fcx.llloadenv), fcx.llderivedtydescs_first);
-    Br(raw_block(fcx, fcx.llderivedtydescs), fcx.lldynamicallocas);
-    Br(raw_block(fcx, fcx.lldynamicallocas), lltop);
+    Br(raw_block(fcx, fcx.llloadenv), lltop);
 }
 
 enum self_arg { impl_self(ty::t), no_self, }
@@ -3884,10 +3790,6 @@ fn trans_res_ctor(ccx: @crate_ctxt, path: path, dtor: ast::fn_decl,
             in trans_res_ctor"); }
     };
     let llretptr = fcx.llretptr;
-    if ty::type_has_dynamic_size(ccx.tcx, ty::ty_fn_ret(fty)) {
-        let llret_t = T_ptr(T_struct([ccx.int_type, llvm::LLVMTypeOf(arg)]));
-        llretptr = BitCast(bcx, llretptr, llret_t);
-    }
 
     let dst = GEPi(bcx, llretptr, [0, 1]);
     bcx = memmove_ty(bcx, dst, arg, arg_t);
@@ -3946,9 +3848,6 @@ fn trans_enum_variant(ccx: @crate_ctxt, enum_id: ast::node_id,
           some(local_mem(x)) { x }
         };
         let arg_ty = arg_tys[i].ty;
-        if ty::type_has_params(arg_ty) {
-            lldestptr = PointerCast(bcx, lldestptr, val_ty(llarg));
-        }
         bcx = memmove_ty(bcx, lldestptr, llarg, arg_ty);
         i += 1u;
     }
@@ -4718,7 +4617,6 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           maps: maps,
           stats:
               {mutable n_static_tydescs: 0u,
-               mutable n_derived_tydescs: 0u,
                mutable n_glues_created: 0u,
                mutable n_null_glues: 0u,
                mutable n_real_glues: 0u,
@@ -4748,7 +4646,6 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
     if ccx.sess.opts.stats {
         #error("--- trans stats ---");
         #error("n_static_tydescs: %u", ccx.stats.n_static_tydescs);
-        #error("n_derived_tydescs: %u", ccx.stats.n_derived_tydescs);
         #error("n_glues_created: %u", ccx.stats.n_glues_created);
         #error("n_null_glues: %u", ccx.stats.n_null_glues);
         #error("n_real_glues: %u", ccx.stats.n_real_glues);

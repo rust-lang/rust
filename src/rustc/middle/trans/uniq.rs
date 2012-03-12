@@ -3,7 +3,7 @@ import lib::llvm::ValueRef;
 import common::*;
 import build::*;
 import base::*;
-import shape::size_of;
+import shape::llsize_of;
 
 export trans_uniq, make_free_glue, autoderef, duplicate, alloc_uniq;
 
@@ -20,17 +20,10 @@ fn trans_uniq(bcx: block, contents: @ast::expr,
 fn alloc_uniq(cx: block, uniq_ty: ty::t) -> result {
     let bcx = cx;
     let contents_ty = content_ty(uniq_ty);
-    let r = size_of(bcx, contents_ty);
-    bcx = r.bcx;
-    let llsz = r.val;
-
-    let llptrty = T_ptr(type_of::type_of(bcx.ccx(), contents_ty));
-
-    r = trans_shared_malloc(bcx, llptrty, llsz);
-    bcx = r.bcx;
-    let llptr = r.val;
-
-    ret rslt(bcx, llptr);
+    let llty = type_of::type_of(bcx.ccx(), contents_ty);
+    let llsz = llsize_of(bcx.ccx(), llty);
+    let llptrty = T_ptr(llty);
+    trans_shared_malloc(bcx, llptrty, llsz)
 }
 
 fn make_free_glue(bcx: block, vptr: ValueRef, t: ty::t)
