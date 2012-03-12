@@ -254,11 +254,15 @@ fn mk_test_desc_vec_ty(cx: test_ctxt) -> @ast::ty {
                  types: []});
 
     let test_desc_ty: ast::ty =
-        nospan(ast::ty_path(test_desc_ty_path, cx.sess.next_node_id()));
+        {id: cx.sess.next_node_id(),
+         node: ast::ty_path(test_desc_ty_path, cx.sess.next_node_id()),
+         span: dummy_sp()};
 
     let vec_mt: ast::mt = {ty: @test_desc_ty, mutbl: ast::m_imm};
 
-    ret @nospan(ast::ty_vec(vec_mt));
+    ret @{id: cx.sess.next_node_id(),
+          node: ast::ty_vec(vec_mt),
+          span: dummy_sp()};
 }
 
 fn mk_test_desc_vec(cx: test_ctxt) -> @ast::expr {
@@ -346,7 +350,7 @@ fn mk_test_wrapper(cx: test_ctxt,
 
     let wrapper_decl: ast::fn_decl = {
         inputs: [],
-        output: @nospan(ast::ty_nil),
+        output: @{id: cx.sess.next_node_id(), node: ast::ty_nil, span: span},
         purity: ast::impure_fn,
         cf: ast::return_val,
         constraints: []
@@ -377,9 +381,13 @@ fn mk_test_wrapper(cx: test_ctxt,
 
 fn mk_main(cx: test_ctxt) -> @ast::item {
     let str_pt = @nospan({global: false, idents: ["str"], types: []});
-    let str_ty = @nospan(ast::ty_path(str_pt, cx.sess.next_node_id()));
+    let str_ty = @{id: cx.sess.next_node_id(),
+                   node: ast::ty_path(str_pt, cx.sess.next_node_id()),
+                   span: dummy_sp()};
     let args_mt: ast::mt = {ty: str_ty, mutbl: ast::m_imm};
-    let args_ty: ast::ty = nospan(ast::ty_vec(args_mt));
+    let args_ty: ast::ty = {id: cx.sess.next_node_id(),
+                            node: ast::ty_vec(args_mt),
+                            span: dummy_sp()};
 
     let args_arg: ast::arg =
         {mode: ast::expl(ast::by_val),
@@ -387,7 +395,9 @@ fn mk_main(cx: test_ctxt) -> @ast::item {
          ident: "args",
          id: cx.sess.next_node_id()};
 
-    let ret_ty = nospan(ast::ty_nil);
+    let ret_ty = {id: cx.sess.next_node_id(),
+                  node: ast::ty_nil,
+                  span: dummy_sp()};
 
     let decl: ast::fn_decl =
         {inputs: [args_arg],

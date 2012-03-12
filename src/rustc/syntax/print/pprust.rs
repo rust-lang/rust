@@ -114,7 +114,9 @@ fn fun_to_str(decl: ast::fn_decl, name: ast::ident,
 fn test_fun_to_str() {
     let decl: ast::fn_decl = {
         inputs: [],
-        output: @ast_util::respan(ast_util::dummy_sp(), ast::ty_nil),
+        output: @{id: 0,
+                  node: ast::ty_nil,
+                  span: ast_util::dummy_sp()},
         purity: ast::impure_fn,
         cf: ast::return_val,
         constraints: []
@@ -138,11 +140,15 @@ fn test_res_to_str() {
     let decl: ast::fn_decl = {
         inputs: [{
             mode: ast::expl(ast::by_val),
-            ty: @ast_util::respan(ast_util::dummy_sp(), ast::ty_nil),
+            ty: @{id: 0,
+                  node: ast::ty_nil,
+                  span: ast_util::dummy_sp()},
             ident: "b",
             id: 0
         }],
-        output: @ast_util::respan(ast_util::dummy_sp(), ast::ty_nil),
+        output: @{id: 0,
+                  node: ast::ty_nil,
+                  span: ast_util::dummy_sp()},
         purity: ast::impure_fn,
         cf: ast::return_val,
         constraints: []

@@ -3463,12 +3463,15 @@ fn serialize_31<S: std::serialization::serializer>(s: S,
 /*syntax::ast::ty*/
 fn serialize_30<S: std::serialization::serializer>(s: S, v: syntax::ast::ty) {
 
-    s.emit_rec(/*syntax::ast::ty_*//*syntax::codemap::span*/
+    s.emit_rec(/*syntax::ast::node_id*//*syntax::ast::ty_*/
+               /*syntax::codemap::span*/
                {||
                    {
-                       s.emit_rec_field("node", 0u,
+                       s.emit_rec_field("id", 0u,
+                                        {|| serialize_27(s, v.id) });
+                       s.emit_rec_field("node", 1u,
                                         {|| serialize_31(s, v.node) });
-                       s.emit_rec_field("span", 1u,
+                       s.emit_rec_field("span", 2u,
                                         {|| serialize_19(s, v.span) })
                    }
                });
@@ -7325,15 +7328,18 @@ fn deserialize_30<S: std::serialization::deserializer>(s: S) ->
     s.read_rec(
 
 
+               /*syntax::ast::node_id*/
+
                /*syntax::ast::ty_*/
 
                /*syntax::codemap::span*/
 
                {||
-                   {node:
-                        s.read_rec_field("node", 0u, {|| deserialize_31(s) }),
+                   {id: s.read_rec_field("id", 0u, {|| deserialize_27(s) }),
+                    node:
+                        s.read_rec_field("node", 1u, {|| deserialize_31(s) }),
                     span:
-                        s.read_rec_field("span", 1u,
+                        s.read_rec_field("span", 2u,
                                          {|| deserialize_19(s) }),}
                })
 

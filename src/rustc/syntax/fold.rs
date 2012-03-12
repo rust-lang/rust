@@ -699,7 +699,7 @@ fn make_fold(afp: ast_fold_precursor) -> ast_fold {
     }
     fn f_ty(afp: ast_fold_precursor, f: ast_fold, &&x: @ty) -> @ty {
         let (n, s) = afp.fold_ty(x.node, x.span, f);
-        ret @{node: n, span: afp.new_span(s)};
+        ret @{id: x.id, node: n, span: afp.new_span(s)};
     }
     fn f_constr(afp: ast_fold_precursor, f: ast_fold, &&x: @ast::constr) ->
        @ast::constr {

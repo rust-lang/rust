@@ -4419,7 +4419,8 @@ fn trans_item(ccx: crate_ctxt, item: ast::item) {
               node: ast::pat_ident(rslt_path, none),
               span: ctor.node.body.span};
         // Set up obj's type
-        let rslt_ast_ty : @ast::ty = @{node: ast::ty_infer,
+        let rslt_ast_ty : @ast::ty = @{id: ccx.sess.next_node_id(),
+                                       node: ast::ty_infer,
                                        span: ctor.node.body.span};
         // kludgy
         let ty_args = [], i = 0u;
