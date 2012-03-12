@@ -550,6 +550,9 @@ location of which -- in the module tree of the current crate -- is defined
 from outside the source file: either by an explicit `source_directive` in
 a referencing crate file, or by the filename of the source file itself.
 
+A source file that contains a `main` function can be compiled to an
+executable. If a `main` function is present, it must have no [type parameters](#type-parameters)
+and no [constraints](#constraints). Its return type must be [`nil`](#primitive-types) and it must either have no arguments, or a single argument of type `[str]`.
 
 # Items and attributes
 
@@ -591,6 +594,8 @@ except that the item's *path name* within the module namespace is qualified by
 the name of the enclosing item, or is private to the enclosing item (in the
 case of functions). The exact locations in which sub-items may be declared is
 given by the grammar.
+
+### Type Parameters
 
 All items except modules may be *parametrized* by type. Type parameters are
 given as a comma-separated list of identifiers enclosed in angle brackets
