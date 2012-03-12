@@ -216,7 +216,7 @@ do
 else enum export
 fail false fn for
 if iface impl import
-let log
+let log loop
 mod mutable
 native
 pure
@@ -1901,6 +1901,38 @@ do {
 } while i < 10;
 ~~~~
 
+### Infinite loops
+
+A `loop` expression denotes an infinite loop:
+
+~~~~~~~~{.ebnf .gram}
+loop_expr : "loop" '{' block '}';
+~~~~~~~~
+
+For a block `b`, the expression `loop b` is semantically equivalent to
+`while true b`. However, `loop`s differ from `while` loops in that the
+typestate analysis pass takes into account that `loop`s are infinite.
+
+For example, the following (contrived) function uses a `loop` with a
+`ret` expression:
+
+~~~~
+fn count() -> bool {
+  let i = 0;
+  loop {
+    i += 1;
+    if i == 20 { ret true; }
+  }
+}
+~~~~
+
+This function compiles, because typestate recognizes that the `loop`
+never terminates (except non-locally, with `ret`), thus there is no
+need to insert a spurious `fail` or `ret` after the `loop`. If `loop`
+were replaced with `while true`, the function would be rejected
+because from the compiler's perspective, there would be a control path
+along which `count` does not return a value (that is, if the loop
+condition is always false).
 
 ### Break expressions
 
