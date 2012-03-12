@@ -7,7 +7,7 @@ fn start(&&task_number: int) { #debug("Started / Finished task."); }
 
 fn test00() {
     let i: int = 0;
-    let builder = task::mk_task_builder();
+    let builder = task::task_builder();
     let r = task::future_result(builder);
     task::run(builder) {|| start(i); };
 

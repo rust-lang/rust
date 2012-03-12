@@ -14,7 +14,7 @@ fn iloop() {
 
 fn main() {
     uint::range(0u, 100u) {|_i|
-        let builder = task::mk_task_builder();
+        let builder = task::task_builder();
         task::unsupervise(builder);
         task::run(builder) {|| iloop(); };
     }

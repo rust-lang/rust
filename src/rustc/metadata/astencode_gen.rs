@@ -4303,7 +4303,7 @@ fn deserialize_8<S: std::serialization::deserializer>(s: S) ->
 
                /*@syntax::ast::meta_item*/
                {|len|
-                   vec::init_fn(len,
+                   vec::from_fn(len,
                                 {|i|
                                     s.read_vec_elt(i, {|| deserialize_9(s) })
                                 })
@@ -4728,7 +4728,7 @@ fn deserialize_2<S: std::serialization::deserializer>(s: S) ->
 
                /*syntax::ast::attribute*/
                {|len|
-                   vec::init_fn(len,
+                   vec::from_fn(len,
                                 {|i|
                                     s.read_vec_elt(i, {|| deserialize_3(s) })
                                 })
@@ -4864,7 +4864,7 @@ fn deserialize_36<S: std::serialization::deserializer>(s: S) ->
 
                /*syntax::ast::ty_field*/
                {|len|
-                   vec::init_fn(len,
+                   vec::from_fn(len,
                                 {|i|
                                     s.read_vec_elt(i, {|| deserialize_37(s) })
                                 })
@@ -4977,7 +4977,7 @@ fn deserialize_41<S: std::serialization::deserializer>(s: S) ->
 
                /*syntax::ast::arg*/
                {|len|
-                   vec::init_fn(len,
+                   vec::from_fn(len,
                                 {|i|
                                     s.read_vec_elt(i, {|| deserialize_42(s) })
                                 })
@@ -5028,7 +5028,7 @@ fn deserialize_54<S: std::serialization::deserializer>(s: S) ->
 
                /*syntax::ast::ident*/
                {|len|
-                   vec::init_fn(len,
+                   vec::from_fn(len,
                                 {|i|
                                     s.read_vec_elt(i, {|| deserialize_1(s) })
                                 })
@@ -5041,7 +5041,7 @@ fn deserialize_55<S: std::serialization::deserializer>(s: S) ->
 
                /*@syntax::ast::ty*/
                {|len|
-                   vec::init_fn(len,
+                   vec::from_fn(len,
                                 {|i|
                                     s.read_vec_elt(i, {|| deserialize_29(s) })
                                 })
@@ -5177,7 +5177,7 @@ fn deserialize_56<S: std::serialization::deserializer>(s: S) ->
                /*@{node: syntax::ast::constr_arg_general_<uint>,span: syntax::codemap::span}*/
 
                {|len|
-                   vec::init_fn(len,
+                   vec::from_fn(len,
                                 {|i|
                                     s.read_vec_elt(i, {|| deserialize_57(s) })
                                 })
@@ -5246,7 +5246,7 @@ fn deserialize_47<S: std::serialization::deserializer>(s: S) ->
 
                /*@syntax::ast::constr*/
                {|len|
-                   vec::init_fn(len,
+                   vec::from_fn(len,
                                 {|i|
                                     s.read_vec_elt(i, {|| deserialize_48(s) })
                                 })
@@ -5356,7 +5356,7 @@ fn deserialize_65<S: std::serialization::deserializer>(s: S) ->
                /*@{node: syntax::ast::constr_arg_general_<@syntax::ast::path>,span: syntax::codemap::span}*/
 
                {|len|
-                   vec::init_fn(len,
+                   vec::from_fn(len,
                                 {|i|
                                     s.read_vec_elt(i, {|| deserialize_66(s) })
                                 })
@@ -5419,7 +5419,7 @@ fn deserialize_61<S: std::serialization::deserializer>(s: S) ->
 
                /*@syntax::ast::ty_constr*/
                {|len|
-                   vec::init_fn(len,
+                   vec::from_fn(len,
                                 {|i|
                                     s.read_vec_elt(i, {|| deserialize_62(s) })
                                 })
@@ -5432,7 +5432,7 @@ fn deserialize_75<S: std::serialization::deserializer>(s: S) ->
 
                /*@syntax::ast::expr*/
                {|len|
-                   vec::init_fn(len,
+                   vec::from_fn(len,
                                 {|i|
                                     s.read_vec_elt(i, {|| deserialize_72(s) })
                                 })
@@ -5490,7 +5490,7 @@ fn deserialize_76<S: std::serialization::deserializer>(s: S) ->
 
                /*syntax::ast::field*/
                {|len|
-                   vec::init_fn(len,
+                   vec::from_fn(len,
                                 {|i|
                                     s.read_vec_elt(i, {|| deserialize_77(s) })
                                 })
@@ -5524,7 +5524,7 @@ fn deserialize_80<S: std::serialization::deserializer>(s: S) ->
 
                /*core::option::t<@syntax::ast::expr>*/
                {|len|
-                   vec::init_fn(len,
+                   vec::from_fn(len,
                                 {|i|
                                     s.read_vec_elt(i, {|| deserialize_79(s) })
                                 })
@@ -5639,7 +5639,7 @@ fn deserialize_94<S: std::serialization::deserializer>(s: S) ->
 
                /*syntax::ast::ident*/
                {|len|
-                   vec::init_fn(len,
+                   vec::from_fn(len,
                                 {|i|
                                     s.read_vec_elt(i, {|| deserialize_1(s) })
                                 })
@@ -5696,7 +5696,7 @@ fn deserialize_95<S: std::serialization::deserializer>(s: S) ->
 
                /*syntax::ast::path_list_ident*/
                {|len|
-                   vec::init_fn(len,
+                   vec::from_fn(len,
                                 {|i|
                                     s.read_vec_elt(i, {|| deserialize_96(s) })
                                 })
@@ -5792,7 +5792,7 @@ fn deserialize_89<S: std::serialization::deserializer>(s: S) ->
 
                /*@syntax::ast::view_path*/
                {|len|
-                   vec::init_fn(len,
+                   vec::from_fn(len,
                                 {|i|
                                     s.read_vec_elt(i, {|| deserialize_90(s) })
                                 })
@@ -5875,7 +5875,7 @@ fn deserialize_85<S: std::serialization::deserializer>(s: S) ->
 
                /*@syntax::ast::view_item*/
                {|len|
-                   vec::init_fn(len,
+                   vec::from_fn(len,
                                 {|i|
                                     s.read_vec_elt(i, {|| deserialize_86(s) })
                                 })
@@ -5909,7 +5909,7 @@ fn deserialize_113<S: std::serialization::deserializer>(s: S) ->
 
                /*@syntax::ast::pat*/
                {|len|
-                   vec::init_fn(len,
+                   vec::from_fn(len,
                                 {|i|
                                     s.read_vec_elt(i,
                                                    {|| deserialize_109(s) })
@@ -5943,7 +5943,7 @@ fn deserialize_114<S: std::serialization::deserializer>(s: S) ->
 
                /*syntax::ast::field_pat*/
                {|len|
-                   vec::init_fn(len,
+                   vec::from_fn(len,
                                 {|i|
                                     s.read_vec_elt(i,
                                                    {|| deserialize_115(s) })
@@ -6195,7 +6195,7 @@ fn deserialize_105<S: std::serialization::deserializer>(s: S) ->
 
                /*@syntax::ast::local*/
                {|len|
-                   vec::init_fn(len,
+                   vec::from_fn(len,
                                 {|i|
                                     s.read_vec_elt(i,
                                                    {|| deserialize_106(s) })
@@ -6344,7 +6344,7 @@ fn deserialize_98<S: std::serialization::deserializer>(s: S) ->
 
                /*@syntax::ast::stmt*/
                {|len|
-                   vec::init_fn(len,
+                   vec::from_fn(len,
                                 {|i|
                                     s.read_vec_elt(i, {|| deserialize_99(s) })
                                 })
@@ -6457,7 +6457,7 @@ fn deserialize_121<S: std::serialization::deserializer>(s: S) ->
 
                /*syntax::ast::arm*/
                {|len|
-                   vec::init_fn(len,
+                   vec::from_fn(len,
                                 {|i|
                                     s.read_vec_elt(i,
                                                    {|| deserialize_122(s) })
@@ -6523,7 +6523,7 @@ fn deserialize_126<S: std::serialization::deserializer>(s: S) ->
 
                /*@syntax::ast::capture_item*/
                {|len|
-                   vec::init_fn(len,
+                   vec::from_fn(len,
                                 {|i|
                                     s.read_vec_elt(i,
                                                    {|| deserialize_127(s) })
@@ -7376,7 +7376,7 @@ fn deserialize_136<S: std::serialization::deserializer>(s: S) ->
 
                /*syntax::ast::ty_param_bound*/
                {|len|
-                   vec::init_fn(len,
+                   vec::from_fn(len,
                                 {|i|
                                     s.read_vec_elt(i,
                                                    {|| deserialize_137(s) })
@@ -7420,7 +7420,7 @@ fn deserialize_133<S: std::serialization::deserializer>(s: S) ->
 
                /*syntax::ast::ty_param*/
                {|len|
-                   vec::init_fn(len,
+                   vec::from_fn(len,
                                 {|i|
                                     s.read_vec_elt(i,
                                                    {|| deserialize_134(s) })
@@ -7434,7 +7434,7 @@ fn deserialize_139<S: std::serialization::deserializer>(s: S) ->
 
                /*@syntax::ast::item*/
                {|len|
-                   vec::init_fn(len,
+                   vec::from_fn(len,
                                 {|i|
                                     s.read_vec_elt(i,
                                                    {|| deserialize_119(s) })
@@ -7530,7 +7530,7 @@ fn deserialize_141<S: std::serialization::deserializer>(s: S) ->
 
                /*@syntax::ast::native_item*/
                {|len|
-                   vec::init_fn(len,
+                   vec::from_fn(len,
                                 {|i|
                                     s.read_vec_elt(i,
                                                    {|| deserialize_142(s) })
@@ -7581,7 +7581,7 @@ fn deserialize_148<S: std::serialization::deserializer>(s: S) ->
 
                /*syntax::ast::variant_arg*/
                {|len|
-                   vec::init_fn(len,
+                   vec::from_fn(len,
                                 {|i|
                                     s.read_vec_elt(i,
                                                    {|| deserialize_149(s) })
@@ -7648,7 +7648,7 @@ fn deserialize_145<S: std::serialization::deserializer>(s: S) ->
 
                /*syntax::ast::variant*/
                {|len|
-                   vec::init_fn(len,
+                   vec::from_fn(len,
                                 {|i|
                                     s.read_vec_elt(i,
                                                    {|| deserialize_146(s) })
@@ -7786,7 +7786,7 @@ fn deserialize_150<S: std::serialization::deserializer>(s: S) ->
 
                /*@syntax::ast::class_item*/
                {|len|
-                   vec::init_fn(len,
+                   vec::from_fn(len,
                                 {|i|
                                     s.read_vec_elt(i,
                                                    {|| deserialize_151(s) })
@@ -7875,7 +7875,7 @@ fn deserialize_159<S: std::serialization::deserializer>(s: S) ->
 
                /*syntax::ast::ty_method*/
                {|len|
-                   vec::init_fn(len,
+                   vec::from_fn(len,
                                 {|i|
                                     s.read_vec_elt(i,
                                                    {|| deserialize_160(s) })
@@ -7960,7 +7960,7 @@ fn deserialize_162<S: std::serialization::deserializer>(s: S) ->
 
                /*@syntax::ast::method*/
                {|len|
-                   vec::init_fn(len,
+                   vec::from_fn(len,
                                 {|i|
                                     s.read_vec_elt(i,
                                                    {|| deserialize_163(s) })
@@ -9142,7 +9142,7 @@ fn deserialize_174<S: std::serialization::deserializer>(s: S) ->
 
                /*syntax::ast::node_id*/
                {|len|
-                   vec::init_fn(len,
+                   vec::from_fn(len,
                                 {|i|
                                     s.read_vec_elt(i, {|| deserialize_27(s) })
                                 })

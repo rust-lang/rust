@@ -172,7 +172,7 @@ fn write_header(ctxt: ctxt, lvl: hlvl, doc: doc::itemtag) {
 }
 
 fn write_header_(ctxt: ctxt, lvl: hlvl, title: str) {
-    let hashes = str::from_chars(vec::init_elt(lvl as uint, '#'));
+    let hashes = str::from_chars(vec::from_elem(lvl as uint, '#'));
     ctxt.w.write_line(#fmt("%s %s", hashes, title));
     ctxt.w.write_line("");
 }

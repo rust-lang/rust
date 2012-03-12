@@ -140,7 +140,7 @@ fn get_exe_path() -> option<fs::path> {
     // FIXME: This doesn't handle the case where the buffer is too small
     // FIXME: path "strings" will likely need fixing...
     let bufsize = 1023u32;
-    let path = str::from_bytes(vec::init_elt(bufsize as uint, 0u8));
+    let path = str::from_bytes(vec::from_elem(bufsize as uint, 0u8));
     ret str::as_buf(path, { |path_buf|
         if mac_libc::_NSGetExecutablePath(path_buf,
                                           ptr::mut_addr_of(bufsize)) == 0i32 {

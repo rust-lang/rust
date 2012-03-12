@@ -89,7 +89,7 @@ fn check_exhaustive(tcx: ty::ctxt, sp: span, pats: [@pat]) {
         }));
       }
       ty::ty_tup(ts) {
-        let cols = vec::to_mut(vec::init_elt(ts.len(), []));
+        let cols = vec::to_mut(vec::from_elem(ts.len(), []));
         for p in pats {
             alt raw_pat(p).node {
               pat_tup(sub) {
@@ -101,7 +101,7 @@ fn check_exhaustive(tcx: ty::ctxt, sp: span, pats: [@pat]) {
         vec::iter(cols) {|col| check_exhaustive(tcx, sp, col); }
       }
       ty::ty_rec(fs) {
-        let cols = vec::init_elt(fs.len(), {mutable wild: false,
+        let cols = vec::from_elem(fs.len(), {mutable wild: false,
                                             mutable pats: []});
         for p in pats {
             alt raw_pat(p).node {
@@ -157,7 +157,7 @@ fn check_exhaustive_enum(tcx: ty::ctxt, enum_id: def_id, sp: span,
     let variants = enum_variants(tcx, enum_id);
     let columns_by_variant = vec::map(*variants, {|v|
         {mutable seen: false,
-         cols: vec::to_mut(vec::init_elt(v.args.len(), []))}
+         cols: vec::to_mut(vec::from_elem(v.args.len(), []))}
     });
 
     for pat in pats {

@@ -100,7 +100,7 @@ mod tests {
 
     fn make_rand_name() -> str {
         import rand;
-        let rng: rand::rng = rand::mk_rng();
+        let rng: rand::rng = rand::rng();
         let n = "TEST" + rng.gen_str(10u);
         assert option::is_none(getenv(n));
         n

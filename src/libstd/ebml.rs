@@ -25,7 +25,6 @@ export doc_as_i16;
 export doc_as_i32;
 export doc_as_i64;
 export writer;
-export mk_writer;
 
 type ebml_tag = {id: uint, size: uint};
 
@@ -177,7 +176,7 @@ fn write_vuint(w: io::writer, n: uint) {
     fail #fmt("vint to write too big: %?", n);
 }
 
-fn mk_writer(w: io::writer) -> writer {
+fn writer(w: io::writer) -> writer {
     let size_positions: [uint] = [];
     ret {writer: w, mutable size_positions: size_positions};
 }

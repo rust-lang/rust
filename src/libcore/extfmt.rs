@@ -385,7 +385,7 @@ mod rt {
 
     // FIXME: This might be useful in str: but needs to be utf8 safe first
     fn str_init_elt(n_elts: uint, c: char) -> str {
-        let svec = vec::init_elt::<u8>(n_elts, c as u8);
+        let svec = vec::from_elem::<u8>(n_elts, c as u8);
 
         ret str::from_bytes(svec);
     }

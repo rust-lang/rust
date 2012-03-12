@@ -131,7 +131,7 @@ fn dylib_filename(base: str) -> str { ret "lib" + base + ".so"; }
 fn get_exe_path() -> option<fs::path> {
     let bufsize = 1023u;
     // FIXME: path "strings" will likely need fixing...
-    let path = str::from_bytes(vec::init_elt(bufsize, 0u8));
+    let path = str::from_bytes(vec::from_elem(bufsize, 0u8));
     ret str::as_buf("/proc/self/exe", { |proc_self_buf|
         str::as_buf(path, { |path_buf|
             if libc::readlink(proc_self_buf, path_buf, bufsize) != -1 {

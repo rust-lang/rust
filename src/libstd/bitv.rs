@@ -37,7 +37,7 @@ Constructs a bitvector
 "]
 fn create(nbits: uint, init: bool) -> t {
     let elt = if init { !0u } else { 0u };
-    let storage = vec::to_mut(vec::init_elt(nbits / uint_bits + 1u, elt));
+    let storage = vec::to_mut(vec::from_elem(nbits / uint_bits + 1u, elt));
     ret @{storage: storage, nbits: nbits};
 }
 
@@ -84,7 +84,7 @@ fn assign(v0: t, v1: t) -> bool { let sub = right; ret process(v0, v1, sub); }
 
 #[doc = "Makes a copy of a bitvector"]
 fn clone(v: t) -> t {
-    let storage = vec::to_mut(vec::init_elt(v.nbits / uint_bits + 1u, 0u));
+    let storage = vec::to_mut(vec::from_elem(v.nbits / uint_bits + 1u, 0u));
     let len = vec::len(v.storage);
     uint::range(0u, len) {|i| storage[i] = v.storage[i]; };
     ret @{storage: storage, nbits: v.nbits};
@@ -190,7 +190,7 @@ Each uint in the resulting vector has either value 0u or 1u.
 "]
 fn to_vec(v: t) -> [uint] {
     let sub = bind init_to_vec(v, _);
-    ret vec::init_fn::<uint>(v.nbits, sub);
+    ret vec::from_fn::<uint>(v.nbits, sub);
 }
 
 
@@ -232,7 +232,7 @@ mod tests {
         let act;
         let exp;
         act = create(0u, false);
-        exp = vec::init_elt::<uint>(0u, 0u);
+        exp = vec::from_elem::<uint>(0u, 0u);
         assert (eq_vec(act, exp));
     }
 
