@@ -24,7 +24,7 @@ type ctxt = {
 fn check_expr(expr: @ast::expr, cx: ctxt, visitor: visit::vt<ctxt>) {
     let t = ty::expr_ty(cx.tcx, expr);
     if ty::type_has_rptrs(t) {
-        ty::walk_ty(cx.tcx, t) { |t|
+        ty::walk_ty(t) { |t|
             alt ty::get(t).struct {
                 ty::ty_rptr(region, _) {
                     alt region {

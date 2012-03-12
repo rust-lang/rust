@@ -23,7 +23,6 @@ export class_items_as_fields;
 export constr;
 export constr_general;
 export constr_table;
-export count_ty_params;
 export ctxt;
 export def_has_ty_params;
 export expr_has_ty_params;
@@ -124,7 +123,7 @@ export unify_mode;
 export set_default_mode;
 export unify;
 export variant_info;
-export walk_ty;
+export walk_ty, maybe_walk_ty;
 export occurs_check;
 export closure_kind;
 export ck_block;
@@ -540,34 +539,38 @@ fn default_arg_mode_for_ty(ty: ty::t) -> ast::rmode {
     else { ast::by_ref }
 }
 
-fn walk_ty(cx: ctxt, ty: t, f: fn(t)) {
+fn walk_ty(ty: t, f: fn(t)) {
+    maybe_walk_ty(ty, {|t| f(t); true});
+}
+
+fn maybe_walk_ty(ty: t, f: fn(t) -> bool) {
+    if !f(ty) { ret; }
     alt get(ty).struct {
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
       ty_str | ty_send_type | ty_type | ty_opaque_box |
       ty_opaque_closure_ptr(_) | ty_var(_) | ty_param(_, _) {}
       ty_box(tm) | ty_vec(tm) | ty_ptr(tm) | ty_rptr(_, tm) {
-        walk_ty(cx, tm.ty, f);
+        maybe_walk_ty(tm.ty, f);
       }
       ty_enum(_, subtys) | ty_iface(_, subtys) | ty_class(_, subtys)
        | ty_self(subtys) {
-        for subty: t in subtys { walk_ty(cx, subty, f); }
+        for subty: t in subtys { maybe_walk_ty(subty, f); }
       }
       ty_rec(fields) {
-        for fl: field in fields { walk_ty(cx, fl.mt.ty, f); }
+        for fl: field in fields { maybe_walk_ty(fl.mt.ty, f); }
       }
-      ty_tup(ts) { for tt in ts { walk_ty(cx, tt, f); } }
+      ty_tup(ts) { for tt in ts { maybe_walk_ty(tt, f); } }
       ty_fn(ft) {
-        for a: arg in ft.inputs { walk_ty(cx, a.ty, f); }
-        walk_ty(cx, ft.output, f);
+        for a: arg in ft.inputs { maybe_walk_ty(a.ty, f); }
+        maybe_walk_ty(ft.output, f);
       }
       ty_res(_, sub, tps) {
-        walk_ty(cx, sub, f);
-        for tp: t in tps { walk_ty(cx, tp, f); }
+        maybe_walk_ty(sub, f);
+        for tp: t in tps { maybe_walk_ty(tp, f); }
       }
-      ty_constr(sub, _) { walk_ty(cx, sub, f); }
-      ty_uniq(tm) { walk_ty(cx, tm.ty, f); }
+      ty_constr(sub, _) { maybe_walk_ty(sub, f); }
+      ty_uniq(tm) { maybe_walk_ty(tm.ty, f); }
     }
-    f(ty);
 }
 
 enum fold_mode {
@@ -1090,9 +1093,9 @@ fn type_param(ty: t) -> option<uint> {
 
 // Returns a vec of all the type variables
 // occurring in t. It may contain duplicates.
-fn vars_in_type(cx: ctxt, ty: t) -> [int] {
+fn vars_in_type(ty: t) -> [int] {
     let rslt = [];
-    walk_ty(cx, ty) {|ty|
+    walk_ty(ty) {|ty|
         alt get(ty).struct { ty_var(v) { rslt += [v]; } _ { } }
     }
     rslt
@@ -1293,22 +1296,6 @@ fn node_id_has_type_params(cx: ctxt, id: ast::node_id) -> bool {
     ret cx.node_type_substs.contains_key(id);
 }
 
-// Returns the number of distinct type parameters in the given type.
-fn count_ty_params(cx: ctxt, ty: t) -> uint {
-    let param_indices = [];
-    walk_ty(cx, ty) {|t|
-        alt get(t).struct {
-          ty_param(param_idx, _) {
-            if !vec::any(param_indices, {|i| i == param_idx}) {
-                param_indices += [param_idx];
-            }
-          }
-          _ {}
-        }
-    }
-    vec::len(param_indices)
-}
-
 // Type accessors for substructures of types
 fn ty_fn_args(fty: t) -> [arg] {
     alt get(fty).struct {
@@ -1445,7 +1432,7 @@ fn occurs_check(tcx: ctxt, sp: span, vid: int, rt: t) {
     if !type_has_vars(rt) { ret; }
 
     // Occurs check!
-    if vec::contains(vars_in_type(tcx, rt), vid) {
+    if vec::contains(vars_in_type(rt), vid) {
             // Maybe this should be span_err -- however, there's an
             // assertion later on that the type doesn't contain
             // variables, so in this case we have to be sure to die.
@@ -2334,9 +2321,12 @@ fn item_path(cx: ctxt, id: ast::def_id) -> ast_map::path {
             vec::init(*path) + [ast_map::path_name(variant.node.name)]
           }
 
+          ast_map::node_ctor(i) {
+            item_path(cx, ast_util::local_def(i.id))
+          }
+
           ast_map::node_expr(_) | ast_map::node_arg(_, _) |
-          ast_map::node_local(_) | ast_map::node_ctor(_) |
-          ast_map::node_export(_, _) {
+          ast_map::node_local(_) | ast_map::node_export(_, _) {
             cx.sess.bug(#fmt["cannot find item_path for node %?", node]);
           }
         }

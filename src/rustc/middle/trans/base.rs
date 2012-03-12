@@ -1784,22 +1784,98 @@ fn trans_external_path(ccx: @crate_ctxt, did: ast::def_id, t: ty::t)
     ret get_extern_const(ccx.externs, ccx.llmod, name, llty);
 }
 
-fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
+fn normalize_for_monomorphization(tcx: ty::ctxt, ty: ty::t) -> option<ty::t> {
+    // FIXME[mono] could do this recursively. is that worthwhile?
+    alt ty::get(ty).struct {
+      ty::ty_box(mt) { some(ty::mk_opaque_box(tcx)) }
+      ty::ty_fn(fty) { some(ty::mk_fn(tcx, {proto: fty.proto,
+                                            inputs: [],
+                                            output: ty::mk_nil(tcx),
+                                            ret_style: ast::return_val,
+                                            constraints: []})) }
+      ty::ty_iface(_, _) { some(ty::mk_fn(tcx, {proto: ast::proto_box,
+                                                inputs: [],
+                                                output: ty::mk_nil(tcx),
+                                                ret_style: ast::return_val,
+                                                constraints: []})) }
+      ty::ty_ptr(_) { some(ty::mk_uint(tcx)) }
+      _ { none }
+    }
+}
+
+fn make_mono_id(ccx: @crate_ctxt, item: ast::def_id, substs: [ty::t],
+                vtables: option<typeck::vtable_res>,
+                param_uses: option<[type_use::type_uses]>) -> mono_id {
+    let precise_param_ids = alt vtables {
+      some(vts) {
+        let bounds = ty::lookup_item_type(ccx.tcx, item).bounds;
+        let i = 0u;
+        vec::map2(*bounds, substs, {|bounds, subst|
+            let v = [];
+            for bound in *bounds {
+                alt bound {
+                  ty::bound_iface(_) {
+                    v += [impl::vtable_id(ccx, vts[i])];
+                    i += 1u;
+                  }
+                  _ {}
+                }
+            }
+            mono_precise(subst, if v.len() > 0u { some(v) } else { none })
+        })
+      }
+      none {
+        vec::map(substs, {|subst| mono_precise(subst, none)})
+      }
+    };
+    let param_ids = alt param_uses {
+      some(uses) {
+        vec::map2(precise_param_ids, uses, {|id, uses|
+            alt check id {
+              mono_precise(_, some(_)) { id }
+              mono_precise(subst, none) {
+                if uses == 0u { mono_any }
+                else if uses == type_use::use_repr &&
+                        !ty::type_needs_drop(ccx.tcx, subst) {
+                    let llty = type_of(ccx, subst);
+                    let size = shape::llsize_of_real(ccx, llty);
+                    let align = shape::llalign_of_real(ccx, llty);
+                    // Special value for nil to prevent problems with undef
+                    // return pointers.
+                    if size == 1u && ty::type_is_nil(subst) {
+                        mono_repr(0u, 0u)
+                    } else { mono_repr(size, align) }
+                } else { id }
+              }
+            }
+        })
+      }
+      none { precise_param_ids }
+    };
+    @{def: item, params: param_ids}
+}
+
+fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, real_substs: [ty::t],
                   vtables: option<typeck::vtable_res>)
     -> {val: ValueRef, must_cast: bool, intrinsic: bool} {
     let mut must_cast = false;
-    let substs = vec::map(substs, {|t|
-        alt ty::get(t).struct {
-          ty::ty_box(mt) { must_cast = true; ty::mk_opaque_box(ccx.tcx) }
-          _ { t }
+    let substs = vec::map(real_substs, {|t|
+        alt normalize_for_monomorphization(ccx.tcx, t) {
+          some(t) { must_cast = true; t }
+          none { t }
         }
     });
-    let hash_id = @{def: fn_id, substs: substs, vtables: alt vtables {
-      some(os) { some_vts(vec::map(*os, impl::vtable_id)) }
-      none { no_vts }
-    }};
+
+    let param_uses = type_use::type_uses_for(ccx, fn_id, substs.len());
+    let hash_id = make_mono_id(ccx, fn_id, substs, vtables, some(param_uses));
+    if vec::any(hash_id.params,
+                {|p| alt p { mono_precise(_, _) { false } _ { true } } }) {
+        must_cast = true;
+    }
     alt ccx.monomorphized.find(hash_id) {
-      some(val) { ret {val: val, must_cast: must_cast, intrinsic: false}; }
+      some(val) {
+        ret {val: val, must_cast: must_cast, intrinsic: false};
+      }
       none {}
     }
 
@@ -1867,12 +1943,12 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
                  impl_self(selfty), psubsts, fn_id.node, none);
       }
       ast_map::node_ctor(i) {
-        alt check ccx.tcx.items.get(i.id) {
-          ast_map::node_item(@{node: ast::item_res(decl, _, _, _, _), _}, _) {
+        alt check i.node {
+          ast::item_res(decl, _, _, _, _) {
             set_inline_hint(lldecl);
             trans_res_ctor(ccx, pt, decl, fn_id.node, psubsts, lldecl);
           }
-          ast_map::node_item(@{node: ast::item_class(_, _, ctor), _}, _) {
+          ast::item_class(_, _, ctor) {
             ccx.sess.unimpl("monomorphic class constructor");
           }
         }
@@ -4606,6 +4682,7 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           tydescs: ty::new_ty_hash(),
           external: util::common::new_def_hash(),
           monomorphized: map::hashmap(hash_mono_id, {|a, b| a == b}),
+          type_use_cache: util::common::new_def_hash(),
           vtables: map::hashmap(hash_mono_id, {|a, b| a == b}),
           module_data: str_hash::<ValueRef>(),
           lltypes: ty::new_ty_hash(),

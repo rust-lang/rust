@@ -90,6 +90,8 @@ type crate_ctxt = {
      external: hashmap<ast::def_id, option<ast::node_id>>,
      // Cache instances of monomorphized functions
      monomorphized: hashmap<mono_id, ValueRef>,
+     // Cache computed type parameter uses (see type_use.rs)
+     type_use_cache: hashmap<ast::def_id, [type_use::type_uses]>,
      // Cache generated vtables
      vtables: hashmap<mono_id, ValueRef>,
      module_data: hashmap<str, ValueRef>,
@@ -797,15 +799,27 @@ fn C_shape(ccx: @crate_ctxt, bytes: [u8]) -> ValueRef {
     ret llvm::LLVMConstPointerCast(llglobal, T_ptr(T_i8()));
 }
 
-// Used to identify cached monomorphized functions
-enum mono_vtables { some_vts([mono_id]), no_vts }
-type mono_id = @{def: ast::def_id, substs: [ty::t], vtables: mono_vtables};
+// Used to identify cached monomorphized functions and vtables
+enum mono_param_id {
+    mono_precise(ty::t, option<[mono_id]>),
+    mono_any,
+    mono_repr(uint /* size */, uint /* align */),
+}
+type mono_id = @{def: ast::def_id, params: [mono_param_id]};
 fn hash_mono_id(&&mi: mono_id) -> uint {
     let h = syntax::ast_util::hash_def_id(mi.def);
-    for ty in mi.substs { h = (h << 2u) + ty::type_id(ty); }
-    alt mi.vtables {
-      some_vts(ds) { for d in ds { h = (h << 2u) + hash_mono_id(d); } }
-      no_vts {}
+    for param in mi.params {
+        h = h * alt param {
+          mono_precise(ty, vts) {
+            let h = ty::type_id(ty);
+            option::may(vts) {|vts|
+                for vt in vts { h += hash_mono_id(vt); }
+            }
+            h
+          }
+          mono_any { 1u }
+          mono_repr(sz, align) { sz * (align + 2u) }
+        }
     }
     h
 }

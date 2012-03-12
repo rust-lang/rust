@@ -27,6 +27,7 @@ mod middle {
         mod native;
         mod shape;
         mod debuginfo;
+        mod type_use;
     }
     mod ty;
     mod ast_map;

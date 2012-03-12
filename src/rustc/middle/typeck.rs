@@ -3398,7 +3398,7 @@ mod vtable {
                                 let subres = lookup_vtables(fcx, isc, sp,
                                                             im_bs, params);
                                 found = some(vtable_static(im.did, params,
-                                                         subres));
+                                                           subres));
                             }
                           }
                           result::err(_) {}

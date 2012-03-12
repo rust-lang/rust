@@ -187,22 +187,23 @@ fn resolve_vtable_in_fn_ctxt(fcx: fn_ctxt, vt: typeck::vtable_origin)
     }
 }
 
-fn vtable_id(origin: typeck::vtable_origin) -> mono_id {
+fn vtable_id(ccx: @crate_ctxt, origin: typeck::vtable_origin) -> mono_id {
     alt check origin {
       typeck::vtable_static(impl_id, substs, sub_vtables) {
-        @{def: impl_id, substs: substs,
-          vtables: if (*sub_vtables).len() == 0u { no_vts }
-                 else { some_vts(vec::map(*sub_vtables, vtable_id)) } }
+        make_mono_id(ccx, impl_id, substs,
+                     if (*sub_vtables).len() == 0u { none }
+                     else { some(sub_vtables) }, none)
       }
       typeck::vtable_iface(iface_id, substs) {
-        @{def: iface_id, substs: substs, vtables: no_vts}
+        @{def: iface_id,
+          params: vec::map(substs, {|t| mono_precise(t, none)})}
       }
     }
 }
 
 fn get_vtable(ccx: @crate_ctxt, origin: typeck::vtable_origin)
     -> ValueRef {
-    let hash_id = vtable_id(origin);
+    let hash_id = vtable_id(ccx, origin);
     alt ccx.vtables.find(hash_id) {
       some(val) { val }
       none {
