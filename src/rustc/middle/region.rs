@@ -12,6 +12,8 @@ import std::map::hashmap;
 type region_map = {
     /* Mapping from a block to its parent block, if there is one. */
     parent_blocks: hashmap<ast::node_id,ast::node_id>,
+    /* Mapping from a lambda to its parent function, if there is one. */
+    parent_fns: hashmap<ast::node_id,ast::node_id>,
     /* Mapping from a region type in the AST to its resolved region. */
     ast_type_to_region: hashmap<ast::node_id,ty::region>,
     /* Mapping from a local variable to its containing block. */
@@ -40,7 +42,8 @@ type ctxt = {
      */
     mut queued_locals: [ast::node_id],
 
-    parent: parent
+    parent: parent,
+    mut parent_fn: option<ast::node_id>
 };
 
 // Returns true if `subblock` is equal to or is lexically nested inside
@@ -206,10 +209,23 @@ fn resolve_pat(pat: @ast::pat, cx: ctxt, visitor: visit::vt<ctxt>) {
     visit::visit_pat(pat, cx, visitor);
 }
 
+fn resolve_expr(expr: @ast::expr, cx: ctxt, visitor: visit::vt<ctxt>) {
+    alt expr.node {
+        ast::expr_fn(_, _, _, _) | ast::expr_fn_block(_, _) {
+            let parent_fns = cx.region_map.parent_fns;
+            parent_fns.insert(expr.id, option::get(cx.parent_fn));
+            let new_cx = {parent_fn: some(expr.id) with cx};
+            visit::visit_expr(expr, new_cx, visitor);
+        }
+        _ { visit::visit_expr(expr, cx, visitor); }
+    }
+}
+
 fn resolve_item(item: @ast::item, cx: ctxt, visitor: visit::vt<ctxt>) {
     // Items create a new outer block scope as far as we're concerned.
     let new_cx: ctxt = {names_in_scope: map::new_str_hash(),
-                        parent: pa_item(item.id)
+                        parent: pa_item(item.id),
+                        parent_fn: some(item.id)
                         with cx};
     visit::visit_item(item, new_cx, visitor);
 }
@@ -219,17 +235,20 @@ fn resolve_crate(sess: session, def_map: resolve::def_map, crate: @ast::crate)
     let cx: ctxt = {sess: sess,
                     def_map: def_map,
                     region_map: @{parent_blocks: map::new_int_hash(),
+                                  parent_fns: map::new_int_hash(),
                                   ast_type_to_region: map::new_int_hash(),
                                   local_blocks: map::new_int_hash()},
                     names_in_scope: map::new_str_hash(),
                     mut queued_locals: [],
-                    parent: pa_crate};
+                    parent: pa_crate,
+                    mut parent_fn: none};
     let visitor = visit::mk_vt(@{
         visit_block: resolve_block,
         visit_item: resolve_item,
         visit_ty: resolve_ty,
         visit_arm: resolve_arm,
-        visit_pat: resolve_pat
+        visit_pat: resolve_pat,
+        visit_expr: resolve_expr
         with *visit::default_visitor()
     });
     visit::visit_crate(*crate, cx, visitor);
