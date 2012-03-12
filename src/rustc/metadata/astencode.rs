@@ -6,12 +6,13 @@ import syntax::ast_util::inlined_item_methods;
 import syntax::codemap::span;
 import std::ebml;
 import std::ebml::writer;
+import std::ebml::serializer;
+import std::ebml::deserializer;
 import std::map::hashmap;
-import std::serialization;
-import std::serialization::serializer;
-import std::serialization::deserializer;
-import std::serialization::serializer_helpers;
-import std::serialization::deserializer_helpers;
+import serialization::serializer;
+import serialization::deserializer;
+import serialization::serializer_helpers;
+import serialization::deserializer_helpers;
 import std::smallintmap::map;
 import middle::trans::common::maps;
 import middle::{ty, typeck, last_use, ast_map};
@@ -243,7 +244,7 @@ fn encode_id_range(ebml_w: ebml::writer, id_range: id_range) {
 
 fn decode_id_range(par_doc: ebml::doc) -> id_range {
     let range_doc = par_doc[c::tag_id_range];
-    let dsr = serialization::ebml_deserializer(range_doc);
+    let dsr = ebml::ebml_deserializer(range_doc);
     dsr.read_tup(2u) {||
         {min: dsr.read_tup_elt(0u) {|| dsr.read_int() },
          max: dsr.read_tup_elt(1u) {|| dsr.read_int() }}
@@ -368,7 +369,7 @@ fn simplify_ast(ii: ast::inlined_item) -> ast::inlined_item {
 
 fn decode_ast(par_doc: ebml::doc) -> ast::inlined_item {
     let chi_doc = par_doc[c::tag_tree];
-    let d = serialization::ebml_deserializer(chi_doc);
+    let d = ebml::ebml_deserializer(chi_doc);
     astencode_gen::deserialize_syntax_ast_inlined_item(d)
 }
 
@@ -398,7 +399,7 @@ fn encode_def(ebml_w: ebml::writer, def: ast::def) {
 }
 
 fn decode_def(xcx: extended_decode_ctxt, doc: ebml::doc) -> ast::def {
-    let dsr = serialization::ebml_deserializer(doc);
+    let dsr = ebml::ebml_deserializer(doc);
     let def = astencode_gen::deserialize_syntax_ast_def(dsr);
     def.tr(xcx)
 }
@@ -445,7 +446,7 @@ fn encode_freevar_entry(ebml_w: ebml::writer, fv: freevar_entry) {
     astencode_gen::serialize_middle_freevars_freevar_entry(ebml_w, fv)
 }
 
-impl helper for serialization::ebml_deserializer {
+impl helper for ebml::ebml_deserializer {
     fn read_freevar_entry(xcx: extended_decode_ctxt) -> freevar_entry {
         let fv =
             astencode_gen::deserialize_middle_freevars_freevar_entry(self);
@@ -466,7 +467,7 @@ fn encode_method_origin(ebml_w: ebml::writer, mo: method_origin) {
     astencode_gen::serialize_middle_typeck_method_origin(ebml_w, mo)
 }
 
-impl helper for serialization::ebml_deserializer {
+impl helper for ebml::ebml_deserializer {
     fn read_method_origin(xcx: extended_decode_ctxt) -> method_origin {
         let fv = astencode_gen::deserialize_middle_typeck_method_origin(self);
         fv.tr(xcx)
@@ -559,7 +560,7 @@ fn encode_dict_origin(ecx: @e::encode_ctxt,
 
 }
 
-impl helpers for serialization::ebml_deserializer {
+impl helpers for ebml::ebml_deserializer {
     fn read_dict_res(xcx: extended_decode_ctxt) -> typeck::dict_res {
         @self.read_to_vec {|| self.read_dict_origin(xcx) }
     }
@@ -800,7 +801,7 @@ impl decoder for ebml::doc {
     }
 }
 
-impl decoder for serialization::ebml_deserializer {
+impl decoder for ebml::ebml_deserializer {
     fn read_ty(xcx: extended_decode_ctxt) -> ty::t {
         tydecode::parse_ty_data(
             self.parent.data, xcx.dcx.cdata.cnum, self.pos, xcx.dcx.tcx,
@@ -850,7 +851,7 @@ fn decode_side_tables(xcx: extended_decode_ctxt,
             dcx.maps.copy_map.insert(id, ());
         } else {
             let val_doc = entry_doc[c::tag_table_val];
-            let val_dsr = serialization::ebml_deserializer(val_doc);
+            let val_dsr = ebml::ebml_deserializer(val_doc);
             if tag == (c::tag_table_def as uint) {
                 let def = decode_def(xcx, val_doc);
                 dcx.tcx.def_map.insert(id, def);
@@ -903,7 +904,7 @@ fn encode_item_ast(ebml_w: ebml::writer, item: @ast::item) {
 #[cfg(test)]
 fn decode_item_ast(par_doc: ebml::doc) -> @ast::item {
     let chi_doc = par_doc[c::tag_tree];
-    let d = serialization::ebml_deserializer(chi_doc);
+    let d = ebml::ebml_deserializer(chi_doc);
     @astencode_gen::deserialize_syntax_ast_item(d)
 }
 

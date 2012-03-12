@@ -82,26 +82,39 @@ import base::*;
 import driver::session::session;
 import codemap::span;
 import std::map;
+import std::map::hashmap;
+import front::attr;
 
-export expand_auto_serialize;
+export expand;
 
-enum ser_cx = {
+enum ser_cx = @{
     ext_cx: ext_ctxt,
-    tps: map::map<str, fn@(@ast::expr) -> [@ast::stmt]>
+    tps: map::hashmap<str, fn@(@ast::expr) -> [@ast::stmt]>
 };
 
-fn expand_auto_serialize(cx: ext_ctxt,
-                         span: span,
-                         _mitem: ast::meta_item,
-                         in_items: [@ast::item]) -> [@ast::item] {
+fn expand(cx: ext_ctxt,
+          span: span,
+          _mitem: ast::meta_item,
+          in_items: [@ast::item]) -> [@ast::item] {
+    fn not_auto_serialize(a: ast::attribute) -> bool {
+        attr::get_attr_name(a) != "auto_serialize"
+    }
+
+    fn filter_attrs(item: @ast::item) -> @ast::item {
+        @{attrs: vec::filter(item.attrs, not_auto_serialize)
+          with *item}
+    }
+
     vec::flat_map(in_items) {|in_item|
         alt in_item.node {
           ast::item_ty(ty, tps) {
-            [in_item, ty_module(cx, in_item.ident, copy ty, tps)]
+            [filter_attrs(in_item),
+             ty_module(cx, in_item.ident, ty, tps)]
           }
 
           ast::item_enum(variants, tps) {
-            [in_item, enum_module(cx, in_item.ident, variants, tps)]
+            [filter_attrs(in_item),
+             enum_module(cx, in_item.ident, in_item.span, variants, tps)]
           }
 
           _ {
@@ -118,9 +131,7 @@ impl helpers for ext_ctxt {
     fn next_id() -> ast::node_id { self.session().next_node_id() }
 
     fn path(span: span, strs: [str]) -> @ast::path {
-        @{node: {global: false,
-                 idents: strs + ["serialize"],
-                 types: []},
+        @{node: {global: false, idents: strs, types: []},
           span: span}
     }
 
@@ -138,6 +149,28 @@ impl helpers for ser_cx {
     }
     fn ty_path(span: span, strs: [str]) -> @ast::ty {
         self.ext_cx.ty_path(span, strs)
+    }
+
+    fn ty_fn(span: span,
+             -input_tys: [@ast::ty],
+             -output: @ast::ty) -> @ast::ty {
+        let args = vec::map(input_tys) {|ty|
+            {mode: ast::expl(ast::by_ref),
+             ty: ty,
+             ident: "",
+             id: self.next_id()}
+        };
+
+        @{node: ast::ty_fn(ast::proto_any, {inputs: args,
+                                            output: output,
+                                            purity: ast::impure_fn,
+                                            cf: ast::return_val,
+                                            constraints: []}),
+          span: span}
+    }
+
+    fn ty_nil(span: span) -> @ast::ty {
+        @{node: ast::ty_nil, span: span}
     }
 
     fn expr(span: span, node: ast::expr_) -> @ast::expr {
@@ -195,8 +228,9 @@ impl helpers for ser_cx {
                   span: span}))
     }
 
-    fn lambda(-blk: @ast::blk) -> @ast::expr {
-        let blk_e = cx.expr(blk.span, expr_block(blk));
+    fn lambda(blk: ast::blk) -> @ast::expr {
+        let ext_cx = self;
+        let blk_e = self.expr(blk.span, ast::expr_block(blk));
         #ast(expr){{|| $(blk_e) }}
     }
 
@@ -206,6 +240,14 @@ impl helpers for ser_cx {
             with *fold::default_ast_fold()
         });
         fld.fold_expr(v)
+    }
+
+    fn clone_ty(v: @ast::ty) -> @ast::ty {
+        let fld = fold::make_fold({
+            new_id: {|_id| self.next_id()}
+            with *fold::default_ast_fold()
+        });
+        fld.fold_ty(v)
     }
 
     fn clone_ty_param(v: ast::ty_param) -> ast::ty_param {
@@ -249,14 +291,17 @@ fn serialize_path(cx: ser_cx, path: @ast::path,
                 cx.path(path.span, path.node.idents + ["serialize"])));
 
     let ty_args = vec::map(path.node.types) {|ty|
-        let sv = serialize_ty(cx, ty, s, #ast(expr){"__v"});
-        cx.at(ty.span, #ast(expr){"{|__v| $(sv)}"})
+        let sv_stmts = serialize_ty(cx, ty, cx.clone(s), #ast(expr){__v});
+        let sv = cx.expr(path.span,
+                         ast::expr_block(cx.blk(path.span,
+                                                sv_stmts)));
+        cx.at(ty.span, #ast(expr){{|__v| $(sv)}})
     };
 
     [cx.stmt(
         cx.expr(
             path.span,
-            ast::expr_call(callee, [s] + ty_args + [v], false)))]
+            ast::expr_call(callee, [s, v] + ty_args, false)))]
 }
 
 fn serialize_variant(cx: ser_cx,
@@ -264,8 +309,8 @@ fn serialize_variant(cx: ser_cx,
                      span: span,
                      -s: @ast::expr,
                      pfn: fn([@ast::pat]) -> ast::pat_,
-                     bodyfn: fn(-@ast::expr, @ast::blk) -> @ast::expr,
-                     argfn: fn(-@ast::expr, uint, @ast::blk) -> @ast::expr)
+                     bodyfn: fn(-@ast::expr, ast::blk) -> @ast::expr,
+                     argfn: fn(-@ast::expr, uint, ast::blk) -> @ast::expr)
     -> ast::arm {
     let vnames = vec::init_fn(vec::len(tys)) {|i| #fmt["__v%u", i]};
     let pats = vec::init_fn(vec::len(tys)) {|i|
@@ -281,7 +326,7 @@ fn serialize_variant(cx: ser_cx,
         cx.stmt(argfn(cx.clone(s), i, arg_blk))
     };
 
-    let body_blk = cx.blk(span, vec::concat(stmts));
+    let body_blk = cx.blk(span, stmts);
     let body = cx.blk(span, [cx.stmt(bodyfn(s, body_blk))]);
 
     {pats: [pat], guard: none, body: body}
@@ -289,6 +334,13 @@ fn serialize_variant(cx: ser_cx,
 
 fn serialize_ty(cx: ser_cx, ty: @ast::ty, -s: @ast::expr, -v: @ast::expr)
     -> [@ast::stmt] {
+
+    fn ty_lambda(cx: ser_cx, ty: @ast::ty, -s: @ast::expr, -v: @ast::expr)
+        -> @ast::expr {
+        cx.lambda(cx.blk(ty.span, serialize_ty(cx, ty, s, v)))
+    }
+
+
     let ext_cx = cx.ext_cx;
 
     alt ty.node {
@@ -296,19 +348,37 @@ fn serialize_ty(cx: ser_cx, ty: @ast::ty, -s: @ast::expr, -v: @ast::expr)
         []
       }
 
-      ast::ty_box(mt) |
-      ast::ty_uniq(mt) |
-      ast::ty_ptr(mt) {
-        serialize_ty(cx, mt.ty, s, #ast(expr){"*$(v)"})
+      ast::ty_box(mt) {
+        let l = ty_lambda(cx, mt.ty, cx.clone(s), #ast(expr){*$(v)});
+        [#ast(stmt){$(s).emit_box($(l));}]
+      }
+
+      ast::ty_uniq(mt) {
+        let l = ty_lambda(cx, mt.ty, cx.clone(s), #ast(expr){*$(v)});
+        [#ast(stmt){$(s).emit_uniq($(l));}]
+      }
+
+      ast::ty_ptr(_) | ast::ty_rptr(_, _) {
+        cx.session().span_err(
+            ty.span, #fmt["Cannot serialize pointer types"]);
+        []
       }
 
       ast::ty_rec(flds) {
-        vec::flat_map(flds) {|fld|
-            let vf = cx.expr(
-                fld.span,
-                ast::expr_field(cx.clone(v), fld.node.ident, []));
-            serialize_ty(cx, fld.node.mt.ty, cx.clone(s), vf)
-        }
+        let fld_stmts = vec::init_fn(vec::len(flds)) {|fidx|
+            let fld = flds[fidx];
+            let vf = cx.expr(fld.span,
+                             ast::expr_field(cx.clone(v),
+                                             fld.node.ident,
+                                             []));
+            let s = cx.clone(s);
+            let f = cx.lit_str(fld.span, fld.node.ident);
+            let i = cx.lit_uint(fld.span, fidx);
+            let l = ty_lambda(cx, fld.node.mt.ty, cx.clone(s), vf);
+            #ast(stmt){$(s).emit_rec_field($(f), $(i), $(l));}
+        };
+        let fld_lambda = cx.lambda(cx.blk(ty.span, fld_stmts));
+        [#ast(stmt){$(s).emit_rec($(fld_lambda));}]
       }
 
       ast::ty_fn(_, _) {
@@ -335,7 +405,7 @@ fn serialize_ty(cx: ser_cx, ty: @ast::ty, -s: @ast::expr, -v: @ast::expr)
                 {|pats| ast::pat_tup(pats)},
 
                 // Generate body s.emit_tup(3, {|| blk })
-                {|-s, -blk|
+                {|-s, blk|
                     let sz = cx.lit_uint(ty.span, vec::len(tys));
                     let body = cx.lambda(blk);
                     #ast[expr]{
@@ -344,7 +414,7 @@ fn serialize_ty(cx: ser_cx, ty: @ast::ty, -s: @ast::expr, -v: @ast::expr)
                 },
 
                 // Generate s.emit_tup_elt(i, {|| blk })
-                {|-s, i, -blk|
+                {|-s, i, blk|
                     let idx = cx.lit_uint(ty.span, i);
                     let body = cx.lambda(blk);
                     #ast[expr]{
@@ -399,30 +469,30 @@ fn serialize_ty(cx: ser_cx, ty: @ast::ty, -s: @ast::expr, -v: @ast::expr)
                                 ty.span,
                                 #ast(expr){__e})))));
 
-        [cx.stmt(
-            cx.expr(
-                ty.span,
-                ast::expr_call(
-                    #ast(expr){$(s).emit_from_vec},
-                    [#ast(expr){{|__e| $(ser_e)}}],
-                    false)))]
+        [#ast(stmt){
+            core::serialization::emit_from_vec($(s), $(v), {|__e| $(ser_e) })
+        }]
       }
     }
 }
 
 fn mk_ser_fn(ext_cx: ext_ctxt, span: span,
-             -v_ty: @ast::ty, tps: [ast::ty_param],
+             v_ty: @ast::ty, tps: [ast::ty_param],
              f: fn(ser_cx, @ast::ty, -@ast::expr, -@ast::expr) -> [@ast::stmt])
     -> @ast::item {
 
-    let cx = ser_cx({ext_cx: ext_cx, tps: map::new_str_hash()});
+    let cx = ser_cx(@{ext_cx: ext_cx, tps: map::new_str_hash()});
 
     let tp_inputs =
         vec::map(tps, {|tp|
             {mode: ast::expl(ast::by_ref),
-             ty: cx.ty_path(span, [tp.ident]),
+             ty: cx.ty_fn(span,
+                          [cx.ty_path(span, [tp.ident])],
+                          cx.ty_nil(span)),
              ident: "__s" + tp.ident,
              id: cx.next_id()}});
+
+    #debug["tp_inputs = %?", tp_inputs];
 
     let ser_inputs: [ast::arg] =
         [{mode: ast::expl(ast::by_ref),
@@ -430,26 +500,24 @@ fn mk_ser_fn(ext_cx: ext_ctxt, span: span,
           ident: "__s",
           id: cx.next_id()},
          {mode: ast::expl(ast::by_ref),
-          ty: v_ty,
+          ty: cx.clone_ty(v_ty),
           ident: "__v",
           id: cx.next_id()}]
         + tp_inputs;
 
-    vec::iter2(tps, ser_inputs) {|tp, arg|
+    vec::iter2(tps, tp_inputs) {|tp, arg|
         let arg_ident = arg.ident;
         cx.tps.insert(
             tp.ident,
             fn@(v: @ast::expr) -> [@ast::stmt] {
                 let f = cx.var_ref(span, arg_ident);
-                [cx.stmt(
-                    cx.expr(
-                        span,
-                        ast::expr_call(f, [v], false)))]
+                #debug["serializing type arg %s", arg_ident];
+                [#ast(stmt){$(f)($(v));}]
             });
     }
 
     let ser_bnds = @[ast::bound_iface(cx.ty_path(span,
-                                                 ["__std", "serialization",
+                                                 ["serialization",
                                                   "serializer"]))];
 
     let ser_tps: [ast::ty_param] =
@@ -462,7 +530,7 @@ fn mk_ser_fn(ext_cx: ext_ctxt, span: span,
                                  span: span};
 
     let ser_blk = cx.blk(span,
-                         f(cx, v_ty, #ast(expr){"__s"}, #ast(expr){"__v"}));
+                         f(cx, v_ty, #ast(expr){__s}, #ast(expr){__v}));
 
     @{ident: "serialize",
       attrs: [],
@@ -477,7 +545,7 @@ fn mk_ser_fn(ext_cx: ext_ctxt, span: span,
       span: span}
 }
 
-fn ty_module(ext_cx: ext_ctxt, name: str, -ty: @ast::ty, tps: [ast::ty_param])
+fn ty_module(ext_cx: ext_ctxt, name: str, ty: @ast::ty, tps: [ast::ty_param])
     -> @ast::item {
 
     let span = ty.span;
@@ -497,62 +565,51 @@ fn enum_module(ext_cx: ext_ctxt, name: str, span: span,
                variants: [ast::variant], tps: [ast::ty_param])
     -> @ast::item {
 
-    let span = ty.span;
     let ty = ext_cx.ty_path(span, [name]);
-    let ser_fn = mk_ser_fn(ext_cx, span, ty, tps) {|cx, ty, s, v|
-        let arms = vec::init_fn(vec::len(variants)) {|vidx|
-            let variant = variants[vidx];
+    let ser_fn = mk_ser_fn(ext_cx, span, ty, tps) {|cx, _ty, s, v|
+        let arms = vec::init_fn(
+            vec::len(variants),
+            fn&(vidx: uint) -> ast::arm {
+                let variant = variants[vidx];
+                let span = variant.span;
+                let name = variant.node.name;
+                let variant_tys = vec::map(variant.node.args) {|a| a.ty };
 
-            if vec::is_empty(variant.args) {
-                // degenerate case.
-                let pat = {id: cx.next_id(),
-                           node: ast::pat_ident(cx.path(variant.ident), none),
-                           Span: variant.span};
-                //#ast(expr){
-                //    $(s).emit_enum_variant(X, Y, SZ) {||
-                //    };
-                //}
-            }
+                serialize_variant(
+                    cx, variant_tys, span, cx.clone(s),
 
-            let variant_tys = vec::map(variant.args) {|a| a.ty };
+                    // Generate pattern var(v1, v2, v3)
+                    {|pats|
+                        if vec::is_empty(pats) {
+                            ast::pat_ident(cx.path(span, [name]), none)
+                        } else {
+                            ast::pat_enum(cx.path(span, [name]), pats)
+                        }
+                    },
 
-            serialize_variant(
-                cx, variant_tys, variant.span, cx.clone(s),
+                    // Generate body s.emit_enum_variant("foo", 0u,
+                    //                                   3u, {|| blk })
+                    {|-s, blk|
+                        let v_name = cx.lit_str(span, name);
+                        let v_id = cx.lit_uint(span, vidx);
+                        let sz = cx.lit_uint(span, vec::len(variant_tys));
+                        let body = cx.lambda(blk);
+                        #ast[expr]{
+                            $(s).emit_enum_variant($(v_name), $(v_id),
+                                                   $(sz), $(body))
+                        }
+                    },
 
-                // Generate pattern var(v1, v2, v3)
-                {|pats|
-                    let pat = {id: cx.next_id(),
-                               node: ast::pat_enum(cx.path(variant.ident)),
-                               span: variant.span};
-
-                    {id: cx.next_id(),
-                     node: expr_call(s, [v_name,
-                                         v_id,
-                                         sz,
-                                         f], false),
-                     span: variant.span}
-                },
-
-                // Generate body s.emit_enum_variant("foo", 0u, 3u, {|| blk })
-                {|-s, -blk|
-                    let v_name = cx.lit_str(variant.span, variant.ident);
-                    let v_id = cx.lit_uint(variant.span, vidx);
-                    let sz = cx.lit_uint(variant.span, vec::len(variant_tys));
-                    let body = cx.lambda(blk);
-                    #ast[expr]{
-                        $(s).emit_enum_variant($(v_name), $(v_id), $(sz), $(body))
-                    }
-                },
-
-                // Generate s.emit_enum_variant_arg(i, {|| blk })
-                {|-s, i, -blk|
-                    let idx = cx.lit_uint(i);
-                    let body = cx.lambda(blk);
-                    #ast[expr]{
-                        $(s).emit_enum_variant_arg($(idx), $(body))
-                    }
-                })
-        };
+                    // Generate s.emit_enum_variant_arg(i, {|| blk })
+                    {|-s, i, blk|
+                        let idx = cx.lit_uint(span, i);
+                        let body = cx.lambda(blk);
+                        #ast[expr]{
+                            $(s).emit_enum_variant_arg($(idx), $(body))
+                        }
+                    })
+            });
+        [cx.alt_stmt(arms, span, v)]
     };
 
     @{ident: name,

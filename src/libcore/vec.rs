@@ -406,7 +406,7 @@ fn map<T, U>(v: [T], f: fn(T) -> U) -> [U] {
 }
 
 fn flat_map<T, U>(v: [T], f: fn(T) -> [U]) -> [U] {
-    let result = [];
+    let mut result = [];
     for elem: T in v { result += f(elem); }
     ret result;
 }

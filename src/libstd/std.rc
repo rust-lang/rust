@@ -12,7 +12,7 @@ export net, uv;
 export c_vec, four, tri, util;
 export bitv, deque, fun_treemap, list, map, smallintmap, sort, treemap, ufind;
 export rope;
-export ebml, dbg, getopts, json, rand, sha1, term, time;
+export ebml, dbg, getopts, json, rand, sha1, term, time, prettyprint;
 export test, tempfile, serialization;
 
 
@@ -55,6 +55,7 @@ mod md4;
 mod tempfile;
 mod term;
 mod time;
+mod prettyprint;
 
 #[cfg(unicode)]
 mod unicode;

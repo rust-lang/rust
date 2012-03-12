@@ -306,6 +306,9 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
         for ast_ty: @ast::ty in args {
             param_bindings += [do_ast_ty_to_ty(tcx, use_site, mode, ast_ty)];
         }
+        #debug("substituting(%s into %s)",
+               str::concat(vec::map(param_bindings, {|t| ty_to_str(tcx, t)})),
+               ty_to_str(tcx, ty_param_bounds_and_ty.ty));
         let typ =
             ty::substitute_type_params(tcx, param_bindings,
                                        ty_param_bounds_and_ty.ty);

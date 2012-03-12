@@ -193,6 +193,7 @@ fn finish<T: qq_helper>
 {
     let cm = ecx.session().parse_sess.cm;
     let str = @codemap::span_to_snippet(body.span, cm);
+    #debug["qquote--str==%?", str];
     let fname = codemap::mk_substr_filename(cm, body.span);
     let node = parse_from_source_str
         (f, fname, codemap::fss_internal(body.span), str,

@@ -192,6 +192,14 @@ fn compl(i: uint) -> uint {
     max_value ^ i
 }
 
+fn serialize<S: serialization::serializer>(s: S, v: uint) {
+    s.emit_uint(v);
+}
+
+fn deserialize<D: serialization::deserializer>(d: D) -> uint {
+    d.read_uint()
+}
+
 #[cfg(test)]
 mod tests {
 

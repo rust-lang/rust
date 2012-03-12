@@ -15,7 +15,8 @@ import io::{reader_util, writer_util};
 import getopts::{optopt, optmulti, optflag, optflagopt, opt_present};
 import back::{x86, x86_64};
 
-enum pp_mode { ppm_normal, ppm_expanded, ppm_typed, ppm_identified, }
+enum pp_mode {ppm_normal, ppm_expanded, ppm_typed, ppm_identified,
+              ppm_expanded_identified }
 
 fn default_configuration(sess: session, argv0: str, input: str) ->
    ast::crate_cfg {
@@ -253,7 +254,7 @@ fn pretty_print_input(sess: session, cfg: ast::crate_cfg, input: str,
     // from stdin, we're going to just suck the source into a string
     // so both the parser and pretty-printer can use it.
     let upto = alt ppm {
-      ppm_expanded { cu_expand }
+      ppm_expanded | ppm_expanded_identified { cu_expand }
       ppm_typed { cu_typeck }
       _ { cu_parse }
     };
@@ -265,7 +266,7 @@ fn pretty_print_input(sess: session, cfg: ast::crate_cfg, input: str,
         ann = {pre: ann_paren_for_expr,
                post: bind ann_typed_post(option::get(tcx), _)};
       }
-      ppm_identified {
+      ppm_identified | ppm_expanded_identified {
         ann = {pre: ann_paren_for_expr, post: ann_identified_post};
       }
       ppm_expanded | ppm_normal {}
@@ -498,7 +499,11 @@ fn parse_pretty(sess: session, &&name: str) -> pp_mode {
         ret ppm_expanded;
     } else if str::eq(name, "typed") {
         ret ppm_typed;
-    } else if str::eq(name, "identified") { ret ppm_identified; }
+    } else if str::eq(name, "expanded,identified") {
+        ret ppm_expanded_identified;
+    } else if str::eq(name, "identified") {
+        ret ppm_identified;
+    }
     sess.fatal("argument to `pretty` must be one of `normal`, `typed`, or " +
                    "`identified`");
 }
