@@ -273,11 +273,9 @@ fn store_environment(bcx: block,
                                   ev_to_str(ccx, bv)));
         }
 
-        let bound_data = GEP_tup_like(bcx, cbox_ty, llbox,
-                                      [0, abi::box_field_body,
-                                       abi::closure_body_bindings, i as int]);
-        bcx = bound_data.bcx;
-        let bound_data = bound_data.val;
+        let bound_data = GEPi(bcx, llbox,
+                              [0, abi::box_field_body,
+                               abi::closure_body_bindings, i as int]);
         alt bv {
           env_expr(e, _) {
             bcx = base::trans_expr_save_in(bcx, e, bound_data);
@@ -377,16 +375,13 @@ fn load_environment(fcx: fn_ctxt,
           capture::cap_drop { /* ignore */ }
           _ {
             let upvarptr =
-                GEP_tup_like(bcx, cdata_ty, llcdata,
-                             [0, abi::closure_body_bindings, i as int]);
-            bcx = upvarptr.bcx;
-            let llupvarptr = upvarptr.val;
+                GEPi(bcx, llcdata, [0, abi::closure_body_bindings, i as int]);
             alt ck {
-              ty::ck_block { llupvarptr = Load(bcx, llupvarptr); }
+              ty::ck_block { upvarptr = Load(bcx, upvarptr); }
               ty::ck_uniq | ty::ck_box { }
             }
             let def_id = ast_util::def_id_of_def(cap_var.def);
-            fcx.llupvars.insert(def_id.node, llupvarptr);
+            fcx.llupvars.insert(def_id.node, upvarptr);
             i += 1u;
           }
         }
@@ -706,21 +701,16 @@ fn trans_bind_thunk(ccx: @crate_ctxt,
         (fptr, llvm::LLVMGetUndef(T_opaque_cbox_ptr(ccx)), 0)
       }
       target_closure {
-        let {bcx: cx, val: pair} =
-            GEP_tup_like(bcx, cdata_ty, llcdata,
-                         [0, abi::closure_body_bindings, 0]);
+        let pair = GEPi(bcx, llcdata, [0, abi::closure_body_bindings, 0]);
         let lltargetenv =
-            Load(cx, GEPi(cx, pair, [0, abi::fn_field_box]));
+            Load(bcx, GEPi(bcx, pair, [0, abi::fn_field_box]));
         let lltargetfn = Load
-            (cx, GEPi(cx, pair, [0, abi::fn_field_code]));
-        bcx = cx;
+            (bcx, GEPi(bcx, pair, [0, abi::fn_field_code]));
         (lltargetfn, lltargetenv, 1)
       }
       target_self(fptr) {
-        let rs = GEP_tup_like(bcx, cdata_ty, llcdata,
-                              [0, abi::closure_body_bindings, 0]);
-        bcx = rs.bcx;
-        (fptr, PointerCast(bcx, rs.val, T_opaque_cbox_ptr(ccx)), 1)
+        let slfptr = GEPi(bcx, llcdata, [0, abi::closure_body_bindings, 0]);
+        (fptr, PointerCast(bcx, slfptr, T_opaque_cbox_ptr(ccx)), 1)
       }
     };
 
@@ -757,11 +747,8 @@ fn trans_bind_thunk(ccx: @crate_ctxt,
           // Arg provided at binding time; thunk copies it from
           // closure.
           some(e) {
-            let bound_arg =
-                GEP_tup_like(bcx, cdata_ty, llcdata,
-                             [0, abi::closure_body_bindings, b]);
-            bcx = bound_arg.bcx;
-            let val = bound_arg.val;
+            let val =
+                GEPi(bcx, llcdata, [0, abi::closure_body_bindings, b]);
 
             alt ty::resolved_mode(tcx, out_arg.mode) {
               ast::by_val {

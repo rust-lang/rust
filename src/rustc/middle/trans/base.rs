@@ -273,113 +273,22 @@ fn bump_ptr(bcx: block, t: ty::t, base: ValueRef, sz: ValueRef) ->
     } else { bumped }
 }
 
-// Replacement for the LLVM 'GEP' instruction when field-indexing into a
-// tuple-like structure (tup, rec) with a static index. This one is driven off
-// ty::struct and knows what to do when it runs into a ty_param stuck in the
-// middle of the thing it's GEP'ing into. Much like size_of and align_of,
-// above.
-fn GEP_tup_like(bcx: block, t: ty::t, base: ValueRef, ixs: [int])
-    -> result {
-    fn compute_off(bcx: block,
-                   off: ValueRef,
-                   t: ty::t,
-                   ixs: [int],
-                   n: uint) -> (block, ValueRef, ty::t) {
-        if n == ixs.len() {
-            ret (bcx, off, t);
-        }
-
-        let ix = ixs[n];
-        let bcx = bcx, off = off;
-        int::range(0, ix) {|i|
-            let comp_t = ty::get_element_type(t, i as uint);
-            let align = align_of(bcx, comp_t);
-            bcx = align.bcx;
-            off = align_to(bcx, off, align.val);
-            let sz = size_of(bcx, comp_t);
-            bcx = sz.bcx;
-            off = Add(bcx, off, sz.val);
-        }
-
-        let comp_t = ty::get_element_type(t, ix as uint);
-        let align = align_of(bcx, comp_t);
-        bcx = align.bcx;
-        off = align_to(bcx, off, align.val);
-
-        be compute_off(bcx, off, comp_t, ixs, n+1u);
-    }
-
-    if !ty::type_has_dynamic_size(bcx.tcx(), t) {
-        ret rslt(bcx, GEPi(bcx, base, ixs));
-    }
-
-    #debug["GEP_tup_like(t=%s,base=%s,ixs=%?)",
-           ty_to_str(bcx.tcx(), t),
-           val_str(bcx.ccx().tn, base),
-           ixs];
-
-    // We require that ixs start with 0 and we expect the input to be a
-    // pointer to an instance of type t, so we can safely ignore ixs[0],
-    // basically.
-    assert ixs[0] == 0;
-
-    let (bcx, off, tar_t) = {
-        compute_off(bcx, C_int(bcx.ccx(), 0), t, ixs, 1u)
-    };
-    ret rslt(bcx, bump_ptr(bcx, tar_t, base, off));
-}
-
-
 // Replacement for the LLVM 'GEP' instruction when field indexing into a enum.
-// This function uses GEP_tup_like() above and automatically performs casts as
-// appropriate. @llblobptr is the data part of a enum value; its actual type
+// @llblobptr is the data part of a enum value; its actual type
 // is meaningless, as it will be cast away.
-fn GEP_enum(cx: block, llblobptr: ValueRef, enum_id: ast::def_id,
-           variant_id: ast::def_id, ty_substs: [ty::t],
-           ix: uint) -> result {
-    let variant = ty::enum_variant_with_id(cx.tcx(), enum_id, variant_id);
+fn GEP_enum(bcx: block, llblobptr: ValueRef, enum_id: ast::def_id,
+            variant_id: ast::def_id, ty_substs: [ty::t],
+            ix: uint) -> result {
+    let ccx = bcx.ccx();
+    let variant = ty::enum_variant_with_id(ccx.tcx, enum_id, variant_id);
     assert ix < variant.args.len();
 
-    // Synthesize a tuple type so that GEP_tup_like() can work its magic.
-    // Separately, store the type of the element we're interested in.
-
-    let arg_tys = variant.args;
-
-    let true_arg_tys: [ty::t] = [];
-    for aty: ty::t in arg_tys {
-            // Would be nice to have a way of stating the invariant
-            // that ty_substs is valid for aty
-        let arg_ty = ty::substitute_type_params(cx.tcx(), ty_substs, aty);
-        true_arg_tys += [arg_ty];
-    }
-
-    // We know that ix < len(variant.args) -- so
-    // it's safe to do this. (Would be nice to have
-    // typestate guarantee that a dynamic bounds check
-    // error can't happen here, but that's in the future.)
-    let elem_ty = true_arg_tys[ix];
-
-    let tup_ty = ty::mk_tup(cx.tcx(), true_arg_tys);
-    // Cast the blob pointer to the appropriate type, if we need to (i.e. if
-    // the blob pointer isn't dynamically sized).
-
-    let llunionptr: ValueRef;
-    let ccx = cx.ccx();
-    if check type_has_static_size(ccx, tup_ty) {
-        let llty = type_of(ccx, tup_ty);
-        llunionptr = TruncOrBitCast(cx, llblobptr, T_ptr(llty));
-    } else { llunionptr = llblobptr; }
-
-    // Do the GEP_tup_like().
-    let rs = GEP_tup_like(cx, tup_ty, llunionptr, [0, ix as int]);
-    // Cast the result to the appropriate type, if necessary.
-
-    let val = if check type_has_static_size(ccx, elem_ty) {
-        let llelemty = type_of(ccx, elem_ty);
-        PointerCast(rs.bcx, rs.val, T_ptr(llelemty))
-    } else { rs.val };
-
-    ret rslt(rs.bcx, val);
+    let arg_lltys = vec::map(variant.args, {|aty|
+        type_of(ccx, ty::substitute_type_params(ccx.tcx, ty_substs, aty))
+    });
+    let typed_blobptr = PointerCast(bcx, llblobptr,
+                                    T_ptr(T_struct(arg_lltys)));
+    rslt(bcx, GEPi(bcx, typed_blobptr, [0, ix as int]))
 }
 
 // trans_shared_malloc: expects a type indicating which pointer type we want
@@ -823,11 +732,10 @@ fn trans_res_drop(bcx: block, rs: ValueRef, did: ast::def_id,
                   inner_t: ty::t, tps: [ty::t]) -> block {
     let ccx = bcx.ccx();
     let inner_t_s = ty::substitute_type_params(ccx.tcx, tps, inner_t);
-    let tup_ty = ty::mk_tup(ccx.tcx, [ty::mk_int(ccx.tcx), inner_t_s]);
 
-    let {bcx, val: drop_flag} = GEP_tup_like(bcx, tup_ty, rs, [0, 0]);
+    let drop_flag = GEPi(bcx, rs, [0, 0]);
     with_cond(bcx, IsNotNull(bcx, Load(bcx, drop_flag))) {|bcx|
-        let {bcx, val: valptr} = GEP_tup_like(bcx, tup_ty, rs, [0, 1]);
+        let valptr = GEPi(bcx, rs, [0, 1]);
         // Find and call the actual destructor.
         let dtor_addr = get_res_dtor(ccx, did, tps);
         let args = [bcx.fcx.llretptr, null_env_ptr(bcx)];
@@ -840,7 +748,7 @@ fn trans_res_drop(bcx: block, rs: ValueRef, did: ast::def_id,
         let val_cast = BitCast(bcx, valptr, val_llty);
         Call(bcx, dtor_addr, args + [val_cast]);
 
-        bcx = drop_ty(bcx, valptr, inner_t_s);
+        let bcx = drop_ty(bcx, valptr, inner_t_s);
         Store(bcx, C_u8(0u), drop_flag);
         bcx
     }
@@ -1014,26 +922,24 @@ fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
       ty::ty_rec(fields) {
         let i: int = 0;
         for fld: ty::field in fields {
-            let {bcx: bcx, val: llfld_a} = GEP_tup_like(cx, t, av, [0, i]);
-            cx = f(bcx, llfld_a, fld.mt.ty);
+            let llfld_a = GEPi(cx, av, [0, i]);
+            cx = f(cx, llfld_a, fld.mt.ty);
             i += 1;
         }
       }
       ty::ty_tup(args) {
         let i = 0;
         for arg in args {
-            let {bcx: bcx, val: llfld_a} = GEP_tup_like(cx, t, av, [0, i]);
-            cx = f(bcx, llfld_a, arg);
+            let llfld_a = GEPi(cx, av, [0, i]);
+            cx = f(cx, llfld_a, arg);
             i += 1;
         }
       }
       ty::ty_res(_, inner, tps) {
         let tcx = cx.tcx();
         let inner1 = ty::substitute_type_params(tcx, tps, inner);
-        let inner_t_s = ty::substitute_type_params(tcx, tps, inner);
-        let tup_t = ty::mk_tup(tcx, [ty::mk_int(tcx), inner_t_s]);
-        let {bcx: bcx, val: llfld_a} = GEP_tup_like(cx, tup_t, av, [0, 1]);
-        ret f(bcx, llfld_a, inner1);
+        let llfld_a = GEPi(cx, av, [0, 1]);
+        ret f(cx, llfld_a, inner1);
       }
       ty::ty_enum(tid, tps) {
         let variants = ty::enum_variants(cx.tcx(), tid);
@@ -1074,8 +980,8 @@ fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
           // a class is like a record type
         let i: int = 0;
         for fld: ty::field in ty::class_items_as_fields(cx.tcx(), did) {
-            let {bcx: bcx, val: llfld_a} = GEP_tup_like(cx, t, av, [0, i]);
-            cx = f(bcx, llfld_a, fld.mt.ty);
+            let llfld_a = GEPi(cx, av, [0, i]);
+            cx = f(cx, llfld_a, fld.mt.ty);
             i += 1;
         }
       }
@@ -2305,7 +2211,7 @@ fn trans_rec_field(bcx: block, base: @ast::expr,
                  base expr has non-record type"); }
         };
     let ix = option::get(ty::field_idx(field, fields));
-    let {bcx, val} = GEP_tup_like(bcx, ty, val, [0, ix as int]);
+    let val = GEPi(bcx, val, [0, ix as int]);
     ret {bcx: bcx, val: val, kind: owned};
 }
 
@@ -2837,9 +2743,7 @@ fn get_landing_pad(bcx: block) -> BasicBlockRef {
     ret pad_bcx.llbb;
 }
 
-fn trans_tup(bcx: block, elts: [@ast::expr], id: ast::node_id,
-             dest: dest) -> block {
-    let t = node_id_type(bcx, id);
+fn trans_tup(bcx: block, elts: [@ast::expr], dest: dest) -> block {
     let bcx = bcx;
     let addr = alt dest {
       ignore {
@@ -2851,11 +2755,11 @@ fn trans_tup(bcx: block, elts: [@ast::expr], id: ast::node_id,
     };
     let temp_cleanups = [], i = 0;
     for e in elts {
-        let dst = GEP_tup_like(bcx, t, addr, [0, i]);
+        let dst = GEPi(bcx, addr, [0, i]);
         let e_ty = expr_ty(bcx, e);
-        bcx = trans_expr_save_in(dst.bcx, e, dst.val);
-        add_clean_temp_mem(bcx, dst.val, e_ty);
-        temp_cleanups += [dst.val];
+        bcx = trans_expr_save_in(bcx, e, dst);
+        add_clean_temp_mem(bcx, dst, e_ty);
+        temp_cleanups += [dst];
         i += 1;
     }
     for cleanup in temp_cleanups { revoke_clean(bcx, cleanup); }
@@ -2887,10 +2791,10 @@ fn trans_rec(bcx: block, fields: [ast::field],
         let ix = option::get(vec::position(ty_fields, {|ft|
             str::eq(fld.node.ident, ft.ident)
         }));
-        let dst = GEP_tup_like(bcx, t, addr, [0, ix as int]);
-        bcx = trans_expr_save_in(dst.bcx, fld.node.expr, dst.val);
-        add_clean_temp_mem(bcx, dst.val, ty_fields[ix].mt.ty);
-        temp_cleanups += [dst.val];
+        let dst = GEPi(bcx, addr, [0, ix as int]);
+        bcx = trans_expr_save_in(bcx, fld.node.expr, dst);
+        add_clean_temp_mem(bcx, dst, ty_fields[ix].mt.ty);
+        temp_cleanups += [dst];
     }
     alt base {
       some(bexp) {
@@ -2899,10 +2803,10 @@ fn trans_rec(bcx: block, fields: [ast::field],
         // Copy over inherited fields
         for tf in ty_fields {
             if !vec::any(fields, {|f| str::eq(f.node.ident, tf.ident)}) {
-                let dst = GEP_tup_like(bcx, t, addr, [0, i]);
-                let base = GEP_tup_like(bcx, t, base_val, [0, i]);
-                let val = load_if_immediate(base.bcx, base.val, tf.mt.ty);
-                bcx = copy_val(base.bcx, INIT, dst.val, val, tf.mt.ty);
+                let dst = GEPi(bcx, addr, [0, i]);
+                let base = GEPi(bcx, base_val, [0, i]);
+                let val = load_if_immediate(bcx, base, tf.mt.ty);
+                bcx = copy_val(bcx, INIT, dst, val, tf.mt.ty);
             }
             i += 1;
         }
@@ -2997,7 +2901,7 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
       ast::expr_rec(args, base) {
         ret trans_rec(bcx, args, base, e.id, dest);
       }
-      ast::expr_tup(args) { ret trans_tup(bcx, args, e.id, dest); }
+      ast::expr_tup(args) { ret trans_tup(bcx, args, dest); }
       ast::expr_lit(lit) { ret trans_lit(bcx, *lit, dest); }
       ast::expr_vec(args, _) { ret tvec::trans_vec(bcx, args, e.id, dest); }
       ast::expr_binary(op, lhs, rhs) {
@@ -3974,8 +3878,6 @@ fn trans_res_ctor(ccx: @crate_ctxt, path: path, dtor: ast::fn_decl,
     let bcx = top_scope_block(fcx, none), lltop = bcx.llbb;
     let fty = node_id_type(bcx, ctor_id);
     let arg_t = ty::ty_fn_args(fty)[0].ty;
-    let tup_t = ty::mk_tup(ccx.tcx, [ty::mk_mach_uint(ccx.tcx, ast::ty_u8),
-                                     arg_t]);
     let arg = alt fcx.llargs.find(dtor.inputs[0].id) {
       some(local_mem(x)) { x }
       _ { ccx.sess.bug("Someone forgot to document an invariant \
@@ -3987,12 +3889,11 @@ fn trans_res_ctor(ccx: @crate_ctxt, path: path, dtor: ast::fn_decl,
         llretptr = BitCast(bcx, llretptr, llret_t);
     }
 
-    let {bcx, val: dst} = GEP_tup_like(bcx, tup_t, llretptr, [0, 1]);
+    let dst = GEPi(bcx, llretptr, [0, 1]);
     bcx = memmove_ty(bcx, dst, arg, arg_t);
-    let flag = GEP_tup_like(bcx, tup_t, llretptr, [0, 0]);
-    bcx = flag.bcx;
+    let flag = GEPi(bcx, llretptr, [0, 0]);
     let one = C_u8(1u);
-    Store(bcx, one, flag.val);
+    Store(bcx, one, flag);
     build_return(bcx);
     finish_fn(fcx, lltop);
 }

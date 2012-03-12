@@ -404,14 +404,11 @@ fn compile_submatch(bcx: block, m: match, vals: [ValueRef],
     let rec_fields = collect_record_fields(m, col);
     // Separate path for extracting and binding record fields
     if rec_fields.len() > 0u {
-        let rec_ty = node_id_type(bcx, pat_id);
-        let fields = ty::get_fields(rec_ty);
+        let fields = ty::get_fields(node_id_type(bcx, pat_id));
         let rec_vals = [];
         for field_name: ast::ident in rec_fields {
             let ix = option::get(ty::field_idx(field_name, fields));
-            let r = GEP_tup_like(bcx, rec_ty, val, [0, ix as int]);
-            rec_vals += [r.val];
-            bcx = r.bcx;
+            rec_vals += [GEPi(bcx, val, [0, ix as int])];
         }
         compile_submatch(bcx, enter_rec(dm, m, col, rec_fields, val),
                          rec_vals + vals_left, chk, exits);
@@ -426,9 +423,7 @@ fn compile_submatch(bcx: block, m: match, vals: [ValueRef],
         };
         let tup_vals = [], i = 0u;
         while i < n_tup_elts {
-            let r = GEP_tup_like(bcx, tup_ty, val, [0, i as int]);
-            tup_vals += [r.val];
-            bcx = r.bcx;
+            tup_vals += [GEPi(bcx, val, [0, i as int])];
             i += 1u;
         }
         compile_submatch(bcx, enter_tup(dm, m, col, val, n_tup_elts),
@@ -706,21 +701,19 @@ fn bind_irrefutable_pat(bcx: block, pat: @ast::pat, val: ValueRef,
         }
       }
       ast::pat_rec(fields, _) {
-        let rec_ty = node_id_type(bcx, pat.id);
-        let rec_fields = ty::get_fields(rec_ty);
+        let rec_fields = ty::get_fields(node_id_type(bcx, pat.id));
         for f: ast::field_pat in fields {
             let ix = option::get(ty::field_idx(f.ident, rec_fields));
             // how to get rid of this check?
-            let r = GEP_tup_like(bcx, rec_ty, val, [0, ix as int]);
-            bcx = bind_irrefutable_pat(r.bcx, f.pat, r.val, make_copy);
+            let fldptr = GEPi(bcx, val, [0, ix as int]);
+            bcx = bind_irrefutable_pat(bcx, f.pat, fldptr, make_copy);
         }
       }
       ast::pat_tup(elems) {
-        let tup_ty = node_id_type(bcx, pat.id);
         let i = 0u;
         for elem in elems {
-            let r = GEP_tup_like(bcx, tup_ty, val, [0, i as int]);
-            bcx = bind_irrefutable_pat(r.bcx, elem, r.val, make_copy);
+            let fldptr = GEPi(bcx, val, [0, i as int]);
+            bcx = bind_irrefutable_pat(bcx, elem, fldptr, make_copy);
             i += 1u;
         }
       }
