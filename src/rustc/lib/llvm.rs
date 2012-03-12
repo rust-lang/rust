@@ -940,7 +940,7 @@ fn name_has_type(tn: type_names, s: str) -> option<TypeRef> {
 fn mk_type_names() -> type_names {
     fn hash(&&t: TypeRef) -> uint { ret t as uint; }
     fn eq(&&a: TypeRef, &&b: TypeRef) -> bool { ret a as uint == b as uint; }
-    @{type_names: std::map::mk_hashmap(hash, eq),
+    @{type_names: std::map::new_hashmap(hash, eq),
       named_types: std::map::new_str_hash()}
 }
 
@@ -987,7 +987,7 @@ fn type_to_str_inner(names: type_names, outer0: [TypeRef], ty: TypeRef) ->
         let s = "fn(";
         let out_ty: TypeRef = llvm::LLVMGetReturnType(ty);
         let n_args = llvm::LLVMCountParamTypes(ty) as uint;
-        let args: [TypeRef] = vec::init_elt::<TypeRef>(n_args, 0 as TypeRef);
+        let args: [TypeRef] = vec::from_elem::<TypeRef>(n_args, 0 as TypeRef);
         unsafe {
             llvm::LLVMGetParamTypes(ty, vec::unsafe::to_ptr(args));
         }
@@ -999,7 +999,7 @@ fn type_to_str_inner(names: type_names, outer0: [TypeRef], ty: TypeRef) ->
       10 {
         let s: str = "{";
         let n_elts = llvm::LLVMCountStructElementTypes(ty) as uint;
-        let elts: [TypeRef] = vec::init_elt::<TypeRef>(n_elts, 0 as TypeRef);
+        let elts: [TypeRef] = vec::from_elem::<TypeRef>(n_elts, 0 as TypeRef);
         unsafe {
             llvm::LLVMGetStructElementTypes(ty, vec::unsafe::to_ptr(elts));
         }
@@ -1042,7 +1042,7 @@ fn float_width(llt: TypeRef) -> uint {
 }
 
 fn fn_ty_param_tys(fn_ty: TypeRef) -> [TypeRef] unsafe {
-    let args = vec::init_elt(llvm::LLVMCountParamTypes(fn_ty) as uint,
+    let args = vec::from_elem(llvm::LLVMCountParamTypes(fn_ty) as uint,
                              0 as TypeRef);
     llvm::LLVMGetParamTypes(fn_ty, vec::unsafe::to_ptr(args));
     ret args;

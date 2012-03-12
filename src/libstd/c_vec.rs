@@ -26,7 +26,7 @@ taken to ensure that a reference to the c_vec::t is still held if needed.
 "];
 
 export t;
-export create, create_with_dtor;
+export c_vec, c_vec_with_dtor;
 export get, set;
 export len;
 export ptr;
@@ -60,7 +60,7 @@ Create a c_vec::t from a native buffer with a given length.
 * base - A native pointer to a buffer
 * len - The number of elements in the buffer
 "]
-unsafe fn create<T>(base: *mutable T, len: uint) -> t<T> {
+unsafe fn c_vec<T>(base: *mutable T, len: uint) -> t<T> {
     ret t({base: base,
            len: len,
            rsrc: @dtor_res(option::none)
@@ -78,7 +78,7 @@ and a function to run upon destruction.
 * dtor - A function to run when the value is destructed, useful
          for freeing the buffer, etc.
 "]
-unsafe fn create_with_dtor<T>(base: *mutable T, len: uint, dtor: fn@())
+unsafe fn c_vec_with_dtor<T>(base: *mutable T, len: uint, dtor: fn@())
   -> t<T> {
     ret t({base: base,
            len: len,
@@ -133,8 +133,8 @@ mod tests {
 
         assert mem as int != 0;
 
-        ret unsafe { create_with_dtor(mem as *mutable u8, n,
-                                      bind free(mem)) };
+        ret unsafe { c_vec_with_dtor(mem as *mutable u8, n,
+                                     bind free(mem)) };
     }
 
     #[test]

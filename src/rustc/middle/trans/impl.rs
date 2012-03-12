@@ -202,7 +202,7 @@ fn trans_iface_callee(bcx: block, callee_id: ast::node_id,
 fn llfn_arg_tys(ft: TypeRef) -> {inputs: [TypeRef], output: TypeRef} {
     let out_ty = llvm::LLVMGetReturnType(ft);
     let n_args = llvm::LLVMCountParamTypes(ft);
-    let args = vec::init_elt(n_args as uint, 0 as TypeRef);
+    let args = vec::from_elem(n_args as uint, 0 as TypeRef);
     unsafe { llvm::LLVMGetParamTypes(ft, vec::unsafe::to_ptr(args)); }
     {inputs: args, output: out_ty}
 }

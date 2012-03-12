@@ -243,7 +243,7 @@ fn encode_id_range(ebml_w: ebml::writer, id_range: id_range) {
 
 fn decode_id_range(par_doc: ebml::doc) -> id_range {
     let range_doc = par_doc[c::tag_id_range];
-    let dsr = serialization::mk_ebml_deserializer(range_doc);
+    let dsr = serialization::ebml_deserializer(range_doc);
     dsr.read_tup(2u) {||
         {min: dsr.read_tup_elt(0u) {|| dsr.read_int() },
          max: dsr.read_tup_elt(1u) {|| dsr.read_int() }}
@@ -368,7 +368,7 @@ fn simplify_ast(ii: ast::inlined_item) -> ast::inlined_item {
 
 fn decode_ast(par_doc: ebml::doc) -> ast::inlined_item {
     let chi_doc = par_doc[c::tag_tree];
-    let d = serialization::mk_ebml_deserializer(chi_doc);
+    let d = serialization::ebml_deserializer(chi_doc);
     astencode_gen::deserialize_syntax_ast_inlined_item(d)
 }
 
@@ -398,7 +398,7 @@ fn encode_def(ebml_w: ebml::writer, def: ast::def) {
 }
 
 fn decode_def(xcx: extended_decode_ctxt, doc: ebml::doc) -> ast::def {
-    let dsr = serialization::mk_ebml_deserializer(doc);
+    let dsr = serialization::ebml_deserializer(doc);
     let def = astencode_gen::deserialize_syntax_ast_def(dsr);
     def.tr(xcx)
 }
@@ -850,7 +850,7 @@ fn decode_side_tables(xcx: extended_decode_ctxt,
             dcx.maps.copy_map.insert(id, ());
         } else {
             let val_doc = entry_doc[c::tag_table_val];
-            let val_dsr = serialization::mk_ebml_deserializer(val_doc);
+            let val_dsr = serialization::ebml_deserializer(val_doc);
             if tag == (c::tag_table_def as uint) {
                 let def = decode_def(xcx, val_doc);
                 dcx.tcx.def_map.insert(id, def);
@@ -903,7 +903,7 @@ fn encode_item_ast(ebml_w: ebml::writer, item: @ast::item) {
 #[cfg(test)]
 fn decode_item_ast(par_doc: ebml::doc) -> @ast::item {
     let chi_doc = par_doc[c::tag_tree];
-    let d = serialization::mk_ebml_deserializer(chi_doc);
+    let d = serialization::ebml_deserializer(chi_doc);
     @astencode_gen::deserialize_syntax_ast_item(d)
 }
 
@@ -948,7 +948,7 @@ fn mk_ctxt() -> fake_ext_ctxt {
 fn roundtrip(in_item: @ast::item) {
     #debug["in_item = %s", pprust::item_to_str(in_item)];
     let mbuf = io::mk_mem_buffer();
-    let ebml_w = ebml::mk_writer(io::mem_buffer_writer(mbuf));
+    let ebml_w = ebml::writer(io::mem_buffer_writer(mbuf));
     encode_item_ast(ebml_w, in_item);
     let ebml_doc = ebml::new_doc(@io::mem_buffer_buf(mbuf));
     let out_item = decode_item_ast(ebml_doc);

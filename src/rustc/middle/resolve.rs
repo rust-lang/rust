@@ -8,7 +8,7 @@ import front::attr;
 import metadata::{csearch, cstore};
 import driver::session::session;
 import util::common::*;
-import std::map::{new_int_hash, new_str_hash, mk_hashmap};
+import std::map::{new_int_hash, new_str_hash, new_hashmap};
 import syntax::codemap::span;
 import syntax::visit;
 import visit::vt;
@@ -82,7 +82,7 @@ fn new_ext_hash() -> ext_hash {
         ret util::common::def_eq(v1.did, v2.did) &&
                 str::eq(v1.ident, v2.ident) && v1.ns == v2.ns;
     }
-    ret std::map::mk_hashmap::<key, def>(hash, eq);
+    ret std::map::new_hashmap::<key, def>(hash, eq);
 }
 
 enum mod_index_entry {

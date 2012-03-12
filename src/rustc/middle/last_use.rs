@@ -58,7 +58,7 @@ fn find_last_uses(c: @crate, def_map: resolve::def_map,
                            visit_stmt: visit_stmt,
                            visit_fn: visit_fn
                            with *visit::default_visitor()});
-    let cx = {last_uses: std::map::mk_hashmap(hash_use_id, {|a, b| a == b}),
+    let cx = {last_uses: std::map::new_hashmap(hash_use_id, {|a, b| a == b}),
               def_map: def_map,
               ref_map: ref_map,
               tcx: tcx,

@@ -31,7 +31,6 @@ export task_opts;
 export task_builder::{};
 
 export default_task_opts;
-export mk_task_builder;
 export get_opts;
 export set_opts;
 export add_wrapper;
@@ -154,11 +153,13 @@ Provides detailed control over the properties and behavior of new tasks.
 // when you try to reuse the builder to spawn a new task. We'll just
 // sidestep that whole issue by making builder's uncopyable and making
 // the run function move them in.
-enum task_builder = {
-    mutable opts: task_opts,
-    mutable gen_body: fn@(+fn~()) -> fn~(),
-    can_not_copy: option<comm::port<()>>
-};
+enum task_builder {
+    task_builder_({
+        mutable opts: task_opts,
+        mutable gen_body: fn@(+fn~()) -> fn~(),
+        can_not_copy: option<comm::port<()>>
+    })
+}
 
 
 /* Task construction */
@@ -178,12 +179,12 @@ fn default_task_opts() -> task_opts {
     }
 }
 
-fn mk_task_builder() -> task_builder {
+fn task_builder() -> task_builder {
     #[doc = "Construct a task_builder"];
 
     let body_identity = fn@(+body: fn~()) -> fn~() { body };
 
-    task_builder({
+    task_builder_({
         mutable opts: default_task_opts(),
         mutable gen_body: body_identity,
         can_not_copy: none
@@ -345,10 +346,10 @@ fn spawn(+f: fn~()) {
     Sets up a new task with its own call stack and schedules it to run
     the provided unique closure.
 
-    This function is equivalent to `run(mk_task_builder(), f)`.
+    This function is equivalent to `run(new_task_builder(), f)`.
     "];
 
-    run(mk_task_builder(), f);
+    run(task_builder(), f);
 }
 
 fn spawn_listener<A:send>(+f: fn~(comm::port<A>)) -> comm::chan<A> {
@@ -374,10 +375,10 @@ fn spawn_listener<A:send>(+f: fn~(comm::port<A>)) -> comm::chan<A> {
         };
         // Likewise, the parent has both a 'po' and 'ch'
 
-    This function is equivalent to `run_listener(mk_task_builder(), f)`.
+    This function is equivalent to `run_listener(new_task_builder(), f)`.
     "];
 
-    run_listener(mk_task_builder(), f)
+    run_listener(task_builder(), f)
 }
 
 fn spawn_sched(mode: sched_mode, +f: fn~()) {
@@ -394,7 +395,7 @@ fn spawn_sched(mode: sched_mode, +f: fn~()) {
     greater than zero.
     "];
 
-    let mut builder = mk_task_builder();
+    let mut builder = task_builder();
     set_opts(builder, {
         sched: some({
             mode: mode,
@@ -419,7 +420,7 @@ fn try<T:send>(+f: fn~() -> T) -> result::t<T,()> {
 
     let po = comm::port();
     let ch = comm::chan(po);
-    let mut builder = mk_task_builder();
+    let mut builder = task_builder();
     unsupervise(builder);
     let result = future_result(builder);
     run(builder) {||
@@ -612,7 +613,7 @@ fn test_spawn_raw_notify() {
 fn test_run_basic() {
     let po = comm::port();
     let ch = comm::chan(po);
-    let builder = mk_task_builder();
+    let builder = task_builder();
     run(builder) {||
         comm::send(ch, ());
     }
@@ -623,7 +624,7 @@ fn test_run_basic() {
 fn test_add_wrapper() {
     let po = comm::port();
     let ch = comm::chan(po);
-    let builder = mk_task_builder();
+    let builder = task_builder();
     add_wrapper(builder) {|body|
         fn~() {
             body();
@@ -637,12 +638,12 @@ fn test_add_wrapper() {
 #[test]
 #[ignore(cfg(target_os = "win32"))]
 fn test_future_result() {
-    let builder = mk_task_builder();
+    let builder = task_builder();
     let result = future_result(builder);
     run(builder) {||}
     assert future::get(result) == success;
 
-    let builder = mk_task_builder();
+    let builder = task_builder();
     let result = future_result(builder);
     unsupervise(builder);
     run(builder) {|| fail }
@@ -653,7 +654,7 @@ fn test_future_result() {
 fn test_future_task() {
     let po = comm::port();
     let ch = comm::chan(po);
-    let builder = mk_task_builder();
+    let builder = task_builder();
     let task1 = future_task(builder);
     run(builder) {|| comm::send(ch, get_task()) }
     assert future::get(task1) == comm::recv(po);
@@ -849,7 +850,7 @@ fn test_avoid_copying_the_body_spawn_listener() {
 #[test]
 fn test_avoid_copying_the_body_run() {
     avoid_copying_the_body {|f|
-        let builder = mk_task_builder();
+        let builder = task_builder();
         run(builder) {||
             f();
         }
@@ -859,7 +860,7 @@ fn test_avoid_copying_the_body_run() {
 #[test]
 fn test_avoid_copying_the_body_run_listener() {
     avoid_copying_the_body {|f|
-        let builder = mk_task_builder();
+        let builder = task_builder();
         run_listener(builder, fn~[move f](_po: comm::port<int>) {
             f();
         });
@@ -878,7 +879,7 @@ fn test_avoid_copying_the_body_try() {
 #[test]
 fn test_avoid_copying_the_body_future_task() {
     avoid_copying_the_body {|f|
-        let builder = mk_task_builder();
+        let builder = task_builder();
         future_task(builder);
         run(builder) {||
             f();
@@ -889,7 +890,7 @@ fn test_avoid_copying_the_body_future_task() {
 #[test]
 fn test_avoid_copying_the_body_unsupervise() {
     avoid_copying_the_body {|f|
-        let builder = mk_task_builder();
+        let builder = task_builder();
         unsupervise(builder);
         run(builder) {||
             f();

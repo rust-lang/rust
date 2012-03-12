@@ -27,7 +27,7 @@ iface rng {
 resource rand_res(c: *rctx) { rustrt::rand_free(c); }
 
 #[doc = "Create a random number generator"]
-fn mk_rng() -> rng {
+fn rng() -> rng {
     impl of rng for @rand_res {
         fn next() -> u32 { ret rustrt::rand_next(**self); }
         fn next_float() -> float {
@@ -70,11 +70,11 @@ mod tests {
 
     #[test]
     fn test() {
-        let r1: rand::rng = rand::mk_rng();
+        let r1: rand::rng = rand::rng();
         log(debug, r1.next());
         log(debug, r1.next());
         {
-            let r2 = rand::mk_rng();
+            let r2 = rand::rng();
             log(debug, r1.next());
             log(debug, r2.next());
             log(debug, r1.next());
@@ -94,7 +94,7 @@ mod tests {
 
     #[test]
     fn genstr() {
-        let r: rand::rng = rand::mk_rng();
+        let r: rand::rng = rand::rng();
         log(debug, r.gen_str(10u));
         log(debug, r.gen_str(10u));
         log(debug, r.gen_str(10u));

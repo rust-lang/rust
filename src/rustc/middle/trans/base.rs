@@ -208,7 +208,7 @@ fn get_simple_extern_fn(cx: block,
                         llmod: ModuleRef,
                         name: str, n_args: int) -> ValueRef {
     let ccx = cx.fcx.ccx;
-    let inputs = vec::init_elt(n_args as uint, ccx.int_type);
+    let inputs = vec::from_elem(n_args as uint, ccx.int_type);
     let output = ccx.int_type;
     let t = T_fn(inputs, output);
     ret get_extern_fn(externs, llmod, name, lib::llvm::CCallConv, t);
@@ -2547,7 +2547,7 @@ fn lval_maybe_callee_to_lval(c: lval_maybe_callee, ty: ty::t) -> lval_result {
         alt c.env { self_env(_, _) | dict_env(_, _) { true } _ { false } };
     if must_bind {
         let n_args = ty::ty_fn_args(ty).len();
-        let args = vec::init_elt(n_args, none);
+        let args = vec::from_elem(n_args, none);
         let space = alloc_ty(c.bcx, ty);
         let bcx = closure::trans_bind_1(space.bcx, ty, c, args, ty,
                                               save_in(space.val));
@@ -4929,7 +4929,7 @@ fn write_abi_version(ccx: crate_ctxt) {
 fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
                output: str, emap: resolve::exp_map, maps: maps)
     -> (ModuleRef, link::link_meta) {
-    let sha = std::sha1::mk_sha1();
+    let sha = std::sha1::sha1();
     let link_meta = link::build_link_meta(sess, *crate, output, sha);
 
     // Append ".rc" to crate name as LLVM module identifier.
@@ -4992,9 +4992,9 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           discrims: ast_util::new_def_id_hash::<ValueRef>(),
           discrim_symbols: new_int_hash::<str>(),
           tydescs: ty::new_ty_hash(),
-          dicts: map::mk_hashmap(hash_dict_id, {|a, b| a == b}),
+          dicts: map::new_hashmap(hash_dict_id, {|a, b| a == b}),
           external: util::common::new_def_hash(),
-          monomorphized: map::mk_hashmap(hash_mono_id, {|a, b| a == b}),
+          monomorphized: map::new_hashmap(hash_mono_id, {|a, b| a == b}),
           module_data: new_str_hash::<ValueRef>(),
           lltypes: ty::new_ty_hash(),
           names: new_namegen(),

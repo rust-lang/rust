@@ -747,7 +747,7 @@ fn encode_metadata(cx: crate_ctxt, crate: @crate) -> [u8] {
 
     let buf = io::mk_mem_buffer();
     let buf_w = io::mem_buffer_writer(buf);
-    let ebml_w = ebml::mk_writer(buf_w);
+    let ebml_w = ebml::writer(buf_w);
 
     encode_hash(ebml_w, cx.link_meta.extras_hash);
 

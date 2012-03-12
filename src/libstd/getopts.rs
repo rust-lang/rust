@@ -171,7 +171,7 @@ to get an error message.
 fn getopts(args: [str], opts: [opt]) -> result unsafe {
     let n_opts = vec::len::<opt>(opts);
     fn f(_x: uint) -> [optval] { ret []; }
-    let vals = vec::to_mut(vec::init_fn(n_opts, f));
+    let vals = vec::to_mut(vec::from_fn(n_opts, f));
     let free: [str] = [];
     let l = vec::len(args);
     let i = 0u;

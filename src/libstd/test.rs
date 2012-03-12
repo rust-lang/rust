@@ -357,7 +357,7 @@ fn run_test(+test: test_desc, monitor_ch: comm::chan<monitor_msg>) {
     task::spawn {||
 
         let testfn = test.fn;
-        let builder = task::mk_task_builder();
+        let builder = task::task_builder();
         let result_future = task::future_result(builder);
         task::unsupervise(builder);
         task::run(builder, testfn);

@@ -5,7 +5,7 @@ import option::{none, some};
 import rand;
 
 fn mkdtemp(prefix: str, suffix: str) -> option<str> {
-    let r = rand::mk_rng();
+    let r = rand::rng();
     let i = 0u;
     while (i < 1000u) {
         let s = prefix + r.gen_str(16u) + suffix;

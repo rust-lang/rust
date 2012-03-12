@@ -409,7 +409,7 @@ fn do_send(h: *libc::c_void) {
     rustrt::rust_uv_async_send(h);
 }
 fn gen_handle_id() -> [u8] {
-    ret rand::mk_rng().gen_bytes(16u);
+    ret rand::rng().gen_bytes(16u);
 }
 fn get_handle_id_from(buf: *u8) -> [u8] unsafe {
     ret vec::unsafe::from_buf(buf, 16u);

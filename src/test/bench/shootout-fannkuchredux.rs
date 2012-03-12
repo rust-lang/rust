@@ -6,9 +6,9 @@ import vec;
 fn fannkuch(n: int) -> int {
     fn perm1init(i: uint) -> int { ret i as int; }
 
-    let perm = vec::to_mut(vec::init_elt(n as uint, 0));
-    let perm1 = vec::to_mut(vec::init_fn(n as uint, perm1init));
-    let count = vec::to_mut(vec::init_elt(n as uint, 0));
+    let perm = vec::to_mut(vec::from_elem(n as uint, 0));
+    let perm1 = vec::to_mut(vec::from_fn(n as uint, perm1init));
+    let count = vec::to_mut(vec::from_elem(n as uint, 0));
     let f = 0;
     let i = 0;
     let k = 0;

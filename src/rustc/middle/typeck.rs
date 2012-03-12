@@ -190,7 +190,7 @@ fn instantiate_path(fcx: @fn_ctxt, pth: @ast::path,
         });
         write_ty_substs(fcx.ccx.tcx, id, tpt.ty, substs);
     } else if ty_param_count > 0u {
-        let vars = vec::init_fn(ty_param_count, {|_i| next_ty_var(fcx)});
+        let vars = vec::from_fn(ty_param_count, {|_i| next_ty_var(fcx)});
         write_ty_substs(fcx.ccx.tcx, id, tpt.ty, vars);
     } else {
         write_ty(fcx.ccx.tcx, id, tpt.ty);
@@ -697,7 +697,7 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span, impl_m: ty::method,
         });
         let impl_fty = ty::mk_fn(tcx, {inputs: auto_modes with impl_m.fty});
         // Add dummy substs for the parameters of the impl method
-        let substs = substs + vec::init_fn(vec::len(*if_m.tps), {|i|
+        let substs = substs + vec::from_fn(vec::len(*if_m.tps), {|i|
             ty::mk_param(tcx, i + impl_tps, {crate: 0, node: 0})
         });
         let if_fty = ty::mk_fn(tcx, if_m.fty);
@@ -1685,7 +1685,7 @@ fn lookup_method(fcx: @fn_ctxt, expr: @ast::expr, node_id: ast::node_id,
                                      parameters given for this method");
 
                 }
-                substs += vec::init_fn(method_n_tps, {|_i|
+                substs += vec::from_fn(method_n_tps, {|_i|
                     ty::mk_var(tcx, next_ty_var_id(fcx))
                 });
             } else {
@@ -1957,7 +1957,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
             // check against
             let dummy = {mode: ast::expl(ast::by_ref),
                          ty: ty::mk_bot(fcx.ccx.tcx)};
-            arg_tys = vec::init_elt(supplied_arg_count, dummy);
+            arg_tys = vec::from_elem(supplied_arg_count, dummy);
         }
 
         // Check the arguments.
@@ -2682,7 +2682,7 @@ fn next_ty_var(fcx: @fn_ctxt) -> ty::t {
 
 fn bind_params(fcx: @fn_ctxt, tp: ty::t, count: uint)
     -> {vars: [ty::t], ty: ty::t} {
-    let vars = vec::init_fn(count, {|_i| next_ty_var(fcx)});
+    let vars = vec::from_fn(count, {|_i| next_ty_var(fcx)});
     {vars: vars, ty: ty::substitute_type_params(fcx.ccx.tcx, vars, tp)}
 }
 

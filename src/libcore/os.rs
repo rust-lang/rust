@@ -64,7 +64,7 @@ fn as_c_charp<T>(s: str, f: fn(*c_char) -> T) -> T {
 
 fn fill_charp_buf(f: fn(*mutable c_char, size_t) -> bool)
     -> option<str> {
-    let buf = vec::to_mut(vec::init_elt(tmpbuf_sz, 0u8 as c_char));
+    let buf = vec::to_mut(vec::from_elem(tmpbuf_sz, 0u8 as c_char));
     vec::as_mut_buf(buf) { |b|
         if f(b, tmpbuf_sz as size_t) {
             some(str::from_cstr(b as str::sbuf))
@@ -89,7 +89,7 @@ mod win32 {
         let mut res = none;
         let mut done = false;
         while !done {
-            let buf = vec::to_mut(vec::init_elt(n, 0u16));
+            let buf = vec::to_mut(vec::from_elem(n, 0u16));
             vec::as_mut_buf(buf) {|b|
                 let k : dword = f(b, tmpbuf_sz as dword);
                 if k == (0 as dword) {
@@ -588,7 +588,7 @@ mod tests {
 
     fn make_rand_name() -> str {
         import rand;
-        let rng: rand::rng = rand::mk_rng();
+        let rng: rand::rng = rand::rng();
         let n = "TEST" + rng.gen_str(10u);
         assert option::is_none(getenv(n));
         n
