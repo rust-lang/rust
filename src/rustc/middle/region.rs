@@ -53,11 +53,11 @@ type ctxt = {
     in_alt: bool
 };
 
-fn region_to_scope(_region_map: @region_map, region: ty::region)
+fn region_to_scope(region_map: @region_map, region: ty::region)
         -> ast::node_id {
     ret alt region {
         ty::re_caller(def_id) { def_id.node }
-        ty::re_named(_) { fail "TODO: named regions" }
+        ty::re_named(def_id) { region_map.region_name_to_fn.get(def_id) }
         ty::re_block(node_id) { node_id }
     };
 }
