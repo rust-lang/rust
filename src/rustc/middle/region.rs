@@ -36,7 +36,7 @@ type region_map = {
     local_blocks: hashmap<ast::node_id,ast::node_id>,
     /* Mapping from a region name to its function. */
     region_name_to_fn: hashmap<ast::def_id,ast::node_id>,
-    /* Mapping from an AST type node to the region that `&` resolves to in it. */
+    /* Mapping from an AST type node to the region that `&` resolves to. */
     ast_type_to_inferred_region: hashmap<ast::node_id,ty::region>
 };
 
