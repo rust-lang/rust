@@ -1925,6 +1925,10 @@ mod unify {
             }
         }
 
+        if sub == ty::re_inferred || super == ty::re_inferred {
+            ret if sub == super { some(super) } else { none };
+        }
+
         // Outer regions are subtypes of inner regions. (This is somewhat
         // surprising!)
         let superscope = region::region_to_scope(cx.tcx.region_map, super);

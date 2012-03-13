@@ -244,8 +244,8 @@ fn resolve_expr(expr: @ast::expr, cx: ctxt, visitor: visit::vt<ctxt>) {
 fn resolve_item(item: @ast::item, cx: ctxt, visitor: visit::vt<ctxt>) {
     // Items create a new outer block scope as far as we're concerned.
     let parent = alt item.node {
-        ast::item_fn(_, _, _)   { pa_fn_item(item.id) }
-        _                       { pa_item(item.id)    }
+        ast::item_fn(_, _, _) | ast::item_enum(_, _) { pa_fn_item(item.id) }
+        _ { pa_item(item.id) }
     };
     let new_cx: ctxt = {bindings: @list::nil,
                         parent: parent,
