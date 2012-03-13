@@ -108,7 +108,7 @@ public:
 
 template<typename T>
 inline size_t
-alignof() {
+rust_alignof() {
 #ifdef _MSC_VER
     return __alignof(T);
 #else
@@ -118,7 +118,7 @@ alignof() {
 
 template<>
 inline size_t
-alignof<double>() {
+rust_alignof<double>() {
     return 4;
 }
 
@@ -649,7 +649,7 @@ public:
     }
 
     template<typename T>
-    void walk_number1()  { sa.set(sizeof(T), alignof<T>()); }
+    void walk_number1()  { sa.set(sizeof(T), rust_alignof<T>()); }
 
     void compute_tag_size(tag_info &tinfo);
 
@@ -851,7 +851,7 @@ namespace shape {
     }
 
 #define DATA_SIMPLE(ty, call) \
-    ALIGN_TO(alignof<ty>()); \
+    ALIGN_TO(rust_alignof<ty>()); \
     U end_dp = dp + sizeof(ty); \
     static_cast<T *>(this)->call; \
     dp = end_dp;
@@ -899,21 +899,21 @@ public:
     void walk_uniq1() { DATA_SIMPLE(void *, walk_uniq2()); }
 
     void walk_fn1(char code) {
-        ALIGN_TO(alignof<void *>());
+        ALIGN_TO(rust_alignof<void *>());
         U next_dp = dp + sizeof(void *) * 2;
         static_cast<T *>(this)->walk_fn2(code);
         dp = next_dp;
     }
 
     void walk_iface1() {
-        ALIGN_TO(alignof<void *>());
+        ALIGN_TO(rust_alignof<void *>());
         U next_dp = dp + sizeof(void *);
         static_cast<T *>(this)->walk_iface2();
         dp = next_dp;
     }
 
     void walk_tydesc1(char kind) {
-        ALIGN_TO(alignof<void *>());
+        ALIGN_TO(rust_alignof<void *>());
         U next_dp = dp + sizeof(void *);
         static_cast<T *>(this)->walk_tydesc2(kind);
         dp = next_dp;
@@ -938,7 +938,7 @@ public:
     template<typename WN>
     void walk_number1() { 
         //DATA_SIMPLE(W, walk_number2<W>());
-        ALIGN_TO(alignof<WN>());
+        ALIGN_TO(rust_alignof<WN>());
         U end_dp = dp + sizeof(WN);
         T* t = static_cast<T *>(this);
         t->template walk_number2<WN>();
@@ -1003,7 +1003,7 @@ data<T,U>::walk_tag1(tag_info &tinfo) {
     size_of::compute_tag_size(*this, tinfo);
 
     if (tinfo.variant_count > 1)
-        ALIGN_TO(alignof<tag_align_t>());
+        ALIGN_TO(rust_alignof<tag_align_t>());
 
     U end_dp = dp + tinfo.tag_sa.size;
 
