@@ -15,9 +15,10 @@ import std::map::hashmap;
 
 /* Represents the type of the most immediate parent node. */
 enum parent {
-    pa_item(ast::node_id),
+    pa_fn_item(ast::node_id),
     pa_block(ast::node_id),
     pa_nested_fn(ast::node_id),
+    pa_item(ast::node_id),
     pa_crate
 }
 
@@ -66,6 +67,7 @@ fn region_to_scope(region_map: @region_map, region: ty::region)
         ty::re_caller(def_id) { def_id.node }
         ty::re_named(def_id) { region_map.region_name_to_fn.get(def_id) }
         ty::re_block(node_id) { node_id }
+        ty::re_inferred { fail "unresolved region in region_to_scope" }
     };
 }
 
@@ -90,10 +92,11 @@ fn get_inferred_region(cx: ctxt, sp: syntax::codemap::span) -> ty::region {
     // TODO: What do we do if we're in an alt?
 
     ret alt cx.parent {
-        pa_item(item_id) | pa_nested_fn(item_id) {
+        pa_fn_item(item_id) | pa_nested_fn(item_id) {
             ty::re_caller({crate: ast::local_crate, node: item_id})
         }
         pa_block(block_id) { ty::re_block(block_id) }
+        pa_item(_) { ty::re_inferred }
         pa_crate { cx.sess.span_bug(sp, "inferred region at crate level?!"); }
     }
 }
@@ -121,9 +124,15 @@ fn resolve_ty(ty: @ast::ty, cx: ctxt, visitor: visit::vt<ctxt>) {
                             region = ty::re_named(def_id);
 
                             alt cx.parent {
-                                pa_item(fn_id) | pa_nested_fn(fn_id) {
+                                pa_fn_item(fn_id) | pa_nested_fn(fn_id) {
                                     let rf = cx.region_map.region_name_to_fn;
                                     rf.insert(def_id, fn_id);
+                                }
+                                pa_item(_) {
+                                    cx.sess.span_err(ty.span,
+                                                     "named region not " +
+                                                     "allowed in this " +
+                                                     "context");
                                 }
                                 pa_block(_) {
                                     cx.sess.span_err(ty.span,
@@ -152,7 +161,10 @@ fn resolve_ty(ty: @ast::ty, cx: ctxt, visitor: visit::vt<ctxt>) {
 
 fn record_parent(cx: ctxt, child_id: ast::node_id) {
     alt cx.parent {
-        pa_item(parent_id) | pa_block(parent_id) | pa_nested_fn(parent_id) {
+        pa_fn_item(parent_id) |
+        pa_item(parent_id) |
+        pa_block(parent_id) |
+        pa_nested_fn(parent_id) {
             cx.region_map.parents.insert(child_id, parent_id);
         }
         pa_crate { /* no-op */ }
@@ -231,8 +243,12 @@ fn resolve_expr(expr: @ast::expr, cx: ctxt, visitor: visit::vt<ctxt>) {
 
 fn resolve_item(item: @ast::item, cx: ctxt, visitor: visit::vt<ctxt>) {
     // Items create a new outer block scope as far as we're concerned.
+    let parent = alt item.node {
+        ast::item_fn(_, _, _)   { pa_fn_item(item.id) }
+        _                       { pa_item(item.id)    }
+    };
     let new_cx: ctxt = {bindings: @list::nil,
-                        parent: pa_item(item.id),
+                        parent: parent,
                         in_alt: false
                         with cx};
     visit::visit_item(item, new_cx, visitor);

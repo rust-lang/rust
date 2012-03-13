@@ -35,7 +35,7 @@ export field;
 export field_idx;
 export get_field;
 export get_fields;
-export fm_general;
+export fm_general, fm_rptr;
 export get_element_type;
 export is_binopable;
 export is_pred_ty;
@@ -88,7 +88,7 @@ export ty_uint, mk_uint, mk_mach_uint;
 export ty_uniq, mk_uniq, mk_imm_uniq, type_is_unique_box;
 export ty_var, mk_var;
 export ty_self, mk_self;
-export region, re_named, re_caller, re_block;
+export region, re_named, re_caller, re_block, re_inferred;
 export get, type_has_params, type_has_vars, type_has_rptrs, type_id;
 export same_type;
 export ty_var_id;
@@ -234,7 +234,8 @@ type fn_ty = {proto: ast::proto,
 enum region {
     re_named(def_id),
     re_caller(def_id),
-    re_block(node_id)
+    re_block(node_id),
+    re_inferred         /* currently unresolved (for typedefs) */
 }
 
 // NB: If you change this, you'll probably want to change the corresponding
@@ -571,6 +572,7 @@ fn walk_ty(cx: ctxt, ty: t, f: fn(t)) {
 enum fold_mode {
     fm_var(fn@(int) -> t),
     fm_param(fn@(uint, def_id) -> t),
+    fm_rptr(fn@(region) -> region),
     fm_general(fn@(t) -> t),
 }
 
@@ -581,6 +583,7 @@ fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
     alt fld {
       fm_var(_) { if !tb.has_vars { ret ty; } }
       fm_param(_) { if !tb.has_params { ret ty; } }
+      fm_rptr(_) { if !tb.has_rptrs { ret ty; } }
       fm_general(_) {/* no fast path */ }
     }
 
@@ -596,9 +599,6 @@ fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
       }
       ty_ptr(tm) {
         ty = mk_ptr(cx, {ty: fold_ty(cx, fld, tm.ty), mutbl: tm.mutbl});
-      }
-      ty_rptr(r, tm) {
-        ty = mk_rptr(cx, r, {ty: fold_ty(cx, fld, tm.ty), mutbl: tm.mutbl});
       }
       ty_vec(tm) {
         ty = mk_vec(cx, {ty: fold_ty(cx, fld, tm.ty), mutbl: tm.mutbl});
@@ -646,6 +646,11 @@ fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
       }
       ty_param(id, did) {
         alt fld { fm_param(folder) { ty = folder(id, did); } _ {} }
+      }
+      ty_rptr(r, tm) {
+        let region = alt fld { fm_rptr(folder) { folder(r) } _ { r } };
+        ty = mk_rptr(cx, region,
+                     {ty: fold_ty(cx, fld, tm.ty), mutbl: tm.mutbl});
       }
       ty_constr(subty, cs) {
           ty = mk_constr(cx, fold_ty(cx, fld, subty), cs);
@@ -1161,6 +1166,7 @@ fn hash_type_structure(st: sty) -> uint {
           re_named(_)   { 1u }
           re_caller(_)  { 2u }
           re_block(_)   { 3u }
+          re_inferred   { 4u }
         }
     }
     alt st {

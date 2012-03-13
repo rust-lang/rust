@@ -247,10 +247,19 @@ enum mode { m_collect, m_check, m_check_tyvar(@fn_ctxt), }
 // internal notion of a type. `getter` is a function that returns the type
 // corresponding to a definition ID:
 fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
-    fn getter(tcx: ty::ctxt, _use_site: ast::node_id, mode: mode,
+    fn subst_inferred_regions(tcx: ty::ctxt, use_site: ast::node_id,
+                              ty: ty::t) -> ty::t {
+        ret ty::fold_ty(tcx, ty::fm_rptr({|r|
+            if r == ty::re_inferred {
+                tcx.region_map.ast_type_to_inferred_region.get(use_site)
+            } else {
+                r
+            }
+        }), ty);
+    }
+    fn getter(tcx: ty::ctxt, use_site: ast::node_id, mode: mode,
               id: ast::def_id) -> ty::ty_param_bounds_and_ty {
-        // FIXME (pcwalton): Doesn't work with region inference.
-        alt mode {
+        let tpt = alt mode {
           m_check | m_check_tyvar(_) { ty::lookup_item_type(tcx, id) }
           m_collect {
             if id.crate != ast::local_crate { csearch::get_type(tcx, id) }
@@ -268,7 +277,13 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
                 }
             }
           }
+        };
+
+        if ty::type_has_rptrs(tpt.ty) {
+            ret {bounds: tpt.bounds,
+                 ty: subst_inferred_regions(tcx, use_site, tpt.ty)};
         }
+        ret tpt;
     }
     fn ast_mt_to_mt(tcx: ty::ctxt, use_site: ast::node_id, mode: mode,
                     mt: ast::mt) -> ty::mt {
@@ -327,7 +342,11 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
           ast::ty_rptr(region, mt) {
             let region = alt region.node {
                 ast::re_inferred | ast::re_self {
-                    tcx.region_map.ast_type_to_inferred_region.get(ast_ty.id)
+                    let attir = tcx.region_map.ast_type_to_inferred_region;
+                    alt attir.find(ast_ty.id) {
+                        some(resolved_region) { resolved_region }
+                        none { ty::re_inferred }
+                    }
                 }
                 ast::re_named(_) {
                     tcx.region_map.ast_type_to_region.get(region.id)
