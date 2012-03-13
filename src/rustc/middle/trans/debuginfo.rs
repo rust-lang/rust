@@ -268,8 +268,10 @@ fn create_block(cx: block) -> @metadata<block_md> {
     ret mdval;
 }
 
-fn size_and_align_of<T>() -> (int, int) {
-    (sys::size_of::<T>() as int, sys::align_of::<T>() as int)
+fn size_and_align_of(cx: crate_ctxt, t: ty::t) -> (int, int) {
+    let llty = type_of::type_of(cx, t);
+    (shape::llsize_of_real(cx, llty) as int,
+     shape::llalign_of_real(cx, llty) as int)
 }
 
 fn create_basic_type(cx: crate_ctxt, t: ty::t, ty: ast::prim_ty, span: span)
@@ -282,33 +284,34 @@ fn create_basic_type(cx: crate_ctxt, t: ty::t, ty: ast::prim_ty, span: span)
       option::none {}
     }
 
-    let (name, (size, align), encoding) = alt check ty {
-      ast::ty_bool {("bool", size_and_align_of::<bool>(), DW_ATE_boolean)}
+    let (name, encoding) = alt check ty {
+      ast::ty_bool {("bool", DW_ATE_boolean)}
       ast::ty_int(m) { alt m {
-        ast::ty_char {("char", size_and_align_of::<char>(), DW_ATE_unsigned)}
-        ast::ty_i {("int", size_and_align_of::<int>(), DW_ATE_signed)}
-        ast::ty_i8 {("i8", size_and_align_of::<i8>(), DW_ATE_signed_char)}
-        ast::ty_i16 {("i16", size_and_align_of::<i16>(), DW_ATE_signed)}
-        ast::ty_i32 {("i32", size_and_align_of::<i32>(), DW_ATE_signed)}
-        ast::ty_i64 {("i64", size_and_align_of::<i64>(), DW_ATE_signed)}
+        ast::ty_char {("char", DW_ATE_unsigned)}
+        ast::ty_i {("int", DW_ATE_signed)}
+        ast::ty_i8 {("i8", DW_ATE_signed_char)}
+        ast::ty_i16 {("i16", DW_ATE_signed)}
+        ast::ty_i32 {("i32", DW_ATE_signed)}
+        ast::ty_i64 {("i64", DW_ATE_signed)}
       }}
       ast::ty_uint(m) { alt m {
-        ast::ty_u {("uint", size_and_align_of::<uint>(), DW_ATE_unsigned)}
-        ast::ty_u8 {("u8", size_and_align_of::<u8>(), DW_ATE_unsigned_char)}
-        ast::ty_u16 {("u16", size_and_align_of::<u16>(), DW_ATE_unsigned)}
-        ast::ty_u32 {("u32", size_and_align_of::<u32>(), DW_ATE_unsigned)}
-        ast::ty_u64 {("u64", size_and_align_of::<u64>(), DW_ATE_unsigned)}
+        ast::ty_u {("uint", DW_ATE_unsigned)}
+        ast::ty_u8 {("u8", DW_ATE_unsigned_char)}
+        ast::ty_u16 {("u16", DW_ATE_unsigned)}
+        ast::ty_u32 {("u32", DW_ATE_unsigned)}
+        ast::ty_u64 {("u64", DW_ATE_unsigned)}
       }}
       ast::ty_float(m) { alt m {
-        ast::ty_f {("float", size_and_align_of::<float>(), DW_ATE_float)}
-        ast::ty_f32 {("f32", size_and_align_of::<f32>(), DW_ATE_float)}
-        ast::ty_f64 {("f64", size_and_align_of::<f64>(), DW_ATE_float)}
+        ast::ty_f {("float", DW_ATE_float)}
+        ast::ty_f32 {("f32", DW_ATE_float)}
+        ast::ty_f64 {("f64", DW_ATE_float)}
       }}
     };
 
     let fname = filename_from_span(cx, span);
     let file_node = create_file(cx, fname);
     let cu_node = create_compile_unit(cx, fname);
+    let (size, align) = size_and_align_of(cx, t);
     let lldata = [lltag(tg),
                   cu_node.node,
                   llstr(name),
@@ -336,7 +339,7 @@ fn create_pointer_type(cx: crate_ctxt, t: ty::t, span: span,
       option::some(md) { ret md; }
       option::none {}
     }*/
-    let (size, align) = size_and_align_of::<libc::intptr_t>();
+    let (size, align) = size_and_align_of(cx, t);
     let fname = filename_from_span(cx, span);
     let file_node = create_file(cx, fname);
     //let cu_node = create_compile_unit(cx, fname);
@@ -410,7 +413,7 @@ fn create_record(cx: crate_ctxt, t: ty::t, fields: [ast::ty_field],
     for field in fields {
         let field_t = ty::get_field(t, field.node.ident).mt.ty;
         let ty_md = create_ty(cx, field_t, field.node.mt.ty);
-        let (size, align) = member_size_and_align(cx.tcx, field.node.mt.ty);
+        let (size, align) = size_and_align_of(cx, field_t);
         add_member(scx, field.node.ident,
                    line_from_span(cx.sess.codemap, field.span) as int,
                    size as int, align as int, ty_md.node);
@@ -492,7 +495,7 @@ fn create_vec(cx: crate_ctxt, vec_t: ty::t, elem_t: ty::t,
     add_member(scx, "alloc", 0, sys::size_of::<libc::size_t>() as int,
                sys::align_of::<libc::size_t>() as int, size_t_type.node);
     let subrange = llmdnode([lltag(SubrangeTag), lli64(0), lli64(0)]);
-    let (arr_size, arr_align) = member_size_and_align(cx.tcx, elem_ty);
+    let (arr_size, arr_align) = size_and_align_of(cx, elem_t);
     let data_ptr = create_composite_type(ArrayTypeTag, "", file_node.node, 0,
                                          arr_size, arr_align, 0,
                                          option::some(elem_ty_md.node),
@@ -501,55 +504,6 @@ fn create_vec(cx: crate_ctxt, vec_t: ty::t, elem_t: ty::t,
                sys::align_of::<u8>() as int, data_ptr);
     let llnode = finish_structure(scx);
     ret @{node: llnode, data: {hash: ty::type_id(vec_t)}};
-}
-
-fn member_size_and_align(tcx: ty::ctxt, ty: @ast::ty) -> (int, int) {
-    alt ty.node {
-      ast::ty_path(_, id) {
-        alt check tcx.def_map.get(id) {
-          ast::def_prim_ty(nty) {
-            alt check nty {
-              ast::ty_bool { size_and_align_of::<bool>() }
-              ast::ty_int(m) { alt m {
-                ast::ty_char { size_and_align_of::<char>() }
-                ast::ty_i { size_and_align_of::<int>() }
-                ast::ty_i8 { size_and_align_of::<i8>() }
-                ast::ty_i16 { size_and_align_of::<i16>() }
-                ast::ty_i32 { size_and_align_of::<i32>() }
-                ast::ty_i64 { size_and_align_of::<i64>() }
-              }}
-              ast::ty_uint(m) { alt m {
-                ast::ty_u { size_and_align_of::<uint>() }
-                ast::ty_u8 { size_and_align_of::<i8>() }
-                ast::ty_u16 { size_and_align_of::<u16>() }
-                ast::ty_u32 { size_and_align_of::<u32>() }
-                ast::ty_u64 { size_and_align_of::<u64>() }
-              }}
-              ast::ty_float(m) { alt m {
-                ast::ty_f { size_and_align_of::<float>() }
-                ast::ty_f32 { size_and_align_of::<f32>() }
-                ast::ty_f64 { size_and_align_of::<f64>() }
-              }}
-            }
-          }
-        }
-      }
-      ast::ty_box(_) | ast::ty_uniq(_) {
-        size_and_align_of::<libc::uintptr_t>()
-      }
-      ast::ty_rec(fields) {
-        let total_size = 0;
-        for field in fields {
-            let (size, _) = member_size_and_align(tcx, field.node.mt.ty);
-            total_size += size;
-        }
-        (total_size, 64) //XXX different align for other arches?
-      }
-      ast::ty_vec(_) {
-        size_and_align_of::<libc::uintptr_t>()
-      }
-      _ { fail "member_size_and_align: can't handle this type"; }
-    }
 }
 
 fn create_ty(_cx: crate_ctxt, _t: ty::t, _ty: @ast::ty)
