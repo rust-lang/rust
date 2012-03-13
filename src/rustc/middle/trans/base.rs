@@ -3141,8 +3141,8 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
       ast::expr_if(cond, thn, els) | ast::expr_if_check(cond, thn, els) {
         ret trans_if(bcx, cond, thn, els, dest);
       }
-      ast::expr_alt(expr, arms, _) {
-        ret alt::trans_alt(bcx, expr, arms, dest);
+      ast::expr_alt(expr, arms, mode) {
+        ret alt::trans_alt(bcx, expr, arms, mode, dest);
       }
       ast::expr_block(blk) {
         ret with_scope(bcx, "block-expr body") {|bcx|

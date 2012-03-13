@@ -354,10 +354,10 @@ fn pick_col(m: match) -> uint {
     ret best_col;
 }
 
-fn compile_submatch(bcx: block, m: match, vals: [ValueRef], f: mk_fail,
-                    &exits: [exit_node]) {
+fn compile_submatch(bcx: block, m: match, vals: [ValueRef],
+                    chk: option<mk_fail>, &exits: [exit_node]) {
     let bcx = bcx, tcx = bcx.tcx(), dm = tcx.def_map;
-    if m.len() == 0u { Br(bcx, f()); ret; }
+    if m.len() == 0u { Br(bcx, option::get(chk)()); ret; }
     if m[0].pats.len() == 0u {
         let data = m[0].data;
         alt data.guard {
@@ -372,7 +372,7 @@ fn compile_submatch(bcx: block, m: match, vals: [ValueRef], f: mk_fail,
                 trans_temp_expr(bcx, e)
             };
             bcx = with_cond(guard_cx, Not(guard_cx, val)) {|bcx|
-                compile_submatch(bcx, vec::tail(m), vals, f, exits);
+                compile_submatch(bcx, vec::tail(m), vals, chk, exits);
                 bcx
             };
           }
@@ -389,13 +389,10 @@ fn compile_submatch(bcx: block, m: match, vals: [ValueRef], f: mk_fail,
     let val = vals[col];
     let m = if has_nested_bindings(m, col) {
                 expand_nested_bindings(m, col, val)
-            } else {
-                m
-            };
+            } else { m };
 
-    let vals_left =
-        vec::slice(vals, 0u, col) +
-            vec::slice(vals, col + 1u, vals.len());
+    let vals_left = vec::slice(vals, 0u, col) +
+        vec::slice(vals, col + 1u, vals.len());
     let ccx = bcx.fcx.ccx;
     let pat_id = 0;
     for br: match_branch in m {
@@ -417,7 +414,7 @@ fn compile_submatch(bcx: block, m: match, vals: [ValueRef], f: mk_fail,
             bcx = r.bcx;
         }
         compile_submatch(bcx, enter_rec(dm, m, col, rec_fields, val),
-                         rec_vals + vals_left, f, exits);
+                         rec_vals + vals_left, chk, exits);
         ret;
     }
 
@@ -435,7 +432,7 @@ fn compile_submatch(bcx: block, m: match, vals: [ValueRef], f: mk_fail,
             i += 1u;
         }
         compile_submatch(bcx, enter_tup(dm, m, col, val, n_tup_elts),
-                         tup_vals + vals_left, f, exits);
+                         tup_vals + vals_left, chk, exits);
         ret;
     }
 
@@ -444,14 +441,14 @@ fn compile_submatch(bcx: block, m: match, vals: [ValueRef], f: mk_fail,
         let box = Load(bcx, val);
         let unboxed = GEPi(bcx, box, [0, abi::box_field_body]);
         compile_submatch(bcx, enter_box(dm, m, col, val), [unboxed]
-                         + vals_left, f, exits);
+                         + vals_left, chk, exits);
         ret;
     }
 
     if any_uniq_pat(m, col) {
         let unboxed = Load(bcx, val);
         compile_submatch(bcx, enter_uniq(dm, m, col, val),
-                         [unboxed] + vals_left, f, exits);
+                         [unboxed] + vals_left, chk, exits);
         ret;
     }
 
@@ -499,42 +496,48 @@ fn compile_submatch(bcx: block, m: match, vals: [ValueRef], f: mk_fail,
         Switch(bcx, test_val, else_cx.llbb, opts.len())
     } else { C_int(ccx, 0) }; // Placeholder for when not using a switch
 
-     // Compile subtrees for each option
-    for opt: opt in opts {
-        let opt_cx = sub_block(bcx, "match_case");
-        alt kind {
-          single { Br(bcx, opt_cx.llbb); }
-          switch {
-            let res = trans_opt(bcx, opt);
-            alt check res {
-              single_result(r) {
-                llvm::LLVMAddCase(sw, r.val, opt_cx.llbb);
-                bcx = r.bcx;
-              }
-            }
-          }
-          compare {
-            let t = node_id_type(bcx, pat_id);
-            let {bcx: after_cx, val: matches} =
-                with_scope_result(bcx, "compare_scope") {|bcx|
-                alt trans_opt(bcx, opt) {
-                  single_result({bcx, val}) {
-                    trans_compare(bcx, ast::eq, test_val, t, val, t)
-                  }
-                  range_result({val: vbegin, _}, {bcx, val: vend}) {
-                    let {bcx, val: ge} = trans_compare(bcx, ast::ge, test_val,
-                                                       t, vbegin, t);
-                    let {bcx, val: le} = trans_compare(bcx, ast::le, test_val,
-                                                       t, vend, t);
-                    {bcx: bcx, val: And(bcx, ge, le)}
+    let defaults = enter_default(dm, m, col, val);
+    let exhaustive = option::is_none(chk) && defaults.len() == 0u;
+    let len = opts.len(), i = 0u;
+    // Compile subtrees for each option
+    for opt in opts {
+        i += 1u;
+        let opt_cx = else_cx;
+        if !exhaustive || i < len {
+            opt_cx = sub_block(bcx, "match_case");
+            alt kind {
+              single { Br(bcx, opt_cx.llbb); }
+              switch {
+                alt check trans_opt(bcx, opt) {
+                  single_result(r) {
+                    llvm::LLVMAddCase(sw, r.val, opt_cx.llbb);
+                    bcx = r.bcx;
                   }
                 }
-            };
-            bcx = sub_block(after_cx, "compare_next");
-            CondBr(after_cx, matches, opt_cx.llbb, bcx.llbb);
-          }
-          _ { }
-        }
+              }
+              compare {
+                let t = node_id_type(bcx, pat_id);
+                let {bcx: after_cx, val: matches} =
+                    with_scope_result(bcx, "compare_scope") {|bcx|
+                    alt trans_opt(bcx, opt) {
+                      single_result({bcx, val}) {
+                        trans_compare(bcx, ast::eq, test_val, t, val, t)
+                      }
+                      range_result({val: vbegin, _}, {bcx, val: vend}) {
+                        let {bcx, val: ge} = trans_compare(
+                            bcx, ast::ge, test_val, t, vbegin, t);
+                        let {bcx, val: le} = trans_compare(
+                            bcx, ast::le, test_val, t, vend, t);
+                        {bcx: bcx, val: And(bcx, ge, le)}
+                      }
+                    }
+                };
+                bcx = sub_block(after_cx, "compare_next");
+                CondBr(after_cx, matches, opt_cx.llbb, bcx.llbb);
+              }
+              _ { }
+            }
+        } else if kind == compare { Br(bcx, else_cx.llbb); }
         let size = 0u;
         let unpacked = [];
         alt opt {
@@ -547,14 +550,15 @@ fn compile_submatch(bcx: block, m: match, vals: [ValueRef], f: mk_fail,
           lit(_) | range(_, _) { }
         }
         compile_submatch(opt_cx, enter_opt(tcx, m, opt, col, size, val),
-                         unpacked + vals_left, f, exits);
+                         unpacked + vals_left, chk, exits);
     }
 
-    // Compile the fall-through case
-    if kind == compare { Br(bcx, else_cx.llbb); }
-    if kind != single {
-        compile_submatch(else_cx, enter_default(dm, m, col, val), vals_left,
-                         f, exits);
+    // Compile the fall-through case, if any
+    if !exhaustive {
+        if kind == compare { Br(bcx, else_cx.llbb); }
+        if kind != single {
+            compile_submatch(else_cx, defaults, vals_left, chk, exits);
+        }
     }
 }
 
@@ -605,12 +609,14 @@ fn make_phi_bindings(bcx: block, map: [exit_node],
 }
 
 fn trans_alt(bcx: block, expr: @ast::expr, arms: [ast::arm],
-             dest: dest) -> block {
-    with_scope(bcx, "alt") {|bcx| trans_alt_inner(bcx, expr, arms, dest)}
+             mode: ast::alt_mode, dest: dest) -> block {
+    with_scope(bcx, "alt") {|bcx|
+        trans_alt_inner(bcx, expr, arms, mode, dest)
+    }
 }
 
 fn trans_alt_inner(scope_cx: block, expr: @ast::expr, arms: [ast::arm],
-                   dest: dest) -> block {
+                   mode: ast::alt_mode, dest: dest) -> block {
     let bcx = scope_cx, tcx = bcx.tcx();
     let bodies = [], match = [];
 
@@ -630,22 +636,26 @@ fn trans_alt_inner(scope_cx: block, expr: @ast::expr, arms: [ast::arm],
         }
     }
 
-    // Cached fail-on-fallthrough block
-    let fail_cx = @mutable none;
-    fn mk_fail(bcx: block, sp: span,
-               done: @mutable option<BasicBlockRef>) -> BasicBlockRef {
-        alt *done { some(bb) { ret bb; } _ { } }
-        let fail_cx = sub_block(bcx, "case_fallthrough");
-        trans_fail(fail_cx, some(sp), "non-exhaustive match failure");;
-        *done = some(fail_cx.llbb);
-        ret fail_cx.llbb;
-    }
-
+    let mk_fail = alt mode {
+      ast::alt_check {
+        // Cached fail-on-fallthrough block
+        let fail_cx = @mutable none;
+        fn mk_fail(bcx: block, sp: span,
+                   done: @mutable option<BasicBlockRef>) -> BasicBlockRef {
+            alt *done { some(bb) { ret bb; } _ { } }
+            let fail_cx = sub_block(bcx, "case_fallthrough");
+            trans_fail(fail_cx, some(sp), "non-exhaustive match failure");;
+            *done = some(fail_cx.llbb);
+            ret fail_cx.llbb;
+        }
+        some(bind mk_fail(scope_cx, expr.span, fail_cx))
+      }
+      ast::alt_exhaustive { none }
+    };
     let exit_map = [];
     let t = node_id_type(bcx, expr.id);
     let {bcx, val: spilled} = spill_if_immediate(bcx, val, t);
-    compile_submatch(bcx, match, [spilled],
-                     bind mk_fail(scope_cx, expr.span, fail_cx), exit_map);
+    compile_submatch(bcx, match, [spilled], mk_fail, exit_map);
 
     let arm_cxs = [], arm_dests = [], i = 0u;
     for a in arms {
