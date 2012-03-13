@@ -104,13 +104,13 @@ fn resolve_ty(ty: @ast::ty, cx: ctxt, visitor: visit::vt<ctxt>) {
 
     alt ty.node {
         ast::ty_rptr({id: region_id, node: node}, _) {
-            let region;
             alt node {
-                ast::re_inferred { region = inferred_region; }
+                ast::re_inferred | ast::re_self { /* no-op */ }
                 ast::re_named(ident) {
                     // If at item scope, introduce or reuse a binding. If at
                     // block scope, require that the binding be introduced.
                     let bindings = cx.bindings;
+                    let region;
                     alt list::find(*bindings, {|b| ident == b.name}) {
                         some(binding) { region = ty::re_named(binding.id); }
                         none {
@@ -138,34 +138,11 @@ fn resolve_ty(ty: @ast::ty, cx: ctxt, visitor: visit::vt<ctxt>) {
                             }
                         }
                     }
+
+                    let ast_type_to_region = cx.region_map.ast_type_to_region;
+                    ast_type_to_region.insert(region_id, region);
                 }
-
-                ast::re_self {
-                    // For blocks, "self" means "the current block".
-                    //
-                    // TODO: What do we do in an alt?
-                    //
-                    // FIXME: Doesn't work in type items.
-
-                    alt cx.parent {
-                        pa_item(item_id) | pa_nested_fn(item_id) {
-                            let def_id = {crate: ast::local_crate,
-                                          node: item_id};
-                            region = ty::re_caller(def_id);
-                        }
-                        pa_block(block_id) {
-                            region = ty::re_block(block_id);
-                        }
-                        pa_crate {
-                            cx.sess.span_bug(ty.span,
-                                             "region type outside item?!");
-                        }
-                    }
-                }
-
             }
-
-            cx.region_map.ast_type_to_region.insert(region_id, region);
         }
         _ { /* nothing to do */ }
     }
