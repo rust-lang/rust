@@ -7,9 +7,9 @@ export c_double;
 export c_float_targ_consts;
 export c_double_targ_consts;
 
-import ctypes::c_int;
-import ctypes::c_float;
-import ctypes::c_double;
+import libc::c_int;
+import libc::c_float;
+import libc::c_double;
 
 // function names are almost identical to C's libmath, a few have been
 // renamed, grep for "rename:"

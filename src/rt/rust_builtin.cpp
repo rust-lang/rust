@@ -6,6 +6,7 @@
 #include "rust_util.h"
 #include "rust_scheduler.h"
 #include "sync/timer.h"
+#include "rust_abi.h"
 
 #ifdef __APPLE__
 #include <crt_externs.h>
@@ -267,28 +268,6 @@ debug_tag(type_desc *t, rust_tag *tag) {
             tag->variant[i]);
 }
 
-struct rust_obj {
-    uintptr_t *vtbl;
-    rust_box *body;
-};
-
-extern "C" CDECL void
-debug_obj(type_desc *t, rust_obj *obj, size_t nmethods, size_t nbytes) {
-    rust_task *task = rust_task_thread::get_task();
-
-    LOG(task, stdlib, "debug_obj with %" PRIdPTR " methods", nmethods);
-    debug_tydesc_helper(t);
-    LOG(task, stdlib, "  vtbl at 0x%" PRIxPTR, obj->vtbl);
-    LOG(task, stdlib, "  body at 0x%" PRIxPTR, obj->body);
-
-    for (uintptr_t *p = obj->vtbl; p < obj->vtbl + nmethods; ++p)
-        LOG(task, stdlib, "  vtbl word: 0x%" PRIxPTR, *p);
-
-    for (uintptr_t i = 0; i < nbytes; ++i)
-        LOG(task, stdlib, "  body byte %" PRIdPTR ": 0x%" PRIxPTR,
-            i, obj->body->data[i]);
-}
-
 struct rust_fn {
     uintptr_t *thunk;
     rust_box *closure;
@@ -503,24 +482,22 @@ new_port(size_t unit_sz) {
 }
 
 extern "C" CDECL void
-rust_port_detach(rust_port *port) {
+rust_port_begin_detach(rust_port *port, uintptr_t *yield) {
     rust_task *task = rust_task_thread::get_task();
     LOG(task, comm, "rust_port_detach(0x%" PRIxPTR ")", (uintptr_t) port);
-    port->detach();
-    // FIXME: Busy waiting until we're the only ref
-    bool done = false;
-    while (!done) {
-        scoped_lock with(port->lock);
-        done = port->ref_count == 1;
-    }
+    port->begin_detach(yield);
+}
+
+extern "C" CDECL void
+rust_port_end_detach(rust_port *port) {
+    port->end_detach();
 }
 
 extern "C" CDECL void
 del_port(rust_port *port) {
     rust_task *task = rust_task_thread::get_task();
     LOG(task, comm, "del_port(0x%" PRIxPTR ")", (uintptr_t) port);
-    A(task->thread, port->ref_count == 1, "Expected port ref_count == 1");
-    port->deref();
+    delete port;
 }
 
 extern "C" CDECL size_t
@@ -549,7 +526,6 @@ chan_id_send(type_desc *t, rust_task_id target_task_id,
         rust_port *port = target_task->get_port_by_id(target_port_id);
         if(port) {
             port->send(sptr);
-            scoped_lock with(target_task->lock);
             port->deref();
             sent = true;
         } else {
@@ -570,39 +546,8 @@ rust_task_yield(rust_task *task, bool *killed) {
 }
 
 extern "C" CDECL void
-port_recv(uintptr_t *dptr, rust_port *port,
-          uintptr_t *yield, uintptr_t *killed) {
-    *yield = false;
-    *killed = false;
-    rust_task *task = rust_task_thread::get_task();
-    {
-        scoped_lock with(port->lock);
-
-        LOG(task, comm, "port: 0x%" PRIxPTR ", dptr: 0x%" PRIxPTR
-            ", size: 0x%" PRIxPTR,
-            (uintptr_t) port, (uintptr_t) dptr, port->unit_sz);
-
-        if (port->receive(dptr)) {
-            return;
-        }
-
-        // If this task has been killed then we're not going to bother
-        // blocking, we have to unwind.
-        if (task->must_fail_from_being_killed()) {
-            *killed = true;
-            return;
-        }
-
-        // No data was buffered on any incoming channel, so block this task on
-        // the port. Remember the rendezvous location so that any sender task
-        // can write to it before waking up this task.
-
-        LOG(task, comm, "<=== waiting for rendezvous data ===");
-        task->rendezvous_ptr = dptr;
-        task->block(port, "waiting for rendezvous data");
-    }
-    *yield = true;
-    return;
+port_recv(uintptr_t *dptr, rust_port *port, uintptr_t *yield) {
+    port->receive(dptr, yield);
 }
 
 extern "C" CDECL void

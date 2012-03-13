@@ -24,7 +24,7 @@ fn supervisor() {
 }
 
 fn main() {
-    let builder = task::mk_task_builder();
+    let builder = task::task_builder();
     task::unsupervise(builder);
     task::run(builder) {|| supervisor(); }
 }

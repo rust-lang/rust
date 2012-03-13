@@ -18,5 +18,5 @@ fn main(args: [str]) {
     } else {
         8
     };
-    std::io::println(#fmt("Ack(3,%d): %d\n", n, ack(3, n)));
+    io::println(#fmt("Ack(3,%d): %d\n", n, ack(3, n)));
 }

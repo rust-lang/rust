@@ -211,12 +211,12 @@ The keywords in [source files](#source-files) are the following strings:
 ~~~~~~~~ {.keyword}
 alt assert
 be break
-check claim class const cont copy
+check claim class const cont copy crust
 do
 else enum export
 fail false fn for
 if iface impl import
-let log
+let log loop
 mod mutable
 native
 pure
@@ -550,6 +550,9 @@ location of which -- in the module tree of the current crate -- is defined
 from outside the source file: either by an explicit `source_directive` in
 a referencing crate file, or by the filename of the source file itself.
 
+A source file that contains a `main` function can be compiled to an
+executable. If a `main` function is present, it must have no [type parameters](#type-parameters)
+and no [constraints](#constraints). Its return type must be [`nil`](#primitive-types) and it must either have no arguments, or a single argument of type `[str]`.
 
 # Items and attributes
 
@@ -560,7 +563,7 @@ of [attributes](#attributes) attached to it.
 
 ~~~~~~~~ {.ebnf .gram}
 item : mod_item | fn_item | type_item | enum_item
-     | res_item | iface_item | impl_item ;
+     | res_item | iface_item | impl_item | native_mod_item ;
 ~~~~~~~~
 
 An _item_ is a component of a crate; some module items can be defined in crate
@@ -591,6 +594,8 @@ except that the item's *path name* within the module namespace is qualified by
 the name of the enclosing item, or is private to the enclosing item (in the
 case of functions). The exact locations in which sub-items may be declared is
 given by the grammar.
+
+### Type Parameters
 
 All items except modules may be *parametrized* by type. Type parameters are
 given as a comma-separated list of identifiers enclosed in angle brackets
@@ -1010,6 +1015,29 @@ Similarly, [interface](#interfaces) bounds can be specified for type
 parameters to allow methods of that interface to be called on values
 of that type.
 
+#### Crust functions
+
+Crust functions are part of Rust's foreign function interface,
+providing the opposite functionality to [native modules](#native-modules).
+Whereas native modules allow Rust code to call foreign
+code, crust functions allow foreign code to call Rust code. They are
+defined the same as any other Rust function, except that they are
+prepended with the `crust` keyword.
+
+~~~
+crust fn new_vec() -> [int] { [] }
+~~~
+
+Crust functions may not be called from Rust code, but their value
+may be taken as an unsafe `u8` pointer.
+
+~~~
+let fptr: *u8 = new_vec;
+~~~
+
+The primary motivation of crust functions is to create callbacks
+for native functions that expect to receive function pointers.
+
 ### Type definitions
 
 A _type definition_ defines a new name for an existing [type](#types). Type
@@ -1216,6 +1244,61 @@ impl of seq<bool> for u32 {
    /* Treat the integer as a sequence of bits */
 }
 ~~~~
+
+### Native modules
+
+~~~ {.ebnf .gram}
+native_mod_item : "native mod" ident '{' native_mod '} ;
+native_mod : [ native_fn ] * ;
+~~~
+
+Native modules form the basis for Rust's foreign function interface. A native
+module describes functions in external, non-Rust libraries. Functions within
+native modules are declared the same as other Rust functions, with the exception
+that they may not have a body and are instead terminated by a semi-colon.
+
+~~~
+native mod c {
+    fn fopen(filename: *c_char, mod: *c_char) -> *FILE;
+}
+~~~
+
+Functions within native modules may be called by Rust code as it would any
+normal function and the Rust compiler will automatically translate between
+the Rust ABI and the native ABI.
+
+The name of the native module has special meaning to the Rust compiler in
+that it will treat the module name as the name of a library to link to,
+performing the linking as appropriate for the target platform. The name
+given for the native module will be transformed in a platform-specific
+way to determine the name of the library. For example, on Linux the name
+of the native module is prefixed with 'lib' and suffixed with '.so', so
+the native mod 'rustrt' would be linked to a library named 'librustrt.so'.
+
+A number of [attributes](#attributes) control the behavior of native mods.
+
+By default native mods assume that the library they are calling use
+the standard C "cdecl" ABI. Other ABI's may be specified using the `abi`
+attribute as in
+
+~~~
+// Interface to the Windows API
+#[abi = "stdcall"]
+native mod kernel32 { }
+~~~
+
+The `link_name` attribute allows the default library naming behavior to
+be overriden by explicitly specifying the name of the library.
+
+~~~
+#[link_name = "crypto"]
+native mod mycrypto { }
+~~~
+
+The `nolink` attribute tells the Rust compiler not to perform any linking
+for the native module. This is particularly useful for creating native
+mods for libc, which tends to not follow standard library naming conventions
+and is linked to all Rust programs anyway.
 
 ## Attributes
 
@@ -1901,6 +1984,38 @@ do {
 } while i < 10;
 ~~~~
 
+### Infinite loops
+
+A `loop` expression denotes an infinite loop:
+
+~~~~~~~~{.ebnf .gram}
+loop_expr : "loop" '{' block '}';
+~~~~~~~~
+
+For a block `b`, the expression `loop b` is semantically equivalent to
+`while true b`. However, `loop`s differ from `while` loops in that the
+typestate analysis pass takes into account that `loop`s are infinite.
+
+For example, the following (contrived) function uses a `loop` with a
+`ret` expression:
+
+~~~~
+fn count() -> bool {
+  let i = 0;
+  loop {
+    i += 1;
+    if i == 20 { ret true; }
+  }
+}
+~~~~
+
+This function compiles, because typestate recognizes that the `loop`
+never terminates (except non-locally, with `ret`), thus there is no
+need to insert a spurious `fail` or `ret` after the `loop`. If `loop`
+were replaced with `while true`, the function would be rejected
+because from the compiler's perspective, there would be a control path
+along which `count` does not return a value (that is, if the loop
+condition is always false).
 
 ### Break expressions
 

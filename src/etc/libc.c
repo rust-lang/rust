@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
+#include <wchar.h>
 
 /* c99 */
 #include <inttypes.h>
@@ -24,6 +25,9 @@
 #define B(T) (((int)sizeof(T)) * CHAR_BIT)
 #define put_type(N,T) \
         printf("        type %s = %c%d;\n", N, S(T), B(T))
+
+#define put_ftype(N,T) \
+        printf("        type %s = f%d;\n", N, B(T))
 
 #define CT(T) ((((T)-1)<0) ? "int" : "uint")
 #define CS(T) ((((T)-1)<0) ? "" : "_u")
@@ -47,11 +51,16 @@ void c95_types() {
   put_type("c_long", long);
   put_type("c_ulong", unsigned long);
 
+  put_ftype("c_float", float);
+  put_ftype("c_double", double);
+
   put_type("size_t", size_t);
   put_type("ptrdiff_t", ptrdiff_t);
 
   put_type("clock_t", clock_t);
   put_type("time_t", time_t);
+
+  put_type("wchar_t", wchar_t);
 
   printf("    }\n");
 }
@@ -158,14 +167,14 @@ void posix88_consts() {
   put_const(X_OK, int);
 #endif
 
-#ifdef STDERR_FILENO
-  put_const(STDERR_FILENO, int);
-#endif
 #ifdef STDIN_FILENO
   put_const(STDIN_FILENO, int);
 #endif
 #ifdef STDOUT_FILENO
   put_const(STDOUT_FILENO, int);
+#endif
+#ifdef STDERR_FILENO
+  put_const(STDERR_FILENO, int);
 #endif
 
 #ifdef F_LOCK

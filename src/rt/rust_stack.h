@@ -26,7 +26,7 @@ destroy_stack(memory_region *region, stk_seg *stk);
 // Must be called before each time a stack is reused to tell valgrind
 // that the stack is accessible.
 void
-prepare_valgrind_stack(stk_seg *stk);
+reuse_valgrind_stack(stk_seg *stk, uint8_t *sp);
 
 // Run a sanity check
 void

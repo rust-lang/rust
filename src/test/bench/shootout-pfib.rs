@@ -12,7 +12,7 @@
 
 use std;
 
-import std::{time, io, getopts};
+import std::{time, getopts};
 import io::writer_util;
 import int::range;
 import comm::port;
@@ -60,7 +60,7 @@ fn parse_opts(argv: [str]) -> config {
 
 fn stress_task(&&id: int) {
     let i = 0;
-    while true {
+    loop {
         let n = 15;
         assert (fib(n) == fib(n));
         i += 1;
@@ -71,7 +71,7 @@ fn stress_task(&&id: int) {
 fn stress(num_tasks: int) {
     let results = [];
     range(0, num_tasks) {|i|
-        let builder = task::mk_task_builder();
+        let builder = task::task_builder();
         results += [task::future_result(builder)];
         task::run(builder) {|| stress_task(i); }
     }

@@ -14,7 +14,7 @@ fn loop(n: int) {
     if n > 0 { t1 = spawn loop(n - 1); t2 = spawn loop(n - 1); }
 
 
-    while true { }
+    loop { }
 }
 
 fn main() { let t: task = spawn loop(5); join(t); }

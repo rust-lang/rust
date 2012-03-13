@@ -13,6 +13,7 @@
 #define CHECK_CLAIMS "CHECK_CLAIMS"
 #define DETAILED_LEAKS "DETAILED_LEAKS"
 #define RUST_SEED "RUST_SEED"
+#define RUST_POISON_ON_FREE "RUST_POISON_ON_FREE"
 
 #if defined(__WIN32__)
 static int
@@ -116,6 +117,7 @@ load_env() {
     env->check_claims = getenv(CHECK_CLAIMS) != NULL;
     env->detailed_leaks = getenv(DETAILED_LEAKS) != NULL;
     env->rust_seed = copyenv(RUST_SEED);
+    env->poison_on_free = getenv(RUST_POISON_ON_FREE) != NULL;
 
     return env;
 }

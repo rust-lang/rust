@@ -1,8 +1,5 @@
 use std;
 
-import std::fs;
-import std::run;
-
 fn gpg(args: [str]) -> { status: int, out: str, err: str } {
     ret run::program_output("gpg", args);
 }
@@ -69,9 +66,9 @@ fn supported() -> bool {
 }
 
 fn init(root: str) {
-    let p = fs::connect(root, "gpg");
-    if !fs::path_is_dir(p) {
-        fs::make_dir(p, 0x1c0i32);
+    let p = path::connect(root, "gpg");
+    if !os::path_is_dir(p) {
+        os::make_dir(p, 0x1c0i32);
         let p = run::start_program("gpg", ["--homedir", p, "--import"]);
         p.input().write_str(signing_key());
         let s = p.finish();
@@ -82,7 +79,7 @@ fn init(root: str) {
 }
 
 fn add(root: str, key: str) {
-    let path = fs::connect(root, "gpg");
+    let path = path::connect(root, "gpg");
     let p = run::program_output("gpg", ["--homedir", path, "--import", key]);
     if p.status != 0 {
         fail "pgp add failed: " + p.out;
@@ -90,7 +87,7 @@ fn add(root: str, key: str) {
 }
 
 fn verify(root: str, data: str, sig: str, keyfp: str) -> bool {
-    let path = fs::connect(root, "gpg");
+    let path = path::connect(root, "gpg");
     let p = gpg(["--homedir", path, "--with-fingerprint", "--verify", sig,
                  data]);
     let res = "Primary key fingerprint: " + keyfp;

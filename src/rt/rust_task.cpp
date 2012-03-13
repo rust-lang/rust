@@ -74,10 +74,6 @@ rust_task::rust_task(rust_task_thread *thread, rust_task_list *state,
     cache(NULL),
     kernel(thread->kernel),
     name(name),
-    state(state),
-    cond(NULL),
-    cond_name("none"),
-    supervisor(spawner),
     list_index(-1),
     next_port_id(0),
     rendezvous_ptr(0),
@@ -88,11 +84,15 @@ rust_task::rust_task(rust_task_thread *thread, rust_task_list *state,
     dynastack(this),
     cc_counter(0),
     total_stack_sz(0),
+    state(state),
+    cond(NULL),
+    cond_name("none"),
     killed(false),
     reentered_rust_stack(false),
     c_stack(NULL),
     next_c_sp(0),
-    next_rust_sp(0)
+    next_rust_sp(0),
+    supervisor(spawner)
 {
     LOGPTR(thread, "new task", (uintptr_t)this);
     DLOG(thread, task, "sizeof(task) = %d (0x%x)", sizeof *this, sizeof *this);
@@ -103,30 +103,30 @@ rust_task::rust_task(rust_task_thread *thread, rust_task_list *state,
     }
 }
 
+// NB: This does not always run on the task's scheduler thread
 void
 rust_task::delete_this()
 {
-    I(thread, !thread->lock.lock_held_by_current_thread());
-    I(thread, port_table.is_empty());
+    {
+        scoped_lock with (port_lock);
+        I(thread, port_table.is_empty());
+    }
+
     DLOG(thread, task, "~rust_task %s @0x%" PRIxPTR ", refcnt=%d",
          name, (uintptr_t)this, ref_count);
 
     // FIXME: We should do this when the task exits, not in the destructor
-    if (supervisor) {
-        supervisor->deref();
+    {
+        scoped_lock with(supervisor_lock);
+        if (supervisor) {
+            supervisor->deref();
+        }
     }
 
     /* FIXME: tighten this up, there are some more
        assertions that hold at task-lifecycle events. */
     I(thread, ref_count == 0); // ||
     //   (ref_count == 1 && this == sched->root_task));
-
-    // Delete all the stacks. There may be more than one if the task failed
-    // and no landing pads stopped to clean up.
-    // FIXME: We should do this when the task exits, not in the destructor
-    while (stk != NULL) {
-        del_stack();
-    }
 
     thread->release_task(this);
 }
@@ -153,9 +153,12 @@ cleanup_task(cleanup_args *args) {
 
     task->die();
 
-    if (task->killed && !threw_exception) {
-        LOG(task, task, "Task killed during termination");
-        threw_exception = true;
+    {
+        scoped_lock with(task->kill_lock);
+        if (task->killed && !threw_exception) {
+            LOG(task, task, "Task killed during termination");
+            threw_exception = true;
+        }
     }
 
     task->notify(!threw_exception);
@@ -237,11 +240,18 @@ rust_task::start(spawn_fn spawnee_fn,
 
 void rust_task::start()
 {
-    transition(&thread->newborn_tasks, &thread->running_tasks);
+    transition(&thread->newborn_tasks, &thread->running_tasks, NULL, "none");
 }
 
 bool
 rust_task::must_fail_from_being_killed() {
+    scoped_lock with(kill_lock);
+    return must_fail_from_being_killed_unlocked();
+}
+
+bool
+rust_task::must_fail_from_being_killed_unlocked() {
+    I(thread, kill_lock.lock_held_by_current_thread());
     return killed && !reentered_rust_stack;
 }
 
@@ -249,6 +259,7 @@ rust_task::must_fail_from_being_killed() {
 void
 rust_task::yield(bool *killed) {
     if (must_fail_from_being_killed()) {
+        I(thread, !blocked());
         *killed = true;
     }
 
@@ -262,10 +273,11 @@ rust_task::yield(bool *killed) {
 
 void
 rust_task::kill() {
+    scoped_lock with(kill_lock);
+
     if (dead()) {
         // Task is already dead, can't kill what's already dead.
         fail_parent();
-        return;
     }
 
     // Note the distinction here: kill() is when you're in an upcall
@@ -275,10 +287,12 @@ rust_task::kill() {
     // When the task next goes to yield or resume it will fail
     killed = true;
     // Unblock the task so it can unwind.
-    unblock();
+
+    if (blocked()) {
+        wakeup(cond);
+    }
 
     LOG(this, task, "preparing to unwind task: 0x%" PRIxPTR, this);
-    // run_on_resume(rust_unwind_glue);
 }
 
 extern "C" CDECL
@@ -309,6 +323,7 @@ rust_task::conclude_failure() {
 
 void
 rust_task::fail_parent() {
+    scoped_lock with(supervisor_lock);
     if (supervisor) {
         DLOG(thread, task,
              "task %s @0x%" PRIxPTR
@@ -316,7 +331,6 @@ rust_task::fail_parent() {
              name, this, supervisor->name, supervisor);
         supervisor->kill();
     }
-    // FIXME: implement unwinding again.
     if (NULL == supervisor && propagate_failure)
         thread->fail();
 }
@@ -324,6 +338,7 @@ rust_task::fail_parent() {
 void
 rust_task::unsupervise()
 {
+    scoped_lock with(supervisor_lock);
     if (supervisor) {
         DLOG(thread, task,
              "task %s @0x%" PRIxPTR
@@ -344,24 +359,28 @@ rust_task::get_frame_glue_fns(uintptr_t fp) {
 bool
 rust_task::running()
 {
+    scoped_lock with(state_lock);
     return state == &thread->running_tasks;
 }
 
 bool
 rust_task::blocked()
 {
+    scoped_lock with(state_lock);
     return state == &thread->blocked_tasks;
 }
 
 bool
 rust_task::blocked_on(rust_cond *on)
 {
-    return blocked() && cond == on;
+    scoped_lock with(state_lock);
+    return cond == on;
 }
 
 bool
 rust_task::dead()
 {
+    scoped_lock with(state_lock);
     return state == &thread->dead_tasks;
 }
 
@@ -384,66 +403,52 @@ rust_task::free(void *p)
 }
 
 void
-rust_task::transition(rust_task_list *src, rust_task_list *dst) {
-    bool unlock = false;
-    if(!thread->lock.lock_held_by_current_thread()) {
-        unlock = true;
-        thread->lock.lock();
-    }
-    DLOG(thread, task,
-         "task %s " PTR " state change '%s' -> '%s' while in '%s'",
-         name, (uintptr_t)this, src->name, dst->name, state->name);
-    I(thread, state == src);
-    src->remove(this);
-    dst->append(this);
-    state = dst;
-    thread->lock.signal();
-    if(unlock)
-        thread->lock.unlock();
+rust_task::transition(rust_task_list *src, rust_task_list *dst,
+                      rust_cond *cond, const char* cond_name) {
+    thread->transition(this, src, dst, cond, cond_name);
 }
 
 void
+rust_task::set_state(rust_task_list *state,
+                     rust_cond *cond, const char* cond_name) {
+    scoped_lock with(state_lock);
+    this->state = state;
+    this->cond = cond;
+    this->cond_name = cond_name;
+}
+
+bool
 rust_task::block(rust_cond *on, const char* name) {
-    I(thread, !lock.lock_held_by_current_thread());
-    scoped_lock with(lock);
+    scoped_lock with(kill_lock);
+
+    if (must_fail_from_being_killed_unlocked()) {
+        // We're already going to die. Don't block. Tell the task to fail
+        return false;
+    }
+
     LOG(this, task, "Blocking on 0x%" PRIxPTR ", cond: 0x%" PRIxPTR,
                          (uintptr_t) on, (uintptr_t) cond);
     A(thread, cond == NULL, "Cannot block an already blocked task.");
     A(thread, on != NULL, "Cannot block on a NULL object.");
 
-    transition(&thread->running_tasks, &thread->blocked_tasks);
-    cond = on;
-    cond_name = name;
+    transition(&thread->running_tasks, &thread->blocked_tasks, on, name);
+
+    return true;
 }
 
 void
 rust_task::wakeup(rust_cond *from) {
-    I(thread, !lock.lock_held_by_current_thread());
-    scoped_lock with(lock);
     A(thread, cond != NULL, "Cannot wake up unblocked task.");
     LOG(this, task, "Blocked on 0x%" PRIxPTR " woken up on 0x%" PRIxPTR,
                         (uintptr_t) cond, (uintptr_t) from);
     A(thread, cond == from, "Cannot wake up blocked task on wrong condition.");
 
-    cond = NULL;
-    cond_name = "none";
-    transition(&thread->blocked_tasks, &thread->running_tasks);
+    transition(&thread->blocked_tasks, &thread->running_tasks, NULL, "none");
 }
 
 void
 rust_task::die() {
-    I(thread, !lock.lock_held_by_current_thread());
-    scoped_lock with(lock);
-    transition(&thread->running_tasks, &thread->dead_tasks);
-}
-
-void
-rust_task::unblock() {
-    if (blocked()) {
-        // FIXME: What if another thread unblocks the task between when
-        // we checked and here?
-        wakeup(cond);
-    }
+    transition(&thread->running_tasks, &thread->dead_tasks, NULL, "none");
 }
 
 rust_crate_cache *
@@ -472,8 +477,8 @@ rust_task::calloc(size_t size, const char *tag) {
 }
 
 rust_port_id rust_task::register_port(rust_port *port) {
-    I(thread, !lock.lock_held_by_current_thread());
-    scoped_lock with(lock);
+    I(thread, !port_lock.lock_held_by_current_thread());
+    scoped_lock with(port_lock);
 
     rust_port_id id = next_port_id++;
     A(thread, id != INTPTR_MAX, "Hit the maximum port id");
@@ -482,13 +487,13 @@ rust_port_id rust_task::register_port(rust_port *port) {
 }
 
 void rust_task::release_port(rust_port_id id) {
-    I(thread, lock.lock_held_by_current_thread());
+    scoped_lock with(port_lock);
     port_table.remove(id);
 }
 
 rust_port *rust_task::get_port_by_id(rust_port_id id) {
-    I(thread, !lock.lock_held_by_current_thread());
-    scoped_lock with(lock);
+    I(thread, !port_lock.lock_held_by_current_thread());
+    scoped_lock with(port_lock);
     rust_port *port = NULL;
     port_table.get(id, &port);
     if (port) {
@@ -511,7 +516,6 @@ rust_task::notify(bool success) {
                 msg.result = !success ? tr_failure : tr_success;
 
                 target_port->send(&msg);
-                scoped_lock with(target_task->lock);
                 target_port->deref();
             }
             target_task->deref();
@@ -572,7 +576,6 @@ rust_task::new_stack(size_t requested_sz) {
             LOG(this, mem, "reusing existing stack");
             stk = stk->prev;
             A(thread, stk->prev == NULL, "Bogus stack ptr");
-            prepare_valgrind_stack(stk);
             return;
         } else {
             LOG(this, mem, "existing stack is not big enough");
@@ -603,7 +606,6 @@ rust_task::new_stack(size_t requested_sz) {
     LOGPTR(thread, "stk end", new_stk->end);
 
     stk = new_stk;
-    prepare_valgrind_stack(stk);
     total_stack_sz += user_stack_size(new_stk);
 }
 
@@ -639,12 +641,29 @@ rust_task::del_stack() {
 
 void *
 rust_task::next_stack(size_t stk_sz, void *args_addr, size_t args_sz) {
+    stk_seg *maybe_next_stack = NULL;
+    if (stk != NULL) {
+        maybe_next_stack = stk->prev;
+    }
+
     new_stack(stk_sz + args_sz);
     A(thread, stk->end - (uintptr_t)stk->data >= stk_sz + args_sz,
       "Did not receive enough stack");
     uint8_t *new_sp = (uint8_t*)stk->end;
     // Push the function arguments to the new stack
     new_sp = align_down(new_sp - args_sz);
+
+    // When reusing a stack segment we need to tell valgrind that this area of
+    // memory is accessible before writing to it, because the act of popping
+    // the stack previously made all of the stack inaccessible.
+    if (maybe_next_stack == stk) {
+        // I don't know exactly where the region ends that valgrind needs us
+        // to mark accessible. On x86_64 these extra bytes aren't needed, but
+        // on i386 we get errors without.
+        int fudge_bytes = 16;
+        reuse_valgrind_stack(stk, new_sp - fudge_bytes);
+    }
+
     memcpy(new_sp, args_addr, args_sz);
     A(thread, rust_task_thread::get_task() == this,
       "Recording the stack limit for the wrong thread");
@@ -723,6 +742,16 @@ rust_task::reset_stack_limit() {
 void
 rust_task::check_stack_canary() {
     ::check_stack_canary(stk);
+}
+
+void
+rust_task::delete_all_stacks() {
+    I(thread, !on_rust_stack());
+    // Delete all the stacks. There may be more than one if the task failed
+    // and no landing pads stopped to clean up.
+    while (stk != NULL) {
+        del_stack();
+    }
 }
 
 void

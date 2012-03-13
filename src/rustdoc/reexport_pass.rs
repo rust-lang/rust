@@ -1,9 +1,11 @@
 #[doc = "Finds docs for reexported items and duplicates them"];
 
 import std::map;
+import std::map::hashmap;
 import rustc::syntax::ast;
 import rustc::syntax::ast_util;
 import rustc::util::common;
+import rustc::middle::ast_map;
 
 export mk_pass;
 
@@ -18,7 +20,7 @@ type def_set = map::set<ast::def_id>;
 type def_map = map::hashmap<ast::def_id, doc::itemtag>;
 type path_map = map::hashmap<str, [(str, doc::itemtag)]>;
 
-fn run(srv: astsrv::srv, doc: doc::cratedoc) -> doc::cratedoc {
+fn run(srv: astsrv::srv, doc: doc::doc) -> doc::doc {
 
     // First gather the set of defs that are used as reexports
     let def_set = build_reexport_def_set(srv);
@@ -75,10 +77,11 @@ fn from_str_assoc_list<V:copy>(
 fn build_reexport_def_set(srv: astsrv::srv) -> def_set {
     let assoc_list = astsrv::exec(srv) {|ctxt|
         let def_set = common::new_def_hash();
-        ctxt.exp_map.items {|_path, defs|
-            for def in *defs {
-                let def_id = ast_util::def_id_of_def(def);
-                def_set.insert(def_id, ());
+        ctxt.exp_map.items {|_id, defs|
+            for def in defs {
+                if def.reexp {
+                    def_set.insert(def.id, ());
+                }
             }
         }
         to_assoc_list(def_set)
@@ -89,7 +92,7 @@ fn build_reexport_def_set(srv: astsrv::srv) -> def_set {
 
 fn build_reexport_def_map(
     srv: astsrv::srv,
-    doc: doc::cratedoc,
+    doc: doc::doc,
     def_set: def_set
 ) -> def_map {
 
@@ -112,7 +115,7 @@ fn build_reexport_def_map(
         with *fold::default_seq_fold(ctxt)
     });
 
-    fold.fold_crate(fold, doc);
+    fold.fold_doc(fold, doc);
 
     ret ctxt.def_map;
 
@@ -154,29 +157,34 @@ fn build_reexport_path_map(srv: astsrv::srv, -def_map: def_map) -> path_map {
         let def_map = from_def_assoc_list(def_assoc_list);
         let path_map = map::new_str_hash();
 
-        ctxt.exp_map.items {|path, defs|
-
-            let path = str::split_str(path, "::");
-            let modpath = str::connect(vec::init(path), "::");
-            let name = option::get(vec::last(path));
+        ctxt.exp_map.items {|exp_id, defs|
+            let path = alt check ctxt.ast_map.get(exp_id) {
+              ast_map::node_export(_, path) { path }
+            };
+          // should be a constraint on the node_export constructor
+          // that guarantees path is non-empty
+            let name = alt check vec::last(*path) {
+              ast_map::path_name(nm) { nm }
+            };
+            let modpath = ast_map::path_to_str(vec::init(*path));
 
             let reexportdocs = [];
-            for def in *defs {
-                let def_id = ast_util::def_id_of_def(def);
-                alt def_map.find(def_id) {
+            for def in defs {
+                if !def.reexp { cont; }
+                alt def_map.find(def.id) {
                   some(itemtag) {
                     reexportdocs += [(name, itemtag)];
                   }
-                  none { }
+                  _ {}
                 }
             }
 
-            if vec::is_not_empty(reexportdocs) {
-                let prevdocs = alt path_map.find(modpath) {
-                  some(docs) { docs }
-                  none { [] }
-                };
-                let reexportdocs = prevdocs + reexportdocs;
+            if reexportdocs.len() > 0u {
+                option::may(path_map.find(modpath)) {|docs|
+                    reexportdocs = docs + vec::filter(reexportdocs, {|x|
+                        !vec::contains(docs, x)
+                    });
+                }
                 path_map.insert(modpath, reexportdocs);
                 #debug("path_map entry: %? - %?",
                        modpath, (name, reexportdocs));
@@ -190,16 +198,16 @@ fn build_reexport_path_map(srv: astsrv::srv, -def_map: def_map) -> path_map {
 }
 
 fn merge_reexports(
-    doc: doc::cratedoc,
+    doc: doc::doc,
     path_map: path_map
-) -> doc::cratedoc {
+) -> doc::doc {
 
     let fold = fold::fold({
         fold_mod: fold_mod
         with *fold::default_seq_fold(path_map)
     });
 
-    ret fold.fold_crate(fold, doc);
+    ret fold.fold_doc(fold, doc);
 
     fn fold_mod(fold: fold::fold<path_map>, doc: doc::moddoc) -> doc::moddoc {
         let doc = fold::default_seq_fold_mod(fold, doc);
@@ -304,7 +312,7 @@ fn should_duplicate_reexported_items() {
     let source = "mod a { export b; fn b() { } } \
                   mod c { import a::b; export b; }";
     let doc = test::mk_doc(source);
-    assert doc.topmod.mods()[1].fns()[0].name() == "b";
+    assert doc.cratemod().mods()[1].fns()[0].name() == "b";
 }
 
 #[test]
@@ -312,7 +320,7 @@ fn should_mark_reepxorts_as_such() {
     let source = "mod a { export b; fn b() { } } \
                   mod c { import a::b; export b; }";
     let doc = test::mk_doc(source);
-    assert doc.topmod.mods()[1].fns()[0].item.reexport == true;
+    assert doc.cratemod().mods()[1].fns()[0].item.reexport == true;
 }
 
 #[test]
@@ -320,7 +328,7 @@ fn should_duplicate_reexported_native_fns() {
     let source = "native mod a { fn b(); } \
                   mod c { import a::b; export b; }";
     let doc = test::mk_doc(source);
-    assert doc.topmod.mods()[0].fns()[0].name() == "b";
+    assert doc.cratemod().mods()[0].fns()[0].name() == "b";
 }
 
 #[test]
@@ -339,8 +347,8 @@ fn should_duplicate_multiple_reexported_items() {
         let doc = run(srv, doc);
         // Reexports may not be in any specific order
         let doc = sort_item_name_pass::mk_pass().f(srv, doc);
-        assert doc.topmod.mods()[1].fns()[0].name() == "b";
-        assert doc.topmod.mods()[1].fns()[1].name() == "c";
+        assert doc.cratemod().mods()[1].fns()[0].name() == "b";
+        assert doc.cratemod().mods()[1].fns()[1].name() == "c";
     }
 }
 
@@ -349,12 +357,12 @@ fn should_rename_items_reexported_with_different_names() {
     let source = "mod a { export b; fn b() { } } \
                   mod c { import x = a::b; export x; }";
     let doc = test::mk_doc(source);
-    assert doc.topmod.mods()[1].fns()[0].name() == "x";
+    assert doc.cratemod().mods()[1].fns()[0].name() == "x";
 }
 
 #[test]
 fn should_reexport_in_topmod() {
-    fn mk_doc(source: str) -> doc::cratedoc {
+    fn mk_doc(source: str) -> doc::doc {
         astsrv::from_str(source) {|srv|
             let doc = extract::from_srv(srv, "core");
             let doc = path_pass::mk_pass().f(srv, doc);
@@ -368,7 +376,7 @@ fn should_reexport_in_topmod() {
                   enum t { some, none } \
                   }";
     let doc = mk_doc(source);
-    assert doc.topmod.enums()[0].name() == "option";
+    assert doc.cratemod().enums()[0].name() == "option";
 }
 
 #[test]
@@ -380,12 +388,12 @@ fn should_not_reexport_multiple_times() {
                   enum t { none, some } \
                   }";
     let doc = test::mk_doc(source);
-    assert vec::len(doc.topmod.enums()) == 1u;
+    assert vec::len(doc.cratemod().enums()) == 1u;
 }
 
 #[cfg(test)]
 mod test {
-    fn mk_doc(source: str) -> doc::cratedoc {
+    fn mk_doc(source: str) -> doc::doc {
         astsrv::from_str(source) {|srv|
             let doc = extract::from_srv(srv, "");
             let doc = path_pass::mk_pass().f(srv, doc);

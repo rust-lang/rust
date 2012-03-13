@@ -87,6 +87,23 @@ inline size_t vec_size(size_t elems) {
     return sizeof(rust_vec) + sizeof(T) * elems;
 }
 
+template <typename T>
+inline rust_vec *
+vec_alloc(size_t alloc_elts, size_t fill_elts, const char *name) {
+    rust_task *task = rust_task_thread::get_task();
+    size_t size = vec_size<T>(alloc_elts);
+    rust_vec *vec = (rust_vec *) task->kernel->malloc(size, name);
+    vec->fill = fill_elts * sizeof(T);
+    vec->alloc = alloc_elts * sizeof(T);
+    return vec;
+}
+
+template <typename T>
+inline T *
+vec_data(rust_vec *v) {
+    return reinterpret_cast<T*>(v->data);
+}
+
 inline void reserve_vec_exact(rust_task* task, rust_vec** vpp, size_t size) {
     if (size > (*vpp)->alloc) {
         *vpp = (rust_vec*)task->kernel->realloc(*vpp, size + sizeof(rust_vec));

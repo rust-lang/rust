@@ -54,7 +54,7 @@ $$(TBIN$(1)_T_$(4)_H_$(3))/compiletest$$(X):			\
 
 $$(HBIN$(2)_H_$(4))/compiletest$$(X):				\
 		$$(TBIN$(1)_T_$(4)_H_$(3))/compiletest$$(X)	\
-		$$(HSREQ$(2)_$(4))
+		$$(HSREQ$(2)_H_$(4))
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
@@ -69,7 +69,7 @@ $$(TBIN$(1)_T_$(4)_H_$(3))/cargo$$(X):				\
 
 $$(HBIN$(2)_H_$(4))/cargo$$(X):					\
 		$$(TBIN$(1)_T_$(4)_H_$(3))/cargo$$(X)	\
-		$$(HSREQ$(2)_$(4))
+		$$(HSREQ$(2)_H_$(4))
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
@@ -84,7 +84,7 @@ $$(TBIN$(1)_T_$(4)_H_$(3))/rustdoc$$(X):			\
 
 $$(HBIN$(2)_H_$(4))/rustdoc$$(X):				\
 		$$(TBIN$(1)_T_$(4)_H_$(3))/rustdoc$$(X)	\
-		$$(HSREQ$(2)_$(4))
+		$$(HSREQ$(2)_H_$(4))
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
@@ -99,7 +99,7 @@ $$(TBIN$(1)_T_$(4)_H_$(3))/serializer$$(X):			\
 
 $$(HBIN$(2)_H_$(4))/serializer$$(X):				\
 		$$(TBIN$(1)_T_$(4)_H_$(3))/serializer$$(X)	\
-		$$(HSREQ$(2)_$(4))
+		$$(HSREQ$(2)_H_$(4))
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 

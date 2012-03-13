@@ -1,5 +1,4 @@
 #[doc = "
-
 Task management.
 
 An executing Rust program consists of a tree of tasks, each with their own
@@ -14,12 +13,13 @@ process.
 
 Tasks may execute in parallel and are scheduled automatically by the runtime.
 
-Example:
+# Example
 
-    spawn {||
-        log(error, \"Hello, World!\");
-    }
-
+~~~
+spawn {||
+    log(error, \"Hello, World!\");
+}
+~~~
 "];
 
 export task;
@@ -31,7 +31,6 @@ export task_opts;
 export task_builder::{};
 
 export default_task_opts;
-export mk_task_builder;
 export get_opts;
 export set_opts;
 export add_wrapper;
@@ -58,7 +57,6 @@ export get_task;
 enum task = task_id;
 
 #[doc = "
-
 Indicates the manner in which a task exited.
 
 A task that completes without failing and whose supervised children complete
@@ -66,18 +64,13 @@ without failing is considered to exit successfully.
 
 FIXME: This description does not indicate the current behavior for linked
 failure.
-
 "]
 enum task_result {
     success,
     failure,
 }
 
-#[doc = "
-
-A message type for notifying of task lifecycle events
-
-"]
+#[doc = "A message type for notifying of task lifecycle events"]
 enum notification {
     #[doc = "Sent when a task exits with the task handle and result"]
     exit(task, task_result)
@@ -96,10 +89,9 @@ enum sched_mode {
 }
 
 #[doc = "
-
 Scheduler configuration options
 
-Fields:
+# Fields
 
 * sched_mode - The operating mode of the scheduler
 
@@ -110,7 +102,6 @@ Fields:
     appropriate for running code written in languages like C. By default these
     native stacks have unspecified size, but with this option their size can
     be precisely specified.
-
 "]
 type sched_opts = {
     mode: sched_mode,
@@ -118,10 +109,9 @@ type sched_opts = {
 };
 
 #[doc = "
-
 Task configuration options
 
-Fields:
+# Fields
 
 * supervise - Do not propagate failure to the parent task
 
@@ -152,11 +142,9 @@ type task_opts = {
 };
 
 #[doc = "
-
 The task builder type.
 
 Provides detailed control over the properties and behavior of new tasks.
-
 "]
 // NB: Builders are designed to be single-use because they do stateful
 // things that get weird when reusing - e.g. if you create a result future
@@ -165,23 +153,23 @@ Provides detailed control over the properties and behavior of new tasks.
 // when you try to reuse the builder to spawn a new task. We'll just
 // sidestep that whole issue by making builder's uncopyable and making
 // the run function move them in.
-enum task_builder = {
-    mutable opts: task_opts,
-    mutable gen_body: fn@(+fn~()) -> fn~(),
-    can_not_copy: option<comm::port<()>>
-};
+enum task_builder {
+    task_builder_({
+        mutable opts: task_opts,
+        mutable gen_body: fn@(+fn~()) -> fn~(),
+        can_not_copy: option<comm::port<()>>
+    })
+}
 
 
 /* Task construction */
 
 fn default_task_opts() -> task_opts {
     #[doc = "
-
     The default task options
 
     By default all tasks are supervised by their parent, are spawned
     into the same scheduler, and do not post lifecycle notifications.
-
     "];
 
     {
@@ -191,12 +179,12 @@ fn default_task_opts() -> task_opts {
     }
 }
 
-fn mk_task_builder() -> task_builder {
+fn task_builder() -> task_builder {
     #[doc = "Construct a task_builder"];
 
     let body_identity = fn@(+body: fn~()) -> fn~() { body };
 
-    task_builder({
+    task_builder_({
         mutable opts: default_task_opts(),
         mutable gen_body: body_identity,
         can_not_copy: none
@@ -211,7 +199,6 @@ fn get_opts(builder: task_builder) -> task_opts {
 
 fn set_opts(builder: task_builder, opts: task_opts) {
     #[doc = "
-
     Set the task_opts associated with a task_builder
 
     To update a single option use a pattern like the following:
@@ -220,7 +207,6 @@ fn set_opts(builder: task_builder, opts: task_opts) {
             supervise: false
             with get_opts(builder)
         });
-
     "];
 
     builder.opts = opts;
@@ -228,7 +214,6 @@ fn set_opts(builder: task_builder, opts: task_opts) {
 
 fn add_wrapper(builder: task_builder, gen_body: fn@(+fn~()) -> fn~()) {
     #[doc = "
-
     Add a wrapper to the body of the spawned task.
 
     Before the task is spawned it is passed through a 'body generator'
@@ -239,7 +224,6 @@ fn add_wrapper(builder: task_builder, gen_body: fn@(+fn~()) -> fn~()) {
     This function augments the current body generator with a new body
     generator by applying the task body which results from the
     existing body generator to the new body generator.
-
     "];
 
     let prev_gen_body = builder.gen_body;
@@ -249,20 +233,18 @@ fn add_wrapper(builder: task_builder, gen_body: fn@(+fn~()) -> fn~()) {
 }
 
 fn run(-builder: task_builder, +f: fn~()) {
-    #[doc(desc = "
-
+    #[doc = "
     Creates and exucutes a new child task
 
     Sets up a new task with its own call stack and schedules it to run
     the provided unique closure. The task has the properties and behavior
     specified by `builder`.
 
-    ", failure = "
+    # Failure
 
     When spawning into a new scheduler, the number of threads requested
     must be greater than zero.
-
-    ")];
+    "];
 
     let body = builder.gen_body(f);
     spawn_raw(builder.opts, body);
@@ -273,7 +255,6 @@ fn run(-builder: task_builder, +f: fn~()) {
 
 fn future_result(builder: task_builder) -> future::future<task_result> {
     #[doc = "
-
     Get a future representing the exit status of the task.
 
     Taking the value of the future will block until the child task terminates.
@@ -283,7 +264,6 @@ fn future_result(builder: task_builder) -> future::future<task_result> {
     builder. If additional tasks are spawned with the same builder
     then a new result future must be obtained prior to spawning each
     task.
-
     "];
 
     // FIXME (1087, 1857): Once linked failure and notification are
@@ -309,10 +289,10 @@ fn future_result(builder: task_builder) -> future::future<task_result> {
 fn future_task(builder: task_builder) -> future::future<task> {
     #[doc = "Get a future representing the handle to the new task"];
 
-    let po = comm::port();
+    let mut po = comm::port();
     let ch = comm::chan(po);
     add_wrapper(builder) {|body|
-        fn~[move body]() {
+        fn~() {
             comm::send(ch, get_task());
             body();
         }
@@ -332,7 +312,6 @@ fn unsupervise(builder: task_builder) {
 fn run_listener<A:send>(-builder: task_builder,
                         +f: fn~(comm::port<A>)) -> comm::chan<A> {
     #[doc = "
-
     Runs a new task while providing a channel from the parent to the child
 
     Sets up a communication channel from the current task to the new
@@ -347,12 +326,12 @@ fn run_listener<A:send>(-builder: task_builder,
     let setup_po = comm::port();
     let setup_ch = comm::chan(setup_po);
 
-    run(builder, fn~[move f]() {
+    run(builder) {||
         let po = comm::port();
-        let ch = comm::chan(po);
+        let mut ch = comm::chan(po);
         comm::send(setup_ch, ch);
         f(po);
-    });
+    }
 
     comm::recv(setup_po)
 }
@@ -362,21 +341,19 @@ fn run_listener<A:send>(-builder: task_builder,
 
 fn spawn(+f: fn~()) {
     #[doc = "
-
     Creates and exucutes a new child task
 
     Sets up a new task with its own call stack and schedules it to run
     the provided unique closure.
 
-    This function is equivalent to `run(mk_task_builder(), f)`.
+    This function is equivalent to `run(new_task_builder(), f)`.
     "];
 
-    run(mk_task_builder(), f);
+    run(task_builder(), f);
 }
 
 fn spawn_listener<A:send>(+f: fn~(comm::port<A>)) -> comm::chan<A> {
     #[doc = "
-
     Runs a new task while providing a channel from the parent to the child
 
     Sets up a communication channel from the current task to the new
@@ -398,30 +375,27 @@ fn spawn_listener<A:send>(+f: fn~(comm::port<A>)) -> comm::chan<A> {
         };
         // Likewise, the parent has both a 'po' and 'ch'
 
-    This function is equivalent to `run_listener(mk_task_builder(), f)`.
-
+    This function is equivalent to `run_listener(new_task_builder(), f)`.
     "];
 
-    run_listener(mk_task_builder(), f)
+    run_listener(task_builder(), f)
 }
 
 fn spawn_sched(mode: sched_mode, +f: fn~()) {
-    #[doc(desc = "
-
+    #[doc = "
     Creates a new scheduler and executes a task on it
 
     Tasks subsequently spawned by that task will also execute on
     the new scheduler. When there are no more tasks to execute the
     scheduler terminates.
 
-    ", failure = "
+    # Failure
 
     In manual threads mode the number of threads requested must be
     greater than zero.
+    "];
 
-    ")];
-
-    let builder = mk_task_builder();
+    let mut builder = task_builder();
     set_opts(builder, {
         sched: some({
             mode: mode,
@@ -433,27 +407,25 @@ fn spawn_sched(mode: sched_mode, +f: fn~()) {
 }
 
 fn try<T:send>(+f: fn~() -> T) -> result::t<T,()> {
-    #[doc(desc = "
-
+    #[doc = "
     Execute a function in another task and return either the return value
     of the function or result::err.
 
-    ", return = "
+    # Return value
 
     If the function executed successfully then try returns result::ok
     containing the value returned by the function. If the function fails
     then try returns result::err containing nil.
-
-    ")];
+    "];
 
     let po = comm::port();
     let ch = comm::chan(po);
-    let builder = mk_task_builder();
+    let mut builder = task_builder();
     unsupervise(builder);
     let result = future_result(builder);
-    run(builder, fn~[move f]() {
+    run(builder) {||
         comm::send(ch, f());
-    });
+    }
     alt future::get(result) {
       success { result::ok(comm::recv(po)) }
       failure { result::err(()) }
@@ -467,7 +439,7 @@ fn yield() {
     #[doc = "Yield control to the task scheduler"];
 
     let task_ = rustrt::rust_get_task();
-    let killed = false;
+    let mut killed = false;
     rusti::task_yield(task_, killed);
     if killed && !failing() {
         fail "killed";
@@ -494,19 +466,19 @@ type task_id = int;
 
 // These are both opaque runtime/compiler types that we don't know the
 // structure of and should only deal with via unsafe pointer
-type rust_task = ctypes::void;
-type rust_closure = ctypes::void;
+type rust_task = libc::c_void;
+type rust_closure = libc::c_void;
 
 fn spawn_raw(opts: task_opts, +f: fn~()) unsafe {
 
-    let f = if opts.supervise {
+    let mut f = if opts.supervise {
         f
     } else {
         // FIXME: The runtime supervision API is weird here because it
         // was designed to let the child unsupervise itself, when what
         // we actually want is for parents to unsupervise new
         // children.
-        fn~[move f]() {
+        fn~() {
             rustrt::unsupervise();
             f();
         }
@@ -566,7 +538,7 @@ native mod rusti {
 
 native mod rustrt {
     fn rust_get_sched_id() -> sched_id;
-    fn rust_new_sched(num_threads: ctypes::uintptr_t) -> sched_id;
+    fn rust_new_sched(num_threads: libc::uintptr_t) -> sched_id;
 
     fn get_task_id() -> task_id;
     fn rust_get_task() -> *rust_task;
@@ -641,7 +613,7 @@ fn test_spawn_raw_notify() {
 fn test_run_basic() {
     let po = comm::port();
     let ch = comm::chan(po);
-    let builder = mk_task_builder();
+    let builder = task_builder();
     run(builder) {||
         comm::send(ch, ());
     }
@@ -652,7 +624,7 @@ fn test_run_basic() {
 fn test_add_wrapper() {
     let po = comm::port();
     let ch = comm::chan(po);
-    let builder = mk_task_builder();
+    let builder = task_builder();
     add_wrapper(builder) {|body|
         fn~() {
             body();
@@ -666,12 +638,12 @@ fn test_add_wrapper() {
 #[test]
 #[ignore(cfg(target_os = "win32"))]
 fn test_future_result() {
-    let builder = mk_task_builder();
+    let builder = task_builder();
     let result = future_result(builder);
     run(builder) {||}
     assert future::get(result) == success;
 
-    let builder = mk_task_builder();
+    let builder = task_builder();
     let result = future_result(builder);
     unsupervise(builder);
     run(builder) {|| fail }
@@ -682,7 +654,7 @@ fn test_future_result() {
 fn test_future_task() {
     let po = comm::port();
     let ch = comm::chan(po);
-    let builder = mk_task_builder();
+    let builder = task_builder();
     let task1 = future_task(builder);
     run(builder) {|| comm::send(ch, get_task()) }
     assert future::get(task1) == comm::recv(po);
@@ -778,12 +750,12 @@ fn test_spawn_sched_childs_on_same_sched() {
 #[nolink]
 #[cfg(test)]
 native mod testrt {
-    fn rust_dbg_lock_create() -> *ctypes::void;
-    fn rust_dbg_lock_destroy(lock: *ctypes::void);
-    fn rust_dbg_lock_lock(lock: *ctypes::void);
-    fn rust_dbg_lock_unlock(lock: *ctypes::void);
-    fn rust_dbg_lock_wait(lock: *ctypes::void);
-    fn rust_dbg_lock_signal(lock: *ctypes::void);
+    fn rust_dbg_lock_create() -> *libc::c_void;
+    fn rust_dbg_lock_destroy(lock: *libc::c_void);
+    fn rust_dbg_lock_lock(lock: *libc::c_void);
+    fn rust_dbg_lock_unlock(lock: *libc::c_void);
+    fn rust_dbg_lock_wait(lock: *libc::c_void);
+    fn rust_dbg_lock_signal(lock: *libc::c_void);
 }
 
 #[test]
@@ -852,10 +824,10 @@ fn avoid_copying_the_body(spawnfn: fn(+fn~())) {
     let x = ~1;
     let x_in_parent = ptr::addr_of(*x) as uint;
 
-    spawnfn(fn~[move x]() {
+    spawnfn {||
         let x_in_child = ptr::addr_of(*x) as uint;
         comm::send(ch, x_in_child);
-    });
+    }
 
     let x_in_child = comm::recv(p);
     assert x_in_parent == x_in_child;
@@ -878,18 +850,18 @@ fn test_avoid_copying_the_body_spawn_listener() {
 #[test]
 fn test_avoid_copying_the_body_run() {
     avoid_copying_the_body {|f|
-        let builder = mk_task_builder();
-        run(builder, fn~[move f]() {
+        let builder = task_builder();
+        run(builder) {||
             f();
-        });
+        }
     }
 }
 
 #[test]
 fn test_avoid_copying_the_body_run_listener() {
     avoid_copying_the_body {|f|
-        let builder = mk_task_builder();
-        run_listener(builder,fn~[move f](_po: comm::port<int>) {
+        let builder = task_builder();
+        run_listener(builder, fn~[move f](_po: comm::port<int>) {
             f();
         });
     }
@@ -898,30 +870,30 @@ fn test_avoid_copying_the_body_run_listener() {
 #[test]
 fn test_avoid_copying_the_body_try() {
     avoid_copying_the_body {|f|
-        try(fn~[move f]() {
-            f();
-        });
+        try {||
+            f()
+        };
     }
 }
 
 #[test]
 fn test_avoid_copying_the_body_future_task() {
     avoid_copying_the_body {|f|
-        let builder = mk_task_builder();
+        let builder = task_builder();
         future_task(builder);
-        run(builder, fn~[move f]() {
+        run(builder) {||
             f();
-        });
+        }
     }
 }
 
 #[test]
 fn test_avoid_copying_the_body_unsupervise() {
     avoid_copying_the_body {|f|
-        let builder = mk_task_builder();
+        let builder = task_builder();
         unsupervise(builder);
-        run(builder, fn~[move f]() {
+        run(builder) {||
             f();
-        });
+        }
     }
 }

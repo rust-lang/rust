@@ -1,10 +1,10 @@
 // xfail-win32 leaks
 // Issue #787
-// Don't try to clean up uninitizaed locals
+// Don't try to clean up uninitialized locals
 
 use std;
 
-fn test_break() { while true { let x: @int = break; } }
+fn test_break() { loop { let x: @int = break; } }
 
 fn test_cont() { let i = 0; while i < 1 { i += 1; let x: @int = cont; } }
 

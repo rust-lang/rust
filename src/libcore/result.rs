@@ -1,42 +1,20 @@
-/*
-Module: result
+#[doc = "A type representing either success or failure"];
 
-A type representing either success or failure
-*/
-
-/* Section: Types */
-
-/*
-Tag: t
-
-The result type
-*/
+#[doc = "The result type"]
 enum t<T, U> {
-    /*
-    Variant: ok
-
-    Contains the result value
-    */
+    #[doc = "Contains the successful result value"]
     ok(T),
-    /*
-    Variant: err
-
-    Contains the error value
-    */
+    #[doc = "Contains the error value"]
     err(U)
 }
 
-/* Section: Operations */
-
-/*
-Function: get
-
+#[doc = "
 Get the value out of a successful result
 
-Failure:
+# Failure
 
 If the result is an error
-*/
+"]
 fn get<T: copy, U>(res: t<T, U>) -> T {
     alt res {
       ok(t) { t }
@@ -48,15 +26,13 @@ fn get<T: copy, U>(res: t<T, U>) -> T {
     }
 }
 
-/*
-Function: get_err
-
+#[doc = "
 Get the value out of an error result
 
-Failure:
+# Failure
 
 If the result is not an error
-*/
+"]
 fn get_err<T, U: copy>(res: t<T, U>) -> U {
     alt res {
       err(u) { u }
@@ -66,11 +42,7 @@ fn get_err<T, U: copy>(res: t<T, U>) -> U {
     }
 }
 
-/*
-Function: success
-
-Returns true if the result is <ok>
-*/
+#[doc = "Returns true if the result is `ok`"]
 pure fn success<T, U>(res: t<T, U>) -> bool {
     alt res {
       ok(_) { true }
@@ -78,15 +50,17 @@ pure fn success<T, U>(res: t<T, U>) -> bool {
     }
 }
 
-/*
-Function: failure
-
-Returns true if the result is <error>
-*/
+#[doc = "Returns true if the result is `error`"]
 pure fn failure<T, U>(res: t<T, U>) -> bool {
     !success(res)
 }
 
+#[doc = "
+Convert to the `either` type
+
+`ok` result variants are converted to `either::right` variants, `err`
+result variants are converted to `either::left`.
+"]
 pure fn to_either<T: copy, U: copy>(res: t<U, T>) -> either::t<T, U> {
     alt res {
       ok(res) { either::right(res) }
@@ -94,22 +68,19 @@ pure fn to_either<T: copy, U: copy>(res: t<U, T>) -> either::t<T, U> {
     }
 }
 
-/*
-Function: chain
-
+#[doc = "
 Call a function based on a previous result
 
-If `res` is <ok> then the value is extracted and passed to `op` whereupon
-`op`s result is returned. if `res` is <err> then it is immediately returned.
+If `res` is `ok` then the value is extracted and passed to `op` whereupon
+`op`s result is returned. if `res` is `err` then it is immediately returned.
 This function can be used to compose the results of two functions.
 
 Example:
 
-> let res = chain(read_file(file), { |buf|
->   ok(parse_buf(buf))
-> })
-
-*/
+    let res = chain(read_file(file)) { |buf|
+        ok(parse_buf(buf))
+    }
+"]
 fn chain<T, U: copy, V: copy>(res: t<T, V>, op: fn(T) -> t<U, V>)
     -> t<U, V> {
     alt res {

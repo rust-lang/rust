@@ -104,15 +104,16 @@ static size_t const BUF_BYTES = 2048;
   void ref() { ++ref_count; } \
   void deref() { if (--ref_count == 0) { dtor; } }
 
-#define RUST_ATOMIC_REFCOUNT()                                            \
-private:                                                                  \
-   intptr_t ref_count;                                                    \
-public:                                                                   \
-   void ref() {                                                           \
-       intptr_t old = sync::increment(ref_count);                         \
-       assert(old > 0);                                                   \
-   }                                                                      \
-   void deref() { if(0 == sync::decrement(ref_count)) { delete_this(); } }
+#define RUST_ATOMIC_REFCOUNT()                                             \
+private:                                                                   \
+   intptr_t ref_count;                                                     \
+public:                                                                    \
+   void ref() {                                                            \
+       intptr_t old = sync::increment(ref_count);                          \
+       assert(old > 0);                                                    \
+   }                                                                       \
+   void deref() { if(0 == sync::decrement(ref_count)) { delete_this(); } } \
+   intptr_t get_ref_count() { return sync::read(ref_count); }
 
 template <typename T> struct task_owned {
     inline void *operator new(size_t size, rust_task *task, const char *tag);

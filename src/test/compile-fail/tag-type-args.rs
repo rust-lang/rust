@@ -1,4 +1,4 @@
-// error-pattern: Wrong number of type arguments
+// error-pattern:wrong number of type arguments
 
 enum quux<T> { bar }
 

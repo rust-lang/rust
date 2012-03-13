@@ -204,14 +204,8 @@ memory_region::claim_alloc(void *mem) {
 
 void
 memory_region::maybe_poison(void *mem) {
-    // TODO: We should lock this, in case the compiler doesn't.
-    static int poison = -1;
-    if (poison < 0) {
-        char *env_str = getenv("RUST_POISON_ON_FREE");
-        poison = env_str != NULL && env_str[0] != '\0';
-    }
 
-    if (!poison)
+    if (!_srv->env->poison_on_free)
         return;
 
 #   if RUSTRT_TRACK_ALLOCATIONS >= 1

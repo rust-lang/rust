@@ -1,4 +1,4 @@
-// error-pattern:Unsatisfied precondition constraint (for example, uint::le
+// error-pattern:unsatisfied precondition constraint (for example, uint::le
 
 fn main() unsafe {
     fn foo(_a: uint, _b: uint) : uint::le(_a, _b) {}

@@ -23,7 +23,7 @@ fn log_fail() { log(error, fail); }
 
 fn log_ret() { log(error, ret); }
 
-fn log_break() { while true { log(error, break); } }
+fn log_break() { loop { log(error, break); } }
 
 fn log_cont() { do { log(error, cont); } while false }
 

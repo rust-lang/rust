@@ -1,6 +1,6 @@
 // -*- rust -*-
 
-// error-pattern: Unsatisfied precondition constraint (for example, lt(a, b)
+// error-pattern:unsatisfied precondition constraint (for example, lt(a, b)
 
 fn f(a: int, b: int) : lt(a, b) { }
 

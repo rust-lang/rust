@@ -1,4 +1,3 @@
-import std::{fs, io};
 import io::writer_util;
 
 import rustc::syntax::{ast, ast_util, fold, visit, codemap};
@@ -23,10 +22,10 @@ fn find_rust_files(&files: [str], path: str) {
     if str::ends_with(path, ".rs") && !contains(path, "utf8") {
         // ignoring "utf8" tests because something is broken
         files += [path];
-    } else if fs::path_is_dir(path)
+    } else if os::path_is_dir(path)
         && !contains(path, "compile-fail")
         && !contains(path, "build") {
-        for p in fs::list_dir(path) {
+        for p in os::list_dir(path) {
             find_rust_files(files, p);
         }
     }
@@ -254,9 +253,9 @@ fn check_variants_T<T: copy>(
     let L = vec::len(things);
 
     if L < 100u {
-        under(math::min(L, 20u)) {|i|
+        under(uint::min(L, 20u)) {|i|
             log(error, "Replacing... #" + uint::str(i));
-            under(math::min(L, 30u)) {|j|
+            under(uint::min(L, 30u)) {|j|
                 log(error, "With... " + stringifier(@things[j]));
                 let crate2 = @replacer(crate, i, things[j], cx.mode);
                 // It would be best to test the *crate* for stability, but testing the
@@ -268,7 +267,7 @@ fn check_variants_T<T: copy>(
                         diagnostic::mk_span_handler(handler, codemap),
                         crate2,
                         filename,
-                        io::string_reader(""), _,
+                        io::str_reader(""), _,
                         pprust::no_ann()));
                 alt cx.mode {
                   tm_converge {
@@ -323,17 +322,17 @@ fn check_whole_compiler(code: str, suggested_filename_prefix: str, allow_running
 fn removeIfExists(filename: str) {
     // So sketchy!
     assert !contains(filename, " ");
-    std::run::program_output("bash", ["-c", "rm " + filename]);
+    run::program_output("bash", ["-c", "rm " + filename]);
 }
 
 fn removeDirIfExists(filename: str) {
     // So sketchy!
     assert !contains(filename, " ");
-    std::run::program_output("bash", ["-c", "rm -r " + filename]);
+    run::program_output("bash", ["-c", "rm -r " + filename]);
 }
 
 fn check_running(exe_filename: str) -> happiness {
-    let p = std::run::program_output("/Users/jruderman/scripts/timed_run_rust_program.py", [exe_filename]);
+    let p = run::program_output("/Users/jruderman/scripts/timed_run_rust_program.py", [exe_filename]);
     let comb = p.out + "\n" + p.err;
     if str::len(comb) > 1u {
         log(error, "comb comb comb: " + comb);
@@ -362,7 +361,7 @@ fn check_running(exe_filename: str) -> happiness {
 }
 
 fn check_compiling(filename: str) -> happiness {
-    let p = std::run::program_output(
+    let p = run::program_output(
             "/Users/jruderman/code/rust/build/x86_64-apple-darwin/stage1/bin/rustc",
             [filename]);
 
@@ -412,12 +411,14 @@ fn parse_and_print(code: @str) -> str {
     write_file(filename, *code);
     let crate = parser::parse_crate_from_source_str(
         filename, code, [], sess);
-    ret as_str(bind pprust::print_crate(sess.cm,
+    io::with_str_reader(*code) { |rdr|
+        as_str(bind pprust::print_crate(sess.cm,
                                         sess.span_diagnostic,
                                         crate,
                                         filename,
-                                        io::string_reader(*code), _,
-                                        pprust::no_ann()));
+                                        rdr, _,
+                                        pprust::no_ann()))
+    }
 }
 
 fn has_raw_pointers(c: ast::crate) -> bool {
@@ -504,9 +505,9 @@ fn check_roundtrip_convergence(code: @str, maxIters: uint) {
         #error("Did not converge after %u iterations!", i);
         write_file("round-trip-a.rs", *old);
         write_file("round-trip-b.rs", *new);
-        std::run::run_program("diff",
-                              ["-w", "-u", "round-trip-a.rs",
-                               "round-trip-b.rs"]);
+        run::run_program("diff",
+                         ["-w", "-u", "round-trip-a.rs",
+                          "round-trip-b.rs"]);
         fail "Mismatch";
     }
 }
@@ -557,13 +558,15 @@ fn check_variants(files: [str], cx: context) {
             parser::parse_crate_from_source_str(
                 file,
                 s, [], sess);
-        #error("%s",
-               as_str(bind pprust::print_crate(sess.cm,
-                                               sess.span_diagnostic,
-                                               crate,
-                                               file,
-                                               io::string_reader(*s), _,
-                                               pprust::no_ann())));
+        io::with_str_reader(*s) { |rdr|
+            #error("%s",
+                   as_str(bind pprust::print_crate(sess.cm,
+                                                   sess.span_diagnostic,
+                                                   crate,
+                                                   file,
+                                                   rdr, _,
+                                                   pprust::no_ann())));
+        }
         check_variants_of_ast(*crate, sess.cm, file, cx);
     }
 }

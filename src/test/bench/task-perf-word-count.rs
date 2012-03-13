@@ -12,7 +12,8 @@ use std;
 
 import option = option;
 import option::{some, none};
-import std::{map, io, time};
+import std::{map, time};
+import std::map::hashmap;
 import io::reader_util;
 
 import comm::chan;
@@ -21,10 +22,10 @@ import comm::recv;
 import comm::send;
 
 fn map(input: str, emit: map_reduce::putter) {
-    let f = io::string_reader(input);
+    let f = io::str_reader(input);
 
 
-    while true {
+    loop {
         alt read_word(f) { some(w) { emit(w, 1); } none { break; } }
     }
 }
@@ -32,7 +33,7 @@ fn map(input: str, emit: map_reduce::putter) {
 fn reduce(_word: str, get: map_reduce::getter) {
     let count = 0;
 
-    while true { alt get() { some(_) { count += 1; } none { break; } } }
+    loop { alt get() { some(_) { count += 1; } none { break; } } }
 }
 
 mod map_reduce {
@@ -61,7 +62,7 @@ mod map_reduce {
        [future::future<task::task_result>] {
         let results = [];
         for i: str in inputs {
-            let builder = task::mk_task_builder();
+            let builder = task::task_builder();
             results += [task::future_result(builder)];
             task::run(builder) {|| map_task(ctrl, i)}
         }
@@ -159,7 +160,7 @@ mod map_reduce {
                     // log(error, "creating new reducer for " + k);
                     let p = port();
                     let ch = chan(p);
-                    let builder = task::mk_task_builder();
+                    let builder = task::task_builder();
                     results += [task::future_result(builder)];
                     task::run(builder) {||reduce_task(k, ch)}
                     c = recv(p);

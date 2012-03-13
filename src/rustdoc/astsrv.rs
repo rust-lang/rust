@@ -7,6 +7,7 @@
      Rustdoc from its non-sendableness."
 )];
 
+import std::map::hashmap;
 import rustc::driver::session;
 import rustc::driver::driver;
 import rustc::driver::diagnostic;
@@ -108,7 +109,7 @@ fn build_ctxt(sess: session::session, ast: @ast::crate,
 
     let ast = config::strip_unconfigured_items(ast);
     let ast = front::test::modify_for_testing(sess, ast);
-    let ast_map = ast_map::map_crate(*ast);
+    let ast_map = ast_map::map_crate(sess, *ast);
     *ignore_errors = true;
     let exp_map = resolve::resolve_crate_reexports(sess, ast_map, ast);
     *ignore_errors = false;
@@ -145,8 +146,8 @@ fn build_session() -> (session::session, @mutable bool) {
         no_trans: false,
         no_asm_comments: false,
         monomorphize: false,
-        inline: false,
-        warn_unused_imports: false
+        warn_unused_imports: false,
+        enforce_mut_vars: false
     };
 
     let codemap = codemap::new_codemap();

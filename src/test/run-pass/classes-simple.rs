@@ -1,4 +1,5 @@
-// xfail-test
+// xfail-test FIXME: Needs metadata encoding
+
 class cat {
   priv {
     let mutable meows : uint;
@@ -12,6 +13,6 @@ class cat {
 fn main() {
   let nyan : cat = cat(52u, 99);
   let kitty = cat(1000u, 2);
-  log(debug, nyan.how_hungry);
-  log(debug, kitty.how_hungry);
+  assert(nyan.how_hungry == 99);
+  assert(kitty.how_hungry == 2);
 }

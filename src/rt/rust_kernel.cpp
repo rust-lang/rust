@@ -17,7 +17,6 @@ rust_kernel::rust_kernel(rust_srv *srv) :
     _region(srv, true),
     _log(srv, NULL),
     srv(srv),
-    live_tasks(0),
     max_task_id(0),
     rval(0),
     max_sched_id(0),
@@ -173,7 +172,7 @@ rust_kernel::register_task(rust_task *task) {
         scoped_lock with(task_lock);
         task->id = max_task_id++;
         task_table.put(task->id, task);
-        new_live_tasks = ++live_tasks;
+        new_live_tasks = task_table.count();
     }
     K(srv, task->id != INTPTR_MAX, "Hit the maximum task id");
     KLOG_("Registered task %" PRIdPTR, task->id);
@@ -187,7 +186,7 @@ rust_kernel::release_task_id(rust_task_id id) {
     {
         scoped_lock with(task_lock);
         task_table.remove(id);
-        new_live_tasks = --live_tasks;
+        new_live_tasks = task_table.count();
     }
     KLOG_("Total outstanding tasks: %d", new_live_tasks);
 }

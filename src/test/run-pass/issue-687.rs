@@ -18,7 +18,7 @@ fn producer(c: chan<[u8]>) {
 fn packager(cb: chan<chan<[u8]>>, msg: chan<msg>) {
     let p: port<[u8]> = port();
     send(cb, chan(p));
-    while true {
+    loop {
         #debug("waiting for bytes");
         let data = recv(p);
         #debug("got bytes");
@@ -46,7 +46,7 @@ fn main() {
     let source_chan: chan<[u8]> = recv(recv_reader);
     let prod = task::spawn {|| producer(source_chan); };
 
-    while true {
+    loop {
         let msg = recv(p);
         alt msg {
           closed { #debug("Got close message"); break; }

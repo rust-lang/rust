@@ -20,12 +20,41 @@ rust_port::~rust_port() {
     task->deref();
 }
 
-void rust_port::detach() {
-    I(task->thread, !task->lock.lock_held_by_current_thread());
-    scoped_lock with(task->lock);
-    {
-        task->release_port(id);
+void rust_port::ref() {
+    scoped_lock with(ref_lock);
+    ref_count++;
+}
+
+void rust_port::deref() {
+    scoped_lock with(ref_lock);
+    ref_count--;
+    if (!ref_count) {
+        if (task->blocked_on(&detach_cond)) {
+            // The port owner is waiting for the port to be detached
+            task->wakeup(&detach_cond);
+        }
     }
+}
+
+void rust_port::begin_detach(uintptr_t *yield) {
+    *yield = false;
+
+    task->release_port(id);
+
+    scoped_lock with(ref_lock);
+    ref_count--;
+
+    if (ref_count != 0) {
+        task->block(&detach_cond, "waiting for port detach");
+        *yield = true;
+    }
+}
+
+void rust_port::end_detach() {
+    // Just take the lock to make sure that the thread that signaled
+    // the detach_cond isn't still holding it
+    scoped_lock with(ref_lock);
+    I(task->thread, ref_count == 0);
 }
 
 void rust_port::send(void *sptr) {
@@ -61,14 +90,37 @@ void rust_port::send(void *sptr) {
     }
 }
 
-bool rust_port::receive(void *dptr) {
-    I(task->thread, lock.lock_held_by_current_thread());
+void rust_port::receive(void *dptr, uintptr_t *yield) {
+    I(task->thread, !lock.lock_held_by_current_thread());
+
+    LOG(task, comm, "port: 0x%" PRIxPTR ", dptr: 0x%" PRIxPTR
+        ", size: 0x%" PRIxPTR,
+        (uintptr_t) this, (uintptr_t) dptr, unit_sz);
+
+    scoped_lock with(lock);
+
+    *yield = false;
+
     if (buffer.is_empty() == false) {
         buffer.dequeue(dptr);
         LOG(task, comm, "<=== read data ===");
-        return true;
+        return;
     }
-    return false;
+
+    // No data was buffered on any incoming channel, so block this task on
+    // the port. Remember the rendezvous location so that any sender task
+    // can write to it before waking up this task.
+
+    LOG(task, comm, "<=== waiting for rendezvous data ===");
+    task->rendezvous_ptr = (uintptr_t*) dptr;
+    task->block(this, "waiting for rendezvous data");
+
+    // Blocking the task might fail if the task has already been killed, but
+    // in the event of both failure and success the task needs to yield. On
+    // success, it yields and waits to be unblocked. On failure it yields and
+    // is then fails the task.
+
+    *yield = true;
 }
 
 size_t rust_port::size() {

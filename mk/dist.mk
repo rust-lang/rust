@@ -23,7 +23,7 @@ PKG_FILES := \
     $(addprefix $(S)src/,                      \
       README.txt                               \
       cargo                                    \
-      comp                                     \
+      rustc                                    \
       compiletest                              \
       etc                                      \
       fuzzer                                   \

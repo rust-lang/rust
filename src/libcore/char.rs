@@ -45,27 +45,27 @@ import is_XID_start = unicode::derived_property::XID_Start;
 import is_XID_continue = unicode::derived_property::XID_Continue;
 
 
-#[doc(
-  brief = "Indicates whether a character is in lower case, defined \
-           in terms of the Unicode General Category 'Ll'."
-)]
+#[doc = "
+Indicates whether a character is in lower case, defined
+in terms of the Unicode General Category 'Ll'
+"]
 pure fn is_lowercase(c: char) -> bool {
     ret unicode::general_category::Ll(c);
 }
 
-#[doc(
-  brief = "Indicates whether a character is in upper case, defined \
-           in terms of the Unicode General Category 'Lu'."
-)]
+#[doc = "
+Indicates whether a character is in upper case, defined
+in terms of the Unicode General Category 'Lu'.
+"]
 pure fn is_uppercase(c: char) -> bool {
     ret unicode::general_category::Lu(c);
 }
 
-#[doc(
-  brief = "Indicates whether a character is whitespace, defined in \
-           terms of the Unicode General Categories 'Zs', 'Zl', 'Zp' \
-           additional 'Cc'-category control codes in the range [0x09, 0x0d]"
-)]
+#[doc = "
+Indicates whether a character is whitespace, defined in
+terms of the Unicode General Categories 'Zs', 'Zl', 'Zp'
+additional 'Cc'-category control codes in the range [0x09, 0x0d]
+"]
 pure fn is_whitespace(c: char) -> bool {
     ret ('\x09' <= c && c <= '\x0d')
         || unicode::general_category::Zs(c)
@@ -73,11 +73,11 @@ pure fn is_whitespace(c: char) -> bool {
         || unicode::general_category::Zp(c);
 }
 
-#[doc(
-  brief = "Indicates whether a character is alphanumeric, defined \
-            in terms of the Unicode General Categories 'Nd', \
-            'Nl', 'No' and the Derived Core Property 'Alphabetic'."
-)]
+#[doc = "
+Indicates whether a character is alphanumeric, defined
+in terms of the Unicode General Categories 'Nd',
+'Nl', 'No' and the Derived Core Property 'Alphabetic'.
+"]
 pure fn is_alphanumeric(c: char) -> bool {
     ret unicode::derived_property::Alphabetic(c) ||
         unicode::general_category::Nd(c) ||
@@ -85,26 +85,32 @@ pure fn is_alphanumeric(c: char) -> bool {
         unicode::general_category::No(c);
 }
 
-#[doc( brief = "Indicates whether the character is an ASCII character" )]
+#[doc = "Indicates whether the character is an ASCII character"]
 pure fn is_ascii(c: char) -> bool {
    c - ('\x7F' & c) == '\x00'
 }
 
-#[doc( brief = "Indicates whether the character is numeric (Nd, Nl, or No)" )]
+#[doc = "Indicates whether the character is numeric (Nd, Nl, or No)"]
 pure fn is_digit(c: char) -> bool {
     ret unicode::general_category::Nd(c) ||
         unicode::general_category::Nl(c) ||
         unicode::general_category::No(c);
 }
 
-#[doc(
-  brief = "Convert a char to the corresponding digit. \
-           Safety note: This function fails if `c` is not a valid char",
-  return = "If `c` is between '0' and '9', the corresponding value \
-            between 0 and 9. If `c` is 'a' or 'A', 10. If `c` is \
-            'b' or 'B', 11, etc. Returns none if the char does not \
-            refer to a digit in the given radix."
-)]
+#[doc = "
+Convert a char to the corresponding digit.
+
+# Safety note
+
+This function fails if `c` is not a valid char
+
+# Return value
+
+If `c` is between '0' and '9', the corresponding value
+between 0 and 9. If `c` is 'a' or 'A', 10. If `c` is
+'b' or 'B', 11, etc. Returns none if the char does not
+refer to a digit in the given radix.
+"]
 pure fn to_digit(c: char, radix: uint) -> option<uint> {
     let val = alt c {
       '0' to '9' { c as uint - ('0' as uint) }
@@ -119,9 +125,7 @@ pure fn to_digit(c: char, radix: uint) -> option<uint> {
 /*
  FIXME: works only on ASCII
 */
-#[doc(
-  brief = "Convert a char to the corresponding lower case."
-)]
+#[doc = "Convert a char to the corresponding lower case."]
 pure fn to_lower(c: char) -> char {
     alt c {
       'A' to 'Z' { ((c as u8) + 32u8) as char }
@@ -132,9 +136,7 @@ pure fn to_lower(c: char) -> char {
 /*
  FIXME: works only on ASCII
 */
-#[doc(
-  brief = "Convert a char to the corresponding upper case."
-)]
+#[doc = "Convert a char to the corresponding upper case."]
 pure fn to_upper(c: char) -> char {
     alt c {
       'a' to 'z' { ((c as u8) - 32u8) as char }
@@ -142,10 +144,13 @@ pure fn to_upper(c: char) -> char {
     }
 }
 
-#[doc(
-  brief =  "Compare two chars.",
-  return = "-1 if a<b, 0 if a==b, +1 if a>b"
-)]
+#[doc = "
+Compare two chars
+
+# Return value
+
+-1 if a < b, 0 if a == b, +1 if a > b
+"]
 pure fn cmp(a: char, b: char) -> int {
     ret  if b > a { -1 }
     else if b < a { 1 }

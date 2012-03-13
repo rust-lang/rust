@@ -1,4 +1,4 @@
-// error-pattern:Declaration of thpppt shadows
+// error-pattern:declaration of `thpppt` shadows
 enum ack { thpppt, ffff, }
 
 fn main() {

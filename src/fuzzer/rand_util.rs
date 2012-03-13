@@ -50,7 +50,7 @@ fn weighted_choice<T: copy>(r : rand::rng, v : [weighted<T>]) -> T {
             ret item;
         }
     }
-    std::util::unreachable();
+    core::unreachable();
 }
 
 fn weighted_vec<T: copy>(v : [weighted<T>]) -> [T] {

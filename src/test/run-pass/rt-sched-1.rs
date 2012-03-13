@@ -3,8 +3,8 @@
 type sched_id = int;
 type task_id = int;
 
-type task = *ctypes::void;
-type closure = *ctypes::void;
+type task = *libc::c_void;
+type closure = *libc::c_void;
 
 native mod rustrt {
     fn rust_new_sched(num_threads: uint) -> sched_id;

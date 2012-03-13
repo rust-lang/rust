@@ -4,7 +4,7 @@ use std;
 use rustc;
 
 import rustc::*;
-import std::io::*;
+import io::*;
 
 import rustc::driver::diagnostic;
 import rustc::syntax::ast;

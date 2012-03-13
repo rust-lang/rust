@@ -274,7 +274,8 @@ else
 fi
 
 opt sharedstd 1 "build libstd as a shared library"
-opt valgrind 1 "run tests with valgrind"
+opt valgrind 1 "run tests with valgrind (memcheck by default)"
+opt helgrind 0 "run tests with helgrind instead of memcheck"
 opt docs     1 "build documentation"
 opt optimize 1 "build optimized rust code"
 opt optimize-cxx 1 "build optimized C++ code"
@@ -305,10 +306,11 @@ probe_need CFG_CURL        curl
 # and shouldn't attempt to load submodules
 if [ ! -e ${CFG_SRC_DIR}.git ]
 then
+    probe CFG_GIT          git
     msg "git: no git directory. disabling submodules"
     CFG_DISABLE_MANAGE_SUBMODULES=1
 else
-    probe_need CFG_GIT              git
+    probe_need CFG_GIT     git
 fi
 
 probe CFG_CLANG            clang++
@@ -317,7 +319,6 @@ probe CFG_LLVM_CONFIG      llvm-config
 probe CFG_VALGRIND         valgrind
 probe CFG_PERF             perf
 probe CFG_ISCC             iscc
-probe CFG_NATURALDOCS      NaturalDocs naturaldocs
 probe CFG_LLNEXTGEN        LLnextgen
 probe CFG_PANDOC           pandoc
 probe CFG_PDFLATEX         pdflatex
@@ -411,7 +412,6 @@ step_msg "making directories"
 
 for i in \
     doc doc/core doc/std \
-    nd nd/core nd/std \
     dl tmp
 do
     make_dir $i
@@ -480,14 +480,6 @@ done
 
 # Configure submodules
 step_msg "configuring submodules"
-
-# If we have no git directory then we are probably a tarball distribution
-# and shouldn't attempt to load submodules
-if [ ! -e ${CFG_SRC_DIR}.git ]
-then
-    msg "git: no git directory. disabling submodules"
-    CFG_DISABLE_MANAGE_SUBMODULES=1
-fi
 
 # Have to be in the top of src directory for this
 if [ -z $CFG_DISABLE_MANAGE_SUBMODULES ]
@@ -678,14 +670,8 @@ putvar CFG_PREFIX
 putvar CFG_TARGET_TRIPLES
 putvar CFG_C_COMPILER
 putvar CFG_LIBDIR
+putvar CFG_DISABLE_MANAGE_SUBMODULES
 
-# Setting this again because it may have been changed
-if [ $CFG_DISABLE_MANAGE_SUBMODULES ]
-then
-    putvar CFG_DISABLE_MANAGE_SUBMODULES
-fi
-
-# Ditto for pandoc
 if [ ! -z $BAD_PANDOC ]
 then
     CFG_PANDOC=

@@ -1,23 +1,15 @@
-/*
-Module: tempfile
-
-Temporary files and directories
-*/
+#[doc = "Temporary files and directories"];
 
 import core::option;
-import fs;
 import option::{none, some};
 import rand;
 
-/*
-Function: mkdtemp
-*/
 fn mkdtemp(prefix: str, suffix: str) -> option<str> {
-    let r = rand::mk_rng();
+    let r = rand::rng();
     let i = 0u;
     while (i < 1000u) {
         let s = prefix + r.gen_str(16u) + suffix;
-        if fs::make_dir(s, 0x1c0i32) {  // FIXME: u+rwx
+        if os::make_dir(s, 0x1c0i32) {  // FIXME: u+rwx
             ret some(s);
         }
         i += 1u;
@@ -30,7 +22,7 @@ fn test_mkdtemp() {
     let r = mkdtemp("./", "foobar");
     alt r {
         some(p) {
-            fs::remove_dir(p);
+            os::remove_dir(p);
             assert(str::ends_with(p, "foobar"));
         }
         _ { assert(false); }

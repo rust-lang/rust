@@ -1,4 +1,4 @@
-// error-pattern:Unsatisfied precondition constraint
+// error-pattern:unsatisfied precondition constraint
 pure fn even(x: uint) -> bool {
     if x < 2u {
         ret false;

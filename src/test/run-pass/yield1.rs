@@ -4,7 +4,7 @@ import task;
 import task::*;
 
 fn main() {
-    let builder = task::mk_task_builder();
+    let builder = task::task_builder();
     let result = task::future_result(builder);
     task::run(builder) {|| child(); }
     #error("1");

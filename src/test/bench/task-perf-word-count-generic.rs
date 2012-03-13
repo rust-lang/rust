@@ -34,7 +34,7 @@ import comm::send;
 fn map(&&filename: [u8], emit: map_reduce::putter<[u8], int>) {
     let f = io::file_reader(str::from_bytes(filename));
 
-    while true {
+    loop {
         alt read_word(f) {
           some(w) { emit(str::bytes(w), 1); }
           none { break; }
@@ -45,7 +45,7 @@ fn map(&&filename: [u8], emit: map_reduce::putter<[u8], int>) {
 fn reduce(&&_word: [u8], get: map_reduce::getter<int>) {
     let count = 0;
 
-    while true { alt get() { some(_) { count += 1; } none { break; } } }
+    loop { alt get() { some(_) { count += 1; } none { break; } } }
 }
 
 mod map_reduce {

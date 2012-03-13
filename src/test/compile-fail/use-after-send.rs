@@ -1,4 +1,4 @@
-// error-pattern: Unsatisfied precondition constraint
+// error-pattern:unsatisfied precondition constraint
 fn send<T: send>(ch: _chan<T>, -data: T) {
     log(debug, ch);
     log(debug, data);

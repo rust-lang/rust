@@ -13,7 +13,7 @@ ifeq ($(CFG_PANDOC),)
 else
 
 DOCS += doc/rust.html
-doc/rust.html: rust.md doc/version.md doc/keywords.md
+doc/rust.html: rust.md doc/version.md doc/keywords.md $(S)doc/rust.css
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_PANDOC) \
          --standalone --toc \
@@ -66,7 +66,7 @@ doc/rust.pdf: doc/rust.tex
   else
 
 DOCS += doc/tutorial.html
-doc/tutorial.html: $(S)doc/tutorial.md
+doc/tutorial.html: $(S)doc/tutorial.md $(S)doc/rust.css
 	@$(call E, cp: $(S)doc/rust.css)
 	-$(Q)cp -a $(S)doc/rust.css doc/ 2> /dev/null
 	@$(call E, pandoc: $@)
@@ -100,42 +100,34 @@ endif
 
 
 ######################################################################
-# Naturaldocs (library reference related)
+# Rustdoc (libcore/std)
 ######################################################################
 
-ifeq ($(CFG_NATURALDOCS),)
-  $(info cfg: no naturaldocs found, omitting library doc build)
+ifeq ($(CFG_PANDOC),)
+  $(info cfg: no pandoc found, omitting library doc build)
 else
 
+# The rustdoc executable
+RUSTDOC = $(HBIN2_H_$(CFG_HOST_TRIPLE))/rustdoc$(X)
+
+# The library documenting macro
+# $(1) - The output directory
+# $(2) - The crate file
+# $(3) - The crate soruce files
 define libdoc
-doc/$(1)/index.html: nd/$(1)/Languages.txt nd/$(1)/Topics.txt \
-                     nd/$(1)/lib.css $(2)
-	@$$(call E, naturaldocs: $$@)
-	$(CFG_NATURALDOCS) -i $(S)src/lib$(1) -o HTML doc/$(1) \
-                       -p nd/$(1) -r -s Default lib
+doc/$(1)/index.html: $(2) $(3) $$(RUSTDOC) doc/$(1)/rust.css
+	@$$(call E, rustdoc: $$@)
+	$(Q)$(RUSTDOC) $(2) --output-dir=doc/$(1)
 
-nd/$(1)/Languages.txt: $(S)doc/Languages.txt
+doc/$(1)/rust.css: $(S)doc/rust.css
 	@$$(call E, cp: $$@)
 	$(Q)cp $$< $$@
 
-nd/$(1)/Topics.txt: $(S)doc/Topics.txt
-	@$$(call E, cp: $$@)
-	$(Q)cp $$< $$@
-
-nd/$(1)/lib.css: $(S)doc/lib.css
-	@$$(call E, cp: $$@)
-	$(Q)cp $$< $$@
-
-GENERATED += nd/$(1)/Languages.txt \
-             nd/$(1)/Topics.txt \
-             nd/$(1)/Menu.txt \
-             nd/$(1)/Data
-
-DOCS += doc/$(1)/index.html nd/$(1)/lib.css
+DOCS += doc/$(1)/index.html
 endef
 
-$(eval $(call libdoc,core,$(CORELIB_CRATE) $(CORELIB_INPUTS)))
-$(eval $(call libdoc,std,$(STDLIB_CRATE) $(STDLIB_INPUTS)))
+$(eval $(call libdoc,core,$(CORELIB_CRATE),$(CORELIB_INPUTS)))
+$(eval $(call libdoc,std,$(STDLIB_CRATE),$(STDLIB_INPUTS)))
 endif
 
 

@@ -9,8 +9,7 @@ import rustc::middle::ast_map;
 import rustc::util::ppaux;
 import std::map::{hashmap, map, new_int_hash};
 import std::getopts;
-import std::io;
-import std::io::writer_util;
+import io::writer_util;
 import driver::build_session_options;
 import driver::build_session;
 import driver::build_configuration;
@@ -50,7 +49,7 @@ type ast_pat = str;
 type ast_ty = str;
 type ast_item = str;
 
-type tp_map = map<ast::node_id, ty::t>;
+type tp_map = hashmap<ast::node_id, ty::t>;
 
 type serialize_ctx = {
     crate: @ast::crate,
@@ -238,7 +237,7 @@ impl serialize_methods for serialize_ctx {
             fail "TODO--implement class";
           }
           ty::ty_rec(fields) {
-            let stmts = vec::init_fn(vec::len(fields)) {|i|
+            let stmts = vec::from_fn(vec::len(fields)) {|i|
                 let field = fields[i];
                 let f_name = field.ident;
                 let f_ty = field.mt.ty;
@@ -258,6 +257,7 @@ impl serialize_methods for serialize_ctx {
             self.serialize_ty(t, v)
           }
           ty::ty_ptr(_) |
+          ty::ty_rptr(_,_) |
           ty::ty_fn(_) |
           ty::ty_iface(_, _) |
           ty::ty_res(_, _, _) |
@@ -317,10 +317,10 @@ impl serialize_methods for serialize_ctx {
     fn serialize_arm(v_path: str, emit_fn: str, args: [ty::t])
         -> (ast_pat, [ast_stmt]) {
         let n_args = vec::len(args);
-        let arg_nms = vec::init_fn(n_args) {|i| #fmt["v%u", i] };
+        let arg_nms = vec::from_fn(n_args) {|i| #fmt["v%u", i] };
         let v_pat =
             #fmt["\n%s(%s)\n", v_path, str::connect(arg_nms, ",")];
-        let stmts = vec::init_fn(n_args) {|i|
+        let stmts = vec::from_fn(n_args) {|i|
             let arg_ty = args[i];
             let serialize_expr =
                 self.serialize_ty(arg_ty, arg_nms[i]);
@@ -402,7 +402,7 @@ impl deserialize_methods for serialize_ctx {
           ty::ty_vec(mt) {
             let selem = self.deserialize_ty(mt.ty);
             #fmt["s.read_vec({|len|\n\
-                    vec::init_fn(len, {|i|\n\
+                    vec::from_fn(len, {|i|\n\
                       s.read_vec_elt(i, {||\n\
                         %s\n\
                   })})})", selem]
@@ -431,6 +431,7 @@ impl deserialize_methods for serialize_ctx {
             self.deserialize_ty(t)
           }
           ty::ty_ptr(_) |
+          ty::ty_rptr(_,_) |
           ty::ty_fn(_) |
           ty::ty_iface(_, _) |
           ty::ty_res(_, _, _) |
@@ -454,7 +455,7 @@ impl deserialize_methods for serialize_ctx {
                         tps: [ty::t]) -> ast_expr {
         let variants = ty::substd_enum_variants(self.tcx, id, tps);
 
-        let arms = vec::init_fn(vec::len(variants)) {|v_id|
+        let arms = vec::from_fn(vec::len(variants)) {|v_id|
             let variant = variants[v_id];
             let item_path = ty::item_path(self.tcx, variant.id);
             let v_path = ast_map::path_to_str(item_path);
@@ -482,7 +483,7 @@ impl deserialize_methods for serialize_ctx {
 
     fn deserialize_arm(v_path: str, read_fn: str, args: [ty::t])
         -> ast_expr {
-        let exprs = vec::init_fn(vec::len(args)) {|i|
+        let exprs = vec::from_fn(vec::len(args)) {|i|
             let rexpr = self.deserialize_ty(args[i]);
             #fmt["\ns.%s(%uu, {||%s})\n", read_fn, i, rexpr]
         };

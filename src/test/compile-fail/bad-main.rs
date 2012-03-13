@@ -1,3 +1,3 @@
-// error-pattern:wrong type in main function
+// error-pattern:expecting `native fn([str])
 
 fn main(x: int) { }

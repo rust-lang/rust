@@ -1,12 +1,16 @@
 // Rust JSON serialization library
 // Copyright (c) 2011 Google Inc.
 
+#[doc = "json serialization"];
+
 import result::{ok, err};
 import io;
 import io::{reader_util, writer_util};
 import map;
+import map::hashmap;
 
 export json;
+export error;
 export to_writer;
 export to_str;
 export from_reader;
@@ -20,23 +24,13 @@ export list;
 export dict;
 export null;
 
-/*
-Tag: json
-
-Represents a json value.
-*/
+#[doc = "Represents a json value"]
 enum json {
-    /* Variant: num */
     num(float),
-    /* Variant: string */
     string(str),
-    /* Variant: boolean */
     boolean(bool),
-    /* Variant: list */
     list([json]),
-    /* Variant: dict */
-    dict(map::map<str,json>),
-    /* Variant: null */
+    dict(map::hashmap<str,json>),
     null,
 }
 
@@ -46,11 +40,7 @@ type error = {
     msg: str,
 };
 
-/*
-Function: to_writer
-
-Serializes a json value into a io::writer.
-*/
+#[doc = "Serializes a json value into a io::writer"]
 fn to_writer(wr: io::writer, j: json) {
     alt j {
       num(n) { wr.write_str(float::to_str(n, 6u)); }
@@ -112,11 +102,7 @@ fn to_writer(wr: io::writer, j: json) {
     }
 }
 
-/*
-Function: to_str
-
-Serializes a json value into a string.
-*/
+#[doc = "Serializes a json value into a string"]
 fn to_str(j: json) -> str {
     io::with_str_writer { |wr| to_writer(wr, j) }
 }
@@ -154,6 +140,8 @@ impl parser for parser {
     fn parse() -> result::t<json, error> {
         alt self.parse_value() {
           ok(value) {
+            // Skip trailing whitespaces.
+            self.parse_whitespace();
             // Make sure there is no trailing characters.
             if self.eof() {
                 ok(value)
@@ -395,23 +383,23 @@ impl parser for parser {
             ret ok(list(values));
         }
 
-        while true {
+        loop {
             alt self.parse_value() {
               ok(v) { vec::push(values, v); }
               e { ret e; }
             }
 
             self.parse_whitespace();
-            if self.eof() { break; }
+            if self.eof() {
+                ret self.error("EOF while parsing list");
+            }
 
             alt self.ch {
               ',' { self.bump(); }
               ']' { self.bump(); ret ok(list(values)); }
               _ { ret self.error("expecting ',' or ']'"); }
             }
-        }
-
-        ret self.error("EOF while parsing list");
+        };
     }
 
     fn parse_object() -> result::t<json, error> {
@@ -465,12 +453,7 @@ impl parser for parser {
     }
 }
 
-/*
-Function: from_reader
-
-Deserializes a json value from an io::reader.
-*/
-
+#[doc = "Deserializes a json value from an io::reader"]
 fn from_reader(rdr: io::reader) -> result::t<json, error> {
     let parser = {
         rdr: rdr,
@@ -482,20 +465,12 @@ fn from_reader(rdr: io::reader) -> result::t<json, error> {
     parser.parse()
 }
 
-/*
-Function: from_str
-
-Deserializes a json value from a string.
-*/
+#[doc = "Deserializes a json value from a string"]
 fn from_str(s: str) -> result::t<json, error> {
-    from_reader(io::string_reader(s))
+    io::with_str_reader(s, from_reader)
 }
 
-/*
-Function: eq
-
-Test if two json values are equal.
-*/
+#[doc = "Test if two json values are equal"]
 fn eq(value0: json, value1: json) -> bool {
     alt (value0, value1) {
       (num(f0), num(f1)) { f0 == f1 }
@@ -627,6 +602,9 @@ mod tests {
         assert from_str("null") == ok(null);
         assert from_str("true") == ok(boolean(true));
         assert from_str("false") == ok(boolean(false));
+        assert from_str(" null ") == ok(null);
+        assert from_str(" true ") == ok(boolean(true));
+        assert from_str(" false ") == ok(boolean(false));
     }
 
     #[test]
@@ -654,6 +632,7 @@ mod tests {
         assert from_str("0.4e5") == ok(num(0.4e5f));
         assert from_str("0.4e+15") == ok(num(0.4e15f));
         assert from_str("0.4e-01") == ok(num(0.4e-01f));
+        assert from_str(" 3 ") == ok(num(3f));
     }
 
     #[test]
@@ -670,6 +649,7 @@ mod tests {
         assert from_str("\"\\n\"") == ok(string("\n"));
         assert from_str("\"\\r\"") == ok(string("\r"));
         assert from_str("\"\\t\"") == ok(string("\t"));
+        assert from_str(" \"foo\" ") == ok(string("foo"));
     }
 
     #[test]
@@ -691,6 +671,7 @@ mod tests {
         assert from_str("[ false ]") == ok(list([boolean(false)]));
         assert from_str("[null]") == ok(list([null]));
         assert from_str("[3, 1]") == ok(list([num(3f), num(1f)]));
+        assert from_str("\n[3, 2]\n") == ok(list([num(3f), num(2f)]));
         assert from_str("[2, [4, 1]]") ==
                ok(list([num(2f), list([num(4f), num(1f)])]));
     }
@@ -726,6 +707,8 @@ mod tests {
                   mk_dict([("a", num(3.0f))]));
 
         assert eq(result::get(from_str("{ \"a\": null, \"b\" : true }")),
+                  mk_dict([("a", null), ("b", boolean(true))]));
+        assert eq(result::get(from_str("\n{ \"a\": null, \"b\" : true }\n")),
                   mk_dict([("a", null), ("b", boolean(true))]));
         assert eq(result::get(from_str("{\"a\" : 1.0 ,\"b\": [ true ]}")),
                   mk_dict([

@@ -48,8 +48,6 @@
 .project
 .valgrindrc
 lexer.ml
-rustboot
-rustc
 TAGS
 version.ml
 version.texi
@@ -78,3 +76,4 @@ rust.tex
 keywords.md
 x86_64-apple-darwin/
 doc/core/
+tmp.*.rs

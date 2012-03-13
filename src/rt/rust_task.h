@@ -68,10 +68,6 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     // Fields known only to the runtime.
     rust_kernel *kernel;
     const char *const name;
-    rust_task_list *state;
-    rust_cond *cond;
-    const char *cond_name;
-    rust_task *supervisor;     // Parent-link for failure propagation.
     int32_t list_index;
 
     rust_port_id next_port_id;
@@ -93,10 +89,6 @@ rust_task : public kernel_owned<rust_task>, rust_cond
 
     bool propagate_failure;
 
-    lock_and_signal lock;
-
-    hash_map<rust_port_id, rust_port *> port_table;
-
     rust_obstack dynastack;
 
     uint32_t cc_counter;
@@ -108,6 +100,18 @@ rust_task : public kernel_owned<rust_task>, rust_cond
 
 private:
 
+    // Protects port_table
+    lock_and_signal port_lock;
+    hash_map<rust_port_id, rust_port *> port_table;
+
+    // Protects state, cond, cond_name
+    lock_and_signal state_lock;
+    rust_task_list *state;
+    rust_cond *cond;
+    const char *cond_name;
+
+    // Protects the killed flag
+    lock_and_signal kill_lock;
     // Indicates that the task was killed and needs to unwind
     bool killed;
     // Indicates that we've called back into Rust from C
@@ -120,6 +124,9 @@ private:
 
     rust_port_selector port_selector;
 
+    lock_and_signal supervisor_lock;
+    rust_task *supervisor;     // Parent-link for failure propagation.
+
     // Called when the atomic refcount reaches zero
     void delete_this();
 
@@ -129,6 +136,11 @@ private:
     size_t get_next_stack_size(size_t min, size_t current, size_t requested);
 
     void return_c_stack();
+
+    void transition(rust_task_list *src, rust_task_list *dst,
+                    rust_cond *cond, const char* cond_name);
+
+    bool must_fail_from_being_killed_unlocked();
 
     friend void task_start_wrapper(spawn_args *a);
     friend void cleanup_task(cleanup_args *a);
@@ -156,12 +168,12 @@ public:
     void *realloc(void *data, size_t sz);
     void free(void *p);
 
-    void transition(rust_task_list *src, rust_task_list *dst);
+    void set_state(rust_task_list *state,
+                   rust_cond *cond, const char* cond_name);
 
-    void block(rust_cond *on, const char* name);
+    bool block(rust_cond *on, const char* name);
     void wakeup(rust_cond *from);
     void die();
-    void unblock();
 
     // Print a backtrace, if the "bt" logging option is on.
     void backtrace();
@@ -205,6 +217,7 @@ public:
     void reset_stack_limit();
     bool on_rust_stack();
     void check_stack_canary();
+    void delete_all_stacks();
 
     void config_notify(chan_handle chan);
 
@@ -213,6 +226,10 @@ public:
     bool have_c_stack() { return c_stack != NULL; }
 
     rust_port_selector *get_port_selector() { return &port_selector; }
+
+    rust_task_list *get_state() { return state; }
+    rust_cond *get_cond() { return cond; }
+    const char *get_cond_name() { return cond_name; }
 };
 
 // This stuff is on the stack-switching fast path
