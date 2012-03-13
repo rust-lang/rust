@@ -28,10 +28,7 @@ type binding = {
 };
 
 type region_map = {
-    /*
-     * Mapping from blocks and function expression to their parent block or
-     * function expression.
-     */
+    /* Mapping from a block/function expression to its parent. */
     parents: hashmap<ast::node_id,ast::node_id>,
     /* Mapping from a region type in the AST to its resolved region. */
     ast_type_to_region: hashmap<ast::node_id,ty::region>,
