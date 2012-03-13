@@ -8,8 +8,8 @@ export is_not_empty;
 export same_length;
 export reserve;
 export len;
-export init_fn;
-export init_elt;
+export from_fn;
+export from_elem;
 export to_mut;
 export from_mut;
 export head;
@@ -129,7 +129,7 @@ Creates and initializes an immutable vector.
 Creates an immutable vector of size `n_elts` and initializes the elements
 to the value returned by the function `op`.
 "]
-fn init_fn<T>(n_elts: uint, op: init_op<T>) -> [T] {
+fn from_fn<T>(n_elts: uint, op: init_op<T>) -> [T] {
     let mut v = [];
     reserve(v, n_elts);
     let mut i: uint = 0u;
@@ -143,7 +143,7 @@ Creates and initializes an immutable vector.
 Creates an immutable vector of size `n_elts` and initializes the elements
 to the value `t`.
 "]
-fn init_elt<T: copy>(n_elts: uint, t: T) -> [T] {
+fn from_elem<T: copy>(n_elts: uint, t: T) -> [T] {
     let mut v = [];
     reserve(v, n_elts);
     let mut i: uint = 0u;
@@ -182,7 +182,7 @@ fn tailn<T: copy>(v: [const T], n: uint) -> [T] {
     slice(v, n, len(v))
 }
 
-// FIXME: This name is sort of confusing next to init_fn, etc
+// FIXME: This name is sort of confusing next to from_fn, etc
 // but this is the name haskell uses for this function,
 // along with head/tail/last.
 #[doc = "Returns all but the last elemnt of a vector"]
@@ -999,16 +999,16 @@ mod tests {
     }
 
     #[test]
-    fn test_init_fn() {
-        // Test on-stack init_fn.
-        let v = init_fn(3u, square);
+    fn test_from_fn() {
+        // Test on-stack from_fn.
+        let v = from_fn(3u, square);
         assert (len(v) == 3u);
         assert (v[0] == 0u);
         assert (v[1] == 1u);
         assert (v[2] == 4u);
 
-        // Test on-heap init_fn.
-        v = init_fn(5u, square);
+        // Test on-heap from_fn.
+        v = from_fn(5u, square);
         assert (len(v) == 5u);
         assert (v[0] == 0u);
         assert (v[1] == 1u);
@@ -1018,15 +1018,15 @@ mod tests {
     }
 
     #[test]
-    fn test_init_elt() {
-        // Test on-stack init_elt.
-        let v = init_elt(2u, 10u);
+    fn test_from_elem() {
+        // Test on-stack from_elem.
+        let v = from_elem(2u, 10u);
         assert (len(v) == 2u);
         assert (v[0] == 10u);
         assert (v[1] == 10u);
 
-        // Test on-heap init_elt.
-        v = init_elt(6u, 20u);
+        // Test on-heap from_elem.
+        v = from_elem(6u, 20u);
         assert (v[0] == 20u);
         assert (v[1] == 20u);
         assert (v[2] == 20u);

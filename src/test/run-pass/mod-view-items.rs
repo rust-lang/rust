@@ -7,7 +7,7 @@
 mod m {
     use std;
     import vec;
-    fn f() -> [int] { vec::init_elt(1u, 0) }
+    fn f() -> [int] { vec::from_elem(1u, 0) }
 }
 
 fn main() { let x = m::f(); }

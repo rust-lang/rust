@@ -18,7 +18,6 @@ the `reset` method.
  * point this will want to be rewritten.
  */
 export sha1;
-export mk_sha1;
 
 #[doc = "The SHA-1 interface"]
 iface sha1 {
@@ -51,7 +50,7 @@ const k3: u32 = 0xCA62C1D6u32;
 
 
 #[doc = "Construct a `sha` object"]
-fn mk_sha1() -> sha1 {
+fn sha1() -> sha1 {
     type sha1state =
         {h: [mutable u32],
          mutable len_low: u32,
@@ -244,13 +243,13 @@ fn mk_sha1() -> sha1 {
         }
     }
     let st = {
-        h: vec::to_mut(vec::init_elt(digest_buf_len, 0u32)),
+        h: vec::to_mut(vec::from_elem(digest_buf_len, 0u32)),
         mutable len_low: 0u32,
         mutable len_high: 0u32,
-        msg_block: vec::to_mut(vec::init_elt(msg_block_len, 0u8)),
+        msg_block: vec::to_mut(vec::from_elem(msg_block_len, 0u8)),
         mutable msg_block_idx: 0u,
         mutable computed: false,
-        work_buf: vec::to_mut(vec::init_elt(work_buf_len, 0u32))
+        work_buf: vec::to_mut(vec::from_elem(work_buf_len, 0u32))
     };
     let sh = st as sha1;
     sh.reset();
@@ -327,7 +326,7 @@ mod tests {
         }
         // Test that it works when accepting the message all at once
 
-        let sh = sha1::mk_sha1();
+        let sh = sha1::sha1();
         for t: test in tests {
             sh.input_str(t.input);
             let out = sh.result();

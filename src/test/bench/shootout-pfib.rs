@@ -71,7 +71,7 @@ fn stress_task(&&id: int) {
 fn stress(num_tasks: int) {
     let results = [];
     range(0, num_tasks) {|i|
-        let builder = task::mk_task_builder();
+        let builder = task::task_builder();
         results += [task::future_result(builder)];
         task::run(builder) {|| stress_task(i); }
     }

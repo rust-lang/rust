@@ -165,7 +165,7 @@ impl of serializer for ebml::writer {
 type ebml_deserializer = {mutable parent: ebml::doc,
                           mutable pos: uint};
 
-fn mk_ebml_deserializer(d: ebml::doc) -> ebml_deserializer {
+fn ebml_deserializer(d: ebml::doc) -> ebml_deserializer {
     {mutable parent: d, mutable pos: d.start}
 }
 
@@ -401,10 +401,10 @@ fn test_option_int() {
     fn test_v(v: option<int>) {
         #debug["v == %?", v];
         let mbuf = io::mk_mem_buffer();
-        let ebml_w = ebml::mk_writer(io::mem_buffer_writer(mbuf));
+        let ebml_w = ebml::writer(io::mem_buffer_writer(mbuf));
         serialize_0(ebml_w, v);
         let ebml_doc = ebml::new_doc(@io::mem_buffer_buf(mbuf));
-        let deser = mk_ebml_deserializer(ebml_doc);
+        let deser = ebml_deserializer(ebml_doc);
         let v1 = deserialize_0(deser);
         #debug["v1 == %?", v1];
         assert v == v1;

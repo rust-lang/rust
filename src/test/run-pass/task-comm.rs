@@ -41,7 +41,7 @@ fn test00() {
     let results = [];
     while i < number_of_tasks {
         i = i + 1;
-        let builder = task::mk_task_builder();
+        let builder = task::task_builder();
         results += [task::future_result(builder)];
         task::run(builder) {|| test00_start(ch, i, number_of_messages);}
     }
@@ -126,7 +126,7 @@ fn test06() {
     let results = [];
     while i < number_of_tasks {
         i = i + 1;
-        let builder = task::mk_task_builder();
+        let builder = task::task_builder();
         results += [task::future_result(builder)];
         task::run(builder) {|| test06_start(i);};
     }

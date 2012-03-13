@@ -120,7 +120,7 @@ fn get_exe_path() -> option<fs::path> {
     // FIXME: This doesn't handle the case where the buffer is too small
     // FIXME: path "strings" will likely need fixing...
     let bufsize = 1023u;
-    let path = str::from_bytes(vec::init_elt(bufsize, 0u8));
+    let path = str::from_bytes(vec::from_elem(bufsize, 0u8));
     ret str::as_buf(path, { |path_buf|
         if kernel32::GetModuleFileNameA(0u, path_buf,
                                         bufsize as u32) != 0u32 {

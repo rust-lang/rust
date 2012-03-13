@@ -44,7 +44,7 @@ fn select_random(r: u32, genelist: [aminoacids]) -> char {
 
 fn make_random_fasta(id: str, desc: str, genelist: [aminoacids], n: int) {
     log(debug, ">" + id + " " + desc);
-    let rng = @{mutable last: std::rand::mk_rng().next()};
+    let rng = @{mutable last: std::rand::rng().next()};
     let op: str = "";
     uint::range(0u, n as uint) {|_i|
         str::push_char(op, select_random(myrandom_next(rng, 100u32),

@@ -11,7 +11,7 @@ type interner<T> =
      eqer: eqfn<T>};
 
 fn mk<T: copy>(hasher: hashfn<T>, eqer: eqfn<T>) -> interner<T> {
-    let m = map::mk_hashmap::<T, uint>(hasher, eqer);
+    let m = map::new_hashmap::<T, uint>(hasher, eqer);
     ret {map: m, mutable vect: [], hasher: hasher, eqer: eqer};
 }
 

@@ -10,7 +10,7 @@ import core::option::{some, none};
 import option = core::option;
 
 export treemap;
-export init;
+export treemap;
 export insert;
 export find;
 export traverse;
@@ -20,7 +20,7 @@ type treemap<K, V> = @mutable tree_node<K, V>;
 enum tree_node<K, V> { empty, node(@K, @V, treemap<K, V>, treemap<K, V>) }
 
 #[doc = "Create a treemap"]
-fn init<K, V>() -> treemap<K, V> { @mutable empty }
+fn treemap<K, V>() -> treemap<K, V> { @mutable empty }
 
 #[doc = "Insert a value into the map"]
 fn insert<K: copy, V: copy>(m: treemap<K, V>, k: K, v: V) {
@@ -78,36 +78,36 @@ fn traverse<K, V>(m: treemap<K, V>, f: fn(K, V)) {
 mod tests {
 
     #[test]
-    fn init_treemap() { let _m = init::<int, int>(); }
+    fn init_treemap() { let _m = treemap::<int, int>(); }
 
     #[test]
-    fn insert_one() { let m = init(); insert(m, 1, 2); }
+    fn insert_one() { let m = treemap(); insert(m, 1, 2); }
 
     #[test]
-    fn insert_two() { let m = init(); insert(m, 1, 2); insert(m, 3, 4); }
+    fn insert_two() { let m = treemap(); insert(m, 1, 2); insert(m, 3, 4); }
 
     #[test]
     fn insert_find() {
-        let m = init();
+        let m = treemap();
         insert(m, 1, 2);
         assert (find(m, 1) == some(2));
     }
 
     #[test]
     fn find_empty() {
-        let m = init::<int, int>(); assert (find(m, 1) == none);
+        let m = treemap::<int, int>(); assert (find(m, 1) == none);
     }
 
     #[test]
     fn find_not_found() {
-        let m = init();
+        let m = treemap();
         insert(m, 1, 2);
         assert (find(m, 2) == none);
     }
 
     #[test]
     fn traverse_in_order() {
-        let m = init();
+        let m = treemap();
         insert(m, 3, ());
         insert(m, 0, ());
         insert(m, 4, ());
@@ -123,7 +123,7 @@ mod tests {
 
     #[test]
     fn u8_map() {
-        let m = init();
+        let m = treemap();
 
         let k1 = str::bytes("foo");
         let k2 = str::bytes("bar");

@@ -357,7 +357,7 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
     alt e.node {
       expr_vec(elts, _) {
         ret find_pre_post_state_exprs(fcx, pres, e.id,
-                                      vec::init_elt(vec::len(elts),
+                                      vec::from_elem(vec::len(elts),
                                                     init_assign), elts,
                                       return_val);
       }
@@ -401,7 +401,7 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
         let exs = field_exprs(fields);
         let changed =
             find_pre_post_state_exprs(fcx, pres, e.id,
-                                      vec::init_elt(vec::len(fields),
+                                      vec::from_elem(vec::len(fields),
                                                     init_assign),
                                       exs, return_val);
 
@@ -415,7 +415,7 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
       }
       expr_tup(elts) {
         ret find_pre_post_state_exprs(fcx, pres, e.id,
-                                      vec::init_elt(vec::len(elts),
+                                      vec::from_elem(vec::len(elts),
                                                     init_assign), elts,
                                       return_val);
       }
