@@ -21,7 +21,6 @@ import libc::{c_char, c_void, c_int, c_uint, size_t, ssize_t,
 import libc::{close, fclose};
 
 import option::{some, none};
-import option = option::t;
 
 import getcwd = rustrt::rust_getcwd;
 import consts::*;

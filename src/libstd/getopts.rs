@@ -45,7 +45,6 @@ name following -o, and accepts both -h and --help as optional flags.
 
 "];
 
-import core::result;
 import core::result::{err, ok};
 import core::option;
 import core::option::{some, none};
@@ -159,7 +158,7 @@ fn fail_str(f: fail_) -> str {
 The result of parsing a command line with a set of options
 (result::t<match, fail_>)
 "]
-type result = result::t<match, fail_>;
+type result = result::result<match, fail_>;
 
 #[doc = "
 Parse command line arguments according to the provided options

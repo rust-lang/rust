@@ -8,12 +8,12 @@ languages you might use a nullable type, in Rust you would use an option type.
 "];
 
 #[doc = "The option type"]
-enum t<T> {
+enum option<T> {
     none,
     some(T),
 }
 
-pure fn get<T: copy>(opt: t<T>) -> T {
+pure fn get<T: copy>(opt: option<T>) -> T {
     #[doc = "
     Gets the value out of an option
 
@@ -25,13 +25,13 @@ pure fn get<T: copy>(opt: t<T>) -> T {
     alt opt { some(x) { ret x; } none { fail "option none"; } }
 }
 
-fn map<T, U: copy>(opt: t<T>, f: fn(T) -> U) -> t<U> {
+fn map<T, U: copy>(opt: option<T>, f: fn(T) -> U) -> option<U> {
     #[doc = "Maps a `some` value from one type to another"];
 
     alt opt { some(x) { some(f(x)) } none { none } }
 }
 
-fn chain<T, U>(opt: t<T>, f: fn(T) -> t<U>) -> t<U> {
+fn chain<T, U>(opt: option<T>, f: fn(T) -> option<U>) -> option<U> {
     #[doc = "
     Update an optional value by optionally running its content through a
     function that returns an option.
@@ -40,37 +40,37 @@ fn chain<T, U>(opt: t<T>, f: fn(T) -> t<U>) -> t<U> {
     alt opt { some(x) { f(x) } none { none } }
 }
 
-pure fn is_none<T>(opt: t<T>) -> bool {
+pure fn is_none<T>(opt: option<T>) -> bool {
     #[doc = "Returns true if the option equals `none`"];
 
     alt opt { none { true } some(_) { false } }
 }
 
-pure fn is_some<T>(opt: t<T>) -> bool {
+pure fn is_some<T>(opt: option<T>) -> bool {
     #[doc = "Returns true if the option contains some value"];
 
     !is_none(opt)
 }
 
-pure fn from_maybe<T: copy>(def: T, opt: t<T>) -> T {
+pure fn from_maybe<T: copy>(def: T, opt: option<T>) -> T {
     #[doc = "Returns the contained value or a default"];
 
     alt opt { some(x) { x } none { def } }
 }
 
-fn maybe<T, U: copy>(def: U, opt: t<T>, f: fn(T) -> U) -> U {
+fn maybe<T, U: copy>(def: U, opt: option<T>, f: fn(T) -> U) -> U {
     #[doc = "Applies a function to the contained value or returns a default"];
 
     alt opt { none { def } some(t) { f(t) } }
 }
 
-fn may<T>(opt: t<T>, f: fn(T)) {
+fn may<T>(opt: option<T>, f: fn(T)) {
     #[doc = "Performs an operation on the contained value or does nothing"];
 
     alt opt { none { } some(t) { f(t); } }
 }
 
-fn unwrap<T>(-opt: t<T>) -> T unsafe {
+fn unwrap<T>(-opt: option<T>) -> T unsafe {
     #[doc = "
     Moves a value out of an option type and returns it.
 

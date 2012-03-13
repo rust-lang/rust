@@ -231,7 +231,7 @@ fn require_unique_names(sess: session, metas: [@ast::meta_item]) {
     }
 }
 
-fn native_abi(attrs: [ast::attribute]) -> either::t<str, ast::native_abi> {
+fn native_abi(attrs: [ast::attribute]) -> either<str, ast::native_abi> {
     ret alt attr::get_meta_item_value_str_by_name(attrs, "abi") {
       option::none {
         either::right(ast::native_abi_cdecl)

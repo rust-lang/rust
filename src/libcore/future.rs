@@ -20,8 +20,6 @@ export get;
 export with;
 export spawn;
 
-import either = either::t;
-
 #[doc = "The future type"]
 enum future<A> = {
     mutable v: either<@A, fn@() -> A>

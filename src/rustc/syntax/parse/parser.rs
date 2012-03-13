@@ -643,7 +643,7 @@ fn parse_seq<T: copy>(bra: token::token, ket: token::token,
     ret spanned(lo, hi, result);
 }
 
-fn have_dollar(p: parser) -> option::t<ast::mac_> {
+fn have_dollar(p: parser) -> option<ast::mac_> {
     alt p.token {
       token::DOLLAR_NUM(num) {
         p.bump();
@@ -2384,7 +2384,7 @@ else { ret none; }
 
 // A type to distingush between the parsing of item attributes or syntax
 // extensions, which both begin with token.POUND
-type attr_or_ext = option<either::t<[ast::attribute], @ast::expr>>;
+type attr_or_ext = option<either<[ast::attribute], @ast::expr>>;
 
 fn parse_outer_attrs_or_ext(
     p: parser,

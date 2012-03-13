@@ -183,7 +183,7 @@ fn allocate_cbox(bcx: block,
     fn store_uniq_tydesc(bcx: block,
                          cdata_ty: ty::t,
                          box: ValueRef,
-                         &ti: option::t<@tydesc_info>) -> block {
+                         &ti: option<@tydesc_info>) -> block {
         let ccx = bcx.ccx();
         let bound_tydesc = GEPi(bcx, box, [0, abi::box_field_tydesc]);
         let {bcx, val: td} = base::get_tydesc(bcx, cdata_ty, true, ti);

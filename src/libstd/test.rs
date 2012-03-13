@@ -58,7 +58,7 @@ fn test_main(args: [str], tests: [test_desc]) {
 
 type test_opts = {filter: option<str>, run_ignored: bool};
 
-type opt_res = either::t<test_opts, str>;
+type opt_res = either<test_opts, str>;
 
 // Parses command line arguments into test options
 fn parse_opts(args: [str]) -> opt_res {

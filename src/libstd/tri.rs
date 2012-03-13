@@ -10,44 +10,44 @@ all operations are done using bit operations which is fast
 on current cpus.
 "];
 
-export t, true, false, unknown;
+export tri, true, false, unknown;
 export not, and, or, xor, implies, eq, ne, is_true, is_false;
 export from_str, to_str, all_values, to_bit;
 
 #[doc = "The type of ternary logic values"]
-type t = u8;
+type tri = u8;
 
 const b0: u8  = 1u8;
 const b1: u8  = 2u8;
 const b01: u8 = 3u8;
 
 #[doc = "Logic value for unknown (maybe true xor maybe false)"]
-const unknown: t = 0u8;
+const unknown: tri = 0u8;
 
 #[doc = "Logic value for truth"]
-const true: t = 1u8;
+const true: tri = 1u8;
 
 #[doc = "Logic value for falsehood"]
-const false: t = 2u8;
+const false: tri = 2u8;
 
 #[doc = "Negation/Inverse"]
-pure fn not(v: t) -> t { ((v << 1u8) | (v >> 1u8)) & b01 }
+pure fn not(v: tri) -> tri { ((v << 1u8) | (v >> 1u8)) & b01 }
 
 #[doc = "Conjunction"]
-pure fn and(a: t, b: t) -> t { ((a | b) & b1) | ((a & b) & b0) }
+pure fn and(a: tri, b: tri) -> tri { ((a | b) & b1) | ((a & b) & b0) }
 
 #[doc = "Disjunction"]
-pure fn or(a: t, b: t) -> t { ((a & b) & b1) | ((a | b) & b0) }
+pure fn or(a: tri, b: tri) -> tri { ((a & b) & b1) | ((a | b) & b0) }
 
 #[doc = "Exclusive or"]
-pure fn xor(a: t, b: t) -> t {
+pure fn xor(a: tri, b: tri) -> tri {
     let anb = a & b;
     let aob = a & not(b);
     ret ((anb & b1) | (anb << 1u8) | (aob >> 1u8) | (aob & b0)) & b01;
 }
 
 #[doc = "Classic implication, i.e. from `a` follows `b`"]
-pure fn implies(a: t, b: t) -> t {
+pure fn implies(a: tri, b: tri) -> tri {
     ret ((a & b1) >> 1u8) | (b & b0) | ((a << 1u8) & b & b1);
 }
 
@@ -56,38 +56,38 @@ pure fn implies(a: t, b: t) -> t {
 
 true if truth values `a` and `b` are indistinguishable in the logic
 "]
-pure fn eq(a: t, b: t) -> bool {  a == b }
+pure fn eq(a: tri, b: tri) -> bool {  a == b }
 
 #[doc = "
 # Return value
 
 true if truth values `a` and `b` are distinguishable in the logic
 "]
-pure fn ne(a: t, b: t) -> bool { a != b }
+pure fn ne(a: tri, b: tri) -> bool { a != b }
 
 #[doc = "
 # Return value
 
 true if `v` represents truth in the logic
 "]
-pure fn is_true(v: t) -> bool { v == tri::true }
+pure fn is_true(v: tri) -> bool { v == tri::true }
 
 #[doc = "
 # Return value
 
 true if `v` represents false in the logic
 "]
-pure fn is_false(v: t) -> bool { v == tri::false }
+pure fn is_false(v: tri) -> bool { v == tri::false }
 
 #[doc = "
 # Return value
 
 true if `v` represents the unknown state in the logic
 "]
-pure fn is_unknown(v: t) -> bool { v == unknown }
+pure fn is_unknown(v: tri) -> bool { v == unknown }
 
 #[doc = "Parse logic value from `s`"]
-pure fn from_str(s: str) -> t {
+pure fn from_str(s: str) -> tri {
     alt check s {
       "unknown" { unknown }
       "true" { tri::true }
@@ -96,7 +96,7 @@ pure fn from_str(s: str) -> t {
 }
 
 #[doc = "Convert `v` into a string"]
-pure fn to_str(v: t) -> str {
+pure fn to_str(v: tri) -> str {
     // FIXME replace with consts as soon as that works
     alt check v {
       0u8 { "unknown" }
@@ -109,7 +109,7 @@ pure fn to_str(v: t) -> str {
 Iterates over all truth values by passing them to `blk`
 in an unspecified order
 "]
-fn all_values(blk: fn(v: t)) {
+fn all_values(blk: fn(v: tri)) {
     blk(tri::false);
     blk(unknown);
     blk(tri::true);
@@ -120,15 +120,17 @@ fn all_values(blk: fn(v: t)) {
 
 An u8 whose first bit is set if `if_true(v)` holds
 "]
-fn to_bit(v: t) -> u8 { v & b0 }
+fn to_bit(v: tri) -> u8 { v & b0 }
 
 #[cfg(test)]
 mod tests {
 
-    pure fn eq1(a: tri::t, b: tri::t) -> bool { tri::eq(a , b) }
-    pure fn ne1(a: tri::t, b: tri::t) -> bool { tri::ne(a , b) }
+    pure fn eq1(a: tri::tri, b: tri::tri) -> bool { tri::eq(a , b) }
+    pure fn ne1(a: tri::tri, b: tri::tri) -> bool { tri::ne(a , b) }
 
-    pure fn eq2(a: tri::t, b: tri::t) -> bool { eq1( a, b ) && eq1( b, a ) }
+    pure fn eq2(a: tri::tri, b: tri::tri) -> bool {
+        eq1( a, b ) && eq1( b, a )
+    }
 
     #[test]
     fn test_eq2() {

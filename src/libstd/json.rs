@@ -133,11 +133,11 @@ impl parser for parser {
         self.ch
     }
 
-    fn error<T>(msg: str) -> result::t<T, error> {
+    fn error<T>(msg: str) -> result<T, error> {
         err({ line: self.line, col: self.col, msg: msg })
     }
 
-    fn parse() -> result::t<json, error> {
+    fn parse() -> result<json, error> {
         alt self.parse_value() {
           ok(value) {
             // Skip trailing whitespaces.
@@ -153,7 +153,7 @@ impl parser for parser {
         }
     }
 
-    fn parse_value() -> result::t<json, error> {
+    fn parse_value() -> result<json, error> {
         self.parse_whitespace();
 
         if self.eof() { ret self.error("EOF while parsing value"); }
@@ -179,7 +179,7 @@ impl parser for parser {
         while char::is_whitespace(self.ch) { self.bump(); }
     }
 
-    fn parse_ident(ident: str, value: json) -> result::t<json, error> {
+    fn parse_ident(ident: str, value: json) -> result<json, error> {
         if str::all(ident, { |c| c == self.next_char() }) {
             self.bump();
             ok(value)
@@ -188,7 +188,7 @@ impl parser for parser {
         }
     }
 
-    fn parse_number() -> result::t<json, error> {
+    fn parse_number() -> result<json, error> {
         let neg = 1f;
 
         if self.ch == '-' {
@@ -218,7 +218,7 @@ impl parser for parser {
         ok(num(neg * res))
     }
 
-    fn parse_integer() -> result::t<float, error> {
+    fn parse_integer() -> result<float, error> {
         let res = 0f;
 
         alt self.ch {
@@ -250,7 +250,7 @@ impl parser for parser {
         ok(res)
     }
 
-    fn parse_decimal(res: float) -> result::t<float, error> {
+    fn parse_decimal(res: float) -> result<float, error> {
         self.bump();
 
         // Make sure a digit follows the decimal place.
@@ -276,7 +276,7 @@ impl parser for parser {
         ok(res)
     }
 
-    fn parse_exponent(res: float) -> result::t<float, error> {
+    fn parse_exponent(res: float) -> result<float, error> {
         self.bump();
 
         let res = res;
@@ -317,7 +317,7 @@ impl parser for parser {
         ok(res)
     }
 
-    fn parse_str() -> result::t<str, error> {
+    fn parse_str() -> result<str, error> {
         let escape = false;
         let res = "";
 
@@ -372,7 +372,7 @@ impl parser for parser {
         self.error("EOF while parsing string")
     }
 
-    fn parse_list() -> result::t<json, error> {
+    fn parse_list() -> result<json, error> {
         self.bump();
         self.parse_whitespace();
 
@@ -402,7 +402,7 @@ impl parser for parser {
         };
     }
 
-    fn parse_object() -> result::t<json, error> {
+    fn parse_object() -> result<json, error> {
         self.bump();
         self.parse_whitespace();
 
@@ -454,7 +454,7 @@ impl parser for parser {
 }
 
 #[doc = "Deserializes a json value from an io::reader"]
-fn from_reader(rdr: io::reader) -> result::t<json, error> {
+fn from_reader(rdr: io::reader) -> result<json, error> {
     let parser = {
         rdr: rdr,
         mutable ch: rdr.read_char(),
@@ -466,7 +466,7 @@ fn from_reader(rdr: io::reader) -> result::t<json, error> {
 }
 
 #[doc = "Deserializes a json value from a string"]
-fn from_str(s: str) -> result::t<json, error> {
+fn from_str(s: str) -> result<json, error> {
     io::with_str_reader(s, from_reader)
 }
 

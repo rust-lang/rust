@@ -25,7 +25,7 @@ form -- for instance, to pass memory back into C -- but great care must be
 taken to ensure that a reference to the c_vec::t is still held if needed.
 "];
 
-export t;
+export c_vec;
 export c_vec, c_vec_with_dtor;
 export get, set;
 export len;
@@ -37,8 +37,8 @@ The type representing a native chunk of memory
 Wrapped in a enum for opacity; FIXME #818 when it is possible to have
 truly opaque types, this should be revisited.
 "]
-enum t<T> {
-    t({ base: *mutable T, len: uint, rsrc: @dtor_res})
+enum c_vec<T> {
+    c_vec_({ base: *mutable T, len: uint, rsrc: @dtor_res})
 }
 
 resource dtor_res(dtor: option<fn@()>) {
@@ -53,22 +53,23 @@ resource dtor_res(dtor: option<fn@()>) {
  */
 
 #[doc = "
-Create a c_vec::t from a native buffer with a given length.
+Create a `c_vec` from a native buffer with a given length.
 
 # Arguments
 
 * base - A native pointer to a buffer
 * len - The number of elements in the buffer
 "]
-unsafe fn c_vec<T>(base: *mutable T, len: uint) -> t<T> {
-    ret t({base: base,
-           len: len,
-           rsrc: @dtor_res(option::none)
-          });
+unsafe fn c_vec<T>(base: *mutable T, len: uint) -> c_vec<T> {
+    ret c_vec_({
+        base: base,
+        len: len,
+        rsrc: @dtor_res(option::none)
+    });
 }
 
 #[doc = "
-Create a c_vec::t from a native buffer, with a given length,
+Create a `c_vec` from a native buffer, with a given length,
 and a function to run upon destruction.
 
 # Arguments
@@ -79,11 +80,12 @@ and a function to run upon destruction.
          for freeing the buffer, etc.
 "]
 unsafe fn c_vec_with_dtor<T>(base: *mutable T, len: uint, dtor: fn@())
-  -> t<T> {
-    ret t({base: base,
-           len: len,
-           rsrc: @dtor_res(option::some(dtor))
-          });
+  -> c_vec<T> {
+    ret c_vec_({
+        base: base,
+        len: len,
+        rsrc: @dtor_res(option::some(dtor))
+    });
 }
 
 /*
@@ -95,7 +97,7 @@ Retrieves an element at a given index
 
 Fails if `ofs` is greater or equal to the length of the vector
 "]
-fn get<T: copy>(t: t<T>, ofs: uint) -> T {
+fn get<T: copy>(t: c_vec<T>, ofs: uint) -> T {
     assert ofs < len(t);
     ret unsafe { *ptr::mut_offset((*t).base, ofs) };
 }
@@ -105,7 +107,7 @@ Sets the value of an element at a given index
 
 Fails if `ofs` is greater or equal to the length of the vector
 "]
-fn set<T: copy>(t: t<T>, ofs: uint, v: T) {
+fn set<T: copy>(t: c_vec<T>, ofs: uint, v: T) {
     assert ofs < len(t);
     unsafe { *ptr::mut_offset((*t).base, ofs) = v };
 }
@@ -115,12 +117,12 @@ fn set<T: copy>(t: t<T>, ofs: uint, v: T) {
  */
 
 #[doc = "Returns the length of the vector"]
-fn len<T>(t: t<T>) -> uint {
+fn len<T>(t: c_vec<T>) -> uint {
     ret (*t).len;
 }
 
 #[doc = "Returns a pointer to the first element of the vector"]
-unsafe fn ptr<T>(t: t<T>) -> *mutable T {
+unsafe fn ptr<T>(t: c_vec<T>) -> *mutable T {
     ret (*t).base;
 }
 
@@ -128,7 +130,7 @@ unsafe fn ptr<T>(t: t<T>) -> *mutable T {
 mod tests {
     import libc::*;
 
-    fn malloc(n: size_t) -> t<u8> {
+    fn malloc(n: size_t) -> c_vec<u8> {
         let mem = libc::malloc(n);
 
         assert mem as int != 0;

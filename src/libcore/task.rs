@@ -406,7 +406,7 @@ fn spawn_sched(mode: sched_mode, +f: fn~()) {
     run(builder, f);
 }
 
-fn try<T:send>(+f: fn~() -> T) -> result::t<T,()> {
+fn try<T:send>(+f: fn~() -> T) -> result<T,()> {
     #[doc = "
     Execute a function in another task and return either the return value
     of the function or result::err.

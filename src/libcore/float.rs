@@ -26,8 +26,6 @@ export j0, j1, jn, y0, y1, yn;
 import m_float = f64;
 import f64::*;
 
-type t = float;
-
 /**
  * Section: String Conversions
  */

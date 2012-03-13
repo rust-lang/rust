@@ -1540,11 +1540,11 @@ You can then declare a function to take a `circular_buf<u8>` or return
 an `option<str>`, or even an `option<T>` if the function itself is
 generic.
 
-The `option` type given above exists in the core library as
-`option::t`, and is the way Rust programs express the thing that in C
-would be a nullable pointer. The nice part is that you have to
-explicitly unpack an `option` type, so accidental null pointer
-dereferences become impossible.
+The `option` type given above exists in the core library and is the
+way Rust programs express the thing that in C would be a nullable
+pointer. The nice part is that you have to explicitly unpack an
+`option` type, so accidental null pointer dereferences become
+impossible.
 
 ## Type-inference and generics
 
@@ -1562,7 +1562,7 @@ you really want to have such a statement, you'll have to write it like
 this:
 
 ~~~~
-let n2: option::t<int> = option::none;
+let n2: option<int> = option::none;
 // or
 let n = option::none::<int>;
 ~~~~

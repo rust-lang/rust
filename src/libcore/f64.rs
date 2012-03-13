@@ -21,8 +21,6 @@ export modf, pow, round, sin, sinh, sqrt, tan, tanh, tgamma, trunc;
 export signbit;
 export epsilon;
 
-type t = f64;
-
 // These are not defined inside consts:: for consistency with
 // the integer types
 
