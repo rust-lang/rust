@@ -36,6 +36,8 @@ type region_map = {
     local_blocks: hashmap<ast::node_id,ast::node_id>,
     /* Mapping from a region name to its function. */
     region_name_to_fn: hashmap<ast::def_id,ast::node_id>,
+    /* Mapping from an AST type node to the region that `&` resolves to in it. */
+    ast_type_to_inferred_region: hashmap<ast::node_id,ty::region>
 };
 
 type ctxt = {
@@ -81,33 +83,30 @@ fn scope_contains(region_map: @region_map, superscope: ast::node_id,
     ret true;
 }
 
+fn get_inferred_region(cx: ctxt, sp: syntax::codemap::span) -> ty::region {
+    // We infer to the caller region if we're at item scope
+    // and to the block region if we're at block scope.
+    //
+    // TODO: What do we do if we're in an alt?
+
+    ret alt cx.parent {
+        pa_item(item_id) | pa_nested_fn(item_id) {
+            ty::re_caller({crate: ast::local_crate, node: item_id})
+        }
+        pa_block(block_id) { ty::re_block(block_id) }
+        pa_crate { cx.sess.span_bug(sp, "inferred region at crate level?!"); }
+    }
+}
+
 fn resolve_ty(ty: @ast::ty, cx: ctxt, visitor: visit::vt<ctxt>) {
+    let inferred_region = get_inferred_region(cx, ty.span);
+    cx.region_map.ast_type_to_inferred_region.insert(ty.id, inferred_region);
+
     alt ty.node {
         ast::ty_rptr({id: region_id, node: node}, _) {
             let region;
             alt node {
-                ast::re_inferred {
-                    // We infer to the caller region if we're at item scope
-                    // and to the block region if we're at block scope.
-                    //
-                    // TODO: What do we do if we're in an alt?
-
-                    alt cx.parent {
-                        pa_item(item_id) | pa_nested_fn(item_id) {
-                            let def_id = {crate: ast::local_crate,
-                                          node: item_id};
-                            region = ty::re_caller(def_id);
-                        }
-                        pa_block(block_id) {
-                            region = ty::re_block(block_id);
-                        }
-                        pa_crate {
-                            cx.sess.span_bug(ty.span, "inferred region at " +
-                                             "crate level?!");
-                        }
-                    }
-                }
-
+                ast::re_inferred { region = inferred_region; }
                 ast::re_named(ident) {
                     // If at item scope, introduce or reuse a binding. If at
                     // block scope, require that the binding be introduced.
@@ -269,7 +268,9 @@ fn resolve_crate(sess: session, def_map: resolve::def_map, crate: @ast::crate)
                     region_map: @{parents: map::new_int_hash(),
                                   ast_type_to_region: map::new_int_hash(),
                                   local_blocks: map::new_int_hash(),
-                                  region_name_to_fn: new_def_hash()},
+                                  region_name_to_fn: new_def_hash(),
+                                  ast_type_to_inferred_region:
+                                    map::new_int_hash()},
                     mut bindings: @list::nil,
                     mut queued_locals: [],
                     parent: pa_crate,
