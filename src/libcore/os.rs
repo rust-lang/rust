@@ -296,7 +296,7 @@ fn self_exe_path() -> option<path> {
                        KERN_PROC_PATHNAME as c_int, -1 as c_int];
             sysctl(vec::unsafe::to_ptr(mib), vec::len(mib) as c_uint,
                    buf as *mutable c_void, ptr::mut_addr_of(sz),
-                   ptr::null(), 0u as size_t) != (0 as c_int)
+                   ptr::null(), 0u as size_t) == (0 as c_int)
         }
     }
 
