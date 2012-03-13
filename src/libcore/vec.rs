@@ -31,6 +31,7 @@ export grow_fn;
 export grow_set;
 export map;
 export map2;
+export flat_map;
 export filter_map;
 export filter;
 export concat;

@@ -40,7 +40,7 @@ fn enc_ty(w: io::writer, cx: @ctxt, t: ty::t) {
         let result_str = alt cx.tcx.short_names_cache.find(t) {
           some(s) { *s }
           none {
-            let buf = io::mk_mem_buffer();
+            let buf = io::mem_buffer();
             enc_sty(io::mem_buffer_writer(buf), cx, ty::get(t).struct);
             cx.tcx.short_names_cache.insert(t, @io::mem_buffer_str(buf));
             io::mem_buffer_str(buf)

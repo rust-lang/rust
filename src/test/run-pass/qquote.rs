@@ -100,7 +100,7 @@ fn main() {
 }
 
 fn check_pp<T>(expr: T, f: fn(pprust::ps, T), expect: str) {
-    let buf = mk_mem_buffer();
+    let buf = mem_buffer();
     let pp = pprust::rust_printer(buf as io::writer);
     f(pp, expr);
     pp::eof(pp.s);

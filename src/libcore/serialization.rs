@@ -96,7 +96,7 @@ fn emit_from_vec<S: serializer, T>(s: S, v: [T], f: fn(T)) {
 
 fn read_to_vec<D: deserializer, T>(d: D, f: fn() -> T) -> [T] {
     d.read_vec {|len|
-        vec::init_fn(len) {|i|
+        vec::from_fn(len) {|i|
             d.read_vec_elt(i) {|| f() }
         }
     }

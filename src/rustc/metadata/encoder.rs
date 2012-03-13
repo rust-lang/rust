@@ -745,7 +745,7 @@ fn encode_metadata(cx: crate_ctxt, crate: @crate) -> [u8] {
                 type_abbrevs: abbrevs,
                 reachable: reachable};
 
-    let buf = io::mk_mem_buffer();
+    let buf = io::mem_buffer();
     let buf_w = io::mem_buffer_writer(buf);
     let ebml_w = ebml::writer(buf_w);
 
@@ -779,7 +779,7 @@ fn encode_metadata(cx: crate_ctxt, crate: @crate) -> [u8] {
 // Get the encoded string for a type
 fn encoded_ty(tcx: ty::ctxt, t: ty::t) -> str {
     let cx = @{ds: def_to_str, tcx: tcx, abbrevs: tyencode::ac_no_abbrevs};
-    let buf = io::mk_mem_buffer();
+    let buf = io::mem_buffer();
     tyencode::enc_ty(io::mem_buffer_writer(buf), cx, t);
     ret io::mem_buffer_str(buf);
 }

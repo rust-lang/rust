@@ -99,7 +99,7 @@ fn path_to_str(&&p: @ast::path) -> str {
 
 fn fun_to_str(decl: ast::fn_decl, name: ast::ident,
               params: [ast::ty_param]) -> str {
-    let buffer = io::mk_mem_buffer();
+    let buffer = io::mem_buffer();
     let s = rust_printer(io::mem_buffer_writer(buffer));
     print_fn(s, decl, name, params);
     end(s); // Close the head box
@@ -124,7 +124,7 @@ fn test_fun_to_str() {
 
 fn res_to_str(decl: ast::fn_decl, name: ast::ident,
               params: [ast::ty_param]) -> str {
-    let buffer = io::mk_mem_buffer();
+    let buffer = io::mem_buffer();
     let s = rust_printer(io::mem_buffer_writer(buffer));
     print_res(s, decl, name, params);
     end(s); // Close the head box
@@ -155,7 +155,7 @@ fn test_res_to_str() {
 }
 
 fn block_to_str(blk: ast::blk) -> str {
-    let buffer = io::mk_mem_buffer();
+    let buffer = io::mem_buffer();
     let s = rust_printer(io::mem_buffer_writer(buffer));
     // containing cbox, will be closed by print-block at }
     cbox(s, indent_unit);
@@ -1700,7 +1700,7 @@ fn escape_str(st: str, to_escape: char) -> str {
 }
 
 fn to_str<T>(t: T, f: fn@(ps, T)) -> str {
-    let buffer = io::mk_mem_buffer();
+    let buffer = io::mem_buffer();
     let s = rust_printer(io::mem_buffer_writer(buffer));
     f(s, t);
     eof(s.s);

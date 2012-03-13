@@ -948,7 +948,7 @@ fn mk_ctxt() -> fake_ext_ctxt {
 #[cfg(test)]
 fn roundtrip(in_item: @ast::item) {
     #debug["in_item = %s", pprust::item_to_str(in_item)];
-    let mbuf = io::mk_mem_buffer();
+    let mbuf = io::mem_buffer();
     let ebml_w = ebml::writer(io::mem_buffer_writer(mbuf));
     encode_item_ast(ebml_w, in_item);
     let ebml_doc = ebml::new_doc(@io::mem_buffer_buf(mbuf));

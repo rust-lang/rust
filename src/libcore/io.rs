@@ -543,7 +543,7 @@ impl of writer for mem_buffer {
     fn flush() -> int { 0 }
 }
 
-fn mk_mem_buffer() -> mem_buffer {
+fn mem_buffer() -> mem_buffer {
     @{mutable buf: [mutable], mutable pos: 0u}
 }
 fn mem_buffer_writer(b: mem_buffer) -> writer { b as writer }
@@ -554,14 +554,14 @@ fn mem_buffer_str(b: mem_buffer) -> str {
 }
 
 fn with_str_writer(f: fn(writer)) -> str {
-    let buf = mk_mem_buffer();
+    let buf = mem_buffer();
     let wr = mem_buffer_writer(buf);
     f(wr);
     io::mem_buffer_str(buf)
 }
 
 fn with_buf_writer(f: fn(writer)) -> [u8] {
-    let buf = mk_mem_buffer();
+    let buf = mem_buffer();
     let wr = mem_buffer_writer(buf);
     f(wr);
     io::mem_buffer_buf(buf)

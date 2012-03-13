@@ -221,10 +221,10 @@ fn under(n: uint, it: fn(uint)) {
     while i < n { it(i); i += 1u; }
 }
 
-fn devnull() -> io::writer { io::mem_buffer_writer(io::mk_mem_buffer()) }
+fn devnull() -> io::writer { io::mem_buffer_writer(io::mem_buffer()) }
 
 fn as_str(f: fn@(io::writer)) -> str {
-    let buf = io::mk_mem_buffer();
+    let buf = io::mem_buffer();
     f(io::mem_buffer_writer(buf));
     io::mem_buffer_str(buf)
 }

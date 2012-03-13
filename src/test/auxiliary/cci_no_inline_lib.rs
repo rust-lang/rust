@@ -1,3 +1,5 @@
+#[link(name="cci_no_inline_lib", vers="0.0")];
+
 // same as cci_iter_lib, more-or-less, but not marked inline
 fn iter(v: [uint], f: fn(uint)) {
     let i = 0u;

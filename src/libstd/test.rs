@@ -189,7 +189,7 @@ fn print_failures(st: console_test_state) {
 
 #[test]
 fn should_sort_failures_before_printing_them() {
-    let buffer = io::mk_mem_buffer();
+    let buffer = io::mem_buffer();
     let writer = io::mem_buffer_writer(buffer);
 
     let test_a = {

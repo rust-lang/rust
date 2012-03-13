@@ -1,3 +1,5 @@
+#[link(name="cci_iter_lib", vers="0.0")];
+
 #[inline]
 fn iter<T>(v: [T], f: fn(T)) {
     let i = 0u;
