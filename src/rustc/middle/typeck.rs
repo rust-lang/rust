@@ -270,16 +270,16 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
         }
     }
     alt tcx.ast_ty_to_ty_cache.find(ast_ty) {
-      some(some(ty)) { ret ty; }
-      some(none) {
+      some(ty::atttce_resolved(ty)) { ret ty; }
+      some(ty::atttce_unresolved) {
         tcx.sess.span_fatal(ast_ty.span, "illegal recursive type. \
                                           insert a enum in the cycle, \
                                           if this is desired)");
       }
-      none { }
-    } /* go on */
+      some(ty::atttce_has_regions) | none { /* go on */ }
+    }
 
-    tcx.ast_ty_to_ty_cache.insert(ast_ty, none::<ty::t>);
+    tcx.ast_ty_to_ty_cache.insert(ast_ty, ty::atttce_unresolved);
     fn ast_mt_to_mt(tcx: ty::ctxt, mode: mode, mt: ast::mt) -> ty::mt {
         ret {ty: ast_ty_to_ty(tcx, mode, mt.ty), mutbl: mt.mutbl};
     }
@@ -425,7 +425,13 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
                                 "found `ty_mac` in unexpected place");
       }
     };
-    tcx.ast_ty_to_ty_cache.insert(ast_ty, some(typ));
+
+    if ty::type_has_rptrs(typ) {
+        tcx.ast_ty_to_ty_cache.insert(ast_ty, ty::atttce_has_regions);
+    } else {
+        tcx.ast_ty_to_ty_cache.insert(ast_ty, ty::atttce_resolved(typ));
+    }
+
     ret typ;
 }
 

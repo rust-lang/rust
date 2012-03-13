@@ -135,6 +135,8 @@ export param_bounds_to_kind;
 export default_arg_mode_for_ty;
 export item_path;
 export item_path_str;
+export ast_ty_to_ty_cache_entry;
+export atttce_unresolved, atttce_resolved, atttce_has_regions;
 
 // Data types
 
@@ -162,6 +164,12 @@ type creader_cache = hashmap<{cnum: int, pos: uint, len: uint}, t>;
 
 type intern_key = {struct: sty, o_def_id: option<ast::def_id>};
 
+enum ast_ty_to_ty_cache_entry {
+    atttce_unresolved,  /* not resolved yet */
+    atttce_resolved(t), /* resolved to a type, irrespective of region */
+    atttce_has_regions  /* has regions; cannot be cached */
+}
+
 type ctxt =
     @{interner: hashmap<intern_key, t_box>,
       mutable next_id: uint,
@@ -177,7 +185,7 @@ type ctxt =
       short_names_cache: hashmap<t, @str>,
       needs_drop_cache: hashmap<t, bool>,
       kind_cache: hashmap<t, kind>,
-      ast_ty_to_ty_cache: hashmap<@ast::ty, option<t>>,
+      ast_ty_to_ty_cache: hashmap<@ast::ty, ast_ty_to_ty_cache_entry>,
       enum_var_cache: hashmap<def_id, @[variant_info]>,
       iface_method_cache: hashmap<def_id, @[method]>,
       ty_param_bounds: hashmap<ast::node_id, param_bounds>,
