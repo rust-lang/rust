@@ -320,7 +320,12 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
         ty::mk_ptr(tcx, ast_mt_to_mt(tcx, mode, mt))
       }
       ast::ty_rptr(region, mt) {
-        let region = tcx.region_map.ast_type_to_region.get(region.id);
+        let region = alt region.node {
+            ast::re_inferred {
+                tcx.region_map.ast_type_to_inferred_region.get(ast_ty.id)
+            }
+            _ { tcx.region_map.ast_type_to_region.get(region.id) }
+        };
         ty::mk_rptr(tcx, region, ast_mt_to_mt(tcx, mode, mt))
       }
       ast::ty_tup(fields) {
