@@ -85,20 +85,20 @@ fn parse_opts(args: [str]) -> opt_res {
 
 enum test_result { tr_ok, tr_failed, tr_ignored, }
 
+type console_test_state =
+    @{out: io::writer,
+      use_color: bool,
+      mutable total: uint,
+      mutable passed: uint,
+      mutable failed: uint,
+      mutable ignored: uint,
+      mutable failures: [test_desc]};
+
 // A simple console test runner
 fn run_tests_console(opts: test_opts,
                      tests: [test_desc]) -> bool {
 
-    type test_state =
-        @{out: io::writer,
-          use_color: bool,
-          mutable total: uint,
-          mutable passed: uint,
-          mutable failed: uint,
-          mutable ignored: uint,
-          mutable failures: [test_desc]};
-
-    fn callback(event: testevent, st: test_state) {
+    fn callback(event: testevent, st: console_test_state) {
         alt event {
           te_filtered(filtered_tests) {
             st.total = vec::len(filtered_tests);
@@ -143,11 +143,7 @@ fn run_tests_console(opts: test_opts,
     let success = st.failed == 0u;
 
     if !success {
-        st.out.write_line("\nfailures:");
-        for test: test_desc in st.failures {
-            let testname = test.name; // Satisfy alias analysis
-            st.out.write_line(#fmt["    %s", testname]);
-        }
+        print_failures(st);
     }
 
     st.out.write_str(#fmt["\nresult: "]);
@@ -181,6 +177,52 @@ fn run_tests_console(opts: test_opts,
             term::reset(out);
         }
     }
+}
+
+fn print_failures(st: console_test_state) {
+    st.out.write_line("\nfailures:");
+    let failures = vec::map(copy st.failures) {|test| test.name};
+    let failures = sort::merge_sort(str::le, failures);
+    for name in failures {
+        st.out.write_line(#fmt["    %s", name]);
+    }
+}
+
+#[test]
+fn should_sort_failures_before_printing_them() {
+    let buffer = io::mk_mem_buffer();
+    let writer = io::mem_buffer_writer(buffer);
+
+    let test_a = {
+        name: "a",
+        fn: fn~() { },
+        ignore: false,
+        should_fail: false
+    };
+
+    let test_b = {
+        name: "b",
+        fn: fn~() { },
+        ignore: false,
+        should_fail: false
+    };
+
+    let st =
+        @{out: writer,
+          use_color: false,
+          mutable total: 0u,
+          mutable passed: 0u,
+          mutable failed: 0u,
+          mutable ignored: 0u,
+          mutable failures: [test_b, test_a]};
+
+    print_failures(st);
+
+    let s = io::mem_buffer_str(buffer);
+
+    let apos = option::get(str::find_str(s, "a"));
+    let bpos = option::get(str::find_str(s, "b"));
+    assert apos < bpos;
 }
 
 fn use_color() -> bool { ret get_concurrency() == 1u; }
