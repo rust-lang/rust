@@ -1,4 +1,3 @@
-import std::fs;
 import std::map::hashmap;
 import lib::llvm::llvm;
 import lib::llvm::ValueRef;
@@ -48,7 +47,7 @@ const DW_ATE_unsigned_char: int = 0x08;
 
 fn llstr(s: str) -> ValueRef {
     str::as_buf(s, {|sbuf|
-        llvm::LLVMMDString(sbuf, str::len(s) as ctypes::c_uint)
+        llvm::LLVMMDString(sbuf, str::len(s) as libc::c_uint)
     })
 }
 fn lltag(lltag: int) -> ValueRef {
@@ -65,7 +64,7 @@ fn lli1(bval: bool) -> ValueRef {
 }
 fn llmdnode(elems: [ValueRef]) -> ValueRef unsafe {
     llvm::LLVMMDNode(vec::unsafe::to_ptr(elems),
-                     vec::len(elems) as ctypes::c_uint)
+                     vec::len(elems) as libc::c_uint)
 }
 fn llunused() -> ValueRef {
     lli32(0x0)
@@ -206,8 +205,8 @@ fn create_file(cx: crate_ctxt, full_path: str) -> @metadata<file_md> {
         option::none {}
     }
 
-    let fname = fs::basename(full_path);
-    let path = fs::dirname(full_path);
+    let fname = path::basename(full_path);
+    let path = path::dirname(full_path);
     let unit_node = create_compile_unit(cx, full_path).node;
     let file_md = [lltag(tg),
                    llstr(fname),
@@ -337,7 +336,7 @@ fn create_pointer_type(cx: crate_ctxt, t: ty::t, span: span,
       option::some(md) { ret md; }
       option::none {}
     }*/
-    let (size, align) = size_and_align_of::<ctypes::intptr_t>();
+    let (size, align) = size_and_align_of::<libc::intptr_t>();
     let fname = filename_from_span(cx, span);
     let file_node = create_file(cx, fname);
     //let cu_node = create_compile_unit(cx, fname);
@@ -488,10 +487,10 @@ fn create_vec(cx: crate_ctxt, vec_t: ty::t, elem_t: ty::t,
     let scx = create_structure(file_node, ty_to_str(cx.tcx, vec_t), 0);
     let size_t_type = create_basic_type(cx, ty::mk_uint(cx.tcx),
                                         ast::ty_uint(ast::ty_u), vec_ty_span);
-    add_member(scx, "fill", 0, sys::size_of::<ctypes::size_t>() as int,
-               sys::align_of::<ctypes::size_t>() as int, size_t_type.node);
-    add_member(scx, "alloc", 0, sys::size_of::<ctypes::size_t>() as int,
-               sys::align_of::<ctypes::size_t>() as int, size_t_type.node);
+    add_member(scx, "fill", 0, sys::size_of::<libc::size_t>() as int,
+               sys::align_of::<libc::size_t>() as int, size_t_type.node);
+    add_member(scx, "alloc", 0, sys::size_of::<libc::size_t>() as int,
+               sys::align_of::<libc::size_t>() as int, size_t_type.node);
     let subrange = llmdnode([lltag(SubrangeTag), lli64(0), lli64(0)]);
     let (arr_size, arr_align) = member_size_and_align(cx.tcx, elem_ty);
     let data_ptr = create_composite_type(ArrayTypeTag, "", file_node.node, 0,
@@ -536,7 +535,7 @@ fn member_size_and_align(tcx: ty::ctxt, ty: @ast::ty) -> (int, int) {
         }
       }
       ast::ty_box(_) | ast::ty_uniq(_) {
-        size_and_align_of::<ctypes::uintptr_t>()
+        size_and_align_of::<libc::uintptr_t>()
       }
       ast::ty_rec(fields) {
         let total_size = 0;
@@ -547,7 +546,7 @@ fn member_size_and_align(tcx: ty::ctxt, ty: @ast::ty) -> (int, int) {
         (total_size, 64) //XXX different align for other arches?
       }
       ast::ty_vec(_) {
-        size_and_align_of::<ctypes::uintptr_t>()
+        size_and_align_of::<libc::uintptr_t>()
       }
       _ { fail "member_size_and_align: can't handle this type"; }
     }

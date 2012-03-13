@@ -7,7 +7,6 @@
 
 import result::{ok, err};
 import io::writer_util;
-import core::ctypes;
 
 export test_name;
 export test_fn;
@@ -22,7 +21,7 @@ export run_tests_console;
 
 #[abi = "cdecl"]
 native mod rustrt {
-    fn sched_threads() -> ctypes::size_t;
+    fn sched_threads() -> libc::size_t;
 }
 
 // The name of a test. By convention this follows the rules for rust

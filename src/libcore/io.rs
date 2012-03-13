@@ -4,14 +4,17 @@ Module: io
 Basic input/output
 */
 
-import core::ctypes::fd_t;
-import core::ctypes::c_int;
+import libc::{c_int, c_uint, c_void, size_t, ssize_t};
+import libc::consts::os::posix88::*;
+import libc::consts::os::extra::*;
+
+type fd_t = c_int;
 
 #[abi = "cdecl"]
 native mod rustrt {
-    fn rust_get_stdin() -> os::FILE;
-    fn rust_get_stdout() -> os::FILE;
-    fn rust_get_stderr() -> os::FILE;
+    fn rust_get_stdin() -> *libc::FILE;
+    fn rust_get_stdout() -> *libc::FILE;
+    fn rust_get_stderr() -> *libc::FILE;
 }
 
 // Reading
@@ -37,7 +40,7 @@ impl reader_util for reader {
     fn read_chars(n: uint) -> [char] {
         // returns the (consumed offset, n_req), appends characters to &chars
         fn chars_from_buf(buf: [u8], &chars: [char]) -> (uint, uint) {
-            let i = 0u;
+            let mut i = 0u;
             while i < vec::len(buf) {
                 let b0 = buf[i];
                 let w = str::utf8_char_width(b0);
@@ -52,7 +55,7 @@ impl reader_util for reader {
                 if end > vec::len(buf) {
                     ret (i - 1u, end - vec::len(buf));
                 }
-                let val = 0u;
+                let mut val = 0u;
                 while i < end {
                     let next = buf[i] as int;
                     i += 1u;
@@ -68,10 +71,10 @@ impl reader_util for reader {
             }
             ret (i, 0u);
         }
-        let buf: [u8] = [];
-        let chars: [char] = [];
+        let mut buf: [u8] = [];
+        let mut chars: [char] = [];
         // might need more bytes, but reading n will never over-read
-        let nbread = n;
+        let mut nbread = n;
         while nbread > 0u {
             let data = self.read_bytes(nbread);
             if vec::len(data) == 0u {
@@ -103,8 +106,8 @@ impl reader_util for reader {
     }
 
     fn read_line() -> str {
-        let buf: [u8] = [];
-        loop {
+        let mut buf: [u8] = [];
+        while true {
             let ch = self.read_byte();
             if ch == -1 || ch == 10 { break; }
             buf += [ch as u8];
@@ -113,8 +116,8 @@ impl reader_util for reader {
     }
 
     fn read_c_str() -> str {
-        let buf: [u8] = [];
-        loop {
+        let mut buf: [u8] = [];
+        while true {
             let ch = self.read_byte();
             if ch < 1 { break; } else { buf += [ch as u8]; }
         }
@@ -123,7 +126,7 @@ impl reader_util for reader {
 
     // FIXME deal with eof?
     fn read_le_uint(size: uint) -> uint {
-        let val = 0u, pos = 0u, i = size;
+        let mut val = 0u, pos = 0u, i = size;
         while i > 0u {
             val += (self.read_byte() as uint) << pos;
             pos += 8u;
@@ -132,7 +135,7 @@ impl reader_util for reader {
         val
     }
     fn read_le_int(size: uint) -> int {
-        let val = 0u, pos = 0u, i = size;
+        let mut val = 0u, pos = 0u, i = size;
         while i > 0u {
             val += (self.read_byte() as uint) << pos;
             pos += 8u;
@@ -141,7 +144,7 @@ impl reader_util for reader {
         val as int
     }
     fn read_be_uint(size: uint) -> uint {
-        let val = 0u, i = size;
+        let mut val = 0u, i = size;
         while i > 0u {
             i -= 1u;
             val += (self.read_byte() as uint) << i * 8u;
@@ -150,7 +153,7 @@ impl reader_util for reader {
     }
 
     fn read_whole_stream() -> [u8] {
-        let buf: [u8] = [];
+        let mut buf: [u8] = [];
         while !self.eof() { buf += self.read_bytes(2048u); }
         buf
     }
@@ -166,21 +169,25 @@ fn convert_whence(whence: seek_style) -> i32 {
     };
 }
 
-impl of reader for os::FILE {
+impl of reader for *libc::FILE {
     fn read_bytes(len: uint) -> [u8] unsafe {
-        let buf = [];
+        let mut buf : [mutable u8] = [mutable];
         vec::reserve(buf, len);
-        let read = os::libc::fread(vec::unsafe::to_ptr(buf), 1u, len, self);
-        vec::unsafe::set_len(buf, read);
-        ret buf;
+        vec::as_mut_buf(buf) {|b|
+            let read = libc::fread(b as *mutable c_void, 1u,
+                                   len, self);
+            vec::unsafe::set_len(buf, read);
+        }
+        ret vec::from_mut(buf);
     }
-    fn read_byte() -> int { ret os::libc::fgetc(self) as int; }
-    fn unread_byte(byte: int) { os::libc::ungetc(byte as i32, self); }
-    fn eof() -> bool { ret os::libc::feof(self) != 0i32; }
+    fn read_byte() -> int { ret libc::fgetc(self) as int; }
+    fn unread_byte(byte: int) { libc::ungetc(byte as c_int, self); }
+    fn eof() -> bool { ret libc::feof(self) != 0 as c_int; }
     fn seek(offset: int, whence: seek_style) {
-        assert os::libc::fseek(self, offset, convert_whence(whence)) == 0i32;
+        assert libc::fseek(self, offset, convert_whence(whence))
+            == 0 as c_int;
     }
-    fn tell() -> uint { ret os::libc::ftell(self) as uint; }
+    fn tell() -> uint { ret libc::ftell(self) as uint; }
 }
 
 // A forwarding impl of reader that also holds on to a resource for the
@@ -195,9 +202,9 @@ impl <T: reader, C> of reader for {base: T, cleanup: C} {
     fn tell() -> uint { self.base.tell() }
 }
 
-resource FILE_res(f: os::FILE) { os::libc::fclose(f); }
+resource FILE_res(f: *libc::FILE) { libc::fclose(f); }
 
-fn FILE_reader(f: os::FILE, cleanup: bool) -> reader {
+fn FILE_reader(f: *libc::FILE, cleanup: bool) -> reader {
     if cleanup {
         {base: f, cleanup: FILE_res(f)} as reader
     } else {
@@ -212,9 +219,9 @@ fn FILE_reader(f: os::FILE, cleanup: bool) -> reader {
 fn stdin() -> reader { rustrt::rust_get_stdin() as reader }
 
 fn file_reader(path: str) -> result::t<reader, str> {
-    let f = str::as_buf(path, {|pathbuf|
-        str::as_buf("r", {|modebuf|
-            os::libc::fopen(pathbuf, modebuf)
+    let f = os::as_c_charp(path, {|pathbuf|
+        os::as_c_charp("r", {|modebuf|
+            libc::fopen(pathbuf, modebuf)
         })
     });
     ret if f as uint == 0u { result::err("error opening " + path) }
@@ -232,7 +239,7 @@ type byte_buf = {buf: [u8], mutable pos: uint, len: uint};
 impl of reader for byte_buf {
     fn read_bytes(len: uint) -> [u8] {
         let rest = self.len - self.pos;
-        let to_read = len;
+        let mut to_read = len;
         if rest < to_read { to_read = rest; }
         let range = vec::slice(self.buf, self.pos, self.pos + to_read);
         self.pos += to_read;
@@ -299,21 +306,27 @@ impl <T: writer, C> of writer for {base: T, cleanup: C} {
     fn flush() -> int { self.base.flush() }
 }
 
-impl of writer for os::FILE {
+impl of writer for *libc::FILE {
     fn write(v: [const u8]) unsafe {
         let len = vec::len(v);
-        let vbuf = vec::unsafe::to_ptr(v);
-        let nout = os::libc::fwrite(vbuf, len, 1u, self);
-        if nout < 1u { #error("error dumping buffer"); }
+        vec::as_buf(v) {|vbuf|
+            let nout = libc::fwrite(vbuf as *c_void, len, 1u, self);
+            if nout < 1 as size_t {
+                #error("error writing buffer");
+                log(error, sys::last_os_error());
+                fail;
+            }
+        }
     }
     fn seek(offset: int, whence: seek_style) {
-        assert os::libc::fseek(self, offset, convert_whence(whence)) == 0i32;
+        assert libc::fseek(self, offset, convert_whence(whence))
+            == 0 as c_int;
     }
-    fn tell() -> uint { os::libc::ftell(self) as uint }
-    fn flush() -> int { os::libc::fflush(self) as int }
+    fn tell() -> uint { libc::ftell(self) as uint }
+    fn flush() -> int { libc::fflush(self) as int }
 }
 
-fn FILE_writer(f: os::FILE, cleanup: bool) -> writer {
+fn FILE_writer(f: *libc::FILE, cleanup: bool) -> writer {
     if cleanup {
         {base: f, cleanup: FILE_res(f)} as writer
     } else {
@@ -324,17 +337,18 @@ fn FILE_writer(f: os::FILE, cleanup: bool) -> writer {
 impl of writer for fd_t {
     fn write(v: [const u8]) unsafe {
         let len = vec::len(v);
-        let count = 0u;
-        let vbuf;
-        while count < len {
-            vbuf = ptr::offset(vec::unsafe::to_ptr(v), count);
-            let nout = os::libc::write(self, vbuf, len);
-            if nout < 0 {
-                #error("error dumping buffer");
-                log(error, sys::last_os_error());
-                fail;
+        let mut count = 0u;
+        vec::as_buf(v) {|vbuf|
+            while count < len {
+                let vb = ptr::offset(vbuf, count) as *c_void;
+                let nout = libc::write(self, vb, len);
+                if nout < 0 as ssize_t {
+                    #error("error writing buffer");
+                    log(error, sys::last_os_error());
+                    fail;
+                }
+                count += nout as uint;
             }
-            count += nout as uint;
         }
     }
     fn seek(_offset: int, _whence: seek_style) {
@@ -348,7 +362,7 @@ impl of writer for fd_t {
     fn flush() -> int { 0 }
 }
 
-resource fd_res(fd: fd_t) { os::libc::close(fd); }
+resource fd_res(fd: fd_t) { libc::close(fd); }
 
 fn fd_writer(fd: fd_t, cleanup: bool) -> writer {
     if cleanup {
@@ -358,23 +372,32 @@ fn fd_writer(fd: fd_t, cleanup: bool) -> writer {
     }
 }
 
+
 fn mk_file_writer(path: str, flags: [fileflag])
     -> result::t<writer, str> {
-    let fflags: i32 =
-        os::libc_constants::O_WRONLY | os::libc_constants::O_BINARY;
+
+    #[cfg(target_os = "win32")]
+    fn wb() -> c_int { (O_WRONLY | O_BINARY) as c_int }
+
+    #[cfg(target_os = "linux")]
+    #[cfg(target_os = "macos")]
+    #[cfg(target_os = "freebsd")]
+    fn wb() -> c_int { O_WRONLY as c_int }
+
+    let mut fflags: c_int = wb();
     for f: fileflag in flags {
         alt f {
-          append { fflags |= os::libc_constants::O_APPEND; }
-          create { fflags |= os::libc_constants::O_CREAT; }
-          truncate { fflags |= os::libc_constants::O_TRUNC; }
+          append { fflags |= O_APPEND as c_int; }
+          create { fflags |= O_CREAT as c_int; }
+          truncate { fflags |= O_TRUNC as c_int; }
           no_flag { }
         }
     }
-    let fd = str::as_buf(path, {|pathbuf|
-        os::libc::open(pathbuf, fflags, os::libc_constants::S_IRUSR |
-                       os::libc_constants::S_IWUSR)
-    });
-    if fd < 0i32 {
+    let fd = os::as_c_charp(path) {|pathbuf|
+        libc::open(pathbuf, fflags,
+                   (S_IRUSR | S_IWUSR) as c_int)
+    };
+    if fd < (0 as c_int) {
         // FIXME don't log this! put it in the returned error string
         log(error, sys::last_os_error());
         result::err("error opening " + path)
@@ -384,7 +407,7 @@ fn mk_file_writer(path: str, flags: [fileflag])
 }
 
 fn u64_to_le_bytes(n: u64, size: uint) -> [u8] {
-    let bytes: [u8] = [], i = size, n = n;
+    let mut bytes: [u8] = [], i = size, n = n;
     while i > 0u {
         bytes += [(n & 255_u64) as u8];
         n >>= 8_u64;
@@ -395,8 +418,8 @@ fn u64_to_le_bytes(n: u64, size: uint) -> [u8] {
 
 fn u64_to_be_bytes(n: u64, size: uint) -> [u8] {
     assert size <= 8u;
-    let bytes: [u8] = [];
-    let i = size;
+    let mut bytes: [u8] = [];
+    let mut i = size;
     while i > 0u {
         let shift = ((i - 1u) * 8u) as u64;
         bytes += [(n >> shift) as u8];
@@ -406,10 +429,10 @@ fn u64_to_be_bytes(n: u64, size: uint) -> [u8] {
 }
 
 fn u64_from_be_bytes(data: [u8], start: uint, size: uint) -> u64 {
-    let sz = size;
+    let mut sz = size;
     assert (sz <= 8u);
-    let val = 0_u64;
-    let pos = start;
+    let mut val = 0_u64;
+    let mut pos = start;
     while sz > 0u {
         sz -= 1u;
         val += (data[pos] as u64) << ((sz * 8u) as u64);
@@ -471,16 +494,19 @@ fn file_writer(path: str, flags: [fileflag]) -> result::t<writer, str> {
 
 // FIXME: fileflags
 fn buffered_file_writer(path: str) -> result::t<writer, str> {
-    let f = str::as_buf(path, {|pathbuf|
-        str::as_buf("w", {|modebuf| os::libc::fopen(pathbuf, modebuf) })
-    });
+    let f = os::as_c_charp(path) {|pathbuf|
+        os::as_c_charp("w") {|modebuf|
+            libc::fopen(pathbuf, modebuf)
+        }
+    };
     ret if f as uint == 0u { result::err("error opening " + path) }
     else { result::ok(FILE_writer(f, true)) }
 }
 
 // FIXME it would be great if this could be a const
-fn stdout() -> writer { fd_writer(1i32, false) }
-fn stderr() -> writer { fd_writer(2i32, false) }
+// FIXME why are these different from the way stdin() is implemented?
+fn stdout() -> writer { fd_writer(libc::STDOUT_FILENO as c_int, false) }
+fn stderr() -> writer { fd_writer(libc::STDERR_FILENO as c_int, false) }
 
 fn print(s: str) { stdout().write_str(s); }
 fn println(s: str) { stdout().write_line(s); }
@@ -498,7 +524,7 @@ impl of writer for mem_buffer {
         }
         // FIXME: Optimize: These should be unique pointers.
         let vlen = vec::len(v);
-        let vpos = 0u;
+        let mut vpos = 0u;
         while vpos < vlen {
             let b = v[vpos];
             if self.pos == vec::len(self.buf) {
@@ -544,7 +570,7 @@ fn with_buf_writer(f: fn(writer)) -> [u8] {
 // Utility functions
 fn seek_in_buf(offset: int, pos: uint, len: uint, whence: seek_style) ->
    uint {
-    let bpos = pos as int;
+    let mut bpos = pos as int;
     let blen = len as int;
     alt whence {
       seek_set { bpos = offset; }
@@ -607,11 +633,11 @@ mod fsync {
     // fsync file after executing blk
     // FIXME find better way to create resources within lifetime of outer res
     fn FILE_res_sync(&&file: FILE_res, opt_level: option<level>,
-                  blk: fn(&&res<os::FILE>)) {
+                  blk: fn(&&res<*libc::FILE>)) {
         blk(res({
             val: *file, opt_level: opt_level,
-            fsync_fn: fn@(&&file: os::FILE, l: level) -> int {
-                ret os::fsync_fd(os::libc::fileno(file), l) as int;
+            fsync_fn: fn@(&&file: *libc::FILE, l: level) -> int {
+                ret os::fsync_fd(libc::fileno(file), l) as int;
             }
         }));
     }

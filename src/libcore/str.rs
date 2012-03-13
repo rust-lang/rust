@@ -99,7 +99,7 @@ export
 #[abi = "cdecl"]
 native mod rustrt {
     fn rust_str_push(&s: str, ch: u8);
-    fn str_reserve_shared(&ss: str, nn: ctypes::size_t);
+    fn str_reserve_shared(&ss: str, nn: libc::size_t);
 }
 
 // FIXME: add pure to a lot of functions

@@ -31,7 +31,7 @@ export uint, u8, u16, u32, u64;
 export float, f32, f64;
 export box, char, str, ptr, vec, bool;
 export either, option, result, iter;
-export libc, os, ctypes, sys, unsafe, logging;
+export libc, os, io, run, rand, sys, unsafe, logging;
 export comm, task, future;
 export extfmt;
 export tuple;
@@ -79,9 +79,11 @@ mod to_str;
 
 mod libc;
 mod os;
+mod io;
+mod run;
+mod rand;
 mod path;
 
-mod ctypes;
 mod cmath;
 mod sys;
 mod unsafe;

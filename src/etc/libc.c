@@ -167,14 +167,14 @@ void posix88_consts() {
   put_const(X_OK, int);
 #endif
 
-#ifdef STDERR_FILENO
-  put_const(STDERR_FILENO, int);
-#endif
 #ifdef STDIN_FILENO
   put_const(STDIN_FILENO, int);
 #endif
 #ifdef STDOUT_FILENO
   put_const(STDOUT_FILENO, int);
+#endif
+#ifdef STDERR_FILENO
+  put_const(STDERR_FILENO, int);
 #endif
 
 #ifdef F_LOCK

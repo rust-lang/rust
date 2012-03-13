@@ -6,26 +6,19 @@
 #[comment = "The Rust standard library"];
 #[license = "MIT"];
 #[crate_type = "lib"];
-
 #[doc = "The Rust standard library"];
 
-export fs, io, net, run, uv;
+export net, uv;
 export c_vec, four, tri, util;
 export bitv, deque, fun_treemap, list, map, smallintmap, sort, treemap, ufind;
 export rope;
 export ebml, dbg, getopts, json, rand, sha1, term, time;
 export test, tempfile, serialization;
-// FIXME: generic_os and os_fs shouldn't be exported
-export generic_os, os, os_fs;
 
 
 // General io and system-services modules
 
-mod fs;
-mod io;
 mod net;
-#[path =  "run_program.rs"]
-mod run;
 mod uv;
 
 
@@ -57,7 +50,6 @@ mod ebml;
 mod dbg;
 mod getopts;
 mod json;
-mod rand;
 mod sha1;
 mod md4;
 mod tempfile;
@@ -72,39 +64,6 @@ mod unicode;
 
 mod test;
 mod serialization;
-
-// Target-os module.
-
-// TODO: Have each os module re-export everything from genericos.
-mod generic_os;
-
-#[cfg(target_os = "win32")]
-#[path = "win32_os.rs"]
-mod os;
-#[cfg(target_os = "win32")]
-#[path = "win32_fs.rs"]
-mod os_fs;
-
-#[cfg(target_os = "macos")]
-#[path = "macos_os.rs"]
-mod os;
-#[cfg(target_os = "macos")]
-#[path = "posix_fs.rs"]
-mod os_fs;
-
-#[cfg(target_os = "linux")]
-#[path = "linux_os.rs"]
-mod os;
-#[cfg(target_os = "linux")]
-#[path = "posix_fs.rs"]
-mod os_fs;
-
-#[cfg(target_os = "freebsd")]
-#[path = "freebsd_os.rs"]
-mod os;
-#[cfg(target_os = "freebsd")]
-#[path = "posix_fs.rs"]
-mod os_fs;
 
 // Local Variables:
 // mode: rust;

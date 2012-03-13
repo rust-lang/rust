@@ -41,8 +41,8 @@ fn mk_rng() -> rng {
             let charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
                           "abcdefghijklmnopqrstuvwxyz" +
                           "0123456789";
-            let s = "";
-            let i = 0u;
+            let mut s = "";
+            let mut i = 0u;
             while (i < len) {
                 let n = rustrt::rand_next(**self) as uint %
                     str::len(charset);
@@ -52,8 +52,8 @@ fn mk_rng() -> rng {
             s
         }
         fn gen_bytes(len: uint) -> [u8] {
-            let v = [];
-            let i = 0u;
+            let mut v = [];
+            let mut i = 0u;
             while i < len {
                 let n = rustrt::rand_next(**self) as uint;
                 v += [(n % (u8::max_value as uint)) as u8];

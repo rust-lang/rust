@@ -24,7 +24,6 @@ import c = common;
 import e = encoder;
 
 // used in testing:
-import std::io;
 import driver::diagnostic;
 import syntax::codemap;
 import syntax::parse::parser;

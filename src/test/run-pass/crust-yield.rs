@@ -1,9 +1,9 @@
 native mod rustrt {
     fn rust_dbg_call(cb: *u8,
-                     data: ctypes::uintptr_t) -> ctypes::uintptr_t;
+                     data: libc::uintptr_t) -> libc::uintptr_t;
 }
 
-crust fn cb(data: ctypes::uintptr_t) -> ctypes::uintptr_t {
+crust fn cb(data: libc::uintptr_t) -> libc::uintptr_t {
     if data == 1u {
         data
     } else {

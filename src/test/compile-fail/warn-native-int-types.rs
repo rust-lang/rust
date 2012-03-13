@@ -1,4 +1,4 @@
-//error-pattern:ctypes::c_int or ctypes::long should be used
+//error-pattern:libc::c_int or libc::c_long should be used
 native mod xx {
   fn strlen(str: *u8) -> uint;
   fn foo(x: int, y: uint);

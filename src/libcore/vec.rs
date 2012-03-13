@@ -73,17 +73,17 @@ export u8;
 
 #[abi = "rust-intrinsic"]
 native mod rusti {
-    fn vec_len<T>(&&v: [const T]) -> ctypes::size_t;
+    fn vec_len<T>(&&v: [const T]) -> libc::size_t;
 }
 
 #[abi = "cdecl"]
 native mod rustrt {
     fn vec_reserve_shared<T>(t: *sys::type_desc,
                              &v: [const T],
-                             n: ctypes::size_t);
+                             n: libc::size_t);
     fn vec_from_buf_shared<T>(t: *sys::type_desc,
                               ptr: *T,
-                              count: ctypes::size_t) -> [T];
+                              count: libc::size_t) -> [T];
 }
 
 #[doc = "A function used to initialize the elements of a vector"]
@@ -912,7 +912,7 @@ mod u8 {
     pure fn cmp(&&a: [u8], &&b: [u8]) -> int unsafe {
         let a_len = len(a);
         let b_len = len(b);
-        let n = uint::min(a_len, b_len) as ctypes::size_t;
+        let n = uint::min(a_len, b_len) as libc::size_t;
         let r = libc::memcmp(unsafe::to_ptr(a) as *libc::c_void,
                              unsafe::to_ptr(b) as *libc::c_void, n) as int;
 

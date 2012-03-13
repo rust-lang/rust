@@ -4,7 +4,7 @@ use std;
 use rustc;
 
 import rustc::*;
-import std::io::*;
+import io::*;
 
 import rustc::driver::diagnostic;
 import rustc::syntax::ast;
@@ -95,7 +95,7 @@ fn main() {
 
 fn check_pp<T>(expr: T, f: fn(pprust::ps, T), expect: str) {
     let buf = mk_mem_buffer();
-    let pp = pprust::rust_printer(buf as std::io::writer);
+    let pp = pprust::rust_printer(buf as io::writer);
     f(pp, expr);
     pp::eof(pp.s);
     let str = mem_buffer_str(buf);

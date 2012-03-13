@@ -1,7 +1,7 @@
 #[doc ="Process spawning"];
 import option::{some, none};
 import str::sbuf;
-import ctypes::{fd_t, pid_t, void};
+import libc::{pid_t, c_void, c_int};
 
 export program;
 export run_program;
@@ -12,8 +12,8 @@ export waitpid;
 
 #[abi = "cdecl"]
 native mod rustrt {
-    fn rust_run_program(argv: *sbuf, envp: *void, dir: sbuf,
-                        in_fd: fd_t, out_fd: fd_t, err_fd: fd_t)
+    fn rust_run_program(argv: *sbuf, envp: *c_void, dir: sbuf,
+                        in_fd: c_int, out_fd: c_int, err_fd: c_int)
         -> pid_t;
 }
 
@@ -65,7 +65,7 @@ The process id of the spawned process
 fn spawn_process(prog: str, args: [str],
                  env: option<[(str,str)]>,
                  dir: option<str>,
-                 in_fd: fd_t, out_fd: fd_t, err_fd: fd_t)
+                 in_fd: c_int, out_fd: c_int, err_fd: c_int)
    -> pid_t unsafe {
     with_argv(prog, args) {|argv|
         with_envp(env) { |envp|
@@ -79,8 +79,8 @@ fn spawn_process(prog: str, args: [str],
 
 fn with_argv<T>(prog: str, args: [str],
                 cb: fn(*sbuf) -> T) -> T unsafe {
-    let argptrs = str::as_buf(prog) {|b| [b] };
-    let tmps = [];
+    let mut argptrs = str::as_buf(prog) {|b| [b] };
+    let mut tmps = [];
     for arg in args {
         let t = @arg;
         tmps += [t];
@@ -94,13 +94,13 @@ fn with_argv<T>(prog: str, args: [str],
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "freebsd")]
 fn with_envp<T>(env: option<[(str,str)]>,
-                cb: fn(*void) -> T) -> T unsafe {
+                cb: fn(*c_void) -> T) -> T unsafe {
     // On posixy systems we can pass a char** for envp, which is
     // a null-terminated array of "k=v\n" strings.
     alt env {
       some (es) {
-        let tmps = [];
-        let ptrs = [];
+        let mut tmps = [];
+        let mut ptrs = [];
 
         for (k,v) in es {
             let t = @(#fmt("%s=%s", k, v));
@@ -118,16 +118,16 @@ fn with_envp<T>(env: option<[(str,str)]>,
 
 #[cfg(target_os = "win32")]
 fn with_envp<T>(env: option<[(str,str)]>,
-                cb: fn(*void) -> T) -> T unsafe {
+                cb: fn(*c_void) -> T) -> T unsafe {
     // On win32 we pass an "environment block" which is not a char**, but
     // rather a concatenation of null-terminated k=v\0 sequences, with a final
     // \0 to terminate.
     alt env {
       some (es) {
-        let blk : [u8] = [];
+        let mut blk : [u8] = [];
         for (k,v) in es {
             let t = #fmt("%s=%s", k, v);
-            let v : [u8] = ::unsafe::reinterpret_cast(t);
+            let mut v : [u8] = ::unsafe::reinterpret_cast(t);
             blk += v;
             ::unsafe::leak(v);
         }
@@ -191,20 +191,20 @@ fn start_program(prog: str, args: [str]) -> program {
                       pipe_err.out);
 
     if pid == -1i32 { fail; }
-    os::libc::close(pipe_input.in);
-    os::libc::close(pipe_output.out);
-    os::libc::close(pipe_err.out);
+    libc::close(pipe_input.in);
+    libc::close(pipe_output.out);
+    libc::close(pipe_err.out);
 
     type prog_repr = {pid: pid_t,
-                      mutable in_fd: fd_t,
-                      out_file: os::FILE,
-                      err_file: os::FILE,
+                      mutable in_fd: c_int,
+                      out_file: *libc::FILE,
+                      err_file: *libc::FILE,
                       mutable finished: bool};
 
     fn close_repr_input(r: prog_repr) {
         let invalid_fd = -1i32;
         if r.in_fd != invalid_fd {
-            os::libc::close(r.in_fd);
+            libc::close(r.in_fd);
             r.in_fd = invalid_fd;
         }
     }
@@ -216,8 +216,8 @@ fn start_program(prog: str, args: [str]) -> program {
     }
     fn destroy_repr(r: prog_repr) {
         finish_repr(r);
-        os::libc::fclose(r.out_file);
-        os::libc::fclose(r.err_file);
+       libc::fclose(r.out_file);
+       libc::fclose(r.err_file);
     }
     resource prog_res(r: prog_repr) { destroy_repr(r); }
 
@@ -232,14 +232,14 @@ fn start_program(prog: str, args: [str]) -> program {
     }
     let repr = {pid: pid,
                 mutable in_fd: pipe_input.out,
-                out_file: os::fd_FILE(pipe_output.in),
-                err_file: os::fd_FILE(pipe_err.in),
+                out_file: os::fdopen(pipe_output.in),
+                err_file: os::fdopen(pipe_err.in),
                 mutable finished: false};
     ret prog_res(repr) as program;
 }
 
 fn read_all(rd: io::reader) -> str {
-    let buf = "";
+    let mut buf = "";
     while !rd.eof() {
         let bytes = rd.read_bytes(4096u);
         buf += str::from_bytes(bytes);
@@ -318,7 +318,6 @@ fn waitpid(pid: pid_t) -> int {
 mod tests {
 
     import io::writer_util;
-    import ctypes::fd_t;
 
     // Regression test for memory leaks
     #[ignore(cfg(target_os = "win32"))] // FIXME
@@ -353,7 +352,7 @@ mod tests {
         log(debug, actual);
         assert (expected == actual);
 
-        fn writeclose(fd: fd_t, s: str) {
+        fn writeclose(fd: c_int, s: str) {
             #error("writeclose %d, %s", fd as int, s);
             let writer = io::fd_writer(fd, false);
             writer.write_str(s);
@@ -361,9 +360,9 @@ mod tests {
             os::close(fd);
         }
 
-        fn readclose(fd: fd_t) -> str {
+        fn readclose(fd: c_int) -> str {
             // Copied from run::program_output
-            let file = os::fd_FILE(fd);
+            let file = os::fdopen(fd);
             let reader = io::FILE_reader(file, false);
             let buf = "";
             while !reader.eof() {

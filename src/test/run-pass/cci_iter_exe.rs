@@ -1,10 +1,7 @@
 // xfail-fast - check-fast doesn't understand aux-build
 // aux-build:cci_iter_lib.rs
 
-use std;
 use cci_iter_lib;
-
-import std::io;
 
 fn main() {
     //let bt0 = sys::rusti::frame_address(1u32);

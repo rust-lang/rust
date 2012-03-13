@@ -96,6 +96,14 @@ export size_t, ptrdiff_t, clock_t, time_t;
 export c_longlong, c_ulonglong, intptr_t, uintptr_t;
 export off_t, dev_t, ino_t, pid_t, mode_t, ssize_t;
 
+export EXIT_FAILURE, EXIT_SUCCESS, RAND_MAX,
+       EOF, SEEK_SET, SEEK_CUR, SEEK_END, _IOFBF, _IONBF, _IOLBF,
+       BUFSIZ, FOPEN_MAX, FILENAME_MAX, L_tmpnam, TMP_MAX,
+       O_RDONLY, O_WRONLY, O_RDWR, O_APPEND, O_CREAT, O_EXCL, O_TRUNC,
+       S_IFIFO, S_IFCHR, S_IFBLK, S_IFDIR, S_IFREG, S_IFMT, S_IEXEC,
+       S_IWRITE, S_IREAD, S_IRWXU, S_IXUSR, S_IWUSR, S_IRUSR, F_OK, R_OK,
+       W_OK, X_OK, STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO;
+
 export isalnum, isalpha, iscntrl, isdigit, islower, isprint, ispunct,
        isspace, isupper, isxdigit, tolower, toupper;
 
@@ -111,7 +119,7 @@ export strcpy, strncpy, strcat, strncat, strcmp, strncmp, strcoll, strchr,
        strxfrm, memcpy, memmove, memcmp, memchr, memset;
 
 export chmod, mkdir;
-export popen, pclose, fdopen;
+export popen, pclose, fdopen, fileno;
 export open, creat;
 export access, chdir, close, dup, dup2, execv, execve, execvp, getcwd,
        getpid, isatty, lseek, pipe, read, rmdir, unlink, write;
@@ -495,9 +503,9 @@ mod consts {
             const R_OK : int = 4;
             const W_OK : int = 2;
             const X_OK : int = 1;
-            const STDERR_FILENO : int = 2;
             const STDIN_FILENO : int = 0;
             const STDOUT_FILENO : int = 1;
+            const STDERR_FILENO : int = 2;
         }
         mod posix01 { }
         mod posix08 { }
@@ -558,6 +566,9 @@ mod consts {
             const R_OK : int = 4;
             const W_OK : int = 2;
             const X_OK : int = 1;
+            const STDIN_FILENO : int = 0;
+            const STDOUT_FILENO : int = 1;
+            const STDERR_FILENO : int = 2;
             const F_LOCK : int = 1;
             const F_TEST : int = 3;
             const F_TLOCK : int = 2;
@@ -618,9 +629,9 @@ mod consts {
             const R_OK : int = 4;
             const W_OK : int = 2;
             const X_OK : int = 1;
-            const STDERR_FILENO : int = 2;
             const STDIN_FILENO : int = 0;
             const STDOUT_FILENO : int = 1;
+            const STDERR_FILENO : int = 2;
             const F_LOCK : int = 1;
             const F_TEST : int = 3;
             const F_TLOCK : int = 2;
@@ -682,9 +693,9 @@ mod consts {
             const R_OK : int = 4;
             const W_OK : int = 2;
             const X_OK : int = 1;
-            const STDERR_FILENO : int = 2;
             const STDIN_FILENO : int = 0;
             const STDOUT_FILENO : int = 1;
+            const STDERR_FILENO : int = 2;
             const F_LOCK : int = 1;
             const F_TEST : int = 3;
             const F_TLOCK : int = 2;
@@ -744,7 +755,8 @@ mod funcs {
             fn setbuf(stream: *FILE, buf: *c_char);
             // Omitted: printf and scanf variants.
             fn fgetc(stream: *FILE) -> c_int;
-            fn fgets(buf: *c_char, n: c_int, stream: *FILE) -> *c_char;
+            fn fgets(buf: *mutable c_char, n: c_int,
+                     stream: *FILE) -> *c_char;
             fn fputc(c: c_int, stream: *FILE) -> c_int;
             fn fputs(s: *c_char, stream: *FILE) -> *c_char;
             // Omitted: getc, getchar (might be macros).
@@ -755,7 +767,7 @@ mod funcs {
             // Omitted: putc, putchar (might be macros).
             fn puts(s: *c_char) -> c_int;
             fn ungetc(c: c_int, stream: *FILE) -> c_int;
-            fn fread(ptr: *c_void, size: size_t,
+            fn fread(ptr: *mutable c_void, size: size_t,
                      nobj: size_t, stream: *FILE) -> size_t;
             fn fwrite(ptr: *c_void, size: size_t,
                       nobj: size_t, stream: *FILE) -> size_t;
@@ -863,7 +875,7 @@ mod funcs {
         #[abi = "cdecl"]
         native mod fcntl {
             #[link_name = "_open"]
-            fn open(path: *c_char, oflag: c_int) -> c_int;
+            fn open(path: *c_char, oflag: c_int, mode: c_int) -> c_int;
 
             #[link_name = "_creat"]
             fn creat(path: *c_char, mode: c_int) -> c_int;
@@ -923,7 +935,7 @@ mod funcs {
                     textmode: c_int) -> c_int;
 
             #[link_name = "_read"]
-            fn read(fd: c_int, buf: *c_void, count: c_uint) -> c_int;
+            fn read(fd: c_int, buf: *mutable c_void, count: c_uint) -> c_int;
 
             #[link_name = "_rmdir"]
             fn rmdir(path: *c_char) -> c_int;
@@ -932,7 +944,7 @@ mod funcs {
             fn unlink(c: *c_char) -> c_int;
 
             #[link_name = "_write"]
-            fn write(fd: c_int, buf: *c_void, count: c_uint) -> c_uint;
+            fn write(fd: c_int, buf: *c_void, count: c_uint) -> c_int;
 
         }
     }
@@ -964,7 +976,7 @@ mod funcs {
         #[nolink]
         #[abi = "cdecl"]
         native mod fcntl {
-            fn open(path: *c_char, oflag: c_int) -> c_int;
+            fn open(path: *c_char, oflag: c_int, mode: c_int) -> c_int;
             fn creat(path: *c_char, mode: mode_t) -> c_int;
             fn fcntl(fd: c_int, cmd: c_int) -> c_int;
         }
@@ -999,7 +1011,7 @@ mod funcs {
             fn getegid() -> gid_t;
             fn geteuid() -> uid_t;
             fn getgid() -> gid_t ;
-            fn getgroups(ngroups_max: c_int, groups: *gid_t) -> c_int;
+            fn getgroups(ngroups_max: c_int, groups: *mutable gid_t) -> c_int;
             fn getlogin() -> *c_char;
             fn getopt(argc: c_int, argv: **c_char, optstr: *c_char) -> c_int;
             fn getpgrp() -> pid_t;
@@ -1012,7 +1024,8 @@ mod funcs {
             fn pathconf(path: *c_char, name: c_int) -> c_long;
             fn pause() -> c_int;
             fn pipe(fds: *mutable c_int) -> c_int;
-            fn read(fd: c_int, buf: *c_void, count: size_t) -> ssize_t;
+            fn read(fd: c_int, buf: *mutable c_void,
+                    count: size_t) -> ssize_t;
             fn rmdir(path: *c_char) -> c_int;
             fn setgid(gid: gid_t) -> c_int;
             fn setpgid(pid: pid_t, pgid: pid_t) -> c_int;

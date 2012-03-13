@@ -1,16 +1,13 @@
-import std::run;
-import std::run::spawn_process;
-import std::io;
-import std::os;
+import run::spawn_process;
 import io::writer_util;
-import ctypes::{pid_t, fd_t};
+import libc::{c_int, pid_t};
 
 export run;
 
 #[cfg(target_os = "win32")]
 fn target_env(lib_path: str, prog: str) -> option<[(str,str)]> {
 
-    let env = std::generic_os::env();
+    let env = os::env();
 
     env = vec::map(env) {|pair|
         let (k,v) = pair;
@@ -81,7 +78,7 @@ fn run(lib_path: str, prog: str, args: [str],
     ret {status: status, out: outs, err: errs};
 }
 
-fn writeclose(fd: fd_t, s: option<str>) {
+fn writeclose(fd: c_int, s: option<str>) {
     if option::is_some(s) {
         let writer = io::fd_writer(fd, false);
         writer.write_str(option::get(s));
@@ -90,9 +87,9 @@ fn writeclose(fd: fd_t, s: option<str>) {
     os::close(fd);
 }
 
-fn readclose(fd: fd_t) -> str {
+fn readclose(fd: c_int) -> str {
     // Copied from run::program_output
-    let file = os::fd_FILE(fd);
+    let file = os::fdopen(fd);
     let reader = io::FILE_reader(file, false);
     let buf = "";
     while !reader.eof() {

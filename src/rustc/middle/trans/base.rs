@@ -13,7 +13,7 @@
 //     but many TypeRefs correspond to one ty::t; for instance, tup(int, int,
 //     int) and rec(x=int, y=int, z=int) will have the same TypeRef.
 
-import ctypes::c_uint;
+import libc::c_uint;
 import std::{map, time};
 import std::map::hashmap;
 import std::map::{new_int_hash, new_str_hash};

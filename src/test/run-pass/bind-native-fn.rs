@@ -3,7 +3,7 @@
 
 use std;
 import str;
-import ctypes::*;
+import libc::*;
 
 #[nolink]
 native mod libc {

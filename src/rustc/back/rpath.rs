@@ -1,4 +1,4 @@
-import std::{os, fs, os_fs, map};
+import std::map;
 import std::map::hashmap;
 import metadata::cstore;
 import driver::session;
@@ -36,20 +36,20 @@ fn get_rpath_flags(sess: session::session, out_filename: str) -> [str] {
     rpaths_to_flags(rpaths)
 }
 
-fn get_sysroot_absolute_rt_lib(sess: session::session) -> fs::path {
+fn get_sysroot_absolute_rt_lib(sess: session::session) -> path::path {
     let path = [sess.filesearch.sysroot()]
         + filesearch::relative_target_lib_path(
             sess.opts.target_triple)
-        + [os::dylib_filename("rustrt")];
-    fs::connect_many(path)
+        + [os::dll_filename("rustrt")];
+    path::connect_many(path)
 }
 
 fn rpaths_to_flags(rpaths: [str]) -> [str] {
     vec::map(rpaths, { |rpath| #fmt("-Wl,-rpath,%s",rpath)})
 }
 
-fn get_rpaths(os: session::os, cwd: fs::path, sysroot: fs::path,
-              output: fs::path, libs: [fs::path],
+fn get_rpaths(os: session::os, cwd: path::path, sysroot: path::path,
+              output: path::path, libs: [path::path],
               target_triple: str) -> [str] {
     #debug("cwd: %s", cwd);
     #debug("sysroot: %s", sysroot);
@@ -91,21 +91,21 @@ fn get_rpaths(os: session::os, cwd: fs::path, sysroot: fs::path,
 }
 
 fn get_rpaths_relative_to_output(os: session::os,
-                                 cwd: fs::path,
-                                 output: fs::path,
-                                 libs: [fs::path]) -> [str] {
+                                 cwd: path::path,
+                                 output: path::path,
+                                 libs: [path::path]) -> [str] {
     vec::map(libs, bind get_rpath_relative_to_output(os, cwd, output, _))
 }
 
 fn get_rpath_relative_to_output(os: session::os,
-                                cwd: fs::path,
-                                output: fs::path,
-                                &&lib: fs::path) : not_win32(os) -> str {
+                                cwd: path::path,
+                                output: path::path,
+                                &&lib: path::path) : not_win32(os) -> str {
     // Mac doesn't appear to support $ORIGIN
     let prefix = alt os {
-        session::os_linux { "$ORIGIN" + fs::path_sep() }
-        session::os_freebsd { "$ORIGIN" + fs::path_sep() }
-        session::os_macos { "@executable_path" + fs::path_sep() }
+        session::os_linux { "$ORIGIN" + path::path_sep() }
+        session::os_freebsd { "$ORIGIN" + path::path_sep() }
+        session::os_macos { "@executable_path" + path::path_sep() }
         session::os_win32 { core::unreachable(); }
     };
 
@@ -115,15 +115,15 @@ fn get_rpath_relative_to_output(os: session::os,
 }
 
 // Find the relative path from one file to another
-fn get_relative_to(abs1: fs::path, abs2: fs::path) -> fs::path {
-    assert fs::path_is_absolute(abs1);
-    assert fs::path_is_absolute(abs2);
+fn get_relative_to(abs1: path::path, abs2: path::path) -> path::path {
+    assert path::path_is_absolute(abs1);
+    assert path::path_is_absolute(abs2);
     #debug("finding relative path from %s to %s",
            abs1, abs2);
-    let normal1 = fs::normalize(abs1);
-    let normal2 = fs::normalize(abs2);
-    let split1 = str::split_char(normal1, os_fs::path_sep);
-    let split2 = str::split_char(normal2, os_fs::path_sep);
+    let normal1 = path::normalize(abs1);
+    let normal2 = path::normalize(abs2);
+    let split1 = path::split(normal1);
+    let split2 = path::split(normal2);
     let len1 = vec::len(split1);
     let len2 = vec::len(split2);
     assert len1 > 0u;
@@ -143,29 +143,29 @@ fn get_relative_to(abs1: fs::path, abs2: fs::path) -> fs::path {
     path += vec::slice(split2, start_idx, len2 - 1u);
 
     if check vec::is_not_empty(path) {
-        ret fs::connect_many(path);
+        ret path::connect_many(path);
     } else {
         ret ".";
     }
 }
 
-fn get_absolute_rpaths(cwd: fs::path, libs: [fs::path]) -> [str] {
+fn get_absolute_rpaths(cwd: path::path, libs: [path::path]) -> [str] {
     vec::map(libs, bind get_absolute_rpath(cwd, _))
 }
 
-fn get_absolute_rpath(cwd: fs::path, &&lib: fs::path) -> str {
-    fs::dirname(get_absolute(cwd, lib))
+fn get_absolute_rpath(cwd: path::path, &&lib: path::path) -> str {
+    path::dirname(get_absolute(cwd, lib))
 }
 
-fn get_absolute(cwd: fs::path, lib: fs::path) -> fs::path {
-    if fs::path_is_absolute(lib) {
+fn get_absolute(cwd: path::path, lib: path::path) -> path::path {
+    if path::path_is_absolute(lib) {
         lib
     } else {
-        fs::connect(cwd, lib)
+        path::connect(cwd, lib)
     }
 }
 
-fn get_install_prefix_rpath(cwd: fs::path, target_triple: str) -> str {
+fn get_install_prefix_rpath(cwd: path::path, target_triple: str) -> str {
     let install_prefix = #env("CFG_PREFIX");
 
     if install_prefix == "" {
@@ -174,7 +174,7 @@ fn get_install_prefix_rpath(cwd: fs::path, target_triple: str) -> str {
 
     let path = [install_prefix]
         + filesearch::relative_target_lib_path(target_triple);
-    get_absolute(cwd, fs::connect_many(path))
+    get_absolute(cwd, path::connect_many(path))
 }
 
 fn minimize_rpaths(rpaths: [str]) -> [str] {
@@ -218,14 +218,14 @@ mod test {
     #[test]
     fn test_prefix_rpath() {
         let res = get_install_prefix_rpath("/usr/lib", "triple");
-        let d = fs::connect(#env("CFG_PREFIX"), "/lib/rustc/triple/lib");
+        let d = path::connect(#env("CFG_PREFIX"), "/lib/rustc/triple/lib");
         assert str::ends_with(res, d);
     }
 
     #[test]
     fn test_prefix_rpath_abs() {
         let res = get_install_prefix_rpath("/usr/lib", "triple");
-        assert fs::path_is_absolute(res);
+        assert path::path_is_absolute(res);
     }
 
     #[test]

@@ -1,5 +1,3 @@
-
-import std::io;
 import parse::lexer;
 import syntax::codemap::codemap;
 import pp::{break_offset, word, printer,

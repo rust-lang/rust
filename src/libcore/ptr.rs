@@ -12,9 +12,9 @@ export memmove;
 #[abi = "rust-intrinsic"]
 native mod rusti {
     fn addr_of<T>(val: T) -> *T;
-    fn ptr_offset<T>(ptr: *T, count: ctypes::uintptr_t) -> *T;
-    fn memcpy<T>(dst: *T, src: *T, count: ctypes::uintptr_t);
-    fn memmove<T>(dst: *T, src: *T, count: ctypes::uintptr_t);
+    fn ptr_offset<T>(ptr: *T, count: libc::uintptr_t) -> *T;
+    fn memcpy<T>(dst: *T, src: *T, count: libc::uintptr_t);
+    fn memmove<T>(dst: *T, src: *T, count: libc::uintptr_t);
 }
 
 #[doc = "Get an unsafe pointer to a value"]

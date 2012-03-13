@@ -4,7 +4,6 @@
  * should all get sucked into either the compiler syntax extension plugin
  * interface.
  */
-import std::generic_os;
 import base::*;
 export expand_syntax_ext;
 
@@ -25,7 +24,7 @@ fn expand_syntax_ext(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
     // option<str> rather than just an maybe-empty string.
 
     let var = expr_to_str(cx, args[0], "#env requires a string");
-    alt generic_os::getenv(var) {
+    alt os::getenv(var) {
       option::none { ret make_new_str(cx, sp, ""); }
       option::some(s) { ret make_new_str(cx, sp, s); }
     }

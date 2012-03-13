@@ -1,4 +1,3 @@
-import std::{fs, io};
 import io::writer_util;
 
 import rustc::syntax::{ast, ast_util, fold, visit, codemap};
@@ -23,10 +22,10 @@ fn find_rust_files(&files: [str], path: str) {
     if str::ends_with(path, ".rs") && !contains(path, "utf8") {
         // ignoring "utf8" tests because something is broken
         files += [path];
-    } else if fs::path_is_dir(path)
+    } else if os::path_is_dir(path)
         && !contains(path, "compile-fail")
         && !contains(path, "build") {
-        for p in fs::list_dir(path) {
+        for p in os::list_dir(path) {
             find_rust_files(files, p);
         }
     }
@@ -323,17 +322,17 @@ fn check_whole_compiler(code: str, suggested_filename_prefix: str, allow_running
 fn removeIfExists(filename: str) {
     // So sketchy!
     assert !contains(filename, " ");
-    std::run::program_output("bash", ["-c", "rm " + filename]);
+    run::program_output("bash", ["-c", "rm " + filename]);
 }
 
 fn removeDirIfExists(filename: str) {
     // So sketchy!
     assert !contains(filename, " ");
-    std::run::program_output("bash", ["-c", "rm -r " + filename]);
+    run::program_output("bash", ["-c", "rm -r " + filename]);
 }
 
 fn check_running(exe_filename: str) -> happiness {
-    let p = std::run::program_output("/Users/jruderman/scripts/timed_run_rust_program.py", [exe_filename]);
+    let p = run::program_output("/Users/jruderman/scripts/timed_run_rust_program.py", [exe_filename]);
     let comb = p.out + "\n" + p.err;
     if str::len(comb) > 1u {
         log(error, "comb comb comb: " + comb);
@@ -362,7 +361,7 @@ fn check_running(exe_filename: str) -> happiness {
 }
 
 fn check_compiling(filename: str) -> happiness {
-    let p = std::run::program_output(
+    let p = run::program_output(
             "/Users/jruderman/code/rust/build/x86_64-apple-darwin/stage1/bin/rustc",
             [filename]);
 
@@ -506,9 +505,9 @@ fn check_roundtrip_convergence(code: @str, maxIters: uint) {
         #error("Did not converge after %u iterations!", i);
         write_file("round-trip-a.rs", *old);
         write_file("round-trip-b.rs", *new);
-        std::run::run_program("diff",
-                              ["-w", "-u", "round-trip-a.rs",
-                               "round-trip-b.rs"]);
+        run::run_program("diff",
+                         ["-w", "-u", "round-trip-a.rs",
+                          "round-trip-b.rs"]);
         fail "Mismatch";
     }
 }

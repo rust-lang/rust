@@ -10,15 +10,11 @@ import rustc::util::filesearch::{get_cargo_root, get_cargo_root_nearest,
 import rustc::driver::diagnostic;
 
 import result::{ok, err};
-import std::fs;
-import std::io;
 import io::writer_util;
 import std::json;
 import result;
 import std::map;
 import std::map::hashmap;
-import std::os;
-import std::run;
 import str;
 import std::tempfile;
 import vec;
@@ -184,8 +180,8 @@ fn rest(s: str, start: uint) -> str {
 }
 
 fn need_dir(s: str) {
-    if fs::path_is_dir(s) { ret; }
-    if !fs::make_dir(s, 0x1c0i32) {
+    if os::path_is_dir(s) { ret; }
+    if !os::make_dir(s, 0x1c0i32) {
         fail #fmt["can't make_dir %s", s];
     }
 }
@@ -225,7 +221,7 @@ fn parse_source(name: str, j: json::json) -> source {
 }
 
 fn try_parse_sources(filename: str, sources: map::hashmap<str, source>) {
-    if !fs::path_exists(filename)  { ret; }
+    if !os::path_exists(filename)  { ret; }
     let c = io::read_whole_file_str(filename);
     alt json::from_str(result::get(c)) {
         ok(json::dict(j)) {
@@ -314,9 +310,9 @@ fn load_one_source_package(&src: source, p: map::hashmap<str, json::json>) {
 
 fn load_source_packages(&c: cargo, &src: source) {
     log(debug, "Loading source: " + src.name);
-    let dir = fs::connect(c.sourcedir, src.name);
-    let pkgfile = fs::connect(dir, "packages.json");
-    if !fs::path_exists(pkgfile) { ret; }
+    let dir = path::connect(c.sourcedir, src.name);
+    let pkgfile = path::connect(dir, "packages.json");
+    if !os::path_exists(pkgfile) { ret; }
     let pkgstr = io::read_whole_file_str(pkgfile);
     alt json::from_str(result::get(pkgstr)) {
         ok(json::list(js)) {
@@ -392,15 +388,15 @@ fn configure(opts: options) -> cargo {
     };
 
     let sources = map::new_str_hash::<source>();
-    try_parse_sources(fs::connect(syscargo, "sources.json"), sources);
-    try_parse_sources(fs::connect(syscargo, "local-sources.json"), sources);
+    try_parse_sources(path::connect(syscargo, "sources.json"), sources);
+    try_parse_sources(path::connect(syscargo, "local-sources.json"), sources);
     let c = {
         pgp: pgp::supported(),
         root: p,
-        bindir: fs::connect(p, "bin"),
-        libdir: fs::connect(p, "lib"),
-        workdir: fs::connect(p, "work"),
-        sourcedir: fs::connect(syscargo, "sources"),
+        bindir: path::connect(p, "bin"),
+        libdir: path::connect(p, "lib"),
+        workdir: path::connect(p, "work"),
+        sourcedir: path::connect(syscargo, "sources"),
         sources: sources,
         opts: opts
     };
@@ -438,7 +434,7 @@ fn for_each_package(c: cargo, b: fn(source, package)) {
 
 // FIXME: deduplicate code with install_one_crate
 fn test_one_crate(_c: cargo, _path: str, cf: str, _p: pkg) {
-    let buildpath = fs::connect(_path, "/test");
+    let buildpath = path::connect(_path, "/test");
     need_dir(buildpath);
     #debug("Testing: %s -> %s", cf, buildpath);
     let p = run::program_output(rustc_sysroot(),
@@ -447,14 +443,14 @@ fn test_one_crate(_c: cargo, _path: str, cf: str, _p: pkg) {
         error(#fmt["rustc failed: %d\n%s\n%s", p.status, p.err, p.out]);
         ret;
     }
-    let new = fs::list_dir(buildpath);
+    let new = os::list_dir(buildpath);
     for ct: str in new {
         run::run_program(ct, []);
     }
 }
 
 fn install_one_crate(c: cargo, _path: str, cf: str, _p: pkg) {
-    let buildpath = fs::connect(_path, "/build");
+    let buildpath = path::connect(_path, "/build");
     need_dir(buildpath);
     #debug("Installing: %s -> %s", cf, buildpath);
     let p = run::program_output(rustc_sysroot(),
@@ -463,14 +459,14 @@ fn install_one_crate(c: cargo, _path: str, cf: str, _p: pkg) {
         error(#fmt["rustc failed: %d\n%s\n%s", p.status, p.err, p.out]);
         ret;
     }
-    let new = fs::list_dir(buildpath);
-    let exec_suffix = os::exec_suffix();
+    let new = os::list_dir(buildpath);
+    let exec_suffix = os::exe_suffix();
     for ct: str in new {
         if (exec_suffix != "" && str::ends_with(ct, exec_suffix)) ||
-            (exec_suffix == "" && !str::starts_with(fs::basename(ct),
+            (exec_suffix == "" && !str::starts_with(path::basename(ct),
                                                     "lib")) {
             #debug("  bin: %s", ct);
-            // FIXME: need libstd fs::copy or something
+            // FIXME: need libstd os::copy or something
             run::run_program("cp", [ct, c.bindir]);
             if c.opts.mode == system_mode {
                 install_one_crate_to_sysroot(ct, "bin");
@@ -486,11 +482,11 @@ fn install_one_crate(c: cargo, _path: str, cf: str, _p: pkg) {
 }
 
 fn install_one_crate_to_sysroot(ct: str, target: str) {
-    alt os::get_exe_path() {
+    alt os::self_exe_path() {
         some(_path) {
             let path = [_path, "..", target];
             check vec::is_not_empty(path);
-            let target_dir = fs::normalize(fs::connect_many(path));
+            let target_dir = path::normalize(path::connect_many(path));
             let p = run::program_output("cp", [ct, target_dir]);
             if p.status != 0 {
                 warn(#fmt["Copying %s to %s is failed", ct, target_dir]);
@@ -501,11 +497,11 @@ fn install_one_crate_to_sysroot(ct: str, target: str) {
 }
 
 fn rustc_sysroot() -> str {
-    alt os::get_exe_path() {
+    alt os::self_exe_path() {
         some(_path) {
             let path = [_path, "..", "bin", "rustc"];
             check vec::is_not_empty(path);
-            let rustc = fs::normalize(fs::connect_many(path));
+            let rustc = path::normalize(path::connect_many(path));
             #debug("  rustc: %s", rustc);
             rustc
         }
@@ -515,8 +511,8 @@ fn rustc_sysroot() -> str {
 
 fn install_source(c: cargo, path: str) {
     #debug("source: %s", path);
-    fs::change_dir(path);
-    let contents = fs::list_dir(".");
+    os::change_dir(path);
+    let contents = os::list_dir(".");
 
     #debug("contents: %s", str::connect(contents, ", "));
 
@@ -545,7 +541,7 @@ fn install_git(c: cargo, wd: str, url: str, ref: option<str>) {
     run::run_program("git", ["clone", url, wd]);
     if option::is_some::<str>(ref) {
         let r = option::get::<str>(ref);
-        fs::change_dir(wd);
+        os::change_dir(wd);
         run::run_program("git", ["checkout", r]);
     }
 
@@ -553,7 +549,7 @@ fn install_git(c: cargo, wd: str, url: str, ref: option<str>) {
 }
 
 fn install_curl(c: cargo, wd: str, url: str) {
-    let tarpath = fs::connect(wd, "pkg.tar");
+    let tarpath = path::connect(wd, "pkg.tar");
     let p = run::program_output("curl", ["-f", "-s", "-o",
                                          tarpath, url]);
     if p.status != 0 {
@@ -684,7 +680,7 @@ fn cmd_install(c: cargo) unsafe {
 
     let target = c.opts.free[2];
 
-    let wd = alt tempfile::mkdtemp(c.workdir + fs::path_sep(), "") {
+    let wd = alt tempfile::mkdtemp(c.workdir + path::path_sep(), "") {
         some(_wd) { _wd }
         none { fail "needed temp dir"; }
     };
@@ -717,11 +713,11 @@ fn cmd_install(c: cargo) unsafe {
 }
 
 fn sync_one(c: cargo, name: str, src: source) {
-    let dir = fs::connect(c.sourcedir, name);
-    let pkgfile = fs::connect(dir, "packages.json.new");
-    let destpkgfile = fs::connect(dir, "packages.json");
-    let sigfile = fs::connect(dir, "packages.json.sig");
-    let keyfile = fs::connect(dir, "key.gpg");
+    let dir = path::connect(c.sourcedir, name);
+    let pkgfile = path::connect(dir, "packages.json.new");
+    let destpkgfile = path::connect(dir, "packages.json");
+    let sigfile = path::connect(dir, "packages.json.sig");
+    let keyfile = path::connect(dir, "key.gpg");
     let url = src.url;
     need_dir(dir);
     info(#fmt["fetching source %s...", name]);
@@ -784,9 +780,9 @@ fn cmd_init(c: cargo) {
     let srcurl = "http://www.rust-lang.org/cargo/sources.json";
     let sigurl = "http://www.rust-lang.org/cargo/sources.json.sig";
 
-    let srcfile = fs::connect(c.root, "sources.json.new");
-    let sigfile = fs::connect(c.root, "sources.json.sig");
-    let destsrcfile = fs::connect(c.root, "sources.json");
+    let srcfile = path::connect(c.root, "sources.json.new");
+    let sigfile = path::connect(c.root, "sources.json.sig");
+    let destsrcfile = path::connect(c.root, "sources.json");
 
     let p = run::program_output("curl", ["-f", "-s", "-o", srcfile, srcurl]);
     if p.status != 0 {

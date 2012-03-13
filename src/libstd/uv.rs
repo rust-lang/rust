@@ -7,11 +7,11 @@ export timer_init, timer_start, timer_stop;
 // process_operation() crust fn below
 enum uv_operation {
     op_async_init([u8]),
-    op_close(uv_handle, *ctypes::void),
+    op_close(uv_handle, *libc::c_void),
     op_timer_init([u8]),
-    op_timer_start([u8], *ctypes::void, u32, u32),
-    op_timer_stop([u8], *ctypes::void, fn~(uv_handle)),
-    op_teardown(*ctypes::void)
+    op_timer_start([u8], *libc::c_void, u32, u32),
+    op_timer_stop([u8], *libc::c_void, fn~(uv_handle)),
+    op_teardown(*libc::c_void)
 }
 
 enum uv_handle {
@@ -31,10 +31,10 @@ enum uv_msg {
     msg_timer_stop([u8], fn~(uv_handle)),
 
     // dispatches from libuv
-    uv_async_init([u8], *ctypes::void),
+    uv_async_init([u8], *libc::c_void),
     uv_async_send([u8]),
     uv_close([u8]),
-    uv_timer_init([u8], *ctypes::void),
+    uv_timer_init([u8], *libc::c_void),
     uv_timer_call([u8]),
     uv_timer_stop([u8], fn~(uv_handle)),
     uv_end(),
@@ -47,37 +47,37 @@ type uv_loop_data = {
 };
 
 enum uv_loop {
-    uv_loop_new(comm::chan<uv_msg>, *ctypes::void)
+    uv_loop_new(comm::chan<uv_msg>, *libc::c_void)
 }
 
 #[nolink]
 native mod rustrt {
-    fn rust_uv_loop_new() -> *ctypes::void;
-    fn rust_uv_loop_delete(lp: *ctypes::void);
+    fn rust_uv_loop_new() -> *libc::c_void;
+    fn rust_uv_loop_delete(lp: *libc::c_void);
     fn rust_uv_loop_set_data(
-        lp: *ctypes::void,
+        lp: *libc::c_void,
         data: *uv_loop_data);
-    fn rust_uv_bind_op_cb(lp: *ctypes::void, cb: *u8)
-        -> *ctypes::void;
-    fn rust_uv_stop_op_cb(handle: *ctypes::void);
-    fn rust_uv_run(loop_handle: *ctypes::void);
-    fn rust_uv_close(handle: *ctypes::void, cb: *u8);
-    fn rust_uv_close_async(handle: *ctypes::void);
-    fn rust_uv_close_timer(handle: *ctypes::void);
-    fn rust_uv_async_send(handle: *ctypes::void);
+    fn rust_uv_bind_op_cb(lp: *libc::c_void, cb: *u8)
+        -> *libc::c_void;
+    fn rust_uv_stop_op_cb(handle: *libc::c_void);
+    fn rust_uv_run(loop_handle: *libc::c_void);
+    fn rust_uv_close(handle: *libc::c_void, cb: *u8);
+    fn rust_uv_close_async(handle: *libc::c_void);
+    fn rust_uv_close_timer(handle: *libc::c_void);
+    fn rust_uv_async_send(handle: *libc::c_void);
     fn rust_uv_async_init(
-        loop_handle: *ctypes::void,
+        loop_handle: *libc::c_void,
         cb: *u8,
-        id: *u8) -> *ctypes::void;
+        id: *u8) -> *libc::c_void;
     fn rust_uv_timer_init(
-        loop_handle: *ctypes::void,
+        loop_handle: *libc::c_void,
         cb: *u8,
-        id: *u8) -> *ctypes::void;
+        id: *u8) -> *libc::c_void;
     fn rust_uv_timer_start(
-        timer_handle: *ctypes::void,
-        timeout: ctypes::c_uint,
-        repeat: ctypes::c_uint);
-    fn rust_uv_timer_stop(handle: *ctypes::void);
+        timer_handle: *libc::c_void,
+        timeout: libc::c_uint,
+        repeat: libc::c_uint);
+    fn rust_uv_timer_stop(handle: *libc::c_void);
 }
 
 // public functions
@@ -130,7 +130,7 @@ fn loop_new() -> uv_loop unsafe {
             process_operation);
 
         // all state goes here
-        let handles: map::hashmap<[u8], *ctypes::void> =
+        let handles: map::hashmap<[u8], *libc::c_void> =
             map::new_bytes_hash();
         let id_to_handle: map::hashmap<[u8], uv_handle> =
             map::new_bytes_hash();
@@ -399,13 +399,13 @@ fn timer_stop(the_timer: uv_handle, after_cb: fn~(uv_handle)) {
 
 // internal functions
 fn pass_to_libuv(
-        op_handle: *ctypes::void,
+        op_handle: *libc::c_void,
         operation_chan: comm::chan<uv_operation>,
         op: uv_operation) unsafe {
     comm::send(operation_chan, copy(op));
     do_send(op_handle);
 }
-fn do_send(h: *ctypes::void) {
+fn do_send(h: *libc::c_void) {
     rustrt::rust_uv_async_send(h);
 }
 fn gen_handle_id() -> [u8] {
@@ -434,7 +434,7 @@ fn get_loop_chan_from_handle(handle: uv_handle)
     }
 }
 
-fn get_loop_ptr_from_uv_loop(lp: uv_loop) -> *ctypes::void {
+fn get_loop_ptr_from_uv_loop(lp: uv_loop) -> *libc::c_void {
     alt lp {
       uv_loop_new(loop_chan, loop_ptr) {
         ret loop_ptr;
@@ -462,7 +462,7 @@ fn get_id_from_handle(handle: uv_handle) -> [u8] {
 
 // crust
 crust fn process_operation(
-        lp: *ctypes::void,
+        lp: *libc::c_void,
         data: *uv_loop_data) unsafe {
     let op_port = (*data).operation_port;
     let loop_chan = get_loop_chan_from_data(data);
@@ -512,7 +512,7 @@ crust fn process_operation(
     }
 }
 
-fn handle_op_close(handle: uv_handle, handle_ptr: *ctypes::void) {
+fn handle_op_close(handle: uv_handle, handle_ptr: *libc::c_void) {
     // it's just like im doing C
     alt handle {
       uv_async(id, lp) {
@@ -557,7 +557,7 @@ fn process_close_common(id: [u8], data: *uv_loop_data)
 
 crust fn process_close_async(
     id_buf: *u8,
-    handle_ptr: *ctypes::void,
+    handle_ptr: *libc::c_void,
     data: *uv_loop_data)
     unsafe {
     let id = get_handle_id_from(id_buf);
@@ -571,7 +571,7 @@ crust fn process_close_async(
 
 crust fn process_close_timer(
     id_buf: *u8,
-    handle_ptr: *ctypes::void,
+    handle_ptr: *libc::c_void,
     data: *uv_loop_data)
     unsafe {
     let id = get_handle_id_from(id_buf);

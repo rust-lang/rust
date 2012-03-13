@@ -1,8 +1,6 @@
 import option;
 import str;
-import std::io;
 import io::reader_util;
-import std::fs;
 
 import common::config;
 
@@ -67,7 +65,7 @@ fn is_test_ignored(config: config, testfile: str) -> bool {
     ret found;
 
     fn xfail_target() -> str {
-        "xfail-" + std::os::target_os()
+        "xfail-" + os::sysname()
     }
 }
 
@@ -103,7 +101,7 @@ fn parse_pp_exact(line: str, testfile: str) -> option<str> {
       option::some(s) { option::some(s) }
       option::none {
         if parse_name_directive(line, "pp-exact") {
-            option::some(fs::basename(testfile))
+            option::some(path::basename(testfile))
         } else {
             option::none
         }

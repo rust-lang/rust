@@ -4,7 +4,6 @@
 import option;
 import std::getopts;
 import std::test;
-import std::fs;
 import str;
 import vec;
 import task;
@@ -131,7 +130,7 @@ fn test_opts(config: config) -> test::test_opts {
 fn make_tests(config: config) -> [test::test_desc] {
     #debug("making tests from %s", config.src_base);
     let tests = [];
-    for file: str in fs::list_dir(config.src_base) {
+    for file: str in os::list_dir(config.src_base) {
         let file = file;
         #debug("inspecting file %s", file);
         if is_test(config, file) {
@@ -146,7 +145,7 @@ fn is_test(config: config, testfile: str) -> bool {
     let valid_extensions =
         alt config.mode { mode_pretty { [".rs"] } _ { [".rc", ".rs"] } };
     let invalid_prefixes = [".", "#", "~"];
-    let name = fs::basename(testfile);
+    let name = path::basename(testfile);
 
     let valid = false;
 

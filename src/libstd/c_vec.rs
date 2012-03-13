@@ -126,21 +126,15 @@ unsafe fn ptr<T>(t: t<T>) -> *mutable T {
 
 #[cfg(test)]
 mod tests {
-    import ctypes::*;
-
-    #[nolink]
-    #[abi = "cdecl"]
-    native mod libc {
-        fn malloc(n: size_t) -> *mutable u8;
-        fn free(m: *mutable u8);
-    }
+    import libc::*;
 
     fn malloc(n: size_t) -> t<u8> {
         let mem = libc::malloc(n);
 
         assert mem as int != 0;
 
-        ret unsafe { create_with_dtor(mem, n, bind libc::free(mem)) };
+        ret unsafe { create_with_dtor(mem as *mutable u8, n,
+                                      bind free(mem)) };
     }
 
     #[test]

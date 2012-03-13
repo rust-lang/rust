@@ -54,9 +54,9 @@ d.write("// AUTO-GENERATED FILE: DO NOT EDIT\n")
 d.write("use std;\n")
 d.write("use run_pass_stage2;\n")
 d.write("import run_pass_stage2::*;\n")
-d.write("import std::io::writer_util;\n");
+d.write("import io::writer_util;\n");
 d.write("fn main() {\n");
-d.write("    let out = std::io::stdout();\n");
+d.write("    let out = io::stdout();\n");
 i = 0
 for t in stage2_tests:
     p = os.path.join("test", "run-pass", t)

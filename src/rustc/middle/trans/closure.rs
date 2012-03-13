@@ -1,4 +1,4 @@
-import core::ctypes::c_uint;
+import libc::c_uint;
 import syntax::ast;
 import syntax::ast_util;
 import lib::llvm::llvm;

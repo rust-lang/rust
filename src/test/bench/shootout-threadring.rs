@@ -23,7 +23,7 @@ fn roundtrip(id: int, p: comm::port<int>, ch: comm::chan<int>) {
     while (true) {
         alt comm::recv(p) {
           1 {
-            std::io::println(#fmt("%d\n", id));
+            io::println(#fmt("%d\n", id));
             ret;
           }
           token {

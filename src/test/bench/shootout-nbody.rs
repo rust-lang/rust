@@ -20,10 +20,10 @@ fn main(args: [str]) {
         100000
     };
     let bodies: [Body::props] = NBodySystem::MakeNBodySystem();
-    std::io::println(#fmt("%f", NBodySystem::energy(bodies)));
+    io::println(#fmt("%f", NBodySystem::energy(bodies)));
     let i: int = 0;
     while i < n { NBodySystem::advance(bodies, 0.01); i += 1; }
-    std::io::println(#fmt("%f", NBodySystem::energy(bodies)));
+    io::println(#fmt("%f", NBodySystem::energy(bodies)));
 }
 
 // Body::props is a record of floats, so

@@ -465,8 +465,8 @@ type task_id = int;
 
 // These are both opaque runtime/compiler types that we don't know the
 // structure of and should only deal with via unsafe pointer
-type rust_task = ctypes::void;
-type rust_closure = ctypes::void;
+type rust_task = libc::c_void;
+type rust_closure = libc::c_void;
 
 fn spawn_raw(opts: task_opts, +f: fn~()) unsafe {
 
@@ -537,7 +537,7 @@ native mod rusti {
 
 native mod rustrt {
     fn rust_get_sched_id() -> sched_id;
-    fn rust_new_sched(num_threads: ctypes::uintptr_t) -> sched_id;
+    fn rust_new_sched(num_threads: libc::uintptr_t) -> sched_id;
 
     fn get_task_id() -> task_id;
     fn rust_get_task() -> *rust_task;
@@ -749,12 +749,12 @@ fn test_spawn_sched_childs_on_same_sched() {
 #[nolink]
 #[cfg(test)]
 native mod testrt {
-    fn rust_dbg_lock_create() -> *ctypes::void;
-    fn rust_dbg_lock_destroy(lock: *ctypes::void);
-    fn rust_dbg_lock_lock(lock: *ctypes::void);
-    fn rust_dbg_lock_unlock(lock: *ctypes::void);
-    fn rust_dbg_lock_wait(lock: *ctypes::void);
-    fn rust_dbg_lock_signal(lock: *ctypes::void);
+    fn rust_dbg_lock_create() -> *libc::c_void;
+    fn rust_dbg_lock_destroy(lock: *libc::c_void);
+    fn rust_dbg_lock_lock(lock: *libc::c_void);
+    fn rust_dbg_lock_unlock(lock: *libc::c_void);
+    fn rust_dbg_lock_wait(lock: *libc::c_void);
+    fn rust_dbg_lock_signal(lock: *libc::c_void);
 }
 
 #[test]

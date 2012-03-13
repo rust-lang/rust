@@ -1,5 +1,3 @@
-
-import std::io;
 import io::reader_util;
 import util::interner;
 import util::interner::intern;

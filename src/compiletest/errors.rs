@@ -1,6 +1,4 @@
-import std::io;
 import io::reader_util;
-import std::fs;
 
 import common::config;
 

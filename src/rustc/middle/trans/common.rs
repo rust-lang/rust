@@ -3,7 +3,7 @@
 
 */
 
-import ctypes::unsigned;
+import libc::c_uint;
 import vec::unsafe::to_ptr;
 import std::map::hashmap;
 import syntax::ast;
@@ -512,7 +512,7 @@ fn T_size_t(targ_cfg: @session::config) -> TypeRef {
 
 fn T_fn(inputs: [TypeRef], output: TypeRef) -> TypeRef unsafe {
     ret llvm::LLVMFunctionType(output, to_ptr(inputs),
-                               inputs.len() as unsigned,
+                               inputs.len() as c_uint,
                                False);
 }
 
@@ -521,11 +521,11 @@ fn T_fn_pair(cx: crate_ctxt, tfn: TypeRef) -> TypeRef {
 }
 
 fn T_ptr(t: TypeRef) -> TypeRef {
-    ret llvm::LLVMPointerType(t, 0u as unsigned);
+    ret llvm::LLVMPointerType(t, 0u as c_uint);
 }
 
 fn T_struct(elts: [TypeRef]) -> TypeRef unsafe {
-    ret llvm::LLVMStructType(to_ptr(elts), elts.len() as unsigned, False);
+    ret llvm::LLVMStructType(to_ptr(elts), elts.len() as c_uint, False);
 }
 
 fn T_named_struct(name: str) -> TypeRef {
@@ -535,7 +535,7 @@ fn T_named_struct(name: str) -> TypeRef {
 
 fn set_struct_body(t: TypeRef, elts: [TypeRef]) unsafe {
     llvm::LLVMStructSetBody(t, to_ptr(elts),
-                            elts.len() as unsigned, False);
+                            elts.len() as c_uint, False);
 }
 
 fn T_empty_struct() -> TypeRef { ret T_struct([]); }
@@ -607,7 +607,7 @@ fn T_tydesc(targ_cfg: @session::config) -> TypeRef {
 }
 
 fn T_array(t: TypeRef, n: uint) -> TypeRef {
-    ret llvm::LLVMArrayType(t, n as unsigned);
+    ret llvm::LLVMArrayType(t, n as c_uint);
 }
 
 // Interior vector.
@@ -740,8 +740,8 @@ fn T_opaque_chan_ptr() -> TypeRef { ret T_ptr(T_i8()); }
 fn C_null(t: TypeRef) -> ValueRef { ret llvm::LLVMConstNull(t); }
 
 fn C_integral(t: TypeRef, u: u64, sign_extend: Bool) -> ValueRef {
-    let u_hi = (u >> 32u64) as unsigned;
-    let u_lo = u as unsigned;
+    let u_hi = (u >> 32u64) as c_uint;
+    let u_lo = u as c_uint;
     ret llvm::LLVMRustConstInt(t, u_hi, u_lo, sign_extend);
 }
 
@@ -784,7 +784,7 @@ fn C_u8(i: uint) -> ValueRef { ret C_integral(T_i8(), i as u64, False); }
 // our boxed-and-length-annotated strings.
 fn C_cstr(cx: crate_ctxt, s: str) -> ValueRef {
     let sc = str::as_buf(s) {|buf|
-        llvm::LLVMConstString(buf, str::len(s) as unsigned, False)
+        llvm::LLVMConstString(buf, str::len(s) as c_uint, False)
     };
     let g =
         str::as_buf(cx.names("str"),
@@ -798,7 +798,7 @@ fn C_cstr(cx: crate_ctxt, s: str) -> ValueRef {
 // Returns a Plain Old LLVM String:
 fn C_postr(s: str) -> ValueRef {
     ret str::as_buf(s) {|buf|
-        llvm::LLVMConstString(buf, str::len(s) as unsigned, False)
+        llvm::LLVMConstString(buf, str::len(s) as c_uint, False)
     };
 }
 
@@ -807,28 +807,28 @@ fn C_zero_byte_arr(size: uint) -> ValueRef unsafe {
     let elts: [ValueRef] = [];
     while i < size { elts += [C_u8(0u)]; i += 1u; }
     ret llvm::LLVMConstArray(T_i8(), vec::unsafe::to_ptr(elts),
-                             elts.len() as unsigned);
+                             elts.len() as c_uint);
 }
 
 fn C_struct(elts: [ValueRef]) -> ValueRef unsafe {
     ret llvm::LLVMConstStruct(vec::unsafe::to_ptr(elts),
-                              elts.len() as unsigned, False);
+                              elts.len() as c_uint, False);
 }
 
 fn C_named_struct(T: TypeRef, elts: [ValueRef]) -> ValueRef unsafe {
     ret llvm::LLVMConstNamedStruct(T, vec::unsafe::to_ptr(elts),
-                                   elts.len() as unsigned);
+                                   elts.len() as c_uint);
 }
 
 fn C_array(ty: TypeRef, elts: [ValueRef]) -> ValueRef unsafe {
     ret llvm::LLVMConstArray(ty, vec::unsafe::to_ptr(elts),
-                             elts.len() as unsigned);
+                             elts.len() as c_uint);
 }
 
 fn C_bytes(bytes: [u8]) -> ValueRef unsafe {
     ret llvm::LLVMConstString(
         unsafe::reinterpret_cast(vec::unsafe::to_ptr(bytes)),
-        bytes.len() as unsigned, False);
+        bytes.len() as c_uint, False);
 }
 
 fn C_shape(ccx: crate_ctxt, bytes: [u8]) -> ValueRef {

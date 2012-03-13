@@ -1,4 +1,4 @@
-import ctypes::c_uint;
+import libc::c_uint;
 import base::*;
 import common::*;
 import type_of::*;

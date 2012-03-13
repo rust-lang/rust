@@ -1,6 +1,5 @@
 // Type encoding
 
-import std::io;
 import io::writer_util;
 import std::map::hashmap;
 import syntax::ast::*;

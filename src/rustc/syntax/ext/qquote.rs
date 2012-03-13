@@ -10,7 +10,7 @@ import syntax::parse::parser;
 import syntax::parse::parser::{parser, parse_from_source_str};
 
 import syntax::print::*;
-import std::io::*;
+import io::*;
 
 import codemap::span;
 
@@ -318,7 +318,7 @@ fn replace_ty(repls: [fragment],
 }
 
 fn print_expr(expr: @ast::expr) {
-    let stdout = std::io::stdout();
+    let stdout = io::stdout();
     let pp = pprust::rust_printer(stdout);
     pprust::print_expr(pp, expr);
     pp::eof(pp.s);

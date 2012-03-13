@@ -1,4 +1,4 @@
-import ctypes::{c_int, c_uint};
+import libc::{c_int, c_uint};
 import driver::session;
 import session::session;
 import lib::llvm::llvm;
@@ -6,9 +6,7 @@ import front::attr;
 import middle::ty;
 import metadata::{encoder, cstore};
 import middle::trans::common::crate_ctxt;
-import std::fs;
 import std::map::hashmap;
-import std::run;
 import std::sha1::sha1;
 import syntax::ast;
 import syntax::print::pprust;
@@ -435,7 +433,7 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
               none {
                 let name =
                     {
-                        let os = str::split_char(fs::basename(output), '.');
+                        let os = str::split_char(path::basename(output), '.');
                         if (vec::len(os) < 2u) {
                             sess.fatal(#fmt("output file name %s doesn't\
                               appear to have an extension", output));
@@ -584,14 +582,14 @@ fn link_binary(sess: session,
 
     let output = if sess.building_library {
         let long_libname =
-            std::os::dylib_filename(#fmt("%s-%s-%s",
-                                         lm.name, lm.extras_hash, lm.vers));
+            os::dll_filename(#fmt("%s-%s-%s",
+                                  lm.name, lm.extras_hash, lm.vers));
         #debug("link_meta.name:  %s", lm.name);
         #debug("long_libname: %s", long_libname);
         #debug("out_filename: %s", out_filename);
-        #debug("dirname(out_filename): %s", fs::dirname(out_filename));
+        #debug("dirname(out_filename): %s", path::dirname(out_filename));
 
-        fs::connect(fs::dirname(out_filename), long_libname)
+        path::connect(path::dirname(out_filename), long_libname)
     } else { out_filename };
 
     log(debug, "output: " + output);
@@ -626,9 +624,9 @@ fn link_binary(sess: session,
             cont;
         }
         let cratepath = cratepath;
-        let dir = fs::dirname(cratepath);
+        let dir = path::dirname(cratepath);
         if dir != "" { cc_args += ["-L" + dir]; }
-        let libarg = unlib(sess.targ_cfg, fs::basename(cratepath));
+        let libarg = unlib(sess.targ_cfg, path::basename(cratepath));
         cc_args += ["-l" + libarg];
     }
 
@@ -645,7 +643,7 @@ fn link_binary(sess: session,
         // be rpathed
         if sess.targ_cfg.os == session::os_macos {
             cc_args += ["-Wl,-install_name,@rpath/"
-                        + fs::basename(output)];
+                        + path::basename(output)];
         }
     } else {
         // FIXME: why do we hardcode -lm?

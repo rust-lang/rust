@@ -12,7 +12,7 @@
 
 use std;
 
-import std::{time, io, getopts};
+import std::{time, getopts};
 import io::writer_util;
 import int::range;
 import comm::port;

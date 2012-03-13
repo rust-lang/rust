@@ -10,9 +10,9 @@ export log_str;
 export set_exit_status;
 
 enum type_desc = {
-    first_param: **ctypes::c_int,
-    size: ctypes::size_t,
-    align: ctypes::size_t
+    first_param: **libc::c_int,
+    size: libc::size_t,
+    align: libc::size_t
     // Remaining fields not listed
 };
 
@@ -22,10 +22,10 @@ native mod rustrt {
     // available outside this crate. Otherwise it's
     // visible-in-crate, but not re-exported.
     fn last_os_error() -> str;
-    fn refcount<T>(t: @T) -> ctypes::intptr_t;
+    fn refcount<T>(t: @T) -> libc::intptr_t;
     fn unsupervise();
     fn shape_log_str<T>(t: *sys::type_desc, data: T) -> str;
-    fn rust_set_exit_status(code: ctypes::intptr_t);
+    fn rust_set_exit_status(code: libc::intptr_t);
 }
 
 #[abi = "rust-intrinsic"]
@@ -34,7 +34,7 @@ native mod rusti {
 
     // Invokes __builtin_frame_address().
     // See <http://gcc.gnu.org/onlinedocs/gcc/Return-Address.html>.
-    fn frame_address(n: ctypes::c_uint) -> ctypes::uintptr_t;
+    fn frame_address(n: libc::c_uint) -> libc::uintptr_t;
 }
 
 #[doc = "
@@ -64,7 +64,7 @@ fn align_of<T>() -> uint unsafe {
 
 #[doc = "Returns the refcount of a shared box"]
 fn refcount<T>(t: @T) -> uint {
-    ret rustrt::refcount::<T>(t);
+    ret rustrt::refcount::<T>(t) as uint;
 }
 
 fn log_str<T>(t: T) -> str {
@@ -80,7 +80,7 @@ supervised by the scheduler then any user-specified exit status is ignored and
 the process exits with the default failure status
 "]
 fn set_exit_status(code: int) {
-    rustrt::rust_set_exit_status(code as ctypes::intptr_t);
+    rustrt::rust_set_exit_status(code as libc::intptr_t);
 }
 
 #[cfg(test)]

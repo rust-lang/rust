@@ -1,6 +1,4 @@
-
 import front::attr;
-import std::{io, fs};
 import syntax::ast;
 import syntax::parse::token;
 import syntax::parse::parser::{parser, new_parser_from_file,
@@ -53,7 +51,7 @@ fn parse_companion_mod(cx: ctx, prefix: str, suffix: option<str>)
 
     fn companion_file(prefix: str, suffix: option<str>) -> str {
         ret alt suffix {
-          option::some(s) { fs::connect(prefix, s) }
+          option::some(s) { path::connect(prefix, s) }
           option::none { prefix }
         } + ".rs";
     }
@@ -100,9 +98,9 @@ fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: str,
       ast::cdir_src_mod(id, attrs) {
         let file_path = cdir_path_opt(id + ".rs", attrs);
         let full_path =
-            if std::fs::path_is_absolute(file_path) {
+            if path::path_is_absolute(file_path) {
                 file_path
-            } else { prefix + std::fs::path_sep() + file_path };
+            } else { prefix + path::path_sep() + file_path };
         let p0 =
             new_parser_from_file(cx.sess, cx.cfg, full_path, SOURCE_FILE);
         let inner_attrs = parse_inner_attrs_and_next(p0);
@@ -121,9 +119,9 @@ fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: str,
       ast::cdir_dir_mod(id, cdirs, attrs) {
         let path = cdir_path_opt(id, attrs);
         let full_path =
-            if std::fs::path_is_absolute(path) {
+            if path::path_is_absolute(path) {
                 path
-            } else { prefix + std::fs::path_sep() + path };
+            } else { prefix + path::path_sep() + path };
         let (m0, a0) = eval_crate_directives_to_mod(
             cx, cdirs, full_path, none);
         let i =

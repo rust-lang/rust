@@ -14,5 +14,5 @@ fn main(args: [str]) {
     } else {
         30
     };
-    std::io::println(#fmt("%d\n", fib(n)));
+    io::println(#fmt("%d\n", fib(n)));
 }

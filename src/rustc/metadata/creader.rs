@@ -8,7 +8,6 @@ import front::attr;
 import syntax::visit;
 import syntax::codemap::span;
 import util::{filesearch};
-import std::{io, fs};
 import io::writer_util;
 import std::map::{hashmap, new_int_hash};
 import syntax::print::pprust;
@@ -178,7 +177,7 @@ fn find_library_crate_aux(sess: session::session,
 
     ret filesearch::search(filesearch, { |path|
         #debug("inspecting file %s", path);
-        let f: str = fs::basename(path);
+        let f: str = path::basename(path);
         if !(str::starts_with(f, prefix) && str::ends_with(f, suffix)) {
             #debug("skipping %s, doesn't look like %s*%s", path, prefix,
                    suffix);

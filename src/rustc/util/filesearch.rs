@@ -2,8 +2,6 @@
 // FIXME: I'm not happy how this module turned out. Should probably
 // just be folded into cstore.
 
-import std::{fs, os, generic_os};
-
 export filesearch;
 export mk_filesearch;
 export pick;
@@ -15,29 +13,31 @@ export get_cargo_root;
 export get_cargo_root_nearest;
 export libdir;
 
-type pick<T> = fn(path: fs::path) -> option<T>;
+import path::path;
 
-fn pick_file(file: fs::path, path: fs::path) -> option<fs::path> {
-    if fs::basename(path) == file { option::some(path) }
+type pick<T> = fn(path: path) -> option<T>;
+
+fn pick_file(file: path, path: path) -> option<path> {
+    if path::basename(path) == file { option::some(path) }
     else { option::none }
 }
 
 iface filesearch {
-    fn sysroot() -> fs::path;
-    fn lib_search_paths() -> [fs::path];
-    fn get_target_lib_path() -> fs::path;
-    fn get_target_lib_file_path(file: fs::path) -> fs::path;
+    fn sysroot() -> path;
+    fn lib_search_paths() -> [path];
+    fn get_target_lib_path() -> path;
+    fn get_target_lib_file_path(file: path) -> path;
 }
 
-fn mk_filesearch(maybe_sysroot: option<fs::path>,
+fn mk_filesearch(maybe_sysroot: option<path>,
                  target_triple: str,
-                 addl_lib_search_paths: [fs::path]) -> filesearch {
-    type filesearch_impl = {sysroot: fs::path,
-                            addl_lib_search_paths: [fs::path],
+                 addl_lib_search_paths: [path]) -> filesearch {
+    type filesearch_impl = {sysroot: path,
+                            addl_lib_search_paths: [path],
                             target_triple: str};
     impl of filesearch for filesearch_impl {
-        fn sysroot() -> fs::path { self.sysroot }
-        fn lib_search_paths() -> [fs::path] {
+        fn sysroot() -> path { self.sysroot }
+        fn lib_search_paths() -> [path] {
             self.addl_lib_search_paths
                 + [make_target_lib_path(self.sysroot, self.target_triple)]
                 + alt get_cargo_lib_path_nearest() {
@@ -49,11 +49,11 @@ fn mk_filesearch(maybe_sysroot: option<fs::path>,
                   result::err(p) { [] }
                 }
         }
-        fn get_target_lib_path() -> fs::path {
+        fn get_target_lib_path() -> path {
             make_target_lib_path(self.sysroot, self.target_triple)
         }
-        fn get_target_lib_file_path(file: fs::path) -> fs::path {
-            fs::connect(self.get_target_lib_path(), file)
+        fn get_target_lib_file_path(file: path) -> path {
+            path::connect(self.get_target_lib_path(), file)
         }
     }
 
@@ -68,7 +68,7 @@ fn mk_filesearch(maybe_sysroot: option<fs::path>,
 fn search<T: copy>(filesearch: filesearch, pick: pick<T>) -> option<T> {
     for lib_search_path in filesearch.lib_search_paths() {
         #debug("searching %s", lib_search_path);
-        for path in fs::list_dir(lib_search_path) {
+        for path in os::list_dir(lib_search_path) {
             #debug("testing %s", path);
             let maybe_picked = pick(path);
             if option::is_some(maybe_picked) {
@@ -82,84 +82,84 @@ fn search<T: copy>(filesearch: filesearch, pick: pick<T>) -> option<T> {
     ret option::none;
 }
 
-fn relative_target_lib_path(target_triple: str) -> [fs::path] {
+fn relative_target_lib_path(target_triple: str) -> [path] {
     [libdir(), "rustc", target_triple, libdir()]
 }
 
-fn make_target_lib_path(sysroot: fs::path,
-                        target_triple: str) -> fs::path {
+fn make_target_lib_path(sysroot: path,
+                        target_triple: str) -> path {
     let path = [sysroot] + relative_target_lib_path(target_triple);
-    let path = fs::connect_many(path);
+    let path = path::connect_many(path);
     ret path;
 }
 
-fn get_default_sysroot() -> fs::path {
-    alt os::get_exe_path() {
-      option::some(p) { fs::normalize(fs::connect(p, "..")) }
+fn get_default_sysroot() -> path {
+    alt os::self_exe_path() {
+      option::some(p) { path::normalize(path::connect(p, "..")) }
       option::none {
         fail "can't determine value for sysroot";
       }
     }
 }
 
-fn get_sysroot(maybe_sysroot: option<fs::path>) -> fs::path {
+fn get_sysroot(maybe_sysroot: option<path>) -> path {
     alt maybe_sysroot {
       option::some(sr) { sr }
       option::none { get_default_sysroot() }
     }
 }
 
-fn get_cargo_sysroot() -> result::t<fs::path, str> {
+fn get_cargo_sysroot() -> result::t<path, str> {
     let path = [get_default_sysroot(), libdir(), "cargo"];
-    result::ok(fs::connect_many(path))
+    result::ok(path::connect_many(path))
 }
 
-fn get_cargo_root() -> result::t<fs::path, str> {
-    alt generic_os::getenv("CARGO_ROOT") {
+fn get_cargo_root() -> result::t<path, str> {
+    alt os::getenv("CARGO_ROOT") {
         some(_p) { result::ok(_p) }
         none {
-          alt fs::homedir() {
-            some(_q) { result::ok(fs::connect(_q, ".cargo")) }
+          alt os::homedir() {
+            some(_q) { result::ok(path::connect(_q, ".cargo")) }
             none { result::err("no CARGO_ROOT or home directory") }
           }
         }
     }
 }
 
-fn get_cargo_root_nearest() -> result::t<fs::path, str> {
+fn get_cargo_root_nearest() -> result::t<path, str> {
     result::chain(get_cargo_root()) { |p|
         let cwd = os::getcwd();
-        let dirname = fs::dirname(cwd);
-        let dirpath = fs::split(dirname);
-        let cwd_cargo = fs::connect(cwd, ".cargo");
-        let par_cargo = fs::connect(dirname, ".cargo");
+        let dirname = path::dirname(cwd);
+        let dirpath = path::split(dirname);
+        let cwd_cargo = path::connect(cwd, ".cargo");
+        let par_cargo = path::connect(dirname, ".cargo");
 
-        if fs::path_is_dir(cwd_cargo) || cwd_cargo == p {
+        if os::path_is_dir(cwd_cargo) || cwd_cargo == p {
             ret result::ok(cwd_cargo);
         }
 
         while vec::is_not_empty(dirpath) && par_cargo != p {
-            if fs::path_is_dir(par_cargo) {
+            if os::path_is_dir(par_cargo) {
                 ret result::ok(par_cargo);
             }
             vec::pop(dirpath);
-            dirname = fs::dirname(dirname);
-            par_cargo = fs::connect(dirname, ".cargo");
+            dirname = path::dirname(dirname);
+            par_cargo = path::connect(dirname, ".cargo");
         }
 
         result::ok(cwd_cargo)
     }
 }
 
-fn get_cargo_lib_path() -> result::t<fs::path, str> {
+fn get_cargo_lib_path() -> result::t<path, str> {
     result::chain(get_cargo_root()) { |p|
-        result::ok(fs::connect(p, libdir()))
+        result::ok(path::connect(p, libdir()))
     }
 }
 
-fn get_cargo_lib_path_nearest() -> result::t<fs::path, str> {
+fn get_cargo_lib_path_nearest() -> result::t<path, str> {
     result::chain(get_cargo_root_nearest()) { |p|
-        result::ok(fs::connect(p, libdir()))
+        result::ok(path::connect(p, libdir()))
     }
 }
 

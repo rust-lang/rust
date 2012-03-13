@@ -2,7 +2,6 @@ import driver::session::session;
 import middle::ty::ctxt;
 import syntax::{ast, visit};
 import front::attr;
-import std::io;
 import std::map::hashmap;
 import io::writer_util;
 
@@ -106,13 +105,13 @@ fn check_ctypes(tcx: ty::ctxt, crate: @ast::crate) {
                     tcx.sess.span_warn(
                         ty.span,
                         "found rust type `int` in native module, while \
-                         ctypes::c_int or ctypes::long should be used");
+                         libc::c_int or libc::c_long should be used");
                   }
                   ast::def_prim_ty(ast::ty_uint(ast::ty_u)) {
                     tcx.sess.span_warn(
                         ty.span,
                         "found rust type `uint` in native module, while \
-                         ctypes::c_uint or ctypes::ulong should be used");
+                         libc::c_uint or libc::c_ulong should be used");
                   }
                   _ { }
                 }

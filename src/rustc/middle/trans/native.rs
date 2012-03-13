@@ -1,6 +1,6 @@
 import driver::session::session;
 import syntax::codemap::span;
-import ctypes::c_uint;
+import libc::c_uint;
 import front::attr;
 import lib::llvm::{ llvm, TypeRef, ValueRef };
 import syntax::ast;

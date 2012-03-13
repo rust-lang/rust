@@ -1,7 +1,4 @@
-import std::io;
 import io::writer_util;
-import std::fs;
-import std::os;
 
 import common::mode_run_pass;
 import common::mode_run_fail;
@@ -115,7 +112,7 @@ fn run_pretty_test(config: config, props: test_props, testfile: str) {
     let expected =
         alt props.pp_exact {
           option::some(file) {
-            let filepath = fs::connect(fs::dirname(testfile), file);
+            let filepath = path::connect(path::dirname(testfile), file);
             result::get(io::read_whole_file_str(filepath))
           }
           option::none { srcs[vec::len(srcs) - 2u] }
@@ -289,7 +286,7 @@ type procres = {status: int, stdout: str, stderr: str, cmdline: str};
 fn compile_test(config: config, props: test_props,
                 testfile: str) -> procres {
     vec::iter(props.aux_builds) {|rel_ab|
-        let abs_ab = fs::connect(config.aux_base, rel_ab);
+        let abs_ab = path::connect(config.aux_base, rel_ab);
         let auxres = compose_and_run(config, abs_ab,
                                      make_compile_args(_, props, ["--lib"],
                                                        make_lib_name, _),
@@ -338,7 +335,7 @@ fn make_lib_name(config: config, testfile: str) -> str {
 }
 
 fn make_exe_name(config: config, testfile: str) -> str {
-    output_base_name(config, testfile) + os::exec_suffix()
+    output_base_name(config, testfile) + os::exe_suffix()
 }
 
 fn make_run_args(config: config, _props: test_props, testfile: str) ->
@@ -434,7 +431,7 @@ fn make_out_name(config: config, testfile: str, extension: str) -> str {
 fn output_base_name(config: config, testfile: str) -> str {
     let base = config.build_base;
     let filename = {
-        let parts = str::split_char(fs::basename(testfile), '.');
+        let parts = str::split_char(path::basename(testfile), '.');
         str::connect(vec::slice(parts, 0u, vec::len(parts) - 1u), ".")
     };
     #fmt["%s%s.%s", base, filename, config.stage_id]

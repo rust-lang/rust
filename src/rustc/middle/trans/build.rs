@@ -1,4 +1,4 @@
-import ctypes::{c_uint, c_int};
+import libc::{c_uint, c_int};
 import str::sbuf;
 import lib::llvm::llvm;
 import syntax::codemap;

@@ -79,10 +79,7 @@ fn pandoc_writer(
     ];
 
     generic_writer {|markdown|
-        import std::run;
-        import std::os;
-        import std::io;
-        import std::io::writer_util;
+        import io::writer_util;
 
         #debug("pandoc cmd: %s", pandoc_cmd);
         #debug("pandoc args: %s", str::connect(pandoc_args, " "));
@@ -126,12 +123,9 @@ fn pandoc_writer(
     }
 }
 
-fn readclose(fd: ctypes::fd_t) -> str {
-    import std::os;
-    import std::io;
-
+fn readclose(fd: libc::c_int) -> str {
     // Copied from run::program_output
-    let file = os::fd_FILE(fd);
+    let file = os::fdopen(fd);
     let reader = io::FILE_reader(file, false);
     let buf = "";
     while !reader.eof() {
@@ -165,7 +159,7 @@ fn make_local_filename(
     page: doc::page
 ) -> str {
     let filename = make_filename(config, page);
-    std::fs::connect(config.output_dir, filename)
+    path::connect(config.output_dir, filename)
 }
 
 fn make_filename(
@@ -251,8 +245,7 @@ mod test {
 }
 
 fn write_file(path: str, s: str) {
-    import std::io;
-    import std::io::writer_util;
+    import io::writer_util;
 
     alt io::file_writer(path, [io::create, io::truncate]) {
       result::ok(writer) {

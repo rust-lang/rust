@@ -5,8 +5,8 @@
 // I *think* it's the same, more or less.
 
 use std;
-import std::io::writer;
-import std::io::writer_util;
+import io::writer;
+import io::writer_util;
 
 enum request {
     get_count,
@@ -52,10 +52,10 @@ fn run(args: [str]) {
     let result = comm::recv(from_child);
     let end = std::time::precise_time_s();
     let elapsed = end - start;
-    std::io::stdout().write_str(#fmt("Count is %?\n", result));
-    std::io::stdout().write_str(#fmt("Test took %? seconds\n", elapsed));
+    io::stdout().write_str(#fmt("Count is %?\n", result));
+    io::stdout().write_str(#fmt("Test took %? seconds\n", elapsed));
     let thruput = ((size / workers * workers) as float) / (elapsed as float);
-    std::io::stdout().write_str(#fmt("Throughput=%f per sec\n", thruput));
+    io::stdout().write_str(#fmt("Throughput=%f per sec\n", thruput));
 }
 
 fn main(args: [str]) {

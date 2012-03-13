@@ -54,7 +54,7 @@ fn opts() -> [(getopts::opt, str)] {
 }
 
 fn usage() {
-    import std::io::println;
+    import io::println;
 
     println("Usage: rustdoc [options] <cratefile>\n");
     println("Options:\n");
@@ -87,7 +87,7 @@ fn mock_program_output(_prog: str, _args: [str]) -> {
 }
 
 fn parse_config(args: [str]) -> result::t<config, str> {
-    parse_config_(args, std::run::program_output)
+    parse_config_(args, run::program_output)
 }
 
 fn parse_config_(

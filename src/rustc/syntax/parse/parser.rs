@@ -1,4 +1,3 @@
-import std::{io, fs};
 import either::{left, right};
 import std::map::{hashmap, new_str_hash};
 import token::can_begin_expr;
@@ -2771,7 +2770,7 @@ fn parse_crate_from_crate_file(input: str, cfg: ast::crate_cfg,
                                sess: parse_sess) -> @ast::crate {
     let p = new_parser_from_file(sess, cfg, input, CRATE_FILE);
     let lo = p.span.lo;
-    let prefix = std::fs::dirname(p.reader.filemap.name);
+    let prefix = path::dirname(p.reader.filemap.name);
     let leading_attrs = parse_inner_attrs_and_next(p);
     let crate_attrs = leading_attrs.inner;
     let first_cdir_attr = leading_attrs.next;
@@ -2782,7 +2781,7 @@ fn parse_crate_from_crate_file(input: str, cfg: ast::crate_cfg,
         @{p: p,
           sess: sess,
           cfg: p.cfg};
-    let (companionmod, _) = fs::splitext(fs::basename(input));
+    let (companionmod, _) = path::splitext(path::basename(input));
     let (m, attrs) = eval::eval_crate_directives_to_mod(
         cx, cdirs, prefix, option::some(companionmod));
     let hi = p.span.hi;

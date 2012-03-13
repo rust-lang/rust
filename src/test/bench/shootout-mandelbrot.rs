@@ -13,7 +13,7 @@
 //  writes pbm image to output path
 
 use std;
-import std::io::writer_util;
+import io::writer_util;
 import std::map::hashmap;
 
 type cmplx = {re: f64, im: f64};
@@ -79,9 +79,9 @@ fn chanmb(i: uint, size: uint, ch: comm::chan<line>) -> ()
 
 type devnull = {dn: int};
 
-impl of std::io::writer for devnull {
+impl of io::writer for devnull {
     fn write(_b: [const u8]) {}
-    fn seek(_i: int, _s: std::io::seek_style) {}
+    fn seek(_i: int, _s: io::seek_style) {}
     fn tell() -> uint {0_u}
     fn flush() -> int {0}
 }
@@ -91,17 +91,17 @@ fn writer(path: str, writech: comm::chan<comm::chan<line>>, size: uint)
     let p: comm::port<line> = comm::port();
     let ch = comm::chan(p);
     comm::send(writech, ch);
-    let cout: std::io::writer = alt path {
+    let cout: io::writer = alt path {
         "" {
-            {dn: 0} as std::io::writer
+            {dn: 0} as io::writer
         }
         "-" {
-            std::io::stdout()
+            io::stdout()
         }
         _ {
             result::get(
-                std::io::file_writer(path,
-                [std::io::create, std::io::truncate]))
+                io::file_writer(path,
+                [io::create, io::truncate]))
         }
     };
     cout.write_line("P4");

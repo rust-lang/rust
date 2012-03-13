@@ -26,11 +26,15 @@ import option = option::t;
 import getcwd = rustrt::rust_getcwd;
 import consts::*;
 
-export close, fclose, fsync_fd;
+export close, fclose, fsync_fd, waitpid;
 export env, getenv, setenv, fdopen, pipe;
 export getcwd, dll_filename, self_exe_path;
 export exe_suffix, dll_suffix, sysname;
-export homedir, list_dir, path_is_dir, path_exists;
+export homedir, list_dir, path_is_dir, path_exists, make_absolute,
+       make_dir, remove_dir, change_dir, remove_file;
+
+// FIXME: move these to str perhaps?
+export as_c_charp, fill_charp_buf;
 
 native mod rustrt {
     fn rust_env_pairs() -> [str];
@@ -76,16 +80,32 @@ mod win32 {
 
     fn fill_utf16_buf_and_decode(f: fn(*mutable u16, dword) -> dword)
         -> option<str> {
-        let buf = vec::to_mut(vec::init_elt(tmpbuf_sz, 0u16));
-        vec::as_mut_buf(buf) {|b|
-            let k : dword = f(b, tmpbuf_sz as dword);
-            if k == (0 as dword) {
-                none
-            } else {
-                let sub = vec::slice(buf, 0u, k as uint);
-                option::some::<str>(str::from_utf16(sub))
+
+        // FIXME: remove these when export globs work properly.
+        import libc::funcs::extra::kernel32::*;
+        import libc::consts::os::extra::*;
+
+        let mut n = tmpbuf_sz;
+        let mut res = none;
+        let mut done = false;
+        while !done {
+            let buf = vec::to_mut(vec::init_elt(n, 0u16));
+            vec::as_mut_buf(buf) {|b|
+                let k : dword = f(b, tmpbuf_sz as dword);
+                if k == (0 as dword) {
+                    done = true;
+                } else if (k == n &&
+                           GetLastError() ==
+                           ERROR_INSUFFICIENT_BUFFER as dword) {
+                    n *= (2 as dword);
+                } else {
+                    let sub = vec::slice(buf, 0u, k as uint);
+                    res = option::some::<str>(str::from_utf16(sub));
+                    done = true;
+                }
             }
         }
+        ret res;
     }
 
     fn as_utf16_p<T>(s: str, f: fn(*u16) -> T) -> T {
@@ -160,41 +180,29 @@ fn fdopen(fd: c_int) -> *FILE {
 
 // fsync related
 
-enum fsync_level {
-    // whatever fsync does on that platform
-    fsync,
-
-    // fdatasync on linux, similiar or more on other platforms
-    fdatasync,
-
-    // full fsync
-    //
-    // You must additionally sync the parent directory as well!
-    fullfsync,
-}
-
 #[cfg(target_os = "win32")]
-fn fsync_fd(fd: c_int, _level: fsync_level) -> c_int {
+fn fsync_fd(fd: c_int, _level: io::fsync::level) -> c_int {
     import libc::funcs::extra::msvcrt::*;
     ret commit(fd);
 }
 
 #[cfg(target_os = "linux")]
-fn fsync_fd(fd: c_int, level: fsync_level) -> c_int {
+fn fsync_fd(fd: c_int, level: io::fsync::level) -> c_int {
     import libc::funcs::posix01::unistd::*;
     alt level {
-      fsync | fullfsync { ret fsync(fd); }
-      fdatasync { ret fdatasync(fd); }
+      io::fsync::fsync
+      | io::fsync::fullfsync { ret fsync(fd); }
+      io::fsync::fdatasync { ret fdatasync(fd); }
     }
 }
 
 #[cfg(target_os = "macos")]
-fn fsync_fd(fd: c_int, level: fsync_level) -> c_int {
+fn fsync_fd(fd: c_int, level: io::fsync::level) -> c_int {
     import libc::consts::os::extra::*;
     import libc::funcs::posix88::fcntl::*;
     import libc::funcs::posix01::unistd::*;
     alt level {
-      fsync { ret fsync(fd); }
+      io::fsync::fsync { ret fsync(fd); }
       _ {
         // According to man fnctl, the ok retval is only specified to be !=-1
         if (fcntl(F_FULLFSYNC as c_int, fd) == -1 as c_int)
@@ -206,7 +214,7 @@ fn fsync_fd(fd: c_int, level: fsync_level) -> c_int {
 }
 
 #[cfg(target_os = "freebsd")]
-fn fsync_fd(fd: c_int, _l: fsync_level) -> c_int {
+fn fsync_fd(fd: c_int, _l: io::fsync::level) -> c_int {
     import libc::funcs::posix01::unistd::*;
     ret fsync(fd);
 }
@@ -576,6 +584,89 @@ mod consts {
 
 #[cfg(test)]
 mod tests {
+
+
+    fn make_rand_name() -> str {
+        import rand;
+        let rng: rand::rng = rand::mk_rng();
+        let n = "TEST" + rng.gen_str(10u);
+        assert option::is_none(getenv(n));
+        n
+    }
+
+    #[test]
+    #[ignore(reason = "fails periodically on mac")]
+    fn test_setenv() {
+        let n = make_rand_name();
+        setenv(n, "VALUE");
+        assert getenv(n) == option::some("VALUE");
+    }
+
+    #[test]
+    #[ignore(reason = "fails periodically on mac")]
+    fn test_setenv_overwrite() {
+        let n = make_rand_name();
+        setenv(n, "1");
+        setenv(n, "2");
+        assert getenv(n) == option::some("2");
+        setenv(n, "");
+        assert getenv(n) == option::some("");
+    }
+
+    // Windows GetEnvironmentVariable requires some extra work to make sure
+    // the buffer the variable is copied into is the right size
+    #[test]
+    #[ignore(reason = "fails periodically on mac")]
+    fn test_getenv_big() {
+        let s = "";
+        let i = 0;
+        while i < 100 { s += "aaaaaaaaaa"; i += 1; }
+        let n = make_rand_name();
+        setenv(n, s);
+        log(debug, s);
+        assert getenv(n) == option::some(s);
+    }
+
+    #[test]
+    fn test_self_exe_path() {
+        let path = os::self_exe_path();
+        assert option::is_some(path);
+        let path = option::get(path);
+        log(debug, path);
+
+        // Hard to test this function
+        if os::sysname() != "win32" {
+            assert str::starts_with(path, path::path_sep());
+        } else {
+            assert path[1] == ':' as u8;
+        }
+    }
+
+    #[test]
+    fn test_env_getenv() {
+        let e = env();
+        assert vec::len(e) > 0u;
+        for (n, v) in e {
+            log(debug, n);
+            let v2 = getenv(n);
+            // MingW seems to set some funky environment variables like
+            // "=C:=C:\MinGW\msys\1.0\bin" and "!::=::\" that are returned
+            // from env() but not visible from getenv().
+            assert option::is_none(v2) || v2 == option::some(v);
+        }
+    }
+
+    #[test]
+    fn test_env_setenv() {
+        let n = make_rand_name();
+
+        let e = env();
+        setenv(n, "VALUE");
+        assert !vec::contains(e, (n, "VALUE"));
+
+        e = env();
+        assert vec::contains(e, (n, "VALUE"));
+    }
 
     #[test]
     fn test() {

@@ -1,4 +1,3 @@
-
 // -*- rust -*-
 import metadata::{creader, cstore};
 import session::session;
@@ -11,7 +10,7 @@ import syntax::print::{pp, pprust};
 import util::{ppaux, filesearch};
 import back::link;
 import result::{ok, err};
-import std::{fs, io, getopts};
+import std::getopts;
 import io::{reader_util, writer_util};
 import getopts::{optopt, optmulti, optflag, optflagopt, opt_present};
 import back::{x86, x86_64};
@@ -37,7 +36,7 @@ fn default_configuration(sess: session, argv0: str, input: str) ->
     };
 
     ret [ // Target bindings.
-         mk("target_os", std::os::target_os()),
+         mk("target_os", os::sysname()),
          mk("target_arch", arch),
          mk("target_libc", libc),
          // Build bindings.
@@ -489,7 +488,7 @@ fn build_session_(
       span_diagnostic: span_diagnostic_handler,
       filesearch: filesearch,
       mutable building_library: false,
-      working_dir: fs::dirname(input)}
+      working_dir: path::dirname(input)}
 }
 
 fn parse_pretty(sess: session, &&name: str) -> pp_mode {
@@ -559,27 +558,27 @@ fn build_output_filenames(ifile: str,
           some(d) { d }
           none {
             if input_is_stdin(ifile) {
-                std::os::getcwd()
+                os::getcwd()
             } else {
-                fs::dirname(ifile)
+                path::dirname(ifile)
             }
           }
         };
 
         let base_filename = if !input_is_stdin(ifile) {
-            let (path, _) = fs::splitext(ifile);
-            fs::basename(path)
+            let (path, _) = path::splitext(ifile);
+            path::basename(path)
         } else {
             "rust_out"
         };
-        let base_path = fs::connect(dirname, base_filename);
+        let base_path = path::connect(dirname, base_filename);
 
 
         if sess.building_library {
-            let basename = fs::basename(base_path);
-            let dylibname = std::os::dylib_filename(basename);
-            out_path = fs::connect(dirname, dylibname);
-            obj_path = fs::connect(dirname, basename + "." + obj_suffix);
+            let basename = path::basename(base_path);
+            let dylibname = os::dll_filename(basename);
+            out_path = path::connect(dirname, dylibname);
+            obj_path = path::connect(dirname, basename + "." + obj_suffix);
         } else {
             out_path = base_path;
             obj_path = base_path + "." + obj_suffix;
@@ -591,7 +590,7 @@ fn build_output_filenames(ifile: str,
         obj_path = if stop_after_codegen {
             out_file
         } else {
-            let (base, _) = fs::splitext(out_file);
+            let (base, _) = path::splitext(out_file);
             let modified = base + "." + obj_suffix;
             modified
         };

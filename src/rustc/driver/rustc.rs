@@ -3,7 +3,7 @@ use rustc;
 
 // -*- rust -*-
 import result::{ok, err};
-import std::{io, getopts};
+import std::getopts;
 import io::writer_util;
 import getopts::{opt_present};
 import rustc::driver::driver::*;

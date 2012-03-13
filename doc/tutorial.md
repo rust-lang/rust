@@ -132,24 +132,23 @@ Rust program files are, by convention, given the extension `.rs`. Say
 we have a file `hello.rs` containing this program:
 
 ~~~~
-use std;
 fn main(args: [str]) {
-    std::io::println("hello world from '" + args[0] + "'!");
+    io::println("hello world from '" + args[0] + "'!");
 }
 ~~~~
 
 If the Rust compiler was installed successfully, running `rustc
 hello.rs` will produce a binary called `hello` (or `hello.exe`).
 
-If you modify the program to make it invalid (for example, remove the
-`use std` line), and then compile it, you'll see an error message like
-this:
+If you modify the program to make it invalid (for example, change the
+function to an unknown name), and then compile it, you'll see an error
+message like this:
 
 ~~~~
 ## notrust
-hello.rs:2:4: 2:20 error: unresolved modulename: std
-hello.rs:2     std::io::println("hello world!");
-               ^~~~~~~~~~~~~~~~
+hello.rs:2:4: 2:16 error: unresolved name: io::print_it
+hello.rs:2     io::print_it("hello world from '" + args[0] + "'!");
+               ^~~~~~~~~~~~
 ~~~~
 
 The Rust compiler tries to provide useful information when it runs
@@ -278,8 +277,8 @@ NOTE: The parser doesn't currently recognize non-ascii alphabetic
 characters. This is a bug that will eventually be fixed.
 
 The double-colon (`::`) is used as a module separator, so
-`std::io::println` means 'the thing named `println` in the module
-named `io` in the module named `std`'.
+`io::println` means 'the thing named `println` in the module
+named `io`.
 
 Rust will normally emit warnings about unused variables. These can be
 suppressed by using a variable name that starts with an underscore.
@@ -300,7 +299,7 @@ const repeat: uint = 5u;
 fn main() {
     let count = 0u;
     while count < repeat {
-        std::io::println("Hi!");
+        io::println("Hi!");
         count += 1u;
     }
 }
@@ -535,7 +534,7 @@ one is `#fmt`, a printf-style text formatting macro that is expanded
 at compile time.
 
 ~~~~
-std::io::println(#fmt("%s is %d", "the answer", 42));
+io::println(#fmt("%s is %d", "the answer", 42));
 ~~~~
 
 `#fmt` supports most of the directives that [printf][pf] supports, but
@@ -549,7 +548,7 @@ All syntax extensions look like `#word`. Another built-in one is
 compile-time.
 
 ~~~~
-std::io::println(#env("PATH"));
+io::println(#env("PATH"));
 ~~~~
 # Control structures
 
@@ -561,11 +560,11 @@ compulsory, an optional `else` clause can be appended, and multiple
 
 ~~~~
 if false {
-    std::io::println("that's odd");
+    io::println("that's odd");
 } else if true {
-    std::io::println("right");
+    io::println("right");
 } else {
-    std::io::println("neither true nor false");
+    io::println("neither true nor false");
 }
 ~~~~
 
@@ -598,10 +597,10 @@ the value.
 ~~~~
 # let my_number = 1;
 alt my_number {
-  0       { std::io::println("zero"); }
-  1 | 2   { std::io::println("one or two"); }
-  3 to 10 { std::io::println("three to ten"); }
-  _       { std::io::println("something else"); }
+  0       { io::println("zero"); }
+  1 | 2   { io::println("one or two"); }
+  3 to 10 { io::println("three to ten"); }
+  _       { io::println("something else"); }
 }
 ~~~~
 
@@ -675,7 +674,7 @@ let x = 5;
 while true {
     x += x - 3;
     if x % 5 == 0 { break; }
-    std::io::println(int::str(x));
+    io::println(int::str(x));
 }
 ~~~~
 
@@ -697,7 +696,7 @@ When iterating over a vector, use `for` instead.
 
 ~~~~
 for elt in ["red", "green", "blue"] {
-    std::io::println(elt);
+    io::println(elt);
 }
 ~~~~
 
@@ -864,7 +863,7 @@ fn mk_appender(suffix: str) -> fn@(str) -> str {
 
 fn main() {
     let shout = mk_appender("!");
-    std::io::println(shout("hey ho, let's go"));
+    io::println(shout("hey ho, let's go"));
 }
 ~~~~
 
@@ -1267,7 +1266,7 @@ with square brackets (zero-based):
 
 ~~~~
 let myvec = [true, false, true, false];
-if myvec[1] { std::io::println("boom"); }
+if myvec[1] { io::println("boom"); }
 ~~~~
 
 By default, vectors are immutable—you can not replace their elements.
@@ -1669,7 +1668,7 @@ mod farm {
     fn cow() -> str { "mooo" }
 }
 fn main() {
-    std::io::println(farm::chicken());
+    io::println(farm::chicken());
 }
 ~~~~
 
@@ -1788,7 +1787,7 @@ fn world() -> str { "world" }
 // main.rs
 use std;
 use mylib;
-fn main() { std::io::println("hello " + mylib::world()); }
+fn main() { io::println("hello " + mylib::world()); }
 ~~~~
 
 Now compile and run like this (adjust to your platform if necessary):
@@ -1810,21 +1809,21 @@ identifiers at the top of a file, module, or block.
 
 ~~~~
 use std;
-import std::io::println;
+import io::println;
 fn main() {
     println("that was easy");
 }
 ~~~~
 
 It is also possible to import just the name of a module (`import
-std::io;`, then use `io::println`), to import all identifiers exported
-by a given module (`import std::io::*`), or to import a specific set
+std::list;`, then use `list::find`), to import all identifiers exported
+by a given module (`import io::*`), or to import a specific set
 of identifiers (`import math::{min, max, pi}`).
 
 You can rename an identifier when importing using the `=` operator:
 
 ~~~~
-import prnt = std::io::println;
+import prnt = io::println;
 ~~~~
 
 ## Exporting
@@ -2158,7 +2157,7 @@ fn sha1(data: str) -> str unsafe {
 }
 
 fn main(args: [str]) {
-    std::io::println(sha1(args[1]));
+    io::println(sha1(args[1]));
 }
 ~~~~
 
@@ -2376,8 +2375,8 @@ module `task`.  Let's begin with the simplest one, `task::spawn()`:
 ~~~~
 let some_value = 22;
 task::spawn {||
-    std::io::println("This executes in the child task.");
-    std::io::println(#fmt("%d", some_value));
+    io::println("This executes in the child task.");
+    io::println(#fmt("%d", some_value));
 }
 ~~~~
 
