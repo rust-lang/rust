@@ -247,8 +247,9 @@ enum mode { m_collect, m_check, m_check_tyvar(@fn_ctxt), }
 // internal notion of a type. `getter` is a function that returns the type
 // corresponding to a definition ID:
 fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
-    fn getter(tcx: ty::ctxt, mode: mode, id: ast::def_id)
-        -> ty::ty_param_bounds_and_ty {
+    fn getter(tcx: ty::ctxt, _use_site: ast::node_id, mode: mode,
+              id: ast::def_id) -> ty::ty_param_bounds_and_ty {
+        // FIXME (pcwalton): Doesn't work with region inference.
         alt mode {
           m_check | m_check_tyvar(_) { ty::lookup_item_type(tcx, id) }
           m_collect {
@@ -269,23 +270,14 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
           }
         }
     }
-    alt tcx.ast_ty_to_ty_cache.find(ast_ty) {
-      some(ty::atttce_resolved(ty)) { ret ty; }
-      some(ty::atttce_unresolved) {
-        tcx.sess.span_fatal(ast_ty.span, "illegal recursive type. \
-                                          insert a enum in the cycle, \
-                                          if this is desired)");
-      }
-      some(ty::atttce_has_regions) | none { /* go on */ }
+    fn ast_mt_to_mt(tcx: ty::ctxt, use_site: ast::node_id, mode: mode,
+                    mt: ast::mt) -> ty::mt {
+        ret {ty: do_ast_ty_to_ty(tcx, use_site, mode, mt.ty),
+             mutbl: mt.mutbl};
     }
-
-    tcx.ast_ty_to_ty_cache.insert(ast_ty, ty::atttce_unresolved);
-    fn ast_mt_to_mt(tcx: ty::ctxt, mode: mode, mt: ast::mt) -> ty::mt {
-        ret {ty: ast_ty_to_ty(tcx, mode, mt.ty), mutbl: mt.mutbl};
-    }
-    fn instantiate(tcx: ty::ctxt, sp: span, mode: mode,
-                   id: ast::def_id, args: [@ast::ty]) -> ty::t {
-        let ty_param_bounds_and_ty = getter(tcx, mode, id);
+    fn instantiate(tcx: ty::ctxt, use_site: ast::node_id, sp: span,
+                   mode: mode, id: ast::def_id, args: [@ast::ty]) -> ty::t {
+        let ty_param_bounds_and_ty = getter(tcx, use_site, mode, id);
         if vec::len(*ty_param_bounds_and_ty.bounds) == 0u {
             ret ty_param_bounds_and_ty.ty;
         }
@@ -297,142 +289,167 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
                                      polymorphic type");
         }
         for ast_ty: @ast::ty in args {
-            param_bindings += [ast_ty_to_ty(tcx, mode, ast_ty)];
+            param_bindings += [do_ast_ty_to_ty(tcx, use_site, mode, ast_ty)];
         }
         let typ =
             ty::substitute_type_params(tcx, param_bindings,
                                        ty_param_bounds_and_ty.ty);
         ret typ;
     }
-    let typ = alt ast_ty.node {
-      ast::ty_nil { ty::mk_nil(tcx) }
-      ast::ty_bot { ty::mk_bot(tcx) }
-      ast::ty_box(mt) {
-        ty::mk_box(tcx, ast_mt_to_mt(tcx, mode, mt))
-      }
-      ast::ty_uniq(mt) {
-        ty::mk_uniq(tcx, ast_mt_to_mt(tcx, mode, mt))
-      }
-      ast::ty_vec(mt) {
-        ty::mk_vec(tcx, ast_mt_to_mt(tcx, mode, mt))
-      }
-      ast::ty_ptr(mt) {
-        ty::mk_ptr(tcx, ast_mt_to_mt(tcx, mode, mt))
-      }
-      ast::ty_rptr(region, mt) {
-        let region = alt region.node {
-            ast::re_inferred | ast::re_self {
-                tcx.region_map.ast_type_to_inferred_region.get(ast_ty.id)
-            }
-            ast::re_named(_) {
-                tcx.region_map.ast_type_to_region.get(region.id)
-            }
-        };
-        ty::mk_rptr(tcx, region, ast_mt_to_mt(tcx, mode, mt))
-      }
-      ast::ty_tup(fields) {
-        let flds = vec::map(fields, bind ast_ty_to_ty(tcx, mode, _));
-        ty::mk_tup(tcx, flds)
-      }
-      ast::ty_rec(fields) {
-        let flds: [field] = [];
-        for f: ast::ty_field in fields {
-            let tm = ast_mt_to_mt(tcx, mode, f.node.mt);
-            flds += [{ident: f.node.ident, mt: tm}];
+    fn do_ast_ty_to_ty(tcx: ty::ctxt, use_site: ast::node_id, mode: mode,
+                       &&ast_ty: @ast::ty) -> ty::t {
+        alt tcx.ast_ty_to_ty_cache.find(ast_ty) {
+          some(ty::atttce_resolved(ty)) { ret ty; }
+          some(ty::atttce_unresolved) {
+            tcx.sess.span_fatal(ast_ty.span, "illegal recursive type. \
+                                              insert a enum in the cycle, \
+                                              if this is desired)");
+          }
+          some(ty::atttce_has_regions) | none { /* go on */ }
         }
-        ty::mk_rec(tcx, flds)
-      }
-      ast::ty_fn(proto, decl) {
-        ty::mk_fn(tcx, ty_of_fn_decl(tcx, mode, proto, decl))
-      }
-      ast::ty_path(path, id) {
-        let a_def = alt tcx.def_map.find(id) {
-          none { tcx.sess.span_fatal(ast_ty.span, #fmt("unbound path %s",
-                                                   path_to_str(path))); }
-          some(d) { d }};
-        alt a_def {
-          ast::def_ty(id) {
-            instantiate(tcx, ast_ty.span, mode, id, path.node.types)
-          }
-          ast::def_prim_ty(nty) {
-            alt nty {
-              ast::ty_bool { ty::mk_bool(tcx) }
-              ast::ty_int(it) { ty::mk_mach_int(tcx, it) }
-              ast::ty_uint(uit) { ty::mk_mach_uint(tcx, uit) }
-              ast::ty_float(ft) { ty::mk_mach_float(tcx, ft) }
-              ast::ty_str { ty::mk_str(tcx) }
-            }
-          }
-          ast::def_ty_param(id, n) {
-            if vec::len(path.node.types) > 0u {
-                tcx.sess.span_err(ast_ty.span, "provided type parameters to \
-                                                a type parameter");
-            }
-            ty::mk_param(tcx, n, id)
-          }
-          ast::def_self(self_id) {
-            alt check tcx.items.get(self_id) {
-              ast_map::node_item(@{node: ast::item_iface(tps, _), _}, _) {
-                if vec::len(tps) != vec::len(path.node.types) {
-                    tcx.sess.span_err(ast_ty.span, "incorrect number of type \
-                                                    parameter to self type");
-                }
-                ty::mk_self(tcx, vec::map(path.node.types, {|ast_ty|
-                    ast_ty_to_ty(tcx, mode, ast_ty)
-                }))
-              }
-            }
-          }
-          ast::def_class(class_id) {
-              alt tcx.items.find(class_id.node) {
-                 some(ast_map::node_item(
-                  @{node: ast::item_class(tps, _, _), _}, _)) {
-                     if vec::len(tps) != vec::len(path.node.types) {
-                        tcx.sess.span_err(ast_ty.span, "incorrect number of \
-                           type parameters to object type");
-                     }
-                     ty::mk_class(tcx, class_id, vec::map(path.node.types,
-                        {|ast_ty| ast_ty_to_ty(tcx, mode, ast_ty)}))
-                 }
-                 _ {
-                     tcx.sess.span_bug(ast_ty.span, "class id is unbound \
-                       in items");
-                 }
-              }
-          }
-          _ {
-            tcx.sess.span_fatal(ast_ty.span,
-                                "found type name used as a variable");
-          }
-        }
-      }
-      ast::ty_constr(t, cs) {
-        let out_cs = [];
-        for constr: @ast::ty_constr in cs {
-            out_cs += [ty::ast_constr_to_constr(tcx, constr)];
-        }
-        ty::mk_constr(tcx, ast_ty_to_ty(tcx, mode, t), out_cs)
-      }
-      ast::ty_infer {
-        alt mode {
-          m_check_tyvar(fcx) { ret next_ty_var(fcx); }
-          _ { tcx.sess.span_bug(ast_ty.span,
-                                "found `ty_infer` in unexpected place"); }
-        }
-      }
-      ast::ty_mac(_) {
-          tcx.sess.span_bug(ast_ty.span,
-                                "found `ty_mac` in unexpected place");
-      }
-    };
 
-    if ty::type_has_rptrs(typ) {
-        tcx.ast_ty_to_ty_cache.insert(ast_ty, ty::atttce_has_regions);
-    } else {
-        tcx.ast_ty_to_ty_cache.insert(ast_ty, ty::atttce_resolved(typ));
+        tcx.ast_ty_to_ty_cache.insert(ast_ty, ty::atttce_unresolved);
+        let typ = alt ast_ty.node {
+          ast::ty_nil { ty::mk_nil(tcx) }
+          ast::ty_bot { ty::mk_bot(tcx) }
+          ast::ty_box(mt) {
+            ty::mk_box(tcx, ast_mt_to_mt(tcx, use_site, mode, mt))
+          }
+          ast::ty_uniq(mt) {
+            ty::mk_uniq(tcx, ast_mt_to_mt(tcx, use_site, mode, mt))
+          }
+          ast::ty_vec(mt) {
+            ty::mk_vec(tcx, ast_mt_to_mt(tcx, use_site, mode, mt))
+          }
+          ast::ty_ptr(mt) {
+            ty::mk_ptr(tcx, ast_mt_to_mt(tcx, use_site, mode, mt))
+          }
+          ast::ty_rptr(region, mt) {
+            let region = alt region.node {
+                ast::re_inferred | ast::re_self {
+                    tcx.region_map.ast_type_to_inferred_region.get(ast_ty.id)
+                }
+                ast::re_named(_) {
+                    tcx.region_map.ast_type_to_region.get(region.id)
+                }
+            };
+            ty::mk_rptr(tcx, region, ast_mt_to_mt(tcx, use_site, mode, mt))
+          }
+          ast::ty_tup(fields) {
+            let flds = vec::map(fields,
+                                bind do_ast_ty_to_ty(tcx, use_site, mode, _));
+            ty::mk_tup(tcx, flds)
+          }
+          ast::ty_rec(fields) {
+            let flds: [field] = [];
+            for f: ast::ty_field in fields {
+                let tm = ast_mt_to_mt(tcx, use_site, mode, f.node.mt);
+                flds += [{ident: f.node.ident, mt: tm}];
+            }
+            ty::mk_rec(tcx, flds)
+          }
+          ast::ty_fn(proto, decl) {
+            ty::mk_fn(tcx, ty_of_fn_decl(tcx, mode, proto, decl))
+          }
+          ast::ty_path(path, id) {
+            let a_def = alt tcx.def_map.find(id) {
+              none { tcx.sess.span_fatal(ast_ty.span, #fmt("unbound path %s",
+                                                       path_to_str(path))); }
+              some(d) { d }};
+            alt a_def {
+              ast::def_ty(id) {
+                instantiate(tcx, use_site, ast_ty.span, mode, id,
+                            path.node.types)
+              }
+              ast::def_prim_ty(nty) {
+                alt nty {
+                  ast::ty_bool { ty::mk_bool(tcx) }
+                  ast::ty_int(it) { ty::mk_mach_int(tcx, it) }
+                  ast::ty_uint(uit) { ty::mk_mach_uint(tcx, uit) }
+                  ast::ty_float(ft) { ty::mk_mach_float(tcx, ft) }
+                  ast::ty_str { ty::mk_str(tcx) }
+                }
+              }
+              ast::def_ty_param(id, n) {
+                if vec::len(path.node.types) > 0u {
+                    tcx.sess.span_err(ast_ty.span, "provided type parameters \
+                                                    to a type parameter");
+                }
+                ty::mk_param(tcx, n, id)
+              }
+              ast::def_self(self_id) {
+                alt check tcx.items.get(self_id) {
+                  ast_map::node_item(@{node: ast::item_iface(tps, _), _}, _) {
+                    if vec::len(tps) != vec::len(path.node.types) {
+                        tcx.sess.span_err(ast_ty.span, "incorrect number of \
+                                                        type parameters to \
+                                                        self type");
+                    }
+                    ty::mk_self(tcx, vec::map(path.node.types, {|ast_ty|
+                        do_ast_ty_to_ty(tcx, use_site, mode, ast_ty)
+                    }))
+                  }
+                }
+              }
+              ast::def_class(class_id) {
+                  alt tcx.items.find(class_id.node) {
+                     some(ast_map::node_item(
+                      @{node: ast::item_class(tps, _, _), _}, _)) {
+                         if vec::len(tps) != vec::len(path.node.types) {
+                            tcx.sess.span_err(ast_ty.span, "incorrect number \
+                               of type parameters to object type");
+                         }
+                         ty::mk_class(tcx, class_id,
+                                      vec::map(path.node.types, {|ast_ty|
+                                                    do_ast_ty_to_ty(tcx,
+                                                                    use_site,
+                                                                    mode,
+                                                                    ast_ty)
+                                               }))
+                     }
+                     _ {
+                         tcx.sess.span_bug(ast_ty.span, "class id is unbound \
+                           in items");
+                     }
+                  }
+              }
+              _ {
+                tcx.sess.span_fatal(ast_ty.span,
+                                    "found type name used as a variable");
+              }
+            }
+          }
+          ast::ty_constr(t, cs) {
+            let out_cs = [];
+            for constr: @ast::ty_constr in cs {
+                out_cs += [ty::ast_constr_to_constr(tcx, constr)];
+            }
+            ty::mk_constr(tcx, do_ast_ty_to_ty(tcx, use_site, mode, t),
+                          out_cs)
+          }
+          ast::ty_infer {
+            alt mode {
+              m_check_tyvar(fcx) { ret next_ty_var(fcx); }
+              _ { tcx.sess.span_bug(ast_ty.span,
+                                    "found `ty_infer` in unexpected place"); }
+            }
+          }
+          ast::ty_mac(_) {
+              tcx.sess.span_bug(ast_ty.span,
+                                    "found `ty_mac` in unexpected place");
+          }
+        };
+
+        if ty::type_has_rptrs(typ) {
+            tcx.ast_ty_to_ty_cache.insert(ast_ty, ty::atttce_has_regions);
+        } else {
+            tcx.ast_ty_to_ty_cache.insert(ast_ty, ty::atttce_resolved(typ));
+        }
+
+        ret typ;
     }
 
-    ret typ;
+    ret do_ast_ty_to_ty(tcx, ast_ty.id, mode, ast_ty);
 }
 
 fn ty_of_item(tcx: ty::ctxt, mode: mode, it: @ast::item)
