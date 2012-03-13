@@ -3,5 +3,5 @@
 fn main() {
     let x: option<uint>;
     x = 5;
-    //!^ ERROR mismatched types: expected `core::option::t<uint>`
+    //!^ ERROR mismatched types: expected `core::option::option<uint>`
 }

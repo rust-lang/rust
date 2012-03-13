@@ -86,14 +86,14 @@ fn mock_program_output(_prog: str, _args: [str]) -> {
     }
 }
 
-fn parse_config(args: [str]) -> result::t<config, str> {
+fn parse_config(args: [str]) -> result<config, str> {
     parse_config_(args, run::program_output)
 }
 
 fn parse_config_(
     args: [str],
     program_output: program_output
-) -> result::t<config, str> {
+) -> result<config, str> {
     let args = vec::tail(args);
     let opts = tuple::first(vec::unzip(opts()));
     alt getopts::getopts(args, opts) {
@@ -117,7 +117,7 @@ fn config_from_opts(
     input_crate: str,
     match: getopts::match,
     program_output: program_output
-) -> result::t<config, str> {
+) -> result<config, str> {
 
     let config = default_config(input_crate);
     let result = result::ok(config);
@@ -165,7 +165,7 @@ fn config_from_opts(
     ret result;
 }
 
-fn parse_output_format(output_format: str) -> result::t<output_format, str> {
+fn parse_output_format(output_format: str) -> result<output_format, str> {
     alt output_format {
       "markdown" { result::ok(markdown) }
       "html" { result::ok(pandoc_html) }
@@ -173,7 +173,7 @@ fn parse_output_format(output_format: str) -> result::t<output_format, str> {
     }
 }
 
-fn parse_output_style(output_style: str) -> result::t<output_style, str> {
+fn parse_output_style(output_style: str) -> result<output_style, str> {
     alt output_style {
       "doc-per-crate" { result::ok(doc_per_crate) }
       "doc-per-mod" { result::ok(doc_per_mod) }
@@ -185,7 +185,7 @@ fn maybe_find_pandoc(
     config: config,
     maybe_pandoc_cmd: option<str>,
     program_output: program_output
-) -> result::t<option<str>, str> {
+) -> result<option<str>, str> {
     if config.output_format != pandoc_html {
         ret result::ok(maybe_pandoc_cmd);
     }
@@ -251,7 +251,7 @@ fn should_error_with_no_pandoc() {
 
 #[cfg(test)]
 mod test {
-    fn parse_config(args: [str]) -> result::t<config, str> {
+    fn parse_config(args: [str]) -> result<config, str> {
         parse_config_(args, mock_program_output)
     }
 }

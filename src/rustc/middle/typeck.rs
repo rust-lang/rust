@@ -1701,7 +1701,7 @@ fn impl_self_ty(tcx: ty::ctxt, did: ast::def_id) -> {n_tps: uint, ty: ty::t} {
 
 fn lookup_method(fcx: @fn_ctxt, expr: @ast::expr, node_id: ast::node_id,
                  name: ast::ident, ty: ty::t, tps: [ty::t])
-    -> option::t<method_origin> {
+    -> option<method_origin> {
     alt lookup_method_inner(fcx, expr, name, ty) {
       some({method_ty: fty, n_tps: method_n_tps, substs, origin, self_sub}) {
         let tcx = fcx.ccx.tcx;
@@ -1743,9 +1743,9 @@ fn lookup_method(fcx: @fn_ctxt, expr: @ast::expr, node_id: ast::node_id,
 
 fn lookup_method_inner(fcx: @fn_ctxt, expr: @ast::expr,
                        name: ast::ident, ty: ty::t)
-    -> option::t<{method_ty: ty::t, n_tps: uint, substs: [ty::t],
+    -> option<{method_ty: ty::t, n_tps: uint, substs: [ty::t],
                   origin: method_origin,
-                  self_sub: option::t<self_subst>}> {
+                  self_sub: option<self_subst>}> {
     let tcx = fcx.ccx.tcx;
     // First, see whether this is an interface-bounded parameter
     alt ty::get(ty).struct {
@@ -2120,8 +2120,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         }
     }
     fn lookup_op_method(fcx: @fn_ctxt, op_ex: @ast::expr, self_t: ty::t,
-                        opname: str, args: [option::t<@ast::expr>])
-        -> option::t<ty::t> {
+                        opname: str, args: [option<@ast::expr>])
+        -> option<ty::t> {
         let callee_id = ast_util::op_expr_callee_id(op_ex);
         alt lookup_method(fcx, op_ex, callee_id, opname, self_t, []) {
           some(origin) {

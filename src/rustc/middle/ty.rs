@@ -1509,7 +1509,7 @@ fn arg_mode(cx: ctxt, a: arg) -> ast::rmode { resolved_mode(cx, a.mode) }
 
 // Unifies `m1` and `m2`.  Returns unified value or failure code.
 fn unify_mode(cx: ctxt, m1: ast::mode, m2: ast::mode)
-    -> result::t<ast::mode, type_err> {
+    -> result<ast::mode, type_err> {
     alt (canon_mode(cx, m1), canon_mode(cx, m2)) {
       (m1, m2) if (m1 == m2) {
         result::ok(m1)
@@ -1758,7 +1758,7 @@ mod unify {
         };
     }
     fn unify_args(cx: @uctxt, e_args: [arg], a_args: [arg],
-                  variance: variance) -> either::t<result, [arg]> {
+                  variance: variance) -> either<result, [arg]> {
         if !vec::same_length(e_args, a_args) {
             ret either::left(ures_err(terr_arg_count));
         }

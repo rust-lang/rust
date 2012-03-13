@@ -20,8 +20,6 @@ export lgamma, ln, log_radix, ln1p, log10, log2, ilog_radix;
 export modf, pow, round, sin, sinh, sqrt, tan, tanh, tgamma, trunc;
 export signbit;
 
-type t = f32;
-
 // These are not defined inside consts:: for consistency with
 // the integer types
 

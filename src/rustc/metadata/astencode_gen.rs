@@ -261,7 +261,7 @@ fn serialize_20<S: std::serialization::serializer>(s: S, v: uint) {
 /*core::option::t<syntax::codemap::span>*/
 fn serialize_26<S: std::serialization::serializer>(s: S,
                                                    v:
-                                                       core::option::t<syntax::codemap::span>) {
+                                                       core::option<syntax::codemap::span>) {
     s.emit_enum("core::option::t",
 
                 /*syntax::codemap::span*/
@@ -291,7 +291,7 @@ fn serialize_25<S: std::serialization::serializer>(s: S,
                                                    v:
                                                        {name: str,
                                                         span:
-                                                            core::option::t<syntax::codemap::span>,}) {
+                                                            core::option<syntax::codemap::span>,}) {
     s.emit_rec(/*str*//*core::option::t<syntax::codemap::span>*/
                {||
                    {
@@ -311,7 +311,7 @@ fn serialize_24<S: std::serialization::serializer>(s: S,
                                                         callie:
                                                             {name: str,
                                                              span:
-                                                                 core::option::t<syntax::codemap::span>,},}) {
+                                                                 core::option<syntax::codemap::span>,},}) {
     s.emit_rec(/*syntax::codemap::span*/
                /*{name: str,span: core::option::t<syntax::codemap::span>}*/
                {||
@@ -1269,7 +1269,7 @@ fn serialize_76<S: std::serialization::serializer>(s: S,
 /*core::option::t<@syntax::ast::expr>*/
 fn serialize_79<S: std::serialization::serializer>(s: S,
                                                    v:
-                                                       core::option::t<@syntax::ast::expr>) {
+                                                       core::option<@syntax::ast::expr>) {
     s.emit_enum("core::option::t",
 
                 /*@syntax::ast::expr*/
@@ -1297,7 +1297,7 @@ fn serialize_79<S: std::serialization::serializer>(s: S,
 /*[core::option::t<@syntax::ast::expr>]*/
 fn serialize_80<S: std::serialization::serializer>(s: S,
                                                    v:
-                                                       [core::option::t<@syntax::ast::expr>]) {
+                                                       [core::option<@syntax::ast::expr>]) {
     s.emit_vec(vec::len(v), /*core::option::t<@syntax::ast::expr>*/
                {||
                    vec::iteri(v,
@@ -1712,7 +1712,7 @@ fn serialize_85<S: std::serialization::serializer>(s: S,
 /*core::option::t<@syntax::ast::pat>*/
 fn serialize_112<S: std::serialization::serializer>(s: S,
                                                     v:
-                                                        core::option::t<@syntax::ast::pat>) {
+                                                        core::option<@syntax::ast::pat>) {
     s.emit_enum("core::option::t",
 
                 /*@syntax::ast::pat*/
@@ -1973,7 +1973,7 @@ fn serialize_117<S: std::serialization::serializer>(s: S,
 /*core::option::t<syntax::ast::initializer>*/
 fn serialize_116<S: std::serialization::serializer>(s: S,
                                                     v:
-                                                        core::option::t<syntax::ast::initializer>) {
+                                                        core::option<syntax::ast::initializer>) {
     s.emit_enum("core::option::t",
 
                 /*syntax::ast::initializer*/
@@ -3950,7 +3950,7 @@ fn serialize_159<S: std::serialization::serializer>(s: S,
 /*core::option::t<@syntax::ast::ty>*/
 fn serialize_161<S: std::serialization::serializer>(s: S,
                                                     v:
-                                                        core::option::t<@syntax::ast::ty>) {
+                                                        core::option<@syntax::ast::ty>) {
     s.emit_enum("core::option::t",
 
                 /*@syntax::ast::ty*/
@@ -4471,7 +4471,7 @@ fn deserialize_20<S: std::serialization::deserializer>(s: S) -> uint {
 }
 /*core::option::t<syntax::codemap::span>*/
 fn deserialize_26<S: std::serialization::deserializer>(s: S) ->
-   core::option::t<syntax::codemap::span> {
+   core::option<syntax::codemap::span> {
     s.read_enum("core::option::t",
 
 
@@ -4492,7 +4492,7 @@ fn deserialize_26<S: std::serialization::deserializer>(s: S) ->
 }
 /*{name: str,span: core::option::t<syntax::codemap::span>}*/
 fn deserialize_25<S: std::serialization::deserializer>(s: S) ->
-   {name: str, span: core::option::t<syntax::codemap::span>,} {
+   {name: str, span: core::option<syntax::codemap::span>,} {
 
     s.read_rec(
 
@@ -4513,7 +4513,7 @@ fn deserialize_25<S: std::serialization::deserializer>(s: S) ->
 /*{call_site: syntax::codemap::span,callie: {name: str,span: core::option::t<syntax::codemap::span>}}*/
 fn deserialize_24<S: std::serialization::deserializer>(s: S) ->
    {call_site: syntax::codemap::span,
-    callie: {name: str, span: core::option::t<syntax::codemap::span>,},} {
+    callie: {name: str, span: core::option<syntax::codemap::span>,},} {
 
     s.read_rec(
 
@@ -5501,7 +5501,7 @@ fn deserialize_76<S: std::serialization::deserializer>(s: S) ->
 }
 /*core::option::t<@syntax::ast::expr>*/
 fn deserialize_79<S: std::serialization::deserializer>(s: S) ->
-   core::option::t<@syntax::ast::expr> {
+   core::option<@syntax::ast::expr> {
     s.read_enum("core::option::t",
 
 
@@ -5522,7 +5522,7 @@ fn deserialize_79<S: std::serialization::deserializer>(s: S) ->
 }
 /*[core::option::t<@syntax::ast::expr>]*/
 fn deserialize_80<S: std::serialization::deserializer>(s: S) ->
-   [core::option::t<@syntax::ast::expr>] {
+   [core::option<@syntax::ast::expr>] {
     s.read_vec(
 
                /*core::option::t<@syntax::ast::expr>*/
@@ -5886,7 +5886,7 @@ fn deserialize_85<S: std::serialization::deserializer>(s: S) ->
 }
 /*core::option::t<@syntax::ast::pat>*/
 fn deserialize_112<S: std::serialization::deserializer>(s: S) ->
-   core::option::t<@syntax::ast::pat> {
+   core::option<@syntax::ast::pat> {
     s.read_enum("core::option::t",
 
 
@@ -6114,7 +6114,7 @@ fn deserialize_117<S: std::serialization::deserializer>(s: S) ->
 }
 /*core::option::t<syntax::ast::initializer>*/
 fn deserialize_116<S: std::serialization::deserializer>(s: S) ->
-   core::option::t<syntax::ast::initializer> {
+   core::option<syntax::ast::initializer> {
     s.read_enum("core::option::t",
 
 
@@ -7890,7 +7890,7 @@ fn deserialize_159<S: std::serialization::deserializer>(s: S) ->
 }
 /*core::option::t<@syntax::ast::ty>*/
 fn deserialize_161<S: std::serialization::deserializer>(s: S) ->
-   core::option::t<@syntax::ast::ty> {
+   core::option<@syntax::ast::ty> {
     s.read_enum("core::option::t",
 
 

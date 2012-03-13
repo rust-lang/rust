@@ -218,7 +218,7 @@ fn FILE_reader(f: *libc::FILE, cleanup: bool) -> reader {
 
 fn stdin() -> reader { rustrt::rust_get_stdin() as reader }
 
-fn file_reader(path: str) -> result::t<reader, str> {
+fn file_reader(path: str) -> result<reader, str> {
     let f = os::as_c_charp(path, {|pathbuf|
         os::as_c_charp("r", {|modebuf|
             libc::fopen(pathbuf, modebuf)
@@ -374,7 +374,7 @@ fn fd_writer(fd: fd_t, cleanup: bool) -> writer {
 
 
 fn mk_file_writer(path: str, flags: [fileflag])
-    -> result::t<writer, str> {
+    -> result<writer, str> {
 
     #[cfg(target_os = "win32")]
     fn wb() -> c_int { (O_WRONLY | O_BINARY) as c_int }
@@ -487,13 +487,13 @@ impl writer_util for writer {
     fn write_u8(n: u8) { self.write([n]) }
 }
 
-fn file_writer(path: str, flags: [fileflag]) -> result::t<writer, str> {
+fn file_writer(path: str, flags: [fileflag]) -> result<writer, str> {
     result::chain(mk_file_writer(path, flags), { |w| result::ok(w)})
 }
 
 
 // FIXME: fileflags
-fn buffered_file_writer(path: str) -> result::t<writer, str> {
+fn buffered_file_writer(path: str) -> result<writer, str> {
     let f = os::as_c_charp(path) {|pathbuf|
         os::as_c_charp("w") {|modebuf|
             libc::fopen(pathbuf, modebuf)
@@ -581,7 +581,7 @@ fn seek_in_buf(offset: int, pos: uint, len: uint, whence: seek_style) ->
     ret bpos as uint;
 }
 
-fn read_whole_file_str(file: str) -> result::t<str, str> {
+fn read_whole_file_str(file: str) -> result<str, str> {
     result::chain(read_whole_file(file), { |bytes|
         result::ok(str::from_bytes(bytes))
     })
@@ -589,7 +589,7 @@ fn read_whole_file_str(file: str) -> result::t<str, str> {
 
 // FIXME implement this in a low-level way. Going through the abstractions is
 // pointless.
-fn read_whole_file(file: str) -> result::t<[u8], str> {
+fn read_whole_file(file: str) -> result<[u8], str> {
     result::chain(file_reader(file), { |rdr|
         result::ok(rdr.read_whole_stream())
     })

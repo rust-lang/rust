@@ -167,7 +167,7 @@ fn recv_<T: send>(p: *rust_port) -> T {
 #[doc = "Receive on one of two ports"]
 fn select2<A: send, B: send>(
     p_a: port<A>, p_b: port<B>
-) -> either::t<A, B> unsafe {
+) -> either<A, B> unsafe {
 
     fn select(dptr: **rust_port, ports: **rust_port,
               n_ports: libc::size_t, yield: *libc::uintptr_t) {

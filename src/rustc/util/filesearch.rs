@@ -109,12 +109,12 @@ fn get_sysroot(maybe_sysroot: option<path>) -> path {
     }
 }
 
-fn get_cargo_sysroot() -> result::t<path, str> {
+fn get_cargo_sysroot() -> result<path, str> {
     let path = [get_default_sysroot(), libdir(), "cargo"];
     result::ok(path::connect_many(path))
 }
 
-fn get_cargo_root() -> result::t<path, str> {
+fn get_cargo_root() -> result<path, str> {
     alt os::getenv("CARGO_ROOT") {
         some(_p) { result::ok(_p) }
         none {
@@ -126,7 +126,7 @@ fn get_cargo_root() -> result::t<path, str> {
     }
 }
 
-fn get_cargo_root_nearest() -> result::t<path, str> {
+fn get_cargo_root_nearest() -> result<path, str> {
     result::chain(get_cargo_root()) { |p|
         let cwd = os::getcwd();
         let dirname = path::dirname(cwd);
@@ -151,13 +151,13 @@ fn get_cargo_root_nearest() -> result::t<path, str> {
     }
 }
 
-fn get_cargo_lib_path() -> result::t<path, str> {
+fn get_cargo_lib_path() -> result<path, str> {
     result::chain(get_cargo_root()) { |p|
         result::ok(path::connect(p, libdir()))
     }
 }
 
-fn get_cargo_lib_path_nearest() -> result::t<path, str> {
+fn get_cargo_lib_path_nearest() -> result<path, str> {
     result::chain(get_cargo_root_nearest()) { |p|
         result::ok(path::connect(p, libdir()))
     }
