@@ -43,7 +43,6 @@ lock_and_signal::lock_and_signal()
 #endif
 
 lock_and_signal::~lock_and_signal() {
-    assert(_holding_thread == INVALID_THREAD);
 #if defined(__WIN32__)
     CloseHandle(_event);
     DeleteCriticalSection(&_cs);

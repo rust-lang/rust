@@ -103,6 +103,7 @@ fn enc_region(w: io::writer, cx: @ctxt, r: ty::region) {
         ty::re_block(nid) {
             w.write_char('b'); w.write_int(nid); w.write_char('|');
         }
+        ty::re_inferred { w.write_char('?'); }
     }
 }
 fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {

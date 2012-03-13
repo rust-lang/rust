@@ -49,6 +49,10 @@ fn check_expr(expr: @ast::expr, cx: ctxt, visitor: visit::vt<ctxt>) {
                                                      "escapes its block");
                             }
                         }
+                        ty::re_inferred {
+                            cx.tcx.sess.span_bug(expr.span,
+                                                 "unresolved region");
+                        }
                     }
                 }
                 _ { /* no-op */ }
