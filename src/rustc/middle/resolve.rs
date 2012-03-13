@@ -1469,6 +1469,24 @@ fn is_exported(e: env, i: ident, m: @indexed_mod) -> bool {
         || e.resolve_unexported;
 }
 
+// A list search function. Applies `f` to each element of `v`, starting from
+// the first. When `f` returns `some(x)`, `list_search` returns `some(x)`. If
+// `f` returns `none` for every element, `list_search` returns `none`.
+fn list_search<T: copy, U: copy>(ls: list<T>, f: fn(T) -> option<U>)
+        -> option<U> {
+    let ls = ls;
+    loop {
+        alt ls {
+          cons(hd, tl) {
+            let result = f(hd);
+            if !is_none(result) { ret result; }
+            ls = *tl;
+          }
+          nil { ret none; }
+        }
+    };
+}
+
 fn lookup_in_local_mod(e: env, node_id: node_id, sp: span, id: ident,
                        ns: namespace, dr: dir) -> option<def> {
     let info = e.mod_map.get(node_id);
@@ -1479,7 +1497,7 @@ fn lookup_in_local_mod(e: env, node_id: node_id, sp: span, id: ident,
     alt info.index.find(id) {
       none { }
       some(lst) {
-        let found = list::find(lst, bind lookup_in_mie(e, _, ns));
+        let found = list_search(lst, bind lookup_in_mie(e, _, ns));
         if !is_none(found) {
             ret found;
         }
@@ -2072,7 +2090,7 @@ fn check_exports(e: @env) {
             e.sess.span_fatal(sp, #fmt("undefined id %s in an export", id));
           }
           some(ms) {
-            let maybe_id = list::find(ms) {|m|
+            let maybe_id = list_search(ms) {|m|
                 alt m {
                   mie_item(@{node: item_enum(_, _), id, _}) { some(id) }
                   _ { none }
