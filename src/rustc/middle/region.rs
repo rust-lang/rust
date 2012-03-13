@@ -8,6 +8,8 @@ import middle::ty;
 import syntax::{ast, visit};
 import util::common::new_def_hash;
 
+import std::list;
+import std::list::list;
 import std::map;
 import std::map::hashmap;
 
@@ -18,6 +20,12 @@ enum parent {
     pa_nested_fn(ast::node_id),
     pa_crate
 }
+
+/* Records the binding site of a region name. */
+type binding = {
+    name: str,
+    id: ast::def_id
+};
 
 type region_map = {
     /*
@@ -37,7 +45,7 @@ type ctxt = {
     sess: session,
     def_map: resolve::def_map,
     region_map: @region_map,
-    names_in_scope: hashmap<str,ast::def_id>,
+    mut bindings: @list<binding>,
 
     /*
      * A list of local IDs that will be parented to the next block we
@@ -106,12 +114,14 @@ fn resolve_ty(ty: @ast::ty, cx: ctxt, visitor: visit::vt<ctxt>) {
                 ast::re_named(ident) {
                     // If at item scope, introduce or reuse a binding. If at
                     // block scope, require that the binding be introduced.
-                    alt cx.names_in_scope.find(ident) {
-                        some(def_id) { region = ty::re_named(def_id); }
+                    let bindings = cx.bindings;
+                    alt list::find(*bindings, {|b| ident == b.name}) {
+                        some(binding) { region = ty::re_named(binding.id); }
                         none {
                             let def_id = {crate: ast::local_crate,
                                           node: region_id};
-                            cx.names_in_scope.insert(ident, def_id);
+                            let binding = {name: ident, id: def_id};
+                            cx.bindings = @list::cons(binding, cx.bindings);
                             region = ty::re_named(def_id);
 
                             alt cx.parent {
@@ -248,7 +258,7 @@ fn resolve_expr(expr: @ast::expr, cx: ctxt, visitor: visit::vt<ctxt>) {
 
 fn resolve_item(item: @ast::item, cx: ctxt, visitor: visit::vt<ctxt>) {
     // Items create a new outer block scope as far as we're concerned.
-    let new_cx: ctxt = {names_in_scope: map::new_str_hash(),
+    let new_cx: ctxt = {bindings: @list::nil,
                         parent: pa_item(item.id),
                         in_alt: false
                         with cx};
@@ -263,7 +273,7 @@ fn resolve_crate(sess: session, def_map: resolve::def_map, crate: @ast::crate)
                                   ast_type_to_region: map::new_int_hash(),
                                   local_blocks: map::new_int_hash(),
                                   region_name_to_fn: new_def_hash()},
-                    names_in_scope: map::new_str_hash(),
+                    mut bindings: @list::nil,
                     mut queued_locals: [],
                     parent: pa_crate,
                     in_alt: false};
