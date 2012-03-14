@@ -40,7 +40,12 @@ type region_map = {
     /* Mapping from an AST type node to the region that `&` resolves to. */
     ast_type_to_inferred_region: hashmap<ast::node_id,ty::region>,
     /* Mapping from a call site (or `bind` site) to its containing block. */
-    call_site_to_block: hashmap<ast::node_id,ast::node_id>
+    call_site_to_block: hashmap<ast::node_id,ast::node_id>,
+    /*
+     * Mapping from an address-of operator or alt expression to its containing
+     * block. This is used as the region if the operand is an rvalue.
+     */
+    rvalue_to_block: hashmap<ast::node_id,ast::node_id>
 };
 
 type ctxt = {
@@ -249,6 +254,17 @@ fn resolve_expr(expr: @ast::expr, cx: ctxt, visitor: visit::vt<ctxt>) {
             }
             visit::visit_expr(expr, cx, visitor);
         }
+        ast::expr_addr_of(_, _) | ast::expr_alt(_, _, _) {
+            // Record the block that this expression appears in, in case the
+            // operand is an rvalue.
+            alt cx.parent {
+                pa_block(blk_id) {
+                    cx.region_map.rvalue_to_block.insert(expr.id, blk_id);
+                }
+                _ { cx.sess.span_bug(expr.span, "expr outside of block?!"); }
+            }
+            visit::visit_expr(expr, cx, visitor);
+        }
         _ { visit::visit_expr(expr, cx, visitor); }
     }
 }
@@ -276,7 +292,8 @@ fn resolve_crate(sess: session, def_map: resolve::def_map, crate: @ast::crate)
                                   region_name_to_fn: new_def_hash(),
                                   ast_type_to_inferred_region:
                                     map::new_int_hash(),
-                                  call_site_to_block: map::new_int_hash()},
+                                  call_site_to_block: map::new_int_hash(),
+                                  rvalue_to_block: map::new_int_hash()},
                     mut bindings: @list::nil,
                     mut queued_locals: [],
                     parent: pa_crate,

@@ -1931,8 +1931,8 @@ fn region_of(fcx: @fn_ctxt, expr: @ast::expr) -> ty::region {
                                          "index, or deref operations");
         }
         _ {
-            fcx.ccx.tcx.sess.span_err(expr.span, "not an lvalue");
-            ret ty::re_block(0);
+            let blk_id = fcx.ccx.tcx.region_map.rvalue_to_block.get(expr.id);
+            ret ty::re_block(blk_id);
         }
     }
 }
