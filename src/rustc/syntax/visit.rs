@@ -220,7 +220,9 @@ fn visit_pat<E>(p: @pat, e: E, v: vt<E>) {
           visit_path(path, e, v);
           option::may(inner, {|subpat| v.visit_pat(subpat, e, v)});
       }
-      _ { }
+      pat_lit(ex) { v.visit_expr(ex, e, v); }
+      pat_range(e1, e2) { v.visit_expr(e1, e, v); v.visit_expr(e2, e, v); }
+      pat_wild {}
     }
 }
 
