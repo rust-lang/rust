@@ -2755,7 +2755,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
               none {
                 let t_err = resolve_type_vars_if_possible(fcx, expr_t);
                 let msg = #fmt["attempted access of field %s on type %s, but \
-                                no method implementation was found",
+                                no field or method with that name was found",
                                field, ty_to_str(tcx, t_err)];
                 tcx.sess.span_err(expr.span, msg);
                 // NB: Adding a bogus type to allow typechecking to continue
