@@ -37,7 +37,7 @@ impl<A> of iterable<A> for option<A> {
 }
 
 fn enumerate<A,IA:iterable<A>>(self: IA, blk: fn(uint, A)) {
-    let i = 0u;
+    let mut i = 0u;
     self.iter {|a|
         blk(i, a);
         i += 1u;
@@ -79,7 +79,7 @@ fn flat_map<A,B,IA:iterable<A>,IB:iterable<B>>(
 }
 
 fn foldl<A,B,IA:iterable<A>>(self: IA, +b0: B, blk: fn(-B, A) -> B) -> B {
-    let b <- b0;
+    let mut b <- b0;
     self.iter {|a|
         b = blk(b, a);
     }
@@ -89,7 +89,7 @@ fn foldl<A,B,IA:iterable<A>>(self: IA, +b0: B, blk: fn(-B, A) -> B) -> B {
 fn foldr<A:copy,B,IA:iterable<A>>(
     self: IA, +b0: B, blk: fn(A, -B) -> B) -> B {
 
-    let b <- b0;
+    let mut b <- b0;
     reversed(self) {|a|
         b = blk(a, b);
     }
@@ -116,7 +116,7 @@ fn count<A,IA:iterable<A>>(self: IA, x: A) -> uint {
 }
 
 fn repeat(times: uint, blk: fn()) {
-    let i = 0u;
+    let mut i = 0u;
     while i < times {
         blk();
         i += 1u;
@@ -124,7 +124,7 @@ fn repeat(times: uint, blk: fn()) {
 }
 
 fn all<A, IA:iterable<A>>(self: IA, prd: fn(A) -> bool) -> bool {
-    let r: bool = true;
+    let mut r: bool = true;
     self.iter {|a|
         r = r && prd(a)
     }

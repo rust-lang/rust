@@ -82,6 +82,9 @@ endif
 ifdef SAVE_TEMPS
   CFG_RUSTC_FLAGS += --save-temps
 endif
+ifdef ENFORCE_MUT_VARS
+  CFG_RUSTC_FLAGS += --enforce-mut-vars
+endif
 ifdef TIME_PASSES
   CFG_RUSTC_FLAGS += --time-passes
 endif
@@ -183,12 +186,12 @@ STDLIB_INPUTS := $(wildcard $(addprefix $(S)src/libstd/,          \
 # rustc crate variables
 ######################################################################
 
-COMPILER_CRATE := $(S)src/comp/rustc.rc
-COMPILER_INPUTS := $(filter-out $(S)src/comp/driver/rustc.rs,     \
-                       $(wildcard $(addprefix $(S)src/comp/,      \
+COMPILER_CRATE := $(S)src/rustc/rustc.rc
+COMPILER_INPUTS := $(filter-out $(S)src/rustc/driver/rustc.rs,     \
+                       $(wildcard $(addprefix $(S)src/rustc/,      \
                            rustc.rc *.rs */*.rs */*/*.rs)))
 
-RUSTC_INPUTS := $(S)src/comp/driver/rustc.rs
+RUSTC_INPUTS := $(S)src/rustc/driver/rustc.rs
 
 ######################################################################
 # LLVM macros
@@ -410,12 +413,13 @@ TSREQS :=											\
 FUZZ := $(HBIN3_H_$(CFG_HOST_TRIPLE))/fuzzer$(X)
 CARGO := $(HBIN3_H_$(CFG_HOST_TRIPLE))/cargo$(X)
 RUSTDOC := $(HBIN3_H_$(CFG_HOST_TRIPLE))/rustdoc$(X)
-SERIALIZER := $(HBIN2_H_$(CFG_HOST_TRIPLE))/serializer$(X)
-# ^^ Note: we use HBIN2 because that is the only stage for which
-#    we build a complete rustc by default, and serializer requires 
-#    the complete rustc.
 
-all: rustc $(GENERATED) docs $(FUZZ) $(CARGO) $(RUSTDOC) $(SERIALIZER)
+all: rustc $(GENERATED) docs $(FUZZ) $(CARGO) $(RUSTDOC) serializer
+
+serializer: $(HBIN1_H_$(CFG_HOST_TRIPLE))/serializer$(X) \
+            $(SREQ1_T_$(CFG_HOST_TRIPLE)_H_$(CFG_HOST_TRIPLE))
+# ^^ Note: we use HBIN1 because that is built by the snapshot compiler
+#    and sometimes we need the serializer to build the later stages.
 
 endif
 

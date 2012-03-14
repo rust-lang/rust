@@ -1,7 +1,8 @@
 fn main() unsafe {
+    fn foo(_a: uint, _b: uint) : uint::le(_a, _b) {}
     let a: uint = 4u;
     let b: uint = 1u;
     check (uint::le(b, a));
     b <-> a;
-    log(debug, str::unsafe::slice_bytes_safe_range("kitties", a, b));
+    log(debug, foo(a, b));
 }

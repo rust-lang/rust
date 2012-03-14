@@ -19,103 +19,73 @@ export enum;
 #[doc = "A signed integer with the same size as a C `char`."]
 type c_char = i8;
 
-#[doc(
-  brief = "A signed integer with the same size as a C `int`."
-)]
+#[doc = "A signed integer with the same size as a C `int`."]
 type c_int = i32;
 
-#[doc(
-  brief = "An unsigned integer with the same size as a C `unsigned int`."
-)]
+#[doc = "An unsigned integer with the same size as a C `unsigned int`."]
 type c_uint = u32;
 
-#[doc(
-  brief = "A signed integer with the same size as a C `long`."
-)]
+#[doc = "A signed integer with the same size as a C `long`."]
 type long = int;
 
-#[doc(
-  brief = "A signed integer with the same size as a C `long long`."
-)]
+#[doc = "A signed integer with the same size as a C `long long`."]
 type longlong = i64;
 
-#[doc(
-  brief = "A signed integer with the same size as a C `unsigned int`."
-)]
+#[doc = "A signed integer with the same size as a C `unsigned int`."]
 type unsigned = u32;
 
-#[doc(
-  brief = "A signed integer with the same size as a C `unsigned long`."
-)]
+#[doc = "A signed integer with the same size as a C `unsigned long`."]
 type ulong = uint;
 
-#[doc(
-  brief = "A signed integer with the same size as a C `unsigned long long`."
-)]
+#[doc = "A signed integer with the same size as a C `unsigned long long`."]
 type ulonglong = u64;
 
-#[doc(
-  brief = "A signed integer with the same size as a pointer. \
-           This is guaranteed to always be the same type as a \
-            Rust `int`."
-)]
+#[doc = "
+A signed integer with the same size as a pointer.  This is guaranteed
+to always be the same type as a Rust `int`.
+"]
 type intptr_t = uint; // FIXME: int
 
-#[doc(
-  brief = "An unsigned integer with the same size as a pointer. \
-           This is guaranteed to always be the same type as a Rust \
-           `uint`."
-)]
+#[doc = "
+An unsigned integer with the same size as a pointer.  This is
+guaranteed to always be the same type as a Rust `uint`.
+"]
 type uintptr_t = uint;
 type uint32_t = u32;
 
-#[doc(
-  brief = "A type, a pointer to which can be used as C `void *`.",
-  desc = "The void type cannot be constructed or destructured, \
-         but using pointers to this type when interoperating \
-         with C void pointers can help in documentation."
-)]
+#[doc = "
+A type, a pointer to which can be used as C `void *`.
+
+The void type cannot be constructed or destructured, but using
+pointers to this type when interoperating with C void pointers can
+help in documentation.
+"]
 enum void {}
 
-#[doc(
-  brief = "A float value with the same size as a C `float`."
-)]
+#[doc = "A float value with the same size as a C `float`."]
 type c_float = f32;
 
-#[doc(
-  brief = "A float value with the same size as a C `double`."
-)]
+#[doc = "A float value with the same size as a C `double`."]
 type c_double = f64;
 
-#[doc(
-  brief = "An unsigned integer corresponding to the C `size_t`."
-)]
+#[doc = "An unsigned integer corresponding to the C `size_t`."]
 type size_t = uint;
 
-#[doc(
-  brief = "A signed integer corresponding to the C `ssize_t`."
-)]
+#[doc = "A signed integer corresponding to the C `ssize_t`."]
 type ssize_t = int;
 
-#[doc(
-  brief = "An unsigned integer corresponding to the C `off_t`."
-)]
+#[doc = "An unsigned integer corresponding to the C `off_t`."]
 type off_t = uint;
 
-#[doc(
-  brief = "A type that can be used for C file descriptors."
-)]
+#[doc = "A type that can be used for C file descriptors."]
 type fd_t = i32;      // not actually a C type, but should be.
 
-#[doc(
-  brief = "A type for representing process ID's, corresponding to C `pid_t`."
-)]
+#[doc = "A type for representing process ID's, corresponding to C `pid_t`."]
 type pid_t = i32;
 
-#[doc(
-  brief = "An unsigned integer with the same size as a C enum. \
-           enum is implementation-defined, but is 32-bits in \
-           practice"
-)]
+#[doc = "
+An unsigned integer with the same size as a C enum.  enum is
+implementation-defined, but is 32-bits in practice
+"]
 type enum = u32;
 

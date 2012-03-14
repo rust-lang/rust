@@ -1,3 +1,3 @@
 fn main() -> char {
-//!^ ERROR wrong type in main function: found `native fn() -> char`
+//!^ ERROR Wrong type in main function: found `native fn() -> char`
 }

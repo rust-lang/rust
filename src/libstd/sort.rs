@@ -1,49 +1,54 @@
-/*
-Module: sort
-
-Sorting methods
-*/
-import vec::{len, slice};
+#[doc = "Sorting methods"];
+import vec::len;
 
 export merge_sort;
 export quick_sort;
 export quick_sort3;
 
-/* Type: le */
 type le<T> = fn(T, T) -> bool;
 
-/*
-Function: merge_sort
-
+#[doc = "
 Merge sort. Returns a new vector containing the sorted list.
 
 Has worst case O(n log n) performance, best case O(n), but
 is not space efficient. This is a stable sort.
-*/
+"]
 fn merge_sort<T: copy>(le: le<T>, v: [const T]) -> [T] {
+    type slice = (uint, uint);
+
+    ret merge_sort_(le, v, (0u, len(v)));
+
+    fn merge_sort_<T: copy>(le: le<T>, v: [const T], slice: slice) -> [T] {
+        let begin = tuple::first(slice);
+        let end = tuple::second(slice);
+
+        let v_len = end - begin;
+        if v_len == 0u { ret []; }
+        if v_len == 1u { ret [v[begin]]; }
+
+        let mid = v_len / 2u + begin;
+        let a = (begin, mid);
+        let b = (mid, end);
+        ret merge(le, merge_sort_(le, v, a), merge_sort_(le, v, b));
+    }
+
     fn merge<T: copy>(le: le<T>, a: [T], b: [T]) -> [T] {
-        let rs: [T] = [];
-        let a_len: uint = len::<T>(a);
-        let a_ix: uint = 0u;
-        let b_len: uint = len::<T>(b);
-        let b_ix: uint = 0u;
+        let rs = [];
+        vec::reserve(rs, len(a) + len(b));
+        let a_len = len(a);
+        let a_ix = 0u;
+        let b_len = len(b);
+        let b_ix = 0u;
         while a_ix < a_len && b_ix < b_len {
             if le(a[a_ix], b[b_ix]) {
                 rs += [a[a_ix]];
                 a_ix += 1u;
             } else { rs += [b[b_ix]]; b_ix += 1u; }
         }
-        rs += slice::<T>(a, a_ix, a_len);
-        rs += slice::<T>(b, b_ix, b_len);
+        rs += vec::slice(a, a_ix, a_len);
+        rs += vec::slice(b, b_ix, b_len);
         ret rs;
     }
-    let v_len: uint = len::<T>(v);
-    if v_len == 0u { ret []; }
-    if v_len == 1u { ret [v[0]]; }
-    let mid: uint = v_len / 2u;
-    let a: [T] = slice::<T>(v, 0u, mid);
-    let b: [T] = slice::<T>(v, mid, v_len);
-    ret merge::<T>(le, merge_sort::<T>(le, a), merge_sort::<T>(le, b));
 }
 
 fn part<T: copy>(compare_func: le<T>, arr: [mutable T], left: uint,
@@ -76,14 +81,12 @@ fn qsort<T: copy>(compare_func: le<T>, arr: [mutable T], left: uint,
     }
 }
 
-/*
-Function: quick_sort
-
+#[doc = "
 Quicksort. Sorts a mutable vector in place.
 
 Has worst case O(n^2) performance, average case O(n log n).
 This is an unstable sort.
-*/
+"]
 fn quick_sort<T: copy>(compare_func: le<T>, arr: [mutable T]) {
     if len::<T>(arr) == 0u { ret; }
     qsort::<T>(compare_func, arr, 0u, len::<T>(arr) - 1u);
@@ -97,7 +100,7 @@ fn qsort3<T: copy>(compare_func_lt: le<T>, compare_func_eq: le<T>,
     let j: int = right;
     let p: int = i;
     let q: int = j;
-    while true {
+    loop {
         i += 1;
         while compare_func_lt(copy arr[i], v) { i += 1; }
         j -= 1;
@@ -138,18 +141,16 @@ fn qsort3<T: copy>(compare_func_lt: le<T>, compare_func_eq: le<T>,
 }
 
 // FIXME: This should take lt and eq types
-/*
-Function: quick_sort3
-
+#[doc = "
 Fancy quicksort. Sorts a mutable vector in place.
 
-Based on algorithm presented by Sedgewick and Bentley
-<http://www.cs.princeton.edu/~rs/talks/QuicksortIsOptimal.pdf>.
+Based on algorithm presented by [Sedgewick and Bentley]
+(http://www.cs.princeton.edu/~rs/talks/QuicksortIsOptimal.pdf).
 According to these slides this is the algorithm of choice for
 'randomly ordered keys, abstract compare' & 'small number of key values'.
 
 This is an unstable sort.
-*/
+"]
 fn quick_sort3<T: copy>(compare_func_lt: le<T>, compare_func_eq: le<T>,
                        arr: [mutable T]) {
     if len::<T>(arr) == 0u { ret; }
@@ -252,8 +253,6 @@ mod test_qsort {
 
         let immut_names = vec::from_mut(names);
 
-        // Silly, but what else can we do?
-        check (vec::same_length(expected, immut_names));
         let pairs = vec::zip(expected, immut_names);
         for (a, b) in pairs { #debug("%d %d", a, b); assert (a == b); }
     }

@@ -37,6 +37,7 @@ public:
     ~rust_scheduler();
 
     void start_task_threads();
+    void join_task_threads();
     void kill_all_tasks();
     rust_task_id create_task(rust_task *spawner,
 			     const char *name,

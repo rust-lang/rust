@@ -1,24 +1,24 @@
 // xfail-win32 leaks
 // Issue #787
-// Don't try to clean up uninitizaed locals
+// Don't try to clean up uninitialized locals
 
 use std;
 
-fn test_break() { while true { let x: @int = break; } }
+fn test_break() { loop { let x: @int = break; } }
 
 fn test_cont() { let i = 0; while i < 1 { i += 1; let x: @int = cont; } }
 
 fn test_ret() { let x: @int = ret; }
 
 fn test_fail() {
-    fn f() { task::unsupervise(); let x: @int = fail; }
-    task::spawn {|| f(); };
+    fn f() { let x: @int = fail; }
+    task::try {|| f() };
 }
 
 fn test_fail_indirect() {
     fn f() -> ! { fail; }
-    fn g() { task::unsupervise(); let x: @int = f(); }
-    task::spawn {|| g(); };
+    fn g() { let x: @int = f(); }
+    task::try {|| g() };
 }
 
 fn main() {

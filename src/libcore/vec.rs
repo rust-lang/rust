@@ -1,169 +1,166 @@
-/*
-Module: vec
-*/
-
 import option::{some, none};
 import uint::next_power_of_two;
 import ptr::addr_of;
 
+export init_op;
+export is_empty;
+export is_not_empty;
+export same_length;
+export reserve;
+export len;
+export from_fn;
+export from_elem;
+export to_mut;
+export from_mut;
+export head;
+export tail;
+export tailn;
+export init;
+export last;
+export last_opt;
+export slice;
+export split;
+export splitn;
+export rsplit;
+export rsplitn;
+export shift;
+export pop;
+export push;
+export grow;
+export grow_fn;
+export grow_set;
+export map;
+export map2;
+export filter_map;
+export filter;
+export concat;
+export connect;
+export foldl;
+export foldr;
+export any;
+export any2;
+export all;
+export all2;
+export contains;
+export count;
+export find;
+export find_from;
+export rfind;
+export rfind_from;
+export position_elt;
+export position;
+export position_from;
+export position_elt;
+export rposition;
+export rposition_from;
+export unzip;
+export zip;
+export swap;
+export reverse;
+export reversed;
+export iter;
+export iter2;
+export iteri;
+export riter;
+export riteri;
+export permute;
+export windowed;
+export as_buf;
+export as_mut_buf;
+export vec_len;
+export unsafe;
+export u8;
+
 #[abi = "rust-intrinsic"]
 native mod rusti {
-    fn vec_len<T>(&&v: [const T]) -> ctypes::size_t;
+    fn vec_len<T>(&&v: [const T]) -> libc::size_t;
 }
 
 #[abi = "cdecl"]
 native mod rustrt {
     fn vec_reserve_shared<T>(t: *sys::type_desc,
                              &v: [const T],
-                             n: ctypes::size_t);
+                             n: libc::size_t);
     fn vec_from_buf_shared<T>(t: *sys::type_desc,
                               ptr: *T,
-                              count: ctypes::size_t) -> [T];
+                              count: libc::size_t) -> [T];
 }
 
-/*
-Type: init_op
-
-A function used to initialize the elements of a vector.
-*/
+#[doc = "A function used to initialize the elements of a vector"]
 type init_op<T> = fn(uint) -> T;
 
-
-/*
-Predicate: is_empty
-
-Returns true if a vector contains no elements.
-*/
+#[doc = "Returns true if a vector contains no elements"]
 pure fn is_empty<T>(v: [const T]) -> bool {
     // FIXME: This would be easier if we could just call len
     for t: T in v { ret false; }
     ret true;
 }
 
-/*
-Predicate: is_not_empty
-
-Returns true if a vector contains some elements.
-*/
+#[doc = "Returns true if a vector contains some elements"]
 pure fn is_not_empty<T>(v: [const T]) -> bool { ret !is_empty(v); }
 
-/*
-Predicate: same_length
-
-Returns true if two vectors have the same length
-*/
-pure fn same_length<T, U>(xs: [T], ys: [U]) -> bool {
+#[doc = "Returns true if two vectors have the same length"]
+pure fn same_length<T, U>(xs: [const T], ys: [const U]) -> bool {
     vec::len(xs) == vec::len(ys)
 }
 
-/*
-Function: reserve
-
+#[doc = "
 Reserves capacity for `n` elements in the given vector.
 
 If the capacity for `v` is already equal to or greater than the requested
 capacity, then no action is taken.
 
-Parameters:
+# Arguments
 
-v - A vector
-n - The number of elements to reserve space for
-*/
+* v - A vector
+* n - The number of elements to reserve space for
+"]
 fn reserve<T>(&v: [const T], n: uint) {
     rustrt::vec_reserve_shared(sys::get_type_desc::<T>(), v, n);
 }
 
-/*
-Function: len
-
-Returns the length of a vector
-*/
+#[doc = "Returns the length of a vector"]
+#[inline(always)]
 pure fn len<T>(v: [const T]) -> uint { unchecked { rusti::vec_len(v) } }
 
-/*
-Function: init_fn
-
+#[doc = "
 Creates and initializes an immutable vector.
 
 Creates an immutable vector of size `n_elts` and initializes the elements
 to the value returned by the function `op`.
-*/
-fn init_fn<T>(n_elts: uint, op: init_op<T>) -> [T] {
-    let v = [];
+"]
+fn from_fn<T>(n_elts: uint, op: init_op<T>) -> [T] {
+    let mut v = [];
     reserve(v, n_elts);
-    let i: uint = 0u;
+    let mut i: uint = 0u;
     while i < n_elts { v += [op(i)]; i += 1u; }
     ret v;
 }
 
-// TODO: Remove me once we have slots.
-/*
-Function: init_fn_mut
-
-Creates and initializes a mutable vector.
-
-Creates a mutable vector of size `n_elts` and initializes the elements to
-the value returned by the function `op`.
-*/
-fn init_fn_mut<T>(n_elts: uint, op: init_op<T>) -> [mutable T] {
-    let v = [mutable];
-    reserve(v, n_elts);
-    let i: uint = 0u;
-    while i < n_elts { v += [mutable op(i)]; i += 1u; }
-    ret v;
-}
-
-/*
-Function: init_elt
-
+#[doc = "
 Creates and initializes an immutable vector.
 
 Creates an immutable vector of size `n_elts` and initializes the elements
 to the value `t`.
-*/
-fn init_elt<T: copy>(n_elts: uint, t: T) -> [T] {
-    let v = [];
+"]
+fn from_elem<T: copy>(n_elts: uint, t: T) -> [T] {
+    let mut v = [];
     reserve(v, n_elts);
-    let i: uint = 0u;
+    let mut i: uint = 0u;
     while i < n_elts { v += [t]; i += 1u; }
-    ret v;
-}
-
-// TODO: Remove me once we have slots.
-/*
-Function: init_elt_mut
-
-Creates and initializes a mutable vector.
-
-Creates a mutable vector of size `n_elts` and initializes the elements
-to the value `t`.
-*/
-fn init_elt_mut<T: copy>(n_elts: uint, t: T) -> [mutable T] {
-    let v = [mutable];
-    reserve(v, n_elts);
-    let i: uint = 0u;
-    while i < n_elts { v += [mutable t]; i += 1u; }
     ret v;
 }
 
 // FIXME: Possible typestate postcondition:
 // len(result) == len(v) (needs issue #586)
-/*
-Function: to_mut
-
-Produces a mutable vector from an immutable vector.
-*/
+#[doc = "Produces a mutable vector from an immutable vector."]
 fn to_mut<T>(+v: [T]) -> [mutable T] unsafe {
     let r = ::unsafe::reinterpret_cast(v);
     ::unsafe::leak(v);
     r
 }
 
-/*
-Function: from_mut
-
-Produces an immutable vector from a mutable vector.
-*/
+#[doc = "Produces an immutable vector from a mutable vector."]
 fn from_mut<T>(+v: [mutable T]) -> [T] unsafe {
     let r = ::unsafe::reinterpret_cast(v);
     ::unsafe::leak(v);
@@ -172,120 +169,65 @@ fn from_mut<T>(+v: [mutable T]) -> [T] unsafe {
 
 // Accessors
 
-/*
-Function: head
+#[doc = "Returns the first element of a vector"]
+pure fn head<T: copy>(v: [const T]) -> T { v[0] }
 
-Returns the first element of a vector
-
-Predicates:
-<is_not_empty> (v)
-*/
-pure fn head<T: copy>(v: [const T]) : is_not_empty(v) -> T { ret v[0]; }
-
-/*
-Function: tail
-
-Returns all but the first element of a vector
-*/
+#[doc = "Returns all but the first element of a vector"]
 fn tail<T: copy>(v: [const T]) -> [T] {
     ret slice(v, 1u, len(v));
 }
 
-/*
-Function tail_n
-
-Returns all but the first N elements of a vector
-*/
-
-fn tail_n<T: copy>(v: [const T], n: uint) -> [T] {
+#[doc = "Returns all but the first `n` elements of a vector"]
+fn tailn<T: copy>(v: [const T], n: uint) -> [T] {
     slice(v, n, len(v))
 }
 
-// FIXME: This name is sort of confusing next to init_fn, etc
+// FIXME: This name is sort of confusing next to from_fn, etc
 // but this is the name haskell uses for this function,
 // along with head/tail/last.
-/*
-Function: init
-
-Returns all but the last elemnt of a vector
-
-Preconditions:
-`v` is not empty
-*/
+#[doc = "Returns all but the last elemnt of a vector"]
 fn init<T: copy>(v: [const T]) -> [T] {
     assert len(v) != 0u;
     slice(v, 0u, len(v) - 1u)
 }
 
-/*
-Function: last
-
-Returns the last element of a vector
-
-Returns:
-
-An option containing the last element of `v` if `v` is not empty, or
-none if `v` is empty.
-*/
-pure fn last<T: copy>(v: [const T]) -> option<T> {
-    if len(v) == 0u { ret none; }
-    ret some(v[len(v) - 1u]);
+#[doc = "
+Returns the last element of a `v`, failing if the vector is empty.
+"]
+pure fn last<T: copy>(v: [const T]) -> T {
+    if len(v) == 0u { fail "last_unsafe: empty vector" }
+    v[len(v) - 1u]
 }
 
-/*
-Function: last_total
-
-Returns the last element of a non-empty vector `v`
-
-Predicates:
-<is_not_empty> (v)
-*/
-pure fn last_total<T: copy>(v: [const T]) : is_not_empty(v) -> T {
-    ret v[len(v) - 1u];
+#[doc = "
+Returns some(x) where `x` is the last element of a vector `v`,
+or none if the vector is empty.
+"]
+pure fn last_opt<T: copy>(v: [const T]) -> option<T> {
+   if len(v) == 0u { ret none; }
+    some(v[len(v) - 1u])
 }
 
-/*
-Function: slice
-
-Returns a copy of the elements from [`start`..`end`) from `v`.
-*/
+#[doc = "Returns a copy of the elements from [`start`..`end`) from `v`."]
 fn slice<T: copy>(v: [const T], start: uint, end: uint) -> [T] {
     assert (start <= end);
     assert (end <= len(v));
-    let result = [];
+    let mut result = [];
     reserve(result, end - start);
-    let i = start;
+    let mut i = start;
     while i < end { result += [v[i]]; i += 1u; }
     ret result;
 }
 
-// TODO: Remove me once we have slots.
-/*
-Function: slice_mut
-
-Returns a copy of the elements from [`start`..`end`) from `v`.
-*/
-fn slice_mut<T: copy>(v: [const T], start: uint, end: uint) -> [mutable T] {
-    assert (start <= end);
-    assert (end <= len(v));
-    let result = [mutable];
-    reserve(result, end - start);
-    let i = start;
-    while i < end { result += [mutable v[i]]; i += 1u; }
-    ret result;
-}
-
-/*
-Function: split
-
+#[doc = "
 Split the vector `v` by applying each element against the predicate `f`.
-*/
-fn split<T: copy>(v: [T], f: fn(T) -> bool) -> [[T]] {
+"]
+fn split<T: copy>(v: [const T], f: fn(T) -> bool) -> [[T]] {
     let ln = len(v);
     if (ln == 0u) { ret [] }
 
-    let start = 0u;
-    let result = [];
+    let mut start = 0u;
+    let mut result = [];
     while start < ln {
         alt position_from(v, start, ln, f) {
           none { break }
@@ -299,19 +241,17 @@ fn split<T: copy>(v: [T], f: fn(T) -> bool) -> [[T]] {
     result
 }
 
-/*
-Function: splitn
-
+#[doc = "
 Split the vector `v` by applying each element against the predicate `f` up
 to `n` times.
-*/
-fn splitn<T: copy>(v: [T], n: uint, f: fn(T) -> bool) -> [[T]] {
+"]
+fn splitn<T: copy>(v: [const T], n: uint, f: fn(T) -> bool) -> [[T]] {
     let ln = len(v);
     if (ln == 0u) { ret [] }
 
-    let start = 0u;
-    let count = n;
-    let result = [];
+    let mut start = 0u;
+    let mut count = n;
+    let mut result = [];
     while start < ln && count > 0u {
         alt position_from(v, start, ln, f) {
           none { break }
@@ -327,18 +267,16 @@ fn splitn<T: copy>(v: [T], n: uint, f: fn(T) -> bool) -> [[T]] {
     result
 }
 
-/*
-Function: rsplit
-
+#[doc = "
 Reverse split the vector `v` by applying each element against the predicate
 `f`.
-*/
-fn rsplit<T: copy>(v: [T], f: fn(T) -> bool) -> [[T]] {
+"]
+fn rsplit<T: copy>(v: [const T], f: fn(T) -> bool) -> [[T]] {
     let ln = len(v);
     if (ln == 0u) { ret [] }
 
-    let end = ln;
-    let result = [];
+    let mut end = ln;
+    let mut result = [];
     while end > 0u {
         alt rposition_from(v, 0u, end, f) {
           none { break }
@@ -352,19 +290,17 @@ fn rsplit<T: copy>(v: [T], f: fn(T) -> bool) -> [[T]] {
     reversed(result)
 }
 
-/*
-Function: rsplitn
-
+#[doc = "
 Reverse split the vector `v` by applying each element against the predicate
 `f` up to `n times.
-*/
-fn rsplitn<T: copy>(v: [T], n: uint, f: fn(T) -> bool) -> [[T]] {
+"]
+fn rsplitn<T: copy>(v: [const T], n: uint, f: fn(T) -> bool) -> [[T]] {
     let ln = len(v);
     if (ln == 0u) { ret [] }
 
-    let end = ln;
-    let count = n;
-    let result = [];
+    let mut end = ln;
+    let mut count = n;
+    let mut result = [];
     while end > 0u && count > 0u {
         alt rposition_from(v, 0u, end, f) {
           none { break }
@@ -382,11 +318,7 @@ fn rsplitn<T: copy>(v: [T], n: uint, f: fn(T) -> bool) -> [[T]] {
 
 // Mutators
 
-/*
-Function: shift
-
-Removes the first element from a vector and return it
-*/
+#[doc = "Removes the first element from a vector and return it"]
 fn shift<T: copy>(&v: [const T]) -> T {
     let ln = len::<T>(v);
     assert (ln > 0u);
@@ -395,11 +327,7 @@ fn shift<T: copy>(&v: [const T]) -> T {
     ret e;
 }
 
-/*
-Function: pop
-
-Remove the last element from a vector and return it
-*/
+#[doc = "Remove the last element from a vector and return it"]
 fn pop<T>(&v: [const T]) -> T unsafe {
     let ln = len(v);
     assert ln > 0u;
@@ -409,147 +337,96 @@ fn pop<T>(&v: [const T]) -> T unsafe {
     val
 }
 
-#[inline]
-/*
-Function: push
-
-Append an element to a vector
-*/
-fn push<T: copy>(&v: [T], initval: T) {
+#[doc = "Append an element to a vector"]
+fn push<T: copy>(&v: [const T], initval: T) {
     v += [initval];
 }
-
-// TODO: More.
 
 
 // Appending
 
-/*
-Function: grow
-
+#[doc = "
 Expands a vector in place, initializing the new elements to a given value
 
-Parameters:
+# Arguments
 
-v - The vector to grow
-n - The number of elements to add
-initval - The value for the new elements
-*/
-fn grow<T: copy>(&v: [T], n: uint, initval: T) {
+* v - The vector to grow
+* n - The number of elements to add
+* initval - The value for the new elements
+"]
+fn grow<T: copy>(&v: [const T], n: uint, initval: T) {
     reserve(v, next_power_of_two(len(v) + n));
-    let i: uint = 0u;
+    let mut i: uint = 0u;
     while i < n { v += [initval]; i += 1u; }
 }
 
-// TODO: Remove me once we have slots.
-// FIXME: Can't grow take a [const T]
-/*
-Function: grow_mut
-
-Expands a vector in place, initializing the new elements to a given value
-
-Parameters:
-
-v - The vector to grow
-n - The number of elements to add
-initval - The value for the new elements
-*/
-fn grow_mut<T: copy>(&v: [mutable T], n: uint, initval: T) {
-    reserve(v, next_power_of_two(len(v) + n));
-    let i: uint = 0u;
-    while i < n { v += [mutable initval]; i += 1u; }
-}
-
-/*
-Function: grow_fn
-
-Expands a vector in place, initializing the new elements to the result of a
-function
+#[doc = "
+Expands a vector in place, initializing the new elements to the result of
+a function
 
 Function `init_op` is called `n` times with the values [0..`n`)
 
-Parameters:
+# Arguments
 
-v - The vector to grow
-n - The number of elements to add
-init_op - A function to call to retreive each appended element's value
-*/
-fn grow_fn<T>(&v: [T], n: uint, op: init_op<T>) {
+* v - The vector to grow
+* n - The number of elements to add
+* init_op - A function to call to retreive each appended element's
+            value
+"]
+fn grow_fn<T>(&v: [const T], n: uint, op: init_op<T>) {
     reserve(v, next_power_of_two(len(v) + n));
-    let i: uint = 0u;
+    let mut i: uint = 0u;
     while i < n { v += [op(i)]; i += 1u; }
 }
 
-/*
-Function: grow_set
-
+#[doc = "
 Sets the value of a vector element at a given index, growing the vector as
 needed
 
 Sets the element at position `index` to `val`. If `index` is past the end
 of the vector, expands the vector by replicating `initval` to fill the
 intervening space.
-*/
+"]
 fn grow_set<T: copy>(&v: [mutable T], index: uint, initval: T, val: T) {
-    if index >= len(v) { grow_mut(v, index - len(v) + 1u, initval); }
+    if index >= len(v) { grow(v, index - len(v) + 1u, initval); }
     v[index] = val;
 }
 
 
 // Functional utilities
 
-/*
-Function: map
-
+#[doc ="
 Apply a function to each element of a vector and return the results
-*/
+"]
 fn map<T, U>(v: [T], f: fn(T) -> U) -> [U] {
-    let result = [];
+    let mut result = [];
     reserve(result, len(v));
     for elem: T in v { result += [f(elem)]; }
     ret result;
 }
 
-/*
-Function: map_mut
-
-Apply a function to each element of a mutable vector and return the results
-*/
-fn map_mut<T: copy, U>(v: [const T], f: fn(T) -> U) -> [U] {
-    let result = [];
-    reserve(result, len(v));
-    for elem: T in v {
-        // copy satisfies alias checker
-        result += [f(copy elem)];
-    }
-    ret result;
-}
-
-/*
-Function: map2
-
+#[doc = "
 Apply a function to each pair of elements and return the results
-*/
-fn map2<T: copy, U: copy, V>(v0: [T], v1: [U], f: fn(T, U) -> V) -> [V] {
+"]
+fn map2<T: copy, U: copy, V>(v0: [const T], v1: [const U],
+                             f: fn(T, U) -> V) -> [V] {
     let v0_len = len(v0);
     if v0_len != len(v1) { fail; }
-    let u: [V] = [];
-    let i = 0u;
+    let mut u: [V] = [];
+    let mut i = 0u;
     while i < v0_len { u += [f(copy v0[i], copy v1[i])]; i += 1u; }
     ret u;
 }
 
-/*
-Function: filter_map
-
+#[doc = "
 Apply a function to each element of a vector and return the results
 
 If function `f` returns `none` then that element is excluded from
 the resulting vector.
-*/
+"]
 fn filter_map<T: copy, U: copy>(v: [const T], f: fn(T) -> option<U>)
     -> [U] {
-    let result = [];
+    let mut result = [];
     for elem: T in v {
         alt f(copy elem) {
           none {/* no-op */ }
@@ -559,43 +436,38 @@ fn filter_map<T: copy, U: copy>(v: [const T], f: fn(T) -> option<U>)
     ret result;
 }
 
-/*
-Function: filter
-
+#[doc = "
 Construct a new vector from the elements of a vector for which some predicate
 holds.
 
 Apply function `f` to each element of `v` and return a vector containing
 only those elements for which `f` returned true.
-*/
+"]
 fn filter<T: copy>(v: [T], f: fn(T) -> bool) -> [T] {
-    let result = [];
+    let mut result = [];
     for elem: T in v {
         if f(elem) { result += [elem]; }
     }
     ret result;
 }
 
-/*
-Function: concat
+#[doc = "
+Concatenate a vector of vectors.
 
-Concatenate a vector of vectors. Flattens a vector of vectors of T into
-a single vector of T.
-*/
+Flattens a vector of vectors of T into a single vector of T.
+"]
 fn concat<T: copy>(v: [const [const T]]) -> [T] {
-    let new: [T] = [];
+    let mut new: [T] = [];
     for inner: [T] in v { new += inner; }
     ret new;
 }
 
-/*
-Function: connect
-
+#[doc = "
 Concatenate a vector of vectors, placing a given separator between each
-*/
+"]
 fn connect<T: copy>(v: [const [const T]], sep: T) -> [T] {
-    let new: [T] = [];
-    let first = true;
+    let mut new: [T] = [];
+    let mut first = true;
     for inner: [T] in v {
         if first { first = false; } else { push(new, sep); }
         new += inner;
@@ -603,55 +475,43 @@ fn connect<T: copy>(v: [const [const T]], sep: T) -> [T] {
     ret new;
 }
 
-/*
-Function: foldl
-
-Reduce a vector from left to right
-*/
+#[doc = "Reduce a vector from left to right"]
 fn foldl<T: copy, U>(z: T, v: [const U], p: fn(T, U) -> T) -> T {
-    let accum = z;
+    let mut accum = z;
     iter(v) { |elt|
         accum = p(accum, elt);
     }
     ret accum;
 }
 
-/*
-Function: foldr
-
-Reduce a vector from right to left
-*/
+#[doc = "Reduce a vector from right to left"]
 fn foldr<T, U: copy>(v: [const T], z: U, p: fn(T, U) -> U) -> U {
-    let accum = z;
+    let mut accum = z;
     riter(v) { |elt|
         accum = p(elt, accum);
     }
     ret accum;
 }
 
-/*
-Function: any
-
+#[doc = "
 Return true if a predicate matches any elements
 
 If the vector contains no elements then false is returned.
-*/
+"]
 fn any<T>(v: [T], f: fn(T) -> bool) -> bool {
     for elem: T in v { if f(elem) { ret true; } }
     ret false;
 }
 
-/*
-Function: any2
-
+#[doc = "
 Return true if a predicate matches any elements in both vectors.
 
 If the vectors contains no elements then false is returned.
-*/
-fn any2<T, U>(v0: [T], v1: [U], f: fn(T, U) -> bool) -> bool {
+"]
+fn any2<T, U>(v0: [const T], v1: [U], f: fn(T, U) -> bool) -> bool {
     let v0_len = len(v0);
     let v1_len = len(v1);
-    let i = 0u;
+    let mut i = 0u;
     while i < v0_len && i < v1_len {
         if f(v0[i], v1[i]) { ret true; };
         i += 1u;
@@ -659,194 +519,148 @@ fn any2<T, U>(v0: [T], v1: [U], f: fn(T, U) -> bool) -> bool {
     ret false;
 }
 
-/*
-Function: all
-
+#[doc = "
 Return true if a predicate matches all elements
 
 If the vector contains no elements then true is returned.
-*/
+"]
 fn all<T>(v: [T], f: fn(T) -> bool) -> bool {
     for elem: T in v { if !f(elem) { ret false; } }
     ret true;
 }
 
-/*
-Function: all2
-
+#[doc = "
 Return true if a predicate matches all elements in both vectors.
 
 If the vectors are not the same size then false is returned.
-*/
-fn all2<T, U>(v0: [T], v1: [U], f: fn(T, U) -> bool) -> bool {
+"]
+fn all2<T, U>(v0: [const T], v1: [const U], f: fn(T, U) -> bool) -> bool {
     let v0_len = len(v0);
     if v0_len != len(v1) { ret false; }
-    let i = 0u;
+    let mut i = 0u;
     while i < v0_len { if !f(v0[i], v1[i]) { ret false; }; i += 1u; }
     ret true;
 }
 
-/*
-Function: contains
-
-Return true if a vector contains an element with the given value
-*/
-fn contains<T>(v: [T], x: T) -> bool {
+#[doc = "Return true if a vector contains an element with the given value"]
+fn contains<T>(v: [const T], x: T) -> bool {
     for elt: T in v { if x == elt { ret true; } }
     ret false;
 }
 
-/*
-Function: count
-
-Returns the number of elements that are equal to a given value
-*/
+#[doc = "Returns the number of elements that are equal to a given value"]
 fn count<T>(v: [const T], x: T) -> uint {
-    let cnt = 0u;
+    let mut cnt = 0u;
     for elt: T in v { if x == elt { cnt += 1u; } }
     ret cnt;
 }
 
-/*
-Function: find
-
+#[doc = "
 Search for the first element that matches a given predicate
 
 Apply function `f` to each element of `v`, starting from the first.
 When function `f` returns true then an option containing the element
 is returned. If `f` matches no elements then none is returned.
-*/
-fn find<T: copy>(v: [T], f: fn(T) -> bool) -> option<T> {
+"]
+fn find<T: copy>(v: [const T], f: fn(T) -> bool) -> option<T> {
     find_from(v, 0u, len(v), f)
 }
 
-/*
-Function: find_from
-
+#[doc = "
 Search for the first element that matches a given predicate within a range
 
 Apply function `f` to each element of `v` within the range [`start`, `end`).
 When function `f` returns true then an option containing the element
 is returned. If `f` matches no elements then none is returned.
-*/
-fn find_from<T: copy>(v: [T], start: uint, end: uint, f: fn(T) -> bool) ->
-  option<T> {
+"]
+fn find_from<T: copy>(v: [const T], start: uint, end: uint,
+                      f: fn(T) -> bool) -> option<T> {
     option::map(position_from(v, start, end, f)) { |i| v[i] }
 }
 
-/*
-Function: rfind
-
+#[doc = "
 Search for the last element that matches a given predicate
 
 Apply function `f` to each element of `v` in reverse order. When function `f`
 returns true then an option containing the element is returned. If `f`
 matches no elements then none is returned.
-*/
-fn rfind<T: copy>(v: [T], f: fn(T) -> bool) -> option<T> {
+"]
+fn rfind<T: copy>(v: [const T], f: fn(T) -> bool) -> option<T> {
     rfind_from(v, 0u, len(v), f)
 }
 
-/*
-Function: rfind_from
-
+#[doc = "
 Search for the last element that matches a given predicate within a range
 
 Apply function `f` to each element of `v` in reverse order within the range
 [`start`, `end`). When function `f` returns true then an option containing
 the element is returned. If `f` matches no elements then none is returned.
-*/
-fn rfind_from<T: copy>(v: [T], start: uint, end: uint, f: fn(T) -> bool) ->
-  option<T> {
+"]
+fn rfind_from<T: copy>(v: [const T], start: uint, end: uint,
+                       f: fn(T) -> bool) -> option<T> {
     option::map(rposition_from(v, start, end, f)) { |i| v[i] }
 }
 
-/*
-Function: position_elt
-
-Find the first index containing a matching value
-
-Returns:
-
-option::some(uint) - The first index containing a matching value
-option::none - No elements matched
-*/
-fn position_elt<T>(v: [T], x: T) -> option<uint> {
+#[doc = "Find the first index containing a matching value"]
+fn position_elt<T>(v: [const T], x: T) -> option<uint> {
     position(v) { |y| x == y }
 }
 
-/*
-Function: position
-
+#[doc = "
 Find the first index matching some predicate
 
 Apply function `f` to each element of `v`.  When function `f` returns true
 then an option containing the index is returned. If `f` matches no elements
 then none is returned.
-*/
-fn position<T>(v: [T], f: fn(T) -> bool) -> option<uint> {
+"]
+fn position<T>(v: [const T], f: fn(T) -> bool) -> option<uint> {
     position_from(v, 0u, len(v), f)
 }
 
-/*
-Function: position_from
-
+#[doc = "
 Find the first index matching some predicate within a range
 
 Apply function `f` to each element of `v` between the range [`start`, `end`).
 When function `f` returns true then an option containing the index is
 returned. If `f` matches no elements then none is returned.
-*/
-fn position_from<T>(v: [T], start: uint, end: uint, f: fn(T) -> bool) ->
-  option<uint> {
+"]
+fn position_from<T>(v: [const T], start: uint, end: uint,
+                    f: fn(T) -> bool) -> option<uint> {
     assert start <= end;
     assert end <= len(v);
-    let i = start;
+    let mut i = start;
     while i < end { if f(v[i]) { ret some::<uint>(i); } i += 1u; }
     ret none;
 }
 
-/*
-Function: rposition_elt
-
-Find the last index containing a matching value
-
-Returns:
-
-option::some(uint) - The last index containing a matching value
-option::none - No elements matched
-*/
-fn rposition_elt<T>(v: [T], x: T) -> option<uint> {
+#[doc = "Find the last index containing a matching value"]
+fn rposition_elt<T>(v: [const T], x: T) -> option<uint> {
     rposition(v) { |y| x == y }
 }
 
-/*
-Function: rposition
-
+#[doc = "
 Find the last index matching some predicate
 
 Apply function `f` to each element of `v` in reverse order.  When function
 `f` returns true then an option containing the index is returned. If `f`
 matches no elements then none is returned.
-*/
-fn rposition<T>(v: [T], f: fn(T) -> bool) -> option<uint> {
+"]
+fn rposition<T>(v: [const T], f: fn(T) -> bool) -> option<uint> {
     rposition_from(v, 0u, len(v), f)
 }
 
-/*
-Function: rposition_from
-
+#[doc = "
 Find the last index matching some predicate within a range
 
 Apply function `f` to each element of `v` in reverse order between the range
 [`start`, `end`). When function `f` returns true then an option containing
 the index is returned. If `f` matches no elements then none is returned.
-*/
-fn rposition_from<T>(v: [T], start: uint, end: uint, f: fn(T) -> bool) ->
-  option<uint> {
+"]
+fn rposition_from<T>(v: [const T], start: uint, end: uint,
+                     f: fn(T) -> bool) -> option<uint> {
     assert start <= end;
     assert end <= len(v);
-    let i = end;
+    let mut i = end;
     while i > start {
         if f(v[i - 1u]) { ret some::<uint>(i - 1u); }
         i -= 1u;
@@ -858,190 +672,145 @@ fn rposition_from<T>(v: [T], start: uint, end: uint, f: fn(T) -> bool) ->
 // saying the two result lists have the same length -- or, could
 // return a nominal record with a constraint saying that, instead of
 // returning a tuple (contingent on issue #869)
-/*
-Function: unzip
-
+#[doc = "
 Convert a vector of pairs into a pair of vectors
 
 Returns a tuple containing two vectors where the i-th element of the first
 vector contains the first element of the i-th tuple of the input vector,
 and the i-th element of the second vector contains the second element
 of the i-th tuple of the input vector.
-*/
-fn unzip<T: copy, U: copy>(v: [(T, U)]) -> ([T], [U]) {
-    let as = [], bs = [];
+"]
+fn unzip<T: copy, U: copy>(v: [const (T, U)]) -> ([T], [U]) {
+    let mut as = [], bs = [];
     for (a, b) in v { as += [a]; bs += [b]; }
     ret (as, bs);
 }
 
-/*
-Function: zip
-
+#[doc = "
 Convert two vectors to a vector of pairs
 
 Returns a vector of tuples, where the i-th tuple contains contains the
 i-th elements from each of the input vectors.
-
-Preconditions:
-
-<same_length> (v, u)
-*/
-fn zip<T: copy, U: copy>(v: [T], u: [U]) : same_length(v, u) -> [(T, U)] {
-    let zipped = [];
-    let sz = len(v), i = 0u;
-    assert (sz == len(u));
+"]
+fn zip<T: copy, U: copy>(v: [const T], u: [const U]) -> [(T, U)] {
+    let mut zipped = [];
+    let sz = len(v);
+    let mut i = 0u;
+    assert sz == len(u);
     while i < sz { zipped += [(v[i], u[i])]; i += 1u; }
     ret zipped;
 }
 
-/*
-Function: swap
-
+#[doc = "
 Swaps two elements in a vector
 
-Parameters:
-v - The input vector
-a - The index of the first element
-b - The index of the second element
-*/
+# Arguments
+
+* v  The input vector
+* a - The index of the first element
+* b - The index of the second element
+"]
 fn swap<T>(v: [mutable T], a: uint, b: uint) {
     v[a] <-> v[b];
 }
 
-/*
-Function: reverse
-
-Reverse the order of elements in a vector, in place
-*/
+#[doc = "Reverse the order of elements in a vector, in place"]
 fn reverse<T>(v: [mutable T]) {
-    let i: uint = 0u;
+    let mut i: uint = 0u;
     let ln = len::<T>(v);
     while i < ln / 2u { v[i] <-> v[ln - i - 1u]; i += 1u; }
 }
 
 
-/*
-Function: reversed
-
-Returns a vector with the order of elements reversed
-*/
+#[doc = "Returns a vector with the order of elements reversed"]
 fn reversed<T: copy>(v: [const T]) -> [T] {
-    let rs: [T] = [];
-    let i = len::<T>(v);
+    let mut rs: [T] = [];
+    let mut i = len::<T>(v);
     if i == 0u { ret rs; } else { i -= 1u; }
     while i != 0u { rs += [v[i]]; i -= 1u; }
     rs += [v[0]];
     ret rs;
 }
 
-// FIXME: Seems like this should take char params. Maybe belongs in char
-/*
-Function: enum_chars
-
-Returns a vector containing a range of chars
-*/
-fn enum_chars(start: u8, end: u8) : ::u8::le(start, end) -> [char] {
-    let i = start;
-    let r = [];
-    while i <= end { r += [i as char]; i += 1u as u8; }
-    ret r;
-}
-
-// FIXME: Probably belongs in uint. Compare to uint::range
-/*
-Function: enum_uints
-
-Returns a vector containing a range of uints
-*/
-fn enum_uints(start: uint, end: uint) : uint::le(start, end) -> [uint] {
-    let i = start;
-    let r = [];
-    while i <= end { r += [i]; i += 1u; }
-    ret r;
-}
-
-/*
-Function: iter
-
+#[doc = "
 Iterates over a vector
 
 Iterates over vector `v` and, for each element, calls function `f` with the
 element's value.
-
-*/
+"]
+#[inline(always)]
 fn iter<T>(v: [const T], f: fn(T)) {
-    iteri(v) { |_i, v| f(v) }
+    unsafe {
+        let mut n = vec::len(v);
+        let mut p = unsafe::to_ptr(v);
+        while n > 0u {
+            f(*p);
+            p = ptr::offset(p, 1u);
+            n -= 1u;
+        }
+    }
 }
 
-/*
-Function: iter2
-
-Iterates over two vectors in parallel
-
-*/
-fn iter2<U, T>(v: [U], v2: [T], f: fn(U, T)) {
-    let i = 0;
+#[doc = "Iterates over two vectors in parallel"]
+#[inline]
+fn iter2<U, T>(v: [ U], v2: [const T], f: fn(U, T)) {
+    let mut i = 0;
     for elt in v { f(elt, v2[i]); i += 1; }
 }
 
-/*
-Function: iteri
-
+#[doc = "
 Iterates over a vector's elements and indexes
 
 Iterates over vector `v` and, for each element, calls function `f` with the
 element's value and index.
-*/
+"]
+#[inline(always)]
 fn iteri<T>(v: [const T], f: fn(uint, T)) {
-    let i = 0u, l = len(v);
+    let mut i = 0u;
+    let l = len(v);
     while i < l { f(i, v[i]); i += 1u; }
 }
 
-/*
-Function: riter
-
+#[doc = "
 Iterates over a vector in reverse
 
 Iterates over vector `v` and, for each element, calls function `f` with the
 element's value.
-
-*/
+"]
 fn riter<T>(v: [const T], f: fn(T)) {
     riteri(v) { |_i, v| f(v) }
 }
 
-/*
-Function: riteri
-
+#[doc ="
 Iterates over a vector's elements and indexes in reverse
 
 Iterates over vector `v` and, for each element, calls function `f` with the
 element's value and index.
-*/
+"]
 fn riteri<T>(v: [const T], f: fn(uint, T)) {
-    let i = len(v);
+    let mut i = len(v);
     while 0u < i {
         i -= 1u;
         f(i, v[i]);
     };
 }
 
-/*
-Function: permute
+#[doc = "
+Iterate over all permutations of vector `v`.
 
-Iterate over all permutations of vector `v`.  Permutations are produced in
-lexicographic order with respect to the order of elements in `v` (so if `v`
-is sorted then the permutations are lexicographically sorted).
+Permutations are produced in lexicographic order with respect to the order of
+elements in `v` (so if `v` is sorted then the permutations are
+lexicographically sorted).
 
 The total number of permutations produced is `len(v)!`.  If `v` contains
 repeated elements, then some permutations are repeated.
-*/
-fn permute<T: copy>(v: [const T], put: fn([T])) {
+"]
+fn permute<T: copy>(v: [T], put: fn([T])) {
   let ln = len(v);
   if ln == 0u {
     put([]);
   } else {
-    let i = 0u;
+    let mut i = 0u;
     while i < ln {
       let elt = v[i];
       let rest = slice(v, 0u, i) + slice(v, i+1u, ln);
@@ -1051,8 +820,8 @@ fn permute<T: copy>(v: [const T], put: fn([T])) {
   }
 }
 
-fn windowed <TT: copy> (nn: uint, xx: [TT]) -> [[TT]] {
-   let ww = [];
+fn windowed <TT: copy> (nn: uint, xx: [const TT]) -> [[TT]] {
+   let mut ww = [];
 
    assert 1u <= nn;
 
@@ -1068,66 +837,57 @@ fn windowed <TT: copy> (nn: uint, xx: [TT]) -> [[TT]] {
    ret ww;
 }
 
-/*
-Function: to_ptr
+#[doc = "
+Work with the buffer of a vector.
 
-FIXME: We don't need this wrapper
-*/
-unsafe fn to_ptr<T>(v: [T]) -> *T { ret unsafe::to_ptr(v); }
-
-/*
-Function: as_buf
-
-Work with the buffer of a vector. Allows for unsafe manipulation
-of vector contents, which is useful for native interop.
-
-*/
+Allows for unsafe manipulation of vector contents, which is useful for native
+interop.
+"]
 fn as_buf<E,T>(v: [const E], f: fn(*E) -> T) -> T unsafe {
     let buf = unsafe::to_ptr(v); f(buf)
 }
 
+fn as_mut_buf<E,T>(v: [mutable E], f: fn(*mutable E) -> T) -> T unsafe {
+    let buf = unsafe::to_ptr(v) as *mutable E; f(buf)
+}
+
 impl vec_len<T> for [T] {
+    #[inline(always)]
     fn len() -> uint { len(self) }
 }
 
-/*
-Module: unsafe
-*/
 mod unsafe {
+    // FIXME: This should have crate visibility
     type vec_repr = {mutable fill: uint, mutable alloc: uint, data: u8};
 
-    /*
-    Function: from_buf
-
+    #[doc = "
     Constructs a vector from an unsafe pointer to a buffer
 
-    Parameters:
+    # Arguments
 
-    ptr - An unsafe pointer to a buffer of `T`
-    elts - The number of elements in the buffer
-    */
+    * ptr - An unsafe pointer to a buffer of `T`
+    * elts - The number of elements in the buffer
+    "]
+    #[inline(always)]
     unsafe fn from_buf<T>(ptr: *T, elts: uint) -> [T] {
         ret rustrt::vec_from_buf_shared(sys::get_type_desc::<T>(),
                                         ptr, elts);
     }
 
-    /*
-    Function: set_len
-
+    #[doc = "
     Sets the length of a vector
 
     This well explicitly set the size of the vector, without actually
     modifing its buffers, so it is up to the caller to ensure that
     the vector is actually the specified size.
-    */
+    "]
+    #[inline(always)]
     unsafe fn set_len<T>(&v: [const T], new_len: uint) {
         let repr: **vec_repr = ::unsafe::reinterpret_cast(addr_of(v));
         (**repr).fill = new_len * sys::size_of::<T>();
     }
 
-    /*
-    Function: to_ptr
-
+    #[doc = "
     Returns an unsafe pointer to the vector's buffer
 
     The caller must ensure that the vector outlives the pointer this
@@ -1135,37 +895,26 @@ mod unsafe {
 
     Modifying the vector may cause its buffer to be reallocated, which
     would also make any pointers to it invalid.
-    */
+    "]
+    #[inline(always)]
     unsafe fn to_ptr<T>(v: [const T]) -> *T {
         let repr: **vec_repr = ::unsafe::reinterpret_cast(addr_of(v));
         ret ::unsafe::reinterpret_cast(addr_of((**repr).data));
     }
 }
 
-/*
-Module: u8
-*/
 mod u8 {
     export cmp;
     export lt, le, eq, ne, ge, gt;
     export hash;
 
-    #[nolink]
-    #[abi = "cdecl"]
-    native mod libc {
-        fn memcmp(s1: *u8, s2: *u8, n: ctypes::size_t) -> ctypes::c_int;
-    }
-
-    /*
-    Function cmp
-
-    Bytewise string comparison
-    */
+    #[doc = "Bytewise string comparison"]
     pure fn cmp(&&a: [u8], &&b: [u8]) -> int unsafe {
         let a_len = len(a);
         let b_len = len(b);
-        let n = math::min(a_len, b_len) as ctypes::size_t;
-        let r = libc::memcmp(to_ptr(a), to_ptr(b), n) as int;
+        let n = uint::min(a_len, b_len) as libc::size_t;
+        let r = libc::memcmp(unsafe::to_ptr(a) as *libc::c_void,
+                             unsafe::to_ptr(b) as *libc::c_void, n) as int;
 
         if r != 0 { r } else {
             if a_len == b_len {
@@ -1178,58 +927,30 @@ mod u8 {
         }
     }
 
-    /*
-    Function: lt
-
-    Bytewise less than or equal
-    */
+    #[doc = "Bytewise less than or equal"]
     pure fn lt(&&a: [u8], &&b: [u8]) -> bool { cmp(a, b) < 0 }
 
-    /*
-    Function: le
-
-    Bytewise less than or equal
-    */
+    #[doc = "Bytewise less than or equal"]
     pure fn le(&&a: [u8], &&b: [u8]) -> bool { cmp(a, b) <= 0 }
 
-    /*
-    Function: eq
-
-    Bytewise equality
-    */
+    #[doc = "Bytewise equality"]
     pure fn eq(&&a: [u8], &&b: [u8]) -> bool unsafe { cmp(a, b) == 0 }
 
-    /*
-    Function: ne
-
-    Bytewise inequality
-    */
+    #[doc = "Bytewise inequality"]
     pure fn ne(&&a: [u8], &&b: [u8]) -> bool unsafe { cmp(a, b) != 0 }
 
-    /*
-    Function: ge
-
-    Bytewise greater than or equal
-    */
+    #[doc ="Bytewise greater than or equal"]
     pure fn ge(&&a: [u8], &&b: [u8]) -> bool { cmp(a, b) >= 0 }
 
-    /*
-    Function: gt
-
-    Bytewise greater than
-    */
+    #[doc = "Bytewise greater than"]
     pure fn gt(&&a: [u8], &&b: [u8]) -> bool { cmp(a, b) > 0 }
 
-    /*
-    Function: hash
-
-    String hash function
-    */
+    #[doc = "String hash function"]
     fn hash(&&s: [u8]) -> uint {
         // djb hash.
         // FIXME: replace with murmur.
 
-        let u: uint = 5381u;
+        let mut u: uint = 5381u;
         vec::iter(s, { |c| u *= 33u; u += c as uint; });
         ret u;
     }
@@ -1258,7 +979,7 @@ mod tests {
     fn test_unsafe_ptrs() unsafe {
         // Test on-stack copy-from-buf.
         let a = [1, 2, 3];
-        let ptr = to_ptr(a);
+        let ptr = unsafe::to_ptr(a);
         let b = unsafe::from_buf(ptr, 3u);
         assert (len(b) == 3u);
         assert (b[0] == 1);
@@ -1267,7 +988,7 @@ mod tests {
 
         // Test on-heap copy-from-buf.
         let c = [1, 2, 3, 4, 5];
-        ptr = to_ptr(c);
+        ptr = unsafe::to_ptr(c);
         let d = unsafe::from_buf(ptr, 5u);
         assert (len(d) == 5u);
         assert (d[0] == 1);
@@ -1278,16 +999,16 @@ mod tests {
     }
 
     #[test]
-    fn test_init_fn() {
-        // Test on-stack init_fn.
-        let v = init_fn(3u, square);
+    fn test_from_fn() {
+        // Test on-stack from_fn.
+        let v = from_fn(3u, square);
         assert (len(v) == 3u);
         assert (v[0] == 0u);
         assert (v[1] == 1u);
         assert (v[2] == 4u);
 
-        // Test on-heap init_fn.
-        v = init_fn(5u, square);
+        // Test on-heap from_fn.
+        v = from_fn(5u, square);
         assert (len(v) == 5u);
         assert (v[0] == 0u);
         assert (v[1] == 1u);
@@ -1297,15 +1018,15 @@ mod tests {
     }
 
     #[test]
-    fn test_init_elt() {
-        // Test on-stack init_elt.
-        let v = init_elt(2u, 10u);
+    fn test_from_elem() {
+        // Test on-stack from_elem.
+        let v = from_elem(2u, 10u);
         assert (len(v) == 2u);
         assert (v[0] == 10u);
         assert (v[1] == 10u);
 
-        // Test on-heap init_elt.
-        v = init_elt(6u, 20u);
+        // Test on-heap from_elem.
+        v = from_elem(6u, 20u);
         assert (v[0] == 20u);
         assert (v[1] == 20u);
         assert (v[2] == 20u);
@@ -1329,28 +1050,25 @@ mod tests {
     #[test]
     fn test_head() {
         let a = [11, 12];
-        check (is_not_empty(a));
         assert (head(a) == 11);
     }
 
     #[test]
     fn test_tail() {
         let a = [11];
-        check (is_not_empty(a));
         assert (tail(a) == []);
 
         a = [11, 12];
-        check (is_not_empty(a));
         assert (tail(a) == [12]);
     }
 
     #[test]
     fn test_last() {
-        let n = last([]);
+        let n = last_opt([]);
         assert (n == none);
-        n = last([1, 2, 3]);
+        n = last_opt([1, 2, 3]);
         assert (n == some(3));
-        n = last([1, 2, 3, 4, 5]);
+        n = last_opt([1, 2, 3, 4, 5]);
         assert (n == some(5));
     }
 
@@ -1667,7 +1385,6 @@ mod tests {
         let v1 = [1, 2, 3];
         let v2 = [4, 5, 6];
 
-        check (same_length(v1, v2)); // Silly, but what else can we do?
         let z1 = zip(v1, v2);
 
         assert ((1, 4) == z1[0]);
@@ -1929,16 +1646,10 @@ mod tests {
     }
 
     #[test]
-    // FIXME: Windows can't undwind
+    #[should_fail]
     #[ignore(cfg(target_os = "win32"))]
     fn test_init_empty() {
-
-        let r = task::join(
-            task::spawn_joinable {||
-                task::unsupervise();
-                init::<int>([]);
-            });
-        assert r == task::tr_failure
+        init::<int>([]);
     }
 
     #[test]
@@ -1969,6 +1680,24 @@ mod tests {
     #[ignore(cfg(target_os = "win32"))]
     fn test_windowed_() {
         let _x = windowed (0u, [1u,2u,3u,4u,5u,6u]);
+    }
+
+    #[test]
+    fn to_mut_no_copy() unsafe {
+        let x = [1, 2, 3];
+        let addr = unsafe::to_ptr(x);
+        let x_mut = to_mut(x);
+        let addr_mut = unsafe::to_ptr(x_mut);
+        assert addr == addr_mut;
+    }
+
+    #[test]
+    fn from_mut_no_copy() unsafe {
+        let x = [mut 1, 2, 3];
+        let addr = unsafe::to_ptr(x);
+        let x_imm = from_mut(x);
+        let addr_imm = unsafe::to_ptr(x_imm);
+        assert addr == addr_imm;
     }
 }
 

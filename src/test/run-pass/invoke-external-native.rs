@@ -1,10 +1,12 @@
-use std;
-import sys;
+// xfail-fast
+// aux-build:native_lib.rs
 
 // The purpose of this test is to check that we can
 // successfully (and safely) invoke external, cdecl
 // functions from outside the crate.
 
+use native_lib;
+
 fn main() {
-    let foo = sys::rustrt::last_os_error();
+    let foo = native_lib::rustrt::last_os_error();
 }

@@ -4,7 +4,6 @@
 import option;
 import std::getopts;
 import std::test;
-import std::fs;
 import str;
 import vec;
 import task;
@@ -35,7 +34,8 @@ fn parse_config(args: [str]) -> config {
     let opts =
         [getopts::reqopt("compile-lib-path"), getopts::reqopt("run-lib-path"),
          getopts::reqopt("rustc-path"), getopts::reqopt("src-base"),
-         getopts::reqopt("build-base"), getopts::reqopt("stage-id"),
+         getopts::reqopt("build-base"), getopts::reqopt("aux-base"),
+         getopts::reqopt("stage-id"),
          getopts::reqopt("mode"), getopts::optflag("ignored"),
          getopts::optopt("runtool"), getopts::optopt("rustcflags"),
          getopts::optflag("verbose")];
@@ -53,6 +53,7 @@ fn parse_config(args: [str]) -> config {
          rustc_path: getopts::opt_str(match, "rustc-path"),
          src_base: getopts::opt_str(match, "src-base"),
          build_base: getopts::opt_str(match, "build-base"),
+         aux_base: getopts::opt_str(match, "aux-base"),
          stage_id: getopts::opt_str(match, "stage-id"),
          mode: str_mode(getopts::opt_str(match, "mode")),
          run_ignored: getopts::opt_present(match, "ignored"),
@@ -129,7 +130,7 @@ fn test_opts(config: config) -> test::test_opts {
 fn make_tests(config: config) -> [test::test_desc] {
     #debug("making tests from %s", config.src_base);
     let tests = [];
-    for file: str in fs::list_dir(config.src_base) {
+    for file: str in os::list_dir(config.src_base) {
         let file = file;
         #debug("inspecting file %s", file);
         if is_test(config, file) {
@@ -144,7 +145,7 @@ fn is_test(config: config, testfile: str) -> bool {
     let valid_extensions =
         alt config.mode { mode_pretty { [".rs"] } _ { [".rc", ".rs"] } };
     let invalid_prefixes = [".", "#", "~"];
-    let name = fs::basename(testfile);
+    let name = path::basename(testfile);
 
     let valid = false;
 

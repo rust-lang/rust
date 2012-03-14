@@ -2,6 +2,7 @@
 
 use std;
 import std::map;
+import std::map::hashmap;
 import uint;
 
 fn main() {
@@ -14,7 +15,7 @@ fn main() {
         ret s == t;
     }
 
-    let map = map::mk_hashmap(hash, eq);
+    let map = map::new_hashmap(hash, eq);
     let arr = [];
     uint::range(0u, 10u) {|i|
         arr += [@"key stuff"];

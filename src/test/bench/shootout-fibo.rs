@@ -10,9 +10,9 @@ fn fib(n: int) -> int {
 
 fn main(args: [str]) {
     let n = if vec::len(args) == 2u {
-        int::from_str(args[1])
+        option::get(int::from_str(args[1]))
     } else {
         30
     };
-    std::io::println(#fmt("%d\n", fib(n)));
+    io::println(#fmt("%d\n", fib(n)));
 }

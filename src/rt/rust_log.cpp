@@ -106,6 +106,10 @@ rust_log::trace_ln(char *prefix, char *message) {
 void
 rust_log::trace_ln(rust_task *task, uint32_t level, char *message) {
 
+    if (task) {
+        // There is not enough room to be logging on the rust stack
+        assert(!task->on_rust_stack() && "logging on rust stack");
+    }
 
     // FIXME: The scheduler and task names used to have meaning,
     // but they are always equal to 'main' currently

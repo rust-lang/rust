@@ -1,9 +1,5 @@
 #[doc = "Operations and constants for `float`"];
 
-/*
-Module: float
-*/
-
 // FIXME find out why these have to be exported explicitly
 
 export to_str_common, to_str_exact, to_str, from_str;
@@ -19,6 +15,7 @@ export mul_add, fmax, fmin, nextafter, frexp, hypot, ldexp;
 export lgamma, ln, log_radix, ln1p, log10, log2, ilog_radix;
 export modf, pow, round, sin, sinh, sqrt, tan, tanh, tgamma, trunc;
 export signbit;
+export pow_with_uint;
 
 // export when m_float == c_double
 
@@ -29,33 +26,29 @@ export j0, j1, jn, y0, y1, yn;
 import m_float = f64;
 import f64::*;
 
-type t = float;
-
 /**
  * Section: String Conversions
  */
 
-/*
-Function: to_str_common
-
+#[doc = "
 Converts a float to a string
 
-Parameters:
+# Arguments
 
-num - The float value
-digits - The number of significant digits
-exact - Whether to enforce the exact number of significant digits
-*/
+* num - The float value
+* digits - The number of significant digits
+* exact - Whether to enforce the exact number of significant digits
+"]
 fn to_str_common(num: float, digits: uint, exact: bool) -> str {
     if is_NaN(num) { ret "NaN"; }
-    let (num, accum) = if num < 0.0 { (-num, "-") } else { (num, "") };
+    let mut (num, accum) = if num < 0.0 { (-num, "-") } else { (num, "") };
     let trunc = num as uint;
-    let frac = num - (trunc as float);
+    let mut frac = num - (trunc as float);
     accum += uint::str(trunc);
-    if frac < epsilon || digits == 0u { ret accum; }
+    if (frac < epsilon && !exact) || digits == 0u { ret accum; }
     accum += ".";
-    let i = digits;
-    let epsilon = 1. / pow_uint_to_uint_as_float(10u, i);
+    let mut i = digits;
+    let mut epsilon = 1. / pow_with_uint(10u, i);
     while i > 0u && (frac >= epsilon || exact) {
         frac *= 10.0;
         epsilon *= 10.0;
@@ -68,80 +61,81 @@ fn to_str_common(num: float, digits: uint, exact: bool) -> str {
 
 }
 
-/*
-Function: to_str
+#[doc = "
+Converts a float to a string with exactly the number of
+provided significant digits
 
-Converts a float to a string with exactly the number of provided significant
-digits
+# Arguments
 
-Parameters:
-
-num - The float value
-digits - The number of significant digits
-*/
+* num - The float value
+* digits - The number of significant digits
+"]
 fn to_str_exact(num: float, digits: uint) -> str {
     to_str_common(num, digits, true)
 }
 
-/*
-Function: to_str
+#[test]
+fn test_to_str_exact_do_decimal() {
+    let s = to_str_exact(5.0, 4u);
+    assert s == "5.0000";
+}
 
-Converts a float to a string with a maximum number of significant digits
 
-Parameters:
+#[doc = "
+Converts a float to a string with a maximum number of
+significant digits
 
-num - The float value
-digits - The number of significant digits
-*/
+# Arguments
+
+* num - The float value
+* digits - The number of significant digits
+"]
 fn to_str(num: float, digits: uint) -> str {
     to_str_common(num, digits, false)
 }
 
-/*
-Function: from_str
-
+#[doc = "
 Convert a string to a float
 
 This function accepts strings such as
-* "3.14"
-* "+3.14", equivalent to "3.14"
-* "-3.14"
-* "2.5E10", or equivalently, "2.5e10"
-* "2.5E-10"
-* "", or, equivalently, "." (understood as 0)
-* "5."
-* ".5", or, equivalently,  "0.5"
+
+* '3.14'
+* '+3.14', equivalent to '3.14'
+* '-3.14'
+* '2.5E10', or equivalently, '2.5e10'
+* '2.5E-10'
+* '', or, equivalently, '.' (understood as 0)
+* '5.'
+* '.5', or, equivalently,  '0.5'
 
 Leading and trailing whitespace are ignored.
 
-Parameters:
+# Arguments
 
-num - A string, possibly empty.
+* num - A string
 
-Returns:
+# Return value
 
-<NaN> If the string did not represent a valid number.
-Otherwise, the floating-point number represented [num].
-*/
-fn from_str(num: str) -> float {
-   let num = str::trim(num);
+`none` if the string did not represent a valid number.  Otherwise, `some(n)`
+where `n` is the floating-point number represented by `[num]`.
+"]
+fn from_str(num: str) -> option<float> {
+   let mut pos = 0u;               //Current byte position in the string.
+                                   //Used to walk the string in O(n).
+   let len = str::len(num);        //Length of the string, in bytes.
 
-   let pos = 0u;                  //Current byte position in the string.
-                                  //Used to walk the string in O(n).
-   let len = str::len_bytes(num);  //Length of the string, in bytes.
-
-   if len == 0u { ret 0.; }
-   let total = 0f;                //Accumulated result
-   let c     = 'z';               //Latest char.
+   if len == 0u { ret none; }
+   let mut total = 0f;             //Accumulated result
+   let mut c     = 'z';            //Latest char.
 
    //The string must start with one of the following characters.
    alt str::char_at(num, 0u) {
       '-' | '+' | '0' to '9' | '.' {}
-      _ { ret NaN; }
+      _ { ret none; }
    }
 
    //Determine if first char is '-'/'+'. Set [pos] and [neg] accordingly.
-   let neg = false;               //Sign of the result
+   let mut neg = false;               //Sign of the result
    alt str::char_at(num, 0u) {
       '-' {
           neg = true;
@@ -167,13 +161,13 @@ fn from_str(num: str) -> float {
            break;
          }
          _ {
-           ret NaN;
+           ret none;
          }
        }
    }
 
    if c == '.' {//Examine decimal part
-      let decimal = 1f;
+      let mut decimal = 1f;
       while(pos < len) {
          let char_range = str::char_range_at(num, pos);
          c = char_range.ch;
@@ -187,15 +181,15 @@ fn from_str(num: str) -> float {
                  break;
              }
              _ {
-                 ret NaN;
+                 ret none;
              }
          }
       }
    }
 
    if (c == 'e') | (c == 'E') {//Examine exponent
-      let exponent = 0u;
-      let neg_exponent = false;
+      let mut exponent = 0u;
+      let mut neg_exponent = false;
       if(pos < len) {
           let char_range = str::char_range_at(num, pos);
           c   = char_range.ch;
@@ -223,7 +217,7 @@ fn from_str(num: str) -> float {
              }
              pos = char_range.next;
           }
-          let multiplier = pow_uint_to_uint_as_float(10u, exponent);
+          let multiplier = pow_with_uint(10u, exponent);
               //Note: not [int::pow], otherwise, we'll quickly
               //end up with a nice overflow
           if neg_exponent {
@@ -232,17 +226,17 @@ fn from_str(num: str) -> float {
              total = total * multiplier;
           }
       } else {
-         ret NaN;
+         ret none;
       }
    }
 
    if(pos < len) {
-     ret NaN;
+     ret none;
    } else {
      if(neg) {
         total *= -1f;
      }
-     ret total;
+     ret some(total);
    }
 }
 
@@ -250,28 +244,28 @@ fn from_str(num: str) -> float {
  * Section: Arithmetics
  */
 
-/*
-Function: pow_uint_to_uint_as_float
+#[doc = "
+Compute the exponentiation of an integer by another integer as a float
 
-Compute the exponentiation of an integer by another integer as a float.
+# Arguments
 
-Parameters:
-x - The base.
-pow - The exponent.
+* x - The base
+* pow - The exponent
 
-Returns:
-<NaN> of both `x` and `pow` are `0u`, otherwise `x^pow`.
-*/
-fn pow_uint_to_uint_as_float(x: uint, pow: uint) -> float {
-   if x == 0u {
+# Return value
+
+`NaN` if both `x` and `pow` are `0u`, otherwise `x^pow`
+"]
+fn pow_with_uint(base: uint, pow: uint) -> float {
+   if base == 0u {
       if pow == 0u {
         ret NaN;
       }
        ret 0.;
    }
-   let my_pow     = pow;
-   let total      = 1f;
-   let multiplier = x as float;
+   let mut my_pow     = pow;
+   let mut total      = 1f;
+   let mut multiplier = base as float;
    while (my_pow > 0u) {
      if my_pow % 2u == 1u {
        total = total * multiplier;
@@ -285,39 +279,36 @@ fn pow_uint_to_uint_as_float(x: uint, pow: uint) -> float {
 
 #[test]
 fn test_from_str() {
-   assert ( from_str("3") == 3. );
-   assert ( from_str("  3  ") == 3. );
-   assert ( from_str("3.14") == 3.14 );
-   assert ( from_str("+3.14") == 3.14 );
-   assert ( from_str("-3.14") == -3.14 );
-   assert ( from_str("2.5E10") == 25000000000. );
-   assert ( from_str("2.5e10") == 25000000000. );
-   assert ( from_str("25000000000.E-10") == 2.5 );
-   assert ( from_str("") == 0. );
-   assert ( from_str(".") == 0. );
-   assert ( from_str(".e1") == 0. );
-   assert ( from_str(".e-1") == 0. );
-   assert ( from_str("5.") == 5. );
-   assert ( from_str(".5") == 0.5 );
-   assert ( from_str("0.5") == 0.5 );
-   assert ( from_str("0.5 ") == 0.5 );
-   assert ( from_str(" 0.5 ") == 0.5 );
-   assert ( from_str(" -.5 ") == -0.5 );
-   assert ( from_str(" -.5 ") == -0.5 );
-   assert ( from_str(" -5 ") == -5. );
+   assert from_str("3") == some(3.);
+   assert from_str("3") == some(3.);
+   assert from_str("3.14") == some(3.14);
+   assert from_str("+3.14") == some(3.14);
+   assert from_str("-3.14") == some(-3.14);
+   assert from_str("2.5E10") == some(25000000000.);
+   assert from_str("2.5e10") == some(25000000000.);
+   assert from_str("25000000000.E-10") == some(2.5);
+   assert from_str(".") == some(0.);
+   assert from_str(".e1") == some(0.);
+   assert from_str(".e-1") == some(0.);
+   assert from_str("5.") == some(5.);
+   assert from_str(".5") == some(0.5);
+   assert from_str("0.5") == some(0.5);
+   assert from_str("0.5") == some(0.5);
+   assert from_str("0.5") == some(0.5);
+   assert from_str("-.5") == some(-0.5);
+   assert from_str("-.5") == some(-0.5);
+   assert from_str("-5") == some(-5.);
 
-   assert ( is_NaN(from_str("x")) );
-   assert ( from_str(" ") == 0. );
-   assert ( from_str("   ") == 0. );
-   assert ( from_str(" 0.5") == 0.5 );
-   assert ( from_str(" 0.5 ") == 0.5 );
-   assert ( from_str(" .1 ") == 0.1 );
-   assert ( is_NaN(from_str("e")) );
-   assert ( is_NaN(from_str("E")) );
-   assert ( is_NaN(from_str("E1")) );
-   assert ( is_NaN(from_str("1e1e1")) );
-   assert ( is_NaN(from_str("1e1.1")) );
-   assert ( is_NaN(from_str("1e1-1")) );
+   assert from_str("") == none;
+   assert from_str("x") == none;
+   assert from_str(" ") == none;
+   assert from_str("   ") == none;
+   assert from_str("e") == none;
+   assert from_str("E") == none;
+   assert from_str("E1") == none;
+   assert from_str("1e1e1") == none;
+   assert from_str("1e1.1") == none;
+   assert from_str("1e1-1") == none;
 }
 
 #[test]

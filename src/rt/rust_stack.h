@@ -1,6 +1,8 @@
 #ifndef RUST_STACK_H
 #define RUST_STACK_H
 
+#include "memory_region.h"
+
 struct stk_seg {
     stk_seg *prev;
     stk_seg *next;
@@ -15,41 +17,16 @@ struct stk_seg {
     uint8_t data[];
 };
 
-// Used by create_stack
-void
-register_valgrind_stack(stk_seg *stk);
-
-// Used by destroy_stack
-void
-deregister_valgrind_stack(stk_seg *stk);
-
-// Used by create_stack
-void
-add_stack_canary(stk_seg *stk);
-
-template <class T>
 stk_seg *
-create_stack(T allocer, size_t sz) {
-  size_t total_sz = sizeof(stk_seg) + sz;
-  stk_seg *stk = (stk_seg *)allocer->malloc(total_sz, "stack");
-  memset(stk, 0, sizeof(stk_seg));
-  stk->end = (uintptr_t) &stk->data[sz];
-  add_stack_canary(stk);
-  register_valgrind_stack(stk);
-  return stk;
-}
+create_stack(memory_region *region, size_t sz);
 
-template <class T>
 void
-destroy_stack(T allocer, stk_seg *stk) {
-  deregister_valgrind_stack(stk);
-  allocer->free(stk);
-}
+destroy_stack(memory_region *region, stk_seg *stk);
 
 // Must be called before each time a stack is reused to tell valgrind
 // that the stack is accessible.
 void
-prepare_valgrind_stack(stk_seg *stk);
+reuse_valgrind_stack(stk_seg *stk, uint8_t *sp);
 
 // Run a sanity check
 void

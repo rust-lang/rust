@@ -96,16 +96,6 @@ fn test_ptr() unsafe {
     assert p1 >= p2;
 }
 
-fn test_task() {
-    fn f() { }
-    let f1 = f, f2 = f;
-    let t1 = task::spawn {|| f1(); };
-    let t2 = task::spawn {|| f2(); };
-
-    assert (t1 == t1);
-    assert (t1 != t2);
-}
-
 fn test_fn() {
     fn f() { }
     fn g() { }
@@ -147,7 +137,6 @@ fn main() {
     test_port();
     test_chan();
     test_ptr();
-    test_task();
     test_fn();
     test_native_fn();
 }

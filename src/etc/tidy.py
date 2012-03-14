@@ -18,8 +18,11 @@ def report_err(s):
     print("%s:%d: %s" % (fileinput.filename(), fileinput.filelineno(), s))
     err=1
 
+file_names = [s for s in sys.argv[1:] if not s.endswith("_gen.rs")]
+
 try:
-    for line in fileinput.input(openhook=fileinput.hook_encoded("utf-8")):
+    for line in fileinput.input(file_names,
+                                openhook=fileinput.hook_encoded("utf-8")):
         if (line.find('\t') != -1 and
             fileinput.filename().find("Makefile") == -1):
             report_err("tab character")

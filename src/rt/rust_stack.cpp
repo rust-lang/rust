@@ -17,13 +17,15 @@ register_valgrind_stack(stk_seg *stk) {
 }
 
 void
-prepare_valgrind_stack(stk_seg *stk) {
+reuse_valgrind_stack(stk_seg *stk, uint8_t *sp) {
 #ifndef NVALGRIND
     // Establish that the stack is accessible.  This must be done when reusing
     // old stack segments, since the act of popping the stack previously
     // caused valgrind to consider the whole thing inaccessible.
-    size_t sz = stk->end - (uintptr_t)&stk->data[0];
-    VALGRIND_MAKE_MEM_UNDEFINED(stk->data, sz);
+    assert(sp >= stk->data && sp <= (uint8_t*) stk->end
+	   && "Stack pointer must be inside stack segment");
+    size_t sz = stk->end - (uintptr_t)sp;
+    VALGRIND_MAKE_MEM_UNDEFINED(sp, sz);
 #endif
 }
 
@@ -40,4 +42,21 @@ add_stack_canary(stk_seg *stk) {
 void
 check_stack_canary(stk_seg *stk) {
     assert(stk->canary == canary_value && "Somebody killed the canary");
+}
+
+stk_seg *
+create_stack(memory_region *region, size_t sz) {
+    size_t total_sz = sizeof(stk_seg) + sz;
+    stk_seg *stk = (stk_seg *)region->malloc(total_sz, "stack", false);
+    memset(stk, 0, sizeof(stk_seg));
+    stk->end = (uintptr_t) &stk->data[sz];
+    add_stack_canary(stk);
+    register_valgrind_stack(stk);
+    return stk;
+}
+
+void
+destroy_stack(memory_region *region, stk_seg *stk) {
+    deregister_valgrind_stack(stk);
+    region->free(stk);
 }

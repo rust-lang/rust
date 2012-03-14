@@ -16,7 +16,7 @@ export mk_pass;
 import str::chars::iterable;
 
 fn mk_pass() -> pass {
-    desc_pass::mk_pass(unindent)
+    text_pass::mk_pass("unindent", unindent)
 }
 
 fn unindent(s: str) -> str {
@@ -59,17 +59,17 @@ fn unindent(s: str) -> str {
                     false
                 }
             };
-            math::min(min_indent, spaces)
+            uint::min(min_indent, spaces)
         }
     };
 
     if check vec::is_not_empty(lines) {
         let unindented = [str::trim(vec::head(lines))]
-            + vec::map(vec::tail(lines)) {|line|
+            + par::anymap(vec::tail(lines)) {|line|
             if str::is_whitespace(line) {
                 line
             } else {
-                assert str::len_bytes(line) >= min_indent;
+                assert str::len(line) >= min_indent;
                 str::slice(line, min_indent, str::len(line))
             }
         };

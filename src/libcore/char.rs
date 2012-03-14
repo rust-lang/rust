@@ -38,34 +38,34 @@ export is_alphabetic,
        is_lowercase, is_uppercase,
        is_whitespace, is_alphanumeric,
        is_ascii, is_digit,
-       to_digit, to_lower, to_upper, maybe_digit, cmp;
+       to_digit, to_lower, to_upper, cmp;
 
 import is_alphabetic = unicode::derived_property::Alphabetic;
 import is_XID_start = unicode::derived_property::XID_Start;
 import is_XID_continue = unicode::derived_property::XID_Continue;
 import str::chars::iterable;
 
-#[doc(
-  brief = "Indicates whether a character is in lower case, defined \
-           in terms of the Unicode General Category 'Ll'."
-)]
+#[doc = "
+Indicates whether a character is in lower case, defined
+in terms of the Unicode General Category 'Ll'
+"]
 pure fn is_lowercase(c: char) -> bool {
     ret unicode::general_category::Ll(c);
 }
 
-#[doc(
-  brief = "Indicates whether a character is in upper case, defined \
-           in terms of the Unicode General Category 'Lu'."
-)]
+#[doc = "
+Indicates whether a character is in upper case, defined
+in terms of the Unicode General Category 'Lu'.
+"]
 pure fn is_uppercase(c: char) -> bool {
     ret unicode::general_category::Lu(c);
 }
 
-#[doc(
-  brief = "Indicates whether a character is whitespace, defined in \
-           terms of the Unicode General Categories 'Zs', 'Zl', 'Zp' \
-           additional 'Cc'-category control codes in the range [0x09, 0x0d]"
-)]
+#[doc = "
+Indicates whether a character is whitespace, defined in
+terms of the Unicode General Categories 'Zs', 'Zl', 'Zp'
+additional 'Cc'-category control codes in the range [0x09, 0x0d]
+"]
 pure fn is_whitespace(c: char) -> bool {
     ret ('\x09' <= c && c <= '\x0d')
         || unicode::general_category::Zs(c)
@@ -73,11 +73,11 @@ pure fn is_whitespace(c: char) -> bool {
         || unicode::general_category::Zp(c);
 }
 
-#[doc(
-  brief = "Indicates whether a character is alphanumeric, defined \
-            in terms of the Unicode General Categories 'Nd', \
-            'Nl', 'No' and the Derived Core Property 'Alphabetic'."
-)]
+#[doc = "
+Indicates whether a character is alphanumeric, defined
+in terms of the Unicode General Categories 'Nd',
+'Nl', 'No' and the Derived Core Property 'Alphabetic'.
+"]
 pure fn is_alphanumeric(c: char) -> bool {
     ret unicode::derived_property::Alphabetic(c) ||
         unicode::general_category::Nd(c) ||
@@ -85,51 +85,47 @@ pure fn is_alphanumeric(c: char) -> bool {
         unicode::general_category::No(c);
 }
 
-#[doc( brief = "Indicates whether the character is an ASCII character" )]
+#[doc = "Indicates whether the character is an ASCII character"]
 pure fn is_ascii(c: char) -> bool {
    c - ('\x7F' & c) == '\x00'
 }
 
-#[doc( brief = "Indicates whether the character is numeric (Nd, Nl, or No)" )]
+#[doc = "Indicates whether the character is numeric (Nd, Nl, or No)"]
 pure fn is_digit(c: char) -> bool {
     ret unicode::general_category::Nd(c) ||
         unicode::general_category::Nl(c) ||
         unicode::general_category::No(c);
 }
 
-#[doc(
-  brief = "Convert a char to the corresponding digit. \
-           Safety note: This function fails if `c` is not a valid char",
-  return = "If `c` is between '0' and '9', the corresponding value \
-            between 0 and 9. If `c` is 'a' or 'A', 10. If `c` is \
-            'b' or 'B', 11, etc."
-)]
-pure fn to_digit(&&c: char) -> u8 unsafe {
-    alt maybe_digit(c) {
-      option::some(x) { x }
-      option::none { fail; }
-    }
-}
+#[doc = "
+Convert a char to the corresponding digit.
 
-#[doc(
-  brief = "Convert a char to the corresponding digit. Returns none when \
-           character is not a valid hexadecimal digit."
-)]
-pure fn maybe_digit(c: char) -> option<u8> {
-    alt c {
-      '0' to '9' { option::some(c as u8 - ('0' as u8)) }
-      'a' to 'z' { option::some(c as u8 + 10u8 - ('a' as u8)) }
-      'A' to 'Z' { option::some(c as u8 + 10u8 - ('A' as u8)) }
-      _ { option::none }
-    }
+# Safety note
+
+This function fails if `c` is not a valid char
+
+# Return value
+
+If `c` is between '0' and '9', the corresponding value
+between 0 and 9. If `c` is 'a' or 'A', 10. If `c` is
+'b' or 'B', 11, etc. Returns none if the char does not
+refer to a digit in the given radix.
+"]
+pure fn to_digit(c: char, radix: uint) -> option<uint> {
+    let val = alt c {
+      '0' to '9' { c as uint - ('0' as uint) }
+      'a' to 'z' { c as uint + 10u - ('a' as uint) }
+      'A' to 'Z' { c as uint + 10u - ('A' as uint) }
+      _ { ret none; }
+    };
+    if val < radix { some(val) }
+    else { none }
 }
 
 /*
  FIXME: works only on ASCII
 */
-#[doc(
-  brief = "Convert a char to the corresponding lower case."
-)]
+#[doc = "Convert a char to the corresponding lower case."]
 pure fn to_lower(c: char) -> char {
     alt c {
       'A' to 'Z' { ((c as u8) + 32u8) as char }
@@ -140,9 +136,7 @@ pure fn to_lower(c: char) -> char {
 /*
  FIXME: works only on ASCII
 */
-#[doc(
-  brief = "Convert a char to the corresponding upper case."
-)]
+#[doc = "Convert a char to the corresponding upper case."]
 pure fn to_upper(c: char) -> char {
     alt c {
       'a' to 'z' { ((c as u8) - 32u8) as char }
@@ -150,10 +144,13 @@ pure fn to_upper(c: char) -> char {
     }
 }
 
-#[doc(
-  brief =  "Compare two chars.",
-  return = "-1 if a<b, 0 if a==b, +1 if a>b"
-)]
+#[doc = "
+Compare two chars
+
+# Return value
+
+-1 if a < b, 0 if a == b, +1 if a > b
+"]
 pure fn cmp(a: char, b: char) -> int {
     ret  if b > a { -1 }
     else if b < a { 1 }
@@ -192,30 +189,19 @@ fn test_is_whitespace() {
 
 #[test]
 fn test_to_digit() {
-    assert (to_digit('0') == 0u8);
-    assert (to_digit('1') == 1u8);
-    assert (to_digit('2') == 2u8);
-    assert (to_digit('9') == 9u8);
-    assert (to_digit('a') == 10u8);
-    assert (to_digit('A') == 10u8);
-    assert (to_digit('b') == 11u8);
-    assert (to_digit('B') == 11u8);
-    assert (to_digit('z') == 35u8);
-    assert (to_digit('Z') == 35u8);
-}
+    assert to_digit('0', 10u) == some(0u);
+    assert to_digit('1', 2u) == some(1u);
+    assert to_digit('2', 3u) == some(2u);
+    assert to_digit('9', 10u) == some(9u);
+    assert to_digit('a', 16u) == some(10u);
+    assert to_digit('A', 16u) == some(10u);
+    assert to_digit('b', 16u) == some(11u);
+    assert to_digit('B', 16u) == some(11u);
+    assert to_digit('z', 36u) == some(35u);
+    assert to_digit('Z', 36u) == some(35u);
 
-#[test]
-#[should_fail]
-#[ignore(cfg(target_os = "win32"))]
-fn test_to_digit_fail_1() {
-    to_digit(' ');
-}
-
-#[test]
-#[should_fail]
-#[ignore(cfg(target_os = "win32"))]
-fn test_to_digit_fail_2() {
-    to_digit('$');
+    assert to_digit(' ', 10u) == none;
+    assert to_digit('$', 36u) == none;
 }
 
 #[test]

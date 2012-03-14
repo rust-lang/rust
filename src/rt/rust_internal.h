@@ -104,15 +104,16 @@ static size_t const BUF_BYTES = 2048;
   void ref() { ++ref_count; } \
   void deref() { if (--ref_count == 0) { dtor; } }
 
-#define RUST_ATOMIC_REFCOUNT()                                            \
-private:                                                                  \
-   intptr_t ref_count;                                                    \
-public:                                                                   \
-   void ref() {                                                           \
-       intptr_t old = sync::increment(ref_count);                         \
-       assert(old > 0);                                                   \
-   }                                                                      \
-   void deref() { if(0 == sync::decrement(ref_count)) { delete_this(); } }
+#define RUST_ATOMIC_REFCOUNT()                                             \
+private:                                                                   \
+   intptr_t ref_count;                                                     \
+public:                                                                    \
+   void ref() {                                                            \
+       intptr_t old = sync::increment(ref_count);                          \
+       assert(old > 0);                                                    \
+   }                                                                       \
+   void deref() { if(0 == sync::decrement(ref_count)) { delete_this(); } } \
+   intptr_t get_ref_count() { return sync::read(ref_count); }
 
 template <typename T> struct task_owned {
     inline void *operator new(size_t size, rust_task *task, const char *tag);
@@ -128,40 +129,6 @@ template <typename T> struct task_owned {
     void operator delete(void *ptr) {
         ((T *)ptr)->task->free(ptr);
     }
-};
-
-template<class T>
-class smart_ptr {
-    T *p;
-
-public:
-    smart_ptr() : p(NULL) {};
-    smart_ptr(T *p) : p(p) { if(p) { p->ref(); } }
-    smart_ptr(const smart_ptr &sp) : p(sp.p) {
-        if(p) { p->ref(); }
-    }
-
-    ~smart_ptr() {
-        if(p) {
-            p->deref();
-        }
-    }
-
-    T *operator=(T* p) {
-        if(this->p) {
-            this->p->deref();
-        }
-        if(p) {
-            p->ref();
-        }
-        this->p = p;
-
-        return p;
-    }
-
-    T *operator->() const { return p; };
-
-    operator T*() const { return p; }
 };
 
 template <typename T> struct kernel_owned {
@@ -185,34 +152,6 @@ template <typename T> struct region_owned {
 // (writing), a port (reading) or a task (waiting).
 
 struct rust_cond { };
-
-// Helper class used regularly elsewhere.
-
-template <typename T> class ptr_vec : public task_owned<ptr_vec<T> > {
-    static const size_t INIT_SIZE = 8;
-    rust_task *task;
-    size_t alloc;
-    size_t fill;
-    T **data;
-public:
-    ptr_vec(rust_task *task);
-    ~ptr_vec();
-
-    size_t length() {
-        return fill;
-    }
-
-    bool is_empty() {
-        return fill == 0;
-    }
-
-    T *& operator[](size_t offset);
-    void push(T *p);
-    T *pop();
-    T *peek();
-    void trim(size_t fill);
-    void swap_delete(T* p);
-};
 
 #include "memory_region.h"
 #include "rust_srv.h"

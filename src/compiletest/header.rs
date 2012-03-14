@@ -1,8 +1,6 @@
 import option;
 import str;
-import std::io;
 import io::reader_util;
-import std::fs;
 
 import common::config;
 
@@ -17,12 +15,15 @@ type test_props = {
     compile_flags: option<str>,
     // If present, the name of a file that this test should match when
     // pretty-printed
-    pp_exact: option<str>
+    pp_exact: option<str>,
+    // Modules from aux directory that should be compiled
+    aux_builds: [str]
 };
 
 // Load any test directives embedded in the file
 fn load_props(testfile: str) -> test_props {
     let error_patterns = [];
+    let aux_builds = [];
     let compile_flags = option::none;
     let pp_exact = option::none;
     iter_header(testfile) {|ln|
@@ -38,11 +39,16 @@ fn load_props(testfile: str) -> test_props {
         if option::is_none(pp_exact) {
             pp_exact = parse_pp_exact(ln, testfile);
         }
+
+        option::may(parse_aux_build(ln)) {|ab|
+            aux_builds += [ab];
+        }
     };
     ret {
         error_patterns: error_patterns,
         compile_flags: compile_flags,
-        pp_exact: pp_exact
+        pp_exact: pp_exact,
+        aux_builds: aux_builds
     };
 }
 
@@ -59,7 +65,7 @@ fn is_test_ignored(config: config, testfile: str) -> bool {
     ret found;
 
     fn xfail_target() -> str {
-        "xfail-" + std::os::target_os()
+        "xfail-" + os::sysname()
     }
 }
 
@@ -82,6 +88,10 @@ fn parse_error_pattern(line: str) -> option<str> {
     parse_name_value_directive(line, "error-pattern")
 }
 
+fn parse_aux_build(line: str) -> option<str> {
+    parse_name_value_directive(line, "aux-build")
+}
+
 fn parse_compile_flags(line: str) -> option<str> {
     parse_name_value_directive(line, "compile-flags")
 }
@@ -91,7 +101,7 @@ fn parse_pp_exact(line: str, testfile: str) -> option<str> {
       option::some(s) { option::some(s) }
       option::none {
         if parse_name_directive(line, "pp-exact") {
-            option::some(fs::basename(testfile))
+            option::some(path::basename(testfile))
         } else {
             option::none
         }
@@ -106,12 +116,10 @@ fn parse_name_directive(line: str, directive: str) -> bool {
 fn parse_name_value_directive(line: str,
                               directive: str) -> option<str> unsafe {
     let keycolon = directive + ":";
-    alt str::find_bytes(line, keycolon) {
+    alt str::find_str(line, keycolon) {
         option::some(colon) {
-            let value =
-                str::unsafe::slice_bytes(line,
-                                         colon + str::len_bytes(keycolon),
-                                         str::len_bytes(line));
+            let value = str::slice(line, colon + str::len(keycolon),
+                                   str::len(line));
             #debug("%s: %s", directive,  value);
             option::some(value)
         }

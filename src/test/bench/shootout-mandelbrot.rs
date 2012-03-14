@@ -13,7 +13,8 @@
 //  writes pbm image to output path
 
 use std;
-import std::io::writer_util;
+import io::writer_util;
+import std::map::hashmap;
 
 type cmplx = {re: f64, im: f64};
 type line = {i: uint, b: [u8]};
@@ -78,9 +79,9 @@ fn chanmb(i: uint, size: uint, ch: comm::chan<line>) -> ()
 
 type devnull = {dn: int};
 
-impl of std::io::writer for devnull {
+impl of io::writer for devnull {
     fn write(_b: [const u8]) {}
-    fn seek(_i: int, _s: std::io::seek_style) {}
+    fn seek(_i: int, _s: io::seek_style) {}
     fn tell() -> uint {0_u}
     fn flush() -> int {0}
 }
@@ -90,17 +91,17 @@ fn writer(path: str, writech: comm::chan<comm::chan<line>>, size: uint)
     let p: comm::port<line> = comm::port();
     let ch = comm::chan(p);
     comm::send(writech, ch);
-    let cout: std::io::writer = alt path {
+    let cout: io::writer = alt path {
         "" {
-            {dn: 0} as std::io::writer
+            {dn: 0} as io::writer
         }
         "-" {
-            std::io::stdout()
+            io::stdout()
         }
         _ {
             result::get(
-                std::io::file_writer(path,
-                [std::io::create, std::io::truncate]))
+                io::file_writer(path,
+                [io::create, io::truncate]))
         }
     };
     cout.write_line("P4");
@@ -136,36 +137,21 @@ fn writer(path: str, writech: comm::chan<comm::chan<line>>, size: uint)
     }
 }
 
-fn main(argv: [str])
-{
-    let size = if vec::len(argv) < 2_u {
-        80u
-    }
-    else {
-        uint::from_str(argv[1])
-    };
-    let yieldevery = if vec::len(argv) < 3_u {
-        10_u
-    }
-    else {
-        uint::from_str(argv[2])
-    };
-    let path = if vec::len(argv) < 4_u {
-        ""
-    }
-    else {
-        argv[3]
-    };
+fn main(argv: [str]) {
+    let size = if vec::len(argv) < 2_u { 80u }
+    else { option::get(uint::from_str(argv[1])) };
+    let yieldevery = if vec::len(argv) < 3_u { 10_u }
+    else { option::get(uint::from_str(argv[2])) };
+    let path = if vec::len(argv) < 4_u { "" }
+    else { argv[3] };
     let writep = comm::port();
     let writech = comm::chan(writep);
-    task::spawn {
-        || writer(path, writech, size);
+    task::spawn {||
+        writer(path, writech, size);
     };
     let ch = comm::recv(writep);
-    uint::range(0_u, size) {
-        |j| task::spawn {
-            || chanmb(j, size, ch);
-        };
+    uint::range(0_u, size) {|j|
+        task::spawn {|| chanmb(j, size, ch);};
         if j % yieldevery == 0_u {
             #debug("Y %u", j);
             task::yield();

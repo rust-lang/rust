@@ -15,6 +15,8 @@ fn main() {
         let y_in_child = ptr::addr_of(*y) as uint;
         comm::send(ch, y_in_child);
     });
+    // Ensure last-use analysis doesn't move y to child.
+    let _q = y;
 
     let x_in_child = comm::recv(p);
     assert x_in_parent == x_in_child;

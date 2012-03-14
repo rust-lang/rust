@@ -47,7 +47,7 @@ fn calc(children: uint, parent_ch: comm::chan<msg>) {
 
 fn main(args: [str]) {
     let children = if vec::len(args) == 2u {
-        uint::from_str(args[1])
+        option::get(uint::from_str(args[1]))
     } else {
         100u
     };

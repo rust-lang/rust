@@ -3,12 +3,6 @@
 // that synchronization by spawning a number of tasks and then
 // allocating and freeing vectors.
 
-use std;
-import vec;
-import uint;
-import str;
-import task;
-
 fn f(&&n: uint) {
     uint::range(0u, n) {|i|
         let v: [u8] = [];
@@ -17,9 +11,7 @@ fn f(&&n: uint) {
 }
 
 fn main(args: [str]) {
-    let n =
-        if vec::len(args) < 2u {
-            100u
-        } else { uint::parse_buf(str::bytes(args[1]), 10u) };
+    let n = if vec::len(args) < 2u { 100u }
+            else { option::get(uint::from_str(args[1])) };
     uint::range(0u, 100u) {|i| task::spawn {|| f(n); };}
 }

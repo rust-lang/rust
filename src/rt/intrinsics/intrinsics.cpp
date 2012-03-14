@@ -166,3 +166,9 @@ upcall_vec_push(rust_vec** vp,
 		type_desc* elt_ty, void* elt) {
   upcall_intrinsic_vec_push(vp, elt_ty, elt);
 }
+
+extern "C" CDECL void
+rust_intrinsic_frame_address(void **p, unsigned n) {
+    *p = __builtin_frame_address(n);
+}
+

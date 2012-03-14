@@ -1,8 +1,6 @@
 // -*- rust -*-
 
-/*
-Module: four
-
+#[doc = "
 The fourrternary Belnap relevance logic FOUR represented as ADT
 
 This allows reasoning with four logic values (true, false, none, both).
@@ -10,162 +8,105 @@ This allows reasoning with four logic values (true, false, none, both).
 Implementation: Truth values are represented using a single u8 and
 all operations are done using bit operations which is fast
 on current cpus.
-*/
+"];
 
 import tri;
 
-export t, none, true, false, both;
+export four, none, true, false, both;
 export not, and, or, xor, implies, implies_materially;
 export eq, ne, is_true, is_false;
 export from_str, to_str, all_values, to_trit, to_bit;
 
-/*
-Type: t
-
+#[doc = "
 The type of fourrternary logic values
 
 It may be thought of as  tuple `(y, x)` of two bools
-
-*/
-type t = u8;
+"]
+type four = u8;
 
 const b0: u8  = 1u8;
 const b1: u8  = 2u8;
 const b01: u8 = 3u8;
 
-/*
-Constant: none
+#[doc = "Logic value `(0, 0)` for bottom (neither true or false)"]
+const none: four  = 0u8;
 
-Logic value `(0, 0)` for bottom (neither true or false)
-*/
-const none: t  = 0u8;
+#[doc = "Logic value `(0, 1)` for truth"]
+const true: four  = 1u8;
 
-/*
-Constant: true
+#[doc = "Logic value `(1, 0)` for falsehood"]
+const false: four = 2u8;
 
-Logic value `(0, 1)` for truth
-*/
-const true: t  = 1u8;
+#[doc = "Logic value `(1, 1)` for top (both true and false)"]
+const both: four = 3u8;
 
-/*
-Constant: false
-
-Logic value `(1, 0)` for falsehood
-*/
-const false: t = 2u8;
-
-/*
-Constant: both
-
-Logic value `(1, 1)` for top (both true and false)
-*/
-const both: t  = 3u8;
-
-/* Function: not
-
+#[doc = "
 Negation/Inverse
 
-Returns:
+Returns `'(v.y, v.x)`
+"]
+pure fn not(v: four) -> four { ((v << 1u8) | (v >> 1u8)) & b01 }
 
-`'(v.y, v.x)`
-*/
-pure fn not(v: t) -> t { ((v << 1u8) | (v >> 1u8)) & b01 }
-
-/* Function: and
-
+#[doc = "
 Conjunction
 
-Returns:
+Returns `(a.x | b.x, a.y & b.y)`
+"]
+pure fn and(a: four, b: four) -> four { ((a & b) & b0) | ((a | b) & b1) }
 
-`(a.x | b.x, a.y & b.y)`
-*/
-pure fn and(a: t, b: t) -> t { ((a & b) & b0) | ((a | b) & b1) }
-
-/* Function: or
-
+#[doc = "
 Disjunction
 
-Returns:
+Returns `(a.x & b.x, a.y | b.y)`
+"]
+pure fn or(a: four, b: four) -> four { ((a | b) & b0) | ((a & b) & b1) }
 
-`(a.x & b.x, a.y | b.y)`
-*/
-pure fn or(a: t, b: t) -> t { ((a | b) & b0) | ((a & b) & b1) }
-
-/* Function: xor
-
+#[doc = "
 Classic exclusive or
 
-Returns:
+Returns `or(and(a, not(b)), and(not(a), b))`
+"]
+pure fn xor(a: four, b: four) -> four { or(and(a, not(b)), and(not(a), b)) }
 
-`or(and(a, not(b)), and(not(a), b))`
-*/
-pure fn xor(a: t, b: t) -> t { or(and(a, not(b)), and(not(a), b)) }
-
-/*
-Function: implies
-
+#[doc = "
 Strong implication (from `a` strongly follows `b`)
 
-Returns:
+Returns `( x1 & y2, !x1 | x2)`
+"]
+pure fn implies(a: four, b: four) -> four {
+    ((a << 1u8) & b & b1) | (((!a) | b) & b0)
+}
 
-`( x1 & y2, !x1 | x2)`
-*/
-pure fn implies(a: t, b: t) -> t { ((a << 1u8) & b & b1) | (((!a) | b) & b0) }
-
-/*
-Function: implies_materially
-
+#[doc = "
 Classic (material) implication in the logic
 (from `a` materially follows `b`)
 
-Returns:
+Returns `or(not(a), b)`
+"]
+pure fn implies_materially(a: four, b: four) -> four { or(not(a), b) }
 
-`or(not(a), b)`
-*/
-pure fn implies_materially(a: t, b: t) -> t { or(not(a), b) }
+#[doc = "
+Returns true if truth values `a` and `b` are indistinguishable in the logic
+"]
+pure fn eq(a: four, b: four) -> bool { a == b }
 
-/*
-Predicate: eq
+#[doc = "
+Returns true if truth values `a` and `b` are distinguishable in the logic
+"]
+pure fn ne(a: four, b: four) -> bool { a != b }
 
-Returns:
+#[doc = "
+Returns true if `v` represents truth in the logic (is `true` or `both`)
+"]
+pure fn is_true(v: four) -> bool { (v & b0) != 0u8 }
 
-true if truth values `a` and `b` are indistinguishable in the logic
-*/
-pure fn eq(a: t, b: t) -> bool { a == b }
+#[doc = "
+Returns true if `v` represents falsehood in the logic (is `false` or `none`)
+"]
+pure fn is_false(v: four) -> bool { (v & b0) == 0u8 }
 
-/*
-Predicate: ne
-
-Returns:
-
-true if truth values `a` and `b` are distinguishable in the logic
-*/
-pure fn ne(a: t, b: t) -> bool { a != b }
-
-/*
-Predicate: is_true
-
-Returns:
-
-true if `v` represents truth in the logic (is `true` or `both`)
-*/
-pure fn is_true(v: t) -> bool { (v & b0) != 0u8 }
-
-/*
-Predicate: is_false
-
-Returns:
-
-true if `v` represents falsehood in the logic (is `false` or `none`)
-*/
-pure fn is_false(v: t) -> bool { (v & b0) == 0u8 }
-
-/*
-Function: from_str
-
-Parse logic value from `s`
-*/
-pure fn from_str(s: str) -> t {
+#[doc = "Parse logic value from `s`"]
+pure fn from_str(s: str) -> four {
     alt check s {
       "none" { none }
       "false" { four::false }
@@ -174,12 +115,8 @@ pure fn from_str(s: str) -> t {
     }
 }
 
-/*
-Function: to_str
-
-Convert `v` into a string
-*/
-pure fn to_str(v: t) -> str {
+#[doc = "Convert `v` into a string"]
+pure fn to_str(v: four) -> str {
     // FIXME replace with consts as soon as that works
     alt check v {
       0u8 { "none" }
@@ -189,44 +126,35 @@ pure fn to_str(v: t) -> str {
     }
 }
 
-/*
-Function: all_values
-
-Iterates over all truth values by passing them to `blk`
-in an unspecified order
-*/
-fn all_values(blk: fn(v: t)) {
+#[doc = "
+Iterates over all truth values by passing them to `blk` in an unspecified
+order
+"]
+fn all_values(blk: fn(v: four)) {
     blk(both);
     blk(four::true);
     blk(four::false);
     blk(none);
 }
 
-/*
-Function: to_bit
+#[doc = "
+Returns an `u8` whose first bit is set if `if_true(v)` holds
+"]
+fn to_bit(v: four) -> u8 { v & b0 }
 
-Returns:
-
-An u8 whose first bit is set if `if_true(v)` holds
-*/
-fn to_bit(v: t) -> u8 { v & b0 }
-
-/*
-Function: to_tri
-
-Returns:
-
-A trit of `v` (`both` and `none` are both coalesced into `trit::unknown`)
-*/
-fn to_trit(v: t) -> tri::t { v & (v ^ not(v)) }
+#[doc = "
+Returns a trit of `v` (`both` and `none` are both coalesced into
+`trit::unknown`)
+"]
+fn to_trit(v: four) -> tri::tri { v & (v ^ not(v)) }
 
 #[cfg(test)]
 mod tests {
 
-    fn eq1(a: four::t, b: four::t) -> bool { four::eq(a , b) }
-    fn ne1(a: four::t, b: four::t) -> bool { four::ne(a , b) }
+    fn eq1(a: four, b: four) -> bool { four::eq(a , b) }
+    fn ne1(a: four, b: four) -> bool { four::ne(a , b) }
 
-    fn eq2(a: four::t, b: four::t) -> bool { eq1( a, b ) && eq1( b, a ) }
+    fn eq2(a: four, b: four) -> bool { eq1( a, b ) && eq1( b, a ) }
 
     #[test]
     fn test_four_req_eq() {
@@ -264,7 +192,7 @@ mod tests {
         }
     }
 
-    fn to_tup(v: four::t) -> (bool, bool) {
+    fn to_tup(v: four) -> (bool, bool) {
         alt check v {
           0u8 { (false, false) }
           1u8 { (false, true) }

@@ -132,24 +132,23 @@ Rust program files are, by convention, given the extension `.rs`. Say
 we have a file `hello.rs` containing this program:
 
 ~~~~
-use std;
 fn main(args: [str]) {
-    std::io::println("hello world from '" + args[0] + "'!");
+    io::println("hello world from '" + args[0] + "'!");
 }
 ~~~~
 
 If the Rust compiler was installed successfully, running `rustc
 hello.rs` will produce a binary called `hello` (or `hello.exe`).
 
-If you modify the program to make it invalid (for example, remove the
-`use std` line), and then compile it, you'll see an error message like
-this:
+If you modify the program to make it invalid (for example, change the
+function to an unknown name), and then compile it, you'll see an error
+message like this:
 
 ~~~~
 ## notrust
-hello.rs:2:4: 2:20 error: unresolved modulename: std
-hello.rs:2     std::io::println("hello world!");
-               ^~~~~~~~~~~~~~~~
+hello.rs:2:4: 2:16 error: unresolved name: io::print_it
+hello.rs:2     io::print_it("hello world from '" + args[0] + "'!");
+               ^~~~~~~~~~~~
 ~~~~
 
 The Rust compiler tries to provide useful information when it runs
@@ -278,8 +277,8 @@ NOTE: The parser doesn't currently recognize non-ascii alphabetic
 characters. This is a bug that will eventually be fixed.
 
 The double-colon (`::`) is used as a module separator, so
-`std::io::println` means 'the thing named `println` in the module
-named `io` in the module named `std`'.
+`io::println` means 'the thing named `println` in the module
+named `io`.
 
 Rust will normally emit warnings about unused variables. These can be
 suppressed by using a variable name that starts with an underscore.
@@ -300,7 +299,7 @@ const repeat: uint = 5u;
 fn main() {
     let count = 0u;
     while count < repeat {
-        std::io::println("Hi!");
+        io::println("Hi!");
         count += 1u;
     }
 }
@@ -535,7 +534,7 @@ one is `#fmt`, a printf-style text formatting macro that is expanded
 at compile time.
 
 ~~~~
-std::io::println(#fmt("%s is %d", "the answer", 42));
+io::println(#fmt("%s is %d", "the answer", 42));
 ~~~~
 
 `#fmt` supports most of the directives that [printf][pf] supports, but
@@ -549,7 +548,7 @@ All syntax extensions look like `#word`. Another built-in one is
 compile-time.
 
 ~~~~
-std::io::println(#env("PATH"));
+io::println(#env("PATH"));
 ~~~~
 # Control structures
 
@@ -561,11 +560,11 @@ compulsory, an optional `else` clause can be appended, and multiple
 
 ~~~~
 if false {
-    std::io::println("that's odd");
+    io::println("that's odd");
 } else if true {
-    std::io::println("right");
+    io::println("right");
 } else {
-    std::io::println("neither true nor false");
+    io::println("neither true nor false");
 }
 ~~~~
 
@@ -598,10 +597,10 @@ the value.
 ~~~~
 # let my_number = 1;
 alt my_number {
-  0       { std::io::println("zero"); }
-  1 | 2   { std::io::println("one or two"); }
-  3 to 10 { std::io::println("three to ten"); }
-  _       { std::io::println("something else"); }
+  0       { io::println("zero"); }
+  1 | 2   { io::println("one or two"); }
+  3 to 10 { io::println("three to ten"); }
+  _       { io::println("something else"); }
 }
 ~~~~
 
@@ -675,7 +674,7 @@ let x = 5;
 while true {
     x += x - 3;
     if x % 5 == 0 { break; }
-    std::io::println(int::str(x));
+    io::println(int::str(x));
 }
 ~~~~
 
@@ -697,7 +696,7 @@ When iterating over a vector, use `for` instead.
 
 ~~~~
 for elt in ["red", "green", "blue"] {
-    std::io::println(elt);
+    io::println(elt);
 }
 ~~~~
 
@@ -864,7 +863,7 @@ fn mk_appender(suffix: str) -> fn@(str) -> str {
 
 fn main() {
     let shout = mk_appender("!");
-    std::io::println(shout("hey ho, let's go"));
+    io::println(shout("hey ho, let's go"));
 }
 ~~~~
 
@@ -1267,7 +1266,7 @@ with square brackets (zero-based):
 
 ~~~~
 let myvec = [true, false, true, false];
-if myvec[1] { std::io::println("boom"); }
+if myvec[1] { io::println("boom"); }
 ~~~~
 
 By default, vectors are immutable—you can not replace their elements.
@@ -1541,11 +1540,11 @@ You can then declare a function to take a `circular_buf<u8>` or return
 an `option<str>`, or even an `option<T>` if the function itself is
 generic.
 
-The `option` type given above exists in the core library as
-`option::t`, and is the way Rust programs express the thing that in C
-would be a nullable pointer. The nice part is that you have to
-explicitly unpack an `option` type, so accidental null pointer
-dereferences become impossible.
+The `option` type given above exists in the core library and is the
+way Rust programs express the thing that in C would be a nullable
+pointer. The nice part is that you have to explicitly unpack an
+`option` type, so accidental null pointer dereferences become
+impossible.
 
 ## Type-inference and generics
 
@@ -1563,7 +1562,7 @@ you really want to have such a statement, you'll have to write it like
 this:
 
 ~~~~
-let n2: option::t<int> = option::none;
+let n2: option<int> = option::none;
 // or
 let n = option::none::<int>;
 ~~~~
@@ -1669,7 +1668,7 @@ mod farm {
     fn cow() -> str { "mooo" }
 }
 fn main() {
-    std::io::println(farm::chicken());
+    io::println(farm::chicken());
 }
 ~~~~
 
@@ -1788,7 +1787,7 @@ fn world() -> str { "world" }
 // main.rs
 use std;
 use mylib;
-fn main() { std::io::println("hello " + mylib::world()); }
+fn main() { io::println("hello " + mylib::world()); }
 ~~~~
 
 Now compile and run like this (adjust to your platform if necessary):
@@ -1810,21 +1809,21 @@ identifiers at the top of a file, module, or block.
 
 ~~~~
 use std;
-import std::io::println;
+import io::println;
 fn main() {
     println("that was easy");
 }
 ~~~~
 
 It is also possible to import just the name of a module (`import
-std::io;`, then use `io::println`), to import all identifiers exported
-by a given module (`import std::io::*`), or to import a specific set
+std::list;`, then use `list::find`), to import all identifiers exported
+by a given module (`import io::*`), or to import a specific set
 of identifiers (`import math::{min, max, pi}`).
 
 You can rename an identifier when importing using the `=` operator:
 
 ~~~~
-import prnt = std::io::println;
+import prnt = io::println;
 ~~~~
 
 ## Exporting
@@ -2158,7 +2157,7 @@ fn sha1(data: str) -> str unsafe {
 }
 
 fn main(args: [str]) {
-    std::io::println(sha1(args[1]));
+    io::println(sha1(args[1]));
 }
 ~~~~
 
@@ -2375,18 +2374,17 @@ module `task`.  Let's begin with the simplest one, `task::spawn()`:
 
 ~~~~
 let some_value = 22;
-let child_task = task::spawn {||
-    std::io::println("This executes in the child task.");
-    std::io::println(#fmt("%d", some_value));
-};
+task::spawn {||
+    io::println("This executes in the child task.");
+    io::println(#fmt("%d", some_value));
+}
 ~~~~
 
 The argument to `task::spawn()` is a [unique
 closure](#unique-closures) of type `fn~()`, meaning that it takes no
 arguments and generates no return value. The effect of `task::spawn()`
 is to fire up a child task that will execute the closure in parallel
-with the creator. The result is a task id, here stored into the
-variable `child_task`.
+with the creator.
 
 ## Ports and channels
 
@@ -2402,10 +2400,10 @@ in parallel.  We might write something like:
 # fn some_other_expensive_computation() {}
 let port = comm::port::<int>();
 let chan = comm::chan::<int>(port);
-let child_task = task::spawn {||
+task::spawn {||
     let result = some_expensive_computation();
     comm::send(chan, result);
-};
+}
 some_other_expensive_computation();
 let result = comm::recv(port);
 ~~~~
@@ -2433,10 +2431,10 @@ The next statement actually spawns the child:
 # fn some_expensive_computation() -> int { 42 }
 # let port = comm::port::<int>();
 # let chan = comm::chan::<int>(port);
-let child_task = task::spawn {||
+task::spawn {||
     let result = some_expensive_computation();
     comm::send(chan, result);
-};
+}
 ~~~~
 
 This child will perform the expensive computation send the result
@@ -2456,70 +2454,66 @@ let result = comm::recv(port);
 ## Creating a task with a bi-directional communication path
 
 A very common thing to do is to spawn a child task where the parent
-and child both need to exchange messages with each other. The function
-`task::spawn_connected()` supports this pattern. We'll look briefly at
-how it is used.
+and child both need to exchange messages with each
+other. The function `task::spawn_listener()` supports this pattern. We'll look
+briefly at how it is used.
 
-To see how `spawn_connected()` works, we will create a child task
+To see how `spawn_listener()` works, we will create a child task
 which receives `uint` messages, converts them to a string, and sends
 the string in response.  The child terminates when `0` is received.
 Here is the function which implements the child task:
 
 ~~~~
-fn stringifier(from_par: comm::port<uint>,
-               to_par: comm::chan<str>) {
+fn stringifier(from_parent: comm::port<uint>,
+               to_parent: comm::chan<str>) {
     let value: uint;
     do {
-        value = comm::recv(from_par);
-        comm::send(to_par, uint::to_str(value, 10u));
+        value = comm::recv(from_parent);
+        comm::send(to_parent, uint::to_str(value, 10u));
     } while value != 0u;
 }
 
 ~~~~
+
 You can see that the function takes two parameters.  The first is a
 port used to receive messages from the parent, and the second is a
 channel used to send messages to the parent.  The body itself simply
 loops, reading from the `from_par` port and then sending its response
 to the `to_par` channel.  The actual response itself is simply the
 strified version of the received value, `uint::to_str(value)`.
-
+ 
 Here is the code for the parent task:
+
 ~~~~
-# fn stringifier(from_par: comm::port<uint>,
-#                to_par: comm::chan<str>) {
-#     comm::send(to_par, "22");
-#     comm::send(to_par, "23");
-#     comm::send(to_par, "0");
+# fn stringifier(from_parent: comm::port<uint>,
+#                to_parent: comm::chan<str>) {
+#     comm::send(to_parent, "22");
+#     comm::send(to_parent, "23");
+#     comm::send(to_parent, "0");
 # }
 fn main() {
-    let t = task::spawn_connected(stringifier);
-    comm::send(t.to_child, 22u);
-    assert comm::recv(t.from_child) == "22";
-    comm::send(t.to_child, 23u);
-    assert comm::recv(t.from_child) == "23";
-    comm::send(t.to_child, 0u);
-    assert comm::recv(t.from_child) == "0";
+    let from_child = comm::port();
+    let to_parent = comm::chan(from_child);
+    let to_child = task::spawn_listener {|from_parent|
+        stringifier(from_parent, to_parent);
+    };
+    comm::send(to_child, 22u);
+    assert comm::recv(from_child) == "22";
+    comm::send(to_child, 23u);
+    assert comm::recv(from_child) == "23";
+    comm::send(to_child, 0u);
+    assert comm::recv(from_child) == "0";
 }
 ~~~~
 
-The call to `spawn_connected()` on the first line will instantiate the
-various ports and channels and startup the child task.  The returned
-value, `t`, is a record of type `task::connected_task<uint,str>`.  In
-addition to the task id of the child, this record defines two fields,
-`from_child` and `to_child`, which contain the port and channel
-respectively for communicating with the child.  Those fields are used
-here to send and receive three messages from the child task.
-
-## Joining a task
-
-The function `spawn_joinable()` is used to spawn a task that can later
-be joined. This is implemented by having the child task send a message
-when it has completed (either successfully or by failing). Therefore,
-`spawn_joinable()` returns a structure containing both the task ID and
-the port where this message will be sent---this structure type is
-called `task::joinable_task`. The structure can be passed to
-`task::join()`, which simply blocks on the port, waiting to receive
-the message from the child task.
+The parent first sets up a port to receive data from and a channel
+that the child can use to send data to that port. The call to
+`spawn_listener()` will spawn the child task, providing it with a port
+on which to receive data from its parent, and returning to the parent
+the associated channel. Finally, the closure passed to
+`spawn_listener()` that forms the body of the child task captures the
+`to_parent` channel in its environment, so both parent and child
+can send and receive data to and from the other.
 
 ## The supervisor relationship
 

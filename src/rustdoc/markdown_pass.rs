@@ -1,43 +1,51 @@
 #[doc = "Generate markdown from a document tree"];
 
-import std::io;
-import std::io::writer_util;
+import markdown_writer::writer;
+import markdown_writer::writer_util;
+import markdown_writer::writer_factory;
 
 export mk_pass;
+export header_kind, header_name, header_text;
 
-// FIXME: This is a really convoluted interface to work around trying
-// to get a writer into a unique closure and then being able to test
-// what was written afterward
-fn mk_pass(
-    give_writer: fn~(fn(io::writer))
-) -> pass {
-    fn~(
-        srv: astsrv::srv,
-        doc: doc::cratedoc
-    ) -> doc::cratedoc {
+fn mk_pass(writer_factory: writer_factory) -> pass {
+    let f = fn~(srv: astsrv::srv, doc: doc::doc) -> doc::doc {
+        run(srv, doc, writer_factory)
+    };
 
-        fn mods_last(item1: doc::itemtag, item2: doc::itemtag) -> bool {
-            fn is_mod(item: doc::itemtag) -> bool {
-                alt item {
-                  doc::modtag(_) { true }
-                  _ { false }
-                }
-            }
-
-            let lteq = !is_mod(item1) || is_mod(item2);
-            lteq
-        }
-
-        give_writer {|writer|
-            // Sort the items so mods come last. All mods will be
-            // output at the same header level so sorting mods last
-            // makes the headers come out nested correctly.
-            let sorted_doc = sort_pass::mk_pass(mods_last)(srv, doc);
-
-            write_markdown(sorted_doc, writer);
-        }
-        doc
+    {
+        name: "markdown",
+        f: f
     }
+}
+
+fn run(
+    srv: astsrv::srv,
+    doc: doc::doc,
+    writer_factory: writer_factory
+) -> doc::doc {
+
+    fn mods_last(item1: doc::itemtag, item2: doc::itemtag) -> bool {
+        fn is_mod(item: doc::itemtag) -> bool {
+            alt item {
+              doc::modtag(_) { true }
+              _ { false }
+            }
+        }
+
+        let lteq = !is_mod(item1) || is_mod(item2);
+        lteq
+    }
+
+    // Sort the items so mods come last. All mods will be
+    // output at the same header level so sorting mods last
+    // makes the headers come out nested correctly.
+    let sorted_doc = sort_pass::mk_pass(
+        "mods last", mods_last
+    ).f(srv, doc);
+
+    write_markdown(sorted_doc, writer_factory);
+
+    ret doc;
 }
 
 #[test]
@@ -56,10 +64,10 @@ fn should_write_modules_last() {
          fn d() { }"
     );
 
-    let idx_a = option::get(str::find_bytes(markdown, "# Module `a`"));
-    let idx_b = option::get(str::find_bytes(markdown, "## Function `b`"));
-    let idx_c = option::get(str::find_bytes(markdown, "# Module `c`"));
-    let idx_d = option::get(str::find_bytes(markdown, "## Function `d`"));
+    let idx_a = option::get(str::find_str(markdown, "# Module `a`"));
+    let idx_b = option::get(str::find_str(markdown, "## Function `b`"));
+    let idx_c = option::get(str::find_str(markdown, "# Module `c`"));
+    let idx_d = option::get(str::find_str(markdown, "## Function `d`"));
 
     assert idx_b < idx_d;
     assert idx_d < idx_a;
@@ -67,37 +75,183 @@ fn should_write_modules_last() {
 }
 
 type ctxt = {
-    w: io::writer
+    w: writer
 };
 
 fn write_markdown(
-    doc: doc::cratedoc,
-    writer: io::writer
+    doc: doc::doc,
+    writer_factory: writer_factory
 ) {
-    let ctxt = {
-        w: writer
+    par::anymap(doc.pages) {|page|
+        let ctxt = {
+            w: writer_factory(page)
+        };
+        write_page(ctxt, page)
     };
+}
 
-    write_crate(ctxt, doc);
+fn write_page(ctxt: ctxt, page: doc::page) {
+    write_title(ctxt, page);
+    alt page {
+      doc::cratepage(doc) {
+        write_crate(ctxt, doc);
+      }
+      doc::itempage(doc) {
+        // We don't write a header for item's pages because their
+        // header in the html output is created by the page title
+        write_item_no_header(ctxt, doc);
+      }
+    }
+    ctxt.w.write_done();
+}
+
+#[test]
+fn should_request_new_writer_for_each_page() {
+    // This port will send us a (page, str) pair for every writer
+    // that was created
+    let (writer_factory, po) = markdown_writer::future_writer_factory();
+    let (srv, doc) = test::create_doc_srv("mod a { }");
+    // Split the document up into pages
+    let doc = page_pass::mk_pass(config::doc_per_mod).f(srv, doc);
+    write_markdown(doc, writer_factory);
+    // We expect two pages to have been written
+    iter::repeat(2u) {||
+        comm::recv(po);
+    }
+}
+
+fn write_title(ctxt: ctxt, page: doc::page) {
+    ctxt.w.write_line(#fmt("%% %s", make_title(page)));
+    ctxt.w.write_line("");
+}
+
+fn make_title(page: doc::page) -> str {
+    let item = alt page {
+      doc::cratepage(cratedoc) {
+        doc::modtag(cratedoc.topmod)
+      }
+      doc::itempage(itemtag) {
+        itemtag
+      }
+    };
+    let title = markdown_pass::header_text(item);
+    let title = str::replace(title, "`", "");
+    ret title;
+}
+
+#[test]
+fn should_write_title_for_each_page() {
+    let (writer_factory, po) = markdown_writer::future_writer_factory();
+    let (srv, doc) = test::create_doc_srv(
+        "#[link(name = \"core\")]; mod a { }");
+    let doc = page_pass::mk_pass(config::doc_per_mod).f(srv, doc);
+    write_markdown(doc, writer_factory);
+    iter::repeat(2u) {||
+        let (page, markdown) = comm::recv(po);
+        alt page {
+          doc::cratepage(_) {
+            assert str::contains(markdown, "% Crate core");
+          }
+          doc::itempage(_) {
+            assert str::contains(markdown, "% Module a");
+          }
+        }
+    }
 }
 
 enum hlvl {
     h1 = 1,
     h2 = 2,
-    h3 = 3
+    h3 = 3,
+    h4 = 4
 }
 
-fn write_header(ctxt: ctxt, lvl: hlvl, title: str) {
-    let hashes = str::from_chars(vec::init_elt(lvl as uint, '#'));
+fn write_header(ctxt: ctxt, lvl: hlvl, doc: doc::itemtag) {
+    let text = header_text(doc);
+    write_header_(ctxt, lvl, text);
+}
+
+fn write_header_(ctxt: ctxt, lvl: hlvl, title: str) {
+    let hashes = str::from_chars(vec::from_elem(lvl as uint, '#'));
     ctxt.w.write_line(#fmt("%s %s", hashes, title));
     ctxt.w.write_line("");
+}
+
+fn header_kind(doc: doc::itemtag) -> str {
+    alt doc {
+      doc::modtag(_) {
+        if doc.id() == rustc::syntax::ast::crate_node_id {
+            "Crate"
+        } else {
+            "Module"
+        }
+      }
+      doc::nmodtag(_) {
+        "Native module"
+      }
+      doc::fntag(_) {
+        "Function"
+      }
+      doc::consttag(_) {
+        "Const"
+      }
+      doc::enumtag(_) {
+        "Enum"
+      }
+      doc::restag(_) {
+        "Resource"
+      }
+      doc::ifacetag(_) {
+        "Interface"
+      }
+      doc::impltag(doc) {
+        "Implementation"
+      }
+      doc::tytag(_) {
+        "Type"
+      }
+    }
+}
+
+fn header_name(doc: doc::itemtag) -> str {
+    let fullpath = str::connect(doc.path() + [doc.name()], "::");
+    alt doc {
+      doc::modtag(_) if doc.id() != rustc::syntax::ast::crate_node_id {
+        fullpath
+      }
+      doc::nmodtag(_) {
+        fullpath
+      }
+      doc::impltag(doc) {
+        assert option::is_some(doc.self_ty);
+        let self_ty = option::get(doc.self_ty);
+        alt doc.iface_ty {
+          some(iface_ty) {
+            #fmt("%s of %s for %s", doc.name(), iface_ty, self_ty)
+          }
+          none {
+            #fmt("%s for %s", doc.name(), self_ty)
+          }
+        }
+      }
+      _ {
+        doc.name()
+      }
+    }
+}
+
+fn header_text(doc: doc::itemtag) -> str {
+    header_text_(header_kind(doc), header_name(doc))
+}
+
+fn header_text_(kind: str, name: str) -> str {
+    #fmt("%s `%s`", kind, name)
 }
 
 fn write_crate(
     ctxt: ctxt,
     doc: doc::cratedoc
 ) {
-    write_header(ctxt, h1, #fmt("Crate %s", doc.topmod.name()));
     write_top_module(ctxt, doc.topmod);
 }
 
@@ -112,8 +266,6 @@ fn write_mod(
     ctxt: ctxt,
     moddoc: doc::moddoc
 ) {
-    let fullpath = str::connect(moddoc.path() + [moddoc.name()], "::");
-    write_header(ctxt, h1, #fmt("Module `%s`", fullpath));
     write_mod_contents(ctxt, moddoc);
 }
 
@@ -123,31 +275,99 @@ fn should_write_full_path_to_mod() {
     assert str::contains(markdown, "# Module `a::b::c`");
 }
 
+fn write_common(
+    ctxt: ctxt,
+    desc: option<str>,
+    sections: [doc::section]
+) {
+    write_desc(ctxt, desc);
+    write_sections(ctxt, sections);
+}
+
+fn write_desc(
+    ctxt: ctxt,
+    desc: option<str>
+) {
+    alt desc {
+        some(desc) {
+            ctxt.w.write_line(desc);
+            ctxt.w.write_line("");
+        }
+        none { }
+    }
+}
+
+fn write_sections(ctxt: ctxt, sections: [doc::section]) {
+    vec::iter(sections) {|section|
+        write_section(ctxt, section);
+    }
+}
+
+fn write_section(ctxt: ctxt, section: doc::section) {
+    write_header_(ctxt, h4, section.header);
+    ctxt.w.write_line(section.body);
+    ctxt.w.write_line("");
+}
+
+#[test]
+fn should_write_sections() {
+    let markdown = test::render(
+        "#[doc = \"\
+         # Header\n\
+         Body\"]\
+         mod a { }");
+    assert str::contains(markdown, "#### Header\n\nBody\n\n");
+}
+
 fn write_mod_contents(
     ctxt: ctxt,
     doc: doc::moddoc
 ) {
-    write_brief(ctxt, doc.brief());
-    write_desc(ctxt, doc.desc());
+    write_common(ctxt, doc.desc(), doc.sections());
+    if option::is_some(doc.index) {
+        write_index(ctxt, option::get(doc.index));
+    }
 
-    for itemtag in *doc.items {
-        alt itemtag {
-          doc::modtag(moddoc) { write_mod(ctxt, moddoc) }
-          doc::fntag(fndoc) { write_fn(ctxt, fndoc) }
-          doc::consttag(constdoc) { write_const(ctxt, constdoc) }
-          doc::enumtag(enumdoc) { write_enum(ctxt, enumdoc) }
-          doc::restag(resdoc) { write_res(ctxt, resdoc) }
-          doc::ifacetag(ifacedoc) { write_iface(ctxt, ifacedoc) }
-          doc::impltag(impldoc) { write_impl(ctxt, impldoc) }
-          doc::tytag(tydoc) { write_type(ctxt, tydoc) }
-        }
+    for itemtag in doc.items {
+        write_item(ctxt, itemtag);
     }
 }
 
-#[test]
-fn should_write_crate_brief_description() {
-    let markdown = test::render("#[doc(brief = \"this is the crate\")];");
-    assert str::contains(markdown, "this is the crate");
+fn write_item(ctxt: ctxt, doc: doc::itemtag) {
+    write_item_(ctxt, doc, true);
+}
+
+fn write_item_no_header(ctxt: ctxt, doc: doc::itemtag) {
+    write_item_(ctxt, doc, false);
+}
+
+fn write_item_(ctxt: ctxt, doc: doc::itemtag, write_header: bool) {
+    if write_header {
+        write_item_header(ctxt, doc);
+    }
+
+    alt doc {
+      doc::modtag(moddoc) { write_mod(ctxt, moddoc) }
+      doc::nmodtag(nmoddoc) { write_nmod(ctxt, nmoddoc) }
+      doc::fntag(fndoc) { write_fn(ctxt, fndoc) }
+      doc::consttag(constdoc) { write_const(ctxt, constdoc) }
+      doc::enumtag(enumdoc) { write_enum(ctxt, enumdoc) }
+      doc::restag(resdoc) { write_res(ctxt, resdoc) }
+      doc::ifacetag(ifacedoc) { write_iface(ctxt, ifacedoc) }
+      doc::impltag(impldoc) { write_impl(ctxt, impldoc) }
+      doc::tytag(tydoc) { write_type(ctxt, tydoc) }
+    }
+}
+
+fn write_item_header(ctxt: ctxt, doc: doc::itemtag) {
+    write_header(ctxt, item_header_lvl(doc), doc);
+}
+
+fn item_header_lvl(doc: doc::itemtag) -> hlvl {
+    alt doc {
+      doc::modtag(_) | doc::nmodtag(_) { h1 }
+      _ { h2 }
+    }
 }
 
 #[test]
@@ -156,37 +376,106 @@ fn should_write_crate_description() {
     assert str::contains(markdown, "this is the crate");
 }
 
+fn write_index(ctxt: ctxt, index: doc::index) {
+    if vec::is_empty(index.entries) {
+        ret;
+    }
+
+    for entry in index.entries {
+        let header = header_text_(entry.kind, entry.name);
+        let id = entry.link;
+        if option::is_some(entry.brief) {
+            ctxt.w.write_line(#fmt("* [%s](%s) - %s",
+                                   header, id, option::get(entry.brief)));
+        } else {
+            ctxt.w.write_line(#fmt("* [%s](%s)", header, id));
+        }
+    }
+    ctxt.w.write_line("");
+}
+
+#[test]
+fn should_write_index() {
+    let markdown = test::render("mod a { } mod b { }");
+    assert str::contains(
+        markdown,
+        "\n\n* [Module `a`](#module-a)\n\
+         * [Module `b`](#module-b)\n\n"
+    );
+}
+
+#[test]
+fn should_write_index_brief() {
+    let markdown = test::render("#[doc = \"test\"] mod a { }");
+    assert str::contains(markdown, "(#module-a) - test\n");
+}
+
+#[test]
+fn should_not_write_index_if_no_entries() {
+    let markdown = test::render("");
+    assert !str::contains(markdown, "\n\n\n");
+}
+
+#[test]
+fn should_write_index_for_native_mods() {
+    let markdown = test::render("native mod a { fn a(); }");
+    assert str::contains(
+        markdown,
+        "\n\n* [Function `a`](#function-a)\n\n"
+    );
+}
+
+fn write_nmod(ctxt: ctxt, doc: doc::nmoddoc) {
+    write_common(ctxt, doc.desc(), doc.sections());
+    if option::is_some(doc.index) {
+        write_index(ctxt, option::get(doc.index));
+    }
+
+    for fndoc in doc.fns {
+        write_item_header(ctxt, doc::fntag(fndoc));
+        write_fn(ctxt, fndoc);
+    }
+}
+
+#[test]
+fn should_write_native_mods() {
+    let markdown = test::render("#[doc = \"test\"] native mod a { }");
+    assert str::contains(markdown, "Native module `a`");
+    assert str::contains(markdown, "test");
+}
+
+#[test]
+fn should_write_native_fns() {
+    let markdown = test::render("native mod a { #[doc = \"test\"] fn a(); }");
+    assert str::contains(markdown, "test");
+}
+
+#[test]
+fn should_write_native_fn_headers() {
+    let markdown = test::render("native mod a { #[doc = \"test\"] fn a(); }");
+    assert str::contains(markdown, "## Function `a`");
+}
+
 fn write_fn(
     ctxt: ctxt,
     doc: doc::fndoc
 ) {
-    write_header(ctxt, h2, #fmt("Function `%s`", doc.name()));
     write_fnlike(
         ctxt,
         doc.sig,
-        doc.brief(),
         doc.desc(),
-        doc.args,
-        doc.return,
-        doc.failure
+        doc.sections()
     );
 }
 
 fn write_fnlike(
     ctxt: ctxt,
     sig: option<str>,
-    brief: option<str>,
     desc: option<str>,
-    args: [doc::argdoc],
-    return: doc::retdoc,
-    failure: option<str>
+    sections: [doc::section]
 ) {
     write_sig(ctxt, sig);
-    write_brief(ctxt, brief);
-    write_desc(ctxt, desc);
-    write_args(ctxt, args);
-    write_return(ctxt, return);
-    write_failure(ctxt, failure);
+    write_common(ctxt, desc, sections);
 }
 
 fn write_sig(ctxt: ctxt, sig: option<str>) {
@@ -201,7 +490,7 @@ fn write_sig(ctxt: ctxt, sig: option<str>) {
 
 fn code_block_indent(s: str) -> str {
     let lines = str::lines_any(s);
-    let indented = vec::map(lines, { |line| #fmt("    %s", line) });
+    let indented = par::seqmap(lines, { |line| #fmt("    %s", line) });
     str::connect(indented, "\n")
 }
 
@@ -227,14 +516,18 @@ fn should_insert_blank_line_after_fn_signature() {
 fn should_correctly_indent_fn_signature() {
     let doc = test::create_doc("fn a() { }");
     let doc = {
-        topmod: {
-            items: ~[doc::fntag({
-                sig: some("line 1\nline 2")
-                with doc.topmod.fns()[0]
-            })]
-            with doc.topmod
-        }
-        with doc
+        pages: [
+            doc::cratepage({
+                topmod: {
+                    items: [doc::fntag({
+                        sig: some("line 1\nline 2")
+                        with doc.cratemod().fns()[0]
+                    })]
+                    with doc.cratemod()
+                }
+                with doc.cratedoc()
+            })
+        ]
     };
     let markdown = test::write_markdown_str(doc);
     assert str::contains(markdown, "    line 1\n    line 2");
@@ -242,192 +535,16 @@ fn should_correctly_indent_fn_signature() {
 
 #[test]
 fn should_leave_blank_line_between_fn_header_and_sig() {
-    let markdown = test::render("#[doc(brief = \"brief\")] fn a() { }");
-    assert str::contains(markdown, "Function `a`\n\n    fn a()");
-}
-
-fn write_brief(
-    ctxt: ctxt,
-    brief: option<str>
-) {
-    alt brief {
-      some(brief) {
-        ctxt.w.write_line(brief);
-        ctxt.w.write_line("");
-      }
-      none { }
-    }
-}
-
-#[test]
-fn should_leave_blank_line_after_brief() {
-    let markdown = test::render("#[doc(brief = \"brief\")] fn a() { }");
-    assert str::contains(markdown, "brief\n\n");
-}
-
-#[test]
-fn should_leave_blank_line_between_brief_and_desc() {
-    let markdown = test::render(
-        "#[doc(brief = \"brief\", desc = \"desc\")] fn a() { }"
-    );
-    assert str::contains(markdown, "brief\n\ndesc");
-}
-
-fn write_desc(
-    ctxt: ctxt,
-    desc: option<str>
-) {
-    alt desc {
-        some(desc) {
-            ctxt.w.write_line(desc);
-            ctxt.w.write_line("");
-        }
-        none { }
-    }
-}
-
-fn write_args(
-    ctxt: ctxt,
-    args: [doc::argdoc]
-) {
-    if vec::is_not_empty(args) {
-        ctxt.w.write_line("Arguments:");
-        ctxt.w.write_line("");
-        vec::iter(args) {|arg| write_arg(ctxt, arg) };
-        ctxt.w.write_line("");
-    }
-}
-
-fn write_arg(ctxt: ctxt, arg: doc::argdoc) {
-    assert option::is_some(arg.ty);
-    ctxt.w.write_str(#fmt(
-        "* `%s`: `%s`",
-        arg.name,
-        option::get(arg.ty)
-    ));
-    alt arg.desc {
-      some(desc) {
-        ctxt.w.write_str(#fmt(" - %s", desc));
-      }
-      none { }
-    }
-    ctxt.w.write_line("");
-}
-
-#[test]
-fn should_write_argument_list() {
-    let source = "fn a(b: int, c: int) { }";
-    let markdown = test::render(source);
-    assert str::contains(
-        markdown,
-        "Arguments:\n\
-         \n\
-         * `b`: `int`\n\
-         * `c`: `int`\n\
-         \n"
-    );
-}
-
-#[test]
-fn should_not_write_arguments_if_none() {
-    let source = "fn a() { } fn b() { }";
-    let markdown = test::render(source);
-    assert !str::contains(markdown, "Arguments");
-}
-
-#[test]
-fn should_write_argument_description() {
-    let source = "#[doc(args(a = \"milk\"))] fn f(a: bool) { }";
-    let markdown = test::render(source);
-    assert str::contains(markdown, "`a`: `bool` - milk");
-}
-
-fn write_return(
-    ctxt: ctxt,
-    doc: doc::retdoc
-) {
-    alt doc.ty {
-      some(ty) {
-        ctxt.w.write_str(#fmt("Returns `%s`", ty));
-        alt doc.desc {
-          some(d) {
-            ctxt.w.write_line(#fmt(" - %s", d));
-            ctxt.w.write_line("");
-          }
-          none {
-            ctxt.w.write_line("");
-            ctxt.w.write_line("");
-          }
-        }
-      }
-      none { }
-    }
-}
-
-#[test]
-fn should_write_return_type_on_new_line() {
-    let markdown = test::render("fn a() -> int { }");
-    assert str::contains(markdown, "\nReturns `int`");
-}
-
-#[test]
-fn should_write_blank_line_between_return_type_and_next_header() {
-    let markdown = test::render(
-        "fn a() -> int { } \
-         fn b() -> int { }"
-    );
-    assert str::contains(markdown, "Returns `int`\n\n##");
-}
-
-#[test]
-fn should_not_write_return_type_when_there_is_none() {
     let markdown = test::render("fn a() { }");
-    assert !str::contains(markdown, "Returns");
-}
-
-#[test]
-fn should_write_blank_line_after_return_description() {
-    let markdown = test::render(
-        "#[doc(return = \"blorp\")] fn a() -> int { }"
-    );
-    assert str::contains(markdown, "blorp\n\n");
-}
-
-#[test]
-fn should_write_return_description_on_same_line_as_type() {
-    let markdown = test::render(
-        "#[doc(return = \"blorp\")] fn a() -> int { }"
-    );
-    assert str::contains(markdown, "Returns `int` - blorp");
-}
-
-fn write_failure(ctxt: ctxt, str: option<str>) {
-    alt str {
-      some(str) {
-        ctxt.w.write_line(#fmt("Failure conditions: %s", str));
-        ctxt.w.write_line("");
-      }
-      none { }
-    }
-}
-
-#[test]
-fn should_write_failure_conditions() {
-    let markdown = test::render(
-        "#[doc(failure = \"it's the fail\")] fn a () { }");
-    assert str::contains(
-        markdown,
-        "\n\nFailure conditions: it's the fail\n\n");
+    assert str::contains(markdown, "Function `a`\n\n    fn a()");
 }
 
 fn write_const(
     ctxt: ctxt,
     doc: doc::constdoc
 ) {
-    write_header(ctxt, h2, #fmt("Const `%s`", doc.name()));
-    write_sig(ctxt, doc.ty);
-    write_brief(ctxt, doc.brief());
-    write_desc(ctxt, doc.desc());
+    write_sig(ctxt, doc.sig);
+    write_common(ctxt, doc.desc(), doc.sections());
 }
 
 #[test]
@@ -439,18 +556,16 @@ fn should_write_const_header() {
 #[test]
 fn should_write_const_description() {
     let markdown = test::render(
-        "#[doc(brief = \"a\", desc = \"b\")]\
+        "#[doc = \"b\"]\
          const a: bool = true;");
-    assert str::contains(markdown, "\n\na\n\nb\n\n");
+    assert str::contains(markdown, "\n\nb\n\n");
 }
 
 fn write_enum(
     ctxt: ctxt,
     doc: doc::enumdoc
 ) {
-    write_header(ctxt, h2, #fmt("Enum `%s`", doc.name()));
-    write_brief(ctxt, doc.brief());
-    write_desc(ctxt, doc.desc());
+    write_common(ctxt, doc.desc(), doc.sections());
     write_variants(ctxt, doc.variants);
 }
 
@@ -463,8 +578,8 @@ fn should_write_enum_header() {
 #[test]
 fn should_write_enum_description() {
     let markdown = test::render(
-        "#[doc(brief = \"a\", desc = \"b\")] enum a { b }");
-    assert str::contains(markdown, "\n\na\n\nb\n\n");
+        "#[doc = \"b\"] enum a { b }");
+    assert str::contains(markdown, "\n\nb\n\n");
 }
 
 fn write_variants(
@@ -475,8 +590,7 @@ fn write_variants(
         ret;
     }
 
-    ctxt.w.write_line("Variants:");
-    ctxt.w.write_line("");
+    write_header_(ctxt, h4, "Variants");
 
     vec::iter(docs, {|variant| write_variant(ctxt, variant) });
 
@@ -504,7 +618,7 @@ fn should_write_variant_list() {
          #[doc = \"test\"] c }");
     assert str::contains(
         markdown,
-        "\n\nVariants:\n\
+        "\n\n#### Variants\n\
          \n* `b` - test\
          \n* `c` - test\n\n");
 }
@@ -514,7 +628,7 @@ fn should_write_variant_list_without_descs() {
     let markdown = test::render("enum a { b, c }");
     assert str::contains(
         markdown,
-        "\n\nVariants:\n\
+        "\n\n#### Variants\n\
          \n* `b`\
          \n* `c`\n\n");
 }
@@ -524,17 +638,14 @@ fn should_write_variant_list_with_signatures() {
     let markdown = test::render("enum a { b(int), #[doc = \"a\"] c(int) }");
     assert str::contains(
         markdown,
-        "\n\nVariants:\n\
+        "\n\n#### Variants\n\
          \n* `b(int)`\
          \n* `c(int)` - a\n\n");
 }
 
 fn write_res(ctxt: ctxt, doc: doc::resdoc) {
-    write_header(ctxt, h2, #fmt("Resource `%s`", doc.name()));
     write_sig(ctxt, doc.sig);
-    write_brief(ctxt, doc.brief());
-    write_desc(ctxt, doc.desc());
-    write_args(ctxt, doc.args);
+    write_common(ctxt, doc.desc(), doc.sections());
 }
 
 #[test]
@@ -549,17 +660,8 @@ fn should_write_resource_signature() {
     assert str::contains(markdown, "\n    resource r(a: bool)\n");
 }
 
-#[test]
-fn should_write_resource_args() {
-    let markdown = test::render("#[doc(args(a = \"b\"))]\
-                                 resource r(a: bool) { }");
-    assert str::contains(markdown, "Arguments:\n\n* `a`: `bool` - b");
-}
-
 fn write_iface(ctxt: ctxt, doc: doc::ifacedoc) {
-    write_header(ctxt, h2, #fmt("Interface `%s`", doc.name()));
-    write_brief(ctxt, doc.brief());
-    write_desc(ctxt, doc.desc());
+    write_common(ctxt, doc.desc(), doc.sections());
     write_methods(ctxt, doc.methods);
 }
 
@@ -568,15 +670,12 @@ fn write_methods(ctxt: ctxt, docs: [doc::methoddoc]) {
 }
 
 fn write_method(ctxt: ctxt, doc: doc::methoddoc) {
-    write_header(ctxt, h3, #fmt("Method `%s`", doc.name));
+    write_header_(ctxt, h3, header_text_("Method", doc.name));
     write_fnlike(
         ctxt,
         doc.sig,
-        doc.brief,
         doc.desc,
-        doc.args,
-        doc.return,
-        doc.failure
+        doc.sections
     );
 }
 
@@ -587,16 +686,9 @@ fn should_write_iface_header() {
 }
 
 #[test]
-fn should_write_iface_brief() {
-    let markdown = test::render(
-        "#[doc(brief = \"brief\")] iface i { fn a(); }");
-    assert str::contains(markdown, "brief");
-}
-
-#[test]
 fn should_write_iface_desc() {
     let markdown = test::render(
-        "#[doc(desc = \"desc\")] iface i { fn a(); }");
+        "#[doc = \"desc\"] iface i { fn a(); }");
     assert str::contains(markdown, "desc");
 }
 
@@ -614,84 +706,27 @@ fn should_write_iface_method_signature() {
     assert str::contains(markdown, "\n    fn a()");
 }
 
-#[test]
-fn should_write_iface_method_argument_header() {
-    let markdown = test::render(
-        "iface a { fn a(b: int); }");
-    assert str::contains(markdown, "\n\nArguments:\n\n");
-}
-
-#[test]
-fn should_write_iface_method_arguments() {
-    let markdown = test::render(
-        "iface a { fn a(b: int); }");
-    assert str::contains(markdown, "* `b`: `int`\n");
-}
-
-#[test]
-fn should_not_write_iface_method_arguments_if_none() {
-    let markdown = test::render(
-        "iface a { fn a(); }");
-    assert !str::contains(markdown, "Arguments");
-}
-
-#[test]
-fn should_write_iface_method_return_info() {
-    let markdown = test::render(
-        "iface a { fn a() -> int; }");
-    assert str::contains(markdown, "Returns `int`");
-}
-
-#[test]
-fn should_write_iface_method_failure_conditions() {
-    let markdown = test::render(
-        "iface a { #[doc(failure = \"nuked\")] fn a(); }");
-    assert str::contains(markdown, "Failure conditions: nuked");
-}
-
 fn write_impl(ctxt: ctxt, doc: doc::impldoc) {
-    assert option::is_some(doc.self_ty);
-    let self_ty = option::get(doc.self_ty);
-    alt doc.iface_ty {
-      some(iface_ty) {
-        write_header(ctxt, h2,
-                     #fmt("Implementation `%s` of `%s` for `%s`",
-                          doc.name(), iface_ty, self_ty));
-      }
-      none {
-        write_header(ctxt, h2,
-                     #fmt("Implementation `%s` for `%s`",
-                          doc.name(), self_ty));
-      }
-    }
-    write_brief(ctxt, doc.brief());
-    write_desc(ctxt, doc.desc());
+    write_common(ctxt, doc.desc(), doc.sections());
     write_methods(ctxt, doc.methods);
 }
 
 #[test]
 fn should_write_impl_header() {
     let markdown = test::render("impl i for int { fn a() { } }");
-    assert str::contains(markdown, "## Implementation `i` for `int`");
+    assert str::contains(markdown, "## Implementation `i for int`");
 }
 
 #[test]
 fn should_write_impl_header_with_iface() {
     let markdown = test::render("impl i of j for int { fn a() { } }");
-    assert str::contains(markdown, "## Implementation `i` of `j` for `int`");
-}
-
-#[test]
-fn should_write_impl_brief() {
-    let markdown = test::render(
-        "#[doc(brief = \"brief\")] impl i for int { fn a() { } }");
-    assert str::contains(markdown, "brief");
+    assert str::contains(markdown, "## Implementation `i of j for int`");
 }
 
 #[test]
 fn should_write_impl_desc() {
     let markdown = test::render(
-        "#[doc(desc = \"desc\")] impl i for int { fn a() { } }");
+        "#[doc = \"desc\"] impl i for int { fn a() { } }");
     assert str::contains(markdown, "desc");
 }
 
@@ -709,49 +744,12 @@ fn should_write_impl_method_signature() {
     assert str::contains(markdown, "\n    fn a()");
 }
 
-#[test]
-fn should_write_impl_method_argument_header() {
-    let markdown = test::render(
-        "impl a for int { fn a(b: int) { } }");
-    assert str::contains(markdown, "\n\nArguments:\n\n");
-}
-
-#[test]
-fn should_write_impl_method_arguments() {
-    let markdown = test::render(
-        "impl a for int { fn a(b: int) { } }");
-    assert str::contains(markdown, "* `b`: `int`\n");
-}
-
-#[test]
-fn should_not_write_impl_method_arguments_if_none() {
-    let markdown = test::render(
-        "impl a for int { fn a() { } }");
-    assert !str::contains(markdown, "Arguments");
-}
-
-#[test]
-fn should_write_impl_method_return_info() {
-    let markdown = test::render(
-        "impl a for int { fn a() -> int { } }");
-    assert str::contains(markdown, "Returns `int`");
-}
-
-#[test]
-fn should_write_impl_method_failure_conditions() {
-    let markdown = test::render(
-        "impl a for int { #[doc(failure = \"nuked\")] fn a() { } }");
-    assert str::contains(markdown, "Failure conditions: nuked");
-}
-
 fn write_type(
     ctxt: ctxt,
     doc: doc::tydoc
 ) {
-    write_header(ctxt, h2, #fmt("Type `%s`", doc.name()));
     write_sig(ctxt, doc.sig);
-    write_brief(ctxt, doc.brief());
-    write_desc(ctxt, doc.desc());
+    write_common(ctxt, doc.desc(), doc.sections());
 }
 
 #[test]
@@ -761,16 +759,9 @@ fn should_write_type_header() {
 }
 
 #[test]
-fn should_write_type_brief() {
-    let markdown = test::render(
-        "#[doc(brief = \"brief\")] type t = int;");
-    assert str::contains(markdown, "\n\nbrief\n\n");
-}
-
-#[test]
 fn should_write_type_desc() {
     let markdown = test::render(
-        "#[doc(desc = \"desc\")] type t = int;");
+        "#[doc = \"desc\"] type t = int;");
     assert str::contains(markdown, "\n\ndesc\n\n");
 }
 
@@ -789,58 +780,57 @@ mod test {
         markdown
     }
 
-    fn create_doc_srv(source: str) -> (astsrv::srv, doc::cratedoc) {
-        let srv = astsrv::mk_srv_from_str(source);
-        let doc = extract::from_srv(srv, "");
-        #debug("doc (extract): %?", doc);
-        let doc = tystr_pass::mk_pass()(srv, doc);
-        #debug("doc (tystr): %?", doc);
-        let doc = path_pass::mk_pass()(srv, doc);
-        #debug("doc (path): %?", doc);
-        let doc = attr_pass::mk_pass()(srv, doc);
-        #debug("doc (attr): %?", doc);
-        (srv, doc)
+    fn create_doc_srv(source: str) -> (astsrv::srv, doc::doc) {
+        astsrv::from_str(source) {|srv|
+
+            let config = {
+                output_style: config::doc_per_crate
+                with config::default_config("whatever")
+            };
+
+            let doc = extract::from_srv(srv, "");
+            #debug("doc (extract): %?", doc);
+            let doc = tystr_pass::mk_pass().f(srv, doc);
+            #debug("doc (tystr): %?", doc);
+            let doc = path_pass::mk_pass().f(srv, doc);
+            #debug("doc (path): %?", doc);
+            let doc = attr_pass::mk_pass().f(srv, doc);
+            #debug("doc (attr): %?", doc);
+            let doc = desc_to_brief_pass::mk_pass().f(srv, doc);
+            #debug("doc (desc_to_brief): %?", doc);
+            let doc = unindent_pass::mk_pass().f(srv, doc);
+            #debug("doc (unindent): %?", doc);
+            let doc = sectionalize_pass::mk_pass().f(srv, doc);
+            #debug("doc (trim): %?", doc);
+            let doc = trim_pass::mk_pass().f(srv, doc);
+            #debug("doc (sectionalize): %?", doc);
+            let doc = markdown_index_pass::mk_pass(config).f(srv, doc);
+            #debug("doc (index): %?", doc);
+            (srv, doc)
+        }
     }
 
-    fn create_doc(source: str) -> doc::cratedoc {
+    fn create_doc(source: str) -> doc::doc {
         let (_, doc) = create_doc_srv(source);
         doc
     }
 
     fn write_markdown_str(
-        doc: doc::cratedoc
+        doc: doc::doc
     ) -> str {
-        let buffer = io::mk_mem_buffer();
-        let writer = io::mem_buffer_writer(buffer);
-        write_markdown(doc, writer);
-        ret io::mem_buffer_str(buffer);
+        let (writer_factory, po) = markdown_writer::future_writer_factory();
+        write_markdown(doc, writer_factory);
+        ret tuple::second(comm::recv(po));
     }
 
     fn write_markdown_str_srv(
         srv: astsrv::srv,
-        doc: doc::cratedoc
+        doc: doc::doc
     ) -> str {
-        let port = comm::port();
-        let chan = comm::chan(port);
-
-        let pass = mk_pass {|f|
-            let buffer = io::mk_mem_buffer();
-            let writer = io::mem_buffer_writer(buffer);
-            f(writer);
-            let result = io::mem_buffer_str(buffer);
-            comm::send(chan, result);
-        };
-        pass(srv, doc);
-        ret comm::recv(port);
-    }
-
-    #[test]
-    fn write_markdown_should_write_crate_header() {
-        let srv = astsrv::mk_srv_from_str("");
-        let doc = extract::from_srv(srv, "belch");
-        let doc = attr_pass::mk_pass()(srv, doc);
-        let markdown = write_markdown_str(doc);
-        assert str::contains(markdown, "# Crate belch");
+        let (writer_factory, po) = markdown_writer::future_writer_factory();
+        let pass = mk_pass(writer_factory);
+        pass.f(srv, doc);
+        ret tuple::second(comm::recv(po));
     }
 
     #[test]

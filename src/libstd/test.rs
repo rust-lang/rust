@@ -1,3 +1,5 @@
+#[doc(hidden)];
+
 // Support code for rustc's built in test runner generator. Currently,
 // none of this is meant for users. It is intended to support the
 // simplest interface possible for representing and running tests
@@ -5,7 +7,6 @@
 
 import result::{ok, err};
 import io::writer_util;
-import core::ctypes;
 
 export test_name;
 export test_fn;
@@ -20,7 +21,7 @@ export run_tests_console;
 
 #[abi = "cdecl"]
 native mod rustrt {
-    fn sched_threads() -> ctypes::size_t;
+    fn sched_threads() -> libc::size_t;
 }
 
 // The name of a test. By convention this follows the rules for rust
@@ -47,7 +48,6 @@ type test_desc = {
 // The default console test runner. It accepts the command line
 // arguments and a vector of test_descs (generated at compile time).
 fn test_main(args: [str], tests: [test_desc]) {
-    check (vec::is_not_empty(args));
     let opts =
         alt parse_opts(args) {
           either::left(o) { o }
@@ -58,11 +58,10 @@ fn test_main(args: [str], tests: [test_desc]) {
 
 type test_opts = {filter: option<str>, run_ignored: bool};
 
-type opt_res = either::t<test_opts, str>;
+type opt_res = either<test_opts, str>;
 
 // Parses command line arguments into test options
-fn parse_opts(args: [str]) : vec::is_not_empty(args) -> opt_res {
-
+fn parse_opts(args: [str]) -> opt_res {
     let args_ = vec::tail(args);
     let opts = [getopts::optflag("ignored")];
     let match =
@@ -85,20 +84,20 @@ fn parse_opts(args: [str]) : vec::is_not_empty(args) -> opt_res {
 
 enum test_result { tr_ok, tr_failed, tr_ignored, }
 
+type console_test_state =
+    @{out: io::writer,
+      use_color: bool,
+      mutable total: uint,
+      mutable passed: uint,
+      mutable failed: uint,
+      mutable ignored: uint,
+      mutable failures: [test_desc]};
+
 // A simple console test runner
 fn run_tests_console(opts: test_opts,
                      tests: [test_desc]) -> bool {
 
-    type test_state =
-        @{out: io::writer,
-          use_color: bool,
-          mutable total: uint,
-          mutable passed: uint,
-          mutable failed: uint,
-          mutable ignored: uint,
-          mutable failures: [test_desc]};
-
-    fn callback(event: testevent, st: test_state) {
+    fn callback(event: testevent, st: console_test_state) {
         alt event {
           te_filtered(filtered_tests) {
             st.total = vec::len(filtered_tests);
@@ -143,11 +142,7 @@ fn run_tests_console(opts: test_opts,
     let success = st.failed == 0u;
 
     if !success {
-        st.out.write_line("\nfailures:");
-        for test: test_desc in st.failures {
-            let testname = test.name; // Satisfy alias analysis
-            st.out.write_line(#fmt["    %s", testname]);
-        }
+        print_failures(st);
     }
 
     st.out.write_str(#fmt["\nresult: "]);
@@ -181,6 +176,52 @@ fn run_tests_console(opts: test_opts,
             term::reset(out);
         }
     }
+}
+
+fn print_failures(st: console_test_state) {
+    st.out.write_line("\nfailures:");
+    let failures = vec::map(copy st.failures) {|test| test.name};
+    let failures = sort::merge_sort(str::le, failures);
+    for name in failures {
+        st.out.write_line(#fmt["    %s", name]);
+    }
+}
+
+#[test]
+fn should_sort_failures_before_printing_them() {
+    let buffer = io::mk_mem_buffer();
+    let writer = io::mem_buffer_writer(buffer);
+
+    let test_a = {
+        name: "a",
+        fn: fn~() { },
+        ignore: false,
+        should_fail: false
+    };
+
+    let test_b = {
+        name: "b",
+        fn: fn~() { },
+        ignore: false,
+        should_fail: false
+    };
+
+    let st =
+        @{out: writer,
+          use_color: false,
+          mutable total: 0u,
+          mutable passed: 0u,
+          mutable failed: 0u,
+          mutable ignored: 0u,
+          mutable failures: [test_b, test_a]};
+
+    print_failures(st);
+
+    let s = io::mem_buffer_str(buffer);
+
+    let apos = option::get(str::find_str(s, "a"));
+    let bpos = option::get(str::find_str(s, "b"));
+    assert apos < bpos;
 }
 
 fn use_color() -> bool { ret get_concurrency() == 1u; }
@@ -316,13 +357,12 @@ fn run_test(+test: test_desc, monitor_ch: comm::chan<monitor_msg>) {
     task::spawn {||
 
         let testfn = test.fn;
-        let test_task = task::spawn_joinable {||
-            configure_test_task();
-            testfn();
-        };
-
-        let task_result = task::join(test_task);
-        let test_result = calc_result(test, task_result == task::tr_success);
+        let builder = task::task_builder();
+        let result_future = task::future_result(builder);
+        task::unsupervise(builder);
+        task::run(builder, testfn);
+        let task_result = future::get(result_future);
+        let test_result = calc_result(test, task_result == task::success);
         comm::send(monitor_ch, (test, test_result));
     };
 }
@@ -335,13 +375,6 @@ fn calc_result(test: test_desc, task_succeeded: bool) -> test_result {
         if test.should_fail { tr_ok }
         else { tr_failed }
     }
-}
-
-// Call from within a test task to make sure it's set up correctly
-fn configure_test_task() {
-    // If this task fails we don't want that failure to propagate to the
-    // test runner or else we couldn't keep running tests
-    task::unsupervise();
 }
 
 #[cfg(test)]
@@ -415,7 +448,6 @@ mod tests {
     #[test]
     fn first_free_arg_should_be_a_filter() {
         let args = ["progname", "filter"];
-        check (vec::is_not_empty(args));
         let opts = alt parse_opts(args) { either::left(o) { o }
           _ { fail "Malformed arg in first_free_arg_should_be_a_filter"; } };
         assert (str::eq("filter", option::get(opts.filter)));
@@ -424,7 +456,6 @@ mod tests {
     #[test]
     fn parse_ignored_flag() {
         let args = ["progname", "filter", "--ignored"];
-        check (vec::is_not_empty(args));
         let opts = alt parse_opts(args) { either::left(o) { o }
           _ { fail "Malformed arg in parse_ignored_flag"; } };
         assert (opts.run_ignored);
@@ -477,12 +508,10 @@ mod tests {
          "test::ignored_tests_result_in_ignored", "test::parse_ignored_flag",
          "test::sort_tests"];
 
-    check (vec::same_length(expected, filtered));
     let pairs = vec::zip(expected, filtered);
 
-
     for (a, b) in pairs { assert (a == b.name); }
-    }
+}
 }
 
 

@@ -12,7 +12,6 @@ fn main() {
     #debug("Check that we don't deadlock.");
     let p = comm::port::<int>();
     let ch = comm::chan(p);
-    let a = task::spawn_joinable {|| start(ch, 0, 10); };
-    task::join(a);
+    task::try {|| start(ch, 0, 10) };
     #debug("Joined task");
 }

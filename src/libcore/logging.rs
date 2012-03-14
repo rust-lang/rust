@@ -13,14 +13,13 @@ fn console_on() {
     rustrt::rust_log_console_on();
 }
 
-#[doc(
-    brief =
-    "Turns off logging to stdout globally",
-    desc =
-    "Turns off the console unless the user has overridden the \
-     runtime environment's logging spec, e.g. by setting \
-     the RUST_LOG environment variable"
-)]
+#[doc = "
+Turns off logging to stdout globally
+
+Turns off the console unless the user has overridden the
+runtime environment's logging spec, e.g. by setting
+the RUST_LOG environment variable
+"]
 fn console_off() {
     rustrt::rust_log_console_off();
 }

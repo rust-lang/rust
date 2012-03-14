@@ -18,7 +18,7 @@ ISTAGE = 2
 
 PREFIX_ROOT = $(CFG_PREFIX)
 PREFIX_BIN = $(PREFIX_ROOT)/bin
-PREFIX_LIB = $(PREFIX_ROOT)/lib
+PREFIX_LIB = $(PREFIX_ROOT)/$(CFG_LIBDIR)
 
 define INSTALL_TARGET_N
   # $(1) is the target triple
@@ -31,7 +31,7 @@ TL$(1)$(2) = $$(TLIB$$(ISTAGE)_T_$(1)_H_$(2))
 # PT{R,B,L} == Prefix Target {Root, Bin, Lib}
 PTR$(1)$(2) = $$(PREFIX_LIB)/rustc/$(1)
 PTB$(1)$(2) = $$(PTR$(1)$(2))/bin
-PTL$(1)$(2) = $$(PTR$(1)$(2))/lib
+PTL$(1)$(2) = $$(PTR$(1)$(2))/$(CFG_LIBDIR)
 
 install-target-$(1)-host-$(2): $$(SREQ$$(ISTAGE)_T_$(1)_H_$(2))
 	$$(Q)mkdir -p $$(PTL$(1)$(2))

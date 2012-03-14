@@ -3,6 +3,7 @@
 #define RUST_KERNEL_H
 
 #include <map>
+#include <vector>
 #include "memory_region.h"
 #include "rust_log.h"
 
@@ -23,12 +24,8 @@ class rust_kernel {
 public:
     rust_srv *srv;
 private:
-    // Protects live_tasks, max_task_id and task_table
+    // Protects max_task_id and task_table
     lock_and_signal task_lock;
-    // Tracks the number of tasks that are being managed by
-    // schedulers. When this hits 0 we will tell all schedulers
-    // to exit.
-    uintptr_t live_tasks;
     // The next task id
     rust_task_id max_task_id;
     hash_map<rust_task_id, rust_task *> task_table;
@@ -36,14 +33,15 @@ private:
     lock_and_signal rval_lock;
     int rval;
 
-    // Protects live_schedulers, max_sched_id and sched_table
+    // Protects max_sched_id and sched_table, join_list
     lock_and_signal sched_lock;
-    // Tracks the number of schedulers currently running.
-    // When this hits 0 we will signal the sched_lock and the
-    // kernel will terminate.
-    uintptr_t live_schedulers;
+    // The next scheduler id
     rust_sched_id max_sched_id;
+    // A map from scheduler ids to schedulers. When this is empty
+    // the kernel terminates
     sched_map sched_table;
+    // A list of scheduler ids that are ready to exit
+    std::vector<rust_sched_id> join_list;
 
 public:
 
@@ -57,6 +55,7 @@ public:
     void *malloc(size_t size, const char *tag);
     void *realloc(void *mem, size_t size);
     void free(void *mem);
+    memory_region *region() { return &_region; }
 
     void fail();
 

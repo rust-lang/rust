@@ -380,3 +380,103 @@
    ...
    fun:uv_loop_delete
 }
+
+{
+   lock_and_signal-probably-threadsafe-access-outside-of-lock
+   Helgrind:Race
+   fun:_ZN15lock_and_signal27lock_held_by_current_threadEv
+   ...
+}  
+
+{
+   lock_and_signal-probably-threadsafe-access-outside-of-lock2
+   Helgrind:Race
+   fun:_ZN15lock_and_signal6unlockEv
+   ...
+}
+
+{
+   lock_and_signal-probably-threadsafe-access-outside-of-lock3
+   Helgrind:Race
+   fun:_ZN15lock_and_signal4lockEv
+   ...
+}
+
+{
+   lock_and_signal-probably-threadsafe-access-outside-of-lock4
+   Helgrind:Race
+   fun:_ZN15lock_and_signal4waitEv
+   ...
+}
+
+{
+   uv-async-send-does-racy-things
+   Helgrind:Race
+   fun:pipecb
+   fun:ev_invoke_pending
+   fun:ev_run
+   fun:uv_run
+   ...
+}
+
+{
+   uv-loop-init-does-some-checks-that-are-not-lock-protected
+   Helgrind:Race
+   fun:loop_init
+   fun:ev_loop_new
+   fun:uv_loop_new
+   ...
+}
+
+{
+   random-locking-order-but-it-only-happens-in-a-single-thread-at-a-time-I-polled-2-other-people-and-they-thought-it-was-prabably-ok
+   Helgrind:LockOrder
+   fun:pthread_mutex_lock
+   fun:_ZN15lock_and_signal4lockEv
+   fun:_ZN18rust_port_selector6selectEP9rust_taskPP9rust_portS4_mPm
+   ...
+}
+
+{
+   random-locking-order-but-it-only-happens-in-a-single-thread-at-a-time-I-polled-2-other-people-and-they-thought-it-was-prabably-ok
+   Helgrind:LockOrder
+   fun:pthread_mutex_lock
+   fun:pthread_mutex_lock
+   fun:_ZN15lock_and_signal4lockEv
+   fun:_ZN18rust_port_selector6selectEP9rust_taskPP9rust_portS4_mPm
+   ...
+}
+
+{
+   random-locking-order-but-it-only-happens-in-a-single-thread-at-a-time-I-polled-2-other-people-and-they-thought-it-was-prabably-ok-i686
+   Helgrind:LockOrder
+   fun:pthread_mutex_lock
+   fun:pthread_mutex_lock
+   fun:_ZN15lock_and_signal4lockEv
+   fun:_ZN18rust_port_selector6selectEP9rust_taskPP9rust_portS4_jPj
+}
+
+{
+   libunwind-surely-this-is-ok
+   Helgrind:Race
+   ...
+   fun:_Unwind_RaiseException
+   fun:__cxa_throw
+   ...
+}
+
+{
+   libunwind-surely-this-is-ok2
+   Helgrind:Race
+   ...
+   fun:_Unwind_Resume
+   ...
+}
+
+{
+   libunwind-surely-this-is-ok3
+   Helgrind:Race
+   fun:_Unwind_SetGR
+   fun:__gxx_personality_v0
+   ...
+}

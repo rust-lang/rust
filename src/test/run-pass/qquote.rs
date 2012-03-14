@@ -4,7 +4,7 @@ use std;
 use rustc;
 
 import rustc::*;
-import std::io::*;
+import io::*;
 
 import rustc::driver::diagnostic;
 import rustc::syntax::ast;
@@ -88,11 +88,20 @@ fn main() {
     let y = #ast{2};
     let test3 = #ast{$(x) + $(y)};
     check_pp(test3, pprust::print_expr, "1 + 2");
+
+    let crate = #ast(crate) { fn a() { } };
+    check_pp(crate, pprust::print_crate_, "fn a() { }\n");
+
+    // issue #1926
+    let s = #ast(expr){__s};
+    let e = #ast(expr){__e};
+    let call = #ast(expr){$(s).foo {|__e| $(e)}};
+    check_pp(call, pprust::print_expr, "__s.foo {|__e| __e }")
 }
 
 fn check_pp<T>(expr: T, f: fn(pprust::ps, T), expect: str) {
     let buf = mk_mem_buffer();
-    let pp = pprust::rust_printer(buf as std::io::writer);
+    let pp = pprust::rust_printer(buf as io::writer);
     f(pp, expr);
     pp::eof(pp.s);
     let str = mem_buffer_str(buf);

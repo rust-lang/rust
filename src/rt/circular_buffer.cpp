@@ -139,7 +139,6 @@ circular_buffer::dequeue(void *dst) {
 void
 circular_buffer::grow() {
     size_t new_buffer_sz = _buffer_sz * 2;
-    I(kernel, new_buffer_sz <= MAX_CIRCULAR_BUFFER_SIZE);
     KLOG(kernel, mem, "circular_buffer is growing to %d bytes",
          new_buffer_sz);
     void *new_buffer = kernel->malloc(new_buffer_sz,

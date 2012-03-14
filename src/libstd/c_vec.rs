@@ -1,6 +1,4 @@
-/*
-Module: c_vec
-
+#[doc = "
 Library to interface with chunks of memory allocated in C.
 
 It is often desirable to safely interface with memory allocated from C,
@@ -25,25 +23,22 @@ itself around, the c_vec could be garbage collected, and the memory within
 could be destroyed.  There are legitimate uses for the pointer elimination
 form -- for instance, to pass memory back into C -- but great care must be
 taken to ensure that a reference to the c_vec::t is still held if needed.
+"];
 
- */
-
-export t;
-export create, create_with_dtor;
+export c_vec;
+export c_vec, c_vec_with_dtor;
 export get, set;
 export len;
 export ptr;
 
-/*
- Type: t
+#[doc = "
+The type representing a native chunk of memory
 
- The type representing a native chunk of memory.  Wrapped in a enum for
- opacity; FIXME #818 when it is possible to have truly opaque types, this
- should be revisited.
- */
-
-enum t<T> {
-    t({ base: *mutable T, len: uint, rsrc: @dtor_res})
+Wrapped in a enum for opacity; FIXME #818 when it is possible to have
+truly opaque types, this should be revisited.
+"]
+enum c_vec<T> {
+    c_vec_({ base: *mutable T, len: uint, rsrc: @dtor_res})
 }
 
 resource dtor_res(dtor: option<fn@()>) {
@@ -57,72 +52,62 @@ resource dtor_res(dtor: option<fn@()>) {
  Section: Introduction forms
  */
 
-/*
-Function: create
+#[doc = "
+Create a `c_vec` from a native buffer with a given length.
 
-Create a c_vec::t from a native buffer with a given length.
+# Arguments
 
-Parameters:
-
-base - A native pointer to a buffer
-len - The number of elements in the buffer
-*/
-unsafe fn create<T>(base: *mutable T, len: uint) -> t<T> {
-    ret t({base: base,
-           len: len,
-           rsrc: @dtor_res(option::none)
-          });
+* base - A native pointer to a buffer
+* len - The number of elements in the buffer
+"]
+unsafe fn c_vec<T>(base: *mutable T, len: uint) -> c_vec<T> {
+    ret c_vec_({
+        base: base,
+        len: len,
+        rsrc: @dtor_res(option::none)
+    });
 }
 
-/*
-Function: create_with_dtor
-
-Create a c_vec::t from a native buffer, with a given length,
+#[doc = "
+Create a `c_vec` from a native buffer, with a given length,
 and a function to run upon destruction.
 
-Parameters:
+# Arguments
 
-base - A native pointer to a buffer
-len - The number of elements in the buffer
-dtor - A function to run when the value is destructed, useful
-       for freeing the buffer, etc.
-*/
-unsafe fn create_with_dtor<T>(base: *mutable T, len: uint, dtor: fn@())
-  -> t<T> {
-    ret t({base: base,
-           len: len,
-           rsrc: @dtor_res(option::some(dtor))
-          });
+* base - A native pointer to a buffer
+* len - The number of elements in the buffer
+* dtor - A function to run when the value is destructed, useful
+         for freeing the buffer, etc.
+"]
+unsafe fn c_vec_with_dtor<T>(base: *mutable T, len: uint, dtor: fn@())
+  -> c_vec<T> {
+    ret c_vec_({
+        base: base,
+        len: len,
+        rsrc: @dtor_res(option::some(dtor))
+    });
 }
 
 /*
  Section: Operations
  */
 
-/*
-Function: get
-
+#[doc = "
 Retrieves an element at a given index
 
-Failure:
-
-If `ofs` is greater or equal to the length of the vector
-*/
-fn get<T: copy>(t: t<T>, ofs: uint) -> T {
+Fails if `ofs` is greater or equal to the length of the vector
+"]
+fn get<T: copy>(t: c_vec<T>, ofs: uint) -> T {
     assert ofs < len(t);
     ret unsafe { *ptr::mut_offset((*t).base, ofs) };
 }
 
-/*
-Function: set
-
+#[doc = "
 Sets the value of an element at a given index
 
-Failure:
-
-If `ofs` is greater or equal to the length of the vector
-*/
-fn set<T: copy>(t: t<T>, ofs: uint, v: T) {
+Fails if `ofs` is greater or equal to the length of the vector
+"]
+fn set<T: copy>(t: c_vec<T>, ofs: uint, v: T) {
     assert ofs < len(t);
     unsafe { *ptr::mut_offset((*t).base, ofs) = v };
 }
@@ -131,41 +116,27 @@ fn set<T: copy>(t: t<T>, ofs: uint, v: T) {
  Section: Elimination forms
  */
 
-/*
-Function: len
-
-Returns the length of the vector
-*/
-fn len<T>(t: t<T>) -> uint {
+#[doc = "Returns the length of the vector"]
+fn len<T>(t: c_vec<T>) -> uint {
     ret (*t).len;
 }
 
-/*
-Function: ptr
-
-Returns a pointer to the first element of the vector
-*/
-unsafe fn ptr<T>(t: t<T>) -> *mutable T {
+#[doc = "Returns a pointer to the first element of the vector"]
+unsafe fn ptr<T>(t: c_vec<T>) -> *mutable T {
     ret (*t).base;
 }
 
 #[cfg(test)]
 mod tests {
-    import ctypes::*;
+    import libc::*;
 
-    #[nolink]
-    #[abi = "cdecl"]
-    native mod libc {
-        fn malloc(n: size_t) -> *mutable u8;
-        fn free(m: *mutable u8);
-    }
-
-    fn malloc(n: size_t) -> t<u8> {
+    fn malloc(n: size_t) -> c_vec<u8> {
         let mem = libc::malloc(n);
 
         assert mem as int != 0;
 
-        ret unsafe { create_with_dtor(mem, n, bind libc::free(mem)) };
+        ret unsafe { c_vec_with_dtor(mem as *mutable u8, n,
+                                     bind free(mem)) };
     }
 
     #[test]

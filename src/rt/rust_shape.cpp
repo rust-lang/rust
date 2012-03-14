@@ -212,7 +212,7 @@ size_of::compute_tag_size(tag_info &tinfo) {
             tinfo.tag_sa.set(1, 1);
     } else {
         // Add in space for the tag.
-        tinfo.tag_sa.add(sizeof(tag_variant_t), alignof<tag_align_t>());
+        tinfo.tag_sa.add(sizeof(tag_variant_t), rust_alignof<tag_align_t>());
     }
 }
 
@@ -277,7 +277,7 @@ private:
     }
 
     inline void cmp_two_pointers() {
-        ALIGN_TO(alignof<void *>());
+        ALIGN_TO(rust_alignof<void *>());
         data_pair<uint8_t *> fst = bump_dp<uint8_t *>(dp);
         data_pair<uint8_t *> snd = bump_dp<uint8_t *>(dp);
         cmp_number(fst);
@@ -286,7 +286,7 @@ private:
     }
 
     inline void cmp_pointer() {
-        ALIGN_TO(alignof<void *>());
+        ALIGN_TO(rust_alignof<void *>());
         cmp_number(bump_dp<uint8_t *>(dp));
     }
 
@@ -447,10 +447,19 @@ log::walk_string2(const std::pair<ptr,ptr> &data) {
     ptr subdp = data.first;
     while (subdp < data.second) {
         char ch = *subdp;
-        if (isprint(ch))
-            out << ch;
-        else if (ch)
-            out << "\\x" << std::setw(2) << std::setfill('0') << (int)ch;
+        switch(ch) {
+        case '\n': out << "\\n"; break;
+        case '\r': out << "\\r"; break;
+        case '\t': out << "\\t"; break;
+        case '\\': out << "\\\\"; break;
+        case '"': out << "\\\""; break;
+        default:
+            if (isprint(ch)) {
+                out << ch;
+            } else if (ch) {
+                out << "\\x" << std::setw(2) << std::setfill('0') << (int)ch;
+            }
+        }
         ++subdp;
     }
 

@@ -3,7 +3,8 @@ use std;
 import str::*;
 
 fn main() unsafe {
+    fn foo(_a: uint, _b: uint) : uint::le(_a, _b) {}
     let a: uint = 4u;
     let b: uint = 1u;
-    log(error, str::unsafe::slice_bytes_safe_range("kitties", a, b));
+    log(error, foo(a, b));
 }

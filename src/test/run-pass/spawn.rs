@@ -5,8 +5,7 @@ use std;
 import task;
 
 fn main() {
-    let t = task::spawn_joinable {|| child(10); };
-    task::join(t);
+    task::spawn {|| child(10); };
 }
 
 fn child(&&i: int) { log(error, i); assert (i == 10); }

@@ -1,4 +1,4 @@
-// error-pattern: Unsatisfied precondition constraint (for example, even(y
+// error-pattern:unsatisfied precondition constraint (for example, even(y
 
 fn print_even(y: int) : even(y) { log(debug, y); }
 
@@ -9,7 +9,7 @@ fn main() {
     let y: int = 42;
     let x: int = 1;
     check (even(y));
-    while true {
+    loop {
         print_even(y);
         while true { while true { while true { y += x; } } }
     }

@@ -1,6 +1,5 @@
 import option;
-import std::generic_os::getenv;
-import std::io;
+import os::getenv;
 
 import common::config;
 

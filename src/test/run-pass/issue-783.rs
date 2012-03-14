@@ -21,6 +21,7 @@ fn a() {
 }
 
 fn main() {
-    let t = spawn_joinable {|| a(); };
-    join(t);
+    iter::repeat(100u) {||
+        spawn {|| a(); }
+    }
 }

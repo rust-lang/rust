@@ -50,7 +50,6 @@ RUNTIME_CS_$(1) := \
               rt/rust_port.cpp \
               rt/rust_upcall.cpp \
               rt/rust_uv.cpp \
-              rt/rust_uvtmp.cpp \
               rt/rust_log.cpp \
               rt/rust_port_selector.cpp \
               rt/circular_buffer.cpp \

@@ -6,9 +6,9 @@ import vec;
 fn fannkuch(n: int) -> int {
     fn perm1init(i: uint) -> int { ret i as int; }
 
-    let perm = vec::init_elt_mut(n as uint, 0);
-    let perm1 = vec::init_fn_mut(n as uint, perm1init);
-    let count = vec::init_elt_mut(n as uint, 0);
+    let perm = vec::to_mut(vec::from_elem(n as uint, 0));
+    let perm1 = vec::to_mut(vec::from_fn(n as uint, perm1init));
+    let count = vec::to_mut(vec::from_elem(n as uint, 0));
     let f = 0;
     let i = 0;
     let k = 0;
@@ -43,7 +43,7 @@ fn fannkuch(n: int) -> int {
         let go = true;
         while go {
             if r == n {
-                std::io::println(#fmt("%d", checksum));
+                io::println(#fmt("%d", checksum));
                 ret flips;
             }
             let p0 = perm1[0];
@@ -60,9 +60,9 @@ fn fannkuch(n: int) -> int {
 
 fn main(args: [str]) {
     let n = if vec::len(args) == 2u {
-        int::from_str(args[1])
+        option::get(int::from_str(args[1]))
     } else {
         8
     };
-    std::io::println(#fmt("Pfannkuchen(%d) = %d", n, fannkuch(n)));
+    io::println(#fmt("Pfannkuchen(%d) = %d", n, fannkuch(n)));
 }

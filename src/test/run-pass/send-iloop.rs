@@ -9,11 +9,10 @@ fn die() {
 }
 
 fn iloop() {
-    task::unsupervise();
     task::spawn {|| die(); };
     let p = comm::port::<()>();
     let c = comm::chan(p);
-    while true {
+    loop {
         // Sending and receiving here because these actions yield,
         // at which point our child can kill us
         comm::send(c, ());
@@ -23,6 +22,8 @@ fn iloop() {
 
 fn main() {
     uint::range(0u, 16u) {|_i|
-        task::spawn {|| iloop(); };
+        let builder = task::task_builder();
+        task::unsupervise(builder);
+        task::run(builder) {|| iloop(); }
     }
 }

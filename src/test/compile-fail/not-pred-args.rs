@@ -1,6 +1,6 @@
 // -*- rust -*-
 
-// error-pattern: Constraint args must be
+// error-pattern:constraint args must be
 
 pure fn f(q: int) -> bool { ret true; }
 

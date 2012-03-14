@@ -1,12 +1,14 @@
 // Top-level, visible-everywhere definitions.
 
-// Export type option as a synonym for option and export the some and none
-// enum constructors.
+// Export various ubiquitous types, constructors, methods.
 
-import option::{some,  none};
-import option = option::t;
+import option::{some, none};
+import option = option::option;
+import either = either::either;
+import result = result::result;
+import path = path::path;
 import vec::vec_len;
-export option, some, none, vec_len;
+export path, option, some, none, vec_len, unreachable;
 
 // Export the log levels as global constants. Higher levels mean
 // more-verbosity. Error is the bottom level, default logging level is
@@ -39,3 +41,13 @@ mod std {
     use std;
     import std::test;
 }
+
+#[doc = "
+A standard function to use to indicate unreachable code. Because the
+function is guaranteed to fail typestate will correctly identify
+any code paths following the appearance of this function as unreachable.
+"]
+fn unreachable() -> ! {
+    fail "Internal error: entered unreachable code";
+}
+
