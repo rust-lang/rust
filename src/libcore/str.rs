@@ -11,13 +11,20 @@ export
    // Creating a string
    from_bytes,
    from_byte,
-   push_char,
    from_char,
    from_chars,
    from_buf,
    from_buf_len,
+   from_c_str,
+   from_c_str_len,
+   push_char,
    concat,
    connect,
+
+   // Reinterpretation
+   as_bytes,
+   as_buf,
+   as_c_str,
 
    // Adding things to and removing things from a string
    push_char,
@@ -88,8 +95,6 @@ export
    char_range_at,
    is_char_boundary,
    char_at,
-   as_bytes,
-   as_buf,
    reserve,
 
    unsafe;
@@ -192,6 +197,11 @@ fn from_buf(buf: *u8) -> str unsafe {
     ret from_buf_len(buf, i);
 }
 
+#[doc = "Create a Rust string from a null-terminated C string"]
+fn from_c_str(c_str: *libc::c_char) -> str unsafe {
+    from_buf(::unsafe::reinterpret_cast(c_str))
+}
+
 #[doc = "Create a Rust string from a *u8 buffer of the given length"]
 fn from_buf_len(buf: *u8, len: uint) -> str unsafe {
     let mut v: [u8] = [];
@@ -204,6 +214,11 @@ fn from_buf_len(buf: *u8, len: uint) -> str unsafe {
     let s: str = ::unsafe::reinterpret_cast(v);
     ::unsafe::leak(v);
     ret s;
+}
+
+#[doc = "Create a Rust string from a `*c_char` buffer of the given length"]
+fn from_c_str_len(c_str: *libc::c_char, len: uint) -> str unsafe {
+    from_buf_len(::unsafe::reinterpret_cast(c_str), len)
 }
 
 #[doc = "Concatenate a vector of strings"]
@@ -1240,6 +1255,16 @@ Work with the byte buffer of a string.
 
 Allows for unsafe manipulation of strings, which is useful for native
 interop.
+"]
+fn as_buf<T>(s: str, f: fn(*u8) -> T) -> T unsafe {
+    as_bytes(s) { |v| vec::as_buf(v, f) }
+}
+
+#[doc = "
+Work with the byte buffer of a string as a null-terminated C string.
+
+Allows for unsafe manipulation of strings, which is useful for native
+interop, without copying the original string.
 
 # Example
 
@@ -1247,8 +1272,8 @@ interop.
 let s = str::as_buf(\"PATH\", { |path_buf| libc::getenv(path_buf) });
 ```
 "]
-fn as_buf<T>(s: str, f: fn(*u8) -> T) -> T unsafe {
-    as_bytes(s) { |v| vec::as_buf(v, f) }
+fn as_c_str<T>(s: str, f: fn(*libc::c_char) -> T) -> T unsafe {
+    as_buf(s) {|buf| f(buf as *libc::c_char) }
 }
 
 #[doc = "Allocate more memory for a string, up to `nn` + 1 bytes"]
