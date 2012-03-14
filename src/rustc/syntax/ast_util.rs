@@ -227,7 +227,7 @@ fn eq_def_id(&&a: def_id, &&b: def_id) -> bool {
 }
 
 fn new_def_id_hash<T: copy>() -> std::map::hashmap<def_id, T> {
-    std::map::new_hashmap(hash_def_id, eq_def_id)
+    std::map::hashmap(hash_def_id, eq_def_id)
 }
 
 fn block_from_expr(e: @expr) -> blk {

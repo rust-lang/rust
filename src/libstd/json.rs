@@ -407,7 +407,7 @@ impl parser for parser {
         self.bump();
         self.parse_whitespace();
 
-        let values = map::new_str_hash();
+        let values = map::str_hash();
 
         if self.ch == '}' {
           self.bump();
@@ -501,7 +501,7 @@ fn eq(value0: json, value1: json) -> bool {
 #[cfg(test)]
 mod tests {
     fn mk_dict(items: [(str, json)]) -> json {
-        let d = map::new_str_hash();
+        let d = map::str_hash();
 
         vec::iter(items) { |item|
             let (key, value) = item;

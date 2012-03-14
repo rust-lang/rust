@@ -60,7 +60,7 @@ fn mk_ast_map_visitor() -> vt {
 }
 
 fn map_crate(sess: session, c: crate) -> map {
-    let cx = {map: std::map::new_int_hash(),
+    let cx = {map: std::map::int_hash(),
               mutable path: [],
               mutable local_id: 0u,
               sess: sess};

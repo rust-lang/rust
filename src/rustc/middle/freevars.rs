@@ -31,7 +31,7 @@ type freevar_map = hashmap<ast::node_id, freevar_info>;
 // in order to start the search.
 fn collect_freevars(def_map: resolve::def_map, blk: ast::blk)
     -> freevar_info {
-    let seen = new_int_hash();
+    let seen = int_hash();
     let refs = @mutable [];
 
     fn ignore_item(_i: @ast::item, &&_depth: int, _v: visit::vt<int>) { }
@@ -86,7 +86,7 @@ fn collect_freevars(def_map: resolve::def_map, blk: ast::blk)
 // one pass. This could be improved upon if it turns out to matter.
 fn annotate_freevars(def_map: resolve::def_map, crate: @ast::crate) ->
    freevar_map {
-    let freevars = new_int_hash();
+    let freevars = int_hash();
 
     let walk_fn = fn@(_fk: visit::fn_kind, _decl: ast::fn_decl,
                       blk: ast::blk, _sp: span, nid: ast::node_id) {

@@ -178,7 +178,7 @@ fn get_install_prefix_rpath(cwd: path::path, target_triple: str) -> str {
 }
 
 fn minimize_rpaths(rpaths: [str]) -> [str] {
-    let set = map::new_str_hash::<()>();
+    let set = map::str_hash::<()>();
     let minimized = [];
     for rpath in rpaths {
         if !set.contains_key(rpath) {

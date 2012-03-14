@@ -4,7 +4,7 @@ import syntax::ast::*;
 import syntax::ast_util::*;
 import syntax::{visit, codemap};
 import codemap::span;
-import std::map::{hashmap, new_int_hash};
+import std::map::{hashmap, int_hash};
 import syntax::print::pprust::path_to_str;
 import tstate::ann::{pre_and_post, pre_and_post_state, empty_ann, prestate,
                      poststate, precond, postcond,
@@ -484,7 +484,7 @@ fn num_constraints(m: fn_info) -> uint { ret m.num_constraints; }
 
 fn new_crate_ctxt(cx: ty::ctxt) -> crate_ctxt {
     let na: [mutable ts_ann] = [mutable];
-    ret {tcx: cx, node_anns: @mutable na, fm: new_int_hash::<fn_info>()};
+    ret {tcx: cx, node_anns: @mutable na, fm: int_hash::<fn_info>()};
 }
 
 /* Use e's type to determine whether it returns.

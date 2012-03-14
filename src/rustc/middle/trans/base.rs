@@ -16,7 +16,7 @@
 import libc::c_uint;
 import std::{map, time};
 import std::map::hashmap;
-import std::map::{new_int_hash, new_str_hash};
+import std::map::{int_hash, str_hash};
 import driver::session;
 import session::session;
 import front::attr;
@@ -3965,9 +3965,9 @@ fn new_fn_ctxt_w_id(ccx: @crate_ctxt, path: path,
           mutable llobstacktoken: none::<ValueRef>,
           mutable llself: none,
           mutable personality: none,
-          llargs: new_int_hash::<local_val>(),
-          lllocals: new_int_hash::<local_val>(),
-          llupvars: new_int_hash::<ValueRef>(),
+          llargs: int_hash::<local_val>(),
+          lllocals: int_hash::<local_val>(),
+          llupvars: int_hash::<ValueRef>(),
           mutable lltyparams: [],
           derived_tydescs: ty::new_ty_hash(),
           id: id,
@@ -4842,7 +4842,7 @@ fn declare_intrinsics(llmod: ModuleRef) -> hashmap<str, ValueRef> {
         decl_cdecl_fn(llmod, "llvm.memset.p0i8.i64",
                       T_fn(T_memset64_args, T_void()));
     let trap = decl_cdecl_fn(llmod, "llvm.trap", T_fn(T_trap_args, T_void()));
-    let intrinsics = new_str_hash::<ValueRef>();
+    let intrinsics = str_hash::<ValueRef>();
     intrinsics.insert("llvm.gcroot", gcroot);
     intrinsics.insert("llvm.gcread", gcread);
     intrinsics.insert("llvm.memmove.p0i8.p0i8.i32", memmove32);
@@ -5002,7 +5002,7 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
     lib::llvm::associate_type(tn, "tydesc", tydesc_type);
     let crate_map = decl_crate_map(sess, link_meta.name, llmod);
     let dbg_cx = if sess.opts.debuginfo {
-        option::some(@{llmetadata: map::new_int_hash(),
+        option::some(@{llmetadata: map::int_hash(),
                        names: new_namegen()})
     } else {
         option::none
@@ -5013,21 +5013,21 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           llmod: llmod,
           td: td,
           tn: tn,
-          externs: new_str_hash::<ValueRef>(),
+          externs: str_hash::<ValueRef>(),
           intrinsics: intrinsics,
-          item_vals: new_int_hash::<ValueRef>(),
+          item_vals: int_hash::<ValueRef>(),
           exp_map: emap,
-          item_symbols: new_int_hash::<str>(),
+          item_symbols: int_hash::<str>(),
           mutable main_fn: none::<ValueRef>,
           link_meta: link_meta,
           enum_sizes: ty::new_ty_hash(),
           discrims: ast_util::new_def_id_hash::<ValueRef>(),
-          discrim_symbols: new_int_hash::<str>(),
+          discrim_symbols: int_hash::<str>(),
           tydescs: ty::new_ty_hash(),
-          dicts: map::new_hashmap(hash_dict_id, {|a, b| a == b}),
+          dicts: map::hashmap(hash_dict_id, {|a, b| a == b}),
           external: util::common::new_def_hash(),
-          monomorphized: map::new_hashmap(hash_mono_id, {|a, b| a == b}),
-          module_data: new_str_hash::<ValueRef>(),
+          monomorphized: map::hashmap(hash_mono_id, {|a, b| a == b}),
+          module_data: str_hash::<ValueRef>(),
           lltypes: ty::new_ty_hash(),
           names: new_namegen(),
           sha: sha,

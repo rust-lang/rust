@@ -39,7 +39,7 @@ fn check_crate(tcx: ty::ctxt, method_map: typeck::method_map,
                last_uses: last_use::last_uses, crate: @crate)
     -> rval_map {
     let ctx = {tcx: tcx,
-               rval_map: std::map::new_int_hash(),
+               rval_map: std::map::int_hash(),
                method_map: method_map,
                last_uses: last_uses};
     let visit = visit::mk_vt(@{

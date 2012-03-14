@@ -1,5 +1,5 @@
 import either::{left, right};
-import std::map::{hashmap, new_str_hash};
+import std::map::{hashmap, str_hash};
 import token::can_begin_expr;
 import codemap::{span,fss_none};
 import util::interner;
@@ -143,7 +143,7 @@ fn new_parser(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader,
 // because, if used at the start of a line, they will cause the line to be
 // interpreted as a specific kind of statement, which would be confusing.
 fn bad_expr_word_table() -> hashmap<str, ()> {
-    let words = new_str_hash();
+    let words = str_hash();
     for word in ["alt", "assert", "be", "break", "check", "claim",
                  "class", "const", "cont", "copy", "crust", "do", "else",
                  "enum", "export", "fail", "fn", "for", "if",  "iface",

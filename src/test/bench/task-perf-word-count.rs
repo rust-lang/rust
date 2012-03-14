@@ -71,7 +71,7 @@ mod map_reduce {
 
     fn map_task(ctrl: chan<ctrl_proto>, input: str) {
         // log(error, "map_task " + input);
-        let intermediates = map::new_str_hash();
+        let intermediates = map::str_hash();
 
         fn emit(im: map::hashmap<str, chan<reduce_proto>>,
                 ctrl: chan<ctrl_proto>, key: str, val: int) {
@@ -136,7 +136,7 @@ mod map_reduce {
 
         let reducers: map::hashmap<str, chan<reduce_proto>>;
 
-        reducers = map::new_str_hash();
+        reducers = map::str_hash();
 
         let num_mappers = vec::len(inputs) as int;
         let results = start_mappers(chan(ctrl), inputs);

@@ -15,7 +15,7 @@ fn main() {
         ret s == t;
     }
 
-    let map = map::new_hashmap(hash, eq);
+    let map = map::hashmap(hash, eq);
     let arr = [];
     uint::range(0u, 10u) {|i|
         arr += [@"key stuff"];

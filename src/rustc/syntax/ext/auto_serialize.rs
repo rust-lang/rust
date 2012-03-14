@@ -506,7 +506,7 @@ fn mk_ser_fn(cx: ext_ctxt, span: span, name: str, tps: [ast::ty_param],
           id: cx.next_id()}]
         + tp_inputs;
 
-    let tps_map = map::new_str_hash();
+    let tps_map = map::str_hash();
     vec::iter2(tps, tp_inputs) {|tp, arg|
         let arg_ident = arg.ident;
         tps_map.insert(
@@ -704,7 +704,7 @@ fn mk_deser_fn(cx: ext_ctxt, span: span, name: str, tps: [ast::ty_param],
           id: cx.next_id()}]
         + tp_inputs;
 
-    let tps_map = map::new_str_hash();
+    let tps_map = map::str_hash();
     vec::iter2(tps, tp_inputs) {|tp, arg|
         let arg_ident = arg.ident;
         tps_map.insert(

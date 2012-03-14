@@ -951,7 +951,7 @@ fn roundtrip(in_item: @ast::item) {
     let mbuf = io::mem_buffer();
     let ebml_w = ebml::writer(io::mem_buffer_writer(mbuf));
     encode_item_ast(ebml_w, in_item);
-    let ebml_doc = ebml::new_doc(@io::mem_buffer_buf(mbuf));
+    let ebml_doc = ebml::doc(@io::mem_buffer_buf(mbuf));
     let out_item = decode_item_ast(ebml_doc);
     #debug["out_item = %s", pprust::item_to_str(out_item)];
     assert in_item == out_item;

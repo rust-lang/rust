@@ -332,18 +332,18 @@ fn mk_rcache() -> creader_cache {
     fn eq_cache_entries(a: val, b: val) -> bool {
         ret a.cnum == b.cnum && a.pos == b.pos && a.len == b.len;
     }
-    ret map::new_hashmap(hash_cache_entry, eq_cache_entries);
+    ret map::hashmap(hash_cache_entry, eq_cache_entries);
 }
 
 fn new_ty_hash<V: copy>() -> map::hashmap<t, V> {
-    map::new_hashmap({|&&t: t| type_id(t)},
+    map::hashmap({|&&t: t| type_id(t)},
                     {|&&a: t, &&b: t| type_id(a) == type_id(b)})
 }
 
 fn mk_ctxt(s: session::session, dm: resolve::def_map, amap: ast_map::map,
            freevars: freevars::freevar_map,
            region_map: @middle::region::region_map) -> ctxt {
-    let interner = map::new_hashmap({|&&k: intern_key|
+    let interner = map::hashmap({|&&k: intern_key|
         hash_type_structure(k.struct) +
             option::maybe(0u, k.o_def_id, ast_util::hash_def_id)
     }, {|&&a, &&b| a == b});
@@ -353,7 +353,7 @@ fn mk_ctxt(s: session::session, dm: resolve::def_map, amap: ast_map::map,
       def_map: dm,
       region_map: region_map,
       node_types: @smallintmap::mk(),
-      node_type_substs: map::new_int_hash(),
+      node_type_substs: map::int_hash(),
       items: amap,
       freevars: freevars,
       tcache: new_def_hash(),
@@ -361,12 +361,12 @@ fn mk_ctxt(s: session::session, dm: resolve::def_map, amap: ast_map::map,
       short_names_cache: new_ty_hash(),
       needs_drop_cache: new_ty_hash(),
       kind_cache: new_ty_hash(),
-      ast_ty_to_ty_cache: map::new_hashmap(
+      ast_ty_to_ty_cache: map::hashmap(
           ast_util::hash_ty, ast_util::eq_ty),
       enum_var_cache: new_def_hash(),
       iface_method_cache: new_def_hash(),
-      ty_param_bounds: map::new_int_hash(),
-      inferred_modes: map::new_int_hash()}
+      ty_param_bounds: map::int_hash(),
+      inferred_modes: map::int_hash()}
 }
 
 

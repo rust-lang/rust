@@ -131,17 +131,17 @@ fn loop_new() -> uv_loop unsafe {
 
         // all state goes here
         let handles: map::hashmap<[u8], *libc::c_void> =
-            map::new_bytes_hash();
+            map::bytes_hash();
         let id_to_handle: map::hashmap<[u8], uv_handle> =
-            map::new_bytes_hash();
+            map::bytes_hash();
         let after_cbs: map::hashmap<[u8], fn~(uv_handle)> =
-            map::new_bytes_hash();
+            map::bytes_hash();
         let close_callbacks: map::hashmap<[u8], fn~()> =
-            map::new_bytes_hash();
+            map::bytes_hash();
         let async_cbs: map::hashmap<[u8], fn~(uv_handle)> =
-            map::new_bytes_hash();
+            map::bytes_hash();
         let timer_cbs: map::hashmap<[u8], fn~(uv_handle)> =
-            map::new_bytes_hash();
+            map::bytes_hash();
 
         // the main loop that this task blocks on.
         // should have the same lifetime as the C libuv

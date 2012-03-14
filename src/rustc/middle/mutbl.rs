@@ -123,7 +123,7 @@ type mutbl_map = std::map::hashmap<node_id, ()>;
 type ctx = {tcx: ty::ctxt, mutbl_map: mutbl_map};
 
 fn check_crate(tcx: ty::ctxt, crate: @crate) -> mutbl_map {
-    let cx = @{tcx: tcx, mutbl_map: std::map::new_int_hash()};
+    let cx = @{tcx: tcx, mutbl_map: std::map::int_hash()};
     let v = @{visit_expr: bind visit_expr(cx, _, _, _),
               visit_decl: bind visit_decl(cx, _, _, _)
               with *visit::default_visitor()};

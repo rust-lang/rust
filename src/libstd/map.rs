@@ -1,8 +1,8 @@
 #[doc = "A map type"];
 
 import chained::hashmap;
-export hashmap, hashfn, eqfn, set, map, chained, new_hashmap, new_str_hash;
-export new_bytes_hash, new_int_hash, new_uint_hash, set_add;
+export hashmap, hashfn, eqfn, set, map, chained, hashmap, str_hash;
+export bytes_hash, int_hash, uint_hash, set_add;
 
 #[doc = "
 A function that returns a hash of a value
@@ -289,7 +289,7 @@ mod chained {
 }
 
 /*
-Function: new_hashmap
+Function: hashmap
 
 Construct a hashmap.
 
@@ -298,33 +298,33 @@ Parameters:
 hasher - The hash function for key type K
 eqer - The equality function for key type K
 */
-fn new_hashmap<K: copy, V: copy>(hasher: hashfn<K>, eqer: eqfn<K>)
+fn hashmap<K: copy, V: copy>(hasher: hashfn<K>, eqer: eqfn<K>)
         -> hashmap<K, V> {
     chained::mk(hasher, eqer)
 }
 
 #[doc = "Construct a hashmap for string keys"]
-fn new_str_hash<V: copy>() -> hashmap<str, V> {
-    ret new_hashmap(str::hash, str::eq);
+fn str_hash<V: copy>() -> hashmap<str, V> {
+    ret hashmap(str::hash, str::eq);
 }
 
 #[doc = "Construct a hashmap for byte string keys"]
-fn new_bytes_hash<V: copy>() -> hashmap<[u8], V> {
-    ret new_hashmap(vec::u8::hash, vec::u8::eq);
+fn bytes_hash<V: copy>() -> hashmap<[u8], V> {
+    ret hashmap(vec::u8::hash, vec::u8::eq);
 }
 
 #[doc = "Construct a hashmap for int keys"]
-fn new_int_hash<V: copy>() -> hashmap<int, V> {
+fn int_hash<V: copy>() -> hashmap<int, V> {
     fn hash_int(&&x: int) -> uint { int::hash(x) }
     fn eq_int(&&a: int, &&b: int) -> bool { ret a == b; }
-    ret new_hashmap(hash_int, eq_int);
+    ret hashmap(hash_int, eq_int);
 }
 
 #[doc = "Construct a hashmap for uint keys"]
-fn new_uint_hash<V: copy>() -> hashmap<uint, V> {
+fn uint_hash<V: copy>() -> hashmap<uint, V> {
     fn hash_uint(&&x: uint) -> uint { uint::hash(x) }
     fn eq_uint(&&a: uint, &&b: uint) -> bool { ret a == b; }
-    ret new_hashmap(hash_uint, eq_uint);
+    ret hashmap(hash_uint, eq_uint);
 }
 
 #[doc = "
@@ -346,7 +346,7 @@ mod tests {
         let eqer_str: map::eqfn<str> = str::eq;
         #debug("uint -> uint");
         let hm_uu: map::hashmap<uint, uint> =
-            map::new_hashmap::<uint, uint>(hasher_uint, eqer_uint);
+            map::hashmap::<uint, uint>(hasher_uint, eqer_uint);
         assert (hm_uu.insert(10u, 12u));
         assert (hm_uu.insert(11u, 13u));
         assert (hm_uu.insert(12u, 14u));
@@ -362,7 +362,7 @@ mod tests {
         let twelve: str = "twelve";
         #debug("str -> uint");
         let hm_su: map::hashmap<str, uint> =
-            map::new_hashmap::<str, uint>(hasher_str, eqer_str);
+            map::hashmap::<str, uint>(hasher_str, eqer_str);
         assert (hm_su.insert("ten", 12u));
         assert (hm_su.insert(eleven, 13u));
         assert (hm_su.insert("twelve", 14u));
@@ -376,7 +376,7 @@ mod tests {
         assert (hm_su.get("twelve") == 12u);
         #debug("uint -> str");
         let hm_us: map::hashmap<uint, str> =
-            map::new_hashmap::<uint, str>(hasher_uint, eqer_uint);
+            map::hashmap::<uint, str>(hasher_uint, eqer_uint);
         assert (hm_us.insert(10u, "twelve"));
         assert (hm_us.insert(11u, "thirteen"));
         assert (hm_us.insert(12u, "fourteen"));
@@ -389,7 +389,7 @@ mod tests {
         assert (str::eq(hm_us.get(12u), "twelve"));
         #debug("str -> str");
         let hm_ss: map::hashmap<str, str> =
-            map::new_hashmap::<str, str>(hasher_str, eqer_str);
+            map::hashmap::<str, str>(hasher_str, eqer_str);
         assert (hm_ss.insert(ten, "twelve"));
         assert (hm_ss.insert(eleven, "thirteen"));
         assert (hm_ss.insert(twelve, "fourteen"));
@@ -417,7 +417,7 @@ mod tests {
         let hasher_uint: map::hashfn<uint> = uint_id;
         let eqer_uint: map::eqfn<uint> = eq_uint;
         let hm_uu: map::hashmap<uint, uint> =
-            map::new_hashmap::<uint, uint>(hasher_uint, eqer_uint);
+            map::hashmap::<uint, uint>(hasher_uint, eqer_uint);
         let i: uint = 0u;
         while i < num_to_insert {
             assert (hm_uu.insert(i, i * i));
@@ -444,7 +444,7 @@ mod tests {
         let hasher_str: map::hashfn<str> = str::hash;
         let eqer_str: map::eqfn<str> = str::eq;
         let hm_ss: map::hashmap<str, str> =
-            map::new_hashmap::<str, str>(hasher_str, eqer_str);
+            map::hashmap::<str, str>(hasher_str, eqer_str);
         i = 0u;
         while i < num_to_insert {
             assert hm_ss.insert(uint::to_str(i, 2u), uint::to_str(i * i, 2u));
@@ -497,7 +497,7 @@ mod tests {
         let hasher: map::hashfn<uint> = hash;
         let eqer: map::eqfn<uint> = eq;
         let hm: map::hashmap<uint, uint> =
-            map::new_hashmap::<uint, uint>(hasher, eqer);
+            map::hashmap::<uint, uint>(hasher, eqer);
         let i: uint = 0u;
         while i < num_to_insert {
             assert (hm.insert(i, i * i));
@@ -560,7 +560,7 @@ mod tests {
     #[test]
     fn test_contains_key() {
         let key = "k";
-        let map = map::new_hashmap::<str, str>(str::hash, str::eq);
+        let map = map::hashmap::<str, str>(str::hash, str::eq);
         assert (!map.contains_key(key));
         map.insert(key, "val");
         assert (map.contains_key(key));
@@ -569,7 +569,7 @@ mod tests {
     #[test]
     fn test_find() {
         let key = "k";
-        let map = map::new_hashmap::<str, str>(str::hash, str::eq);
+        let map = map::hashmap::<str, str>(str::hash, str::eq);
         assert (option::is_none(map.find(key)));
         map.insert(key, "val");
         assert (option::get(map.find(key)) == "val");

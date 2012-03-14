@@ -7,7 +7,7 @@ import rustc::syntax::codemap::span;
 import rustc::middle::ty;
 import rustc::middle::ast_map;
 import rustc::util::ppaux;
-import std::map::{hashmap, map, new_int_hash};
+import std::map::{hashmap, map, int_hash};
 import std::getopts;
 import io::writer_util;
 import driver::build_session_options;
@@ -90,7 +90,7 @@ impl serialize_ctx for serialize_ctx {
 
     fn tp_map(ty_params: [ast::ty_param], tps: [ty::t]) -> tp_map {
         assert vec::len(tps) == vec::len(ty_params);
-        let tps_map = new_int_hash();
+        let tps_map = int_hash();
         vec::iter2(ty_params, tps) {|tp_def,tp_val|
             tps_map.insert(tp_def.id, tp_val);
         }

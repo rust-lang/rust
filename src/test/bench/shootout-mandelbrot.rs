@@ -106,7 +106,7 @@ fn writer(path: str, writech: comm::chan<comm::chan<line>>, size: uint)
     };
     cout.write_line("P4");
     cout.write_line(#fmt("%u %u", size, size));
-    let lines = std::map::new_uint_hash();
+    let lines = std::map::uint_hash();
     let done = 0_u;
     let i = 0_u;
     while i < size {

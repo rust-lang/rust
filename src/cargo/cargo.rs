@@ -387,7 +387,7 @@ fn configure(opts: options) -> cargo {
         result::err(e) { fail e }
     };
 
-    let sources = map::new_str_hash::<source>();
+    let sources = map::str_hash::<source>();
     try_parse_sources(path::connect(syscargo, "sources.json"), sources);
     try_parse_sources(path::connect(syscargo, "local-sources.json"), sources);
     let c = {

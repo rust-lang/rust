@@ -13,7 +13,7 @@ import middle::ty::{node_id_to_type, arg, block_ty,
                     ty_param_bounds_and_ty, lookup_class_items};
 import util::ppaux::ty_to_str;
 import std::smallintmap;
-import std::map::{hashmap, new_int_hash};
+import std::map::{hashmap, int_hash};
 import syntax::print::pprust::*;
 
 export check_crate;
@@ -1354,7 +1354,7 @@ fn gather_locals(ccx: @crate_ctxt,
     let {vb: vb, locals: locals, nvi: nvi} = alt old_fcx {
       none {
         {vb: ty::unify::mk_var_bindings(),
-         locals: new_int_hash::<int>(),
+         locals: int_hash::<int>(),
          nvi: @mutable 0}
       }
       some(fcx) {
@@ -2956,7 +2956,7 @@ fn check_const(ccx: @crate_ctxt, _sp: span, e: @ast::expr, id: ast::node_id) {
           purity: ast::pure_fn,
           proto: ast::proto_box,
           var_bindings: ty::unify::mk_var_bindings(),
-          locals: new_int_hash::<int>(),
+          locals: int_hash::<int>(),
           next_var_id: @mutable 0,
           ccx: ccx};
     check_expr(fcx, e);
@@ -2975,7 +2975,7 @@ fn check_enum_variants(ccx: @crate_ctxt, sp: span, vs: [ast::variant],
           purity: ast::pure_fn,
           proto: ast::proto_box,
           var_bindings: ty::unify::mk_var_bindings(),
-          locals: new_int_hash::<int>(),
+          locals: int_hash::<int>(),
           next_var_id: @mutable 0,
           ccx: ccx};
     let disr_vals: [int] = [];
@@ -3192,7 +3192,7 @@ fn check_method(ccx: @crate_ctxt, method: @ast::method) {
 }
 
 fn class_types(ccx: @crate_ctxt, members: [@ast::class_item]) -> class_map {
-    let rslt = new_int_hash::<ty::t>();
+    let rslt = int_hash::<ty::t>();
     for m in members {
       alt m.node.decl {
          ast::instance_var(_,t,_,id) {
@@ -3513,10 +3513,10 @@ fn check_crate(tcx: ty::ctxt, impl_map: resolve::impl_map,
 
     let ccx = @{mutable self_infos: [],
                 impl_map: impl_map,
-                method_map: std::map::new_int_hash(),
-                dict_map: std::map::new_int_hash(),
+                method_map: std::map::int_hash(),
+                dict_map: std::map::int_hash(),
                 enclosing_class_id: none,
-                enclosing_class: std::map::new_int_hash(),
+                enclosing_class: std::map::int_hash(),
                 tcx: tcx};
     let visit = visit::mk_simple_visitor(@{
         visit_item: bind check_item(ccx, _)

@@ -940,8 +940,8 @@ fn name_has_type(tn: type_names, s: str) -> option<TypeRef> {
 fn mk_type_names() -> type_names {
     fn hash(&&t: TypeRef) -> uint { ret t as uint; }
     fn eq(&&a: TypeRef, &&b: TypeRef) -> bool { ret a as uint == b as uint; }
-    @{type_names: std::map::new_hashmap(hash, eq),
-      named_types: std::map::new_str_hash()}
+    @{type_names: std::map::hashmap(hash, eq),
+      named_types: std::map::str_hash()}
 }
 
 fn type_to_str(names: type_names, ty: TypeRef) -> str {

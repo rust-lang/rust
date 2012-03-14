@@ -8,12 +8,11 @@ import front::attr;
 import metadata::{csearch, cstore};
 import driver::session::session;
 import util::common::*;
-import std::map::{new_int_hash, new_str_hash, new_hashmap};
+import std::map::{int_hash, str_hash, hashmap};
 import syntax::codemap::span;
 import syntax::visit;
 import visit::vt;
 import std::{list, deque};
-import std::map::hashmap;
 import std::list::{list, nil, cons};
 import option::{is_none, is_some};
 import syntax::print::pprust::*;
@@ -82,7 +81,7 @@ fn new_ext_hash() -> ext_hash {
         ret util::common::def_eq(v1.did, v2.did) &&
                 str::eq(v1.ident, v2.ident) && v1.ns == v2.ns;
     }
-    ret std::map::new_hashmap::<key, def>(hash, eq);
+    ret std::map::hashmap::<key, def>(hash, eq);
 }
 
 enum mod_index_entry {
@@ -187,14 +186,14 @@ fn resolve_crate_reexports(sess: session, amap: ast_map::map,
 
 fn create_env(sess: session, amap: ast_map::map) -> @env {
     @{cstore: sess.cstore,
-      def_map: new_int_hash(),
+      def_map: int_hash(),
       ast_map: amap,
-      imports: new_int_hash(),
-      mutable exp_map: new_int_hash(),
-      mod_map: new_int_hash(),
-      block_map: new_int_hash(),
+      imports: int_hash(),
+      mutable exp_map: int_hash(),
+      mod_map: int_hash(),
+      block_map: int_hash(),
       ext_map: new_def_hash(),
-      impl_map: new_int_hash(),
+      impl_map: int_hash(),
       impl_cache: new_def_hash(),
       ext_cache: new_ext_hash(),
       used_imports: {mutable track: false, mutable data:  []},
@@ -289,7 +288,7 @@ fn map_crate(e: @env, c: @ast::crate) {
                                index: index_mod(md),
                                mutable glob_imports: [],
                                mutable globbed_exports: [],
-                               glob_imported_names: new_str_hash(),
+                               glob_imported_names: str_hash(),
                                path: path_from_scope(sc, i.ident)});
           }
           ast::item_native_mod(nmd) {
@@ -298,7 +297,7 @@ fn map_crate(e: @env, c: @ast::crate) {
                                index: index_nmod(nmd),
                                mutable glob_imports: [],
                                mutable globbed_exports: [],
-                               glob_imported_names: new_str_hash(),
+                               glob_imported_names: str_hash(),
                                path: path_from_scope(sc, i.ident)});
           }
           _ { }
@@ -357,7 +356,7 @@ fn map_crate(e: @env, c: @ast::crate) {
                        index: index_mod(c.node.module),
                        mutable glob_imports: [],
                        mutable globbed_exports: [],
-                       glob_imported_names: new_str_hash(),
+                       glob_imported_names: str_hash(),
                        path: ""});
 
     // Next, assemble the links for globbed imports and exports.
@@ -1660,7 +1659,7 @@ fn index_view_items(view_items: [@ast::view_item],
 }
 
 fn index_mod(md: ast::_mod) -> mod_index {
-    let index = new_str_hash::<list<mod_index_entry>>();
+    let index = str_hash::<list<mod_index_entry>>();
 
     index_view_items(md.view_items, index);
 
@@ -1705,7 +1704,7 @@ fn index_mod(md: ast::_mod) -> mod_index {
 
 
 fn index_nmod(md: ast::native_mod) -> mod_index {
-    let index = new_str_hash::<list<mod_index_entry>>();
+    let index = str_hash::<list<mod_index_entry>>();
 
     index_view_items(md.view_items, index);
 
@@ -2141,7 +2140,7 @@ fn check_exports(e: @env) {
     e.mod_map.values {|_mod|
         alt _mod.m {
           some(m) {
-            let glob_is_re_exported = new_int_hash();
+            let glob_is_re_exported = int_hash();
 
             for vi in m.view_items {
                 iter_export_paths(*vi) { |vp|

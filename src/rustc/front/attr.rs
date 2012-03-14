@@ -220,7 +220,7 @@ fn remove_meta_items_by_name(items: [@ast::meta_item], name: str) ->
 }
 
 fn require_unique_names(sess: session, metas: [@ast::meta_item]) {
-    let map = map::new_str_hash();
+    let map = map::str_hash();
     for meta: @ast::meta_item in metas {
         let name = get_meta_item_name(meta);
         if map.contains_key(name) {

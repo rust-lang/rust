@@ -9,7 +9,7 @@ import syntax::visit;
 import syntax::codemap::span;
 import util::{filesearch};
 import io::writer_util;
-import std::map::{hashmap, new_int_hash};
+import std::map::{hashmap, int_hash};
 import syntax::print::pprust;
 import common::*;
 
@@ -20,7 +20,7 @@ export list_file_metadata;
 // libraries necessary for later resolving, typechecking, linking, etc.
 fn read_crates(sess: session::session, crate: ast::crate) {
     let e = @{sess: sess,
-              crate_cache: std::map::new_str_hash::<int>(),
+              crate_cache: std::map::str_hash::<int>(),
               mutable next_crate_num: 1};
     let v =
         visit::mk_simple_visitor(@{visit_view_item:
@@ -275,7 +275,7 @@ fn resolve_crate_deps(e: env, cdata: @[u8]) -> cstore::cnum_map {
     #debug("resolving deps of external crate");
     // The map from crate numbers in the crate we're resolving to local crate
     // numbers
-    let cnum_map = new_int_hash::<ast::crate_num>();
+    let cnum_map = int_hash::<ast::crate_num>();
     for dep: decoder::crate_dep in decoder::get_crate_deps(cdata) {
         let extrn_cnum = dep.cnum;
         let cname = dep.ident;

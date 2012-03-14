@@ -62,8 +62,8 @@ fn check_crate(tcx: ty::ctxt, crate: @ast::crate) -> (copy_map, ref_map) {
     // Stores information about function arguments that's otherwise not easily
     // available.
     let cx = @{tcx: tcx,
-               copy_map: std::map::new_int_hash(),
-               ref_map: std::map::new_int_hash(),
+               copy_map: std::map::int_hash(),
+               ref_map: std::map::int_hash(),
                mutable silent: false};
     let v = @{visit_fn: bind visit_fn(cx, _, _, _, _, _, _, _),
               visit_expr: bind visit_expr(cx, _, _, _),

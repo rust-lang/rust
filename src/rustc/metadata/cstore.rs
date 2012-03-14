@@ -64,8 +64,8 @@ type use_crate_map = map::hashmap<ast::node_id, ast::crate_num>;
 fn p(cstore: cstore) -> cstore_private { alt cstore { private(p) { p } } }
 
 fn mk_cstore() -> cstore {
-    let meta_cache = map::new_int_hash::<crate_metadata>();
-    let crate_map = map::new_int_hash::<ast::crate_num>();
+    let meta_cache = map::int_hash::<crate_metadata>();
+    let crate_map = map::int_hash::<ast::crate_num>();
     let mod_path_map = new_def_hash();
     ret private(@{metas: meta_cache,
                   use_crate_map: crate_map,

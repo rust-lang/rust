@@ -58,14 +58,14 @@ fn find_last_uses(c: @crate, def_map: resolve::def_map,
                            visit_stmt: visit_stmt,
                            visit_fn: visit_fn
                            with *visit::default_visitor()});
-    let cx = {last_uses: std::map::new_hashmap(hash_use_id, {|a, b| a == b}),
+    let cx = {last_uses: std::map::hashmap(hash_use_id, {|a, b| a == b}),
               def_map: def_map,
               ref_map: ref_map,
               tcx: tcx,
               mutable current: [],
               mutable blocks: nil};
     visit::visit_crate(*c, cx, v);
-    let mini_table = std::map::new_int_hash();
+    let mini_table = std::map::int_hash();
     cx.last_uses.items {|key, val|
         if !val { ret; }
         alt key {

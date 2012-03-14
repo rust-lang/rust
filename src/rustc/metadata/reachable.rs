@@ -21,7 +21,7 @@ type ctx = {ccx: @middle::trans::common::crate_ctxt,
 
 fn find_reachable(ccx: @middle::trans::common::crate_ctxt, crate_mod: _mod)
     -> map {
-    let rmap = std::map::new_int_hash();
+    let rmap = std::map::int_hash();
     traverse_public_mod({ccx: ccx, rmap: rmap}, crate_mod);
     rmap
 }

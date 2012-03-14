@@ -71,7 +71,7 @@ fn from_def_assoc_list<V:copy>(
 fn from_str_assoc_list<V:copy>(
     list: [(str, V)]
 ) -> map::hashmap<str, V> {
-    from_assoc_list(list, bind map::new_str_hash())
+    from_assoc_list(list, bind map::str_hash())
 }
 
 fn build_reexport_def_set(srv: astsrv::srv) -> def_set {
@@ -155,7 +155,7 @@ fn build_reexport_path_map(srv: astsrv::srv, -def_map: def_map) -> path_map {
     let assoc_list = astsrv::exec(srv) {|ctxt|
 
         let def_map = from_def_assoc_list(def_assoc_list);
-        let path_map = map::new_str_hash();
+        let path_map = map::str_hash();
 
         ctxt.exp_map.items {|exp_id, defs|
             let path = alt check ctxt.ast_map.get(exp_id) {

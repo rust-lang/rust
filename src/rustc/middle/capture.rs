@@ -34,7 +34,7 @@ fn check_capture_clause(tcx: ty::ctxt,
                         fn_proto: ast::proto,
                         cap_clause: ast::capture_clause) {
     let freevars = freevars::get_freevars(tcx, fn_expr_id);
-    let seen_defs = map::new_int_hash();
+    let seen_defs = map::int_hash();
 
     let check_capture_item = fn@(&&cap_item: @ast::capture_item) {
         let cap_def = tcx.def_map.get(cap_item.id);
@@ -93,7 +93,7 @@ fn compute_capture_vars(tcx: ty::ctxt,
                         fn_proto: ast::proto,
                         cap_clause: ast::capture_clause) -> [capture_var] {
     let freevars = freevars::get_freevars(tcx, fn_expr_id);
-    let cap_map = map::new_int_hash();
+    let cap_map = map::int_hash();
 
     vec::iter(cap_clause.copies) { |cap_item|
         let cap_def = tcx.def_map.get(cap_item.id);

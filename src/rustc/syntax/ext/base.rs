@@ -1,7 +1,7 @@
 import std::map::hashmap;
 import driver::session::session;
 import codemap::{span, expn_info, expanded_from};
-import std::map::new_str_hash;
+import std::map::str_hash;
 
 type syntax_expander_ =
     fn@(ext_ctxt, span, ast::mac_arg, ast::mac_body) -> @ast::expr;
@@ -25,7 +25,7 @@ enum syntax_extension {
 fn syntax_expander_table() -> hashmap<str, syntax_extension> {
     fn builtin(f: syntax_expander_) -> syntax_extension
         {normal({expander: f, span: none})}
-    let syntax_expanders = new_str_hash::<syntax_extension>();
+    let syntax_expanders = str_hash::<syntax_extension>();
     syntax_expanders.insert("fmt", builtin(ext::fmt::expand_syntax_ext));
     syntax_expanders.insert("auto_serialize",
                             item_decorator(ext::auto_serialize::expand));

@@ -81,7 +81,7 @@ fn find_item(item_id: int, items: ebml::doc) -> ebml::doc {
 // Looks up an item in the given metadata and returns an ebml doc pointing
 // to the item data.
 fn lookup_item(item_id: int, data: @[u8]) -> ebml::doc {
-    let items = ebml::get_doc(ebml::new_doc(data), tag_items);
+    let items = ebml::get_doc(ebml::doc(data), tag_items);
     ret find_item(item_id, items);
 }
 
@@ -169,7 +169,7 @@ fn resolve_path(path: [ast::ident], data: @[u8]) -> [ast::def_id] {
         ret str::eq(str::from_bytes(data), s);
     }
     let s = str::connect(path, "::");
-    let md = ebml::new_doc(data);
+    let md = ebml::doc(data);
     let paths = ebml::get_doc(md, tag_paths);
     let eqer = bind eq_item(_, s);
     let result: [ast::def_id] = [];
@@ -274,7 +274,7 @@ fn maybe_get_item_ast(cdata: cmd, tcx: ty::ctxt, maps: maps,
 fn get_enum_variants(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
     -> [ty::variant_info] {
     let data = cdata.data;
-    let items = ebml::get_doc(ebml::new_doc(data), tag_items);
+    let items = ebml::get_doc(ebml::doc(data), tag_items);
     let item = find_item(id, items);
     let infos: [ty::variant_info] = [];
     let variant_ids = enum_variant_ids(item, cdata);
@@ -459,14 +459,14 @@ fn list_crate_attributes(md: ebml::doc, hash: str, out: io::writer) {
 }
 
 fn get_crate_attributes(data: @[u8]) -> [ast::attribute] {
-    ret get_attributes(ebml::new_doc(data));
+    ret get_attributes(ebml::doc(data));
 }
 
 type crate_dep = {cnum: ast::crate_num, ident: str};
 
 fn get_crate_deps(data: @[u8]) -> [crate_dep] {
     let deps: [crate_dep] = [];
-    let cratedoc = ebml::new_doc(data);
+    let cratedoc = ebml::doc(data);
     let depsdoc = ebml::get_doc(cratedoc, tag_crate_deps);
     let crate_num = 1;
     ebml::tagged_docs(depsdoc, tag_crate_dep) {|depdoc|
@@ -488,7 +488,7 @@ fn list_crate_deps(data: @[u8], out: io::writer) {
 }
 
 fn get_crate_hash(data: @[u8]) -> str {
-    let cratedoc = ebml::new_doc(data);
+    let cratedoc = ebml::doc(data);
     let hashdoc = ebml::get_doc(cratedoc, tag_crate_hash);
     ret str::from_bytes(ebml::doc_data(hashdoc));
 }
@@ -503,7 +503,7 @@ fn list_crate_items(bytes: @[u8], md: ebml::doc, out: io::writer) {
 }
 
 fn iter_crate_items(bytes: @[u8], proc: fn(str, ast::def_id)) {
-    let md = ebml::new_doc(bytes);
+    let md = ebml::doc(bytes);
     let paths = ebml::get_doc(md, tag_paths);
     let index = ebml::get_doc(paths, tag_index);
     let bs = ebml::get_doc(index, tag_index_buckets);
@@ -527,7 +527,7 @@ fn get_crate_module_paths(bytes: @[u8]) -> [(ast::def_id, str)] {
     // find all module (path, def_ids), which are not
     // fowarded path due to renamed import or reexport
     let res = [];
-    let mods = map::new_str_hash();
+    let mods = map::str_hash();
     iter_crate_items(bytes) {|path, did|
         let m = mod_of_path(path);
         if str::is_not_empty(m) {
@@ -547,7 +547,7 @@ fn get_crate_module_paths(bytes: @[u8]) -> [(ast::def_id, str)] {
 
 fn list_crate_metadata(bytes: @[u8], out: io::writer) {
     let hash = get_crate_hash(bytes);
-    let md = ebml::new_doc(bytes);
+    let md = ebml::doc(bytes);
     list_crate_attributes(md, hash, out);
     list_crate_deps(bytes, out);
     list_crate_items(bytes, md, out);
