@@ -1933,8 +1933,8 @@ fn lookup_field_ty(cx: ty::ctxt, items:[@ast::class_item],
 
 /*
  * Returns the region that the value named by the given expression lives in.
- * If the expression is not an lvalue, reports an error and returns the block
- * region.
+ * The expression must have been typechecked. If the expression is not an
+ * lvalue, returns the block region.
  *
  * Note that borrowing is not detected here, because we would have to
  * immediately structurally resolve too many types otherwise. Thus the
@@ -1958,10 +1958,20 @@ fn region_of(fcx: @fn_ctxt, expr: @ast::expr) -> ty::region {
                 }
             }
         }
-        ast::expr_field(base, _, _) | ast::expr_index(base, _) |
-                ast::expr_unary(ast::deref, base) {
-            fcx.ccx.tcx.sess.span_unimpl(expr.span, "regions of field, " +
-                                         "index, or deref operations");
+        ast::expr_field(base, _, _) | ast::expr_index(base, _) {
+            fcx.ccx.tcx.sess.span_unimpl(expr.span, "regions of field or " +
+                                         "index operations");
+        }
+        ast::expr_unary(ast::deref, base) {
+            let expr_ty = ty::expr_ty(fcx.ccx.tcx, base);
+            let expr_ty = structurally_resolved_type(fcx, expr.span, expr_ty);
+            alt ty::get(expr_ty).struct {
+                ty::ty_rptr(region, _) { region }
+                ty::ty_box(_) | ty::ty_uniq(_) {
+                    fcx.ccx.tcx.sess.span_unimpl(expr.span, "borrowing");
+                }
+                _ { ret region_of(fcx, base); }
+            }
         }
         _ {
             let blk_id = fcx.ccx.tcx.region_map.rvalue_to_block.get(expr.id);
