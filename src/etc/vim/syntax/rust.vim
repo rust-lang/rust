@@ -17,7 +17,7 @@ endif
 syn keyword   rustKeyword     alt as assert be bind break
 syn keyword   rustKeyword     check claim cont const copy do else enum export fail
 syn keyword   rustKeyword     fn for if iface impl import in inline lambda let log
-syn keyword   rustKeyword     mod mut mutable native note of prove pure
+syn keyword   rustKeyword     loop mod mut mutable native note of prove pure
 syn keyword   rustKeyword     resource ret self syntax to type unchecked
 syn keyword   rustKeyword     unsafe use while with
 
