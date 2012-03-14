@@ -1437,8 +1437,9 @@ fn check_lit(ccx: @crate_ctxt, lit: @ast::lit) -> ty::t {
     }
 }
 
-fn valid_range_bounds(from: @ast::expr, to: @ast::expr) -> bool {
-    ast_util::compare_lit_exprs(from, to) <= 0
+fn valid_range_bounds(tcx: ty::ctxt, from: @ast::expr, to: @ast::expr)
+    -> bool {
+    ast_util::compare_lit_exprs(tcx, from, to) <= 0
 }
 
 fn check_pat_variant(fcx: @fn_ctxt, map: pat_util::pat_id_map,
@@ -1516,7 +1517,7 @@ fn check_pat(fcx: @fn_ctxt, map: pat_util::pat_id_map, pat: @ast::pat,
             tcx.sess.span_err(pat.span, "mismatched types in range");
         } else if !ty::type_is_numeric(b_ty) {
             tcx.sess.span_err(pat.span, "non-numeric type used in range");
-        } else if !valid_range_bounds(begin, end) {
+        } else if !valid_range_bounds(tcx, begin, end) {
             tcx.sess.span_err(begin.span, "lower range bound must be less \
                                            than upper");
         }
@@ -2913,14 +2914,14 @@ fn check_enum_variants(ccx: @crate_ctxt, sp: span, vs: [ast::variant],
         alt v.node.disr_expr {
           some(e) {
             check_expr(fcx, e);
-            let cty = expr_ty(fcx.ccx.tcx, e);
-            let declty = ty::mk_int(fcx.ccx.tcx);
+            let cty = expr_ty(ccx.tcx, e);
+            let declty = ty::mk_int(ccx.tcx);
             demand::simple(fcx, e.span, declty, cty);
             // FIXME: issue #1417
             // Also, check_expr (from check_const pass) doesn't guarantee that
             // the expression in an form that eval_const_expr can handle, so
             // we may still get an internal compiler error
-            alt syntax::ast_util::eval_const_expr(e) {
+            alt syntax::ast_util::eval_const_expr(ccx.tcx, e) {
               syntax::ast_util::const_int(val) {
                 disr_val = val as int;
               }

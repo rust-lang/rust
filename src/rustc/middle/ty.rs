@@ -2373,7 +2373,7 @@ fn enum_variants(cx: ctxt, id: ast::def_id) -> @[variant_info] {
                 alt variant.node.disr_expr {
                   some (ex) {
                     // FIXME: issue #1417
-                    disr_val = alt syntax::ast_util::eval_const_expr(ex) {
+                    disr_val = alt syntax::ast_util::eval_const_expr(cx, ex) {
                       ast_util::const_int(val) {val as int}
                       _ { cx.sess.bug("tag_variants: bad disr expr"); }
                     }

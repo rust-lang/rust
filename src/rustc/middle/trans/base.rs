@@ -2592,6 +2592,17 @@ fn float_cast(bcx: block, lldsttype: TypeRef, llsrctype: TypeRef,
         } else { llsrc };
 }
 
+enum cast_kind { cast_pointer, cast_integral, cast_float,
+                 cast_enum, cast_other, }
+fn cast_type_kind(t: ty::t) -> cast_kind {
+    if ty::type_is_fp(t) { cast_float }
+    else if ty::type_is_unsafe_ptr(t) { cast_pointer }
+    else if ty::type_is_integral(t) { cast_integral }
+    else if ty::type_is_enum(t) { cast_enum }
+    else { cast_other }
+}
+
+
 fn trans_cast(cx: block, e: @ast::expr, id: ast::node_id,
               dest: dest) -> block {
     let ccx = cx.ccx();
@@ -2605,55 +2616,48 @@ fn trans_cast(cx: block, e: @ast::expr, id: ast::node_id,
     let t_in = expr_ty(cx, e);
     let ll_t_out = type_of(ccx, t_out);
 
-    enum kind { pointer, integral, float, enum_, other, }
-    fn t_kind(t: ty::t) -> kind {
-        ret if ty::type_is_fp(t) { float }
-        else if ty::type_is_unsafe_ptr(t) { pointer }
-        else if ty::type_is_integral(t) { integral }
-        else if ty::type_is_enum(t) { enum_ }
-        else { other };
-    }
-    let k_in = t_kind(t_in);
-    let k_out = t_kind(t_out);
-    let s_in = k_in == integral && ty::type_is_signed(t_in);
+    let k_in = cast_type_kind(t_in);
+    let k_out = cast_type_kind(t_out);
+    let s_in = k_in == cast_integral && ty::type_is_signed(t_in);
 
     let newval =
         alt {in: k_in, out: k_out} {
-          {in: integral, out: integral} {
+          {in: cast_integral, out: cast_integral} {
             int_cast(e_res.bcx, ll_t_out, ll_t_in, e_res.val, s_in)
           }
-          {in: float, out: float} {
+          {in: cast_float, out: cast_float} {
             float_cast(e_res.bcx, ll_t_out, ll_t_in, e_res.val)
           }
-          {in: integral, out: float} {
+          {in: cast_integral, out: cast_float} {
             if s_in {
                 SIToFP(e_res.bcx, e_res.val, ll_t_out)
             } else { UIToFP(e_res.bcx, e_res.val, ll_t_out) }
           }
-          {in: float, out: integral} {
+          {in: cast_float, out: cast_integral} {
             if ty::type_is_signed(t_out) {
                 FPToSI(e_res.bcx, e_res.val, ll_t_out)
             } else { FPToUI(e_res.bcx, e_res.val, ll_t_out) }
           }
-          {in: integral, out: pointer} {
+          {in: cast_integral, out: cast_pointer} {
             IntToPtr(e_res.bcx, e_res.val, ll_t_out)
           }
-          {in: pointer, out: integral} {
+          {in: cast_pointer, out: cast_integral} {
             PtrToInt(e_res.bcx, e_res.val, ll_t_out)
           }
-          {in: pointer, out: pointer} {
+          {in: cast_pointer, out: cast_pointer} {
             PointerCast(e_res.bcx, e_res.val, ll_t_out)
           }
-          {in: enum_, out: integral} | {in: enum_, out: float} {
+          {in: cast_enum, out: cast_integral} |
+          {in: cast_enum, out: cast_float} {
             let cx = e_res.bcx;
             let llenumty = T_opaque_enum_ptr(ccx);
             let av_enum = PointerCast(cx, e_res.val, llenumty);
             let lldiscrim_a_ptr = GEPi(cx, av_enum, [0, 0]);
             let lldiscrim_a = Load(cx, lldiscrim_a_ptr);
             alt k_out {
-              integral {int_cast(e_res.bcx, ll_t_out,
-                                  val_ty(lldiscrim_a), lldiscrim_a, true)}
-              float {SIToFP(e_res.bcx, lldiscrim_a, ll_t_out)}
+              cast_integral {int_cast(e_res.bcx, ll_t_out,
+                                      val_ty(lldiscrim_a), lldiscrim_a, true)}
+              cast_float {SIToFP(e_res.bcx, lldiscrim_a, ll_t_out)}
               _ { ccx.sess.bug("translating unsupported cast.") }
             }
           }
@@ -4332,6 +4336,26 @@ fn trans_const_expr(cx: crate_ctxt, e: @ast::expr) -> ValueRef {
           ast::neg    {
             if is_float { llvm::LLVMConstFNeg(te) }
             else        { llvm::LLVMConstNeg(te) }
+          }
+        }
+      }
+      ast::expr_cast(base, tp) {
+        let ety = ty::expr_ty(cx.tcx, e), llty = type_of(cx, ety);
+        let basety = ty::expr_ty(cx.tcx, base);
+        let v = trans_const_expr(cx, base);
+        alt check (cast_type_kind(basety), cast_type_kind(ety)) {
+          (cast_integral, cast_integral) {
+            let s = if ty::type_is_signed(basety) { True } else { False };
+            llvm::LLVMConstIntCast(v, llty, s)
+          }
+          (cast_integral, cast_float) {
+            if ty::type_is_signed(basety) { llvm::LLVMConstSIToFP(v, llty) }
+            else { llvm::LLVMConstUIToFP(v, llty) }
+          }
+          (cast_float, cast_float) { llvm::LLVMConstFPCast(v, llty) }
+          (cast_float, cast_integral) {
+            if ty::type_is_signed(ety) { llvm::LLVMConstFPToSI(v, llty) }
+            else { llvm::LLVMConstFPToUI(v, llty) }
           }
         }
       }

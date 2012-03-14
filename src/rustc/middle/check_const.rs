@@ -3,11 +3,12 @@ import syntax::{visit, ast_util};
 import driver::session::session;
 import std::map::hashmap;
 
-fn check_crate(sess: session, crate: @crate, method_map: typeck::method_map) {
+fn check_crate(sess: session, crate: @crate, method_map: typeck::method_map,
+               tcx: ty::ctxt) {
     visit::visit_crate(*crate, false, visit::mk_vt(@{
         visit_item: check_item,
         visit_pat: check_pat,
-        visit_expr: bind check_expr(sess, method_map, _, _, _)
+        visit_expr: bind check_expr(sess, method_map, tcx, _, _, _)
         with *visit::default_visitor()
     }));
     sess.abort_if_errors();
@@ -42,8 +43,8 @@ fn check_pat(p: @pat, &&_is_const: bool, v: visit::vt<bool>) {
     }
 }
 
-fn check_expr(sess: session, method_map: typeck::method_map, e: @expr,
-              &&is_const: bool, v: visit::vt<bool>) {
+fn check_expr(sess: session, method_map: typeck::method_map, tcx: ty::ctxt,
+              e: @expr, &&is_const: bool, v: visit::vt<bool>) {
     if is_const {
         alt e.node {
           expr_unary(box(_), _) | expr_unary(uniq(_), _) |
@@ -63,6 +64,14 @@ fn check_expr(sess: session, method_map: typeck::method_map, e: @expr,
             }
           }
           expr_lit(_) {}
+          expr_cast(_, _) {
+            let ety = ty::expr_ty(tcx, e);
+            if !ty::type_is_numeric(ety) {
+                sess.span_err(e.span, "can not cast to `" +
+                              util::ppaux::ty_to_str(tcx, ety) +
+                              "` in a constant expression");
+            }
+          }
           _ {
             sess.span_err(e.span,
                           "constant contains unimplemented expression type");

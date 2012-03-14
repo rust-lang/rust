@@ -23,12 +23,12 @@ enum opt {
     var(/* disr val */int, /* variant dids */{enm: def_id, var: def_id}),
     range(@ast::expr, @ast::expr)
 }
-fn opt_eq(a: opt, b: opt) -> bool {
+fn opt_eq(tcx: ty::ctxt, a: opt, b: opt) -> bool {
     alt (a, b) {
-      (lit(a), lit(b)) { ast_util::compare_lit_exprs(a, b) == 0 }
+      (lit(a), lit(b)) { ast_util::compare_lit_exprs(tcx, a, b) == 0 }
       (range(a1, a2), range(b1, b2)) {
-        ast_util::compare_lit_exprs(a1, b1) == 0 &&
-        ast_util::compare_lit_exprs(a2, b2) == 0
+        ast_util::compare_lit_exprs(tcx, a1, b1) == 0 &&
+        ast_util::compare_lit_exprs(tcx, a2, b2) == 0
       }
       (var(a, _), var(b, _)) { a == b }
       _ { false }
@@ -161,18 +161,18 @@ fn enter_opt(tcx: ty::ctxt, m: match, opt: opt, col: uint,
     enter_match(tcx.def_map, m, col, val) {|p|
         alt p.node {
           ast::pat_enum(_, subpats) {
-            if opt_eq(variant_opt(tcx, p.id), opt) { some(subpats) }
+            if opt_eq(tcx, variant_opt(tcx, p.id), opt) { some(subpats) }
             else { none }
           }
           ast::pat_ident(_, none) if pat_is_variant(tcx.def_map, p) {
-            if opt_eq(variant_opt(tcx, p.id), opt) { some([]) }
+            if opt_eq(tcx, variant_opt(tcx, p.id), opt) { some([]) }
             else { none }
           }
           ast::pat_lit(l) {
-            if opt_eq(lit(l), opt) { some([]) } else { none }
+            if opt_eq(tcx, lit(l), opt) { some([]) } else { none }
           }
           ast::pat_range(l1, l2) {
-            if opt_eq(range(l1, l2), opt) { some([]) } else { none }
+            if opt_eq(tcx, range(l1, l2), opt) { some([]) } else { none }
           }
           _ { some(vec::from_elem(variant_size, dummy)) }
         }
@@ -232,8 +232,8 @@ fn enter_uniq(dm: def_map, m: match, col: uint, val: ValueRef) -> match {
 }
 
 fn get_options(ccx: crate_ctxt, m: match, col: uint) -> [opt] {
-    fn add_to_set(&set: [opt], val: opt) {
-        for l in set { if opt_eq(l, val) { ret; } }
+    fn add_to_set(tcx: ty::ctxt, &set: [opt], val: opt) {
+        for l in set { if opt_eq(tcx, l, val) { ret; } }
         set += [val];
     }
 
@@ -241,12 +241,12 @@ fn get_options(ccx: crate_ctxt, m: match, col: uint) -> [opt] {
     for br in m {
         let cur = br.pats[col];
         if pat_is_variant(ccx.tcx.def_map, cur) {
-            add_to_set(found, variant_opt(ccx.tcx, br.pats[col].id));
+            add_to_set(ccx.tcx, found, variant_opt(ccx.tcx, br.pats[col].id));
         } else {
             alt cur.node {
-              ast::pat_lit(l) { add_to_set(found, lit(l)); }
+              ast::pat_lit(l) { add_to_set(ccx.tcx, found, lit(l)); }
               ast::pat_range(l1, l2) {
-                add_to_set(found, range(l1, l2));
+                add_to_set(ccx.tcx, found, range(l1, l2));
               }
               _ {}
             }

@@ -258,19 +258,19 @@ fn pattern_supersedes(tcx: ty::ctxt, a: @pat, b: @pat) -> bool {
       }
       pat_lit(la) {
         alt b.node {
-          pat_lit(lb) { lit_expr_eq(la, lb) }
+          pat_lit(lb) { lit_expr_eq(tcx, la, lb) }
           _ { false }
         }
       }
       pat_range(begina, enda) {
         alt b.node {
           pat_lit(lb) {
-            compare_lit_exprs(begina, lb) <= 0 &&
-            compare_lit_exprs(enda, lb) >= 0
+            compare_lit_exprs(tcx, begina, lb) <= 0 &&
+            compare_lit_exprs(tcx, enda, lb) >= 0
           }
           pat_range(beginb, endb) {
-            compare_lit_exprs(begina, beginb) <= 0 &&
-            compare_lit_exprs(enda, endb) >= 0
+            compare_lit_exprs(tcx, begina, beginb) <= 0 &&
+            compare_lit_exprs(tcx, enda, endb) >= 0
           }
           _ { false }
         }
