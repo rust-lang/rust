@@ -1,6 +1,5 @@
 #[doc ="Process spawning"];
 import option::{some, none};
-import str::sbuf;
 import libc::{pid_t, c_void, c_int};
 
 export program;
@@ -12,7 +11,7 @@ export waitpid;
 
 #[abi = "cdecl"]
 native mod rustrt {
-    fn rust_run_program(argv: *sbuf, envp: *c_void, dir: sbuf,
+    fn rust_run_program(argv: **u8, envp: *c_void, dir: *u8,
                         in_fd: c_int, out_fd: c_int, err_fd: c_int)
         -> pid_t;
 }
@@ -78,7 +77,7 @@ fn spawn_process(prog: str, args: [str],
 }
 
 fn with_argv<T>(prog: str, args: [str],
-                cb: fn(*sbuf) -> T) -> T unsafe {
+                cb: fn(**u8) -> T) -> T unsafe {
     let mut argptrs = str::as_buf(prog) {|b| [b] };
     let mut tmps = [];
     for arg in args {
@@ -141,7 +140,7 @@ fn with_envp<T>(env: option<[(str,str)]>,
 }
 
 fn with_dirp<T>(d: option<str>,
-                cb: fn(sbuf) -> T) -> T unsafe {
+                cb: fn(*u8) -> T) -> T unsafe {
     alt d {
       some(dir) { str::as_buf(dir, cb) }
       none { cb(ptr::null()) }

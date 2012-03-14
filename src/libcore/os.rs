@@ -38,8 +38,8 @@ export as_c_charp, fill_charp_buf;
 native mod rustrt {
     fn rust_env_pairs() -> [str];
     fn rust_getcwd() -> str;
-    fn rust_path_is_dir(path: str::sbuf) -> c_int;
-    fn rust_path_exists(path: str::sbuf) -> c_int;
+    fn rust_path_is_dir(path: *u8) -> c_int;
+    fn rust_path_exists(path: *u8) -> c_int;
     fn rust_list_files(path: str) -> [str];
     fn rust_process_wait(handle: c_int) -> c_int;
 }
@@ -66,7 +66,7 @@ fn fill_charp_buf(f: fn(*mutable c_char, size_t) -> bool)
     let buf = vec::to_mut(vec::from_elem(tmpbuf_sz, 0u8 as c_char));
     vec::as_mut_buf(buf) { |b|
         if f(b, tmpbuf_sz as size_t) {
-            some(str::from_cstr(b as str::sbuf))
+            some(str::from_cstr(b as *u8))
         } else {
             none
         }

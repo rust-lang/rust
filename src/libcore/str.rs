@@ -90,7 +90,6 @@ export
    char_at,
    as_bytes,
    as_buf,
-   sbuf,
    reserve,
 
    unsafe;
@@ -184,7 +183,7 @@ fn from_chars(chs: [char]) -> str {
 }
 
 #[doc = "Create a Rust string from a null-terminated C string"]
-fn from_cstr(cstr: sbuf) -> str unsafe {
+fn from_cstr(cstr: *u8) -> str unsafe {
     let mut curr = cstr, i = 0u;
     while *curr != 0u8 {
         i += 1u;
@@ -194,7 +193,7 @@ fn from_cstr(cstr: sbuf) -> str unsafe {
 }
 
 #[doc = "Create a Rust string from a C string of the given length"]
-fn from_cstr_len(cstr: sbuf, len: uint) -> str unsafe {
+fn from_cstr_len(cstr: *u8, len: uint) -> str unsafe {
     let mut buf: [u8] = [];
     vec::reserve(buf, len + 1u);
     vec::as_buf(buf) {|b| ptr::memcpy(b, cstr, len); }
@@ -1248,12 +1247,9 @@ interop.
 let s = str::as_buf(\"PATH\", { |path_buf| libc::getenv(path_buf) });
 ```
 "]
-fn as_buf<T>(s: str, f: fn(sbuf) -> T) -> T unsafe {
+fn as_buf<T>(s: str, f: fn(*u8) -> T) -> T unsafe {
     as_bytes(s) { |v| vec::as_buf(v, f) }
 }
-
-#[doc = "An unsafe buffer of bytes"]
-type sbuf = *u8;
 
 #[doc = "Allocate more memory for a string, up to `nn` + 1 bytes"]
 fn reserve(&ss: str, nn: uint) {

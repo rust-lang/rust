@@ -1,4 +1,3 @@
-import str::sbuf;
 import std::map::hashmap;
 
 import libc::{c_int, c_uint, c_longlong, c_ulonglong};
@@ -148,28 +147,28 @@ native mod llvm {
     fn LLVMContextCreate() -> ContextRef;
     fn LLVMGetGlobalContext() -> ContextRef;
     fn LLVMContextDispose(C: ContextRef);
-    fn LLVMGetMDKindIDInContext(C: ContextRef, Name: sbuf, SLen: c_uint) ->
+    fn LLVMGetMDKindIDInContext(C: ContextRef, Name: *u8, SLen: c_uint) ->
        c_uint;
-    fn LLVMGetMDKindID(Name: sbuf, SLen: c_uint) -> c_uint;
+    fn LLVMGetMDKindID(Name: *u8, SLen: c_uint) -> c_uint;
 
     /* Create and destroy modules. */
-    fn LLVMModuleCreateWithNameInContext(ModuleID: sbuf, C: ContextRef) ->
+    fn LLVMModuleCreateWithNameInContext(ModuleID: *u8, C: ContextRef) ->
        ModuleRef;
     fn LLVMDisposeModule(M: ModuleRef);
 
     /** Data layout. See Module::getDataLayout. */
-    fn LLVMGetDataLayout(M: ModuleRef) -> sbuf;
-    fn LLVMSetDataLayout(M: ModuleRef, Triple: sbuf);
+    fn LLVMGetDataLayout(M: ModuleRef) -> *u8;
+    fn LLVMSetDataLayout(M: ModuleRef, Triple: *u8);
 
     /** Target triple. See Module::getTargetTriple. */
-    fn LLVMGetTarget(M: ModuleRef) -> sbuf;
-    fn LLVMSetTarget(M: ModuleRef, Triple: sbuf);
+    fn LLVMGetTarget(M: ModuleRef) -> *u8;
+    fn LLVMSetTarget(M: ModuleRef, Triple: *u8);
 
     /** See Module::dump. */
     fn LLVMDumpModule(M: ModuleRef);
 
     /** See Module::setModuleInlineAsm. */
-    fn LLVMSetModuleInlineAsm(M: ModuleRef, Asm: sbuf);
+    fn LLVMSetModuleInlineAsm(M: ModuleRef, Asm: *u8);
 
     /** See llvm::LLVMTypeKind::getTypeID. */
 
@@ -253,8 +252,8 @@ native mod llvm {
 
     /* Operations on all values */
     fn LLVMTypeOf(Val: ValueRef) -> TypeRef;
-    fn LLVMGetValueName(Val: ValueRef) -> sbuf;
-    fn LLVMSetValueName(Val: ValueRef, Name: sbuf);
+    fn LLVMGetValueName(Val: ValueRef) -> *u8;
+    fn LLVMSetValueName(Val: ValueRef, Name: *u8);
     fn LLVMDumpValue(Val: ValueRef);
     fn LLVMReplaceAllUsesWith(OldVal: ValueRef, NewVal: ValueRef);
     fn LLVMHasMetadata(Val: ValueRef) -> c_int;
@@ -283,13 +282,13 @@ native mod llvm {
     fn LLVMConstPointerNull(Ty: TypeRef) -> ValueRef;
 
     /* Operations on metadata */
-    fn LLVMMDStringInContext(C: ContextRef, Str: sbuf, SLen: c_uint) ->
+    fn LLVMMDStringInContext(C: ContextRef, Str: *u8, SLen: c_uint) ->
        ValueRef;
-    fn LLVMMDString(Str: sbuf, SLen: c_uint) -> ValueRef;
+    fn LLVMMDString(Str: *u8, SLen: c_uint) -> ValueRef;
     fn LLVMMDNodeInContext(C: ContextRef, Vals: *ValueRef, Count: c_uint) ->
        ValueRef;
     fn LLVMMDNode(Vals: *ValueRef, Count: c_uint) -> ValueRef;
-    fn LLVMAddNamedMetadataOperand(M: ModuleRef, Str: sbuf,
+    fn LLVMAddNamedMetadataOperand(M: ModuleRef, Str: *u8,
                                    Val: ValueRef);
 
     /* Operations on scalar constants */
@@ -297,25 +296,25 @@ native mod llvm {
        ValueRef;
     // FIXME: radix is actually u8, but our native layer can't handle this
     // yet.  lucky for us we're little-endian. Small miracles.
-    fn LLVMConstIntOfString(IntTy: TypeRef, Text: sbuf, Radix: c_int) ->
+    fn LLVMConstIntOfString(IntTy: TypeRef, Text: *u8, Radix: c_int) ->
        ValueRef;
-    fn LLVMConstIntOfStringAndSize(IntTy: TypeRef, Text: sbuf, SLen: c_uint,
+    fn LLVMConstIntOfStringAndSize(IntTy: TypeRef, Text: *u8, SLen: c_uint,
                                    Radix: u8) -> ValueRef;
     fn LLVMConstReal(RealTy: TypeRef, N: f64) -> ValueRef;
-    fn LLVMConstRealOfString(RealTy: TypeRef, Text: sbuf) -> ValueRef;
-    fn LLVMConstRealOfStringAndSize(RealTy: TypeRef, Text: sbuf,
+    fn LLVMConstRealOfString(RealTy: TypeRef, Text: *u8) -> ValueRef;
+    fn LLVMConstRealOfStringAndSize(RealTy: TypeRef, Text: *u8,
                                     SLen: c_uint) -> ValueRef;
     fn LLVMConstIntGetZExtValue(ConstantVal: ValueRef) -> c_ulonglong;
     fn LLVMConstIntGetSExtValue(ConstantVal: ValueRef) -> c_longlong;
 
 
     /* Operations on composite constants */
-    fn LLVMConstStringInContext(C: ContextRef, Str: sbuf, Length: c_uint,
+    fn LLVMConstStringInContext(C: ContextRef, Str: *u8, Length: c_uint,
                                 DontNullTerminate: Bool) -> ValueRef;
     fn LLVMConstStructInContext(C: ContextRef, ConstantVals: *ValueRef,
                                 Count: c_uint, Packed: Bool) -> ValueRef;
 
-    fn LLVMConstString(Str: sbuf, Length: c_uint,
+    fn LLVMConstString(Str: *u8, Length: c_uint,
                        DontNullTerminate: Bool) -> ValueRef;
     fn LLVMConstArray(ElementTy: TypeRef, ConstantVals: *ValueRef,
                       Length: c_uint) -> ValueRef;
@@ -417,7 +416,7 @@ native mod llvm {
     fn LLVMConstInsertValue(AggConstant: ValueRef,
                             ElementValueConstant: ValueRef, IdxList: *uint,
                             NumIdx: c_uint) -> ValueRef;
-    fn LLVMConstInlineAsm(Ty: TypeRef, AsmString: sbuf, Constraints: sbuf,
+    fn LLVMConstInlineAsm(Ty: TypeRef, AsmString: *u8, Constraints: *u8,
                           HasSideEffects: Bool, IsAlignStack: Bool) ->
        ValueRef;
     fn LLVMBlockAddress(F: ValueRef, BB: BasicBlockRef) -> ValueRef;
@@ -429,8 +428,8 @@ native mod llvm {
     fn LLVMIsDeclaration(Global: ValueRef) -> Bool;
     fn LLVMGetLinkage(Global: ValueRef) -> c_uint;
     fn LLVMSetLinkage(Global: ValueRef, Link: c_uint);
-    fn LLVMGetSection(Global: ValueRef) -> sbuf;
-    fn LLVMSetSection(Global: ValueRef, Section: sbuf);
+    fn LLVMGetSection(Global: ValueRef) -> *u8;
+    fn LLVMSetSection(Global: ValueRef, Section: *u8);
     fn LLVMGetVisibility(Global: ValueRef) -> c_uint;
     fn LLVMSetVisibility(Global: ValueRef, Viz: c_uint);
     fn LLVMGetAlignment(Global: ValueRef) -> c_uint;
@@ -438,10 +437,10 @@ native mod llvm {
 
 
     /* Operations on global variables */
-    fn LLVMAddGlobal(M: ModuleRef, Ty: TypeRef, Name: sbuf) -> ValueRef;
-    fn LLVMAddGlobalInAddressSpace(M: ModuleRef, Ty: TypeRef, Name: sbuf,
+    fn LLVMAddGlobal(M: ModuleRef, Ty: TypeRef, Name: *u8) -> ValueRef;
+    fn LLVMAddGlobalInAddressSpace(M: ModuleRef, Ty: TypeRef, Name: *u8,
                                    AddressSpace: c_uint) -> ValueRef;
-    fn LLVMGetNamedGlobal(M: ModuleRef, Name: sbuf) -> ValueRef;
+    fn LLVMGetNamedGlobal(M: ModuleRef, Name: *u8) -> ValueRef;
     fn LLVMGetFirstGlobal(M: ModuleRef) -> ValueRef;
     fn LLVMGetLastGlobal(M: ModuleRef) -> ValueRef;
     fn LLVMGetNextGlobal(GlobalVar: ValueRef) -> ValueRef;
@@ -455,25 +454,25 @@ native mod llvm {
     fn LLVMSetGlobalConstant(GlobalVar: ValueRef, IsConstant: Bool);
 
     /* Operations on aliases */
-    fn LLVMAddAlias(M: ModuleRef, Ty: TypeRef, Aliasee: ValueRef, Name: sbuf)
+    fn LLVMAddAlias(M: ModuleRef, Ty: TypeRef, Aliasee: ValueRef, Name: *u8)
        -> ValueRef;
 
     /* Operations on functions */
-    fn LLVMAddFunction(M: ModuleRef, Name: sbuf, FunctionTy: TypeRef) ->
+    fn LLVMAddFunction(M: ModuleRef, Name: *u8, FunctionTy: TypeRef) ->
        ValueRef;
-    fn LLVMGetNamedFunction(M: ModuleRef, Name: sbuf) -> ValueRef;
+    fn LLVMGetNamedFunction(M: ModuleRef, Name: *u8) -> ValueRef;
     fn LLVMGetFirstFunction(M: ModuleRef) -> ValueRef;
     fn LLVMGetLastFunction(M: ModuleRef) -> ValueRef;
     fn LLVMGetNextFunction(Fn: ValueRef) -> ValueRef;
     fn LLVMGetPreviousFunction(Fn: ValueRef) -> ValueRef;
     fn LLVMDeleteFunction(Fn: ValueRef);
-    fn LLVMGetOrInsertFunction(M: ModuleRef, Name: sbuf, FunctionTy: TypeRef)
+    fn LLVMGetOrInsertFunction(M: ModuleRef, Name: *u8, FunctionTy: TypeRef)
        -> ValueRef;
     fn LLVMGetIntrinsicID(Fn: ValueRef) -> c_uint;
     fn LLVMGetFunctionCallConv(Fn: ValueRef) -> c_uint;
     fn LLVMSetFunctionCallConv(Fn: ValueRef, CC: c_uint);
-    fn LLVMGetGC(Fn: ValueRef) -> sbuf;
-    fn LLVMSetGC(Fn: ValueRef, Name: sbuf);
+    fn LLVMGetGC(Fn: ValueRef) -> *u8;
+    fn LLVMSetGC(Fn: ValueRef, Name: *u8);
     fn LLVMAddFunctionAttr(Fn: ValueRef, PA: c_uint, HighPA: c_uint);
     fn LLVMGetFunctionAttr(Fn: ValueRef) -> c_uint;
     fn LLVMRemoveFunctionAttr(Fn: ValueRef, PA: c_uint, HighPA: c_uint);
@@ -505,13 +504,13 @@ native mod llvm {
     fn LLVMGetPreviousBasicBlock(BB: BasicBlockRef) -> BasicBlockRef;
     fn LLVMGetEntryBasicBlock(Fn: ValueRef) -> BasicBlockRef;
 
-    fn LLVMAppendBasicBlockInContext(C: ContextRef, Fn: ValueRef, Name: sbuf)
+    fn LLVMAppendBasicBlockInContext(C: ContextRef, Fn: ValueRef, Name: *u8)
        -> BasicBlockRef;
     fn LLVMInsertBasicBlockInContext(C: ContextRef, BB: BasicBlockRef,
-                                     Name: sbuf) -> BasicBlockRef;
+                                     Name: *u8) -> BasicBlockRef;
 
-    fn LLVMAppendBasicBlock(Fn: ValueRef, Name: sbuf) -> BasicBlockRef;
-    fn LLVMInsertBasicBlock(InsertBeforeBB: BasicBlockRef, Name: sbuf) ->
+    fn LLVMAppendBasicBlock(Fn: ValueRef, Name: *u8) -> BasicBlockRef;
+    fn LLVMInsertBasicBlock(InsertBeforeBB: BasicBlockRef, Name: *u8) ->
        BasicBlockRef;
     fn LLVMDeleteBasicBlock(BB: BasicBlockRef);
 
@@ -554,7 +553,7 @@ native mod llvm {
     fn LLVMClearInsertionPosition(Builder: BuilderRef);
     fn LLVMInsertIntoBuilder(Builder: BuilderRef, Instr: ValueRef);
     fn LLVMInsertIntoBuilderWithName(Builder: BuilderRef, Instr: ValueRef,
-                                     Name: sbuf);
+                                     Name: *u8);
     fn LLVMDisposeBuilder(Builder: BuilderRef);
 
     /* Metadata */
@@ -576,9 +575,9 @@ native mod llvm {
                            NumDests: c_uint) -> ValueRef;
     fn LLVMBuildInvoke(B: BuilderRef, Fn: ValueRef, Args: *ValueRef,
                        NumArgs: c_uint, Then: BasicBlockRef,
-                       Catch: BasicBlockRef, Name: sbuf) -> ValueRef;
+                       Catch: BasicBlockRef, Name: *u8) -> ValueRef;
     fn LLVMBuildLandingPad(B: BuilderRef, Ty: TypeRef, PersFn: ValueRef,
-                           NumClauses: c_uint, Name: sbuf) -> ValueRef;
+                           NumClauses: c_uint, Name: *u8) -> ValueRef;
     fn LLVMBuildResume(B: BuilderRef, Exn: ValueRef) -> ValueRef;
     fn LLVMBuildUnreachable(B: BuilderRef) -> ValueRef;
 
@@ -595,169 +594,169 @@ native mod llvm {
     fn LLVMSetCleanup(LandingPad: ValueRef, Val: Bool);
 
     /* Arithmetic */
-    fn LLVMBuildAdd(B: BuilderRef, LHS: ValueRef, RHS: ValueRef, Name: sbuf)
+    fn LLVMBuildAdd(B: BuilderRef, LHS: ValueRef, RHS: ValueRef, Name: *u8)
        -> ValueRef;
     fn LLVMBuildNSWAdd(B: BuilderRef, LHS: ValueRef, RHS: ValueRef,
-                       Name: sbuf) -> ValueRef;
+                       Name: *u8) -> ValueRef;
     fn LLVMBuildNUWAdd(B: BuilderRef, LHS: ValueRef, RHS: ValueRef,
-                       Name: sbuf) -> ValueRef;
-    fn LLVMBuildFAdd(B: BuilderRef, LHS: ValueRef, RHS: ValueRef, Name: sbuf)
+                       Name: *u8) -> ValueRef;
+    fn LLVMBuildFAdd(B: BuilderRef, LHS: ValueRef, RHS: ValueRef, Name: *u8)
        -> ValueRef;
-    fn LLVMBuildSub(B: BuilderRef, LHS: ValueRef, RHS: ValueRef, Name: sbuf)
+    fn LLVMBuildSub(B: BuilderRef, LHS: ValueRef, RHS: ValueRef, Name: *u8)
        -> ValueRef;
     fn LLVMBuildNSWSub(B: BuilderRef, LHS: ValueRef, RHS: ValueRef,
-                       Name: sbuf) -> ValueRef;
+                       Name: *u8) -> ValueRef;
     fn LLVMBuildNUWSub(B: BuilderRef, LHS: ValueRef, RHS: ValueRef,
-                       Name: sbuf) -> ValueRef;
-    fn LLVMBuildFSub(B: BuilderRef, LHS: ValueRef, RHS: ValueRef, Name: sbuf)
+                       Name: *u8) -> ValueRef;
+    fn LLVMBuildFSub(B: BuilderRef, LHS: ValueRef, RHS: ValueRef, Name: *u8)
        -> ValueRef;
-    fn LLVMBuildMul(B: BuilderRef, LHS: ValueRef, RHS: ValueRef, Name: sbuf)
+    fn LLVMBuildMul(B: BuilderRef, LHS: ValueRef, RHS: ValueRef, Name: *u8)
        -> ValueRef;
     fn LLVMBuildNSWMul(B: BuilderRef, LHS: ValueRef, RHS: ValueRef,
-                       Name: sbuf) -> ValueRef;
+                       Name: *u8) -> ValueRef;
     fn LLVMBuildNUWMul(B: BuilderRef, LHS: ValueRef, RHS: ValueRef,
-                       Name: sbuf) -> ValueRef;
-    fn LLVMBuildFMul(B: BuilderRef, LHS: ValueRef, RHS: ValueRef, Name: sbuf)
+                       Name: *u8) -> ValueRef;
+    fn LLVMBuildFMul(B: BuilderRef, LHS: ValueRef, RHS: ValueRef, Name: *u8)
        -> ValueRef;
-    fn LLVMBuildUDiv(B: BuilderRef, LHS: ValueRef, RHS: ValueRef, Name: sbuf)
+    fn LLVMBuildUDiv(B: BuilderRef, LHS: ValueRef, RHS: ValueRef, Name: *u8)
        -> ValueRef;
-    fn LLVMBuildSDiv(B: BuilderRef, LHS: ValueRef, RHS: ValueRef, Name: sbuf)
+    fn LLVMBuildSDiv(B: BuilderRef, LHS: ValueRef, RHS: ValueRef, Name: *u8)
        -> ValueRef;
     fn LLVMBuildExactSDiv(B: BuilderRef, LHS: ValueRef, RHS: ValueRef,
-                          Name: sbuf) -> ValueRef;
-    fn LLVMBuildFDiv(B: BuilderRef, LHS: ValueRef, RHS: ValueRef, Name: sbuf)
+                          Name: *u8) -> ValueRef;
+    fn LLVMBuildFDiv(B: BuilderRef, LHS: ValueRef, RHS: ValueRef, Name: *u8)
        -> ValueRef;
-    fn LLVMBuildURem(B: BuilderRef, LHS: ValueRef, RHS: ValueRef, Name: sbuf)
+    fn LLVMBuildURem(B: BuilderRef, LHS: ValueRef, RHS: ValueRef, Name: *u8)
        -> ValueRef;
-    fn LLVMBuildSRem(B: BuilderRef, LHS: ValueRef, RHS: ValueRef, Name: sbuf)
+    fn LLVMBuildSRem(B: BuilderRef, LHS: ValueRef, RHS: ValueRef, Name: *u8)
        -> ValueRef;
-    fn LLVMBuildFRem(B: BuilderRef, LHS: ValueRef, RHS: ValueRef, Name: sbuf)
+    fn LLVMBuildFRem(B: BuilderRef, LHS: ValueRef, RHS: ValueRef, Name: *u8)
        -> ValueRef;
-    fn LLVMBuildShl(B: BuilderRef, LHS: ValueRef, RHS: ValueRef, Name: sbuf)
+    fn LLVMBuildShl(B: BuilderRef, LHS: ValueRef, RHS: ValueRef, Name: *u8)
        -> ValueRef;
-    fn LLVMBuildLShr(B: BuilderRef, LHS: ValueRef, RHS: ValueRef, Name: sbuf)
+    fn LLVMBuildLShr(B: BuilderRef, LHS: ValueRef, RHS: ValueRef, Name: *u8)
        -> ValueRef;
-    fn LLVMBuildAShr(B: BuilderRef, LHS: ValueRef, RHS: ValueRef, Name: sbuf)
+    fn LLVMBuildAShr(B: BuilderRef, LHS: ValueRef, RHS: ValueRef, Name: *u8)
        -> ValueRef;
-    fn LLVMBuildAnd(B: BuilderRef, LHS: ValueRef, RHS: ValueRef, Name: sbuf)
+    fn LLVMBuildAnd(B: BuilderRef, LHS: ValueRef, RHS: ValueRef, Name: *u8)
        -> ValueRef;
-    fn LLVMBuildOr(B: BuilderRef, LHS: ValueRef, RHS: ValueRef, Name: sbuf) ->
+    fn LLVMBuildOr(B: BuilderRef, LHS: ValueRef, RHS: ValueRef, Name: *u8) ->
        ValueRef;
-    fn LLVMBuildXor(B: BuilderRef, LHS: ValueRef, RHS: ValueRef, Name: sbuf)
+    fn LLVMBuildXor(B: BuilderRef, LHS: ValueRef, RHS: ValueRef, Name: *u8)
        -> ValueRef;
     fn LLVMBuildBinOp(B: BuilderRef, Op: Opcode, LHS: ValueRef, RHS: ValueRef,
-                      Name: sbuf) -> ValueRef;
-    fn LLVMBuildNeg(B: BuilderRef, V: ValueRef, Name: sbuf) -> ValueRef;
-    fn LLVMBuildNSWNeg(B: BuilderRef, V: ValueRef, Name: sbuf) -> ValueRef;
-    fn LLVMBuildNUWNeg(B: BuilderRef, V: ValueRef, Name: sbuf) -> ValueRef;
-    fn LLVMBuildFNeg(B: BuilderRef, V: ValueRef, Name: sbuf) -> ValueRef;
-    fn LLVMBuildNot(B: BuilderRef, V: ValueRef, Name: sbuf) -> ValueRef;
+                      Name: *u8) -> ValueRef;
+    fn LLVMBuildNeg(B: BuilderRef, V: ValueRef, Name: *u8) -> ValueRef;
+    fn LLVMBuildNSWNeg(B: BuilderRef, V: ValueRef, Name: *u8) -> ValueRef;
+    fn LLVMBuildNUWNeg(B: BuilderRef, V: ValueRef, Name: *u8) -> ValueRef;
+    fn LLVMBuildFNeg(B: BuilderRef, V: ValueRef, Name: *u8) -> ValueRef;
+    fn LLVMBuildNot(B: BuilderRef, V: ValueRef, Name: *u8) -> ValueRef;
 
     /* Memory */
-    fn LLVMBuildMalloc(B: BuilderRef, Ty: TypeRef, Name: sbuf) -> ValueRef;
+    fn LLVMBuildMalloc(B: BuilderRef, Ty: TypeRef, Name: *u8) -> ValueRef;
     fn LLVMBuildArrayMalloc(B: BuilderRef, Ty: TypeRef, Val: ValueRef,
-                            Name: sbuf) -> ValueRef;
-    fn LLVMBuildAlloca(B: BuilderRef, Ty: TypeRef, Name: sbuf) -> ValueRef;
+                            Name: *u8) -> ValueRef;
+    fn LLVMBuildAlloca(B: BuilderRef, Ty: TypeRef, Name: *u8) -> ValueRef;
     fn LLVMBuildArrayAlloca(B: BuilderRef, Ty: TypeRef, Val: ValueRef,
-                            Name: sbuf) -> ValueRef;
+                            Name: *u8) -> ValueRef;
     fn LLVMBuildFree(B: BuilderRef, PointerVal: ValueRef) -> ValueRef;
-    fn LLVMBuildLoad(B: BuilderRef, PointerVal: ValueRef, Name: sbuf) ->
+    fn LLVMBuildLoad(B: BuilderRef, PointerVal: ValueRef, Name: *u8) ->
        ValueRef;
     fn LLVMBuildStore(B: BuilderRef, Val: ValueRef, Ptr: ValueRef) ->
        ValueRef;
     fn LLVMBuildGEP(B: BuilderRef, Pointer: ValueRef, Indices: *ValueRef,
-                    NumIndices: c_uint, Name: sbuf) -> ValueRef;
+                    NumIndices: c_uint, Name: *u8) -> ValueRef;
     fn LLVMBuildInBoundsGEP(B: BuilderRef, Pointer: ValueRef,
                             Indices: *ValueRef, NumIndices: c_uint,
-                            Name: sbuf)
+                            Name: *u8)
        -> ValueRef;
     fn LLVMBuildStructGEP(B: BuilderRef, Pointer: ValueRef, Idx: c_uint,
-                          Name: sbuf) -> ValueRef;
-    fn LLVMBuildGlobalString(B: BuilderRef, Str: sbuf, Name: sbuf) ->
+                          Name: *u8) -> ValueRef;
+    fn LLVMBuildGlobalString(B: BuilderRef, Str: *u8, Name: *u8) ->
        ValueRef;
-    fn LLVMBuildGlobalStringPtr(B: BuilderRef, Str: sbuf, Name: sbuf) ->
+    fn LLVMBuildGlobalStringPtr(B: BuilderRef, Str: *u8, Name: *u8) ->
        ValueRef;
 
     /* Casts */
     fn LLVMBuildTrunc(B: BuilderRef, Val: ValueRef, DestTy: TypeRef,
-                      Name: sbuf) -> ValueRef;
+                      Name: *u8) -> ValueRef;
     fn LLVMBuildZExt(B: BuilderRef, Val: ValueRef, DestTy: TypeRef,
-                     Name: sbuf) -> ValueRef;
+                     Name: *u8) -> ValueRef;
     fn LLVMBuildSExt(B: BuilderRef, Val: ValueRef, DestTy: TypeRef,
-                     Name: sbuf) -> ValueRef;
+                     Name: *u8) -> ValueRef;
     fn LLVMBuildFPToUI(B: BuilderRef, Val: ValueRef, DestTy: TypeRef,
-                       Name: sbuf) -> ValueRef;
+                       Name: *u8) -> ValueRef;
     fn LLVMBuildFPToSI(B: BuilderRef, Val: ValueRef, DestTy: TypeRef,
-                       Name: sbuf) -> ValueRef;
+                       Name: *u8) -> ValueRef;
     fn LLVMBuildUIToFP(B: BuilderRef, Val: ValueRef, DestTy: TypeRef,
-                       Name: sbuf) -> ValueRef;
+                       Name: *u8) -> ValueRef;
     fn LLVMBuildSIToFP(B: BuilderRef, Val: ValueRef, DestTy: TypeRef,
-                       Name: sbuf) -> ValueRef;
+                       Name: *u8) -> ValueRef;
     fn LLVMBuildFPTrunc(B: BuilderRef, Val: ValueRef, DestTy: TypeRef,
-                        Name: sbuf) -> ValueRef;
+                        Name: *u8) -> ValueRef;
     fn LLVMBuildFPExt(B: BuilderRef, Val: ValueRef, DestTy: TypeRef,
-                      Name: sbuf) -> ValueRef;
+                      Name: *u8) -> ValueRef;
     fn LLVMBuildPtrToInt(B: BuilderRef, Val: ValueRef, DestTy: TypeRef,
-                         Name: sbuf) -> ValueRef;
+                         Name: *u8) -> ValueRef;
     fn LLVMBuildIntToPtr(B: BuilderRef, Val: ValueRef, DestTy: TypeRef,
-                         Name: sbuf) -> ValueRef;
+                         Name: *u8) -> ValueRef;
     fn LLVMBuildBitCast(B: BuilderRef, Val: ValueRef, DestTy: TypeRef,
-                        Name: sbuf) -> ValueRef;
+                        Name: *u8) -> ValueRef;
     fn LLVMBuildZExtOrBitCast(B: BuilderRef, Val: ValueRef, DestTy: TypeRef,
-                              Name: sbuf) -> ValueRef;
+                              Name: *u8) -> ValueRef;
     fn LLVMBuildSExtOrBitCast(B: BuilderRef, Val: ValueRef, DestTy: TypeRef,
-                              Name: sbuf) -> ValueRef;
+                              Name: *u8) -> ValueRef;
     fn LLVMBuildTruncOrBitCast(B: BuilderRef, Val: ValueRef, DestTy: TypeRef,
-                               Name: sbuf) -> ValueRef;
+                               Name: *u8) -> ValueRef;
     fn LLVMBuildCast(B: BuilderRef, Op: Opcode, Val: ValueRef,
-                     DestTy: TypeRef, Name: sbuf) -> ValueRef;
+                     DestTy: TypeRef, Name: *u8) -> ValueRef;
     fn LLVMBuildPointerCast(B: BuilderRef, Val: ValueRef, DestTy: TypeRef,
-                            Name: sbuf) -> ValueRef;
+                            Name: *u8) -> ValueRef;
     fn LLVMBuildIntCast(B: BuilderRef, Val: ValueRef, DestTy: TypeRef,
-                        Name: sbuf) -> ValueRef;
+                        Name: *u8) -> ValueRef;
     fn LLVMBuildFPCast(B: BuilderRef, Val: ValueRef, DestTy: TypeRef,
-                       Name: sbuf) -> ValueRef;
+                       Name: *u8) -> ValueRef;
 
     /* Comparisons */
     fn LLVMBuildICmp(B: BuilderRef, Op: c_uint, LHS: ValueRef,
-                     RHS: ValueRef, Name: sbuf) -> ValueRef;
+                     RHS: ValueRef, Name: *u8) -> ValueRef;
     fn LLVMBuildFCmp(B: BuilderRef, Op: c_uint, LHS: ValueRef,
-                     RHS: ValueRef, Name: sbuf) -> ValueRef;
+                     RHS: ValueRef, Name: *u8) -> ValueRef;
 
     /* Miscellaneous instructions */
-    fn LLVMBuildPhi(B: BuilderRef, Ty: TypeRef, Name: sbuf) -> ValueRef;
+    fn LLVMBuildPhi(B: BuilderRef, Ty: TypeRef, Name: *u8) -> ValueRef;
     fn LLVMBuildCall(B: BuilderRef, Fn: ValueRef, Args: *ValueRef,
-                     NumArgs: c_uint, Name: sbuf) -> ValueRef;
+                     NumArgs: c_uint, Name: *u8) -> ValueRef;
     fn LLVMBuildSelect(B: BuilderRef, If: ValueRef, Then: ValueRef,
-                       Else: ValueRef, Name: sbuf) -> ValueRef;
-    fn LLVMBuildVAArg(B: BuilderRef, list: ValueRef, Ty: TypeRef, Name: sbuf)
+                       Else: ValueRef, Name: *u8) -> ValueRef;
+    fn LLVMBuildVAArg(B: BuilderRef, list: ValueRef, Ty: TypeRef, Name: *u8)
        -> ValueRef;
     fn LLVMBuildExtractElement(B: BuilderRef, VecVal: ValueRef,
-                               Index: ValueRef, Name: sbuf) -> ValueRef;
+                               Index: ValueRef, Name: *u8) -> ValueRef;
     fn LLVMBuildInsertElement(B: BuilderRef, VecVal: ValueRef,
-                              EltVal: ValueRef, Index: ValueRef, Name: sbuf)
+                              EltVal: ValueRef, Index: ValueRef, Name: *u8)
        -> ValueRef;
     fn LLVMBuildShuffleVector(B: BuilderRef, V1: ValueRef, V2: ValueRef,
-                              Mask: ValueRef, Name: sbuf) -> ValueRef;
+                              Mask: ValueRef, Name: *u8) -> ValueRef;
     fn LLVMBuildExtractValue(B: BuilderRef, AggVal: ValueRef, Index: c_uint,
-                             Name: sbuf) -> ValueRef;
+                             Name: *u8) -> ValueRef;
     fn LLVMBuildInsertValue(B: BuilderRef, AggVal: ValueRef, EltVal: ValueRef,
-                            Index: c_uint, Name: sbuf) -> ValueRef;
+                            Index: c_uint, Name: *u8) -> ValueRef;
 
-    fn LLVMBuildIsNull(B: BuilderRef, Val: ValueRef, Name: sbuf) -> ValueRef;
-    fn LLVMBuildIsNotNull(B: BuilderRef, Val: ValueRef, Name: sbuf) ->
+    fn LLVMBuildIsNull(B: BuilderRef, Val: ValueRef, Name: *u8) -> ValueRef;
+    fn LLVMBuildIsNotNull(B: BuilderRef, Val: ValueRef, Name: *u8) ->
        ValueRef;
     fn LLVMBuildPtrDiff(B: BuilderRef, LHS: ValueRef, RHS: ValueRef,
-                        Name: sbuf) -> ValueRef;
+                        Name: *u8) -> ValueRef;
 
     /* Selected entries from the downcasts. */
     fn LLVMIsATerminatorInst(Inst: ValueRef) -> ValueRef;
 
     /** Writes a module to the specified path. Returns 0 on success. */
-    fn LLVMWriteBitcodeToFile(M: ModuleRef, Path: sbuf) -> c_int;
+    fn LLVMWriteBitcodeToFile(M: ModuleRef, Path: *u8) -> c_int;
 
     /** Creates target data from a target layout string. */
-    fn LLVMCreateTargetData(StringRep: sbuf) -> TargetDataRef;
+    fn LLVMCreateTargetData(StringRep: *u8) -> TargetDataRef;
     /** Adds the target data to the given pass manager. The pass manager
         references the target data only weakly. */
     fn LLVMAddTargetData(TD: TargetDataRef, PM: PassManagerRef);
@@ -857,38 +856,38 @@ native mod llvm {
     /** Moves the section iterator to point to the next section. */
     fn LLVMMoveToNextSection(SI: SectionIteratorRef);
     /** Returns the current section name. */
-    fn LLVMGetSectionName(SI: SectionIteratorRef) -> sbuf;
+    fn LLVMGetSectionName(SI: SectionIteratorRef) -> *u8;
     /** Returns the current section size. */
     fn LLVMGetSectionSize(SI: SectionIteratorRef) -> c_ulonglong;
     /** Returns the current section contents as a string buffer. */
-    fn LLVMGetSectionContents(SI: SectionIteratorRef) -> sbuf;
+    fn LLVMGetSectionContents(SI: SectionIteratorRef) -> *u8;
 
     /** Reads the given file and returns it as a memory buffer. Use
         LLVMDisposeMemoryBuffer() to get rid of it. */
-    fn LLVMRustCreateMemoryBufferWithContentsOfFile(Path: sbuf) ->
+    fn LLVMRustCreateMemoryBufferWithContentsOfFile(Path: *u8) ->
        MemoryBufferRef;
 
     /* FIXME: The FileType is an enum.*/
-    fn LLVMRustWriteOutputFile(PM: PassManagerRef, M: ModuleRef, Triple: sbuf,
-                               Output: sbuf, FileType: c_int, OptLevel: c_int,
+    fn LLVMRustWriteOutputFile(PM: PassManagerRef, M: ModuleRef, Triple: *u8,
+                               Output: *u8, FileType: c_int, OptLevel: c_int,
                                EnableSegmentedStacks: bool);
 
     /** Returns a string describing the last error caused by an LLVMRust*
         call. */
-    fn LLVMRustGetLastError() -> sbuf;
+    fn LLVMRustGetLastError() -> *u8;
 
     /** Parses the bitcode in the given memory buffer. */
     fn LLVMRustParseBitcode(MemBuf: MemoryBufferRef) -> ModuleRef;
 
     /** Parses LLVM asm in the given file */
-    fn LLVMRustParseAssemblyFile(Filename: sbuf) -> ModuleRef;
+    fn LLVMRustParseAssemblyFile(Filename: *u8) -> ModuleRef;
 
     /** FiXME: Hacky adaptor for lack of c_ulonglong in FFI: */
     fn LLVMRustConstInt(IntTy: TypeRef, N_hi: c_uint, N_lo: c_uint,
                         SignExtend: Bool) -> ValueRef;
 
     fn LLVMRustAddPrintModulePass(PM: PassManagerRef, M: ModuleRef,
-                                  Output: sbuf);
+                                  Output: *u8);
 
     /** Turn on LLVM pass-timing. */
     fn LLVMRustEnableTimePasses();
@@ -896,7 +895,7 @@ native mod llvm {
     /** Print the pass timings since static dtors aren't picking them up. */
     fn LLVMRustPrintPassTimings();
 
-    fn LLVMStructCreateNamed(C: ContextRef, Name: sbuf) -> TypeRef;
+    fn LLVMStructCreateNamed(C: ContextRef, Name: *u8) -> TypeRef;
 
     fn LLVMStructSetBody(StructTy: TypeRef, ElementTypes: *TypeRef,
                          ElementCount: c_uint, Packed: Bool);

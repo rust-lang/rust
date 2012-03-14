@@ -1,5 +1,4 @@
 import libc::{c_uint, c_int};
-import str::sbuf;
 import lib::llvm::llvm;
 import syntax::codemap;
 import codemap::span;
@@ -83,7 +82,7 @@ fn IndirectBr(cx: block, Addr: ValueRef, NumDests: uint) {
 
 // This is a really awful way to get a zero-length c-string, but better (and a
 // lot more efficient) than doing str::as_buf("", ...) every time.
-fn noname() -> sbuf unsafe {
+fn noname() -> *u8 unsafe {
     const cnull: uint = 0u;
     ret unsafe::reinterpret_cast(ptr::addr_of(cnull));
 }
@@ -360,12 +359,12 @@ fn StructGEP(cx: block, Pointer: ValueRef, Idx: uint) -> ValueRef {
     ret llvm::LLVMBuildStructGEP(B(cx), Pointer, Idx as c_uint, noname());
 }
 
-fn GlobalString(cx: block, _Str: sbuf) -> ValueRef {
+fn GlobalString(cx: block, _Str: *u8) -> ValueRef {
     if cx.unreachable { ret llvm::LLVMGetUndef(T_ptr(T_i8())); }
     ret llvm::LLVMBuildGlobalString(B(cx), _Str, noname());
 }
 
-fn GlobalStringPtr(cx: block, _Str: sbuf) -> ValueRef {
+fn GlobalStringPtr(cx: block, _Str: *u8) -> ValueRef {
     if cx.unreachable { ret llvm::LLVMGetUndef(T_ptr(T_i8())); }
     ret llvm::LLVMBuildGlobalStringPtr(B(cx), _Str, noname());
 }
@@ -450,7 +449,7 @@ fn TruncOrBitCast(cx: block, Val: ValueRef, DestTy: TypeRef) ->
 }
 
 fn Cast(cx: block, Op: Opcode, Val: ValueRef, DestTy: TypeRef,
-        _Name: sbuf) -> ValueRef {
+        _Name: *u8) -> ValueRef {
     if cx.unreachable { ret llvm::LLVMGetUndef(DestTy); }
     ret llvm::LLVMBuildCast(B(cx), Op, Val, DestTy, noname());
 }

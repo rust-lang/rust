@@ -4,8 +4,8 @@ import str;
 #[abi = "cdecl"]
 #[nolink]
 native mod libc {
-    fn atol(x: str::sbuf) -> int;
-    fn atoll(x: str::sbuf) -> i64;
+    fn atol(x: *u8) -> int;
+    fn atoll(x: *u8) -> i64;
 }
 
 fn atol(s: str) -> int {
