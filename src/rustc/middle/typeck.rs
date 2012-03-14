@@ -1058,7 +1058,7 @@ fn do_autoderef(fcx: @fn_ctxt, sp: span, t: ty::t) -> ty::t {
     let t1 = t;
     loop {
         alt structure_of(fcx, sp, t1) {
-          ty::ty_box(inner) | ty::ty_uniq(inner) {
+          ty::ty_box(inner) | ty::ty_uniq(inner) | ty::ty_rptr(_, inner) {
             alt ty::get(t1).struct {
               ty::ty_var(v1) {
                 ty::occurs_check(fcx.ccx.tcx, sp, v1,

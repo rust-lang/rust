@@ -1119,7 +1119,7 @@ fn type_autoderef(cx: ctxt, t: t) -> t {
     let t1 = t;
     loop {
         alt get(t1).struct {
-          ty_box(mt) | ty_uniq(mt) { t1 = mt.ty; }
+          ty_box(mt) | ty_uniq(mt) | ty::ty_rptr(_, mt) { t1 = mt.ty; }
           ty_res(_, inner, tps) {
             t1 = substitute_type_params(cx, tps, inner);
           }

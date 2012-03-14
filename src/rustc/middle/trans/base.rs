@@ -1849,6 +1849,10 @@ fn autoderef(cx: block, v: ValueRef, t: ty::t) -> result_t {
             t1 = derefed.t;
             v1 = derefed.v;
           }
+          ty::ty_rptr(_, mt) {
+            t1 = mt.ty;
+            v1 = v;
+          }
           ty::ty_res(did, inner, tps) {
             t1 = ty::substitute_type_params(ccx.tcx, tps, inner);
             v1 = GEPi(cx, v1, [0, 1]);
