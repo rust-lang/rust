@@ -1970,8 +1970,42 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
 
     // A generic function to factor out common logic from call and bind
     // expressions.
-    fn check_call_or_bind(fcx: @fn_ctxt, sp: span, fty: ty::t,
-                          args: [option<@ast::expr>]) -> bool {
+    fn check_call_or_bind(fcx: @fn_ctxt, sp: span, id: ast::node_id,
+                          fty: ty::t, args: [option<@ast::expr>]) -> bool {
+        // Replaces "caller" regions in the arguments with the local region.
+        fn instantiate_caller_regions(fcx: @fn_ctxt, id: ast::node_id,
+                                      args: [ty::arg]) -> [ty::arg] {
+            let site_to_block = fcx.ccx.tcx.region_map.call_site_to_block;
+            let block_id = alt site_to_block.find(id) {
+                none {
+                    // This can happen for those expressions that are
+                    // synthesized during typechecking; e.g. during
+                    // check_constraints().
+                    ret args;
+                }
+                some(block_id) { block_id }
+            };
+
+            let region = ty::re_block(block_id);
+            ret vec::map(args) {|arg|
+                if ty::type_has_rptrs(arg.ty) {
+                    let ty = ty::fold_ty(fcx.ccx.tcx, ty::fm_rptr({|r|
+                        alt r {
+                            ty::re_caller(_) {
+                                // FIXME: We should not recurse into nested
+                                // function types here.
+                                region
+                            }
+                            _ { r }
+                        }
+                    }), arg.ty);
+                    {ty: ty with arg}
+                } else {
+                    arg
+                }
+            };
+        }
+
         let sty = structure_of(fcx, sp, fty);
         // Grab the argument types
         let arg_tys = alt sty {
@@ -2008,6 +2042,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                          ty: ty::mk_bot(fcx.ccx.tcx)};
             arg_tys = vec::from_elem(supplied_arg_count, dummy);
         }
+
+        arg_tys = instantiate_caller_regions(fcx, id, arg_tys);
 
         // Check the arguments.
         // We do this in a pretty awful way: first we typecheck any arguments
@@ -2049,7 +2085,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
     }
 
     // A generic function for checking call expressions
-    fn check_call(fcx: @fn_ctxt, sp: span, f: @ast::expr, args: [@ast::expr])
+    fn check_call(fcx: @fn_ctxt, sp: span, id: ast::node_id, f: @ast::expr,
+                  args: [@ast::expr])
         -> bool {
         let args_opt_0: [option<@ast::expr>] = [];
         for arg: @ast::expr in args {
@@ -2058,13 +2095,14 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
 
         let bot = check_expr(fcx, f);
         // Call the generic checker.
-        bot | check_call_or_bind(fcx, sp, expr_ty(fcx.ccx.tcx, f), args_opt_0)
+        bot | check_call_or_bind(fcx, sp, id, expr_ty(fcx.ccx.tcx, f),
+                                 args_opt_0)
     }
 
     // A generic function for doing all of the checking for call expressions
-    fn check_call_full(fcx: @fn_ctxt, sp: span, f: @ast::expr,
-                       args: [@ast::expr], id: ast::node_id) -> bool {
-        let bot = check_call(fcx, sp, f, args);
+    fn check_call_full(fcx: @fn_ctxt, sp: span, id: ast::node_id,
+                       f: @ast::expr, args: [@ast::expr]) -> bool {
+        let bot = check_call(fcx, sp, id, f, args);
         /* here we're kind of hosed, as f can be any expr
         need to restrict it to being an explicit expr_path if we're
         inside a pure function, and need an environment mapping from
@@ -2145,7 +2183,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         alt lookup_method(fcx, op_ex, callee_id, opname, self_t, []) {
           some(origin) {
             let method_ty = ty::node_id_to_type(fcx.ccx.tcx, callee_id);
-            check_call_or_bind(fcx, op_ex.span, method_ty, args);
+            check_call_or_bind(fcx, op_ex.span, op_ex.id, method_ty, args);
             fcx.ccx.method_map.insert(op_ex.id, origin);
             some(ty::ty_fn_ret(method_ty))
           }
@@ -2472,7 +2510,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
       ast::expr_bind(f, args) {
         // Call the generic checker.
         bot = check_expr(fcx, f);
-        bot |= check_call_or_bind(fcx, expr.span, expr_ty(tcx, f), args);
+        bot |= check_call_or_bind(fcx, expr.span, expr.id, expr_ty(tcx, f),
+                                  args);
 
         // Pull the argument and return types out.
         let proto, arg_tys, rt, cf, constrs;
@@ -2518,7 +2557,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         write_ty(tcx, id, ft);
       }
       ast::expr_call(f, args, _) {
-        bot = check_call_full(fcx, expr.span, f, args, expr.id);
+        bot = check_call_full(fcx, expr.span, expr.id, f, args);
       }
       ast::expr_cast(e, t) {
         bot = check_expr(fcx, e);
