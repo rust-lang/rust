@@ -205,7 +205,7 @@ fn find_library_crate_aux(sess: session::session,
 
 fn get_metadata_section(sess: session::session,
                         filename: str) -> option<@[u8]> unsafe {
-    let mb = str::as_buf(filename, {|buf|
+    let mb = str::as_c_str(filename, {|buf|
         llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf)
                                    });
     if mb as int == 0 { ret option::none::<@[u8]>; }
@@ -216,13 +216,13 @@ fn get_metadata_section(sess: session::session,
     let si = mk_section_iter(of.llof);
     while llvm::LLVMIsSectionIteratorAtEnd(of.llof, si.llsi) == False {
         let name_buf = llvm::LLVMGetSectionName(si.llsi);
-        let name = unsafe { str::from_buf(name_buf) };
+        let name = unsafe { str::from_c_str(name_buf) };
         if str::eq(name, sess.targ_cfg.target_strs.meta_sect_name) {
             let cbuf = llvm::LLVMGetSectionContents(si.llsi);
             let csz = llvm::LLVMGetSectionSize(si.llsi) as uint;
             unsafe {
                 let cvbuf: *u8 = unsafe::reinterpret_cast(cbuf);
-                ret option::some::<@[u8]>(@vec::unsafe::from_buf(cvbuf, csz));
+                ret some(@vec::unsafe::from_buf(cvbuf, csz));
             }
         }
         llvm::LLVMMoveToNextSection(si.llsi);

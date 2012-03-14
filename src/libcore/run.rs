@@ -11,7 +11,8 @@ export waitpid;
 
 #[abi = "cdecl"]
 native mod rustrt {
-    fn rust_run_program(argv: **u8, envp: *c_void, dir: *u8,
+    fn rust_run_program(argv: **libc::c_char, envp: *c_void,
+                        dir: *libc::c_char,
                         in_fd: c_int, out_fd: c_int, err_fd: c_int)
         -> pid_t;
 }
@@ -77,13 +78,13 @@ fn spawn_process(prog: str, args: [str],
 }
 
 fn with_argv<T>(prog: str, args: [str],
-                cb: fn(**u8) -> T) -> T unsafe {
-    let mut argptrs = str::as_buf(prog) {|b| [b] };
+                cb: fn(**libc::c_char) -> T) -> T unsafe {
+    let mut argptrs = str::as_c_str(prog) {|b| [b] };
     let mut tmps = [];
     for arg in args {
         let t = @arg;
         tmps += [t];
-        argptrs += str::as_buf(*t) {|b| [b] };
+        argptrs += str::as_c_str(*t) {|b| [b] };
     }
     argptrs += [ptr::null()];
     vec::as_buf(argptrs, cb)
@@ -104,7 +105,7 @@ fn with_envp<T>(env: option<[(str,str)]>,
         for (k,v) in es {
             let t = @(#fmt("%s=%s", k, v));
             vec::push(tmps, t);
-            ptrs += str::as_buf(*t) {|b| [b]};
+            ptrs += str::as_c_str(*t) {|b| [b]};
         }
         ptrs += [ptr::null()];
         vec::as_buf(ptrs) { |p| cb(::unsafe::reinterpret_cast(p)) }
@@ -140,9 +141,9 @@ fn with_envp<T>(env: option<[(str,str)]>,
 }
 
 fn with_dirp<T>(d: option<str>,
-                cb: fn(*u8) -> T) -> T unsafe {
+                cb: fn(*libc::c_char) -> T) -> T unsafe {
     alt d {
-      some(dir) { str::as_buf(dir, cb) }
+      some(dir) { str::as_c_str(dir, cb) }
       none { cb(ptr::null()) }
     }
 }

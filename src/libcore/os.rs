@@ -38,8 +38,8 @@ export as_c_charp, fill_charp_buf;
 native mod rustrt {
     fn rust_env_pairs() -> [str];
     fn rust_getcwd() -> str;
-    fn rust_path_is_dir(path: *u8) -> c_int;
-    fn rust_path_exists(path: *u8) -> c_int;
+    fn rust_path_is_dir(path: *libc::c_char) -> c_int;
+    fn rust_path_exists(path: *libc::c_char) -> c_int;
     fn rust_list_files(path: str) -> [str];
     fn rust_process_wait(handle: c_int) -> c_int;
 }
@@ -58,7 +58,7 @@ fn env() -> [(str,str)] {
 const tmpbuf_sz : uint = 1000u;
 
 fn as_c_charp<T>(s: str, f: fn(*c_char) -> T) -> T {
-    str::as_buf(s) {|b| f(b as *c_char) }
+    str::as_c_str(s) {|b| f(b as *c_char) }
 }
 
 fn fill_charp_buf(f: fn(*mutable c_char, size_t) -> bool)
@@ -386,14 +386,14 @@ fn homedir() -> option<path> {
 
 #[doc = "Indicates whether a path represents a directory"]
 fn path_is_dir(p: path) -> bool {
-    str::as_buf(p) {|buf|
+    str::as_c_str(p) {|buf|
         rustrt::rust_path_is_dir(buf) != 0 as c_int
     }
 }
 
 #[doc = "Indicates whether a path exists"]
 fn path_exists(p: path) -> bool {
-    str::as_buf(p) {|buf|
+    str::as_c_str(p) {|buf|
         rustrt::rust_path_exists(buf) != 0 as c_int
     }
 }

@@ -210,7 +210,7 @@ fn llfn_arg_tys(ft: TypeRef) -> {inputs: [TypeRef], output: TypeRef} {
 fn trans_vtable(ccx: @crate_ctxt, id: ast::node_id, name: str,
                 ptrs: [ValueRef]) {
     let tbl = C_struct(ptrs);
-    let vt_gvar = str::as_buf(name, {|buf|
+    let vt_gvar = str::as_c_str(name, {|buf|
         llvm::LLVMAddGlobal(ccx.llmod, val_ty(tbl), buf)
     });
     llvm::LLVMSetInitializer(vt_gvar, tbl);
@@ -467,7 +467,7 @@ fn get_static_dict(bcx: block, origin: typeck::dict_origin)
     }
     let ptrs = C_struct(get_dict_ptrs(bcx, origin).ptrs);
     let name = ccx.names("dict");
-    let gvar = str::as_buf(name, {|buf|
+    let gvar = str::as_c_str(name, {|buf|
         llvm::LLVMAddGlobal(ccx.llmod, val_ty(ptrs), buf)
     });
     llvm::LLVMSetGlobalConstant(gvar, lib::llvm::True);

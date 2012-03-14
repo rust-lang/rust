@@ -24,10 +24,10 @@ enum output_type {
 }
 
 fn llvm_err(sess: session, msg: str) -> ! unsafe {
-    let buf = llvm::LLVMRustGetLastError();
-    if buf == ptr::null() {
+    let cstr = llvm::LLVMRustGetLastError();
+    if cstr == ptr::null() {
         sess.fatal(msg);
-    } else { sess.fatal(msg + ": " + str::from_buf(buf)); }
+    } else { sess.fatal(msg + ": " + str::from_c_str(cstr)); }
 }
 
 fn load_intrinsics_bc(sess: session) -> option<ModuleRef> {
@@ -40,7 +40,7 @@ fn load_intrinsics_bc(sess: session) -> option<ModuleRef> {
         ret option::none;
       }
     };
-    let membuf = str::as_buf(path, {|buf|
+    let membuf = str::as_c_str(path, {|buf|
         llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf)
                                    });
     if membuf as uint == 0u {
@@ -63,7 +63,7 @@ fn load_intrinsics_ll(sess: session) -> ModuleRef {
       option::some(path) { path }
       option::none { sess.fatal("couldn't find intrinsics.ll") }
     };
-    let llintrinsicsmod = str::as_buf(path, { |buf|
+    let llintrinsicsmod = str::as_c_str(path, { |buf|
         llvm::LLVMRustParseAssemblyFile(buf)
                                         });
     if llintrinsicsmod as uint == 0u {
@@ -131,7 +131,7 @@ mod write {
               output_type_bitcode {
                 if opts.optimize != 0u {
                     let filename = mk_intermediate_name(output, "no-opt.bc");
-                    str::as_buf(filename,
+                    str::as_c_str(filename,
                                 {|buf|
                                     llvm::LLVMWriteBitcodeToFile(llmod, buf)
                                 });
@@ -139,7 +139,7 @@ mod write {
               }
               _ {
                 let filename = mk_intermediate_name(output, "bc");
-                str::as_buf(filename,
+                str::as_c_str(filename,
                             {|buf|
                                 llvm::LLVMWriteBitcodeToFile(llmod, buf)
                             });
@@ -215,7 +215,7 @@ mod write {
 
                 let filename = mk_intermediate_name(output, "opt.bc");
                 llvm::LLVMRunPassManager(pm.llpm, llmod);
-                str::as_buf(filename,
+                str::as_c_str(filename,
                             {|buf|
                                 llvm::LLVMWriteBitcodeToFile(llmod, buf)
                             });
@@ -223,10 +223,10 @@ mod write {
                 // Save the assembly file if -S is used
 
                 if opts.output_type == output_type_assembly {
-                    let _: () = str::as_buf(
+                    let _: () = str::as_c_str(
                         sess.targ_cfg.target_strs.target_triple,
                         {|buf_t|
-                            str::as_buf(output, {|buf_o|
+                            str::as_c_str(output, {|buf_o|
                                 llvm::LLVMRustWriteOutputFile(
                                     pm.llpm,
                                     llmod,
@@ -243,10 +243,10 @@ mod write {
                 if opts.output_type == output_type_object ||
                        opts.output_type == output_type_exe {
                     let _: () =
-                        str::as_buf(
+                        str::as_c_str(
                             sess.targ_cfg.target_strs.target_triple,
                             {|buf_t|
-                                str::as_buf(output, {|buf_o|
+                                str::as_c_str(output, {|buf_o|
                                     llvm::LLVMRustWriteOutputFile(
                                         pm.llpm,
                                         llmod,
@@ -261,10 +261,10 @@ mod write {
                 // type corresponding to the '-c' or '-S' flag used
 
                 let _: () =
-                    str::as_buf(
+                    str::as_c_str(
                         sess.targ_cfg.target_strs.target_triple,
                         {|buf_t|
-                            str::as_buf(output, {|buf_o|
+                            str::as_c_str(output, {|buf_o|
                                 llvm::LLVMRustWriteOutputFile(
                                     pm.llpm,
                                     llmod,
@@ -283,13 +283,13 @@ mod write {
 
         if opts.output_type == output_type_llvm_assembly {
             // Given options "-S --emit-llvm": output LLVM assembly
-            str::as_buf(output, {|buf_o|
+            str::as_c_str(output, {|buf_o|
                 llvm::LLVMRustAddPrintModulePass(pm.llpm, llmod, buf_o)});
         } else {
             // If only a bitcode file is asked for by using the '--emit-llvm'
             // flag, then output it here
             llvm::LLVMRunPassManager(pm.llpm, llmod);
-            str::as_buf(output,
+            str::as_c_str(output,
                         {|buf| llvm::LLVMWriteBitcodeToFile(llmod, buf) });
         }
 

@@ -81,8 +81,8 @@ fn IndirectBr(cx: block, Addr: ValueRef, NumDests: uint) {
 }
 
 // This is a really awful way to get a zero-length c-string, but better (and a
-// lot more efficient) than doing str::as_buf("", ...) every time.
-fn noname() -> *u8 unsafe {
+// lot more efficient) than doing str::as_c_str("", ...) every time.
+fn noname() -> *libc::c_char unsafe {
     const cnull: uint = 0u;
     ret unsafe::reinterpret_cast(ptr::addr_of(cnull));
 }
@@ -359,12 +359,12 @@ fn StructGEP(cx: block, Pointer: ValueRef, Idx: uint) -> ValueRef {
     ret llvm::LLVMBuildStructGEP(B(cx), Pointer, Idx as c_uint, noname());
 }
 
-fn GlobalString(cx: block, _Str: *u8) -> ValueRef {
+fn GlobalString(cx: block, _Str: *libc::c_char) -> ValueRef {
     if cx.unreachable { ret llvm::LLVMGetUndef(T_ptr(T_i8())); }
     ret llvm::LLVMBuildGlobalString(B(cx), _Str, noname());
 }
 
-fn GlobalStringPtr(cx: block, _Str: *u8) -> ValueRef {
+fn GlobalStringPtr(cx: block, _Str: *libc::c_char) -> ValueRef {
     if cx.unreachable { ret llvm::LLVMGetUndef(T_ptr(T_i8())); }
     ret llvm::LLVMBuildGlobalStringPtr(B(cx), _Str, noname());
 }
@@ -534,8 +534,8 @@ fn add_comment(bcx: block, text: str) {
     if (!ccx.sess.opts.no_asm_comments) {
         let sanitized = str::replace(text, "$", "");
         let comment_text = "; " + sanitized;
-        let asm = str::as_buf(comment_text, {|c|
-            str::as_buf("", {|e|
+        let asm = str::as_c_str(comment_text, {|c|
+            str::as_c_str("", {|e|
                 llvm::LLVMConstInlineAsm(T_fn([], T_void()), c, e,
                                          False, False)
             })
@@ -636,7 +636,7 @@ fn Trap(cx: block) {
     let BB: BasicBlockRef = llvm::LLVMGetInsertBlock(b);
     let FN: ValueRef = llvm::LLVMGetBasicBlockParent(BB);
     let M: ModuleRef = llvm::LLVMGetGlobalParent(FN);
-    let T: ValueRef = str::as_buf("llvm.trap", {|buf|
+    let T: ValueRef = str::as_c_str("llvm.trap", {|buf|
         llvm::LLVMGetNamedFunction(M, buf)
     });
     assert (T as int != 0);

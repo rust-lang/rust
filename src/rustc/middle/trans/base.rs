@@ -166,7 +166,7 @@ fn log_fn_time(ccx: @crate_ctxt, name: str, start: time::timeval,
 
 fn decl_fn(llmod: ModuleRef, name: str, cc: lib::llvm::CallConv,
            llty: TypeRef) -> ValueRef {
-    let llfn: ValueRef = str::as_buf(name, {|buf|
+    let llfn: ValueRef = str::as_c_str(name, {|buf|
         llvm::LLVMGetOrInsertFunction(llmod, buf, llty)
     });
     lib::llvm::SetFunctionCallConv(llfn, cc);
@@ -198,7 +198,7 @@ fn get_extern_fn(externs: hashmap<str, ValueRef>, llmod: ModuleRef, name: str,
 fn get_extern_const(externs: hashmap<str, ValueRef>, llmod: ModuleRef,
                     name: str, ty: TypeRef) -> ValueRef {
     if externs.contains_key(name) { ret externs.get(name); }
-    let c = str::as_buf(name, {|buf| llvm::LLVMAddGlobal(llmod, ty, buf) });
+    let c = str::as_c_str(name, {|buf| llvm::LLVMAddGlobal(llmod, ty, buf) });
     externs.insert(name, c);
     ret c;
 }
@@ -698,7 +698,7 @@ fn declare_tydesc(ccx: @crate_ctxt, t: ty::t, ty_params: [uint])
         name = mangle_internal_name_by_type_only(ccx, t, "tydesc");
         name = sanitize(name);
     } else { name = mangle_internal_name_by_seq(ccx, "tydesc"); }
-    let gvar = str::as_buf(name, {|buf|
+    let gvar = str::as_c_str(name, {|buf|
         llvm::LLVMAddGlobal(ccx.llmod, ccx.tydesc_type, buf)
     });
     let info =
@@ -1028,7 +1028,7 @@ fn decr_refcnt_maybe_free(bcx: block, box_ptr: ValueRef, t: ty::t) -> block {
 // Structural comparison: a rather involved form of glue.
 fn maybe_name_value(cx: @crate_ctxt, v: ValueRef, s: str) {
     if cx.sess.opts.save_temps {
-        let _: () = str::as_buf(s, {|buf| llvm::LLVMSetValueName(v, buf) });
+        let _: () = str::as_c_str(s, {|buf| llvm::LLVMSetValueName(v, buf) });
     }
 }
 
@@ -2306,7 +2306,7 @@ fn lookup_discriminant(ccx: @crate_ctxt, vid: ast::def_id) -> ValueRef {
         // It's an external discriminant that we haven't seen yet.
         assert (vid.crate != ast::local_crate);
         let sym = csearch::get_symbol(ccx.sess.cstore, vid);
-        let gvar = str::as_buf(sym, {|buf|
+        let gvar = str::as_c_str(sym, {|buf|
             llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type, buf)
         });
         lib::llvm::SetLinkage(gvar, lib::llvm::ExternalLinkage);
@@ -3407,7 +3407,7 @@ fn trans_log(lvl: @ast::expr, bcx: block, e: @ast::expr) -> block {
     } else {
         let s = link::mangle_internal_name_by_path_and_seq(
             ccx, modpath, "loglevel");
-        let global = str::as_buf(s, {|buf|
+        let global = str::as_c_str(s, {|buf|
             llvm::LLVMAddGlobal(ccx.llmod, T_i32(), buf)
         });
         llvm::LLVMSetGlobalConstant(global, False);
@@ -3669,7 +3669,7 @@ fn new_block(cx: fn_ctxt, parent: block_parent, kind: block_kind,
     if cx.ccx.sess.opts.save_temps || cx.ccx.sess.opts.debuginfo {
         s = cx.ccx.names(name);
     }
-    let llbb: BasicBlockRef = str::as_buf(s, {|buf|
+    let llbb: BasicBlockRef = str::as_c_str(s, {|buf|
         llvm::LLVMAppendBasicBlock(cx.llfn, buf)
     });
     let bcx = @{llbb: llbb,
@@ -3892,7 +3892,7 @@ fn alloc_local(cx: block, local: @ast::local) -> block {
     let {bcx, val} = alloc_ty(cx, t);
     if cx.sess().opts.debuginfo {
         option::may(simple_name) {|name|
-            str::as_buf(name, {|buf|
+            str::as_c_str(name, {|buf|
                 llvm::LLVMSetValueName(val, buf)
             });
         }
@@ -3928,15 +3928,15 @@ fn mk_standard_basic_blocks(llfn: ValueRef) ->
     dt: BasicBlockRef,
     da: BasicBlockRef,
     rt: BasicBlockRef} {
-    ret {sa: str::as_buf("static_allocas", {|buf|
+    ret {sa: str::as_c_str("static_allocas", {|buf|
                  llvm::LLVMAppendBasicBlock(llfn, buf) }),
-         ca: str::as_buf("load_env", {|buf|
+         ca: str::as_c_str("load_env", {|buf|
                  llvm::LLVMAppendBasicBlock(llfn, buf) }),
-         dt: str::as_buf("derived_tydescs", {|buf|
+         dt: str::as_c_str("derived_tydescs", {|buf|
                  llvm::LLVMAppendBasicBlock(llfn, buf) }),
-         da: str::as_buf("dynamic_allocas", {|buf|
+         da: str::as_c_str("dynamic_allocas", {|buf|
                  llvm::LLVMAppendBasicBlock(llfn, buf) }),
-         rt: str::as_buf("return", {|buf|
+         rt: str::as_c_str("return", {|buf|
                  llvm::LLVMAppendBasicBlock(llfn, buf) })};
 }
 
@@ -4629,7 +4629,7 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
         fn main_name() -> str { ret "main"; }
         let llfty = T_fn([ccx.int_type, ccx.int_type], ccx.int_type);
         let llfn = decl_cdecl_fn(ccx.llmod, main_name(), llfty);
-        let llbb = str::as_buf("top", {|buf|
+        let llbb = str::as_c_str("top", {|buf|
             llvm::LLVMAppendBasicBlock(llfn, buf)
         });
         let bld = *ccx.builder;
@@ -4637,7 +4637,7 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
         let crate_map = ccx.crate_map;
         let start_ty = T_fn([val_ty(rust_main), ccx.int_type, ccx.int_type,
                              val_ty(crate_map)], ccx.int_type);
-        let start = str::as_buf("rust_start", {|buf|
+        let start = str::as_c_str("rust_start", {|buf|
             llvm::LLVMAddGlobal(ccx.llmod, start_ty, buf)
         });
         let args = [rust_main, llvm::LLVMGetParam(llfn, 0 as c_uint),
@@ -4687,7 +4687,7 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
               ast::item_const(_, _) {
                 let typ = ty::node_id_to_type(ccx.tcx, i.id);
                 let s = mangle_exported_name(ccx, my_path, typ);
-                let g = str::as_buf(s, {|buf|
+                let g = str::as_c_str(s, {|buf|
                     llvm::LLVMAddGlobal(ccx.llmod, type_of(ccx, typ), buf)
                 });
                 ccx.item_symbols.insert(i.id, s);
@@ -4772,7 +4772,7 @@ fn trans_constant(ccx: @crate_ctxt, it: @ast::item) {
                             path_name("discrim")];
             let s = mangle_exported_name(ccx, p, ty::mk_int(ccx.tcx));
             let disr_val = vi[i].disr_val;
-            let discrim_gvar = str::as_buf(s, {|buf|
+            let discrim_gvar = str::as_c_str(s, {|buf|
                 llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type, buf)
             });
             llvm::LLVMSetInitializer(discrim_gvar, C_int(ccx, disr_val));
@@ -4876,7 +4876,7 @@ fn trap(bcx: block) {
 fn create_module_map(ccx: @crate_ctxt) -> ValueRef {
     let elttype = T_struct([ccx.int_type, ccx.int_type]);
     let maptype = T_array(elttype, ccx.module_data.size() + 1u);
-    let map = str::as_buf("_rust_mod_map", {|buf|
+    let map = str::as_c_str("_rust_mod_map", {|buf|
         llvm::LLVMAddGlobal(ccx.llmod, maptype, buf)
     });
     lib::llvm::SetLinkage(map, lib::llvm::InternalLinkage);
@@ -4904,7 +4904,7 @@ fn decl_crate_map(sess: session::session, mapname: str,
     let sym_name = "_rust_crate_map_" + mapname;
     let arrtype = T_array(int_type, n_subcrates as uint);
     let maptype = T_struct([int_type, arrtype]);
-    let map = str::as_buf(sym_name, {|buf|
+    let map = str::as_c_str(sym_name, {|buf|
         llvm::LLVMAddGlobal(llmod, maptype, buf)
     });
     lib::llvm::SetLinkage(map, lib::llvm::ExternalLinkage);
@@ -4918,7 +4918,7 @@ fn fill_crate_map(ccx: @crate_ctxt, map: ValueRef) {
     let cstore = ccx.sess.cstore;
     while cstore::have_crate_data(cstore, i) {
         let nm = "_rust_crate_map_" + cstore::get_crate_data(cstore, i).name;
-        let cr = str::as_buf(nm, {|buf|
+        let cr = str::as_c_str(nm, {|buf|
             llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type, buf)
         });
         subcrates += [p2i(ccx, cr)];
@@ -4934,18 +4934,18 @@ fn write_metadata(cx: @crate_ctxt, crate: @ast::crate) {
     if !cx.sess.building_library { ret; }
     let llmeta = C_bytes(metadata::encoder::encode_metadata(cx, crate));
     let llconst = C_struct([llmeta]);
-    let llglobal = str::as_buf("rust_metadata", {|buf|
+    let llglobal = str::as_c_str("rust_metadata", {|buf|
         llvm::LLVMAddGlobal(cx.llmod, val_ty(llconst), buf)
     });
     llvm::LLVMSetInitializer(llglobal, llconst);
-    str::as_buf(cx.sess.targ_cfg.target_strs.meta_sect_name, {|buf|
+    str::as_c_str(cx.sess.targ_cfg.target_strs.meta_sect_name, {|buf|
         llvm::LLVMSetSection(llglobal, buf)
     });
     lib::llvm::SetLinkage(llglobal, lib::llvm::InternalLinkage);
 
     let t_ptr_i8 = T_ptr(T_i8());
     llglobal = llvm::LLVMConstBitCast(llglobal, t_ptr_i8);
-    let llvm_used = str::as_buf("llvm.used", {|buf|
+    let llvm_used = str::as_c_str("llvm.used", {|buf|
         llvm::LLVMAddGlobal(cx.llmod, T_array(t_ptr_i8, 1u), buf)
     });
     lib::llvm::SetLinkage(llvm_used, lib::llvm::AppendingLinkage);
@@ -4974,17 +4974,17 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
     // 1. http://llvm.org/bugs/show_bug.cgi?id=11479
     let llmod_id = link_meta.name + ".rc";
 
-    let llmod = str::as_buf(llmod_id, {|buf|
+    let llmod = str::as_c_str(llmod_id, {|buf|
         llvm::LLVMModuleCreateWithNameInContext
             (buf, llvm::LLVMGetGlobalContext())
     });
     let data_layout = sess.targ_cfg.target_strs.data_layout;
     let targ_triple = sess.targ_cfg.target_strs.target_triple;
     let _: () =
-        str::as_buf(data_layout,
+        str::as_c_str(data_layout,
                     {|buf| llvm::LLVMSetDataLayout(llmod, buf) });
     let _: () =
-        str::as_buf(targ_triple,
+        str::as_c_str(targ_triple,
                     {|buf| llvm::LLVMSetTarget(llmod, buf) });
     let targ_cfg = sess.targ_cfg;
     let td = mk_target_data(sess.targ_cfg.target_strs.data_layout);

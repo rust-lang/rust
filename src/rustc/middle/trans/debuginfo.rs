@@ -46,7 +46,7 @@ const DW_ATE_unsigned: int = 0x07;
 const DW_ATE_unsigned_char: int = 0x08;
 
 fn llstr(s: str) -> ValueRef {
-    str::as_buf(s, {|sbuf|
+    str::as_c_str(s, {|sbuf|
         llvm::LLVMMDString(sbuf, str::len(s) as libc::c_uint)
     })
 }
@@ -74,7 +74,7 @@ fn llnull() -> ValueRef unsafe {
 }
 
 fn add_named_metadata(cx: @crate_ctxt, name: str, val: ValueRef) {
-    str::as_buf(name, {|sbuf|
+    str::as_c_str(name, {|sbuf|
         llvm::LLVMAddNamedMetadataOperand(cx.llmod, sbuf,
                                           val)
     })

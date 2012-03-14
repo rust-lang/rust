@@ -79,7 +79,7 @@ fn eq_res_info(a: res_info, b: res_info) -> bool {
 fn mk_global(ccx: @crate_ctxt, name: str, llval: ValueRef, internal: bool) ->
    ValueRef {
     let llglobal =
-        str::as_buf(name,
+        str::as_c_str(name,
                     {|buf|
                         lib::llvm::llvm::LLVMAddGlobal(ccx.llmod,
                                                        val_ty(llval), buf)
@@ -270,7 +270,7 @@ fn s_send_tydesc(_tcx: ty_ctxt) -> u8 {
 
 fn mk_ctxt(llmod: ModuleRef) -> ctxt {
     let llshapetablesty = trans::common::T_named_struct("shapes");
-    let llshapetables = str::as_buf("shapes", {|buf|
+    let llshapetables = str::as_c_str("shapes", {|buf|
         lib::llvm::llvm::LLVMAddGlobal(llmod, llshapetablesty, buf)
     });
 
