@@ -8,6 +8,7 @@ import io::writer;
 import std::prettyprint::serializer;
 import std::ebml::serializer;
 import std::ebml::deserializer;
+import std::serialization::{serialize_uint, deserialize_uint};
 
 fn test_ser_and_deser<A>(a1: A,
                          expected: str,
@@ -68,31 +69,31 @@ fn main() {
                             @plus(@val(22u), @val(5u))),
                        "plus(@minus(@val(3u), @val(10u)), \
                         @plus(@val(22u), @val(5u)))",
-                       expr::serialize(_, _),
-                       expr::deserialize(_),
-                       expr::serialize(_, _));
+                       serialize_expr(_, _),
+                       deserialize_expr(_),
+                       serialize_expr(_, _));
 
     test_ser_and_deser({lo: 0u, hi: 5u, node: 22u},
                        "{lo: 0u, hi: 5u, node: 22u}",
-                       spanned_uint::serialize(_, _),
-                       spanned_uint::deserialize(_),
-                       spanned_uint::serialize(_, _));
+                       serialize_spanned_uint(_, _),
+                       deserialize_spanned_uint(_),
+                       serialize_spanned_uint(_, _));
 
     test_ser_and_deser(an_enum({v: [1u, 2u, 3u]}),
                        "an_enum({v: [1u, 2u, 3u]})",
-                       an_enum::serialize(_, _),
-                       an_enum::deserialize(_),
-                       an_enum::serialize(_, _));
+                       serialize_an_enum(_, _),
+                       deserialize_an_enum(_),
+                       serialize_an_enum(_, _));
 
     test_ser_and_deser({x: 3u, y: 5u},
                        "{x: 3u, y: 5u}",
-                       point::serialize(_, _),
-                       point::deserialize(_),
-                       point::serialize(_, _));
+                       serialize_point(_, _),
+                       deserialize_point(_),
+                       serialize_point(_, _));
 
     test_ser_and_deser([1u, 2u, 3u],
                        "[1u, 2u, 3u]",
-                       uint_vec::serialize(_, _),
-                       uint_vec::deserialize(_),
-                       uint_vec::serialize(_, _));
+                       serialize_uint_vec(_, _),
+                       deserialize_uint_vec(_),
+                       serialize_uint_vec(_, _));
 }

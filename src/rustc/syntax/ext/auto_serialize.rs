@@ -9,18 +9,13 @@ For example, a type like:
 
     type node_id = uint;
 
-would generate a companion module like:
+would generate two functions like:
 
-    mod node_id {
-        use std;
-        import std::serialization::serializer;
-        import std::serialization::deserializer;
-        fn serialize<S: serializer>(s: S, v: node_id) {
-             s.emit_uint(v);
-        }
-        fn deserializer<D: deserializer>(d: D) -> node_id {
-             d.read_uint()
-        }
+    fn serialize_node_id<S: serializer>(s: S, v: node_id) {
+        s.emit_uint(v);
+    }
+    fn deserialize_node_id<D: deserializer>(d: D) -> node_id {
+        d.read_uint()
     }
 
 Other interesting scenarios are whe the item has type parameters or
@@ -28,34 +23,29 @@ references other non-built-in types.  A type definition like:
 
     type spanned<T> = {node: T, span: span};
 
-would yield a helper module like:
+would yield functions like:
 
-    mod spanned {
-        use std;
-        import std::serialization::serializer;
-        import std::serialization::deserializer;
-        fn serialize<S: serializer,T>(s: S, t: fn(T), v: spanned<T>) {
-             s.emit_rec(2u) {||
-                 s.emit_rec_field("node", 0u) {||
-                     t(s.node);
-                 };
-                 s.emit_rec_field("span", 1u) {||
-                     span::serialize(s, s.span);
-                 };
-             }
-        }
-        fn deserializer<D: deserializer>(d: D, t: fn() -> T) -> node_id {
-             d.read_rec(2u) {||
-                 {node: d.read_rec_field("node", 0u, t),
-                  span: d.read_rec_field("span", 1u) {||span::deserialize(d)}}
-             }
-        }
+    fn serialize_spanned<S: serializer,T>(s: S, v: spanned<T>, t: fn(T)) {
+         s.emit_rec(2u) {||
+             s.emit_rec_field("node", 0u) {||
+                 t(s.node);
+             };
+             s.emit_rec_field("span", 1u) {||
+                 serialize_span(s, s.span);
+             };
+         }
+    }
+    fn deserialize_spanned<D: deserializer>(d: D, t: fn() -> T) -> node_id {
+         d.read_rec(2u) {||
+             {node: d.read_rec_field("node", 0u, t),
+              span: d.read_rec_field("span", 1u) {||deserialize_span(d)}}
+         }
     }
 
 In general, the code to serialize an instance `v` of a non-built-in
 type a::b::c<T0,...,Tn> looks like:
 
-    a::b::c::serialize(s, {|v| c_T0}, ..., {|v| c_Tn}, v)
+    a::b::serialize_c(s, {|v| c_T0}, ..., {|v| c_Tn}, v)
 
 where `c_Ti` is the code to serialize an instance `v` of the type
 `Ti`.
@@ -63,12 +53,13 @@ where `c_Ti` is the code to serialize an instance `v` of the type
 Similarly, the code to deserialize an instance of a non-built-in type
 `a::b::c<T0,...,Tn>` using the deserializer `d` looks like:
 
-    a::b::c::deserialize(d, {|| c_T0}, ..., {|| c_Tn})
+    a::b::deserialize_c(d, {|| c_T0}, ..., {|| c_Tn})
 
 where `c_Ti` is the code to deserialize an instance of `Ti` using the
 deserializer `d`.
 
-TODO--Hygiene. Search for "__" strings.
+TODO--Hygiene. Search for "__" strings.  We also assume "std" is the
+standard library.
 
 Misc notes:
 -----------
@@ -106,13 +97,12 @@ fn expand(cx: ext_ctxt,
     vec::flat_map(in_items) {|in_item|
         alt in_item.node {
           ast::item_ty(ty, tps) {
-            [filter_attrs(in_item),
-             ty_module(cx, in_item.ident, ty, tps)]
+            [filter_attrs(in_item)] + ty_fns(cx, in_item.ident, ty, tps)
           }
 
           ast::item_enum(variants, tps) {
-            [filter_attrs(in_item),
-             enum_module(cx, in_item.ident, in_item.span, variants, tps)]
+            [filter_attrs(in_item)] + enum_fns(cx, in_item.ident,
+                                               in_item.span, variants, tps)
           }
 
           _ {
@@ -127,6 +117,13 @@ fn expand(cx: ext_ctxt,
 
 impl helpers for ext_ctxt {
     fn next_id() -> ast::node_id { self.session().next_node_id() }
+
+    fn helper_path(base_path: @ast::path,
+                   helper_name: str) -> @ast::path {
+        let head = vec::init(base_path.node.idents);
+        let tail = vec::last(base_path.node.idents);
+        self.path(base_path.span, head + [helper_name + "_" + tail])
+    }
 
     fn path(span: span, strs: [str]) -> @ast::path {
         @{node: {global: false, idents: strs, types: []},
@@ -284,7 +281,7 @@ fn ser_path(cx: ext_ctxt, tps: ser_tps_map, path: @ast::path,
         cx.expr(
             path.span,
             ast::expr_path(
-                cx.path(path.span, path.node.idents + ["serialize"])));
+                cx.helper_path(path, "serialize")));
 
     let ty_args = vec::map(path.node.types) {|ty|
         let sv_stmts = ser_ty(cx, tps, ty, cx.clone(s), #ast{ __v });
@@ -466,13 +463,13 @@ fn ser_ty(cx: ext_ctxt, tps: ser_tps_map,
                             cx.at(ty.span, #ast{ __e })))));
 
         [#ast(stmt){
-            core::serialization::emit_from_vec($(s), $(v), {|__e| $(ser_e) })
+            std::serialization::emit_from_vec($(s), $(v), {|__e| $(ser_e) })
         }]
       }
     }
 }
 
-fn mk_ser_fn(cx: ext_ctxt, span: span,
+fn mk_ser_fn(cx: ext_ctxt, span: span, name: str,
              -v_ty: @ast::ty, tps: [ast::ty_param],
              f: fn(ext_ctxt, ser_tps_map, @ast::ty,
                    -@ast::expr, -@ast::expr) -> [@ast::stmt])
@@ -514,7 +511,8 @@ fn mk_ser_fn(cx: ext_ctxt, span: span,
     }
 
     let ser_bnds = @[ast::bound_iface(cx.ty_path(span,
-                                                 ["serialization",
+                                                 ["std",
+                                                  "serialization",
                                                   "serializer"]))];
 
     let ser_tps: [ast::ty_param] =
@@ -530,7 +528,7 @@ fn mk_ser_fn(cx: ext_ctxt, span: span,
     let ser_blk = cx.blk(span,
                          f(cx, tps_map, v_ty, #ast{ __s }, #ast{ __v }));
 
-    @{ident: "serialize",
+    @{ident: "serialize_" + name,
       attrs: [],
       id: cx.next_id(),
       node: ast::item_fn({inputs: ser_inputs,
@@ -554,7 +552,7 @@ fn deser_path(cx: ext_ctxt, tps: deser_tps_map, path: @ast::path,
         cx.expr(
             path.span,
             ast::expr_path(
-                cx.path(path.span, path.node.idents + ["deserialize"])));
+                cx.helper_path(path, "deserialize")));
 
     let ty_args = vec::map(path.node.types) {|ty|
         let dv_expr = deser_ty(cx, tps, ty, cx.clone(d));
@@ -667,12 +665,12 @@ fn deser_ty(cx: ext_ctxt, tps: deser_tps_map,
 
       ast::ty_vec(mt) {
         let l = deser_lambda(cx, tps, mt.ty, cx.clone(d));
-        #ast{ core::serialization::read_to_vec($(d), $(l)) }
+        #ast{ std::serialization::read_to_vec($(d), $(l)) }
       }
     }
 }
 
-fn mk_deser_fn(cx: ext_ctxt, span: span,
+fn mk_deser_fn(cx: ext_ctxt, span: span, name: str,
                -v_ty: @ast::ty, tps: [ast::ty_param],
                f: fn(ext_ctxt, deser_tps_map,
                      @ast::ty, -@ast::expr) -> @ast::expr)
@@ -709,7 +707,8 @@ fn mk_deser_fn(cx: ext_ctxt, span: span,
     }
 
     let deser_bnds = @[ast::bound_iface(cx.ty_path(span,
-                                                   ["serialization",
+                                                   ["std",
+                                                    "serialization",
                                                     "deserializer"]))];
 
     let deser_tps: [ast::ty_param] =
@@ -720,7 +719,7 @@ fn mk_deser_fn(cx: ext_ctxt, span: span,
 
     let deser_blk = cx.expr_blk(f(cx, tps_map, v_ty, #ast(expr){__d}));
 
-    @{ident: "deserialize",
+    @{ident: "deserialize_" + name,
       attrs: [],
       id: cx.next_id(),
       node: ast::item_fn({inputs: deser_inputs,
@@ -733,21 +732,14 @@ fn mk_deser_fn(cx: ext_ctxt, span: span,
       span: span}
 }
 
-fn ty_module(cx: ext_ctxt, name: str, ty: @ast::ty, tps: [ast::ty_param])
-    -> @ast::item {
+fn ty_fns(cx: ext_ctxt, name: str, ty: @ast::ty, tps: [ast::ty_param])
+    -> [@ast::item] {
 
     let span = ty.span;
-    let ser_fn = mk_ser_fn(cx, span, cx.clone_ty(ty), tps, ser_ty);
-    let deser_fn = mk_deser_fn(cx, span, cx.clone_ty(ty), tps, deser_ty);
-
-    // Return a module containing the serialization and deserialization
-    // functions:
-    @{ident: name,
-      attrs: [],
-      id: cx.next_id(),
-      node: ast::item_mod({view_items: [],
-                           items: [ser_fn, deser_fn]}),
-      span: span}
+    [
+        mk_ser_fn(cx, span, name, cx.clone_ty(ty), tps, ser_ty),
+        mk_deser_fn(cx, span, name, cx.clone_ty(ty), tps, deser_ty)
+    ]
 }
 
 fn ser_enum(cx: ext_ctxt, tps: ser_tps_map, e_name: str,
@@ -836,21 +828,14 @@ fn deser_enum(cx: ext_ctxt, tps: deser_tps_map, e_name: str,
     #ast{ $(d).read_enum($(e_name), $(read_lambda)) }
 }
 
-fn enum_module(cx: ext_ctxt, e_name: str, e_span: span,
+fn enum_fns(cx: ext_ctxt, e_name: str, e_span: span,
                variants: [ast::variant], tps: [ast::ty_param])
-    -> @ast::item {
+    -> [@ast::item] {
     let ty = cx.ty_path(e_span, [e_name]);
-    let ser_fn =
-        mk_ser_fn(cx, e_span, cx.clone_ty(ty), tps,
-                  ser_enum(_, _, e_name, e_span, variants, _, _, _));
-    let deser_fn =
-        mk_deser_fn(cx, e_span, ty, tps,
-                    deser_enum(_, _, e_name, e_span, variants, _, _));
-
-    @{ident: e_name,
-      attrs: [],
-      id: cx.next_id(),
-      node: ast::item_mod({view_items: [],
-                           items: [ser_fn, deser_fn]}),
-      span: e_span}
+    [
+        mk_ser_fn(cx, e_span, e_name, cx.clone_ty(ty), tps,
+                  ser_enum(_, _, e_name, e_span, variants, _, _, _)),
+        mk_deser_fn(cx, e_span, e_name, ty, tps,
+                    deser_enum(_, _, e_name, e_span, variants, _, _))
+    ]
 }

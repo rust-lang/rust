@@ -293,7 +293,7 @@ enum ebml_serializer_tag {
     es_label // Used only when debugging
 }
 
-impl serializer of core::serialization::serializer for ebml::writer {
+impl serializer of serialization::serializer for ebml::writer {
     fn emit_nil() {}
 
     // used internally to emit things like the vector length and so on
@@ -371,7 +371,7 @@ fn ebml_deserializer(d: ebml::doc) -> ebml_deserializer {
     {mutable parent: d, mutable pos: d.start}
 }
 
-impl deserializer of core::serialization::deserializer for ebml_deserializer {
+impl deserializer of serialization::deserializer for ebml_deserializer {
     fn _check_label(lbl: str) {
         if self.pos < self.parent.end {
             let {tag: r_tag, doc: r_doc} =

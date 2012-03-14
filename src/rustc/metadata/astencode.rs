@@ -9,10 +9,10 @@ import std::ebml::writer;
 import std::ebml::serializer;
 import std::ebml::deserializer;
 import std::map::hashmap;
-import serialization::serializer;
-import serialization::deserializer;
-import serialization::serializer_helpers;
-import serialization::deserializer_helpers;
+import std::serialization::serializer;
+import std::serialization::deserializer;
+import std::serialization::serializer_helpers;
+import std::serialization::deserializer_helpers;
 import std::smallintmap::map;
 import middle::trans::common::maps;
 import middle::{ty, typeck, last_use, ast_map};
@@ -295,13 +295,13 @@ impl of tr for span {
     }
 }
 
-impl serializer_helpers<S: serialization::serializer> for S {
+impl serializer_helpers<S: serializer> for S {
     fn emit_def_id(did: ast::def_id) {
         astencode_gen::serialize_syntax_ast_def_id(self, did)
     }
 }
 
-impl deserializer_helpers<D: serialization::deserializer> for D {
+impl deserializer_helpers<D: deserializer> for D {
     fn read_def_id(xcx: extended_decode_ctxt) -> ast::def_id {
         let did = astencode_gen::deserialize_syntax_ast_def_id(self);
         did.tr(xcx)
