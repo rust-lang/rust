@@ -492,9 +492,7 @@ fn write_sig(ctxt: ctxt, sig: option<str>) {
 
 fn code_block_indent(s: str) -> str {
     let indented: [str] = [];
-#error("s = '%?'", s);
     iter::each(s, { |line| indented += [#fmt("    %s", line)] });
-#error("indented = '%?'", indented);
     str::connect(indented, "\n")
 }
 
@@ -534,7 +532,6 @@ fn should_correctly_indent_fn_signature() {
         ]
     };
     let markdown = test::write_markdown_str(doc);
-#error("markdown = '%s'", markdown);
     assert str::contains(markdown, "    line 1\n    line 2");
 }
 
