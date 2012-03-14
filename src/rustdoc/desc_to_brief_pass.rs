@@ -7,6 +7,9 @@ is interpreted as the brief description.
 
 "];
 
+import iter::iterable;
+import str::lines::iterable;
+
 export mk_pass;
 
 fn mk_pass() -> pass {
@@ -135,10 +138,9 @@ fn sentences(s: str) -> [str] {
 }
 
 fn paragraphs(s: str) -> [str] {
-    let lines = str::lines_any(s);
     let whitespace_lines = 0;
     let accum = "";
-    let paras = vec::foldl([], lines) {|paras, line|
+    let paras = iter::foldl(s, []) {|paras, line|
         let res = paras;
 
         if str::is_whitespace(line) {

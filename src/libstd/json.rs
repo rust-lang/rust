@@ -8,6 +8,8 @@ import io;
 import io::{reader_util, writer_util};
 import map;
 import map::hashmap;
+import iter::iterable;
+import str::chars::iterable;
 
 export json;
 export error;
@@ -47,7 +49,7 @@ fn to_writer(wr: io::writer, j: json) {
       string(s) {
         wr.write_char('"');
         let escaped = "";
-        str::chars_iter(s) { |c|
+        iter::each(s) { |c|
             alt c {
               '"' { escaped += "\\\""; }
               '\\' { escaped += "\\\\"; }
@@ -180,7 +182,7 @@ impl parser for parser {
     }
 
     fn parse_ident(ident: str, value: json) -> result<json, error> {
-        if str::all(ident, { |c| c == self.next_char() }) {
+        if iter::all(ident, { |c| c == self.next_char() }) {
             self.bump();
             ok(value)
         } else {

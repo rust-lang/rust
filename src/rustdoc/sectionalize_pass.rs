@@ -1,5 +1,8 @@
 #[doc = "Breaks rustdocs into sections according to their headers"];
 
+import iter::iterable;
+import str::lines::iterable;
+
 export mk_pass;
 
 fn mk_pass() -> pass {
@@ -88,13 +91,11 @@ fn sectionalize(desc: option<str>) -> (option<str>, [doc::section]) {
         ret (none, []);
     }
 
-    let lines = str::lines(option::get(desc));
-
     let new_desc = none;
     let current_section = none;
     let sections = [];
 
-    for line in lines {
+    iter::each(option::get(desc)) {|line|
         alt parse_header(line) {
           some(header) {
             if option::is_some(current_section) {

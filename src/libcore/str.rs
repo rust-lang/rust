@@ -52,15 +52,9 @@ export
    hash,
 
    // Iterating through strings
-   all, any,
    all_between, any_between,
-   map,
-   bytes_iter,
-   chars_iter,
    split_char_iter,
    splitn_char_iter,
-   words_iter,
-   lines_iter,
 
    // Searching
    find, find_from, find_between,
@@ -571,51 +565,12 @@ fn hash(&&s: str) -> uint {
 Section: Iterating through strings
 */
 
-#[doc = "
-Return true if a predicate matches all characters or if the string
-contains no characters
-"]
-fn all(s: str, it: fn(char) -> bool) -> bool {
-    all_between(s, 0u, len(s), it)
-}
-
-#[doc = "
-Return true if a predicate matches any character (and false if it
-matches none or there are no characters)
-"]
-fn any(ss: str, pred: fn(char) -> bool) -> bool {
-    !all(ss, {|cc| !pred(cc)})
-}
-
 #[doc = "Apply a function to each character"]
 fn map(ss: str, ff: fn(char) -> char) -> str {
     let mut result = "";
     reserve(result, len(ss));
-    chars_iter(ss) {|cc| str::push_char(result, ff(cc));}
+    iter::each(ss) {|cc| str::push_char(result, ff(cc));}
     result
-}
-
-#[doc = "Iterate over the bytes in a string"]
-fn bytes_iter(ss: str, it: fn(u8)) {
-    let mut pos = 0u;
-    let len = len(ss);
-
-    while (pos < len) {
-        it(ss[pos]);
-        pos += 1u;
-    }
-}
-
-#[doc = "Iterate over the characters in a string"]
-fn chars_iter(s: str, it: fn(char)) {
-    let mut pos = 0u;
-    let len = len(s);
-
-    while (pos < len) {
-        let {ch, next} = char_range_at(s, pos);
-        pos = next;
-        it(ch);
-    }
 }
 
 #[doc = "
@@ -631,16 +586,6 @@ Apply a function to each substring after splitting by character, up to
 "]
 fn splitn_char_iter(ss: str, sep: char, count: uint, ff: fn(&&str)) unsafe {
    vec::iter(splitn_char(ss, sep, count), ff)
-}
-
-#[doc = "Apply a function to each word"]
-fn words_iter(ss: str, ff: fn(&&str)) {
-    vec::iter(words(ss), ff)
-}
-
-#[doc = "Apply a function to each lines (by '\n')"]
-fn lines_iter(ss: str, ff: fn(&&str)) {
-    vec::iter(lines(ss), ff)
 }
 
 /*
@@ -957,7 +902,7 @@ fn is_utf16(v: [const u16]) -> bool {
 
 fn to_utf16(s: str) -> [u16] {
     let mut u = [];
-    chars_iter(s) {|cch|
+    iter::each(s) {|&&cch: char|
         // Arithmetic with u32 literals is easier on the eyes than chars.
         let mut ch = cch as u32;
 
@@ -1416,6 +1361,7 @@ mod chars {
             }
             i += 1u;
         }
+        assert(i == 3u);
     }
 
     #[test]
@@ -1491,6 +1437,9 @@ mod words {
                 }
                 pos = next;
             }
+            if (buflen > 0u) {
+                blk(buf);
+            }
         }
     }
 
@@ -1501,18 +1450,41 @@ mod words {
         let ii = 0;
 
         data.iter {|ww|
+#error("%d='%s'", ii, ww);
             alt ii {
               0 { assert "Mary"   == ww; }
               1 { assert "had"    == ww; }
               2 { assert "a"      == ww; }
               3 { assert "little" == ww; }
-              4 { assert "lamb." == ww; }
-              _ { () }
+              4 { assert "lamb."  == ww; }
+              5 { assert "Little" == ww; }
+              6 { assert "lamb"   == ww; }
+              _ { fail }
             }
             ii += 1;
         }
+        assert(ii == 7);
 
         "".iter {|_x| fail; } // should not fail
+    }
+
+    #[test]
+    fn test_words_iter2() {
+        let data = "\nMary had a";
+
+        let ii = 0;
+
+        data.iter {|ww|
+#error("%d='%s'", ii, ww);
+            alt ii {
+              0 { assert "Mary"   == ww; }
+              1 { assert "had"    == ww; }
+              2 { assert "a"      == ww; }
+              _ { fail }
+            }
+            ii += 1;
+        }
+        assert(ii == 3);
     }
 }
 
@@ -1536,25 +1508,44 @@ mod lines {
                 }
                 pos = next;
             }
+            blk(buf);
         }
     }
 
     #[test]
     fn test_lines_iter() {
-        let lf = "\nMary had a little lamb\nLittle lamb\n";
+        let lf = "\nMary had a little lamb\r\nLittle lamb\n";
 
         let ii = 0;
 
         lf.iter {|x|
             alt ii {
                 0 { assert "" == x; }
-                1 { assert "Mary had a little lamb" == x; }
+                1 { assert "Mary had a little lamb\r" == x; }
                 2 { assert "Little lamb" == x; }
                 3 { assert "" == x; }
-                _ { () }
+                _ { fail }
             }
             ii += 1;
         }
+        assert(ii == 4);
+    }
+
+    #[test]
+    fn test_lines_iter2() {
+        let lf = "Mary had a little lamb\nLittle lamb";
+
+        let ii = 0;
+
+        lf.iter {|x|
+            alt ii {
+                0 { assert "Mary had a little lamb" == x; }
+                1 { assert "Little lamb" == x; }
+                _ { fail }
+            }
+            ii += 1;
+        }
+        assert(ii == 2);
     }
 }
 
@@ -2229,37 +2220,6 @@ mod tests {
     }
 
     #[test]
-    fn test_chars_iter() {
-        let i = 0;
-        chars_iter("x\u03c0y") {|ch|
-            alt check i {
-              0 { assert ch == 'x'; }
-              1 { assert ch == '\u03c0'; }
-              2 { assert ch == 'y'; }
-            }
-            i += 1;
-        }
-
-        chars_iter("") {|_ch| fail; } // should not fail
-    }
-
-    #[test]
-    fn test_bytes_iter() {
-        let i = 0;
-
-        bytes_iter("xyz") {|bb|
-            alt check i {
-              0 { assert bb == 'x' as u8; }
-              1 { assert bb == 'y' as u8; }
-              2 { assert bb == 'z' as u8; }
-            }
-            i += 1;
-        }
-
-        bytes_iter("") {|bb| assert bb == 0u8; }
-    }
-
-    #[test]
     fn test_split_char_iter() {
         let data = "\nMary had a little lamb\nLittle lamb\n";
 
@@ -2289,44 +2249,6 @@ mod tests {
               1 { assert "had"    == xx; }
               2 { assert "a little lamb\nLittle lamb\n" == xx; }
               _ { () }
-            }
-            ii += 1;
-        }
-    }
-
-    #[test]
-    fn test_words_iter() {
-        let data = "\nMary had a little lamb\nLittle lamb\n";
-
-        let ii = 0;
-
-        words_iter(data) {|ww|
-            alt ii {
-              0 { assert "Mary"   == ww; }
-              1 { assert "had"    == ww; }
-              2 { assert "a"      == ww; }
-              3 { assert "little" == ww; }
-              _ { () }
-            }
-            ii += 1;
-        }
-
-        words_iter("") {|_x| fail; } // should not fail
-    }
-
-    #[test]
-    fn test_lines_iter () {
-        let lf = "\nMary had a little lamb\nLittle lamb\n";
-
-        let ii = 0;
-
-        lines_iter(lf) {|x|
-            alt ii {
-                0 { assert "" == x; }
-                1 { assert "Mary had a little lamb" == x; }
-                2 { assert "Little lamb" == x; }
-                3 { assert "" == x; }
-                _ { () }
             }
             ii += 1;
         }
