@@ -254,12 +254,12 @@ fn resolve_expr(expr: @ast::expr, cx: ctxt, visitor: visit::vt<ctxt>) {
             }
             visit::visit_expr(expr, cx, visitor);
         }
-        ast::expr_addr_of(_, _) | ast::expr_alt(_, _, _) {
+        ast::expr_addr_of(_, subexpr) | ast::expr_alt(subexpr, _, _) {
             // Record the block that this expression appears in, in case the
             // operand is an rvalue.
             alt cx.parent {
                 pa_block(blk_id) {
-                    cx.region_map.rvalue_to_block.insert(expr.id, blk_id);
+                    cx.region_map.rvalue_to_block.insert(subexpr.id, blk_id);
                 }
                 _ { cx.sess.span_bug(expr.span, "expr outside of block?!"); }
             }

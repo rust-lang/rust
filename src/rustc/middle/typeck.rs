@@ -2492,7 +2492,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
       ast::expr_alt(discrim, arms, _) {
         bot = check_expr(fcx, discrim);
 
-        let parent_block = tcx.region_map.rvalue_to_block.get(expr.id);
+        let parent_block = tcx.region_map.rvalue_to_block.get(discrim.id);
 
         // Typecheck the patterns first, so that we get types for all the
         // bindings.

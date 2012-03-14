@@ -1649,11 +1649,12 @@ fn trans_unary(bcx: block, op: ast::unop, e: @ast::expr,
 }
 
 fn trans_addr_of(cx: block, e: @ast::expr, dest: dest) -> block {
-    // FIXME: This is wrong.
     let {bcx, val, kind} = trans_temp_lval(cx, e);
-    if kind != owned {
-        bcx.sess().span_bug(e.span,
-                            "can't take the address of an rvalue");
+    let ety = expr_ty(cx, e);
+    let is_immediate = ty::type_is_immediate(ety);
+    if (kind == temporary && is_immediate) || kind == owned_imm {
+        let {bcx: bcx2, val: val2} = do_spill(cx, val, ety);
+        bcx = bcx2; val = val2;
     }
     ret store_in_dest(bcx, val, dest);
 }
