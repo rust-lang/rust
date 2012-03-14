@@ -287,6 +287,7 @@ enum type_err {
     terr_ref_mutability,
     terr_vec_mutability,
     terr_tuple_size(uint, uint),
+    terr_ty_param_size(uint, uint),
     terr_record_size(uint, uint),
     terr_record_mutability,
     terr_record_fields(ast::ident, ast::ident),
@@ -1550,26 +1551,21 @@ fn set_default_mode(cx: ctxt, m: ast::mode, m_def: ast::rmode) {
 //
 //     http://www.cs.man.ac.uk/~hoderk/ubench/unification_full.pdf
 mod unify {
-    export fixup_result;
+    import result::{result, ok, err, chain, map, map2};
+
     export fixup_vars;
-    export fix_ok;
-    export fix_err;
     export mk_var_bindings;
     export resolve_type_structure;
     export resolve_type_var;
-    export result;
     export unify;
-    export ures_ok;
-    export ures_err;
     export var_bindings;
     export precise, in_bindings;
 
-    enum result { ures_ok(t), ures_err(type_err), }
-    enum union_result { unres_ok, unres_err(type_err), }
-    enum fixup_result {
-        fix_ok(t), // fixup succeeded
-        fix_err(int), // fixup failed because a type variable was unresolved
-    }
+    type ures<T> = result<T,type_err>;
+
+    // in case of failure, value is the idx of an unresolved type var
+    type fres<T> = result<T,int>;
+
     type var_bindings =
         {sets: ufind::ufind, types: smallintmap::smallintmap<t>};
 
@@ -1584,8 +1580,10 @@ mod unify {
     }
 
     // Unifies two sets.
-    fn union(cx: @uctxt, set_a: uint, set_b: uint,
-             variance: variance) -> union_result {
+    fn union<T:copy>(
+        cx: @uctxt, set_a: uint, set_b: uint,
+        variance: variance, nxt: fn() -> ures<T>) -> ures<T> {
+
         let vb = alt cx.st {
             in_bindings(vb) { vb }
             _ { cx.tcx.sess.bug("someone forgot to document an invariant \
@@ -1606,76 +1604,80 @@ mod unify {
         alt smallintmap::find(vb.types, root_a) {
           none {
             alt smallintmap::find(vb.types, root_b) {
-              none { ufind::union(vb.sets, set_a, set_b); ret unres_ok; }
-              some(t_b) { replace_type(vb, t_b); ret unres_ok; }
+              none { ufind::union(vb.sets, set_a, set_b); ret nxt(); }
+              some(t_b) { replace_type(vb, t_b); ret nxt(); }
             }
           }
           some(t_a) {
             alt smallintmap::find(vb.types, root_b) {
-              none { replace_type(vb, t_a); ret unres_ok; }
+              none { replace_type(vb, t_a); ret nxt(); }
               some(t_b) {
-                alt unify_step(cx, t_a, t_b, variance) {
-                  ures_ok(t_c) { replace_type(vb, t_c); ret unres_ok; }
-                  ures_err(terr) { ret unres_err(terr); }
-                }
+                ret unify_step(cx, t_a, t_b, variance) {|t_c|
+                    replace_type(vb, t_c);
+                    nxt()
+                };
               }
             }
           }
         }
     }
 
-    fn record_var_binding(cx: @uctxt, key: int, typ: t, variance: variance)
-        -> result {
+    fn record_var_binding<T:copy>(
+        cx: @uctxt, key: int,
+        typ: t, variance: variance,
+        nxt: fn(t) -> ures<T>) -> ures<T> {
+
         let vb = alt check cx.st { in_bindings(vb) { vb } };
         ufind::grow(vb.sets, (key as uint) + 1u);
         let root = ufind::find(vb.sets, key as uint);
         let result_type = typ;
         alt smallintmap::find(vb.types, root) {
           some(old_type) {
-            alt unify_step(cx, old_type, typ, variance) {
-              ures_ok(unified_type) { result_type = unified_type; }
-              rs { ret rs; }
+            alt unify_step(cx, old_type, typ, variance, {|v| ok(v)}) {
+              ok(unified_type) { result_type = unified_type; }
+              err(e) { ret err(e); }
             }
           }
           none {/* fall through */ }
         }
         smallintmap::insert(vb.types, root, result_type);
-        ret ures_ok(mk_var(cx.tcx, key));
+        ret nxt(mk_var(cx.tcx, key));
     }
 
     // Simple structural type comparison.
-    fn struct_cmp(cx: @uctxt, expected: t, actual: t) -> result {
+    fn struct_cmp<T:copy>(
+        cx: @uctxt, expected: t, actual: t,
+        nxt: fn(t) -> ures<T>) -> ures<T> {
+
         let tcx = cx.tcx;
         let cfg = tcx.sess.targ_cfg;
         if mach_sty(cfg, expected) == mach_sty(cfg, actual) {
-            ret ures_ok(expected);
+            ret nxt(expected);
         }
-        ret ures_err(terr_mismatch);
+        ret err(terr_mismatch);
     }
 
     // Right now this just checks that the lists of constraints are
     // pairwise equal.
-    fn unify_constrs(base_t: t, expected: [@type_constr],
-                     actual: [@type_constr]) -> result {
-        let expected_len = vec::len(expected);
-        let actual_len = vec::len(actual);
+    fn unify_constrs<T:copy>(
+        expected: [@type_constr],
+        actual: [@type_constr],
+        nxt: fn([@type_constr]) -> ures<T>) -> ures<T> {
 
-        if expected_len != actual_len {
-            ret ures_err(terr_constr_len(expected_len, actual_len));
+        if check vec::same_length(expected, actual) {
+            map2(expected, actual,
+                 {|e,a| unify_constr(e, a, {|v| ok(v)})}, nxt)
+        } else {
+            ret err(terr_constr_len(expected.len(), actual.len()));
         }
-        let i = 0u;
-        let rslt;
-        for c: @type_constr in expected {
-            rslt = unify_constr(base_t, c, actual[i]);
-            alt rslt { ures_ok(_) { } ures_err(_) { ret rslt; } }
-            i += 1u;
-        }
-        ret ures_ok(base_t);
     }
-    fn unify_constr(base_t: t, expected: @type_constr,
-                    actual_constr: @type_constr) -> result {
-        let ok_res = ures_ok(base_t);
-        let err_res = ures_err(terr_constr_mismatch(expected, actual_constr));
+
+    fn unify_constr<T:copy>(
+        expected: @type_constr,
+        actual_constr: @type_constr,
+        nxt: fn(@type_constr) -> ures<T>) -> ures<T> {
+
+        let err_res = err(terr_constr_mismatch(expected, actual_constr));
         if expected.node.id != actual_constr.node.id { ret err_res; }
         let expected_arg_len = vec::len(expected.node.args);
         let actual_arg_len = vec::len(actual_constr.node.args);
@@ -1703,13 +1705,14 @@ mod unify {
             }
             i += 1u;
         }
-        ret ok_res;
+        ret nxt(expected);
     }
 
     // Unifies two mutability flags.
-    fn unify_mut(expected: ast::mutability, actual: ast::mutability,
-                 variance: variance) ->
-       option<(ast::mutability, variance)> {
+    fn unify_mut<T:copy>(
+        expected: ast::mutability, actual: ast::mutability,
+        variance: variance, mut_err: type_err,
+        nxt: fn(ast::mutability, variance) -> ures<T>) -> ures<T> {
 
         // If you're unifying on something mutable then we have to
         // be invariant on the inner type
@@ -1722,20 +1725,25 @@ mod unify {
           }
         };
 
-        if expected == actual { ret some((expected, newvariance)); }
+        if expected == actual {
+            ret nxt(expected, newvariance);
+        }
         if variance == covariant {
             if expected == ast::m_const {
-                ret some((actual, newvariance));
+                ret nxt(actual, newvariance);
             }
         } else if variance == contravariant {
             if actual == ast::m_const {
-                ret some((expected, newvariance));
+                ret nxt(expected, newvariance);
             }
         }
-        ret none;
+        ret err(mut_err);
     }
-    fn unify_fn_proto(e_proto: ast::proto, a_proto: ast::proto,
-                      variance: variance) -> option<result> {
+
+    fn unify_fn_proto<T:copy>(
+        e_proto: ast::proto, a_proto: ast::proto, variance: variance,
+        nxt: fn(ast::proto) -> ures<T>) -> ures<T> {
+
         // Prototypes form a diamond-shaped partial order:
         //
         //        block
@@ -1757,90 +1765,91 @@ mod unify {
         }
 
         ret alt variance {
-          invariant if e_proto == a_proto { none }
-          covariant if sub_proto(a_proto, e_proto) { none }
-          contravariant if sub_proto(e_proto, a_proto) { none }
-          _ { some(ures_err(terr_mismatch)) }
+          invariant if e_proto == a_proto { nxt(e_proto) }
+          covariant if sub_proto(a_proto, e_proto) { nxt(e_proto) }
+          contravariant if sub_proto(e_proto, a_proto) { nxt(e_proto) }
+          _ { ret err(terr_mismatch) }
         };
     }
-    fn unify_args(cx: @uctxt, e_args: [arg], a_args: [arg],
-                  variance: variance) -> either<result, [arg]> {
-        if !vec::same_length(e_args, a_args) {
-            ret either::left(ures_err(terr_arg_count));
-        }
-        // The variance changes (flips basically) when descending
-        // into arguments of function types
-        let variance = variance_transform(variance, contravariant);
-        // Would use vec::map2(), but for the need to return in case of
-        // error:
-        let i = 0u, result = [];
-        for expected_input in e_args {
-            let actual_input = a_args[i];
-            i += 1u;
 
-            // Unify the result modes.
-            let result_mode =
-                alt unify_mode(cx.tcx, expected_input.mode,
-                               actual_input.mode) {
-                  result::err(err) { ret either::left(ures_err(err)); }
-                  result::ok(m) { m }
-                };
+    fn unify_arg<T:copy>(
+        cx: @uctxt, e_arg: arg, a_arg: arg,
+        variance: variance,
+        nxt: fn(arg) -> ures<T>) -> ures<T> {
 
-            alt unify_step(cx, expected_input.ty, actual_input.ty,
-                           variance) {
-              ures_ok(rty) { result += [{mode: result_mode, ty: rty}]; }
-              err { ret either::left(err); }
+        // Unify the result modes.
+        chain(unify_mode(cx.tcx, e_arg.mode, a_arg.mode)) {|mode|
+            unify_step(cx, e_arg.ty, a_arg.ty, variance) {|ty|
+                nxt({mode: mode, ty: ty})
             }
         }
-        either::right(result)
     }
-    fn unify_fn(cx: @uctxt, e_f: fn_ty, a_f: fn_ty, variance: variance)
-        -> result {
-        alt unify_fn_proto(e_f.proto, a_f.proto, variance) {
-          some(err) { ret err; }
-          none { /* fall through */ }
-        }
 
-        if a_f.ret_style != ast::noreturn && a_f.ret_style != e_f.ret_style {
+    fn unify_args<T:copy>(
+        cx: @uctxt, e_args: [arg], a_args: [arg],
+        variance: variance, nxt: fn([arg]) -> ures<T>) -> ures<T> {
+
+        if check vec::same_length(e_args, a_args) {
+            // The variance changes (flips basically) when descending
+            // into arguments of function types
+            let variance = variance_transform(variance, contravariant);
+            map2(e_args, a_args,
+                 {|e,a| unify_arg(cx, e, a, variance, {|v| ok(v)})},
+                 nxt)
+        } else {
+            ret err(terr_arg_count);
+        }
+    }
+
+    fn unify_ret_style<T:copy>(
+        e_ret_style: ret_style,
+        a_ret_style: ret_style,
+        nxt: fn(ret_style) -> ures<T>) -> ures<T> {
+
+        if a_ret_style != ast::noreturn && a_ret_style != e_ret_style {
             /* even though typestate checking is mostly
                responsible for checking control flow annotations,
                this check is necessary to ensure that the
                annotation in an object method matches the
                declared object type */
-            ret ures_err(terr_ret_style_mismatch(e_f.ret_style,
-                                                 a_f.ret_style));
+            ret err(terr_ret_style_mismatch(e_ret_style, a_ret_style));
+        } else {
+            nxt(a_ret_style)
         }
-        let result_ins = alt unify_args(cx, e_f.inputs, a_f.inputs,
-                                        variance) {
-            either::left(err) { ret err; }
-            either::right(ts) { ts }
-        };
+    }
 
-        // Check the output.
-        alt unify_step(cx, e_f.output, a_f.output, variance) {
-          ures_ok(rty) {
-            ures_ok(mk_fn(cx.tcx, {proto: e_f.proto,
-                                   inputs: result_ins,
-                                   output: rty
-                                   with a_f}))
-          }
-          x { x }
+    fn unify_fn<T:copy>(
+        cx: @uctxt, e_f: fn_ty, a_f: fn_ty, variance: variance,
+        nxt: fn(t) -> ures<T>) -> ures<T> {
+
+        unify_fn_proto(e_f.proto, a_f.proto, variance) {|proto|
+            unify_ret_style(e_f.ret_style, a_f.ret_style) {|rs|
+                unify_args(cx, e_f.inputs, a_f.inputs, variance) {|args|
+                    unify_step(cx, e_f.output, a_f.output, variance) {|rty|
+                        let cs = e_f.constraints; // FIXME: Unify?
+                        nxt(mk_fn(cx.tcx, {proto: proto,
+                                           inputs: args,
+                                           output: rty,
+                                           ret_style: rs,
+                                           constraints: cs}))
+                    }
+                }
+            }
         }
     }
 
     // If the given type is a variable, returns the structure of that type.
-    fn resolve_type_structure(vb: @var_bindings, typ: t) ->
-       fixup_result {
+    fn resolve_type_structure(vb: @var_bindings, typ: t) -> fres<t> {
         alt get(typ).struct {
           ty_var(vid) {
-            if vid as uint >= ufind::set_count(vb.sets) { ret fix_err(vid); }
+            if vid as uint >= ufind::set_count(vb.sets) { ret err(vid); }
             let root_id = ufind::find(vb.sets, vid as uint);
             alt smallintmap::find::<t>(vb.types, root_id) {
-              none { ret fix_err(vid); }
-              some(rt) { ret fix_ok(rt); }
+              none { ret err(vid); }
+              some(rt) { ret ok(rt); }
             }
           }
-          _ { ret fix_ok(typ); }
+          _ { ret ok(typ); }
         }
     }
 
@@ -1886,47 +1895,66 @@ mod unify {
         }
     }
 
-    fn unify_tps(cx: @uctxt, expected_tps: [t], actual_tps: [t],
-                 variance: variance, finish: fn([t]) -> t) -> result {
-        let result_tps = [], i = 0u;
-        for exp in expected_tps {
-            let act = actual_tps[i];
-            i += 1u;
-            let result = unify_step(cx, exp, act, variance);
-            alt result {
-              ures_ok(rty) { result_tps += [rty]; }
-              _ { ret result; }
-            }
-        }
-        ures_ok(finish(result_tps))
+    fn unify_tys<T:copy>(
+        cx: @uctxt, expected_tps: [t], actual_tps: [t],
+        variance: variance, nxt: fn([t]) -> ures<T>)
+        : vec::same_length(expected_tps, actual_tps)
+        -> ures<T> {
+
+        map2(expected_tps, actual_tps,
+             {|e,a| unify_step(cx, e, a, variance, {|v| ok(v)})},
+             nxt)
     }
-    fn unify_mt(cx: @uctxt, e_mt: mt, a_mt: mt, variance: variance,
-                mut_err: type_err, finish: fn(ctxt, mt) -> t) -> result {
-        alt unify_mut(e_mt.mutbl, a_mt.mutbl, variance) {
-          none { ures_err(mut_err) }
-          some((mutt, var)) {
-            alt unify_step(cx, e_mt.ty, a_mt.ty, var) {
-              ures_ok(result_sub) {
-                ures_ok(finish(cx.tcx, {ty: result_sub, mutbl: mutt}))
-              }
-              err { err }
-            }
-          }
+
+    fn unify_tps<T:copy>(
+        cx: @uctxt, expected_tps: [t], actual_tps: [t],
+        variance: variance, nxt: fn([t]) -> ures<T>)
+        -> ures<T> {
+
+        if check vec::same_length(expected_tps, actual_tps) {
+            map2(expected_tps, actual_tps,
+                 {|e,a| unify_step(cx, e, a, variance, {|v| ok(v)})},
+                 nxt)
+        } else {
+            err(terr_ty_param_size(expected_tps.len(),
+                                   actual_tps.len()))
         }
     }
-    fn unify_regions(cx: @uctxt, e_region: region, a_region: region,
-                     variance: variance) -> option<region> {
+
+    fn unify_mt<T:copy>(
+        cx: @uctxt, e_mt: mt, a_mt: mt, variance: variance,
+        mut_err: type_err,
+        nxt: fn(mt) -> ures<T>) -> ures<T> {
+        unify_mut(e_mt.mutbl, a_mt.mutbl, variance, mut_err) {|mutbl,var|
+            unify_step(cx, e_mt.ty, a_mt.ty, var) {|ty|
+                nxt({ty: ty, mutbl: mutbl})
+            }
+        }
+    }
+
+    fn unify_regions<T:copy>(
+        cx: @uctxt, e_region: region, a_region: region,
+        variance: variance,
+        nxt: fn(region) -> ures<T>) -> ures<T> {
         let sub, super;
         alt variance {
             covariant { super = e_region; sub = a_region; }
             contravariant { super = a_region; sub = e_region; }
             invariant {
-                ret if e_region == a_region { some(e_region) } else { none };
+              ret if e_region == a_region {
+                  nxt(e_region)
+              } else {
+                  err(terr_regions_differ)
+              };
             }
         }
 
         if sub == ty::re_inferred || super == ty::re_inferred {
-            ret if sub == super { some(super) } else { none };
+            ret if sub == super {
+                nxt(super)
+            } else {
+                err(terr_regions_differ)
+            };
         }
 
         // Outer regions are subtypes of inner regions. (This is somewhat
@@ -1934,151 +1962,147 @@ mod unify {
         let superscope = region::region_to_scope(cx.tcx.region_map, super);
         let subscope = region::region_to_scope(cx.tcx.region_map, sub);
         if region::scope_contains(cx.tcx.region_map, subscope, superscope) {
-            ret some(super);
+            ret nxt(super);
         }
-        ret none;
+        ret err(terr_regions_differ);
     }
 
-    fn unify_step(cx: @uctxt, expected: t, actual: t,
-                  variance: variance) -> result {
+    fn unify_field<T:copy>(
+        cx: @uctxt, e_field: field, a_field: field,
+        variance: variance,
+        nxt: fn(field) -> ures<T>) -> ures<T> {
+
+        if e_field.ident != a_field.ident {
+            ret err(terr_record_fields(e_field.ident,
+                                       a_field.ident));
+        }
+
+        unify_mt(cx, e_field.mt, a_field.mt, variance,
+                 terr_record_mutability) {|mt|
+            nxt({ident: e_field.ident, mt: mt})
+        }
+    }
+
+    fn unify_step<T:copy>(
+        cx: @uctxt, expected: t, actual: t,
+        variance: variance, nxt: fn(t) -> ures<T>) -> ures<T> {
+
         // Fast path.
-        if expected == actual { ret ures_ok(expected); }
+        if expected == actual { ret nxt(expected); }
 
         alt (get(expected).struct, get(actual).struct) {
           (ty_var(e_id), ty_var(a_id)) {
-            alt union(cx, e_id as uint, a_id as uint, variance) {
-              unres_ok { ures_ok(actual) }
-              unres_err(err) { ures_err(err) }
+            union(cx, e_id as uint, a_id as uint, variance) {||
+                nxt(actual)
             }
           }
           (_, ty_var(a_id)) {
             let v = variance_transform(variance, contravariant);
-            record_var_binding(cx, a_id, expected, v)
+            record_var_binding(cx, a_id, expected, v, nxt)
           }
           (ty_var(e_id), _) {
             let v = variance_transform(variance, covariant);
-            record_var_binding(cx, e_id, actual, v)
+            record_var_binding(cx, e_id, actual, v, nxt)
           }
-          (_, ty_bot) { ures_ok(expected) }
-          (ty_bot, _) { ures_ok(actual) }
+          (_, ty_bot) { nxt(expected) }
+          (ty_bot, _) { nxt(actual) }
           (ty_nil, _) | (ty_bool, _) | (ty_int(_), _) | (ty_uint(_), _) |
           (ty_float(_), _) | (ty_str, _) | (ty_send_type, _) {
-            struct_cmp(cx, expected, actual)
+            struct_cmp(cx, expected, actual, nxt)
           }
           (ty_param(e_n, _), ty_param(a_n, _)) if e_n == a_n {
-            ures_ok(expected)
+            nxt(expected)
           }
           (ty_enum(e_id, e_tps), ty_enum(a_id, a_tps)) if e_id == a_id {
-            unify_tps(cx, e_tps, a_tps, variance, {|tps|
-                mk_enum(cx.tcx, e_id, tps)
-            })
+            unify_tps(cx, e_tps, a_tps, variance) {|tps|
+                nxt(mk_enum(cx.tcx, e_id, tps))
+            }
           }
           (ty_iface(e_id, e_tps), ty_iface(a_id, a_tps)) if e_id == a_id {
-            unify_tps(cx, e_tps, a_tps, variance, {|tps|
-                mk_iface(cx.tcx, e_id, tps)
-            })
+            unify_tps(cx, e_tps, a_tps, variance) {|tps|
+                nxt(mk_iface(cx.tcx, e_id, tps))
+            }
           }
           (ty_class(e_id, e_tps), ty_class(a_id, a_tps)) if e_id == a_id {
-            unify_tps(cx, e_tps, a_tps, variance, {|tps|
-                mk_class(cx.tcx, e_id, tps)
-            })
+            unify_tps(cx, e_tps, a_tps, variance) {|tps|
+                nxt(mk_class(cx.tcx, e_id, tps))
+            }
           }
           (ty_box(e_mt), ty_box(a_mt)) {
-            unify_mt(cx, e_mt, a_mt, variance, terr_box_mutability, mk_box)
+            unify_mt(cx, e_mt, a_mt, variance, terr_box_mutability,
+                     {|mt| nxt(mk_box(cx.tcx, mt))})
           }
           (ty_uniq(e_mt), ty_uniq(a_mt)) {
-            unify_mt(cx, e_mt, a_mt, variance, terr_box_mutability, mk_uniq)
+            unify_mt(cx, e_mt, a_mt, variance, terr_box_mutability,
+                     {|mt| nxt(mk_uniq(cx.tcx, mt))})
           }
           (ty_vec(e_mt), ty_vec(a_mt)) {
-            unify_mt(cx, e_mt, a_mt, variance, terr_vec_mutability, mk_vec)
+            unify_mt(cx, e_mt, a_mt, variance, terr_vec_mutability,
+                     {|mt| nxt(mk_vec(cx.tcx, mt))})
           }
           (ty_ptr(e_mt), ty_ptr(a_mt)) {
-            unify_mt(cx, e_mt, a_mt, variance, terr_ptr_mutability, mk_ptr)
+            unify_mt(cx, e_mt, a_mt, variance, terr_ptr_mutability,
+                     {|mt| nxt(mk_ptr(cx.tcx, mt))})
           }
           (ty_rptr(e_region, e_mt), ty_rptr(a_region, a_mt)) {
-            alt unify_regions(cx, e_region, a_region, variance) {
-                none { ures_err(terr_regions_differ) }
-                some(r_region) {
-                    unify_mt(cx, e_mt, a_mt, variance, terr_ref_mutability,
-                             bind mk_rptr(_, r_region, _))
-                }
+            unify_regions(cx, e_region, a_region, variance) {|r|
+                unify_mt(cx, e_mt, a_mt, variance, terr_ref_mutability,
+                         {|mt| nxt(mk_rptr(cx.tcx, r, mt))})
             }
           }
           (ty_res(e_id, e_inner, e_tps), ty_res(a_id, a_inner, a_tps))
           if e_id == a_id {
-            alt unify_step(cx, e_inner, a_inner, variance) {
-              ures_ok(res_inner) {
-                unify_tps(cx, e_tps, a_tps, variance, {|tps|
-                    mk_res(cx.tcx, a_id, res_inner, tps)
-                })
+              unify_step(cx, e_inner, a_inner, variance) {|t|
+                  unify_tps(cx, e_tps, a_tps, variance) {|tps|
+                      nxt(mk_res(cx.tcx, a_id, t, tps))
+                  }
               }
-              err { err }
-            }
           }
           (ty_rec(e_fields), ty_rec(a_fields)) {
-            let e_len = e_fields.len(), a_len = a_fields.len();
-            if e_len != a_len {
-                ret ures_err(terr_record_size(e_len, a_len));
-            }
-            let result_fields = [], i = 0u;
-            while i < a_len {
-                let e_field = e_fields[i], a_field = a_fields[i];
-                if e_field.ident != a_field.ident {
-                    ret ures_err(terr_record_fields(e_field.ident,
-                                                    a_field.ident));
-                }
-                alt unify_mt(cx, e_field.mt, a_field.mt, variance,
-                             terr_record_mutability, {|cx, mt|
-                    result_fields += [{mt: mt with e_field}];
-                    mk_nil(cx)
-                }) {
-                  ures_ok(_) {}
-                  err { ret err; }
-                }
-                i += 1u;
-            }
-            ures_ok(mk_rec(cx.tcx, result_fields))
+              if check vec::same_length(e_fields, a_fields) {
+                  map2(e_fields, a_fields,
+                       {|e,a| unify_field(cx, e, a, variance, {|v| ok(v)})},
+                       {|fields| nxt(mk_rec(cx.tcx, fields))})
+              } else {
+                  ret err(terr_record_size(e_fields.len(),
+                                           a_fields.len()));
+              }
           }
           (ty_tup(e_elems), ty_tup(a_elems)) {
-            let e_len = e_elems.len(), a_len = a_elems.len();
-            if e_len != a_len { ret ures_err(terr_tuple_size(e_len, a_len)); }
-            let result_elems = [], i = 0u;
-            while i < a_len {
-                alt unify_step(cx, e_elems[i], a_elems[i], variance) {
-                  ures_ok(rty) { result_elems += [rty]; }
-                  err { ret err; }
+            if check vec::same_length(e_elems, a_elems) {
+                unify_tys(cx, e_elems, a_elems, variance) {|elems|
+                    nxt(mk_tup(cx.tcx, elems))
                 }
-                i += 1u;
+            } else {
+                err(terr_tuple_size(e_elems.len(), a_elems.len()))
             }
-            ures_ok(mk_tup(cx.tcx, result_elems))
           }
           (ty_fn(e_fty), ty_fn(a_fty)) {
-            unify_fn(cx, e_fty, a_fty, variance)
+            unify_fn(cx, e_fty, a_fty, variance, nxt)
           }
           (ty_constr(e_t, e_constrs), ty_constr(a_t, a_constrs)) {
             // unify the base types...
-            alt unify_step(cx, e_t, a_t, variance) {
-              ures_ok(rty) {
+            unify_step(cx, e_t, a_t, variance) {|rty|
                 // FIXME: probably too restrictive --
                 // requires the constraints to be syntactically equal
-                unify_constrs(expected, e_constrs, a_constrs)
-              }
-              err { err }
+                unify_constrs(e_constrs, a_constrs) {|constrs|
+                    nxt(mk_constr(cx.tcx, rty, constrs))
+                }
             }
           }
           (ty_constr(e_t, _), _) {
             // If the actual type is *not* a constrained type,
             // then we go ahead and just ignore the constraints on
             // the expected type. typestate handles the rest.
-            unify_step(cx, e_t, actual, variance)
+            unify_step(cx, e_t, actual, variance, nxt)
           }
-          _ { ures_err(terr_mismatch) }
+          _ { err(terr_mismatch) }
         }
     }
     fn unify(expected: t, actual: t, st: unify_style,
-             tcx: ctxt) -> result {
+             tcx: ctxt) -> ures<t> {
         let cx = @{st: st, tcx: tcx};
-        ret unify_step(cx, expected, actual, covariant);
+        ret unify_step(cx, expected, actual, covariant, {|v| ok(v)});
     }
     fn dump_var_bindings(tcx: ctxt, vb: @var_bindings) {
         let i = 0u;
@@ -2104,7 +2128,7 @@ mod unify {
     //    iff the span is present (so that if we already know we're going
     //    to error anyway, we don't complain)
     fn fixup_vars(tcx: ctxt, sp: option<span>, vb: @var_bindings,
-                  typ: t) -> fixup_result {
+                  typ: t) -> fres<t> {
         fn subst_vars(tcx: ctxt, sp: option<span>, vb: @var_bindings,
                       unresolved: @mutable option<int>,
                       vars_seen: std::list::list<int>, vid: int) -> t {
@@ -2142,16 +2166,16 @@ mod unify {
             tcx, sp, vb, unresolved, std::list::nil, _)), typ);
         let ur = *unresolved;
         alt ur {
-          none { ret fix_ok(rty); }
-          some(var_id) { ret fix_err(var_id); }
+          none { ret ok(rty); }
+          some(var_id) { ret err(var_id); }
         }
     }
     fn resolve_type_var(tcx: ctxt, sp: option<span>, vb: @var_bindings,
-                        vid: int) -> fixup_result {
-        if vid as uint >= ufind::set_count(vb.sets) { ret fix_err(vid); }
+                        vid: int) -> fres<t> {
+        if vid as uint >= ufind::set_count(vb.sets) { ret err(vid); }
         let root_id = ufind::find(vb.sets, vid as uint);
         alt smallintmap::find::<t>(vb.types, root_id) {
-          none { ret fix_err(vid); }
+          none { ret err(vid); }
           some(rt) { ret fixup_vars(tcx, sp, vb, rt); }
         }
     }
@@ -2159,8 +2183,8 @@ mod unify {
 
 fn same_type(cx: ctxt, a: t, b: t) -> bool {
     alt unify::unify(a, b, unify::precise, cx) {
-      unify::ures_ok(_) { true }
-      _ { false }
+      result::ok(_) { true }
+      result::err(_) { false }
     }
 }
 
@@ -2181,6 +2205,11 @@ fn type_err_to_str(err: type_err) -> str {
       terr_vec_mutability { ret "vectors differ in mutability"; }
       terr_ptr_mutability { ret "pointers differ in mutability"; }
       terr_ref_mutability { ret "references differ in mutability"; }
+      terr_ty_param_size(e_sz, a_sz) {
+        ret "expected a type with " + uint::to_str(e_sz, 10u) +
+                " type params but found one with " + uint::to_str(a_sz, 10u) +
+                " type params";
+      }
       terr_tuple_size(e_sz, a_sz) {
         ret "expected a tuple with " + uint::to_str(e_sz, 10u) +
                 " elements but found one with " + uint::to_str(a_sz, 10u) +

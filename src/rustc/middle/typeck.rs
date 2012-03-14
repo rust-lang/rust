@@ -12,7 +12,6 @@ import middle::ty::{node_id_to_type, arg, block_ty,
                     expr_ty, field, node_type_table, mk_nil,
                     ty_param_bounds_and_ty, lookup_class_items};
 import util::ppaux::ty_to_str;
-import middle::ty::unify::{ures_ok, ures_err, fix_ok, fix_err};
 import std::smallintmap;
 import std::map::{hashmap, new_int_hash};
 import syntax::print::pprust::*;
@@ -200,8 +199,8 @@ fn instantiate_path(fcx: @fn_ctxt, pth: @ast::path,
 // Type tests
 fn structurally_resolved_type(fcx: @fn_ctxt, sp: span, tp: ty::t) -> ty::t {
     alt ty::unify::resolve_type_structure(fcx.var_bindings, tp) {
-      fix_ok(typ_s) { ret typ_s; }
-      fix_err(_) {
+      result::ok(typ_s) { ret typ_s; }
+      result::err(_) {
         fcx.ccx.tcx.sess.span_fatal
             (sp, "the type of this value must be known in this context");
       }
@@ -218,12 +217,11 @@ fn structure_of(fcx: @fn_ctxt, sp: span, typ: ty::t) -> ty::sty {
 // is not known yet.
 fn structure_of_maybe(fcx: @fn_ctxt, _sp: span, typ: ty::t) ->
    option<ty::sty> {
-    let r =
-        ty::unify::resolve_type_structure(fcx.var_bindings, typ);
-    ret alt r {
-          fix_ok(typ_s) { some(ty::get(typ_s).struct) }
-          fix_err(_) { none }
-        }
+    let r = ty::unify::resolve_type_structure(fcx.var_bindings, typ);
+    alt r {
+      result::ok(typ_s) { some(ty::get(typ_s).struct) }
+      result::err(_) { none }
+    }
 }
 
 fn type_is_integral(fcx: @fn_ctxt, sp: span, typ: ty::t) -> bool {
@@ -759,13 +757,13 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span, impl_m: ty::method,
                                              self_full(self_ty, impl_tps));
         }
         alt ty::unify::unify(impl_fty, if_fty, ty::unify::precise, tcx) {
-          ty::unify::ures_err(err) {
+          result::err(err) {
             tcx.sess.span_err(sp, "method `" + if_m.ident +
                               "` has an incompatible type: " +
                               ty::type_err_to_str(err));
             impl_fty
           }
-          ty::unify::ures_ok(tp) { tp }
+          result::ok(tp) { tp }
         }
     }
 }
@@ -1046,7 +1044,7 @@ mod collect {
 // Type unification
 mod unify {
     fn unify(fcx: @fn_ctxt, expected: ty::t, actual: ty::t) ->
-       ty::unify::result {
+        result<ty::t, ty::type_err> {
         ret ty::unify::unify(expected, actual,
                              ty::unify::in_bindings(fcx.var_bindings),
                              fcx.ccx.tcx);
@@ -1089,8 +1087,8 @@ fn do_autoderef(fcx: @fn_ctxt, sp: span, t: ty::t) -> ty::t {
 
 fn resolve_type_vars_if_possible(fcx: @fn_ctxt, typ: ty::t) -> ty::t {
     alt ty::unify::fixup_vars(fcx.ccx.tcx, none, fcx.var_bindings, typ) {
-      fix_ok(new_type) { ret new_type; }
-      fix_err(_) { ret typ; }
+      result::ok(new_type) { ret new_type; }
+      result::err(_) { ret typ; }
     }
 }
 
@@ -1140,8 +1138,8 @@ mod demand {
 
 
         alt unify::unify(fcx, expected, actual) {
-          ures_ok(t) { ret mk_result(fcx, t, ty_param_subst_var_ids); }
-          ures_err(err) {
+          result::ok(t) { ret mk_result(fcx, t, ty_param_subst_var_ids); }
+          result::err(err) {
             let e_err = resolve_type_vars_if_possible(fcx, expected);
             let a_err = resolve_type_vars_if_possible(fcx, actual);
             fcx.ccx.tcx.sess.span_err(sp,
@@ -1161,8 +1159,8 @@ mod demand {
 // Returns true if the two types unify and false if they don't.
 fn are_compatible(fcx: @fn_ctxt, expected: ty::t, actual: ty::t) -> bool {
     alt unify::unify(fcx, expected, actual) {
-      ures_ok(_) { ret true; }
-      ures_err(_) { ret false; }
+      result::ok(_) { ret true; }
+      result::err(_) { ret false; }
     }
 }
 
@@ -1204,8 +1202,8 @@ mod writeback {
         if !ty::type_has_vars(typ) { ret some(typ); }
         alt ty::unify::fixup_vars(fcx.ccx.tcx, some(sp), fcx.var_bindings,
                                   typ) {
-          fix_ok(new_type) { ret some(new_type); }
-          fix_err(vid) {
+          result::ok(new_type) { ret some(new_type); }
+          result::err(vid) {
             if !fcx.ccx.tcx.sess.has_errors() {
                 fcx.ccx.tcx.sess.span_err(sp, "cannot determine a type \
                                                for this expression");
@@ -1296,8 +1294,8 @@ mod writeback {
             ty::unify::resolve_type_var(wbcx.fcx.ccx.tcx, some(l.span),
                                         wbcx.fcx.var_bindings, var_id);
         alt fix_rslt {
-          fix_ok(lty) { write_ty(wbcx.fcx.ccx.tcx, l.node.id, lty); }
-          fix_err(_) {
+          result::ok(lty) { write_ty(wbcx.fcx.ccx.tcx, l.node.id, lty); }
+          result::err(_) {
             wbcx.fcx.ccx.tcx.sess.span_err(l.span,
                                            "cannot determine a type \
                                                 for this local variable");
@@ -1849,7 +1847,7 @@ fn lookup_method_inner(fcx: @fn_ctxt, expr: @ast::expr,
                     bind_params(fcx, self_ty, n_tps)
                 } else { {vars: [], ty: self_ty} };
                 alt unify::unify(fcx, ty, self_ty) {
-                  ures_ok(_) {
+                  result::ok(_) {
                     if option::is_some(result) {
                         // FIXME[impl] score specificity to resolve ambiguity?
                         if !complained {
@@ -1867,7 +1865,7 @@ fn lookup_method_inner(fcx: @fn_ctxt, expr: @ast::expr,
                         });
                     }
                   }
-                  _ {}
+                  result::err(_) {}
                 }
               }
               _ {}
@@ -3311,7 +3309,7 @@ mod dict {
                         } else { {vars: [], ty: self_ty} };
                         let im_bs = ty::lookup_item_type(tcx, im.did).bounds;
                         alt unify::unify(fcx, ty, self_ty) {
-                          ures_ok(_) {
+                          result::ok(_) {
                             if option::is_some(found) {
                                 tcx.sess.span_err(
                                     sp, "multiple applicable implementations \
@@ -3327,7 +3325,7 @@ mod dict {
                                                          subres));
                             }
                           }
-                          _ {}
+                          result::err(_) {}
                         }
                     }
                 }
@@ -3348,8 +3346,8 @@ mod dict {
     fn fixup_ty(fcx: @fn_ctxt, sp: span, ty: ty::t) -> ty::t {
         let tcx = fcx.ccx.tcx;
         alt ty::unify::fixup_vars(tcx, some(sp), fcx.var_bindings, ty) {
-          fix_ok(new_type) { new_type }
-          fix_err(vid) {
+          result::ok(new_type) { new_type }
+          result::err(vid) {
             tcx.sess.span_fatal(sp, "could not determine a type for a \
                                      bounded type parameter");
           }
