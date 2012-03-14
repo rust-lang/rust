@@ -488,23 +488,23 @@ fn file_might_not_converge(filename: str) -> bool {
 fn check_roundtrip_convergence(code: @str, maxIters: uint) {
 
     let i = 0u;
-    let new = code;
-    let old = code;
+    let newv = code;
+    let oldv = code;
 
     while i < maxIters {
-        old = new;
-        if content_might_not_converge(*old) { ret; }
-        new = @parse_and_print(old);
-        if old == new { break; }
+        oldv = newv;
+        if content_might_not_converge(*oldv) { ret; }
+        newv = @parse_and_print(oldv);
+        if oldv == newv { break; }
         i += 1u;
     }
 
-    if old == new {
+    if oldv == newv {
         #error("Converged after %u iterations", i);
     } else {
         #error("Did not converge after %u iterations!", i);
-        write_file("round-trip-a.rs", *old);
-        write_file("round-trip-b.rs", *new);
+        write_file("round-trip-a.rs", *oldv);
+        write_file("round-trip-b.rs", *newv);
         run::run_program("diff",
                          ["-w", "-u", "round-trip-a.rs",
                           "round-trip-b.rs"]);

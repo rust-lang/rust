@@ -150,7 +150,7 @@ fn bad_expr_word_table() -> hashmap<str, ()> {
                  "enum", "export", "fail", "fn", "for", "if",  "iface",
                  "impl", "import", "let", "log", "loop", "mod", "mut",
                  "mutable", "native", "pure", "resource", "ret", "trait",
-                 "type", "unchecked", "unsafe", "while"] {
+                 "type", "unchecked", "unsafe", "while", "new"] {
         words.insert(word, ());
     }
     words
@@ -852,6 +852,13 @@ fn parse_bottom_expr(p: parser) -> pexpr {
             let blk = parse_block_tail(p, lo, ast::default_blk);
             ret mk_pexpr(p, blk.span.lo, blk.span.hi, ast::expr_block(blk));
         }
+    } else if eat_word(p, "new") {
+        expect(p, token::LPAREN);
+        let r = parse_expr(p);
+        expect(p, token::RPAREN);
+        let v = parse_expr(p);
+        ret mk_pexpr(p, lo, p.span.hi,
+                     ast::expr_new(r, p.get_id(), v));
     } else if eat_word(p, "if") {
         ret pexpr(parse_if_expr(p));
     } else if eat_word(p, "for") {

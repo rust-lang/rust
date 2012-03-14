@@ -21,7 +21,7 @@ fn request_task(c: chan<ctx>) {
     req = recv(p);
 }
 
-fn new() -> ctx {
+fn new_cx() -> ctx {
     let p = port();
     let ch = chan(p);
     let t = task::spawn {|| request_task(ch); };
@@ -31,7 +31,7 @@ fn new() -> ctx {
 }
 
 fn main() {
-    let cx = new();
+    let cx = new_cx();
 
     let p = port::<bool>();
     send(cx, close(chan(p)));

@@ -2308,6 +2308,9 @@ fn resolve_impl_in_expr(e: @env, x: @ast::expr, sc: iscopes, v: vt<iscopes>) {
       ast::expr_assign_op(_, _, _) | ast::expr_index(_, _) {
         e.impl_map.insert(x.id, sc);
       }
+      ast::expr_new(p, _, _) {
+        e.impl_map.insert(p.id, sc);
+      }
       _ {}
     }
     visit::visit_expr(x, sc, v);

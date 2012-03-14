@@ -168,6 +168,9 @@ fn mark_for_expr(cx: ctx, e: @expr) {
       expr_log(_, _, val) {
         node_type_needs(cx, use_tydesc, val.id);
       }
+      expr_new(_, _, v) {
+        node_type_needs(cx, use_repr, v.id);
+      }
       expr_for(_, _, _) | expr_do_while(_, _) | expr_alt(_, _, _) |
       expr_block(_) | expr_if(_, _, _) | expr_while(_, _) |
       expr_fail(_) | expr_break | expr_cont | expr_unary(_, _) |

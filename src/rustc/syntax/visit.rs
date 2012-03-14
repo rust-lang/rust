@@ -315,6 +315,10 @@ fn visit_mac<E>(m: mac, e: E, v: vt<E>) {
 
 fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
     alt ex.node {
+      expr_new(pool, _, val) {
+        v.visit_expr(pool, e, v);
+        v.visit_expr(val, e, v);
+      }
       expr_vec(es, _) { visit_exprs(es, e, v); }
       expr_rec(flds, base) {
         for f: field in flds { v.visit_expr(f.node.expr, e, v); }

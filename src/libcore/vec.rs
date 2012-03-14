@@ -468,22 +468,22 @@ Concatenate a vector of vectors.
 Flattens a vector of vectors of T into a single vector of T.
 "]
 fn concat<T: copy>(v: [const [const T]]) -> [T] {
-    let mut new: [T] = [];
-    for inner: [T] in v { new += inner; }
-    ret new;
+    let mut r: [T] = [];
+    for inner: [T] in v { r += inner; }
+    ret r;
 }
 
 #[doc = "
 Concatenate a vector of vectors, placing a given separator between each
 "]
 fn connect<T: copy>(v: [const [const T]], sep: T) -> [T] {
-    let mut new: [T] = [];
+    let mut r: [T] = [];
     let mut first = true;
     for inner: [T] in v {
-        if first { first = false; } else { push(new, sep); }
-        new += inner;
+        if first { first = false; } else { push(r, sep); }
+        r += inner;
     }
-    ret new;
+    ret r;
 }
 
 #[doc = "Reduce a vector from left to right"]

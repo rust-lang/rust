@@ -1888,6 +1888,12 @@ fn lookup_method_inner(fcx: @fn_ctxt, expr: @ast::expr,
                   origin: method_origin,
                   self_sub: option<self_subst>}> {
     let tcx = fcx.ccx.tcx;
+
+    #debug["lookup_method_inner: expr=%s name=%s ty=%s",
+           expr_to_str(expr),
+           name,
+           ty_to_str(fcx.ccx.tcx, ty)];
+
     // First, see whether this is an interface-bounded parameter
     alt ty::get(ty).struct {
       ty::ty_param(n, did) {
@@ -2869,6 +2875,51 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
             }
           }
         }
+      }
+      ast::expr_new(p, alloc_id, v) {
+        bot |= check_expr(fcx, p);
+        bot |= check_expr(fcx, v);
+
+        let p_ty = expr_ty(tcx, p);
+
+        alt lookup_method(fcx, p, alloc_id, "alloc", p_ty, []) {
+          some(origin) {
+            fcx.ccx.method_map.insert(alloc_id, origin);
+
+            // Check that the alloc() method has the expected type, which
+            // should be fn(sz: uint, align: uint) -> *().
+            let expected_ty = {
+                let ty_uint = ty::mk_uint(tcx);
+                let ty_nilp = ty::mk_ptr(tcx, {ty: ty::mk_nil(tcx),
+                                              mutbl: ast::m_imm});
+                let m = ast::expl(ty::default_arg_mode_for_ty(ty_uint));
+                ty::mk_fn(tcx, {proto: ast::proto_any,
+                                inputs: [{mode: m, ty: ty_uint},
+                                         {mode: m, ty: ty_uint}],
+                                output: ty_nilp,
+                                ret_style: ast::return_val,
+                                constraints: []})
+            };
+
+            demand::simple(fcx, expr.span,
+                           expected_ty, node_id_to_type(tcx, alloc_id));
+          }
+
+          none {
+            let t_err = resolve_type_vars_if_possible(fcx, p_ty);
+            let msg = #fmt["no `alloc()` method found for type `%s`",
+                           ty_to_str(tcx, t_err)];
+            tcx.sess.span_err(expr.span, msg);
+          }
+        }
+
+        // The region value must have a type like &r.T.  The resulting
+        // memory will be allocated into the region `r`.
+        let pool_region = region_of(fcx, p);
+        let v_ty = expr_ty(tcx, v);
+        let res_ty = ty::mk_rptr(tcx, pool_region, {ty: v_ty,
+                                                    mutbl: ast::m_imm});
+        write_ty(tcx, expr.id, res_ty);
       }
     }
     if bot { write_ty(tcx, expr.id, ty::mk_bot(tcx)); }

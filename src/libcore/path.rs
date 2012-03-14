@@ -266,30 +266,30 @@ fn normalize(p: path) -> path {
     #[cfg(target_os = "linux")]
     #[cfg(target_os = "macos")]
     #[cfg(target_os = "freebsd")]
-    fn reabsolute(orig: path, new: path) -> path {
+    fn reabsolute(orig: path, n: path) -> path {
         if path_is_absolute(orig) {
-            path_sep() + new
+            path_sep() + n
         } else {
-            new
+            n
         }
     }
 
     #[cfg(target_os = "win32")]
-    fn reabsolute(orig: path, new: path) -> path {
+    fn reabsolute(orig: path, newp: path) -> path {
        if path_is_absolute(orig) && orig[0] == consts::path_sep as u8 {
-           str::from_char(consts::path_sep) + new
+           str::from_char(consts::path_sep) + newp
        } else {
-           new
+           newp
        }
     }
 
-    fn reterminate(orig: path, new: path) -> path {
+    fn reterminate(orig: path, newp: path) -> path {
         let last = orig[str::len(orig) - 1u];
         if last == consts::path_sep as u8
             || last == consts::path_sep as u8 {
-            ret new + path_sep();
+            ret newp + path_sep();
         } else {
-            ret new;
+            ret newp;
         }
     }
 }

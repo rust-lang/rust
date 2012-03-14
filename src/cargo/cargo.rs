@@ -434,8 +434,8 @@ fn for_each_package(c: cargo, b: fn(source, package)) {
 
 // Runs all programs in directory <buildpath>
 fn run_programs(buildpath: str) {
-    let new = os::list_dir(buildpath);
-    for ct: str in new {
+    let newv = os::list_dir(buildpath);
+    for ct: str in newv {
         run::run_program(ct, []);
     }
 }
@@ -471,9 +471,9 @@ fn install_one_crate(c: cargo, path: str, cf: str) {
       none { ret; }
       some(bp) { bp }
     };
-    let new = os::list_dir(buildpath);
+    let newv = os::list_dir(buildpath);
     let exec_suffix = os::exe_suffix();
-    for ct: str in new {
+    for ct: str in newv {
         if (exec_suffix != "" && str::ends_with(ct, exec_suffix)) ||
             (exec_suffix == "" && !str::starts_with(path::basename(ct),
                                                     "lib")) {

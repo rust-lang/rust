@@ -1089,6 +1089,13 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         word_nbsp(s, "assert");
         print_expr(s, expr);
       }
+      ast::expr_new(p, _, v) {
+        word_nbsp(s, "new");
+        popen(s);
+        print_expr(s, p);
+        pclose(s);
+        print_expr(s, v);
+      }
       ast::expr_mac(m) { print_mac(s, m); }
     }
     s.ann.post(ann_node);

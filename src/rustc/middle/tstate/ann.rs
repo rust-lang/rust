@@ -183,14 +183,14 @@ fn set_poststate(a: ts_ann, p: poststate) -> bool {
 
 
 // Set all the bits in p that are set in new
-fn extend_prestate(p: prestate, new: poststate) -> bool {
-    ret tritv_union(p, new);
+fn extend_prestate(p: prestate, newv: poststate) -> bool {
+    ret tritv_union(p, newv);
 }
 
 
 // Set all the bits in p that are set in new
-fn extend_poststate(p: poststate, new: poststate) -> bool {
-    ret tritv_union(p, new);
+fn extend_poststate(p: poststate, newv: poststate) -> bool {
+    ret tritv_union(p, newv);
 }
 
 // Sets the given bit in p to "don't care"

@@ -155,8 +155,8 @@ fn trit_and(a: trit, b: trit) -> trit {
     // a and b were both dont_care
 }
 
-fn change(changed: bool, old: trit, new: trit) -> bool {
-    changed || new != old
+fn change(changed: bool, old: trit, newv: trit) -> bool {
+    changed || newv != old
 }
 
 fn tritv_difference(p1: t, p2: t) -> bool {
@@ -166,9 +166,9 @@ fn tritv_difference(p1: t, p2: t) -> bool {
     let changed = false;
     while i < sz {
         let old = tritv_get(p1, i);
-        let new = trit_minus(old, tritv_get(p2, i));
-        changed = change(changed, old, new);
-        tritv_set(i, p1, new);
+        let newv = trit_minus(old, tritv_get(p2, i));
+        changed = change(changed, old, newv);
+        tritv_set(i, p1, newv);
         i += 1u;
     }
     ret changed;
@@ -181,9 +181,9 @@ fn tritv_union(p1: t, p2: t) -> bool {
     let changed = false;
     while i < sz {
         let old = tritv_get(p1, i);
-        let new = trit_or(old, tritv_get(p2, i));
-        changed = change(changed, old, new);
-        tritv_set(i, p1, new);
+        let newv = trit_or(old, tritv_get(p2, i));
+        changed = change(changed, old, newv);
+        tritv_set(i, p1, newv);
         i += 1u;
     }
     ret changed;
@@ -196,9 +196,9 @@ fn tritv_intersect(p1: t, p2: t) -> bool {
     let changed = false;
     while i < sz {
         let old = tritv_get(p1, i);
-        let new = trit_and(old, tritv_get(p2, i));
-        changed = change(changed, old, new);
-        tritv_set(i, p1, new);
+        let newv = trit_and(old, tritv_get(p2, i));
+        changed = change(changed, old, newv);
+        tritv_set(i, p1, newv);
         i += 1u;
     }
     ret changed;

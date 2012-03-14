@@ -325,6 +325,10 @@ enum expr_ {
     expr_be(@expr),
     expr_log(int, @expr, @expr),
 
+    expr_new(/* arena */ @expr,
+             /* id for the alloc() call */ node_id,
+             /* value */ @expr),
+
     /* just an assert, no significance to typestate */
     expr_assert(@expr),
 

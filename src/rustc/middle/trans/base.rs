@@ -1261,9 +1261,9 @@ fn trans_unary(bcx: block, op: ast::unop, e: @ast::expr,
       some(origin) {
         let callee_id = ast_util::op_expr_callee_id(un_expr);
         let fty = node_id_type(bcx, callee_id);
-        ret trans_call_inner(bcx, fty, {|bcx|
+        ret trans_call_inner(bcx, fty, expr_ty(bcx, un_expr), {|bcx|
             impl::trans_method_callee(bcx, callee_id, e, origin)
-        }, [], un_expr.id, dest);
+        }, arg_exprs([]), dest);
       }
       _ {}
     }
@@ -1450,10 +1450,10 @@ fn trans_assign_op(bcx: block, ex: @ast::expr, op: ast::binop,
       some(origin) {
         let callee_id = ast_util::op_expr_callee_id(ex);
         let fty = node_id_type(bcx, callee_id);
-        ret trans_call_inner(bcx, fty, {|bcx|
+        ret trans_call_inner(bcx, fty, expr_ty(bcx, ex), {|bcx|
             // FIXME provide the already-computed address, not the expr
             impl::trans_method_callee(bcx, callee_id, dst, origin)
-        }, [src], ex.id, save_in(lhs_res.val));
+        }, arg_exprs([src]), save_in(lhs_res.val));
       }
       _ {}
     }
@@ -1561,9 +1561,9 @@ fn trans_binary(bcx: block, op: ast::binop, lhs: @ast::expr,
       some(origin) {
         let callee_id = ast_util::op_expr_callee_id(ex);
         let fty = node_id_type(bcx, callee_id);
-        ret trans_call_inner(bcx, fty, {|bcx|
+        ret trans_call_inner(bcx, fty, expr_ty(bcx, ex), {|bcx|
             impl::trans_method_callee(bcx, callee_id, lhs, origin)
-        }, [rhs], ex.id, dest);
+        }, arg_exprs([rhs]), dest);
       }
       _ {}
     }
@@ -2498,6 +2498,10 @@ fn trans_arg_expr(cx: block, arg: ty::arg, lldestty: TypeRef, e: @ast::expr,
     ret rslt(bcx, val);
 }
 
+enum call_args {
+    arg_exprs([@ast::expr]),
+    arg_vals([ValueRef])
+}
 
 // NB: must keep 4 fns in sync:
 //
@@ -2505,12 +2509,12 @@ fn trans_arg_expr(cx: block, arg: ty::arg, lldestty: TypeRef, e: @ast::expr,
 //  - create_llargs_for_fn_args.
 //  - new_fn_ctxt
 //  - trans_args
-fn trans_args(cx: block, llenv: ValueRef, es: [@ast::expr], fn_ty: ty::t,
+fn trans_args(cx: block, llenv: ValueRef, args: call_args, fn_ty: ty::t,
               dest: dest, generic_intrinsic: bool)
     -> {bcx: block, args: [ValueRef], retslot: ValueRef} {
 
     let temp_cleanups = [];
-    let args = ty::ty_fn_args(fn_ty);
+    let arg_tys = ty::ty_fn_args(fn_ty);
     let llargs: [ValueRef] = [];
 
     let ccx = cx.ccx();
@@ -2546,13 +2550,21 @@ fn trans_args(cx: block, llenv: ValueRef, es: [@ast::expr], fn_ty: ty::t,
     // First we figure out the caller's view of the types of the arguments.
     // This will be needed if this is a generic call, because the callee has
     // to cast her view of the arguments to the caller's view.
-    let arg_tys = type_of_explicit_args(ccx, args);
-    let i = 0u;
-    for e: @ast::expr in es {
-        let r = trans_arg_expr(bcx, args[i], arg_tys[i], e, temp_cleanups);
-        bcx = r.bcx;
-        llargs += [r.val];
-        i += 1u;
+    alt args {
+      arg_exprs(es) {
+        let llarg_tys = type_of_explicit_args(ccx, arg_tys);
+        let i = 0u;
+        for e: @ast::expr in es {
+            let r = trans_arg_expr(bcx, arg_tys[i], llarg_tys[i],
+                                   e, temp_cleanups);
+            bcx = r.bcx;
+            llargs += [r.val];
+            i += 1u;
+        }
+      }
+      arg_vals(vs) {
+        llargs += vs;
+      }
     }
 
     // now that all arguments have been successfully built, we can revoke any
@@ -2568,15 +2580,15 @@ fn trans_args(cx: block, llenv: ValueRef, es: [@ast::expr], fn_ty: ty::t,
 }
 
 fn trans_call(in_cx: block, f: @ast::expr,
-              args: [@ast::expr], id: ast::node_id, dest: dest)
+              args: call_args, id: ast::node_id, dest: dest)
     -> block {
-    trans_call_inner(in_cx, expr_ty(in_cx, f),
-                     {|cx| trans_callee(cx, f)}, args, id, dest)
+    trans_call_inner(in_cx, expr_ty(in_cx, f), node_id_type(in_cx, id),
+                     {|cx| trans_callee(cx, f)}, args, dest)
 }
 
-fn trans_call_inner(in_cx: block, fn_expr_ty: ty::t,
+fn trans_call_inner(in_cx: block, fn_expr_ty: ty::t, ret_ty: ty::t,
                     get_callee: fn(block) -> lval_maybe_callee,
-                    args: [@ast::expr], id: ast::node_id, dest: dest)
+                    args: call_args, dest: dest)
     -> block {
     with_scope(in_cx, "call") {|cx|
         let f_res = get_callee(cx);
@@ -2603,9 +2615,10 @@ fn trans_call_inner(in_cx: block, fn_expr_ty: ty::t,
           }
         };
 
-        let ret_ty = node_id_type(bcx, id);
-        let args_res = trans_args(bcx, llenv, args, fn_expr_ty, dest,
-                                  option::is_some(f_res.tds));
+        let args_res = {
+            trans_args(bcx, llenv, args, fn_expr_ty, dest,
+                       option::is_some(f_res.tds))
+        };
         bcx = args_res.bcx;
         let llargs = args_res.args;
         option::may(f_res.tds) {|vals|
@@ -2923,7 +2936,7 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
       }
       ast::expr_cast(val, _) { ret trans_cast(bcx, val, e.id, dest); }
       ast::expr_call(f, args, _) {
-        ret trans_call(bcx, f, args, e.id, dest);
+        ret trans_call(bcx, f, arg_exprs(args), e.id, dest);
       }
       ast::expr_field(base, _, _) {
         if dest == ignore { ret trans_expr(bcx, base, ignore); }
@@ -2937,9 +2950,9 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
         let origin = bcx.ccx().maps.method_map.get(e.id);
         let callee_id = ast_util::op_expr_callee_id(e);
         let fty = node_id_type(bcx, callee_id);
-        ret trans_call_inner(bcx, fty, {|bcx|
+        ret trans_call_inner(bcx, fty, expr_ty(bcx, e), {|bcx|
             impl::trans_method_callee(bcx, callee_id, base, origin)
-        }, [idx], e.id, dest);
+        }, arg_exprs([idx]), dest);
       }
 
       // These return nothing
@@ -3036,6 +3049,45 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
       ast::expr_assign_op(op, dst, src) {
         assert dest == ignore;
         ret trans_assign_op(bcx, e, op, dst, src);
+      }
+      ast::expr_new(pool, alloc_id, val) {
+        // First, call pool->alloc(sz, align) to get back a void*.  Then, cast
+        // this memory to the required type and evaluate value into it.
+        let ccx = bcx.ccx();
+
+        // Allocate space for the ptr that will be returned from
+        // `pool.alloc()`:
+        let ptr_ty = expr_ty(bcx, e);
+        let {bcx, val: ptr_ptr_val} = alloc_ty(bcx, ptr_ty);
+
+        #debug["ptr_ty = %s", ty_to_str(tcx, ptr_ty)];
+        #debug["ptr_ptr_val = %s", val_str(ccx.tn, ptr_ptr_val)];
+
+        let void_ty = ty::mk_ptr(tcx, {ty: ty::mk_nil(tcx),
+                                       mutbl: ast::m_imm});
+        let voidval = {
+            let llvoid_ty = type_of(ccx, void_ty);
+            PointerCast(bcx, ptr_ptr_val, T_ptr(llvoid_ty))
+        };
+
+        #debug["voidval = %s", val_str(ccx.tn, voidval)];
+
+        let llval_ty = type_of(ccx, expr_ty(bcx, val));
+        let args = [llsize_of(ccx, llval_ty), llalign_of(ccx, llval_ty)];
+        let origin = bcx.ccx().maps.method_map.get(alloc_id);
+        let bcx = trans_call_inner(
+            bcx,
+            node_id_type(bcx, alloc_id),
+            void_ty,
+            {|bcx| impl::trans_method_callee(bcx, alloc_id, pool, origin) },
+            arg_vals(args),
+            save_in(voidval));
+
+        #debug["dest = %s", dest_str(ccx, dest)];
+        let ptr_val = Load(bcx, ptr_ptr_val);
+        #debug["ptr_val = %s", val_str(ccx.tn, ptr_val)];
+        let bcx = trans_expr(bcx, val, save_in(ptr_val));
+        store_in_dest(bcx, ptr_val, dest)
       }
       _ { bcx.tcx().sess.span_bug(e.span, "trans_expr reached \
              fall-through case"); }

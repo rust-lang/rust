@@ -111,27 +111,28 @@ fn classify_ty(ty: TypeRef) -> [x86_64_reg_class] {
         }
     }
 
-    fn unify(cls: [mut x86_64_reg_class], i: uint,
-             new: x86_64_reg_class) {
-        if cls[i] == new {
+    fn unify(cls: [mut x86_64_reg_class],
+             i: uint,
+             newv: x86_64_reg_class) {
+        if cls[i] == newv {
             ret;
         } else if cls[i] == no_class {
-            cls[i] = new;
-        } else if new == no_class {
+            cls[i] = newv;
+        } else if newv == no_class {
             ret;
-        } else if cls[i] == memory_class || new == memory_class {
+        } else if cls[i] == memory_class || newv == memory_class {
             cls[i] = memory_class;
-        } else if cls[i] == integer_class || new == integer_class {
+        } else if cls[i] == integer_class || newv == integer_class {
             cls[i] = integer_class;
         } else if cls[i] == x87_class ||
                   cls[i] == x87up_class ||
                   cls[i] == complex_x87_class ||
-                  new == x87_class ||
-                  new == x87up_class ||
-                  new == complex_x87_class {
+                  newv == x87_class ||
+                  newv == x87up_class ||
+                  newv == complex_x87_class {
             cls[i] = memory_class;
         } else {
-            cls[i] = new;
+            cls[i] = newv;
         }
     }
 

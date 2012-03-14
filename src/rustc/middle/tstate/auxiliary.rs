@@ -709,8 +709,8 @@ fn find_instances(_fcx: fn_ctxt, subst: subst, c: constraint) ->
         for d: pred_args in *descs {
             if args_mention(d.node.args, find_in_subst_bool, subst) {
                 let old_bit_num = d.node.bit_num;
-                let new = replace(subst, d);
-                alt find_instance_(new, *descs) {
+                let newv = replace(subst, d);
+                alt find_instance_(newv, *descs) {
                   some(d1) { rslt += [{from: old_bit_num, to: d1}]; }
                   _ { }
                 }
@@ -753,7 +753,7 @@ fn replace(subst: subst, d: pred_args) -> [constr_arg_general_<inst>] {
         alt c.node {
           carg_ident(p) {
             alt find_in_subst(p.node, subst) {
-              some(new) { rslt += [carg_ident(new)]; }
+              some(newv) { rslt += [carg_ident(newv)]; }
               _ { rslt += [c.node]; }
             }
           }

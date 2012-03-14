@@ -355,6 +355,9 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
     let num_constrs = num_constraints(fcx.enclosing);
 
     alt e.node {
+      expr_new(p, _, v) {
+        ret find_pre_post_state_two(fcx, pres, p, v, e.id, oper_pure);
+      }
       expr_vec(elts, _) {
         ret find_pre_post_state_exprs(fcx, pres, e.id,
                                       vec::from_elem(vec::len(elts),
