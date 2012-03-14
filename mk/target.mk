@@ -38,7 +38,7 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_STDLIB): \
         $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_CORELIB) \
 		$$(TSREQ$(1)_T_$(2)_H_$(3))
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< && touch $$@
+	$$(STAGE$(1)_T_$(2)_H_$(3)) --enforce-mut-vars -o $$@ $$< && touch $$@
 
 $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_RUSTLLVM): \
 		rustllvm/$(2)/$$(CFG_RUSTLLVM)

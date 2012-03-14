@@ -171,21 +171,21 @@ fn getopts(args: [str], opts: [opt]) -> result unsafe {
     let n_opts = vec::len::<opt>(opts);
     fn f(_x: uint) -> [optval] { ret []; }
     let vals = vec::to_mut(vec::from_fn(n_opts, f));
-    let free: [str] = [];
+    let mut free: [str] = [];
     let l = vec::len(args);
-    let i = 0u;
+    let mut i = 0u;
     while i < l {
         let cur = args[i];
         let curlen = str::len(cur);
         if !is_arg(cur) {
             free += [cur];
         } else if str::eq(cur, "--") {
-            let j = i + 1u;
+            let mut j = i + 1u;
             while j < l { free += [args[j]]; j += 1u; }
             break;
         } else {
-            let names;
-            let i_arg = option::none::<str>;
+            let mut names;
+            let mut i_arg = option::none::<str>;
             if cur[1] == '-' as u8 {
                 let tail = str::slice(cur, 2u, curlen);
                 let tail_eq = str::splitn_char(tail, '=', 1u);
@@ -198,7 +198,7 @@ fn getopts(args: [str], opts: [opt]) -> result unsafe {
                         option::some::<str>(tail_eq[1]);
                 }
             } else {
-                let j = 1u;
+                let mut j = 1u;
                 names = [];
                 while j < curlen {
                     let range = str::char_range_at(cur, j);
@@ -206,14 +206,13 @@ fn getopts(args: [str], opts: [opt]) -> result unsafe {
                     j = range.next;
                 }
             }
-            let name_pos = 0u;
+            let mut name_pos = 0u;
             for nm: name in names {
                 name_pos += 1u;
-                let optid;
-                alt find_opt(opts, nm) {
-                  some(id) { optid = id; }
+                let optid = alt find_opt(opts, nm) {
+                  some(id) { id }
                   none { ret err(unrecognized_option(name_str(nm))); }
-                }
+                };
                 alt opts[optid].hasarg {
                   no {
                     if !option::is_none::<str>(i_arg) {
@@ -289,7 +288,7 @@ Returns a vector of the arguments provided to all matches of the given option.
 Used when an option accepts multiple values.
 "]
 fn opt_strs(m: match, nm: str) -> [str] {
-    let acc: [str] = [];
+    let mut acc: [str] = [];
     for v: optval in opt_vals(m, nm) {
         alt v { val(s) { acc += [s]; } _ { } }
     }

@@ -26,9 +26,9 @@ fn create<T: copy>() -> t<T> {
     fn grow<T: copy>(nelts: uint, lo: uint, elts: [mutable cell<T>]) ->
        [mutable cell<T>] {
         assert (nelts == vec::len(elts));
-        let rv = [mutable];
+        let mut rv = [mutable];
 
-        let i = 0u;
+        let mut i = 0u;
         let nalloc = uint::next_power_of_two(nelts + 1u);
         while i < nalloc {
             if i < nelts {

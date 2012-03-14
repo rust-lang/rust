@@ -155,7 +155,7 @@ measure to ensure that the result is balanced.
 "]
 fn concat(v: [rope]) -> rope {
     //Copy `v` into a mutable vector
-    let len   = vec::len(v);
+    let mut len = vec::len(v);
     if len == 0u { ret node::empty; }
     let ropes = vec::to_mut(vec::from_elem(len, v[0]));
     uint::range(1u, len) {|i|
@@ -684,12 +684,12 @@ mod node {
             ret candidate;
         } else {
             //Firstly, split `str` in slices of hint_max_leaf_char_len
-            let leaves = uint::div_ceil(char_len, hint_max_leaf_char_len);
+            let mut leaves = uint::div_ceil(char_len, hint_max_leaf_char_len);
             //Number of leaves
             let nodes  = vec::to_mut(vec::from_elem(leaves, candidate));
 
-            let i = 0u;
-            let offset = byte_start;
+            let mut i = 0u;
+            let mut offset = byte_start;
             let first_leaf_char_len =
                 if char_len%hint_max_leaf_char_len == 0u {
                   hint_max_leaf_char_len
@@ -753,17 +753,17 @@ mod node {
                execution and should be discarded as meaningless afterwards.
     "]
     fn tree_from_forest_destructive(forest: [mutable @node]) -> @node {
-        let i = 0u;
-        let len = vec::len(forest);
+        let mut i = 0u;
+        let mut len = vec::len(forest);
         while len > 1u {
             i = 0u;
             while i < len - 1u {//Concat nodes 0 with 1, 2 with 3 etc.
-                let left  = forest[i];
-                let right = forest[i+1u];
+                let mut left  = forest[i];
+                let mut right = forest[i+1u];
                 let left_len = char_len(left);
                 let right_len= char_len(right);
-                let left_height= height(left);
-                let right_height=height(right);
+                let mut left_height= height(left);
+                let mut right_height=height(right);
                 if left_len + right_len > hint_max_leaf_char_len {
                     if left_len <= hint_max_leaf_char_len {
                         left = flatten(left);
@@ -797,16 +797,17 @@ mod node {
     }
 
     fn serialize_node(node: @node) -> str unsafe {
-        let buf = vec::to_mut(vec::from_elem(byte_len(node), 0u8));
-        let offset = 0u;//Current position in the buffer
+        let mut buf = vec::to_mut(vec::from_elem(byte_len(node), 0u8));
+        let mut offset = 0u;//Current position in the buffer
         let it = leaf_iterator::start(node);
         loop {
             alt(leaf_iterator::next(it)) {
               option::none { break; }
               option::some(x) {
                 //TODO: Replace with memcpy or something similar
-                let local_buf: [u8] = unsafe::reinterpret_cast(*x.content);
-                let i = x.byte_offset;
+                let mut local_buf: [u8] =
+                    unsafe::reinterpret_cast(*x.content);
+                let mut i = x.byte_offset;
                 while i < x.byte_len {
                     buf[offset] = local_buf[i];
                     offset += 1u;
@@ -860,7 +861,7 @@ mod node {
     fn bal(node: @node) -> option<@node> {
         if height(node) < hint_max_node_height { ret option::none; }
         //1. Gather all leaves as a forest
-        let forest = [mutable];
+        let mut forest = [mutable];
         let it = leaf_iterator::start(node);
         loop {
             alt (leaf_iterator::next(it)) {
@@ -894,8 +895,8 @@ mod node {
     valid positions in `node`.
     "]
     fn sub_bytes(node: @node, byte_offset: uint, byte_len: uint) -> @node {
-        let node        = node;
-        let byte_offset = byte_offset;
+        let mut node        = node;
+        let mut byte_offset = byte_offset;
         loop {
             if byte_offset == 0u && byte_len == node::byte_len(node) {
                 ret node;
@@ -955,8 +956,8 @@ mod node {
     valid positions in `node`.
     "]
     fn sub_chars(node: @node, char_offset: uint, char_len: uint) -> @node {
-        let node        = node;
-        let char_offset = char_offset;
+        let mut node        = node;
+        let mut char_offset = char_offset;
         loop {
             alt(*node) {
               node::leaf(x) {
@@ -1018,8 +1019,8 @@ mod node {
     fn cmp(a: @node, b: @node) -> int {
         let ita = char_iterator::start(a);
         let itb = char_iterator::start(b);
-        let result = 0;
-        let pos = 0u;
+        let mut result = 0;
+        let mut pos = 0u;
         while result == 0 {
             alt((char_iterator::next(ita), char_iterator::next(itb))) {
               (option::none, option::none) {
@@ -1063,7 +1064,7 @@ mod node {
     that is if `it` returned `false` at any point.
     "]
     fn loop_leaves(node: @node, it: fn(leaf) -> bool) -> bool{
-        let current = node;
+        let mut current = node;
         loop {
             alt(*current) {
               leaf(x) {
@@ -1098,8 +1099,8 @@ mod node {
     length of the largest leaf.
     "]
     fn char_at(node: @node, pos: uint) -> char {
-        let node    = node;
-        let pos     = pos;
+        let mut node    = node;
+        let mut pos     = pos;
         loop {
             alt *node {
               leaf(x) {

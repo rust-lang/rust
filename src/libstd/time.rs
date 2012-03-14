@@ -12,8 +12,8 @@ Returns the current time as a `timeval` containing the seconds and
 microseconds since 1970-01-01T00:00:00Z.
 "]
 fn get_time() -> timeval {
-    let sec = 0u32;
-    let usec = 0u32;
+    let mut sec = 0u32;
+    let mut usec = 0u32;
     rustrt::get_time(sec, usec);
     ret {sec: sec, usec: usec};
 }
@@ -22,7 +22,11 @@ fn get_time() -> timeval {
 Returns the current value of a high-resolution performance counter
 in nanoseconds since an unspecified epoch.
 "]
-fn precise_time_ns() -> u64 { let ns = 0u64; rustrt::precise_time_ns(ns); ns }
+fn precise_time_ns() -> u64 {
+    let mut ns = 0u64;
+    rustrt::precise_time_ns(ns);
+    ns
+}
 
 #[doc = "
 Returns the current value of a high-resolution performance counter

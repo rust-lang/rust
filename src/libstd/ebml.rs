@@ -77,7 +77,7 @@ fn doc_at(data: @[u8], start: uint) -> tagged_doc {
 }
 
 fn maybe_get_doc(d: doc, tg: uint) -> option<doc> {
-    let pos = d.start;
+    let mut pos = d.start;
     while pos < d.end {
         let elt_tag = vuint_at(*d.data, pos);
         let elt_size = vuint_at(*d.data, elt_tag.next);
@@ -100,7 +100,7 @@ fn get_doc(d: doc, tg: uint) -> doc {
 }
 
 fn docs(d: doc, it: fn(uint, doc)) {
-    let pos = d.start;
+    let mut pos = d.start;
     while pos < d.end {
         let elt_tag = vuint_at(*d.data, pos);
         let elt_size = vuint_at(*d.data, elt_tag.next);
@@ -110,7 +110,7 @@ fn docs(d: doc, it: fn(uint, doc)) {
 }
 
 fn tagged_docs(d: doc, tg: uint, it: fn(doc)) {
-    let pos = d.start;
+    let mut pos = d.start;
     while pos < d.end {
         let elt_tag = vuint_at(*d.data, pos);
         let elt_size = vuint_at(*d.data, elt_tag.next);
@@ -154,20 +154,19 @@ fn doc_as_i64(d: doc) -> i64 { doc_as_u64(d) as i64 }
 type writer = {writer: io::writer, mutable size_positions: [uint]};
 
 fn write_sized_vuint(w: io::writer, n: uint, size: uint) {
-    let buf: [u8];
-    alt size {
-      1u { buf = [0x80u8 | (n as u8)]; }
-      2u { buf = [0x40u8 | ((n >> 8_u) as u8), n as u8]; }
+    let buf: [u8] = alt size {
+      1u { [0x80u8 | (n as u8)] }
+      2u { [0x40u8 | ((n >> 8_u) as u8), n as u8] }
       3u {
-        buf = [0x20u8 | ((n >> 16_u) as u8), (n >> 8_u) as u8,
-               n as u8];
+        [0x20u8 | ((n >> 16_u) as u8), (n >> 8_u) as u8,
+               n as u8]
       }
       4u {
-        buf = [0x10u8 | ((n >> 24_u) as u8), (n >> 16_u) as u8,
-               (n >> 8_u) as u8, n as u8];
+        [0x10u8 | ((n >> 24_u) as u8), (n >> 16_u) as u8,
+               (n >> 8_u) as u8, n as u8]
       }
       _ { fail #fmt("vint to write too big: %?", n); }
-    }
+    };
     w.write(buf);
 }
 

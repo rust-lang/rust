@@ -6,7 +6,7 @@ import rand;
 
 fn mkdtemp(prefix: str, suffix: str) -> option<str> {
     let r = rand::rng();
-    let i = 0u;
+    let mut i = 0u;
     while (i < 1000u) {
         let s = prefix + r.gen_str(16u) + suffix;
         if os::make_dir(s, 0x1c0i32) {  // FIXME: u+rwx

@@ -45,7 +45,7 @@ fn process(v0: t, v1: t, op: fn(uint, uint) -> uint) -> bool {
     let len = vec::len(v1.storage);
     assert (vec::len(v0.storage) == len);
     assert (v0.nbits == v1.nbits);
-    let changed = false;
+    let mut changed = false;
     uint::range(0u, len) {|i|
         let w0 = v0.storage[i];
         let w1 = v1.storage[i];
@@ -113,7 +113,7 @@ fn equal(v0: t, v1: t) -> bool {
     //        we can eliminate this painful while-loop
 
     let len = vec::len(v1.storage);
-    let i = 0u;
+    let mut i = 0u;
     while i < len {
         if v0.storage[i] != v1.storage[i] { ret false; }
         i = i + 1u;
@@ -201,7 +201,7 @@ The resulting string has the same length as the bitvector, and each character
 is either '0' or '1'.
 "]
 fn to_str(v: t) -> str {
-    let rs = "";
+    let mut rs = "";
     for i: uint in to_vec(v) { if i == 1u { rs += "1"; } else { rs += "0"; } }
     ret rs;
 }
@@ -215,7 +215,7 @@ bitvector and vector must have the same length
 fn eq_vec(v0: t, v1: [uint]) -> bool {
     assert (v0.nbits == vec::len::<uint>(v1));
     let len = v0.nbits;
-    let i = 0u;
+    let mut i = 0u;
     while i < len {
         let w0 = get(v0, i);
         let w1 = v1[i];

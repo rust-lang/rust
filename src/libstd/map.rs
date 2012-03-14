@@ -94,8 +94,8 @@ mod chained {
     fn search_rem<K: copy, V: copy>(
         tbl: t<K,V>, k: K, h: uint, idx: uint,
         e_root: @entry<K,V>) -> search_result<K,V> {
-        let e0 = e_root;
-        let comp = 1u;   // for logging
+        let mut e0 = e_root;
+        let mut comp = 1u;   // for logging
         loop {
             alt e0.next {
               absent {
@@ -207,7 +207,7 @@ mod chained {
 
     fn foreach_entry<K: copy, V: copy>(chain0: chain<K,V>,
                                      blk: fn(@entry<K,V>)) {
-        let chain = chain0;
+        let mut chain = chain0;
         loop {
             alt chain {
               absent { ret; }
@@ -222,7 +222,8 @@ mod chained {
 
     fn foreach_chain<K: copy, V: copy>(chains: [const chain<K,V>],
                                      blk: fn(@entry<K,V>)) {
-        let i = 0u, n = vec::len(chains);
+        let mut i = 0u;
+        let n = vec::len(chains);
         while i < n {
             foreach_entry(chains[i], blk);
             i += 1u;

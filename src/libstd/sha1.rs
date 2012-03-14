@@ -82,13 +82,13 @@ fn sha1() -> sha1 {
         // FIXME: Make precondition
         assert (vec::len(st.h) == digest_buf_len);
         assert (vec::len(st.work_buf) == work_buf_len);
-        let t: int; // Loop counter
+        let mut t: int; // Loop counter
         let w = st.work_buf;
 
         // Initialize the first 16 words of the vector w
         t = 0;
         while t < 16 {
-            let tmp;
+            let mut tmp;
             tmp = (st.msg_block[t * 4] as u32) << 24u32;
             tmp = tmp | (st.msg_block[t * 4 + 1] as u32) << 16u32;
             tmp = tmp | (st.msg_block[t * 4 + 2] as u32) << 8u32;
@@ -103,12 +103,12 @@ fn sha1() -> sha1 {
             w[t] = circular_shift(1u32, val);
             t += 1;
         }
-        let a = st.h[0];
-        let b = st.h[1];
-        let c = st.h[2];
-        let d = st.h[3];
-        let e = st.h[4];
-        let temp: u32;
+        let mut a = st.h[0];
+        let mut b = st.h[1];
+        let mut c = st.h[2];
+        let mut d = st.h[3];
+        let mut e = st.h[4];
+        let mut temp: u32;
         t = 0;
         while t < 20 {
             temp = circular_shift(5u32, a) + (b & c | !b & d) + e + w[t] + k0;
@@ -160,7 +160,7 @@ fn sha1() -> sha1 {
     }
     fn mk_result(st: sha1state) -> [u8] {
         if !st.computed { pad_msg(st); st.computed = true; }
-        let rs: [u8] = [];
+        let mut rs: [u8] = [];
         for hpart: u32 in st.h {
             let a = (hpart >> 24u32 & 0xFFu32) as u8;
             let b = (hpart >> 16u32 & 0xFFu32) as u8;
@@ -237,7 +237,7 @@ fn sha1() -> sha1 {
         fn result() -> [u8] { ret mk_result(self); }
         fn result_str() -> str {
             let r = mk_result(self);
-            let s = "";
+            let mut s = "";
             for b: u8 in r { s += uint::to_str(b as uint, 16u); }
             ret s;
         }

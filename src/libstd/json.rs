@@ -46,7 +46,7 @@ fn to_writer(wr: io::writer, j: json) {
       num(n) { wr.write_str(float::to_str(n, 6u)); }
       string(s) {
         wr.write_char('"');
-        let escaped = "";
+        let mut escaped = "";
         str::chars_iter(s) { |c|
             alt c {
               '"' { escaped += "\\\""; }
@@ -67,7 +67,7 @@ fn to_writer(wr: io::writer, j: json) {
       }
       list(v) {
         wr.write_char('[');
-        let first = true;
+        let mut first = true;
         vec::iter(v) { |item|
             if !first {
                 wr.write_str(", ");
@@ -84,7 +84,7 @@ fn to_writer(wr: io::writer, j: json) {
         }
 
         wr.write_str("{ ");
-        let first = true;
+        let mut first = true;
         d.items { |key, value|
             if !first {
                 wr.write_str(", ");
@@ -189,14 +189,14 @@ impl parser for parser {
     }
 
     fn parse_number() -> result<json, error> {
-        let neg = 1f;
+        let mut neg = 1f;
 
         if self.ch == '-' {
             self.bump();
             neg = -1f;
         }
 
-        let res =  alt self.parse_integer() {
+        let mut res = alt self.parse_integer() {
           ok(res) { res }
           err(e) { ret err(e); }
         };
@@ -219,7 +219,7 @@ impl parser for parser {
     }
 
     fn parse_integer() -> result<float, error> {
-        let res = 0f;
+        let mut res = 0f;
 
         alt self.ch {
           '0' {
@@ -259,8 +259,8 @@ impl parser for parser {
           _ { ret self.error("invalid number"); }
         }
 
-        let res = res;
-        let dec = 1f;
+        let mut res = res;
+        let mut dec = 1f;
         while !self.eof() {
             alt self.ch {
               '0' to '9' {
@@ -279,9 +279,9 @@ impl parser for parser {
     fn parse_exponent(res: float) -> result<float, error> {
         self.bump();
 
-        let res = res;
-        let exp = 0u;
-        let neg_exp = false;
+        let mut res = res;
+        let mut exp = 0u;
+        let mut neg_exp = false;
 
         alt self.ch {
           '+' { self.bump(); }
@@ -318,8 +318,8 @@ impl parser for parser {
     }
 
     fn parse_str() -> result<str, error> {
-        let escape = false;
-        let res = "";
+        let mut escape = false;
+        let mut res = "";
 
         while !self.eof() {
             self.bump();
@@ -336,8 +336,8 @@ impl parser for parser {
                   't' { str::push_char(res, '\t'); }
                   'u' {
                       // Parse \u1234.
-                      let i = 0u;
-                      let n = 0u;
+                      let mut i = 0u;
+                      let mut n = 0u;
                       while i < 4u {
                           alt self.next_char() {
                             '0' to '9' {
@@ -346,6 +346,7 @@ impl parser for parser {
                             }
                             _ { ret self.error("invalid \\u escape"); }
                           }
+                          i += 1u;
                       }
 
                       // Error out if we didn't parse 4 digits.
@@ -376,7 +377,7 @@ impl parser for parser {
         self.bump();
         self.parse_whitespace();
 
-        let values = [];
+        let mut values = [];
 
         if self.ch == ']' {
             self.bump();
@@ -479,7 +480,7 @@ fn eq(value0: json, value1: json) -> bool {
       (list(l0), list(l1)) { vec::all2(l0, l1, eq) }
       (dict(d0), dict(d1)) {
           if d0.size() == d1.size() {
-              let equal = true;
+              let mut equal = true;
               d0.items { |k, v0|
                   alt d1.find(k) {
                     some(v1) {

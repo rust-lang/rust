@@ -47,6 +47,6 @@ fn set_count(ufnd: ufind) -> uint { ret vec::len::<node>(ufnd.nodes); }
 fn prune(ufnd: ufind, n: uint) {
     // TODO: Use "slice" once we get rid of "const"
 
-    let len = vec::len::<node>(ufnd.nodes);
+    let mut len = vec::len::<node>(ufnd.nodes);
     while len != n { vec::pop::<node>(ufnd.nodes); len -= 1u; }
 }

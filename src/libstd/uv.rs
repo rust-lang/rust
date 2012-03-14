@@ -146,8 +146,8 @@ fn loop_new() -> uv_loop unsafe {
         // the main loop that this task blocks on.
         // should have the same lifetime as the C libuv
         // event loop.
-        let keep_going = true;
-        while (keep_going) {
+        let mut keep_going = true;
+        while keep_going {
             alt comm::recv(rust_loop_port) {
               msg_run(end_chan) {
                 // start the libuv event loop
@@ -339,7 +339,7 @@ fn async_init (
     lp: uv_loop,
     async_cb: fn~(uv_handle),
     after_cb: fn~(uv_handle)) {
-    let msg = msg_async_init(async_cb, after_cb);
+    let mut msg = msg_async_init(async_cb, after_cb);
     let loop_chan = get_loop_chan_from_uv_loop(lp);
     comm::send(loop_chan, msg);
 }
@@ -363,7 +363,7 @@ fn close(h: uv_handle, cb: fn~()) {
 }
 
 fn timer_init(lp: uv_loop, after_cb: fn~(uv_handle)) {
-    let msg = msg_timer_init(after_cb);
+    let mut msg = msg_timer_init(after_cb);
     let loop_chan = get_loop_chan_from_uv_loop(lp);
     comm::send(loop_chan, msg);
 }
@@ -372,7 +372,7 @@ fn timer_start(the_timer: uv_handle, timeout: u32, repeat:u32,
                timer_cb: fn~(uv_handle)) {
     alt the_timer {
       uv_timer(id, lp) {
-        let msg = msg_timer_start(id, timeout, repeat, timer_cb);
+        let mut msg = msg_timer_start(id, timeout, repeat, timer_cb);
         let loop_chan = get_loop_chan_from_uv_loop(lp);
         comm::send(loop_chan, msg);
       }
@@ -387,7 +387,7 @@ fn timer_stop(the_timer: uv_handle, after_cb: fn~(uv_handle)) {
     alt the_timer {
       uv_timer(id, lp) {
         let loop_chan = get_loop_chan_from_uv_loop(lp);
-        let msg = msg_timer_stop(id, after_cb);
+        let mut msg = msg_timer_stop(id, after_cb);
         comm::send(loop_chan, msg);
       }
       _ {
@@ -466,7 +466,7 @@ crust fn process_operation(
         data: *uv_loop_data) unsafe {
     let op_port = (*data).operation_port;
     let loop_chan = get_loop_chan_from_data(data);
-    let op_pending = comm::peek(op_port);
+    let mut op_pending = comm::peek(op_port);
     while(op_pending) {
         alt comm::recv(op_port) {
           op_async_init(id) {

@@ -33,12 +33,12 @@ fn merge_sort<T: copy>(le: le<T>, v: [const T]) -> [T] {
     }
 
     fn merge<T: copy>(le: le<T>, a: [T], b: [T]) -> [T] {
-        let rs = [];
+        let mut rs = [];
         vec::reserve(rs, len(a) + len(b));
         let a_len = len(a);
-        let a_ix = 0u;
+        let mut a_ix = 0u;
         let b_len = len(b);
-        let b_ix = 0u;
+        let mut b_ix = 0u;
         while a_ix < a_len && b_ix < b_len {
             if le(a[a_ix], b[b_ix]) {
                 rs += [a[a_ix]];
@@ -55,8 +55,8 @@ fn part<T: copy>(compare_func: le<T>, arr: [mutable T], left: uint,
                 right: uint, pivot: uint) -> uint {
     let pivot_value = arr[pivot];
     arr[pivot] <-> arr[right];
-    let storage_index: uint = left;
-    let i: uint = left;
+    let mut storage_index: uint = left;
+    let mut i: uint = left;
     while i < right {
         if compare_func(copy arr[i], pivot_value) {
             arr[i] <-> arr[storage_index];
@@ -96,10 +96,10 @@ fn qsort3<T: copy>(compare_func_lt: le<T>, compare_func_eq: le<T>,
                   arr: [mutable T], left: int, right: int) {
     if right <= left { ret; }
     let v: T = arr[right];
-    let i: int = left - 1;
-    let j: int = right;
-    let p: int = i;
-    let q: int = j;
+    let mut i: int = left - 1;
+    let mut j: int = right;
+    let mut p: int = i;
+    let mut q: int = j;
     loop {
         i += 1;
         while compare_func_lt(copy arr[i], v) { i += 1; }
@@ -122,7 +122,7 @@ fn qsort3<T: copy>(compare_func_lt: le<T>, compare_func_eq: le<T>,
     arr[i] <-> arr[right];
     j = i - 1;
     i += 1;
-    let k: int = left;
+    let mut k: int = left;
     while k < p {
         arr[k] <-> arr[j];
         k += 1;

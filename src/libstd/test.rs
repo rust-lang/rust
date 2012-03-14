@@ -237,7 +237,7 @@ type monitor_msg = (test_desc, test_result);
 fn run_tests(opts: test_opts, tests: [test_desc],
              callback: fn@(testevent)) {
 
-    let filtered_tests = filter_tests(opts, tests);
+    let mut filtered_tests = filter_tests(opts, tests);
     callback(te_filtered(filtered_tests));
 
     // It's tempting to just spawn all the tests at once, but since we have
@@ -246,9 +246,9 @@ fn run_tests(opts: test_opts, tests: [test_desc],
     #debug("using %u test tasks", concurrency);
 
     let total = vec::len(filtered_tests);
-    let run_idx = 0u;
-    let wait_idx = 0u;
-    let done_idx = 0u;
+    let mut run_idx = 0u;
+    let mut wait_idx = 0u;
+    let mut done_idx = 0u;
 
     let p = comm::port();
     let ch = comm::chan(p);
@@ -294,7 +294,7 @@ fn get_concurrency() -> uint {
 
 fn filter_tests(opts: test_opts,
                 tests: [test_desc]) -> [test_desc] {
-    let filtered = tests;
+    let mut filtered = tests;
 
     // Remove tests that don't match the test filter
     filtered = if option::is_none(opts.filter) {
@@ -355,9 +355,8 @@ fn run_test(+test: test_desc, monitor_ch: comm::chan<monitor_msg>) {
     }
 
     task::spawn {||
-
         let testfn = test.fn;
-        let builder = task::task_builder();
+        let mut builder = task::task_builder();
         let result_future = task::future_result(builder);
         task::unsupervise(builder);
         task::run(builder, testfn);

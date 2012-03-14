@@ -28,7 +28,7 @@ accumulated result.
 * f - The function to apply
 "]
 fn foldl<T: copy, U>(ls: list<U>, z: T, f: fn(T, U) -> T) -> T {
-    let accum: T = z;
+    let mut accum: T = z;
     iter(ls) {|elt| accum = f(accum, elt);}
     accum
 }
@@ -41,7 +41,7 @@ When function `f` returns true then an option containing the element
 is returned. If `f` matches no elements then none is returned.
 "]
 fn find<T: copy>(ls: list<T>, f: fn(T) -> bool) -> option<T> {
-    let ls = ls;
+    let mut ls = ls;
     loop {
         alt ls {
           cons(hd, tl) {
@@ -55,7 +55,7 @@ fn find<T: copy>(ls: list<T>, f: fn(T) -> bool) -> option<T> {
 
 #[doc = "Returns true if a list contains an element with the given value"]
 fn has<T: copy>(ls: list<T>, elt: T) -> bool {
-    let ls = ls;
+    let mut ls = ls;
     loop {
         alt ls {
           cons(hd, tl) { if elt == hd { ret true; } else { ls = *tl; } }
@@ -79,7 +79,7 @@ pure fn is_not_empty<T: copy>(ls: list<T>) -> bool {
 
 #[doc = "Returns the length of a list"]
 fn len<T>(ls: list<T>) -> uint {
-    let count = 0u;
+    let mut count = 0u;
     iter(ls) {|_e| count += 1u;}
     count
 }
@@ -110,7 +110,7 @@ fn iter<T>(l: list<T>, f: fn(T)) {
     alt l {
       cons(hd, tl) {
         f(hd);
-        let cur = tl;
+        let mut cur = tl;
         loop {
             alt *cur {
               cons(hd, tl) {
