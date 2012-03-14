@@ -130,9 +130,14 @@ impl helpers for ext_ctxt {
           span: span}
     }
 
-    fn ty_path(span: span, strs: [str]) -> @ast::ty {
+    fn path_tps(span: span, strs: [str], tps: [@ast::ty]) -> @ast::path {
+        @{node: {global: false, idents: strs, types: tps},
+          span: span}
+    }
+
+    fn ty_path(span: span, strs: [str], tps: [@ast::ty]) -> @ast::ty {
         @{id: self.next_id(),
-          node: ast::ty_path(self.path(span, strs), self.next_id()),
+          node: ast::ty_path(self.path_tps(span, strs, tps), self.next_id()),
           span: span}
     }
 
@@ -469,27 +474,30 @@ fn ser_ty(cx: ext_ctxt, tps: ser_tps_map,
     }
 }
 
-fn mk_ser_fn(cx: ext_ctxt, span: span, name: str,
-             -v_ty: @ast::ty, tps: [ast::ty_param],
-             f: fn(ext_ctxt, ser_tps_map, @ast::ty,
+fn mk_ser_fn(cx: ext_ctxt, span: span, name: str, tps: [ast::ty_param],
+             f: fn(ext_ctxt, ser_tps_map,
                    -@ast::expr, -@ast::expr) -> [@ast::stmt])
     -> @ast::item {
     let ext_cx = cx; // required for #ast
+
+    let tp_types = vec::map(tps, {|tp| cx.ty_path(span, [tp.ident], [])});
+    let v_ty = cx.ty_path(span, [name], tp_types);
 
     let tp_inputs =
         vec::map(tps, {|tp|
             {mode: ast::expl(ast::by_ref),
              ty: cx.ty_fn(span,
-                          [cx.ty_path(span, [tp.ident])],
+                          [cx.ty_path(span, [tp.ident], [])],
                           cx.ty_nil(span)),
              ident: "__s" + tp.ident,
              id: cx.next_id()}});
 
     #debug["tp_inputs = %?", tp_inputs];
 
+
     let ser_inputs: [ast::arg] =
         [{mode: ast::expl(ast::by_ref),
-          ty: cx.ty_path(span, ["__S"]),
+          ty: cx.ty_path(span, ["__S"], []),
           ident: "__s",
           id: cx.next_id()},
          {mode: ast::expl(ast::by_ref),
@@ -510,10 +518,10 @@ fn mk_ser_fn(cx: ext_ctxt, span: span, name: str,
             });
     }
 
-    let ser_bnds = @[ast::bound_iface(cx.ty_path(span,
-                                                 ["std",
-                                                  "serialization",
-                                                  "serializer"]))];
+    let ser_bnds = @[
+        ast::bound_iface(cx.ty_path(span,
+                                    ["std", "serialization", "serializer"],
+                                    []))];
 
     let ser_tps: [ast::ty_param] =
         [{ident: "__S",
@@ -526,7 +534,7 @@ fn mk_ser_fn(cx: ext_ctxt, span: span, name: str,
                                  span: span};
 
     let ser_blk = cx.blk(span,
-                         f(cx, tps_map, v_ty, #ast{ __s }, #ast{ __v }));
+                         f(cx, tps_map, #ast{ __s }, #ast{ __v }));
 
     @{ident: "serialize_" + name,
       attrs: [],
@@ -670,19 +678,20 @@ fn deser_ty(cx: ext_ctxt, tps: deser_tps_map,
     }
 }
 
-fn mk_deser_fn(cx: ext_ctxt, span: span, name: str,
-               -v_ty: @ast::ty, tps: [ast::ty_param],
-               f: fn(ext_ctxt, deser_tps_map,
-                     @ast::ty, -@ast::expr) -> @ast::expr)
+fn mk_deser_fn(cx: ext_ctxt, span: span, name: str, tps: [ast::ty_param],
+               f: fn(ext_ctxt, deser_tps_map, -@ast::expr) -> @ast::expr)
     -> @ast::item {
     let ext_cx = cx; // required for #ast
+
+    let tp_types = vec::map(tps, {|tp| cx.ty_path(span, [tp.ident], [])});
+    let v_ty = cx.ty_path(span, [name], tp_types);
 
     let tp_inputs =
         vec::map(tps, {|tp|
             {mode: ast::expl(ast::by_ref),
              ty: cx.ty_fn(span,
                           [],
-                          cx.ty_path(span, [tp.ident])),
+                          cx.ty_path(span, [tp.ident], [])),
              ident: "__d" + tp.ident,
              id: cx.next_id()}});
 
@@ -690,7 +699,7 @@ fn mk_deser_fn(cx: ext_ctxt, span: span, name: str,
 
     let deser_inputs: [ast::arg] =
         [{mode: ast::expl(ast::by_ref),
-          ty: cx.ty_path(span, ["__D"]),
+          ty: cx.ty_path(span, ["__D"], []),
           ident: "__d",
           id: cx.next_id()}]
         + tp_inputs;
@@ -706,10 +715,10 @@ fn mk_deser_fn(cx: ext_ctxt, span: span, name: str,
             });
     }
 
-    let deser_bnds = @[ast::bound_iface(cx.ty_path(span,
-                                                   ["std",
-                                                    "serialization",
-                                                    "deserializer"]))];
+    let deser_bnds = @[
+        ast::bound_iface(cx.ty_path(span,
+                                    ["std", "serialization", "deserializer"],
+                                    []))];
 
     let deser_tps: [ast::ty_param] =
         [{ident: "__D",
@@ -717,7 +726,7 @@ fn mk_deser_fn(cx: ext_ctxt, span: span, name: str,
           bounds: deser_bnds}] +
         vec::map(tps) {|tp| cx.clone_ty_param(tp) };
 
-    let deser_blk = cx.expr_blk(f(cx, tps_map, v_ty, #ast(expr){__d}));
+    let deser_blk = cx.expr_blk(f(cx, tps_map, #ast(expr){__d}));
 
     @{ident: "deserialize_" + name,
       attrs: [],
@@ -737,14 +746,14 @@ fn ty_fns(cx: ext_ctxt, name: str, ty: @ast::ty, tps: [ast::ty_param])
 
     let span = ty.span;
     [
-        mk_ser_fn(cx, span, name, cx.clone_ty(ty), tps, ser_ty),
-        mk_deser_fn(cx, span, name, cx.clone_ty(ty), tps, deser_ty)
+        mk_ser_fn(cx, span, name, tps, ser_ty(_, _, ty, _, _)),
+        mk_deser_fn(cx, span, name, tps, deser_ty(_, _, ty, _))
     ]
 }
 
 fn ser_enum(cx: ext_ctxt, tps: ser_tps_map, e_name: str,
             e_span: span, variants: [ast::variant],
-            _ty: @ast::ty, -s: @ast::expr, -v: @ast::expr) -> [@ast::stmt] {
+            -s: @ast::expr, -v: @ast::expr) -> [@ast::stmt] {
     let ext_cx = cx;
     let arms = vec::from_fn(vec::len(variants)) {|vidx|
         let variant = variants[vidx];
@@ -793,7 +802,7 @@ fn ser_enum(cx: ext_ctxt, tps: ser_tps_map, e_name: str,
 
 fn deser_enum(cx: ext_ctxt, tps: deser_tps_map, e_name: str,
               e_span: span, variants: [ast::variant],
-              _ty: @ast::ty, -d: @ast::expr) -> @ast::expr {
+              -d: @ast::expr) -> @ast::expr {
     let ext_cx = cx;
     let arms: [ast::arm] = vec::from_fn(vec::len(variants)) {|vidx|
         let variant = variants[vidx];
@@ -831,11 +840,10 @@ fn deser_enum(cx: ext_ctxt, tps: deser_tps_map, e_name: str,
 fn enum_fns(cx: ext_ctxt, e_name: str, e_span: span,
                variants: [ast::variant], tps: [ast::ty_param])
     -> [@ast::item] {
-    let ty = cx.ty_path(e_span, [e_name]);
     [
-        mk_ser_fn(cx, e_span, e_name, cx.clone_ty(ty), tps,
-                  ser_enum(_, _, e_name, e_span, variants, _, _, _)),
-        mk_deser_fn(cx, e_span, e_name, ty, tps,
-                    deser_enum(_, _, e_name, e_span, variants, _, _))
+        mk_ser_fn(cx, e_span, e_name, tps,
+                  ser_enum(_, _, e_name, e_span, variants, _, _)),
+        mk_deser_fn(cx, e_span, e_name, tps,
+                    deser_enum(_, _, e_name, e_span, variants, _))
     ]
 }

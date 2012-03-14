@@ -63,6 +63,15 @@ type uint_vec = [uint];
 #[auto_serialize]
 type point = {x: uint, y: uint};
 
+#[auto_serialize]
+enum quark<T> {
+    top(T),
+    bottom(T)
+}
+
+#[auto_serialize]
+type uint_quark = quark<uint>;
+
 fn main() {
 
     test_ser_and_deser(plus(@minus(@val(3u), @val(10u)),
@@ -96,4 +105,16 @@ fn main() {
                        serialize_uint_vec(_, _),
                        deserialize_uint_vec(_),
                        serialize_uint_vec(_, _));
+
+    test_ser_and_deser(top(22u),
+                       "top(22u)",
+                       serialize_uint_quark(_, _),
+                       deserialize_uint_quark(_),
+                       serialize_uint_quark(_, _));
+
+    test_ser_and_deser(bottom(222u),
+                       "bottom(222u)",
+                       serialize_uint_quark(_, _),
+                       deserialize_uint_quark(_),
+                       serialize_uint_quark(_, _));
 }

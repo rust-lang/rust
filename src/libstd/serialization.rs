@@ -120,3 +120,151 @@ fn serialize_uint<S: serializer>(s: S, v: uint) {
 fn deserialize_uint<D: deserializer>(d: D) -> uint {
     d.read_uint()
 }
+
+fn serialize_u8<S: serializer>(s: S, v: u8) {
+    s.emit_u8(v);
+}
+
+fn deserialize_u8<D: deserializer>(d: D) -> u8 {
+    d.read_u8()
+}
+
+fn serialize_u16<S: serializer>(s: S, v: u16) {
+    s.emit_u16(v);
+}
+
+fn deserialize_u16<D: deserializer>(d: D) -> u16 {
+    d.read_u16()
+}
+
+fn serialize_u32<S: serializer>(s: S, v: u32) {
+    s.emit_u32(v);
+}
+
+fn deserialize_u32<D: deserializer>(d: D) -> u32 {
+    d.read_u32()
+}
+
+fn serialize_u64<S: serializer>(s: S, v: u64) {
+    s.emit_u64(v);
+}
+
+fn deserialize_u64<D: deserializer>(d: D) -> u64 {
+    d.read_u64()
+}
+
+fn serialize_int<S: serializer>(s: S, v: int) {
+    s.emit_int(v);
+}
+
+fn deserialize_int<D: deserializer>(d: D) -> int {
+    d.read_int()
+}
+
+fn serialize_i8<S: serializer>(s: S, v: i8) {
+    s.emit_i8(v);
+}
+
+fn deserialize_i8<D: deserializer>(d: D) -> i8 {
+    d.read_i8()
+}
+
+fn serialize_i16<S: serializer>(s: S, v: i16) {
+    s.emit_i16(v);
+}
+
+fn deserialize_i16<D: deserializer>(d: D) -> i16 {
+    d.read_i16()
+}
+
+fn serialize_i32<S: serializer>(s: S, v: i32) {
+    s.emit_i32(v);
+}
+
+fn deserialize_i32<D: deserializer>(d: D) -> i32 {
+    d.read_i32()
+}
+
+fn serialize_i64<S: serializer>(s: S, v: i64) {
+    s.emit_i64(v);
+}
+
+fn deserialize_i64<D: deserializer>(d: D) -> i64 {
+    d.read_i64()
+}
+
+fn serialize_str<S: serializer>(s: S, v: str) {
+    s.emit_str(v);
+}
+
+fn deserialize_str<D: deserializer>(d: D) -> str {
+    d.read_str()
+}
+
+fn serialize_float<S: serializer>(s: S, v: float) {
+    s.emit_float(v);
+}
+
+fn deserialize_float<D: deserializer>(d: D) -> float {
+    d.read_float()
+}
+
+fn serialize_f32<S: serializer>(s: S, v: f32) {
+    s.emit_f32(v);
+}
+
+fn deserialize_f32<D: deserializer>(d: D) -> f32 {
+    d.read_f32()
+}
+
+fn serialize_f64<S: serializer>(s: S, v: f64) {
+    s.emit_f64(v);
+}
+
+fn deserialize_f64<D: deserializer>(d: D) -> f64 {
+    d.read_f64()
+}
+
+fn serialize_bool<S: serializer>(s: S, v: bool) {
+    s.emit_bool(v);
+}
+
+fn deserialize_bool<D: deserializer>(d: D) -> bool {
+    d.read_bool()
+}
+
+fn serialize_option<S: serializer,T>(s: S, v: option<T>, st: fn(T)) {
+    s.emit_enum("option") {||
+        alt v {
+          none {
+            s.emit_enum_variant("none", 0u, 0u) {||
+            }
+          }
+
+          some(v) {
+            s.emit_enum_variant("some", 1u, 1u) {||
+                s.emit_enum_variant_arg(0u) {||
+                    st(v)
+                }
+            }
+          }
+        }
+    }
+}
+
+fn deserialize_option<D: deserializer,T>(d: D, st: fn() -> T) -> option<T> {
+    d.read_enum("option") {||
+        d.read_enum_variant {|i|
+            alt check i {
+              0u { // none
+                none
+              }
+              1u { // some(v)
+                some(d.read_enum_variant_arg(0u) {||
+                    st()
+                })
+              }
+            }
+        }
+    }
+}
