@@ -269,6 +269,16 @@ fn resolve_expr(expr: @ast::expr, cx: ctxt, visitor: visit::vt<ctxt>) {
     }
 }
 
+fn resolve_local(local: @ast::local, cx: ctxt, visitor: visit::vt<ctxt>) {
+    alt cx.parent {
+        pa_block(blk_id) {
+            cx.region_map.rvalue_to_block.insert(local.node.id, blk_id);
+        }
+        _ { cx.sess.span_bug(local.span, "local outside of block?!"); }
+    }
+    visit::visit_local(local, cx, visitor);
+}
+
 fn resolve_item(item: @ast::item, cx: ctxt, visitor: visit::vt<ctxt>) {
     // Items create a new outer block scope as far as we're concerned.
     let parent = alt item.node {
@@ -304,7 +314,8 @@ fn resolve_crate(sess: session, def_map: resolve::def_map, crate: @ast::crate)
         visit_ty: resolve_ty,
         visit_arm: resolve_arm,
         visit_pat: resolve_pat,
-        visit_expr: resolve_expr
+        visit_expr: resolve_expr,
+        visit_local: resolve_local
         with *visit::default_visitor()
     });
     visit::visit_crate(*crate, cx, visitor);
