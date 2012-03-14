@@ -14,8 +14,8 @@ export
    push_char,
    from_char,
    from_chars,
-   from_cstr,
-   from_cstr_len,
+   from_buf,
+   from_buf_len,
    concat,
    connect,
 
@@ -182,27 +182,27 @@ fn from_chars(chs: [char]) -> str {
     ret buf;
 }
 
-#[doc = "Create a Rust string from a null-terminated C string"]
-fn from_cstr(cstr: *u8) -> str unsafe {
-    let mut curr = cstr, i = 0u;
+#[doc = "Create a Rust string from a null-terminated *u8 buffer"]
+fn from_buf(buf: *u8) -> str unsafe {
+    let mut curr = buf, i = 0u;
     while *curr != 0u8 {
         i += 1u;
-        curr = ptr::offset(cstr, i);
+        curr = ptr::offset(buf, i);
     }
-    ret from_cstr_len(cstr, i);
+    ret from_buf_len(buf, i);
 }
 
-#[doc = "Create a Rust string from a C string of the given length"]
-fn from_cstr_len(cstr: *u8, len: uint) -> str unsafe {
-    let mut buf: [u8] = [];
-    vec::reserve(buf, len + 1u);
-    vec::as_buf(buf) {|b| ptr::memcpy(b, cstr, len); }
-    vec::unsafe::set_len(buf, len);
-    buf += [0u8];
+#[doc = "Create a Rust string from a *u8 buffer of the given length"]
+fn from_buf_len(buf: *u8, len: uint) -> str unsafe {
+    let mut v: [u8] = [];
+    vec::reserve(v, len + 1u);
+    vec::as_buf(v) {|b| ptr::memcpy(b, buf, len); }
+    vec::unsafe::set_len(v, len);
+    v += [0u8];
 
-    assert is_utf8(buf);
-    let s: str = ::unsafe::reinterpret_cast(buf);
-    ::unsafe::leak(buf);
+    assert is_utf8(v);
+    let s: str = ::unsafe::reinterpret_cast(v);
+    ::unsafe::leak(v);
     ret s;
 }
 
@@ -1946,18 +1946,18 @@ mod tests {
     }
 
     #[test]
-    fn test_from_cstr() unsafe {
+    fn test_from_buf() unsafe {
         let a = [65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 0u8];
         let b = vec::unsafe::to_ptr(a);
-        let c = from_cstr(b);
+        let c = from_buf(b);
         assert (c == "AAAAAAA");
     }
 
     #[test]
-    fn test_from_cstr_len() unsafe {
+    fn test_from_buf_len() unsafe {
         let a = [65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 0u8];
         let b = vec::unsafe::to_ptr(a);
-        let c = from_cstr_len(b, 3u);
+        let c = from_buf_len(b, 3u);
         assert (c == "AAA");
     }
 
@@ -1979,7 +1979,7 @@ mod tests {
     fn test_as_buf2() unsafe {
         let s = "hello";
         let sb = as_buf(s, {|b| b });
-        let s_cstr = from_cstr(sb);
+        let s_cstr = from_buf(sb);
         assert (eq(s_cstr, s));
     }
 
