@@ -9,6 +9,13 @@
 # runtime rather than the runtime from the working directory.
 USE_SNAPSHOT_RUNTIME=0
 
+# Do not use --enforce-mut-vars in stage0, for now, as the snapshot
+# has an older version of the check.
+ENFORCE_MUT_VARS_0=
+ENFORCE_MUT_VARS_1=--enforce-mut-vars
+ENFORCE_MUT_VARS_2=--enforce-mut-vars
+ENFORCE_MUT_VARS_3=--enforce-mut-vars
+
 define TARGET_STAGE_N
 
 $$(TLIB$(1)_T_$(2)_H_$(3))/intrinsics.ll: \
@@ -38,7 +45,8 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_STDLIB): \
         $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_CORELIB) \
 		$$(TSREQ$(1)_T_$(2)_H_$(3))
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)_T_$(2)_H_$(3)) --enforce-mut-vars -o $$@ $$< && touch $$@
+	$$(STAGE$(1)_T_$(2)_H_$(3)) $$(ENFORCE_MUT_VARS_$(1)) \
+		-o $$@ $$< && touch $$@
 
 $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_RUSTLLVM): \
 		rustllvm/$(2)/$$(CFG_RUSTLLVM)

@@ -176,7 +176,7 @@ fn visit_expr(cx: @ctx, ex: @expr, &&e: (), v: visit::vt<()>) {
       expr_fn(_, _, _, cap) {
         for moved in cap.moves {
             let def = cx.tcx.def_map.get(moved.id);
-            alt is_immutable_def(cx, def) {
+            alt is_illegal_to_modify_def(cx, def, msg_move_out) {
               some(name) { mk_err(cx, moved.span, msg_move_out, moved.name); }
               _ { }
             }
@@ -192,7 +192,7 @@ fn check_lval(cx: @ctx, dest: @expr, msg: msg) {
     alt dest.node {
       expr_path(p) {
         let def = cx.tcx.def_map.get(dest.id);
-        alt is_immutable_def(cx, def) {
+        alt is_illegal_to_modify_def(cx, def, msg) {
           some(name) { mk_err(cx, dest.span, msg, name); }
           _ { }
         }
@@ -278,7 +278,9 @@ fn check_bind(cx: @ctx, f: @expr, args: [option<@expr>]) {
     }
 }
 
-fn is_immutable_def(cx: @ctx, def: def) -> option<str> {
+// returns some if the def cannot be modified.  the kind of modification is
+// indicated by `msg`.
+fn is_illegal_to_modify_def(cx: @ctx, def: def, msg: msg) -> option<str> {
     alt def {
       def_fn(_, _) | def_mod(_) | def_native_mod(_) | def_const(_) |
       def_use(_) {
@@ -295,8 +297,12 @@ fn is_immutable_def(cx: @ctx, def: def) -> option<str> {
         let ty = ty::node_id_to_type(cx.tcx, node_id);
         let proto = ty::ty_fn_proto(ty);
         ret alt proto {
-          proto_any | proto_block { is_immutable_def(cx, *inner) }
-          _ { some("upvar") }
+          proto_any | proto_block {
+            is_illegal_to_modify_def(cx, *inner, msg)
+          }
+          proto_bare | proto_uniq | proto_box {
+            some("upvar")
+          }
         };
       }
 
@@ -304,6 +310,7 @@ fn is_immutable_def(cx: @ctx, def: def) -> option<str> {
       // here and then guarantee in the typestate pass that immutable local
       // variables are assigned at most once.  But this requires a new kind of
       // propagation (def. not assigned), so I didn't do that.
+      def_local(_, false) if msg == msg_move_out { none }
       def_local(_, false) if cx.tcx.sess.opts.enforce_mut_vars {
         some("immutable local variable")
       }

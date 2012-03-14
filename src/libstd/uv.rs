@@ -339,7 +339,7 @@ fn async_init (
     lp: uv_loop,
     async_cb: fn~(uv_handle),
     after_cb: fn~(uv_handle)) {
-    let mut msg = msg_async_init(async_cb, after_cb);
+    let msg = msg_async_init(async_cb, after_cb);
     let loop_chan = get_loop_chan_from_uv_loop(lp);
     comm::send(loop_chan, msg);
 }
@@ -363,7 +363,7 @@ fn close(h: uv_handle, cb: fn~()) {
 }
 
 fn timer_init(lp: uv_loop, after_cb: fn~(uv_handle)) {
-    let mut msg = msg_timer_init(after_cb);
+    let msg = msg_timer_init(after_cb);
     let loop_chan = get_loop_chan_from_uv_loop(lp);
     comm::send(loop_chan, msg);
 }
@@ -372,7 +372,7 @@ fn timer_start(the_timer: uv_handle, timeout: u32, repeat:u32,
                timer_cb: fn~(uv_handle)) {
     alt the_timer {
       uv_timer(id, lp) {
-        let mut msg = msg_timer_start(id, timeout, repeat, timer_cb);
+        let msg = msg_timer_start(id, timeout, repeat, timer_cb);
         let loop_chan = get_loop_chan_from_uv_loop(lp);
         comm::send(loop_chan, msg);
       }
@@ -387,7 +387,7 @@ fn timer_stop(the_timer: uv_handle, after_cb: fn~(uv_handle)) {
     alt the_timer {
       uv_timer(id, lp) {
         let loop_chan = get_loop_chan_from_uv_loop(lp);
-        let mut msg = msg_timer_stop(id, after_cb);
+        let msg = msg_timer_stop(id, after_cb);
         comm::send(loop_chan, msg);
       }
       _ {
