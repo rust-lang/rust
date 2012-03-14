@@ -1442,25 +1442,49 @@ fn valid_range_bounds(tcx: ty::ctxt, from: @ast::expr, to: @ast::expr)
     ast_util::compare_lit_exprs(tcx, from, to) <= 0
 }
 
-fn check_pat_variant(fcx: @fn_ctxt, map: pat_util::pat_id_map,
-                     pat: @ast::pat, path: @ast::path, subpats: [@ast::pat],
-                     expected: ty::t) {
+type pat_ctxt = {
+    fcx: @fn_ctxt,
+    map: pat_util::pat_id_map,
+    alt_region: ty::region,
+    block_region: ty::region,
+    /* Equal to either alt_region or block_region. */
+    pat_region: ty::region
+};
+
+fn instantiate_self_regions(pcx: pat_ctxt, args: [ty::t]) -> [ty::t] {
+    vec::map(args, {|arg_ty|
+        if ty::type_has_rptrs(arg_ty) {
+            ty::fold_ty(pcx.fcx.ccx.tcx, ty::fm_rptr({|r|
+                alt r {
+                    ty::re_inferred | ty::re_caller(_) { pcx.pat_region }
+                    _ { r }
+                }
+            }), arg_ty)
+        } else {
+            arg_ty
+        }
+    })
+}
+
+fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
+                     subpats: [@ast::pat], expected: ty::t) {
     // Typecheck the path.
-    let tcx = fcx.ccx.tcx;
-    let v_def = lookup_def(fcx, path.span, pat.id);
+    let tcx = pcx.fcx.ccx.tcx;
+    let v_def = lookup_def(pcx.fcx, path.span, pat.id);
     let v_def_ids = ast_util::variant_def_ids(v_def);
     let ctor_tpt = ty::lookup_item_type(tcx, v_def_ids.enm);
-    instantiate_path(fcx, path, ctor_tpt, pat.span, pat.id);
+    instantiate_path(pcx.fcx, path, ctor_tpt, pat.span, pat.id);
 
     // Take the enum type params out of `expected`.
-    alt structure_of(fcx, pat.span, expected) {
+    alt structure_of(pcx.fcx, pat.span, expected) {
       ty::ty_enum(_, expected_tps) {
         let ctor_ty = ty::node_id_to_type(tcx, pat.id);
-        demand::with_substs(fcx, pat.span, expected, ctor_ty,
+        demand::with_substs(pcx.fcx, pat.span, expected, ctor_ty,
                             expected_tps);
         // Get the number of arguments in this enum variant.
-        let arg_types = variant_arg_types(fcx.ccx, pat.span,
+        let arg_types = variant_arg_types(pcx.fcx.ccx, pat.span,
                                           v_def_ids.var, expected_tps);
+        arg_types = instantiate_self_regions(pcx, arg_types);
         let subpats_len = subpats.len(), arg_len = arg_types.len();
         if arg_len > 0u {
             // N-ary variant.
@@ -1475,7 +1499,7 @@ fn check_pat_variant(fcx: @fn_ctxt, map: pat_util::pat_id_map,
             }
 
             vec::iter2(subpats, arg_types) {|subpat, arg_ty|
-                check_pat(fcx, map, subpat, arg_ty);
+                check_pat(pcx, subpat, arg_ty);
             }
         } else if subpats_len > 0u {
             tcx.sess.span_err
@@ -1497,23 +1521,23 @@ fn check_pat_variant(fcx: @fn_ctxt, map: pat_util::pat_id_map,
 
 // Pattern checking is top-down rather than bottom-up so that bindings get
 // their types immediately.
-fn check_pat(fcx: @fn_ctxt, map: pat_util::pat_id_map, pat: @ast::pat,
-             expected: ty::t) {
-    let tcx = fcx.ccx.tcx;
+fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
+    let tcx = pcx.fcx.ccx.tcx;
     alt pat.node {
       ast::pat_wild {
         write_ty(tcx, pat.id, expected);
       }
       ast::pat_lit(lt) {
-        check_expr_with(fcx, lt, expected);
+        check_expr_with(pcx.fcx, lt, expected);
         write_ty(tcx, pat.id, expr_ty(tcx, lt));
       }
       ast::pat_range(begin, end) {
-        check_expr_with(fcx, begin, expected);
-        check_expr_with(fcx, end, expected);
-        let b_ty = resolve_type_vars_if_possible(fcx, expr_ty(tcx, begin));
+        check_expr_with(pcx.fcx, begin, expected);
+        check_expr_with(pcx.fcx, end, expected);
+        let b_ty = resolve_type_vars_if_possible(pcx.fcx,
+                                                 expr_ty(tcx, begin));
         if !ty::same_type(tcx, b_ty, resolve_type_vars_if_possible(
-            fcx, expr_ty(tcx, end))) {
+            pcx.fcx, expr_ty(tcx, end))) {
             tcx.sess.span_err(pat.span, "mismatched types in range");
         } else if !ty::type_is_numeric(b_ty) {
             tcx.sess.span_err(pat.span, "non-numeric type used in range");
@@ -1525,29 +1549,30 @@ fn check_pat(fcx: @fn_ctxt, map: pat_util::pat_id_map, pat: @ast::pat,
       }
       ast::pat_ident(name, sub)
       if !pat_util::pat_is_variant(tcx.def_map, pat) {
-        let vid = lookup_local(fcx, pat.span, pat.id);
+        let vid = lookup_local(pcx.fcx, pat.span, pat.id);
         let typ = ty::mk_var(tcx, vid);
-        typ = demand::simple(fcx, pat.span, expected, typ);
-        let canon_id = map.get(path_to_ident(name));
+        typ = demand::simple(pcx.fcx, pat.span, expected, typ);
+        let canon_id = pcx.map.get(path_to_ident(name));
         if canon_id != pat.id {
-            let ct = ty::mk_var(tcx, lookup_local(fcx, pat.span, canon_id));
-            typ = demand::simple(fcx, pat.span, ct, typ);
+            let tv_id = lookup_local(pcx.fcx, pat.span, canon_id);
+            let ct = ty::mk_var(tcx, tv_id);
+            typ = demand::simple(pcx.fcx, pat.span, ct, typ);
         }
         write_ty(tcx, pat.id, typ);
         alt sub {
-          some(p) { check_pat(fcx, map, p, expected); }
+          some(p) { check_pat(pcx, p, expected); }
           _ {}
         }
       }
       ast::pat_ident(path, _) {
-        check_pat_variant(fcx, map, pat, path, [], expected);
+        check_pat_variant(pcx, pat, path, [], expected);
       }
       ast::pat_enum(path, subpats) {
-        check_pat_variant(fcx, map, pat, path, subpats, expected);
+        check_pat_variant(pcx, pat, path, subpats, expected);
       }
       ast::pat_rec(fields, etc) {
         let ex_fields;
-        alt structure_of(fcx, pat.span, expected) {
+        alt structure_of(pcx.fcx, pat.span, expected) {
           ty::ty_rec(fields) { ex_fields = fields; }
           _ {
             tcx.sess.span_fatal
@@ -1570,7 +1595,9 @@ fn check_pat(fcx: @fn_ctxt, map: pat_util::pat_id_map, pat: @ast::pat,
         }
         for f: ast::field_pat in fields {
             alt vec::find(ex_fields, bind matches(f.ident, _)) {
-              some(field) { check_pat(fcx, map, f.pat, field.mt.ty); }
+              some(field) {
+                check_pat(pcx, f.pat, field.mt.ty);
+              }
               none {
                 tcx.sess.span_fatal(pat.span,
                                     #fmt["mismatched types: did not \
@@ -1583,7 +1610,7 @@ fn check_pat(fcx: @fn_ctxt, map: pat_util::pat_id_map, pat: @ast::pat,
       }
       ast::pat_tup(elts) {
         let ex_elts;
-        alt structure_of(fcx, pat.span, expected) {
+        alt structure_of(pcx.fcx, pat.span, expected) {
           ty::ty_tup(elts) { ex_elts = elts; }
           _ {
             tcx.sess.span_fatal
@@ -1600,13 +1627,17 @@ fn check_pat(fcx: @fn_ctxt, map: pat_util::pat_id_map, pat: @ast::pat,
                       fields", vec::len(ex_elts), e_count]);
         }
         let i = 0u;
-        for elt in elts { check_pat(fcx, map, elt, ex_elts[i]); i += 1u; }
+        for elt in elts {
+            check_pat(pcx, elt, ex_elts[i]);
+            i += 1u;
+        }
+
         write_ty(tcx, pat.id, expected);
       }
       ast::pat_box(inner) {
-        alt structure_of(fcx, pat.span, expected) {
+        alt structure_of(pcx.fcx, pat.span, expected) {
           ty::ty_box(e_inner) {
-            check_pat(fcx, map, inner, e_inner.ty);
+            check_pat(pcx, inner, e_inner.ty);
             write_ty(tcx, pat.id, expected);
           }
           _ {
@@ -1618,9 +1649,9 @@ fn check_pat(fcx: @fn_ctxt, map: pat_util::pat_id_map, pat: @ast::pat,
         }
       }
       ast::pat_uniq(inner) {
-        alt structure_of(fcx, pat.span, expected) {
+        alt structure_of(pcx.fcx, pat.span, expected) {
           ty::ty_uniq(e_inner) {
-            check_pat(fcx, map, inner, e_inner.ty);
+            check_pat(pcx, inner, e_inner.ty);
             write_ty(tcx, pat.id, expected);
           }
           _ {
@@ -2454,16 +2485,25 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
           write_ty(tcx, id, ty::mk_nil(tcx));
           bot = !may_break(body);
       }
-      ast::expr_alt(expr, arms, _) {
-        bot = check_expr(fcx, expr);
+      ast::expr_alt(discrim, arms, _) {
+        bot = check_expr(fcx, discrim);
+
+        let parent_block = tcx.region_map.rvalue_to_block.get(expr.id);
 
         // Typecheck the patterns first, so that we get types for all the
         // bindings.
-        let pattern_ty = ty::expr_ty(tcx, expr);
+        let pattern_ty = ty::expr_ty(tcx, discrim);
         for arm: ast::arm in arms {
-            let id_map = pat_util::pat_id_map(tcx.def_map, arm.pats[0]);
+            let pcx = {
+                fcx: fcx,
+                map: pat_util::pat_id_map(tcx.def_map, arm.pats[0]),
+                alt_region: ty::re_block(parent_block),
+                block_region: ty::re_block(arm.body.node.id),
+                pat_region: ty::re_block(parent_block)
+            };
+
             for p: @ast::pat in arm.pats {
-                check_pat(fcx, id_map, p, pattern_ty);
+                check_pat(pcx, p, pattern_ty);
             }
         }
         // Now typecheck the blocks.
@@ -2797,8 +2837,18 @@ fn check_decl_local(fcx: @fn_ctxt, local: @ast::local) -> bool {
       }
       _ {/* fall through */ }
     }
-    let id_map = pat_util::pat_id_map(fcx.ccx.tcx.def_map, local.node.pat);
-    check_pat(fcx, id_map, local.node.pat, t);
+
+    let block_id = fcx.ccx.tcx.region_map.rvalue_to_block.get(local.node.id);
+    let region = ty::re_block(block_id);
+    let pcx = {
+        fcx: fcx,
+        map: pat_util::pat_id_map(fcx.ccx.tcx.def_map, local.node.pat),
+        alt_region: region,
+        block_region: region,
+        pat_region: region
+    };
+
+    check_pat(pcx, local.node.pat, t);
     ret bot;
 }
 
