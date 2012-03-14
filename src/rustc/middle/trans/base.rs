@@ -2001,10 +2001,12 @@ fn trans_for(cx: block, local: @ast::local, seq: @ast::expr,
 fn trans_while(cx: block, cond: @ast::expr, body: ast::blk)
     -> block {
     let next_cx = sub_block(cx, "while next");
-    let cond_cx = loop_scope_block(cx, cont_self, next_cx,
-                                   "while cond", body.span);
-    let body_cx = scope_block(cond_cx, "while loop body");
-    Br(cx, cond_cx.llbb);
+    let loop_cx = loop_scope_block(cx, cont_self, next_cx,
+                                   "while loop", body.span);
+    let cond_cx = scope_block(loop_cx, "while loop cond");
+    let body_cx = scope_block(loop_cx, "while loop body");
+    Br(cx, loop_cx.llbb);
+    Br(loop_cx, cond_cx.llbb);
     let cond_res = trans_temp_expr(cond_cx, cond);
     let cond_bcx = trans_block_cleanups(cond_res.bcx, cond_cx);
     CondBr(cond_bcx, cond_res.val, body_cx.llbb, next_cx.llbb);
