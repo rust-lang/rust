@@ -56,10 +56,6 @@ str_reserve_shared
 vec_from_buf_shared
 unsupervise
 upcall_cmp_type
-upcall_dynastack_alloc
-upcall_dynastack_alloc_2
-upcall_dynastack_free
-upcall_dynastack_mark
 upcall_fail
 upcall_free
 upcall_validate_box

@@ -56,7 +56,6 @@ RUNTIME_CS_$(1) := \
               rt/rust_srv.cpp \
               rt/rust_kernel.cpp \
               rt/rust_shape.cpp \
-              rt/rust_obstack.cpp \
               rt/rust_abi.cpp \
               rt/rust_cc.cpp \
               rt/rust_debug.cpp \
@@ -76,7 +75,6 @@ RUNTIME_HDR_$(1) := rt/globals.h \
                rt/rust_internal.h \
                rt/rust_util.h \
                rt/rust_env.h \
-               rt/rust_obstack.h \
                rt/rust_unwind.h \
                rt/rust_upcall.h \
                rt/rust_port.h \

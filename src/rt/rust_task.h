@@ -13,7 +13,6 @@
 #include "rust_debug.h"
 #include "rust_internal.h"
 #include "rust_kernel.h"
-#include "rust_obstack.h"
 #include "boxed_region.h"
 #include "rust_stack.h"
 #include "rust_port_selector.h"
@@ -79,8 +78,6 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     bool unwinding;
 
     bool propagate_failure;
-
-    rust_obstack dynastack;
 
     uint32_t cc_counter;
 
