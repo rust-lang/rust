@@ -428,7 +428,6 @@ LLVMIsAConstantStruct
 LLVMIsAConstantVector
 LLVMIsADbgDeclareInst
 LLVMIsADbgInfoIntrinsic
-LLVMIsAEHSelectorInst
 LLVMIsAExtractElementInst
 LLVMIsAExtractValueInst
 LLVMIsAFCmpInst
