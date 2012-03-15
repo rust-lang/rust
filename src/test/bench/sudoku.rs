@@ -50,7 +50,7 @@ fn solve_grid(g: grid_t) {
     fn next_color(g: grid, row: u8, col: u8, start_color: u8) -> bool {
         if start_color < 10u8 {
             // colors not yet used
-            let avail = bitv::create(10u, false);
+            let avail = bitv::bitv(10u, false);
             u8::range(start_color, 10u8) { |color|
                 bitv::set(avail, color as uint, true);
             }
@@ -73,8 +73,8 @@ fn solve_grid(g: grid_t) {
     }
 
     // find colors available in neighbourhood of (row, col)
-    fn drop_colors(g: grid, avail: bitv::t, row: u8, col: u8) {
-        fn drop_color(g: grid, colors: bitv::t, row: u8, col: u8) {
+    fn drop_colors(g: grid, avail: bitv::bitv, row: u8, col: u8) {
+        fn drop_color(g: grid, colors: bitv::bitv, row: u8, col: u8) {
             let color = g[row][col];
             if color != 0u8 { bitv::set(colors, color as uint, false); }
         }
