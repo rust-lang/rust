@@ -24,11 +24,8 @@ class rust_kernel {
 public:
     rust_srv *srv;
 private:
-    // Protects max_task_id and task_table
-    lock_and_signal task_lock;
     // The next task id
     rust_task_id max_task_id;
-    hash_map<rust_task_id, rust_task *> task_table;
 
     // Protects max_port_id and port_table
     lock_and_signal port_lock;
@@ -75,9 +72,7 @@ public:
     void win32_require(LPCTSTR fn, BOOL ok);
 #endif
 
-    void register_task(rust_task *task);
-    rust_task *get_task_by_id(rust_task_id id);
-    void release_task_id(rust_task_id tid);
+    rust_task_id generate_task_id();
 
     rust_port_id register_port(rust_port *port);
     rust_port *get_port_by_id(rust_port_id id);

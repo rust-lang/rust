@@ -146,8 +146,6 @@ rust_task_thread::reap_dead_tasks() {
     // from the scheduler, which may end up trying to take this lock
     lock.unlock();
 
-    // Release the task from the kernel so nobody else can get at it
-    kernel->release_task_id(dead_task->id);
     dead_task->delete_all_stacks();
     // Deref the task, which may cause it to request us to release it
     dead_task->deref();
@@ -316,7 +314,7 @@ rust_task_thread::create_task(rust_task *spawner, const char *name,
         newborn_tasks.append(task);
     }
 
-    kernel->register_task(task);
+    task->id = kernel->generate_task_id();
     return task;
 }
 

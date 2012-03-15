@@ -166,51 +166,11 @@ rust_kernel::fail() {
     }
 }
 
-void
-rust_kernel::register_task(rust_task *task) {
-    uintptr_t new_live_tasks;
-    {
-        scoped_lock with(task_lock);
-        task->id = max_task_id++;
-        task_table.put(task->id, task);
-        new_live_tasks = task_table.count();
-    }
-    K(srv, task->id != INTPTR_MAX, "Hit the maximum task id");
-    KLOG_("Registered task %" PRIdPTR, task->id);
-    KLOG_("Total outstanding tasks: %d", new_live_tasks);
-}
-
-void
-rust_kernel::release_task_id(rust_task_id id) {
-    KLOG_("Releasing task %" PRIdPTR, id);
-    uintptr_t new_live_tasks;
-    {
-        scoped_lock with(task_lock);
-        task_table.remove(id);
-        new_live_tasks = task_table.count();
-    }
-    KLOG_("Total outstanding tasks: %d", new_live_tasks);
-}
-
-rust_task *
-rust_kernel::get_task_by_id(rust_task_id id) {
-    scoped_lock with(task_lock);
-    rust_task *task = NULL;
-    // get leaves task unchanged if not found.
-    task_table.get(id, &task);
-    if(task) {
-        if(task->get_ref_count() == 0) {
-            // FIXME: I don't think this is possible.
-            // this means the destructor is running, since the destructor
-            // grabs the kernel lock to unregister the task. Pretend this
-            // doesn't actually exist.
-            return NULL;
-        }
-        else {
-            task->ref();
-        }
-    }
-    return task;
+rust_task_id
+rust_kernel::generate_task_id() {
+    rust_task_id id = sync::increment(max_task_id);
+    K(srv, id != INTPTR_MAX, "Hit the maximum task id");
+    return id;
 }
 
 rust_port_id
