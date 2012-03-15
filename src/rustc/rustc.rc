@@ -126,7 +126,6 @@ mod metadata {
     mod tyencode;
     mod tydecode;
     mod astencode;
-    mod astencode_gen;
     mod encoder;
     mod decoder;
     mod creader;

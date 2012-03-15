@@ -16,11 +16,6 @@ CARGO_INPUTS := $(wildcard $(S)src/cargo/*rs)
 RUSTDOC_CRATE := $(S)src/rustdoc/rustdoc.rc
 RUSTDOC_INPUTS := $(wildcard $(S)src/rustdoc/*.rs)
 
-# Serializer, generates serialization code
-# (Should eventually move into a compiler ext)
-SERIALIZER_CRATE := $(S)src/serializer/serializer.rc
-SERIALIZER_INPUTS := $(wildcard $(S)src/serializer/*.rs)
-
 # FIXME: These are only built for the host arch. Eventually we'll
 # have tools that need to built for other targets.
 define TOOLS_STAGE_N
@@ -84,21 +79,6 @@ $$(TBIN$(1)_T_$(4)_H_$(3))/rustdoc$$(X):			\
 
 $$(HBIN$(2)_H_$(4))/rustdoc$$(X):				\
 		$$(TBIN$(1)_T_$(4)_H_$(3))/rustdoc$$(X)	\
-		$$(HSREQ$(2)_H_$(4))
-	@$$(call E, cp: $$@)
-	$$(Q)cp $$< $$@
-
-$$(TBIN$(1)_T_$(4)_H_$(3))/serializer$$(X):			\
-		$$(SERIALIZER_CRATE) $$(SERIALIZER_INPUTS)	\
-		$$(TSREQ$(1)_T_$(4)_H_$(3))					\
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_CORELIB)	\
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_STDLIB)	\
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBRUSTC)
-	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)_T_$(4)_H_$(3)) -o $$@ $$<
-
-$$(HBIN$(2)_H_$(4))/serializer$$(X):				\
-		$$(TBIN$(1)_T_$(4)_H_$(3))/serializer$$(X)	\
 		$$(HSREQ$(2)_H_$(4))
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@

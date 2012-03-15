@@ -414,12 +414,7 @@ FUZZ := $(HBIN3_H_$(CFG_HOST_TRIPLE))/fuzzer$(X)
 CARGO := $(HBIN3_H_$(CFG_HOST_TRIPLE))/cargo$(X)
 RUSTDOC := $(HBIN3_H_$(CFG_HOST_TRIPLE))/rustdoc$(X)
 
-all: rustc $(GENERATED) docs $(FUZZ) $(CARGO) $(RUSTDOC) serializer
-
-serializer: $(HBIN1_H_$(CFG_HOST_TRIPLE))/serializer$(X) \
-            $(SREQ1_T_$(CFG_HOST_TRIPLE)_H_$(CFG_HOST_TRIPLE))
-# ^^ Note: we use HBIN1 because that is built by the snapshot compiler
-#    and sometimes we need the serializer to build the later stages.
+all: rustc $(GENERATED) docs $(FUZZ) $(CARGO) $(RUSTDOC)
 
 endif
 
