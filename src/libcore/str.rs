@@ -311,7 +311,11 @@ Converts a string to a vector of bytes
 The result vector is not null-terminated.
 "]
 fn bytes(s: str) -> [u8] unsafe {
-    as_bytes(s) { |v| vec::slice(v, 0u, vec::len(v) - 1u) }
+    let mut s_copy = s;
+    let mut v: [u8] = ::unsafe::reinterpret_cast(s_copy);
+    ::unsafe::leak(s_copy);
+    vec::unsafe::set_len(v, len(s));
+    ret v;
 }
 
 #[doc = "Convert a string to a vector of characters"]
