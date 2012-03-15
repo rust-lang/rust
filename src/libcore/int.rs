@@ -37,7 +37,7 @@ pure fn nonnegative(x: int) -> bool { ret x >= 0; }
 
 // FIXME: Make sure this works with negative integers.
 #[doc = "Produce a uint suitable for use in a hash table"]
-fn hash(x: int) -> uint { ret x as uint; }
+pure fn hash(x: int) -> uint { ret x as uint; }
 
 #[doc = "Iterate over the range `[lo..hi)`"]
 fn range(lo: int, hi: int, it: fn(int)) {
@@ -107,7 +107,7 @@ fn pow(base: int, exponent: uint) -> int {
 }
 
 #[doc = "Computes the bitwise complement"]
-fn compl(i: int) -> int {
+pure fn compl(i: int) -> int {
     uint::compl(i as uint) as int
 }
 

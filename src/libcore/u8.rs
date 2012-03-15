@@ -28,7 +28,7 @@ fn range(lo: u8, hi: u8, it: fn(u8)) {
 }
 
 #[doc = "Computes the bitwise complement"]
-fn compl(i: u8) -> u8 {
+pure fn compl(i: u8) -> u8 {
     max_value ^ i
 }
 

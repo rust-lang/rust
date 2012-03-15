@@ -31,11 +31,11 @@ fn range(lo: i64, hi: i64, it: fn(i64)) {
 }
 
 #[doc = "Computes the bitwise complement"]
-fn compl(i: i64) -> i64 {
+pure fn compl(i: i64) -> i64 {
     u64::compl(i as u64) as i64
 }
 
 #[doc = "Computes the absolute value"]
-fn abs(i: i64) -> i64 {
+pure fn abs(i: i64) -> i64 {
     if negative(i) { -i } else { i }
 }

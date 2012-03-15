@@ -1,14 +1,14 @@
-fn first<T:copy, U:copy>(pair: (T, U)) -> T {
+pure fn first<T:copy, U:copy>(pair: (T, U)) -> T {
     let (t, _) = pair;
     ret t;
 }
 
-fn second<T:copy, U:copy>(pair: (T, U)) -> U {
+pure fn second<T:copy, U:copy>(pair: (T, U)) -> U {
     let (_, u) = pair;
     ret u;
 }
 
-fn swap<T:copy, U:copy>(pair: (T, U)) -> (U, T) {
+pure fn swap<T:copy, U:copy>(pair: (T, U)) -> (U, T) {
     let (t, u) = pair;
     ret (u, t);
 }

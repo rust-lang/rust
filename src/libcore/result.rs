@@ -15,7 +15,7 @@ Get the value out of a successful result
 
 If the result is an error
 "]
-fn get<T: copy, U>(res: result<T, U>) -> T {
+pure fn get<T: copy, U>(res: result<T, U>) -> T {
     alt res {
       ok(t) { t }
       err(_) {
@@ -33,7 +33,7 @@ Get the value out of an error result
 
 If the result is not an error
 "]
-fn get_err<T, U: copy>(res: result<T, U>) -> U {
+pure fn get_err<T, U: copy>(res: result<T, U>) -> U {
     alt res {
       err(u) { u }
       ok(_) {

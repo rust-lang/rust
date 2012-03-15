@@ -74,7 +74,7 @@ is either `x/y` or `x/y + 1`.
 pure fn div_floor(x: uint, y: uint) -> uint { ret x / y; }
 
 #[doc = "Produce a uint suitable for use in a hash table"]
-fn hash(x: uint) -> uint { ret x; }
+pure fn hash(x: uint) -> uint { ret x; }
 
 #[doc = "Iterate over the range [`lo`..`hi`)"]
 #[inline(always)]
@@ -188,7 +188,7 @@ fn to_str(num: uint, radix: uint) -> str {
 fn str(i: uint) -> str { ret to_str(i, 10u); }
 
 #[doc = "Computes the bitwise complement"]
-fn compl(i: uint) -> uint {
+pure fn compl(i: uint) -> uint {
     max_value ^ i
 }
 

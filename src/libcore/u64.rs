@@ -82,6 +82,6 @@ fn from_str(buf: str, radix: u64) -> option<u64> {
 }
 
 #[doc = "Computes the bitwise complement"]
-fn compl(i: u64) -> u64 {
+pure fn compl(i: u64) -> u64 {
     max_value ^ i
 }
