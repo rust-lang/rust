@@ -76,7 +76,7 @@ fn eq_res_info(a: res_info, b: res_info) -> bool {
     ret a.did.crate == b.did.crate && a.did.node == b.did.node && a.t == b.t;
 }
 
-fn mk_global(ccx: crate_ctxt, name: str, llval: ValueRef, internal: bool) ->
+fn mk_global(ccx: @crate_ctxt, name: str, llval: ValueRef, internal: bool) ->
    ValueRef {
     let llglobal =
         str::as_buf(name,
@@ -101,7 +101,7 @@ fn mk_global(ccx: crate_ctxt, name: str, llval: ValueRef, internal: bool) ->
 //
 // FIXME: Use this in dynamic_size_of() as well.
 
-fn largest_variants(ccx: crate_ctxt, tag_id: ast::def_id) -> [uint] {
+fn largest_variants(ccx: @crate_ctxt, tag_id: ast::def_id) -> [uint] {
     // Compute the minimum and maximum size and alignment for each variant.
     //
     // FIXME: We could do better here; e.g. we know that any variant that
@@ -180,7 +180,7 @@ fn round_up(size: u16, align: u8) -> u16 {
 
 type size_align = {size: u16, align: u8};
 
-fn compute_static_enum_size(ccx: crate_ctxt, largest_variants: [uint],
+fn compute_static_enum_size(ccx: @crate_ctxt, largest_variants: [uint],
                            did: ast::def_id) -> size_align {
     let max_size = 0u16;
     let max_align = 1u8;
@@ -220,7 +220,7 @@ enum enum_kind {
     tk_complex  // N variants, no data
 }
 
-fn enum_kind(ccx: crate_ctxt, did: ast::def_id) -> enum_kind {
+fn enum_kind(ccx: @crate_ctxt, did: ast::def_id) -> enum_kind {
     let variants = ty::enum_variants(ccx.tcx, did);
     if vec::any(*variants) {|v| vec::len(v.args) > 0u} {
         if vec::len(*variants) == 1u { tk_newtype }
@@ -294,7 +294,7 @@ fn add_substr(&dest: [u8], src: [u8]) {
     dest += src;
 }
 
-fn shape_of(ccx: crate_ctxt, t: ty::t, ty_param_map: [uint]) -> [u8] {
+fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint]) -> [u8] {
     let s = [];
 
     alt ty::get(t).struct {
@@ -438,7 +438,7 @@ fn shape_of(ccx: crate_ctxt, t: ty::t, ty_param_map: [uint]) -> [u8] {
 }
 
 // FIXME: We might discover other variants as we traverse these. Handle this.
-fn shape_of_variant(ccx: crate_ctxt, v: ty::variant_info,
+fn shape_of_variant(ccx: @crate_ctxt, v: ty::variant_info,
                     ty_param_count: uint) -> [u8] {
     let ty_param_map = [];
     let i = 0u;
@@ -449,7 +449,7 @@ fn shape_of_variant(ccx: crate_ctxt, v: ty::variant_info,
     ret s;
 }
 
-fn gen_enum_shapes(ccx: crate_ctxt) -> ValueRef {
+fn gen_enum_shapes(ccx: @crate_ctxt) -> ValueRef {
     // Loop over all the enum variants and write their shapes into a
     // data buffer. As we do this, it's possible for us to discover
     // new enums, so we must do this first.
@@ -547,7 +547,7 @@ fn gen_enum_shapes(ccx: crate_ctxt) -> ValueRef {
     ret mk_global(ccx, "tag_shapes", C_bytes(header), true);
 }
 
-fn gen_resource_shapes(ccx: crate_ctxt) -> ValueRef {
+fn gen_resource_shapes(ccx: @crate_ctxt) -> ValueRef {
     let dtors = [];
     let i = 0u;
     let len = interner::len(ccx.shape_cx.resources);
@@ -560,7 +560,7 @@ fn gen_resource_shapes(ccx: crate_ctxt) -> ValueRef {
     ret mk_global(ccx, "resource_shapes", C_struct(dtors), true);
 }
 
-fn gen_shape_tables(ccx: crate_ctxt) {
+fn gen_shape_tables(ccx: @crate_ctxt) {
     let lltagstable = gen_enum_shapes(ccx);
     let llresourcestable = gen_resource_shapes(ccx);
     trans::common::set_struct_body(ccx.shape_cx.llshapetablesty,
@@ -623,21 +623,21 @@ fn metrics(bcx: block, t: ty::t) -> metrics {
 }
 
 // Returns the real size of the given type for the current target.
-fn llsize_of_real(cx: crate_ctxt, t: TypeRef) -> uint {
+fn llsize_of_real(cx: @crate_ctxt, t: TypeRef) -> uint {
     ret llvm::LLVMStoreSizeOfType(cx.td.lltd, t) as uint;
 }
 
 // Returns the real alignment of the given type for the current target.
-fn llalign_of_real(cx: crate_ctxt, t: TypeRef) -> uint {
+fn llalign_of_real(cx: @crate_ctxt, t: TypeRef) -> uint {
     ret llvm::LLVMPreferredAlignmentOfType(cx.td.lltd, t) as uint;
 }
 
-fn llsize_of(cx: crate_ctxt, t: TypeRef) -> ValueRef {
+fn llsize_of(cx: @crate_ctxt, t: TypeRef) -> ValueRef {
     ret llvm::LLVMConstIntCast(lib::llvm::llvm::LLVMSizeOf(t), cx.int_type,
                                False);
 }
 
-fn llalign_of(cx: crate_ctxt, t: TypeRef) -> ValueRef {
+fn llalign_of(cx: @crate_ctxt, t: TypeRef) -> ValueRef {
     ret llvm::LLVMConstIntCast(lib::llvm::llvm::LLVMAlignOf(t), cx.int_type,
                                False);
 }
@@ -648,7 +648,7 @@ fn llalign_of(cx: crate_ctxt, t: TypeRef) -> ValueRef {
 // FIXME: Migrate trans over to use this.
 
 // Computes the size of the data part of a non-dynamically-sized enum.
-fn static_size_of_enum(cx: crate_ctxt, t: ty::t) -> uint {
+fn static_size_of_enum(cx: @crate_ctxt, t: ty::t) -> uint {
     if cx.enum_sizes.contains_key(t) { ret cx.enum_sizes.get(t); }
     alt ty::get(t).struct {
       ty::ty_enum(tid, subtys) {

@@ -61,7 +61,7 @@ enum dest {
     ignore,
 }
 
-fn dest_str(ccx: crate_ctxt, d: dest) -> str {
+fn dest_str(ccx: @crate_ctxt, d: dest) -> str {
     alt d {
       by_val(v) { #fmt["by_val(%s)", val_str(ccx.tn, *v)] }
       save_in(v) { #fmt["save_in(%s)", val_str(ccx.tn, v)] }
@@ -156,7 +156,7 @@ fn sanitize(s: str) -> str {
 }
 
 
-fn log_fn_time(ccx: crate_ctxt, name: str, start: time::timeval,
+fn log_fn_time(ccx: @crate_ctxt, name: str, start: time::timeval,
                end: time::timeval) {
     let elapsed = 1000 * ((end.sec - start.sec) as int) +
         ((end.usec as int) - (start.usec as int)) / 1000;
@@ -276,7 +276,7 @@ fn dynastack_alloca(cx: block, t: TypeRef, n: ValueRef, ty: ty::t) ->
     ret PointerCast(dy_cx, llresult, T_ptr(t));
 }
 
-fn mk_obstack_token(ccx: crate_ctxt, fcx: fn_ctxt) ->
+fn mk_obstack_token(ccx: @crate_ctxt, fcx: fn_ctxt) ->
    ValueRef {
     let cx = raw_block(fcx, fcx.lldynamicallocas);
     ret Call(cx, ccx.upcalls.dynastack_mark, []);
@@ -620,7 +620,7 @@ fn get_tydesc(cx: block, t: ty::t, escapes: bool,
     ret rslt(cx, info.tydesc);
 }
 
-fn get_static_tydesc(ccx: crate_ctxt, t: ty::t, ty_params: [uint])
+fn get_static_tydesc(ccx: @crate_ctxt, t: ty::t, ty_params: [uint])
     -> @tydesc_info {
     alt ccx.tydescs.find(t) {
       some(info) { ret info; }
@@ -677,7 +677,7 @@ fn set_glue_inlining(f: ValueRef, t: ty::t) {
 
 
 // Generates the declaration for (but doesn't emit) a type descriptor.
-fn declare_tydesc(ccx: crate_ctxt, t: ty::t, ty_params: [uint])
+fn declare_tydesc(ccx: @crate_ctxt, t: ty::t, ty_params: [uint])
     -> @tydesc_info {
     log(debug, "+++ declare_tydesc " + ty_to_str(ccx.tcx, t));
     let llsize;
@@ -716,7 +716,7 @@ fn declare_tydesc(ccx: crate_ctxt, t: ty::t, ty_params: [uint])
 
 type glue_helper = fn@(block, ValueRef, ty::t);
 
-fn declare_generic_glue(ccx: crate_ctxt, t: ty::t, llfnty: TypeRef,
+fn declare_generic_glue(ccx: @crate_ctxt, t: ty::t, llfnty: TypeRef,
                         name: str) -> ValueRef {
     let name = name;
     let fn_nm;
@@ -729,7 +729,7 @@ fn declare_generic_glue(ccx: crate_ctxt, t: ty::t, llfnty: TypeRef,
     ret llfn;
 }
 
-fn make_generic_glue_inner(ccx: crate_ctxt, t: ty::t,
+fn make_generic_glue_inner(ccx: @crate_ctxt, t: ty::t,
                            llfn: ValueRef, helper: glue_helper,
                            ty_params: [uint]) -> ValueRef {
     let fcx = new_fn_ctxt(ccx, [], llfn, none);
@@ -769,7 +769,7 @@ fn make_generic_glue_inner(ccx: crate_ctxt, t: ty::t,
     ret llfn;
 }
 
-fn make_generic_glue(ccx: crate_ctxt, t: ty::t, llfn: ValueRef,
+fn make_generic_glue(ccx: @crate_ctxt, t: ty::t, llfn: ValueRef,
                      helper: glue_helper, ty_params: [uint], name: str)
     -> ValueRef {
     if !ccx.sess.opts.stats {
@@ -784,7 +784,7 @@ fn make_generic_glue(ccx: crate_ctxt, t: ty::t, llfn: ValueRef,
     ret llval;
 }
 
-fn emit_tydescs(ccx: crate_ctxt) {
+fn emit_tydescs(ccx: @crate_ctxt) {
     ccx.tydescs.items {|key, val|
         let glue_fn_ty = T_ptr(T_glue_fn(ccx));
         let ti = val;
@@ -1026,7 +1026,7 @@ fn decr_refcnt_maybe_free(bcx: block, box_ptr: ValueRef, t: ty::t) -> block {
 }
 
 // Structural comparison: a rather involved form of glue.
-fn maybe_name_value(cx: crate_ctxt, v: ValueRef, s: str) {
+fn maybe_name_value(cx: @crate_ctxt, v: ValueRef, s: str) {
     if cx.sess.opts.save_temps {
         let _: () = str::as_buf(s, {|buf| llvm::LLVMSetValueName(v, buf) });
     }
@@ -1237,21 +1237,21 @@ fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
     ret cx;
 }
 
-fn lazily_emit_all_tydesc_glue(ccx: crate_ctxt,
+fn lazily_emit_all_tydesc_glue(ccx: @crate_ctxt,
                                static_ti: option<@tydesc_info>) {
     lazily_emit_tydesc_glue(ccx, abi::tydesc_field_take_glue, static_ti);
     lazily_emit_tydesc_glue(ccx, abi::tydesc_field_drop_glue, static_ti);
     lazily_emit_tydesc_glue(ccx, abi::tydesc_field_free_glue, static_ti);
 }
 
-fn lazily_emit_all_generic_info_tydesc_glues(ccx: crate_ctxt,
+fn lazily_emit_all_generic_info_tydesc_glues(ccx: @crate_ctxt,
                                              gi: generic_info) {
     for ti: option<@tydesc_info> in gi.static_tis {
         lazily_emit_all_tydesc_glue(ccx, ti);
     }
 }
 
-fn lazily_emit_tydesc_glue(ccx: crate_ctxt, field: int,
+fn lazily_emit_tydesc_glue(ccx: @crate_ctxt, field: int,
                            static_ti: option<@tydesc_info>) {
     alt static_ti {
       none { }
@@ -1571,7 +1571,7 @@ fn store_temp_expr(cx: block, action: copy_action, dst: ValueRef,
     ret move_val(cx, action, dst, src, t);
 }
 
-fn trans_crate_lit(cx: crate_ctxt, lit: ast::lit) -> ValueRef {
+fn trans_crate_lit(cx: @crate_ctxt, lit: ast::lit) -> ValueRef {
     alt lit.node {
       ast::lit_int(i, t) { C_integral(T_int_ty(cx, t), i as u64, True) }
       ast::lit_uint(u, t) { C_integral(T_uint_ty(cx, t), u, False) }
@@ -2107,7 +2107,7 @@ fn trans_external_path(cx: block, did: ast::def_id,
                          type_of_ty_param_bounds_and_ty(ccx, tpt));
 }
 
-fn monomorphic_fn(ccx: crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
+fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
                   dicts: option<typeck::dict_res>)
     -> option<{llfn: ValueRef, fty: ty::t}> {
     let substs = vec::map(substs, {|t|
@@ -2171,7 +2171,7 @@ fn monomorphic_fn(ccx: crate_ctxt, fn_id: ast::def_id, substs: [ty::t],
 }
 
 // FIXME[mono] Only actually translate things that are not generic
-fn maybe_instantiate_inline(ccx: crate_ctxt, fn_id: ast::def_id)
+fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id)
     -> ast::def_id {
     alt ccx.external.find(fn_id) {
       some(some(node_id)) {
@@ -2300,7 +2300,7 @@ fn lval_static_fn(bcx: block, fn_id: ast::def_id, id: ast::node_id,
     ret {bcx: bcx, val: val, kind: owned, env: null_env, generic: gen};
 }
 
-fn lookup_discriminant(ccx: crate_ctxt, vid: ast::def_id) -> ValueRef {
+fn lookup_discriminant(ccx: @crate_ctxt, vid: ast::def_id) -> ValueRef {
     alt ccx.discrims.find(vid) {
       none {
         // It's an external discriminant that we haven't seen yet.
@@ -3947,7 +3947,7 @@ fn mk_standard_basic_blocks(llfn: ValueRef) ->
 //  - create_llargs_for_fn_args.
 //  - new_fn_ctxt
 //  - trans_args
-fn new_fn_ctxt_w_id(ccx: crate_ctxt, path: path,
+fn new_fn_ctxt_w_id(ccx: @crate_ctxt, path: path,
                     llfndecl: ValueRef, id: ast::node_id,
                     maybe_self_id: option<@ast::expr>,
                     param_substs: option<param_substs>,
@@ -3978,7 +3978,7 @@ fn new_fn_ctxt_w_id(ccx: crate_ctxt, path: path,
           ccx: ccx};
 }
 
-fn new_fn_ctxt(ccx: crate_ctxt, path: path, llfndecl: ValueRef,
+fn new_fn_ctxt(ccx: @crate_ctxt, path: path, llfndecl: ValueRef,
                sp: option<span>) -> fn_ctxt {
     ret new_fn_ctxt_w_id(ccx, path, llfndecl, -1, none, none, sp);
 }
@@ -4098,7 +4098,7 @@ enum self_arg { impl_self(ty::t), no_self, }
 // trans_closure: Builds an LLVM function out of a source function.
 // If the function closes over its environment a closure will be
 // returned.
-fn trans_closure(ccx: crate_ctxt, path: path, decl: ast::fn_decl,
+fn trans_closure(ccx: @crate_ctxt, path: path, decl: ast::fn_decl,
                  body: ast::blk, llfndecl: ValueRef,
                  ty_self: self_arg,
                  tps_bounds: [ty::param_bounds],
@@ -4147,7 +4147,7 @@ fn trans_closure(ccx: crate_ctxt, path: path, decl: ast::fn_decl,
 
 // trans_fn: creates an LLVM function corresponding to a source language
 // function.
-fn trans_fn(ccx: crate_ctxt,
+fn trans_fn(ccx: @crate_ctxt,
             path: path,
             decl: ast::fn_decl,
             body: ast::blk,
@@ -4172,7 +4172,7 @@ fn trans_fn(ccx: crate_ctxt,
     }
 }
 
-fn trans_res_ctor(ccx: crate_ctxt, path: path, dtor: ast::fn_decl,
+fn trans_res_ctor(ccx: @crate_ctxt, path: path, dtor: ast::fn_decl,
                   ctor_id: ast::node_id, tps_bounds: [ty::param_bounds],
                   param_substs: option<param_substs>, llfndecl: ValueRef) {
     // Create a function for the constructor
@@ -4206,7 +4206,7 @@ fn trans_res_ctor(ccx: crate_ctxt, path: path, dtor: ast::fn_decl,
 }
 
 
-fn trans_enum_variant(ccx: crate_ctxt, enum_id: ast::node_id,
+fn trans_enum_variant(ccx: @crate_ctxt, enum_id: ast::node_id,
                       variant: ast::variant, disr: int, is_degen: bool,
                       ty_params: [ast::ty_param],
                       param_substs: option<param_substs>,
@@ -4275,7 +4275,7 @@ fn trans_enum_variant(ccx: crate_ctxt, enum_id: ast::node_id,
 // FIXME: this should do some structural hash-consing to avoid
 // duplicate constants. I think. Maybe LLVM has a magical mode
 // that does so later on?
-fn trans_const_expr(cx: crate_ctxt, e: @ast::expr) -> ValueRef {
+fn trans_const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
     alt e.node {
       ast::expr_lit(lit) { ret trans_crate_lit(cx, *lit); }
       ast::expr_binary(b, e1, e2) {
@@ -4369,7 +4369,7 @@ fn trans_const_expr(cx: crate_ctxt, e: @ast::expr) -> ValueRef {
     }
 }
 
-fn trans_const(ccx: crate_ctxt, e: @ast::expr, id: ast::node_id) {
+fn trans_const(ccx: @crate_ctxt, e: @ast::expr, id: ast::node_id) {
     let v = trans_const_expr(ccx, e);
 
     // The scalars come back as 1st class LLVM vals
@@ -4379,7 +4379,7 @@ fn trans_const(ccx: crate_ctxt, e: @ast::expr, id: ast::node_id) {
     llvm::LLVMSetGlobalConstant(g, True);
 }
 
-fn trans_item(ccx: crate_ctxt, item: ast::item) {
+fn trans_item(ccx: @crate_ctxt, item: ast::item) {
     let path = alt check ccx.tcx.items.get(item.id) {
       ast_map::node_item(_, p) { p }
     };
@@ -4513,11 +4513,11 @@ fn trans_item(ccx: crate_ctxt, item: ast::item) {
 // separate modules in the compiled program.  That's because modules exist
 // only as a convenience for humans working with the code, to organize names
 // and control visibility.
-fn trans_mod(ccx: crate_ctxt, m: ast::_mod) {
+fn trans_mod(ccx: @crate_ctxt, m: ast::_mod) {
     for item in m.items { trans_item(ccx, *item); }
 }
 
-fn compute_ii_method_info(ccx: crate_ctxt,
+fn compute_ii_method_info(ccx: @crate_ctxt,
                           impl_did: ast::def_id,
                           m: @ast::method,
                           f: fn(ty::t, [ty::param_bounds], ast_map::path)) {
@@ -4534,7 +4534,7 @@ fn get_pair_fn_ty(llpairty: TypeRef) -> TypeRef {
     ret struct_elt(llpairty, 0u);
 }
 
-fn register_fn(ccx: crate_ctxt, sp: span, path: path, flav: str,
+fn register_fn(ccx: @crate_ctxt, sp: span, path: path, flav: str,
                ty_params: [ast::ty_param], node_id: ast::node_id)
     -> ValueRef {
     let t = ty::node_id_to_type(ccx.tcx, node_id);
@@ -4542,11 +4542,12 @@ fn register_fn(ccx: crate_ctxt, sp: span, path: path, flav: str,
     register_fn_full(ccx, sp, path, flav, bnds, node_id, t)
 }
 
-fn param_bounds(ccx: crate_ctxt, tps: [ast::ty_param]) -> [ty::param_bounds] {
+fn param_bounds(ccx: @crate_ctxt, tps: [ast::ty_param])
+        -> [ty::param_bounds] {
     vec::map(tps) {|tp| ccx.tcx.ty_param_bounds.get(tp.id) }
 }
 
-fn register_fn_full(ccx: crate_ctxt, sp: span, path: path, flav: str,
+fn register_fn_full(ccx: @crate_ctxt, sp: span, path: path, flav: str,
                     bnds: [ty::param_bounds], node_id: ast::node_id,
                     node_type: ty::t) -> ValueRef {
     let llfty = type_of_fn_from_ty(ccx, node_type, bnds);
@@ -4554,7 +4555,7 @@ fn register_fn_full(ccx: crate_ctxt, sp: span, path: path, flav: str,
                        lib::llvm::CCallConv, llfty)
 }
 
-fn register_fn_fuller(ccx: crate_ctxt, sp: span, path: path, _flav: str,
+fn register_fn_fuller(ccx: @crate_ctxt, sp: span, path: path, _flav: str,
                       node_id: ast::node_id, node_type: ty::t,
                       cc: lib::llvm::CallConv, llfty: TypeRef) -> ValueRef {
     let ps: str = mangle_exported_name(ccx, path, node_type);
@@ -4571,7 +4572,7 @@ fn register_fn_fuller(ccx: crate_ctxt, sp: span, path: path, _flav: str,
 
 // Create a _rust_main(args: [str]) function which will be called from the
 // runtime rust_start function
-fn create_main_wrapper(ccx: crate_ctxt, sp: span, main_llfn: ValueRef,
+fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
                        main_node_type: ty::t) {
 
     if ccx.main_fn != none::<ValueRef> {
@@ -4589,7 +4590,7 @@ fn create_main_wrapper(ccx: crate_ctxt, sp: span, main_llfn: ValueRef,
     ccx.main_fn = some(llfn);
     create_entry_fn(ccx, llfn);
 
-    fn create_main(ccx: crate_ctxt, main_llfn: ValueRef,
+    fn create_main(ccx: @crate_ctxt, main_llfn: ValueRef,
                    takes_argv: bool) -> ValueRef {
         let unit_ty = ty::mk_str(ccx.tcx);
         let vecarg_ty: ty::arg =
@@ -4617,7 +4618,7 @@ fn create_main_wrapper(ccx: crate_ctxt, sp: span, main_llfn: ValueRef,
         ret llfdecl;
     }
 
-    fn create_entry_fn(ccx: crate_ctxt, rust_main: ValueRef) {
+    fn create_entry_fn(ccx: @crate_ctxt, rust_main: ValueRef) {
         #[cfg(target_os = "win32")]
         fn main_name() -> str { ret "WinMain@16"; }
         #[cfg(target_os = "macos")]
@@ -4669,13 +4670,13 @@ fn fill_fn_pair(bcx: block, pair: ValueRef, llfn: ValueRef,
     Store(bcx, llenvblobptr, env_cell);
 }
 
-fn item_path(ccx: crate_ctxt, i: @ast::item) -> path {
+fn item_path(ccx: @crate_ctxt, i: @ast::item) -> path {
     *alt check ccx.tcx.items.get(i.id) {
       ast_map::node_item(_, p) { p }
     } + [path_name(i.ident)]
 }
 
-fn get_item_val(ccx: crate_ctxt, id: ast::node_id) -> ValueRef {
+fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
     alt ccx.item_vals.find(id) {
       some(v) { v }
       none {
@@ -4760,7 +4761,7 @@ fn get_item_val(ccx: crate_ctxt, id: ast::node_id) -> ValueRef {
 }
 
 // The constant translation pass.
-fn trans_constant(ccx: crate_ctxt, it: @ast::item) {
+fn trans_constant(ccx: @crate_ctxt, it: @ast::item) {
     alt it.node {
       ast::item_enum(variants, _) {
         let vi = ty::enum_variants(ccx.tcx, {crate: ast::local_crate,
@@ -4796,7 +4797,7 @@ fn trans_constant(ccx: crate_ctxt, it: @ast::item) {
     }
 }
 
-fn trans_constants(ccx: crate_ctxt, crate: @ast::crate) {
+fn trans_constants(ccx: @crate_ctxt, crate: @ast::crate) {
     visit::visit_crate(*crate, (), visit::mk_simple_visitor(@{
         visit_item: bind trans_constant(ccx, _)
         with *visit::default_simple_visitor()
@@ -4808,7 +4809,7 @@ fn vp2i(cx: block, v: ValueRef) -> ValueRef {
     ret PtrToInt(cx, v, ccx.int_type);
 }
 
-fn p2i(ccx: crate_ctxt, v: ValueRef) -> ValueRef {
+fn p2i(ccx: @crate_ctxt, v: ValueRef) -> ValueRef {
     ret llvm::LLVMConstPtrToInt(v, ccx.int_type);
 }
 
@@ -4872,7 +4873,7 @@ fn trap(bcx: block) {
     }
 }
 
-fn create_module_map(ccx: crate_ctxt) -> ValueRef {
+fn create_module_map(ccx: @crate_ctxt) -> ValueRef {
     let elttype = T_struct([ccx.int_type, ccx.int_type]);
     let maptype = T_array(elttype, ccx.module_data.size() + 1u);
     let map = str::as_buf("_rust_mod_map", {|buf|
@@ -4911,7 +4912,7 @@ fn decl_crate_map(sess: session::session, mapname: str,
 }
 
 // FIXME use hashed metadata instead of crate names once we have that
-fn fill_crate_map(ccx: crate_ctxt, map: ValueRef) {
+fn fill_crate_map(ccx: @crate_ctxt, map: ValueRef) {
     let subcrates: [ValueRef] = [];
     let i = 1;
     let cstore = ccx.sess.cstore;
@@ -4929,7 +4930,7 @@ fn fill_crate_map(ccx: crate_ctxt, map: ValueRef) {
          C_array(ccx.int_type, subcrates)]));
 }
 
-fn write_metadata(cx: crate_ctxt, crate: @ast::crate) {
+fn write_metadata(cx: @crate_ctxt, crate: @ast::crate) {
     if !cx.sess.building_library { ret; }
     let llmeta = C_bytes(metadata::encoder::encode_metadata(cx, crate));
     let llconst = C_struct([llmeta]);
@@ -4952,7 +4953,7 @@ fn write_metadata(cx: crate_ctxt, crate: @ast::crate) {
 }
 
 // Writes the current ABI version into the crate.
-fn write_abi_version(ccx: crate_ctxt) {
+fn write_abi_version(ccx: @crate_ctxt) {
     mk_global(ccx, "rust_abi_version", C_uint(ccx, abi::abi_version),
                      false);
 }

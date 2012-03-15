@@ -16,10 +16,10 @@ export map, find_reachable;
 
 type map = std::map::hashmap<node_id, ()>;
 
-type ctx = {ccx: middle::trans::common::crate_ctxt,
+type ctx = {ccx: @middle::trans::common::crate_ctxt,
             rmap: map};
 
-fn find_reachable(ccx: middle::trans::common::crate_ctxt, crate_mod: _mod)
+fn find_reachable(ccx: @middle::trans::common::crate_ctxt, crate_mod: _mod)
     -> map {
     let rmap = std::map::new_int_hash();
     traverse_public_mod({ccx: ccx, rmap: rmap}, crate_mod);

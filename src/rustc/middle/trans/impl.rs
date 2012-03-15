@@ -43,7 +43,7 @@ import std::map::hashmap;
 // annotates nodes with information about the methods and dicts that
 // are referenced (ccx.method_map and ccx.dict_map).
 
-fn trans_impl(ccx: crate_ctxt, path: path, name: ast::ident,
+fn trans_impl(ccx: @crate_ctxt, path: path, name: ast::ident,
               methods: [@ast::method], tps: [ast::ty_param]) {
     let sub_path = path + [path_name(name)];
     for m in methods {
@@ -104,7 +104,7 @@ fn trans_static_callee(bcx: block, callee_id: ast::node_id,
      with lval_static_fn(bcx, did, callee_id, substs)}
 }
 
-fn wrapper_fn_ty(ccx: crate_ctxt, dict_ty: TypeRef, fty: ty::t,
+fn wrapper_fn_ty(ccx: @crate_ctxt, dict_ty: TypeRef, fty: ty::t,
                  tps: @[ty::param_bounds]) -> {ty: ty::t, llty: TypeRef} {
     let bare_fn_ty = type_of_fn_from_ty(ccx, fty, *tps);
     let {inputs, output} = llfn_arg_tys(bare_fn_ty);
@@ -207,7 +207,7 @@ fn llfn_arg_tys(ft: TypeRef) -> {inputs: [TypeRef], output: TypeRef} {
     {inputs: args, output: out_ty}
 }
 
-fn trans_vtable(ccx: crate_ctxt, id: ast::node_id, name: str,
+fn trans_vtable(ccx: @crate_ctxt, id: ast::node_id, name: str,
                 ptrs: [ValueRef]) {
     let tbl = C_struct(ptrs);
     let vt_gvar = str::as_buf(name, {|buf|
@@ -269,7 +269,7 @@ fn resolve_dicts_in_fn_ctxt(fcx: fn_ctxt, dicts: typeck::dict_res)
     some(@result)
 }
 
-fn trans_wrapper(ccx: crate_ctxt, pt: path, llfty: TypeRef,
+fn trans_wrapper(ccx: @crate_ctxt, pt: path, llfty: TypeRef,
                  fill: fn(ValueRef, block) -> block)
     -> ValueRef {
     let name = link::mangle_internal_name_by_path(ccx, pt);
@@ -282,7 +282,7 @@ fn trans_wrapper(ccx: crate_ctxt, pt: path, llfty: TypeRef,
     ret llfn;
 }
 
-fn trans_impl_wrapper(ccx: crate_ctxt, pt: path,
+fn trans_impl_wrapper(ccx: @crate_ctxt, pt: path,
                       extra_tps: [ty::param_bounds], real_fn: ValueRef)
     -> ValueRef {
     let {inputs: real_args, output: real_ret} =
@@ -327,7 +327,7 @@ fn trans_impl_wrapper(ccx: crate_ctxt, pt: path,
     })
 }
 
-fn trans_impl_vtable(ccx: crate_ctxt, pt: path,
+fn trans_impl_vtable(ccx: @crate_ctxt, pt: path,
                      iface_id: ast::def_id, ms: [@ast::method],
                      tps: [ast::ty_param], it: @ast::item) {
     let new_pt = pt + [path_name(it.ident), path_name(int::str(it.id)),
@@ -350,7 +350,7 @@ fn trans_impl_vtable(ccx: crate_ctxt, pt: path,
     trans_vtable(ccx, it.id, s, ptrs);
 }
 
-fn trans_iface_wrapper(ccx: crate_ctxt, pt: path, m: ty::method,
+fn trans_iface_wrapper(ccx: @crate_ctxt, pt: path, m: ty::method,
                        n: uint) -> ValueRef {
     let {llty: llfty, _} = wrapper_fn_ty(ccx, T_ptr(T_i8()),
                                          ty::mk_fn(ccx.tcx, m.fty), m.tps);
@@ -376,7 +376,7 @@ fn trans_iface_wrapper(ccx: crate_ctxt, pt: path, m: ty::method,
     })
 }
 
-fn trans_iface_vtable(ccx: crate_ctxt, pt: path, it: @ast::item) {
+fn trans_iface_vtable(ccx: @crate_ctxt, pt: path, it: @ast::item) {
     let new_pt = pt + [path_name(it.ident), path_name(int::str(it.id))];
     let i_did = ast_util::local_def(it.id), i = 0u;
     let ptrs = vec::map(*ty::iface_methods(ccx.tcx, i_did), {|m|
@@ -481,7 +481,7 @@ fn get_static_dict(bcx: block, origin: typeck::dict_origin)
 fn get_dict_ptrs(bcx: block, origin: typeck::dict_origin)
     -> {bcx: block, ptrs: [ValueRef]} {
     let ccx = bcx.ccx();
-    fn get_vtable(ccx: crate_ctxt, did: ast::def_id) -> ValueRef {
+    fn get_vtable(ccx: @crate_ctxt, did: ast::def_id) -> ValueRef {
         if did.crate == ast::local_crate {
             get_item_val(ccx, did.node)
         } else {

@@ -493,7 +493,7 @@ fn symbol_hash(tcx: ty::ctxt, sha: sha1, t: ty::t, link_meta: link_meta) ->
     ret "_" + hash;
 }
 
-fn get_symbol_hash(ccx: crate_ctxt, t: ty::t) -> str {
+fn get_symbol_hash(ccx: @crate_ctxt, t: ty::t) -> str {
     let hash = "";
     alt ccx.type_sha1s.find(t) {
       some(h) { hash = h; }
@@ -525,28 +525,28 @@ fn exported_name(path: path, hash: str, _vers: str) -> str {
 
 }
 
-fn mangle_exported_name(ccx: crate_ctxt, path: path, t: ty::t) -> str {
+fn mangle_exported_name(ccx: @crate_ctxt, path: path, t: ty::t) -> str {
     let hash = get_symbol_hash(ccx, t);
     ret exported_name(path, hash, ccx.link_meta.vers);
 }
 
-fn mangle_internal_name_by_type_only(ccx: crate_ctxt, t: ty::t, name: str) ->
+fn mangle_internal_name_by_type_only(ccx: @crate_ctxt, t: ty::t, name: str) ->
    str {
     let s = util::ppaux::ty_to_short_str(ccx.tcx, t);
     let hash = get_symbol_hash(ccx, t);
     ret mangle([path_name(name), path_name(s), path_name(hash)]);
 }
 
-fn mangle_internal_name_by_path_and_seq(ccx: crate_ctxt, path: path,
+fn mangle_internal_name_by_path_and_seq(ccx: @crate_ctxt, path: path,
                                         flav: str) -> str {
     ret mangle(path + [path_name(ccx.names(flav))]);
 }
 
-fn mangle_internal_name_by_path(_ccx: crate_ctxt, path: path) -> str {
+fn mangle_internal_name_by_path(_ccx: @crate_ctxt, path: path) -> str {
     ret mangle(path);
 }
 
-fn mangle_internal_name_by_seq(ccx: crate_ctxt, flav: str) -> str {
+fn mangle_internal_name_by_seq(ccx: @crate_ctxt, flav: str) -> str {
     ret ccx.names(flav);
 }
 

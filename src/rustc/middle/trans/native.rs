@@ -29,7 +29,7 @@ type c_stack_tys = {
     shim_fn_ty: TypeRef
 };
 
-fn c_arg_and_ret_lltys(ccx: crate_ctxt,
+fn c_arg_and_ret_lltys(ccx: @crate_ctxt,
                        id: ast::node_id) -> ([TypeRef], TypeRef, ty::t) {
     alt ty::get(ty::node_id_to_type(ccx.tcx, id)).struct {
       ty::ty_fn({inputs: arg_tys, output: ret_ty, _}) {
@@ -41,7 +41,7 @@ fn c_arg_and_ret_lltys(ccx: crate_ctxt,
     }
 }
 
-fn c_stack_tys(ccx: crate_ctxt,
+fn c_stack_tys(ccx: @crate_ctxt,
                id: ast::node_id) -> @c_stack_tys {
     let (llargtys, llretty, ret_ty) = c_arg_and_ret_lltys(ccx, id);
     let bundle_ty = T_struct(llargtys + [T_ptr(llretty)]);
@@ -60,7 +60,7 @@ type shim_arg_builder = fn(bcx: block, tys: @c_stack_tys,
 type shim_ret_builder = fn(bcx: block, tys: @c_stack_tys,
                            llargbundle: ValueRef, llretval: ValueRef);
 
-fn build_shim_fn_(ccx: crate_ctxt,
+fn build_shim_fn_(ccx: @crate_ctxt,
                   shim_name: str,
                   llbasefn: ValueRef,
                   tys: @c_stack_tys,
@@ -97,7 +97,7 @@ type wrap_arg_builder = fn(bcx: block, tys: @c_stack_tys,
 type wrap_ret_builder = fn(bcx: block, tys: @c_stack_tys,
                            llargbundle: ValueRef);
 
-fn build_wrap_fn_(ccx: crate_ctxt,
+fn build_wrap_fn_(ccx: @crate_ctxt,
                   tys: @c_stack_tys,
                   llshimfn: ValueRef,
                   llwrapfn: ValueRef,
@@ -161,9 +161,9 @@ fn build_wrap_fn_(ccx: crate_ctxt,
 // stack pointer appropriately to avoid a round of copies.  (In fact, the shim
 // function itself is unnecessary). We used to do this, in fact, and will
 // perhaps do so in the future.
-fn trans_native_mod(ccx: crate_ctxt,
+fn trans_native_mod(ccx: @crate_ctxt,
                     native_mod: ast::native_mod, abi: ast::native_abi) {
-    fn build_shim_fn(ccx: crate_ctxt,
+    fn build_shim_fn(ccx: @crate_ctxt,
                      native_item: @ast::native_item,
                      tys: @c_stack_tys,
                      cc: lib::llvm::CallConv) -> ValueRef {
@@ -204,7 +204,7 @@ fn trans_native_mod(ccx: crate_ctxt,
                            build_args, build_ret);
     }
 
-    fn build_wrap_fn(ccx: crate_ctxt,
+    fn build_wrap_fn(ccx: @crate_ctxt,
                      tys: @c_stack_tys,
                      num_tps: uint,
                      llshimfn: ValueRef,
@@ -260,10 +260,10 @@ fn trans_native_mod(ccx: crate_ctxt,
     }
 }
 
-fn trans_crust_fn(ccx: crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
+fn trans_crust_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
                   body: ast::blk, llwrapfn: ValueRef, id: ast::node_id) {
 
-    fn build_rust_fn(ccx: crate_ctxt, path: ast_map::path,
+    fn build_rust_fn(ccx: @crate_ctxt, path: ast_map::path,
                      decl: ast::fn_decl, body: ast::blk,
                      id: ast::node_id) -> ValueRef {
         let t = ty::node_id_to_type(ccx.tcx, id);
@@ -276,7 +276,7 @@ fn trans_crust_fn(ccx: crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
         ret llfndecl;
     }
 
-    fn build_shim_fn(ccx: crate_ctxt, path: ast_map::path,
+    fn build_shim_fn(ccx: @crate_ctxt, path: ast_map::path,
                      llrustfn: ValueRef, tys: @c_stack_tys) -> ValueRef {
 
         fn build_args(bcx: block, tys: @c_stack_tys,
@@ -309,7 +309,7 @@ fn trans_crust_fn(ccx: crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
                            build_args, build_ret);
     }
 
-    fn build_wrap_fn(ccx: crate_ctxt, llshimfn: ValueRef,
+    fn build_wrap_fn(ccx: @crate_ctxt, llshimfn: ValueRef,
                      llwrapfn: ValueRef, tys: @c_stack_tys) {
 
         fn build_args(bcx: block, tys: @c_stack_tys,
@@ -347,7 +347,7 @@ fn trans_crust_fn(ccx: crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
     build_wrap_fn(ccx, llshimfn, llwrapfn, tys)
 }
 
-fn register_crust_fn(ccx: crate_ctxt, sp: span,
+fn register_crust_fn(ccx: @crate_ctxt, sp: span,
                      path: ast_map::path, node_id: ast::node_id)
     -> ValueRef {
     let t = ty::node_id_to_type(ccx.tcx, node_id);
@@ -357,7 +357,7 @@ fn register_crust_fn(ccx: crate_ctxt, sp: span,
                        t, lib::llvm::CCallConv, llfty)
 }
 
-fn abi_of_native_fn(ccx: crate_ctxt, i: @ast::native_item)
+fn abi_of_native_fn(ccx: @crate_ctxt, i: @ast::native_item)
     -> ast::native_abi {
     alt attr::get_meta_item_value_str_by_name(i.attrs, "abi") {
       none {
@@ -374,7 +374,7 @@ fn abi_of_native_fn(ccx: crate_ctxt, i: @ast::native_item)
     }
 }
 
-fn decl_native_fn(ccx: crate_ctxt, i: @ast::native_item,
+fn decl_native_fn(ccx: @crate_ctxt, i: @ast::native_item,
                   pth: ast_map::path) -> ValueRef {
     alt i.node {
       ast::native_item_fn(_, tps) {

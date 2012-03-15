@@ -103,7 +103,7 @@ enum environment_value {
     env_ref(ValueRef, ty::t, lval_kind),
 }
 
-fn ev_to_str(ccx: crate_ctxt, ev: environment_value) -> str {
+fn ev_to_str(ccx: @crate_ctxt, ev: environment_value) -> str {
     alt ev {
       env_expr(ex, _) { expr_to_str(ex) }
       env_copy(v, t, lk) { #fmt("copy(%s,%s)", val_str(ccx.tn, v),
@@ -720,7 +720,7 @@ enum target_info {
 }
 
 // pth is cx.path
-fn trans_bind_thunk(ccx: crate_ctxt,
+fn trans_bind_thunk(ccx: @crate_ctxt,
                     path: path,
                     incoming_fty: ty::t,
                     outgoing_fty: ty::t,

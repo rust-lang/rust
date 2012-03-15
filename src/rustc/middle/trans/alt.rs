@@ -231,7 +231,7 @@ fn enter_uniq(dm: def_map, m: match, col: uint, val: ValueRef) -> match {
     }
 }
 
-fn get_options(ccx: crate_ctxt, m: match, col: uint) -> [opt] {
+fn get_options(ccx: @crate_ctxt, m: match, col: uint) -> [opt] {
     fn add_to_set(tcx: ty::ctxt, &set: [opt], val: opt) {
         for l in set { if opt_eq(tcx, l, val) { ret; } }
         set += [val];

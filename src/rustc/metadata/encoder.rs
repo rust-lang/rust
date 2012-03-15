@@ -28,7 +28,7 @@ export encode_def_id;
 
 type abbrev_map = map::hashmap<ty::t, tyencode::ty_abbrev>;
 
-type encode_ctxt = {ccx: crate_ctxt,
+type encode_ctxt = {ccx: @crate_ctxt,
                     type_abbrevs: abbrev_map,
                     reachable: reachable::map};
 
@@ -737,7 +737,7 @@ fn encode_hash(ebml_w: ebml::writer, hash: str) {
     ebml_w.end_tag();
 }
 
-fn encode_metadata(cx: crate_ctxt, crate: @crate) -> [u8] {
+fn encode_metadata(cx: @crate_ctxt, crate: @crate) -> [u8] {
 
     let reachable = reachable::find_reachable(cx, crate.node.module);
     let abbrevs = ty::new_ty_hash();

@@ -7,7 +7,7 @@ import std::map::hashmap;
 
 import ty::*;
 
-fn type_of_explicit_args(cx: crate_ctxt, inputs: [ty::arg]) -> [TypeRef] {
+fn type_of_explicit_args(cx: @crate_ctxt, inputs: [ty::arg]) -> [TypeRef] {
     vec::map(inputs) {|arg|
         let arg_ty = arg.ty;
         let llty = type_of(cx, arg_ty);
@@ -18,7 +18,7 @@ fn type_of_explicit_args(cx: crate_ctxt, inputs: [ty::arg]) -> [TypeRef] {
     }
 }
 
-fn type_of_fn(cx: crate_ctxt, inputs: [ty::arg],
+fn type_of_fn(cx: @crate_ctxt, inputs: [ty::arg],
               output: ty::t, params: [ty::param_bounds]) -> TypeRef {
     let atys: [TypeRef] = [];
 
@@ -44,12 +44,12 @@ fn type_of_fn(cx: crate_ctxt, inputs: [ty::arg],
 }
 
 // Given a function type and a count of ty params, construct an llvm type
-fn type_of_fn_from_ty(cx: crate_ctxt, fty: ty::t,
+fn type_of_fn_from_ty(cx: @crate_ctxt, fty: ty::t,
                       param_bounds: [ty::param_bounds]) -> TypeRef {
     type_of_fn(cx, ty::ty_fn_args(fty), ty::ty_fn_ret(fty), param_bounds)
 }
 
-fn type_of(cx: crate_ctxt, t: ty::t) -> TypeRef {
+fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
     assert !ty::type_has_vars(t);
     // Check the cache.
 
@@ -135,7 +135,7 @@ fn type_of(cx: crate_ctxt, t: ty::t) -> TypeRef {
     ret llty;
 }
 
-fn type_of_enum(cx: crate_ctxt, did: ast::def_id, t: ty::t)
+fn type_of_enum(cx: @crate_ctxt, did: ast::def_id, t: ty::t)
     -> TypeRef {
     let degen = (*ty::enum_variants(cx.tcx, did)).len() == 1u;
     if check type_has_static_size(cx, t) {
@@ -151,7 +151,7 @@ fn type_of_enum(cx: crate_ctxt, did: ast::def_id, t: ty::t)
 }
 
 fn type_of_ty_param_bounds_and_ty
-    (ccx: crate_ctxt, tpt: ty::ty_param_bounds_and_ty) -> TypeRef {
+    (ccx: @crate_ctxt, tpt: ty::ty_param_bounds_and_ty) -> TypeRef {
     let t = tpt.ty;
     alt ty::get(t).struct {
       ty::ty_fn(_) {
@@ -164,7 +164,7 @@ fn type_of_ty_param_bounds_and_ty
     type_of(ccx, t)
 }
 
-fn type_of_or_i8(ccx: crate_ctxt, typ: ty::t) -> TypeRef {
+fn type_of_or_i8(ccx: @crate_ctxt, typ: ty::t) -> TypeRef {
     if check type_has_static_size(ccx, typ) {
         type_of(ccx, typ)
     } else { T_i8() }
