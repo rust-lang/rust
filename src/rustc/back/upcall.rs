@@ -16,8 +16,6 @@ type upcalls =
      shared_free: ValueRef,
      shared_realloc: ValueRef,
      mark: ValueRef,
-     create_shared_type_desc: ValueRef,
-     free_shared_type_desc: ValueRef,
      vec_grow: ValueRef,
      vec_push: ValueRef,
      cmp_type: ValueRef,
@@ -65,11 +63,6 @@ fn declare_upcalls(targ_cfg: @session::config,
               d("shared_realloc", [T_ptr(T_i8()), size_t], T_ptr(T_i8())),
           mark:
               d("mark", [T_ptr(T_i8())], int_t),
-          create_shared_type_desc:
-              d("create_shared_type_desc", [T_ptr(tydesc_type)],
-                T_ptr(tydesc_type)),
-          free_shared_type_desc:
-              dv("free_shared_type_desc", [T_ptr(tydesc_type)]),
           vec_grow:
               dv("vec_grow", [T_ptr(T_ptr(opaque_vec_t)), int_t]),
           vec_push:

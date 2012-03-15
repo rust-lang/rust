@@ -298,7 +298,6 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint]) -> [u8] {
       ty::ty_float(ast::ty_f) { [s_float(ccx.tcx)] }
       ty::ty_uint(ast::ty_u) | ty::ty_ptr(_) { [s_uint(ccx.tcx)] }
       ty::ty_type { [s_tydesc(ccx.tcx)] }
-      ty::ty_send_type { [s_send_tydesc(ccx.tcx)] }
       ty::ty_int(ast::ty_i8) { [shape_i8] }
       ty::ty_uint(ast::ty_u16) { [shape_u16] }
       ty::ty_int(ast::ty_i16) { [shape_i16] }

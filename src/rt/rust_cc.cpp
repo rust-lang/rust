@@ -18,9 +18,6 @@
 // collection.
 #define RUST_CC_FREQUENCY   5000
 
-// defined in rust_upcall.cpp:
-void upcall_s_free_shared_type_desc(type_desc *td);
-
 using namespace std;
 
 namespace cc {
@@ -534,9 +531,6 @@ class sweep : public shape::data<sweep,shape::ptr> {
                   // free closed over data:
                   shape::data<sweep,shape::ptr>::walk_fn_contents1();
                   
-                  // now free the embedded type descr:
-                  upcall_s_free_shared_type_desc((type_desc*)pair.env->td);
-                  
                   // now free the ptr:
                   task->kernel->free(pair.env);
               }
@@ -563,12 +557,9 @@ class sweep : public shape::data<sweep,shape::ptr> {
     }
 
     void walk_tydesc2(char kind) {
-        type_desc *td = *(type_desc **)dp;
         switch(kind) {
           case shape::SHAPE_TYDESC:
-            break;
           case shape::SHAPE_SEND_TYDESC:
-            upcall_s_free_shared_type_desc(td);
             break;
           default: abort();
         }

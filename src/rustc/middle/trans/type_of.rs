@@ -71,7 +71,7 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
         ret T_struct([T_i8(), type_of(cx, sub1)]);
       }
       ty::ty_param(_, _) { T_typaram(cx.tn) }
-      ty::ty_send_type | ty::ty_type { T_ptr(cx.tydesc_type) }
+      ty::ty_type { T_ptr(cx.tydesc_type) }
       ty::ty_tup(elts) {
         let tys = [];
         for elt in elts {

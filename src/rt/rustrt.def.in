@@ -59,8 +59,6 @@ upcall_cmp_type
 upcall_fail
 upcall_free
 upcall_validate_box
-upcall_create_shared_type_desc
-upcall_free_shared_type_desc
 upcall_log_type
 upcall_malloc
 upcall_rust_personality

@@ -114,16 +114,8 @@ fn ev_to_str(ccx: @crate_ctxt, ev: environment_value) -> str {
     }
 }
 
-fn mk_tydesc_ty(tcx: ty::ctxt, ck: ty::closure_kind) -> ty::t {
-    ret alt ck {
-      ty::ck_block | ty::ck_box { ty::mk_type(tcx) }
-      ty::ck_uniq { ty::mk_send_type(tcx) }
-    };
-}
-
 fn mk_tuplified_uniq_cbox_ty(tcx: ty::ctxt, cdata_ty: ty::t) -> ty::t {
-    let tydesc_ty = mk_tydesc_ty(tcx, ty::ck_uniq);
-    let cbox_ty = tuplify_cbox_ty(tcx, cdata_ty, tydesc_ty);
+    let cbox_ty = tuplify_cbox_ty(tcx, cdata_ty, ty::mk_type(tcx));
     ret ty::mk_imm_uniq(tcx, cbox_ty);
 }
 
@@ -166,14 +158,12 @@ fn allocate_cbox(bcx: block,
         Store(bcx, rc, ref_cnt);
     }
 
-    fn store_uniq_tydesc(bcx: block,
-                         cdata_ty: ty::t,
-                         box: ValueRef,
-                         &ti: option<@tydesc_info>) -> block {
-        let ccx = bcx.ccx();
+    fn store_tydesc(bcx: block,
+                    cdata_ty: ty::t,
+                    box: ValueRef,
+                    &ti: option<@tydesc_info>) -> block {
         let bound_tydesc = GEPi(bcx, box, [0, abi::box_field_tydesc]);
         let {bcx, val: td} = base::get_tydesc(bcx, cdata_ty, ti);
-        let td = Call(bcx, ccx.upcalls.create_shared_type_desc, [td]);
         Store(bcx, td, bound_tydesc);
         bcx
     }
@@ -190,7 +180,7 @@ fn allocate_cbox(bcx: block,
         let uniq_cbox_ty = mk_tuplified_uniq_cbox_ty(tcx, cdata_ty);
         let {bcx, val: box} = uniq::alloc_uniq(bcx, uniq_cbox_ty);
         nuke_ref_count(bcx, box);
-        let bcx = store_uniq_tydesc(bcx, cdata_ty, box, ti);
+        let bcx = store_tydesc(bcx, cdata_ty, box, ti);
         (bcx, box)
       }
       ty::ck_block {
@@ -221,19 +211,6 @@ type closure_result = {
 fn store_environment(bcx: block,
                      bound_values: [environment_value],
                      ck: ty::closure_kind) -> closure_result {
-
-    fn maybe_clone_tydesc(bcx: block,
-                          ck: ty::closure_kind,
-                          td: ValueRef) -> ValueRef {
-        ret alt ck {
-          ty::ck_block | ty::ck_box {
-            td
-          }
-          ty::ck_uniq {
-            Call(bcx, bcx.ccx().upcalls.create_shared_type_desc, [td])
-          }
-        };
-    }
 
     let ccx = bcx.ccx(), tcx = ccx.tcx;
 
@@ -551,7 +528,7 @@ fn make_opaque_cbox_take_glue(
 
         // Take the (deeply cloned) type descriptor
         let tydesc_out = GEPi(bcx, cbox_out, [0, abi::box_field_tydesc]);
-        let bcx = take_ty(bcx, tydesc_out, mk_tydesc_ty(tcx, ty::ck_uniq));
+        let bcx = take_ty(bcx, tydesc_out, ty::mk_type(tcx));
 
         // Take the data in the tuple
         let ti = none;
@@ -612,7 +589,7 @@ fn make_opaque_cbox_free_glue(
             trans_free(bcx, cbox)
           }
           ty::ck_uniq {
-            let bcx = free_ty(bcx, tydesc, mk_tydesc_ty(tcx, ck));
+            let bcx = free_ty(bcx, tydesc, ty::mk_type(tcx));
             trans_shared_free(bcx, cbox)
           }
         }

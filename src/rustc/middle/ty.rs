@@ -82,7 +82,6 @@ export ty_rptr, mk_rptr;
 export ty_rec, mk_rec;
 export ty_enum, mk_enum, type_is_enum;
 export ty_tup, mk_tup;
-export ty_send_type, mk_send_type;
 export ty_type, mk_type;
 export ty_uint, mk_uint, mk_mach_uint;
 export ty_uniq, mk_uniq, mk_imm_uniq, type_is_unique_box;
@@ -267,7 +266,6 @@ enum sty {
     ty_self([t]), // interface method self type
 
     ty_type, // type_desc*
-    ty_send_type, // type_desc* that has been cloned into exchange heap
     ty_opaque_box, // used by monomorphizer to represent any @ box
     ty_constr(t, [@type_constr]),
     ty_opaque_closure_ptr(closure_kind), // ptr to env for fn, fn@, fn~
@@ -392,7 +390,7 @@ fn mk_t_with_id(cx: ctxt, st: sty, o_def_id: option<ast::def_id>) -> t {
     }
     alt st {
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
-      ty_str | ty_type | ty_send_type | ty_opaque_closure_ptr(_) |
+      ty_str | ty_type | ty_opaque_closure_ptr(_) |
       ty_opaque_box {}
       ty_param(_, _) { has_params = true; }
       ty_var(_) | ty_self(_) { has_vars = true; }
@@ -518,8 +516,6 @@ fn mk_param(cx: ctxt, n: uint, k: def_id) -> t { mk_t(cx, ty_param(n, k)) }
 
 fn mk_type(cx: ctxt) -> t { mk_t(cx, ty_type) }
 
-fn mk_send_type(cx: ctxt) -> t { mk_t(cx, ty_send_type) }
-
 fn mk_opaque_closure_ptr(cx: ctxt, ck: closure_kind) -> t {
     mk_t(cx, ty_opaque_closure_ptr(ck))
 }
@@ -553,7 +549,7 @@ fn maybe_walk_ty(ty: t, f: fn(t) -> bool) {
     if !f(ty) { ret; }
     alt get(ty).struct {
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
-      ty_str | ty_send_type | ty_type | ty_opaque_box |
+      ty_str | ty_type | ty_opaque_box |
       ty_opaque_closure_ptr(_) | ty_var(_) | ty_param(_, _) {}
       ty_box(tm) | ty_vec(tm) | ty_ptr(tm) | ty_rptr(_, tm) {
         maybe_walk_ty(tm.ty, f);
@@ -599,7 +595,7 @@ fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
 
     alt tb.struct {
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
-      ty_str | ty_type | ty_send_type | ty_opaque_closure_ptr(_) |
+      ty_str | ty_type | ty_opaque_closure_ptr(_) |
       ty_opaque_box {}
       ty_box(tm) {
         ty = mk_box(cx, {ty: fold_ty(cx, fld, tm.ty), mutbl: tm.mutbl});
@@ -780,7 +776,7 @@ pure fn type_is_unique(ty: t) -> bool {
 pure fn type_is_scalar(ty: t) -> bool {
     alt get(ty).struct {
       ty_nil | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
-      ty_send_type | ty_type | ty_ptr(_) | ty_rptr(_, _) { true }
+      ty_type | ty_ptr(_) | ty_rptr(_, _) { true }
       _ { false }
     }
 }
@@ -884,7 +880,7 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
     let result = alt get(ty).struct {
       // Scalar and unique types are sendable
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
-      ty_ptr(_) | ty_send_type | ty_str { kind_sendable }
+      ty_ptr(_) | ty_str { kind_sendable }
       ty_type { kind_copyable }
       ty_fn(f) { proto_kind(f.proto) }
       ty_opaque_closure_ptr(ck_block) { kind_noncopyable }
@@ -1034,7 +1030,7 @@ fn type_is_pod(cx: ctxt, ty: t) -> bool {
     alt get(ty).struct {
       // Scalar types
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
-      ty_send_type | ty_type | ty_ptr(_) { result = true; }
+      ty_type | ty_ptr(_) { result = true; }
       // Boxed types
       ty_str | ty_box(_) | ty_uniq(_) | ty_vec(_) | ty_fn(_) |
       ty_iface(_, _) | ty_rptr(_,_) | ty_opaque_box { result = false; }
@@ -1223,7 +1219,6 @@ fn hash_type_structure(st: sty) -> uint {
         h
       }
       ty_uniq(mt) { hash_subty(37u, mt.ty) }
-      ty_send_type { 38u }
       ty_iface(did, tys) {
         let h = hash_def(40u, did);
         for typ: t in tys { h = hash_subty(h, typ); }
@@ -1984,7 +1979,7 @@ mod unify {
           (_, ty_bot) { nxt(expected) }
           (ty_bot, _) { nxt(actual) }
           (ty_nil, _) | (ty_bool, _) | (ty_int(_), _) | (ty_uint(_), _) |
-          (ty_float(_), _) | (ty_str, _) | (ty_send_type, _) {
+          (ty_float(_), _) | (ty_str, _) {
             struct_cmp(cx, expected, actual, nxt)
           }
           (ty_param(e_n, _), ty_param(a_n, _)) if e_n == a_n {

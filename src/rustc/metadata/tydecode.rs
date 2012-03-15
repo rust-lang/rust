@@ -267,7 +267,6 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
       }
       'X' { ret ty::mk_var(st.tcx, parse_int(st)); }
       'Y' { ret ty::mk_type(st.tcx); }
-      'y' { ret ty::mk_send_type(st.tcx); }
       'C' {
         let ck = alt check next(st) {
           '&' { ty::ck_block }

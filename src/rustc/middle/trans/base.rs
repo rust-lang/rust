@@ -559,14 +559,6 @@ fn make_take_glue(cx: block, v: ValueRef, t: ty::t) {
         Store(r.bcx, r.val, v);
         r.bcx
       }
-      ty::ty_send_type {
-        // sendable type descriptors are basically unique pointers,
-        // they must be cloned when copied:
-        let r = Load(bcx, v);
-        let s = Call(bcx, bcx.ccx().upcalls.create_shared_type_desc, [r]);
-        Store(bcx, s, v);
-        bcx
-      }
       ty::ty_fn(_) {
         closure::make_fn_glue(bcx, v, t, take_ty)
       }
@@ -623,14 +615,6 @@ fn make_free_glue(bcx: block, v: ValueRef, t: ty::t) {
       ty::ty_vec(_) | ty::ty_str {
         tvec::make_free_glue(bcx, PointerCast(bcx, v, type_of(ccx, t)), t)
       }
-      ty::ty_send_type {
-        // sendable type descriptors are basically unique pointers,
-        // they must be freed.
-        let ccx = bcx.ccx();
-        let v = PointerCast(bcx, v, T_ptr(ccx.tydesc_type));
-        Call(bcx, ccx.upcalls.free_shared_type_desc, [v]);
-        bcx
-      }
       ty::ty_fn(_) {
         closure::make_fn_glue(bcx, v, t, free_ty)
       }
@@ -649,7 +633,7 @@ fn make_drop_glue(bcx: block, v0: ValueRef, t: ty::t) {
       ty::ty_box(_) | ty::ty_opaque_box {
         decr_refcnt_maybe_free(bcx, Load(bcx, v0), t)
       }
-      ty::ty_uniq(_) | ty::ty_vec(_) | ty::ty_str | ty::ty_send_type {
+      ty::ty_uniq(_) | ty::ty_vec(_) | ty::ty_str {
         free_ty(bcx, Load(bcx, v0), t)
       }
       ty::ty_res(did, inner, tps) {
