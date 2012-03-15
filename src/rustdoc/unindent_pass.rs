@@ -13,18 +13,17 @@ middle of a line, and each of the following lines is indented.
 
 export mk_pass;
 
-import str::chars::iterable;
+import str::iterable;
 
 fn mk_pass() -> pass {
     text_pass::mk_pass("unindent", unindent)
 }
 
 fn unindent(s: str) -> str {
-    let lines = str::lines_any(s);
     let saw_first_line = false;
     let saw_second_line = false;
-    let min_indent = vec::foldl(uint::max_value, lines) {|min_indent, line|
-
+    let min_indent = iter::foldl(str::by_lines(s), uint::max_value)
+        {|min_indent, line|
         // After we see the first non-whitespace line, look at
         // the line we have. If it is not whitespace, and therefore
         // part of the first paragraph, then ignore the indentation
@@ -49,7 +48,7 @@ fn unindent(s: str) -> str {
         } else {
             saw_first_line = true;
             let spaces = 0u;
-            iter::all(line) {|char|
+            iter::all(str::by_chars(line)) {|char|
                 // Only comparing against space because I wouldn't
                 // know what to do with mixed whitespace chars
                 if char == ' ' {
@@ -63,20 +62,19 @@ fn unindent(s: str) -> str {
         }
     };
 
-    if check vec::is_not_empty(lines) {
-        let unindented = [str::trim(vec::head(lines))]
-            + par::anymap(vec::tail(lines)) {|line|
-            if str::is_whitespace(line) {
-                line
-            } else {
-                assert str::len(line) >= min_indent;
-                str::slice(line, min_indent, str::len(line))
-            }
-        };
-        str::connect(unindented, "\n")
-    } else {
-        s
+    let unindented = [];
+    iter::head(str::by_lines(s)) {|line|
+        unindented += [str::trim(line)]
     }
+    iter::tail(str::by_lines(s)) {|line|
+        if str::is_whitespace(line) {
+            unindented += [line]
+        } else {
+            assert str::len(line) >= min_indent;
+            unindented += [str::slice(line, min_indent, str::len(line))];
+        }
+    };
+    str::connect(unindented, "\n")
 }
 
 #[test]

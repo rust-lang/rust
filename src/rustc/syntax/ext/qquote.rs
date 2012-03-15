@@ -11,10 +11,9 @@ import syntax::parse::parser::{parser, parse_from_source_str};
 
 import syntax::print::*;
 import io::*;
+import str::iterable;
 
 import codemap::span;
-
-import str::chars::iterable;
 
 type aq_ctxt = @{lo: uint,
                  mutable gather: [{lo: uint, hi: uint,
@@ -217,7 +216,7 @@ fn finish<T: qq_helper>
     let state = active;
     let i = 0u, j = 0u;
     let g_len = vec::len(cx.gather);
-    (*str).iter() {|ch|
+    iter::each(str::by_chars(*str)) {|ch|
         if (j < g_len && i == cx.gather[j].lo) {
             assert ch == '$';
             let repl = #fmt("$%u ", j);

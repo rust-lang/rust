@@ -1,5 +1,6 @@
 export iterable, enumerate, filter, map, flat_map,
-       foldl, to_list, repeat, all, any, each;
+       foldl, to_list, repeat, all, any, each,
+       take, drop, head, tail;
 
 iface iterable<A> {
     fn iter(blk: fn(A));
@@ -169,6 +170,34 @@ fn max<A:copy,IA:iterable<A>>(self: IA) -> A {
     }
 }
 
+fn take<A:copy, IA:iterable<A>>(self:IA, n:uint, blk:fn(A)) {
+    let mut i = 0u;
+    self.iter() {|a|
+        if (i < n) {
+            blk(a);
+            i += 1u;
+        }
+    }
+}
+
+fn head<A:copy, IA:iterable<A>>(self:IA, blk:fn(A)) {
+    take(self, 1u, blk)
+}
+
+fn drop<A:copy, IA:iterable<A>>(self:IA, n:uint, blk:fn(A)) {
+    let mut i:uint = 0u;
+    self.iter {|a|
+        if (i >= n) {
+            blk(a);
+        }
+        i += 1u;
+    }
+}
+
+fn tail<A:copy, IA:iterable<A>>(self:IA, blk:fn(A)) {
+    drop(self, 1u, blk)
+}
+
 #[test]
 fn test_enumerate() {
     enumerate(["0", "1", "2"]) {|i,j|
@@ -307,4 +336,72 @@ fn test_foldr() {
     }
     let sum = foldr([1, 2, 3, 4], 0, sub);
     assert sum == -2;
+}
+
+#[test]
+fn test_take() {
+    let i = 0u;
+    take([5, 4, 1, 2, 3], 1u) {|h| assert h == 5; i += 1u; };
+    assert i == 1u;
+
+    i = 0u;
+    take([5, 4, 1, 2, 3], 2u) {|j|
+        alt i {
+          0u { assert 5 == j }
+          1u { assert 4 == j }
+          _ { fail; }
+        }
+        i += 1u;
+    }
+    assert i == 2u;
+}
+
+#[test]
+fn test_drop() {
+    let i = 0u;
+    drop([5, 4, 1, 2, 3], 1u) {|j|
+        alt i {
+          0u { assert 4 == j }
+          1u { assert 1 == j }
+          2u { assert 2 == j }
+          3u { assert 3 == j }
+          _ { fail; }
+        }
+        i += 1u;
+    }
+    assert i == 4u;
+
+    i = 0u;
+    drop([5, 4, 1, 2, 3], 3u) {|j|
+        alt i {
+          0u { assert 2 == j }
+          1u { assert 3 == j }
+          _ { fail; }
+        }
+        i += 1u;
+    }
+    assert i == 2u;
+}
+
+#[test]
+fn test_head() {
+    let i = 0u;
+    head([5, 4, 1, 2, 3]) {|h| assert h == 5; i += 1u; };
+    assert i == 1u;
+}
+
+#[test]
+fn test_tail() {
+    let i = 0u;
+    tail([5, 4, 1, 2, 3]) {|j|
+        alt i {
+          0u { assert 4 == j }
+          1u { assert 1 == j }
+          2u { assert 2 == j }
+          3u { assert 3 == j }
+          _ { fail; }
+        }
+        i += 1u;
+    }
+    assert i == 4u;
 }

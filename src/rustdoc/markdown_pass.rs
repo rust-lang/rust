@@ -3,8 +3,7 @@
 import markdown_writer::writer;
 import markdown_writer::writer_util;
 import markdown_writer::writer_factory;
-import iter::iterable;
-import str::lines::iterable;
+import str::iterable;
 
 export mk_pass;
 export header_kind, header_name, header_text;
@@ -492,7 +491,9 @@ fn write_sig(ctxt: ctxt, sig: option<str>) {
 
 fn code_block_indent(s: str) -> str {
     let indented: [str] = [];
-    iter::each(s, { |line| indented += [#fmt("    %s", line)] });
+    iter::each(str::by_lines(s), {
+        |line| indented += [#fmt("    %s", line)]
+    });
     str::connect(indented, "\n")
 }
 

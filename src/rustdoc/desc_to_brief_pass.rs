@@ -7,8 +7,7 @@ is interpreted as the brief description.
 
 "];
 
-import iter::iterable;
-import str::lines::iterable;
+import str::iterable;
 
 export mk_pass;
 
@@ -140,7 +139,7 @@ fn sentences(s: str) -> [str] {
 fn paragraphs(s: str) -> [str] {
     let whitespace_lines = 0;
     let accum = "";
-    let paras = iter::foldl(s, []) {|paras, line|
+    let paras = iter::foldl(str::by_lines(s), []) {|paras, line|
         let res = paras;
 
         if str::is_whitespace(line) {

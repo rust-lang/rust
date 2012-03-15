@@ -1,5 +1,4 @@
-import iter::iterable;
-import str::bytes::iterable;
+import str::iterable;
 
 // EBML enum definitions and utils shared by the encoder and decoder
 
@@ -109,6 +108,8 @@ fn hash_node_id(&&node_id: int) -> uint { ret 177573u ^ (node_id as uint); }
 
 fn hash_path(&&s: str) -> uint {
     let h = 5381u;
-    iter::each(s) {|&&ch: u8| h = (h << 5u) + h ^ (ch as uint); }
+    iter::each(str::by_bytes(s)) {|&&ch: u8|
+        h = (h << 5u) + h ^ (ch as uint);
+    }
     ret h;
 }

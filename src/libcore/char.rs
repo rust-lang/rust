@@ -43,7 +43,7 @@ export is_alphabetic,
 import is_alphabetic = unicode::derived_property::Alphabetic;
 import is_XID_start = unicode::derived_property::XID_Start;
 import is_XID_continue = unicode::derived_property::XID_Continue;
-import str::chars::iterable;
+import str::iterable;
 
 #[doc = "
 Indicates whether a character is in lower case, defined
@@ -222,8 +222,10 @@ fn test_to_upper() {
 
 #[test]
 fn test_is_ascii() unsafe {
-   assert iter::all("banana", {|&&ch| char::is_ascii(ch) });
-   assert ! iter::all("ประเทศไทย中华Việt Nam", {|&&ch| char::is_ascii(ch) });
+   assert iter::all(str::by_chars("banana"), {|&&ch| char::is_ascii(ch) });
+   assert ! iter::all(str::by_chars("ประเทศไทย中华Việt Nam"), {|&&ch|
+       char::is_ascii(ch)
+   });
 }
 
 #[test]
