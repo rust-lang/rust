@@ -432,33 +432,45 @@ fn for_each_package(c: cargo, b: fn(source, package)) {
     })
 }
 
-// FIXME: deduplicate code with install_one_crate
-fn test_one_crate(_c: cargo, _path: str, cf: str, _p: pkg) {
-    let buildpath = path::connect(_path, "/test");
-    need_dir(buildpath);
-    #debug("Testing: %s -> %s", cf, buildpath);
-    let p = run::program_output(rustc_sysroot(),
-                                ["--out-dir", buildpath, "--test", cf]);
-    if p.status != 0 {
-        error(#fmt["rustc failed: %d\n%s\n%s", p.status, p.err, p.out]);
-        ret;
-    }
+// Runs all programs in directory <buildpath>
+fn run_programs(buildpath: str) {
     let new = os::list_dir(buildpath);
     for ct: str in new {
         run::run_program(ct, []);
     }
 }
 
-fn install_one_crate(c: cargo, _path: str, cf: str, _p: pkg) {
-    let buildpath = path::connect(_path, "/build");
+// Runs rustc in <path + subdir> with the given flags
+// and returns <path + subdir>
+fn run_in_buildpath(what: str, path: str, subdir: str, cf: str,
+                    extra_flags: [str]) -> option<str> {
+    let buildpath = path::connect(path, subdir);
     need_dir(buildpath);
-    #debug("Installing: %s -> %s", cf, buildpath);
+    #debug("%s: %s -> %s", what, cf, buildpath);
     let p = run::program_output(rustc_sysroot(),
-                                ["--out-dir", buildpath, cf]);
+                                ["--out-dir", buildpath, cf] + extra_flags);
     if p.status != 0 {
         error(#fmt["rustc failed: %d\n%s\n%s", p.status, p.err, p.out]);
-        ret;
+        ret none;
     }
+    some(buildpath)
+}
+
+fn test_one_crate(_c: cargo, path: str, cf: str) {
+  let buildpath = alt run_in_buildpath("Testing", path, "/test", cf,
+                                       [ "--test"]) {
+      none { ret; }
+      some(bp) { bp }
+  };
+  run_programs(buildpath);
+}
+
+fn install_one_crate(c: cargo, path: str, cf: str) {
+    let buildpath = alt run_in_buildpath("Installing", path,
+                                         "/build", cf, []) {
+      none { ret; }
+      some(bp) { bp }
+    };
     let new = os::list_dir(buildpath);
     let exec_suffix = os::exe_suffix();
     for ct: str in new {
@@ -466,7 +478,7 @@ fn install_one_crate(c: cargo, _path: str, cf: str, _p: pkg) {
             (exec_suffix == "" && !str::starts_with(path::basename(ct),
                                                     "lib")) {
             #debug("  bin: %s", ct);
-            // FIXME: need libstd os::copy or something
+            // FIXME: need libstd os::copy or something (Issue #1983)
             run::run_program("cp", [ct, c.bindir]);
             if c.opts.mode == system_mode {
                 install_one_crate_to_sysroot(ct, "bin");
@@ -527,11 +539,11 @@ fn install_source(c: cargo, path: str) {
         let p = load_pkg(cf);
         alt p {
             none { cont; }
-            some(_p) {
+            some(_) {
                 if c.opts.test {
-                    test_one_crate(c, path, cf, _p);
+                    test_one_crate(c, path, cf);
                 }
-                install_one_crate(c, path, cf, _p);
+                install_one_crate(c, path, cf);
             }
         }
     }
