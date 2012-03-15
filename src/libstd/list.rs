@@ -27,7 +27,7 @@ accumulated result.
 * z - The initial value
 * f - The function to apply
 "]
-fn foldl<T: copy, U>(ls: list<U>, z: T, f: fn(T, U) -> T) -> T {
+fn foldl<T: copy, U>(z: T, ls: list<U>, f: fn(T, U) -> T) -> T {
     let mut accum: T = z;
     iter(ls) {|elt| accum = f(accum, elt);}
     accum
@@ -180,8 +180,8 @@ mod tests {
         fn add(&&a: uint, &&b: int) -> uint { ret a + (b as uint); }
         let l = from_vec([0, 1, 2, 3, 4]);
         let empty = list::nil::<int>;
-        assert (list::foldl(l, 0u, add) == 10u);
-        assert (list::foldl(empty, 0u, add) == 0u);
+        assert (list::foldl(0u, l, add) == 10u);
+        assert (list::foldl(0u, empty, add) == 0u);
     }
 
     #[test]
@@ -190,7 +190,7 @@ mod tests {
             a - b
         }
         let l = from_vec([1, 2, 3, 4]);
-        assert (list::foldl(l, 0, sub) == -10);
+        assert (list::foldl(0, l, sub) == -10);
     }
 
     #[test]
