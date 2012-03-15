@@ -58,7 +58,7 @@ native mod rustrt {
 
 #[abi = "rust-intrinsic"]
 native mod rusti {
-    // FIXME: This should probably not take a boxed closure
+    // FIXME: This should probably not take a boxed closure (Issue #1987)
     fn call_with_retptr<T: send>(&&f: fn@(*uint)) -> T;
 }
 
@@ -89,7 +89,7 @@ resource port_ptr<T: send>(po: *rust_port) {
     if yield != 0u {
         // Need to wait for the port to be detached
         // FIXME: If this fails then we're going to leave our port
-        // in a bogus state.
+        // in a bogus state. (Issue #1988)
         task::yield();
     }
     rustrt::rust_port_end_detach(po);

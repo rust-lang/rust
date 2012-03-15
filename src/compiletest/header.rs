@@ -56,6 +56,7 @@ fn is_test_ignored(config: config, testfile: str) -> bool {
     let found = false;
     iter_header(testfile) {|ln|
         // FIXME: Can't return or break from iterator
+        // (Fix when Issue #1619 is resolved)
         found = found || parse_name_directive(ln, "xfail-test");
         found = found || parse_name_directive(ln, xfail_target());
         if (config.mode == common::mode_pretty) {

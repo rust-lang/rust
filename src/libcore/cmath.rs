@@ -1,6 +1,7 @@
 export c_float;
 export c_double;
 
+// uncomment once #1433 is fixed
 // FIXME export c_float_math_consts;
 // FIXME export c_double_math_consts;
 
@@ -70,6 +71,7 @@ native mod c_double {
     pure fn modf(n: c_double, &iptr: c_double) -> c_double;
     pure fn pow(n: c_double, e: c_double) -> c_double;
 // FIXME enable when rounding modes become available
+// (See Issue #1379)
 //    pure fn rint(n: c_double) -> c_double;
     pure fn round(n: c_double) -> c_double;
     // rename: for consistency with logradix
@@ -152,6 +154,7 @@ native mod c_float {
                                       &iptr: c_float) -> c_float;
     #[link_name="powf"] pure fn pow(n: c_float, e: c_float) -> c_float;
 // FIXME enable when rounding modes become available
+// (See Issue #1379)
 //    #[link_name="rintf"] pure fn rint(n: c_float) -> c_float;
     #[link_name="roundf"] pure fn round(n: c_float) -> c_float;
     #[link_name="scalbnf"] pure fn ldexp_radix(n: c_float, i: c_int)
@@ -167,7 +170,7 @@ native mod c_float {
 
 // PORT check these by running src/etc/machconsts.c for your architecture
 
-// FIXME obtain machine float/math constants automatically
+// FIXME obtain machine float/math constants automatically (Issue #1986)
 
 mod c_float_targ_consts {
     const radix: uint = 2u;
@@ -178,6 +181,7 @@ mod c_float_targ_consts {
     const min_10_exp: int = -37;
     const max_10_exp: int = 38;
     // FIXME this is wrong! replace with hexadecimal (%a) constants below
+    // (see Issue #1433)
     const min_value: f32 = 1.175494e-38_f32;
     const max_value: f32 = 3.402823e+38_f32;
     const epsilon: f32 = 0.000000_f32;
@@ -192,6 +196,7 @@ mod c_double_targ_consts {
     const min_10_exp: int = -307;
     const max_10_exp: int = 308;
     // FIXME this is wrong! replace with hexadecimal (%a) constants below
+    // (see Issue #1433)
     const min_value: f64 = 2.225074e-308_f64;
     const max_value: f64 = 1.797693e+308_f64;
     const epsilon: f64 = 2.220446e-16_f64;
@@ -199,7 +204,7 @@ mod c_double_targ_consts {
 
 /*
 
-FIXME use these once they can be parsed
+FIXME use these once they can be parsed (see Issue #1433)
 
 mod c_float_math_consts {
     const pi: c_float = 0x1.921fb6p+1_f32;
