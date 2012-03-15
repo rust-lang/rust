@@ -15,7 +15,7 @@ else
 DOCS += doc/rust.html
 doc/rust.html: rust.md doc/version.md doc/keywords.md $(S)doc/rust.css
 	@$(call E, pandoc: $@)
-	$(Q)$(CFG_PANDOC) \
+	$(Q)"$(CFG_PANDOC)" \
          --standalone --toc \
          --section-divs \
          --number-sections \
