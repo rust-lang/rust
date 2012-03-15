@@ -3,6 +3,8 @@
 import chained::hashmap;
 export hashmap, hashfn, eqfn, set, map, chained, hashmap, str_hash;
 export bytes_hash, int_hash, uint_hash, set_add;
+export hash_from_vec, hash_from_strs, hash_from_bytes;
+export hash_from_ints, hash_from_uints;
 
 #[doc = "
 A function that returns a hash of a value
@@ -313,17 +315,19 @@ fn bytes_hash<V: copy>() -> hashmap<[u8], V> {
     ret hashmap(vec::u8::hash, vec::u8::eq);
 }
 
+fn hash_int(&&x: int) -> uint { int::hash(x) }
+fn eq_int(&&a: int, &&b: int) -> bool { ret a == b; }
+
 #[doc = "Construct a hashmap for int keys"]
 fn int_hash<V: copy>() -> hashmap<int, V> {
-    fn hash_int(&&x: int) -> uint { int::hash(x) }
-    fn eq_int(&&a: int, &&b: int) -> bool { ret a == b; }
     ret hashmap(hash_int, eq_int);
 }
 
+fn hash_uint(&&x: uint) -> uint { uint::hash(x) }
+fn eq_uint(&&a: uint, &&b: uint) -> bool { ret a == b; }
+
 #[doc = "Construct a hashmap for uint keys"]
 fn uint_hash<V: copy>() -> hashmap<uint, V> {
-    fn hash_uint(&&x: uint) -> uint { uint::hash(x) }
-    fn eq_uint(&&a: uint, &&b: uint) -> bool { ret a == b; }
     ret hashmap(hash_uint, eq_uint);
 }
 
@@ -331,6 +335,37 @@ fn uint_hash<V: copy>() -> hashmap<uint, V> {
 Convenience function for adding keys to a hashmap with nil type keys
 "]
 fn set_add<K: copy>(set: set<K>, key: K) -> bool { ret set.insert(key, ()); }
+
+#[doc = "Construct a hashmap from a vector"]
+fn hash_from_vec<K: copy, V: copy>(hasher: hashfn<K>, eqer: eqfn<K>,
+                                   items: [(K, V)]) -> hashmap<K, V> {
+    let map = hashmap(hasher, eqer);
+    vec::iter(items) { |item|
+        let (key, value) = item;
+        map.insert(key, value);
+    }
+    map
+}
+
+#[doc = "Construct a hashmap from a vector with string keys"]
+fn hash_from_strs<V: copy>(items: [(str, V)]) -> hashmap<str, V> {
+    hash_from_vec(str::hash, str::eq, items)
+}
+
+#[doc = "Construct a hashmap from a vector with byte keys"]
+fn hash_from_bytes<V: copy>(items: [([u8], V)]) -> hashmap<[u8], V> {
+    hash_from_vec(vec::u8::hash, vec::u8::eq, items)
+}
+
+#[doc = "Construct a hashmap from a vector with int keys"]
+fn hash_from_ints<V: copy>(items: [(int, V)]) -> hashmap<int, V> {
+    hash_from_vec(hash_int, eq_int, items)
+}
+
+#[doc = "Construct a hashmap from a vector with uint keys"]
+fn hash_from_uints<V: copy>(items: [(uint, V)]) -> hashmap<uint, V> {
+    hash_from_vec(hash_uint, eq_uint, items)
+}
 
 #[cfg(test)]
 mod tests {
@@ -573,5 +608,18 @@ mod tests {
         assert (option::is_none(map.find(key)));
         map.insert(key, "val");
         assert (option::get(map.find(key)) == "val");
+    }
+
+    #[test]
+    fn test_hash_from_vec() {
+        let map = map::hash_from_strs([
+            ("a", 1),
+            ("b", 2),
+            ("c", 3)
+        ]);
+        assert map.size() == 3u;
+        assert map.get("a") == 1;
+        assert map.get("b") == 2;
+        assert map.get("c") == 3;
     }
 }
