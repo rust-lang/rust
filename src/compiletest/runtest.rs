@@ -358,13 +358,7 @@ fn make_run_args(config: config, _props: test_props, testfile: str) ->
 fn split_maybe_args(argstr: option<str>) -> [str] {
     fn rm_whitespace(v: [str]) -> [str] {
         fn flt(&&s: str) -> option<str> {
-            if !is_whitespace(s) { option::some(s) } else { option::none }
-        }
-
-        // FIXME: This should be in std
-        fn is_whitespace(s: str) -> bool {
-            for c: u8 in s { if c != ' ' as u8 { ret false; } }
-            ret true;
+          if !str::is_whitespace(s) { option::some(s) } else { option::none }
         }
         vec::filter_map(v, flt)
     }
