@@ -123,10 +123,11 @@ pure fn to_digit(c: char, radix: uint) -> option<uint> {
 }
 
 /*
- FIXME: works only on ASCII
+ FIXME: works only on ASCII (Issue #1985)
 */
 #[doc = "Convert a char to the corresponding lower case."]
 pure fn to_lower(c: char) -> char {
+    assert is_ascii(c);
     alt c {
       'A' to 'Z' { ((c as u8) + 32u8) as char }
       _ { c }
@@ -134,10 +135,11 @@ pure fn to_lower(c: char) -> char {
 }
 
 /*
- FIXME: works only on ASCII
+ FIXME: works only on ASCII (Issue 1985)
 */
 #[doc = "Convert a char to the corresponding upper case."]
 pure fn to_upper(c: char) -> char {
+    assert is_ascii(c);
     alt c {
       'a' to 'z' { ((c as u8) - 32u8) as char }
       _ { c }
@@ -208,16 +210,18 @@ fn test_to_digit() {
 fn test_to_lower() {
     assert (to_lower('H') == 'h');
     assert (to_lower('e') == 'e');
+    // non-ASCII, shouldn't work (see earlier FIXME)
     //assert (to_lower('Ö') == 'ö');
-    assert (to_lower('ß') == 'ß');
+    //assert (to_lower('ß') == 'ß');
 }
 
 #[test]
 fn test_to_upper() {
     assert (to_upper('l') == 'L');
     assert (to_upper('Q') == 'Q');
+    // non-ASCII, shouldn't work (see earlier FIXME)
     //assert (to_upper('ü') == 'Ü');
-    assert (to_upper('ß') == 'ß');
+    //assert (to_upper('ß') == 'ß');
 }
 
 #[test]
