@@ -163,24 +163,36 @@ fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
       }
       expr_call(f, args, _) {
         v.visit_expr(f, cx, v);
-        let i = 0u, fns = [];
+        let fns = [];
         let arg_ts = ty::ty_fn_args(ty::expr_ty(cx.tcx, f));
-        for arg in args {
+        vec::iter2(args, arg_ts) {|arg, arg_t|
             alt arg.node {
               expr_fn(_, _, _, _) | expr_fn_block(_, _)
-              if is_blockish(ty::ty_fn_proto(arg_ts[i].ty)) {
+              if is_blockish(ty::ty_fn_proto(arg_t.ty)) {
                 fns += [arg];
               }
               _ {
-                alt ty::arg_mode(cx.tcx, arg_ts[i]) {
+                alt ty::arg_mode(cx.tcx, arg_t) {
                   by_mutbl_ref { clear_if_path(cx, arg, v, false); }
                   _ { v.visit_expr(arg, cx, v); }
                 }
               }
             }
-            i += 1u;
         }
         for f in fns { v.visit_expr(f, cx, v); }
+        vec::iter2(args, arg_ts) {|arg, arg_t|
+            alt arg.node {
+              expr_path(_) {
+                alt ty::arg_mode(cx.tcx, arg_t) {
+                  by_ref | by_val | by_mutbl_ref {
+                    clear_if_path(cx, arg, v, false);
+                  }
+                  _ {}
+                }
+              }
+              _ {}
+            }
+        }
       }
       _ { visit::visit_expr(ex, cx, v); }
     }
