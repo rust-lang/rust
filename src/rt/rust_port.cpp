@@ -11,7 +11,7 @@ rust_port::rust_port(rust_task *task, size_t unit_sz)
         PRIxPTR, (uintptr_t)task, unit_sz, (uintptr_t)this);
 
     task->ref();
-    id = task->register_port(this);
+    id = kernel->register_port(this);
 }
 
 rust_port::~rust_port() {
@@ -39,7 +39,7 @@ void rust_port::deref() {
 void rust_port::begin_detach(uintptr_t *yield) {
     *yield = false;
 
-    task->release_port(id);
+    kernel->release_port_id(id);
 
     scoped_lock with(ref_lock);
     ref_count--;

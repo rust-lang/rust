@@ -513,7 +513,6 @@ get_port_id(rust_port *port) {
 extern "C" CDECL uintptr_t
 chan_id_send(type_desc *t, rust_task_id target_task_id,
              rust_port_id target_port_id, void *sptr) {
-    // FIXME: make sure this is thread-safe
     bool sent = false;
     rust_task *task = rust_task_thread::get_task();
 
@@ -521,19 +520,13 @@ chan_id_send(type_desc *t, rust_task_id target_task_id,
         " port: 0x%" PRIxPTR, (uintptr_t) target_task_id,
         (uintptr_t) target_port_id);
 
-    rust_task *target_task = task->kernel->get_task_by_id(target_task_id);
-    if(target_task) {
-        rust_port *port = target_task->get_port_by_id(target_port_id);
-        if(port) {
-            port->send(sptr);
-            port->deref();
-            sent = true;
-        } else {
-            LOG(task, comm, "didn't get the port");
-        }
-        target_task->deref();
+    rust_port *port = task->kernel->get_port_by_id(target_port_id);
+    if(port) {
+        port->send(sptr);
+        port->deref();
+        sent = true;
     } else {
-        LOG(task, comm, "didn't get the task");
+        LOG(task, comm, "didn't get the port");
     }
     return (uintptr_t)sent;
 }

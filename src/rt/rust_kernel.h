@@ -30,6 +30,12 @@ private:
     rust_task_id max_task_id;
     hash_map<rust_task_id, rust_task *> task_table;
 
+    // Protects max_port_id and port_table
+    lock_and_signal port_lock;
+    // The next port id
+    rust_task_id max_port_id;
+    hash_map<rust_port_id, rust_port *> port_table;
+
     lock_and_signal rval_lock;
     int rval;
 
@@ -72,6 +78,10 @@ public:
     void register_task(rust_task *task);
     rust_task *get_task_by_id(rust_task_id id);
     void release_task_id(rust_task_id tid);
+
+    rust_port_id register_port(rust_port *port);
+    rust_port *get_port_by_id(rust_port_id id);
+    void release_port_id(rust_port_id tid);
 
     void set_exit_status(int code);
 };

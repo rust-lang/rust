@@ -18,6 +18,7 @@ rust_kernel::rust_kernel(rust_srv *srv) :
     _log(srv, NULL),
     srv(srv),
     max_task_id(0),
+    max_port_id(0),
     rval(0),
     max_sched_id(0),
     env(srv->env)
@@ -210,6 +211,46 @@ rust_kernel::get_task_by_id(rust_task_id id) {
         }
     }
     return task;
+}
+
+rust_port_id
+rust_kernel::register_port(rust_port *port) {
+    uintptr_t new_live_ports;
+    rust_port_id new_port_id;
+    {
+        scoped_lock with(port_lock);
+        new_port_id = max_port_id++;
+        port_table.put(new_port_id, port);
+        new_live_ports = port_table.count();
+    }
+    K(srv, new_port_id != INTPTR_MAX, "Hit the maximum port id");
+    KLOG_("Registered port %" PRIdPTR, new_port_id);
+    KLOG_("Total outstanding ports: %d", new_live_ports);
+    return new_port_id;
+}
+
+void
+rust_kernel::release_port_id(rust_port_id id) {
+    KLOG_("Releasing port %" PRIdPTR, id);
+    uintptr_t new_live_ports;
+    {
+        scoped_lock with(port_lock);
+        port_table.remove(id);
+        new_live_ports = port_table.count();
+    }
+    KLOG_("Total outstanding ports: %d", new_live_ports);
+}
+
+rust_port *
+rust_kernel::get_port_by_id(rust_port_id id) {
+    scoped_lock with(port_lock);
+    rust_port *port = NULL;
+    // get leaves port unchanged if not found.
+    port_table.get(id, &port);
+    if(port) {
+        port->ref();
+    }
+    return port;
 }
 
 #ifdef __WIN32__

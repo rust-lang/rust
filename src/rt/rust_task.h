@@ -70,8 +70,6 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     const char *const name;
     int32_t list_index;
 
-    rust_port_id next_port_id;
-
     // Rendezvous pointer for receiving data when blocked on a port. If we're
     // trying to read data and no data is available on any incoming channel,
     // we block on the port, and yield control to the scheduler. Since, we
@@ -99,10 +97,6 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     size_t total_stack_sz;
 
 private:
-
-    // Protects port_table
-    lock_and_signal port_lock;
-    hash_map<rust_port_id, rust_port *> port_table;
 
     // Protects state, cond, cond_name
     lock_and_signal state_lock;
@@ -200,10 +194,6 @@ public:
     rust_crate_cache * get_crate_cache();
 
     void *calloc(size_t size, const char *tag);
-
-    rust_port_id register_port(rust_port *port);
-    void release_port(rust_port_id id);
-    rust_port *get_port_by_id(rust_port_id id);
 
     // Use this function sparingly. Depending on the ref count is generally
     // not at all safe.

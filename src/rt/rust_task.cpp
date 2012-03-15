@@ -75,7 +75,6 @@ rust_task::rust_task(rust_task_thread *thread, rust_task_list *state,
     kernel(thread->kernel),
     name(name),
     list_index(-1),
-    next_port_id(0),
     rendezvous_ptr(0),
     local_region(&thread->srv->local_region),
     boxed(&local_region),
@@ -107,11 +106,6 @@ rust_task::rust_task(rust_task_thread *thread, rust_task_list *state,
 void
 rust_task::delete_this()
 {
-    {
-        scoped_lock with (port_lock);
-        I(thread, port_table.is_empty());
-    }
-
     DLOG(thread, task, "~rust_task %s @0x%" PRIxPTR ", refcnt=%d",
          name, (uintptr_t)this, ref_count);
 
@@ -476,49 +470,19 @@ rust_task::calloc(size_t size, const char *tag) {
     return local_region.calloc(size, tag);
 }
 
-rust_port_id rust_task::register_port(rust_port *port) {
-    I(thread, !port_lock.lock_held_by_current_thread());
-    scoped_lock with(port_lock);
-
-    rust_port_id id = next_port_id++;
-    A(thread, id != INTPTR_MAX, "Hit the maximum port id");
-    port_table.put(id, port);
-    return id;
-}
-
-void rust_task::release_port(rust_port_id id) {
-    scoped_lock with(port_lock);
-    port_table.remove(id);
-}
-
-rust_port *rust_task::get_port_by_id(rust_port_id id) {
-    I(thread, !port_lock.lock_held_by_current_thread());
-    scoped_lock with(port_lock);
-    rust_port *port = NULL;
-    port_table.get(id, &port);
-    if (port) {
-        port->ref();
-    }
-    return port;
-}
-
 void
 rust_task::notify(bool success) {
     // FIXME (1078) Do this in rust code
     if(notify_enabled) {
-        rust_task *target_task = kernel->get_task_by_id(notify_chan.task);
-        if (target_task) {
-            rust_port *target_port =
-                target_task->get_port_by_id(notify_chan.port);
-            if(target_port) {
-                task_notification msg;
-                msg.id = id;
-                msg.result = !success ? tr_failure : tr_success;
+        rust_port *target_port =
+            kernel->get_port_by_id(notify_chan.port);
+        if(target_port) {
+            task_notification msg;
+            msg.id = id;
+            msg.result = !success ? tr_failure : tr_success;
 
-                target_port->send(&msg);
-                target_port->deref();
-            }
-            target_task->deref();
+            target_port->send(&msg);
+            target_port->deref();
         }
     }
 }
