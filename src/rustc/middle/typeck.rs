@@ -1466,6 +1466,17 @@ fn instantiate_self_regions(pcx: pat_ctxt, args: [ty::t]) -> [ty::t] {
     })
 }
 
+// Replaces all region variables in the given type with "inferred regions".
+// This is used during method lookup to allow typeclass implementations to
+// refer to inferred regions.
+fn universally_quantify_regions(tcx: ty::ctxt, ty: ty::t) -> ty::t {
+    if ty::type_has_rptrs(ty) {
+        ty::fold_ty(tcx, ty::fm_rptr({|_r| ty::re_inferred}), ty)
+    } else {
+        ty
+    }
+}
+
 fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
                      subpats: [@ast::pat], expected: ty::t) {
     // Typecheck the path.
@@ -1877,7 +1888,12 @@ fn lookup_method_inner(fcx: @fn_ctxt, expr: @ast::expr,
                 let {n_tps, ty: self_ty} = impl_self_ty(tcx, did);
                 let {vars, ty: self_ty} = if n_tps > 0u {
                     bind_params(fcx, self_ty, n_tps)
-                } else { {vars: [], ty: self_ty} };
+                } else {
+                    {vars: [], ty: self_ty}
+                };
+
+                let ty = universally_quantify_regions(tcx, ty);
+
                 alt unify::unify(fcx, ty, self_ty) {
                   result::ok(_) {
                     if option::is_some(result) {
