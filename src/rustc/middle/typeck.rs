@@ -349,14 +349,14 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
           }
           ast::ty_rptr(region, mt) {
             let region = alt region.node {
-                ast::re_inferred | ast::re_self {
+                ast::re_inferred {
                     let attir = tcx.region_map.ast_type_to_inferred_region;
                     alt attir.find(ast_ty.id) {
                         some(resolved_region) { resolved_region }
                         none { ty::re_inferred }
                     }
                 }
-                ast::re_named(_) {
+                ast::re_named(_) | ast::re_self {
                     tcx.region_map.ast_type_to_region.get(region.id)
                 }
             };
