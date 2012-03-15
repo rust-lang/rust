@@ -71,11 +71,11 @@ impl of serializer for writer {
         f();
     }
 
-    fn emit_enum_variant(v_name: str, _v_id: uint, _sz: uint, f: fn()) {
+    fn emit_enum_variant(v_name: str, _v_id: uint, sz: uint, f: fn()) {
         self.write_str(v_name);
-        self.write_str("(");
+        if sz > 0u { self.write_str("("); }
         f();
-        self.write_str(")");
+        if sz > 0u { self.write_str(")"); }
     }
 
     fn emit_enum_variant_arg(idx: uint, f: fn()) {

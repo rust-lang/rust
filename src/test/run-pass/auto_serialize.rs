@@ -72,6 +72,9 @@ enum quark<T> {
 #[auto_serialize]
 type uint_quark = quark<uint>;
 
+#[auto_serialize]
+enum c_like { a, b, c }
+
 fn main() {
 
     test_ser_and_deser(plus(@minus(@val(3u), @val(10u)),
@@ -117,4 +120,16 @@ fn main() {
                        serialize_uint_quark(_, _),
                        deserialize_uint_quark(_),
                        serialize_uint_quark(_, _));
+
+    test_ser_and_deser(a,
+                       "a",
+                       serialize_c_like(_, _),
+                       deserialize_c_like(_),
+                       serialize_c_like(_, _));
+
+    test_ser_and_deser(b,
+                       "b",
+                       serialize_c_like(_, _),
+                       deserialize_c_like(_),
+                       serialize_c_like(_, _));
 }

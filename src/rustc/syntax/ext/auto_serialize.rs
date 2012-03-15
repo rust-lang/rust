@@ -816,9 +816,16 @@ fn deser_enum(cx: ext_ctxt, tps: deser_tps_map, e_name: str,
             #ast{ $(d).read_enum_variant_arg($(idx), $(body)) }
         };
 
-        let body =
-            cx.expr(v_span, ast::expr_call(
-                cx.var_ref(v_span, v_name), arg_exprs, false));
+        let body = {
+            if vec::is_empty(tys) {
+                // for a nullary variant v, do "v"
+                cx.var_ref(v_span, v_name)
+            } else {
+                // for an n-ary variant v, do "v(a_1, ..., a_n)"
+                cx.expr(v_span, ast::expr_call(
+                    cx.var_ref(v_span, v_name), arg_exprs, false))
+            }
+        };
 
         {pats: [@{id: cx.next_id(),
                   node: ast::pat_lit(cx.lit_uint(v_span, vidx)),
