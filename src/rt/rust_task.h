@@ -57,7 +57,6 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     uintptr_t runtime_sp;      // Runtime sp while task running.
     rust_scheduler *sched;
     rust_task_thread *thread;
-    rust_crate_cache *cache;
 
     // Fields known only to the runtime.
     rust_kernel *kernel;
@@ -185,7 +184,6 @@ public:
     void unsupervise();
 
     frame_glue_fns *get_frame_glue_fns(uintptr_t fp);
-    rust_crate_cache * get_crate_cache();
 
     void *calloc(size_t size, const char *tag);
 

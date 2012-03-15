@@ -71,7 +71,6 @@ rust_task::rust_task(rust_task_thread *thread, rust_task_list *state,
     runtime_sp(0),
     sched(thread->sched),
     thread(thread),
-    cache(NULL),
     kernel(thread->kernel),
     name(name),
     list_index(-1),
@@ -443,16 +442,6 @@ rust_task::wakeup(rust_cond *from) {
 void
 rust_task::die() {
     transition(&thread->running_tasks, &thread->dead_tasks, NULL, "none");
-}
-
-rust_crate_cache *
-rust_task::get_crate_cache()
-{
-    if (!cache) {
-        DLOG(thread, task, "fetching cache for current crate");
-        cache = thread->get_cache();
-    }
-    return cache;
 }
 
 void

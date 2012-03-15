@@ -24,7 +24,6 @@ rust_task_thread::rust_task_thread(rust_scheduler *sched,
                                    int id) :
     rust_thread(SCHED_STACK_SIZE),
     _log(srv, this),
-    cache(this),
     id(id),
     should_exit(false),
     cached_c_stack(NULL),
@@ -293,11 +292,6 @@ rust_task_thread::start_main_loop() {
         destroy_stack(kernel->region(), cached_c_stack);
         cached_c_stack = NULL;
     }
-}
-
-rust_crate_cache *
-rust_task_thread::get_cache() {
-    return &cache;
 }
 
 rust_task *

@@ -55,7 +55,6 @@ struct rust_task;
 class rust_log;
 class rust_port;
 class rust_kernel;
-class rust_crate_cache;
 
 struct stk_seg;
 struct type_desc;

@@ -11,37 +11,6 @@
 #include <windows.h>
 #endif
 
-struct rust_task_thread;
-
-struct rust_hashable_dict {
-    UT_hash_handle hh;
-    void* fields[0];
-};
-
-class rust_crate_cache {
-public:
-    type_desc *get_type_desc(size_t size,
-                             size_t align,
-                             size_t n_descs,
-                             type_desc const **descs,
-                             uintptr_t n_obj_params);
-    void** get_dict(size_t n_fields, void** dict);
-
-private:
-
-    type_desc *type_descs;
-    rust_hashable_dict *dicts;
-
-public:
-
-    rust_task_thread *thread;
-    size_t idx;
-
-    rust_crate_cache(rust_task_thread *thread);
-    ~rust_crate_cache();
-    void flush();
-};
-
 struct rust_task_thread : public kernel_owned<rust_task_thread>,
                         rust_thread
 {
@@ -52,7 +21,6 @@ private:
     // Fields known only by the runtime:
     rust_log _log;
 
-    rust_crate_cache cache;
     const int id;
 
 #ifndef __WIN32__
@@ -108,7 +76,6 @@ public:
     rust_log & get_log();
     void fail();
 
-    rust_crate_cache *get_cache();
     size_t number_of_live_tasks();
 
     void reap_dead_tasks();

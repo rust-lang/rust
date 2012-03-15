@@ -40,7 +40,6 @@ RUNTIME_CS_$(1) := \
               rt/rust.cpp \
               rt/rust_builtin.cpp \
               rt/rust_run_program.cpp \
-              rt/rust_crate_cache.cpp \
               rt/rust_env.cpp \
               rt/rust_task_thread.cpp \
               rt/rust_scheduler.cpp \

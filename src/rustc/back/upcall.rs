@@ -18,7 +18,6 @@ type upcalls =
      mark: ValueRef,
      create_shared_type_desc: ValueRef,
      free_shared_type_desc: ValueRef,
-     get_type_desc: ValueRef,
      vec_grow: ValueRef,
      vec_push: ValueRef,
      cmp_type: ValueRef,
@@ -71,12 +70,6 @@ fn declare_upcalls(targ_cfg: @session::config,
                 T_ptr(tydesc_type)),
           free_shared_type_desc:
               dv("free_shared_type_desc", [T_ptr(tydesc_type)]),
-          get_type_desc:
-              d("get_type_desc",
-                [T_ptr(T_nil()), size_t,
-                 size_t, size_t,
-                 T_ptr(T_ptr(tydesc_type)), int_t],
-                T_ptr(tydesc_type)),
           vec_grow:
               dv("vec_grow", [T_ptr(T_ptr(opaque_vec_t)), int_t]),
           vec_push:
