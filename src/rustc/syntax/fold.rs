@@ -117,13 +117,14 @@ fn fold_meta_item_(&&mi: @meta_item, fld: ast_fold) -> @meta_item {
                   meta_name_value(fld.fold_ident(id), s)
                 }
               },
-          span: mi.span};
+          span: fld.new_span(mi.span)};
 }
 //used in noop_fold_item and noop_fold_crate
-fn fold_attribute_(at: attribute, fmi: fn@(&&@meta_item) -> @meta_item) ->
+fn fold_attribute_(at: attribute, fld: ast_fold) ->
    attribute {
-    ret {node: {style: at.node.style, value: *fmi(@at.node.value)},
-         span: at.span};
+    ret {node: {style: at.node.style,
+                value: *fold_meta_item_(@at.node.value, fld)},
+         span: fld.new_span(at.span)};
 }
 //used in noop_fold_native_item and noop_fold_fn_decl
 fn fold_arg_(a: arg, fld: ast_fold) -> arg {
@@ -148,7 +149,7 @@ fn fold_mac_(m: mac, fld: ast_fold) -> mac {
                mac_aq(_,_) { /* fixme */ m.node }
                mac_var(_) { /* fixme */ m.node }
              },
-         span: m.span};
+         span: fld.new_span(m.span)};
 }
 
 fn fold_fn_decl(decl: ast::fn_decl, fld: ast_fold) -> ast::fn_decl {
@@ -178,7 +179,7 @@ fn fold_ty_params(tps: [ty_param], fld: ast_fold) -> [ty_param] {
 
 fn noop_fold_crate(c: crate_, fld: ast_fold) -> crate_ {
     let fold_meta_item = bind fold_meta_item_(_, fld);
-    let fold_attribute = bind fold_attribute_(_, fold_meta_item);
+    let fold_attribute = bind fold_attribute_(_, fld);
 
     ret {directives: vec::map(c.directives, fld.fold_crate_directive),
          module: fld.fold_mod(c.module),
@@ -208,8 +209,7 @@ fn noop_fold_view_item(vi: view_item_, _fld: ast_fold) -> view_item_ {
 
 fn noop_fold_native_item(&&ni: @native_item, fld: ast_fold) -> @native_item {
     let fold_arg = bind fold_arg_(_, fld);
-    let fold_meta_item = bind fold_meta_item_(_, fld);
-    let fold_attribute = bind fold_attribute_(_, fold_meta_item);
+    let fold_attribute = bind fold_attribute_(_, fld);
 
     ret @{ident: fld.fold_ident(ni.ident),
           attrs: vec::map(ni.attrs, fold_attribute),
@@ -231,8 +231,7 @@ fn noop_fold_native_item(&&ni: @native_item, fld: ast_fold) -> @native_item {
 }
 
 fn noop_fold_item(&&i: @item, fld: ast_fold) -> @item {
-    let fold_meta_item = bind fold_meta_item_(_, fld);
-    let fold_attribute = bind fold_attribute_(_, fold_meta_item);
+    let fold_attribute = bind fold_attribute_(_, fld);
 
     ret @{ident: fld.fold_ident(i.ident),
           attrs: vec::map(i.attrs, fold_attribute),
@@ -252,7 +251,7 @@ fn noop_fold_class_item(&&ci: @class_item, fld: ast_fold)
         }
         class_method(i) { class_method(fld.fold_item(i)) }
          }},
-       span: ci.span}
+       span: fld.new_span(ci.span)}
 }
 
 fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
@@ -374,7 +373,7 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
                  {mutbl: field.node.mutbl,
                   ident: fld.fold_ident(field.node.ident),
                   expr: fld.fold_expr(field.node.expr)},
-             span: field.span};
+             span: fld.new_span(field.span)};
     }
     let fold_field = bind fold_field_(_, fld);
 
@@ -519,8 +518,7 @@ fn noop_fold_variant(v: variant_, fld: ast_fold) -> variant_ {
     let fold_variant_arg = bind fold_variant_arg_(_, fld);
     let args = vec::map(v.args, fold_variant_arg);
 
-    let fold_meta_item = bind fold_meta_item_(_, fld);
-    let fold_attribute = bind fold_attribute_(_, fold_meta_item);
+    let fold_attribute = bind fold_attribute_(_, fld);
     let attrs = vec::map(v.attrs, fold_attribute);
 
     let de = alt v.disr_expr {

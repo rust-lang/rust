@@ -14,13 +14,17 @@ import middle::ty::{node_id_to_type, arg, block_ty,
 import util::ppaux::ty_to_str;
 import std::smallintmap;
 import std::map::{hashmap, int_hash};
+import std::serialization::{serialize_uint, deserialize_uint};
 import syntax::print::pprust::*;
 
 export check_crate;
-export method_map, method_origin, method_static, method_param, method_iface;
-export vtable_map, vtable_res, vtable_origin, vtable_static, vtable_param,
-       vtable_iface;
+export method_map;
+export method_origin, serialize_method_origin, deserialize_method_origin;
+export vtable_map;
+export vtable_res;
+export vtable_origin;
 
+#[auto_serialize]
 enum method_origin {
     method_static(ast::def_id),
     // iface id, method num, param num, bound num
@@ -37,6 +41,7 @@ enum vtable_origin {
     vtable_param(uint, uint),
     vtable_iface(ast::def_id, [ty::t]),
 }
+
 type vtable_map = hashmap<ast::node_id, vtable_res>;
 
 type ty_table = hashmap<ast::def_id, ty::t>;

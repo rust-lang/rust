@@ -13,14 +13,19 @@ import std::serialization::serializer;
 import std::serialization::deserializer;
 import std::serialization::serializer_helpers;
 import std::serialization::deserializer_helpers;
+import std::prettyprint::serializer;
 import std::smallintmap::map;
 import middle::trans::common::maps;
 import middle::{ty, typeck, last_use, ast_map};
-import middle::typeck::method_origin;
-import middle::typeck::vtable_res;
-import middle::typeck::vtable_origin;
+import middle::typeck::{method_origin,
+                        serialize_method_origin,
+                        deserialize_method_origin,
+                        vtable_res,
+                        vtable_origin};
 import driver::session::session;
-import middle::freevars::freevar_entry;
+import middle::freevars::{freevar_entry,
+                          serialize_freevar_entry,
+                          deserialize_freevar_entry};
 import c = common;
 import e = encoder;
 
@@ -302,13 +307,13 @@ impl of tr for span {
 
 impl serializer_helpers<S: serializer> for S {
     fn emit_def_id(did: ast::def_id) {
-        astencode_gen::serialize_syntax_ast_def_id(self, did)
+        ast::serialize_def_id(self, did)
     }
 }
 
 impl deserializer_helpers<D: deserializer> for D {
     fn read_def_id(xcx: extended_decode_ctxt) -> ast::def_id {
-        let did = astencode_gen::deserialize_syntax_ast_def_id(self);
+        let did = ast::deserialize_def_id(self);
         did.tr(xcx)
     }
 }
@@ -330,7 +335,7 @@ impl deserializer_helpers<D: deserializer> for D {
 
 fn encode_ast(ebml_w: ebml::writer, item: ast::inlined_item) {
     ebml_w.wr_tag(c::tag_tree as uint) {||
-        astencode_gen::serialize_syntax_ast_inlined_item(ebml_w, item)
+        ast::serialize_inlined_item(ebml_w, item)
     }
 }
 
@@ -375,7 +380,7 @@ fn simplify_ast(ii: ast::inlined_item) -> ast::inlined_item {
 fn decode_ast(par_doc: ebml::doc) -> ast::inlined_item {
     let chi_doc = par_doc[c::tag_tree];
     let d = ebml::ebml_deserializer(chi_doc);
-    astencode_gen::deserialize_syntax_ast_inlined_item(d)
+    ast::deserialize_inlined_item(d)
 }
 
 fn renumber_ast(xcx: extended_decode_ctxt, ii: ast::inlined_item)
@@ -400,12 +405,12 @@ fn renumber_ast(xcx: extended_decode_ctxt, ii: ast::inlined_item)
 // Encoding and decoding of ast::def
 
 fn encode_def(ebml_w: ebml::writer, def: ast::def) {
-    astencode_gen::serialize_syntax_ast_def(ebml_w, def)
+    ast::serialize_def(ebml_w, def)
 }
 
 fn decode_def(xcx: extended_decode_ctxt, doc: ebml::doc) -> ast::def {
     let dsr = ebml::ebml_deserializer(doc);
-    let def = astencode_gen::deserialize_syntax_ast_def(dsr);
+    let def = ast::deserialize_def(dsr);
     def.tr(xcx)
 }
 
@@ -448,13 +453,12 @@ impl of tr for ast::def {
 // Encoding and decoding of freevar information
 
 fn encode_freevar_entry(ebml_w: ebml::writer, fv: freevar_entry) {
-    astencode_gen::serialize_middle_freevars_freevar_entry(ebml_w, fv)
+    serialize_freevar_entry(ebml_w, fv)
 }
 
 impl helper for ebml::ebml_deserializer {
     fn read_freevar_entry(xcx: extended_decode_ctxt) -> freevar_entry {
-        let fv =
-            astencode_gen::deserialize_middle_freevars_freevar_entry(self);
+        let fv = deserialize_freevar_entry(self);
         fv.tr(xcx)
     }
 }
@@ -469,16 +473,16 @@ impl of tr for freevar_entry {
 // Encoding and decoding of method_origin
 
 fn encode_method_origin(ebml_w: ebml::writer, mo: method_origin) {
-    astencode_gen::serialize_middle_typeck_method_origin(ebml_w, mo)
+    serialize_method_origin(ebml_w, mo)
 }
 
 impl helper for ebml::ebml_deserializer {
     fn read_method_origin(xcx: extended_decode_ctxt) -> method_origin {
-        let fv = astencode_gen::deserialize_middle_typeck_method_origin(self);
+        let fv = deserialize_method_origin(self);
         fv.tr(xcx)
     }
     fn read_is_last_use(xcx: extended_decode_ctxt) -> last_use::is_last_use {
-        let lu = astencode_gen::deserialize_middle_last_use_is_last_use(self);
+        let lu = last_use::deserialize_is_last_use(self);
         lu.tr(xcx)
     }
 }
@@ -692,7 +696,7 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
         ebml_w.tag(c::tag_table_def) {||
             ebml_w.id(id);
             ebml_w.tag(c::tag_table_val) {||
-                astencode_gen::serialize_syntax_ast_def(ebml_w, def)
+                ast::serialize_def(ebml_w, def)
             }
         }
     }
@@ -774,7 +778,7 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
         ebml_w.tag(c::tag_table_last_use) {||
             ebml_w.id(id);
             ebml_w.tag(c::tag_table_val) {||
-               astencode_gen::serialize_middle_last_use_is_last_use(ebml_w, m)
+                last_use::serialize_is_last_use(ebml_w, m)
             }
         }
     }
@@ -786,8 +790,7 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
         ebml_w.tag(c::tag_table_method_map) {||
             ebml_w.id(id);
             ebml_w.tag(c::tag_table_val) {||
-                astencode_gen::
-                    serialize_middle_typeck_method_origin(ebml_w, mo)
+                serialize_method_origin(ebml_w, mo)
             }
         }
     }
@@ -899,5 +902,130 @@ fn decode_side_tables(xcx: extended_decode_ctxt,
         }
 
         #debug[">< Side table doc loaded"];
+    }
+}
+
+// ______________________________________________________________________
+// Testing of astencode_gen
+
+#[cfg(test)]
+fn encode_item_ast(ebml_w: ebml::writer, item: @ast::item) {
+    ebml_w.wr_tag(c::tag_tree as uint) {||
+        ast::serialize_item(ebml_w, *item);
+    }
+}
+
+#[cfg(test)]
+fn decode_item_ast(par_doc: ebml::doc) -> @ast::item {
+    let chi_doc = par_doc[c::tag_tree];
+    let d = ebml::ebml_deserializer(chi_doc);
+    @ast::deserialize_item(d)
+}
+
+#[cfg(test)]
+fn new_parse_sess() -> parser::parse_sess {
+    let cm = codemap::new_codemap();
+    let handler = diagnostic::mk_handler(option::none);
+    let sess = @{
+        cm: cm,
+        mutable next_id: 1,
+        span_diagnostic: diagnostic::mk_span_handler(handler, cm),
+        mutable chpos: 0u,
+        mutable byte_pos: 0u
+    };
+    ret sess;
+}
+
+#[cfg(test)]
+iface fake_ext_ctxt {
+    fn session() -> fake_session;
+}
+
+#[cfg(test)]
+type fake_options = {cfg: ast::crate_cfg};
+
+#[cfg(test)]
+type fake_session = {opts: @fake_options,
+                     parse_sess: parser::parse_sess};
+
+#[cfg(test)]
+impl of fake_ext_ctxt for fake_session {
+    fn session() -> fake_session {self}
+}
+
+#[cfg(test)]
+fn mk_ctxt() -> fake_ext_ctxt {
+    let opts : fake_options = {cfg: []};
+    {opts: @opts, parse_sess: new_parse_sess()} as fake_ext_ctxt
+}
+
+#[cfg(test)]
+fn roundtrip(in_item: @ast::item) {
+    #debug["in_item = %s", pprust::item_to_str(in_item)];
+    let mbuf = io::mem_buffer();
+    let ebml_w = ebml::writer(io::mem_buffer_writer(mbuf));
+    encode_item_ast(ebml_w, in_item);
+    let ebml_doc = ebml::doc(@io::mem_buffer_buf(mbuf));
+    let out_item = decode_item_ast(ebml_doc);
+    #debug["out_item = %s", pprust::item_to_str(out_item)];
+
+    let exp_str =
+        io::with_str_writer {|w| ast::serialize_item(w, *in_item) };
+    let out_str =
+        io::with_str_writer {|w| ast::serialize_item(w, *out_item) };
+
+    #debug["expected string: %s", exp_str];
+    #debug["actual string  : %s", out_str];
+
+    assert exp_str == out_str;
+}
+
+#[test]
+fn test_basic() {
+    let ext_cx = mk_ctxt();
+    roundtrip(#ast(item){
+        fn foo() {}
+    });
+}
+
+#[test]
+fn test_smalltalk() {
+    let ext_cx = mk_ctxt();
+    roundtrip(#ast(item){
+        fn foo() -> int { 3 + 4 } // first smalltalk program ever executed.
+    });
+}
+
+#[test]
+fn test_more() {
+    let ext_cx = mk_ctxt();
+    roundtrip(#ast(item){
+        fn foo(x: uint, y: uint) -> uint {
+            let z = x + y;
+            ret z;
+        }
+    });
+}
+
+#[test]
+fn test_simplification() {
+    let ext_cx = mk_ctxt();
+    let item_in = ast::ii_item(#ast(item) {
+        fn new_int_alist<B: copy>() -> alist<int, B> {
+            fn eq_int(&&a: int, &&b: int) -> bool { a == b }
+            ret {eq_fn: eq_int, mut data: []};
+        }
+    });
+    let item_out = simplify_ast(item_in);
+    let item_exp = ast::ii_item(#ast(item) {
+        fn new_int_alist<B: copy>() -> alist<int, B> {
+            ret {eq_fn: eq_int, mut data: []};
+        }
+    });
+    alt (item_out, item_exp) {
+      (ast::ii_item(item_out), ast::ii_item(item_exp)) {
+        assert pprust::item_to_str(item_out) == pprust::item_to_str(item_exp);
+      }
+      _ { fail; }
     }
 }

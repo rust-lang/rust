@@ -25,6 +25,7 @@ import std::map::hashmap;
 // (by `break` or conditionals), and for handling loops.
 
 // Marks expr_paths that are last uses.
+#[auto_serialize]
 enum is_last_use {
     is_last_use,
     has_last_use,
