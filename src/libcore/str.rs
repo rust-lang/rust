@@ -1331,7 +1331,16 @@ mod unsafe {
        assert (begin <= end);
        assert (end <= len(s));
 
-       let mut v = as_bytes(s) { |v| vec::slice(v, begin, end) };
+       let mut v = as_buf(s) { |sbuf|
+           let mut v = [];
+           vec::reserve(v, end - begin + 1u);
+           vec::as_buf(v) { |vbuf|
+               let src = ptr::offset(sbuf, begin);
+               ptr::memcpy(vbuf, src, end - begin);
+           }
+           vec::unsafe::set_len(v, end - begin);
+           v
+       };
        v += [0u8];
        let s: str = ::unsafe::reinterpret_cast(v);
        ::unsafe::leak(v);
