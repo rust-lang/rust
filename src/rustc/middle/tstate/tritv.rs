@@ -29,12 +29,12 @@ export to_str;
  have the same length; 11 should never appear in a given position)
 */
 
-type t = {uncertain: bitv::t, val: bitv::t, nbits: uint};
+type t = {uncertain: bitv::bitv, val: bitv::bitv, nbits: uint};
 enum trit { ttrue, tfalse, dont_care, }
 
 fn create_tritv(len: uint) -> t {
-    ret {uncertain: bitv::create(len, true),
-         val: bitv::create(len, false),
+    ret {uncertain: bitv::bitv(len, true),
+         val: bitv::bitv(len, false),
          nbits: len};
 }
 

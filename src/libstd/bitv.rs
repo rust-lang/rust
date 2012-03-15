@@ -1,5 +1,4 @@
-export t;
-export create;
+export bitv;
 export union;
 export intersect;
 export assign;
@@ -23,7 +22,7 @@ export eq_vec;
 //        for the case where nbits <= 32.
 
 #[doc = "The bitvector type"]
-type t = @{storage: [mutable uint], nbits: uint};
+type bitv = @{storage: [mutable uint], nbits: uint};
 
 const uint_bits: uint = 32u + (1u << 32u >> 27u);
 
@@ -35,13 +34,13 @@ Constructs a bitvector
 * nbits - The number of bits in the bitvector
 * init - If true then the bits are initialized to 1, otherwise 0
 "]
-fn create(nbits: uint, init: bool) -> t {
+fn bitv(nbits: uint, init: bool) -> bitv {
     let elt = if init { !0u } else { 0u };
     let storage = vec::to_mut(vec::from_elem(nbits / uint_bits + 1u, elt));
     ret @{storage: storage, nbits: nbits};
 }
 
-fn process(v0: t, v1: t, op: fn(uint, uint) -> uint) -> bool {
+fn process(v0: bitv, v1: bitv, op: fn(uint, uint) -> uint) -> bool {
     let len = vec::len(v1.storage);
     assert (vec::len(v0.storage) == len);
     assert (v0.nbits == v1.nbits);
@@ -58,7 +57,9 @@ fn process(v0: t, v1: t, op: fn(uint, uint) -> uint) -> bool {
 
 fn lor(w0: uint, w1: uint) -> uint { ret w0 | w1; }
 
-fn union(v0: t, v1: t) -> bool { let sub = lor; ret process(v0, v1, sub); }
+fn union(v0: bitv, v1: bitv) -> bool {
+    let sub = lor; ret process(v0, v1, sub);
+}
 
 fn land(w0: uint, w1: uint) -> uint { ret w0 & w1; }
 
@@ -68,7 +69,7 @@ Calculates the intersection of two bitvectors
 Sets `v0` to the intersection of `v0` and `v1`. Both bitvectors must be the
 same length. Returns 'true' if `v0` was changed.
 "]
-fn intersect(v0: t, v1: t) -> bool {
+fn intersect(v0: bitv, v1: bitv) -> bool {
     let sub = land;
     ret process(v0, v1, sub);
 }
@@ -80,10 +81,12 @@ Assigns the value of `v1` to `v0`
 
 Both bitvectors must be the same length. Returns `true` if `v0` was changed
 "]
-fn assign(v0: t, v1: t) -> bool { let sub = right; ret process(v0, v1, sub); }
+fn assign(v0: bitv, v1: bitv) -> bool {
+    let sub = right; ret process(v0, v1, sub);
+}
 
 #[doc = "Makes a copy of a bitvector"]
-fn clone(v: t) -> t {
+fn clone(v: bitv) -> bitv {
     let storage = vec::to_mut(vec::from_elem(v.nbits / uint_bits + 1u, 0u));
     let len = vec::len(v.storage);
     uint::range(0u, len) {|i| storage[i] = v.storage[i]; };
@@ -91,7 +94,7 @@ fn clone(v: t) -> t {
 }
 
 #[doc = "Retreive the value at index `i`"]
-pure fn get(v: t, i: uint) -> bool {
+pure fn get(v: bitv, i: uint) -> bool {
     assert (i < v.nbits);
     let bits = uint_bits;
     let w = i / bits;
@@ -108,7 +111,7 @@ Compares two bitvectors
 Both bitvectors must be the same length. Returns `true` if both bitvectors
 contain identical elements.
 "]
-fn equal(v0: t, v1: t) -> bool {
+fn equal(v0: bitv, v1: bitv) -> bool {
     // FIXME: when we can break or return from inside an iterator loop,
     //        we can eliminate this painful while-loop
 
@@ -122,17 +125,17 @@ fn equal(v0: t, v1: t) -> bool {
 }
 
 #[doc = "Set all bits to 0"]
-fn clear(v: t) {
+fn clear(v: bitv) {
     uint::range(0u, vec::len(v.storage)) {|i| v.storage[i] = 0u; };
 }
 
 #[doc = "Set all bits to 1"]
-fn set_all(v: t) {
+fn set_all(v: bitv) {
     uint::range(0u, v.nbits) {|i| set(v, i, true); };
 }
 
 #[doc = "Invert all bits"]
-fn invert(v: t) {
+fn invert(v: bitv) {
     uint::range(0u, vec::len(v.storage)) {|i|
         v.storage[i] = !v.storage[i];
     };
@@ -146,7 +149,7 @@ of `v1` at the same index. Both bitvectors must be the same length.
 
 Returns `true` if `v0` was changed.
 "]
-fn difference(v0: t, v1: t) -> bool {
+fn difference(v0: bitv, v1: bitv) -> bool {
     invert(v1);
     let b = intersect(v0, v1);
     invert(v1);
@@ -158,7 +161,7 @@ Set the value of a bit at a given index
 
 `i` must be less than the length of the bitvector.
 "]
-fn set(v: t, i: uint, x: bool) {
+fn set(v: bitv, i: uint, x: bool) {
     assert (i < v.nbits);
     let bits = uint_bits;
     let w = i / bits;
@@ -169,26 +172,28 @@ fn set(v: t, i: uint, x: bool) {
 
 
 #[doc = "Returns true if all bits are 1"]
-fn is_true(v: t) -> bool {
+fn is_true(v: bitv) -> bool {
     for i: uint in to_vec(v) { if i != 1u { ret false; } }
     ret true;
 }
 
 
 #[doc = "Returns true if all bits are 0"]
-fn is_false(v: t) -> bool {
+fn is_false(v: bitv) -> bool {
     for i: uint in to_vec(v) { if i == 1u { ret false; } }
     ret true;
 }
 
-fn init_to_vec(v: t, i: uint) -> uint { ret if get(v, i) { 1u } else { 0u }; }
+fn init_to_vec(v: bitv, i: uint) -> uint {
+    ret if get(v, i) { 1u } else { 0u };
+}
 
 #[doc = "
 Converts the bitvector to a vector of uint with the same length.
 
 Each uint in the resulting vector has either value 0u or 1u.
 "]
-fn to_vec(v: t) -> [uint] {
+fn to_vec(v: bitv) -> [uint] {
     let sub = bind init_to_vec(v, _);
     ret vec::from_fn::<uint>(v.nbits, sub);
 }
@@ -200,7 +205,7 @@ Converts the bitvector to a string.
 The resulting string has the same length as the bitvector, and each character
 is either '0' or '1'.
 "]
-fn to_str(v: t) -> str {
+fn to_str(v: bitv) -> str {
     let mut rs = "";
     for i: uint in to_vec(v) { if i == 1u { rs += "1"; } else { rs += "0"; } }
     ret rs;
@@ -212,7 +217,7 @@ Compare a bitvector to a vector of uint
 The uint vector is expected to only contain the values 0u and 1u. Both the
 bitvector and vector must have the same length
 "]
-fn eq_vec(v0: t, v1: [uint]) -> bool {
+fn eq_vec(v0: bitv, v1: [uint]) -> bool {
     assert (v0.nbits == vec::len::<uint>(v1));
     let len = v0.nbits;
     let mut i = 0u;
@@ -231,7 +236,7 @@ mod tests {
     fn test_0_elements() {
         let act;
         let exp;
-        act = create(0u, false);
+        act = bitv(0u, false);
         exp = vec::from_elem::<uint>(0u, 0u);
         assert (eq_vec(act, exp));
     }
@@ -239,9 +244,9 @@ mod tests {
     #[test]
     fn test_1_element() {
         let act;
-        act = create(1u, false);
+        act = bitv(1u, false);
         assert (eq_vec(act, [0u]));
-        act = create(1u, true);
+        act = bitv(1u, true);
         assert (eq_vec(act, [1u]));
     }
 
@@ -250,15 +255,15 @@ mod tests {
         let act;
         // all 0
 
-        act = create(10u, false);
+        act = bitv(10u, false);
         assert (eq_vec(act, [0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u]));
         // all 1
 
-        act = create(10u, true);
+        act = bitv(10u, true);
         assert (eq_vec(act, [1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u]));
         // mixed
 
-        act = create(10u, false);
+        act = bitv(10u, false);
         set(act, 0u, true);
         set(act, 1u, true);
         set(act, 2u, true);
@@ -267,7 +272,7 @@ mod tests {
         assert (eq_vec(act, [1u, 1u, 1u, 1u, 1u, 0u, 0u, 0u, 0u, 0u]));
         // mixed
 
-        act = create(10u, false);
+        act = bitv(10u, false);
         set(act, 5u, true);
         set(act, 6u, true);
         set(act, 7u, true);
@@ -276,7 +281,7 @@ mod tests {
         assert (eq_vec(act, [0u, 0u, 0u, 0u, 0u, 1u, 1u, 1u, 1u, 1u]));
         // mixed
 
-        act = create(10u, false);
+        act = bitv(10u, false);
         set(act, 0u, true);
         set(act, 3u, true);
         set(act, 6u, true);
@@ -289,21 +294,21 @@ mod tests {
         let act;
         // all 0
 
-        act = create(31u, false);
+        act = bitv(31u, false);
         assert (eq_vec(act,
                        [0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
                         0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
                         0u, 0u, 0u, 0u, 0u]));
         // all 1
 
-        act = create(31u, true);
+        act = bitv(31u, true);
         assert (eq_vec(act,
                        [1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u,
                         1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u,
                         1u, 1u, 1u, 1u, 1u]));
         // mixed
 
-        act = create(31u, false);
+        act = bitv(31u, false);
         set(act, 0u, true);
         set(act, 1u, true);
         set(act, 2u, true);
@@ -318,7 +323,7 @@ mod tests {
                         0u, 0u, 0u, 0u, 0u]));
         // mixed
 
-        act = create(31u, false);
+        act = bitv(31u, false);
         set(act, 16u, true);
         set(act, 17u, true);
         set(act, 18u, true);
@@ -333,7 +338,7 @@ mod tests {
                         0u, 0u, 0u, 0u, 0u]));
         // mixed
 
-        act = create(31u, false);
+        act = bitv(31u, false);
         set(act, 24u, true);
         set(act, 25u, true);
         set(act, 26u, true);
@@ -347,7 +352,7 @@ mod tests {
                         1u, 1u, 1u, 1u, 1u]));
         // mixed
 
-        act = create(31u, false);
+        act = bitv(31u, false);
         set(act, 3u, true);
         set(act, 17u, true);
         set(act, 30u, true);
@@ -362,21 +367,21 @@ mod tests {
         let act;
         // all 0
 
-        act = create(32u, false);
+        act = bitv(32u, false);
         assert (eq_vec(act,
                        [0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
                         0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
                         0u, 0u, 0u, 0u, 0u, 0u]));
         // all 1
 
-        act = create(32u, true);
+        act = bitv(32u, true);
         assert (eq_vec(act,
                        [1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u,
                         1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u,
                         1u, 1u, 1u, 1u, 1u, 1u]));
         // mixed
 
-        act = create(32u, false);
+        act = bitv(32u, false);
         set(act, 0u, true);
         set(act, 1u, true);
         set(act, 2u, true);
@@ -391,7 +396,7 @@ mod tests {
                         0u, 0u, 0u, 0u, 0u, 0u]));
         // mixed
 
-        act = create(32u, false);
+        act = bitv(32u, false);
         set(act, 16u, true);
         set(act, 17u, true);
         set(act, 18u, true);
@@ -406,7 +411,7 @@ mod tests {
                         0u, 0u, 0u, 0u, 0u, 0u]));
         // mixed
 
-        act = create(32u, false);
+        act = bitv(32u, false);
         set(act, 24u, true);
         set(act, 25u, true);
         set(act, 26u, true);
@@ -421,7 +426,7 @@ mod tests {
                         1u, 1u, 1u, 1u, 1u, 1u]));
         // mixed
 
-        act = create(32u, false);
+        act = bitv(32u, false);
         set(act, 3u, true);
         set(act, 17u, true);
         set(act, 30u, true);
@@ -437,21 +442,21 @@ mod tests {
         let act;
         // all 0
 
-        act = create(33u, false);
+        act = bitv(33u, false);
         assert (eq_vec(act,
                        [0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
                         0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
                         0u, 0u, 0u, 0u, 0u, 0u, 0u]));
         // all 1
 
-        act = create(33u, true);
+        act = bitv(33u, true);
         assert (eq_vec(act,
                        [1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u,
                         1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u,
                         1u, 1u, 1u, 1u, 1u, 1u, 1u]));
         // mixed
 
-        act = create(33u, false);
+        act = bitv(33u, false);
         set(act, 0u, true);
         set(act, 1u, true);
         set(act, 2u, true);
@@ -466,7 +471,7 @@ mod tests {
                         0u, 0u, 0u, 0u, 0u, 0u, 0u]));
         // mixed
 
-        act = create(33u, false);
+        act = bitv(33u, false);
         set(act, 16u, true);
         set(act, 17u, true);
         set(act, 18u, true);
@@ -481,7 +486,7 @@ mod tests {
                         0u, 0u, 0u, 0u, 0u, 0u, 0u]));
         // mixed
 
-        act = create(33u, false);
+        act = bitv(33u, false);
         set(act, 24u, true);
         set(act, 25u, true);
         set(act, 26u, true);
@@ -496,7 +501,7 @@ mod tests {
                         1u, 1u, 1u, 1u, 1u, 1u, 0u]));
         // mixed
 
-        act = create(33u, false);
+        act = bitv(33u, false);
         set(act, 3u, true);
         set(act, 17u, true);
         set(act, 30u, true);
