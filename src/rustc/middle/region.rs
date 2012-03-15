@@ -65,13 +65,19 @@ type ctxt = {
     parent: parent,
 
     /* True if we're within the pattern part of an alt, false otherwise. */
-    in_alt: bool
+    in_alt: bool,
+
+    /*
+     * Points to the site of the current typeclass implementation, or none if
+     * we're outside one.
+     */
+    self_binding: option<ast::def_id>
 };
 
 fn region_to_scope(region_map: @region_map, region: ty::region)
         -> ast::node_id {
     ret alt region {
-        ty::re_caller(def_id) { def_id.node }
+        ty::re_caller(def_id) | ty::re_self(def_id) { def_id.node }
         ty::re_named(def_id) { region_map.region_name_to_fn.get(def_id) }
         ty::re_block(node_id) { node_id }
         ty::re_inferred { fail "unresolved region in region_to_scope" }
@@ -115,7 +121,21 @@ fn resolve_ty(ty: @ast::ty, cx: ctxt, visitor: visit::vt<ctxt>) {
     alt ty.node {
         ast::ty_rptr({id: region_id, node: node}, _) {
             alt node {
-                ast::re_inferred | ast::re_self { /* no-op */ }
+                ast::re_inferred { /* no-op */ }
+                ast::re_self {
+                    alt cx.self_binding {
+                        some(def_id) {
+                            let region = ty::re_self(def_id);
+                            let rm = cx.region_map;
+                            rm.ast_type_to_region.insert(region_id, region);
+                        }
+                        none {
+                            cx.sess.span_err(ty.span,
+                                             "the `self` region is not \
+                                              allowed here");
+                        }
+                    }
+                }
                 ast::re_named(ident) {
                     // If at item scope, introduce or reuse a binding. If at
                     // block scope, require that the binding be introduced.
@@ -281,13 +301,22 @@ fn resolve_local(local: @ast::local, cx: ctxt, visitor: visit::vt<ctxt>) {
 
 fn resolve_item(item: @ast::item, cx: ctxt, visitor: visit::vt<ctxt>) {
     // Items create a new outer block scope as far as we're concerned.
-    let parent = alt item.node {
-        ast::item_fn(_, _, _) | ast::item_enum(_, _) { pa_fn_item(item.id) }
-        _ { pa_item(item.id) }
+    let parent;
+    let mut self_binding = cx.self_binding;
+    alt item.node {
+        ast::item_fn(_, _, _) | ast::item_enum(_, _) {
+            parent = pa_fn_item(item.id);
+        }
+        ast::item_impl(_, _, _, _) {
+            self_binding = some({crate: ast::local_crate, node: item.id});
+            parent = pa_item(item.id);
+        }
+        _ { parent = pa_item(item.id); }
     };
     let new_cx: ctxt = {bindings: @list::nil,
                         parent: parent,
-                        in_alt: false
+                        in_alt: false,
+                        self_binding: self_binding
                         with cx};
     visit::visit_item(item, new_cx, visitor);
 }
@@ -307,7 +336,8 @@ fn resolve_crate(sess: session, def_map: resolve::def_map, crate: @ast::crate)
                     mut bindings: @list::nil,
                     mut queued_locals: [],
                     parent: pa_crate,
-                    in_alt: false};
+                    in_alt: false,
+                    self_binding: none};
     let visitor = visit::mk_vt(@{
         visit_block: resolve_block,
         visit_item: resolve_item,

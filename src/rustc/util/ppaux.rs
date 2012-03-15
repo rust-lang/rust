@@ -73,6 +73,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
           re_named(_)   { "<name>."   }     // TODO: include name
           re_caller(_)  { "<caller>." }
           re_block(_)   { "<block>."  }     // TODO: include line number
+          re_self(_)    { "self."     }
           re_inferred   { ""          }
         }
     }

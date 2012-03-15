@@ -233,6 +233,7 @@ type fn_ty = {proto: ast::proto,
 enum region {
     re_named(def_id),
     re_caller(def_id),
+    re_self(def_id),
     re_block(node_id),
     re_inferred         /* currently unresolved (for typedefs) */
 }
@@ -1152,8 +1153,9 @@ fn hash_type_structure(st: sty) -> uint {
         alt r {
           re_named(_)   { 1u }
           re_caller(_)  { 2u }
-          re_block(_)   { 3u }
-          re_inferred   { 4u }
+          re_self(_)    { 3u }
+          re_block(_)   { 4u }
+          re_inferred   { 5u }
         }
     }
     alt st {

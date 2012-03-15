@@ -254,10 +254,11 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
     fn subst_inferred_regions(tcx: ty::ctxt, use_site: ast::node_id,
                               ty: ty::t) -> ty::t {
         ret ty::fold_ty(tcx, ty::fm_rptr({|r|
-            if r == ty::re_inferred {
-                tcx.region_map.ast_type_to_inferred_region.get(use_site)
-            } else {
-                r
+            alt r {
+                ty::re_inferred | ty::re_self(_) {
+                    tcx.region_map.ast_type_to_inferred_region.get(use_site)
+                }
+                _ { r }
             }
         }), ty);
     }
@@ -1462,7 +1463,9 @@ fn instantiate_self_regions(pcx: pat_ctxt, args: [ty::t]) -> [ty::t] {
         if ty::type_has_rptrs(arg_ty) {
             ty::fold_ty(pcx.fcx.ccx.tcx, ty::fm_rptr({|r|
                 alt r {
-                    ty::re_inferred | ty::re_caller(_) { pcx.pat_region }
+                    ty::re_inferred | ty::re_caller(_) | ty::re_self(_) {
+                        pcx.pat_region
+                    }
                     _ { r }
                 }
             }), arg_ty)

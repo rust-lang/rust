@@ -28,7 +28,9 @@ fn check_expr(expr: @ast::expr, cx: ctxt, visitor: visit::vt<ctxt>) {
             alt ty::get(t).struct {
                 ty::ty_rptr(region, _) {
                     alt region {
-                        ty::re_named(_) | ty::re_caller(_) { /* ok */ }
+                        ty::re_named(_) | ty::re_caller(_) | ty::re_self(_) {
+                            /* ok */
+                        }
                         ty::re_block(rbi) {
                             let referent_block_id = rbi;
                             let enclosing_block_id = alt cx.enclosing_block {
