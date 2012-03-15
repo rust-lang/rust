@@ -120,8 +120,8 @@ public:
 
     void kill_all_tasks();
 
-    rust_task_id create_task(rust_task *spawner, const char *name,
-                             size_t init_stack_sz);
+    rust_task *create_task(rust_task *spawner, const char *name,
+                           size_t init_stack_sz);
 
     void transition(rust_task *task,
                     rust_task_list *src, rust_task_list *dst,

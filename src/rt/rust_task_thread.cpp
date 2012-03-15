@@ -159,8 +159,6 @@ void
 rust_task_thread::release_task(rust_task *task) {
     // Nobody should have a ref to the task at this point
     I(this, task->get_ref_count() == 0);
-    // Kernel should not know about the task any more
-    I(this, kernel->get_task_by_id(task->id) == NULL);
     // Now delete the task, which will require using this thread's
     // memory region.
     delete task;
@@ -304,7 +302,7 @@ rust_task_thread::get_cache() {
     return &cache;
 }
 
-rust_task_id
+rust_task *
 rust_task_thread::create_task(rust_task *spawner, const char *name,
                             size_t init_stack_sz) {
     rust_task *task =
@@ -319,7 +317,7 @@ rust_task_thread::create_task(rust_task *spawner, const char *name,
     }
 
     kernel->register_task(task);
-    return task->id;
+    return task;
 }
 
 void 

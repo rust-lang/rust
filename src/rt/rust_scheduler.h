@@ -39,10 +39,10 @@ public:
     void start_task_threads();
     void join_task_threads();
     void kill_all_tasks();
-    rust_task_id create_task(rust_task *spawner,
-			     const char *name,
-			     size_t init_stack_sz);
-    rust_task_id create_task(rust_task *spawner, const char *name);
+    rust_task* create_task(rust_task *spawner,
+			   const char *name,
+			   size_t init_stack_sz);
+    rust_task* create_task(rust_task *spawner, const char *name);
 
     void release_task();
 

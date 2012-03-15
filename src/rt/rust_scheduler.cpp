@@ -82,7 +82,7 @@ rust_scheduler::kill_all_tasks() {
     }
 }
 
-rust_task_id
+rust_task *
 rust_scheduler::create_task(rust_task *spawner, const char *name,
 			    size_t init_stack_sz) {
     size_t thread_no;
@@ -95,7 +95,7 @@ rust_scheduler::create_task(rust_task *spawner, const char *name,
     return thread->create_task(spawner, name, init_stack_sz);
 }
 
-rust_task_id
+rust_task *
 rust_scheduler::create_task(rust_task *spawner, const char *name) {
     return create_task(spawner, name, env->min_stack_size);
 }

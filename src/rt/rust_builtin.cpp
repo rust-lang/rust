@@ -424,18 +424,18 @@ get_task_id() {
     return task->id;
 }
 
-static rust_task_id
+static rust_task*
 new_task_common(rust_scheduler *sched, rust_task *parent) {
     return sched->create_task(parent, NULL);
 }
 
-extern "C" CDECL rust_task_id
+extern "C" CDECL rust_task*
 new_task() {
     rust_task *task = rust_task_thread::get_task();
     return new_task_common(task->sched, task);
 }
 
-extern "C" CDECL rust_task_id
+extern "C" CDECL rust_task*
 rust_new_task_in_sched(rust_sched_id id) {
     rust_task *task = rust_task_thread::get_task();
     rust_scheduler *sched = task->kernel->get_scheduler_by_id(id);
@@ -444,13 +444,8 @@ rust_new_task_in_sched(rust_sched_id id) {
 }
 
 extern "C" CDECL void
-rust_task_config_notify(rust_task_id task_id, chan_handle *chan) {
-    rust_task *task = rust_task_thread::get_task();
-    rust_task *target = task->kernel->get_task_by_id(task_id);
-    A(task->thread, target != NULL,
-      "This function should only be called when we know the task exists");
+rust_task_config_notify(rust_task *target, chan_handle *chan) {
     target->config_notify(*chan);
-    target->deref();
 }
 
 extern "C" rust_task *
@@ -459,11 +454,8 @@ rust_get_task() {
 }
 
 extern "C" CDECL void
-start_task(rust_task_id id, fn_env_pair *f) {
-    rust_task *task = rust_task_thread::get_task();
-    rust_task *target = task->kernel->get_task_by_id(id);
+start_task(rust_task *target, fn_env_pair *f) {
     target->start(f->f, f->env, NULL);
-    target->deref();
 }
 
 extern "C" CDECL int

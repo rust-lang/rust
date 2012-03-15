@@ -487,7 +487,7 @@ fn spawn_raw(opts: task_opts, +f: fn~()) unsafe {
     let fptr = ptr::addr_of(f);
     let closure: *rust_closure = unsafe::reinterpret_cast(fptr);
 
-    let task_id = alt opts.sched {
+    let new_task = alt opts.sched {
       none {
         rustrt::new_task()
       }
@@ -498,13 +498,13 @@ fn spawn_raw(opts: task_opts, +f: fn~()) unsafe {
 
     option::may(opts.notify_chan) {|c|
         // FIXME (1087): Would like to do notification in Rust
-        rustrt::rust_task_config_notify(task_id, c);
+        rustrt::rust_task_config_notify(new_task, c);
     }
 
-    rustrt::start_task(task_id, closure);
+    rustrt::start_task(new_task, closure);
     unsafe::leak(f);
 
-    fn new_task_in_new_sched(opts: sched_opts) -> task_id {
+    fn new_task_in_new_sched(opts: sched_opts) -> *rust_task {
         if opts.native_stack_size != none {
             fail "native_stack_size scheduler option unimplemented";
         }
@@ -543,13 +543,13 @@ native mod rustrt {
     fn get_task_id() -> task_id;
     fn rust_get_task() -> *rust_task;
 
-    fn new_task() -> task_id;
-    fn rust_new_task_in_sched(id: sched_id) -> task_id;
+    fn new_task() -> *rust_task;
+    fn rust_new_task_in_sched(id: sched_id) -> *rust_task;
 
     fn rust_task_config_notify(
-        id: task_id, &&chan: comm::chan<notification>);
+        task: *rust_task, &&chan: comm::chan<notification>);
 
-    fn start_task(id: task_id, closure: *rust_closure);
+    fn start_task(task: *rust_task, closure: *rust_closure);
 
     fn rust_task_is_unwinding(rt: *rust_task) -> bool;
     fn unsupervise();
