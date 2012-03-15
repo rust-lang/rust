@@ -475,7 +475,7 @@ rust_task::notify(bool success) {
     // FIXME (1078) Do this in rust code
     if(notify_enabled) {
         rust_port *target_port =
-            kernel->get_port_by_id(notify_chan.port);
+            kernel->get_port_by_id(notify_port);
         if(target_port) {
             task_notification msg;
             msg.id = id;
@@ -719,9 +719,9 @@ rust_task::delete_all_stacks() {
 }
 
 void
-rust_task::config_notify(chan_handle chan) {
+rust_task::config_notify(rust_port_id port) {
     notify_enabled = true;
-    notify_chan = chan;
+    notify_port = port;
 }
 
 /*

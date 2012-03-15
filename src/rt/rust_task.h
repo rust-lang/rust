@@ -18,12 +18,6 @@
 #include "rust_stack.h"
 #include "rust_port_selector.h"
 
-// Corresponds to the rust chan (currently _chan) type.
-struct chan_handle {
-    rust_task_id task;
-    rust_port_id port;
-};
-
 struct rust_box;
 
 struct frame_glue_fns {
@@ -56,7 +50,7 @@ rust_task : public kernel_owned<rust_task>, rust_cond
 
     rust_task_id id;
     bool notify_enabled;
-    chan_handle notify_chan;
+    rust_port_id notify_port;
 
     context ctx;
     stk_seg *stk;
@@ -209,7 +203,7 @@ public:
     void check_stack_canary();
     void delete_all_stacks();
 
-    void config_notify(chan_handle chan);
+    void config_notify(rust_port_id port);
 
     void call_on_c_stack(void *args, void *fn_ptr);
     void call_on_rust_stack(void *args, void *fn_ptr);

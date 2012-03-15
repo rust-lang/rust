@@ -38,10 +38,9 @@ enum rust_port {}
 
 #[abi = "cdecl"]
 native mod rustrt {
-    fn get_task_id() -> task_id;
-    fn chan_id_send<T: send>(t: *sys::type_desc,
-                            target_task: task_id, target_port: port_id,
-                            data: T) -> libc::uintptr_t;
+    fn rust_port_id_send<T: send>(t: *sys::type_desc,
+                                  target_port: port_id,
+                                  data: T) -> libc::uintptr_t;
 
     fn new_port(unit_sz: libc::size_t) -> *rust_port;
     fn del_port(po: *rust_port);
@@ -63,7 +62,6 @@ native mod rusti {
     fn call_with_retptr<T: send>(&&f: fn@(*uint)) -> T;
 }
 
-type task_id = int;
 type port_id = int;
 
 // It's critical that this only have one variant, so it has a record
@@ -79,7 +77,7 @@ data will be silently dropped.  Channels may be duplicated and
 themselves transmitted over other channels.
 "]
 enum chan<T: send> {
-    chan_t(task_id, port_id)
+    chan_t(port_id)
 }
 
 resource port_ptr<T: send>(po: *rust_port) {
@@ -119,8 +117,8 @@ Sends data over a channel. The sent data is moved into the channel,
 whereupon the caller loses access to it.
 "]
 fn send<T: send>(ch: chan<T>, -data: T) {
-    let chan_t(t, p) = ch;
-    let res = rustrt::chan_id_send(sys::get_type_desc::<T>(), t, p, data);
+    let chan_t(p) = ch;
+    let res = rustrt::rust_port_id_send(sys::get_type_desc::<T>(), p, data);
     if res != 0u unsafe {
         // Data sent successfully
         unsafe::leak(data);
@@ -217,7 +215,7 @@ Constructs a channel. The channel is bound to the port used to
 construct it.
 "]
 fn chan<T: send>(p: port<T>) -> chan<T> {
-    chan_t(rustrt::get_task_id(), rustrt::get_port_id(***p))
+    chan_t(rustrt::get_port_id(***p))
 }
 
 #[test]

@@ -444,8 +444,8 @@ rust_new_task_in_sched(rust_sched_id id) {
 }
 
 extern "C" CDECL void
-rust_task_config_notify(rust_task *target, chan_handle *chan) {
-    target->config_notify(*chan);
+rust_task_config_notify(rust_task *target, rust_port_id *port) {
+    target->config_notify(*port);
 }
 
 extern "C" rust_task *
@@ -503,13 +503,11 @@ get_port_id(rust_port *port) {
 }
 
 extern "C" CDECL uintptr_t
-chan_id_send(type_desc *t, rust_task_id target_task_id,
-             rust_port_id target_port_id, void *sptr) {
+rust_port_id_send(type_desc *t, rust_port_id target_port_id, void *sptr) {
     bool sent = false;
     rust_task *task = rust_task_thread::get_task();
 
-    LOG(task, comm, "chan_id_send task: 0x%" PRIxPTR
-        " port: 0x%" PRIxPTR, (uintptr_t) target_task_id,
+    LOG(task, comm, "rust_port_id*_send port: 0x%" PRIxPTR,
         (uintptr_t) target_port_id);
 
     rust_port *port = task->kernel->get_port_by_id(target_port_id);
