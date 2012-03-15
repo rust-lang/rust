@@ -231,6 +231,7 @@ fn make_impl_vtable(ccx: @crate_ctxt, impl_id: ast::def_id, substs: [ty::t],
                     vtables: typeck::vtable_res) -> ValueRef {
     let tcx = ccx.tcx;
     let ifce_id = ty::ty_to_def_id(option::get(ty::impl_iface(tcx, impl_id)));
+    let has_tps = (*ty::lookup_item_type(ccx.tcx, impl_id).bounds).len() > 0u;
     make_vtable(ccx, vec::map(*ty::iface_methods(tcx, ifce_id), {|im|
         let fty = ty::substitute_type_params(tcx, substs,
                                              ty::mk_fn(tcx, im.fty));
@@ -238,7 +239,13 @@ fn make_impl_vtable(ccx: @crate_ctxt, impl_id: ast::def_id, substs: [ty::t],
             C_null(type_of_fn_from_ty(ccx, fty))
         } else {
             let m_id = method_with_name(ccx, impl_id, im.ident);
-            monomorphic_fn(ccx, m_id, substs, some(vtables)).val
+            if has_tps {
+                monomorphic_fn(ccx, m_id, substs, some(vtables)).val
+            } else if m_id.crate == ast::local_crate {
+                get_item_val(ccx, m_id.node)
+            } else {
+                trans_external_path(ccx, m_id, fty)
+            }
         }
     }))
 }
