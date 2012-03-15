@@ -130,14 +130,13 @@ fn get_relative_to(abs1: path::path, abs2: path::path) -> path::path {
     assert len2 > 0u;
 
     let max_common_path = uint::min(len1, len2) - 1u;
-    let start_idx = 0u;
+    let mut start_idx = 0u;
     while start_idx < max_common_path
         && split1[start_idx] == split2[start_idx] {
         start_idx += 1u;
     }
 
-    let path = [];
-
+    let mut path = [];
     uint::range(start_idx, len1 - 1u) {|_i| path += [".."]; };
 
     path += vec::slice(split2, start_idx, len2 - 1u);
@@ -179,7 +178,7 @@ fn get_install_prefix_rpath(cwd: path::path, target_triple: str) -> str {
 
 fn minimize_rpaths(rpaths: [str]) -> [str] {
     let set = map::str_hash::<()>();
-    let minimized = [];
+    let mut minimized = [];
     for rpath in rpaths {
         if !set.contains_key(rpath) {
             minimized += [rpath];

@@ -88,7 +88,7 @@ fn region_to_scope(region_map: @region_map, region: ty::region)
 // `superscope` and false otherwise.
 fn scope_contains(region_map: @region_map, superscope: ast::node_id,
                   subscope: ast::node_id) -> bool {
-    let subscope = subscope;
+    let mut subscope = subscope;
     while superscope != subscope {
         alt region_map.parents.find(subscope) {
             none { ret false; }
@@ -140,7 +140,7 @@ fn resolve_ty(ty: @ast::ty, cx: ctxt, visitor: visit::vt<ctxt>) {
                     // If at item scope, introduce or reuse a binding. If at
                     // block scope, require that the binding be introduced.
                     let bindings = cx.bindings;
-                    let region;
+                    let mut region;
                     alt list::find(*bindings, {|b| ident == b.name}) {
                         some(binding) { region = ty::re_named(binding.id); }
                         none {
@@ -301,7 +301,7 @@ fn resolve_local(local: @ast::local, cx: ctxt, visitor: visit::vt<ctxt>) {
 
 fn resolve_item(item: @ast::item, cx: ctxt, visitor: visit::vt<ctxt>) {
     // Items create a new outer block scope as far as we're concerned.
-    let parent;
+    let mut parent;
     let mut self_binding = cx.self_binding;
     alt item.node {
         ast::item_fn(_, _, _) | ast::item_enum(_, _) {

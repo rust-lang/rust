@@ -137,7 +137,7 @@ fn to_str(r: reader, t: token) -> str {
       /* Literals */
       LIT_INT(c, ast::ty_char) {
         // FIXME: escape.
-        let tmp = "'";
+        let mut tmp = "'";
         str::push_char(tmp, c as char);
         str::push_char(tmp, '\'');
         ret tmp;

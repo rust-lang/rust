@@ -173,7 +173,7 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
         for a in args { alt a { some(ex) { maybe_copy(cx, ex); } _ {} } }
       }
       expr_call(f, args, _) {
-        let i = 0u;
+        let mut i = 0u;
         for arg_t in ty::ty_fn_args(ty::expr_ty(cx.tcx, f)) {
             alt ty::arg_mode(cx.tcx, arg_t) {
               by_copy { maybe_copy(cx, args[i]); }

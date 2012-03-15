@@ -254,7 +254,7 @@ fn add_clean_free(cx: block, ptr: ValueRef, shared: bool) {
 // drop glue checks whether it is zero.
 fn revoke_clean(cx: block, val: ValueRef) {
     in_scope_cx(cx) {|info|
-        let i = 0u;
+        let mut i = 0u;
         for cu in info.cleanups {
             alt cu {
               clean_temp(v, _) if v == val {
@@ -356,7 +356,7 @@ fn struct_elt(llstructty: TypeRef, n: uint) -> TypeRef unsafe {
 }
 
 fn in_scope_cx(cx: block, f: fn(scope_info)) {
-    let cur = cx;
+    let mut cur = cx;
     loop {
         alt cur.kind {
           block_scope(info) { f(info); ret; }
@@ -762,8 +762,8 @@ fn C_postr(s: str) -> ValueRef {
 }
 
 fn C_zero_byte_arr(size: uint) -> ValueRef unsafe {
-    let i = 0u;
-    let elts: [ValueRef] = [];
+    let mut i = 0u;
+    let mut elts: [ValueRef] = [];
     while i < size { elts += [C_u8(0u)]; i += 1u; }
     ret llvm::LLVMConstArray(T_i8(), vec::unsafe::to_ptr(elts),
                              elts.len() as c_uint);
@@ -809,11 +809,11 @@ enum mono_param_id {
 }
 type mono_id = @{def: ast::def_id, params: [mono_param_id]};
 fn hash_mono_id(&&mi: mono_id) -> uint {
-    let h = syntax::ast_util::hash_def_id(mi.def);
+    let mut h = syntax::ast_util::hash_def_id(mi.def);
     for param in mi.params {
         h = h * alt param {
           mono_precise(ty, vts) {
-            let h = ty::type_id(ty);
+            let mut h = ty::type_id(ty);
             option::may(vts) {|vts|
                 for vt in vts { h += hash_mono_id(vt); }
             }
@@ -843,7 +843,7 @@ fn align_to(cx: block, off: ValueRef, align: ValueRef) -> ValueRef {
 }
 
 fn path_str(p: path) -> str {
-    let r = "", first = true;
+    let mut r = "", first = true;
     for e in p {
         alt e { ast_map::path_name(s) | ast_map::path_mod(s) {
           if first { first = false; }

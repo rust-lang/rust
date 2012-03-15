@@ -268,7 +268,7 @@ fn synth_comment(s: ps, text: str) {
 
 fn commasep<IN>(s: ps, b: breaks, elts: [IN], op: fn(ps, IN)) {
     box(s, 0u, b);
-    let first = true;
+    let mut first = true;
     for elt: IN in elts {
         if first { first = false; } else { word_space(s, ","); }
         op(s, elt);
@@ -281,7 +281,7 @@ fn commasep_cmnt<IN>(s: ps, b: breaks, elts: [IN], op: fn(ps, IN),
                      get_span: fn(IN) -> codemap::span) {
     box(s, 0u, b);
     let len = vec::len::<IN>(elts);
-    let i = 0u;
+    let mut i = 0u;
     for elt: IN in elts {
         maybe_print_comment(s, get_span(elt).hi);
         op(s, elt);
@@ -626,7 +626,7 @@ fn print_method(s: ps, meth: @ast::method) {
 }
 
 fn print_outer_attributes(s: ps, attrs: [ast::attribute]) {
-    let count = 0;
+    let mut count = 0;
     for attr: ast::attribute in attrs {
         alt attr.node.style {
           ast::attr_outer { print_attribute(s, attr); count += 1; }
@@ -637,7 +637,7 @@ fn print_outer_attributes(s: ps, attrs: [ast::attribute]) {
 }
 
 fn print_inner_attributes(s: ps, attrs: [ast::attribute]) {
-    let count = 0;
+    let mut count = 0;
     for attr: ast::attribute in attrs {
         alt attr.node.style {
           ast::attr_inner {
@@ -856,7 +856,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
       }
       ast::expr_call(func, args, has_block) {
         print_expr_parens_if_not_bot(s, func);
-        let base_args = args, blk = none;
+        let mut base_args = args, blk = none;
         if has_block { blk = some(vec::pop(base_args)); }
         if !has_block || vec::len(base_args) > 0u {
             popen(s);
@@ -952,7 +952,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
             space(s.s);
             cbox(s, alt_indent_unit);
             ibox(s, 0u);
-            let first = true;
+            let mut first = true;
             for p: @ast::pat in arm.pats {
                 if first {
                     first = false;
@@ -1169,7 +1169,7 @@ fn print_for_decl(s: ps, loc: @ast::local, coll: @ast::expr) {
 fn print_path(s: ps, &&path: @ast::path, colons_before_params: bool) {
     maybe_print_comment(s, path.span.lo);
     if path.node.global { word(s.s, "::"); }
-    let first = true;
+    let mut first = true;
     for id: ast::ident in path.node.idents {
         if first { first = false; } else { word(s.s, "::"); }
         word(s.s, id);
@@ -1383,7 +1383,7 @@ fn print_meta_item(s: ps, &&item: @ast::meta_item) {
 }
 
 fn print_simple_path(s: ps, path: ast::simple_path) {
-    let first = true;
+    let mut first = true;
     for id in path {
         if first { first = false; } else { word(s.s, "::"); }
         word(s.s, id);
@@ -1530,14 +1530,14 @@ fn print_ty_fn(s: ps, opt_proto: option<ast::proto>,
 
 fn maybe_print_trailing_comment(s: ps, span: codemap::span,
                                 next_pos: option<uint>) {
-    let cm;
+    let mut cm;
     alt s.cm { some(ccm) { cm = ccm; } _ { ret; } }
     alt next_comment(s) {
       some(cmnt) {
         if cmnt.style != lexer::trailing { ret; }
         let span_line = codemap::lookup_char_pos(cm, span.hi);
         let comment_line = codemap::lookup_char_pos(cm, cmnt.pos);
-        let next = cmnt.pos + 1u;
+        let mut next = cmnt.pos + 1u;
         alt next_pos { none { } some(p) { next = p; } }
         if span.hi < cmnt.pos && cmnt.pos < next &&
                span_line.line == comment_line.line {
@@ -1689,9 +1689,9 @@ fn print_string(s: ps, st: str) {
 }
 
 fn escape_str(st: str, to_escape: char) -> str {
-    let out: str = "";
+    let mut out: str = "";
     let len = str::len(st);
-    let i = 0u;
+    let mut i = 0u;
     while i < len {
         alt st[i] as char {
           '\n' { out += "\\n"; }
@@ -1731,8 +1731,8 @@ fn next_comment(s: ps) -> option<lexer::cmnt> {
 
 fn constr_args_to_str<T>(f: fn@(T) -> str, args: [@ast::sp_constr_arg<T>]) ->
    str {
-    let comma = false;
-    let s = "(";
+    let mut comma = false;
+    let mut s = "(";
     for a: @ast::sp_constr_arg<T> in args {
         if comma { s += ", "; } else { comma = true; }
         s += constr_arg_to_str::<T>(f, a.node);
@@ -1775,7 +1775,7 @@ fn ty_constr_to_str(&&c: @ast::ty_constr) -> str {
 }
 
 fn constrs_str<T>(constrs: [T], elt: fn(T) -> str) -> str {
-    let s = "", colon = true;
+    let mut s = "", colon = true;
     for c in constrs {
         if colon { s += " : "; colon = false; } else { s += ", "; }
         s += elt(c);

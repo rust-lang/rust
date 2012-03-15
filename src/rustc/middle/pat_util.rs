@@ -63,7 +63,7 @@ fn walk_pat(pat: @pat, it: fn(@pat)) {
 }
 
 fn pat_binding_ids(dm: resolve::def_map, pat: @pat) -> [node_id] {
-    let found = [];
+    let mut found = [];
     pat_bindings(dm, pat) {|b_id, _sp, _pt| found += [b_id]; };
     ret found;
 }

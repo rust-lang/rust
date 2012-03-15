@@ -965,8 +965,8 @@ fn type_to_str_inner(names: type_names, outer0: [TypeRef], ty: TypeRef) ->
     let kind: int = llvm::LLVMGetTypeKind(ty) as int;
 
     fn tys_str(names: type_names, outer: [TypeRef], tys: [TypeRef]) -> str {
-        let s: str = "";
-        let first: bool = true;
+        let mut s: str = "";
+        let mut first: bool = true;
         for t: TypeRef in tys {
             if first { first = false; } else { s += ", "; }
             s += type_to_str_inner(names, outer, t);
@@ -989,7 +989,7 @@ fn type_to_str_inner(names: type_names, outer0: [TypeRef], ty: TypeRef) ->
         ret "i" + int::str(llvm::LLVMGetIntTypeWidth(ty) as int);
       }
       9 {
-        let s = "fn(";
+        let mut s = "fn(";
         let out_ty: TypeRef = llvm::LLVMGetReturnType(ty);
         let n_args = llvm::LLVMCountParamTypes(ty) as uint;
         let args: [TypeRef] = vec::from_elem::<TypeRef>(n_args, 0 as TypeRef);
@@ -1002,7 +1002,7 @@ fn type_to_str_inner(names: type_names, outer0: [TypeRef], ty: TypeRef) ->
         ret s;
       }
       10 {
-        let s: str = "{";
+        let mut s: str = "{";
         let n_elts = llvm::LLVMCountStructElementTypes(ty) as uint;
         let elts: [TypeRef] = vec::from_elem::<TypeRef>(n_elts, 0 as TypeRef);
         unsafe {
@@ -1018,7 +1018,7 @@ fn type_to_str_inner(names: type_names, outer0: [TypeRef], ty: TypeRef) ->
             uint::str(llvm::LLVMGetArrayLength(ty) as uint) + "]";
       }
       12 {
-        let i: uint = 0u;
+        let mut i: uint = 0u;
         for tout: TypeRef in outer0 {
             i += 1u;
             if tout as int == ty as int {

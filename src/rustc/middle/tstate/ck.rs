@@ -49,7 +49,7 @@ fn check_states_expr(e: @expr, fcx: fn_ctxt, v: visit::vt<fn_ctxt>) {
     */
 
     if !implies(pres, prec) {
-        let s = "";
+        let mut s = "";
         let diff = first_difference_string(fcx, prec, pres);
         s +=
             "unsatisfied precondition constraint (for example, " + diff +
@@ -79,7 +79,7 @@ fn check_states_stmt(s: @stmt, fcx: fn_ctxt, v: visit::vt<fn_ctxt>) {
     log_tritv(fcx, pres);
 
     if !implies(pres, prec) {
-        let ss = "";
+        let mut ss = "";
         let diff = first_difference_string(fcx, prec, pres);
         ss +=
             "unsatisfied precondition constraint (for example, " + diff +
@@ -182,13 +182,13 @@ fn check_crate(cx: ty::ctxt, crate: @crate) {
     /* Compute the pre and postcondition for every subexpression */
 
     let vtor = visit::default_visitor::<crate_ctxt>();
-    vtor = @{visit_fn: fn_pre_post with *vtor};
+    let vtor = @{visit_fn: fn_pre_post with *vtor};
     visit::visit_crate(*crate, ccx, visit::mk_vt(vtor));
 
     /* Check the pre- and postcondition against the pre- and poststate
        for every expression */
     let vtor = visit::default_visitor::<crate_ctxt>();
-    vtor = @{visit_fn: fn_states with *vtor};
+    let vtor = @{visit_fn: fn_states with *vtor};
     visit::visit_crate(*crate, ccx, visit::mk_vt(vtor));
 }
 //

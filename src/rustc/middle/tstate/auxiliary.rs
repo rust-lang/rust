@@ -35,8 +35,8 @@ fn def_id_to_str(d: def_id) -> str {
 }
 
 fn comma_str(args: [@constr_arg_use]) -> str {
-    let rslt = "";
-    let comma = false;
+    let mut rslt = "";
+    let mut comma = false;
     for a: @constr_arg_use in args {
         if comma { rslt += ", "; } else { comma = true; }
         alt a.node {
@@ -64,8 +64,8 @@ fn constraint_to_str(tcx: ty::ctxt, c: sp_constr) -> str {
 }
 
 fn tritv_to_str(fcx: fn_ctxt, v: tritv::t) -> str {
-    let s = "";
-    let comma = false;
+    let mut s = "";
+    let mut comma = false;
     for p: norm_constraint in constraints(fcx) {
         alt tritv_get(v, p.bit_num) {
           dont_care { }
@@ -101,7 +101,7 @@ fn log_tritv_err(fcx: fn_ctxt, v: tritv::t) {
 }
 
 fn tos(v: [uint]) -> str {
-    let rslt = "";
+    let mut rslt = "";
     for i: uint in v {
         if i == 0u {
             rslt += "0";
@@ -524,7 +524,7 @@ fn norm_a_constraint(id: def_id, c: constraint) -> [norm_constraint] {
         ret [{bit_num: n, c: respan(sp, ninit(id.node, i))}];
       }
       cpred(p, descs) {
-        let rslt: [norm_constraint] = [];
+        let mut rslt: [norm_constraint] = [];
         for pd: pred_args in *descs {
             rslt +=
                 [{bit_num: pd.node.bit_num,
@@ -539,7 +539,7 @@ fn norm_a_constraint(id: def_id, c: constraint) -> [norm_constraint] {
 // Tried to write this as an iterator, but I got a
 // non-exhaustive match in trans.
 fn constraints(fcx: fn_ctxt) -> [norm_constraint] {
-    let rslt: [norm_constraint] = [];
+    let mut rslt: [norm_constraint] = [];
     fcx.enclosing.constrs.items {|key, val|
         rslt += norm_a_constraint(key, val);
     };
@@ -604,7 +604,7 @@ fn expr_to_constr_arg(tcx: ty::ctxt, e: @expr) -> @constr_arg_use {
 
 fn exprs_to_constr_args(tcx: ty::ctxt, args: [@expr]) -> [@constr_arg_use] {
     let f = bind expr_to_constr_arg(tcx, _);
-    let rslt: [@constr_arg_use] = [];
+    let mut rslt: [@constr_arg_use] = [];
     for e: @expr in args { rslt += [f(e)]; }
     rslt
 }
@@ -638,7 +638,7 @@ fn pred_args_to_str(p: pred_args) -> str {
 
 fn substitute_constr_args(cx: ty::ctxt, actuals: [@expr], c: @ty::constr) ->
    tsconstr {
-    let rslt: [@constr_arg_use] = [];
+    let mut rslt: [@constr_arg_use] = [];
     for a: @constr_arg in c.node.args {
         rslt += [substitute_arg(cx, actuals, a)];
     }
@@ -663,7 +663,7 @@ fn substitute_arg(cx: ty::ctxt, actuals: [@expr], a: @constr_arg) ->
 
 fn pred_args_matches(pattern: [constr_arg_general_<inst>], desc: pred_args) ->
    bool {
-    let i = 0u;
+    let mut i = 0u;
     for c: @constr_arg_use in desc.node.args {
         let n = pattern[i];
         alt c.node {
@@ -700,7 +700,7 @@ type subst = [{from: inst, to: inst}];
 fn find_instances(_fcx: fn_ctxt, subst: subst, c: constraint) ->
    [{from: uint, to: uint}] {
 
-    let rslt = [];
+    let mut rslt = [];
     if vec::len(subst) == 0u { ret rslt; }
 
     alt c {
@@ -733,7 +733,7 @@ fn find_in_subst_bool(s: subst, id: node_id) -> bool {
 }
 
 fn insts_to_str(stuff: [constr_arg_general_<inst>]) -> str {
-    let rslt = "<";
+    let mut rslt = "<";
     for i: constr_arg_general_<inst> in stuff {
         rslt +=
             " " +
@@ -748,7 +748,7 @@ fn insts_to_str(stuff: [constr_arg_general_<inst>]) -> str {
 }
 
 fn replace(subst: subst, d: pred_args) -> [constr_arg_general_<inst>] {
-    let rslt: [constr_arg_general_<inst>] = [];
+    let mut rslt: [constr_arg_general_<inst>] = [];
     for c: @constr_arg_use in d.node.args {
         alt c.node {
           carg_ident(p) {
@@ -844,7 +844,7 @@ fn copy_in_poststate(fcx: fn_ctxt, post: poststate, dest: inst, src: inst,
 fn copy_in_poststate_two(fcx: fn_ctxt, src_post: poststate,
                          target_post: poststate, dest: inst, src: inst,
                          ty: oper_type) {
-    let subst;
+    let mut subst;
     alt ty {
       oper_swap { subst = [{from: dest, to: src}, {from: src, to: dest}]; }
       oper_assign_op {
@@ -911,7 +911,7 @@ fn forget_in_poststate(fcx: fn_ctxt, p: poststate, dead_v: node_id) -> bool {
     // In the poststate given by parent_exp, clear the bits
     // for any constraints mentioning dead_v
     let d = local_node_id_to_local_def_id(fcx, dead_v);
-    let changed = false;
+    let mut changed = false;
     alt d {
       some(d_id) {
         for c: norm_constraint in constraints(fcx) {
@@ -930,7 +930,7 @@ fn forget_in_poststate_still_init(fcx: fn_ctxt, p: poststate, dead_v: node_id)
     // In the poststate given by parent_exp, clear the bits
     // for any constraints mentioning dead_v
     let d = local_node_id_to_local_def_id(fcx, dead_v);
-    let changed = false;
+    let mut changed = false;
     alt d {
       some(d_id) {
         for c: norm_constraint in constraints(fcx) {
@@ -1013,7 +1013,7 @@ fn do_nothing<T>(_fk: visit::fn_kind, _decl: fn_decl, _body: blk,
 
 fn args_to_constr_args(tcx: ty::ctxt, args: [arg],
                        indices: [@sp_constr_arg<uint>]) -> [@constr_arg_use] {
-    let actuals: [@constr_arg_use] = [];
+    let mut actuals: [@constr_arg_use] = [];
     let num_args = vec::len(args);
     for a: @sp_constr_arg<uint> in indices {
         actuals +=
@@ -1052,7 +1052,7 @@ fn ast_constr_to_sp_constr(tcx: ty::ctxt, args: [arg], c: @constr) ->
 type binding = {lhs: [inst], rhs: option<initializer>};
 
 fn local_to_bindings(tcx: ty::ctxt, loc: @local) -> binding {
-    let lhs = [];
+    let mut lhs = [];
     pat_bindings(tcx.def_map, loc.node.pat) {|p_id, _s, name|
         lhs += [{ident: path_to_ident(name), node: p_id}];
     };
@@ -1060,7 +1060,7 @@ fn local_to_bindings(tcx: ty::ctxt, loc: @local) -> binding {
 }
 
 fn locals_to_bindings(tcx: ty::ctxt, locals: [@local]) -> [binding] {
-    let rslt = [];
+    let mut rslt = [];
     for loc in locals { rslt += [local_to_bindings(tcx, loc)]; }
     ret rslt;
 }
@@ -1070,7 +1070,7 @@ fn callee_modes(fcx: fn_ctxt, callee: node_id) -> [mode] {
                                 ty::node_id_to_type(fcx.ccx.tcx, callee));
     alt ty::get(ty).struct {
       ty::ty_fn({inputs: args, _}) {
-        let modes = [];
+        let mut modes = [];
         for arg: ty::arg in args { modes += [arg.mode]; }
         ret modes;
       }
@@ -1092,8 +1092,8 @@ fn callee_arg_init_ops(fcx: fn_ctxt, callee: node_id) -> [init_op] {
 }
 
 fn anon_bindings(ops: [init_op], es: [@expr]) -> [binding] {
-    let bindings: [binding] = [];
-    let i = 0;
+    let mut bindings: [binding] = [];
+    let mut i = 0;
     for op: init_op in ops {
         bindings += [{lhs: [], rhs: some({op: op, expr: es[i]})}];
         i += 1;

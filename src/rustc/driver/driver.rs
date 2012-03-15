@@ -66,7 +66,7 @@ fn build_configuration(sess: session, argv0: str, input: str) ->
 fn parse_cfgspecs(cfgspecs: [str]) -> ast::crate_cfg {
     // FIXME: It would be nice to use the parser to parse all varieties of
     // meta_item here. At the moment we just support the meta_word variant.
-    let words = [];
+    let mut words = [];
     for s: str in cfgspecs { words += [attr::mk_word_item(s)]; }
     ret words;
 }
@@ -106,8 +106,8 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
                 outputs: option<output_filenames>)
     -> {crate: @ast::crate, tcx: option<ty::ctxt>} {
     let time_passes = sess.opts.time_passes;
-    let crate = time(time_passes, "parsing",
-                     bind parse_input(sess, cfg, input));
+    let mut crate = time(time_passes, "parsing",
+                         bind parse_input(sess, cfg, input));
     if upto == cu_parse { ret {crate: crate, tcx: none}; }
 
     sess.building_library = session::building_library(
@@ -261,7 +261,7 @@ fn pretty_print_input(sess: session, cfg: ast::crate_cfg, input: str,
     };
     let {crate, tcx} = compile_upto(sess, cfg, input, upto, none);
 
-    let ann: pprust::pp_ann = pprust::no_ann();
+    let mut ann: pprust::pp_ann = pprust::no_ann();
     alt ppm {
       ppm_typed {
         ann = {pre: ann_paren_for_expr,
@@ -362,7 +362,7 @@ fn build_session_options(match: getopts::match,
 
     let parse_only = opt_present(match, "parse-only");
     let no_trans = opt_present(match, "no-trans");
-    let lint_opts = [];
+    let mut lint_opts = [];
     if opt_present(match, "no-lint-ctypes") {
         lint_opts += [(lint::ctypes, false)];
     }
@@ -388,7 +388,7 @@ fn build_session_options(match: getopts::match,
     let time_llvm_passes = opt_present(match, "time-llvm-passes");
     let sysroot_opt = getopts::opt_maybe_str(match, "sysroot");
     let target_opt = getopts::opt_maybe_str(match, "target");
-    let no_asm_comments = getopts::opt_present(match, "no-asm-comments");
+    let mut no_asm_comments = getopts::opt_present(match, "no-asm-comments");
     alt output_type {
       // unless we're emitting huamn-readable assembly, omit comments.
       link::output_type_llvm_assembly | link::output_type_assembly {}
@@ -531,8 +531,8 @@ fn build_output_filenames(ifile: str,
                           ofile: option<str>,
                           sess: session)
         -> output_filenames {
-    let obj_path = "";
-    let out_path: str = "";
+    let mut obj_path = "";
+    let mut out_path: str = "";
     let sopts = sess.opts;
     let stop_after_codegen =
         sopts.output_type != link::output_type_exe ||

@@ -15,7 +15,7 @@ type deref = @{mutbl: bool, kind: deref_t, outer_t: ty::t};
 fn expr_root(tcx: ty::ctxt, ex: @expr, autoderef: bool) ->
    {ex: @expr, ds: @[deref]} {
     fn maybe_auto_unbox(tcx: ty::ctxt, t: ty::t) -> {t: ty::t, ds: [deref]} {
-        let ds = [], t = t;
+        let mut ds = [], t = t;
         loop {
             alt ty::get(t).struct {
               ty::ty_box(mt) | ty::ty_uniq(mt) | ty::ty_rptr(_, mt) {
@@ -42,12 +42,12 @@ fn expr_root(tcx: ty::ctxt, ex: @expr, autoderef: bool) ->
         }
         ret {t: t, ds: ds};
     }
-    let ds: [deref] = [], ex = ex;
+    let mut ds: [deref] = [], ex = ex;
     loop {
         alt copy ex.node {
           expr_field(base, ident, _) {
             let auto_unbox = maybe_auto_unbox(tcx, ty::expr_ty(tcx, base));
-            let is_mutbl = false;
+            let mut is_mutbl = false;
             alt ty::get(auto_unbox.t).struct {
               ty::ty_rec(fields) {
                 for fld: ty::field in fields {
@@ -83,7 +83,7 @@ fn expr_root(tcx: ty::ctxt, ex: @expr, autoderef: bool) ->
           expr_unary(op, base) {
             if op == deref {
                 let base_t = ty::expr_ty(tcx, base);
-                let is_mutbl = false, ptr = false;
+                let mut is_mutbl = false, ptr = false;
                 alt ty::get(base_t).struct {
                   ty::ty_box(mt) { is_mutbl = mt.mutbl == m_mutbl; }
                   ty::ty_uniq(mt) { is_mutbl = mt.mutbl == m_mutbl; }
@@ -236,7 +236,7 @@ fn check_move_rhs(cx: @ctx, src: @expr) {
 
 fn check_call(cx: @ctx, f: @expr, args: [@expr]) {
     let arg_ts = ty::ty_fn_args(ty::expr_ty(cx.tcx, f));
-    let i = 0u;
+    let mut i = 0u;
     for arg_t: ty::arg in arg_ts {
         alt ty::resolved_mode(cx.tcx, arg_t.mode) {
           by_mutbl_ref { check_lval(cx, args[i], msg_mutbl_ref); }
@@ -249,7 +249,7 @@ fn check_call(cx: @ctx, f: @expr, args: [@expr]) {
 
 fn check_bind(cx: @ctx, f: @expr, args: [option<@expr>]) {
     let arg_ts = ty::ty_fn_args(ty::expr_ty(cx.tcx, f));
-    let i = 0u;
+    let mut i = 0u;
     for arg in args {
         alt arg {
           some(expr) {

@@ -141,7 +141,7 @@ fn find_use_stmt_cnum(cstore: cstore,
 // sorted by crate name.
 fn get_dep_hashes(cstore: cstore) -> [str] {
     type crate_hash = {name: str, hash: str};
-    let result = [];
+    let mut result = [];
 
     p(cstore).use_crate_map.values {|cnum|
         let cdata = cstore::get_crate_data(cstore, cnum);

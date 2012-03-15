@@ -19,7 +19,7 @@ fn type_of_explicit_args(cx: @crate_ctxt, inputs: [ty::arg]) -> [TypeRef] {
 }
 
 fn type_of_fn(cx: @crate_ctxt, inputs: [ty::arg], output: ty::t) -> TypeRef {
-    let atys: [TypeRef] = [];
+    let mut atys: [TypeRef] = [];
 
     // Arg 0: Output pointer.
     atys += [T_ptr(type_of(cx, output))];
@@ -57,7 +57,7 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
       ty::ty_ptr(mt) { T_ptr(type_of(cx, mt.ty)) }
       ty::ty_rptr(_, mt) { T_ptr(type_of(cx, mt.ty)) }
       ty::ty_rec(fields) {
-        let tys: [TypeRef] = [];
+        let mut tys: [TypeRef] = [];
         for f: ty::field in fields {
             let mt_ty = f.mt.ty;
             tys += [type_of(cx, mt_ty)];
@@ -73,7 +73,7 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
       ty::ty_param(_, _) { T_typaram(cx.tn) }
       ty::ty_type { T_ptr(cx.tydesc_type) }
       ty::ty_tup(elts) {
-        let tys = [];
+        let mut tys = [];
         for elt in elts {
             tys += [type_of(cx, elt)];
         }
@@ -82,14 +82,12 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
       ty::ty_opaque_closure_ptr(_) { T_opaque_box_ptr(cx) }
       ty::ty_constr(subt,_) { type_of(cx, subt) }
       ty::ty_class(did, _) {
-        let tys: [TypeRef] = [];
         // only instance vars are record fields at runtime
         let fields = lookup_class_fields(cx.tcx, did);
-        for f in fields {
+        let tys = vec::map(fields) {|f|
             let t = ty::lookup_field_type(cx.tcx, did, f.id);
-            let fty = type_of(cx, t);
-            tys += [fty];
-        }
+            type_of(cx, t)
+        };
         T_struct(tys)
       }
       ty::ty_self(_) { cx.tcx.sess.unimpl("type_of: ty_self \

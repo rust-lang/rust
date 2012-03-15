@@ -136,7 +136,7 @@ fn expand_ast(ecx: ext_ctxt, _sp: span,
               arg: ast::mac_arg, body: ast::mac_body)
     -> @ast::expr
 {
-    let what = "expr";
+    let mut what = "expr";
     option::may(arg) {|arg|
         let args: [@ast::expr] =
             alt arg.node {
@@ -211,10 +211,10 @@ fn finish<T: qq_helper>
         // ^^ check that the spans are non-overlapping
     }
 
-    let str2 = "";
+    let mut str2 = "";
     enum state {active, skip(uint), blank};
-    let state = active;
-    let i = 0u, j = 0u;
+    let mut state = active;
+    let mut i = 0u, j = 0u;
     let g_len = vec::len(cx.gather);
     str::chars_iter(*str) {|ch|
         if (j < g_len && i == cx.gather[j].lo) {
@@ -260,7 +260,7 @@ fn finish<T: qq_helper>
                                    "cfg"),
                         mk_access_(cx,sp, session_call(), "parse_sess")]
                       );
-    let rcall = pcall;
+    let mut rcall = pcall;
     if (g_len > 0u) {
         rcall = mk_call(cx,sp,
                         ["syntax", "ext", "qquote", "replace"],

@@ -142,7 +142,7 @@ fn classify_ty(ty: TypeRef) -> [x86_64_reg_class] {
         if vec::is_empty(tys) {
             classify(T_i64(), cls, i, off);
         } else {
-            let field_off = off;
+            let mut field_off = off;
             for ty in tys {
                 field_off = align(field_off, ty);
                 classify(ty, cls, i, field_off);
@@ -159,7 +159,7 @@ fn classify_ty(ty: TypeRef) -> [x86_64_reg_class] {
 
         let misalign = off % t_align;
         if misalign != 0u {
-            let i = off / 8u;
+            let mut i = off / 8u;
             let e = (off + t_size + 7u) / 8u;
             while i < e {
                 unify(cls, i, memory_class);
@@ -193,7 +193,7 @@ fn classify_ty(ty: TypeRef) -> [x86_64_reg_class] {
     }
 
     fn fixup(ty: TypeRef, cls: [mut x86_64_reg_class]) {
-        let i = 0u;
+        let mut i = 0u;
         let e = vec::len(cls);
         if vec::len(cls) > 2u &&
            llvm::LLVMGetTypeKind(ty) as int == 10 /* struct */ {
@@ -250,7 +250,7 @@ fn classify_ty(ty: TypeRef) -> [x86_64_reg_class] {
 
 fn llreg_ty(cls: [x86_64_reg_class]) -> TypeRef {
     fn llvec_len(cls: [x86_64_reg_class]) -> uint {
-        let len = 1u;
+        let mut len = 1u;
         for c in cls {
             if c != sseup_class {
                 break;
@@ -260,8 +260,8 @@ fn llreg_ty(cls: [x86_64_reg_class]) -> TypeRef {
         ret len;
     }
 
-    let tys = [];
-    let i = 0u;
+    let mut tys = [];
+    let mut i = 0u;
     let e = vec::len(cls);
     while i < e {
         alt cls[i] {
@@ -329,9 +329,9 @@ fn x86_64_tys(atys: [TypeRef],
     fn x86_64_ty(ty: TypeRef,
                  is_mem_cls: fn(cls: [x86_64_reg_class]) -> bool,
                  attr: Attribute) -> (x86_64_llty, option<Attribute>) {
-        let cast = false;
-        let ty_attr = option::none;
-        let llty = ty;
+        let mut cast = false;
+        let mut ty_attr = option::none;
+        let mut llty = ty;
         if !is_reg_ty(ty) {
             let cls = classify_ty(ty);
             if is_mem_cls(cls) {
@@ -345,15 +345,15 @@ fn x86_64_tys(atys: [TypeRef],
         ret ({ cast: cast, ty: llty }, ty_attr);
     }
 
-    let arg_tys = [];
-    let attrs = [];
+    let mut arg_tys = [];
+    let mut attrs = [];
     for t in atys {
         let (ty, attr) = x86_64_ty(t, is_pass_byval, ByValAttribute);
         arg_tys += [ty];
         attrs += [attr];
     }
-    let (ret_ty, ret_attr) = x86_64_ty(rty, is_ret_bysret,
-                                            StructRetAttribute);
+    let mut (ret_ty, ret_attr) = x86_64_ty(rty, is_ret_bysret,
+                                       StructRetAttribute);
     let sret = option::is_some(ret_attr);
     if sret {
         arg_tys = [ret_ty] + arg_tys;
@@ -557,14 +557,14 @@ fn trans_native_mod(ccx: @crate_ctxt,
 
         fn build_args(bcx: block, tys: @c_stack_tys,
                       llargbundle: ValueRef) -> [ValueRef] {
-            let llargvals = [];
-            let i = 0u;
+            let mut llargvals = [];
+            let mut i = 0u;
             let n = vec::len(tys.arg_tys);
 
             alt tys.x86_64_tys {
                 some(x86_64) {
-                    let atys = x86_64.arg_tys;
-                    let attrs = x86_64.attrs;
+                    let mut atys = x86_64.arg_tys;
+                    let mut attrs = x86_64.attrs;
                     if x86_64.sret {
                         let llretptr = GEPi(bcx, llargbundle, [0, n as int]);
                         let llretloc = Load(bcx, llretptr);
@@ -575,9 +575,9 @@ fn trans_native_mod(ccx: @crate_ctxt,
                     while i < n {
                         let llargval = if atys[i].cast {
                             let arg_ptr = GEPi(bcx, llargbundle,
-                                                    [0, i as int]);
-                            arg_ptr = BitCast(bcx, arg_ptr,
-                                                   T_ptr(atys[i].ty));
+                                               [0, i as int]);
+                            let arg_ptr = BitCast(bcx, arg_ptr,
+                                              T_ptr(atys[i].ty));
                             Load(bcx, arg_ptr)
                         } else if option::is_some(attrs[i]) {
                             GEPi(bcx, llargbundle, [0, i as int])
@@ -668,7 +668,8 @@ fn trans_native_mod(ccx: @crate_ctxt,
 
         fn build_args(bcx: block, tys: @c_stack_tys,
                       llwrapfn: ValueRef, llargbundle: ValueRef) {
-            let i = 0u, n = vec::len(tys.arg_tys);
+            let mut i = 0u;
+            let n = vec::len(tys.arg_tys);
             let implicit_args = first_real_arg; // ret + env
             while i < n {
                 let llargval = llvm::LLVMGetParam(
@@ -691,7 +692,7 @@ fn trans_native_mod(ccx: @crate_ctxt,
                        build_args, build_ret);
     }
 
-    let cc = lib::llvm::CCallConv;
+    let mut cc = lib::llvm::CCallConv;
     alt abi {
       ast::native_abi_rust_intrinsic {
         for item in native_mod.items { get_item_val(ccx, item.id); }
@@ -735,8 +736,8 @@ fn trans_crust_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
 
         fn build_args(bcx: block, tys: @c_stack_tys,
                       llargbundle: ValueRef) -> [ValueRef] {
-            let llargvals = [];
-            let i = 0u;
+            let mut llargvals = [];
+            let mut i = 0u;
             let n = vec::len(tys.arg_tys);
             let llretptr = load_inbounds(bcx, llargbundle, [0, n as int]);
             llargvals += [llretptr];
@@ -770,9 +771,9 @@ fn trans_crust_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
                       llwrapfn: ValueRef, llargbundle: ValueRef) {
             alt tys.x86_64_tys {
                 option::some(x86_64) {
-                    let atys = x86_64.arg_tys;
-                    let attrs = x86_64.attrs;
-                    let j = 0u;
+                    let mut atys = x86_64.arg_tys;
+                    let mut attrs = x86_64.attrs;
+                    let mut j = 0u;
                     let llretptr = if x86_64.sret {
                         atys = vec::tail(atys);
                         attrs = vec::tail(attrs);
@@ -785,18 +786,20 @@ fn trans_crust_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
                         alloca(bcx, tys.ret_ty)
                     };
 
-                    let i = 0u, n = vec::len(atys);
+                    let mut i = 0u;
+                    let n = vec::len(atys);
                     while i < n {
-                        let argval = llvm::LLVMGetParam(llwrapfn,
-                                                        (i + j) as c_uint);
+                        let mut argval =
+                            llvm::LLVMGetParam(llwrapfn, (i + j) as c_uint);
                         if option::is_some(attrs[i]) {
                             argval = Load(bcx, argval);
                             store_inbounds(bcx, argval, llargbundle,
                                                         [0, i as int]);
                         } else if atys[i].cast {
                             let argptr = GEPi(bcx, llargbundle,
-                                                   [0, i as int]);
-                            argptr = BitCast(bcx, argptr, T_ptr(atys[i].ty));
+                                              [0, i as int]);
+                            let argptr = BitCast(bcx, argptr,
+                                                 T_ptr(atys[i].ty));
                             Store(bcx, argval, argptr);
                         } else {
                             store_inbounds(bcx, argval, llargbundle,
@@ -808,7 +811,8 @@ fn trans_crust_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
                 }
                 _ {
                     let llretptr = alloca(bcx, tys.ret_ty);
-                    let i = 0u, n = vec::len(tys.arg_tys);
+                    let mut i = 0u;
+                    let n = vec::len(tys.arg_tys);
                     while i < n {
                         let llargval = llvm::LLVMGetParam(llwrapfn,
                                                           i as c_uint);

@@ -67,7 +67,7 @@ fn mk_vec_e(cx: ext_ctxt, sp: span, exprs: [@ast::expr]) ->
 fn mk_rec_e(cx: ext_ctxt, sp: span,
             fields: [{ident: ast::ident, ex: @ast::expr}]) ->
     @ast::expr {
-    let astfields: [ast::field] = [];
+    let mut astfields: [ast::field] = [];
     for field: {ident: ast::ident, ex: @ast::expr} in fields {
         let ident = field.ident;
         let val = field.ex;

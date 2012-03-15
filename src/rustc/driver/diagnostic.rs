@@ -195,8 +195,8 @@ fn highlight_lines(cm: codemap::codemap, sp: span,
 
     // arbitrarily only print up to six lines of the error
     let max_lines = 6u;
-    let elided = false;
-    let display_lines = lines.lines;
+    let mut elided = false;
+    let mut display_lines = lines.lines;
     if vec::len(display_lines) > max_lines {
         display_lines = vec::slice(display_lines, 0u, max_lines);
         elided = true;
@@ -210,8 +210,8 @@ fn highlight_lines(cm: codemap::codemap, sp: span,
     if elided {
         let last_line = display_lines[vec::len(display_lines) - 1u];
         let s = #fmt["%s:%u ", fm.name, last_line + 1u];
-        let indent = str::len(s);
-        let out = "";
+        let mut indent = str::len(s);
+        let mut out = "";
         while indent > 0u { out += " "; indent -= 1u; }
         out += "...\n";
         io::stderr().write_str(out);
@@ -221,22 +221,22 @@ fn highlight_lines(cm: codemap::codemap, sp: span,
     // If there's one line at fault we can easily point to the problem
     if vec::len(lines.lines) == 1u {
         let lo = codemap::lookup_char_pos(cm, sp.lo);
-        let digits = 0u;
-        let num = (lines.lines[0] + 1u) / 10u;
+        let mut digits = 0u;
+        let mut num = (lines.lines[0] + 1u) / 10u;
 
         // how many digits must be indent past?
         while num > 0u { num /= 10u; digits += 1u; }
 
         // indent past |name:## | and the 0-offset column location
-        let left = str::len(fm.name) + digits + lo.col + 3u;
-        let s = "";
+        let mut left = str::len(fm.name) + digits + lo.col + 3u;
+        let mut s = "";
         while left > 0u { str::push_char(s, ' '); left -= 1u; }
 
         s += "^";
         let hi = codemap::lookup_char_pos(cm, sp.hi);
         if hi.col != lo.col {
             // the ^ already takes up one space
-            let width = hi.col - lo.col - 1u;
+            let mut width = hi.col - lo.col - 1u;
             while width > 0u { str::push_char(s, '~'); width -= 1u; }
         }
         io::stderr().write_str(s + "\n");

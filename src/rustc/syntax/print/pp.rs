@@ -74,9 +74,9 @@ fn buf_str(toks: [mutable token], szs: [mutable int], left: uint, right: uint,
            lim: uint) -> str {
     let n = vec::len(toks);
     assert (n == vec::len(szs));
-    let i = left;
-    let L = lim;
-    let s = "[";
+    let mut i = left;
+    let mut L = lim;
+    let mut s = "[";
     while i != right && L != 0u {
         L -= 1u;
         if i != left { s += ", "; }
@@ -399,7 +399,8 @@ impl printer for printer {
     }
     fn get_top() -> print_stack_elt {
         let n = vec::len(self.print_stack);
-        let top: print_stack_elt = {offset: 0, pbreak: broken(inconsistent)};
+        let mut top: print_stack_elt =
+            {offset: 0, pbreak: broken(inconsistent)};
         if n != 0u { top = self.print_stack[n - 1u]; }
         ret top;
     }

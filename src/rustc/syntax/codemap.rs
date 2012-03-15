@@ -56,8 +56,8 @@ fn lookup_line(map: codemap, pos: uint, lookup: lookup_fn)
     -> {fm: filemap, line: uint}
 {
     let len = vec::len(map.files);
-    let a = 0u;
-    let b = len;
+    let mut a = 0u;
+    let mut b = len;
     while b - a > 1u {
         let m = (a + b) / 2u;
         if lookup(map.files[m].start_pos) > pos { b = m; } else { a = m; }
@@ -150,7 +150,7 @@ type file_lines = {file: filemap, lines: [uint]};
 fn span_to_lines(sp: span, cm: codemap::codemap) -> @file_lines {
     let lo = lookup_char_pos(cm, sp.lo);
     let hi = lookup_char_pos(cm, sp.hi);
-    let lines = [];
+    let mut lines = [];
     uint::range(lo.line - 1u, hi.line as uint) {|i| lines += [i]; };
     ret @{file: lo.file, lines: lines};
 }

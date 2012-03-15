@@ -55,7 +55,7 @@ fn seq_trit(u: trit, v: trit) -> trit {
 // 1 in q and 0 in p, it's 1 in the result; however,
 // if it's 0 in q and 1 in p, it's 0 in the result
 fn seq_tritv(p: postcond, q: postcond) {
-    let i = 0u;
+    let mut i = 0u;
     assert (p.nbits == q.nbits);
     while i < p.nbits {
         tritv_set(i, p, seq_trit(tritv_get(p, i), tritv_get(q, i)));
@@ -146,7 +146,7 @@ fn relax_precond_block_inner(b: blk, cx: relax_ctxt,
 fn relax_precond_block(fcx: fn_ctxt, i: node_id, b: blk) {
     let cx = {fcx: fcx, i: i};
     let visitor = visit::default_visitor::<relax_ctxt>();
-    visitor =
+    let visitor =
         @{visit_block: relax_precond_block_inner,
           visit_expr: relax_precond_expr,
           visit_stmt: relax_precond_stmt,

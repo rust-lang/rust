@@ -65,8 +65,8 @@ fn enc_ty(w: io::writer, cx: @ctxt, t: ty::t) {
             let end = w.tell();
             let len = end - pos;
             fn estimate_sz(u: uint) -> uint {
-                let n = u;
-                let len = 0u;
+                let mut n = u;
+                let mut len = 0u;
                 while n != 0u { len += 1u; n = n >> 4u; }
                 ret len;
             }
@@ -256,7 +256,7 @@ fn enc_ty_fn(w: io::writer, cx: @ctxt, ft: ty::fn_ty) {
         enc_ty(w, cx, arg.ty);
     }
     w.write_char(']');
-    let colon = true;
+    let mut colon = true;
     for c: @ty::constr in ft.constraints {
         if colon {
             w.write_char(':');
@@ -276,7 +276,7 @@ fn enc_constr(w: io::writer, cx: @ctxt, c: @ty::constr) {
     w.write_char('(');
     w.write_str(cx.ds(c.node.id));
     w.write_char('|');
-    let semi = false;
+    let mut semi = false;
     for a: @constr_arg in c.node.args {
         if semi { w.write_char(';'); } else { semi = true; }
         alt a.node {
@@ -293,7 +293,7 @@ fn enc_ty_constr(w: io::writer, cx: @ctxt, c: @ty::type_constr) {
     w.write_char('(');
     w.write_str(cx.ds(c.node.id));
     w.write_char('|');
-    let semi = false;
+    let mut semi = false;
     for a: @ty::ty_constr_arg in c.node.args {
         if semi { w.write_char(';'); } else { semi = true; }
         alt a.node {

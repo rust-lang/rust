@@ -56,9 +56,9 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span, pieces: [piece], args: [@ast::expr])
 
     fn make_rt_conv_expr(cx: ext_ctxt, sp: span, cnv: conv) -> @ast::expr {
         fn make_flags(cx: ext_ctxt, sp: span, flags: [flag]) -> @ast::expr {
-            let flagexprs: [@ast::expr] = [];
+            let mut flagexprs: [@ast::expr] = [];
             for f: flag in flags {
-                let fstr;
+                let mut fstr;
                 alt f {
                   flag_left_justify { fstr = "flag_left_justify"; }
                   flag_left_zero_pad { fstr = "flag_left_zero_pad"; }
@@ -85,7 +85,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span, pieces: [piece], args: [@ast::expr])
             }
         }
         fn make_ty(cx: ext_ctxt, sp: span, t: ty) -> @ast::expr {
-            let rt_type;
+            let mut rt_type;
             alt t {
               ty_hex(c) {
                 alt c {
@@ -249,8 +249,8 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span, pieces: [piece], args: [@ast::expr])
         }
     }
     let fmt_sp = args[0].span;
-    let n = 0u;
-    let tmp_expr = mk_str(cx, sp, "");
+    let mut n = 0u;
+    let mut tmp_expr = mk_str(cx, sp, "");
     let nargs = vec::len::<@ast::expr>(args);
     for pc: piece in pieces {
         alt pc {

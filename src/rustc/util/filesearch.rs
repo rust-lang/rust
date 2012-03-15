@@ -130,10 +130,10 @@ fn get_cargo_root() -> result<path, str> {
 fn get_cargo_root_nearest() -> result<path, str> {
     result::chain(get_cargo_root()) { |p|
         let cwd = os::getcwd();
-        let dirname = path::dirname(cwd);
-        let dirpath = path::split(dirname);
+        let mut dirname = path::dirname(cwd);
+        let mut dirpath = path::split(dirname);
         let cwd_cargo = path::connect(cwd, ".cargo");
-        let par_cargo = path::connect(dirname, ".cargo");
+        let mut par_cargo = path::connect(dirname, ".cargo");
 
         if os::path_is_dir(cwd_cargo) || cwd_cargo == p {
             ret result::ok(cwd_cargo);

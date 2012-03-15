@@ -11,7 +11,7 @@ import rustc::syntax::codemap;
 import rustc::driver::diagnostic;
 
 fn version(argv0: str) {
-    let vers = "unknown version";
+    let mut vers = "unknown version";
     let env_vers = #env["CFG_VERSION"];
     if str::len(env_vers) != 0u { vers = env_vers; }
     io::stdout().write_str(#fmt["%s %s\n", argv0, vers]);
@@ -73,7 +73,8 @@ fn run_compiler(args: [str], demitter: diagnostic::emitter) {
     // Don't display log spew by default. Can override with RUST_LOG.
     logging::console_off();
 
-    let args = args, binary = vec::shift(args);
+    let mut args = args;
+    let binary = vec::shift(args);
 
     if vec::len(args) == 0u { usage(binary); ret; }
 

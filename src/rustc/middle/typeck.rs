@@ -307,7 +307,7 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
         }
 
         // The typedef is type-parametric. Do the type substitution.
-        let param_bindings: [ty::t] = [];
+        let mut param_bindings: [ty::t] = [];
         if vec::len(args) != vec::len(*ty_param_bounds_and_ty.bounds) {
             tcx.sess.span_fatal(sp, "wrong number of type arguments for a \
                                      polymorphic type");
@@ -377,11 +377,10 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
             ty::mk_tup(tcx, flds)
           }
           ast::ty_rec(fields) {
-            let flds: [field] = [];
-            for f: ast::ty_field in fields {
+            let flds = vec::map(fields) {|f|
                 let tm = ast_mt_to_mt(tcx, use_site, mode, f.node.mt);
-                flds += [{ident: f.node.ident, mt: tm}];
-            }
+                {ident: f.node.ident, mt: tm}
+            };
             ty::mk_rec(tcx, flds)
           }
           ast::ty_fn(proto, decl) {
@@ -456,10 +455,9 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
             }
           }
           ast::ty_constr(t, cs) {
-            let out_cs = [];
-            for constr: @ast::ty_constr in cs {
-                out_cs += [ty::ast_constr_to_constr(tcx, constr)];
-            }
+            let out_cs = vec::map(cs) {|constr|
+                ty::ast_constr_to_constr(tcx, constr)
+            };
             ty::mk_constr(tcx, do_ast_ty_to_ty(tcx, use_site, mode, t),
                           out_cs)
           }
@@ -608,10 +606,9 @@ fn ty_of_fn_decl(tcx: ty::ctxt,
     let input_tys = vec::map(decl.inputs) {|a| ty_of_arg(tcx, mode, a) };
     let output_ty = ast_ty_to_ty(tcx, mode, decl.output);
 
-    let out_constrs = [];
-    for constr: @ast::constr in decl.constraints {
-        out_constrs += [ty::ast_constr_to_constr(tcx, constr)];
-    }
+    let out_constrs = vec::map(decl.constraints) {|constr|
+        ty::ast_constr_to_constr(tcx, constr)
+    };
     {proto: proto, inputs: input_tys,
      output: output_ty, ret_style: decl.cf, constraints: out_constrs}
 }
@@ -627,10 +624,10 @@ fn ty_of_fn(tcx: ty::ctxt, mode: mode, decl: ast::fn_decl,
 fn ty_of_native_fn_decl(tcx: ty::ctxt, mode: mode, decl: ast::fn_decl,
                         ty_params: [ast::ty_param], def_id: ast::def_id)
     -> ty::ty_param_bounds_and_ty {
-    let input_tys = [], bounds = ty_param_bounds(tcx, mode, ty_params);
-    for a: ast::arg in decl.inputs {
-        input_tys += [ty_of_arg(tcx, mode, a)];
-    }
+    let bounds = ty_param_bounds(tcx, mode, ty_params);
+    let input_tys = vec::map(decl.inputs) {|a|
+        ty_of_arg(tcx, mode, a)
+    };
     let output_ty = ast_ty_to_ty(tcx, mode, decl.output);
 
     let t_fn = ty::mk_fn(tcx, {proto: ast::proto_bare,
@@ -644,12 +641,12 @@ fn ty_of_native_fn_decl(tcx: ty::ctxt, mode: mode, decl: ast::fn_decl,
 }
 fn ty_param_bounds(tcx: ty::ctxt, mode: mode, params: [ast::ty_param])
     -> @[ty::param_bounds] {
-    let result = [];
+    let mut result = [];
     for param in params {
         result += [alt tcx.ty_param_bounds.find(param.id) {
           some(bs) { bs }
           none {
-            let bounds = [];
+            let mut bounds = [];
             for b in *param.bounds {
                 bounds += [alt b {
                   ast::bound_send { ty::bound_send }
@@ -728,7 +725,8 @@ fn write_bot(tcx: ty::ctxt, node_id: ast::node_id) {
 
 fn mk_ty_params(tcx: ty::ctxt, atps: [ast::ty_param])
     -> {bounds: @[ty::param_bounds], params: [ty::t]} {
-    let i = 0u, bounds = ty_param_bounds(tcx, m_collect, atps);
+    let mut i = 0u;
+    let bounds = ty_param_bounds(tcx, m_collect, atps);
     {bounds: bounds,
      params: vec::map(atps, {|atp|
          let t = ty::mk_param(tcx, i, local_def(atp.id));
@@ -766,7 +764,7 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span, impl_m: ty::method,
         let substs = substs + vec::from_fn(vec::len(*if_m.tps), {|i|
             ty::mk_param(tcx, i + impl_tps, {crate: 0, node: 0})
         });
-        let if_fty = ty::mk_fn(tcx, if_m.fty);
+        let mut if_fty = ty::mk_fn(tcx, if_m.fty);
         if_fty = ty::substitute_type_params(tcx, substs, if_fty);
         if ty::type_has_vars(if_fty) {
             if_fty = fixup_self_in_method_ty(tcx, if_fty, substs,
@@ -800,7 +798,7 @@ fn fixup_self_in_method_ty(cx: ty::ctxt, mty: ty::t, m_substs: [ty::t],
                 if vec::len(tps) > 0u {
                     // Move the substs into the type param system of the
                     // context.
-                    let substs = vec::map(tps, {|t|
+                    let mut substs = vec::map(tps, {|t|
                         let f = fixup_self_in_method_ty(cx, t, m_substs,
                                                         self);
                         ty::substitute_type_params(cx, m_substs, f)
@@ -876,7 +874,7 @@ mod collect {
             } else {
                 // As above, tell ast_ty_to_ty() that trans_ty_item_to_ty()
                 // should be called to resolve named types.
-                let args: [arg] = [];
+                let mut args: [arg] = [];
                 for va: ast::variant_arg in variant.node.args {
                     let arg_ty = ast_ty_to_ty(tcx, m_collect, va.ty);
                     args += [{mode: ast::expl(ast::by_copy), ty: arg_ty}];
@@ -925,7 +923,7 @@ mod collect {
     fn convert_methods(tcx: ty::ctxt, ms: [@ast::method],
         i_bounds: @[ty::param_bounds], maybe_self: option<ty::t>)
         -> [{mty: ty::method, id: ast::node_id, span: span}] {
-        let my_methods = [];
+        let mut my_methods = [];
         for m in ms {
            alt maybe_self {
               some(selfty) {
@@ -1111,7 +1109,7 @@ mod unify {
 // FIXME This is almost a duplicate of ty::type_autoderef, with structure_of
 // instead of ty::struct.
 fn do_autoderef(fcx: @fn_ctxt, sp: span, t: ty::t) -> ty::t {
-    let t1 = t;
+    let mut t1 = t;
     loop {
         alt structure_of(fcx, sp, t1) {
           ty::ty_box(inner) | ty::ty_uniq(inner) | ty::ty_rptr(_, inner) {
@@ -1185,8 +1183,8 @@ mod demand {
             ty_param_substs_0: [ty::t]) ->
        ty_param_substs_and_ty {
 
-        let ty_param_substs: [mutable ty::t] = [mutable];
-        let ty_param_subst_var_ids: [int] = [];
+        let mut ty_param_substs: [mutable ty::t] = [mutable];
+        let mut ty_param_subst_var_ids: [int] = [];
         for ty_param_subst: ty::t in ty_param_substs_0 {
             // Generate a type variable and unify it with the type parameter
             // substitution. We will then pull out these type variables.
@@ -1199,7 +1197,7 @@ mod demand {
         fn mk_result(fcx: @fn_ctxt, result_ty: ty::t,
                      ty_param_subst_var_ids: [int]) ->
            ty_param_substs_and_ty {
-            let result_ty_param_substs: [ty::t] = [];
+            let mut result_ty_param_substs: [ty::t] = [];
             for var_id: int in ty_param_subst_var_ids {
                 let tp_subst = ty::mk_var(fcx.ccx.tcx, var_id);
                 result_ty_param_substs += [tp_subst];
@@ -1241,7 +1239,7 @@ fn are_compatible(fcx: @fn_ctxt, expected: ty::t, actual: ty::t) -> bool {
 // Returns the types of the arguments to a enum variant.
 fn variant_arg_types(ccx: @crate_ctxt, _sp: span, vid: ast::def_id,
                      enum_ty_params: [ty::t]) -> [ty::t] {
-    let result: [ty::t] = [];
+    let mut result: [ty::t] = [];
     let tpt = ty::lookup_item_type(ccx.tcx, vid);
     alt ty::get(tpt.ty).struct {
       ty::ty_fn(f) {
@@ -1298,7 +1296,7 @@ mod writeback {
             write_ty(tcx, id, t);
             alt tcx.node_type_substs.find(id) {
               some(substs) {
-                let new_substs = [];
+                let mut new_substs = [];
                 for subst: ty::t in substs {
                     alt resolve_type_vars_in_type(fcx, sp, subst) {
                       some(t) { new_substs += [t]; }
@@ -1454,7 +1452,7 @@ fn gather_locals(ccx: @crate_ctxt,
 
     // Add formal parameters.
     let args = ty::ty_fn_args(ty::node_id_to_type(ccx.tcx, id));
-    let i = 0u;
+    let mut i = 0u;
     for arg: ty::arg in args {
         assign(decl.inputs[i].id, some(arg.ty));
         i += 1u;
@@ -1600,7 +1598,7 @@ fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
         // Get the number of arguments in this enum variant.
         let arg_types = variant_arg_types(pcx.fcx.ccx, pat.span,
                                           v_def_ids.var, expected_tps);
-        arg_types = vec::map(arg_types,
+        let arg_types = vec::map(arg_types,
                              bind instantiate_self_regions(pcx.fcx.ccx.tcx,
                                                            pcx.pat_region,
                                                            _));
@@ -1669,7 +1667,7 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
       ast::pat_ident(name, sub)
       if !pat_util::pat_is_variant(tcx.def_map, pat) {
         let vid = lookup_local(pcx.fcx, pat.span, pat.id);
-        let typ = ty::mk_var(tcx, vid);
+        let mut typ = ty::mk_var(tcx, vid);
         typ = demand::simple(pcx.fcx, pat.span, expected, typ);
         let canon_id = pcx.map.get(path_to_ident(name));
         if canon_id != pat.id {
@@ -1690,16 +1688,15 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
         check_pat_variant(pcx, pat, path, subpats, expected);
       }
       ast::pat_rec(fields, etc) {
-        let ex_fields;
-        alt structure_of(pcx.fcx, pat.span, expected) {
-          ty::ty_rec(fields) { ex_fields = fields; }
+        let ex_fields = alt structure_of(pcx.fcx, pat.span, expected) {
+          ty::ty_rec(fields) { fields }
           _ {
             tcx.sess.span_fatal
                 (pat.span,
                 #fmt["mismatched types: expected `%s` but found record",
                                 ty_to_str(tcx, expected)]);
           }
-        }
+        };
         let f_count = vec::len(fields);
         let ex_f_count = vec::len(ex_fields);
         if ex_f_count < f_count || !etc && ex_f_count > f_count {
@@ -1728,16 +1725,15 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
         write_ty(tcx, pat.id, expected);
       }
       ast::pat_tup(elts) {
-        let ex_elts;
-        alt structure_of(pcx.fcx, pat.span, expected) {
-          ty::ty_tup(elts) { ex_elts = elts; }
+        let ex_elts = alt structure_of(pcx.fcx, pat.span, expected) {
+          ty::ty_tup(elts) { elts }
           _ {
             tcx.sess.span_fatal
                 (pat.span,
                  #fmt["mismatched types: expected `%s`, found tuple",
                         ty_to_str(tcx, expected)]);
           }
-        }
+        };
         let e_count = vec::len(elts);
         if e_count != vec::len(ex_elts) {
             tcx.sess.span_fatal
@@ -1745,7 +1741,7 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
                       with %u fields, found one with %u \
                       fields", vec::len(ex_elts), e_count]);
         }
-        let i = 0u;
+        let mut i = 0u;
         for elt in elts {
             check_pat(pcx, elt, ex_elts[i]);
             i += 1u;
@@ -1878,7 +1874,8 @@ fn lookup_method(fcx: @fn_ctxt, expr: @ast::expr, node_id: ast::node_id,
     alt lookup_method_inner(fcx, expr, name, ty) {
       some({method_ty: fty, n_tps: method_n_tps, substs, origin, self_sub}) {
         let tcx = fcx.ccx.tcx;
-        let substs = substs, n_tps = vec::len(substs), n_tys = vec::len(tps);
+        let mut substs = substs;
+        let n_tps = vec::len(substs), n_tys = vec::len(tps);
         let has_self = ty::type_has_vars(fty);
         if method_n_tps + n_tps > 0u {
             if n_tys == 0u || n_tys != method_n_tps {
@@ -1904,13 +1901,13 @@ fn lookup_method(fcx: @fn_ctxt, expr: @ast::expr, node_id: ast::node_id,
         }
         if has_self && !option::is_none(self_sub) {
             let fty = ty::node_id_to_type(tcx, node_id);
-            fty = fixup_self_in_method_ty(
+            let fty = fixup_self_in_method_ty(
                 tcx, fty, substs, option::get(self_sub));
             write_ty(tcx, node_id, fty);
         }
         if ty::type_has_rptrs(ty::ty_fn_ret(fty)) {
             let fty = ty::node_id_to_type(tcx, node_id);
-            fty = fixup_self_region_in_method_ty(fcx, fty, expr);
+            let fty = fixup_self_region_in_method_ty(fcx, fty, expr);
             write_ty(tcx, node_id, fty);
         }
         some(origin)
@@ -1929,7 +1926,7 @@ fn lookup_method_inner_(tcx: ty::ctxt, ms: [ty::method],
     -> option<{method_ty: ty::t, n_tps: uint, substs: [ty::t],
         origin: method_origin, self_sub: option<self_subst>}> {
     #debug("lookup_method_inner_: %? %? %s", ms, parent, name);
-    let i = 0u;
+    let mut i = 0u;
     for m in ms  {
        if m.ident == name {
           let fty = ty::mk_fn(tcx, {proto: ast::proto_box with m.fty});
@@ -1977,7 +1974,7 @@ fn lookup_method_inner(fcx: @fn_ctxt, expr: @ast::expr,
     // First, see whether this is an interface-bounded parameter
     alt ty::get(ty).struct {
       ty::ty_param(n, did) {
-        let bound_n = 0u;
+        let mut bound_n = 0u;
         for bound in *tcx.ty_param_bounds.get(did.node) {
             alt bound {
               ty::bound_iface(t) {
@@ -2038,7 +2035,7 @@ fn lookup_method_inner(fcx: @fn_ctxt, expr: @ast::expr,
         }
     }
 
-    let result = none, complained = false;
+    let mut result = none, complained = false;
     std::list::iter(fcx.ccx.impl_map.get(expr.id)) {|impls|
         if option::is_some(result) { ret; }
         for @{did, methods, _} in *impls {
@@ -2224,7 +2221,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
 
         let sty = structure_of(fcx, sp, fty);
         // Grab the argument types
-        let arg_tys = alt sty {
+        let mut arg_tys = alt sty {
           ty::ty_fn({inputs: arg_tys, _}) { arg_tys }
           _ {
             fcx.ccx.tcx.sess.span_fatal(sp, "mismatched types: \
@@ -2269,8 +2266,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         // of arguments when we typecheck the functions. This isn't really the
         // right way to do this.
         let check_args = fn@(check_blocks: bool) -> bool {
-            let i = 0u;
-            let bot = false;
+            let mut i = 0u;
+            let mut bot = false;
             for a_opt in args {
                 alt a_opt {
                   some(a) {
@@ -2306,7 +2303,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
     fn check_call(fcx: @fn_ctxt, sp: span, id: ast::node_id, f: @ast::expr,
                   args: [@ast::expr])
             -> check_call_or_bind_result {
-        let args_opt_0: [option<@ast::expr>] = [];
+        let mut args_opt_0: [option<@ast::expr>] = [];
         for arg: @ast::expr in args {
             args_opt_0 += [some::<@ast::expr>(arg)];
         }
@@ -2451,7 +2448,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
 
     let tcx = fcx.ccx.tcx;
     let id = expr.id;
-    let bot = false;
+    let mut bot = false;
     alt expr.node {
       ast::expr_lit(lit) {
         let typ = check_lit(fcx.ccx, lit);
@@ -2484,7 +2481,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
       }
       ast::expr_unary(unop, oper) {
         bot = check_expr(fcx, oper);
-        let oper_t = expr_ty(tcx, oper);
+        let mut oper_t = expr_ty(tcx, oper);
         alt unop {
           ast::box(mutbl) {
             oper_t = ty::mk_box(tcx, {ty: oper_t, mutbl: mutbl});
@@ -2540,7 +2537,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
       }
       ast::expr_addr_of(mutbl, oper) {
         bot = check_expr(fcx, oper);
-        let oper_t = expr_ty(tcx, oper);
+        let mut oper_t = expr_ty(tcx, oper);
 
         let region = region_of(fcx, oper);
         let tm = { ty: oper_t, mutbl: mutbl };
@@ -2637,7 +2634,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
       }
       ast::expr_for(decl, seq, body) {
         bot = check_expr(fcx, seq);
-        let elt_ty;
+        let mut elt_ty;
         let ety = expr_ty(tcx, seq);
         alt structure_of(fcx, expr.span, ety) {
           ty::ty_vec(vec_elt_ty) { elt_ty = vec_elt_ty.ty; }
@@ -2687,8 +2684,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
             }
         }
         // Now typecheck the blocks.
-        let result_ty = next_ty_var(fcx);
-        let arm_non_bot = false;
+        let mut result_ty = next_ty_var(fcx);
+        let mut arm_non_bot = false;
         for arm: ast::arm in arms {
             alt arm.guard {
               some(e) { check_expr_with(fcx, e, ty::mk_bool(tcx)); }
@@ -2739,7 +2736,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         // TODO: Perform substitutions on the return type.
 
         // Pull the argument and return types out.
-        let proto, arg_tys, rt, cf, constrs;
+        let mut proto, arg_tys, rt, cf, constrs;
         alt structure_of(fcx, expr.span, expr_ty(tcx, f)) {
           // FIXME:
           // probably need to munge the constrs to drop constraints
@@ -2768,8 +2765,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
 
         // For each blank argument, add the type of that argument
         // to the resulting function type.
-        let out_args = [];
-        let i = 0u;
+        let mut out_args = [];
+        let mut i = 0u;
         while i < vec::len(args) {
             alt args[i] {
               some(_) {/* no-op */ }
@@ -2826,7 +2823,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         write_ty(tcx, id, typ);
       }
       ast::expr_tup(elts) {
-        let elt_ts = [];
+        let mut elt_ts = [];
         vec::reserve(elt_ts, vec::len(elts));
         for e in elts {
             check_expr(fcx, e);
@@ -2838,7 +2835,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
       }
       ast::expr_rec(fields, base) {
         alt base { none {/* no-op */ } some(b_0) { check_expr(fcx, b_0); } }
-        let fields_t: [spanned<field>] = [];
+        let mut fields_t: [spanned<field>] = [];
         for f: ast::field in fields {
             bot |= check_expr(fcx, f.node.expr);
             let expr_t = expr_ty(tcx, f.node.expr);
@@ -2858,7 +2855,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
           some(bexpr) {
             bot |= check_expr(fcx, bexpr);
             let bexpr_t = expr_ty(tcx, bexpr);
-            let base_fields: [field] = [];
+            let mut base_fields: [field] = [];
             alt structure_of(fcx, expr.span, bexpr_t) {
               ty::ty_rec(flds) { base_fields = flds; }
               _ {
@@ -2868,7 +2865,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
             }
             write_ty(tcx, id, bexpr_t);
             for f: spanned<ty::field> in fields_t {
-                let found = false;
+                let mut found = false;
                 for bf: ty::field in base_fields {
                     if str::eq(f.node.ident, bf.ident) {
                         demand::simple(fcx, f.span, bf.mt.ty, f.node.mt.ty);
@@ -2889,7 +2886,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         let expr_t = structurally_resolved_type(fcx, expr.span,
                                                 expr_ty(tcx, base));
         let base_t = do_autoderef(fcx, expr.span, expr_t);
-        let handled = false, n_tys = vec::len(tys);
+        let mut handled = false;
+        let n_tys = vec::len(tys);
         alt structure_of(fcx, expr.span, base_t) {
           ty::ty_rec(fields) {
             alt ty::field_idx(field, fields) {
@@ -3060,7 +3058,7 @@ fn check_decl_initializer(fcx: @fn_ctxt, nid: ast::node_id,
 }
 
 fn check_decl_local(fcx: @fn_ctxt, local: @ast::local) -> bool {
-    let bot = false;
+    let mut bot = false;
 
     let t = ty::mk_var(fcx.ccx.tcx, fcx.locals.get(local.node.id));
     write_ty(fcx.ccx.tcx, local.node.id, t);
@@ -3086,8 +3084,8 @@ fn check_decl_local(fcx: @fn_ctxt, local: @ast::local) -> bool {
 }
 
 fn check_stmt(fcx: @fn_ctxt, stmt: @ast::stmt) -> bool {
-    let node_id;
-    let bot = false;
+    let mut node_id;
+    let mut bot = false;
     alt stmt.node {
       ast::stmt_decl(decl, id) {
         node_id = id;
@@ -3127,8 +3125,8 @@ fn check_block(fcx0: @fn_ctxt, blk: ast::blk) -> bool {
       ast::unsafe_blk { @{purity: ast::unsafe_fn with *fcx0} }
       ast::default_blk { fcx0 }
     };
-    let bot = false;
-    let warned = false;
+    let mut bot = false;
+    let mut warned = false;
     for s: @ast::stmt in blk.node.stmts {
         if bot && !warned &&
                alt s.node {
@@ -3191,8 +3189,8 @@ fn check_enum_variants(ccx: @crate_ctxt, sp: span, vs: [ast::variant],
           locals: int_hash::<int>(),
           next_var_id: @mutable 0,
           ccx: ccx};
-    let disr_vals: [int] = [];
-    let disr_val = 0;
+    let mut disr_vals: [int] = [];
+    let mut disr_val = 0;
     for v in vs {
         alt v.node.disr_expr {
           some(e) {
@@ -3223,7 +3221,7 @@ fn check_enum_variants(ccx: @crate_ctxt, sp: span, vs: [ast::variant],
         disr_vals += [disr_val];
         disr_val += 1;
     }
-    let outer = true, did = local_def(id);
+    let mut outer = true, did = local_def(id);
     if ty::type_structurally_contains(ccx.tcx, rty, {|sty|
         alt sty {
           ty::ty_enum(id, _) if id == did {
@@ -3287,7 +3285,7 @@ fn check_pred_expr(fcx: @fn_ctxt, e: @ast::expr) -> bool {
 }
 
 fn check_constraints(fcx: @fn_ctxt, cs: [@ast::constr], args: [ast::arg]) {
-    let c_args;
+    let mut c_args;
     let num_args = vec::len(args);
     for c: @ast::constr in cs {
         c_args = [];
@@ -3384,7 +3382,7 @@ fn check_fn(ccx: @crate_ctxt,
     }
 
     let args = ty::ty_fn_args(ty::node_id_to_type(ccx.tcx, id));
-    let i = 0u;
+    let mut i = 0u;
     for arg: ty::arg in args {
         write_ty(ccx.tcx, decl.inputs[i].id, arg.ty);
         i += 1u;
@@ -3442,7 +3440,7 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
       ast::item_impl(tps, _, ty, ms) {
         let self_ty = ast_ty_to_ty(ccx.tcx, m_check, ty);
         let self_region = ty::re_self({crate: ast::local_crate, node: it.id});
-        self_ty = instantiate_self_regions(ccx.tcx, self_region, self_ty);
+        let self_ty = instantiate_self_regions(ccx.tcx, self_region, self_ty);
         ccx.self_infos += [self_impl(self_ty)];
         for m in ms { check_method(ccx, m); }
         vec::pop(ccx.self_infos);
@@ -3493,7 +3491,7 @@ fn check_main_fn_ty(tcx: ty::ctxt, main_id: ast::node_id, main_span: span) {
          }
          _ {}
         }
-        let ok = vec::len(constraints) == 0u;
+        let mut ok = vec::len(constraints) == 0u;
         ok &= ty::type_is_nil(output);
         let num_args = vec::len(inputs);
         ok &= num_args == 0u || num_args == 1u &&
@@ -3534,7 +3532,8 @@ mod vtable {
     fn lookup_vtables(fcx: @fn_ctxt, isc: resolve::iscopes, sp: span,
                       bounds: @[ty::param_bounds], tys: [ty::t],
                       allow_unsafe: bool) -> vtable_res {
-        let tcx = fcx.ccx.tcx, result = [], i = 0u;
+        let tcx = fcx.ccx.tcx;
+        let mut result = [], i = 0u;
         for ty in tys {
             for bound in *bounds[i] {
                 alt bound {
@@ -3561,7 +3560,7 @@ mod vtable {
         let ty = fixup_ty(fcx, sp, ty);
         alt ty::get(ty).struct {
           ty::ty_param(n, did) {
-            let n_bound = 0u;
+            let mut n_bound = 0u;
             for bound in *tcx.ty_param_bounds.get(did.node) {
                 alt bound {
                   ty::bound_iface(ity) {
@@ -3594,7 +3593,7 @@ mod vtable {
             ret vtable_iface(did, tps);
           }
           _ {
-            let found = none;
+            let mut found = none;
             std::list::iter(isc) {|impls|
                 if option::is_some(found) { ret; }
                 for im in *impls {

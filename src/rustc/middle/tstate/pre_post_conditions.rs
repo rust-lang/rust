@@ -299,7 +299,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
       expr_call(operator, operands, _) {
         /* copy */
 
-        let args = operands;
+        let mut args = operands;
         args += [operator];
 
         find_pre_post_exprs(fcx, args, e.id);
@@ -355,7 +355,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
         set_pre_and_post(fcx.ccx, e.id, p.precondition, p.postcondition);
       }
       expr_rec(fields, maybe_base) {
-        let es = field_exprs(fields);
+        let mut es = field_exprs(fields);
         alt maybe_base { none {/* no-op */ } some(b) { es += [b]; } }
         find_pre_post_exprs(fcx, es, e.id);
       }
@@ -433,7 +433,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
       expr_do_while(body, test) {
         find_pre_post_block(fcx, body);
         find_pre_post_expr(fcx, test);
-        let loop_postcond =
+        let mut loop_postcond =
             seq_postconds(fcx,
                           [block_postcond(fcx.ccx, body),
                            expr_postcond(fcx.ccx, test)]);
@@ -452,7 +452,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
       expr_loop(body) {
         find_pre_post_block(fcx, body);
         /* Infinite loop: if control passes it, everything is true. */
-        let loop_postcond = false_postcond(num_local_vars);
+        let mut loop_postcond = false_postcond(num_local_vars);
         /* Conservative approximation: if the body has any nonlocal exits,
          the poststate is blank since we don't know what parts of it
           execute. */
@@ -476,7 +476,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
             find_pre_post_block(fcx, an_alt.body);
             ret block_pp(fcx.ccx, an_alt.body);
         }
-        let alt_pps = [];
+        let mut alt_pps = [];
         for a: arm in alts { alt_pps += [do_an_alt(fcx, a)]; }
         fn combine_pp(antec: pre_and_post, fcx: fn_ctxt, &&pp: pre_and_post,
                       &&next: pre_and_post) -> pre_and_post {
@@ -499,7 +499,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
         copy_pre_post(fcx.ccx, e.id, operator);
       }
       expr_fail(maybe_val) {
-        let prestate;
+        let mut prestate;
         alt maybe_val {
           none { prestate = empty_prestate(num_local_vars); }
           some(fail_val) {
@@ -534,10 +534,10 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
 
 
       expr_bind(operator, maybe_args) {
-        let args = [];
-        let cmodes = callee_modes(fcx, operator.id);
-        let modes = [];
-        let i = 0;
+        let mut args = [];
+        let mut cmodes = callee_modes(fcx, operator.id);
+        let mut modes = [];
+        let mut i = 0;
         for expr_opt: option<@expr> in maybe_args {
             alt expr_opt {
               none {/* no-op */ }
@@ -562,7 +562,7 @@ fn find_pre_post_stmt(fcx: fn_ctxt, s: stmt) {
       stmt_decl(adecl, id) {
         alt adecl.node {
           decl_local(alocals) {
-            let e_pp;
+            let mut e_pp;
             let prev_pp = empty_pre_post(num_constraints(fcx.enclosing));
             for alocal in alocals {
                 alt alocal.node.init {
@@ -578,7 +578,7 @@ fn find_pre_post_stmt(fcx: fn_ctxt, s: stmt) {
                        initialized to the postcondition */
                     copy_pre_post(fcx.ccx, id, an_init.expr);
 
-                    let p = none;
+                    let mut p = none;
                     alt an_init.expr.node {
                       expr_path(_p) { p = some(_p); }
                       _ { }
@@ -676,7 +676,7 @@ fn find_pre_post_block(fcx: fn_ctxt, b: blk) {
     let do_inner = bind do_inner_(fcx, _);
     option::map::<@expr, ()>(b.node.expr, do_inner);
 
-    let pps: [pre_and_post] = [];
+    let mut pps: [pre_and_post] = [];
     for s: @stmt in b.node.stmts { pps += [stmt_pp(fcx.ccx, *s)]; }
     alt b.node.expr {
       none {/* no-op */ }
@@ -685,14 +685,14 @@ fn find_pre_post_block(fcx: fn_ctxt, b: blk) {
 
     let block_precond = seq_preconds(fcx, pps);
 
-    let postconds = [];
+    let mut postconds = [];
     for pp: pre_and_post in pps { postconds += [get_post(pp)]; }
 
     /* A block may be empty, so this next line ensures that the postconds
        vector is non-empty. */
     postconds += [block_precond];
 
-    let block_postcond = empty_poststate(nv);
+    let mut block_postcond = empty_poststate(nv);
     /* conservative approximation */
 
     if !has_nonlocal_exits(b) {

@@ -40,7 +40,7 @@ fn get_type_param_count(cstore: cstore::cstore, def: ast::def_id) -> uint {
 
 fn lookup_defs(cstore: cstore::cstore, cnum: ast::crate_num,
                path: [ast::ident]) -> [ast::def] {
-    let result = [];
+    let mut result = [];
     #debug("lookup_defs: path = %? cnum = %?", path, cnum);
     for (c, data, def) in resolve_path(cstore, cnum, path) {
         result += [decoder::lookup_def(c, data, def)];
@@ -64,7 +64,7 @@ fn resolve_path(cstore: cstore::cstore, cnum: ast::crate_num,
     let cm = cstore::get_crate_data(cstore, cnum);
     #debug("resolve_path %s in crates[%d]:%s",
            str::connect(path, "::"), cnum, cm.name);
-    let result = [];
+    let mut result = [];
     for def in decoder::resolve_path(path, cm.data) {
         if def.crate == ast::local_crate {
             result += [(cnum, cm.data, def)];

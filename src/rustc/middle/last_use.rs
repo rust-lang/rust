@@ -108,7 +108,8 @@ fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
       }
       expr_alt(input, arms, _) {
         v.visit_expr(input, cx, v);
-        let before = cx.current, sets = [];
+        let before = cx.current;
+        let mut sets = [];
         for arm in arms {
             cx.current = before;
             v.visit_arm(arm, cx, v);
@@ -118,7 +119,7 @@ fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
       }
       expr_if(cond, then, els) {
         v.visit_expr(cond, cx, v);
-        let cur = cx.current;
+        let mut cur = cx.current;
         visit::visit_block(then, cx, v);
         cx.current <-> cur;
         visit::visit_expr_opt(els, cx, v);
@@ -164,7 +165,7 @@ fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
       }
       expr_call(f, args, _) {
         v.visit_expr(f, cx, v);
-        let fns = [];
+        let mut fns = [];
         let arg_ts = ty::ty_fn_args(ty::expr_ty(cx.tcx, f));
         vec::iter2(args, arg_ts) {|arg, arg_t|
             alt arg.node {
@@ -204,7 +205,7 @@ fn visit_stmt(s: @stmt, cx: ctx, v: visit::vt<ctx>) {
       stmt_decl(@{node: decl_local(ls), _}, _) {
         shadow_in_current(cx, {|id|
             for local in ls {
-                let found = false;
+                let mut found = false;
                 pat_util::pat_bindings(cx.tcx.def_map, local.node.pat,
                                        {|pid, _a, _b|
                     if pid == id { found = true; }
@@ -247,7 +248,7 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
           }
           _ {}
         }
-        let old_cur = [], old_blocks = nil;
+        let mut old_cur = [], old_blocks = nil;
         cx.blocks <-> old_blocks;
         cx.current <-> old_cur;
         visit::visit_fn(fk, decl, body, sp, id, cx, v);
@@ -272,7 +273,7 @@ fn visit_block(tp: block_type, cx: ctx, visit: fn()) {
 }
 
 fn add_block_exit(cx: ctx, tp: block_type) -> bool {
-    let cur = cx.blocks;
+    let mut cur = cx.blocks;
     while cur != nil {
         alt cur {
           cons(b, tail) {
@@ -293,12 +294,13 @@ fn add_block_exit(cx: ctx, tp: block_type) -> bool {
 }
 
 fn join_branches(branches: [set]) -> set {
-    let found: set = [], i = 0u, l = vec::len(branches);
+    let mut found: set = [], i = 0u;
+    let l = vec::len(branches);
     for set in branches {
         i += 1u;
         for {def, uses} in set {
             if !vec::any(found, {|v| v.def == def}) {
-                let j = i, nne = uses;
+                let mut j = i, nne = uses;
                 while j < l {
                     for {def: d2, uses} in branches[j] {
                         if d2 == def {
@@ -331,7 +333,7 @@ fn leave_fn(cx: ctx) {
 }
 
 fn shadow_in_current(cx: ctx, p: fn(node_id) -> bool) {
-    let out = [];
+    let mut out = [];
     cx.current <-> out;
     for e in out { if !p(e.def) { cx.current += [e]; } }
 }

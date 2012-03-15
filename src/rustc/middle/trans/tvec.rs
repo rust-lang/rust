@@ -67,7 +67,7 @@ fn duplicate(bcx: block, vptr: ValueRef, vec_ty: ty::t) -> result {
     let size = Add(bcx, fill, llsize_of(ccx, ccx.opaque_vec_type));
     let {bcx: bcx, val: newptr} =
         trans_shared_malloc(bcx, val_ty(vptr), size);
-    let bcx = call_memmove(bcx, newptr, vptr, size).bcx;
+    let mut bcx = call_memmove(bcx, newptr, vptr, size).bcx;
     let unit_ty = ty::sequence_element_type(bcx.tcx(), vec_ty);
     Store(bcx, fill, GEPi(bcx, newptr, [0, abi::vec_elt_alloc]));
     if ty::type_needs_drop(bcx.tcx(), unit_ty) {
@@ -88,7 +88,8 @@ fn make_free_glue(bcx: block, vptr: ValueRef, vec_ty: ty::t) ->
 
 fn trans_vec(bcx: block, args: [@ast::expr], id: ast::node_id,
              dest: dest) -> block {
-    let ccx = bcx.ccx(), bcx = bcx;
+    let ccx = bcx.ccx();
+    let mut bcx = bcx;
     if dest == base::ignore {
         for arg in args {
             bcx = base::trans_expr(bcx, arg, base::ignore);
@@ -96,16 +97,15 @@ fn trans_vec(bcx: block, args: [@ast::expr], id: ast::node_id,
         ret bcx;
     }
     let vec_ty = node_id_type(bcx, id);
-    let {bcx: bcx,
-         val: vptr,
-         unit_ty: unit_ty,
-         llunitty: llunitty} =
-        alloc(bcx, vec_ty, args.len());
+    let mut {bcx: bcx,
+             val: vptr,
+             unit_ty: unit_ty,
+             llunitty: llunitty} = alloc(bcx, vec_ty, args.len());
 
     add_clean_free(bcx, vptr, true);
     // Store the individual elements.
     let dataptr = get_dataptr(bcx, vptr, llunitty);
-    let i = 0u, temp_cleanups = [vptr];
+    let mut i = 0u, temp_cleanups = [vptr];
     for e in args {
         let lleltptr = InBoundsGEP(bcx, dataptr, [C_uint(ccx, i)]);
         bcx = base::trans_expr_save_in(bcx, e, lleltptr);
@@ -145,7 +145,7 @@ fn trans_append(bcx: block, vec_ty: ty::t, lhsptr: ValueRef,
     let self_append = ICmp(bcx, lib::llvm::IntEQ, lhs, rhs);
     let lfill = get_fill(bcx, lhs);
     let rfill = get_fill(bcx, rhs);
-    let new_fill = Add(bcx, lfill, rfill);
+    let mut new_fill = Add(bcx, lfill, rfill);
     if strings { new_fill = Sub(bcx, new_fill, C_int(ccx, 1)); }
     let opaque_lhs = PointerCast(bcx, lhsptr,
                                  T_ptr(T_ptr(ccx.opaque_vec_type)));
@@ -156,7 +156,7 @@ fn trans_append(bcx: block, vec_ty: ty::t, lhsptr: ValueRef,
     let rhs = Select(bcx, self_append, lhs, rhs);
 
     let lhs_data = get_dataptr(bcx, lhs, llunitty);
-    let lhs_off = lfill;
+    let mut lhs_off = lfill;
     if strings { lhs_off = Sub(bcx, lhs_off, C_int(ccx, 1)); }
     let write_ptr = pointer_add(bcx, lhs_data, lhs_off);
     let write_ptr_ptr = do_spill_noroot(bcx, write_ptr);
@@ -174,8 +174,8 @@ fn trans_append_literal(bcx: block, vptrptr: ValueRef, vec_ty: ty::t,
                         vals: [@ast::expr]) -> block {
     let ccx = bcx.ccx();
     let elt_ty = ty::sequence_element_type(bcx.tcx(), vec_ty);
-    let ti = none;
-    let {bcx: bcx, val: td} = get_tydesc(bcx, elt_ty, ti);
+    let mut ti = none;
+    let mut {bcx: bcx, val: td} = get_tydesc(bcx, elt_ty, ti);
     base::lazily_emit_tydesc_glue(ccx, abi::tydesc_field_take_glue, ti);
     let opaque_v = PointerCast(bcx, vptrptr,
                                T_ptr(T_ptr(ccx.opaque_vec_type)));
@@ -206,7 +206,7 @@ fn trans_add(bcx: block, vec_ty: ty::t, lhs: ValueRef,
     let lhs_fill = get_fill(bcx, lhs);
     let rhs_fill = get_fill(bcx, rhs);
     let new_fill = Add(bcx, lhs_fill, rhs_fill);
-    let {bcx: bcx, val: new_vec_ptr} = alloc_raw(bcx, new_fill, new_fill);
+    let mut {bcx: bcx, val: new_vec_ptr} = alloc_raw(bcx, new_fill, new_fill);
     new_vec_ptr = PointerCast(bcx, new_vec_ptr, T_ptr(T_vec(ccx, llunitty)));
 
     let write_ptr_ptr = do_spill_noroot
@@ -223,7 +223,7 @@ fn trans_add(bcx: block, vec_ty: ty::t, lhs: ValueRef,
     };
 
     let bcx = iter_vec_raw(bcx, lhs, vec_ty, lhs_fill, copy_fn);
-    bcx = iter_vec_raw(bcx, rhs, vec_ty, rhs_fill, copy_fn);
+    let bcx = iter_vec_raw(bcx, rhs, vec_ty, rhs_fill, copy_fn);
     ret base::store_in_dest(bcx, new_vec_ptr, dest);
 }
 
@@ -253,7 +253,7 @@ fn iter_vec_raw(bcx: block, vptr: ValueRef, vec_ty: ty::t,
     let body_cx = sub_block(header_cx, "iter_vec_loop_body");
     let next_cx = sub_block(header_cx, "iter_vec_next");
     CondBr(header_cx, not_yet_at_end, body_cx.llbb, next_cx.llbb);
-    body_cx = f(body_cx, data_ptr, unit_ty);
+    let body_cx = f(body_cx, data_ptr, unit_ty);
     AddIncomingToPhi(data_ptr, InBoundsGEP(body_cx, data_ptr,
                                            [C_int(ccx, 1)]), body_cx.llbb);
     Br(body_cx, header_cx.llbb);

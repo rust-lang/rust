@@ -142,8 +142,8 @@ fn float_ty_to_str(t: float_ty) -> str {
 }
 
 fn is_exported(i: ident, m: _mod) -> bool {
-    let local = false;
-    let parent_enum : option<ident> = none;
+    let mut local = false;
+    let mut parent_enum : option<ident> = none;
     for it: @item in m.items {
         if it.ident == i { local = true; }
         alt it.node {
@@ -159,7 +159,7 @@ fn is_exported(i: ident, m: _mod) -> bool {
         }
         if local { break; }
     }
-    let has_explicit_exports = false;
+    let mut has_explicit_exports = false;
     for vi: @view_item in m.view_items {
         alt vi.node {
           view_item_export(vps) {
@@ -438,7 +438,7 @@ pure fn class_item_ident(ci: @class_item) -> ident {
 type ivar = {ident: ident, ty: @ty, cm: class_mutability, id: node_id};
 
 fn split_class_items(cs: [@class_item]) -> ([ivar], [@method]) {
-    let vs = [], ms = [];
+    let mut vs = [], ms = [];
     for c in cs {
       alt c.node.decl {
         instance_var(i, t, cm, id) {

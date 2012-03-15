@@ -123,7 +123,7 @@ fn mk_tuplified_uniq_cbox_ty(tcx: ty::ctxt, cdata_ty: ty::t) -> ty::t {
 fn mk_closure_tys(tcx: ty::ctxt,
                   bound_values: [environment_value])
     -> (ty::t, [ty::t]) {
-    let bound_tys = [];
+    let mut bound_tys = [];
 
     // Compute the closed over data
     for bv in bound_values {
@@ -169,8 +169,8 @@ fn allocate_cbox(bcx: block,
     }
 
     // Allocate and initialize the box:
-    let ti = none;
-    let temp_cleanups = [];
+    let mut ti = none;
+    let mut temp_cleanups = [];
     let (bcx, box) = alt ck {
       ty::ck_box {
         let {bcx, val: box} = trans_malloc_boxed_raw(bcx, cdata_ty, ti);
@@ -219,7 +219,7 @@ fn store_environment(bcx: block,
         mk_closure_tys(tcx, bound_values);
 
     // allocate closure in the heap
-    let (bcx, llbox, temp_cleanups) =
+    let mut (bcx, llbox, temp_cleanups) =
         allocate_cbox(bcx, ck, cdata_ty);
 
     // cbox_ty has the form of a tuple: (a, b, c) we want a ptr to a
@@ -232,6 +232,7 @@ fn store_environment(bcx: block,
     #debug["tuplify_box_ty = %s", ty_to_str(tcx, cbox_ty)];
 
     // Copy expr values into boxed bindings.
+    let mut bcx = bcx;
     vec::iteri(bound_values) { |i, bv|
         #debug["Copy %s into closure", ev_to_str(ccx, bv)];
 
@@ -287,15 +288,16 @@ fn build_closure(bcx0: block,
                  ck: ty::closure_kind,
                  id: ast::node_id) -> closure_result {
     // If we need to, package up the iterator body to call
-    let env_vals = [];
-    let bcx = bcx0, ccx = bcx.ccx(), tcx = ccx.tcx;
+    let mut env_vals = [];
+    let mut bcx = bcx0;
+    let ccx = bcx.ccx(), tcx = ccx.tcx;
 
     // Package up the captured upvars
     vec::iter(cap_vars) { |cap_var|
         #debug["Building closure: captured variable %?", cap_var];
         let lv = trans_local_var(bcx, cap_var.def);
         let nid = ast_util::def_id_of_def(cap_var.def).node;
-        let ty = node_id_type(bcx, nid);
+        let mut ty = node_id_type(bcx, nid);
         alt cap_var.mode {
           capture::cap_ref {
             assert ck == ty::ck_block;
@@ -336,12 +338,12 @@ fn load_environment(fcx: fn_ctxt,
     let llcdata = base::opaque_box_body(bcx, cdata_ty, fcx.llenv);
 
     // Populate the upvars from the environment.
-    let i = 0u;
+    let mut i = 0u;
     vec::iter(cap_vars) { |cap_var|
         alt cap_var.mode {
           capture::cap_drop { /* ignore */ }
           _ {
-            let upvarptr =
+            let mut upvarptr =
                 GEPi(bcx, llcdata, [0, abi::closure_body_bindings, i as int]);
             alt ck {
               ty::ck_block { upvarptr = Load(bcx, upvarptr); }
@@ -410,11 +412,11 @@ fn trans_bind_1(cx: block, outgoing_fty: ty::t,
                 dest: dest) -> block {
     assert option::is_none(f_res.tds);
     let ccx = cx.ccx();
-    let bound: [@ast::expr] = [];
+    let mut bound: [@ast::expr] = [];
     for argopt: option<@ast::expr> in args {
         alt argopt { none { } some(e) { bound += [e]; } }
     }
-    let bcx = f_res.bcx;
+    let mut bcx = f_res.bcx;
     if dest == ignore {
         for ex in bound { bcx = trans_expr(bcx, ex, ignore); }
         ret bcx;
@@ -648,7 +650,7 @@ fn trans_bind_thunk(ccx: @crate_ctxt,
     // Create a new function context and block context for the thunk, and hold
     // onto a pointer to the first block in the function for later use.
     let fcx = new_fn_ctxt(ccx, path, llthunk, none);
-    let bcx = top_scope_block(fcx, none);
+    let mut bcx = top_scope_block(fcx, none);
     let lltop = bcx.llbb;
     // Since we might need to construct derived tydescs that depend on
     // our bound tydescs, we need to load tydescs out of the environment
@@ -701,18 +703,18 @@ fn trans_bind_thunk(ccx: @crate_ctxt,
     let outgoing_args = ty::ty_fn_args(outgoing_fty);
 
     // Set up the three implicit arguments to the thunk.
-    let llargs: [ValueRef] = [fcx.llretptr, lltargetenv];
+    let mut llargs: [ValueRef] = [fcx.llretptr, lltargetenv];
 
-    let a: uint = first_real_arg; // retptr, env come first
-    let b: int = starting_idx;
-    let outgoing_arg_index: uint = 0u;
+    let mut a: uint = first_real_arg; // retptr, env come first
+    let mut b: int = starting_idx;
+    let mut outgoing_arg_index: uint = 0u;
     for arg: option<@ast::expr> in args {
         let out_arg = outgoing_args[outgoing_arg_index];
         alt arg {
           // Arg provided at binding time; thunk copies it from
           // closure.
           some(e) {
-            let val =
+            let mut val =
                 GEPi(bcx, llcdata, [0, abi::closure_body_bindings, b]);
 
             alt ty::resolved_mode(tcx, out_arg.mode) {
@@ -744,9 +746,8 @@ fn trans_bind_thunk(ccx: @crate_ctxt,
     // This is necessary because the type of the function that we have
     // in the closure does not know how many type descriptors the function
     // needs to take.
-    let lltargetty =
-        type_of_fn_from_ty(ccx, outgoing_fty);
-    lltargetfn = PointerCast(bcx, lltargetfn, T_ptr(lltargetty));
+    let lltargetty = type_of_fn_from_ty(ccx, outgoing_fty);
+    let lltargetfn = PointerCast(bcx, lltargetfn, T_ptr(lltargetty));
     Call(bcx, lltargetfn, llargs);
     build_return(bcx);
     finish_fn(fcx, lltop);

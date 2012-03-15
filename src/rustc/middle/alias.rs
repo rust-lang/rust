@@ -96,7 +96,7 @@ fn visit_fn(cx: @ctx, _fk: visit::fn_kind, decl: ast::fn_decl,
 }
 
 fn visit_expr(cx: @ctx, ex: @ast::expr, sc: scope, v: vt<scope>) {
-    let handled = true;
+    let mut handled = true;
     alt ex.node {
       ast::expr_call(f, args, _) {
         check_call(*cx, sc, f, args);
@@ -213,9 +213,9 @@ fn check_call(cx: ctx, sc: scope, f: @ast::expr, args: [@ast::expr])
     -> [binding] {
     let fty = ty::expr_ty(cx.tcx, f);
     let arg_ts = ty::ty_fn_args(fty);
-    let mut_roots: [{arg: uint, node: node_id}] = [];
-    let bindings = [];
-    let i = 0u;
+    let mut mut_roots: [{arg: uint, node: node_id}] = [];
+    let mut bindings = [];
+    let mut i = 0u;
     for arg_t: ty::arg in arg_ts {
         let arg = args[i];
         let root = expr_root(cx, arg, false);
@@ -251,9 +251,9 @@ fn check_call(cx: ctx, sc: scope, f: @ast::expr, args: [@ast::expr])
           _ { true }
         };
     if f_may_close {
-        let i = 0u;
+        let mut i = 0u;
         for b in bindings {
-            let unsfe = vec::len(b.unsafe_tys) > 0u;
+            let mut unsfe = vec::len(b.unsafe_tys) > 0u;
             alt b.root_var {
               some(rid) {
                 for o in sc.bs {
@@ -271,10 +271,10 @@ fn check_call(cx: ctx, sc: scope, f: @ast::expr, args: [@ast::expr])
             i += 1u;
         }
     }
-    let j = 0u;
+    let mut j = 0u;
     for b in bindings {
         for unsafe_ty in b.unsafe_tys {
-            let i = 0u;
+            let mut i = 0u;
             for arg_t: ty::arg in arg_ts {
                 let mut_alias =
                     (ast::by_mutbl_ref == ty::arg_mode(cx.tcx, arg_t));
@@ -294,7 +294,7 @@ fn check_call(cx: ctx, sc: scope, f: @ast::expr, args: [@ast::expr])
     // Ensure we're not passing a root by mutable alias.
 
     for {node: node, arg: arg} in mut_roots {
-        let i = 0u;
+        let mut i = 0u;
         for b in bindings {
             if i != arg {
                 alt b.root_var {
@@ -319,17 +319,17 @@ fn check_alt(cx: ctx, input: @ast::expr, arms: [ast::arm], sc: scope,
              v: vt<scope>) {
     v.visit_expr(input, sc, v);
     let orig_invalid = *sc.invalid;
-    let all_invalid = orig_invalid;
+    let mut all_invalid = orig_invalid;
     let root = expr_root(cx, input, true);
     for a: ast::arm in arms {
-        let new_bs = sc.bs;
+        let mut new_bs = sc.bs;
         let root_var = path_def_id(cx, root.ex);
         let pat_id_map = pat_util::pat_id_map(cx.tcx.def_map, a.pats[0]);
         type info = {
             id: node_id,
             mutable unsafe_tys: [unsafe_ty],
             span: span};
-        let binding_info: [info] = [];
+        let mut binding_info: [info] = [];
         for pat in a.pats {
             for proot in pattern_roots(cx.tcx, root.mutbl, pat) {
                 let canon_id = pat_id_map.get(proot.name);
@@ -361,7 +361,7 @@ fn check_for(cx: ctx, local: @ast::local, seq: @ast::expr, blk: ast::blk,
 
     // If this is a mutable vector, don't allow it to be touched.
     let seq_t = ty::expr_ty(cx.tcx, seq);
-    let cur_mutbl = root.mutbl;
+    let mut cur_mutbl = root.mutbl;
     alt ty::get(seq_t).struct {
       ty::ty_vec(mt) {
         if mt.mutbl != ast::m_imm {
@@ -371,7 +371,7 @@ fn check_for(cx: ctx, local: @ast::local, seq: @ast::expr, blk: ast::blk,
       _ {}
     }
     let root_var = path_def_id(cx, root.ex);
-    let new_bs = sc.bs;
+    let mut new_bs = sc.bs;
     for proot in pattern_roots(cx.tcx, cur_mutbl, local.node.pat) {
         new_bs += [mk_binding(cx, proot.id, proot.span, root_var,
                               unsafe_set(proot.mutbl))];
@@ -445,7 +445,7 @@ fn check_loop(cx: ctx, sc: scope, checker: fn()) {
 }
 
 fn test_scope(cx: ctx, sc: scope, b: binding, p: @ast::path) {
-    let prob = find_invalid(b.node_id, *sc.invalid);
+    let mut prob = find_invalid(b.node_id, *sc.invalid);
     alt b.root_var {
       some(dn) {
         for other in sc.bs {
@@ -560,12 +560,12 @@ fn copy_is_expensive(tcx: ty::ctxt, ty: ty::t) -> bool {
           ty::ty_str | ty::ty_vec(_) | ty::ty_param(_, _) { 50u }
           ty::ty_uniq(mt) { 1u + score_ty(tcx, mt.ty) }
           ty::ty_enum(_, ts) | ty::ty_tup(ts) {
-            let sum = 0u;
+            let mut sum = 0u;
             for t in ts { sum += score_ty(tcx, t); }
             sum
           }
           ty::ty_rec(fs) {
-            let sum = 0u;
+            let mut sum = 0u;
             for f in fs { sum += score_ty(tcx, f.mt.ty); }
             sum
           }
@@ -628,7 +628,7 @@ fn pattern_roots(tcx: ty::ctxt, mutbl: option<unsafe_ty>, pat: @ast::pat)
           }
         }
     }
-    let set = [];
+    let mut set = [];
     walk(tcx, mutbl, pat, set);
     ret set;
 }
@@ -638,7 +638,7 @@ fn pattern_roots(tcx: ty::ctxt, mutbl: option<unsafe_ty>, pat: @ast::pat)
 fn expr_root(cx: ctx, ex: @ast::expr, autoderef: bool)
     -> {ex: @ast::expr, mutbl: option<unsafe_ty>} {
     let base_root = mutbl::expr_root(cx.tcx, ex, autoderef);
-    let unsafe_ty = none;
+    let mut unsafe_ty = none;
     for d in *base_root.ds {
         if d.mutbl { unsafe_ty = some(contains(d.outer_t)); break; }
     }
@@ -651,7 +651,7 @@ fn unsafe_set(from: option<unsafe_ty>) -> [unsafe_ty] {
 
 fn find_invalid(id: node_id, lst: list<@invalid>)
     -> option<@invalid> {
-    let cur = lst;
+    let mut cur = lst;
     loop {
         alt cur {
           list::nil { ret none; }
@@ -664,9 +664,9 @@ fn find_invalid(id: node_id, lst: list<@invalid>)
 }
 
 fn join_invalid(a: list<@invalid>, b: list<@invalid>) -> list<@invalid> {
-    let result = a;
+    let mut result = a;
     list::iter(b) {|elt|
-        let found = false;
+        let mut found = false;
         list::iter(a) {|e| if e == elt { found = true; } }
         if !found { result = list::cons(elt, @result); }
     }
@@ -674,7 +674,7 @@ fn join_invalid(a: list<@invalid>, b: list<@invalid>) -> list<@invalid> {
 }
 
 fn filter_invalid(src: list<@invalid>, bs: [binding]) -> list<@invalid> {
-    let out = list::nil, cur = src;
+    let mut out = list::nil, cur = src;
     while cur != list::nil {
         alt cur {
           list::cons(head, tail) {

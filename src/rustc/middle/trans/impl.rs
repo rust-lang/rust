@@ -31,7 +31,7 @@ fn trans_impl(ccx: @crate_ctxt, path: path, name: ast::ident,
 fn trans_self_arg(bcx: block, base: @ast::expr) -> result {
     let basety = expr_ty(bcx, base);
     let m_by_ref = ast::expl(ast::by_ref);
-    let temp_cleanups = [];
+    let mut temp_cleanups = [];
     let result = trans_arg_expr(bcx, {mode: m_by_ref, ty: basety},
                                 T_ptr(type_of::type_of(bcx.ccx(), basety)),
                                 base, temp_cleanups);
@@ -147,7 +147,7 @@ fn trans_iface_callee(bcx: block, base: @ast::expr,
 
 fn find_vtable_in_fn_ctxt(ps: param_substs, n_param: uint, n_bound: uint)
     -> typeck::vtable_origin {
-    let vtable_off = n_bound, i = 0u;
+    let mut vtable_off = n_bound, i = 0u;
     // Vtables are stored in a flat array, finding the right one is
     // somewhat awkward
     for bounds in *ps.bounds {
@@ -258,7 +258,7 @@ fn trans_cast(bcx: block, val: @ast::expr, id: ast::node_id, dest: dest)
     if dest == ignore { ret trans_expr(bcx, val, ignore); }
     let ccx = bcx.ccx();
     let v_ty = expr_ty(bcx, val);
-    let {bcx, box, body} = trans_malloc_boxed(bcx, v_ty);
+    let mut {bcx, box, body} = trans_malloc_boxed(bcx, v_ty);
     add_clean_free(bcx, box, false);
     bcx = trans_expr_save_in(bcx, val, body);
     revoke_clean(bcx, box);

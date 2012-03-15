@@ -338,7 +338,7 @@ fn GEP(cx: block, Pointer: ValueRef, Indices: [ValueRef]) -> ValueRef {
 // Simple wrapper around GEP that takes an array of ints and wraps them
 // in C_i32()
 fn GEPi(cx: block, base: ValueRef, ixs: [int]) -> ValueRef {
-    let v: [ValueRef] = [];
+    let mut v: [ValueRef] = [];
     for i: int in ixs { v += [C_i32(i as i32)]; }
     ret InBoundsGEP(cx, base, v);
 }

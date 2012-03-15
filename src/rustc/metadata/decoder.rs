@@ -60,7 +60,7 @@ fn lookup_hash(d: ebml::doc, eq_fn: fn@([u8]) -> bool, hash: uint) ->
     let {tag:_, doc:bucket} = ebml::doc_at(d.data, pos);
     // Awkward logic because we can't ret from foreach yet
 
-    let result: [ebml::doc] = [];
+    let mut result: [ebml::doc] = [];
     let belt = tag_index_buckets_bucket_elt;
     ebml::tagged_docs(bucket, belt) {|elt|
         let pos = io::u64_from_be_bytes(*elt.data, elt.start, 4u) as uint;
@@ -107,7 +107,7 @@ fn item_symbol(item: ebml::doc) -> str {
 }
 
 fn item_parent_item(d: ebml::doc) -> option<ast::def_id> {
-    let found = none;
+    let mut found = none;
     ebml::tagged_docs(d, tag_items_data_parent_item) {|did|
         found = some(parse_def_id(ebml::doc_data(did)));
     }
@@ -142,7 +142,7 @@ fn item_type(item_id: ast::def_id, item: ebml::doc,
 
 fn item_impl_iface(item: ebml::doc, tcx: ty::ctxt, cdata: cmd)
     -> option<ty::t> {
-    let result = none;
+    let mut result = none;
     ebml::tagged_docs(item, tag_impl_iface) {|ity|
         let t = parse_ty_data(ity.data, cdata.cnum, ity.start, tcx, {|did|
             translate_def_id(cdata, did)
@@ -154,7 +154,7 @@ fn item_impl_iface(item: ebml::doc, tcx: ty::ctxt, cdata: cmd)
 
 fn item_ty_param_bounds(item: ebml::doc, tcx: ty::ctxt, cdata: cmd)
     -> @[ty::param_bounds] {
-    let bounds = [];
+    let mut bounds = [];
     ebml::tagged_docs(item, tag_items_data_item_ty_param_bounds) {|p|
         let bd = parse_bounds_data(p.data, p.start, cdata.cnum, tcx, {|did|
             translate_def_id(cdata, did)
@@ -165,14 +165,14 @@ fn item_ty_param_bounds(item: ebml::doc, tcx: ty::ctxt, cdata: cmd)
 }
 
 fn item_ty_param_count(item: ebml::doc) -> uint {
-    let n = 0u;
+    let mut n = 0u;
     ebml::tagged_docs(item, tag_items_data_item_ty_param_bounds,
                       {|_p| n += 1u; });
     n
 }
 
 fn enum_variant_ids(item: ebml::doc, cdata: cmd) -> [ast::def_id] {
-    let ids: [ast::def_id] = [];
+    let mut ids: [ast::def_id] = [];
     let v = tag_items_data_item_variant;
     ebml::tagged_docs(item, v) {|p|
         let ext = parse_def_id(ebml::doc_data(p));
@@ -191,7 +191,7 @@ fn resolve_path(path: [ast::ident], data: @[u8]) -> [ast::def_id] {
     let md = ebml::doc(data);
     let paths = ebml::get_doc(md, tag_paths);
     let eqer = bind eq_item(_, s);
-    let result: [ast::def_id] = [];
+    let mut result: [ast::def_id] = [];
     #debug("resolve_path: looking up %s", s);
     for doc: ebml::doc in lookup_hash(paths, eqer, hash_path(s)) {
         let did_doc = ebml::get_doc(doc, tag_def_id);
@@ -206,7 +206,7 @@ fn item_path(item_doc: ebml::doc) -> ast_map::path {
     let len_doc = ebml::get_doc(path_doc, tag_path_len);
     let len = ebml::doc_as_u32(len_doc) as uint;
 
-    let result = [];
+    let mut result = [];
     vec::reserve(result, len);
 
     ebml::docs(path_doc) {|tag, elt_doc|
@@ -250,7 +250,7 @@ fn lookup_def(cnum: ast::crate_num, data: @[u8], did_: ast::def_id) ->
       'm' { ast::def_mod(did) }
       'n' { ast::def_native_mod(did) }
       'v' {
-        let tid = option::get(item_parent_item(item));
+        let mut tid = option::get(item_parent_item(item));
         tid = {crate: cnum, node: tid.node};
         ast::def_variant(tid, did)
       }
@@ -279,7 +279,7 @@ fn get_impl_iface(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
 
 fn get_impl_method(cdata: cmd, id: ast::node_id, name: str) -> ast::def_id {
     let items = ebml::get_doc(ebml::doc(cdata.data), tag_items);
-    let found = none;
+    let mut found = none;
     ebml::tagged_docs(find_item(id, items), tag_item_method) {|mid|
         let m_did = parse_def_id(ebml::doc_data(mid));
         if item_name(find_item(m_did.node, items)) == name {
@@ -290,7 +290,7 @@ fn get_impl_method(cdata: cmd, id: ast::node_id, name: str) -> ast::def_id {
 }
 
 fn item_is_intrinsic(cdata: cmd, id: ast::node_id) -> bool {
-    let intrinsic = false;
+    let mut intrinsic = false;
     ebml::tagged_docs(lookup_item(id, cdata.data), tag_item_is_intrinsic,
                       {|_i| intrinsic = true;});
     intrinsic
@@ -332,15 +332,15 @@ fn get_enum_variants(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
     let data = cdata.data;
     let items = ebml::get_doc(ebml::doc(data), tag_items);
     let item = find_item(id, items);
-    let infos: [ty::variant_info] = [];
+    let mut infos: [ty::variant_info] = [];
     let variant_ids = enum_variant_ids(item, cdata);
-    let disr_val = 0;
+    let mut disr_val = 0;
     for did: ast::def_id in variant_ids {
         let item = find_item(did.node, items);
         let ctor_ty = item_type({crate: cdata.cnum, node: id}, item,
                                 tcx, cdata);
         let name = item_name(item);
-        let arg_tys: [ty::t] = [];
+        let mut arg_tys: [ty::t] = [];
         alt ty::get(ctor_ty).struct {
           ty::ty_fn(f) {
             for a: ty::arg in f.inputs { arg_tys += [a.ty]; }
@@ -360,7 +360,7 @@ fn get_enum_variants(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
 
 fn item_impl_methods(cdata: cmd, item: ebml::doc, base_tps: uint)
     -> [@middle::resolve::method_info] {
-    let rslt = [];
+    let mut rslt = [];
     ebml::tagged_docs(item, tag_item_method) {|doc|
         let m_did = parse_def_id(ebml::doc_data(doc));
         let mth_item = lookup_item(m_did.node, cdata.data);
@@ -375,7 +375,8 @@ fn get_impls_for_mod(cdata: cmd, m_id: ast::node_id,
                      name: option<ast::ident>)
     -> @[@middle::resolve::_impl] {
     let data = cdata.data;
-    let mod_item = lookup_item(m_id, data), result = [];
+    let mod_item = lookup_item(m_id, data);
+    let mut result = [];
     ebml::tagged_docs(mod_item, tag_mod_impl) {|doc|
         let did = translate_def_id(cdata, parse_def_id(ebml::doc_data(doc)));
         let item = lookup_item(did.node, data), nm = item_name(item);
@@ -391,7 +392,8 @@ fn get_impls_for_mod(cdata: cmd, m_id: ast::node_id,
 fn get_iface_methods(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
     -> @[ty::method] {
     let data = cdata.data;
-    let item = lookup_item(id, data), result = [];
+    let item = lookup_item(id, data);
+    let mut result = [];
     ebml::tagged_docs(item, tag_item_method) {|mth|
         let bounds = item_ty_param_bounds(mth, tcx, cdata);
         let name = item_name(mth);
@@ -413,7 +415,8 @@ fn get_iface_methods(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
 fn get_class_members(cdata: cmd, id: ast::node_id,
                      family: char) -> [ty::field_ty] {
     let data = cdata.data;
-    let item = lookup_item(id, data), result = [];
+    let item = lookup_item(id, data);
+    let mut result = [];
     ebml::tagged_docs(item, tag_items_data_item) {|an_item|
        if item_family(an_item) == family {
           let name = item_name(an_item);
@@ -487,7 +490,7 @@ fn item_family_to_str(fam: char) -> str {
 }
 
 fn get_meta_items(md: ebml::doc) -> [@ast::meta_item] {
-    let items: [@ast::meta_item] = [];
+    let mut items: [@ast::meta_item] = [];
     ebml::tagged_docs(md, tag_meta_item_word) {|meta_item_doc|
         let nd = ebml::get_doc(meta_item_doc, tag_meta_item_name);
         let n = str::from_bytes(ebml::doc_data(nd));
@@ -512,7 +515,7 @@ fn get_meta_items(md: ebml::doc) -> [@ast::meta_item] {
 }
 
 fn get_attributes(md: ebml::doc) -> [ast::attribute] {
-    let attrs: [ast::attribute] = [];
+    let mut attrs: [ast::attribute] = [];
     alt ebml::maybe_get_doc(md, tag_attributes) {
       option::some(attrs_d) {
         ebml::tagged_docs(attrs_d, tag_attribute) {|attr_doc|
@@ -554,10 +557,10 @@ fn get_crate_attributes(data: @[u8]) -> [ast::attribute] {
 type crate_dep = {cnum: ast::crate_num, ident: str};
 
 fn get_crate_deps(data: @[u8]) -> [crate_dep] {
-    let deps: [crate_dep] = [];
+    let mut deps: [crate_dep] = [];
     let cratedoc = ebml::doc(data);
     let depsdoc = ebml::get_doc(cratedoc, tag_crate_deps);
-    let crate_num = 1;
+    let mut crate_num = 1;
     ebml::tagged_docs(depsdoc, tag_crate_dep) {|depdoc|
         let depname = str::from_bytes(ebml::doc_data(depdoc));
         deps += [{cnum: crate_num, ident: depname}];
@@ -615,7 +618,7 @@ fn get_crate_module_paths(bytes: @[u8]) -> [(ast::def_id, str)] {
 
     // find all module (path, def_ids), which are not
     // fowarded path due to renamed import or reexport
-    let res = [];
+    let mut res = [];
     let mods = map::str_hash();
     iter_crate_items(bytes) {|path, did|
         let m = mod_of_path(path);

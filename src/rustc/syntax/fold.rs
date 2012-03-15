@@ -339,7 +339,7 @@ fn noop_fold_pat(p: pat_, fld: ast_fold) -> pat_ {
             pat_enum(fld.fold_path(pth), vec::map(pats, fld.fold_pat))
           }
           pat_rec(fields, etc) {
-            let fs = [];
+            let mut fs = [];
             for f: ast::field_pat in fields {
                 fs += [{ident: f.ident, pat: fld.fold_pat(f.pat)}];
             }

@@ -128,7 +128,7 @@ fn compute_capture_vars(tcx: ty::ctxt,
         }
     }
 
-    let result = [];
+    let mut result = [];
     cap_map.values { |cap_var| result += [cap_var]; }
     ret result;
 }

@@ -28,8 +28,8 @@ fn eval_crate_directives_to_mod(cx: ctx, cdirs: [@ast::crate_directive],
            option::from_maybe(suffix, "none"));
     let (cview_items, citems, cattrs)
         = parse_companion_mod(cx, prefix, suffix);
-    let view_items: [@ast::view_item] = [];
-    let items: [@ast::item] = [];
+    let mut view_items: [@ast::view_item] = [];
+    let mut items: [@ast::item] = [];
     eval_crate_directives(cx, cdirs, prefix, view_items, items);
     ret ({view_items: view_items + cview_items,
           items: items + citems},

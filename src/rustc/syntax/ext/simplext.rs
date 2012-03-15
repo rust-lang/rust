@@ -74,8 +74,8 @@ type selector = fn@(matchable) -> match_result;
 
 fn elts_to_ell(cx: ext_ctxt, elts: [@expr]) ->
    {pre: [@expr], rep: option<@expr>, post: [@expr]} {
-    let idx: uint = 0u;
-    let res = none;
+    let mut idx: uint = 0u;
+    let mut res = none;
     for elt: @expr in elts {
         alt elt.node {
           expr_mac(m) {
@@ -104,7 +104,7 @@ fn elts_to_ell(cx: ext_ctxt, elts: [@expr]) ->
 
 fn option_flatten_map<T: copy, U: copy>(f: fn@(T) -> option<U>, v: [T]) ->
    option<[U]> {
-    let res = [];
+    let mut res = [];
     for elem: T in v {
         alt f(elem) { none { ret none; } some(fv) { res += [fv]; } }
     }
@@ -169,7 +169,7 @@ fn use_selectors_to_bind(b: binders, e: @expr) -> option<bindings> {
     for sel: selector in b.literal_ast_matchers {
         alt sel(match_expr(e)) { none { ret none; } _ { } }
     }
-    let never_mind: bool = false;
+    let mut never_mind: bool = false;
     b.real_binders.items {|key, val|
         alt val(match_expr(e)) {
           none { never_mind = true; }
@@ -211,7 +211,7 @@ fn transcribe(cx: ext_ctxt, b: bindings, body: @expr) -> @expr {
 /* helper: descend into a matcher */
 fn follow(m: arb_depth<matchable>, idx_path: @mutable [uint]) ->
    arb_depth<matchable> {
-    let res: arb_depth<matchable> = m;
+    let mut res: arb_depth<matchable> = m;
     for idx: uint in *idx_path {
         alt res {
           leaf(_) { ret res;/* end of the line */ }
@@ -263,11 +263,11 @@ fn transcribe_exprs(cx: ext_ctxt, b: bindings, idx_path: @mutable [uint],
                     recur: fn@(&&@expr) -> @expr, exprs: [@expr]) -> [@expr] {
     alt elts_to_ell(cx, exprs) {
       {pre: pre, rep: repeat_me_maybe, post: post} {
-        let res = vec::map(pre, recur);
+        let mut res = vec::map(pre, recur);
         alt repeat_me_maybe {
           none { }
           some(repeat_me) {
-            let repeat: option<{rep_count: uint, name: ident}> = none;
+            let mut repeat: option<{rep_count: uint, name: ident}> = none;
             /* we need to walk over all the free vars in lockstep, except for
             the leaves, which are just duplicated */
             free_vars(b, repeat_me) {|fv|
@@ -301,7 +301,7 @@ fn transcribe_exprs(cx: ext_ctxt, b: bindings, idx_path: @mutable [uint],
               }
               some({rep_count: rc, _}) {
                 /* Whew, we now know how how many times to repeat */
-                let idx: uint = 0u;
+                let mut idx: uint = 0u;
                 while idx < rc {
                     *idx_path += [idx];
                     res += [recur(repeat_me)]; // whew!
@@ -598,8 +598,8 @@ fn p_t_s_r_ellipses(cx: ext_ctxt, repeat_me: @expr, offset: uint, s: selector,
               match_expr(e) {
                 alt e.node {
                   expr_vec(arg_elts, _) {
-                    let elts = [];
-                    let idx = offset;
+                    let mut elts = [];
+                    let mut idx = offset;
                     while idx < vec::len(arg_elts) {
                         elts += [leaf(match_expr(arg_elts[idx]))];
                         idx += 1u;
@@ -645,7 +645,7 @@ fn p_t_s_r_length(cx: ext_ctxt, len: uint, at_least: bool, s: selector,
 
 fn p_t_s_r_actual_vector(cx: ext_ctxt, elts: [@expr], _repeat_after: bool,
                          s: selector, b: binders) {
-    let idx: uint = 0u;
+    let mut idx: uint = 0u;
     while idx < vec::len(elts) {
         fn select(cx: ext_ctxt, m: matchable, idx: uint) -> match_result {
             ret alt m {
@@ -678,8 +678,8 @@ fn add_new_extension(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
           }
         };
 
-    let macro_name: option<str> = none;
-    let clauses: [@clause] = [];
+    let mut macro_name: option<str> = none;
+    let mut clauses: [@clause] = [];
     for arg: @expr in args {
         alt arg.node {
           expr_vec(elts, mutbl) {

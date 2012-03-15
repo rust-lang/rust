@@ -66,7 +66,7 @@ fn merge_opts(attrs: [ast::attribute], cmd_opts: [(option, bool)]) ->
         ret false;
     }
 
-    let result = cmd_opts;
+    let mut result = cmd_opts;
 
     let lint_metas =
         attr::attr_metas(attr::find_attrs_by_name(attrs, "lint"));

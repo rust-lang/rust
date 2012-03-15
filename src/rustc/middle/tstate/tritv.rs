@@ -160,10 +160,10 @@ fn change(changed: bool, old: trit, newv: trit) -> bool {
 }
 
 fn tritv_difference(p1: t, p2: t) -> bool {
-    let i: uint = 0u;
+    let mut i: uint = 0u;
     assert (p1.nbits == p2.nbits);
     let sz: uint = p1.nbits;
-    let changed = false;
+    let mut changed = false;
     while i < sz {
         let old = tritv_get(p1, i);
         let newv = trit_minus(old, tritv_get(p2, i));
@@ -175,10 +175,10 @@ fn tritv_difference(p1: t, p2: t) -> bool {
 }
 
 fn tritv_union(p1: t, p2: t) -> bool {
-    let i: uint = 0u;
+    let mut i: uint = 0u;
     assert (p1.nbits == p2.nbits);
     let sz: uint = p1.nbits;
-    let changed = false;
+    let mut changed = false;
     while i < sz {
         let old = tritv_get(p1, i);
         let newv = trit_or(old, tritv_get(p2, i));
@@ -190,10 +190,10 @@ fn tritv_union(p1: t, p2: t) -> bool {
 }
 
 fn tritv_intersect(p1: t, p2: t) -> bool {
-    let i: uint = 0u;
+    let mut i: uint = 0u;
     assert (p1.nbits == p2.nbits);
     let sz: uint = p1.nbits;
-    let changed = false;
+    let mut changed = false;
     while i < sz {
         let old = tritv_get(p1, i);
         let newv = trit_and(old, tritv_get(p2, i));
@@ -238,17 +238,17 @@ fn tritv_copy(target: t, source: t) -> bool {
 }
 
 fn tritv_set_all(v: t) {
-    let i: uint = 0u;
+    let mut i: uint = 0u;
     while i < v.nbits { tritv_set(i, v, ttrue); i += 1u; }
 }
 
 fn tritv_clear(v: t) {
-    let i: uint = 0u;
+    let mut i: uint = 0u;
     while i < v.nbits { tritv_set(i, v, dont_care); i += 1u; }
 }
 
 fn tritv_kill(v: t) {
-    let i: uint = 0u;
+    let mut i: uint = 0u;
     while i < v.nbits { tritv_set(i, v, tfalse); i += 1u; }
 }
 
@@ -259,7 +259,7 @@ fn tritv_clone(v: t) -> t {
 }
 
 fn tritv_doesntcare(v: t) -> bool {
-    let i: uint = 0u;
+    let mut i: uint = 0u;
     while i < v.nbits {
         if tritv_get(v, i) != dont_care { ret false; }
         i += 1u;
@@ -268,8 +268,8 @@ fn tritv_doesntcare(v: t) -> bool {
 }
 
 fn to_vec(v: t) -> [uint] {
-    let i: uint = 0u;
-    let rslt: [uint] = [];
+    let mut i: uint = 0u;
+    let mut rslt: [uint] = [];
     while i < v.nbits {
         rslt +=
             [alt tritv_get(v, i) {
@@ -283,8 +283,8 @@ fn to_vec(v: t) -> [uint] {
 }
 
 fn to_str(v: t) -> str {
-    let i: uint = 0u;
-    let rs: str = "";
+    let mut i: uint = 0u;
+    let mut rs: str = "";
     while i < v.nbits {
         rs +=
             alt tritv_get(v, i) {

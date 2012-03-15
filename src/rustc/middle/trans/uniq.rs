@@ -12,7 +12,7 @@ fn trans_uniq(bcx: block, contents: @ast::expr,
     let uniq_ty = node_id_type(bcx, node_id);
     let {bcx, val: llptr} = alloc_uniq(bcx, uniq_ty);
     add_clean_free(bcx, llptr, true);
-    bcx = trans_expr_save_in(bcx, contents, llptr);
+    let bcx = trans_expr_save_in(bcx, contents, llptr);
     revoke_clean(bcx, llptr);
     ret store_in_dest(bcx, llptr, dest);
 }

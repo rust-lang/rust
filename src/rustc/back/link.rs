@@ -116,7 +116,7 @@ mod write {
         let opts = sess.opts;
         if opts.time_llvm_passes { llvm::LLVMRustEnableTimePasses(); }
         link_intrinsics(sess, llmod);
-        let pm = mk_pass_manager();
+        let mut pm = mk_pass_manager();
         let td = mk_target_data(
             sess.targ_cfg.target_strs.data_layout);
         llvm::LLVMAddTargetData(td.lltd, pm.llpm);
@@ -165,7 +165,7 @@ mod write {
             llvm::LLVMPassManagerBuilderDispose(FPMB);
 
             llvm::LLVMRunPassManager(fpm.llpm, llmod);
-            let threshold = 225u;
+            let mut threshold = 225u;
             if opts.optimize == 3u { threshold = 275u; }
 
             let MPMB = llvm::LLVMPassManagerBuilderCreate();
@@ -195,7 +195,7 @@ mod write {
             let LLVMOptDefault    = 2 as c_int; // -O2, -Os
             let LLVMOptAggressive = 3 as c_int; // -O3
 
-            let CodeGenOptLevel;
+            let mut CodeGenOptLevel;
             alt check opts.optimize {
               0u { CodeGenOptLevel = LLVMOptNone; }
               1u { CodeGenOptLevel = LLVMOptLess; }
@@ -203,7 +203,7 @@ mod write {
               3u { CodeGenOptLevel = LLVMOptAggressive; }
             }
 
-            let FileType;
+            let mut FileType;
             if opts.output_type == output_type_object ||
                    opts.output_type == output_type_exe {
                 FileType = LLVMObjectFile;
@@ -362,9 +362,9 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
 
     fn provided_link_metas(sess: session, c: ast::crate) ->
        provided_metas {
-        let name: option<str> = none;
-        let vers: option<str> = none;
-        let cmh_items: [@ast::meta_item] = [];
+        let mut name: option<str> = none;
+        let mut vers: option<str> = none;
+        let mut cmh_items: [@ast::meta_item] = [];
         let linkage_metas = attr::find_linkage_metas(c.node.attrs);
         attr::require_unique_names(sess, linkage_metas);
         for meta: @ast::meta_item in linkage_metas {
@@ -433,7 +433,8 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
               none {
                 let name =
                     {
-                        let os = str::split_char(path::basename(output), '.');
+                        let mut os =
+                            str::split_char(path::basename(output), '.');
                         if (vec::len(os) < 2u) {
                             sess.fatal(#fmt("output file name %s doesn't\
                               appear to have an extension", output));
@@ -494,7 +495,7 @@ fn symbol_hash(tcx: ty::ctxt, sha: sha1, t: ty::t, link_meta: link_meta) ->
 }
 
 fn get_symbol_hash(ccx: @crate_ctxt, t: ty::t) -> str {
-    let hash = "";
+    let mut hash = "";
     alt ccx.type_sha1s.find(t) {
       some(h) { hash = h; }
       none {
@@ -509,7 +510,7 @@ fn get_symbol_hash(ccx: @crate_ctxt, t: ty::t) -> str {
 // Name sanitation. LLVM will happily accept identifiers with weird names, but
 // gas doesn't!
 fn sanitize(s: str) -> str {
-    let result = "";
+    let mut result = "";
     str::chars_iter(s) {|c|
         alt c {
           '@' { result += "_sbox_"; }
@@ -536,7 +537,7 @@ fn sanitize(s: str) -> str {
 fn mangle(ss: path) -> str {
     // Follow C++ namespace-mangling style
 
-    let n = "_ZN"; // Begin name-sequence.
+    let mut n = "_ZN"; // Begin name-sequence.
 
     for s in ss {
         alt s { path_name(s) | path_mod(s) {
@@ -597,7 +598,7 @@ fn link_binary(sess: session,
             } else { ret filename; }
         };
         fn rmext(filename: str) -> str {
-            let parts = str::split_char(filename, '.');
+            let mut parts = str::split_char(filename, '.');
             vec::pop(parts);
             ret str::connect(parts, ".");
         }
@@ -636,11 +637,11 @@ fn link_binary(sess: session,
         if sess.targ_cfg.os == session::os_win32 { "gcc" } else { "cc" };
     // The invocations of cc share some flags across platforms
 
-    let cc_args =
+    let mut cc_args =
         [stage] + sess.targ_cfg.target_strs.cc_args +
         ["-o", output, obj_filename];
 
-    let lib_cmd;
+    let mut lib_cmd;
     let os = sess.targ_cfg.os;
     if os == session::os_macos {
         lib_cmd = "-dynamiclib";

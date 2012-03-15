@@ -235,7 +235,7 @@ fn line_from_span(cm: codemap::codemap, sp: span) -> uint {
 
 fn create_block(cx: block) -> @metadata<block_md> {
     let cache = get_cache(cx.ccx());
-    let cx = cx;
+    let mut cx = cx;
     while option::is_none(cx.block_span) {
         alt cx.parent {
           parent_some(b) { cx = b; }

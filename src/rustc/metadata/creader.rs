@@ -68,7 +68,7 @@ fn visit_item(e: env, i: @ast::item) {
               }
               none { i.ident }
             };
-        let already_added = false;
+        let mut already_added = false;
         if vec::len(attr::find_attrs_by_name(i.attrs, "nolink")) == 0u {
             already_added = !cstore::add_used_library(cstore, native_name);
         }

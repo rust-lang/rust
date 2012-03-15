@@ -12,7 +12,7 @@ fn def_eq(a: ast::def_id, b: ast::def_id) -> bool {
 }
 
 fn hash_def(d: ast::def_id) -> uint {
-    let h = 5381u;
+    let mut h = 5381u;
     h = (h << 5u) + h ^ (d.crate as uint);
     h = (h << 5u) + h ^ (d.node as uint);
     ret h;
@@ -27,7 +27,7 @@ fn new_def_hash<V: copy>() -> std::map::hashmap<ast::def_id, V> {
 fn field_expr(f: ast::field) -> @ast::expr { ret f.node.expr; }
 
 fn field_exprs(fields: [ast::field]) -> [@ast::expr] {
-    let es = [];
+    let mut es = [];
     for f: ast::field in fields { es += [f.node.expr]; }
     ret es;
 }

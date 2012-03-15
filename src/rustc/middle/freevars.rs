@@ -49,11 +49,11 @@ fn collect_freevars(def_map: resolve::def_map, blk: ast::blk)
                 visit::visit_expr(expr, depth + 1, v);
               }
               ast::expr_path(path) {
-                  let i = 0;
+                  let mut i = 0;
                   alt def_map.find(expr.id) {
                     none { fail ("Not found: " + path_to_str(path)) }
                     some(df) {
-                      let def = df;
+                      let mut def = df;
                       while i < depth {
                         alt copy def {
                           ast::def_upvar(_, inner, _) { def = *inner; }

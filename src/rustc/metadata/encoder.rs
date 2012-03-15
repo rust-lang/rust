@@ -180,8 +180,8 @@ fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
 
 fn encode_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt, crate: @crate)
     -> [entry<str>] {
-    let index: [entry<str>] = [];
-    let path: [str] = [];
+    let mut index: [entry<str>] = [];
+    let mut path: [str] = [];
     ebml_w.start_tag(tag_paths);
     encode_module_item_paths(ebml_w, ecx, crate.node.module, path, index);
     encode_reexport_paths(ebml_w, ecx, index);
@@ -283,8 +283,8 @@ fn encode_enum_variant_info(ecx: @encode_ctxt, ebml_w: ebml::writer,
                             id: node_id, variants: [variant],
                             path: ast_map::path, index: @mutable [entry<int>],
                             ty_params: [ty_param]) {
-    let disr_val = 0;
-    let i = 0;
+    let mut disr_val = 0;
+    let mut i = 0;
     let vi = ty::enum_variants(ecx.ccx.tcx, {crate: local_crate, node: id});
     for variant: variant in variants {
         *index += [{val: variant.node.id, pos: ebml_w.writer.tell()}];
@@ -604,7 +604,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_type_param_bounds(ebml_w, ecx, tps);
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_name(ebml_w, item.ident);
-        let i = 0u;
+        let mut i = 0u;
         for mty in *ty::iface_methods(tcx, local_def(item.id)) {
             ebml_w.start_tag(tag_item_method);
             encode_name(ebml_w, mty.ident);
@@ -695,14 +695,14 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::writer,
 
 fn create_index<T: copy>(index: [entry<T>], hash_fn: fn@(T) -> uint) ->
    [@[entry<T>]] {
-    let buckets: [@mutable [entry<T>]] = [];
+    let mut buckets: [@mutable [entry<T>]] = [];
     uint::range(0u, 256u) {|_i| buckets += [@mutable []]; };
     for elt: entry<T> in index {
         let h = hash_fn(elt.val);
         *buckets[h % 256u] += [elt];
     }
 
-    let buckets_frozen = [];
+    let mut buckets_frozen = [];
     for bucket: @mutable [entry<T>] in buckets {
         buckets_frozen += [@*bucket];
     }
@@ -713,7 +713,7 @@ fn encode_index<T>(ebml_w: ebml::writer, buckets: [@[entry<T>]],
                    write_fn: fn(io::writer, T)) {
     let writer = ebml_w.writer;
     ebml_w.start_tag(tag_index);
-    let bucket_locs: [uint] = [];
+    let mut bucket_locs: [uint] = [];
     ebml_w.start_tag(tag_index_buckets);
     for bucket: @[entry<T>] in buckets {
         bucket_locs += [ebml_w.writer.tell()];
@@ -815,8 +815,8 @@ fn synthesize_crate_attrs(ecx: @encode_ctxt, crate: @crate) -> [attribute] {
         ret attr::mk_attr(link_item);
     }
 
-    let attrs: [attribute] = [];
-    let found_link_attr = false;
+    let mut attrs: [attribute] = [];
+    let mut found_link_attr = false;
     for attr: attribute in crate.node.attrs {
         attrs +=
             if attr::get_attr_name(attr) != "link" {
@@ -844,7 +844,7 @@ fn encode_crate_deps(ebml_w: ebml::writer, cstore: cstore::cstore) {
         type numname = {crate: crate_num, ident: str};
 
         // Pull the cnums and names out of cstore
-        let pairs: [mutable numname] = [mutable];
+        let mut pairs: [mutable numname] = [mutable];
         cstore::iter_crate_data(cstore) {|key, val|
             pairs += [mutable {crate: key, ident: val.name}];
         };
@@ -854,7 +854,7 @@ fn encode_crate_deps(ebml_w: ebml::writer, cstore: cstore::cstore) {
         std::sort::quick_sort(lteq, pairs);
 
         // Sanity-check the crate numbers
-        let expected_cnum = 1;
+        let mut expected_cnum = 1;
         for n: numname in pairs {
             assert (n.crate == expected_cnum);
             expected_cnum += 1;

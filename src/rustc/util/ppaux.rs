@@ -60,10 +60,10 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
     fn fn_to_str(cx: ctxt, proto: ast::proto, ident: option<ast::ident>,
                  inputs: [arg], output: t, cf: ast::ret_style,
                  constrs: [@constr]) -> str {
-        let s = proto_to_str(proto);
+        let mut s = proto_to_str(proto);
         alt ident { some(i) { s += " "; s += i; } _ { } }
         s += "(";
-        let strs = [];
+        let mut strs = [];
         for a: arg in inputs { strs += [fn_input_to_str(cx, a)]; }
         s += str::connect(strs, ", ");
         s += ")";
@@ -137,12 +137,12 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
       ty_vec(tm) { "[" + mt_to_str(cx, tm) + "]" }
       ty_type { "type" }
       ty_rec(elems) {
-        let strs: [str] = [];
+        let mut strs: [str] = [];
         for fld: field in elems { strs += [field_to_str(cx, fld)]; }
         "{" + str::connect(strs, ",") + "}"
       }
       ty_tup(elems) {
-        let strs = [];
+        let mut strs = [];
         for elem in elems { strs += [ty_to_str(cx, elem)]; }
         "(" + str::connect(strs, ",") + ")"
       }
@@ -165,7 +165,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
 }
 
 fn ty_to_short_str(cx: ctxt, typ: t) -> str {
-    let s = encoder::encoded_ty(cx, typ);
+    let mut s = encoder::encoded_ty(cx, typ);
     if str::len(s) >= 32u { s = str::slice(s, 0u, 32u); }
     ret s;
 }
@@ -176,8 +176,8 @@ fn constr_to_str(c: @constr) -> str {
 }
 
 fn constrs_str(constrs: [@constr]) -> str {
-    let s = "";
-    let colon = true;
+    let mut s = "";
+    let mut colon = true;
     for c: @constr in constrs {
         if colon { s += " : "; colon = false; } else { s += ", "; }
         s += constr_to_str(c);

@@ -37,7 +37,7 @@ export native_abi;
 // From a list of crate attributes get only the meta_items that impact crate
 // linkage
 fn find_linkage_metas(attrs: [ast::attribute]) -> [@ast::meta_item] {
-    let metas: [@ast::meta_item] = [];
+    let mut metas: [@ast::meta_item] = [];
     for attr: ast::attribute in find_attrs_by_name(attrs, "link") {
         alt attr.node.value.node {
           ast::meta_list(_, items) { metas += items; }
@@ -141,7 +141,7 @@ fn attr_meta(attr: ast::attribute) -> @ast::meta_item { @attr.node.value }
 
 // Get the meta_items from inside a vector of attributes
 fn attr_metas(attrs: [ast::attribute]) -> [@ast::meta_item] {
-    let mitems = [];
+    let mut mitems = [];
     for a: ast::attribute in attrs { mitems += [attr_meta(a)]; }
     ret mitems;
 }
@@ -198,12 +198,12 @@ fn sort_meta_items(items: [@ast::meta_item]) -> [@ast::meta_item] {
     }
 
     // This is sort of stupid here, converting to a vec of mutables and back
-    let v: [mutable @ast::meta_item] = [mutable];
+    let mut v: [mutable @ast::meta_item] = [mutable];
     for mi: @ast::meta_item in items { v += [mutable mi]; }
 
     std::sort::quick_sort(lteq, v);
 
-    let v2: [@ast::meta_item] = [];
+    let mut v2: [@ast::meta_item] = [];
     for mi: @ast::meta_item in v { v2 += [mi]; }
     ret v2;
 }

@@ -48,8 +48,7 @@ fn find_locals(tcx: ty::ctxt,
                id: node_id) -> ctxt {
     let cx: ctxt = {cs: @mutable [], tcx: tcx};
     let visitor = visit::default_visitor::<ctxt>();
-
-    visitor =
+    let visitor =
         @{visit_local: collect_local,
           visit_expr: collect_pred,
           visit_fn: bind do_nothing(_, _, _, _, _, _, _)
@@ -100,7 +99,7 @@ fn mk_fn_info(ccx: crate_ctxt,
               id: node_id) {
     let name = visit::name_of_fn(fk);
     let res_map = new_def_hash::<constraint>();
-    let next: uint = 0u;
+    let mut next: uint = 0u;
 
     let cx: ctxt = find_locals(ccx.tcx, fk, f_decl, f_body, f_sp, id);
     /* now we have to add bit nums for both the constraints
@@ -111,7 +110,7 @@ fn mk_fn_info(ccx: crate_ctxt,
     }
     /* if this function has any constraints, instantiate them to the
        argument names and add them */
-    let sc;
+    let mut sc;
     for c: @constr in f_decl.constraints {
         sc = ast_constr_to_sp_constr(cx.tcx, f_decl.inputs, c);
         next = add_constraint(cx.tcx, sc, next, res_map);

@@ -65,8 +65,8 @@ fn handle_fail(fcx: fn_ctxt, pres:prestate, post:poststate) {
 
 fn seq_states(fcx: fn_ctxt, pres: prestate, bindings: [binding]) ->
    {changed: bool, post: poststate} {
-    let changed = false;
-    let post = tritv_clone(pres);
+    let mut changed = false;
+    let mut post = tritv_clone(pres);
     for b: binding in bindings {
         alt b.rhs {
           some(an_init) {
@@ -103,7 +103,7 @@ fn seq_states(fcx: fn_ctxt, pres: prestate, bindings: [binding]) ->
 
 fn find_pre_post_state_sub(fcx: fn_ctxt, pres: prestate, e: @expr,
                            parent: node_id, c: option<tsconstr>) -> bool {
-    let changed = find_pre_post_state_expr(fcx, pres, e);
+    let mut changed = find_pre_post_state_expr(fcx, pres, e);
 
     changed = set_prestate_ann(fcx.ccx, parent, pres) || changed;
 
@@ -120,7 +120,7 @@ fn find_pre_post_state_sub(fcx: fn_ctxt, pres: prestate, e: @expr,
 fn find_pre_post_state_two(fcx: fn_ctxt, pres: prestate, lhs: @expr,
                            rhs: @expr, parent: node_id, ty: oper_type) ->
    bool {
-    let changed = set_prestate_ann(fcx.ccx, parent, pres);
+    let mut changed = set_prestate_ann(fcx.ccx, parent, pres);
     changed = find_pre_post_state_expr(fcx, pres, lhs) || changed;
     changed =
         find_pre_post_state_expr(fcx, expr_poststate(fcx.ccx, lhs), rhs) ||
@@ -183,7 +183,7 @@ fn find_pre_post_state_two(fcx: fn_ctxt, pres: prestate, lhs: @expr,
 fn find_pre_post_state_call(fcx: fn_ctxt, pres: prestate, a: @expr,
                             id: node_id, ops: [init_op], bs: [@expr],
                             cf: ret_style) -> bool {
-    let changed = find_pre_post_state_expr(fcx, pres, a);
+    let mut changed = find_pre_post_state_expr(fcx, pres, a);
     // FIXME: This could be a typestate constraint
     if vec::len(bs) != vec::len(ops) {
         fcx.ccx.tcx.sess.span_bug(a.span,
@@ -199,7 +199,7 @@ fn find_pre_post_state_exprs(fcx: fn_ctxt, pres: prestate, id: node_id,
                              ops: [init_op], es: [@expr], cf: ret_style) ->
    bool {
     let rs = seq_states(fcx, pres, anon_bindings(ops, es));
-    let changed = rs.changed | set_prestate_ann(fcx.ccx, id, pres);
+    let mut changed = rs.changed | set_prestate_ann(fcx.ccx, id, pres);
     /* if this is a failing call, it sets everything as initialized */
     alt cf {
       noreturn {
@@ -218,7 +218,7 @@ fn find_pre_post_state_loop(fcx: fn_ctxt, pres: prestate, l: @local,
     // ever grow larger? It seems like it can't?
     let loop_pres = intersect_states(pres, block_poststate(fcx.ccx, body));
 
-    let changed =
+    let mut changed =
         set_prestate_ann(fcx.ccx, id, loop_pres) |
             find_pre_post_state_expr(fcx, pres, index);
 
@@ -260,7 +260,7 @@ fn gen_if_local(fcx: fn_ctxt, p: poststate, e: @expr) -> bool {
 fn join_then_else(fcx: fn_ctxt, antec: @expr, conseq: blk,
                   maybe_alt: option<@expr>, id: node_id, chk: if_ty,
                   pres: prestate) -> bool {
-    let changed =
+    let mut changed =
         set_prestate_ann(fcx.ccx, id, pres) |
             find_pre_post_state_expr(fcx, pres, antec);
 
@@ -305,7 +305,7 @@ fn join_then_else(fcx: fn_ctxt, antec: @expr, conseq: blk,
             find_pre_post_state_expr(fcx, expr_poststate(fcx.ccx, antec),
                                      altern);
 
-        let conseq_prestate = expr_poststate(fcx.ccx, antec);
+        let mut conseq_prestate = expr_poststate(fcx.ccx, antec);
         alt chk {
           if_check {
             let c: sp_constr = expr_to_constr(fcx.ccx.tcx, antec);
@@ -371,10 +371,10 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
                                      controlflow_expr(fcx.ccx, operator));
       }
       expr_bind(operator, maybe_args) {
-        let args = [];
+        let mut args = [];
         let callee_ops = callee_arg_init_ops(fcx, operator.id);
-        let ops = [];
-        let i = 0;
+        let mut ops = [];
+        let mut i = 0;
         for a_opt: option<@expr> in maybe_args {
             alt a_opt {
               none {/* no-op */ }
@@ -402,7 +402,7 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
       }
       expr_rec(fields, maybe_base) {
         let exs = field_exprs(fields);
-        let changed =
+        let mut changed =
             find_pre_post_state_exprs(fcx, pres, e.id,
                                       vec::from_elem(vec::len(fields),
                                                     init_assign),
@@ -435,7 +435,7 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
         // lhs and rhs in constraints
       }
       expr_ret(maybe_ret_val) {
-        let changed = set_prestate_ann(fcx.ccx, e.id, pres);
+        let mut changed = set_prestate_ann(fcx.ccx, e.id, pres);
         /* normally, everything is true if execution continues after
            a ret expression (since execution never continues locally
            after a ret expression */
@@ -455,7 +455,7 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
         ret changed;
       }
       expr_be(val) {
-        let changed = set_prestate_ann(fcx.ccx, e.id, pres);
+        let mut changed = set_prestate_ann(fcx.ccx, e.id, pres);
         let post = false_postcond(num_constrs);
         // except for the "diverges" bit...
         kill_poststate_(fcx, fcx.enclosing.i_diverge, post);
@@ -468,7 +468,7 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
       }
       expr_binary(bop, l, r) {
         if lazy_binop(bop) {
-            let changed = find_pre_post_state_expr(fcx, pres, l);
+            let mut changed = find_pre_post_state_expr(fcx, pres, l);
             changed |=
                 find_pre_post_state_expr(fcx, expr_poststate(fcx.ccx, l), r);
             ret changed | set_prestate_ann(fcx.ccx, e.id, pres) |
@@ -492,7 +492,7 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
         let loop_pres =
             intersect_states(block_poststate(fcx.ccx, body), pres);
 
-        let changed =
+        let mut changed =
             set_prestate_ann(fcx.ccx, e.id, loop_pres) |
                 find_pre_post_state_expr(fcx, loop_pres, test) |
                 find_pre_post_state_block(fcx, expr_poststate(fcx.ccx, test),
@@ -514,7 +514,7 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
       expr_do_while(body, test) {
         let loop_pres = intersect_states(expr_poststate(fcx.ccx, test), pres);
 
-        let changed = set_prestate_ann(fcx.ccx, e.id, loop_pres);
+        let mut changed = set_prestate_ann(fcx.ccx, e.id, loop_pres);
         changed |= find_pre_post_state_block(fcx, loop_pres, body);
         /* conservative approximination: if the body of the loop
            could break or cont, we revert to the prestate
@@ -548,7 +548,7 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
       expr_loop(body) {
         let loop_pres =
             intersect_states(block_poststate(fcx.ccx, body), pres);
-        let changed = set_prestate_ann(fcx.ccx, e.id, loop_pres)
+        let mut changed = set_prestate_ann(fcx.ccx, e.id, loop_pres)
               | find_pre_post_state_block(fcx, loop_pres, body);
         /* conservative approximation: if a loop contains a break
            or cont, we assume nothing about the poststate */
@@ -569,11 +569,11 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
         ret find_pre_post_state_two(fcx, pres, val, sub, e.id, oper_pure);
       }
       expr_alt(val, alts, _) {
-        let changed =
+        let mut changed =
             set_prestate_ann(fcx.ccx, e.id, pres) |
                 find_pre_post_state_expr(fcx, pres, val);
         let e_post = expr_poststate(fcx.ccx, val);
-        let a_post;
+        let mut a_post;
         if vec::len(alts) > 0u {
             a_post = false_postcond(num_constrs);
             for an_alt: arm in alts {
@@ -660,7 +660,7 @@ fn find_pre_post_state_stmt(fcx: fn_ctxt, pres: prestate, s: @stmt) -> bool {
             termination (don't want to set changed to true
             for intermediate changes) */
 
-            let changed =
+            let mut changed =
                 set_poststate(stmt_ann, c_and_p.post) | c_and_p.changed;
 
             #debug("Summary: stmt = ");
@@ -681,7 +681,7 @@ fn find_pre_post_state_stmt(fcx: fn_ctxt, pres: prestate, s: @stmt) -> bool {
         }
       }
       stmt_expr(ex, _) | stmt_semi(ex, _) {
-        let changed =
+        let mut changed =
             find_pre_post_state_expr(fcx, pres, ex) |
                 set_prestate(stmt_ann, expr_prestate(fcx.ccx, ex)) |
                 set_poststate(stmt_ann, expr_poststate(fcx.ccx, ex));
@@ -707,17 +707,17 @@ fn find_pre_post_state_stmt(fcx: fn_ctxt, pres: prestate, s: @stmt) -> bool {
 fn find_pre_post_state_block(fcx: fn_ctxt, pres0: prestate, b: blk) -> bool {
     /* First, set the pre-states and post-states for every expression */
 
-    let pres = pres0;
+    let mut pres = pres0;
     /* Iterate over each stmt. The new prestate is <pres>. The poststate
      consist of improving <pres> with whatever variables this stmt
      initializes.  Then <pres> becomes the new poststate. */
 
-    let changed = false;
+    let mut changed = false;
     for s: @stmt in b.node.stmts {
         changed |= find_pre_post_state_stmt(fcx, pres, s);
         pres = stmt_poststate(fcx.ccx, *s);
     }
-    let post = pres;
+    let mut post = pres;
     alt b.node.expr {
       none { }
       some(e) {
@@ -766,7 +766,7 @@ fn find_pre_post_state_fn(fcx: fn_ctxt,
         set_in_prestate_constr(fcx, tsc, block_pre);
     }
 
-    let changed = find_pre_post_state_block(fcx, block_pre, f_body);
+    let mut changed = find_pre_post_state_block(fcx, block_pre, f_body);
 
     // Treat the tail expression as a return statement
     alt f_body.node.expr {
