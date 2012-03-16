@@ -398,9 +398,7 @@ fn mk_file_writer(path: str, flags: [fileflag])
                    (S_IRUSR | S_IWUSR) as c_int)
     };
     if fd < (0 as c_int) {
-        // FIXME don't log this! put it in the returned error string
-        log(error, sys::last_os_error());
-        result::err("error opening " + path)
+        result::err(#fmt("error opening %s: %s", path, sys::last_os_error()))
     } else {
         result::ok(fd_writer(fd, true))
     }
@@ -748,7 +746,7 @@ mod tests {
     fn file_writer_bad_name() {
         alt io::file_writer("?/?", []) {
           result::err(e) {
-            assert e == "error opening ?/?";
+            assert e == "error opening ?/?: No such file or directory";
           }
           result::ok(_) { fail; }
         }
