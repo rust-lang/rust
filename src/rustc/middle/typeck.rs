@@ -1458,21 +1458,20 @@ type pat_ctxt = {
     pat_region: ty::region
 };
 
-fn instantiate_self_regions(pcx: pat_ctxt, args: [ty::t]) -> [ty::t] {
-    vec::map(args, {|arg_ty|
-        if ty::type_has_rptrs(arg_ty) {
-            ty::fold_ty(pcx.fcx.ccx.tcx, ty::fm_rptr({|r|
-                alt r {
-                    ty::re_inferred | ty::re_caller(_) | ty::re_self(_) {
-                        pcx.pat_region
-                    }
-                    _ { r }
-                }
-            }), arg_ty)
-        } else {
-            arg_ty
-        }
-    })
+// Replaces self, caller, or inferred regions in the given type with the given
+// region.
+fn instantiate_self_regions(tcx: ty::ctxt, region: ty::region, &&ty: ty::t)
+        -> ty::t {
+    if ty::type_has_rptrs(ty) {
+        ty::fold_ty(tcx, ty::fm_rptr({|r|
+            alt r {
+                ty::re_inferred | ty::re_caller(_) | ty::re_self(_) { region }
+                _ { r }
+            }
+        }), ty)
+    } else {
+        ty
+    }
 }
 
 // Replaces all region variables in the given type with "inferred regions".
@@ -1504,7 +1503,10 @@ fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
         // Get the number of arguments in this enum variant.
         let arg_types = variant_arg_types(pcx.fcx.ccx, pat.span,
                                           v_def_ids.var, expected_tps);
-        arg_types = instantiate_self_regions(pcx, arg_types);
+        arg_types = vec::map(arg_types,
+                             bind instantiate_self_regions(pcx.fcx.ccx.tcx,
+                                                           pcx.pat_region,
+                                                           _));
         let subpats_len = subpats.len(), arg_len = arg_types.len();
         if arg_len > 0u {
             // N-ary variant.
@@ -3239,7 +3241,10 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
         check_fn(ccx, ast::proto_bare, decl, body, dtor_id, none);
       }
       ast::item_impl(tps, _, ty, ms) {
-        ccx.self_infos += [self_impl(ast_ty_to_ty(ccx.tcx, m_check, ty))];
+        let self_ty = ast_ty_to_ty(ccx.tcx, m_check, ty);
+        let self_region = ty::re_self({crate: ast::local_crate, node: it.id});
+        self_ty = instantiate_self_regions(ccx.tcx, self_region, self_ty);
+        ccx.self_infos += [self_impl(self_ty)];
         for m in ms { check_method(ccx, m); }
         vec::pop(ccx.self_infos);
       }
