@@ -1909,7 +1909,7 @@ fn lookup_method_inner(fcx: @fn_ctxt, expr: @ast::expr,
 
                 let ty = universally_quantify_regions(tcx, ty);
 
-                alt unify::unify(fcx, ty, self_ty) {
+                alt unify::unify(fcx, self_ty, ty) {
                   result::ok(_) {
                     if option::is_some(result) {
                         // FIXME[impl] score specificity to resolve ambiguity?

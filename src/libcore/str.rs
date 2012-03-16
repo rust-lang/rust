@@ -1162,7 +1162,7 @@ fn is_utf8(v: [const u8]) -> bool {
 
 #[doc = "Determines if a vector of `u16` contains valid UTF-16"]
 fn is_utf16(v: [const u16]) -> bool {
-    let len = v.len();
+    let len = vec::len(v);
     let mut i = 0u;
     while (i < len) {
         let u = v[i];
@@ -1205,7 +1205,7 @@ fn to_utf16(s: str) -> [u16] {
 }
 
 fn utf16_chars(v: [const u16], f: fn(char)) {
-    let len = v.len();
+    let len = vec::len(v);
     let mut i = 0u;
     while (i < len && v[i] != 0u16) {
         let mut u = v[i];
@@ -1231,7 +1231,7 @@ fn utf16_chars(v: [const u16], f: fn(char)) {
 
 fn from_utf16(v: [const u16]) -> str {
     let mut buf = "";
-    reserve(buf, v.len());
+    reserve(buf, vec::len(v));
     utf16_chars(v) {|ch| push_char(buf, ch); }
     ret buf;
 }
