@@ -517,13 +517,13 @@ fn split_str_nonempty(s: str, sep: str) -> [str] {
 }
 
 #[doc = "
-Splits a string into a vector of the substrings separated by LF ('\n')
+Splits a string into a vector of the substrings separated by LF ('\\n')
 "]
 fn lines(s: str) -> [str] { split_char(s, '\n') }
 
 #[doc = "
-Splits a string into a vector of the substrings separated by LF ('\n')
-and/or CR LF ('\r\n')
+Splits a string into a vector of the substrings separated by LF ('\\n')
+and/or CR LF ('\\r\\n')
 "]
 fn lines_any(s: str) -> [str] {
     vec::map(lines(s), {|s|
@@ -664,7 +664,7 @@ fn words_iter(ss: str, ff: fn(&&str)) {
     vec::iter(words(ss), ff)
 }
 
-#[doc = "Apply a function to each lines (by '\n')"]
+#[doc = "Apply a function to each lines (by '\\n')"]
 fn lines_iter(ss: str, ff: fn(&&str)) {
     vec::iter(lines(ss), ff)
 }
