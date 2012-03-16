@@ -288,7 +288,7 @@ fn is_illegal_to_modify_def(cx: @ctx, def: def, msg: msg) -> option<str> {
       }
       def_arg(_, m) {
         alt ty::resolved_mode(cx.tcx, m) {
-          by_ref | by_val { some("argument") }
+          by_ref | by_val { some("argument of enclosing function") }
           by_mutbl_ref | by_move | by_copy { none }
         }
       }
