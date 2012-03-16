@@ -367,6 +367,37 @@ fn hash_from_uints<V: copy>(items: [(uint, V)]) -> hashmap<uint, V> {
     hash_from_vec(hash_uint, eq_uint, items)
 }
 
+#[doc = "Construct a hashmap from a vector"]
+fn hash_from_vec<K: copy, V: copy>(hasher: hashfn<K>, eqer: eqfn<K>,
+                                   items: [(K, V)]) -> hashmap<K, V> {
+    let map = hashmap(hasher, eqer);
+    vec::iter(items) { |item|
+        let (key, value) = item;
+        map.insert(key, value);
+    }
+    map
+}
+
+#[doc = "Construct a hashmap from a vector with string keys"]
+fn hash_from_strs<V: copy>(items: [(str, V)]) -> hashmap<str, V> {
+    hash_from_vec(str::hash, str::eq, items)
+}
+
+#[doc = "Construct a hashmap from a vector with byte keys"]
+fn hash_from_bytes<V: copy>(items: [([u8], V)]) -> hashmap<[u8], V> {
+    hash_from_vec(vec::u8::hash, vec::u8::eq, items)
+}
+
+#[doc = "Construct a hashmap from a vector with int keys"]
+fn hash_from_ints<V: copy>(items: [(int, V)]) -> hashmap<int, V> {
+    hash_from_vec(hash_int, eq_int, items)
+}
+
+#[doc = "Construct a hashmap from a vector with uint keys"]
+fn hash_from_uints<V: copy>(items: [(uint, V)]) -> hashmap<uint, V> {
+    hash_from_vec(hash_uint, eq_uint, items)
+}
+
 #[cfg(test)]
 mod tests {
 
