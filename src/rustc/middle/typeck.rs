@@ -767,7 +767,7 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span, impl_m: ty::method,
           result::err(err) {
             tcx.sess.span_err(sp, "method `" + if_m.ident +
                               "` has an incompatible type: " +
-                              ty::type_err_to_str(err));
+                              ty::type_err_to_str(tcx, err));
             impl_fty
           }
           result::ok(tp) { tp }
@@ -1154,7 +1154,9 @@ mod demand {
                                           ty_to_str(fcx.ccx.tcx, e_err) +
                                           "` but found `" +
                                           ty_to_str(fcx.ccx.tcx, a_err) +
-                                          "` (" + ty::type_err_to_str(err) +
+                                          "` (" +
+                                          ty::type_err_to_str(fcx.ccx.tcx,
+                                                              err) +
                                           ")");
             ret mk_result(fcx, expected, ty_param_subst_var_ids);
           }

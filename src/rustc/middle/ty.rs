@@ -8,6 +8,7 @@ import syntax::ast_util;
 import syntax::codemap::span;
 import metadata::csearch;
 import util::common::*;
+import util::ppaux::region_to_str;
 import util::ppaux::ty_to_str;
 import util::ppaux::ty_constr_to_str;
 import syntax::print::pprust::*;
@@ -295,7 +296,7 @@ enum type_err {
     terr_mode_mismatch(mode, mode),
     terr_constr_len(uint, uint),
     terr_constr_mismatch(@type_constr, @type_constr),
-    terr_regions_differ,
+    terr_regions_differ(bool /* variance */, region, region),
 }
 
 enum param_bound {
@@ -1916,7 +1917,7 @@ mod unify {
               ret if e_region == a_region {
                   nxt(e_region)
               } else {
-                  err(terr_regions_differ)
+                  err(terr_regions_differ(true, e_region, a_region))
               };
             }
         }
@@ -1925,7 +1926,7 @@ mod unify {
             ret if sub == super {
                 nxt(super)
             } else {
-                err(terr_regions_differ)
+                err(terr_regions_differ(true, super, sub))
             };
         }
 
@@ -1936,7 +1937,7 @@ mod unify {
         if region::scope_contains(cx.tcx.region_map, subscope, superscope) {
             ret nxt(super);
         }
-        ret err(terr_regions_differ);
+        ret err(terr_regions_differ(false, sub, super));
     }
 
     fn unify_field<T:copy>(
@@ -2160,7 +2161,7 @@ fn same_type(cx: ctxt, a: t, b: t) -> bool {
     }
 }
 
-fn type_err_to_str(err: type_err) -> str {
+fn type_err_to_str(cx: ctxt, err: type_err) -> str {
     alt err {
       terr_mismatch { ret "types differ"; }
       terr_ret_style_mismatch(expect, actual) {
@@ -2212,8 +2213,15 @@ fn type_err_to_str(err: type_err) -> str {
                 " but found one with constraint " +
                 ty_constr_to_str(a_constr);
       }
-      terr_regions_differ {
-        ret "inconsistent pointer lifetimes"
+      terr_regions_differ(true, region_a, region_b) {
+        ret #fmt("reference lifetime %s does not match reference lifetime %s",
+                 region_to_str(cx, region_a), region_to_str(cx, region_b));
+      }
+      terr_regions_differ(false, subregion, superregion) {
+        ret #fmt("references with lifetime %s do not outlive references with \
+                  lifetime %s",
+                 region_to_str(cx, subregion),
+                 region_to_str(cx, superregion));
       }
     }
 }

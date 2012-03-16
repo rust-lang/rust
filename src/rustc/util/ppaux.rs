@@ -12,19 +12,19 @@ import driver::session::session;
 
 fn region_to_str(cx: ctxt, region: region) -> str {
     alt region {
-      re_named(_)   { "<name>."   }     // TODO: include name
-      re_caller(_)  { "<caller>." }
+      re_named(_)   { "<name>" }    // TODO: include name
+      re_caller(_)  { "<caller>" }
       re_block(node_id) {
         alt cx.items.get(node_id) {
             ast_map::node_block(blk) {
-                #fmt("<block at %s>.", codemap::span_to_str(blk.span,
-                                                            cx.sess.codemap))
+                #fmt("<block at %s>", codemap::span_to_str(blk.span,
+                                                           cx.sess.codemap))
             }
             _ { cx.sess.bug("re_block refers to non-block") }
         }
       }
-      re_self(_)    { "self."     }
-      re_inferred   { ""          }
+      re_self(_)    { "self" }
+      re_inferred   { "" }
     }
 }
 
@@ -121,7 +121,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
       ty_box(tm) { "@" + mt_to_str(cx, tm) }
       ty_uniq(tm) { "~" + mt_to_str(cx, tm) }
       ty_ptr(tm) { "*" + mt_to_str(cx, tm) }
-      ty_rptr(r, tm) { "&" + region_to_str(cx, r) + mt_to_str(cx, tm) }
+      ty_rptr(r, tm) { "&" + region_to_str(cx, r) + "." + mt_to_str(cx, tm) }
       ty_vec(tm) { "[" + mt_to_str(cx, tm) + "]" }
       ty_type { "type" }
       ty_rec(elems) {
