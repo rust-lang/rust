@@ -104,6 +104,7 @@ fn to_list<A:copy,IA:iterable<A>>(self: IA) -> [A] {
 }
 
 // FIXME: This could be made more efficient with an riterable interface
+// #2005
 fn reversed<A:copy,IA:iterable<A>>(self: IA, blk: fn(A)) {
     vec::riter(to_list(self), blk)
 }
@@ -131,6 +132,7 @@ fn min<A:copy,IA:iterable<A>>(self: IA) -> A {
         alt a {
           some(a_) if a_ < b {
             // FIXME: Not sure if this is successfully optimized to a move
+            // #2005
             a
           }
           _ { some(b) }
@@ -146,6 +148,7 @@ fn max<A:copy,IA:iterable<A>>(self: IA) -> A {
         alt a {
           some(a_) if a_ > b {
             // FIXME: Not sure if this is successfully optimized to a move
+            // #2005
             a
           }
           _ { some(b) }
