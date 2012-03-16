@@ -1745,7 +1745,7 @@ type lval_result = {bcx: block, val: ValueRef, kind: lval_kind};
 enum callee_env {
     null_env,
     is_closure,
-    self_env(ValueRef, ty::t),
+    self_env(ValueRef, ty::t, option<ValueRef>),
 }
 type lval_maybe_callee = {bcx: block,
                           val: ValueRef,
@@ -2341,7 +2341,7 @@ fn trans_lval(cx: block, e: @ast::expr) -> lval_result {
 }
 
 fn lval_maybe_callee_to_lval(c: lval_maybe_callee, ty: ty::t) -> lval_result {
-    let must_bind = alt c.env { self_env(_, _) { true } _ { false } };
+    let must_bind = alt c.env { self_env(_, _, _) { true } _ { false } };
     if must_bind {
         let n_args = ty::ty_fn_args(ty).len();
         let args = vec::from_elem(n_args, none);
@@ -2618,7 +2618,7 @@ fn trans_call_inner(in_cx: block, fn_expr_ty: ty::t,
           null_env {
             llvm::LLVMGetUndef(T_opaque_box_ptr(ccx))
           }
-          self_env(e, _) {
+          self_env(e, _, _) {
             PointerCast(bcx, e, T_opaque_box_ptr(ccx))
           }
           is_closure {

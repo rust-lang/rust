@@ -49,7 +49,7 @@ fn trans_method_callee(bcx: block, callee_id: ast::node_id,
     alt origin {
       typeck::method_static(did) {
         let {bcx, val} = trans_self_arg(bcx, self);
-        {env: self_env(val, node_id_type(bcx, self.id))
+        {env: self_env(val, node_id_type(bcx, self.id), none)
          with lval_static_fn(bcx, did, callee_id)}
       }
       typeck::method_param(iid, off, p, b) {
@@ -115,7 +115,7 @@ fn trans_monomorphized_callee(bcx: block, callee_id: ast::node_id,
         let ty_substs = impl_substs +
             vec::tailn(node_substs, node_substs.len() - n_m_tps);
         let {bcx, val} = trans_self_arg(bcx, base);
-        {env: self_env(val, node_id_type(bcx, base.id))
+        {env: self_env(val, node_id_type(bcx, base.id), none)
          with lval_static_fn_inner(bcx, mth_id, callee_id, ty_substs,
                                    some(sub_origins))}
       }
@@ -138,8 +138,8 @@ fn trans_iface_callee(bcx: block, base: @ast::expr,
     let box = Load(bcx, GEPi(bcx, val, [0, 1]));
     // FIXME[impl] I doubt this is alignment-safe
     let self = GEPi(bcx, box, [0, abi::box_field_body]);
-    trans_vtable_callee(bcx, self_env(self, expr_ty(bcx, base)), vtable,
-                        callee_id, n_method)
+    let env = self_env(self, ty::mk_opaque_box(bcx.tcx()), some(box));
+    trans_vtable_callee(bcx, env, vtable, callee_id, n_method)
 }
 
 fn find_vtable_in_fn_ctxt(ps: param_substs, n_param: uint, n_bound: uint)

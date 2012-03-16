@@ -462,8 +462,13 @@ fn trans_bind_1(cx: block, outgoing_fty: ty::t,
         let src_loc = PointerCast(bcx, f_res.val, llclosurety);
         ([env_copy(src_loc, pair_ty, owned)], target_closure)
       }
-      self_env(slf, slf_t) {
-        ([env_copy(slf, slf_t, owned)], target_self(f_res.val))
+      self_env(slf, slf_t, none) {
+        ([env_copy(slf, slf_t, owned)], target_static_self(f_res.val))
+      }
+      self_env(_, slf_t, some(slf)) {
+        let cast = PointerCast(bcx, f_res.val, T_ptr(T_nil()));
+        ([env_copy(cast, ty::mk_nil_ptr(ccx.tcx), owned_imm),
+          env_copy(slf, slf_t, owned_imm)], target_self)
       }
     };
 
@@ -617,7 +622,8 @@ fn make_opaque_cbox_free_glue(
 enum target_info {
     target_closure,
     target_static(ValueRef),
-    target_self(ValueRef),
+    target_self,
+    target_static_self(ValueRef),
 }
 
 // pth is cx.path
@@ -698,7 +704,14 @@ fn trans_bind_thunk(ccx: @crate_ctxt,
             (bcx, GEPi(bcx, pair, [0, abi::fn_field_code]));
         (lltargetfn, lltargetenv, 1)
       }
-      target_self(fptr) {
+      target_self {
+        let fptr = Load(bcx, GEPi(bcx, llcdata,
+                                  [0, abi::closure_body_bindings, 0]));
+        let slfbox = GEPi(bcx, llcdata, [0, abi::closure_body_bindings, 1]);
+        let selfptr = GEPi(bcx, Load(bcx, slfbox), [0, abi::box_field_body]);
+        (fptr, PointerCast(bcx, selfptr, T_opaque_cbox_ptr(ccx)), 2)
+      }
+      target_static_self(fptr) {
         let slfptr = GEPi(bcx, llcdata, [0, abi::closure_body_bindings, 0]);
         (fptr, PointerCast(bcx, slfptr, T_opaque_cbox_ptr(ccx)), 1)
       }
