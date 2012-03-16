@@ -2,7 +2,7 @@
 
 /*
 FIXME: Add a test that uses some native code to verify these sizes,
-which are not obviously correct for all potential platforms.
+which are not obviously correct for all potential platforms. (see Issue #1990)
 */
 
 export c_char, c_int, c_uint, long, longlong, unsigned, ulong, ulonglong;
@@ -44,7 +44,7 @@ type ulonglong = u64;
 A signed integer with the same size as a pointer.  This is guaranteed
 to always be the same type as a Rust `int`.
 "]
-type intptr_t = uint; // FIXME: int
+type intptr_t = int;
 
 #[doc = "
 An unsigned integer with the same size as a pointer.  This is
