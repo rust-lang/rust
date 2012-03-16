@@ -20,7 +20,6 @@ export
    push_char,
    concat,
    connect,
-   init_elt,
 
    // Reinterpretation
    as_bytes,
@@ -239,16 +238,6 @@ fn connect(v: [str], sep: str) -> str {
         s += ss;
     }
     ret s;
-}
-
-#[doc = "Returns a string of <n_elts> repetitions of <c>, which must be \
-           UTF-8"]
-fn init_elt(n_elts: uint, c: char) -> str {
-  let mut rslt = "";
-  uint::range(0u, n_elts) {|_i|
-      push_char(rslt, c);
-  }
-  rslt
 }
 
 /*

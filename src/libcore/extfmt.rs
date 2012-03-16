@@ -373,7 +373,7 @@ mod rt {
                 let len = str::char_len(s);
                 if len < prec {
                     let diff = prec - len;
-                    let pad = str::init_elt(diff, '0');
+                    let pad = str::from_chars(vec::from_elem(diff, '0'));
                     pad + s
                 } else { s }
             };
@@ -398,7 +398,7 @@ mod rt {
         let mut padchar = ' ';
         let diff = uwidth - strlen;
         if have_flag(cv.flags, flag_left_justify) {
-            let padstr = str::init_elt(diff, padchar);
+            let padstr = str::from_chars(vec::from_elem(diff, padchar));
             ret s + padstr;
         }
         let {might_zero_pad, signed} = alt mode {
@@ -418,7 +418,7 @@ mod rt {
                 false
             }
         };
-        let padstr = str::init_elt(diff, padchar);
+        let padstr = str::from_chars(vec::from_elem(diff, padchar));
         // This is completely heinous. If we have a signed value then
         // potentially rip apart the intermediate result and insert some
         // zeros. It may make sense to convert zero padding to a precision
@@ -427,7 +427,7 @@ mod rt {
         if signed && zero_padding && str::len(s) > 0u {
             let head = str::shift_char(s);
             if head == '+' || head == '-' || head == ' ' {
-                let headstr = str::init_elt(1u, head);
+                let headstr = str::from_chars(vec::from_elem(1u, head));
                 ret headstr + padstr + s;
             }
             else {
