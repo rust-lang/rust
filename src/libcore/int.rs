@@ -7,6 +7,7 @@ const min_value: int = -1 << 31;
 const min_value: int = -1 << 63;
 
 // FIXME: Find another way to access the machine word size in a const expr
+// (See Issue #2001)
 #[cfg(target_arch="x86")]
 const max_value: int = (-1 << 31)-1;
 
@@ -36,6 +37,7 @@ pure fn nonnegative(x: int) -> bool { ret x >= 0; }
 
 
 // FIXME: Make sure this works with negative integers.
+// See Issue #2002
 #[doc = "Produce a uint suitable for use in a hash table"]
 pure fn hash(x: int) -> uint { ret x as uint; }
 
