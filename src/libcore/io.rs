@@ -20,12 +20,13 @@ native mod rustrt {
 // Reading
 
 // FIXME This is all buffered. We might need an unbuffered variant as well
+// #2004
 enum seek_style { seek_set, seek_end, seek_cur, }
 
 
 // The raw underlying reader iface. All readers must implement this.
 iface reader {
-    // FIXME: Seekable really should be orthogonal.
+    // FIXME: Seekable really should be orthogonal. // #2004
     fn read_bytes(uint) -> [u8];
     fn read_byte() -> int;
     fn unread_byte(int);
@@ -79,7 +80,7 @@ impl reader_util for reader {
             let data = self.read_bytes(nbread);
             if vec::len(data) == 0u {
                 // eof - FIXME should we do something if
-                // we're split in a unicode char?
+                // we're split in a unicode char? // #2004
                 break;
             }
             buf += data;
@@ -99,7 +100,7 @@ impl reader_util for reader {
     fn read_char() -> char {
         let c = self.read_chars(1u);
         if vec::len(c) == 0u {
-            ret -1 as char; // FIXME will this stay valid?
+            ret -1 as char; // FIXME will this stay valid? // #2004
         }
         assert(vec::len(c) == 1u);
         ret c[0];
@@ -124,7 +125,7 @@ impl reader_util for reader {
         str::from_bytes(buf)
     }
 
-    // FIXME deal with eof?
+    // FIXME deal with eof? // #2004
     fn read_le_uint(size: uint) -> uint {
         let mut val = 0u, pos = 0u, i = size;
         while i > 0u {
@@ -192,7 +193,7 @@ impl of reader for *libc::FILE {
 
 // A forwarding impl of reader that also holds on to a resource for the
 // duration of its lifetime.
-// FIXME there really should be a better way to do this
+// FIXME there really should be a better way to do this // #2004
 impl <T: reader, C> of reader for {base: T, cleanup: C} {
     fn read_bytes(len: uint) -> [u8] { self.base.read_bytes(len) }
     fn read_byte() -> int { self.base.read_byte() }
@@ -214,7 +215,7 @@ fn FILE_reader(f: *libc::FILE, cleanup: bool) -> reader {
 
 // FIXME: this should either be an iface-less impl, a set of top-level
 // functions that take a reader, or a set of default methods on reader
-// (which can then be called reader)
+// (which can then be called reader) // #2004
 
 fn stdin() -> reader { rustrt::rust_get_stdin() as reader }
 
@@ -292,6 +293,7 @@ enum fileflag { append, create, truncate, no_flag, }
 
 // FIXME: Seekable really should be orthogonal.
 // FIXME: eventually u64
+// #2004
 iface writer {
     fn write([const u8]);
     fn seek(int, seek_style);
@@ -490,7 +492,7 @@ fn file_writer(path: str, flags: [fileflag]) -> result<writer, str> {
 }
 
 
-// FIXME: fileflags
+// FIXME: fileflags // #2004
 fn buffered_file_writer(path: str) -> result<writer, str> {
     let f = os::as_c_charp(path) {|pathbuf|
         os::as_c_charp("w") {|modebuf|
@@ -503,6 +505,7 @@ fn buffered_file_writer(path: str) -> result<writer, str> {
 
 // FIXME it would be great if this could be a const
 // FIXME why are these different from the way stdin() is implemented?
+// #2004
 fn stdout() -> writer { fd_writer(libc::STDOUT_FILENO as c_int, false) }
 fn stderr() -> writer { fd_writer(libc::STDERR_FILENO as c_int, false) }
 
@@ -520,7 +523,7 @@ impl of writer for mem_buffer {
             self.pos += vec::len(v);
             ret;
         }
-        // FIXME: Optimize: These should be unique pointers.
+        // FIXME: Optimize: These should be unique pointers. // #2004
         let vlen = vec::len(v);
         let mut vpos = 0u;
         while vpos < vlen {
@@ -586,7 +589,7 @@ fn read_whole_file_str(file: str) -> result<str, str> {
 }
 
 // FIXME implement this in a low-level way. Going through the abstractions is
-// pointless.
+// pointless. // #2004
 fn read_whole_file(file: str) -> result<[u8], str> {
     result::chain(file_reader(file), { |rdr|
         result::ok(rdr.read_whole_stream())
@@ -630,6 +633,7 @@ mod fsync {
 
     // fsync file after executing blk
     // FIXME find better way to create resources within lifetime of outer res
+    // #2004
     fn FILE_res_sync(&&file: FILE_res, opt_level: option<level>,
                   blk: fn(&&res<*libc::FILE>)) {
         blk(res({
