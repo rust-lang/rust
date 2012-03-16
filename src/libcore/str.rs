@@ -517,13 +517,13 @@ fn split_str_nonempty(s: str, sep: str) -> [str] {
 }
 
 #[doc = "
-Splits a string into a vector of the substrings separated by LF ('\\n')
+Splits a string into a vector of the substrings separated by LF ('\\\\n')
 "]
 fn lines(s: str) -> [str] { split_char(s, '\n') }
 
 #[doc = "
-Splits a string into a vector of the substrings separated by LF ('\\n')
-and/or CR LF ('\\r\\n')
+Splits a string into a vector of the substrings separated by LF ('\\\\n')
+and/or CR LF ('\\\\r\\\\n')
 "]
 fn lines_any(s: str) -> [str] {
     vec::map(lines(s), {|s|
@@ -1319,7 +1319,7 @@ fn reserve(&ss: str, nn: uint) {
     rustrt::str_reserve_shared(ss, nn);
 }
 
-#[doc = "These functions may create invalid UTF-8 strings and eat your baby"]
+#[doc = "Unsafe operations"]
 mod unsafe {
    export
       // FIXME: stop exporting several of these
