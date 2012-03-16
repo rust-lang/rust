@@ -53,7 +53,7 @@ mod ct {
         ty_octal,
         ty_float,
         ty_poly,
-        // FIXME: More types
+        // FIXME: More types (Issue #1992)
     }
     enum flag {
         flag_left_justify,
@@ -275,31 +275,32 @@ mod rt {
         // FIXME: This is a hack to avoid creating 0-length vec exprs,
         // which have some difficulty typechecking currently. See
         // comments in front::extfmt::make_flags
+        // (once #1993 is addressed, this won't be necessary)
         flag_none,
     }
     enum count { count_is(int), count_implied, }
     enum ty { ty_default, ty_bits, ty_hex_upper, ty_hex_lower, ty_octal, }
 
     // FIXME: May not want to use a vector here for flags;
-    // instead just use a bool per flag
+    // instead just use a bool per flag (see Issue #1993)
     type conv = {flags: [flag], width: count, precision: count, ty: ty};
 
     fn conv_int(cv: conv, i: int) -> str {
         let radix = 10u;
         let prec = get_int_precision(cv);
-        let mut s = int_to_str_prec(i, radix, prec);
+        let mut s : str = int_to_str_prec(i, radix, prec);
         if 0 <= i {
             if have_flag(cv.flags, flag_sign_always) {
-                s = "+" + s;
+                str::unshift_char(s, '+');
             } else if have_flag(cv.flags, flag_space_for_sign) {
-                s = " " + s;
+                str::unshift_char(s, ' ');
             }
         }
         ret pad(cv, s, pad_signed);
     }
     fn conv_uint(cv: conv, u: uint) -> str {
         let prec = get_int_precision(cv);
-        let rs =
+        let mut rs =
             alt cv.ty {
               ty_default { uint_to_str_prec(u, 10u, prec) }
               ty_hex_lower { uint_to_str_prec(u, 16u, prec) }
@@ -317,12 +318,13 @@ mod rt {
         ret conv_str(cv, s);
     }
     fn conv_char(cv: conv, c: char) -> str {
-        ret pad(cv, str::from_char(c), pad_nozero);
+        let mut s = str::from_char(c);
+        ret pad(cv, s, pad_nozero);
     }
     fn conv_str(cv: conv, s: str) -> str unsafe {
         // For strings, precision is the maximum characters
         // displayed
-        let unpadded = alt cv.precision {
+        let mut unpadded = alt cv.precision {
           count_implied { s }
           count_is(max) {
             if max as uint < str::char_len(s) {
@@ -371,7 +373,7 @@ mod rt {
                 let len = str::char_len(s);
                 if len < prec {
                     let diff = prec - len;
-                    let pad = str_init_elt(diff, '0');
+                    let pad = str::init_elt(diff, '0');
                     pad + s
                 } else { s }
             };
@@ -382,20 +384,13 @@ mod rt {
               count_implied { 1u }
             };
     }
-
-    // FIXME: This might be useful in str: but needs to be utf8 safe first
-    fn str_init_elt(n_elts: uint, c: char) -> str {
-        let svec = vec::from_elem::<u8>(n_elts, c as u8);
-
-        ret str::from_bytes(svec);
-    }
     enum pad_mode { pad_signed, pad_unsigned, pad_nozero, }
-    fn pad(cv: conv, s: str, mode: pad_mode) -> str unsafe {
-        let uwidth = alt cv.width {
+    fn pad(cv: conv, &s: str, mode: pad_mode) -> str unsafe {
+        let uwidth : uint = alt cv.width {
           count_implied { ret s; }
           count_is(width) {
-            // FIXME: Maybe width should be uint
-            width as uint
+              // FIXME: width should probably be uint (see Issue #1996)
+              width as uint
           }
         };
         let strlen = str::char_len(s);
@@ -403,7 +398,7 @@ mod rt {
         let mut padchar = ' ';
         let diff = uwidth - strlen;
         if have_flag(cv.flags, flag_left_justify) {
-            let padstr = str_init_elt(diff, padchar);
+            let padstr = str::init_elt(diff, padchar);
             ret s + padstr;
         }
         let {might_zero_pad, signed} = alt mode {
@@ -423,20 +418,20 @@ mod rt {
                 false
             }
         };
-        let padstr = str_init_elt(diff, padchar);
+        let padstr = str::init_elt(diff, padchar);
         // This is completely heinous. If we have a signed value then
         // potentially rip apart the intermediate result and insert some
         // zeros. It may make sense to convert zero padding to a precision
         // instead.
 
         if signed && zero_padding && str::len(s) > 0u {
-            let head = s[0];
-            if head == '+' as u8 || head == '-' as u8 || head == ' ' as u8 {
-                let headstr = str::from_bytes([head]);
-                // FIXME: not UTF-8 safe
-                let bytelen = str::len(s);
-                let numpart = str::slice(s, 1u, bytelen);
-                ret headstr + padstr + numpart;
+            let head = str::shift_char(s);
+            if head == '+' || head == '-' || head == ' ' {
+                let headstr = str::init_elt(1u, head);
+                ret headstr + padstr + s;
+            }
+            else {
+                str::unshift_char(s, head);
             }
         }
         ret padstr + s;
