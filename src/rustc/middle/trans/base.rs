@@ -2668,12 +2668,12 @@ fn invoke_(bcx: block, llfn: ValueRef, llargs: [ValueRef],
     // cleanups to run
     if bcx.unreachable { ret bcx; }
     let normal_bcx = sub_block(bcx, "normal return");
-    /*std::io::println("fn: " + lib::llvm::type_to_str(bcx.ccx().tn,
-                     val_ty(llfn)));
+    /*io::println("fn: " + lib::llvm::type_to_str(bcx.ccx().tn,
+                                                val_ty(llfn)));
     for a in llargs {
-        std::io::println(" a: " + lib::llvm::type_to_str(bcx.ccx().tn,
-                         val_ty(a)));
-    }*/
+        io::println(" a: " + lib::llvm::type_to_str(bcx.ccx().tn,
+                                                    val_ty(a)));
+    }// */
     invoker(bcx, llfn, llargs, normal_bcx.llbb, get_landing_pad(bcx));
     ret normal_bcx;
 }

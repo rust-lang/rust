@@ -1782,7 +1782,7 @@ fn lookup_method(fcx: @fn_ctxt, expr: @ast::expr, node_id: ast::node_id,
       some({method_ty: fty, n_tps: method_n_tps, substs, origin, self_sub}) {
         let tcx = fcx.ccx.tcx;
         let substs = substs, n_tps = vec::len(substs), n_tys = vec::len(tps);
-        let has_self = ty::type_has_params(fty);
+        let has_self = ty::type_has_vars(fty);
         if method_n_tps + n_tps > 0u {
             if n_tys == 0u || n_tys != method_n_tps {
                 if n_tys != 0u {
@@ -3335,15 +3335,16 @@ mod vtable {
     }
 
     fn lookup_vtables(fcx: @fn_ctxt, isc: resolve::iscopes, sp: span,
-                    bounds: @[ty::param_bounds], tys: [ty::t])
-        -> vtable_res {
+                      bounds: @[ty::param_bounds], tys: [ty::t],
+                      allow_unsafe: bool) -> vtable_res {
         let tcx = fcx.ccx.tcx, result = [], i = 0u;
         for ty in tys {
             for bound in *bounds[i] {
                 alt bound {
                   ty::bound_iface(i_ty) {
                     let i_ty = ty::substitute_type_params(tcx, tys, i_ty);
-                    result += [lookup_vtable(fcx, isc, sp, ty, i_ty)];
+                    result += [lookup_vtable(fcx, isc, sp, ty, i_ty,
+                                             allow_unsafe)];
                   }
                   _ {}
                 }
@@ -3354,7 +3355,8 @@ mod vtable {
     }
 
     fn lookup_vtable(fcx: @fn_ctxt, isc: resolve::iscopes, sp: span,
-                   ty: ty::t, iface_ty: ty::t) -> vtable_origin {
+                     ty: ty::t, iface_ty: ty::t, allow_unsafe: bool)
+        -> vtable_origin {
         let tcx = fcx.ccx.tcx;
         let (iface_id, iface_tps) = alt check ty::get(iface_ty).struct {
             ty::ty_iface(did, tps) { (did, tps) }
@@ -3378,6 +3380,20 @@ mod vtable {
             }
           }
           ty::ty_iface(did, tps) if iface_id == did {
+            if !allow_unsafe {
+                for m in *ty::iface_methods(tcx, did) {
+                    if ty::type_has_vars(ty::mk_fn(tcx, m.fty)) {
+                        tcx.sess.span_err(
+                            sp, "a boxed iface with self types may not be \
+                                 passed as a bounded type");
+                    } else if (*m.tps).len() > 0u {
+                        tcx.sess.span_err(
+                            sp, "a boxed iface with generic methods may not \
+                                 be passed as a bounded type");
+
+                    }
+                }
+            }
             ret vtable_iface(did, tps);
           }
           _ {
@@ -3410,8 +3426,8 @@ mod vtable {
                                                   im.did);
                                 let params = vec::map(vars, {|t|
                                     fixup_ty(fcx, sp, t)});
-                                let subres = lookup_vtables(fcx, isc, sp,
-                                                            im_bs, params);
+                                let subres = lookup_vtables(
+                                    fcx, isc, sp, im_bs, params, false);
                                 found = some(vtable_static(im.did, params,
                                                            subres));
                             }
@@ -3469,7 +3485,7 @@ mod vtable {
                 if has_iface_bounds(*item_ty.bounds) {
                     let impls = cx.impl_map.get(ex.id);
                     cx.vtable_map.insert(ex.id, lookup_vtables(
-                        fcx, impls, ex.span, item_ty.bounds, ts));
+                        fcx, impls, ex.span, item_ty.bounds, ts, false));
                 }
               }
               _ {}
@@ -3490,7 +3506,7 @@ mod vtable {
                     let ts = ty::node_id_to_type_params(cx.tcx, callee_id);
                     let iscs = cx.impl_map.get(ex.id);
                     cx.vtable_map.insert(callee_id, lookup_vtables(
-                        fcx, iscs, ex.span, bounds, ts));
+                        fcx, iscs, ex.span, bounds, ts, false));
                 }
               }
               _ {}
@@ -3502,7 +3518,8 @@ mod vtable {
               ty::ty_iface(_, _) {
                 let impls = cx.impl_map.get(ex.id);
                 let vtable = lookup_vtable(fcx, impls, ex.span,
-                                       expr_ty(cx.tcx, src), target_ty);
+                                           expr_ty(cx.tcx, src), target_ty,
+                                           true);
                 cx.vtable_map.insert(ex.id, @[vtable]);
               }
               _ {}

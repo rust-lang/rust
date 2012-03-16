@@ -115,9 +115,12 @@ fn trans_monomorphized_callee(bcx: block, callee_id: ast::node_id,
         let ty_substs = impl_substs +
             vec::tailn(node_substs, node_substs.len() - n_m_tps);
         let {bcx, val} = trans_self_arg(bcx, base);
-        {env: self_env(val, node_id_type(bcx, base.id), none)
-         with lval_static_fn_inner(bcx, mth_id, callee_id, ty_substs,
-                                   some(sub_origins))}
+        let lval = lval_static_fn_inner(bcx, mth_id, callee_id, ty_substs,
+                                        some(sub_origins));
+        {env: self_env(val, node_id_type(bcx, base.id), none),
+         val: PointerCast(bcx, lval.val, T_ptr(type_of_fn_from_ty(
+             ccx, node_id_type(bcx, callee_id))))
+         with lval}
       }
       typeck::vtable_iface(iid, tps) {
         trans_iface_callee(bcx, base, callee_id, n_method)
@@ -236,7 +239,7 @@ fn make_impl_vtable(ccx: @crate_ctxt, impl_id: ast::def_id, substs: [ty::t],
         let fty = ty::substitute_type_params(tcx, substs,
                                              ty::mk_fn(tcx, im.fty));
         if (*im.tps).len() > 0u || ty::type_has_vars(fty) {
-            C_null(type_of_fn_from_ty(ccx, fty))
+            C_null(T_ptr(T_nil()))
         } else {
             let m_id = method_with_name(ccx, impl_id, im.ident);
             if has_tps {
