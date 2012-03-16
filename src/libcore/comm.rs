@@ -24,8 +24,7 @@ io::println(comm::recv(p));
 ~~~
 "];
 
-import sys;
-import task;
+import either::either;
 
 export send;
 export recv;

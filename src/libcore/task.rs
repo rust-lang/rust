@@ -22,6 +22,8 @@ spawn {||
 ~~~
 "];
 
+import result::result;
+
 export task;
 export task_result;
 export notification;

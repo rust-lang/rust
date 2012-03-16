@@ -5,6 +5,7 @@
 // simplest interface possible for representing and running tests
 // while providing a base that other test frameworks may build off of.
 
+import either::either;
 import result::{ok, err};
 import io::writer_util;
 

@@ -1,3 +1,4 @@
+import result::result;
 import syntax::{ast, ast_util};
 import ast::spanned;
 import syntax::ast_util::{local_def, respan};

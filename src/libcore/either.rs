@@ -1,5 +1,7 @@
 #[doc = "A type that represents one of two alternatives"];
 
+import result::result;
+
 #[doc = "The either type"]
 enum either<T, U> {
     left(T),

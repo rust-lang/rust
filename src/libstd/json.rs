@@ -3,7 +3,7 @@
 
 #[doc = "json serialization"];
 
-import result::{ok, err};
+import result::{result, ok, err};
 import io;
 import io::{reader_util, writer_util};
 import map;

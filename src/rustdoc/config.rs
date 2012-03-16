@@ -1,3 +1,4 @@
+import result::result;
 import std::getopts;
 
 export output_format;

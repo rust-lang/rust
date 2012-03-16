@@ -1,5 +1,7 @@
 #[doc = "A type representing either success or failure"];
 
+import either::either;
+
 #[doc = "The result type"]
 enum result<T, U> {
     #[doc = "Contains the successful result value"]

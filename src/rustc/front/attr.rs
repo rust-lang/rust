@@ -2,6 +2,7 @@
 
 import std::map;
 import std::map::hashmap;
+import either::either;
 import syntax::{ast, ast_util};
 import driver::session::session;
 

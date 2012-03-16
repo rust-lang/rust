@@ -4,8 +4,6 @@
 
 import option::{some, none};
 import option = option::option;
-import either = either::either;
-import result = result::result;
 import path = path::path;
 import vec::vec_len;
 export path, option, some, none, vec_len, unreachable;

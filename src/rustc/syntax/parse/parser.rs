@@ -1,4 +1,5 @@
-import either::{left, right};
+import result::result;
+import either::{either, left, right};
 import std::map::{hashmap, str_hash};
 import token::can_begin_expr;
 import codemap::{span,fss_none};

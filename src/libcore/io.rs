@@ -4,6 +4,8 @@ Module: io
 Basic input/output
 */
 
+import result::result;
+
 import libc::{c_int, c_uint, c_void, size_t, ssize_t};
 import libc::consts::os::posix88::*;
 import libc::consts::os::extra::*;
