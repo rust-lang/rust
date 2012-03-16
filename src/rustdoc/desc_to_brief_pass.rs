@@ -123,15 +123,42 @@ fn parse_desc(desc: str) -> option<str> {
 fn first_sentence(s: str) -> option<str> {
     let paras = paragraphs(s);
     if vec::is_not_empty(paras) {
-        let first = vec::head(sentences(vec::head(paras)));
-        some(str::replace(first, "\n", " "))
+        let first_para = vec::head(paras);
+        some(str::replace(first_sentence_(first_para), "\n", " "))
     } else {
         none
     }
 }
 
-fn sentences(s: str) -> [str] {
-    str::split_char(s, '.')
+fn first_sentence_(s: str) -> str {
+    let dotcount = 0;
+    // The index of the character following a single dot. This allows
+    // Things like [0..1) to appear in the brief description
+    let idx = str::find(s) {|ch|
+        if ch == '.' {
+            dotcount += 1;
+            false
+        } else {
+            if dotcount == 1 {
+                true
+            } else {
+                dotcount = 0;
+                false
+            }
+        }
+    };
+    alt idx {
+      some(idx) if idx > 2u {
+        str::slice(s, 0u, idx - 1u)
+      }
+      _ {
+        if str::ends_with(s, ".") {
+            str::slice(s, 0u, str::len(s))
+        } else {
+            s
+        }
+      }
+    }
 }
 
 fn paragraphs(s: str) -> [str] {
@@ -216,4 +243,34 @@ counties.");
     let brief = extract(desc);
     assert brief == some(
         "Warkworth Castle is a ruined medieval building in the town");
+}
+
+#[test]
+fn should_not_consider_double_period_to_end_sentence() {
+    let desc = some("Warkworth..Castle is a ruined medieval building
+in the town. of the same name in the English county of Northumberland,
+and the town and castle occupy a loop of the River Coquet, less than a mile
+from England's north-east coast. When the castle was founded is uncertain,
+but traditionally its construction has been ascribed to Prince Henry of
+Scotland in the mid 12th century, although it may have been built by
+King Henry II of England when he took control of England'snorthern
+counties.");
+    let brief = extract(desc);
+    assert brief == some(
+        "Warkworth..Castle is a ruined medieval building in the town");
+}
+
+#[test]
+fn should_not_consider_triple_period_to_end_sentence() {
+    let desc = some("Warkworth... Castle is a ruined medieval building
+in the town. of the same name in the English county of Northumberland,
+and the town and castle occupy a loop of the River Coquet, less than a mile
+from England's north-east coast. When the castle was founded is uncertain,
+but traditionally its construction has been ascribed to Prince Henry of
+Scotland in the mid 12th century, although it may have been built by
+King Henry II of England when he took control of England'snorthern
+counties.");
+    let brief = extract(desc);
+    assert brief == some(
+        "Warkworth... Castle is a ruined medieval building in the town");
 }
