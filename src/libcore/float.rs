@@ -1,7 +1,8 @@
 #[doc = "Operations and constants for `float`"];
 
-// FIXME find out why these have to be exported explicitly
-
+// Even though this module exports everything defined in it,
+// because it contains re-exports, we also have to explicitly
+// export locally defined things. That's a bit annoying.
 export to_str_common, to_str_exact, to_str, from_str;
 export add, sub, mul, div, rem, lt, le, gt, eq, eq, ne;
 export is_positive, is_negative, is_nonpositive, is_nonnegative;

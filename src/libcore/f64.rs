@@ -5,8 +5,9 @@
 import cmath::c_double::*;
 import cmath::c_double_targ_consts::*;
 
-// FIXME find out why these have to be exported explicitly
-
+// Even though this module exports everything defined in it,
+// because it contains re-exports, we also have to explicitly
+// export locally defined things. That's a bit annoying.
 export add, sub, mul, div, rem, lt, le, gt, eq, eq, ne;
 export is_positive, is_negative, is_nonpositive, is_nonnegative;
 export is_zero, is_infinite, is_finite;
@@ -27,6 +28,7 @@ export epsilon;
 // PORT check per architecture
 
 // FIXME obtain these in a different way
+// (perhaps related to Issue #1433)
 
 const radix: uint = 2u;
 
@@ -120,12 +122,13 @@ pure fn is_finite(x: f64) -> bool {
 }
 
 // FIXME add is_normal, is_subnormal, and fpclassify
+// also see Issue #1999
 
 /* Module: consts */
 mod consts {
 
     // FIXME replace with mathematical constants from cmath
-
+    // (requires Issue #1433 to fix)
     #[doc = "Archimedes' constant"]
     const pi: f64 = 3.14159265358979323846264338327950288_f64;
 
@@ -174,13 +177,14 @@ pure fn signbit(x: f64) -> int {
 #[cfg(target_os="macos")]
 #[cfg(target_os="win32")]
 pure fn logarithm(n: f64, b: f64) -> f64 {
-    // FIXME check if it is good to use log2 instead of ln here;
-    // in theory should be faster since the radix is 2
     ret log2(n) / log2(b);
 }
 
 #[cfg(target_os="freebsd")]
 pure fn logarithm(n: f64, b: f64) -> f64 {
+    // FIXME check if it is good to use log2 instead of ln here;
+    // in theory should be faster since the radix is 2
+    // See Issue #2000
     ret ln(n) / ln(b);
 }
 

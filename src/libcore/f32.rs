@@ -55,6 +55,7 @@ pure fn gt(x: f32, y: f32) -> bool { ret x > y; }
 
 // FIXME replace the predicates below with llvm intrinsics or calls
 // to the libmath macros in the rust runtime for performance
+// See Issue #1999
 
 #[doc = "
 Returns true if `x` is a positive number, including +0.0f320 and +Infinity
@@ -104,11 +105,13 @@ pure fn is_finite(x: f32) -> bool {
 }
 
 // FIXME add is_normal, is_subnormal, and fpclassify
+// also see Issue #1999
 
 /* Module: consts */
 mod consts {
 
     // FIXME replace with mathematical constants from cmath
+    // (requires Issue #1433 to fix)
     #[doc = "Archimedes' constant"]
     const pi: f32 = 3.14159265358979323846264338327950288_f32;
 
@@ -157,13 +160,14 @@ pure fn signbit(x: f32) -> int {
 #[cfg(target_os="macos")]
 #[cfg(target_os="win32")]
 pure fn logarithm(n: f32, b: f32) -> f32 {
-    // FIXME check if it is good to use log2 instead of ln here;
-    // in theory should be faster since the radix is 2
     ret log2(n) / log2(b);
 }
 
 #[cfg(target_os="freebsd")]
 pure fn logarithm(n: f32, b: f32) -> f32 {
+    // FIXME check if it is good to use log2 instead of ln here;
+    // in theory should be faster since the radix is 2
+    // See Issue #2000
     ret ln(n) / ln(b);
 }
 
