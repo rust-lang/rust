@@ -2609,8 +2609,10 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         }
 
         let proto = alt proto {
-          ast::proto_bare | ast::proto_box { ast::proto_box }
-          ast::proto_uniq | ast::proto_any | ast::proto_block {
+          ast::proto_bare | ast::proto_box | ast::proto_uniq {
+            ast::proto_box
+          }
+          ast::proto_any | ast::proto_block {
             tcx.sess.span_err(expr.span,
                               #fmt["cannot bind %s closures",
                                    proto_to_str(proto)]);
