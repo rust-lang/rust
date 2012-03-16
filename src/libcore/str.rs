@@ -664,7 +664,7 @@ fn words_iter(ss: str, ff: fn(&&str)) {
     vec::iter(words(ss), ff)
 }
 
-#[doc = "Apply a function to each lines (by '\\n')"]
+#[doc = "Apply a function to each line (by '\\n')"]
 fn lines_iter(ss: str, ff: fn(&&str)) {
     vec::iter(lines(ss), ff)
 }
@@ -674,23 +674,66 @@ Section: Searching
 */
 
 #[doc = "
-Returns the byte index of the first matching char (as option some/none)
+Returns the byte index of the first matching character
+
+# Arguments
+
+* `s` - The string to search
+* `c` - The character to search for
+
+# Return value
+
+An `option` containing the byte index of the first matching character
+or `none` if there is no match
 "]
 fn find_char(s: str, c: char) -> option<uint> {
     find_char_between(s, c, 0u, len(s))
 }
 
 #[doc = "
-Returns the byte index of the first matching char as option
-some/none), starting from `start`
+Returns the byte index of the first matching character beginning
+from a given byte offset
+
+# Arguments
+
+* `s` - The string to search
+* `c` - The character to search for
+* `start` - The byte index to begin searching at, inclusive
+
+# Return value
+
+An `option` containing the byte index of the first matching character
+or `none` if there is no match
+
+# Failure
+
+`start` must be less than or equal to `len(s)`. `start` must be the
+index of a character boundary, as defined by `is_char_boundary`.
 "]
-fn find_char_from(s: str, c: char, from: uint) -> option<uint> {
-    find_char_between(s, c, from, len(s))
+fn find_char_from(s: str, c: char, start: uint) -> option<uint> {
+    find_char_between(s, c, start, len(s))
 }
 
 #[doc = "
-Returns the byte index of the first matching char (as option
-some/none), between `start` and `end`
+Returns the byte index of the first matching character within a given range
+
+# Arguments
+
+* `s` - The string to search
+* `c` - The character to search for
+* `start` - The byte index to begin searching at, inclusive
+* `end` - The byte index to end searching at, exclusive
+
+# Return value
+
+An `option` containing the byte index of the first matching character
+or `none` if there is no match
+
+# Failure
+
+`start` must be less than or equal to `end` and `end` must be less than
+or equal to `len(s)`. `start` must be the index of a character boundary,
+as defined by `is_char_boundary`.
 "]
 fn find_char_between(s: str, c: char, start: uint, end: uint)
     -> option<uint> {
@@ -710,24 +753,66 @@ fn find_char_between(s: str, c: char, start: uint, end: uint)
 }
 
 #[doc = "
-Returns the byte index of the last matching char as option some/none)
+Returns the byte index of the last matching character
+
+# Arguments
+
+* `s` - The string to search
+* `c` - The character to search for
+
+# Return value
+
+An `option` containing the byte index of the last matching character
+or `none` if there is no match
 "]
 fn rfind_char(s: str, c: char) -> option<uint> {
     rfind_char_between(s, c, len(s), 0u)
 }
 
 #[doc = "
-Returns the byte index of the last matching char (as option
-some/none), starting from `start`
+Returns the byte index of the last matching character beginning
+from a given byte offset
+
+# Arguments
+
+* `s` - The string to search
+* `c` - The character to search for
+* `start` - The byte index to begin searching at, exclusive
+
+# Return value
+
+An `option` containing the byte index of the last matching character
+or `none` if there is no match
+
+# Failure
+
+`start` must be less than or equal to `len(s)`. `start` must be
+the index of a character boundary, as defined by `is_char_boundary`.
 "]
 fn rfind_char_from(s: str, c: char, start: uint) -> option<uint> {
     rfind_char_between(s, c, start, 0u)
 }
 
 #[doc = "
-Returns the byte index of the last matching char (as option
-some/none), between from `start` and `end` (start must be greater
-than or equal to end)
+Returns the byte index of the last matching character within a given range
+
+# Arguments
+
+* `s` - The string to search
+* `c` - The character to search for
+* `start` - The byte index to begin searching at, exclusive
+* `end` - The byte index to end searching at, inclusive
+
+# Return value
+
+An `option` containing the byte index of the last matching character
+or `none` if there is no match
+
+# Failure
+
+`end` must be less than or equal to `start` and `start` must be less than
+or equal to `len(s)`. `start` must be the index of a character boundary,
+as defined by `is_char_boundary`.
 "]
 fn rfind_char_between(s: str, c: char, start: uint, end: uint)
     -> option<uint> {
@@ -747,24 +832,68 @@ fn rfind_char_between(s: str, c: char, start: uint, end: uint)
 }
 
 #[doc = "
-Returns, as an option, the first character that passes the given
-predicate
+Returns the byte index of the first character that satisfies
+the given predicate
+
+# Arguments
+
+* `s` - The string to search
+* `f` - The predicate to satisfy
+
+# Return value
+
+An `option` containing the byte index of the first matching character
+or `none` if there is no match
 "]
 fn find(s: str, f: fn(char) -> bool) -> option<uint> {
     find_between(s, 0u, len(s), f)
 }
 
 #[doc = "
-Returns, as an option, the first character that passes the given
-predicate, starting at byte offset `start`
+Returns the byte index of the first character that satisfies
+the given predicate, beginning from a given byte offset
+
+# Arguments
+
+* `s` - The string to search
+* `start` - The byte index to begin searching at, inclusive
+* `f` - The predicate to satisfy
+
+# Return value
+
+An `option` containing the byte index of the first matching charactor
+or `none` if there is no match
+
+# Failure
+
+`start` must be less than or equal to `len(s)`. `start` must be the
+index of a character boundary, as defined by `is_char_boundary`.
 "]
 fn find_from(s: str, start: uint, f: fn(char) -> bool) -> option<uint> {
     find_between(s, start, len(s), f)
 }
 
 #[doc = "
-Returns, as an option, the first character that passes the given
-predicate, between byte offsets `start` and `end`
+Returns the byte index of the first character that satisfies
+the given predicate, within a given range
+
+# Arguments
+
+* `s` - The string to search
+* `start` - The byte index to begin searching at, inclusive
+* `end` - The byte index to end searching at, exclusive
+* `f` - The predicate to satisfy
+
+# Return value
+
+An `option` containing the byte index of the first matching character
+or `none` if there is no match
+
+# Failure
+
+`start` must be less than or equal to `end` and `end` must be less than
+or equal to `len(s)`. `start` must be the index of a character
+boundary, as defined by `is_char_boundary`.
 "]
 fn find_between(s: str, start: uint, end: uint, f: fn(char) -> bool)
     -> option<uint> {
@@ -781,25 +910,68 @@ fn find_between(s: str, start: uint, end: uint, f: fn(char) -> bool)
 }
 
 #[doc = "
-Returns, as an option, the last character in the string that passes
+Returns the byte index of the last character that satisfies
 the given predicate
+
+# Arguments
+
+* `s` - The string to search
+* `f` - The predicate to satisfy
+
+# Return value
+
+An option containing the byte index of the last matching character
+or `none` if there is no match
 "]
 fn rfind(s: str, f: fn(char) -> bool) -> option<uint> {
     rfind_between(s, len(s), 0u, f)
 }
 
 #[doc = "
-Returns, as an option, the last character that passes the given
-predicate, up until byte offset `start`
+Returns the byte index of the last character that satisfies
+the given predicate, beginning from a given byte offset
+
+# Arguments
+
+* `s` - The string to search
+* `start` - The byte index to begin searching at, exclusive
+* `f` - The predicate to satisfy
+
+# Return value
+
+An `option` containing the byte index of the last matching character
+or `none` if there is no match
+
+# Failure
+
+`start` must be less than or equal to `len(s)', `start` must be the
+index of a character boundary, as defined by `is_char_boundary`
 "]
 fn rfind_from(s: str, start: uint, f: fn(char) -> bool) -> option<uint> {
     rfind_between(s, start, 0u, f)
 }
 
 #[doc = "
-Returns, as an option, the last character that passes the given
-predicate, between byte offsets `start` and `end` (`start` must be
-greater than or equal to `end`)
+Returns the byte index of the last character that satisfies
+the given predicate, within a given range
+
+# Arguments
+
+* `s` - The string to search
+* `start` - The byte index to begin searching at, exclusive
+* `end` - The byte index to end searching at, inclusive
+* `f` - The predicate to satisfy
+
+# Return value
+
+An `option` containing the byte index of the last matching character
+or `none` if there is no match
+
+# Failure
+
+`end` must be less than or equal to `start` and `start` must be less
+than or equal to `len(s)`. `start` must be the index of a character
+boundary, as defined by `is_char_boundary`
 "]
 fn rfind_between(s: str, start: uint, end: uint, f: fn(char) -> bool)
     -> option<uint> {
@@ -823,16 +995,40 @@ fn match_at(haystack: str, needle: str, at: uint) -> bool {
 }
 
 #[doc = "
-Find the byte position of the first instance of one string
-within another, or return `option::none`
+Returns the byte index of the first matching substring
+
+# Arguments
+
+* `haystack` - The string to search
+* `needle` - The string to search for
+
+# Return value
+
+An `option` containing the byte index of the first matching substring
+or `none` if there is no match
 "]
 fn find_str(haystack: str, needle: str) -> option<uint> {
     find_str_between(haystack, needle, 0u, len(haystack))
 }
 
 #[doc = "
-Find the byte position of the first instance of one string
-within another, or return `option::none`
+Returns the byte index of the first matching substring beginning
+from a given byte offset
+
+# Arguments
+
+* `haystack` - The string to search
+* `needle` - The string to search for
+* `start` - The byte index to begin searching at, inclusive
+
+# Return value
+
+An `option` containing the byte index of the last matching character
+or `none` if there is no match
+
+# Failure
+
+`start` must be less than or equal to `len(s)`
 "]
 fn find_str_from(haystack: str, needle: str, start: uint)
   -> option<uint> {
@@ -840,8 +1036,24 @@ fn find_str_from(haystack: str, needle: str, start: uint)
 }
 
 #[doc = "
-Find the byte position of the first instance of one string
-within another, or return `option::none`
+Returns the byte index of the first matching substring within a given range
+
+# Arguments
+
+* `haystack` - The string to search
+* `needle` - The string to search for
+* `start` - The byte index to begin searching at, inclusive
+* `end` - The byte index to end searching at, exclusive
+
+# Return value
+
+An `option` containing the byte index of the first matching character
+or `none` if there is no match
+
+# Failure
+
+`start` must be less than or equal to `end` and `end` must be less than
+or equal to `len(s)`.
 "]
 fn find_str_between(haystack: str, needle: str, start: uint, end:uint)
   -> option<uint> {
@@ -1413,6 +1625,9 @@ mod unsafe {
        ret b;
    }
 
+    #[doc = "
+    Sets the length of the string and adds the null terminator
+    "]
     unsafe fn set_len(&v: str, new_len: uint) {
         let repr: *vec::unsafe::vec_repr = ::unsafe::reinterpret_cast(v);
         (*repr).fill = new_len + 1u;
