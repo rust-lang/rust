@@ -1,4 +1,6 @@
-#[doc = "Random number generation"]
+#[doc = "Random number generation"];
+
+export rng;
 
 enum rctx {}
 

@@ -961,6 +961,7 @@ fn is_utf8(v: [const u8]) -> bool {
     ret true;
 }
 
+#[doc = "Determines if a vector of `u16` contains valid UTF-16"]
 fn is_utf16(v: [const u16]) -> bool {
     let len = v.len();
     let mut i = 0u;
@@ -981,6 +982,7 @@ fn is_utf16(v: [const u16]) -> bool {
     ret true;
 }
 
+#[doc = "Converts to a vector of `u16` encoded as UTF-16"]
 fn to_utf16(s: str) -> [u16] {
     let mut u = [];
     chars_iter(s) {|cch|
@@ -1200,7 +1202,7 @@ Loop through a substring, char by char
 # Safety note
 
 * This function does not check whether the substring is valid.
-* This function fails if `byte_offset` or `byte_len` do not
+* This function fails if `start` or `end` do not
   represent valid positions inside `s`
 
 # Arguments
@@ -1227,6 +1229,27 @@ fn all_between(s: str, start: uint, end: uint, it: fn(char) -> bool) -> bool {
     ret true;
 }
 
+#[doc = "
+Loop through a substring, char by char
+
+# Safety note
+
+* This function does not check whether the substring is valid.
+* This function fails if `start` or `end` do not
+  represent valid positions inside `s`
+
+# Arguments
+
+* s - A string to traverse. It may be empty.
+* start - The byte offset at which to start in the string.
+* end - The end of the range to traverse
+* it - A block to execute with each consecutive character of `s`.
+       Return `true` to continue, `false` to stop.
+
+# Return value
+
+`true` if `it` returns `true` for any character
+"]
 fn any_between(s: str, start: uint, end: uint, it: fn(char) -> bool) -> bool {
     !all_between(s, start, end, {|c| !it(c)})
 }

@@ -1,10 +1,36 @@
-#[doc = "Path data type and helper functions"]
+#[doc = "Path data type and helper functions"];
+
+export path;
+export consts;
+export path_is_absolute;
+export path_sep;
+export dirname;
+export basename;
+export connect;
+export connect_many;
+export split;
+export splitext;
+export normalize;
+
+// FIXME: This type should probably be constrained
+#[doc = "A path or fragment of a filesystem path"]
+type path = str;
 
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
 #[cfg(target_os = "linux")]
 mod consts {
+    #[doc = "
+    The primary path seperator character for the platform
+
+    On all platforms it is '/'
+    "]
     const path_sep: char = '/';
+    #[doc = "
+    The secondary path seperator character for the platform
+
+    On Unixes it is '/'. On Windows it is '\\'.
+    "]
     const alt_path_sep: char = '/';
 }
 
@@ -35,14 +61,8 @@ fn path_is_absolute(p: str) -> bool {
             || str::char_at(p, 2u) == consts::alt_path_sep);
 }
 
-
-
 #[doc = "Get the default path separator for the host platform"]
 fn path_sep() -> str { ret str::from_char(consts::path_sep); }
-
-// FIXME: This type should probably be constrained
-#[doc = "A path or fragment of a filesystem path"]
-type path = str;
 
 fn split_dirname_basename (pp: path) -> {dirname: str, basename: str} {
     alt str::rfind(pp, {|ch|

@@ -1,3 +1,5 @@
+#[doc = "Vectors"];
+
 import option::{some, none};
 import uint::next_power_of_two;
 import ptr::addr_of;
@@ -396,7 +398,7 @@ fn grow_set<T: copy>(&v: [mutable T], index: uint, initval: T, val: T) {
 
 // Functional utilities
 
-#[doc ="
+#[doc = "
 Apply a function to each element of a vector and return the results
 "]
 fn map<T, U>(v: [T], f: fn(T) -> U) -> [U] {
@@ -406,6 +408,10 @@ fn map<T, U>(v: [T], f: fn(T) -> U) -> [U] {
     ret result;
 }
 
+#[doc = "
+Apply a function eo each element of a vector and return a concatenation
+of each result vector
+"]
 fn flat_map<T, U>(v: [T], f: fn(T) -> [U]) -> [U] {
     let mut result = [];
     for elem: T in v { result += f(elem); }
@@ -413,8 +419,6 @@ fn flat_map<T, U>(v: [T], f: fn(T) -> [U]) -> [U] {
 }
 
 #[doc = "
-Function: map2
-
 Apply a function to each pair of elements and return the results
 "]
 fn map2<T: copy, U: copy, V>(v0: [const T], v1: [const U],
@@ -860,13 +864,17 @@ fn as_mut_buf<E,T>(v: [mutable E], f: fn(*mutable E) -> T) -> T unsafe {
     let buf = unsafe::to_ptr(v) as *mutable E; f(buf)
 }
 
+#[doc = "An extension implementation providing a `len` method"]
 impl vec_len<T> for [T] {
+    #[doc = "Return the length of the vector"]
     #[inline(always)]
     fn len() -> uint { len(self) }
 }
 
+#[doc = "Unsafe operations"]
 mod unsafe {
     // FIXME: This should have crate visibility
+    #[doc = "The internal representation of a vector"]
     type vec_repr = {mutable fill: uint, mutable alloc: uint, data: u8};
 
     #[doc = "
@@ -912,6 +920,7 @@ mod unsafe {
     }
 }
 
+#[doc = "Operations on `[u8]`"]
 mod u8 {
     export cmp;
     export lt, le, eq, ne, ge, gt;
