@@ -558,7 +558,7 @@ fn hash(&&s: str) -> uint {
     // djb hash.
     // FIXME: replace with murmur.
     let mut u: uint = 5381u;
-    for c: u8 in s { u *= 33u; u += c as uint; }
+    iter::each(by_bytes(s)) {|c| u *= 33u; u += c as uint; }
     ret u;
 }
 

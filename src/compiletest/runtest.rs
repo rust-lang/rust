@@ -8,6 +8,7 @@ import common::config;
 import header::load_props;
 import header::test_props;
 import util::logv;
+import str::iterable;
 
 export run;
 
@@ -195,7 +196,7 @@ fn check_error_patterns(props: test_props,
 
     let next_err_idx = 0u;
     let next_err_pat = props.error_patterns[next_err_idx];
-    for line: str in str::split_char(procres.stderr, '\n') {
+    iter::each(str::by_lines(procres.stderr)) {|line|
         if str::contains(line, next_err_pat) {
             #debug("found error pattern %s", next_err_pat);
             next_err_idx += 1u;
@@ -243,7 +244,7 @@ fn check_expected_errors(expected_errors: [errors::expected_error],
     //    filename:line1:col1: line2:col2: *warning:* msg
     // where line1:col1: is the starting point, line2:col2:
     // is the ending point, and * represents ANSI color codes.
-    for line: str in str::split_char(procres.stderr, '\n') {
+    iter::each(str::by_lines(procres.stderr)) {|line|
         let was_expected = false;
         vec::iteri(expected_errors) {|i, ee|
             if !found_flags[i] {
@@ -356,21 +357,8 @@ fn make_run_args(config: config, _props: test_props, testfile: str) ->
 }
 
 fn split_maybe_args(argstr: option<str>) -> [str] {
-    fn rm_whitespace(v: [str]) -> [str] {
-        fn flt(&&s: str) -> option<str> {
-            if !is_whitespace(s) { option::some(s) } else { option::none }
-        }
-
-        // FIXME: This should be in std
-        fn is_whitespace(s: str) -> bool {
-            for c: u8 in s { if c != ' ' as u8 { ret false; } }
-            ret true;
-        }
-        vec::filter_map(v, flt)
-    }
-
     alt argstr {
-      option::some(s) { rm_whitespace(str::split_char(s, ' ')) }
+      option::some(s) { vec::filter(str::split_char(s, ' '), {|s| !str::is_whitespace(s) }) }
       option::none { [] }
     }
 }
