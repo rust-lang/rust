@@ -180,22 +180,38 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
             i += 1u;
         }
       }
-      expr_path(_) {
+      expr_path(_) | expr_field(_, _, _) {
         alt cx.tcx.node_type_substs.find(e.id) {
           some(ts) {
-            let did = ast_util::def_id_of_def(cx.tcx.def_map.get(e.id));
-            let bounds = ty::lookup_item_type(cx.tcx, did).bounds;
-            let i = 0u;
-            for ty in ts {
+            let bounds = alt check e.node {
+              expr_path(_) {
+                let did = ast_util::def_id_of_def(cx.tcx.def_map.get(e.id));
+                ty::lookup_item_type(cx.tcx, did).bounds
+              }
+              expr_field(_, _, _) {
+                alt cx.method_map.get(e.id) {
+                  typeck::method_static(did) {
+                    ty::lookup_item_type(cx.tcx, did).bounds
+                  }
+                  typeck::method_param(ifce_id, n_mth, _, _) |
+                  typeck::method_iface(ifce_id, n_mth) {
+                    let ifce_bounds =
+                        ty::lookup_item_type(cx.tcx, ifce_id).bounds;
+                    let mth = ty::iface_methods(cx.tcx, ifce_id)[n_mth];
+                    @(*ifce_bounds + *mth.tps)
+                  }
+                }
+              }
+            };
+            vec::iter2(ts, *bounds) {|ty, bound|
                 let kind = ty::type_kind(cx.tcx, ty);
-                let p_kind = ty::param_bounds_to_kind(bounds[i]);
+                let p_kind = ty::param_bounds_to_kind(bound);
                 if !ty::kind_lteq(p_kind, kind) {
                     cx.tcx.sess.span_err(e.span, "instantiating a " +
                                          kind_to_str(p_kind) +
                                          " type parameter with a "
                                          + kind_to_str(kind) + " type");
                 }
-                i += 1u;
             }
           }
           none {}

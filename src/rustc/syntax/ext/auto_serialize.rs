@@ -723,8 +723,10 @@ fn mk_deser_fn(cx: ext_ctxt, span: span, name: str, tps: [ast::ty_param],
     let deser_tps: [ast::ty_param] =
         [{ident: "__D",
           id: cx.next_id(),
-          bounds: deser_bnds}] +
-        vec::map(tps) {|tp| cx.clone_ty_param(tp) };
+          bounds: deser_bnds}] + vec::map(tps) {|tp|
+        let cloned = cx.clone_ty_param(tp);
+        {bounds: @(*cloned.bounds + [ast::bound_copy]) with cloned}
+    };
 
     let deser_blk = cx.expr_blk(f(cx, tps_map, #ast(expr){__d}));
 

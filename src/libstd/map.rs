@@ -330,7 +330,7 @@ fn uint_hash<V: copy>() -> hashmap<uint, V> {
 #[doc = "
 Convenience function for adding keys to a hashmap with nil type keys
 "]
-fn set_add<K>(set: set<K>, key: K) -> bool { ret set.insert(key, ()); }
+fn set_add<K: copy>(set: set<K>, key: K) -> bool { ret set.insert(key, ()); }
 
 #[cfg(test)]
 mod tests {
