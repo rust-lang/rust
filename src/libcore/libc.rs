@@ -38,6 +38,7 @@ dissolved.
 // wind up exported, if you're interested in writing platform-specific code.
 
 // FIXME: change these to glob-exports when sufficiently supported.
+// Issue #2006
 
 import types::common::c95::*;
 import types::common::c99::*;
@@ -81,6 +82,7 @@ import funcs::extra::*;
 // FIXME: remove these 3 exports (and their uses next door in os::) when
 // export globs work. They provide access (for now) for os:: to dig around in
 // the rest of the platform-specific definitions.
+// Issue #2006
 
 export types, funcs, consts;
 
