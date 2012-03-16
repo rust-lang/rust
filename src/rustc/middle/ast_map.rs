@@ -36,6 +36,7 @@ enum ast_node {
     node_arg(arg, uint),
     node_local(uint),
     node_ctor(@item),
+    node_block(blk),
 }
 
 type map = std::map::hashmap<node_id, ast_node>;
@@ -105,6 +106,11 @@ fn map_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
         cx.local_id += 1u;
     }
     visit::visit_fn(fk, decl, body, sp, id, cx, v);
+}
+
+fn map_block(b: blk, cx: ctx, v: vt) {
+    cx.map.insert(b.node.id, node_block(b));
+    visit::visit_block(b, cx, v);
 }
 
 fn number_pat(cx: ctx, pat: @pat) {

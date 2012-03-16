@@ -2328,7 +2328,8 @@ fn item_path(cx: ctxt, id: ast::def_id) -> ast_map::path {
           }
 
           ast_map::node_expr(_) | ast_map::node_arg(_, _) |
-          ast_map::node_local(_) | ast_map::node_export(_, _) {
+          ast_map::node_local(_) | ast_map::node_export(_, _) |
+          ast_map::node_block(_) {
             cx.sess.bug(#fmt["cannot find item_path for node %?", node]);
           }
         }
