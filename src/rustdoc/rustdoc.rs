@@ -143,6 +143,7 @@ fn run(config: config::config) {
             tystr_pass::mk_pass(),
             path_pass::mk_pass(),
             attr_pass::mk_pass(),
+            escape_pass::mk_pass(),
             prune_hidden_pass::mk_pass(),
             desc_to_brief_pass::mk_pass(),
             unindent_pass::mk_pass(),
