@@ -55,7 +55,8 @@ fn mk_ast_map_visitor() -> vt {
         visit_fn: map_fn,
         visit_local: map_local,
         visit_arm: map_arm,
-        visit_view_item: map_view_item
+        visit_view_item: map_view_item,
+        visit_block: map_block
         with *visit::default_visitor()
     });
 }

@@ -1,12 +1,32 @@
+import std::map::hashmap;
 import middle::ty;
 import middle::ty::*;
 import metadata::encoder;
+import syntax::codemap;
 import syntax::print::pprust;
 import syntax::print::pprust::{path_to_str, constr_args_to_str, proto_to_str,
                                mode_to_str};
 import syntax::{ast, ast_util};
 import middle::ast_map;
 import driver::session::session;
+
+fn region_to_str(cx: ctxt, region: region) -> str {
+    alt region {
+      re_named(_)   { "<name>."   }     // TODO: include name
+      re_caller(_)  { "<caller>." }
+      re_block(node_id) {
+        alt cx.items.get(node_id) {
+            ast_map::node_block(blk) {
+                #fmt("<block at %s>.", codemap::span_to_str(blk.span,
+                                                            cx.sess.codemap))
+            }
+            _ { cx.sess.bug("re_block refers to non-block") }
+        }
+      }
+      re_self(_)    { "self."     }
+      re_inferred   { ""          }
+    }
+}
 
 fn ty_to_str(cx: ctxt, typ: t) -> str {
     fn fn_input_to_str(cx: ctxt, input: {mode: ast::mode, ty: t}) ->
@@ -66,15 +86,6 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
             #fmt["%s<%s>", base, str::connect(strs, ",")]
         } else {
             base
-        }
-    }
-    fn region_to_str(_cx: ctxt, r: region) -> str {
-        alt r {
-          re_named(_)   { "<name>."   }     // TODO: include name
-          re_caller(_)  { "<caller>." }
-          re_block(_)   { "<block>."  }     // TODO: include line number
-          re_self(_)    { "self."     }
-          re_inferred   { ""          }
         }
     }
 
