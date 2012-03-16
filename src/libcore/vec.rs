@@ -94,9 +94,7 @@ type init_op<T> = fn(uint) -> T;
 
 #[doc = "Returns true if a vector contains no elements"]
 pure fn is_empty<T>(v: [const T]) -> bool {
-    // FIXME: This would be easier if we could just call len
-    for t: T in v { ret false; }
-    ret true;
+    len(v) == 0u
 }
 
 #[doc = "Returns true if a vector contains some elements"]
@@ -154,8 +152,6 @@ fn from_elem<T: copy>(n_elts: uint, t: T) -> [T] {
     ret v;
 }
 
-// FIXME: Possible typestate postcondition:
-// len(result) == len(v) (needs issue #586)
 #[doc = "Produces a mutable vector from an immutable vector."]
 fn to_mut<T>(+v: [T]) -> [mutable T] unsafe {
     let r = ::unsafe::reinterpret_cast(v);
@@ -185,9 +181,6 @@ fn tailn<T: copy>(v: [const T], n: uint) -> [T] {
     slice(v, n, len(v))
 }
 
-// FIXME: This name is sort of confusing next to from_fn, etc
-// but this is the name haskell uses for this function,
-// along with head/tail/last.
 #[doc = "Returns all but the last elemnt of a vector"]
 fn init<T: copy>(v: [const T]) -> [T] {
     assert len(v) != 0u;

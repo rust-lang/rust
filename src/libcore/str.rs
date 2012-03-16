@@ -106,8 +106,6 @@ native mod rustrt {
     fn str_reserve_shared(&ss: str, nn: libc::size_t);
 }
 
-// FIXME: add pure to a lot of functions
-
 /*
 Section: Creating a string
 */
