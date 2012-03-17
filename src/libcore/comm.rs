@@ -57,8 +57,7 @@ native mod rustrt {
 
 #[abi = "rust-intrinsic"]
 native mod rusti {
-    // FIXME: This should probably not take a boxed closure (Issue #1987)
-    fn call_with_retptr<T: send>(&&f: fn@(*uint)) -> T;
+    fn call_with_retptr<T: send>(&&f: fn(*uint)) -> T;
 }
 
 type port_id = int;
