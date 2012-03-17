@@ -10,14 +10,11 @@ rust_port::rust_port(rust_task *task, size_t unit_sz)
         "new rust_port(task=0x%" PRIxPTR ", unit_sz=%d) -> port=0x%"
         PRIxPTR, (uintptr_t)task, unit_sz, (uintptr_t)this);
 
-    task->ref();
     id = kernel->register_port(this);
 }
 
 rust_port::~rust_port() {
     LOG(task, comm, "~rust_port 0x%" PRIxPTR, (uintptr_t) this);
-
-    task->deref();
 }
 
 void rust_port::ref() {
