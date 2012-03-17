@@ -95,7 +95,8 @@ export
    reserve_at_least,
    capacity,
 
-   unsafe;
+   unsafe,
+   extensions;
 
 #[abi = "cdecl"]
 native mod rustrt {
@@ -1730,6 +1731,88 @@ mod unsafe {
     }
 }
 
+#[doc = "Extension methods for strings"]
+impl extensions for str {
+    #[doc = "
+    Return true if a predicate matches all characters or if the string
+    contains no characters
+    "]
+    #[inline]
+    fn all(it: fn(char) -> bool) -> bool { all(self, it) }
+    #[doc = "
+    Return true if a predicate matches any character (and false if it
+    matches none or there are no characters)
+    "]
+    #[inline]
+    fn any(it: fn(char) -> bool) -> bool { any(self, it) }
+    #[doc = "Returns true if one string contains another"]
+    #[inline]
+    fn contains(needle: str) -> bool { contains(self, needle) }
+    #[doc = "Returns true if one string ends with another"]
+    #[inline]
+    fn ends_with(needle: str) -> bool { ends_with(self, needle) }
+    #[doc = "Returns true if the string has length 0"]
+    #[inline]
+    fn is_empty() -> bool { is_empty(self) }
+    #[doc = "Returns true if the string has length greater than 0"]
+    #[inline]
+    fn is_not_empty() -> bool { is_not_empty(self) }
+    #[doc = "
+    Returns true if the string contains only whitespace
+
+    Whitespace characters are determined by `char::is_whitespace`
+    "]
+    #[inline]
+    fn is_whitespace() -> bool { is_whitespace(self) }
+    #[doc = "
+    Returns a slice of the given string from the byte range [`begin`..`end`)
+
+    Fails when `begin` and `end` do not point to valid characters or
+    beyond the last character of the string
+    "]
+    #[inline]
+    fn slice(begin: uint, end: uint) -> str { slice(self, begin, end) }
+    #[doc = "Splits a string into substrings using a character function"]
+    #[inline]
+    fn split(sepfn: fn(char) -> bool) -> [str] { split(self, sepfn) }
+    #[doc = "
+    Splits a string into substrings at each occurrence of a given character
+    "]
+    #[inline]
+    fn split_char(sep: char) -> [str] { split_char(self, sep) }
+    #[doc = "
+    Splits a string into a vector of the substrings separated by a given
+    string
+    "]
+    #[inline]
+    fn split_str(sep: str) -> [str] { split_str(self, sep) }
+    #[doc = "Returns true if one string starts with another"]
+    #[inline]
+    fn starts_with(needle: str) -> bool { starts_with(self, needle) }
+    #[doc = "
+    Take a substring of another.
+
+    Returns a string containing `n` characters starting at byte offset
+    `begin`.
+    "]
+    #[inline]
+    fn substr(begin: uint, n: uint) -> str { substr(self, begin, n) }
+    #[doc = "Convert a string to lowercase"]
+    #[inline]
+    fn to_lower() -> str { to_lower(self) }
+    #[doc = "Convert a string to uppercase"]
+    #[inline]
+    fn to_upper() -> str { to_upper(self) }
+    #[doc = "Returns a string with leading and trailing whitespace removed"]
+    #[inline]
+    fn trim() -> str { trim(self) }
+    #[doc = "Returns a string with leading whitespace removed"]
+    #[inline]
+    fn trim_left() -> str { trim_left(self) }
+    #[doc = "Returns a string with trailing whitespace removed"]
+    #[inline]
+    fn trim_right() -> str { trim_right(self) }
+}
 
 #[cfg(test)]
 mod tests {
