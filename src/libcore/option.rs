@@ -87,6 +87,34 @@ fn unwrap<T>(-opt: option<T>) -> T unsafe {
     ret liberated_value;
 }
 
+impl extensions<T:copy> for option<T> {
+    #[doc = "
+    Update an optional value by optionally running its content through a
+    function that returns an option.
+    "]
+    fn chain<U>(f: fn(T) -> option<U>) -> option<U> { chain(self, f) }
+    #[doc = "Returns the contained value or a default"]
+    fn from_maybe(def: T) -> T { from_maybe(self, def) }
+    #[doc = "Applies a function to the contained value or returns a default"]
+    fn maybe<U: copy>(def: U, f: fn(T) -> U) -> U { maybe(self, def, f) }
+    #[doc = "Performs an operation on the contained value or does nothing"]
+    fn may(f: fn(T)) { may(self, f) }
+    #[doc = "
+    Gets the value out of an option
+
+    # Failure
+
+    Fails if the value equals `none`
+    "]
+    fn get() -> T { get(self) }
+    #[doc = "Returns true if the option equals `none`"]
+    fn is_none() -> bool { is_none(self) }
+    #[doc = "Returns true if the option contains some value"]
+    fn is_some() -> bool { is_some(self) }
+    #[doc = "Maps a `some` value from one type to another"]
+    fn map<U:copy>(f: fn(T) -> U) -> option<U> { map(self, f) }
+}
+
 #[test]
 fn test_unwrap_ptr() {
     let x = ~0;

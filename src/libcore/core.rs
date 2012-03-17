@@ -7,6 +7,7 @@ import option = option::option;
 import path = path::path;
 import vec::vec_len;
 import str::extensions;
+import option::extensions;
 export path, option, some, none, vec_len, unreachable;
 export extensions;
 
