@@ -13,6 +13,9 @@ import driver::session::session;
 import std::map::hashmap;
 
 fn forbid_upvar(fcx: fn_ctxt, rhs_id: node_id, sp: span, t: oper_type) {
+    //            fcx.ccx.tcx.sess.span_note(sp,
+    //              #fmt("forbid_upvar: checking. %?", t));
+
     alt t {
       oper_move {
         alt local_node_id_to_def(fcx, rhs_id) {
@@ -29,7 +32,7 @@ fn forbid_upvar(fcx: fn_ctxt, rhs_id: node_id, sp: span, t: oper_type) {
 }
 
 fn handle_move_or_copy(fcx: fn_ctxt, post: poststate, rhs_path: @path,
-                       rhs_id: node_id, instlhs: inst, init_op: init_op) {
+                       rhs_id: node_id, destlhs: dest, init_op: init_op) {
     forbid_upvar(fcx, rhs_id, rhs_path.span, op_to_oper_ty(init_op));
 
     let rhs_d_id = local_node_id_to_def_id(fcx, rhs_id);
@@ -38,8 +41,13 @@ fn handle_move_or_copy(fcx: fn_ctxt, post: poststate, rhs_path: @path,
         // RHS is a local var
         let instrhs =
             {ident: path_to_ident(rhs_path), node: rhsid.node};
-        copy_in_poststate(fcx, post, instlhs, instrhs,
-                          op_to_oper_ty(init_op));
+        alt destlhs {
+          local_dest(instlhs) {
+             copy_in_poststate(fcx, post, instlhs, instrhs,
+                               op_to_oper_ty(init_op));
+          }
+          _ {}
+        }
       }
       _ {
         // not a local -- do nothing
@@ -74,15 +82,20 @@ fn seq_states(fcx: fn_ctxt, pres: prestate, bindings: [binding]) ->
             changed |=
                 find_pre_post_state_expr(fcx, post, an_init.expr) || changed;
             post = tritv_clone(expr_poststate(fcx.ccx, an_init.expr));
-            for b.lhs.each {|i|
+            for b.lhs.each {|d|
                 alt an_init.expr.node {
                   expr_path(p) {
-                    handle_move_or_copy(fcx, post, p, an_init.expr.id, i,
+                    handle_move_or_copy(fcx, post, p, an_init.expr.id, d,
                                         an_init.op);
                   }
                   _ { }
                 }
-                set_in_poststate_ident(fcx, i.node, i.ident, post);
+                alt d {
+                  local_dest(i) {
+                      set_in_poststate_ident(fcx, i.node, i.ident, post);
+                  }
+                  _ {}
+                }
             }
 
             // Forget the RHS if we just moved it.
@@ -91,9 +104,14 @@ fn seq_states(fcx: fn_ctxt, pres: prestate, bindings: [binding]) ->
             }
           }
           none {
-            for b.lhs.each {|i|
+            for b.lhs.each {|d|
                 // variables w/o an initializer
-                clear_in_poststate_ident_(fcx, i.node, i.ident, post);
+                 alt check d {
+                   // would be an error to pass something uninit'd to a call
+                   local_dest(i) {
+                     clear_in_poststate_ident_(fcx, i.node, i.ident, post);
+                   }
+                 }
             }
           }
         }
@@ -198,7 +216,7 @@ fn find_pre_post_state_call(fcx: fn_ctxt, pres: prestate, a: @expr,
 fn find_pre_post_state_exprs(fcx: fn_ctxt, pres: prestate, id: node_id,
                              ops: [init_op], es: [@expr], cf: ret_style) ->
    bool {
-    let rs = seq_states(fcx, pres, anon_bindings(ops, es));
+    let rs = seq_states(fcx, pres, arg_bindings(ops, es));
     let mut changed = rs.changed | set_prestate_ann(fcx.ccx, id, pres);
     /* if this is a failing call, it sets everything as initialized */
     alt cf {
@@ -371,6 +389,8 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
                                       return_val);
       }
       expr_call(operator, operands, _) {
+          #debug("hey it's a call");
+          log_expr(*e);
         ret find_pre_post_state_call(fcx, pres, operator, e.id,
                                      callee_arg_init_ops(fcx, operator.id),
                                      operands,

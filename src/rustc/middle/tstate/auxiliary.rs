@@ -710,6 +710,12 @@ fn find_instance_(pattern: [constr_arg_general_<inst>], descs: [pred_args]) ->
 }
 
 type inst = {ident: ident, node: node_id};
+
+enum dest {
+    local_dest(inst), // RHS is assigned to a local variable
+    call                        // RHS is passed to a function
+}
+
 type subst = [{from: inst, to: inst}];
 
 fn find_instances(_fcx: fn_ctxt, subst: subst, c: constraint) ->
@@ -1064,12 +1070,12 @@ fn ast_constr_to_sp_constr(tcx: ty::ctxt, args: [arg], c: @constr) ->
     ret respan(c.span, tconstr);
 }
 
-type binding = {lhs: [inst], rhs: option<initializer>};
+type binding = {lhs: [dest], rhs: option<initializer>};
 
 fn local_to_bindings(tcx: ty::ctxt, loc: @local) -> binding {
     let mut lhs = [];
     pat_bindings(tcx.def_map, loc.node.pat) {|p_id, _s, name|
-        lhs += [{ident: path_to_ident(name), node: p_id}];
+      lhs += [local_dest({ident: path_to_ident(name), node: p_id})];
     };
     {lhs: lhs, rhs: loc.node.init}
 }
@@ -1106,12 +1112,12 @@ fn callee_arg_init_ops(fcx: fn_ctxt, callee: node_id) -> [init_op] {
     }
 }
 
-fn anon_bindings(ops: [init_op], es: [@expr]) -> [binding] {
+fn arg_bindings(ops: [init_op], es: [@expr]) -> [binding] {
     let mut bindings: [binding] = [];
-    let mut i = 0;
+    let mut i = 0u;
     for ops.each {|op|
-        bindings += [{lhs: [], rhs: some({op: op, expr: es[i]})}];
-        i += 1;
+        bindings += [{lhs: [call], rhs: some({op: op, expr: es[i]})}];
+        i += 1u;
     }
     ret bindings;
 }
