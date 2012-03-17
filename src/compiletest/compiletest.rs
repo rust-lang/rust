@@ -1,6 +1,3 @@
-// FIXME (Issue #1984): The way this module sets up tests is a relic and more
-// convoluted than it needs to be
-
 import option;
 import std::getopts;
 import std::test;
