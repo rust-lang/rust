@@ -152,9 +152,8 @@ fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
               encode_def_id(ebml_w, local_def(it.id));
               ebml_w.end_tag();
               ebml_w.start_tag(tag_paths);
-              /* a bit confused -- adding the same ident twice
-               (once for class, once for ctor) */
               add_to_index(ebml_w, path, index, it.ident);
+              #debug("ctor id: %d", ctor.node.id);
               encode_named_def_id(ebml_w, it.ident, local_def(ctor.node.id));
               encode_class_item_paths(ebml_w, items, path + [it.ident],
                                       index);
@@ -364,7 +363,7 @@ fn encode_info_for_class(ecx: @encode_ctxt, ebml_w: ebml::writer,
             ebml_w.start_tag(tag_items_class_member); // ???
             alt ci.node.decl {
                instance_var(nm, _, _, id) {
-                   #debug("encode_info_for_class: doing %s", nm);
+                   #debug("encode_info_for_class: doing %s %d", nm, id);
                    encode_family(ebml_w, 'g');
                    encode_name(ebml_w, nm);
                    encode_type(ecx, ebml_w, node_id_to_type(tcx, id));
@@ -500,13 +499,13 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_enum_variant_info(ecx, ebml_w, item.id, variants,
                                  path, index, tps);
       }
-      item_class(tps,items,_) {
+      item_class(tps,items,ctor) {
           /* We're not forgetting about the ctor here! It gets
-           encoded elsewhere */
-          ebml_w.start_tag(tag_items_data_item);
-         encode_info_for_class(ecx, ebml_w, item.id, path, item.ident,
+             encoded elsewhere */
+        ebml_w.start_tag(tag_items_data_item);
+        encode_info_for_class(ecx, ebml_w, item.id, path, item.ident,
                                tps, items);
-         ebml_w.end_tag();
+        ebml_w.end_tag();
       }
       item_res(_, tps, _, _, ctor_id) {
         let fn_ty = node_id_to_type(tcx, ctor_id);
@@ -639,23 +638,22 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::writer,
             alt check ecx.ccx.tcx.items.get(i.id) {
               ast_map::node_item(_, pt) {
                 encode_info_for_item(ecx, ebml_w, i, index, *pt);
-              }
-          /* TODO: encode info for class items! */
-          /* encode ctor, then encode items */
-          ast_map::node_ctor(i, path) {
-            alt i.node {
-               item_class(tps, _, ctor) {
-                   #debug("class, encoding a fn: %d", ctor.node.id);
+                /* TODO: encode info for class items! */
+                /* encode ctor, then encode items */
+                alt i.node {
+                  item_class(tps,_,ctor) {
                    /* this is assuming that ctors aren't inlined...
                       probably shouldn't assume that */
+                   #debug("encoding info for ctor %s %d", i.ident,
+                          ctor.node.id);
+                   *index += [{val: ctor.node.id, pos: ebml_w.writer.tell()}];
                    encode_info_for_fn(ecx, ebml_w, ctor.node.id, i.ident,
-                                      *path, none, tps, ctor.node.dec)
-               }
-               _ { /* TODO: should handle item_res, probably */ }
+                                      *pt, none, tps, ctor.node.dec)
+                  }
+                  _ {}
             }
+           }
           }
-
-            }
         },
         visit_native_item: {|ni, cx, v|
             visit::visit_native_item(ni, cx, v);

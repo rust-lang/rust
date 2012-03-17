@@ -51,6 +51,8 @@ fn lookup_method_purity(cstore: cstore::cstore, did: ast::def_id)
     }
 }
 
+/* Returns a vector of possible def IDs for a given path,
+   in a given crate */
 fn resolve_path(cstore: cstore::cstore, cnum: ast::crate_num,
                 path: [ast::ident]) ->
     [(ast::crate_num, @[u8], ast::def_id)] {

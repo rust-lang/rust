@@ -177,8 +177,8 @@ fn enum_variant_ids(item: ebml::doc, cdata: cmd) -> [ast::def_id] {
     ret ids;
 }
 
-// Given a path and serialized crate metadata, returns the ID of the
-// definition the path refers to.
+// Given a path and serialized crate metadata, returns the IDs of the
+// definitions the path may refer to.
 fn resolve_path(path: [ast::ident], data: @[u8]) -> [ast::def_id] {
     fn eq_item(data: [u8], s: str) -> bool {
         ret str::eq(str::from_bytes(data), s);
