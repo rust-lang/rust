@@ -2437,11 +2437,7 @@ fn lookup_item_type(cx: ctxt, did: ast::def_id) -> ty_param_bounds_and_ty {
 // Look up the list of item types for a given class
 // Fails if the id is not bound to a class.
 fn lookup_class_item_tys(cx: ctxt, did: ast::def_id) -> [@class_item_ty] {
-    /*
-      TODO: Check whether this is a local id or not; use csearch / tcache
-      if it's external
-     */
-    if did.crate == ast::local_crate {
+  if did.crate == ast::local_crate {
     alt cx.items.find(did.node) {
        some(ast_map::node_item(i,_)) {
          alt i.node {
@@ -2454,7 +2450,7 @@ fn lookup_class_item_tys(cx: ctxt, did: ast::def_id) -> [@class_item_ty] {
        _ { cx.sess.bug("class ID not bound to an item"); }
     }
         }
-    else {
+  else {
         ret csearch::get_class_items(cx, did);
     }
 }

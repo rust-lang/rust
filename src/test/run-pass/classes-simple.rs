@@ -1,5 +1,3 @@
-// xfail-test FIXME: Needs metadata encoding
-
 class cat {
   priv {
     let mutable meows : uint;

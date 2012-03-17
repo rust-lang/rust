@@ -4128,7 +4128,7 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
         // Register a type for obj
         smallintmap::insert(*ccx.tcx.node_types,
                             rslt_loc_.id as uint, rslt_ty);
-        // Create the decl statement that initializers obj
+        // Create the decl statement that initializes obj
         let rslt_loc : @ast::local =
             @{node: rslt_loc_, span: ctor.node.body.span};
         let rslt_decl_ : ast::decl_ = ast::decl_local([rslt_loc]);

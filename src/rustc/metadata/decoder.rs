@@ -405,12 +405,8 @@ fn get_iface_methods(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
     @result
 }
 
-/*
-  FIXME
-  This is not working. metadata is broken -- fields get encoded correctly,
-  but not decoded. look at this code, see what it's actually writing out
-  also see what "data" is
- */
+/* Take a node ID for a class, return a vector of the class's
+ member types */
 fn get_class_items(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
     -> [@ty::class_item_ty] {
     let data = cdata.data;

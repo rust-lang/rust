@@ -1,4 +1,3 @@
-// xfail-test
 // xfail-fast
 // aux-build:cci_class.rs
 use cci_class;

@@ -358,9 +358,9 @@ fn encode_info_for_class(ecx: @encode_ctxt, ebml_w: ebml::writer,
     encode_name(ebml_w, name);
 
     for ci in items {
-      alt ci.node.privacy {
-        pub {
-            ebml_w.start_tag(tag_items_class_member); // ???
+            /* We encode both private and public fields -- need to include
+             private fields to get the offsets right */
+            ebml_w.start_tag(tag_items_class_member);
             alt ci.node.decl {
                instance_var(nm, _, _, id) {
                    #debug("encode_info_for_class: doing %s %d", nm, id);
@@ -383,11 +383,6 @@ fn encode_info_for_class(ecx: @encode_ctxt, ebml_w: ebml::writer,
                }
             }
             ebml_w.end_tag();
-        }
-        priv {
-            /* don't export it, then! */
-        }
-      }
     }
 }
 
