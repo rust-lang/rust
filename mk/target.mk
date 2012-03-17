@@ -158,7 +158,9 @@ endif
 # Non-host triples build the stage0 runtime from the working directory
 $(foreach source,$(CFG_TARGET_TRIPLES),				\
  $(foreach target,$(NON_HOST_TRIPLES),				\
-  $(eval $(call TARGET_RT_FROM_WD,0,$(target),$(source)))))
+  $(eval $(call TARGET_RT_FROM_WD,0,$(target),$(source)))       \
+  $(eval $(call TARGET_CORELIB_FROM_WD,0,$(target),$(source)))  \
+))
 
 # After stage0, always build the stage0 runtime from the working directory
 $(foreach source,$(CFG_TARGET_TRIPLES),				\
