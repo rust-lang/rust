@@ -1900,6 +1900,7 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, real_substs: [ty::t],
     let s = mangle_exported_name(ccx, pt, mono_ty);
     let lldecl = decl_cdecl_fn(ccx.llmod, s, llfty);
     ccx.monomorphized.insert(hash_id, lldecl);
+    ccx.item_symbols.insert(fn_id.node, s);
 
     let psubsts = some({tys: substs, vtables: vtables, bounds: tpt.bounds});
     alt check map_node {
