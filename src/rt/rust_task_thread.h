@@ -47,7 +47,6 @@ private:
     stk_seg *cached_c_stack;
     stk_seg *extra_c_stack;
 
-    rust_task_list newborn_tasks;
     rust_task_list running_tasks;
     rust_task_list blocked_tasks;
     rust_task_list dead_tasks;

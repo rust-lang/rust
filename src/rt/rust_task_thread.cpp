@@ -255,7 +255,6 @@ rust_task_thread::start_main_loop() {
         reap_dead_tasks();
     }
 
-    A(this, newborn_tasks.is_empty(), "Should have no newborn tasks");
     A(this, running_tasks.is_empty(), "Should have no running tasks");
     A(this, blocked_tasks.is_empty(), "Should have no blocked tasks");
     A(this, dead_tasks.is_empty(), "Should have no dead tasks");
@@ -280,11 +279,6 @@ rust_task_thread::create_task(rust_task *spawner, const char *name,
     DLOG(this, task, "created task: " PTR ", spawner: %s, name: %s",
                         task, spawner ? spawner->name : "null", name);
 
-    {
-        scoped_lock with(lock);
-        newborn_tasks.append(task);
-    }
-
     task->id = kernel->generate_task_id();
     return task;
 }
@@ -292,14 +286,14 @@ rust_task_thread::create_task(rust_task *spawner, const char *name,
 rust_task_list *
 rust_task_thread::state_list(rust_task_state state) {
     switch (state) {
-    case task_state_newborn:
-        return &newborn_tasks;
     case task_state_running:
         return &running_tasks;
     case task_state_blocked:
         return &blocked_tasks;
     case task_state_dead:
         return &dead_tasks;
+    default:
+        return NULL;
     }
 }
 
@@ -330,8 +324,14 @@ rust_task_thread::transition(rust_task *task,
          name, (uintptr_t)this, state_name(src), state_name(dst),
          state_name(task->get_state()));
     I(this, task->get_state() == src);
-    state_list(src)->remove(task);
-    state_list(dst)->append(task);
+    rust_task_list *src_list = state_list(src);
+    if (src_list) {
+        src_list->remove(task);
+    }
+    rust_task_list *dst_list = state_list(dst);
+    if (dst_list) {
+        dst_list->append(task);
+    }
     task->set_state(dst, cond, cond_name);
 
     lock.signal();
