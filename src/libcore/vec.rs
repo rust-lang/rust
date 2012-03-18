@@ -430,11 +430,11 @@ Apply a function to each element of a vector and return the results
 If function `f` returns `none` then that element is excluded from
 the resulting vector.
 "]
-fn filter_map<T: copy, U: copy>(v: [const T], f: fn(T) -> option<U>)
+fn filter_map<T: copy, U: copy>(v: [T], f: fn(T) -> option<U>)
     -> [U] {
     let mut result = [];
     for elem: T in v {
-        alt f(copy elem) {
+        alt f(elem) {
           none {/* no-op */ }
           some(result_elem) { result += [result_elem]; }
         }
