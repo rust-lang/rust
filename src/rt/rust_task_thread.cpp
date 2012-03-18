@@ -27,10 +27,6 @@ rust_task_thread::rust_task_thread(rust_scheduler *sched,
     id(id),
     should_exit(false),
     cached_c_stack(NULL),
-    newborn_tasks(this),
-    running_tasks(this),
-    blocked_tasks(this),
-    dead_tasks(this),
     kernel(sched->kernel),
     sched(sched),
     srv(srv),
@@ -45,15 +41,6 @@ rust_task_thread::rust_task_thread(rust_scheduler *sched,
 
     if (!tls_initialized)
         init_tls();
-}
-
-rust_task_thread::~rust_task_thread() {
-    DLOG(this, dom, "~rust_task_thread %s @0x%" PRIxPTR, name, (uintptr_t)this);
-
-    newborn_tasks.delete_all();
-    running_tasks.delete_all();
-    blocked_tasks.delete_all();
-    dead_tasks.delete_all();
 }
 
 void

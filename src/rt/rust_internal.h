@@ -145,8 +145,6 @@ template <typename T> struct region_owned {
     }
 };
 
-#include "rust_task_list.h"
-
 // A cond(ition) is something we can block on. This can be a channel
 // (writing), a port (reading) or a task (waiting).
 

@@ -45,7 +45,6 @@ RUNTIME_CS_$(1) := \
               rt/rust_scheduler.cpp \
               rt/rust_task.cpp \
               rt/rust_stack.cpp \
-              rt/rust_task_list.cpp \
               rt/rust_port.cpp \
               rt/rust_upcall.cpp \
               rt/rust_uv.cpp \
@@ -83,7 +82,6 @@ RUNTIME_HDR_$(1) := rt/globals.h \
                rt/rust_shape.h \
                rt/rust_task.h \
                rt/rust_stack.h \
-               rt/rust_task_list.h \
                rt/rust_log.h \
                rt/rust_port_selector.h \
                rt/circular_buffer.h \

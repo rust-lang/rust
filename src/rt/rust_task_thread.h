@@ -19,6 +19,8 @@ enum rust_task_state {
     task_state_dead
 };
 
+typedef indexed_list<rust_task> rust_task_list;
+
 struct rust_task_thread : public kernel_owned<rust_task_thread>,
                         rust_thread
 {
@@ -80,7 +82,6 @@ public:
     // Only a pointer to 'name' is kept, so it must live as long as this
     // domain.
     rust_task_thread(rust_scheduler *sched, rust_srv *srv, int id);
-    ~rust_task_thread();
     void activate(rust_task *task);
     void log(rust_task *task, uint32_t level, char const *fmt, ...);
     rust_log & get_log();
