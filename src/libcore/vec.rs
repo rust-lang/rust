@@ -334,7 +334,7 @@ fn pop<T>(&v: [const T]) -> T unsafe {
 }
 
 #[doc = "Append an element to a vector"]
-fn push<T: copy>(&v: [const T], initval: T) {
+fn push<T>(&v: [const T], +initval: T) {
     v += [initval];
 }
 
