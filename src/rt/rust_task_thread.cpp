@@ -42,11 +42,6 @@ rust_task_thread::rust_task_thread(rust_scheduler *sched,
 {
     LOGPTR(this, "new dom", (uintptr_t)this);
     isaac_init(kernel, &rctx);
-#ifndef __WIN32__
-    pthread_attr_init(&attr);
-    pthread_attr_setstacksize(&attr, 1024 * 1024);
-    pthread_attr_setdetachstate(&attr, true);
-#endif
 
     if (!tls_initialized)
         init_tls();
@@ -59,9 +54,6 @@ rust_task_thread::~rust_task_thread() {
     running_tasks.delete_all();
     blocked_tasks.delete_all();
     dead_tasks.delete_all();
-#ifndef __WIN32__
-    pthread_attr_destroy(&attr);
-#endif
 }
 
 void

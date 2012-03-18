@@ -24,7 +24,6 @@ private:
     const int id;
 
 #ifndef __WIN32__
-    pthread_attr_t attr;
     static pthread_key_t task_key;
 #else
     static DWORD task_key;
