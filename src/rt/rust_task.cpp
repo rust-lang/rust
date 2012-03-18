@@ -242,7 +242,6 @@ rust_task::must_fail_from_being_killed() {
 
 bool
 rust_task::must_fail_from_being_killed_unlocked() {
-    I(thread, kill_lock.lock_held_by_current_thread());
     return killed && !reentered_rust_stack;
 }
 

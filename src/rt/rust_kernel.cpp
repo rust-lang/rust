@@ -62,7 +62,6 @@ void rust_kernel::free(void *mem) {
 
 rust_sched_id
 rust_kernel::create_scheduler(size_t num_threads) {
-    I(this, !sched_lock.lock_held_by_current_thread());
     rust_sched_id id;
     rust_scheduler *sched;
     {
@@ -81,7 +80,6 @@ rust_kernel::create_scheduler(size_t num_threads) {
 
 rust_scheduler *
 rust_kernel::get_scheduler_by_id(rust_sched_id id) {
-    I(this, !sched_lock.lock_held_by_current_thread());
     scoped_lock with(sched_lock);
     sched_map::iterator iter = sched_table.find(id);
     if (iter != sched_table.end()) {
@@ -93,7 +91,6 @@ rust_kernel::get_scheduler_by_id(rust_sched_id id) {
 
 void
 rust_kernel::release_scheduler_id(rust_sched_id id) {
-    I(this, !sched_lock.lock_held_by_current_thread());
     scoped_lock with(sched_lock);
     // This list will most likely only ever have a single element in it, but
     // it's an actual list because we could potentially get here multiple
@@ -111,7 +108,6 @@ them then we can see valgrind errors due to un-freed pthread memory.
 int
 rust_kernel::wait_for_schedulers()
 {
-    I(this, !sched_lock.lock_held_by_current_thread());
     scoped_lock with(sched_lock);
     while (!sched_table.empty()) {
         while (!join_list.empty()) {

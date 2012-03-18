@@ -55,7 +55,6 @@ void rust_port::end_detach() {
 }
 
 void rust_port::send(void *sptr) {
-    I(task->thread, !lock.lock_held_by_current_thread());
     bool did_rendezvous = false;
     {
         scoped_lock with(lock);
@@ -88,8 +87,6 @@ void rust_port::send(void *sptr) {
 }
 
 void rust_port::receive(void *dptr, uintptr_t *yield) {
-    I(task->thread, !lock.lock_held_by_current_thread());
-
     LOG(task, comm, "port: 0x%" PRIxPTR ", dptr: 0x%" PRIxPTR
         ", size: 0x%" PRIxPTR,
         (uintptr_t) this, (uintptr_t) dptr, unit_sz);
@@ -122,7 +119,6 @@ void rust_port::receive(void *dptr, uintptr_t *yield) {
 }
 
 size_t rust_port::size() {
-    I(task->thread, !lock.lock_held_by_current_thread());
     scoped_lock with(lock);
     return buffer.size();
 }

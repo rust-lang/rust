@@ -133,7 +133,6 @@ rust_scheduler::number_of_threads() {
 
 void
 rust_scheduler::release_task_thread() {
-    I(this, !lock.lock_held_by_current_thread());
     uintptr_t new_live_threads;
     {
 	scoped_lock with(lock);

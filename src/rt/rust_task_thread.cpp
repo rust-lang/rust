@@ -121,8 +121,6 @@ rust_task_thread::number_of_live_tasks() {
  */
 void
 rust_task_thread::reap_dead_tasks() {
-    I(this, lock.lock_held_by_current_thread());
-
     if (dead_tasks.length() == 0) {
         return;
     }
@@ -358,7 +356,6 @@ rust_task_thread::place_task_in_tls(rust_task *task) {
 
 void
 rust_task_thread::exit() {
-    A(this, !lock.lock_held_by_current_thread(), "Shouldn't have lock");
     scoped_lock with(lock);
     should_exit = true;
     lock.signal();
