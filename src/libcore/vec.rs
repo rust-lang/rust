@@ -71,9 +71,9 @@ export permute;
 export windowed;
 export as_buf;
 export as_mut_buf;
-export vec_len;
 export unsafe;
 export u8;
+export extensions;
 
 #[abi = "cdecl"]
 native mod rustrt {
@@ -954,12 +954,179 @@ fn as_mut_buf<E,T>(v: [mut E], f: fn(*mut E) -> T) -> T unsafe {
     let buf = unsafe::to_ptr(v) as *mut E; f(buf)
 }
 
-#[doc = "An extension implementation providing a `len` method"]
-impl vec_len<T> for [const T] {
-    #[doc = "Return the length of the vector"]
-    #[inline(always)]
+#[doc = "Extension methods for vectors"]
+impl extensions<T> for [const T] {
+    #[doc = "
+    Return true if a vector contains an element with the given value
+    "]
+    #[inline]
+    fn contains(x: T) -> bool { contains(self, x) }
+    #[doc = "Returns the number of elements that are equal to a given value"]
+    #[inline]
+    fn count(x: T) -> uint { count(self, x) }
+    #[doc = "Reduce a vector from left to right"]
+    #[inline]
+    fn foldl<U: copy>(z: U, p: fn(U, T) -> U) -> U { foldl(z, self, p) }
+    #[doc = "Reduce a vector from right to left"]
+    #[inline]
+    fn foldr<U: copy>(z: U, p: fn(T, U) -> U) -> U { foldr(self, z, p) }
+    #[doc = "Returns true if a vector contains no elements"]
+    #[inline]
+    fn is_empty() -> bool { is_empty(self) }
+    #[doc = "Returns true if a vector contains some elements"]
+    #[inline]
+    fn is_not_empty() -> bool { is_not_empty(self) }
+    #[doc = "
+    Iterates over a vector
+
+    Iterates over vector `v` and, for each element, calls function `f` with
+    the element's value.
+    "]
+    #[inline]
+    fn iter(f: fn(T)) { iter(self, f) }
+    #[doc = "
+    Iterates over a vector's elements and indexes
+
+    Iterates over vector `v` and, for each element, calls function `f` with
+    the element's value and index.
+    "]
+    #[inline]
+    fn iteri(f: fn(uint, T)) { iteri(self, f) }
+    #[doc = "Returns the length of a vector"]
+    #[inline]
     fn len() -> uint { len(self) }
+    #[doc = "
+    Find the first index matching some predicate
+
+    Apply function `f` to each element of `v`.  When function `f` returns true
+    then an option containing the index is returned. If `f` matches no
+    elements then none is returned.
+    "]
+    #[inline]
+    fn position(f: fn(T) -> bool) -> option<uint> { position(self, f) }
+    #[doc = "Find the first index containing a matching value"]
+    #[inline]
+    fn position_elem(x: T) -> option<uint> { position_elem(self, x) }
+    #[doc = "
+    Iterates over a vector in reverse
+
+    Iterates over vector `v` and, for each element, calls function `f` with
+    the element's value.
+    "]
+    #[inline]
+    fn riter(f: fn(T)) { riter(self, f) }
+    #[doc ="
+    Iterates over a vector's elements and indexes in reverse
+
+    Iterates over vector `v` and, for each element, calls function `f` with
+    the element's value and index.
+    "]
+    #[inline]
+    fn riteri(f: fn(uint, T)) { riteri(self, f) }
+    #[doc = "
+    Find the last index matching some predicate
+
+    Apply function `f` to each element of `v` in reverse order.  When function
+    `f` returns true then an option containing the index is returned. If `f`
+    matches no elements then none is returned.
+    "]
+    #[inline]
+    fn rposition(f: fn(T) -> bool) -> option<uint> { rposition(self, f) }
+    #[doc = "Find the last index containing a matching value"]
+    #[inline]
+    fn rposition_elem(x: T) -> option<uint> { rposition_elem(self, x) }
 }
+
+#[doc = "Extension methods for vectors"]
+impl extensions<T: copy> for [const T] {
+    #[doc = "
+    Search for the first element that matches a given predicate
+
+    Apply function `f` to each element of `v`, starting from the first.
+    When function `f` returns true then an option containing the element
+    is returned. If `f` matches no elements then none is returned.
+    "]
+    #[inline]
+    fn find(f: fn(T) -> bool) -> option<T> { find(self, f) }
+    #[doc = "Returns the first element of a vector"]
+    #[inline]
+    fn head() -> T { head(self) }
+    #[doc = "Returns all but the last elemnt of a vector"]
+    #[inline]
+    fn init() -> [T] { init(self) }
+    #[doc = "
+    Returns the last element of a `v`, failing if the vector is empty.
+    "]
+    #[inline]
+    fn last() -> T { last(self) }
+    #[doc = "
+    Search for the last element that matches a given predicate
+
+    Apply function `f` to each element of `v` in reverse order. When function
+    `f` returns true then an option containing the element is returned. If `f`
+    matches no elements then none is returned.
+    "]
+    #[inline]
+    fn rfind(f: fn(T) -> bool) -> option<T> { rfind(self, f) }
+    #[doc = "Returns a copy of the elements from [`start`..`end`) from `v`."]
+    #[inline]
+    fn slice(start: uint, end: uint) -> [T] { slice(self, start, end) }
+    #[doc = "Returns all but the first element of a vector"]
+    #[inline]
+    fn tail() -> [T] { tail(self) }
+}
+
+#[doc = "Extension methods for vectors"]
+impl extensions<T> for [T] {
+    #[doc = "
+    Return true if a predicate matches all elements
+
+    If the vector contains no elements then true is returned.
+    "]
+    #[inline]
+    fn all(f: fn(T) -> bool) -> bool { all(self, f) }
+    #[doc = "
+    Return true if a predicate matches any elements
+
+    If the vector contains no elements then false is returned.
+    "]
+    #[inline]
+    fn any(f: fn(T) -> bool) -> bool { any(self, f) }
+    #[doc = "
+    Apply a function to each element of a vector and return the results
+
+    If function `f` returns `none` then that element is excluded from
+    the resulting vector.
+    "]
+    #[inline]
+    fn filter_map<U: copy>(f: fn(T) -> option<U>) -> [U] {
+        filter_map(self, f)
+    }
+    #[doc = "
+    Apply a function eo each element of a vector and return a concatenation
+    of each result vector
+    "]
+    #[inline]
+    fn flat_map<U>(f: fn(T) -> [U]) -> [U] { flat_map(self, f) }
+    #[doc = "
+    Apply a function to each element of a vector and return the results
+    "]
+    #[inline]
+    fn map<U>(f: fn(T) -> U) -> [U] { map(self, f) }
+}
+
+#[doc = "Extension methods for vectors"]
+impl extensions<T: copy> for [T] {
+    #[doc = "
+    Construct a new vector from the elements of a vector for which some
+    predicate holds.
+
+    Apply function `f` to each element of `v` and return a vector containing
+    only those elements for which `f` returned true.
+    "]
+   #[inline]
+    fn filter(f: fn(T) -> bool) -> [T] { filter(self, f) }
+ }
 
 #[doc = "Unsafe operations"]
 mod unsafe {

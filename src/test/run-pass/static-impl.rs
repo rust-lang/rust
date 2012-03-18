@@ -18,9 +18,9 @@ impl util for uint {
 }
 
 impl util<T> for [T] {
-    fn length() -> uint { vec::len(self) }
-    fn iter(f: fn(T)) { for x in self { f(x); } }
-    fn map<U>(f: fn(T) -> U) -> [U] {
+    fn length_() -> uint { vec::len(self) }
+    fn iter_(f: fn(T)) { for x in self { f(x); } }
+    fn map_<U>(f: fn(T) -> U) -> [U] {
         let mut r = [];
         for elt in self { r += [f(elt)]; }
         r
@@ -33,9 +33,9 @@ fn main() {
     assert 10u.plus() == 30;
     assert "hi".plus() == 200;
 
-    assert [1].length().str() == "1";
-    assert [3, 4].map({|a| a + 4})[0] == 7;
-    assert [3, 4].map::<uint>({|a| a as uint + 4u})[0] == 7u;
+    assert [1].length_().str() == "1";
+    assert [3, 4].map_({|a| a + 4})[0] == 7;
+    assert [3, 4].map_::<uint>({|a| a as uint + 4u})[0] == 7u;
     let mut x = 0u;
     10u.times {|_n| x += 2u;}
     assert x == 20u;
