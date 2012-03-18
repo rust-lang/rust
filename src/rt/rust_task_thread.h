@@ -1,6 +1,7 @@
 #ifndef RUST_TASK_THREAD_H
 #define RUST_TASK_THREAD_H
 
+#include "rust_internal.h"
 #include "sync/rust_thread.h"
 #include "rust_stack.h"
 #include "context.h"
@@ -10,6 +11,13 @@
 #else
 #include <windows.h>
 #endif
+
+enum rust_task_state {
+    task_state_newborn,
+    task_state_running,
+    task_state_blocked,
+    task_state_dead
+};
 
 struct rust_task_thread : public kernel_owned<rust_task_thread>,
                         rust_thread
@@ -37,18 +45,20 @@ private:
     stk_seg *cached_c_stack;
     stk_seg *extra_c_stack;
 
+    rust_task_list newborn_tasks;
+    rust_task_list running_tasks;
+    rust_task_list blocked_tasks;
+    rust_task_list dead_tasks;
+
     void prepare_c_stack(rust_task *task);
     void unprepare_c_stack();
+
+    rust_task_list *state_list(rust_task_state state);
 
 public:
     rust_kernel *kernel;
     rust_scheduler *sched;
     rust_srv *srv;
-
-    rust_task_list newborn_tasks;
-    rust_task_list running_tasks;
-    rust_task_list blocked_tasks;
-    rust_task_list dead_tasks;
 
     // NB: this is used to filter *runtime-originating* debug
     // logging, on a per-scheduler basis. It's not likely what
@@ -90,7 +100,7 @@ public:
                            size_t init_stack_sz);
 
     void transition(rust_task *task,
-                    rust_task_list *src, rust_task_list *dst,
+                    rust_task_state src, rust_task_state dst,
                     rust_cond *cond, const char* cond_name);
 
     virtual void run();

@@ -90,7 +90,7 @@ private:
 
     // Protects state, cond, cond_name
     lock_and_signal state_lock;
-    rust_task_list *state;
+    rust_task_state state;
     rust_cond *cond;
     const char *cond_name;
 
@@ -121,7 +121,7 @@ private:
 
     void return_c_stack();
 
-    void transition(rust_task_list *src, rust_task_list *dst,
+    void transition(rust_task_state src, rust_task_state dst,
                     rust_cond *cond, const char* cond_name);
 
     bool must_fail_from_being_killed_unlocked();
@@ -134,7 +134,7 @@ public:
 
     // Only a pointer to 'name' is kept, so it must live as long as this task.
     rust_task(rust_task_thread *thread,
-              rust_task_list *state,
+              rust_task_state state,
               rust_task *spawner,
               const char *name,
               size_t init_stack_sz);
@@ -152,7 +152,7 @@ public:
     void *realloc(void *data, size_t sz);
     void free(void *p);
 
-    void set_state(rust_task_list *state,
+    void set_state(rust_task_state state,
                    rust_cond *cond, const char* cond_name);
 
     bool block(rust_cond *on, const char* name);
@@ -206,7 +206,7 @@ public:
 
     rust_port_selector *get_port_selector() { return &port_selector; }
 
-    rust_task_list *get_state() { return state; }
+    rust_task_state get_state() { return state; }
     rust_cond *get_cond() { return cond; }
     const char *get_cond_name() { return cond_name; }
 };

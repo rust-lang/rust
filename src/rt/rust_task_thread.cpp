@@ -27,13 +27,13 @@ rust_task_thread::rust_task_thread(rust_scheduler *sched,
     id(id),
     should_exit(false),
     cached_c_stack(NULL),
-    kernel(sched->kernel),
-    sched(sched),
-    srv(srv),
     newborn_tasks(this, "newborn"),
     running_tasks(this, "running"),
     blocked_tasks(this, "blocked"),
     dead_tasks(this, "dead"),
+    kernel(sched->kernel),
+    sched(sched),
+    srv(srv),
     log_lvl(log_debug),
     min_stack_size(kernel->env->min_stack_size),
     env(kernel->env),
@@ -248,7 +248,7 @@ rust_task_thread::start_main_loop() {
              ", state: %s",
              scheduled_task->name,
              (uintptr_t)scheduled_task,
-             scheduled_task->get_state()->name);
+             state_list(scheduled_task->get_state())->name);
 
         place_task_in_tls(scheduled_task);
 
@@ -262,7 +262,7 @@ rust_task_thread::start_main_loop() {
              " in state '%s', worker id=%d" PRIxPTR,
              scheduled_task->name,
              (uintptr_t)scheduled_task,
-             scheduled_task->get_state()->name,
+             state_list(scheduled_task->get_state())->name,
              id);
 
         reap_dead_tasks();
@@ -289,7 +289,7 @@ rust_task_thread::create_task(rust_task *spawner, const char *name,
                             size_t init_stack_sz) {
     rust_task *task =
         new (this->kernel, "rust_task")
-        rust_task (this, &newborn_tasks, spawner, name, init_stack_sz);
+        rust_task (this, task_state_newborn, spawner, name, init_stack_sz);
     DLOG(this, task, "created task: " PTR ", spawner: %s, name: %s",
                         task, spawner ? spawner->name : "null", name);
 
@@ -302,18 +302,34 @@ rust_task_thread::create_task(rust_task *spawner, const char *name,
     return task;
 }
 
+rust_task_list *
+rust_task_thread::state_list(rust_task_state state) {
+    switch (state) {
+    case task_state_newborn:
+        return &newborn_tasks;
+    case task_state_running:
+        return &running_tasks;
+    case task_state_blocked:
+        return &blocked_tasks;
+    case task_state_dead:
+        return &dead_tasks;
+    }
+}
+
 void 
 rust_task_thread::transition(rust_task *task,
-                             rust_task_list *src, rust_task_list *dst,
+                             rust_task_state src, rust_task_state dst,
                              rust_cond *cond, const char* cond_name) {
     scoped_lock with(lock);
+    rust_task_list *src_list = state_list(src);
+    rust_task_list *dst_list = state_list(dst);
     DLOG(this, task,
          "task %s " PTR " state change '%s' -> '%s' while in '%s'",
-         name, (uintptr_t)this, src->name, dst->name,
-         task->get_state()->name);
+         name, (uintptr_t)this, src_list->name, dst_list->name,
+         state_list(task->get_state())->name);
     I(this, task->get_state() == src);
-    src->remove(task);
-    dst->append(task);
+    src_list->remove(task);
+    dst_list->append(task);
     task->set_state(dst, cond, cond_name);
 
     lock.signal();

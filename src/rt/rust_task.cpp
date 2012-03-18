@@ -61,7 +61,7 @@ extern "C" CDECL void
 record_sp(void *limit);
 
 // Tasks
-rust_task::rust_task(rust_task_thread *thread, rust_task_list *state,
+rust_task::rust_task(rust_task_thread *thread, rust_task_state state,
                      rust_task *spawner, const char *name,
                      size_t init_stack_sz) :
     ref_count(1),
@@ -231,7 +231,7 @@ rust_task::start(spawn_fn spawnee_fn,
 
 void rust_task::start()
 {
-    transition(&thread->newborn_tasks, &thread->running_tasks, NULL, "none");
+    transition(task_state_newborn, task_state_running, NULL, "none");
 }
 
 bool
@@ -350,14 +350,14 @@ bool
 rust_task::running()
 {
     scoped_lock with(state_lock);
-    return state == &thread->running_tasks;
+    return state == task_state_running;
 }
 
 bool
 rust_task::blocked()
 {
     scoped_lock with(state_lock);
-    return state == &thread->blocked_tasks;
+    return state == task_state_blocked;
 }
 
 bool
@@ -371,7 +371,7 @@ bool
 rust_task::dead()
 {
     scoped_lock with(state_lock);
-    return state == &thread->dead_tasks;
+    return state == task_state_dead;
 }
 
 void *
@@ -393,13 +393,13 @@ rust_task::free(void *p)
 }
 
 void
-rust_task::transition(rust_task_list *src, rust_task_list *dst,
+rust_task::transition(rust_task_state src, rust_task_state dst,
                       rust_cond *cond, const char* cond_name) {
     thread->transition(this, src, dst, cond, cond_name);
 }
 
 void
-rust_task::set_state(rust_task_list *state,
+rust_task::set_state(rust_task_state state,
                      rust_cond *cond, const char* cond_name) {
     scoped_lock with(state_lock);
     this->state = state;
@@ -421,7 +421,7 @@ rust_task::block(rust_cond *on, const char* name) {
     A(thread, cond == NULL, "Cannot block an already blocked task.");
     A(thread, on != NULL, "Cannot block on a NULL object.");
 
-    transition(&thread->running_tasks, &thread->blocked_tasks, on, name);
+    transition(task_state_running, task_state_blocked, on, name);
 
     return true;
 }
@@ -433,12 +433,12 @@ rust_task::wakeup(rust_cond *from) {
                         (uintptr_t) cond, (uintptr_t) from);
     A(thread, cond == from, "Cannot wake up blocked task on wrong condition.");
 
-    transition(&thread->blocked_tasks, &thread->running_tasks, NULL, "none");
+    transition(task_state_blocked, task_state_running, NULL, "none");
 }
 
 void
 rust_task::die() {
-    transition(&thread->running_tasks, &thread->dead_tasks, NULL, "none");
+    transition(task_state_running, task_state_dead, NULL, "none");
 }
 
 void
