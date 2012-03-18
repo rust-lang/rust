@@ -49,7 +49,7 @@ private:
 
     rust_task_list running_tasks;
     rust_task_list blocked_tasks;
-    rust_task_list dead_tasks;
+    rust_task *dead_task;
 
     void prepare_c_stack(rust_task *task);
     void unprepare_c_stack();

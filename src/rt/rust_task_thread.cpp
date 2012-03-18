@@ -27,6 +27,7 @@ rust_task_thread::rust_task_thread(rust_scheduler *sched,
     id(id),
     should_exit(false),
     cached_c_stack(NULL),
+    dead_task(NULL),
     kernel(sched->kernel),
     sched(sched),
     srv(srv),
@@ -108,15 +109,9 @@ rust_task_thread::number_of_live_tasks() {
  */
 void
 rust_task_thread::reap_dead_tasks() {
-    if (dead_tasks.length() == 0) {
+    if (dead_task == NULL) {
         return;
     }
-
-    A(this, dead_tasks.length() == 1,
-      "Only one task should die during a single turn of the event loop");
-
-    // First make a copy of the dead_task list with the lock held
-    rust_task *dead_task = dead_tasks.pop_value();
 
     // Dereferencing the task will probably cause it to be released
     // from the scheduler, which may end up trying to take this lock
@@ -125,6 +120,7 @@ rust_task_thread::reap_dead_tasks() {
     dead_task->delete_all_stacks();
     // Deref the task, which may cause it to request us to release it
     dead_task->deref();
+    dead_task = NULL;
 
     lock.lock();
 }
@@ -187,14 +183,6 @@ rust_task_thread::log_state() {
                 blocked_tasks[i]->get_cond_name());
         }
     }
-
-    if (!dead_tasks.is_empty()) {
-        log(NULL, log_debug, "dead tasks:");
-        for (size_t i = 0; i < dead_tasks.length(); i++) {
-            log(NULL, log_debug, "\t task: %s 0x%" PRIxPTR,
-                dead_tasks[i]->name, dead_tasks[i]);
-        }
-    }
 }
 /**
  * Starts the main scheduler loop which performs task scheduling for this
@@ -221,7 +209,7 @@ rust_task_thread::start_main_loop() {
                  "all tasks are blocked, scheduler id %d yielding ...",
                  id);
             lock.wait();
-            A(this, dead_tasks.length() == 0,
+            A(this, dead_task == NULL,
               "Tasks should only die after running");
             DLOG(this, task,
                  "scheduler %d resuming ...", id);
@@ -257,7 +245,7 @@ rust_task_thread::start_main_loop() {
 
     A(this, running_tasks.is_empty(), "Should have no running tasks");
     A(this, blocked_tasks.is_empty(), "Should have no blocked tasks");
-    A(this, dead_tasks.is_empty(), "Should have no dead tasks");
+    A(this, dead_task == NULL, "Should have no dead tasks");
 
     DLOG(this, dom, "finished main-loop %d", id);
 
@@ -290,8 +278,6 @@ rust_task_thread::state_list(rust_task_state state) {
         return &running_tasks;
     case task_state_blocked:
         return &blocked_tasks;
-    case task_state_dead:
-        return &dead_tasks;
     default:
         return NULL;
     }
@@ -331,6 +317,10 @@ rust_task_thread::transition(rust_task *task,
     rust_task_list *dst_list = state_list(dst);
     if (dst_list) {
         dst_list->append(task);
+    }
+    if (dst == task_state_dead) {
+        I(this, dead_task == NULL);
+        dead_task = task;
     }
     task->set_state(dst, cond, cond_name);
 
