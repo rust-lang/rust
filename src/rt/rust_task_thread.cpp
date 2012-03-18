@@ -27,10 +27,10 @@ rust_task_thread::rust_task_thread(rust_scheduler *sched,
     id(id),
     should_exit(false),
     cached_c_stack(NULL),
-    newborn_tasks(this, "newborn"),
-    running_tasks(this, "running"),
-    blocked_tasks(this, "blocked"),
-    dead_tasks(this, "dead"),
+    newborn_tasks(this),
+    running_tasks(this),
+    blocked_tasks(this),
+    dead_tasks(this),
     kernel(sched->kernel),
     sched(sched),
     srv(srv),
@@ -248,7 +248,7 @@ rust_task_thread::start_main_loop() {
              ", state: %s",
              scheduled_task->name,
              (uintptr_t)scheduled_task,
-             state_list(scheduled_task->get_state())->name);
+             state_name(scheduled_task->get_state()));
 
         place_task_in_tls(scheduled_task);
 
@@ -262,7 +262,7 @@ rust_task_thread::start_main_loop() {
              " in state '%s', worker id=%d" PRIxPTR,
              scheduled_task->name,
              (uintptr_t)scheduled_task,
-             state_list(scheduled_task->get_state())->name,
+             state_name(scheduled_task->get_state()),
              id);
 
         reap_dead_tasks();
@@ -316,20 +316,35 @@ rust_task_thread::state_list(rust_task_state state) {
     }
 }
 
+const char *
+rust_task_thread::state_name(rust_task_state state) {
+    switch (state) {
+    case task_state_newborn:
+        return "newborn";
+    case task_state_running:
+        return "running";
+    case task_state_blocked:
+        return "blocked";
+    case task_state_dead:
+        return "dead";
+    default:
+        assert(false);
+        return "";
+    }
+}
+
 void 
 rust_task_thread::transition(rust_task *task,
                              rust_task_state src, rust_task_state dst,
                              rust_cond *cond, const char* cond_name) {
     scoped_lock with(lock);
-    rust_task_list *src_list = state_list(src);
-    rust_task_list *dst_list = state_list(dst);
     DLOG(this, task,
          "task %s " PTR " state change '%s' -> '%s' while in '%s'",
-         name, (uintptr_t)this, src_list->name, dst_list->name,
-         state_list(task->get_state())->name);
+         name, (uintptr_t)this, state_name(src), state_name(dst),
+         state_name(task->get_state()));
     I(this, task->get_state() == src);
-    src_list->remove(task);
-    dst_list->append(task);
+    state_list(src)->remove(task);
+    state_list(dst)->append(task);
     task->set_state(dst, cond, cond_name);
 
     lock.signal();

@@ -54,6 +54,7 @@ private:
     void unprepare_c_stack();
 
     rust_task_list *state_list(rust_task_state state);
+    const char *state_name(rust_task_state state);
 
 public:
     rust_kernel *kernel;
