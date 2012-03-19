@@ -186,7 +186,7 @@ fn from_chars(chs: [char]) -> str {
 }
 
 #[doc = "Create a Rust string from a null-terminated *u8 buffer"]
-fn from_buf(buf: *u8) -> str unsafe {
+unsafe fn from_buf(buf: *u8) -> str {
     let mut curr = buf, i = 0u;
     while *curr != 0u8 {
         i += 1u;
@@ -196,12 +196,12 @@ fn from_buf(buf: *u8) -> str unsafe {
 }
 
 #[doc = "Create a Rust string from a null-terminated C string"]
-fn from_c_str(c_str: *libc::c_char) -> str unsafe {
+unsafe fn from_c_str(c_str: *libc::c_char) -> str {
     from_buf(::unsafe::reinterpret_cast(c_str))
 }
 
 #[doc = "Create a Rust string from a *u8 buffer of the given length"]
-fn from_buf_len(buf: *u8, len: uint) -> str unsafe {
+unsafe fn from_buf_len(buf: *u8, len: uint) -> str {
     let mut v: [u8] = [];
     vec::reserve(v, len + 1u);
     vec::as_buf(v) {|b| ptr::memcpy(b, buf, len); }
@@ -215,7 +215,7 @@ fn from_buf_len(buf: *u8, len: uint) -> str unsafe {
 }
 
 #[doc = "Create a Rust string from a `*c_char` buffer of the given length"]
-fn from_c_str_len(c_str: *libc::c_char, len: uint) -> str unsafe {
+unsafe fn from_c_str_len(c_str: *libc::c_char, len: uint) -> str {
     from_buf_len(::unsafe::reinterpret_cast(c_str), len)
 }
 
