@@ -47,15 +47,15 @@ export all2;
 export contains;
 export count;
 export find;
-export find_from;
+export find_between;
 export rfind;
-export rfind_from;
+export rfind_between;
 export position_elem;
 export position;
-export position_from;
+export position_between;
 export position_elem;
 export rposition;
-export rposition_from;
+export rposition_between;
 export unzip;
 export zip;
 export swap;
@@ -225,7 +225,7 @@ fn split<T: copy>(v: [const T], f: fn(T) -> bool) -> [[T]] {
     let mut start = 0u;
     let mut result = [];
     while start < ln {
-        alt position_from(v, start, ln, f) {
+        alt position_between(v, start, ln, f) {
           none { break }
           some(i) {
             push(result, slice(v, start, i));
@@ -249,7 +249,7 @@ fn splitn<T: copy>(v: [const T], n: uint, f: fn(T) -> bool) -> [[T]] {
     let mut count = n;
     let mut result = [];
     while start < ln && count > 0u {
-        alt position_from(v, start, ln, f) {
+        alt position_between(v, start, ln, f) {
           none { break }
           some(i) {
             push(result, slice(v, start, i));
@@ -274,7 +274,7 @@ fn rsplit<T: copy>(v: [const T], f: fn(T) -> bool) -> [[T]] {
     let mut end = ln;
     let mut result = [];
     while end > 0u {
-        alt rposition_from(v, 0u, end, f) {
+        alt rposition_between(v, 0u, end, f) {
           none { break }
           some(i) {
             push(result, slice(v, i + 1u, end));
@@ -298,7 +298,7 @@ fn rsplitn<T: copy>(v: [const T], n: uint, f: fn(T) -> bool) -> [[T]] {
     let mut count = n;
     let mut result = [];
     while end > 0u && count > 0u {
-        alt rposition_from(v, 0u, end, f) {
+        alt rposition_between(v, 0u, end, f) {
           none { break }
           some(i) {
             push(result, slice(v, i + 1u, end));
@@ -574,7 +574,7 @@ When function `f` returns true then an option containing the element
 is returned. If `f` matches no elements then none is returned.
 "]
 fn find<T: copy>(v: [const T], f: fn(T) -> bool) -> option<T> {
-    find_from(v, 0u, len(v), f)
+    find_between(v, 0u, len(v), f)
 }
 
 #[doc = "
@@ -584,9 +584,9 @@ Apply function `f` to each element of `v` within the range [`start`, `end`).
 When function `f` returns true then an option containing the element
 is returned. If `f` matches no elements then none is returned.
 "]
-fn find_from<T: copy>(v: [const T], start: uint, end: uint,
+fn find_between<T: copy>(v: [const T], start: uint, end: uint,
                       f: fn(T) -> bool) -> option<T> {
-    option::map(position_from(v, start, end, f)) { |i| v[i] }
+    option::map(position_between(v, start, end, f)) { |i| v[i] }
 }
 
 #[doc = "
@@ -597,7 +597,7 @@ returns true then an option containing the element is returned. If `f`
 matches no elements then none is returned.
 "]
 fn rfind<T: copy>(v: [const T], f: fn(T) -> bool) -> option<T> {
-    rfind_from(v, 0u, len(v), f)
+    rfind_between(v, 0u, len(v), f)
 }
 
 #[doc = "
@@ -607,9 +607,9 @@ Apply function `f` to each element of `v` in reverse order within the range
 [`start`, `end`). When function `f` returns true then an option containing
 the element is returned. If `f` matches no elements then none is returned.
 "]
-fn rfind_from<T: copy>(v: [const T], start: uint, end: uint,
+fn rfind_between<T: copy>(v: [const T], start: uint, end: uint,
                        f: fn(T) -> bool) -> option<T> {
-    option::map(rposition_from(v, start, end, f)) { |i| v[i] }
+    option::map(rposition_between(v, start, end, f)) { |i| v[i] }
 }
 
 #[doc = "Find the first index containing a matching value"]
@@ -625,7 +625,7 @@ then an option containing the index is returned. If `f` matches no elements
 then none is returned.
 "]
 fn position<T>(v: [const T], f: fn(T) -> bool) -> option<uint> {
-    position_from(v, 0u, len(v), f)
+    position_between(v, 0u, len(v), f)
 }
 
 #[doc = "
@@ -635,7 +635,7 @@ Apply function `f` to each element of `v` between the range [`start`, `end`).
 When function `f` returns true then an option containing the index is
 returned. If `f` matches no elements then none is returned.
 "]
-fn position_from<T>(v: [const T], start: uint, end: uint,
+fn position_between<T>(v: [const T], start: uint, end: uint,
                     f: fn(T) -> bool) -> option<uint> {
     assert start <= end;
     assert end <= len(v);
@@ -657,7 +657,7 @@ Apply function `f` to each element of `v` in reverse order.  When function
 matches no elements then none is returned.
 "]
 fn rposition<T>(v: [const T], f: fn(T) -> bool) -> option<uint> {
-    rposition_from(v, 0u, len(v), f)
+    rposition_between(v, 0u, len(v), f)
 }
 
 #[doc = "
@@ -667,7 +667,7 @@ Apply function `f` to each element of `v` in reverse order between the range
 [`start`, `end`). When function `f` returns true then an option containing
 the index is returned. If `f` matches no elements then none is returned.
 "]
-fn rposition_from<T>(v: [const T], start: uint, end: uint,
+fn rposition_between<T>(v: [const T], start: uint, end: uint,
                      f: fn(T) -> bool) -> option<uint> {
     assert start <= end;
     assert end <= len(v);
@@ -1462,31 +1462,31 @@ mod tests {
     }
 
     #[test]
-    fn test_position_from() {
-        assert position_from([], 0u, 0u, f) == none;
+    fn test_position_between() {
+        assert position_between([], 0u, 0u, f) == none;
 
         fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
         let v = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
-        assert position_from(v, 0u, 0u, f) == none;
-        assert position_from(v, 0u, 1u, f) == none;
-        assert position_from(v, 0u, 2u, f) == some(1u);
-        assert position_from(v, 0u, 3u, f) == some(1u);
-        assert position_from(v, 0u, 4u, f) == some(1u);
+        assert position_between(v, 0u, 0u, f) == none;
+        assert position_between(v, 0u, 1u, f) == none;
+        assert position_between(v, 0u, 2u, f) == some(1u);
+        assert position_between(v, 0u, 3u, f) == some(1u);
+        assert position_between(v, 0u, 4u, f) == some(1u);
 
-        assert position_from(v, 1u, 1u, f) == none;
-        assert position_from(v, 1u, 2u, f) == some(1u);
-        assert position_from(v, 1u, 3u, f) == some(1u);
-        assert position_from(v, 1u, 4u, f) == some(1u);
+        assert position_between(v, 1u, 1u, f) == none;
+        assert position_between(v, 1u, 2u, f) == some(1u);
+        assert position_between(v, 1u, 3u, f) == some(1u);
+        assert position_between(v, 1u, 4u, f) == some(1u);
 
-        assert position_from(v, 2u, 2u, f) == none;
-        assert position_from(v, 2u, 3u, f) == none;
-        assert position_from(v, 2u, 4u, f) == some(3u);
+        assert position_between(v, 2u, 2u, f) == none;
+        assert position_between(v, 2u, 3u, f) == none;
+        assert position_between(v, 2u, 4u, f) == some(3u);
 
-        assert position_from(v, 3u, 3u, f) == none;
-        assert position_from(v, 3u, 4u, f) == some(3u);
+        assert position_between(v, 3u, 3u, f) == none;
+        assert position_between(v, 3u, 4u, f) == some(3u);
 
-        assert position_from(v, 4u, 4u, f) == none;
+        assert position_between(v, 4u, 4u, f) == none;
     }
 
     #[test]
@@ -1502,31 +1502,31 @@ mod tests {
     }
 
     #[test]
-    fn test_find_from() {
-        assert find_from([], 0u, 0u, f) == none;
+    fn test_find_between() {
+        assert find_between([], 0u, 0u, f) == none;
 
         fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
         let v = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
-        assert find_from(v, 0u, 0u, f) == none;
-        assert find_from(v, 0u, 1u, f) == none;
-        assert find_from(v, 0u, 2u, f) == some((1, 'b'));
-        assert find_from(v, 0u, 3u, f) == some((1, 'b'));
-        assert find_from(v, 0u, 4u, f) == some((1, 'b'));
+        assert find_between(v, 0u, 0u, f) == none;
+        assert find_between(v, 0u, 1u, f) == none;
+        assert find_between(v, 0u, 2u, f) == some((1, 'b'));
+        assert find_between(v, 0u, 3u, f) == some((1, 'b'));
+        assert find_between(v, 0u, 4u, f) == some((1, 'b'));
 
-        assert find_from(v, 1u, 1u, f) == none;
-        assert find_from(v, 1u, 2u, f) == some((1, 'b'));
-        assert find_from(v, 1u, 3u, f) == some((1, 'b'));
-        assert find_from(v, 1u, 4u, f) == some((1, 'b'));
+        assert find_between(v, 1u, 1u, f) == none;
+        assert find_between(v, 1u, 2u, f) == some((1, 'b'));
+        assert find_between(v, 1u, 3u, f) == some((1, 'b'));
+        assert find_between(v, 1u, 4u, f) == some((1, 'b'));
 
-        assert find_from(v, 2u, 2u, f) == none;
-        assert find_from(v, 2u, 3u, f) == none;
-        assert find_from(v, 2u, 4u, f) == some((3, 'b'));
+        assert find_between(v, 2u, 2u, f) == none;
+        assert find_between(v, 2u, 3u, f) == none;
+        assert find_between(v, 2u, 4u, f) == some((3, 'b'));
 
-        assert find_from(v, 3u, 3u, f) == none;
-        assert find_from(v, 3u, 4u, f) == some((3, 'b'));
+        assert find_between(v, 3u, 3u, f) == none;
+        assert find_between(v, 3u, 4u, f) == some((3, 'b'));
 
-        assert find_from(v, 4u, 4u, f) == none;
+        assert find_between(v, 4u, 4u, f) == none;
     }
 
     #[test]
@@ -1542,31 +1542,31 @@ mod tests {
     }
 
     #[test]
-    fn test_rposition_from() {
-        assert rposition_from([], 0u, 0u, f) == none;
+    fn test_rposition_between() {
+        assert rposition_between([], 0u, 0u, f) == none;
 
         fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
         let v = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
-        assert rposition_from(v, 0u, 0u, f) == none;
-        assert rposition_from(v, 0u, 1u, f) == none;
-        assert rposition_from(v, 0u, 2u, f) == some(1u);
-        assert rposition_from(v, 0u, 3u, f) == some(1u);
-        assert rposition_from(v, 0u, 4u, f) == some(3u);
+        assert rposition_between(v, 0u, 0u, f) == none;
+        assert rposition_between(v, 0u, 1u, f) == none;
+        assert rposition_between(v, 0u, 2u, f) == some(1u);
+        assert rposition_between(v, 0u, 3u, f) == some(1u);
+        assert rposition_between(v, 0u, 4u, f) == some(3u);
 
-        assert rposition_from(v, 1u, 1u, f) == none;
-        assert rposition_from(v, 1u, 2u, f) == some(1u);
-        assert rposition_from(v, 1u, 3u, f) == some(1u);
-        assert rposition_from(v, 1u, 4u, f) == some(3u);
+        assert rposition_between(v, 1u, 1u, f) == none;
+        assert rposition_between(v, 1u, 2u, f) == some(1u);
+        assert rposition_between(v, 1u, 3u, f) == some(1u);
+        assert rposition_between(v, 1u, 4u, f) == some(3u);
 
-        assert rposition_from(v, 2u, 2u, f) == none;
-        assert rposition_from(v, 2u, 3u, f) == none;
-        assert rposition_from(v, 2u, 4u, f) == some(3u);
+        assert rposition_between(v, 2u, 2u, f) == none;
+        assert rposition_between(v, 2u, 3u, f) == none;
+        assert rposition_between(v, 2u, 4u, f) == some(3u);
 
-        assert rposition_from(v, 3u, 3u, f) == none;
-        assert rposition_from(v, 3u, 4u, f) == some(3u);
+        assert rposition_between(v, 3u, 3u, f) == none;
+        assert rposition_between(v, 3u, 4u, f) == some(3u);
 
-        assert rposition_from(v, 4u, 4u, f) == none;
+        assert rposition_between(v, 4u, 4u, f) == none;
     }
 
     #[test]
@@ -1582,31 +1582,31 @@ mod tests {
     }
 
     #[test]
-    fn test_rfind_from() {
-        assert rfind_from([], 0u, 0u, f) == none;
+    fn test_rfind_between() {
+        assert rfind_between([], 0u, 0u, f) == none;
 
         fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
         let v = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
-        assert rfind_from(v, 0u, 0u, f) == none;
-        assert rfind_from(v, 0u, 1u, f) == none;
-        assert rfind_from(v, 0u, 2u, f) == some((1, 'b'));
-        assert rfind_from(v, 0u, 3u, f) == some((1, 'b'));
-        assert rfind_from(v, 0u, 4u, f) == some((3, 'b'));
+        assert rfind_between(v, 0u, 0u, f) == none;
+        assert rfind_between(v, 0u, 1u, f) == none;
+        assert rfind_between(v, 0u, 2u, f) == some((1, 'b'));
+        assert rfind_between(v, 0u, 3u, f) == some((1, 'b'));
+        assert rfind_between(v, 0u, 4u, f) == some((3, 'b'));
 
-        assert rfind_from(v, 1u, 1u, f) == none;
-        assert rfind_from(v, 1u, 2u, f) == some((1, 'b'));
-        assert rfind_from(v, 1u, 3u, f) == some((1, 'b'));
-        assert rfind_from(v, 1u, 4u, f) == some((3, 'b'));
+        assert rfind_between(v, 1u, 1u, f) == none;
+        assert rfind_between(v, 1u, 2u, f) == some((1, 'b'));
+        assert rfind_between(v, 1u, 3u, f) == some((1, 'b'));
+        assert rfind_between(v, 1u, 4u, f) == some((3, 'b'));
 
-        assert rfind_from(v, 2u, 2u, f) == none;
-        assert rfind_from(v, 2u, 3u, f) == none;
-        assert rfind_from(v, 2u, 4u, f) == some((3, 'b'));
+        assert rfind_between(v, 2u, 2u, f) == none;
+        assert rfind_between(v, 2u, 3u, f) == none;
+        assert rfind_between(v, 2u, 4u, f) == some((3, 'b'));
 
-        assert rfind_from(v, 3u, 3u, f) == none;
-        assert rfind_from(v, 3u, 4u, f) == some((3, 'b'));
+        assert rfind_between(v, 3u, 3u, f) == none;
+        assert rfind_between(v, 3u, 4u, f) == some((3, 'b'));
 
-        assert rfind_from(v, 4u, 4u, f) == none;
+        assert rfind_between(v, 4u, 4u, f) == none;
     }
 
     #[test]
