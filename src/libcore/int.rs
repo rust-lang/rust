@@ -35,9 +35,6 @@ pure fn negative(x: int) -> bool { ret x < 0; }
 pure fn nonpositive(x: int) -> bool { ret x <= 0; }
 pure fn nonnegative(x: int) -> bool { ret x >= 0; }
 
-
-// FIXME: Make sure this works with negative integers.
-// See Issue #2002
 #[doc = "Produce a uint suitable for use in a hash table"]
 pure fn hash(x: int) -> uint { ret x as uint; }
 
