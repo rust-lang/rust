@@ -1648,10 +1648,10 @@ fn parse_let(p: parser) -> @ast::decl {
     ret @spanned(lo, p.last_span.hi, ast::decl_local(locals));
 }
 
+/* assumes "let" token has already been consumed */
 fn parse_instance_var(p:parser) -> (ast::class_member, codemap::span) {
     let is_mutbl = ast::class_immutable;
     let lo = p.span.lo;
-    expect_word(p, "let");
     if eat_word(p, "mut") || eat_word(p, "mutable") {
             is_mutbl = ast::class_mutable;
     }
@@ -2104,15 +2104,14 @@ enum class_contents { ctor_decl(ast::fn_decl, ast::blk, codemap::span),
             expect(p, token::LBRACE);
             let results = [];
             while p.token != token::RBRACE {
-               alt parse_item(p, []) {
-                 some(i) {
-                     results += [(ast::class_method(i), i.span)];
-                 }
-                 _ {
-                     let a_var = parse_instance_var(p);
-                     expect(p, token::SEMI);
-                     results += [a_var];
-                 }
+               if eat_word(p, "let") {
+                  let a_var = parse_instance_var(p);
+                  expect(p, token::SEMI);
+                  results += [a_var];
+               }
+               else {
+                   let m = parse_method(p);
+                   results += [(ast::class_method(m), m.span)];
                }
             }
             p.bump();
@@ -2120,15 +2119,14 @@ enum class_contents { ctor_decl(ast::fn_decl, ast::blk, codemap::span),
     }
     else {
         // Probably need to parse attrs
-        alt parse_item(p, []) {
-         some(i) {
-             ret plain_decl(ast::class_method(i), i.span);
-         }
-         _ {
+        ret if eat_word(p, "let") {
              let (a_var, a_span) = parse_instance_var(p);
              expect(p, token::SEMI);
-             ret plain_decl(a_var, a_span);
-         }
+             plain_decl(a_var, a_span)
+        }
+        else {
+            let m = parse_method(p);
+            plain_decl(ast::class_method(m), m.span)
         }
     }
 }

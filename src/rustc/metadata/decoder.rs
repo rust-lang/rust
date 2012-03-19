@@ -14,8 +14,9 @@ import tydecode::{parse_ty_data, parse_def_id, parse_bounds_data,
 import syntax::print::pprust;
 import cmd=cstore::crate_metadata;
 import middle::trans::common::maps;
+import util::ppaux::ty_to_str;
 
-export get_class_items;
+export get_class_fields;
 export get_symbol;
 export get_enum_variants;
 export get_type;
@@ -35,6 +36,8 @@ export get_impls_for_mod;
 export get_iface_methods;
 export get_crate_module_paths;
 export get_item_path;
+export maybe_find_item; // sketchy
+export item_type; // sketchy
 export maybe_get_item_ast;
 export item_is_intrinsic;
 
@@ -110,9 +113,9 @@ fn item_parent_item(d: ebml::doc) -> option<ast::def_id> {
     found
 }
 
-fn class_field_id(d: ebml::doc) -> ast::def_id {
+fn class_field_id(d: ebml::doc, cdata: cmd) -> ast::def_id {
     let tagdoc = ebml::get_doc(d, tag_def_id);
-    ret parse_def_id(ebml::doc_data(tagdoc));
+    ret translate_def_id(cdata, parse_def_id(ebml::doc_data(tagdoc)));
 }
 
 fn variant_disr_val(d: ebml::doc) -> option<int> {
@@ -406,36 +409,25 @@ fn get_iface_methods(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
 }
 
 /* Take a node ID for a class, return a vector of the class's
- member types */
-fn get_class_items(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
-    -> [@ty::class_item_ty] {
+   field names/IDs */
+fn get_class_fields(tcx: ty::ctxt,
+               cdata: cmd, id: ast::node_id) -> [ty::field_ty] {
     let data = cdata.data;
     let item = lookup_item(id, data), result = [];
-    #debug("get_class_items: %s", item_name(item));
-    #debug("item: %?", item);
-    // right tag?
-    ebml::tagged_docs(item, tag_items_class_member) {|an_item|
+    ebml::tagged_docs(item, tag_items_data_item) {|an_item|
         let fam = item_family(an_item);
-        let decl = alt check fam {
-                'g' {
-                    let name = item_name(an_item);
-                    #debug("why hello there! %s", name);
-                    let ty = doc_type(an_item, tcx, cdata);
-                    let did = class_field_id(an_item);
-                    {ident: name,
-                     id: did.node,
-                     contents: ty::var_ty(ty)}
-                }
-                _ {
-                    fail; // FIXME
-                }
-        };
-        result += [@decl];
+        alt fam {
+         'g' {
+             let name = item_name(an_item);
+             let _ty = doc_type(an_item, tcx, cdata);
+             let did = class_field_id(an_item, cdata);
+             result += [{ident: name, id: did}];
+         }
+        _ { /* this only handles fields */}
+       }
     }
     result
 }
-
-
 
 fn family_has_type_params(fam_ch: char) -> bool {
     alt check fam_ch {

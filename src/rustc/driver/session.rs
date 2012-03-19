@@ -110,6 +110,14 @@ impl session for session {
     }
 }
 
+// Seems out of place, but it uses session, so I'm putting it here
+fn expect<T: copy>(sess: session, opt: option<T>, msg: fn() -> str) -> T {
+    alt opt {
+       some(t) { t }
+       none { sess.bug(msg()); }
+    }
+}
+
 fn building_library(req_crate_type: crate_type, crate: @ast::crate,
                     testing: bool) -> bool {
     alt req_crate_type {

@@ -1,15 +1,19 @@
 // Searching for information from the cstore
 
+import std::{ebml};
 import syntax::ast;
 import syntax::ast_util;
 import middle::{ty, ast_map};
 import option::{some, none};
 import driver::session;
+import driver::session::expect;
 import middle::trans::common::maps;
+import common::*;
 import std::map::hashmap;
 
 export get_symbol;
-export get_class_items;
+export get_class_fields;
+export get_field_type;
 export get_type_param_count;
 export lookup_defs;
 export lookup_method_purity;
@@ -120,16 +124,37 @@ fn get_iface_methods(tcx: ty::ctxt, def: ast::def_id) -> @[ty::method] {
     decoder::get_iface_methods(cdata, def.node, tcx)
 }
 
-fn get_class_items(tcx: ty::ctxt, def: ast::def_id) -> [@ty::class_item_ty] {
+fn get_class_fields(tcx: ty::ctxt, def: ast::def_id) -> [ty::field_ty] {
     let cstore = tcx.sess.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
-    decoder::get_class_items(cdata, def.node, tcx)
+    decoder::get_class_fields(tcx, cdata, def.node)
 }
 
 fn get_type(tcx: ty::ctxt, def: ast::def_id) -> ty::ty_param_bounds_and_ty {
     let cstore = tcx.sess.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
     decoder::get_type(cdata, def.node, tcx)
+}
+
+/* FIXME: Refactor */
+fn get_field_type(tcx: ty::ctxt, class_id: ast::def_id,
+                  def: ast::def_id) -> ty::ty_param_bounds_and_ty {
+    let cstore = tcx.sess.cstore;
+    let cdata = cstore::get_crate_data(cstore, class_id.crate);
+    let all_items = ebml::get_doc(ebml::doc(cdata.data), tag_items);
+    #debug("Looking up %?", class_id);
+    let class_doc = expect(tcx.sess,
+                           decoder::maybe_find_item(class_id.node, all_items),
+                           {|| #fmt("get_field_type: class ID %? not found",
+                     class_id)});
+    #debug("looking up %? : %?", def, class_doc);
+    let the_field = expect(tcx.sess,
+        decoder::maybe_find_item(def.node, class_doc),
+        {|| #fmt("get_field_type: in class %?, field ID %? not found",
+                 class_id, def)});
+    #debug("got field data %?", the_field);
+    let ty = decoder::item_type(def, the_field, tcx, cdata);
+    ret {bounds: @[], ty: ty};
 }
 
 fn get_impl_iface(tcx: ty::ctxt, def: ast::def_id)

@@ -526,8 +526,8 @@ fn print_item(s: ps, &&item: @ast::item) {
                     print_type(s, t);
                     word(s.s, ";");
                 }
-                ast::class_method(i) {
-                    print_item(s, i);
+                ast::class_method(m) {
+                    print_method(s, m);
                 }
              }
              alt ci.node.privacy {
@@ -555,12 +555,7 @@ fn print_item(s: ps, &&item: @ast::item) {
         space(s.s);
         bopen(s);
         for meth in methods {
-            hardbreak_if_not_bol(s);
-            maybe_print_comment(s, meth.span.lo);
-            print_outer_attributes(s, meth.attrs);
-            print_fn(s, meth.decl, meth.ident, meth.tps);
-            word(s.s, " ");
-            print_block_with_attrs(s, meth.body, meth.attrs);
+           print_method(s, meth);
         }
         bclose(s, item.span);
       }
@@ -619,6 +614,15 @@ fn print_ty_method(s: ps, m: ast::ty_method) {
     print_outer_attributes(s, m.attrs);
     print_ty_fn(s, none, m.decl, some(m.ident), some(m.tps));
     word(s.s, ";");
+}
+
+fn print_method(s: ps, meth: @ast::method) {
+    hardbreak_if_not_bol(s);
+    maybe_print_comment(s, meth.span.lo);
+    print_outer_attributes(s, meth.attrs);
+    print_fn(s, meth.decl, meth.ident, meth.tps);
+    word(s.s, " ");
+    print_block_with_attrs(s, meth.body, meth.attrs);
 }
 
 fn print_outer_attributes(s: ps, attrs: [ast::attribute]) {

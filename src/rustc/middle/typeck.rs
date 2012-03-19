@@ -1,7 +1,7 @@
 import result::result;
 import syntax::{ast, ast_util};
 import ast::spanned;
-import syntax::ast_util::{local_def, respan};
+import syntax::ast_util::{local_def, respan, split_class_items};
 import syntax::visit;
 import metadata::csearch;
 import driver::session::session;
@@ -11,7 +11,7 @@ import pat_util::*;
 import middle::ty;
 import middle::ty::{node_id_to_type, arg, block_ty,
                     expr_ty, field, node_type_table, mk_nil,
-                    ty_param_bounds_and_ty, lookup_class_item_tys};
+                    ty_param_bounds_and_ty, lookup_class_fields};
 import util::ppaux::ty_to_str;
 import std::smallintmap;
 import std::map::{hashmap, int_hash};
@@ -896,20 +896,38 @@ mod collect {
           }
         }
     }
-    fn convert_class_item(tcx: ty::ctxt, ci: ast::class_member) {
+    fn convert_class_item(tcx: ty::ctxt, v: ast_util::ivar) {
         /* we want to do something here, b/c within the
          scope of the class, it's ok to refer to fields &
         methods unqualified */
 
         /* they have these types *within the scope* of the
          class. outside the class, it's done with expr_field */
-        alt ci {
-         ast::instance_var(_,t,_,id) {
-             let tt = ast_ty_to_ty(tcx, m_collect, t);
-             write_ty(tcx, id, tt);
-         }
-         ast::class_method(it) { convert(tcx, it); }
+        let tt = ast_ty_to_ty(tcx, m_collect, v.ty);
+        #debug("convert_class_item: %s %?", v.ident, v.id);
+        write_ty(tcx, v.id, tt);
+    }
+    fn convert_methods(tcx: ty::ctxt, ms: [@ast::method],
+        i_bounds: @[ty::param_bounds], maybe_self: option<ty::t>)
+        -> [{mty: ty::method, id: ast::node_id, span: span}] {
+        let my_methods = [];
+        for m in ms {
+           alt maybe_self {
+              some(selfty) {
+                write_ty(tcx, m.self_id, selfty);
+              }
+              _ {}
+           }
+           let bounds = ty_param_bounds(tcx, m_collect, m.tps);
+           let mty = ty_of_method(tcx, m_collect, m);
+           my_methods += [{mty: mty, id: m.id, span: m.span}];
+           let fty = ty::mk_fn(tcx, mty.fty);
+           tcx.tcache.insert(local_def(m.id),
+                             {bounds: @(*i_bounds + *bounds),
+                                     ty: fty});
+           write_ty(tcx, m.id, fty);
         }
+        my_methods
     }
     fn convert(tcx: ty::ctxt, it: @ast::item) {
         alt it.node {
@@ -922,22 +940,11 @@ mod collect {
           }
           ast::item_impl(tps, ifce, selfty, ms) {
             let i_bounds = ty_param_bounds(tcx, m_collect, tps);
-            let my_methods = [];
             let selfty = ast_ty_to_ty(tcx, m_collect, selfty);
             write_ty(tcx, it.id, selfty);
             tcx.tcache.insert(local_def(it.id), {bounds: i_bounds,
                                                  ty: selfty});
-            for m in ms {
-                write_ty(tcx, m.self_id, selfty);
-                let bounds = ty_param_bounds(tcx, m_collect, m.tps);
-                let mty = ty_of_method(tcx, m_collect, m);
-                my_methods += [{mty: mty, id: m.id, span: m.span}];
-                let fty = ty::mk_fn(tcx, mty.fty);
-                tcx.tcache.insert(local_def(m.id),
-                                     {bounds: @(*i_bounds + *bounds),
-                                      ty: fty});
-                write_ty(tcx, m.id, fty);
-            }
+            let my_methods = convert_methods(tcx, ms, i_bounds, some(selfty));
             alt ifce {
               some(t) {
                 let iface_ty = ast_ty_to_ty(tcx, m_collect, t);
@@ -1028,9 +1035,11 @@ mod collect {
                                    {bounds: tpt.bounds, ty: t_ctor});
               /* FIXME: check for proper public/privateness */
               // Write the type of each of the members
-              for m in members {
-                 convert_class_item(tcx, m.node.decl);
+              let (fields, methods) = split_class_items(members);
+              for f in fields {
+                 convert_class_item(tcx, f);
               }
+              convert_methods(tcx, methods, @[], none);
           }
           _ {
             // This call populates the type cache with the converted type
@@ -1732,8 +1741,10 @@ fn require_pure_call(ccx: @crate_ctxt, caller_purity: ast::purity,
         alt ccx.method_map.find(callee.id) {
           some(method_static(did)) {
             if did.crate == ast::local_crate {
-                alt check ccx.tcx.items.get(did.node) {
+                alt ccx.tcx.items.get(did.node) {
                   ast_map::node_method(m, _, _) { m.decl.purity }
+                  _ { ccx.tcx.sess.span_bug(sp,
+                             "Node not bound to a method") }
                 }
             } else {
                 csearch::lookup_method_purity(ccx.tcx.sess.cstore, did)
@@ -1834,6 +1845,43 @@ fn lookup_method(fcx: @fn_ctxt, expr: @ast::expr, node_id: ast::node_id,
     }
 }
 
+enum method_parent {
+    cls(ast::def_id),
+    an_iface(ast::def_id)
+}
+
+fn lookup_method_inner_(tcx: ty::ctxt, ms: [ty::method],
+    tps: [ty::t], parent: method_parent, name: ast::ident, sp: span)
+    -> option<{method_ty: ty::t, n_tps: uint, substs: [ty::t],
+        origin: method_origin, self_sub: option<self_subst>}> {
+    #debug("lookup_method_inner_: %? %? %s", ms, parent, name);
+    let i = 0u;
+    for m in ms  {
+       if m.ident == name {
+          let fty = ty::mk_fn(tcx, {proto: ast::proto_box with m.fty});
+          if ty::type_has_vars(fty) {
+               tcx.sess.span_fatal(
+                    sp, "can not call a method that contains a \
+                                    self type through a boxed iface");
+          } else if (*m.tps).len() > 0u {
+                   tcx.sess.span_fatal(
+                        sp, "can not call a generic method through a \
+                                    boxed iface");
+          }
+          ret some({method_ty: fty,
+                          n_tps: vec::len(*m.tps),
+                          substs: tps,
+                          origin: alt parent {
+                                    cls(did) { method_static(did) }
+                                    an_iface(did) { method_iface(did, i) }
+                          },
+                      self_sub: none});
+       }
+       i += 1u;
+    }
+    ret none;
+}
+
 fn lookup_method_inner(fcx: @fn_ctxt, expr: @ast::expr,
                        name: ast::ident, ty: ty::t)
     -> option<{method_ty: ty::t, n_tps: uint, substs: [ty::t],
@@ -1871,26 +1919,17 @@ fn lookup_method_inner(fcx: @fn_ctxt, expr: @ast::expr,
         }
       }
       ty::ty_iface(did, tps) {
-        let i = 0u;
-        for m in *ty::iface_methods(tcx, did) {
-            if m.ident == name {
-                let fty = ty::mk_fn(tcx, {proto: ast::proto_box with m.fty});
-                if ty::type_has_vars(fty) {
-                    tcx.sess.span_fatal(
-                        expr.span, "can not call a method that contains a \
-                                    self type through a boxed iface");
-                } else if (*m.tps).len() > 0u {
-                    tcx.sess.span_fatal(
-                        expr.span, "can not call a generic method through a \
-                                    boxed iface");
-                }
-                ret some({method_ty: fty,
-                          n_tps: vec::len(*m.tps),
-                          substs: tps,
-                          origin: method_iface(did, i),
-                          self_sub: none});
-            }
-            i += 1u;
+        alt lookup_method_inner_(tcx, *ty::iface_methods(tcx, did), tps,
+                                 an_iface(did), name, expr.span) {
+           some(r) { ret some(r); }
+           none {  }
+        }
+      }
+      ty::ty_class(did, tps) {
+        alt lookup_method_inner_(tcx, *ty::iface_methods(tcx, did), tps,
+                                 cls(did), name, expr.span) {
+          some(r) { ret some(r); }
+          none    { }
         }
       }
       _ {}
@@ -1957,19 +1996,12 @@ fn lookup_method_inner(fcx: @fn_ctxt, expr: @ast::expr,
     result
 }
 
-// problem -- class_item_ty should really be only used for internal stuff.
-// or should have a privacy field.
-fn lookup_field_ty(cx: ty::ctxt, items:[@ty::class_item_ty],
-                   fieldname: ast::ident, sp: span)
-    -> ty::t {
-    for item in items {
-            #debug("%s $$$ %s", fieldname, item.ident);
-        alt item.contents {
-          ty::var_ty(t) if item.ident == fieldname { ret t; }
-          _ { }
-        }
-    }
-    cx.sess.span_fatal(sp, #fmt("unbound field %s", fieldname));
+// Only for fields! Returns <none> for methods>
+// FIXME: privacy flags
+fn lookup_field_ty(tcx: ty::ctxt, class_id: ast::def_id,
+  items:[ty::field_ty], fieldname: ast::ident) -> option<ty::t> {
+    option::map(vec::find(items, {|f| f.ident == fieldname}),
+                {|f| ty::lookup_field_type(tcx, class_id, f.id) })
 }
 
 /*
@@ -2053,6 +2085,7 @@ fn check_expr_fn_with_unifier(fcx: @fn_ctxt,
 
 fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                            expected: ty::t) -> bool {
+
     #debug("typechecking expr %s",
            syntax::print::pprust::expr_to_str(expr));
 
@@ -2191,10 +2224,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
     fn check_call_full(fcx: @fn_ctxt, sp: span, id: ast::node_id,
                        f: @ast::expr, args: [@ast::expr]) -> bool {
         let bot = check_call(fcx, sp, id, f, args);
-        /* here we're kind of hosed, as f can be any expr
-        need to restrict it to being an explicit expr_path if we're
-        inside a pure function, and need an environment mapping from
-        function name onto purity-designation */
+        /* need to restrict oper to being an explicit expr_path if we're
+        inside a pure function */
         require_pure_call(fcx.ccx, fcx.purity, f, sp);
 
         // Pull the return type out of the type of the function.
@@ -2774,13 +2805,19 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
           ty::ty_class(base_id, _params) {
               // (1) verify that the class id actually has a field called
               // field
-              let cls_items = lookup_class_item_tys(tcx, base_id);
-              let field_ty = lookup_field_ty(fcx.ccx.tcx, cls_items, field,
-                                             expr.span);
-              // (2) look up what field's type is, and return it
-              // FIXME: actually instantiate any type params
-              write_ty(tcx, id, field_ty);
-              handled = true;
+              #debug("class named %s", ty_to_str(tcx, base_t));
+              let cls_items = lookup_class_fields(tcx, base_id);
+              #debug("cls_items: %?", cls_items);
+              alt lookup_field_ty(tcx, base_id, cls_items, field) {
+                 some(field_ty) {
+                     #debug("a");
+                    // (2) look up what field's type is, and return it
+                    // FIXME: actually instantiate any type params
+                     write_ty(tcx, id, field_ty);
+                     handled = true;
+                 }
+                 none { #debug("b"); }
+              }
           }
           _ {}
         }
@@ -3226,8 +3263,9 @@ fn class_types(ccx: @crate_ctxt, members: [@ast::class_item]) -> class_map {
          ast::instance_var(_,t,_,id) {
            rslt.insert(id, ast_ty_to_ty(ccx.tcx, m_collect, t));
          }
-         ast::class_method(it) {
-             rslt.insert(it.id, ty_of_item(ccx.tcx, m_collect, it).ty);
+         ast::class_method(mth) {
+             rslt.insert(mth.id, ty::mk_fn(ccx.tcx,
+                   ty_of_method(ccx.tcx, m_collect, mth).fty));
          }
       }
     }
@@ -3239,7 +3277,7 @@ fn check_class_member(ccx: @crate_ctxt, cm: ast::class_member) {
       ast::instance_var(_,t,_,_) { // ??? Not sure
       }
       // not right yet -- need a scope
-      ast::class_method(i) { check_item(ccx, i); }
+      ast::class_method(m) { check_method(ccx, m); }
     }
 }
 

@@ -172,8 +172,19 @@ fn map_item(i: @item, cx: ctx, v: vt) {
             cx.map.insert(nitem.id, node_native_item(nitem, abi, @cx.path));
         }
       }
-      item_class(_, _, ctor) {
+      item_class(_, items, ctor) {
           cx.map.insert(ctor.node.id, node_ctor(i, item_path));
+          let d_id = ast_util::local_def(i.id);
+          let p = extend(cx, i.ident);
+          for ci in items {
+           // only need to handle methods
+           alt ci.node.decl {
+             class_method(m) {
+               map_method(d_id, p, m, cx);
+             }
+             _ {}
+           }
+          }
       }
       _ { }
     }

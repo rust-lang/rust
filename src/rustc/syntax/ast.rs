@@ -659,10 +659,10 @@ type class_item = spanned<class_item_>;
 #[auto_serialize]
 enum class_member {
     instance_var(ident, @ty, class_mutability, node_id),
-    class_method(@item) // FIXME: methods aren't allowed to be
-    // type-parametric.
+    class_method(@method)
     // without constrained types, have to duplicate some stuff. or factor out
     // item to separate out things with type params?
+    // (FIXME) where do we enforce that type params is empty?
 }
 
 #[auto_serialize]

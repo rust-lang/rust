@@ -157,8 +157,8 @@ fn visit_class_item<E>(_s: span, _p: privacy, cm: class_member,
         instance_var(ident, t, mt, id) {
             v.visit_ty(t, e, v);
         }
-        class_method(i) {
-            v.visit_item(i, e, v);
+        class_method(m) {
+            visit_method_helper(m, e, v);
         }
     }
 }

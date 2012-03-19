@@ -531,7 +531,9 @@ fn visit_item_with_scope(e: @env, i: @ast::item, sc: scopes, v: vt<scopes>) {
         /* visit the items */
         for cm in members {
             alt cm.node.decl {
-              class_method(i) { visit_item_with_scope(e, i, class_scope, v); }
+              class_method(m) { visit_fn_with_scope(e,
+                 visit::fk_item_fn(m.ident, tps), m.decl, m.body,
+                 m.span, m.id, class_scope, v); }
               instance_var(_,t,_,_) { v.visit_ty(t, class_scope, v); }
             }
         }

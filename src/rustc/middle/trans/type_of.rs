@@ -83,16 +83,12 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
       ty::ty_constr(subt,_) { type_of(cx, subt) }
       ty::ty_class(did, _) {
         let tys: [TypeRef] = [];
-        let cls_items = lookup_class_item_tys(cx.tcx, did);
-        for ci in cls_items {
-            // only instance vars are record fields at runtime
-            alt ci.contents {
-                var_ty(t) {
-                  let fty = type_of(cx, t);
-                  tys += [fty];
-                }
-                _ {}
-            }
+        // only instance vars are record fields at runtime
+        let fields = lookup_class_fields(cx.tcx, did);
+        for f in fields {
+            let t = ty::lookup_field_type(cx.tcx, did, f.id);
+            let fty = type_of(cx, t);
+            tys += [fty];
         }
         T_struct(tys)
       }

@@ -102,14 +102,11 @@ fn traverse_public_item(cx: ctx, item: @item) {
         cx.rmap.insert(ctor.node.id, ());
         for item in items {
             alt item.node.decl {
-              class_method(i) {
-                cx.rmap.insert(i.id, ());
+              class_method(m) {
+                cx.rmap.insert(m.id, ());
                 if tps.len() > 0u ||
-                   attr::find_inline_attr(i.attrs) != attr::ia_none {
-                    alt i.node {
-                      item_fn(_, _, blk) { traverse_inline_body(cx, blk); }
-                      _ {}
-                    }
+                   attr::find_inline_attr(m.attrs) != attr::ia_none {
+                    traverse_inline_body(cx, m.body);
                 }
               }
               _ {}

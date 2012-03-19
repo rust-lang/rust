@@ -249,7 +249,7 @@ fn noop_fold_class_item(&&ci: @class_item, fld: ast_fold)
         instance_var(ident, t, cm, id) {
             instance_var(ident, fld.fold_ty(t), cm, id)
         }
-        class_method(i) { class_method(fld.fold_item(i)) }
+        class_method(m) { class_method(fld.fold_method(m)) }
          }},
        span: fld.new_span(ci.span)}
 }
@@ -656,8 +656,8 @@ fn make_fold(afp: ast_fold_precursor) -> ast_fold {
                instance_var(nm, f_ty(afp, f, t),
                                  mt, id)
            }
-           class_method(i) {
-               class_method(afp.fold_item(i, f))
+           class_method(m) {
+               class_method(afp.fold_method(m, f))
            }
             }}, span: afp.new_span(ci.span)}
     }

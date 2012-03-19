@@ -433,6 +433,21 @@ pure fn class_item_ident(ci: @class_item) -> ident {
     }
 }
 
+type ivar = {ident: ident, ty: @ty, cm: class_mutability, id: node_id};
+
+fn split_class_items(cs: [@class_item]) -> ([ivar], [@method]) {
+    let vs = [], ms = [];
+    for c in cs {
+      alt c.node.decl {
+        instance_var(i, t, cm, id) {
+          vs += [{ident: i, ty: t, cm: cm, id: id}];
+        }
+        class_method(m) { ms += [m]; }
+      }
+    }
+    (vs, ms)
+}
+
 impl inlined_item_methods for inlined_item {
     fn ident() -> ident {
         alt self {
@@ -455,7 +470,6 @@ impl inlined_item_methods for inlined_item {
         }
     }
 }
-
 // Local Variables:
 // mode: rust
 // fill-column: 78;

@@ -20,8 +20,6 @@ export arg;
 export args_eq;
 export ast_constr_to_constr;
 export block_ty;
-export class_contents_ty;
-export class_item_ty;
 export class_items_as_fields;
 export constr;
 export constr_general;
@@ -32,6 +30,7 @@ export expr_has_ty_params;
 export expr_ty;
 export expr_ty_params_and_ty;
 export expr_is_lval;
+export field_ty;
 export fold_ty;
 export field;
 export field_idx;
@@ -41,7 +40,8 @@ export fm_general, fm_rptr;
 export get_element_type;
 export is_binopable;
 export is_pred_ty;
-export lookup_class_item_tys;
+export lookup_class_fields;
+export lookup_field_type;
 export lookup_item_type;
 export method;
 export method_idx;
@@ -158,16 +158,11 @@ type constr_table = hashmap<ast::node_id, [constr]>;
 
 type mt = {ty: t, mutbl: ast::mutability};
 
-type class_item_ty = {
+// Just use <field> for class fields?
+type field_ty = {
   ident: ident,
-  id: node_id,
-  contents: class_contents_ty
+  id: def_id,
 };
-
-enum class_contents_ty {
-  var_ty(t),   // FIXME: need mutability, too
-  method_ty(fn_decl)
-}
 
 // Contains information needed to resolve types and (in the future) look up
 // the types of AST nodes.
@@ -1971,6 +1966,9 @@ mod unify {
         cx: @uctxt, expected: t, actual: t,
         variance: variance, nxt: fn(t) -> ures<T>) -> ures<T> {
 
+        #debug("unify_step: %s %s", ty_to_str(cx.tcx, expected),
+               ty_to_str(cx.tcx, actual));
+
         // Fast path.
         if expected == actual { ret nxt(expected); }
 
@@ -2434,15 +2432,40 @@ fn lookup_item_type(cx: ctxt, did: ast::def_id) -> ty_param_bounds_and_ty {
     }
 }
 
+// Look up a field ID, whether or not it's local
+fn lookup_field_type(tcx: ctxt, class_id: def_id, id: def_id) -> ty::t {
+    if id.crate == ast::local_crate {
+            /*
+        alt items.find(tcx.items, id.node) {
+           some(ast_map::node_item({node: item_class(_,items,
+        }
+            */
+        node_id_to_type(tcx, id.node)
+    }
+    else {
+        alt tcx.tcache.find(id) {
+           some(tpt) { ret tpt.ty; }
+           none {
+               let tpt = csearch::get_field_type(tcx, class_id, id);
+               // ok b/c fields are monomorphic
+               // TODO: Comment might be a lie, what if it mentions
+               // class-bound ty params?
+               tcx.tcache.insert(id, tpt);
+               ret tpt.ty;
+           }
+        }
+    }
+}
+
 // Look up the list of item types for a given class
 // Fails if the id is not bound to a class.
-fn lookup_class_item_tys(cx: ctxt, did: ast::def_id) -> [@class_item_ty] {
+fn lookup_class_fields(cx: ctxt, did: ast::def_id) -> [field_ty] {
   if did.crate == ast::local_crate {
     alt cx.items.find(did.node) {
        some(ast_map::node_item(i,_)) {
          alt i.node {
            ast::item_class(_, items, _) {
-               class_item_tys(cx, items)
+               class_field_tys(items)
            }
            _ { cx.sess.bug("class ID bound to non-class"); }
          }
@@ -2451,27 +2474,19 @@ fn lookup_class_item_tys(cx: ctxt, did: ast::def_id) -> [@class_item_ty] {
     }
         }
   else {
-        ret csearch::get_class_items(cx, did);
+        ret csearch::get_class_fields(cx, did);
     }
 }
 
 // must be called after typechecking?
-fn class_item_tys(cx: ctxt, items: [@class_item]) -> [@class_item_ty] {
+fn class_field_tys(items: [@class_item]) -> [field_ty] {
     let rslt = [];
     for it in items {
        alt it.node.decl {
           instance_var(nm, _, _, id) {
-              rslt += [@{ident: nm, id: id,
-                        contents: var_ty(node_id_to_type(cx, id)) }];
+              rslt += [{ident: nm, id: ast_util::local_def(id)}];
           }
-          class_method(it) {
-              alt it.node {
-                 item_fn(dec, _, _) {
-                     rslt += [@{ident: it.ident, id: it.id,
-                                 contents: method_ty(dec)}];
-                 }
-                 _ { fail; /* TODO */ }
-               }
+          class_method(_) {
           }
        }
     }
@@ -2482,19 +2497,11 @@ fn class_item_tys(cx: ctxt, items: [@class_item]) -> [@class_item_ty] {
 // (as if the class was a record). trans uses this
 fn class_items_as_fields(cx:ctxt, did: ast::def_id) -> [field] {
     let rslt = [];
-    for ci in lookup_class_item_tys(cx, did) {
-       alt ci.contents {
-          var_ty(t) {
-             // consider all instance vars mutable, because the
-             // constructor may mutate all vars
-             rslt += [{ident: ci.ident, mt: {ty: t,
-                             mutbl: m_mutbl}}];
-          }
-         /* do nothing, since methods don't have a runtime
-          representation? */
-          method_ty(_) {
-          }
-       }
+    for f in lookup_class_fields(cx, did) {
+       // consider all instance vars mutable, because the
+       // constructor may mutate all vars
+      rslt += [{ident: f.ident, mt: {ty: lookup_field_type(cx, did, f.id),
+                  mutbl: m_mutbl}}];
     }
     rslt
 }
