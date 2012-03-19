@@ -297,7 +297,8 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
              mutbl: mt.mutbl};
     }
     fn instantiate(tcx: ty::ctxt, use_site: ast::node_id, sp: span,
-                   mode: mode, id: ast::def_id, args: [@ast::ty]) -> ty::t {
+                   mode: mode, id: ast::def_id, path_id: ast::node_id,
+                   args: [@ast::ty]) -> ty::t {
         let ty_param_bounds_and_ty = getter(tcx, use_site, mode, id);
         if vec::len(*ty_param_bounds_and_ty.bounds) == 0u {
             ret ty_param_bounds_and_ty.ty;
@@ -318,6 +319,7 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
         let typ =
             ty::substitute_type_params(tcx, param_bindings,
                                        ty_param_bounds_and_ty.ty);
+        write_substs(tcx, path_id, param_bindings);
         ret typ;
     }
     fn do_ast_ty_to_ty(tcx: ty::ctxt, use_site: ast::node_id, mode: mode,
@@ -385,9 +387,9 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
                                                        path_to_str(path))); }
               some(d) { d }};
             alt a_def {
-              ast::def_ty(id) {
-                instantiate(tcx, use_site, ast_ty.span, mode, id,
-                            path.node.types)
+              ast::def_ty(did) {
+                instantiate(tcx, use_site, ast_ty.span, mode, did,
+                            id, path.node.types)
               }
               ast::def_prim_ty(nty) {
                 alt nty {

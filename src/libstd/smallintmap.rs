@@ -7,10 +7,10 @@ import core::option::{some, none};
 
 // FIXME: Should not be @; there's a bug somewhere in rustc that requires this
 // to be.
-type smallintmap<T> = @{mutable v: [mutable option<T>]};
+type smallintmap<T: copy> = @{mutable v: [mutable option<T>]};
 
 #[doc = "Create a smallintmap"]
-fn mk<T>() -> smallintmap<T> {
+fn mk<T: copy>() -> smallintmap<T> {
     let v: [mutable option<T>] = [mutable];
     ret @{mutable v: v};
 }
@@ -59,7 +59,7 @@ fn truncate<T: copy>(m: smallintmap<T>, len: uint) {
     m.v = vec::to_mut(vec::slice::<option<T>>(m.v, 0u, len));
 }
 
-fn max_key<T>(m: smallintmap<T>) -> uint {
+fn max_key<T: copy>(m: smallintmap<T>) -> uint {
     ret vec::len::<option<T>>(m.v);
 }
 
@@ -116,6 +116,6 @@ impl <V: copy> of map::map<uint, V> for smallintmap<V> {
 }
 
 #[doc = "Cast the given smallintmap to a map::map"]
-fn as_map<V>(s: smallintmap<V>) -> map::map<uint, V> {
+fn as_map<V: copy>(s: smallintmap<V>) -> map::map<uint, V> {
     s as map::map::<uint, V>
 }

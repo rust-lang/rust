@@ -46,7 +46,8 @@ fn check_crate(tcx: ty::ctxt, method_map: typeck::method_map,
         visit_expr: check_expr,
         visit_stmt: check_stmt,
         visit_block: check_block,
-        visit_fn: check_fn
+        visit_fn: check_fn,
+        visit_ty: check_ty
         with *visit::default_visitor()
     });
     visit::visit_crate(*crate, ctx, visit);
@@ -182,8 +183,7 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
         }
       }
       expr_path(_) | expr_field(_, _, _) {
-        alt cx.tcx.node_type_substs.find(e.id) {
-          some(ts) {
+        option::may(cx.tcx.node_type_substs.find(e.id)) {|ts|
             let bounds = alt check e.node {
               expr_path(_) {
                 let did = ast_util::def_id_of_def(cx.tcx.def_map.get(e.id));
@@ -205,17 +205,8 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
               }
             };
             vec::iter2(ts, *bounds) {|ty, bound|
-                let kind = ty::type_kind(cx.tcx, ty);
-                let p_kind = ty::param_bounds_to_kind(bound);
-                if !ty::kind_lteq(p_kind, kind) {
-                    cx.tcx.sess.span_err(e.span, "instantiating a " +
-                                         kind_to_str(p_kind) +
-                                         " type parameter with a "
-                                         + kind_to_str(kind) + " type");
-                }
+                check_bounds(cx, e.span, ty, bound)
             }
-          }
-          none {}
         }
       }
       expr_fn(_, _, _, cap_clause) {
@@ -239,6 +230,33 @@ fn check_stmt(stmt: @stmt, cx: ctx, v: visit::vt<ctx>) {
       _ {}
     }
     visit::visit_stmt(stmt, cx, v);
+}
+
+fn check_ty(aty: @ty, cx: ctx, v: visit::vt<ctx>) {
+    alt aty.node {
+      ty_path(_, id) {
+        option::may(cx.tcx.node_type_substs.find(id)) {|ts|
+            let did = ast_util::def_id_of_def(cx.tcx.def_map.get(id));
+            let bounds = ty::lookup_item_type(cx.tcx, did).bounds;
+            vec::iter2(ts, *bounds) {|ty, bound|
+                check_bounds(cx, aty.span, ty, bound)
+            }
+        }
+      }
+      _ {}
+    }
+    visit::visit_ty(aty, cx, v);
+}
+
+fn check_bounds(cx: ctx, sp: span, ty: ty::t, bounds: ty::param_bounds) {
+    let kind = ty::type_kind(cx.tcx, ty);
+    let p_kind = ty::param_bounds_to_kind(bounds);
+    if !ty::kind_lteq(p_kind, kind) {
+        cx.tcx.sess.span_err(sp, "instantiating a " +
+                             kind_to_str(p_kind) +
+                             " type parameter with a "
+                             + kind_to_str(kind) + " type");
+    }
 }
 
 fn maybe_copy(cx: ctx, ex: @expr) {
