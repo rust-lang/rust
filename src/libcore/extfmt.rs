@@ -269,12 +269,7 @@ mod rt {
         flag_space_for_sign,
         flag_sign_always,
         flag_alternate,
-
-
-        // FIXME: This is a hack to avoid creating 0-length vec exprs,
-        // which have some difficulty typechecking currently. See
-        // comments in front::extfmt::make_flags
-        // (once #1993 is addressed, this won't be necessary)
+        // FIXME(1993): This is no longer needed. Remove after a snapshot
         flag_none,
     }
     enum count { count_is(int), count_implied, }

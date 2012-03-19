@@ -68,13 +68,6 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span, pieces: [piece], args: [@ast::expr])
                 }
                 flagexprs += [make_rt_path_expr(cx, sp, fstr)];
             }
-            // FIXME: 0-length vectors can't have their type inferred
-            // through the rec that these flags are a member of, so
-            // this is a hack placeholder flag
-
-            if vec::len::<@ast::expr>(flagexprs) == 0u {
-                flagexprs += [make_rt_path_expr(cx, sp, "flag_none")];
-            }
             ret mk_vec_e(cx, sp, flagexprs);
         }
         fn make_count(cx: ext_ctxt, sp: span, cnt: count) -> @ast::expr {
