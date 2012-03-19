@@ -50,13 +50,13 @@ fn get_fn_sig(srv: astsrv::srv, fn_id: doc::ast_id) -> option<str> {
         alt check ctxt.ast_map.get(fn_id) {
           ast_map::node_item(@{
             ident: ident,
-            node: ast::item_fn(decl, _, _), _
+            node: ast::item_fn(decl, tys, _), _
           }, _) |
           ast_map::node_native_item(@{
             ident: ident,
-            node: ast::native_item_fn(decl, _), _
+            node: ast::native_item_fn(decl, tys), _
           }, _, _) {
-            some(pprust::fun_to_str(decl, ident, []))
+            some(pprust::fun_to_str(decl, ident, tys))
           }
         }
     }
@@ -64,14 +64,14 @@ fn get_fn_sig(srv: astsrv::srv, fn_id: doc::ast_id) -> option<str> {
 
 #[test]
 fn should_add_fn_sig() {
-    let doc = test::mk_doc("fn a() -> int { }");
-    assert doc.cratemod().fns()[0].sig == some("fn a() -> int");
+    let doc = test::mk_doc("fn a<T>() -> int { }");
+    assert doc.cratemod().fns()[0].sig == some("fn a<T>() -> int");
 }
 
 #[test]
 fn should_add_native_fn_sig() {
-    let doc = test::mk_doc("native mod a { fn a() -> int; }");
-    assert doc.cratemod().nmods()[0].fns[0].sig == some("fn a() -> int");
+    let doc = test::mk_doc("native mod a { fn a<T>() -> int; }");
+    assert doc.cratemod().nmods()[0].fns[0].sig == some("fn a<T>() -> int");
 }
 
 fn fold_const(
@@ -149,9 +149,9 @@ fn fold_res(
         sig: some(astsrv::exec(srv) {|ctxt|
             alt check ctxt.ast_map.get(doc.id()) {
               ast_map::node_item(@{
-                node: ast::item_res(decl, _, _, _, _), _
+                node: ast::item_res(decl, tys, _, _, _), _
               }, _) {
-                pprust::res_to_str(decl, doc.name(), [])
+                pprust::res_to_str(decl, doc.name(), tys)
               }
             }
         })
@@ -161,8 +161,9 @@ fn fold_res(
 
 #[test]
 fn should_add_resource_sigs() {
-    let doc = test::mk_doc("resource r(b: bool) { }");
-    assert doc.cratemod().resources()[0].sig == some("resource r(b: bool)");
+    let doc = test::mk_doc("resource r<T>(b: bool) { }");
+    assert doc.cratemod().resources()[0].sig
+        == some("resource r<T>(b: bool)");
 }
 
 fn fold_iface(
@@ -202,7 +203,11 @@ fn get_method_sig(
                 method.ident == method_name
             } {
                 some(method) {
-                    some(pprust::fun_to_str(method.decl, method.ident, []))
+                    some(pprust::fun_to_str(
+                        method.decl,
+                        method.ident,
+                        method.tps
+                    ))
                 }
             }
           }
@@ -213,7 +218,11 @@ fn get_method_sig(
                 method.ident == method_name
             } {
                 some(method) {
-                    some(pprust::fun_to_str(method.decl, method.ident, []))
+                    some(pprust::fun_to_str(
+                        method.decl,
+                        method.ident,
+                        method.tps
+                    ))
                 }
             }
           }
@@ -223,8 +232,9 @@ fn get_method_sig(
 
 #[test]
 fn should_add_iface_method_sigs() {
-    let doc = test::mk_doc("iface i { fn a() -> int; }");
-    assert doc.cratemod().ifaces()[0].methods[0].sig == some("fn a() -> int");
+    let doc = test::mk_doc("iface i { fn a<T>() -> int; }");
+    assert doc.cratemod().ifaces()[0].methods[0].sig
+        == some("fn a<T>() -> int");
 }
 
 fn fold_impl(
@@ -258,7 +268,7 @@ fn fold_impl(
 
 #[test]
 fn should_add_impl_iface_ty() {
-    let doc = test::mk_doc("impl i of j for int { fn a() { } }");
+    let doc = test::mk_doc("impl i of j for int { fn a<T>() { } }");
     assert doc.cratemod().impls()[0].iface_ty == some("j");
 }
 
@@ -276,8 +286,9 @@ fn should_add_impl_self_ty() {
 
 #[test]
 fn should_add_impl_method_sigs() {
-    let doc = test::mk_doc("impl i for int { fn a() -> int { fail } }");
-    assert doc.cratemod().impls()[0].methods[0].sig == some("fn a() -> int");
+    let doc = test::mk_doc("impl i for int { fn a<T>() -> int { fail } }");
+    assert doc.cratemod().impls()[0].methods[0].sig
+        == some("fn a<T>() -> int");
 }
 
 fn fold_type(
