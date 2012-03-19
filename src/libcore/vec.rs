@@ -50,10 +50,10 @@ export find;
 export find_from;
 export rfind;
 export rfind_from;
-export position_elt;
+export position_elem;
 export position;
 export position_from;
-export position_elt;
+export position_elem;
 export rposition;
 export rposition_from;
 export unzip;
@@ -613,7 +613,7 @@ fn rfind_from<T: copy>(v: [const T], start: uint, end: uint,
 }
 
 #[doc = "Find the first index containing a matching value"]
-fn position_elt<T>(v: [const T], x: T) -> option<uint> {
+fn position_elem<T>(v: [const T], x: T) -> option<uint> {
     position(v) { |y| x == y }
 }
 
@@ -645,7 +645,7 @@ fn position_from<T>(v: [const T], start: uint, end: uint,
 }
 
 #[doc = "Find the last index containing a matching value"]
-fn rposition_elt<T>(v: [const T], x: T) -> option<uint> {
+fn rposition_elem<T>(v: [const T], x: T) -> option<uint> {
     rposition(v) { |y| x == y }
 }
 
@@ -1439,14 +1439,14 @@ mod tests {
     }
 
     #[test]
-    fn test_position_elt() {
-        assert position_elt([], 1) == none;
+    fn test_position_elem() {
+        assert position_elem([], 1) == none;
 
         let v1 = [1, 2, 3, 3, 2, 5];
-        assert position_elt(v1, 1) == some(0u);
-        assert position_elt(v1, 2) == some(1u);
-        assert position_elt(v1, 5) == some(5u);
-        assert position_elt(v1, 4) == none;
+        assert position_elem(v1, 1) == some(0u);
+        assert position_elem(v1, 2) == some(1u);
+        assert position_elem(v1, 5) == some(5u);
+        assert position_elem(v1, 4) == none;
     }
 
     #[test]

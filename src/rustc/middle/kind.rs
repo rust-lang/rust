@@ -91,7 +91,8 @@ fn check_fn(fk: visit::fn_kind, decl: fn_decl, body: blk, sp: span,
                   some(last_use::closes_over(vars)) { vars }
                   none { [] }
                 };
-                if option::is_some(vec::position_elt(last_uses, id)) { cont; }
+                if option::is_some(
+                    vec::position_elem(last_uses, id)) { cont; }
             }
             let ty = ty::node_id_to_type(cx.tcx, id);
             checker(cx, ty, span);
