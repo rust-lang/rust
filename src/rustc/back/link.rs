@@ -27,7 +27,7 @@ fn llvm_err(sess: session, msg: str) -> ! unsafe {
     let cstr = llvm::LLVMRustGetLastError();
     if cstr == ptr::null() {
         sess.fatal(msg);
-    } else { sess.fatal(msg + ": " + str::from_c_str(cstr)); }
+    } else { sess.fatal(msg + ": " + str::unsafe::from_c_str(cstr)); }
 }
 
 fn load_intrinsics_bc(sess: session) -> option<ModuleRef> {

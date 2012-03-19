@@ -13,10 +13,6 @@ export
    from_byte,
    from_char,
    from_chars,
-   from_buf,
-   from_buf_len,
-   from_c_str,
-   from_c_str_len,
    push_char,
    concat,
    connect,
@@ -183,40 +179,6 @@ fn from_chars(chs: [char]) -> str {
     reserve(buf, chs.len());
     for ch in chs { push_char(buf, ch); }
     ret buf;
-}
-
-#[doc = "Create a Rust string from a null-terminated *u8 buffer"]
-unsafe fn from_buf(buf: *u8) -> str {
-    let mut curr = buf, i = 0u;
-    while *curr != 0u8 {
-        i += 1u;
-        curr = ptr::offset(buf, i);
-    }
-    ret from_buf_len(buf, i);
-}
-
-#[doc = "Create a Rust string from a null-terminated C string"]
-unsafe fn from_c_str(c_str: *libc::c_char) -> str {
-    from_buf(::unsafe::reinterpret_cast(c_str))
-}
-
-#[doc = "Create a Rust string from a *u8 buffer of the given length"]
-unsafe fn from_buf_len(buf: *u8, len: uint) -> str {
-    let mut v: [u8] = [];
-    vec::reserve(v, len + 1u);
-    vec::as_buf(v) {|b| ptr::memcpy(b, buf, len); }
-    vec::unsafe::set_len(v, len);
-    v += [0u8];
-
-    assert is_utf8(v);
-    let s: str = ::unsafe::reinterpret_cast(v);
-    ::unsafe::leak(v);
-    ret s;
-}
-
-#[doc = "Create a Rust string from a `*c_char` buffer of the given length"]
-unsafe fn from_c_str_len(c_str: *libc::c_char, len: uint) -> str {
-    from_buf_len(::unsafe::reinterpret_cast(c_str), len)
 }
 
 #[doc = "Concatenate a vector of strings"]
@@ -1522,6 +1484,10 @@ fn reserve(&ss: str, nn: uint) {
 mod unsafe {
    export
       // FIXME: stop exporting several of these
+      from_buf,
+      from_buf_len,
+      from_c_str,
+      from_c_str_len,
       from_bytes,
       from_byte,
       slice_bytes,
@@ -1530,6 +1496,42 @@ mod unsafe {
       pop_byte,
       shift_byte,
       set_len;
+
+    #[doc = "Create a Rust string from a null-terminated *u8 buffer"]
+    unsafe fn from_buf(buf: *u8) -> str {
+        let mut curr = buf, i = 0u;
+        while *curr != 0u8 {
+            i += 1u;
+            curr = ptr::offset(buf, i);
+        }
+        ret from_buf_len(buf, i);
+    }
+
+    #[doc = "Create a Rust string from a *u8 buffer of the given length"]
+    unsafe fn from_buf_len(buf: *u8, len: uint) -> str {
+        let mut v: [u8] = [];
+        vec::reserve(v, len + 1u);
+        vec::as_buf(v) {|b| ptr::memcpy(b, buf, len); }
+        vec::unsafe::set_len(v, len);
+        v += [0u8];
+
+        assert is_utf8(v);
+        let s: str = ::unsafe::reinterpret_cast(v);
+        ::unsafe::leak(v);
+        ret s;
+    }
+
+    #[doc = "Create a Rust string from a null-terminated C string"]
+    unsafe fn from_c_str(c_str: *libc::c_char) -> str {
+        from_buf(::unsafe::reinterpret_cast(c_str))
+    }
+
+    #[doc = "
+    Create a Rust string from a `*c_char` buffer of the given length
+    "]
+    unsafe fn from_c_str_len(c_str: *libc::c_char, len: uint) -> str {
+        from_buf_len(::unsafe::reinterpret_cast(c_str), len)
+    }
 
    #[doc = "
    Converts a vector of bytes to a string.
@@ -2222,7 +2224,7 @@ mod tests {
     fn test_from_buf() unsafe {
         let a = [65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 0u8];
         let b = vec::unsafe::to_ptr(a);
-        let c = from_buf(b);
+        let c = unsafe::from_buf(b);
         assert (c == "AAAAAAA");
     }
 
@@ -2230,7 +2232,7 @@ mod tests {
     fn test_from_buf_len() unsafe {
         let a = [65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 0u8];
         let b = vec::unsafe::to_ptr(a);
-        let c = from_buf_len(b, 3u);
+        let c = unsafe::from_buf_len(b, 3u);
         assert (c == "AAA");
     }
 
@@ -2252,7 +2254,7 @@ mod tests {
     fn test_as_buf2() unsafe {
         let s = "hello";
         let sb = as_buf(s, {|b| b });
-        let s_cstr = from_buf(sb);
+        let s_cstr = unsafe::from_buf(sb);
         assert (eq(s_cstr, s));
     }
 
