@@ -53,7 +53,6 @@ mod ct {
         ty_octal,
         ty_float,
         ty_poly,
-        // FIXME: More types (Issue #1992)
     }
     enum flag {
         flag_left_justify,
