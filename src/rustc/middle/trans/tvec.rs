@@ -194,15 +194,16 @@ fn trans_append_literal(bcx: block, vptrptr: ValueRef, vec_ty: ty::t,
 fn trans_add(bcx: block, vec_ty: ty::t, lhs: ValueRef,
              rhs: ValueRef, dest: dest) -> block {
     let ccx = bcx.ccx();
-    let strings = alt ty::get(vec_ty).struct {
-      ty::ty_str { true }
-      _ { false }
-    };
+
+    if ty::get(vec_ty).struct == ty::ty_str {
+        let n = Call(bcx, ccx.upcalls.str_concat, [lhs, rhs]);
+        ret base::store_in_dest(bcx, n, dest);
+    }
+
     let unit_ty = ty::sequence_element_type(bcx.tcx(), vec_ty);
     let llunitty = type_of::type_of(ccx, unit_ty);
 
     let lhs_fill = get_fill(bcx, lhs);
-    if strings { lhs_fill = Sub(bcx, lhs_fill, C_int(ccx, 1)); }
     let rhs_fill = get_fill(bcx, rhs);
     let new_fill = Add(bcx, lhs_fill, rhs_fill);
     let {bcx: bcx, val: new_vec_ptr} = alloc_raw(bcx, new_fill, new_fill);

@@ -309,6 +309,34 @@ upcall_vec_grow(rust_vec** vp, size_t new_sz) {
     UPCALL_SWITCH_STACK(&args, upcall_s_vec_grow);
 }
 
+struct s_str_concat_args {
+    rust_vec* lhs;
+    rust_vec* rhs;
+    rust_vec* retval;
+};
+
+extern "C" CDECL void
+upcall_s_str_concat(s_str_concat_args *args) {
+    rust_vec *lhs = args->lhs;
+    rust_vec *rhs = args->rhs;
+    rust_task *task = rust_task_thread::get_task();
+    size_t fill = lhs->fill + rhs->fill - 1;
+    rust_vec* v = (rust_vec*)task->kernel->malloc(fill + sizeof(rust_vec),
+                                                  "str_concat");
+    v->fill = v->alloc = fill;
+    memmove(&v->data[0], &lhs->data[0], lhs->fill - 1);
+    memmove(&v->data[lhs->fill - 1], &rhs->data[0], rhs->fill);
+    args->retval = v;
+}
+
+extern "C" CDECL rust_vec*
+upcall_str_concat(rust_vec* lhs, rust_vec* rhs) {
+    s_str_concat_args args = {lhs, rhs, 0};
+    UPCALL_SWITCH_STACK(&args, upcall_s_str_concat);
+    return args.retval;
+}
+
+
 extern "C" _Unwind_Reason_Code
 __gxx_personality_v0(int version,
                      _Unwind_Action actions,

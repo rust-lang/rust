@@ -18,6 +18,7 @@ type upcalls =
      mark: ValueRef,
      vec_grow: ValueRef,
      vec_push: ValueRef,
+     str_concat: ValueRef,
      cmp_type: ValueRef,
      log_type: ValueRef,
      alloc_c_stack: ValueRef,
@@ -69,6 +70,9 @@ fn declare_upcalls(targ_cfg: @session::config,
               dvi("vec_push",
                 [T_ptr(T_ptr(opaque_vec_t)), T_ptr(tydesc_type),
                  T_ptr(T_i8())]),
+          str_concat:
+              d("str_concat", [T_ptr(opaque_vec_t), T_ptr(opaque_vec_t)],
+                T_ptr(opaque_vec_t)),
           cmp_type:
               dv("cmp_type",
                  [T_ptr(T_i1()), T_ptr(tydesc_type),
