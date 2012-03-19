@@ -110,6 +110,7 @@ define DEF_DOC_TEST_HOST
 
 doc-tutorial-extract$(1):
 	@$$(call E, extract: tutorial tests)
+	$$(Q)rm $(1)/test/doc-tutorial/*.rs
 	$$(Q)$$(EXTRACT_TESTS) $$(S)doc/tutorial.md $(1)/test/doc-tutorial
 
 endef
