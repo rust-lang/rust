@@ -4338,7 +4338,7 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
           ast_map::node_method(m, impl_id, pth) {
             exprt = true;
             let mty = ty::node_id_to_type(ccx.tcx, id);
-            let pth = *pth + [path_name(int::str(impl_id.node)),
+            let pth = *pth + [path_name(ccx.names("meth")),
                               path_name(m.ident)];
             let llfn = register_fn_full(ccx, m.span, pth, "impl_method",
                                         id, mty);
