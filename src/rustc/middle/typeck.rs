@@ -835,6 +835,18 @@ fn fixup_self_in_method_ty(cx: ty::ctxt, mty: ty::t, m_substs: [ty::t],
     } else { mty }
 }
 
+// Mangles an iface method ty to instantiate its `self` region.
+fn fixup_self_region_in_method_ty(fcx: @fn_ctxt, mty: ty::t,
+                                  self_expr: @ast::expr) -> ty::t {
+    let self_region = region_of(fcx, self_expr);
+    ty::fold_ty(fcx.ccx.tcx, ty::fm_rptr({|r|
+        alt r {
+            ty::re_self(_) { self_region }
+            _ { r }
+        }
+    }), mty)
+}
+
 // Item collection - a pair of bootstrap passes:
 //
 // (1) Collect the IDs of all type items (typedefs) and store them in a table.
@@ -1811,6 +1823,11 @@ fn lookup_method(fcx: @fn_ctxt, expr: @ast::expr, node_id: ast::node_id,
                 tcx, fty, substs, option::get(self_sub));
             write_ty(tcx, node_id, fty);
         }
+        if ty::type_has_rptrs(ty::ty_fn_ret(fty)) {
+            let fty = ty::node_id_to_type(tcx, node_id);
+            fty = fixup_self_region_in_method_ty(fcx, fty, expr);
+            write_ty(tcx, node_id, fty);
+        }
         some(origin)
       }
       none { none }
@@ -1982,9 +1999,13 @@ fn region_of(fcx: @fn_ctxt, expr: @ast::expr) -> ty::region {
                 }
             }
         }
-        ast::expr_field(base, _, _) | ast::expr_index(base, _) {
-            fcx.ccx.tcx.sess.span_unimpl(expr.span, "regions of field or " +
-                                         "index operations");
+        ast::expr_field(base, _, _) {
+            // FIXME: Insert borrowing!
+            ret region_of(fcx, base);
+        }
+        ast::expr_index(base, _) {
+            fcx.ccx.tcx.sess.span_unimpl(expr.span,
+                                         "regions of index operations");
         }
         ast::expr_unary(ast::deref, base) {
             let expr_ty = ty::expr_ty(fcx.ccx.tcx, base);
