@@ -161,8 +161,10 @@ Spawns a process and waits for it to terminate
 The process id
 "]
 fn run_program(prog: str, args: [str]) -> int {
-    ret waitpid(spawn_process(prog, args, none, none,
-                              0i32, 0i32, 0i32));
+    let pid = spawn_process(prog, args, none, none,
+                            0i32, 0i32, 0i32);
+    if pid == -1 as pid_t { fail; }
+    ret waitpid(pid);
 }
 
 #[doc ="
@@ -190,7 +192,7 @@ fn start_program(prog: str, args: [str]) -> program {
                       pipe_input.in, pipe_output.out,
                       pipe_err.out);
 
-    if pid == -1i32 { fail; }
+    if pid == -1 as pid_t { fail; }
     libc::close(pipe_input.in);
     libc::close(pipe_output.out);
     libc::close(pipe_err.out);
