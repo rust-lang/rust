@@ -476,6 +476,7 @@ do
     make_dir $h/test/perf
     make_dir $h/test/pretty
     make_dir $h/test/doc-tutorial
+    make_dir $h/test/doc-ref
 done
 
 # Configure submodules

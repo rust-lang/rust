@@ -34,6 +34,12 @@ while cur < len(lines):
         tags = re.findall("\.([\w-]*)", line)
         block = ""
         ignore = "notrust" in tags or "ignore" in tags
+        # Some tags used by the language ref that indicate not rust
+        ignore |= "ebnf" in tags
+        ignore |= "abnf" in tags
+        ignore |= "keyword" in tags
+        ignore |= "field" in tags
+        ignore |= "precedence" in tags
         xfail = "xfail-test" in tags
         while cur < len(lines):
             line = lines[cur]

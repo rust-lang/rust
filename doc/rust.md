@@ -424,7 +424,7 @@ across crates; an item's canonical path merely identifies it within the crate.
 
 Two examples of simple paths consisting of only identifier components:
 
-~~~~
+~~~~{.xfail-test}
 x;
 x::y::z;
 ~~~~
@@ -438,7 +438,7 @@ expression context, the final namespace qualifier is omitted.
 
 Two examples of paths with type arguments:
 
-~~~~
+~~~~{.xfail-test}
 type t = map::hashtbl<int,str>;  // Type arguments used in a type expression
 let x = id::<int>(10);           // Type arguments used in a call expression
 ~~~~
@@ -506,7 +506,7 @@ or a *configuration* in Mesa.] A crate file describes:
 
 An example of a crate file:
 
-~~~~~~~~
+~~~~~~~~{.xfail-test}
 // Linkage attributes
 #[ link(name = "projx"
         vers = "2.5",
@@ -627,7 +627,7 @@ of modules making up a crate. Modules can nest arbitrarily.
 
 An example of a module:
 
-~~~~~~~~
+~~~~~~~~{.xfail-test}
 mod math {
     type complex = (f64,f64);
     fn sin(f64) -> f64 {
@@ -680,7 +680,7 @@ attribute is assumed, equal to the `ident` given in the `use_decl`.
 
 Two examples of `use` declarations:
 
-~~~~~~~~
+~~~~~~~~{.xfail-test}
 use pcre (uuid = "54aba0f8-a7b1-4beb-92f1-4cf625264841");
 
 use std; // equivalent to: use std ( name = "std" );
@@ -718,7 +718,7 @@ Imports support a number of "convenience" notations:
 
 An example of imports:
 
-~~~~
+~~~~{.xfail-test}
 import foo = core::info;
 import std::math::sin;
 import std::str::{char_at, hash};
@@ -753,7 +753,7 @@ declaration replaces the default export with the export specified.
 
 An example of an export:
 
-~~~~~~~~
+~~~~~~~~{.xfail-test}
 mod foo {
     export primary;
 
@@ -775,7 +775,7 @@ fn main() {
 
 Multiple names may be exported from a single export declaration:
 
-~~~~~~~~
+~~~~~~~~{.xfail-test}
 mod foo {
     export primary, secondary;
 
@@ -797,7 +797,7 @@ mod foo {
 When exporting the name of an `enum` type `t`, by default, the module also
 implicitly exports all of `t`'s constructors. For example:
 
-~~~~~~~~
+~~~~~~~~{.xfail-test}
 mod foo {
     export t;
     
@@ -815,7 +815,7 @@ constructors, achieving a simple kind of data abstraction. The third
 form exports an `enum` type name along with a subset of its
 constructors. For example:
 
-~~~~~~~~
+~~~~~~~~{.xfail-test}
 mod foo {
     export abstract{};
     export slightly_abstract{a, b};
@@ -883,7 +883,7 @@ with a [`ret`](#return-expressions) or diverging expression. So, if `my_err`
 were declared without the `!` annotation, the following code would not
 typecheck:
 
-~~~~
+~~~~{.xfail-test}
 fn f(i: int) -> int {
    if i == 42 {
      ret 42;
@@ -923,7 +923,7 @@ pure fn lt_42(x: int) -> bool {
 A non-boolean function may also be declared with `pure fn`. This allows
 predicates to call non-boolean functions as long as they are pure. For example:
 
-~~~~
+~~~~{.xfail-test}
 pure fn pure_length<T>(ls: list<T>) -> uint { /* ... */ }
 
 pure fn nonempty_list<T>(ls: list<T>) -> bool { pure_length(ls) > 0u }
@@ -953,7 +953,7 @@ verify the semantics of the predicates they write.
 
 An example of a predicate that uses an unchecked block:
 
-~~~~
+~~~~{.xfail-test}
 fn pure_foldl<T, U: copy>(ls: list<T>, u: U, f: block(&T, &U) -> U) -> U {
     alt ls {
       nil. { u }
@@ -982,7 +982,7 @@ appear in its signature. Each type parameter must be explicitly
 declared, in an angle-bracket-enclosed, comma-separated list following
 the function name.
 
-~~~~
+~~~~{.xfail-test}
 fn iter<T>(seq: [T], f: block(T)) {
     for elt: T in seq { f(elt); }
 }
@@ -1031,7 +1031,7 @@ crust fn new_vec() -> [int] { [] }
 Crust functions may not be called from Rust code, but their value
 may be taken as an unsafe `u8` pointer.
 
-~~~
+~~~{.xfail-test}
 let fptr: *u8 = new_vec;
 ~~~
 
@@ -1081,7 +1081,7 @@ type the constructor is a member of. Such recursion has restrictions:
 
 An example of an `enum` item and its use:
 
-~~~~
+~~~~{.xfail-test}
 enum animal {
   dog;
   cat;
@@ -1093,7 +1093,7 @@ a = cat;
 
 An example of a *recursive* `enum` item and its use:
 
-~~~~
+~~~~{.xfail-test}
 enum list<T> {
   nil;
   cons(T, @list<T>);
@@ -1107,7 +1107,7 @@ let a: list<int> = cons(7, @cons(13, @nil));
 _Resources_ are values that have a destructor associated with them. A
 _resource item_ is used to declare resource type and constructor.
 
-~~~~
+~~~~{.xfail-test}
 resource file_descriptor(fd: int) {
     std::os::libc::close(fd);
 }
@@ -1133,7 +1133,7 @@ An _interface item_ describes a set of method types. _[implementation
 items](#implementations)_ can be used to provide implementations of
 those methods for a specific type.
 
-~~~~
+~~~~{.xfail-test}
 iface shape {
     fn draw(surface);
     fn bounding_box() -> bounding_box;
@@ -1149,7 +1149,7 @@ Type parameters can be specified for an interface to make it generic.
 These appear after the name, using the same syntax used in [generic
 functions](#generic-functions).
 
-~~~~
+~~~~{.xfail-test}
 iface seq<T> {
    fn len() -> uint;
    fn elt_at(n: uint) -> T;
@@ -1163,7 +1163,7 @@ interface can be used to instantiate the parameter, and within the
 generic function, the methods of the interface can be called on values
 that have the parameter's type. For example:
 
-~~~~
+~~~~{.xfail-test}
 fn draw_twice<T: shape>(surface: surface, sh: T) {
     sh.draw(surface);
     sh.draw(surface);
@@ -1176,7 +1176,7 @@ interface. Values of this type are created by
 implementation of the given interface is in scope) to the interface
 type.
 
-~~~~
+~~~~{.xfail-test}
 let myshape: shape = mycircle as shape;
 ~~~~
 
@@ -1191,7 +1191,7 @@ instantiate type parameters that are bounded on their interface.
 An _implementation item_ provides an implementation of an
 [interfaces](#interfaces) for a type.
 
-~~~~
+~~~~{.xfail-test}
 type circle = {radius: float, center: point};
 
 impl circle_shape of shape for circle {
@@ -1218,7 +1218,7 @@ statically (as direct calls on the values of the type that the
 implementation targets). In such an implementation, the `of` clause is
 not given, and the name is mandatory.
 
-~~~~
+~~~~{.xfail-test}
 impl uint_loops for uint {
     fn times(f: block(uint)) {
         let i = 0;
@@ -1236,7 +1236,7 @@ from the type parameters taken by the interface it implements. They
 are written after the name of the implementation, or if that is not
 specified, after the `impl` keyword.
 
-~~~~
+~~~~{.xfail-test}
 impl <T> of seq<T> for [T] {
     /* ... */
 }
@@ -1257,7 +1257,7 @@ module describes functions in external, non-Rust libraries. Functions within
 native modules are declared the same as other Rust functions, with the exception
 that they may not have a body and are instead terminated by a semi-colon.
 
-~~~
+~~~{.xfail-test}
 native mod c {
     fn fopen(filename: *c_char, mod: *c_char) -> *FILE;
 }
@@ -1281,7 +1281,7 @@ By default native mods assume that the library they are calling use
 the standard C "cdecl" ABI. Other ABI's may be specified using the `abi`
 attribute as in
 
-~~~
+~~~{.xfail-test}
 // Interface to the Windows API
 #[abi = "stdcall"]
 native mod kernel32 { }
@@ -1325,7 +1325,7 @@ declaration within the entity body.
 
 An example of attributes:
 
-~~~~~~~~
+~~~~~~~~{.xfail-test}
 // A function marked as a unit test
 #[test]
 fn test_foo() {
@@ -1475,7 +1475,7 @@ values.
 
 ~~~~~~~~ {.tuple}
 (0f, 4.5f);
-("a", 4u, true)
+("a", 4u, true);
 ~~~~~~~~
 
 ### Record expressions
@@ -1578,7 +1578,7 @@ Indices are zero-based, and may be of any integral type. Vector access
 is bounds-checked at run-time. When the check fails, it will put the
 task in a _failing state_.
 
-~~~~
+~~~~{.xfail-test}
 [1, 2, 3, 4][0];
 [mutable 'x', 'y'][1] = 'z';
 ["a", "b"][10]; // fails
@@ -1696,7 +1696,7 @@ is unsupported and will fail to compile.
 
 An example of an `as` expression:
 
-~~~~
+~~~~{.xfail-test}
 fn avg(v: [float]) -> float {
   let sum: float = sum(v);
   let sz: float = std::vec::len(v) as float;
@@ -1727,7 +1727,7 @@ expression. No allocation or destruction is entailed.
 
 An example of three different move expressions:
 
-~~~~~~~~
+~~~~~~~~{.xfail-test}
 x <- a;
 x[i] <- b;
 x.y <- c;
@@ -1749,7 +1749,7 @@ expression. No allocation or destruction is entailed.
 
 An example of three different swap expressions:
 
-~~~~~~~~
+~~~~~~~~{.xfail-test}
 x <-> a;
 x[i] <-> b[i];
 x.y <-> a.b;
@@ -1766,7 +1766,7 @@ expression](#binary-move-expressions) applied to a [unary copy
 expression](#unary-copy-expressions). For example, the following two
 expressions have the same effect:
 
-~~~~
+~~~~{.xfail-test}
 x = y
 x <- copy y
 ~~~~
@@ -1871,7 +1871,7 @@ typestates propagate through function boundaries.
 
 An example of a call expression:
 
-~~~~
+~~~~{.xfail-test}
 let x: int = add(1, 2);
 ~~~~
 
@@ -1894,7 +1894,7 @@ and residual arguments that was specified during the binding.
 
 An example of a `bind` expression:
 
-~~~~
+~~~~{.xfail-test}
 fn add(x: int, y: int) -> int {
     ret x + y;
 }
@@ -1949,7 +1949,7 @@ loop body. If it evaluates to `false`, control exits the loop.
 
 An example of a simple `while` expression:
 
-~~~~
+~~~~{.xfail-test}
 while i < 10 {
     print("hello\n");
     i = i + 1;
@@ -1958,7 +1958,7 @@ while i < 10 {
 
 An example of a `do`-`while` expression:
 
-~~~~
+~~~~{.xfail-test}
 do {
     print("hello\n");
     i = i + 1;
@@ -2035,7 +2035,7 @@ elements of the underlying sequence, one iteration per sequence element.
 
 An example a for loop:
 
-~~~~
+~~~~{.xfail-test}
 let v: [foo] = [a, b, c];
 
 for e: foo in v {
@@ -2093,7 +2093,7 @@ variables in the arm's block, and control enters the block.
 An example of an `alt` expression:
 
 
-~~~~
+~~~~{.xfail-test}
 enum list<X> { nil; cons(X, @list<X>); }
 
 let x: list<int> = cons(10, @cons(11, @nil));
@@ -2118,7 +2118,7 @@ Records can also be pattern-matched and their fields bound to variables.
 When matching fields of a record, the fields being matched are specified
 first, then a placeholder (`_`) represents the remaining fields.
 
-~~~~
+~~~~{.xfail-test}
 fn main() {
     let r = {
         player: "ralph",
@@ -2146,7 +2146,7 @@ fn main() {
 Multiple alternative patterns may be joined with the `|` operator.  A
 range of values may be specified with `to`.  For example:
 
-~~~~
+~~~~{.xfail-test}
 let message = alt x {
   0 | 1  { "not many" }
   2 to 9 { "a few" }
@@ -2159,7 +2159,7 @@ criteria for matching a case. Pattern guards appear after the pattern and
 consist of a bool-typed expression following the `if` keyword. A pattern
 guard may refer to the variables bound within the pattern they follow.
 
-~~~~
+~~~~{.xfail-test}
 let message = alt maybe_digit {
   some(x) if x < 10 { process_digit(x) }
   some(x) { process_other(x) }
@@ -2203,7 +2203,7 @@ the `note` to the internal logging diagnostic buffer.
 
 An example of a `note` expression:
 
-~~~~
+~~~~{.xfail-test}
 fn read_file_lines(path: str) -> [str] {
     note path;
     let r: [str];
@@ -2276,7 +2276,7 @@ syntax-extension.
 The following examples all produce the same output, logged at the `error`
 logging level:
 
-~~~~
+~~~~{.xfail-test}
 // Full version, logging a value.
 log(core::error, "file not found: " + filename);
 
@@ -2327,7 +2327,7 @@ itself. From there, the typestate algorithm can perform dataflow calculations
 on subsequent expressions, propagating [conditions](#conditions) forward and
 statically comparing implied states and their specifications.
 
-~~~~~~~~
+~~~~~~~~{.xfail-test}
 pure fn even(x: int) -> bool {
     ret x & 1 == 0;
 }
@@ -2392,14 +2392,14 @@ following two examples are equivalent:
 
 Example using `check`:
 
-~~~~
+~~~~{.xfail-test}
 check even(x);
 print_even(x);
 ~~~~
 
 Equivalent example using `if check`:
 
-~~~~
+~~~~{.xfail-test}
 if check even(x) {
     print_even(x);
 } else {
@@ -2455,7 +2455,7 @@ second-class Rust concepts that are present in syntax. The arguments to
 `macro` are pairs (two-element vectors). The pairs consist of an invocation
 and the syntax to expand into. An example:
 
-~~~~~~~~
+~~~~~~~~{.xfail-test}
 #macro([#apply[fn, [args, ...]], fn(args, ...)]);
 ~~~~~~~~
 
@@ -2474,7 +2474,7 @@ matched, and where the repeated output must be transcribed. A more
 sophisticated example:
 
 
-~~~~~~~~
+~~~~~~~~{.xfail-test}
 #macro([#zip_literals[[x, ...], [y, ...]), [[x, y], ...]]);
 #macro([#unzip_literals[[x, y], ...], [[x, ...], [y, ...]]]);
 ~~~~~~~~
@@ -2611,7 +2611,7 @@ order specified by the tuple type.
 
 An example of a tuple type and its use:
 
-~~~~
+~~~~{.xfail-test}
 type pair = (int,str);
 let p: pair = (10,"hello");
 let (a, b) = p;
@@ -2638,7 +2638,7 @@ behaviour supports idiomatic in-place "growth" of a mutable slot holding a
 vector:
 
 
-~~~~
+~~~~{.xfail-test}
 let v: mutable [int] = [1, 2, 3];
 v += [4, 5, 6];
 ~~~~
@@ -2693,7 +2693,7 @@ consists of a sequence of input slots, an optional set of
 
 An example of a `fn` type:
 
-~~~~~~~~
+~~~~~~~~{.xfail-test}
 fn add(x: int, y: int) -> int {
   ret x + y;
 }
@@ -2735,7 +2735,7 @@ that value to be of copyable kind. Type parameter types are assumed to
 be noncopyable, unless one of the special bounds `send` or `copy` is
 declared for it. For example, this is not a valid program:
 
-~~~~
+~~~~{.xfail-test}
 fn box<T>(x: T) -> @T { @x }
 ~~~~
 
@@ -2776,7 +2776,7 @@ has a set of points before and after it in the implied control flow.
 
 For example, this code:
 
-~~~~~~~~
+~~~~~~~~{.xfail-test}
  s = "hello, world";
  print(s);
 ~~~~~~~~
@@ -2801,8 +2801,8 @@ Consists of 2 statements, 3 expressions and 12 points:
 Whereas this code:
 
 
-~~~~~~~~
- print(x() + y());
+~~~~~~~~{.xfail-test}
+print(x() + y());
 ~~~~~~~~
 
 Consists of 1 statement, 7 expressions and 14 points:
@@ -3106,7 +3106,7 @@ dereference} operations are:
 
 An example of an implicit-dereference operation performed on box values:
 
-~~~~~~~~
+~~~~~~~~{.xfail-test}
 let x: @int = @10;
 let y: @int = @12;
 assert (x + y == 22);
@@ -3280,7 +3280,7 @@ The result of a `spawn` call is a `core::task::task` value.
 
 An example of a `spawn` call:
 
-~~~~
+~~~~{.xfail-test}
 import task::*;
 import comm::*;
 
@@ -3305,7 +3305,7 @@ channel's outgoing buffer.
 
 An example of a send:
 
-~~~~
+~~~~{.xfail-test}
 import comm::*;
 let c: chan<str> = ...;
 send(c, "hello, world");
@@ -3321,7 +3321,7 @@ time the port deques a value to return, and un-blocks the receiving task.
 
 An example of a *receive*:
 
-~~~~~~~~
+~~~~~~~~{.xfail-test}
 import comm::*;
 let p: port<str> = ...;
 let s = recv(p);
