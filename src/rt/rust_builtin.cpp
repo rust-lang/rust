@@ -200,6 +200,43 @@ rand_free(randctx *rctx) {
     task->free(rctx);
 }
 
+
+/* Debug helpers strictly to verify ABI conformance.
+ *
+ * FIXME: move these into a testcase when the testsuite
+ * understands how to have explicit C files included.
+ */
+
+struct quad {
+    uint64_t a;
+    uint64_t b;
+    uint64_t c;
+    uint64_t d;
+};
+
+struct floats {
+    double a;
+    uint8_t b;
+    double c;
+};
+
+extern "C" quad
+debug_abi_1(quad q) {
+    quad qq = { q.c + 1,
+                q.d - 1,
+                q.a + 1,
+                q.b - 1 };
+    return qq;
+}
+
+extern "C" floats
+debug_abi_2(floats f) {
+    floats ff = { f.c + 1.0,
+                  0xff,
+                  f.a - 1.0 };
+    return ff;
+}
+
 /* Debug builtins for std::dbg. */
 
 static void

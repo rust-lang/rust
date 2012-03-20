@@ -7,6 +7,8 @@ debug_ptrcast
 debug_tag
 debug_tydesc
 debug_get_stk_seg
+debug_abi_1
+debug_abi_2
 get_port_id
 get_task_id
 get_time
