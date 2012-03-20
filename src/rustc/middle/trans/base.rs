@@ -4162,20 +4162,20 @@ fn get_pair_fn_ty(llpairty: TypeRef) -> TypeRef {
     ret struct_elt(llpairty, 0u);
 }
 
-fn register_fn(ccx: @crate_ctxt, sp: span, path: path, flav: str,
+fn register_fn(ccx: @crate_ctxt, sp: span, path: path,
                node_id: ast::node_id) -> ValueRef {
     let t = ty::node_id_to_type(ccx.tcx, node_id);
-    register_fn_full(ccx, sp, path, flav, node_id, t)
+    register_fn_full(ccx, sp, path, node_id, t)
 }
 
-fn register_fn_full(ccx: @crate_ctxt, sp: span, path: path, flav: str,
+fn register_fn_full(ccx: @crate_ctxt, sp: span, path: path,
                     node_id: ast::node_id, node_type: ty::t) -> ValueRef {
     let llfty = type_of_fn_from_ty(ccx, node_type);
-    register_fn_fuller(ccx, sp, path, flav, node_id, node_type,
+    register_fn_fuller(ccx, sp, path, node_id, node_type,
                        lib::llvm::CCallConv, llfty)
 }
 
-fn register_fn_fuller(ccx: @crate_ctxt, sp: span, path: path, _flav: str,
+fn register_fn_fuller(ccx: @crate_ctxt, sp: span, path: path,
                       node_id: ast::node_id, node_type: ty::t,
                       cc: lib::llvm::CallConv, llfty: TypeRef) -> ValueRef {
     let ps: str = mangle_exported_name(ccx, path, node_type);
@@ -4316,7 +4316,7 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
               }
               ast::item_fn(decl, _, _) {
                 let llfn = if decl.purity != ast::crust_fn {
-                    register_fn(ccx, i.span, my_path, "fn", i.id)
+                    register_fn(ccx, i.span, my_path, i.id)
                 } else {
                     native::register_crust_fn(ccx, i.span, my_path, i.id)
                 };
@@ -4331,7 +4331,7 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
                 // find the dtor symbol.
                 let t = ty::node_id_to_type(ccx.tcx, dtor_id);
                 register_fn_full(ccx, i.span, my_path + [path_name("dtor")],
-                                 "res_dtor", i.id, t)
+                                 i.id, t)
               }
             }
           }
@@ -4340,8 +4340,7 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
             let mty = ty::node_id_to_type(ccx.tcx, id);
             let pth = *pth + [path_name(ccx.names("meth")),
                               path_name(m.ident)];
-            let llfn = register_fn_full(ccx, m.span, pth, "impl_method",
-                                        id, mty);
+            let llfn = register_fn_full(ccx, m.span, pth, id, mty);
             set_inline_hint_if_appr(m.attrs, llfn);
             llfn
           }
@@ -4353,13 +4352,12 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
             alt check i.node {
               ast::item_res(_, _, _, _, _) {
                 let my_path = item_path(ccx, i);
-                let llctor = register_fn(ccx, i.span, my_path, "res_ctor",
-                                         id);
+                let llctor = register_fn(ccx, i.span, my_path, id);
                 set_inline_hint(llctor);
                 llctor
               }
               ast::item_class(_, _, ctor) {
-                register_fn(ccx, i.span, item_path(ccx, i), "ctor", id)
+                register_fn(ccx, i.span, item_path(ccx, i), id)
               }
             }
           }
@@ -4368,7 +4366,7 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
             let pth = *pth + [path_name(enm.ident), path_name(v.node.name)];
             let llfn = alt check enm.node {
               ast::item_enum(_, _) {
-                register_fn(ccx, v.span, pth, "enum", id)
+                register_fn(ccx, v.span, pth, id)
               }
             };
             set_inline_hint(llfn);

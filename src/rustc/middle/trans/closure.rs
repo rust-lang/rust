@@ -370,7 +370,7 @@ fn trans_expr_fn(bcx: block,
     let sub_path = bcx.fcx.path + [path_name("anon")];
     let s = mangle_internal_name_by_path(ccx, sub_path);
     let llfn = decl_internal_cdecl_fn(ccx.llmod, s, llfnty);
-    register_fn(ccx, sp, sub_path, "anon fn", id);
+    register_fn(ccx, sp, sub_path, id);
 
     let trans_closure_env = fn@(ck: ty::closure_kind) -> ValueRef {
         let cap_vars = capture::compute_capture_vars(

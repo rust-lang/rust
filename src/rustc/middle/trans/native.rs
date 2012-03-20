@@ -873,12 +873,12 @@ fn register_crust_fn(ccx: @crate_ctxt, sp: span,
         let ret_def = !ty::type_is_bot(ret_ty) && !ty::type_is_nil(ret_ty);
         let x86_64 = x86_64_tys(llargtys, llretty, ret_def);
         decl_x86_64_fn(x86_64) {|fnty|
-            register_fn_fuller(ccx, sp, path, "crust fn", node_id,
+            register_fn_fuller(ccx, sp, path, node_id,
                                t, lib::llvm::CCallConv, fnty)
         }
     } else {
         let llfty = T_fn(llargtys, llretty);
-        register_fn_fuller(ccx, sp, path, "crust fn", node_id,
+        register_fn_fuller(ccx, sp, path, node_id,
                            t, lib::llvm::CCallConv, llfty)
     }
 }
@@ -920,7 +920,7 @@ fn decl_native_fn(ccx: @crate_ctxt, i: @ast::native_item,
             // For true external functions: create a rust wrapper
             // and link to that.  The rust wrapper will handle
             // switching to the C stack.
-            register_fn(ccx, i.span, pth, "native fn", i.id)
+            register_fn(ccx, i.span, pth, i.id)
           }
         }
       }
