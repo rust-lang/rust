@@ -156,10 +156,13 @@ fn bad_expr_word_table() -> hashmap<str, ()> {
     words
 }
 
-fn unexpected(p: parser, t: token::token) -> ! {
-    let s: str = "unexpected token: '" + token::to_str(p.reader, t) +
-        "'";
-    p.fatal(s);
+fn unexpected_last(p: parser, t: token::token) -> ! {
+    p.span_fatal(p.last_span,
+                 "unexpected token: '" + token::to_str(p.reader, t) + "'");
+}
+
+fn unexpected(p: parser) -> ! {
+    p.fatal("unexpected token: '" + token::to_str(p.reader, p.token) + "'");
 }
 
 fn expect(p: parser, t: token::token) {
@@ -483,7 +486,7 @@ fn parse_ty(p: parser, colons_before_params: bool) -> @ast::ty {
         let elems =
             parse_seq(token::LBRACE, token::RBRACE, seq_sep_opt(token::COMMA),
                       parse_ty_field, p);
-        if vec::len(elems.node) == 0u { unexpected(p, token::RBRACE); }
+        if vec::len(elems.node) == 0u { unexpected_last(p, token::RBRACE); }
         let hi = elems.span.hi;
 
         let t = ast::ty_rec(elems.node);
@@ -669,7 +672,7 @@ fn lit_from_token(p: parser, tok: token::token) -> ast::lit_ {
       token::LIT_FLOAT(s, ft) { ast::lit_float(p.get_str(s), ft) }
       token::LIT_STR(s) { ast::lit_str(p.get_str(s)) }
       token::LPAREN { expect(p, token::RPAREN); ast::lit_nil }
-      _ { unexpected(p, tok); }
+      _ { unexpected_last(p, tok); }
     }
 }
 
@@ -1065,7 +1068,7 @@ fn parse_dot_or_call_expr_with(p: parser, e0: pexpr) -> pexpr {
                                              p.get_str(i),
                                              tys));
               }
-              t { unexpected(p, t); }
+              _ { unexpected(p); }
             }
             cont;
         }
@@ -2200,7 +2203,7 @@ fn parse_fn_purity(p: parser) -> ast::purity {
     if eat_word(p, "fn") { ast::impure_fn }
     else if eat_word(p, "pure") { expect_word(p, "fn"); ast::pure_fn }
     else if eat_word(p, "unsafe") { expect_word(p, "fn"); ast::unsafe_fn }
-    else { unexpected(p, p.token); }
+    else { unexpected(p); }
 }
 
 fn parse_native_item(p: parser, attrs: [ast::attribute]) ->
@@ -2738,7 +2741,7 @@ fn parse_crate_directive(p: parser, first_outer_attr: [ast::attribute]) ->
             ret spanned(lo, hi,
                         ast::cdir_dir_mod(id, cdirs, mod_attrs));
           }
-          t { unexpected(p, t); }
+          _ { unexpected(p); }
         }
     } else if is_view_item(p) {
         let vi = parse_view_item(p);
