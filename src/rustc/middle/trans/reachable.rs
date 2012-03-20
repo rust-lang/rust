@@ -5,7 +5,6 @@
 // makes all other generics or inline functions that it references
 // reachable as well.
 
-import middle::{resolve, ast_map, typeck};
 import syntax::ast::*;
 import syntax::{visit, ast_util};
 import syntax::ast_util::def_id_of_def;
@@ -16,13 +15,15 @@ export map, find_reachable;
 
 type map = std::map::hashmap<node_id, ()>;
 
-type ctx = {ccx: @middle::trans::common::crate_ctxt,
+type ctx = {exp_map: resolve::exp_map,
+            tcx: ty::ctxt,
+            method_map: typeck::method_map,
             rmap: map};
 
-fn find_reachable(ccx: @middle::trans::common::crate_ctxt, crate_mod: _mod)
-    -> map {
+fn find_reachable(crate_mod: _mod, exp_map: resolve::exp_map,
+                  tcx: ty::ctxt, method_map: typeck::method_map) -> map {
     let rmap = std::map::int_hash();
-    let cx = {ccx: ccx, rmap: rmap};
+    let cx = {exp_map: exp_map, tcx: tcx, method_map: method_map, rmap: rmap};
     traverse_public_mod(cx, crate_mod);
     traverse_all_resources(cx, crate_mod);
     rmap
@@ -50,14 +51,14 @@ fn traverse_exports(cx: ctx, vis: [@view_item]) -> bool {
 }
 
 fn traverse_export(cx: ctx, exp_id: node_id) {
-    option::may(cx.ccx.exp_map.find(exp_id)) {|defs|
+    option::may(cx.exp_map.find(exp_id)) {|defs|
         for def in defs { traverse_def_id(cx, def.id); }
     }
 }
 
 fn traverse_def_id(cx: ctx, did: def_id) {
     if did.crate != local_crate { ret; }
-    alt cx.ccx.tcx.items.get(did.node) {
+    alt cx.tcx.items.get(did.node) {
       ast_map::node_item(item, _) { traverse_public_item(cx, item); }
       ast_map::node_method(_, impl_id, _) { traverse_def_id(cx, impl_id); }
       ast_map::node_native_item(item, _, _) { cx.rmap.insert(item.id, ()); }
@@ -106,10 +107,10 @@ fn traverse_inline_body(cx: ctx, body: blk) {
     fn traverse_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
         alt e.node {
           expr_path(_) {
-            traverse_def_id(cx, def_id_of_def(cx.ccx.tcx.def_map.get(e.id)));
+            traverse_def_id(cx, def_id_of_def(cx.tcx.def_map.get(e.id)));
           }
           expr_field(_, _, _) {
-            alt cx.ccx.maps.method_map.find(e.id) {
+            alt cx.method_map.find(e.id) {
               some(typeck::method_static(did)) { traverse_def_id(cx, did); }
               _ {}
             }

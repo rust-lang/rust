@@ -29,8 +29,7 @@ export encode_def_id;
 type abbrev_map = map::hashmap<ty::t, tyencode::ty_abbrev>;
 
 type encode_ctxt = {ccx: @crate_ctxt,
-                    type_abbrevs: abbrev_map,
-                    reachable: reachable::map};
+                    type_abbrevs: abbrev_map};
 
 // Path table encoding
 fn encode_name(ebml_w: ebml::writer, name: str) {
@@ -97,7 +96,7 @@ fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
                             module: _mod, path: [str], &index: [entry<str>]) {
     // FIXME factor out add_to_index/start/encode_name/encode_def_id/end ops
     for it: @item in module.items {
-        if !ecx.reachable.contains_key(it.id) ||
+        if !ecx.ccx.reachable.contains_key(it.id) ||
            !ast_util::is_exported(it.ident, module) { cont; }
         alt it.node {
           item_const(_, _) {
@@ -430,7 +429,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
 
     let tcx = ecx.ccx.tcx;
     let must_write = alt item.node { item_enum(_, _) { true } _ { false } };
-    if !must_write && !ecx.reachable.contains_key(item.id) { ret; }
+    if !must_write && !ecx.ccx.reachable.contains_key(item.id) { ret; }
     *index += [{val: item.id, pos: ebml_w.writer.tell()}];
 
     alt item.node {
@@ -598,7 +597,7 @@ fn encode_info_for_native_item(ecx: @encode_ctxt, ebml_w: ebml::writer,
                                nitem: @native_item,
                                index: @mutable [entry<int>],
                                path: ast_map::path, abi: native_abi) {
-    if !ecx.reachable.contains_key(nitem.id) { ret; }
+    if !ecx.ccx.reachable.contains_key(nitem.id) { ret; }
     *index += [{val: nitem.id, pos: ebml_w.writer.tell()}];
 
     ebml_w.start_tag(tag_items_data_item);
@@ -861,12 +860,7 @@ fn encode_hash(ebml_w: ebml::writer, hash: str) {
 }
 
 fn encode_metadata(cx: @crate_ctxt, crate: @crate) -> [u8] {
-
-    let reachable = reachable::find_reachable(cx, crate.node.module);
-    let abbrevs = ty::new_ty_hash();
-    let ecx = @{ccx: cx,
-                type_abbrevs: abbrevs,
-                reachable: reachable};
+    let ecx = @{ccx: cx, type_abbrevs: ty::new_ty_hash()};
 
     let buf = io::mem_buffer();
     let buf_w = io::mem_buffer_writer(buf);

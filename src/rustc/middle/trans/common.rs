@@ -79,6 +79,7 @@ type crate_ctxt = {
      intrinsics: hashmap<str, ValueRef>,
      item_vals: hashmap<ast::node_id, ValueRef>,
      exp_map: resolve::exp_map,
+     reachable: reachable::map,
      item_symbols: hashmap<ast::node_id, str>,
      mutable main_fn: option<ValueRef>,
      link_meta: link::link_meta,

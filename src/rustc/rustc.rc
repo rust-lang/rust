@@ -28,6 +28,7 @@ mod middle {
         mod shape;
         mod debuginfo;
         mod type_use;
+        mod reachable;
     }
     mod ty;
     mod ast_map;
@@ -131,7 +132,6 @@ mod metadata {
     mod creader;
     mod cstore;
     mod csearch;
-    mod reachable;
 }
 
 mod driver {

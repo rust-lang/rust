@@ -4604,6 +4604,8 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
     -> (ModuleRef, link::link_meta) {
     let sha = std::sha1::sha1();
     let link_meta = link::build_link_meta(sess, *crate, output, sha);
+    let reachable = reachable::find_reachable(crate.node.module, emap, tcx,
+                                              maps.method_map);
 
     // Append ".rc" to crate name as LLVM module identifier.
     //
@@ -4658,6 +4660,7 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           intrinsics: intrinsics,
           item_vals: int_hash::<ValueRef>(),
           exp_map: emap,
+          reachable: reachable,
           item_symbols: int_hash::<str>(),
           mutable main_fn: none::<ValueRef>,
           link_meta: link_meta,
