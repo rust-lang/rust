@@ -700,7 +700,10 @@ fn link_binary(sess: session,
 
     // Remove the temporary object file if we aren't saving temps
     if !sess.opts.save_temps {
-        run::run_program("rm", [obj_filename]);
+        if ! os::remove_file(obj_filename) {
+            sess.warn(#fmt["failed to delete object file '%s'",
+                           obj_filename]);
+        }
     }
 }
 //
