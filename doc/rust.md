@@ -1852,25 +1852,6 @@ mutate(copy v);   // Pass a copy
 assert v[0] == 1; // Original was not modified
 ~~~~
 
-### Unary move expressions
-
-~~~~~~~~{.ebnf .gram}
-move_expr : "move" expr ;
-~~~~~~~~
-
-This is used to indicate that the referenced _lval_ must be moved out,
-rather than copied, when evaluating this expression. It will only have
-an effect when the expression is _stored_ somewhere or passed to a
-function that takes ownership of it.
-
-~~~~
-let x = ~10;
-let y = [move x];
-~~~~
-
-Any access to `x` after applying the `move` operator to it is invalid,
-since it is no longer initialized at that point.
-
 ### Call expressions
 
 ~~~~~~~~ {.abnf .gram}
