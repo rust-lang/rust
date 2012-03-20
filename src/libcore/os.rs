@@ -372,7 +372,7 @@ fn homedir() -> option<path> {
 
     #[cfg(target_os = "win32")]
     fn secondary() -> option<path> {
-        option::maybe(none, getenv("USERPROFILE")) {|p|
+        option::chain(getenv("USERPROFILE")) {|p|
             if !str::is_empty(p) {
                 some(p)
             } else {

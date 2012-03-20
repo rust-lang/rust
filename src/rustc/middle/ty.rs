@@ -356,7 +356,7 @@ fn mk_ctxt(s: session::session, dm: resolve::def_map, amap: ast_map::map,
            region_map: @middle::region::region_map) -> ctxt {
     let interner = map::hashmap({|&&k: intern_key|
         hash_type_structure(k.struct) +
-            option::maybe(0u, k.o_def_id, ast_util::hash_def_id)
+            option::maybe(k.o_def_id, 0u, ast_util::hash_def_id)
     }, {|&&a, &&b| a == b});
     @{interner: interner,
       mutable next_id: 0u,

@@ -50,7 +50,7 @@ fn fold_crate(
     {
         topmod: {
             item: {
-                name: option::from_maybe(doc.topmod.name(), attrs.name)
+                name: option::from_maybe(attrs.name, doc.topmod.name())
                 with doc.topmod.item
             }
             with doc.topmod

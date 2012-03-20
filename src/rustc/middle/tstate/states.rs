@@ -616,7 +616,7 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
         handle_fail(fcx, pres, post);
         ret set_prestate_ann(fcx.ccx, e.id, pres) |
                 set_poststate_ann(fcx.ccx, e.id, post) |
-                option::maybe(false, maybe_fail_val, {|fail_val|
+                option::maybe(maybe_fail_val, false, {|fail_val|
                         find_pre_post_state_expr(fcx, pres, fail_val)});
       }
       expr_assert(p) {

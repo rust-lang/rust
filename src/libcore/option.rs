@@ -52,13 +52,13 @@ pure fn is_some<T>(opt: option<T>) -> bool {
     !is_none(opt)
 }
 
-pure fn from_maybe<T: copy>(def: T, opt: option<T>) -> T {
+pure fn from_maybe<T: copy>(opt: option<T>, def: T) -> T {
     #[doc = "Returns the contained value or a default"];
 
     alt opt { some(x) { x } none { def } }
 }
 
-fn maybe<T, U: copy>(def: U, opt: option<T>, f: fn(T) -> U) -> U {
+fn maybe<T, U: copy>(opt: option<T>, def: U, f: fn(T) -> U) -> U {
     #[doc = "Applies a function to the contained value or returns a default"];
 
     alt opt { none { def } some(t) { f(t) } }

@@ -245,7 +245,7 @@ fn highlight_lines(cm: codemap::codemap, sp: span,
 
 fn print_macro_backtrace(cm: codemap::codemap, sp: span) {
     option::may (sp.expn_info) {|ei|
-        let ss = option::maybe("", ei.callie.span,
+        let ss = option::maybe(ei.callie.span, "",
                                bind codemap::span_to_str(_, cm));
         print_diagnostic(ss, note,
                          #fmt("in expansion of #%s", ei.callie.name));
