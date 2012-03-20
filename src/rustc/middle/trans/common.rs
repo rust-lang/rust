@@ -5,7 +5,7 @@
 
 import libc::c_uint;
 import vec::unsafe::to_ptr;
-import std::map::hashmap;
+import std::map::{hashmap,set};
 import syntax::ast;
 import driver::session;
 import session::session;
@@ -101,6 +101,7 @@ type crate_ctxt = {
      sha: std::sha1::sha1,
      type_sha1s: hashmap<ty::t, str>,
      type_short_names: hashmap<ty::t, str>,
+     all_llvm_symbols: set<str>,
      tcx: ty::ctxt,
      maps: maps,
      stats: stats,

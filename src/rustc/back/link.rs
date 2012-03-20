@@ -505,6 +505,34 @@ fn get_symbol_hash(ccx: @crate_ctxt, t: ty::t) -> str {
     ret hash;
 }
 
+
+// Name sanitation. LLVM will happily accept identifiers with weird names, but
+// gas doesn't!
+fn sanitize(s: str) -> str {
+    let result = "";
+    str::chars_iter(s) {|c|
+        alt c {
+          '@' { result += "_sbox_"; }
+          '~' { result += "_ubox_"; }
+          '*' { result += "_ptr_"; }
+          '&' { result += "_ref_"; }
+          ',' { result += "_"; }
+
+          '{' | '(' { result += "_of_"; }
+          'a' to 'z'
+          | 'A' to 'Z'
+          | '0' to '9'
+          | '_' { str::push_char(result,c); }
+          _ {
+            if c > 'z' && char::is_XID_continue(c) {
+                str::push_char(result,c);
+            }
+          }
+        }
+    }
+    ret result;
+}
+
 fn mangle(ss: path) -> str {
     // Follow C++ namespace-mangling style
 
@@ -512,7 +540,8 @@ fn mangle(ss: path) -> str {
 
     for s in ss {
         alt s { path_name(s) | path_mod(s) {
-          n += #fmt["%u%s", str::len(s), s];
+          let sani = sanitize(s);
+          n += #fmt["%u%s", str::len(sani), sani];
         } }
     }
     n += "E"; // End name-sequence.

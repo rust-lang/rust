@@ -128,34 +128,6 @@ fn get_dest_addr(dest: dest) -> ValueRef {
     }
 }
 
-// Name sanitation. LLVM will happily accept identifiers with weird names, but
-// gas doesn't!
-fn sanitize(s: str) -> str {
-    let result = "";
-    for c: u8 in s {
-        if c == '@' as u8 {
-            result += "boxed_";
-        } else {
-            if c == ',' as u8 {
-                result += "_";
-            } else {
-                if c == '{' as u8 || c == '(' as u8 {
-                    result += "_of_";
-                } else {
-                    if c != 10u8 && c != '}' as u8 && c != ')' as u8 &&
-                           c != ' ' as u8 && c != '\t' as u8 && c != ';' as u8
-                       {
-                        let v = [c];
-                        result += str::from_bytes(v);
-                    }
-                }
-            }
-        }
-    }
-    ret result;
-}
-
-
 fn log_fn_time(ccx: @crate_ctxt, name: str, start: time::timeval,
                end: time::timeval) {
     let elapsed = 1000 * ((end.sec - start.sec) as int) +
@@ -412,6 +384,14 @@ fn set_glue_inlining(f: ValueRef, t: ty::t) {
     } else { set_always_inline(f); }
 }
 
+// Double-check that we never ask LLVM to declare the same symbol twice. It
+// silently mangles such symbols, breaking our linkage model.
+fn note_unique_llvm_symbol(ccx: @crate_ctxt, sym: str) {
+    if ccx.all_llvm_symbols.contains_key(sym) {
+        ccx.sess.bug("duplicate LLVM symbol: " + sym);
+    }
+    ccx.all_llvm_symbols.insert(sym, ());
+}
 
 // Generates the declaration for (but doesn't emit) a type descriptor.
 fn declare_tydesc(ccx: @crate_ctxt, t: ty::t) -> @tydesc_info {
@@ -424,8 +404,8 @@ fn declare_tydesc(ccx: @crate_ctxt, t: ty::t) -> @tydesc_info {
     let name;
     if ccx.sess.opts.debuginfo {
         name = mangle_internal_name_by_type_only(ccx, t, "tydesc");
-        name = sanitize(name);
     } else { name = mangle_internal_name_by_seq(ccx, "tydesc"); }
+    note_unique_llvm_symbol(ccx, name);
     let gvar = str::as_c_str(name, {|buf|
         llvm::LLVMAddGlobal(ccx.llmod, ccx.tydesc_type, buf)
     });
@@ -449,8 +429,10 @@ fn declare_generic_glue(ccx: @crate_ctxt, t: ty::t, llfnty: TypeRef,
     let fn_nm;
     if ccx.sess.opts.debuginfo {
         fn_nm = mangle_internal_name_by_type_only(ccx, t, "glue_" + name);
-        fn_nm = sanitize(fn_nm);
-    } else { fn_nm = mangle_internal_name_by_seq(ccx, "glue_" + name); }
+    } else {
+        fn_nm = mangle_internal_name_by_seq(ccx, "glue_" + name);
+    }
+    note_unique_llvm_symbol(ccx, fn_nm);
     let llfn = decl_cdecl_fn(ccx.llmod, fn_nm, llfnty);
     set_glue_inlining(llfn, t);
     ret llfn;
@@ -4414,6 +4396,7 @@ fn trans_constant(ccx: @crate_ctxt, it: @ast::item) {
                             path_name("discrim")];
             let s = mangle_exported_name(ccx, p, ty::mk_int(ccx.tcx));
             let disr_val = vi[i].disr_val;
+            note_unique_llvm_symbol(ccx, s);
             let discrim_gvar = str::as_c_str(s, {|buf|
                 llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type, buf)
             });
@@ -4669,6 +4652,7 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           sha: sha,
           type_sha1s: ty::new_ty_hash(),
           type_short_names: ty::new_ty_hash(),
+          all_llvm_symbols: str_hash::<()>(),
           tcx: tcx,
           maps: maps,
           stats:
