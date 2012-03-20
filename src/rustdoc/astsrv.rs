@@ -30,7 +30,8 @@ export exec;
 type ctxt = {
     ast: @ast::crate,
     ast_map: ast_map::map,
-    exp_map: resolve::exp_map
+    exp_map: resolve::exp_map,
+    impl_map: resolve::impl_map
 };
 
 type srv_owner<T> = fn(srv: srv) -> T;
@@ -111,13 +112,14 @@ fn build_ctxt(sess: session::session, ast: @ast::crate,
     let ast = front::test::modify_for_testing(sess, ast);
     let ast_map = ast_map::map_crate(sess, *ast);
     *ignore_errors = true;
-    let exp_map = resolve::resolve_crate_reexports(sess, ast_map, ast);
+    let {exp_map, impl_map, _} = resolve::resolve_crate(sess, ast_map, ast);
     *ignore_errors = false;
 
     {
         ast: ast,
         ast_map: ast_map,
-        exp_map: exp_map
+        exp_map: exp_map,
+        impl_map: impl_map
     }
 }
 

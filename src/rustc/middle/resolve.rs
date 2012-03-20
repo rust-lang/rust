@@ -17,7 +17,7 @@ import std::list::{list, nil, cons};
 import option::{is_none, is_some};
 import syntax::print::pprust::*;
 
-export resolve_crate, resolve_crate_reexports;
+export resolve_crate;
 export def_map, ext_map, exp_map, impl_map;
 export _impl, iscopes, method_info;
 
@@ -164,16 +164,6 @@ fn resolve_crate(sess: session, amap: ast_map::map, crate: @ast::crate) ->
         check_unused_imports(e);
     }
     ret {def_map: e.def_map, exp_map: e.exp_map, impl_map: e.impl_map};
-}
-
-// Used by rustdoc
-fn resolve_crate_reexports(sess: session, amap: ast_map::map,
-                           crate: @ast::crate) -> exp_map {
-    let e = create_env(sess, amap);
-    map_crate(e, crate);
-    resolve_imports(*e);
-    check_exports(e);
-    ret e.exp_map;
 }
 
 fn create_env(sess: session, amap: ast_map::map) -> @env {
