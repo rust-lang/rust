@@ -119,7 +119,7 @@ fn send<T: send>(ch: chan<T>, -data: T) {
     let res = rustrt::rust_port_id_send(sys::get_type_desc::<T>(), p, data);
     if res != 0u unsafe {
         // Data sent successfully
-        unsafe::leak(data);
+        unsafe::forget(data);
     }
     task::yield();
 }

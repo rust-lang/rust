@@ -504,7 +504,7 @@ fn spawn_raw(opts: task_opts, +f: fn~()) unsafe {
     }
 
     rustrt::start_task(new_task, closure);
-    unsafe::leak(f);
+    unsafe::forget(f);
 
     fn new_task_in_new_sched(opts: sched_opts) -> *rust_task {
         if opts.native_stack_size != none {

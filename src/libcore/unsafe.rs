@@ -1,6 +1,6 @@
 #[doc = "Unsafe operations"];
 
-export reinterpret_cast, leak;
+export reinterpret_cast, forget;
 
 #[abi = "rust-intrinsic"]
 native mod rusti {
@@ -24,13 +24,13 @@ unsafe fn reinterpret_cast<T, U>(src: T) -> U {
 #[doc ="
 Move a thing into the void
 
-The leak function will take ownership of the provided value but neglect
+The forget function will take ownership of the provided value but neglect
 to run any required cleanup or memory-management operations on it. This
 can be used for various acts of magick, particularly when using
 reinterpret_cast on managed pointer types.
 "]
 #[inline(always)]
-unsafe fn leak<T>(-thing: T) { rusti::leak(thing); }
+unsafe fn forget<T>(-thing: T) { rusti::leak(thing); }
 
 #[cfg(test)]
 mod tests {

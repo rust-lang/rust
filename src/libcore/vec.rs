@@ -155,14 +155,14 @@ fn from_elem<T: copy>(n_elts: uint, t: T) -> [T] {
 #[doc = "Produces a mutable vector from an immutable vector."]
 fn to_mut<T>(+v: [T]) -> [mutable T] unsafe {
     let r = ::unsafe::reinterpret_cast(v);
-    ::unsafe::leak(v);
+    ::unsafe::forget(v);
     r
 }
 
 #[doc = "Produces an immutable vector from a mutable vector."]
 fn from_mut<T>(+v: [mutable T]) -> [T] unsafe {
     let r = ::unsafe::reinterpret_cast(v);
-    ::unsafe::leak(v);
+    ::unsafe::forget(v);
     r
 }
 

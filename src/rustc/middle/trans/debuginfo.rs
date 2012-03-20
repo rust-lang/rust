@@ -123,7 +123,7 @@ enum debug_metadata {
 fn cast_safely<T: copy, U>(val: T) -> U unsafe {
     let val2 = val;
     let val3 = unsafe::reinterpret_cast(val2);
-    unsafe::leak(val2);
+    unsafe::forget(val2);
     ret val3;
 }
 

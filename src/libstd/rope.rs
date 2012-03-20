@@ -813,12 +813,12 @@ mod node {
                     offset += 1u;
                     i      += 1u;
                 }
-                unsafe::leak(local_buf);
+                unsafe::forget(local_buf);
               }
             }
         }
         let str : str = unsafe::reinterpret_cast(buf);
-        unsafe::leak(buf);//TODO: Check if this is correct
+        unsafe::forget(buf);//TODO: Check if this is correct
         ret str;
     }
 

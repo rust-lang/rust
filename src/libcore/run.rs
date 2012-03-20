@@ -129,7 +129,7 @@ fn with_envp<T>(env: option<[(str,str)]>,
             let t = #fmt("%s=%s", k, v);
             let mut v : [u8] = ::unsafe::reinterpret_cast(t);
             blk += v;
-            ::unsafe::leak(v);
+            ::unsafe::forget(v);
         }
         blk += [0_u8];
         vec::as_buf(blk) {|p| cb(::unsafe::reinterpret_cast(p)) }

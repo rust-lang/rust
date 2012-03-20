@@ -83,7 +83,7 @@ fn unwrap<T>(-opt: option<T>) -> T unsafe {
       none { fail "option none" }
     };
     let liberated_value = unsafe::reinterpret_cast(*addr);
-    unsafe::leak(opt);
+    unsafe::forget(opt);
     ret liberated_value;
 }
 
