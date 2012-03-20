@@ -2,10 +2,13 @@
 
 import std::map;
 import std::map::hashmap;
+import std::list;
 import rustc::syntax::ast;
 import rustc::syntax::ast_util;
 import rustc::util::common;
 import rustc::middle::ast_map;
+import rustc::syntax::visit;
+import rustc::syntax::codemap;
 
 export mk_pass;
 
@@ -84,10 +87,61 @@ fn build_reexport_def_set(srv: astsrv::srv) -> def_set {
                 }
             }
         }
+        for def in find_reexport_impls(ctxt) {
+            def_set.insert(def, ());
+        }
         to_assoc_list(def_set)
     };
 
     from_def_assoc_list(assoc_list)
+}
+
+fn find_reexport_impls(ctxt: astsrv::ctxt) -> [ast::def_id] {
+    let defs = @mut [];
+    let visitor = @{
+        visit_mod: bind visit_mod(ctxt, defs, _, _, _)
+        with *visit::default_simple_visitor()
+    };
+    let visitor = visit::mk_simple_visitor(visitor);
+    visit::visit_crate(*ctxt.ast, (), visitor);
+    ret *defs;
+
+    fn visit_mod(
+        ctxt: astsrv::ctxt,
+        defs: @mut [ast::def_id],
+        m: ast::_mod,
+        _sp: codemap::span,
+        mod_id: ast::node_id
+    ) {
+        let all_impls = all_impls(m);
+        alt check ctxt.impl_map.get(mod_id) {
+          list::cons(impls, @list::nil) {
+            for i in *impls {
+                // This impl is not an item in the current mod
+                if !all_impls.contains_key(i.did) {
+                    // Ignore external impls because I don't
+                    // know what to do with them yet
+                    if i.did.crate == ast::local_crate {
+                        *defs += [i.did]
+                    }
+                }
+            }
+          }
+        }
+    }
+}
+
+fn all_impls(m: ast::_mod) -> map::set<ast::def_id> {
+    let all_impls = common::new_def_hash();
+    for item in m.items {
+        alt item.node {
+          ast::item_impl(_, _, _, _) {
+            all_impls.insert(ast_util::local_def(item.id), ());
+          }
+          _ { }
+        }
+    }
+    ret all_impls;
 }
 
 fn build_reexport_def_map(
@@ -191,10 +245,75 @@ fn build_reexport_path_map(srv: astsrv::srv, -def_map: def_map) -> path_map {
             }
         }
 
+        for (path, doc) in find_reexport_impl_docs(ctxt, def_map) {
+            let docs = alt path_map.find(path) {
+              some(docs) { docs + [(doc)] }
+              none { [doc] }
+            };
+            path_map.insert(path, docs);
+        }
+
         to_assoc_list(path_map)
     };
 
     from_str_assoc_list(assoc_list)
+}
+
+fn find_reexport_impl_docs(
+    ctxt: astsrv::ctxt,
+    def_map: def_map
+) -> [(str, (str, doc::itemtag))] {
+    let docs = @mut [];
+    let visitor = @{
+        visit_mod: bind visit_mod(ctxt, def_map, docs, _, _, _)
+        with *visit::default_simple_visitor()
+    };
+    let visitor = visit::mk_simple_visitor(visitor);
+    visit::visit_crate(*ctxt.ast, (), visitor);
+    ret *docs;
+
+    fn visit_mod(
+        ctxt: astsrv::ctxt,
+        def_map: def_map,
+        docs: @mut [(str, (str, doc::itemtag))],
+        m: ast::_mod,
+        _sp: codemap::span,
+        mod_id: ast::node_id
+    ) {
+        let all_impls = all_impls(m);
+        alt check ctxt.impl_map.get(mod_id) {
+          list::cons(impls, @list::nil) {
+            for i in *impls {
+                // This impl is not an item in the current mod
+                if !all_impls.contains_key(i.did) {
+                    // Ignore external impls because I don't
+                    // know what to do with them yet
+                    if i.did.crate == ast::local_crate {
+                        let path = alt ctxt.ast_map.find(mod_id) {
+                          some(ast_map::node_item(item, path)) {
+                            let path = ast_map::path_to_str(*path);
+                            if str::is_empty(path) {
+                                item.ident
+                            } else {
+                                path + "::" + item.ident
+                            }
+                          }
+                          _ {
+                            assert mod_id == ast::crate_node_id;
+                            ""
+                          }
+                        };
+                        let ident = i.ident;
+                        let doc = alt check def_map.find(i.did) {
+                          some(doc) { doc }
+                        };
+                        *docs += [(path, (ident, doc))];
+                    }
+                }
+            }
+          }
+        }
+    }
 }
 
 fn merge_reexports(
@@ -321,6 +440,30 @@ fn should_mark_reepxorts_as_such() {
                   mod c { import a::b; export b; }";
     let doc = test::mk_doc(source);
     assert doc.cratemod().mods()[1].fns()[0].item.reexport == true;
+}
+
+#[test]
+fn should_duplicate_reexported_impls() {
+    let source = "mod a { impl b for int { fn c() { } } } \
+                  mod d { import a::b; export b; }";
+    let doc = test::mk_doc(source);
+    assert doc.cratemod().mods()[1].impls()[0].name() == "b";
+}
+
+#[test]
+fn should_duplicate_reexported_impls_deep() {
+    let source = "mod a { impl b for int { fn c() { } } } \
+                  mod d { mod e { import a::b; export b; } }";
+    let doc = test::mk_doc(source);
+    assert doc.cratemod().mods()[1].mods()[0].impls()[0].name() == "b";
+}
+
+#[test]
+fn should_duplicate_reexported_impls_crate() {
+    let source = "import a::b; export b; \
+                  mod a { impl b for int { fn c() { } } }";
+    let doc = test::mk_doc(source);
+    assert doc.cratemod().impls()[0].name() == "b";
 }
 
 #[test]
