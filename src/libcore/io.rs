@@ -752,7 +752,7 @@ mod tests {
     fn file_writer_bad_name() {
         alt io::file_writer("?/?", []) {
           result::err(e) {
-            assert e == "error opening ?/?: No such file or directory";
+            assert str::starts_with(e, "error opening ?/?");
           }
           result::ok(_) { fail; }
         }
