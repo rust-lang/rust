@@ -18,13 +18,7 @@ fn expr_root(tcx: ty::ctxt, ex: @expr, autoderef: bool) ->
         let ds = [], t = t;
         loop {
             alt ty::get(t).struct {
-              ty::ty_box(mt) {
-                ds += [@{mutbl: mt.mutbl == m_mutbl,
-                         kind: unbox(false),
-                         outer_t: t}];
-                t = mt.ty;
-              }
-              ty::ty_uniq(mt) {
+              ty::ty_box(mt) | ty::ty_uniq(mt) | ty::ty_rptr(_, mt) {
                 ds += [@{mutbl: mt.mutbl == m_mutbl,
                          kind: unbox(false),
                          outer_t: t}];
