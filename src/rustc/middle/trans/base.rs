@@ -1898,7 +1898,7 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, real_substs: [ty::t],
 
     let pt = *pt + [path_name(ccx.names(name))];
     let s = mangle_exported_name(ccx, pt, mono_ty);
-    let lldecl = decl_cdecl_fn(ccx.llmod, s, llfty);
+    let lldecl = decl_internal_cdecl_fn(ccx.llmod, s, llfty);
     ccx.monomorphized.insert(hash_id, lldecl);
     ccx.item_symbols.insert(fn_id.node, s);
 
@@ -1982,12 +1982,14 @@ fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id)
           }
           csearch::found(ast::ii_method(impl_did, mth)) {
             ccx.external.insert(fn_id, some(mth.id));
-            compute_ii_method_info(ccx, impl_did, mth) {|ty, bounds, path|
-                if bounds.len() == 0u {
-                    let llfn = get_item_val(ccx, mth.id);
-                    trans_fn(ccx, path, mth.decl, mth.body,
-                             llfn, impl_self(ty), none, mth.id, none);
-                }
+            let {bounds: impl_bnds, ty: impl_ty} =
+                ty::lookup_item_type(ccx.tcx, impl_did);
+            if (*impl_bnds).len() + mth.tps.len() == 0u {
+                let llfn = get_item_val(ccx, mth.id);
+                let path = ty::item_path(ccx.tcx, impl_did) +
+                    [path_name(mth.ident)];
+                trans_fn(ccx, path, mth.decl, mth.body,
+                         llfn, impl_self(impl_ty), none, mth.id, none);
             }
             local_def(mth.id)
           }
@@ -4173,18 +4175,6 @@ fn trans_mod(ccx: @crate_ctxt, m: ast::_mod) {
     for item in m.items { trans_item(ccx, *item); }
 }
 
-fn compute_ii_method_info(ccx: @crate_ctxt,
-                          impl_did: ast::def_id,
-                          m: @ast::method,
-                          f: fn(ty::t, [ty::param_bounds], ast_map::path)) {
-    let {bounds: impl_bnds, ty: impl_ty} =
-        ty::lookup_item_type(ccx.tcx, impl_did);
-    let m_bounds = *impl_bnds + param_bounds(ccx, m.tps);
-    let impl_path = ty::item_path(ccx.tcx, impl_did);
-    let m_path = impl_path + [path_name(m.ident)];
-    f(impl_ty, m_bounds, m_path);
-}
-
 fn get_pair_fn_ty(llpairty: TypeRef) -> TypeRef {
     // Bit of a kludge: pick the fn typeref out of the pair.
     ret struct_elt(llpairty, 0u);
@@ -4194,11 +4184,6 @@ fn register_fn(ccx: @crate_ctxt, sp: span, path: path, flav: str,
                node_id: ast::node_id) -> ValueRef {
     let t = ty::node_id_to_type(ccx.tcx, node_id);
     register_fn_full(ccx, sp, path, flav, node_id, t)
-}
-
-fn param_bounds(ccx: @crate_ctxt, tps: [ast::ty_param])
-        -> [ty::param_bounds] {
-    vec::map(tps) {|tp| ccx.tcx.ty_param_bounds.get(tp.id) }
 }
 
 fn register_fn_full(ccx: @crate_ctxt, sp: span, path: path, flav: str,
@@ -4333,6 +4318,7 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
     alt ccx.item_vals.find(id) {
       some(v) { v }
       none {
+        let exprt = false;
         let val = alt check ccx.tcx.items.get(id) {
           ast_map::node_item(i, pth) {
             let my_path = *pth + [path_name(i.ident)];
@@ -4368,6 +4354,7 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
             }
           }
           ast_map::node_method(m, impl_id, pth) {
+            exprt = true;
             let mty = ty::node_id_to_type(ccx.tcx, id);
             let pth = *pth + [path_name(int::str(impl_id.node)),
                               path_name(m.ident)];
@@ -4377,6 +4364,7 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
             llfn
           }
           ast_map::node_native_item(ni, _, pth) {
+            exprt = true;
             native::decl_native_fn(ccx, ni, *pth + [path_name(ni.ident)])
           }
           ast_map::node_ctor(i, _) {
@@ -4405,6 +4393,9 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
             llfn
           }
         };
+        if !(exprt || ccx.reachable.contains_key(id)) {
+            lib::llvm::SetLinkage(val, lib::llvm::InternalLinkage);
+        }
         ccx.item_vals.insert(id, val);
         val
       }

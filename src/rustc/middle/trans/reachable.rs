@@ -98,7 +98,24 @@ fn traverse_public_item(cx: ctx, item: @item) {
             }
         }
       }
-      item_class(_tps, _items, _) {} // FIXME handle these when stable
+      item_class(tps, items, ctor) {
+        cx.rmap.insert(ctor.node.id, ());
+        for item in items {
+            alt item.node.decl {
+              class_method(i) {
+                cx.rmap.insert(i.id, ());
+                if tps.len() > 0u ||
+                   attr::find_inline_attr(i.attrs) != attr::ia_none {
+                    alt i.node {
+                      item_fn(_, _, blk) { traverse_inline_body(cx, blk); }
+                      _ {}
+                    }
+                }
+              }
+              _ {}
+            }
+        }
+      }
       item_const(_, _) | item_ty(_, _) | item_enum(_, _) | item_iface(_, _) {}
     }
 }
