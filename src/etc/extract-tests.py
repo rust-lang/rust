@@ -29,17 +29,16 @@ while cur < len(lines):
         chapter = re.sub(r"\W", "_", chap.group(1)).lower()
         chapter_n = 1
     elif re.match("~~~", line):
+        # Parse the tags that open a code block in the pandoc format:
+        # ~~~ {.tag1 .tag2}
+        tags = re.findall("\.([\w-]*)", line)
         block = ""
-        ignore = False
-        xfail = False
+        ignore = "notrust" in tags or "ignore" in tags
+        xfail = "xfail-test" in tags
         while cur < len(lines):
             line = lines[cur]
             cur += 1
-            if re.match(r"\s*## (notrust|ignore)", line):
-                ignore = True
-            elif re.match(r"\s*## xfail-test", line):
-                xfail = True
-            elif re.match("~~~", line):
+            if re.match("~~~", line):
                 break
             else:
                 block += re.sub("^# ", "", line)
@@ -60,4 +59,3 @@ while cur < len(lines):
             f = open(filename, 'w')
             f.write(block)
             f.close()
-

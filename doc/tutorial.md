@@ -96,8 +96,7 @@ prerequisites, something along these lines should work. Building from source on
 Windows requires some extra steps: please see the
 [getting started][wiki-get-started] page on the Rust wiki.
 
-~~~~
-## notrust
+~~~~ {.notrust}
 $ wget http://dl.rust-lang.org/dist/rust-0.1.tar.gz
 $ tar -xzf rust-0.1.tar.gz
 $ cd rust-0.1
@@ -144,8 +143,7 @@ If you modify the program to make it invalid (for example, change the
 function to an unknown name), and then compile it, you'll see an error
 message like this:
 
-~~~~
-## notrust
+~~~~ {.notrust}
 hello.rs:2:4: 2:16 error: unresolved name: io::print_it
 hello.rs:2     io::print_it("hello world from '" + args[0] + "'!");
                ^~~~~~~~~~~~
@@ -511,8 +509,7 @@ BSD-style license). Finally, you can have a name followed by a
 comma-separated list of nested attributes, as in the `cfg` example
 above, or in this [crate](#modules-and-crates) metadata declaration:
 
-~~~~
-## ignore
+~~~~ {.ignore}
 #[link(name = "std",
        vers = "0.1",
        url = "http://rust-lang.org/src/std")];
@@ -1595,8 +1592,7 @@ parameter `T`, can you copy values of that type? In Rust, you can't,
 unless you explicitly declare that type parameter to have copyable
 'kind'. A kind is a type of type.
 
-~~~~
-## ignore
+~~~~ {.ignore}
 // This does not compile
 fn head_bad<T>(v: [T]) -> T { v[0] }
 // This does
@@ -1687,8 +1683,7 @@ It is also possible to include multiple files in a crate. For this
 purpose, you create a `.rc` crate file, which references any number of
 `.rs` code files. A crate file could look like this:
 
-~~~~
-## ignore
+~~~~ {.ignore}
 #[link(name = "farm", vers = "2.5", author = "mjh")];
 mod cow;
 mod chicken;
@@ -1707,8 +1702,7 @@ later.
 To have a nested directory structure for your source files, you can
 nest mods in your `.rc` file:
 
-~~~~
-## ignore
+~~~~ {.ignore}
 mod poultry {
     mod chicken;
     mod turkey;
@@ -1736,8 +1730,7 @@ crate library with the right name.
 It is possible to provide more specific information when using an
 external crate.
 
-~~~~
-## ignore
+~~~~ {.ignore}
 use myfarm (name = "farm", vers = "2.7");
 ~~~~
 
@@ -1750,8 +1743,7 @@ local name `myfarm`.
 
 Our example crate declared this set of `link` attributes:
 
-~~~~
-## ignore
+~~~~ {.ignore}
 #[link(name = "farm", vers = "2.5", author = "mjh")];
 ~~~~
 
@@ -1780,8 +1772,7 @@ these two files:
 fn world() -> str { "world" }
 ~~~~
 
-~~~~
-## ignore
+~~~~ {.ignore}
 // main.rs
 use std;
 use mylib;
@@ -1790,8 +1781,7 @@ fn main() { io::println("hello " + mylib::world()); }
 
 Now compile and run like this (adjust to your platform if necessary):
 
-~~~~
-## notrust
+~~~~ {.notrust}
 > rustc --lib mylib.rs
 > rustc main.rs -L .
 > ./main
@@ -2133,8 +2123,7 @@ hash of its first command-line argument, which it then converts to a
 hexadecimal string and prints to standard output. If you have the
 OpenSSL libraries installed, it should 'just work'.
 
-~~~~
-## xfail-test
+~~~~ {.xfail-test}
 use std;
 
 native mod crypto {
@@ -2164,8 +2153,7 @@ fn main(args: [str]) {
 Before we can call `SHA1`, we have to declare it. That is what this
 part of the program is responsible for:
 
-~~~~
-## xfail-test
+~~~~ {.xfail-test}
 native mod crypto {
     fn SHA1(src: *u8, sz: uint, out: *u8) -> *u8;
 }
@@ -2180,8 +2168,7 @@ in a platform-specific way (`libcrypto.so` on Linux, for example), and
 link that in. If you want the module to have a different name from the
 actual library, you can use the `"link_name"` attribute, like:
 
-~~~~
-## xfail-test
+~~~~ {.xfail-test}
 #[link_name = "crypto"]
 native mod something {
     fn SHA1(src: *u8, sz: uint, out: *u8) -> *u8;
@@ -2213,8 +2200,7 @@ or `"stdcall"`. Other conventions may be defined in the future.
 The native `SHA1` function is declared to take three arguments, and
 return a pointer.
 
-~~~~
-## xfail-test
+~~~~ {.xfail-test}
 # native mod crypto {
 fn SHA1(src: *u8, sz: uint, out: *u8) -> *u8;
 # }
@@ -2547,8 +2533,7 @@ When you compile the program normally, the `test_twice` function will
 not be included. To compile and run such tests, compile with the
 `--test` flag, and then run the result:
 
-~~~~
-## notrust
+~~~~ {.notrust}
 > rustc --test twice.rs
 > ./twice
 running 1 tests
@@ -2559,8 +2544,7 @@ result: ok. 1 passed; 0 failed; 0 ignored
 Or, if we change the file to fail, for example by replacing `x + x`
 with `x + 1`:
 
-~~~~
-## notrust
+~~~~ {.notrust}
 running 1 tests
 test test_twice ... FAILED
 failures:

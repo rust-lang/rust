@@ -39,10 +39,10 @@ var out = outfile ? fs.createWriteStream(outfile) : process.stdout;
 
 while ((line = lines[cur++]) != null) {
   if (/^~~~/.test(line)) {
-    var block = "", bline, isRust = true;
+    var block = "", bline;
+    var isRust = !/notrust/.test(line);
     while ((bline = lines[cur++]) != null) {
-      if (/^\s*## notrust/.test(bline)) isRust = false;
-      else if (/^~~~/.test(bline)) break;
+      if (/^~~~/.test(bline)) break;
       if (!/^\s*##? /.test(bline)) block += bline + "\n";
     }
     if (!highlight || !isRust)
