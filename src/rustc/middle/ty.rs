@@ -1542,8 +1542,8 @@ mod unify {
     export resolve_type_structure;
     export resolve_type_var;
     export unify;
-    export var_bindings;
-    export precise, in_bindings;
+    export var_bindings, region_bindings;
+    export precise, in_bindings, in_region_bindings;
 
     type ures<T> = result<T,type_err>;
 
@@ -1669,7 +1669,11 @@ mod unify {
         typ: t, variance: variance,
         nxt: fn(t) -> ures<T>) -> ures<T> {
 
-        let vb = alt check cx.st { in_bindings(vb) { vb } };
+        let vb = alt cx.st {
+            in_bindings(vb) | in_region_bindings(vb, _) { vb }
+            precise { fail; }
+        };
+
         ufind::grow(vb.sets, (key as uint) + 1u);
         let root = ufind::find(vb.sets, key as uint);
         let result_type = typ;

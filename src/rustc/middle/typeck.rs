@@ -1089,6 +1089,15 @@ mod collect {
 
 // Type unification
 mod unify {
+    fn unify_with_region_bindings(fcx: @fn_ctxt,
+                                  rb: @ty::unify::region_bindings,
+                                  expected: ty::t,
+                                  actual: ty::t)
+            -> result<ty::t, ty::type_err> {
+        let irb = ty::unify::in_region_bindings(fcx.var_bindings, rb);
+        ret ty::unify::unify(expected, actual, irb, fcx.ccx.tcx);
+    }
+
     fn unify(fcx: @fn_ctxt, expected: ty::t, actual: ty::t) ->
         result<ty::t, ty::type_err> {
         ret ty::unify::unify(expected, actual,
@@ -1146,17 +1155,32 @@ type ty_param_substs_and_ty = {substs: [ty::t], ty: ty::t};
 mod demand {
     fn simple(fcx: @fn_ctxt, sp: span, expected: ty::t, actual: ty::t) ->
        ty::t {
-        full(fcx, sp, expected, actual, []).ty
+        full(fcx, sp, unify::unify, expected, actual, []).ty
+    }
+
+    fn with_region_bindings(fcx: @fn_ctxt,
+                            sp: span,
+                            rb: @ty::unify::region_bindings,
+                            expected: ty::t,
+                            actual: ty::t)
+            -> ty::t {
+        full(fcx, sp, bind unify::unify_with_region_bindings(_, rb, _, _),
+             expected, actual, []).ty
     }
 
     fn with_substs(fcx: @fn_ctxt, sp: span, expected: ty::t, actual: ty::t,
                    ty_param_substs_0: [ty::t]) -> ty_param_substs_and_ty {
-        full(fcx, sp, expected, actual, ty_param_substs_0)
+        full(fcx, sp, unify::unify, expected, actual, ty_param_substs_0)
     }
 
     // Requires that the two types unify, and prints an error message if they
     // don't. Returns the unified type and the type parameter substitutions.
-    fn full(fcx: @fn_ctxt, sp: span, expected: ty::t, actual: ty::t,
+    fn full(fcx: @fn_ctxt,
+            sp: span,
+            unifier: fn@(@fn_ctxt, ty::t, ty::t)
+                -> result<ty::t, ty::type_err>,
+            expected: ty::t,
+            actual: ty::t,
             ty_param_substs_0: [ty::t]) ->
        ty_param_substs_and_ty {
 
@@ -1183,7 +1207,7 @@ mod demand {
         }
 
 
-        alt unify::unify(fcx, expected, actual) {
+        alt unifier(fcx, expected, actual) {
           result::ok(t) { ret mk_result(fcx, t, ty_param_subst_var_ids); }
           result::err(err) {
             let e_err = resolve_type_vars_if_possible(fcx, expected);
