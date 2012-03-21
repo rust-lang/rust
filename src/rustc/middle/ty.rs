@@ -1538,7 +1538,7 @@ mod unify {
     import result::{result, ok, err, chain, map, map2};
 
     export fixup_vars;
-    export mk_var_bindings;
+    export mk_var_bindings, mk_region_bindings;
     export resolve_type_structure;
     export resolve_type_var;
     export unify;

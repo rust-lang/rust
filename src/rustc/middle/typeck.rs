@@ -2141,6 +2141,11 @@ fn check_expr_fn_with_unifier(fcx: @fn_ctxt,
     check_fn(fcx.ccx, proto, decl, body, expr.id, some(fcx));
 }
 
+type check_call_or_bind_result = {
+    bot: bool,
+    rb: @ty::unify::region_bindings
+};
+
 fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                            expected: ty::t) -> bool {
 
@@ -2150,7 +2155,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
     // A generic function to factor out common logic from call and bind
     // expressions.
     fn check_call_or_bind(fcx: @fn_ctxt, sp: span, id: ast::node_id,
-                          fty: ty::t, args: [option<@ast::expr>]) -> bool {
+                          fty: ty::t, args: [option<@ast::expr>])
+            -> check_call_or_bind_result {
         // Replaces "caller" regions in the arguments with the local region.
         fn instantiate_caller_regions(fcx: @fn_ctxt, id: ast::node_id,
                                       args: [ty::arg]) -> [ty::arg] {
@@ -2184,6 +2190,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                 }
             };
         }
+
+        let rb = ty::unify::mk_region_bindings();
+        let unifier = bind demand::with_region_bindings(_, _, rb, _, _);
 
         let sty = structure_of(fcx, sp, fty);
         // Grab the argument types
@@ -2222,6 +2231,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
             arg_tys = vec::from_elem(supplied_arg_count, dummy);
         }
 
+        // FIXME: This should instantiate re_params instead.
         arg_tys = instantiate_caller_regions(fcx, id, arg_tys);
 
         // Check the arguments.
@@ -2241,8 +2251,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                       _ { false }
                     };
                     if is_block == check_blocks {
-                        bot |= check_expr_with_unifier(
-                            fcx, a, demand::simple, arg_tys[i].ty);
+                        let t = arg_tys[i].ty;
+                        bot |= check_expr_with_unifier(fcx, a, unifier, t);
                     }
                   }
                   none { }
@@ -2251,7 +2261,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
             }
             ret bot;
         };
-        check_args(false) | check_args(true)
+        let bot = check_args(false) | check_args(true);
+        ret { bot: bot, rb: rb };
     }
 
     // A generic function for checking assignment expressions
@@ -2272,10 +2283,15 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
             args_opt_0 += [some::<@ast::expr>(arg)];
         }
 
-        let bot = check_expr(fcx, f);
+        let mut bot = check_expr(fcx, f);
         // Call the generic checker.
-        bot | check_call_or_bind(fcx, sp, id, expr_ty(fcx.ccx.tcx, f),
-                                 args_opt_0)
+        let ccobr = check_call_or_bind(fcx, sp, id, expr_ty(fcx.ccx.tcx, f),
+                                       args_opt_0);
+        bot |= ccobr.bot;
+
+        // TODO: Munge return type.
+
+        ret bot;
     }
 
     // A generic function for doing all of the checking for call expressions
@@ -2690,8 +2706,11 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
       ast::expr_bind(f, args) {
         // Call the generic checker.
         bot = check_expr(fcx, f);
-        bot |= check_call_or_bind(fcx, expr.span, expr.id, expr_ty(tcx, f),
-                                  args);
+        let ccobr = check_call_or_bind(fcx, expr.span, expr.id,
+                                       expr_ty(tcx, f), args);
+        bot |= ccobr.bot;
+
+        // TODO: Perform substitutions on the return type.
 
         // Pull the argument and return types out.
         let proto, arg_tys, rt, cf, constrs;
