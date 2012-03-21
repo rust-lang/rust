@@ -334,7 +334,7 @@ fn noop_fold_pat(p: pat_, fld: ast_fold) -> pat_ {
           pat_ident(pth, sub) {
             pat_ident(fld.fold_path(pth), option::map(sub, fld.fold_pat))
           }
-          pat_lit(_) { p }
+          pat_lit(e) { pat_lit(fld.fold_expr(e)) }
           pat_enum(pth, pats) {
             pat_enum(fld.fold_path(pth), vec::map(pats, fld.fold_pat))
           }
@@ -348,7 +348,9 @@ fn noop_fold_pat(p: pat_, fld: ast_fold) -> pat_ {
           pat_tup(elts) { pat_tup(vec::map(elts, fld.fold_pat)) }
           pat_box(inner) { pat_box(fld.fold_pat(inner)) }
           pat_uniq(inner) { pat_uniq(fld.fold_pat(inner)) }
-          pat_range(_, _) { p }
+          pat_range(e1, e2) {
+            pat_range(fld.fold_expr(e1), fld.fold_expr(e2))
+          }
         };
 }
 
@@ -698,7 +700,7 @@ fn make_fold(afp: ast_fold_precursor) -> ast_fold {
     }
     fn f_ty(afp: ast_fold_precursor, f: ast_fold, &&x: @ty) -> @ty {
         let (n, s) = afp.fold_ty(x.node, x.span, f);
-        ret @{id: x.id, node: n, span: afp.new_span(s)};
+        ret @{id: afp.new_id(x.id), node: n, span: afp.new_span(s)};
     }
     fn f_constr(afp: ast_fold_precursor, f: ast_fold, &&x: @ast::constr) ->
        @ast::constr {
