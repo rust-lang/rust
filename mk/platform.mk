@@ -85,6 +85,7 @@ endif
 ifneq ($(findstring darwin,$(CFG_OSTYPE)),)
   CFG_LIB_NAME=lib$(1).dylib
   CFG_LIB_GLOB=lib$(1)-*.dylib
+  CFG_LIB_DSYM_GLOB=lib$(1)-*.dylib.dSYM
   CFG_UNIXY := 1
   CFG_LDENV := DYLD_LIBRARY_PATH
   CFG_GCCISH_LINK_FLAGS += -dynamiclib -lpthread -framework CoreServices -Wl,-no_compact_unwind

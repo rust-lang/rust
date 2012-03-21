@@ -114,7 +114,7 @@ type crate_ctxt = {
      builder: BuilderRef_res,
      shape_cx: shape::ctxt,
      crate_map: ValueRef,
-     dbg_cx: option<@debuginfo::debug_ctxt>,
+     dbg_cx: option<debuginfo::debug_ctxt>,
      mutable do_not_commit_warning_issued: bool};
 
 // Types used for llself.

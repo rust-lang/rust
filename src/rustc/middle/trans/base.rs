@@ -402,7 +402,7 @@ fn declare_tydesc(ccx: @crate_ctxt, t: ty::t) -> @tydesc_info {
     llsize = llsize_of(ccx, llty);
     llalign = llalign_of(ccx, llty);
     let name;
-    if ccx.sess.opts.debuginfo {
+    if false /*ccx.sess.opts.debuginfo*/ { //XXX this triggers duplicate LLVM symbols
         name = mangle_internal_name_by_type_only(ccx, t, "tydesc");
     } else { name = mangle_internal_name_by_seq(ccx, "tydesc"); }
     note_unique_llvm_symbol(ccx, name);
@@ -427,7 +427,7 @@ fn declare_generic_glue(ccx: @crate_ctxt, t: ty::t, llfnty: TypeRef,
                         name: str) -> ValueRef {
     let name = name;
     let fn_nm;
-    if ccx.sess.opts.debuginfo {
+    if false /*ccx.sess.opts.debuginfo*/ { //XXX this triggers duplicate LLVM symbols
         fn_nm = mangle_internal_name_by_type_only(ccx, t, "glue_" + name);
     } else {
         fn_nm = mangle_internal_name_by_seq(ccx, "glue_" + name);
@@ -4672,8 +4672,7 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
     lib::llvm::associate_type(tn, "tydesc", tydesc_type);
     let crate_map = decl_crate_map(sess, link_meta.name, llmod);
     let dbg_cx = if sess.opts.debuginfo {
-        option::some(@{llmetadata: map::int_hash(),
-                       names: new_namegen()})
+        option::some(debuginfo::mk_ctxt(llmod_id))
     } else {
         option::none
     };

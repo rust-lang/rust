@@ -449,19 +449,18 @@ fn build_session_options(match: getopts::match,
     ret sopts;
 }
 
-fn build_session(sopts: @session::options, input: str,
+fn build_session(sopts: @session::options,
                  demitter: diagnostic::emitter) -> session {
     let codemap = codemap::new_codemap();
     let diagnostic_handler =
         diagnostic::mk_handler(some(demitter));
     let span_diagnostic_handler =
         diagnostic::mk_span_handler(diagnostic_handler, codemap);
-    build_session_(sopts, input, codemap, demitter,
-                   span_diagnostic_handler)
+    build_session_(sopts, codemap, demitter, span_diagnostic_handler)
 }
 
 fn build_session_(
-    sopts: @session::options, input: str,
+    sopts: @session::options,
     codemap: codemap::codemap,
     demitter: diagnostic::emitter,
     span_diagnostic_handler: diagnostic::span_handler
@@ -488,7 +487,7 @@ fn build_session_(
       span_diagnostic: span_diagnostic_handler,
       filesearch: filesearch,
       mutable building_library: false,
-      working_dir: path::dirname(input)}
+      working_dir: os::getcwd()}
 }
 
 fn parse_pretty(sess: session, &&name: str) -> pp_mode {
@@ -636,7 +635,7 @@ mod test {
                        getopts::fail_str(f); }
             };
         let sessopts = build_session_options(match, diagnostic::emit);
-        let sess = build_session(sessopts, "", diagnostic::emit);
+        let sess = build_session(sessopts, diagnostic::emit);
         let cfg = build_configuration(sess, "whatever", "whatever");
         assert (attr::contains_name(cfg, "test"));
     }
@@ -652,7 +651,7 @@ mod test {
                        getopts::fail_str(f); }
             };
         let sessopts = build_session_options(match, diagnostic::emit);
-        let sess = build_session(sessopts, "", diagnostic::emit);
+        let sess = build_session(sessopts, diagnostic::emit);
         let cfg = build_configuration(sess, "whatever", "whatever");
         let test_items = attr::find_meta_items_by_name(cfg, "test");
         assert (vec::len(test_items) == 1u);

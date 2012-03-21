@@ -114,6 +114,9 @@ CFG_LIBRUSTC :=$(call CFG_LIB_NAME,rustc)
 STDLIB_GLOB :=$(call CFG_LIB_GLOB,std)
 CORELIB_GLOB :=$(call CFG_LIB_GLOB,core)
 LIBRUSTC_GLOB :=$(call CFG_LIB_GLOB,rustc)
+STDLIB_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,std)
+CORELIB_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,core)
+LIBRUSTC_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,rustc)
 
 # version-string calculation
 CFG_GIT_DIR := $(CFG_SRC_DIR).git

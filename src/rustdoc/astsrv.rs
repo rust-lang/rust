@@ -155,7 +155,7 @@ fn build_session() -> (session::session, @mutable bool) {
     let error_handlers = build_error_handlers(codemap);
     let {emitter, span_handler, ignore_errors} = error_handlers;
 
-    let session = driver::build_session_(sopts, ".", codemap, emitter,
+    let session = driver::build_session_(sopts, codemap, emitter,
                                          span_handler);
     (session, ignore_errors)
 }

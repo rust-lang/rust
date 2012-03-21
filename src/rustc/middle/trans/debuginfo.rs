@@ -1,3 +1,4 @@
+import std::map;
 import std::map::hashmap;
 import lib::llvm::llvm;
 import lib::llvm::ValueRef;
@@ -17,6 +18,7 @@ export create_function;
 export create_arg;
 export update_source_pos;
 export debug_ctxt;
+export mk_ctxt;
 
 const LLVMDebugVersion: int = (9 << 16);
 
@@ -75,8 +77,7 @@ fn llnull() -> ValueRef unsafe {
 
 fn add_named_metadata(cx: @crate_ctxt, name: str, val: ValueRef) {
     str::as_c_str(name, {|sbuf|
-        llvm::LLVMAddNamedMetadataOperand(cx.llmod, sbuf,
-                                          val)
+        llvm::LLVMAddNamedMetadataOperand(cx.llmod, sbuf, val)
     })
 }
 
@@ -84,8 +85,15 @@ fn add_named_metadata(cx: @crate_ctxt, name: str, val: ValueRef) {
 
 type debug_ctxt = {
     llmetadata: metadata_cache,
-    names: namegen
+    names: namegen,
+    crate_file: str
 };
+
+fn mk_ctxt(crate: str) -> debug_ctxt {
+    {llmetadata: map::int_hash(),
+     names: new_namegen(),
+     crate_file: crate}
+}
 
 fn update_cache(cache: metadata_cache, mdtag: int, val: debug_metadata) {
     let existing = if cache.contains_key(mdtag) {
@@ -99,7 +107,7 @@ fn update_cache(cache: metadata_cache, mdtag: int, val: debug_metadata) {
 type metadata<T> = {node: ValueRef, data: T};
 
 type file_md = {path: str};
-type compile_unit_md = {path: str};
+type compile_unit_md = {name: str};
 type subprogram_md = {id: ast::node_id};
 type local_var_md = {id: ast::node_id};
 type tydesc_md = {hash: uint};
@@ -154,46 +162,49 @@ fn cached_metadata<T: copy>(cache: metadata_cache, mdtag: int,
     ret option::none;
 }
 
-fn create_compile_unit(cx: @crate_ctxt, full_path: str)
+fn create_compile_unit(cx: @crate_ctxt)
     -> @metadata<compile_unit_md> unsafe {
     let cache = get_cache(cx);
+    let crate_name = option::get(cx.dbg_cx).crate_file;
     let tg = CompileUnitTag;
     alt cached_metadata::<@metadata<compile_unit_md>>(cache, tg,
-                        {|md| md.data.path == full_path}) {
+                        {|md| md.data.name == crate_name}) {
       option::some(md) { ret md; }
       option::none {}
     }
 
-    let work_dir = cx.sess.working_dir;
-    let file_path = if str::starts_with(full_path, work_dir) {
-        str::slice(full_path, str::len(work_dir), str::len(full_path))
-    } else {
-        full_path
-    };
+    let (_, work_dir) = get_file_path_and_dir(cx.sess.working_dir,
+                                              crate_name);
     let unit_metadata = [lltag(tg),
                          llunused(),
                          lli32(DW_LANG_RUST),
-                         llstr(file_path),
+                         llstr(crate_name),
                          llstr(work_dir),
                          llstr(#env["CFG_VERSION"]),
-                         lli1(false), // main compile unit
+                         lli1(true), // deprecated: main compile unit
                          lli1(cx.sess.opts.optimize != 0u),
                          llstr(""), // flags (???)
                          lli32(0) // runtime version (???)
-                         // list of enum types
-                         // list of retained values
-                         // list of subprograms
-                         // list of global variables
                         ];
     let unit_node = llmdnode(unit_metadata);
     add_named_metadata(cx, "llvm.dbg.cu", unit_node);
-    let mdval = @{node: unit_node, data: {path: full_path}};
+    let mdval = @{node: unit_node, data: {name: crate_name}};
     update_cache(cache, tg, compile_unit_metadata(mdval));
+
     ret mdval;
 }
 
 fn get_cache(cx: @crate_ctxt) -> metadata_cache {
     option::get(cx.dbg_cx).llmetadata
+}
+
+fn get_file_path_and_dir(work_dir: str, full_path: str) -> (str, str) {
+    (if str::starts_with(full_path, work_dir) {
+        str::slice(full_path, str::len(work_dir) + 1u,
+                   str::len(full_path))
+    } else {
+        full_path
+    }, work_dir)
 }
 
 fn create_file(cx: @crate_ctxt, full_path: str) -> @metadata<file_md> {
@@ -205,12 +216,12 @@ fn create_file(cx: @crate_ctxt, full_path: str) -> @metadata<file_md> {
         option::none {}
     }
 
-    let fname = path::basename(full_path);
-    let path = path::dirname(full_path);
-    let unit_node = create_compile_unit(cx, full_path).node;
+    let (file_path, work_dir) = get_file_path_and_dir(cx.sess.working_dir,
+                                                      full_path);
+    let unit_node = create_compile_unit(cx).node;
     let file_md = [lltag(tg),
-                   llstr(fname),
-                   llstr(path),
+                   llstr(file_path),
+                   llstr(work_dir),
                    unit_node];
     let val = llmdnode(file_md);
     let mdval = @{node: val, data: {path: full_path}};
@@ -310,7 +321,7 @@ fn create_basic_type(cx: @crate_ctxt, t: ty::t, ty: ast::prim_ty, span: span)
 
     let fname = filename_from_span(cx, span);
     let file_node = create_file(cx, fname);
-    let cu_node = create_compile_unit(cx, fname);
+    let cu_node = create_compile_unit(cx);
     let (size, align) = size_and_align_of(cx, t);
     let lldata = [lltag(tg),
                   cu_node.node,
@@ -463,7 +474,7 @@ fn create_composite_type(type_tag: int, name: str, file: ValueRef, line: int,
                   lli32(line), // source line definition
                   lli64(size), // size of members
                   lli64(align), // align
-                  lli64(offset), // offset
+                  lli32/*64*/(offset), // offset
                   lli32(0), // flags
                   if option::is_none(derived) {
                       llnull()
@@ -781,13 +792,9 @@ fn create_function(fcx: fn_ctxt) -> @metadata<subprogram_md> {
       option::none {}
     }
 
-    let path = path_str(fcx.path);
-
     let loc = codemap::lookup_char_pos(cx.sess.codemap,
                                        sp.lo);
     let file_node = create_file(cx, loc.file.name).node;
-    let key = if cx.item_symbols.contains_key(fcx.id) { fcx.id } else { id };
-    let mangled = cx.item_symbols.get(key);
     let ty_node = if cx.sess.opts.extra_debuginfo {
         alt ret_ty.node {
           ast::ty_nil { llnull() }
@@ -804,17 +811,17 @@ fn create_function(fcx: fn_ctxt) -> @metadata<subprogram_md> {
                        llunused(),
                        file_node,
                        llstr(ident),
-                       llstr(path), //XXX fully-qualified C++ name
-                       llstr(mangled), //XXX MIPS name?????
+                       llstr(ident), //XXX fully-qualified C++ name
+                       llstr(""), //XXX MIPS name?????
                        file_node,
                        lli32(loc.line as int),
                        sub_node,
                        lli1(false), //XXX static (check export)
-                       lli1(true), // not extern
+                       lli1(true), // defined in compilation unit
                        lli32(DW_VIRTUALITY_none), // virtual-ness
                        lli32(0i), //index into virt func
-                       llnull(), // base type with vtbl
-                       lli1(false), // artificial
+                       /*llnull()*/ lli32(0), // base type with vtbl
+                       lli32(256), // flags
                        lli1(cx.sess.opts.optimize != 0u),
                        fcx.llfn
                        //list of template params
@@ -825,5 +832,6 @@ fn create_function(fcx: fn_ctxt) -> @metadata<subprogram_md> {
     add_named_metadata(cx, "llvm.dbg.sp", val);
     let mdval = @{node: val, data: {id: id}};
     update_cache(cache, SubprogramTag, subprogram_metadata(mdval));
+
     ret mdval;
 }

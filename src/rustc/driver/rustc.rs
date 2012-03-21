@@ -99,7 +99,7 @@ fn run_compiler(args: [str], demitter: diagnostic::emitter) {
     };
 
     let sopts = build_session_options(match, demitter);
-    let sess = build_session(sopts, ifile, demitter);
+    let sess = build_session(sopts, demitter);
     let odir = getopts::opt_maybe_str(match, "out-dir");
     let ofile = getopts::opt_maybe_str(match, "o");
     let cfg = build_configuration(sess, binary, ifile);

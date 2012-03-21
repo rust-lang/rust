@@ -31,7 +31,8 @@ $$(HLIB$(2)_H_$(4))/$$(CFG_LIBRUSTC): \
 	$$(HSTDLIB_DEFAULT$(2)_H_$(3))
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
-	$$(Q)cp $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBRUSTC_GLOB) \
+	$$(Q)cp -R $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBRUSTC_GLOB) \
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBRUSTC_DSYM_GLOB) \
 	        $$(HLIB$(2)_H_$(4))
 
 $$(HLIB$(2)_H_$(4))/$$(CFG_RUNTIME): \
@@ -44,7 +45,8 @@ $$(HLIB$(2)_H_$(4))/$$(CFG_CORELIB): \
 	$$(HLIB$(2)_H_$(4))/$$(CFG_RUNTIME)
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
-	$$(Q)cp $$(TLIB$(1)_T_$(4)_H_$(3))/$(CORELIB_GLOB) \
+	$$(Q)cp -R $$(TLIB$(1)_T_$(4)_H_$(3))/$(CORELIB_GLOB) \
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CORELIB_DSYM_GLOB) \
 	        $$(HLIB$(2)_H_$(4))
 
 $$(HLIB$(2)_H_$(4))/$$(CFG_STDLIB): \
@@ -53,7 +55,8 @@ $$(HLIB$(2)_H_$(4))/$$(CFG_STDLIB): \
 	$$(HLIB$(2)_H_$(4))/$$(CFG_RUNTIME)
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
-	$$(Q)cp $$(TLIB$(1)_T_$(4)_H_$(3))/$(STDLIB_GLOB) \
+	$$(Q)cp -R $$(TLIB$(1)_T_$(4)_H_$(3))/$(STDLIB_GLOB) \
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$(STDLIB_DSYM_GLOB) \
 	        $$(HLIB$(2)_H_$(4))
 
 $$(HLIB$(2)_H_$(4))/libcore.rlib: \
