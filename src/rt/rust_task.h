@@ -363,11 +363,6 @@ rust_task::return_c_stack() {
 // NB: This runs on the Rust stack
 inline void *
 rust_task::next_stack(size_t stk_sz, void *args_addr, size_t args_sz) {
-    stk_seg *maybe_next_stack = NULL;
-    if (stk != NULL) {
-        maybe_next_stack = stk->prev;
-    }
-
     new_stack_fast(stk_sz + args_sz);
     A(thread, stk->end - (uintptr_t)stk->data >= stk_sz + args_sz,
       "Did not receive enough stack");
@@ -375,16 +370,11 @@ rust_task::next_stack(size_t stk_sz, void *args_addr, size_t args_sz) {
     // Push the function arguments to the new stack
     new_sp = align_down(new_sp - args_sz);
 
-    // When reusing a stack segment we need to tell valgrind that this area of
-    // memory is accessible before writing to it, because the act of popping
-    // the stack previously made all of the stack inaccessible.
-    if (maybe_next_stack == stk) {
-        // I don't know exactly where the region ends that valgrind needs us
-        // to mark accessible. On x86_64 these extra bytes aren't needed, but
-        // on i386 we get errors without.
-        int fudge_bytes = 16;
-        reuse_valgrind_stack(stk, new_sp - fudge_bytes);
-    }
+    // I don't know exactly where the region ends that valgrind needs us
+    // to mark accessible. On x86_64 these extra bytes aren't needed, but
+    // on i386 we get errors without.
+    const int fudge_bytes = 16;
+    reuse_valgrind_stack(stk, new_sp - fudge_bytes);
 
     memcpy(new_sp, args_addr, args_sz);
     record_stack_limit();
