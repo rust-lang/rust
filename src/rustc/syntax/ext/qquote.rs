@@ -239,9 +239,10 @@ fn finish<T: qq_helper>
     }
 
     let cx = ecx;
-    let session_call = bind mk_call_(cx,sp,
-                                     mk_access(cx,sp,["ext_cx"], "session"),
-                                     []);
+    let session_call = {||
+        mk_call_(cx, sp, mk_access(cx, sp, ["ext_cx"], "session"), [])
+    };
+
     let pcall = mk_call(cx,sp,
                        ["syntax", "parse", "parser",
                         "parse_from_source_str"],
