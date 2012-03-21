@@ -49,7 +49,7 @@ MORESTACK:
 	// Calculate the CFA as on offset from %ebp
 	.cfi_def_cfa_register %rbp
 
-        subq $200, %rsp
+        subq $184, %rsp
 
 	// FIXME: libgcc also saves rax. not sure if we need to
 
@@ -107,7 +107,7 @@ MORESTACK:
 	movdqa 144(%rsp), %xmm6
 	movdqa 160(%rsp), %xmm7
 
-	addq $200, %rsp
+	addq $184, %rsp
 
         movq 8(%rbp),%r10       // Grab the return pointer.
         incq %r10               // Skip past the `ret` in our parent frame
