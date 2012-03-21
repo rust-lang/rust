@@ -509,6 +509,37 @@ rust_task::free_stack(stk_seg *stk) {
     destroy_stack(&local_region, stk);
 }
 
+struct new_stack_args {
+    rust_task *task;
+    size_t requested_sz;
+};
+
+void
+new_stack_slow(new_stack_args *args) {
+    args->task->new_stack(args->requested_sz);
+}
+
+// NB: This runs on the Rust stack
+// This is the new stack fast path, in which we
+// reuse the next cached stack segment
+void
+rust_task::new_stack_fast(size_t requested_sz) {
+    // The minimum stack size, in bytes, of a Rust stack, excluding red zone
+    size_t min_sz = thread->min_stack_size;
+
+    // Try to reuse an existing stack segment
+    if (stk != NULL && stk->prev != NULL) {
+        size_t prev_sz = user_stack_size(stk->prev);
+        if (min_sz <= prev_sz && requested_sz <= prev_sz) {
+            stk = stk->prev;
+            return;
+        }
+    }
+
+    new_stack_args args = {this, requested_sz};
+    call_on_c_stack(&args, (void*)new_stack_slow);
+}
+
 void
 rust_task::new_stack(size_t requested_sz) {
     LOG(this, mem, "creating new stack for task %" PRIxPTR, this);
@@ -572,7 +603,7 @@ rust_task::next_stack(size_t stk_sz, void *args_addr, size_t args_sz) {
         maybe_next_stack = stk->prev;
     }
 
-    new_stack(stk_sz + args_sz);
+    new_stack_fast(stk_sz + args_sz);
     A(thread, stk->end - (uintptr_t)stk->data >= stk_sz + args_sz,
       "Did not receive enough stack");
     uint8_t *new_sp = (uint8_t*)stk->end;

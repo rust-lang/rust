@@ -33,6 +33,7 @@ typedef unsigned long task_result;
 struct spawn_args;
 struct cleanup_args;
 struct reset_args;
+struct new_stack_args;
 
 // std::lib::task::task_notification
 //
@@ -114,7 +115,8 @@ private:
     // Called when the atomic refcount reaches zero
     void delete_this();
 
-    void new_stack(size_t sz);
+    void new_stack_fast(size_t requested_sz);
+    void new_stack(size_t requested_sz);
     void free_stack(stk_seg *stk);
     size_t get_next_stack_size(size_t min, size_t current, size_t requested);
 
@@ -128,6 +130,7 @@ private:
     friend void task_start_wrapper(spawn_args *a);
     friend void cleanup_task(cleanup_args *a);
     friend void reset_stack_limit_on_c_stack(reset_args *a);
+    friend void new_stack_slow(new_stack_args *a);
 
 public:
 
