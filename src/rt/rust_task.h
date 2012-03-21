@@ -61,6 +61,18 @@
 #endif
 #endif
 
+extern "C" CDECL void
+record_sp_limit(void *limit);
+extern "C" CDECL uintptr_t
+get_sp_limit();
+
+// The function prolog compares the amount of stack needed to the end of
+// the stack. As an optimization, when the frame size is less than 256
+// bytes, it will simply compare %esp to to the stack limit instead of
+// subtracting the frame size. As a result we need our stack limit to
+// account for those 256 bytes.
+const unsigned LIMIT_OFFSET = 256;
+
 struct rust_box;
 
 struct frame_glue_fns {
@@ -257,6 +269,7 @@ public:
     const char *get_cond_name() { return cond_name; }
 
     void cleanup_after_turn();
+    static rust_task *get_task_from_tcb();
 };
 
 // This stuff is on the stack-switching fast path
@@ -432,12 +445,6 @@ record_sp_limit(void *limit);
 inline void
 rust_task::record_stack_limit() {
     I(thread, stk);
-    // The function prolog compares the amount of stack needed to the end of
-    // the stack. As an optimization, when the frame size is less than 256
-    // bytes, it will simply compare %esp to to the stack limit instead of
-    // subtracting the frame size. As a result we need our stack limit to
-    // account for those 256 bytes.
-    const unsigned LIMIT_OFFSET = 256;
     A(thread,
       (uintptr_t)stk->end - RED_ZONE_SIZE
       - (uintptr_t)stk->data >= LIMIT_OFFSET,
@@ -445,6 +452,28 @@ rust_task::record_stack_limit() {
     record_sp_limit(stk->data + LIMIT_OFFSET + RED_ZONE_SIZE);
 }
 
+// The stack pointer boundary is stored in a quickly-accessible location
+// in the TCB. From that we can calculate the address of the stack segment
+// structure it belongs to, and in that structure is a pointer to the task
+// that owns it.
+inline rust_task*
+rust_task::get_task_from_tcb() {
+    uintptr_t sp_limit = get_sp_limit();
+    // FIXME (1226) - Because of a hack in upcall_call_shim_on_c_stack this
+    // value is sometimes inconveniently set to 0, so we can't use this
+    // method of retreiving the task pointer and need to fall back to TLS.
+    if (sp_limit == 0) {
+        return NULL;
+    }
+
+    uintptr_t seg_addr =
+        sp_limit - RED_ZONE_SIZE - LIMIT_OFFSET - sizeof(stk_seg);
+    stk_seg *stk = (stk_seg*) seg_addr;
+    // Make sure we've calculated the right address
+    ::check_stack_canary(stk);
+    assert(stk->task != NULL && "task pointer not in stack structure");
+    return stk->task;
+}
 
 //
 // Local Variables:
