@@ -402,7 +402,8 @@ fn declare_tydesc(ccx: @crate_ctxt, t: ty::t) -> @tydesc_info {
     llsize = llsize_of(ccx, llty);
     llalign = llalign_of(ccx, llty);
     let name;
-    if false /*ccx.sess.opts.debuginfo*/ { //XXX this triggers duplicate LLVM symbols
+    //XXX this triggers duplicate LLVM symbols
+    if false /*ccx.sess.opts.debuginfo*/ {
         name = mangle_internal_name_by_type_only(ccx, t, "tydesc");
     } else { name = mangle_internal_name_by_seq(ccx, "tydesc"); }
     note_unique_llvm_symbol(ccx, name);
@@ -427,7 +428,8 @@ fn declare_generic_glue(ccx: @crate_ctxt, t: ty::t, llfnty: TypeRef,
                         name: str) -> ValueRef {
     let name = name;
     let fn_nm;
-    if false /*ccx.sess.opts.debuginfo*/ { //XXX this triggers duplicate LLVM symbols
+    //XXX this triggers duplicate LLVM symbols
+    if false /*ccx.sess.opts.debuginfo*/ {
         fn_nm = mangle_internal_name_by_type_only(ccx, t, "glue_" + name);
     } else {
         fn_nm = mangle_internal_name_by_seq(ccx, "glue_" + name);
