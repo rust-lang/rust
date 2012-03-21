@@ -49,30 +49,25 @@ MORESTACK:
 	// Calculate the CFA as on offset from %ebp
 	.cfi_def_cfa_register %rbp
 
-	pushq $0 // Alignment
+        subq $200, %rsp
 
 	// FIXME: libgcc also saves rax. not sure if we need to
 
 	// Save argument registers of the original function
-	pushq	%rdi
-	pushq	%rsi
-	pushq	%rdx
-	pushq	%rcx
-	pushq	%r8
-	pushq	%r9
-
-	pushq $0 // Alignment
-	pushq $0 // Alignment
-
-	subq $128, %rsp
-	movdqa %xmm0,	 (%rsp)
-	movdqa %xmm1,  16(%rsp)
-	movdqa %xmm2,  32(%rsp)
-	movdqa %xmm3,  48(%rsp)
-	movdqa %xmm4,  64(%rsp)
-	movdqa %xmm5,  80(%rsp)
-	movdqa %xmm6,  96(%rsp)
-	movdqa %xmm7, 112(%rsp)
+	movq %rdi,       (%rsp)
+	movq %rsi,      8(%rsp)
+	movq %rdx,     16(%rsp)
+	movq %rcx,     24(%rsp)
+	movq %r8,      32(%rsp)
+	movq %r9,      40(%rsp)
+	movdqa %xmm0,  48(%rsp)
+	movdqa %xmm1,  64(%rsp)
+	movdqa %xmm2,  80(%rsp)
+	movdqa %xmm3,  96(%rsp)
+	movdqa %xmm4, 112(%rsp)
+	movdqa %xmm5, 128(%rsp)
+	movdqa %xmm6, 144(%rsp)
+	movdqa %xmm7, 160(%rsp)
 
 	// Calculate the address of the stack arguments.
 	// We have the base pointer, __morestack's return address,
@@ -97,28 +92,22 @@ MORESTACK:
 #endif
 
 	// Pop the saved arguments
-	movdqa    (%rsp), %xmm0
-	movdqa  16(%rsp), %xmm1
-	movdqa  32(%rsp), %xmm2
-	movdqa  48(%rsp), %xmm3
-	movdqa  64(%rsp), %xmm4
-	movdqa  80(%rsp), %xmm5
-	movdqa  96(%rsp), %xmm6
-	movdqa 112(%rsp), %xmm7
-	addq $128, %rsp
+	movq      (%rsp), %rdi
+	movq     8(%rsp), %rsi
+	movq    16(%rsp), %rdx
+	movq    24(%rsp), %rcx
+	movq    32(%rsp), %r8
+	movq    40(%rsp), %r9
+	movdqa  48(%rsp), %xmm0
+	movdqa  64(%rsp), %xmm1
+	movdqa  80(%rsp), %xmm2
+	movdqa  96(%rsp), %xmm3
+	movdqa 112(%rsp), %xmm4
+	movdqa 128(%rsp), %xmm5
+	movdqa 144(%rsp), %xmm6
+	movdqa 160(%rsp), %xmm7
 
-	popq %r9 // Alignment
-	popq %r9 // Alignment
-
-	popq %r9
-	popq %r8
-	popq %rcx
-	popq %rdx
-	popq %rsi
-	popq %rdi
-
-	// Pop the unwinding %rsp
-	addq $8, %rsp
+	addq $200, %rsp
 
         movq 8(%rbp),%r10       // Grab the return pointer.
         incq %r10               // Skip past the `ret` in our parent frame
