@@ -12,6 +12,7 @@ struct stk_seg {
     uint32_t pad;
 #endif
 
+    rust_task *task;
     uintptr_t canary;
 
     uint8_t data[];
