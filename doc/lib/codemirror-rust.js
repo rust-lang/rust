@@ -5,7 +5,7 @@ CodeMirror.defineMode("rust", function() {
     "do": "else-style", "ret": "else-style", "fail": "else-style",
     "break": "atom", "cont": "atom", "const": "let", "resource": "fn",
     "let": "let", "fn": "fn", "for": "for", "alt": "alt", "iface": "iface",
-    "impl": "impl", "type": "type", "tag": "tag", "mod": "mod",
+    "impl": "impl", "type": "type", "enum": "enum", "mod": "mod",
     "as": "op", "true": "atom", "false": "atom", "assert": "op", "check": "op",
     "claim": "op", "native": "ignore", "unsafe": "ignore", "import": "else-style",
     "export": "else-style", "copy": "op", "log": "op", "log_err": "op",
@@ -177,7 +177,7 @@ CodeMirror.defineMode("rust", function() {
     if (type == "let") return stat_of(letdef1, "let");
     if (type == "fn") return stat_of(fndef);
     if (type == "type") return cont(pushlex("stat"), tydef, endstatement, poplex, block);
-    if (type == "tag") return stat_of(tagdef);
+    if (type == "enum") return stat_of(tagdef);
     if (type == "mod") return stat_of(mod);
     if (type == "iface") return stat_of(iface);
     if (type == "impl") return stat_of(impl);
