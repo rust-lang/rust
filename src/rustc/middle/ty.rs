@@ -89,7 +89,7 @@ export ty_uint, mk_uint, mk_mach_uint;
 export ty_uniq, mk_uniq, mk_imm_uniq, type_is_unique_box;
 export ty_var, mk_var;
 export ty_self, mk_self;
-export region, re_named, re_caller, re_block, re_inferred;
+export region, re_named, re_caller, re_block, re_param;
 export get, type_has_params, type_has_vars, type_has_rptrs, type_id;
 export same_type;
 export ty_var_id;
@@ -242,7 +242,10 @@ enum region {
     re_caller(def_id),
     re_self(def_id),
     re_block(node_id),
-    re_inferred         /* currently unresolved (for typedefs) */
+
+    // A region parameter. Currently used only for typedefs.
+    // TODO: Use this for caller and named regions as well.
+    re_param(uint)
 }
 
 // NB: If you change this, you'll probably want to change the corresponding
@@ -1163,7 +1166,7 @@ fn hash_type_structure(st: sty) -> uint {
           re_caller(_)  { 2u }
           re_self(_)    { 3u }
           re_block(_)   { 4u }
-          re_inferred   { 5u }
+          re_param(_)   { 5u }
         }
     }
     alt st {
@@ -1928,12 +1931,17 @@ mod unify {
             }
         }
 
-        if sub == ty::re_inferred || super == ty::re_inferred {
-            ret if sub == super {
-                nxt(super)
-            } else {
-                err(terr_regions_differ(true, super, sub))
-            };
+        // FIXME: This is wrong. We should be keeping a set of region bindings
+        // around.
+        alt (sub, super) {
+            (ty::re_param(_), _) | (_, ty::re_param(_)) {
+                ret if sub == super {
+                    nxt(super)
+                } else {
+                    err(terr_regions_differ(true, super, sub))
+                }
+            }
+            _ { /* fall through */ }
         }
 
         // Outer regions are subtypes of inner regions. (This is somewhat

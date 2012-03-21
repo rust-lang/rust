@@ -80,7 +80,7 @@ fn region_to_scope(region_map: @region_map, region: ty::region)
         ty::re_caller(def_id) | ty::re_self(def_id) { def_id.node }
         ty::re_named(def_id) { region_map.region_name_to_fn.get(def_id) }
         ty::re_block(node_id) { node_id }
-        ty::re_inferred { fail "unresolved region in region_to_scope" }
+        ty::re_param(_) { fail "unresolved region in region_to_scope" }
     };
 }
 
@@ -109,7 +109,7 @@ fn get_inferred_region(cx: ctxt, sp: syntax::codemap::span) -> ty::region {
             ty::re_caller({crate: ast::local_crate, node: item_id})
         }
         pa_block(block_id) { ty::re_block(block_id) }
-        pa_item(_) { ty::re_inferred }
+        pa_item(_) { ty::re_param(0u) }
         pa_crate { cx.sess.span_bug(sp, "inferred region at crate level?!"); }
     }
 }

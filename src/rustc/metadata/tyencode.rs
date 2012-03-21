@@ -106,7 +106,9 @@ fn enc_region(w: io::writer, cx: @ctxt, r: ty::region) {
         ty::re_self(did) {
             w.write_char('s'); w.write_str(cx.ds(did)); w.write_char('|');
         }
-        ty::re_inferred { w.write_char('?'); }
+        ty::re_param(id) {
+            w.write_char('p'); w.write_uint(id); w.write_char('|');
+        }
     }
 }
 fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {

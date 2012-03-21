@@ -256,7 +256,8 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
                               ty: ty::t) -> ty::t {
         ret ty::fold_ty(tcx, ty::fm_rptr({|r|
             alt r {
-                ty::re_inferred | ty::re_self(_) {
+                // FIXME: This is probably wrong for params.
+                ty::re_param(_) | ty::re_self(_) {
                     tcx.region_map.ast_type_to_inferred_region.get(use_site)
                 }
                 _ { r }
@@ -356,7 +357,11 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
                     let attir = tcx.region_map.ast_type_to_inferred_region;
                     alt attir.find(ast_ty.id) {
                         some(resolved_region) { resolved_region }
-                        none { ty::re_inferred }
+                        none {
+                            // FIXME: Shouldn't be 0u and should instead be
+                            // a fresh variable.
+                            ty::re_param(0u)
+                        }
                     }
                 }
                 ast::re_named(_) | ast::re_self {
@@ -1488,7 +1493,8 @@ fn instantiate_self_regions(tcx: ty::ctxt, region: ty::region, &&ty: ty::t)
     if ty::type_has_rptrs(ty) {
         ty::fold_ty(tcx, ty::fm_rptr({|r|
             alt r {
-                ty::re_inferred | ty::re_caller(_) | ty::re_self(_) { region }
+                // FIXME: Should not happen for re_param.
+                ty::re_param(_) | ty::re_caller(_) | ty::re_self(_) { region }
                 _ { r }
             }
         }), ty)
@@ -1502,7 +1508,10 @@ fn instantiate_self_regions(tcx: ty::ctxt, region: ty::region, &&ty: ty::t)
 // refer to inferred regions.
 fn universally_quantify_regions(tcx: ty::ctxt, ty: ty::t) -> ty::t {
     if ty::type_has_rptrs(ty) {
-        ty::fold_ty(tcx, ty::fm_rptr({|_r| ty::re_inferred}), ty)
+        ty::fold_ty(tcx, ty::fm_rptr({|_r|
+            // FIXME: Very wrong. Shouldn't be 0u.
+            ty::re_param(0u)
+        }), ty)
     } else {
         ty
     }
