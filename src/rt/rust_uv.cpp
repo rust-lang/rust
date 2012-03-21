@@ -234,9 +234,22 @@ rust_uv_get_stream_handle_for_connect(uv_connect_t* connect) {
   return connect->handle;
 }
 
-extern "C" uv_buf_t
+static uv_buf_t
+current_kernel_malloc_alloc_cb(uv_handle_t* handle,
+							   size_t suggested_size) {
+  char* base_ptr = (char*)current_kernel_malloc(sizeof(char)
+											* suggested_size,
+										 "uv_buf_t_base_val");
+  return uv_buf_init(base_ptr, suggested_size);
+}
+
+// FIXME see issue #1402
+extern "C" void*
 rust_uv_buf_init(char* base, size_t len) {
-  return uv_buf_init(base, len);
+  uv_buf_t* buf_ptr = current_kernel_malloc(sizeof(uv_buf_t),
+											"uv_buf_t_1402");
+  *buf_ptr = uv_buf_init(base, len);
+  return buf_ptr;
 }
 
 extern "C" uv_loop_t*
