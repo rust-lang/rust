@@ -13,53 +13,6 @@
 #include "globals.h"
 #include "rust_upcall.h"
 
-// The amount of extra space at the end of each stack segment, available
-// to the rt, compiler and dynamic linker for running small functions
-// FIXME: We want this to be 128 but need to slim the red zone calls down
-#define RZ_LINUX_32 (1024*2)
-#define RZ_LINUX_64 (1024*2)
-#define RZ_MAC_32   (1024*20)
-#define RZ_MAC_64   (1024*20)
-#define RZ_WIN_32   (1024*20)
-#define RZ_BSD_32   (1024*20)
-#define RZ_BSD_64   (1024*20)
-
-#ifdef __linux__
-#ifdef __i386__
-#define RED_ZONE_SIZE RZ_LINUX_32
-#endif
-#ifdef __x86_64__
-#define RED_ZONE_SIZE RZ_LINUX_64
-#endif
-#endif
-#ifdef __APPLE__
-#ifdef __i386__
-#define RED_ZONE_SIZE RZ_MAC_32
-#endif
-#ifdef __x86_64__
-#define RED_ZONE_SIZE RZ_MAC_64
-#endif
-#endif
-#ifdef __WIN32__
-#ifdef __i386__
-#define RED_ZONE_SIZE RZ_WIN_32
-#endif
-#ifdef __x86_64__
-#define RED_ZONE_SIZE RZ_WIN_64
-#endif
-#endif
-#ifdef __FreeBSD__
-#ifdef __i386__
-#define RED_ZONE_SIZE RZ_BSD_32
-#endif
-#ifdef __x86_64__
-#define RED_ZONE_SIZE RZ_BSD_64
-#endif
-#endif
-
-extern "C" CDECL void
-record_sp(void *limit);
-
 // Tasks
 rust_task::rust_task(rust_task_thread *thread, rust_task_state state,
                      rust_task *spawner, const char *name,
@@ -494,14 +447,6 @@ rust_task::get_next_stack_size(size_t min, size_t current, size_t requested) {
     return sz;
 }
 
-// The amount of stack in a segment available to Rust code
-static size_t
-user_stack_size(stk_seg *stk) {
-    return (size_t)(stk->end
-                    - (uintptr_t)&stk->data[0]
-                    - RED_ZONE_SIZE);
-}
-
 void
 rust_task::free_stack(stk_seg *stk) {
     LOGPTR(thread, "freeing stk segment", (uintptr_t)stk);
@@ -509,35 +454,9 @@ rust_task::free_stack(stk_seg *stk) {
     destroy_stack(&local_region, stk);
 }
 
-struct new_stack_args {
-    rust_task *task;
-    size_t requested_sz;
-};
-
 void
 new_stack_slow(new_stack_args *args) {
     args->task->new_stack(args->requested_sz);
-}
-
-// NB: This runs on the Rust stack
-// This is the new stack fast path, in which we
-// reuse the next cached stack segment
-void
-rust_task::new_stack_fast(size_t requested_sz) {
-    // The minimum stack size, in bytes, of a Rust stack, excluding red zone
-    size_t min_sz = thread->min_stack_size;
-
-    // Try to reuse an existing stack segment
-    if (stk != NULL && stk->next != NULL) {
-        size_t next_sz = user_stack_size(stk->next);
-        if (min_sz <= next_sz && requested_sz <= next_sz) {
-            stk = stk->next;
-            return;
-        }
-    }
-
-    new_stack_args args = {this, requested_sz};
-    call_on_c_stack(&args, (void*)new_stack_slow);
 }
 
 void
@@ -594,63 +513,6 @@ rust_task::new_stack(size_t requested_sz) {
 
     stk = new_stk;
     total_stack_sz += user_stack_size(new_stk);
-}
-
-void *
-rust_task::next_stack(size_t stk_sz, void *args_addr, size_t args_sz) {
-    stk_seg *maybe_next_stack = NULL;
-    if (stk != NULL) {
-        maybe_next_stack = stk->prev;
-    }
-
-    new_stack_fast(stk_sz + args_sz);
-    A(thread, stk->end - (uintptr_t)stk->data >= stk_sz + args_sz,
-      "Did not receive enough stack");
-    uint8_t *new_sp = (uint8_t*)stk->end;
-    // Push the function arguments to the new stack
-    new_sp = align_down(new_sp - args_sz);
-
-    // When reusing a stack segment we need to tell valgrind that this area of
-    // memory is accessible before writing to it, because the act of popping
-    // the stack previously made all of the stack inaccessible.
-    if (maybe_next_stack == stk) {
-        // I don't know exactly where the region ends that valgrind needs us
-        // to mark accessible. On x86_64 these extra bytes aren't needed, but
-        // on i386 we get errors without.
-        int fudge_bytes = 16;
-        reuse_valgrind_stack(stk, new_sp - fudge_bytes);
-    }
-
-    memcpy(new_sp, args_addr, args_sz);
-    record_stack_limit();
-    return new_sp;
-}
-
-// NB: This runs on the Rust stack
-void
-rust_task::prev_stack() {
-    // We're not going to actually delete anything now because that would
-    // require switching to the C stack and be costly. Instead we'll just move
-    // up the link list and clean up later, either in new_stack or after our
-    // turn ends on the scheduler.
-    stk = stk->prev;
-    record_stack_limit();
-}
-
-void
-rust_task::record_stack_limit() {
-    I(thread, stk);
-    // The function prolog compares the amount of stack needed to the end of
-    // the stack. As an optimization, when the frame size is less than 256
-    // bytes, it will simply compare %esp to to the stack limit instead of
-    // subtracting the frame size. As a result we need our stack limit to
-    // account for those 256 bytes.
-    const unsigned LIMIT_OFFSET = 256;
-    A(thread,
-      (uintptr_t)stk->end - RED_ZONE_SIZE
-      - (uintptr_t)stk->data >= LIMIT_OFFSET,
-      "Stack size must be greater than LIMIT_OFFSET");
-    record_sp(stk->data + LIMIT_OFFSET + RED_ZONE_SIZE);
 }
 
 void
