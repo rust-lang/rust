@@ -260,11 +260,11 @@ rust_task_thread::start_main_loop() {
 }
 
 rust_task *
-rust_task_thread::create_task(rust_task *spawner, const char *name,
-                            size_t init_stack_sz) {
+rust_task_thread::create_task(rust_task *spawner, const char *name) {
     rust_task *task =
         new (this->kernel, "rust_task")
-        rust_task (this, task_state_newborn, spawner, name, init_stack_sz);
+        rust_task (this, task_state_newborn,
+                   spawner, name, env->min_stack_size);
     DLOG(this, task, "created task: " PTR ", spawner: %s, name: %s",
                         task, spawner ? spawner->name : "null", name);
 

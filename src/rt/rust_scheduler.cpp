@@ -83,8 +83,7 @@ rust_scheduler::kill_all_tasks() {
 }
 
 rust_task *
-rust_scheduler::create_task(rust_task *spawner, const char *name,
-			    size_t init_stack_sz) {
+rust_scheduler::create_task(rust_task *spawner, const char *name) {
     size_t thread_no;
     {
 	scoped_lock with(lock);
@@ -92,12 +91,7 @@ rust_scheduler::create_task(rust_task *spawner, const char *name,
 	live_tasks++;
     }
     rust_task_thread *thread = threads[thread_no];
-    return thread->create_task(spawner, name, init_stack_sz);
-}
-
-rust_task *
-rust_scheduler::create_task(rust_task *spawner, const char *name) {
-    return create_task(spawner, name, env->min_stack_size);
+    return thread->create_task(spawner, name);
 }
 
 void

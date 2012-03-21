@@ -67,8 +67,6 @@ command_line_args : public kernel_owned<command_line_args>
 
 int check_claims = 0;
 
-const size_t MAIN_STACK_SIZE = 1024*1024;
-
 extern "C" CDECL int
 rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map) {
 
@@ -81,7 +79,7 @@ rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map) {
     rust_kernel *kernel = new rust_kernel(srv);
     rust_sched_id sched_id = kernel->create_scheduler(env->num_sched_threads);
     rust_scheduler *sched = kernel->get_scheduler_by_id(sched_id);
-    rust_task *root_task = sched->create_task(NULL, "main", MAIN_STACK_SIZE);
+    rust_task *root_task = sched->create_task(NULL, "main");
     rust_task_thread *thread = root_task->thread;
     command_line_args *args
         = new (kernel, "main command line args")
