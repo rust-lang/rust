@@ -3625,8 +3625,6 @@ mod vtable {
               _ {}
             }
           }
-          ast::expr_fn(p, _, _, _) if ast::is_blockish(p) {}
-          ast::expr_fn(_, _, _, _) { ret; }
           _ {}
         }
         visit::visit_expr(ex, fcx, v);
