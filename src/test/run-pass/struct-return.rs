@@ -1,5 +1,3 @@
-// xfail-test
-
 type quad = { a: u64, b: u64, c: u64, d: u64 };
 type floats = { a: f64, b: u8, c: f64 };
 
@@ -9,9 +7,7 @@ native mod rustrt {
     fn debug_abi_2(++f: floats) -> floats;
 }
 
-fn main() {
-
-    // First check
+fn test1() {
     let q = { a: 0xaaaa_aaaa_aaaa_aaaa_u64,
              b: 0xbbbb_bbbb_bbbb_bbbb_u64,
              c: 0xcccc_cccc_cccc_cccc_u64,
@@ -25,8 +21,10 @@ fn main() {
     assert qq.b == q.d - 1u64;
     assert qq.c == q.a + 1u64;
     assert qq.d == q.b - 1u64;
+}
 
-    // Second check
+#[cfg(target_arch = "x86_64")]
+fn test2() {
     let f = { a: 1.234567890e-15_f64,
              b: 0b_1010_1010_u8,
              c: 1.0987654321e-15_f64 };
@@ -37,4 +35,13 @@ fn main() {
     assert ff.a == f.c + 1.0;
     assert ff.b == 0xff_u8;
     assert ff.c == f.a - 1.0;
+}
+
+#[cfg(target_arch = "x86")]
+fn test2() {
+}
+
+fn main() {
+    test1();
+    test2();
 }
