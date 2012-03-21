@@ -1550,15 +1550,22 @@ mod unify {
 
     type var_bindings =
         {sets: ufind::ufind, types: smallintmap::smallintmap<t>};
+    type region_bindings =
+        {sets: ufind::ufind, regions: smallintmap::smallintmap<region>};
 
     enum unify_style {
         precise,
         in_bindings(@var_bindings),
+        in_region_bindings(@var_bindings, @region_bindings)
     }
     type uctxt = {st: unify_style, tcx: ctxt};
 
     fn mk_var_bindings() -> @var_bindings {
         ret @{sets: ufind::make(), types: smallintmap::mk::<t>()};
+    }
+
+    fn mk_region_bindings() -> @region_bindings {
+        ret @{sets: ufind::make(), regions: smallintmap::mk::<region>()};
     }
 
     // Unifies two sets.
@@ -1567,9 +1574,12 @@ mod unify {
         variance: variance, nxt: fn() -> ures<T>) -> ures<T> {
 
         let vb = alt cx.st {
+            in_region_bindings(vb, _) { vb }
             in_bindings(vb) { vb }
-            _ { cx.tcx.sess.bug("someone forgot to document an invariant \
-                         in union"); }
+            precise {
+                cx.tcx.sess.bug("someone forgot to document an invariant \
+                                 in union");
+            }
         };
         ufind::grow(vb.sets, uint::max(set_a, set_b) + 1u);
         let root_a = ufind::find(vb.sets, set_a);
@@ -1596,6 +1606,54 @@ mod unify {
               some(t_b) {
                 ret unify_step(cx, t_a, t_b, variance) {|t_c|
                     replace_type(vb, t_c);
+                    nxt()
+                };
+              }
+            }
+          }
+        }
+    }
+
+    // Unifies two region sets.
+    //
+    // FIXME: This is a straight copy of the code above. We should use
+    //        polymorphism to make this better.
+    fn union_region_sets<T:copy>(
+        cx: @uctxt, set_a: uint, set_b: uint,
+        variance: variance, nxt: fn() -> ures<T>) -> ures<T> {
+
+        let rb = alt cx.st {
+            in_region_bindings(_, rb) { rb }
+            in_bindings(_) | precise {
+                cx.tcx.sess.bug("attempted to unify two region sets without \
+                                 a set of region bindings present");
+            }
+        };
+        ufind::grow(rb.sets, uint::max(set_a, set_b) + 1u);
+        let root_a = ufind::find(rb.sets, set_a);
+        let root_b = ufind::find(rb.sets, set_b);
+
+        let replace_region = (
+            fn@(rb: @region_bindings, r: region) {
+                ufind::union(rb.sets, set_a, set_b);
+                let root_c: uint = ufind::find(rb.sets, set_a);
+                smallintmap::insert::<region>(rb.regions, root_c, r);
+            }
+        );
+
+        alt smallintmap::find(rb.regions, root_a) {
+          none {
+            alt smallintmap::find(rb.regions, root_b) {
+              none { ufind::union(rb.sets, set_a, set_b); ret nxt(); }
+              some(r_b) { replace_region(rb, r_b); ret nxt(); }
+            }
+          }
+          some(r_a) {
+            alt smallintmap::find(rb.regions, root_b) {
+              none { replace_region(rb, r_a); ret nxt(); }
+              some(r_b) {
+                ret unify_regions(cx, r_a, r_b, variance) {|r_c|
+                    replace_region(rb, r_c);
                     nxt()
                 };
               }
