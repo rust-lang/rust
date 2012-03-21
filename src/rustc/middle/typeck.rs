@@ -16,6 +16,7 @@ import util::ppaux::ty_to_str;
 import std::smallintmap;
 import std::map::{hashmap, int_hash};
 import std::serialization::{serialize_uint, deserialize_uint};
+import std::ufind;
 import syntax::print::pprust::*;
 
 export check_crate;
@@ -1554,6 +1555,33 @@ fn universally_quantify_regions(tcx: ty::ctxt, ty: ty::t) -> ty::t {
     }
 }
 
+// Replaces region parameter types in the given type with the appropriate
+// bindings.
+fn replace_region_params(tcx: ty::ctxt,
+                         sp: span,
+                         rb: @ty::unify::region_bindings,
+                         ty: ty::t)
+        -> ty::t {
+
+    if ty::type_has_rptrs(ty) {
+        ty::fold_ty(tcx, ty::fm_rptr({ |r|
+            alt r {
+                ty::re_param(n) {
+                    if n < ufind::set_count(rb.sets) {
+                        smallintmap::get(rb.regions, ufind::find(rb.sets, n))
+                    } else {
+                        tcx.sess.span_err(sp, "unresolved region");
+                        r
+                    }
+                }
+                _ { r }
+            }
+        }), ty)
+    } else {
+        ty
+    }
+}
+
 fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
                      subpats: [@ast::pat], expected: ty::t) {
     // Typecheck the path.
@@ -2277,40 +2305,38 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
     // A generic function for checking call expressions
     fn check_call(fcx: @fn_ctxt, sp: span, id: ast::node_id, f: @ast::expr,
                   args: [@ast::expr])
-        -> bool {
+            -> check_call_or_bind_result {
         let args_opt_0: [option<@ast::expr>] = [];
         for arg: @ast::expr in args {
             args_opt_0 += [some::<@ast::expr>(arg)];
         }
 
-        let mut bot = check_expr(fcx, f);
+        let bot = check_expr(fcx, f);
         // Call the generic checker.
         let ccobr = check_call_or_bind(fcx, sp, id, expr_ty(fcx.ccx.tcx, f),
                                        args_opt_0);
-        bot |= ccobr.bot;
-
-        // TODO: Munge return type.
-
-        ret bot;
+        ret { bot: bot | ccobr.bot with ccobr };
     }
 
     // A generic function for doing all of the checking for call expressions
     fn check_call_full(fcx: @fn_ctxt, sp: span, id: ast::node_id,
                        f: @ast::expr, args: [@ast::expr]) -> bool {
-        let bot = check_call(fcx, sp, id, f, args);
+        let ccobr = check_call(fcx, sp, id, f, args);
+        let mut bot = ccobr.bot;
         /* need to restrict oper to being an explicit expr_path if we're
         inside a pure function */
         require_pure_call(fcx.ccx, fcx.purity, f, sp);
 
         // Pull the return type out of the type of the function.
         let fty = ty::expr_ty(fcx.ccx.tcx, f);
-        let rt_1 = alt structure_of(fcx, sp, fty) {
+        let mut rt_1 = alt structure_of(fcx, sp, fty) {
           ty::ty_fn(f) {
             bot |= f.ret_style == ast::noreturn;
             f.output
           }
           _ { fcx.ccx.tcx.sess.span_fatal(sp, "calling non-function"); }
         };
+        rt_1 = replace_region_params(fcx.ccx.tcx, f.span, ccobr.rb, rt_1);
         write_ty(fcx.ccx.tcx, id, rt_1);
         ret bot;
     }
