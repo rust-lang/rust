@@ -424,7 +424,7 @@ across crates; an item's canonical path merely identifies it within the crate.
 
 Two examples of simple paths consisting of only identifier components:
 
-~~~~{.xfail-test}
+~~~~{.ignore}
 x;
 x::y::z;
 ~~~~
@@ -438,9 +438,13 @@ expression context, the final namespace qualifier is omitted.
 
 Two examples of paths with type arguments:
 
-~~~~{.xfail-test}
-type t = map::hashtbl<int,str>;  // Type arguments used in a type expression
+~~~~
+# import std::map;
+# fn f() {
+# fn id<T:copy>(t: T) -> T { t }
+type t = map::hashmap<int,str>;  // Type arguments used in a type expression
 let x = id::<int>(10);           // Type arguments used in a call expression
+# }
 ~~~~
 
 
@@ -627,19 +631,21 @@ of modules making up a crate. Modules can nest arbitrarily.
 
 An example of a module:
 
-~~~~~~~~{.xfail-test}
+~~~~~~~~
 mod math {
-    type complex = (f64,f64);
-    fn sin(f64) -> f64 {
-        ...
+    type complex = (f64, f64);
+    fn sin(f: f64) -> f64 {
+        // ...
+# fail;
     }
-    fn cos(f64) -> f64 {
-        ...
+    fn cos(f: f64) -> f64 {
+        // ...
+# fail;
     }
-    fn tan(f64) -> f64 {
-        ...
+    fn tan(f: f64) -> f64 {
+        // ...
+# fail;
     }
-    ...
 }
 ~~~~~~~~
 
@@ -718,22 +724,22 @@ Imports support a number of "convenience" notations:
 
 An example of imports:
 
-~~~~{.xfail-test}
+~~~~
 import foo = core::info;
-import std::math::sin;
-import std::str::{char_at, hash};
-import core::option::*;
+import core::float::sin;
+import core::str::{slice, hash};
+import core::option::some;
 
 fn main() {
-    // Equivalent to 'log(core::info, std::math::sin(1.0));'
+    // Equivalent to 'log(core::info, core::float::sin(1.0));'
     log(foo, sin(1.0));
 
     // Equivalent to 'log(core::info, core::option::some(1.0));'
     log(info, some(1.0));
 
     // Equivalent to 'log(core::info,
-    //                    std::str::hash(std::str::char_at("foo")));'
-    log(info, hash(char_at("foo")));
+    //                    core::str::hash(core::str::slice("foo", 0u, 1u)));'
+    log(info, hash(slice("foo", 0u, 1u)));
 }
 ~~~~
 
@@ -753,7 +759,7 @@ declaration replaces the default export with the export specified.
 
 An example of an export:
 
-~~~~~~~~{.xfail-test}
+~~~~~~~~
 mod foo {
     export primary;
 
@@ -763,19 +769,25 @@ mod foo {
     }
 
     fn helper(x: int, y: int) {
-        ...
+        // ...
     }
 }
 
 fn main() {
     foo::primary();  // Will compile.
-    foo::helper(2,3) // ERROR: will not compile.
 }
+~~~~~~~~
+
+If, instead of calling `foo::primary` in main, you were to call `foo::helper`
+then it would fail to compile:
+
+~~~~~~~~{.ignore}
+    foo::helper(2,3) // ERROR: will not compile.
 ~~~~~~~~
 
 Multiple names may be exported from a single export declaration:
 
-~~~~~~~~{.xfail-test}
+~~~~~~~~
 mod foo {
     export primary, secondary;
 
@@ -785,11 +797,11 @@ mod foo {
     }
 
     fn secondary() {
-        ...
+        // ...
     }
 
     fn helper(x: int, y: int) {
-        ...
+        // ...
     }
 }
 ~~~~~~~~
@@ -797,11 +809,11 @@ mod foo {
 When exporting the name of an `enum` type `t`, by default, the module also
 implicitly exports all of `t`'s constructors. For example:
 
-~~~~~~~~{.xfail-test}
+~~~~~~~~
 mod foo {
     export t;
     
-    enum t {a, b, c};
+    enum t {a, b, c}
 }
 ~~~~~~~~
 
@@ -815,10 +827,10 @@ constructors, achieving a simple kind of data abstraction. The third
 form exports an `enum` type name along with a subset of its
 constructors. For example:
 
-~~~~~~~~{.xfail-test}
+~~~~~~~~
 mod foo {
-    export abstract{};
-    export slightly_abstract{a, b};
+    export abstract::{};
+    export slightly_abstract::{a, b};
 
     enum abstract {x, y, z}
     enum slightly_abstract {a, b, c, d}
@@ -883,7 +895,9 @@ with a [`ret`](#return-expressions) or diverging expression. So, if `my_err`
 were declared without the `!` annotation, the following code would not
 typecheck:
 
-~~~~{.xfail-test}
+~~~~
+# fn my_err(s: str) -> ! { fail }
+
 fn f(i: int) -> int {
    if i == 42 {
      ret 42;
@@ -953,18 +967,20 @@ verify the semantics of the predicates they write.
 
 An example of a predicate that uses an unchecked block:
 
-~~~~{.xfail-test}
-fn pure_foldl<T, U: copy>(ls: list<T>, u: U, f: block(&T, &U) -> U) -> U {
+~~~~
+# import std::list::*;
+
+fn pure_foldl<T, U: copy>(ls: list<T>, u: U, f: fn(&&T, &&U) -> U) -> U {
     alt ls {
-      nil. { u }
+      nil { u }
       cons(hd, tl) { f(hd, pure_foldl(*tl, f(hd, u), f)) }
     }
 }
 
 pure fn pure_length<T>(ls: list<T>) -> uint {
-    fn count<T>(_t: T, u: uint) -> uint { u + 1u }
+    fn count<T>(_t: T, &&u: uint) -> uint { u + 1u }
     unchecked {
-        pure_foldl(ls, 0u, count)
+        pure_foldl(ls, 0u, count(_, _))
     }
 }
 ~~~~
@@ -982,11 +998,11 @@ appear in its signature. Each type parameter must be explicitly
 declared, in an angle-bracket-enclosed, comma-separated list following
 the function name.
 
-~~~~{.xfail-test}
-fn iter<T>(seq: [T], f: block(T)) {
+~~~~
+fn iter<T>(seq: [T], f: fn(T)) {
     for elt: T in seq { f(elt); }
 }
-fn map<T, U>(seq: [T], f: block(T) -> U) -> [U] {
+fn map<T, U>(seq: [T], f: fn(T) -> U) -> [U] {
     let acc = [];
     for elt in seq { acc += [f(elt)]; }
     acc
@@ -1000,7 +1016,7 @@ When a generic function is referenced, its type is instantiated based
 on the context of the reference. For example, calling the `iter`
 function defined above on `[1, 2]` will instantiate type parameter `T`
 with `int`, and require the closure parameter to have type
-`block(int)`.
+`fn(int)`.
 
 Since a parameter type is opaque to the generic function, the set of
 operations that can be performed on it is limited. Values of parameter
@@ -1031,7 +1047,8 @@ crust fn new_vec() -> [int] { [] }
 Crust functions may not be called from Rust code, but their value
 may be taken as an unsafe `u8` pointer.
 
-~~~{.xfail-test}
+~~~
+# crust fn new_vec() -> [int] { [] }
 let fptr: *u8 = new_vec;
 ~~~
 
@@ -1081,10 +1098,10 @@ type the constructor is a member of. Such recursion has restrictions:
 
 An example of an `enum` item and its use:
 
-~~~~{.xfail-test}
+~~~~
 enum animal {
-  dog;
-  cat;
+  dog,
+  cat
 }
 
 let a: animal = dog;
@@ -1093,10 +1110,10 @@ a = cat;
 
 An example of a *recursive* `enum` item and its use:
 
-~~~~{.xfail-test}
+~~~~
 enum list<T> {
-  nil;
-  cons(T, @list<T>);
+  nil,
+  cons(T, @list<T>)
 }
 
 let a: list<int> = cons(7, @cons(13, @nil));
@@ -1107,9 +1124,9 @@ let a: list<int> = cons(7, @cons(13, @nil));
 _Resources_ are values that have a destructor associated with them. A
 _resource item_ is used to declare resource type and constructor.
 
-~~~~{.xfail-test}
-resource file_descriptor(fd: int) {
-    std::os::libc::close(fd);
+~~~~
+resource file_descriptor(fd: libc::c_int) {
+    libc::close(fd);
 }
 ~~~~
 
@@ -1133,7 +1150,10 @@ An _interface item_ describes a set of method types. _[implementation
 items](#implementations)_ can be used to provide implementations of
 those methods for a specific type.
 
-~~~~{.xfail-test}
+~~~~
+# type surface = int;
+# type bounding_box = int;
+
 iface shape {
     fn draw(surface);
     fn bounding_box() -> bounding_box;
@@ -1149,11 +1169,11 @@ Type parameters can be specified for an interface to make it generic.
 These appear after the name, using the same syntax used in [generic
 functions](#generic-functions).
 
-~~~~{.xfail-test}
+~~~~
 iface seq<T> {
    fn len() -> uint;
    fn elt_at(n: uint) -> T;
-   fn iter(block(T));
+   fn iter(fn(T));
 }
 ~~~~
 
@@ -1163,7 +1183,10 @@ interface can be used to instantiate the parameter, and within the
 generic function, the methods of the interface can be called on values
 that have the parameter's type. For example:
 
-~~~~{.xfail-test}
+~~~~
+# type surface = int;
+# iface shape { fn draw(surface); }
+
 fn draw_twice<T: shape>(surface: surface, sh: T) {
     sh.draw(surface);
     sh.draw(surface);
@@ -1176,7 +1199,11 @@ interface. Values of this type are created by
 implementation of the given interface is in scope) to the interface
 type.
 
-~~~~{.xfail-test}
+~~~~
+# iface shape { }
+# impl of shape for int { }
+# let mycircle = 0;
+
 let myshape: shape = mycircle as shape;
 ~~~~
 
@@ -1191,7 +1218,13 @@ instantiate type parameters that are bounded on their interface.
 An _implementation item_ provides an implementation of an
 [interfaces](#interfaces) for a type.
 
-~~~~{.xfail-test}
+~~~~
+# type point = {x: float, y: float};
+# type surface = int;
+# type bounding_box = {x: float, y: float, width: float, height: float};
+# iface shape { fn draw(surface); fn bounding_box() -> bounding_box; }
+# fn do_draw_circle(s: surface, c: circle) { }
+
 type circle = {radius: float, center: point};
 
 impl circle_shape of shape for circle {
@@ -1199,7 +1232,7 @@ impl circle_shape of shape for circle {
     fn bounding_box() -> bounding_box {
         let r = self.radius;
         {x: self.center.x - r, y: self.center.y - r,
-         width: 2 * r, height: 2 * r}
+         width: 2.0 * r, height: 2.0 * r}
     }
 }
 ~~~~
@@ -1218,10 +1251,10 @@ statically (as direct calls on the values of the type that the
 implementation targets). In such an implementation, the `of` clause is
 not given, and the name is mandatory.
 
-~~~~{.xfail-test}
+~~~~
 impl uint_loops for uint {
-    fn times(f: block(uint)) {
-        let i = 0;
+    fn times(f: fn(uint)) {
+        let i = 0u;
         while i < self { f(i); i += 1u; }
     }
 }
@@ -1236,7 +1269,9 @@ from the type parameters taken by the interface it implements. They
 are written after the name of the implementation, or if that is not
 specified, after the `impl` keyword.
 
-~~~~{.xfail-test}
+~~~~
+# iface seq { }
+
 impl <T> of seq<T> for [T] {
     /* ... */
 }
@@ -1257,9 +1292,12 @@ module describes functions in external, non-Rust libraries. Functions within
 native modules are declared the same as other Rust functions, with the exception
 that they may not have a body and are instead terminated by a semi-colon.
 
-~~~{.xfail-test}
+~~~
+# import libc::{c_char, FILE};
+# #[nolink]
+
 native mod c {
-    fn fopen(filename: *c_char, mod: *c_char) -> *FILE;
+    fn fopen(filename: *c_char, mode: *c_char) -> *FILE;
 }
 ~~~
 
@@ -1326,19 +1364,19 @@ declaration within the entity body.
 An example of attributes:
 
 ~~~~~~~~{.xfail-test}
+// General metadata applied to the enclosing module or crate.
+#[license = "BSD"];
+
 // A function marked as a unit test
 #[test]
 fn test_foo() {
-  ...
+  // ...
 }
-
-// General metadata applied to the enclosing module or crate.
-#[license = "BSD"];
 
 // A conditionally-compiled module
 #[cfg(target_os="linux")]
 mod bar {
-  ...
+  // ...
 }
 
 // A documentation attribute
@@ -1578,10 +1616,16 @@ Indices are zero-based, and may be of any integral type. Vector access
 is bounds-checked at run-time. When the check fails, it will put the
 task in a _failing state_.
 
-~~~~{.xfail-test}
+~~~~
+# let builder = task::task_builder();
+# task::unsupervise(builder);
+# task::run(builder) {||
+
 [1, 2, 3, 4][0];
 [mutable 'x', 'y'][1] = 'z';
 ["a", "b"][10]; // fails
+
+# }
 ~~~~
 
 ### Unary operator expressions
@@ -1696,10 +1740,13 @@ is unsupported and will fail to compile.
 
 An example of an `as` expression:
 
-~~~~{.xfail-test}
+~~~~
+# fn sum(v: [float]) -> float { 0.0 }
+# fn len(v: [float]) -> int { 0 }
+
 fn avg(v: [float]) -> float {
   let sum: float = sum(v);
-  let sz: float = std::vec::len(v) as float;
+  let sz: float = len(v) as float;
   ret sum / sz;
 }
 ~~~~
@@ -1727,10 +1774,17 @@ expression. No allocation or destruction is entailed.
 
 An example of three different move expressions:
 
-~~~~~~~~{.xfail-test}
+~~~~~~~~
+# let x = [mut 0];
+# let a = [mut 0];
+# let b = 0;
+# let y = {mut z: 0};
+# let c = 0;
+# let i = 0;
+
 x <- a;
 x[i] <- b;
-x.y <- c;
+y.z <- c;
 ~~~~~~~~
 
 #### Swap expressions
@@ -1749,10 +1803,16 @@ expression. No allocation or destruction is entailed.
 
 An example of three different swap expressions:
 
-~~~~~~~~{.xfail-test}
+~~~~~~~~
+# let x = [mut 0];
+# let a = [mut 0];
+# let i = 0;
+# let y = {mut z: 0};
+# let b = {mut c: 0};
+
 x <-> a;
-x[i] <-> b[i];
-x.y <-> a.b;
+x[i] <-> a[i];
+y.z <-> b.c;
 ~~~~~~~~
 
 
@@ -1766,9 +1826,12 @@ expression](#binary-move-expressions) applied to a [unary copy
 expression](#unary-copy-expressions). For example, the following two
 expressions have the same effect:
 
-~~~~{.xfail-test}
-x = y
-x <- copy y
+~~~~
+# let x = 0;
+# let y = 0;
+
+x = y;
+x <- copy y;
 ~~~~
 
 The former is just more terse and familiar.
@@ -1871,7 +1934,9 @@ typestates propagate through function boundaries.
 
 An example of a call expression:
 
-~~~~{.xfail-test}
+~~~~
+# fn add(x: int, y: int) -> int { 0 }
+
 let x: int = add(1, 2);
 ~~~~
 
@@ -1949,18 +2014,24 @@ loop body. If it evaluates to `false`, control exits the loop.
 
 An example of a simple `while` expression:
 
-~~~~{.xfail-test}
+~~~~
+# let i = 0;
+# let println = io::println;
+
 while i < 10 {
-    print("hello\n");
+    println("hello\n");
     i = i + 1;
 }
 ~~~~
 
 An example of a `do`-`while` expression:
 
-~~~~{.xfail-test}
+~~~~
+# let i = 0;
+# let println = io::println;
+
 do {
-    print("hello\n");
+    println("hello\n");
     i = i + 1;
 } while i < 10;
 ~~~~
@@ -2035,7 +2106,11 @@ elements of the underlying sequence, one iteration per sequence element.
 
 An example a for loop:
 
-~~~~{.xfail-test}
+~~~~
+# type foo = int;
+# fn bar(f: foo) { }
+# let a = 0, b = 0, c = 0;
+
 let v: [foo] = [a, b, c];
 
 for e: foo in v {
@@ -2093,8 +2168,11 @@ variables in the arm's block, and control enters the block.
 An example of an `alt` expression:
 
 
-~~~~{.xfail-test}
-enum list<X> { nil; cons(X, @list<X>); }
+~~~~
+# fn process_pair(a: int, b: int) { }
+# fn process_ten() { }
+
+enum list<X> { nil, cons(X, @list<X>) }
 
 let x: list<int> = cons(10, @cons(11, @nil));
 
@@ -2118,7 +2196,13 @@ Records can also be pattern-matched and their fields bound to variables.
 When matching fields of a record, the fields being matched are specified
 first, then a placeholder (`_`) represents the remaining fields.
 
-~~~~{.xfail-test}
+~~~~
+# type options = {choose: bool, size: str};
+# type player = {player: str, stats: (), options: options};
+# fn load_stats() { }
+# fn choose_player(r: player) { }
+# fn next_player() { }
+
 fn main() {
     let r = {
         player: "ralph",
@@ -2146,12 +2230,14 @@ fn main() {
 Multiple alternative patterns may be joined with the `|` operator.  A
 range of values may be specified with `to`.  For example:
 
-~~~~{.xfail-test}
+~~~~
+# let x = 2;
+
 let message = alt x {
   0 | 1  { "not many" }
   2 to 9 { "a few" }
   _      { "lots" }
-}
+};
 ~~~~
 
 Finally, alt patterns can accept *pattern guards* to further refine the
@@ -2159,11 +2245,16 @@ criteria for matching a case. Pattern guards appear after the pattern and
 consist of a bool-typed expression following the `if` keyword. A pattern
 guard may refer to the variables bound within the pattern they follow.
 
-~~~~{.xfail-test}
+~~~~
+# let maybe_digit = some(0);
+# fn process_digit(i: int) { }
+# fn process_other(i: int) { }
+
 let message = alt maybe_digit {
   some(x) if x < 10 { process_digit(x) }
   some(x) { process_other(x) }
-}
+  none { fail }
+};
 ~~~~
 
 
@@ -2276,7 +2367,9 @@ syntax-extension.
 The following examples all produce the same output, logged at the `error`
 logging level:
 
-~~~~{.xfail-test}
+~~~~
+# let filename = "bulbasaur";
+
 // Full version, logging a value.
 log(core::error, "file not found: " + filename);
 
@@ -2327,7 +2420,9 @@ itself. From there, the typestate algorithm can perform dataflow calculations
 on subsequent expressions, propagating [conditions](#conditions) forward and
 statically comparing implied states and their specifications.
 
-~~~~~~~~{.xfail-test}
+~~~~~~~~
+# fn print(i: int) { }
+
 pure fn even(x: int) -> bool {
     ret x & 1 == 0;
 }
@@ -2392,14 +2487,22 @@ following two examples are equivalent:
 
 Example using `check`:
 
-~~~~{.xfail-test}
+~~~~
+# pure fn even(x: int) -> bool { true }
+# fn print_even(x: int) { }
+# let x = 0;
+
 check even(x);
 print_even(x);
 ~~~~
 
 Equivalent example using `if check`:
 
-~~~~{.xfail-test}
+~~~~
+# pure fn even(x: int) -> bool { true }
+# fn print_even(x: int) { }
+# let x = 0;
+
 if check even(x) {
     print_even(x);
 } else {
