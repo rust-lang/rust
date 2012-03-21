@@ -40,7 +40,16 @@ var out = outfile ? fs.createWriteStream(outfile) : process.stdout;
 while ((line = lines[cur++]) != null) {
   if (/^~~~/.test(line)) {
     var block = "", bline;
-    var isRust = !/notrust/.test(line);
+    var notRust =
+          /notrust/.test(line)
+          // These are all used by the language ref to indicate things
+          // that are not Rust source code
+          || /ebnf/.test(line)
+          || /abnf/.test(line)
+          || /keyword/.test(line)
+          || /field/.test(line)
+          || /precedence/.test(line);
+    var isRust = !notRust;
     while ((bline = lines[cur++]) != null) {
       if (/^~~~/.test(bline)) break;
       if (!/^\s*##? /.test(bline)) block += bline + "\n";

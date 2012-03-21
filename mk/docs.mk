@@ -12,20 +12,25 @@ ifeq ($(CFG_PANDOC),)
   $(info cfg: no pandoc found, omitting doc/rust.pdf)
 else
 
+  ifeq ($(CFG_NODE),)
+    $(info cfg: no node found, omitting doc/tutorial.html)
+  else
+
 DOCS += doc/rust.html
 doc/rust.html: rust.md doc/version.md doc/keywords.md $(S)doc/rust.css
 	@$(call E, pandoc: $@)
-	$(Q)"$(CFG_PANDOC)" \
+	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
+	"$(CFG_PANDOC)" \
          --standalone --toc \
          --section-divs \
          --number-sections \
          --from=markdown --to=html \
          --css=rust.css \
-         --output=$@ \
-         $<
+         --output=$@
 	@$(call E, cp: $(S)doc/rust.css)
 	-$(Q)cp -a $(S)doc/rust.css doc/rust.css 2> /dev/null
 
+  endif
 
   ifeq ($(CFG_PDFLATEX),)
     $(info cfg: no pdflatex found, omitting doc/rust.pdf)
