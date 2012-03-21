@@ -528,10 +528,10 @@ rust_task::new_stack_fast(size_t requested_sz) {
     size_t min_sz = thread->min_stack_size;
 
     // Try to reuse an existing stack segment
-    if (stk != NULL && stk->prev != NULL) {
-        size_t prev_sz = user_stack_size(stk->prev);
-        if (min_sz <= prev_sz && requested_sz <= prev_sz) {
-            stk = stk->prev;
+    if (stk != NULL && stk->next != NULL) {
+        size_t next_sz = user_stack_size(stk->next);
+        if (min_sz <= next_sz && requested_sz <= next_sz) {
+            stk = stk->next;
             return;
         }
     }
@@ -551,19 +551,19 @@ rust_task::new_stack(size_t requested_sz) {
     size_t min_sz = thread->min_stack_size;
 
     // Try to reuse an existing stack segment
-    while (stk != NULL && stk->prev != NULL) {
-        size_t prev_sz = user_stack_size(stk->prev);
-        if (min_sz <= prev_sz && requested_sz <= prev_sz) {
+    while (stk != NULL && stk->next != NULL) {
+        size_t next_sz = user_stack_size(stk->next);
+        if (min_sz <= next_sz && requested_sz <= next_sz) {
             LOG(this, mem, "reusing existing stack");
-            stk = stk->prev;
+            stk = stk->next;
             return;
         } else {
             LOG(this, mem, "existing stack is not big enough");
-            stk_seg *new_prev = stk->prev->prev;
-            free_stack(stk->prev);
-            stk->prev = new_prev;
-            if (new_prev) {
-                new_prev->next = stk;
+            stk_seg *new_next = stk->next->next;
+            free_stack(stk->next);
+            stk->next = new_next;
+            if (new_next) {
+                new_next->prev = stk;
             }
         }
     }
@@ -585,10 +585,10 @@ rust_task::new_stack(size_t requested_sz) {
     size_t sz = rust_stk_sz + RED_ZONE_SIZE;
     stk_seg *new_stk = create_stack(&local_region, sz);
     LOGPTR(thread, "new stk", (uintptr_t)new_stk);
-    new_stk->prev = NULL;
-    new_stk->next = stk;
+    new_stk->next = NULL;
+    new_stk->prev = stk;
     if (stk) {
-        stk->prev = new_stk;
+        stk->next = new_stk;
     }
     LOGPTR(thread, "stk end", new_stk->end);
 
@@ -633,7 +633,7 @@ rust_task::prev_stack() {
     // require switching to the C stack and be costly. Instead we'll just move
     // up the link list and clean up later, either in new_stack or after our
     // turn ends on the scheduler.
-    stk = stk->next;
+    stk = stk->prev;
     record_stack_limit();
 }
 
@@ -658,10 +658,10 @@ rust_task::cleanup_after_turn() {
     // Delete any spare stack segments that were left
     // behind by calls to prev_stack
     I(thread, stk);
-    while (stk->prev) {
-        stk_seg *new_prev = stk->prev->prev;
-        free_stack(stk->prev);
-        stk->prev = new_prev;
+    while (stk->next) {
+        stk_seg *new_next = stk->next->next;
+        free_stack(stk->next);
+        stk->next = new_next;
     }
 }
 
@@ -686,7 +686,7 @@ reset_stack_limit_on_c_stack(reset_args *args) {
     rust_task *task = args->task;
     uintptr_t sp = args->sp;
     while (!sp_in_stk_seg(sp, task->stk)) {
-        task->stk = task->stk->next;
+        task->stk = task->stk->prev;
         A(task->thread, task->stk != NULL,
           "Failed to find the current stack");
     }
@@ -720,11 +720,11 @@ rust_task::delete_all_stacks() {
     I(thread, !on_rust_stack());
     // Delete all the stacks. There may be more than one if the task failed
     // and no landing pads stopped to clean up.
-    I(thread, stk->prev == NULL);
+    I(thread, stk->next == NULL);
     while (stk != NULL) {
-        stk_seg *next = stk->next;
+        stk_seg *prev = stk->prev;
         free_stack(stk);
-        stk = next;
+        stk = prev;
     }
 }
 
@@ -748,10 +748,10 @@ rust_task::on_rust_stack() {
     bool in_first_segment = sp_in_stk_seg(sp, stk);
     if (in_first_segment) {
         return true;
-    } else if (stk->next != NULL) {
+    } else if (stk->prev != NULL) {
         // This happens only when calling the upcall to delete
         // a stack segment
-        bool in_second_segment = sp_in_stk_seg(sp, stk->next);
+        bool in_second_segment = sp_in_stk_seg(sp, stk->prev);
         return in_second_segment;
     } else {
         return false;
