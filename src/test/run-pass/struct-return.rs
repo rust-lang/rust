@@ -1,3 +1,4 @@
+// xfail-test
 
 type quad = { a: u64, b: u64, c: u64, d: u64 };
 type floats = { a: f64, b: u8, c: f64 };
