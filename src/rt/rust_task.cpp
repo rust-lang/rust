@@ -135,6 +135,10 @@ void task_start_wrapper(spawn_args *a)
         if (task->c_stack) {
             task->return_c_stack();
         }
+
+        // Since we call glue code below we need to make sure we
+        // have the stack limit set up correctly
+        task->reset_stack_limit();
     }
 
     // We should have returned any C stack by now
