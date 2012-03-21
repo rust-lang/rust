@@ -1690,6 +1690,34 @@ mod unify {
         ret nxt(mk_var(cx.tcx, key));
     }
 
+    fn record_region_binding<T:copy>(
+        cx: @uctxt, key: uint,
+        r: region, base_mt: mt, variance: variance,
+        nxt: fn(t) -> ures<T>) -> ures<T> {
+
+        let rb = alt cx.st {
+            in_region_bindings(_, rb) { rb }
+            in_bindings(_) | precise { fail; }
+        };
+
+        ufind::grow(rb.sets, key + 1u);
+        let root = ufind::find(rb.sets, key);
+        let mut result_region = r;
+        alt smallintmap::find(rb.regions, root) {
+          some(old_region) {
+            alt unify_regions(cx, old_region, r, variance, {|v| ok(v)}) {
+              ok(unified_region) { result_region = unified_region; }
+              err(e) { ret err(e); }
+            }
+          }
+          none {/* fall through */ }
+        }
+        smallintmap::insert(rb.regions, root, result_region);
+
+        // FIXME: This should be re_var instead.
+        ret nxt(mk_rptr(cx.tcx, re_param(key), base_mt));
+    }
+
     // Simple structural type comparison.
     fn struct_cmp<T:copy>(
         cx: @uctxt, expected: t, actual: t,
