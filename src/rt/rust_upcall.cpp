@@ -442,7 +442,7 @@ upcall_log_type(const type_desc *tydesc, uint8_t *data, uint32_t level) {
 // NB: This needs to be blazing fast. Don't switch stacks
 extern "C" CDECL void *
 upcall_new_stack(size_t stk_sz, void *args_addr, size_t args_sz) {
-    rust_task *task = rust_task_thread::get_task();
+    rust_task *task = rust_task::get_task_from_tcb();
     return task->next_stack(stk_sz,
                             args_addr,
                             args_sz);
@@ -451,7 +451,7 @@ upcall_new_stack(size_t stk_sz, void *args_addr, size_t args_sz) {
 // NB: This needs to be blazing fast. Don't switch stacks
 extern "C" CDECL void
 upcall_del_stack() {
-    rust_task *task = rust_task_thread::get_task();
+    rust_task *task = rust_task::get_task_from_tcb();
     task->prev_stack();
 }
 
