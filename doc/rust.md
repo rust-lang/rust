@@ -1328,7 +1328,7 @@ native mod kernel32 { }
 The `link_name` attribute allows the default library naming behavior to
 be overriden by explicitly specifying the name of the library.
 
-~~~
+~~~{.xfail-test}
 #[link_name = "crypto"]
 native mod mycrypto { }
 ~~~
@@ -2714,11 +2714,11 @@ order specified by the tuple type.
 
 An example of a tuple type and its use:
 
-~~~~{.xfail-test}
+~~~~
 type pair = (int,str);
 let p: pair = (10,"hello");
 let (a, b) = p;
-assert (b == "world");
+assert b != "world";
 ~~~~
 
 ### Vector types
@@ -2741,8 +2741,8 @@ behaviour supports idiomatic in-place "growth" of a mutable slot holding a
 vector:
 
 
-~~~~{.xfail-test}
-let v: mutable [int] = [1, 2, 3];
+~~~~
+let mut v: [int] = [1, 2, 3];
 v += [4, 5, 6];
 ~~~~
 
@@ -2796,12 +2796,12 @@ consists of a sequence of input slots, an optional set of
 
 An example of a `fn` type:
 
-~~~~~~~~{.xfail-test}
+~~~~~~~~
 fn add(x: int, y: int) -> int {
   ret x + y;
 }
 
-let int x = add(5,7);
+let x = add(5,7);
 
 type binop = fn(int,int) -> int;
 let bo: binop = add;
@@ -2879,9 +2879,11 @@ has a set of points before and after it in the implied control flow.
 
 For example, this code:
 
-~~~~~~~~{.xfail-test}
- s = "hello, world";
- print(s);
+~~~~~~~~
+# let s;
+
+s = "hello, world";
+io::println(s);
 ~~~~~~~~
 
 Consists of 2 statements, 3 expressions and 12 points:
@@ -2904,8 +2906,11 @@ Consists of 2 statements, 3 expressions and 12 points:
 Whereas this code:
 
 
-~~~~~~~~{.xfail-test}
-print(x() + y());
+~~~~~~~~
+# fn x() -> str { "" }
+# fn y() -> str { "" }
+
+io::println(x() + y());
 ~~~~~~~~
 
 Consists of 1 statement, 7 expressions and 14 points:
@@ -3200,19 +3205,12 @@ let x: @int = @10;
 let x: ~int = ~10;
 ~~~~~~~~
 
-Some operations implicitly dereference boxes. Examples of such @dfn{implicit
-dereference} operations are:
+Some operations (such as field selection) implicitly dereference boxes. An
+example of an @dfn{implicit dereference} operation performed on box values:
 
-* arithmetic operators (`x + y - z`)
-* field selection (`x.y.z`)
-
-
-An example of an implicit-dereference operation performed on box values:
-
-~~~~~~~~{.xfail-test}
-let x: @int = @10;
-let y: @int = @12;
-assert (x + y == 22);
+~~~~~~~~
+let x = @{y: 10};
+assert x.y == 10;
 ~~~~~~~~
 
 Other operations act on box values as single-word-sized address values. For
@@ -3383,20 +3381,17 @@ The result of a `spawn` call is a `core::task::task` value.
 
 An example of a `spawn` call:
 
-~~~~{.xfail-test}
-import task::*;
-import comm::*;
+~~~~
+let po = comm::port();
+let ch = comm::chan(po);
 
-let p = port();
-let c = chan(p);
-
-spawn {||
+task::spawn {||
     // let task run, do other things
     // ...
-    send(c, true);
+    comm::send(ch, true);
 };
 
-let result = recv(p);
+let result = comm::recv(po);
 ~~~~
 
 
@@ -3408,10 +3403,10 @@ channel's outgoing buffer.
 
 An example of a send:
 
-~~~~{.xfail-test}
-import comm::*;
-let c: chan<str> = ...;
-send(c, "hello, world");
+~~~~
+let po = comm::port();
+let ch = comm::chan(po);
+comm::send(ch, "hello, world");
 ~~~~
 
 
@@ -3424,10 +3419,11 @@ time the port deques a value to return, and un-blocks the receiving task.
 
 An example of a *receive*:
 
-~~~~~~~~{.xfail-test}
-import comm::*;
-let p: port<str> = ...;
-let s = recv(p);
+~~~~~~~~
+# let po = comm::port();
+# let ch = comm::chan(po);
+# comm::send(ch, "");
+let s = comm::recv(po);
 ~~~~~~~~
 
 
