@@ -557,6 +557,7 @@ type _mod = {view_items: [@view_item], items: [@item]};
 #[auto_serialize]
 enum native_abi {
     native_abi_rust_intrinsic,
+    native_abi_rust_builtin,
     native_abi_cdecl,
     native_abi_stdcall,
 }
@@ -702,7 +703,8 @@ enum native_item_ {
 #[auto_serialize]
 enum inlined_item {
     ii_item(@item),
-    ii_method(def_id /* impl id */, @method)
+    ii_method(def_id /* impl id */, @method),
+    ii_native(@native_item),
 }
 
 //

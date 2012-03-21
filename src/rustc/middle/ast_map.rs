@@ -91,6 +91,10 @@ fn map_decoded_item(sess: session, map: map, path: path, ii: inlined_item) {
     // add it to the table now:
     alt ii {
       ii_item(i) { /* fallthrough */ }
+      ii_native(i) {
+        cx.map.insert(i.id, node_native_item(i, native_abi_rust_builtin,
+                                             @path));
+      }
       ii_method(impl_did, m) {
         map_method(impl_did, @path, m, cx);
       }

@@ -374,6 +374,9 @@ fn simplify_ast(ii: ast::inlined_item) -> ast::inlined_item {
       ast::ii_method(d, m) {
         ast::ii_method(d, fld.fold_method(m))
       }
+      ast::ii_native(i) {
+        ast::ii_native(fld.fold_native_item(i))
+      }
     }
 }
 
@@ -397,6 +400,9 @@ fn renumber_ast(xcx: extended_decode_ctxt, ii: ast::inlined_item)
       }
       ast::ii_method(d, m) {
         ast::ii_method(xcx.tr_def_id(d), fld.fold_method(m))
+      }
+      ast::ii_native(i) {
+        ast::ii_native(fld.fold_native_item(i))
       }
     }
 }

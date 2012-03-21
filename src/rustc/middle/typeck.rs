@@ -945,7 +945,13 @@ mod collect {
     fn convert(tcx: ty::ctxt, it: @ast::item) {
         alt it.node {
           // These don't define types.
-          ast::item_mod(_) | ast::item_native_mod(_) {}
+          ast::item_mod(_) {}
+          ast::item_native_mod(m) {
+            if front::attr::native_abi(it.attrs) ==
+               either::right(ast::native_abi_rust_builtin) {
+                for item in m.items { check_builtin_type(tcx, item); }
+            }
+          }
           ast::item_enum(variants, ty_params) {
             let tpt = ty_of_item(tcx, m_collect, it);
             write_ty(tcx, it.id, tpt.ty);
@@ -1408,6 +1414,44 @@ mod writeback {
     }
 }
 
+fn check_builtin_type(tcx: ty::ctxt, it: @ast::native_item) {
+    fn param(tcx: ty::ctxt, n: uint) -> ty::t {
+        ty::mk_param(tcx, n, local_def(0))
+    }
+    fn arg(m: ast::rmode, ty: ty::t) -> ty::arg {
+        {mode: ast::expl(m), ty: ty}
+    }
+    let (n_tps, inputs, output) = alt it.ident {
+      "size_of" | "align_of" { (1u, [], ty::mk_uint(tcx)) }
+      "get_tydesc" { (1u, [], ty::mk_nil_ptr(tcx)) }
+      "init" { (1u, [], param(tcx, 0u)) }
+      "forget" { (1u, [arg(ast::by_move, param(tcx, 0u))],
+                  ty::mk_nil(tcx)) }
+      "reinterpret_cast" { (2u, [arg(ast::by_ref, param(tcx, 0u))],
+                            param(tcx, 1u)) }
+      "addr_of" { (1u, [arg(ast::by_ref, param(tcx, 0u))],
+                   ty::mk_imm_ptr(tcx, param(tcx, 0u))) }
+      other {
+        tcx.sess.span_err(it.span, "unrecognized builtin function: `" +
+                          other + "`");
+        ret;
+      }
+    };
+    let fty = ty::mk_fn(tcx, {proto: ast::proto_bare,
+                              inputs: inputs, output: output,
+                              ret_style: ast::return_val,
+                              constraints: []});
+    let i_ty = ty_of_native_item(tcx, m_collect, it);
+    let i_n_tps = (*i_ty.bounds).len();
+    if i_n_tps != n_tps {
+        tcx.sess.span_err(it.span, #fmt("builtin function has wrong number \
+                                         of type parameters. found %u, \
+                                         expected %u", i_n_tps, n_tps));
+    } else if !ty::same_type(tcx, i_ty.ty, fty) {
+        tcx.sess.span_err(it.span, #fmt("builtin function has wrong type. \
+                                         expected %s", ty_to_str(tcx, fty)));
+    }
+}
 
 // Local variable gathering. We gather up all locals and create variable IDs
 // for them before typechecking the function.

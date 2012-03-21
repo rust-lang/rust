@@ -454,6 +454,7 @@ impl inlined_item_methods for inlined_item {
     fn ident() -> ident {
         alt self {
           ii_item(i) { i.ident }
+          ii_native(i) { i.ident }
           ii_method(_, m) { m.ident }
         }
     }
@@ -461,6 +462,7 @@ impl inlined_item_methods for inlined_item {
     fn id() -> ast::node_id {
         alt self {
           ii_item(i) { i.id }
+          ii_native(i) { i.id }
           ii_method(_, m) { m.id }
         }
     }
@@ -468,6 +470,7 @@ impl inlined_item_methods for inlined_item {
     fn accept<E>(e: E, v: visit::vt<E>) {
         alt self {
           ii_item(i) { v.visit_item(i, e, v) }
+          ii_native(i) { v.visit_native_item(i, e, v) }
           ii_method(_, m) { visit::visit_method_helper(m, e, v) }
         }
     }

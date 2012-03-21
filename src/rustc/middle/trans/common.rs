@@ -804,6 +804,10 @@ fn C_shape(ccx: @crate_ctxt, bytes: [u8]) -> ValueRef {
     ret llvm::LLVMConstPointerCast(llglobal, T_ptr(T_i8()));
 }
 
+fn get_param(fndecl: ValueRef, param: uint) -> ValueRef {
+    llvm::LLVMGetParam(fndecl, param as c_uint)
+}
+
 // Used to identify cached monomorphized functions and vtables
 enum mono_param_id {
     mono_precise(ty::t, option<[mono_id]>),

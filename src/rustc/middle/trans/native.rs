@@ -6,16 +6,17 @@ import lib::llvm::{ llvm, TypeRef, ValueRef,
                     ModuleRef, CallConv, Attribute,
                     StructRetAttribute, ByValAttribute
                   };
-import syntax::ast;
+import syntax::{ast, ast_util};
 import back::link;
 import common::*;
 import build::*;
 import base::*;
 import type_of::*;
 import std::map::hashmap;
+import util::ppaux::ty_to_str;
 
 export link_name, trans_native_mod, register_crust_fn, trans_crust_fn,
-       decl_native_fn;
+       decl_native_fn, trans_builtin;
 
 enum x86_64_reg_class {
     no_class,
@@ -384,7 +385,7 @@ fn decl_x86_64_fn(tys: x86_64_tys,
     vec::iteri(tys.attrs) {|i, a|
         alt a {
             option::some(attr) {
-                let llarg = llvm::LLVMGetParam(llfn, i as c_uint);
+                let llarg = get_param(llfn, i);
                 llvm::LLVMAddAttribute(llarg, attr as c_uint);
             }
             _ {}
@@ -462,7 +463,7 @@ fn build_shim_fn_(ccx: @crate_ctxt,
     let fcx = new_fn_ctxt(ccx, [], llshimfn, none);
     let bcx = top_scope_block(fcx, none);
     let lltop = bcx.llbb;
-    let llargbundle = llvm::LLVMGetParam(llshimfn, 0 as c_uint);
+    let llargbundle = get_param(llshimfn, 0u);
     let llargvals = arg_builder(bcx, tys, llargbundle);
 
     // Create the call itself and store the return value:
@@ -683,13 +684,11 @@ fn trans_native_mod(ccx: @crate_ctxt,
             let n = vec::len(tys.arg_tys);
             let implicit_args = first_real_arg; // ret + env
             while i < n {
-                let llargval = llvm::LLVMGetParam(
-                    llwrapfn,
-                    (i + implicit_args) as c_uint);
+                let llargval = get_param(llwrapfn, i + implicit_args);
                 store_inbounds(bcx, llargval, llargbundle, [0, i as int]);
                 i += 1u;
             }
-            let llretptr = llvm::LLVMGetParam(llwrapfn, 0 as c_uint);
+            let llretptr = get_param(llwrapfn, 0u);
             store_inbounds(bcx, llretptr, llargbundle, [0, n as int]);
         }
 
@@ -704,15 +703,15 @@ fn trans_native_mod(ccx: @crate_ctxt,
                        build_args, build_ret);
     }
 
-    let mut cc = lib::llvm::CCallConv;
-    alt abi {
+    let mut cc = alt abi {
       ast::native_abi_rust_intrinsic {
         for item in native_mod.items { get_item_val(ccx, item.id); }
         ret;
       }
-      ast::native_abi_cdecl { cc = lib::llvm::CCallConv; }
-      ast::native_abi_stdcall { cc = lib::llvm::X86StdcallCallConv; }
-    }
+      ast::native_abi_rust_builtin { ret; }
+      ast::native_abi_cdecl { lib::llvm::CCallConv }
+      ast::native_abi_stdcall { lib::llvm::X86StdcallCallConv }
+    };
 
     for native_item in native_mod.items {
       alt native_item.node {
@@ -725,6 +724,58 @@ fn trans_native_mod(ccx: @crate_ctxt,
         }
       }
     }
+}
+
+fn trans_builtin(ccx: @crate_ctxt, decl: ValueRef, item: @ast::native_item,
+                 path: ast_map::path, substs: param_substs,
+                 ref_id: option<ast::node_id>) {
+    let fcx = new_fn_ctxt_w_id(ccx, path, decl, item.id, none,
+                               some(substs), some(item.span));
+    let bcx = top_scope_block(fcx, none), lltop = bcx.llbb;
+    let tp_ty = substs.tys[0], lltp_ty = type_of::type_of(ccx, tp_ty);
+    alt check item.ident {
+      "size_of" {
+        Store(bcx, C_uint(ccx, shape::llsize_of_real(ccx, lltp_ty)),
+              fcx.llretptr);
+      }
+      "align_of" {
+        Store(bcx, C_uint(ccx, shape::llalign_of_real(ccx, lltp_ty)),
+              fcx.llretptr);
+      }
+      "get_tydesc" {
+        let td = get_tydesc_simple(ccx, tp_ty);
+        Store(bcx, PointerCast(bcx, td, T_ptr(T_nil())), fcx.llretptr);
+      }
+      "init" {
+        if !ty::type_is_nil(tp_ty) {
+            Store(bcx, C_null(lltp_ty), fcx.llretptr);
+        }
+      }
+      "forget" {}
+      "reinterpret_cast" {
+        let llout_ty = type_of::type_of(ccx, substs.tys[1]);
+        if shape::llsize_of_real(ccx, lltp_ty) !=
+           shape::llsize_of_real(ccx, llout_ty) {
+            let sp = alt check ccx.tcx.items.get(option::get(ref_id)) {
+              ast_map::node_expr(e) { e.span }
+            };
+            ccx.sess.span_fatal(sp, "reinterpret_cast called on types \
+                                     with different size: " +
+                                ty_to_str(ccx.tcx, tp_ty) + " to " +
+                                ty_to_str(ccx.tcx, substs.tys[1]));
+        }
+        if !ty::type_is_nil(substs.tys[1]) {
+            let cast = PointerCast(bcx, get_param(decl, first_real_arg),
+                                   T_ptr(llout_ty));
+            Store(bcx, Load(bcx, cast), fcx.llretptr);
+        }
+      }
+      "addr_of" {
+        Store(bcx, get_param(decl, first_real_arg), fcx.llretptr);
+      }
+    }
+    build_return(bcx);
+    finish_fn(fcx, lltop);
 }
 
 fn trans_crust_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
@@ -799,7 +850,7 @@ fn trans_crust_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
                         atys = vec::tail(atys);
                         attrs = vec::tail(attrs);
                         j = 1u;
-                        llvm::LLVMGetParam(llwrapfn, 0 as c_uint)
+                        get_param(llwrapfn, 0u)
                     } else if x86_64.ret_ty.cast {
                         let retptr = alloca(bcx, x86_64.ret_ty.ty);
                         BitCast(bcx, retptr, T_ptr(tys.ret_ty))
@@ -810,8 +861,7 @@ fn trans_crust_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
                     let mut i = 0u;
                     let n = vec::len(atys);
                     while i < n {
-                        let mut argval =
-                            llvm::LLVMGetParam(llwrapfn, (i + j) as c_uint);
+                        let mut argval = get_param(llwrapfn, i + j);
                         if option::is_some(attrs[i]) {
                             argval = Load(bcx, argval);
                             store_inbounds(bcx, argval, llargbundle,
@@ -835,8 +885,7 @@ fn trans_crust_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
                     let mut i = 0u;
                     let n = vec::len(tys.arg_tys);
                     while i < n {
-                        let llargval = llvm::LLVMGetParam(llwrapfn,
-                                                          i as c_uint);
+                        let llargval = get_param(llwrapfn, i);
                         store_inbounds(bcx, llargval, llargbundle,
                                                       [0, i as int]);
                         i += 1u;
@@ -944,8 +993,8 @@ fn decl_native_fn(ccx: @crate_ctxt, i: @ast::native_item,
             get_extern_fn(ccx.externs, ccx.llmod, ri_name,
                           lib::llvm::CCallConv, fn_type)
           }
-
-          ast::native_abi_cdecl | ast::native_abi_stdcall {
+          ast::native_abi_cdecl | ast::native_abi_stdcall |
+          ast::native_abi_rust_builtin {
             // For true external functions: create a rust wrapper
             // and link to that.  The rust wrapper will handle
             // switching to the C stack.

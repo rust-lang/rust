@@ -681,7 +681,12 @@ fn encode_info_for_native_item(ecx: @encode_ctxt, ebml_w: ebml::writer,
             ebml_w.end_tag();
         }
         encode_type(ecx, ebml_w, node_id_to_type(ecx.ccx.tcx, nitem.id));
-        encode_symbol(ecx, ebml_w, nitem.id);
+        if abi == native_abi_rust_builtin {
+            astencode::encode_inlined_item(ecx, ebml_w, path,
+                                           ii_native(nitem));
+        } else {
+            encode_symbol(ecx, ebml_w, nitem.id);
+        }
         encode_path(ebml_w, path, ast_map::path_name(nitem.ident));
       }
     }

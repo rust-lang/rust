@@ -251,7 +251,7 @@ fn make_impl_vtable(ccx: @crate_ctxt, impl_id: ast::def_id, substs: [ty::t],
         } else {
             let m_id = method_with_name(ccx, impl_id, im.ident);
             if has_tps {
-                monomorphic_fn(ccx, m_id, substs, some(vtables)).val
+                monomorphic_fn(ccx, m_id, substs, some(vtables), none).val
             } else if m_id.crate == ast::local_crate {
                 get_item_val(ccx, m_id.node)
             } else {

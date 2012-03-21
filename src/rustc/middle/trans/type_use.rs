@@ -71,9 +71,17 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
       ast_map::node_variant(_, _, _) {
         uint::range(0u, n_tps) {|n| cx.uses[n] |= use_repr;}
       }
-      ast_map::node_native_item(@{node: native_item_fn(_, _), _}, abi, _) {
+      ast_map::node_native_item(i@@{node: native_item_fn(_, _), _}, abi, _) {
         if abi == native_abi_rust_intrinsic {
             uint::range(0u, n_tps) {|n| cx.uses[n] |= use_tydesc;}
+        } else if abi == native_abi_rust_builtin {
+            let flags = alt check i.ident {
+              "size_of" | "align_of" | "init" |
+              "reinterpret_cast" { use_repr }
+              "get_tydesc" { use_tydesc }
+              "forget" | "addr_of" { 0u }
+            };
+            uint::range(0u, n_tps) {|n| cx.uses[n] |= flags;}
         }
       }
       ast_map::node_ctor(@{node: item_class(_, _, ctor), _}, _) {

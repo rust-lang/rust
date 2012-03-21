@@ -337,7 +337,7 @@ fn trans_malloc_boxed_raw(bcx: block, t: ty::t,
     let llty = type_of(ccx, box_ptr);
 
     // Get the tydesc for the body:
-    let {bcx, val: lltydesc} = get_tydesc(bcx, t, static_ti);
+    let lltydesc = get_tydesc(ccx, t, static_ti);
     lazily_emit_all_tydesc_glue(ccx, static_ti);
 
     // Allocate space:
@@ -358,18 +358,18 @@ fn trans_malloc_boxed(bcx: block, t: ty::t) ->
 
 // Type descriptor and type glue stuff
 
-fn get_tydesc_simple(bcx: block, t: ty::t) -> result {
+fn get_tydesc_simple(ccx: @crate_ctxt, t: ty::t) -> ValueRef {
     let mut ti = none;
-    get_tydesc(bcx, t, ti)
+    get_tydesc(ccx, t, ti)
 }
 
-fn get_tydesc(cx: block, t: ty::t,
-              &static_ti: option<@tydesc_info>) -> result {
+fn get_tydesc(ccx: @crate_ctxt, t: ty::t,
+              &static_ti: option<@tydesc_info>) -> ValueRef {
     assert !ty::type_has_params(t);
     // Otherwise, generate a tydesc if necessary, and return it.
-    let info = get_static_tydesc(cx.ccx(), t);
+    let info = get_static_tydesc(ccx, t);
     static_ti = some(info);
-    ret rslt(cx, info.tydesc);
+    info.tydesc
 }
 
 fn get_static_tydesc(ccx: @crate_ctxt, t: ty::t) -> @tydesc_info {
@@ -699,7 +699,7 @@ fn get_res_dtor(ccx: @crate_ctxt, did: ast::def_id, substs: [ty::t])
         maybe_instantiate_inline(ccx, did)
     } else { did };
     assert did.crate == ast::local_crate;
-    monomorphic_fn(ccx, did, substs, none).val
+    monomorphic_fn(ccx, did, substs, none, none).val
 }
 
 fn trans_res_drop(bcx: block, rs: ValueRef, did: ast::def_id,
@@ -1074,10 +1074,10 @@ fn call_tydesc_glue_full(cx: block, v: ValueRef, tydesc: ValueRef,
 fn call_tydesc_glue(cx: block, v: ValueRef, t: ty::t, field: int) ->
    block {
     let _icx = cx.insn_ctxt("call_tydesc_glue");
-    let mut ti: option<@tydesc_info> = none;
-    let {bcx: bcx, val: td} = get_tydesc(cx, t, ti);
-    call_tydesc_glue_full(bcx, v, td, field, ti);
-    ret bcx;
+    let mut ti = none;
+    let td = get_tydesc(cx.ccx(), t, ti);
+    call_tydesc_glue_full(cx, v, td, field, ti);
+    ret cx;
 }
 
 fn call_cmp_glue(cx: block, lhs: ValueRef, rhs: ValueRef, t: ty::t,
@@ -1096,11 +1096,9 @@ fn call_cmp_glue(cx: block, lhs: ValueRef, rhs: ValueRef, t: ty::t,
 
     let llrawlhsptr = BitCast(bcx, lllhs, T_ptr(T_i8()));
     let llrawrhsptr = BitCast(bcx, llrhs, T_ptr(T_i8()));
-    let r = get_tydesc_simple(bcx, t);
-    let lltydesc = r.val;
-    let bcx = r.bcx;
-    let lltydescs = GEPi(bcx, lltydesc, [0, abi::tydesc_field_first_param]);
-    let lltydescs = Load(bcx, lltydescs);
+    let lltydesc = get_tydesc_simple(bcx.ccx(), t);
+    let lltydescs =
+        Load(bcx, GEPi(bcx, lltydesc, [0, abi::tydesc_field_first_param]));
 
     let llfn = bcx.ccx().upcalls.cmp_type;
 
@@ -1171,9 +1169,7 @@ fn call_memmove(cx: block, dst: ValueRef, src: ValueRef,
       session::arch_x86 | session::arch_arm { "llvm.memmove.p0i8.p0i8.i32" }
       session::arch_x86_64 { "llvm.memmove.p0i8.p0i8.i64" }
     };
-    let i = ccx.intrinsics;
-    assert (i.contains_key(key));
-    let memmove = i.get(key);
+    let memmove = ccx.intrinsics.get(key);
     let src_ptr = PointerCast(cx, src, T_ptr(T_i8()));
     let dst_ptr = PointerCast(cx, dst, T_ptr(T_i8()));
     let size = IntCast(cx, n_bytes, ccx.int_type);
@@ -1911,7 +1907,8 @@ fn make_mono_id(ccx: @crate_ctxt, item: ast::def_id, substs: [ty::t],
 }
 
 fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, real_substs: [ty::t],
-                  vtables: option<typeck::vtable_res>)
+                  vtables: option<typeck::vtable_res>,
+                  ref_id: option<ast::node_id>)
     -> {val: ValueRef, must_cast: bool, intrinsic: bool} {
     let _icx = ccx.insn_ctxt("monomorphic_fn");
     let mut must_cast = false;
@@ -1952,6 +1949,8 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, real_substs: [ty::t],
       }
       ast_map::node_variant(v, _, pt) { (pt, v.node.name) }
       ast_map::node_method(m, _, pt) { (pt, m.ident) }
+      ast_map::node_native_item(i, ast::native_abi_rust_builtin, pt)
+      { (pt, i.ident) }
       ast_map::node_native_item(_, abi, _) {
         // Natives don't have to be monomorphized.
         ret {val: get_item_val(ccx, fn_id.node),
@@ -1983,6 +1982,10 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, real_substs: [ty::t],
       }
       ast_map::node_item(@{node: ast::item_res(d, _, body, d_id, _), _}, _) {
         trans_fn(ccx, pt, d, body, lldecl, no_self, psubsts, d_id, none);
+      }
+      ast_map::node_native_item(i, _, _) {
+        native::trans_builtin(ccx, lldecl, i, pt, option::get(psubsts),
+                              ref_id);
       }
       ast_map::node_variant(v, enum_item, _) {
         let tvs = ty::enum_variants(ccx.tcx, local_def(enum_item.id));
@@ -2034,6 +2037,10 @@ fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id)
           csearch::found(ast::ii_item(item)) {
             ccx.external.insert(fn_id, some(item.id));
             trans_item(ccx, *item);
+            local_def(item.id)
+          }
+          csearch::found(ast::ii_native(item)) {
+            ccx.external.insert(fn_id, some(item.id));
             local_def(item.id)
           }
           csearch::found_parent(parent_id, ast::ii_item(item)) {
@@ -2088,11 +2095,9 @@ fn lval_intrinsic_fn(bcx: block, val: ValueRef, tys: [ty::t],
     let mut bcx = bcx;
     let ccx = bcx.ccx();
     let tds = vec::map(tys, {|t|
-        let mut ti = none;
-        let td_res = get_tydesc(bcx, t, ti);
-        bcx = td_res.bcx;
+        let mut ti = none, td = get_tydesc(bcx.ccx(), t, ti);
         lazily_emit_all_tydesc_glue(ccx, ti);
-        td_res.val
+        td
     });
     let llfty = type_of_fn_from_ty(ccx, node_id_type(bcx, id));
     let val = PointerCast(bcx, val, T_ptr(add_tydesc_params(
@@ -2124,7 +2129,7 @@ fn lval_static_fn_inner(bcx: block, fn_id: ast::def_id, id: ast::node_id,
 
     if fn_id.crate == ast::local_crate && tys.len() > 0u {
         let mut {val, must_cast, intrinsic} =
-            monomorphic_fn(ccx, fn_id, tys, vtables);
+            monomorphic_fn(ccx, fn_id, tys, vtables, some(id));
         if intrinsic { ret lval_intrinsic_fn(bcx, val, tys, id); }
         if must_cast {
             val = PointerCast(bcx, val, T_ptr(type_of_fn_from_ty(
@@ -3318,7 +3323,7 @@ fn trans_log(lvl: @ast::expr, bcx: block, e: @ast::expr) -> block {
         with_scope(bcx, "log") {|bcx|
             let {bcx, val, _} = trans_temp_expr(bcx, e);
             let e_ty = expr_ty(bcx, e);
-            let {bcx, val: tydesc} = get_tydesc_simple(bcx, e_ty);
+            let tydesc = get_tydesc_simple(ccx, e_ty);
             // Call the polymorphic log function.
             let {bcx, val} = spill_if_immediate(bcx, val, e_ty);
             let val = PointerCast(bcx, val, T_ptr(T_i8()));
