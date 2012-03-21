@@ -115,7 +115,6 @@ private:
     void delete_this();
 
     void new_stack(size_t sz);
-    void del_stack();
     void free_stack(stk_seg *stk);
     size_t get_next_stack_size(size_t min, size_t current, size_t requested);
 
@@ -209,6 +208,8 @@ public:
     rust_task_state get_state() { return state; }
     rust_cond *get_cond() { return cond; }
     const char *get_cond_name() { return cond_name; }
+
+    void cleanup_after_turn();
 };
 
 // This stuff is on the stack-switching fast path

@@ -461,15 +461,11 @@ upcall_new_stack(size_t stk_sz, void *args_addr, size_t args_sz) {
     return args.result;
 }
 
-extern "C" CDECL void
-upcall_s_del_stack() {
-    rust_task *task = rust_task_thread::get_task();
-    task->prev_stack();
-}
-
+// NB: This needs to be blazing fast. Don't switch stacks
 extern "C" CDECL void
 upcall_del_stack() {
-    UPCALL_SWITCH_STACK(NULL, upcall_s_del_stack);
+    rust_task *task = rust_task_thread::get_task();
+    task->prev_stack();
 }
 
 // Landing pads need to call this to insert the

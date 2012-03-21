@@ -51,6 +51,7 @@ rust_task_thread::activate(rust_task *task) {
     lock.unlock();
     prepare_c_stack(task);
     task->ctx.swap(c_context);
+    task->cleanup_after_turn();
     unprepare_c_stack();
     lock.lock();
     DLOG(this, task, "task has returned");

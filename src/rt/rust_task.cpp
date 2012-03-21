@@ -520,17 +520,20 @@ rust_task::new_stack(size_t requested_sz) {
     size_t min_sz = thread->min_stack_size;
 
     // Try to reuse an existing stack segment
-    if (stk != NULL && stk->prev != NULL) {
+    while (stk != NULL && stk->prev != NULL) {
         size_t prev_sz = user_stack_size(stk->prev);
         if (min_sz <= prev_sz && requested_sz <= prev_sz) {
             LOG(this, mem, "reusing existing stack");
             stk = stk->prev;
-            A(thread, stk->prev == NULL, "Bogus stack ptr");
             return;
         } else {
             LOG(this, mem, "existing stack is not big enough");
+            stk_seg *new_prev = stk->prev->prev;
             free_stack(stk->prev);
-            stk->prev = NULL;
+            stk->prev = new_prev;
+            if (new_prev) {
+                new_prev->next = stk;
+            }
         }
     }
 
@@ -553,40 +556,13 @@ rust_task::new_stack(size_t requested_sz) {
     LOGPTR(thread, "new stk", (uintptr_t)new_stk);
     new_stk->prev = NULL;
     new_stk->next = stk;
+    if (stk) {
+        stk->prev = new_stk;
+    }
     LOGPTR(thread, "stk end", new_stk->end);
 
     stk = new_stk;
     total_stack_sz += user_stack_size(new_stk);
-}
-
-void
-rust_task::del_stack() {
-    stk_seg *old_stk = stk;
-    ::check_stack_canary(old_stk);
-
-    stk = old_stk->next;
-
-    bool delete_stack = false;
-    if (stk != NULL) {
-        // Don't actually delete this stack. Save it to reuse later,
-        // preventing the pathological case where we repeatedly reallocate
-        // the stack for the next frame.
-        stk->prev = old_stk;
-    } else {
-        // This is the last stack, delete it.
-        delete_stack = true;
-    }
-
-    // Delete the previous previous stack
-    if (old_stk->prev != NULL) {
-        free_stack(old_stk->prev);
-        old_stk->prev = NULL;
-    }
-
-    if (delete_stack) {
-        free_stack(old_stk);
-        A(thread, total_stack_sz == 0, "Stack size should be 0");
-    }
 }
 
 void *
@@ -615,17 +591,18 @@ rust_task::next_stack(size_t stk_sz, void *args_addr, size_t args_sz) {
     }
 
     memcpy(new_sp, args_addr, args_sz);
-    A(thread, rust_task_thread::get_task() == this,
-      "Recording the stack limit for the wrong thread");
     record_stack_limit();
     return new_sp;
 }
 
+// NB: This runs on the Rust stack
 void
 rust_task::prev_stack() {
-    del_stack();
-    A(thread, rust_task_thread::get_task() == this,
-      "Recording the stack limit for the wrong thread");
+    // We're not going to actually delete anything now because that would
+    // require switching to the C stack and be costly. Instead we'll just move
+    // up the link list and clean up later, either in new_stack or after our
+    // turn ends on the scheduler.
+    stk = stk->next;
     record_stack_limit();
 }
 
@@ -643,6 +620,18 @@ rust_task::record_stack_limit() {
       - (uintptr_t)stk->data >= LIMIT_OFFSET,
       "Stack size must be greater than LIMIT_OFFSET");
     record_sp(stk->data + LIMIT_OFFSET + RED_ZONE_SIZE);
+}
+
+void
+rust_task::cleanup_after_turn() {
+    // Delete any spare stack segments that were left
+    // behind by calls to prev_stack
+    I(thread, stk);
+    while (stk->prev) {
+        stk_seg *new_prev = stk->prev->prev;
+        free_stack(stk->prev);
+        stk->prev = new_prev;
+    }
 }
 
 static bool
@@ -666,7 +655,7 @@ reset_stack_limit_on_c_stack(reset_args *args) {
     rust_task *task = args->task;
     uintptr_t sp = args->sp;
     while (!sp_in_stk_seg(sp, task->stk)) {
-        task->del_stack();
+        task->stk = task->stk->next;
         A(task->thread, task->stk != NULL,
           "Failed to find the current stack");
     }
@@ -674,10 +663,9 @@ reset_stack_limit_on_c_stack(reset_args *args) {
 }
 
 /*
-Called by landing pads during unwinding to figure out which
-stack segment we are currently running on, delete the others,
-and record the stack limit (which was not restored when unwinding
-through __morestack).
+Called by landing pads during unwinding to figure out which stack segment we
+are currently running on and record the stack limit (which was not restored
+when unwinding through __morestack).
  */
 void
 rust_task::reset_stack_limit() {
@@ -685,6 +673,8 @@ rust_task::reset_stack_limit() {
     uintptr_t sp = get_sp();
     // Have to do the rest on the C stack because it involves
     // freeing stack segments, logging, etc.
+    // FIXME: This probably doesn't need to happen on the C
+    // stack now
     reset_args ra = {this, sp};
     call_on_c_stack(&ra, (void*)reset_stack_limit_on_c_stack);
 }
@@ -699,8 +689,11 @@ rust_task::delete_all_stacks() {
     I(thread, !on_rust_stack());
     // Delete all the stacks. There may be more than one if the task failed
     // and no landing pads stopped to clean up.
+    I(thread, stk->prev == NULL);
     while (stk != NULL) {
-        del_stack();
+        stk_seg *next = stk->next;
+        free_stack(stk);
+        stk = next;
     }
 }
 
