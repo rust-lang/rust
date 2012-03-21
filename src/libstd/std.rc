@@ -11,7 +11,7 @@
 export net, uv;
 export c_vec, four, tri, util;
 export bitv, deque, fun_treemap, list, map, smallintmap, sort, treemap, ufind;
-export rope;
+export rope, arena;
 export ebml, dbg, getopts, json, rand, sha1, term, time, prettyprint;
 export test, tempfile, serialization;
 
@@ -56,6 +56,7 @@ mod tempfile;
 mod term;
 mod time;
 mod prettyprint;
+mod arena;
 
 #[cfg(unicode)]
 mod unicode;

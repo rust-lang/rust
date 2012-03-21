@@ -672,9 +672,9 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::writer,
                                       *pt, none, tps, ctor.node.dec)
                   }
                   _ {}
+                }
+              }
             }
-           }
-          }
         },
         visit_native_item: {|ni, cx, v|
             visit::visit_native_item(ni, cx, v);
