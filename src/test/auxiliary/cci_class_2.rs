@@ -1,3 +1,5 @@
+mod kitties {
+
 class cat {
   priv {
     let mutable meows : uint;
@@ -10,10 +12,4 @@ class cat {
   fn speak() {}
 }
 
-fn main() {
-  let nyan : cat = cat(52u, 99);
-  let kitty = cat(1000u, 2);
-  assert(nyan.how_hungry == 99);
-  assert(kitty.how_hungry == 2);
-  nyan.speak();
 }

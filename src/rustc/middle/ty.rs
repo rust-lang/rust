@@ -6,6 +6,7 @@ import session::session;
 import syntax::ast;
 import syntax::ast::*;
 import syntax::ast_util;
+import syntax::ast_util::{is_local, split_class_items};
 import syntax::codemap::span;
 import metadata::csearch;
 import util::common::*;
@@ -41,6 +42,7 @@ export get_element_type;
 export is_binopable;
 export is_pred_ty;
 export lookup_class_fields;
+export lookup_class_method_by_name;
 export lookup_field_type;
 export lookup_item_type;
 export method;
@@ -2523,7 +2525,7 @@ fn lookup_field_type(tcx: ctxt, class_id: def_id, id: def_id) -> ty::t {
     }
 }
 
-// Look up the list of item types for a given class
+// Look up the list of field names and IDs for a given class
 // Fails if the id is not bound to a class.
 fn lookup_class_fields(cx: ctxt, did: ast::def_id) -> [field_ty] {
   if did.crate == ast::local_crate {
@@ -2544,7 +2546,41 @@ fn lookup_class_fields(cx: ctxt, did: ast::def_id) -> [field_ty] {
     }
 }
 
-// must be called after typechecking?
+// Look up the list of method names and IDs for a given class
+// Fails if the id is not bound to a class.
+fn lookup_class_method_ids(cx: ctxt, did: ast::def_id)
+    : is_local(did) -> [{name: ident, id: node_id}] {
+    alt cx.items.find(did.node) {
+       some(ast_map::node_item(@{node: item_class(_,items,_), _}, _)) {
+         let (_,ms) = split_class_items(items);
+         vec::map(ms, {|m| {name: m.ident, id: m.id}})
+       }
+       _ {
+           cx.sess.bug("lookup_class_method_ids: id not bound to a class");
+       }
+    }
+}
+
+/* Given a class def_id and a method name, return the method's
+ def_id. Needed so we can do static dispatch for methods */
+fn lookup_class_method_by_name(cx:ctxt, did: ast::def_id, name: ident,
+                               sp: span) ->
+    def_id {
+    if check is_local(did) {
+       let ms = lookup_class_method_ids(cx, did);
+       for m in ms {
+         if m.name == name {
+             ret ast_util::local_def(m.id);
+         }
+       }
+       cx.sess.span_fatal(sp, #fmt("Class doesn't have a method named %s",
+                                  name));
+    }
+    else {
+      csearch::get_impl_method(cx.sess.cstore, did, name)
+    }
+}
+
 fn class_field_tys(items: [@class_item]) -> [field_ty] {
     let rslt = [];
     for it in items {

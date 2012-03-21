@@ -4194,7 +4194,10 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
         trans_fn(ccx, *path + [path_name(item.ident)], ctor.node.dec,
                  ctor_body__, llctor_decl, no_self,
                  none, ctor.node.id, some(rslt_expr));
-        // TODO: translate methods!
+        // Translate methods
+        let (_, ms) = ast_util::split_class_items(items);
+        // not sure how this is going to work what with "self" and fields
+        impl::trans_impl(ccx, *path, item.ident, ms, tps);
       }
       _ {/* fall through */ }
     }

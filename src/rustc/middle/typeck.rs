@@ -893,11 +893,20 @@ mod collect {
         }
     }
     fn ensure_iface_methods(tcx: ty::ctxt, id: ast::node_id) {
+        fn store_methods<T>(tcx: ty::ctxt, id: ast::node_id,
+                            stuff: [T], f: fn@(T) -> ty::method) {
+            ty::store_iface_methods(tcx, id, @vec::map(stuff, f));
+        }
+
         alt check tcx.items.get(id) {
           ast_map::node_item(@{node: ast::item_iface(_, ms), _}, _) {
-            ty::store_iface_methods(tcx, id, @vec::map(ms, {|m|
-                ty_of_ty_method(tcx, m_collect, m)
-            }));
+              store_methods::<ast::ty_method>(tcx, id, ms, {|m|
+                          ty_of_ty_method(tcx, m_collect, m)});
+          }
+          ast_map::node_item(@{node: ast::item_class(_,its,_), _}, _) {
+              let (_,ms) = split_class_items(its);
+              store_methods::<@ast::method>(tcx, id, ms, {|m|
+                          ty_of_method(tcx, m_collect, m)});
           }
         }
     }
@@ -1038,13 +1047,17 @@ mod collect {
               write_ty(tcx, ctor.node.id, t_ctor);
               tcx.tcache.insert(local_def(ctor.node.id),
                                    {bounds: tpt.bounds, ty: t_ctor});
+              ensure_iface_methods(tcx, it.id);
               /* FIXME: check for proper public/privateness */
               // Write the type of each of the members
               let (fields, methods) = split_class_items(members);
               for f in fields {
                  convert_class_item(tcx, f);
               }
-              convert_methods(tcx, methods, @[], none);
+              let selfty = ty::mk_class(tcx, local_def(it.id),
+                                        mk_ty_params(tcx, tps).params);
+              // The selfty is just the class type
+              convert_methods(tcx, methods, @[], some(selfty));
           }
           _ {
             // This call populates the type cache with the converted type
@@ -1854,13 +1867,13 @@ fn lookup_method(fcx: @fn_ctxt, expr: @ast::expr, node_id: ast::node_id,
     }
 }
 
-enum method_parent {
-    cls(ast::def_id),
+enum method_kind {
+    cls(ast::def_id), // *method* id (in both cases)
     an_iface(ast::def_id)
 }
 
 fn lookup_method_inner_(tcx: ty::ctxt, ms: [ty::method],
-    tps: [ty::t], parent: method_parent, name: ast::ident, sp: span)
+    tps: [ty::t], parent: method_kind, name: ast::ident, sp: span)
     -> option<{method_ty: ty::t, n_tps: uint, substs: [ty::t],
         origin: method_origin, self_sub: option<self_subst>}> {
     #debug("lookup_method_inner_: %? %? %s", ms, parent, name);
@@ -1878,13 +1891,19 @@ fn lookup_method_inner_(tcx: ty::ctxt, ms: [ty::method],
                                     boxed iface");
           }
           ret some({method_ty: fty,
-                          n_tps: vec::len(*m.tps),
-                          substs: tps,
-                          origin: alt parent {
-                                    cls(did) { method_static(did) }
-                                    an_iface(did) { method_iface(did, i) }
-                          },
-                      self_sub: none});
+                    n_tps: vec::len(*m.tps),
+                    substs: tps,
+                    origin: alt parent {
+                      cls(parent_id)          {
+                        // look up method named <name>
+                        // its id is did
+                        let m_declared = ty::lookup_class_method_by_name(tcx,
+                                            parent_id, name, sp);
+                        method_static(m_declared)
+                      }
+                      an_iface(did) { method_iface(did, i) }
+                      },
+                    self_sub: none});
        }
        i += 1u;
     }

@@ -1,3 +1,4 @@
+// xfail-test
 class cat {
   priv {
     let mutable meows : uint;
@@ -7,7 +8,8 @@ class cat {
 
   new(in_x : uint, in_y : int) { meows = in_x; how_hungry = in_y; }
 
-  fn speak() {}
+  fn speak() { meows += 1u; }
+  fn meow_count() -> uint { meows }
 }
 
 fn main() {
@@ -16,4 +18,5 @@ fn main() {
   assert(nyan.how_hungry == 99);
   assert(kitty.how_hungry == 2);
   nyan.speak();
+  assert(nyan.meow_count() == 53u);
 }

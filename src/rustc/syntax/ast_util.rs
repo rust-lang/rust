@@ -17,7 +17,9 @@ fn path_name(p: @path) -> str { path_name_i(p.node.idents) }
 
 fn path_name_i(idents: [ident]) -> str { str::connect(idents, "::") }
 
-fn local_def(id: node_id) -> def_id { ret {crate: local_crate, node: id}; }
+fn local_def(id: node_id) -> def_id { {crate: local_crate, node: id} }
+
+pure fn is_local(did: ast::def_id) -> bool { did.crate == local_crate }
 
 fn stmt_id(s: stmt) -> node_id {
     alt s.node {

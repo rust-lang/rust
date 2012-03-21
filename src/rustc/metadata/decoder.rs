@@ -17,6 +17,7 @@ import middle::trans::common::maps;
 import util::ppaux::ty_to_str;
 
 export get_class_fields;
+// export get_class_method_ids;
 export get_symbol;
 export get_enum_variants;
 export get_type;
@@ -113,7 +114,7 @@ fn item_parent_item(d: ebml::doc) -> option<ast::def_id> {
     found
 }
 
-fn class_field_id(d: ebml::doc, cdata: cmd) -> ast::def_id {
+fn class_member_id(d: ebml::doc, cdata: cmd) -> ast::def_id {
     let tagdoc = ebml::get_doc(d, tag_def_id);
     ret translate_def_id(cdata, parse_def_id(ebml::doc_data(tagdoc)));
 }
@@ -408,26 +409,35 @@ fn get_iface_methods(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
     @result
 }
 
-/* Take a node ID for a class, return a vector of the class's
-   field names/IDs */
-fn get_class_fields(tcx: ty::ctxt,
-               cdata: cmd, id: ast::node_id) -> [ty::field_ty] {
+// Helper function that gets either fields or methods
+fn get_class_members(cdata: cmd, id: ast::node_id,
+                     family: char) -> [ty::field_ty] {
     let data = cdata.data;
     let item = lookup_item(id, data), result = [];
     ebml::tagged_docs(item, tag_items_data_item) {|an_item|
-        let fam = item_family(an_item);
-        alt fam {
-         'g' {
-             let name = item_name(an_item);
-             let _ty = doc_type(an_item, tcx, cdata);
-             let did = class_field_id(an_item, cdata);
-             result += [{ident: name, id: did}];
-         }
-        _ { /* this only handles fields */}
+       if item_family(an_item) == family {
+          let name = item_name(an_item);
+          let did = class_member_id(an_item, cdata);
+          result += [{ident: name, id: did}];
        }
     }
     result
 }
+
+
+/* Take a node ID for a class, return a vector of the class's
+   field names/IDs */
+fn get_class_fields(cdata: cmd, id: ast::node_id) -> [ty::field_ty] {
+    get_class_members(cdata, id, 'g')
+}
+
+/*
+/* Take a node ID for a class, return a vector of the class's
+   method names/IDs */
+fn get_class_method_ids(cdata: cmd, id: ast::node_id) -> [ty::field_ty] {
+    get_class_members(cdata, id, 'h')
+}
+*/
 
 fn family_has_type_params(fam_ch: char) -> bool {
     alt check fam_ch {
