@@ -20,19 +20,26 @@ fn arena() -> arena {
 }
 
 impl arena for arena {
-    unsafe fn alloc<T>(n_bytes: uint) -> &self.T {
+    fn alloc(n_bytes: uint, align: uint) -> *() {
+        let alignm1 = align - 1u;
         let mut head = list::head(self.chunks);
-        if head.fill + n_bytes > vec::len(head.data) {
+
+        let mut start = head.fill;
+        start = (start + alignm1) & !alignm1;
+        let mut end = start + n_bytes;
+
+        if end > vec::len(head.data) {
             // Allocate a new chunk.
             let new_min_chunk_size = uint::max(n_bytes, vec::len(head.data));
             head = chunk(uint::next_power_of_two(new_min_chunk_size));
             self.chunks = list::cons(head, @self.chunks);
+            start = 0u;
+            end = n_bytes;
         }
 
-        let start = vec::unsafe::to_ptr(head.data);
-        let p = ptr::offset(start, head.fill);
-        head.fill += n_bytes;
-        ret unsafe::reinterpret_cast(p);
+        let p = ptr::offset(ptr::addr_of(head.fill), start);
+        head.fill = end;
+        unsafe { ret unsafe::reinterpret_cast(p); }
     }
 }
 
