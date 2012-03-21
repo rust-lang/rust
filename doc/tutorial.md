@@ -167,15 +167,13 @@ programs. The `use std` directive that appears at the top of a lot of
 examples imports the [standard library][std]. This is described in more
 detail [later on](#modules-and-crates).
 
-[std]: http://doc.rust-lang.org/doc/std/index/General.html
+[std]: http://doc.rust-lang.org/doc/std
 
 ## Editing Rust code
 
 There are Vim highlighting and indentation scripts in the Rust source
 distribution under `src/etc/vim/`, and an emacs mode under
 `src/etc/emacs/`.
-
-[rust-mode]: https://github.com/marijnh/rust-mode
 
 Other editors are not provided for yet. If you end up writing a Rust
 mode for your favorite editor, let us know so that we can link to it.
@@ -1769,7 +1767,7 @@ Rust program, unless the `--no-core` compiler switch is given.
 
 This library is documented [here][core].
 
-[core]: http://doc.rust-lang.org/doc/core/index/General.html
+[core]: http://doc.rust-lang.org/doc/core
 
 ## A minimal example
 
