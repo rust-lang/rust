@@ -12,7 +12,6 @@ export memmove;
 #[abi = "rust-intrinsic"]
 native mod rusti {
     fn addr_of<T>(val: T) -> *T;
-    fn ptr_offset<T>(ptr: *T, count: libc::uintptr_t) -> *T;
     fn memcpy<T>(dst: *T, src: *T, count: libc::uintptr_t);
     fn memmove<T>(dst: *T, src: *T, count: libc::uintptr_t);
 }
@@ -29,14 +28,14 @@ fn mut_addr_of<T>(val: T) -> *mutable T unsafe {
 
 #[doc = "Calculate the offset from a pointer"]
 #[inline(always)]
-fn offset<T>(ptr: *T, count: uint) -> *T {
-    ret rusti::ptr_offset(ptr, count);
+fn offset<T>(ptr: *T, count: uint) -> *T unsafe {
+    (ptr as uint + count * sys::size_of::<T>()) as *T
 }
 
 #[doc = "Calculate the offset from a mutable pointer"]
 #[inline(always)]
 fn mut_offset<T>(ptr: *mutable T, count: uint) -> *mutable T {
-    ret rusti::ptr_offset(ptr as *T, count) as *mutable T;
+    (ptr as uint + count * sys::size_of::<T>()) as *mutable T
 }
 
 
