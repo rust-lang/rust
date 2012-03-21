@@ -1692,8 +1692,8 @@ mod unify {
 
     fn record_region_binding<T:copy>(
         cx: @uctxt, key: uint,
-        r: region, base_mt: mt, variance: variance,
-        nxt: fn(t) -> ures<T>) -> ures<T> {
+        r: region, variance: variance,
+        nxt: fn(region) -> ures<T>) -> ures<T> {
 
         let rb = alt cx.st {
             in_region_bindings(_, rb) { rb }
@@ -1715,7 +1715,7 @@ mod unify {
         smallintmap::insert(rb.regions, root, result_region);
 
         // FIXME: This should be re_var instead.
-        ret nxt(mk_rptr(cx.tcx, re_param(key), base_mt));
+        ret nxt(re_param(key));
     }
 
     // Simple structural type comparison.
