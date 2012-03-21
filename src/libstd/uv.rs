@@ -273,7 +273,7 @@ native mod rustrt {
         loop_handle: *ctypes::void,
         handle_ptr: *uv_tcp_t) -> ctypes::c_int;
     fn rust_uv_buf_init(base: *u8, len: ctypes::size_t)
-        -> uv_buf_t;
+        -> *ctypes::void;
     fn rust_uv_last_error(loop_handle: *ctypes::void) -> uv_err_t;
     fn rust_uv_ip4_addr(ip: *u8, port: ctypes::c_int)
         -> *ctypes::void;
@@ -352,10 +352,6 @@ mod direct {
     unsafe fn write_t() -> uv_write_t {
         ret gen_stub_uv_write_t();
     }
-    // FIXME: see github issue #1402
-    unsafe fn buf_init(input: *u8, len: uint) -> *ctypes::void {
-        ret rustrt::rust_uv_buf_init(input, len);
-    }
     unsafe fn get_loop_for_uv_handle(handle: *ctypes::void)
         -> *ctypes::void {
         ret rustrt::rust_uv_get_loop_for_uv_handle(handle);
@@ -373,6 +369,10 @@ mod direct {
         rustrt::rust_uv_set_data_for_req(req, data);
     }
     // FIXME: see github issue #1402
+    unsafe fn buf_init(input: *u8, len: uint) -> *ctypes::void {
+        ret rustrt::rust_uv_buf_init(input, len);
+    }
+    // FIXME: see github issue #1402
     unsafe fn ip4_addr(ip: str, port: ctypes::c_int)
     -> *ctypes::void {
         let addr_vec = str::bytes(ip);
@@ -382,10 +382,9 @@ mod direct {
         io::println(#fmt("vec val: '%s' length: %u",ip_back, vec::len(addr_vec)));
         ret rustrt::rust_uv_ip4_addr(addr_vec_ptr, port);
     }
-
     // this is lame.
     // FIXME: see github issue #1402
-    unsafe fn ip4_addr_free(ptr: *ctypes::void) {
+    unsafe fn free_1402(ptr: *ctypes::void) {
         rustrt::rust_uv_free(ptr);
     }
 }
@@ -1033,7 +1032,7 @@ fn impl_uv_tcp_request() unsafe {
             direct::run(test_loop);
             io::println("after run tcp req loop");
             // FIXME: see github issue #1402
-            direct::ip4_addr_free(addr);
+            direct::free_1402(addr);
         }
         else {
            io::println("direct::tcp_connect() failure");
