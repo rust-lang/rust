@@ -302,9 +302,15 @@ rust_uv_tcp_connect(uv_connect_t* connect_ptr,
 
 extern "C" int
 rust_uv_write(uv_write_t* req, uv_stream_t* handle,
-			  uv_buf_t* bufs, int buf_cnt,
+			  void** bufs, int buf_cnt,
 			  uv_write_cb cb) {
-	return uv_write(req, handle, bufs, buf_cnt, cb);
+	// TODO github #1402 -- convert this array of pointers to
+    // uv_buf_t into an array of uv_buf_t values
+	uv_buf_t buf_vals[buf_cnt];
+	for(int ctr = 0; ctr < buf_cnt; ctr++) {
+	  buf_vals[ctr] = *((uv_buf_t*)bufs[ctr]);
+	}
+	return uv_write(req, handle, buf_vals, buf_cnt, cb);
 }
 
 extern "C" sockaddr_in
