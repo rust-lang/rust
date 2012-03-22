@@ -66,40 +66,16 @@ RUNTIME_S_$(1) := rt/arch/$$(HOST_$(1))/_context.S \
                   rt/arch/$$(HOST_$(1))/ccall.S \
                   rt/arch/$$(HOST_$(1))/record_sp.S
 
-RUNTIME_HDR_$(1) := rt/globals.h \
-               rt/rust.h \
-               rt/rust_abi.h \
-               rt/rust_cc.h \
-               rt/rust_debug.h \
-               rt/rust_internal.h \
-               rt/rust_util.h \
-               rt/rust_env.h \
-               rt/rust_unwind.h \
-               rt/rust_upcall.h \
-               rt/rust_port.h \
-               rt/rust_task_thread.h \
-               rt/rust_scheduler.h \
-               rt/rust_shape.h \
-               rt/rust_task.h \
-               rt/rust_stack.h \
-               rt/rust_log.h \
-               rt/rust_port_selector.h \
-               rt/circular_buffer.h \
-               rt/util/array_list.h \
-               rt/util/indexed_list.h \
-               rt/util/synchronized_indexed_list.h \
-               rt/util/hash_map.h \
-               rt/sync/sync.h \
-               rt/sync/timer.h \
-               rt/sync/lock_and_signal.h \
-               rt/sync/lock_free_queue.h \
-               rt/sync/rust_thread.h \
-               rt/rust_srv.h \
-               rt/rust_kernel.h \
-               rt/memory_region.h \
-               rt/memory.h \
-               rt/arch/$$(HOST_$(1))/context.h \
-               rt/arch/$$(HOST_$(1))/regs.h
+RUNTIME_HDR_$(1) := $$(wildcard \
+                       rt/*.h \
+                       rt/bigint/*.h \
+                       rt/isaac/*.h \
+                       rt/msvc/*.h \
+                       rt/sync/*.h \
+                       rt/uthash/*.h \
+                       rt/util/*.h \
+                       rt/vg/*.h \
+                       rt/arch/$$(HOST_$(1))/*.h)
 
 ifeq ($$(HOST_$(1)), i386)
   LIBUV_ARCH_$(1) := ia32
@@ -129,11 +105,12 @@ RUNTIME_OBJS_$(1) := $$(RUNTIME_CS_$(1):rt/%.cpp=rt/$(1)/%.o) \
                      $$(RUNTIME_S_$(1):rt/%.S=rt/$(1)/%.o)
 RUNTIME_LIBS_$(1) := $$(LIBUV_LIB_$(1))
 
-rt/$(1)/%.o: rt/%.cpp $$(MKFILE_DEPS)
+rt/$(1)/%.o: rt/%.cpp RUNTIME_HDR_$(1) $$(MKFILE_DEPS)
 	@$$(call E, compile: $$@)
 	$$(Q)$$(call CFG_COMPILE_C_$(1), $$@, $$(RUNTIME_INCS_$(1))) $$<
 
-rt/$(1)/%.o: rt/%.S $$(MKFILE_DEPS) $$(LLVM_CONFIG_$$(CFG_HOST_TRIPLE))
+rt/$(1)/%.o: rt/%.S  RUNTIME_HDR_$(1) $$(MKFILE_DEPS) \
+                     $$(LLVM_CONFIG_$$(CFG_HOST_TRIPLE))
 	@$$(call E, compile: $$@)
 	$$(Q)$$(call CFG_ASSEMBLE_$(1),$$@,$$<)
 
@@ -143,7 +120,7 @@ rt/$(1)/arch/$$(HOST_$(1))/libmorestack.a: \
 	$$(Q)ar rcs $$@ $$<
 
 rt/$(1)/$(CFG_RUNTIME): $$(RUNTIME_OBJS_$(1)) $$(MKFILE_DEPS) \
-			$$(RUNTIME_HDR_$(1)) \
+                        $$(RUNTIME_HDR_$(1)) \
                         $$(RUNTIME_DEF_$(1)) \
                         $$(RUNTIME_LIBS_$(1))
 	@$$(call E, link: $$@)
