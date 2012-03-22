@@ -1019,8 +1019,10 @@ fn findn_str_between (haystack: str, needle: str,
                       nn: uint,
                       start: uint, end: uint) -> [uint] {
 
-    boyer_moore_search(haystack, needle, nn, start, end)
-    //simple_search(haystack, needle, nn, start, end)
+    let BM = boyer_moore_search(haystack, needle, nn, start, end);
+    let SS = simple_search(haystack, needle, nn, start, end);
+    assert SS == BM;
+    ret SS;
 }
 
 #[doc = "
@@ -1168,7 +1170,7 @@ fn boyer_moore_search (haystack: str, needle: str,
 // (a.k.a. the bad-character table)
 fn boyer_moore_unmatched_chars(needle: str) -> [uint] {
     let len = str::len(needle);
-    let mm  = vec::to_mut(vec::from_elem(255u, len));
+    let deltas = vec::to_mut(vec::from_elem(255u, len));
 
     assert 0u < len;
     let mut jj = len - 1u; // drop the last byte
@@ -1181,105 +1183,132 @@ fn boyer_moore_unmatched_chars(needle: str) -> [uint] {
 
         // if we haven't set it yet, set it now
         // (besides default)
-        if mm[key] == len {
-            mm[key] = len - 1u - jj;
+        if deltas[key] == len {
+            deltas[key] = len - 1u - jj;
         }
     }
 
-    ret vec::from_mut(mm);
+    ret vec::from_mut(deltas);
+}
+
+// for each prefix of the search string
+// find the largest suffix which is a suffix of the search string
+fn boyer_moore_largest_suffixes(needle: str) -> [uint] {
+    let len = str::len(needle);
+
+    if len == 0u { ret []; }
+
+    let mut suffs = vec::to_mut(vec::from_elem(len, 0u));
+    suffs[len - 1u] = len;
+
+    let mut ii   = len - 1u;
+    let mut head = len; // index starting the previous found suffix
+    let mut tail = len; // index after the previous found suffix
+
+    // loop through each smaller prefix,
+    // keeping track of the last suffix of a prefix
+    // which was found to be a suffix of the needle
+    while 0u < ii {
+        ii -= 1u;
+
+        if head < ii + 1u
+           && suffs[(len - 1u) - ((tail - 1u) - ii)] + head < ii + 1u
+        {
+            // The needle is a suffix of itself, stored before this loop,
+            // so each prefix of that is matched
+            // with its largest possible suffix...
+            //
+            // So (bear with me) when considering prefixes
+            // of another matched prefix (i.e., when head <= ii < tail)
+            // if the corresponding maximum prefix's match is
+            // smaller than the space left within the current match,
+            // then we know this prefix's matching suffix is the same.
+
+            // Consider:
+            //     01234567
+            //     heyyheyy
+            //       ^   ^
+            //
+            // When testing i=2, a match from 0-3 has already been found
+            // ("heyy"), and the match at i=6 ("y") fits
+            // in the remaining space within the current match,
+            // we know that suffs[2]=sufs[6].
+            //
+            // If, however, sufs[6] was much larger, we'd have to work more.
+
+            suffs[ii] = suffs[(len - 1u) - ((tail-1u) - ii)];
+
+        } else {
+            // Here, find the largest suffix of the needle which matches
+            // the prefix ending at ii.
+
+            // move the head left
+            //
+            // Note that if the head is already further left,
+            // we've already explored that far and eliminated the possibility
+            // of smaller match, above.
+            if ii + 1u <= head {
+                 head = ii + 1u;
+            }
+
+            // put the tail here (the ending of this suffix)
+            tail = ii + 1u;
+
+            // move the head left until it is before the matching suffix
+            while 1u <= head
+               && needle[head-1u] == needle[(len - 1u) - (tail - head)]
+            {
+                head -= 1u;
+            }
+
+            // store the length of this suffix
+            suffs[ii] = tail - head;
+        }
+    }
+
+    ret vec::from_mut(suffs);
 }
 
 // compute the table used to choose a shift based on
 // a partially matched suffix of the search string
 // (a.k.a. the good-suffix table)
-fn boyer_moore_matching_suffixes(needle_str: str) -> [uint] {
-    let needle = str::bytes(needle_str);
+fn boyer_moore_matching_suffixes(needle: str) -> [uint] {
+    let len   = str::len(needle);
 
-    let len = vec::len(needle);
+    // compute the largest suffix of each prefix
+    let suffs = boyer_moore_largest_suffixes(needle);
 
-    // initialize len chars to len
-    let mm = vec::to_mut(vec::from_elem(len, len));
+    // (1) initialize deltas
+    let deltas = vec::to_mut(vec::from_elem(len, len));
 
-    // is the suffix from here a prefix of the needle?
-    let is_prefix = fn@(pos: uint) -> bool {
-        let suffixlen = len - pos;
-        let mut ii = 0u;
-        while ii < suffixlen {
-            if needle[ii] != needle[pos + ii] { ret false; }
-            ii += 1u;
+    // (2) step to smaller suffixes ending with ii, and
+    // if a whole prefix is a suffix
+    // set all the deltas for indexes smaller than length - 1 - ii
+    // to length - 1 - ii
+    let mut ii = len;
+    let mut jj = 0u;
+    while 0u < ii {
+        ii -= 1u;
+
+        if suffs[ii] == ii + 1u {
+            // do not reset jj, only do this once
+            while ii < len - 1u - jj {
+                if deltas[len - 1u - jj] == len {
+                    deltas[len - 1u - jj] = len - 1u - ii;
+                }
+                jj += 1u;
+            }
         }
-        ret true;
-    };
-
-    // if this is the end of a suffix of the word, how long is it?
-    let longest_suffix = fn@(pos: uint) -> uint {
-        let mut jj = 0u;
-
-        // count up while matching larger suffixes with this prefix
-        while needle[pos - jj] == needle[len - 1u - jj]
-              && jj < pos
-        {
-            jj += 1u;
-
-            assert pos    >= jj;
-            assert len-1u >= jj;
-        }
-
-        ret jj;
-    };
-
-
-    // step to smaller prefixes
-    // for the case where each suffix could contain a prefix of the needle
-    // i.e., suffix ends with prefix?
-    let mut pii = len;
-    let mut last_prefix_index = len - 1u;
-    while 0u < pii {
-        pii -= 1u;
-
-        // FIXME: possible +1 issue
-
-        // find if each possible suffix is a prefix
-        if is_prefix(pii + 1u) { last_prefix_index = pii + 1u; };
-        ////log(error, "pref idx ->");
-        ////log(error, last_prefix_index);
-
-        ////log(error, "prefix(pii..len):");
-        ////log(error, str::from_bytes(vec::slice(needle, pii, len)));
-        //mm[pii] = last_prefix_index + len - 1u - pii;
-        mm[len - 1u - pii] = last_prefix_index;
     }
 
-
-    ////log(error, mm);
-
-    // step to larger suffixes
-    // for the case where each suffix could be part of the needle
-    // i.e., prefix ends with suffix?
-    let mut sii = 0u;
-    while sii < len {
-        let slen = longest_suffix(sii);
-        assert sii >= slen;
-
-        if needle[sii - slen] != needle[len - 1u - slen] {
-            ////log(error, "suffix(len-1-slen)");
-            ////log(error, str::from_bytes(vec::slice(needle,len-slen, len)));
-
-            ////log(error, "sii:");
-            ////log(error, sii);
-
-            ////log(error, "slen:");
-            ////log(error, slen);
-
-            mm[slen] = len - 1u - sii;
-        }
-
-        sii += 1u;
+    // (3) then for each different matched suffix size, set the delta
+    let mut kk = 0u;
+    while 2u <= len && kk <= len - 2u {
+        deltas[suffs[kk]] = len - 1u - kk;
+        kk += 1u;
     }
 
-    ////log(error, mm);
-
-    ret vec::from_mut(mm);
+    ret vec::from_mut(deltas);
 }
 
 #[doc = "
@@ -2181,6 +2210,22 @@ mod tests {
     }
 
     #[test]
+    fn test_simple_search() {
+        let data = "abcabc";
+        assert simple_search(data, "ab", 2u, 0u, 6u) == [0u, 3u];
+        assert simple_search(data, "ab", 1u, 0u, 6u) == [0u];
+        assert simple_search(data, "ax", 1u, 0u, 6u) == [];
+    }
+
+    #[test]
+    fn test_boyer_moore_search() {
+        let data = "abcabc";
+        assert boyer_moore_search(data, "ab", 2u, 0u, 6u) == [0u, 3u];
+        assert boyer_moore_search(data, "ab", 1u, 0u, 6u) == [0u];
+        assert boyer_moore_search(data, "ax", 1u, 0u, 6u) == [];
+    }
+
+    #[test]
     fn test_findn_str() {
         assert []       == str::findn_str("banana", "apple pie", 1u);
         assert [0u]     == str::findn_str("abcxxxxxx", "abc", 1u);
@@ -2619,7 +2664,28 @@ mod tests {
     }
 
     #[test]
+    fn test_boyer_moore_largest_suffixes() {
+        assert boyer_moore_largest_suffixes("")
+            == [];
+
+        assert boyer_moore_largest_suffixes("x")
+            == [1u];
+
+        assert boyer_moore_largest_suffixes("heyyheyyheyy")
+            == [0u,0u,1u,4u,0u,0u,1u,8u,0u,0u,1u,12u];
+
+        assert boyer_moore_largest_suffixes("gcagagag")
+            == [1u,0u,0u,2u,0u,4u,0u,8u];
+    }
+
+    #[test]
     fn test_matching_suffixes_ascii() {
+        assert [] == boyer_moore_matching_suffixes("");
+
+        let test1 = boyer_moore_matching_suffixes("gcagagag");
+        assert test1 == [1u,7u,4u,7u,2u,7u,7u,7u];
+
+
         let pt = boyer_moore_matching_suffixes("ANPANMAN");
 
         assert 1u == pt[0u]; //        (n)
