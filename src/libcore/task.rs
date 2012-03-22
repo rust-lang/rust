@@ -442,7 +442,7 @@ fn yield() {
 
     let task_ = rustrt::rust_get_task();
     let mut killed = false;
-    rusti::task_yield(task_, killed);
+    rustrt::rust_task_yield(task_, killed);
     if killed && !failing() {
         fail "killed";
     }
@@ -533,12 +533,10 @@ fn spawn_raw(opts: task_opts, +f: fn~()) unsafe {
 
 }
 
-#[abi = "rust-intrinsic"]
-native mod rusti {
-    fn task_yield(task: *rust_task, &killed: bool);
-}
-
 native mod rustrt {
+    #[rust_stack]
+    fn rust_task_yield(task: *rust_task, &killed: bool);
+
     fn rust_get_sched_id() -> sched_id;
     fn rust_new_sched(num_threads: libc::uintptr_t) -> sched_id;
 

@@ -652,22 +652,48 @@ fn trans_native_mod(ccx: @crate_ctxt,
         }
 
         let lname = link_name(native_item);
-        // Declare the "prototype" for the base function F:
-        let llbasefn = alt tys.x86_64_tys {
-            some(x86_64) {
-                decl_x86_64_fn(x86_64) {|fnty|
-                    decl_fn(ccx.llmod, lname, cc, fnty)
-                }
-            }
-            _ {
-                let llbasefnty = T_fn(tys.arg_tys, tys.ret_ty);
-                decl_fn(ccx.llmod, lname, cc, llbasefnty)
-            }
-        };
+        let llbasefn = base_fn(ccx, lname, tys, cc);
         // Name the shim function
         let shim_name = lname + "__c_stack_shim";
         ret build_shim_fn_(ccx, shim_name, llbasefn, tys, cc,
                            build_args, build_ret);
+    }
+
+    fn base_fn(ccx: @crate_ctxt, lname: str, tys: @c_stack_tys,
+               cc: lib::llvm::CallConv) -> ValueRef {
+        // Declare the "prototype" for the base function F:
+        alt tys.x86_64_tys {
+          some(x86_64) {
+            decl_x86_64_fn(x86_64) {|fnty|
+                decl_fn(ccx.llmod, lname, cc, fnty)
+            }
+          }
+          _ {
+            let llbasefnty = T_fn(tys.arg_tys, tys.ret_ty);
+            decl_fn(ccx.llmod, lname, cc, llbasefnty)
+          }
+        }
+    }
+
+    // FIXME this is very shaky and probably gets ABIs wrong all over
+    // the place
+    fn build_direct_fn(ccx: @crate_ctxt, decl: ValueRef,
+                       item: @ast::native_item, tys: @c_stack_tys,
+                       cc: lib::llvm::CallConv) {
+        let fcx = new_fn_ctxt(ccx, [], decl, none);
+        let bcx = top_scope_block(fcx, none), lltop = bcx.llbb;
+        let llbasefn = base_fn(ccx, link_name(item), tys, cc);
+        let ty = ty::lookup_item_type(ccx.tcx,
+                                      ast_util::local_def(item.id)).ty;
+        let args = vec::from_fn(ty::ty_fn_args(ty).len(), {|i|
+            get_param(decl, i + first_real_arg)
+        });
+        let retval = Call(bcx, llbasefn, args);
+        if !ty::type_is_nil(ty::ty_fn_ret(ty)) {
+            Store(bcx, retval, fcx.llretptr);
+        }
+        build_return(bcx);
+        finish_fn(fcx, lltop);
     }
 
     fn build_wrap_fn(ccx: @crate_ctxt,
@@ -717,10 +743,14 @@ fn trans_native_mod(ccx: @crate_ctxt,
       alt native_item.node {
         ast::native_item_fn(fn_decl, _) {
           let id = native_item.id;
-          let tys = c_stack_tys(ccx, id);
           let llwrapfn = get_item_val(ccx, id);
-          let llshimfn = build_shim_fn(ccx, native_item, tys, cc);
-          build_wrap_fn(ccx, tys, llshimfn, llwrapfn);
+          let tys = c_stack_tys(ccx, id);
+          if attr::attrs_contains_name(native_item.attrs, "rust_stack") {
+              build_direct_fn(ccx, llwrapfn, native_item, tys, cc);
+          } else {
+              let llshimfn = build_shim_fn(ccx, native_item, tys, cc);
+              build_wrap_fn(ccx, tys, llshimfn, llwrapfn);
+          }
         }
       }
     }

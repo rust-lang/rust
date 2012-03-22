@@ -13,7 +13,9 @@ import libc::c_void;
 #[nolink]
 #[abi = "cdecl"]
 native mod libc_ {
+    #[rust_stack]
     fn memcpy(dest: *c_void, src: *c_void, n: libc::size_t) -> *c_void;
+    #[rust_stack]
     fn memmove(dest: *c_void, src: *c_void, n: libc::size_t) -> *c_void;
 }
 

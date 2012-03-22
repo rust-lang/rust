@@ -141,7 +141,6 @@ fn recv_<T: send>(p: *rust_port) -> T {
     let yieldp = ptr::addr_of(yield);
     let mut res;
     res = rusti::init::<T>();
-    log(debug, ptr::addr_of(res));
     rustrt::port_recv(ptr::addr_of(res) as *uint, p, yieldp);
 
     if yield != 0u {

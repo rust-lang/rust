@@ -2625,7 +2625,7 @@ enum call_args {
 //  - new_fn_ctxt
 //  - trans_args
 fn trans_args(cx: block, llenv: ValueRef, args: call_args, fn_ty: ty::t,
-              dest: dest, generic_intrinsic: bool)
+              dest: dest, always_valid_retptr: bool)
     -> {bcx: block, args: [ValueRef], retslot: ValueRef} {
     let _icx = cx.insn_ctxt("trans_args");
     let mut temp_cleanups = [];
@@ -2639,7 +2639,7 @@ fn trans_args(cx: block, llenv: ValueRef, args: call_args, fn_ty: ty::t,
     // Arg 0: Output pointer.
     let llretslot = alt dest {
       ignore {
-        if ty::type_is_nil(retty) && !generic_intrinsic {
+        if ty::type_is_nil(retty) && !always_valid_retptr {
             llvm::LLVMGetUndef(T_ptr(T_nil()))
         } else {
             let {bcx: cx, val} = alloc_ty(bcx, retty);

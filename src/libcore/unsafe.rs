@@ -34,11 +34,4 @@ mod tests {
     fn test_reinterpret_cast() unsafe {
         assert reinterpret_cast(1) == 1u;
     }
-
-    #[test]
-    #[should_fail]
-    #[ignore(cfg(target_os = "win32"))]
-    fn test_reinterpret_cast_wrong_size() unsafe {
-        let _i: uint = reinterpret_cast(0u8);
-    }
 }
