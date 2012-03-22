@@ -105,11 +105,11 @@ RUNTIME_OBJS_$(1) := $$(RUNTIME_CS_$(1):rt/%.cpp=rt/$(1)/%.o) \
                      $$(RUNTIME_S_$(1):rt/%.S=rt/$(1)/%.o)
 RUNTIME_LIBS_$(1) := $$(LIBUV_LIB_$(1))
 
-rt/$(1)/%.o: rt/%.cpp RUNTIME_HDR_$(1) $$(MKFILE_DEPS)
+rt/$(1)/%.o: rt/%.cpp $$(RUNTIME_HDR_$(1)) $$(MKFILE_DEPS)
 	@$$(call E, compile: $$@)
 	$$(Q)$$(call CFG_COMPILE_C_$(1), $$@, $$(RUNTIME_INCS_$(1))) $$<
 
-rt/$(1)/%.o: rt/%.S  RUNTIME_HDR_$(1) $$(MKFILE_DEPS) \
+rt/$(1)/%.o: rt/%.S  $$(RUNTIME_HDR_$(1)) $$(MKFILE_DEPS) \
                      $$(LLVM_CONFIG_$$(CFG_HOST_TRIPLE))
 	@$$(call E, compile: $$@)
 	$$(Q)$$(call CFG_ASSEMBLE_$(1),$$@,$$<)
