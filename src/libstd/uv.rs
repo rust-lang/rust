@@ -282,7 +282,7 @@ native mod rustrt {
                            addr: *libc::c_void,
                            after_cb: *u8) -> libc::c_int;
     fn rust_uv_write(req: *libc::c_void, stream: *libc::c_void,
-             buf_in: *uv_buf_t, buf_cnt: libc::c_int,
+             buf_in: **libc::c_void, buf_cnt: libc::c_int,
              cb: *u8) -> libc::c_int;
 
     // sizeof testing helpers
@@ -336,8 +336,11 @@ mod direct {
                                     address, after_connect_cb);
     }
 
+    // TODO github #1402 -- the buf_in is a vector of pointers
+    // to malloc'd buffers .. these will have to be translated
+    // back into their value types in c. sigh.
     unsafe fn write(req: *libc::c_void, stream: *libc::c_void,
-             buf_in: *[uv_buf_t], cb: *u8) -> libc::c_int {
+             buf_in: *[*libc::c_void], cb: *u8) -> libc::c_int {
         let buf_ptr = vec::unsafe::to_ptr(*buf_in);
         let buf_cnt = vec::len(*buf_in) as i32;
         ret rustrt::rust_uv_write(req, stream, buf_ptr, buf_cnt, cb);
@@ -945,7 +948,7 @@ fn test_uv_timer() {
 
 type request_wrapper = {
     write_req: *uv_write_t,
-    req_buf: *[uv_buf_t]
+    req_buf: *[*libc::c_void]
 };
 
 crust fn on_alloc(handle: *libc::c_void,
