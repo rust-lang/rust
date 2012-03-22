@@ -75,7 +75,6 @@ mod syntax {
 
     mod fold;
     mod visit;
-    mod codemap;
     mod parse {
         mod lexer;
         mod parser;
