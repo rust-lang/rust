@@ -196,91 +196,92 @@ rust_uv_timer_start(uv_timer_t* the_timer, uint32_t timeout,
 
 extern "C" void
 rust_uv_timer_stop(uv_timer_t* the_timer) {
-  uv_timer_stop(the_timer);
+	uv_timer_stop(the_timer); 
 }
 
 extern "C" int
 rust_uv_tcp_init(uv_loop_t* loop, uv_tcp_t* handle) {
-  return uv_tcp_init(loop, handle);
+	return uv_tcp_init(loop, handle);
 }
 
 extern "C" size_t
 rust_uv_helper_uv_tcp_t_size() {
-  return sizeof(uv_tcp_t);
+	return sizeof(uv_tcp_t);
 }
 extern "C" size_t
 rust_uv_helper_uv_connect_t_size() {
-  return sizeof(uv_connect_t);
+	return sizeof(uv_connect_t);
 }
 extern "C" size_t
 rust_uv_helper_uv_buf_t_size() {
-  return sizeof(uv_buf_t);
+	return sizeof(uv_buf_t);
 }
 extern "C" size_t
 rust_uv_helper_uv_write_t_size() {
-  return sizeof(uv_write_t);
+	return sizeof(uv_write_t);
 }
 extern "C" size_t
 rust_uv_helper_uv_err_t_size() {
-  return sizeof(uv_err_t);
+	return sizeof(uv_err_t);
 }
 extern "C" size_t
 rust_uv_helper_sockaddr_in_size() {
-  return sizeof(sockaddr_in);
+	return sizeof(sockaddr_in);
 }
 
 extern "C" uv_stream_t*
 rust_uv_get_stream_handle_for_connect(uv_connect_t* connect) {
-  return connect->handle;
+	return connect->handle;
 }
 
-static uv_buf_t
+extern "C" uv_buf_t
 current_kernel_malloc_alloc_cb(uv_handle_t* handle,
 							   size_t suggested_size) {
-  char* base_ptr = (char*)current_kernel_malloc(sizeof(char)
-											* suggested_size,
-										 "uv_buf_t_base_val");
-  return uv_buf_init(base_ptr, suggested_size);
+	char* base_ptr = (char*)current_kernel_malloc(sizeof(char)
+											  * suggested_size,
+										   "uv_buf_t_base_val");
+	return uv_buf_init(base_ptr, suggested_size);
 }
 
 // FIXME see issue #1402
 extern "C" void*
 rust_uv_buf_init(char* base, size_t len) {
-  uv_buf_t* buf_ptr = current_kernel_malloc(sizeof(uv_buf_t),
-											"uv_buf_t_1402");
-  *buf_ptr = uv_buf_init(base, len);
-  return buf_ptr;
+	uv_buf_t* buf_ptr = (uv_buf_t*)current_kernel_malloc(
+									 sizeof(uv_buf_t),
+									 "uv_buf_t_1402");
+	*buf_ptr = uv_buf_init(base, len);
+	return buf_ptr;
 }
 
 extern "C" uv_loop_t*
 rust_uv_get_loop_for_uv_handle(uv_handle_t* handle) {
-  return handle->loop;
+	return handle->loop;
 }
 
 extern "C" void*
 rust_uv_get_data_for_uv_handle(uv_handle_t* handle) {
-  return handle->data;
+	return handle->data;
 }
 
 extern "C" void
 rust_uv_set_data_for_uv_handle(uv_handle_t* handle,
 							   void* data) {
-  handle->data = data;
+	handle->data = data;
 }
 
 extern "C" void*
 rust_uv_get_data_for_req(uv_req_t* req) {
-  return req->data;
+	return req->data;
 }
 
 extern "C" void
 rust_uv_set_data_for_req(uv_req_t* req, void* data) {
-  req->data = data;
+	req->data = data;
 }
 
 extern "C" uv_err_t
 rust_uv_last_error(uv_loop_t* loop) {
-  return uv_last_error(loop);
+	return uv_last_error(loop);
 }
 
 extern "C" int
@@ -288,23 +289,31 @@ rust_uv_tcp_connect(uv_connect_t* connect_ptr,
 					uv_tcp_t* tcp_ptr,
 					void* addr_ptr,
 					uv_connect_cb cb) {
-  //return uv_tcp_connect(connect_ptr, tcp_ptr, addr, cb);
-  printf("inside rust_uv_tcp_connect\n");
-  sockaddr_in addr_tmp = *((sockaddr_in*)addr_ptr);
-  sockaddr_in addr = addr_tmp;
-  printf("before tcp_connect .. port: %d\n", addr.sin_port);
-  int result = uv_tcp_connect(connect_ptr, tcp_ptr, addr, cb);
-  printf ("leaving rust_uv_tcp_connect.. and result: %d\n", result);
-  return result;
+	//return uv_tcp_connect(connect_ptr, tcp_ptr, addr, cb);
+	printf("inside rust_uv_tcp_connect\n");
+	sockaddr_in addr_tmp = *((sockaddr_in*)addr_ptr);
+	sockaddr_in addr = addr_tmp;
+	printf("before tcp_connect .. port: %d\n", addr.sin_port);
+	int result = uv_tcp_connect(connect_ptr, tcp_ptr, addr, cb);
+	printf ("leaving rust_uv_tcp_connect.. and result: %d\n",
+			result);
+	return result;
+}
+
+extern "C" int
+rust_uv_write(uv_write_t* req, uv_stream_t* handle,
+			  uv_buf_t* bufs, int buf_cnt,
+			  uv_write_cb cb) {
+	return uv_write(req, handle, bufs, buf_cnt, cb);
 }
 
 extern "C" void*
 rust_uv_ip4_addr(const char* ip, int port) {
-  sockaddr_in* addr_ptr = (sockaddr_in*)current_kernel_malloc(
+	sockaddr_in* addr_ptr = (sockaddr_in*)current_kernel_malloc(
 							  sizeof(sockaddr_in),
 							  "sockaddr_in");
-  printf("before creating addr_ptr.. ip %s port %d\n", ip, port);
-  *addr_ptr = uv_ip4_addr("173.194.33.40", 80);
-  printf("after creating .. port: %d\n", addr_ptr->sin_port);
-  return (void*)addr_ptr;
+	printf("before creating addr_ptr.. ip %s port %d\n", ip, port);
+	*addr_ptr = uv_ip4_addr("173.194.33.40", 80);
+	printf("after creating .. port: %d\n", addr_ptr->sin_port);
+	return (void*)addr_ptr;
 }
