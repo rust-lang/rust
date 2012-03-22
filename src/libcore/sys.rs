@@ -28,13 +28,11 @@ native mod rustrt {
     fn rust_set_exit_status(code: libc::intptr_t);
 }
 
-#[abi = "rust-intrinsic"]
+#[abi = "rust-builtin"]
 native mod rusti {
-    fn get_type_desc<T>() -> *type_desc;
-
-    // Invokes __builtin_frame_address().
-    // See <http://gcc.gnu.org/onlinedocs/gcc/Return-Address.html>.
-    fn frame_address(n: libc::c_uint) -> libc::uintptr_t;
+    fn get_tydesc<T>() -> *();
+    fn size_of<T>() -> uint;
+    fn align_of<T>() -> uint;
 }
 
 #[doc = "
@@ -44,7 +42,7 @@ Useful for calling certain function in the Rust runtime or otherwise
 performing dark magick.
 "]
 fn get_type_desc<T>() -> *type_desc {
-    ret rusti::get_type_desc::<T>();
+    rusti::get_tydesc::<T>() as *type_desc
 }
 
 #[doc = "Get a string representing the platform-dependent last error"]
@@ -54,12 +52,12 @@ fn last_os_error() -> str {
 
 #[doc = "Returns the size of a type"]
 fn size_of<T>() -> uint unsafe {
-    ret (*get_type_desc::<T>()).size;
+    rusti::size_of::<T>()
 }
 
 #[doc = "Returns the alignment of a type"]
 fn align_of<T>() -> uint unsafe {
-    ret (*get_type_desc::<T>()).align;
+    rusti::align_of::<T>()
 }
 
 #[doc = "Returns the refcount of a shared box"]

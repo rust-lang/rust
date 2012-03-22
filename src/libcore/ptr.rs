@@ -8,22 +8,28 @@ export null;
 export memcpy;
 export memmove;
 
+import libc::c_void;
 
-#[abi = "rust-intrinsic"]
+#[nolink]
+#[abi = "cdecl"]
+native mod libc_ {
+    fn memcpy(dest: *c_void, src: *c_void, n: libc::size_t) -> *c_void;
+    fn memmove(dest: *c_void, src: *c_void, n: libc::size_t) -> *c_void;
+}
+
+#[abi = "rust-builtin"]
 native mod rusti {
     fn addr_of<T>(val: T) -> *T;
-    fn memcpy<T>(dst: *T, src: *T, count: libc::uintptr_t);
-    fn memmove<T>(dst: *T, src: *T, count: libc::uintptr_t);
 }
 
 #[doc = "Get an unsafe pointer to a value"]
 #[inline(always)]
-fn addr_of<T>(val: T) -> *T { ret rusti::addr_of(val); }
+fn addr_of<T>(val: T) -> *T { rusti::addr_of(val) }
 
 #[doc = "Get an unsafe mutable pointer to a value"]
 #[inline(always)]
 fn mut_addr_of<T>(val: T) -> *mutable T unsafe {
-    ret unsafe::reinterpret_cast(rusti::addr_of(val));
+    unsafe::reinterpret_cast(rusti::addr_of(val))
 }
 
 #[doc = "Calculate the offset from a pointer"]
@@ -51,7 +57,8 @@ and destination may not overlap.
 "]
 #[inline(always)]
 unsafe fn memcpy<T>(dst: *T, src: *T, count: uint) {
-    rusti::memcpy(dst, src, count);
+    let n = count * sys::size_of::<T>();
+    libc_::memcpy(dst as *c_void, src as *c_void, n);
 }
 
 #[doc = "
@@ -62,7 +69,8 @@ and destination may overlap.
 "]
 #[inline(always)]
 unsafe fn memmove<T>(dst: *T, src: *T, count: uint)  {
-    rusti::memmove(dst, src, count);
+    let n = count * sys::size_of::<T>();
+    libc_::memmove(dst as *c_void, src as *c_void, n);
 }
 
 #[test]

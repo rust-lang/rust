@@ -2,10 +2,10 @@
 
 export reinterpret_cast, forget;
 
-#[abi = "rust-intrinsic"]
+#[abi = "rust-builtin"]
 native mod rusti {
-    fn cast<T, U>(src: T) -> U;
-    fn leak<T>(-thing: T);
+    fn forget<T>(-x: T);
+    fn reinterpret_cast<T, U>(e: T) -> U;
 }
 
 #[doc = "
@@ -13,12 +13,7 @@ Casts the value at `src` to U. The two types must have the same length.
 "]
 #[inline(always)]
 unsafe fn reinterpret_cast<T, U>(src: T) -> U {
-    let t1 = sys::get_type_desc::<T>();
-    let t2 = sys::get_type_desc::<U>();
-    if (*t1).size != (*t2).size {
-        fail "attempt to cast values of differing sizes";
-    }
-    ret rusti::cast(src);
+    rusti::reinterpret_cast(src)
 }
 
 #[doc ="
@@ -30,7 +25,7 @@ can be used for various acts of magick, particularly when using
 reinterpret_cast on managed pointer types.
 "]
 #[inline(always)]
-unsafe fn forget<T>(-thing: T) { rusti::leak(thing); }
+unsafe fn forget<T>(-thing: T) { rusti::forget(thing); }
 
 #[cfg(test)]
 mod tests {

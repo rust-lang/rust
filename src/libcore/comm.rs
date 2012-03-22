@@ -55,9 +55,9 @@ native mod rustrt {
                         yield: *libc::uintptr_t);
 }
 
-#[abi = "rust-intrinsic"]
+#[abi = "rust-builtin"]
 native mod rusti {
-    fn call_with_retptr<T: send>(&&f: fn(*uint)) -> T;
+    fn init<T>() -> T;
 }
 
 type port_id = int;
@@ -137,18 +137,13 @@ fn recv<T: send>(p: port<T>) -> T { recv_(***p) }
 
 #[doc = "Receive on a raw port pointer"]
 fn recv_<T: send>(p: *rust_port) -> T {
-    // FIXME: Due to issue 1185 we can't use a return pointer when
-    // calling C code, and since we can't create our own return
-    // pointer on the stack, we're going to call a little intrinsic
-    // that will grab the value of the return pointer, then call this
-    // function, which we will then use to call the runtime.
-    fn recv(dptr: *uint, port: *rust_port,
-            yield: *libc::uintptr_t) unsafe {
-        rustrt::port_recv(dptr, port, yield);
-    }
     let yield = 0u;
     let yieldp = ptr::addr_of(yield);
-    let res = rusti::call_with_retptr(bind recv(_, p, yieldp));
+    let mut res;
+    res = rusti::init::<T>();
+    log(debug, ptr::addr_of(res));
+    rustrt::port_recv(ptr::addr_of(res) as *uint, p, yieldp);
+
     if yield != 0u {
         // Data isn't available yet, so res has not been initialized.
         task::yield();
@@ -161,26 +156,18 @@ fn recv_<T: send>(p: *rust_port) -> T {
 }
 
 #[doc = "Receive on one of two ports"]
-fn select2<A: send, B: send>(
-    p_a: port<A>, p_b: port<B>
-) -> either<A, B> unsafe {
-
-    fn select(dptr: **rust_port, ports: **rust_port,
-              n_ports: libc::size_t, yield: *libc::uintptr_t) {
-        rustrt::rust_port_select(dptr, ports, n_ports, yield)
-    }
-
-    let mut ports = [];
-    ports += [***p_a, ***p_b];
+fn select2<A: send, B: send>(p_a: port<A>, p_b: port<B>)
+    -> either<A, B> unsafe {
+    let ports = [***p_a, ***p_b];
     let n_ports = 2 as libc::size_t;
-    let yield = 0u;
-    let yieldp = ptr::addr_of(yield);
+    let yield = 0u, yieldp = ptr::addr_of(yield);
 
-    let resport: *rust_port = vec::as_buf(ports) {|ports|
-        rusti::call_with_retptr {|retptr|
-            select(unsafe::reinterpret_cast(retptr), ports, n_ports, yieldp)
-        }
-    };
+    let mut resport: *rust_port;
+    resport = rusti::init::<*rust_port>();
+    vec::as_buf(ports) {|ports|
+        rustrt::rust_port_select(ptr::addr_of(resport), ports, n_ports,
+                                 yieldp);
+    }
 
     if yield != 0u {
         // Wait for data
