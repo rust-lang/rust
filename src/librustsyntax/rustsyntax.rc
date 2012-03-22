@@ -1,0 +1,5 @@
+#[link(name = "rustsyntax",
+       vers = "0.2",
+       uuid = "c2b79dd0-a437-4ec7-95f9-858d77808c2f")];
+
+#[crate_type = "lib"];

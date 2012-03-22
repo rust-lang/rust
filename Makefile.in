@@ -106,13 +106,16 @@ CFG_RUSTLLVM :=$(call CFG_LIB_NAME,rustllvm)
 CFG_CORELIB :=$(call CFG_LIB_NAME,core)
 CFG_STDLIB :=$(call CFG_LIB_NAME,std)
 CFG_LIBRUSTC :=$(call CFG_LIB_NAME,rustc)
+CFG_LIBRUSTSYNTAX :=$(call CFG_LIB_NAME,rustsyntax)
 
 STDLIB_GLOB :=$(call CFG_LIB_GLOB,std)
 CORELIB_GLOB :=$(call CFG_LIB_GLOB,core)
 LIBRUSTC_GLOB :=$(call CFG_LIB_GLOB,rustc)
+LIBRUSTSYNTAX_GLOB :=$(call CFG_LIB_GLOB,rustsyntax)
 STDLIB_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,std)
 CORELIB_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,core)
 LIBRUSTC_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,rustc)
+LIBRUSTSYNTAX_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,rustsyntax)
 
 # version-string calculation
 CFG_GIT_DIR := $(CFG_SRC_DIR).git
@@ -189,6 +192,10 @@ COMPILER_CRATE := $(S)src/rustc/rustc.rc
 COMPILER_INPUTS := $(filter-out $(S)src/rustc/driver/rustc.rs,     \
                        $(wildcard $(addprefix $(S)src/rustc/,      \
                            rustc.rc *.rs */*.rs */*/*.rs)))
+
+LIBRUSTSYNTAX_CRATE := $(S)src/librustsyntax/rustsyntax.rc
+LIBRUSTSYNTAX_INPUTS := $(wildcard $(addprefix $(S)src/librustsyntax/, \
+                            rustsyntax.rc *.rs))
 
 RUSTC_INPUTS := $(S)src/rustc/driver/rustc.rs
 
