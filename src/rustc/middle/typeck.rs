@@ -1645,7 +1645,7 @@ fn check_lit(ccx: @crate_ctxt, lit: @ast::lit) -> ty::t {
 
 fn valid_range_bounds(tcx: ty::ctxt, from: @ast::expr, to: @ast::expr)
     -> bool {
-    ast_util::compare_lit_exprs(tcx, from, to) <= 0
+    const_eval::compare_lit_exprs(tcx, from, to) <= 0
 }
 
 type pat_ctxt = {
@@ -3404,8 +3404,8 @@ fn check_enum_variants(ccx: @crate_ctxt, sp: span, vs: [ast::variant],
             // Also, check_expr (from check_const pass) doesn't guarantee that
             // the expression in an form that eval_const_expr can handle, so
             // we may still get an internal compiler error
-            alt syntax::ast_util::eval_const_expr(ccx.tcx, e) {
-              syntax::ast_util::const_int(val) {
+            alt const_eval::eval_const_expr(ccx.tcx, e) {
+              const_eval::const_int(val) {
                 disr_val = val as int;
               }
               _ {

@@ -1306,7 +1306,7 @@ fn arg_eq<T>(eq: fn(T, T) -> bool,
       }
       ast::carg_lit(l) {
         alt b.node {
-          ast::carg_lit(m) { ret ast_util::lit_eq(l, m); } _ { ret false; }
+          ast::carg_lit(m) { ret const_eval::lit_eq(l, m); } _ { ret false; }
         }
       }
     }
@@ -1894,8 +1894,8 @@ fn enum_variants(cx: ctxt, id: ast::def_id) -> @[variant_info] {
                 alt variant.node.disr_expr {
                   some (ex) {
                     // FIXME: issue #1417
-                    disr_val = alt syntax::ast_util::eval_const_expr(cx, ex) {
-                      ast_util::const_int(val) {val as int}
+                    disr_val = alt const_eval::eval_const_expr(cx, ex) {
+                      const_eval::const_int(val) {val as int}
                       _ { cx.sess.bug("tag_variants: bad disr expr"); }
                     }
                   }

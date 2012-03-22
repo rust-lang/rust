@@ -676,7 +676,7 @@ fn pred_args_matches(pattern: [constr_arg_general_<inst>], desc: pred_args) ->
           carg_base { if n != carg_base { ret false; } }
           carg_lit(l) {
             alt n {
-              carg_lit(m) { if !lit_eq(l, m) { ret false; } }
+              carg_lit(m) { if !const_eval::lit_eq(l, m) { ret false; } }
               _ { ret false; }
             }
           }

@@ -50,6 +50,7 @@ mod middle {
     mod pat_util;
     mod region;
     mod regionck;
+    mod const_eval;
 
     mod tstate {
         mod ck;

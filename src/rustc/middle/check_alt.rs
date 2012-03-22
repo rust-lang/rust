@@ -1,7 +1,7 @@
 
 import syntax::ast::*;
-import syntax::ast_util::{variant_def_ids, dummy_sp, compare_lit_exprs,
-        lit_expr_eq, unguarded_pat};
+import syntax::ast_util::{variant_def_ids, dummy_sp, unguarded_pat};
+import middle::const_eval::{compare_lit_exprs, lit_expr_eq};
 import syntax::codemap::span;
 import pat_util::*;
 import syntax::visit;

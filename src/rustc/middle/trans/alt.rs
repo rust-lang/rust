@@ -25,10 +25,10 @@ enum opt {
 }
 fn opt_eq(tcx: ty::ctxt, a: opt, b: opt) -> bool {
     alt (a, b) {
-      (lit(a), lit(b)) { ast_util::compare_lit_exprs(tcx, a, b) == 0 }
+      (lit(a), lit(b)) { const_eval::compare_lit_exprs(tcx, a, b) == 0 }
       (range(a1, a2), range(b1, b2)) {
-        ast_util::compare_lit_exprs(tcx, a1, b1) == 0 &&
-        ast_util::compare_lit_exprs(tcx, a2, b2) == 0
+        const_eval::compare_lit_exprs(tcx, a1, b1) == 0 &&
+        const_eval::compare_lit_exprs(tcx, a2, b2) == 0
       }
       (var(a, _), var(b, _)) { a == b }
       _ { false }
