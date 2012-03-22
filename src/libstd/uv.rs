@@ -76,19 +76,19 @@ enum uv_handle_type {
     UV_FS_EVENT
 }
 
-type handle_type = ctypes::enum;
+type handle_type = libc::c_uint;
 
 type uv_handle_fields = {
-   loop_handle: *ctypes::void,
+   loop_handle: *libc::c_void,
    type_: handle_type,
    close_cb: *u8,
-   mutable data: *ctypes::void,
+   mutable data: *libc::c_void,
 };
 
 // unix size: 8
 type uv_err_t = {
-    code: ctypes::c_int,
-    sys_errno_: ctypes::c_int
+    code: libc::c_int,
+    sys_errno_: libc::c_int
 };
 
 // don't create one of these directly. instead,
@@ -138,7 +138,7 @@ fn gen_stub_uv_tcp_t() -> uv_tcp_t {
 
 #[cfg(target_os = "win32")]
 type uv_tcp_t = {
-    loop_handle: *ctypes::void
+    loop_handle: *libc::c_void
 };
 #[cfg(target_os = "win32")]
 fn gen_stub_uv_tcp_t() -> uv_tcp_t {
@@ -170,14 +170,14 @@ fn gen_stub_uv_connect_t() -> uv_connect_t {
 #[cfg(target_os = "freebsd")]
 type uv_buf_t = {
     base: *u8,
-    len: ctypes::size_t
+    len: libc::size_t
 };
 // no gen stub method.. should create
 // it via uv::direct::buf_init()
 
 #[cfg(target_os = "win32")]
 type uv_connect_t = {
-    loop_handle: *ctypes::void
+    loop_handle: *libc::c_void
 };
 #[cfg(target_os = "win32")]
 fn gen_stub_uv_connect_t() -> uv_connect_t {
@@ -210,7 +210,7 @@ fn gen_stub_uv_write_t() -> uv_write_t {
 }
 #[cfg(target_os = "win32")]
 type uv_write_t = {
-    loop_handle: *ctypes::void
+    loop_handle: *libc::c_void
 };
 #[cfg(target_os = "win32")]
 fn gen_stub_uv_write_t() -> uv_write_t {
@@ -268,77 +268,82 @@ native mod rustrt {
     ////////////
     // NOT IN rustrt.def.in
     ////////////
-    fn rust_uv_free(ptr: *ctypes::void);
+    fn rust_uv_free(ptr: *libc::c_void);
     fn rust_uv_tcp_init(
-        loop_handle: *ctypes::void,
-        handle_ptr: *uv_tcp_t) -> ctypes::c_int;
-    fn rust_uv_buf_init(base: *u8, len: ctypes::size_t)
-        -> *ctypes::void;
-    fn rust_uv_last_error(loop_handle: *ctypes::void) -> uv_err_t;
-    fn rust_uv_ip4_addr(ip: *u8, port: ctypes::c_int)
-        -> *ctypes::void;
+        loop_handle: *libc::c_void,
+        handle_ptr: *uv_tcp_t) -> libc::c_int;
+    fn rust_uv_buf_init(base: *u8, len: libc::size_t)
+        -> *libc::c_void;
+    fn rust_uv_last_error(loop_handle: *libc::c_void) -> uv_err_t;
+    fn rust_uv_ip4_addr(ip: *u8, port: libc::c_int)
+        -> *libc::c_void;
     fn rust_uv_tcp_connect(connect_ptr: *uv_connect_t,
                            tcp_handle_ptr: *uv_tcp_t,
-                           addr: *ctypes::void,
-                           after_cb: *u8) -> ctypes::c_int;
+                           addr: *libc::c_void,
+                           after_cb: *u8) -> libc::c_int;
+    fn rust_uv_write(req: *libc::c_void, stream: *libc::c_void,
+             buf_in: *uv_buf_t, buf_cnt: libc::c_int,
+             cb: *u8) -> libc::c_int;
 
     // sizeof testing helpers
-    fn rust_uv_helper_uv_tcp_t_size() -> ctypes::c_uint;
-    fn rust_uv_helper_uv_connect_t_size() -> ctypes::c_uint;
-    fn rust_uv_helper_uv_buf_t_size() -> ctypes::c_uint;
-    fn rust_uv_helper_uv_write_t_size() -> ctypes::c_uint;
-    fn rust_uv_helper_uv_err_t_size() -> ctypes::c_uint;
-    fn rust_uv_helper_sockaddr_in_size() -> ctypes::c_uint;
+    fn rust_uv_helper_uv_tcp_t_size() -> libc::c_uint;
+    fn rust_uv_helper_uv_connect_t_size() -> libc::c_uint;
+    fn rust_uv_helper_uv_buf_t_size() -> libc::c_uint;
+    fn rust_uv_helper_uv_write_t_size() -> libc::c_uint;
+    fn rust_uv_helper_uv_err_t_size() -> libc::c_uint;
+    fn rust_uv_helper_sockaddr_in_size() -> libc::c_uint;
 
     // data accessors for rust-mapped uv structs
     fn rust_uv_get_stream_handle_for_connect(connect: *uv_connect_t)
         -> *uv_stream_t;
-    fn rust_uv_get_loop_for_uv_handle(handle: *ctypes::void)
-        -> *ctypes::void;
-    fn rust_uv_get_data_for_uv_handle(handle: *ctypes::void)
-        -> *ctypes::void;
-    fn rust_uv_set_data_for_uv_handle(handle: *ctypes::void,
-                                      data: *ctypes::void);
-    fn rust_uv_get_data_for_req(req: *ctypes::void) -> *ctypes::void;
-    fn rust_uv_set_data_for_req(req: *ctypes::void,
-                                data: *ctypes::void);
+    fn rust_uv_get_loop_for_uv_handle(handle: *libc::c_void)
+        -> *libc::c_void;
+    fn rust_uv_get_data_for_uv_handle(handle: *libc::c_void)
+        -> *libc::c_void;
+    fn rust_uv_set_data_for_uv_handle(handle: *libc::c_void,
+                                      data: *libc::c_void);
+    fn rust_uv_get_data_for_req(req: *libc::c_void) -> *libc::c_void;
+    fn rust_uv_set_data_for_req(req: *libc::c_void,
+                                data: *libc::c_void);
 }
 
 // this module is structured around functions that directly
 // expose libuv functionality and data structures. for use
 // in higher level mappings
 mod direct {
-    unsafe fn loop_new() -> *ctypes::void {
+    unsafe fn loop_new() -> *libc::c_void {
         ret rustrt::rust_uv_loop_new();
     }
 
-    unsafe fn loop_delete(loop_handle: *ctypes::void) {
+    unsafe fn loop_delete(loop_handle: *libc::c_void) {
         rustrt::rust_uv_loop_delete(loop_handle);
     }
 
-    unsafe fn run(loop_handle: *ctypes::void) {
+    unsafe fn run(loop_handle: *libc::c_void) {
         rustrt::rust_uv_run(loop_handle);
     }
 
-    unsafe fn tcp_init(loop_handle: *ctypes::void, handle: *uv_tcp_t)
-        -> ctypes::c_int {
+    unsafe fn tcp_init(loop_handle: *libc::c_void, handle: *uv_tcp_t)
+        -> libc::c_int {
         ret rustrt::rust_uv_tcp_init(loop_handle, handle);
     }
     unsafe fn tcp_connect(connect_ptr: *uv_connect_t,
                           tcp_handle_ptr: *uv_tcp_t,
-                          address: *ctypes::void,
+                          address: *libc::c_void,
                           after_connect_cb: *u8)
-    -> ctypes::c_int {
+    -> libc::c_int {
         ret rustrt::rust_uv_tcp_connect(connect_ptr, tcp_handle_ptr,
                                     address, after_connect_cb);
     }
 
-    unsafe fn write(req: *ctypes::void, stream: *ctypes::void,
-             buf: *[uv_buf_t], cb: *u8) -> ctypes::c_int {
-        ret rustrt::rust_uv_write(
+    unsafe fn write(req: *libc::c_void, stream: *libc::c_void,
+             buf_in: *[uv_buf_t], cb: *u8) -> libc::c_int {
+        let buf_ptr = vec::unsafe::to_ptr(*buf_in);
+        let buf_cnt = vec::len(*buf_in) as i32;
+        ret rustrt::rust_uv_write(req, stream, buf_ptr, buf_cnt, cb);
     }
 
-    unsafe fn uv_last_error(loop_handle: *ctypes::void) -> uv_err_t {
+    unsafe fn uv_last_error(loop_handle: *libc::c_void) -> uv_err_t {
         ret rustrt::rust_uv_last_error(loop_handle);
     }
 
@@ -352,8 +357,8 @@ mod direct {
     unsafe fn write_t() -> uv_write_t {
         ret gen_stub_uv_write_t();
     }
-    unsafe fn get_loop_for_uv_handle(handle: *ctypes::void)
-        -> *ctypes::void {
+    unsafe fn get_loop_for_uv_handle(handle: *libc::c_void)
+        -> *libc::c_void {
         ret rustrt::rust_uv_get_loop_for_uv_handle(handle);
     }
     unsafe fn get_stream_handle_for_connect(connect: *uv_connect_t)
@@ -361,20 +366,20 @@ mod direct {
         ret rustrt::rust_uv_get_stream_handle_for_connect(connect);
     }
 
-    unsafe fn get_data_for_req(req: *ctypes::void) -> *ctypes::void {
+    unsafe fn get_data_for_req(req: *libc::c_void) -> *libc::c_void {
         ret rustrt::rust_uv_get_data_for_req(req);
     }
-    unsafe fn set_data_for_req(req: *ctypes::void,
-                        data: *ctypes::void) {
+    unsafe fn set_data_for_req(req: *libc::c_void,
+                        data: *libc::c_void) {
         rustrt::rust_uv_set_data_for_req(req, data);
     }
     // FIXME: see github issue #1402
-    unsafe fn buf_init(input: *u8, len: uint) -> *ctypes::void {
+    unsafe fn buf_init(input: *u8, len: uint) -> *libc::c_void {
         ret rustrt::rust_uv_buf_init(input, len);
     }
     // FIXME: see github issue #1402
-    unsafe fn ip4_addr(ip: str, port: ctypes::c_int)
-    -> *ctypes::void {
+    unsafe fn ip4_addr(ip: str, port: libc::c_int)
+    -> *libc::c_void {
         let addr_vec = str::bytes(ip);
         addr_vec += [0u8]; // add null terminator
         let addr_vec_ptr = vec::unsafe::to_ptr(addr_vec);
@@ -384,7 +389,7 @@ mod direct {
     }
     // this is lame.
     // FIXME: see github issue #1402
-    unsafe fn free_1402(ptr: *ctypes::void) {
+    unsafe fn free_1402(ptr: *libc::c_void) {
         rustrt::rust_uv_free(ptr);
     }
 }
@@ -943,44 +948,46 @@ type request_wrapper = {
     req_buf: *[uv_buf_t]
 };
 
-crust fn on_alloc(handle: *ctypes::void,
-                  suggested_size: ctypes::size_t) -> uv_buf_t
+crust fn on_alloc(handle: *libc::c_void,
+                  suggested_size: libc::size_t) -> uv_buf_t
     unsafe {
     io::println("beginning on_alloc...");
     io::println("ending on_alloc...");
     let new_vec: @[u8] = @[];
     let ptr = vec::unsafe::to_ptr(*new_vec);
-    ret direct::buf_init(ptr, vec::len(*new_vec));
+    let buf = direct::buf_init(ptr, vec::len(*new_vec));
+    ret *(buf as *uv_buf_t);
+    
 }
 
 crust fn on_write_complete_cb(write_handle: *uv_write_t,
-                              status: ctypes::c_int) unsafe {
+                              status: libc::c_int) unsafe {
     io::println("beginning on_write_complete_cb");
     io::println("ending on_write_complete_cb");
 }
 
 crust fn on_connect_cb(connect_handle_ptr: *uv_connect_t,
-                             status: ctypes::c_int) unsafe {
+                             status: libc::c_int) unsafe {
     io::println(#fmt("beginning on_connect_cb .. status: %d",
                      status as int));
     let stream = direct::get_stream_handle_for_connect(connect_handle_ptr);
     if (status == 0i32) {
         io::println("on_connect_cb: in status=0 if..");
         let data = direct::get_data_for_req(
-            connect_handle_ptr as *ctypes::void)
+            connect_handle_ptr as *libc::c_void)
             as *request_wrapper;
-        let write_handle = (*data).write_req as *ctypes::void;
+        let write_handle = (*data).write_req as *libc::c_void;
         io::println(#fmt("on_connect_cb: tcp stream: %d write_handle addr %d",
                         stream as int, write_handle as int));
         direct::write(write_handle,
-                          stream as *ctypes::void,
+                          stream as *libc::c_void,
                           (*data).req_buf,
                           on_write_complete_cb);
         io::println("on_connect_cb: after direct::write()");
     }
     else {
         let loop_handle = direct::get_loop_for_uv_handle(
-            stream as *ctypes::void);
+            stream as *libc::c_void);
         let err = direct::uv_last_error(loop_handle);
     }
     io::println("finishing on_connect_cb");
@@ -1016,7 +1023,7 @@ fn impl_uv_tcp_request() unsafe {
     let addr = direct::ip4_addr("173.194.33.40", 80i32);
     
     let tcp_init_result = direct::tcp_init(
-        test_loop as *ctypes::void, tcp_handle_ptr);
+        test_loop as *libc::c_void, tcp_handle_ptr);
     if (tcp_init_result == 0i32) {
         io::println("sucessful tcp_init_result");
         // this should set up the connection request..
@@ -1026,8 +1033,8 @@ fn impl_uv_tcp_request() unsafe {
         if (tcp_connect_result == 0i32) {
             // not set the data on the connect_req until its initialized
             direct::set_data_for_req(
-                connect_handle_ptr as *ctypes::void,
-                ptr::addr_of(req) as *ctypes::void);
+                connect_handle_ptr as *libc::c_void,
+                ptr::addr_of(req) as *libc::c_void);
             io::println("before run tcp req loop");
             direct::run(test_loop);
             io::println("after run tcp req loop");
