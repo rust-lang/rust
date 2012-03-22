@@ -25,6 +25,7 @@ reuse_valgrind_stack(stk_seg *stk, uint8_t *sp) {
 	   && "Stack pointer must be inside stack segment");
     size_t sz = stk->end - (uintptr_t)sp;
     (void) VALGRIND_MAKE_MEM_UNDEFINED(sp, sz);
+    (void) sz;
 }
 
 void
