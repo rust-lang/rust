@@ -14,6 +14,12 @@ fn get_fill(bcx: block, vptr: ValueRef) -> ValueRef {
     let _icx = bcx.insn_ctxt("tvec::get_fill");
     Load(bcx, GEPi(bcx, vptr, [0, abi::vec_elt_fill]))
 }
+fn set_fill(bcx: block, vptr: ValueRef, fill: ValueRef) {
+    Store(bcx, fill, GEPi(bcx, vptr, [0, abi::vec_elt_fill]));
+}
+fn get_alloc(bcx: block, vptr: ValueRef) -> ValueRef {
+    Load(bcx, GEPi(bcx, vptr, [0, abi::vec_elt_alloc]))
+}
 fn get_dataptr(bcx: block, vptr: ValueRef, unit_ty: TypeRef)
     -> ValueRef {
     let _icx = bcx.insn_ctxt("tvec::get_dataptr");
@@ -185,21 +191,29 @@ fn trans_append_literal(bcx: block, vptrptr: ValueRef, vec_ty: ty::t,
     let _icx = bcx.insn_ctxt("tvec::trans_append_literal");
     let mut bcx = bcx, ccx = bcx.ccx();
     let elt_ty = ty::sequence_element_type(bcx.tcx(), vec_ty);
-    let mut ti = none;
-    let td = get_tydesc(ccx, elt_ty, ti);
-    base::lazily_emit_tydesc_glue(ccx, abi::tydesc_field_take_glue, ti);
-    let opaque_v = PointerCast(bcx, vptrptr,
-                               T_ptr(T_ptr(ccx.opaque_vec_type)));
+    let elt_llty = type_of::type_of(ccx, elt_ty);
+    let elt_sz = shape::llsize_of(ccx, elt_llty);
+    let scratch = base::alloca(bcx, elt_llty);
     for val in vals {
-        let {bcx: e_bcx, val: elt} = base::trans_temp_expr(bcx, val);
-        bcx = e_bcx;
-        let r = base::spill_if_immediate(bcx, elt, elt_ty);
-        let spilled = r.val;
-        bcx = r.bcx;
-        Call(bcx, bcx.ccx().upcalls.vec_push,
-             [opaque_v, td, PointerCast(bcx, spilled, T_ptr(T_i8()))]);
+        bcx = base::trans_expr_save_in(bcx, val, scratch);
+        let vptr = Load(bcx, vptrptr);
+        let old_fill = get_fill(bcx, vptr);
+        let new_fill = Add(bcx, old_fill, elt_sz);
+        let do_grow = ICmp(bcx, lib::llvm::IntUGT, new_fill,
+                           get_alloc(bcx, vptr));
+        bcx = base::with_cond(bcx, do_grow) {|bcx|
+            let pt = PointerCast(bcx, vptrptr,
+                                 T_ptr(T_ptr(ccx.opaque_vec_type)));
+            Call(bcx, ccx.upcalls.vec_grow, [pt, new_fill]);
+            bcx
+        };
+        let vptr = Load(bcx, vptrptr);
+        set_fill(bcx, vptr, new_fill);
+        let targetptr = pointer_add(bcx, get_dataptr(bcx, vptr, elt_llty),
+                                    old_fill);
+        bcx = call_memmove(bcx, targetptr, scratch, elt_sz).bcx;
     }
-    ret bcx;
+    bcx
 }
 
 fn trans_add(bcx: block, vec_ty: ty::t, lhs: ValueRef,
