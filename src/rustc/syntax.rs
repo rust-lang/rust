@@ -19,3 +19,8 @@ export parse;
 export ext;
 export print;
 export util;
+
+mod util {
+    import rustsyntax::util::interner;
+    export interner;
+}

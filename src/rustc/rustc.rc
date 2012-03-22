@@ -95,9 +95,6 @@ mod syntax {
         mod pprust;
         mod pp;
     }
-    mod util {
-        mod interner;
-    }
 }
 
 mod front {
