@@ -16,7 +16,7 @@ impl point_ops for point {
 }
 
 fn main() {
-    let p = {x: 10, y: 20};
+    let mut p = {x: 10, y: 20};
     p += {x: 101, y: 102};
     p -= {x: 100, y: 100};
     assert p + {x: 5, y: 5} == {x: 16, y: 27};

@@ -127,7 +127,7 @@ fn readclose(fd: libc::c_int) -> str {
     // Copied from run::program_output
     let file = os::fdopen(fd);
     let reader = io::FILE_reader(file, false);
-    let buf = "";
+    let mut buf = "";
     while !reader.eof() {
         let bytes = reader.read_bytes(4096u);
         buf += str::from_bytes(bytes);
@@ -138,8 +138,8 @@ fn readclose(fd: libc::c_int) -> str {
 
 fn generic_writer(process: fn~(markdown: str)) -> writer {
     let ch = task::spawn_listener {|po: comm::port<writeinstr>|
-        let markdown = "";
-        let keep_going = true;
+        let mut markdown = "";
+        let mut keep_going = true;
         while keep_going {
             alt comm::recv(po) {
               write(s) { markdown += s; }
@@ -281,7 +281,7 @@ fn future_writer() -> (writer, future::future<str>) {
         comm::send(chan, copy instr);
     };
     let future = future::from_fn {||
-        let res = "";
+        let mut res = "";
         loop {
             alt comm::recv(port) {
               write(s) { res += s }

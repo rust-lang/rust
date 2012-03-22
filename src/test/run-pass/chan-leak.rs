@@ -15,7 +15,7 @@ type ctx = chan<request>;
 fn request_task(c: chan<ctx>) {
     let p = port();
     send(c, chan(p));
-    let req: request;
+    let mut req: request;
     req = recv(p);
     // Need to drop req before receiving it again
     req = recv(p);
@@ -25,7 +25,7 @@ fn new_cx() -> ctx {
     let p = port();
     let ch = chan(p);
     let t = task::spawn {|| request_task(ch); };
-    let cx: ctx;
+    let mut cx: ctx;
     cx = recv(p);
     ret cx;
 }

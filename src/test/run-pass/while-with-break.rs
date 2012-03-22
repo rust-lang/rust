@@ -3,7 +3,7 @@
 
 // -*- rust -*-
 fn main() {
-    let i: int = 90;
+    let mut i: int = 90;
     while i < 100 {
         log(debug, i);
         i = i + 1;

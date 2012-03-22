@@ -5,7 +5,7 @@ enum int_wrapper {
 fn main() {
     let x = 3;
     let y = int_wrapper_ctor(&x);
-    let z : &int;
+    let mut z : &int;
     alt y {
         int_wrapper_ctor(zz) { z = zz; }
     }

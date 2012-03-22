@@ -7,7 +7,7 @@ fn main() {
     let ch = comm::chan(po);
 
     // Spawn 10 tasks each sending us back one int.
-    let i = 10;
+    let mut i = 10;
     while (i > 0) {
         log(debug, i);
         task::spawn {|| child(i, ch); };
@@ -18,7 +18,7 @@ fn main() {
     // anything back, so we deadlock here.
 
     i = 10;
-    let value = 0;
+    let mut value = 0;
     while (i > 0) {
         log(debug, i);
         value = comm::recv(po);

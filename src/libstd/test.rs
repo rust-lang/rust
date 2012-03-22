@@ -491,7 +491,7 @@ mod tests {
         let tests =
         {
         let testfn = fn~() { };
-        let tests = [];
+        let mut tests = [];
         for name: str in names {
             let test = {name: name, fn: testfn, ignore: false,
                         should_fail: false};

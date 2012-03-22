@@ -9,7 +9,7 @@ fn f1(a: {mutable x: int}, &b: int, -c: int) -> int {
 fn f2(a: int, f: fn(int)) -> int { f(1); ret a; }
 
 fn main() {
-    let a = {mutable x: 1}, b = 2, c = 3;
+    let mut a = {mutable x: 1}, b = 2, c = 3;
     assert (f1(a, b, c) == 6);
     assert (a.x == 0);
     assert (b == 10);

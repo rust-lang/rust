@@ -21,7 +21,7 @@ fn test05() {
     let po = comm::port();
     let ch = comm::chan(po);
     task::spawn {|| test05_start(ch); };
-    let value = comm::recv(po);
+    let mut value = comm::recv(po);
     log(error, value);
     value = comm::recv(po);
     log(error, value);

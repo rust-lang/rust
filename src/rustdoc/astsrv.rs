@@ -77,7 +77,7 @@ fn act(po: comm::port<msg>, source: str, parse: parser) {
         ignore_errors
     );
 
-    let keep_going = true;
+    let mut keep_going = true;
     while keep_going {
         alt comm::recv(po) {
           handle_request(f) {
@@ -147,8 +147,7 @@ fn build_session() -> (session::session, @mutable bool) {
         parse_only: false,
         no_trans: false,
         no_asm_comments: false,
-        warn_unused_imports: false,
-        enforce_mut_vars: false
+        warn_unused_imports: false
     };
 
     let codemap = codemap::new_codemap();

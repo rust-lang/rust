@@ -1,5 +1,5 @@
 fn main() {
-  let i = 0u;
+  let mut i = 0u;
   loop {
     log(error, "a");
     i += 1u;
@@ -8,7 +8,7 @@ fn main() {
     }
   }
   assert (i == 10u);
-  let is_even = false;
+  let mut is_even = false;
   loop {
     if i == 21u {
         break;

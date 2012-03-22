@@ -1,7 +1,7 @@
 
 
 fn main() {
-    let s = "a";
+    let mut s = "a";
     s += "b";
     assert (s[0] == 'a' as u8);
     assert (s[1] == 'b' as u8);

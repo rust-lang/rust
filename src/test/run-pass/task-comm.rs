@@ -19,7 +19,7 @@ fn main() {
 
 fn test00_start(ch: chan<int>, message: int, count: int) {
     #debug("Starting test00_start");
-    let i: int = 0;
+    let mut i: int = 0;
     while i < count {
         #debug("Sending Message");
         send(ch, message + 0);
@@ -36,16 +36,16 @@ fn test00() {
     let po = port();
     let ch = chan(po);
 
-    let i: int = 0;
+    let mut i: int = 0;
 
-    let results = [];
+    let mut results = [];
     while i < number_of_tasks {
         i = i + 1;
         let builder = task::task_builder();
         results += [task::future_result(builder)];
         task::run(builder) {|| test00_start(ch, i, number_of_messages);}
     }
-    let sum: int = 0;
+    let mut sum: int = 0;
     for r in results {
         i = 0;
         while i < number_of_messages { sum += recv(po); i = i + 1; }
@@ -79,14 +79,14 @@ fn test02() {
 
 fn test04_start() {
     #debug("Started task");
-    let i: int = 1024 * 1024;
+    let mut i: int = 1024 * 1024;
     while i > 0 { i = i - 1; }
     #debug("Finished task");
 }
 
 fn test04() {
     #debug("Spawning lots of tasks.");
-    let i: int = 4;
+    let mut i: int = 4;
     while i > 0 { i = i - 1; task::spawn {|| test04_start(); }; }
     #debug("Finishing up.");
 }
@@ -103,7 +103,7 @@ fn test05() {
     let po = comm::port();
     let ch = chan(po);
     task::spawn {|| test05_start(ch); };
-    let value: int;
+    let mut value: int;
     value = recv(po);
     value = recv(po);
     value = recv(po);
@@ -112,7 +112,7 @@ fn test05() {
 
 fn test06_start(&&task_number: int) {
     #debug("Started task.");
-    let i: int = 0;
+    let mut i: int = 0;
     while i < 1000000 { i = i + 1; }
     #debug("Finished task.");
 }
@@ -121,9 +121,9 @@ fn test06() {
     let number_of_tasks: int = 4;
     #debug("Creating tasks");
 
-    let i: int = 0;
+    let mut i: int = 0;
 
-    let results = [];
+    let mut results = [];
     while i < number_of_tasks {
         i = i + 1;
         let builder = task::task_builder();

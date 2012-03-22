@@ -167,7 +167,7 @@ mod test_qsort3 {
         let f1 = lt;
         let f2 = equal;
         quick_sort3::<int>(f1, f2, v1);
-        let i = 0u;
+        let mut i = 0u;
         while i < len {
             log(debug, v2[i]);
             assert (v2[i] == v1[i]);
@@ -208,7 +208,7 @@ mod test_qsort {
         fn leual(&&a: int, &&b: int) -> bool { ret a <= b; }
         let f = leual;
         quick_sort::<int>(f, v1);
-        let i = 0u;
+        let mut i = 0u;
         while i < len {
             log(debug, v2[i]);
             assert (v2[i] == v1[i]);
@@ -266,7 +266,7 @@ mod tests {
         fn le(&&a: int, &&b: int) -> bool { ret a <= b; }
         let f = le;
         let v3 = merge_sort::<int>(f, v1);
-        let i = 0u;
+        let mut i = 0u;
         while i < len {
             log(debug, v3[i]);
             assert (v3[i] == v2[i]);

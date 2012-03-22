@@ -59,7 +59,7 @@ fn parse_opts(argv: [str]) -> config {
 }
 
 fn stress_task(&&id: int) {
-    let i = 0;
+    let mut i = 0;
     loop {
         let n = 15;
         assert (fib(n) == fib(n));
@@ -69,7 +69,7 @@ fn stress_task(&&id: int) {
 }
 
 fn stress(num_tasks: int) {
-    let results = [];
+    let mut results = [];
     range(0, num_tasks) {|i|
         let builder = task::task_builder();
         results += [task::future_result(builder)];

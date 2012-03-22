@@ -617,8 +617,8 @@ mod tests {
     #[test]
     #[ignore(reason = "fails periodically on mac")]
     fn test_getenv_big() {
-        let s = "";
-        let i = 0;
+        let mut s = "";
+        let mut i = 0;
         while i < 100 { s += "aaaaaaaaaa"; i += 1; }
         let n = make_rand_name();
         setenv(n, s);
@@ -659,7 +659,7 @@ mod tests {
     fn test_env_setenv() {
         let n = make_rand_name();
 
-        let e = env();
+        let mut e = env();
         setenv(n, "VALUE");
         assert !vec::contains(e, (n, "VALUE"));
 

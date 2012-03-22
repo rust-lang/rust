@@ -1003,7 +1003,7 @@ fn iter<T>(seq: [T], f: fn(T)) {
     for elt: T in seq { f(elt); }
 }
 fn map<T, U>(seq: [T], f: fn(T) -> U) -> [U] {
-    let acc = [];
+    let mut acc = [];
     for elt in seq { acc += [f(elt)]; }
     acc
 }
@@ -1104,7 +1104,7 @@ enum animal {
   cat
 }
 
-let a: animal = dog;
+let mut a: animal = dog;
 a = cat;
 ~~~~
 
@@ -1254,7 +1254,7 @@ not given, and the name is mandatory.
 ~~~~
 impl uint_loops for uint {
     fn times(f: fn(uint)) {
-        let i = 0u;
+        let mut i = 0u;
         while i < self { f(i); i += 1u; }
     }
 }
@@ -1775,7 +1775,7 @@ expression. No allocation or destruction is entailed.
 An example of three different move expressions:
 
 ~~~~~~~~
-# let x = [mut 0];
+# let mut x = [mut 0];
 # let a = [mut 0];
 # let b = 0;
 # let y = {mut z: 0};
@@ -1804,8 +1804,8 @@ expression. No allocation or destruction is entailed.
 An example of three different swap expressions:
 
 ~~~~~~~~
-# let x = [mut 0];
-# let a = [mut 0];
+# let mut x = [mut 0];
+# let mut a = [mut 0];
 # let i = 0;
 # let y = {mut z: 0};
 # let b = {mut c: 0};
@@ -1827,7 +1827,7 @@ expression](#unary-copy-expressions). For example, the following two
 expressions have the same effect:
 
 ~~~~
-# let x = 0;
+# let mut x = 0;
 # let y = 0;
 
 x = y;
@@ -2015,7 +2015,7 @@ loop body. If it evaluates to `false`, control exits the loop.
 An example of a simple `while` expression:
 
 ~~~~
-# let i = 0;
+# let mut i = 0;
 # let println = io::println;
 
 while i < 10 {
@@ -2027,7 +2027,7 @@ while i < 10 {
 An example of a `do`-`while` expression:
 
 ~~~~
-# let i = 0;
+# let mut i = 0;
 # let println = io::println;
 
 do {
@@ -2053,7 +2053,7 @@ For example, the following (contrived) function uses a `loop` with a
 
 ~~~~
 fn count() -> bool {
-  let i = 0;
+  let mut i = 0;
   loop {
     i += 1;
     if i == 20 { ret true; }
@@ -2801,7 +2801,7 @@ fn add(x: int, y: int) -> int {
   ret x + y;
 }
 
-let x = add(5,7);
+let mut x = add(5,7);
 
 type binop = fn(int,int) -> int;
 let bo: binop = add;
@@ -2880,7 +2880,7 @@ has a set of points before and after it in the implied control flow.
 For example, this code:
 
 ~~~~~~~~
-# let s;
+# let mut s;
 
 s = "hello, world";
 io::println(s);
@@ -3154,7 +3154,10 @@ A _reference_ references a value outside the frame. It may refer to a
 value allocated in another frame *or* a boxed value in the heap. The
 reference-formation rules ensure that the referent will outlive the reference.
 
-Local variables are always implicitly mutable.
+Local variables are immutable unless declared with `let mut`.  The
+`mut` keyword applies to all local variables declared within that
+declaration (so `let mut x, y` declares two mutable variables, `x` and
+`y`).
 
 Local variables are not initialized when allocated; the entire frame worth of
 local variables are allocated at once, on frame-entry, in an uninitialized

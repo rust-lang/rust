@@ -36,9 +36,9 @@ fn zombiejesus() {
 }
 
 fn notsure() {
-    let _x;
-    let _y = (_x = 0) == (_x = 0);
-    let _z = (_x <- 0) < (_x = 0);
+    let mut _x;
+    let mut _y = (_x = 0) == (_x = 0);
+    let mut _z = (_x <- 0) < (_x = 0);
     let _a = (_x += 0) == (_x = 0);
     let _b = (_y <-> _z) == (_y <-> _z);
 }
@@ -56,7 +56,7 @@ fn canttouchthis() -> uint {
 
 fn angrydome() {
     loop { if break { } }
-    let i = 0;
+    let mut i = 0;
     do  { i += 1; if i == 1 { alt cont { _ { } } } } while false
 }
 

@@ -23,9 +23,9 @@ fn b8() -> str {
 }
 
 fn sub(t: str, n: int) -> str unsafe {
-    let b: str = "";
-    let i: uint = 0u;
-    let ns: str;
+    let mut b: str = "";
+    let mut i: uint = 0u;
+    let mut ns: str;
     alt n {
       0 { ns = "no more bottles"; }
       1 { ns = "1 bottle"; }
@@ -42,7 +42,7 @@ fn sub(t: str, n: int) -> str unsafe {
 
 /* Using an interator */
 fn ninetynine(it: fn(int)) {
-    let n: int = 100;
+    let mut n: int = 100;
     while n > 1 { n -= 1; it(n); }
 }
 

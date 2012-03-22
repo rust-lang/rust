@@ -1,5 +1,5 @@
 fn main() {
-    let i;
+    let mut i;
     i <- ~100;
     assert *i == 100;
 }

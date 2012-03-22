@@ -47,7 +47,7 @@ fn run_cfail_test(config: config, props: test_props, testfile: str) {
 }
 
 fn run_rfail_test(config: config, props: test_props, testfile: str) {
-    let procres = compile_test(config, props, testfile);
+    let mut procres = compile_test(config, props, testfile);
 
     if procres.status != 0 { fatal_procres("compilation failed!", procres); }
 
@@ -75,7 +75,7 @@ fn check_correct_failure_status(procres: procres) {
 }
 
 fn run_rpass_test(config: config, props: test_props, testfile: str) {
-    let procres = compile_test(config, props, testfile);
+    let mut procres = compile_test(config, props, testfile);
 
     if procres.status != 0 { fatal_procres("compilation failed!", procres); }
 
@@ -93,9 +93,9 @@ fn run_pretty_test(config: config, props: test_props, testfile: str) {
     let rounds =
         alt props.pp_exact { option::some(_) { 1 } option::none { 2 } };
 
-    let srcs = [result::get(io::read_whole_file_str(testfile))];
+    let mut srcs = [result::get(io::read_whole_file_str(testfile))];
 
-    let round = 0;
+    let mut round = 0;
     while round < rounds {
         logv(config, #fmt["pretty-printing round %d", round]);
         let procres = print_source(config, testfile, srcs[round]);
@@ -109,7 +109,7 @@ fn run_pretty_test(config: config, props: test_props, testfile: str) {
         round += 1;
     }
 
-    let expected =
+    let mut expected =
         alt props.pp_exact {
           option::some(file) {
             let filepath = path::connect(path::dirname(testfile), file);
@@ -117,7 +117,7 @@ fn run_pretty_test(config: config, props: test_props, testfile: str) {
           }
           option::none { srcs[vec::len(srcs) - 2u] }
         };
-    let actual = srcs[vec::len(srcs) - 1u];
+    let mut actual = srcs[vec::len(srcs) - 1u];
 
     if option::is_some(props.pp_exact) {
         // Now we have to care about line endings
@@ -176,7 +176,7 @@ actual:\n\
 
     fn make_typecheck_args(config: config, _testfile: str) -> procargs {
         let prog = config.rustc_path;
-        let args = ["-", "--no-trans", "--lib", "-L", config.build_base];
+        let mut args = ["-", "--no-trans", "--lib", "-L", config.build_base];
         args += split_maybe_args(config.rustcflags);
         ret {prog: prog, args: args};
     }
@@ -193,8 +193,8 @@ fn check_error_patterns(props: test_props,
         fatal("process did not return an error status");
     }
 
-    let next_err_idx = 0u;
-    let next_err_pat = props.error_patterns[next_err_idx];
+    let mut next_err_idx = 0u;
+    let mut next_err_pat = props.error_patterns[next_err_idx];
     for line: str in str::split_char(procres.stderr, '\n') {
         if str::contains(line, next_err_pat) {
             #debug("found error pattern %s", next_err_pat);
@@ -244,7 +244,7 @@ fn check_expected_errors(expected_errors: [errors::expected_error],
     // where line1:col1: is the starting point, line2:col2:
     // is the ending point, and * represents ANSI color codes.
     for line: str in str::split_char(procres.stderr, '\n') {
-        let was_expected = false;
+        let mut was_expected = false;
         vec::iteri(expected_errors) {|i, ee|
             if !found_flags[i] {
                 #debug["prefix=%s ee.kind=%s ee.msg=%s line=%s",
@@ -321,8 +321,8 @@ fn make_compile_args(config: config, props: test_props, extras: [str],
                      xform: fn(config, str) -> str, testfile: str) ->
    procargs {
     let prog = config.rustc_path;
-    let args = [testfile, "-o", xform(config, testfile),
-                "-L", config.build_base] + extras;
+    let mut args = [testfile, "-o", xform(config, testfile),
+                    "-L", config.build_base] + extras;
     args += split_maybe_args(config.rustcflags);
     args += split_maybe_args(props.compile_flags);
     ret {prog: prog, args: args};

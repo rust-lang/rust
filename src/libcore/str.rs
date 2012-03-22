@@ -1675,7 +1675,7 @@ mod tests {
 
     #[test]
     fn test_pop_char() {
-        let data = "ประเทศไทย中华";
+        let mut data = "ประเทศไทย中华";
         let cc = pop_char(data);
         assert "ประเทศไทย中" == data;
         assert '华' == cc;
@@ -1683,7 +1683,7 @@ mod tests {
 
     #[test]
     fn test_pop_char_2() {
-        let data2 = "华";
+        let mut data2 = "华";
         let cc2 = pop_char(data2);
         assert "" == data2;
         assert '华' == cc2;
@@ -1693,7 +1693,7 @@ mod tests {
     #[should_fail]
     #[ignore(cfg(target_os = "win32"))]
     fn test_pop_char_fail() {
-        let data = "";
+        let mut data = "";
         let _cc3 = pop_char(data);
     }
 
@@ -1887,7 +1887,7 @@ mod tests {
         assert find_str_between(data, "ab", 2u, 6u) == some(3u);
         assert find_str_between(data, "ab", 2u, 4u) == none;
 
-        let data = "ประเทศไทย中华Việt Nam";
+        let mut data = "ประเทศไทย中华Việt Nam";
         data += data;
         assert find_str_between(data, "", 0u, 43u) == some(0u);
         assert find_str_between(data, "", 6u, 43u) == some(6u);
@@ -1959,14 +1959,14 @@ mod tests {
         assert (eq("bc", unsafe::slice_bytes("abc", 1u, 3u)));
         assert (eq("", unsafe::slice_bytes("abc", 1u, 1u)));
         fn a_million_letter_a() -> str {
-            let i = 0;
-            let rs = "";
+            let mut i = 0;
+            let mut rs = "";
             while i < 100000 { rs += "aaaaaaaaaa"; i += 1; }
             ret rs;
         }
         fn half_a_million_letter_a() -> str {
-            let i = 0;
-            let rs = "";
+            let mut i = 0;
+            let mut rs = "";
             while i < 100000 { rs += "aaaaa"; i += 1; }
             ret rs;
         }
@@ -2068,14 +2068,14 @@ mod tests {
         assert "华" == slice(data, 30u, 33u);
 
         fn a_million_letter_X() -> str {
-            let i = 0;
-            let rs = "";
+            let mut i = 0;
+            let mut rs = "";
             while i < 100000 { rs += "华华华华华华华华华华"; i += 1; }
             ret rs;
         }
         fn half_a_million_letter_X() -> str {
-            let i = 0;
-            let rs = "";
+            let mut i = 0;
+            let mut rs = "";
             while i < 100000 { rs += "华华华华华"; i += 1; }
             ret rs;
         }
@@ -2164,7 +2164,7 @@ mod tests {
 
     #[test]
     fn test_shift_byte() unsafe {
-        let s = "ABC";
+        let mut s = "ABC";
         let b = unsafe::shift_byte(s);
         assert (s == "BC");
         assert (b == 65u8);
@@ -2172,7 +2172,7 @@ mod tests {
 
     #[test]
     fn test_pop_byte() unsafe {
-        let s = "ABC";
+        let mut s = "ABC";
         let b = unsafe::pop_byte(s);
         assert (s == "AB");
         assert (b == 67u8);
@@ -2264,7 +2264,7 @@ mod tests {
 
         let v: [u8] = bytes(s1);
         let s2: str = from_bytes(v);
-        let i: uint = 0u;
+        let mut i: uint = 0u;
         let n1: uint = len(s1);
         let n2: uint = vec::len::<u8>(v);
         assert (n1 == n2);
@@ -2297,7 +2297,7 @@ mod tests {
 
     #[test]
     fn test_chars_iter() {
-        let i = 0;
+        let mut i = 0;
         chars_iter("x\u03c0y") {|ch|
             alt check i {
               0 { assert ch == 'x'; }
@@ -2312,7 +2312,7 @@ mod tests {
 
     #[test]
     fn test_bytes_iter() {
-        let i = 0;
+        let mut i = 0;
 
         bytes_iter("xyz") {|bb|
             alt check i {
@@ -2330,7 +2330,7 @@ mod tests {
     fn test_split_char_iter() {
         let data = "\nMary had a little lamb\nLittle lamb\n";
 
-        let ii = 0;
+        let mut ii = 0;
 
         split_char_iter(data, ' ') {|xx|
             alt ii {
@@ -2348,7 +2348,7 @@ mod tests {
     fn test_splitn_char_iter() {
         let data = "\nMary had a little lamb\nLittle lamb\n";
 
-        let ii = 0;
+        let mut ii = 0;
 
         splitn_char_iter(data, ' ', 2u) {|xx|
             alt ii {
@@ -2365,7 +2365,7 @@ mod tests {
     fn test_words_iter() {
         let data = "\nMary had a little lamb\nLittle lamb\n";
 
-        let ii = 0;
+        let mut ii = 0;
 
         words_iter(data) {|ww|
             alt ii {
@@ -2385,7 +2385,7 @@ mod tests {
     fn test_lines_iter () {
         let lf = "\nMary had a little lamb\nLittle lamb\n";
 
-        let ii = 0;
+        let mut ii = 0;
 
         lines_iter(lf) {|x|
             alt ii {

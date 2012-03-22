@@ -4,7 +4,7 @@ import comm;
 import task;
 
 fn start(c: comm::chan<int>, i0: int) {
-    let i = i0;
+    let mut i = i0;
     while i > 0 {
         comm::send(c, 0);
         i = i - 1;

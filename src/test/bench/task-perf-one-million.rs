@@ -9,8 +9,8 @@ enum msg {
 fn calc(children: uint, parent_ch: comm::chan<msg>) {
     let port = comm::port();
     let chan = comm::chan(port);
-    let child_chs = [];
-    let sum = 0;
+    let mut child_chs = [];
+    let mut sum = 0;
 
     iter::repeat (children) {||
         task::spawn {||

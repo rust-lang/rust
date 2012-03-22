@@ -232,7 +232,7 @@ fn test_flat_map_with_option() {
 #[test]
 fn test_flat_map_with_list() {
     fn repeat(&&i: int) -> [int] {
-        let r = [];
+        let mut r = [];
         int::range(0, i) {|_j| r += [i]; }
         r
     }
@@ -246,8 +246,7 @@ fn test_flat_map_with_list() {
 
 #[test]
 fn test_repeat() {
-    let c = [],
-        i = 0u;
+    let mut c = [], i = 0u;
     repeat(5u) {||
         c += [(i * i)];
         i += 1u;

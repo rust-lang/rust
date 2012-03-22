@@ -264,8 +264,8 @@ mod tests {
         type test = {input: str, output: [u8]};
 
         fn a_million_letter_a() -> str {
-            let i = 0;
-            let rs = "";
+            let mut i = 0;
+            let mut rs = "";
             while i < 100000 { rs += "aaaaaaaaaa"; i += 1; }
             ret rs;
         }
@@ -316,7 +316,7 @@ mod tests {
         fn check_vec_eq(v0: [u8], v1: [u8]) {
             assert (vec::len::<u8>(v0) == vec::len::<u8>(v1));
             let len = vec::len::<u8>(v0);
-            let i = 0u;
+            let mut i = 0u;
             while i < len {
                 let a = v0[i];
                 let b = v1[i];
@@ -338,7 +338,7 @@ mod tests {
         // Test that it works when accepting the message in pieces
         for t: test in tests {
             let len = str::len(t.input);
-            let left = len;
+            let mut left = len;
             while left > 0u {
                 let take = (left + 1u) / 2u;
                 sh.input_str(str::slice(t.input, len - left,

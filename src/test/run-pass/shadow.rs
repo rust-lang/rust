@@ -1,7 +1,7 @@
 // -*- rust -*-
 fn foo(c: [int]) {
     let a: int = 5;
-    let b: [int] = [];
+    let mut b: [int] = [];
 
 
     alt none::<int> {

@@ -1017,7 +1017,7 @@ mod tests {
     fn test_unsafe_ptrs() unsafe {
         // Test on-stack copy-from-buf.
         let a = [1, 2, 3];
-        let ptr = unsafe::to_ptr(a);
+        let mut ptr = unsafe::to_ptr(a);
         let b = unsafe::from_buf(ptr, 3u);
         assert (len(b) == 3u);
         assert (b[0] == 1);
@@ -1039,7 +1039,7 @@ mod tests {
     #[test]
     fn test_from_fn() {
         // Test on-stack from_fn.
-        let v = from_fn(3u, square);
+        let mut v = from_fn(3u, square);
         assert (len(v) == 3u);
         assert (v[0] == 0u);
         assert (v[1] == 1u);
@@ -1058,7 +1058,7 @@ mod tests {
     #[test]
     fn test_from_elem() {
         // Test on-stack from_elem.
-        let v = from_elem(2u, 10u);
+        let mut v = from_elem(2u, 10u);
         assert (len(v) == 2u);
         assert (v[0] == 10u);
         assert (v[1] == 10u);
@@ -1093,7 +1093,7 @@ mod tests {
 
     #[test]
     fn test_tail() {
-        let a = [11];
+        let mut a = [11];
         assert (tail(a) == []);
 
         a = [11, 12];
@@ -1102,7 +1102,7 @@ mod tests {
 
     #[test]
     fn test_last() {
-        let n = last_opt([]);
+        let mut n = last_opt([]);
         assert (n == none);
         n = last_opt([1, 2, 3]);
         assert (n == some(3));
@@ -1113,7 +1113,7 @@ mod tests {
     #[test]
     fn test_slice() {
         // Test on-stack -> on-stack slice.
-        let v = slice([1, 2, 3], 1u, 3u);
+        let mut v = slice([1, 2, 3], 1u, 3u);
         assert (len(v) == 2u);
         assert (v[0] == 2);
         assert (v[1] == 3);
@@ -1138,8 +1138,8 @@ mod tests {
     #[test]
     fn test_pop() {
         // Test on-stack pop.
-        let v = [1, 2, 3];
-        let e = pop(v);
+        let mut v = [1, 2, 3];
+        let mut e = pop(v);
         assert (len(v) == 2u);
         assert (v[0] == 1);
         assert (v[1] == 2);
@@ -1159,7 +1159,7 @@ mod tests {
     #[test]
     fn test_push() {
         // Test on-stack push().
-        let v = [];
+        let mut v = [];
         push(v, 1);
         assert (len(v) == 1u);
         assert (v[0] == 1);
@@ -1174,7 +1174,7 @@ mod tests {
     #[test]
     fn test_grow() {
         // Test on-stack grow().
-        let v = [];
+        let mut v = [];
         grow(v, 2u, 1);
         assert (len(v) == 2u);
         assert (v[0] == 1);
@@ -1192,7 +1192,7 @@ mod tests {
 
     #[test]
     fn test_grow_fn() {
-        let v = [];
+        let mut v = [];
         grow_fn(v, 3u, square);
         assert (len(v) == 3u);
         assert (v[0] == 0u);
@@ -1202,7 +1202,7 @@ mod tests {
 
     #[test]
     fn test_grow_set() {
-        let v = [mutable 1, 2, 3];
+        let mut v = [mutable 1, 2, 3];
         grow_set(v, 4u, 4, 5);
         assert (len(v) == 5u);
         assert (v[0] == 1);
@@ -1215,8 +1215,8 @@ mod tests {
     #[test]
     fn test_map() {
         // Test on-stack map.
-        let v = [1u, 2u, 3u];
-        let w = map(v, square_ref);
+        let mut v = [1u, 2u, 3u];
+        let mut w = map(v, square_ref);
         assert (len(w) == 3u);
         assert (w[0] == 1u);
         assert (w[1] == 4u);
@@ -1240,15 +1240,15 @@ mod tests {
         let v0 = [1, 2, 3, 4, 5];
         let v1 = [5, 4, 3, 2, 1];
         let u = map2::<int, int, int>(v0, v1, f);
-        let i = 0;
+        let mut i = 0;
         while i < 5 { assert (v0[i] * v1[i] == u[i]); i += 1; }
     }
 
     #[test]
     fn test_filter_map() {
         // Test on-stack filter-map.
-        let v = [1u, 2u, 3u];
-        let w = filter_map(v, square_if_odd);
+        let mut v = [1u, 2u, 3u];
+        let mut w = filter_map(v, square_if_odd);
         assert (len(w) == 2u);
         assert (w[0] == 1u);
         assert (w[1] == 9u);
@@ -1287,8 +1287,8 @@ mod tests {
     #[test]
     fn test_foldl() {
         // Test on-stack fold.
-        let v = [1u, 2u, 3u];
-        let sum = foldl(0u, v, add);
+        let mut v = [1u, 2u, 3u];
+        let mut sum = foldl(0u, v, add);
         assert (sum == 6u);
 
         // Test on-heap fold.
@@ -1302,7 +1302,7 @@ mod tests {
         fn sub(&&a: int, &&b: int) -> int {
             a - b
         }
-        let v = [1, 2, 3, 4];
+        let mut v = [1, 2, 3, 4];
         let sum = foldl(0, v, sub);
         assert sum == -10;
     }
@@ -1312,28 +1312,28 @@ mod tests {
         fn sub(&&a: int, &&b: int) -> int {
             a - b
         }
-        let v = [1, 2, 3, 4];
+        let mut v = [1, 2, 3, 4];
         let sum = foldr(v, 0, sub);
         assert sum == -2;
     }
 
     #[test]
     fn test_iter_empty() {
-        let i = 0;
+        let mut i = 0;
         iter::<int>([], { |_v| i += 1 });
         assert i == 0;
     }
 
     #[test]
     fn test_iter_nonempty() {
-        let i = 0;
+        let mut i = 0;
         iter([1, 2, 3], { |v| i += v });
         assert i == 6;
     }
 
     #[test]
     fn test_iteri() {
-        let i = 0;
+        let mut i = 0;
         iteri([1, 2, 3], { |j, v|
             if i == 0 { assert v == 1; }
             assert j + 1u == v as uint;
@@ -1344,14 +1344,14 @@ mod tests {
 
     #[test]
     fn test_riter_empty() {
-        let i = 0;
+        let mut i = 0;
         riter::<int>([], { |_v| i += 1 });
         assert i == 0;
     }
 
     #[test]
     fn test_riter_nonempty() {
-        let i = 0;
+        let mut i = 0;
         riter([1, 2, 3], { |v|
             if i == 0 { assert v == 3; }
             i += v
@@ -1361,7 +1361,7 @@ mod tests {
 
     #[test]
     fn test_riteri() {
-        let i = 0;
+        let mut i = 0;
         riteri([0, 1, 2], { |j, v|
             if i == 0 { assert v == 2; }
             assert j == v as uint;
@@ -1372,7 +1372,7 @@ mod tests {
 
     #[test]
     fn test_permute() {
-        let results: [[int]];
+        let mut results: [[int]];
 
         results = [];
         permute([]) {|v| results += [v]; }
@@ -1464,7 +1464,7 @@ mod tests {
         assert position_between([], 0u, 0u, f) == none;
 
         fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
-        let v = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
+        let mut v = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
         assert position_between(v, 0u, 0u, f) == none;
         assert position_between(v, 0u, 1u, f) == none;
@@ -1493,7 +1493,7 @@ mod tests {
 
         fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
         fn g(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'd' }
-        let v = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
+        let mut v = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
         assert find(v, f) == some((1, 'b'));
         assert find(v, g) == none;
@@ -1504,7 +1504,7 @@ mod tests {
         assert find_between([], 0u, 0u, f) == none;
 
         fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
-        let v = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
+        let mut v = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
         assert find_between(v, 0u, 0u, f) == none;
         assert find_between(v, 0u, 1u, f) == none;
@@ -1533,7 +1533,7 @@ mod tests {
 
         fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
         fn g(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'd' }
-        let v = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
+        let mut v = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
         assert position(v, f) == some(1u);
         assert position(v, g) == none;
@@ -1544,7 +1544,7 @@ mod tests {
         assert rposition_between([], 0u, 0u, f) == none;
 
         fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
-        let v = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
+        let mut v = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
         assert rposition_between(v, 0u, 0u, f) == none;
         assert rposition_between(v, 0u, 1u, f) == none;
@@ -1573,7 +1573,7 @@ mod tests {
 
         fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
         fn g(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'd' }
-        let v = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
+        let mut v = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
         assert rfind(v, f) == some((3, 'b'));
         assert rfind(v, g) == none;
@@ -1584,7 +1584,7 @@ mod tests {
         assert rfind_between([], 0u, 0u, f) == none;
 
         fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
-        let v = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
+        let mut v = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
         assert rfind_between(v, 0u, 0u, f) == none;
         assert rfind_between(v, 0u, 1u, f) == none;
@@ -1740,7 +1740,7 @@ mod tests {
 
     #[test]
     fn test_unshift() {
-        let x = [1, 2, 3];
+        let mut x = [1, 2, 3];
         unshift(x, 0);
         assert x == [0, 1, 2, 3];
     }

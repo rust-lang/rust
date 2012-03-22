@@ -90,9 +90,9 @@ fn sectionalize(desc: option<str>) -> (option<str>, [doc::section]) {
 
     let lines = str::lines(option::get(desc));
 
-    let new_desc = none;
-    let current_section = none;
-    let sections = [];
+    let mut new_desc = none;
+    let mut current_section = none;
+    let mut sections = [];
 
     for line in lines {
         alt parse_header(line) {

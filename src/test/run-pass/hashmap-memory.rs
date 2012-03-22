@@ -44,7 +44,7 @@ mod map_reduce {
 
         fn emit(im: map::hashmap<str, int>, ctrl: chan<ctrl_proto>, key: str,
                 val: str) {
-            let c;
+            let mut c;
             alt im.find(key) {
               some(_c) { c = _c }
               none {
@@ -69,19 +69,19 @@ mod map_reduce {
         // This task becomes the master control task. It spawns others
         // to do the rest.
 
-        let reducers: map::hashmap<str, int>;
+        let mut reducers: map::hashmap<str, int>;
 
         reducers = map::str_hash();
 
         start_mappers(chan(ctrl), inputs);
 
-        let num_mappers = vec::len(inputs) as int;
+        let mut num_mappers = vec::len(inputs) as int;
 
         while num_mappers > 0 {
             alt recv(ctrl) {
               mapper_done { num_mappers -= 1; }
               find_reducer(k, cc) {
-                let c;
+                let mut c;
                 alt reducers.find(str::from_bytes(k)) {
                   some(_c) { c = _c; }
                   none { c = 0; }

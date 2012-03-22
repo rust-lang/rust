@@ -126,7 +126,7 @@ mod tests {
         assert (d.peek_front() == 42);
         log(debug, d.peek_back());
         assert (d.peek_back() == 137);
-        let i: int = d.pop_front();
+        let mut i: int = d.pop_front();
         log(debug, i);
         assert (i == 42);
         i = d.pop_back();

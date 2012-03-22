@@ -51,7 +51,7 @@ fn next(b: bottle) -> bottle {
 fn more(b: bottle) -> bool { alt b { none { ret false; } _ { ret true; } } }
 
 fn main() {
-    let b: bottle = multiple(99);
-    let running: bool = true;
+    let mut b: bottle = multiple(99);
+    let mut running: bool = true;
     while running { show(b); #debug(""); running = more(b); b = next(b); }
 }

@@ -6,7 +6,7 @@ fn two(it: fn(int)) { it(0); it(1); }
 
 fn main() {
     let a: [mutable int] = [mutable -1, -1, -1, -1];
-    let p: int = 0;
+    let mut p: int = 0;
     two {|i|
         two {|j| a[p] = 10 * i + j; p += 1; };
     };

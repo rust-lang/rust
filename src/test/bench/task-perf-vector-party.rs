@@ -5,7 +5,7 @@
 
 fn f(&&n: uint) {
     uint::range(0u, n) {|i|
-        let v: [u8] = [];
+        let mut v: [u8] = [];
         vec::reserve(v, 1000u);
     }
 }

@@ -217,7 +217,7 @@ fn replace_ty_in_crate(crate: ast::crate, i: uint, newty: ast::ty, tm: test_mode
 }
 
 fn under(n: uint, it: fn(uint)) {
-    let i: uint = 0u;
+    let mut i: uint = 0u;
     while i < n { it(i); i += 1u; }
 }
 
@@ -487,9 +487,9 @@ fn file_might_not_converge(filename: str) -> bool {
 
 fn check_roundtrip_convergence(code: @str, maxIters: uint) {
 
-    let i = 0u;
-    let newv = code;
-    let oldv = code;
+    let mut i = 0u;
+    let mut newv = code;
+    let mut oldv = code;
 
     while i < maxIters {
         oldv = newv;
@@ -576,7 +576,7 @@ fn main(args: [str]) {
         #error("usage: %s <testdir>", args[0]);
         ret;
     }
-    let files = [];
+    let mut files = [];
     let root = args[1];
 
     find_rust_files(files, root);

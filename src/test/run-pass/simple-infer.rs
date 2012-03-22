@@ -1,3 +1,3 @@
 
 
-fn main() { let n; n = 1; log(debug, n); }
+fn main() { let mut n; n = 1; log(debug, n); }

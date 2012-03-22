@@ -5,7 +5,7 @@ fn main() {
     swap(a, 2, 4);
     assert (a[2] == 4);
     assert (a[4] == 2);
-    let n = 42;
+    let mut n = 42;
     n <-> a[0];
     assert (a[0] == 42);
     assert (n == 0);

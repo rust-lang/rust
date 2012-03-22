@@ -8,7 +8,7 @@ fn main() {
     }
 
     // Usable at all:
-    let any_negative = vec::any(v) { |e| float::is_negative(e) };
+    let mut any_negative = vec::any(v) { |e| float::is_negative(e) };
     assert any_negative;
 
     // Higher precedence than assignments:

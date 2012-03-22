@@ -9,7 +9,7 @@ enum color {
 }
 
 fn process(c: color) -> int {
-    let x: int;
+    let mut x: int;
     alt c {
       rgb(r, _, _) { #debug("rgb"); log(debug, r); x = r; }
       rgba(_, _, _, a) { #debug("rgba"); log(debug, a); x = a; }

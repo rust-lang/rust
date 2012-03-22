@@ -9,13 +9,13 @@ fn fannkuch(n: int) -> int {
     let perm = vec::to_mut(vec::from_elem(n as uint, 0));
     let perm1 = vec::to_mut(vec::from_fn(n as uint, perm1init));
     let count = vec::to_mut(vec::from_elem(n as uint, 0));
-    let f = 0;
-    let i = 0;
-    let k = 0;
-    let r = 0;
-    let flips = 0;
-    let nperm = 0;
-    let checksum = 0;
+    let mut f = 0;
+    let mut i = 0;
+    let mut k = 0;
+    let mut r = 0;
+    let mut flips = 0;
+    let mut nperm = 0;
+    let mut checksum = 0;
     r = n;
     while r > 0 {
         i = 0;
@@ -40,7 +40,7 @@ fn fannkuch(n: int) -> int {
         if nperm & 0x1 == 0 { checksum += f; } else { checksum -= f; }
         // Use incremental change to generate another permutation
 
-        let go = true;
+        let mut go = true;
         while go {
             if r == n {
                 io::println(#fmt("%d", checksum));

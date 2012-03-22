@@ -1,7 +1,7 @@
 
 
 fn range(lo: uint, hi: uint, it: fn(uint)) {
-    let lo_ = lo;
+    let mut lo_ = lo;
     while lo_ < hi { it(lo_); lo_ += 1u; }
 }
 

@@ -3,7 +3,7 @@ fn f(&i: ~int) {
 }
 
 fn main() {
-    let i = ~100;
+    let mut i = ~100;
     f(i);
     assert *i == 200;
 }

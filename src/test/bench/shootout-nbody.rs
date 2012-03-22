@@ -21,7 +21,7 @@ fn main(args: [str]) {
     };
     let bodies: [Body::props] = NBodySystem::MakeNBodySystem();
     io::println(#fmt("%f", NBodySystem::energy(bodies)));
-    let i: int = 0;
+    let mut i: int = 0;
     while i < n { NBodySystem::advance(bodies, 0.01); i += 1; }
     io::println(#fmt("%f", NBodySystem::energy(bodies)));
 }
@@ -37,11 +37,11 @@ mod NBodySystem {
             [Body::sun(), Body::jupiter(), Body::saturn(), Body::uranus(),
              Body::neptune()];
 
-        let px: float = 0.0;
-        let py: float = 0.0;
-        let pz: float = 0.0;
+        let mut px: float = 0.0;
+        let mut py: float = 0.0;
+        let mut pz: float = 0.0;
 
-        let i: int = 0;
+        let mut i: int = 0;
         while i < 5 {
             px += bodies[i].vx * bodies[i].mass;
             py += bodies[i].vy * bodies[i].mass;
@@ -58,9 +58,9 @@ mod NBodySystem {
 
     fn advance(bodies: [Body::props], dt: float) {
 
-        let i: int = 0;
+        let mut i: int = 0;
         while i < 5 {
-            let j: int = i + 1;
+            let mut j: int = i + 1;
             while j < 5 { advance_one(bodies[i], bodies[j], dt); j += 1; }
 
             i += 1;
@@ -96,20 +96,20 @@ mod NBodySystem {
     }
 
     fn energy(bodies: [Body::props]) -> float unsafe {
-        let dx: float;
-        let dy: float;
-        let dz: float;
-        let distance: float;
-        let e: float = 0.0;
+        let mut dx: float;
+        let mut dy: float;
+        let mut dz: float;
+        let mut distance: float;
+        let mut e: float = 0.0;
 
-        let i: int = 0;
+        let mut i: int = 0;
         while i < 5 {
             e +=
                 0.5 * bodies[i].mass *
                     (bodies[i].vx * bodies[i].vx + bodies[i].vy * bodies[i].vy
                          + bodies[i].vz * bodies[i].vz);
 
-            let j: int = i + 1;
+            let mut j: int = i + 1;
             while j < 5 {
                 dx = bodies[i].x - bodies[j].x;
                 dy = bodies[i].y - bodies[j].y;

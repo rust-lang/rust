@@ -5,8 +5,8 @@ import comm::send;
 fn main() { test00(); }
 
 fn test00() {
-    let r: int = 0;
-    let sum: int = 0;
+    let mut r: int = 0;
+    let mut sum: int = 0;
     let p = comm::port();
     let c = comm::chan(p);
     send(c, 1);

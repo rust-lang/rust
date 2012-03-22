@@ -93,9 +93,9 @@ fn error(msg: str) {
 fn load_link(mis: [@ast::meta_item]) -> (option<str>,
                                          option<str>,
                                          option<str>) {
-    let name = none;
-    let vers = none;
-    let uuid = none;
+    let mut name = none;
+    let mut vers = none;
+    let mut uuid = none;
     for a: @ast::meta_item in mis {
         alt a.node {
             ast::meta_name_value(v, {node: ast::lit_str(s), span: _}) {
@@ -124,12 +124,12 @@ fn load_pkg(filename: str) -> option<pkg> {
     };
     let c = parser::parse_crate_from_crate_file(filename, [], sess);
 
-    let name = none;
-    let vers = none;
-    let uuid = none;
-    let desc = none;
-    let sigs = none;
-    let crate_type = none;
+    let mut name = none;
+    let mut vers = none;
+    let mut uuid = none;
+    let mut desc = none;
+    let mut sigs = none;
+    let mut crate_type = none;
 
     for a in c.node.attrs {
         alt a.node.value.node {
@@ -273,7 +273,7 @@ fn load_one_source_package(&src: source, p: map::hashmap<str, json::json>) {
         _ { none }
     };
 
-    let tags = [];
+    let mut tags = [];
     alt p.find("tags") {
         some(json::list(js)) {
             for j in js {
@@ -390,7 +390,7 @@ fn configure(opts: options) -> cargo {
     let sources = map::str_hash::<source>();
     try_parse_sources(path::connect(syscargo, "sources.json"), sources);
     try_parse_sources(path::connect(syscargo, "local-sources.json"), sources);
-    let c = {
+    let mut c = {
         pgp: pgp::supported(),
         root: p,
         bindir: path::connect(p, "bin"),
@@ -408,7 +408,7 @@ fn configure(opts: options) -> cargo {
     need_dir(c.bindir);
 
     sources.keys { |k|
-        let s = sources.get(k);
+        let mut s = sources.get(k);
         load_source_packages(c, s);
         sources.insert(k, s);
     };
@@ -597,7 +597,7 @@ fn cargo_suggestion(c: cargo, syncing: bool, fallback: fn())
         ret;
     }
     if !syncing {
-        let npkg = 0u;
+        let mut npkg = 0u;
         c.sources.values({ |v| npkg += vec::len(v.packages) });
         if npkg == 0u {
             error("No packages known. You may wish to run " +
@@ -609,7 +609,7 @@ fn cargo_suggestion(c: cargo, syncing: bool, fallback: fn())
 }
 
 fn install_uuid(c: cargo, wd: str, uuid: str) {
-    let ps = [];
+    let mut ps = [];
     for_each_package(c, { |s, p|
         info(#fmt["%s ? %s", p.uuid, uuid]);
         if p.uuid == uuid {
@@ -631,7 +631,7 @@ fn install_uuid(c: cargo, wd: str, uuid: str) {
 }
 
 fn install_named(c: cargo, wd: str, name: str) {
-    let ps = [];
+    let mut ps = [];
     for_each_package(c, { |s, p|
         if p.name == name {
             vec::grow(ps, 1u, (s, p));
@@ -698,7 +698,7 @@ fn cmd_install(c: cargo) unsafe {
     };
 
     if str::starts_with(target, "uuid:") {
-        let uuid = rest(target, 5u);
+        let mut uuid = rest(target, 5u);
         alt str::find_char(uuid, '/') {
             option::some(idx) {
                let source = str::slice(uuid, 0u, idx);
@@ -710,7 +710,7 @@ fn cmd_install(c: cargo) unsafe {
             }
         }
     } else {
-        let name = target;
+        let mut name = target;
         alt str::find_char(name, '/') {
             option::some(idx) {
                let source = str::slice(name, 0u, idx);
@@ -820,7 +820,7 @@ fn cmd_init(c: cargo) {
 }
 
 fn print_pkg(s: source, p: package) {
-    let m = s.name + "/" + p.name + " (" + p.uuid + ")";
+    let mut m = s.name + "/" + p.name + " (" + p.uuid + ")";
     if vec::len(p.tags) > 0u {
         m = m + " [" + str::connect(p.tags, ", ") + "]";
     }
@@ -842,7 +842,7 @@ fn cmd_search(c: cargo) {
         cmd_usage();
         ret;
     }
-    let n = 0;
+    let mut n = 0;
     let name = c.opts.free[2];
     let tags = vec::slice(c.opts.free, 3u, vec::len(c.opts.free));
     for_each_package(c, { |s, p|

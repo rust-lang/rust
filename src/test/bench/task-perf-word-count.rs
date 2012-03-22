@@ -31,7 +31,7 @@ fn map(input: str, emit: map_reduce::putter) {
 }
 
 fn reduce(_word: str, get: map_reduce::getter) {
-    let count = 0;
+    let mut count = 0;
 
     loop { alt get() { some(_) { count += 1; } none { break; } } }
 }
@@ -60,7 +60,7 @@ mod map_reduce {
 
     fn start_mappers(ctrl: chan<ctrl_proto>, -inputs: [str]) ->
        [future::future<task::task_result>] {
-        let results = [];
+        let mut results = [];
         for i: str in inputs {
             let builder = task::task_builder();
             results += [task::future_result(builder)];
@@ -75,7 +75,7 @@ mod map_reduce {
 
         fn emit(im: map::hashmap<str, chan<reduce_proto>>,
                 ctrl: chan<ctrl_proto>, key: str, val: int) {
-            let c;
+            let mut c;
             alt im.find(key) {
               some(_c) {
                 c = _c;
@@ -134,12 +134,12 @@ mod map_reduce {
         // This task becomes the master control task. It task::_spawns
         // to do the rest.
 
-        let reducers: map::hashmap<str, chan<reduce_proto>>;
+        let mut reducers: map::hashmap<str, chan<reduce_proto>>;
 
         reducers = map::str_hash();
 
-        let num_mappers = vec::len(inputs) as int;
-        let results = start_mappers(chan(ctrl), inputs);
+        let mut num_mappers = vec::len(inputs) as int;
+        let mut results = start_mappers(chan(ctrl), inputs);
 
         while num_mappers > 0 {
             alt recv(ctrl) {
@@ -148,7 +148,7 @@ mod map_reduce {
                 num_mappers -= 1;
               }
               find_reducer(k, cc) {
-                let c;
+                let mut c;
                 // log(error, "finding reducer for " + k);
                 alt reducers.find(k) {
                   some(_c) {
@@ -191,7 +191,7 @@ fn main(argv: [str]) {
     map_reduce::map_reduce(inputs);
     let stop = time::precise_time_ns();
 
-    let elapsed = stop - start;
+    let mut elapsed = stop - start;
     elapsed /= 1000000u64;
 
     log(error, "MapReduce completed in "
@@ -199,7 +199,7 @@ fn main(argv: [str]) {
 }
 
 fn read_word(r: io::reader) -> option<str> {
-    let w = "";
+    let mut w = "";
 
     while !r.eof() {
         let c = r.read_char();

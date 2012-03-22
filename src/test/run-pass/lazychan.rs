@@ -7,7 +7,7 @@ import comm::*;
 fn main() {
     let p = port();
     let ch = chan(p);
-    let y: int;
+    let mut y: int;
 
     task::spawn {|| child(ch); };
     y = recv(p);

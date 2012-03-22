@@ -8,10 +8,10 @@ fn eval_A(i: uint, j: uint) -> float {
 
 fn eval_A_times_u(u: [const float], Au: [mutable float]) {
     let N = vec::len(u);
-    let i = 0u;
+    let mut i = 0u;
     while i < N {
         Au[i] = 0.0;
-        let j = 0u;
+        let mut j = 0u;
         while j < N {
             Au[i] += eval_A(i, j) * u[j];
             j += 1u;
@@ -22,10 +22,10 @@ fn eval_A_times_u(u: [const float], Au: [mutable float]) {
 
 fn eval_At_times_u(u: [const float], Au: [mutable float]) {
     let N = vec::len(u);
-    let i = 0u;
+    let mut i = 0u;
     while i < N {
         Au[i] = 0.0;
-        let j = 0u;
+        let mut j = 0u;
         while j < N {
             Au[i] += eval_A(j, i) * u[j];
             j += 1u;
@@ -50,16 +50,16 @@ fn main(args: [str]) {
 
     let u = vec::to_mut(vec::from_elem(N, 1.0));
     let v = vec::to_mut(vec::from_elem(N, 0.0));
-    let i = 0u;
+    let mut i = 0u;
     while i < 10u {
         eval_AtA_times_u(u, v);
         eval_AtA_times_u(v, u);
         i += 1u;
     }
 
-    let vBv = 0.0;
-    let vv = 0.0;
-    let i = 0u;
+    let mut vBv = 0.0;
+    let mut vv = 0.0;
+    let mut i = 0u;
     while i < N {
         vBv += u[i] * v[i];
         vv += v[i] * v[i];

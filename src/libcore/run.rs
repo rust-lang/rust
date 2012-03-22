@@ -366,7 +366,7 @@ mod tests {
             // Copied from run::program_output
             let file = os::fdopen(fd);
             let reader = io::FILE_reader(file, false);
-            let buf = "";
+            let mut buf = "";
             while !reader.eof() {
                 let bytes = reader.read_bytes(4096u);
                 buf += str::from_bytes(bytes);

@@ -59,7 +59,7 @@ fn solve_grid(g: grid_t) {
             drop_colors(g, avail, row, col);
 
             // find first remaining color that is available
-            let i = 1 as uint;
+            let mut i = 1 as uint;
             while i < (10 as uint) { /* FIXME llvm ctlhd */
                 if bitv::get(avail, i) {
                     g[row][col] = i as u8;
@@ -94,7 +94,7 @@ fn solve_grid(g: grid_t) {
         }
     }
 
-    let work: [(u8, u8)] = []; /* queue of uncolored fields */
+    let mut work: [(u8, u8)] = []; /* queue of uncolored fields */
     u8::range(0u8, 9u8) { |row|
         u8::range(0u8, 9u8) { |col|
             let color = (*g)[row][col];
@@ -102,7 +102,7 @@ fn solve_grid(g: grid_t) {
         }
     }
 
-    let ptr = 0u;
+    let mut ptr = 0u;
     let end = vec::len(work);
     while (ptr < end) {
         let (row, col) = work[ptr];

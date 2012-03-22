@@ -12,7 +12,7 @@ fn test00() {
     task::run(builder) {|| start(i); };
 
     // Sleep long enough for the task to finish.
-    let i = 0;
+    let mut i = 0;
     while i < 10000 {
         task::yield();
         i += 1;

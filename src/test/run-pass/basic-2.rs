@@ -15,7 +15,7 @@ fn main() {
     let ch = chan(p);
     task::spawn {|| a(ch); };
     task::spawn {|| b(ch); };
-    let n: int = 0;
+    let mut n: int = 0;
     n = recv(p);
     n = recv(p);
     #debug("Finished.");

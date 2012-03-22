@@ -46,7 +46,7 @@ fn to_assoc_list<K:copy, V:copy>(
     map: map::hashmap<K, V>
 ) -> [(K, V)] {
 
-    let vec = [];
+    let mut vec = [];
     map.items {|k, v|
         vec += [(k, v)];
     }
@@ -183,7 +183,7 @@ fn build_reexport_path_map(srv: astsrv::srv, -def_map: def_map) -> path_map {
             };
             let modpath = ast_map::path_to_str(vec::init(*path));
 
-            let reexportdocs = [];
+            let mut reexportdocs = [];
             for def in defs {
                 if !def.reexp { cont; }
                 alt def_map.find(def.id) {

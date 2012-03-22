@@ -1,6 +1,6 @@
 fn main() {
     let u = {x: 10, y: @{a: 20}};
-    let {x: x, y: @{a: a}} = u;
+    let mut {x: x, y: @{a: a}} = u;
     x = 100;
     a = 100;
     assert (x == 100);

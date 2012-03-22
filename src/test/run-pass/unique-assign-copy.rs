@@ -1,7 +1,7 @@
 fn main() {
     let i = ~mutable 1;
     // Should be a copy
-    let j;
+    let mut j;
     j = i;
     *i = 2;
     *j = 3;

@@ -9,9 +9,9 @@ type expected_error = { line: uint, kind: str, msg: str };
 
 // Load any test directives embedded in the file
 fn load_errors(testfile: str) -> [expected_error] {
-    let error_patterns = [];
+    let mut error_patterns = [];
     let rdr = result::get(io::file_reader(testfile));
-    let line_num = 1u;
+    let mut line_num = 1u;
     while !rdr.eof() {
         let ln = rdr.read_line();
         error_patterns += parse_expected(line_num, ln);
@@ -22,7 +22,7 @@ fn load_errors(testfile: str) -> [expected_error] {
 
 fn parse_expected(line_num: uint, line: str) -> [expected_error] unsafe {
     let error_tag = "//!";
-    let idx;
+    let mut idx;
     alt str::find_str(line, error_tag) {
          option::none { ret []; }
          option::some(nn) { idx = (nn as uint) + str::len(error_tag); }
@@ -30,7 +30,7 @@ fn parse_expected(line_num: uint, line: str) -> [expected_error] unsafe {
 
     // "//!^^^ kind msg" denotes a message expected
     // three lines above current line:
-    let adjust_line = 0u;
+    let mut adjust_line = 0u;
     let len = str::len(line);
     while idx < len && line[idx] == ('^' as u8) {
         adjust_line += 1u;

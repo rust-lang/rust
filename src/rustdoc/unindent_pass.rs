@@ -19,8 +19,8 @@ fn mk_pass() -> pass {
 
 fn unindent(s: str) -> str {
     let lines = str::lines_any(s);
-    let saw_first_line = false;
-    let saw_second_line = false;
+    let mut saw_first_line = false;
+    let mut saw_second_line = false;
     let min_indent = vec::foldl(uint::max_value, lines) {|min_indent, line|
 
         // After we see the first non-whitespace line, look at
@@ -46,7 +46,7 @@ fn unindent(s: str) -> str {
             min_indent
         } else {
             saw_first_line = true;
-            let spaces = 0u;
+            let mut spaces = 0u;
             str::all(line) {|char|
                 // Only comparing against space because I wouldn't
                 // know what to do with mixed whitespace chars

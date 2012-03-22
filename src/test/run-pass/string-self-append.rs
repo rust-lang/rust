@@ -3,9 +3,9 @@ import str;
 
 fn main() {
     // Make sure we properly handle repeated self-appends.
-    let a: str = "A";
-    let i = 20;
-    let expected_len = 1u;
+    let mut a: str = "A";
+    let mut i = 20;
+    let mut expected_len = 1u;
     while i > 0 {
         log(error, str::len(a));
         assert (str::len(a) == expected_len);

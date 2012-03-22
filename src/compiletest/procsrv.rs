@@ -60,9 +60,9 @@ fn run(lib_path: str, prog: str, args: [str],
         comm::send(ch, (1, output));
     };
     let status = run::waitpid(pid);
-    let errs = "";
-    let outs = "";
-    let count = 2;
+    let mut errs = "";
+    let mut outs = "";
+    let mut count = 2;
     while count > 0 {
         let stream = comm::recv(p);
         alt check stream {
@@ -91,7 +91,7 @@ fn readclose(fd: c_int) -> str {
     // Copied from run::program_output
     let file = os::fdopen(fd);
     let reader = io::FILE_reader(file, false);
-    let buf = "";
+    let mut buf = "";
     while !reader.eof() {
         let bytes = reader.read_bytes(4096u);
         buf += str::from_bytes(bytes);

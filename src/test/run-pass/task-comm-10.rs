@@ -6,8 +6,8 @@ fn start(c: comm::chan<comm::chan<str>>) {
     let p = comm::port();
     comm::send(c, comm::chan(p));
 
-    let a;
-    let b;
+    let mut a;
+    let mut b;
     a = comm::recv(p);
     assert a == "A";
     log(error, a);

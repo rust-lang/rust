@@ -25,7 +25,7 @@ fn main(args: [str]) {
         8
     };
     let min_depth = 4;
-    let max_depth;
+    let mut max_depth;
     if min_depth + 2 > n {
         max_depth = min_depth + 2;
     } else { max_depth = n; }
@@ -35,13 +35,13 @@ fn main(args: [str]) {
                           stretch_depth,
                           item_check(stretch_tree)));
     let long_lived_tree = bottom_up_tree(0, max_depth);
-    let depth = min_depth;
+    let mut depth = min_depth;
     while depth <= max_depth {
         let iterations = int::pow(2, (max_depth - depth + min_depth) as uint);
-        let chk = 0;
-        let i = 1;
+        let mut chk = 0;
+        let mut i = 1;
         while i <= iterations {
-            let temp_tree = bottom_up_tree(i, depth);
+            let mut temp_tree = bottom_up_tree(i, depth);
             chk += item_check(temp_tree);
             temp_tree = bottom_up_tree(-i, depth);
             chk += item_check(temp_tree);

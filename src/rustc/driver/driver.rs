@@ -422,7 +422,6 @@ fn build_session_options(match: getopts::match,
     let cfg = parse_cfgspecs(getopts::opt_strs(match, "cfg"));
     let test = opt_present(match, "test");
     let warn_unused_imports = opt_present(match, "warn-unused-imports");
-    let enforce_mut_vars = opt_present(match, "enforce-mut-vars");
     let sopts: @session::options =
         @{crate_type: crate_type,
           static: static,
@@ -444,8 +443,7 @@ fn build_session_options(match: getopts::match,
           parse_only: parse_only,
           no_trans: no_trans,
           no_asm_comments: no_asm_comments,
-          warn_unused_imports: warn_unused_imports,
-          enforce_mut_vars: enforce_mut_vars};
+          warn_unused_imports: warn_unused_imports};
     ret sopts;
 }
 

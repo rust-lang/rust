@@ -1281,18 +1281,18 @@ mod tests {
     #[test]
     fn of_string2() {
         let buf = @ mutable "1234567890";
-        let i = 0;
+        let mut i = 0;
         while i < 10 { *buf = *buf + *buf; i+=1;}
         let sample = @*buf;
         let r      = of_str(sample);
         assert char_len(r) == str::char_len(*sample);
         assert rope_to_string(r) == *sample;
 
-        let string_iter = 0u;
+        let mut string_iter = 0u;
         let string_len  = str::len(*sample);
         let rope_iter   = iterator::char::start(r);
-        let equal       = true;
-        let pos         = 0u;
+        let mut equal   = true;
+        let mut pos     = 0u;
         while equal {
             alt(node::char_iterator::next(rope_iter)) {
               option::none {
@@ -1314,12 +1314,12 @@ mod tests {
     #[test]
     fn iter1() {
         let buf = @ mutable "1234567890";
-        let i = 0;
+        let mut i = 0;
         while i < 10 { *buf = *buf + *buf; i+=1;}
         let sample = @*buf;
         let r      = of_str(sample);
 
-        let len = 0u;
+        let mut len = 0u;
         let it  = iterator::char::start(r);
         loop {
             alt(node::char_iterator::next(it)) {
@@ -1335,11 +1335,11 @@ mod tests {
     fn bal1() {
         let init = @ "1234567890";
         let buf  = @ mutable * init;
-        let i = 0;
+        let mut i = 0;
         while i < 8 { *buf = *buf + *buf; i+=1;}
         let sample = @*buf;
         let r1     = of_str(sample);
-        let r2     = of_str(init);
+        let mut r2 = of_str(init);
         i = 0;
         while i < 8 { r2 = append_rope(r2, r2); i+= 1;}
 
@@ -1354,19 +1354,19 @@ mod tests {
     #[test]
     fn char_at1() {
         //Generate a large rope
-        let r = of_str(@ "123456789");
+        let mut r = of_str(@ "123456789");
         uint::range(0u, 10u){|_i|
             r = append_rope(r, r);
         }
 
         //Copy it in the slowest possible way
-        let r2 = empty();
+        let mut r2 = empty();
         uint::range(0u, char_len(r)){|i|
             r2 = append_char(r2, char_at(r, i));
         }
         assert eq(r, r2);
 
-        let r3 = empty();
+        let mut r3 = empty();
         uint::range(0u, char_len(r)){|i|
             r3 = prepend_char(r3, char_at(r, char_len(r) - i - 1u));
         }
@@ -1387,7 +1387,7 @@ mod tests {
     fn concat1() {
         //Generate a reasonable rope
         let chunk = of_str(@ "123456789");
-        let r = empty();
+        let mut r = empty();
         uint::range(0u, 10u){|_i|
             r = append_rope(r, chunk);
         }

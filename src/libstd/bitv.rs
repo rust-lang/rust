@@ -234,8 +234,8 @@ fn eq_vec(v0: bitv, v1: [uint]) -> bool {
 mod tests {
     #[test]
     fn test_0_elements() {
-        let act;
-        let exp;
+        let mut act;
+        let mut exp;
         act = bitv(0u, false);
         exp = vec::from_elem::<uint>(0u, 0u);
         assert (eq_vec(act, exp));
@@ -243,7 +243,7 @@ mod tests {
 
     #[test]
     fn test_1_element() {
-        let act;
+        let mut act;
         act = bitv(1u, false);
         assert (eq_vec(act, [0u]));
         act = bitv(1u, true);
@@ -252,7 +252,7 @@ mod tests {
 
     #[test]
     fn test_10_elements() {
-        let act;
+        let mut act;
         // all 0
 
         act = bitv(10u, false);
@@ -291,7 +291,7 @@ mod tests {
 
     #[test]
     fn test_31_elements() {
-        let act;
+        let mut act;
         // all 0
 
         act = bitv(31u, false);
@@ -364,7 +364,7 @@ mod tests {
 
     #[test]
     fn test_32_elements() {
-        let act;
+        let mut act;
         // all 0
 
         act = bitv(32u, false);
@@ -439,7 +439,7 @@ mod tests {
 
     #[test]
     fn test_33_elements() {
-        let act;
+        let mut act;
         // all 0
 
         act = bitv(33u, false);

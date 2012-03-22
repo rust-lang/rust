@@ -30,7 +30,7 @@ fn main() {
     assert (oo as int == 0xd6);
 
     fn check_str_eq(a: str, b: str) {
-        let i: int = 0;
+        let mut i: int = 0;
         for ab: u8 in a {
             log(debug, i);
             log(debug, ab);

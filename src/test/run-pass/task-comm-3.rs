@@ -9,7 +9,7 @@ fn main() { #debug("===== WITHOUT THREADS ====="); test00(); }
 
 fn test00_start(ch: chan<int>, message: int, count: int) {
     #debug("Starting test00_start");
-    let i: int = 0;
+    let mut i: int = 0;
     while i < count {
         #debug("Sending Message");
         send(ch, message + 0);
@@ -27,10 +27,10 @@ fn test00() {
     let po = comm::port();
     let ch = chan(po);
 
-    let i: int = 0;
+    let mut i: int = 0;
 
     // Create and spawn tasks...
-    let results = [];
+    let mut results = [];
     while i < number_of_tasks {
         let builder = task::task_builder();
         results += [task::future_result(builder)];
@@ -41,7 +41,7 @@ fn test00() {
     }
 
     // Read from spawned tasks...
-    let sum = 0;
+    let mut sum = 0;
     for r in results {
         i = 0;
         while i < number_of_messages {

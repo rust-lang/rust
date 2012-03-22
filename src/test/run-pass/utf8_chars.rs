@@ -19,7 +19,7 @@ fn main() {
     assert (!str::is_utf8([0xc0_u8]));
     assert (!str::is_utf8([0xc0_u8, 0x10_u8]));
 
-    let stack = "a×c€";
+    let mut stack = "a×c€";
     assert (str::pop_char(stack) == '€');
     assert (str::pop_char(stack) == 'c');
     str::push_char(stack, 'u');

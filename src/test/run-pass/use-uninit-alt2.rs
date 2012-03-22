@@ -1,7 +1,7 @@
 
 
 fn foo<T>(o: myoption<T>) -> int {
-    let x: int;
+    let mut x: int;
     alt o { none::<T> { fail; } some::<T>(t) { x = 5; } }
     ret x;
 }

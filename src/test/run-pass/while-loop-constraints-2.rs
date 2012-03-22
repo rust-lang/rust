@@ -1,8 +1,8 @@
 fn main() {
 
-    let y: int = 42;
-    let z: int = 42;
-    let x: int;
+    let mut y: int = 42;
+    let mut z: int = 42;
+    let mut x: int;
     while z < 50 {
         z += 1;
         while false { x <- y; y = z; }

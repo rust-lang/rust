@@ -13,12 +13,12 @@ fn ret_ext_mem() -> {a: @int, b: @int} { ret {a: @10, b: @10}; }
 fn ret_ext_ext_mem() -> @{a: @int, b: @int} { ret @{a: @10, b: @10}; }
 
 fn main() {
-    let int_i: int;
-    let ext_i: @int;
-    let int_rec: {a: int, b: int};
-    let ext_rec: @{a: int, b: int};
-    let ext_mem: {a: @int, b: @int};
-    let ext_ext_mem: @{a: @int, b: @int};
+    let mut int_i: int;
+    let mut ext_i: @int;
+    let mut int_rec: {a: int, b: int};
+    let mut ext_rec: @{a: int, b: int};
+    let mut ext_mem: {a: @int, b: @int};
+    let mut ext_ext_mem: @{a: @int, b: @int};
     int_i = ret_int_i(); // initializing
 
     int_i = ret_int_i(); // non-initializing

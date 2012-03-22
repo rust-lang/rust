@@ -1134,6 +1134,13 @@ fn print_decl(s: ps, decl: @ast::decl) {
         space_if_not_bol(s);
         ibox(s, indent_unit);
         word_nbsp(s, "let");
+
+        // if any are mutable, all are mutable
+        if vec::any(locs) {|l| l.node.is_mutbl } {
+            assert vec::all(locs) {|l| l.node.is_mutbl };
+            word_nbsp(s, "mut");
+        }
+
         fn print_local(s: ps, &&loc: @ast::local) {
             ibox(s, indent_unit);
             print_local_decl(s, loc);

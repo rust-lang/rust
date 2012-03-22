@@ -6,7 +6,7 @@ use std;
 fn grow(&v: [int]) { v += [1]; }
 
 fn main() {
-    let v: [int] = [];
+    let mut v: [int] = [];
     grow(v);
     grow(v);
     grow(v);

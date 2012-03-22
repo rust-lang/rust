@@ -23,8 +23,8 @@ fn myrandom_next(r: myrandom, mx: u32) -> u32 {
 type aminoacids = {ch: char, prob: u32};
 
 fn make_cumulative(aa: [aminoacids]) -> [aminoacids] {
-    let cp: u32 = 0u32;
-    let ans: [aminoacids] = [];
+    let mut cp: u32 = 0u32;
+    let mut ans: [aminoacids] = [];
     for a: aminoacids in aa { cp += a.prob; ans += [{ch: a.ch, prob: cp}]; }
     ret ans;
 }
@@ -45,7 +45,7 @@ fn select_random(r: u32, genelist: [aminoacids]) -> char {
 fn make_random_fasta(id: str, desc: str, genelist: [aminoacids], n: int) {
     log(debug, ">" + id + " " + desc);
     let rng = @{mutable last: std::rand::rng().next()};
-    let op: str = "";
+    let mut op: str = "";
     uint::range(0u, n as uint) {|_i|
         str::push_char(op, select_random(myrandom_next(rng, 100u32),
                                          genelist));
@@ -59,7 +59,7 @@ fn make_random_fasta(id: str, desc: str, genelist: [aminoacids], n: int) {
 
 fn make_repeat_fasta(id: str, desc: str, s: str, n: int) unsafe {
     log(debug, ">" + id + " " + desc);
-    let op: str = "";
+    let mut op: str = "";
     let sl: uint = str::len(s);
     uint::range(0u, n as uint) {|i|
         str::unsafe::push_byte(op, s[i % sl]);

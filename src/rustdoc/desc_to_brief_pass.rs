@@ -131,7 +131,7 @@ fn first_sentence(s: str) -> option<str> {
 }
 
 fn first_sentence_(s: str) -> str {
-    let dotcount = 0;
+    let mut dotcount = 0;
     // The index of the character following a single dot. This allows
     // Things like [0..1) to appear in the brief description
     let idx = str::find(s) {|ch|
@@ -163,10 +163,10 @@ fn first_sentence_(s: str) -> str {
 
 fn paragraphs(s: str) -> [str] {
     let lines = str::lines_any(s);
-    let whitespace_lines = 0;
-    let accum = "";
+    let mut whitespace_lines = 0;
+    let mut accum = "";
     let paras = vec::foldl([], lines) {|paras, line|
-        let res = paras;
+        let mut res = paras;
 
         if str::is_whitespace(line) {
             whitespace_lines += 1;

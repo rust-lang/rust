@@ -11,8 +11,8 @@ fn target() {
 }
 
 fn general() {
-    let a: int = 1;
-    let b: int = 2;
+    let mut a: int = 1;
+    let mut b: int = 2;
     a ^= b;
     b ^= a;
     a = a ^ b;

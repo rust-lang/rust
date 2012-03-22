@@ -26,7 +26,7 @@ a curly-brace language in the tradition of C, C++, and JavaScript.
 
 ~~~~
 fn fac(n: int) -> int {
-    let result = 1, i = 1;
+    let mut result = 1, i = 1;
     while i <= n {
         result *= i;
         i += 1;
@@ -286,16 +286,19 @@ fn this_doesnt(_x: int) {}
 
 ## Variable declaration
 
-The `let` keyword, as we've seen, introduces a local variable. Global
-constants can be defined with `const`:
+The `let` keyword, as we've seen, introduces a local variable. Local
+variables are immutable by default: `let mut` can be used to introduce
+a local variable that can be reassigned.  Global constants can be
+defined with `const`:
 
 ~~~~
 use std;
 const repeat: uint = 5u;
 fn main() {
-    let count = 0u;
+    let hi = "Hi!";
+    let mut count = 0u;
     while count < repeat {
-        io::println("Hi!");
+        io::println(hi);
         count += 1u;
     }
 }
@@ -320,7 +323,7 @@ annotation:
 ~~~~
 // The type of this vector will be inferred based on its use.
 let x = [];
-# x = [3];
+# vec::map(x, fn&(&&_y:int) -> int { _y });
 // Explicitly say this is a vector of integers.
 let y: [int] = [];
 ~~~~
@@ -665,7 +668,7 @@ keyword `break` can be used to abort the loop, and `cont` can be used
 to abort the current iteration and continue with the next.
 
 ~~~~
-let x = 5;
+let mut x = 5;
 while true {
     x += x - 3;
     if x % 5 == 0 { break; }
@@ -761,7 +764,7 @@ failure otherwise. It is typically used to double-check things that
 *should* hold at a certain point in a program.
 
 ~~~~
-let x = 100;
+let mut x = 100;
 while (x > 10) { x -= 10; }
 assert x == 10;
 ~~~~
@@ -933,7 +936,7 @@ of integers backwards:
 
 ~~~~
 fn for_rev(v: [int], act: fn(int)) {
-    let i = vec::len(v);
+    let mut i = vec::len(v);
     while (i > 0u) {
         i -= 1u;
         act(v[i]);
@@ -1273,7 +1276,7 @@ The `+` operator means concatenation when applied to vector types.
 Growing a vector in Rust is not as inefficient as it looks :
 
 ~~~~
-let myvec = [], i = 0;
+let mut myvec = [], i = 0;
 while i < 100 {
     myvec += [i];
     i += 1;
@@ -1376,7 +1379,7 @@ in `main`, so we're good. But the call could also look like this:
 ~~~~
 # fn myfunc(a: int, b: fn()) {}
 # fn get_another_record() -> int { 1 }
-# let x = 1;
+# let mut x = 1;
 myfunc(x, {|| x = get_another_record(); });
 ~~~~
 
@@ -1436,7 +1439,7 @@ very cheap, but you'll occasionally have to copy them to ensure
 safety.
 
 ~~~~
-let my_rec = {a: 4, b: [1, 2, 3]};
+let mut my_rec = {a: 4, b: [1, 2, 3]};
 alt my_rec {
   {a, b} {
     log(info, b); // This is okay
@@ -1497,7 +1500,7 @@ Thus, Rust allows functions and datatypes to have type parameters.
 
 ~~~~
 fn for_rev<T>(v: [T], act: fn(T)) {
-    let i = vec::len(v);
+    let mut i = vec::len(v);
     while i > 0u {
         i -= 1u;
         act(v[i]);
@@ -1505,7 +1508,7 @@ fn for_rev<T>(v: [T], act: fn(T)) {
 }
 
 fn map<T, U>(v: [T], f: fn(T) -> U) -> [U] {
-    let acc = [];
+    let mut acc = [];
     for elt in v { acc += [f(elt)]; }
     ret acc;
 }
@@ -1548,7 +1551,7 @@ programs that just can't be typed.
 
 ~~~~
 let n = option::none;
-# n = option::some(1);
+# option::may(n, fn&(&&x:int) {})
 ~~~~
 
 If you never do anything else with `n`, the compiler will not be able
@@ -1982,7 +1985,7 @@ parameters.
 ~~~~
 # iface to_str { fn to_str() -> str; }
 fn comma_sep<T: to_str>(elts: [T]) -> str {
-    let result = "", first = true;
+    let mut result = "", first = true;
     for elt in elts {
         if first { first = false; }
         else { result += ", "; }
@@ -2094,7 +2097,7 @@ to leave off the `of` clause.
 # fn mk_currency(x: int, s: str) {}
 impl int_util for int {
     fn times(b: fn(int)) {
-        let i = 0;
+        let mut i = 0;
         while i < self { b(i); i += 1; }
     }
     fn dollars() -> currency {
@@ -2450,7 +2453,7 @@ Here is the function which implements the child task:
 ~~~~
 fn stringifier(from_parent: comm::port<uint>,
                to_parent: comm::chan<str>) {
-    let value: uint;
+    let mut value: uint;
     do {
         value = comm::recv(from_parent);
         comm::send(to_parent, uint::to_str(value, 10u));

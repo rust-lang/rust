@@ -5,7 +5,7 @@ use std;
 import str;
 
 fn test1() {
-    let s: str = "hello";
+    let mut s: str = "hello";
     s += "world";
     log(debug, s);
     assert (s[9] == 'd' as u8);

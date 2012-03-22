@@ -2,12 +2,12 @@
 
 fn main() {
     let x = [1, 2, 3];
-    let y = 0;
+    let mut y = 0;
     for i: int in x { log(debug, i); y += i; }
     log(debug, y);
     assert (y == 6);
     let s = "hello there";
-    let i: int = 0;
+    let mut i: int = 0;
     for c: u8 in s {
         if i == 0 { assert (c == 'h' as u8); }
         if i == 1 { assert (c == 'e' as u8); }

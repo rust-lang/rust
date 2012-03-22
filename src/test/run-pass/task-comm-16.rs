@@ -15,7 +15,7 @@ fn test_rec() {
     let ch = chan(po);
     let r0: r = {val0: 0, val1: 1u8, val2: '2'};
     send(ch, r0);
-    let r1: r;
+    let mut r1: r;
     r1 = recv(po);
     assert (r1.val0 == 0);
     assert (r1.val1 == 1u8);
@@ -53,7 +53,7 @@ fn test_tag() {
     send(ch, tag2(10));
     send(ch, tag3(10, 11u8, 'A'));
     // FIXME: Do port semantics really guarantee these happen in order?
-    let t1: t;
+    let mut t1: t;
     t1 = recv(po);
     assert (t1 == tag1);
     t1 = recv(po);
@@ -72,7 +72,7 @@ fn test_chan() {
     // Does the transmitted channel still work?
 
     send(ch1, 10);
-    let i: int;
+    let mut i: int;
     i = recv(po0);
     assert (i == 10);
 }

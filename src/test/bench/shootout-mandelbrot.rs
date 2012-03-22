@@ -36,9 +36,9 @@ pure fn cabs(x: cmplx) -> f64
 
 fn mb(x: cmplx) -> bool
 {
-    let z = {re: 0., im: 0.};
-    let i = 0;
-    let in = true;
+    let mut z = {re: 0., im: 0.};
+    let mut i = 0;
+    let mut in = true;
     while i < 50 {
         z = z*z + x;
         if cabs(z) >= 4. {
@@ -51,8 +51,8 @@ fn mb(x: cmplx) -> bool
 }
 
 fn fillbyte(x: cmplx, incr: f64) -> u8 {
-    let rv = 0_u8;
-    let i = 0_u8;
+    let mut rv = 0_u8;
+    let mut i = 0_u8;
     while i < 8_u8 {
         let z = {re: x.re + (i as f64)*incr, im: x.im};
         if mb(z) {
@@ -65,7 +65,7 @@ fn fillbyte(x: cmplx, incr: f64) -> u8 {
 
 fn chanmb(i: uint, size: uint, ch: comm::chan<line>) -> ()
 {
-    let crv = [];
+    let mut crv = [];
     let incr = 2./(size as f64);
     let y = incr*(i as f64) - 1.;
     let xincr = 8.*incr;
@@ -107,15 +107,15 @@ fn writer(path: str, writech: comm::chan<comm::chan<line>>, size: uint)
     cout.write_line("P4");
     cout.write_line(#fmt("%u %u", size, size));
     let lines = std::map::uint_hash();
-    let done = 0_u;
-    let i = 0_u;
+    let mut done = 0_u;
+    let mut i = 0_u;
     while i < size {
         let aline = comm::recv(p);
         if aline.i == done {
             #debug("W %u", aline.i);
             cout.write(aline.b);
             done += 1_u;
-            let prev = done;
+            let mut prev = done;
             while prev <= i {
                 if lines.contains_key(prev) {
                     #debug("WS %u", prev);

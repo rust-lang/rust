@@ -1,7 +1,7 @@
 
 
 fn main() {
-    let v = [1];
+    let mut v = [1];
     v += [2];
     v += [3];
     v += [4];

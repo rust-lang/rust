@@ -332,8 +332,8 @@ fn test_select2_stress() {
         };
     }
 
-    let as = 0;
-    let bs = 0;
+    let mut as = 0;
+    let mut bs = 0;
     iter::repeat(msgs * times * 2u) {||
         alt check select2(po_a, po_b) {
           either::left("a") { as += 1 }

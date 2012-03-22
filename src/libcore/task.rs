@@ -790,7 +790,7 @@ fn test_spawn_sched_blocking() {
         comm::recv(start_po);
 
         fn pingpong(po: comm::port<int>, ch: comm::chan<int>) {
-            let val = 20;
+            let mut val = 20;
             while val > 0 {
                 val = comm::recv(po);
                 comm::send(ch, val - 1);

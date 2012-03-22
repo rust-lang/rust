@@ -3,7 +3,7 @@
 
 // -*- rust -*-
 fn len(v: [const int]) -> uint {
-    let i = 0u;
+    let mut i = 0u;
     for x: int in v { i += 1u; }
     ret i;
 }

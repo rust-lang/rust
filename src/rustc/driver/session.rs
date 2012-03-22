@@ -45,8 +45,7 @@ type options =
      parse_only: bool,
      no_trans: bool,
      no_asm_comments: bool,
-     warn_unused_imports: bool,
-     enforce_mut_vars: bool};
+     warn_unused_imports: bool};
 
 type crate_metadata = {name: str, data: [u8]};
 
@@ -154,7 +153,7 @@ mod test {
     }
 
     fn make_crate(with_bin: bool, with_lib: bool) -> @ast::crate {
-        let attrs = [];
+        let mut attrs = [];
         if with_bin { attrs += [make_crate_type_attr("bin")]; }
         if with_lib { attrs += [make_crate_type_attr("lib")]; }
         @ast_util::respan(ast_util::dummy_sp(), {

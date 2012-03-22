@@ -4,7 +4,7 @@ use std;
 import task;
 
 fn main() {
-    let i = 10;
+    let mut i = 10;
     while i > 0 { task::spawn {|| child(i); }; i = i - 1; }
     #debug("main thread exiting");
 }

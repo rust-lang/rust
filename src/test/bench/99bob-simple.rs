@@ -23,9 +23,9 @@ fn b8() -> str {
 }
 
 fn sub(t: str, n: int) -> str unsafe {
-    let b: str = "";
-    let i: uint = 0u;
-    let ns: str;
+    let mut b: str = "";
+    let mut i: uint = 0u;
+    let mut ns: str;
     alt n {
       0 { ns = "no more bottles"; }
       1 { ns = "1 bottle"; }
@@ -42,7 +42,7 @@ fn sub(t: str, n: int) -> str unsafe {
 
 /* Straightforward counter */
 fn main() {
-    let n: int = 99;
+    let mut n: int = 99;
     while n > 0 {
         log(debug, sub(b1(), n));
         log(debug, sub(b2(), n - 1));

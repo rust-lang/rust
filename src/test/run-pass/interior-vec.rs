@@ -6,11 +6,11 @@ native mod rusti {
 }
 
 fn main() unsafe {
-    let v: [int] = [];
+    let mut v: [int] = [];
     assert (vec_len(v) == 0u); // zero-length
-    let x = [1, 2];
+    let mut x = [1, 2];
     assert (vec_len(x) == 2u); // on stack
-    let y = [1, 2, 3, 4, 5];
+    let mut y = [1, 2, 3, 4, 5];
     assert (vec_len(y) == 5u); // on heap
 
     v += [];

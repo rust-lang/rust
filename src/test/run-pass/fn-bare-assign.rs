@@ -8,7 +8,7 @@ fn g(f: native fn(int, &bool), &called: bool) {
 }
 
 fn main() {
-    let called = false;
+    let mut called = false;
     let h = f;
     g(h, called);
     assert called == true;

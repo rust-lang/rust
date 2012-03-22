@@ -28,13 +28,13 @@ fn g(x: int, y: str) -> int {
 }
 
 fn main() {
-    let n: int = 2 + 3 * 7;
+    let mut n: int = 2 + 3 * 7;
     let s: str = "hello there";
     let p = comm::port();
     let ch = comm::chan(p);
     task::spawn {|| a(ch); };
     task::spawn {|| b(ch); };
-    let x: int = 10;
+    let mut x: int = 10;
     x = g(n, s);
     log(debug, x);
     n = recv(p);

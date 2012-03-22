@@ -12,7 +12,7 @@ mod b {
 impl util for uint {
     fn str() -> str { uint::str(self) }
     fn times(f: fn(uint)) {
-        let c = 0u;
+        let mut c = 0u;
         while c < self { f(c); c += 1u; }
     }
 }
@@ -21,7 +21,7 @@ impl util<T> for [T] {
     fn length() -> uint { vec::len(self) }
     fn iter(f: fn(T)) { for x in self { f(x); } }
     fn map<U>(f: fn(T) -> U) -> [U] {
-        let r = [];
+        let mut r = [];
         for elt in self { r += [f(elt)]; }
         r
     }
@@ -36,7 +36,7 @@ fn main() {
     assert [1].length().str() == "1";
     assert [3, 4].map({|a| a + 4})[0] == 7;
     assert [3, 4].map::<uint>({|a| a as uint + 4u})[0] == 7u;
-    let x = 0u;
+    let mut x = 0u;
     10u.times {|_n| x += 2u;}
     assert x == 20u;
 }

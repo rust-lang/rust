@@ -40,7 +40,7 @@ fn rec_ret() { let _r = {c: ret}; }
 fn vec_ret() { let _v = [1, 2, ret, 4]; }
 
 fn fail_then_concat() {
-    let x = [], y = [3];
+    let mut x = [], y = [3];
     fail;
     x += y;
     "good" + "bye";

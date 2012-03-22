@@ -13,7 +13,7 @@ fn a() {
         spawn {|| b(ch); };
         recv(p);
     }
-    let i = 0;
+    let mut i = 0;
     while i < 100 {
         doit();
         i += 1;

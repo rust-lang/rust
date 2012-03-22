@@ -715,7 +715,7 @@ mod tests {
             assert(vec::slice(ivals, 0u, vec::len(res)) ==
                    vec::map(res, {|x| x as int}));
         }
-        let i = 0u;
+        let mut i = 0u;
         while i < 8u {
             check_read_ln(i, wide_test, ivals);
             i += 1u;

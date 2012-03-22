@@ -305,7 +305,7 @@ fn is_illegal_to_modify_def(cx: @ctx, def: def, msg: msg) -> option<str> {
       // variables are assigned at most once.  But this requires a new kind of
       // propagation (def. not assigned), so I didn't do that.
       def_local(_, false) if msg == msg_move_out { none }
-      def_local(_, false) if cx.tcx.sess.opts.enforce_mut_vars {
+      def_local(_, false) {
         some("immutable local variable")
       }
 

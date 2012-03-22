@@ -33,16 +33,16 @@ fn test_heap_add() {
 }
 
 fn test_append() {
-    let s = "";
+    let mut s = "";
     s += "a";
     assert (s == "a");
 
-    let s = "a";
+    let mut s = "a";
     s += "b";
     log(debug, s);
     assert (s == "ab");
 
-    let s = "c";
+    let mut s = "c";
     s += "offee";
     assert (s == "coffee");
 

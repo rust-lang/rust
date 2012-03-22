@@ -22,10 +22,10 @@ type test_props = {
 
 // Load any test directives embedded in the file
 fn load_props(testfile: str) -> test_props {
-    let error_patterns = [];
-    let aux_builds = [];
-    let compile_flags = option::none;
-    let pp_exact = option::none;
+    let mut error_patterns = [];
+    let mut aux_builds = [];
+    let mut compile_flags = option::none;
+    let mut pp_exact = option::none;
     iter_header(testfile) {|ln|
         alt parse_error_pattern(ln) {
           option::some(ep) { error_patterns += [ep]; }
@@ -53,7 +53,7 @@ fn load_props(testfile: str) -> test_props {
 }
 
 fn is_test_ignored(config: config, testfile: str) -> bool {
-    let found = false;
+    let mut found = false;
     iter_header(testfile) {|ln|
         // FIXME: Can't return or break from iterator
         // (Fix when Issue #1619 is resolved)

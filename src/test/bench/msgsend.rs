@@ -15,8 +15,8 @@ enum request {
 }
 
 fn server(requests: comm::port<request>, responses: comm::chan<uint>) {
-    let count = 0u;
-    let done = false;
+    let mut count = 0u;
+    let mut done = false;
     while !done {
         alt comm::recv(requests) {
           get_count { comm::send(responses, copy count); }
@@ -37,7 +37,7 @@ fn run(args: [str]) {
     let workers = option::get(uint::from_str(args[2]));
     let start = std::time::precise_time_s();
     let to_child = to_child;
-    let worker_results = [];
+    let mut worker_results = [];
     uint::range(0u, workers) {|_i|
         let builder = task::task_builder();
         worker_results += [task::future_result(builder)];

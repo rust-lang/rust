@@ -453,7 +453,7 @@ mod tests {
         let eqer_uint: map::eqfn<uint> = eq_uint;
         let hm_uu: map::hashmap<uint, uint> =
             map::hashmap::<uint, uint>(hasher_uint, eqer_uint);
-        let i: uint = 0u;
+        let mut i: uint = 0u;
         while i < num_to_insert {
             assert (hm_uu.insert(i, i * i));
             #debug("inserting %u -> %u", i, i*i);
@@ -533,7 +533,7 @@ mod tests {
         let eqer: map::eqfn<uint> = eq;
         let hm: map::hashmap<uint, uint> =
             map::hashmap::<uint, uint>(hasher, eqer);
-        let i: uint = 0u;
+        let mut i: uint = 0u;
         while i < num_to_insert {
             assert (hm.insert(i, i * i));
             #debug("inserting %u -> %u", i, i*i);

@@ -5,14 +5,14 @@
 
 // Tests for using alt as an expression
 fn test_basic() {
-    let rs: bool = alt true { true { true } false { false } };
+    let mut rs: bool = alt true { true { true } false { false } };
     assert (rs);
     rs = alt false { true { false } false { true } };
     assert (rs);
 }
 
 fn test_inferrence() {
-    let rs = alt true { true { true } false { false } };
+    let mut rs = alt true { true { true } false { false } };
     assert (rs);
 }
 
