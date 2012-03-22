@@ -307,13 +307,10 @@ rust_uv_write(uv_write_t* req, uv_stream_t* handle,
 	return uv_write(req, handle, bufs, buf_cnt, cb);
 }
 
-extern "C" void*
+extern "C" sockaddr_in
 rust_uv_ip4_addr(const char* ip, int port) {
-	sockaddr_in* addr_ptr = (sockaddr_in*)current_kernel_malloc(
-							  sizeof(sockaddr_in),
-							  "sockaddr_in");
 	printf("before creating addr_ptr.. ip %s port %d\n", ip, port);
-	*addr_ptr = uv_ip4_addr("173.194.33.40", 80);
-	printf("after creating .. port: %d\n", addr_ptr->sin_port);
-	return (void*)addr_ptr;
+	sockaddr_in addr = uv_ip4_addr("173.194.33.40", 80);
+	printf("after creating .. port: %d\n", addr.sin_port);
+	return addr;
 }
