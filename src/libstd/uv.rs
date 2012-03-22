@@ -276,7 +276,7 @@ native mod rustrt {
         -> *libc::c_void;
     fn rust_uv_last_error(loop_handle: *libc::c_void) -> uv_err_t;
     fn rust_uv_ip4_addr(ip: *u8, port: libc::c_int)
-        -> *libc::c_void;
+        -> sockaddr_in;
     fn rust_uv_tcp_connect(connect_ptr: *uv_connect_t,
                            tcp_handle_ptr: *uv_tcp_t,
                            addr: *libc::c_void,
@@ -373,14 +373,14 @@ mod direct {
                         data: *libc::c_void) {
         rustrt::rust_uv_set_data_for_req(req, data);
     }
-    // FIXME: see github issue #1402
+    // TODO: see github issue #1402
     unsafe fn buf_init(input: *u8, len: uint) -> *libc::c_void {
         ret rustrt::rust_uv_buf_init(input, len);
     }
-    // FIXME: see github issue #1402
+    // TODO: see github issue #1402
     unsafe fn ip4_addr(ip: str, port: libc::c_int)
-    -> *libc::c_void {
-        let addr_vec = str::bytes(ip);
+    -> sockaddr_in {
+        let mut addr_vec = str::bytes(ip);
         addr_vec += [0u8]; // add null terminator
         let addr_vec_ptr = vec::unsafe::to_ptr(addr_vec);
         let ip_back = str::from_bytes(addr_vec);
@@ -388,7 +388,7 @@ mod direct {
         ret rustrt::rust_uv_ip4_addr(addr_vec_ptr, port);
     }
     // this is lame.
-    // FIXME: see github issue #1402
+    // TODO: see github issue #1402
     unsafe fn free_1402(ptr: *libc::c_void) {
         rustrt::rust_uv_free(ptr);
     }
@@ -962,7 +962,8 @@ crust fn on_alloc(handle: *libc::c_void,
 
 crust fn on_write_complete_cb(write_handle: *uv_write_t,
                               status: libc::c_int) unsafe {
-    io::println("beginning on_write_complete_cb");
+    io::println(#fmt("beginning on_write_complete_cb status: %d",
+                     status as int));
     io::println("ending on_write_complete_cb");
 }
 
@@ -979,11 +980,12 @@ crust fn on_connect_cb(connect_handle_ptr: *uv_connect_t,
         let write_handle = (*data).write_req as *libc::c_void;
         io::println(#fmt("on_connect_cb: tcp stream: %d write_handle addr %d",
                         stream as int, write_handle as int));
-        direct::write(write_handle,
+        let write_result = direct::write(write_handle,
                           stream as *libc::c_void,
                           (*data).req_buf,
                           on_write_complete_cb);
-        io::println("on_connect_cb: after direct::write()");
+        io::println(#fmt("on_connect_cb: direct::write() status: %d",
+                         write_result as int));
     }
     else {
         let loop_handle = direct::get_loop_for_uv_handle(
@@ -1015,31 +1017,38 @@ fn impl_uv_tcp_request() unsafe {
     // this to C..
     let write_handle = direct::write_t();
     let write_handle_ptr = ptr::addr_of(write_handle);
-    io::println(#fmt("tcp req setup: tcp stream: %d write_handle addr %d",
-                    tcp_handle_ptr as int, write_handle_ptr as int));
+    io::println(#fmt("tcp req: tcp stream: %d write_handle: %d",
+                     tcp_handle_ptr as int,
+                     write_handle_ptr as int));
     let req = { writer_handle: write_handle_ptr,
                 req_buf: ptr::addr_of(req_msg) };
-    io::println("building addr...");
-    let addr = direct::ip4_addr("173.194.33.40", 80i32);
     
     let tcp_init_result = direct::tcp_init(
         test_loop as *libc::c_void, tcp_handle_ptr);
     if (tcp_init_result == 0i32) {
         io::println("sucessful tcp_init_result");
+        
+        io::println("building addr...");
+        let addr_val = direct::ip4_addr("173.194.33.40", 80i32);
+        io::println(#fmt("after build addr in rust. port: %u",
+                         addr_val.sin_port as uint));
+        let addr: *libc::c_void = ptr::addr_of(addr_val) as
+                                    *libc::c_void;
+        
         // this should set up the connection request..
         let tcp_connect_result = direct::tcp_connect(
             connect_handle_ptr, tcp_handle_ptr,
             addr, on_connect_cb);
         if (tcp_connect_result == 0i32) {
-            // not set the data on the connect_req until its initialized
+            // not set the data on the connect_req
+            // until its initialized
             direct::set_data_for_req(
                 connect_handle_ptr as *libc::c_void,
                 ptr::addr_of(req) as *libc::c_void);
             io::println("before run tcp req loop");
             direct::run(test_loop);
             io::println("after run tcp req loop");
-            // FIXME: see github issue #1402
-            direct::free_1402(addr);
+            // TODO: see github issue #1402
         }
         else {
            io::println("direct::tcp_connect() failure");
