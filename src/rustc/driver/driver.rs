@@ -386,6 +386,7 @@ fn build_session_options(match: getopts::match,
     let stats = opt_present(match, "stats");
     let time_passes = opt_present(match, "time-passes");
     let time_llvm_passes = opt_present(match, "time-llvm-passes");
+    let count_llvm_insns = opt_present(match, "count-llvm-insns");
     let sysroot_opt = getopts::opt_maybe_str(match, "sysroot");
     let target_opt = getopts::opt_maybe_str(match, "target");
     let mut no_asm_comments = getopts::opt_present(match, "no-asm-comments");
@@ -433,6 +434,7 @@ fn build_session_options(match: getopts::match,
           save_temps: save_temps,
           stats: stats,
           time_passes: time_passes,
+          count_llvm_insns: count_llvm_insns,
           time_llvm_passes: time_llvm_passes,
           output_type: output_type,
           addl_lib_search_paths: addl_lib_search_paths,
@@ -513,6 +515,7 @@ fn opts() -> [getopts::opt] {
          optflag("c"), optflag("g"), optflag("save-temps"),
          optopt("sysroot"), optopt("target"), optflag("stats"),
          optflag("time-passes"), optflag("time-llvm-passes"),
+         optflag("count-llvm-insns"),
          optflag("no-verify"),
          optflag("no-lint-ctypes"),
          optmulti("cfg"), optflag("test"),

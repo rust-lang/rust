@@ -50,11 +50,14 @@ type tydesc_info =
  * task such as bringing a task to life, allocating memory, etc.
  *
  */
+
 type stats =
     {mutable n_static_tydescs: uint,
      mutable n_glues_created: uint,
      mutable n_null_glues: uint,
      mutable n_real_glues: uint,
+     llvm_insn_ctxt: @mutable [str],
+     llvm_insns: hashmap<str, uint>,
      fn_times: @mutable [{ident: str, time: int}]};
 
 resource BuilderRef_res(B: BuilderRef) { llvm::LLVMDisposeBuilder(B); }

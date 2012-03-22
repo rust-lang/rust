@@ -9,6 +9,7 @@ export trans_uniq, make_free_glue, autoderef, duplicate, alloc_uniq;
 
 fn trans_uniq(bcx: block, contents: @ast::expr,
               node_id: ast::node_id, dest: dest) -> block {
+    let _icx = bcx.insn_ctxt("uniq::trans_uniq");
     let uniq_ty = node_id_type(bcx, node_id);
     let {bcx, val: llptr} = alloc_uniq(bcx, uniq_ty);
     add_clean_free(bcx, llptr, true);
@@ -19,6 +20,7 @@ fn trans_uniq(bcx: block, contents: @ast::expr,
 
 fn alloc_uniq(cx: block, uniq_ty: ty::t) -> result {
     let bcx = cx;
+    let _icx = bcx.insn_ctxt("uniq::alloc_uniq");
     let contents_ty = content_ty(uniq_ty);
     let llty = type_of::type_of(bcx.ccx(), contents_ty);
     let llsz = llsize_of(bcx.ccx(), llty);
@@ -28,6 +30,7 @@ fn alloc_uniq(cx: block, uniq_ty: ty::t) -> result {
 
 fn make_free_glue(bcx: block, vptr: ValueRef, t: ty::t)
     -> block {
+    let _icx = bcx.insn_ctxt("uniq::make_free_glue");
     with_cond(bcx, IsNotNull(bcx, vptr)) {|bcx|
         let bcx = drop_ty(bcx, vptr, content_ty(t));
         trans_shared_free(bcx, vptr)
@@ -47,6 +50,7 @@ fn autoderef(v: ValueRef, t: ty::t) -> {v: ValueRef, t: ty::t} {
 }
 
 fn duplicate(bcx: block, v: ValueRef, t: ty::t) -> result {
+    let _icx = bcx.insn_ctxt("uniq::duplicate");
     let content_ty = content_ty(t);
     let {bcx, val: llptr} = alloc_uniq(bcx, t);
 

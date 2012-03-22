@@ -16,6 +16,7 @@ import std::map::hashmap;
 
 fn trans_impl(ccx: @crate_ctxt, path: path, name: ast::ident,
               methods: [@ast::method], tps: [ast::ty_param]) {
+    let _icx = ccx.insn_ctxt("impl::trans_impl");
     if tps.len() > 0u { ret; }
     let sub_path = path + [path_name(name)];
     for m in methods {
@@ -29,6 +30,7 @@ fn trans_impl(ccx: @crate_ctxt, path: path, name: ast::ident,
 }
 
 fn trans_self_arg(bcx: block, base: @ast::expr) -> result {
+    let _icx = bcx.insn_ctxt("impl::trans_self_arg");
     let basety = expr_ty(bcx, base);
     let m_by_ref = ast::expl(ast::by_ref);
     let mut temp_cleanups = [];
@@ -46,6 +48,7 @@ fn trans_self_arg(bcx: block, base: @ast::expr) -> result {
 fn trans_method_callee(bcx: block, callee_id: ast::node_id,
                        self: @ast::expr, origin: typeck::method_origin)
     -> lval_maybe_callee {
+    let _icx = bcx.insn_ctxt("impl::trans_method_callee");
     alt origin {
       typeck::method_static(did) {
         let {bcx, val} = trans_self_arg(bcx, self);
@@ -69,6 +72,7 @@ fn trans_method_callee(bcx: block, callee_id: ast::node_id,
 fn trans_vtable_callee(bcx: block, env: callee_env, vtable: ValueRef,
                        callee_id: ast::node_id, n_method: uint)
     -> lval_maybe_callee {
+    let _icx = bcx.insn_ctxt("impl::trans_vtable_callee");
     let bcx = bcx, ccx = bcx.ccx();
     let fty = node_id_type(bcx, callee_id);
     let llfty = type_of::type_of_fn_from_ty(ccx, fty);
@@ -105,6 +109,7 @@ fn trans_monomorphized_callee(bcx: block, callee_id: ast::node_id,
                               base: @ast::expr, iface_id: ast::def_id,
                               n_method: uint, n_param: uint, n_bound: uint,
                               substs: param_substs) -> lval_maybe_callee {
+    let _icx = bcx.insn_ctxt("impl::trans_monomorphized_callee");
     alt find_vtable_in_fn_ctxt(substs, n_param, n_bound) {
       typeck::vtable_static(impl_did, impl_substs, sub_origins) {
         let ccx = bcx.ccx();
@@ -135,6 +140,7 @@ fn trans_monomorphized_callee(bcx: block, callee_id: ast::node_id,
 fn trans_iface_callee(bcx: block, base: @ast::expr,
                       callee_id: ast::node_id, n_method: uint)
     -> lval_maybe_callee {
+    let _icx = bcx.insn_ctxt("impl::trans_iface_callee");
     let {bcx, val} = trans_temp_expr(bcx, base);
     let vtable = Load(bcx, PointerCast(bcx, GEPi(bcx, val, [0, 0]),
                                      T_ptr(T_ptr(T_vtable()))));
@@ -220,6 +226,7 @@ fn get_vtable(ccx: @crate_ctxt, origin: typeck::vtable_origin)
 }
 
 fn make_vtable(ccx: @crate_ctxt, ptrs: [ValueRef]) -> ValueRef {
+    let _icx = ccx.insn_ctxt("impl::make_vtable");
     let tbl = C_struct(ptrs);
     let vt_gvar = str::as_c_str(ccx.names("vtable"), {|buf|
         llvm::LLVMAddGlobal(ccx.llmod, val_ty(tbl), buf)
@@ -232,6 +239,7 @@ fn make_vtable(ccx: @crate_ctxt, ptrs: [ValueRef]) -> ValueRef {
 
 fn make_impl_vtable(ccx: @crate_ctxt, impl_id: ast::def_id, substs: [ty::t],
                     vtables: typeck::vtable_res) -> ValueRef {
+    let _icx = ccx.insn_ctxt("impl::make_impl_vtable");
     let tcx = ccx.tcx;
     let ifce_id = ty::ty_to_def_id(option::get(ty::impl_iface(tcx, impl_id)));
     let has_tps = (*ty::lookup_item_type(ccx.tcx, impl_id).bounds).len() > 0u;
@@ -255,6 +263,7 @@ fn make_impl_vtable(ccx: @crate_ctxt, impl_id: ast::def_id, substs: [ty::t],
 
 fn trans_cast(bcx: block, val: @ast::expr, id: ast::node_id, dest: dest)
     -> block {
+    let _icx = bcx.insn_ctxt("impl::trans_cast");
     if dest == ignore { ret trans_expr(bcx, val, ignore); }
     let ccx = bcx.ccx();
     let v_ty = expr_ty(bcx, val);

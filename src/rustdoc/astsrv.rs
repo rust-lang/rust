@@ -137,6 +137,7 @@ fn build_session() -> (session::session, @mutable bool) {
         save_temps: false,
         stats: false,
         time_passes: false,
+        count_llvm_insns: false,
         time_llvm_passes: false,
         output_type: link::output_type_exe,
         addl_lib_search_paths: [],

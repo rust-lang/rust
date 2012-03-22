@@ -146,10 +146,11 @@ fn allocate_cbox(bcx: block,
                  ck: ty::closure_kind,
                  cdata_ty: ty::t)
     -> (block, ValueRef, [ValueRef]) {
-
+    let _icx = bcx.insn_ctxt("closure::allocate_cbox");
     let ccx = bcx.ccx(), tcx = ccx.tcx;
 
     fn nuke_ref_count(bcx: block, box: ValueRef) {
+        let _icx = bcx.insn_ctxt("closure::nuke_ref_count");
         // Initialize ref count to arbitrary value for debugging:
         let ccx = bcx.ccx();
         let box = PointerCast(bcx, box, T_opaque_box_ptr(ccx));
@@ -211,7 +212,7 @@ type closure_result = {
 fn store_environment(bcx: block,
                      bound_values: [environment_value],
                      ck: ty::closure_kind) -> closure_result {
-
+    let _icx = bcx.insn_ctxt("closure::store_environment");
     let ccx = bcx.ccx(), tcx = ccx.tcx;
 
     // compute the shape of the closure
@@ -287,6 +288,7 @@ fn build_closure(bcx0: block,
                  cap_vars: [capture::capture_var],
                  ck: ty::closure_kind,
                  id: ast::node_id) -> closure_result {
+    let _icx = bcx0.insn_ctxt("closure::build_closure");
     // If we need to, package up the iterator body to call
     let mut env_vals = [];
     let mut bcx = bcx0;
@@ -332,6 +334,7 @@ fn load_environment(fcx: fn_ctxt,
                     cdata_ty: ty::t,
                     cap_vars: [capture::capture_var],
                     ck: ty::closure_kind) {
+    let _icx = fcx.insn_ctxt("closure::load_environment");
     let bcx = raw_block(fcx, fcx.llloadenv);
 
     // Load a pointer to the closure data, skipping over the box header:
@@ -365,6 +368,7 @@ fn trans_expr_fn(bcx: block,
                  id: ast::node_id,
                  cap_clause: ast::capture_clause,
                  dest: dest) -> block {
+    let _icx = bcx.insn_ctxt("closure::trans_expr_fn");
     if dest == ignore { ret bcx; }
     let ccx = bcx.ccx(), bcx = bcx;
     let fty = node_id_type(bcx, id);
@@ -401,6 +405,7 @@ fn trans_expr_fn(bcx: block,
 
 fn trans_bind(cx: block, f: @ast::expr, args: [option<@ast::expr>],
               id: ast::node_id, dest: dest) -> block {
+    let _icx = cx.insn_ctxt("closure::trans_bind");
     let f_res = trans_callee(cx, f);
     ret trans_bind_1(cx, expr_ty(cx, f), f_res, args,
                      node_id_type(cx, id), dest);
@@ -410,6 +415,7 @@ fn trans_bind_1(cx: block, outgoing_fty: ty::t,
                 f_res: lval_maybe_callee,
                 args: [option<@ast::expr>], pair_ty: ty::t,
                 dest: dest) -> block {
+    let _icx = cx.insn_ctxt("closure::trans_bind1");
     assert option::is_none(f_res.tds);
     let ccx = cx.ccx();
     let mut bound: [@ast::expr] = [];
@@ -472,6 +478,7 @@ fn make_fn_glue(
     t: ty::t,
     glue_fn: fn@(block, v: ValueRef, t: ty::t) -> block)
     -> block {
+    let _icx = cx.insn_ctxt("closure::make_fn_glue");
     let bcx = cx;
     let tcx = cx.tcx();
 
@@ -500,6 +507,7 @@ fn make_opaque_cbox_take_glue(
     cboxptr: ValueRef)     // ptr to ptr to the opaque closure
     -> block {
     // Easy cases:
+    let _icx = bcx.insn_ctxt("closure::make_opaque_cbox_take_glue");
     alt ck {
       ty::ck_block { ret bcx; }
       ty::ck_box { ret incr_refcnt_of_boxed(bcx, Load(bcx, cboxptr)); }
@@ -546,6 +554,7 @@ fn make_opaque_cbox_drop_glue(
     ck: ty::closure_kind,
     cboxptr: ValueRef)     // ptr to the opaque closure
     -> block {
+    let _icx = bcx.insn_ctxt("closure::make_opaque_cbox_drop_glue");
     alt ck {
       ty::ck_block { bcx }
       ty::ck_box {
@@ -564,6 +573,7 @@ fn make_opaque_cbox_free_glue(
     ck: ty::closure_kind,
     cbox: ValueRef)     // ptr to the opaque closure
     -> block {
+    let _icx = bcx.insn_ctxt("closure::make_opaque_cbox_free_glue");
     alt ck {
       ty::ck_block { ret bcx; }
       ty::ck_box | ty::ck_uniq { /* hard cases: */ }
@@ -614,6 +624,7 @@ fn trans_bind_thunk(ccx: @crate_ctxt,
                     cdata_ty: ty::t,
                     target_info: target_info)
     -> {val: ValueRef, ty: TypeRef} {
+    let _icx = ccx.insn_ctxt("closure::trans_bind_thunk");
     let tcx = ccx.tcx;
     #debug["trans_bind_thunk[incoming_fty=%s,outgoing_fty=%s,\
             cdata_ty=%s]",

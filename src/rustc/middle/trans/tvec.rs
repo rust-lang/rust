@@ -5,27 +5,31 @@ import back::abi;
 import base::{call_memmove, trans_shared_malloc,
                INIT, copy_val, load_if_immediate, get_tydesc,
                sub_block, do_spill_noroot,
-               dest};
+               dest, bcx_icx};
 import shape::llsize_of;
 import build::*;
 import common::*;
 
 fn get_fill(bcx: block, vptr: ValueRef) -> ValueRef {
+    let _icx = bcx.insn_ctxt("tvec::get_fill");
     Load(bcx, GEPi(bcx, vptr, [0, abi::vec_elt_fill]))
 }
 fn get_dataptr(bcx: block, vptr: ValueRef, unit_ty: TypeRef)
     -> ValueRef {
+    let _icx = bcx.insn_ctxt("tvec::get_dataptr");
     let ptr = GEPi(bcx, vptr, [0, abi::vec_elt_elems]);
     PointerCast(bcx, ptr, T_ptr(unit_ty))
 }
 
 fn pointer_add(bcx: block, ptr: ValueRef, bytes: ValueRef) -> ValueRef {
+    let _icx = bcx.insn_ctxt("tvec::pointer_add");
     let old_ty = val_ty(ptr);
     let bptr = PointerCast(bcx, ptr, T_ptr(T_i8()));
     ret PointerCast(bcx, InBoundsGEP(bcx, bptr, [bytes]), old_ty);
 }
 
 fn alloc_raw(bcx: block, fill: ValueRef, alloc: ValueRef) -> result {
+    let _icx = bcx.insn_ctxt("tvec::alloc_raw");
     let ccx = bcx.ccx();
     let llvecty = ccx.opaque_vec_type;
     let vecsize = Add(bcx, alloc, llsize_of(ccx, llvecty));
@@ -43,6 +47,7 @@ type alloc_result =
      llunitty: TypeRef};
 
 fn alloc(bcx: block, vec_ty: ty::t, elts: uint) -> alloc_result {
+    let _icx = bcx.insn_ctxt("tvec::alloc");
     let ccx = bcx.ccx();
     let unit_ty = ty::sequence_element_type(bcx.tcx(), vec_ty);
     let llunitty = type_of::type_of(ccx, unit_ty);
@@ -62,6 +67,7 @@ fn alloc(bcx: block, vec_ty: ty::t, elts: uint) -> alloc_result {
 }
 
 fn duplicate(bcx: block, vptr: ValueRef, vec_ty: ty::t) -> result {
+    let _icx = bcx.insn_ctxt("tvec::duplicate");
     let ccx = bcx.ccx();
     let fill = get_fill(bcx, vptr);
     let size = Add(bcx, fill, llsize_of(ccx, ccx.opaque_vec_type));
@@ -77,6 +83,7 @@ fn duplicate(bcx: block, vptr: ValueRef, vec_ty: ty::t) -> result {
 }
 fn make_free_glue(bcx: block, vptr: ValueRef, vec_ty: ty::t) ->
    block {
+    let _icx = bcx.insn_ctxt("tvec::make_free_glue");
     let tcx = bcx.tcx(), unit_ty = ty::sequence_element_type(tcx, vec_ty);
     base::with_cond(bcx, IsNotNull(bcx, vptr)) {|bcx|
         let bcx = if ty::type_needs_drop(tcx, unit_ty) {
@@ -88,6 +95,7 @@ fn make_free_glue(bcx: block, vptr: ValueRef, vec_ty: ty::t) ->
 
 fn trans_vec(bcx: block, args: [@ast::expr], id: ast::node_id,
              dest: dest) -> block {
+    let _icx = bcx.insn_ctxt("tvec::trans_vec");
     let ccx = bcx.ccx();
     let mut bcx = bcx;
     if dest == base::ignore {
@@ -118,6 +126,7 @@ fn trans_vec(bcx: block, args: [@ast::expr], id: ast::node_id,
 }
 
 fn trans_str(bcx: block, s: str, dest: dest) -> block {
+    let _icx = bcx.insn_ctxt("tvec::trans_str");
     let veclen = str::len(s) + 1u; // +1 for \0
     let {bcx: bcx, val: sptr, _} =
         alloc(bcx, ty::mk_str(bcx.tcx()), veclen);
@@ -131,6 +140,7 @@ fn trans_str(bcx: block, s: str, dest: dest) -> block {
 
 fn trans_append(bcx: block, vec_ty: ty::t, lhsptr: ValueRef,
                 rhs: ValueRef) -> block {
+    let _icx = bcx.insn_ctxt("tvec::trans_append");
     // Cast to opaque interior vector types if necessary.
     let ccx = bcx.ccx();
     let unit_ty = ty::sequence_element_type(ccx.tcx, vec_ty);
@@ -172,6 +182,7 @@ fn trans_append(bcx: block, vec_ty: ty::t, lhsptr: ValueRef,
 
 fn trans_append_literal(bcx: block, vptrptr: ValueRef, vec_ty: ty::t,
                         vals: [@ast::expr]) -> block {
+    let _icx = bcx.insn_ctxt("tvec::trans_append_literal");
     let ccx = bcx.ccx();
     let elt_ty = ty::sequence_element_type(bcx.tcx(), vec_ty);
     let mut ti = none;
@@ -193,6 +204,7 @@ fn trans_append_literal(bcx: block, vptrptr: ValueRef, vec_ty: ty::t,
 
 fn trans_add(bcx: block, vec_ty: ty::t, lhs: ValueRef,
              rhs: ValueRef, dest: dest) -> block {
+    let _icx = bcx.insn_ctxt("tvec::trans_add");
     let ccx = bcx.ccx();
 
     if ty::get(vec_ty).struct == ty::ty_str {
@@ -233,6 +245,7 @@ type iter_vec_block = fn(block, ValueRef, ty::t) -> block;
 
 fn iter_vec_raw(bcx: block, vptr: ValueRef, vec_ty: ty::t,
                 fill: ValueRef, f: iter_vec_block) -> block {
+    let _icx = bcx.insn_ctxt("tvec::iter_vec_raw");
     let ccx = bcx.ccx();
     let unit_ty = ty::sequence_element_type(bcx.tcx(), vec_ty);
     let llunitty = type_of::type_of(ccx, unit_ty);
@@ -262,6 +275,7 @@ fn iter_vec_raw(bcx: block, vptr: ValueRef, vec_ty: ty::t,
 
 fn iter_vec(bcx: block, vptr: ValueRef, vec_ty: ty::t,
             f: iter_vec_block) -> block {
+    let _icx = bcx.insn_ctxt("tvec::iter_vec");
     let vptr = PointerCast(bcx, vptr, T_ptr(bcx.ccx().opaque_vec_type));
     ret iter_vec_raw(bcx, vptr, vec_ty, get_fill(bcx, vptr), f);
 }

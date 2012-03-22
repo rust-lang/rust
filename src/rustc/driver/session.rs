@@ -35,6 +35,7 @@ type options =
      save_temps: bool,
      stats: bool,
      time_passes: bool,
+     count_llvm_insns: bool,
      time_llvm_passes: bool,
      output_type: back::link::output_type,
      addl_lib_search_paths: [str],

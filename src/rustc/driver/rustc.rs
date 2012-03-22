@@ -62,6 +62,7 @@ Options:
 
     --time-passes      Time the individual phases of the compiler
     --time-llvm-passes Time the individual phases of the LLVM backend
+    --count-llvm-insns Count and categorize generated LLVM instructions
     -v --version       Print version info and exit
     --warn-unused-imports
                        Warn about unnecessary imports

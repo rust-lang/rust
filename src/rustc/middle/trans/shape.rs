@@ -14,7 +14,6 @@ import syntax::ast;
 import syntax::ast_util::dummy_sp;
 import syntax::util::interner;
 import util::common;
-import trans::build::{Load, Store, Add, GEPi};
 import syntax::codemap::span;
 
 import std::map::hashmap;
