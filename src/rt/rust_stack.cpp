@@ -18,7 +18,6 @@ register_valgrind_stack(stk_seg *stk) {
 
 void
 reuse_valgrind_stack(stk_seg *stk, uint8_t *sp) {
-#ifndef NVALGRIND
     // Establish that the stack is accessible.  This must be done when reusing
     // old stack segments, since the act of popping the stack previously
     // caused valgrind to consider the whole thing inaccessible.
@@ -26,7 +25,6 @@ reuse_valgrind_stack(stk_seg *stk, uint8_t *sp) {
 	   && "Stack pointer must be inside stack segment");
     size_t sz = stk->end - (uintptr_t)sp;
     VALGRIND_MAKE_MEM_UNDEFINED(sp, sz);
-#endif
 }
 
 void
