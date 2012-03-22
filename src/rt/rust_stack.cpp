@@ -24,7 +24,7 @@ reuse_valgrind_stack(stk_seg *stk, uint8_t *sp) {
     assert(sp >= stk->data && sp <= (uint8_t*) stk->end
 	   && "Stack pointer must be inside stack segment");
     size_t sz = stk->end - (uintptr_t)sp;
-    VALGRIND_MAKE_MEM_UNDEFINED(sp, sz);
+    (void) VALGRIND_MAKE_MEM_UNDEFINED(sp, sz);
 }
 
 void
