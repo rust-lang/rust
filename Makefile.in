@@ -120,7 +120,7 @@ LIBRUSTC_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,rustc)
 
 # version-string calculation
 CFG_GIT_DIR := $(CFG_SRC_DIR).git
-CFG_RELEASE = 0.1.1
+CFG_RELEASE = 0.2
 CFG_VERSION = $(CFG_RELEASE)
 
 ifneq ($(wildcard $(CFG_GIT)),)
