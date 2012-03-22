@@ -2,6 +2,15 @@
 import rustsyntax::codemap;
 export codemap;
 
+import rustsyntax::ast;
+export ast;
+
+import rustsyntax::ast_util;
+export ast_util;
+
+import rustsyntax::visit;
+export visit;
+
 export ast;
 export ast_util;
 export visit;
