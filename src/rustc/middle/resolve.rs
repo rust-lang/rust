@@ -37,7 +37,7 @@ enum scope {
     scope_loop(@ast::local), // there's only 1 decl per loop.
     scope_block(ast::blk, @mutable uint, @mutable uint),
     scope_arm(ast::arm),
-    scope_method(ast::node_id, [ast::ty_param]),
+    scope_method(node_id, [ast::ty_param]),
 }
 
 type scopes = list<scope>;
@@ -47,7 +47,7 @@ fn top_scope() -> scopes {
 }
 
 enum import_state {
-    todo(ast::node_id, ast::ident, @[ast::ident], span, scopes),
+    todo(ast::ident, @[ast::ident], span, scopes),
     is_glob(@[ast::ident], scopes, span),
     resolving(span),
     resolved(option<def>, /* value */
@@ -126,16 +126,16 @@ type env =
     {cstore: cstore::cstore,
      def_map: def_map,
      ast_map: ast_map::map,
-     imports: hashmap<ast::node_id, import_state>,
+     imports: hashmap<node_id, import_state>,
      mutable exp_map: exp_map,
-     mod_map: hashmap<ast::node_id, @indexed_mod>,
-     block_map: hashmap<ast::node_id, [glob_imp_def]>,
+     mod_map: hashmap<node_id, @indexed_mod>,
+     block_map: hashmap<node_id, [glob_imp_def]>,
      ext_map: ext_map,
      impl_map: impl_map,
      impl_cache: impl_cache,
      ext_cache: ext_hash,
      used_imports: {mutable track: bool,
-                    mutable data: [ast::node_id]},
+                    mutable data: [node_id]},
      mutable reported: [{ident: str, sc: scope}],
      mutable ignored_imports: [node_id],
      mutable current_tp: option<uint>,
@@ -233,14 +233,14 @@ fn map_crate(e: @env, c: @ast::crate) {
         iter_effective_import_paths(*i) { |vp|
             alt vp.node {
               ast::view_path_simple(name, path, id) {
-                e.imports.insert(id, todo(id, name, path, vp.span, sc));
+                e.imports.insert(id, todo(name, path, vp.span, sc));
               }
               ast::view_path_glob(path, id) {
                 e.imports.insert(id, is_glob(path, sc, vp.span));
               }
               ast::view_path_list(mod_path, idents, _) {
                 for ident in idents {
-                    let t = todo(ident.node.id, ident.node.name,
+                    let t = todo(ident.node.name,
                                  @(*mod_path + [ident.node.name]),
                                  ident.span, sc);
                     e.imports.insert(ident.node.id, t);
@@ -355,12 +355,11 @@ fn resolve_imports(e: env) {
     e.used_imports.track = true;
     loop {
         let mut done = true;
-        e.imports.values {|v|
+        e.imports.items {|id, v|
             alt check v {
-              todo(node_id, name, path, span, scopes) {
+              todo(name, path, span, scopes) {
                 done = false;
-                resolve_import(e, local_def(node_id), name, *path, span,
-                               scopes);
+                resolve_import(e, id, name, *path, span, scopes);
               }
               resolved(_, _, _, _, _, _) | is_glob(_, _, _) { }
             }
@@ -699,7 +698,7 @@ fn resolve_constr(e: @env, c: @ast::constr, sc: scopes, _v: vt<scopes>) {
 }
 
 // Import resolution
-fn resolve_import(e: env, defid: ast::def_id, name: ast::ident,
+fn resolve_import(e: env, n_id: node_id, name: ast::ident,
                   ids: [ast::ident], sp: codemap::span, sc: scopes) {
     fn register(e: env, id: node_id, cx: ctxt, sp: codemap::span,
                 name: ast::ident, lookup: fn(namespace) -> option<def>,
@@ -758,13 +757,13 @@ fn resolve_import(e: env, defid: ast::def_id, name: ast::ident,
     }
     // This function has cleanup code at the end. Do not return without going
     // through that.
-    e.imports.insert(defid.node, resolving(sp));
-    let mut ignored = find_imports_after(e, defid.node, sc);
+    e.imports.insert(n_id, resolving(sp));
+    let mut ignored = find_imports_after(e, n_id, sc);
     e.ignored_imports <-> ignored;
     let n_idents = vec::len(ids);
     let end_id = ids[n_idents - 1u];
     if n_idents == 1u {
-        register(e, defid.node, in_scope(sc), sp, name,
+        register(e, n_id, in_scope(sc), sp, name,
                  {|ns| lookup_in_scope(e, sc, sp, end_id, ns, true) }, []);
     } else {
         alt lookup_in_scope(e, sc, sp, ids[0], ns_module, true) {
@@ -777,7 +776,7 @@ fn resolve_import(e: env, defid: ast::def_id, name: ast::ident,
                 if i == n_idents - 1u {
                     let mut impls = [];
                     find_impls_in_mod(e, dcur, impls, some(end_id));
-                    register(e, defid.node, in_mod(dcur), sp, name, {|ns|
+                    register(e, n_id, in_mod(dcur), sp, name, {|ns|
                         lookup_in_mod(e, dcur, sp, end_id, ns, outside)
                     }, impls);
                     break;
@@ -801,9 +800,9 @@ fn resolve_import(e: env, defid: ast::def_id, name: ast::ident,
     // If we couldn't resolve the import, don't leave it in a partially
     // resolved state, to avoid having it reported later as a cyclic
     // import
-    alt e.imports.find(defid.node) {
+    alt e.imports.find(n_id) {
       some(resolving(sp)) {
-        e.imports.insert(defid.node, resolved(none, none, none, @[], "", sp));
+        e.imports.insert(n_id, resolved(none, none, none, @[], "", sp));
       }
       _ { }
     }
@@ -1259,15 +1258,14 @@ fn lookup_in_block(e: env, name: ident, sp: span, b: ast::blk_, pos: uint,
                 alt vp.node {
                   ast::view_path_simple(ident, _, id) {
                     if is_import && name == ident {
-                        ret lookup_import(e, local_def(id), ns);
+                        ret lookup_import(e, id, ns);
                     }
                   }
 
                   ast::view_path_list(path, idents, _) {
                     for ident in idents {
                         if name == ident.node.name {
-                            let def = local_def(ident.node.id);
-                            ret lookup_import(e, def, ns);
+                            ret lookup_import(e, ident.node.id, ns);
                         }
                     }
                   }
@@ -1389,13 +1387,13 @@ fn found_view_item(e: env, id: node_id) -> option<def> {
     }
 }
 
-fn lookup_import(e: env, defid: def_id, ns: namespace) -> option<def> {
+fn lookup_import(e: env, n_id: node_id, ns: namespace) -> option<def> {
     // Imports are simply ignored when resolving themselves.
-    if vec::contains(e.ignored_imports, defid.node) { ret none; }
-    alt e.imports.get(defid.node) {
-      todo(node_id, name, path, span, scopes) {
-        resolve_import(e, local_def(node_id), name, *path, span, scopes);
-        ret lookup_import(e, defid, ns);
+    if vec::contains(e.ignored_imports, n_id) { ret none; }
+    alt e.imports.get(n_id) {
+      todo(name, path, span, scopes) {
+        resolve_import(e, n_id, name, *path, span, scopes);
+        ret lookup_import(e, n_id, ns);
       }
       resolving(sp) {
         e.sess.span_err(sp, "cyclic import");
@@ -1403,7 +1401,7 @@ fn lookup_import(e: env, defid: def_id, ns: namespace) -> option<def> {
       }
       resolved(val, typ, md, _, _, _) {
         if e.used_imports.track {
-            e.used_imports.data += [defid.node];
+            e.used_imports.data += [n_id];
         }
         ret alt ns { ns_val { val } ns_type { typ } ns_module { md } };
       }
@@ -1537,7 +1535,7 @@ fn lookup_in_mie(e: env, mie: mod_index_entry, ns: namespace) ->
       mie_view_item(_, id, _) {
          if ns == ns_module { ret found_view_item(e, id); }
       }
-      mie_import_ident(id, _) { ret lookup_import(e, local_def(id), ns); }
+      mie_import_ident(id, _) { ret lookup_import(e, id, ns); }
       mie_item(item) { ret found_def_item(item, ns); }
       mie_enum_variant(variant_idx, variants, parent_id, parent_span) {
          alt ns {
@@ -2146,13 +2144,12 @@ fn resolve_impls(e: @env, c: @ast::crate) {
 
 fn find_impls_in_view_item(e: env, vi: @ast::view_item,
                            &impls: [@_impl], sc: option<iscopes>) {
-    fn lookup_imported_impls(e: env, id: ast::node_id,
+    fn lookup_imported_impls(e: env, id: node_id,
                              act: fn(@[@_impl])) {
         alt e.imports.get(id) {
           resolved(_, _, _, is, _, _) { act(is); }
-          todo(node_id, name, path, span, scopes) {
-            resolve_import(e, local_def(node_id), name, *path, span,
-                           scopes);
+          todo(name, path, span, scopes) {
+            resolve_import(e, id, name, *path, span, scopes);
             alt check e.imports.get(id) {
               resolved(_, _, _, is, _, _) { act(is); }
             }
