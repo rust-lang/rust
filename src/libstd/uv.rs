@@ -271,7 +271,7 @@ native mod rustrt {
         loop_handle: *libc::c_void,
         handle_ptr: *uv_tcp_t) -> libc::c_int;
     fn rust_uv_buf_init(base: *u8, len: libc::size_t)
-        -> *libc::c_void;
+        -> uv_buf_t;
     fn rust_uv_last_error(loop_handle: *libc::c_void) -> uv_err_t;
     fn rust_uv_ip4_test_verify_port_val(++addr: sockaddr_in,
                                         expected: libc::c_uint)
@@ -283,7 +283,7 @@ native mod rustrt {
                            ++addr: sockaddr_in,
                            after_cb: *u8) -> libc::c_int;
     fn rust_uv_write(req: *libc::c_void, stream: *libc::c_void,
-             buf_in: **libc::c_void, buf_cnt: libc::c_int,
+             ++buf_in: *uv_buf_t, buf_cnt: libc::c_int,
              cb: *u8) -> libc::c_int;
 
     // sizeof testing helpers
@@ -342,7 +342,7 @@ mod direct {
     // to malloc'd buffers .. these will have to be translated
     // back into their value types in c. sigh.
     unsafe fn write(req: *libc::c_void, stream: *libc::c_void,
-             buf_in: *[*libc::c_void], cb: *u8) -> libc::c_int {
+             buf_in: *[uv_buf_t], cb: *u8) -> libc::c_int {
         let buf_ptr = vec::unsafe::to_ptr(*buf_in);
         let buf_cnt = vec::len(*buf_in) as i32;
         ret rustrt::rust_uv_write(req, stream, buf_ptr, buf_cnt, cb);
@@ -379,7 +379,7 @@ mod direct {
         rustrt::rust_uv_set_data_for_req(req, data);
     }
     // TODO: see github issue #1402
-    unsafe fn buf_init(input: *u8, len: uint) -> *libc::c_void {
+    unsafe fn buf_init(input: *u8, len: uint) -> uv_buf_t {
         ret rustrt::rust_uv_buf_init(input, len);
     }
     unsafe fn ip4_addr(ip: str, port: int)
@@ -950,20 +950,8 @@ fn test_uv_timer() {
 
 type request_wrapper = {
     write_req: *uv_write_t,
-    req_buf: *[*libc::c_void]
+    req_buf: *[uv_buf_t]
 };
-
-crust fn on_alloc(handle: *libc::c_void,
-                  suggested_size: libc::size_t) -> uv_buf_t
-    unsafe {
-    io::println("beginning on_alloc...");
-    io::println("ending on_alloc...");
-    let new_vec: @[u8] = @[];
-    let ptr = vec::unsafe::to_ptr(*new_vec);
-    let buf = direct::buf_init(ptr, vec::len(*new_vec));
-    ret *(buf as *uv_buf_t);
-    
-}
 
 crust fn on_write_complete_cb(write_handle: *uv_write_t,
                               status: libc::c_int) unsafe {
