@@ -30,7 +30,7 @@ fn g(fcx : &fcx) {
 
 fn f(ccx : &ccx) {
     let a = arena(());
-    let fcx = { arena: &a, ccx: ccx }; 
+    let fcx = { arena: &a, ccx: ccx };
     ret g(&fcx);
 }
 
