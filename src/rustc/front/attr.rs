@@ -4,7 +4,7 @@ import std::map;
 import std::map::hashmap;
 import either::either;
 import syntax::{ast, ast_util};
-import driver::session::session;
+import driver::diagnostic::span_handler;
 
 export attr_meta;
 export attr_metas;
@@ -220,13 +220,14 @@ fn remove_meta_items_by_name(items: [@ast::meta_item], name: str) ->
     ret vec::filter_map(items, filter);
 }
 
-fn require_unique_names(sess: session, metas: [@ast::meta_item]) {
+fn require_unique_names(diagnostic: span_handler,
+                        metas: [@ast::meta_item]) {
     let map = map::str_hash();
     for meta: @ast::meta_item in metas {
         let name = get_meta_item_name(meta);
         if map.contains_key(name) {
-            sess.span_fatal(meta.span,
-                            #fmt["duplicate meta item `%s`", name]);
+            diagnostic.span_fatal(meta.span,
+                                  #fmt["duplicate meta item `%s`", name]);
         }
         map.insert(name, ());
     }

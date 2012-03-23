@@ -302,7 +302,7 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
         let mut vers: option<str> = none;
         let mut cmh_items: [@ast::meta_item] = [];
         let linkage_metas = attr::find_linkage_metas(c.node.attrs);
-        attr::require_unique_names(sess, linkage_metas);
+        attr::require_unique_names(sess.diagnostic(), linkage_metas);
         for meta: @ast::meta_item in linkage_metas {
             if attr::get_meta_item_name(meta) == "name" {
                 alt attr::get_meta_item_value_str(meta) {

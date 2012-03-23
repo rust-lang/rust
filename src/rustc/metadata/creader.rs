@@ -137,7 +137,7 @@ fn find_library_crate(sess: session::session, ident: ast::ident,
                       metas: [@ast::meta_item])
    -> option<{ident: str, data: @[u8]}> {
 
-    attr::require_unique_names(sess, metas);
+    attr::require_unique_names(sess.diagnostic(), metas);
     let metas = metas;
 
     let crate_name =
