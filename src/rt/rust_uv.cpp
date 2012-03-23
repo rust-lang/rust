@@ -287,12 +287,12 @@ rust_uv_last_error(uv_loop_t* loop) {
 extern "C" int
 rust_uv_tcp_connect(uv_connect_t* connect_ptr,
 					uv_tcp_t* tcp_ptr,
-					void* addr_ptr,
+					struct sockaddr_in addr,
 					uv_connect_cb cb) {
 	//return uv_tcp_connect(connect_ptr, tcp_ptr, addr, cb);
 	printf("inside rust_uv_tcp_connect\n");
-	sockaddr_in addr_tmp = *((sockaddr_in*)addr_ptr);
-	sockaddr_in addr = addr_tmp;
+	//sockaddr_in addr_tmp = *((sockaddr_in*)addr_ptr);
+	//sockaddr_in addr = addr_tmp;
 	printf("before tcp_connect .. port: %d\n", addr.sin_port);
 	int result = uv_tcp_connect(connect_ptr, tcp_ptr, addr, cb);
 	printf ("leaving rust_uv_tcp_connect.. and result: %d\n",
@@ -313,10 +313,17 @@ rust_uv_write(uv_write_t* req, uv_stream_t* handle,
 	return uv_write(req, handle, buf_vals, buf_cnt, cb);
 }
 
-extern "C" sockaddr_in
+extern "C" struct sockaddr_in
 rust_uv_ip4_addr(const char* ip, int port) {
 	printf("before creating addr_ptr.. ip %s port %d\n", ip, port);
-	sockaddr_in addr = uv_ip4_addr("173.194.33.40", 80);
+	struct sockaddr_in addr = uv_ip4_addr(ip, port);
 	printf("after creating .. port: %d\n", addr.sin_port);
 	return addr;
+}
+
+extern "C" bool
+rust_uv_ip4_test_verify_port_val(struct sockaddr_in addr,
+								 unsigned int expected) {
+	printf("inside c++ ip4_test .. port: %u\n", addr.sin_port);
+	return addr.sin_port == expected;
 }

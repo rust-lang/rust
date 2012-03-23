@@ -217,17 +217,15 @@ fn gen_stub_uv_write_t() -> uv_write_t {
     ret { loop_handle: ptr::null() };
 }
 
-// not going to use this type, for now, because of
-// github issue #1402
 // unix size: 16
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
 type sockaddr_in = {
-    sin_family: u16,
-    sin_port: u16,
-    sin_addr: u32, // in_addr: this is an opaque, per-platform struct
-    sin_zero: *u8
+    mut sin_family: u16,
+    mut sin_port: u16,
+    mut sin_addr: u32, // in_addr: this is an opaque, per-platform struct
+    mut sin_zero: (u8, u8, u8, u8, u8, u8, u8, u8)
 };
 
 // unix size: 28 .. make due w/ 32
@@ -275,11 +273,14 @@ native mod rustrt {
     fn rust_uv_buf_init(base: *u8, len: libc::size_t)
         -> *libc::c_void;
     fn rust_uv_last_error(loop_handle: *libc::c_void) -> uv_err_t;
+    fn rust_uv_ip4_test_verify_port_val(++addr: sockaddr_in,
+                                        expected: libc::c_uint)
+        -> bool;
     fn rust_uv_ip4_addr(ip: *u8, port: libc::c_int)
         -> sockaddr_in;
     fn rust_uv_tcp_connect(connect_ptr: *uv_connect_t,
                            tcp_handle_ptr: *uv_tcp_t,
-                           addr: *libc::c_void,
+                           ++addr: sockaddr_in,
                            after_cb: *u8) -> libc::c_int;
     fn rust_uv_write(req: *libc::c_void, stream: *libc::c_void,
              buf_in: **libc::c_void, buf_cnt: libc::c_int,
@@ -329,9 +330,10 @@ mod direct {
     }
     unsafe fn tcp_connect(connect_ptr: *uv_connect_t,
                           tcp_handle_ptr: *uv_tcp_t,
-                          address: *libc::c_void,
+                          address: sockaddr_in,
                           after_connect_cb: *u8)
     -> libc::c_int {
+        io::println(#fmt("before native tcp_connect -- addr port: %u", address.sin_port as uint));
         ret rustrt::rust_uv_tcp_connect(connect_ptr, tcp_handle_ptr,
                                     address, after_connect_cb);
     }
@@ -380,15 +382,15 @@ mod direct {
     unsafe fn buf_init(input: *u8, len: uint) -> *libc::c_void {
         ret rustrt::rust_uv_buf_init(input, len);
     }
-    // TODO: see github issue #1402
-    unsafe fn ip4_addr(ip: str, port: libc::c_int)
+    unsafe fn ip4_addr(ip: str, port: int)
     -> sockaddr_in {
         let mut addr_vec = str::bytes(ip);
         addr_vec += [0u8]; // add null terminator
         let addr_vec_ptr = vec::unsafe::to_ptr(addr_vec);
         let ip_back = str::from_bytes(addr_vec);
         io::println(#fmt("vec val: '%s' length: %u",ip_back, vec::len(addr_vec)));
-        ret rustrt::rust_uv_ip4_addr(addr_vec_ptr, port);
+        ret rustrt::rust_uv_ip4_addr(addr_vec_ptr,
+                                     port as libc::c_int);
     }
     // this is lame.
     // TODO: see github issue #1402
@@ -1032,11 +1034,11 @@ fn impl_uv_tcp_request() unsafe {
         io::println("sucessful tcp_init_result");
         
         io::println("building addr...");
-        let addr_val = direct::ip4_addr("173.194.33.40", 80i32);
+        let addr = direct::ip4_addr("173.194.33.40", 80);
         io::println(#fmt("after build addr in rust. port: %u",
-                         addr_val.sin_port as uint));
-        let addr: *libc::c_void = ptr::addr_of(addr_val) as
-                                    *libc::c_void;
+                         addr.sin_port as uint));
+        //let addr: *libc::c_void = ptr::addr_of(addr_val) as
+        //                            *libc::c_void;
         
         // this should set up the connection request..
         let tcp_connect_result = direct::tcp_connect(
@@ -1127,4 +1129,18 @@ fn test_uv_struct_size_sockaddr_in() {
                       native_handle_size as uint, rust_handle_size);
     io::println(output);
     assert native_handle_size as uint == rust_handle_size;
+}
+
+fn impl_uv_byval_test() unsafe {
+    let addr = direct::ip4_addr("173.194.33.111", 80);
+    io::println(#fmt("after build addr in rust. port: %u",
+                     addr.sin_port as uint));
+    assert rustrt::rust_uv_ip4_test_verify_port_val(addr,
+                                   addr.sin_port as libc::c_uint);
+    io::println(#fmt("after build addr in rust. port: %u",
+                     addr.sin_port as uint));
+}
+#[test]
+fn test_uv_ip4_byval_passing_test() {
+    impl_uv_byval_test();
 }
