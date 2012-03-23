@@ -16,7 +16,7 @@ import std::map::hashmap;
 import util::ppaux::ty_to_str;
 
 export link_name, trans_native_mod, register_crust_fn, trans_crust_fn,
-       decl_native_fn, trans_intrinsic;
+       decl_native_fn, trans_builtin;
 
 enum x86_64_reg_class {
     no_class,
@@ -730,7 +730,11 @@ fn trans_native_mod(ccx: @crate_ctxt,
     }
 
     let mut cc = alt abi {
-      ast::native_abi_rust_intrinsic { ret; }
+      ast::native_abi_rust_intrinsic {
+        for item in native_mod.items { get_item_val(ccx, item.id); }
+        ret;
+      }
+      ast::native_abi_rust_builtin { ret; }
       ast::native_abi_cdecl { lib::llvm::CCallConv }
       ast::native_abi_stdcall { lib::llvm::X86StdcallCallConv }
     };
@@ -752,9 +756,9 @@ fn trans_native_mod(ccx: @crate_ctxt,
     }
 }
 
-fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::native_item,
-                   path: ast_map::path, substs: param_substs,
-                   ref_id: option<ast::node_id>) {
+fn trans_builtin(ccx: @crate_ctxt, decl: ValueRef, item: @ast::native_item,
+                 path: ast_map::path, substs: param_substs,
+                 ref_id: option<ast::node_id>) {
     let fcx = new_fn_ctxt_w_id(ccx, path, decl, item.id, none,
                                some(substs), some(item.span));
     let bcx = top_scope_block(fcx, none), lltop = bcx.llbb;
@@ -1005,5 +1009,28 @@ fn abi_of_native_fn(ccx: @crate_ctxt, i: @ast::native_item)
 
 fn decl_native_fn(ccx: @crate_ctxt, i: @ast::native_item,
                   pth: ast_map::path) -> ValueRef {
-    register_fn(ccx, i.span, pth, i.id)
+    let _icx = ccx.insn_ctxt("native::decl_native_fn");
+    alt i.node {
+      ast::native_item_fn(_, _) {
+        let node_type = ty::node_id_to_type(ccx.tcx, i.id);
+        alt abi_of_native_fn(ccx, i) {
+          ast::native_abi_rust_intrinsic {
+            // For intrinsics: link the function directly to the intrinsic
+            // function itself.
+            let fn_type = type_of_fn_from_ty(ccx, node_type);
+            let ri_name = "rust_intrinsic_" + native::link_name(i);
+            ccx.item_symbols.insert(i.id, ri_name);
+            get_extern_fn(ccx.externs, ccx.llmod, ri_name,
+                          lib::llvm::CCallConv, fn_type)
+          }
+          ast::native_abi_cdecl | ast::native_abi_stdcall |
+          ast::native_abi_rust_builtin {
+            // For true external functions: create a rust wrapper
+            // and link to that.  The rust wrapper will handle
+            // switching to the C stack.
+            register_fn(ccx, i.span, pth, i.id)
+          }
+        }
+      }
+    }
 }

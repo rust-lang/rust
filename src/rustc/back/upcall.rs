@@ -17,6 +17,7 @@ type upcalls =
      shared_realloc: ValueRef,
      mark: ValueRef,
      vec_grow: ValueRef,
+     vec_push: ValueRef,
      str_concat: ValueRef,
      cmp_type: ValueRef,
      log_type: ValueRef,
@@ -40,6 +41,7 @@ fn declare_upcalls(targ_cfg: @session::config,
     }
     let d = bind decl(llmod, "upcall_", _, _, _);
     let dv = bind decl(llmod, "upcall_", _, _, T_void());
+    let dvi = bind decl(llmod, "upcall_intrinsic_", _, _, T_void());
 
     let int_t = T_int(targ_cfg);
     let size_t = T_size_t(targ_cfg);
@@ -64,6 +66,10 @@ fn declare_upcalls(targ_cfg: @session::config,
               d("mark", [T_ptr(T_i8())], int_t),
           vec_grow:
               dv("vec_grow", [T_ptr(T_ptr(opaque_vec_t)), int_t]),
+          vec_push:
+              dvi("vec_push",
+                [T_ptr(T_ptr(opaque_vec_t)), T_ptr(tydesc_type),
+                 T_ptr(T_i8())]),
           str_concat:
               d("str_concat", [T_ptr(opaque_vec_t), T_ptr(opaque_vec_t)],
                 T_ptr(opaque_vec_t)),

@@ -124,7 +124,7 @@ fn check_ctypes(tcx: ty::ctxt, crate: @ast::crate) {
     fn check_item(tcx: ty::ctxt, it: @ast::item) {
         alt it.node {
           ast::item_native_mod(nmod) if attr::native_abi(it.attrs) !=
-              either::right(ast::native_abi_rust_intrinsic) {
+              either::right(ast::native_abi_rust_builtin) {
             for ni in nmod.items {
                 alt ni.node {
                   ast::native_item_fn(decl, tps) {

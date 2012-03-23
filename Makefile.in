@@ -317,6 +317,7 @@ HSREQ$(1)_H_$(3) = \
 TSREQ$(1)_T_$(2)_H_$(3) = \
 	$$(HSREQ$(1)_H_$(3)) \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_RUNTIME) \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/intrinsics.bc \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/libmorestack.a
 
 # Prerequisites for complete stageN targets

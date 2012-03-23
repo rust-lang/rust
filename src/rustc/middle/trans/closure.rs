@@ -416,6 +416,7 @@ fn trans_bind_1(cx: block, outgoing_fty: ty::t,
                 args: [option<@ast::expr>], pair_ty: ty::t,
                 dest: dest) -> block {
     let _icx = cx.insn_ctxt("closure::trans_bind1");
+    assert option::is_none(f_res.tds);
     let ccx = cx.ccx();
     let mut bound: [@ast::expr] = [];
     for argopt: option<@ast::expr> in args {

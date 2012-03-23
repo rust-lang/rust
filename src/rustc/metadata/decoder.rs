@@ -41,6 +41,7 @@ export get_item_path;
 export maybe_find_item; // sketchy
 export item_type; // sketchy
 export maybe_get_item_ast;
+export item_is_intrinsic;
 
 // Used internally by astencode:
 export translate_def_id;
@@ -306,6 +307,13 @@ fn get_class_method(cdata: cmd, id: ast::node_id, name: str) -> ast::def_id {
       some(found) { found }
       none { fail (#fmt("get_class_method: no method named %s", name)) }
     }
+}
+
+fn item_is_intrinsic(cdata: cmd, id: ast::node_id) -> bool {
+    let mut intrinsic = false;
+    ebml::tagged_docs(lookup_item(id, cdata.data), tag_item_is_intrinsic,
+                      {|_i| intrinsic = true;});
+    intrinsic
 }
 
 fn get_symbol(data: @[u8], id: ast::node_id) -> str {
