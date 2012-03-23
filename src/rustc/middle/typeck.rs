@@ -948,8 +948,8 @@ mod collect {
           ast::item_mod(_) {}
           ast::item_native_mod(m) {
             if front::attr::native_abi(it.attrs) ==
-               either::right(ast::native_abi_rust_builtin) {
-                for item in m.items { check_builtin_type(tcx, item); }
+               either::right(ast::native_abi_rust_intrinsic) {
+                for item in m.items { check_intrinsic_type(tcx, item); }
             }
           }
           ast::item_enum(variants, ty_params) {
@@ -1414,7 +1414,7 @@ mod writeback {
     }
 }
 
-fn check_builtin_type(tcx: ty::ctxt, it: @ast::native_item) {
+fn check_intrinsic_type(tcx: ty::ctxt, it: @ast::native_item) {
     fn param(tcx: ty::ctxt, n: uint) -> ty::t {
         ty::mk_param(tcx, n, local_def(0))
     }
@@ -1432,7 +1432,7 @@ fn check_builtin_type(tcx: ty::ctxt, it: @ast::native_item) {
       "addr_of" { (1u, [arg(ast::by_ref, param(tcx, 0u))],
                    ty::mk_imm_ptr(tcx, param(tcx, 0u))) }
       other {
-        tcx.sess.span_err(it.span, "unrecognized builtin function: `" +
+        tcx.sess.span_err(it.span, "unrecognized intrinsic function: `" +
                           other + "`");
         ret;
       }
@@ -1444,11 +1444,11 @@ fn check_builtin_type(tcx: ty::ctxt, it: @ast::native_item) {
     let i_ty = ty_of_native_item(tcx, m_collect, it);
     let i_n_tps = (*i_ty.bounds).len();
     if i_n_tps != n_tps {
-        tcx.sess.span_err(it.span, #fmt("builtin function has wrong number \
+        tcx.sess.span_err(it.span, #fmt("intrinsic has wrong number \
                                          of type parameters. found %u, \
                                          expected %u", i_n_tps, n_tps));
     } else if !ty::same_type(tcx, i_ty.ty, fty) {
-        tcx.sess.span_err(it.span, #fmt("builtin function has wrong type. \
+        tcx.sess.span_err(it.span, #fmt("intrinsic has wrong type. \
                                          expected %s", ty_to_str(tcx, fty)));
     }
 }

@@ -79,7 +79,7 @@ fn trans_vtable_callee(bcx: block, env: callee_env, vtable: ValueRef,
     let vtable = PointerCast(bcx, vtable,
                              T_ptr(T_array(T_ptr(llfty), n_method + 1u)));
     let mptr = Load(bcx, GEPi(bcx, vtable, [0, n_method as int]));
-    {bcx: bcx, val: mptr, kind: owned, env: env, tds: none}
+    {bcx: bcx, val: mptr, kind: owned, env: env}
 }
 
 fn method_with_name(ccx: @crate_ctxt, impl_id: ast::def_id,

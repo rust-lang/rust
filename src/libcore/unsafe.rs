@@ -2,7 +2,7 @@
 
 export reinterpret_cast, forget;
 
-#[abi = "rust-builtin"]
+#[abi = "rust-intrinsic"]
 native mod rusti {
     fn forget<T>(-x: T);
     fn reinterpret_cast<T, U>(e: T) -> U;

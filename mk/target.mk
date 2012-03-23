@@ -13,17 +13,6 @@ USE_SNAPSHOT_CORELIB=0
 
 define TARGET_STAGE_N
 
-$$(TLIB$(1)_T_$(2)_H_$(3))/intrinsics.ll: \
-		$$(S)src/rt/intrinsics/intrinsics.$(HOST_$(2)).ll.in
-	@$$(call E, sed: $$@)
-	$$(Q)sed s/@CFG_TARGET_TRIPLE@/$(2)/ $$< > $$@
-
-$$(TLIB$(1)_T_$(2)_H_$(3))/intrinsics.bc: \
-		$$(TLIB$(1)_T_$(2)_H_$(3))/intrinsics.ll \
-		$$(LLVM_CONFIG_$(2))
-	@$$(call E, llvms-as: $$@)
-	$$(Q)$$(LLVM_AS_$(2)) -o $$@ $$<
-
 $$(TLIB$(1)_T_$(2)_H_$(3))/libmorestack.a: \
 		rt/$(2)/arch/$$(HOST_$(2))/libmorestack.a
 	@$$(call E, cp: $$@)

@@ -99,8 +99,6 @@ clean$(1)_T_$(2)_H_$(3):
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(LIBRUSTC_GLOB)
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_RUSTLLVM)
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/libstd.rlib
-	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/intrinsics.bc
-	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/intrinsics.ll
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/libmorestack.a
 endef
 

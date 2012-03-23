@@ -55,7 +55,7 @@ native mod rustrt {
                         yield: *libc::uintptr_t);
 }
 
-#[abi = "rust-builtin"]
+#[abi = "rust-intrinsic"]
 native mod rusti {
     fn init<T>() -> T;
 }

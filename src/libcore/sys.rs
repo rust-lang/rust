@@ -28,7 +28,7 @@ native mod rustrt {
     fn rust_set_exit_status(code: libc::intptr_t);
 }
 
-#[abi = "rust-builtin"]
+#[abi = "rust-intrinsic"]
 native mod rusti {
     fn get_tydesc<T>() -> *();
     fn size_of<T>() -> uint;

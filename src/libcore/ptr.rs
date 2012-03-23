@@ -19,7 +19,7 @@ native mod libc_ {
     fn memmove(dest: *c_void, src: *c_void, n: libc::size_t) -> *c_void;
 }
 
-#[abi = "rust-builtin"]
+#[abi = "rust-intrinsic"]
 native mod rusti {
     fn addr_of<T>(val: T) -> *T;
 }
