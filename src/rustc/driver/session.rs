@@ -108,6 +108,9 @@ impl session for session {
     fn next_node_id() -> ast::node_id {
         ret syntax::parse::parser::next_node_id(self.parse_sess);
     }
+    fn diagnostic() -> diagnostic::span_handler {
+        self.span_diagnostic
+    }
 }
 
 // Seems out of place, but it uses session, so I'm putting it here
