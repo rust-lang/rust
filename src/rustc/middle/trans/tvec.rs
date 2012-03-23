@@ -2,7 +2,7 @@ import syntax::ast;
 import driver::session::session;
 import lib::llvm::{ValueRef, TypeRef};
 import back::abi;
-import base::{call_memmove, trans_shared_malloc,
+import base::{call_memmove, shared_malloc,
                INIT, copy_val, load_if_immediate, get_tydesc,
                sub_block, do_spill_noroot,
                dest, bcx_icx};
@@ -39,8 +39,7 @@ fn alloc_raw(bcx: block, fill: ValueRef, alloc: ValueRef) -> result {
     let ccx = bcx.ccx();
     let llvecty = ccx.opaque_vec_type;
     let vecsize = Add(bcx, alloc, llsize_of(ccx, llvecty));
-    let {bcx: bcx, val: vecptr} =
-        trans_shared_malloc(bcx, T_ptr(llvecty), vecsize);
+    let vecptr = shared_malloc(bcx, T_ptr(llvecty), vecsize);
     Store(bcx, fill, GEPi(bcx, vecptr, [0, abi::vec_elt_fill]));
     Store(bcx, alloc, GEPi(bcx, vecptr, [0, abi::vec_elt_alloc]));
     ret {bcx: bcx, val: vecptr};
@@ -77,14 +76,13 @@ fn duplicate(bcx: block, vptr: ValueRef, vec_ty: ty::t) -> result {
     let ccx = bcx.ccx();
     let fill = get_fill(bcx, vptr);
     let size = Add(bcx, fill, llsize_of(ccx, ccx.opaque_vec_type));
-    let {bcx: bcx, val: newptr} =
-        trans_shared_malloc(bcx, val_ty(vptr), size);
-    let mut bcx = call_memmove(bcx, newptr, vptr, size).bcx;
+    let newptr = shared_malloc(bcx, val_ty(vptr), size);
+    call_memmove(bcx, newptr, vptr, size);
     let unit_ty = ty::sequence_element_type(bcx.tcx(), vec_ty);
     Store(bcx, fill, GEPi(bcx, newptr, [0, abi::vec_elt_alloc]));
-    if ty::type_needs_drop(bcx.tcx(), unit_ty) {
-        bcx = iter_vec(bcx, newptr, vec_ty, base::take_ty);
-    }
+    let bcx = if ty::type_needs_drop(bcx.tcx(), unit_ty) {
+        iter_vec(bcx, newptr, vec_ty, base::take_ty)
+    } else { bcx };
     ret rslt(bcx, newptr);
 }
 fn make_free_glue(bcx: block, vptr: ValueRef, vec_ty: ty::t) ->
@@ -139,8 +137,8 @@ fn trans_str(bcx: block, s: str, dest: dest) -> block {
 
     let ccx = bcx.ccx();
     let llcstr = C_cstr(ccx, s);
-    let bcx = call_memmove(bcx, get_dataptr(bcx, sptr, T_i8()), llcstr,
-                           C_uint(ccx, veclen)).bcx;
+    call_memmove(bcx, get_dataptr(bcx, sptr, T_i8()), llcstr,
+                 C_uint(ccx, veclen));
     ret base::store_in_dest(bcx, sptr, dest);
 }
 
@@ -211,7 +209,7 @@ fn trans_append_literal(bcx: block, vptrptr: ValueRef, vec_ty: ty::t,
         set_fill(bcx, vptr, new_fill);
         let targetptr = pointer_add(bcx, get_dataptr(bcx, vptr, elt_llty),
                                     old_fill);
-        bcx = call_memmove(bcx, targetptr, scratch, elt_sz).bcx;
+        call_memmove(bcx, targetptr, scratch, elt_sz);
     }
     bcx
 }

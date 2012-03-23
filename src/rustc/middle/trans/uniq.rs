@@ -11,21 +11,20 @@ fn trans_uniq(bcx: block, contents: @ast::expr,
               node_id: ast::node_id, dest: dest) -> block {
     let _icx = bcx.insn_ctxt("uniq::trans_uniq");
     let uniq_ty = node_id_type(bcx, node_id);
-    let {bcx, val: llptr} = alloc_uniq(bcx, uniq_ty);
+    let llptr = alloc_uniq(bcx, uniq_ty);
     add_clean_free(bcx, llptr, true);
     let bcx = trans_expr_save_in(bcx, contents, llptr);
     revoke_clean(bcx, llptr);
     ret store_in_dest(bcx, llptr, dest);
 }
 
-fn alloc_uniq(cx: block, uniq_ty: ty::t) -> result {
-    let bcx = cx;
+fn alloc_uniq(bcx: block, uniq_ty: ty::t) -> ValueRef {
     let _icx = bcx.insn_ctxt("uniq::alloc_uniq");
     let contents_ty = content_ty(uniq_ty);
     let llty = type_of::type_of(bcx.ccx(), contents_ty);
     let llsz = llsize_of(bcx.ccx(), llty);
     let llptrty = T_ptr(llty);
-    trans_shared_malloc(bcx, llptrty, llsz)
+    shared_malloc(bcx, llptrty, llsz)
 }
 
 fn make_free_glue(bcx: block, vptr: ValueRef, t: ty::t)
@@ -52,7 +51,7 @@ fn autoderef(v: ValueRef, t: ty::t) -> {v: ValueRef, t: ty::t} {
 fn duplicate(bcx: block, v: ValueRef, t: ty::t) -> result {
     let _icx = bcx.insn_ctxt("uniq::duplicate");
     let content_ty = content_ty(t);
-    let {bcx, val: llptr} = alloc_uniq(bcx, t);
+    let llptr = alloc_uniq(bcx, t);
 
     let src = load_if_immediate(bcx, v, content_ty);
     let dst = llptr;

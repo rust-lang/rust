@@ -284,7 +284,7 @@ fn bump_ptr(bcx: block, t: ty::t, base: ValueRef, sz: ValueRef) ->
 // is meaningless, as it will be cast away.
 fn GEP_enum(bcx: block, llblobptr: ValueRef, enum_id: ast::def_id,
             variant_id: ast::def_id, ty_substs: [ty::t],
-            ix: uint) -> result {
+            ix: uint) -> ValueRef {
     let _icx = bcx.insn_ctxt("GEP_enum");
     let ccx = bcx.ccx();
     let variant = ty::enum_variant_with_id(ccx.tcx, enum_id, variant_id);
@@ -295,16 +295,16 @@ fn GEP_enum(bcx: block, llblobptr: ValueRef, enum_id: ast::def_id,
     });
     let typed_blobptr = PointerCast(bcx, llblobptr,
                                     T_ptr(T_struct(arg_lltys)));
-    rslt(bcx, GEPi(bcx, typed_blobptr, [0, ix as int]))
+    GEPi(bcx, typed_blobptr, [0, ix as int])
 }
 
 // trans_shared_malloc: expects a type indicating which pointer type we want
 // and a size indicating how much space we want malloc'd.
-fn trans_shared_malloc(cx: block, llptr_ty: TypeRef, llsize: ValueRef)
-   -> result {
+fn shared_malloc(cx: block, llptr_ty: TypeRef, llsize: ValueRef)
+   -> ValueRef {
     let _icx = cx.insn_ctxt("opaque_shared_malloc");
     let rval = Call(cx, cx.ccx().upcalls.shared_malloc, [llsize]);
-    ret rslt(cx, PointerCast(cx, rval, llptr_ty));
+    PointerCast(cx, rval, llptr_ty)
 }
 
 // Returns a pointer to the body for the box. The box may be an opaque
@@ -325,15 +325,14 @@ fn opaque_box_body(bcx: block,
 // trans_malloc_boxed_raw: expects an unboxed type and returns a pointer to
 // enough space for a box of that type.  This includes a rust_opaque_box
 // header.
-fn trans_malloc_boxed_raw(bcx: block, t: ty::t,
-                          &static_ti: option<@tydesc_info>) -> result {
+fn malloc_boxed_raw(bcx: block, t: ty::t,
+                    &static_ti: option<@tydesc_info>) -> ValueRef {
     let _icx = bcx.insn_ctxt("trans_malloc_boxed_raw");
-    let mut bcx = bcx;
     let ccx = bcx.ccx();
 
     // Grab the TypeRef type of box_ptr, because that's what trans_raw_malloc
     // wants.
-    let box_ptr = ty::mk_imm_box(bcx.tcx(), t);
+    let box_ptr = ty::mk_imm_box(ccx.tcx, t);
     let llty = type_of(ccx, box_ptr);
 
     // Get the tydesc for the body:
@@ -342,18 +341,17 @@ fn trans_malloc_boxed_raw(bcx: block, t: ty::t,
 
     // Allocate space:
     let rval = Call(bcx, ccx.upcalls.malloc, [lltydesc]);
-    ret rslt(bcx, PointerCast(bcx, rval, llty));
+    ret PointerCast(bcx, rval, llty);
 }
 
 // trans_malloc_boxed: usefully wraps trans_malloc_box_raw; allocates a box,
 // initializes the reference count to 1, and pulls out the body and rc
-fn trans_malloc_boxed(bcx: block, t: ty::t) ->
-   {bcx: block, box: ValueRef, body: ValueRef} {
+fn malloc_boxed(bcx: block, t: ty::t) -> {box: ValueRef, body: ValueRef} {
     let _icx = bcx.insn_ctxt("trans_malloc_boxed");
     let mut ti = none;
-    let {bcx, val:box} = trans_malloc_boxed_raw(bcx, t, ti);
+    let box = malloc_boxed_raw(bcx, t, ti);
     let body = GEPi(bcx, box, [0, abi::box_field_body]);
-    ret {bcx: bcx, box: box, body: body};
+    ret {box: box, body: body};
 }
 
 // Type descriptor and type glue stuff
@@ -571,30 +569,30 @@ fn emit_tydescs(ccx: @crate_ctxt) {
     };
 }
 
-fn make_take_glue(cx: block, v: ValueRef, t: ty::t) {
-    let _icx = cx.insn_ctxt("make_take_glue");
-    let mut bcx = cx;
+fn make_take_glue(bcx: block, v: ValueRef, t: ty::t) {
+    let _icx = bcx.insn_ctxt("make_take_glue");
     // NB: v is a *pointer* to type t here, not a direct value.
-    bcx = alt ty::get(t).struct {
+    let bcx = alt ty::get(t).struct {
       ty::ty_box(_) | ty::ty_opaque_box {
-        incr_refcnt_of_boxed(bcx, Load(bcx, v))
+        incr_refcnt_of_boxed(bcx, Load(bcx, v)); bcx
       }
       ty::ty_uniq(_) {
-        let r = uniq::duplicate(bcx, Load(bcx, v), t);
-        Store(r.bcx, r.val, v);
-        r.bcx
+        let {bcx, val} = uniq::duplicate(bcx, Load(bcx, v), t);
+        Store(bcx, val, v);
+        bcx
       }
       ty::ty_vec(_) | ty::ty_str {
-        let r = tvec::duplicate(bcx, Load(bcx, v), t);
-        Store(r.bcx, r.val, v);
-        r.bcx
+        let {bcx, val} = tvec::duplicate(bcx, Load(bcx, v), t);
+        Store(bcx, val, v);
+        bcx
       }
       ty::ty_fn(_) {
         closure::make_fn_glue(bcx, v, t, take_ty)
       }
       ty::ty_iface(_, _) {
         let box = Load(bcx, GEPi(bcx, v, [0, 1]));
-        incr_refcnt_of_boxed(bcx, box)
+        incr_refcnt_of_boxed(bcx, box);
+        bcx
       }
       ty::ty_opaque_closure_ptr(ck) {
         closure::make_opaque_cbox_take_glue(bcx, ck, v)
@@ -608,7 +606,7 @@ fn make_take_glue(cx: block, v: ValueRef, t: ty::t) {
     build_return(bcx);
 }
 
-fn incr_refcnt_of_boxed(cx: block, box_ptr: ValueRef) -> block {
+fn incr_refcnt_of_boxed(cx: block, box_ptr: ValueRef) {
     let _icx = cx.insn_ctxt("incr_refcnt_of_boxed");
     let ccx = cx.ccx();
     maybe_validate_box(cx, box_ptr);
@@ -616,7 +614,6 @@ fn incr_refcnt_of_boxed(cx: block, box_ptr: ValueRef) -> block {
     let rc = Load(cx, rc_ptr);
     let rc = Add(cx, rc, C_int(ccx, 1));
     Store(cx, rc, rc_ptr);
-    ret cx;
 }
 
 fn make_free_glue(bcx: block, v: ValueRef, t: ty::t) {
@@ -881,9 +878,7 @@ fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
             let mut j = 0u;
             let v_id = variant.id;
             for a: ty::arg in args {
-                let rslt = GEP_enum(cx, a_tup, tid, v_id, tps, j);
-                let llfldp_a = rslt.val;
-                cx = rslt.bcx;
+                let llfldp_a = GEP_enum(cx, a_tup, tid, v_id, tps, j);
                 let ty_subst = ty::substitute_type_params(ccx.tcx, tps, a.ty);
                 cx = f(cx, llfldp_a, ty_subst);
                 j += 1u;
@@ -1080,19 +1075,14 @@ fn call_tydesc_glue(cx: block, v: ValueRef, t: ty::t, field: int) ->
     ret cx;
 }
 
-fn call_cmp_glue(cx: block, lhs: ValueRef, rhs: ValueRef, t: ty::t,
-                 llop: ValueRef) -> result {
+fn call_cmp_glue(bcx: block, lhs: ValueRef, rhs: ValueRef, t: ty::t,
+                 llop: ValueRef) -> ValueRef {
     // We can't use call_tydesc_glue_full() and friends here because compare
     // glue has a special signature.
-    let _icx = cx.insn_ctxt("call_cmp_glue");
-    let bcx = cx;
+    let _icx = bcx.insn_ctxt("call_cmp_glue");
 
-    let r = spill_if_immediate(bcx, lhs, t);
-    let lllhs = r.val;
-    let bcx = r.bcx;
-    let r = spill_if_immediate(bcx, rhs, t);
-    let llrhs = r.val;
-    let bcx = r.bcx;
+    let lllhs = spill_if_immediate(bcx, lhs, t);
+    let llrhs = spill_if_immediate(bcx, rhs, t);
 
     let llrawlhsptr = BitCast(bcx, lllhs, T_ptr(T_i8()));
     let llrawrhsptr = BitCast(bcx, llrhs, T_ptr(T_i8()));
@@ -1105,7 +1095,7 @@ fn call_cmp_glue(cx: block, lhs: ValueRef, rhs: ValueRef, t: ty::t,
     let llcmpresultptr = alloca(bcx, T_i1());
     Call(bcx, llfn, [llcmpresultptr, lltydesc, lltydescs,
                      llrawlhsptr, llrawrhsptr, llop]);
-    ret rslt(bcx, Load(bcx, llcmpresultptr));
+    ret Load(bcx, llcmpresultptr);
 }
 
 fn take_ty(cx: block, v: ValueRef, t: ty::t) -> block {
@@ -1139,7 +1129,8 @@ fn take_ty_immediate(bcx: block, v: ValueRef, t: ty::t) -> result {
     let _icx = bcx.insn_ctxt("take_ty_immediate");
     alt ty::get(t).struct {
       ty::ty_box(_) | ty::ty_opaque_box {
-        rslt(incr_refcnt_of_boxed(bcx, v), v)
+        incr_refcnt_of_boxed(bcx, v);
+        rslt(bcx, v)
       }
       ty::ty_uniq(_) {
         uniq::duplicate(bcx, v, t)
@@ -1158,7 +1149,7 @@ fn free_ty(cx: block, v: ValueRef, t: ty::t) -> block {
 }
 
 fn call_memmove(cx: block, dst: ValueRef, src: ValueRef,
-                n_bytes: ValueRef) -> result {
+                n_bytes: ValueRef) {
     // FIXME: Provide LLVM with better alignment information when the
     // alignment is statically known (it must be nothing more than a constant
     // int, or LLVM complains -- not even a constant element of a tydesc
@@ -1175,21 +1166,18 @@ fn call_memmove(cx: block, dst: ValueRef, src: ValueRef,
     let size = IntCast(cx, n_bytes, ccx.int_type);
     let align = C_i32(1i32);
     let volatile = C_bool(false);
-    let ret_val = Call(cx, memmove, [dst_ptr, src_ptr, size,
-                                     align, volatile]);
-    ret rslt(cx, ret_val);
+    Call(cx, memmove, [dst_ptr, src_ptr, size, align, volatile]);
 }
 
-fn memmove_ty(bcx: block, dst: ValueRef, src: ValueRef, t: ty::t) ->
-    block {
+fn memmove_ty(bcx: block, dst: ValueRef, src: ValueRef, t: ty::t) {
     let _icx = bcx.insn_ctxt("memmove_ty");
     let ccx = bcx.ccx();
     if ty::type_is_structural(t) {
         let llsz = llsize_of(ccx, type_of(ccx, t));
-        ret call_memmove(bcx, dst, src, llsz).bcx;
+        call_memmove(bcx, dst, src, llsz);
+    } else {
+        Store(bcx, Load(bcx, src), dst);
     }
-    Store(bcx, Load(bcx, src), dst);
-    ret bcx;
 }
 
 enum copy_action { INIT, DROP_EXISTING, }
@@ -1238,7 +1226,7 @@ fn copy_val_no_check(bcx: block, action: copy_action, dst: ValueRef,
     }
     if type_is_structural_or_param(t) {
         if action == DROP_EXISTING { bcx = drop_ty(bcx, dst, t); }
-        bcx = memmove_ty(bcx, dst, src, t);
+        memmove_ty(bcx, dst, src, t);
         ret take_ty(bcx, dst, t);
     }
     ccx.sess.bug("unexpected type in trans::copy_val_no_check: " +
@@ -1273,7 +1261,7 @@ fn move_val(cx: block, action: copy_action, dst: ValueRef,
         ret cx;
     } else if type_is_structural_or_param(t) {
         if action == DROP_EXISTING { cx = drop_ty(cx, dst, t); }
-        cx = memmove_ty(cx, dst, src_val, t);
+        memmove_ty(cx, dst, src_val, t);
         if src.kind == owned { ret zero_alloca(cx, src_val, t); }
         // If we're here, it must be a temporary.
         revoke_clean(cx, src_val);
@@ -1354,7 +1342,7 @@ fn trans_unary(bcx: block, op: ast::unop, e: @ast::expr,
         ret store_in_dest(bcx, neg, dest);
       }
       ast::box(_) {
-        let mut {bcx, box, body} = trans_malloc_boxed(bcx, e_ty);
+        let mut {box, body} = malloc_boxed(bcx, e_ty);
         add_clean_free(bcx, box, false);
         // Cast the body type to the type of the value. This is needed to
         // make enums work, since enums have a different LLVM type depending
@@ -1362,7 +1350,7 @@ fn trans_unary(bcx: block, op: ast::unop, e: @ast::expr,
         let ccx = bcx.ccx();
         let llety = T_ptr(type_of(ccx, e_ty));
         body = PointerCast(bcx, body, llety);
-        bcx = trans_expr_save_in(bcx, e, body);
+        let bcx = trans_expr_save_in(bcx, e, body);
         revoke_clean(bcx, box);
         ret store_in_dest(bcx, box, dest);
       }
@@ -1383,8 +1371,7 @@ fn trans_addr_of(cx: block, e: @ast::expr, dest: dest) -> block {
     let ety = expr_ty(cx, e);
     let is_immediate = ty::type_is_immediate(ety);
     if (kind == temporary && is_immediate) || kind == owned_imm {
-        let {bcx: bcx2, val: val2} = do_spill(cx, val, ety);
-        bcx = bcx2; val = val2;
+        val = do_spill(cx, val, ety);
     }
     ret store_in_dest(bcx, val, dest);
 }
@@ -1407,16 +1394,13 @@ fn trans_compare(cx: block, op: ast::binop, lhs: ValueRef,
         }
     };
 
-    let rs = call_cmp_glue(cx, lhs, rhs, rhs_t, llop);
+    let cmpval = call_cmp_glue(cx, lhs, rhs, rhs_t, llop);
 
     // Invert the result if necessary.
     alt op {
-      ast::eq | ast::lt | ast::le { ret rslt(rs.bcx, rs.val); }
-      ast::ne | ast::ge | ast::gt {
-        ret rslt(rs.bcx, Not(rs.bcx, rs.val));
-      }
-      _ { cx.tcx().sess.bug("trans_compare got\
-              non-comparison-op"); }
+      ast::eq | ast::lt | ast::le { rslt(cx, cmpval) }
+      ast::ne | ast::ge | ast::gt { rslt(cx, Not(cx, cmpval)) }
+      _ { cx.tcx().sess.bug("trans_compare got non-comparison-op"); }
     }
 }
 
@@ -2254,16 +2238,14 @@ fn trans_var(cx: block, def: ast::def, id: ast::node_id, path: @ast::path)
         } else {
             // Nullary variant.
             let enum_ty = node_id_type(cx, id);
-            let alloc_result = alloc_ty(cx, enum_ty);
-            let llenumblob = alloc_result.val;
+            let llenumblob = alloc_ty(cx, enum_ty);
             let llenumty = type_of_enum(ccx, tid, enum_ty);
-            let bcx = alloc_result.bcx;
-            let llenumptr = PointerCast(bcx, llenumblob, T_ptr(llenumty));
-            let lldiscrimptr = GEPi(bcx, llenumptr, [0, 0]);
-            let lldiscrim_gv = lookup_discriminant(bcx.fcx.ccx, vid);
-            let lldiscrim = Load(bcx, lldiscrim_gv);
-            Store(bcx, lldiscrim, lldiscrimptr);
-            ret lval_no_env(bcx, llenumptr, temporary);
+            let llenumptr = PointerCast(cx, llenumblob, T_ptr(llenumty));
+            let lldiscrimptr = GEPi(cx, llenumptr, [0, 0]);
+            let lldiscrim_gv = lookup_discriminant(ccx, vid);
+            let lldiscrim = Load(cx, lldiscrim_gv);
+            Store(cx, lldiscrim, lldiscrimptr);
+            ret lval_no_env(cx, llenumptr, temporary);
         }
       }
       ast::def_const(did) {
@@ -2425,10 +2407,10 @@ fn lval_maybe_callee_to_lval(c: lval_maybe_callee, ty: ty::t) -> lval_result {
         let n_args = ty::ty_fn_args(ty).len();
         let args = vec::from_elem(n_args, none);
         let space = alloc_ty(c.bcx, ty);
-        let bcx = closure::trans_bind_1(space.bcx, ty, c, args, ty,
-                                              save_in(space.val));
-        add_clean_temp(bcx, space.val, ty);
-        {bcx: bcx, val: space.val, kind: temporary}
+        let bcx = closure::trans_bind_1(c.bcx, ty, c, args, ty,
+                                        save_in(space));
+        add_clean_temp(bcx, space, ty);
+        {bcx: bcx, val: space, kind: temporary}
     } else {
         alt check c.env {
           is_closure { {bcx: c.bcx, val: c.val, kind: c.kind} }
@@ -2571,9 +2553,9 @@ fn trans_arg_expr(cx: block, arg: ty::arg, lldestty: TypeRef, e: @ast::expr,
         if ccx.maps.copy_map.contains_key(e.id) && lv.kind != temporary {
             if !copied {
                 let alloc = alloc_ty(bcx, e_ty);
-                bcx = copy_val(alloc.bcx, INIT, alloc.val,
-                               load_if_immediate(alloc.bcx, val, e_ty), e_ty);
-                val = alloc.val;
+                bcx = copy_val(bcx, INIT, alloc,
+                               load_if_immediate(bcx, val, e_ty), e_ty);
+                val = alloc;
             } else { bcx = take_ty(bcx, val, e_ty); }
             add_clean(bcx, val, e_ty);
         }
@@ -2581,13 +2563,12 @@ fn trans_arg_expr(cx: block, arg: ty::arg, lldestty: TypeRef, e: @ast::expr,
             val = Load(bcx, val);
         }
     } else if arg_mode == ast::by_copy || arg_mode == ast::by_move {
-        let {bcx: cx, val: alloc} = alloc_ty(bcx, e_ty);
+        let alloc = alloc_ty(bcx, e_ty);
         let move_out = arg_mode == ast::by_move ||
             ccx.maps.last_uses.contains_key(e.id);
-        bcx = cx;
         if lv.kind == temporary { revoke_clean(bcx, val); }
         if lv.kind == owned || !ty::type_is_immediate(e_ty) {
-            bcx = memmove_ty(bcx, alloc, val, e_ty);
+            memmove_ty(bcx, alloc, val, e_ty);
             if move_out && ty::type_needs_drop(ccx.tcx, e_ty) {
                 bcx = zero_alloca(bcx, val, e_ty);
             }
@@ -2602,9 +2583,7 @@ fn trans_arg_expr(cx: block, arg: ty::arg, lldestty: TypeRef, e: @ast::expr,
         add_clean_temp_mem(bcx, val, e_ty);
         temp_cleanups += [val];
     } else if ty::type_is_immediate(e_ty) && lv.kind != owned {
-        let r = do_spill(bcx, val, e_ty);
-        val = r.val;
-        bcx = r.bcx;
+        val = do_spill(bcx, val, e_ty);
     }
 
     if !is_bot && arg.ty != e_ty || ty::type_has_params(arg.ty) {
@@ -2641,18 +2620,10 @@ fn trans_args(cx: block, llenv: ValueRef, args: call_args, fn_ty: ty::t,
       ignore {
         if ty::type_is_nil(retty) && !always_valid_retptr {
             llvm::LLVMGetUndef(T_ptr(T_nil()))
-        } else {
-            let {bcx: cx, val} = alloc_ty(bcx, retty);
-            bcx = cx;
-            val
-        }
+        } else { alloc_ty(bcx, retty) }
       }
       save_in(dst) { dst }
-      by_val(_) {
-          let {bcx: cx, val} = alloc_ty(bcx, retty);
-          bcx = cx;
-          val
-      }
+      by_val(_) { alloc_ty(bcx, retty) }
     };
 
     llargs += [llretslot];
@@ -2966,7 +2937,7 @@ fn trans_temp_lval(bcx: block, e: @ast::expr) -> lval_result {
             add_clean_temp(bcx, *cell, ty);
             ret {bcx: bcx, val: *cell, kind: temporary};
         } else {
-            let {bcx, val: scratch} = alloc_ty(bcx, ty);
+            let scratch = alloc_ty(bcx, ty);
             let bcx = trans_expr_save_in(bcx, e, scratch);
             add_clean_temp(bcx, scratch, ty);
             ret {bcx: bcx, val: scratch, kind: temporary};
@@ -3068,7 +3039,8 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
         let callee = trans_callee(bcx, e), ty = expr_ty(bcx, e);
         let lv = lval_maybe_callee_to_lval(callee, ty);
         revoke_clean(lv.bcx, lv.val);
-        ret memmove_ty(lv.bcx, get_dest_addr(dest), lv.val, ty);
+        memmove_ty(lv.bcx, get_dest_addr(dest), lv.val, ty);
+        ret lv.bcx;
       }
       ast::expr_index(base, idx) {
         // If it is here, it's not an lval, so this is a user-defined index op
@@ -3165,9 +3137,9 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
         assert lhs_res.kind == owned;
         let rhs_res = trans_lval(lhs_res.bcx, src);
         let t = expr_ty(bcx, src);
-        let {bcx: bcx, val: tmp_alloc} = alloc_ty(rhs_res.bcx, t);
+        let tmp_alloc = alloc_ty(rhs_res.bcx, t);
         // Swap through a temporary.
-        let bcx = move_val(bcx, INIT, tmp_alloc, lhs_res, t);
+        let bcx = move_val(rhs_res.bcx, INIT, tmp_alloc, lhs_res, t);
         let bcx = move_val(bcx, INIT, lhs_res.val, rhs_res, t);
         ret move_val(bcx, INIT, rhs_res.val, lval_owned(bcx, tmp_alloc), t);
       }
@@ -3183,7 +3155,7 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
         // Allocate space for the ptr that will be returned from
         // `pool.alloc()`:
         let ptr_ty = expr_ty(bcx, e);
-        let {bcx, val: ptr_ptr_val} = alloc_ty(bcx, ptr_ty);
+        let ptr_ptr_val = alloc_ty(bcx, ptr_ty);
 
         #debug["ptr_ty = %s", ty_to_str(tcx, ptr_ty)];
         #debug["ptr_ptr_val = %s", val_str(ccx.tn, ptr_ptr_val)];
@@ -3250,21 +3222,13 @@ fn lval_to_dps(bcx: block, e: @ast::expr, dest: dest) -> block {
     ret bcx;
 }
 
-fn do_spill(cx: block, v: ValueRef, t: ty::t) -> result {
-    // We have a value but we have to spill it, and root it, to pass by alias.
-    let mut bcx = cx;
-
+fn do_spill(bcx: block, v: ValueRef, t: ty::t) -> ValueRef {
     if ty::type_is_bot(t) {
-        ret rslt(bcx, C_null(T_ptr(T_i8())));
+        ret C_null(T_ptr(T_i8()));
     }
-
-    let r = alloc_ty(bcx, t);
-    bcx = r.bcx;
-    let llptr = r.val;
-
+    let llptr = alloc_ty(bcx, t);
     Store(bcx, v, llptr);
-
-    ret rslt(bcx, llptr);
+    ret llptr;
 }
 
 // Since this function does *not* root, it is the caller's responsibility to
@@ -3275,10 +3239,10 @@ fn do_spill_noroot(cx: block, v: ValueRef) -> ValueRef {
     ret llptr;
 }
 
-fn spill_if_immediate(cx: block, v: ValueRef, t: ty::t) -> result {
+fn spill_if_immediate(cx: block, v: ValueRef, t: ty::t) -> ValueRef {
     let _icx = cx.insn_ctxt("spill_if_immediate");
     if ty::type_is_immediate(t) { ret do_spill(cx, v, t); }
-    ret rslt(cx, v);
+    ret v;
 }
 
 fn load_if_immediate(cx: block, v: ValueRef, t: ty::t) -> ValueRef {
@@ -3325,7 +3289,7 @@ fn trans_log(lvl: @ast::expr, bcx: block, e: @ast::expr) -> block {
             let e_ty = expr_ty(bcx, e);
             let tydesc = get_tydesc_simple(ccx, e_ty);
             // Call the polymorphic log function.
-            let {bcx, val} = spill_if_immediate(bcx, val, e_ty);
+            let val = spill_if_immediate(bcx, val, e_ty);
             let val = PointerCast(bcx, val, T_ptr(T_i8()));
             Call(bcx, ccx.upcalls.log_type, [tydesc, val, level]);
             bcx
@@ -3744,21 +3708,13 @@ fn block_locals(b: ast::blk, it: fn(@ast::local)) {
     }
 }
 
-fn alloc_ty(cx: block, t: ty::t) -> result {
-    let _icx = cx.insn_ctxt("alloc_ty");
-    let bcx = cx, ccx = cx.ccx();
+fn alloc_ty(bcx: block, t: ty::t) -> ValueRef {
+    let _icx = bcx.insn_ctxt("alloc_ty");
+    let ccx = bcx.ccx();
     let llty = type_of(ccx, t);
     assert !ty::type_has_params(t);
     let val = alloca(bcx, llty);
-
-    // NB: since we've pushed all size calculations in this
-    // function up to the alloca block, we actually return the
-    // block passed into us unmodified; it doesn't really
-    // have to be passed-and-returned here, but it fits
-    // past caller conventions and may well make sense again,
-    // so we leave it as-is.
-
-    ret rslt(cx, val);
+    ret val;
 }
 
 fn alloc_local(cx: block, local: @ast::local) -> block {
@@ -3779,7 +3735,7 @@ fn alloc_local(cx: block, local: @ast::local) -> block {
           _ {}
         }
     }
-    let {bcx, val} = alloc_ty(cx, t);
+    let val = alloc_ty(cx, t);
     if cx.sess().opts.debuginfo {
         option::may(simple_name) {|name|
             str::as_c_str(name, {|buf|
@@ -3788,7 +3744,7 @@ fn alloc_local(cx: block, local: @ast::local) -> block {
         }
     }
     cx.fcx.lllocals.insert(local.node.id, local_mem(val));
-    ret bcx;
+    ret cx;
 }
 
 fn trans_block(bcx: block, b: ast::blk, dest: dest)
@@ -3917,8 +3873,7 @@ fn copy_args_to_allocas(fcx: fn_ctxt, bcx: block, args: [ast::arg],
           ast::by_move | ast::by_copy { add_clean(bcx, argval, arg.ty); }
           ast::by_val {
             if !ty::type_is_immediate(arg.ty) {
-                let {bcx: cx, val: alloc} = alloc_ty(bcx, arg.ty);
-                bcx = cx;
+                let alloc = alloc_ty(bcx, arg.ty);
                 Store(bcx, argval, alloc);
                 fcx.llargs.insert(id, local_mem(alloc));
             } else {
@@ -4049,7 +4004,7 @@ fn trans_res_ctor(ccx: @crate_ctxt, path: path, dtor: ast::fn_decl,
     let llretptr = fcx.llretptr;
 
     let dst = GEPi(bcx, llretptr, [0, 1]);
-    bcx = memmove_ty(bcx, dst, arg, arg_t);
+    memmove_ty(bcx, dst, arg, arg_t);
     let flag = GEPi(bcx, llretptr, [0, 0]);
     let one = C_u8(1u);
     Store(bcx, one, flag);
@@ -4078,9 +4033,9 @@ fn trans_enum_variant(ccx: @crate_ctxt, enum_id: ast::node_id,
       some(substs) { substs.tys }
       none { [] }
     };
-    let mut bcx = top_scope_block(fcx, none), lltop = bcx.llbb;
+    let bcx = top_scope_block(fcx, none), lltop = bcx.llbb;
     let arg_tys = ty::ty_fn_args(node_id_type(bcx, variant.node.id));
-    bcx = copy_args_to_allocas(fcx, bcx, fn_args, arg_tys);
+    let bcx = copy_args_to_allocas(fcx, bcx, fn_args, arg_tys);
 
     // Cast the enum to a type we can GEP into.
     let llblobptr = if is_degen {
@@ -4096,9 +4051,8 @@ fn trans_enum_variant(ccx: @crate_ctxt, enum_id: ast::node_id,
     let t_id = local_def(enum_id);
     let v_id = local_def(variant.node.id);
     for va: ast::variant_arg in variant.node.args {
-        let rslt = GEP_enum(bcx, llblobptr, t_id, v_id, ty_param_substs, i);
-        bcx = rslt.bcx;
-        let lldestptr = rslt.val;
+        let lldestptr = GEP_enum(bcx, llblobptr, t_id, v_id,
+                                 ty_param_substs, i);
         // If this argument to this function is a enum, it'll have come in to
         // this function as an opaque blob due to the way that type_of()
         // works. So we have to cast to the destination's view of the type.
@@ -4106,7 +4060,7 @@ fn trans_enum_variant(ccx: @crate_ctxt, enum_id: ast::node_id,
           some(local_mem(x)) { x }
         };
         let arg_ty = arg_tys[i].ty;
-        bcx = memmove_ty(bcx, lldestptr, llarg, arg_ty);
+        memmove_ty(bcx, lldestptr, llarg, arg_ty);
         i += 1u;
     }
     build_return(bcx);

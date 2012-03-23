@@ -267,9 +267,9 @@ fn trans_cast(bcx: block, val: @ast::expr, id: ast::node_id, dest: dest)
     if dest == ignore { ret trans_expr(bcx, val, ignore); }
     let ccx = bcx.ccx();
     let v_ty = expr_ty(bcx, val);
-    let mut {bcx, box, body} = trans_malloc_boxed(bcx, v_ty);
+    let {box, body} = malloc_boxed(bcx, v_ty);
     add_clean_free(bcx, box, false);
-    bcx = trans_expr_save_in(bcx, val, body);
+    let bcx = trans_expr_save_in(bcx, val, body);
     revoke_clean(bcx, box);
     let result = get_dest_addr(dest);
     Store(bcx, box, PointerCast(bcx, GEPi(bcx, result, [0, 1]),

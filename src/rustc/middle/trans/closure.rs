@@ -174,19 +174,19 @@ fn allocate_cbox(bcx: block,
     let mut temp_cleanups = [];
     let (bcx, box) = alt ck {
       ty::ck_box {
-        let {bcx, val: box} = trans_malloc_boxed_raw(bcx, cdata_ty, ti);
+        let box = malloc_boxed_raw(bcx, cdata_ty, ti);
         (bcx, box)
       }
       ty::ck_uniq {
         let uniq_cbox_ty = mk_tuplified_uniq_cbox_ty(tcx, cdata_ty);
-        let {bcx, val: box} = uniq::alloc_uniq(bcx, uniq_cbox_ty);
+        let box = uniq::alloc_uniq(bcx, uniq_cbox_ty);
         nuke_ref_count(bcx, box);
         let bcx = store_tydesc(bcx, cdata_ty, box, ti);
         (bcx, box)
       }
       ty::ck_block {
         let cbox_ty = tuplify_box_ty(tcx, cdata_ty);
-        let {bcx, val: box} = base::alloc_ty(bcx, cbox_ty);
+        let box = base::alloc_ty(bcx, cbox_ty);
         nuke_ref_count(bcx, box);
         (bcx, box)
       }
@@ -432,7 +432,8 @@ fn trans_bind_1(cx: block, outgoing_fty: ty::t,
        (f_res.env == null_env || f_res.env == is_closure) {
         // Trivial 'binding': just return the closure
         let lv = lval_maybe_callee_to_lval(f_res, pair_ty);
-        ret memmove_ty(lv.bcx, get_dest_addr(dest), lv.val, pair_ty);
+        memmove_ty(lv.bcx, get_dest_addr(dest), lv.val, pair_ty);
+        ret lv.bcx;
     }
 
     // Arrange for the bound function to live in the first binding spot
@@ -510,7 +511,7 @@ fn make_opaque_cbox_take_glue(
     let _icx = bcx.insn_ctxt("closure::make_opaque_cbox_take_glue");
     alt ck {
       ty::ck_block { ret bcx; }
-      ty::ck_box { ret incr_refcnt_of_boxed(bcx, Load(bcx, cboxptr)); }
+      ty::ck_box { incr_refcnt_of_boxed(bcx, Load(bcx, cboxptr)); ret bcx; }
       ty::ck_uniq { /* hard case: */ }
     }
 
@@ -533,7 +534,7 @@ fn make_opaque_cbox_take_glue(
         let malloc = ccx.upcalls.shared_malloc;
         let cbox_out = Call(bcx, malloc, [sz]);
         let cbox_out = PointerCast(bcx, cbox_out, llopaquecboxty);
-        let {bcx, val: _} = call_memmove(bcx, cbox_out, cbox_in, sz);
+        call_memmove(bcx, cbox_out, cbox_in, sz);
         Store(bcx, cbox_out, cboxptr);
 
         // Take the (deeply cloned) type descriptor
@@ -733,8 +734,8 @@ fn trans_bind_thunk(ccx: @crate_ctxt,
                 val = Load(bcx, val);
               }
               ast::by_copy {
-                let {bcx: cx, val: alloc} = alloc_ty(bcx, out_arg.ty);
-                bcx = memmove_ty(cx, alloc, val, out_arg.ty);
+                let alloc = alloc_ty(bcx, out_arg.ty);
+                memmove_ty(bcx, alloc, val, out_arg.ty);
                 bcx = take_ty(bcx, alloc, out_arg.ty);
                 val = alloc;
               }

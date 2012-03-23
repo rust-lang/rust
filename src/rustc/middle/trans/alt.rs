@@ -262,7 +262,6 @@ fn extract_variant_args(bcx: block, pat_id: ast::node_id,
    {vals: [ValueRef], bcx: block} {
     let _icx = bcx.insn_ctxt("alt::extract_variant_args");
     let ccx = bcx.fcx.ccx;
-    let mut bcx = bcx;
     let enum_ty_substs = alt check ty::get(node_id_type(bcx, pat_id)).struct {
       ty::ty_enum(id, tps) { assert id == vdefs.enm; tps }
     };
@@ -280,10 +279,8 @@ fn extract_variant_args(bcx: block, pat_id: ast::node_id,
     let vdefs_tg = vdefs.enm;
     let vdefs_var = vdefs.var;
     while i < size {
-        let r = GEP_enum(bcx, blobptr, vdefs_tg, vdefs_var,
-                         enum_ty_substs, i);
-        bcx = r.bcx;
-        args += [r.val];
+        args += [GEP_enum(bcx, blobptr, vdefs_tg, vdefs_var,
+                          enum_ty_substs, i)];
         i += 1u;
     }
     ret {vals: args, bcx: bcx};
@@ -597,10 +594,9 @@ fn make_phi_bindings(bcx: block, map: [exit_node],
                         make_phi_bindings"); }
                 };
                 let e_ty = node_id_type(bcx, node_id);
-                let {bcx: abcx, val: alloc} = alloc_ty(bcx, e_ty);
-                bcx = copy_val(abcx, INIT, alloc,
-                                      load_if_immediate(abcx, local, e_ty),
-                                      e_ty);
+                let alloc = alloc_ty(bcx, e_ty);
+                bcx = copy_val(bcx, INIT, alloc,
+                               load_if_immediate(bcx, local, e_ty), e_ty);
                 add_clean(bcx, alloc, e_ty);
                 bcx.fcx.lllocals.insert(node_id, local_mem(alloc));
             }
@@ -659,7 +655,7 @@ fn trans_alt_inner(scope_cx: block, expr: @ast::expr, arms: [ast::arm],
     };
     let mut exit_map = [];
     let t = node_id_type(bcx, expr.id);
-    let {bcx, val: spilled} = spill_if_immediate(bcx, val, t);
+    let spilled = spill_if_immediate(bcx, val, t);
     compile_submatch(bcx, match, [spilled], mk_fail, exit_map);
 
     let mut arm_cxs = [], arm_dests = [], i = 0u;
