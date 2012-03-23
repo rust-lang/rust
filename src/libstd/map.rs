@@ -257,12 +257,16 @@ mod chained {
         fn size() -> uint { self.count }
 
         fn insert(k: K, v: V) -> bool {
-            let nchains = vec::len(self.chains);
-            let load = {num: (self.count + 1u) as int, den: nchains as int};
-            // Structural consts would be nice. This is a const 3/4
-            // load factor that we compare against.
-            if !util::rational_leq(load, {num:3, den:4}) { rehash(self); }
-            ret insert(self, k, v);
+            let grew = insert(self, k, v);
+            if grew {
+                let nchains = vec::len(self.chains);
+                let load = {num: (self.count + 1u) as int,
+                            den: nchains as int};
+                // Structural consts would be nice. This is a const 3/4
+                // load factor that we compare against.
+                if !util::rational_leq(load, {num:3, den:4}) { rehash(self); }
+            }
+            grew
         }
 
         fn contains_key(k: K) -> bool { option::is_some(get(self, k)) }
