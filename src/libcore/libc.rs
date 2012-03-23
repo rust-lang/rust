@@ -736,8 +736,8 @@ mod funcs {
             fn isspace(c: c_int) -> c_int;
             fn isupper(c: c_int) -> c_int;
             fn isxdigit(c: c_int) -> c_int;
-            fn tolower(c: c_int) -> c_int;
-            fn toupper(c: c_int) -> c_int;
+            fn tolower(c: c_char) -> c_char;
+            fn toupper(c: c_char) -> c_char;
         }
 
         #[nolink]

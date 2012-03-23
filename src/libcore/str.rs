@@ -95,7 +95,6 @@ export
 
    unsafe;
 
-
 #[abi = "cdecl"]
 native mod rustrt {
     fn rust_str_push(&s: str, ch: u8);
@@ -492,14 +491,14 @@ fn words(s: str) -> [str] {
     split_nonempty(s, {|c| char::is_whitespace(c)})
 }
 
-#[doc = "Convert a string to lowercase"]
+#[doc = "Convert a string to lowercase. ASCII only"]
 fn to_lower(s: str) -> str {
-    map(s, char::to_lower)
+    map(s, {|c| (libc::tolower(c as libc::c_char)) as char})
 }
 
-#[doc = "Convert a string to uppercase"]
+#[doc = "Convert a string to uppercase. ASCII only"]
 fn to_upper(s: str) -> str {
-    map(s, char::to_upper)
+    map(s, {|c| (libc::toupper(c as libc::c_char)) as char})
 }
 
 #[doc = "
@@ -1629,6 +1628,8 @@ mod unsafe {
 #[cfg(test)]
 mod tests {
 
+    import libc::c_char;
+
     #[test]
     fn test_eq() {
         assert (eq("", ""));
@@ -1937,9 +1938,9 @@ mod tests {
 
     #[test]
     fn test_to_upper() {
-        // char::to_upper, and hence str::to_upper
+        // libc::toupper, and hence str::to_upper
         // are culturally insensitive: they only work for ASCII
-        // (see Issue #1985)
+        // (see Issue #1347)
         let unicode = ""; //"\u65e5\u672c"; // uncomment once non-ASCII works
         let input = "abcDEF" + unicode + "xyz:.;";
         let expected = "ABCDEF" + unicode + "XYZ:.;";
@@ -1949,8 +1950,9 @@ mod tests {
 
     #[test]
     fn test_to_lower() {
-        assert "" == map("", char::to_lower);
-        assert "ymca" == map("YMCA", char::to_lower);
+        assert "" == map("", {|c| libc::tolower(c as c_char) as char});
+        assert "ymca" == map("YMCA",
+                             {|c| libc::tolower(c as c_char) as char});
     }
 
     #[test]
@@ -2401,8 +2403,9 @@ mod tests {
 
     #[test]
     fn test_map() {
-        assert "" == map("", char::to_upper);
-        assert "YMCA" == map("ymca", char::to_upper);
+        assert "" == map("", {|c| libc::toupper(c as c_char) as char});
+        assert "YMCA" == map("ymca", {|c| libc::toupper(c as c_char)
+              as char});
     }
 
     #[test]
