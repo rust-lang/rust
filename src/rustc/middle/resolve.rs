@@ -2004,6 +2004,7 @@ fn check_exports(e: @env) {
                         maybe_add_reexport(e, export_id, t);
                         maybe_add_reexport(e, export_id, m);
                       }
+                      _ { e.sess.span_bug(vi.span, "unresolved export"); }
                     }
                   }
                   mie_item(@{id, _}) | mie_native_item(@{id, _}) |

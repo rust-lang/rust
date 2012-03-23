@@ -91,7 +91,7 @@ export ty_uint, mk_uint, mk_mach_uint;
 export ty_uniq, mk_uniq, mk_imm_uniq, type_is_unique_box;
 export ty_var, mk_var;
 export ty_self, mk_self;
-export region, re_named, re_caller, re_block, re_param;
+export region, re_block, re_param, re_var;
 export get, type_has_params, type_has_vars, type_has_rptrs, type_id;
 export same_type;
 export ty_var_id;
@@ -139,7 +139,7 @@ export default_arg_mode_for_ty;
 export item_path;
 export item_path_str;
 export ast_ty_to_ty_cache_entry;
-export atttce_unresolved, atttce_resolved, atttce_has_regions;
+export atttce_unresolved, atttce_resolved;
 
 // Data types
 
@@ -174,8 +174,7 @@ type intern_key = {struct: sty, o_def_id: option<ast::def_id>};
 
 enum ast_ty_to_ty_cache_entry {
     atttce_unresolved,  /* not resolved yet */
-    atttce_resolved(t), /* resolved to a type, irrespective of region */
-    atttce_has_regions  /* has regions; cannot be cached */
+    atttce_resolved(t)  /* resolved to a type, irrespective of region */
 }
 
 type ctxt =
@@ -240,14 +239,19 @@ type fn_ty = {proto: ast::proto,
               constraints: [@constr]};
 
 enum region {
-    re_named(def_id),
-    re_caller(def_id),
-    re_self(def_id),
+    // The region of a block.
     re_block(node_id),
+    // The self region. Only valid inside classes and typeclass
+    // implementations.
+    re_self,
+    // The inferred region, which also corresponds to &self in typedefs.
+    re_inferred,
 
-    // A region parameter. Currently used only for typedefs.
-    // TODO: Use this for caller and named regions as well.
-    re_param(uint)
+    // A region parameter.
+    re_param(uint),
+
+    // A region variable.
+    re_var(uint)
 }
 
 // NB: If you change this, you'll probably want to change the corresponding
@@ -594,100 +598,123 @@ fn maybe_walk_ty(ty: t, f: fn(t) -> bool) {
 enum fold_mode {
     fm_var(fn@(int) -> t),
     fm_param(fn@(uint, def_id) -> t),
-    fm_rptr(fn@(region) -> region),
+    fm_rptr(fn@(region, bool /* under & */) -> region),
     fm_general(fn@(t) -> t),
 }
 
 fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
-    let mut ty = ty_0;
+    fn do_fold(cx: ctxt, fld: fold_mode, ty_0: t, under_rptr: bool) -> t {
+        let mut ty = ty_0;
 
-    let tb = get(ty);
-    alt fld {
-      fm_var(_) { if !tb.has_vars { ret ty; } }
-      fm_param(_) { if !tb.has_params { ret ty; } }
-      fm_rptr(_) { if !tb.has_rptrs { ret ty; } }
-      fm_general(_) {/* no fast path */ }
-    }
-
-    alt tb.struct {
-      ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
-      ty_str | ty_type | ty_opaque_closure_ptr(_) |
-      ty_opaque_box {}
-      ty_box(tm) {
-        ty = mk_box(cx, {ty: fold_ty(cx, fld, tm.ty), mutbl: tm.mutbl});
-      }
-      ty_uniq(tm) {
-        ty = mk_uniq(cx, {ty: fold_ty(cx, fld, tm.ty), mutbl: tm.mutbl});
-      }
-      ty_ptr(tm) {
-        ty = mk_ptr(cx, {ty: fold_ty(cx, fld, tm.ty), mutbl: tm.mutbl});
-      }
-      ty_vec(tm) {
-        ty = mk_vec(cx, {ty: fold_ty(cx, fld, tm.ty), mutbl: tm.mutbl});
-      }
-      ty_enum(tid, subtys) {
-        ty = mk_enum(cx, tid, vec::map(subtys, {|t| fold_ty(cx, fld, t) }));
-      }
-      ty_iface(did, subtys) {
-        ty = mk_iface(cx, did, vec::map(subtys, {|t| fold_ty(cx, fld, t) }));
-      }
-      ty_self(subtys) {
-        ty = mk_self(cx, vec::map(subtys, {|t| fold_ty(cx, fld, t) }));
-      }
-      ty_rec(fields) {
-        let mut new_fields: [field] = [];
-        for fl: field in fields {
-            let new_ty = fold_ty(cx, fld, fl.mt.ty);
-            let new_mt = {ty: new_ty, mutbl: fl.mt.mutbl};
-            new_fields += [{ident: fl.ident, mt: new_mt}];
+        let tb = get(ty);
+        alt fld {
+          fm_var(_) { if !tb.has_vars { ret ty; } }
+          fm_param(_) { if !tb.has_params { ret ty; } }
+          fm_rptr(_) { if !tb.has_rptrs { ret ty; } }
+          fm_general(_) {/* no fast path */ }
         }
-        ty = mk_rec(cx, new_fields);
-      }
-      ty_tup(ts) {
-        let mut new_ts = [];
-        for tt in ts { new_ts += [fold_ty(cx, fld, tt)]; }
-        ty = mk_tup(cx, new_ts);
-      }
-      ty_fn(f) {
-        let mut new_args: [arg] = [];
-        for a: arg in f.inputs {
-            let new_ty = fold_ty(cx, fld, a.ty);
-            new_args += [{mode: a.mode, ty: new_ty}];
+
+        alt tb.struct {
+          ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
+          ty_str | ty_type | ty_opaque_closure_ptr(_) |
+          ty_opaque_box {}
+          ty_box(tm) {
+            ty = mk_box(cx, {ty: do_fold(cx, fld, tm.ty, under_rptr),
+                             mutbl: tm.mutbl});
+          }
+          ty_uniq(tm) {
+            ty = mk_uniq(cx, {ty: do_fold(cx, fld, tm.ty, under_rptr),
+                              mutbl: tm.mutbl});
+          }
+          ty_ptr(tm) {
+            ty = mk_ptr(cx, {ty: do_fold(cx, fld, tm.ty, under_rptr),
+                             mutbl: tm.mutbl});
+          }
+          ty_vec(tm) {
+            ty = mk_vec(cx, {ty: do_fold(cx, fld, tm.ty, under_rptr),
+                             mutbl: tm.mutbl});
+          }
+          ty_enum(tid, subtys) {
+            ty = mk_enum(cx, tid,
+                         vec::map(subtys, {|t|
+                            do_fold(cx, fld, t, under_rptr)
+                         }));
+          }
+          ty_iface(did, subtys) {
+            ty = mk_iface(cx, did,
+                          vec::map(subtys, {|t|
+                              do_fold(cx, fld, t, under_rptr)
+                          }));
+          }
+          ty_self(subtys) {
+            ty = mk_self(cx, vec::map(subtys, {|t|
+                                do_fold(cx, fld, t, under_rptr)
+                             }));
+          }
+          ty_rec(fields) {
+            let mut new_fields: [field] = [];
+            for fl: field in fields {
+                let new_ty = do_fold(cx, fld, fl.mt.ty, under_rptr);
+                let new_mt = {ty: new_ty, mutbl: fl.mt.mutbl};
+                new_fields += [{ident: fl.ident, mt: new_mt}];
+            }
+            ty = mk_rec(cx, new_fields);
+          }
+          ty_tup(ts) {
+            let mut new_ts = [];
+            for tt in ts { new_ts += [do_fold(cx, fld, tt, under_rptr)]; }
+            ty = mk_tup(cx, new_ts);
+          }
+          ty_fn(f) {
+            let mut new_args: [arg] = [];
+            for a: arg in f.inputs {
+                let new_ty = do_fold(cx, fld, a.ty, under_rptr);
+                new_args += [{mode: a.mode, ty: new_ty}];
+            }
+            ty = mk_fn(cx, {inputs: new_args,
+                            output: do_fold(cx, fld, f.output, under_rptr)
+                            with f});
+          }
+          ty_res(did, subty, tps) {
+            let mut new_tps = [];
+            for tp: t in tps {
+                new_tps += [do_fold(cx, fld, tp, under_rptr)];
+            }
+            ty = mk_res(cx, did, do_fold(cx, fld, subty, under_rptr),
+                        new_tps);
+          }
+          ty_var(id) {
+            alt fld { fm_var(folder) { ty = folder(id); } _ {/* no-op */ } }
+          }
+          ty_param(id, did) {
+            alt fld { fm_param(folder) { ty = folder(id, did); } _ {} }
+          }
+          ty_rptr(r, tm) {
+            let region = alt fld {
+                fm_rptr(folder) { folder(r, under_rptr) }
+                _ { r }
+            };
+            ty = mk_rptr(cx, region,
+                         {ty: do_fold(cx, fld, tm.ty, true),
+                          mutbl: tm.mutbl});
+          }
+          ty_constr(subty, cs) {
+              ty = mk_constr(cx, do_fold(cx, fld, subty, under_rptr), cs);
+          }
+          _ {
+              cx.sess.bug("unsupported sort of type in fold_ty");
+          }
         }
-        ty = mk_fn(cx, {inputs: new_args,
-                        output: fold_ty(cx, fld, f.output)
-                        with f});
-      }
-      ty_res(did, subty, tps) {
-        let mut new_tps = [];
-        for tp: t in tps { new_tps += [fold_ty(cx, fld, tp)]; }
-        ty = mk_res(cx, did, fold_ty(cx, fld, subty), new_tps);
-      }
-      ty_var(id) {
-        alt fld { fm_var(folder) { ty = folder(id); } _ {/* no-op */ } }
-      }
-      ty_param(id, did) {
-        alt fld { fm_param(folder) { ty = folder(id, did); } _ {} }
-      }
-      ty_rptr(r, tm) {
-        let region = alt fld { fm_rptr(folder) { folder(r) } _ { r } };
-        ty = mk_rptr(cx, region,
-                     {ty: fold_ty(cx, fld, tm.ty), mutbl: tm.mutbl});
-      }
-      ty_constr(subty, cs) {
-          ty = mk_constr(cx, fold_ty(cx, fld, subty), cs);
-      }
-      _ {
-          cx.sess.bug("unsupported sort of type in fold_ty");
-      }
-    }
-    alt tb.o_def_id {
-      some(did) { ty = mk_t_with_id(cx, get(ty).struct, some(did)); }
-      _ {}
+        alt tb.o_def_id {
+          some(did) { ty = mk_t_with_id(cx, get(ty).struct, some(did)); }
+          _ {}
+        }
+
+        // If this is a general type fold, then we need to run it now.
+        alt fld { fm_general(folder) { ret folder(ty); } _ { ret ty; } }
     }
 
-    // If this is a general type fold, then we need to run it now.
-    alt fld { fm_general(folder) { ret folder(ty); } _ { ret ty; } }
+    ret do_fold(cx, fld, ty_0, false);
 }
 
 
@@ -1168,11 +1195,11 @@ fn hash_type_structure(st: sty) -> uint {
     }
     fn hash_region(r: region) -> uint {
         alt r {
-          re_named(_)   { 1u }
-          re_caller(_)  { 2u }
-          re_self(_)    { 3u }
-          re_block(_)   { 4u }
-          re_param(_)   { 5u }
+          re_block(_)   { 0u }
+          re_self       { 1u }
+          re_inferred   { 2u }
+          re_param(_)   { 3u }
+          re_var(_)     { 4u }
         }
     }
     alt st {
@@ -1643,7 +1670,7 @@ mod unify {
             fn@(rb: @region_bindings, r: region) {
                 ufind::union(rb.sets, set_a, set_b);
                 let root_c: uint = ufind::find(rb.sets, set_a);
-                smallintmap::insert::<region>(rb.regions, root_c, r);
+                smallintmap::insert(rb.regions, root_c, r);
             }
         );
 
@@ -2013,39 +2040,69 @@ mod unify {
         cx: @uctxt, e_region: region, a_region: region,
         variance: variance,
         nxt: fn(region) -> ures<T>) -> ures<T> {
-        let {sub, super} = alt variance {
-          covariant { {sub: a_region, super: e_region} }
-          contravariant { {sub: e_region, super: a_region} }
-          invariant {
-            ret if e_region == a_region {
-                  nxt(e_region)
-              } else {
-                  err(terr_regions_differ(true, e_region, a_region))
-              };
-            }
-        };
+        let mut sub, super;
+        alt variance {
+            covariant | invariant { super = e_region; sub = a_region; }
+            contravariant { super = a_region; sub = e_region; }
+        }
 
-        // FIXME: This is wrong. We should be keeping a set of region bindings
-        // around.
-        alt (sub, super) {
-            (ty::re_param(_), _) | (_, ty::re_param(_)) {
-                ret if sub == super {
-                    nxt(super)
-                } else {
-                    err(terr_regions_differ(true, super, sub))
-                }
+        // FIXME: Should have a way of unifying regions that relies on bounds,
+        // not on unification.
+        alt (super, sub) {
+            (ty::re_var(superkey), ty::re_var(subkey)) {
+                ret union_region_sets(cx, subkey, superkey, variance,
+                                      {|| nxt(sub) });
+            }
+            (ty::re_var(superkey), _) {
+                ret record_region_binding(cx, superkey, sub, variance, nxt);
+            }
+            (_, ty::re_var(subkey)) {
+                ret record_region_binding(cx, subkey, super, variance, nxt);
             }
             _ { /* fall through */ }
         }
 
-        // Outer regions are subtypes of inner regions. (This is somewhat
-        // surprising!)
-        let superscope = region::region_to_scope(cx.tcx.region_map, super);
-        let subscope = region::region_to_scope(cx.tcx.region_map, sub);
-        if region::scope_contains(cx.tcx.region_map, subscope, superscope) {
-            ret nxt(super);
+        if variance == invariant {
+          ret if e_region == a_region {
+              nxt(e_region)
+          } else {
+              err(terr_regions_differ(true, e_region, a_region))
+          };
         }
-        ret err(terr_regions_differ(false, sub, super));
+
+        alt (super, sub) {
+            (ty::re_var(_), _) | (_, ty::re_var(_)) {
+                fail "should have been handled above";
+            }
+            (ty::re_inferred, _) | (_, ty::re_inferred) {
+                fail "tried to unify inferred regions";
+            }
+            (ty::re_param(_), ty::re_param(_)) |
+            (ty::re_self, ty::re_self) {
+                ret if super == sub {
+                    nxt(ty::re_self)
+                } else {
+                    err(terr_regions_differ(false, super, sub))
+                };
+            }
+            (ty::re_param(_), ty::re_block(_)) |
+            (ty::re_self, ty::re_block(_)) {
+                ret nxt(super);
+            }
+            (ty::re_block(_), ty::re_param(_)) |
+            (ty::re_block(_), ty::re_self) {
+                ret err(terr_regions_differ(false, super, sub));
+            }
+            (ty::re_block(superblock), ty::re_block(subblock)) {
+                // Outer regions are subtypes of inner regions. (This is
+                // somewhat surprising!)
+                let rm = cx.tcx.region_map;
+                if region::scope_contains(rm, subblock, superblock) {
+                    ret nxt(super);
+                }
+                ret err(terr_regions_differ(false, sub, super));
+            }
+        }
     }
 
     fn unify_field<T:copy>(
@@ -2073,6 +2130,9 @@ mod unify {
 
         // Fast path.
         if expected == actual { ret nxt(expected); }
+
+        // FIXME: This is terribly wrong. We should be unifying type sets
+        // using some sort of bound.
 
         alt (get(expected).struct, get(actual).struct) {
           (ty_var(e_id), ty_var(a_id)) {

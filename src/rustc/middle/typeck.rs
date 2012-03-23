@@ -253,21 +253,10 @@ enum mode { m_collect, m_check, m_check_tyvar(@fn_ctxt), }
 // internal notion of a type. `getter` is a function that returns the type
 // corresponding to a definition ID:
 fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
-    fn subst_inferred_regions(tcx: ty::ctxt, use_site: ast::node_id,
-                              ty: ty::t) -> ty::t {
-        ret ty::fold_ty(tcx, ty::fm_rptr({|r|
-            alt r {
-                // FIXME: This is probably wrong for params.
-                ty::re_param(_) | ty::re_self(_) {
-                    tcx.region_map.ast_type_to_inferred_region.get(use_site)
-                }
-                _ { r }
-            }
-        }), ty);
-    }
-    fn getter(tcx: ty::ctxt, use_site: ast::node_id, mode: mode,
-              id: ast::def_id) -> ty::ty_param_bounds_and_ty {
-        let tpt = alt mode {
+    fn getter(tcx: ty::ctxt, mode: mode, id: ast::def_id)
+            -> ty::ty_param_bounds_and_ty {
+
+        alt mode {
           m_check | m_check_tyvar(_) { ty::lookup_item_type(tcx, id) }
           m_collect {
             if id.crate != ast::local_crate { csearch::get_type(tcx, id) }
@@ -285,23 +274,14 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
                 }
             }
           }
-        };
-
-        if ty::type_has_rptrs(tpt.ty) {
-            ret {bounds: tpt.bounds,
-                 ty: subst_inferred_regions(tcx, use_site, tpt.ty)};
         }
-        ret tpt;
     }
-    fn ast_mt_to_mt(tcx: ty::ctxt, use_site: ast::node_id, mode: mode,
-                    mt: ast::mt) -> ty::mt {
-        ret {ty: do_ast_ty_to_ty(tcx, use_site, mode, mt.ty),
-             mutbl: mt.mutbl};
+    fn ast_mt_to_mt(tcx: ty::ctxt, mode: mode, mt: ast::mt) -> ty::mt {
+        ret {ty: do_ast_ty_to_ty(tcx, mode, mt.ty), mutbl: mt.mutbl};
     }
-    fn instantiate(tcx: ty::ctxt, use_site: ast::node_id, sp: span,
-                   mode: mode, id: ast::def_id, path_id: ast::node_id,
-                   args: [@ast::ty]) -> ty::t {
-        let ty_param_bounds_and_ty = getter(tcx, use_site, mode, id);
+    fn instantiate(tcx: ty::ctxt, sp: span, mode: mode, id: ast::def_id,
+                   path_id: ast::node_id, args: [@ast::ty]) -> ty::t {
+        let ty_param_bounds_and_ty = getter(tcx, mode, id);
         if vec::len(*ty_param_bounds_and_ty.bounds) == 0u {
             ret ty_param_bounds_and_ty.ty;
         }
@@ -313,7 +293,7 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
                                      polymorphic type");
         }
         for ast_ty: @ast::ty in args {
-            param_bindings += [do_ast_ty_to_ty(tcx, use_site, mode, ast_ty)];
+            param_bindings += [do_ast_ty_to_ty(tcx, mode, ast_ty)];
         }
         #debug("substituting(%s into %s)",
                str::concat(vec::map(param_bindings, {|t| ty_to_str(tcx, t)})),
@@ -324,8 +304,9 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
         write_substs(tcx, path_id, param_bindings);
         ret typ;
     }
-    fn do_ast_ty_to_ty(tcx: ty::ctxt, use_site: ast::node_id, mode: mode,
-                       &&ast_ty: @ast::ty) -> ty::t {
+    fn do_ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty)
+            -> ty::t {
+
         alt tcx.ast_ty_to_ty_cache.find(ast_ty) {
           some(ty::atttce_resolved(ty)) { ret ty; }
           some(ty::atttce_unresolved) {
@@ -333,7 +314,7 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
                                               insert a enum in the cycle, \
                                               if this is desired)");
           }
-          some(ty::atttce_has_regions) | none { /* go on */ }
+          none { /* go on */ }
         }
 
         tcx.ast_ty_to_ty_cache.insert(ast_ty, ty::atttce_unresolved);
@@ -341,46 +322,37 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
           ast::ty_nil { ty::mk_nil(tcx) }
           ast::ty_bot { ty::mk_bot(tcx) }
           ast::ty_box(mt) {
-            ty::mk_box(tcx, ast_mt_to_mt(tcx, use_site, mode, mt))
+            ty::mk_box(tcx, ast_mt_to_mt(tcx, mode, mt))
           }
           ast::ty_uniq(mt) {
-            ty::mk_uniq(tcx, ast_mt_to_mt(tcx, use_site, mode, mt))
+            ty::mk_uniq(tcx, ast_mt_to_mt(tcx, mode, mt))
           }
           ast::ty_vec(mt) {
-            ty::mk_vec(tcx, ast_mt_to_mt(tcx, use_site, mode, mt))
+            ty::mk_vec(tcx, ast_mt_to_mt(tcx, mode, mt))
           }
           ast::ty_ptr(mt) {
-            ty::mk_ptr(tcx, ast_mt_to_mt(tcx, use_site, mode, mt))
+            ty::mk_ptr(tcx, ast_mt_to_mt(tcx, mode, mt))
           }
           ast::ty_rptr(region, mt) {
             let region = alt region.node {
-                ast::re_inferred {
-                    let attir = tcx.region_map.ast_type_to_inferred_region;
-                    alt attir.find(ast_ty.id) {
-                        some(resolved_region) { resolved_region }
-                        none {
-                            // FIXME: Shouldn't be 0u and should instead be
-                            // a fresh variable.
-                            ty::re_param(0u)
-                        }
-                    }
-                }
-                ast::re_named(_) | ast::re_self {
+                ast::re_inferred { ty::re_inferred }
+                ast::re_self { ty::re_self }
+                ast::re_named(_) {
                     tcx.region_map.ast_type_to_region.get(region.id)
                 }
             };
-            ty::mk_rptr(tcx, region, ast_mt_to_mt(tcx, use_site, mode, mt))
+            ty::mk_rptr(tcx, region, ast_mt_to_mt(tcx, mode, mt))
           }
           ast::ty_tup(fields) {
-            let flds = vec::map(fields,
-                                bind do_ast_ty_to_ty(tcx, use_site, mode, _));
+            let flds = vec::map(fields, bind do_ast_ty_to_ty(tcx, mode, _));
             ty::mk_tup(tcx, flds)
           }
           ast::ty_rec(fields) {
-            let flds = vec::map(fields) {|f|
-                let tm = ast_mt_to_mt(tcx, use_site, mode, f.node.mt);
-                {ident: f.node.ident, mt: tm}
-            };
+            let mut flds: [field] = [];
+            for f: ast::ty_field in fields {
+                let tm = ast_mt_to_mt(tcx, mode, f.node.mt);
+                flds += [{ident: f.node.ident, mt: tm}];
+            }
             ty::mk_rec(tcx, flds)
           }
           ast::ty_fn(proto, decl) {
@@ -393,7 +365,7 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
               some(d) { d }};
             alt a_def {
               ast::def_ty(did) {
-                instantiate(tcx, use_site, ast_ty.span, mode, did,
+                instantiate(tcx, ast_ty.span, mode, did,
                             id, path.node.types)
               }
               ast::def_prim_ty(nty) {
@@ -421,7 +393,7 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
                                                         self type");
                     }
                     ty::mk_self(tcx, vec::map(path.node.types, {|ast_ty|
-                        do_ast_ty_to_ty(tcx, use_site, mode, ast_ty)
+                        do_ast_ty_to_ty(tcx, mode, ast_ty)
                     }))
                   }
                 }
@@ -445,7 +417,7 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
                 }
               }
               else {
-                  getter(tcx, use_site, mode, class_id).ty
+                  getter(tcx, mode, class_id).ty
               }
              }
              _ {
@@ -455,11 +427,11 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
             }
           }
           ast::ty_constr(t, cs) {
-            let out_cs = vec::map(cs) {|constr|
-                ty::ast_constr_to_constr(tcx, constr)
-            };
-            ty::mk_constr(tcx, do_ast_ty_to_ty(tcx, use_site, mode, t),
-                          out_cs)
+            let mut out_cs = [];
+            for constr: @ast::ty_constr in cs {
+                out_cs += [ty::ast_constr_to_constr(tcx, constr)];
+            }
+            ty::mk_constr(tcx, do_ast_ty_to_ty(tcx, mode, t), out_cs)
           }
           ast::ty_infer {
             alt mode {
@@ -474,16 +446,11 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
           }
         };
 
-        if ty::type_has_rptrs(typ) {
-            tcx.ast_ty_to_ty_cache.insert(ast_ty, ty::atttce_has_regions);
-        } else {
-            tcx.ast_ty_to_ty_cache.insert(ast_ty, ty::atttce_resolved(typ));
-        }
-
+        tcx.ast_ty_to_ty_cache.insert(ast_ty, ty::atttce_resolved(typ));
         ret typ;
     }
 
-    ret do_ast_ty_to_ty(tcx, ast_ty.id, mode, ast_ty);
+    ret do_ast_ty_to_ty(tcx, mode, ast_ty);
 }
 
 fn ty_of_item(tcx: ty::ctxt, mode: mode, it: @ast::item)
@@ -571,6 +538,37 @@ fn ty_of_native_item(tcx: ty::ctxt, mode: mode, it: @ast::native_item)
       }
     }
 }
+
+type next_region_param_id = { mut id: uint };
+
+fn fixup_regions(tcx: ty::ctxt, next_region_param_id: next_region_param_id,
+                 ty: ty::t) -> ty::t {
+    let cur_region_param = @mut next_region_param_id.id;
+    ret ty::fold_ty(tcx, ty::fm_rptr({|region, under_rptr|
+        alt region {
+            ty::re_inferred {
+                if !under_rptr {
+                    *cur_region_param = next_region_param_id.id;
+                    next_region_param_id.id += 1u;
+                }
+                ty::re_param(*cur_region_param)
+            }
+            _ { region }
+        }
+    }), ty);
+}
+
+fn fixup_regions_to_block(tcx: ty::ctxt, ty: ty::t, ast_ty: @ast::ty)
+        -> ty::t {
+    let region = tcx.region_map.ast_type_to_inferred_region.get(ast_ty.id);
+    ret ty::fold_ty(tcx, ty::fm_rptr({|this_region, _under_rptr|
+        alt this_region {
+            ty::re_inferred { region }
+            _ { this_region }
+        }
+    }), ty);
+}
+
 fn ty_of_arg(tcx: ty::ctxt, mode: mode, a: ast::arg) -> ty::arg {
     fn arg_mode(tcx: ty::ctxt, m: ast::mode, ty: ty::t) -> ast::mode {
         alt m {
@@ -603,8 +601,38 @@ fn ty_of_fn_decl(tcx: ty::ctxt,
                  mode: mode,
                  proto: ast::proto,
                  decl: ast::fn_decl) -> ty::fn_ty {
-    let input_tys = vec::map(decl.inputs) {|a| ty_of_arg(tcx, mode, a) };
-    let output_ty = ast_ty_to_ty(tcx, mode, decl.output);
+    let mut has_regions: bool = false;
+    let mut max_region_param: @mut uint = @mut 0u;
+
+    let mut input_tys = vec::map(decl.inputs) {|a|
+        let arg_ty = ty_of_arg(tcx, mode, a);
+
+        if ty::type_has_rptrs(arg_ty.ty) {
+            has_regions = true;
+            let _ = ty::fold_ty(tcx, ty::fm_rptr({|r, _under_rptr|
+                alt r {
+                    ty::re_param(n) {
+                        *max_region_param = uint::max(n, *max_region_param);
+                    }
+                    _ { /* no-op */ }
+                };
+                r
+            }), arg_ty.ty);
+        }
+
+        arg_ty
+    };
+
+    let mut output_ty = ast_ty_to_ty(tcx, mode, decl.output);
+
+    if has_regions {
+        let next_region_param_id = { mut id: *max_region_param };
+        input_tys = vec::map(input_tys, {|input_ty|
+            {ty: fixup_regions(tcx, next_region_param_id, input_ty.ty)
+             with input_ty}
+        });
+        output_ty = fixup_regions(tcx, next_region_param_id, output_ty);
+    }
 
     let out_constrs = vec::map(decl.constraints) {|constr|
         ty::ast_constr_to_constr(tcx, constr)
@@ -843,9 +871,9 @@ fn fixup_self_in_method_ty(cx: ty::ctxt, mty: ty::t, m_substs: [ty::t],
 fn fixup_self_region_in_method_ty(fcx: @fn_ctxt, mty: ty::t,
                                   self_expr: @ast::expr) -> ty::t {
     let self_region = region_of(fcx, self_expr);
-    ty::fold_ty(fcx.ccx.tcx, ty::fm_rptr({|r|
+    ty::fold_ty(fcx.ccx.tcx, ty::fm_rptr({|r, _under_rptr|
         alt r {
-            ty::re_self(_) { self_region }
+            ty::re_self { self_region }
             _ { r }
         }
     }), mty)
@@ -876,7 +904,13 @@ mod collect {
                 // should be called to resolve named types.
                 let mut args: [arg] = [];
                 for va: ast::variant_arg in variant.node.args {
-                    let arg_ty = ast_ty_to_ty(tcx, m_collect, va.ty);
+                    let mut arg_ty = ast_ty_to_ty(tcx, m_collect, va.ty);
+                    if ty::type_has_rptrs(arg_ty) {
+                        let next_region_param_id = { mut id: 0u };
+                        arg_ty = fixup_regions(tcx, next_region_param_id,
+                                               arg_ty);
+                    }
+
                     args += [{mode: ast::expl(ast::by_copy), ty: arg_ty}];
                 }
                 // FIXME: this will be different for constrained types
@@ -1504,8 +1538,16 @@ fn gather_locals(ccx: @crate_ctxt,
 
     // Add explicitly-declared locals.
     let visit_local = fn@(local: @ast::local, &&e: (), v: visit::vt<()>) {
-        let local_ty = ast_ty_to_ty_crate_infer(ccx, local.node.ty);
-        assign(local.node.id, local_ty);
+        let mut local_ty_opt = ast_ty_to_ty_crate_infer(ccx, local.node.ty);
+        alt local_ty_opt {
+            some(local_ty) if ty::type_has_rptrs(local_ty) {
+                local_ty_opt = some(fixup_regions_to_block(ccx.tcx, local_ty,
+                                                           local.node.ty));
+            }
+            _ { /* nothing to do */ }
+        }
+
+        assign(local.node.id, local_ty_opt);
         visit::visit_local(local, e, v);
     };
 
@@ -1571,10 +1613,9 @@ type pat_ctxt = {
 fn instantiate_self_regions(tcx: ty::ctxt, region: ty::region, &&ty: ty::t)
         -> ty::t {
     if ty::type_has_rptrs(ty) {
-        ty::fold_ty(tcx, ty::fm_rptr({|r|
+        ty::fold_ty(tcx, ty::fm_rptr({|r, _under_rptr|
             alt r {
-                // FIXME: Should not happen for re_param.
-                ty::re_param(_) | ty::re_caller(_) | ty::re_self(_) { region }
+                ty::re_inferred | ty::re_self | ty::re_param(_) { region }
                 _ { r }
             }
         }), ty)
@@ -1588,9 +1629,9 @@ fn instantiate_self_regions(tcx: ty::ctxt, region: ty::region, &&ty: ty::t)
 // refer to inferred regions.
 fn universally_quantify_regions(tcx: ty::ctxt, ty: ty::t) -> ty::t {
     if ty::type_has_rptrs(ty) {
-        ty::fold_ty(tcx, ty::fm_rptr({|_r|
-            // FIXME: Very wrong. Shouldn't be 0u.
-            ty::re_param(0u)
+        ty::fold_ty(tcx, ty::fm_rptr({|_r, _under_rptr|
+            // FIXME: Should these all be different variables?
+            ty::re_var(0u)
         }), ty)
     } else {
         ty
@@ -1606,7 +1647,7 @@ fn replace_region_params(tcx: ty::ctxt,
         -> ty::t {
 
     if ty::type_has_rptrs(ty) {
-        ty::fold_ty(tcx, ty::fm_rptr({ |r|
+        ty::fold_ty(tcx, ty::fm_rptr({ |r, _under_rptr|
             alt r {
                 ty::re_param(n) {
                     if n < ufind::set_count(rb.sets) {
@@ -2085,13 +2126,14 @@ fn lookup_method_inner(fcx: @fn_ctxt, expr: @ast::expr,
         for @{did, methods, _} in *impls {
             alt vec::find(methods, {|m| m.ident == name}) {
               some(m) {
-                let {n_tps, ty: self_ty} = impl_self_ty(tcx, did);
-                let {vars, ty: self_ty} = if n_tps > 0u {
+                let mut {n_tps, ty: self_ty} = impl_self_ty(tcx, did);
+                let mut {vars, ty: self_ty} = if n_tps > 0u {
                     bind_params(fcx, self_ty, n_tps)
                 } else {
                     {vars: [], ty: self_ty}
                 };
 
+                self_ty = universally_quantify_regions(tcx, self_ty);
                 let ty = universally_quantify_regions(tcx, ty);
 
                 alt unify::unify(fcx, self_ty, ty) {
@@ -2223,32 +2265,23 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
 
     // A generic function to factor out common logic from call and bind
     // expressions.
-    fn check_call_or_bind(fcx: @fn_ctxt, sp: span, id: ast::node_id,
-                          fty: ty::t, args: [option<@ast::expr>])
+    fn check_call_or_bind(fcx: @fn_ctxt, sp: span, fty: ty::t,
+                          args: [option<@ast::expr>])
             -> check_call_or_bind_result {
-        // Replaces "caller" regions in the arguments with the local region.
-        fn instantiate_caller_regions(fcx: @fn_ctxt, id: ast::node_id,
-                                      args: [ty::arg]) -> [ty::arg] {
-            let site_to_block = fcx.ccx.tcx.region_map.call_site_to_block;
-            let block_id = alt site_to_block.find(id) {
-                none {
-                    // This can happen for those expressions that are
-                    // synthesized during typechecking; e.g. during
-                    // check_constraints().
-                    ret args;
-                }
-                some(block_id) { block_id }
-            };
 
-            let region = ty::re_block(block_id);
+        // Replaces "caller" regions in the arguments with the local region.
+        fn instantiate_caller_regions(fcx: @fn_ctxt, args: [ty::arg])
+                -> [ty::arg] {
+
             ret vec::map(args) {|arg|
                 if ty::type_has_rptrs(arg.ty) {
-                    let ty = ty::fold_ty(fcx.ccx.tcx, ty::fm_rptr({|r|
+                    let ty = ty::fold_ty(fcx.ccx.tcx,
+                                         ty::fm_rptr({|r, _under_rptr|
                         alt r {
-                            ty::re_caller(_) {
+                            ty::re_param(param) {
                                 // FIXME: We should not recurse into nested
                                 // function types here.
-                                region
+                                ty::re_var(param)
                             }
                             _ { r }
                         }
@@ -2301,7 +2334,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         }
 
         // FIXME: This should instantiate re_params instead.
-        arg_tys = instantiate_caller_regions(fcx, id, arg_tys);
+        arg_tys = instantiate_caller_regions(fcx, arg_tys);
 
         // Check the arguments.
         // We do this in a pretty awful way: first we typecheck any arguments
@@ -2344,8 +2377,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
     }
 
     // A generic function for checking call expressions
-    fn check_call(fcx: @fn_ctxt, sp: span, id: ast::node_id, f: @ast::expr,
-                  args: [@ast::expr])
+    fn check_call(fcx: @fn_ctxt, sp: span, f: @ast::expr, args: [@ast::expr])
             -> check_call_or_bind_result {
         let mut args_opt_0: [option<@ast::expr>] = [];
         for arg: @ast::expr in args {
@@ -2354,7 +2386,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
 
         let bot = check_expr(fcx, f);
         // Call the generic checker.
-        let ccobr = check_call_or_bind(fcx, sp, id, expr_ty(fcx.ccx.tcx, f),
+        let ccobr = check_call_or_bind(fcx, sp, expr_ty(fcx.ccx.tcx, f),
                                        args_opt_0);
         ret { bot: bot | ccobr.bot with ccobr };
     }
@@ -2362,7 +2394,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
     // A generic function for doing all of the checking for call expressions
     fn check_call_full(fcx: @fn_ctxt, sp: span, id: ast::node_id,
                        f: @ast::expr, args: [@ast::expr]) -> bool {
-        let ccobr = check_call(fcx, sp, id, f, args);
+        let ccobr = check_call(fcx, sp, f, args);
         let mut bot = ccobr.bot;
         /* need to restrict oper to being an explicit expr_path if we're
         inside a pure function */
@@ -2443,7 +2475,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         alt lookup_method(fcx, op_ex, callee_id, opname, self_t, []) {
           some(origin) {
             let method_ty = ty::node_id_to_type(fcx.ccx.tcx, callee_id);
-            check_call_or_bind(fcx, op_ex.span, op_ex.id, method_ty, args);
+            check_call_or_bind(fcx, op_ex.span, method_ty, args);
             fcx.ccx.method_map.insert(op_ex.id, origin);
             some(ty::ty_fn_ret(method_ty))
           }
@@ -2773,8 +2805,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
       ast::expr_bind(f, args) {
         // Call the generic checker.
         bot = check_expr(fcx, f);
-        let ccobr = check_call_or_bind(fcx, expr.span, expr.id,
-                                       expr_ty(tcx, f), args);
+        let ccobr = check_call_or_bind(fcx, expr.span, expr_ty(tcx, f), args);
         bot |= ccobr.bot;
 
         // TODO: Perform substitutions on the return type.
@@ -3482,9 +3513,9 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
         check_fn(ccx, ast::proto_bare, decl, body, dtor_id, none);
       }
       ast::item_impl(tps, _, ty, ms) {
-        let self_ty = ast_ty_to_ty(ccx.tcx, m_check, ty);
-        let self_region = ty::re_self({crate: ast::local_crate, node: it.id});
-        let self_ty = instantiate_self_regions(ccx.tcx, self_region, self_ty);
+        let mut self_ty = ast_ty_to_ty(ccx.tcx, m_check, ty);
+        let self_region = ty::re_self;
+        self_ty = instantiate_self_regions(ccx.tcx, self_region, self_ty);
         ccx.self_infos += [self_impl(self_ty)];
         for m in ms { check_method(ccx, m); }
         vec::pop(ccx.self_infos);

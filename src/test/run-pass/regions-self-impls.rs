@@ -7,5 +7,6 @@ impl clam for clam {
 fn main() {
     let clam = { chowder: &3 };
     log(debug, *clam.get_chowder());
+    clam.get_chowder();
 }
 

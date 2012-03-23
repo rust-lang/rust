@@ -92,22 +92,22 @@ fn enc_mt(w: io::writer, cx: @ctxt, mt: ty::mt) {
     }
     enc_ty(w, cx, mt.ty);
 }
-fn enc_region(w: io::writer, cx: @ctxt, r: ty::region) {
+fn enc_region(w: io::writer, r: ty::region) {
     alt r {
-        ty::re_named(did) {
-            w.write_char('n'); w.write_str(cx.ds(did)); w.write_char('|');
-        }
-        ty::re_caller(did) {
-            w.write_char('c'); w.write_str(cx.ds(did)); w.write_char('|');
-        }
         ty::re_block(nid) {
             w.write_char('b'); w.write_int(nid); w.write_char('|');
         }
-        ty::re_self(did) {
-            w.write_char('s'); w.write_str(cx.ds(did)); w.write_char('|');
+        ty::re_self {
+            w.write_char('s');
+        }
+        ty::re_inferred {
+            w.write_char('i');
         }
         ty::re_param(id) {
             w.write_char('p'); w.write_uint(id); w.write_char('|');
+        }
+        ty::re_var(id) {
+            w.write_char('v'); w.write_uint(id); w.write_char('|');
         }
     }
 }
@@ -167,7 +167,7 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
       ty::ty_ptr(mt) { w.write_char('*'); enc_mt(w, cx, mt); }
       ty::ty_rptr(r, mt) {
         w.write_char('&');
-        enc_region(w, cx, r);
+        enc_region(w, r);
         enc_mt(w, cx, mt);
       }
       ty::ty_vec(mt) { w.write_char('I'); enc_mt(w, cx, mt); }

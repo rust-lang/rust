@@ -28,7 +28,7 @@ fn check_expr(expr: @ast::expr, cx: ctxt, visitor: visit::vt<ctxt>) {
             alt ty::get(t).struct {
                 ty::ty_rptr(region, _) {
                     alt region {
-                        ty::re_named(_) | ty::re_caller(_) | ty::re_self(_) {
+                        ty::re_self | ty::re_inferred | ty::re_param(_) {
                             /* ok */
                         }
                         ty::re_block(rbi) {
@@ -51,7 +51,7 @@ fn check_expr(expr: @ast::expr, cx: ctxt, visitor: visit::vt<ctxt>) {
                                                      "escapes its block");
                             }
                         }
-                        ty::re_param(_) {
+                        ty::re_var(_) {
                             cx.tcx.sess.span_bug(expr.span,
                                                  "unresolved region");
                         }

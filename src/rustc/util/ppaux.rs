@@ -12,20 +12,6 @@ import driver::session::session;
 
 fn region_to_str(cx: ctxt, region: region) -> str {
     alt region {
-      re_named(_)   { "<name>" }    // TODO: include name
-      re_caller(def_id) {
-        if def_id.crate == ast::local_crate {
-            alt cx.items.get(def_id.node) {
-              ast_map::node_item(item, path) {
-                #fmt("<caller of %s::%s>", ast_map::path_to_str(*path),
-                     item.ident)
-              }
-              _ { "<caller>" }
-            }
-        } else {
-            "<caller>"
-        }
-      }
       re_block(node_id) {
         alt cx.items.get(node_id) {
             ast_map::node_block(blk) {
@@ -35,8 +21,10 @@ fn region_to_str(cx: ctxt, region: region) -> str {
             _ { cx.sess.bug("re_block refers to non-block") }
         }
       }
-      re_self(_)    { "self" }
+      re_self       { "self" }
       re_inferred   { "" }
+      re_param(id)  { #fmt("<P%u>", id) }    // TODO: do better than this
+      re_var(id)    { #fmt("<R%u>", id) }    // TODO: do better than this
     }
 }
 
