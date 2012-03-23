@@ -94,9 +94,7 @@ resource port_ptr<T: send>(po: *rust_port) {
 
     // Drain the port so that all the still-enqueued items get dropped
     while rustrt::rust_port_size(po) > 0u {
-        // FIXME: For some reason if we don't assign to something here
-        // we end up with invalid reads in the drop glue.
-        let _t = recv_::<T>(po);
+       recv_::<T>(po);
     }
     rustrt::del_port(po);
 }
