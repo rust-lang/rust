@@ -20,14 +20,7 @@ export print;
 import rustsyntax::parse;
 export parse;
 
-export ast;
-export ast_util;
-export visit;
-export fold;
-export ext;
+import rustsyntax::util;
 export util;
 
-mod util {
-    import rustsyntax::util::interner;
-    export interner;
-}
+export ext;
