@@ -1,4 +1,4 @@
-import syntax::codemap::span;
+import codemap::span;
 import ast::*;
 
 export ast_fold_precursor;

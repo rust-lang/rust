@@ -70,7 +70,6 @@ mod middle {
 
 
 mod syntax {
-    mod fold;
     mod parse {
         mod lexer;
         mod parser;

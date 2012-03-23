@@ -11,6 +11,9 @@ export ast_util;
 import rustsyntax::visit;
 export visit;
 
+import rustsyntax::fold;
+export fold;
+
 export ast;
 export ast_util;
 export visit;
