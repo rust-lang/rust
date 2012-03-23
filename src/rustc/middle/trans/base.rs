@@ -1947,7 +1947,7 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, real_substs: [ty::t],
       }
       ast_map::node_variant(v, _, pt) { (pt, v.node.name) }
       ast_map::node_method(m, _, pt) { (pt, m.ident) }
-      ast_map::node_native_item(i, ast::native_abi_rust_builtin, pt)
+      ast_map::node_native_item(i, ast::native_abi_rust_intrinsic, pt)
       { (pt, i.ident) }
       ast_map::node_native_item(_, abi, _) {
         // Natives don't have to be monomorphized.
@@ -1981,8 +1981,8 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, real_substs: [ty::t],
         trans_fn(ccx, pt, d, body, lldecl, no_self, psubsts, d_id, none);
       }
       ast_map::node_native_item(i, _, _) {
-        native::trans_builtin(ccx, lldecl, i, pt, option::get(psubsts),
-                              ref_id);
+        native::trans_intrinsic(ccx, lldecl, i, pt, option::get(psubsts),
+                                ref_id);
       }
       ast_map::node_variant(v, enum_item, _) {
         let tvs = ty::enum_variants(ccx.tcx, local_def(enum_item.id));

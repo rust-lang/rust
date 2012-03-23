@@ -68,7 +68,7 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
         uint::range(0u, n_tps) {|n| cx.uses[n] |= use_repr;}
       }
       ast_map::node_native_item(i@@{node: native_item_fn(_, _), _}, abi, _) {
-        if abi == native_abi_rust_builtin {
+        if abi == native_abi_rust_intrinsic {
             let flags = alt check i.ident {
               "size_of" | "align_of" | "init" |
               "reinterpret_cast" { use_repr }

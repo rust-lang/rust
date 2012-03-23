@@ -16,7 +16,7 @@ import std::map::hashmap;
 import util::ppaux::ty_to_str;
 
 export link_name, trans_native_mod, register_crust_fn, trans_crust_fn,
-       decl_native_fn, trans_builtin;
+       decl_native_fn, trans_intrinsic;
 
 enum x86_64_reg_class {
     no_class,
@@ -730,7 +730,7 @@ fn trans_native_mod(ccx: @crate_ctxt,
     }
 
     let mut cc = alt abi {
-      ast::native_abi_rust_builtin { ret; }
+      ast::native_abi_rust_intrinsic { ret; }
       ast::native_abi_cdecl { lib::llvm::CCallConv }
       ast::native_abi_stdcall { lib::llvm::X86StdcallCallConv }
     };
@@ -752,9 +752,9 @@ fn trans_native_mod(ccx: @crate_ctxt,
     }
 }
 
-fn trans_builtin(ccx: @crate_ctxt, decl: ValueRef, item: @ast::native_item,
-                 path: ast_map::path, substs: param_substs,
-                 ref_id: option<ast::node_id>) {
+fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::native_item,
+                   path: ast_map::path, substs: param_substs,
+                   ref_id: option<ast::node_id>) {
     let fcx = new_fn_ctxt_w_id(ccx, path, decl, item.id, none,
                                some(substs), some(item.span));
     let bcx = top_scope_block(fcx, none), lltop = bcx.llbb;

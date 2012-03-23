@@ -677,7 +677,7 @@ fn encode_info_for_native_item(ecx: @encode_ctxt, ebml_w: ebml::writer,
         encode_family(ebml_w, purity_fn_family(fn_decl.purity));
         encode_type_param_bounds(ebml_w, ecx, tps);
         encode_type(ecx, ebml_w, node_id_to_type(ecx.ccx.tcx, nitem.id));
-        if abi == native_abi_rust_builtin {
+        if abi == native_abi_rust_intrinsic {
             astencode::encode_inlined_item(ecx, ebml_w, path,
                                            ii_native(nitem));
         } else {

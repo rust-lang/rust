@@ -556,7 +556,7 @@ type _mod = {view_items: [@view_item], items: [@item]};
 
 #[auto_serialize]
 enum native_abi {
-    native_abi_rust_builtin,
+    native_abi_rust_intrinsic,
     native_abi_cdecl,
     native_abi_stdcall,
 }
