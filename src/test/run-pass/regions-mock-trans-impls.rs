@@ -22,7 +22,7 @@ impl arena for arena {
 }
 
 fn h(bcx : &bcx) -> &bcx {
-    ret new(*bcx.fcx.arena) { fcx: fcx };
+    ret new(*bcx.fcx.arena) { fcx: bcx.fcx };
 }
 
 fn g(fcx : &fcx) {
