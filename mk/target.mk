@@ -8,8 +8,8 @@
 # (resp.  corelib), set this flag to 1.  It will cause stage1 to use
 # the snapshot runtime (resp. corelib) rather than the runtime
 # (resp. corelib) from the working directory.
-USE_SNAPSHOT_RUNTIME=1
-USE_SNAPSHOT_CORELIB=1
+USE_SNAPSHOT_RUNTIME=0
+USE_SNAPSHOT_CORELIB=0
 
 define TARGET_STAGE_N
 
