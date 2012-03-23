@@ -3,8 +3,7 @@
 import std::map;
 import std::map::hashmap;
 import either::either;
-import syntax::{ast, ast_util};
-import driver::diagnostic::span_handler;
+import diagnostic::span_handler;
 
 export attr_meta;
 export attr_metas;
@@ -169,10 +168,10 @@ fn eq(a: @ast::meta_item, b: @ast::meta_item) -> bool {
 
 fn contains(haystack: [@ast::meta_item], needle: @ast::meta_item) -> bool {
     #debug("looking for %s",
-           syntax::print::pprust::meta_item_to_str(*needle));
+           print::pprust::meta_item_to_str(*needle));
     for item: @ast::meta_item in haystack {
         #debug("looking in %s",
-               syntax::print::pprust::meta_item_to_str(*item));
+               print::pprust::meta_item_to_str(*item));
         if eq(item, needle) { #debug("found it!"); ret true; }
     }
     #debug("found it not :(");

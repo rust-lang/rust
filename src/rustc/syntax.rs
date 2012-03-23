@@ -14,13 +14,17 @@ export visit;
 import rustsyntax::fold;
 export fold;
 
+import rustsyntax::print;
+export print;
+
+import rustsyntax::parse;
+export parse;
+
 export ast;
 export ast_util;
 export visit;
 export fold;
-export parse;
 export ext;
-export print;
 export util;
 
 mod util {

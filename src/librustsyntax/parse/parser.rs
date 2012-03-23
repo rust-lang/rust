@@ -6,9 +6,7 @@ import codemap::{span,fss_none};
 import util::interner;
 import ast::{node_id, spanned};
 import ast_util::{mk_sp, ident_to_path};
-import front::attr;
 import lexer::reader;
-import driver::diagnostic;
 
 enum restriction {
     UNRESTRICTED,

@@ -1,9 +1,9 @@
 import parse::lexer;
-import syntax::codemap::codemap;
+import codemap::codemap;
 import pp::{break_offset, word, printer,
             space, zerobreak, hardbreak, breaks, consistent,
             inconsistent, eof};
-import driver::diagnostic;
+import diagnostic;
 
 // The ps is stored here to prevent recursive type.
 enum ann_node {

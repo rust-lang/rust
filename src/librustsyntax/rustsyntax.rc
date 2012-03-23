@@ -6,6 +6,7 @@
 
 use std;
 
+mod attr;
 mod diagnostic;
 mod codemap;
 mod ast;
@@ -16,6 +17,13 @@ mod util {
     mod interner;
 }
 mod parse {
-    mod token;
+    mod eval;
     mod lexer;
+    mod parser;
+    mod token;
+}
+
+mod print {
+    mod pp;
+    mod pprust;
 }

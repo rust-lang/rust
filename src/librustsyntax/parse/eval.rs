@@ -1,9 +1,7 @@
-import front::attr;
-import syntax::ast;
-import syntax::parse::token;
-import syntax::parse::parser::{parser, new_parser_from_file,
-                               parse_inner_attrs_and_next,
-                               parse_mod_items, SOURCE_FILE};
+import attr;
+import parser::{parser, new_parser_from_file,
+                parse_inner_attrs_and_next,
+                parse_mod_items, SOURCE_FILE};
 
 export eval_crate_directives_to_mod;
 
@@ -109,8 +107,8 @@ fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: str,
         let m0 = parse_mod_items(p0, token::EOF, first_item_outer_attrs);
 
         let i =
-            syntax::parse::parser::mk_item(p0, cdir.span.lo, cdir.span.hi, id,
-                                           ast::item_mod(m0), mod_attrs);
+            parser::mk_item(p0, cdir.span.lo, cdir.span.hi, id,
+                            ast::item_mod(m0), mod_attrs);
         // Thread defids, chpos and byte_pos through the parsers
         cx.sess.chpos = p0.reader.chpos;
         cx.sess.byte_pos = cx.sess.byte_pos + p0.reader.pos;

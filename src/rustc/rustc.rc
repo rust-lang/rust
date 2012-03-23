@@ -70,10 +70,6 @@ mod middle {
 
 
 mod syntax {
-    mod parse {
-        mod parser;
-        mod eval;
-    }
     mod ext {
         mod base;
         mod expand;
@@ -88,14 +84,9 @@ mod syntax {
         mod log_syntax;
         mod auto_serialize;
     }
-    mod print {
-        mod pprust;
-        mod pp;
-    }
 }
 
 mod front {
-    mod attr;
     mod config;
     mod test;
     mod core_inject;
