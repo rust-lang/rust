@@ -69,7 +69,8 @@ type maps = {
     last_uses: middle::last_use::last_uses,
     impl_map: middle::resolve::impl_map,
     method_map: middle::typeck::method_map,
-    vtable_map: middle::typeck::vtable_map
+    vtable_map: middle::typeck::vtable_map,
+    spill_map: last_use::spill_map
 };
 
 // Crate context.  Every crate we compile has one of these.

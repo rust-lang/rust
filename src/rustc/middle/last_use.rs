@@ -28,10 +28,10 @@ import std::map::hashmap;
 #[auto_serialize]
 enum is_last_use {
     is_last_use,
-    has_last_use,
     closes_over([node_id]),
 }
 type last_uses = std::map::hashmap<node_id, is_last_use>;
+type spill_map = std::map::hashmap<node_id, ()>;
 
 enum seen { unset, seen(node_id), }
 enum block_type { func, lp, }
@@ -46,6 +46,7 @@ fn hash_use_id(id: use_id) -> uint {
 }
 
 type ctx = {last_uses: std::map::hashmap<use_id, bool>,
+            spill_map: std::map::hashmap<node_id, ()>,
             def_map: resolve::def_map,
             ref_map: alias::ref_map,
             tcx: ty::ctxt,
@@ -54,12 +55,14 @@ type ctx = {last_uses: std::map::hashmap<use_id, bool>,
             mutable blocks: list<bl>};
 
 fn find_last_uses(c: @crate, def_map: resolve::def_map,
-                  ref_map: alias::ref_map, tcx: ty::ctxt) -> last_uses {
+                  ref_map: alias::ref_map, tcx: ty::ctxt)
+    -> (last_uses, spill_map) {
     let v = visit::mk_vt(@{visit_expr: visit_expr,
                            visit_stmt: visit_stmt,
                            visit_fn: visit_fn
                            with *visit::default_visitor()});
     let cx = {last_uses: std::map::hashmap(hash_use_id, {|a, b| a == b}),
+              spill_map: std::map::int_hash(),
               def_map: def_map,
               ref_map: ref_map,
               tcx: tcx,
@@ -73,10 +76,10 @@ fn find_last_uses(c: @crate, def_map: resolve::def_map,
           path(id) {
             mini_table.insert(id, is_last_use);
             let def_node = ast_util::def_id_of_def(def_map.get(id)).node;
-            mini_table.insert(def_node, has_last_use);
+            cx.spill_map.insert(def_node, ());
           }
           close(fn_id, local_id) {
-            mini_table.insert(local_id, has_last_use);
+            cx.spill_map.insert(local_id, ());
             let known = alt check mini_table.find(fn_id) {
               some(closes_over(ids)) { ids }
               none { [] }
@@ -85,7 +88,7 @@ fn find_last_uses(c: @crate, def_map: resolve::def_map,
           }
         }
     }
-    ret mini_table;
+    ret (mini_table, cx.spill_map);
 }
 
 fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
@@ -187,7 +190,11 @@ fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
               expr_path(_) {
                 alt ty::arg_mode(cx.tcx, arg_t) {
                   by_ref | by_val | by_mutbl_ref {
-                    clear_if_path(cx, arg, v, false);
+                    let def = cx.def_map.get(arg.id);
+                    option::may(def_is_owned_local(cx, def)) {|id|
+                        clear_in_current(cx, id, false);
+                        cx.spill_map.insert(id, ());
+                    }
                   }
                   _ {}
                 }

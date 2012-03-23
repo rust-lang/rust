@@ -3687,7 +3687,7 @@ fn alloc_local(cx: block, local: @ast::local) -> block {
     let ccx = cx.ccx();
     if option::is_some(simple_name) &&
        !ccx.maps.mutbl_map.contains_key(local.node.pat.id) &&
-       !ccx.maps.last_uses.contains_key(local.node.pat.id) &&
+       !ccx.maps.spill_map.contains_key(local.node.pat.id) &&
        ty::type_is_immediate(t) {
         alt local.node.init {
           some({op: ast::init_assign, _}) { ret cx; }

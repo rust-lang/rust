@@ -169,7 +169,7 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
     let (copy_map, ref_map) =
         time(time_passes, "alias checking",
              bind middle::alias::check_crate(ty_cx, crate));
-    let last_uses = time(time_passes, "last use finding",
+    let (last_uses, spill_map) = time(time_passes, "last use finding",
         bind last_use::find_last_uses(crate, def_map, ref_map, ty_cx));
     time(time_passes, "kind checking",
          bind kind::check_crate(ty_cx, method_map, last_uses, crate));
@@ -181,7 +181,8 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
 
     let maps = {mutbl_map: mutbl_map, copy_map: copy_map,
                 last_uses: last_uses, impl_map: impl_map,
-                method_map: method_map, vtable_map: vtable_map};
+                method_map: method_map, vtable_map: vtable_map,
+                spill_map: spill_map};
 
     let (llmod, link_meta) =
         time(time_passes, "translation",
