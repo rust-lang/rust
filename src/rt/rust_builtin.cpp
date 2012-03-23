@@ -79,7 +79,7 @@ rust_getcwd() {
         return NULL;
     }
 
-    return make_str(task->kernel, cbuf, strlen(cbuf), "rust_str(getcwd");
+    return make_str(task->kernel, cbuf, strlen(cbuf), "rust_str(getcwd)");
 }
 
 #if defined(__WIN32__)
