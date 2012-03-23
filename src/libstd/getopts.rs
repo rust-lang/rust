@@ -63,6 +63,7 @@ export opt_str;
 export opt_strs;
 export opt_maybe_str;
 export opt_default;
+export result; //NDM
 
 enum name { long(str), short(char), }
 

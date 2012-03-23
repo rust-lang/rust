@@ -28,6 +28,15 @@ fn region_to_str(cx: ctxt, region: region) -> str {
     }
 }
 
+fn mt_to_str(cx: ctxt, m: mt) -> str {
+    let mstr = alt m.mutbl {
+      ast::m_mutbl { "mut " }
+      ast::m_imm { "" }
+      ast::m_const { "const " }
+    };
+    ret mstr + ty_to_str(cx, m.ty);
+}
+
 fn ty_to_str(cx: ctxt, typ: t) -> str {
     fn fn_input_to_str(cx: ctxt, input: {mode: ast::mode, ty: t}) ->
        str {
@@ -71,14 +80,6 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
     }
     fn field_to_str(cx: ctxt, f: field) -> str {
         ret f.ident + ": " + mt_to_str(cx, f.mt);
-    }
-    fn mt_to_str(cx: ctxt, m: mt) -> str {
-        let mstr = alt m.mutbl {
-          ast::m_mutbl { "mut " }
-          ast::m_imm { "" }
-          ast::m_const { "const " }
-        };
-        ret mstr + ty_to_str(cx, m.ty);
     }
     fn parameterized(cx: ctxt, base: str, tps: [ty::t]) -> str {
         if vec::len(tps) > 0u {

@@ -170,7 +170,7 @@ fn build_reexport_path_map(srv: astsrv::srv, -def_map: def_map) -> path_map {
     let assoc_list = astsrv::exec(srv) {|ctxt|
 
         let def_map = from_def_assoc_list(def_assoc_list);
-        let path_map = map::str_hash();
+        let path_map = map::str_hash::<[(str,doc::itemtag)]>();
 
         ctxt.exp_map.items {|exp_id, defs|
             let path = alt check ctxt.ast_map.get(exp_id) {

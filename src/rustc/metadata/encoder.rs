@@ -221,6 +221,7 @@ fn encode_type_param_bounds(ebml_w: ebml::writer, ecx: @encode_ctxt,
                             params: [ty_param]) {
     let ty_str_ctxt = @{ds: def_to_str,
                         tcx: ecx.ccx.tcx,
+                        reachable: ecx.ccx.reachable,
                         abbrevs: tyencode::ac_use_abbrevs(ecx.type_abbrevs)};
     for param in params {
         ebml_w.start_tag(tag_items_data_item_ty_param_bounds);
@@ -240,6 +241,7 @@ fn write_type(ecx: @encode_ctxt, ebml_w: ebml::writer, typ: ty::t) {
     let ty_str_ctxt =
         @{ds: def_to_str,
           tcx: ecx.ccx.tcx,
+          reachable: ecx.ccx.reachable,
           abbrevs: tyencode::ac_use_abbrevs(ecx.type_abbrevs)};
     tyencode::enc_ty(ebml_w.writer, ty_str_ctxt, typ);
 }
@@ -966,7 +968,10 @@ fn encode_metadata(cx: @crate_ctxt, crate: @crate) -> [u8] {
 
 // Get the encoded string for a type
 fn encoded_ty(tcx: ty::ctxt, t: ty::t) -> str {
-    let cx = @{ds: def_to_str, tcx: tcx, abbrevs: tyencode::ac_no_abbrevs};
+    let cx = @{ds: def_to_str,
+               tcx: tcx,
+               reachable: std::map::int_hash(),
+               abbrevs: tyencode::ac_no_abbrevs};
     let buf = io::mem_buffer();
     tyencode::enc_ty(io::mem_buffer_writer(buf), cx, t);
     ret io::mem_buffer_str(buf);

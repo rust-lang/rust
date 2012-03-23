@@ -27,6 +27,7 @@ export rsplit;
 export rsplitn;
 export shift;
 export pop;
+export clear;
 export push;
 export grow;
 export grow_fn;
@@ -159,6 +160,13 @@ fn to_mut<T>(+v: [T]) -> [mutable T] unsafe {
 
 #[doc = "Produces an immutable vector from a mutable vector."]
 fn from_mut<T>(+v: [mutable T]) -> [T] unsafe {
+    let r = ::unsafe::reinterpret_cast(v);
+    ::unsafe::forget(v);
+    r
+}
+
+// This function only exists to work around bugs in the type checker.
+fn from_const<T>(+v: [const T]) -> [T] unsafe {
     let r = ::unsafe::reinterpret_cast(v);
     ::unsafe::forget(v);
     r
@@ -336,6 +344,14 @@ fn pop<T>(&v: [const T]) -> T unsafe {
     val
 }
 
+#[doc = "
+Removes all elements from a vector without affecting
+how much space is reserved.
+"]
+fn clear<T>(&v: [const T]) unsafe {
+    unsafe::set_len(v, 0u);
+}
+
 #[doc = "Append an element to a vector"]
 fn push<T>(&v: [const T], +initval: T) {
     v += [initval];
@@ -466,8 +482,8 @@ Concatenate a vector of vectors.
 Flattens a vector of vectors of T into a single vector of T.
 "]
 fn concat<T: copy>(v: [const [const T]]) -> [T] {
-    let mut r: [T] = [];
-    for inner: [T] in v { r += inner; }
+    let mut r = [];
+    for inner in v { r += from_const(inner); }
     ret r;
 }
 
@@ -477,9 +493,9 @@ Concatenate a vector of vectors, placing a given separator between each
 fn connect<T: copy>(v: [const [const T]], sep: T) -> [T] {
     let mut r: [T] = [];
     let mut first = true;
-    for inner: [T] in v {
+    for inner in v {
         if first { first = false; } else { push(r, sep); }
-        r += inner;
+        r += from_const(inner);
     }
     ret r;
 }
@@ -885,7 +901,7 @@ fn as_mut_buf<E,T>(v: [mutable E], f: fn(*mutable E) -> T) -> T unsafe {
 }
 
 #[doc = "An extension implementation providing a `len` method"]
-impl vec_len<T> for [T] {
+impl vec_len<T> for [const T] {
     #[doc = "Return the length of the vector"]
     #[inline(always)]
     fn len() -> uint { len(self) }

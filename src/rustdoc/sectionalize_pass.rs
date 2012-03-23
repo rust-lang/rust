@@ -90,7 +90,7 @@ fn sectionalize(desc: option<str>) -> (option<str>, [doc::section]) {
 
     let lines = str::lines(option::get(desc));
 
-    let mut new_desc = none;
+    let mut new_desc = none::<str>;
     let mut current_section = none;
     let mut sections = [];
 

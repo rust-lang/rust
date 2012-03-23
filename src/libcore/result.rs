@@ -91,6 +91,24 @@ fn chain<T, U: copy, V: copy>(res: result<T, V>, op: fn(T) -> result<U, V>)
     }
 }
 
+#[doc = "
+Call a function based on a previous result
+
+If `res` is `err` then the value is extracted and passed to `op`
+whereupon `op`s result is returned. if `res` is `ok` then it is
+immediately returned.  This function can be used to pass through a
+successful result while handling an error.
+"]
+fn chain_err<T: copy, U: copy, V: copy>(
+    res: result<T, V>,
+    op: fn(V) -> result<T, U>)
+    -> result<T, U> {
+    alt res {
+      ok(t) { ok(t) }
+      err(v) { op(v) }
+    }
+}
+
 // ______________________________________________________________________
 // Note:
 //
@@ -169,6 +187,22 @@ fn map2<S,T,U:copy,V:copy,W>(ss: [S], ts: [T],
         i += 1u;
     }
     ret nxt(vs);
+}
+
+fn iter2<S,T,U:copy>(ss: [S], ts: [T],
+                     op: fn(S,T) -> result<(),U>)
+    : vec::same_length(ss, ts)
+    -> result<(),U> {
+    let n = vec::len(ts);
+    let mut i = 0u;
+    while i < n {
+        alt op(ss[i],ts[i]) {
+          ok(()) { }
+          err(u) { ret err(u); }
+        }
+        i += 1u;
+    }
+    ret ok(());
 }
 
 #[cfg(test)]

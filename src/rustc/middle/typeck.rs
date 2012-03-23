@@ -73,7 +73,7 @@ type fn_ctxt =
     {ret_ty: ty::t,
      purity: ast::purity,
      proto: ast::proto,
-     var_bindings: @ty::unify::var_bindings,
+     infcx: infer::infer_ctxt,
      locals: hashmap<ast::node_id, int>,
      next_var_id: @mutable int,
      ccx: @crate_ctxt};
@@ -206,7 +206,7 @@ fn instantiate_path(fcx: @fn_ctxt, pth: @ast::path,
 
 // Type tests
 fn structurally_resolved_type(fcx: @fn_ctxt, sp: span, tp: ty::t) -> ty::t {
-    alt ty::unify::resolve_type_structure(fcx.var_bindings, tp) {
+    alt infer::resolve_type_structure(fcx.infcx, tp) {
       result::ok(typ_s) { ret typ_s; }
       result::err(_) {
         fcx.ccx.tcx.sess.span_fatal
@@ -225,7 +225,7 @@ fn structure_of(fcx: @fn_ctxt, sp: span, typ: ty::t) -> ty::sty {
 // is not known yet.
 fn structure_of_maybe(fcx: @fn_ctxt, _sp: span, typ: ty::t) ->
    option<ty::sty> {
-    let r = ty::unify::resolve_type_structure(fcx.var_bindings, typ);
+    let r = infer::resolve_type_structure(fcx.infcx, typ);
     alt r {
       result::ok(typ_s) { some(ty::get(typ_s).struct) }
       result::err(_) { none }
@@ -798,15 +798,15 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span, impl_m: ty::method,
             if_fty = fixup_self_in_method_ty(tcx, if_fty, substs,
                                              self_full(self_ty, impl_tps));
         }
-        alt ty::unify::unify(impl_fty, if_fty, ty::unify::precise, tcx) {
+        alt infer::compare_tys(tcx, impl_fty, if_fty) {
           result::err(err) {
             tcx.sess.span_err(sp, "method `" + if_m.ident +
                               "` has an incompatible type: " +
                               ty::type_err_to_str(tcx, err));
-            impl_fty
           }
-          result::ok(tp) { tp }
+          result::ok(()) { }
         }
+        ret impl_fty;
     }
 }
 
@@ -1132,16 +1132,14 @@ mod unify {
                                   rb: @ty::unify::region_bindings,
                                   expected: ty::t,
                                   actual: ty::t)
-            -> result<ty::t, ty::type_err> {
-        let irb = ty::unify::in_region_bindings(fcx.var_bindings, rb);
-        ret ty::unify::unify(expected, actual, irb, fcx.ccx.tcx);
+            -> result<(), ty::type_err> {
+        //let irb = ty::unify::in_region_bindings(fcx.var_bindings, rb);
+        ret infer::mk_subty(fcx.infcx, actual, expected);
     }
 
     fn unify(fcx: @fn_ctxt, expected: ty::t, actual: ty::t) ->
-        result<ty::t, ty::type_err> {
-        ret ty::unify::unify(expected, actual,
-                             ty::unify::in_bindings(fcx.var_bindings),
-                             fcx.ccx.tcx);
+        result<(), ty::type_err> {
+        ret infer::mk_subty(fcx.infcx, actual, expected);
     }
 }
 
@@ -1180,12 +1178,11 @@ fn do_autoderef(fcx: @fn_ctxt, sp: span, t: ty::t) -> ty::t {
 }
 
 fn resolve_type_vars_if_possible(fcx: @fn_ctxt, typ: ty::t) -> ty::t {
-    alt ty::unify::fixup_vars(fcx.ccx.tcx, none, fcx.var_bindings, typ) {
+    alt infer::fixup_vars(fcx.infcx, typ) {
       result::ok(new_type) { ret new_type; }
       result::err(_) { ret typ; }
     }
 }
-
 
 // Demands - procedures that require that two types unify and emit an error
 // message if they don't.
@@ -1195,6 +1192,11 @@ mod demand {
     fn simple(fcx: @fn_ctxt, sp: span, expected: ty::t, actual: ty::t) ->
        ty::t {
         full(fcx, sp, unify::unify, expected, actual, []).ty
+    }
+
+    // n.b.: order of arguments is reversed.
+    fn subty(fcx: @fn_ctxt, sp: span, actual: ty::t, expected: ty::t) {
+        full(fcx, sp, unify::unify, expected, actual, []);
     }
 
     fn with_region_bindings(fcx: @fn_ctxt,
@@ -1217,7 +1219,7 @@ mod demand {
     fn full(fcx: @fn_ctxt,
             sp: span,
             unifier: fn@(@fn_ctxt, ty::t, ty::t)
-                -> result<ty::t, ty::type_err>,
+                -> result<(), ty::type_err>,
             expected: ty::t,
             actual: ty::t,
             ty_param_substs_0: [ty::t]) ->
@@ -1247,7 +1249,9 @@ mod demand {
 
 
         alt unifier(fcx, expected, actual) {
-          result::ok(t) { ret mk_result(fcx, t, ty_param_subst_var_ids); }
+          result::ok(()) {
+            ret mk_result(fcx, expected, ty_param_subst_var_ids);
+          }
           result::err(err) {
             let e_err = resolve_type_vars_if_possible(fcx, expected);
             let a_err = resolve_type_vars_if_possible(fcx, actual);
@@ -1311,9 +1315,14 @@ mod writeback {
     fn resolve_type_vars_in_type(fcx: @fn_ctxt, sp: span, typ: ty::t) ->
        option<ty::t> {
         if !ty::type_has_vars(typ) { ret some(typ); }
-        alt ty::unify::fixup_vars(fcx.ccx.tcx, some(sp), fcx.var_bindings,
-                                  typ) {
+        alt infer::fixup_vars(fcx.infcx, typ) {
           result::ok(new_type) { ret some(new_type); }
+          result::err(-1) {
+            fcx.ccx.tcx.sess.span_err(
+                sp,
+                "can not instantiate infinite type");
+            ret none;
+          }
           result::err(vid) {
             if !fcx.ccx.tcx.sess.has_errors() {
                 fcx.ccx.tcx.sess.span_err(sp, "cannot determine a type \
@@ -1396,16 +1405,29 @@ mod writeback {
     fn visit_pat(p: @ast::pat, wbcx: wb_ctxt, v: wb_vt) {
         if !wbcx.success { ret; }
         resolve_type_vars_for_node(wbcx, p.span, p.id);
+        #debug["Type for pattern binding %s (id %d) resolved to %s",
+               pat_to_str(p), p.id,
+               ty_to_str(wbcx.fcx.ccx.tcx,
+                         ty::node_id_to_type(wbcx.fcx.ccx.tcx,
+                                             p.id))];
         visit::visit_pat(p, wbcx, v);
     }
     fn visit_local(l: @ast::local, wbcx: wb_ctxt, v: wb_vt) {
         if !wbcx.success { ret; }
         let var_id = lookup_local(wbcx.fcx, l.span, l.node.id);
-        let fix_rslt =
-            ty::unify::resolve_type_var(wbcx.fcx.ccx.tcx, some(l.span),
-                                        wbcx.fcx.var_bindings, var_id);
-        alt fix_rslt {
-          result::ok(lty) { write_ty(wbcx.fcx.ccx.tcx, l.node.id, lty); }
+        alt infer::resolve_var(wbcx.fcx.infcx, var_id) {
+          result::ok(lty) {
+            #debug["Type for local %s (id %d) resolved to %s",
+                   pat_to_str(l.node.pat), l.node.id,
+                   ty_to_str(wbcx.fcx.ccx.tcx, lty)];
+            write_ty(wbcx.fcx.ccx.tcx, l.node.id, lty);
+          }
+          result::err(-1) {
+            wbcx.fcx.ccx.tcx.sess.span_err(
+                l.span,
+                "this local variable has a type of infinite size");
+            wbcx.success = false;
+          }
           result::err(_) {
             wbcx.fcx.ccx.tcx.sess.span_err(l.span,
                                            "cannot determine a type \
@@ -1490,7 +1512,7 @@ fn check_intrinsic_type(tcx: ty::ctxt, it: @ast::native_item) {
 // Local variable gathering. We gather up all locals and create variable IDs
 // for them before typechecking the function.
 type gather_result =
-    {var_bindings: @ty::unify::var_bindings,
+    {infcx: infer::infer_ctxt,
      locals: hashmap<ast::node_id, int>,
      next_var_id: @mutable int};
 
@@ -1500,14 +1522,14 @@ fn gather_locals(ccx: @crate_ctxt,
                  body: ast::blk,
                  id: ast::node_id,
                  old_fcx: option<@fn_ctxt>) -> gather_result {
-    let {vb: vb, locals: locals, nvi: nvi} = alt old_fcx {
+    let {infcx, locals, nvi} = alt old_fcx {
       none {
-        {vb: ty::unify::mk_var_bindings(),
+        {infcx: infer::new_infer_ctxt(ccx.tcx),
          locals: int_hash::<int>(),
          nvi: @mutable 0}
       }
       some(fcx) {
-        {vb: fcx.var_bindings,
+        {infcx: fcx.infcx,
          locals: fcx.locals,
          nvi: fcx.next_var_id}
       }
@@ -1522,8 +1544,7 @@ fn gather_locals(ccx: @crate_ctxt,
         alt ty_opt {
           none {/* nothing to do */ }
           some(typ) {
-            ty::unify::unify(ty::mk_var(tcx, var_id), typ,
-                             ty::unify::in_bindings(vb), tcx);
+            infer::mk_eqty(infcx, ty::mk_var(tcx, var_id), typ);
           }
         }
     };
@@ -1533,6 +1554,8 @@ fn gather_locals(ccx: @crate_ctxt,
     let mut i = 0u;
     for arg: ty::arg in args {
         assign(decl.inputs[i].id, some(arg.ty));
+        #debug["Argument %s is assigned to <T%d>",
+               decl.inputs[i].ident, locals.get(decl.inputs[i].id)];
         i += 1u;
     }
 
@@ -1548,15 +1571,19 @@ fn gather_locals(ccx: @crate_ctxt,
         }
 
         assign(local.node.id, local_ty_opt);
+        #debug["Local variable %s is assigned to <T%d>",
+               pat_to_str(local.node.pat), locals.get(local.node.id)];
         visit::visit_local(local, e, v);
     };
 
     // Add pattern bindings.
     let visit_pat = fn@(p: @ast::pat, &&e: (), v: visit::vt<()>) {
         alt p.node {
-          ast::pat_ident(_, _)
+          ast::pat_ident(path, _)
           if !pat_util::pat_is_variant(ccx.tcx.def_map, p) {
             assign(p.id, none);
+            #debug["Pattern binding %s is assigned to <T%d>",
+                   path.node.idents[0], locals.get(p.id)];
           }
           _ {}
         }
@@ -1577,7 +1604,7 @@ fn gather_locals(ccx: @crate_ctxt,
               with *visit::default_visitor()};
 
     visit::visit_block(body, (), visit::mk_vt(visit));
-    ret {var_bindings: vb,
+    ret {infcx: infcx,
          locals: locals,
          next_var_id: nvi};
 }
@@ -2419,18 +2446,14 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                  element_ty: ty::t, body: ast::blk,
                  node_id: ast::node_id) -> bool {
         let locid = lookup_local(fcx, local.span, local.node.id);
-        let element_ty = demand::simple(fcx, local.span, element_ty,
-                                        ty::mk_var(fcx.ccx.tcx, locid));
+        demand::simple(fcx, local.span,
+                       ty::mk_var(fcx.ccx.tcx, locid),
+                       element_ty);
         let bot = check_decl_local(fcx, local);
         check_block_no_value(fcx, body);
-        // Unify type of decl with element type of the seq
-        demand::simple(fcx, local.span,
-                       ty::node_id_to_type(fcx.ccx.tcx, local.node.id),
-                       element_ty);
         write_nil(fcx.ccx.tcx, node_id);
         ret bot;
     }
-
 
     // A generic function for checking the then and else in an if
     // or if-check
@@ -2470,49 +2493,108 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
     }
     fn lookup_op_method(fcx: @fn_ctxt, op_ex: @ast::expr, self_t: ty::t,
                         opname: str, args: [option<@ast::expr>])
-        -> option<ty::t> {
+        -> option<(ty::t, bool)> {
         let callee_id = ast_util::op_expr_callee_id(op_ex);
         alt lookup_method(fcx, op_ex, callee_id, opname, self_t, []) {
           some(origin) {
             let method_ty = ty::node_id_to_type(fcx.ccx.tcx, callee_id);
-            check_call_or_bind(fcx, op_ex.span, method_ty, args);
+            let r = check_call_or_bind(fcx, op_ex.span, method_ty, args);
             fcx.ccx.method_map.insert(op_ex.id, origin);
-            some(ty::ty_fn_ret(method_ty))
+            some((ty::ty_fn_ret(method_ty), r.bot))
           }
           _ { none }
         }
     }
-    fn check_binop(fcx: @fn_ctxt, ex: @ast::expr, ty: ty::t,
-                   op: ast::binop, rhs: @ast::expr) -> ty::t {
-        let resolved_t = structurally_resolved_type(fcx, ex.span, ty);
+    // could be either a expr_binop or an expr_assign_binop
+    fn check_binop(fcx: @fn_ctxt, expr: @ast::expr,
+                   op: ast::binop,
+                   lhs: @ast::expr,
+                   rhs: @ast::expr) -> bool {
         let tcx = fcx.ccx.tcx;
-        if ty::is_binopable(tcx, resolved_t, op) {
-            ret alt op {
-              ast::eq | ast::lt | ast::le | ast::ne | ast::ge |
-              ast::gt { ty::mk_bool(tcx) }
-              _ { resolved_t }
-            };
-        }
+        let lhs_bot = check_expr(fcx, lhs);
+        let lhs_t = expr_ty(tcx, lhs);
+        let lhs_t = structurally_resolved_type(fcx, lhs.span, lhs_t);
+        ret alt (op, ty::get(lhs_t).struct) {
+          (ast::add, ty::ty_vec(lhs_mt)) {
+            // For adding vectors with type L=[M TL] and R=[M TR], the result
+            // is somewhat subtle.  Let L_c=[const TL] and R_c=[const TR] be
+            // const versions of the vectors in L and R.  Next, let T be a
+            // fresh type variable where TL <: T and TR <: T.  Then the result
+            // type is a fresh type variable T1 where T1 <: [const T].  This
+            // allows the result to be either a mutable or immutable vector,
+            // depending on external demands.
+            let const_vec_t =
+                ty::mk_vec(tcx, {ty: next_ty_var(fcx),
+                                 mutbl: ast::m_const});
+            demand::simple(fcx, lhs.span, const_vec_t, lhs_t);
+            let rhs_bot = check_expr_with(fcx, rhs, const_vec_t);
+            let result_var = next_ty_var(fcx);
+            demand::simple(fcx, lhs.span, const_vec_t, result_var);
+            write_ty(tcx, expr.id, result_var);
+            lhs_bot | rhs_bot
+          }
 
+          (_, _) if ty::type_is_integral(lhs_t) &&
+          ast_util::is_shift_binop(op) {
+            // Shift is a special case: rhs can be any integral type
+            let rhs_bot = check_expr(fcx, rhs);
+            let rhs_t = expr_ty(tcx, rhs);
+            require_integral(fcx, rhs.span, rhs_t);
+            write_ty(tcx, expr.id, lhs_t);
+            lhs_bot | rhs_bot
+          }
+
+          (_, _) if ty::is_binopable(tcx, lhs_t, op) {
+            let rhs_bot = check_expr_with(fcx, rhs, lhs_t);
+            let rhs_t = alt op {
+              ast::eq | ast::lt | ast::le | ast::ne | ast::ge |
+              ast::gt {
+                // these comparison operators are handled in a
+                // separate case below.
+                tcx.sess.span_bug(
+                    expr.span,
+                    #fmt["Comparison operator in expr_binop: %s",
+                         ast_util::binop_to_str(op)]);
+              }
+              _ { lhs_t }
+            };
+            write_ty(tcx, expr.id, rhs_t);
+            if !ast_util::lazy_binop(op) { lhs_bot | rhs_bot }
+            else { lhs_bot }
+          }
+
+          (_, _) {
+            let (result, rhs_bot) =
+                check_user_binop(fcx, expr, lhs_t, op, rhs);
+            write_ty(tcx, expr.id, result);
+            lhs_bot | rhs_bot
+          }
+        };
+    }
+    fn check_user_binop(fcx: @fn_ctxt, ex: @ast::expr, lhs_resolved_t: ty::t,
+                        op: ast::binop, rhs: @ast::expr) -> (ty::t, bool) {
+        let tcx = fcx.ccx.tcx;
         alt binop_method(op) {
           some(name) {
-            alt lookup_op_method(fcx, ex, resolved_t, name, [some(rhs)]) {
-              some(ret_ty) { ret ret_ty; }
+            alt lookup_op_method(fcx, ex, lhs_resolved_t, name, [some(rhs)]) {
+              some(pair) { ret pair; }
               _ {}
             }
           }
           _ {}
         }
+        check_expr(fcx, rhs);
         tcx.sess.span_err(
             ex.span, "binary operation " + ast_util::binop_to_str(op) +
-            " cannot be applied to type `" + ty_to_str(tcx, resolved_t) +
+            " cannot be applied to type `" +
+            ty_to_str(tcx, lhs_resolved_t) +
             "`");
-        resolved_t
+        (lhs_resolved_t, false)
     }
     fn check_user_unop(fcx: @fn_ctxt, op_str: str, mname: str,
                        ex: @ast::expr, rhs_t: ty::t) -> ty::t {
         alt lookup_op_method(fcx, ex, rhs_t, mname, []) {
-          some(ret_ty) { ret_ty }
+          some((ret_ty, _)) { ret_ty }
           _ {
             fcx.ccx.tcx.sess.span_err(
                 ex.span, #fmt["cannot apply unary operator `%s` to type `%s`",
@@ -2530,30 +2612,39 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         let typ = check_lit(fcx.ccx, lit);
         write_ty(tcx, id, typ);
       }
-      ast::expr_binary(binop, lhs, rhs) {
-        let lhs_t = next_ty_var(fcx);
-        bot = check_expr_with(fcx, lhs, lhs_t);
 
-        let rhs_bot = if !ast_util::is_shift_binop(binop) {
-            check_expr_with(fcx, rhs, lhs_t)
-        } else {
-            let rhs_bot = check_expr(fcx, rhs);
-            let rhs_t = expr_ty(tcx, rhs);
-            require_integral(fcx, rhs.span, rhs_t);
-            rhs_bot
-        };
-
-        if !ast_util::lazy_binop(binop) { bot |= rhs_bot; }
-
-        let result = check_binop(fcx, expr, lhs_t, binop, rhs);
-        write_ty(tcx, id, result);
+      // Something of a hack: special rules for comparison operators that
+      // simply unify LHS and RHS.  This helps with inference as LHS and RHS
+      // do not need to be "resolvable".  Some tests, particularly those with
+      // complicated iface requirements, fail without this---I think this code
+      // can be removed if we improve iface resolution to be more eager when
+      // possible.
+      ast::expr_binary(ast::eq, lhs, rhs) |
+      ast::expr_binary(ast::ne, lhs, rhs) |
+      ast::expr_binary(ast::lt, lhs, rhs) |
+      ast::expr_binary(ast::le, lhs, rhs) |
+      ast::expr_binary(ast::gt, lhs, rhs) |
+      ast::expr_binary(ast::ge, lhs, rhs) {
+        let tcx = fcx.ccx.tcx;
+        bot |= check_expr(fcx, lhs);
+        let lhs_t = expr_ty(tcx, lhs);
+        bot |= check_expr_with(fcx, rhs, lhs_t);
+        write_ty(tcx, id, ty::mk_bool(tcx));
+      }
+      ast::expr_binary(op, lhs, rhs) {
+        bot |= check_binop(fcx, expr, op, lhs, rhs);
       }
       ast::expr_assign_op(op, lhs, rhs) {
         require_impure(tcx.sess, fcx.purity, expr.span);
-        bot = check_assignment(fcx, expr.span, lhs, rhs, id);
+        bot |= check_binop(fcx, expr, op, lhs, rhs);
         let lhs_t = ty::expr_ty(tcx, lhs);
-        let result = check_binop(fcx, expr, lhs_t, op, rhs);
-        demand::simple(fcx, expr.span, result, lhs_t);
+        let result_t = ty::expr_ty(tcx, expr);
+        demand::simple(fcx, expr.span, result_t, lhs_t);
+
+        // Overwrite result of check_binop...this preserves existing behavior
+        // but seems quite dubious with regard to user-defined methods
+        // and so forth. - Niko
+        write_nil(tcx, expr.id);
       }
       ast::expr_unary(unop, oper) {
         bot = check_expr(fcx, oper);
@@ -3036,7 +3127,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                                                       raw_base_t);
             alt lookup_op_method(fcx, expr, resolved, "[]",
                                  [some(idx)]) {
-              some(ret_ty) { write_ty(tcx, id, ret_ty); }
+              some((ret_ty, _)) { write_ty(tcx, id, ret_ty); }
               _ {
                 tcx.sess.span_fatal(
                     expr.span, "cannot index a value of type `" +
@@ -3241,7 +3332,7 @@ fn check_const(ccx: @crate_ctxt, _sp: span, e: @ast::expr, id: ast::node_id) {
         @{ret_ty: rty,
           purity: ast::pure_fn,
           proto: ast::proto_box,
-          var_bindings: ty::unify::mk_var_bindings(),
+          infcx: infer::new_infer_ctxt(ccx.tcx),
           locals: int_hash::<int>(),
           next_var_id: @mutable 0,
           ccx: ccx};
@@ -3260,7 +3351,7 @@ fn check_enum_variants(ccx: @crate_ctxt, sp: span, vs: [ast::variant],
         @{ret_ty: rty,
           purity: ast::pure_fn,
           proto: ast::proto_box,
-          var_bindings: ty::unify::mk_var_bindings(),
+          infcx: infer::new_infer_ctxt(ccx.tcx),
           locals: int_hash::<int>(),
           next_var_id: @mutable 0,
           ccx: ccx};
@@ -3438,7 +3529,7 @@ fn check_fn(ccx: @crate_ctxt,
         @{ret_ty: ty::ty_fn_ret(ty::node_id_to_type(ccx.tcx, id)),
           purity: purity,
           proto: proto,
-          var_bindings: gather_result.var_bindings,
+          infcx: gather_result.infcx,
           locals: gather_result.locals,
           next_var_id: gather_result.next_var_id,
           ccx: ccx};
@@ -3723,8 +3814,12 @@ mod vtable {
 
     fn fixup_ty(fcx: @fn_ctxt, sp: span, ty: ty::t) -> ty::t {
         let tcx = fcx.ccx.tcx;
-        alt ty::unify::fixup_vars(tcx, some(sp), fcx.var_bindings, ty) {
+        alt infer::fixup_vars(fcx.infcx, ty) {
           result::ok(new_type) { new_type }
+          result::err(-1) {
+            tcx.sess.span_fatal(sp, "bounded type parameter with \
+                                     cyclic type");
+          }
           result::err(vid) {
             tcx.sess.span_fatal(sp, "could not determine a type for a \
                                      bounded type parameter");

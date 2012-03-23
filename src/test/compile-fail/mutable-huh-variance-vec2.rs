@@ -1,11 +1,12 @@
-// error-pattern: mismatched types
-
 fn main() {
-    let v = [mutable [mutable 0]];
+    // Note: explicit type annot is required here
+    // because otherwise the inference gets smart
+    // and assigns a type of [mut [const int]].
+    let v: [mut [mut int]] = [mutable [mutable 0]];
 
     fn f(&&v: [mutable [const int]]) {
         v[0] = [3]
     }
 
-    f(v);
+    f(v); //! ERROR (values differ in mutability)
 }

@@ -31,6 +31,7 @@ mod middle {
         mod reachable;
     }
     mod ty;
+    mod infer;
     mod ast_map;
     mod resolve;
     mod typeck;

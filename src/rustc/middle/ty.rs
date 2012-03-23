@@ -37,7 +37,7 @@ export field;
 export field_idx;
 export get_field;
 export get_fields;
-export fm_general, fm_rptr;
+export fm_var, fm_general, fm_rptr;
 export get_element_type;
 export is_binopable;
 export is_pred_ty;
@@ -140,6 +140,7 @@ export item_path;
 export item_path_str;
 export ast_ty_to_ty_cache_entry;
 export atttce_unresolved, atttce_resolved;
+export mach_sty;
 
 // Data types
 
@@ -304,6 +305,8 @@ type constr = constr_general<uint>;
 enum type_err {
     terr_mismatch,
     terr_ret_style_mismatch(ast::ret_style, ast::ret_style),
+    terr_mutability,
+    terr_proto_mismatch(ast::proto, ast::proto),
     terr_box_mutability,
     terr_ptr_mutability,
     terr_ref_mutability,
@@ -2360,6 +2363,11 @@ fn type_err_to_str(cx: ctxt, err: type_err) -> str {
         ret to_str(actual) + " function found where " + to_str(expect) +
             " function was expected";
       }
+      terr_proto_mismatch(e, a) {
+        ret #fmt["closure protocol mismatch (%s vs %s)",
+                 proto_to_str(e), proto_to_str(a)];
+      }
+      terr_mutability { ret "values differ in mutability"; }
       terr_box_mutability { ret "boxed values differ in mutability"; }
       terr_vec_mutability { ret "vectors differ in mutability"; }
       terr_ptr_mutability { ret "pointers differ in mutability"; }

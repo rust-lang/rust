@@ -169,14 +169,14 @@ fn test_enumerate() {
 #[test]
 fn test_map_and_to_list() {
     let a = bind vec::iter([0, 1, 2], _);
-    let b = bind map(a, {|i| i*2}, _);
+    let b = bind map(a, {|i| 2*i}, _);
     let c = to_list(b);
     assert c == [0, 2, 4];
 }
 
 #[test]
 fn test_map_directly_on_vec() {
-    let b = bind map([0, 1, 2], {|i| i*2}, _);
+    let b = bind map([0, 1, 2], {|i| 2*i}, _);
     let c = to_list(b);
     assert c == [0, 2, 4];
 }
