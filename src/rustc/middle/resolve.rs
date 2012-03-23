@@ -353,19 +353,14 @@ fn map_crate(e: @env, c: @ast::crate) {
 
 fn resolve_imports(e: env) {
     e.used_imports.track = true;
-    loop {
-        let mut done = true;
-        e.imports.items {|id, v|
-            alt check v {
-              todo(name, path, span, scopes) {
-                done = false;
-                resolve_import(e, id, name, *path, span, scopes);
-              }
-              resolved(_, _, _, _, _, _) | is_glob(_, _, _) { }
-            }
+    e.imports.items {|id, v|
+        alt check v {
+          todo(name, path, span, scopes) {
+            resolve_import(e, id, name, *path, span, scopes);
+          }
+          resolved(_, _, _, _, _, _) | is_glob(_, _, _) { }
         }
-        if done { break; }
-    };
+    }
     e.used_imports.track = false;
     e.sess.abort_if_errors();
 }
