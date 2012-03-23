@@ -15,3 +15,7 @@ mod fold;
 mod util {
     mod interner;
 }
+mod parse {
+    mod token;
+    mod lexer;
+}

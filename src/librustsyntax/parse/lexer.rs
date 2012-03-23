@@ -1,7 +1,7 @@
 import io::reader_util;
 import util::interner;
 import util::interner::intern;
-import driver::diagnostic;
+import diagnostic;
 
 type reader = @{
     cm: codemap::codemap,

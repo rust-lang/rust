@@ -71,9 +71,7 @@ mod middle {
 
 mod syntax {
     mod parse {
-        mod lexer;
         mod parser;
-        mod token;
         mod eval;
     }
     mod ext {
