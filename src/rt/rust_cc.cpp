@@ -565,9 +565,26 @@ class sweep : public shape::data<sweep,shape::ptr> {
         }
     }
 
+    struct run_dtor_args {
+        const shape::rust_fn *dtor;
+        void *data;
+    };
+
+    typedef void (*dtor)(void **retptr, void *env, void *dptr);
+
+    static void run_dtor(run_dtor_args *args) {
+        dtor f = (dtor)args->dtor;
+        f(NULL, args->dtor->env, args->data);
+    }
+
     void walk_res2(const shape::rust_fn *dtor, unsigned n_params,
                    const shape::type_param *params, const uint8_t *end_sp,
                    bool live) {
+        void *data = (void*)(uintptr_t)dp;
+        // Switch back to the Rust stack to run the destructor
+        run_dtor_args args = {dtor, data};
+        task->call_on_rust_stack((void*)&args, (void*)run_dtor);
+
         while (this->sp != end_sp) {
             this->walk();
             align = true;

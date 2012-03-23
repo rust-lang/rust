@@ -252,6 +252,7 @@ public:
     void prev_stack();
     void record_stack_limit();
     void reset_stack_limit();
+    
     bool on_rust_stack();
     void check_stack_canary();
     void delete_all_stacks();
@@ -334,6 +335,7 @@ inline void
 rust_task::call_on_rust_stack(void *args, void *fn_ptr) {
     // Too expensive to check
     // I(thread, !on_rust_stack());
+    A(thread, get_sp_limit() != 0, "Stack must be configured");
     I(thread, next_rust_sp);
 
     bool had_reentered_rust_stack = reentered_rust_stack;
@@ -344,6 +346,8 @@ rust_task::call_on_rust_stack(void *args, void *fn_ptr) {
 
     uintptr_t sp = sanitize_next_sp(next_rust_sp);
 
+    // FIXME(2047): There are times when this is called and needs
+    // to be able to throw, and we don't account for that.
     __morestack(args, fn_ptr, sp);
 
     next_c_sp = prev_c_sp;
