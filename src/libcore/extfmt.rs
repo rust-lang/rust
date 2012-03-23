@@ -269,8 +269,6 @@ mod rt {
         flag_space_for_sign,
         flag_sign_always,
         flag_alternate,
-        // FIXME(1993): This is no longer needed. Remove after a snapshot
-        flag_none,
     }
     enum count { count_is(int), count_implied, }
     enum ty { ty_default, ty_bits, ty_hex_upper, ty_hex_lower, ty_octal, }
