@@ -244,13 +244,9 @@ current_kernel_malloc_alloc_cb(uv_handle_t* handle,
 }
 
 // FIXME see issue #1402
-extern "C" void*
+extern "C" uv_buf_t
 rust_uv_buf_init(char* base, size_t len) {
-	uv_buf_t* buf_ptr = (uv_buf_t*)current_kernel_malloc(
-									 sizeof(uv_buf_t),
-									 "uv_buf_t_1402");
-	*buf_ptr = uv_buf_init(base, len);
-	return buf_ptr;
+	return uv_buf_init(base, len);
 }
 
 extern "C" uv_loop_t*
@@ -302,15 +298,9 @@ rust_uv_tcp_connect(uv_connect_t* connect_ptr,
 
 extern "C" int
 rust_uv_write(uv_write_t* req, uv_stream_t* handle,
-			  void** bufs, int buf_cnt,
+			  uv_buf_t* bufs, int buf_cnt,
 			  uv_write_cb cb) {
-	// TODO github #1402 -- convert this array of pointers to
-    // uv_buf_t into an array of uv_buf_t values
-	uv_buf_t buf_vals[buf_cnt];
-	for(int ctr = 0; ctr < buf_cnt; ctr++) {
-	  buf_vals[ctr] = *((uv_buf_t*)bufs[ctr]);
-	}
-	return uv_write(req, handle, buf_vals, buf_cnt, cb);
+	return uv_write(req, handle, bufs, buf_cnt, cb);
 }
 
 extern "C" struct sockaddr_in
