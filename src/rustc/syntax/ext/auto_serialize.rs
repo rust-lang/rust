@@ -70,7 +70,6 @@ node twice.
 
 */
 import base::*;
-import driver::session::session;
 import codemap::span;
 import std::map;
 import std::map::hashmap;
@@ -106,9 +105,9 @@ fn expand(cx: ext_ctxt,
           }
 
           _ {
-            cx.session().span_err(span, "#[auto_serialize] can only be \
-                                         applied to type and enum \
-                                         definitions");
+            cx.span_err(span, "#[auto_serialize] can only be \
+                               applied to type and enum \
+                               definitions");
             [in_item]
           }
         }
@@ -116,8 +115,6 @@ fn expand(cx: ext_ctxt,
 }
 
 impl helpers for ext_ctxt {
-    fn next_id() -> ast::node_id { self.session().next_node_id() }
-
     fn helper_path(base_path: @ast::path,
                    helper_name: str) -> @ast::path {
         let head = vec::init(base_path.node.idents);
@@ -347,7 +344,7 @@ fn ser_ty(cx: ext_ctxt, tps: ser_tps_map,
       }
 
       ast::ty_bot {
-        cx.session().span_err(
+        cx.span_err(
             ty.span, #fmt["Cannot serialize bottom type"]);
         []
       }
@@ -363,7 +360,7 @@ fn ser_ty(cx: ext_ctxt, tps: ser_tps_map,
       }
 
       ast::ty_ptr(_) | ast::ty_rptr(_, _) {
-        cx.session().span_err(
+        cx.span_err(
             ty.span, #fmt["Cannot serialize pointer types"]);
         []
       }
@@ -386,7 +383,7 @@ fn ser_ty(cx: ext_ctxt, tps: ser_tps_map,
       }
 
       ast::ty_fn(_, _) {
-        cx.session().span_err(
+        cx.span_err(
             ty.span, #fmt["Cannot serialize function types"]);
         []
       }
@@ -444,13 +441,13 @@ fn ser_ty(cx: ext_ctxt, tps: ser_tps_map,
       }
 
       ast::ty_mac(_) {
-        cx.session().span_err(
+        cx.span_err(
             ty.span, #fmt["Cannot serialize macro types"]);
         []
       }
 
       ast::ty_infer {
-        cx.session().span_err(
+        cx.span_err(
             ty.span, #fmt["Cannot serialize inferred types"]);
         []
       }

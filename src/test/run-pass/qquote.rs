@@ -26,21 +26,19 @@ fn new_parse_sess() -> parser::parse_sess {
 }
 
 iface fake_ext_ctxt {
-    fn session() -> fake_session;
+    fn cfg() -> ast::crate_cfg;
+    fn parse_sess() -> parser::parse_sess;
 }
 
-type fake_options = {cfg: ast::crate_cfg};
-
-type fake_session = {opts: @fake_options,
-                     parse_sess: parser::parse_sess};
+type fake_session = ();
 
 impl of fake_ext_ctxt for fake_session {
-    fn session() -> fake_session {self}
+    fn cfg() -> ast::crate_cfg { [] }
+    fn parse_sess() -> parser::parse_sess { new_parse_sess() }
 }
 
 fn mk_ctxt() -> fake_ext_ctxt {
-    let opts : fake_options = {cfg: []};
-    {opts: @opts, parse_sess: new_parse_sess()} as fake_ext_ctxt
+    () as fake_ext_ctxt
 }
 
 

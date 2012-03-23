@@ -2,7 +2,6 @@ use std;
 
 import codemap::span;
 import std::map::{hashmap, str_hash};
-import driver::session::session;
 
 import base::*;
 
@@ -478,7 +477,7 @@ fn p_t_s_rec(cx: ext_ctxt, m: matchable, s: selector, b: binders) {
         }
       }
       _ {
-          cx.session().bug("undocumented invariant in p_t_s_rec");
+          cx.bug("undocumented invariant in p_t_s_rec");
       }
     }
 }

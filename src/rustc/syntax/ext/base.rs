@@ -1,6 +1,7 @@
 import std::map::hashmap;
-import driver::session::session;
-import codemap::{span, expn_info, expanded_from};
+import syntax::parse::parser;
+import driver::diagnostic::span_handler;
+import codemap::{codemap, span, expn_info, expanded_from};
 import std::map::str_hash;
 
 type syntax_expander_ =
@@ -44,7 +45,10 @@ fn syntax_expander_table() -> hashmap<str, syntax_extension> {
 }
 
 iface ext_ctxt {
-    fn session() -> session;
+    fn session() -> driver::session::session;
+    fn codemap() -> codemap;
+    fn parse_sess() -> parser::parse_sess;
+    fn cfg() -> ast::crate_cfg;
     fn print_backtrace();
     fn backtrace() -> expn_info;
     fn bt_push(ei: codemap::expn_info_);
@@ -57,11 +61,18 @@ iface ext_ctxt {
     fn next_id() -> ast::node_id;
 }
 
-fn mk_ctxt(sess: session) -> ext_ctxt {
-    type ctxt_repr = {sess: session,
+fn mk_ctxt(session: driver::session::session,
+           parse_sess: parser::parse_sess,
+           cfg: ast::crate_cfg) -> ext_ctxt {
+    type ctxt_repr = {session: driver::session::session,
+                      parse_sess: parser::parse_sess,
+                      cfg: ast::crate_cfg,
                       mutable backtrace: expn_info};
     impl of ext_ctxt for ctxt_repr {
-        fn session() -> session { self.sess }
+        fn session() -> driver::session::session { self.session }
+        fn codemap() -> codemap { self.parse_sess.cm }
+        fn parse_sess() -> parser::parse_sess { self.parse_sess }
+        fn cfg() -> ast::crate_cfg { self.cfg }
         fn print_backtrace() { }
         fn backtrace() -> expn_info { self.backtrace }
         fn bt_push(ei: codemap::expn_info_) {
@@ -85,24 +96,34 @@ fn mk_ctxt(sess: session) -> ext_ctxt {
         }
         fn span_fatal(sp: span, msg: str) -> ! {
             self.print_backtrace();
-            self.sess.span_fatal(sp, msg);
+            self.parse_sess.span_diagnostic.span_fatal(sp, msg);
         }
         fn span_err(sp: span, msg: str) {
             self.print_backtrace();
-            self.sess.span_err(sp, msg);
+            self.parse_sess.span_diagnostic.span_err(sp, msg);
         }
         fn span_unimpl(sp: span, msg: str) -> ! {
             self.print_backtrace();
-            self.sess.span_unimpl(sp, msg);
+            self.parse_sess.span_diagnostic.span_unimpl(sp, msg);
         }
         fn span_bug(sp: span, msg: str) -> ! {
             self.print_backtrace();
-            self.sess.span_bug(sp, msg);
+            self.parse_sess.span_diagnostic.span_bug(sp, msg);
         }
-        fn bug(msg: str) -> ! { self.print_backtrace(); self.sess.bug(msg); }
-        fn next_id() -> ast::node_id { ret self.sess.next_node_id(); }
+        fn bug(msg: str) -> ! {
+            self.print_backtrace();
+            self.parse_sess.span_diagnostic.handler().bug(msg);
+        }
+        fn next_id() -> ast::node_id {
+            ret parser::next_node_id(self.parse_sess);
+        }
     }
-    let imp : ctxt_repr = {sess: sess, mutable backtrace: none};
+    let imp : ctxt_repr = {
+        session: session,
+        parse_sess: parse_sess,
+        cfg: cfg,
+        mutable backtrace: none
+    };
     ret imp as ext_ctxt
 }
 

@@ -122,7 +122,7 @@ fn core_macros() -> str {
 fn expand_crate(sess: session::session, c: @crate) -> @crate {
     let exts = syntax_expander_table();
     let afp = default_ast_fold();
-    let cx: ext_ctxt = mk_ctxt(sess);
+    let cx: ext_ctxt = mk_ctxt(sess, sess.parse_sess, sess.opts.cfg);
     let f_pre =
         {fold_expr: bind expand_expr(exts, cx, _, _, _, afp.fold_expr),
          fold_mod: bind expand_mod_items(exts, cx, _, _, afp.fold_mod),

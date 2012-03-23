@@ -1,5 +1,3 @@
-import driver::session;
-
 import syntax::ast::{crate, expr_, mac_invoc,
                      mac_aq, mac_var};
 import syntax::fold::*;
@@ -191,13 +189,13 @@ fn finish<T: qq_helper>
     (ecx: ext_ctxt, body: ast::mac_body_, f: fn (p: parser) -> T)
     -> @ast::expr
 {
-    let cm = ecx.session().parse_sess.cm;
+    let cm = ecx.codemap();
     let str = @codemap::span_to_snippet(body.span, cm);
     #debug["qquote--str==%?", str];
     let fname = codemap::mk_substr_filename(cm, body.span);
     let node = parse_from_source_str
         (f, fname, codemap::fss_internal(body.span), str,
-         ecx.session().opts.cfg, ecx.session().parse_sess);
+         ecx.cfg(), ecx.parse_sess());
     let loc = codemap::lookup_char_pos(cm, body.span.lo);
 
     let sp = node.span();
@@ -239,8 +237,13 @@ fn finish<T: qq_helper>
     }
 
     let cx = ecx;
-    let session_call = {||
-        mk_call_(cx, sp, mk_access(cx, sp, ["ext_cx"], "session"), [])
+
+    let cfg_call = {||
+        mk_call_(cx, sp, mk_access(cx, sp, ["ext_cx"], "cfg"), [])
+    };
+
+    let parse_sess_call = {||
+        mk_call_(cx, sp, mk_access(cx, sp, ["ext_cx"], "parse_sess"), [])
     };
 
     let pcall = mk_call(cx,sp,
@@ -255,10 +258,8 @@ fn finish<T: qq_helper>
                                  mk_uint(cx,sp, loc.col)]),
                         mk_unary(cx,sp, ast::box(ast::m_imm),
                                  mk_str(cx,sp, str2)),
-                        mk_access_(cx,sp,
-                                   mk_access_(cx,sp, session_call(), "opts"),
-                                   "cfg"),
-                        mk_access_(cx,sp, session_call(), "parse_sess")]
+                        cfg_call(),
+                        parse_sess_call()]
                       );
     let mut rcall = pcall;
     if (g_len > 0u) {
