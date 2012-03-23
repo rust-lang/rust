@@ -1,4 +1,4 @@
-import syntax::{ast, fold};
+import syntax::{ast, fold, attr};
 
 export strip_unconfigured_items;
 export metas_in_cfg;

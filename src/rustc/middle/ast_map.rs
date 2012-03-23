@@ -5,7 +5,7 @@ import syntax::ast_util;
 import syntax::ast_util::inlined_item_methods;
 import syntax::{visit, codemap};
 import driver::session::session;
-import front::attr;
+import syntax::attr;
 
 enum path_elt { path_mod(str), path_name(str) }
 type path = [path_elt];

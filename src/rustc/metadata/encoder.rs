@@ -13,7 +13,7 @@ import middle::trans::common::crate_ctxt;
 import middle::ty;
 import middle::ty::node_id_to_type;
 import middle::ast_map;
-import front::attr;
+import syntax::attr;
 import driver::session::session;
 import std::serialization::serializer;
 

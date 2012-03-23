@@ -1,7 +1,7 @@
 import driver::session::session;
 import middle::ty::ctxt;
 import syntax::{ast, visit};
-import front::attr;
+import syntax::attr;
 import std::map::hashmap;
 import io::writer_util;
 

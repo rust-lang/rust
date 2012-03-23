@@ -4,7 +4,7 @@ import ast::{ident, fn_ident, def, def_id, node_id};
 import syntax::ast_util::{local_def, def_id_of_def, class_item_ident};
 import pat_util::*;
 
-import front::attr;
+import syntax::attr;
 import metadata::{csearch, cstore};
 import driver::session::session;
 import util::common::*;

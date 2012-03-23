@@ -1,7 +1,7 @@
 import driver::session::{session, arch_x86_64};
 import syntax::codemap::span;
 import libc::c_uint;
-import front::attr;
+import syntax::attr;
 import lib::llvm::{ llvm, TypeRef, ValueRef,
                     ModuleRef, CallConv, Attribute,
                     StructRetAttribute, ByValAttribute

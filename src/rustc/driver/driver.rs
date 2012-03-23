@@ -3,7 +3,7 @@ import metadata::{creader, cstore};
 import session::session;
 import syntax::parse::{parser};
 import syntax::{ast, codemap};
-import front::attr;
+import syntax::attr;
 import middle::{trans, resolve, freevars, kind, ty, typeck, fn_usage,
                 last_use, lint};
 import syntax::print::{pp, pprust};

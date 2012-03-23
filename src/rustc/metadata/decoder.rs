@@ -5,7 +5,7 @@ import std::map::hashmap;
 import io::writer_util;
 import syntax::{ast, ast_util};
 import driver::session::session;
-import front::attr;
+import syntax::attr;
 import middle::ty;
 import middle::ast_map;
 import common::*;

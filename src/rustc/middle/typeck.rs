@@ -987,7 +987,7 @@ mod collect {
           // These don't define types.
           ast::item_mod(_) {}
           ast::item_native_mod(m) {
-            if front::attr::native_abi(it.attrs) ==
+            if syntax::attr::native_abi(it.attrs) ==
                either::right(ast::native_abi_rust_intrinsic) {
                 for item in m.items { check_intrinsic_type(tcx, item); }
             }

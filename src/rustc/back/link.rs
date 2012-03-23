@@ -2,7 +2,7 @@ import libc::{c_int, c_uint};
 import driver::session;
 import session::session;
 import lib::llvm::llvm;
-import front::attr;
+import syntax::attr;
 import middle::ty;
 import metadata::{encoder, cstore};
 import middle::trans::common::crate_ctxt;

@@ -4,7 +4,7 @@ import driver::session;
 import session::session;
 import syntax::{ast, ast_util};
 import lib::llvm::{False, llvm, mk_object_file, mk_section_iter};
-import front::attr;
+import syntax::attr;
 import syntax::visit;
 import syntax::codemap::span;
 import util::{filesearch};

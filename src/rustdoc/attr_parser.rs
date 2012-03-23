@@ -6,7 +6,7 @@
 )];
 
 import rustc::syntax::ast;
-import rustc::front::attr;
+import rustc::syntax::attr;
 import core::tuple;
 
 export crate_attrs;

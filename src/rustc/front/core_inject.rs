@@ -1,7 +1,7 @@
 import driver::session::session;
 import syntax::codemap;
 import syntax::ast;
-import front::attr;
+import syntax::attr;
 
 export maybe_inject_libcore_ref;
 

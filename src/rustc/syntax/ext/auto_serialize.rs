@@ -73,7 +73,7 @@ import base::*;
 import codemap::span;
 import std::map;
 import std::map::hashmap;
-import front::attr;
+import syntax::attr;
 
 export expand;
 

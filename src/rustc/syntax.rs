@@ -23,4 +23,7 @@ export parse;
 import rustsyntax::util;
 export util;
 
+import rustsyntax::attr;
+export attr;
+
 export ext;

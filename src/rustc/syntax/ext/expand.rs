@@ -3,7 +3,7 @@ import driver::session::session;
 
 import std::map::hashmap;
 
-import front::attr;
+import syntax::attr;
 
 import syntax::ast::{crate, expr_, expr_mac, mac_invoc};
 import syntax::fold::*;

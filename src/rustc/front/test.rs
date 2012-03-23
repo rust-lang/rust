@@ -8,7 +8,7 @@ import syntax::print::pprust;
 import syntax::codemap::span;
 import driver::session;
 import session::session;
-import front::attr;
+import syntax::attr;
 
 export modify_for_testing;
 

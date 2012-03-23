@@ -8,7 +8,7 @@
 import syntax::ast::*;
 import syntax::{visit, ast_util};
 import syntax::ast_util::def_id_of_def;
-import front::attr;
+import syntax::attr;
 import std::map::hashmap;
 
 export map, find_reachable;

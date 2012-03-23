@@ -19,7 +19,7 @@ import std::map::hashmap;
 import std::map::{int_hash, str_hash};
 import driver::session;
 import session::session;
-import front::attr;
+import syntax::attr;
 import back::{link, abi, upcall};
 import syntax::{ast, ast_util, codemap};
 import ast_util::inlined_item_methods;
