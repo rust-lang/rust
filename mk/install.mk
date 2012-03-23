@@ -42,7 +42,6 @@ install-target-$(1)-host-$(2): $$(SREQ$$(ISTAGE)_T_$(1)_H_$(2))
 		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(STDLIB_GLOB))
 	$$(Q)$$(call INSTALL_LIB, \
 		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(LIBRUSTC_GLOB))
-	$$(Q)$$(call INSTALL,$$(TL$(1)$(2)),$$(PTL$(1)$(2)),intrinsics.bc)
 	$$(Q)$$(call INSTALL,$$(TL$(1)$(2)),$$(PTL$(1)$(2)),libmorestack.a)
 
 endef

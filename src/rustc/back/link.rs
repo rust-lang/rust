@@ -30,69 +30,6 @@ fn llvm_err(sess: session, msg: str) -> ! unsafe {
     } else { sess.fatal(msg + ": " + str::unsafe::from_c_str(cstr)); }
 }
 
-fn load_intrinsics_bc(sess: session) -> option<ModuleRef> {
-    let path = alt filesearch::search(
-        sess.filesearch,
-        bind filesearch::pick_file("intrinsics.bc", _)) {
-      option::some(path) { path }
-      option::none {
-        sess.warn("couldn't find intrinsics.bc");
-        ret option::none;
-      }
-    };
-    let membuf = str::as_c_str(path, {|buf|
-        llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf)
-                                   });
-    if membuf as uint == 0u {
-        llvm_err(sess, "installation problem: couldn't open " + path);
-    }
-    let llintrinsicsmod = llvm::LLVMRustParseBitcode(membuf);
-    llvm::LLVMDisposeMemoryBuffer(membuf);
-    if llintrinsicsmod as uint == 0u {
-        sess.warn("couldn't parse intrinsics.bc");
-        ret option::none;
-    }
-
-    ret option::some(llintrinsicsmod);
-}
-
-fn load_intrinsics_ll(sess: session) -> ModuleRef {
-    let path = alt filesearch::search(
-        sess.filesearch,
-        bind filesearch::pick_file("intrinsics.ll", _)) {
-      option::some(path) { path }
-      option::none { sess.fatal("couldn't find intrinsics.ll") }
-    };
-    let llintrinsicsmod = str::as_c_str(path, { |buf|
-        llvm::LLVMRustParseAssemblyFile(buf)
-                                        });
-    if llintrinsicsmod as uint == 0u {
-        llvm_err(sess, "couldn't parse intrinsics.ll");
-    }
-    ret llintrinsicsmod;
-}
-
-fn link_intrinsics(sess: session, llmod: ModuleRef) {
-    let llintrinsicsmod = {
-        alt load_intrinsics_bc(sess) {
-          option::some(m) { m }
-          option::none {
-            // When the bitcode format changes we can't parse a .bc
-            // file produced with a newer LLVM (as happens when stage0
-            // is trying to build against a new LLVM revision), in
-            // that case we'll try to parse the assembly.
-            sess.warn("couldn't parse intrinsics.bc, trying intrinsics.ll");
-            load_intrinsics_ll(sess)
-          }
-        }
-    };
-    let linkres = llvm::LLVMLinkModules(llmod, llintrinsicsmod);
-    llvm::LLVMDisposeModule(llintrinsicsmod);
-    if linkres == False {
-        llvm_err(sess, "couldn't link the module with the intrinsics");
-    }
-}
-
 mod write {
     fn is_object_or_assembly_or_exe(ot: output_type) -> bool {
         if ot == output_type_assembly || ot == output_type_object ||
@@ -115,7 +52,6 @@ mod write {
     fn run_passes(sess: session, llmod: ModuleRef, output: str) {
         let opts = sess.opts;
         if opts.time_llvm_passes { llvm::LLVMRustEnableTimePasses(); }
-        link_intrinsics(sess, llmod);
         let mut pm = mk_pass_manager();
         let td = mk_target_data(
             sess.targ_cfg.target_strs.data_layout);

@@ -237,9 +237,6 @@ fn native_abi(attrs: [ast::attribute]) -> either<str, ast::native_abi> {
       option::none {
         either::right(ast::native_abi_cdecl)
       }
-      option::some("rust-intrinsic") {
-        either::right(ast::native_abi_rust_intrinsic)
-      }
       option::some("rust-builtin") {
         either::right(ast::native_abi_rust_builtin)
       }
