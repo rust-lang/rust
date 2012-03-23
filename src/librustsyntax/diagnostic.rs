@@ -1,6 +1,5 @@
 import std::term;
 import io::writer_util;
-import syntax::codemap;
 import codemap::span;
 
 export emitter, emit;

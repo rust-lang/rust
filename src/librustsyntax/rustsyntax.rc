@@ -6,6 +6,7 @@
 
 use std;
 
+mod diagnostic;
 mod codemap;
 mod ast;
 mod ast_util;
