@@ -2606,7 +2606,7 @@ fn lookup_class_method_by_name(cx:ctxt, did: ast::def_id, name: ident,
                                   name));
     }
     else {
-      csearch::get_impl_method(cx.sess.cstore, did, name)
+      csearch::get_class_method(cx.sess.cstore, did, name)
     }
 }
 

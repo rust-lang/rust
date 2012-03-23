@@ -13,6 +13,7 @@ import std::map::hashmap;
 
 export get_symbol;
 export get_class_fields;
+export get_class_method;
 // export get_class_method_ids;
 export get_field_type;
 export get_type_param_count;
@@ -177,6 +178,16 @@ fn get_impl_method(cstore: cstore::cstore, def: ast::def_id, mname: str)
     -> ast::def_id {
     let cdata = cstore::get_crate_data(cstore, def.crate);
     decoder::get_impl_method(cdata, def.node, mname)
+}
+
+/* Because classes use the iface format rather than the impl format
+   for their methods (so that get_iface_methods can be reused to get
+   class methods), classes require a slightly different version of
+   get_impl_method. Sigh. */
+fn get_class_method(cstore: cstore::cstore, def: ast::def_id, mname: str)
+    -> ast::def_id {
+    let cdata = cstore::get_crate_data(cstore, def.crate);
+    decoder::get_class_method(cdata, def.node, mname)
 }
 
 fn item_is_intrinsic(cstore: cstore::cstore, def: ast::def_id) -> bool {

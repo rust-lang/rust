@@ -353,19 +353,12 @@ fn encode_info_for_mod(ecx: @encode_ctxt, ebml_w: ebml::writer, md: _mod,
 
 /* Returns an index of items in this class */
 fn encode_info_for_class(ecx: @encode_ctxt, ebml_w: ebml::writer,
-                         id: node_id, path: ast_map::path, name: ident,
-                         tps: [ty_param], items: [@class_item])
+                         id: node_id, path: ast_map::path,
+                         items: [@class_item],
+                         global_index: @mutable[entry<int>])
  -> [entry<int>] {
     let index = @mutable [];
-
     let tcx = ecx.ccx.tcx;
-    encode_def_id(ebml_w, local_def(id));
-    encode_family(ebml_w, 'C');
-    encode_type_param_bounds(ebml_w, ecx, tps);
-    encode_type(ecx, ebml_w, node_id_to_type(tcx, id));
-    encode_name(ebml_w, name);
-    encode_path(ebml_w, path, ast_map::path_name(name));
-
     for ci in items {
      /* We encode both private and public fields -- need to include
         private fields to get the offsets right */
@@ -380,22 +373,23 @@ fn encode_info_for_class(ecx: @encode_ctxt, ebml_w: ebml::writer,
           encode_type(ecx, ebml_w, node_id_to_type(tcx, id));
           /* TODO: mutability */
           encode_def_id(ebml_w, local_def(id));
+          ebml_w.end_tag();
         }
         class_method(m) {
           *index += [{val: m.id, pos: ebml_w.writer.tell()}];
-          ebml_w.start_tag(tag_items_data_item);
-          encode_family(ebml_w, 'h');
-          encode_name(ebml_w, m.ident);
+          /* Not sure whether we really need to have two indices,
+             but it works for now -- tjc */
+          *global_index += [{val: m.id, pos: ebml_w.writer.tell()}];
           let impl_path = path + [ast_map::path_name(m.ident)];
           /*
             Recall methods are (currently) monomorphic, and we don't
             repeat the class's ty params in the method decl
           */
+          #debug("encode_info_for_class: doing %s %d", m.ident, m.id);
           encode_info_for_method(ecx, ebml_w, impl_path,
                                  should_inline(m.attrs), id, m, []);
         }
       }
-      ebml_w.end_tag();
     }
     *index
 }
@@ -404,6 +398,7 @@ fn encode_info_for_fn(ecx: @encode_ctxt, ebml_w: ebml::writer,
                       id: node_id, ident: ident, path: ast_map::path,
                       item: option<@item>, tps: [ty_param], decl: fn_decl) {
         ebml_w.start_tag(tag_items_data_item);
+        encode_name(ebml_w, ident);
         encode_def_id(ebml_w, local_def(id));
         encode_family(ebml_w, purity_fn_family(decl.purity));
         encode_type_param_bounds(ebml_w, ecx, tps);
@@ -469,10 +464,16 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
     let tcx = ecx.ccx.tcx;
     let must_write = alt item.node { item_enum(_, _) { true } _ { false } };
     if !must_write && !ecx.ccx.reachable.contains_key(item.id) { ret; }
-    *index += [{val: item.id, pos: ebml_w.writer.tell()}];
+
+    fn add_to_index_(item: @item, ebml_w: ebml::writer,
+                     index: @mutable [entry<int>]) {
+        *index += [{val: item.id, pos: ebml_w.writer.tell()}];
+    }
+    let add_to_index = bind add_to_index_(item, ebml_w, index);
 
     alt item.node {
       item_const(_, _) {
+        add_to_index();
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
         encode_family(ebml_w, 'c');
@@ -482,6 +483,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         ebml_w.end_tag();
       }
       item_fn(decl, tps, _) {
+        add_to_index();
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
         encode_family(ebml_w, purity_fn_family(decl.purity));
@@ -496,9 +498,11 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         ebml_w.end_tag();
       }
       item_mod(m) {
+        add_to_index();
         encode_info_for_mod(ecx, ebml_w, m, item.id, path, item.ident);
       }
       item_native_mod(_) {
+        add_to_index();
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
         encode_family(ebml_w, 'n');
@@ -507,6 +511,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         ebml_w.end_tag();
       }
       item_ty(_, tps) {
+        add_to_index();
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
         encode_family(ebml_w, 'y');
@@ -517,6 +522,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         ebml_w.end_tag();
       }
       item_enum(variants, tps) {
+        add_to_index();
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
         encode_family(ebml_w, 't');
@@ -533,15 +539,50 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
                                  path, index, tps);
       }
       item_class(tps,items,ctor) {
+        /* First, encode the fields and methods
+           These come first because we need to write them to make
+           the index, and the index needs to be in the item for the
+           class itself */
+        let idx = encode_info_for_class(ecx, ebml_w, item.id, path, items,
+                                          index);
+        /* Index the class*/
+        add_to_index();
+        /* Now, make an item for the class itself */
         ebml_w.start_tag(tag_items_data_item);
-        let idx = encode_info_for_class(ecx, ebml_w, item.id, path,
-                 item.ident, tps, items);
-        /* each class must have its own index */
+        encode_def_id(ebml_w, local_def(item.id));
+        encode_family(ebml_w, 'C');
+        encode_type_param_bounds(ebml_w, ecx, tps);
+        encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
+        encode_name(ebml_w, item.ident);
+        encode_path(ebml_w, path, ast_map::path_name(item.ident));
+
+        /* Encode def_ids for each field and method
+         for methods, write all the stuff get_iface_method
+        needs to know*/
+        let (fs,ms) = ast_util::split_class_items(items);
+        for f in fs {
+           ebml_w.start_tag(tag_item_field);
+           encode_family(ebml_w, 'g');
+           encode_name(ebml_w, f.ident);
+           encode_def_id(ebml_w, local_def(f.id));
+           ebml_w.end_tag();
+        }
+        for m in ms {
+           ebml_w.start_tag(tag_item_method);
+           #debug("Writing %s %d", m.ident, m.id);
+           encode_family(ebml_w, purity_fn_family(m.decl.purity));
+           encode_name(ebml_w, m.ident);
+           encode_type(ecx, ebml_w, node_id_to_type(tcx, m.id));
+           encode_def_id(ebml_w, local_def(m.id));
+           ebml_w.end_tag();
+        }
+        /* Each class has its own index -- encode it */
         let bkts = create_index(idx, hash_node_id);
         encode_index(ebml_w, bkts, write_int);
         ebml_w.end_tag();
       }
       item_res(_, tps, _, _, ctor_id) {
+        add_to_index();
         let fn_ty = node_id_to_type(tcx, ctor_id);
 
         ebml_w.start_tag(tag_items_data_item);
@@ -565,6 +606,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         ebml_w.end_tag();
       }
       item_impl(tps, ifce, _, methods) {
+        add_to_index();
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
         encode_family(ebml_w, 'i');
@@ -598,6 +640,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         }
       }
       item_iface(tps, ms) {
+        add_to_index();
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
         encode_family(ebml_w, 'I');

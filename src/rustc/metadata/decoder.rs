@@ -23,6 +23,7 @@ export get_enum_variants;
 export get_type;
 export get_type_param_count;
 export get_impl_iface;
+export get_class_method;
 export get_impl_method;
 export lookup_def;
 export lookup_item_name;
@@ -289,6 +290,25 @@ fn get_impl_method(cdata: cmd, id: ast::node_id, name: str) -> ast::def_id {
     option::get(found)
 }
 
+fn get_class_method(cdata: cmd, id: ast::node_id, name: str) -> ast::def_id {
+    let items = ebml::get_doc(ebml::doc(cdata.data), tag_items);
+    let mut found = none;
+    let cls_items = alt maybe_find_item(id, items) {
+            some(it) { it }
+            none { fail (#fmt("get_class_method: class id not found \
+             when looking up method %s", name)) }};
+    ebml::tagged_docs(cls_items, tag_item_method) {|mid|
+        let m_did = class_member_id(mid, cdata);
+        if item_name(mid) == name {
+            found = some(m_did);
+        }
+    }
+    alt found {
+      some(found) { found }
+      none { fail (#fmt("get_class_method: no method named %s", name)) }
+    }
+}
+
 fn item_is_intrinsic(cdata: cmd, id: ast::node_id) -> bool {
     let mut intrinsic = false;
     ebml::tagged_docs(lookup_item(id, cdata.data), tag_item_is_intrinsic,
@@ -306,6 +326,7 @@ fn get_item_path(cdata: cmd, id: ast::node_id) -> ast_map::path {
 
 fn maybe_get_item_ast(cdata: cmd, tcx: ty::ctxt, maps: maps,
                       id: ast::node_id) -> csearch::found_ast {
+    #debug("Looking up item: %d", id);
     let item_doc = lookup_item(id, cdata.data);
     let path = vec::init(item_path(item_doc));
     alt astencode::decode_inlined_item(cdata, tcx, maps, path, item_doc) {
@@ -389,6 +410,7 @@ fn get_impls_for_mod(cdata: cmd, m_id: ast::node_id,
     @result
 }
 
+/* Works for both classes and ifaces */
 fn get_iface_methods(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
     -> @[ty::method] {
     let data = cdata.data;
@@ -417,7 +439,7 @@ fn get_class_members(cdata: cmd, id: ast::node_id,
     let data = cdata.data;
     let item = lookup_item(id, data);
     let mut result = [];
-    ebml::tagged_docs(item, tag_items_data_item) {|an_item|
+    ebml::tagged_docs(item, tag_item_field) {|an_item|
        if item_family(an_item) == family {
           let name = item_name(an_item);
           let did = class_member_id(an_item, cdata);
