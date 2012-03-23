@@ -179,12 +179,22 @@ fn mark_for_expr(cx: ctx, e: @expr) {
       expr_new(_, _, v) {
         node_type_needs(cx, use_repr, v.id);
       }
+      expr_call(f, _, _) {
+        vec::iter(ty::ty_fn_args(ty::node_id_to_type(cx.ccx.tcx, f.id))) {|a|
+            alt a.mode {
+              expl(by_move) | expl(by_copy) | expl(by_val) {
+                type_needs(cx, use_repr, a.ty);
+              }
+              _ {}
+            }
+        }
+      }
       expr_for(_, _, _) | expr_do_while(_, _) | expr_alt(_, _, _) |
       expr_block(_) | expr_if(_, _, _) | expr_while(_, _) |
       expr_fail(_) | expr_break | expr_cont | expr_unary(_, _) |
       expr_lit(_) | expr_assert(_) | expr_check(_, _) |
       expr_if_check(_, _, _) | expr_mac(_) | expr_addr_of(_, _) |
-      expr_ret(_) | expr_loop(_) | expr_call(_, _, _) | expr_bind(_, _) {}
+      expr_ret(_) | expr_loop(_) | expr_bind(_, _) {}
     }
 }
 
