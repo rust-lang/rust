@@ -1,3 +1,5 @@
+mod kitties {
+
 class cat {
   priv {
     let mutable meows : uint;
@@ -29,10 +31,4 @@ class cat {
   }
 }
 
-fn main() {
-  let nyan = cat(0u, 2);
-  nyan.eat();
-  assert(!nyan.eat());
-  uint::range(1u, 10u, {|_i| nyan.speak(); });
-  assert(nyan.eat());
 }

@@ -2241,7 +2241,16 @@ fn trans_var(cx: block, def: ast::def, id: ast::node_id, path: @ast::path)
             }
             _ { cx.sess().bug("unbound self param in class"); }
           }
-     }
+      }
+      ast::def_class_method(parent, did) {
+          alt cx.fcx.llself {
+             some(slf) {
+                ret {env: self_env(slf.v, slf.t, none)
+                        with lval_static_fn(cx, did, id)};
+             }
+             none { cx.sess().bug("unbound self param in class"); }
+          }
+      }
       _ {
         let loc = trans_local_var(cx, def);
         ret lval_no_env(cx, loc.val, loc.kind);
@@ -2266,7 +2275,11 @@ fn trans_rec_field_inner(bcx: block, val: ValueRef, ty: ty::t,
             _ { bcx.tcx().sess.span_bug(sp, "trans_rec_field:\
                  base expr has non-record type"); }
         };
-    let ix = option::get(ty::field_idx(field, fields));
+    let ix = alt ty::field_idx(field, fields) {
+      none { bcx.tcx().sess.span_bug(sp, #fmt("trans_rec_field:\
+               base expr doesn't appear to have a field named %s", field));}
+      some(i) { i }
+    };
     let val = GEPi(bcx, val, [0, ix as int]);
     ret {bcx: bcx, val: val, kind: owned};
 }
