@@ -2719,7 +2719,7 @@ fn invoke_(bcx: block, llfn: ValueRef, llargs: [ValueRef],
     for a in llargs {
         io::println(" a: " + lib::llvm::type_to_str(bcx.ccx().tn,
                                                     val_ty(a)));
-    }// */
+    }*/
     invoker(bcx, llfn, llargs, normal_bcx.llbb, get_landing_pad(bcx));
     ret normal_bcx;
 }
