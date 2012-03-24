@@ -119,6 +119,9 @@ type crate_ctxt = {
      shape_cx: shape::ctxt,
      crate_map: ValueRef,
      dbg_cx: option<debuginfo::debug_ctxt>,
+     // Mapping from class constructors to parent class --
+     // used in base::trans_closure
+     class_ctors: hashmap<ast::node_id, ast::node_id>,
      mutable do_not_commit_warning_issued: bool};
 
 // Types used for llself.
@@ -174,10 +177,6 @@ type fn_ctxt = @{
     // The node_id of the function, or -1 if it doesn't correspond to
     // a user-defined function.
     id: ast::node_id,
-
-    // The expr for the "self" object (only if this function corresponds
-    // to a class constructor function)
-    self_id: option<@ast::expr>,
 
     // If this function is being monomorphized, this contains the type
     // substitutions used.

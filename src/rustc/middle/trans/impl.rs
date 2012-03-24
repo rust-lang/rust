@@ -24,7 +24,7 @@ fn trans_impl(ccx: @crate_ctxt, path: path, name: ast::ident,
             let llfn = get_item_val(ccx, m.id);
             trans_fn(ccx, sub_path + [path_name(m.ident)], m.decl, m.body,
                      llfn, impl_self(ty::node_id_to_type(ccx.tcx, m.self_id)),
-                     none, m.id, none);
+                     none, m.id);
         }
     }
 }

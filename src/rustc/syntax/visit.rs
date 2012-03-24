@@ -18,18 +18,21 @@ enum fn_kind {
     fk_res(ident, [ty_param]),
     fk_anon(proto),  //< an anonymous function like fn@(...)
     fk_fn_block,     //< a block {||...}
+    fk_ctor(ident, [ty_param]) // class constructor
 }
 
 fn name_of_fn(fk: fn_kind) -> ident {
     alt fk {
-      fk_item_fn(name, _) | fk_method(name, _, _) | fk_res(name, _) { name }
+      fk_item_fn(name, _) | fk_method(name, _, _) | fk_res(name, _)
+          | fk_ctor(name, _) { name }
       fk_anon(_) | fk_fn_block { "anon" }
     }
 }
 
 fn tps_of_fn(fk: fn_kind) -> [ty_param] {
     alt fk {
-      fk_item_fn(_, tps) | fk_method(_, tps, _) | fk_res(_, tps) { tps }
+      fk_item_fn(_, tps) | fk_method(_, tps, _) | fk_res(_, tps)
+          | fk_ctor(_, tps) { tps }
       fk_anon(_) | fk_fn_block { [] }
     }
 }
@@ -138,8 +141,9 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
           for m in members {
              v.visit_class_item(m.span, m.node.privacy, m.node.decl, e, v);
           }
-          visit_fn_decl(ctor.node.dec, e, v);
-          v.visit_block(ctor.node.body, e, v);
+          // make up a fake fn so as to call visit_fn on the ctor
+          v.visit_fn(fk_ctor(i.ident, tps), ctor.node.dec,
+                     ctor.node.body, ctor.span, ctor.node.id, e, v);
       }
       item_iface(tps, methods) {
         v.visit_ty_params(tps, e, v);

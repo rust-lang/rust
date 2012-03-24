@@ -111,7 +111,8 @@ fn check_states_against_conditions(fcx: fn_ctxt,
 
     /* Check that the return value is initialized */
     let post = aux::block_poststate(fcx.ccx, f_body);
-    if !promises(fcx, post, fcx.enclosing.i_return) &&
+    let is_ctor = alt fk { visit::fk_ctor(_,_) { true } _ { false } };
+    if !is_ctor && !promises(fcx, post, fcx.enclosing.i_return) &&
        !ty::type_is_nil(ty::ty_fn_ret(ty::node_id_to_type(
            fcx.ccx.tcx, id))) &&
        f_decl.cf == return_val {

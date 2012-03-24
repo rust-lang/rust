@@ -818,8 +818,7 @@ fn trans_crust_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
             ccx, path + [ast_map::path_name("__rust_abi")]);
         let llty = type_of_fn_from_ty(ccx, t);
         let llfndecl = decl_internal_cdecl_fn(ccx.llmod, ps, llty);
-        trans_fn(ccx, path, decl, body, llfndecl, no_self, none, id,
-                 none);
+        trans_fn(ccx, path, decl, body, llfndecl, no_self, none, id);
         ret llfndecl;
     }
 

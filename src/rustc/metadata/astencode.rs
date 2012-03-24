@@ -201,7 +201,7 @@ fn visit_ids(item: ast::inlined_item, vfn: fn@(ast::node_id)) {
 
             alt fk {
               visit::fk_item_fn(_, tps) |
-              visit::fk_res(_, tps) {
+              visit::fk_res(_, tps) | visit::fk_ctor(_, tps) {
                 vec::iter(tps) {|tp| vfn(tp.id)}
               }
               visit::fk_method(_, tps, m) {
