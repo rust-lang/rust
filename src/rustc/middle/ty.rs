@@ -121,6 +121,7 @@ export type_structurally_contains;
 export type_structurally_contains_uniques;
 export type_autoderef;
 export type_param;
+export type_needs_unwind_cleanup;
 export canon_mode;
 export resolved_mode;
 export arg_mode;
@@ -201,6 +202,7 @@ type ctxt =
       rcache: creader_cache,
       short_names_cache: hashmap<t, @str>,
       needs_drop_cache: hashmap<t, bool>,
+      needs_unwind_cleanup_cache: hashmap<t, bool>,
       kind_cache: hashmap<t, kind>,
       ast_ty_to_ty_cache: hashmap<@ast::ty, ast_ty_to_ty_cache_entry>,
       enum_var_cache: hashmap<def_id, @[variant_info]>,
@@ -388,6 +390,7 @@ fn mk_ctxt(s: session::session, dm: resolve::def_map, amap: ast_map::map,
       rcache: mk_rcache(),
       short_names_cache: new_ty_hash(),
       needs_drop_cache: new_ty_hash(),
+      needs_unwind_cleanup_cache: new_ty_hash(),
       kind_cache: new_ty_hash(),
       ast_ty_to_ty_cache: map::hashmap(
           ast_util::hash_ty, ast_util::eq_ty),
@@ -900,6 +903,48 @@ fn type_needs_drop(cx: ctxt, ty: t) -> bool {
 
     cx.needs_drop_cache.insert(ty, result);
     ret result;
+}
+
+// Some things don't need cleanups during unwinding because the
+// task can free them all at once later. Currently only things
+// that only contain scalars and shared boxes can avoid unwind
+// cleanups.
+fn type_needs_unwind_cleanup(cx: ctxt, ty: t) -> bool {
+    alt cx.needs_unwind_cleanup_cache.find(ty) {
+      some(result) { ret result; }
+      none { }
+    }
+
+    // Prevent infinite recursion
+    cx.needs_unwind_cleanup_cache.insert(ty, false);
+
+    let mut needs_unwind_cleanup = false;
+    maybe_walk_ty(ty) {|ty|
+        alt get(ty).struct {
+          ty_nil | ty_bot | ty_bool |
+          ty_int(_) | ty_uint(_) | ty_float(_) |
+          ty_box(_) | ty_rec(_) | ty_tup(_) {
+            true
+          }
+          ty_enum(did, tps) {
+            for v in *enum_variants(cx, did) {
+                for aty in v.args {
+                    let t = substitute_type_params(cx, tps, aty);
+                    needs_unwind_cleanup |= type_needs_unwind_cleanup(cx, t);
+                }
+            }
+            !needs_unwind_cleanup
+          }
+          _ {
+            needs_unwind_cleanup = true;
+            false
+          }
+        }
+    }
+
+    cx.needs_unwind_cleanup_cache.insert(ty, needs_unwind_cleanup);
+
+    ret needs_unwind_cleanup;
 }
 
 enum kind { kind_sendable, kind_copyable, kind_noncopyable, }
@@ -2322,6 +2367,7 @@ fn ast_constr_to_constr<T>(tcx: ctxt, c: @ast::constr_general<T>) ->
       }
     }
 }
+
 
 // Local Variables:
 // mode: rust

@@ -201,9 +201,14 @@ fn warn_not_to_commit(ccx: @crate_ctxt, msg: str) {
     }
 }
 
+enum cleantype {
+    normal_exit_only,
+    normal_exit_and_unwind
+}
+
 enum cleanup {
-    clean(fn@(block) -> block),
-    clean_temp(ValueRef, fn@(block) -> block),
+    clean(fn@(block) -> block, cleantype),
+    clean_temp(ValueRef, fn@(block) -> block, cleantype),
 }
 
 // Used to remember and reuse existing cleanup paths
@@ -216,15 +221,26 @@ fn scope_clean_changed(info: scope_info) {
     info.landing_pad = none;
 }
 
+fn cleanup_type(cx: ty::ctxt, ty: ty::t) -> cleantype {
+    if ty::type_needs_unwind_cleanup(cx, ty) {
+        normal_exit_and_unwind
+    } else {
+        normal_exit_only
+    }
+}
+
 fn add_clean(cx: block, val: ValueRef, ty: ty::t) {
     if !ty::type_needs_drop(cx.tcx(), ty) { ret; }
+    let cleanup_type = cleanup_type(cx.tcx(), ty);
     in_scope_cx(cx) {|info|
-        info.cleanups += [clean(bind base::drop_ty(_, val, ty))];
+        info.cleanups += [clean(bind base::drop_ty(_, val, ty),
+                                cleanup_type)];
         scope_clean_changed(info);
     }
 }
 fn add_clean_temp(cx: block, val: ValueRef, ty: ty::t) {
     if !ty::type_needs_drop(cx.tcx(), ty) { ret; }
+    let cleanup_type = cleanup_type(cx.tcx(), ty);
     fn do_drop(bcx: block, val: ValueRef, ty: ty::t) ->
        block {
         if ty::type_is_immediate(ty) {
@@ -234,14 +250,17 @@ fn add_clean_temp(cx: block, val: ValueRef, ty: ty::t) {
         }
     }
     in_scope_cx(cx) {|info|
-        info.cleanups += [clean_temp(val, bind do_drop(_, val, ty))];
+        info.cleanups += [clean_temp(val, bind do_drop(_, val, ty),
+                                     cleanup_type)];
         scope_clean_changed(info);
     }
 }
 fn add_clean_temp_mem(cx: block, val: ValueRef, ty: ty::t) {
     if !ty::type_needs_drop(cx.tcx(), ty) { ret; }
+    let cleanup_type = cleanup_type(cx.tcx(), ty);
     in_scope_cx(cx) {|info|
-        info.cleanups += [clean_temp(val, bind base::drop_ty(_, val, ty))];
+        info.cleanups += [clean_temp(val, bind base::drop_ty(_, val, ty),
+                                     cleanup_type)];
         scope_clean_changed(info);
     }
 }
@@ -249,7 +268,8 @@ fn add_clean_free(cx: block, ptr: ValueRef, shared: bool) {
     let free_fn = if shared { bind base::trans_shared_free(_, ptr) }
                   else { bind base::trans_free(_, ptr) };
     in_scope_cx(cx) {|info|
-        info.cleanups += [clean_temp(ptr, free_fn)];
+        info.cleanups += [clean_temp(ptr, free_fn,
+                                     normal_exit_and_unwind)];
         scope_clean_changed(info);
     }
 }
@@ -263,7 +283,7 @@ fn revoke_clean(cx: block, val: ValueRef) {
         let mut i = 0u;
         for cu in info.cleanups {
             alt cu {
-              clean_temp(v, _) if v == val {
+              clean_temp(v, _, _) if v == val {
                 info.cleanups =
                     vec::slice(info.cleanups, 0u, i) +
                     vec::slice(info.cleanups, i + 1u, info.cleanups.len());

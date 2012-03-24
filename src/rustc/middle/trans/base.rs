@@ -3640,7 +3640,11 @@ fn raw_block(fcx: fn_ctxt, llbb: BasicBlockRef) -> block {
 // need to make sure those variables go out of scope when the block ends.  We
 // do that by running a 'cleanup' function for each variable.
 // trans_block_cleanups runs all the cleanup functions for the block.
-fn trans_block_cleanups(bcx: block, cleanup_cx: block) ->
+fn trans_block_cleanups(bcx: block, cleanup_cx: block) -> block {
+    trans_block_cleanups_(bcx, cleanup_cx, false)
+}
+
+fn trans_block_cleanups_(bcx: block, cleanup_cx: block, is_lpad: bool) ->
    block {
     let _icx = bcx.insn_ctxt("trans_block_cleanups");
     if bcx.unreachable { ret bcx; }
@@ -3648,7 +3652,15 @@ fn trans_block_cleanups(bcx: block, cleanup_cx: block) ->
     alt check cleanup_cx.kind {
       block_scope({cleanups, _}) {
         vec::riter(copy cleanups) {|cu|
-            alt cu { clean(cfn) | clean_temp(_, cfn) { bcx = cfn(bcx); } }
+            alt cu {
+              clean(cfn, cleanup_type) | clean_temp(_, cfn, cleanup_type) {
+                // Some types don't need to be cleaned up during
+                // landing pads because they can be freed en mass later
+                if cleanup_type == normal_exit_and_unwind || !is_lpad {
+                    bcx = cfn(bcx);
+                }
+              }
+            }
         }
       }
     }
@@ -3662,6 +3674,7 @@ fn cleanup_and_leave(bcx: block, upto: option<BasicBlockRef>,
                      leave: option<BasicBlockRef>) {
     let _icx = bcx.insn_ctxt("cleanup_and_leave");
     let mut cur = bcx, bcx = bcx;
+    let is_lpad = leave == none;
     loop {
         alt cur.kind {
           block_scope(info) if info.cleanups.len() > 0u {
@@ -3674,7 +3687,7 @@ fn cleanup_and_leave(bcx: block, upto: option<BasicBlockRef>,
             let sub_cx = sub_block(bcx, "cleanup");
             Br(bcx, sub_cx.llbb);
             info.cleanup_paths += [{target: leave, dest: sub_cx.llbb}];
-            bcx = trans_block_cleanups(sub_cx, cur);
+            bcx = trans_block_cleanups_(sub_cx, cur, is_lpad);
           }
           _ {}
         }
