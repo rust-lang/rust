@@ -1,3 +1,5 @@
+// xfail-test
+
 import libc, sys, unsafe;
 
 enum arena = ();

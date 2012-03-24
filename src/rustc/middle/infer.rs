@@ -291,27 +291,9 @@ impl unify_methods for infer_ctxt {
         iter2(as, bs) {|a,b| self.tys(a,b) }
     }
 
-    fn regions(a: ty::region, b: ty::region) -> ures {
-        // FIXME: This is wrong. We should be keeping a set of region
-        // bindings around.
-        alt (a, b) {
-            (ty::re_param(_), _) | (_, ty::re_param(_)) {
-                ret if a == b {
-                    self.uok()
-                } else {
-                    self.uerr(ty::terr_regions_differ(true, b, a))
-                };
-            }
-            _ { /* fall through */ }
-        }
-
-        let bscope = region::region_to_scope(self.tcx.region_map, b);
-        let ascope = region::region_to_scope(self.tcx.region_map, a);
-        if region::scope_contains(self.tcx.region_map, ascope, bscope) {
-            self.uok()
-        } else {
-            self.uerr(ty::terr_regions_differ(false, a, b))
-        }
+    fn regions(_a: ty::region, _b: ty::region) -> ures {
+        // FIXME: pcwalton!
+        self.uok()
     }
 
     fn mts(a: ty::mt, b: ty::mt) -> ures {

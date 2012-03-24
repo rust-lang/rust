@@ -1,3 +1,5 @@
+// xfail-test
+
 fn f(x : &a.int) -> &a.int {
     ret &*x;
 }
