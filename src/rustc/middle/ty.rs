@@ -177,6 +177,12 @@ enum ast_ty_to_ty_cache_entry {
     atttce_resolved(t)  /* resolved to a type, irrespective of region */
 }
 
+enum borrowing {
+    bo_none,
+    bo_box(@borrowing),
+    bo_uniq(@borrowing)
+}
+
 type ctxt =
     @{interner: hashmap<intern_key, t_box>,
       mutable next_id: uint,
@@ -196,7 +202,8 @@ type ctxt =
       enum_var_cache: hashmap<def_id, @[variant_info]>,
       iface_method_cache: hashmap<def_id, @[method]>,
       ty_param_bounds: hashmap<ast::node_id, param_bounds>,
-      inferred_modes: hashmap<ast::node_id, ast::mode>};
+      inferred_modes: hashmap<ast::node_id, ast::mode>,
+      borrowings: hashmap<ast::node_id, borrowing>};
 
 type t_box = @{struct: sty,
                id: uint,
@@ -381,7 +388,8 @@ fn mk_ctxt(s: session::session, dm: resolve::def_map, amap: ast_map::map,
       enum_var_cache: new_def_hash(),
       iface_method_cache: new_def_hash(),
       ty_param_bounds: map::int_hash(),
-      inferred_modes: map::int_hash()}
+      inferred_modes: map::int_hash(),
+      borrowings: map::int_hash()}
 }
 
 
