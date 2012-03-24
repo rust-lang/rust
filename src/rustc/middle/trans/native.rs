@@ -755,7 +755,7 @@ fn trans_native_mod(ccx: @crate_ctxt,
 fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::native_item,
                    path: ast_map::path, substs: param_substs,
                    ref_id: option<ast::node_id>) {
-    let fcx = new_fn_ctxt_w_id(ccx, path, decl, item.id, none,
+    let fcx = new_fn_ctxt_w_id(ccx, path, decl, item.id,
                                some(substs), some(item.span));
     let bcx = top_scope_block(fcx, none), lltop = bcx.llbb;
     let tp_ty = substs.tys[0], lltp_ty = type_of::type_of(ccx, tp_ty);

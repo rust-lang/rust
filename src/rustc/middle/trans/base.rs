@@ -4248,13 +4248,11 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
         // We *don't* want self to be passed to the ctor -- that
         // wouldn't make sense
         // So we initialize it here
-        let {bcx, val} = alloc_ty(bcx_top, rslt_ty);
-        let mut bcx = bcx;
-        let selfptr = val;
+        let selfptr = alloc_ty(bcx_top, rslt_ty);
         fcx.llself = some({v: selfptr, t: rslt_ty});
 
         // Translate the body of the ctor
-        bcx = trans_block(bcx_top, ctor.node.body, ignore);
+        let mut bcx = trans_block(bcx_top, ctor.node.body, ignore);
         let lval_res = {bcx: bcx, val: selfptr, kind: owned};
         // Generate the return expression
         bcx = store_temp_expr(bcx, INIT, fcx.llretptr, lval_res,
