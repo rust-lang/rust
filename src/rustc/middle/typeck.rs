@@ -1129,7 +1129,7 @@ mod collect {
 // Type unification
 mod unify {
     fn unify_with_region_bindings(fcx: @fn_ctxt,
-                                  rb: @ty::unify::region_bindings,
+                                  _rb: @ty::unify::region_bindings,
                                   expected: ty::t,
                                   actual: ty::t)
             -> result<(), ty::type_err> {

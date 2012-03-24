@@ -85,6 +85,15 @@ impl methods for ures {
     }
 }
 
+// Most of these methods, like tys() and so forth, take two parameters
+// a and b and they are tasked with "ensuring that a is a subtype of
+// b".  They return success or failure.  They make changes in-place to
+// the variable bindings: these changes are recorded in the `bindings`
+// array, which then allows the changes to be rolled back if needed.
+//
+// The merge() and merge_bnds() methods are somewhat different in that
+// they compute a new type range for a variable (generally a subset of
+// the old range).  They therefore return a result.
 impl unify_methods for infer_ctxt {
     fn uok() -> ures {
         #debug["Unification OK"];
@@ -177,18 +186,8 @@ impl unify_methods for infer_ctxt {
         }
     }
 
-    // Take bound a if it is set, else take bound b.
-    fn aelseb(a: bound, b: bound) -> bound {
-        alt (a, b) {
-          (none, none) { none }
-          (some(_), none) { a }
-          (none, some(_)) { b }
-          (some(_), some(_)) { a }
-        }
-    }
-
     // Combines the two bounds.  Returns a bounds r where (r.lb <:
-    // a,b) and (a,b <: r.ub).
+    // a,b) and (a,b <: r.ub) (if such a bounds exists).
     fn merge_bnds(a: bound, b: bound) -> result<bounds, ty::type_err> {
         alt (a, b) {
           (none, none) {
@@ -215,10 +214,14 @@ impl unify_methods for infer_ctxt {
         }
     }
 
-    // Given a variable with bounds `a`, returns a new set of bounds
-    // such that `a` <: `b`.  The new bounds will always be a subset
-    // of the old bounds.  If this cannot be achieved, the result is
-    // failure.
+    // Updates the bounds for the variable `v_id` to be the intersection
+    // of `a` and `b`.  That is, the new bounds for `v_id` will be
+    // a bounds c such that:
+    //    c.ub <: a.ub
+    //    c.ub <: b.ub
+    //    a.lb <: c.lb
+    //    b.lb <: c.lb
+    // If this cannot be achieved, the result is failure.
     fn merge(v_id: uint, a: bounds, b: bounds) -> ures {
         // Think of the two diamonds, we want to find the
         // intersection.  There are basically four possibilities (you
