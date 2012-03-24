@@ -666,14 +666,22 @@ fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
             ty = mk_tup(cx, new_ts);
           }
           ty_fn(f) {
-            let mut new_args: [arg] = [];
-            for a: arg in f.inputs {
-                let new_ty = do_fold(cx, fld, a.ty, under_rptr);
-                new_args += [{mode: a.mode, ty: new_ty}];
+            alt fld {
+              fm_rptr(_) {
+                // Don't recurse into functions, because regions are
+                // universally quantified, well, universally, at function
+                // boundaries.
+              }
+              _ {
+                let mut new_args: [arg] = [];
+                for a: arg in f.inputs {
+                    let new_ty = do_fold(cx, fld, a.ty, under_rptr);
+                    new_args += [{mode: a.mode, ty: new_ty}];
+                }
+                let new_output = do_fold(cx, fld, f.output, under_rptr);
+                ty = mk_fn(cx, {inputs: new_args, output: new_output with f});
+              }
             }
-            ty = mk_fn(cx, {inputs: new_args,
-                            output: do_fold(cx, fld, f.output, under_rptr)
-                            with f});
           }
           ty_res(did, subty, tps) {
             let mut new_tps = [];
