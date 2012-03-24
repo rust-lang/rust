@@ -88,11 +88,16 @@ struct cleanup_args {
 };
 
 void
+annihilate_boxes(rust_task *task);
+
+void
 cleanup_task(cleanup_args *args) {
     spawn_args *a = args->spargs;
     bool threw_exception = args->threw_exception;
     rust_task *task = a->task;
 
+    cc::do_cc(task);
+    annihilate_boxes(task);
     cc::do_final_cc(task);
 
     task->die();

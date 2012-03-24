@@ -67,6 +67,7 @@ RUNTIME_CS_$(1) := \
               rt/rust_abi.cpp \
               rt/rust_cc.cpp \
               rt/rust_debug.cpp \
+              rt/rust_box_annihilator.cpp \
               rt/memory_region.cpp \
               rt/boxed_region.cpp \
               rt/arch/$$(HOST_$(1))/context.cpp
