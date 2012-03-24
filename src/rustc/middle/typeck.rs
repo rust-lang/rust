@@ -798,14 +798,10 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span, impl_m: ty::method,
             if_fty = fixup_self_in_method_ty(tcx, if_fty, substs,
                                              self_full(self_ty, impl_tps));
         }
-        alt infer::compare_tys(tcx, impl_fty, if_fty) {
-          result::err(err) {
-            tcx.sess.span_err(sp, "method `" + if_m.ident +
-                              "` has an incompatible type: " +
-                              ty::type_err_to_str(tcx, err));
-          }
-          result::ok(()) { }
-        }
+        require_same_types(
+            tcx, sp, impl_fty, if_fty,
+            {|| "method `" + if_m.ident +
+                 "` has an incompatible type"});
         ret impl_fty;
     }
 }
@@ -1188,6 +1184,24 @@ fn resolve_type_vars_if_possible(fcx: @fn_ctxt, typ: ty::t) -> ty::t {
 // message if they don't.
 type ty_param_substs_and_ty = {substs: [ty::t], ty: ty::t};
 
+fn require_same_types(
+    tcx: ty::ctxt,
+    span: span,
+    t1: ty::t,
+    t2: ty::t,
+    msg: fn() -> str) -> bool {
+
+    alt infer::compare_tys(tcx, t1, t2) {
+      result::ok(()) { true }
+      result::err(terr) {
+        tcx.sess.span_err(
+            span, msg() + ": " +
+            ty::type_err_to_str(tcx, terr));
+        false
+      }
+    }
+}
+
 mod demand {
     fn simple(fcx: @fn_ctxt, sp: span, expected: ty::t, actual: ty::t) ->
        ty::t {
@@ -1503,9 +1517,12 @@ fn check_intrinsic_type(tcx: ty::ctxt, it: @ast::native_item) {
         tcx.sess.span_err(it.span, #fmt("intrinsic has wrong number \
                                          of type parameters. found %u, \
                                          expected %u", i_n_tps, n_tps));
-    } else if !ty::same_type(tcx, i_ty.ty, fty) {
-        tcx.sess.span_err(it.span, #fmt("intrinsic has wrong type. \
-                                         expected %s", ty_to_str(tcx, fty)));
+    } else {
+        require_same_types(
+            tcx, it.span, i_ty.ty, fty,
+            {|| #fmt["intrinsic has wrong type. \
+                      expected %s",
+                     ty_to_str(tcx, fty)]});
     }
 }
 
@@ -1765,9 +1782,12 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
         check_expr_with(pcx.fcx, end, expected);
         let b_ty = resolve_type_vars_if_possible(pcx.fcx,
                                                  expr_ty(tcx, begin));
-        if !ty::same_type(tcx, b_ty, resolve_type_vars_if_possible(
-            pcx.fcx, expr_ty(tcx, end))) {
-            tcx.sess.span_err(pat.span, "mismatched types in range");
+        if !require_same_types(
+            tcx, pat.span, b_ty,
+            resolve_type_vars_if_possible(
+                pcx.fcx, expr_ty(tcx, end)),
+            {|| "mismatched types in range" }) {
+            // no-op
         } else if !ty::type_is_numeric(b_ty) {
             tcx.sess.span_err(pat.span, "non-numeric type used in range");
         } else if !valid_range_bounds(tcx, begin, end) {
