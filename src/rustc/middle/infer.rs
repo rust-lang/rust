@@ -294,9 +294,41 @@ impl unify_methods for infer_ctxt {
         iter2(as, bs) {|a,b| self.tys(a,b) }
     }
 
-    fn regions(_a: ty::region, _b: ty::region) -> ures {
-        // FIXME: pcwalton!
-        self.uok()
+    fn regions(a: ty::region, b: ty::region) -> ures {
+        alt (a, b) {
+          (ty::re_var(_), _) | (_, ty::re_var(_)) {
+            self.uok()  // FIXME: We need region variables!
+          }
+          (ty::re_inferred, _) | (_, ty::re_inferred) {
+            fail "tried to unify inferred regions"
+          }
+          (ty::re_param(_), ty::re_param(_)) |
+          (ty::re_self, ty::re_self) {
+            if a == b {
+                self.uok()
+            } else {
+                self.uerr(ty::terr_regions_differ(false, a, b))
+            }
+          }
+          (ty::re_param(_), ty::re_block(_)) |
+          (ty::re_self, ty::re_block(_)) {
+            self.uok()
+          }
+          (ty::re_block(_), ty::re_param(_)) |
+          (ty::re_block(_), ty::re_self) {
+            self.uerr(ty::terr_regions_differ(false, a, b))
+          }
+          (ty::re_block(superblock), ty::re_block(subblock)) {
+            // The region corresponding to an outer block is a subtype of the
+            // region corresponding to an inner block.
+            let rm = self.tcx.region_map;
+            if region::scope_contains(rm, subblock, superblock) {
+                self.uok()
+            } else {
+                self.uerr(ty::terr_regions_differ(false, a, b))
+            }
+          }
+        }
     }
 
     fn mts(a: ty::mt, b: ty::mt) -> ures {

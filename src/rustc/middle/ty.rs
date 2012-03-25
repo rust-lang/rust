@@ -1682,59 +1682,9 @@ mod unify {
     }
 
     fn unify_regions<T:copy>(
-        cx: @uctxt, e_region: region, a_region: region,
-        nxt: fn(region) -> ures<T>) -> ures<T> {
-        let sub = a_region, super = e_region;
-
-        // FIXME: Should have a way of unifying regions that relies on bounds,
-        // not on unification.
-        alt (super, sub) {
-            (ty::re_var(superkey), ty::re_var(subkey)) {
-                ret union_region_sets(cx, subkey, superkey,
-                                      {|| nxt(sub) });
-            }
-            (ty::re_var(superkey), _) {
-                ret record_region_binding(cx, superkey, sub, nxt);
-            }
-            (_, ty::re_var(subkey)) {
-                ret record_region_binding(cx, subkey, super, nxt);
-            }
-            _ { /* fall through */ }
-        }
-
-        alt (super, sub) {
-            (ty::re_var(_), _) | (_, ty::re_var(_)) {
-                fail "should have been handled above";
-            }
-            (ty::re_inferred, _) | (_, ty::re_inferred) {
-                fail "tried to unify inferred regions";
-            }
-            (ty::re_param(_), ty::re_param(_)) |
-            (ty::re_self, ty::re_self) {
-                ret if super == sub {
-                    nxt(ty::re_self)
-                } else {
-                    err(terr_regions_differ(false, super, sub))
-                };
-            }
-            (ty::re_param(_), ty::re_block(_)) |
-            (ty::re_self, ty::re_block(_)) {
-                ret nxt(super);
-            }
-            (ty::re_block(_), ty::re_param(_)) |
-            (ty::re_block(_), ty::re_self) {
-                ret err(terr_regions_differ(false, super, sub));
-            }
-            (ty::re_block(superblock), ty::re_block(subblock)) {
-                // Outer regions are subtypes of inner regions. (This is
-                // somewhat surprising!)
-                let rm = cx.tcx.region_map;
-                if region::scope_contains(rm, subblock, superblock) {
-                    ret nxt(super);
-                }
-                ret err(terr_regions_differ(false, sub, super));
-            }
-        }
+            _cx: @uctxt, _e_region: region, _a_region: region,
+            _nxt: fn(region) -> ures<T>) -> ures<T> {
+        fail;   // unused
     }
 }
 
