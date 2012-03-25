@@ -293,14 +293,32 @@ impl unify_methods for infer_ctxt {
     }
 
     fn vars(a_id: uint, b_id: uint) -> ures {
-        #debug["vars(<T%u> <: <T%u>)",
-               a_id, b_id];
-
         // Need to make sub_id a subtype of sup_id.
         let {root: a_id, bounds: a_bounds} = self.get(a_id);
         let {root: b_id, bounds: b_bounds} = self.get(b_id);
 
+        #debug["vars(<T%u>=%s <: <T%u>=%s)",
+               a_id, self.bounds_to_str(a_bounds),
+               b_id, self.bounds_to_str(b_bounds)];
+
         if a_id == b_id { ret self.uok(); }
+
+        // If both A's UB and B's LB have already been bound to types,
+        // see if we can make those types subtypes.
+        alt (a_bounds.ub, b_bounds.lb) {
+          (some(a_ub), some(b_lb)) {
+            let r = self.try {|| self.tys(a_ub, b_lb) };
+            alt r {
+              result::ok(()) { ret result::ok(()); }
+              result::err(_) { /*fallthrough */ }
+            }
+          }
+          _ { /*fallthrough*/ }
+        }
+
+        // Otherwise, we need to merge A and B so as to guarantee that
+        // A remains a subtype of B.  Actually, there are other options,
+        // but that's the route we choose to take.
         self.merge(a_id, a_bounds, b_bounds).then {||
             // For max perf, we should consider the rank here.
             self.set(b_id, redirect(a_id));
@@ -309,18 +327,20 @@ impl unify_methods for infer_ctxt {
     }
 
     fn varty(a_id: uint, b: ty::t) -> ures {
-        #debug["varty(<T%u> <: %s)",
-               a_id, self.ty_to_str(b)];
         let {root: a_id, bounds: a_bounds} = self.get(a_id);
+        #debug["varty(<T%u>=%s <: %s)",
+               a_id, self.bounds_to_str(a_bounds),
+               self.ty_to_str(b)];
         let b_bounds = {lb: none, ub: some(b)};
         self.merge(a_id, a_bounds, b_bounds)
     }
 
     fn tyvar(a: ty::t, b_id: uint) -> ures {
-        #debug["tyvar(%s <: <T%u>)",
-               self.ty_to_str(a), b_id];
         let a_bounds = {lb: some(a), ub: none};
         let {root: b_id, bounds: b_bounds} = self.get(b_id);
+        #debug["tyvar(%s <: <T%u>=%s)",
+               self.ty_to_str(a),
+               b_id, self.bounds_to_str(b_bounds)];
         self.merge(b_id, a_bounds, b_bounds)
     }
 
@@ -532,6 +552,8 @@ impl unify_methods for infer_ctxt {
         if a == b { ret self.uok(); }
 
         alt (ty::get(a).struct, ty::get(b).struct) {
+          (ty::ty_bot, _) { self.uok() }
+
           (ty::ty_var(a_id), ty::ty_var(b_id)) {
             self.vars(a_id as uint, b_id as uint)
           }
@@ -541,9 +563,6 @@ impl unify_methods for infer_ctxt {
           (_, ty::ty_var(b_id)) {
             self.tyvar(a, b_id as uint)
           }
-
-          (_, ty::ty_bot) { self.uok() }
-          (ty::ty_bot, _) { self.uok() }
 
           (ty::ty_nil, _) |
           (ty::ty_bool, _) |

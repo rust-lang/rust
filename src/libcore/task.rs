@@ -694,7 +694,7 @@ fn test_try_fail() {
         fail
     } {
         result::err(()) { }
-        _ { fail; }
+        result::ok(()) { fail; }
     }
 }
 

@@ -35,9 +35,9 @@ fn ret_guard() {
     }
 }
 
-fn rec_ret() { let _r = {c: ret}; }
+fn rec_ret() { let _r: {c: int} = {c: ret}; }
 
-fn vec_ret() { let _v = [1, 2, ret, 4]; }
+fn vec_ret() { let _v: [int] = [1, 2, ret, 4]; }
 
 fn fail_then_concat() {
     let mut x = [], y = [3];

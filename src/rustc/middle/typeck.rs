@@ -2483,15 +2483,11 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         let (if_t, if_bot) =
             alt elsopt {
               some(els) {
+                let if_t = next_ty_var(fcx);
                 let thn_bot = check_block(fcx, thn);
                 let thn_t = block_ty(fcx.ccx.tcx, thn);
-                let els_bot = check_expr_with(fcx, els, thn_t);
-                let els_t = expr_ty(fcx.ccx.tcx, els);
-                let if_t = if !ty::type_is_bot(els_t) {
-                    els_t
-                } else {
-                    thn_t
-                };
+                demand::simple(fcx, thn.span, if_t, thn_t);
+                let els_bot = check_expr_with(fcx, els, if_t);
                 (if_t, thn_bot & els_bot)
               }
               none {
@@ -2565,7 +2561,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
           }
 
           (_, _) if ty::is_binopable(tcx, lhs_t, op) {
-            let rhs_bot = check_expr_with(fcx, rhs, lhs_t);
+            let tvar = next_ty_var(fcx);
+            demand::simple(fcx, expr.span, tvar, lhs_t);
+            let rhs_bot = check_expr_with(fcx, rhs, tvar);
             let rhs_t = alt op {
               ast::eq | ast::lt | ast::le | ast::ne | ast::ge |
               ast::gt {
@@ -2646,9 +2644,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
       ast::expr_binary(ast::gt, lhs, rhs) |
       ast::expr_binary(ast::ge, lhs, rhs) {
         let tcx = fcx.ccx.tcx;
-        bot |= check_expr(fcx, lhs);
-        let lhs_t = expr_ty(tcx, lhs);
-        bot |= check_expr_with(fcx, rhs, lhs_t);
+        let tvar = next_ty_var(fcx);
+        bot |= check_expr_with(fcx, lhs, tvar);
+        bot |= check_expr_with(fcx, rhs, tvar);
         write_ty(tcx, id, ty::mk_bool(tcx));
       }
       ast::expr_binary(op, lhs, rhs) {
@@ -2782,7 +2780,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
       }
       ast::expr_log(_, lv, e) {
         bot = check_expr_with(fcx, lv, ty::mk_mach_uint(tcx, ast::ty_u32));
-        bot |= check_expr(fcx, e);
+        // Note: this does not always execute, so do not propagate bot:
+        check_expr(fcx, e);
         write_nil(tcx, id);
       }
       ast::expr_check(_, e) {
@@ -2850,13 +2849,14 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
           bot = !may_break(body);
       }
       ast::expr_alt(discrim, arms, _) {
-        bot = check_expr(fcx, discrim);
+        let pattern_ty = next_ty_var(fcx);
+        bot = check_expr_with(fcx, discrim, pattern_ty);
 
         let parent_block = tcx.region_map.rvalue_to_block.get(discrim.id);
 
         // Typecheck the patterns first, so that we get types for all the
         // bindings.
-        let pattern_ty = ty::expr_ty(tcx, discrim);
+        //let pattern_ty = ty::expr_ty(tcx, discrim);
         for arm: ast::arm in arms {
             let pcx = {
                 fcx: fcx,
@@ -3204,6 +3204,11 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
       }
     }
     if bot { write_ty(tcx, expr.id, ty::mk_bot(tcx)); }
+
+    #debug("type of expr %s is %s, expected is %s",
+           syntax::print::pprust::expr_to_str(expr),
+           ty_to_str(tcx, expr_ty(tcx, expr)),
+           ty_to_str(tcx, expected));
 
     unify(fcx, expr.span, expected, expr_ty(tcx, expr));
     ret bot;
