@@ -1,3 +1,4 @@
-// error-pattern: some control paths may return
-fn f() -> ! { 3 }
+fn f() -> ! {
+    3 //! ERROR expected `_|_` but found `int` (types differ)
+}
 fn main() { }

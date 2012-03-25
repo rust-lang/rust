@@ -1,3 +1,5 @@
-// error-pattern:in non-returning function f, some control paths may return
-fn f() -> ! { ret 42; fail; }
+fn f() -> ! {
+    ret 42; //! ERROR expected `_|_` but found `int` (types differ)
+    fail; //! WARNING unreachable statement
+}
 fn main() { }

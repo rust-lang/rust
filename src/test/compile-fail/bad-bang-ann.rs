@@ -1,7 +1,9 @@
 // -*- rust -*-
 // Tests that a function with a ! annotation always actually fails
-// error-pattern: may return to the caller
 
-fn bad_bang(i: uint) -> ! { if i < 0u { } else { fail; } }
+fn bad_bang(i: uint) -> ! {
+    if i < 0u { } else { fail; }
+    //!^ ERROR expected `_|_` but found `()` (types differ)
+}
 
 fn main() { bad_bang(5u); }
