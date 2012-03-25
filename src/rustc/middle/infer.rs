@@ -25,10 +25,21 @@ enum var_value {
     bounded(bounds)
 }
 
+type region_bound = option<ty::region>;
+
+type region_bounds = {lb: region_bound, ub: region_bound};
+
+enum region_value {
+    rv_redirect(uint),
+    rv_bounded(region_bounds)
+}
+
 enum infer_ctxt = @{
     tcx: ty::ctxt,
     vals: smallintmap<var_value>,
-    mut bindings: [(uint, var_value)]
+    mut bindings: [(uint, var_value)],
+    region_vals: smallintmap<region_value>,
+    mut region_bindings: [(uint, region_value)]
 };
 
 type ures = result::result<(), ty::type_err>;
@@ -37,7 +48,9 @@ type fres<T> = result::result<T,int>;
 fn new_infer_ctxt(tcx: ty::ctxt) -> infer_ctxt {
     infer_ctxt(@{tcx: tcx,
                  vals: smallintmap::mk(),
-                 mut bindings: []})
+                 mut bindings: [],
+                 region_vals: smallintmap::mk(),
+                 mut region_bindings: []})
 }
 
 fn mk_subty(cx: infer_ctxt, a: ty::t, b: ty::t) -> ures {
@@ -182,6 +195,28 @@ impl unify_methods for infer_ctxt {
           }
           some(bounded(bounds)) {
             {root: vid, bounds: bounds}
+          }
+        }
+    }
+
+    // FIXME: See if we can't throw some polymorphism on this to make this
+    // less of a straight copy of the above.
+    fn get_region(rid: uint) -> {root: uint, bounds:region_bounds} {
+        alt self.region_vals.find(rid) {
+          none {
+            let bnds = {lb: none, ub: none};
+            self.region_vals.insert(rid, rv_bounded(bnds));
+            {root: rid, bounds: bnds}
+          }
+          some(rv_redirect(rid)) {
+            let {root, bounds} = self.get_region(rid);
+            if root != rid {
+                self.region_vals.insert(rid, rv_redirect(root));
+            }
+            {root: root, bounds: bounds}
+          }
+          some(rv_bounded(bounds)) {
+            {root: rid, bounds: bounds}
           }
         }
     }
@@ -603,7 +638,7 @@ impl resolve_methods for infer_ctxt {
         result::ok(t)
     }
 
-    fn rerr(v: int) -> fres<ty::t> {
+    fn rerr<T>(v: int) -> fres<T> {
         #debug["Resolve error: %?", v];
         result::err(v)
     }
@@ -628,6 +663,14 @@ impl resolve_methods for infer_ctxt {
     fn resolve_ty(typ: ty::t) -> fres<ty::t> {
         alt ty::get(typ).struct {
           ty::ty_var(vid) { self.resolve_var(vid) }
+          ty::ty_rptr(ty::re_var(rid), base_ty) {
+            alt self.resolve_region(rid as int) {
+              result::err(terr)  { result::err(terr) }
+              result::ok(region) {
+                self.rok(ty::mk_rptr(self.tcx, region, base_ty))
+              }
+            }
+          }
           _ { self.rok(typ) }
         }
     }
@@ -675,6 +718,63 @@ impl resolve_methods for infer_ctxt {
                                 std::list::nil,
                                 _)),
                         typ);
+
+        let ur = *unresolved;
+        alt ur {
+          none { ret self.rok(rty); }
+          some(var_id) { ret self.rerr(var_id); }
+        }
+    }
+
+    // FIXME: These should be integrated with the two functions above instead
+    // of being such blatant lazy duplicates.
+
+    fn resolve_region(rid: int) -> fres<ty::region> {
+        let {root:_, bounds} = self.get_region(rid as uint);
+
+        // See comments in resolve_ty above re. nonobviousness.
+
+        alt bounds {
+          { ub:_, lb:some(r) } |
+          { ub:some(r), lb:_ } |
+          { ub:_, lb:some(r) } { result::ok(r) }
+          { ub:none, lb:none } { self.rerr(rid) }
+        }
+    }
+
+    fn subst_regions(unresolved: @mutable option<int>,
+                     regions_seen: std::list::list<int>,
+                     rid: int) -> ty::region {
+        // Should really return a fixup_result instead of a t, but fold_ty
+        // doesn't allow returning anything but a t.
+        alt self.resolve_region(rid) {
+          result::err(rid) {
+            *unresolved = some(rid);
+            ret ty::re_var(rid as uint);
+          }
+          result::ok(rr) {
+            let mut give_up = false;
+            std::list::iter(regions_seen) {|r|
+                if r == rid {
+                    *unresolved = some(-1); // hack: communicate inf region
+                    give_up = true;
+                }
+            }
+            ret rr;
+          }
+        }
+    }
+
+    fn fixup_regions(typ: ty::t) -> fres<ty::t> {
+        let unresolved = @mutable none::<int>;
+        let rty = ty::fold_ty(self.tcx, ty::fm_rptr({ |region, _under_rptr|
+            alt region {
+              ty::re_var(rid) {
+                self.subst_regions(unresolved, std::list::nil, rid as int)
+              }
+              _ { region }
+            }
+        }), typ);
 
         let ur = *unresolved;
         alt ur {
