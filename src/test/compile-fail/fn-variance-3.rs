@@ -12,10 +12,13 @@ fn main() {
 
     // @int <: X
     //
-    // Note: this is really an inference failure.
-    // The correct answer would be to make X
-    // equal to @const int, but we are not (yet)
-    // smart enough.
-    r(@3); //! ERROR (values differ in mutability)
+    // This constraint forces X to be
+    // @const int.
+    r(@3);
 
+    // Here the type check succeeds but the
+    // mutability check will fail, because the
+    // type of r has been inferred to be
+    // fn(@const int) -> @const int
+    *r(@mut 3) = 4; //! ERROR assigning to immutable box
 }

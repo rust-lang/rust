@@ -27,7 +27,6 @@ export rsplit;
 export rsplitn;
 export shift;
 export pop;
-export clear;
 export push;
 export grow;
 export grow_fn;
@@ -321,7 +320,7 @@ fn rsplitn<T: copy>(v: [const T], n: uint, f: fn(T) -> bool) -> [[T]] {
 // Mutators
 
 #[doc = "Removes the first element from a vector and return it"]
-fn shift<T: copy>(&v: [const T]) -> T {
+fn shift<T: copy>(&v: [T]) -> T {
     let ln = len::<T>(v);
     assert (ln > 0u);
     let e = v[0];
@@ -331,6 +330,9 @@ fn shift<T: copy>(&v: [const T]) -> T {
 
 #[doc = "Prepend an element to a vector"]
 fn unshift<T: copy>(&v: [const T], +t: T) {
+    // n.b.---for most callers, using unshift() ought not to type check, but
+    // it does. It's because the type system is unaware of the mutability of
+    // `v` and so allows the vector to be covariant.
     v = [const t] + v;
 }
 
@@ -342,14 +344,6 @@ fn pop<T>(&v: [const T]) -> T unsafe {
     let val <- *valptr;
     unsafe::set_len(v, ln - 1u);
     val
-}
-
-#[doc = "
-Removes all elements from a vector without affecting
-how much space is reserved.
-"]
-fn clear<T>(&v: [const T]) unsafe {
-    unsafe::set_len(v, 0u);
 }
 
 #[doc = "Append an element to a vector"]

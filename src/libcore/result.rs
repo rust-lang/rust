@@ -109,20 +109,21 @@ fn chain_err<T: copy, U: copy, V: copy>(
     }
 }
 
-// ______________________________________________________________________
-// Note:
-//
-// These helper functions are written in a "pre-chained" (a.k.a,
-// deforested) style because I have found that, in practice, this is
-// the most concise way to do things.  That means that they do not not
-// terminate with a call to `ok(v)` but rather `nxt(v)`.  If you would
-// like to just get the result, just pass in `ok` as `nxt`.
+impl methods<T:copy,E:copy> for result<T,E> {
+    fn chain<U:copy>(op: fn(T) -> result<U,E>) -> result<U,E> {
+        chain(self, op)
+    }
+
+    fn chain_err<F:copy>(op: fn(E) -> result<T,F>) -> result<T,F> {
+        chain_err(self, op)
+    }
+}
 
 #[doc = "
 Maps each element in the vector `ts` using the operation `op`.  Should an
 error occur, no further mappings are performed and the error is returned.
 Should no error occur, a vector containing the result of each map is
-passed to the `nxt` function.
+returned.
 
 Here is an example which increments every integer in a vector,
 checking for overflow:
@@ -131,27 +132,11 @@ checking for overflow:
         if x == uint::max_value { ret err(\"overflow\"); }
         else { ret ok(x+1u); }
     }
-    map([1u, 2u, 3u], inc_conditionally) {|incd|
-        assert incd == [2u, 3u, 4u];
-    }
-
-Note: if you have to combine a deforested style transform with map,
-you should use `ok` for the `nxt` operation, as shown here (this is an
-alternate version of the previous example where the
-`inc_conditionally()` routine is deforested):
-
-    fn inc_conditionally<T>(x: uint,
-                            nxt: fn(uint) -> result<T,str>) -> result<T,str> {
-        if x == uint::max_value { ret err(\"overflow\"); }
-        else { ret nxt(x+1u); }
-    }
-    map([1u, 2u, 3u], inc_conditionally(_, ok)) {|incd|
+    map([1u, 2u, 3u], inc_conditionally).chain {|incd|
         assert incd == [2u, 3u, 4u];
     }
 "]
-fn map<T,U:copy,V:copy,W>(ts: [T],
-                          op: fn(T) -> result<V,U>,
-                          nxt: fn([V]) -> result<W,U>) -> result<W,U> {
+fn map<T,U:copy,V:copy>(ts: [T], op: fn(T) -> result<V,U>) -> result<[V],U> {
     let mut vs: [V] = [];
     vec::reserve(vs, vec::len(ts));
     for t in ts {
@@ -160,7 +145,7 @@ fn map<T,U:copy,V:copy,W>(ts: [T],
           err(u) { ret err(u); }
         }
     }
-    ret nxt(vs);
+    ret ok(vs);
 }
 
 #[doc = "Same as map, but it operates over two parallel vectors.
@@ -170,11 +155,9 @@ length.  While we do not often use preconditions in the standard
 library, a precondition is used here because result::t is generally
 used in 'careful' code contexts where it is both appropriate and easy
 to accommodate an error like the vectors being of different lengths."]
-fn map2<S,T,U:copy,V:copy,W>(ss: [S], ts: [T],
-                             op: fn(S,T) -> result<V,U>,
-                             nxt: fn([V]) -> result<W,U>)
-    : vec::same_length(ss, ts)
-    -> result<W,U> {
+fn map2<S,T,U:copy,V:copy>(ss: [S], ts: [T], op: fn(S,T) -> result<V,U>)
+    : vec::same_length(ss, ts) -> result<[V],U> {
+
     let n = vec::len(ts);
     let mut vs = [];
     vec::reserve(vs, n);
@@ -186,13 +169,19 @@ fn map2<S,T,U:copy,V:copy,W>(ss: [S], ts: [T],
         }
         i += 1u;
     }
-    ret nxt(vs);
+    ret ok(vs);
 }
 
+#[doc = "
+Applies op to the pairwise elements from `ss` and `ts`, aborting on
+error.  This could be implemented using `map2()` but it is more efficient
+on its own as no result vector is built.
+"]
 fn iter2<S,T,U:copy>(ss: [S], ts: [T],
                      op: fn(S,T) -> result<(),U>)
     : vec::same_length(ss, ts)
     -> result<(),U> {
+
     let n = vec::len(ts);
     let mut i = 0u;
     while i < n {
