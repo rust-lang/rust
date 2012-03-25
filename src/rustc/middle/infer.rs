@@ -47,14 +47,14 @@ fn new_infer_ctxt(tcx: ty::ctxt) -> infer_ctxt {
 
 fn mk_subty(cx: infer_ctxt, a: ty::t, b: ty::t) -> ures {
     #debug[">> mk_subty(%s <: %s)", cx.ty_to_str(a), cx.ty_to_str(b)];
-    cx.commit(cx.vb) {||
+    cx.commit {||
         cx.tys(a, b)
     }
 }
 
 fn mk_eqty(cx: infer_ctxt, a: ty::t, b: ty::t) -> ures {
     #debug["> mk_eqty(%s <: %s)", cx.ty_to_str(a), cx.ty_to_str(b)];
-    cx.commit(cx.vb) {||
+    cx.commit {||
         mk_subty(cx, a, b).then {||
             mk_subty(cx, b, a)
         }
@@ -64,7 +64,7 @@ fn mk_eqty(cx: infer_ctxt, a: ty::t, b: ty::t) -> ures {
 fn compare_tys(tcx: ty::ctxt, a: ty::t, b: ty::t) -> ures {
     let infcx = new_infer_ctxt(tcx);
     #debug["> compare_tys(%s == %s)", infcx.ty_to_str(a), infcx.ty_to_str(b)];
-    infcx.commit(infcx.vb) {||
+    infcx.commit {||
         mk_subty(infcx, a, b).then {||
             mk_subty(infcx, b, a)
         }
@@ -158,30 +158,47 @@ impl unify_methods for infer_ctxt {
         }
     }
 
-    fn commit<T:copy,E:copy,U:copy>(vb: vals_and_bindings<U>,
-                                    f: fn() -> result<T,E>) -> result<T,E> {
+    fn commit<T:copy,E:copy>(f: fn() -> result<T,E>) -> result<T,E> {
 
-        assert vb.bindings.len() == 0u;
-        let r = self.try(vb, f);
-        vec::clear(vb.bindings);
+        assert self.vb.bindings.len() == 0u;
+        assert self.rb.bindings.len() == 0u;
+
+        let r = self.try(f);
+
+        // TODO---could use a vec::clear() that ran destructors but kept
+        // the vec at its currently allocated length
+        self.vb.bindings = [];
+        self.rb.bindings = [];
+
         ret r;
     }
 
-    fn try<T:copy,E:copy,U:copy>(vb: vals_and_bindings<U>,
-                                 f: fn() -> result<T,E>) -> result<T,E> {
+    fn try<T:copy,E:copy>(f: fn() -> result<T,E>) -> result<T,E> {
 
-        let l = vb.bindings.len();
-        #debug["try(l=%u)", l];
+        fn rollback_to<T:copy>(vb: vals_and_bindings<T>, len: uint) {
+            while vb.bindings.len() != len {
+                let (vid, old_v) = vec::pop(vb.bindings);
+                vb.vals.insert(vid, old_v);
+            }
+        }
+
+        let vbl = self.vb.bindings.len();
+        let rbl = self.rb.bindings.len();
+        #debug["try(vbl=%u, rbl=%u)", vbl, rbl];
         let r = f();
         alt r {
           result::ok(_) { #debug["try--ok"]; }
-          result::err(_) { #debug["try--rollback"]; }
+          result::err(_) {
+            #debug["try--rollback"];
+            rollback_to(self.vb, vbl);
+            rollback_to(self.rb, rbl);
+          }
         }
         ret r;
     }
 
     fn get<T:copy>(vb: vals_and_bindings<T>, vid: uint)
-            -> {root: uint, bounds:bounds<T>} {
+        -> {root: uint, bounds:bounds<T>} {
 
         alt vb.vals.find(vid) {
           none {
@@ -228,7 +245,7 @@ impl unify_methods for infer_ctxt {
             ok({lb: b, ub: b})
           }
           (some(t_a), some(t_b)) {
-            let r1 = self.try(self.vb) {||
+            let r1 = self.try {||
                 self.tys(t_a, t_b).then {||
                     ok({lb: a, ub: b})
                 }
@@ -294,8 +311,8 @@ impl unify_methods for infer_ctxt {
         let {root: b_id, bounds: b_bounds} = self.get(self.vb, b_id);
 
         #debug["vars(<T%u>=%s <: <T%u>=%s)",
-               a_id, self.bounds_to_str(a_bounds),
-               b_id, self.bounds_to_str(b_bounds)];
+               a_id, self.ty_bounds_to_str(a_bounds),
+               b_id, self.ty_bounds_to_str(b_bounds)];
 
         if a_id == b_id { ret self.uok(); }
 
