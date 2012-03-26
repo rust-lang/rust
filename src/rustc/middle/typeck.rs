@@ -11,7 +11,7 @@ import pat_util::*;
 import middle::ty;
 import middle::ty::{node_id_to_type, arg, block_ty,
                     expr_ty, field, node_type_table, mk_nil,
-                    ty_param_bounds_and_ty, lookup_class_fields};
+                    ty_param_bounds_and_ty, lookup_public_fields};
 import util::ppaux::ty_to_str;
 import std::smallintmap;
 import std::map::{hashmap, int_hash};
@@ -934,7 +934,9 @@ mod collect {
           }
           ast_map::node_item(@{node: ast::item_class(_,its,_), _}, _) {
               let (_,ms) = split_class_items(its);
-              store_methods::<@ast::method>(tcx, id, ms, {|m|
+              // Handling all methods here
+              let ps = ast_util::ignore_privacy(ms);
+              store_methods::<@ast::method>(tcx, id, ps, {|m|
                           ty_of_method(tcx, m_collect, m)});
           }
         }
@@ -1089,10 +1091,13 @@ mod collect {
               for f in fields {
                  convert_class_item(tcx, f);
               }
+              // The selfty is just the class type
               let selfty = ty::mk_class(tcx, local_def(it.id),
                                         mk_ty_params(tcx, tps).params);
-              // The selfty is just the class type
-              convert_methods(tcx, methods, @[], some(selfty));
+              // Need to convert all methods so we can check internal
+              // references to private methods
+              convert_methods(tcx, ast_util::ignore_privacy(methods), @[],
+                              some(selfty));
           }
           _ {
             // This call populates the type cache with the converted type
@@ -3095,7 +3100,11 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
               // (1) verify that the class id actually has a field called
               // field
               #debug("class named %s", ty_to_str(tcx, base_t));
-              let cls_items = lookup_class_fields(tcx, base_id);
+              /*
+                This is an external reference, so only consider public
+                fields
+               */
+              let cls_items = lookup_public_fields(tcx, base_id);
               #debug("cls_items: %?", cls_items);
               alt lookup_field_ty(tcx, base_id, cls_items, field) {
                  some(field_ty) {
@@ -3119,7 +3128,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
               none {
                 let t_err = resolve_type_vars_if_possible(fcx, expr_t);
                 let msg = #fmt["attempted access of field %s on type %s, but \
-                                no field or method with that name was found",
+                          no public field or method with that name was found",
                                field, ty_to_str(tcx, t_err)];
                 tcx.sess.span_err(expr.span, msg);
                 // NB: Adding a bogus type to allow typechecking to continue
@@ -3613,9 +3622,8 @@ fn class_types(ccx: @crate_ctxt, members: [@ast::class_item]) -> class_map {
 
 fn check_class_member(ccx: @crate_ctxt, cm: ast::class_member) {
     alt cm {
-      ast::instance_var(_,t,_,_) { // ??? Not sure
+      ast::instance_var(_,t,_,_) {
       }
-      // not right yet -- need a scope
       ast::class_method(m) { check_method(ccx, m); }
     }
 }

@@ -435,16 +435,29 @@ pure fn class_item_ident(ci: @class_item) -> ident {
     }
 }
 
-type ivar = {ident: ident, ty: @ty, cm: class_mutability, id: node_id};
+type ivar = {ident: ident, ty: @ty, cm: class_mutability,
+             id: node_id, privacy: privacy};
 
-fn split_class_items(cs: [@class_item]) -> ([ivar], [@method]) {
+type cmethod = {privacy: privacy, meth: @method};
+
+fn public_methods(cms: [cmethod]) -> [@method] {
+    vec::filter_map(cms, {|cm| alt cm.privacy {
+                    pub { some(cm.meth) }
+                    _   { none }}})
+}
+
+fn ignore_privacy(cms: [cmethod]) -> [@method] {
+    vec::map(cms, {|cm| cm.meth})
+}
+
+fn split_class_items(cs: [@class_item]) -> ([ivar], [cmethod]) {
     let mut vs = [], ms = [];
     for c in cs {
       alt c.node.decl {
         instance_var(i, t, cm, id) {
-          vs += [{ident: i, ty: t, cm: cm, id: id}];
+          vs += [{ident: i, ty: t, cm: cm, id: id, privacy: c.node.privacy}];
         }
-        class_method(m) { ms += [m]; }
+        class_method(m) { ms += [{privacy: c.node.privacy, meth: m}]; }
       }
     }
     (vs, ms)

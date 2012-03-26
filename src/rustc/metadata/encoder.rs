@@ -353,6 +353,11 @@ fn encode_info_for_mod(ecx: @encode_ctxt, ebml_w: ebml::writer, md: _mod,
     ebml_w.end_tag();
 }
 
+fn encode_privacy(ebml_w: ebml::writer, privacy: privacy) {
+    encode_family(ebml_w, alt privacy {
+                pub { 'g' } priv { 'j' }});
+}
+
 /* Returns an index of items in this class */
 fn encode_info_for_class(ecx: @encode_ctxt, ebml_w: ebml::writer,
                          id: node_id, path: ast_map::path,
@@ -369,7 +374,7 @@ fn encode_info_for_class(ecx: @encode_ctxt, ebml_w: ebml::writer,
           *index += [{val: id, pos: ebml_w.writer.tell()}];
           ebml_w.start_tag(tag_items_data_item);
           #debug("encode_info_for_class: doing %s %d", nm, id);
-          encode_family(ebml_w, 'g');
+          encode_privacy(ebml_w, ci.node.privacy);
           encode_name(ebml_w, nm);
           encode_path(ebml_w, path, ast_map::path_name(nm));
           encode_type(ecx, ebml_w, node_id_to_type(tcx, id));
@@ -564,19 +569,25 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         let (fs,ms) = ast_util::split_class_items(items);
         for f in fs {
            ebml_w.start_tag(tag_item_field);
-           encode_family(ebml_w, 'g');
+           encode_privacy(ebml_w, f.privacy);
            encode_name(ebml_w, f.ident);
            encode_def_id(ebml_w, local_def(f.id));
            ebml_w.end_tag();
         }
-        for m in ms {
-           ebml_w.start_tag(tag_item_method);
-           #debug("Writing %s %d", m.ident, m.id);
-           encode_family(ebml_w, purity_fn_family(m.decl.purity));
-           encode_name(ebml_w, m.ident);
-           encode_type(ecx, ebml_w, node_id_to_type(tcx, m.id));
-           encode_def_id(ebml_w, local_def(m.id));
-           ebml_w.end_tag();
+        for mt in ms {
+           alt mt.privacy {
+              priv { /* do nothing */ }
+              pub {
+                let m = mt.meth;
+                ebml_w.start_tag(tag_item_method);
+                #debug("Writing %s %d", m.ident, m.id);
+                encode_family(ebml_w, purity_fn_family(m.decl.purity));
+                encode_name(ebml_w, m.ident);
+                encode_type(ecx, ebml_w, node_id_to_type(tcx, m.id));
+                encode_def_id(ebml_w, local_def(m.id));
+                ebml_w.end_tag();
+              }
+           }
         }
         /* Each class has its own index -- encode it */
         let bkts = create_index(idx, hash_node_id);

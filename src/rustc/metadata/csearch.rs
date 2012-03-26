@@ -14,7 +14,6 @@ import std::map::hashmap;
 export get_symbol;
 export get_class_fields;
 export get_class_method;
-// export get_class_method_ids;
 export get_field_type;
 export get_type_param_count;
 export lookup_defs;
@@ -130,14 +129,6 @@ fn get_class_fields(tcx: ty::ctxt, def: ast::def_id) -> [ty::field_ty] {
     let cdata = cstore::get_crate_data(cstore, def.crate);
     decoder::get_class_fields(cdata, def.node)
 }
-
-/*
-fn get_class_method_ids(tcx: ty::ctxt, def: ast::def_id) -> [ty::field_ty] {
-    let cstore = tcx.sess.cstore;
-    let cdata = cstore::get_crate_data(cstore, def.crate);
-    decoder::get_class_method_ids(cdata, def.node)
-}
-*/
 
 fn get_type(tcx: ty::ctxt, def: ast::def_id) -> ty::ty_param_bounds_and_ty {
     let cstore = tcx.sess.cstore;

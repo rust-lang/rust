@@ -45,6 +45,7 @@ export lookup_class_fields;
 export lookup_class_method_by_name;
 export lookup_field_type;
 export lookup_item_type;
+export lookup_public_fields;
 export method;
 export method_idx;
 export mk_class;
@@ -160,10 +161,10 @@ type constr_table = hashmap<ast::node_id, [constr]>;
 
 type mt = {ty: t, mutbl: ast::mutability};
 
-// Just use <field> for class fields?
 type field_ty = {
   ident: ident,
   id: def_id,
+  privacy: ast::privacy
 };
 
 // Contains information needed to resolve types and (in the future) look up
@@ -1996,14 +1997,26 @@ fn lookup_class_fields(cx: ctxt, did: ast::def_id) -> [field_ty] {
     }
 }
 
+fn lookup_public_fields(cx: ctxt, did: ast::def_id) -> [field_ty] {
+    vec::filter(lookup_class_fields(cx, did), is_public)
+}
+
+pure fn is_public(f: field_ty) -> bool {
+  alt f.privacy {
+       pub { true }
+       priv { false }
+  }
+}
+
 // Look up the list of method names and IDs for a given class
 // Fails if the id is not bound to a class.
 fn lookup_class_method_ids(cx: ctxt, did: ast::def_id)
-    : is_local(did) -> [{name: ident, id: node_id}] {
+    : is_local(did) -> [{name: ident, id: node_id, privacy: privacy}] {
     alt cx.items.find(did.node) {
        some(ast_map::node_item(@{node: item_class(_,items,_), _}, _)) {
          let (_,ms) = split_class_items(items);
-         vec::map(ms, {|m| {name: m.ident, id: m.id}})
+         vec::map(ms, {|m| {name: m.meth.ident, id: m.meth.id,
+                         privacy: m.privacy}})
        }
        _ {
            cx.sess.bug("lookup_class_method_ids: id not bound to a class");
@@ -2012,19 +2025,19 @@ fn lookup_class_method_ids(cx: ctxt, did: ast::def_id)
 }
 
 /* Given a class def_id and a method name, return the method's
- def_id. Needed so we can do static dispatch for methods */
+ def_id. Needed so we can do static dispatch for methods
+ Fails if the requested method is private */
 fn lookup_class_method_by_name(cx:ctxt, did: ast::def_id, name: ident,
-                               sp: span) ->
-    def_id {
+                               sp: span) -> def_id {
     if check is_local(did) {
        let ms = lookup_class_method_ids(cx, did);
        for m in ms {
-         if m.name == name {
+         if m.name == name && m.privacy == ast::pub {
              ret ast_util::local_def(m.id);
          }
        }
-       cx.sess.span_fatal(sp, #fmt("Class doesn't have a method named %s",
-                                  name));
+       cx.sess.span_fatal(sp, #fmt("Class doesn't have a public method \
+           named %s", name));
     }
     else {
       csearch::get_class_method(cx.sess.cstore, did, name)
@@ -2036,7 +2049,8 @@ fn class_field_tys(items: [@class_item]) -> [field_ty] {
     for it in items {
        alt it.node.decl {
           instance_var(nm, _, _, id) {
-              rslt += [{ident: nm, id: ast_util::local_def(id)}];
+              rslt += [{ident: nm, id: ast_util::local_def(id),
+                          privacy: it.node.privacy}];
           }
           class_method(_) {
           }

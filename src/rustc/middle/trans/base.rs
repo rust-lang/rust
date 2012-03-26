@@ -4271,7 +4271,8 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
 
         // Translate methods
         let (_, ms) = ast_util::split_class_items(items);
-        impl::trans_impl(ccx, *path, item.ident, ms, tps);
+        impl::trans_impl(ccx, *path, item.ident,
+                         vec::map(ms, {|m| m.meth}), tps);
       }
       _ {/* fall through */ }
     }

@@ -17,7 +17,6 @@ import middle::trans::common::maps;
 import util::ppaux::ty_to_str;
 
 export get_class_fields;
-// export get_class_method_ids;
 export get_symbol;
 export get_enum_variants;
 export get_type;
@@ -427,38 +426,38 @@ fn get_iface_methods(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
 
 // Helper function that gets either fields or methods
 fn get_class_members(cdata: cmd, id: ast::node_id,
-                     family: char) -> [ty::field_ty] {
+                     p: fn(char) -> bool) -> [ty::field_ty] {
     let data = cdata.data;
     let item = lookup_item(id, data);
     let mut result = [];
     ebml::tagged_docs(item, tag_item_field) {|an_item|
-       if item_family(an_item) == family {
+       let f = item_family(an_item);
+       if p(f) {
           let name = item_name(an_item);
           let did = class_member_id(an_item, cdata);
-          result += [{ident: name, id: did}];
+          result += [{ident: name, id: did, privacy:
+                  // This won't work for methods, argh
+                  family_to_privacy(f)}];
        }
     }
     result
 }
 
+pure fn family_to_privacy(family: char) -> ast::privacy {
+    alt family {
+      'g' { ast::pub }
+      _   { ast::priv }
+    }
+}
 
-/* Take a node ID for a class, return a vector of the class's
-   field names/IDs */
+/* 'g' for public field, 'j' for private field */
 fn get_class_fields(cdata: cmd, id: ast::node_id) -> [ty::field_ty] {
-    get_class_members(cdata, id, 'g')
+    get_class_members(cdata, id, {|f| f == 'g' || f == 'j'})
 }
-
-/*
-/* Take a node ID for a class, return a vector of the class's
-   method names/IDs */
-fn get_class_method_ids(cdata: cmd, id: ast::node_id) -> [ty::field_ty] {
-    get_class_members(cdata, id, 'h')
-}
-*/
 
 fn family_has_type_params(fam_ch: char) -> bool {
     alt check fam_ch {
-      'c' | 'T' | 'm' | 'n' | 'g' | 'h' { false }
+      'c' | 'T' | 'm' | 'n' | 'g' | 'h' | 'j' { false }
       'f' | 'u' | 'p' | 'F' | 'U' | 'P' | 'y' | 't' | 'v' | 'i' | 'I' | 'C'
           | 'a'
           { true }
