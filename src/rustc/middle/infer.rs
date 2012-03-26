@@ -879,7 +879,7 @@ impl resolve_methods for infer_ctxt {
 //
 // There are two type combiners, lub and gub.  The first computes the
 // Least Upper Bound of two types `a` and `b`---that is, a mutual
-// supertype type `c` where `a <: c` and `a <: c`.  As the name
+// supertype type `c` where `a <: c` and `b <: c`.  As the name
 // implies, it tries to pick the most precise `c` possible.  `glb`
 // computes the greatest lower bound---that is, it computes a mutual
 // subtype, aiming for the most general such type possible.  Both
