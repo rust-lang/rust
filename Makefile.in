@@ -89,7 +89,7 @@ ifdef DEBUG
 endif
 
 # platform-specific auto-configuration
-include $(CFG_SRC_DIR)/mk/platform.mk
+include $(CFG_SRC_DIR)mk/platform.mk
 
 # Run the stage1/2 compilers under valgrind
 ifdef VALGRIND_COMPILE
@@ -443,15 +443,15 @@ config.stamp: $(S)configure $(S)Makefile.in $(S)src/snapshots.txt
 # Primary-target makefiles
 ######################################################################
 
-include $(CFG_SRC_DIR)/mk/target.mk
-include $(CFG_SRC_DIR)/mk/host.mk
-include $(CFG_SRC_DIR)/mk/stage0.mk
-include $(CFG_SRC_DIR)/mk/rt.mk
-include $(CFG_SRC_DIR)/mk/rustllvm.mk
-include $(CFG_SRC_DIR)/mk/autodep.mk
-include $(CFG_SRC_DIR)/mk/tools.mk
-include $(CFG_SRC_DIR)/mk/docs.mk
-include $(CFG_SRC_DIR)/mk/llvm.mk
+include $(CFG_SRC_DIR)mk/target.mk
+include $(CFG_SRC_DIR)mk/host.mk
+include $(CFG_SRC_DIR)mk/stage0.mk
+include $(CFG_SRC_DIR)mk/rt.mk
+include $(CFG_SRC_DIR)mk/rustllvm.mk
+include $(CFG_SRC_DIR)mk/autodep.mk
+include $(CFG_SRC_DIR)mk/tools.mk
+include $(CFG_SRC_DIR)mk/docs.mk
+include $(CFG_SRC_DIR)mk/llvm.mk
 
 ######################################################################
 # Secondary makefiles, conditionalized for speed
@@ -463,18 +463,18 @@ ifneq ($(strip $(findstring dist,$(MAKECMDGOALS))   \
                $(findstring tidy,$(MAKECMDGOALS))   \
                $(findstring clean,$(MAKECMDGOALS))),)
   CFG_INFO := $(info cfg: including dist rules)
-  include $(CFG_SRC_DIR)/mk/dist.mk
+  include $(CFG_SRC_DIR)mk/dist.mk
 endif
 
 ifneq ($(strip $(findstring snap,$(MAKECMDGOALS))   \
                $(findstring clean,$(MAKECMDGOALS))),)
   CFG_INFO := $(info cfg: including snap rules)
-  include $(CFG_SRC_DIR)/mk/snap.mk
+  include $(CFG_SRC_DIR)mk/snap.mk
 endif
 
 ifneq ($(findstring reformat,$(MAKECMDGOALS)),)
   CFG_INFO := $(info cfg: including reformat rules)
-  include $(CFG_SRC_DIR)/mk/pp.mk
+  include $(CFG_SRC_DIR)mk/pp.mk
 endif
 
 ifneq ($(strip $(findstring check,$(MAKECMDGOALS)) \
@@ -482,17 +482,17 @@ ifneq ($(strip $(findstring check,$(MAKECMDGOALS)) \
                $(findstring perf,$(MAKECMDGOALS))  \
                $(findstring tidy,$(MAKECMDGOALS))),)
   CFG_INFO := $(info cfg: including test rules)
-  include $(CFG_SRC_DIR)/mk/tests.mk
+  include $(CFG_SRC_DIR)mk/tests.mk
 endif
 
 ifneq ($(findstring perf,$(MAKECMDGOALS)),)
   CFG_INFO := $(info cfg: including perf rules)
-  include $(CFG_SRC_DIR)/mk/perf.mk
+  include $(CFG_SRC_DIR)mk/perf.mk
 endif
 
 ifneq ($(findstring clean,$(MAKECMDGOALS)),)
   CFG_INFO := $(info cfg: including clean rules)
-  include $(CFG_SRC_DIR)/mk/clean.mk
+  include $(CFG_SRC_DIR)mk/clean.mk
 endif
 
 ifneq ($(findstring install,$(MAKECMDGOALS)),)
@@ -503,11 +503,11 @@ ifneq ($(findstring install,$(MAKECMDGOALS)),)
   endif
 
   CFG_INFO := $(info cfg: including install rules)
-  include $(CFG_SRC_DIR)/mk/install.mk
+  include $(CFG_SRC_DIR)mk/install.mk
 endif
 
 ifneq ($(strip $(findstring TAGS.emacs,$(MAKECMDGOALS)) \
                $(findstring TAGS.vi,$(MAKECMDGOALS))),)
   CFG_INFO := $(info cfg: including ctags rules)
-  include $(CFG_SRC_DIR)/mk/ctags.mk
+  include $(CFG_SRC_DIR)mk/ctags.mk
 endif

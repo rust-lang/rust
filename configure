@@ -251,8 +251,8 @@ esac
 DEFAULT_HOST_TRIPLE="${CFG_CPUTYPE}-${CFG_OSTYPE}"
 
 CFG_SELF=$(echo $0 | tr '\\' '/')
-CFG_SRC_DIR=${CFG_SELF%${CFG_SELF##*/}}
-CFG_BUILD_DIR=$(echo $PWD | tr '\\' '/')
+CFG_SRC_DIR="$(dirname $CFG_SELF)/"
+CFG_BUILD_DIR="$(echo $PWD | tr '\\' '/')/"
 CFG_CONFIGURE_ARGS="$@"
 
 OPTIONS=""
@@ -517,14 +517,14 @@ fi
 
 # Configure llvm, only if necessary
 step_msg "looking at LLVM"
-CFG_LLVM_SRC_DIR=${CFG_SRC_DIR}src/llvm
+CFG_LLVM_SRC_DIR=${CFG_SRC_DIR}src/llvm/
 for t in $CFG_TARGET_TRIPLES
 do
     do_reconfigure=1
 
     if [ -z $CFG_LLVM_ROOT ]
     then
-        LLVM_BUILD_DIR=$CFG_BUILD_DIR/llvm/$t
+        LLVM_BUILD_DIR=${CFG_BUILD_DIR}llvm/$t
         if [ ! -z "$CFG_DISABLE_OPTIMIZE_LLVM" ]
         then
             LLVM_DBG_OPTS=""
@@ -552,7 +552,7 @@ do
         index2="${CFG_SRC_DIR}src/llvm/.git/index"
         for index in ${index1} ${index2}
         do
-            config_status="${CFG_BUILD_DIR}/llvm/$t/config.status"
+            config_status="${CFG_BUILD_DIR}llvm/$t/config.status"
             if test -e ${index} -a \
                     -e ${config_status} -a \
                     ${config_status} -nt ${index}
@@ -636,10 +636,10 @@ do
         cd $LLVM_BUILD_DIR
         case $CFG_SRC_DIR in
             /* | [a-z]:* | [A-Z]:*)
-                ${CFG_LLVM_SRC_DIR}/configure $LLVM_FLAGS
+                ${CFG_LLVM_SRC_DIR}configure $LLVM_FLAGS
                 ;;
             *)
-                ${CFG_BUILD_DIR}/${CFG_LLVM_SRC_DIR}/configure \
+                ${CFG_BUILD_DIR}${CFG_LLVM_SRC_DIR}configure \
                     $LLVM_FLAGS
                 ;;
         esac
