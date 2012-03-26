@@ -2910,6 +2910,24 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         check_expr_fn_with_unifier(fcx, expr, proto, decl, body,
                                    unify, expected);
       }
+      ast::expr_loop_body(block) {
+        let rty = structurally_resolved_type(fcx, expr.span, expected);
+        let inner_ty = alt check ty::get(rty).struct {
+          ty::ty_fn(fty) {
+            demand::simple(fcx, expr.span, fty.output, ty::mk_bool(tcx));
+            ty::mk_fn(tcx, {output: ty::mk_nil(tcx) with fty})
+          }
+        };
+        check_expr_with(fcx, block, inner_ty);
+        let block_ty = structurally_resolved_type(
+            fcx, expr.span, ty::node_id_to_type(tcx, block.id));
+        alt check ty::get(block_ty).struct {
+          ty::ty_fn(fty) {
+            write_ty(tcx, expr.id, ty::mk_fn(tcx, {output: ty::mk_bool(tcx)
+                                                   with fty}));
+          }
+        }
+      }
       ast::expr_block(b) {
         // If this is an unchecked block, turn off purity-checking
         bot = check_block(fcx, b);

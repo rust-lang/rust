@@ -303,6 +303,7 @@ enum expr_ {
     expr_alt(@expr, [arm], alt_mode),
     expr_fn(proto, fn_decl, blk, @capture_clause),
     expr_fn_block(fn_decl, blk),
+    expr_loop_body(@expr),
     expr_block(blk),
 
     /*

@@ -718,9 +718,7 @@ fn C_nil() -> ValueRef {
 }
 
 fn C_bool(b: bool) -> ValueRef {
-    if b {
-        ret C_integral(T_bool(), 1u64, False);
-    } else { ret C_integral(T_bool(), 0u64, False); }
+    C_integral(T_bool(), if b { 1u64 } else { 0u64 }, False)
 }
 
 fn C_i32(i: i32) -> ValueRef {

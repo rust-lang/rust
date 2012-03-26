@@ -1403,13 +1403,37 @@ fn parse_else_expr(p: parser) -> @ast::expr {
 }
 
 fn parse_for_expr(p: parser) -> @ast::expr {
-    let lo = p.last_span.lo;
-    let decl = parse_local(p, false, false);
-    expect_word(p, "in");
-    let seq = parse_expr(p);
-    let body = parse_block_no_value(p);
-    let mut hi = body.span.hi;
-    ret mk_expr(p, lo, hi, ast::expr_for(decl, seq, body));
+    let lo = p.last_span;
+    // FIXME remove this kludge after migration and snapshotting (#1619)
+    let new_style = alt p.token {
+      token::IDENT(_, false) { alt p.look_ahead(1u) {
+        token::DOT | token::LPAREN { true }
+        _ { false }
+      } }
+      token::IDENT(_, true) { true }
+      _ { false }
+    };
+    if new_style {
+        let call = parse_expr(p);
+        alt call.node {
+          ast::expr_call(f, args, true) {
+            let b_arg = vec::last(args);
+            let last = mk_expr(p, b_arg.span.lo, b_arg.span.hi,
+                               ast::expr_loop_body(b_arg));
+            @{node: ast::expr_call(f, vec::init(args) + [last], true)
+              with *call}
+          }
+          _ {
+            p.span_fatal(lo, "`for` must be followed by a block call");
+          }
+        }
+    } else {
+        let decl = parse_local(p, false, false);
+        expect_word(p, "in");
+        let seq = parse_expr(p);
+        let body = parse_block_no_value(p);
+        mk_expr(p, lo.lo, body.span.hi, ast::expr_for(decl, seq, body))
+    }
 }
 
 fn parse_while_expr(p: parser) -> @ast::expr {

@@ -338,10 +338,12 @@ fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
         for eo: option<@expr> in args { visit_expr_opt(eo, e, v); }
       }
       expr_binary(_, a, b) { v.visit_expr(a, e, v); v.visit_expr(b, e, v); }
-      expr_unary(_, a) { v.visit_expr(a, e, v); }
+      expr_addr_of(_, x) | expr_unary(_, x) | expr_loop_body(x) |
+      expr_check(_, x) | expr_assert(x) {
+        v.visit_expr(x, e, v);
+      }
       expr_lit(_) { }
       expr_cast(x, t) { v.visit_expr(x, e, v); v.visit_ty(t, e, v); }
-      expr_addr_of(_, x) { v.visit_expr(x, e, v); }
       expr_if(x, b, eo) {
         v.visit_expr(x, e, v);
         v.visit_block(b, e, v);
@@ -353,7 +355,7 @@ fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
         visit_expr_opt(eo, e, v);
       }
       expr_while(x, b) { v.visit_expr(x, e, v); v.visit_block(b, e, v); }
-      expr_loop(b)     { v.visit_block(b, e, v); }
+      expr_loop(b) { v.visit_block(b, e, v); }
       expr_for(dcl, x, b) {
         v.visit_local(dcl, e, v);
         v.visit_expr(x, e, v);
@@ -394,8 +396,6 @@ fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
         v.visit_expr(lv, e, v);
         v.visit_expr(x, e, v);
       }
-      expr_check(_, x) { v.visit_expr(x, e, v); }
-      expr_assert(x) { v.visit_expr(x, e, v); }
       expr_mac(mac) { visit_mac(mac, e, v); }
     }
 }

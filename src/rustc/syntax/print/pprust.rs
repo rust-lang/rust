@@ -855,9 +855,16 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         pclose(s);
       }
       ast::expr_call(func, args, has_block) {
+        let mut base_args = args;
+        let blk = if has_block {
+            let blk_arg = vec::pop(base_args);
+            alt blk_arg.node {
+              ast::expr_loop_body(_) { word_nbsp(s, "for"); }
+              _ {}
+            }
+            some(blk_arg)
+        } else { none };
         print_expr_parens_if_not_bot(s, func);
-        let mut base_args = args, blk = none;
-        if has_block { blk = some(vec::pop(base_args)); }
         if !has_block || vec::len(base_args) > 0u {
             popen(s);
             commasep_exprs(s, inconsistent, base_args);
@@ -988,6 +995,9 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         word(s.s, "{");
         print_fn_block_args(s, decl);
         print_possibly_embedded_block(s, body, block_block_fn, indent_unit);
+      }
+      ast::expr_loop_body(body) {
+        print_expr(s, body);
       }
       ast::expr_block(blk) {
         // containing cbox, will be closed by print-block at }

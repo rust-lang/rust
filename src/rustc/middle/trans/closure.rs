@@ -367,6 +367,7 @@ fn trans_expr_fn(bcx: block,
                  sp: span,
                  id: ast::node_id,
                  cap_clause: ast::capture_clause,
+                 is_loop_body: bool,
                  dest: dest) -> block {
     let _icx = bcx.insn_ctxt("closure::trans_expr_fn");
     if dest == ignore { ret bcx; }
@@ -385,6 +386,8 @@ fn trans_expr_fn(bcx: block,
         trans_closure(ccx, sub_path, decl, body, llfn, no_self,
                       bcx.fcx.param_substs, id, {|fcx|
             load_environment(fcx, cdata_ty, cap_vars, ck);
+        }, {|bcx|
+            if is_loop_body { Store(bcx, C_bool(true), bcx.fcx.llretptr); }
         });
         llbox
     };
@@ -395,7 +398,7 @@ fn trans_expr_fn(bcx: block,
       ast::proto_uniq { trans_closure_env(ty::ck_uniq) }
       ast::proto_bare {
         trans_closure(ccx, sub_path, decl, body, llfn, no_self, none,
-                      id, {|_fcx|});
+                      id, {|_fcx|}, {|_bcx|});
         C_null(T_opaque_box_ptr(ccx))
       }
     };

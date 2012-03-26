@@ -2990,20 +2990,24 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
       }
       ast::expr_addr_of(_, x) { ret trans_addr_of(bcx, x, dest); }
       ast::expr_fn(proto, decl, body, cap_clause) {
-        ret closure::trans_expr_fn(
-            bcx, proto, decl, body, e.span, e.id, *cap_clause, dest);
+        ret closure::trans_expr_fn(bcx, proto, decl, body, e.span, e.id,
+                                   *cap_clause, false, dest);
       }
       ast::expr_fn_block(decl, body) {
-        alt ty::get(expr_ty(bcx, e)).struct {
+        alt check ty::get(expr_ty(bcx, e)).struct {
           ty::ty_fn({proto, _}) {
             #debug("translating fn_block %s with type %s",
                    expr_to_str(e), ty_to_str(tcx, expr_ty(bcx, e)));
-            let cap_clause = { copies: [], moves: [] };
-            ret closure::trans_expr_fn(
-                bcx, proto, decl, body, e.span, e.id, cap_clause, dest);
+            ret closure::trans_expr_fn(bcx, proto, decl, body, e.span, e.id,
+                                       {copies: [], moves: []}, false, dest);
           }
-          _ {
-            fail "type of fn block is not a function!";
+        }
+      }
+      ast::expr_loop_body(b@@{node: ast::expr_fn_block(decl, body), _}) {
+        alt check ty::get(expr_ty(bcx, e)).struct {
+          ty::ty_fn({proto, _}) {
+            ret closure::trans_expr_fn(bcx, proto, decl, body, e.span, b.id,
+                                       {copies: [], moves: []}, true, dest);
           }
         }
       }
@@ -3375,7 +3379,16 @@ fn trans_break_cont(bcx: block, to_end: bool)
           }
           _ {}
         }
-        unwind = alt check unwind.parent { parent_some(cx) { cx } };
+        unwind = alt unwind.parent {
+          parent_some(cx) { cx }
+          // This is a return from a loop body block
+          parent_none {
+            Store(bcx, C_bool(!to_end), bcx.fcx.llretptr);
+            cleanup_and_leave(bcx, none, some(bcx.fcx.llreturn));
+            Unreachable(bcx);
+            ret bcx;
+          }
+        };
     }
     cleanup_and_Br(bcx, unwind, target.llbb);
     Unreachable(bcx);
@@ -3895,7 +3908,8 @@ fn trans_closure(ccx: @crate_ctxt, path: path, decl: ast::fn_decl,
                  ty_self: self_arg,
                  param_substs: option<param_substs>,
                  id: ast::node_id,
-                 maybe_load_env: fn(fn_ctxt)) {
+                 maybe_load_env: fn(fn_ctxt),
+                 finish: fn(block)) {
     let _icx = ccx.insn_ctxt("trans_closure");
     set_uwtable(llfndecl);
 
@@ -3932,6 +3946,7 @@ fn trans_closure(ccx: @crate_ctxt, path: path, decl: ast::fn_decl,
     } else {
         bcx = trans_block(bcx, body, save_in(fcx.llretptr));
     }
+    finish(bcx);
     cleanup_and_Br(bcx, bcx_top, fcx.llreturn);
 
     // Insert the mandatory first few basic blocks before lltop.
@@ -3957,7 +3972,7 @@ fn trans_fn(ccx: @crate_ctxt,
         if ccx.sess.opts.extra_debuginfo {
             debuginfo::create_function(fcx);
         }
-    });
+    }, {|_bcx|});
     if do_time {
         let end = time::get_time();
         log_fn_time(ccx, path_str(path), start, end);

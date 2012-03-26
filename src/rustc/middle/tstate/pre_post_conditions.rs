@@ -360,10 +360,6 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
         find_pre_post_exprs(fcx, es, e.id);
       }
       expr_tup(elts) { find_pre_post_exprs(fcx, elts, e.id); }
-      expr_copy(a) {
-        find_pre_post_expr(fcx, a);
-        copy_pre_post(fcx.ccx, e.id, a);
-      }
       expr_move(lhs, rhs) { handle_update(fcx, e, lhs, rhs, oper_move); }
       expr_swap(lhs, rhs) { handle_update(fcx, e, lhs, rhs, oper_swap); }
       expr_assign(lhs, rhs) { handle_update(fcx, e, lhs, rhs, oper_assign); }
@@ -408,17 +404,10 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
                               expr_postcond(fcx.ccx, l));
         } else { find_pre_post_exprs(fcx, [l, r], e.id); }
       }
-      expr_unary(_, operand) {
-        find_pre_post_expr(fcx, operand);
-        copy_pre_post(fcx.ccx, e.id, operand);
-      }
-      expr_addr_of(_, operand) {
-        find_pre_post_expr(fcx, operand);
-        copy_pre_post(fcx.ccx, e.id, operand);
-      }
-      expr_cast(operand, _) {
-        find_pre_post_expr(fcx, operand);
-        copy_pre_post(fcx.ccx, e.id, operand);
+      expr_addr_of(_, x) | expr_cast(x, _) | expr_unary(_, x) |
+      expr_loop_body(x) | expr_assert(x) | expr_copy(x) {
+        find_pre_post_expr(fcx, x);
+        copy_pre_post(fcx.ccx, e.id, x);
       }
       expr_while(test, body) {
         find_pre_post_expr(fcx, test);
@@ -512,10 +501,6 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
                             then everything is true! */
                          prestate, false_postcond(num_local_vars));
       }
-      expr_assert(p) {
-        find_pre_post_expr(fcx, p);
-        copy_pre_post(fcx.ccx, e.id, p);
-      }
       expr_check(_, p) {
         find_pre_post_expr(fcx, p);
         copy_pre_post(fcx.ccx, e.id, p);
@@ -527,12 +512,6 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
       expr_if_check(p, conseq, maybe_alt) {
         join_then_else(fcx, p, conseq, maybe_alt, e.id, if_check);
       }
-
-
-
-
-
-
       expr_bind(operator, maybe_args) {
         let mut args = [];
         let mut cmodes = callee_modes(fcx, operator.id);

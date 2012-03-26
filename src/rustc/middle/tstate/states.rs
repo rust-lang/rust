@@ -422,7 +422,6 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
                                                     init_assign), elts,
                                       return_val);
       }
-      expr_copy(a) { ret find_pre_post_state_sub(fcx, pres, a, e.id, none); }
       expr_move(lhs, rhs) {
         ret find_pre_post_state_two(fcx, pres, lhs, rhs, e.id, oper_move);
       }
@@ -598,17 +597,10 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
         }
         ret changed | set_poststate_ann(fcx.ccx, e.id, a_post);
       }
-      expr_field(val, _, _) {
-        ret find_pre_post_state_sub(fcx, pres, val, e.id, none);
-      }
-      expr_unary(_, operand) {
-        ret find_pre_post_state_sub(fcx, pres, operand, e.id, none);
-      }
-      expr_addr_of(_, operand) {
-        ret find_pre_post_state_sub(fcx, pres, operand, e.id, none);
-      }
-      expr_cast(operand, _) {
-        ret find_pre_post_state_sub(fcx, pres, operand, e.id, none);
+      expr_field(x, _, _) | expr_loop_body(x) | expr_unary(_, x) |
+      expr_addr_of(_, x) | expr_assert(x) | expr_cast(x, _) |
+      expr_copy(x) {
+        ret find_pre_post_state_sub(fcx, pres, x, e.id, none);
       }
       expr_fail(maybe_fail_val) {
         // FIXME Should factor out this code,
@@ -621,9 +613,6 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
                 set_poststate_ann(fcx.ccx, e.id, post) |
                 option::maybe(maybe_fail_val, false, {|fail_val|
                         find_pre_post_state_expr(fcx, pres, fail_val)});
-      }
-      expr_assert(p) {
-        ret find_pre_post_state_sub(fcx, pres, p, e.id, none);
       }
       expr_check(_, p) {
         /* predicate p holds after this expression executes */
