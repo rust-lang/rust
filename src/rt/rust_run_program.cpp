@@ -168,7 +168,7 @@ rust_run_program(const char* argv[],
         *_NSGetEnviron() = (char **)envp;
     }
     execvp(argv[0], (char * const *)argv);
-#elif __FreeBSD__
+#elif __FreeBSD__ || (defined(__linux__) && defined(RUST_SNAPSHOT))
     if (envp) { environ = (char **)envp; }
     execvp(argv[0], (char * const *)argv);
 #else

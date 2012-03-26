@@ -27,6 +27,15 @@
 LIBUV_FLAGS_i386 = -m32 -fPIC
 LIBUV_FLAGS_x86_64 = -m64 -fPIC
 
+# when we're doing a snapshot build, we intentionally degrade as many
+# features in libuv and the runtime as possible, to ease portability.
+
+SNAP_DEFINES:=
+ifneq ($(strip $(findstring snap,$(MAKECMDGOALS))),)
+	SNAP_DEFINES=-DRUST_SNAPSHOT
+endif
+
+
 define DEF_RUNTIME_TARGETS
 
 ######################################################################
@@ -107,7 +116,8 @@ RUNTIME_LIBS_$(1) := $$(LIBUV_LIB_$(1))
 
 rt/$(1)/%.o: rt/%.cpp $$(RUNTIME_HDR_$(1)) $$(MKFILE_DEPS)
 	@$$(call E, compile: $$@)
-	$$(Q)$$(call CFG_COMPILE_C_$(1), $$@, $$(RUNTIME_INCS_$(1))) $$<
+	$$(Q)$$(call CFG_COMPILE_C_$(1), $$@, $$(RUNTIME_INCS_$(1)) \
+                 $$(SNAP_DEFINES)) $$<
 
 rt/$(1)/%.o: rt/%.S  $$(RUNTIME_HDR_$(1)) $$(MKFILE_DEPS) \
                      $$(LLVM_CONFIG_$$(CFG_HOST_TRIPLE))
@@ -144,7 +154,7 @@ endif
 
 $$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS)
 	$$(Q)$$(MAKE) -C $$(S)mk/libuv/$$(LIBUV_ARCH_$(1))/$$(LIBUV_OSTYPE_$(1)) \
-		CFLAGS="$$(LIBUV_FLAGS_$$(HOST_$(1)))" \
+		CFLAGS="$$(LIBUV_FLAGS_$$(HOST_$(1))) $$(SNAP_DEFINES)" \
         LDFLAGS="$$(LIBUV_FLAGS_$$(HOST_$(1)))" \
 		CC="$$(CFG_GCCISH_CROSS)$$(CC)" \
 		CXX="$$(CFG_GCCISH_CROSS)$$(CXX)" \
