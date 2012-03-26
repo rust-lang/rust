@@ -692,7 +692,7 @@ fn make_drop_glue(bcx: block, v0: ValueRef, t: ty::t) {
 fn get_res_dtor(ccx: @crate_ctxt, did: ast::def_id, substs: [ty::t])
    -> ValueRef {
     let _icx = ccx.insn_ctxt("trans_res_dtor");
-    let did = if did.crate != ast::local_crate && substs.len() > 0u {
+    let did = if did.crate != ast::local_crate {
         maybe_instantiate_inline(ccx, did)
     } else { did };
     assert did.crate == ast::local_crate;
