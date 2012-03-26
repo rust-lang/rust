@@ -1308,7 +1308,7 @@ iterate over all characters, which `str::chars` helps with), and
 for those that do, many don't need actual characters, and can operate
 on bytes. For algorithms that do really need to index by character,
 there's the option to convert your string to a character vector (using
-`str::to_chars`).
+`str::chars`).
 
 Like vectors, strings are always unique. You can wrap them in a shared
 box to share them. Unlike vectors, there is no mutable variant of
