@@ -2761,30 +2761,76 @@ fn trans_call_inner(in_cx: block, fn_expr_ty: ty::t, ret_ty: ty::t,
 
 fn invoke(bcx: block, llfn: ValueRef, llargs: [ValueRef]) -> block {
     let _icx = bcx.insn_ctxt("invoke_");
-    // FIXME: May be worth turning this into a plain call when there are no
-    // cleanups to run
     if bcx.unreachable { ret bcx; }
-    let normal_bcx = sub_block(bcx, "normal return");
-    Invoke(bcx, llfn, llargs, normal_bcx.llbb, get_landing_pad(bcx));
-    ret normal_bcx;
+    if need_invoke(bcx) {
+        log(error, "invoking");
+        let normal_bcx = sub_block(bcx, "normal return");
+        Invoke(bcx, llfn, llargs, normal_bcx.llbb, get_landing_pad(bcx));
+        ret normal_bcx;
+    } else {
+        log(error, "calling");
+        Call(bcx, llfn, llargs);
+        ret bcx;
+    }
+}
+
+fn need_invoke(bcx: block) -> bool {
+    if have_cached_lpad(bcx) {
+        ret true;
+    }
+
+    // Walk the scopes to look for cleanups
+    let mut cur = bcx;
+    loop {
+        alt cur.kind {
+          block_scope(info) {
+            for cleanup in info.cleanups {
+                alt cleanup {
+                  clean(_, cleanup_type) | clean_temp(_, _, cleanup_type) {
+                    if cleanup_type == normal_exit_and_unwind {
+                        ret true;
+                    }
+                  }
+                }
+            }
+          }
+          _ { }
+        }
+        cur = alt cur.parent {
+          parent_some(next) { next }
+          parent_none { ret false; }
+        }
+    }
+}
+
+fn have_cached_lpad(bcx: block) -> bool {
+    let mut res = false;
+    in_lpad_scope_cx(bcx) {|info|
+        alt info.landing_pad {
+          some(_) { res = true; }
+          none { res = false; }
+        }
+    }
+    ret res;
+}
+
+fn in_lpad_scope_cx(bcx: block, f: fn(scope_info)) {
+    let mut bcx = bcx;
+    loop {
+        alt bcx.kind {
+          block_scope(info) {
+            if info.cleanups.len() > 0u || bcx.parent == parent_none {
+                f(info); ret;
+            }
+          }
+          _ {}
+        }
+        bcx = block_parent(bcx);
+    }
 }
 
 fn get_landing_pad(bcx: block) -> BasicBlockRef {
     let _icx = bcx.insn_ctxt("get_landing_pad");
-    fn in_lpad_scope_cx(bcx: block, f: fn(scope_info)) {
-        let mut bcx = bcx;
-        loop {
-            alt bcx.kind {
-              block_scope(info) {
-                if info.cleanups.len() > 0u || bcx.parent == parent_none {
-                    f(info); ret;
-                }
-              }
-              _ {}
-            }
-            bcx = block_parent(bcx);
-        }
-    }
 
     let mut cached = none, pad_bcx = bcx; // Guaranteed to be set below
     in_lpad_scope_cx(bcx) {|info|

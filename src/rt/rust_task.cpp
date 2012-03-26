@@ -571,7 +571,6 @@ when unwinding through __morestack).
  */
 void
 rust_task::reset_stack_limit() {
-    I(thread, on_rust_stack());
     uintptr_t sp = get_sp();
     // Have to do the rest on the C stack because it involves
     // freeing stack segments, logging, etc.
