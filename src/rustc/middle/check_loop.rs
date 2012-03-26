@@ -1,0 +1,54 @@
+import syntax::ast::*;
+import syntax::visit;
+import driver::session::session;
+
+type ctx = {in_loop: bool, can_ret: bool};
+
+fn check_crate(sess: session, crate: @crate) {
+    visit::visit_crate(*crate, {in_loop: false,can_ret: true}, visit::mk_vt(@{
+        visit_item: {|i, _cx, v|
+            visit::visit_item(i, {in_loop: false, can_ret: true}, v);
+        },
+        visit_expr: {|e: @expr, cx: ctx, v: visit::vt<ctx>|
+            alt e.node {
+              expr_for(_, e, b) | expr_while(e, b) | expr_do_while(b, e) {
+                v.visit_expr(e, cx, v);
+                v.visit_block(b, {in_loop: true with cx}, v);
+              }
+              expr_loop(b) {
+                v.visit_block(b, {in_loop: true with cx}, v);
+              }
+              expr_fn(_, _, _, _) {
+                visit::visit_expr(e, {in_loop: false, can_ret: true}, v);
+              }
+              expr_fn_block(fn_decl, blk) {
+                visit::visit_expr(e, {in_loop: false, can_ret: false}, v);
+              }
+              expr_break {
+                if !cx.in_loop {
+                    sess.span_err(e.span, "`break` outside of loop");
+                }
+              }
+              expr_cont {
+                if !cx.in_loop {
+                    sess.span_err(e.span, "`cont` outside of loop");
+                }
+              }
+              expr_ret(oe) {
+                if !cx.can_ret {
+                    sess.span_err(e.span, "`ret` in block function");
+                }
+                visit::visit_expr_opt(oe, cx, v);
+              }
+              expr_be(re) {
+                if !cx.can_ret {
+                    sess.span_err(e.span, "`be` in block function");
+                }
+                v.visit_expr(re, cx, v);
+              }
+              _ { visit::visit_expr(e, cx, v); }
+            }
+        }
+        with *visit::default_visitor()
+    }));
+}
