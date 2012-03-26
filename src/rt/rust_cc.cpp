@@ -20,6 +20,9 @@
 
 using namespace std;
 
+void
+annihilate_box(rust_task *task, rust_opaque_box *box);
+
 namespace cc {
 
 // Internal reference count computation
@@ -448,183 +451,9 @@ mark::do_mark(rust_task *task,
     }
 }
 
-class sweep : public shape::data<sweep,shape::ptr> {
-    friend class shape::data<sweep,shape::ptr>;
-
-    sweep(const sweep &other, const shape::ptr &in_dp)
-        : shape::data<sweep,shape::ptr>(other.task, other.align,
-                                        other.sp, other.params,
-                                        other.tables, in_dp) {}
-
-    sweep(const sweep &other,
-          const uint8_t *in_sp,
-          const shape::type_param *in_params,
-          const rust_shape_tables *in_tables = NULL)
-        : shape::data<sweep,shape::ptr>(other.task,
-                                        other.align,
-                                        in_sp,
-                                        in_params,
-                                        in_tables ? in_tables : other.tables,
-                                        other.dp) {}
-
-    sweep(const sweep &other,
-          const uint8_t *in_sp,
-          const shape::type_param *in_params,
-          const rust_shape_tables *in_tables,
-          shape::ptr in_dp)
-        : shape::data<sweep,shape::ptr>(other.task,
-                                        other.align,
-                                        in_sp,
-                                        in_params,
-                                        in_tables,
-                                        in_dp) {}
-
-    sweep(rust_task *in_task,
-          bool in_align,
-          const uint8_t *in_sp,
-          const shape::type_param *in_params,
-          const rust_shape_tables *in_tables,
-          uint8_t *in_data)
-        : shape::data<sweep,shape::ptr>(in_task, in_align, in_sp,
-                                        in_params, in_tables, in_data) {}
-
-    void walk_vec2(bool is_pod, uint16_t sp_size) {
-        void *vec = shape::get_dp<void *>(dp);
-        walk_vec2(is_pod, get_vec_data_range(dp));
-        task->kernel->free(vec);
-    }
-
-    void walk_vec2(bool is_pod,
-                  const std::pair<shape::ptr,shape::ptr> &data_range) {
-        sweep sub(*this, data_range.first);
-        shape::ptr data_end = sub.end_dp = data_range.second;
-        while (sub.dp < data_end) {
-            sub.walk_reset();
-            sub.align = true;
-        }
-    }
-
-    void walk_tag2(shape::tag_info &tinfo, uint32_t tag_variant) {
-        shape::data<sweep,shape::ptr>::walk_variant1(tinfo, tag_variant);
-    }
-
-    void walk_uniq2() {
-        void *x = *((void **)dp);
-        // free contents first:
-        shape::data<sweep,shape::ptr>::walk_uniq_contents1();
-        // now free the ptr:
-        task->kernel->free(x);
-    }
-
-    void walk_box2() {
-        // In sweep phase, do not walk the box contents.  There is an
-        // outer loop walking all remaining boxes, and this box may well
-        // have been freed already!
-    }
-
-    void walk_fn2(char code) {
-        switch (code) {
-          case shape::SHAPE_UNIQ_FN: {
-              fn_env_pair pair = *(fn_env_pair*)dp;
-
-              if (pair.env) {
-                  // free closed over data:
-                  shape::data<sweep,shape::ptr>::walk_fn_contents1();
-                  
-                  // now free the ptr:
-                  task->kernel->free(pair.env);
-              }
-              break;
-          }
-          case shape::SHAPE_BOX_FN: {
-              // the box will be visited separately:
-              shape::bump_dp<void*>(dp); // skip over the code ptr
-              walk_box2();               // walk over the environment ptr
-              break;
-          }
-          case shape::SHAPE_BARE_FN:         // Does not close over data.
-          case shape::SHAPE_STACK_FN: break; // Not reachable from heap.
-          default: abort();
-        }
-    }
-
-    void walk_obj2() {
-        return;
-    }
-
-    void walk_iface2() {
-        walk_box2();
-    }
-
-    void walk_tydesc2(char kind) {
-        switch(kind) {
-          case shape::SHAPE_TYDESC:
-          case shape::SHAPE_SEND_TYDESC:
-            break;
-          default: abort();
-        }
-    }
-
-    struct run_dtor_args {
-        const shape::rust_fn *dtor;
-        void *data;
-    };
-
-    typedef void (*dtor)(void **retptr, void *env, void *dptr);
-
-    static void run_dtor(run_dtor_args *args) {
-        dtor f = (dtor)args->dtor;
-        f(NULL, args->dtor->env, args->data);
-    }
-
-    void walk_res2(const shape::rust_fn *dtor, unsigned n_params,
-                   const shape::type_param *params, const uint8_t *end_sp,
-                   bool live) {
-        void *data = (void*)(uintptr_t)dp;
-        // Switch back to the Rust stack to run the destructor
-        run_dtor_args args = {dtor, data};
-        task->call_on_rust_stack((void*)&args, (void*)run_dtor);
-
-        while (this->sp != end_sp) {
-            this->walk();
-            align = true;
-        }
-    }
-
-    void walk_subcontext2(sweep &sub) { sub.walk(); }
-
-    void walk_uniq_contents2(sweep &sub) { sub.walk(); }
-
-    void walk_struct2(const uint8_t *end_sp) {
-        while (this->sp != end_sp) {
-            this->walk();
-            align = true;
-        }
-    }
-
-    void walk_variant2(shape::tag_info &tinfo, uint32_t variant_id,
-                      const std::pair<const uint8_t *,const uint8_t *>
-                      variant_ptr_and_end) {
-        sweep sub(*this, variant_ptr_and_end.first, tinfo.params);
-
-        const uint8_t *variant_end = variant_ptr_and_end.second;
-        while (sub.sp < variant_end) {
-            sub.walk();
-            align = true;
-        }
-    }
-
-    template<typename T>
-    inline void walk_number2() { /* no-op */ }
-
-public:
-    static void do_sweep(rust_task *task,
-                         const std::set<rust_opaque_box*> &marked);
-};
-
 void
-sweep::do_sweep(rust_task *task,
-                const std::set<rust_opaque_box*> &marked) {
+do_sweep(rust_task *task,
+         const std::set<rust_opaque_box*> &marked) {
     boxed_region *boxed = &task->boxed;
     rust_opaque_box *box = boxed->first_live_alloc();
     while (box != NULL) {
@@ -632,19 +461,7 @@ sweep::do_sweep(rust_task *task,
         rust_opaque_box *box_next = box->next;
         if (marked.find(box) == marked.end()) {
             LOG(task, gc, "object is part of a cycle: %p", box);
-
-            const type_desc *tydesc = box->td;
-            uint8_t *p = (uint8_t*) box_body(box);
-            shape::arena arena;
-            shape::type_param *params =
-                shape::type_param::from_tydesc_and_data(tydesc, p, arena);
-
-            sweep sweep(task, true, tydesc->shape,
-                        params, tydesc->shape_tables,
-                        p);
-            sweep.walk();
-
-            boxed->free(box);
+            annihilate_box(task, box);
         }
         box = box_next;
     }
@@ -664,7 +481,7 @@ do_cc(rust_task *task) {
     std::set<rust_opaque_box*> marked;
     mark::do_mark(task, roots, marked);
 
-    sweep::do_sweep(task, marked);
+    do_sweep(task, marked);
 }
 
 void
