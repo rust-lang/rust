@@ -96,12 +96,6 @@ cleanup_task(cleanup_args *args) {
     bool threw_exception = args->threw_exception;
     rust_task *task = a->task;
 
-    cc::do_cc(task);
-    annihilate_boxes(task);
-    cc::do_final_cc(task);
-
-    task->die();
-
     {
         scoped_lock with(task->kill_lock);
         if (task->killed && !threw_exception) {
@@ -109,6 +103,20 @@ cleanup_task(cleanup_args *args) {
             threw_exception = true;
         }
     }
+
+    // FIXME: For performance we should do the annihilator instead
+    // of the cycle collector even under normal termination, but
+    // since that would hide memory management errors (like not derefing
+    // boxes), it needs to be disableable in debug builds.
+    if (threw_exception) {
+        // FIXME: When the annihilator is more powerful and successfully
+        // runs resource destructors, etc. we can get rid of this cc
+        cc::do_cc(task);
+        annihilate_boxes(task);
+    }
+    cc::do_final_cc(task);
+
+    task->die();
 
     task->notify(!threw_exception);
 
