@@ -46,9 +46,10 @@ syn match	rustFloat		display contained "\.\d\+\(e[-+]\=\d\+\)\=[fl]\=\>"
 "floating point number, without dot, with exponent
 syn match	rustFloat		display contained "\d\+e[-+]\=\d\+[fl]\=\>"
 
-syn match   rustCharacter   "'[^']*'"
-
 syn case match
+
+syn match   rustCharacter   "'\([^'\\]\|\\\(['nrt\\\"]\|x\x\{2}\|u\x\{4}\|U\x\{8}\)\)'"
+
 syn region    rustComment     start="/\*" end="\*/" contains=rustComment
 syn region    rustComment     start="//" skip="\\$" end="$" keepend
 
