@@ -2730,7 +2730,7 @@ fn trans_call_inner(in_cx: block, fn_expr_ty: ty::t, ret_ty: ty::t,
         then one or more of the args has
         type _|_. Since that means it diverges, the code
         for the call itself is unreachable. */
-        bcx = invoke_full(bcx, faddr, llargs);
+        bcx = invoke(bcx, faddr, llargs);
         alt dest {
           ignore {
             if llvm::LLVMIsUndef(llretslot) != lib::llvm::True {
@@ -2759,31 +2759,13 @@ fn trans_call_inner(in_cx: block, fn_expr_ty: ty::t, ret_ty: ty::t,
     }
 }
 
-fn invoke(bcx: block, llfn: ValueRef,
-          llargs: [ValueRef]) -> block {
-    ret invoke_(bcx, llfn, llargs, Invoke);
-}
-
-fn invoke_full(bcx: block, llfn: ValueRef, llargs: [ValueRef])
-    -> block {
-    ret invoke_(bcx, llfn, llargs, Invoke);
-}
-
-fn invoke_(bcx: block, llfn: ValueRef, llargs: [ValueRef],
-           invoker: fn(block, ValueRef, [ValueRef],
-                       BasicBlockRef, BasicBlockRef)) -> block {
+fn invoke(bcx: block, llfn: ValueRef, llargs: [ValueRef]) -> block {
     let _icx = bcx.insn_ctxt("invoke_");
     // FIXME: May be worth turning this into a plain call when there are no
     // cleanups to run
     if bcx.unreachable { ret bcx; }
     let normal_bcx = sub_block(bcx, "normal return");
-    /*io::println("fn: " + lib::llvm::type_to_str(bcx.ccx().tn,
-                                                val_ty(llfn)));
-    for a in llargs {
-        io::println(" a: " + lib::llvm::type_to_str(bcx.ccx().tn,
-                                                    val_ty(a)));
-    }*/
-    invoker(bcx, llfn, llargs, normal_bcx.llbb, get_landing_pad(bcx));
+    Invoke(bcx, llfn, llargs, normal_bcx.llbb, get_landing_pad(bcx));
     ret normal_bcx;
 }
 
