@@ -707,7 +707,7 @@ impl resolve_methods for infer_ctxt {
 
     fn resolve_var<T:copy to_str>(
         vb: vals_and_bindings<T>, bot_guard: fn(T)->bool,
-        vid: int) -> fres<T> {
+        vid: int, unbound: fn() -> fres<T>) -> fres<T> {
 
         let {root:_, bounds} = self.get(vb, vid as uint);
 
@@ -724,16 +724,24 @@ impl resolve_methods for infer_ctxt {
           { ub:_, lb:some(t) } if !bot_guard(t) { ok(t) }
           { ub:some(t), lb:_ } { ok(t) }
           { ub:_, lb:some(t) } { ok(t) }
-          { ub:none, lb:none } { self.rerr(vid) }
+          { ub:none, lb:none } { unbound() }
         }
     }
 
     fn resolve_ty_var(vid: int) -> fres<ty::t> {
-        ret self.resolve_var(self.vb, {|t| type_is_bot(t)}, vid);
+        ret self.resolve_var(
+            self.vb,
+            {|t| type_is_bot(t) },
+            vid,
+            {|| ok(ty::mk_bot(self.tcx)) });
     }
 
     fn resolve_region_var(rid: int) -> fres<ty::region> {
-        ret self.resolve_var(self.rb, {|_t| false}, rid);
+        ret self.resolve_var(
+            self.rb,
+            {|_t| false },
+            rid,
+            {|| err(rid) });
     }
 
     fn resolve_ty(typ: ty::t) -> fres<ty::t> {
