@@ -230,8 +230,12 @@ rust_uv_helper_sockaddr_in_size() {
 }
 
 extern "C" uv_stream_t*
-rust_uv_get_stream_handle_for_connect(uv_connect_t* connect) {
+rust_uv_get_stream_handle_from_connect_req(uv_connect_t* connect) {
 	return connect->handle;
+}
+extern "C" uv_stream_t*
+rust_uv_get_stream_handle_from_write_req(uv_write_t* write_req) {
+	return write_req->handle;
 }
 
 extern "C" uv_buf_t
@@ -275,6 +279,16 @@ rust_uv_set_data_for_req(uv_req_t* req, void* data) {
 	req->data = data;
 }
 
+extern "C" char*
+rust_uv_get_base_from_buf(uv_buf_t buf) {
+	return buf.base;
+}
+
+extern "C" size_t
+rust_uv_get_len_from_buf(uv_buf_t buf) {
+	return buf.len;
+}
+
 extern "C" uv_err_t
 rust_uv_last_error(uv_loop_t* loop) {
 	return uv_last_error(loop);
@@ -301,6 +315,21 @@ rust_uv_write(uv_write_t* req, uv_stream_t* handle,
 			  uv_buf_t* bufs, int buf_cnt,
 			  uv_write_cb cb) {
 	return uv_write(req, handle, bufs, buf_cnt, cb);
+}
+extern "C" int
+rust_uv_read_start(uv_stream_t* stream, uv_alloc_cb on_alloc,
+				   uv_read_cb on_read) {
+    return uv_read_start(stream, on_alloc, on_read);
+}
+
+extern "C" char*
+rust_uv_malloc_buf_base_of(size_t suggested_size) {
+	return (char*) current_kernel_malloc(sizeof(char)*suggested_size,
+									   "uv_buf_t base");
+}
+extern "C" void
+rust_uv_free_base_of_buf(uv_buf_t buf) {
+	current_kernel_free(buf.base);
 }
 
 extern "C" struct sockaddr_in
