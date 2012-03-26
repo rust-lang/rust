@@ -96,25 +96,27 @@ fn type_needs(cx: ctx, use: uint, ty: ty::t) {
 
 fn type_needs_inner(cx: ctx, use: uint, ty: ty::t) {
     ty::maybe_walk_ty(ty) {|ty|
-        if !ty::type_has_params(ty) { ret false; }
-        alt ty::get(ty).struct {
-          ty::ty_fn(_) | ty::ty_ptr(_) | ty::ty_rptr(_, _) |
-          ty::ty_box(_) | ty::ty_iface(_, _) { ret false; }
-          ty::ty_enum(did, tps) {
-            for v in *ty::enum_variants(cx.ccx.tcx, did) {
-                for aty in v.args {
-                    let t = ty::substitute_type_params(cx.ccx.tcx, tps, aty);
-                    type_needs_inner(cx, use, t);
+        if ty::type_has_params(ty) {
+            alt ty::get(ty).struct {
+              ty::ty_fn(_) | ty::ty_ptr(_) | ty::ty_rptr(_, _) |
+              ty::ty_box(_) | ty::ty_iface(_, _) { false }
+              ty::ty_enum(did, tps) {
+                for v in *ty::enum_variants(cx.ccx.tcx, did) {
+                    for aty in v.args {
+                        let t = ty::substitute_type_params(cx.ccx.tcx, tps,
+                                                           aty);
+                        type_needs_inner(cx, use, t);
+                    }
                 }
+                false
+              }
+              ty::ty_param(n, _) {
+                cx.uses[n] |= use;
+                false
+              }
+              _ { true }
             }
-            ret false;
-          }
-          ty::ty_param(n, _) {
-            cx.uses[n] |= use;
-          }
-          _ {}
-        }
-        ret true;
+        } else { false }
     }
 }
 

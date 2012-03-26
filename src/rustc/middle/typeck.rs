@@ -2169,43 +2169,45 @@ fn lookup_method_inner(fcx: @fn_ctxt, expr: @ast::expr,
 
     let mut result = none, complained = false;
     std::list::iter(fcx.ccx.impl_map.get(expr.id)) {|impls|
-        if option::is_some(result) { ret; }
-        for @{did, methods, _} in *impls {
-            alt vec::find(methods, {|m| m.ident == name}) {
-              some(m) {
-                let mut {n_tps, ty: self_ty} = impl_self_ty(tcx, did);
-                let mut {vars, ty: self_ty} = if n_tps > 0u {
-                    bind_params(fcx, self_ty, n_tps)
-                } else {
-                    {vars: [], ty: self_ty}
-                };
-
-                self_ty = universally_quantify_regions(tcx, self_ty);
-                let ty = universally_quantify_regions(tcx, ty);
-
-                alt unify::unify(fcx, self_ty, ty) {
-                  result::ok(_) {
-                    if option::is_some(result) {
-                        // FIXME[impl] score specificity to resolve ambiguity?
-                        if !complained {
-                           tcx.sess.span_err(expr.span, "multiple applicable \
-                                                         methods in scope");
-                           complained = true;
-                        }
+        if option::is_none(result) {
+            for @{did, methods, _} in *impls {
+                alt vec::find(methods, {|m| m.ident == name}) {
+                  some(m) {
+                    let mut {n_tps, ty: self_ty} = impl_self_ty(tcx, did);
+                    let mut {vars, ty: self_ty} = if n_tps > 0u {
+                        bind_params(fcx, self_ty, n_tps)
                     } else {
-                        result = some({
-                            method_ty: ty_from_did(tcx, m.did),
-                            n_tps: m.n_tps,
-                            substs: vars,
-                            origin: method_static(m.did),
-                            self_sub: none
-                        });
+                        {vars: [], ty: self_ty}
+                    };
+
+                    self_ty = universally_quantify_regions(tcx, self_ty);
+                    let ty = universally_quantify_regions(tcx, ty);
+
+                    alt unify::unify(fcx, self_ty, ty) {
+                      result::ok(_) {
+                        if option::is_some(result) {
+                            // FIXME[impl] score specificity?
+                            if !complained {
+                                tcx.sess.span_err(expr.span,
+                                                  "multiple applicable \
+                                                   methods in scope");
+                                complained = true;
+                            }
+                        } else {
+                            result = some({
+                                method_ty: ty_from_did(tcx, m.did),
+                                n_tps: m.n_tps,
+                                substs: vars,
+                                origin: method_static(m.did),
+                                self_sub: none
+                            });
+                        }
+                      }
+                      result::err(_) {}
                     }
                   }
-                  result::err(_) {}
+                  _ {}
                 }
-              }
-              _ {}
             }
         }
     }
@@ -3786,40 +3788,43 @@ mod vtable {
           _ {
             let mut found = none;
             std::list::iter(isc) {|impls|
-                if option::is_some(found) { ret; }
-                for im in *impls {
-                    let match = alt ty::impl_iface(tcx, im.did) {
-                      some(ity) {
-                        alt check ty::get(ity).struct {
-                          ty::ty_iface(id, _) { id == iface_id }
-                        }
-                      }
-                      _ { false }
-                    };
-                    if match {
-                        let {n_tps, ty: self_ty} = impl_self_ty(tcx, im.did);
-                        let {vars, ty: self_ty} = if n_tps > 0u {
-                            bind_params(fcx, self_ty, n_tps)
-                        } else { {vars: [], ty: self_ty} };
-                        let im_bs = ty::lookup_item_type(tcx, im.did).bounds;
-                        alt unify::unify(fcx, ty, self_ty) {
-                          result::ok(_) {
-                            if option::is_some(found) {
-                                tcx.sess.span_err(
-                                    sp, "multiple applicable implementations \
-                                         in scope");
-                            } else {
-                                connect_iface_tps(fcx, sp, vars, iface_tps,
-                                                  im.did);
-                                let params = vec::map(vars, {|t|
-                                    fixup_ty(fcx, sp, t)});
-                                let subres = lookup_vtables(
-                                    fcx, isc, sp, im_bs, params, false);
-                                found = some(vtable_static(im.did, params,
-                                                           subres));
+                if option::is_none(found) {
+                    for im in *impls {
+                        let match = alt ty::impl_iface(tcx, im.did) {
+                          some(ity) {
+                            alt check ty::get(ity).struct {
+                              ty::ty_iface(id, _) { id == iface_id }
                             }
                           }
-                          result::err(_) {}
+                          _ { false }
+                        };
+                        if match {
+                            let {n_tps, ty: self_ty} =
+                                impl_self_ty(tcx, im.did);
+                            let {vars, ty: self_ty} = if n_tps > 0u {
+                                bind_params(fcx, self_ty, n_tps)
+                            } else { {vars: [], ty: self_ty} };
+                            let im_bs =
+                                ty::lookup_item_type(tcx, im.did).bounds;
+                            alt unify::unify(fcx, ty, self_ty) {
+                              result::ok(_) {
+                                if option::is_some(found) {
+                                    tcx.sess.span_err(
+                                        sp, "multiple applicable implemen\
+                                             tations in scope");
+                                } else {
+                                    connect_iface_tps(fcx, sp, vars,
+                                                      iface_tps, im.did);
+                                    let params = vec::map(vars, {|t|
+                                        fixup_ty(fcx, sp, t)});
+                                    let subres = lookup_vtables(
+                                        fcx, isc, sp, im_bs, params, false);
+                                    found = some(vtable_static(im.did, params,
+                                                               subres));
+                                }
+                              }
+                              result::err(_) {}
+                            }
                         }
                     }
                 }

@@ -2162,13 +2162,14 @@ fn find_impls_in_view_item(e: env, vi: @ast::view_item,
             if vec::len(*pt) == 1u {
                 option::may(sc) {|sc|
                     list::iter(sc) {|level|
-                        if vec::len(found) > 0u { ret; }
-                        for imp in *level {
-                            if imp.ident == pt[0] {
-                                found += [@{ident: name with *imp}];
+                        if vec::len(found) == 0u {
+                            for imp in *level {
+                                if imp.ident == pt[0] {
+                                    found += [@{ident: name with *imp}];
+                                }
                             }
+                            if vec::len(found) > 0u { impls += found; }
                         }
-                        if vec::len(found) > 0u { impls += found; }
                     }
                 }
             } else {

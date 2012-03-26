@@ -71,21 +71,22 @@ fn find_last_uses(c: @crate, def_map: resolve::def_map,
     visit::visit_crate(*c, cx, v);
     let mini_table = std::map::int_hash();
     cx.last_uses.items {|key, val|
-        if !val { ret; }
-        alt key {
-          path(id) {
-            mini_table.insert(id, is_last_use);
-            let def_node = ast_util::def_id_of_def(def_map.get(id)).node;
-            cx.spill_map.insert(def_node, ());
-          }
-          close(fn_id, local_id) {
-            cx.spill_map.insert(local_id, ());
-            let known = alt check mini_table.find(fn_id) {
-              some(closes_over(ids)) { ids }
-              none { [] }
-            };
-            mini_table.insert(fn_id, closes_over(known + [local_id]));
-          }
+        if val {
+            alt key {
+              path(id) {
+                mini_table.insert(id, is_last_use);
+                let def_node = ast_util::def_id_of_def(def_map.get(id)).node;
+                cx.spill_map.insert(def_node, ());
+              }
+              close(fn_id, local_id) {
+                cx.spill_map.insert(local_id, ());
+                let known = alt check mini_table.find(fn_id) {
+                  some(closes_over(ids)) { ids }
+                  none { [] }
+                };
+                mini_table.insert(fn_id, closes_over(known + [local_id]));
+              }
+            }
         }
     }
     ret (mini_table, cx.spill_map);
@@ -211,15 +212,16 @@ fn visit_stmt(s: @stmt, cx: ctx, v: visit::vt<ctx>) {
     alt s.node {
       stmt_decl(@{node: decl_local(ls), _}, _) {
         shadow_in_current(cx, {|id|
+            let mut rslt = false;
             for local in ls {
                 let mut found = false;
                 pat_util::pat_bindings(cx.tcx.def_map, local.node.pat,
                                        {|pid, _a, _b|
                     if pid == id { found = true; }
                 });
-                if found { ret true; }
+                if found { rslt = true; break; }
             }
-            false
+            rslt
         });
       }
       _ {}
@@ -236,8 +238,7 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
       proto_any | proto_block {
         visit_block(func, cx, {||
             shadow_in_current(cx, {|id|
-                for arg in decl.inputs { if arg.id == id { ret true; } }
-                false
+                vec::any(decl.inputs, {|arg| arg.id == id})
             });
             visit::visit_fn(fk, decl, body, sp, id, cx, v);
         });

@@ -155,6 +155,8 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
 
     time(time_passes, "block-use checking",
          bind middle::block_use::check_crate(ty_cx, crate));
+    time(time_passes, "loop checking",
+         bind middle::check_loop::check_crate(sess, crate));
     time(time_passes, "function usage",
          bind fn_usage::check_crate_fn_usage(ty_cx, crate));
     time(time_passes, "alt checking",

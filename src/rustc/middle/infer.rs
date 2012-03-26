@@ -654,8 +654,8 @@ impl unify_methods for infer_ctxt {
                         self.constrs(a, b)
                     }
                 } else {
-                    ret self.uerr(ty::terr_constr_len(a_constrs.len(),
-                                                b_constrs.len()));
+                    self.uerr(ty::terr_constr_len(a_constrs.len(),
+                                                  b_constrs.len()))
                 }
             }
           }

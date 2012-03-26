@@ -399,7 +399,7 @@ Loop through a rope, char by char, until the end.
 fn iter_chars(rope: rope, it: fn(char)) {
     loop_chars(rope) {|x|
         it(x);
-        ret true
+        true
     };
 }
 
@@ -1043,9 +1043,9 @@ mod node {
 
     fn loop_chars(node: @node, it: fn(char) -> bool) -> bool {
         ret loop_leaves(node, {|leaf|
-            ret str::all_between(*leaf.content,
-                                 leaf.byte_offset,
-                                 leaf.byte_len, it)
+            str::all_between(*leaf.content,
+                             leaf.byte_offset,
+                             leaf.byte_len, it)
         })
     }
 

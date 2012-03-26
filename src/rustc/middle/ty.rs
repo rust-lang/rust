@@ -1036,12 +1036,7 @@ fn type_allows_implicit_copy(cx: ctxt, ty: t) -> bool {
             mt.mutbl != ast::m_imm
           }
           ty_rec(fields) {
-            for field in fields {
-                if field.mt.mutbl != ast::m_imm {
-                    ret true;
-                }
-            }
-            false
+            vec::any(fields, {|f| f.mt.mutbl != ast::m_imm})
           }
           _ { false }
         }
@@ -1050,12 +1045,12 @@ fn type_allows_implicit_copy(cx: ctxt, ty: t) -> bool {
 
 fn type_structurally_contains_uniques(cx: ctxt, ty: t) -> bool {
     ret type_structurally_contains(cx, ty, {|sty|
-        ret alt sty {
-          ty_uniq(_) { ret true; }
+        alt sty {
+          ty_uniq(_) { true }
           ty_vec(_) { true }
           ty_str { true }
-          _ { ret false; }
-        };
+          _ { false }
+        }
     });
 }
 

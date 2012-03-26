@@ -36,6 +36,7 @@ mod middle {
     mod resolve;
     mod typeck;
     mod fn_usage;
+    mod check_loop;
     mod check_alt;
     mod check_const;
     mod lint;

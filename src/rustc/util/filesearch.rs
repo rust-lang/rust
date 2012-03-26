@@ -134,21 +134,20 @@ fn get_cargo_root_nearest() -> result<path, str> {
         let mut dirpath = path::split(dirname);
         let cwd_cargo = path::connect(cwd, ".cargo");
         let mut par_cargo = path::connect(dirname, ".cargo");
+        let mut rslt = result::ok(cwd_cargo);
 
-        if os::path_is_dir(cwd_cargo) || cwd_cargo == p {
-            ret result::ok(cwd_cargo);
-        }
-
-        while vec::is_not_empty(dirpath) && par_cargo != p {
-            if os::path_is_dir(par_cargo) {
-                ret result::ok(par_cargo);
+        if !os::path_is_dir(cwd_cargo) && cwd_cargo != p {
+            while vec::is_not_empty(dirpath) && par_cargo != p {
+                if os::path_is_dir(par_cargo) {
+                    rslt = result::ok(par_cargo);
+                    break;
+                }
+                vec::pop(dirpath);
+                dirname = path::dirname(dirname);
+                par_cargo = path::connect(dirname, ".cargo");
             }
-            vec::pop(dirpath);
-            dirname = path::dirname(dirname);
-            par_cargo = path::connect(dirname, ".cargo");
         }
-
-        result::ok(cwd_cargo)
+        rslt
     }
 }
 

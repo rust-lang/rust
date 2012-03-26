@@ -2772,11 +2772,12 @@ fn get_landing_pad(bcx: block) -> BasicBlockRef {
     in_lpad_scope_cx(bcx) {|info|
         // If there is a valid landing pad still around, use it
         alt info.landing_pad {
-          some(target) { cached = some(target); ret; }
-          none {}
+          some(target) { cached = some(target); }
+          none {
+            pad_bcx = sub_block(bcx, "unwind");
+            info.landing_pad = some(pad_bcx.llbb);
+          }
         }
-        pad_bcx = sub_block(bcx, "unwind");
-        info.landing_pad = some(pad_bcx.llbb);
     }
     alt cached { some(b) { ret b; } none {} } // Can't return from block above
     // The landing pad return type (the type being propagated). Not sure what
@@ -3374,13 +3375,7 @@ fn trans_break_cont(bcx: block, to_end: bool)
           }
           _ {}
         }
-        unwind = alt check unwind.parent {
-          parent_some(cx) { cx }
-          parent_none {
-            bcx.sess().bug
-                (if to_end { "break" } else { "cont" } + " outside a loop");
-          }
-        };
+        unwind = alt check unwind.parent { parent_some(cx) { cx } };
     }
     cleanup_and_Br(bcx, unwind, target.llbb);
     Unreachable(bcx);

@@ -180,7 +180,7 @@ fn trans_append(bcx: block, vec_ty: ty::t, lhsptr: ValueRef,
                            load_if_immediate(bcx, addr, unit_ty), unit_ty);
         Store(bcx, InBoundsGEP(bcx, write_ptr, [C_int(ccx, 1)]),
               write_ptr_ptr);
-        ret bcx;
+        bcx
     })
 }
 

@@ -1,4 +1,4 @@
-// error-pattern:break outside a loop
+// error-pattern:`break` outside of loop
 fn main() {
     let pth = break;
 

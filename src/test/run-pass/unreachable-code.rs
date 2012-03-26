@@ -11,7 +11,7 @@ fn call_id_2() { id(true) && id(ret); }
 
 fn call_id_3() { id(ret) && id(ret); }
 
-fn call_id_4() { while id(break) { } }
+fn call_id_4() { while id(ret) { } }
 
 fn bind_id_1() { bind id(fail); }
 

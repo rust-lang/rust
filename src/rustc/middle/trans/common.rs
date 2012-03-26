@@ -265,7 +265,7 @@ fn revoke_clean(cx: block, val: ValueRef) {
                     vec::slice(info.cleanups, 0u, i) +
                     vec::slice(info.cleanups, i + 1u, info.cleanups.len());
                 scope_clean_changed(info);
-                ret;
+                break;
               }
               _ {}
             }
