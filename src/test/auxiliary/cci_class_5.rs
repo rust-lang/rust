@@ -1,4 +1,5 @@
-// error-pattern:attempted access of field nap on type
+mod kitties {
+
 class cat {
   priv {
     let mutable meows : uint;
@@ -10,7 +11,4 @@ class cat {
   new(in_x : uint, in_y : int) { meows = in_x; how_hungry = in_y; }
 }
 
-fn main() {
-  let nyan : cat = cat(52u, 99);
-  nyan.nap();
 }

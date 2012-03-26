@@ -934,8 +934,8 @@ mod collect {
           }
           ast_map::node_item(@{node: ast::item_class(_,its,_), _}, _) {
               let (_,ms) = split_class_items(its);
-              // Handling all methods here
-              let ps = ast_util::ignore_privacy(ms);
+              // Only public methods need to be stored
+              let ps = ast_util::public_methods(ms);
               store_methods::<@ast::method>(tcx, id, ps, {|m|
                           ty_of_method(tcx, m_collect, m)});
           }
