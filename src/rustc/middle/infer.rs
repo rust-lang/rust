@@ -105,6 +105,12 @@ impl of to_str for ty::mt {
     }
 }
 
+impl of to_str for ty::region {
+    fn to_str(cx: infer_ctxt) -> str {
+        util::ppaux::region_to_str(cx.tcx, self)
+    }
+}
+
 impl<V:copy to_str> of to_str for bound<V> {
     fn to_str(cx: infer_ctxt) -> str {
         alt self {
@@ -756,11 +762,15 @@ impl resolve_methods for infer_ctxt {
         ret self.resolve_var(self.vb, {|t| type_is_bot(t)}, vid);
     }
 
+    fn resolve_region_var(rid: int) -> fres<ty::region> {
+        ret self.resolve_var(self.rb, {|_t| false}, rid);
+    }
+
     fn resolve_ty(typ: ty::t) -> fres<ty::t> {
         alt ty::get(typ).struct {
           ty::ty_var(vid) { self.resolve_ty_var(vid) }
           ty::ty_rptr(ty::re_var(rid), base_ty) {
-            alt self.resolve_region(rid as int) {
+            alt self.resolve_region_var(rid as int) {
               err(terr)  { err(terr) }
               ok(region) {
                 self.rok(ty::mk_rptr(self.tcx, region, base_ty))
@@ -825,25 +835,12 @@ impl resolve_methods for infer_ctxt {
     // FIXME: These should be integrated with the two functions above instead
     // of being such blatant lazy duplicates.
 
-    fn resolve_region(rid: int) -> fres<ty::region> {
-        let {root:_, bounds} = self.get_region(rid as uint);
-
-        // See comments in resolve_ty above re. nonobviousness.
-
-        alt bounds {
-          { ub:_, lb:some(r) } |
-          { ub:some(r), lb:_ } |
-          { ub:_, lb:some(r) } { ok(r) }
-          { ub:none, lb:none } { self.rerr(rid) }
-        }
-    }
-
     fn subst_regions(unresolved: @mutable option<int>,
                      regions_seen: std::list::list<int>,
                      rid: int) -> ty::region {
         // Should really return a fixup_result instead of a t, but fold_ty
         // doesn't allow returning anything but a t.
-        alt self.resolve_region(rid) {
+        alt self.resolve_region_var(rid) {
           err(rid) {
             *unresolved = some(rid);
             ret ty::re_var(rid as uint);
