@@ -28,6 +28,7 @@ Grahame Bowland <grahame@angrygoats.net>
 Graham Fawcett <fawcett@uwindsor.ca>
 Haitao Li <lihaitao@gmail.com>
 Ian D. Bollinger <ian.bollinger@gmail.com>
+Jacob Parker <j3parker@csclub.uwaterloo.ca>
 Jason Orendorff <jorendorff@mozilla.com>
 Jeff Balogh <jbalogh@mozilla.com>
 Jeff Muizelaar <jmuizelaar@mozilla.com>
