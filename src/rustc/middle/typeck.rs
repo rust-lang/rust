@@ -2414,8 +2414,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
     // A generic function for checking assignment expressions
     fn check_assignment(fcx: @fn_ctxt, _sp: span, lhs: @ast::expr,
                         rhs: @ast::expr, id: ast::node_id) -> bool {
-        let t = next_ty_var(fcx);
-        let bot = check_expr_with(fcx, lhs, t) | check_expr_with(fcx, rhs, t);
+        let mut bot = check_expr(fcx, lhs);
+        bot |= check_expr_with(fcx, rhs, expr_ty(fcx.ccx.tcx, lhs));
         write_ty(fcx.ccx.tcx, id, ty::mk_nil(fcx.ccx.tcx));
         ret bot;
     }
