@@ -84,6 +84,42 @@ fn scope_contains(region_map: @region_map, superscope: ast::node_id,
     ret true;
 }
 
+fn nearest_common_ancestor(region_map: @region_map, scope_a: ast::node_id,
+                           scope_b: ast::node_id) -> option<ast::node_id> {
+
+    fn ancestors_of(region_map: @region_map, scope: ast::node_id)
+                    -> [ast::node_id] {
+        let mut result = [scope];
+        let mut scope = scope;
+        loop {
+            alt region_map.parents.find(scope) {
+                none { ret result; }
+                some(superscope) {
+                    result += [superscope];
+                    scope = superscope;
+                }
+            }
+        }
+    }
+
+    if scope_a == scope_b { ret some(scope_a); }
+
+    let a_ancestors = ancestors_of(region_map, scope_a);
+    let b_ancestors = ancestors_of(region_map, scope_b);
+    let mut a_index = vec::len(a_ancestors) - 1u;
+    let mut b_index = vec::len(b_ancestors) - 1u;
+    while a_ancestors[a_index] == b_ancestors[b_index] {
+        a_index -= 1u;
+        b_index -= 1u;
+    }
+
+    if a_index == vec::len(a_ancestors) {
+        ret none;
+    }
+
+    ret some(a_ancestors[a_index + 1u]);
+}
+
 fn get_inferred_region(cx: ctxt, sp: syntax::codemap::span) -> ty::region {
     // We infer to the caller region if we're at item scope
     // and to the block region if we're at block scope.
