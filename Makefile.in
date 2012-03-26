@@ -48,21 +48,14 @@ STAGES = 0 1 2 3
 # Residual auto-configuration
 ######################################################################
 
+# Recursive wildcard function
+# http://blog.jgc.org/2011/07/gnu-make-recursive-wildcard-function.html
+rwildcard=$(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2) \
+  $(filter $(subst *,%,$2),$d))
+
 include config.mk
 
-ifdef IGNORE_MKFILES
-  MKFILE_DEPS :=
-else
-  OUR_MKFILES := Makefile config.mk $(wildcard $(CFG_SRC_DIR)/mk/*.mk)
-  3RDPARTY_MKFILES := $(CFG_SRC_DIR)/src/libuv/Makefile \
-                      $(wildcard $(CFG_SRC_DIR)/src/libuv/*.mk)
-  GEN_MKFILES := $(wildcard $(CFG_SRC_DIR)/mk/libuv/*/*/*) \
-                 $(wildcard $(CFG_SRC_DIR)/mk/libuv/mac/src/libuv/*) \
-                 $(wildcard $(CFG_SRC_DIR)/mk/libuv/mac/src/libuv/*) \
-                 $(wildcard $(CFG_SRC_DIR)/mk/libuv/mac/src/libuv/*)
-  MKFILE_DEPS := $(OUR_MKFILES) $(3RDPARTY_MKFILES) $(GEN_MKFILES)
-endif
-
+MKFILE_DEPS := config.stamp $(call rwildcard,$(CFG_SRC_DIR)mk/,*)
 NON_HOST_TRIPLES = $(filter-out $(CFG_HOST_TRIPLE),$(CFG_TARGET_TRIPLES))
 
 ifneq ($(MAKE_RESTARTS),)
@@ -435,12 +428,15 @@ endif
 ifeq ($(NEED_GIT_RECONFIG),0)
 else
 # If the submodules have changed then always execute config.mk
-.PHONY: config.mk
+.PHONY: config.stamp
 endif
 
-config.mk: $(S)configure $(S)Makefile.in $(S)src/snapshots.txt
+Makefile config.mk: config.stamp
+
+config.stamp: $(S)configure $(S)Makefile.in $(S)src/snapshots.txt
 	@$(call E, cfg: reconfiguring)
 	$(Q)$(S)configure $(CFG_CONFIGURE_ARGS)
+	$(Q)touch $@
 
 
 ######################################################################
