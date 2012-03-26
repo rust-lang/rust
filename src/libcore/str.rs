@@ -1019,10 +1019,15 @@ fn findn_str_between (haystack: str, needle: str,
                       nn: uint,
                       start: uint, end: uint) -> [uint] {
 
-    let BM = boyer_moore_search(haystack, needle, nn, start, end);
-    let SS = simple_search(haystack, needle, nn, start, end);
-    assert SS == BM;
-    ret SS;
+    let hl = str::len(haystack);
+    let nl = str::len(needle);
+
+    // numbers subject to change...
+    if hl > 10*nl + 1500 && nl > 10 {
+        ret boyer_moore_search(haystack, needle, nn, start, end);
+    } else {
+        ret simple_search(haystack, needle, nn, start, end);
+    }
 }
 
 #[doc = "
