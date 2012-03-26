@@ -63,7 +63,10 @@ CFG_INFO := $(info cfg: make restarts: $(MAKE_RESTARTS))
 endif
 
 CFG_INFO := $(info cfg: shell host triple $(CFG_HOST_TRIPLE))
+
+ifneq ($(wildcard $(NON_HOST_TRIPLES)),)
 CFG_INFO := $(info cfg: non host triples $(NON_HOST_TRIPLES))
+endif
 
 ifdef CFG_DISABLE_OPTIMIZE
   $(info cfg: disabling rustc optimization (CFG_DISABLE_OPTIMIZE))
