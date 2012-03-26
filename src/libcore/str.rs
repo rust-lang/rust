@@ -1023,7 +1023,9 @@ fn findn_str_between (haystack: str, needle: str,
     let nl = str::len(needle);
 
     // numbers subject to change...
-    if hl > 10*nl + 1500 && nl > 10 {
+    if hl > 10u * nl + 1500u
+       && nl > 10u
+    {
         ret boyer_moore_search(haystack, needle, nn, start, end);
     } else {
         ret simple_search(haystack, needle, nn, start, end);
