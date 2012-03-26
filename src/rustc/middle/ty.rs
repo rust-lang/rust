@@ -915,25 +915,56 @@ fn type_needs_unwind_cleanup(cx: ctxt, ty: t) -> bool {
       none { }
     }
 
-    // Prevent infinite recursion
-    cx.needs_unwind_cleanup_cache.insert(ty, false);
+    let tycache = new_ty_hash();
+    let needs_unwind_cleanup =
+        type_needs_unwind_cleanup_(cx, ty, tycache, false);
+    cx.needs_unwind_cleanup_cache.insert(ty, needs_unwind_cleanup);
+    ret needs_unwind_cleanup;
+}
 
+fn type_needs_unwind_cleanup_(cx: ctxt, ty: t,
+                              tycache: map::hashmap<t, ()>,
+                              encountered_box: bool) -> bool {
+
+    // Prevent infinite recursion
+    alt tycache.find(ty) {
+      some(_) { ret false; }
+      none { tycache.insert(ty, ()); }
+    }
+
+    let mut encountered_box = encountered_box;
     let mut needs_unwind_cleanup = false;
     maybe_walk_ty(ty) {|ty|
         alt get(ty).struct {
+          ty_box(_) | ty_opaque_box {
+            encountered_box = true;
+            true
+          }
           ty_nil | ty_bot | ty_bool |
           ty_int(_) | ty_uint(_) | ty_float(_) |
-          ty_box(_) | ty_rec(_) | ty_tup(_) {
+          ty_rec(_) | ty_tup(_) | ty_ptr(_) {
             true
           }
           ty_enum(did, tps) {
             for v in *enum_variants(cx, did) {
                 for aty in v.args {
                     let t = substitute_type_params(cx, tps, aty);
-                    needs_unwind_cleanup |= type_needs_unwind_cleanup(cx, t);
+                    needs_unwind_cleanup |=
+                        type_needs_unwind_cleanup_(cx, t, tycache,
+                                                   encountered_box);
                 }
             }
             !needs_unwind_cleanup
+          }
+          ty_uniq(_) | ty_str | ty_vec(_) | ty_res(_, _, _) {
+            // Once we're inside a box, the annihilator will find
+            // it and destroy it.
+            if !encountered_box {
+                needs_unwind_cleanup = true;
+                false
+            } else {
+                true
+            }
           }
           _ {
             needs_unwind_cleanup = true;
@@ -941,8 +972,6 @@ fn type_needs_unwind_cleanup(cx: ctxt, ty: t) -> bool {
           }
         }
     }
-
-    cx.needs_unwind_cleanup_cache.insert(ty, needs_unwind_cleanup);
 
     ret needs_unwind_cleanup;
 }
