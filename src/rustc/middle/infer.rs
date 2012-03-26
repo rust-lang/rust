@@ -832,9 +832,6 @@ impl resolve_methods for infer_ctxt {
         }
     }
 
-    // FIXME: These should be integrated with the two functions above instead
-    // of being such blatant lazy duplicates.
-
     fn subst_regions(unresolved: @mutable option<int>,
                      regions_seen: std::list::list<int>,
                      rid: int) -> ty::region {
