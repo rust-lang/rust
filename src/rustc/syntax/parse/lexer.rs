@@ -537,7 +537,7 @@ fn next_token_inner(rdr: reader) -> token::token {
       '/' { ret binop(rdr, token::SLASH); }
       '^' { ret binop(rdr, token::CARET); }
       '%' { ret binop(rdr, token::PERCENT); }
-      c { rdr.fatal(#fmt["unkown start of token: %d", c as int]); }
+      c { rdr.fatal(#fmt["unknown start of token: %d", c as int]); }
     }
 }
 
