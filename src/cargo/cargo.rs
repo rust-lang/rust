@@ -657,9 +657,8 @@ fn install_uuid_specific(c: cargo, wd: str, src: str, uuid: str) {
             if vec::any(copy s.packages, { |p|
                 if p.uuid == uuid {
                     install_package(c, wd, p);
-                    ret true;
-                }
-                ret false;
+                    true
+                } else { false }
             }) { ret; }
         }
         _ { }
@@ -673,9 +672,8 @@ fn install_named_specific(c: cargo, wd: str, src: str, name: str) {
             if vec::any(copy s.packages, { |p|
                 if p.name == name {
                     install_package(c, wd, p);
-                    ret true;
-                }
-                ret false;
+                    true
+                } else { false }
             }) { ret; }
         }
         _ { }
