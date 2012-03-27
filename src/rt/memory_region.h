@@ -16,6 +16,7 @@
 // 0 --- no headers, no debugging support
 // 1 --- support poison, but do not track allocations
 // 2 --- track allocations in detail
+// 3 --- record backtraces of every allocation
 //
 // NB: please do not commit code with level 2. It's
 // hugely expensive and should only be used as a last resort.
@@ -31,6 +32,10 @@ private:
         int index;
         const char *tag;
         uint32_t size;
+#       if RUSTRT_TRACK_ALLOCATIONS >= 3
+        void *bt[32];
+        int btframes;
+#       endif
 #       endif
     };
 

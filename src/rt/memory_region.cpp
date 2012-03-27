@@ -1,6 +1,10 @@
 #include "rust_internal.h"
 #include "memory_region.h"
 
+#if RUSTRT_TRACK_ALLOCATIONS >= 3
+#include <execinfo.h>
+#endif
+
 #if RUSTRT_TRACK_ALLOCATIONS >= 1
 // For some platforms, 16 byte alignment is required.
 #  define PTR_SIZE 16
@@ -148,6 +152,13 @@ memory_region::~memory_region() {
                        header->tag,
                        (uintptr_t) get_data(header));
                 ++leak_count;
+
+#               if RUSTRT_TRACK_ALLOCATIONS >= 3
+                if (_detailed_leaks) {
+                    backtrace_symbols_fd(header->bt + 1,
+                                         header->btframes - 1, 2);
+                }
+#               endif
             }
         }
         assert(leak_count == _live_allocations);
@@ -197,6 +208,12 @@ memory_region::claim_alloc(void *mem) {
     if (_synchronized) { _lock.lock(); }
     alloc->index = _allocation_list.append(alloc);
     if (_synchronized) { _lock.unlock(); }
+#   endif
+
+#   if RUSTRT_TRACK_ALLOCATIONS >= 3
+    if (_detailed_leaks) {
+        alloc->btframes = ::backtrace(alloc->bt, 32);
+    }
 #   endif
 
     add_alloc();
