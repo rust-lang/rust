@@ -985,7 +985,9 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
           param_bounds_to_kind(cx.ty_param_bounds.get(did.node))
       }
       ty_constr(t, _) { type_kind(cx, t) }
-      _ { cx.sess.bug("bad type in type_kind"); }
+      ty_class(_, _) { fail "FIXME"; }
+      ty_var(_) { fail "FIXME"; }
+      ty_self(_) { kind_noncopyable }
     };
 
     cx.kind_cache.insert(ty, result);
