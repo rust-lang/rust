@@ -99,8 +99,8 @@ fn visit_expr(cx: @ctx, ex: @ast::expr, sc: scope, v: vt<scope>) {
     let mut handled = true;
     alt ex.node {
       ast::expr_call(f, args, _) {
-        check_call(*cx, sc, f, args);
-        handled = false;
+        check_call(cx, sc, f, args, v);
+        visit_expr(cx, f, sc, v);
       }
       ast::expr_alt(input, arms, _) { check_alt(*cx, input, arms, sc, v); }
       ast::expr_for(decl, seq, blk) {
@@ -163,33 +163,6 @@ fn visit_block(cx: @ctx, b: ast::blk, sc: scope, v: vt<scope>) {
     visit::visit_expr_opt(b.node.expr, sc, v);
 }
 
-fn add_bindings_for_let(cx: ctx, &bs: [binding], loc: @ast::local) {
-    alt loc.node.init {
-      some(init) {
-        if init.op == ast::init_move {
-            err(cx, loc.span, "can not move into a by-reference binding");
-        }
-        let root = expr_root(cx, init.expr, false);
-        let root_var = path_def_id(cx, root.ex);
-        if is_none(root_var) {
-            err(cx, loc.span, "a reference binding can't be \
-                               rooted in a temporary");
-        }
-        for proot in pattern_roots(cx.tcx, root.mutbl, loc.node.pat) {
-            let bnd = mk_binding(cx, proot.id, proot.span, root_var,
-                                 unsafe_set(proot.mutbl));
-            // Don't implicitly copy explicit references
-            bnd.copied = not_allowed;
-            bs += [bnd];
-        }
-      }
-      _ {
-        err(cx, loc.span, "by-reference bindings must be initialized");
-      }
-    }
-}
-
-
 fn cant_copy(cx: ctx, b: binding) -> bool {
     alt b.copied {
       not_allowed { ret true; }
@@ -209,47 +182,67 @@ fn cant_copy(cx: ctx, b: binding) -> bool {
     } else { ret true; }
 }
 
-fn check_call(cx: ctx, sc: scope, f: @ast::expr, args: [@ast::expr])
-    -> [binding] {
+// FIXME this is a really awful hack
+fn local_id_for_args(cx: ctx, args: [@ast::expr]) -> uint {
+    for vec::each(args) {|arg|
+        alt arg.node {
+          ast::expr_fn_block(decl, _) | ast::expr_fn(_, decl, _, _) |
+          ast::expr_loop_body(@{node: ast::expr_fn_block(decl, _), _}) {
+            if decl.inputs.len() > 0u {
+                ret local_id_of_node(cx, decl.inputs[0].id);
+            }
+          }
+          _ {}
+        }
+    }
+    0xFFFFFFFFu
+}
+
+fn check_call(cx: @ctx, sc: scope, f: @ast::expr, args: [@ast::expr],
+              v: vt<scope>) {
     let fty = ty::expr_ty(cx.tcx, f);
     let arg_ts = ty::ty_fn_args(fty);
-    let mut mut_roots: [{arg: uint, node: node_id}] = [];
+    let mut mut_roots: [{arg: @ast::expr, node: node_id}] = [];
     let mut bindings = [];
-    let mut i = 0u;
-    for arg_t: ty::arg in arg_ts {
-        let arg = args[i];
-        let root = expr_root(cx, arg, false);
+    let mut blocks = [], loc_id = local_id_for_args(*cx, args);
+    vec::iter2(args, arg_ts) {|arg, arg_t|
+        let root = expr_root(*cx, arg, false);
         alt ty::resolved_mode(cx.tcx, arg_t.mode) {
           ast::by_mutbl_ref {
-            alt path_def(cx, arg) {
+            alt path_def(*cx, arg) {
               some(def) {
                 let dnum = ast_util::def_id_of_def(def).node;
-                mut_roots += [{arg: i, node: dnum}];
+                mut_roots += [{arg: arg, node: dnum}];
               }
               _ { }
             }
           }
-          ast::by_ref | ast::by_val | ast::by_move | ast::by_copy { }
+          ast::by_ref | ast::by_val | ast::by_move | ast::by_copy {}
         }
-        let root_var = path_def_id(cx, root.ex);
-        let arg_copied = alt ty::resolved_mode(cx.tcx, arg_t.mode) {
-          ast::by_move | ast::by_copy { copied }
-          ast::by_mutbl_ref { not_allowed }
-          ast::by_ref | ast::by_val { not_copied }
-        };
-        bindings += [@{node_id: arg.id,
-                       span: arg.span,
-                       root_var: root_var,
-                       local_id: 0u,
-                       unsafe_tys: unsafe_set(root.mutbl),
-                       mut copied: arg_copied}];
-        i += 1u;
+        alt arg.node {
+          ast::expr_fn_block(_, _) { blocks += [arg]; }
+          ast::expr_loop_body(b) { blocks += [b]; }
+          _ {
+            let root_var = path_def_id(*cx, root.ex);
+            let arg_copied = alt ty::resolved_mode(cx.tcx, arg_t.mode) {
+              ast::by_move | ast::by_copy { copied }
+              ast::by_mutbl_ref { not_allowed }
+              ast::by_ref | ast::by_val { not_copied }
+            };
+            visit_expr(cx, arg, sc, v);
+            bindings += [@{node_id: arg.id,
+                           span: arg.span,
+                           root_var: root_var,
+                           local_id: loc_id,
+                           unsafe_tys: unsafe_set(root.mutbl),
+                           mut copied: arg_copied}];
+          }
+        }
     }
-    let f_may_close =
-        alt f.node {
-          ast::expr_path(_) { def_is_local_or_self(cx.tcx.def_map.get(f.id)) }
-          _ { true }
-        };
+    let f_may_close = alt f.node {
+      ast::expr_path(_) { def_is_local_or_self(cx.tcx.def_map.get(f.id)) }
+      _ { true }
+    };
     if f_may_close {
         let mut i = 0u;
         for b in bindings {
@@ -264,9 +257,9 @@ fn check_call(cx: ctx, sc: scope, f: @ast::expr, args: [@ast::expr])
               }
               _ {}
             }
-            if unsfe && cant_copy(cx, b) {
-                err(cx, f.span, #fmt["function may alias with argument \
-                                     %u, which is not immutably rooted", i]);
+            if unsfe && cant_copy(*cx, b) {
+                err(*cx, f.span, #fmt["function may alias with argument \
+                                      %u, which is not immutably rooted", i]);
             }
             i += 1u;
         }
@@ -274,33 +267,34 @@ fn check_call(cx: ctx, sc: scope, f: @ast::expr, args: [@ast::expr])
     let mut j = 0u;
     for b in bindings {
         for unsafe_ty in b.unsafe_tys {
-            let mut i = 0u;
-            for arg_t: ty::arg in arg_ts {
+            vec::iteri(arg_ts) {|i, arg_t|
                 let mut_alias =
                     (ast::by_mutbl_ref == ty::arg_mode(cx.tcx, arg_t));
-                if i != j &&
-                       ty_can_unsafely_include(cx, unsafe_ty, arg_t.ty,
-                                               mut_alias) &&
-                       cant_copy(cx, b) {
-                    err(cx, args[i].span,
-                        #fmt["argument %u may alias with argument %u, \
-                             which is not immutably rooted", i, j]);
+                alt args[i].node {
+                  ast::expr_fn_block(_, _) | ast::expr_loop_body(_) {}
+                  _ {
+                    if i != j && ty_can_unsafely_include(
+                        *cx, unsafe_ty, arg_t.ty, mut_alias) &&
+                       cant_copy(*cx, b) {
+                        err(*cx, args[i].span,
+                            #fmt["argument %u may alias with argument %u, \
+                                  which is not immutably rooted", i, j]);
+                    }
+                  }
                 }
-                i += 1u;
             }
         }
         j += 1u;
     }
-    // Ensure we're not passing a root by mut alias.
 
+    // Ensure we're not passing a root by mut alias.
     for {node: node, arg: arg} in mut_roots {
-        let mut i = 0u;
         for b in bindings {
-            if i != arg {
+            if b.node_id != arg.id {
                 alt b.root_var {
                   some(root) {
-                    if node == root && cant_copy(cx, b) {
-                        err(cx, args[arg].span,
+                    if node == root && cant_copy(*cx, b) {
+                        err(*cx, arg.span,
                             "passing a mut reference to a \
                              variable that roots another reference");
                         break;
@@ -309,10 +303,22 @@ fn check_call(cx: ctx, sc: scope, f: @ast::expr, args: [@ast::expr])
                   none { }
                 }
             }
-            i += 1u;
         }
     }
-    ret bindings;
+    // Check the bodies of block arguments against the current scope
+    if blocks.len() > 0u {
+        let inner_sc = {bs: bindings + sc.bs, invalid: sc.invalid};
+        for blk in blocks {
+            alt check blk.node {
+              ast::expr_fn_block(_, body) {
+                v.visit_block(body, inner_sc, v);
+              }
+            }
+        }
+        for binding in bindings {
+            test_scope(*cx, sc, binding, none);
+        }
+    }
 }
 
 fn check_alt(cx: ctx, input: @ast::expr, arms: [ast::arm], sc: scope,
@@ -397,7 +403,7 @@ fn check_var(cx: ctx, ex: @ast::expr, p: @ast::path, id: ast::node_id,
                 }
             }
         } else if b.node_id == my_defnum {
-            test_scope(cx, sc, b, p);
+            test_scope(cx, sc, b, some(p));
         }
     }
 }
@@ -444,7 +450,7 @@ fn check_loop(cx: ctx, sc: scope, checker: fn()) {
     *sc.invalid = new_invalid;
 }
 
-fn test_scope(cx: ctx, sc: scope, b: binding, p: @ast::path) {
+fn test_scope(cx: ctx, sc: scope, b: binding, p: option<@ast::path>) {
     let mut prob = find_invalid(b.node_id, *sc.invalid);
     alt b.root_var {
       some(dn) {
@@ -463,8 +469,12 @@ fn test_scope(cx: ctx, sc: scope, b: binding, p: @ast::path) {
           overwritten { "overwriting " + ast_util::path_name(i.path) }
           val_taken { "taking the value of " + ast_util::path_name(i.path) }
         };
-        err(cx, i.sp, msg + " will invalidate reference " +
-            ast_util::path_name(p) + ", which is still used");
+        let refname = alt p {
+          some(pt) { "reference " + ast_util::path_name(pt) +
+                        ", which is still used" }
+          none { "an argument" }
+        };
+        err(cx, i.sp, msg + " will invalidate " + refname);
     }
 }
 

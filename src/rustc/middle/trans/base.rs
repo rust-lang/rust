@@ -3677,7 +3677,7 @@ fn trans_block_cleanups(bcx: block, cleanup_cx: block) ->
     let mut bcx = bcx;
     alt check cleanup_cx.kind {
       block_scope({cleanups, _}) {
-        vec::riter(cleanups) {|cu|
+        vec::riter(copy cleanups) {|cu|
             alt cu { clean(cfn) | clean_temp(_, cfn) { bcx = cfn(bcx); } }
         }
       }
