@@ -16,8 +16,12 @@ else
     $(info cfg: no node found, omitting doc/tutorial.html)
   else
 
+doc/rust.css: rust.css
+	@$(call E, cp: $@)
+	$(Q)cp -a $< $@ 2> /dev/null
+
 DOCS += doc/rust.html
-doc/rust.html: rust.md doc/version.md doc/keywords.md $(S)doc/rust.css
+doc/rust.html: rust.md doc/version.md doc/keywords.md doc/rust.css
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
 	"$(CFG_PANDOC)" \
@@ -27,9 +31,6 @@ doc/rust.html: rust.md doc/version.md doc/keywords.md $(S)doc/rust.css
          --from=markdown --to=html \
          --css=rust.css \
          --output=$@
-	@$(call E, cp: $(S)doc/rust.css)
-	-$(Q)cp -a $(S)doc/rust.css doc/rust.css 2> /dev/null
-
   endif
 
   ifeq ($(CFG_PDFLATEX),)
@@ -71,9 +72,7 @@ doc/rust.pdf: doc/rust.tex
   else
 
 DOCS += doc/tutorial.html
-doc/tutorial.html: $(S)doc/tutorial.md $(S)doc/rust.css
-	@$(call E, cp: $(S)doc/rust.css)
-	-$(Q)cp -a $(S)doc/rust.css doc/ 2> /dev/null
+doc/tutorial.html: tutorial.md doc/rust.css
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
           $(CFG_PANDOC) --standalone --toc \
@@ -124,7 +123,7 @@ doc/$(1)/index.html: $(2) $(3) $$(RUSTDOC) doc/$(1)/rust.css
 	@$$(call E, rustdoc: $$@)
 	$(Q)$(RUSTDOC) $(2) --output-dir=doc/$(1)
 
-doc/$(1)/rust.css: $(S)doc/rust.css
+doc/$(1)/rust.css: rust.css
 	@$$(call E, cp: $$@)
 	$(Q)cp $$< $$@
 
@@ -146,7 +145,7 @@ doc/version.md: $(MKFILE_DEPS) rust.md
 	@$(call E, version-stamp: $@)
 	$(Q)echo "$(CFG_VERSION)" >$@
 
-doc/keywords.md: $(MKFILE_DEPS) rust.md
+doc/keywords.md: $(S)doc/keywords.txt $(MKFILE_DEPS) rust.md
 	@$(call E, grep -v: $$@)
 	$(Q)grep -v '^#' $< >$@
 
