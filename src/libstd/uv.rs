@@ -99,6 +99,7 @@ type uv_err_t = {
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
+#[cfg(target_os = "win32")]
 type uv_stream_t = {
     fields: uv_handle_fields
 };
@@ -107,6 +108,7 @@ type uv_stream_t = {
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
+#[cfg(target_os = "win32")]
 type uv_tcp_t = {
     fields: uv_handle_fields,
     a00: *u8, a01: *u8, a02: *u8, a03: *u8,
@@ -121,6 +123,7 @@ type uv_tcp_t = {
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
+#[cfg(target_os = "win32")]
 fn gen_stub_uv_tcp_t() -> uv_tcp_t {
     ret { fields: { loop_handle: ptr::null(), type_: 0u32,
                     close_cb: ptr::null(),
@@ -136,6 +139,7 @@ fn gen_stub_uv_tcp_t() -> uv_tcp_t {
     };
 }
 
+/*
 #[cfg(target_os = "win32")]
 type uv_tcp_t = {
     loop_handle: *libc::c_void
@@ -144,11 +148,13 @@ type uv_tcp_t = {
 fn gen_stub_uv_tcp_t() -> uv_tcp_t {
     ret { loop_handle: ptr::null() };
 }
+*/
 
 // unix size: 48
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
+#[cfg(target_os = "win32")]
 type uv_connect_t = {
     a00: *u8, a01: *u8, a02: *u8, a03: *u8,
     a04: *u8, a05: *u8
@@ -156,6 +162,7 @@ type uv_connect_t = {
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
+#[cfg(target_os = "win32")]
 fn gen_stub_uv_connect_t() -> uv_connect_t {
     ret {
         a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8, a03: 0 as *u8,
@@ -168,6 +175,7 @@ fn gen_stub_uv_connect_t() -> uv_connect_t {
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
+#[cfg(target_os = "win32")]
 type uv_buf_t = {
     base: *u8,
     len: libc::size_t
@@ -175,19 +183,11 @@ type uv_buf_t = {
 // no gen stub method.. should create
 // it via uv::direct::buf_init()
 
-#[cfg(target_os = "win32")]
-type uv_connect_t = {
-    loop_handle: *libc::c_void
-};
-#[cfg(target_os = "win32")]
-fn gen_stub_uv_connect_t() -> uv_connect_t {
-    ret { loop_handle: ptr::null() };
-}
-
 // unix size: 144
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
+#[cfg(target_os = "win32")]
 type uv_write_t = {
     fields: uv_handle_fields,
     a00: *u8, a01: *u8, a02: *u8, a03: *u8,
@@ -198,6 +198,7 @@ type uv_write_t = {
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
+#[cfg(target_os = "win32")]
 fn gen_stub_uv_write_t() -> uv_write_t {
     ret { fields: { loop_handle: ptr::null(), type_: 0u32,
                     close_cb: ptr::null(),
@@ -208,19 +209,12 @@ fn gen_stub_uv_write_t() -> uv_write_t {
         a12: 0 as *u8, a13: 0 as *u8
     };
 }
-#[cfg(target_os = "win32")]
-type uv_write_t = {
-    loop_handle: *libc::c_void
-};
-#[cfg(target_os = "win32")]
-fn gen_stub_uv_write_t() -> uv_write_t {
-    ret { loop_handle: ptr::null() };
-}
 
 // unix size: 16
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
+#[cfg(target_os = "win32")]
 type sockaddr_in = {
     mut sin_family: u16,
     mut sin_port: u16,
@@ -229,6 +223,10 @@ type sockaddr_in = {
 };
 
 // unix size: 28 .. make due w/ 32
+#[cfg(target_os = "linux")]
+#[cfg(target_os = "macos")]
+#[cfg(target_os = "freebsd")]
+#[cfg(target_os = "win32")]
 type sockaddr_in6 = {
     a0: *u8, a1: *u8,
     a2: *u8, a3: *u8
