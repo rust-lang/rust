@@ -55,7 +55,7 @@
     (dolist (word '("mod" "type" "resource" "fn" "enum" "iface" "impl"))
       (puthash word 'def table))
     (dolist (word '("if" "else" "while" "do" "for" "break" "cont" "ret" "be" "fail" "const"
-                    "check" "assert" "claim" "prove" "native" "import" "export" "let" "log"
+                    "check" "assert" "claim" "prove" "native" "import" "export" "let" "mut" "log"
                     "use" "pure" "unsafe"))
       (puthash word t table))
     (puthash "alt" 'alt table)
