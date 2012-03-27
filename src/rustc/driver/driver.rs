@@ -121,7 +121,8 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
              bind front::test::modify_for_testing(sess, crate));
     crate =
         time(time_passes, "expansion",
-             bind syntax::ext::expand::expand_crate(sess, crate));
+             bind syntax::ext::expand::expand_crate(
+                 sess.parse_sess, sess.opts.cfg, crate));
 
     if upto == cu_expand { ret {crate: crate, tcx: none}; }
 

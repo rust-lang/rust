@@ -45,7 +45,6 @@ fn syntax_expander_table() -> hashmap<str, syntax_extension> {
 }
 
 iface ext_ctxt {
-    fn session() -> driver::session::session;
     fn codemap() -> codemap;
     fn parse_sess() -> parser::parse_sess;
     fn cfg() -> ast::crate_cfg;
@@ -61,15 +60,12 @@ iface ext_ctxt {
     fn next_id() -> ast::node_id;
 }
 
-fn mk_ctxt(session: driver::session::session,
-           parse_sess: parser::parse_sess,
+fn mk_ctxt(parse_sess: parser::parse_sess,
            cfg: ast::crate_cfg) -> ext_ctxt {
-    type ctxt_repr = {session: driver::session::session,
-                      parse_sess: parser::parse_sess,
+    type ctxt_repr = {parse_sess: parser::parse_sess,
                       cfg: ast::crate_cfg,
                       mut backtrace: expn_info};
     impl of ext_ctxt for ctxt_repr {
-        fn session() -> driver::session::session { self.session }
         fn codemap() -> codemap { self.parse_sess.cm }
         fn parse_sess() -> parser::parse_sess { self.parse_sess }
         fn cfg() -> ast::crate_cfg { self.cfg }
@@ -119,7 +115,6 @@ fn mk_ctxt(session: driver::session::session,
         }
     }
     let imp : ctxt_repr = {
-        session: session,
         parse_sess: parse_sess,
         cfg: cfg,
         mut backtrace: none

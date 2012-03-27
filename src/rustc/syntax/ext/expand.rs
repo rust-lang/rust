@@ -9,6 +9,7 @@ import syntax::ast::{crate, expr_, expr_mac, mac_invoc};
 import syntax::fold::*;
 import syntax::ext::base::*;
 import syntax::ext::qquote::{qq_helper};
+import syntax::parse::parser;
 import syntax::parse::parser::parse_expr_from_source_str;
 
 
@@ -119,10 +120,11 @@ fn core_macros() -> str {
 }";
 }
 
-fn expand_crate(sess: session::session, c: @crate) -> @crate {
+fn expand_crate(parse_sess: parser::parse_sess,
+                cfg: ast::crate_cfg, c: @crate) -> @crate {
     let exts = syntax_expander_table();
     let afp = default_ast_fold();
-    let cx: ext_ctxt = mk_ctxt(sess, sess.parse_sess, sess.opts.cfg);
+    let cx: ext_ctxt = mk_ctxt(parse_sess, cfg);
     let f_pre =
         {fold_expr: bind expand_expr(exts, cx, _, _, _, afp.fold_expr),
          fold_mod: bind expand_mod_items(exts, cx, _, _, afp.fold_mod),
@@ -131,8 +133,8 @@ fn expand_crate(sess: session::session, c: @crate) -> @crate {
     let f = make_fold(f_pre);
     let cm = parse_expr_from_source_str("<core-macros>",
                                         @core_macros(),
-                                        sess.opts.cfg,
-                                        sess.parse_sess);
+                                        cfg,
+                                        parse_sess);
 
     // This is run for its side-effects on the expander env,
     // as it registers all the core macros as expanders.
