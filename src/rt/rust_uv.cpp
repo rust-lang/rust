@@ -322,6 +322,11 @@ rust_uv_read_start(uv_stream_t* stream, uv_alloc_cb on_alloc,
     return uv_read_start(stream, on_alloc, on_read);
 }
 
+extern "C" int
+rust_uv_read_stop(uv_stream_t* stream) {
+  return uv_read_stop(stream);
+}
+
 extern "C" char*
 rust_uv_malloc_buf_base_of(size_t suggested_size) {
 	return (char*) current_kernel_malloc(sizeof(char)*suggested_size,
