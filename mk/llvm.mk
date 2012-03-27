@@ -2,10 +2,6 @@
 ifdef CFG_ENABLE_FAST_MAKE
 LLVM_DEPS := $(S)/.gitmodules
 else
-# Recursive wildcard function
-# http://blog.jgc.org/2011/07/gnu-make-recursive-wildcard-function.html
-rwildcard=$(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2) \
-  $(filter $(subst *,%,$2),$d))
 
 # This is just a rough approximation of LLVM deps
 LLVM_DEPS=$(call rwildcard,$(CFG_LLVM_SRC_DIR),*cpp *hpp)
