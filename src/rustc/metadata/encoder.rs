@@ -283,7 +283,7 @@ fn encode_parent_item(ebml_w: ebml::writer, id: def_id) {
 
 fn encode_enum_variant_info(ecx: @encode_ctxt, ebml_w: ebml::writer,
                             id: node_id, variants: [variant],
-                            path: ast_map::path, index: @mutable [entry<int>],
+                            path: ast_map::path, index: @mut [entry<int>],
                             ty_params: [ty_param]) {
     let mut disr_val = 0;
     let mut i = 0;
@@ -362,9 +362,9 @@ fn encode_privacy(ebml_w: ebml::writer, privacy: privacy) {
 fn encode_info_for_class(ecx: @encode_ctxt, ebml_w: ebml::writer,
                          id: node_id, path: ast_map::path,
                          items: [@class_item],
-                         global_index: @mutable[entry<int>])
+                         global_index: @mut[entry<int>])
  -> [entry<int>] {
-    let index = @mutable [];
+    let index = @mut [];
     let tcx = ecx.ccx.tcx;
     for ci in items {
      /* We encode both private and public fields -- need to include
@@ -466,14 +466,14 @@ fn should_inline(attrs: [attribute]) -> bool {
 
 
 fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
-                        index: @mutable [entry<int>], path: ast_map::path) {
+                        index: @mut [entry<int>], path: ast_map::path) {
 
     let tcx = ecx.ccx.tcx;
     let must_write = alt item.node { item_enum(_, _) { true } _ { false } };
     if !must_write && !ecx.ccx.reachable.contains_key(item.id) { ret; }
 
     fn add_to_index_(item: @item, ebml_w: ebml::writer,
-                     index: @mutable [entry<int>]) {
+                     index: @mut [entry<int>]) {
         *index += [{val: item.id, pos: ebml_w.writer.tell()}];
     }
     let add_to_index = bind add_to_index_(item, ebml_w, index);
@@ -678,7 +678,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
 
 fn encode_info_for_native_item(ecx: @encode_ctxt, ebml_w: ebml::writer,
                                nitem: @native_item,
-                               index: @mutable [entry<int>],
+                               index: @mut [entry<int>],
                                path: ast_map::path, abi: native_abi) {
     if !ecx.ccx.reachable.contains_key(nitem.id) { ret; }
     *index += [{val: nitem.id, pos: ebml_w.writer.tell()}];
@@ -704,7 +704,7 @@ fn encode_info_for_native_item(ecx: @encode_ctxt, ebml_w: ebml::writer,
 
 fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::writer,
                          crate: @crate) -> [entry<int>] {
-    let index = @mutable [];
+    let index = @mut [];
     ebml_w.start_tag(tag_items_data);
     *index += [{val: crate_node_id, pos: ebml_w.writer.tell()}];
     encode_info_for_mod(ecx, ebml_w, crate.node.module,
@@ -752,15 +752,15 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::writer,
 
 fn create_index<T: copy>(index: [entry<T>], hash_fn: fn@(T) -> uint) ->
    [@[entry<T>]] {
-    let mut buckets: [@mutable [entry<T>]] = [];
-    uint::range(0u, 256u) {|_i| buckets += [@mutable []]; };
+    let mut buckets: [@mut [entry<T>]] = [];
+    uint::range(0u, 256u) {|_i| buckets += [@mut []]; };
     for elt: entry<T> in index {
         let h = hash_fn(elt.val);
         *buckets[h % 256u] += [elt];
     }
 
     let mut buckets_frozen = [];
-    for bucket: @mutable [entry<T>] in buckets {
+    for bucket: @mut [entry<T>] in buckets {
         buckets_frozen += [@*bucket];
     }
     ret buckets_frozen;
@@ -901,9 +901,9 @@ fn encode_crate_deps(ebml_w: ebml::writer, cstore: cstore::cstore) {
         type numname = {crate: crate_num, ident: str};
 
         // Pull the cnums and names out of cstore
-        let mut pairs: [mutable numname] = [mutable];
+        let mut pairs: [mut numname] = [mut];
         cstore::iter_crate_data(cstore) {|key, val|
-            pairs += [mutable {crate: key, ident: val.name}];
+            pairs += [mut {crate: key, ident: val.name}];
         };
 
         // Sort by cnum
@@ -919,7 +919,7 @@ fn encode_crate_deps(ebml_w: ebml::writer, cstore: cstore::cstore) {
 
         // Return just the names
         fn name(kv: numname) -> str { kv.ident }
-        // mutable -> immutable hack for vec::map
+        // mut -> immutable hack for vec::map
         let immpairs = vec::slice(pairs, 0u, vec::len(pairs));
         ret vec::map(immpairs, name);
     }

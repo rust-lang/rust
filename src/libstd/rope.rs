@@ -154,7 +154,7 @@ rope remains balanced. However, this function does not take any further
 measure to ensure that the result is balanced.
 "]
 fn concat(v: [rope]) -> rope {
-    //Copy `v` into a mutable vector
+    //Copy `v` into a mut vector
     let mut len = vec::len(v);
     if len == 0u { ret node::empty; }
     let ropes = vec::to_mut(vec::from_elem(len, v[0]));
@@ -752,7 +752,7 @@ mod node {
     * forest - The forest. This vector is progressively rewritten during
                execution and should be discarded as meaningless afterwards.
     "]
-    fn tree_from_forest_destructive(forest: [mutable @node]) -> @node {
+    fn tree_from_forest_destructive(forest: [mut @node]) -> @node {
         let mut i = 0u;
         let mut len = vec::len(forest);
         while len > 1u {
@@ -861,12 +861,12 @@ mod node {
     fn bal(node: @node) -> option<@node> {
         if height(node) < hint_max_node_height { ret option::none; }
         //1. Gather all leaves as a forest
-        let mut forest = [mutable];
+        let mut forest = [mut];
         let it = leaf_iterator::start(node);
         loop {
             alt (leaf_iterator::next(it)) {
               option::none   { break; }
-              option::some(x) { forest += [mutable @leaf(x)]; }
+              option::some(x) { forest += [mut @leaf(x)]; }
             }
         }
         //2. Rebuild tree from forest
@@ -1117,20 +1117,20 @@ mod node {
 
     mod leaf_iterator {
         type t = {
-            stack:            [mutable @node],
-            mutable stackpos: int
+            stack:            [mut @node],
+            mut stackpos: int
         };
 
         fn empty() -> t {
-            let stack : [mutable @node] = [mutable];
-            ret {stack: stack, mutable stackpos: -1}
+            let stack : [mut @node] = [mut];
+            ret {stack: stack, mut stackpos: -1}
         }
 
         fn start(node: @node) -> t {
             let stack = vec::to_mut(vec::from_elem(height(node)+1u, node));
             ret {
                 stack:             stack,
-                mutable stackpos:  0
+                mut stackpos:  0
             }
         }
 
@@ -1157,23 +1157,23 @@ mod node {
     mod char_iterator {
         type t = {
             leaf_iterator: leaf_iterator::t,
-            mutable leaf:  option<leaf>,
-            mutable leaf_byte_pos: uint
+            mut leaf:  option<leaf>,
+            mut leaf_byte_pos: uint
         };
 
         fn start(node: @node) -> t {
             ret {
                 leaf_iterator: leaf_iterator::start(node),
-                mutable leaf:          option::none,
-                mutable leaf_byte_pos: 0u
+                mut leaf:          option::none,
+                mut leaf_byte_pos: 0u
             }
         }
 
         fn empty() -> t {
             ret {
                 leaf_iterator: leaf_iterator::empty(),
-                mutable leaf:  option::none,
-                mutable leaf_byte_pos: 0u
+                mut leaf:  option::none,
+                mut leaf_byte_pos: 0u
             }
         }
 
@@ -1242,8 +1242,8 @@ mod tests {
         alt(r) {
           node::empty { ret "" }
           node::content(x) {
-            let str = @mutable "";
-            fn aux(str: @mutable str, node: @node::node) unsafe {
+            let str = @mut "";
+            fn aux(str: @mut str, node: @node::node) unsafe {
                 alt(*node) {
                   node::leaf(x) {
                     *str += str::slice(
@@ -1280,7 +1280,7 @@ mod tests {
 
     #[test]
     fn of_string2() {
-        let buf = @ mutable "1234567890";
+        let buf = @ mut "1234567890";
         let mut i = 0;
         while i < 10 { *buf = *buf + *buf; i+=1;}
         let sample = @*buf;
@@ -1313,7 +1313,7 @@ mod tests {
 
     #[test]
     fn iter1() {
-        let buf = @ mutable "1234567890";
+        let buf = @ mut "1234567890";
         let mut i = 0;
         while i < 10 { *buf = *buf + *buf; i+=1;}
         let sample = @*buf;
@@ -1334,7 +1334,7 @@ mod tests {
     #[test]
     fn bal1() {
         let init = @ "1234567890";
-        let buf  = @ mutable * init;
+        let buf  = @ mut * init;
         let mut i = 0;
         while i < 8 { *buf = *buf + *buf; i+=1;}
         let sample = @*buf;

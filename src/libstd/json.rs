@@ -109,9 +109,9 @@ fn to_str(j: json) -> str {
 
 type parser = {
     rdr: io::reader,
-    mutable ch: char,
-    mutable line: uint,
-    mutable col: uint,
+    mut ch: char,
+    mut line: uint,
+    mut col: uint,
 };
 
 impl parser for parser {
@@ -458,9 +458,9 @@ impl parser for parser {
 fn from_reader(rdr: io::reader) -> result<json, error> {
     let parser = {
         rdr: rdr,
-        mutable ch: rdr.read_char(),
-        mutable line: 1u,
-        mutable col: 1u,
+        mut ch: rdr.read_char(),
+        mut line: 1u,
+        mut col: 1u,
     };
 
     parser.parse()

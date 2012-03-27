@@ -4,14 +4,14 @@ enum maybe_pointy {
 }
 
 type pointy = {
-    mutable a : maybe_pointy,
+    mut a : maybe_pointy,
     c : ~int,
     d : fn~()->(),
 };
 
 fn empty_pointy() -> @pointy {
     ret @{
-        mutable a : none,
+        mut a : none,
         c : ~22,
         d : fn~()->(){},
     }

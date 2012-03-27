@@ -4,11 +4,11 @@ use std;
 
 fn main() {
     let a = [0];
-    let v: *mutable [int] = ptr::mut_addr_of(a);
+    let v: *mut [int] = ptr::mut_addr_of(a);
 
-    fn f(&&v: *mutable [const int]) {
+    fn f(&&v: *mut [const int]) {
         unsafe {
-            *v = [mutable 3]
+            *v = [mut 3]
         }
     }
 

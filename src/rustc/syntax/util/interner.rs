@@ -6,13 +6,13 @@ import std::map::{hashmap, hashfn, eqfn};
 
 type interner<T> =
     {map: hashmap<T, uint>,
-     mutable vect: [T],
+     mut vect: [T],
      hasher: hashfn<T>,
      eqer: eqfn<T>};
 
 fn mk<T: copy>(hasher: hashfn<T>, eqer: eqfn<T>) -> interner<T> {
     let m = map::hashmap::<T, uint>(hasher, eqer);
-    ret {map: m, mutable vect: [], hasher: hasher, eqer: eqer};
+    ret {map: m, mut vect: [], hasher: hasher, eqer: eqer};
 }
 
 fn intern<T: copy>(itr: interner<T>, val: T) -> uint {

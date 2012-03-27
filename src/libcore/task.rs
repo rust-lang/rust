@@ -157,8 +157,8 @@ Provides detailed control over the properties and behavior of new tasks.
 // the run function move them in.
 enum task_builder {
     task_builder_({
-        mutable opts: task_opts,
-        mutable gen_body: fn@(+fn~()) -> fn~(),
+        mut opts: task_opts,
+        mut gen_body: fn@(+fn~()) -> fn~(),
         can_not_copy: option<comm::port<()>>
     })
 }
@@ -187,8 +187,8 @@ fn task_builder() -> task_builder {
     let body_identity = fn@(+body: fn~()) -> fn~() { body };
 
     task_builder_({
-        mutable opts: default_task_opts(),
-        mutable gen_body: body_identity,
+        mut opts: default_task_opts(),
+        mut gen_body: body_identity,
         can_not_copy: none
     })
 }

@@ -23,10 +23,10 @@ import ty_ctxt = middle::ty::ctxt;
 type res_info = {did: ast::def_id, tps: [ty::t]};
 
 type ctxt =
-    {mutable next_tag_id: u16,
+    {mut next_tag_id: u16,
      pad: u16,
      tag_id_to_index: hashmap<ast::def_id, u16>,
-     mutable tag_order: [ast::def_id],
+     mut tag_order: [ast::def_id],
      resources: interner::interner<res_info>,
      llshapetablesty: TypeRef,
      llshapetables: ValueRef};
@@ -126,8 +126,8 @@ fn largest_variants(ccx: @crate_ctxt, tag_id: ast::def_id) -> [uint] {
     }
 
     // Initialize the candidate set to contain all variants.
-    let mut candidates = [mutable];
-    for variant in *variants { candidates += [mutable true]; }
+    let mut candidates = [mut];
+    for variant in *variants { candidates += [mut true]; }
 
     // Do a pairwise comparison among all variants still in the candidate set.
     // Throw out any variant that we know has size and alignment at least as
@@ -269,10 +269,10 @@ fn mk_ctxt(llmod: ModuleRef) -> ctxt {
         lib::llvm::llvm::LLVMAddGlobal(llmod, llshapetablesty, buf)
     });
 
-    ret {mutable next_tag_id: 0u16,
+    ret {mut next_tag_id: 0u16,
          pad: 0u16,
          tag_id_to_index: common::new_def_hash(),
-         mutable tag_order: [],
+         mut tag_order: [],
          resources: interner::mk(hash_res_info, {|a, b| a == b}),
          llshapetablesty: llshapetablesty,
          llshapetables: llshapetables};

@@ -15,7 +15,7 @@ export noop_fold_block;
 export wrap;
 export fold_ty_param;
 
-type ast_fold = @mutable a_f;
+type ast_fold = @mut a_f;
 
 // We may eventually want to be able to fold over type parameters, too
 
@@ -602,9 +602,9 @@ fn default_ast_fold() -> @ast_fold_precursor {
 
 fn make_fold(afp: ast_fold_precursor) -> ast_fold {
     // FIXME: Have to bind all the bare functions into shared functions
-    // because @mutable is invariant with respect to its contents
+    // because @mut is invariant with respect to its contents
     let result: ast_fold =
-        @mutable {fold_crate: bind nf_crate_dummy(_),
+        @mut {fold_crate: bind nf_crate_dummy(_),
                   fold_crate_directive: bind nf_crate_directive_dummy(_),
                   fold_view_item: bind nf_view_item_dummy(_),
                   fold_native_item: bind nf_native_item_dummy(_),

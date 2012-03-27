@@ -4,10 +4,10 @@ enum maybe_pointy {
 }
 
 type pointy = {
-    mutable x : maybe_pointy
+    mut x : maybe_pointy
 };
 
 fn main() {
-    let m = @{ mutable x : no_pointy };
+    let m = @{ mut x : no_pointy };
     m.x = yes_pointy(m);
 }

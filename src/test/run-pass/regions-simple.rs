@@ -1,6 +1,6 @@
 fn main() {
     let x: int = 3;
-    let y: &mutable int = &mutable x;
+    let y: &mut int = &mut x;
     *y = 5;
     log (debug, *y);
 }

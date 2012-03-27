@@ -366,8 +366,8 @@ type struct_ctxt = {
     file: ValueRef,
     name: str,
     line: int,
-    mutable members: [ValueRef],
-    mutable total_size: int,
+    mut members: [ValueRef],
+    mut total_size: int,
     align: int
 };
 
@@ -382,8 +382,8 @@ fn create_structure(file: @metadata<file_md>, name: str, line: int)
     let cx = @{file: file.node,
                name: name,
                line: line,
-               mutable members: [],
-               mutable total_size: 0,
+               mut members: [],
+               mut total_size: 0,
                align: 64 //XXX different alignment per arch?
               };
     ret cx;

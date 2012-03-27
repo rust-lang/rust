@@ -70,7 +70,7 @@ fn tok_str(t: token) -> str {
     }
 }
 
-fn buf_str(toks: [mutable token], szs: [mutable int], left: uint, right: uint,
+fn buf_str(toks: [mut token], szs: [mut int], left: uint, right: uint,
            lim: uint) -> str {
     let n = vec::len(toks);
     assert (n == vec::len(szs));
@@ -99,26 +99,26 @@ fn mk_printer(out: io::writer, linewidth: uint) -> printer {
     // fall behind.
     let n: uint = 3u * linewidth;
     #debug("mk_printer %u", linewidth);
-    let token: [mutable token] = vec::to_mut(vec::from_elem(n, EOF));
-    let size: [mutable int] = vec::to_mut(vec::from_elem(n, 0));
-    let scan_stack: [mutable uint] = vec::to_mut(vec::from_elem(n, 0u));
+    let token: [mut token] = vec::to_mut(vec::from_elem(n, EOF));
+    let size: [mut int] = vec::to_mut(vec::from_elem(n, 0));
+    let scan_stack: [mut uint] = vec::to_mut(vec::from_elem(n, 0u));
     let print_stack: [print_stack_elt] = [];
     @{out: out,
       buf_len: n,
-      mutable margin: linewidth as int,
-      mutable space: linewidth as int,
-      mutable left: 0u,
-      mutable right: 0u,
-      mutable token: token,
-      mutable size: size,
-      mutable left_total: 0,
-      mutable right_total: 0,
-      mutable scan_stack: scan_stack,
-      mutable scan_stack_empty: true,
-      mutable top: 0u,
-      mutable bottom: 0u,
-      mutable print_stack: print_stack,
-      mutable pending_indentation: 0}
+      mut margin: linewidth as int,
+      mut space: linewidth as int,
+      mut left: 0u,
+      mut right: 0u,
+      mut token: token,
+      mut size: size,
+      mut left_total: 0,
+      mut right_total: 0,
+      mut scan_stack: scan_stack,
+      mut scan_stack_empty: true,
+      mut top: 0u,
+      mut bottom: 0u,
+      mut print_stack: print_stack,
+      mut pending_indentation: 0}
 }
 
 
@@ -202,28 +202,28 @@ fn mk_printer(out: io::writer, linewidth: uint) -> printer {
 type printer = @{
     out: io::writer,
     buf_len: uint,
-    mutable margin: int, // width of lines we're constrained to
-    mutable space: int, // number of spaces left on line
-    mutable left: uint, // index of left side of input stream
-    mutable right: uint, // index of right side of input stream
-    mutable token: [mutable token], // ring-buffr stream goes through
-    mutable size: [mutable int], // ring-buffer of calculated sizes
-    mutable left_total: int, // running size of stream "...left"
-    mutable right_total: int, // running size of stream "...right"
+    mut margin: int, // width of lines we're constrained to
+    mut space: int, // number of spaces left on line
+    mut left: uint, // index of left side of input stream
+    mut right: uint, // index of right side of input stream
+    mut token: [mut token], // ring-buffr stream goes through
+    mut size: [mut int], // ring-buffer of calculated sizes
+    mut left_total: int, // running size of stream "...left"
+    mut right_total: int, // running size of stream "...right"
     // pseudo-stack, really a ring too. Holds the
     // primary-ring-buffers index of the BEGIN that started the
     // current block, possibly with the most recent BREAK after that
     // BEGIN (if there is any) on top of it. Stuff is flushed off the
     // bottom as it becomes irrelevant due to the primary ring-buffer
     // advancing.
-    mutable scan_stack: [mutable uint],
-    mutable scan_stack_empty: bool, // top==bottom disambiguator
-    mutable top: uint, // index of top of scan_stack
-    mutable bottom: uint, // index of bottom of scan_stack
+    mut scan_stack: [mut uint],
+    mut scan_stack_empty: bool, // top==bottom disambiguator
+    mut top: uint, // index of top of scan_stack
+    mut bottom: uint, // index of bottom of scan_stack
     // stack of blocks-in-progress being flushed by print
-    mutable print_stack: [print_stack_elt],
+    mut print_stack: [print_stack_elt],
     // buffered indentation to avoid writing trailing whitespace
-    mutable pending_indentation: int
+    mut pending_indentation: int
 };
 
 impl printer for printer {

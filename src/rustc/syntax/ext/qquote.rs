@@ -13,7 +13,7 @@ import io::*;
 import codemap::span;
 
 type aq_ctxt = @{lo: uint,
-                 mutable gather: [{lo: uint, hi: uint,
+                 mut gather: [{lo: uint, hi: uint,
                                    e: @ast::expr,
                                    constr: str}]};
 enum fragment {
@@ -99,7 +99,7 @@ fn gather_anti_quotes<N: qq_helper>(lo: uint, node: N) -> aq_ctxt
     let v = @{visit_expr: visit_aq_expr,
               visit_ty: visit_aq_ty
               with *default_visitor()};
-    let cx = @{lo:lo, mutable gather: []};
+    let cx = @{lo:lo, mut gather: []};
     node.visit(cx, mk_vt(v));
     // FIXME: Maybe this is an overkill (merge_sort), it might be better
     //   to just keep the gather array in sorted order ...

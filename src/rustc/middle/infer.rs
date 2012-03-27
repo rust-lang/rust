@@ -424,8 +424,8 @@ impl unify_methods for infer_ctxt {
 
         alt b.mutbl {
           ast::m_mutbl {
-            // If supertype is mutable, subtype must match exactly
-            // (i.e., invariant if mutable):
+            // If supertype is mut, subtype must match exactly
+            // (i.e., invariant if mut):
             self.eq_tys(a.ty, b.ty)
           }
           ast::m_imm | ast::m_const {
@@ -751,7 +751,7 @@ impl resolve_methods for infer_ctxt {
         }
     }
 
-    fn subst_vars(unresolved: @mutable option<int>,
+    fn subst_vars(unresolved: @mut option<int>,
                   vars_seen: std::list::list<int>,
                   vid: int) -> ty::t {
         // Should really return a fixup_result instead of a t, but fold_ty
@@ -785,7 +785,7 @@ impl resolve_methods for infer_ctxt {
     }
 
     fn fixup_vars(typ: ty::t) -> fres<ty::t> {
-        let unresolved = @mutable none::<int>;
+        let unresolved = @mut none::<int>;
         let rty =
             ty::fold_ty(self.tcx,
                         ty::fm_var(
@@ -802,7 +802,7 @@ impl resolve_methods for infer_ctxt {
         }
     }
 
-    fn subst_regions(unresolved: @mutable option<int>,
+    fn subst_regions(unresolved: @mut option<int>,
                      regions_seen: std::list::list<int>,
                      rid: int) -> ty::region {
         // Should really return a fixup_result instead of a t, but fold_ty
@@ -826,7 +826,7 @@ impl resolve_methods for infer_ctxt {
     }
 
     fn fixup_regions(typ: ty::t) -> fres<ty::t> {
-        let unresolved = @mutable none::<int>;
+        let unresolved = @mut none::<int>;
         let rty = ty::fold_ty(self.tcx, ty::fm_rptr({ |region, _under_rptr|
             alt region {
               ty::re_var(rid) {
@@ -1346,8 +1346,8 @@ impl of combine for glb {
                mt_to_str(tcx, b));
 
         alt (a.mutbl, b.mutbl) {
-          // If one side or both is mutable, then the GLB must use
-          // the precise type from the mutable side.
+          // If one side or both is mut, then the GLB must use
+          // the precise type from the mut side.
           (ast::m_mutbl, ast::m_const) {
             self.infcx().tys(a.ty, b.ty).then {||
                 ok({ty: a.ty, mutbl: ast::m_mutbl})

@@ -131,7 +131,7 @@ fn mk_err(cx: @ctx, span: syntax::codemap::span, msg: msg, name: str) {
     cx.tcx.sess.span_err(span, alt msg {
       msg_assign { "assigning to " + name }
       msg_move_out { "moving out of " + name }
-      msg_mutbl_ref { "passing " + name + " by mutable reference" }
+      msg_mutbl_ref { "passing " + name + " by mut reference" }
     });
 }
 
@@ -254,7 +254,7 @@ fn check_bind(cx: @ctx, f: @expr, args: [option<@expr>]) {
         alt arg {
           some(expr) {
             let o_msg = alt ty::resolved_mode(cx.tcx, arg_ts[i].mode) {
-              by_mutbl_ref { some("by mutable reference") }
+              by_mutbl_ref { some("by mut reference") }
               by_move { some("by move") }
               _ { none }
             };

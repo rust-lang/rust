@@ -88,11 +88,11 @@ enum test_result { tr_ok, tr_failed, tr_ignored, }
 type console_test_state =
     @{out: io::writer,
       use_color: bool,
-      mutable total: uint,
-      mutable passed: uint,
-      mutable failed: uint,
-      mutable ignored: uint,
-      mutable failures: [test_desc]};
+      mut total: uint,
+      mut passed: uint,
+      mut failed: uint,
+      mut ignored: uint,
+      mut failures: [test_desc]};
 
 // A simple console test runner
 fn run_tests_console(opts: test_opts,
@@ -131,11 +131,11 @@ fn run_tests_console(opts: test_opts,
     let st =
         @{out: io::stdout(),
           use_color: use_color(),
-          mutable total: 0u,
-          mutable passed: 0u,
-          mutable failed: 0u,
-          mutable ignored: 0u,
-          mutable failures: []};
+          mut total: 0u,
+          mut passed: 0u,
+          mut failed: 0u,
+          mut ignored: 0u,
+          mut failures: []};
 
     run_tests(opts, tests, bind callback(_, st));
 
@@ -210,11 +210,11 @@ fn should_sort_failures_before_printing_them() {
     let st =
         @{out: writer,
           use_color: false,
-          mutable total: 0u,
-          mutable passed: 0u,
-          mutable failed: 0u,
-          mutable ignored: 0u,
-          mutable failures: [test_b, test_a]};
+          mut total: 0u,
+          mut passed: 0u,
+          mut failed: 0u,
+          mut ignored: 0u,
+          mut failures: [test_b, test_a]};
 
     print_failures(st);
 

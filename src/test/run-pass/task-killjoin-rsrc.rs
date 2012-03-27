@@ -8,7 +8,7 @@ import task;
 
 fn joinable(f: fn()) -> (task::task, comm::port<bool>) {
     resource notify(data: (comm::chan<bool>,
-                           @mutable bool)) {
+                           @mut bool)) {
         let (c, v) = data;
         #error["notify: task=%d v=%x unwinding=%b b=%b",
                task::get_task(),
@@ -19,7 +19,7 @@ fn joinable(f: fn()) -> (task::task, comm::port<bool>) {
     }
     fn wrapper(pair: (comm::chan<bool>, fn())) {
         let (c, f) = pair;
-        let b = @mutable false;
+        let b = @mut false;
         #error["wrapper: task=%d allocated v=%x",
                task::get_task(),
                ptr::addr_of(*b) as uint];

@@ -186,7 +186,7 @@ enum borrowing {
 
 type ctxt =
     @{interner: hashmap<intern_key, t_box>,
-      mutable next_id: uint,
+      mut next_id: uint,
       sess: session::session,
       def_map: resolve::def_map,
       region_map: @middle::region::region_map,
@@ -373,7 +373,7 @@ fn mk_ctxt(s: session::session, dm: resolve::def_map, amap: ast_map::map,
             option::maybe(k.o_def_id, 0u, ast_util::hash_def_id)
     }, {|&&a, &&b| a == b});
     @{interner: interner,
-      mutable next_id: 0u,
+      mut next_id: 0u,
       sess: s,
       def_map: dm,
       region_map: region_map,
@@ -1027,7 +1027,7 @@ fn type_structurally_contains(cx: ctxt, ty: t, test: fn(sty) -> bool) ->
 }
 
 // Returns true for noncopyable types and types where a copy of a value can be
-// distinguished from the value itself. I.e. types with mutable content that's
+// distinguished from the value itself. I.e. types with mut content that's
 // not shared through a pointer.
 fn type_allows_implicit_copy(cx: ctxt, ty: t) -> bool {
     ret !type_structurally_contains(cx, ty, {|sty|
@@ -2064,7 +2064,7 @@ fn class_field_tys(items: [@class_item]) -> [field_ty] {
 fn class_items_as_fields(cx:ctxt, did: ast::def_id) -> [field] {
     let mut rslt = [];
     for f in lookup_class_fields(cx, did) {
-       // consider all instance vars mutable, because the
+       // consider all instance vars mut, because the
        // constructor may mutate all vars
       rslt += [{ident: f.ident, mt: {ty: lookup_field_type(cx, did, f.id),
                   mutbl: m_mutbl}}];

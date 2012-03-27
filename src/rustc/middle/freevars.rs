@@ -34,7 +34,7 @@ type freevar_map = hashmap<ast::node_id, freevar_info>;
 fn collect_freevars(def_map: resolve::def_map, blk: ast::blk)
     -> freevar_info {
     let seen = int_hash();
-    let refs = @mutable [];
+    let refs = @mut [];
 
     fn ignore_item(_i: @ast::item, &&_depth: int, _v: visit::vt<int>) { }
 

@@ -149,7 +149,7 @@ fn doc_as_i32(d: doc) -> i32 { doc_as_u32(d) as i32 }
 fn doc_as_i64(d: doc) -> i64 { doc_as_u64(d) as i64 }
 
 // ebml writing
-type writer = {writer: io::writer, mutable size_positions: [uint]};
+type writer = {writer: io::writer, mut size_positions: [uint]};
 
 fn write_sized_vuint(w: io::writer, n: uint, size: uint) {
     let buf: [u8] = alt size {
@@ -178,7 +178,7 @@ fn write_vuint(w: io::writer, n: uint) {
 
 fn writer(w: io::writer) -> writer {
     let size_positions: [uint] = [];
-    ret {writer: w, mutable size_positions: size_positions};
+    ret {writer: w, mut size_positions: size_positions};
 }
 
 // TODO: Provide a function to write the standard ebml header.
@@ -361,11 +361,11 @@ impl serializer of serialization::serializer for ebml::writer {
     fn emit_tup_elt(_idx: uint, f: fn()) { f() }
 }
 
-type ebml_deserializer = {mutable parent: ebml::doc,
-                          mutable pos: uint};
+type ebml_deserializer = {mut parent: ebml::doc,
+                          mut pos: uint};
 
 fn ebml_deserializer(d: ebml::doc) -> ebml_deserializer {
-    {mutable parent: d, mutable pos: d.start}
+    {mut parent: d, mut pos: d.start}
 }
 
 impl deserializer of serialization::deserializer for ebml_deserializer {

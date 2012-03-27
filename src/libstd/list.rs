@@ -164,7 +164,7 @@ mod tests {
 
     #[test]
     fn test_from_vec_mut() {
-        let l = from_vec([mutable 0, 1, 2]);
+        let l = from_vec([mut 0, 1, 2]);
 
         assert (head(l) == 0);
 

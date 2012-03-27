@@ -71,8 +71,8 @@ mod chained {
     type entry<K, V> = {
         hash: uint,
         key: K,
-        mutable value: V,
-        mutable next: chain<K, V>
+        mut value: V,
+        mut next: chain<K, V>
     };
 
     enum chain<K, V> {
@@ -81,8 +81,8 @@ mod chained {
     }
 
     type t<K, V> = @{
-        mutable count: uint,
-        mutable chains: [mutable chain<K,V>],
+        mut count: uint,
+        mut chains: [mut chain<K,V>],
         hasher: hashfn<K>,
         eqer: eqfn<K>
     };
@@ -152,8 +152,8 @@ mod chained {
             tbl.chains[idx] = present(@{
                 hash: hash,
                 key: k,
-                mutable value: v,
-                mutable next: old_chain});
+                mut value: v,
+                mut next: old_chain});
             ret true;
           }
           found_first(_, entry) {
@@ -203,7 +203,7 @@ mod chained {
         }
     }
 
-    fn chains<K: copy, V: copy>(nchains: uint) -> [mutable chain<K,V>] {
+    fn chains<K: copy, V: copy>(nchains: uint) -> [mut chain<K,V>] {
         ret vec::to_mut(vec::from_elem(nchains, absent));
     }
 
@@ -286,8 +286,8 @@ mod chained {
 
     fn mk<K: copy, V: copy>(hasher: hashfn<K>, eqer: eqfn<K>) -> t<K,V> {
         let initial_capacity: uint = 32u; // 2^5
-        let slf: t<K, V> = @{mutable count: 0u,
-                             mutable chains: chains(initial_capacity),
+        let slf: t<K, V> = @{mut count: 0u,
+                             mut chains: chains(initial_capacity),
                              hasher: hasher,
                              eqer: eqer};
         slf

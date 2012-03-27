@@ -11,13 +11,13 @@ fn mk_pass() -> pass {
 
 type ctxt = {
     srv: astsrv::srv,
-    mutable path: [str]
+    mut path: [str]
 };
 
 fn run(srv: astsrv::srv, doc: doc::doc) -> doc::doc {
     let ctxt = {
         srv: srv,
-        mutable path: []
+        mut path: []
     };
     let fold = fold::fold({
         fold_item: fold_item,

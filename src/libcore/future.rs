@@ -24,7 +24,7 @@ export spawn;
 
 #[doc = "The future type"]
 enum future<A> = {
-    mutable v: either<@A, fn@() -> A>
+    mut v: either<@A, fn@() -> A>
 };
 
 #[doc = "Methods on the `future` type"]
@@ -52,7 +52,7 @@ fn from_value<A>(+val: A) -> future<A> {
     "];
 
     future({
-        mutable v: either::left(@val)
+        mut v: either::left(@val)
     })
 }
 
@@ -79,7 +79,7 @@ fn from_fn<A>(f: fn@() -> A) -> future<A> {
     "];
 
     future({
-        mutable v: either::right(f)
+        mut v: either::right(f)
     })
 }
 

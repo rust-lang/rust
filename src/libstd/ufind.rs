@@ -8,13 +8,13 @@ import option::{some, none};
 // than the node itself.
 type node = option<uint>;
 
-type ufind = {mutable nodes: [mutable node]};
+type ufind = {mut nodes: [mut node]};
 
-fn make() -> ufind { ret {mutable nodes: [mutable]}; }
+fn make() -> ufind { ret {mut nodes: [mut]}; }
 
 fn make_set(ufnd: ufind) -> uint {
     let idx = vec::len(ufnd.nodes);
-    ufnd.nodes += [mutable none::<uint>];
+    ufnd.nodes += [mut none::<uint>];
     ret idx;
 }
 

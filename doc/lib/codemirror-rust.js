@@ -218,14 +218,14 @@ CodeMirror.defineMode("rust", function() {
       if (content == "|") return cont(blockvars, poplex, pushlex("}", "block"), block);
       if (content == "||") return cont(poplex, pushlex("}", "block"), block);
     }
-    if (content == "mutable" || (content.match(/^\w+$/) && cx.stream.peek() == ":"
+    if (content == "mut" || (content.match(/^\w+$/) && cx.stream.peek() == ":"
                                  && !cx.stream.match("::", false)))
       return pass(record_of(expression));
     return pass(block);
   }
   function record_of(comb) {
     function ro(type) {
-      if (content == "mutable" || content == "with") {cx.marked = "keyword"; return cont(ro);}
+      if (content == "mut" || content == "with") {cx.marked = "keyword"; return cont(ro);}
       if (content.match(/^\w*$/)) {cx.marked = "variable"; return cont(ro);}
       if (type == ":") return cont(comb, ro);
       if (type == "}") return cont();
@@ -317,7 +317,7 @@ CodeMirror.defineMode("rust", function() {
   }
   function rtype(type) {
     if (type == "name") {cx.marked = "variable-3"; return cont(rtypemaybeparam); }
-    if (content == "mutable") {cx.marked = "keyword"; return cont(rtype);}
+    if (content == "mut") {cx.marked = "keyword"; return cont(rtype);}
     if (type == "atom") return cont(rtypemaybeparam);
     if (type == "op" || type == "obj") return cont(rtype);
     if (type == "fn") return cont(fntype);

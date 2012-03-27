@@ -15,17 +15,17 @@ export insert;
 export find;
 export traverse;
 
-type treemap<K, V> = @mutable tree_node<K, V>;
+type treemap<K, V> = @mut tree_node<K, V>;
 
 enum tree_node<K, V> { empty, node(@K, @V, treemap<K, V>, treemap<K, V>) }
 
 #[doc = "Create a treemap"]
-fn treemap<K, V>() -> treemap<K, V> { @mutable empty }
+fn treemap<K, V>() -> treemap<K, V> { @mut empty }
 
 #[doc = "Insert a value into the map"]
 fn insert<K: copy, V: copy>(m: treemap<K, V>, k: K, v: V) {
     alt m {
-      @empty { *m = node(@k, @v, @mutable empty, @mutable empty); }
+      @empty { *m = node(@k, @v, @mut empty, @mut empty); }
       @node(@kk, _, _, _) {
 
         // We have to name left and right individually, because
@@ -114,8 +114,8 @@ mod tests {
         insert(m, 2, ());
         insert(m, 1, ());
 
-        let n = @mutable 0;
-        fn t(n: @mutable int, &&k: int, &&_v: ()) {
+        let n = @mut 0;
+        fn t(n: @mut int, &&k: int, &&_v: ()) {
             assert (*n == k); *n += 1;
         }
         traverse(m, bind t(n, _, _));

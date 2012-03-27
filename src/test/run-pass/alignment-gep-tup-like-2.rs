@@ -5,11 +5,11 @@ type pair<A,B> = {
 enum rec<A> = _rec<A>;
 type _rec<A> = {
     val: A,
-    mutable rec: option<@rec<A>>
+    mut rec: option<@rec<A>>
 };
 
 fn make_cycle<A:copy>(a: A) {
-    let g: @rec<A> = @rec({val: a, mutable rec: none});
+    let g: @rec<A> = @rec({val: a, mut rec: none});
     g.rec = some(g);
 }
 

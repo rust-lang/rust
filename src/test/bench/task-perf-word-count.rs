@@ -103,10 +103,10 @@ mod map_reduce {
 
         send(out, chan(p));
 
-        let state = @{mutable ref_count: 0, mutable is_done: false};
+        let state = @{mut ref_count: 0, mut is_done: false};
 
-        fn get(p: port<reduce_proto>, state: @{mutable ref_count: int,
-                                               mutable is_done: bool})
+        fn get(p: port<reduce_proto>, state: @{mut ref_count: int,
+                                               mut is_done: bool})
             -> option<int> {
             while !state.is_done || state.ref_count > 0 {
                 alt recv(p) {

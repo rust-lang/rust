@@ -1,6 +1,6 @@
 // error-pattern: copying a noncopyable value
 
-resource r(i: @mutable int) {
+resource r(i: @mut int) {
     *i = *i + 1;
 }
 
@@ -9,8 +9,8 @@ fn f<T>(+i: [T], +j: [T]) {
 }
 
 fn main() {
-    let i1 = @mutable 0;
-    let i2 = @mutable 1;
+    let i1 = @mut 0;
+    let i2 = @mut 1;
     let r1 <- [~r(i1)];
     let r2 <- [~r(i2)];
     f(r1, r2);

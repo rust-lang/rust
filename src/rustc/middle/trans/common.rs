@@ -22,7 +22,7 @@ import ast_map::path;
 
 type namegen = fn@(str) -> str;
 fn new_namegen() -> namegen {
-    let i = @mutable 0;
+    let i = @mut 0;
     ret fn@(prefix: str) -> str { *i += 1; prefix + int::str(*i) };
 }
 
@@ -31,9 +31,9 @@ type tydesc_info =
      tydesc: ValueRef,
      size: ValueRef,
      align: ValueRef,
-     mutable take_glue: option<ValueRef>,
-     mutable drop_glue: option<ValueRef>,
-     mutable free_glue: option<ValueRef>};
+     mut take_glue: option<ValueRef>,
+     mut drop_glue: option<ValueRef>,
+     mut free_glue: option<ValueRef>};
 
 /*
  * A note on nomenclature of linking: "upcall", "extern" and "native".
@@ -52,13 +52,13 @@ type tydesc_info =
  */
 
 type stats =
-    {mutable n_static_tydescs: uint,
-     mutable n_glues_created: uint,
-     mutable n_null_glues: uint,
-     mutable n_real_glues: uint,
-     llvm_insn_ctxt: @mutable [str],
+    {mut n_static_tydescs: uint,
+     mut n_glues_created: uint,
+     mut n_null_glues: uint,
+     mut n_real_glues: uint,
+     llvm_insn_ctxt: @mut [str],
      llvm_insns: hashmap<str, uint>,
-     fn_times: @mutable [{ident: str, time: int}]};
+     fn_times: @mut [{ident: str, time: int}]};
 
 resource BuilderRef_res(B: BuilderRef) { llvm::LLVMDisposeBuilder(B); }
 
@@ -85,7 +85,7 @@ type crate_ctxt = {
      exp_map: resolve::exp_map,
      reachable: reachable::map,
      item_symbols: hashmap<ast::node_id, str>,
-     mutable main_fn: option<ValueRef>,
+     mut main_fn: option<ValueRef>,
      link_meta: link::link_meta,
      enum_sizes: hashmap<ty::t, uint>,
      discrims: hashmap<ast::def_id, ValueRef>,
@@ -122,7 +122,7 @@ type crate_ctxt = {
      // Mapping from class constructors to parent class --
      // used in base::trans_closure
      class_ctors: hashmap<ast::node_id, ast::node_id>,
-     mutable do_not_commit_warning_issued: bool};
+     mut do_not_commit_warning_issued: bool};
 
 // Types used for llself.
 type val_self_pair = {v: ValueRef, t: ty::t};
@@ -152,19 +152,19 @@ type fn_ctxt = @{
     // the function, due to LLVM's quirks.
     // A block for all the function's static allocas, so that LLVM
     // will coalesce them into a single alloca call.
-    mutable llstaticallocas: BasicBlockRef,
+    mut llstaticallocas: BasicBlockRef,
     // A block containing code that copies incoming arguments to space
     // already allocated by code in one of the llallocas blocks.
     // (LLVM requires that arguments be copied to local allocas before
     // allowing most any operation to be performed on them.)
-    mutable llloadenv: BasicBlockRef,
-    mutable llreturn: BasicBlockRef,
+    mut llloadenv: BasicBlockRef,
+    mut llreturn: BasicBlockRef,
     // The 'self' value currently in use in this function, if there
     // is one.
-    mutable llself: option<val_self_pair>,
+    mut llself: option<val_self_pair>,
     // The a value alloca'd for calls to upcalls.rust_personality. Used when
     // outputting the resume instruction.
-    mutable personality: option<ValueRef>,
+    mut personality: option<ValueRef>,
 
     // Maps arguments to allocas created for them in llallocas.
     llargs: hashmap<ast::node_id, local_val>,
@@ -294,12 +294,12 @@ type scope_info = {
     // A list of functions that must be run at when leaving this
     // block, cleaning up any variables that were introduced in the
     // block.
-    mutable cleanups: [cleanup],
+    mut cleanups: [cleanup],
     // Existing cleanup paths that may be reused, indexed by destination and
     // cleared when the set of cleanups changes.
-    mutable cleanup_paths: [cleanup_path],
+    mut cleanup_paths: [cleanup_path],
     // Unwinding landing pad. Also cleared when cleanups change.
-    mutable landing_pad: option<BasicBlockRef>,
+    mut landing_pad: option<BasicBlockRef>,
 };
 
 // Basic block context.  We create a block context for each basic block
@@ -314,14 +314,14 @@ type block = @{
     // instructions into that block by way of this block context.
     // The block pointing to this one in the function's digraph.
     llbb: BasicBlockRef,
-    mutable terminated: bool,
-    mutable unreachable: bool,
+    mut terminated: bool,
+    mut unreachable: bool,
     parent: block_parent,
     // The 'kind' of basic block this is.
     kind: block_kind,
     // The source span where the block came from, if it is a block that
     // actually appears in the source code.
-    mutable block_span: option<span>,
+    mut block_span: option<span>,
     // The function context for the function to which this block is
     // attached.
     fcx: fn_ctxt

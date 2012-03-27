@@ -1,8 +1,8 @@
-// error-pattern:mutable reference to a variable that roots another reference
+// error-pattern:mut reference to a variable that roots another reference
 
-fn f(a: {mutable x: int}, &b: {mutable x: int}) -> int {
+fn f(a: {mut x: int}, &b: {mut x: int}) -> int {
     b.x += 1;
     ret a.x + b.x;
 }
 
-fn main() { let i = {mutable x: 4}; log(debug, f(i, i)); }
+fn main() { let i = {mut x: 4}; log(debug, f(i, i)); }

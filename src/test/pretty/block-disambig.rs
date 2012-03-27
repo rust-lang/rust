@@ -7,7 +7,7 @@ fn test1() { let val = @0; { } *val; }
 fn test2() -> int { let val = @0; { } *val }
 
 fn test3() {
-    let regs = @{mutable eax: 0};
+    let regs = @{mut eax: 0};
     alt check true { true { } }
     (*regs).eax = 1;
 }
@@ -36,10 +36,10 @@ fn test8() -> int {
     }
 }
 
-fn test9() { let regs = @mutable 0; alt check true { true { } } *regs += 1; }
+fn test9() { let regs = @mut 0; alt check true { true { } } *regs += 1; }
 
 fn test10() -> int {
-    let regs = @mutable [0];
+    let regs = @mut [0];
     alt check true { true { } }
     (*regs)[0]
 }

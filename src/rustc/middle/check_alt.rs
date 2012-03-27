@@ -101,8 +101,8 @@ fn check_exhaustive(tcx: ty::ctxt, sp: span, pats: [@pat]) {
         vec::iter(cols) {|col| check_exhaustive(tcx, sp, col); }
       }
       ty::ty_rec(fs) {
-        let cols = vec::from_elem(fs.len(), {mutable wild: false,
-                                            mutable pats: []});
+        let cols = vec::from_elem(fs.len(), {mut wild: false,
+                                            mut pats: []});
         for p in pats {
             alt raw_pat(p).node {
               pat_rec(sub, _) {
@@ -156,7 +156,7 @@ fn check_exhaustive_enum(tcx: ty::ctxt, enum_id: def_id, sp: span,
                          pats: [@pat]) {
     let variants = enum_variants(tcx, enum_id);
     let columns_by_variant = vec::map(*variants, {|v|
-        {mutable seen: false,
+        {mut seen: false,
          cols: vec::to_mut(vec::from_elem(v.args.len(), []))}
     });
 

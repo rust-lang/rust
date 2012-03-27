@@ -51,7 +51,7 @@ type ty_table = hashmap<ast::def_id, ty::t>;
 // Used for typechecking the methods of an impl
 enum self_info { self_impl(ty::t) }
 
-type crate_ctxt = {mutable self_infos: [self_info],
+type crate_ctxt = {mut self_infos: [self_info],
                    impl_map: resolve::impl_map,
                    method_map: method_map,
                    vtable_map: vtable_map,
@@ -75,7 +75,7 @@ type fn_ctxt =
      proto: ast::proto,
      infcx: infer::infer_ctxt,
      locals: hashmap<ast::node_id, int>,
-     next_var_id: @mutable int,
+     next_var_id: @mut int,
      ccx: @crate_ctxt};
 
 
@@ -1244,13 +1244,13 @@ mod demand {
             ty_param_substs_0: [ty::t]) ->
        ty_param_substs_and_ty {
 
-        let mut ty_param_substs: [mutable ty::t] = [mutable];
+        let mut ty_param_substs: [mut ty::t] = [mut];
         let mut ty_param_subst_var_ids: [int] = [];
         for ty_param_subst: ty::t in ty_param_substs_0 {
             // Generate a type variable and unify it with the type parameter
             // substitution. We will then pull out these type variables.
             let t_0 = next_ty_var(fcx);
-            ty_param_substs += [mutable t_0];
+            ty_param_substs += [mut t_0];
             ty_param_subst_var_ids += [ty::ty_var_id(t_0)];
             simple(fcx, sp, ty_param_subst, t_0);
         }
@@ -1383,7 +1383,7 @@ mod writeback {
     type wb_ctxt =
         // As soon as we hit an error we have to stop resolving
         // the entire function
-        {fcx: @fn_ctxt, mutable success: bool};
+        {fcx: @fn_ctxt, mut success: bool};
     type wb_vt = visit::vt<wb_ctxt>;
 
     fn visit_stmt(s: @ast::stmt, wbcx: wb_ctxt, v: wb_vt) {
@@ -1461,7 +1461,7 @@ mod writeback {
     }
 
     fn resolve_type_vars_in_expr(fcx: @fn_ctxt, e: @ast::expr) -> bool {
-        let wbcx = {fcx: fcx, mutable success: true};
+        let wbcx = {fcx: fcx, mut success: true};
         let visit =
             visit::mk_vt(@{visit_item: visit_item,
                            visit_stmt: visit_stmt,
@@ -1475,7 +1475,7 @@ mod writeback {
     }
 
     fn resolve_type_vars_in_block(fcx: @fn_ctxt, blk: ast::blk) -> bool {
-        let wbcx = {fcx: fcx, mutable success: true};
+        let wbcx = {fcx: fcx, mut success: true};
         let visit =
             visit::mk_vt(@{visit_item: visit_item,
                            visit_stmt: visit_stmt,
@@ -1536,7 +1536,7 @@ fn check_intrinsic_type(tcx: ty::ctxt, it: @ast::native_item) {
 type gather_result =
     {infcx: infer::infer_ctxt,
      locals: hashmap<ast::node_id, int>,
-     next_var_id: @mutable int};
+     next_var_id: @mut int};
 
 // Used only as a helper for check_fn.
 fn gather_locals(ccx: @crate_ctxt,
@@ -1548,7 +1548,7 @@ fn gather_locals(ccx: @crate_ctxt,
       none {
         {infcx: infer::new_infer_ctxt(ccx.tcx),
          locals: int_hash::<int>(),
-         nvi: @mutable 0}
+         nvi: @mut 0}
       }
       some(fcx) {
         {infcx: fcx.infcx,
@@ -2544,7 +2544,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
             // const versions of the vectors in L and R.  Next, let T be a
             // fresh type variable where TL <: T and TR <: T.  Then the result
             // type is a fresh type variable T1 where T1 <: [const T].  This
-            // allows the result to be either a mutable or immutable vector,
+            // allows the result to be either a mut or immutable vector,
             // depending on external demands.
             let const_vec_t =
                 ty::mk_vec(tcx, {ty: next_ty_var(fcx),
@@ -3370,7 +3370,7 @@ fn check_const(ccx: @crate_ctxt, _sp: span, e: @ast::expr, id: ast::node_id) {
           proto: ast::proto_box,
           infcx: infer::new_infer_ctxt(ccx.tcx),
           locals: int_hash::<int>(),
-          next_var_id: @mutable 0,
+          next_var_id: @mut 0,
           ccx: ccx};
     check_expr(fcx, e);
     let cty = expr_ty(fcx.ccx.tcx, e);
@@ -3389,7 +3389,7 @@ fn check_enum_variants(ccx: @crate_ctxt, sp: span, vs: [ast::variant],
           proto: ast::proto_box,
           infcx: infer::new_infer_ctxt(ccx.tcx),
           locals: int_hash::<int>(),
-          next_var_id: @mutable 0,
+          next_var_id: @mut 0,
           ccx: ccx};
     let mut disr_vals: [int] = [];
     let mut disr_val = 0;
@@ -3950,7 +3950,7 @@ fn check_crate(tcx: ty::ctxt, impl_map: resolve::impl_map,
                crate: @ast::crate) -> (method_map, vtable_map) {
     collect::collect_item_types(tcx, crate);
 
-    let ccx = @{mutable self_infos: [],
+    let ccx = @{mut self_infos: [],
                 impl_map: impl_map,
                 method_map: std::map::int_hash(),
                 vtable_map: std::map::int_hash(),

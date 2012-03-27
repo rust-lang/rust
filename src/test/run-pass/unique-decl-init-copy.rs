@@ -1,5 +1,5 @@
 fn main() {
-    let i = ~mutable 1;
+    let i = ~mut 1;
     // Should be a copy
     let j = i;
     *i = 2;

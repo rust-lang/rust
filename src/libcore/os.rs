@@ -61,7 +61,7 @@ fn as_c_charp<T>(s: str, f: fn(*c_char) -> T) -> T {
     str::as_c_str(s) {|b| f(b as *c_char) }
 }
 
-fn fill_charp_buf(f: fn(*mutable c_char, size_t) -> bool)
+fn fill_charp_buf(f: fn(*mut c_char, size_t) -> bool)
     -> option<str> {
     let buf = vec::to_mut(vec::from_elem(tmpbuf_sz, 0u8 as c_char));
     vec::as_mut_buf(buf) { |b|
@@ -77,7 +77,7 @@ fn fill_charp_buf(f: fn(*mutable c_char, size_t) -> bool)
 mod win32 {
     import dword = libc::types::os::arch::extra::DWORD;
 
-    fn fill_utf16_buf_and_decode(f: fn(*mutable u16, dword) -> dword)
+    fn fill_utf16_buf_and_decode(f: fn(*mut u16, dword) -> dword)
         -> option<str> {
 
         // FIXME: remove these when export globs work properly.
@@ -241,8 +241,8 @@ fn waitpid(pid: pid_t) -> c_int {
 #[cfg(target_os = "freebsd")]
 #[cfg(target_os = "macos")]
 fn pipe() -> {in: c_int, out: c_int} {
-    let fds = {mutable in: 0 as c_int,
-               mutable out: 0 as c_int };
+    let fds = {mut in: 0 as c_int,
+               mut out: 0 as c_int };
     assert (libc::pipe(ptr::mut_addr_of(fds.in)) == (0 as c_int));
     ret {in: fds.in, out: fds.out};
 }
@@ -258,8 +258,8 @@ fn pipe() -> {in: c_int, out: c_int} {
     // understand. Here we explicitly make the pipe non-inheritable, which
     // means to pass it to a subprocess they need to be duplicated first, as
     // in rust_run_program.
-    let fds = { mutable in: 0 as c_int,
-               mutable out: 0 as c_int };
+    let fds = { mut in: 0 as c_int,
+               mut out: 0 as c_int };
     let res = libc::pipe(ptr::mut_addr_of(fds.in),
                          1024 as c_uint,
                          (O_BINARY | O_NOINHERIT) as c_int);
@@ -294,7 +294,7 @@ fn self_exe_path() -> option<path> {
                        KERN_PROC as c_int,
                        KERN_PROC_PATHNAME as c_int, -1 as c_int];
             sysctl(vec::unsafe::to_ptr(mib), vec::len(mib) as c_uint,
-                   buf as *mutable c_void, ptr::mut_addr_of(sz),
+                   buf as *mut c_void, ptr::mut_addr_of(sz),
                    ptr::null(), 0u as size_t) == (0 as c_int)
         }
     }

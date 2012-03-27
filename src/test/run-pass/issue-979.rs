@@ -1,9 +1,9 @@
-resource r(b: @mutable int) {
+resource r(b: @mut int) {
     *b += 1;
 }
 
 fn main() {
-    let b = @mutable 0;
+    let b = @mut 0;
     {
         let p = some(r(b));
     }

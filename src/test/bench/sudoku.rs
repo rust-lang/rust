@@ -22,7 +22,7 @@ import io::{writer_util, reader_util};
 export grid_t, read_grid, solve_grid, write_grid;
 
 // internal type of sudoku grids
-type grid = [[mutable u8]];
+type grid = [[mut u8]];
 
 // exported type of sudoku grids
 enum grid_t { grid_ctor(grid), }

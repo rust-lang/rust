@@ -198,8 +198,8 @@ fn sort_meta_items(items: [@ast::meta_item]) -> [@ast::meta_item] {
     }
 
     // This is sort of stupid here, converting to a vec of mutables and back
-    let mut v: [mutable @ast::meta_item] = [mutable];
-    for mi: @ast::meta_item in items { v += [mutable mi]; }
+    let mut v: [mut @ast::meta_item] = [mut];
+    for mi: @ast::meta_item in items { v += [mut mi]; }
 
     std::sort::quick_sort(lteq, v);
 

@@ -17,7 +17,7 @@ export parse_bounds_data;
 // Callback to translate defs to strs or back:
 type conv_did = fn(ast::def_id) -> ast::def_id;
 
-type pstate = {data: @[u8], crate: int, mutable pos: uint, tcx: ty::ctxt};
+type pstate = {data: @[u8], crate: int, mut pos: uint, tcx: ty::ctxt};
 
 fn peek(st: @pstate) -> char {
     st.data[st.pos] as char
@@ -52,7 +52,7 @@ fn parse_ident_(st: @pstate, is_last: fn@(char) -> bool) ->
 
 fn parse_ty_data(data: @[u8], crate_num: int, pos: uint, tcx: ty::ctxt,
                  conv: conv_did) -> ty::t {
-    let st = @{data: data, crate: crate_num, mutable pos: pos, tcx: tcx};
+    let st = @{data: data, crate: crate_num, mut pos: pos, tcx: tcx};
     parse_ty(st, conv)
 }
 
@@ -416,7 +416,7 @@ fn parse_def_id(buf: [u8]) -> ast::def_id {
 fn parse_bounds_data(data: @[u8], start: uint,
                      crate_num: int, tcx: ty::ctxt, conv: conv_did)
     -> @[ty::param_bound] {
-    let st = @{data: data, crate: crate_num, mutable pos: start, tcx: tcx};
+    let st = @{data: data, crate: crate_num, mut pos: start, tcx: tcx};
     parse_bounds(st, conv)
 }
 

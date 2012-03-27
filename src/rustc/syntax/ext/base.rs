@@ -67,7 +67,7 @@ fn mk_ctxt(session: driver::session::session,
     type ctxt_repr = {session: driver::session::session,
                       parse_sess: parser::parse_sess,
                       cfg: ast::crate_cfg,
-                      mutable backtrace: expn_info};
+                      mut backtrace: expn_info};
     impl of ext_ctxt for ctxt_repr {
         fn session() -> driver::session::session { self.session }
         fn codemap() -> codemap { self.parse_sess.cm }
@@ -122,7 +122,7 @@ fn mk_ctxt(session: driver::session::session,
         session: session,
         parse_sess: parse_sess,
         cfg: cfg,
-        mutable backtrace: none
+        mut backtrace: none
     };
     ret imp as ext_ctxt
 }

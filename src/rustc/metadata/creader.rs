@@ -21,7 +21,7 @@ export list_file_metadata;
 fn read_crates(sess: session::session, crate: ast::crate) {
     let e = @{sess: sess,
               crate_cache: std::map::str_hash::<int>(),
-              mutable next_crate_num: 1};
+              mut next_crate_num: 1};
     let v =
         visit::mk_simple_visitor(@{visit_view_item:
                                        bind visit_view_item(e, _),
@@ -32,7 +32,7 @@ fn read_crates(sess: session::session, crate: ast::crate) {
 
 type env = @{sess: session::session,
              crate_cache: hashmap<str, int>,
-             mutable next_crate_num: ast::crate_num};
+             mut next_crate_num: ast::crate_num};
 
 fn visit_view_item(e: env, i: @ast::view_item) {
     alt i.node {

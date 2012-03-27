@@ -4,7 +4,7 @@ Library to interface with chunks of memory allocated in C.
 It is often desirable to safely interface with memory allocated from C,
 encapsulating the unsafety into allocation and destruction time.  Indeed,
 allocating memory externally is currently the only way to give Rust shared
-mutable state with C programs that keep their own references; vectors are
+mut state with C programs that keep their own references; vectors are
 unsuitable because they could be reallocated or moved at any time, and
 importing C memory into a vector takes a one-time snapshot of the memory.
 
@@ -38,7 +38,7 @@ Wrapped in a enum for opacity; FIXME #818 when it is possible to have
 truly opaque types, this should be revisited.
 "]
 enum c_vec<T> {
-    c_vec_({ base: *mutable T, len: uint, rsrc: @dtor_res})
+    c_vec_({ base: *mut T, len: uint, rsrc: @dtor_res})
 }
 
 resource dtor_res(dtor: option<fn@()>) {
@@ -60,7 +60,7 @@ Create a `c_vec` from a native buffer with a given length.
 * base - A native pointer to a buffer
 * len - The number of elements in the buffer
 "]
-unsafe fn c_vec<T>(base: *mutable T, len: uint) -> c_vec<T> {
+unsafe fn c_vec<T>(base: *mut T, len: uint) -> c_vec<T> {
     ret c_vec_({
         base: base,
         len: len,
@@ -79,7 +79,7 @@ and a function to run upon destruction.
 * dtor - A function to run when the value is destructed, useful
          for freeing the buffer, etc.
 "]
-unsafe fn c_vec_with_dtor<T>(base: *mutable T, len: uint, dtor: fn@())
+unsafe fn c_vec_with_dtor<T>(base: *mut T, len: uint, dtor: fn@())
   -> c_vec<T> {
     ret c_vec_({
         base: base,
@@ -122,7 +122,7 @@ fn len<T>(t: c_vec<T>) -> uint {
 }
 
 #[doc = "Returns a pointer to the first element of the vector"]
-unsafe fn ptr<T>(t: c_vec<T>) -> *mutable T {
+unsafe fn ptr<T>(t: c_vec<T>) -> *mut T {
     ret (*t).base;
 }
 
@@ -135,7 +135,7 @@ mod tests {
 
         assert mem as int != 0;
 
-        ret unsafe { c_vec_with_dtor(mem as *mutable u8, n,
+        ret unsafe { c_vec_with_dtor(mem as *mut u8, n,
                                      bind free(mem)) };
     }
 

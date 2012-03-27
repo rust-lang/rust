@@ -19,8 +19,8 @@ type test = {span: span, path: [ast::ident], ignore: bool, should_fail: bool};
 type test_ctxt =
     @{sess: session::session,
       crate: @ast::crate,
-      mutable path: [ast::ident],
-      mutable testfns: [test]};
+      mut path: [ast::ident],
+      mut testfns: [test]};
 
 // Traverse the crate, collecting all the test functions, eliding any
 // existing main functions, and synthesizing a main test harness
@@ -39,8 +39,8 @@ fn generate_test_harness(sess: session::session,
     let cx: test_ctxt =
         @{sess: sess,
           crate: crate,
-          mutable path: [],
-          mutable testfns: []};
+          mut path: [],
+          mut testfns: []};
 
     let precursor =
         {fold_crate: fold::wrap(bind fold_crate(cx, _, _)),

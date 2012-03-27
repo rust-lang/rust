@@ -8,11 +8,11 @@ type reader = @{
     span_diagnostic: diagnostic::span_handler,
     src: @str,
     len: uint,
-    mutable col: uint,
-    mutable pos: uint,
-    mutable curr: char,
-    mutable chpos: uint,
-    mutable strs: [str],
+    mut col: uint,
+    mut pos: uint,
+    mut curr: char,
+    mut chpos: uint,
+    mut strs: [str],
     filemap: codemap::filemap,
     interner: @interner::interner<str>
 };
@@ -63,8 +63,8 @@ fn new_reader(cm: codemap::codemap,
     let r = @{cm: cm,
               span_diagnostic: span_diagnostic,
               src: filemap.src, len: str::len(*filemap.src),
-              mutable col: 0u, mutable pos: 0u, mutable curr: -1 as char,
-              mutable chpos: filemap.start_pos.ch, mutable strs: [],
+              mut col: 0u, mut pos: 0u, mut curr: -1 as char,
+              mut chpos: filemap.start_pos.ch, mut strs: [],
               filemap: filemap, interner: itr};
     if r.pos < r.len {
         let next = str::char_range_at(*r.src, r.pos);

@@ -53,9 +53,9 @@ type cstore_private =
     @{metas: map::hashmap<ast::crate_num, crate_metadata>,
       use_crate_map: use_crate_map,
       mod_path_map: mod_path_map,
-      mutable used_crate_files: [str],
-      mutable used_libraries: [str],
-      mutable used_link_args: [str]};
+      mut used_crate_files: [str],
+      mut used_libraries: [str],
+      mut used_link_args: [str]};
 
 // Map from node_id's of local use statements to crate numbers
 type use_crate_map = map::hashmap<ast::node_id, ast::crate_num>;
@@ -70,9 +70,9 @@ fn mk_cstore() -> cstore {
     ret private(@{metas: meta_cache,
                   use_crate_map: crate_map,
                   mod_path_map: mod_path_map,
-                  mutable used_crate_files: [],
-                  mutable used_libraries: [],
-                  mutable used_link_args: []});
+                  mut used_crate_files: [],
+                  mut used_libraries: [],
+                  mut used_link_args: []});
 }
 
 fn get_crate_data(cstore: cstore, cnum: ast::crate_num) -> crate_metadata {

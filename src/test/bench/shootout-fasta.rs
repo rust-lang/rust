@@ -13,7 +13,7 @@ import str;
 
 fn LINE_LENGTH() -> uint { ret 60u; }
 
-type myrandom = @{mutable last: u32};
+type myrandom = @{mut last: u32};
 
 fn myrandom_next(r: myrandom, mx: u32) -> u32 {
     r.last = (r.last * 3877u32 + 29573u32) % 139968u32;
@@ -44,7 +44,7 @@ fn select_random(r: u32, genelist: [aminoacids]) -> char {
 
 fn make_random_fasta(id: str, desc: str, genelist: [aminoacids], n: int) {
     log(debug, ">" + id + " " + desc);
-    let rng = @{mutable last: std::rand::rng().next()};
+    let rng = @{mut last: std::rand::rng().next()};
     let mut op: str = "";
     uint::range(0u, n as uint) {|_i|
         str::push_char(op, select_random(myrandom_next(rng, 100u32),

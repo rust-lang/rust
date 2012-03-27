@@ -109,10 +109,10 @@ fn test_unwrap_str() {
 
 #[test]
 fn test_unwrap_resource() {
-    resource r(i: @mutable int) {
+    resource r(i: @mut int) {
         *i += 1;
     }
-    let i = @mutable 0;
+    let i = @mut 0;
     {
         let x = r(i);
         let opt = some(x);

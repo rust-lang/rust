@@ -1,12 +1,12 @@
 // Resources can't be copied, but storing into data structures counts
 // as a move unless the stored thing is used afterwards.
 
-resource r(i: @mutable int) {
+resource r(i: @mut int) {
     *i = *i + 1;
 }
 
 fn test_box() {
-    let i = @mutable 0;
+    let i = @mut 0;
     {
         let a <- @r(i);
     }
@@ -14,7 +14,7 @@ fn test_box() {
 }
 
 fn test_rec() {
-    let i = @mutable 0;
+    let i = @mut 0;
     {
         let a <- {x: r(i)};
     }
@@ -26,7 +26,7 @@ fn test_tag() {
         t0(r),
     }
 
-    let i = @mutable 0;
+    let i = @mut 0;
     {
         let a <- t0(r(i));
     }
@@ -34,7 +34,7 @@ fn test_tag() {
 }
 
 fn test_tup() {
-    let i = @mutable 0;
+    let i = @mut 0;
     {
         let a <- (r(i), 0);
     }
@@ -42,7 +42,7 @@ fn test_tup() {
 }
 
 fn test_unique() {
-    let i = @mutable 0;
+    let i = @mut 0;
     {
         let a <- ~r(i);
     }
@@ -50,7 +50,7 @@ fn test_unique() {
 }
 
 fn test_box_rec() {
-    let i = @mutable 0;
+    let i = @mut 0;
     {
         let a <- @{
             x: r(i)

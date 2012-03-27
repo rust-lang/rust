@@ -174,10 +174,10 @@ fn convert_whence(whence: seek_style) -> i32 {
 
 impl of reader for *libc::FILE {
     fn read_bytes(len: uint) -> [u8] unsafe {
-        let mut buf : [mutable u8] = [mutable];
+        let mut buf : [mut u8] = [mut];
         vec::reserve(buf, len);
         vec::as_mut_buf(buf) {|b|
-            let read = libc::fread(b as *mutable c_void, 1u,
+            let read = libc::fread(b as *mut c_void, 1u,
                                    len, self);
             vec::unsafe::set_len(buf, read);
         }
@@ -237,7 +237,7 @@ fn file_reader(path: str) -> result<reader, str> {
 // Byte buffer readers
 
 // TODO: const u8, but this fails with rustboot.
-type byte_buf = {buf: [u8], mutable pos: uint, len: uint};
+type byte_buf = {buf: [u8], mut pos: uint, len: uint};
 
 impl of reader for byte_buf {
     fn read_bytes(len: uint) -> [u8] {
@@ -268,7 +268,7 @@ fn bytes_reader(bytes: [u8]) -> reader {
 }
 
 fn bytes_reader_between(bytes: [u8], start: uint, end: uint) -> reader {
-    {buf: bytes, mutable pos: start, len: end} as reader
+    {buf: bytes, mut pos: start, len: end} as reader
 }
 
 fn with_bytes_reader<t>(bytes: [u8], f: fn(reader) -> t) -> t {
@@ -514,14 +514,14 @@ fn stderr() -> writer { fd_writer(libc::STDERR_FILENO as c_int, false) }
 fn print(s: str) { stdout().write_str(s); }
 fn println(s: str) { stdout().write_line(s); }
 
-type mem_buffer = @{mutable buf: [mutable u8],
-                    mutable pos: uint};
+type mem_buffer = @{mut buf: [mut u8],
+                    mut pos: uint};
 
 impl of writer for mem_buffer {
     fn write(v: [const u8]) {
         // Fast path.
         if self.pos == vec::len(self.buf) {
-            for b: u8 in v { self.buf += [mutable b]; }
+            for b: u8 in v { self.buf += [mut b]; }
             self.pos += vec::len(v);
             ret;
         }
@@ -531,7 +531,7 @@ impl of writer for mem_buffer {
         while vpos < vlen {
             let b = v[vpos];
             if self.pos == vec::len(self.buf) {
-                self.buf += [mutable b];
+                self.buf += [mut b];
             } else { self.buf[self.pos] = b; }
             self.pos += 1u;
             vpos += 1u;
@@ -547,7 +547,7 @@ impl of writer for mem_buffer {
 }
 
 fn mem_buffer() -> mem_buffer {
-    @{mutable buf: [mutable], mutable pos: 0u}
+    @{mut buf: [mut], mut pos: 0u}
 }
 fn mem_buffer_writer(b: mem_buffer) -> writer { b as writer }
 fn mem_buffer_buf(b: mem_buffer) -> [u8] { vec::from_mut(b.buf) }

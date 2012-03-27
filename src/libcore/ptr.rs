@@ -28,9 +28,9 @@ native mod rusti {
 #[inline(always)]
 fn addr_of<T>(val: T) -> *T { rusti::addr_of(val) }
 
-#[doc = "Get an unsafe mutable pointer to a value"]
+#[doc = "Get an unsafe mut pointer to a value"]
 #[inline(always)]
-fn mut_addr_of<T>(val: T) -> *mutable T unsafe {
+fn mut_addr_of<T>(val: T) -> *mut T unsafe {
     unsafe::reinterpret_cast(rusti::addr_of(val))
 }
 
@@ -40,10 +40,10 @@ fn offset<T>(ptr: *T, count: uint) -> *T unsafe {
     (ptr as uint + count * sys::size_of::<T>()) as *T
 }
 
-#[doc = "Calculate the offset from a mutable pointer"]
+#[doc = "Calculate the offset from a mut pointer"]
 #[inline(always)]
-fn mut_offset<T>(ptr: *mutable T, count: uint) -> *mutable T {
-    (ptr as uint + count * sys::size_of::<T>()) as *mutable T
+fn mut_offset<T>(ptr: *mut T, count: uint) -> *mut T {
+    (ptr as uint + count * sys::size_of::<T>()) as *mut T
 }
 
 
@@ -77,16 +77,16 @@ unsafe fn memmove<T>(dst: *T, src: *T, count: uint)  {
 
 #[test]
 fn test() unsafe {
-    type pair = {mutable fst: int, mutable snd: int};
-    let p = {mutable fst: 10, mutable snd: 20};
-    let pptr: *mutable pair = mut_addr_of(p);
-    let iptr: *mutable int = unsafe::reinterpret_cast(pptr);
+    type pair = {mut fst: int, mut snd: int};
+    let p = {mut fst: 10, mut snd: 20};
+    let pptr: *mut pair = mut_addr_of(p);
+    let iptr: *mut int = unsafe::reinterpret_cast(pptr);
     assert (*iptr == 10);;
     *iptr = 30;
     assert (*iptr == 30);
     assert (p.fst == 30);;
 
-    *pptr = {mutable fst: 50, mutable snd: 60};
+    *pptr = {mut fst: 50, mut snd: 60};
     assert (*iptr == 50);
     assert (p.fst == 50);
     assert (p.snd == 60);

@@ -234,8 +234,8 @@ fn visit_ids(item: ast::inlined_item, vfn: fn@(ast::node_id)) {
 }
 
 fn compute_id_range(item: ast::inlined_item) -> id_range {
-    let min = @mutable int::max_value;
-    let max = @mutable int::min_value;
+    let min = @mut int::max_value;
+    let max = @mut int::min_value;
     visit_ids(item) {|id|
         *min = int::min(*min, id);
         *max = int::max(*max, id + 1);
@@ -684,7 +684,7 @@ fn encode_side_tables_for_ii(ecx: @e::encode_ctxt,
     ebml_w.wr_tag(c::tag_table as uint) {||
         visit_ids(ii, fn@(id: ast::node_id) {
             // Note: this will cause a copy of ebml_w, which is bad as
-            // it has mutable fields.  But I believe it's harmless since
+            // it has mut fields.  But I believe it's harmless since
             // we generate balanced EBML.
             encode_side_tables_for_id(ecx, ebml_w, id)
         });
@@ -943,10 +943,10 @@ fn new_parse_sess() -> parser::parse_sess {
     let handler = diagnostic::mk_handler(option::none);
     let sess = @{
         cm: cm,
-        mutable next_id: 1,
+        mut next_id: 1,
         span_diagnostic: diagnostic::mk_span_handler(handler, cm),
-        mutable chpos: 0u,
-        mutable byte_pos: 0u
+        mut chpos: 0u,
+        mut byte_pos: 0u
     };
     ret sess;
 }

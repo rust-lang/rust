@@ -1,9 +1,9 @@
 // error-pattern: mismatched types
 
 fn main() {
-    let v = [mutable @mutable ~mutable [0]];
+    let v = [mut @mut ~mut [0]];
 
-    fn f(&&v: [mutable @mutable ~mutable [const int]]) {
+    fn f(&&v: [mut @mut ~mut [const int]]) {
     }
 
     f(v);

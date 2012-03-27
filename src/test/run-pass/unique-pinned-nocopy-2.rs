@@ -1,9 +1,9 @@
-resource r(i: @mutable int) {
+resource r(i: @mut int) {
     *i = *i + 1;
 }
 
 fn main() {
-    let i = @mutable 0;
+    let i = @mut 0;
     {
         let j = ~r(i);
     }

@@ -30,11 +30,11 @@ type binding = @{node_id: node_id,
                  root_var: option<node_id>,
                  local_id: uint,
                  unsafe_tys: [unsafe_ty],
-                 mutable copied: copied};
+                 mut copied: copied};
 
 // FIXME it may be worthwhile to use a linked list of bindings instead
 type scope = {bs: [binding],
-              invalid: @mutable list<@invalid>};
+              invalid: @mut list<@invalid>};
 
 fn mk_binding(cx: ctx, id: node_id, span: span, root_var: option<node_id>,
               unsafe_tys: [unsafe_ty]) -> binding {
@@ -45,7 +45,7 @@ fn mk_binding(cx: ctx, id: node_id, span: span, root_var: option<node_id>,
     ret @{node_id: id, span: span, root_var: root_var,
           local_id: local_id_of_node(cx, id),
           unsafe_tys: unsafe_tys,
-          mutable copied: not_copied};
+          mut copied: not_copied};
 }
 
 enum local_info { local(uint), }
@@ -56,7 +56,7 @@ type ref_map = std::map::hashmap<node_id, node_id>;
 type ctx = {tcx: ty::ctxt,
             copy_map: copy_map,
             ref_map: ref_map,
-            mutable silent: bool};
+            mut silent: bool};
 
 fn check_crate(tcx: ty::ctxt, crate: @ast::crate) -> (copy_map, ref_map) {
     // Stores information about function arguments that's otherwise not easily
@@ -64,12 +64,12 @@ fn check_crate(tcx: ty::ctxt, crate: @ast::crate) -> (copy_map, ref_map) {
     let cx = @{tcx: tcx,
                copy_map: std::map::int_hash(),
                ref_map: std::map::int_hash(),
-               mutable silent: false};
+               mut silent: false};
     let v = @{visit_fn: bind visit_fn(cx, _, _, _, _, _, _, _),
               visit_expr: bind visit_expr(cx, _, _, _),
               visit_block: bind visit_block(cx, _, _, _)
               with *visit::default_visitor::<scope>()};
-    let sc = {bs: [], invalid: @mutable list::nil};
+    let sc = {bs: [], invalid: @mut list::nil};
     visit::visit_crate(*crate, sc, visit::mk_vt(v));
     tcx.sess.abort_if_errors();
     ret (cx.copy_map, cx.ref_map);
@@ -89,7 +89,7 @@ fn visit_fn(cx: @ctx, _fk: visit::fn_kind, decl: ast::fn_decl,
         check_loop(*cx, sc) {|| v.visit_block(body, sc, v);}
       }
       ast::proto_box | ast::proto_uniq | ast::proto_bare {
-        let sc = {bs: [], invalid: @mutable list::nil};
+        let sc = {bs: [], invalid: @mut list::nil};
         v.visit_block(body, sc, v);
       }
     }
@@ -242,7 +242,7 @@ fn check_call(cx: ctx, sc: scope, f: @ast::expr, args: [@ast::expr])
                        root_var: root_var,
                        local_id: 0u,
                        unsafe_tys: unsafe_set(root.mutbl),
-                       mutable copied: arg_copied}];
+                       mut copied: arg_copied}];
         i += 1u;
     }
     let f_may_close =
@@ -291,7 +291,7 @@ fn check_call(cx: ctx, sc: scope, f: @ast::expr, args: [@ast::expr])
         }
         j += 1u;
     }
-    // Ensure we're not passing a root by mutable alias.
+    // Ensure we're not passing a root by mut alias.
 
     for {node: node, arg: arg} in mut_roots {
         let mut i = 0u;
@@ -301,7 +301,7 @@ fn check_call(cx: ctx, sc: scope, f: @ast::expr, args: [@ast::expr])
                   some(root) {
                     if node == root && cant_copy(cx, b) {
                         err(cx, args[arg].span,
-                            "passing a mutable reference to a \
+                            "passing a mut reference to a \
                              variable that roots another reference");
                         break;
                     }
@@ -327,7 +327,7 @@ fn check_alt(cx: ctx, input: @ast::expr, arms: [ast::arm], sc: scope,
         let pat_id_map = pat_util::pat_id_map(cx.tcx.def_map, a.pats[0]);
         type info = {
             id: node_id,
-            mutable unsafe_tys: [unsafe_ty],
+            mut unsafe_tys: [unsafe_ty],
             span: span};
         let mut binding_info: [info] = [];
         for pat in a.pats {
@@ -338,7 +338,7 @@ fn check_alt(cx: ctx, input: @ast::expr, arms: [ast::arm], sc: scope,
                   none {
                       binding_info += [
                           {id: canon_id,
-                           mutable unsafe_tys: unsafe_set(proot.mutbl),
+                           mut unsafe_tys: unsafe_set(proot.mutbl),
                            span: proot.span}];
                   }
                 }
@@ -359,7 +359,7 @@ fn check_for(cx: ctx, local: @ast::local, seq: @ast::expr, blk: ast::blk,
              sc: scope, v: vt<scope>) {
     let root = expr_root(cx, seq, false);
 
-    // If this is a mutable vector, don't allow it to be touched.
+    // If this is a mut vector, don't allow it to be touched.
     let seq_t = ty::expr_ty(cx.tcx, seq);
     let mut cur_mutbl = root.mutbl;
     alt ty::get(seq_t).struct {
@@ -522,7 +522,7 @@ fn ty_can_unsafely_include(cx: ctx, needle: unsafe_ty, haystack: ty::t,
           ty::ty_fn(_) | ty::ty_iface(_, _) { ret true; }
           // A type param may include everything, but can only be
           // treated as opaque downstream, and is thus safe unless we
-          // saw mutable fields, in which case the whole thing can be
+          // saw mut fields, in which case the whole thing can be
           // overwritten.
           ty::ty_param(_, _) { ret mutbl; }
           _ { ret false; }

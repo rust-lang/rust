@@ -346,17 +346,17 @@ mod types {
                 type LPCWSTR = *WCHAR;
                 type LPCSTR = *CHAR;
 
-                type LPWSTR = *mutable WCHAR;
-                type LPSTR = *mutable CHAR;
+                type LPWSTR = *mut WCHAR;
+                type LPSTR = *mut CHAR;
 
                 // Not really, but opaque to us.
                 type LPSECURITY_ATTRIBUTES = LPVOID;
 
-                type LPVOID = *mutable c_void;
-                type LPWORD = *mutable WORD;
+                type LPVOID = *mut c_void;
+                type LPWORD = *mut WORD;
 
                 type LRESULT = LONG_PTR;
-                type PBOOL = *mutable BOOL;
+                type PBOOL = *mut BOOL;
                 type WCHAR = wchar_t;
                 type WORD = u16;
             }
@@ -757,7 +757,7 @@ mod funcs {
             fn setbuf(stream: *FILE, buf: *c_char);
             // Omitted: printf and scanf variants.
             fn fgetc(stream: *FILE) -> c_int;
-            fn fgets(buf: *mutable c_char, n: c_int,
+            fn fgets(buf: *mut c_char, n: c_int,
                      stream: *FILE) -> *c_char;
             fn fputc(c: c_int, stream: *FILE) -> c_int;
             fn fputs(s: *c_char, stream: *FILE) -> *c_char;
@@ -769,7 +769,7 @@ mod funcs {
             // Omitted: putc, putchar (might be macros).
             fn puts(s: *c_char) -> c_int;
             fn ungetc(c: c_int, stream: *FILE) -> c_int;
-            fn fread(ptr: *mutable c_void, size: size_t,
+            fn fread(ptr: *mut c_void, size: size_t,
                      nobj: size_t, stream: *FILE) -> size_t;
             fn fwrite(ptr: *c_void, size: size_t,
                       nobj: size_t, stream: *FILE) -> size_t;
@@ -933,11 +933,11 @@ mod funcs {
             fn lseek(fd: c_int, offset: c_long, origin: c_int) -> c_long;
 
             #[link_name = "_pipe"]
-            fn pipe(fds: *mutable c_int, psize: c_uint,
+            fn pipe(fds: *mut c_int, psize: c_uint,
                     textmode: c_int) -> c_int;
 
             #[link_name = "_read"]
-            fn read(fd: c_int, buf: *mutable c_void, count: c_uint) -> c_int;
+            fn read(fd: c_int, buf: *mut c_void, count: c_uint) -> c_int;
 
             #[link_name = "_rmdir"]
             fn rmdir(path: *c_char) -> c_int;
@@ -1013,7 +1013,7 @@ mod funcs {
             fn getegid() -> gid_t;
             fn geteuid() -> uid_t;
             fn getgid() -> gid_t ;
-            fn getgroups(ngroups_max: c_int, groups: *mutable gid_t) -> c_int;
+            fn getgroups(ngroups_max: c_int, groups: *mut gid_t) -> c_int;
             fn getlogin() -> *c_char;
             fn getopt(argc: c_int, argv: **c_char, optstr: *c_char) -> c_int;
             fn getpgrp() -> pid_t;
@@ -1025,8 +1025,8 @@ mod funcs {
             fn lseek(fd: c_int, offset: off_t, whence: c_int) -> off_t;
             fn pathconf(path: *c_char, name: c_int) -> c_long;
             fn pause() -> c_int;
-            fn pipe(fds: *mutable c_int) -> c_int;
-            fn read(fd: c_int, buf: *mutable c_void,
+            fn pipe(fds: *mut c_int) -> c_int;
+            fn read(fd: c_int, buf: *mut c_void,
                     count: size_t) -> ssize_t;
             fn rmdir(path: *c_char) -> c_int;
             fn setgid(gid: gid_t) -> c_int;
@@ -1050,7 +1050,7 @@ mod funcs {
         #[nolink]
         #[abi = "cdecl"]
         native mod unistd {
-            fn readlink(path: *c_char, buf: *mutable c_char,
+            fn readlink(path: *c_char, buf: *mut c_char,
                         bufsz: size_t) -> ssize_t;
 
             fn fsync(fd: c_int) -> c_int;
@@ -1067,7 +1067,7 @@ mod funcs {
         #[nolink]
         #[abi = "cdecl"]
         native mod wait {
-            fn waitpid(pid: pid_t, status: *mutable c_int,
+            fn waitpid(pid: pid_t, status: *mut c_int,
                        options: c_int) -> pid_t;
         }
     }
@@ -1096,15 +1096,15 @@ mod funcs {
     native mod bsd44 {
 
         fn sysctl(name: *c_int, namelen: c_uint,
-                  oldp: *mutable c_void, oldlenp: *mutable size_t,
+                  oldp: *mut c_void, oldlenp: *mut size_t,
                   newp: *c_void, newlen: size_t) -> c_int;
 
         fn sysctlbyname(name: *c_char,
-                        oldp: *mutable c_void, oldlenp: *mutable size_t,
+                        oldp: *mut c_void, oldlenp: *mut size_t,
                         newp: *c_void, newlen: size_t) -> c_int;
 
-        fn sysctlnametomib(name: *c_char, mibp: *mutable c_int,
-                           sizep: *mutable size_t) -> c_int;
+        fn sysctlnametomib(name: *c_char, mibp: *mut c_int,
+                           sizep: *mut size_t) -> c_int;
     }
 
 
@@ -1118,8 +1118,8 @@ mod funcs {
     #[nolink]
     #[abi = "cdecl"]
     native mod extra {
-        fn _NSGetExecutablePath(buf: *mutable c_char,
-                                bufsize: *mutable u32) -> c_int;
+        fn _NSGetExecutablePath(buf: *mut c_char,
+                                bufsize: *mut u32) -> c_int;
     }
 
     #[cfg(target_os = "freebsd")]

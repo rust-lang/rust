@@ -479,17 +479,17 @@ fn build_session_(
       cstore: cstore,
       parse_sess: @{
           cm: codemap,
-          mutable next_id: 1,
+          mut next_id: 1,
           span_diagnostic: span_diagnostic_handler,
-          mutable chpos: 0u,
-          mutable byte_pos: 0u
+          mut chpos: 0u,
+          mut byte_pos: 0u
       },
       codemap: codemap,
       // For a library crate, this is always none
-      mutable main_fn: none,
+      mut main_fn: none,
       span_diagnostic: span_diagnostic_handler,
       filesearch: filesearch,
-      mutable building_library: false,
+      mut building_library: false,
       working_dir: os::getcwd()}
 }
 

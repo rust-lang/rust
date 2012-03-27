@@ -104,7 +104,7 @@ fn exec<T:send>(
 }
 
 fn build_ctxt(sess: session::session, ast: @ast::crate,
-              ignore_errors: @mutable bool) -> ctxt {
+              ignore_errors: @mut bool) -> ctxt {
 
     import rustc::front::config;
 
@@ -125,7 +125,7 @@ fn build_ctxt(sess: session::session, ast: @ast::crate,
 
 // FIXME: this whole structure should not be duplicated here. makes it
 // painful to add or remove options.
-fn build_session() -> (session::session, @mutable bool) {
+fn build_session() -> (session::session, @mut bool) {
     let sopts: @session::options = @{
         crate_type: session::lib_crate,
         static: false,
@@ -163,7 +163,7 @@ fn build_session() -> (session::session, @mutable bool) {
 type error_handlers = {
     emitter: diagnostic::emitter,
     span_handler: diagnostic::span_handler,
-    ignore_errors: @mutable bool
+    ignore_errors: @mut bool
 };
 
 // Build a custom error handler that will allow us to ignore non-fatal
@@ -174,7 +174,7 @@ fn build_error_handlers(
 
     type diagnostic_handler = {
         inner: diagnostic::handler,
-        ignore_errors: @mutable bool
+        ignore_errors: @mut bool
     };
 
     impl of diagnostic::handler for diagnostic_handler {
@@ -197,7 +197,7 @@ fn build_error_handlers(
         }
     }
 
-    let ignore_errors = @mutable false;
+    let ignore_errors = @mut false;
     let emitter = fn@(cmsp: option<(codemap::codemap, codemap::span)>,
                        msg: str, lvl: diagnostic::level) {
         if !(*ignore_errors) {

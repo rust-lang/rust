@@ -136,7 +136,7 @@ fn compose_sels(s1: selector, s2: selector) -> selector {
 
 type binders =
     {real_binders: hashmap<ident, selector>,
-     mutable literal_ast_matchers: [selector]};
+     mut literal_ast_matchers: [selector]};
 type bindings = hashmap<ident, arb_depth<matchable>>;
 
 fn acumm_bindings(_cx: ext_ctxt, _b_dest: bindings, _b_src: bindings) { }
@@ -148,7 +148,7 @@ fn acumm_bindings(_cx: ext_ctxt, _b_dest: bindings, _b_src: bindings) { }
 fn pattern_to_selectors(cx: ext_ctxt, e: @expr) -> binders {
     let res: binders =
         {real_binders: str_hash::<selector>(),
-         mutable literal_ast_matchers: []};
+         mut literal_ast_matchers: []};
     //this oughta return binders instead, but macro args are a sequence of
     //expressions, rather than a single expression
     fn trivial_selector(m: matchable) -> match_result { ret some(leaf(m)); }
@@ -183,7 +183,7 @@ fn use_selectors_to_bind(b: binders, e: @expr) -> option<bindings> {
 /* use the bindings on the body to generate the expanded code */
 
 fn transcribe(cx: ext_ctxt, b: bindings, body: @expr) -> @expr {
-    let idx_path: @mutable [uint] = @mutable [];
+    let idx_path: @mut [uint] = @mut [];
     fn new_id(_old: node_id, cx: ext_ctxt) -> node_id { ret cx.next_id(); }
     fn new_span(cx: ext_ctxt, sp: span) -> span {
         /* this discards information in the case of macro-defining macros */
@@ -208,7 +208,7 @@ fn transcribe(cx: ext_ctxt, b: bindings, body: @expr) -> @expr {
 
 
 /* helper: descend into a matcher */
-fn follow(m: arb_depth<matchable>, idx_path: @mutable [uint]) ->
+fn follow(m: arb_depth<matchable>, idx_path: @mut [uint]) ->
    arb_depth<matchable> {
     let mut res: arb_depth<matchable> = m;
     for idx: uint in *idx_path {
@@ -221,7 +221,7 @@ fn follow(m: arb_depth<matchable>, idx_path: @mutable [uint]) ->
 }
 
 fn follow_for_trans(cx: ext_ctxt, mmaybe: option<arb_depth<matchable>>,
-                    idx_path: @mutable [uint]) -> option<matchable> {
+                    idx_path: @mut [uint]) -> option<matchable> {
     alt mmaybe {
       none { ret none }
       some(m) {
@@ -258,7 +258,7 @@ fn free_vars(b: bindings, e: @expr, it: fn(ident)) {
 
 
 /* handle sequences (anywhere in the AST) of exprs, either real or ...ed */
-fn transcribe_exprs(cx: ext_ctxt, b: bindings, idx_path: @mutable [uint],
+fn transcribe_exprs(cx: ext_ctxt, b: bindings, idx_path: @mut [uint],
                     recur: fn@(&&@expr) -> @expr, exprs: [@expr]) -> [@expr] {
     alt elts_to_ell(cx, exprs) {
       {pre: pre, rep: repeat_me_maybe, post: post} {
@@ -320,7 +320,7 @@ fn transcribe_exprs(cx: ext_ctxt, b: bindings, idx_path: @mutable [uint],
 
 
 // substitute, in a position that's required to be an ident
-fn transcribe_ident(cx: ext_ctxt, b: bindings, idx_path: @mutable [uint],
+fn transcribe_ident(cx: ext_ctxt, b: bindings, idx_path: @mut [uint],
                     &&i: ident, _fld: ast_fold) -> ident {
     ret alt follow_for_trans(cx, b.find(i), idx_path) {
           some(match_ident(a_id)) { a_id.node }
@@ -330,7 +330,7 @@ fn transcribe_ident(cx: ext_ctxt, b: bindings, idx_path: @mutable [uint],
 }
 
 
-fn transcribe_path(cx: ext_ctxt, b: bindings, idx_path: @mutable [uint],
+fn transcribe_path(cx: ext_ctxt, b: bindings, idx_path: @mut [uint],
                    p: path_, s:span, _fld: ast_fold) -> (path_, span) {
     // Don't substitute into qualified names.
     if vec::len(p.types) > 0u || vec::len(p.idents) != 1u { ret (p, s); }
@@ -345,7 +345,7 @@ fn transcribe_path(cx: ext_ctxt, b: bindings, idx_path: @mutable [uint],
 }
 
 
-fn transcribe_expr(cx: ext_ctxt, b: bindings, idx_path: @mutable [uint],
+fn transcribe_expr(cx: ext_ctxt, b: bindings, idx_path: @mut [uint],
                    e: ast::expr_, s: span, fld: ast_fold,
                    orig: fn@(ast::expr_, span, ast_fold)->(ast::expr_, span))
     -> (ast::expr_, span)
@@ -373,7 +373,7 @@ fn transcribe_expr(cx: ext_ctxt, b: bindings, idx_path: @mutable [uint],
         }
 }
 
-fn transcribe_type(cx: ext_ctxt, b: bindings, idx_path: @mutable [uint],
+fn transcribe_type(cx: ext_ctxt, b: bindings, idx_path: @mut [uint],
                    t: ast::ty_, s: span, fld: ast_fold,
                    orig: fn@(ast::ty_, span, ast_fold) -> (ast::ty_, span))
     -> (ast::ty_, span)
@@ -399,7 +399,7 @@ fn transcribe_type(cx: ext_ctxt, b: bindings, idx_path: @mutable [uint],
 /* for parsing reasons, syntax variables bound to blocks must be used like
 `{v}` */
 
-fn transcribe_block(cx: ext_ctxt, b: bindings, idx_path: @mutable [uint],
+fn transcribe_block(cx: ext_ctxt, b: bindings, idx_path: @mut [uint],
                     blk: blk_, s: span, fld: ast_fold,
                     orig: fn@(blk_, span, ast_fold) -> (blk_, span))
     -> (blk_, span)

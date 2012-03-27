@@ -5,11 +5,11 @@ enum option<T> {
     some(T),
 }
 
-type smallintmap<T> = @{mutable v: [mutable option<T>]};
+type smallintmap<T> = @{mut v: [mut option<T>]};
 
 fn mk<T>() -> smallintmap<T> {
-    let v: [mutable option<T>] = [mutable];
-    ret @{mutable v: v};
+    let v: [mut option<T>] = [mut];
+    ret @{mut v: v};
 }
 
 fn f<T,U>() {

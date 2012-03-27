@@ -640,9 +640,9 @@ fn trans_alt_inner(scope_cx: block, expr: @ast::expr, arms: [ast::arm],
     let mk_fail = alt mode {
       ast::alt_check {
         // Cached fail-on-fallthrough block
-        let fail_cx = @mutable none;
+        let fail_cx = @mut none;
         fn mk_fail(bcx: block, sp: span,
-                   done: @mutable option<BasicBlockRef>) -> BasicBlockRef {
+                   done: @mut option<BasicBlockRef>) -> BasicBlockRef {
             alt *done { some(bb) { ret bb; } _ { } }
             let fail_cx = sub_block(bcx, "case_fallthrough");
             trans_fail(fail_cx, some(sp), "non-exhaustive match failure");;

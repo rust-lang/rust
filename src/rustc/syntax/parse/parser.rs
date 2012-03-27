@@ -21,11 +21,11 @@ enum file_type { CRATE_FILE, SOURCE_FILE, }
 
 type parse_sess = @{
     cm: codemap::codemap,
-    mutable next_id: node_id,
+    mut next_id: node_id,
     span_diagnostic: diagnostic::span_handler,
     // these two must be kept up to date
-    mutable chpos: uint,
-    mutable byte_pos: uint
+    mut chpos: uint,
+    mut byte_pos: uint
 };
 
 fn next_node_id(sess: parse_sess) -> node_id {
@@ -40,11 +40,11 @@ type parser = @{
     sess: parse_sess,
     cfg: ast::crate_cfg,
     file_type: file_type,
-    mutable token: token::token,
-    mutable span: span,
-    mutable last_span: span,
-    mutable buffer: [{tok: token::token, span: span}],
-    mutable restriction: restriction,
+    mut token: token::token,
+    mut span: span,
+    mut last_span: span,
+    mut buffer: [{tok: token::token, span: span}],
+    mut restriction: restriction,
     reader: reader,
     precs: @[op_spec],
     bad_expr_words: hashmap<str, ()>
@@ -130,11 +130,11 @@ fn new_parser(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader,
     @{sess: sess,
       cfg: cfg,
       file_type: ftype,
-      mutable token: tok0.tok,
-      mutable span: span0,
-      mutable last_span: span0,
-      mutable buffer: [],
-      mutable restriction: UNRESTRICTED,
+      mut token: tok0.tok,
+      mut span: span0,
+      mut last_span: span0,
+      mut buffer: [],
+      mut restriction: UNRESTRICTED,
       reader: rdr,
       precs: prec_table(),
       bad_expr_words: bad_expr_word_table()}
@@ -149,7 +149,7 @@ fn bad_expr_word_table() -> hashmap<str, ()> {
                  "class", "const", "cont", "copy", "crust", "do", "else",
                  "enum", "export", "fail", "fn", "for", "if",  "iface",
                  "impl", "import", "let", "log", "loop", "mod", "mut",
-                 "mutable", "native", "pure", "resource", "ret", "trait",
+                 "mut", "native", "pure", "resource", "ret", "trait",
                  "type", "unchecked", "unsafe", "while", "new"] {
         words.insert(word, ());
     }
@@ -735,7 +735,7 @@ fn parse_path_and_ty_param_substs(p: parser, colons: bool) -> @ast::path {
 }
 
 fn parse_mutability(p: parser) -> ast::mutability {
-    if eat_word(p, "mutable") {
+    if eat_word(p, "mut") {
         ast::m_mutbl
     } else if eat_word(p, "mut") {
         ast::m_mutbl
@@ -831,7 +831,7 @@ fn parse_bottom_expr(p: parser) -> pexpr {
         ret mk_pexpr(p, lo, hi, ast::expr_tup(es));
     } else if p.token == token::LBRACE {
         p.bump();
-        if is_word(p, "mut") || is_word(p, "mutable") ||
+        if is_word(p, "mut") ||
                is_plain_ident(p) && p.look_ahead(1u) == token::COLON {
             let mut fields = [parse_field(p, token::COLON)];
             let mut base = none;
@@ -1660,7 +1660,7 @@ fn parse_let(p: parser) -> @ast::decl {
 fn parse_instance_var(p:parser) -> (ast::class_member, codemap::span) {
     let mut is_mutbl = ast::class_immutable;
     let lo = p.span.lo;
-    if eat_word(p, "mut") || eat_word(p, "mutable") {
+    if eat_word(p, "mut") {
             is_mutbl = ast::class_mutable;
     }
     if !is_plain_ident(p) {

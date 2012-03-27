@@ -29,10 +29,10 @@ mod test {
         let handler = diagnostic::mk_handler(none);
         let parse_sess = @{
             cm: cm,
-            mutable next_id: 0,
+            mut next_id: 0,
             span_diagnostic: diagnostic::mk_span_handler(handler, cm),
-            mutable chpos: 0u,
-            mutable byte_pos: 0u
+            mut chpos: 0u,
+            mut byte_pos: 0u
         };
         let parser = parser::new_parser_from_source_str(
             parse_sess, [], "-", codemap::fss_none, @source);

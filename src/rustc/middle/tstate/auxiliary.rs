@@ -200,9 +200,9 @@ type constr_arg_use = spanned<constr_arg_general_<inst>>;
 enum constraint {
     cinit(uint, span, ident),
 
-    // FIXME: really only want it to be mutable during collect_locals.
+    // FIXME: really only want it to be mut during collect_locals.
     // freeze it after that.
-    cpred(@path, @mutable [pred_args]),
+    cpred(@path, @mut [pred_args]),
 }
 
 // An ninit variant has a node_id because it refers to a local var.
@@ -261,7 +261,7 @@ type fn_info =
      cf: ret_style,
      i_return: tsconstr,
      i_diverge: tsconstr,
-     used_vars: @mutable [node_id]};
+     used_vars: @mut [node_id]};
 
 fn tsconstr_to_def_id(t: tsconstr) -> def_id {
     alt t { ninit(id, _) { local_def(id) } npred(_, id, _) { id } }
@@ -275,7 +275,7 @@ fn tsconstr_to_node_id(t: tsconstr) -> node_id {
 }
 
 /* mapping from node ID to typestate annotation */
-type node_ann_table = @mutable [mutable ts_ann];
+type node_ann_table = @mut [mut ts_ann];
 
 
 /* mapping from function name to fn_info map */
@@ -483,8 +483,8 @@ fn pure_exp(ccx: crate_ctxt, id: node_id, p: prestate) -> bool {
 fn num_constraints(m: fn_info) -> uint { ret m.num_constraints; }
 
 fn new_crate_ctxt(cx: ty::ctxt) -> crate_ctxt {
-    let na: [mutable ts_ann] = [mutable];
-    ret {tcx: cx, node_anns: @mutable na, fm: int_hash::<fn_info>()};
+    let na: [mut ts_ann] = [mut];
+    ret {tcx: cx, node_anns: @mut na, fm: int_hash::<fn_info>()};
 }
 
 /* Use e's type to determine whether it returns.
@@ -549,7 +549,7 @@ fn constraints(fcx: fn_ctxt) -> [norm_constraint] {
 // FIXME
 // Would rather take an immutable vec as an argument,
 // should freeze it at some earlier point.
-fn match_args(fcx: fn_ctxt, occs: @mutable [pred_args],
+fn match_args(fcx: fn_ctxt, occs: @mut [pred_args],
               occ: [@constr_arg_use]) -> uint {
     #debug("match_args: looking at %s",
            constr_args_to_str(fn@(i: inst) -> str { ret i.ident; }, occ));
@@ -995,7 +995,7 @@ fn args_mention<T>(args: [@constr_arg_use],
 fn use_var(fcx: fn_ctxt, v: node_id) { *fcx.enclosing.used_vars += [v]; }
 
 // FIXME: This should be a function in vec::.
-fn vec_contains(v: @mutable [node_id], i: node_id) -> bool {
+fn vec_contains(v: @mut [node_id], i: node_id) -> bool {
     for d: node_id in *v { if d == i { ret true; } }
     ret false;
 }

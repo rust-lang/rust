@@ -366,7 +366,7 @@ more detail later on (the `T`s here stand for any other type):
 `[T]`
   : Vector type.
 
-`[mutable T]`
+`[mut T]`
   : Mutable vector type.
 
 `(T1, T2)`
@@ -994,10 +994,10 @@ Fields that you want to mutate must be explicitly marked as such. For
 example...
 
 ~~~~
-type stack = {content: [int], mutable head: uint};
+type stack = {content: [int], mut head: uint};
 ~~~~
 
-With such a type, you can do `mystack.head += 1u`. If `mutable` were
+With such a type, you can do `mystack.head += 1u`. If `mut` were
 omitted from the type, such an assignment would result in a type
 error.
 
@@ -1240,12 +1240,12 @@ become the sole owner of the box.
 
 ### Mutability
 
-All pointer types have a mutable variant, written `@mutable TYPE` or
-`~mutable TYPE`. Given such a pointer, you can write to its contents
+All pointer types have a mutable variant, written `@mut TYPE` or
+`~mut TYPE`. Given such a pointer, you can write to its contents
 by combining the dereference operator with a mutating action.
 
 ~~~~
-fn increase_contents(pt: @mutable int) {
+fn increase_contents(pt: @mut int) {
     *pt += 1;
 }
 ~~~~
@@ -1268,9 +1268,9 @@ if myvec[1] { io::println("boom"); }
 ~~~~
 
 By default, vectors are immutable—you can not replace their elements.
-The type written as `[mutable TYPE]` is a vector with mutable
-elements. Mutable vector literals are written `[mutable]` (empty) or
-`[mutable 1, 2, 3]` (with elements).
+The type written as `[mut TYPE]` is a vector with mutable
+elements. Mutable vector literals are written `[mut]` (empty) or
+`[mut 1, 2, 3]` (with elements).
 
 The `+` operator means concatenation when applied to vector types.
 Growing a vector in Rust is not as inefficient as it looks :
@@ -1398,7 +1398,7 @@ to pessimistically assume a value will get mutated, even though it is
 not sure.
 
 ~~~~
-fn for_each(v: [mutable @int], iter: fn(@int)) {
+fn for_each(v: [mut @int], iter: fn(@int)) {
    for elt in v { iter(elt); }
 }
 ~~~~
@@ -1413,15 +1413,15 @@ reference count is considered cheap enough to not warn about it).
 ## The copy operator
 
 If the `for_each` function given above were to take a vector of
-`{mutable a: int}` instead of `@int`, it would not be able to
+`{mut a: int}` instead of `@int`, it would not be able to
 implicitly copy, since if the `iter` function changes a copy of a
 mutable record, the changes won't be visible in the record itself. If
 we *do* want to allow copies there, we have to explicitly allow it
 with the `copy` operator:
 
 ~~~~
-type mutrec = {mutable x: int};
-fn for_each(v: [mutable mutrec], iter: fn(mutrec)) {
+type mutrec = {mut x: int};
+fn for_each(v: [mut mutrec], iter: fn(mutrec)) {
    for elt in v { iter(copy elt); }
 }
 ~~~~
@@ -1529,7 +1529,7 @@ Generic `type` and `enum` declarations follow the same pattern:
 ~~~~
 type circular_buf<T> = {start: uint,
                         end: uint,
-                        buf: [mutable T]};
+                        buf: [mut T]};
 
 enum option<T> { some(T), none }
 ~~~~
@@ -2315,14 +2315,14 @@ microsecond-resolution timer.
 
 ~~~~
 use std;
-type timeval = {mutable tv_sec: uint,
-                mutable tv_usec: uint};
+type timeval = {mut tv_sec: uint,
+                mut tv_usec: uint};
 #[nolink]
 native mod libc {
     fn gettimeofday(tv: *timeval, tz: *()) -> i32;
 }
 fn unix_time_in_microseconds() -> u64 unsafe {
-    let x = {mutable tv_sec: 0u, mutable tv_usec: 0u};
+    let x = {mut tv_sec: 0u, mut tv_usec: 0u};
     libc::gettimeofday(ptr::addr_of(x), ptr::null());
     ret (x.tv_sec as u64) * 1000_000_u64 + (x.tv_usec as u64);
 }

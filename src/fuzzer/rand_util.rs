@@ -12,7 +12,7 @@ fn choice<T: copy>(r : rand::rng, v : [T]) -> T { assert vec::len(v) != 0u; v[un
 fn unlikely(r : rand::rng, n : uint) -> bool { under(r, n) == 0u }
 
 // shuffle a vec in place
-fn shuffle<T>(r : rand::rng, &v : [mutable T]) {
+fn shuffle<T>(r : rand::rng, &v : [mut T]) {
     let i = vec::len(v);
     while i >= 2u {
         // Loop invariant: elements with index >= i have been locked in place.
@@ -73,7 +73,7 @@ fn main()
     log(error, choice(r, [10, 20, 30]));
     log(error, if unlikely(r, 5u) { "unlikely" } else { "likely" });
 
-    let a = [mutable 1, 2, 3];
+    let a = [mut 1, 2, 3];
     shuffle(r, a);
     log(error, a);
 

@@ -86,7 +86,7 @@ enum def {
     // first def_id is for parent class
     def_class_field(def_id, def_id),
     // No purity allowed for now, I guess
-    // (simpler this way, b/c presumably methods read mutable state)
+    // (simpler this way, b/c presumably methods read mut state)
     def_class_method(def_id, def_id),
     def_region(node_id)
 }

@@ -24,9 +24,9 @@ type ps =
       cm: option<codemap>,
       comments: option<[lexer::cmnt]>,
       literals: option<[lexer::lit]>,
-      mutable cur_cmnt: uint,
-      mutable cur_lit: uint,
-      mutable boxes: [pp::breaks],
+      mut cur_cmnt: uint,
+      mut cur_lit: uint,
+      mut boxes: [pp::breaks],
       ann: pp_ann};
 
 fn ibox(s: ps, u: uint) { s.boxes += [pp::inconsistent]; pp::ibox(s.s, u); }
@@ -39,9 +39,9 @@ fn rust_printer(writer: io::writer) -> ps {
           cm: none::<codemap>,
           comments: none::<[lexer::cmnt]>,
           literals: none::<[lexer::lit]>,
-          mutable cur_cmnt: 0u,
-          mutable cur_lit: 0u,
-          mutable boxes: boxes,
+          mut cur_cmnt: 0u,
+          mut cur_lit: 0u,
+          mut boxes: boxes,
           ann: no_ann()};
 }
 
@@ -64,9 +64,9 @@ fn print_crate(cm: codemap, span_diagnostic: diagnostic::span_handler,
           cm: some(cm),
           comments: some(r.cmnts),
           literals: some(r.lits),
-          mutable cur_cmnt: 0u,
-          mutable cur_lit: 0u,
-          mutable boxes: boxes,
+          mut cur_cmnt: 0u,
+          mut cur_lit: 0u,
+          mut boxes: boxes,
           ann: ann};
     print_crate_(s, crate);
 }
@@ -518,7 +518,7 @@ fn print_item(s: ps, &&item: @ast::item) {
                  ast::instance_var(nm, t, mt, _) {
                     word_nbsp(s, "let");
                     alt mt {
-                      ast::class_mutable { word_nbsp(s, "mutable"); }
+                      ast::class_mutable { word_nbsp(s, "mut"); }
                       _ {}
                     }
                     word(s.s, nm);
@@ -818,7 +818,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         ibox(s, indent_unit);
         word(s.s, "[");
         if mutbl == ast::m_mutbl {
-            word(s.s, "mutable");
+            word(s.s, "mut");
             if vec::len(exprs) > 0u { nbsp(s); }
         }
         commasep_exprs(s, inconsistent, exprs);
@@ -828,7 +828,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
       ast::expr_rec(fields, wth) {
         fn print_field(s: ps, field: ast::field) {
             ibox(s, indent_unit);
-            if field.node.mutbl == ast::m_mutbl { word_nbsp(s, "mutable"); }
+            if field.node.mutbl == ast::m_mutbl { word_nbsp(s, "mut"); }
             word(s.s, field.node.ident);
             word_space(s, ":");
             print_expr(s, field.node.expr);
@@ -1135,7 +1135,7 @@ fn print_decl(s: ps, decl: @ast::decl) {
         ibox(s, indent_unit);
         word_nbsp(s, "let");
 
-        // if any are mutable, all are mutable
+        // if any are mut, all are mut
         if vec::any(locs) {|l| l.node.is_mutbl } {
             assert vec::all(locs) {|l| l.node.is_mutbl };
             word_nbsp(s, "mut");
@@ -1493,7 +1493,7 @@ fn print_op_maybe_parens(s: ps, expr: @ast::expr, outer_prec: int) {
 
 fn print_mutability(s: ps, mutbl: ast::mutability) {
     alt mutbl {
-      ast::m_mutbl { word_nbsp(s, "mutable"); }
+      ast::m_mutbl { word_nbsp(s, "mut"); }
       ast::m_const { word_nbsp(s, "const"); }
       ast::m_imm {/* nothing */ }
     }

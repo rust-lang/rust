@@ -43,7 +43,7 @@ type source = {
     sig: option<str>,
     key: option<str>,
     keyfp: option<str>,
-    mutable packages: [package]
+    mut packages: [package]
 };
 
 type cargo = {
@@ -117,10 +117,10 @@ fn load_pkg(filename: str) -> option<pkg> {
     let handler = diagnostic::mk_handler(none);
     let sess = @{
         cm: cm,
-        mutable next_id: 1,
+        mut next_id: 1,
         span_diagnostic: diagnostic::mk_span_handler(handler, cm),
-        mutable chpos: 0u,
-        mutable byte_pos: 0u
+        mut chpos: 0u,
+        mut byte_pos: 0u
     };
     let c = parser::parse_crate_from_crate_file(filename, [], sess);
 
@@ -214,7 +214,7 @@ fn parse_source(name: str, j: json::json) -> source {
                 _ { none }
             };
             ret { name: name, url: url, sig: sig, key: key, keyfp: keyfp,
-                  mutable packages: [] };
+                  mut packages: [] };
         }
         _ { fail "Needed dict value in source."; }
     };

@@ -119,7 +119,7 @@ fn safe_to_steal_ty(t: @ast::ty, tm: test_mode) -> bool {
 
 // Not type-parameterized: https://github.com/mozilla/rust/issues/898 (FIXED)
 fn stash_expr_if(c: fn@(@ast::expr, test_mode)->bool,
-                 es: @mutable [ast::expr],
+                 es: @mut [ast::expr],
                  e: @ast::expr,
                  tm: test_mode) {
     if c(e, tm) {
@@ -128,7 +128,7 @@ fn stash_expr_if(c: fn@(@ast::expr, test_mode)->bool,
 }
 
 fn stash_ty_if(c: fn@(@ast::ty, test_mode)->bool,
-               es: @mutable [ast::ty],
+               es: @mut [ast::ty],
                e: @ast::ty,
                tm: test_mode) {
     if c(e, tm) {
@@ -139,8 +139,8 @@ fn stash_ty_if(c: fn@(@ast::ty, test_mode)->bool,
 type stolen_stuff = {exprs: [ast::expr], tys: [ast::ty]};
 
 fn steal(crate: ast::crate, tm: test_mode) -> stolen_stuff {
-    let exprs = @mutable [];
-    let tys = @mutable [];
+    let exprs = @mut [];
+    let tys = @mut [];
     let v = visit::mk_simple_visitor(@{
         visit_expr: bind stash_expr_if(safe_to_steal_expr, exprs, _, tm),
         visit_ty: bind stash_ty_if(safe_to_steal_ty, tys, _, tm)
@@ -176,8 +176,8 @@ fn safe_to_replace_ty(t: ast::ty_, _tm: test_mode) -> bool {
 // Replace the |i|th expr (in fold order) of |crate| with |newexpr|.
 fn replace_expr_in_crate(crate: ast::crate, i: uint, newexpr: ast::expr, tm: test_mode) ->
    ast::crate {
-    let j: @mutable uint = @mutable 0u;
-    fn fold_expr_rep(j_: @mutable uint, i_: uint, newexpr_: ast::expr_,
+    let j: @mut uint = @mut 0u;
+    fn fold_expr_rep(j_: @mut uint, i_: uint, newexpr_: ast::expr_,
                      original: ast::expr_, fld: fold::ast_fold, tm_: test_mode) ->
        ast::expr_ {
         *j_ += 1u;
@@ -199,8 +199,8 @@ fn replace_expr_in_crate(crate: ast::crate, i: uint, newexpr: ast::expr, tm: tes
 // Replace the |i|th ty (in fold order) of |crate| with |newty|.
 fn replace_ty_in_crate(crate: ast::crate, i: uint, newty: ast::ty, tm: test_mode) ->
    ast::crate {
-    let j: @mutable uint = @mutable 0u;
-    fn fold_ty_rep(j_: @mutable uint, i_: uint, newty_: ast::ty_,
+    let j: @mut uint = @mut 0u;
+    fn fold_ty_rep(j_: @mut uint, i_: uint, newty_: ast::ty_,
                      original: ast::ty_, fld: fold::ast_fold, tm_: test_mode) ->
        ast::ty_ {
         *j_ += 1u;
@@ -403,10 +403,10 @@ fn parse_and_print(code: @str) -> str {
     let handler = diagnostic::mk_handler(none);
     let sess = @{
         cm: cm,
-        mutable next_id: 1,
+        mut next_id: 1,
         span_diagnostic: diagnostic::mk_span_handler(handler, cm),
-        mutable chpos: 0u,
-        mutable byte_pos: 0u
+        mut chpos: 0u,
+        mut byte_pos: 0u
     };
     write_file(filename, *code);
     let crate = parser::parse_crate_from_source_str(
@@ -422,8 +422,8 @@ fn parse_and_print(code: @str) -> str {
 }
 
 fn has_raw_pointers(c: ast::crate) -> bool {
-    let has_rp = @mutable false;
-    fn visit_ty(flag: @mutable bool, t: @ast::ty) {
+    let has_rp = @mut false;
+    fn visit_ty(flag: @mut bool, t: @ast::ty) {
         alt t.node {
           ast::ty_ptr(_) { *flag = true; }
           _ { }
@@ -549,10 +549,10 @@ fn check_variants(files: [str], cx: context) {
         let handler = diagnostic::mk_handler(none);
         let sess = @{
             cm: cm,
-            mutable next_id: 1,
+            mut next_id: 1,
             span_diagnostic: diagnostic::mk_span_handler(handler, cm),
-            mutable chpos: 0u,
-            mutable byte_pos: 0u
+            mut chpos: 0u,
+            mut byte_pos: 0u
         };
         let crate =
             parser::parse_crate_from_source_str(

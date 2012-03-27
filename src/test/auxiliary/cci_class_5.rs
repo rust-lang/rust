@@ -2,7 +2,7 @@ mod kitties {
 
 class cat {
   priv {
-    let mutable meows : uint;
+    let mut meows : uint;
     fn nap() { uint::range(1u, 10000u) {|_i|}}
   }
 

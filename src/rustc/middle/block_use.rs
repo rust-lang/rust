@@ -2,10 +2,10 @@ import syntax::visit;
 import syntax::ast::*;
 import driver::session::session;
 
-type ctx = {tcx: ty::ctxt, mutable allow_block: bool};
+type ctx = {tcx: ty::ctxt, mut allow_block: bool};
 
 fn check_crate(tcx: ty::ctxt, crate: @crate) {
-    let cx = {tcx: tcx, mutable allow_block: false};
+    let cx = {tcx: tcx, mut allow_block: false};
     let v = visit::mk_vt(@{visit_expr: visit_expr
                            with *visit::default_visitor()});
     visit::visit_crate(*crate, cx, v);

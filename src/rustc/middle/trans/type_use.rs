@@ -29,7 +29,7 @@ const use_repr: uint = 1u; // Dependency on size/alignment and take/drop glue
 const use_tydesc: uint = 2u; // Takes the tydesc, or compares
 
 type ctx = {ccx: @crate_ctxt,
-            uses: [mutable type_uses]};
+            uses: [mut type_uses]};
 
 fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
     -> [type_uses] {

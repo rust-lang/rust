@@ -1,11 +1,11 @@
 // error-pattern: copying a noncopyable value
 
-resource r(i: @mutable int) {
+resource r(i: @mut int) {
     *i = *i + 1;
 }
 
 fn main() {
-    let i = @mutable 0;
+    let i = @mut 0;
     {
         // Can't do this copy
         let x = ~~~{y: r(i)};

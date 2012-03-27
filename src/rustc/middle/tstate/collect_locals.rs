@@ -10,7 +10,7 @@ import driver::session::session;
 import aux::*;
 import std::map::hashmap;
 
-type ctxt = {cs: @mutable [sp_constr], tcx: ty::ctxt};
+type ctxt = {cs: @mut [sp_constr], tcx: ty::ctxt};
 
 fn collect_local(loc: @local, cx: ctxt, v: visit::vt<ctxt>) {
     pat_bindings(cx.tcx.def_map, loc.node.pat) {|p_id, _s, id|
@@ -46,7 +46,7 @@ fn find_locals(tcx: ty::ctxt,
                f_body: blk,
                sp: span,
                id: node_id) -> ctxt {
-    let cx: ctxt = {cs: @mutable [], tcx: tcx};
+    let cx: ctxt = {cs: @mut [], tcx: tcx};
     let visitor = visit::default_visitor::<ctxt>();
     let visitor =
         @{visit_local: collect_local,
@@ -78,8 +78,8 @@ fn add_constraint(tcx: ty::ctxt, c: sp_constr, next: uint, tbl: constr_map) ->
             }
           }
           none {
-            let rslt: @mutable [pred_args] =
-                @mutable [respan(c.span, {args: args, bit_num: next})];
+            let rslt: @mut [pred_args] =
+                @mut [respan(c.span, {args: args, bit_num: next})];
             tbl.insert(d_id, cpred(p, rslt));
           }
         }
@@ -141,7 +141,7 @@ fn mk_fn_info(ccx: crate_ctxt,
     next = add_constraint(cx.tcx, respan(f_sp, diverges_constr), next,
                           res_map);
 
-    let v: @mutable [node_id] = @mutable [];
+    let v: @mut [node_id] = @mut [];
     let rslt =
         {constrs: res_map,
          num_constraints: next,

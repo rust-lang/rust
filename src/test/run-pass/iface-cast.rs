@@ -2,8 +2,8 @@
 
 enum Tree = TreeR;
 type TreeR = @{
-    mutable left: option<Tree>,
-    mutable right: option<Tree>,
+    mut left: option<Tree>,
+    mut right: option<Tree>,
     val: to_str
 };
 
@@ -36,11 +36,11 @@ impl of to_str for Tree {
 fn foo<T: to_str>(x: T) -> str { x.to_str() }
 
 fn main() {
-    let t1 = Tree(@{mutable left: none,
-                    mutable right: none,
+    let t1 = Tree(@{mut left: none,
+                    mut right: none,
                     val: 1 as to_str });
-    let t2 = Tree(@{mutable left: some(t1),
-                    mutable right: some(t1),
+    let t2 = Tree(@{mut left: some(t1),
+                    mut right: some(t1),
                     val: 2 as to_str });
     let expected = "[2, some([1, none, none]), some([1, none, none])]";
     assert t2.to_str() == expected;

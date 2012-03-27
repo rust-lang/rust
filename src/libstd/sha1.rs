@@ -52,13 +52,13 @@ const k3: u32 = 0xCA62C1D6u32;
 #[doc = "Construct a `sha` object"]
 fn sha1() -> sha1 {
     type sha1state =
-        {h: [mutable u32],
-         mutable len_low: u32,
-         mutable len_high: u32,
-         msg_block: [mutable u8],
-         mutable msg_block_idx: uint,
-         mutable computed: bool,
-         work_buf: [mutable u32]};
+        {h: [mut u32],
+         mut len_low: u32,
+         mut len_high: u32,
+         msg_block: [mut u8],
+         mut msg_block_idx: uint,
+         mut computed: bool,
+         work_buf: [mut u32]};
 
     fn add_input(st: sha1state, msg: [u8]) {
         // FIXME: Should be typestate precondition
@@ -244,11 +244,11 @@ fn sha1() -> sha1 {
     }
     let st = {
         h: vec::to_mut(vec::from_elem(digest_buf_len, 0u32)),
-        mutable len_low: 0u32,
-        mutable len_high: 0u32,
+        mut len_low: 0u32,
+        mut len_high: 0u32,
         msg_block: vec::to_mut(vec::from_elem(msg_block_len, 0u8)),
-        mutable msg_block_idx: 0u,
-        mutable computed: false,
+        mut msg_block_idx: 0u,
+        mut computed: false,
         work_buf: vec::to_mut(vec::from_elem(work_buf_len, 0u32))
     };
     let sh = st as sha1;

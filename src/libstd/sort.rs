@@ -51,7 +51,7 @@ fn merge_sort<T: copy>(le: le<T>, v: [const T]) -> [T] {
     }
 }
 
-fn part<T: copy>(compare_func: le<T>, arr: [mutable T], left: uint,
+fn part<T: copy>(compare_func: le<T>, arr: [mut T], left: uint,
                 right: uint, pivot: uint) -> uint {
     let pivot_value = arr[pivot];
     arr[pivot] <-> arr[right];
@@ -68,7 +68,7 @@ fn part<T: copy>(compare_func: le<T>, arr: [mutable T], left: uint,
     ret storage_index;
 }
 
-fn qsort<T: copy>(compare_func: le<T>, arr: [mutable T], left: uint,
+fn qsort<T: copy>(compare_func: le<T>, arr: [mut T], left: uint,
              right: uint) {
     if right > left {
         let pivot = (left + right) / 2u;
@@ -82,18 +82,18 @@ fn qsort<T: copy>(compare_func: le<T>, arr: [mutable T], left: uint,
 }
 
 #[doc = "
-Quicksort. Sorts a mutable vector in place.
+Quicksort. Sorts a mut vector in place.
 
 Has worst case O(n^2) performance, average case O(n log n).
 This is an unstable sort.
 "]
-fn quick_sort<T: copy>(compare_func: le<T>, arr: [mutable T]) {
+fn quick_sort<T: copy>(compare_func: le<T>, arr: [mut T]) {
     if len::<T>(arr) == 0u { ret; }
     qsort::<T>(compare_func, arr, 0u, len::<T>(arr) - 1u);
 }
 
 fn qsort3<T: copy>(compare_func_lt: le<T>, compare_func_eq: le<T>,
-                  arr: [mutable T], left: int, right: int) {
+                  arr: [mut T], left: int, right: int) {
     if right <= left { ret; }
     let v: T = arr[right];
     let mut i: int = left - 1;
@@ -142,7 +142,7 @@ fn qsort3<T: copy>(compare_func_lt: le<T>, compare_func_eq: le<T>,
 
 // FIXME: This should take lt and eq types
 #[doc = "
-Fancy quicksort. Sorts a mutable vector in place.
+Fancy quicksort. Sorts a mut vector in place.
 
 Based on algorithm presented by [Sedgewick and Bentley]
 (http://www.cs.princeton.edu/~rs/talks/QuicksortIsOptimal.pdf).
@@ -152,7 +152,7 @@ According to these slides this is the algorithm of choice for
 This is an unstable sort.
 "]
 fn quick_sort3<T: copy>(compare_func_lt: le<T>, compare_func_eq: le<T>,
-                       arr: [mutable T]) {
+                       arr: [mut T]) {
     if len::<T>(arr) == 0u { ret; }
     qsort3::<T>(compare_func_lt, compare_func_eq, arr, 0,
                 (len::<T>(arr) as int) - 1);
@@ -160,7 +160,7 @@ fn quick_sort3<T: copy>(compare_func_lt: le<T>, compare_func_eq: le<T>,
 
 #[cfg(test)]
 mod test_qsort3 {
-    fn check_sort(v1: [mutable int], v2: [mutable int]) {
+    fn check_sort(v1: [mut int], v2: [mut int]) {
         let len = vec::len::<int>(v1);
         fn lt(&&a: int, &&b: int) -> bool { ret a < b; }
         fn equal(&&a: int, &&b: int) -> bool { ret a == b; }
@@ -178,24 +178,24 @@ mod test_qsort3 {
     #[test]
     fn test() {
         {
-            let v1 = [mutable 3, 7, 4, 5, 2, 9, 5, 8];
-            let v2 = [mutable 2, 3, 4, 5, 5, 7, 8, 9];
+            let v1 = [mut 3, 7, 4, 5, 2, 9, 5, 8];
+            let v2 = [mut 2, 3, 4, 5, 5, 7, 8, 9];
             check_sort(v1, v2);
         }
         {
-            let v1 = [mutable 1, 1, 1];
-            let v2 = [mutable 1, 1, 1];
+            let v1 = [mut 1, 1, 1];
+            let v2 = [mut 1, 1, 1];
             check_sort(v1, v2);
         }
         {
-            let v1: [mutable int] = [mutable];
-            let v2: [mutable int] = [mutable];
+            let v1: [mut int] = [mut];
+            let v2: [mut int] = [mut];
             check_sort(v1, v2);
         }
-        { let v1 = [mutable 9]; let v2 = [mutable 9]; check_sort(v1, v2); }
+        { let v1 = [mut 9]; let v2 = [mut 9]; check_sort(v1, v2); }
         {
-            let v1 = [mutable 9, 3, 3, 3, 9];
-            let v2 = [mutable 3, 3, 3, 9, 9];
+            let v1 = [mut 9, 3, 3, 3, 9];
+            let v2 = [mut 3, 3, 3, 9, 9];
             check_sort(v1, v2);
         }
     }
@@ -203,7 +203,7 @@ mod test_qsort3 {
 
 #[cfg(test)]
 mod test_qsort {
-    fn check_sort(v1: [mutable int], v2: [mutable int]) {
+    fn check_sort(v1: [mut int], v2: [mut int]) {
         let len = vec::len::<int>(v1);
         fn leual(&&a: int, &&b: int) -> bool { ret a <= b; }
         let f = leual;
@@ -219,24 +219,24 @@ mod test_qsort {
     #[test]
     fn test() {
         {
-            let v1 = [mutable 3, 7, 4, 5, 2, 9, 5, 8];
-            let v2 = [mutable 2, 3, 4, 5, 5, 7, 8, 9];
+            let v1 = [mut 3, 7, 4, 5, 2, 9, 5, 8];
+            let v2 = [mut 2, 3, 4, 5, 5, 7, 8, 9];
             check_sort(v1, v2);
         }
         {
-            let v1 = [mutable 1, 1, 1];
-            let v2 = [mutable 1, 1, 1];
+            let v1 = [mut 1, 1, 1];
+            let v2 = [mut 1, 1, 1];
             check_sort(v1, v2);
         }
         {
-            let v1: [mutable int] = [mutable];
-            let v2: [mutable int] = [mutable];
+            let v1: [mut int] = [mut];
+            let v2: [mut int] = [mut];
             check_sort(v1, v2);
         }
-        { let v1 = [mutable 9]; let v2 = [mutable 9]; check_sort(v1, v2); }
+        { let v1 = [mut 9]; let v2 = [mut 9]; check_sort(v1, v2); }
         {
-            let v1 = [mutable 9, 3, 3, 3, 9];
-            let v2 = [mutable 3, 3, 3, 9, 9];
+            let v1 = [mut 9, 3, 3, 3, 9];
+            let v2 = [mut 3, 3, 3, 9, 9];
             check_sort(v1, v2);
         }
     }
@@ -244,7 +244,7 @@ mod test_qsort {
     // Regression test for #750
     #[test]
     fn test_simple() {
-        let names = [mutable 2, 1, 3];
+        let names = [mut 2, 1, 3];
 
         let expected = [1, 2, 3];
 
@@ -294,7 +294,7 @@ mod tests {
     #[test]
     fn test_merge_sort_mutable() {
         fn le(&&a: int, &&b: int) -> bool { ret a <= b; }
-        let v1 = [mutable 3, 2, 1];
+        let v1 = [mut 3, 2, 1];
         let v2 = merge_sort(le, v1);
         assert v2 == [1, 2, 3];
     }

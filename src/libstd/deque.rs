@@ -23,30 +23,30 @@ fn create<T: copy>() -> t<T> {
       * Grow is only called on full elts, so nelts is also len(elts), unlike
       * elsewhere.
       */
-    fn grow<T: copy>(nelts: uint, lo: uint, elts: [mutable cell<T>]) ->
-       [mutable cell<T>] {
+    fn grow<T: copy>(nelts: uint, lo: uint, elts: [mut cell<T>]) ->
+       [mut cell<T>] {
         assert (nelts == vec::len(elts));
-        let mut rv = [mutable];
+        let mut rv = [mut];
 
         let mut i = 0u;
         let nalloc = uint::next_power_of_two(nelts + 1u);
         while i < nalloc {
             if i < nelts {
-                rv += [mutable elts[(lo + i) % nelts]];
-            } else { rv += [mutable none]; }
+                rv += [mut elts[(lo + i) % nelts]];
+            } else { rv += [mut none]; }
             i += 1u;
         }
 
         ret rv;
     }
-    fn get<T: copy>(elts: [mutable cell<T>], i: uint) -> T {
+    fn get<T: copy>(elts: [mut cell<T>], i: uint) -> T {
         ret alt elts[i] { some(t) { t } _ { fail } };
     }
 
-    type repr<T> = {mutable nelts: uint,
-                    mutable lo: uint,
-                    mutable hi: uint,
-                    mutable elts: [mutable cell<T>]};
+    type repr<T> = {mut nelts: uint,
+                    mut lo: uint,
+                    mut hi: uint,
+                    mut elts: [mut cell<T>]};
 
     impl <T: copy> of t<T> for repr<T> {
         fn size() -> uint { ret self.nelts; }
@@ -102,10 +102,10 @@ fn create<T: copy>() -> t<T> {
     }
 
     let repr: repr<T> = {
-        mutable nelts: 0u,
-        mutable lo: 0u,
-        mutable hi: 0u,
-        mutable elts: vec::to_mut(vec::from_elem(initial_capacity, none))
+        mut nelts: 0u,
+        mut lo: 0u,
+        mut hi: 0u,
+        mut elts: vec::to_mut(vec::from_elem(initial_capacity, none))
     };
     repr as t::<T>
 }

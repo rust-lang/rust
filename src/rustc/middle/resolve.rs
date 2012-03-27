@@ -35,7 +35,7 @@ enum scope {
     scope_fn_expr(ast::fn_decl, node_id, [ast::ty_param]),
     scope_native_item(@ast::native_item),
     scope_loop(@ast::local), // there's only 1 decl per loop.
-    scope_block(ast::blk, @mutable uint, @mutable uint),
+    scope_block(ast::blk, @mut uint, @mut uint),
     scope_arm(ast::arm),
     scope_method(node_id, [ast::ty_param]),
 }
@@ -104,8 +104,8 @@ type glob_imp_def = {def: def, path: @ast::view_path};
 type indexed_mod = {
     m: option<ast::_mod>,
     index: mod_index,
-    mutable glob_imports: [glob_imp_def],
-    mutable globbed_exports: [ident],
+    mut glob_imports: [glob_imp_def],
+    mut globbed_exports: [ident],
     glob_imported_names: hashmap<str, glob_import_state>,
     path: str
 };
@@ -127,19 +127,19 @@ type env =
      def_map: def_map,
      ast_map: ast_map::map,
      imports: hashmap<node_id, import_state>,
-     mutable exp_map: exp_map,
+     mut exp_map: exp_map,
      mod_map: hashmap<node_id, @indexed_mod>,
      block_map: hashmap<node_id, [glob_imp_def]>,
      ext_map: ext_map,
      impl_map: impl_map,
      impl_cache: impl_cache,
      ext_cache: ext_hash,
-     used_imports: {mutable track: bool,
-                    mutable data: [node_id]},
-     mutable reported: [{ident: str, sc: scope}],
-     mutable ignored_imports: [node_id],
-     mutable current_tp: option<uint>,
-     mutable resolve_unexported: bool,
+     used_imports: {mut track: bool,
+                    mut data: [node_id]},
+     mut reported: [{ident: str, sc: scope}],
+     mut ignored_imports: [node_id],
+     mut current_tp: option<uint>,
+     mut resolve_unexported: bool,
      sess: session};
 
 
@@ -171,18 +171,18 @@ fn create_env(sess: session, amap: ast_map::map) -> @env {
       def_map: int_hash(),
       ast_map: amap,
       imports: int_hash(),
-      mutable exp_map: int_hash(),
+      mut exp_map: int_hash(),
       mod_map: int_hash(),
       block_map: int_hash(),
       ext_map: new_def_hash(),
       impl_map: int_hash(),
       impl_cache: new_def_hash(),
       ext_cache: new_ext_hash(),
-      used_imports: {mutable track: false, mutable data:  []},
-      mutable reported: [],
-      mutable ignored_imports: [],
-      mutable current_tp: none,
-      mutable resolve_unexported: false,
+      used_imports: {mut track: false, mut data:  []},
+      mut reported: [],
+      mut ignored_imports: [],
+      mut current_tp: none,
+      mut resolve_unexported: false,
       sess: sess}
 }
 
@@ -268,8 +268,8 @@ fn map_crate(e: @env, c: @ast::crate) {
             e.mod_map.insert(i.id,
                              @{m: some(md),
                                index: index_mod(md),
-                               mutable glob_imports: [],
-                               mutable globbed_exports: [],
+                               mut glob_imports: [],
+                               mut globbed_exports: [],
                                glob_imported_names: str_hash(),
                                path: path_from_scope(sc, i.ident)});
           }
@@ -277,8 +277,8 @@ fn map_crate(e: @env, c: @ast::crate) {
             e.mod_map.insert(i.id,
                              @{m: none::<ast::_mod>,
                                index: index_nmod(nmd),
-                               mutable glob_imports: [],
-                               mutable globbed_exports: [],
+                               mut glob_imports: [],
+                               mut globbed_exports: [],
                                glob_imported_names: str_hash(),
                                path: path_from_scope(sc, i.ident)});
           }
@@ -336,8 +336,8 @@ fn map_crate(e: @env, c: @ast::crate) {
     e.mod_map.insert(ast::crate_node_id,
                      @{m: some(c.node.module),
                        index: index_mod(c.node.module),
-                       mutable glob_imports: [],
-                       mutable globbed_exports: [],
+                       mut glob_imports: [],
+                       mut globbed_exports: [],
                        glob_imported_names: str_hash(),
                        path: ""});
 
@@ -580,7 +580,7 @@ fn visit_fn_with_scope(e: @env, fk: visit::fn_kind, decl: ast::fn_decl,
 }
 
 fn visit_block_with_scope(b: ast::blk, sc: scopes, v: vt<scopes>) {
-    let pos = @mutable 0u, loc = @mutable 0u;
+    let pos = @mut 0u, loc = @mut 0u;
     let block_sc = cons(scope_block(b, pos, loc), @sc);
     for vi in b.node.view_items { v.visit_view_item(vi, block_sc, v); }
     for stmt in b.node.stmts {
@@ -594,7 +594,7 @@ fn visit_block_with_scope(b: ast::blk, sc: scopes, v: vt<scopes>) {
 fn visit_decl_with_scope(d: @decl, sc: scopes, v: vt<scopes>) {
     let loc_pos = alt list::head(sc) {
       scope_block(_, _, pos) { pos }
-      _ { @mutable 0u }
+      _ { @mut 0u }
     };
     alt d.node {
       decl_local(locs) {
@@ -1894,11 +1894,11 @@ fn check_ty(e: @env, ty: @ast::ty, &&x: (), v: vt<()>) {
     visit::visit_ty(ty, x, v);
 }
 
-type checker = @{mutable seen: [ident], kind: str, sess: session};
+type checker = @{mut seen: [ident], kind: str, sess: session};
 
 fn checker(e: env, kind: str) -> checker {
     let seen: [ident] = [];
-    ret @{mutable seen: seen, kind: kind, sess: e.sess};
+    ret @{mut seen: seen, kind: kind, sess: e.sess};
 }
 
 fn check_name(ch: checker, sp: span, name: ident) {

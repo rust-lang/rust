@@ -22,7 +22,7 @@ export eq_vec;
 //        for the case where nbits <= 32.
 
 #[doc = "The bitvector type"]
-type bitv = @{storage: [mutable uint], nbits: uint};
+type bitv = @{storage: [mut uint], nbits: uint};
 
 const uint_bits: uint = 32u + (1u << 32u >> 27u);
 

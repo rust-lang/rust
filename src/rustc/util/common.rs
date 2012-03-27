@@ -68,8 +68,8 @@ fn log_stmt_err(st: ast::stmt) {
 }
 
 fn has_nonlocal_exits(b: ast::blk) -> bool {
-    let has_exits = @mutable false;
-    fn visit_expr(flag: @mutable bool, e: @ast::expr) {
+    let has_exits = @mut false;
+    fn visit_expr(flag: @mut bool, e: @ast::expr) {
         alt e.node {
           ast::expr_break { *flag = true; }
           ast::expr_cont { *flag = true; }
@@ -85,8 +85,8 @@ fn has_nonlocal_exits(b: ast::blk) -> bool {
 
 /* FIXME: copy/paste, yuck */
 fn may_break(b: ast::blk) -> bool {
-    let has_exits = @mutable false;
-    fn visit_expr(flag: @mutable bool, e: @ast::expr) {
+    let has_exits = @mut false;
+    fn visit_expr(flag: @mut bool, e: @ast::expr) {
         alt e.node {
           ast::expr_break { *flag = true; }
           _ { }

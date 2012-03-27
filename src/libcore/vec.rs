@@ -150,15 +150,15 @@ fn from_elem<T: copy>(n_elts: uint, t: T) -> [T] {
     ret v;
 }
 
-#[doc = "Produces a mutable vector from an immutable vector."]
-fn to_mut<T>(+v: [T]) -> [mutable T] unsafe {
+#[doc = "Produces a mut vector from an immutable vector."]
+fn to_mut<T>(+v: [T]) -> [mut T] unsafe {
     let r = ::unsafe::reinterpret_cast(v);
     ::unsafe::forget(v);
     r
 }
 
-#[doc = "Produces an immutable vector from a mutable vector."]
-fn from_mut<T>(+v: [mutable T]) -> [T] unsafe {
+#[doc = "Produces an immutable vector from a mut vector."]
+fn from_mut<T>(+v: [mut T]) -> [T] unsafe {
     let r = ::unsafe::reinterpret_cast(v);
     ::unsafe::forget(v);
     r
@@ -396,7 +396,7 @@ Sets the element at position `index` to `val`. If `index` is past the end
 of the vector, expands the vector by replicating `initval` to fill the
 intervening space.
 "]
-fn grow_set<T: copy>(&v: [mutable T], index: uint, initval: T, val: T) {
+fn grow_set<T: copy>(&v: [mut T], index: uint, initval: T, val: T) {
     if index >= len(v) { grow(v, index - len(v) + 1u, initval); }
     v[index] = val;
 }
@@ -729,12 +729,12 @@ Swaps two elements in a vector
 * a - The index of the first element
 * b - The index of the second element
 "]
-fn swap<T>(v: [mutable T], a: uint, b: uint) {
+fn swap<T>(v: [mut T], a: uint, b: uint) {
     v[a] <-> v[b];
 }
 
 #[doc = "Reverse the order of elements in a vector, in place"]
-fn reverse<T>(v: [mutable T]) {
+fn reverse<T>(v: [mut T]) {
     let mut i: uint = 0u;
     let ln = len::<T>(v);
     while i < ln / 2u { v[i] <-> v[ln - i - 1u]; i += 1u; }
@@ -890,8 +890,8 @@ fn as_buf<E,T>(v: [const E], f: fn(*E) -> T) -> T unsafe {
     let buf = unsafe::to_ptr(v); f(buf)
 }
 
-fn as_mut_buf<E,T>(v: [mutable E], f: fn(*mutable E) -> T) -> T unsafe {
-    let buf = unsafe::to_ptr(v) as *mutable E; f(buf)
+fn as_mut_buf<E,T>(v: [mut E], f: fn(*mut E) -> T) -> T unsafe {
+    let buf = unsafe::to_ptr(v) as *mut E; f(buf)
 }
 
 #[doc = "An extension implementation providing a `len` method"]
@@ -905,7 +905,7 @@ impl vec_len<T> for [const T] {
 mod unsafe {
     // FIXME: This should have crate visibility
     #[doc = "The internal representation of a vector"]
-    type vec_repr = {mutable fill: uint, mutable alloc: uint, data: u8};
+    type vec_repr = {mut fill: uint, mut alloc: uint, data: u8};
 
     #[doc = "
     Constructs a vector from an unsafe pointer to a buffer
@@ -1212,7 +1212,7 @@ mod tests {
 
     #[test]
     fn test_grow_set() {
-        let mut v = [mutable 1, 2, 3];
+        let mut v = [mut 1, 2, 3];
         grow_set(v, 4u, 4, 5);
         assert (len(v) == 5u);
         assert (v[0] == 1);
@@ -1619,7 +1619,7 @@ mod tests {
 
     #[test]
     fn reverse_and_reversed() {
-        let v: [mutable int] = [mutable 10, 20];
+        let v: [mut int] = [mut 10, 20];
         assert (v[0] == 10);
         assert (v[1] == 20);
         reverse(v);
@@ -1634,13 +1634,13 @@ mod tests {
 
         let v4 = reversed::<int>([]);
         assert (v4 == []);
-        let v3: [mutable int] = [mutable];
+        let v3: [mut int] = [mut];
         reverse::<int>(v3);
     }
 
     #[test]
     fn reversed_mut() {
-        let v2 = reversed::<int>([mutable 10, 20]);
+        let v2 = reversed::<int>([mut 10, 20]);
         assert (v2[0] == 20);
         assert (v2[1] == 10);
     }

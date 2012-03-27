@@ -37,7 +37,7 @@ iface handler {
 }
 
 type handler_t = @{
-    mutable err_count: uint,
+    mut err_count: uint,
     _emit: emitter
 };
 
@@ -127,7 +127,7 @@ fn mk_handler(emitter: option<emitter>) -> handler {
     };
 
     @{
-        mutable err_count: 0u,
+        mut err_count: 0u,
         _emit: emit
     } as handler
 }

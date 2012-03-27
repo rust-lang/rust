@@ -1,7 +1,7 @@
-resource r(i: @mutable int) { *i += 1; }
+resource r(i: @mut int) { *i += 1; }
 
 fn main() {
-    let i = @mutable 0;
+    let i = @mut 0;
     // Even though these look like copies, they are guaranteed not to be
     {
         let a = r(i);

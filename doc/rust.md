@@ -217,7 +217,7 @@ else enum export
 fail false fn for
 if iface impl import
 let log loop
-mod mutable
+mod mut
 native
 pure
 resource ret
@@ -1527,13 +1527,13 @@ rec_expr : '{' ident ':' expr
 A _[record](#record-types) expression_ is one or more comma-separated
 name-value pairs enclosed by braces. A fieldname can be any identifier
 (including keywords), and is separated from its value expression by a
-colon. To indicate that a field is mutable, the `mutable` keyword is
+colon. To indicate that a field is mutable, the `mut` keyword is
 written before its name.
 
 ~~~~
 {x: 10f, y: 20f};
 {name: "Joe", age: 35u, score: 100_000};
-{ident: "X", mutable count: 0u};
+{ident: "X", mut count: 0u};
 ~~~~
 
 The order of the fields in a record expression is significant, and
@@ -1586,19 +1586,19 @@ expression on the left of the dot.
 ### Vector expressions
 
 ~~~~~~~~{.ebnf .gram}
-vec_expr : '[' "mutable" ? [ expr [ ',' expr ] * ] ? ']'
+vec_expr : '[' "mut" ? [ expr [ ',' expr ] * ] ? ']'
 ~~~~~~~~
 
 A _[vector](#vector-types) expression_ is written by enclosing zero or
 more comma-separated expressions of uniform type in square brackets.
-The keyword `mutable` can be written after the opening bracket to
+The keyword `mut` can be written after the opening bracket to
 indicate that the elements of the resulting vector may be mutated.
 When no mutability is specified, the vector is immutable.
 
 ~~~~
 [1, 2, 3, 4];
 ["a", "b", "c", "d"];
-[mutable 0u8, 0u8, 0u8, 0u8];
+[mut 0u8, 0u8, 0u8, 0u8];
 ~~~~
 
 ### Index expressions
@@ -1622,7 +1622,7 @@ task in a _failing state_.
 # task::run(builder) {||
 
 [1, 2, 3, 4][0];
-[mutable 'x', 'y'][1] = 'z';
+[mut 'x', 'y'][1] = 'z';
 ["a", "b"][10]; // fails
 
 # }
@@ -1904,11 +1904,11 @@ argument to a function to be copied and passed by value.
 An example of a copy expression:
 
 ~~~~
-fn mutate(vec: [mutable int]) {
+fn mutate(vec: [mut int]) {
    vec[0] = 10;
 }
 
-let v = [mutable 1,2,3];
+let v = [mut 1,2,3];
 
 mutate(copy v);   // Pass a copy
 

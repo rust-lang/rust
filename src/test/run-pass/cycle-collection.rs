@@ -1,10 +1,10 @@
 enum taggy {
-    cons(@mutable taggy),
+    cons(@mut taggy),
     nil,
 }
 
 fn f() {
-    let box = @mutable nil;
+    let box = @mut nil;
     *box = cons(box);
 }
 

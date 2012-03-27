@@ -56,7 +56,7 @@ import std::smallintmap;
 // destination of a computation's value.
 
 enum dest {
-    by_val(@mutable ValueRef),
+    by_val(@mut ValueRef),
     save_in(ValueRef),
     ignore,
 }
@@ -69,8 +69,8 @@ fn dest_str(ccx: @crate_ctxt, d: dest) -> str {
     }
 }
 
-fn empty_dest_cell() -> @mutable ValueRef {
-    ret @mutable llvm::LLVMGetUndef(T_nil());
+fn empty_dest_cell() -> @mut ValueRef {
+    ret @mut llvm::LLVMGetUndef(T_nil());
 }
 
 fn dup_for_join(dest: dest) -> dest {
@@ -454,9 +454,9 @@ fn declare_tydesc(ccx: @crate_ctxt, t: ty::t) -> @tydesc_info {
           tydesc: gvar,
           size: llsize,
           align: llalign,
-          mutable take_glue: none,
-          mutable drop_glue: none,
-          mutable free_glue: none};
+          mut take_glue: none,
+          mut drop_glue: none,
+          mut free_glue: none};
     log(debug, "--- declare_tydesc " + ty_to_str(ccx.tcx, t));
     ret info;
 }
@@ -3516,11 +3516,11 @@ fn new_block(cx: fn_ctxt, parent: block_parent, kind: block_kind,
         llvm::LLVMAppendBasicBlock(cx.llfn, buf)
     });
     let bcx = @{llbb: llbb,
-                mutable terminated: false,
-                mutable unreachable: false,
+                mut terminated: false,
+                mut unreachable: false,
                 parent: parent,
                 kind: kind,
-                mutable block_span: block_span,
+                mut block_span: block_span,
                 fcx: cx};
     alt parent {
       parent_some(cx) {
@@ -3532,8 +3532,8 @@ fn new_block(cx: fn_ctxt, parent: block_parent, kind: block_kind,
 }
 
 fn simple_block_scope() -> block_kind {
-    block_scope({is_loop: none, mutable cleanups: [],
-                 mutable cleanup_paths: [], mutable landing_pad: none})
+    block_scope({is_loop: none, mut cleanups: [],
+                 mut cleanup_paths: [], mut landing_pad: none})
 }
 
 // Use this when you're at the top block of a function or the like.
@@ -3552,9 +3552,9 @@ fn loop_scope_block(bcx: block, _cont: loop_cont,
     -> block {
     ret new_block(bcx.fcx, parent_some(bcx), block_scope({
         is_loop: some({cnt: _cont, brk: _break}),
-        mutable cleanups: [],
-        mutable cleanup_paths: [],
-        mutable landing_pad: none
+        mut cleanups: [],
+        mut cleanup_paths: [],
+        mut landing_pad: none
     }), n, some(sp));
 }
 
@@ -3566,11 +3566,11 @@ fn sub_block(bcx: block, n: str) -> block {
 
 fn raw_block(fcx: fn_ctxt, llbb: BasicBlockRef) -> block {
     ret @{llbb: llbb,
-          mutable terminated: false,
-          mutable unreachable: false,
+          mut terminated: false,
+          mut unreachable: false,
           parent: parent_none,
           kind: block_non_scope,
-          mutable block_span: none,
+          mut block_span: none,
           fcx: fcx};
 }
 
@@ -3775,11 +3775,11 @@ fn new_fn_ctxt_w_id(ccx: @crate_ctxt, path: path,
     ret @{llfn: llfndecl,
           llenv: llvm::LLVMGetParam(llfndecl, 1u as c_uint),
           llretptr: llvm::LLVMGetParam(llfndecl, 0u as c_uint),
-          mutable llstaticallocas: llbbs.sa,
-          mutable llloadenv: llbbs.ca,
-          mutable llreturn: llbbs.rt,
-          mutable llself: none,
-          mutable personality: none,
+          mut llstaticallocas: llbbs.sa,
+          mut llloadenv: llbbs.ca,
+          mut llreturn: llbbs.rt,
+          mut llself: none,
+          mut personality: none,
           llargs: int_hash::<local_val>(),
           lllocals: int_hash::<local_val>(),
           llupvars: int_hash::<ValueRef>(),
@@ -4766,7 +4766,7 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           exp_map: emap,
           reachable: reachable,
           item_symbols: int_hash::<str>(),
-          mutable main_fn: none::<ValueRef>,
+          mut main_fn: none::<ValueRef>,
           link_meta: link_meta,
           enum_sizes: ty::new_ty_hash(),
           discrims: ast_util::new_def_id_hash::<ValueRef>(),
@@ -4786,13 +4786,13 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           tcx: tcx,
           maps: maps,
           stats:
-              {mutable n_static_tydescs: 0u,
-               mutable n_glues_created: 0u,
-               mutable n_null_glues: 0u,
-               mutable n_real_glues: 0u,
-               llvm_insn_ctxt: @mutable [],
+              {mut n_static_tydescs: 0u,
+               mut n_glues_created: 0u,
+               mut n_null_glues: 0u,
+               mut n_real_glues: 0u,
+               llvm_insn_ctxt: @mut [],
                llvm_insns: str_hash(),
-               fn_times: @mutable []},
+               fn_times: @mut []},
           upcalls:
               upcall::declare_upcalls(targ_cfg, tn, tydesc_type,
                                       llmod),
@@ -4806,7 +4806,7 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           crate_map: crate_map,
           dbg_cx: dbg_cx,
           class_ctors: int_hash::<int>(),
-          mutable do_not_commit_warning_issued: false};
+          mut do_not_commit_warning_issued: false};
 
 
     {

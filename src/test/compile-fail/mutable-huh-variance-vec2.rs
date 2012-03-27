@@ -2,9 +2,9 @@ fn main() {
     // Note: explicit type annot is required here
     // because otherwise the inference gets smart
     // and assigns a type of [mut [const int]].
-    let v: [mut [mut int]] = [mutable [mutable 0]];
+    let v: [mut [mut int]] = [mut [mut 0]];
 
-    fn f(&&v: [mutable [const int]]) {
+    fn f(&&v: [mut [const int]]) {
         v[0] = [3]
     }
 

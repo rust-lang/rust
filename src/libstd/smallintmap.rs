@@ -7,12 +7,12 @@ import core::option::{some, none};
 
 // FIXME: Should not be @; there's a bug somewhere in rustc that requires this
 // to be.
-type smallintmap<T: copy> = @{mutable v: [mutable option<T>]};
+type smallintmap<T: copy> = @{mut v: [mut option<T>]};
 
 #[doc = "Create a smallintmap"]
 fn mk<T: copy>() -> smallintmap<T> {
-    let v: [mutable option<T>] = [mutable];
-    ret @{mutable v: v};
+    let v: [mut option<T>] = [mut];
+    ret @{mut v: v};
 }
 
 #[doc = "

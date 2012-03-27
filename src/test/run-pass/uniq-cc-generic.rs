@@ -4,7 +4,7 @@ enum maybe_pointy {
 }
 
 type pointy = {
-    mutable a : maybe_pointy,
+    mut a : maybe_pointy,
     d : fn~() -> uint,
 };
 
@@ -14,7 +14,7 @@ fn make_uniq_closure<A:send>(a: A) -> fn~() -> uint {
 
 fn empty_pointy() -> @pointy {
     ret @{
-        mutable a : none,
+        mut a : none,
         d : make_uniq_closure("hi")
     }
 }

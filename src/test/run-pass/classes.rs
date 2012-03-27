@@ -1,6 +1,6 @@
 class cat {
   priv {
-    let mutable meows : uint;
+    let mut meows : uint;
     fn meow() {
       #error("Meow");
       meows += 1u;

@@ -1,4 +1,4 @@
 //error-pattern:mismatched types
 fn main() {
-    let i: ~int = ~mutable 0;
+    let i: ~int = ~mut 0;
 }

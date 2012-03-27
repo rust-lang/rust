@@ -38,7 +38,7 @@ enum block_type { func, lp, }
 
 enum use { var_use(node_id), close_over(node_id), }
 type set = [{def: node_id, uses: list<use>}];
-type bl = @{type: block_type, mutable second: bool, mutable exits: [set]};
+type bl = @{type: block_type, mut second: bool, mut exits: [set]};
 
 enum use_id { path(node_id), close(node_id, node_id) }
 fn hash_use_id(id: use_id) -> uint {
@@ -51,8 +51,8 @@ type ctx = {last_uses: std::map::hashmap<use_id, bool>,
             ref_map: alias::ref_map,
             tcx: ty::ctxt,
             // The current set of local last uses
-            mutable current: set,
-            mutable blocks: list<bl>};
+            mut current: set,
+            mut blocks: list<bl>};
 
 fn find_last_uses(c: @crate, def_map: resolve::def_map,
                   ref_map: alias::ref_map, tcx: ty::ctxt)
@@ -66,8 +66,8 @@ fn find_last_uses(c: @crate, def_map: resolve::def_map,
               def_map: def_map,
               ref_map: ref_map,
               tcx: tcx,
-              mutable current: [],
-              mutable blocks: nil};
+              mut current: [],
+              mut blocks: nil};
     visit::visit_crate(*c, cx, v);
     let mini_table = std::map::int_hash();
     cx.last_uses.items {|key, val|
@@ -268,7 +268,7 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
 }
 
 fn visit_block(tp: block_type, cx: ctx, visit: fn()) {
-    let local = @{type: tp, mutable second: false, mutable exits: []};
+    let local = @{type: tp, mut second: false, mut exits: []};
     cx.blocks = cons(local, @cx.blocks);
     visit();
     local.second = true;

@@ -8,8 +8,8 @@ fn funny() {
 }
 
 fn what() {
-    fn the(x: @mutable bool) { ret while !*x { *x = true; }; }
-    let i = @mutable false;
+    fn the(x: @mut bool) { ret while !*x { *x = true; }; }
+    let i = @mut false;
     let dont = bind the(i);
     dont();
     assert (*i);

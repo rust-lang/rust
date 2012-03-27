@@ -40,8 +40,8 @@ enum ast_node {
 }
 
 type map = std::map::hashmap<node_id, ast_node>;
-type ctx = {map: map, mutable path: path,
-            mutable local_id: uint, sess: session};
+type ctx = {map: map, mut path: path,
+            mut local_id: uint, sess: session};
 type vt = visit::vt<ctx>;
 
 fn extend(cx: ctx, elt: str) -> @path {
@@ -63,8 +63,8 @@ fn mk_ast_map_visitor() -> vt {
 
 fn map_crate(sess: session, c: crate) -> map {
     let cx = {map: std::map::int_hash(),
-              mutable path: [],
-              mutable local_id: 0u,
+              mut path: [],
+              mut local_id: 0u,
               sess: sess};
     visit::visit_crate(c, cx, mk_ast_map_visitor());
     ret cx.map;
@@ -81,8 +81,8 @@ fn map_decoded_item(sess: session, map: map, path: path, ii: inlined_item) {
     // even if we did I think it only needs an ordering between local
     // variables that are simultaneously in scope).
     let cx = {map: map,
-              mutable path: path,
-              mutable local_id: 0u,
+              mut path: path,
+              mut local_id: 0u,
               sess: sess};
     let v = mk_ast_map_visitor();
 

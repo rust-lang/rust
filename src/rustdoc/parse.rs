@@ -14,10 +14,10 @@ fn new_parse_sess() -> parser::parse_sess {
     let handler = diagnostic::mk_handler(none);
     let sess = @{
         cm: cm,
-        mutable next_id: 1,
+        mut next_id: 1,
         span_diagnostic: diagnostic::mk_span_handler(handler, cm),
-        mutable chpos: 0u,
-        mutable byte_pos: 0u
+        mut chpos: 0u,
+        mut byte_pos: 0u
     };
     ret sess;
 }

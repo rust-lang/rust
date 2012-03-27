@@ -198,10 +198,10 @@ fn start_program(prog: str, args: [str]) -> program {
     libc::close(pipe_err.out);
 
     type prog_repr = {pid: pid_t,
-                      mutable in_fd: c_int,
+                      mut in_fd: c_int,
                       out_file: *libc::FILE,
                       err_file: *libc::FILE,
-                      mutable finished: bool};
+                      mut finished: bool};
 
     fn close_repr_input(r: prog_repr) {
         let invalid_fd = -1i32;
@@ -233,10 +233,10 @@ fn start_program(prog: str, args: [str]) -> program {
         fn destroy() { destroy_repr(*self); }
     }
     let repr = {pid: pid,
-                mutable in_fd: pipe_input.out,
+                mut in_fd: pipe_input.out,
                 out_file: os::fdopen(pipe_output.in),
                 err_file: os::fdopen(pipe_err.in),
-                mutable finished: false};
+                mut finished: false};
     ret prog_res(repr) as program;
 }
 
