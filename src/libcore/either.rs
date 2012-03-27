@@ -25,7 +25,7 @@ fn lefts<T: copy, U>(eithers: [either<T, U>]) -> [T] {
     #[doc = "Extracts from a vector of either all the left values"];
 
     let mut result: [T] = [];
-    for elt: either<T, U> in eithers {
+    for vec::each(eithers) {|elt|
         alt elt { left(l) { result += [l]; } _ {/* fallthrough */ } }
     }
     ret result;
@@ -35,7 +35,7 @@ fn rights<T, U: copy>(eithers: [either<T, U>]) -> [U] {
     #[doc = "Extracts from a vector of either all the right values"];
 
     let mut result: [U] = [];
-    for elt: either<T, U> in eithers {
+    for vec::each(eithers) {|elt|
         alt elt { right(r) { result += [r]; } _ {/* fallthrough */ } }
     }
     ret result;
@@ -52,7 +52,7 @@ fn partition<T: copy, U: copy>(eithers: [either<T, U>])
 
     let mut lefts: [T] = [];
     let mut rights: [U] = [];
-    for elt: either<T, U> in eithers {
+    for vec::each(eithers) {|elt|
         alt elt { left(l) { lefts += [l]; } right(r) { rights += [r]; } }
     }
     ret {lefts: lefts, rights: rights};

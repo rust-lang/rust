@@ -19,7 +19,7 @@ fn trans_impl(ccx: @crate_ctxt, path: path, name: ast::ident,
     let _icx = ccx.insn_ctxt("impl::trans_impl");
     if tps.len() > 0u { ret; }
     let sub_path = path + [path_name(name)];
-    for m in methods {
+    for vec::each(methods) {|m|
         if m.tps.len() == 0u {
             let llfn = get_item_val(ccx, m.id);
             trans_fn(ccx, sub_path + [path_name(m.ident)], m.decl, m.body,
@@ -156,9 +156,9 @@ fn find_vtable_in_fn_ctxt(ps: param_substs, n_param: uint, n_bound: uint)
     let mut vtable_off = n_bound, i = 0u;
     // Vtables are stored in a flat array, finding the right one is
     // somewhat awkward
-    for bounds in *ps.bounds {
+    for vec::each(*ps.bounds) {|bounds|
         if i >= n_param { break; }
-        for bound in *bounds {
+        for vec::each(*bounds) {|bound|
             alt bound { ty::bound_iface(_) { vtable_off += 1u; } _ {} }
         }
         i += 1u;

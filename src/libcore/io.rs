@@ -389,7 +389,7 @@ fn mk_file_writer(path: str, flags: [fileflag])
     fn wb() -> c_int { O_WRONLY as c_int }
 
     let mut fflags: c_int = wb();
-    for f: fileflag in flags {
+    for vec::each(flags) {|f|
         alt f {
           append { fflags |= O_APPEND as c_int; }
           create { fflags |= O_CREAT as c_int; }
@@ -521,7 +521,7 @@ impl of writer for mem_buffer {
     fn write(v: [const u8]) {
         // Fast path.
         if self.pos == vec::len(self.buf) {
-            for b: u8 in v { self.buf += [mut b]; }
+            for vec::each(v) {|b| self.buf += [mut b]; }
             self.pos += vec::len(v);
             ret;
         }

@@ -818,12 +818,12 @@ enum mono_param_id {
 type mono_id = @{def: ast::def_id, params: [mono_param_id]};
 fn hash_mono_id(&&mi: mono_id) -> uint {
     let mut h = syntax::ast_util::hash_def_id(mi.def);
-    for param in mi.params {
+    for vec::each(mi.params) {|param|
         h = h * alt param {
           mono_precise(ty, vts) {
             let mut h = ty::type_id(ty);
             option::may(vts) {|vts|
-                for vt in vts { h += hash_mono_id(vt); }
+                for vec::each(vts) {|vt| h += hash_mono_id(vt); }
             }
             h
           }
@@ -852,7 +852,7 @@ fn align_to(cx: block, off: ValueRef, align: ValueRef) -> ValueRef {
 
 fn path_str(p: path) -> str {
     let mut r = "", first = true;
-    for e in p {
+    for vec::each(p) {|e|
         alt e { ast_map::path_name(s) | ast_map::path_mod(s) {
           if first { first = false; }
           else { r += "::"; }

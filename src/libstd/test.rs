@@ -183,7 +183,7 @@ fn print_failures(st: console_test_state) {
     st.out.write_line("\nfailures:");
     let failures = vec::map(copy st.failures) {|test| test.name};
     let failures = sort::merge_sort(str::le, failures);
-    for name in failures {
+    for vec::each(failures) {|name|
         st.out.write_line(#fmt["    %s", name]);
     }
 }
@@ -492,7 +492,7 @@ mod tests {
         {
         let testfn = fn~() { };
         let mut tests = [];
-        for name: str in names {
+        for vec::each(names) {|name|
             let test = {name: name, fn: testfn, ignore: false,
                         should_fail: false};
             tests += [test];
@@ -510,7 +510,7 @@ mod tests {
 
     let pairs = vec::zip(expected, filtered);
 
-    for (a, b) in pairs { assert (a == b.name); }
+    for vec::each(pairs) {|p| let (a, b) = p; assert (a == b.name); }
 }
 }
 

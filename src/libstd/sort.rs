@@ -254,7 +254,11 @@ mod test_qsort {
         let immut_names = vec::from_mut(names);
 
         let pairs = vec::zip(expected, immut_names);
-        for (a, b) in pairs { #debug("%d %d", a, b); assert (a == b); }
+        for vec::each(pairs) {|p|
+            let (a, b) = p;
+            #debug("%d %d", a, b);
+            assert (a == b);
+        }
     }
 }
 

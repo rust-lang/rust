@@ -410,7 +410,7 @@ Apply a function to each element of a vector and return the results
 fn map<T, U>(v: [T], f: fn(T) -> U) -> [U] {
     let mut result = [];
     reserve(result, len(v));
-    for elem: T in v { result += [f(elem)]; }
+    for each(v) {|elem| result += [f(elem)]; }
     ret result;
 }
 
@@ -420,7 +420,7 @@ of each result vector
 "]
 fn flat_map<T, U>(v: [T], f: fn(T) -> [U]) -> [U] {
     let mut result = [];
-    for elem: T in v { result += f(elem); }
+    for each(v) {|elem| result += f(elem); }
     ret result;
 }
 
@@ -446,7 +446,7 @@ the resulting vector.
 fn filter_map<T, U: copy>(v: [T], f: fn(T) -> option<U>)
     -> [U] {
     let mut result = [];
-    for elem: T in v {
+    for each(v) {|elem|
         alt f(elem) {
           none {/* no-op */ }
           some(result_elem) { result += [result_elem]; }
@@ -464,7 +464,7 @@ only those elements for which `f` returned true.
 "]
 fn filter<T: copy>(v: [T], f: fn(T) -> bool) -> [T] {
     let mut result = [];
-    for elem: T in v {
+    for each(v) {|elem|
         if f(elem) { result += [elem]; }
     }
     ret result;
@@ -477,7 +477,7 @@ Flattens a vector of vectors of T into a single vector of T.
 "]
 fn concat<T: copy>(v: [const [const T]]) -> [T] {
     let mut r = [];
-    for inner in v { r += from_const(inner); }
+    for each(v) {|inner| r += from_const(inner); }
     ret r;
 }
 
@@ -487,7 +487,7 @@ Concatenate a vector of vectors, placing a given separator between each
 fn connect<T: copy>(v: [const [const T]], sep: T) -> [T] {
     let mut r: [T] = [];
     let mut first = true;
-    for inner in v {
+    for each(v) {|inner|
         if first { first = false; } else { push(r, sep); }
         r += from_const(inner);
     }
@@ -518,7 +518,7 @@ Return true if a predicate matches any elements
 If the vector contains no elements then false is returned.
 "]
 fn any<T>(v: [T], f: fn(T) -> bool) -> bool {
-    for elem: T in v { if f(elem) { ret true; } }
+    for each(v) {|elem| if f(elem) { ret true; } }
     ret false;
 }
 
@@ -544,7 +544,7 @@ Return true if a predicate matches all elements
 If the vector contains no elements then true is returned.
 "]
 fn all<T>(v: [T], f: fn(T) -> bool) -> bool {
-    for elem: T in v { if !f(elem) { ret false; } }
+    for each(v) {|elem| if !f(elem) { ret false; } }
     ret true;
 }
 
@@ -563,14 +563,14 @@ fn all2<T, U>(v0: [const T], v1: [const U], f: fn(T, U) -> bool) -> bool {
 
 #[doc = "Return true if a vector contains an element with the given value"]
 fn contains<T>(v: [const T], x: T) -> bool {
-    for elt: T in v { if x == elt { ret true; } }
+    for each(v) {|elt| if x == elt { ret true; } }
     ret false;
 }
 
 #[doc = "Returns the number of elements that are equal to a given value"]
 fn count<T>(v: [const T], x: T) -> uint {
     let mut cnt = 0u;
-    for elt: T in v { if x == elt { cnt += 1u; } }
+    for each(v) {|elt| if x == elt { cnt += 1u; } }
     ret cnt;
 }
 
@@ -701,7 +701,7 @@ of the i-th tuple of the input vector.
 "]
 fn unzip<T: copy, U: copy>(v: [const (T, U)]) -> ([T], [U]) {
     let mut as = [], bs = [];
-    for (a, b) in v { as += [a]; bs += [b]; }
+    for each(v) {|p| let (a, b) = p; as += [a]; bs += [b]; }
     ret (as, bs);
 }
 
@@ -807,7 +807,7 @@ Iterates over a vector's elements and indices
 fn eachi<T>(v: [const T], f: fn(uint, T) -> bool) unsafe {
     let mut i = 0u, l = len(v);
     let mut p = ptr::offset(unsafe::to_ptr(v), 0u);
-    while i > l {
+    while i < l {
         if !f(i, *p) { break; }
         p = ptr::offset(p, 1u);
         i += 1u;

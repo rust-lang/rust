@@ -173,14 +173,14 @@ fn set(v: bitv, i: uint, x: bool) {
 
 #[doc = "Returns true if all bits are 1"]
 fn is_true(v: bitv) -> bool {
-    for i: uint in to_vec(v) { if i != 1u { ret false; } }
+    for each(v) {|i| if !i { ret false; } }
     ret true;
 }
 
 
 #[doc = "Returns true if all bits are 0"]
 fn is_false(v: bitv) -> bool {
-    for i: uint in to_vec(v) { if i == 1u { ret false; } }
+    for each(v) {|i| if i { ret false; } }
     ret true;
 }
 
@@ -198,6 +198,12 @@ fn to_vec(v: bitv) -> [uint] {
     ret vec::from_fn::<uint>(v.nbits, sub);
 }
 
+fn each(v: bitv, f: fn(bool) -> bool) {
+    let mut i = 0u;
+    while i < v.nbits {
+        if !f(get(v, i)) { break; }
+    }
+}
 
 #[doc = "
 Converts the bitvector to a string.
@@ -207,7 +213,7 @@ is either '0' or '1'.
 "]
 fn to_str(v: bitv) -> str {
     let mut rs = "";
-    for i: uint in to_vec(v) { if i == 1u { rs += "1"; } else { rs += "0"; } }
+    for each(v) {|i| if i { rs += "1"; } else { rs += "0"; } }
     ret rs;
 }
 

@@ -111,7 +111,7 @@ fn join_returns(parent_cx: block, in_cxs: [block],
                 in_ds: [dest], out_dest: dest) -> block {
     let out = sub_block(parent_cx, "join");
     let mut reachable = false, i = 0u, phi = none;
-    for cx in in_cxs {
+    for vec::each(in_cxs) {|cx|
         if !cx.unreachable {
             Br(cx, out.llbb);
             reachable = true;
@@ -222,7 +222,7 @@ fn trans_native_call(cx: block, externs: hashmap<str, ValueRef>,
     let llnative: ValueRef =
         get_simple_extern_fn(cx, externs, llmod, name, n);
     let mut call_args: [ValueRef] = [];
-    for a: ValueRef in args {
+    for vec::each(args) {|a|
         call_args += [ZExtOrBitCast(cx, a, cx.ccx().int_type)];
     }
     ret Call(cx, llnative, call_args);
@@ -877,7 +877,7 @@ fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
           ty::ty_fn({inputs: args, _}) {
             let mut j = 0u;
             let v_id = variant.id;
-            for a: ty::arg in args {
+            for vec::each(args) {|a|
                 let llfldp_a = GEP_enum(cx, a_tup, tid, v_id, tps, j);
                 let ty_subst = ty::substitute_type_params(ccx.tcx, tps, a.ty);
                 cx = f(cx, llfldp_a, ty_subst);
@@ -895,19 +895,15 @@ fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
     let mut cx = cx;
     alt ty::get(t).struct {
       ty::ty_rec(fields) {
-        let mut i: int = 0;
-        for fld: ty::field in fields {
-            let llfld_a = GEPi(cx, av, [0, i]);
+        for vec::eachi(fields) {|i, fld|
+            let llfld_a = GEPi(cx, av, [0, i as int]);
             cx = f(cx, llfld_a, fld.mt.ty);
-            i += 1;
         }
       }
       ty::ty_tup(args) {
-        let mut i = 0;
-        for arg in args {
-            let llfld_a = GEPi(cx, av, [0, i]);
+        for vec::eachi(args) {|i, arg|
+            let llfld_a = GEPi(cx, av, [0, i as int]);
             cx = f(cx, llfld_a, arg);
-            i += 1;
         }
       }
       ty::ty_res(_, inner, tps) {
@@ -939,7 +935,7 @@ fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
         Unreachable(unr_cx);
         let llswitch = Switch(cx, lldiscrim_a, unr_cx.llbb, n_variants);
         let next_cx = sub_block(cx, "enum-iter-next");
-        for variant: ty::variant_info in *variants {
+        for vec::each(*variants) {|variant|
             let variant_cx =
                 sub_block(cx,
                                    "enum-iter-variant-" +
@@ -954,7 +950,7 @@ fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
       ty::ty_class(did, tps) {
           // a class is like a record type
         let mut i: int = 0;
-        for fld: ty::field in ty::class_items_as_fields(cx.tcx(), did) {
+        for vec::each(ty::class_items_as_fields(cx.tcx(), did)) {|fld|
             let llfld_a = GEPi(cx, av, [0, i]);
             cx = f(cx, llfld_a, fld.mt.ty);
             i += 1;
@@ -1846,7 +1842,7 @@ fn make_mono_id(ccx: @crate_ctxt, item: ast::def_id, substs: [ty::t],
         let mut i = 0u;
         vec::map2(*bounds, substs, {|bounds, subst|
             let mut v = [];
-            for bound in *bounds {
+            for vec::each(*bounds) {|bound|
                 alt bound {
                   ty::bound_iface(_) {
                     v += [impl::vtable_id(ccx, vts[i])];
@@ -2889,14 +2885,14 @@ fn trans_tup(bcx: block, elts: [@ast::expr], dest: dest) -> block {
     let mut bcx = bcx;
     let addr = alt dest {
       ignore {
-        for ex in elts { bcx = trans_expr(bcx, ex, ignore); }
+        for vec::each(elts) {|ex| bcx = trans_expr(bcx, ex, ignore); }
         ret bcx;
       }
       save_in(pos) { pos }
       _ { bcx.tcx().sess.bug("trans_tup: weird dest"); }
     };
     let mut temp_cleanups = [], i = 0;
-    for e in elts {
+    for vec::each(elts) {|e|
         let dst = GEPi(bcx, addr, [0, i]);
         let e_ty = expr_ty(bcx, e);
         bcx = trans_expr_save_in(bcx, e, dst);
@@ -2904,7 +2900,7 @@ fn trans_tup(bcx: block, elts: [@ast::expr], dest: dest) -> block {
         temp_cleanups += [dst];
         i += 1;
     }
-    for cleanup in temp_cleanups { revoke_clean(bcx, cleanup); }
+    for vec::each(temp_cleanups) {|cleanup| revoke_clean(bcx, cleanup); }
     ret bcx;
 }
 
@@ -2914,21 +2910,18 @@ fn trans_rec(bcx: block, fields: [ast::field],
     let _icx = bcx.insn_ctxt("trans_rec");
     let t = node_id_type(bcx, id);
     let mut bcx = bcx;
-    let addr = alt dest {
+    let addr = alt check dest {
       ignore {
-        for fld in fields {
+        for vec::each(fields) {|fld|
             bcx = trans_expr(bcx, fld.node.expr, ignore);
         }
         ret bcx;
       }
       save_in(pos) { pos }
-      _ { bcx.tcx().sess.bug("trans_rec: weird dest"); }
     };
 
-    let ty_fields = alt ty::get(t).struct {
-      ty::ty_rec(f) { f }
-      _ { bcx.tcx().sess.bug("trans_rec: id doesn't\
-           have a record type") } };
+    let ty_fields = alt check ty::get(t).struct { ty::ty_rec(f) { f } };
+
     let mut temp_cleanups = [];
     for fld in fields {
         let ix = option::get(vec::position(ty_fields, {|ft|
@@ -3584,7 +3577,7 @@ fn trans_stmt(cx: block, s: ast::stmt) -> block {
       ast::stmt_decl(d, _) {
         alt d.node {
           ast::decl_local(locals) {
-            for local in locals {
+            for vec::each(locals) {|local|
                 bcx = init_local(bcx, local);
                 if cx.sess().opts.extra_debuginfo {
                     debuginfo::create_local_var(bcx, local);
@@ -3702,9 +3695,9 @@ fn cleanup_and_leave(bcx: block, upto: option<BasicBlockRef>,
     loop {
         alt cur.kind {
           block_scope(info) if info.cleanups.len() > 0u {
-            for exists in info.cleanup_paths {
-                if exists.target == leave {
-                    Br(bcx, exists.dest);
+            for cp in info.cleanup_paths {
+                if cp.target == leave {
+                    Br(bcx, cp.dest);
                     ret;
                 }
             }
@@ -3770,12 +3763,12 @@ fn with_cond(bcx: block, val: ValueRef, f: fn(block) -> block) -> block {
 }
 
 fn block_locals(b: ast::blk, it: fn(@ast::local)) {
-    for s: @ast::stmt in b.node.stmts {
+    for vec::each(b.node.stmts) {|s|
         alt s.node {
           ast::stmt_decl(d, _) {
             alt d.node {
               ast::decl_local(locals) {
-                for local in locals { it(local); }
+                for vec::each(locals) {|local| it(local); }
               }
               _ {/* fall through */ }
             }
@@ -3829,7 +3822,7 @@ fn trans_block(bcx: block, b: ast::blk, dest: dest)
     let _icx = bcx.insn_ctxt("trans_block");
     let mut bcx = bcx;
     block_locals(b) {|local| bcx = alloc_local(bcx, local); };
-    for s: @ast::stmt in b.node.stmts {
+    for vec::each(b.node.stmts) {|s|
         debuginfo::update_source_pos(bcx, b.span);
         bcx = trans_stmt(bcx, *s);
     }
@@ -3920,7 +3913,7 @@ fn create_llargs_for_fn_args(cx: fn_ctxt,
 
     // Populate the llargs field of the function context with the ValueRefs
     // that we get from llvm::LLVMGetParam for each argument.
-    for arg: ast::arg in args {
+    for vec::each(args) {|arg|
         let llarg = llvm::LLVMGetParam(cx.llfn, arg_n as c_uint);
         assert (llarg as int != 0);
         // Note that this uses local_mem even for things passed by value.
@@ -3940,7 +3933,7 @@ fn copy_args_to_allocas(fcx: fn_ctxt, bcx: block, args: [ast::arg],
         tcx.sess.bug("someone forgot\
                 to document an invariant in copy_args_to_allocas!");
     };
-    for arg in arg_tys {
+    for vec::each(arg_tys) {|arg|
         let id = args[arg_n].id;
         let argval = alt fcx.llargs.get(id) { local_mem(v) { v }
                                               _ { epic_fail() } };
@@ -4096,13 +4089,12 @@ fn trans_enum_variant(ccx: @crate_ctxt, enum_id: ast::node_id,
                       llfndecl: ValueRef) {
     let _icx = ccx.insn_ctxt("trans_enum_variant");
     // Translate variant arguments to function arguments.
-    let mut fn_args = [], i = 0u;
-    for varg in variant.node.args {
-        fn_args += [{mode: ast::expl(ast::by_copy),
-                     ty: varg.ty,
-                     ident: "arg" + uint::to_str(i, 10u),
-                     id: varg.id}];
-    }
+    let fn_args = vec::map(variant.node.args, {|varg|
+        {mode: ast::expl(ast::by_copy),
+         ty: varg.ty,
+         ident: "arg",
+         id: varg.id}
+    });
     let fcx = new_fn_ctxt_w_id(ccx, [], llfndecl, variant.node.id,
                                param_substs, none);
     create_llargs_for_fn_args(fcx, no_self, fn_args);
@@ -4127,7 +4119,7 @@ fn trans_enum_variant(ccx: @crate_ctxt, enum_id: ast::node_id,
     let mut i = 0u;
     let t_id = local_def(enum_id);
     let v_id = local_def(variant.node.id);
-    for va: ast::variant_arg in variant.node.args {
+    for vec::each(variant.node.args) {|va|
         let lldestptr = GEP_enum(bcx, llblobptr, t_id, v_id,
                                  ty_param_substs, i);
         // If this argument to this function is a enum, it'll have come in to
@@ -4270,7 +4262,7 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
             trans_fn(ccx, *path + [path_name(item.ident)], decl, body,
                      llfndecl, no_self, none, item.id);
         } else {
-            for stmt in body.node.stmts {
+            for vec::each(body.node.stmts) {|stmt|
                 alt stmt.node {
                   ast::stmt_decl(@{node: ast::decl_item(i), _}, _) {
                     trans_item(ccx, *i);
@@ -4301,7 +4293,7 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
             let degen = variants.len() == 1u;
             let vi = ty::enum_variants(ccx.tcx, local_def(item.id));
             let mut i = 0;
-            for variant: ast::variant in variants {
+            for vec::each(variants) {|variant|
                 if variant.node.args.len() > 0u {
                     let llfn = get_item_val(ccx, variant.node.id);
                     trans_enum_variant(ccx, item.id, variant,
@@ -4331,12 +4323,9 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
         // kludgy -- this wouldn't be necessary if the typechecker
         // special-cased constructors, then we could just look up
         // the ctor's return type.
-        let mut ty_args = [], i = 0u;
-        for tp in tps {
-            ty_args += [ty::mk_param(ccx.tcx, i,
-                                     local_def(tps[i].id))];
-            i += 1u;
-        }
+        let ty_args = vec::from_fn(tps.len(), {|i|
+            ty::mk_param(ccx.tcx, i, local_def(tps[i].id))
+        });
         let rslt_ty =  ty::mk_class(ccx.tcx,
                                     local_def(item.id),
                                     ty_args);
@@ -4383,7 +4372,7 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
 // and control visibility.
 fn trans_mod(ccx: @crate_ctxt, m: ast::_mod) {
     let _icx = ccx.insn_ctxt("trans_mod");
-    for item in m.items { trans_item(ccx, *item); }
+    for vec::each(m.items) {|item| trans_item(ccx, *item); }
 }
 
 fn get_pair_fn_ty(llpairty: TypeRef) -> TypeRef {
@@ -4620,7 +4609,7 @@ fn trans_constant(ccx: @crate_ctxt, it: @ast::item) {
                                              node: it.id});
         let mut i = 0;
         let path = item_path(ccx, it);
-        for variant in variants {
+        for vec::each(variants) {|variant|
             let p = path + [path_name(variant.node.name),
                             path_name("discrim")];
             let s = mangle_exported_name(ccx, p, ty::mk_int(ccx.tcx));
@@ -4933,7 +4922,7 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
         io::println(#fmt("n_null_glues: %u", ccx.stats.n_null_glues));
         io::println(#fmt("n_real_glues: %u", ccx.stats.n_real_glues));
 
-        for timing: {ident: str, time: int} in *ccx.stats.fn_times {
+        for vec::each(copy *ccx.stats.fn_times) {|timing|
             io::println(#fmt("time: %s took %d ms", timing.ident,
                              timing.time));
         }

@@ -103,7 +103,7 @@ fn trans_vec(bcx: block, args: [@ast::expr], id: ast::node_id,
     let ccx = bcx.ccx();
     let mut bcx = bcx;
     if dest == base::ignore {
-        for arg in args {
+        for vec::each(args) {|arg|
             bcx = base::trans_expr(bcx, arg, base::ignore);
         }
         ret bcx;
@@ -118,14 +118,14 @@ fn trans_vec(bcx: block, args: [@ast::expr], id: ast::node_id,
     // Store the individual elements.
     let dataptr = get_dataptr(bcx, vptr, llunitty);
     let mut i = 0u, temp_cleanups = [vptr];
-    for e in args {
+    for vec::each(args) {|e|
         let lleltptr = InBoundsGEP(bcx, dataptr, [C_uint(ccx, i)]);
         bcx = base::trans_expr_save_in(bcx, e, lleltptr);
         add_clean_temp_mem(bcx, lleltptr, unit_ty);
         temp_cleanups += [lleltptr];
         i += 1u;
     }
-    for cln in temp_cleanups { revoke_clean(bcx, cln); }
+    for vec::each(temp_cleanups) {|cln| revoke_clean(bcx, cln); }
     ret base::store_in_dest(bcx, vptr, dest);
 }
 
@@ -192,7 +192,7 @@ fn trans_append_literal(bcx: block, vptrptr: ValueRef, vec_ty: ty::t,
     let elt_llty = type_of::type_of(ccx, elt_ty);
     let elt_sz = shape::llsize_of(ccx, elt_llty);
     let scratch = base::alloca(bcx, elt_llty);
-    for val in vals {
+    for vec::each(vals) {|val|
         bcx = base::trans_expr_save_in(bcx, val, scratch);
         let vptr = Load(bcx, vptrptr);
         let old_fill = get_fill(bcx, vptr);

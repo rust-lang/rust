@@ -47,7 +47,7 @@ native mod rustrt {
 
 fn env() -> [(str,str)] {
     let mut pairs = [];
-    for p in rustrt::rust_env_pairs() {
+    for vec::each(rustrt::rust_env_pairs()) {|p|
         let vs = str::splitn_char(p, '=', 1u);
         assert vec::len(vs) == 2u;
         pairs += [(vs[0], vs[1])];
@@ -464,7 +464,7 @@ fn list_dir(p: path) -> [str] {
         p += path::path_sep();
     }
     let mut full_paths: [str] = [];
-    for filename: str in rustrt::rust_list_files(p + star()) {
+    for vec::each(rustrt::rust_list_files(p + star())) {|filename|
         if !str::eq(filename, ".") {
             if !str::eq(filename, "..") {
                 full_paths += [p + filename];
@@ -645,7 +645,8 @@ mod tests {
     fn test_env_getenv() {
         let e = env();
         assert vec::len(e) > 0u;
-        for (n, v) in e {
+        for vec::each(e) {|p|
+            let (n, v) = p;
             log(debug, n);
             let v2 = getenv(n);
             // MingW seems to set some funky environment variables like
@@ -734,7 +735,7 @@ mod tests {
         // Just assuming that we've got some contents in the current directory
         assert (vec::len(dirs) > 0u);
 
-        for dir in dirs { log(debug, dir); }
+        for vec::each(dirs) {|dir| log(debug, dir); }
     }
 
     #[test]

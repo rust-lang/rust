@@ -58,7 +58,7 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
       ty::ty_rptr(_, mt) { T_ptr(type_of(cx, mt.ty)) }
       ty::ty_rec(fields) {
         let mut tys: [TypeRef] = [];
-        for f: ty::field in fields {
+        for vec::each(fields) {|f|
             let mt_ty = f.mt.ty;
             tys += [type_of(cx, mt_ty)];
         }
@@ -74,7 +74,7 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
       ty::ty_type { T_ptr(cx.tydesc_type) }
       ty::ty_tup(elts) {
         let mut tys = [];
-        for elt in elts {
+        for vec::each(elts) {|elt|
             tys += [type_of(cx, elt)];
         }
         T_struct(tys)

@@ -45,7 +45,7 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
     let cx = {ccx: ccx, uses: vec::to_mut(vec::from_elem(n_tps, 0u))};
     alt ty::get(ty::lookup_item_type(cx.ccx.tcx, fn_id).ty).struct {
       ty::ty_fn({inputs, _}) {
-        for arg in inputs {
+        for vec::each(inputs) {|arg|
             if arg.mode == expl(by_val) { type_needs(cx, use_repr, arg.ty); }
         }
       }
@@ -90,7 +90,7 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
 fn type_needs(cx: ctx, use: uint, ty: ty::t) {
     let mut done = true;
     // Optimization -- don't descend type if all params already have this use
-    for u in cx.uses { if u & use != use { done = false } }
+    for vec::each(cx.uses) {|u| if u & use != use { done = false } }
     if !done { type_needs_inner(cx, use, ty); }
 }
 
@@ -101,8 +101,8 @@ fn type_needs_inner(cx: ctx, use: uint, ty: ty::t) {
               ty::ty_fn(_) | ty::ty_ptr(_) | ty::ty_rptr(_, _) |
               ty::ty_box(_) | ty::ty_iface(_, _) { false }
               ty::ty_enum(did, tps) {
-                for v in *ty::enum_variants(cx.ccx.tcx, did) {
-                    for aty in v.args {
+                for vec::each(*ty::enum_variants(cx.ccx.tcx, did)) {|v|
+                    for vec::each(v.args) {|aty|
                         let t = ty::substitute_type_params(cx.ccx.tcx, tps,
                                                            aty);
                         type_needs_inner(cx, use, t);
@@ -152,7 +152,7 @@ fn mark_for_expr(cx: ctx, e: @expr) {
         alt ty::ty_fn_proto(ty::expr_ty(cx.ccx.tcx, e)) {
           proto_bare | proto_any | proto_uniq {}
           proto_box | proto_block {
-            for fv in *freevars::get_freevars(cx.ccx.tcx, e.id) {
+            for vec::each(*freevars::get_freevars(cx.ccx.tcx, e.id)) {|fv|
                 let node_id = ast_util::def_id_of_def(fv.def).node;
                 node_type_needs(cx, use_repr, node_id);
             }

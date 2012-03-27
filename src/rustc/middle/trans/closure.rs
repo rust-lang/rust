@@ -126,7 +126,7 @@ fn mk_closure_tys(tcx: ty::ctxt,
     let mut bound_tys = [];
 
     // Compute the closed over data
-    for bv in bound_values {
+    for vec::each(bound_values) {|bv|
         bound_tys += [alt bv {
             env_copy(_, t, _) { t }
             env_move(_, t, _) { t }
@@ -277,7 +277,7 @@ fn store_environment(bcx: block,
           }
         }
     }
-    for cleanup in temp_cleanups { revoke_clean(bcx, cleanup); }
+    for vec::each(temp_cleanups) {|cleanup| revoke_clean(bcx, cleanup); }
 
     ret {llbox: llbox, cdata_ty: cdata_ty, bcx: bcx};
 }
@@ -445,12 +445,12 @@ fn trans_bind_1(cx: block, outgoing_fty: ty::t,
     let _icx = cx.insn_ctxt("closure::trans_bind1");
     let ccx = cx.ccx();
     let mut bound: [@ast::expr] = [];
-    for argopt: option<@ast::expr> in args {
+    for vec::each(args) {|argopt|
         alt argopt { none { } some(e) { bound += [e]; } }
     }
     let mut bcx = f_res.bcx;
     if dest == ignore {
-        for ex in bound { bcx = trans_expr(bcx, ex, ignore); }
+        for vec::each(bound) {|ex| bcx = trans_expr(bcx, ex, ignore); }
         ret bcx;
     }
 
@@ -746,7 +746,7 @@ fn trans_bind_thunk(ccx: @crate_ctxt,
     let mut a: uint = first_real_arg; // retptr, env come first
     let mut b: int = starting_idx;
     let mut outgoing_arg_index: uint = 0u;
-    for arg: option<@ast::expr> in args {
+    for vec::each(args) {|arg|
         let out_arg = outgoing_args[outgoing_arg_index];
         alt arg {
           // Arg provided at binding time; thunk copies it from

@@ -208,7 +208,7 @@ fn getopts(args: [str], opts: [opt]) -> result unsafe {
                 }
             }
             let mut name_pos = 0u;
-            for nm: name in names {
+            for vec::each(names) {|nm|
                 name_pos += 1u;
                 let optid = alt find_opt(opts, nm) {
                   some(id) { id }
@@ -290,7 +290,7 @@ Used when an option accepts multiple values.
 "]
 fn opt_strs(m: match, nm: str) -> [str] {
     let mut acc: [str] = [];
-    for v: optval in opt_vals(m, nm) {
+    for vec::each(opt_vals(m, nm)) {|v|
         alt v { val(s) { acc += [s]; } _ { } }
     }
     ret acc;

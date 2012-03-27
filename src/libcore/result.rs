@@ -139,7 +139,7 @@ checking for overflow:
 fn map<T,U:copy,V:copy>(ts: [T], op: fn(T) -> result<V,U>) -> result<[V],U> {
     let mut vs: [V] = [];
     vec::reserve(vs, vec::len(ts));
-    for t in ts {
+    for vec::each(ts) {|t|
         alt op(t) {
           ok(v) { vs += [v]; }
           err(u) { ret err(u); }

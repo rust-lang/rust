@@ -31,11 +31,11 @@ fn find_reachable(crate_mod: _mod, exp_map: resolve::exp_map,
 
 fn traverse_exports(cx: ctx, vis: [@view_item]) -> bool {
     let mut found_export = false;
-    for vi in vis {
+    for vec::each(vis) {|vi|
         alt vi.node {
           view_item_export(vps) {
             found_export = true;
-            for vp in vps {
+            for vec::each(vps) {|vp|
                 alt vp.node {
                   view_path_simple(_, _, id) | view_path_glob(_, id) |
                   view_path_list(_, _, id) {
@@ -52,7 +52,7 @@ fn traverse_exports(cx: ctx, vis: [@view_item]) -> bool {
 
 fn traverse_export(cx: ctx, exp_id: node_id) {
     option::may(cx.exp_map.find(exp_id)) {|defs|
-        for def in defs { traverse_def_id(cx, def.id); }
+        for vec::each(defs) {|def| traverse_def_id(cx, def.id); }
     }
 }
 
@@ -70,7 +70,7 @@ fn traverse_def_id(cx: ctx, did: def_id) {
 fn traverse_public_mod(cx: ctx, m: _mod) {
     if !traverse_exports(cx, m.view_items) {
         // No exports, so every local item is exported
-        for item in m.items { traverse_public_item(cx, item); }
+        for vec::each(m.items) {|item| traverse_public_item(cx, item); }
     }
 }
 
@@ -81,7 +81,7 @@ fn traverse_public_item(cx: ctx, item: @item) {
       item_mod(m) { traverse_public_mod(cx, m); }
       item_native_mod(nm) {
           if !traverse_exports(cx, nm.view_items) {
-              for item in nm.items { cx.rmap.insert(item.id, ()); }
+              for vec::each(nm.items) {|item| cx.rmap.insert(item.id, ()); }
           }
       }
       item_res(_, tps, blk, _, _) | item_fn(_, tps, blk) {
@@ -91,7 +91,7 @@ fn traverse_public_item(cx: ctx, item: @item) {
         }
       }
       item_impl(tps, _, _, ms) {
-        for m in ms {
+        for vec::each(ms) {|m|
             if tps.len() > 0u || m.tps.len() > 0u ||
                attr::find_inline_attr(m.attrs) != attr::ia_none {
                 traverse_inline_body(cx, m.body);
@@ -100,7 +100,7 @@ fn traverse_public_item(cx: ctx, item: @item) {
       }
       item_class(tps, items, ctor) {
         cx.rmap.insert(ctor.node.id, ());
-        for item in items {
+        for vec::each(items) {|item|
             alt item.node.decl {
               class_method(m) {
                 cx.rmap.insert(m.id, ());

@@ -144,7 +144,7 @@ fn classify_ty(ty: TypeRef) -> [x86_64_reg_class] {
             classify(T_i64(), cls, i, off);
         } else {
             let mut field_off = off;
-            for ty in tys {
+            for vec::each(tys) {|ty|
                 field_off = align(field_off, ty);
                 classify(ty, cls, i, field_off);
                 field_off += ty_size(ty);
@@ -252,7 +252,7 @@ fn classify_ty(ty: TypeRef) -> [x86_64_reg_class] {
 fn llreg_ty(cls: [x86_64_reg_class]) -> TypeRef {
     fn llvec_len(cls: [x86_64_reg_class]) -> uint {
         let mut len = 1u;
-        for c in cls {
+        for vec::each(cls) {|c|
             if c != sseup_class {
                 break;
             }
@@ -348,7 +348,7 @@ fn x86_64_tys(atys: [TypeRef],
 
     let mut arg_tys = [];
     let mut attrs = [];
-    for t in atys {
+    for vec::each(atys) {|t|
         let (ty, attr) = x86_64_ty(t, is_pass_byval, ByValAttribute);
         arg_tys += [ty];
         attrs += [attr];
@@ -735,7 +735,7 @@ fn trans_native_mod(ccx: @crate_ctxt,
       ast::native_abi_stdcall { lib::llvm::X86StdcallCallConv }
     };
 
-    for native_item in native_mod.items {
+    for vec::each(native_mod.items) {|native_item|
       alt native_item.node {
         ast::native_item_fn(fn_decl, _) {
           let id = native_item.id;

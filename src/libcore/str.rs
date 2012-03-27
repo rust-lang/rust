@@ -55,6 +55,7 @@ export
    all, any,
    all_between, any_between,
    map,
+   each,
    bytes_iter,
    chars_iter,
    split_char_iter,
@@ -176,14 +177,14 @@ fn from_char(ch: char) -> str {
 fn from_chars(chs: [char]) -> str {
     let mut buf = "";
     reserve(buf, chs.len());
-    for ch in chs { push_char(buf, ch); }
+    for vec::each(chs) {|ch| push_char(buf, ch); }
     ret buf;
 }
 
 #[doc = "Concatenate a vector of strings"]
 fn concat(v: [str]) -> str {
     let mut s: str = "";
-    for ss: str in v { s += ss; }
+    for vec::each(v) {|ss| s += ss; }
     ret s;
 }
 
@@ -192,7 +193,7 @@ Concatenate a vector of strings, placing a given separator between each
 "]
 fn connect(v: [str], sep: str) -> str {
     let mut s = "", first = true;
-    for ss: str in v {
+    for vec::each(v) {|ss|
         if first { first = false; } else { s += sep; }
         s += ss;
     }
@@ -538,7 +539,7 @@ fn hash(&&s: str) -> uint {
     // djb hash.
     // FIXME: replace with murmur.
     let mut u: uint = 5381u;
-    for c: u8 in s { u *= 33u; u += c as uint; }
+    for each(s) {|c| u *= 33u; u += c as uint; }
     ret u;
 }
 
@@ -578,6 +579,16 @@ fn bytes_iter(ss: str, it: fn(u8)) {
     while (pos < len) {
         it(ss[pos]);
         pos += 1u;
+    }
+}
+
+#[doc = "Iterate over the bytes in a string"]
+#[inline(always)]
+fn each(s: str, it: fn(u8) -> bool) {
+    let mut i = 0u, l = len(s);
+    while (i < l) {
+        if !it(s[i]) { break; }
+        i += 1u;
     }
 }
 
@@ -938,7 +949,7 @@ fn rfind_between(s: str, start: uint, end: uint, f: fn(char) -> bool)
 // Utility used by various searching functions
 fn match_at(haystack: str, needle: str, at: uint) -> bool {
     let mut i = at;
-    for c in needle { if haystack[i] != c { ret false; } i += 1u; }
+    for each(needle) {|c| if haystack[i] != c { ret false; } i += 1u; }
     ret true;
 }
 
@@ -1074,7 +1085,7 @@ fn is_ascii(s: str) -> bool {
 }
 
 #[doc = "Returns true if the string has length 0"]
-pure fn is_empty(s: str) -> bool { for c: u8 in s { ret false; } ret true; }
+pure fn is_empty(s: str) -> bool { len(s) == 0u }
 
 #[doc = "Returns true if the string has length greater than 0"]
 pure fn is_not_empty(s: str) -> bool { !is_empty(s) }
@@ -1588,7 +1599,7 @@ mod unsafe {
 
    #[doc = "Appends a vector of bytes to a string. (Not UTF-8 safe)."]
    unsafe fn push_bytes(&s: str, bytes: [u8]) {
-       for byte in bytes { rustrt::rust_str_push(s, byte); }
+       for vec::each(bytes) {|byte| rustrt::rust_str_push(s, byte); }
    }
 
    #[doc = "
@@ -2472,7 +2483,8 @@ mod tests {
                0xd801_u16, 0xdc95_u16, 0xd801_u16, 0xdc86_u16,
                0x000a_u16 ]) ];
 
-        for (s, u) in pairs {
+        for vec::each(pairs) {|p|
+            let (s, u) = p;
             assert to_utf16(s) == u;
             assert from_utf16(u) == s;
             assert from_utf16(to_utf16(s)) == s;
