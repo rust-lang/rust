@@ -1,3 +1,42 @@
+Version 0.2  (March 2012)
+-------------------------
+
+   * >1400 changes, numerous bugfixes
+
+   * New docs and doc tooling
+
+   * New port: FreeBSD x86_64
+
+   * Compilation model enhancements
+      * Generics now specialized, multiply instantiated
+      * Functions now inlined across separate crates
+
+   * Scheduling, stack and threading fixes
+      * Noticably improved message-passing performance
+      * Explicit schedulers
+      * Callbacks from C
+      * Helgrind clean
+
+   * Preliminary new language features
+      * Operator overloading
+      * Region pointers
+      * Classes
+
+   * Various language extensions
+      * C-callback function types: 'crust fn ...'
+      * Infinite-loop construct: 'loop { ... }'
+      * Shorten 'mutable' to 'mut'
+      * Required mutable-local qualifier: 'let mut ...'
+      * Basic glob-exporting: 'export foo::*;'
+      * Alt now exhaustive, 'alt check' for runtime-checked
+
+   * New library code
+      * AST quasi-quote syntax extension
+      * Revived libuv interface
+      * New modules: core::{future, iter}, std::arena
+      * Merged per-platform std::{os*, fs*} to core::{libc, os}
+      * Extensive cleanup, regularization in libstd, libcore
+
 Version 0.1  (January 2012)
 ---------------------------
 
