@@ -99,14 +99,14 @@ fn foldr<A:copy,B,IA:iterable<A>>(
     ret b;
 }
 
-fn to_list<A:copy,IA:iterable<A>>(self: IA) -> [A] {
+fn to_vec<A:copy,IA:iterable<A>>(self: IA) -> [A] {
     foldl::<A,[A],IA>(self, [], {|r, a| r + [a]})
 }
 
 // FIXME: This could be made more efficient with an riterable interface
 // #2005
 fn reversed<A:copy,IA:iterable<A>>(self: IA, blk: fn(A)) {
-    vec::riter(to_list(self), blk)
+    vec::riter(to_vec(self), blk)
 }
 
 fn count<A,IA:iterable<A>>(self: IA, x: A) -> uint {
@@ -167,17 +167,17 @@ fn test_enumerate() {
 }
 
 #[test]
-fn test_map_and_to_list() {
+fn test_map_and_to_vec() {
     let a = bind vec::iter([0, 1, 2], _);
     let b = bind map(a, {|i| 2*i}, _);
-    let c = to_list(b);
+    let c = to_vec(b);
     assert c == [0, 2, 4];
 }
 
 #[test]
 fn test_map_directly_on_vec() {
     let b = bind map([0, 1, 2], {|i| 2*i}, _);
-    let c = to_list(b);
+    let c = to_vec(b);
     assert c == [0, 2, 4];
 }
 
@@ -187,7 +187,7 @@ fn test_filter_on_int_range() {
         ret (i % 2) == 0;
     }
 
-    let l = to_list(bind filter(bind int::range(0, 10, _), is_even, _));
+    let l = to_vec(bind filter(bind int::range(0, 10, _), is_even, _));
     assert l == [0, 2, 4, 6, 8];
 }
 
@@ -197,7 +197,7 @@ fn test_filter_on_uint_range() {
         ret (i % 2u) == 0u;
     }
 
-    let l = to_list(bind filter(bind uint::range(0u, 10u, _), is_even, _));
+    let l = to_vec(bind filter(bind uint::range(0u, 10u, _), is_even, _));
     assert l == [0u, 2u, 4u, 6u, 8u];
 }
 
@@ -211,7 +211,7 @@ fn test_filter_map() {
         }
     }
 
-    let l = to_list(bind filter_map(
+    let l = to_vec(bind filter_map(
         bind int::range(0, 5, _), negativate_the_evens, _));
     assert l == [0, -2, -4];
 }
@@ -225,7 +225,7 @@ fn test_flat_map_with_option() {
 
     let a = bind vec::iter([0, 1, 2], _);
     let b = bind flat_map(a, if_even, _);
-    let c = to_list(b);
+    let c = to_vec(b);
     assert c == [0, 2];
 }
 
@@ -239,7 +239,7 @@ fn test_flat_map_with_list() {
 
     let a = bind vec::iter([0, 1, 2, 3], _);
     let b = bind flat_map(a, repeat, _);
-    let c = to_list(b);
+    let c = to_vec(b);
     #debug["c = %?", c];
     assert c == [1, 2, 2, 3, 3, 3];
 }
@@ -281,7 +281,7 @@ fn test_max_empty() {
 
 #[test]
 fn test_reversed() {
-    assert to_list(bind reversed([1, 2, 3], _)) == [3, 2, 1];
+    assert to_vec(bind reversed([1, 2, 3], _)) == [3, 2, 1];
 }
 
 #[test]
