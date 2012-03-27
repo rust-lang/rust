@@ -46,12 +46,12 @@ doc/rust.html: rust.md doc/version.md doc/keywords.md doc/rust.css
 DOCS += doc/rust.pdf
 doc/rust.tex: rust.md doc/version.md doc/keywords.md
 	@$(call E, pandoc: $@)
-	$(Q)$(CFG_PANDOC) \
+	$(Q)$(CFG_NODE) $(S)doc/prep.js $< | \
+	"$(CFG_PANDOC)" \
          --standalone --toc \
          --number-sections \
          --from=markdown --to=latex \
-         --output=$@ \
-         $<
+         --output=$@
 
 doc/rust.pdf: doc/rust.tex
 	@$(call E, pdflatex: $@)
