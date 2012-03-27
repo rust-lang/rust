@@ -1216,7 +1216,7 @@ instantiate type parameters that are bounded on their interface.
 ### Implementations
 
 An _implementation item_ provides an implementation of an
-[interfaces](#interfaces) for a type.
+[interface](#interfaces) for a type.
 
 ~~~~
 # type point = {x: float, y: float};
@@ -2759,7 +2759,7 @@ vector is always bounds-checked.
 
 An *enumerated type* is a nominal, heterogeneous disjoint union type.^[The
 `enum` type is analogous to a `data` constructor declaration in ML or a *pick
-ADT* in Limbo.} An [`enum` *item*](#enumerations) consists of a number of
+ADT* in Limbo.] An [`enum` *item*](#enumerations) consists of a number of
 *constructors*, each of which is independently named and takes an optional
 tuple of arguments.
 
