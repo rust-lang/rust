@@ -715,5 +715,6 @@ msg
 copy_if_changed ${CFG_SRC_DIR}Makefile.in ./Makefile
 move_if_changed config.tmp config.mk
 rm -f config.tmp
+touch config.stamp
 
 step_msg "complete"

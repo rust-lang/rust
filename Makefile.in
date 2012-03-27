@@ -439,7 +439,6 @@ Makefile config.mk: config.stamp
 config.stamp: $(S)configure $(S)Makefile.in $(S)src/snapshots.txt
 	@$(call E, cfg: reconfiguring)
 	$(Q)$(S)configure $(CFG_CONFIGURE_ARGS)
-	$(Q)touch $@
 
 
 ######################################################################
