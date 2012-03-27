@@ -71,6 +71,8 @@ type fn_ctxt =
     // with any nested functions that capture the environment
     // (and with any functions whose environment is being captured).
     {ret_ty: ty::t,
+     // Used by loop bodies that return from the outer function
+     indirect_ret_ty: option<ty::t>,
      purity: ast::purity,
      proto: ast::proto,
      infcx: infer::infer_ctxt,
@@ -2286,7 +2288,8 @@ fn check_expr_fn_with_unifier(fcx: @fn_ctxt,
                               decl: ast::fn_decl,
                               body: ast::blk,
                               unify: unifier,
-                              expected: ty::t) {
+                              expected: ty::t,
+                              is_loop_body: bool) {
     let tcx = fcx.ccx.tcx;
     let fty = ty::mk_fn(tcx,
                         ty_of_fn_decl(tcx, m_check_tyvar(fcx), proto, decl));
@@ -2303,7 +2306,7 @@ fn check_expr_fn_with_unifier(fcx: @fn_ctxt,
     // record projection work on type inferred arguments.
     unify(fcx, expr.span, expected, fty);
 
-    check_fn(fcx.ccx, proto, decl, body, expr.id, some(fcx));
+    check_fn(fcx.ccx, proto, decl, body, expr.id, is_loop_body, some(fcx));
 }
 
 type check_call_or_bind_result = {
@@ -2766,15 +2769,18 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
       ast::expr_cont { write_bot(tcx, id); bot = true; }
       ast::expr_ret(expr_opt) {
         bot = true;
+        let ret_ty = alt fcx.indirect_ret_ty {
+          some(t) { t } none { fcx.ret_ty }
+        };
         alt expr_opt {
           none {
             let nil = ty::mk_nil(tcx);
-            if !are_compatible(fcx, fcx.ret_ty, nil) {
+            if !are_compatible(fcx, ret_ty, nil) {
                 tcx.sess.span_err(expr.span,
                                   "ret; in function returning non-nil");
             }
           }
-          some(e) { check_expr_with(fcx, e, fcx.ret_ty); }
+          some(e) { check_expr_with(fcx, e, ret_ty); }
         }
         write_bot(tcx, id);
       }
@@ -2895,7 +2901,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
       }
       ast::expr_fn(proto, decl, body, captures) {
         check_expr_fn_with_unifier(fcx, expr, proto, decl, body,
-                          unify, expected);
+                                   unify, expected, false);
         capture::check_capture_clause(tcx, expr.id, proto, *captures);
       }
       ast::expr_fn_block(decl, body) {
@@ -2908,19 +2914,25 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                expr_to_str(expr),
                ty_to_str(tcx, expected));
         check_expr_fn_with_unifier(fcx, expr, proto, decl, body,
-                                   unify, expected);
+                                   unify, expected, false);
       }
-      ast::expr_loop_body(block) {
+      ast::expr_loop_body(b) {
         let rty = structurally_resolved_type(fcx, expr.span, expected);
-        let inner_ty = alt check ty::get(rty).struct {
+        let (inner_ty, proto) = alt check ty::get(rty).struct {
           ty::ty_fn(fty) {
             demand::simple(fcx, expr.span, fty.output, ty::mk_bool(tcx));
-            ty::mk_fn(tcx, {output: ty::mk_nil(tcx) with fty})
+            (ty::mk_fn(tcx, {output: ty::mk_nil(tcx) with fty}),
+             fty.proto)
           }
         };
-        check_expr_with(fcx, block, inner_ty);
+        alt check b.node {
+          ast::expr_fn_block(decl, body) {
+            check_expr_fn_with_unifier(fcx, b, proto, decl, body,
+                                       unify, inner_ty, true);
+          }
+        }
         let block_ty = structurally_resolved_type(
-            fcx, expr.span, ty::node_id_to_type(tcx, block.id));
+            fcx, expr.span, ty::node_id_to_type(tcx, b.id));
         alt check ty::get(block_ty).struct {
           ty::ty_fn(fty) {
             write_ty(tcx, expr.id, ty::mk_fn(tcx, {output: ty::mk_bool(tcx)
@@ -3045,18 +3057,15 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         write_ty(tcx, id, typ);
       }
       ast::expr_rec(fields, base) {
-        alt base { none {/* no-op */ } some(b_0) { check_expr(fcx, b_0); } }
-        let mut fields_t: [spanned<field>] = [];
-        for f: ast::field in fields {
+        option::may(base) {|b| check_expr(fcx, b); }
+        let fields_t = vec::map(fields, {|f|
             bot |= check_expr(fcx, f.node.expr);
             let expr_t = expr_ty(tcx, f.node.expr);
             let expr_mt = {ty: expr_t, mutbl: f.node.mutbl};
             // for the most precise error message,
             // should be f.node.expr.span, not f.span
-            fields_t +=
-                [respan(f.node.expr.span,
-                        {ident: f.node.ident, mt: expr_mt})];
-        }
+            respan(f.node.expr.span, {ident: f.node.ident, mt: expr_mt})
+        });
         alt base {
           none {
             fn get_node(f: spanned<field>) -> field { f.node }
@@ -3384,6 +3393,7 @@ fn check_const(ccx: @crate_ctxt, _sp: span, e: @ast::expr, id: ast::node_id) {
     let rty = node_id_to_type(ccx.tcx, id);
     let fcx: @fn_ctxt =
         @{ret_ty: rty,
+          indirect_ret_ty: none,
           purity: ast::pure_fn,
           proto: ast::proto_box,
           infcx: infer::new_infer_ctxt(ccx.tcx),
@@ -3403,6 +3413,7 @@ fn check_enum_variants(ccx: @crate_ctxt, sp: span, vs: [ast::variant],
     let rty = node_id_to_type(ccx.tcx, id);
     let fcx: @fn_ctxt =
         @{ret_ty: rty,
+          indirect_ret_ty: none,
           purity: ast::pure_fn,
           proto: ast::proto_box,
           infcx: infer::new_infer_ctxt(ccx.tcx),
@@ -3570,6 +3581,7 @@ fn check_fn(ccx: @crate_ctxt,
             decl: ast::fn_decl,
             body: ast::blk,
             id: ast::node_id,
+            indirect_ret: bool,
             old_fcx: option<@fn_ctxt>) {
     // If old_fcx is some(...), this is a block fn { |x| ... }.
     // In that case, the purity is inherited from the context.
@@ -3579,8 +3591,16 @@ fn check_fn(ccx: @crate_ctxt,
     };
 
     let gather_result = gather_locals(ccx, decl, body, id, old_fcx);
+    let indirect_ret_ty = if indirect_ret {
+        let ofcx = option::get(old_fcx);
+        alt ofcx.indirect_ret_ty {
+          some(t) { some(t) }
+          none { some(ofcx.ret_ty) }
+        }
+    } else { none };
     let fcx: @fn_ctxt =
         @{ret_ty: ty::ty_fn_ret(ty::node_id_to_type(ccx.tcx, id)),
+          indirect_ret_ty: indirect_ret_ty,
           purity: purity,
           proto: proto,
           infcx: gather_result.infcx,
@@ -3619,7 +3639,8 @@ fn check_fn(ccx: @crate_ctxt,
 }
 
 fn check_method(ccx: @crate_ctxt, method: @ast::method) {
-    check_fn(ccx, ast::proto_bare, method.decl, method.body, method.id, none);
+    check_fn(ccx, ast::proto_bare, method.decl, method.body, method.id,
+             false, none);
 }
 
 fn class_types(ccx: @crate_ctxt, members: [@ast::class_item]) -> class_map {
@@ -3651,10 +3672,10 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
       ast::item_const(_, e) { check_const(ccx, it.span, e, it.id); }
       ast::item_enum(vs, _) { check_enum_variants(ccx, it.span, vs, it.id); }
       ast::item_fn(decl, tps, body) {
-        check_fn(ccx, ast::proto_bare, decl, body, it.id, none);
+        check_fn(ccx, ast::proto_bare, decl, body, it.id, false, none);
       }
       ast::item_res(decl, tps, body, dtor_id, _) {
-        check_fn(ccx, ast::proto_bare, decl, body, dtor_id, none);
+        check_fn(ccx, ast::proto_bare, decl, body, dtor_id, false, none);
       }
       ast::item_impl(tps, _, ty, ms) {
         let mut self_ty = ast_ty_to_ty(ccx.tcx, m_check, ty);
@@ -3671,7 +3692,7 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
                             enclosing_class:members_info with *ccx};
           // typecheck the ctor
           check_fn(class_ccx, ast::proto_bare, ctor.node.dec,
-                   ctor.node.body, ctor.node.id, none);
+                   ctor.node.body, ctor.node.id, false, none);
           // typecheck the members
           for m in members { check_class_member(class_ccx, m.node.decl); }
       }

@@ -303,6 +303,9 @@ enum expr_ {
     expr_alt(@expr, [arm], alt_mode),
     expr_fn(proto, fn_decl, blk, @capture_clause),
     expr_fn_block(fn_decl, blk),
+    // Inner expr is always an expr_fn_block. We need the wrapping node to
+    // sanely type this (a function returning nil on the inside but bool on
+    // the outside).
     expr_loop_body(@expr),
     expr_block(blk),
 

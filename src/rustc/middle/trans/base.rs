@@ -2516,15 +2516,43 @@ fn trans_cast(cx: block, e: @ast::expr, id: ast::node_id,
     ret store_in_dest(e_res.bcx, newval, dest);
 }
 
+fn trans_loop_body(bcx: block, e: @ast::expr, ret_flag: option<ValueRef>,
+                   dest: dest) -> block {
+    alt check e.node {
+      ast::expr_loop_body(b@@{node: ast::expr_fn_block(decl, body), _}) {
+        alt check ty::get(expr_ty(bcx, e)).struct {
+          ty::ty_fn({proto, _}) {
+            closure::trans_expr_fn(bcx, proto, decl, body, e.span, b.id,
+                                   {copies: [], moves: []}, some(ret_flag),
+                                   dest)
+          }
+        }
+      }
+    }
+}
+
 // temp_cleanups: cleanups that should run only if failure occurs before the
 // call takes place:
 fn trans_arg_expr(cx: block, arg: ty::arg, lldestty: TypeRef, e: @ast::expr,
-                  &temp_cleanups: [ValueRef]) -> result {
+                  &temp_cleanups: [ValueRef], ret_flag: option<ValueRef>)
+    -> result {
     let _icx = cx.insn_ctxt("trans_arg_expr");
     let ccx = cx.ccx();
     let e_ty = expr_ty(cx, e);
     let is_bot = ty::type_is_bot(e_ty);
-    let lv = trans_temp_lval(cx, e);
+    let lv = alt ret_flag {
+      // If there is a ret_flag, this *must* be a loop body
+      some(ptr) {
+        alt check e.node {
+          ast::expr_loop_body(blk) {
+            let scratch = alloc_ty(cx, expr_ty(cx, blk));
+            let bcx = trans_loop_body(cx, e, ret_flag, save_in(scratch));
+            {bcx: bcx, val: scratch, kind: temporary}
+          }
+        }
+      }
+      none { trans_temp_lval(cx, e) }
+    };
     let mut bcx = lv.bcx;
     let mut val = lv.val;
     let arg_mode = ty::resolved_mode(ccx.tcx, arg.mode);
@@ -2595,7 +2623,7 @@ enum call_args {
 //  - new_fn_ctxt
 //  - trans_args
 fn trans_args(cx: block, llenv: ValueRef, args: call_args, fn_ty: ty::t,
-              dest: dest)
+              dest: dest, ret_flag: option<ValueRef>)
     -> {bcx: block, args: [ValueRef], retslot: ValueRef} {
     let _icx = cx.insn_ctxt("trans_args");
     let mut temp_cleanups = [];
@@ -2630,13 +2658,13 @@ fn trans_args(cx: block, llenv: ValueRef, args: call_args, fn_ty: ty::t,
     alt args {
       arg_exprs(es) {
         let llarg_tys = type_of_explicit_args(ccx, arg_tys);
-        let mut i = 0u;
-        for e: @ast::expr in es {
+        let last = es.len() - 1u;
+        vec::iteri(es) {|i, e|
             let r = trans_arg_expr(bcx, arg_tys[i], llarg_tys[i],
-                                   e, temp_cleanups);
+                                   e, temp_cleanups, if i == last { ret_flag }
+                                                     else { none });
             bcx = r.bcx;
             llargs += [r.val];
-            i += 1u;
         }
       }
       arg_vals(vs) {
@@ -2664,14 +2692,44 @@ fn trans_call(in_cx: block, f: @ast::expr,
                      {|cx| trans_callee(cx, f)}, args, dest)
 }
 
+fn body_contains_ret(body: ast::blk) -> bool {
+    let cx = {mut found: false};
+    visit::visit_block(body, cx, visit::mk_vt(@{
+        visit_item: {|_i, _cx, _v|},
+        visit_expr: {|e: @ast::expr, cx: {mut found: bool}, v|
+            if !cx.found {
+                alt e.node {
+                  ast::expr_ret(_) { cx.found = true; }
+                  _ { visit::visit_expr(e, cx, v); }
+                }
+            }
+        } with *visit::default_visitor()
+    }));
+    cx.found
+}
+
 fn trans_call_inner(in_cx: block, fn_expr_ty: ty::t, ret_ty: ty::t,
                     get_callee: fn(block) -> lval_maybe_callee,
                     args: call_args, dest: dest)
     -> block {
+    let ret_in_loop = alt args {
+      arg_exprs(args) { args.len() > 0u && alt vec::last(args).node {
+        ast::expr_loop_body(@{node: ast::expr_fn_block(_, body), _}) {
+          body_contains_ret(body)
+        }
+        _ { false }
+      } }
+      _ { false }
+    };
     with_scope(in_cx, "call") {|cx|
         let f_res = get_callee(cx);
         let mut bcx = f_res.bcx;
         let ccx = cx.ccx();
+        let ret_flag = if ret_in_loop {
+            let flag = alloca(in_cx, T_bool());
+            Store(cx, C_bool(false), flag);
+            some(flag)
+        } else { none };
 
         let mut faddr = f_res.val;
         let llenv = alt f_res.env {
@@ -2695,7 +2753,7 @@ fn trans_call_inner(in_cx: block, fn_expr_ty: ty::t, ret_ty: ty::t,
         };
 
         let args_res = {
-            trans_args(bcx, llenv, args, fn_expr_ty, dest)
+            trans_args(bcx, llenv, args, fn_expr_ty, dest, ret_flag)
         };
         bcx = args_res.bcx;
         let mut llargs = args_res.args;
@@ -2718,7 +2776,19 @@ fn trans_call_inner(in_cx: block, fn_expr_ty: ty::t, ret_ty: ty::t,
             *cell = Load(bcx, llretslot);
           }
         }
-        if ty::type_is_bot(ret_ty) { Unreachable(bcx); }
+        if ty::type_is_bot(ret_ty) {
+            Unreachable(bcx);
+        } else if ret_in_loop {
+            bcx = with_cond(bcx, Load(bcx, option::get(ret_flag))) {|bcx|
+                option::may(bcx.fcx.loop_ret) {|lret|
+                    Store(bcx, C_bool(true), lret.flagptr);
+                    Store(bcx, C_bool(false), bcx.fcx.llretptr);
+                }
+                cleanup_and_leave(bcx, none, some(bcx.fcx.llreturn));
+                Unreachable(bcx);
+                bcx
+            }
+        }
         bcx
     }
 }
@@ -2991,7 +3061,7 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
       ast::expr_addr_of(_, x) { ret trans_addr_of(bcx, x, dest); }
       ast::expr_fn(proto, decl, body, cap_clause) {
         ret closure::trans_expr_fn(bcx, proto, decl, body, e.span, e.id,
-                                   *cap_clause, false, dest);
+                                   *cap_clause, none, dest);
       }
       ast::expr_fn_block(decl, body) {
         alt check ty::get(expr_ty(bcx, e)).struct {
@@ -2999,17 +3069,12 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
             #debug("translating fn_block %s with type %s",
                    expr_to_str(e), ty_to_str(tcx, expr_ty(bcx, e)));
             ret closure::trans_expr_fn(bcx, proto, decl, body, e.span, e.id,
-                                       {copies: [], moves: []}, false, dest);
+                                       {copies: [], moves: []}, none, dest);
           }
         }
       }
-      ast::expr_loop_body(b@@{node: ast::expr_fn_block(decl, body), _}) {
-        alt check ty::get(expr_ty(bcx, e)).struct {
-          ty::ty_fn({proto, _}) {
-            ret closure::trans_expr_fn(bcx, proto, decl, body, e.span, b.id,
-                                       {copies: [], moves: []}, true, dest);
-          }
-        }
+      ast::expr_loop_body(blk) {
+        ret trans_loop_body(bcx, e, none, dest);
       }
       ast::expr_bind(f, args) {
         ret closure::trans_bind(
@@ -3406,8 +3471,25 @@ fn trans_cont(cx: block) -> block {
 fn trans_ret(bcx: block, e: option<@ast::expr>) -> block {
     let _icx = bcx.insn_ctxt("trans_ret");
     let mut bcx = bcx;
+    let retptr = alt bcx.fcx.loop_ret {
+      some({flagptr, retptr}) {
+        // This is a loop body return. Must set continue flag (our retptr)
+        // to false, return flag to true, and then store the value in the
+        // parent's retptr.
+        Store(bcx, C_bool(true), flagptr);
+        Store(bcx, C_bool(false), bcx.fcx.llretptr);
+        alt e {
+          some(x) { PointerCast(bcx, retptr,
+                                T_ptr(type_of(bcx.ccx(), expr_ty(bcx, x)))) }
+          none { retptr }
+        }
+      }
+      none { bcx.fcx.llretptr }
+    };
     alt e {
-      some(x) { bcx = trans_expr_save_in(bcx, x, bcx.fcx.llretptr); }
+      some(x) {
+        bcx = trans_expr_save_in(bcx, x, retptr);
+      }
       _ {}
     }
     cleanup_and_leave(bcx, none, some(bcx.fcx.llreturn));
@@ -3793,6 +3875,7 @@ fn new_fn_ctxt_w_id(ccx: @crate_ctxt, path: path,
           mut llreturn: llbbs.rt,
           mut llself: none,
           mut personality: none,
+          mut loop_ret: none,
           llargs: int_hash::<local_val>(),
           lllocals: int_hash::<local_val>(),
           llupvars: int_hash::<ValueRef>(),

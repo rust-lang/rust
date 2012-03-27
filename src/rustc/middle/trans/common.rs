@@ -165,6 +165,9 @@ type fn_ctxt = @{
     // The a value alloca'd for calls to upcalls.rust_personality. Used when
     // outputting the resume instruction.
     mut personality: option<ValueRef>,
+    // If this is a for-loop body that returns, this holds the pointers needed
+    // for that
+    mut loop_ret: option<{flagptr: ValueRef, retptr: ValueRef}>,
 
     // Maps arguments to allocas created for them in llallocas.
     llargs: hashmap<ast::node_id, local_val>,

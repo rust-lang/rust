@@ -287,7 +287,8 @@ fn store_environment(bcx: block,
 fn build_closure(bcx0: block,
                  cap_vars: [capture::capture_var],
                  ck: ty::closure_kind,
-                 id: ast::node_id) -> closure_result {
+                 id: ast::node_id,
+                 include_ret_handle: option<ValueRef>) -> closure_result {
     let _icx = bcx0.insn_ctxt("closure::build_closure");
     // If we need to, package up the iterator body to call
     let mut env_vals = [];
@@ -324,6 +325,16 @@ fn build_closure(bcx0: block,
           }
         }
     }
+    option::may(include_ret_handle) {|flagptr|
+        let our_ret = alt bcx.fcx.loop_ret {
+          some({retptr, _}) { retptr }
+          none { bcx.fcx.llretptr }
+        };
+        let nil_ret = PointerCast(bcx, our_ret, T_ptr(T_nil()));
+        env_vals +=
+            [env_ref(flagptr, ty::mk_mut_ptr(tcx, ty::mk_bool(tcx)), owned),
+             env_ref(nil_ret, ty::mk_nil_ptr(tcx), owned)];
+    }
     ret store_environment(bcx, env_vals, ck);
 }
 
@@ -333,6 +344,7 @@ fn build_closure(bcx0: block,
 fn load_environment(fcx: fn_ctxt,
                     cdata_ty: ty::t,
                     cap_vars: [capture::capture_var],
+                    load_ret_handle: bool,
                     ck: ty::closure_kind) {
     let _icx = fcx.insn_ctxt("closure::load_environment");
     let bcx = raw_block(fcx, fcx.llloadenv);
@@ -341,22 +353,29 @@ fn load_environment(fcx: fn_ctxt,
     let llcdata = base::opaque_box_body(bcx, cdata_ty, fcx.llenv);
 
     // Populate the upvars from the environment.
-    let mut i = 0u;
+    let mut i = 0;
     vec::iter(cap_vars) { |cap_var|
         alt cap_var.mode {
           capture::cap_drop { /* ignore */ }
           _ {
             let mut upvarptr =
-                GEPi(bcx, llcdata, [0, abi::closure_body_bindings, i as int]);
+                GEPi(bcx, llcdata, [0, abi::closure_body_bindings, i]);
             alt ck {
               ty::ck_block { upvarptr = Load(bcx, upvarptr); }
               ty::ck_uniq | ty::ck_box { }
             }
             let def_id = ast_util::def_id_of_def(cap_var.def);
             fcx.llupvars.insert(def_id.node, upvarptr);
-            i += 1u;
+            i += 1;
           }
         }
+    }
+    if load_ret_handle {
+        let flagptr = Load(bcx, GEPi(bcx, llcdata,
+                                     [0, abi::closure_body_bindings, i]));
+        let retptr = Load(bcx, GEPi(bcx, llcdata,
+                                    [0, abi::closure_body_bindings, i+1]));
+        fcx.loop_ret = some({flagptr: flagptr, retptr: retptr});
     }
 }
 
@@ -367,7 +386,7 @@ fn trans_expr_fn(bcx: block,
                  sp: span,
                  id: ast::node_id,
                  cap_clause: ast::capture_clause,
-                 is_loop_body: bool,
+                 is_loop_body: option<option<ValueRef>>,
                  dest: dest) -> block {
     let _icx = bcx.insn_ctxt("closure::trans_expr_fn");
     if dest == ignore { ret bcx; }
@@ -382,12 +401,17 @@ fn trans_expr_fn(bcx: block,
     let trans_closure_env = fn@(ck: ty::closure_kind) -> ValueRef {
         let cap_vars = capture::compute_capture_vars(
             ccx.tcx, id, proto, cap_clause);
-        let {llbox, cdata_ty, bcx} = build_closure(bcx, cap_vars, ck, id);
+        let ret_handle = alt is_loop_body { some(x) { x } none { none } };
+        let {llbox, cdata_ty, bcx} = build_closure(bcx, cap_vars, ck, id,
+                                                   ret_handle);
         trans_closure(ccx, sub_path, decl, body, llfn, no_self,
                       bcx.fcx.param_substs, id, {|fcx|
-            load_environment(fcx, cdata_ty, cap_vars, ck);
+            load_environment(fcx, cdata_ty, cap_vars,
+                             option::is_some(ret_handle), ck);
         }, {|bcx|
-            if is_loop_body { Store(bcx, C_bool(true), bcx.fcx.llretptr); }
+            if option::is_some(is_loop_body) {
+                Store(bcx, C_bool(true), bcx.fcx.llretptr);
+            }
         });
         llbox
     };
