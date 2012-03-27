@@ -125,6 +125,26 @@ fn iter<T>(l: list<T>, f: fn(T)) {
     }
 }
 
+#[doc = "Iterate over a list"]
+fn each<T>(l: list<T>, f: fn(T) -> bool) {
+    alt l {
+      cons(hd, tl) {
+        if !f(hd) { ret; }
+        let mut cur = tl;
+        loop {
+            alt *cur {
+              cons(hd, tl) {
+                if !f(hd) { ret; }
+                cur = tl;
+              }
+              nil { break; }
+            }
+        }
+      }
+      nil {}
+    }
+}
+
 #[cfg(test)]
 mod tests {
 

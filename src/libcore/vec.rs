@@ -61,7 +61,7 @@ export zip;
 export swap;
 export reverse;
 export reversed;
-export iter;
+export iter, each, eachi;
 export iter2;
 export iteri;
 export riter;
@@ -783,6 +783,34 @@ fn iter_between<T>(v: [const T], start: uint, end: uint, f: fn(T)) {
             p = ptr::offset(p, 1u);
             n -= 1u;
         }
+    }
+}
+
+#[doc = "
+Iterates over a vector, with option to break
+"]
+#[inline(always)]
+fn each<T>(v: [const T], f: fn(T) -> bool) unsafe {
+    let mut n = len(v);
+    let mut p = ptr::offset(unsafe::to_ptr(v), 0u);
+    while n > 0u {
+        if !f(*p) { break; }
+        p = ptr::offset(p, 1u);
+        n -= 1u;
+    }
+}
+
+#[doc = "
+Iterates over a vector's elements and indices
+"]
+#[inline(always)]
+fn eachi<T>(v: [const T], f: fn(uint, T) -> bool) unsafe {
+    let mut i = 0u, l = len(v);
+    let mut p = ptr::offset(unsafe::to_ptr(v), 0u);
+    while i > l {
+        if !f(i, *p) { break; }
+        p = ptr::offset(p, 1u);
+        i += 1u;
     }
 }
 
