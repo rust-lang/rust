@@ -1,7 +1,7 @@
 Version 0.2  (March 2012)
 -------------------------
 
-   * >1400 changes, numerous bugfixes
+   * >1500 changes, numerous bugfixes
 
    * New docs and doc tooling
 
@@ -17,7 +17,7 @@ Version 0.2  (March 2012)
       * Callbacks from C
       * Helgrind clean
 
-   * Preliminary new language features
+   * Experimental new language features
       * Operator overloading
       * Region pointers
       * Classes
@@ -29,6 +29,7 @@ Version 0.2  (March 2012)
       * Required mutable-local qualifier: 'let mut ...'
       * Basic glob-exporting: 'export foo::*;'
       * Alt now exhaustive, 'alt check' for runtime-checked
+      * Block-function form of 'for' loop, with 'break' and 'ret'.
 
    * New library code
       * AST quasi-quote syntax extension
