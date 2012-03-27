@@ -610,7 +610,8 @@ fn maybe_walk_ty(ty: t, f: fn(t) -> bool) {
 enum fold_mode {
     fm_var(fn@(int) -> t),
     fm_param(fn@(uint, def_id) -> t),
-    fm_rptr(fn@(region, bool /* under & */) -> region),
+    fm_rptr(fn@(region, bool /* under & */) -> region,
+            bool /* descend into outermost fn */),
     fm_general(fn@(t) -> t),
 }
 
@@ -622,7 +623,7 @@ fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
         alt fld {
           fm_var(_) { if !tb.has_vars { ret ty; } }
           fm_param(_) { if !tb.has_params { ret ty; } }
-          fm_rptr(_) { if !tb.has_rptrs { ret ty; } }
+          fm_rptr(_,_) { if !tb.has_rptrs { ret ty; } }
           fm_general(_) {/* no fast path */ }
         }
 
@@ -678,22 +679,27 @@ fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
             ty = mk_tup(cx, new_ts);
           }
           ty_fn(f) {
+            let mut new_fld;
             alt fld {
-              fm_rptr(_) {
+              fm_rptr(_, false) {
                 // Don't recurse into functions, because regions are
                 // universally quantified, well, universally, at function
                 // boundaries.
+                ret ty;
               }
-              _ {
-                let mut new_args: [arg] = [];
-                for a: arg in f.inputs {
-                    let new_ty = do_fold(cx, fld, a.ty, under_rptr);
-                    new_args += [{mode: a.mode, ty: new_ty}];
-                }
-                let new_output = do_fold(cx, fld, f.output, under_rptr);
-                ty = mk_fn(cx, {inputs: new_args, output: new_output with f});
+              fm_rptr(f, true) {
+                new_fld = fm_rptr(f, false);
               }
+              _ { new_fld = fld; }
             }
+
+            let mut new_args: [arg] = [];
+            for a: arg in f.inputs {
+                let new_ty = do_fold(cx, new_fld, a.ty, under_rptr);
+                new_args += [{mode: a.mode, ty: new_ty}];
+            }
+            let new_output = do_fold(cx, new_fld, f.output, under_rptr);
+            ty = mk_fn(cx, {inputs: new_args, output: new_output with f});
           }
           ty_res(did, subty, tps) {
             let mut new_tps = [];
@@ -711,7 +717,7 @@ fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
           }
           ty_rptr(r, tm) {
             let region = alt fld {
-                fm_rptr(folder) { folder(r, under_rptr) }
+                fm_rptr(folder, _) { folder(r, under_rptr) }
                 _ { r }
             };
             ty = mk_rptr(cx, region,

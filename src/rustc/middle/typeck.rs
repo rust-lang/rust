@@ -80,6 +80,7 @@ type fn_ctxt =
      infcx: infer::infer_ctxt,
      locals: hashmap<ast::node_id, int>,
      next_var_id: @mut int,
+     next_region_var_id: @mut int,
      ccx: @crate_ctxt};
 
 
@@ -559,7 +560,7 @@ fn fixup_regions(tcx: ty::ctxt, next_region_param_id: next_region_param_id,
             }
             _ { region }
         }
-    }), ty);
+    }, false), ty);
 }
 
 fn fixup_regions_to_block(tcx: ty::ctxt, ty: ty::t, ast_ty: @ast::ty)
@@ -570,7 +571,7 @@ fn fixup_regions_to_block(tcx: ty::ctxt, ty: ty::t, ast_ty: @ast::ty)
             ty::re_inferred { region }
             _ { this_region }
         }
-    }), ty);
+    }, false), ty);
 }
 
 fn ty_of_arg(tcx: ty::ctxt, mode: mode, a: ast::arg) -> ty::arg {
@@ -621,7 +622,7 @@ fn ty_of_fn_decl(tcx: ty::ctxt,
                     _ { /* no-op */ }
                 };
                 r
-            }), arg_ty.ty);
+            }, false), arg_ty.ty);
         }
 
         arg_ty
@@ -876,7 +877,7 @@ fn fixup_self_region_in_method_ty(fcx: @fn_ctxt, mty: ty::t,
             ty::re_self { self_region }
             _ { r }
         }
-    }), mty)
+    }, false), mty)
 }
 
 // Item collection - a pair of bootstrap passes:
@@ -1133,15 +1134,6 @@ mod collect {
 
 // Type unification
 mod unify {
-    fn unify_with_region_bindings(fcx: @fn_ctxt,
-                                  _rb: @ty::unify::region_bindings,
-                                  expected: ty::t,
-                                  actual: ty::t)
-            -> result<(), ty::type_err> {
-        //let irb = ty::unify::in_region_bindings(fcx.var_bindings, rb);
-        ret infer::mk_subty(fcx.infcx, actual, expected);
-    }
-
     fn unify(fcx: @fn_ctxt, expected: ty::t, actual: ty::t) ->
         result<(), ty::type_err> {
         ret infer::mk_subty(fcx.infcx, actual, expected);
@@ -1220,16 +1212,6 @@ mod demand {
     // n.b.: order of arguments is reversed.
     fn subty(fcx: @fn_ctxt, sp: span, actual: ty::t, expected: ty::t) {
         full(fcx, sp, unify::unify, expected, actual, []);
-    }
-
-    fn with_region_bindings(fcx: @fn_ctxt,
-                            sp: span,
-                            rb: @ty::unify::region_bindings,
-                            expected: ty::t,
-                            actual: ty::t)
-            -> ty::t {
-        full(fcx, sp, bind unify::unify_with_region_bindings(_, rb, _, _),
-             expected, actual, []).ty
     }
 
     fn with_substs(fcx: @fn_ctxt, sp: span, expected: ty::t, actual: ty::t,
@@ -1661,6 +1643,23 @@ type pat_ctxt = {
     pat_region: ty::region
 };
 
+fn count_region_params(ty: ty::t) -> uint {
+    if (!ty::type_has_rptrs(ty)) { ret 0u; }
+
+    let count = @mut 0u;
+    ty::walk_ty(ty) {|ty|
+        alt ty::get(ty).struct {
+            ty::ty_rptr(ty::re_param(param_id), _) {
+                if param_id > *count {
+                    *count = param_id;
+                }
+            }
+            _ { /* no-op */ }
+        }
+    };
+    ret *count;
+}
+
 // Replaces self, caller, or inferred regions in the given type with the given
 // region.
 fn instantiate_self_regions(tcx: ty::ctxt, region: ty::region, &&ty: ty::t)
@@ -1671,48 +1670,39 @@ fn instantiate_self_regions(tcx: ty::ctxt, region: ty::region, &&ty: ty::t)
                 ty::re_inferred | ty::re_self | ty::re_param(_) { region }
                 _ { r }
             }
-        }), ty)
+        }, false), ty)
     } else {
         ty
     }
 }
 
-// Replaces all region variables in the given type with "inferred regions".
-// This is used during method lookup to allow typeclass implementations to
-// refer to inferred regions.
-fn universally_quantify_regions(tcx: ty::ctxt, ty: ty::t) -> ty::t {
-    if ty::type_has_rptrs(ty) {
-        ty::fold_ty(tcx, ty::fm_rptr({|_r, _under_rptr|
-            // FIXME: Should these all be different variables?
-            ty::re_var(0u)
-        }), ty)
-    } else {
-        ty
-    }
+type region_env = smallintmap::smallintmap<int>;
+
+fn region_env() -> @region_env {
+    ret @smallintmap::mk::<int>();
 }
 
-// Replaces region parameter types in the given type with the appropriate
-// bindings.
-fn replace_region_params(tcx: ty::ctxt,
-                         sp: span,
-                         rb: @ty::unify::region_bindings,
-                         ty: ty::t)
+// Replaces all region parameters in the given type with region variables.
+// This is used when typechecking function calls, bind expressions, and method
+// calls.
+fn universally_quantify_regions(fcx: @fn_ctxt, renv: @region_env, ty: ty::t)
         -> ty::t {
-
     if ty::type_has_rptrs(ty) {
-        ty::fold_ty(tcx, ty::fm_rptr({ |r, _under_rptr|
+        ty::fold_ty(fcx.ccx.tcx, ty::fm_rptr({|r, _under_rptr|
             alt r {
-                ty::re_param(n) {
-                    if n < ufind::set_count(rb.sets) {
-                        smallintmap::get(rb.regions, ufind::find(rb.sets, n))
-                    } else {
-                        tcx.sess.span_err(sp, "unresolved region");
-                        r
+                ty::re_param(param_id) {
+                    alt smallintmap::find(*renv, param_id) {
+                        some(var_id) { ty::re_var(var_id as uint) }
+                        none {
+                            let var_id = next_region_var_id(fcx);
+                            smallintmap::insert(*renv, param_id, var_id);
+                            ty::re_var(var_id as uint)
+                        }
                     }
                 }
                 _ { r }
             }
-        }), ty)
+        }, true), ty)
     } else {
         ty
     }
@@ -2189,8 +2179,17 @@ fn lookup_method_inner(fcx: @fn_ctxt, expr: @ast::expr,
                         {vars: [], ty: self_ty}
                     };
 
-                    self_ty = universally_quantify_regions(tcx, self_ty);
-                    let ty = universally_quantify_regions(tcx, ty);
+                    // Here "self" refers to the callee side...
+                    let next_rid = count_region_params(self_ty);
+                    self_ty = instantiate_self_regions(fcx.ccx.tcx,
+                                                       ty::re_param(next_rid),
+                                                       self_ty);
+                    self_ty = universally_quantify_regions(fcx, region_env(),
+                                                           self_ty);
+
+                    // ... and "ty" refers to the caller side.
+                    let ty = universally_quantify_regions(fcx, region_env(),
+                                                          ty);
 
                     alt unify::unify(fcx, self_ty, ty) {
                       result::ok(_) {
@@ -2311,11 +2310,6 @@ fn check_expr_fn_with_unifier(fcx: @fn_ctxt,
     check_fn(fcx.ccx, proto, decl, body, expr.id, is_loop_body, some(fcx));
 }
 
-type check_call_or_bind_result = {
-    bot: bool,
-    rb: @ty::unify::region_bindings
-};
-
 fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                            expected: ty::t) -> bool {
 
@@ -2325,35 +2319,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
     // A generic function to factor out common logic from call and bind
     // expressions.
     fn check_call_or_bind(fcx: @fn_ctxt, sp: span, fty: ty::t,
-                          args: [option<@ast::expr>])
-            -> check_call_or_bind_result {
-
-        // Replaces "caller" regions in the arguments with the local region.
-        fn instantiate_caller_regions(fcx: @fn_ctxt, args: [ty::arg])
-                -> [ty::arg] {
-
-            ret vec::map(args) {|arg|
-                if ty::type_has_rptrs(arg.ty) {
-                    let ty = ty::fold_ty(fcx.ccx.tcx,
-                                         ty::fm_rptr({|r, _under_rptr|
-                        alt r {
-                            ty::re_param(param) {
-                                // FIXME: We should not recurse into nested
-                                // function types here.
-                                ty::re_var(param)
-                            }
-                            _ { r }
-                        }
-                    }), arg.ty);
-                    {ty: ty with arg}
-                } else {
-                    arg
-                }
-            };
-        }
-
-        let rb = ty::unify::mk_region_bindings();
-        let unifier = bind demand::with_region_bindings(_, _, rb, _, _);
+                          args: [option<@ast::expr>]) -> bool {
 
         let sty = structure_of(fcx, sp, fty);
         // Grab the argument types
@@ -2392,9 +2358,6 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
             arg_tys = vec::from_elem(supplied_arg_count, dummy);
         }
 
-        // FIXME: This should instantiate re_params instead.
-        arg_tys = instantiate_caller_regions(fcx, arg_tys);
-
         // Check the arguments.
         // We do this in a pretty awful way: first we typecheck any arguments
         // that are not anonymous functions, then we typecheck the anonymous
@@ -2413,7 +2376,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                     };
                     if is_block == check_blocks {
                         let t = arg_tys[i].ty;
-                        bot |= check_expr_with_unifier(fcx, a, unifier, t);
+                        bot |= check_expr_with_unifier(fcx, a, demand::simple,
+                                                       t);
                     }
                   }
                   none { }
@@ -2422,8 +2386,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
             }
             ret bot;
         };
-        let bot = check_args(false) | check_args(true);
-        ret { bot: bot, rb: rb };
+        ret check_args(false) | check_args(true);
     }
 
     // A generic function for checking assignment expressions
@@ -2437,24 +2400,25 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
 
     // A generic function for checking call expressions
     fn check_call(fcx: @fn_ctxt, sp: span, f: @ast::expr, args: [@ast::expr])
-            -> check_call_or_bind_result {
+            -> bool {
         let mut args_opt_0: [option<@ast::expr>] = [];
         for arg: @ast::expr in args {
             args_opt_0 += [some::<@ast::expr>(arg)];
         }
 
         let bot = check_expr(fcx, f);
+
+        let mut fn_ty = expr_ty(fcx.ccx.tcx, f);
+        fn_ty = universally_quantify_regions(fcx, region_env(), fn_ty);
+
         // Call the generic checker.
-        let ccobr = check_call_or_bind(fcx, sp, expr_ty(fcx.ccx.tcx, f),
-                                       args_opt_0);
-        ret { bot: bot | ccobr.bot with ccobr };
+        ret check_call_or_bind(fcx, sp, fn_ty, args_opt_0) | bot;
     }
 
     // A generic function for doing all of the checking for call expressions
     fn check_call_full(fcx: @fn_ctxt, sp: span, id: ast::node_id,
                        f: @ast::expr, args: [@ast::expr]) -> bool {
-        let ccobr = check_call(fcx, sp, f, args);
-        let mut bot = ccobr.bot;
+        let mut bot = check_call(fcx, sp, f, args);
         /* need to restrict oper to being an explicit expr_path if we're
         inside a pure function */
         require_pure_call(fcx.ccx, fcx.purity, f, sp);
@@ -2468,7 +2432,6 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
           }
           _ { fcx.ccx.tcx.sess.span_fatal(sp, "calling non-function"); }
         };
-        rt_1 = replace_region_params(fcx.ccx.tcx, f.span, ccobr.rb, rt_1);
         write_ty(fcx.ccx.tcx, id, rt_1);
         ret bot;
     }
@@ -2525,10 +2488,12 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         let callee_id = ast_util::op_expr_callee_id(op_ex);
         alt lookup_method(fcx, op_ex, callee_id, opname, self_t, []) {
           some(origin) {
-            let method_ty = ty::node_id_to_type(fcx.ccx.tcx, callee_id);
-            let r = check_call_or_bind(fcx, op_ex.span, method_ty, args);
+            let mut method_ty = ty::node_id_to_type(fcx.ccx.tcx, callee_id);
+            method_ty = universally_quantify_regions(fcx, region_env(),
+                                                     method_ty);
+            let bot = check_call_or_bind(fcx, op_ex.span, method_ty, args);
             fcx.ccx.method_map.insert(op_ex.id, origin);
-            some((ty::ty_fn_ret(method_ty), r.bot))
+            some((ty::ty_fn_ret(method_ty), bot))
           }
           _ { none }
         }
@@ -2955,8 +2920,12 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
       ast::expr_bind(f, args) {
         // Call the generic checker.
         bot = check_expr(fcx, f);
-        let ccobr = check_call_or_bind(fcx, expr.span, expr_ty(tcx, f), args);
-        bot |= ccobr.bot;
+
+        let mut fn_ty = expr_ty(fcx.ccx.tcx, f);
+        fn_ty = universally_quantify_regions(fcx, region_env(), fn_ty);
+
+        let ccob_bot = check_call_or_bind(fcx, expr.span, fn_ty, args);
+        bot |= ccob_bot;
 
         // TODO: Perform substitutions on the return type.
 
@@ -3280,6 +3249,16 @@ fn next_ty_var(fcx: @fn_ctxt) -> ty::t {
     ret ty::mk_var(fcx.ccx.tcx, next_ty_var_id(fcx));
 }
 
+fn next_region_var_id(fcx: @fn_ctxt) -> int {
+    let id = *fcx.next_region_var_id;
+    *fcx.next_region_var_id += 1;
+    ret id;
+}
+
+fn next_region_var(fcx: @fn_ctxt) -> ty::region {
+    ret ty::re_var(next_region_var_id(fcx) as uint);
+}
+
 fn bind_params(fcx: @fn_ctxt, tp: ty::t, count: uint)
     -> {vars: [ty::t], ty: ty::t} {
     let vars = vec::from_fn(count, {|_i| next_ty_var(fcx)});
@@ -3409,6 +3388,7 @@ fn check_const(ccx: @crate_ctxt, _sp: span, e: @ast::expr, id: ast::node_id) {
           infcx: infer::new_infer_ctxt(ccx.tcx),
           locals: int_hash::<int>(),
           next_var_id: @mut 0,
+          next_region_var_id: @mut 0,
           ccx: ccx};
     check_expr(fcx, e);
     let cty = expr_ty(fcx.ccx.tcx, e);
@@ -3429,6 +3409,7 @@ fn check_enum_variants(ccx: @crate_ctxt, sp: span, vs: [ast::variant],
           infcx: infer::new_infer_ctxt(ccx.tcx),
           locals: int_hash::<int>(),
           next_var_id: @mut 0,
+          next_region_var_id: @mut 0,
           ccx: ccx};
     let mut disr_vals: [int] = [];
     let mut disr_val = 0;
@@ -3616,6 +3597,7 @@ fn check_fn(ccx: @crate_ctxt,
           infcx: gather_result.infcx,
           locals: gather_result.locals,
           next_var_id: gather_result.next_var_id,
+          next_region_var_id: @mut 0,
           ccx: ccx};
 
     check_constraints(fcx, decl.constraints, decl.inputs);
