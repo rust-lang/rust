@@ -1,4 +1,11 @@
-import re, os, sys, glob, hashlib, tarfile, shutil, subprocess, tempfile
+import re, os, sys, glob, tarfile, shutil, subprocess, tempfile
+
+try:
+  import hashlib
+  sha_func = hashlib.sha1
+except ImportError:
+  import sha
+  sha_func = sha.new
 
 def scrub(b):
   if sys.version_info >= (3,) and type(b) == bytes:
@@ -119,9 +126,8 @@ def local_rev_committer_date():
 def get_url_to_file(u,f):
     # no security issue, just to stop partial download leaving a stale file
     tmpf = f + '.tmp'
-    try:
-        subprocess.check_call(["curl", "-o", tmpf, u])
-    except subprocess.CalledProcessError:
+    returncode = subprocess.call(["curl", "-o", tmpf, u])
+    if returncode != 0:
         os.unlink(tmpf)
         raise
     os.rename(tmpf, f)
@@ -133,7 +139,7 @@ def snap_filename_hash_part(snap):
   return match.group(1)
 
 def hash_file(x):
-    h = hashlib.sha1()
+    h = sha_func()
     h.update(open(x, "rb").read())
     return scrub(h.hexdigest())
 

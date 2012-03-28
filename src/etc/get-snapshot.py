@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import os, tarfile, hashlib, re, shutil, sys
+import os, tarfile, re, shutil, sys
 from snapshot import *
 
 def unpack_snapshot(triple, dl_path):
