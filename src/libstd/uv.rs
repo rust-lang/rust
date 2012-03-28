@@ -340,8 +340,8 @@ native mod rustrt {
         -> sockaddr_in;
     fn rust_uv_tcp_connect(connect_ptr: *uv_connect_t,
                            tcp_handle_ptr: *uv_tcp_t,
-                           ++addr: sockaddr_in,
-                           after_cb: *u8) -> libc::c_int;
+                           ++after_cb: *u8,
+                           ++addr: *sockaddr_in) -> libc::c_int;
     fn rust_uv_write(req: *libc::c_void, stream: *libc::c_void,
              ++buf_in: *uv_buf_t, buf_cnt: libc::c_int,
              cb: *u8) -> libc::c_int;
@@ -405,13 +405,14 @@ mod direct {
     }
     unsafe fn tcp_connect(connect_ptr: *uv_connect_t,
                           tcp_handle_ptr: *uv_tcp_t,
-                          address: sockaddr_in,
-                          after_connect_cb: *u8)
+                          addr_ptr: *sockaddr_in,
+                          ++after_connect_cb: *u8)
     -> libc::c_int {
-        io::println(#fmt("b4 native tcp_connect--addr port: %u",
-                         address.sin_port as uint));
+        let address = *addr_ptr;
+        io::println(#fmt("b4 native tcp_connect--addr port: %u cb: %u",
+                         address.sin_port as uint, after_connect_cb as uint));
         ret rustrt::rust_uv_tcp_connect(connect_ptr, tcp_handle_ptr,
-                                    address, after_connect_cb);
+                                    after_connect_cb, addr_ptr);
     }
 
     // TODO github #1402 -- the buf_in is a vector of pointers
@@ -1185,16 +1186,19 @@ fn impl_uv_tcp_request() unsafe {
         io::println("sucessful tcp_init_result");
 
         io::println("building addr...");
-        let addr = direct::ip4_addr("173.194.33.40", 80);
+        let addr = direct::ip4_addr("74.125.227.16", 80);
+        let addr_ptr = ptr::addr_of(addr);
         io::println(#fmt("after build addr in rust. port: %u",
                          addr.sin_port as uint));
         //let addr: *libc::c_void = ptr::addr_of(addr_val) as
         //                            *libc::c_void;
 
         // this should set up the connection request..
+        io::println(#fmt("before calling tcp_connect .. connect cb ptr: %u ",
+                        on_connect_cb as uint));
         let tcp_connect_result = direct::tcp_connect(
             connect_req_ptr, tcp_handle_ptr,
-            addr, on_connect_cb);
+            addr_ptr, on_connect_cb);
         if (tcp_connect_result == 0i32) {
             // not set the data on the connect_req
             // until its initialized
