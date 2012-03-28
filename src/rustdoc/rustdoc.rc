@@ -3,7 +3,7 @@
 #[link(name = "rustdoc",
        vers = "0.2",
        uuid = "f8abd014-b281-484d-a0c3-26e3de8e2412",
-       url = "http://rust-lang.org/doc/rustdoc")];
+       url = "https://github.com/mozilla/rust/tree/master/src/rustdoc")];
 
 #[comment = "The Rust documentation generator"];
 #[license = "MIT"];

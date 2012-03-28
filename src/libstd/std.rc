@@ -1,7 +1,7 @@
 #[link(name = "std",
        vers = "0.2",
        uuid = "122bed0b-c19b-4b82-b0b7-7ae8aead7297",
-       url = "http://rust-lang.org/src/std")];
+       url = "https://github.com/mozilla/rust/tree/master/src/libstd")];
 
 #[comment = "The Rust standard library"];
 #[license = "MIT"];

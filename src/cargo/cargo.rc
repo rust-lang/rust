@@ -13,7 +13,7 @@
 #[link(name = "cargo",
        vers = "0.2",
        uuid = "9ff87a04-8fed-4295-9ff8-f99bb802650b",
-       url = "http://rust-lang.org/doc/cargo")];
+       url = "https://github.com/mozilla/rust/tree/master/src/cargo")];
 
 #[crate_type = "bin"];
 

@@ -3,7 +3,7 @@
 #[link(name = "rustc",
        vers = "0.2",
        uuid = "0ce89b41-2f92-459e-bbc1-8f5fe32f16cf",
-       url = "http://rust-lang.org/src/rustc")];
+       url = "https://github.com/mozilla/rust/tree/master/src/rustc")];
 
 #[comment = "The Rust compiler"];
 #[license = "MIT"];
@@ -11,7 +11,7 @@
 
 use std (name = "std",
          vers = "0.2",
-         url = "http://rust-lang.org/src/std");
+         url = "https://github.com/mozilla/rust/tree/master/src/libstd");
 
 mod middle {
     mod trans {
