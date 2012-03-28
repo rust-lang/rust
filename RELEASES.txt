@@ -12,7 +12,7 @@ Version 0.2  (March 2012)
       * Functions now inlined across separate crates
 
    * Scheduling, stack and threading fixes
-      * Noticably improved message-passing performance
+      * Noticeably improved message-passing performance
       * Explicit schedulers
       * Callbacks from C
       * Helgrind clean
