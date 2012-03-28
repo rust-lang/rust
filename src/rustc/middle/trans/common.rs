@@ -884,6 +884,16 @@ fn node_id_type_params(bcx: block, id: ast::node_id) -> [ty::t] {
     }
 }
 
+fn field_idx_strict(cx: ty::ctxt, sp: span, ident: ast::ident,
+                    fields: [ty::field])
+    -> int {
+    alt ty::field_idx(ident, fields) {
+            none { cx.sess.span_bug(sp, #fmt("base expr doesn't appear to \
+                     have a field named %s", ident)); }
+            some(i) { i as int }
+        }
+}
+
 //
 // Local Variables:
 // mode: rust

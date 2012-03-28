@@ -2271,11 +2271,7 @@ fn trans_rec_field_inner(bcx: block, val: ValueRef, ty: ty::t,
             _ { bcx.tcx().sess.span_bug(sp, "trans_rec_field:\
                  base expr has non-record type"); }
         };
-    let ix = alt ty::field_idx(field, fields) {
-      none { bcx.tcx().sess.span_bug(sp, #fmt("trans_rec_field:\
-               base expr doesn't appear to have a field named %s", field));}
-      some(i) { i }
-    };
+    let ix = field_idx_strict(bcx.tcx(), sp, field, fields);
     let val = GEPi(bcx, val, [0, ix as int]);
     ret {bcx: bcx, val: val, kind: owned};
 }
@@ -3666,7 +3662,7 @@ fn raw_block(fcx: fn_ctxt, llbb: BasicBlockRef) -> block {
 // trans_block_cleanups: Go through all the cleanups attached to this
 // block and execute them.
 //
-// When translating a block that introdces new variables during its scope, we
+// When translating a block that introduces new variables during its scope, we
 // need to make sure those variables go out of scope when the block ends.  We
 // do that by running a 'cleanup' function for each variable.
 // trans_block_cleanups runs all the cleanup functions for the block.
@@ -4344,10 +4340,24 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
         // wouldn't make sense
         // So we initialize it here
         let selfptr = alloc_ty(bcx_top, rslt_ty);
+        // initialize fields to zero
+        let fields = ty::class_items_as_fields(bcx_top.tcx(),
+                                               local_def(item.id));
+        let mut bcx = bcx_top;
+        // Initialize fields to zero so init assignments can validly
+        // drop their LHS
+        for field in fields {
+           let ix = field_idx_strict(bcx.tcx(), ctor.span, field.ident,
+                                     fields);
+           bcx = zero_alloca(bcx, GEPi(bcx, selfptr, [0, ix]),
+                                       field.mt.ty);
+        }
+
+        // note we don't want to take *or* drop self.
         fcx.llself = some({v: selfptr, t: rslt_ty});
 
         // Translate the body of the ctor
-        let mut bcx = trans_block(bcx_top, ctor.node.body, ignore);
+        bcx = trans_block(bcx_top, ctor.node.body, ignore);
         let lval_res = {bcx: bcx, val: selfptr, kind: owned};
         // Generate the return expression
         bcx = store_temp_expr(bcx, INIT, fcx.llretptr, lval_res,

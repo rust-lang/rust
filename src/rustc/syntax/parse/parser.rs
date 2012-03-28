@@ -1684,8 +1684,8 @@ fn parse_let(p: parser) -> @ast::decl {
 fn parse_instance_var(p:parser) -> (ast::class_member, codemap::span) {
     let mut is_mutbl = ast::class_immutable;
     let lo = p.span.lo;
-    if eat_word(p, "mut") {
-            is_mutbl = ast::class_mutable;
+    if eat_word(p, "mut") || eat_word(p, "mutable") {
+        is_mutbl = ast::class_mutable;
     }
     if !is_plain_ident(p) {
         p.fatal("expecting ident");

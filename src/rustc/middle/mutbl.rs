@@ -57,6 +57,16 @@ fn expr_root(tcx: ty::ctxt, ex: @expr, autoderef: bool) ->
                     }
                 }
               }
+              ty::ty_class(did, _) {
+                  util::common::log_expr(*ex);
+                  for fld: ty::field_ty in ty::lookup_class_fields(tcx, did) {
+                    #debug("%s %?", fld.ident, fld.mutability);
+                    if str::eq(ident, fld.ident) {
+                        is_mutbl = fld.mutability == class_mutable;
+                    }
+                    break;
+                  }
+              }
               _ {}
             }
             ds += [@{mutbl: is_mutbl, kind: field, outer_t: auto_unbox.t}];
@@ -114,14 +124,17 @@ fn expr_root(tcx: ty::ctxt, ex: @expr, autoderef: bool) ->
 // Actual mutbl-checking pass
 
 type mutbl_map = std::map::hashmap<node_id, ()>;
-type ctx = {tcx: ty::ctxt, mutbl_map: mutbl_map};
+// Keep track of whether we're inside a ctor, so as to
+// allow mutating immutable fields in the same class
+type ctx = {tcx: ty::ctxt, mutbl_map: mutbl_map, in_ctor: bool};
 
 fn check_crate(tcx: ty::ctxt, crate: @crate) -> mutbl_map {
-    let cx = @{tcx: tcx, mutbl_map: std::map::int_hash()};
-    let v = @{visit_expr: bind visit_expr(cx, _, _, _),
-              visit_decl: bind visit_decl(cx, _, _, _)
+    let cx = @{tcx: tcx, mutbl_map: std::map::int_hash(), in_ctor: false};
+    let v = @{visit_expr: visit_expr,
+              visit_decl: visit_decl,
+              visit_item: visit_item
               with *visit::default_visitor()};
-    visit::visit_crate(*crate, (), visit::mk_vt(v));
+    visit::visit_crate(*crate, cx, visit::mk_vt(v));
     ret cx.mutbl_map;
 }
 
@@ -135,8 +148,8 @@ fn mk_err(cx: @ctx, span: syntax::codemap::span, msg: msg, name: str) {
     });
 }
 
-fn visit_decl(cx: @ctx, d: @decl, &&e: (), v: visit::vt<()>) {
-    visit::visit_decl(d, e, v);
+fn visit_decl(d: @decl, &&cx: @ctx, v: visit::vt<@ctx>) {
+    visit::visit_decl(d, cx, v);
     alt d.node {
       decl_local(locs) {
         for loc in locs {
@@ -152,7 +165,7 @@ fn visit_decl(cx: @ctx, d: @decl, &&e: (), v: visit::vt<()>) {
     }
 }
 
-fn visit_expr(cx: @ctx, ex: @expr, &&e: (), v: visit::vt<()>) {
+fn visit_expr(ex: @expr, &&cx: @ctx, v: visit::vt<@ctx>) {
     alt ex.node {
       expr_call(f, args, _) { check_call(cx, f, args); }
       expr_bind(f, args) { check_bind(cx, f, args); }
@@ -179,7 +192,22 @@ fn visit_expr(cx: @ctx, ex: @expr, &&e: (), v: visit::vt<()>) {
       }
       _ { }
     }
-    visit::visit_expr(ex, e, v);
+    visit::visit_expr(ex, cx, v);
+}
+
+fn visit_item(item: @item, &&cx: @ctx, v: visit::vt<@ctx>) {
+    alt item.node {
+            item_class(tps, items, ctor) {
+                v.visit_ty_params(tps, cx, v);
+                vec::map::<@class_item, ()>(items,
+                      {|i| v.visit_class_item(i.span,
+                            i.node.privacy, i.node.decl, cx, v); });
+                v.visit_fn(visit::fk_ctor(item.ident, tps), ctor.node.dec,
+                           ctor.node.body, ctor.span, ctor.node.id,
+                           @{in_ctor: true with *cx}, v);
+            }
+            _ { visit::visit_item(item, cx, v); }
+    }
 }
 
 fn check_lval(cx: @ctx, dest: @expr, msg: msg) {
@@ -277,7 +305,7 @@ fn check_bind(cx: @ctx, f: @expr, args: [option<@expr>]) {
 fn is_illegal_to_modify_def(cx: @ctx, def: def, msg: msg) -> option<str> {
     alt def {
       def_fn(_, _) | def_mod(_) | def_native_mod(_) | def_const(_) |
-      def_use(_) {
+      def_use(_) | def_class_method(_,_) {
         some("static item")
       }
       def_arg(_, m) {
@@ -310,6 +338,18 @@ fn is_illegal_to_modify_def(cx: @ctx, def: def, msg: msg) -> option<str> {
       }
 
       def_binding(_) { some("binding") }
+      def_class_field(parent,fld) {
+          if !cx.in_ctor {
+             /* Enforce mutability *unless* we're inside a ctor */
+             alt ty::lookup_class_field(cx.tcx, parent, fld).mutability {
+               class_mutable { none }
+               class_immutable { some("immutable class field") }
+             }
+          }
+          else {
+              none
+          }
+      }
       _ { none }
     }
 }

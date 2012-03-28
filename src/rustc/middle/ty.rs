@@ -41,7 +41,7 @@ export fm_var, fm_general, fm_rptr;
 export get_element_type;
 export is_binopable;
 export is_pred_ty;
-export lookup_class_fields;
+export lookup_class_field, lookup_class_fields;
 export lookup_class_method_by_name;
 export lookup_field_type;
 export lookup_item_type;
@@ -164,7 +164,8 @@ type mt = {ty: t, mutbl: ast::mutability};
 type field_ty = {
   ident: ident,
   id: def_id,
-  privacy: ast::privacy
+  privacy: ast::privacy,
+  mutability: ast::class_mutability
 };
 
 // Contains information needed to resolve types and (in the future) look up
@@ -864,6 +865,12 @@ fn type_needs_drop(cx: ctxt, ty: t) -> bool {
         for f in flds { if type_needs_drop(cx, f.mt.ty) { accum = true; } }
         accum
       }
+      ty_class(did,_) {
+          for f in ty::class_items_as_fields(cx, did)
+          { if type_needs_drop(cx, f.mt.ty) { accum = true; } }
+        accum
+      }
+
       ty_tup(elts) {
         for m in elts { if type_needs_drop(cx, m) { accum = true; } }
         accum
@@ -1956,11 +1963,6 @@ fn lookup_item_type(cx: ctxt, did: ast::def_id) -> ty_param_bounds_and_ty {
 // Look up a field ID, whether or not it's local
 fn lookup_field_type(tcx: ctxt, class_id: def_id, id: def_id) -> ty::t {
     if id.crate == ast::local_crate {
-            /*
-        alt items.find(tcx.items, id.node) {
-           some(ast_map::node_item({node: item_class(_,items,
-        }
-            */
         node_id_to_type(tcx, id.node)
     }
     else {
@@ -1996,6 +1998,15 @@ fn lookup_class_fields(cx: ctxt, did: ast::def_id) -> [field_ty] {
         }
   else {
         ret csearch::get_class_fields(cx, did);
+    }
+}
+
+fn lookup_class_field(cx: ctxt, parent: ast::def_id, field_id: ast::def_id)
+    -> field_ty {
+    alt vec::find(lookup_class_fields(cx, parent))
+                 {|f| f.id.node == field_id.node} {
+        some(t) { t }
+        none { cx.sess.bug("class ID not found in parent's fields"); }
     }
 }
 
@@ -2050,9 +2061,9 @@ fn class_field_tys(items: [@class_item]) -> [field_ty] {
     let mut rslt = [];
     for it in items {
        alt it.node.decl {
-          instance_var(nm, _, _, id) {
+          instance_var(nm, _, cm, id) {
               rslt += [{ident: nm, id: ast_util::local_def(id),
-                          privacy: it.node.privacy}];
+                          privacy: it.node.privacy, mutability: cm}];
           }
           class_method(_) {
           }

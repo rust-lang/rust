@@ -47,6 +47,13 @@ fn encode_named_def_id(ebml_w: ebml::writer, name: str, id: def_id) {
     }
 }
 
+fn encode_mutability(ebml_w: ebml::writer, mt: class_mutability) {
+    ebml_w.wr_tag(tag_class_mut) {||
+        ebml_w.writer.write([alt mt { class_immutable { 'i' }
+                class_mutable { 'm' } } as u8]);
+        }
+}
+
 type entry<T> = {val: T, pos: uint};
 
 fn encode_enum_variant_paths(ebml_w: ebml::writer, variants: [variant],
@@ -370,7 +377,7 @@ fn encode_info_for_class(ecx: @encode_ctxt, ebml_w: ebml::writer,
      /* We encode both private and public fields -- need to include
         private fields to get the offsets right */
       alt ci.node.decl {
-        instance_var(nm, _, _, id) {
+        instance_var(nm, _, mt, id) {
           *index += [{val: id, pos: ebml_w.writer.tell()}];
           ebml_w.start_tag(tag_items_data_item);
           #debug("encode_info_for_class: doing %s %d", nm, id);
@@ -378,7 +385,7 @@ fn encode_info_for_class(ecx: @encode_ctxt, ebml_w: ebml::writer,
           encode_name(ebml_w, nm);
           encode_path(ebml_w, path, ast_map::path_name(nm));
           encode_type(ecx, ebml_w, node_id_to_type(tcx, id));
-          /* TODO: mutability */
+          encode_mutability(ebml_w, mt);
           encode_def_id(ebml_w, local_def(id));
           ebml_w.end_tag();
         }

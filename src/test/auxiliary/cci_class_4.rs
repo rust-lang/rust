@@ -12,9 +12,11 @@ class cat {
     }
   }
 
-  let how_hungry : int;
+  let mutable how_hungry : int;
+  let name : str;
 
-  new(in_x : uint, in_y : int) { meows = in_x; how_hungry = in_y; }
+  new(in_x : uint, in_y : int, in_name: str)
+    { meows = in_x; how_hungry = in_y; name = in_name; }
 
   fn speak() { meow(); }
 

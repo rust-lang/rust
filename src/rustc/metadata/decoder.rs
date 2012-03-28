@@ -118,6 +118,18 @@ fn class_member_id(d: ebml::doc, cdata: cmd) -> ast::def_id {
     ret translate_def_id(cdata, parse_def_id(ebml::doc_data(tagdoc)));
 }
 
+fn field_mutability(d: ebml::doc) -> ast::class_mutability {
+    // Use maybe_get_doc in case it's a method
+    option::maybe(ebml::maybe_get_doc(d, tag_class_mut),
+                  ast::class_immutable,
+                  {|d|
+                  alt ebml::doc_as_u8(d) as char {
+                    'm' { ast::class_mutable }
+                    _   { ast::class_immutable }
+                  }
+                  })
+}
+
 fn variant_disr_val(d: ebml::doc) -> option<int> {
     option::chain(ebml::maybe_get_doc(d, tag_disr_val)) {|val_doc|
         int::parse_buf(ebml::doc_data(val_doc), 10u)
@@ -435,9 +447,9 @@ fn get_class_members(cdata: cmd, id: ast::node_id,
        if p(f) {
           let name = item_name(an_item);
           let did = class_member_id(an_item, cdata);
+          let mt = field_mutability(an_item);
           result += [{ident: name, id: did, privacy:
-                  // This won't work for methods, argh
-                  family_to_privacy(f)}];
+                  family_to_privacy(f), mutability: mt}];
        }
     }
     result
