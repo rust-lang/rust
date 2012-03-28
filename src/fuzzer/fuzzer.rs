@@ -366,29 +366,24 @@ fn check_compiling(filename: str) -> happiness {
             [filename]);
 
     //#error("Status: %d", p.status);
-    if p.err != "" {
-        if false {
-            known_bug("...")
+    if p.status == 0 {
+        passed
+    } else if p.err != "" {
+        if contains(p.err, "error:") {
+            cleanly_rejected("rejected with span_error")
         } else {
             log(error, "Stderr: " + p.err);
             failed("Unfamiliar error message")
         }
-    } else if p.status == 0 {
-        passed
     } else if contains(p.out, "Assertion") && contains(p.out, "failed") {
         log(error, "Stdout: " + p.out);
         failed("Looks like an llvm assertion failure")
-
-    } else if contains(p.out, "Taking the value of a method does not work yet (issue #435)") {
-        known_bug("https://github.com/mozilla/rust/issues/435")
     } else if contains(p.out, "internal compiler error unimplemented") {
         known_bug("Something unimplemented")
     } else if contains(p.out, "internal compiler error") {
         log(error, "Stdout: " + p.out);
         failed("internal compiler error")
 
-    } else if contains(p.out, "error:") {
-        cleanly_rejected("rejected with span_error")
     } else {
         log(error, p.status);
         log(error, "!Stdout: " + p.out);
