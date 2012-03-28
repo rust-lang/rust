@@ -130,7 +130,7 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
       }
       item_impl(tps, ifce, ty, methods) {
         v.visit_ty_params(tps, e, v);
-        alt ifce { some(ty) { v.visit_ty(ty, e, v); } _ {} }
+        alt ifce { some(ty) { v.visit_ty(ty, e, v); } none {} }
         v.visit_ty(ty, e, v);
         for m in methods {
             visit_method_helper(m, e, v)
@@ -193,7 +193,11 @@ fn visit_ty<E>(t: @ty, e: E, v: vt<E>) {
             v.visit_constr(tc.node.path, tc.span, tc.node.id, e, v);
         }
       }
-      _ {}
+      ty_nil |
+      ty_bot |
+      ty_mac(_) |
+      ty_infer {
+      }
     }
 }
 
@@ -243,7 +247,7 @@ fn visit_ty_params<E>(tps: [ty_param], e: E, v: vt<E>) {
         for bound in *tp.bounds {
             alt bound {
               bound_iface(t) { v.visit_ty(t, e, v); }
-              _ {}
+              bound_copy | bound_send { }
             }
         }
     }

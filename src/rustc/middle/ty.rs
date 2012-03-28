@@ -1561,7 +1561,8 @@ fn constrs_eq(cs: [@constr], ds: [@constr]) -> bool {
 fn node_id_to_type(cx: ctxt, id: ast::node_id) -> t {
     alt smallintmap::find(*cx.node_types, id as uint) {
        some(t) { t }
-       none { cx.sess.bug(#fmt("node_id_to_type: unbound node ID %?", id)); }
+       none { cx.sess.bug(#fmt("node_id_to_type: unbound node ID %s",
+                               ast_map::node_id_to_str(cx.items, id))); }
     }
 }
 
