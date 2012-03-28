@@ -13,7 +13,6 @@ export
    from_byte,
    from_char,
    from_chars,
-   push_char,
    concat,
    connect,
 
@@ -102,6 +101,8 @@ export
 native mod rustrt {
     fn rust_str_push(&s: str, ch: u8);
     fn str_reserve_shared(&ss: str, nn: libc::size_t);
+    #[rust_stack]
+    fn upcall_vec_grow(&s: str, new_sz: libc::size_t);
 }
 
 /*
@@ -138,34 +139,72 @@ fn from_byte(b: u8) -> str unsafe {
 #[doc = "Appends a character at the end of a string"]
 fn push_char(&s: str, ch: char) unsafe {
     let code = ch as uint;
-    if code < max_one_b {
-        rustrt::rust_str_push(s, code as u8);
-    } else if code < max_two_b {
-        rustrt::rust_str_push(s, (code >> 6u & 31u | tag_two_b) as u8);
-        rustrt::rust_str_push(s, (code & 63u | tag_cont) as u8);
-    } else if code < max_three_b {
-        rustrt::rust_str_push(s, (code >> 12u & 15u | tag_three_b) as u8);
-        rustrt::rust_str_push(s, (code >> 6u & 63u | tag_cont) as u8);
-        rustrt::rust_str_push(s, (code & 63u | tag_cont) as u8);
-    } else if code < max_four_b {
-        rustrt::rust_str_push(s, (code >> 18u & 7u | tag_four_b) as u8);
-        rustrt::rust_str_push(s, (code >> 12u & 63u | tag_cont) as u8);
-        rustrt::rust_str_push(s, (code >> 6u & 63u | tag_cont) as u8);
-        rustrt::rust_str_push(s, (code & 63u | tag_cont) as u8);
-    } else if code < max_five_b {
-        rustrt::rust_str_push(s, (code >> 24u & 3u | tag_five_b) as u8);
-        rustrt::rust_str_push(s, (code >> 18u & 63u | tag_cont) as u8);
-        rustrt::rust_str_push(s, (code >> 12u & 63u | tag_cont) as u8);
-        rustrt::rust_str_push(s, (code >> 6u & 63u | tag_cont) as u8);
-        rustrt::rust_str_push(s, (code & 63u | tag_cont) as u8);
+    let nb = if code < max_one_b { 1u }
+        else if code < max_two_b { 2u }
+        else if code < max_three_b { 3u }
+        else if code < max_four_b { 4u }
+        else if code < max_five_b { 5u }
+        else { 6u };
+    let mut repr: *vec::unsafe::vec_repr = ::unsafe::reinterpret_cast(s);
+    let fill = (*repr).fill;
+    if fill + nb <= (*repr).alloc {
+        (*repr).fill = fill + nb;
     } else {
-        rustrt::rust_str_push(s, (code >> 30u & 1u | tag_six_b) as u8);
-        rustrt::rust_str_push(s, (code >> 24u & 63u | tag_cont) as u8);
-        rustrt::rust_str_push(s, (code >> 18u & 63u | tag_cont) as u8);
-        rustrt::rust_str_push(s, (code >> 12u & 63u | tag_cont) as u8);
-        rustrt::rust_str_push(s, (code >> 6u & 63u | tag_cont) as u8);
-        rustrt::rust_str_push(s, (code & 63u | tag_cont) as u8);
+        rustrt::upcall_vec_grow(s, fill + nb);
+        // possibly realloc'd
+        repr = ::unsafe::reinterpret_cast(s);
     }
+    let off = fill - 1u;
+    if nb == 1u {
+        *ptr::mut_offset(ptr::mut_addr_of((*repr).data), off) =
+            code as u8;
+    } else if nb == 2u {
+        *ptr::mut_offset(ptr::mut_addr_of((*repr).data), off) =
+            (code >> 6u & 31u | tag_two_b) as u8;
+        *ptr::mut_offset(ptr::mut_addr_of((*repr).data), off + 1u) =
+            (code & 63u | tag_cont) as u8;
+    } else if nb == 3u {
+        *ptr::mut_offset(ptr::mut_addr_of((*repr).data), off) =
+            (code >> 12u & 15u | tag_three_b) as u8;
+        *ptr::mut_offset(ptr::mut_addr_of((*repr).data), off + 1u) =
+            (code >> 6u & 63u | tag_cont) as u8;
+        *ptr::mut_offset(ptr::mut_addr_of((*repr).data), off + 2u) =
+            (code & 63u | tag_cont) as u8;
+    } else if nb == 4u {
+        *ptr::mut_offset(ptr::mut_addr_of((*repr).data), off) =
+            (code >> 18u & 7u | tag_four_b) as u8;
+        *ptr::mut_offset(ptr::mut_addr_of((*repr).data), off + 1u) =
+            (code >> 12u & 63u | tag_cont) as u8;
+        *ptr::mut_offset(ptr::mut_addr_of((*repr).data), off + 2u) =
+            (code >> 6u & 63u | tag_cont) as u8;
+        *ptr::mut_offset(ptr::mut_addr_of((*repr).data), off + 3u) =
+            (code & 63u | tag_cont) as u8;
+    } else if nb == 5u {
+        *ptr::mut_offset(ptr::mut_addr_of((*repr).data), off) =
+            (code >> 24u & 3u | tag_five_b) as u8;
+        *ptr::mut_offset(ptr::mut_addr_of((*repr).data), off + 1u) =
+            (code >> 18u & 63u | tag_cont) as u8;
+        *ptr::mut_offset(ptr::mut_addr_of((*repr).data), off + 2u) =
+            (code >> 12u & 63u | tag_cont) as u8;
+        *ptr::mut_offset(ptr::mut_addr_of((*repr).data), off + 3u) =
+            (code >> 6u & 63u | tag_cont) as u8;
+        *ptr::mut_offset(ptr::mut_addr_of((*repr).data), off + 4u) =
+            (code & 63u | tag_cont) as u8;
+    } else if nb == 6u {
+        *ptr::mut_offset(ptr::mut_addr_of((*repr).data), off) =
+            (code >> 30u & 1u | tag_six_b) as u8;
+        *ptr::mut_offset(ptr::mut_addr_of((*repr).data), off + 1u) =
+            (code >> 24u & 63u | tag_cont) as u8;
+        *ptr::mut_offset(ptr::mut_addr_of((*repr).data), off + 2u) =
+            (code >> 18u & 63u | tag_cont) as u8;
+        *ptr::mut_offset(ptr::mut_addr_of((*repr).data), off + 3u) =
+            (code >> 12u & 63u | tag_cont) as u8;
+        *ptr::mut_offset(ptr::mut_addr_of((*repr).data), off + 4u) =
+            (code >> 6u & 63u | tag_cont) as u8;
+        *ptr::mut_offset(ptr::mut_addr_of((*repr).data), off + 5u) =
+            (code & 63u | tag_cont) as u8;
+    }
+    *ptr::mut_offset(ptr::mut_addr_of((*repr).data), off + nb) = 0u8;
 }
 
 #[doc = "Convert a char to a string"]
