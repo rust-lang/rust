@@ -287,7 +287,8 @@ type procres = {status: int, stdout: str, stderr: str, cmdline: str};
 fn compile_test(config: config, props: test_props,
                 testfile: str) -> procres {
     compose_and_run_compiler(config, props, testfile,
-                             make_compile_args(_, props, [], make_exe_name, _),
+                             make_compile_args(_, props, [],
+                                               make_exe_name, _),
                              none)
 }
 
