@@ -130,7 +130,7 @@ fn run_pretty_test(config: config, props: test_props, testfile: str) {
     compare_source(expected, actual);
 
     // Finally, let's make sure it actually appears to remain valid code
-    let procres = typecheck_source(config, testfile, actual);
+    let procres = typecheck_source(config, props, testfile, actual);
 
     if procres.status != 0 {
         fatal_procres("pretty-printed source does not typecheck", procres);
@@ -169,9 +169,10 @@ actual:\n\
         }
     }
 
-    fn typecheck_source(config: config, testfile: str, src: str) -> procres {
-        compose_and_run(config, testfile, make_typecheck_args,
-                        config.compile_lib_path, option::some(src))
+    fn typecheck_source(config: config, props: test_props,
+                        testfile: str, src: str) -> procres {
+        compose_and_run_compiler(
+            config, props, testfile, make_typecheck_args, option::some(src))
     }
 
     fn make_typecheck_args(config: config, _testfile: str) -> procargs {
@@ -285,6 +286,25 @@ type procres = {status: int, stdout: str, stderr: str, cmdline: str};
 
 fn compile_test(config: config, props: test_props,
                 testfile: str) -> procres {
+    compose_and_run_compiler(config, props, testfile,
+                             make_compile_args(_, props, [], make_exe_name, _),
+                             none)
+}
+
+fn exec_compiled_test(config: config, props: test_props,
+                      testfile: str) -> procres {
+    compose_and_run(config, testfile,
+                             bind make_run_args(_, props, _),
+                             config.run_lib_path, option::none)
+}
+
+fn compose_and_run_compiler(
+    config: config,
+    props: test_props,
+    testfile: str,
+    mk_args: fn(config: config, _testfile: str) -> procargs,
+    input: option<str>) -> procres {
+
     vec::iter(props.aux_builds) {|rel_ab|
         let abs_ab = path::connect(config.aux_base, rel_ab);
         let auxres = compose_and_run(config, abs_ab,
@@ -298,19 +318,12 @@ fn compile_test(config: config, props: test_props,
         }
     }
 
-    compose_and_run(config, testfile,
-                    make_compile_args(_, props, [], make_exe_name, _),
-                    config.compile_lib_path, option::none)
-}
-
-fn exec_compiled_test(config: config, props: test_props,
-                      testfile: str) -> procres {
-    compose_and_run(config, testfile, bind make_run_args(_, props, _),
-                    config.run_lib_path, option::none)
+    compose_and_run(config, testfile, mk_args,
+                    config.compile_lib_path, input)
 }
 
 fn compose_and_run(config: config, testfile: str,
-                   make_args: fn@(config, str) -> procargs, lib_path: str,
+                   make_args: fn(config, str) -> procargs, lib_path: str,
                    input: option<str>) -> procres {
     let procargs = make_args(config, testfile);
     ret program_output(config, testfile, lib_path,
