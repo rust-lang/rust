@@ -684,6 +684,7 @@ type class_ctor = spanned<class_ctor_>;
 
 #[auto_serialize]
 type class_ctor_ = {id: node_id,
+                    self_id: node_id,
                     dec: fn_decl,
                     body: blk};
 

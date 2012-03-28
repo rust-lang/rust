@@ -2092,10 +2092,12 @@ fn parse_item_class(p: parser, attrs: [ast::attribute]) -> @ast::item {
     }
     p.bump();
     alt the_ctor {
-      some((ct_d, ct_b, ct_s)) { ret mk_item(p, lo, p.last_span.hi,
+      some((ct_d, ct_b, ct_s)) {
+          ret mk_item(p, lo, p.last_span.hi,
                                              class_name,
          ast::item_class(ty_params, items,
                          {node: {id: ctor_id,
+                                 self_id: p.get_id(),
                                  dec: ct_d,
                                  body: ct_b},
                           span: ct_s}), attrs); }

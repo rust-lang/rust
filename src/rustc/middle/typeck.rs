@@ -49,7 +49,9 @@ type vtable_map = hashmap<ast::node_id, vtable_res>;
 type ty_table = hashmap<ast::def_id, ty::t>;
 
 // Used for typechecking the methods of an impl
-enum self_info { self_impl(ty::t) }
+// first field is the self type, second is the ID for the "self" object
+// that's currently in scope
+enum self_info { self_impl(ty::t, ast::node_id) }
 
 type crate_ctxt = {mut self_infos: [self_info],
                    impl_map: resolve::impl_map,
@@ -117,7 +119,7 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
       }
       ast::def_self(_) {
         alt get_self_info(fcx.ccx) {
-          some(self_impl(impl_t)) {
+          some(self_impl(impl_t,_)) {
             ret {bounds: @[], ty: impl_t};
           }
           none {
@@ -3128,20 +3130,28 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
               // field
               #debug("class named %s", ty_to_str(tcx, base_t));
               /*
-                This is an external reference, so only consider public
-                fields
+                check whether this is a self-reference or not, which
+                determines whether we look at all fields or only public
+                ones
                */
-              let cls_items = lookup_public_fields(tcx, base_id);
-              #debug("cls_items: %?", cls_items);
-              alt lookup_field_ty(tcx, base_id, cls_items, field) {
+              let node_def = lookup_def(fcx, base.span, base.id);
+              let cls_items = alt get_self_info(fcx.ccx) {
+                      some(self_impl(_, n_id)) if alt node_def {
+                          ast::def_self(base_id) { base_id == n_id }
+                          _ { false }} {
+                        // base expr is "self" -- consider all fields
+                        ty::lookup_class_fields(tcx, base_id)
+                      }
+                      _ { lookup_public_fields(tcx, base_id) }
+              };
+               alt lookup_field_ty(tcx, base_id, cls_items, field) {
                  some(field_ty) {
-                     #debug("a");
                     // (2) look up what field's type is, and return it
                     // FIXME: actually instantiate any type params
                      write_ty(tcx, id, field_ty);
                      handled = true;
                  }
-                 none { #debug("b"); }
+                 none {}
               }
           }
           _ {}
@@ -3659,11 +3669,16 @@ fn class_types(ccx: @crate_ctxt, members: [@ast::class_item]) -> class_map {
     rslt
 }
 
-fn check_class_member(ccx: @crate_ctxt, cm: ast::class_member) {
+fn check_class_member(ccx: @crate_ctxt, class_t: ty::t,
+                      cm: ast::class_member) {
     alt cm {
       ast::instance_var(_,t,_,_) {
       }
-      ast::class_method(m) { check_method(ccx, m); }
+      ast::class_method(m) {
+          ccx.self_infos += [self_impl(class_t, m.self_id)];
+          check_method(ccx, m);
+          vec::pop(ccx.self_infos);
+      }
     }
 }
 
@@ -3681,20 +3696,28 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
         let mut self_ty = ast_ty_to_ty(ccx.tcx, m_check, ty);
         let self_region = ty::re_self;
         self_ty = instantiate_self_regions(ccx.tcx, self_region, self_ty);
-        ccx.self_infos += [self_impl(self_ty)];
-        for m in ms { check_method(ccx, m); }
-        vec::pop(ccx.self_infos);
+        for m in ms {
+             ccx.self_infos += [self_impl(self_ty, m.id)];
+             check_method(ccx, m);
+             vec::pop(ccx.self_infos);
+        }
       }
       ast::item_class(tps, members, ctor) {
           let cid = some(it.id);
+          let class_t = node_id_to_type(ccx.tcx, it.id);
           let members_info = class_types(ccx, members);
+          // can also ditch the enclosing_class stuff once we move to self
+          // FIXME
           let class_ccx = @{enclosing_class_id:cid,
                             enclosing_class:members_info with *ccx};
+          class_ccx.self_infos += [self_impl(class_t, ctor.node.self_id)];
           // typecheck the ctor
           check_fn(class_ccx, ast::proto_bare, ctor.node.dec,
                    ctor.node.body, ctor.node.id, false, none);
+          vec::pop(class_ccx.self_infos);
           // typecheck the members
-          for m in members { check_class_member(class_ccx, m.node.decl); }
+          for m in members { check_class_member(class_ccx, class_t,
+                                                m.node.decl); }
       }
       _ {/* nothing to do */ }
     }

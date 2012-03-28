@@ -523,17 +523,23 @@ fn visit_item_with_scope(e: @env, i: @ast::item, sc: scopes, v: vt<scopes>) {
       }
       ast::item_class(tps, members, ctor) {
         visit::visit_ty_params(tps, sc, v);
+        // Can maybe skip this now that we require self on class fields
         let class_scope = cons(scope_item(i), @sc);
         /* visit the constructor... */
+        let ctor_scope = cons(scope_method(ctor.node.self_id, tps),
+                              @class_scope);
         visit_fn_with_scope(e, visit::fk_item_fn(i.ident, tps), ctor.node.dec,
                             ctor.node.body, ctor.span, ctor.node.id,
-                            class_scope, v);
+                            ctor_scope, v);
         /* visit the items */
         for cm in members {
             alt cm.node.decl {
-              class_method(m) { visit_fn_with_scope(e,
-                 visit::fk_item_fn(m.ident, tps), m.decl, m.body,
-                 m.span, m.id, class_scope, v); }
+              class_method(m) {
+                  let msc = cons(scope_method(m.self_id, tps + m.tps),
+                                 @class_scope);
+                  visit_fn_with_scope(e,
+                     visit::fk_item_fn(m.ident, tps), m.decl, m.body,
+                                 m.span, m.id, msc, v); }
               instance_var(_,t,_,_) { v.visit_ty(t, class_scope, v); }
             }
         }

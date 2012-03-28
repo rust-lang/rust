@@ -647,7 +647,7 @@ fn pattern_roots(tcx: ty::ctxt, mutbl: option<unsafe_ty>, pat: @ast::pat)
 // return-by-reference
 fn expr_root(cx: ctx, ex: @ast::expr, autoderef: bool)
     -> {ex: @ast::expr, mutbl: option<unsafe_ty>} {
-    let base_root = mutbl::expr_root(cx.tcx, ex, autoderef);
+    let base_root = mutbl::expr_root_(cx.tcx, none, ex, autoderef);
     let mut unsafe_ty = none;
     for d in *base_root.ds {
         if d.mutbl { unsafe_ty = some(contains(d.outer_t)); break; }

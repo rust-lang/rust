@@ -12,7 +12,13 @@ type deref = @{mutbl: bool, kind: deref_t, outer_t: ty::t};
 // vec of dereferences that were used on this root. Note that, in this vec,
 // the inner derefs come in front, so foo.bar[1] becomes rec(ex=foo,
 // ds=[index,field])
-fn expr_root(tcx: ty::ctxt, ex: @expr, autoderef: bool) ->
+fn expr_root(cx: @ctx, ex: @expr, autoderef: bool)
+    -> {ex: @expr, ds: @[deref]} {
+    expr_root_(cx.tcx, cx.in_ctor, ex, autoderef)
+}
+
+fn expr_root_(tcx: ty::ctxt, ctor_self: option<node_id>,
+             ex: @expr, autoderef: bool) ->
    {ex: @expr, ds: @[deref]} {
     fn maybe_auto_unbox(tcx: ty::ctxt, t: ty::t) -> {t: ty::t, ds: [deref]} {
         let mut ds = [], t = t;
@@ -58,13 +64,23 @@ fn expr_root(tcx: ty::ctxt, ex: @expr, autoderef: bool) ->
                 }
               }
               ty::ty_class(did, _) {
-                  util::common::log_expr(*ex);
+                  util::common::log_expr(*base);
+                  let in_self = alt ctor_self {
+                          some(selfid) {
+                              alt tcx.def_map.find(base.id) {
+                                 some(def_self(slfid)) { slfid == selfid }
+                                 _ { false }
+                              }
+                          }
+                          none { false }
+                  };
                   for fld: ty::field_ty in ty::lookup_class_fields(tcx, did) {
-                    #debug("%s %?", fld.ident, fld.mutability);
                     if str::eq(ident, fld.ident) {
-                        is_mutbl = fld.mutability == class_mutable;
+                        is_mutbl = fld.mutability == class_mutable
+                            || in_self; // all fields can be mutated
+                                        // in the ctor
+                        break;
                     }
-                    break;
                   }
               }
               _ {}
@@ -126,10 +142,11 @@ fn expr_root(tcx: ty::ctxt, ex: @expr, autoderef: bool) ->
 type mutbl_map = std::map::hashmap<node_id, ()>;
 // Keep track of whether we're inside a ctor, so as to
 // allow mutating immutable fields in the same class
-type ctx = {tcx: ty::ctxt, mutbl_map: mutbl_map, in_ctor: bool};
+// if we are in a ctor, we track the self id
+type ctx = {tcx: ty::ctxt, mutbl_map: mutbl_map, in_ctor: option<node_id>};
 
 fn check_crate(tcx: ty::ctxt, crate: @crate) -> mutbl_map {
-    let cx = @{tcx: tcx, mutbl_map: std::map::int_hash(), in_ctor: false};
+    let cx = @{tcx: tcx, mutbl_map: std::map::int_hash(), in_ctor: none};
     let v = @{visit_expr: visit_expr,
               visit_decl: visit_decl,
               visit_item: visit_item
@@ -204,7 +221,7 @@ fn visit_item(item: @item, &&cx: @ctx, v: visit::vt<@ctx>) {
                             i.node.privacy, i.node.decl, cx, v); });
                 v.visit_fn(visit::fk_ctor(item.ident, tps), ctor.node.dec,
                            ctor.node.body, ctor.span, ctor.node.id,
-                           @{in_ctor: true with *cx}, v);
+                           @{in_ctor: some(ctor.node.self_id) with *cx}, v);
             }
             _ { visit::visit_item(item, cx, v); }
     }
@@ -221,7 +238,7 @@ fn check_lval(cx: @ctx, dest: @expr, msg: msg) {
         cx.mutbl_map.insert(ast_util::def_id_of_def(def).node, ());
       }
       _ {
-        let root = expr_root(cx.tcx, dest, false);
+        let root = expr_root(cx, dest, false);
         if vec::len(*root.ds) == 0u {
             if msg != msg_move_out {
                 mk_err(cx, dest.span, msg, "non-lvalue");
@@ -251,7 +268,7 @@ fn check_move_rhs(cx: @ctx, src: @expr) {
         check_lval(cx, src, msg_move_out);
       }
       _ {
-        let root = expr_root(cx.tcx, src, false);
+        let root = expr_root(cx, src, false);
 
         // Not a path and no-derefs means this is a temporary.
         if vec::len(*root.ds) != 0u &&
@@ -339,7 +356,7 @@ fn is_illegal_to_modify_def(cx: @ctx, def: def, msg: msg) -> option<str> {
 
       def_binding(_) { some("binding") }
       def_class_field(parent,fld) {
-          if !cx.in_ctor {
+          if option::is_none(cx.in_ctor) {
              /* Enforce mutability *unless* we're inside a ctor */
              alt ty::lookup_class_field(cx.tcx, parent, fld).mutability {
                class_mutable { none }
