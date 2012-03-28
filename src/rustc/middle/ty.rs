@@ -15,6 +15,7 @@ import util::ppaux::ty_to_str;
 import util::ppaux::ty_constr_to_str;
 import syntax::print::pprust::*;
 
+export is_instantiable;
 export node_id_to_type;
 export node_id_to_type_params;
 export arg;
@@ -1005,6 +1006,136 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
 
     cx.kind_cache.insert(ty, result);
     ret result;
+}
+
+// True if instantiating an instance of `ty` requires an instead of `r_ty`.
+fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
+
+    fn type_requires(cx: ctxt, seen: @mut [def_id],
+                     r_ty: t, ty: t) -> bool {
+        #debug["type_requires(%s, %s)?",
+               ty_to_str(cx, r_ty),
+               ty_to_str(cx, ty)];
+
+        let r = {
+            get(r_ty).struct == get(ty).struct ||
+                subtypes_require(cx, seen, r_ty, ty)
+        };
+
+        #debug["type_requires(%s, %s)? %b",
+               ty_to_str(cx, r_ty),
+               ty_to_str(cx, ty),
+               r];
+        ret r;
+    }
+
+    fn subtypes_require(cx: ctxt, seen: @mut [def_id],
+                        r_ty: t, ty: t) -> bool {
+        #debug["subtypes_require(%s, %s)?",
+               ty_to_str(cx, r_ty),
+               ty_to_str(cx, ty)];
+
+        let r = alt get(ty).struct {
+          ty_nil |
+          ty_bot |
+          ty_bool |
+          ty_int(_) |
+          ty_uint(_) |
+          ty_float(_) |
+          ty_str |
+          ty_fn(_) |
+          ty_var(_) |
+          ty_param(_, _) |
+          ty_self(_) |
+          ty_type |
+          ty_opaque_box |
+          ty_opaque_closure_ptr(_) |
+          ty_vec(_) {
+            false
+          }
+
+          ty_constr(t, _) {
+            type_requires(cx, seen, r_ty, t)
+          }
+
+          ty_box(mt) |
+          ty_uniq(mt) |
+          ty_ptr(mt) |
+          ty_rptr(_, mt) {
+            be type_requires(cx, seen, r_ty, mt.ty);
+          }
+
+          ty_rec(fields) {
+            vec::any(fields) {|field|
+                type_requires(cx, seen, r_ty, field.mt.ty)
+            }
+          }
+
+          ty_iface(_, _) {
+            false
+          }
+
+          ty_class(did, _) if vec::contains(*seen, did) {
+            false
+          }
+
+          ty_class(did, tps) {
+            vec::push(*seen, did);
+            let r = vec::any(lookup_class_fields(cx, did)) {|f|
+                let fty = ty::lookup_item_type(cx, f.id);
+                let sty = substitute_type_params(cx, tps, fty.ty);
+                type_requires(cx, seen, r_ty, sty)
+            };
+            vec::pop(*seen);
+            r
+          }
+
+          ty_res(did, _, _) if vec::contains(*seen, did) {
+            false
+          }
+
+          ty_res(did, sub, tps) {
+            vec::push(*seen, did);
+            let sty = substitute_type_params(cx, tps, sub);
+            let r = type_requires(cx, seen, r_ty, sty);
+            vec::pop(*seen);
+            r
+          }
+
+          ty_tup(ts) {
+            vec::any(ts) {|t|
+                type_requires(cx, seen, r_ty, t)
+            }
+          }
+
+          ty_enum(did, _) if vec::contains(*seen, did) {
+            false
+          }
+
+          ty_enum(did, tps) {
+            vec::push(*seen, did);
+            let vs = enum_variants(cx, did);
+            let r = vec::len(*vs) > 0u && vec::all(*vs) {|variant|
+                vec::any(variant.args) {|aty|
+                    let sty = substitute_type_params(cx, tps, aty);
+                    type_requires(cx, seen, r_ty, sty)
+                }
+            };
+            vec::pop(*seen);
+            r
+          }
+        };
+
+        #debug["subtypes_require(%s, %s)? %b",
+               ty_to_str(cx, r_ty),
+               ty_to_str(cx, ty),
+               r];
+
+        ret r;
+    }
+
+    let seen = @mut [];
+    !subtypes_require(cx, seen, r_ty, r_ty)
 }
 
 fn type_structurally_contains(cx: ctxt, ty: t, test: fn(sty) -> bool) ->

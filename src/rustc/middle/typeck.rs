@@ -1145,6 +1145,7 @@ mod unify {
 // instead of ty::struct.
 fn do_autoderef(fcx: @fn_ctxt, sp: span, t: ty::t) -> ty::t {
     let mut t1 = t;
+    let mut enum_dids = [];
     loop {
         alt structure_of(fcx, sp, t1) {
           ty::ty_box(inner) | ty::ty_uniq(inner) | ty::ty_rptr(_, inner) {
@@ -1161,6 +1162,16 @@ fn do_autoderef(fcx: @fn_ctxt, sp: span, t: ty::t) -> ty::t {
             t1 = ty::substitute_type_params(fcx.ccx.tcx, tps, inner);
           }
           ty::ty_enum(did, tps) {
+            // Watch out for a type like `enum t = @t`.  Such a type would
+            // otherwise infinitely auto-deref.  This is the only autoderef
+            // loop that needs to be concerned with this, as an error will be
+            // reported on the enum definition as well because the enum is not
+            // instantiable.
+            if vec::contains(enum_dids, did) {
+                ret t1;
+            }
+            vec::push(enum_dids, did);
+
             let variants = ty::enum_variants(fcx.ccx.tcx, did);
             if vec::len(*variants) != 1u || vec::len(variants[0].args) != 1u {
                 ret t1;
@@ -3396,6 +3407,18 @@ fn check_const(ccx: @crate_ctxt, _sp: span, e: @ast::expr, id: ast::node_id) {
     demand::simple(fcx, e.span, declty, cty);
 }
 
+fn check_instantiable(tcx: ty::ctxt,
+                      sp: span,
+                      item_id: ast::node_id) {
+    let rty = ty::node_id_to_type(tcx, item_id);
+    if !ty::is_instantiable(tcx, rty) {
+        tcx.sess.span_err(sp, #fmt["this type cannot be instantiated \
+                                    without an instance of itself. \
+                                    Consider using option<%s>.",
+                                   ty_to_str(tcx, rty)]);
+    }
+}
+
 fn check_enum_variants(ccx: @crate_ctxt, sp: span, vs: [ast::variant],
                       id: ast::node_id) {
     // FIXME: this is kinda a kludge; we manufacture a fake function context
@@ -3443,6 +3466,8 @@ fn check_enum_variants(ccx: @crate_ctxt, sp: span, vs: [ast::variant],
         disr_vals += [disr_val];
         disr_val += 1;
     }
+
+    // Check that it is possible to represent this enum:
     let mut outer = true, did = local_def(id);
     if ty::type_structurally_contains(ccx.tcx, rty, {|sty|
         alt sty {
@@ -3453,10 +3478,13 @@ fn check_enum_variants(ccx: @crate_ctxt, sp: span, vs: [ast::variant],
           _ { false }
         }
     }) {
-        ccx.tcx.sess.span_fatal(sp, "illegal recursive enum type. \
-                                     wrap the inner value in a box to \
-                                     make it represenable");
+        ccx.tcx.sess.span_err(sp, "illegal recursive enum type. \
+                                   wrap the inner value in a box to \
+                                   make it represenable");
     }
+
+    // Check that it is possible to instantiate this enum:
+    check_instantiable(ccx.tcx, sp, id);
 }
 
 // A generic function for checking the pred in a check
@@ -3672,6 +3700,7 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
         check_fn(ccx, ast::proto_bare, decl, body, it.id, false, none);
       }
       ast::item_res(decl, tps, body, dtor_id, _) {
+        check_instantiable(ccx.tcx, it.span, it.id);
         check_fn(ccx, ast::proto_bare, decl, body, dtor_id, false, none);
       }
       ast::item_impl(tps, _, ty, ms) {
