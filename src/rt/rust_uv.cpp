@@ -293,17 +293,19 @@ extern "C" uv_err_t
 rust_uv_last_error(uv_loop_t* loop) {
 	return uv_last_error(loop);
 }
-
 extern "C" int
 rust_uv_tcp_connect(uv_connect_t* connect_ptr,
 					uv_tcp_t* tcp_ptr,
-					struct sockaddr_in addr,
-					uv_connect_cb cb) {
+					uv_connect_cb cb,
+					sockaddr_in* addr_ptr) {
 	//return uv_tcp_connect(connect_ptr, tcp_ptr, addr, cb);
 	printf("inside rust_uv_tcp_connect\n");
 	//sockaddr_in addr_tmp = *((sockaddr_in*)addr_ptr);
 	//sockaddr_in addr = addr_tmp;
+	sockaddr_in addr = *addr_ptr;
 	printf("before tcp_connect .. port: %d\n", addr.sin_port);
+	//int result = uv_tcp_connect(connect_ptr, tcp_ptr, loc_addr, cb);
+	printf("before tcp_connect.. tcp stream: %lu cb ptr: %lu\n", (unsigned long int)tcp_ptr, (unsigned long int)cb);
 	int result = uv_tcp_connect(connect_ptr, tcp_ptr, addr, cb);
 	printf ("leaving rust_uv_tcp_connect.. and result: %d\n",
 			result);
