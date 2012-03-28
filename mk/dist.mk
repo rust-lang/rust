@@ -35,7 +35,8 @@ PKG_FILES := \
       snapshots.txt                            \
       test)                                    \
     $(PKG_GITMODULES)                          \
-    $(filter-out Makefile config.mk, $(MKFILE_DEPS))
+    $(filter-out Makefile config.stamp config.mk, \
+                 $(MKFILE_DEPS))
 
 UNROOTED_PKG_FILES := $(patsubst $(S)%,./%,$(PKG_FILES))
 
