@@ -204,9 +204,9 @@ endif
 
 CFG_INFO := $(info cfg: using $(CFG_C_COMPILER))
 ifeq ($(CFG_C_COMPILER),clang)
-  CC=clang
-  CXX=clang++
-  CPP=cpp
+  CC ?= clang
+  CXX ?= clang++
+  CPP ?= cpp
   CFG_GCCISH_CFLAGS += -Wall -Werror -fno-rtti -g
   CFG_GCCISH_LINK_FLAGS += -g
   CFG_DEPEND_C = $(CFG_GCCISH_CROSS)$(CXX) $(CFG_GCCISH_CFLAGS) -MT "$(1)" \
@@ -229,9 +229,9 @@ ifeq ($(CFG_C_COMPILER),clang)
     $(eval $(call CFG_MAKE_CC,$(target))))
 else
 ifeq ($(CFG_C_COMPILER),gcc)
-  CC=gcc
-  CXX=g++
-  CPP=cpp
+  CC ?= gcc
+  CXX ?= g++
+  CPP ?= cpp
   CFG_GCCISH_CFLAGS += -Wall -Werror -fno-rtti -g
   CFG_GCCISH_LINK_FLAGS += -g
   CFG_DEPEND_C = $(CFG_GCCISH_CROSS)$(CXX) $(CFG_GCCISH_CFLAGS) -MT "$(1)" \
