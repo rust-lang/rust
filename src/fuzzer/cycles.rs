@@ -68,7 +68,7 @@ fn test_cycles(r : rand::rng, k: uint, n: uint)
         if (likelihood(r, k, n)) { v[i].c = @p(choice(r, v)); }
 
         if (likelihood(r, k, n)) { v[i].f = bind nopP(choice(r, v)); }
-        if (false)               { v[i].g = bind (fn~(_x: @pointy) { })(choice(r, v)); }
+        //if (false)               { v[i].g = bind (fn~(_x: @pointy) { })(choice(r, v)); }
           // https://github.com/mozilla/rust/issues/1899
 
         if (likelihood(r, k, n)) { v[i].m = [p(choice(r, v))]; }
@@ -84,7 +84,7 @@ fn test_cycles(r : rand::rng, k: uint, n: uint)
 
 fn main()
 {
-    let r = rand::mk_rng();
+    let r = rand::rng();
     range(0u, iters) {|i|
         test_cycles(r, i, iters);
     }
