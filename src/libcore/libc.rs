@@ -139,7 +139,16 @@ mod types {
             enum FILE {}
             enum fpos_t {}
         }
-        mod c99 { }
+        mod c99 {
+            type int8_t = i8;
+            type int16_t = i16;
+            type int32_t = i32;
+            type int64_t = i64;
+            type uint8_t = u8;
+            type uint16_t = u16;
+            type uint32_t = u32;
+            type uint64_t = u64;
+        }
         mod posix88 {
             enum DIR {}
             enum dirent {}
