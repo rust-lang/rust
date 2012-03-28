@@ -3,10 +3,11 @@
 #define __STDC_LIMIT_MACROS 1
 #endif
 
-#include <vector>
 #include "rust_internal.h"
 #include "rust_util.h"
 #include "rust_scheduler.h"
+
+#include <vector>
 
 #define KLOG_(...)                              \
     KLOG(this, kern, __VA_ARGS__)

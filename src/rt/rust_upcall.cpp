@@ -34,7 +34,8 @@
 // the rust stack and happen frequently enough to catch most stack changes,
 // including at the beginning of all landing pads.
 // FIXME: Enable this for windows
-#if defined __linux__ || defined __APPLE__ || defined __FreeBSD__
+#if (defined __linux__ || defined __APPLE__ || defined __FreeBSD__) \
+    && (defined(GCC_VERSION) && GCC_VERSION > 40300)
 extern "C" void
 check_stack_alignment() __attribute__ ((aligned (16)));
 #else

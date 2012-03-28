@@ -43,6 +43,7 @@ public:
     }
     virtual int32_t remove(T* value);
     virtual T * operator[](int32_t index);
+    virtual ~indexed_list() {}
 };
 
 template<typename T> int32_t
