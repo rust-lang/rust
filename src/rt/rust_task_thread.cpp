@@ -5,7 +5,6 @@
 #include <vector>
 #include "rust_internal.h"
 #include "rust_util.h"
-#include "globals.h"
 #include "rust_scheduler.h"
 
 #ifndef _WIN32

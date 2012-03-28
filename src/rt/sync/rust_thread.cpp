@@ -1,4 +1,4 @@
-#include "globals.h"
+#include "rust_globals.h"
 #include "rust_thread.h"
 
 const size_t default_stack_sz = 1024*1024;

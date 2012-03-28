@@ -1,4 +1,4 @@
-#include "../globals.h"
+#include "../rust_globals.h"
 #include "timer.h"
 
 #if defined(__APPLE__)

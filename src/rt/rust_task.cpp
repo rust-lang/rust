@@ -10,7 +10,6 @@
 #include <cstring>
 #include <algorithm>
 
-#include "globals.h"
 #include "rust_upcall.h"
 
 // Tasks

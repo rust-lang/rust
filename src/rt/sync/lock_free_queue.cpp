@@ -5,7 +5,7 @@
  * dequeue() is not allowed to interrupt itself.
  */
 
-#include "../globals.h"
+#include "../rust_globals.h"
 #include "lock_free_queue.h"
 
 lock_free_queue_node::lock_free_queue_node() : next(NULL) {

@@ -1,8 +1,3 @@
-// A workaround that makes INTPTR_MAX be visible
-#ifdef __FreeBSD__
-#define __STDC_LIMIT_MACROS 1
-#endif
-
 #include "rust_internal.h"
 #include "rust_util.h"
 #include "rust_scheduler.h"

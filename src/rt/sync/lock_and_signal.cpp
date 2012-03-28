@@ -1,5 +1,5 @@
 #include <assert.h>
-#include "../globals.h"
+#include "../rust_globals.h"
 
 /*
  * A "lock-and-signal" pair. These are necessarily coupled on pthreads
