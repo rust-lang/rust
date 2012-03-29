@@ -1485,9 +1485,24 @@ fn as_c_str<T>(s: str, f: fn(*libc::c_char) -> T) -> T unsafe {
     as_buf(s) {|buf| f(buf as *libc::c_char) }
 }
 
-#[doc = "Allocate more memory for a string, up to `nn` + 1 bytes"]
-fn reserve(&ss: str, nn: uint) {
-    rustrt::str_reserve_shared(ss, nn);
+#[doc = "
+Reserves capacity for exactly `n` bytes in the given string, not including
+the null terminator.
+
+Assuming single-byte characters, the resulting string will be large
+enough to hold a string of length `n`. To account for the null terminator,
+the underlying buffer will have the size `n` + 1.
+
+If the capacity for `s` is already equal to or greater than the requested
+capacity, then no action is taken.
+
+# Arguments
+
+* s - A string
+* n - The number of bytes to reserve space for
+"]
+fn reserve(&s: str, n: uint) {
+    rustrt::str_reserve_shared(s, n);
 }
 
 #[doc = "Unsafe operations"]
