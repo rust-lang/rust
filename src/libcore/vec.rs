@@ -9,6 +9,7 @@ export is_not_empty;
 export same_length;
 export reserve;
 export reserve_at_least;
+export capacity;
 export len;
 export from_fn;
 export from_elem;
@@ -132,6 +133,14 @@ capacity, then no action is taken.
 "]
 fn reserve_at_least<T>(&v: [const T], n: uint) {
     reserve(v, uint::next_power_of_two(n));
+}
+
+#[doc = "
+Returns the number of elements the vector can hold without reallocating
+"]
+fn capacity<T>(&&v: [const T]) -> uint unsafe {
+    let repr: **unsafe::vec_repr = ::unsafe::reinterpret_cast(addr_of(v));
+    (**repr).alloc / sys::size_of::<T>()
 }
 
 #[doc = "Returns the length of a vector"]
@@ -1800,6 +1809,16 @@ mod tests {
         let mut x = [1, 2, 3];
         unshift(x, 0);
         assert x == [0, 1, 2, 3];
+    }
+
+    #[test]
+    fn test_capacity() {
+        let mut v = [0u64];
+        reserve(v, 10u);
+        assert capacity(v) == 10u;
+        let mut v = [0u32];
+        reserve(v, 10u);
+        assert capacity(v) == 10u;
     }
 }
 
