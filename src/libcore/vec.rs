@@ -113,7 +113,10 @@ capacity, then no action is taken.
 * n - The number of elements to reserve space for
 "]
 fn reserve<T>(&v: [const T], n: uint) {
-    rustrt::vec_reserve_shared(sys::get_type_desc::<T>(), v, n);
+    // Only make the (slow) call into the runtime if we have to
+    if capacity(v) < n {
+        rustrt::vec_reserve_shared(sys::get_type_desc::<T>(), v, n);
+    }
 }
 
 #[doc = "

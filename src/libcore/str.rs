@@ -1504,7 +1504,9 @@ capacity, then no action is taken.
 * n - The number of bytes to reserve space for
 "]
 fn reserve(&s: str, n: uint) {
-    rustrt::str_reserve_shared(s, n);
+    if capacity(s) < n {
+        rustrt::str_reserve_shared(s, n);
+    }
 }
 
 #[doc = "
