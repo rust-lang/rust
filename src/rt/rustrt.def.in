@@ -87,8 +87,9 @@ rust_uv_bind_op_cb
 rust_uv_stop_op_cb
 rust_uv_run
 rust_uv_close
-rust_uv_close_async
-rust_uv_close_timer
+rust_uv_hilvl_close
+rust_uv_hilvl_close_async
+rust_uv_hilvl_close_timer
 rust_uv_async_send
 rust_uv_async_init
 rust_uv_timer_init
@@ -101,6 +102,9 @@ rust_uv_last_error
 rust_uv_ip4_test_verify_port_val
 rust_uv_ip4_addr
 rust_uv_tcp_connect
+rust_uv_tcp_bind
+rust_uv_listen
+rust_uv_accept
 rust_uv_write
 rust_uv_read_start
 rust_uv_read_stop
