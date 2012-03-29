@@ -25,7 +25,7 @@ impl arena for arena {
     fn alloc_grow(n_bytes: uint, align: uint) -> *() {
         // Allocate a new chunk.
         let mut head = list::head(self.chunks);
-        let chunk_size = vec::alloc_len(head.data);
+        let chunk_size = vec::capacity(head.data);
         let new_min_chunk_size = uint::max(n_bytes, chunk_size);
         head = chunk(uint::next_power_of_two(new_min_chunk_size + 1u));
         self.chunks = list::cons(head, @self.chunks);
@@ -41,7 +41,7 @@ impl arena for arena {
         let mut start = head.fill;
         start = (start + alignm1) & !alignm1;
         let end = start + n_bytes;
-        if end > vec::alloc_len(head.data) {
+        if end > vec::capacity(head.data) {
             ret self.alloc_grow(n_bytes, align);
         }
 

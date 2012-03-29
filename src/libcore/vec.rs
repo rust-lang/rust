@@ -11,7 +11,6 @@ export reserve;
 export reserve_at_least;
 export capacity;
 export len;
-export alloc_len;
 export from_fn;
 export from_elem;
 export to_mut;
@@ -142,6 +141,7 @@ fn reserve_at_least<T>(&v: [const T], n: uint) {
 #[doc = "
 Returns the number of elements the vector can hold without reallocating
 "]
+#[inline(always)]
 fn capacity<T>(&&v: [const T]) -> uint unsafe {
     let repr: **unsafe::vec_repr = ::unsafe::reinterpret_cast(addr_of(v));
     (**repr).alloc / sys::size_of::<T>()
@@ -152,13 +152,6 @@ fn capacity<T>(&&v: [const T]) -> uint unsafe {
 pure fn len<T>(&&v: [const T]) -> uint unsafe {
     let repr: **unsafe::vec_repr = ::unsafe::reinterpret_cast(addr_of(v));
     (**repr).fill / sys::size_of::<T>()
-}
-
-#[doc = "Returns the number of bytes allocated for this vector"]
-#[inline(always)]
-pure fn alloc_len<T>(&&v: [const T]) -> uint unsafe {
-    let repr: **unsafe::vec_repr = ::unsafe::reinterpret_cast(addr_of(v));
-    (**repr).alloc
 }
 
 #[doc = "
