@@ -1,8 +1,10 @@
 use std;
+import std::arena;
+import std::arena::arena;
 
-enum tree { nil, node(~tree, ~tree, int), }
+enum tree { nil, node(&tree, &tree, int), }
 
-fn item_check(t: ~tree) -> int {
+fn item_check(t: &tree) -> int {
     alt *t {
       nil { ret 0; }
       node(left, right, item) {
@@ -11,11 +13,13 @@ fn item_check(t: ~tree) -> int {
     }
 }
 
-fn bottom_up_tree(item: int, depth: int) -> ~tree {
+fn bottom_up_tree(arena: &a.arena::arena, item: int, depth: int) -> &a.tree {
     if depth > 0 {
-        ret ~node(bottom_up_tree(2 * item - 1, depth - 1),
-                  bottom_up_tree(2 * item, depth - 1), item);
-    } else { ret ~nil; }
+        ret new(*arena) node(bottom_up_tree(arena, 2 * item - 1, depth - 1),
+                             bottom_up_tree(arena, 2 * item, depth - 1),
+                             item);
+    }
+    ret new(*arena) nil;
 }
 
 fn main(args: [str]) {
@@ -28,22 +32,29 @@ fn main(args: [str]) {
     let mut max_depth;
     if min_depth + 2 > n {
         max_depth = min_depth + 2;
-    } else { max_depth = n; }
+    } else {
+        max_depth = n;
+    }
+
+    let stretch_arena = arena::arena();
     let stretch_depth = max_depth + 1;
-    let stretch_tree = bottom_up_tree(0, stretch_depth);
+    let stretch_tree = bottom_up_tree(&stretch_arena, 0, stretch_depth);
+
     io::println(#fmt("stretch tree of depth %d\t check: %d",
                           stretch_depth,
                           item_check(stretch_tree)));
-    let long_lived_tree = bottom_up_tree(0, max_depth);
+
+    let long_lived_arena = arena::arena();
+    let long_lived_tree = bottom_up_tree(&long_lived_arena, 0, max_depth);
     let mut depth = min_depth;
     while depth <= max_depth {
         let iterations = int::pow(2, (max_depth - depth + min_depth) as uint);
         let mut chk = 0;
         let mut i = 1;
         while i <= iterations {
-            let mut temp_tree = bottom_up_tree(i, depth);
+            let mut temp_tree = bottom_up_tree(&long_lived_arena, i, depth);
             chk += item_check(temp_tree);
-            temp_tree = bottom_up_tree(-i, depth);
+            temp_tree = bottom_up_tree(&long_lived_arena, -i, depth);
             chk += item_check(temp_tree);
             i += 1;
         }
