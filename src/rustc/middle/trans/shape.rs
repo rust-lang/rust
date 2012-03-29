@@ -632,7 +632,7 @@ fn simplify_type(tcx: ty::ctxt, typ: ty::t) -> ty::t {
     fn simplifier(tcx: ty::ctxt, typ: ty::t) -> ty::t {
         alt ty::get(typ).struct {
           ty::ty_box(_) | ty::ty_opaque_box | ty::ty_uniq(_) | ty::ty_vec(_) |
-          ty::ty_ptr(_) { nilptr(tcx) }
+          ty::ty_ptr(_) | ty::ty_rptr(_,_) { nilptr(tcx) }
           ty::ty_fn(_) { ty::mk_tup(tcx, [nilptr(tcx), nilptr(tcx)]) }
           ty::ty_res(_, sub, tps) {
             let sub1 = ty::substitute_type_params(tcx, tps, sub);
