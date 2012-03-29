@@ -6,8 +6,8 @@ class cat {
 
   let how_hungry : int;
 
-  fn speak() { meows += 1u; }
-  new(in_x : uint, in_y : int) { meows = in_x; how_hungry = in_y; }
+  fn speak() { self.meows += 1u; }
+  new(in_x : uint, in_y : int) { self.meows = in_x; self.how_hungry = in_y; }
 }
 
 fn main() {

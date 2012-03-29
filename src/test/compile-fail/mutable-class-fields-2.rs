@@ -1,4 +1,4 @@
-// error-pattern:assigning to immutable class field
+// error-pattern:assigning to immutable field
 class cat {
   priv {
     let mutable meows : uint;
@@ -7,10 +7,10 @@ class cat {
   let how_hungry : int;
 
   fn eat() {
-    how_hungry -= 5;
+    self.how_hungry -= 5;
   }
 
-  new(in_x : uint, in_y : int) { meows = in_x; how_hungry = in_y; }
+  new(in_x : uint, in_y : int) { self.meows = in_x; self.how_hungry = in_y; }
 }
 
 fn main() {

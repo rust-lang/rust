@@ -88,8 +88,6 @@ enum mod_index_entry {
     mie_view_item(ident, node_id, span),
     mie_import_ident(node_id, span),
     mie_item(@ast::item),
-    mie_class_item(node_id, /* parent class name */
-                   @ast::class_member), /* class member */
     mie_native_item(@ast::native_item),
     mie_enum_variant(/* variant index */uint,
                      /*parts of enum item*/ [variant],
@@ -1017,9 +1015,6 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace,
                       ret some(ast::def_fn(local_def(ctor.node.id),
                                            ast::impure_fn));
                   }
-                  if ns == ns_val {
-                      ret lookup_in_class(local_def(it.id), members, name);
-                  }
                   // FIXME: AST allows other items to appear in a class,
                   // but that might not be wise
               }
@@ -1154,30 +1149,6 @@ fn lookup_in_fn(e: env, name: ident, decl: ast::fn_decl,
       ns_type { ret lookup_in_ty_params(e, name, ty_params); }
       _ { ret none; }
     }
-}
-
-/*
-   FIXME: not sure about this code. maybe this should be handled
-   using the mod_index stuff
- */
-fn lookup_in_class(parent_id: def_id,
-                   members: [@class_member], name: ident)
-   -> option<def> {
-    for m in members {
-      alt m.node {
-        instance_var(v_name,_,_,id,_) {
-            if v_name == name {
-              ret some(def_class_field(parent_id, local_def(id)));
-            }
-        }
-        class_method(i) {
-            if i.ident == name {
-              ret some(def_class_method(parent_id, local_def(i.id)));
-            }
-        }
-      }
-    }
-    ret none;
 }
 
 fn lookup_in_block(e: env, name: ident, sp: span, b: ast::blk_, pos: uint,
@@ -1559,18 +1530,6 @@ fn lookup_in_mie(e: env, mie: mod_index_entry, ns: namespace) ->
           }
         }
       }
-      mie_class_item(parent_id, class_item) {
-          alt class_item.node {
-              instance_var(_,_,_,id,_) {
-                  ret some(ast::def_class_field(local_def(parent_id),
-                                                local_def(id)));
-              }
-              class_method(it) {
-                  ret some(ast::def_class_method(local_def(parent_id),
-                                                 local_def(it.id)));
-              }
-          }
-      }
     }
     ret none;
 }
@@ -1648,11 +1607,6 @@ fn index_mod(md: ast::_mod) -> mod_index {
                             node:
                               item_fn(ctor.node.dec, tps, ctor.node.body),
                             span: ctor.node.body.span}));
-              // add the members
-              for ci in items {
-                 add_to_index(index, class_item_ident(ci),
-                              mie_class_item(it.id, ci));
-              }
           }
         }
     }
@@ -1678,8 +1632,7 @@ fn ns_for_def(d: def) -> namespace {
       ast::def_variant(_, _) { ns_val }
       ast::def_fn(_, _) | ast::def_self(_) |
       ast::def_const(_) | ast::def_arg(_, _) | ast::def_local(_, _) |
-      ast::def_upvar(_, _, _) |  ast::def_self(_) |
-      ast::def_class_field(_,_) | ast::def_class_method(_,_) { ns_val }
+      ast::def_upvar(_, _, _) |  ast::def_self(_) { ns_val }
       ast::def_mod(_) | ast::def_native_mod(_) { ns_module }
       ast::def_ty(_) | ast::def_binding(_) | ast::def_use(_) |
       ast::def_ty_param(_, _) | ast::def_prim_ty(_) | ast::def_class(_)
@@ -1761,7 +1714,6 @@ fn mie_span(mie: mod_index_entry) -> span {
           mie_item(item) { item.span }
           mie_enum_variant(_, _, _, span) { span }
           mie_native_item(item) { item.span }
-          mie_class_item(_,item) { item.span }
         };
 }
 

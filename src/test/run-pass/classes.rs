@@ -3,9 +3,9 @@ class cat {
     let mut meows : uint;
     fn meow() {
       #error("Meow");
-      meows += 1u;
-      if meows % 5u == 0u {
-          how_hungry += 1;
+      self.meows += 1u;
+      if self.meows % 5u == 0u {
+          self.how_hungry += 1;
       }
     }
   }
@@ -14,14 +14,14 @@ class cat {
   let name : str;
 
   new(in_x : uint, in_y : int, in_name: str)
-    { meows = in_x; how_hungry = in_y; name = in_name; }
+    { self.meows = in_x; self.how_hungry = in_y; self.name = in_name; }
 
-  fn speak() { meow(); }
+  fn speak() { self.meow(); }
 
   fn eat() -> bool {
-    if how_hungry > 0 {
+    if self.how_hungry > 0 {
         #error("OM NOM NOM");
-        how_hungry -= 2;
+        self.how_hungry -= 2;
         ret true;
     }
     else {

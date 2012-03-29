@@ -443,12 +443,6 @@ impl of tr for ast::def {
           ast::def_class(did) {
             ast::def_class(did.tr(xcx))
           }
-          ast::def_class_field(did0, did1) {
-            ast::def_class_field(did0.tr(xcx), did1.tr(xcx))
-          }
-          ast::def_class_method(did0, did1) {
-            ast::def_class_method(did0.tr(xcx), did1.tr(xcx))
-          }
           ast::def_region(nid) { ast::def_region(xcx.tr_id(nid)) }
         }
     }

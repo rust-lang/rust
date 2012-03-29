@@ -2177,22 +2177,18 @@ fn trans_local_var(cx: block, def: ast::def) -> local_var_result {
     }
 }
 
-// The third argument (path) ends up getting used when the id
-// refers to a field within the enclosing class, since the name
-// gets turned into a record field name.
-fn trans_path(cx: block, id: ast::node_id, path: @ast::path)
+fn trans_path(cx: block, id: ast::node_id)
     -> lval_maybe_callee {
     let _icx = cx.insn_ctxt("trans_path");
     alt cx.tcx().def_map.find(id) {
       none { cx.sess().bug("trans_path: unbound node ID"); }
       some(df) {
-          ret trans_var(cx, df, id, path);
+          ret trans_var(cx, df, id);
       }
     }
 }
 
-fn trans_var(cx: block, def: ast::def, id: ast::node_id, path: @ast::path)
-    -> lval_maybe_callee {
+fn trans_var(cx: block, def: ast::def, id: ast::node_id)-> lval_maybe_callee {
     let _icx = cx.insn_ctxt("trans_var");
     let ccx = cx.ccx();
     alt def {
@@ -2224,28 +2220,6 @@ fn trans_var(cx: block, def: ast::def, id: ast::node_id, path: @ast::path)
             let val = trans_external_path(ccx, did, tp);
             ret lval_no_env(cx, load_if_immediate(cx, val, tp), owned_imm);
         }
-      }
-      ast::def_class_field(parent, did) {
-          // base is implicitly "Self"
-          alt cx.fcx.llself {
-            some(slf) {
-                let base = cast_self(cx, slf);
-                let {bcx, val, kind} = trans_rec_field_inner(cx, base,
-                                         slf.t,
-                                         path_to_ident(path), path.span);
-                ret lval_no_env(bcx, val, kind);
-            }
-            _ { cx.sess().bug("unbound self param in class"); }
-          }
-      }
-      ast::def_class_method(parent, did) {
-          alt cx.fcx.llself {
-             some(slf) {
-                ret {env: self_env(slf.v, slf.t, none)
-                        with lval_static_fn(cx, did, id)};
-             }
-             none { cx.sess().bug("unbound self param in class"); }
-          }
       }
       _ {
         let loc = trans_local_var(cx, def);
@@ -2323,7 +2297,7 @@ fn expr_is_lval(bcx: block, e: @ast::expr) -> bool {
 fn trans_callee(bcx: block, e: @ast::expr) -> lval_maybe_callee {
     let _icx = bcx.insn_ctxt("trans_callee");
     alt e.node {
-      ast::expr_path(path) { ret trans_path(bcx, e.id, path); }
+      ast::expr_path(path) { ret trans_path(bcx, e.id); }
       ast::expr_field(base, ident, _) {
         // Lval means this is a record field, so not a method
         if !expr_is_lval(bcx, e) {
@@ -2350,8 +2324,8 @@ fn trans_callee(bcx: block, e: @ast::expr) -> lval_maybe_callee {
 fn trans_lval(cx: block, e: @ast::expr) -> lval_result {
     let _icx = cx.insn_ctxt("trans_lval");
     alt e.node {
-      ast::expr_path(p) {
-          let v = trans_path(cx, e.id, p);
+      ast::expr_path(_) {
+        let v = trans_path(cx, e.id);
         ret lval_maybe_callee_to_lval(v, expr_ty(cx, e));
       }
       ast::expr_field(base, ident, _) {

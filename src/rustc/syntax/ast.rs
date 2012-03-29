@@ -83,11 +83,6 @@ enum def {
               @def    /* closed over def */,
               node_id /* expr node that creates the closure */),
     def_class(def_id),
-    // first def_id is for parent class
-    def_class_field(def_id, def_id),
-    // No purity allowed for now, I guess
-    // (simpler this way, b/c presumably methods read mut state)
-    def_class_method(def_id, def_id),
     def_region(node_id)
 }
 

@@ -321,7 +321,7 @@ fn check_bind(cx: @ctx, f: @expr, args: [option<@expr>]) {
 fn is_illegal_to_modify_def(cx: @ctx, def: def, msg: msg) -> option<str> {
     alt def {
       def_fn(_, _) | def_mod(_) | def_native_mod(_) | def_const(_) |
-      def_use(_) | def_class_method(_,_) {
+      def_use(_) {
         some("static item")
       }
       def_arg(_, m) {
@@ -354,18 +354,6 @@ fn is_illegal_to_modify_def(cx: @ctx, def: def, msg: msg) -> option<str> {
       }
 
       def_binding(_) { some("binding") }
-      def_class_field(parent,fld) {
-          if option::is_none(cx.in_ctor) {
-             /* Enforce mutability *unless* we're inside a ctor */
-             alt ty::lookup_class_field(cx.tcx, parent, fld).mutability {
-               class_mutable { none }
-               class_immutable { some("immutable class field") }
-             }
-          }
-          else {
-              none
-          }
-      }
       _ { none }
     }
 }

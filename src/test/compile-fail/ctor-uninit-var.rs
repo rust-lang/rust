@@ -7,13 +7,13 @@ class cat {
   let how_hungry : int;
 
   fn eat() {
-    how_hungry -= 5;
+    self.how_hungry -= 5;
   }
 
   new(in_x : uint, in_y : int) {
     let foo;
-    meows = in_x + (in_y as uint);
-    how_hungry = foo;
+    self.meows = in_x + (in_y as uint);
+    self.how_hungry = foo;
   }
 }
 

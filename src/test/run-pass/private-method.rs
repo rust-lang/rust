@@ -7,10 +7,10 @@ class cat {
   let how_hungry : int;
 
   fn play() {
-    meows += 1u;
+    self.meows += 1u;
     self.nap();
   }
-  new(in_x : uint, in_y : int) { meows = in_x; how_hungry = in_y; }
+  new(in_x : uint, in_y : int) { self.meows = in_x; self.how_hungry = in_y; }
 }
 
 fn main() {

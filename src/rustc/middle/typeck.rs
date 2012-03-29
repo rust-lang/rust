@@ -170,20 +170,6 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
       ast::def_upvar(_, inner, _) {
         ret ty_param_bounds_and_ty_for_def(fcx, sp, *inner);
       }
-      ast::def_class_method(_, id) | ast::def_class_field(_, id) {
-          if id.crate != ast::local_crate {
-                  fcx.ccx.tcx.sess.span_fatal(sp,
-                                 "class method or field referred to \
-                                  out of scope");
-          }
-          alt fcx.ccx.enclosing_class.find(id.node) {
-             some(a_ty) { ret {bounds: @[], ty: a_ty}; }
-             _ { fcx.ccx.tcx.sess.span_fatal(sp,
-                                 "class method or field referred to \
-                                  out of scope"); }
-          }
-      }
-
       _ {
         // FIXME: handle other names.
         fcx.ccx.tcx.sess.unimpl("definition variant");

@@ -5,8 +5,8 @@ class cat {
 
   let how_hungry : int;
 
-  fn meow_count() -> uint { meows }
-  new(in_x : uint, in_y : int) { meows = in_x; how_hungry = in_y; }
+  fn meow_count() -> uint { self.meows }
+  new(in_x : uint, in_y : int) { self.meows = in_x; self.how_hungry = in_y; }
 }
 
 fn main() {

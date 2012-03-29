@@ -40,9 +40,7 @@ fn def_id_of_def(d: def) -> def_id {
       def_fn(id, _) | def_mod(id) |
       def_native_mod(id) | def_const(id) |
       def_variant(_, id) | def_ty(id) | def_ty_param(id, _) |
-      def_use(id) |
-      def_class(id) | def_class_field(_, id) | def_class_method(_, id) { id }
-
+      def_use(id) | def_class(id) { id }
       def_arg(id, _) | def_local(id, _) | def_self(id) |
       def_upvar(id, _, _) | def_binding(id) | def_region(id) {
         local_def(id)
