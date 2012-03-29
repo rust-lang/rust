@@ -163,19 +163,15 @@ rust_run_program(const char* argv[],
         assert(!result && "chdir failed");
     }
 
-#ifdef __APPLE__
     if (envp) {
+#ifdef __APPLE__
         *_NSGetEnviron() = (char **)envp;
-    }
-    execvp(argv[0], (char * const *)argv);
-#elif __FreeBSD__ || (defined(__linux__) && defined(RUST_SNAPSHOT))
-    if (envp) { environ = (char **)envp; }
-    execvp(argv[0], (char * const *)argv);
 #else
-    if (!envp) { envp = environ; }
-    execvpe(argv[0], (char * const *)argv, (char * const *)envp);
+        environ = (char **)envp;
 #endif
+    }
 
+    execvp(argv[0], (char * const *)argv);
     exit(1);
 }
 
