@@ -83,6 +83,22 @@ type fn_ctxt =
      next_region_var_id: @mut int,
      ccx: @crate_ctxt};
 
+// Determines whether the given node ID is a use of the def of
+// the self ID for the current method, if there is one
+fn self_ref(fcx: @fn_ctxt, id: ast::node_id) -> bool {
+    let node_def = alt fcx.ccx.tcx.def_map.find(id) {
+            none { ret false; }
+            some(d) { d } };
+    alt get_self_info(fcx.ccx) {
+       some(self_impl(_, slf_def)) {
+           alt node_def {
+                   ast::def_self(slf_actual) { slf_def == slf_actual }
+                   _ { false }
+           }
+       }
+       none { false }
+    }
+}
 
 fn lookup_local(fcx: @fn_ctxt, sp: span, id: ast::node_id) -> int {
     alt fcx.locals.find(id) {
@@ -709,13 +725,14 @@ fn ty_param_bounds(tcx: ty::ctxt, mode: mode, params: [ast::ty_param])
 fn ty_of_method(tcx: ty::ctxt, mode: mode, m: @ast::method) -> ty::method {
     {ident: m.ident, tps: ty_param_bounds(tcx, mode, m.tps),
      fty: ty_of_fn_decl(tcx, mode, ast::proto_bare, m.decl),
-     purity: m.decl.purity}
+     purity: m.decl.purity, privacy: m.privacy}
 }
 fn ty_of_ty_method(tcx: ty::ctxt, mode: mode, m: ast::ty_method)
     -> ty::method {
     {ident: m.ident, tps: ty_param_bounds(tcx, mode, m.tps),
      fty: ty_of_fn_decl(tcx, mode, ast::proto_bare, m.decl),
-     purity: m.decl.purity}
+    // assume public, because this is only invoked on iface methods
+     purity: m.decl.purity, privacy: ast::pub}
 }
 
 // A convenience function to use a crate_ctxt to resolve names for
@@ -939,9 +956,9 @@ mod collect {
           }
           ast_map::node_item(@{node: ast::item_class(_,its,_), _}, _) {
               let (_,ms) = split_class_items(its);
-              // Only public methods need to be stored
-              let ps = ast_util::public_methods(ms);
-              store_methods::<@ast::method>(tcx, id, ps, {|m|
+              // All methods need to be stored, since lookup_method
+              // relies on the same method cache for self-calls
+              store_methods::<@ast::method>(tcx, id, ms, {|m|
                           ty_of_method(tcx, m_collect, m)});
           }
         }
@@ -1101,8 +1118,7 @@ mod collect {
                                         mk_ty_params(tcx, tps).params);
               // Need to convert all methods so we can check internal
               // references to private methods
-              convert_methods(tcx, ast_util::ignore_privacy(methods), @[],
-                              some(selfty));
+              convert_methods(tcx, methods, @[], some(selfty));
           }
           _ {
             // This call populates the type cache with the converted type
@@ -2011,9 +2027,10 @@ fn impl_self_ty(tcx: ty::ctxt, did: ast::def_id) -> {n_tps: uint, ty: ty::t} {
 }
 
 fn lookup_method(fcx: @fn_ctxt, expr: @ast::expr, node_id: ast::node_id,
-                 name: ast::ident, ty: ty::t, tps: [ty::t])
+                 name: ast::ident, ty: ty::t, tps: [ty::t],
+                 include_private: bool)
     -> option<method_origin> {
-    alt lookup_method_inner(fcx, expr, name, ty) {
+    alt lookup_method_inner(fcx, expr, name, ty, include_private) {
       some({method_ty: fty, n_tps: method_n_tps, substs, origin, self_sub}) {
         let tcx = fcx.ccx.tcx;
         let mut substs = substs;
@@ -2064,7 +2081,8 @@ enum method_kind {
 }
 
 fn lookup_method_inner_(tcx: ty::ctxt, ms: [ty::method],
-    tps: [ty::t], parent: method_kind, name: ast::ident, sp: span)
+     tps: [ty::t], parent: method_kind, name: ast::ident, sp: span,
+                        include_private: bool)
     -> option<{method_ty: ty::t, n_tps: uint, substs: [ty::t],
         origin: method_origin, self_sub: option<self_subst>}> {
     #debug("lookup_method_inner_: %? %? %s", ms, parent, name);
@@ -2080,6 +2098,10 @@ fn lookup_method_inner_(tcx: ty::ctxt, ms: [ty::method],
                    tcx.sess.span_fatal(
                         sp, "can not call a generic method through a \
                                     boxed iface");
+          } else if m.privacy == ast::priv && !include_private {
+                   tcx.sess.span_fatal(
+                        sp, "Call to private method not allowed outside \
+                          its defining class");
           }
           ret some({method_ty: fty,
                     n_tps: vec::len(*m.tps),
@@ -2089,7 +2111,7 @@ fn lookup_method_inner_(tcx: ty::ctxt, ms: [ty::method],
                         // look up method named <name>
                         // its id is did
                         let m_declared = ty::lookup_class_method_by_name(tcx,
-                                            parent_id, name, sp);
+                                      parent_id, name, sp);
                         method_static(m_declared)
                       }
                       an_iface(did) { method_iface(did, i) }
@@ -2102,7 +2124,8 @@ fn lookup_method_inner_(tcx: ty::ctxt, ms: [ty::method],
 }
 
 fn lookup_method_inner(fcx: @fn_ctxt, expr: @ast::expr,
-                       name: ast::ident, ty: ty::t)
+                       name: ast::ident, ty: ty::t,
+                       include_private: bool)
     -> option<{method_ty: ty::t, n_tps: uint, substs: [ty::t],
                   origin: method_origin,
                   self_sub: option<self_subst>}> {
@@ -2145,14 +2168,14 @@ fn lookup_method_inner(fcx: @fn_ctxt, expr: @ast::expr,
       }
       ty::ty_iface(did, tps) {
         alt lookup_method_inner_(tcx, *ty::iface_methods(tcx, did), tps,
-                                 an_iface(did), name, expr.span) {
+              an_iface(did), name, expr.span, include_private) {
            some(r) { ret some(r); }
            none {  }
         }
       }
       ty::ty_class(did, tps) {
         alt lookup_method_inner_(tcx, *ty::iface_methods(tcx, did), tps,
-                                 cls(did), name, expr.span) {
+              cls(did), name, expr.span, include_private) {
           some(r) { ret some(r); }
           none    { }
         }
@@ -2499,7 +2522,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                         opname: str, args: [option<@ast::expr>])
         -> option<(ty::t, bool)> {
         let callee_id = ast_util::op_expr_callee_id(op_ex);
-        alt lookup_method(fcx, op_ex, callee_id, opname, self_t, []) {
+        alt lookup_method(fcx, op_ex, callee_id, opname, self_t, [], false) {
           some(origin) {
             let mut method_ty = ty::node_id_to_type(fcx.ccx.tcx, callee_id);
             method_ty = universally_quantify_regions(fcx, region_env(),
@@ -3108,6 +3131,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
             }
           }
           ty::ty_class(base_id, _params) {
+              // This is just for fields -- the same code handles
+              // methods in both classes and ifaces
+
               // (1) verify that the class id actually has a field called
               // field
               #debug("class named %s", ty_to_str(tcx, base_t));
@@ -3116,17 +3142,14 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                 determines whether we look at all fields or only public
                 ones
                */
-              let node_def = lookup_def(fcx, base.span, base.id);
-              let cls_items = alt get_self_info(fcx.ccx) {
-                      some(self_impl(_, n_id)) if alt node_def {
-                          ast::def_self(base_id) { base_id == n_id }
-                          _ { false }} {
-                        // base expr is "self" -- consider all fields
-                        ty::lookup_class_fields(tcx, base_id)
-                      }
-                      _ { lookup_public_fields(tcx, base_id) }
+              let cls_items = if self_ref(fcx, base.id) {
+                  // base expr is "self" -- consider all fields
+                  ty::lookup_class_fields(tcx, base_id)
+              }
+              else {
+                  lookup_public_fields(tcx, base_id)
               };
-               alt lookup_field_ty(tcx, base_id, cls_items, field) {
+              alt lookup_field_ty(tcx, base_id, cls_items, field) {
                  some(field_ty) {
                     // (2) look up what field's type is, and return it
                     // FIXME: actually instantiate any type params
@@ -3140,7 +3163,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         }
         if !handled {
             let tps = vec::map(tys, {|ty| ast_ty_to_ty_crate(fcx.ccx, ty)});
-            alt lookup_method(fcx, expr, expr.id, field, expr_t, tps) {
+            alt lookup_method(fcx, expr, expr.id, field, expr_t, tps,
+                              self_ref(fcx, base.id)) {
               some(origin) {
                 fcx.ccx.method_map.insert(id, origin);
               }
@@ -3193,7 +3217,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
 
         let p_ty = expr_ty(tcx, p);
 
-        alt lookup_method(fcx, p, alloc_id, "alloc", p_ty, []) {
+        alt lookup_method(fcx, p, alloc_id, "alloc", p_ty, [], false) {
           some(origin) {
             fcx.ccx.method_map.insert(alloc_id, origin);
 
@@ -3665,16 +3689,16 @@ fn check_method(ccx: @crate_ctxt, method: @ast::method) {
              false, none);
 }
 
-fn class_types(ccx: @crate_ctxt, members: [@ast::class_item]) -> class_map {
+fn class_types(ccx: @crate_ctxt, members: [@ast::class_member]) -> class_map {
     let rslt = int_hash::<ty::t>();
     for m in members {
-      alt m.node.decl {
-         ast::instance_var(_,t,_,id) {
+      alt m.node {
+         ast::instance_var(_,t,_,id,_) {
            rslt.insert(id, ast_ty_to_ty(ccx.tcx, m_collect, t));
          }
          ast::class_method(mth) {
              rslt.insert(mth.id, ty::mk_fn(ccx.tcx,
-                   ty_of_method(ccx.tcx, m_collect, mth).fty));
+                ty_of_method(ccx.tcx, m_collect, mth).fty));
          }
       }
     }
@@ -3682,10 +3706,9 @@ fn class_types(ccx: @crate_ctxt, members: [@ast::class_item]) -> class_map {
 }
 
 fn check_class_member(ccx: @crate_ctxt, class_t: ty::t,
-                      cm: ast::class_member) {
-    alt cm {
-      ast::instance_var(_,t,_,_) {
-      }
+                      cm: @ast::class_member) {
+    alt cm.node {
+      ast::instance_var(_,t,_,_,_) { }
       ast::class_method(m) {
           ccx.self_infos += [self_impl(class_t, m.self_id)];
           check_method(ccx, m);
@@ -3729,8 +3752,7 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
                    ctor.node.body, ctor.node.id, false, none);
           vec::pop(class_ccx.self_infos);
           // typecheck the members
-          for m in members { check_class_member(class_ccx, class_t,
-                                                m.node.decl); }
+          for m in members { check_class_member(class_ccx, class_t, m); }
       }
       _ {/* nothing to do */ }
     }

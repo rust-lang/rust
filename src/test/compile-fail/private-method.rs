@@ -1,4 +1,4 @@
-// error-pattern:attempted access of field nap on type
+// error-pattern:Call to private method not allowed
 class cat {
   priv {
     let mut meows : uint;

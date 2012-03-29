@@ -506,7 +506,8 @@ fn print_item(s: ps, &&item: @ast::item) {
                    */
              hardbreak_if_not_bol(s);
              maybe_print_comment(s, ci.span.lo);
-             alt ci.node.privacy {
+             let pr = ast_util::class_member_privacy(ci);
+             alt pr {
                 ast::priv {
                     head(s, "priv");
                     bopen(s);
@@ -514,8 +515,8 @@ fn print_item(s: ps, &&item: @ast::item) {
                 }
                 _ {}
              }
-             alt ci.node.decl {
-                 ast::instance_var(nm, t, mt, _) {
+             alt ci.node {
+                ast::instance_var(nm, t, mt, _,_) {
                     word_nbsp(s, "let");
                     alt mt {
                       ast::class_mutable { word_nbsp(s, "mut"); }
@@ -530,7 +531,7 @@ fn print_item(s: ps, &&item: @ast::item) {
                     print_method(s, m);
                 }
              }
-             alt ci.node.privacy {
+             alt pr {
                  ast::priv { bclose(s, ci.span); }
                  _ {}
              }

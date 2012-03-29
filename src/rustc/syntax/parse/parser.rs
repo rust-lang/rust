@@ -1681,7 +1681,7 @@ fn parse_let(p: parser) -> @ast::decl {
 }
 
 /* assumes "let" token has already been consumed */
-fn parse_instance_var(p:parser) -> (ast::class_member, codemap::span) {
+fn parse_instance_var(p:parser, pr: ast::privacy) -> @ast::class_member {
     let mut is_mutbl = ast::class_immutable;
     let lo = p.span.lo;
     if eat_word(p, "mut") || eat_word(p, "mutable") {
@@ -1693,8 +1693,8 @@ fn parse_instance_var(p:parser) -> (ast::class_member, codemap::span) {
     let name = parse_ident(p);
     expect(p, token::COLON);
     let ty = parse_ty(p, false);
-    ret (ast::instance_var(name, ty, is_mutbl, p.get_id()),
-         ast_util::mk_sp(lo, p.last_span.hi));
+    ret @{node: ast::instance_var(name, ty, is_mutbl, p.get_id(), pr),
+          span: ast_util::mk_sp(lo, p.last_span.hi)};
 }
 
 fn parse_stmt(p: parser, first_item_attrs: [ast::attribute]) -> @ast::stmt {
@@ -1986,7 +1986,7 @@ fn parse_method_name(p: parser) -> ast::ident {
     }
 }
 
-fn parse_method(p: parser) -> @ast::method {
+fn parse_method(p: parser, pr: ast::privacy) -> @ast::method {
     let attrs = parse_outer_attributes(p);
     let lo = p.span.lo, pur = parse_fn_purity(p);
     let ident = parse_method_name(p);
@@ -1996,7 +1996,7 @@ fn parse_method(p: parser) -> @ast::method {
     let attrs = attrs + inner_attrs;
     @{ident: ident, attrs: attrs, tps: tps, decl: decl, body: body,
       id: p.get_id(), span: ast_util::mk_sp(lo, body.span.hi),
-      self_id: p.get_id()}
+      self_id: p.get_id(), privacy: pr}
 }
 
 fn parse_item_iface(p: parser, attrs: [ast::attribute]) -> @ast::item {
@@ -2034,7 +2034,7 @@ fn parse_item_impl(p: parser, attrs: [ast::attribute]) -> @ast::item {
     let ty = parse_ty(p, false);
     let mut meths = [];
     expect(p, token::LBRACE);
-    while !eat(p, token::RBRACE) { meths += [parse_method(p)]; }
+    while !eat(p, token::RBRACE) { meths += [parse_method(p, ast::pub)]; }
     ret mk_item(p, lo, p.last_span.hi, ident,
                 ast::item_impl(tps, ifce, ty, meths), attrs);
 }
@@ -2070,24 +2070,15 @@ fn parse_item_class(p: parser, attrs: [ast::attribute]) -> @ast::item {
     let class_path = ident_to_path(p.last_span, class_name);
     let ty_params = parse_ty_params(p);
     expect(p, token::LBRACE);
-    let mut items: [@ast::class_item] = [];
+    let mut ms: [@ast::class_member] = [];
     let ctor_id = p.get_id();
     let mut the_ctor : option<(ast::fn_decl, ast::blk, codemap::span)> = none;
     while p.token != token::RBRACE {
         alt parse_class_item(p, class_path) {
-           ctor_decl(a_fn_decl, blk, s) {
+            ctor_decl(a_fn_decl, blk, s) {
                the_ctor = some((a_fn_decl, blk, s));
             }
-           plain_decl(a_decl, s) {
-                items += [@{node: {privacy: ast::pub, decl: a_decl},
-                            span: s}];
-            }
-            priv_decls(some_decls) {
-                items += vec::map(some_decls, {|p|
-                            let (d, s) = p;
-                            @{node: {privacy: ast::priv, decl: d},
-                                span: s}});
-            }
+            members(mms) { ms += mms; }
        }
     }
     p.bump();
@@ -2095,7 +2086,7 @@ fn parse_item_class(p: parser, attrs: [ast::attribute]) -> @ast::item {
       some((ct_d, ct_b, ct_s)) {
           ret mk_item(p, lo, p.last_span.hi,
                                              class_name,
-         ast::item_class(ty_params, items,
+         ast::item_class(ty_params, ms,
                          {node: {id: ctor_id,
                                  self_id: p.get_id(),
                                  dec: ct_d,
@@ -2112,16 +2103,10 @@ fn parse_item_class(p: parser, attrs: [ast::attribute]) -> @ast::item {
 
 // lets us identify the constructor declaration at
 // parse time
-// we don't really want just the fn_decl...
 enum class_contents { ctor_decl(ast::fn_decl, ast::blk, codemap::span),
-                      // assumed to be public
-                      plain_decl(ast::class_member, codemap::span),
-                      // contents of a priv section --
-                      // parse_class_item ensures that
-                      // none of these are a ctor decl
-                      priv_decls([(ast::class_member, codemap::span)])}
+                      members([@ast::class_member]) }
 
-    fn parse_class_item(p:parser, class_name:@ast::path) -> class_contents {
+fn parse_class_item(p:parser, class_name:@ast::path) -> class_contents {
     if eat_word(p, "new") {
         let lo = p.last_span.lo;
         // Can ctors have attrs?
@@ -2140,28 +2125,28 @@ enum class_contents { ctor_decl(ast::fn_decl, ast::blk, codemap::span),
             let mut results = [];
             while p.token != token::RBRACE {
                if eat_word(p, "let") {
-                  let a_var = parse_instance_var(p);
+                  let a_var = parse_instance_var(p, ast::priv);
                   expect(p, token::SEMI);
                   results += [a_var];
                }
                else {
-                   let m = parse_method(p);
-                   results += [(ast::class_method(m), m.span)];
+                   let m = parse_method(p, ast::priv);
+                   results += [@{node: ast::class_method(m), span: m.span}];
                }
             }
             p.bump();
-            ret priv_decls(results);
+            ret members(results);
     }
     else {
         // Probably need to parse attrs
         ret if eat_word(p, "let") {
-             let (a_var, a_span) = parse_instance_var(p);
+             let ivar = parse_instance_var(p, ast::pub);
              expect(p, token::SEMI);
-             plain_decl(a_var, a_span)
+             members([ivar])
         }
         else {
-            let m = parse_method(p);
-            plain_decl(ast::class_method(m), m.span)
+            let m = parse_method(p, ast::pub);
+            members([@{node: ast::class_method(m), span: m.span}])
         }
     }
 }

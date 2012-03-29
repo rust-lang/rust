@@ -182,10 +182,8 @@ fn map_item(i: @item, cx: ctx, v: vt) {
           let p = extend(cx, i.ident);
           for ci in items {
            // only need to handle methods
-           alt ci.node.decl {
-             class_method(m) {
-               map_method(d_id, p, m, cx);
-             }
+           alt ci.node {
+             class_method(m) { map_method(d_id, p, m, cx); }
              _ {}
            }
           }

@@ -216,9 +216,8 @@ fn visit_item(item: @item, &&cx: @ctx, v: visit::vt<@ctx>) {
     alt item.node {
             item_class(tps, items, ctor) {
                 v.visit_ty_params(tps, cx, v);
-                vec::map::<@class_item, ()>(items,
-                      {|i| v.visit_class_item(i.span,
-                            i.node.privacy, i.node.decl, cx, v); });
+                vec::map::<@class_member, ()>(items,
+                    {|i| v.visit_class_item(i, cx, v); });
                 v.visit_fn(visit::fk_ctor(item.ident, tps), ctor.node.dec,
                            ctor.node.body, ctor.span, ctor.node.id,
                            @{in_ctor: some(ctor.node.self_id) with *cx}, v);

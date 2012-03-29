@@ -262,9 +262,9 @@ pure fn unguarded_pat(a: arm) -> option<[@pat]> {
 // for reserving this id.
 fn op_expr_callee_id(e: @expr) -> node_id { e.id - 1 }
 
-pure fn class_item_ident(ci: @class_item) -> ident {
-    alt ci.node.decl {
-      instance_var(i,_,_,_) { i }
+pure fn class_item_ident(ci: @class_member) -> ident {
+    alt ci.node {
+      instance_var(i,_,_,_,_) { i }
       class_method(it) { it.ident }
     }
 }
@@ -272,29 +272,30 @@ pure fn class_item_ident(ci: @class_item) -> ident {
 type ivar = {ident: ident, ty: @ty, cm: class_mutability,
              id: node_id, privacy: privacy};
 
-type cmethod = {privacy: privacy, meth: @method};
-
-fn public_methods(cms: [cmethod]) -> [@method] {
-    vec::filter_map(cms, {|cm| alt cm.privacy {
-                    pub { some(cm.meth) }
-                    _   { none }}})
+fn public_methods(ms: [@method]) -> [@method] {
+    vec::filter(ms, {|m| alt m.privacy {
+                    pub { true }
+                    _   { false }}})
 }
 
-fn ignore_privacy(cms: [cmethod]) -> [@method] {
-    vec::map(cms, {|cm| cm.meth})
-}
-
-fn split_class_items(cs: [@class_item]) -> ([ivar], [cmethod]) {
+fn split_class_items(cs: [@class_member]) -> ([ivar], [@method]) {
     let mut vs = [], ms = [];
     for c in cs {
-      alt c.node.decl {
-        instance_var(i, t, cm, id) {
-          vs += [{ident: i, ty: t, cm: cm, id: id, privacy: c.node.privacy}];
+      alt c.node {
+        instance_var(i, t, cm, id, privacy) {
+          vs += [{ident: i, ty: t, cm: cm, id: id, privacy: privacy}];
         }
-        class_method(m) { ms += [{privacy: c.node.privacy, meth: m}]; }
+        class_method(m) { ms += [m]; }
       }
     }
     (vs, ms)
+}
+
+pure fn class_member_privacy(ci: @class_member) -> privacy {
+  alt ci.node {
+     instance_var(_, _, _, _, p) { p }
+     class_method(m) { m.privacy }
+  }
 }
 
 impl inlined_item_methods for inlined_item {

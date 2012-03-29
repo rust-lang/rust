@@ -156,7 +156,8 @@ type param_bounds = @[param_bound];
 type method = {ident: ast::ident,
                tps: @[param_bounds],
                fty: fn_ty,
-               purity: ast::purity};
+               purity: ast::purity,
+               privacy: ast::privacy};
 
 type constr_table = hashmap<ast::node_id, [constr]>;
 
@@ -2165,7 +2166,7 @@ fn lookup_class_method_ids(cx: ctxt, did: ast::def_id)
     alt cx.items.find(did.node) {
        some(ast_map::node_item(@{node: item_class(_,items,_), _}, _)) {
          let (_,ms) = split_class_items(items);
-         vec::map(ms, {|m| {name: m.meth.ident, id: m.meth.id,
+         vec::map(ms, {|m| {name: m.ident, id: m.id,
                          privacy: m.privacy}})
        }
        _ {
@@ -2176,17 +2177,19 @@ fn lookup_class_method_ids(cx: ctxt, did: ast::def_id)
 
 /* Given a class def_id and a method name, return the method's
  def_id. Needed so we can do static dispatch for methods
- Fails if the requested method is private */
+ Doesn't care about the method's privacy. (It's assumed that
+ the caller already checked that.)
+*/
 fn lookup_class_method_by_name(cx:ctxt, did: ast::def_id, name: ident,
                                sp: span) -> def_id {
     if check is_local(did) {
        let ms = lookup_class_method_ids(cx, did);
        for m in ms {
-         if m.name == name && m.privacy == ast::pub {
+         if m.name == name {
              ret ast_util::local_def(m.id);
          }
        }
-       cx.sess.span_fatal(sp, #fmt("Class doesn't have a public method \
+       cx.sess.span_fatal(sp, #fmt("Class doesn't have a method \
            named %s", name));
     }
     else {
@@ -2194,16 +2197,15 @@ fn lookup_class_method_by_name(cx:ctxt, did: ast::def_id, name: ident,
     }
 }
 
-fn class_field_tys(items: [@class_item]) -> [field_ty] {
+fn class_field_tys(items: [@class_member]) -> [field_ty] {
     let mut rslt = [];
     for it in items {
-       alt it.node.decl {
-          instance_var(nm, _, cm, id) {
+       alt it.node {
+          instance_var(nm, _, cm, id, privacy) {
               rslt += [{ident: nm, id: ast_util::local_def(id),
-                          privacy: it.node.privacy, mutability: cm}];
+                          privacy: privacy, mutability: cm}];
           }
-          class_method(_) {
-          }
+          class_method(_) { }
        }
     }
     rslt

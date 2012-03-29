@@ -101,7 +101,7 @@ fn traverse_public_item(cx: ctx, item: @item) {
       item_class(tps, items, ctor) {
         cx.rmap.insert(ctor.node.id, ());
         for vec::each(items) {|item|
-            alt item.node.decl {
+            alt item.node {
               class_method(m) {
                 cx.rmap.insert(m.id, ());
                 if tps.len() > 0u ||

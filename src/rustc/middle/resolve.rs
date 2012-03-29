@@ -89,7 +89,7 @@ enum mod_index_entry {
     mie_import_ident(node_id, span),
     mie_item(@ast::item),
     mie_class_item(node_id, /* parent class name */
-                   @ast::class_item), /* class member */
+                   @ast::class_member), /* class member */
     mie_native_item(@ast::native_item),
     mie_enum_variant(/* variant index */uint,
                      /*parts of enum item*/ [variant],
@@ -533,14 +533,14 @@ fn visit_item_with_scope(e: @env, i: @ast::item, sc: scopes, v: vt<scopes>) {
                             ctor_scope, v);
         /* visit the items */
         for cm in members {
-            alt cm.node.decl {
+            alt cm.node {
               class_method(m) {
                   let msc = cons(scope_method(m.self_id, tps + m.tps),
                                  @class_scope);
                   visit_fn_with_scope(e,
                      visit::fk_item_fn(m.ident, tps), m.decl, m.body,
                                  m.span, m.id, msc, v); }
-              instance_var(_,t,_,_) { v.visit_ty(t, class_scope, v); }
+              instance_var(_,t,_,_,_) { v.visit_ty(t, class_scope, v); }
             }
         }
       }
@@ -1161,11 +1161,11 @@ fn lookup_in_fn(e: env, name: ident, decl: ast::fn_decl,
    using the mod_index stuff
  */
 fn lookup_in_class(parent_id: def_id,
-                   members: [@class_item], name: ident)
+                   members: [@class_member], name: ident)
    -> option<def> {
     for m in members {
-      alt m.node.decl {
-        instance_var(v_name,_,_,id) {
+      alt m.node {
+        instance_var(v_name,_,_,id,_) {
             if v_name == name {
               ret some(def_class_field(parent_id, local_def(id)));
             }
@@ -1560,8 +1560,8 @@ fn lookup_in_mie(e: env, mie: mod_index_entry, ns: namespace) ->
         }
       }
       mie_class_item(parent_id, class_item) {
-          alt class_item.node.decl {
-              instance_var(_,_,_,id) {
+          alt class_item.node {
+              instance_var(_,_,_,id,_) {
                   ret some(ast::def_class_field(local_def(parent_id),
                                                 local_def(id)));
               }

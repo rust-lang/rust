@@ -431,7 +431,7 @@ fn get_iface_methods(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
                       'u' { ast::unsafe_fn }
                       'f' { ast::impure_fn }
                       'p' { ast::pure_fn }
-                    }}];
+                    }, privacy: ast::pub}];
     }
     @result
 }

@@ -83,13 +83,13 @@ fn encode_native_module_item_paths(ebml_w: ebml::writer, nmod: native_mod,
 }
 
 fn encode_class_item_paths(ebml_w: ebml::writer,
-     items: [@class_item], path: [str], &index: [entry<str>]) {
+     items: [@class_member], path: [str], &index: [entry<str>]) {
     for it in items {
-       alt it.node.privacy {
+     alt ast_util::class_member_privacy(it) {
           priv { cont; }
           pub {
-              let (id, ident) = alt it.node.decl {
-                 instance_var(v, _, _, vid) { (vid, v) }
+              let (id, ident) = alt it.node {
+                 instance_var(v, _, _, vid, _) { (vid, v) }
                  class_method(it) { (it.id, it.ident) }
               };
               add_to_index(ebml_w, path, index, ident);
@@ -368,7 +368,7 @@ fn encode_privacy(ebml_w: ebml::writer, privacy: privacy) {
 /* Returns an index of items in this class */
 fn encode_info_for_class(ecx: @encode_ctxt, ebml_w: ebml::writer,
                          id: node_id, path: ast_map::path,
-                         items: [@class_item],
+                         items: [@class_member],
                          global_index: @mut[entry<int>])
  -> [entry<int>] {
     let index = @mut [];
@@ -376,12 +376,12 @@ fn encode_info_for_class(ecx: @encode_ctxt, ebml_w: ebml::writer,
     for ci in items {
      /* We encode both private and public fields -- need to include
         private fields to get the offsets right */
-      alt ci.node.decl {
-        instance_var(nm, _, mt, id) {
+      alt ci.node {
+        instance_var(nm, _, mt, id, pr) {
           *index += [{val: id, pos: ebml_w.writer.tell()}];
           ebml_w.start_tag(tag_items_data_item);
           #debug("encode_info_for_class: doing %s %d", nm, id);
-          encode_privacy(ebml_w, ci.node.privacy);
+          encode_privacy(ebml_w, pr);
           encode_name(ebml_w, nm);
           encode_path(ebml_w, path, ast_map::path_name(nm));
           encode_type(ecx, ebml_w, node_id_to_type(tcx, id));
@@ -390,18 +390,23 @@ fn encode_info_for_class(ecx: @encode_ctxt, ebml_w: ebml::writer,
           ebml_w.end_tag();
         }
         class_method(m) {
-          *index += [{val: m.id, pos: ebml_w.writer.tell()}];
-          /* Not sure whether we really need to have two indices,
-             but it works for now -- tjc */
-          *global_index += [{val: m.id, pos: ebml_w.writer.tell()}];
-          let impl_path = path + [ast_map::path_name(m.ident)];
-          /*
-            Recall methods are (currently) monomorphic, and we don't
-            repeat the class's ty params in the method decl
-          */
-          #debug("encode_info_for_class: doing %s %d", m.ident, m.id);
-          encode_info_for_method(ecx, ebml_w, impl_path,
-                                 should_inline(m.attrs), id, m, []);
+           alt m.privacy {
+              pub {
+                *index += [{val: m.id, pos: ebml_w.writer.tell()}];
+                /* Not sure whether we really need to have two indices,
+                   but it works for now -- tjc */
+                *global_index += [{val: m.id, pos: ebml_w.writer.tell()}];
+                let impl_path = path + [ast_map::path_name(m.ident)];
+                /*
+                  Recall methods are (currently) monomorphic, and we don't
+                  repeat the class's ty params in the method decl
+                */
+                #debug("encode_info_for_class: doing %s %d", m.ident, m.id);
+                encode_info_for_method(ecx, ebml_w, impl_path,
+                                       should_inline(m.attrs), id, m, []);
+            }
+            _ { /* don't encode private methods */ }
+          }
         }
       }
     }
@@ -581,11 +586,10 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
            encode_def_id(ebml_w, local_def(f.id));
            ebml_w.end_tag();
         }
-        for mt in ms {
-           alt mt.privacy {
+        for m in ms {
+           alt m.privacy {
               priv { /* do nothing */ }
               pub {
-                let m = mt.meth;
                 ebml_w.start_tag(tag_item_method);
                 #debug("Writing %s %d", m.ident, m.id);
                 encode_family(ebml_w, purity_fn_family(m.decl.purity));

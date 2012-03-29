@@ -218,10 +218,9 @@ fn visit_ids(item: ast::inlined_item, vfn: fn@(ast::node_id)) {
             }
         },
 
-        visit_class_item: fn@(_s: span, _p: ast::privacy,
-                              c: ast::class_member) {
-            alt c {
-              ast::instance_var(_, _, _, id) {
+        visit_class_item: fn@(c: @ast::class_member) {
+            alt c.node {
+              ast::instance_var(_, _, _, id,_) {
                 vfn(id)
               }
               ast::class_method(_) {

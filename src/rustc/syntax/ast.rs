@@ -553,7 +553,9 @@ enum ret_style {
 #[auto_serialize]
 type method = {ident: ident, attrs: [attribute],
                tps: [ty_param], decl: fn_decl, body: blk,
-               id: node_id, span: span, self_id: node_id};
+               id: node_id, span: span, self_id: node_id,
+               privacy: privacy}; // privacy is always public, unless it's a
+                                  // class method
 
 #[auto_serialize]
 type _mod = {view_items: [@view_item], items: [@item]};
@@ -649,8 +651,8 @@ enum item_ {
     item_res(fn_decl /* dtor */, [ty_param], blk,
              node_id /* dtor id */, node_id /* ctor id */),
     item_class([ty_param], /* ty params for class */
-               [@class_item], /* methods, etc. */
-                             /* (not including ctor) */
+               [@class_member], /* methods, etc. */
+                               /* (not including ctor) */
                class_ctor
                ),
     item_iface([ty_param], [ty_method]),
@@ -659,14 +661,11 @@ enum item_ {
 }
 
 #[auto_serialize]
-type class_item_ = {privacy: privacy, decl: class_member};
+type class_member = spanned<class_member_>;
 
 #[auto_serialize]
-type class_item = spanned<class_item_>;
-
-#[auto_serialize]
-enum class_member {
-    instance_var(ident, @ty, class_mutability, node_id),
+enum class_member_ {
+    instance_var(ident, @ty, class_mutability, node_id, privacy),
     class_method(@method)
     // without constrained types, have to duplicate some stuff. or factor out
     // item to separate out things with type params?

@@ -8,7 +8,7 @@ class cat {
 
   fn play() {
     meows += 1u;
-    nap();
+    self.nap();
   }
   new(in_x : uint, in_y : int) { meows = in_x; how_hungry = in_y; }
 }
