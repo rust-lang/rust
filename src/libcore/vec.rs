@@ -101,7 +101,7 @@ pure fn same_length<T, U>(xs: [const T], ys: [const U]) -> bool {
 }
 
 #[doc = "
-Reserves capacity for `n` elements in the given vector.
+Reserves capacity for exactly `n` elements in the given vector.
 
 If the capacity for `v` is already equal to or greater than the requested
 capacity, then no action is taken.
