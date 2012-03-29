@@ -34,8 +34,8 @@ Building and installing
 Assuming you're on a relatively modern Linux/OSX system and have met the
 prerequisites, something along these lines should work:
 
-    $ tar -xzf rust-0.1.tar.gz
-    $ cd rust-0.1
+    $ tar -xzf rust-0.2.tar.gz
+    $ cd rust-0.2
     $ ./configure
     $ make && make install
 
