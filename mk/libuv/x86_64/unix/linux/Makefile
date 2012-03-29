@@ -58,7 +58,7 @@ CXXFLAGS.target ?= $(CXXFLAGS)
 LINK.target ?= $(LINK)
 LDFLAGS.target ?= $(LDFLAGS)
 AR.target ?= $(AR)
-ARFLAGS.target ?= crsT
+ARFLAGS.target ?= crs
 
 # N.B.: the logic of which commands to run should match the computation done
 # in gyp's make.py where ARFLAGS.host etc. is computed.
@@ -71,7 +71,7 @@ CXXFLAGS.host ?=
 LINK.host ?= g++
 LDFLAGS.host ?=
 AR.host ?= ar
-ARFLAGS.host := crsT
+ARFLAGS.host := crs
 
 # Define a dir function that can handle spaces.
 # http://www.gnu.org/software/make/manual/make.html#Syntax-of-Functions
