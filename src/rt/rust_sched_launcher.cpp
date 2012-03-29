@@ -7,10 +7,10 @@ rust_sched_launcher::rust_sched_launcher(rust_scheduler *sched,
                                          rust_srv *srv, int id)
     : rust_thread(SCHED_STACK_SIZE),
       kernel(sched->kernel),
-      thread(sched, srv, id) {
+      sched_loop(sched, srv, id) {
 }
 
 void
 rust_sched_launcher::run() {
-    thread.start_main_loop();
+    sched_loop.start_main_loop();
 }

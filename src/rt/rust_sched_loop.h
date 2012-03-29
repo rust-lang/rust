@@ -1,5 +1,5 @@
-#ifndef RUST_TASK_THREAD_H
-#define RUST_TASK_THREAD_H
+#ifndef RUST_SCHED_LOOP_H
+#define RUST_SCHED_LOOP_H
 
 #include "rust_internal.h"
 #include "rust_stack.h"
@@ -14,7 +14,7 @@ enum rust_task_state {
 
 typedef indexed_list<rust_task> rust_task_list;
 
-struct rust_task_thread
+struct rust_sched_loop
 {
 private:
 
@@ -73,7 +73,7 @@ public:
 
     // Only a pointer to 'name' is kept, so it must live as long as this
     // domain.
-    rust_task_thread(rust_scheduler *sched, rust_srv *srv, int id);
+    rust_sched_loop(rust_scheduler *sched, rust_srv *srv, int id);
     void activate(rust_task *task);
     void log(rust_task *task, uint32_t level, char const *fmt, ...);
     rust_log & get_log();
@@ -113,7 +113,7 @@ public:
 };
 
 inline rust_log &
-rust_task_thread::get_log() {
+rust_sched_loop::get_log() {
     return _log;
 }
 
@@ -122,7 +122,7 @@ rust_task_thread::get_log() {
 #ifndef __WIN32__
 
 inline rust_task *
-rust_task_thread::get_task() {
+rust_sched_loop::get_task() {
     if (!tls_initialized)
         return NULL;
     rust_task *task = reinterpret_cast<rust_task *>
@@ -134,7 +134,7 @@ rust_task_thread::get_task() {
 #else
 
 inline rust_task *
-rust_task_thread::get_task() {
+rust_sched_loop::get_task() {
     if (!tls_initialized)
         return NULL;
     rust_task *task = reinterpret_cast<rust_task *>(TlsGetValue(task_key));
@@ -146,7 +146,7 @@ rust_task_thread::get_task() {
 
 // NB: Runs on the Rust stack
 inline stk_seg *
-rust_task_thread::borrow_c_stack() {
+rust_sched_loop::borrow_c_stack() {
     I(this, cached_c_stack);
     stk_seg *your_stack;
     if (extra_c_stack) {
@@ -161,7 +161,7 @@ rust_task_thread::borrow_c_stack() {
 
 // NB: Runs on the Rust stack
 inline void
-rust_task_thread::return_c_stack(stk_seg *stack) {
+rust_sched_loop::return_c_stack(stk_seg *stack) {
     I(this, !extra_c_stack);
     if (!cached_c_stack) {
         cached_c_stack = stack;
@@ -182,4 +182,4 @@ rust_task_thread::return_c_stack(stk_seg *stack) {
 // End:
 //
 
-#endif /* RUST_TASK_THREAD_H */
+#endif /* RUST_SCHED_LOOP_H */

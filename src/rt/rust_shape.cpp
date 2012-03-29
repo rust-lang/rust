@@ -550,7 +550,7 @@ extern "C" void
 shape_cmp_type(int8_t *result, const type_desc *tydesc,
 	       const type_desc **subtydescs, uint8_t *data_0,
 	       uint8_t *data_1, uint8_t cmp_type) {
-    rust_task *task = rust_task_thread::get_task();
+    rust_task *task = rust_sched_loop::get_task();
     shape::arena arena;
 
     // FIXME: This may well be broken when comparing two closures or objects
@@ -571,7 +571,7 @@ shape_cmp_type(int8_t *result, const type_desc *tydesc,
 
 extern "C" rust_str *
 shape_log_str(const type_desc *tydesc, uint8_t *data) {
-    rust_task *task = rust_task_thread::get_task();
+    rust_task *task = rust_sched_loop::get_task();
 
     shape::arena arena;
     shape::type_param *params =
@@ -589,7 +589,7 @@ shape_log_str(const type_desc *tydesc, uint8_t *data) {
 
 extern "C" void
 shape_log_type(const type_desc *tydesc, uint8_t *data, uint32_t level) {
-    rust_task *task = rust_task_thread::get_task();
+    rust_task *task = rust_sched_loop::get_task();
 
     shape::arena arena;
     shape::type_param *params =
@@ -601,6 +601,6 @@ shape_log_type(const type_desc *tydesc, uint8_t *data, uint32_t level) {
 
     log.walk();
 
-    task->thread->log(task, level, "%s", ss.str().c_str());
+    task->sched_loop->log(task, level, "%s", ss.str().c_str());
 }
 

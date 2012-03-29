@@ -17,13 +17,13 @@ public:
     rust_kernel *kernel;
 
 private:
-    rust_task_thread thread;
+    rust_sched_loop sched_loop;
 
 public:
     rust_sched_launcher(rust_scheduler *sched, rust_srv *srv, int id);
 
     virtual void run();
-    rust_task_thread *get_loop() { return &thread; }
+    rust_sched_loop *get_loop() { return &sched_loop; }
 };
 
 #endif // RUST_SCHED_LAUNCHER_H
