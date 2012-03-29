@@ -37,9 +37,11 @@ impl arena for arena {
             end = n_bytes;
         }
 
-        let p = ptr::offset(ptr::addr_of(head.fill), start);
-        head.fill = end;
-        unsafe { ret unsafe::reinterpret_cast(p); }
+        unsafe {
+            let p = ptr::offset(vec::unsafe::to_ptr(head.data), start);
+            head.fill = end;
+            ret unsafe::reinterpret_cast(p);
+        }
     }
 }
 
