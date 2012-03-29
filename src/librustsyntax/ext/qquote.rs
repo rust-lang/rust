@@ -1,13 +1,13 @@
-import syntax::ast::{crate, expr_, mac_invoc,
+import ast::{crate, expr_, mac_invoc,
                      mac_aq, mac_var};
-import syntax::fold::*;
-import syntax::visit::*;
-import syntax::ext::base::*;
-import syntax::ext::build::*;
-import syntax::parse::parser;
-import syntax::parse::parser::{parser, parse_from_source_str};
+import fold::*;
+import visit::*;
+import ext::base::*;
+import ext::build::*;
+import parse::parser;
+import parse::parser::{parser, parse_from_source_str};
 
-import syntax::print::*;
+import print::*;
 import io::*;
 
 import codemap::span;
@@ -127,7 +127,7 @@ fn visit_aq_ty(node: @ast::ty, &&cx: aq_ctxt, v: vt<aq_ctxt>) {
 }
 
 fn is_space(c: char) -> bool {
-    syntax::parse::lexer::is_whitespace(c)
+    parse::lexer::is_whitespace(c)
 }
 
 fn expand_ast(ecx: ext_ctxt, _sp: span,

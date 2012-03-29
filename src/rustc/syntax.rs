@@ -26,4 +26,5 @@ export util;
 import rustsyntax::attr;
 export attr;
 
+import rustsyntax::ext;
 export ext;

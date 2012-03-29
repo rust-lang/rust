@@ -1,5 +1,5 @@
 import codemap::span;
-import syntax::ext::base::ext_ctxt;
+import base::ext_ctxt;
 
 // NOTE: Moved from fmt.rs which had this fixme:
 // FIXME: Cleanup the naming of these functions

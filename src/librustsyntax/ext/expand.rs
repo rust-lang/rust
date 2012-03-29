@@ -1,16 +1,11 @@
-import driver::session;
-import driver::session::session;
-
 import std::map::hashmap;
 
-import syntax::attr;
-
-import syntax::ast::{crate, expr_, expr_mac, mac_invoc};
-import syntax::fold::*;
-import syntax::ext::base::*;
-import syntax::ext::qquote::{qq_helper};
-import syntax::parse::parser;
-import syntax::parse::parser::parse_expr_from_source_str;
+import ast::{crate, expr_, expr_mac, mac_invoc};
+import fold::*;
+import ext::base::*;
+import ext::qquote::{qq_helper};
+import parse::parser;
+import parse::parser::parse_expr_from_source_str;
 
 
 import codemap::{span, expanded_from};

@@ -8,7 +8,7 @@
 import extfmt::ct::*;
 import base::*;
 import codemap::span;
-import syntax::ext::build::*;
+import ext::build::*;
 export expand_syntax_ext;
 
 fn expand_syntax_ext(cx: ext_ctxt, sp: span, arg: ast::mac_arg,

@@ -1,5 +1,4 @@
 import base::*;
-import syntax::ast;
 
 fn expand_syntax_ext(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
                      _body: ast::mac_body) -> @ast::expr {

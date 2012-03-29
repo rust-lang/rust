@@ -27,3 +27,18 @@ mod print {
     mod pp;
     mod pprust;
 }
+
+mod ext {
+    mod base;
+    mod expand;
+    mod qquote;
+    mod build;
+
+    mod fmt;
+    mod env;
+    mod simplext;
+    mod concat_idents;
+    mod ident_to_str;
+    mod log_syntax;
+    mod auto_serialize;
+}

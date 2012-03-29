@@ -73,9 +73,16 @@ import base::*;
 import codemap::span;
 import std::map;
 import std::map::hashmap;
-import syntax::attr;
 
 export expand;
+
+// Transitional reexports so qquote can find the paths it is looking for
+mod syntax {
+    import ext;
+    export ext;
+    import parse;
+    export parse;
+}
 
 type ser_tps_map = map::hashmap<str, fn@(@ast::expr) -> [@ast::stmt]>;
 type deser_tps_map = map::hashmap<str, fn@() -> @ast::expr>;

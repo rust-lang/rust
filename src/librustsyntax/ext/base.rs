@@ -1,6 +1,6 @@
 import std::map::hashmap;
-import syntax::parse::parser;
-import driver::diagnostic::span_handler;
+import parse::parser;
+import diagnostic::span_handler;
 import codemap::{codemap, span, expn_info, expanded_from};
 import std::map::str_hash;
 

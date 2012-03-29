@@ -1,5 +1,4 @@
 import base::*;
-import syntax::ast;
 import io::writer_util;
 
 fn expand_syntax_ext(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
