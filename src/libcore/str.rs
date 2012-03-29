@@ -93,6 +93,7 @@ export
    is_char_boundary,
    char_at,
    reserve,
+   reserve_at_least,
 
    unsafe;
 
@@ -1503,6 +1504,30 @@ capacity, then no action is taken.
 "]
 fn reserve(&s: str, n: uint) {
     rustrt::str_reserve_shared(s, n);
+}
+
+#[doc = "
+Reserves capacity for at least `n` bytes in the given string, not including
+the null terminator.
+
+Assuming single-byte characters, the resulting string will be large
+enough to hold a string of length `n`. To account for the null terminator,
+the underlying buffer will have the size `n` + 1.
+
+This function will over-allocate in order to amortize the allocation costs
+in scenarios where the caller may need to repeatedly reserve additional
+space.
+
+If the capacity for `s` is already equal to or greater than the requested
+capacity, then no action is taken.
+
+# Arguments
+
+* s - A string
+* n - The number of bytes to reserve space for
+"]
+fn reserve_at_least(&s: str, n: uint) unsafe {
+    reserve(s, uint::next_power_of_two(n + 1u) - 1u)
 }
 
 #[doc = "Unsafe operations"]
