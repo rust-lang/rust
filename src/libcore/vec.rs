@@ -1,7 +1,6 @@
 #[doc = "Vectors"];
 
 import option::{some, none};
-import uint::next_power_of_two;
 import ptr::addr_of;
 
 export init_op;
@@ -9,6 +8,7 @@ export is_empty;
 export is_not_empty;
 export same_length;
 export reserve;
+export reserve_at_least;
 export len;
 export from_fn;
 export from_elem;
@@ -113,6 +113,25 @@ capacity, then no action is taken.
 "]
 fn reserve<T>(&v: [const T], n: uint) {
     rustrt::vec_reserve_shared(sys::get_type_desc::<T>(), v, n);
+}
+
+#[doc = "
+Reserves capacity for at least `n` elements in the given vector.
+
+This function will over-allocate in order to amortize the allocation costs
+in scenarios where the caller may need to repeatedly reserve additional
+space.
+
+If the capacity for `v` is already equal to or greater than the requested
+capacity, then no action is taken.
+
+# Arguments
+
+* v - A vector
+* n - The number of elements to reserve space for
+"]
+fn reserve_at_least<T>(&v: [const T], n: uint) {
+    reserve(v, uint::next_power_of_two(n));
 }
 
 #[doc = "Returns the length of a vector"]
@@ -364,7 +383,7 @@ Expands a vector in place, initializing the new elements to a given value
 * initval - The value for the new elements
 "]
 fn grow<T: copy>(&v: [const T], n: uint, initval: T) {
-    reserve(v, next_power_of_two(len(v) + n));
+    reserve_at_least(v, len(v) + n);
     let mut i: uint = 0u;
     while i < n { v += [initval]; i += 1u; }
 }
@@ -383,7 +402,7 @@ Function `init_op` is called `n` times with the values [0..`n`)
             value
 "]
 fn grow_fn<T>(&v: [const T], n: uint, op: init_op<T>) {
-    reserve(v, next_power_of_two(len(v) + n));
+    reserve_at_least(v, len(v) + n);
     let mut i: uint = 0u;
     while i < n { v += [op(i)]; i += 1u; }
 }
