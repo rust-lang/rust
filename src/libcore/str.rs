@@ -94,6 +94,7 @@ export
    char_at,
    reserve,
    reserve_at_least,
+   capacity,
 
    unsafe;
 
@@ -1528,6 +1529,18 @@ capacity, then no action is taken.
 "]
 fn reserve_at_least(&s: str, n: uint) unsafe {
     reserve(s, uint::next_power_of_two(n + 1u) - 1u)
+}
+
+#[doc = "
+Returns the number of single-byte characters the string can hold without
+reallocating
+"]
+fn capacity(&&s: str) -> uint unsafe {
+    as_bytes(s) {|buf|
+        let vcap = vec::capacity(buf);
+        assert vcap > 0u;
+        vcap - 1u
+    }
 }
 
 #[doc = "Unsafe operations"]
