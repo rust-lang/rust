@@ -58,6 +58,7 @@ export
    each,
    bytes_iter,
    chars_iter,
+   chars_iteri,
    split_char_iter,
    splitn_char_iter,
    words_iter,
@@ -69,6 +70,10 @@ export
    find_char, find_char_from, find_char_between,
    rfind_char, rfind_char_from, rfind_char_between,
    find_str, find_str_from, find_str_between,
+   findn_str,
+   findn_str_between,
+   simple_search,      // temp, called by findn_str_between
+   boyer_moore_search, // temp, called by findn_str_between
    contains,
    starts_with,
    ends_with,
@@ -401,31 +406,12 @@ fn split_inner(s: str, sepfn: fn(cc: char) -> bool, count: uint,
     result
 }
 
-// FIXME use Boyer-Moore
-fn iter_matches(s: str, sep: str, f: fn(uint, uint)) {
-    let sep_len = len(sep), l = len(s);
+fn iter_matches(ss: str, sep: str, f: fn(uint, uint)) {
+    let sep_len = len(sep);
     assert sep_len > 0u;
-    let mut i = 0u, match_start = 0u, match_i = 0u;
 
-    while i < l {
-        if s[i] == sep[match_i] {
-            if match_i == 0u { match_start = i; }
-            match_i += 1u;
-            // Found a match
-            if match_i == sep_len {
-                f(match_start, i + 1u);
-                match_i = 0u;
-            }
-            i += 1u;
-        } else {
-            // Failed match, backtrack
-            if match_i > 0u {
-                match_i = 0u;
-                i = match_start + 1u;
-            } else {
-                i += 1u;
-            }
-        }
+    for match in findn_str(ss, sep, len(ss)) {
+        f(match, match + sep_len);
     }
 }
 
@@ -593,13 +579,19 @@ fn each(s: str, it: fn(u8) -> bool) {
 }
 
 #[doc = "Iterate over the characters in a string"]
-fn chars_iter(s: str, it: fn(char)) {
+fn chars_iter(ss: str, it: fn(char)) {
+    chars_iteri(ss, {|_ii, ch| it(ch)})
+}
+
+#[doc = "Iterate over the characters in a string"]
+fn chars_iteri(ss: str, it: fn(uint,char)) {
     let mut pos = 0u;
-    let len = len(s);
+    let len = len(ss);
+
     while (pos < len) {
-        let {ch, next} = char_range_at(s, pos);
+        let {ch, next} = char_range_at(ss, pos);
+        it(pos, ch);
         pos = next;
-        it(ch);
     }
 }
 
@@ -947,6 +939,8 @@ fn rfind_between(s: str, start: uint, end: uint, f: fn(char) -> bool)
 }
 
 // Utility used by various searching functions
+// Returns true if the whole needle is present in the haystack
+// beginning at haystack[at]
 fn match_at(haystack: str, needle: str, at: uint) -> bool {
     let mut i = at;
     for each(needle) {|c| if haystack[i] != c { ret false; } i += 1u; }
@@ -1016,19 +1010,323 @@ or equal to `len(s)`.
 "]
 fn find_str_between(haystack: str, needle: str, start: uint, end:uint)
   -> option<uint> {
-    // FIXME: Boyer-Moore should be significantly faster
-    assert end <= len(haystack);
-    let needle_len = len(needle);
-    if needle_len == 0u { ret some(start); }
-    if needle_len > end { ret none; }
-
-    let mut i = start;
-    let e = end - needle_len;
-    while i <= e {
-        if match_at(haystack, needle, i) { ret some(i); }
-        i += 1u;
+    let found = findn_str_between(haystack, needle, 1u, start, end);
+    alt vec::len(found) {
+        0u  { ret option::none; }
+        _nn { ret option::some(found[0u]); }
     }
-    ret none;
+}
+
+#[doc = "Returns up to `nn` byte positions of matched substrings"]
+fn findn_str(haystack: str, needle: str, nn: uint) -> [uint] {
+    findn_str_between(haystack, needle, nn, 0u, str::len(haystack))
+}
+
+#[doc = "
+Returns up to `nn` byte positions of matched substrings
+between `start` and `end`
+"]
+fn findn_str_between (haystack: str, needle: str,
+                      nn: uint,
+                      start: uint, end: uint) -> [uint] {
+
+    let hl = str::len(haystack);
+    let nl = str::len(needle);
+
+    // numbers subject to change...
+    if hl > 10u * nl + 1500u
+       && nl > 10u
+    {
+        ret boyer_moore_search(haystack, needle, nn, start, end);
+    } else {
+        ret simple_search(haystack, needle, nn, start, end);
+    }
+}
+
+#[doc = "
+Returns up to `nn` byte positions of matched substrings
+between `start` and `end`
+(using a naive search algorithm)
+"]
+fn simple_search (haystack: str, needle: str,
+                      nn: uint,
+                      start: uint, end: uint) -> [uint] {
+    let mut results = [];
+
+    let nlen = str::len(needle);
+
+    assert start <= end;
+    assert end <= str::len(haystack);
+    let hlen = end - start;
+
+    // empty needle
+    if nlen == 0u {
+        ret [start];
+    }
+
+    // haystack empty, or smaller than needle
+    if hlen == 0u || hlen < nlen {
+        ret [];
+    }
+
+    let mut ii = start, match_start = 0u, match_i = 0u;
+
+    while ii < end {
+        if haystack[ii] == needle[match_i] {
+            if match_i == 0u { match_start = ii; }
+            match_i += 1u;
+            // Found a match
+            if match_i == nlen {
+                vec::push(results, match_start);
+                match_i = 0u;
+
+                if vec::len(results) >= nn { ret results; }
+            }
+            ii += 1u;
+        } else {
+            // Failed match, backtrack
+            if match_i > 0u {
+                match_i = 0u;
+                ii = match_start + 1u;
+            } else {
+                ii += 1u;
+            }
+        }
+    }
+
+    ret results;
+}
+
+#[doc = "
+Returns up to `nn` byte positions of matched substrings
+between `start` and `end`
+(using Boyer-Moore)
+"]
+fn boyer_moore_search (haystack: str, needle: str,
+                      nn: uint,
+                      start: uint, end: uint) -> [uint] {
+    let mut results = [];
+
+    let nlen = str::len(needle);
+
+    assert start <= end;
+    assert end <= str::len(haystack);
+    let hlen = end - start;
+
+    // empty needle
+    if nlen == 0u {
+        ret [start];
+    }
+
+    // haystack empty, or smaller than needle
+    if hlen == 0u || hlen < nlen {
+        ret [];
+    }
+
+    // generate the tables
+    let ct = boyer_moore_unmatched_chars(needle);
+    let pt = boyer_moore_matching_suffixes(needle);
+
+    // query both tables based on position
+    // within the needle and character in haystack
+    let getShift = fn@(pos: uint, ch: u8) -> uint {
+        let matchedSoFar = nlen - 1u - pos;
+        let rawCharShift = ct[ch as uint];
+        let prefShift    = pt[matchedSoFar];
+
+        if rawCharShift >= matchedSoFar {
+           let adjCharShift = rawCharShift - matchedSoFar;
+
+           if adjCharShift > prefShift {
+               ret adjCharShift;
+           }
+        }
+
+        ret prefShift;
+    };
+
+    // step up through the haystack
+    let mut outerii = start;
+    while outerii + nlen <= end {
+
+        // step back through needle
+        // (checking outer range again)
+        let mut windowii = nlen;
+        while 0u < windowii {
+
+            windowii -= 1u;
+
+            // matching byte?
+            if needle[windowii] == haystack[outerii+windowii] {
+
+                // needle fully matched?
+                // note: last decremented windowii
+                if windowii == 0u {
+                    vec::push(results, outerii);
+
+                    if vec::len(results) >= nn { ret results; }
+
+                    outerii += nlen;
+                }
+
+                // if not fully matched, leave outerii alone
+                // but decrement the windowii
+
+            } else {
+                // no match or a partial match
+                outerii += getShift(windowii, haystack[outerii+windowii]);
+                break;
+            }
+        }
+    }
+
+    ret results;
+}
+
+// compute the table used to choose a shift based on
+// an unmatched character's possible position within the search string
+// (a.k.a. the bad-character table)
+fn boyer_moore_unmatched_chars(needle: str) -> [uint] {
+    let len = str::len(needle);
+    let deltas = vec::to_mut(vec::from_elem(255u, len));
+
+    assert 0u < len;
+    let mut jj = len - 1u; // drop the last byte
+
+    // from last-1 to first
+    while jj > 0u {
+        jj -= 1u;
+
+        let key = needle[jj] as uint;
+
+        // if we haven't set it yet, set it now
+        // (besides default)
+        if deltas[key] == len {
+            deltas[key] = len - 1u - jj;
+        }
+    }
+
+    ret vec::from_mut(deltas);
+}
+
+// for each prefix of the search string
+// find the largest suffix which is a suffix of the search string
+fn boyer_moore_largest_suffixes(needle: str) -> [uint] {
+    let len = str::len(needle);
+
+    if len == 0u { ret []; }
+
+    let mut suffs = vec::to_mut(vec::from_elem(len, 0u));
+    suffs[len - 1u] = len;
+
+    let mut ii   = len - 1u;
+    let mut head = len; // index starting the previous found suffix
+    let mut tail = len; // index after the previous found suffix
+
+    // loop through each smaller prefix,
+    // keeping track of the last suffix of a prefix
+    // which was found to be a suffix of the needle
+    while 0u < ii {
+        ii -= 1u;
+
+        if head < ii + 1u
+           && suffs[(len - 1u) - ((tail - 1u) - ii)] + head < ii + 1u
+        {
+            // The needle is a suffix of itself, stored before this loop,
+            // so each prefix of that is matched
+            // with its largest possible suffix...
+            //
+            // So (bear with me) when considering prefixes
+            // of another matched prefix (i.e., when head <= ii < tail)
+            // if the corresponding maximum prefix's match is
+            // smaller than the space left within the current match,
+            // then we know this prefix's matching suffix is the same.
+
+            // Consider:
+            //     01234567
+            //     heyyheyy
+            //       ^   ^
+            //
+            // When testing i=2, a match from 0-3 has already been found
+            // ("heyy"), and the match at i=6 ("y") fits
+            // in the remaining space within the current match,
+            // we know that suffs[2]=sufs[6].
+            //
+            // If, however, sufs[6] was much larger, we'd have to work more.
+
+            suffs[ii] = suffs[(len - 1u) - ((tail-1u) - ii)];
+
+        } else {
+            // Here, find the largest suffix of the needle which matches
+            // the prefix ending at ii.
+
+            // move the head left
+            //
+            // Note that if the head is already further left,
+            // we've already explored that far and eliminated the possibility
+            // of smaller match, above.
+            if ii + 1u <= head {
+                 head = ii + 1u;
+            }
+
+            // put the tail here (the ending of this suffix)
+            tail = ii + 1u;
+
+            // move the head left until it is before the matching suffix
+            while 1u <= head
+               && needle[head-1u] == needle[(len - 1u) - (tail - head)]
+            {
+                head -= 1u;
+            }
+
+            // store the length of this suffix
+            suffs[ii] = tail - head;
+        }
+    }
+
+    ret vec::from_mut(suffs);
+}
+
+// compute the table used to choose a shift based on
+// a partially matched suffix of the search string
+// (a.k.a. the good-suffix table)
+fn boyer_moore_matching_suffixes(needle: str) -> [uint] {
+    let len   = str::len(needle);
+
+    // compute the largest suffix of each prefix
+    let suffs = boyer_moore_largest_suffixes(needle);
+
+    // (1) initialize deltas
+    let deltas = vec::to_mut(vec::from_elem(len, len));
+
+    // (2) step to smaller suffixes ending with ii, and
+    // if a whole prefix is a suffix
+    // set all the deltas for indexes smaller than length - 1 - ii
+    // to length - 1 - ii
+    let mut ii = len;
+    let mut jj = 0u;
+    while 0u < ii {
+        ii -= 1u;
+
+        if suffs[ii] == ii + 1u {
+            // do not reset jj, only do this once
+            while ii < len - 1u - jj {
+                if deltas[len - 1u - jj] == len {
+                    deltas[len - 1u - jj] = len - 1u - ii;
+                }
+                jj += 1u;
+            }
+        }
+    }
+
+    // (3) then for each different matched suffix size, set the delta
+    let mut kk = 0u;
+    while 2u <= len && kk <= len - 2u {
+        deltas[suffs[kk]] = len - 1u - kk;
+        kk += 1u;
+    }
+
+    ret vec::from_mut(deltas);
 }
 
 #[doc = "
@@ -1877,7 +2175,6 @@ mod tests {
 
     #[test]
     fn test_find_str() {
-        // byte positions
         assert find_str("banana", "apple pie") == none;
         assert find_str("", "") == some(0u);
 
@@ -1890,15 +2187,20 @@ mod tests {
     }
 
     #[test]
-    fn test_find_str_between() {
-        // byte positions
+    fn test_find_str_between_ascii() {
         assert find_str_between("", "", 0u, 0u) == some(0u);
+        assert find_str_between("", "pow", 0u, 0u) == none;
+        assert find_str_between("donatello", "don", 0u, 9u) == some(0u);
+        assert find_str_between("don", "donatello", 0u, 3u) == none;
 
         let data = "abcabc";
         assert find_str_between(data, "ab", 0u, 6u) == some(0u);
         assert find_str_between(data, "ab", 2u, 6u) == some(3u);
         assert find_str_between(data, "ab", 2u, 4u) == none;
+    }
 
+    #[test]
+    fn test_find_str_between_utf8() {
         let mut data = "ประเทศไทย中华Việt Nam";
         data += data;
         assert find_str_between(data, "", 0u, 43u) == some(0u);
@@ -1916,6 +2218,67 @@ mod tests {
         assert find_str_between(data, "iệt", 43u, 86u) == some(77u);
         assert find_str_between(data, "Nam", 43u, 86u) == some(83u);
     }
+
+    #[test]
+    fn test_findn_str_between() {
+        let data = "abcabc";
+        assert findn_str_between(data, "ab", 2u, 0u, 6u) == [0u, 3u];
+        assert findn_str_between(data, "ab", 1u, 0u, 6u) == [0u];
+        assert findn_str_between(data, "ax", 1u, 0u, 6u) == [];
+    }
+
+    #[test]
+    fn test_simple_search() {
+        let data = "abcabc";
+        assert simple_search(data, "ab", 2u, 0u, 6u) == [0u, 3u];
+        assert simple_search(data, "ab", 1u, 0u, 6u) == [0u];
+        assert simple_search(data, "ax", 1u, 0u, 6u) == [];
+    }
+
+    #[test]
+    fn test_boyer_moore_search() {
+        let data = "abcabc";
+        assert boyer_moore_search(data, "ab", 2u, 0u, 6u) == [0u, 3u];
+        assert boyer_moore_search(data, "ab", 1u, 0u, 6u) == [0u];
+        assert boyer_moore_search(data, "ax", 1u, 0u, 6u) == [];
+    }
+
+    #[test]
+    fn test_findn_str() {
+        assert []       == str::findn_str("banana", "apple pie", 1u);
+        assert [0u]     == str::findn_str("abcxxxxxx", "abc", 1u);
+        assert [3u]     == str::findn_str("xxxabcxxx", "abc", 1u);
+        assert [6u]     == str::findn_str("xxxxxxabc", "abc", 1u);
+        assert [3u]     == str::findn_str("xxxabcabc", "abc", 1u);
+        assert [3u, 6u] == str::findn_str("xxxabcabc", "abc", 5u);
+        assert [3u, 7u] == str::findn_str("xxxabcxabc", "abc", 5u);
+        assert [3u, 8u] == str::findn_str("xxxabcxxabc", "abc", 5u);
+    }
+
+    #[test]
+    fn test_find_str_ascii() {
+        assert option::some(0u) == find_str("", "");
+        assert option::none     == find_str("banana", "apple pie");
+        assert option::some(0u) == find_str("abcxxxxxx", "abc");
+        assert option::some(3u) == find_str("xxxabcxxx", "abc");
+        assert option::some(6u) == find_str("xxxxxxabc", "abc");
+    }
+
+    #[test]
+    fn test_find_str_utf8() {
+        let data = "ประเทศไทย中华Việt Nam";
+
+        assert option::some( 0u) == find_str(data, "");
+        assert option::none      == find_str(data, "ไท华");
+        assert option::some( 0u) == find_str(data, "ประเ");
+        assert option::some( 3u) == find_str(data, "ระ");
+        assert option::some( 6u) == find_str(data, "ะเ");
+        assert option::some(15u) == find_str(data, "ศไทย中华");
+        assert option::some(18u) == find_str(data, "ไทย中华");
+        assert option::some(24u) == find_str(data, "ย中华");
+        assert option::some(27u) == find_str(data, "中华");
+    }
+
 
     #[test]
     fn test_substr() {
@@ -2289,6 +2652,78 @@ mod tests {
             assert (a == b);
             i += 1u;
         }
+    }
+
+    #[test]
+    fn test_unmatched_chars_ascii () {
+        let ct = boyer_moore_unmatched_chars("ANPANMAN");
+
+        assert 1u == ct['A' as uint];
+        assert 2u == ct['M' as uint];
+        assert 3u == ct['N' as uint];
+        assert 5u == ct['P' as uint];
+
+        // others
+        assert 8u == ct['z' as uint];
+        assert 8u == ct['w' as uint];
+        assert 8u == ct['x' as uint];
+    }
+
+    #[test]
+    fn test_unmatched_chars_utf8() {
+        let ct = boyer_moore_unmatched_chars("ะเ"); //e0b8b0 e0b980
+
+        assert 2u == ct[0x_e0_u];
+        assert 4u == ct[0x_b8_u];
+        assert 3u == ct[0x_b0_u];
+        assert 2u == ct[0x_e0_u];
+        assert 1u == ct[0x_b9_u];
+        assert 6u == ct[0x_80_u];
+    }
+
+    #[test]
+    fn test_boyer_moore_largest_suffixes() {
+        assert boyer_moore_largest_suffixes("")
+            == [];
+
+        assert boyer_moore_largest_suffixes("x")
+            == [1u];
+
+        assert boyer_moore_largest_suffixes("heyyheyyheyy")
+            == [0u,0u,1u,4u,0u,0u,1u,8u,0u,0u,1u,12u];
+
+        assert boyer_moore_largest_suffixes("gcagagag")
+            == [1u,0u,0u,2u,0u,4u,0u,8u];
+    }
+
+    #[test]
+    fn test_matching_suffixes_ascii() {
+        assert [] == boyer_moore_matching_suffixes("");
+
+        let test1 = boyer_moore_matching_suffixes("gcagagag");
+        assert test1 == [1u,7u,4u,7u,2u,7u,7u,7u];
+
+
+        let pt = boyer_moore_matching_suffixes("ANPANMAN");
+
+        assert 1u == pt[0u]; //        (n)
+        assert 8u == pt[1u]; //       (a)n
+        assert 3u == pt[2u]; //      (m)an
+        assert 6u == pt[3u]; //     (n)man
+        assert 6u == pt[4u]; //    (a)nman
+        assert 6u == pt[5u]; //   (p)anman
+        assert 6u == pt[6u]; //  (n)panman
+        assert 6u == pt[7u]; // (a)npanman
+    }
+
+    #[test]
+    fn test_matching_suffixes_utf8() {
+        let pt = boyer_moore_matching_suffixes("ประเ");
+
+        assert  1u == pt[0u];
+        assert 12u == pt[3u];
+        assert 12u == pt[6u];
+        assert 12u == pt[9u];
     }
 
     #[test]
