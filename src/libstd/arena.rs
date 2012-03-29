@@ -30,9 +30,10 @@ impl arena for arena {
         start = (start + alignm1) & !alignm1;
         let mut end = start + n_bytes;
 
-        if end > vec::len(head.data) {
+        if end > vec::alloc_len(head.data) {
             // Allocate a new chunk.
-            let new_min_chunk_size = uint::max(n_bytes, vec::len(head.data));
+            let new_min_chunk_size = uint::max(n_bytes,
+                                               vec::alloc_len(head.data));
             head = chunk(uint::next_power_of_two(new_min_chunk_size));
             self.chunks = list::cons(head, @self.chunks);
             start = 0u;
