@@ -139,20 +139,25 @@ rust_uv_run(uv_loop_t* loop) {
 }
 
 extern "C" void
-rust_uv_close(uv_handle_t* handle, crust_close_cb cb) {
-        handle_data* data = (handle_data*)handle->data;
-        data->close_cb = cb;
-        uv_close(handle, native_close_cb);
+rust_uv_close(uv_handle_t* handle, uv_close_cb cb) {
+	uv_close(handle, cb);
 }
 
 extern "C" void
-rust_uv_close_async(uv_async_t* handle) {
+rust_uv_hilvl_close(uv_handle_t* handle, crust_close_cb cb) {
+	handle_data* data = (handle_data*)handle->data;
+	data->close_cb = cb;
+	uv_close(handle, native_close_cb);
+}
+
+extern "C" void
+rust_uv_hilvl_close_async(uv_async_t* handle) {
   current_kernel_free(handle->data);
   current_kernel_free(handle);
 }
 
 extern "C" void
-rust_uv_close_timer(uv_async_t* handle) {
+rust_uv_hilvl_close_timer(uv_async_t* handle) {
   current_kernel_free(handle->data);
   current_kernel_free(handle);
 }
@@ -204,6 +209,43 @@ rust_uv_tcp_init(uv_loop_t* loop, uv_tcp_t* handle) {
 	return uv_tcp_init(loop, handle);
 }
 
+extern "C" int
+rust_uv_tcp_connect(uv_connect_t* connect_ptr,
+					uv_tcp_t* tcp_ptr,
+					uv_connect_cb cb,
+					sockaddr_in* addr_ptr) {
+	printf("inside rust_uv_tcp_connect\n");
+	// FIXME ref #2064
+	sockaddr_in addr = *addr_ptr;
+	printf("before tcp_connect .. port: %d\n", addr.sin_port);
+	printf("before tcp_connect.. tcp stream: %lu cb ptr: %lu\n",
+		   (unsigned long int)tcp_ptr, (unsigned long int)cb);
+	int result = uv_tcp_connect(connect_ptr, tcp_ptr, addr, cb);
+	printf ("leaving rust_uv_tcp_connect.. and result: %d\n",
+			result);
+	return result;
+}
+
+extern "C" int
+rust_uv_tcp_bind(uv_tcp_t* tcp_server, sockaddr_in* addr_ptr) {
+	// FIXME ref #2064
+	sockaddr_in addr = *addr_ptr;
+	printf("before uv_tcp_bind .. tcp_server: %lu port: %d\n",
+		   (unsigned long int)tcp_server, addr.sin_port);
+	return uv_tcp_bind(tcp_server, addr);
+}
+
+extern "C" int
+rust_uv_listen(uv_stream_t* stream, int backlog,
+				   uv_connection_cb cb) {
+	return uv_listen(stream, backlog, cb);
+}
+
+extern "C" int
+rust_uv_accept(uv_stream_t* server, uv_stream_t* client) {
+	return uv_accept(server, client);
+}
+
 extern "C" size_t
 rust_uv_helper_uv_tcp_t_size() {
 	return sizeof(uv_tcp_t);
@@ -247,7 +289,6 @@ current_kernel_malloc_alloc_cb(uv_handle_t* handle,
 	return uv_buf_init(base_ptr, suggested_size);
 }
 
-// FIXME see issue #1402
 extern "C" uv_buf_t
 rust_uv_buf_init(char* base, size_t len) {
 	return uv_buf_init(base, len);
@@ -292,24 +333,6 @@ rust_uv_get_len_from_buf(uv_buf_t buf) {
 extern "C" uv_err_t
 rust_uv_last_error(uv_loop_t* loop) {
 	return uv_last_error(loop);
-}
-extern "C" int
-rust_uv_tcp_connect(uv_connect_t* connect_ptr,
-					uv_tcp_t* tcp_ptr,
-					uv_connect_cb cb,
-					sockaddr_in* addr_ptr) {
-	//return uv_tcp_connect(connect_ptr, tcp_ptr, addr, cb);
-	printf("inside rust_uv_tcp_connect\n");
-	//sockaddr_in addr_tmp = *((sockaddr_in*)addr_ptr);
-	//sockaddr_in addr = addr_tmp;
-	sockaddr_in addr = *addr_ptr;
-	printf("before tcp_connect .. port: %d\n", addr.sin_port);
-	//int result = uv_tcp_connect(connect_ptr, tcp_ptr, loc_addr, cb);
-	printf("before tcp_connect.. tcp stream: %lu cb ptr: %lu\n", (unsigned long int)tcp_ptr, (unsigned long int)cb);
-	int result = uv_tcp_connect(connect_ptr, tcp_ptr, addr, cb);
-	printf ("leaving rust_uv_tcp_connect.. and result: %d\n",
-			result);
-	return result;
 }
 
 extern "C" int

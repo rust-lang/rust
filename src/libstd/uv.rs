@@ -218,7 +218,6 @@ fn gen_stub_uv_connect_t() -> uv_connect_t {
     };
 }
 
-// ref #1402 .. don't use this, like sockaddr_in
 // unix size: 16
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
@@ -310,8 +309,9 @@ native mod rustrt {
     fn rust_uv_stop_op_cb(handle: *libc::c_void);
     fn rust_uv_run(loop_handle: *libc::c_void);
     fn rust_uv_close(handle: *libc::c_void, cb: *u8);
-    fn rust_uv_close_async(handle: *libc::c_void);
-    fn rust_uv_close_timer(handle: *libc::c_void);
+    fn rust_uv_hilvl_close(handle: *libc::c_void, cb: *u8);
+    fn rust_uv_hilvl_close_async(handle: *libc::c_void);
+    fn rust_uv_hilvl_close_timer(handle: *libc::c_void);
     fn rust_uv_async_send(handle: *libc::c_void);
     fn rust_uv_async_init(
         loop_handle: *libc::c_void,
@@ -338,10 +338,18 @@ native mod rustrt {
         -> bool;
     fn rust_uv_ip4_addr(ip: *u8, port: libc::c_int)
         -> sockaddr_in;
+    // FIXME ref #2064
     fn rust_uv_tcp_connect(connect_ptr: *uv_connect_t,
                            tcp_handle_ptr: *uv_tcp_t,
                            ++after_cb: *u8,
                            ++addr: *sockaddr_in) -> libc::c_int;
+    // FIXME ref 2064
+    fn rust_uv_tcp_bind(tcp_server: *uv_tcp_t,
+                        ++addr: *sockaddr_in) -> libc::c_int;
+    fn rust_uv_listen(stream: *libc::c_void, backlog: libc::c_int,
+                      cb: *u8) -> libc::c_int;
+    fn rust_uv_accept(server: *libc::c_void, client: *libc::c_void)
+        -> libc::c_int;
     fn rust_uv_write(req: *libc::c_void, stream: *libc::c_void,
              ++buf_in: *uv_buf_t, buf_cnt: libc::c_int,
              cb: *u8) -> libc::c_int;
@@ -403,6 +411,7 @@ mod direct {
         -> libc::c_int {
         ret rustrt::rust_uv_tcp_init(loop_handle, handle);
     }
+    // FIXME ref #2064
     unsafe fn tcp_connect(connect_ptr: *uv_connect_t,
                           tcp_handle_ptr: *uv_tcp_t,
                           addr_ptr: *sockaddr_in,
@@ -414,10 +423,23 @@ mod direct {
         ret rustrt::rust_uv_tcp_connect(connect_ptr, tcp_handle_ptr,
                                     after_connect_cb, addr_ptr);
     }
+    // FIXME ref #2064
+    unsafe fn tcp_bind(tcp_server_ptr: *uv_tcp_t,
+                       addr_ptr: *sockaddr_in) -> libc::c_int {
+        ret rustrt::rust_uv_tcp_bind(tcp_server_ptr,
+                                     addr_ptr);
+    }
 
-    // TODO github #1402 -- the buf_in is a vector of pointers
-    // to malloc'd buffers .. these will have to be translated
-    // back into their value types in c. sigh.
+    unsafe fn listen(stream: *libc::c_void, backlog: libc::c_int,
+                     cb: *u8) -> libc::c_int {
+        ret rustrt::rust_uv_listen(stream, backlog, cb);
+    }
+
+    unsafe fn accept(server: *libc::c_void, client: *libc::c_void)
+        -> libc::c_int {
+        ret rustrt::rust_uv_accept(server, client);
+    }
+
     unsafe fn write(req: *libc::c_void, stream: *libc::c_void,
              buf_in: *[uv_buf_t], cb: *u8) -> libc::c_int {
         let buf_ptr = vec::unsafe::to_ptr(*buf_in);
@@ -944,12 +966,12 @@ fn handle_op_close(handle: uv_handle, handle_ptr: *libc::c_void) {
     alt handle {
       uv_async(id, lp) {
         let cb = process_close_async;
-        rustrt::rust_uv_close(
+        rustrt::rust_uv_hilvl_close(
             handle_ptr, cb);
       }
       uv_timer(id, lp) {
         let cb = process_close_timer;
-        rustrt::rust_uv_close(
+        rustrt::rust_uv_hilvl_close(
             handle_ptr, cb);
       }
       _ {
@@ -988,7 +1010,7 @@ crust fn process_close_async(
     data: *uv_loop_data)
     unsafe {
     let id = get_handle_id_from(id_buf);
-    rustrt::rust_uv_close_async(handle_ptr);
+    rustrt::rust_uv_hilvl_close_async(handle_ptr);
     // at this point, the handle and its data has been
     // released. notify the rust loop to remove the
     // handle and its data and call the user-supplied
@@ -1002,7 +1024,7 @@ crust fn process_close_timer(
     data: *uv_loop_data)
     unsafe {
     let id = get_handle_id_from(id_buf);
-    rustrt::rust_uv_close_timer(handle_ptr);
+    rustrt::rust_uv_hilvl_close_timer(handle_ptr);
     process_close_common(id, data);
 }
 
@@ -1187,11 +1209,10 @@ fn impl_uv_tcp_request() unsafe {
 
         io::println("building addr...");
         let addr = direct::ip4_addr("74.125.227.16", 80);
+        // FIXME ref #2064
         let addr_ptr = ptr::addr_of(addr);
         io::println(#fmt("after build addr in rust. port: %u",
                          addr.sin_port as uint));
-        //let addr: *libc::c_void = ptr::addr_of(addr_val) as
-        //                            *libc::c_void;
 
         // this should set up the connection request..
         io::println(#fmt("before calling tcp_connect .. connect cb ptr: %u ",
@@ -1264,6 +1285,176 @@ fn test_uv_tcp_request() unsafe {
     impl_uv_tcp_request();
 }
 // END TCP REQUEST TEST SUITE
+
+crust fn server_after_close_cb(handle: *libc::c_void) unsafe {
+    io::println("server stream closed, should exit loop...");
+}
+
+crust fn client_stream_after_close_cb(handle: *libc::c_void)
+    unsafe {
+    io::println("closed client stream, now server..");
+    let client_data = direct::get_data_for_uv_handle(
+        handle) as
+        *tcp_server_data;
+    direct::close((*client_data).server as *libc::c_void,
+                  server_after_close_cb);
+}
+
+crust fn on_server_read_cb(client_stream_ptr: *uv_stream_t,
+                           nread: libc::ssize_t,
+                           ++buf: uv_buf_t) unsafe {
+    if (nread > 0) {
+        // we have data
+        io::println(#fmt("read: data! nread: %d", nread));
+        
+        // pull out the contents of the write from the client
+        let buf_base = direct::get_base_from_buf(buf);
+        let buf_len = direct::get_len_from_buf(buf);
+        let bytes = vec::unsafe::from_buf(buf_base, buf_len);
+        let request_str = str::from_bytes(bytes);
+        io::println("client req to follow");
+        io::println(request_str);
+        io::println("end of client read");
+        
+        if (str::contains(request_str, ">>EOF<<")) {
+            let client_data = direct::get_data_for_uv_handle(
+                client_stream_ptr as *libc::c_void) as
+                *tcp_server_data;
+            direct::read_stop(client_stream_ptr);
+            direct::close(client_stream_ptr as *libc::c_void,
+                          client_stream_after_close_cb)
+        }
+    }
+    else if (nread == -1) {
+        // err .. possibly EOF
+        io::println("read: eof!");
+    }
+    else {
+        // nread == 0 .. do nothing, just free buf as below
+        io::println("read: do nothing!");
+    }
+    // when we're done
+    direct::free_base_of_buf(buf);
+    io::println("exiting on_read_cb");
+}
+
+crust fn server_connection_cb(server_stream_ptr: *uv_stream_t,
+                              status: libc::c_int) unsafe {
+    io::println("client connecting!");
+    let test_loop = direct::get_loop_for_uv_handle(
+                           server_stream_ptr as *libc::c_void);
+    let server_data = direct::get_data_for_uv_handle(
+        server_stream_ptr as *libc::c_void) as *tcp_server_data;
+    let client_stream_ptr = (*server_data).client;
+    let client_init_result = direct::tcp_init(test_loop,
+                                              client_stream_ptr);
+    direct::set_data_for_uv_handle(
+        client_stream_ptr as *libc::c_void,
+        server_data as *libc::c_void);
+    if (client_init_result == 0i32) {
+        io::println("successfully initialized client stream");
+        let accept_result = direct::accept(server_stream_ptr as
+                                             *libc::c_void,
+                                           client_stream_ptr as
+                                             *libc::c_void);
+        if (accept_result == 0i32) {
+            // start reading
+            let read_result = direct::read_start(client_stream_ptr
+                                                   as *uv_stream_t,
+                                                 on_alloc_cb,
+                                                 on_server_read_cb);
+            if (read_result == 0i32) {
+                io::println("successful server read start");
+            }
+            else {
+                io::println(#fmt("server_connection_cb: bad read:%d",
+                                read_result as int));
+                assert false;
+            }
+        }
+        else {
+            io::println(#fmt("server_connection_cb: bad accept: %d",
+                        accept_result as int));
+            assert false;
+        }
+    }
+    else {
+        io::println(#fmt("server_connection_cb: bad client init: %d",
+                    client_init_result as int));
+        assert false;
+    }
+}
+
+type tcp_server_data = {
+    client: *uv_tcp_t,
+    server: *uv_tcp_t
+};
+
+fn impl_uv_tcp_server(server_ip: str, server_port: int) unsafe {
+    let test_loop = direct::loop_new();
+    let tcp_server = direct::tcp_t();
+    let tcp_server_ptr = ptr::addr_of(tcp_server);
+
+    let tcp_client = direct::tcp_t();
+    let tcp_client_ptr = ptr::addr_of(tcp_client);
+
+    let server_data: tcp_server_data = {
+        client: tcp_client_ptr,
+        server: tcp_server_ptr
+    };
+    let server_data_ptr = ptr::addr_of(server_data);
+    direct::set_data_for_uv_handle(tcp_server_ptr as *libc::c_void,
+                                   server_data_ptr as *libc::c_void);
+
+    // uv_tcp_init()
+    let tcp_init_result = direct::tcp_init(
+        test_loop as *libc::c_void, tcp_server_ptr);
+    if (tcp_init_result == 0i32) {
+        let server_addr = direct::ip4_addr(server_ip, server_port);
+        // FIXME ref #2064
+        let server_addr_ptr = ptr::addr_of(server_addr);
+
+        // uv_tcp_bind()
+        let bind_result = direct::tcp_bind(tcp_server_ptr,
+                                           server_addr_ptr);
+        if (bind_result == 0i32) {
+            io::println("successful uv_tcp_bind, listening");
+
+            // uv_listen()
+            let listen_result = direct::listen(tcp_server_ptr as
+                                                 *libc::c_void,
+                                               128i32,
+                                               server_connection_cb);
+            if (listen_result == 0i32) {
+                // uv_run()
+                direct::run(test_loop);
+            }
+            else {
+                io::println(#fmt("non-zero result on uv_listen: %d",
+                            listen_result as int));
+                assert false;
+            }
+            
+            direct::loop_delete(test_loop);
+        }
+        else {
+            io::println(#fmt("non-zero result on uv_tcp_bind: %d",
+                        bind_result as int));
+            assert false;
+        }
+    }
+    else {
+        io::println(#fmt("non-zero result on uv_tcp_init: %d",
+                    tcp_init_result as int));
+        assert false;
+    }
+}
+
+#[test]
+#[ignore(cfg(target_os = "freebsd"))]
+fn test_uv_tcp_server() unsafe {
+    impl_uv_tcp_server("0.0.0.0", 8888);
+}
 
 // struct size tests
 #[test]
