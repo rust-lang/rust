@@ -8,7 +8,9 @@ type chunk = {data: [u8], mut fill: uint};
 type arena = {mut chunks: list::list<@chunk>};
 
 fn chunk(size: uint) -> @chunk {
-    @{ data: vec::from_elem(size, 0u8), mut fill: 0u }
+    let mut v = [];
+    vec::reserve(v, size);
+    @{ data: v, mut fill: 0u }
 }
 
 fn arena_with_size(initial_size: uint) -> arena {
