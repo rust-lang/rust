@@ -22,22 +22,27 @@ fn arena() -> arena {
 }
 
 impl arena for arena {
+    fn alloc_grow(n_bytes: uint, align: uint) -> *() {
+        // Allocate a new chunk.
+        let mut head = list::head(self.chunks);
+        let chunk_size = vec::alloc_len(head.data);
+        let new_min_chunk_size = uint::max(n_bytes, chunk_size);
+        head = chunk(uint::next_power_of_two(new_min_chunk_size));
+        self.chunks = list::cons(head, @self.chunks);
+
+        ret self.alloc(n_bytes, align);
+    }
+
+    #[inline(always)]
     fn alloc(n_bytes: uint, align: uint) -> *() {
         let alignm1 = align - 1u;
         let mut head = list::head(self.chunks);
 
         let mut start = head.fill;
         start = (start + alignm1) & !alignm1;
-        let mut end = start + n_bytes;
-
+        let end = start + n_bytes;
         if end > vec::alloc_len(head.data) {
-            // Allocate a new chunk.
-            let new_min_chunk_size = uint::max(n_bytes,
-                                               vec::alloc_len(head.data));
-            head = chunk(uint::next_power_of_two(new_min_chunk_size));
-            self.chunks = list::cons(head, @self.chunks);
-            start = 0u;
-            end = n_bytes;
+            ret self.alloc_grow(n_bytes, align);
         }
 
         unsafe {
