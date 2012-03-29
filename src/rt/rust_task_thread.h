@@ -2,15 +2,8 @@
 #define RUST_TASK_THREAD_H
 
 #include "rust_internal.h"
-#include "sync/rust_thread.h"
 #include "rust_stack.h"
 #include "context.h"
-
-#ifndef _WIN32
-#include <pthread.h>
-#else
-#include <windows.h>
-#endif
 
 enum rust_task_state {
     task_state_newborn,
@@ -21,8 +14,7 @@ enum rust_task_state {
 
 typedef indexed_list<rust_task> rust_task_list;
 
-struct rust_task_thread : public kernel_owned<rust_task_thread>,
-                        rust_thread
+struct rust_task_thread
 {
 private:
 
@@ -75,6 +67,7 @@ public:
 
     randctx rctx;
 
+    // FIXME: Neither of these are used
     int32_t list_index;
     const char *const name;
 
@@ -102,8 +95,6 @@ public:
     void transition(rust_task *task,
                     rust_task_state src, rust_task_state dst,
                     rust_cond *cond, const char* cond_name);
-
-    virtual void run();
 
     void init_tls();
     void place_task_in_tls(rust_task *task);

@@ -3,6 +3,8 @@
 
 #include "rust_internal.h"
 
+class rust_sched_launcher;
+
 class rust_scheduler : public kernel_owned<rust_scheduler> {
     // FIXME: Make these private
 public:
@@ -17,7 +19,7 @@ private:
     // When this hits zero we'll tell the threads to exit
     uintptr_t live_tasks;
 
-    array_list<rust_task_thread *> threads;
+    array_list<rust_sched_launcher *> threads;
     const size_t num_threads;
     size_t cur_thread;
 
@@ -26,8 +28,8 @@ private:
     void create_task_threads();
     void destroy_task_threads();
 
-    rust_task_thread *create_task_thread(int id);
-    void destroy_task_thread(rust_task_thread *thread);
+    rust_sched_launcher *create_task_thread(int id);
+    void destroy_task_thread(rust_sched_launcher *thread);
 
     void exit();
 

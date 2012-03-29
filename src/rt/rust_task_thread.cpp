@@ -13,7 +13,6 @@ pthread_key_t rust_task_thread::task_key;
 DWORD rust_task_thread::task_key;
 #endif
 
-const size_t SCHED_STACK_SIZE = 1024*100;
 const size_t C_STACK_SIZE = 1024*1024;
 
 bool rust_task_thread::tls_initialized = false;
@@ -21,7 +20,6 @@ bool rust_task_thread::tls_initialized = false;
 rust_task_thread::rust_task_thread(rust_scheduler *sched,
                                    rust_srv *srv,
                                    int id) :
-    rust_thread(SCHED_STACK_SIZE),
     _log(srv, this),
     id(id),
     should_exit(false),
@@ -256,6 +254,8 @@ rust_task_thread::start_main_loop() {
         destroy_stack(kernel->region(), cached_c_stack);
         cached_c_stack = NULL;
     }
+
+    sched->release_task_thread();
 }
 
 rust_task *
@@ -325,11 +325,6 @@ rust_task_thread::transition(rust_task *task,
     task->set_state(dst, cond, cond_name);
 
     lock.signal();
-}
-
-void rust_task_thread::run() {
-    this->start_main_loop();
-    sched->release_task_thread();
 }
 
 #ifndef _WIN32
