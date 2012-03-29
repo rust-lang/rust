@@ -27,7 +27,7 @@ impl arena for arena {
         let mut head = list::head(self.chunks);
         let chunk_size = vec::alloc_len(head.data);
         let new_min_chunk_size = uint::max(n_bytes, chunk_size);
-        head = chunk(uint::next_power_of_two(new_min_chunk_size));
+        head = chunk(uint::next_power_of_two(new_min_chunk_size + 1u));
         self.chunks = list::cons(head, @self.chunks);
 
         ret self.alloc(n_bytes, align);
