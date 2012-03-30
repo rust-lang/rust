@@ -55,6 +55,7 @@ export
    all_between, any_between,
    map,
    each,
+   each_char,
    bytes_iter,
    chars_iter,
    split_char_iter,
@@ -632,6 +633,18 @@ fn each(s: str, it: fn(u8) -> bool) {
     while (i < l) {
         if !it(s[i]) { break; }
         i += 1u;
+    }
+}
+
+#[doc = "Iterates over the chars in a string"]
+#[inline(always)]
+fn each_char(s: str, it: fn(char) -> bool) {
+    let mut pos = 0u;
+    let len = len(s);
+    while pos < len {
+        let {ch, next} = char_range_at(s, pos);
+        pos = next;
+        if !it(ch) { break; }
     }
 }
 
@@ -2668,5 +2681,18 @@ mod tests {
             assert from_utf16(to_utf16(s)) == s;
             assert to_utf16(from_utf16(u)) == u;
         }
+    }
+
+    #[test]
+    fn test_each_char() {
+        let s = "abc";
+        let mut found_b = false;
+        for each_char(s) {|ch|
+            if ch == 'b' {
+                found_b = true;
+                break;
+            }
+        }
+        assert found_b;
     }
 }
