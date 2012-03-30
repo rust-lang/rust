@@ -12,6 +12,16 @@ enum rust_task_state {
     task_state_dead
 };
 
+/*
+The result of every turn of the scheduler loop. Instructs the loop
+driver how to proceed.
+ */
+enum rust_sched_loop_state {
+    sched_loop_state_keep_going,
+    sched_loop_state_block,
+    sched_loop_state_exit
+};
+
 typedef indexed_list<rust_task> rust_task_list;
 
 struct rust_sched_loop
@@ -48,6 +58,8 @@ private:
 
     rust_task_list *state_list(rust_task_state state);
     const char *state_name(rust_task_state state);
+
+    rust_sched_loop_state run_single_turn();
 
 public:
     rust_kernel *kernel;

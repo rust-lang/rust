@@ -182,6 +182,7 @@ rust_sched_loop::log_state() {
         }
     }
 }
+
 /**
  * Starts the main scheduler loop which performs task scheduling for this
  * domain.
@@ -191,11 +192,29 @@ rust_sched_loop::log_state() {
  */
 void
 rust_sched_loop::start_main_loop() {
-    lock.lock();
-
     DLOG(this, dom, "started domain loop %d", id);
 
-    while (!should_exit) {
+    rust_sched_loop_state state = sched_loop_state_keep_going;
+    while (state != sched_loop_state_exit) {
+        state = run_single_turn();
+
+        scoped_lock with(lock);
+        if (!should_exit && running_tasks.length() == 0) {
+            lock.wait();
+        }
+        DLOG(this, task,
+             "scheduler %d resuming ...", id);
+    }
+}
+
+rust_sched_loop_state
+rust_sched_loop::run_single_turn() {
+    lock.lock();
+
+    if (!should_exit) {
+        A(this, dead_task == NULL,
+          "Tasks should only die after running");
+
         DLOG(this, dom, "worker %d, number_of_live_tasks = %d",
              id, number_of_live_tasks());
 
@@ -206,12 +225,9 @@ rust_sched_loop::start_main_loop() {
             DLOG(this, task,
                  "all tasks are blocked, scheduler id %d yielding ...",
                  id);
-            lock.wait();
-            A(this, dead_task == NULL,
-              "Tasks should only die after running");
-            DLOG(this, task,
-                 "scheduler %d resuming ...", id);
-            continue;
+
+            lock.unlock();
+            return sched_loop_state_block;
         }
 
         I(this, scheduled_task->running());
@@ -239,23 +255,27 @@ rust_sched_loop::start_main_loop() {
              id);
 
         reap_dead_tasks();
+
+        lock.unlock();
+        return sched_loop_state_keep_going;
+    } else {
+        A(this, running_tasks.is_empty(), "Should have no running tasks");
+        A(this, blocked_tasks.is_empty(), "Should have no blocked tasks");
+        A(this, dead_task == NULL, "Should have no dead tasks");
+
+        DLOG(this, dom, "finished main-loop %d", id);
+
+        lock.unlock();
+
+        I(this, !extra_c_stack);
+        if (cached_c_stack) {
+            destroy_stack(kernel->region(), cached_c_stack);
+            cached_c_stack = NULL;
+        }
+
+        sched->release_task_thread();
+        return sched_loop_state_exit;
     }
-
-    A(this, running_tasks.is_empty(), "Should have no running tasks");
-    A(this, blocked_tasks.is_empty(), "Should have no blocked tasks");
-    A(this, dead_task == NULL, "Should have no dead tasks");
-
-    DLOG(this, dom, "finished main-loop %d", id);
-
-    lock.unlock();
-
-    I(this, !extra_c_stack);
-    if (cached_c_stack) {
-        destroy_stack(kernel->region(), cached_c_stack);
-        cached_c_stack = NULL;
-    }
-
-    sched->release_task_thread();
 }
 
 rust_task *
@@ -360,6 +380,7 @@ rust_sched_loop::place_task_in_tls(rust_task *task) {
 void
 rust_sched_loop::exit() {
     scoped_lock with(lock);
+    DLOG(this, dom, "Requesting exit for thread %d", id);
     should_exit = true;
     lock.signal();
 }
