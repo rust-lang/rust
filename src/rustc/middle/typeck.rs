@@ -1790,9 +1790,9 @@ fn region_env() -> @region_env {
 // Replaces all region parameters in the given type with region variables.
 // This is used when typechecking function calls, bind expressions, and method
 // calls.
-fn universally_quantify_regions(fcx: @fn_ctxt, renv: @region_env, ty: ty::t)
-        -> ty::t {
+fn universally_quantify_regions(fcx: @fn_ctxt, ty: ty::t) -> ty::t {
     if ty::type_has_rptrs(ty) {
+        let renv = region_env();
         ty::fold_ty(fcx.ccx.tcx, ty::fm_rptr({|r, _under_rptr|
             alt r {
                 ty::re_param(param_id) {
@@ -2301,12 +2301,10 @@ fn lookup_method_inner(fcx: @fn_ctxt, expr: @ast::expr,
                     self_ty = instantiate_self_regions(fcx.ccx.tcx,
                                                        ty::re_param(next_rid),
                                                        self_ty);
-                    self_ty = universally_quantify_regions(fcx, region_env(),
-                                                           self_ty);
+                    self_ty = universally_quantify_regions(fcx, self_ty);
 
                     // ... and "ty" refers to the caller side.
-                    let ty = universally_quantify_regions(fcx, region_env(),
-                                                          ty);
+                    let ty = universally_quantify_regions(fcx, ty);
 
                     alt unify::unify(fcx, self_ty, ty) {
                       result::ok(_) {
@@ -2440,9 +2438,11 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
 
     // A generic function to factor out common logic from call and bind
     // expressions.
-    fn check_call_or_bind(fcx: @fn_ctxt, sp: span, fty: ty::t,
-                          args: [option<@ast::expr>]) -> bool {
+    fn check_call_or_bind(
+        fcx: @fn_ctxt, sp: span, fty: ty::t,
+        args: [option<@ast::expr>]) -> {fty: ty::t, bot: bool} {
 
+        let fty = universally_quantify_regions(fcx, fty);
         let sty = structure_of(fcx, sp, fty);
         // Grab the argument types
         let mut arg_tys = alt sty {
@@ -2510,7 +2510,10 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
             }
             ret bot;
         };
-        ret check_args(false) | check_args(true);
+
+        let bot = check_args(false) | check_args(true);
+
+        {fty: fty, bot: bot}
     }
 
     // A generic function for checking assignment expressions
@@ -2532,11 +2535,11 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
 
         let bot = check_expr(fcx, f);
 
-        let mut fn_ty = fcx.expr_ty(f);
-        fn_ty = universally_quantify_regions(fcx, region_env(), fn_ty);
-
         // Call the generic checker.
-        ret check_call_or_bind(fcx, sp, fn_ty, args_opt_0) | bot;
+        ret {
+            let fn_ty = fcx.expr_ty(f);
+            check_call_or_bind(fcx, sp, fn_ty, args_opt_0).bot | bot
+        };
     }
 
     // A generic function for doing all of the checking for call expressions
@@ -2612,10 +2615,10 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         let callee_id = ast_util::op_expr_callee_id(op_ex);
         alt lookup_method(fcx, op_ex, callee_id, opname, self_t, [], false) {
           some(origin) {
-            let method_ty = fcx.node_ty(callee_id);
-            let method_ty = universally_quantify_regions(fcx, region_env(),
-                                                     method_ty);
-            let bot = check_call_or_bind(fcx, op_ex.span, method_ty, args);
+            let {fty: method_ty, bot: bot} = {
+                let method_ty = fcx.node_ty(callee_id);
+                check_call_or_bind(fcx, op_ex.span, method_ty, args)
+            };
             fcx.ccx.method_map.insert(op_ex.id, origin);
             some((ty::ty_fn_ret(method_ty), bot))
           }
@@ -2834,18 +2837,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         let defn = lookup_def(fcx, pth.span, id);
 
         let tpt = ty_param_bounds_and_ty_for_def(fcx, expr.span, defn);
-        if ty::def_has_ty_params(defn) {
-            instantiate_path(fcx, pth, tpt, expr.span, expr.id);
-        } else {
-            // The definition doesn't take type parameters. If the programmer
-            // supplied some, that's an error
-            if vec::len::<@ast::ty>(pth.node.types) > 0u {
-                tcx.sess.span_fatal(expr.span,
-                                    "this kind of value does not \
-                                     take type parameters");
-            }
-            fcx.write_ty(id, tpt.ty);
-        }
+        instantiate_path(fcx, pth, tpt, expr.span, expr.id);
       }
       ast::expr_mac(_) { tcx.sess.bug("unexpanded macro"); }
       ast::expr_fail(expr_opt) {
@@ -3045,10 +3037,10 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         // Call the generic checker.
         bot = check_expr(fcx, f);
 
-        let mut fn_ty = fcx.expr_ty(f);
-        fn_ty = universally_quantify_regions(fcx, region_env(), fn_ty);
-
-        let ccob_bot = check_call_or_bind(fcx, expr.span, fn_ty, args);
+        let ccob_bot = {
+            let fn_ty = fcx.expr_ty(f);
+            check_call_or_bind(fcx, expr.span, fn_ty, args).bot
+        };
         bot |= ccob_bot;
 
         // TODO: Perform substitutions on the return type.
