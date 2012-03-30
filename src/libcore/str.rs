@@ -1761,6 +1761,12 @@ impl extensions for str {
     #[doc = "Returns true if one string contains another"]
     #[inline]
     fn contains(needle: str) -> bool { contains(self, needle) }
+    #[doc = "Iterate over the bytes in a string"]
+    #[inline]
+    fn each(it: fn(u8) -> bool) { each(self, it) }
+    #[doc = "Iterate over the chars in a string"]
+    #[inline]
+    fn each_char(it: fn(char) -> bool) { each_char(self, it) }
     #[doc = "Returns true if one string ends with another"]
     #[inline]
     fn ends_with(needle: str) -> bool { ends_with(self, needle) }
