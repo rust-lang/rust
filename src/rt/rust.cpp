@@ -93,7 +93,7 @@ rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map) {
     root_task->start((spawn_fn)main_fn, NULL, args->args);
     root_task = NULL;
 
-    int ret = kernel->wait_for_schedulers();
+    int ret = kernel->wait_for_exit();
     delete args;
     delete kernel;
     delete srv;

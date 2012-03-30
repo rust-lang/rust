@@ -6,6 +6,7 @@
 #include <vector>
 #include "memory_region.h"
 #include "rust_log.h"
+#include "rust_sched_reaper.h"
 
 struct rust_task_thread;
 class rust_scheduler;
@@ -46,6 +47,8 @@ private:
     // A list of scheduler ids that are ready to exit
     std::vector<rust_sched_id> join_list;
 
+    rust_sched_reaper sched_reaper;
+
 public:
 
     struct rust_env *env;
@@ -66,7 +69,8 @@ public:
     rust_scheduler* get_scheduler_by_id(rust_sched_id id);
     // Called by a scheduler to indicate that it is terminating
     void release_scheduler_id(rust_sched_id id);
-    int wait_for_schedulers();
+    void wait_for_schedulers();
+    int wait_for_exit();
 
 #ifdef __WIN32__
     void win32_require(LPCTSTR fn, BOOL ok);
