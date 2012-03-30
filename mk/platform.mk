@@ -9,8 +9,7 @@ endef
 $(foreach t,$(CFG_TARGET_TRIPLES),$(eval $(call DEF_HOST_VAR,$(t))))
 $(foreach t,$(CFG_TARGET_TRIPLES),$(info cfg: host for $(t) is $(HOST_$(t))))
 
-CFG_GCCISH_FLAGS := -fno-strict-aliasing
-CFG_GCCISH_LINK_FLAGS :=
+CFG_GCCISH_FLAGS += -fno-strict-aliasing
 
 # On Darwin, we need to run dsymutil so the debugging information ends
 # up in the right place.  On other platforms, it automatically gets

@@ -68,11 +68,24 @@ ifneq ($(wildcard $(NON_HOST_TRIPLES)),)
 CFG_INFO := $(info cfg: non host triples $(NON_HOST_TRIPLES))
 endif
 
+CFG_RUSTC_FLAGS :=
+CFG_GCCISH_CFLAGS :=
+CFG_GCCISH_LINK_FLAGS :=
+
 ifdef CFG_DISABLE_OPTIMIZE
   $(info cfg: disabling rustc optimization (CFG_DISABLE_OPTIMIZE))
-  CFG_RUSTC_FLAGS :=
+  CFG_RUSTC_FLAGS +=
 else
-  CFG_RUSTC_FLAGS := -O
+  CFG_RUSTC_FLAGS += -O
+endif
+
+ifdef CFG_ENABLE_DEBUG
+  $(info cfg: enabling more debugging (CFG_ENABLE_DEBUG))
+  CFG_RUSTC_FLAGS += -g --cfg=debug
+  CFG_GCCISH_CFLAGS += -DRUST_DEBUG
+else
+  CFG_RUSTC_FLAGS += --cfg=ndebug
+  CFG_GCCISH_CFLAGS += -DRUST_NDEBUG
 endif
 
 ifdef SAVE_TEMPS
@@ -86,9 +99,6 @@ ifdef TIME_PASSES
 endif
 ifdef TIME_LLVM_PASSES
   CFG_RUSTC_FLAGS += --time-llvm-passes
-endif
-ifdef DEBUG
-  CFG_RUSTC_FLAGS += -g
 endif
 
 # platform-specific auto-configuration
