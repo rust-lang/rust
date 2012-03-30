@@ -211,7 +211,7 @@ fn gen_stub_uv_connect_t() -> uv_connect_t {
 }
 #[cfg(target_os = "win32")]
 fn gen_stub_uv_connect_t() -> uv_connect_t {
-    ret { 
+    ret {
         a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8, a03: 0 as *u8,
         a04: 0 as *u8, a05: 0 as *u8, a06: 0 as *u8, a07: 0 as *u8,
         a08: 0 as *u8, a09: 0 as *u8, a10: 0 as *u8
@@ -1076,8 +1076,6 @@ fn test_uv_timer() {
     uv::loop_delete(test_loop);
 }
 
-// BEGIN TCP REQUEST TEST SUITE
-
 enum tcp_read_data {
     tcp_read_eof,
     tcp_read_more([u8]),
@@ -1087,7 +1085,7 @@ enum tcp_read_data {
 type request_wrapper = {
     write_req: *uv_write_t,
     req_buf: *[uv_buf_t],
-    read_chan: comm::chan<tcp_read_data>
+    read_chan: *comm::chan<str>
 };
 
 crust fn after_close_cb(handle: *libc::c_void) {
@@ -1114,9 +1112,9 @@ crust fn on_read_cb(stream: *uv_stream_t, nread: libc::ssize_t,
         let buf_base = direct::get_base_from_buf(buf);
         let buf_len = direct::get_len_from_buf(buf);
         let bytes = vec::unsafe::from_buf(buf_base, buf_len);
-        let read_chan = (*client_data).read_chan;
-        comm::send(read_chan, tcp_read_more(bytes));
-        comm::send(read_chan, tcp_read_eof);
+        let read_chan = *((*client_data).read_chan);
+        let msg_from_server = str::from_bytes(bytes);
+        comm::send(read_chan, msg_from_server);
         direct::close(stream as *libc::c_void, after_close_cb)
     }
     else if (nread == -1) {
@@ -1171,7 +1169,8 @@ crust fn on_connect_cb(connect_req_ptr: *uv_connect_t,
     io::println("finishing on_connect_cb");
 }
 
-fn impl_uv_tcp_request() unsafe {
+fn impl_uv_tcp_request(ip: str, port: int, req_str: str,
+                      client_chan: *comm::chan<str>) unsafe {
     let test_loop = direct::loop_new();
     let tcp_handle = direct::tcp_t();
     let tcp_handle_ptr = ptr::addr_of(tcp_handle);
@@ -1183,11 +1182,10 @@ fn impl_uv_tcp_request() unsafe {
     // In C, this would be a malloc'd or stack-allocated
     // struct that we'd cast to a void* and store as the
     // data field in our uv_connect_t struct
-    let req_str = str::bytes("GET / HTTP/1.1\r\nHost: google.com"
-                                + "\r\n\r\n\r\n");
-    let req_msg_ptr: *u8 = vec::unsafe::to_ptr(req_str);
+    let req_str_bytes = str::bytes(req_str);
+    let req_msg_ptr: *u8 = vec::unsafe::to_ptr(req_str_bytes);
     let req_msg = [
-        direct::buf_init(req_msg_ptr, vec::len(req_str))
+        direct::buf_init(req_msg_ptr, vec::len(req_str_bytes))
     ];
     // this is the enclosing record, we'll pass a ptr to
     // this to C..
@@ -1196,11 +1194,9 @@ fn impl_uv_tcp_request() unsafe {
     io::println(#fmt("tcp req: tcp stream: %d write_handle: %d",
                      tcp_handle_ptr as int,
                      write_handle_ptr as int));
-    let read_port = comm::port::<tcp_read_data>();
-    let read_chan = comm::chan::<tcp_read_data>(read_port);
     let client_data = { writer_handle: write_handle_ptr,
                 req_buf: ptr::addr_of(req_msg),
-                read_chan: read_chan };
+                read_chan: client_chan };
 
     let tcp_init_result = direct::tcp_init(
         test_loop as *libc::c_void, tcp_handle_ptr);
@@ -1208,7 +1204,7 @@ fn impl_uv_tcp_request() unsafe {
         io::println("sucessful tcp_init_result");
 
         io::println("building addr...");
-        let addr = direct::ip4_addr("74.125.227.16", 80);
+        let addr = direct::ip4_addr(ip, port);
         // FIXME ref #2064
         let addr_ptr = ptr::addr_of(addr);
         io::println(#fmt("after build addr in rust. port: %u",
@@ -1232,40 +1228,6 @@ fn impl_uv_tcp_request() unsafe {
             io::println("before run tcp req loop");
             direct::run(test_loop);
             io::println("after run tcp req loop");
-
-            // now we read from the port to get data
-            let mut read_bytes: [u8] = [0u8];
-            let mut more_data = true;
-            while(more_data) {
-                alt comm::recv(read_port) {
-                  tcp_read_eof {
-                    more_data = false;
-                  }
-                  tcp_read_more(new_bytes) {
-                    if (vec::len(read_bytes) == 1u &&
-                        read_bytes[0] == 0u8) {
-                        // the "first" read.. replace
-                        // the stubbed out vec above
-                        // with our initial set of read
-                        // data
-                        read_bytes = new_bytes;
-                    }
-                    else {
-                        // otherwise append
-                        read_bytes += new_bytes;
-                    }
-                  }
-                  _ {
-                    assert false;
-                  }
-                }
-            }
-            io::println("finished reading data, output to follow:");
-            let read_str = str::from_bytes(read_bytes);
-
-            io::println(read_str);
-            io::println(">>>>EOF<<<<");
-            direct::loop_delete(test_loop);
         }
         else {
            io::println("direct::tcp_connect() failure");
@@ -1276,15 +1238,9 @@ fn impl_uv_tcp_request() unsafe {
         io::println("direct::tcp_init() failure");
         assert false;
     }
+    direct::loop_delete(test_loop);
 
 }
-// START HERE AND WORK YOUR WAY UP VIA CALLBACKS
-#[test]
-#[ignore(cfg(target_os = "freebsd"))]
-fn test_uv_tcp_request() unsafe {
-    impl_uv_tcp_request();
-}
-// END TCP REQUEST TEST SUITE
 
 crust fn server_after_close_cb(handle: *libc::c_void) unsafe {
     io::println("server stream closed, should exit loop...");
@@ -1300,13 +1256,24 @@ crust fn client_stream_after_close_cb(handle: *libc::c_void)
                   server_after_close_cb);
 }
 
+crust fn after_server_resp_write(req: *uv_write_t) unsafe {
+    let client_stream_ptr =
+        direct::get_stream_handle_from_write_req(req);
+    let client_data = direct::get_data_for_uv_handle(
+        client_stream_ptr as *libc::c_void) as
+        *tcp_server_data;
+    direct::read_stop(client_stream_ptr);
+    direct::close(client_stream_ptr as *libc::c_void,
+                  client_stream_after_close_cb)
+}
+
 crust fn on_server_read_cb(client_stream_ptr: *uv_stream_t,
                            nread: libc::ssize_t,
                            ++buf: uv_buf_t) unsafe {
     if (nread > 0) {
         // we have data
         io::println(#fmt("read: data! nread: %d", nread));
-        
+
         // pull out the contents of the write from the client
         let buf_base = direct::get_base_from_buf(buf);
         let buf_len = direct::get_len_from_buf(buf);
@@ -1315,14 +1282,20 @@ crust fn on_server_read_cb(client_stream_ptr: *uv_stream_t,
         io::println("client req to follow");
         io::println(request_str);
         io::println("end of client read");
-        
-        if (str::contains(request_str, ">>EOF<<")) {
-            let client_data = direct::get_data_for_uv_handle(
-                client_stream_ptr as *libc::c_void) as
-                *tcp_server_data;
-            direct::read_stop(client_stream_ptr);
-            direct::close(client_stream_ptr as *libc::c_void,
-                          client_stream_after_close_cb)
+
+        let client_data = direct::get_data_for_uv_handle(
+            client_stream_ptr as *libc::c_void) as *tcp_server_data;
+
+        let server_kill_msg = (*client_data).server_kill_msg;
+        let write_req = (*client_data).server_write_req;
+        if (str::contains(request_str, server_kill_msg)) {
+            let server_chan = *((*client_data).server_chan);
+            comm::send(server_chan, request_str);
+            let write_result = direct::write(
+                write_req as *libc::c_void,
+                client_stream_ptr as *libc::c_void,
+                (*client_data).server_resp_buf,
+                after_server_resp_write);
         }
     }
     else if (nread == -1) {
@@ -1387,10 +1360,19 @@ crust fn server_connection_cb(server_stream_ptr: *uv_stream_t,
 
 type tcp_server_data = {
     client: *uv_tcp_t,
-    server: *uv_tcp_t
+    server: *uv_tcp_t,
+    server_kill_msg: str,
+    server_resp_buf: *[uv_buf_t],
+    server_chan: *comm::chan<str>,
+    server_write_req: *uv_write_t
 };
 
-fn impl_uv_tcp_server(server_ip: str, server_port: int) unsafe {
+fn impl_uv_tcp_server(server_ip: str,
+                      server_port: int,
+                      kill_server_msg: str,
+                      server_resp_msg: str,
+                      server_chan: *comm::chan<str>,
+                      continue_chan: comm::chan<bool>) unsafe {
     let test_loop = direct::loop_new();
     let tcp_server = direct::tcp_t();
     let tcp_server_ptr = ptr::addr_of(tcp_server);
@@ -1398,9 +1380,22 @@ fn impl_uv_tcp_server(server_ip: str, server_port: int) unsafe {
     let tcp_client = direct::tcp_t();
     let tcp_client_ptr = ptr::addr_of(tcp_client);
 
+    let server_write_req = direct::write_t();
+    let server_write_req_ptr = ptr::addr_of(server_write_req);
+
+    let resp_str_bytes = str::bytes(server_resp_msg);
+    let resp_msg_ptr: *u8 = vec::unsafe::to_ptr(resp_str_bytes);
+    let resp_msg = [
+        direct::buf_init(resp_msg_ptr, vec::len(resp_str_bytes))
+    ];
+
     let server_data: tcp_server_data = {
         client: tcp_client_ptr,
-        server: tcp_server_ptr
+        server: tcp_server_ptr,
+        server_kill_msg: kill_server_msg,
+        server_resp_buf: ptr::addr_of(resp_msg),
+        server_chan: server_chan,
+        server_write_req: server_write_req_ptr
     };
     let server_data_ptr = ptr::addr_of(server_data);
     direct::set_data_for_uv_handle(tcp_server_ptr as *libc::c_void,
@@ -1426,6 +1421,10 @@ fn impl_uv_tcp_server(server_ip: str, server_port: int) unsafe {
                                                128i32,
                                                server_connection_cb);
             if (listen_result == 0i32) {
+                // let the test know it can set up the tcp server,
+                // now.. this may still present a race, not sure..
+                comm::send(continue_chan, true);
+
                 // uv_run()
                 direct::run(test_loop);
             }
@@ -1434,8 +1433,6 @@ fn impl_uv_tcp_server(server_ip: str, server_port: int) unsafe {
                             listen_result as int));
                 assert false;
             }
-            
-            direct::loop_delete(test_loop);
         }
         else {
             io::println(#fmt("non-zero result on uv_tcp_bind: %d",
@@ -1448,12 +1445,48 @@ fn impl_uv_tcp_server(server_ip: str, server_port: int) unsafe {
                     tcp_init_result as int));
         assert false;
     }
+    direct::loop_delete(test_loop);
 }
 
 #[test]
 #[ignore(cfg(target_os = "freebsd"))]
-fn test_uv_tcp_server() unsafe {
-    impl_uv_tcp_server("0.0.0.0", 8888);
+fn test_uv_tcp_server_and_request() unsafe {
+    let ip = "0.0.0.0";
+    let port = 8888;
+    let kill_server_msg = "does a dog have buddha nature?";
+    let server_resp_msg = "mu!";
+    let client_port = comm::port::<str>();
+    let client_chan = comm::chan::<str>(client_port);
+    let server_port = comm::port::<str>();
+    let server_chan = comm::chan::<str>(server_port);
+
+    let continue_port = comm::port::<bool>();
+    let continue_chan = comm::chan::<bool>(continue_port);
+
+    task::spawn_sched(task::manual_threads(1u)) {||
+        impl_uv_tcp_server(ip, port,
+                           kill_server_msg,
+                           server_resp_msg,
+                           ptr::addr_of(server_chan),
+                           continue_chan);
+    };
+
+    // block until the server up is.. possibly a race?
+    io::println("before receiving on server continue_port");
+    comm::recv(continue_port);
+    io::println("received on continue port, set up tcp client");
+
+    task::spawn_sched(task::manual_threads(1u)) {||
+        impl_uv_tcp_request(ip, port,
+                           kill_server_msg,
+                           ptr::addr_of(client_chan));
+    };
+
+    let msg_from_client = comm::recv(server_port);
+    let msg_from_server = comm::recv(client_port);
+
+    assert str::contains(msg_from_client, kill_server_msg);
+    assert str::contains(msg_from_server, server_resp_msg);
 }
 
 // struct size tests
