@@ -82,8 +82,33 @@ type fn_ctxt =
      locals: hashmap<ast::node_id, int>,
      next_var_id: @mut int,
      next_region_var_id: @mut int,
+
+     // While type checking a function, the intermediate types for the
+     // expressions, blocks, and so forth contained within the function are
+     // stored in these tables.  These types may contain unresolved type
+     // variables.  After type checking is complete, the functions in the
+     // writeback module are used to take the types from this table, resolve
+     // them, and then write them into their permanent home in the type
+     // context `ccx.tcx`.
+     //
+     // This means that during inferencing you should use `fcx.write_ty()`
+     // and `fcx.expr_ty()` / `fcx.node_ty()` to write/obtain the types of
+     // nodes within the function.
+     //
+     // The types of top-level items, which never contain unbound type
+     // variables, are stored directly into the `tcx` tables.
+     //
+     // n.b.: A type variable is not the same thing as a type parameter.  A
+     // type variable is rather an "instance" of a type parameter: that is,
+     // given a generic function `fn foo<T>(t: T)`: while checking the
+     // function `foo`, the type `ty_param(0)` refers to the type `T`, which
+     // is treated in abstract.  When `foo()` is called, however, `T` will be
+     // substituted for a fresh type variable `ty_var(N)`.  This variable will
+     // eventually be resolved to some concrete type (which might itself be
+     // type parameter).
      node_types: smallintmap::smallintmap<ty::t>,
      node_type_substs: hashmap<ast::node_id, [ty::t]>,
+
      ccx: @crate_ctxt};
 
 // Determines whether the given node ID is a use of the def of

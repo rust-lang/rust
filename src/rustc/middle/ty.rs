@@ -194,8 +194,18 @@ type ctxt =
       sess: session::session,
       def_map: resolve::def_map,
       region_map: @middle::region::region_map,
+
+      // Stores the types for various nodes in the AST.  Note that this table
+      // is not guaranteed to be populated until after typeck.  See
+      // typeck::fn_ctxt for details.
       node_types: node_type_table,
+
+      // Stores the type parameters which were substituted to obtain the type
+      // of this node.  This only applies to nodes that refer to entities
+      // parameterized by type parameters, such as generic fns, types, or
+      // other items.
       node_type_substs: hashmap<node_id, [t]>,
+
       items: ast_map::map,
       freevars: freevars::freevar_map,
       tcache: type_cache,
