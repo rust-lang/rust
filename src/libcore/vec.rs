@@ -964,6 +964,12 @@ impl extensions<T> for [const T] {
     #[doc = "Returns the number of elements that are equal to a given value"]
     #[inline]
     fn count(x: T) -> uint { count(self, x) }
+    #[doc = "Iterates over a vector, with option to break"]
+    #[inline]
+    fn each<T>(f: fn(T) -> bool) { each(self, f) }
+    #[doc = "Iterates over a vector's elements and indices"]
+    #[inline]
+    fn eachi<T>(f: fn(uint, T) -> bool) { eachi(self, f) }
     #[doc = "Reduce a vector from left to right"]
     #[inline]
     fn foldl<U: copy>(z: U, p: fn(U, T) -> U) -> U { foldl(z, self, p) }
