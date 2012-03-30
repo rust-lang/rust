@@ -2802,7 +2802,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                 let variants = ty::enum_variants(tcx, id);
                 if vec::len(*variants) != 1u ||
                        vec::len(variants[0].args) != 1u {
-                    tcx.sess.span_err(expr.span,
+                    tcx.sess.span_fatal(expr.span,
                                         "can only dereference enums " +
                                         "with a single variant which has a "
                                             + "single argument");
