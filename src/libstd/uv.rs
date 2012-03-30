@@ -274,6 +274,30 @@ fn gen_stub_uv_write_t() -> uv_write_t {
         a12: 0 as *u8
     };
 }
+// unix size: 120
+#[cfg(target_os = "linux")]
+#[cfg(target_os = "macos")]
+#[cfg(target_os = "freebsd")]
+#[cfg(target_os = "win32")]
+type uv_async_t = {
+    fields: uv_handle_fields,
+    a00: *u8, a01: *u8, a02: *u8, a03: *u8,
+    a04: *u8, a05: *u8, a06: *u8, a07: *u8,
+    a08: *u8, a09: *u8, a10: *u8
+};
+#[cfg(target_os = "linux")]
+#[cfg(target_os = "macos")]
+#[cfg(target_os = "freebsd")]
+#[cfg(target_os = "win32")]
+fn gen_stub_uv_async_t() -> uv_async_t {
+    ret { fields: { loop_handle: ptr::null(), type_: 0u32,
+                    close_cb: ptr::null(),
+                    mut data: ptr::null() },
+        a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8, a03: 0 as *u8,
+        a04: 0 as *u8, a05: 0 as *u8, a06: 0 as *u8, a07: 0 as *u8,
+        a08: 0 as *u8, a09: 0 as *u8, a10: 0 as *u8
+    };
+}
 
 // unix size: 16
 #[cfg(target_os = "linux")]
@@ -312,8 +336,11 @@ native mod rustrt {
     fn rust_uv_hilvl_close(handle: *libc::c_void, cb: *u8);
     fn rust_uv_hilvl_close_async(handle: *libc::c_void);
     fn rust_uv_hilvl_close_timer(handle: *libc::c_void);
-    fn rust_uv_async_send(handle: *libc::c_void);
-    fn rust_uv_async_init(
+    fn rust_uv_async_send(handle: *uv_async_t);
+    fn rust_uv_async_init(loop_handle: *libc::c_void,
+                          async_handle: *uv_async_t,
+                          cb: *u8) -> libc::c_int;
+    fn rust_uv_hilvl_async_init(
         loop_handle: *libc::c_void,
         cb: *u8,
         id: *u8) -> *libc::c_void;
@@ -366,6 +393,7 @@ native mod rustrt {
     fn rust_uv_helper_uv_write_t_size() -> libc::c_uint;
     fn rust_uv_helper_uv_err_t_size() -> libc::c_uint;
     fn rust_uv_helper_sockaddr_in_size() -> libc::c_uint;
+    fn rust_uv_helper_uv_async_t_size() -> libc::c_uint;
 
     // data accessors for rust-mapped uv structs
     fn rust_uv_get_stream_handle_from_connect_req(
@@ -460,6 +488,18 @@ mod direct {
         ret rustrt::rust_uv_last_error(loop_handle);
     }
 
+    unsafe fn async_init(loop_handle: *libc::c_void,
+                         async_handle: *uv_async_t,
+                         cb: *u8) -> libc::c_int {
+        ret rustrt::rust_uv_async_init(loop_handle,
+                                       async_handle,
+                                       cb);
+    }
+
+    unsafe fn async_send(async_handle: *uv_async_t) {
+        ret rustrt::rust_uv_async_send(async_handle);
+    }
+
     // libuv struct initializers
     unsafe fn tcp_t() -> uv_tcp_t {
         ret gen_stub_uv_tcp_t();
@@ -469,6 +509,9 @@ mod direct {
     }
     unsafe fn write_t() -> uv_write_t {
         ret gen_stub_uv_write_t();
+    }
+    unsafe fn async_t() -> uv_async_t {
+        ret gen_stub_uv_async_t();
     }
     unsafe fn get_loop_for_uv_handle(handle: *libc::c_void)
         -> *libc::c_void {
@@ -855,7 +898,7 @@ fn pass_to_libuv(
     do_send(op_handle);
 }
 fn do_send(h: *libc::c_void) {
-    rustrt::rust_uv_async_send(h);
+    rustrt::rust_uv_async_send(h as *uv_async_t);
 }
 fn gen_handle_id() -> [u8] {
     ret rand::rng().gen_bytes(16u);
@@ -920,7 +963,7 @@ crust fn process_operation(
         alt comm::recv(op_port) {
           op_async_init(id) {
             let id_ptr = vec::unsafe::to_ptr(id);
-            let async_handle = rustrt::rust_uv_async_init(
+            let async_handle = rustrt::rust_uv_hilvl_async_init(
                 lp,
                 process_async_send,
                 id_ptr);
@@ -1367,12 +1410,29 @@ type tcp_server_data = {
     server_write_req: *uv_write_t
 };
 
+type async_handle_data = {
+    continue_chan: *comm::chan<bool>
+};
+
+crust fn continue_async_cb(async_handle: *uv_async_t,
+                           status: libc::c_int) unsafe {
+    // once we're in the body of this callback,
+    // the tcp server's loop is set up, so we
+    // can continue on to let the tcp client
+    // do its thang
+    let data = direct::get_data_for_uv_handle(
+        async_handle as *libc::c_void) as *async_handle_data;
+    let continue_chan = *((*data).continue_chan);
+    comm::send(continue_chan, true);
+    direct::close(async_handle as *libc::c_void, 0 as *u8);
+}
+
 fn impl_uv_tcp_server(server_ip: str,
                       server_port: int,
                       kill_server_msg: str,
                       server_resp_msg: str,
                       server_chan: *comm::chan<str>,
-                      continue_chan: comm::chan<bool>) unsafe {
+                      continue_chan: *comm::chan<bool>) unsafe {
     let test_loop = direct::loop_new();
     let tcp_server = direct::tcp_t();
     let tcp_server_ptr = ptr::addr_of(tcp_server);
@@ -1388,6 +1448,13 @@ fn impl_uv_tcp_server(server_ip: str,
     let resp_msg = [
         direct::buf_init(resp_msg_ptr, vec::len(resp_str_bytes))
     ];
+
+    let continue_async_handle = direct::async_t();
+    let continue_async_handle_ptr =
+        ptr::addr_of(continue_async_handle);
+    let async_data =
+        { continue_chan: continue_chan };
+    let async_data_ptr = ptr::addr_of(async_data);
 
     let server_data: tcp_server_data = {
         client: tcp_client_ptr,
@@ -1423,10 +1490,22 @@ fn impl_uv_tcp_server(server_ip: str,
             if (listen_result == 0i32) {
                 // let the test know it can set up the tcp server,
                 // now.. this may still present a race, not sure..
-                comm::send(continue_chan, true);
-
-                // uv_run()
-                direct::run(test_loop);
+                let async_result = direct::async_init(test_loop,
+                                   continue_async_handle_ptr,
+                                   continue_async_cb);
+                if (async_result == 0i32) {
+                    direct::set_data_for_uv_handle(
+                        continue_async_handle_ptr as *libc::c_void,
+                        async_data_ptr as *libc::c_void);
+                    direct::async_send(continue_async_handle_ptr);
+                    // uv_run()
+                    direct::run(test_loop);
+                }
+                else {
+                    io::println(#fmt("uv_async_init failure: %d",
+                            async_result as int));
+                    assert false;
+                }
             }
             else {
                 io::println(#fmt("non-zero result on uv_listen: %d",
@@ -1462,13 +1541,14 @@ fn test_uv_tcp_server_and_request() unsafe {
 
     let continue_port = comm::port::<bool>();
     let continue_chan = comm::chan::<bool>(continue_port);
+    let continue_chan_ptr = ptr::addr_of(continue_chan);
 
     task::spawn_sched(task::manual_threads(1u)) {||
         impl_uv_tcp_server(ip, port,
                            kill_server_msg,
                            server_resp_msg,
                            ptr::addr_of(server_chan),
-                           continue_chan);
+                           continue_chan_ptr);
     };
 
     // block until the server up is.. possibly a race?
@@ -1541,6 +1621,18 @@ fn test_uv_struct_size_sockaddr_in() {
         rustrt::rust_uv_helper_sockaddr_in_size();
     let rust_handle_size = sys::size_of::<sockaddr_in>();
     let output = #fmt("sockaddr_in -- native: %u rust: %u",
+                      native_handle_size as uint, rust_handle_size);
+    io::println(output);
+    assert native_handle_size as uint == rust_handle_size;
+}
+
+#[test]
+#[ignore(cfg(target_os = "freebsd"))]
+fn test_uv_struct_size_uv_async_t() {
+    let native_handle_size =
+        rustrt::rust_uv_helper_uv_async_t_size();
+    let rust_handle_size = sys::size_of::<uv_async_t>();
+    let output = #fmt("uv_async_t -- native: %u rust: %u",
                       native_handle_size as uint, rust_handle_size);
     io::println(output);
     assert native_handle_size as uint == rust_handle_size;

@@ -92,6 +92,7 @@ rust_uv_hilvl_close_async
 rust_uv_hilvl_close_timer
 rust_uv_async_send
 rust_uv_async_init
+rust_uv_hilvl_async_init
 rust_uv_timer_init
 rust_uv_timer_start
 rust_uv_timer_stop
@@ -116,6 +117,7 @@ rust_uv_helper_uv_buf_t_size
 rust_uv_helper_uv_write_t_size
 rust_uv_helper_uv_err_t_size
 rust_uv_helper_sockaddr_in_size
+rust_uv_helper_uv_async_t_size
 rust_uv_get_stream_handle_from_connect_req
 rust_uv_get_stream_handle_from_write_req
 rust_uv_get_loop_for_uv_handle
