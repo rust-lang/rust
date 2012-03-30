@@ -167,15 +167,22 @@ rust_uv_async_send(uv_async_t* handle) {
     uv_async_send(handle);
 }
 
+extern "C" int
+rust_uv_async_init(uv_loop_t* loop_handle,
+				   uv_async_t* async_handle,
+				   uv_async_cb cb) {
+	return uv_async_init(loop_handle, async_handle, cb);
+}
+
 extern "C" void*
-rust_uv_async_init(uv_loop_t* loop, crust_simple_cb cb,
-                                                 uint8_t* buf) {
-        uv_async_t* async = (uv_async_t*)current_kernel_malloc(
-                sizeof(uv_async_t),
-                "uv_async_t");
-        uv_async_init(loop, async, native_async_cb);
-        handle_data* data = new_handle_data_from(buf, cb);
-        async->data = data;
+rust_uv_hilvl_async_init(uv_loop_t* loop, crust_simple_cb cb,
+						 uint8_t* buf) {
+	uv_async_t* async = (uv_async_t*)current_kernel_malloc(
+		sizeof(uv_async_t),
+		"uv_async_t");
+	uv_async_init(loop, async, native_async_cb);
+	handle_data* data = new_handle_data_from(buf, cb);
+	async->data = data;
 
         return async;
 }
@@ -269,6 +276,10 @@ rust_uv_helper_uv_err_t_size() {
 extern "C" size_t
 rust_uv_helper_sockaddr_in_size() {
 	return sizeof(sockaddr_in);
+}
+extern "C" size_t
+rust_uv_helper_uv_async_t_size() {
+	return sizeof(uv_async_t);
 }
 
 extern "C" uv_stream_t*
