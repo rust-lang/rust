@@ -25,6 +25,7 @@ rust_sched_loop::rust_sched_loop(rust_scheduler *sched,
     should_exit(false),
     cached_c_stack(NULL),
     dead_task(NULL),
+    pump_signal(NULL),
     kernel(sched->kernel),
     sched(sched),
     srv(srv),
@@ -183,32 +184,24 @@ rust_sched_loop::log_state() {
     }
 }
 
-/**
- * Starts the main scheduler loop which performs task scheduling for this
- * domain.
- *
- * Returns once no more tasks can be scheduled and all task ref_counts
- * drop to zero.
- */
 void
-rust_sched_loop::start_main_loop() {
-    DLOG(this, dom, "started domain loop %d", id);
+rust_sched_loop::on_pump_loop(rust_signal *signal) {
+    I(this, pump_signal == NULL);
+    I(this, signal != NULL);
+    pump_signal = signal;
+}
 
-    rust_sched_loop_state state = sched_loop_state_keep_going;
-    while (state != sched_loop_state_exit) {
-        state = run_single_turn();
-
-        scoped_lock with(lock);
-        if (!should_exit && running_tasks.length() == 0) {
-            lock.wait();
-        }
-        DLOG(this, task,
-             "scheduler %d resuming ...", id);
-    }
+void
+rust_sched_loop::pump_loop() {
+    I(this, pump_signal != NULL);
+    pump_signal->signal();
 }
 
 rust_sched_loop_state
 rust_sched_loop::run_single_turn() {
+    DLOG(this, task,
+         "scheduler %d resuming ...", id);
+
     lock.lock();
 
     if (!should_exit) {
@@ -344,7 +337,7 @@ rust_sched_loop::transition(rust_task *task,
     }
     task->set_state(dst, cond, cond_name);
 
-    lock.signal();
+    pump_loop();
 }
 
 #ifndef _WIN32
@@ -382,7 +375,7 @@ rust_sched_loop::exit() {
     scoped_lock with(lock);
     DLOG(this, dom, "Requesting exit for thread %d", id);
     should_exit = true;
-    lock.signal();
+    pump_loop();
 }
 
 // Before activating each task, make sure we have a C stack available.

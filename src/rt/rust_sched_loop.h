@@ -3,6 +3,7 @@
 
 #include "rust_internal.h"
 #include "rust_stack.h"
+#include "rust_signal.h"
 #include "context.h"
 
 enum rust_task_state {
@@ -21,6 +22,8 @@ enum rust_sched_loop_state {
     sched_loop_state_block,
     sched_loop_state_exit
 };
+
+struct rust_task;
 
 typedef indexed_list<rust_task> rust_task_list;
 
@@ -53,13 +56,15 @@ private:
     rust_task_list blocked_tasks;
     rust_task *dead_task;
 
+    rust_signal *pump_signal;
+
     void prepare_c_stack(rust_task *task);
     void unprepare_c_stack();
 
     rust_task_list *state_list(rust_task_state state);
     const char *state_name(rust_task_state state);
 
-    rust_sched_loop_state run_single_turn();
+    void pump_loop();
 
 public:
     rust_kernel *kernel;
@@ -96,7 +101,8 @@ public:
     void reap_dead_tasks();
     rust_task *schedule_task();
 
-    void start_main_loop();
+    void on_pump_loop(rust_signal *signal);
+    rust_sched_loop_state run_single_turn();
 
     void log_state();
 

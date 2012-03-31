@@ -3,12 +3,7 @@
 
 #include "rust_internal.h"
 #include "sync/rust_thread.h"
-
-#ifndef _WIN32
-#include <pthread.h>
-#else
-#include <windows.h>
-#endif
+#include "rust_sched_driver.h"
 
 class rust_sched_launcher
   : public kernel_owned<rust_sched_launcher>,
@@ -18,6 +13,7 @@ public:
 
 private:
     rust_sched_loop sched_loop;
+    rust_sched_driver driver;
 
 public:
     rust_sched_launcher(rust_scheduler *sched, rust_srv *srv, int id);

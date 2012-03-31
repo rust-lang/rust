@@ -52,6 +52,7 @@ RUNTIME_CS_$(1) := \
               rt/rust_env.cpp \
               rt/rust_sched_loop.cpp \
               rt/rust_sched_launcher.cpp \
+              rt/rust_sched_driver.cpp \
               rt/rust_scheduler.cpp \
               rt/rust_sched_reaper.cpp \
               rt/rust_task.cpp \
