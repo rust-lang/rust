@@ -44,6 +44,7 @@ rust_sched_loop::rust_sched_loop(rust_scheduler *sched,
 
 void
 rust_sched_loop::activate(rust_task *task) {
+    lock.must_have_lock();
     task->ctx.next = &c_context;
     DLOG(this, task, "descheduling...");
     lock.unlock();
@@ -147,6 +148,7 @@ rust_sched_loop::release_task(rust_task *task) {
  */
 rust_task *
 rust_sched_loop::schedule_task() {
+    lock.must_have_lock();
     I(this, this);
     // FIXME: in the face of failing tasks, this is not always right.
     // I(this, n_live_tasks() > 0);
