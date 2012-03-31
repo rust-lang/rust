@@ -1155,6 +1155,9 @@ mod funcs {
             fn CreateDirectoryW(lpPathName: LPCWSTR,
                                 lpSecurityAttributes:
                                 LPSECURITY_ATTRIBUTES) -> BOOL;
+            fn CopyFileW(lpExistingFileName: LPCWSTR,
+                         lpNewFileName: LPCWSTR,
+                         bFailIfExists: BOOL) -> BOOL;
             fn DeleteFileW(lpPathName: LPCWSTR) -> BOOL;
             fn RemoveDirectoryW(lpPathName: LPCWSTR) -> BOOL;
             fn SetCurrentDirectoryW(lpPathName: LPCWSTR) -> BOOL;

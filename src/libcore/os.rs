@@ -30,7 +30,7 @@ export env, getenv, setenv, fdopen, pipe;
 export getcwd, dll_filename, self_exe_path;
 export exe_suffix, dll_suffix, sysname;
 export homedir, list_dir, path_is_dir, path_exists, make_absolute,
-       make_dir, remove_dir, change_dir, remove_file;
+       make_dir, remove_dir, change_dir, remove_file, copy_file;
 
 // FIXME: move these to str perhaps?
 export as_c_charp, fill_charp_buf;
@@ -520,6 +520,68 @@ fn change_dir(p: path) -> bool {
         ret as_c_charp(p) {|buf|
             libc::chdir(buf) == (0 as c_int)
         };
+    }
+}
+
+#[doc = "Copies a file from one location to another"]
+fn copy_file(from: path, to: path) -> bool {
+    ret do_copy_file(from, to);
+
+    #[cfg(target_os = "win32")]
+    fn do_copy_file(from: path, to: path) -> bool {
+        // FIXME: remove imports when export globs work properly.
+        import libc::funcs::extra::kernel32::*;
+        import libc::types::os::arch::extra::*;
+        import win32::*;
+        ret as_utf16_p(from) {|fromp|
+            as_utf16_p(to) {|top|
+                CopyFileW(fromp, top, (0 as BOOL)) != (0 as BOOL)
+            }
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    #[cfg(target_os = "macos")]
+    #[cfg(target_os = "freebsd")]
+    fn do_copy_file(from: path, to: path) -> bool unsafe {
+        let istream = as_c_charp(from) {|fromp|
+            as_c_charp("rb") {|modebuf|
+                libc::fopen(fromp, modebuf)
+            }
+        };
+        if istream as uint == 0u {
+            ret false;
+        }
+        let ostream = as_c_charp(to) {|top|
+            as_c_charp("w+b") {|modebuf|
+                libc::fopen(top, modebuf)
+            }
+        };
+        if ostream as uint == 0u {
+            fclose(istream);
+            ret false;
+        }
+        let mut buf : [mut u8] = [mut];
+        let bufsize = 8192u;
+        vec::reserve(buf, bufsize);
+        let mut done = false;
+        let mut ok = true;
+        while !done {
+            vec::as_mut_buf(buf) {|b|
+                let nread = libc::fread(b as *mut c_void, 1u, bufsize, istream);
+                if nread > 0 as size_t {
+                    if libc::fwrite(b as *c_void, 1u, nread, ostream) != nread {
+                        ok = false;
+                        done = true;
+                    }
+                } else {
+                    done = true;
+                }
+            }
+        }
+        fclose(istream);
+        fclose(ostream);
+        ret ok;
     }
 }
 
