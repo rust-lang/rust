@@ -2763,12 +2763,12 @@ fn invoke(bcx: block, llfn: ValueRef, llargs: [ValueRef]) -> block {
     let _icx = bcx.insn_ctxt("invoke_");
     if bcx.unreachable { ret bcx; }
     if need_invoke(bcx) {
-        log(error, "invoking");
+        log(debug, "invoking");
         let normal_bcx = sub_block(bcx, "normal return");
         Invoke(bcx, llfn, llargs, normal_bcx.llbb, get_landing_pad(bcx));
         ret normal_bcx;
     } else {
-        log(error, "calling");
+        log(debug, "calling");
         Call(bcx, llfn, llargs);
         ret bcx;
     }
