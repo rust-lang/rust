@@ -69,6 +69,8 @@ void
 rust_port_selector::msg_sent_on(rust_port *port) {
     rust_task *task = port->task;
 
+    port->lock.must_not_have_lock();
+
     // Prevent two ports from trying to wake up the task
     // simultaneously
     scoped_lock with(rendezvous_lock);

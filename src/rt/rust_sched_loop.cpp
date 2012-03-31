@@ -108,6 +108,8 @@ rust_sched_loop::number_of_live_tasks() {
  */
 void
 rust_sched_loop::reap_dead_tasks() {
+    lock.must_have_lock();
+
     if (dead_task == NULL) {
         return;
     }
