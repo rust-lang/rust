@@ -10,16 +10,16 @@ public:
     rust_srv *srv;
     rust_env *env;
 private:
-    // Protects the random number context and live_threads
+    // Protects live_threads and cur_thread increments
     lock_and_signal lock;
     // When this hits zero we'll tell the kernel to release us
     uintptr_t live_threads;
     // When this hits zero we'll tell the threads to exit
     uintptr_t live_tasks;
-    randctx rctx;
 
     array_list<rust_task_thread *> threads;
     const size_t num_threads;
+    size_t cur_thread;
 
     rust_sched_id id;
 

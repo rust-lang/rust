@@ -13,7 +13,6 @@ rust_scheduler::rust_scheduler(rust_kernel *kernel,
     num_threads(num_threads),
     id(id)
 {
-    isaac_init(kernel, &rctx);
     create_task_threads();
 }
 
@@ -86,9 +85,11 @@ rust_task *
 rust_scheduler::create_task(rust_task *spawner, const char *name) {
     size_t thread_no;
     {
-	scoped_lock with(lock);
-	thread_no = isaac_rand(&rctx) % num_threads;
-	live_tasks++;
+        scoped_lock with(lock);
+        live_tasks++;
+        if (++cur_thread >= num_threads)
+            cur_thread = 0;
+        thread_no = cur_thread;
     }
     rust_task_thread *thread = threads[thread_no];
     return thread->create_task(spawner, name);
@@ -98,11 +99,11 @@ void
 rust_scheduler::release_task() {
     bool need_exit = false;
     {
-	scoped_lock with(lock);
-	live_tasks--;
-	if (live_tasks == 0) {
-	    need_exit = true;
-	}
+        scoped_lock with(lock);
+        live_tasks--;
+        if (live_tasks == 0) {
+            need_exit = true;
+        }
     }
     if (need_exit) {
 	// There are no more tasks on this scheduler. Time to leave
@@ -129,10 +130,10 @@ void
 rust_scheduler::release_task_thread() {
     uintptr_t new_live_threads;
     {
-	scoped_lock with(lock);
-	new_live_threads = --live_threads;
+        scoped_lock with(lock);
+        new_live_threads = --live_threads;
     }
     if (new_live_threads == 0) {
-	kernel->release_scheduler_id(id);
+        kernel->release_scheduler_id(id);
     }
 }
