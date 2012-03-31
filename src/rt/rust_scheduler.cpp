@@ -11,6 +11,7 @@ rust_scheduler::rust_scheduler(rust_kernel *kernel,
     live_threads(num_threads),
     live_tasks(0),
     num_threads(num_threads),
+    cur_thread(0),
     id(id)
 {
     create_task_threads();
@@ -87,9 +88,9 @@ rust_scheduler::create_task(rust_task *spawner, const char *name) {
     {
         scoped_lock with(lock);
         live_tasks++;
-        if (++cur_thread >= num_threads)
+        thread_no = cur_thread++;
+        if (cur_thread >= num_threads)
             cur_thread = 0;
-        thread_no = cur_thread;
     }
     rust_task_thread *thread = threads[thread_no];
     return thread->create_task(spawner, name);
