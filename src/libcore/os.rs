@@ -458,7 +458,7 @@ fn list_dir(p: path) -> [str] {
     fn star(p: str) -> str {
         let pl = str::len(p);
         if pl == 0u || (p[pl - 1u] as char != path::consts::path_sep
-                        ** p[pl - 1u] as char != path::consts::alt_path_sep) {
+                        || p[pl - 1u] as char != path::consts::alt_path_sep) {
             p + path::path_sep() + "*"
         } else {
             p + "*"
