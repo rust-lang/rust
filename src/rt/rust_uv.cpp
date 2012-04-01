@@ -346,6 +346,18 @@ rust_uv_last_error(uv_loop_t* loop) {
 	return uv_last_error(loop);
 }
 
+extern "C" const char*
+rust_uv_strerror(uv_err_t* err_ptr) {
+	uv_err_t err = *err_ptr;
+	return uv_strerror(err);
+}
+
+extern "C" const char*
+rust_uv_err_name(uv_err_t* err_ptr) {
+	uv_err_t err = *err_ptr;
+	return uv_err_name(err);
+}
+
 extern "C" int
 rust_uv_write(uv_write_t* req, uv_stream_t* handle,
 			  uv_buf_t* bufs, int buf_cnt,
