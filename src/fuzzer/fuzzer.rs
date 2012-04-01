@@ -25,7 +25,7 @@ fn find_rust_files(&files: [str], path: str) {
     } else if os::path_is_dir(path)
         && !contains(path, "compile-fail")
         && !contains(path, "build") {
-        for p in os::list_dir(path) {
+        for p in os::list_dir_path(path) {
             find_rust_files(files, p);
         }
     }

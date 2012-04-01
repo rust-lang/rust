@@ -127,7 +127,7 @@ fn test_opts(config: config) -> test::test_opts {
 fn make_tests(config: config) -> [test::test_desc] {
     #debug("making tests from %s", config.src_base);
     let mut tests = [];
-    for file: str in os::list_dir(config.src_base) {
+    for file: str in os::list_dir_path(config.src_base) {
         let file = file;
         #debug("inspecting file %s", file);
         if is_test(config, file) {
