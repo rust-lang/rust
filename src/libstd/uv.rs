@@ -360,6 +360,10 @@ native mod rustrt {
     fn rust_uv_buf_init(base: *u8, len: libc::size_t)
         -> uv_buf_t;
     fn rust_uv_last_error(loop_handle: *libc::c_void) -> uv_err_t;
+    // FIXME ref #2064
+    fn rust_uv_strerror(err: *uv_err_t) -> *libc::c_char;
+    // FIXME ref #2064
+    fn rust_uv_err_name(err: *uv_err_t) -> *libc::c_char;
     fn rust_uv_ip4_test_verify_port_val(++addr: sockaddr_in,
                                         expected: libc::c_uint)
         -> bool;
@@ -484,8 +488,15 @@ mod direct {
         ret rustrt::rust_uv_read_stop(stream as *libc::c_void);
     }
 
-    unsafe fn uv_last_error(loop_handle: *libc::c_void) -> uv_err_t {
+    unsafe fn last_error(loop_handle: *libc::c_void) -> uv_err_t {
         ret rustrt::rust_uv_last_error(loop_handle);
+    }
+
+    unsafe fn strerror(err: *uv_err_t) -> *libc::c_char {
+        ret rustrt::rust_uv_strerror(err);
+    }
+    unsafe fn err_name(err: *uv_err_t) -> *libc::c_char {
+        ret rustrt::rust_uv_err_name(err);
     }
 
     unsafe fn async_init(loop_handle: *libc::c_void,
@@ -569,6 +580,15 @@ mod direct {
     }
     unsafe fn free_base_of_buf(buf: uv_buf_t) {
         rustrt::rust_uv_free_base_of_buf(buf);
+    }
+
+    unsafe fn print_last_err_info(uv_loop: *libc::c_void) {
+        let err = direct::last_error(uv_loop);
+        let err_ptr = ptr::addr_of(err);
+        let err_name = str::unsafe::from_c_str(direct::err_name(err_ptr));
+        let err_msg = str::unsafe::from_c_str(direct::strerror(err_ptr));
+        io::println(#fmt("LIBUV ERROR: name: %s msg: %s",
+                        err_name, err_msg));
     }
 }
 
@@ -1145,9 +1165,10 @@ crust fn on_alloc_cb(handle: *libc::c_void,
 
 crust fn on_read_cb(stream: *uv_stream_t, nread: libc::ssize_t,
                     ++buf: uv_buf_t) unsafe {
+    io::println(#fmt("CLIENT entering on_read_cb nred: %d", nread));
     if (nread > 0) {
         // we have data
-        io::println(#fmt("read: data! nread: %d", nread));
+        io::println(#fmt("CLIENT read: data! nread: %d", nread));
         direct::read_stop(stream);
         let client_data = direct::
             get_data_for_uv_handle(stream as *libc::c_void)
@@ -1170,18 +1191,18 @@ crust fn on_read_cb(stream: *uv_stream_t, nread: libc::ssize_t,
     }
     // when we're done
     direct::free_base_of_buf(buf);
-    io::println("exiting on_read_cb");
+    io::println("CLIENT exiting on_read_cb");
 }
 
 crust fn on_write_complete_cb(write_req: *uv_write_t,
                               status: libc::c_int) unsafe {
-    io::println(#fmt("beginning on_write_complete_cb status: %d",
+    io::println(#fmt("CLIENT beginning on_write_complete_cb status: %d",
                      status as int));
     let stream = direct::get_stream_handle_from_write_req(write_req);
-    io::println(#fmt("on_write_complete_cb: tcp:%d write_handle:%d",
+    io::println(#fmt("CLIENT on_write_complete_cb: tcp:%d write_handle:%d",
         stream as int, write_req as int));
     let result = direct::read_start(stream, on_alloc_cb, on_read_cb);
-    io::println(#fmt("ending on_write_complete_cb .. status: %d",
+    io::println(#fmt("CLIENT ending on_write_complete_cb .. status: %d",
                      result as int));
 }
 
@@ -1207,7 +1228,9 @@ crust fn on_connect_cb(connect_req_ptr: *uv_connect_t,
                          write_result as int));
     }
     else {
-        io::println("non-zero status for on_connect_cb..");
+        let test_loop = direct::get_loop_for_uv_handle(stream as *libc::c_void);
+        direct::print_last_err_info(test_loop);
+        assert false;
     }
     io::println("finishing on_connect_cb");
 }
@@ -1286,12 +1309,12 @@ fn impl_uv_tcp_request(ip: str, port: int, req_str: str,
 }
 
 crust fn server_after_close_cb(handle: *libc::c_void) unsafe {
-    io::println("server stream closed, should exit loop...");
+    io::println("SERVER server stream closed, should exit loop...");
 }
 
 crust fn client_stream_after_close_cb(handle: *libc::c_void)
     unsafe {
-    io::println("closed client stream, now server..");
+    io::println("SERVER: closed client stream, now closing server stream");
     let client_data = direct::get_data_for_uv_handle(
         handle) as
         *tcp_server_data;
@@ -1305,7 +1328,7 @@ crust fn after_server_resp_write(req: *uv_write_t) unsafe {
     let client_data = direct::get_data_for_uv_handle(
         client_stream_ptr as *libc::c_void) as
         *tcp_server_data;
-    direct::read_stop(client_stream_ptr);
+    io::println("SERVER: resp sent... closing client stream");
     direct::close(client_stream_ptr as *libc::c_void,
                   client_stream_after_close_cb)
 }
@@ -1315,16 +1338,13 @@ crust fn on_server_read_cb(client_stream_ptr: *uv_stream_t,
                            ++buf: uv_buf_t) unsafe {
     if (nread > 0) {
         // we have data
-        io::println(#fmt("read: data! nread: %d", nread));
+        io::println(#fmt("SERVER read: data! nread: %d", nread));
 
         // pull out the contents of the write from the client
         let buf_base = direct::get_base_from_buf(buf);
         let buf_len = direct::get_len_from_buf(buf);
         let bytes = vec::unsafe::from_buf(buf_base, buf_len);
         let request_str = str::from_bytes(bytes);
-        io::println("client req to follow");
-        io::println(request_str);
-        io::println("end of client read");
 
         let client_data = direct::get_data_for_uv_handle(
             client_stream_ptr as *libc::c_void) as *tcp_server_data;
@@ -1332,6 +1352,9 @@ crust fn on_server_read_cb(client_stream_ptr: *uv_stream_t,
         let server_kill_msg = (*client_data).server_kill_msg;
         let write_req = (*client_data).server_write_req;
         if (str::contains(request_str, server_kill_msg)) {
+            io::println("SERVER: client request contains server_kill_msg!");
+            io::println("SERVER: sending response to client");
+            direct::read_stop(client_stream_ptr);
             let server_chan = *((*client_data).server_chan);
             comm::send(server_chan, request_str);
             let write_result = direct::write(
@@ -1339,6 +1362,18 @@ crust fn on_server_read_cb(client_stream_ptr: *uv_stream_t,
                 client_stream_ptr as *libc::c_void,
                 (*client_data).server_resp_buf,
                 after_server_resp_write);
+            io::println(#fmt("SERVER: resp write result: %d",
+                        write_result as int));
+            if (write_result != 0i32) {
+                io::println("non-zero result for server resp direct::write()");
+                direct::print_last_err_info(
+                    direct::get_loop_for_uv_handle(client_stream_ptr
+                        as *libc::c_void));
+                assert false;
+            }
+        }
+        else {
+            io::println("SERVER: client req DOESNT contain server_kill_msg!");
         }
     }
     else if (nread == -1) {
@@ -1351,7 +1386,7 @@ crust fn on_server_read_cb(client_stream_ptr: *uv_stream_t,
     }
     // when we're done
     direct::free_base_of_buf(buf);
-    io::println("exiting on_read_cb");
+    io::println("SERVER exiting on_read_cb");
 }
 
 crust fn server_connection_cb(server_stream_ptr: *uv_stream_t,
@@ -1414,6 +1449,10 @@ type async_handle_data = {
     continue_chan: *comm::chan<bool>
 };
 
+crust fn async_close_cb(handle: *libc::c_void) {
+    io::println("SERVER: closing async cb...");
+}
+
 crust fn continue_async_cb(async_handle: *uv_async_t,
                            status: libc::c_int) unsafe {
     // once we're in the body of this callback,
@@ -1424,7 +1463,7 @@ crust fn continue_async_cb(async_handle: *uv_async_t,
         async_handle as *libc::c_void) as *async_handle_data;
     let continue_chan = *((*data).continue_chan);
     comm::send(continue_chan, true);
-    direct::close(async_handle as *libc::c_void, 0 as *u8);
+    direct::close(async_handle as *libc::c_void, async_close_cb);
 }
 
 fn impl_uv_tcp_server(server_ip: str,
@@ -1500,6 +1539,7 @@ fn impl_uv_tcp_server(server_ip: str,
                     direct::async_send(continue_async_handle_ptr);
                     // uv_run()
                     direct::run(test_loop);
+                    io::println("server uv::run() has returned");
                 }
                 else {
                     io::println(#fmt("uv_async_init failure: %d",
@@ -1530,7 +1570,8 @@ fn impl_uv_tcp_server(server_ip: str,
 #[test]
 #[ignore(cfg(target_os = "freebsd"))]
 fn test_uv_tcp_server_and_request() unsafe {
-    let ip = "0.0.0.0";
+    let bind_ip = "0.0.0.0";
+    let request_ip = "127.0.0.1";
     let port = 8888;
     let kill_server_msg = "does a dog have buddha nature?";
     let server_resp_msg = "mu!";
@@ -1544,7 +1585,7 @@ fn test_uv_tcp_server_and_request() unsafe {
     let continue_chan_ptr = ptr::addr_of(continue_chan);
 
     task::spawn_sched(task::manual_threads(1u)) {||
-        impl_uv_tcp_server(ip, port,
+        impl_uv_tcp_server(bind_ip, port,
                            kill_server_msg,
                            server_resp_msg,
                            ptr::addr_of(server_chan),
@@ -1557,7 +1598,7 @@ fn test_uv_tcp_server_and_request() unsafe {
     io::println("received on continue port, set up tcp client");
 
     task::spawn_sched(task::manual_threads(1u)) {||
-        impl_uv_tcp_request(ip, port,
+        impl_uv_tcp_request(request_ip, port,
                            kill_server_msg,
                            ptr::addr_of(client_chan));
     };
