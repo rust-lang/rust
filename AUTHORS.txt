@@ -37,6 +37,7 @@ Jeffrey Yasskin <jyasskin@gmail.com>
 Jesse Ruderman <jruderman@gmail.com>
 Joe Pletcher <joepletcher@gmail.com>
 Jon Morton <jonanin@gmail.com>
+Jonathan Sternberg <jonathansternberg@gmail.com>
 Josh Matthews <josh@joshmatthews.net>
 Joshua Clark <joshua.clark@txstate.edu>
 Joshua Wise <joshua@joshuawise.com>
