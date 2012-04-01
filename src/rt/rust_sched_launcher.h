@@ -17,6 +17,7 @@ protected:
 
 public:
     rust_sched_launcher(rust_scheduler *sched, rust_srv *srv, int id);
+    virtual ~rust_sched_launcher() { }
 
     virtual void start() = 0;
     virtual void join() = 0;
