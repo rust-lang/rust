@@ -108,7 +108,7 @@ fn chain_err<T: copy, U: copy, V: copy>(
     }
 }
 
-impl methods<T:copy,E:copy> for result<T,E> {
+impl extensions<T:copy, E:copy> for result<T,E> {
     fn chain<U:copy>(op: fn(T) -> result<U,E>) -> result<U,E> {
         chain(self, op)
     }
