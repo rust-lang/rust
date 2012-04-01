@@ -69,7 +69,7 @@ fn mk_filesearch(maybe_sysroot: option<path>,
 fn search<T: copy>(filesearch: filesearch, pick: pick<T>) -> option<T> {
     for lib_search_path in filesearch.lib_search_paths() {
         #debug("searching %s", lib_search_path);
-        for path in os::list_dir(lib_search_path) {
+        for path in os::list_dir_path(lib_search_path) {
             #debug("testing %s", path);
             let maybe_picked = pick(path);
             if option::is_some(maybe_picked) {

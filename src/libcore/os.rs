@@ -29,8 +29,8 @@ export close, fclose, fsync_fd, waitpid;
 export env, getenv, setenv, fdopen, pipe;
 export getcwd, dll_filename, self_exe_path;
 export exe_suffix, dll_suffix, sysname;
-export homedir, list_dir, path_is_dir, path_exists, make_absolute,
-       make_dir, remove_dir, change_dir, remove_file;
+export homedir, list_dir, list_dir_path, path_is_dir, path_exists,
+       make_absolute, make_dir, remove_dir, change_dir, remove_file;
 
 // FIXME: move these to str perhaps?
 export as_c_charp, fill_charp_buf;
@@ -452,26 +452,37 @@ fn list_dir(p: path) -> [str] {
     #[cfg(target_os = "linux")]
     #[cfg(target_os = "macos")]
     #[cfg(target_os = "freebsd")]
-    fn star() -> str { "" }
+    fn star(p: str) -> str { p }
 
     #[cfg(target_os = "win32")]
-    fn star() -> str { "*" }
+    fn star(p: str) -> str {
+        let pl = str::len(p);
+        if pl == 0u || (p[pl - 1u] as char != path::consts::path_sep
+                        ** p[pl - 1u] as char != path::consts::alt_path_sep) {
+            p + path::path_sep() + "*"
+        } else {
+            p + "*"
+        }
+    }
 
+    rustrt::rust_list_files(star(p)).filter {|filename|
+        !str::eq(filename, ".") || !str::eq(filename, "..")
+    }
+}
+
+#[doc = "
+Lists the contents of a directory
+
+This version prepends each entry with the directory.
+"]
+fn list_dir_path(p: path) -> [str] {
     let mut p = p;
     let pl = str::len(p);
     if pl == 0u || (p[pl - 1u] as char != path::consts::path_sep
                     && p[pl - 1u] as char != path::consts::alt_path_sep) {
         p += path::path_sep();
     }
-    let mut full_paths: [str] = [];
-    for vec::each(rustrt::rust_list_files(p + star())) {|filename|
-        if !str::eq(filename, ".") {
-            if !str::eq(filename, "..") {
-                full_paths += [p + filename];
-            }
-        }
-    }
-    ret full_paths;
+    os::list_dir(p).map {|f| p + f}
 }
 
 #[doc = "Removes a directory at the specified path"]
