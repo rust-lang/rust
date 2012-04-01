@@ -1,5 +1,5 @@
 #[doc = "
-Rust mappings to libuv (http://github.com/joyent/libuv)
+Rust bindings to libuv
 
 This crate provides a low-level mapping to libuv, a library for
 running an asynchronous event loop, with extensive IO operations.
@@ -10,7 +10,8 @@ should not be inferred from its current form.
 The base module contains a set of safe functions for creating
 an event loop that runs within a single task, but allows operations
 against it from other tasks, but funneling it through a uv_async
-request which reads from a port that users write to.
+request which reads from a port that users write to. This API should
+not be considered stable and may go away in the near future.
 
 The 'll' module contains low-level, bare-metal mappings to the libuv
 C-api. All functions within this module are marked unsafe and should
