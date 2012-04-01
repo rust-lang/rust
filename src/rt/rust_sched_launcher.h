@@ -7,7 +7,7 @@
 
 class rust_sched_launcher
   : public kernel_owned<rust_sched_launcher>,
-    public rust_thread {
+    private rust_thread {
 public:
     rust_kernel *kernel;
 
@@ -18,7 +18,9 @@ private:
 public:
     rust_sched_launcher(rust_scheduler *sched, rust_srv *srv, int id);
 
-    virtual void run();
+    void start() { rust_thread::start(); }
+    void run() { driver.start_main_loop(); }
+    void join() { rust_thread::join(); }
     rust_sched_loop *get_loop() { return &sched_loop; }
 };
 

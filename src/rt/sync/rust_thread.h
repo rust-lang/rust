@@ -20,9 +20,7 @@ class rust_thread {
 
     void start();
 
-    virtual void run() {
-        return;
-    }
+    virtual void run() = 0;
 
     void join();
     void detach();

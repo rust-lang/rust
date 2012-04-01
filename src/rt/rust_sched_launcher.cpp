@@ -10,8 +10,3 @@ rust_sched_launcher::rust_sched_launcher(rust_scheduler *sched,
       sched_loop(sched, srv, id),
       driver(&sched_loop) {
 }
-
-void
-rust_sched_launcher::run() {
-    driver.start_main_loop();
-}
