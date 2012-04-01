@@ -95,7 +95,8 @@ vec_data(rust_vec *v) {
 
 inline void reserve_vec_exact(rust_task* task, rust_vec** vpp, size_t size) {
     if (size > (*vpp)->alloc) {
-        *vpp = (rust_vec*)task->kernel->realloc(*vpp, size + sizeof(rust_vec));
+        *vpp = (rust_vec*)task->kernel
+            ->realloc(*vpp, size + sizeof(rust_vec));
         (*vpp)->alloc = size;
     }
 }
@@ -107,7 +108,8 @@ inline void reserve_vec(rust_task* task, rust_vec** vpp, size_t size) {
 typedef rust_vec rust_str;
 
 inline rust_str *
-make_str(rust_kernel* kernel, const char* c, size_t strlen, const char* name) {
+make_str(rust_kernel* kernel, const char* c, size_t strlen,
+         const char* name) {
     size_t str_fill = strlen + 1;
     size_t str_alloc = str_fill;
     rust_str *str = (rust_str *)

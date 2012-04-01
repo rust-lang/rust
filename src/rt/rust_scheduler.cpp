@@ -2,9 +2,9 @@
 #include "rust_util.h"
 
 rust_scheduler::rust_scheduler(rust_kernel *kernel,
-			       rust_srv *srv,
-			       size_t num_threads,
-			       rust_sched_id id) :
+                               rust_srv *srv,
+                               size_t num_threads,
+                               rust_sched_id id) :
     kernel(kernel),
     srv(srv),
     env(srv->env),
@@ -107,8 +107,8 @@ rust_scheduler::release_task() {
         }
     }
     if (need_exit) {
-	// There are no more tasks on this scheduler. Time to leave
-	exit();
+        // There are no more tasks on this scheduler. Time to leave
+        exit();
     }
 }
 

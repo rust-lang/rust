@@ -67,7 +67,8 @@ rust_kernel::create_scheduler(size_t num_threads) {
         sched = new (this, "rust_scheduler")
             rust_scheduler(this, srv, num_threads, id);
         bool is_new = sched_table
-            .insert(std::pair<rust_sched_id, rust_scheduler*>(id, sched)).second;
+            .insert(std::pair<rust_sched_id,
+                              rust_scheduler*>(id, sched)).second;
         A(this, is_new, "Reusing a sched id?");
     }
     sched->start_task_threads();

@@ -31,11 +31,11 @@ struct registers_t {
 class context {
 public:
     registers_t regs;
-    
+
     context();
-    
+
     context *next;
-    
+
     void swap(context &out);
     void call(void *f, void *arg, void *sp);
 };

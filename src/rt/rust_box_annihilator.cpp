@@ -58,7 +58,8 @@ class annihilator : public shape::data<annihilator,shape::ptr> {
     }
 
     void walk_tag2(shape::tag_info &tinfo, uint32_t tag_variant) {
-        shape::data<annihilator,shape::ptr>::walk_variant1(tinfo, tag_variant);
+        shape::data<annihilator,shape::ptr>
+          ::walk_variant1(tinfo, tag_variant);
     }
 
     void walk_uniq2() {
@@ -83,7 +84,7 @@ class annihilator : public shape::data<annihilator,shape::ptr> {
               if (pair.env) {
                   // free closed over data:
                   shape::data<annihilator,shape::ptr>::walk_fn_contents1();
-                  
+
                   // now free the ptr:
                   task->kernel->free(pair.env);
               }

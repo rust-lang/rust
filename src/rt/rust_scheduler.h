@@ -33,7 +33,7 @@ private:
 
 public:
     rust_scheduler(rust_kernel *kernel, rust_srv *srv, size_t num_threads,
-		   rust_sched_id id);
+                   rust_sched_id id);
     ~rust_scheduler();
 
     void start_task_threads();

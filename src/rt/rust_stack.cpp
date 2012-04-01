@@ -22,7 +22,7 @@ reuse_valgrind_stack(stk_seg *stk, uint8_t *sp) {
     // old stack segments, since the act of popping the stack previously
     // caused valgrind to consider the whole thing inaccessible.
     assert(sp >= stk->data && sp <= (uint8_t*) stk->end
-	   && "Stack pointer must be inside stack segment");
+           && "Stack pointer must be inside stack segment");
     size_t sz = stk->end - (uintptr_t)sp;
     (void) VALGRIND_MAKE_MEM_UNDEFINED(sp, sz);
     (void) sz;

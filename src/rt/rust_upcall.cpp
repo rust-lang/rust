@@ -118,7 +118,7 @@ extern "C" CDECL void
 upcall_s_fail(s_fail_args *args) {
     rust_task *task = rust_task_thread::get_task();
     LOG_UPCALL_ENTRY(task);
-    LOG_ERR(task, upcall, "upcall fail '%s', %s:%" PRIdPTR, 
+    LOG_ERR(task, upcall, "upcall fail '%s', %s:%" PRIdPTR,
             args->expr, args->file, args->line);
     task->fail();
 }
@@ -416,7 +416,8 @@ extern "C" void
 upcall_cmp_type(int8_t *result, const type_desc *tydesc,
                 const type_desc **subtydescs, uint8_t *data_0,
                 uint8_t *data_1, uint8_t cmp_type) {
-    s_cmp_type_args args = {result, tydesc, subtydescs, data_0, data_1, cmp_type};
+    s_cmp_type_args args = {result, tydesc, subtydescs,
+                            data_0, data_1, cmp_type};
     UPCALL_SWITCH_STACK(&args, upcall_s_cmp_type);
 }
 

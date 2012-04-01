@@ -50,10 +50,10 @@ rust_port_selector::select(rust_task *task, rust_port **dptr,
         task->rendezvous_ptr = (uintptr_t*)dptr;
         task->block(this, "waiting for select rendezvous");
 
-	// Blocking the task might fail if the task has already been
-	// killed, but in the event of both failure and success the
-	// task needs to yield. On success, it yields and waits to be
-	// unblocked. On failure it yields and is then fails the task.
+        // Blocking the task might fail if the task has already been
+        // killed, but in the event of both failure and success the
+        // task needs to yield. On success, it yields and waits to be
+        // unblocked. On failure it yields and is then fails the task.
 
         *yield = true;
     }

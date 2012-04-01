@@ -16,10 +16,10 @@ class rust_port_selector : public rust_cond {
     rust_port_selector();
 
     void select(rust_task *task,
-		rust_port **dptr,
-		rust_port **ports,
-		size_t n_ports,
-		uintptr_t *yield);
+                rust_port **dptr,
+                rust_port **ports,
+                size_t n_ports,
+                uintptr_t *yield);
 
     void msg_sent_on(rust_port *port);
 };

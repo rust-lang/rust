@@ -176,8 +176,8 @@ rust_task_thread::log_state() {
     if (!blocked_tasks.is_empty()) {
         log(NULL, log_debug, "blocked tasks:");
         for (size_t i = 0; i < blocked_tasks.length(); i++) {
-            log(NULL, log_debug, "\t task: %s @0x%" PRIxPTR ", blocked on: 0x%"
-                PRIxPTR " '%s'",
+            log(NULL, log_debug, "\t task: %s @0x%" PRIxPTR
+                ", blocked on: 0x%" PRIxPTR " '%s'",
                 blocked_tasks[i]->name, blocked_tasks[i],
                 blocked_tasks[i]->get_cond(),
                 blocked_tasks[i]->get_cond_name());
@@ -300,7 +300,7 @@ rust_task_thread::state_name(rust_task_state state) {
     }
 }
 
-void 
+void
 rust_task_thread::transition(rust_task *task,
                              rust_task_state src, rust_task_state dst,
                              rust_cond *cond, const char* cond_name) {

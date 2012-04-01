@@ -252,7 +252,7 @@ public:
     void prev_stack();
     void record_stack_limit();
     void reset_stack_limit();
-    
+
     bool on_rust_stack();
     void check_stack_canary();
     void delete_all_stacks();

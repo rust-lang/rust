@@ -395,7 +395,7 @@ ctxt<T>::get_variant_sp(tag_info &tinfo, tag_variant_t variant_id) {
     const uint8_t *variant_ptr = tables->tags + variant_offset;
     uint16_t variant_len = get_u16_bump(variant_ptr);
     const uint8_t *variant_end = variant_ptr + variant_len;
-    
+
     return std::make_pair(variant_ptr, variant_end);
 }
 
@@ -936,7 +936,7 @@ public:
     }
 
     template<typename WN>
-    void walk_number1() { 
+    void walk_number1() {
         //DATA_SIMPLE(W, walk_number2<W>());
         ALIGN_TO(rust_alignof<WN>());
         U end_dp = dp + sizeof(WN);
@@ -1158,7 +1158,8 @@ private:
                        variant_ptr_and_end);
     void walk_string2(const std::pair<ptr,ptr> &data);
     void walk_res2(const rust_fn *dtor, unsigned n_params,
-                   const type_param *params, const uint8_t *end_sp, bool live);
+                   const type_param *params, const uint8_t *end_sp,
+                   bool live);
 
     template<typename T>
     inline void walk_number2() {

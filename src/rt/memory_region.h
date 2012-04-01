@@ -41,7 +41,6 @@ private:
 
     inline alloc_header *get_header(void *mem);
     inline void *get_data(alloc_header *);
-    
 
     rust_srv *_srv;
     memory_region *_parent;

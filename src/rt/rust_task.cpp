@@ -44,7 +44,8 @@ rust_task::rust_task(rust_task_thread *thread, rust_task_state state,
     supervisor(spawner)
 {
     LOGPTR(thread, "new task", (uintptr_t)this);
-    DLOG(thread, task, "sizeof(task) = %d (0x%x)", sizeof *this, sizeof *this);
+    DLOG(thread, task, "sizeof(task) = %d (0x%x)",
+         sizeof *this, sizeof *this);
 
     new_stack(init_stack_sz);
     if (supervisor) {
@@ -136,7 +137,7 @@ void task_start_wrapper(spawn_args *a)
 
     bool threw_exception = false;
     try {
-        // The first argument is the return pointer; as the task fn 
+        // The first argument is the return pointer; as the task fn
         // must have void return type, we can safely pass 0.
         a->f(0, a->envptr, a->argptr);
     } catch (rust_task *ex) {
@@ -400,7 +401,8 @@ rust_task::wakeup(rust_cond *from) {
     A(thread, cond != NULL, "Cannot wake up unblocked task.");
     LOG(this, task, "Blocked on 0x%" PRIxPTR " woken up on 0x%" PRIxPTR,
                         (uintptr_t) cond, (uintptr_t) from);
-    A(thread, cond == from, "Cannot wake up blocked task on wrong condition.");
+    A(thread, cond == from,
+      "Cannot wake up blocked task on wrong condition.");
 
     transition(task_state_blocked, task_state_running, NULL, "none");
 }

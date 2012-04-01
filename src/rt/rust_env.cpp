@@ -84,10 +84,10 @@ static size_t
 get_max_stk_size() {
     char *maxsz = getenv(RUST_MAX_STACK);
     if (maxsz) {
-	return strtol(maxsz, NULL, 0);
+        return strtol(maxsz, NULL, 0);
     }
     else {
-	return 1024*1024*8;
+        return 1024*1024*8;
     }
 }
 

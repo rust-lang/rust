@@ -362,7 +362,8 @@ public:
     void walk_fn2(char) { return cmp_two_pointers(); }
     void walk_obj2()    { return cmp_two_pointers(); }
 
-    void walk_tag2(tag_info &tinfo, const data_pair<tag_variant_t> &tag_variants);
+    void walk_tag2(tag_info &tinfo,
+                   const data_pair<tag_variant_t> &tag_variants);
     void walk_struct2(const uint8_t *end_sp);
     void walk_res2(const rust_fn *dtor, uint16_t n_ty_params,
                    const type_param *ty_params_sp, const uint8_t *end_sp,
@@ -400,7 +401,8 @@ cmp::walk_vec2(bool is_pod, const std::pair<ptr_pair,ptr_pair> &data_range) {
 }
 
 void
-cmp::walk_tag2(tag_info &tinfo, const data_pair<tag_variant_t> &tag_variants) {
+cmp::walk_tag2(tag_info &tinfo,
+               const data_pair<tag_variant_t> &tag_variants) {
     cmp_number(tag_variants);
     if (result != 0)
         return;
@@ -548,8 +550,8 @@ log::walk_res2(const rust_fn *dtor, unsigned n_params,
 
 extern "C" void
 shape_cmp_type(int8_t *result, const type_desc *tydesc,
-	       const type_desc **subtydescs, uint8_t *data_0,
-	       uint8_t *data_1, uint8_t cmp_type) {
+               const type_desc **subtydescs, uint8_t *data_0,
+               uint8_t *data_1, uint8_t cmp_type) {
     rust_task *task = rust_task_thread::get_task();
     shape::arena arena;
 

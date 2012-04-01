@@ -210,11 +210,11 @@ irc::compute_ircs(rust_task *task, irc_map &ircs) {
         type_desc *tydesc = box->td;
         uint8_t *body = (uint8_t*) box_body(box);
 
-        LOG(task, gc, 
+        LOG(task, gc,
             "determining internal ref counts: "
             "box=%p tydesc=%p body=%p",
             box, tydesc, body);
-        
+
         shape::arena arena;
         shape::type_param *params =
             shape::type_param::from_tydesc_and_data(tydesc, body, arena);
@@ -425,7 +425,7 @@ void
 mark::do_mark(rust_task *task,
               const std::vector<rust_opaque_box *> &roots,
               std::set<rust_opaque_box *> &marked) {
-    std::vector<rust_opaque_box *>::const_iterator 
+    std::vector<rust_opaque_box *>::const_iterator
       begin(roots.begin()),
       end(roots.end());
     while (begin != end) {

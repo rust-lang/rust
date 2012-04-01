@@ -25,7 +25,8 @@ lock_and_signal::lock_and_signal()
     // TODO? Consider checking GetProcAddress("InitializeCriticalSectionEx")
     // so Windows >= Vista we can use CRITICAL_SECTION_NO_DEBUG_INFO to avoid
     // allocating CRITICAL_SECTION debug info that is never released. See:
-    // http://stackoverflow.com/questions/804848/critical-sections-leaking-memory-on-vista-win2008#889853
+    // http://stackoverflow.com/questions/804848/
+    //        critical-sections-leaking-memory-on-vista-win2008#889853
 }
 
 #else
