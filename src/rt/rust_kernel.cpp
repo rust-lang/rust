@@ -17,6 +17,7 @@ rust_kernel::rust_kernel(rust_srv *srv) :
     max_port_id(0),
     rval(0),
     max_sched_id(0),
+    sched_reaper(this),
     env(srv->env)
 {
 }
@@ -62,6 +63,9 @@ rust_kernel::create_scheduler(size_t num_threads) {
     rust_scheduler *sched;
     {
         scoped_lock with(sched_lock);
+        // If this is the first scheduler then we need to launch
+        // the scheduler reaper.
+        bool start_reaper = sched_table.empty();
         id = max_sched_id++;
         K(srv, id != INTPTR_MAX, "Hit the maximum scheduler id");
         sched = new (this, "rust_scheduler")
@@ -70,6 +74,9 @@ rust_kernel::create_scheduler(size_t num_threads) {
             .insert(std::pair<rust_sched_id,
                               rust_scheduler*>(id, sched)).second;
         A(this, is_new, "Reusing a sched id?");
+        if (start_reaper) {
+            sched_reaper.start();
+        }
     }
     sched->start_task_threads();
     return id;
@@ -97,12 +104,12 @@ rust_kernel::release_scheduler_id(rust_sched_id id) {
 }
 
 /*
-Called on the main thread to wait for the kernel to exit. This function is
-also used to join on every terminating scheduler thread, so that we can be
-sure they have completely exited before the process exits.  If we don't join
-them then we can see valgrind errors due to un-freed pthread memory.
+Called by rust_sched_reaper to join every every terminating scheduler thread,
+so that we can be sure they have completely exited before the process exits.
+If we don't join them then we can see valgrind errors due to un-freed pthread
+memory.
  */
-int
+void
 rust_kernel::wait_for_schedulers()
 {
     scoped_lock with(sched_lock);
@@ -121,6 +128,12 @@ rust_kernel::wait_for_schedulers()
             sched_lock.wait();
         }
     }
+}
+
+/* Called on the main thread to wait for the kernel to exit */
+int
+rust_kernel::wait_for_exit() {
+    sched_reaper.join();
     return rval;
 }
 

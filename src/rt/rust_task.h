@@ -112,7 +112,7 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     stk_seg *stk;
     uintptr_t runtime_sp;      // Runtime sp while task running.
     rust_scheduler *sched;
-    rust_task_thread *thread;
+    rust_sched_loop *sched_loop;
 
     // Fields known only to the runtime.
     rust_kernel *kernel;
@@ -191,7 +191,7 @@ private:
 public:
 
     // Only a pointer to 'name' is kept, so it must live as long as this task.
-    rust_task(rust_task_thread *thread,
+    rust_task(rust_sched_loop *sched_loop,
               rust_task_state state,
               rust_task *spawner,
               const char *name,
@@ -312,7 +312,7 @@ rust_task::call_on_c_stack(void *args, void *fn_ptr) {
     bool borrowed_a_c_stack = false;
     uintptr_t sp;
     if (c_stack == NULL) {
-        c_stack = thread->borrow_c_stack();
+        c_stack = sched_loop->borrow_c_stack();
         next_c_sp = align_down(c_stack->end);
         sp = next_c_sp;
         borrowed_a_c_stack = true;
@@ -335,8 +335,8 @@ inline void
 rust_task::call_on_rust_stack(void *args, void *fn_ptr) {
     // Too expensive to check
     // I(thread, !on_rust_stack());
-    A(thread, get_sp_limit() != 0, "Stack must be configured");
-    I(thread, next_rust_sp);
+    A(sched_loop, get_sp_limit() != 0, "Stack must be configured");
+    I(sched_loop, next_rust_sp);
 
     bool had_reentered_rust_stack = reentered_rust_stack;
     reentered_rust_stack = true;
@@ -358,8 +358,8 @@ inline void
 rust_task::return_c_stack() {
     // Too expensive to check
     // I(thread, on_rust_stack());
-    I(thread, c_stack != NULL);
-    thread->return_c_stack(c_stack);
+    I(sched_loop, c_stack != NULL);
+    sched_loop->return_c_stack(c_stack);
     c_stack = NULL;
     next_c_sp = 0;
 }
@@ -368,7 +368,7 @@ rust_task::return_c_stack() {
 inline void *
 rust_task::next_stack(size_t stk_sz, void *args_addr, size_t args_sz) {
     new_stack_fast(stk_sz + args_sz);
-    A(thread, stk->end - (uintptr_t)stk->data >= stk_sz + args_sz,
+    A(sched_loop, stk->end - (uintptr_t)stk->data >= stk_sz + args_sz,
       "Did not receive enough stack");
     uint8_t *new_sp = (uint8_t*)stk->end;
     // Push the function arguments to the new stack
@@ -407,7 +407,7 @@ new_stack_slow(new_stack_args *args);
 inline void
 rust_task::new_stack_fast(size_t requested_sz) {
     // The minimum stack size, in bytes, of a Rust stack, excluding red zone
-    size_t min_sz = thread->min_stack_size;
+    size_t min_sz = sched_loop->min_stack_size;
 
     // Try to reuse an existing stack segment
     if (stk != NULL && stk->next != NULL) {
@@ -438,8 +438,8 @@ record_sp_limit(void *limit);
 
 inline void
 rust_task::record_stack_limit() {
-    I(thread, stk);
-    A(thread,
+    I(sched_loop, stk);
+    A(sched_loop,
       (uintptr_t)stk->end - RED_ZONE_SIZE
       - (uintptr_t)stk->data >= LIMIT_OFFSET,
       "Stack size must be greater than LIMIT_OFFSET");

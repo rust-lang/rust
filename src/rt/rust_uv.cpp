@@ -20,13 +20,13 @@ struct handle_data {
 // helpers
 static void*
 current_kernel_malloc(size_t size, const char* tag) {
-  void* ptr = rust_task_thread::get_task()->kernel->malloc(size, tag);
+  void* ptr = rust_sched_loop::get_task()->kernel->malloc(size, tag);
   return ptr;
 }
 
 static void
 current_kernel_free(void* ptr) {
-  rust_task_thread::get_task()->kernel->free(ptr);
+  rust_sched_loop::get_task()->kernel->free(ptr);
 }
 
 static handle_data*

@@ -10,7 +10,7 @@
 #include "sync/lock_and_signal.h"
 #include "sync/lock_free_queue.h"
 
-struct rust_task_thread;
+struct rust_sched_loop;
 struct rust_task;
 class rust_log;
 class rust_port;
@@ -110,7 +110,7 @@ struct rust_cond { };
 #include "rust_srv.h"
 #include "rust_log.h"
 #include "rust_kernel.h"
-#include "rust_task_thread.h"
+#include "rust_sched_loop.h"
 
 typedef void CDECL (glue_fn)(void *, void *,
                              const type_desc **, void *);

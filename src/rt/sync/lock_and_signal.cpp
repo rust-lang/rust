@@ -10,8 +10,15 @@
 
 #include "lock_and_signal.h"
 
+// FIXME: This is not a portable way of specifying an invalid pthread_t
+#define INVALID_THREAD 0
+
+
 #if defined(__WIN32__)
 lock_and_signal::lock_and_signal()
+#if defined(DEBUG_LOCKS)
+    : _holding_thread(INVALID_THREAD)
+#endif
 {
     _event = CreateEvent(NULL, FALSE, FALSE, NULL);
 
@@ -31,6 +38,9 @@ lock_and_signal::lock_and_signal()
 
 #else
 lock_and_signal::lock_and_signal()
+#if defined(DEBUG_LOCKS)
+    : _holding_thread(INVALID_THREAD)
+#endif
 {
     CHECKED(pthread_cond_init(&_cond, NULL));
     CHECKED(pthread_mutex_init(&_mutex, NULL));
@@ -48,14 +58,25 @@ lock_and_signal::~lock_and_signal() {
 }
 
 void lock_and_signal::lock() {
+    must_not_have_lock();
 #if defined(__WIN32__)
     EnterCriticalSection(&_cs);
+#if defined(DEBUG_LOCKS)
+    _holding_thread = GetCurrentThreadId();
+#endif
 #else
     CHECKED(pthread_mutex_lock(&_mutex));
+#if defined(DEBUG_LOCKS)
+    _holding_thread = pthread_self();
+#endif
 #endif
 }
 
 void lock_and_signal::unlock() {
+    must_have_lock();
+#if defined(DEBUG_LOCKS)
+    _holding_thread = INVALID_THREAD;
+#endif
 #if defined(__WIN32__)
     LeaveCriticalSection(&_cs);
 #else
@@ -67,12 +88,24 @@ void lock_and_signal::unlock() {
  * Wait indefinitely until condition is signaled.
  */
 void lock_and_signal::wait() {
+    must_have_lock();
+#if defined(DEBUG_LOCKS)
+    _holding_thread = INVALID_THREAD;
+#endif
 #if defined(__WIN32__)
     LeaveCriticalSection(&_cs);
     WaitForSingleObject(_event, INFINITE);
     EnterCriticalSection(&_cs);
+    must_not_be_locked();
+#if defined(DEBUG_LOCKS)
+    _holding_thread = GetCurrentThreadId();
+#endif
 #else
     CHECKED(pthread_cond_wait(&_cond, &_mutex));
+    must_not_be_locked();
+#if defined(DEBUG_LOCKS)
+    _holding_thread = pthread_self();
+#endif
 #endif
 }
 
@@ -86,6 +119,32 @@ void lock_and_signal::signal() {
     CHECKED(pthread_cond_signal(&_cond));
 #endif
 }
+
+#if defined(DEBUG_LOCKS)
+bool lock_and_signal::lock_held_by_current_thread()
+{
+#if defined(__WIN32__)
+    return _holding_thread == GetCurrentThreadId();
+#else
+    return pthread_equal(_holding_thread, pthread_self());
+#endif
+}
+#endif
+
+#if defined(DEBUG_LOCKS)
+void lock_and_signal::must_have_lock() {
+    assert(lock_held_by_current_thread() && "must have lock");
+}
+void lock_and_signal::must_not_have_lock() {
+    assert(!lock_held_by_current_thread() && "must not have lock");
+}
+void lock_and_signal::must_not_be_locked() {
+}
+#else
+void lock_and_signal::must_have_lock() { }
+void lock_and_signal::must_not_have_lock() { }
+void lock_and_signal::must_not_be_locked() { }
+#endif
 
 scoped_lock::scoped_lock(lock_and_signal &lock)
     : lock(lock)

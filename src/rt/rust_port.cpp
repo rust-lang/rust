@@ -51,7 +51,7 @@ void rust_port::end_detach() {
     // Just take the lock to make sure that the thread that signaled
     // the detach_cond isn't still holding it
     scoped_lock with(ref_lock);
-    I(task->thread, ref_count == 0);
+    I(task->sched_loop, ref_count == 0);
 }
 
 void rust_port::send(void *sptr) {

@@ -80,21 +80,20 @@ rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map) {
     rust_sched_id sched_id = kernel->create_scheduler(env->num_sched_threads);
     rust_scheduler *sched = kernel->get_scheduler_by_id(sched_id);
     rust_task *root_task = sched->create_task(NULL, "main");
-    rust_task_thread *thread = root_task->thread;
     command_line_args *args
         = new (kernel, "main command line args")
         command_line_args(root_task, argc, argv);
 
-    DLOG(thread, dom, "startup: %d args in 0x%" PRIxPTR,
+    LOG(root_task, dom, "startup: %d args in 0x%" PRIxPTR,
              args->argc, (uintptr_t)args->args);
     for (int i = 0; i < args->argc; i++) {
-        DLOG(thread, dom, "startup: arg[%d] = '%s'", i, args->argv[i]);
+        LOG(root_task, dom, "startup: arg[%d] = '%s'", i, args->argv[i]);
     }
 
     root_task->start((spawn_fn)main_fn, NULL, args->args);
     root_task = NULL;
 
-    int ret = kernel->wait_for_schedulers();
+    int ret = kernel->wait_for_exit();
     delete args;
     delete kernel;
     delete srv;

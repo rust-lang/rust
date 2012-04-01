@@ -8,18 +8,18 @@ const uint32_t log_info = 2;
 const uint32_t log_debug = 3;
 
 #define LOG(task, field, ...)                                   \
-    DLOG_LVL(log_debug, task, task->thread, field, __VA_ARGS__)
+    DLOG_LVL(log_debug, task, task->sched_loop, field, __VA_ARGS__)
 #define LOG_ERR(task, field, ...)                               \
-    DLOG_LVL(log_err, task, task->thread, field, __VA_ARGS__)
-#define DLOG(thread, field, ...)                                   \
-    DLOG_LVL(log_debug, NULL, thread, field, __VA_ARGS__)
-#define DLOG_ERR(thread, field, ...)                               \
-    DLOG_LVL(log_err, NULL, thread, field, __VA_ARGS__)
-#define LOGPTR(thread, msg, ptrval)                                \
-    DLOG_LVL(log_debug, NULL, thread, mem, "%s 0x%" PRIxPTR, msg, ptrval)
-#define DLOG_LVL(lvl, task, thread, field, ...)                    \
+    DLOG_LVL(log_err, task, task->sched_loop, field, __VA_ARGS__)
+#define DLOG(sched_loop, field, ...)                                   \
+    DLOG_LVL(log_debug, NULL, sched_loop, field, __VA_ARGS__)
+#define DLOG_ERR(sched_loop, field, ...)                               \
+    DLOG_LVL(log_err, NULL, sched_loop, field, __VA_ARGS__)
+#define LOGPTR(sched_loop, msg, ptrval)                                \
+    DLOG_LVL(log_debug, NULL, sched_loop, mem, "%s 0x%" PRIxPTR, msg, ptrval)
+#define DLOG_LVL(lvl, task, sched_loop, field, ...)                    \
     do {                                                        \
-        rust_task_thread* _d_ = thread;                            \
+        rust_sched_loop* _d_ = sched_loop;                      \
         if (log_rt_##field >= lvl && _d_->log_lvl >= lvl) {     \
             _d_->log(task, lvl, __VA_ARGS__);                   \
         }                                                       \
@@ -34,13 +34,13 @@ const uint32_t log_debug = 3;
         }                                                     \
     } while (0)
 
-struct rust_task_thread;
+struct rust_sched_loop;
 struct rust_task;
 
 class rust_log {
 
 public:
-    rust_log(rust_srv *srv, rust_task_thread *thread);
+    rust_log(rust_srv *srv, rust_sched_loop *sched_loop);
     virtual ~rust_log();
 
     void trace_ln(rust_task *task, uint32_t level, char *message);
@@ -49,7 +49,7 @@ public:
 
 private:
     rust_srv *_srv;
-    rust_task_thread *_thread;
+    rust_sched_loop *_sched_loop;
     bool _use_labels;
     void trace_ln(rust_task *task, char *message);
 };

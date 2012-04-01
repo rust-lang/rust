@@ -1,5 +1,6 @@
 #include "rust_scheduler.h"
 #include "rust_util.h"
+#include "rust_sched_launcher.h"
 
 rust_scheduler::rust_scheduler(rust_kernel *kernel,
                                rust_srv *srv,
@@ -21,21 +22,21 @@ rust_scheduler::~rust_scheduler() {
     destroy_task_threads();
 }
 
-rust_task_thread *
+rust_sched_launcher *
 rust_scheduler::create_task_thread(int id) {
     rust_srv *srv = this->srv->clone();
-    rust_task_thread *thread =
-        new (kernel, "rust_task_thread") rust_task_thread(this, srv, id);
-    KLOG(kernel, kern, "created task thread: " PTR ", id: %d, index: %d",
-          thread, id, thread->list_index);
+    rust_sched_launcher *thread =
+        new (kernel, "rust_thread_sched_launcher")
+        rust_thread_sched_launcher(this, srv, id);
+    KLOG(kernel, kern, "created task thread: " PTR ", id: %d",
+          thread, id);
     return thread;
 }
 
 void
-rust_scheduler::destroy_task_thread(rust_task_thread *thread) {
-    KLOG(kernel, kern, "deleting task thread: " PTR ", name: %s, index: %d",
-        thread, thread->name, thread->list_index);
-    rust_srv *srv = thread->srv;
+rust_scheduler::destroy_task_thread(rust_sched_launcher *thread) {
+    KLOG(kernel, kern, "deleting task thread: " PTR, thread);
+    rust_srv *srv = thread->get_loop()->srv;
     delete thread;
     delete srv;
 }
@@ -60,7 +61,7 @@ void
 rust_scheduler::start_task_threads()
 {
     for(size_t i = 0; i < num_threads; ++i) {
-        rust_task_thread *thread = threads[i];
+        rust_sched_launcher *thread = threads[i];
         thread->start();
     }
 }
@@ -69,7 +70,7 @@ void
 rust_scheduler::join_task_threads()
 {
     for(size_t i = 0; i < num_threads; ++i) {
-        rust_task_thread *thread = threads[i];
+        rust_sched_launcher *thread = threads[i];
         thread->join();
     }
 }
@@ -77,8 +78,8 @@ rust_scheduler::join_task_threads()
 void
 rust_scheduler::kill_all_tasks() {
     for(size_t i = 0; i < num_threads; ++i) {
-        rust_task_thread *thread = threads[i];
-        thread->kill_all_tasks();
+        rust_sched_launcher *thread = threads[i];
+        thread->get_loop()->kill_all_tasks();
     }
 }
 
@@ -92,8 +93,8 @@ rust_scheduler::create_task(rust_task *spawner, const char *name) {
         if (cur_thread >= num_threads)
             cur_thread = 0;
     }
-    rust_task_thread *thread = threads[thread_no];
-    return thread->create_task(spawner, name);
+    rust_sched_launcher *thread = threads[thread_no];
+    return thread->get_loop()->create_task(spawner, name);
 }
 
 void
@@ -118,7 +119,7 @@ rust_scheduler::exit() {
     // scheduler will get destroyed, and our fields will cease to exist.
     size_t current_num_threads = num_threads;
     for(size_t i = 0; i < current_num_threads; ++i) {
-        threads[i]->exit();
+        threads[i]->get_loop()->exit();
     }
 }
 
