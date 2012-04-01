@@ -30,8 +30,16 @@ class rust_thread_sched_launcher
 public:
     rust_thread_sched_launcher(rust_scheduler *sched, rust_srv *srv, int id);
     virtual void start() { rust_thread::start(); }
-    virtual void run() { driver.start_main_loop(); }
     virtual void join() { rust_thread::join(); }
+    virtual void run() { driver.start_main_loop(); }
+};
+
+class rust_manual_sched_launcher : public rust_sched_launcher {
+public:
+  rust_manual_sched_launcher(rust_scheduler *sched, rust_srv *srv, int id);
+  virtual void start() { }
+  virtual void join() { }
+  void start_main_loop() { driver.start_main_loop(); }
 };
 
 #endif // RUST_SCHED_LAUNCHER_H
