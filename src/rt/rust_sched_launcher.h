@@ -19,7 +19,6 @@ public:
     rust_sched_launcher(rust_scheduler *sched, rust_srv *srv, int id);
 
     virtual void start() = 0;
-    virtual void run()  = 0;
     virtual void join() = 0;
     rust_sched_loop *get_loop() { return &sched_loop; }
 };
