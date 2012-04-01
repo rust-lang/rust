@@ -5,7 +5,7 @@ import middle::ty;
 import syntax::ast;
 import syntax::ast::{ret_style};
 import util::ppaux::{ty_to_str, mt_to_str};
-import result::{result, methods, chain, chain_err, ok, err, map, map2, iter2};
+import result::{result, extensions, ok, err, map, map2, iter2};
 import ty::type_is_bot;
 
 export infer_ctxt;
@@ -85,7 +85,7 @@ fn fixup_vars(cx: infer_ctxt, a: ty::t) -> fres<ty::t> {
 impl methods for ures {
     fn then<T:copy>(f: fn() -> result<T,ty::type_err>)
         -> result<T,ty::type_err> {
-        chain(self) {|_i| f() }
+        self.chain() {|_i| f() }
     }
 }
 
