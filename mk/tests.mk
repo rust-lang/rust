@@ -74,13 +74,34 @@ check-full: tidy all check-stage1 check-stage2 check-stage3 \
 ifdef CFG_NOTIDY
 tidy:
 else
+
+ALL_CS := $(wildcard $(S)src/rt/*.cpp \
+                     $(S)src/rt/*/*.cpp \
+                     $(S)src/rt/*/*/*.cpp \
+                     $(S)srcrustllvm/*.cpp)
+ALL_CS := $(filter-out $(S)src/rt/bigint/bigint_ext.cpp \
+                       $(S)src/rt/bigint/bigint_int.cpp \
+	,$(ALL_CS))
+ALL_HS := $(wildcard $(S)src/rt/*.h \
+                     $(S)src/rt/*/*.h \
+                     $(S)src/rt/*/*/*.h \
+                     $(S)srcrustllvm/*.h)
+ALL_HS := $(filter-out $(S)src/rt/vg/valgrind.h \
+                       $(S)src/rt/vg/memcheck.h \
+                       $(S)src/rt/uthash/uthash.h \
+                       $(S)src/rt/uthash/utlist.h \
+                       $(S)src/rt/msvc/typeof.h \
+                       $(S)src/rt/msvc/stdint.h \
+                       $(S)src/rt/msvc/inttypes.h \
+                       $(S)src/rt/bigint/bigint.h \
+	,$(ALL_HS))
+
 tidy:
 		@$(call E, check: formatting)
 		$(Q)echo \
-	  	  $(addprefix $(S)src/, $(RUSTLLVM_LIB_CS) $(RUSTLLVM_OBJS_CS) \
-	    	  $(RUSTLLVM_HDR) \
-                $(RUNTIME_CS) $(RUNTIME_HDR) $(RUNTIME_S)) \
               $(wildcard $(S)src/etc/*.py)  \
+              $(ALL_CS) \
+              $(ALL_HS) \
               $(COMPILER_CRATE) \
               $(COMPILER_INPUTS) \
               $(CORELIB_CRATE) \
