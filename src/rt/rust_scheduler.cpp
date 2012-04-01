@@ -26,7 +26,8 @@ rust_sched_launcher *
 rust_scheduler::create_task_thread(int id) {
     rust_srv *srv = this->srv->clone();
     rust_sched_launcher *thread =
-        new (kernel, "rust_sched_launcher") rust_sched_launcher(this, srv, id);
+	new (kernel, "rust_thread_sched_launcher")
+	rust_thread_sched_launcher(this, srv, id);
     KLOG(kernel, kern, "created task thread: " PTR ", id: %d",
           thread, id);
     return thread;
