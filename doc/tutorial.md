@@ -1623,10 +1623,9 @@ The previous section mentioned that arguments are passed by pointer or
 by value based on their type. There is one situation in which this is
 difficult. If you try this program:
 
-~~~~
-# fn map(f: fn(int) -> int, v: [int]) {}
+~~~~{.xfail-test}
 fn plus1(x: int) -> int { x + 1 }
-map(plus1, [1, 2, 3]);
+vec::map([1, 2, 3], plus1);
 ~~~~
 
 You will get an error message about argument passing styles
@@ -1639,9 +1638,8 @@ pass to a generic higher-order function as being passed by pointer,
 using the `&&` sigil:
 
 ~~~~
-# fn map<T, U>(f: fn(T) -> U, v: [T]) {}
 fn plus1(&&x: int) -> int { x + 1 }
-map(plus1, [1, 2, 3]);
+vec::map([1, 2, 3], plus1);
 ~~~~
 
 NOTE: This is inconvenient, and we are hoping to get rid of this
@@ -2134,7 +2132,7 @@ native mod crypto {
 }
 
 fn as_hex(data: [u8]) -> str {
-    let acc = "";
+    let mut acc = "";
     for byte in data { acc += #fmt("%02x", byte as uint); }
     ret acc;
 }
@@ -2517,14 +2515,16 @@ The Rust language has a facility for testing built into the language.
 Tests can be interspersed with other code, and annotated with the
 `#[test]` attribute.
 
-~~~~
+~~~~{.xfail-test}
+# // FIXME: xfailed because test_twice is a #[test] function it's not
+# // getting compiled
 use std;
 
 fn twice(x: int) -> int { x + x }
 
 #[test]
 fn test_twice() {
-    let i = -100;
+    let mut i = -100;
     while i < 100 {
         assert twice(i) == 2 * i;
         i += 1;
