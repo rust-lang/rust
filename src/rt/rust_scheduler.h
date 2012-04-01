@@ -12,16 +12,17 @@ public:
     rust_srv *srv;
     rust_env *env;
 private:
-    // Protects live_threads and cur_thread increments
+    // Protects live_threads, live_tasks, cur_thread, may_exit
     lock_and_signal lock;
     // When this hits zero we'll tell the kernel to release us
     uintptr_t live_threads;
     // When this hits zero we'll tell the threads to exit
     uintptr_t live_tasks;
+    size_t cur_thread;
+    bool may_exit;
 
     array_list<rust_sched_launcher *> threads;
     const size_t num_threads;
-    size_t cur_thread;
 
     rust_sched_id id;
 
@@ -35,7 +36,7 @@ private:
 
 public:
     rust_scheduler(rust_kernel *kernel, rust_srv *srv, size_t num_threads,
-                   rust_sched_id id);
+                   rust_sched_id id, bool allow_exit);
     ~rust_scheduler();
 
     void start_task_threads();
@@ -51,6 +52,9 @@ public:
     void release_task_thread();
 
     rust_sched_id get_id() { return id; }
+    // Tells the scheduler that as soon as it runs out of tasks
+    // to run it should exit
+    void allow_exit();
 };
 
 #endif /* RUST_SCHEDULER_H */

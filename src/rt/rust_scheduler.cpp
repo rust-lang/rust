@@ -5,14 +5,16 @@
 rust_scheduler::rust_scheduler(rust_kernel *kernel,
                                rust_srv *srv,
                                size_t num_threads,
-                               rust_sched_id id) :
+                               rust_sched_id id,
+                               bool allow_exit) :
     kernel(kernel),
     srv(srv),
     env(srv->env),
     live_threads(num_threads),
     live_tasks(0),
-    num_threads(num_threads),
     cur_thread(0),
+    may_exit(allow_exit),
+    num_threads(num_threads),
     id(id)
 {
     create_task_threads();
@@ -103,12 +105,11 @@ rust_scheduler::release_task() {
     {
         scoped_lock with(lock);
         live_tasks--;
-        if (live_tasks == 0) {
+        if (live_tasks == 0 && may_exit) {
             need_exit = true;
         }
     }
     if (need_exit) {
-        // There are no more tasks on this scheduler. Time to leave
         exit();
     }
 }
@@ -137,5 +138,18 @@ rust_scheduler::release_task_thread() {
     }
     if (new_live_threads == 0) {
         kernel->release_scheduler_id(id);
+    }
+}
+
+void
+rust_scheduler::allow_exit() {
+    bool need_exit = false;
+    {
+        scoped_lock with(lock);
+        may_exit = true;
+        need_exit = live_tasks == 0;
+    }
+    if (need_exit) {
+        exit();
     }
 }

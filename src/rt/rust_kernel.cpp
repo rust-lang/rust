@@ -69,7 +69,7 @@ rust_kernel::create_scheduler(size_t num_threads) {
         id = max_sched_id++;
         K(srv, id != INTPTR_MAX, "Hit the maximum scheduler id");
         sched = new (this, "rust_scheduler")
-            rust_scheduler(this, srv, num_threads, id);
+            rust_scheduler(this, srv, num_threads, id, true);
         bool is_new = sched_table
             .insert(std::pair<rust_sched_id,
                               rust_scheduler*>(id, sched)).second;
