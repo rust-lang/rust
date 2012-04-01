@@ -641,7 +641,7 @@ fn simplify_type(tcx: ty::ctxt, typ: ty::t) -> ty::t {
           _ { typ }
         }
     }
-    ty::fold_ty(tcx, ty::fm_general(bind simplifier(tcx, _)), typ)
+    ty::fold_ty(tcx, typ) {|t| simplifier(tcx, t) }
 }
 
 // Given a tag type `ty`, returns the offset of the payload.

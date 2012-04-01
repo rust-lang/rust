@@ -15,6 +15,8 @@ import util::ppaux::ty_to_str;
 import util::ppaux::ty_constr_to_str;
 import syntax::print::pprust::*;
 
+export ty_vid, region_vid, vid;
+export br_hashmap;
 export is_instantiable;
 export node_id_to_type;
 export node_id_to_type_params;
@@ -33,12 +35,11 @@ export expr_ty;
 export expr_ty_params_and_ty;
 export expr_is_lval;
 export field_ty;
-export fold_ty;
+export fold_ty, fold_sty_to_ty, fold_region, fold_ty_var;
 export field;
 export field_idx;
 export get_field;
 export get_fields;
-export fm_var, fm_general, fm_rptr;
 export get_element_type;
 export is_binopable;
 export is_pred_ty;
@@ -93,7 +94,7 @@ export ty_uint, mk_uint, mk_mach_uint;
 export ty_uniq, mk_uniq, mk_imm_uniq, type_is_unique_box;
 export ty_var, mk_var;
 export ty_self, mk_self;
-export region, re_block, re_param, re_var;
+export region, bound_region;
 export get, type_has_params, type_has_vars, type_has_rptrs, type_id;
 export ty_var_id;
 export ty_to_def_id;
@@ -127,7 +128,6 @@ export resolved_mode;
 export arg_mode;
 export unify_mode;
 export set_default_mode;
-export unify;
 export variant_info;
 export walk_ty, maybe_walk_ty;
 export occurs_check;
@@ -261,20 +261,25 @@ type fn_ty = {proto: ast::proto,
               ret_style: ret_style,
               constraints: [@constr]};
 
+// See discussion at head of region.rs
 enum region {
-    // The region of a block.
-    re_block(node_id),
-    // The self region. Only valid inside classes and typeclass
-    // implementations.
-    re_self,
-    // The inferred region, which also corresponds to &self in typedefs.
-    re_inferred,
+    re_bound(bound_region),
+    re_free(node_id, bound_region),
+    re_scope(node_id),
+    re_var(region_vid),
+    re_default
+}
 
-    // A region parameter.
-    re_param(uint),
+enum bound_region {
+    // The `self` region for a given class/impl/iface.  The defining item may
+    // appear in another crate.
+    br_self,
 
-    // A region variable.
-    re_var(uint)
+    // The anonymous region parameter for a given function.
+    br_anon,
+
+    // A named region parameter.
+    br_param(uint, str)
 }
 
 // NB: If you change this, you'll probably want to change the corresponding
@@ -300,7 +305,7 @@ enum sty {
     ty_res(def_id, t, [t]),
     ty_tup([t]),
 
-    ty_var(int), // type variable during typechecking
+    ty_var(ty_vid), // type variable during typechecking
     ty_param(uint, def_id), // type parameter
     ty_self([t]), // interface method self type
 
@@ -342,6 +347,24 @@ enum param_bound {
     bound_copy,
     bound_send,
     bound_iface(t),
+}
+
+enum ty_vid = uint;
+enum region_vid = uint;
+
+iface vid {
+    fn to_uint() -> uint;
+    fn to_str() -> str;
+}
+
+impl of vid for ty_vid {
+    fn to_uint() -> uint { *self }
+    fn to_str() -> str { #fmt["<V%u>", self.to_uint()] }
+}
+
+impl of vid for region_vid {
+    fn to_uint() -> uint { *self }
+    fn to_str() -> str { #fmt["<R%u>", self.to_uint()] }
 }
 
 fn param_bounds_to_kind(bounds: param_bounds) -> kind {
@@ -443,7 +466,11 @@ fn mk_t_with_id(cx: ctxt, st: sty, o_def_id: option<ast::def_id>) -> t {
       ty_box(m) | ty_uniq(m) | ty_vec(m) | ty_ptr(m) {
         derive_flags(has_params, has_vars, has_rptrs, m.ty);
       }
-      ty_rptr(_, m) {
+      ty_rptr(r, m) {
+        alt r {
+          ty::re_var(_) { has_vars = true; }
+          _ { }
+        }
         has_rptrs = true;
         derive_flags(has_params, has_vars, has_rptrs, m.ty);
       }
@@ -555,7 +582,7 @@ fn mk_res(cx: ctxt, did: ast::def_id, inner: t, tps: [t]) -> t {
     mk_t(cx, ty_res(did, inner, tps))
 }
 
-fn mk_var(cx: ctxt, v: int) -> t { mk_t(cx, ty_var(v)) }
+fn mk_var(cx: ctxt, v: ty_vid) -> t { mk_t(cx, ty_var(v)) }
 
 fn mk_self(cx: ctxt, tps: [t]) -> t { mk_t(cx, ty_self(tps)) }
 
@@ -622,146 +649,124 @@ fn maybe_walk_ty(ty: t, f: fn(t) -> bool) {
     }
 }
 
-enum fold_mode {
-    fm_var(fn@(int) -> t),
-    fm_param(fn@(uint, def_id) -> t),
-    fm_rptr(fn@(region, bool /* under & */) -> region,
-            bool /* descend into outermost fn */),
-    fm_general(fn@(t) -> t),
+fn fold_sty_to_ty(tcx: ty::ctxt, sty: sty, foldop: fn(t) -> t) -> t {
+    mk_t(tcx, fold_sty(sty, foldop))
 }
 
-fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
-    fn do_fold(cx: ctxt, fld: fold_mode, ty_0: t, under_rptr: bool) -> t {
-        let mut ty = ty_0;
+fn fold_sty(sty: sty, fldop: fn(t) -> t) -> sty {
+    alt sty {
+      ty_box(tm) {
+        ty_box({ty: fldop(tm.ty), mutbl: tm.mutbl})
+      }
+      ty_uniq(tm) {
+        ty_uniq({ty: fldop(tm.ty), mutbl: tm.mutbl})
+      }
+      ty_ptr(tm) {
+        ty_ptr({ty: fldop(tm.ty), mutbl: tm.mutbl})
+      }
+      ty_vec(tm) {
+        ty_vec({ty: fldop(tm.ty), mutbl: tm.mutbl})
+      }
+      ty_enum(tid, subtys) {
+        ty_enum(tid, vec::map(subtys) {|t| fldop(t) })
+      }
+      ty_iface(did, subtys) {
+        ty_iface(did, vec::map(subtys) {|t| fldop(t) })
+      }
+      ty_self(subtys) {
+        ty_self(vec::map(subtys) {|t| fldop(t) })
+      }
+      ty_rec(fields) {
+        let new_fields = vec::map(fields) {|fl|
+            let new_ty = fldop(fl.mt.ty);
+            let new_mt = {ty: new_ty, mutbl: fl.mt.mutbl};
+            {ident: fl.ident, mt: new_mt}
+        };
+        ty_rec(new_fields)
+      }
+      ty_tup(ts) {
+        let new_ts = vec::map(ts) {|tt| fldop(tt) };
+        ty_tup(new_ts)
+      }
+      ty_fn(f) {
+        let new_args = vec::map(f.inputs) {|a|
+            let new_ty = fldop(a.ty);
+            {mode: a.mode, ty: new_ty}
+        };
+        let new_output = fldop(f.output);
+        ty_fn({inputs: new_args, output: new_output with f})
+      }
+      ty_res(did, subty, tps) {
+        let new_tps = vec::map(tps) {|ty| fldop(ty) };
+        ty_res(did, fldop(subty), new_tps)
+      }
+      ty_rptr(r, tm) {
+        ty_rptr(r, {ty: fldop(tm.ty), mutbl: tm.mutbl})
+      }
+      ty_constr(subty, cs) {
+        ty_constr(fldop(subty), cs)
+      }
+      ty_class(did, tps) {
+        let new_tps = vec::map(tps) {|ty| fldop(ty) };
+        ty_class(did, new_tps)
+      }
+      ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
+      ty_str | ty_type | ty_opaque_closure_ptr(_) |
+      ty_opaque_box | ty_var(_) | ty_param(_, _) {
+        sty
+      }
+    }
+}
 
-        let tb = get(ty);
-        alt fld {
-          fm_var(_) { if !tb.has_vars { ret ty; } }
-          fm_param(_) { if !tb.has_params { ret ty; } }
-          fm_rptr(_,_) { if !tb.has_rptrs { ret ty; } }
-          fm_general(_) {/* no fast path */ }
-        }
+// Folds types from the bottom up.
+fn fold_ty(cx: ctxt, t0: t, fldop: fn(t) -> t) -> t {
+    let sty = fold_sty(get(t0).struct) {|t| fold_ty(cx, t, fldop) };
+    fldop(mk_t(cx, sty))
+}
 
+fn fold_ty_var(cx: ctxt, t0: t, fldop: fn(ty_vid) -> t) -> t {
+    let tb = get(t0);
+    if !tb.has_vars { ret t0; }
+    alt tb.struct {
+      ty_var(id) { fldop(id) }
+      sty { fold_sty_to_ty(cx, sty) {|t| fold_ty_var(cx, t, fldop) } }
+    }
+}
+
+fn fold_region(cx: ctxt, t0: t, fldop: fn(region, bool) -> region) -> t {
+    fn do_fold(cx: ctxt, t0: t, under_r: bool,
+               fldop: fn(region, bool) -> region) -> t {
+        let tb = get(t0);
+        if !tb.has_rptrs { ret t0; }
         alt tb.struct {
-          ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
-          ty_str | ty_type | ty_opaque_closure_ptr(_) |
-          ty_opaque_box {}
-          ty_box(tm) {
-            ty = mk_box(cx, {ty: do_fold(cx, fld, tm.ty, under_rptr),
-                             mutbl: tm.mutbl});
+          ty_rptr(r, {ty: t1, mutbl: m}) {
+            let m_r = fldop(r, under_r);
+            let m_t1 = do_fold(cx, t1, true, fldop);
+            ty::mk_rptr(cx, m_r, {ty: m_t1, mutbl: m})
           }
-          ty_uniq(tm) {
-            ty = mk_uniq(cx, {ty: do_fold(cx, fld, tm.ty, under_rptr),
-                              mutbl: tm.mutbl});
+          ty_fn(_) {
+            // do not recurse into functions, which introduce fresh bindings
+            t0
           }
-          ty_ptr(tm) {
-            ty = mk_ptr(cx, {ty: do_fold(cx, fld, tm.ty, under_rptr),
-                             mutbl: tm.mutbl});
-          }
-          ty_vec(tm) {
-            ty = mk_vec(cx, {ty: do_fold(cx, fld, tm.ty, under_rptr),
-                             mutbl: tm.mutbl});
-          }
-          ty_enum(tid, subtys) {
-            ty = mk_enum(cx, tid,
-                         vec::map(subtys, {|t|
-                            do_fold(cx, fld, t, under_rptr)
-                         }));
-          }
-          ty_iface(did, subtys) {
-            ty = mk_iface(cx, did,
-                          vec::map(subtys, {|t|
-                              do_fold(cx, fld, t, under_rptr)
-                          }));
-          }
-          ty_self(subtys) {
-            ty = mk_self(cx, vec::map(subtys, {|t|
-                                do_fold(cx, fld, t, under_rptr)
-                             }));
-          }
-          ty_rec(fields) {
-            let mut new_fields: [field] = [];
-            for fl: field in fields {
-                let new_ty = do_fold(cx, fld, fl.mt.ty, under_rptr);
-                let new_mt = {ty: new_ty, mutbl: fl.mt.mutbl};
-                new_fields += [{ident: fl.ident, mt: new_mt}];
+          sty {
+            fold_sty_to_ty(cx, sty) {|t|
+                do_fold(cx, t, under_r, fldop)
             }
-            ty = mk_rec(cx, new_fields);
           }
-          ty_tup(ts) {
-            let mut new_ts = [];
-            for tt in ts { new_ts += [do_fold(cx, fld, tt, under_rptr)]; }
-            ty = mk_tup(cx, new_ts);
-          }
-          ty_fn(f) {
-            let mut new_fld;
-            alt fld {
-              fm_rptr(_, false) {
-                // Don't recurse into functions, because regions are
-                // universally quantified, well, universally, at function
-                // boundaries.
-                ret ty;
-              }
-              fm_rptr(f, true) {
-                new_fld = fm_rptr(f, false);
-              }
-              _ { new_fld = fld; }
-            }
-
-            let mut new_args: [arg] = [];
-            for a: arg in f.inputs {
-                let new_ty = do_fold(cx, new_fld, a.ty, under_rptr);
-                new_args += [{mode: a.mode, ty: new_ty}];
-            }
-            let new_output = do_fold(cx, new_fld, f.output, under_rptr);
-            ty = mk_fn(cx, {inputs: new_args, output: new_output with f});
-          }
-          ty_res(did, subty, tps) {
-            let mut new_tps = [];
-            for tp: t in tps {
-                new_tps += [do_fold(cx, fld, tp, under_rptr)];
-            }
-            ty = mk_res(cx, did, do_fold(cx, fld, subty, under_rptr),
-                        new_tps);
-          }
-          ty_var(id) {
-            alt fld { fm_var(folder) { ty = folder(id); } _ {/* no-op */ } }
-          }
-          ty_param(id, did) {
-            alt fld { fm_param(folder) { ty = folder(id, did); } _ {} }
-          }
-          ty_rptr(r, tm) {
-            let region = alt fld {
-                fm_rptr(folder, _) { folder(r, under_rptr) }
-                _ { r }
-            };
-            ty = mk_rptr(cx, region,
-                         {ty: do_fold(cx, fld, tm.ty, true),
-                          mutbl: tm.mutbl});
-          }
-          ty_constr(subty, cs) {
-              ty = mk_constr(cx, do_fold(cx, fld, subty, under_rptr), cs);
-          }
-          ty_class(did, ts) {
-              ty = mk_class(cx, did, vec::map(ts, {|t|
-                              do_fold(cx, fld, t, under_rptr)}));
-          }
-          _ {
-              cx.sess.bug("unsupported sort of type in fold_ty");
-          }
-        }
-        alt tb.o_def_id {
-          some(did) { ty = mk_t_with_id(cx, get(ty).struct, some(did)); }
-          _ {}
-        }
-
-        // If this is a general type fold, then we need to run it now.
-        alt fld { fm_general(folder) { ret folder(ty); } _ { ret ty; } }
+      }
     }
 
-    ret do_fold(cx, fld, ty_0, false);
+    do_fold(cx, t0, false, fldop)
 }
 
+fn substitute_type_params(cx: ctxt, substs: [ty::t], typ: t) -> t {
+    let tb = get(typ);
+    alt tb.struct {
+      ty_param(idx, _) { substs[idx] }
+      _ if !tb.has_params { typ }
+      s { mk_t(cx, fold_sty(s) {|t| substitute_type_params(cx, substs, t)}) }
+    }
+}
 
 // Type utilities
 
@@ -1392,7 +1397,7 @@ fn type_param(ty: t) -> option<uint> {
 
 // Returns a vec of all the type variables
 // occurring in t. It may contain duplicates.
-fn vars_in_type(ty: t) -> [int] {
+fn vars_in_type(ty: t) -> [ty_vid] {
     let mut rslt = [];
     walk_ty(ty) {|ty|
         alt get(ty).struct { ty_var(v) { rslt += [v]; } _ { } }
@@ -1419,6 +1424,19 @@ fn type_autoderef(cx: ctxt, t: t) -> t {
         }
     }
     ret t1;
+}
+
+fn hash_bound_region(br: bound_region) -> uint {
+    alt br { // no idea if this is any good
+      br_self { 0u }
+      br_anon { 1u }
+      br_param(id, _) { id }
+    }
+}
+
+fn br_hashmap<V:copy>() -> hashmap<bound_region, V> {
+    map::hashmap(hash_bound_region,
+                 {|&&a: bound_region, &&b: bound_region| a == b })
 }
 
 // Type hashing.
@@ -1448,12 +1466,13 @@ fn hash_type_structure(st: sty) -> uint {
         h
     }
     fn hash_region(r: region) -> uint {
-        alt r {
-          re_block(_)   { 0u }
-          re_self       { 1u }
-          re_inferred   { 2u }
-          re_param(_)   { 3u }
-          re_var(_)     { 4u }
+        alt r { // no idea if this is any good
+          re_bound(br) { (hash_bound_region(br)) << 2u | 0u }
+          re_free(id, br) { ((id as uint) << 4u) |
+                               (hash_bound_region(br)) << 2u | 1u }
+          re_scope(id)  { ((id as uint) << 2u) | 2u }
+          re_var(id)    { (id.to_uint() << 2u) | 3u }
+          re_default    { 4u }
         }
     }
     alt st {
@@ -1492,7 +1511,7 @@ fn hash_type_structure(st: sty) -> uint {
         for a in f.inputs { h = hash_subty(h, a.ty); }
         hash_subty(h, f.output)
       }
-      ty_var(v) { hash_uint(30u, v as uint) }
+      ty_var(v) { hash_uint(30u, v.to_uint()) }
       ty_param(pid, did) { hash_def(hash_uint(31u, pid), did) }
       ty_self(ts) {
         let mut h = 28u;
@@ -1638,7 +1657,7 @@ fn is_pred_ty(fty: t) -> bool {
     is_fn_ty(fty) && type_is_bool(ty_fn_ret(fty))
 }
 
-fn ty_var_id(typ: t) -> int {
+fn ty_var_id(typ: t) -> ty_vid {
     alt get(typ).struct {
       ty_var(vid) { ret vid; }
       _ { #error("ty_var_id called on non-var ty"); fail; }
@@ -1727,7 +1746,7 @@ fn sort_methods(meths: [method]) -> [method] {
     ret std::sort::merge_sort(bind method_lteq(_, _), meths);
 }
 
-fn occurs_check(tcx: ctxt, sp: span, vid: int, rt: t) {
+fn occurs_check(tcx: ctxt, sp: span, vid: ty_vid, rt: t) {
     // Fast path
     if !type_has_vars(rt) { ret; }
 
@@ -1816,115 +1835,6 @@ fn set_default_mode(cx: ctxt, m: ast::mode, m_def: ast::rmode) {
     }
 }
 
-// Type unification via Robinson's algorithm (Robinson 1965). Implemented as
-// described in Hoder and Voronkov:
-//
-//     http://www.cs.man.ac.uk/~hoderk/ubench/unification_full.pdf
-mod unify {
-    import result::{result, ok, err, chain, map, map2};
-
-    export mk_region_bindings;
-    export region_bindings;
-    export precise, in_region_bindings;
-
-    type ures<T> = result<T,type_err>;
-
-    type region_bindings =
-        {sets: ufind::ufind, regions: smallintmap::smallintmap<region>};
-
-    enum unify_style {
-        precise,
-        in_region_bindings(@region_bindings)
-    }
-    type uctxt = {st: unify_style, tcx: ctxt};
-
-    fn mk_region_bindings() -> @region_bindings {
-        ret @{sets: ufind::make(), regions: smallintmap::mk::<region>()};
-    }
-
-    // Unifies two region sets.
-    //
-    // FIXME: This is a straight copy of the code above. We should use
-    //        polymorphism to make this better.
-    fn union_region_sets<T:copy>(
-        cx: @uctxt, set_a: uint, set_b: uint,
-        nxt: fn() -> ures<T>) -> ures<T> {
-
-        let rb = alt cx.st {
-            in_region_bindings(rb) { rb }
-            precise {
-                cx.tcx.sess.bug("attempted to unify two region sets without \
-                                 a set of region bindings present");
-            }
-        };
-        ufind::grow(rb.sets, uint::max(set_a, set_b) + 1u);
-        let root_a = ufind::find(rb.sets, set_a);
-        let root_b = ufind::find(rb.sets, set_b);
-
-        let replace_region = (
-            fn@(rb: @region_bindings, r: region) {
-                ufind::union(rb.sets, set_a, set_b);
-                let root_c: uint = ufind::find(rb.sets, set_a);
-                smallintmap::insert(rb.regions, root_c, r);
-            }
-        );
-
-        alt smallintmap::find(rb.regions, root_a) {
-          none {
-            alt smallintmap::find(rb.regions, root_b) {
-              none { ufind::union(rb.sets, set_a, set_b); ret nxt(); }
-              some(r_b) { replace_region(rb, r_b); ret nxt(); }
-            }
-          }
-          some(r_a) {
-            alt smallintmap::find(rb.regions, root_b) {
-              none { replace_region(rb, r_a); ret nxt(); }
-              some(r_b) {
-                ret unify_regions(cx, r_a, r_b) {|r_c|
-                    replace_region(rb, r_c);
-                    nxt()
-                };
-              }
-            }
-          }
-        }
-    }
-
-    fn record_region_binding<T:copy>(
-        cx: @uctxt, key: uint,
-        r: region,
-        nxt: fn(region) -> ures<T>) -> ures<T> {
-
-        let rb = alt cx.st {
-            in_region_bindings(rb) { rb }
-            precise { fail; }
-        };
-
-        ufind::grow(rb.sets, key + 1u);
-        let root = ufind::find(rb.sets, key);
-        let mut result_region = r;
-        alt smallintmap::find(rb.regions, root) {
-          some(old_region) {
-            alt unify_regions(cx, old_region, r, {|v| ok(v)}) {
-              ok(unified_region) { result_region = unified_region; }
-              err(e) { ret err(e); }
-            }
-          }
-          none {/* fall through */ }
-        }
-        smallintmap::insert(rb.regions, root, result_region);
-
-        // FIXME: This should be re_var instead.
-        ret nxt(re_param(key));
-    }
-
-    fn unify_regions<T:copy>(
-            _cx: @uctxt, _e_region: region, _a_region: region,
-            _nxt: fn(region) -> ures<T>) -> ures<T> {
-        fail;   // unused
-    }
-}
-
 fn type_err_to_str(cx: ctxt, err: type_err) -> str {
     alt err {
       terr_mismatch { ret "types differ"; }
@@ -1993,14 +1903,6 @@ fn type_err_to_str(cx: ctxt, err: type_err) -> str {
                  region_to_str(cx, superregion));
       }
     }
-}
-
-// Replaces type parameters in the given type using the given list of
-// substitions.
-fn substitute_type_params(cx: ctxt, substs: [ty::t], typ: t) -> t {
-    if !type_has_params(typ) { ret typ; }
-    // Precondition? idx < vec::len(substs)
-    fold_ty(cx, fm_param({|idx, _id| substs[idx]}), typ)
 }
 
 fn def_has_ty_params(def: ast::def) -> bool {

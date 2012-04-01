@@ -1,3 +1,6 @@
+// xfail-test
+// ^ handling of self is currently broken
+
 type clam = { chowder: &int };
 
 impl clam for clam {

@@ -265,7 +265,9 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
         st.pos = st.pos + 1u;
         ret ty::mk_res(st.tcx, def, inner, params);
       }
-      'X' { ret ty::mk_var(st.tcx, parse_int(st)); }
+      'X' {
+        ret ty::mk_var(st.tcx, ty::ty_vid(parse_int(st) as uint));
+      }
       'Y' { ret ty::mk_type(st.tcx); }
       'C' {
         let ck = alt check next(st) {

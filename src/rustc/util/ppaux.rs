@@ -10,21 +10,32 @@ import syntax::{ast, ast_util};
 import middle::ast_map;
 import driver::session::session;
 
+fn bound_region_to_str(_cx: ctxt, br: bound_region) -> str {
+    alt br {
+      br_anon          { "&" }
+      br_param(_, str) { #fmt["&%s.", str] }
+      br_self          { "&self." }
+    }
+}
+
 fn region_to_str(cx: ctxt, region: region) -> str {
     alt region {
-      re_block(node_id) {
+      re_scope(node_id) {
         alt cx.items.get(node_id) {
             ast_map::node_block(blk) {
-                #fmt("<block at %s>", codemap::span_to_str(blk.span,
+                #fmt("&<block at %s>.", codemap::span_to_str(blk.span,
                                                            cx.sess.codemap))
             }
             _ { cx.sess.bug("re_block refers to non-block") }
         }
       }
-      re_self       { "self" }
-      re_inferred   { "" }
-      re_param(id)  { #fmt("<P%u>", id) }    // TODO: do better than this
-      re_var(id)    { #fmt("<R%u>", id) }    // TODO: do better than this
+
+      re_bound(br) { bound_region_to_str(cx, br) }
+      re_free(id, br) { #fmt["{%d} %s", id, bound_region_to_str(cx, br)] }
+
+      // These two should not be seen by end-users (very often, anyhow):
+      re_var(id)    { #fmt("&%s.", id.to_str()) }
+      re_default    { "&(default)." }
     }
 }
 
@@ -122,7 +133,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
       ty_box(tm) { "@" + mt_to_str(cx, tm) }
       ty_uniq(tm) { "~" + mt_to_str(cx, tm) }
       ty_ptr(tm) { "*" + mt_to_str(cx, tm) }
-      ty_rptr(r, tm) { "&" + region_to_str(cx, r) + "." + mt_to_str(cx, tm) }
+      ty_rptr(r, tm) { region_to_str(cx, r) + mt_to_str(cx, tm) }
       ty_vec(tm) { "[" + mt_to_str(cx, tm) + "]" }
       ty_type { "type" }
       ty_rec(elems) {
@@ -139,7 +150,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
         fn_to_str(cx, f.proto, none, f.inputs, f.output, f.ret_style,
                   f.constraints)
       }
-      ty_var(v) { "<T" + int::str(v) + ">" }
+      ty_var(v) { v.to_str() }
       ty_param(id, _) {
         "'" + str::from_bytes([('a' as u8) + (id as u8)])
       }

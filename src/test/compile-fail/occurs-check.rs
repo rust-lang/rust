@@ -1,4 +1,4 @@
 fn main() {
-    let f; //! ERROR this local variable has a type of infinite size
+    let f; //! ERROR cyclic type of infinite size
     f = @f;
 }

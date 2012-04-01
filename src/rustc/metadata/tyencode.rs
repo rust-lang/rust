@@ -5,6 +5,7 @@ import std::map::hashmap;
 import syntax::ast::*;
 import driver::session::session;
 import middle::ty;
+import middle::ty::vid;
 import syntax::print::pprust::*;
 import middle::trans::reachable;
 
@@ -99,23 +100,46 @@ fn enc_mt(w: io::writer, cx: @ctxt, mt: ty::mt) {
     }
     enc_ty(w, cx, mt.ty);
 }
+fn enc_bound_region(w: io::writer, br: ty::bound_region) {
+    alt br {
+      ty::br_self { w.write_char('s') }
+      ty::br_anon { w.write_char('a') }
+      ty::br_param(id, s) {
+        w.write_char('[');
+        w.write_uint(id);
+        w.write_char('|');
+        w.write_str(s);
+        w.write_char(']')
+      }
+    }
+}
 fn enc_region(w: io::writer, r: ty::region) {
     alt r {
-        ty::re_block(nid) {
-            w.write_char('b'); w.write_int(nid); w.write_char('|');
-        }
-        ty::re_self {
-            w.write_char('s');
-        }
-        ty::re_inferred {
-            w.write_char('i');
-        }
-        ty::re_param(id) {
-            w.write_char('p'); w.write_uint(id); w.write_char('|');
-        }
-        ty::re_var(id) {
-            w.write_char('v'); w.write_uint(id); w.write_char('|');
-        }
+      ty::re_bound(br) {
+        w.write_char('b');
+        enc_bound_region(w, br);
+      }
+      ty::re_free(id, br) {
+        w.write_char('f');
+        w.write_char('[');
+        w.write_int(id);
+        w.write_char('|');
+        enc_bound_region(w, br);
+        w.write_char(']');
+      }
+      ty::re_scope(nid) {
+        w.write_char('s');
+        w.write_int(nid);
+        w.write_char('|');
+      }
+      ty::re_default {
+        w.write_char('i');
+      }
+      ty::re_var(id) {
+        w.write_char('v');
+        w.write_uint(id.to_uint());
+        w.write_char('|');
+      }
     }
 }
 fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
@@ -199,7 +223,10 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
         for t: ty::t in tps { enc_ty(w, cx, t); }
         w.write_char(']');
       }
-      ty::ty_var(id) { w.write_char('X'); w.write_str(int::str(id)); }
+      ty::ty_var(id) {
+        w.write_char('X');
+        w.write_uint(id.to_uint());
+      }
       ty::ty_param(id, did) {
         w.write_char('p');
         w.write_str(cx.ds(did));

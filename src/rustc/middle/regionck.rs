@@ -26,38 +26,38 @@ fn check_expr(expr: @ast::expr, cx: ctxt, visitor: visit::vt<ctxt>) {
     if ty::type_has_rptrs(t) {
         ty::walk_ty(t) { |t|
             alt ty::get(t).struct {
-                ty::ty_rptr(region, _) {
-                    alt region {
-                        ty::re_self | ty::re_inferred | ty::re_param(_) {
-                            /* ok */
-                        }
-                        ty::re_block(rbi) {
-                            let referent_block_id = rbi;
-                            let enclosing_block_id = alt cx.enclosing_block {
-                                none {
-                                    cx.tcx.sess.span_bug(expr.span,
-                                                         "block region " +
-                                                         "type outside a " +
-                                                         "block?!");
-                                }
-                                some(eb) { eb }
-                            };
+              ty::ty_rptr(region, _) {
+                alt region {
+                  ty::re_bound(_) | ty::re_free(_, _) {
+                    /* ok */
+                  }
+                  ty::re_scope(rbi) {
+                    let referent_block_id = rbi;
+                    let enclosing_block_id = alt cx.enclosing_block {
+                      none {
+                        cx.tcx.sess.span_bug(expr.span,
+                                             "block region " +
+                                             "type outside a " +
+                                             "block?!");
+                      }
+                      some(eb) { eb }
+                    };
 
-                            if !region::scope_contains(cx.tcx.region_map,
-                                                       referent_block_id,
-                                                       enclosing_block_id) {
+                    if !region::scope_contains(cx.tcx.region_map,
+                                               referent_block_id,
+                                               enclosing_block_id) {
 
-                                cx.tcx.sess.span_err(expr.span, "reference " +
-                                                     "escapes its block");
-                            }
-                        }
-                        ty::re_var(_) {
-                            cx.tcx.sess.span_bug(expr.span,
-                                                 "unresolved region");
-                        }
+                        cx.tcx.sess.span_err(expr.span, "reference " +
+                                             "escapes its block");
                     }
+                  }
+                  ty::re_default | ty::re_var(_) {
+                    cx.tcx.sess.span_bug(expr.span,
+                                         "unresolved region");
+                  }
                 }
-                _ { /* no-op */ }
+              }
+              _ { /* no-op */ }
             }
         }
     }
