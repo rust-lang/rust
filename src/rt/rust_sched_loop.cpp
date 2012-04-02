@@ -143,9 +143,6 @@ rust_sched_loop::schedule_task() {
     I(this, this);
     // FIXME: in the face of failing tasks, this is not always right.
     // I(this, n_live_tasks() > 0);
-    if (running_tasks.size() == 0)
-        return NULL;
-
     return running_tasks.next();
 }
 

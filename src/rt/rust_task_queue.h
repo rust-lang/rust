@@ -4,7 +4,7 @@
 
 #include <cstddef>
 
-class rust_task;
+struct rust_task;
 
 class rust_task_iterator {
  public:

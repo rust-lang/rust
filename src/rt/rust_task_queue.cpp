@@ -21,6 +21,8 @@ rust_task_queue::rust_task_queue() : head(NULL), sz(0)
 
 rust_task *
 rust_task_queue::next() {
+    if (sz == 0)
+        return NULL;
     rust_task *ret = head;
     head = head->next;
     return ret;
