@@ -1,23 +1,26 @@
 #[doc = "
 Rust bindings to libuv
 
-This crate provides a low-level mapping to libuv, a library for
-running an asynchronous event loop, with extensive IO operations.
+This is the base-module for various levels of bindings to
+the libuv library.
 
-This crate is seeing heavy work, currently, and the final API layout
-should not be inferred from its current form.
+These modules are seeing heavy work, currently, and the final
+API layout should not be inferred from its current form.
 
-The base module contains a set of safe functions for creating
-an event loop that runs within a single task, but allows operations
-against it from other tasks, but funneling it through a uv_async
-request which reads from a port that users write to. This API should
-not be considered stable and may go away in the near future.
+This base module currently contains a historical, rust-based
+implementation of a few libuv operations that hews closely to
+the patterns of the libuv C-API. It was used, mostly, to explore
+some implementation details and will most likely be deprecated
+in the near future.
 
-The 'll' module contains low-level, bare-metal mappings to the libuv
-C-api. All functions within this module are marked unsafe and should
-be used, primarily, for composing rust-idiomatic abstractions. In
-lieu of satisfactory documention for the 'll' module, itself, libuv's
-uv.h should be consulted.
+The `ll` module contains low-level mappings for working directly
+with the libuv C-API.
+
+The `hl` module contains a set of tools library developers can
+use for interacting with an active libuv loop. This modules's
+API is meant to be used to write high-level,
+rust-idiomatic abstractions for utilizes libuv's asynchronous IO
+facilities.
 "];
 
 import map::hashmap;
@@ -27,6 +30,9 @@ export timer_init, timer_start, timer_stop;
 
 import ll = uv_ll;
 export ll;
+
+import hl = uv_hl;
+export hl;
 
 #[nolink]
 native mod rustrt {
