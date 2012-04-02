@@ -383,9 +383,6 @@ native mod rustrt {
     fn rust_uv_strerror(err: *uv_err_t) -> *libc::c_char;
     // FIXME ref #2064
     fn rust_uv_err_name(err: *uv_err_t) -> *libc::c_char;
-    fn rust_uv_ip4_test_verify_port_val(++addr: sockaddr_in,
-                                        expected: libc::c_uint)
-        -> bool;
     fn rust_uv_ip4_addr(ip: *u8, port: libc::c_int)
         -> sockaddr_in;
     // FIXME ref #2064
@@ -1697,19 +1694,4 @@ fn test_uv_struct_size_uv_async_t() {
                       native_handle_size as uint, rust_handle_size);
     io::println(output);
     assert native_handle_size as uint == rust_handle_size;
-}
-
-fn impl_uv_byval_test() unsafe {
-    let addr = direct::ip4_addr("173.194.33.111", 80);
-    io::println(#fmt("after build addr in rust. port: %u",
-                     addr.sin_port as uint));
-    assert rustrt::rust_uv_ip4_test_verify_port_val(addr,
-                                   addr.sin_port as libc::c_uint);
-    io::println(#fmt("after build addr in rust. port: %u",
-                     addr.sin_port as uint));
-}
-#[test]
-#[ignore(cfg(target_os = "freebsd"))]
-fn test_uv_ip4_byval_passing_test() {
-    impl_uv_byval_test();
 }
