@@ -3,8 +3,6 @@
 
 #include "rust_globals.h"
 #include "util/array_list.h"
-#include "util/indexed_list.h"
-#include "util/synchronized_indexed_list.h"
 #include "util/hash_map.h"
 #include "sync/sync.h"
 #include "sync/lock_and_signal.h"
