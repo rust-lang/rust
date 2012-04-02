@@ -23,14 +23,14 @@ void *memory_region::get_data(alloc_header *ptr) {
     return (void*)((char *)ptr + HEADER_SIZE);
 }
 
-memory_region::memory_region(rust_srv *srv, bool synchronized) :
-    _srv(srv), _parent(NULL), _live_allocations(0),
-    _detailed_leaks(srv->env->detailed_leaks),
+memory_region::memory_region(rust_env *env, bool synchronized) :
+    _env(env), _parent(NULL), _live_allocations(0),
+    _detailed_leaks(env->detailed_leaks),
     _synchronized(synchronized) {
 }
 
 memory_region::memory_region(memory_region *parent) :
-    _srv(parent->_srv), _parent(parent), _live_allocations(0),
+    _env(parent->_env), _parent(parent), _live_allocations(0),
     _detailed_leaks(parent->_detailed_leaks),
     _synchronized(parent->_synchronized) {
 }
@@ -55,11 +55,11 @@ void memory_region::free(void *mem) {
 #   endif
 
     if (_live_allocations < 1) {
-        _srv->fatal("live_allocs < 1", __FILE__, __LINE__, "");
+        assert(false && "live_allocs < 1");
     }
     release_alloc(mem);
     maybe_poison(mem);
-    _srv->free(alloc);
+    ::free(alloc);
 }
 
 void *
@@ -74,7 +74,7 @@ memory_region::realloc(void *mem, size_t orig_size) {
 #   endif
 
     size_t size = orig_size + HEADER_SIZE;
-    alloc_header *newMem = (alloc_header *)_srv->realloc(alloc, size);
+    alloc_header *newMem = (alloc_header *)::realloc(alloc, size);
 
 #   if RUSTRT_TRACK_ALLOCATIONS >= 1
     assert(newMem->magic == MAGIC);
@@ -88,7 +88,7 @@ memory_region::realloc(void *mem, size_t orig_size) {
                alloc->index, _allocation_list[alloc->index], alloc);
         printf("realloc: ptr 0x%" PRIxPTR " (%s) is not in allocation_list\n",
                (uintptr_t) get_data(alloc), alloc->tag);
-        _srv->fatal("not in allocation_list", __FILE__, __LINE__, "");
+        assert(false && "not in allocation_list");
     }
     else {
         _allocation_list[newMem->index] = newMem;
@@ -105,7 +105,7 @@ void *
 memory_region::malloc(size_t size, const char *tag, bool zero) {
     size_t old_size = size;
     size += HEADER_SIZE;
-    alloc_header *mem = (alloc_header *)_srv->malloc(size);
+    alloc_header *mem = (alloc_header *)::malloc(size);
 
 #   if RUSTRT_TRACK_ALLOCATIONS >= 1
     mem->magic = MAGIC;
@@ -166,8 +166,8 @@ memory_region::~memory_region() {
 #   endif
 
     if (_live_allocations > 0) {
-        _srv->fatal(msg, __FILE__, __LINE__,
-                    "%d objects", _live_allocations);
+        fprintf(stderr, "%s\n", msg);
+        assert(false);
     }
     if (_synchronized) { _lock.unlock(); }
 }
@@ -184,7 +184,7 @@ memory_region::release_alloc(void *mem) {
     if (_allocation_list[alloc->index] != alloc) {
         printf("free: ptr 0x%" PRIxPTR " (%s) is not in allocation_list\n",
                (uintptr_t) get_data(alloc), alloc->tag);
-        _srv->fatal("not in allocation_list", __FILE__, __LINE__, "");
+        assert(false && "not in allocation_list");
     }
     else {
         // printf("freed index %d\n", index);
@@ -222,7 +222,7 @@ memory_region::claim_alloc(void *mem) {
 void
 memory_region::maybe_poison(void *mem) {
 
-    if (!_srv->env->poison_on_free)
+    if (!_env->poison_on_free)
         return;
 
 #   if RUSTRT_TRACK_ALLOCATIONS >= 1

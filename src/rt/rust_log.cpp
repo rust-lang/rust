@@ -40,8 +40,8 @@ log_console_off(rust_env *env) {
     }
 }
 
-rust_log::rust_log(rust_srv *srv, rust_sched_loop *sched_loop) :
-    _srv(srv),
+rust_log::rust_log(rust_env *env, rust_sched_loop *sched_loop) :
+    _env(env),
     _sched_loop(sched_loop) {
 }
 
@@ -98,7 +98,8 @@ rust_log::trace_ln(char *prefix, char *message) {
     append_string(buffer, "%s", prefix);
     append_string(buffer, "%s", message);
     if (_log_to_console) {
-        _srv->log(buffer);
+        fprintf(stderr, "rust: %s\n", buffer);
+        fflush(stderr);
     }
     _log_lock.unlock();
 }

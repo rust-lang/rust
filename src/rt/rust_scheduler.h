@@ -9,8 +9,6 @@ class rust_scheduler : public kernel_owned<rust_scheduler> {
     // FIXME: Make these private
 public:
     rust_kernel *kernel;
-    rust_srv *srv;
-    rust_env *env;
 private:
     // Protects live_threads and cur_thread increments
     lock_and_signal lock;
@@ -34,7 +32,7 @@ private:
     void exit();
 
 public:
-    rust_scheduler(rust_kernel *kernel, rust_srv *srv, size_t num_threads,
+    rust_scheduler(rust_kernel *kernel, size_t num_threads,
                    rust_sched_id id);
     ~rust_scheduler();
 

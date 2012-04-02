@@ -22,9 +22,6 @@ class rust_kernel {
     memory_region _region;
     rust_log _log;
 
-public:
-    rust_srv *srv;
-private:
     // The next task id
     rust_task_id max_task_id;
 
@@ -50,10 +47,9 @@ private:
     rust_sched_reaper sched_reaper;
 
 public:
-
     struct rust_env *env;
 
-    rust_kernel(rust_srv *srv);
+    rust_kernel(rust_env *env);
 
     void log(uint32_t level, char const *fmt, ...);
     void fatal(char const *fmt, ...);

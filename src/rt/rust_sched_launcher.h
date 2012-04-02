@@ -16,7 +16,7 @@ protected:
     rust_sched_driver driver;
 
 public:
-    rust_sched_launcher(rust_scheduler *sched, rust_srv *srv, int id);
+    rust_sched_launcher(rust_scheduler *sched, int id);
     virtual ~rust_sched_launcher() { }
 
     virtual void start() = 0;
@@ -28,7 +28,7 @@ class rust_thread_sched_launcher
   :public rust_sched_launcher,
    private rust_thread {
 public:
-    rust_thread_sched_launcher(rust_scheduler *sched, rust_srv *srv, int id);
+    rust_thread_sched_launcher(rust_scheduler *sched, int id);
     virtual void start() { rust_thread::start(); }
     virtual void run() { driver.start_main_loop(); }
     virtual void join() { rust_thread::join(); }

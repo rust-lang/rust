@@ -24,18 +24,6 @@ typedef intptr_t rust_sched_id;
 typedef intptr_t rust_task_id;
 typedef intptr_t rust_port_id;
 
-#define I(dom, e) ((e) ? (void)0 : \
-         (dom)->srv->fatal(#e, __FILE__, __LINE__, ""))
-
-#define W(dom, e, s, ...) ((e) ? (void)0 : \
-         (dom)->srv->warning(#e, __FILE__, __LINE__, s, ## __VA_ARGS__))
-
-#define A(dom, e, s, ...) ((e) ? (void)0 : \
-         (dom)->srv->fatal(#e, __FILE__, __LINE__, s, ## __VA_ARGS__))
-
-#define K(srv, e, s, ...) ((e) ? (void)0 : \
-         srv->fatal(#e, __FILE__, __LINE__, s, ## __VA_ARGS__))
-
 #define PTR "0x%" PRIxPTR
 
 // This drives our preemption scheme.
@@ -107,7 +95,6 @@ template <typename T> struct region_owned {
 struct rust_cond { };
 
 #include "memory_region.h"
-#include "rust_srv.h"
 #include "rust_log.h"
 #include "rust_kernel.h"
 #include "rust_sched_loop.h"

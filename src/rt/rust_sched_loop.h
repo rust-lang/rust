@@ -69,7 +69,6 @@ private:
 public:
     rust_kernel *kernel;
     rust_scheduler *sched;
-    rust_srv *srv;
 
     // NB: this is used to filter *runtime-originating* debug
     // logging, on a per-scheduler basis. It's not likely what
@@ -81,6 +80,7 @@ public:
 
     size_t min_stack_size;
     rust_env *env;
+    memory_region local_region;
 
     randctx rctx;
 
@@ -90,7 +90,7 @@ public:
 
     // Only a pointer to 'name' is kept, so it must live as long as this
     // domain.
-    rust_sched_loop(rust_scheduler *sched, rust_srv *srv, int id);
+    rust_sched_loop(rust_scheduler *sched, int id);
     void activate(rust_task *task);
     void log(rust_task *task, uint32_t level, char const *fmt, ...);
     rust_log & get_log();
@@ -165,7 +165,7 @@ rust_sched_loop::get_task() {
 // NB: Runs on the Rust stack
 inline stk_seg *
 rust_sched_loop::borrow_c_stack() {
-    I(this, cached_c_stack);
+    assert(cached_c_stack);
     stk_seg *your_stack;
     if (extra_c_stack) {
         your_stack = extra_c_stack;
@@ -180,7 +180,7 @@ rust_sched_loop::borrow_c_stack() {
 // NB: Runs on the Rust stack
 inline void
 rust_sched_loop::return_c_stack(stk_seg *stack) {
-    I(this, !extra_c_stack);
+    assert(!extra_c_stack);
     if (!cached_c_stack) {
         cached_c_stack = stack;
     } else {
