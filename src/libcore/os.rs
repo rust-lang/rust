@@ -30,7 +30,8 @@ export env, getenv, setenv, fdopen, pipe;
 export getcwd, dll_filename, self_exe_path;
 export exe_suffix, dll_suffix, sysname;
 export homedir, list_dir, list_dir_path, path_is_dir, path_exists,
-       make_absolute, make_dir, remove_dir, change_dir, remove_file;
+       make_absolute, make_dir, remove_dir, change_dir, remove_file,
+       copy_file;
 
 // FIXME: move these to str perhaps?
 export as_c_charp, fill_charp_buf;
@@ -534,6 +535,68 @@ fn change_dir(p: path) -> bool {
     }
 }
 
+#[doc = "Copies a file from one location to another"]
+fn copy_file(from: path, to: path) -> bool {
+    ret do_copy_file(from, to);
+
+    #[cfg(target_os = "win32")]
+    fn do_copy_file(from: path, to: path) -> bool {
+        // FIXME: remove imports when export globs work properly.
+        import libc::funcs::extra::kernel32::*;
+        import libc::types::os::arch::extra::*;
+        import win32::*;
+        ret as_utf16_p(from) {|fromp|
+            as_utf16_p(to) {|top|
+                CopyFileW(fromp, top, (0 as BOOL)) != (0 as BOOL)
+            }
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    #[cfg(target_os = "macos")]
+    #[cfg(target_os = "freebsd")]
+    fn do_copy_file(from: path, to: path) -> bool unsafe {
+        let istream = as_c_charp(from) {|fromp|
+            as_c_charp("rb") {|modebuf|
+                libc::fopen(fromp, modebuf)
+            }
+        };
+        if istream as uint == 0u {
+            ret false;
+        }
+        let ostream = as_c_charp(to) {|top|
+            as_c_charp("w+b") {|modebuf|
+                libc::fopen(top, modebuf)
+            }
+        };
+        if ostream as uint == 0u {
+            fclose(istream);
+            ret false;
+        }
+        let mut buf : [mut u8] = [mut];
+        let bufsize = 8192u;
+        vec::reserve(buf, bufsize);
+        let mut done = false;
+        let mut ok = true;
+        while !done {
+          vec::as_mut_buf(buf) {|b|
+            let nread = libc::fread(b as *mut c_void, 1u, bufsize, istream);
+              if nread > 0 as size_t {
+                 if libc::fwrite(b as *c_void, 1u, nread, ostream) != nread {
+                    ok = false;
+                    done = true;
+                 }
+              } else {
+                    done = true;
+              }
+           }
+        }
+        fclose(istream);
+        fclose(ostream);
+        ret ok;
+    }
+}
+
 #[doc = "Deletes an existing file"]
 fn remove_file(p: path) -> bool {
     ret unlink(p);
@@ -541,6 +604,7 @@ fn remove_file(p: path) -> bool {
     #[cfg(target_os = "win32")]
     fn unlink(p: path) -> bool {
         // FIXME: remove imports when export globs work properly.
+        // (similar to Issue #2006)
         import libc::funcs::extra::kernel32::*;
         import libc::types::os::arch::extra::*;
         import win32::*;
@@ -762,4 +826,42 @@ mod tests {
         assert (!os::path_exists("test/nonexistent-bogus-path"));
     }
 
+    #[test]
+    fn copy_file_does_not_exist() {
+      assert !os::copy_file("test/nonexistent-bogus-path",
+                           "test/other-bogus-path");
+      assert !os::path_exists("test/other-bogus-path");
+    }
+
+    #[test]
+    fn copy_file_ok() {
+      let tempdir = getcwd(); // would like to use $TMPDIR,
+                              // doesn't seem to work on Linux
+      assert (str::len(tempdir) > 0u);
+      let in = tempdir + path::path_sep() + "in.txt";
+      let out = tempdir + path::path_sep() + "out.txt";
+
+      /* Write the temp input file */
+      let ostream = as_c_charp(in) {|fromp|
+            as_c_charp("w+b") {|modebuf|
+                libc::fopen(fromp, modebuf)
+            }
+      };
+      assert (ostream as uint != 0u);
+      let s = "hello";
+      let mut buf = str::bytes(s) + [0 as u8];
+      vec::as_mut_buf(buf) {|b|
+         assert (libc::fwrite(b as *c_void, 1u, str::len(s) + 1u, ostream) ==
+                 buf.len())};
+      assert (libc::fclose(ostream) == (0u as c_int));
+      let rs = os::copy_file(in, out);
+      if (!os::path_exists(in)) {
+        fail (#fmt("%s doesn't exist", in));
+      }
+      assert(rs);
+      let rslt = run::run_program("diff", [in, out]);
+      assert (rslt == 0);
+      assert (remove_file(in));
+      assert (remove_file(out));
+    }
 }
