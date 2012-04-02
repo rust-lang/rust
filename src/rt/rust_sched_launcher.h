@@ -36,10 +36,10 @@ public:
 
 class rust_manual_sched_launcher : public rust_sched_launcher {
 public:
-  rust_manual_sched_launcher(rust_scheduler *sched, rust_srv *srv, int id);
-  virtual void start() { }
-  virtual void join() { }
-  void start_main_loop() { driver.start_main_loop(); }
+    rust_manual_sched_launcher(rust_scheduler *sched, rust_srv *srv, int id);
+    virtual void start() { }
+    virtual void join() { }
+    rust_sched_driver *get_driver() { return &driver; };
 };
 
 class rust_sched_launcher_factory {
@@ -62,7 +62,10 @@ private:
 public:
     rust_manual_sched_launcher_factory() : launcher(NULL) { }
     virtual rust_sched_launcher *create(rust_scheduler *sched, int id);
-    rust_manual_sched_launcher *get_launcher() { return launcher; }
+    rust_sched_driver *get_driver() {
+        assert(launcher != NULL);
+        return launcher->get_driver();
+    }
 };
 
 #endif // RUST_SCHED_LAUNCHER_H

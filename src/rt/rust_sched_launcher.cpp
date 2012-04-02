@@ -32,6 +32,7 @@ rust_sched_launcher *
 rust_manual_sched_launcher_factory::create(rust_scheduler *sched, int id) {
     assert(launcher == NULL && "I can only track one sched_launcher");
     rust_srv *srv = sched->srv->clone();
-    return new(sched->kernel, "rust_manual_sched_launcher")
+    launcher = new(sched->kernel, "rust_manual_sched_launcher")
         rust_manual_sched_launcher(sched, srv, id);
+    return launcher;
 }

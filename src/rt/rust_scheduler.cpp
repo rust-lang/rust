@@ -6,7 +6,8 @@ rust_scheduler::rust_scheduler(rust_kernel *kernel,
                                rust_srv *srv,
                                size_t num_threads,
                                rust_sched_id id,
-                               bool allow_exit) :
+                               bool allow_exit,
+                               rust_sched_launcher_factory *launchfac) :
     kernel(kernel),
     srv(srv),
     env(srv->env),
@@ -17,8 +18,7 @@ rust_scheduler::rust_scheduler(rust_kernel *kernel,
     num_threads(num_threads),
     id(id)
 {
-    rust_thread_sched_launcher_factory launchfac;
-    create_task_threads(&launchfac);
+    create_task_threads(launchfac);
 }
 
 rust_scheduler::~rust_scheduler() {

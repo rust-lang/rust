@@ -38,7 +38,8 @@ private:
 
 public:
     rust_scheduler(rust_kernel *kernel, rust_srv *srv, size_t num_threads,
-                   rust_sched_id id, bool allow_exit);
+                   rust_sched_id id, bool allow_exit,
+                   rust_sched_launcher_factory *launchfac);
     ~rust_scheduler();
 
     void start_task_threads();
