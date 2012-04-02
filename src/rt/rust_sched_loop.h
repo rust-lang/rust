@@ -5,6 +5,7 @@
 #include "rust_stack.h"
 #include "rust_signal.h"
 #include "context.h"
+#include "rust_task_queue.h"
 
 enum rust_task_state {
     task_state_newborn,
@@ -52,8 +53,9 @@ private:
     stk_seg *cached_c_stack;
     stk_seg *extra_c_stack;
 
-    rust_task_list running_tasks;
-    rust_task_list blocked_tasks;
+    rust_task_queue running_tasks;
+    rust_task_queue blocked_tasks;
+
     rust_task *dead_task;
 
     rust_signal *pump_signal;
@@ -61,7 +63,7 @@ private:
     void prepare_c_stack(rust_task *task);
     void unprepare_c_stack();
 
-    rust_task_list *state_list(rust_task_state state);
+    rust_task_queue *state_list(rust_task_state state);
     const char *state_name(rust_task_state state);
 
     void pump_loop();
@@ -81,8 +83,6 @@ public:
 
     size_t min_stack_size;
     rust_env *env;
-
-    randctx rctx;
 
     // FIXME: Neither of these are used
     int32_t list_index;

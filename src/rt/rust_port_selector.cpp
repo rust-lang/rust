@@ -1,8 +1,10 @@
 #include "rust_port.h"
 #include "rust_port_selector.h"
+#include "rust_util.h"
 
-rust_port_selector::rust_port_selector()
+rust_port_selector::rust_port_selector(rust_kernel * kernel)
     : ports(NULL), n_ports(0) {
+    isaac_init(kernel, &rctx);
 }
 
 void
@@ -27,7 +29,7 @@ rust_port_selector::select(rust_task *task, rust_port **dptr,
     // message.
 
     // Start looking for ports from a different index each time.
-    size_t j = isaac_rand(&task->sched_loop->rctx);
+    size_t j = isaac_rand(&rctx);
     for (size_t i = 0; i < n_ports; i++) {
         size_t k = (i + j) % n_ports;
         rust_port *port = ports[k];

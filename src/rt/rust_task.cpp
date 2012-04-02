@@ -33,6 +33,8 @@ rust_task::rust_task(rust_sched_loop *sched_loop, rust_task_state state,
     propagate_failure(true),
     cc_counter(0),
     total_stack_sz(0),
+    next(NULL),
+    prev(NULL),
     state(state),
     cond(NULL),
     cond_name("none"),
@@ -41,6 +43,7 @@ rust_task::rust_task(rust_sched_loop *sched_loop, rust_task_state state,
     c_stack(NULL),
     next_c_sp(0),
     next_rust_sp(0),
+    port_selector(kernel),
     supervisor(spawner)
 {
     LOGPTR(sched_loop, "new task", (uintptr_t)this);
