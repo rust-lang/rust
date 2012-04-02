@@ -919,7 +919,7 @@ for the parameter list, as in `{|| ...}`.
 Partial application is done using the `bind` keyword in Rust.
 
 ~~~~
-let daynum = bind vec::position_elem(["mo", "tu", "we", "do",
+let daynum = bind vec::position_elem(["mo", "tu", "we", "th",
                                       "fr", "sa", "su"], _);
 ~~~~
 
