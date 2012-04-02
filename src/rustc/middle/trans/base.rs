@@ -1045,8 +1045,6 @@ fn call_tydesc_glue_full(cx: block, v: ValueRef, tydesc: ValueRef,
     }
 
     let llrawptr = PointerCast(cx, v, T_ptr(T_i8()));
-    let lltydescs = GEPi(cx, tydesc, [0, abi::tydesc_field_first_param]);
-    let lltydescs = Load(cx, lltydescs);
 
     let llfn = {
         alt static_glue_fn {
@@ -1059,7 +1057,7 @@ fn call_tydesc_glue_full(cx: block, v: ValueRef, tydesc: ValueRef,
     };
 
     Call(cx, llfn, [C_null(T_ptr(T_nil())), C_null(T_ptr(T_nil())),
-                    lltydescs, llrawptr]);
+                    C_null(T_ptr(T_ptr(cx.ccx().tydesc_type))), llrawptr]);
 }
 
 fn call_tydesc_glue(cx: block, v: ValueRef, t: ty::t, field: int) ->
