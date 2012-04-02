@@ -17,7 +17,8 @@ rust_scheduler::rust_scheduler(rust_kernel *kernel,
     num_threads(num_threads),
     id(id)
 {
-    create_task_threads();
+    rust_thread_sched_launcher_factory launchfac;
+    create_task_threads(&launchfac);
 }
 
 rust_scheduler::~rust_scheduler() {
@@ -25,11 +26,9 @@ rust_scheduler::~rust_scheduler() {
 }
 
 rust_sched_launcher *
-rust_scheduler::create_task_thread(int id) {
-    rust_srv *srv = this->srv->clone();
-    rust_sched_launcher *thread =
-        new (kernel, "rust_thread_sched_launcher")
-        rust_thread_sched_launcher(this, srv, id);
+rust_scheduler::create_task_thread(rust_sched_launcher_factory *launchfac,
+                                   int id) {
+    rust_sched_launcher *thread = launchfac->create(this, id);
     KLOG(kernel, kern, "created task thread: " PTR ", id: %d",
           thread, id);
     return thread;
@@ -44,11 +43,11 @@ rust_scheduler::destroy_task_thread(rust_sched_launcher *thread) {
 }
 
 void
-rust_scheduler::create_task_threads() {
+rust_scheduler::create_task_threads(rust_sched_launcher_factory *launchfac) {
     KLOG(kernel, kern, "Using %d scheduler threads.", num_threads);
 
     for(size_t i = 0; i < num_threads; ++i) {
-        threads.push(create_task_thread(i));
+        threads.push(create_task_thread(launchfac, i));
     }
 }
 

@@ -4,6 +4,7 @@
 #include "rust_internal.h"
 
 class rust_sched_launcher;
+class rust_sched_launcher_factory;
 
 class rust_scheduler : public kernel_owned<rust_scheduler> {
     // FIXME: Make these private
@@ -26,10 +27,11 @@ private:
 
     rust_sched_id id;
 
-    void create_task_threads();
+    void create_task_threads(rust_sched_launcher_factory *launchfac);
     void destroy_task_threads();
 
-    rust_sched_launcher *create_task_thread(int id);
+    rust_sched_launcher *
+    create_task_thread(rust_sched_launcher_factory *launchfac, int id);
     void destroy_task_thread(rust_sched_launcher *thread);
 
     void exit();

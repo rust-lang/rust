@@ -42,4 +42,17 @@ public:
   void start_main_loop() { driver.start_main_loop(); }
 };
 
+class rust_sched_launcher_factory {
+public:
+    virtual ~rust_sched_launcher_factory() { }
+    virtual rust_sched_launcher *
+    create(rust_scheduler *sched, int id) = 0;
+};
+
+class rust_thread_sched_launcher_factory
+    : public rust_sched_launcher_factory {
+public:
+    virtual rust_sched_launcher *create(rust_scheduler *sched, int id);
+};
+
 #endif // RUST_SCHED_LAUNCHER_H

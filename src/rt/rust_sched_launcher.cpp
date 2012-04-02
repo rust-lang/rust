@@ -20,3 +20,10 @@ rust_manual_sched_launcher::rust_manual_sched_launcher(rust_scheduler *sched,
                                                        rust_srv *srv, int id)
     : rust_sched_launcher(sched, srv, id) {
 }
+
+rust_sched_launcher *
+rust_thread_sched_launcher_factory::create(rust_scheduler *sched, int id) {
+    rust_srv *srv = sched->srv->clone();
+    return new(sched->kernel, "rust_thread_sched_launcher")
+        rust_thread_sched_launcher(sched, srv, id);
+}
