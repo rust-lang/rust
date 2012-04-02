@@ -1247,7 +1247,8 @@ crust fn on_connect_cb(connect_req_ptr: *uv_connect_t,
                          write_result as int));
     }
     else {
-        let test_loop = direct::get_loop_for_uv_handle(stream as *libc::c_void);
+        let test_loop = direct::get_loop_for_uv_handle(
+            stream as *libc::c_void);
         direct::print_last_err_info(test_loop);
         assert false;
     }
@@ -1384,7 +1385,7 @@ crust fn on_server_read_cb(client_stream_ptr: *uv_stream_t,
             io::println(#fmt("SERVER: resp write result: %d",
                         write_result as int));
             if (write_result != 0i32) {
-                io::println("non-zero result for server resp direct::write()");
+                io::println("bad result for server resp direct::write()");
                 direct::print_last_err_info(
                     direct::get_loop_for_uv_handle(client_stream_ptr
                         as *libc::c_void));
