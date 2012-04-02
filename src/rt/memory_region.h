@@ -22,7 +22,7 @@
 // hugely expensive and should only be used as a last resort.
 #define RUSTRT_TRACK_ALLOCATIONS 0
 
-class rust_env;
+struct rust_env;
 
 class memory_region {
 private:
