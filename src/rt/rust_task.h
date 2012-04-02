@@ -146,7 +146,7 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     // for linked list in rust_task_queue
     rust_task * next;
     rust_task * prev;
-    
+
 private:
 
     // Protects state, cond, cond_name

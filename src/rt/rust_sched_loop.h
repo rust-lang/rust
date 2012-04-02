@@ -55,7 +55,7 @@ private:
 
     rust_task_queue running_tasks;
     rust_task_queue blocked_tasks;
-    
+
     rust_task *dead_task;
 
     rust_signal *pump_signal;
