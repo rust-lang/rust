@@ -29,7 +29,7 @@ impl<A> of iterable<A> for [A] {
 
 impl<A> of iterable<A> for option<A> {
     fn iter(blk: fn(A)) {
-        option::may(self, blk)
+        option::with_option_do(self, blk)
     }
 }
 

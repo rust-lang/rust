@@ -3170,7 +3170,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         fcx.write_ty(id, typ);
       }
       ast::expr_rec(fields, base) {
-        option::may(base) {|b| check_expr(fcx, b); }
+        option::with_option_do(base) {|b| check_expr(fcx, b); }
         let fields_t = vec::map(fields, {|f|
             bot |= check_expr(fcx, f.node.expr);
             let expr_t = fcx.expr_ty(f.node.expr);

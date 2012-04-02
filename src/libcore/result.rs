@@ -20,10 +20,9 @@ If the result is an error
 pure fn get<T: copy, U>(res: result<T, U>) -> T {
     alt res {
       ok(t) { t }
-      err(_) {
-        // FIXME: Serialize the error value
-        // and include it in the fail message (maybe just note it)
-        fail "get called on error result";
+      err(the_err) {
+        // FIXME: have a run-fail test for this
+        unchecked{ fail #fmt("get called on error result: %?", the_err); }
       }
     }
 }

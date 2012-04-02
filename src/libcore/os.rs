@@ -702,7 +702,7 @@ mod tests {
         setenv("HOME", "");
         assert os::homedir() == none;
 
-        option::may(oldhome, {|s| setenv("HOME", s)});
+        option::with_option_do(oldhome, {|s| setenv("HOME", s)});
     }
 
     #[test]
@@ -732,8 +732,9 @@ mod tests {
         setenv("USERPROFILE", "/home/PaloAlto");
         assert os::homedir() == some("/home/MountainView");
 
-        option::may(oldhome, {|s| setenv("HOME", s)});
-        option::may(olduserprofile, {|s| setenv("USERPROFILE", s)});
+        option::with_option_do(oldhome, {|s| setenv("HOME", s)});
+        option::with_option_do(olduserprofile,
+                               {|s| setenv("USERPROFILE", s)});
     }
 
     // Issue #712

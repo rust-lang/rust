@@ -135,7 +135,7 @@ fn expand_ast(ecx: ext_ctxt, _sp: span,
     -> @ast::expr
 {
     let mut what = "expr";
-    option::may(arg) {|arg|
+    option::with_option_do(arg) {|arg|
         let args: [@ast::expr] =
             alt arg.node {
               ast::expr_vec(elts, _) { elts }

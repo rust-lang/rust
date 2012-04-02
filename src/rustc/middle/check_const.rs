@@ -19,7 +19,7 @@ fn check_item(it: @item, &&_is_const: bool, v: visit::vt<bool>) {
       item_const(_, ex) { v.visit_expr(ex, true, v); }
       item_enum(vs, _) {
         for var in vs {
-            option::may(var.node.disr_expr) {|ex|
+            option::with_option_do(var.node.disr_expr) {|ex|
                 v.visit_expr(ex, true, v);
             }
         }

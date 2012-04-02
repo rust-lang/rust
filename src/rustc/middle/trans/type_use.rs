@@ -146,7 +146,7 @@ fn mark_for_expr(cx: ctx, e: @expr) {
         }
       }
       expr_path(_) {
-        option::may(cx.ccx.tcx.node_type_substs.find(e.id)) {|ts|
+        option::with_option_do(cx.ccx.tcx.node_type_substs.find(e.id)) {|ts|
             let id = ast_util::def_id_of_def(cx.ccx.tcx.def_map.get(e.id));
             vec::iter2(type_uses_for(cx.ccx, id, ts.len()), ts) {|uses, subst|
                 type_needs(cx, uses, subst)
@@ -215,7 +215,7 @@ fn handle_body(cx: ctx, body: blk) {
         },
         visit_block: {|b, cx, v|
             visit::visit_block(b, cx, v);
-            option::may(b.node.expr) {|e|
+            option::with_option_do(b.node.expr) {|e|
                 node_type_needs(cx, use_repr, e.id);
             }
         },

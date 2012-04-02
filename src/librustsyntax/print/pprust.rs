@@ -792,7 +792,7 @@ fn print_mac(s: ps, m: ast::mac) {
           some(@{node: ast::expr_vec(_, _), _}) { }
           _ { word(s.s, " "); }
         }
-        option::may(arg, bind print_expr(s, _));
+        option::with_option_do(arg, bind print_expr(s, _));
         // FIXME: extension 'body'
       }
       ast::mac_embed_type(ty) {

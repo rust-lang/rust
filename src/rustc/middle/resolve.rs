@@ -1936,7 +1936,7 @@ fn check_exports(e: @env) {
 
 
     fn maybe_add_reexport(e: @env, export_id: node_id, def: option<def>) {
-        option::may(def) {|def|
+        option::with_option_do(def) {|def|
             add_export(e, export_id, def_id_of_def(def), true);
         }
     }
@@ -2118,7 +2118,7 @@ fn find_impls_in_view_item(e: env, vi: @ast::view_item,
           ast::view_path_simple(name, pt, id) {
             let mut found = [];
             if vec::len(*pt) == 1u {
-                option::may(sc) {|sc|
+                option::with_option_do(sc) {|sc|
                     list::iter(sc) {|level|
                         if vec::len(found) == 0u {
                             for imp in *level {

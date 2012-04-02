@@ -183,7 +183,7 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
         }
       }
       expr_path(_) | expr_field(_, _, _) {
-        option::may(cx.tcx.node_type_substs.find(e.id)) {|ts|
+        option::with_option_do(cx.tcx.node_type_substs.find(e.id)) {|ts|
             let bounds = alt check e.node {
               expr_path(_) {
                 let did = ast_util::def_id_of_def(cx.tcx.def_map.get(e.id));
@@ -235,7 +235,7 @@ fn check_stmt(stmt: @stmt, cx: ctx, v: visit::vt<ctx>) {
 fn check_ty(aty: @ty, cx: ctx, v: visit::vt<ctx>) {
     alt aty.node {
       ty_path(_, id) {
-        option::may(cx.tcx.node_type_substs.find(id)) {|ts|
+        option::with_option_do(cx.tcx.node_type_substs.find(id)) {|ts|
             let did = ast_util::def_id_of_def(cx.tcx.def_map.get(id));
             let bounds = ty::lookup_item_type(cx.tcx, did).bounds;
             vec::iter2(ts, *bounds) {|ty, bound|

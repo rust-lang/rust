@@ -195,7 +195,7 @@ fn build_reexport_path_map(srv: astsrv::srv, -def_map: def_map) -> path_map {
             }
 
             if reexportdocs.len() > 0u {
-                option::may(path_map.find(modpath)) {|docs|
+                option::with_option_do(path_map.find(modpath)) {|docs|
                     reexportdocs = docs + vec::filter(reexportdocs, {|x|
                         !vec::contains(docs, x)
                     });

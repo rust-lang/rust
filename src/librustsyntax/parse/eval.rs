@@ -23,7 +23,7 @@ fn eval_crate_directives_to_mod(cx: ctx, cdirs: [@ast::crate_directive],
     -> (ast::_mod, [ast::attribute]) {
     #debug("eval crate prefix: %s", prefix);
     #debug("eval crate suffix: %s",
-           option::from_maybe(suffix, "none"));
+           option::get_or_default(suffix, "none"));
     let (cview_items, citems, cattrs)
         = parse_companion_mod(cx, prefix, suffix);
     let mut view_items: [@ast::view_item] = [];

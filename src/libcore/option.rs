@@ -52,19 +52,19 @@ pure fn is_some<T>(opt: option<T>) -> bool {
     !is_none(opt)
 }
 
-pure fn from_maybe<T: copy>(opt: option<T>, def: T) -> T {
+pure fn get_or_default<T: copy>(opt: option<T>, def: T) -> T {
     #[doc = "Returns the contained value or a default"];
 
     alt opt { some(x) { x } none { def } }
 }
 
-fn maybe<T, U: copy>(opt: option<T>, def: U, f: fn(T) -> U) -> U {
+fn with_option<T, U: copy>(opt: option<T>, def: U, f: fn(T) -> U) -> U {
     #[doc = "Applies a function to the contained value or returns a default"];
 
     alt opt { none { def } some(t) { f(t) } }
 }
 
-fn may<T>(opt: option<T>, f: fn(T)) {
+fn with_option_do<T>(opt: option<T>, f: fn(T)) {
     #[doc = "Performs an operation on the contained value or does nothing"];
 
     alt opt { none { } some(t) { f(t); } }
@@ -94,11 +94,12 @@ impl extensions<T:copy> for option<T> {
     "]
     fn chain<U>(f: fn(T) -> option<U>) -> option<U> { chain(self, f) }
     #[doc = "Returns the contained value or a default"]
-    fn from_maybe(def: T) -> T { from_maybe(self, def) }
+    fn get_or_default(def: T) -> T { get_or_default(self, def) }
     #[doc = "Applies a function to the contained value or returns a default"]
-    fn maybe<U: copy>(def: U, f: fn(T) -> U) -> U { maybe(self, def, f) }
+    fn with_option<U: copy>(def: U, f: fn(T) -> U) -> U
+        { with_option(self, def, f) }
     #[doc = "Performs an operation on the contained value or does nothing"]
-    fn may(f: fn(T)) { may(self, f) }
+    fn with_option_do(f: fn(T)) { with_option_do(self, f) }
     #[doc = "
     Gets the value out of an option
 

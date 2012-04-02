@@ -51,7 +51,7 @@ fn traverse_exports(cx: ctx, vis: [@view_item]) -> bool {
 }
 
 fn traverse_export(cx: ctx, exp_id: node_id) {
-    option::may(cx.exp_map.find(exp_id)) {|defs|
+    option::with_option_do(cx.exp_map.find(exp_id)) {|defs|
         for vec::each(defs) {|def| traverse_def_id(cx, def.id); }
     }
 }

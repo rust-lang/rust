@@ -842,7 +842,7 @@ fn hash_mono_id(&&mi: mono_id) -> uint {
         h = h * alt param {
           mono_precise(ty, vts) {
             let mut h = ty::type_id(ty);
-            option::may(vts) {|vts|
+            option::with_option_do(vts) {|vts|
                 for vec::each(vts) {|vt| h += hash_mono_id(vt); }
             }
             h
