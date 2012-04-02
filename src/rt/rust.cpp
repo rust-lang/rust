@@ -75,8 +75,7 @@ rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map) {
     update_log_settings(crate_map, env->logspec);
     check_claims = env->check_claims;
 
-    rust_srv *srv = new rust_srv(env);
-    rust_kernel *kernel = new rust_kernel(srv);
+    rust_kernel *kernel = new rust_kernel(env);
     rust_sched_id sched_id = kernel->create_scheduler(env->num_sched_threads);
     rust_scheduler *sched = kernel->get_scheduler_by_id(sched_id);
     rust_task *root_task = sched->create_task(NULL, "main");
@@ -96,7 +95,6 @@ rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map) {
     int ret = kernel->wait_for_exit();
     delete args;
     delete kernel;
-    delete srv;
 
     free_env(env);
 

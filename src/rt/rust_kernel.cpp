@@ -9,16 +9,15 @@
 #define KLOG_ERR_(field, ...)                   \
     KLOG_LVL(this, field, log_err, __VA_ARGS__)
 
-rust_kernel::rust_kernel(rust_srv *srv) :
-    _region(srv, true),
-    _log(srv, NULL),
-    srv(srv),
+rust_kernel::rust_kernel(rust_env *env) :
+    _region(env, true),
+    _log(env, NULL),
     max_task_id(0),
     max_port_id(0),
     rval(0),
     max_sched_id(0),
     sched_reaper(this),
-    env(srv->env)
+    env(env)
 {
 }
 
@@ -69,7 +68,7 @@ rust_kernel::create_scheduler(size_t num_threads) {
         id = max_sched_id++;
         assert(id != INTPTR_MAX && "Hit the maximum scheduler id");
         sched = new (this, "rust_scheduler")
-            rust_scheduler(this, srv, num_threads, id);
+            rust_scheduler(this, num_threads, id);
         bool is_new = sched_table
             .insert(std::pair<rust_sched_id,
                               rust_scheduler*>(id, sched)).second;

@@ -22,7 +22,7 @@
 // hugely expensive and should only be used as a last resort.
 #define RUSTRT_TRACK_ALLOCATIONS 0
 
-class rust_srv;
+class rust_env;
 
 class memory_region {
 private:
@@ -42,7 +42,7 @@ private:
     inline alloc_header *get_header(void *mem);
     inline void *get_data(alloc_header *);
 
-    rust_srv *_srv;
+    rust_env *_env;
     memory_region *_parent;
     int _live_allocations;
     array_list<alloc_header *> _allocation_list;
@@ -58,7 +58,7 @@ private:
     void claim_alloc(void *mem);
 
 public:
-    memory_region(rust_srv *srv, bool synchronized);
+    memory_region(rust_env *env, bool synchronized);
     memory_region(memory_region *parent);
     void *malloc(size_t size, const char *tag, bool zero = true);
     void *calloc(size_t size, const char *tag);

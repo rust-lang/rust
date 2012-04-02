@@ -95,7 +95,6 @@ template <typename T> struct region_owned {
 struct rust_cond { };
 
 #include "memory_region.h"
-#include "rust_srv.h"
 #include "rust_log.h"
 #include "rust_kernel.h"
 #include "rust_sched_loop.h"

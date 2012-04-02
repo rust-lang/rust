@@ -17,10 +17,8 @@ const size_t C_STACK_SIZE = 1024*1024;
 
 bool rust_sched_loop::tls_initialized = false;
 
-rust_sched_loop::rust_sched_loop(rust_scheduler *sched,
-                                   rust_srv *srv,
-                                   int id) :
-    _log(srv, this),
+rust_sched_loop::rust_sched_loop(rust_scheduler *sched,int id) :
+    _log(env, this),
     id(id),
     should_exit(false),
     cached_c_stack(NULL),
@@ -28,10 +26,10 @@ rust_sched_loop::rust_sched_loop(rust_scheduler *sched,
     pump_signal(NULL),
     kernel(sched->kernel),
     sched(sched),
-    srv(srv),
     log_lvl(log_debug),
     min_stack_size(kernel->env->min_stack_size),
     env(kernel->env),
+    local_region(env, false),
     // TODO: calculate a per scheduler name.
     name("main")
 {

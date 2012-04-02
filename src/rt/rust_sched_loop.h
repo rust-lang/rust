@@ -69,7 +69,6 @@ private:
 public:
     rust_kernel *kernel;
     rust_scheduler *sched;
-    rust_srv *srv;
 
     // NB: this is used to filter *runtime-originating* debug
     // logging, on a per-scheduler basis. It's not likely what
@@ -81,6 +80,7 @@ public:
 
     size_t min_stack_size;
     rust_env *env;
+    memory_region local_region;
 
     randctx rctx;
 
@@ -90,7 +90,7 @@ public:
 
     // Only a pointer to 'name' is kept, so it must live as long as this
     // domain.
-    rust_sched_loop(rust_scheduler *sched, rust_srv *srv, int id);
+    rust_sched_loop(rust_scheduler *sched, int id);
     void activate(rust_task *task);
     void log(rust_task *task, uint32_t level, char const *fmt, ...);
     rust_log & get_log();

@@ -23,14 +23,14 @@ void *memory_region::get_data(alloc_header *ptr) {
     return (void*)((char *)ptr + HEADER_SIZE);
 }
 
-memory_region::memory_region(rust_srv *srv, bool synchronized) :
-    _srv(srv), _parent(NULL), _live_allocations(0),
-    _detailed_leaks(srv->env->detailed_leaks),
+memory_region::memory_region(rust_env *env, bool synchronized) :
+    _env(env), _parent(NULL), _live_allocations(0),
+    _detailed_leaks(env->detailed_leaks),
     _synchronized(synchronized) {
 }
 
 memory_region::memory_region(memory_region *parent) :
-    _srv(parent->_srv), _parent(parent), _live_allocations(0),
+    _env(parent->_env), _parent(parent), _live_allocations(0),
     _detailed_leaks(parent->_detailed_leaks),
     _synchronized(parent->_synchronized) {
 }
@@ -59,7 +59,7 @@ void memory_region::free(void *mem) {
     }
     release_alloc(mem);
     maybe_poison(mem);
-    _srv->free(alloc);
+    ::free(alloc);
 }
 
 void *
@@ -74,7 +74,7 @@ memory_region::realloc(void *mem, size_t orig_size) {
 #   endif
 
     size_t size = orig_size + HEADER_SIZE;
-    alloc_header *newMem = (alloc_header *)_srv->realloc(alloc, size);
+    alloc_header *newMem = (alloc_header *)::realloc(alloc, size);
 
 #   if RUSTRT_TRACK_ALLOCATIONS >= 1
     assert(newMem->magic == MAGIC);
@@ -105,7 +105,7 @@ void *
 memory_region::malloc(size_t size, const char *tag, bool zero) {
     size_t old_size = size;
     size += HEADER_SIZE;
-    alloc_header *mem = (alloc_header *)_srv->malloc(size);
+    alloc_header *mem = (alloc_header *)::malloc(size);
 
 #   if RUSTRT_TRACK_ALLOCATIONS >= 1
     mem->magic = MAGIC;
@@ -222,7 +222,7 @@ memory_region::claim_alloc(void *mem) {
 void
 memory_region::maybe_poison(void *mem) {
 
-    if (!_srv->env->poison_on_free)
+    if (!_env->poison_on_free)
         return;
 
 #   if RUSTRT_TRACK_ALLOCATIONS >= 1

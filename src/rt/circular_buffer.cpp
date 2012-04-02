@@ -24,8 +24,12 @@ circular_buffer::circular_buffer(rust_kernel *kernel, size_t unit_sz) :
 circular_buffer::~circular_buffer() {
     KLOG(kernel, mem, "~circular_buffer 0x%" PRIxPTR, this);
     assert(_buffer);
-    W(kernel, _unread == 0,
-      "freeing circular_buffer with %d unread bytes", _unread);
+    if (_unread != 0) {
+        fprintf(stderr, "warning: freeing circular_buffer with"
+                " %lu unread bytes", _unread);
+        fflush(stderr);
+    }
+
     kernel->free(_buffer);
 }
 

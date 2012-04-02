@@ -3,12 +3,9 @@
 #include "rust_sched_launcher.h"
 
 rust_scheduler::rust_scheduler(rust_kernel *kernel,
-                               rust_srv *srv,
                                size_t num_threads,
                                rust_sched_id id) :
     kernel(kernel),
-    srv(srv),
-    env(srv->env),
     live_threads(num_threads),
     live_tasks(0),
     num_threads(num_threads),
@@ -24,10 +21,9 @@ rust_scheduler::~rust_scheduler() {
 
 rust_sched_launcher *
 rust_scheduler::create_task_thread(int id) {
-    rust_srv *srv = this->srv->clone();
     rust_sched_launcher *thread =
         new (kernel, "rust_thread_sched_launcher")
-        rust_thread_sched_launcher(this, srv, id);
+        rust_thread_sched_launcher(this, id);
     KLOG(kernel, kern, "created task thread: " PTR ", id: %d",
           thread, id);
     return thread;
@@ -36,9 +32,7 @@ rust_scheduler::create_task_thread(int id) {
 void
 rust_scheduler::destroy_task_thread(rust_sched_launcher *thread) {
     KLOG(kernel, kern, "deleting task thread: " PTR, thread);
-    rust_srv *srv = thread->get_loop()->srv;
     delete thread;
-    delete srv;
 }
 
 void
