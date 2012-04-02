@@ -71,6 +71,7 @@ immediately after using `uv::ll::loop_new()`
 A `high_level_loop` record that can be used to interact with the
 loop (after you use `uv::ll::run()` on the `uv_loop_t*`, of course
 "]
+#[cfg(target_archsdfsdf="bleh")]
 unsafe fn prepare_loop(loop_ptr: *libc::c_void)
     -> high_level_loop {
     // will probably need to stake out a data record
@@ -80,12 +81,18 @@ unsafe fn prepare_loop(loop_ptr: *libc::c_void)
     // move this into a malloc
     let async = ll::async_t();
     let async_ptr = ptr::addr_of(async);
+    let op_port = comm::port::<fn~(*libc::c_void)>();
     let async_result = ll::async_init(loop_ptr,
                                       async_ptr,
-                                      interact_ptr);
+                                      interact_poke);
     if (async_result != 0i32) {
         fail ll::get_last_err_info(loop_ptr);
     }
+    // need to store the port and async_ptr in the top-level
+    // of the provided loop ..
+    ret { async_handle: async_ptr,
+         op_chan: comm::chan::<fn~(*libc::c_void)>(op_port)
+        };
 }
 
 // this will be invoked by a called to uv::hl::interact(), so

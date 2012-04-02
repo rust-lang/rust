@@ -65,36 +65,37 @@ native mod rustrt {
     fn rust_uv_free(ptr: *libc::c_void);
     fn rust_uv_tcp_init(
         loop_handle: *libc::c_void,
-        handle_ptr: *uv_tcp_t) -> libc::c_int;
+        handle_ptr: *ll::uv_tcp_t) -> libc::c_int;
     fn rust_uv_buf_init(base: *u8, len: libc::size_t)
-        -> uv_buf_t;
-    fn rust_uv_last_error(loop_handle: *libc::c_void) -> uv_err_t;
+        -> ll::uv_buf_t;
+    fn rust_uv_last_error(loop_handle: *libc::c_void) ->
+        ll::uv_err_t;
     // FIXME ref #2064
-    fn rust_uv_strerror(err: *uv_err_t) -> *libc::c_char;
+    fn rust_uv_strerror(err: *ll::uv_err_t) -> *libc::c_char;
     // FIXME ref #2064
-    fn rust_uv_err_name(err: *uv_err_t) -> *libc::c_char;
+    fn rust_uv_err_name(err: *ll::uv_err_t) -> *libc::c_char;
     fn rust_uv_ip4_addr(ip: *u8, port: libc::c_int)
-        -> sockaddr_in;
+        -> ll::sockaddr_in;
     // FIXME ref #2064
-    fn rust_uv_tcp_connect(connect_ptr: *uv_connect_t,
-                           tcp_handle_ptr: *uv_tcp_t,
+    fn rust_uv_tcp_connect(connect_ptr: *ll::uv_connect_t,
+                           tcp_handle_ptr: *ll::uv_tcp_t,
                            ++after_cb: *u8,
-                           ++addr: *sockaddr_in) -> libc::c_int;
+                           ++addr: *ll::sockaddr_in) -> libc::c_int;
     // FIXME ref 2064
-    fn rust_uv_tcp_bind(tcp_server: *uv_tcp_t,
-                        ++addr: *sockaddr_in) -> libc::c_int;
+    fn rust_uv_tcp_bind(tcp_server: *ll::uv_tcp_t,
+                        ++addr: *ll::sockaddr_in) -> libc::c_int;
     fn rust_uv_listen(stream: *libc::c_void, backlog: libc::c_int,
                       cb: *u8) -> libc::c_int;
     fn rust_uv_accept(server: *libc::c_void, client: *libc::c_void)
         -> libc::c_int;
     fn rust_uv_write(req: *libc::c_void, stream: *libc::c_void,
-             ++buf_in: *uv_buf_t, buf_cnt: libc::c_int,
+             ++buf_in: *ll::uv_buf_t, buf_cnt: libc::c_int,
              cb: *u8) -> libc::c_int;
     fn rust_uv_read_start(stream: *libc::c_void, on_alloc: *u8,
                           on_read: *u8) -> libc::c_int;
     fn rust_uv_read_stop(stream: *libc::c_void) -> libc::c_int;
     fn rust_uv_malloc_buf_base_of(sug_size: libc::size_t) -> *u8;
-    fn rust_uv_free_base_of_buf(++buf: uv_buf_t);
+    fn rust_uv_free_base_of_buf(++buf: ll::uv_buf_t);
 
     // sizeof testing helpers
     fn rust_uv_helper_uv_tcp_t_size() -> libc::c_uint;
