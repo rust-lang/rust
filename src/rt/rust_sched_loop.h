@@ -26,8 +26,6 @@ enum rust_sched_loop_state {
 
 struct rust_task;
 
-typedef indexed_list<rust_task> rust_task_list;
-
 struct rust_sched_loop
 {
 private:
