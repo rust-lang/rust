@@ -27,6 +27,7 @@ mod net;
 // libuv modules
 mod uv;
 mod uv_ll;
+mod uv_hl;
 
 
 // Utility modules
