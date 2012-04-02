@@ -61,11 +61,10 @@ isaac_init(rust_kernel *kernel, randctx *rctx)
                  CryptReleaseContext(hProv, 0));
 #else
             int fd = open("/dev/urandom", O_RDONLY);
-            I(kernel, fd > 0);
-            I(kernel,
-              read(fd, (void*) &rctx->randrsl, sizeof(rctx->randrsl))
-              == sizeof(rctx->randrsl));
-            I(kernel, close(fd) == 0);
+            assert(fd > 0);
+            assert(read(fd, (void*) &rctx->randrsl, sizeof(rctx->randrsl))
+                   == sizeof(rctx->randrsl));
+            assert(close(fd) == 0);
 #endif
         }
 

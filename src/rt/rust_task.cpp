@@ -70,7 +70,7 @@ rust_task::delete_this()
 
     /* FIXME: tighten this up, there are some more
        assertions that hold at task-lifecycle events. */
-    I(sched_loop, ref_count == 0); // ||
+    assert(ref_count == 0); // ||
     //   (ref_count == 1 && this == sched->root_task));
 
     sched_loop->release_task(this);
@@ -125,7 +125,7 @@ cleanup_task(cleanup_args *args) {
 #ifndef __WIN32__
         task->conclude_failure();
 #else
-        A(task->sched_loop, false, "Shouldn't happen");
+        assert(false && "Shouldn't happen");
 #endif
     }
 }
@@ -141,8 +141,7 @@ void task_start_wrapper(spawn_args *a)
         // must have void return type, we can safely pass 0.
         a->f(0, a->envptr, a->argptr);
     } catch (rust_task *ex) {
-        A(task->sched_loop, ex == task,
-          "Expected this task to be thrown for unwinding");
+        assert(ex == task && "Expected this task to be thrown for unwinding");
         threw_exception = true;
 
         if (task->c_stack) {
@@ -155,7 +154,7 @@ void task_start_wrapper(spawn_args *a)
     }
 
     // We should have returned any C stack by now
-    I(task->sched_loop, task->c_stack == NULL);
+    assert(task->c_stack == NULL);
 
     rust_opaque_box* env = a->envptr;
     if(env) {
@@ -181,7 +180,7 @@ rust_task::start(spawn_fn spawnee_fn,
         " with env 0x%" PRIxPTR " and arg 0x%" PRIxPTR,
         spawnee_fn, envptr, argptr);
 
-    I(sched_loop, stk->data != NULL);
+    assert(stk->data != NULL);
 
     char *sp = (char *)stk->end;
 
@@ -220,7 +219,7 @@ rust_task::must_fail_from_being_killed_unlocked() {
 void
 rust_task::yield(bool *killed) {
     if (must_fail_from_being_killed()) {
-        I(sched_loop, !blocked());
+        assert(!blocked());
         *killed = true;
     }
 
@@ -389,8 +388,8 @@ rust_task::block(rust_cond *on, const char* name) {
 
     LOG(this, task, "Blocking on 0x%" PRIxPTR ", cond: 0x%" PRIxPTR,
                          (uintptr_t) on, (uintptr_t) cond);
-    A(sched_loop, cond == NULL, "Cannot block an already blocked task.");
-    A(sched_loop, on != NULL, "Cannot block on a NULL object.");
+    assert(cond == NULL && "Cannot block an already blocked task.");
+    assert(on != NULL && "Cannot block on a NULL object.");
 
     transition(task_state_running, task_state_blocked, on, name);
 
@@ -399,11 +398,10 @@ rust_task::block(rust_cond *on, const char* name) {
 
 void
 rust_task::wakeup(rust_cond *from) {
-    A(sched_loop, cond != NULL, "Cannot wake up unblocked task.");
+    assert(cond != NULL && "Cannot wake up unblocked task.");
     LOG(this, task, "Blocked on 0x%" PRIxPTR " woken up on 0x%" PRIxPTR,
                         (uintptr_t) cond, (uintptr_t) from);
-    A(sched_loop, cond == from,
-      "Cannot wake up blocked task on wrong condition.");
+    assert(cond == from && "Cannot wake up blocked task on wrong condition.");
 
     transition(task_state_blocked, task_state_running, NULL, "none");
 }
@@ -462,7 +460,7 @@ rust_task::get_next_stack_size(size_t min, size_t current, size_t requested) {
     sz = std::max(sz, next);
 
     LOG(this, mem, "next stack size: %" PRIdPTR, sz);
-    I(sched_loop, requested <= sz);
+    assert(requested <= sz);
     return sz;
 }
 
@@ -539,7 +537,7 @@ void
 rust_task::cleanup_after_turn() {
     // Delete any spare stack segments that were left
     // behind by calls to prev_stack
-    I(sched_loop, stk);
+    assert(stk);
     while (stk->next) {
         stk_seg *new_next = stk->next->next;
         free_stack(stk->next);
@@ -569,8 +567,7 @@ reset_stack_limit_on_c_stack(reset_args *args) {
     uintptr_t sp = args->sp;
     while (!sp_in_stk_seg(sp, task->stk)) {
         task->stk = task->stk->prev;
-        A(task->sched_loop, task->stk != NULL,
-          "Failed to find the current stack");
+        assert(task->stk != NULL && "Failed to find the current stack");
     }
     task->record_stack_limit();
 }
@@ -598,10 +595,10 @@ rust_task::check_stack_canary() {
 
 void
 rust_task::delete_all_stacks() {
-    I(sched_loop, !on_rust_stack());
+    assert(!on_rust_stack());
     // Delete all the stacks. There may be more than one if the task failed
     // and no landing pads stopped to clean up.
-    I(sched_loop, stk->next == NULL);
+    assert(stk->next == NULL);
     while (stk != NULL) {
         stk_seg *prev = stk->prev;
         free_stack(stk);

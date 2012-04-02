@@ -10,12 +10,12 @@ rust_port_selector::select(rust_task *task, rust_port **dptr,
                            rust_port **ports,
                            size_t n_ports, uintptr_t *yield) {
 
-    I(task->sched_loop, this->ports == NULL);
-    I(task->sched_loop, this->n_ports == 0);
-    I(task->sched_loop, dptr != NULL);
-    I(task->sched_loop, ports != NULL);
-    I(task->sched_loop, n_ports != 0);
-    I(task->sched_loop, yield != NULL);
+    assert(this->ports == NULL);
+    assert(this->n_ports == 0);
+    assert(dptr != NULL);
+    assert(ports != NULL);
+    assert(n_ports != 0);
+    assert(yield != NULL);
 
     *yield = false;
     size_t locks_taken = 0;
@@ -31,7 +31,7 @@ rust_port_selector::select(rust_task *task, rust_port **dptr,
     for (size_t i = 0; i < n_ports; i++) {
         size_t k = (i + j) % n_ports;
         rust_port *port = ports[k];
-        I(task->sched_loop, port != NULL);
+        assert(port != NULL);
 
         port->lock.lock();
         locks_taken++;
@@ -46,7 +46,7 @@ rust_port_selector::select(rust_task *task, rust_port **dptr,
     if (!found_msg) {
         this->ports = ports;
         this->n_ports = n_ports;
-        I(task->sched_loop, task->rendezvous_ptr == NULL);
+        assert(task->rendezvous_ptr == NULL);
         task->rendezvous_ptr = (uintptr_t*)dptr;
         task->block(this, "waiting for select rendezvous");
 

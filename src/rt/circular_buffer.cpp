@@ -12,18 +12,18 @@ circular_buffer::circular_buffer(rust_kernel *kernel, size_t unit_sz) :
     _unread(0),
     _buffer((uint8_t *)kernel->malloc(_buffer_sz, "circular_buffer")) {
 
-    A(kernel, unit_sz, "Unit size must be larger than zero.");
+    assert(unit_sz && "Unit size must be larger than zero.");
 
     KLOG(kernel, mem, "new circular_buffer(buffer_sz=%d, unread=%d)"
          "-> circular_buffer=0x%" PRIxPTR,
          _buffer_sz, _unread, this);
 
-    A(kernel, _buffer, "Failed to allocate buffer.");
+    assert(_buffer && "Failed to allocate buffer.");
 }
 
 circular_buffer::~circular_buffer() {
     KLOG(kernel, mem, "~circular_buffer 0x%" PRIxPTR, this);
-    I(kernel, _buffer);
+    assert(_buffer);
     W(kernel, _unread == 0,
       "freeing circular_buffer with %d unread bytes", _unread);
     kernel->free(_buffer);
@@ -31,7 +31,7 @@ circular_buffer::~circular_buffer() {
 
 size_t
 circular_buffer::initial_size() {
-    I(kernel, unit_sz > 0);
+    assert(unit_sz > 0);
     return INITIAL_CIRCULAR_BUFFER_SIZE_IN_UNITS * unit_sz;
 }
 
@@ -40,8 +40,8 @@ circular_buffer::initial_size() {
  */
 void
 circular_buffer::transfer(void *dst) {
-    I(kernel, dst);
-    I(kernel, _unread <= _buffer_sz);
+    assert(dst);
+    assert(_unread <= _buffer_sz);
 
     uint8_t *ptr = (uint8_t *) dst;
 
@@ -53,13 +53,13 @@ circular_buffer::transfer(void *dst) {
     } else {
         head_sz = _buffer_sz - _next;
     }
-    I(kernel, _next + head_sz <= _buffer_sz);
+    assert(_next + head_sz <= _buffer_sz);
     memcpy(ptr, _buffer + _next, head_sz);
 
     // Then copy any other items from the beginning of the buffer
-    I(kernel, _unread >= head_sz);
+    assert(_unread >= head_sz);
     size_t tail_sz = _unread - head_sz;
-    I(kernel, head_sz + tail_sz <= _buffer_sz);
+    assert(head_sz + tail_sz <= _buffer_sz);
     memcpy(ptr + head_sz, _buffer, tail_sz);
 }
 
@@ -69,9 +69,9 @@ circular_buffer::transfer(void *dst) {
  */
 void
 circular_buffer::enqueue(void *src) {
-    I(kernel, src);
-    I(kernel, _unread <= _buffer_sz);
-    I(kernel, _buffer);
+    assert(src);
+    assert(_unread <= _buffer_sz);
+    assert(_buffer);
 
     // Grow if necessary.
     if (_unread == _buffer_sz) {
@@ -82,20 +82,20 @@ circular_buffer::enqueue(void *src) {
          "unread: %d, next: %d, buffer_sz: %d, unit_sz: %d",
          _unread, _next, _buffer_sz, unit_sz);
 
-    I(kernel, _unread < _buffer_sz);
-    I(kernel, _unread + unit_sz <= _buffer_sz);
+    assert(_unread < _buffer_sz);
+    assert(_unread + unit_sz <= _buffer_sz);
 
     // Copy data
     size_t dst_idx = _next + _unread;
-    I(kernel, dst_idx >= _buffer_sz || dst_idx + unit_sz <= _buffer_sz);
+    assert(dst_idx >= _buffer_sz || dst_idx + unit_sz <= _buffer_sz);
     if (dst_idx >= _buffer_sz) {
         dst_idx -= _buffer_sz;
 
-        I(kernel, _next >= unit_sz);
-        I(kernel, dst_idx <= _next - unit_sz);
+        assert(_next >= unit_sz);
+        assert(dst_idx <= _next - unit_sz);
     }
 
-    I(kernel, dst_idx + unit_sz <= _buffer_sz);
+    assert(dst_idx + unit_sz <= _buffer_sz);
     memcpy(&_buffer[dst_idx], src, unit_sz);
     _unread += unit_sz;
 
@@ -109,17 +109,17 @@ circular_buffer::enqueue(void *src) {
  */
 void
 circular_buffer::dequeue(void *dst) {
-    I(kernel, unit_sz > 0);
-    I(kernel, _unread >= unit_sz);
-    I(kernel, _unread <= _buffer_sz);
-    I(kernel, _buffer);
+    assert(unit_sz > 0);
+    assert(_unread >= unit_sz);
+    assert(_unread <= _buffer_sz);
+    assert(_buffer);
 
     KLOG(kernel, mem,
              "circular_buffer dequeue "
              "unread: %d, next: %d, buffer_sz: %d, unit_sz: %d",
              _unread, _next, _buffer_sz, unit_sz);
 
-    I(kernel, _next + unit_sz <= _buffer_sz);
+    assert(_next + unit_sz <= _buffer_sz);
     if (dst != NULL) {
         memcpy(dst, &_buffer[_next], unit_sz);
     }
@@ -153,7 +153,7 @@ circular_buffer::grow() {
 void
 circular_buffer::shrink() {
     size_t new_buffer_sz = _buffer_sz / 2;
-    I(kernel, initial_size() <= new_buffer_sz);
+    assert(initial_size() <= new_buffer_sz);
     KLOG(kernel, mem, "circular_buffer is shrinking to %d bytes",
          new_buffer_sz);
     void *new_buffer = kernel->malloc(new_buffer_sz,

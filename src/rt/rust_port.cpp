@@ -51,7 +51,7 @@ void rust_port::end_detach() {
     // Just take the lock to make sure that the thread that signaled
     // the detach_cond isn't still holding it
     scoped_lock with(ref_lock);
-    I(task->sched_loop, ref_count == 0);
+    assert(ref_count == 0);
 }
 
 void rust_port::send(void *sptr) {
@@ -61,8 +61,8 @@ void rust_port::send(void *sptr) {
 
         buffer.enqueue(sptr);
 
-        A(kernel, !buffer.is_empty(),
-          "rust_chan::transmit with nothing to send.");
+        assert(!buffer.is_empty() &&
+               "rust_chan::transmit with nothing to send.");
 
         if (task->blocked_on(this)) {
             KLOG(kernel, comm, "dequeued in rendezvous_ptr");

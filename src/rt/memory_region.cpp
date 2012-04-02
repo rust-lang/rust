@@ -55,7 +55,7 @@ void memory_region::free(void *mem) {
 #   endif
 
     if (_live_allocations < 1) {
-        _srv->fatal("live_allocs < 1", __FILE__, __LINE__, "");
+        assert(false && "live_allocs < 1");
     }
     release_alloc(mem);
     maybe_poison(mem);
@@ -88,7 +88,7 @@ memory_region::realloc(void *mem, size_t orig_size) {
                alloc->index, _allocation_list[alloc->index], alloc);
         printf("realloc: ptr 0x%" PRIxPTR " (%s) is not in allocation_list\n",
                (uintptr_t) get_data(alloc), alloc->tag);
-        _srv->fatal("not in allocation_list", __FILE__, __LINE__, "");
+        assert(false && "not in allocation_list");
     }
     else {
         _allocation_list[newMem->index] = newMem;
@@ -166,8 +166,8 @@ memory_region::~memory_region() {
 #   endif
 
     if (_live_allocations > 0) {
-        _srv->fatal(msg, __FILE__, __LINE__,
-                    "%d objects", _live_allocations);
+        fprintf(stderr, "%s\n", msg);
+        assert(false);
     }
     if (_synchronized) { _lock.unlock(); }
 }
@@ -184,7 +184,7 @@ memory_region::release_alloc(void *mem) {
     if (_allocation_list[alloc->index] != alloc) {
         printf("free: ptr 0x%" PRIxPTR " (%s) is not in allocation_list\n",
                (uintptr_t) get_data(alloc), alloc->tag);
-        _srv->fatal("not in allocation_list", __FILE__, __LINE__, "");
+        assert(false && "not in allocation_list");
     }
     else {
         // printf("freed index %d\n", index);

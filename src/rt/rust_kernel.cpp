@@ -67,13 +67,13 @@ rust_kernel::create_scheduler(size_t num_threads) {
         // the scheduler reaper.
         bool start_reaper = sched_table.empty();
         id = max_sched_id++;
-        K(srv, id != INTPTR_MAX, "Hit the maximum scheduler id");
+        assert(id != INTPTR_MAX && "Hit the maximum scheduler id");
         sched = new (this, "rust_scheduler")
             rust_scheduler(this, srv, num_threads, id);
         bool is_new = sched_table
             .insert(std::pair<rust_sched_id,
                               rust_scheduler*>(id, sched)).second;
-        A(this, is_new, "Reusing a sched id?");
+        assert(is_new && "Reusing a sched id?");
         if (start_reaper) {
             sched_reaper.start();
         }
@@ -118,7 +118,7 @@ rust_kernel::wait_for_schedulers()
             rust_sched_id id = join_list.back();
             join_list.pop_back();
             sched_map::iterator iter = sched_table.find(id);
-            I(this, iter != sched_table.end());
+            assert(iter != sched_table.end());
             rust_scheduler *sched = iter->second;
             sched_table.erase(iter);
             sched->join_task_threads();
@@ -175,7 +175,7 @@ rust_kernel::fail() {
 rust_task_id
 rust_kernel::generate_task_id() {
     rust_task_id id = sync::increment(max_task_id);
-    K(srv, id != INTPTR_MAX, "Hit the maximum task id");
+    assert(id != INTPTR_MAX && "Hit the maximum task id");
     return id;
 }
 
@@ -189,7 +189,7 @@ rust_kernel::register_port(rust_port *port) {
         port_table.put(new_port_id, port);
         new_live_ports = port_table.count();
     }
-    K(srv, new_port_id != INTPTR_MAX, "Hit the maximum port id");
+    assert(new_port_id != INTPTR_MAX && "Hit the maximum port id");
     KLOG_("Registered port %" PRIdPTR, new_port_id);
     KLOG_("Total outstanding ports: %d", new_live_ports);
     return new_port_id;
@@ -233,7 +233,7 @@ rust_kernel::win32_require(LPCTSTR fn, BOOL ok) {
                       (LPTSTR) &buf, 0, NULL );
         KLOG_ERR_(dom, "%s failed with error %ld: %s", fn, err, buf);
         LocalFree((HLOCAL)buf);
-        I(this, ok);
+        assert(ok);
     }
 }
 #endif

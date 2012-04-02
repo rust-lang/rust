@@ -130,7 +130,7 @@ rust_sched_loop::reap_dead_tasks() {
 void
 rust_sched_loop::release_task(rust_task *task) {
     // Nobody should have a ref to the task at this point
-    I(this, task->get_ref_count() == 0);
+    assert(task->get_ref_count() == 0);
     // Now delete the task, which will require using this thread's
     // memory region.
     delete task;
@@ -149,9 +149,9 @@ rust_sched_loop::release_task(rust_task *task) {
 rust_task *
 rust_sched_loop::schedule_task() {
     lock.must_have_lock();
-    I(this, this);
+    assert(this);
     // FIXME: in the face of failing tasks, this is not always right.
-    // I(this, n_live_tasks() > 0);
+    // assert(n_live_tasks() > 0);
     if (running_tasks.length() > 0) {
         size_t k = isaac_rand(&rctx);
         // Look around for a runnable task, starting at k.
@@ -190,14 +190,14 @@ rust_sched_loop::log_state() {
 
 void
 rust_sched_loop::on_pump_loop(rust_signal *signal) {
-    I(this, pump_signal == NULL);
-    I(this, signal != NULL);
+    assert(pump_signal == NULL);
+    assert(signal != NULL);
     pump_signal = signal;
 }
 
 void
 rust_sched_loop::pump_loop() {
-    I(this, pump_signal != NULL);
+    assert(pump_signal != NULL);
     pump_signal->signal();
 }
 
@@ -209,8 +209,7 @@ rust_sched_loop::run_single_turn() {
     lock.lock();
 
     if (!should_exit) {
-        A(this, dead_task == NULL,
-          "Tasks should only die after running");
+        assert(dead_task == NULL && "Tasks should only die after running");
 
         DLOG(this, dom, "worker %d, number_of_live_tasks = %d",
              id, number_of_live_tasks());
@@ -227,7 +226,7 @@ rust_sched_loop::run_single_turn() {
             return sched_loop_state_block;
         }
 
-        I(this, scheduled_task->running());
+        assert(scheduled_task->running());
 
         DLOG(this, task,
              "activating task %s 0x%" PRIxPTR
@@ -256,15 +255,15 @@ rust_sched_loop::run_single_turn() {
         lock.unlock();
         return sched_loop_state_keep_going;
     } else {
-        A(this, running_tasks.is_empty(), "Should have no running tasks");
-        A(this, blocked_tasks.is_empty(), "Should have no blocked tasks");
-        A(this, dead_task == NULL, "Should have no dead tasks");
+        assert(running_tasks.is_empty() && "Should have no running tasks");
+        assert(blocked_tasks.is_empty() && "Should have no blocked tasks");
+        assert(dead_task == NULL && "Should have no dead tasks");
 
         DLOG(this, dom, "finished main-loop %d", id);
 
         lock.unlock();
 
-        I(this, !extra_c_stack);
+        assert(!extra_c_stack);
         if (cached_c_stack) {
             destroy_stack(kernel->region(), cached_c_stack);
             cached_c_stack = NULL;
@@ -326,7 +325,7 @@ rust_sched_loop::transition(rust_task *task,
          "task %s " PTR " state change '%s' -> '%s' while in '%s'",
          name, (uintptr_t)this, state_name(src), state_name(dst),
          state_name(task->get_state()));
-    I(this, task->get_state() == src);
+    assert(task->get_state() == src);
     rust_task_list *src_list = state_list(src);
     if (src_list) {
         src_list->remove(task);
@@ -336,7 +335,7 @@ rust_sched_loop::transition(rust_task *task,
         dst_list->append(task);
     }
     if (dst == task_state_dead) {
-        I(this, dead_task == NULL);
+        assert(dead_task == NULL);
         dead_task = task;
     }
     task->set_state(dst, cond, cond_name);
@@ -388,7 +387,7 @@ rust_sched_loop::exit() {
 // room to do the allocation
 void
 rust_sched_loop::prepare_c_stack(rust_task *task) {
-    I(this, !extra_c_stack);
+    assert(!extra_c_stack);
     if (!cached_c_stack && !task->have_c_stack()) {
         cached_c_stack = create_stack(kernel->region(), C_STACK_SIZE);
     }

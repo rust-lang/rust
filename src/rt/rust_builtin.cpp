@@ -450,8 +450,7 @@ rust_get_sched_id() {
 extern "C" CDECL rust_sched_id
 rust_new_sched(uintptr_t threads) {
     rust_task *task = rust_sched_loop::get_task();
-    A(task->sched_loop, threads > 0,
-      "Can't create a scheduler with no threads, silly!");
+    assert(threads > 0 && "Can't create a scheduler with no threads, silly!");
     return task->kernel->create_scheduler(threads);
 }
 
@@ -606,36 +605,31 @@ rust_dbg_lock_create() {
 
 extern "C" CDECL void
 rust_dbg_lock_destroy(lock_and_signal *lock) {
-    rust_task *task = rust_sched_loop::get_task();
-    I(task->sched_loop, lock);
+    assert(lock);
     delete lock;
 }
 
 extern "C" CDECL void
 rust_dbg_lock_lock(lock_and_signal *lock) {
-    rust_task *task = rust_sched_loop::get_task();
-    I(task->sched_loop, lock);
+    assert(lock);
     lock->lock();
 }
 
 extern "C" CDECL void
 rust_dbg_lock_unlock(lock_and_signal *lock) {
-    rust_task *task = rust_sched_loop::get_task();
-    I(task->sched_loop, lock);
+    assert(lock);
     lock->unlock();
 }
 
 extern "C" CDECL void
 rust_dbg_lock_wait(lock_and_signal *lock) {
-    rust_task *task = rust_sched_loop::get_task();
-    I(task->sched_loop, lock);
+    assert(lock);
     lock->wait();
 }
 
 extern "C" CDECL void
 rust_dbg_lock_signal(lock_and_signal *lock) {
-    rust_task *task = rust_sched_loop::get_task();
-    I(task->sched_loop, lock);
+    assert(lock);
     lock->signal();
 }
 

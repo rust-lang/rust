@@ -304,7 +304,7 @@ sanitize_next_sp(uintptr_t next_sp) {
 inline void
 rust_task::call_on_c_stack(void *args, void *fn_ptr) {
     // Too expensive to check
-    // I(thread, on_rust_stack());
+    // assert(on_rust_stack());
 
     uintptr_t prev_rust_sp = next_rust_sp;
     next_rust_sp = get_sp();
@@ -334,9 +334,9 @@ rust_task::call_on_c_stack(void *args, void *fn_ptr) {
 inline void
 rust_task::call_on_rust_stack(void *args, void *fn_ptr) {
     // Too expensive to check
-    // I(thread, !on_rust_stack());
-    A(sched_loop, get_sp_limit() != 0, "Stack must be configured");
-    I(sched_loop, next_rust_sp);
+    // assert(!on_rust_stack());
+    assert(get_sp_limit() != 0 && "Stack must be configured");
+    assert(next_rust_sp);
 
     bool had_reentered_rust_stack = reentered_rust_stack;
     reentered_rust_stack = true;
@@ -357,8 +357,8 @@ rust_task::call_on_rust_stack(void *args, void *fn_ptr) {
 inline void
 rust_task::return_c_stack() {
     // Too expensive to check
-    // I(thread, on_rust_stack());
-    I(sched_loop, c_stack != NULL);
+    // assert(on_rust_stack());
+    assert(c_stack != NULL);
     sched_loop->return_c_stack(c_stack);
     c_stack = NULL;
     next_c_sp = 0;
@@ -368,8 +368,8 @@ rust_task::return_c_stack() {
 inline void *
 rust_task::next_stack(size_t stk_sz, void *args_addr, size_t args_sz) {
     new_stack_fast(stk_sz + args_sz);
-    A(sched_loop, stk->end - (uintptr_t)stk->data >= stk_sz + args_sz,
-      "Did not receive enough stack");
+    assert(stk->end - (uintptr_t)stk->data >= stk_sz + args_sz
+      && "Did not receive enough stack");
     uint8_t *new_sp = (uint8_t*)stk->end;
     // Push the function arguments to the new stack
     new_sp = align_down(new_sp - args_sz);
@@ -438,11 +438,10 @@ record_sp_limit(void *limit);
 
 inline void
 rust_task::record_stack_limit() {
-    I(sched_loop, stk);
-    A(sched_loop,
-      (uintptr_t)stk->end - RED_ZONE_SIZE
-      - (uintptr_t)stk->data >= LIMIT_OFFSET,
-      "Stack size must be greater than LIMIT_OFFSET");
+    assert(stk);
+    assert((uintptr_t)stk->end - RED_ZONE_SIZE
+      - (uintptr_t)stk->data >= LIMIT_OFFSET
+           && "Stack size must be greater than LIMIT_OFFSET");
     record_sp_limit(stk->data + LIMIT_OFFSET + RED_ZONE_SIZE);
 }
 
