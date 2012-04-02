@@ -40,8 +40,7 @@ log_console_off(rust_env *env) {
     }
 }
 
-rust_log::rust_log(rust_env *env, rust_sched_loop *sched_loop) :
-    _env(env),
+rust_log::rust_log(rust_sched_loop *sched_loop) :
     _sched_loop(sched_loop) {
 }
 
