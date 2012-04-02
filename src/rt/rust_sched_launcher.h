@@ -55,4 +55,14 @@ public:
     virtual rust_sched_launcher *create(rust_scheduler *sched, int id);
 };
 
+class rust_manual_sched_launcher_factory
+    : public rust_sched_launcher_factory {
+private:
+    rust_manual_sched_launcher *launcher;
+public:
+    rust_manual_sched_launcher_factory() : launcher(NULL) { }
+    virtual rust_sched_launcher *create(rust_scheduler *sched, int id);
+    rust_manual_sched_launcher *get_launcher() { return launcher; }
+};
+
 #endif // RUST_SCHED_LAUNCHER_H
