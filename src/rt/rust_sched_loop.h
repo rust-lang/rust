@@ -38,13 +38,6 @@ private:
 
     const int id;
 
-#ifndef __WIN32__
-    static pthread_key_t task_key;
-#else
-    static DWORD task_key;
-#endif
-
-    static bool tls_initialized;
     context c_context;
 
     bool should_exit;
@@ -69,6 +62,13 @@ private:
 public:
     rust_kernel *kernel;
     rust_scheduler *sched;
+    static bool tls_initialized;
+
+#ifndef __WIN32__
+    static pthread_key_t task_key;
+#else
+    static DWORD task_key;
+#endif
 
     // NB: this is used to filter *runtime-originating* debug
     // logging, on a per-scheduler basis. It's not likely what
@@ -116,8 +116,6 @@ public:
     void init_tls();
     void place_task_in_tls(rust_task *task);
 
-    static rust_task *get_task();
-
     // Called by each task when they are ready to be destroyed
     void release_task(rust_task *task);
 
@@ -133,33 +131,6 @@ inline rust_log &
 rust_sched_loop::get_log() {
     return _log;
 }
-
-// This stuff is on the stack-switching fast path
-
-#ifndef __WIN32__
-
-inline rust_task *
-rust_sched_loop::get_task() {
-    if (!tls_initialized)
-        return NULL;
-    rust_task *task = reinterpret_cast<rust_task *>
-        (pthread_getspecific(task_key));
-    assert(task && "Couldn't get the task from TLS!");
-    return task;
-}
-
-#else
-
-inline rust_task *
-rust_sched_loop::get_task() {
-    if (!tls_initialized)
-        return NULL;
-    rust_task *task = reinterpret_cast<rust_task *>(TlsGetValue(task_key));
-    assert(task && "Couldn't get the task from TLS!");
-    return task;
-}
-
-#endif
 
 // NB: Runs on the Rust stack
 inline stk_seg *

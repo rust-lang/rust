@@ -270,7 +270,6 @@ public:
     const char *get_cond_name() { return cond_name; }
 
     void cleanup_after_turn();
-    static rust_task *get_task_from_tcb();
 };
 
 // This stuff is on the stack-switching fast path
@@ -445,26 +444,43 @@ rust_task::record_stack_limit() {
     record_sp_limit(stk->data + LIMIT_OFFSET + RED_ZONE_SIZE);
 }
 
-// The stack pointer boundary is stored in a quickly-accessible location
-// in the TCB. From that we can calculate the address of the stack segment
-// structure it belongs to, and in that structure is a pointer to the task
-// that owns it.
-inline rust_task*
-rust_task::get_task_from_tcb() {
+inline rust_task* __rust_get_task_tls()
+{
+    if (!rust_sched_loop::tls_initialized)
+        return NULL;
+#ifdef __WIN32__
+    rust_task *task = reinterpret_cast<rust_task *>
+        (TlsGetValue(rust_sched_loop::task_key));
+#else
+    rust_task *task = reinterpret_cast<rust_task *>
+        (pthread_getspecific(rust_sched_loop::task_key));
+#endif
+    assert(task && "Couldn't get the task from TLS!");
+    return task;
+
+}
+
+inline rust_task* rust_get_current_task() {
     uintptr_t sp_limit = get_sp_limit();
+
     // FIXME (1226) - Because of a hack in upcall_call_shim_on_c_stack this
     // value is sometimes inconveniently set to 0, so we can't use this
     // method of retreiving the task pointer and need to fall back to TLS.
-    if (sp_limit == 0) {
-        return NULL;
-    }
+    if (sp_limit == 0)
+        return __rust_get_task_tls();
 
+    // The stack pointer boundary is stored in a quickly-accessible location
+    // in the TCB. From that we can calculate the address of the stack segment
+    // structure it belongs to, and in that structure is a pointer to the task
+    // that owns it.
     uintptr_t seg_addr =
         sp_limit - RED_ZONE_SIZE - LIMIT_OFFSET - sizeof(stk_seg);
     stk_seg *stk = (stk_seg*) seg_addr;
     // Make sure we've calculated the right address
     ::check_stack_canary(stk);
-    assert(stk->task != NULL && "task pointer not in stack structure");
+
+    if (stk->task == NULL)
+        return __rust_get_task_tls();
     return stk->task;
 }
 
