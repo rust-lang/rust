@@ -11,7 +11,7 @@
 
 rust_kernel::rust_kernel(rust_env *env) :
     _region(env, true),
-    _log(env, NULL),
+    _log(NULL),
     max_task_id(0),
     max_port_id(0),
     rval(0),

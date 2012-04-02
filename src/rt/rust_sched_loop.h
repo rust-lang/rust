@@ -79,7 +79,6 @@ public:
     uint32_t log_lvl;
 
     size_t min_stack_size;
-    rust_env *env;
     memory_region local_region;
 
     randctx rctx;

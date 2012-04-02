@@ -40,7 +40,7 @@ struct rust_task;
 class rust_log {
 
 public:
-    rust_log(rust_env *env, rust_sched_loop *sched_loop);
+    rust_log(rust_sched_loop *sched_loop);
     virtual ~rust_log();
 
     void trace_ln(rust_task *task, uint32_t level, char *message);
@@ -48,7 +48,6 @@ public:
     bool is_tracing(uint32_t type_bits);
 
 private:
-    rust_env *_env;
     rust_sched_loop *_sched_loop;
     bool _use_labels;
     void trace_ln(rust_task *task, char *message);

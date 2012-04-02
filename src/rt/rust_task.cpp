@@ -513,7 +513,7 @@ rust_task::new_stack(size_t requested_sz) {
     size_t rust_stk_sz = get_next_stack_size(min_sz,
                                              current_sz, requested_sz);
 
-    if (total_stack_sz + rust_stk_sz > sched_loop->env->max_stack_size) {
+    if (total_stack_sz + rust_stk_sz > kernel->env->max_stack_size) {
         LOG_ERR(this, task, "task %" PRIxPTR " ran out of stack", this);
         fail();
     }

@@ -18,7 +18,7 @@ const size_t C_STACK_SIZE = 1024*1024;
 bool rust_sched_loop::tls_initialized = false;
 
 rust_sched_loop::rust_sched_loop(rust_scheduler *sched,int id) :
-    _log(env, this),
+    _log(this),
     id(id),
     should_exit(false),
     cached_c_stack(NULL),
@@ -28,8 +28,7 @@ rust_sched_loop::rust_sched_loop(rust_scheduler *sched,int id) :
     sched(sched),
     log_lvl(log_debug),
     min_stack_size(kernel->env->min_stack_size),
-    env(kernel->env),
-    local_region(env, false),
+    local_region(kernel->env, false),
     // TODO: calculate a per scheduler name.
     name("main")
 {
@@ -277,7 +276,7 @@ rust_sched_loop::create_task(rust_task *spawner, const char *name) {
     rust_task *task =
         new (this->kernel, "rust_task")
         rust_task (this, task_state_newborn,
-                   spawner, name, env->min_stack_size);
+                   spawner, name, kernel->env->min_stack_size);
     DLOG(this, task, "created task: " PTR ", spawner: %s, name: %s",
                         task, spawner ? spawner->name : "null", name);
 
