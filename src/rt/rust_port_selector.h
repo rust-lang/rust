@@ -11,9 +11,10 @@ class rust_port_selector : public rust_cond {
     rust_port **ports;
     size_t n_ports;
     lock_and_signal rendezvous_lock;
+    randctx rctx;
 
  public:
-    rust_port_selector();
+    rust_port_selector(rust_kernel *kernel);
 
     void select(rust_task *task,
                 rust_port **dptr,
