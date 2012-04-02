@@ -24,7 +24,7 @@ circular_buffer::circular_buffer(rust_kernel *kernel, size_t unit_sz) :
 circular_buffer::~circular_buffer() {
     KLOG(kernel, mem, "~circular_buffer 0x%" PRIxPTR, this);
     assert(_buffer);
-    assert(_unread != 0 && "didn't expect bytes in the circular buffer");
+    assert(_unread == 0 && "didn't expect bytes in the circular buffer");
 
     kernel->free(_buffer);
 }
