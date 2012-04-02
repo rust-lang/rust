@@ -2062,11 +2062,24 @@ fn parse_item_res(p: parser, attrs: [ast::attribute]) -> @ast::item {
                 attrs);
 }
 
+// Instantiates ident <i> with references to <typarams> as arguments
+fn ident_to_path_tys(p: parser, i: ast::ident,
+                     typarams: [ast::ty_param]) -> @ast::path {
+    let s = p.last_span;
+    let p_: ast::path_ = {global: false, idents: [i],
+          types: vec::map(typarams,
+            {|tp| @{id: p.get_id(),
+                   node: ast::ty_path(ident_to_path(s, tp.ident),
+                                      p.get_id()),
+                        span: s}})};
+    @spanned(s.lo, s.hi, p_)
+}
+
 fn parse_item_class(p: parser, attrs: [ast::attribute]) -> @ast::item {
     let lo = p.last_span.lo;
     let class_name = parse_value_ident(p);
-    let class_path = ident_to_path(p.last_span, class_name);
     let ty_params = parse_ty_params(p);
+    let class_path = ident_to_path_tys(p, class_name, ty_params);
     expect(p, token::LBRACE);
     let mut ms: [@ast::class_member] = [];
     let ctor_id = p.get_id();
@@ -2104,15 +2117,16 @@ fn parse_item_class(p: parser, attrs: [ast::attribute]) -> @ast::item {
 enum class_contents { ctor_decl(ast::fn_decl, ast::blk, codemap::span),
                       members([@ast::class_member]) }
 
-fn parse_class_item(p:parser, class_name:@ast::path) -> class_contents {
+fn parse_class_item(p:parser, class_name_with_tps:@ast::path)
+    -> class_contents {
     if eat_word(p, "new") {
         let lo = p.last_span.lo;
         // Can ctors have attrs?
             // result type is always the type of the class
         let decl_ = parse_fn_decl(p, ast::impure_fn);
         let decl = {output: @{id: p.get_id(),
-                              node: ast::ty_path(class_name, p.get_id()),
-                              span: decl_.output.span}
+                      node: ast::ty_path(class_name_with_tps, p.get_id()),
+                      span: decl_.output.span}
                     with decl_};
         let body = parse_block(p);
         ret ctor_decl(decl, body, ast_util::mk_sp(lo, p.last_span.hi));

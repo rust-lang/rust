@@ -950,7 +950,7 @@ fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
       ty::ty_class(did, tps) {
           // a class is like a record type
         let mut i: int = 0;
-        for vec::each(ty::class_items_as_fields(cx.tcx(), did)) {|fld|
+        for vec::each(ty::class_items_as_fields(cx.tcx(), did, tps)) {|fld|
             let llfld_a = GEPi(cx, av, [0, i]);
             cx = f(cx, llfld_a, fld.mt.ty);
             i += 1;
@@ -1983,8 +1983,13 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, real_substs: [ty::t],
             set_inline_hint(lldecl);
             trans_res_ctor(ccx, pt, decl, fn_id.node, psubsts, lldecl);
           }
-          ast::item_class(_, _, ctor) {
-            ccx.sess.unimpl("monomorphic class constructor");
+          ast::item_class(tps, _, ctor) {
+            set_inline_hint_if_appr(i.attrs, lldecl);
+            let tp_tys: [ty::t] = ty::ty_params_to_tys(ccx.tcx, tps);
+            trans_class_ctor(ccx, pt, ctor.node.dec, ctor.node.body, lldecl,
+                 option::get_or_default(psubsts,
+                   {tys:tp_tys, vtables: none, bounds: @[]}),
+              fn_id.node, i.id, ctor.span);
           }
         }
       }
@@ -2238,7 +2243,8 @@ fn trans_rec_field_inner(bcx: block, val: ValueRef, ty: ty::t,
                          field: ast::ident, sp: span) -> lval_result {
     let fields = alt ty::get(ty).struct {
             ty::ty_rec(fs) { fs }
-            ty::ty_class(did,_) { ty::class_items_as_fields(bcx.tcx(), did) }
+            ty::ty_class(did,ts) {
+                ty::class_items_as_fields(bcx.tcx(), did, ts) }
             // Constraint?
             _ { bcx.tcx().sess.span_bug(sp, "trans_rec_field:\
                  base expr has non-record type"); }
@@ -4255,6 +4261,61 @@ fn trans_const(ccx: @crate_ctxt, e: @ast::expr, id: ast::node_id) {
     llvm::LLVMSetGlobalConstant(g, True);
 }
 
+fn trans_class_ctor(ccx: @crate_ctxt, path: path, decl: ast::fn_decl,
+                    body: ast::blk, llctor_decl: ValueRef,
+                    psubsts: param_substs, ctor_id: ast::node_id,
+                    parent_id: ast::node_id, sp: span) {
+  // Add ctor to the ctor map
+  ccx.class_ctors.insert(ctor_id, parent_id);
+  // Translate the ctor
+
+  // Set up the type for the result of the ctor
+  // kludgy -- this wouldn't be necessary if the typechecker
+  // special-cased constructors, then we could just look up
+  // the ctor's return type.
+  let rslt_ty =  ty::mk_class(ccx.tcx, local_def(parent_id),
+                                    psubsts.tys);
+  // Make the fn context
+  let fcx = new_fn_ctxt_w_id(ccx, path, llctor_decl, ctor_id,
+                                   some(psubsts), some(sp));
+  // FIXME: need to substitute into the fn arg types too?
+  create_llargs_for_fn_args(fcx, no_self, decl.inputs);
+  let mut bcx_top = top_scope_block(fcx, some(sp));
+  let lltop = bcx_top.llbb;
+  bcx_top = copy_args_to_allocas(fcx, bcx_top, decl.inputs,
+              ty::ty_fn_args(node_id_type(bcx_top, ctor_id)));
+
+  // We *don't* want self to be passed to the ctor -- that
+  // wouldn't make sense
+  // So we initialize it here
+  let selfptr = alloc_ty(bcx_top, rslt_ty);
+  // initialize fields to zero
+  let fields = ty::class_items_as_fields(bcx_top.tcx(),
+                                         local_def(parent_id),
+                                         psubsts.tys);
+  let mut bcx = bcx_top;
+  // Initialize fields to zero so init assignments can validly
+  // drop their LHS
+  for field in fields {
+     let ix = field_idx_strict(bcx.tcx(), sp, field.ident, fields);
+     bcx = zero_alloca(bcx, GEPi(bcx, selfptr, [0, ix]),
+                       field.mt.ty);
+  }
+
+  // note we don't want to take *or* drop self.
+  fcx.llself = some({v: selfptr, t: rslt_ty});
+
+  // Translate the body of the ctor
+  bcx = trans_block(bcx_top, body, ignore);
+  let lval_res = {bcx: bcx, val: selfptr, kind: owned};
+  // Generate the return expression
+  bcx = store_temp_expr(bcx, INIT, fcx.llretptr, lval_res,
+                        rslt_ty, true);
+  cleanup_and_leave(bcx, none, some(fcx.llreturn));
+  Unreachable(bcx);
+  finish_fn(fcx, lltop);
+}
+
 fn trans_item(ccx: @crate_ctxt, item: ast::item) {
     let _icx = ccx.insn_ctxt("trans_item");
     let path = alt check ccx.tcx.items.get(item.id) {
@@ -4322,62 +4383,15 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
         native::trans_native_mod(ccx, native_mod, abi);
       }
       ast::item_class(tps, items, ctor) {
-        // FIXME factor our ctor translation, call from monomorphic_fn
-        let llctor_decl = get_item_val(ccx, ctor.node.id);
-        // Add ctor to the ctor map
-        ccx.class_ctors.insert(ctor.node.id, item.id);
-        // Translate the ctor
-
-        // Set up the type for the result of the ctor
-        // kludgy -- this wouldn't be necessary if the typechecker
-        // special-cased constructors, then we could just look up
-        // the ctor's return type.
-        let ty_args = vec::from_fn(tps.len(), {|i|
-            ty::mk_param(ccx.tcx, i, local_def(tps[i].id))
-        });
-        let rslt_ty =  ty::mk_class(ccx.tcx,
-                                    local_def(item.id),
-                                    ty_args);
-
-        // Make the fn context
-        let fcx = new_fn_ctxt_w_id(ccx, *path, llctor_decl, ctor.node.id,
-                                      // substs?
-                                      none, some(ctor.span));
-        create_llargs_for_fn_args(fcx, no_self, ctor.node.dec.inputs);
-        let mut bcx_top = top_scope_block(fcx, some(ctor.span));
-        let lltop = bcx_top.llbb;
-        bcx_top = copy_args_to_allocas(fcx, bcx_top, ctor.node.dec.inputs,
-           ty::ty_fn_args(node_id_type(bcx_top, ctor.node.id)));
-
-        // We *don't* want self to be passed to the ctor -- that
-        // wouldn't make sense
-        // So we initialize it here
-        let selfptr = alloc_ty(bcx_top, rslt_ty);
-        // initialize fields to zero
-        let fields = ty::class_items_as_fields(bcx_top.tcx(),
-                                               local_def(item.id));
-        let mut bcx = bcx_top;
-        // Initialize fields to zero so init assignments can validly
-        // drop their LHS
-        for field in fields {
-           let ix = field_idx_strict(bcx.tcx(), ctor.span, field.ident,
-                                     fields);
-           bcx = zero_alloca(bcx, GEPi(bcx, selfptr, [0, ix]),
-                                       field.mt.ty);
+        if tps.len() == 0u {
+          let psubsts = {tys: ty::ty_params_to_tys(ccx.tcx, tps),
+                         vtables: none,
+                         bounds: @[]};
+          trans_class_ctor(ccx, *path, ctor.node.dec, ctor.node.body,
+                         get_item_val(ccx, ctor.node.id), psubsts,
+                         ctor.node.id, item.id, ctor.span);
         }
-
-        // note we don't want to take *or* drop self.
-        fcx.llself = some({v: selfptr, t: rslt_ty});
-
-        // Translate the body of the ctor
-        bcx = trans_block(bcx_top, ctor.node.body, ignore);
-        let lval_res = {bcx: bcx, val: selfptr, kind: owned};
-        // Generate the return expression
-        bcx = store_temp_expr(bcx, INIT, fcx.llretptr, lval_res,
-                              rslt_ty, true);
-        cleanup_and_leave(bcx, none, some(fcx.llreturn));
-        Unreachable(bcx);
-        finish_fn(fcx, lltop);
+        // If there are ty params, the ctor will get monomorphized
 
         // Translate methods
         let (_, ms) = ast_util::split_class_items(items);

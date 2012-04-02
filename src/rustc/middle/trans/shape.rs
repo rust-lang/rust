@@ -369,10 +369,10 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint]) -> [u8] {
         s
       }
       ty::ty_iface(_, _) { [shape_box_fn] }
-      ty::ty_class(did, _) {
+      ty::ty_class(did, ts) {
         // same as records
         let mut s = [shape_struct], sub = [];
-        for f:field in ty::class_items_as_fields(ccx.tcx, did) {
+        for f:field in ty::class_items_as_fields(ccx.tcx, did, ts) {
             sub += shape_of(ccx, f.mt.ty, ty_param_map);
         }
         add_substr(s, sub);

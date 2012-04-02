@@ -189,10 +189,26 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
                 let did = ast_util::def_id_of_def(cx.tcx.def_map.get(e.id));
                 ty::lookup_item_type(cx.tcx, did).bounds
               }
-              expr_field(_, _, _) {
+              expr_field(base, _, _) {
                 alt cx.method_map.get(e.id) {
                   typeck::method_static(did) {
-                    ty::lookup_item_type(cx.tcx, did).bounds
+                   /*
+                        If this is a class method, we want to use the
+                        class bounds plus the method bounds -- otherwise the
+                        indices come out wrong. So we check base's type...
+                   */
+                   let mut bounds = ty::lookup_item_type(cx.tcx, did).bounds;
+                   alt ty::get(ty::node_id_to_type(cx.tcx, base.id)).struct {
+                        ty::ty_class(parent_id, ts) {
+                            /* ...and if it has a class type, prepend the
+                               class bounds onto the method bounds */
+                            bounds =
+                             @(*ty::lookup_item_type(cx.tcx, parent_id).bounds
+                               + *bounds);
+                        }
+                        _ { }
+                      }
+                      bounds
                   }
                   typeck::method_param(ifce_id, n_mth, _, _) |
                   typeck::method_iface(ifce_id, n_mth) {

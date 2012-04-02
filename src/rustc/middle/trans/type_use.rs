@@ -1,4 +1,4 @@
-// Determines the ways in which a generic function body is dependant
+// Determines the ways in which a generic function body depends
 // on its type parameters. Used to aggressively reuse compiled
 // function bodies for different types.
 
@@ -80,7 +80,7 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
         }
       }
       ast_map::node_ctor(@{node: item_class(_, _, ctor), _}, _) {
-        ccx.sess.unimpl("type uses in class constructor");
+        handle_body(cx, ctor.node.body);
       }
     }
     let uses = vec::from_mut(cx.uses);

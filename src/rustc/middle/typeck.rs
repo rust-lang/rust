@@ -218,7 +218,7 @@ fn instantiate_path(fcx: @fn_ctxt, pth: @ast::path,
                 (sp, "this item does not take type parameters");
         } else if ty_substs_len > ty_param_count {
             fcx.ccx.tcx.sess.span_fatal
-                (sp, "too many type parameter provided for this item");
+                (sp, "too many type parameters provided for this item");
         } else if ty_substs_len < ty_param_count {
             fcx.ccx.tcx.sess.span_fatal
                 (sp, "not enough type parameters provided for this item");
@@ -399,7 +399,7 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
                                                        path_to_str(path))); }
               some(d) { d }};
             alt a_def {
-              ast::def_ty(did) {
+              ast::def_ty(did) | ast::def_class(did) {
                 instantiate(tcx, ast_ty.span, mode, did,
                             id, path.node.types)
               }
@@ -433,28 +433,6 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
                   }
                 }
               }
-             ast::def_class(class_id) {
-              if class_id.crate == ast::local_crate {
-                 alt tcx.items.find(class_id.node) {
-                   some(ast_map::node_item(
-                     @{node: ast::item_class(tps, _, _), _}, _)) {
-                        if vec::len(tps) != vec::len(path.node.types) {
-                          tcx.sess.span_err(ast_ty.span, "incorrect number \
-                            of type parameters to object type");
-                        }
-                        ty::mk_class(tcx, class_id, vec::map(path.node.types,
-                          {|ast_ty| ast_ty_to_ty(tcx, mode, ast_ty)}))
-                     }
-                   _ {
-                      tcx.sess.span_bug(ast_ty.span, #fmt("class id is \
-                        unbound in items"));
-                   }
-                }
-              }
-              else {
-                  getter(tcx, mode, class_id).ty
-              }
-             }
              _ {
                 tcx.sess.span_fatal(ast_ty.span,
                                     "found type name used as a variable");
@@ -2196,7 +2174,8 @@ fn lookup_method_inner_(tcx: ty::ctxt, ms: [ty::method],
                tcx.sess.span_fatal(
                     sp, "can not call a method that contains a \
                                     self type through a boxed iface");
-          } else if (*m.tps).len() > 0u {
+          } else if (*m.tps).len() > 0u  &&
+               alt parent { an_iface(_) { true } cls(_) { false } } {
                    tcx.sess.span_fatal(
                         sp, "can not call a generic method through a \
                                     boxed iface");
@@ -2276,8 +2255,10 @@ fn lookup_method_inner(fcx: @fn_ctxt, expr: @ast::expr,
         }
       }
       ty::ty_class(did, tps) {
-        alt lookup_method_inner_(tcx, *ty::iface_methods(tcx, did), tps,
-              cls(did), name, expr.span, include_private) {
+        alt lookup_method_inner_(tcx, *ty::iface_methods(tcx, did),
+                                /* Need to include class tps so that the
+                                    indices for ty params work out right */
+                         tps, cls(did), name, expr.span, include_private) {
           some(r) { ret some(r); }
           none    { }
         }
@@ -2361,9 +2342,10 @@ fn lookup_method_inner(fcx: @fn_ctxt, expr: @ast::expr,
 // Only for fields! Returns <none> for methods>
 // FIXME: privacy flags
 fn lookup_field_ty(tcx: ty::ctxt, class_id: ast::def_id,
-  items:[ty::field_ty], fieldname: ast::ident) -> option<ty::t> {
+   items:[ty::field_ty], fieldname: ast::ident, substs: [ty::t])
+    -> option<ty::t> {
     option::map(vec::find(items, {|f| f.ident == fieldname}),
-                {|f| ty::lookup_field_type(tcx, class_id, f.id) })
+                {|f| ty::lookup_field_type(tcx, class_id, f.id, substs) })
 }
 
 /*
@@ -3236,7 +3218,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
               _ {}
             }
           }
-          ty::ty_class(base_id, _params) {
+          ty::ty_class(base_id, params) {
               // This is just for fields -- the same code handles
               // methods in both classes and ifaces
 
@@ -3255,7 +3237,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
               else {
                   lookup_public_fields(tcx, base_id)
               };
-              alt lookup_field_ty(tcx, base_id, cls_items, field) {
+              alt lookup_field_ty(tcx, base_id, cls_items, field, params) {
                  some(field_ty) {
                     // (2) look up what field's type is, and return it
                     // FIXME: actually instantiate any type params

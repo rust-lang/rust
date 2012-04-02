@@ -197,6 +197,20 @@ type pred_args = spanned<pred_args_>;
 // for this local.
 type constr_arg_use = spanned<constr_arg_general_<inst>>;
 
+/*
+  A constraint is either an init constraint, referring to the initialization
+  state of a variable (not initialized, definitely initialized, or maybe
+  initialized) or a predicate constraint, referring to the truth value of a
+  predicate on variables (definitely false, maybe true, or definitely true).
+
+  cinit and ninit represent init constraints, while cpred and npred
+  represent predicate constraints.
+
+  In a predicate constraint, the <path> field (and the <def_id> field
+  in the npred constructor) names a user-defined function that may
+  be the operator in a "check" expression in the source.
+ */
+
 enum constraint {
     cinit(uint, span, ident),
 

@@ -82,7 +82,7 @@ export ty_vec, mk_vec, type_is_vec;
 export ty_nil, mk_nil, type_is_nil;
 export ty_iface, mk_iface;
 export ty_res, mk_res;
-export ty_param, mk_param;
+export ty_param, mk_param, ty_params_to_tys;
 export ty_ptr, mk_ptr, mk_mut_ptr, mk_imm_ptr, mk_nil_ptr, type_is_unsafe_ptr;
 export ty_rptr, mk_rptr;
 export ty_rec, mk_rec;
@@ -742,6 +742,10 @@ fn fold_ty(cx: ctxt, fld: fold_mode, ty_0: t) -> t {
           ty_constr(subty, cs) {
               ty = mk_constr(cx, do_fold(cx, fld, subty, under_rptr), cs);
           }
+          ty_class(did, ts) {
+              ty = mk_class(cx, did, vec::map(ts, {|t|
+                              do_fold(cx, fld, t, under_rptr)}));
+          }
           _ {
               cx.sess.bug("unsupported sort of type in fold_ty");
           }
@@ -886,8 +890,8 @@ fn type_needs_drop(cx: ctxt, ty: t) -> bool {
         for f in flds { if type_needs_drop(cx, f.mt.ty) { accum = true; } }
         accum
       }
-      ty_class(did,_) {
-          for f in ty::class_items_as_fields(cx, did)
+      ty_class(did, ts) {
+          for f in ty::class_items_as_fields(cx, did, ts)
           { if type_needs_drop(cx, f.mt.ty) { accum = true; } }
         accum
       }
@@ -1996,7 +2000,8 @@ fn substitute_type_params(cx: ctxt, substs: [ty::t], typ: t) -> t {
 
 fn def_has_ty_params(def: ast::def) -> bool {
     alt def {
-      ast::def_fn(_, _) | ast::def_variant(_, _) { true }
+      ast::def_fn(_, _) | ast::def_variant(_, _) | ast::def_class(_)
+        { true }
       _ { false }
     }
 }
@@ -2166,9 +2171,6 @@ fn enum_variant_with_id(cx: ctxt, enum_id: ast::def_id,
 // If the given item is in an external crate, looks up its type and adds it to
 // the type cache. Returns the type parameters and type.
 fn lookup_item_type(cx: ctxt, did: ast::def_id) -> ty_param_bounds_and_ty {
-    /*
-      Are we putting class ids in the tcache (where does that happen?)
-     */
     alt cx.tcache.find(did) {
       some(tpt) { ret tpt; }
       none {
@@ -2184,23 +2186,26 @@ fn lookup_item_type(cx: ctxt, did: ast::def_id) -> ty_param_bounds_and_ty {
 }
 
 // Look up a field ID, whether or not it's local
-fn lookup_field_type(tcx: ctxt, class_id: def_id, id: def_id) -> ty::t {
-    if id.crate == ast::local_crate {
+// Takes a list of type substs in case the class is generic
+fn lookup_field_type(tcx: ctxt, class_id: def_id, id: def_id,
+                     substs: [ty::t]) -> ty::t {
+    let t = if id.crate == ast::local_crate {
         node_id_to_type(tcx, id.node)
     }
     else {
         alt tcx.tcache.find(id) {
-           some(tpt) { ret tpt.ty; }
+           some(tpt) { tpt.ty }
            none {
                let tpt = csearch::get_field_type(tcx, class_id, id);
                // ok b/c fields are monomorphic
                // TODO: Comment might be a lie, what if it mentions
                // class-bound ty params?
                tcx.tcache.insert(id, tpt);
-               ret tpt.ty;
+               tpt.ty
            }
         }
-    }
+    };
+    substitute_type_params(tcx, substs, t)
 }
 
 // Look up the list of field names and IDs for a given class
@@ -2298,13 +2303,16 @@ fn class_field_tys(items: [@class_member]) -> [field_ty] {
 
 // Return a list of fields corresponding to the class's items
 // (as if the class was a record). trans uses this
-fn class_items_as_fields(cx:ctxt, did: ast::def_id) -> [field] {
+// Takes a list of substs with which to instantiate field types
+fn class_items_as_fields(cx:ctxt, did: ast::def_id, substs: [ty::t])
+    -> [field] {
     let mut rslt = [];
     for f in lookup_class_fields(cx, did) {
        // consider all instance vars mut, because the
        // constructor may mutate all vars
-      rslt += [{ident: f.ident, mt: {ty: lookup_field_type(cx, did, f.id),
-                  mutbl: m_mutbl}}];
+       rslt += [{ident: f.ident, mt:
+               {ty: lookup_field_type(cx, did, f.id, substs),
+                    mutbl: m_mutbl}}];
     }
     rslt
 }
@@ -2408,7 +2416,11 @@ fn ast_constr_to_constr<T>(tcx: ctxt, c: @ast::constr_general<T>) ->
     }
 }
 
-
+fn ty_params_to_tys(tcx: ty::ctxt, tps: [ast::ty_param]) -> [t] {
+    vec::from_fn(tps.len(), {|i|
+                ty::mk_param(tcx, i, ast_util::local_def(tps[i].id))
+        })
+}
 // Local Variables:
 // mode: rust
 // fill-column: 78;
