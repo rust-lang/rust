@@ -117,7 +117,6 @@ rust_task : public kernel_owned<rust_task>, rust_cond
     // Fields known only to the runtime.
     rust_kernel *kernel;
     const char *const name;
-    int32_t list_index;
 
     // Rendezvous pointer for receiving data when blocked on a port. If we're
     // trying to read data and no data is available on any incoming channel,
