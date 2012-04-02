@@ -463,6 +463,7 @@ inline rust_task* rust_get_current_task() {
 
     // Make sure we've calculated the right address
     ::check_stack_canary(stk);
+    assert(stk->task != NULL && "task pointer not in stack structure");
     return stk->task;
 }
 
