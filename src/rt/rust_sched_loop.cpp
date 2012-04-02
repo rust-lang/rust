@@ -73,21 +73,21 @@ rust_sched_loop::fail() {
     kernel->fail();
 }
 
+static void kill_task(rust_task * task)
+{
+    task->unsupervise();
+    task->kill();
+}
+
 void
 rust_sched_loop::kill_all_tasks() {
     rust_task_iterator it = running_tasks.iterator();
-    while (it.hasNext()) {
-        rust_task *task = it.next();
-        task->unsupervise();
-        task->kill();
-    }
+    while (it.hasNext())
+        kill_task(it.next());
     
     it = blocked_tasks.iterator();
-    while (it.hasNext()) {
-        rust_task *task = it.next();
-        task->unsupervise();
-        task->kill();
-    }
+    while (it.hasNext())
+        kill_task(it.next());
 }
 
 size_t
