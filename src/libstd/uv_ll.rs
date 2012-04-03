@@ -180,7 +180,7 @@ type uv_async_t = {
     fields: uv_handle_fields,
     a00: *u8, a01: *u8, a02: *u8, a03: *u8,
     a04: *u8, a05: *u8, a06: *u8, a07: *u8,
-    a08: *u8, a09: *u8, 
+    a08: *u8, a09: *u8,
     a11: uv_async_t_32bit_unix_riders
 };
 #[cfg(target_arch="x86_64")]
