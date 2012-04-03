@@ -131,15 +131,11 @@ fn trans_vec(bcx: block, args: [@ast::expr], id: ast::node_id,
 
 fn trans_str(bcx: block, s: str, dest: dest) -> block {
     let _icx = bcx.insn_ctxt("tvec::trans_str");
-    let veclen = str::len(s) + 1u; // +1 for \0
-    let {bcx: bcx, val: sptr, _} =
-        alloc(bcx, ty::mk_str(bcx.tcx()), veclen);
-
     let ccx = bcx.ccx();
-    let llcstr = C_cstr(ccx, s);
-    call_memmove(bcx, get_dataptr(bcx, sptr, T_i8()), llcstr,
-                 C_uint(ccx, veclen));
-    ret base::store_in_dest(bcx, sptr, dest);
+    let cs = PointerCast(bcx, C_cstr(ccx, s), T_ptr(T_i8()));
+    let len = C_uint(ccx, str::len(s));
+    let n = Call(bcx, ccx.upcalls.str_new, [cs, len]);
+    ret base::store_in_dest(bcx, n, dest);
 }
 
 fn trans_append(bcx: block, vec_ty: ty::t, lhsptr: ValueRef,

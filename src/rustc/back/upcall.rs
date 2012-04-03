@@ -17,6 +17,7 @@ type upcalls =
      shared_realloc: ValueRef,
      mark: ValueRef,
      vec_grow: ValueRef,
+     str_new: ValueRef,
      str_concat: ValueRef,
      cmp_type: ValueRef,
      log_type: ValueRef,
@@ -64,6 +65,8 @@ fn declare_upcalls(targ_cfg: @session::config,
               d("mark", [T_ptr(T_i8())], int_t),
           vec_grow:
               dv("vec_grow", [T_ptr(T_ptr(opaque_vec_t)), int_t]),
+          str_new:
+              d("str_new", [T_ptr(T_i8()), int_t], T_ptr(opaque_vec_t)),
           str_concat:
               d("str_concat", [T_ptr(opaque_vec_t), T_ptr(opaque_vec_t)],
                 T_ptr(opaque_vec_t)),

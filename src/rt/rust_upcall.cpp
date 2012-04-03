@@ -291,6 +291,27 @@ upcall_shared_realloc(void *ptr, size_t size) {
 
 /**********************************************************************/
 
+struct s_str_new_args {
+    const char *cstr;
+    size_t len;
+    rust_str *retval;
+};
+
+extern "C" CDECL void
+upcall_s_str_new(s_str_new_args *args) {
+    rust_task *task = rust_get_current_task();
+    LOG_UPCALL_ENTRY(task);
+    args->retval = make_str(task->kernel, args->cstr, args->len, "str_new");
+}
+
+extern "C" CDECL rust_str*
+upcall_str_new(const char *cstr, size_t len) {
+    s_str_new_args args = { cstr, len, 0 };
+    UPCALL_SWITCH_STACK(&args, upcall_s_str_new);
+    return args.retval;
+}
+
+
 struct s_vec_grow_args {
     rust_vec** vp;
     size_t new_sz;
