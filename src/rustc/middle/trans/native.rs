@@ -780,15 +780,17 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::native_item,
       "forget" {}
       "reinterpret_cast" {
         let llout_ty = type_of::type_of(ccx, substs.tys[1]);
-        if shape::llsize_of_real(ccx, lltp_ty) !=
-           shape::llsize_of_real(ccx, llout_ty) {
+        let tp_sz = shape::llsize_of_real(ccx, lltp_ty),
+            out_sz = shape::llsize_of_real(ccx, llout_ty);
+        if tp_sz != out_sz {
             let sp = alt check ccx.tcx.items.get(option::get(ref_id)) {
               ast_map::node_expr(e) { e.span }
             };
-            ccx.sess.span_fatal(sp, "reinterpret_cast called on types \
-                                     with different size: " +
-                                ty_to_str(ccx.tcx, tp_ty) + " to " +
-                                ty_to_str(ccx.tcx, substs.tys[1]));
+            ccx.sess.span_fatal(
+                sp, #fmt("reinterpret_cast called on types \
+                          with different size: %s (%u) to %s (%u)",
+                         ty_to_str(ccx.tcx, tp_ty), tp_sz,
+                         ty_to_str(ccx.tcx, substs.tys[1]), out_sz));
         }
         if !ty::type_is_nil(substs.tys[1]) {
             let cast = PointerCast(bcx, get_param(decl, first_real_arg),
