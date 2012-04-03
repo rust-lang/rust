@@ -16,7 +16,6 @@
 #define ERROR 0
 
 #include <stdlib.h>
-#include <stdint.h>
 #include <inttypes.h>
 #include <stdarg.h>
 #include <sys/types.h>
