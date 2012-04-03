@@ -12,7 +12,8 @@ export
     now,
     at,
     now_utc,
-    at_utc;
+    at_utc,
+    strptime;
 
 #[abi = "cdecl"]
 native mod rustrt {
@@ -114,6 +115,464 @@ fn at(clock: timespec) -> tm {
 #[doc = "Returns the current time in the local timezone"]
 fn now() -> tm {
     at(get_time())
+}
+
+#[doc = "Parses the time from the string according to the format string."]
+fn strptime(s: str, format: str) -> result<tm, str> {
+    type tm_mut = {
+       mut tm_sec: i32,
+       mut tm_min: i32,
+       mut tm_hour: i32,
+       mut tm_mday: i32,
+       mut tm_mon: i32,
+       mut tm_year: i32,
+       mut tm_wday: i32,
+       mut tm_yday: i32,
+       mut tm_isdst: i32,
+       mut tm_gmtoff: i32,
+       mut tm_zone: str,
+       mut tm_nsec: i32,
+    };
+
+    fn match_str(s: str, pos: uint, needle: str) -> bool {
+        let mut i = pos;
+        for str::each(needle) {|ch|
+            if s[i] != ch {
+                ret false;
+            }
+            i += 1u;
+        }
+        ret true;
+    }
+
+    fn match_strs(s: str, pos: uint, strs: [(str, i32)])
+      -> option<(i32, uint)> {
+        let mut i = 0u;
+        let len = vec::len(strs);
+        while i < len {
+            let (needle, value) = strs[i];
+
+            if match_str(s, pos, needle) {
+                ret some((value, pos + str::len(needle)));
+            }
+            i += 1u;
+        }
+
+        none
+    }
+
+    fn match_digits(s: str, pos: uint, digits: uint, ws: bool)
+      -> option<(i32, uint)> {
+        let mut pos = pos;
+        let mut value = 0_i32;
+
+        let mut i = 0u;
+        while i < digits {
+            let {ch, next} = str::char_range_at(s, pos);
+            pos = next;
+
+            alt ch {
+              '0' to '9' {
+                value = value * 10_i32 + (ch as i32 - '0' as i32);
+              }
+              ' ' if ws { }
+              _ { ret none; }
+            }
+            i += 1u;
+        }
+
+        some((value, pos))
+    }
+
+    fn parse_char(s: str, pos: uint, c: char) -> result<uint, str> {
+        let {ch, next} = str::char_range_at(s, pos);
+
+        if c == ch {
+            ok(next)
+        } else {
+            err(#fmt("Expected %?, found %?",
+                str::from_char(c),
+                str::from_char(ch)))
+        }
+    }
+
+    fn parse_type(s: str, pos: uint, ch: char, tm: tm_mut)
+      -> result<uint, str> {
+        alt ch {
+          'A' {
+            alt match_strs(s, pos, [
+                ("Sunday", 0_i32),
+                ("Monday", 1_i32),
+                ("Tuesday", 2_i32),
+                ("Wednesday", 3_i32),
+                ("Thursday", 4_i32),
+                ("Friday", 5_i32),
+                ("Saturday", 6_i32)
+            ]) {
+              some(item) { let (v, pos) = item; tm.tm_wday = v; ok(pos) }
+              none { err("Invalid day") }
+            }
+          }
+          'a' {
+            alt match_strs(s, pos, [
+                ("Sun", 0_i32),
+                ("Mon", 1_i32),
+                ("Tue", 2_i32),
+                ("Wed", 3_i32),
+                ("Thu", 4_i32),
+                ("Fri", 5_i32),
+                ("Sat", 6_i32)
+            ]) {
+              some(item) { let (v, pos) = item; tm.tm_wday = v; ok(pos) }
+              none { err("Invalid day") }
+            }
+          }
+          'B' {
+            alt match_strs(s, pos, [
+                ("January", 0_i32),
+                ("February", 1_i32),
+                ("March", 2_i32),
+                ("April", 3_i32),
+                ("May", 4_i32),
+                ("June", 5_i32),
+                ("July", 6_i32),
+                ("August", 7_i32),
+                ("September", 8_i32),
+                ("October", 9_i32),
+                ("November", 10_i32),
+                ("December", 11_i32)
+            ]) {
+              some(item) { let (v, pos) = item; tm.tm_mon = v; ok(pos) }
+              none { err("Invalid month") }
+            }
+          }
+          'b' | 'h' {
+            alt match_strs(s, pos, [
+                ("Jan", 0_i32),
+                ("Feb", 1_i32),
+                ("Mar", 2_i32),
+                ("Apr", 3_i32),
+                ("May", 4_i32),
+                ("Jun", 5_i32),
+                ("Jul", 6_i32),
+                ("Aug", 7_i32),
+                ("Sep", 8_i32),
+                ("Oct", 9_i32),
+                ("Nov", 10_i32),
+                ("Dec", 11_i32)
+            ]) {
+              some(item) { let (v, pos) = item; tm.tm_mon = v; ok(pos) }
+              none { err("Invalid month") }
+            }
+          }
+          'C' {
+            alt match_digits(s, pos, 2u, false) {
+              some(item) {
+                let (v, pos) = item;
+                tm.tm_year += (v * 100_i32) - 1900_i32;
+                ok(pos)
+              }
+              none { err("Invalid year") }
+            }
+          }
+          'c' {
+            parse_type(s, pos, 'a', tm)
+                .chain { |pos| parse_char(s, pos, ' ') }
+                .chain { |pos| parse_type(s, pos, 'b', tm) }
+                .chain { |pos| parse_char(s, pos, ' ') }
+                .chain { |pos| parse_type(s, pos, 'e', tm) }
+                .chain { |pos| parse_char(s, pos, ' ') }
+                .chain { |pos| parse_type(s, pos, 'T', tm) }
+                .chain { |pos| parse_char(s, pos, ' ') }
+                .chain { |pos| parse_type(s, pos, 'Y', tm) }
+          }
+          'D' | 'x' {
+            parse_type(s, pos, 'm', tm)
+                .chain { |pos| parse_char(s, pos, '/') }
+                .chain { |pos| parse_type(s, pos, 'd', tm) }
+                .chain { |pos| parse_char(s, pos, '/') }
+                .chain { |pos| parse_type(s, pos, 'y', tm) }
+          }
+          'd' {
+            alt match_digits(s, pos, 2u, false) {
+              some(item) { let (v, pos) = item; tm.tm_mday = v; ok(pos) }
+              none { err("Invalid day of the month") }
+            }
+          }
+          'e' {
+            alt match_digits(s, pos, 2u, true) {
+              some(item) { let (v, pos) = item; tm.tm_mday = v; ok(pos) }
+              none { err("Invalid day of the month") }
+            }
+          }
+          'F' {
+            parse_type(s, pos, 'Y', tm)
+                .chain { |pos| parse_char(s, pos, '-') }
+                .chain { |pos| parse_type(s, pos, 'm', tm) }
+                .chain { |pos| parse_char(s, pos, '-') }
+                .chain { |pos| parse_type(s, pos, 'd', tm) }
+          }
+          'H' {
+            // FIXME: range check.
+            alt match_digits(s, pos, 2u, false) {
+              some(item) { let (v, pos) = item; tm.tm_hour = v; ok(pos) }
+              none { err("Invalid hour") }
+            }
+          }
+          'I' {
+            // FIXME: range check.
+            alt match_digits(s, pos, 2u, false) {
+              some(item) {
+                  let (v, pos) = item;
+                  tm.tm_hour = if v == 12_i32 { 0_i32 } else { v };
+                  ok(pos)
+              }
+              none { err("Invalid hour") }
+            }
+          }
+          'j' {
+            // FIXME: range check.
+            alt match_digits(s, pos, 3u, false) {
+              some(item) {
+                let (v, pos) = item;
+                tm.tm_yday = v - 1_i32;
+                ok(pos)
+              }
+              none { err("Invalid year") }
+            }
+          }
+          'k' {
+            // FIXME: range check.
+            alt match_digits(s, pos, 2u, true) {
+              some(item) { let (v, pos) = item; tm.tm_hour = v; ok(pos) }
+              none { err("Invalid hour") }
+            }
+          }
+          'l' {
+            // FIXME: range check.
+            alt match_digits(s, pos, 2u, true) {
+              some(item) {
+                  let (v, pos) = item;
+                  tm.tm_hour = if v == 12_i32 { 0_i32 } else { v };
+                  ok(pos)
+              }
+              none { err("Invalid hour") }
+            }
+          }
+          'M' {
+            // FIXME: range check.
+            alt match_digits(s, pos, 2u, false) {
+              some(item) { let (v, pos) = item; tm.tm_min = v; ok(pos) }
+              none { err("Invalid minute") }
+            }
+          }
+          'm' {
+            // FIXME: range check.
+            alt match_digits(s, pos, 2u, false) {
+              some(item) {
+                let (v, pos) = item;
+                tm.tm_mon = v - 1_i32;
+                ok(pos)
+              }
+              none { err("Invalid month") }
+            }
+          }
+          'n' { parse_char(s, pos, '\n') }
+          'P' {
+            alt match_strs(s, pos, [("am", 0_i32), ("pm", 12_i32)]) {
+              some(item) { let (v, pos) = item; tm.tm_hour += v; ok(pos) }
+              none { err("Invalid hour") }
+            }
+          }
+          'p' {
+            alt match_strs(s, pos, [("AM", 0_i32), ("PM", 12_i32)]) {
+              some(item) { let (v, pos) = item; tm.tm_hour += v; ok(pos) }
+              none { err("Invalid hour") }
+            }
+          }
+          'R' {
+            parse_type(s, pos, 'H', tm)
+                .chain { |pos| parse_char(s, pos, ':') }
+                .chain { |pos| parse_type(s, pos, 'M', tm) }
+          }
+          'r' {
+            parse_type(s, pos, 'I', tm)
+                .chain { |pos| parse_char(s, pos, ':') }
+                .chain { |pos| parse_type(s, pos, 'M', tm) }
+                .chain { |pos| parse_char(s, pos, ':') }
+                .chain { |pos| parse_type(s, pos, 'S', tm) }
+                .chain { |pos| parse_char(s, pos, ' ') }
+                .chain { |pos| parse_type(s, pos, 'p', tm) }
+          }
+          'S' {
+            // FIXME: range check.
+            alt match_digits(s, pos, 2u, false) {
+              some(item) {
+                let (v, pos) = item;
+                tm.tm_sec = v;
+                ok(pos)
+              }
+              none { err("Invalid second") }
+            }
+          }
+          //'s' {}
+          'T' | 'X' {
+            parse_type(s, pos, 'H', tm)
+                .chain { |pos| parse_char(s, pos, ':') }
+                .chain { |pos| parse_type(s, pos, 'M', tm) }
+                .chain { |pos| parse_char(s, pos, ':') }
+                .chain { |pos| parse_type(s, pos, 'S', tm) }
+          }
+          't' { parse_char(s, pos, '\t') }
+          'u' {
+            // FIXME: range check.
+            alt match_digits(s, pos, 1u, false) {
+              some(item) {
+                let (v, pos) = item;
+                tm.tm_wday = v;
+                ok(pos)
+              }
+              none { err("Invalid weekday") }
+            }
+          }
+          'v' {
+            parse_type(s, pos, 'e', tm)
+                .chain { |pos| parse_char(s, pos, '-') }
+                .chain { |pos| parse_type(s, pos, 'b', tm) }
+                .chain { |pos| parse_char(s, pos, '-') }
+                .chain { |pos| parse_type(s, pos, 'Y', tm) }
+          }
+          //'W' {}
+          'w' {
+            // FIXME: range check.
+            alt match_digits(s, pos, 1u, false) {
+              some(item) { let (v, pos) = item; tm.tm_wday = v; ok(pos) }
+              none { err("Invalid weekday") }
+            }
+          }
+          //'X' {}
+          //'x' {}
+          'Y' {
+            // FIXME: range check.
+            alt match_digits(s, pos, 4u, false) {
+              some(item) {
+                let (v, pos) = item;
+                tm.tm_year = v - 1900_i32;
+                ok(pos)
+              }
+              none { err("Invalid weekday") }
+            }
+          }
+          'y' {
+            // FIXME: range check.
+            alt match_digits(s, pos, 2u, false) {
+              some(item) {
+                let (v, pos) = item;
+                tm.tm_year = v - 1900_i32;
+                ok(pos)
+              }
+              none { err("Invalid weekday") }
+            }
+          }
+          'Z' {
+            if match_str(s, pos, "UTC") || match_str(s, pos, "GMT") {
+                tm.tm_gmtoff = 0_i32;
+                tm.tm_zone = "UTC";
+                ok(pos + 3u)
+            } else {
+                // It's odd, but to maintain compatibility with c's
+                // strptime we ignore the timezone.
+                let mut pos = pos;
+                let len = str::len(s);
+                while pos < len {
+                    let {ch, next} = str::char_range_at(s, pos);
+                    pos = next;
+                    if ch == ' ' { break; }
+                }
+
+                ok(pos)
+            }
+          }
+          'z' {
+            let {ch, next} = str::char_range_at(s, pos);
+
+            if ch == '+' || ch == '-' {
+                alt match_digits(s, next, 4u, false) {
+                  some(item) {
+                    let (v, pos) = item;
+                    if v == 0_i32 {
+                        tm.tm_gmtoff = 0_i32;
+                        tm.tm_zone = "UTC";
+                    }
+
+                    ok(pos)
+                  }
+                  none { err("Invalid zone offset") }
+                }
+            } else {
+                err("Invalid zone offset")
+            }
+          }
+          '%' { parse_char(s, pos, '%') }
+          ch {
+            err(#fmt("unknown formatting type: %?", str::from_char(ch)))
+          }
+        }
+    }
+
+    io::with_str_reader(format) { |rdr|
+        let tm = {
+            mut tm_sec: 0_i32,
+            mut tm_min: 0_i32,
+            mut tm_hour: 0_i32,
+            mut tm_mday: 0_i32,
+            mut tm_mon: 0_i32,
+            mut tm_year: 0_i32,
+            mut tm_wday: 0_i32,
+            mut tm_yday: 0_i32,
+            mut tm_isdst: 0_i32,
+            mut tm_gmtoff: 0_i32,
+            mut tm_zone: "",
+            mut tm_nsec: 0_i32,
+        };
+        let mut pos = 0u;
+        let len = str::len(s);
+        let mut result = err("Invalid time");
+
+        while !rdr.eof() && pos < len {
+            let {ch, next} = str::char_range_at(s, pos);
+
+            alt rdr.read_char() {
+              '%' {
+                alt parse_type(s, pos, rdr.read_char(), tm) {
+                  ok(next) { pos = next; }
+                  err(e) { result = err(e); break; }
+                }
+              }
+              c {
+                if c != ch { break }
+                pos = next;
+              }
+            }
+        }
+
+        if pos == len && rdr.eof() {
+            ok({
+                tm_sec: tm.tm_sec,
+                tm_min: tm.tm_min,
+                tm_hour: tm.tm_hour,
+                tm_mday: tm.tm_mday,
+                tm_mon: tm.tm_mon,
+                tm_year: tm.tm_year,
+                tm_wday: tm.tm_wday,
+                tm_yday: tm.tm_yday,
+                tm_isdst: tm.tm_isdst,
+                tm_gmtoff: tm.tm_gmtoff,
+                tm_zone: tm.tm_zone,
+                tm_nsec: tm.tm_nsec,
+            })
+        } else { result }
+    }
 }
 
 fn strftime(format: str, tm: tm) -> str {
@@ -478,6 +937,151 @@ mod tests {
         assert utc.to_utc() == utc;
         assert utc.to_local() == local;
         assert utc.to_local().to_utc() == utc;
+    }
+
+    #[test]
+    fn test_strptime() {
+        os::setenv("TZ", "America/Los_Angeles");
+
+        alt strptime("", "") {
+          ok(tm) {
+            assert tm.tm_sec == 0_i32;
+            assert tm.tm_min == 0_i32;
+            assert tm.tm_hour == 0_i32;
+            assert tm.tm_mday == 0_i32;
+            assert tm.tm_mon == 0_i32;
+            assert tm.tm_year == 0_i32;
+            assert tm.tm_wday == 0_i32;
+            assert tm.tm_isdst== 0_i32;
+            assert tm.tm_gmtoff == 0_i32;
+            assert tm.tm_zone == "";
+            assert tm.tm_nsec == 0_i32;
+          }
+          err(_) {}
+        }
+
+        let format = "%a %b %e %T %Y";
+        assert strptime("", format) == err("Invalid time");
+        assert strptime("Fri Feb 13 15:31:30", format) == err("Invalid time");
+
+        alt strptime("Fri Feb 13 15:31:30 2009", format) {
+          err(e) { fail e }
+          ok(tm) {
+            assert tm.tm_sec == 30_i32;
+            assert tm.tm_min == 31_i32;
+            assert tm.tm_hour == 15_i32;
+            assert tm.tm_mday == 13_i32;
+            assert tm.tm_mon == 1_i32;
+            assert tm.tm_year == 109_i32;
+            assert tm.tm_wday == 5_i32;
+            assert tm.tm_yday == 0_i32;
+            assert tm.tm_isdst == 0_i32;
+            assert tm.tm_gmtoff == 0_i32;
+            assert tm.tm_zone == "";
+            assert tm.tm_nsec == 0_i32;
+          }
+        }
+
+        fn test(s: str, format: str) -> bool {
+            alt strptime(s, format) {
+              ok(tm) { tm.strftime(format) == s }
+              err(e) { fail e }
+            }
+        }
+
+        [
+            "Sunday",
+            "Monday",
+            "Tuesday",
+            "Wednesday",
+            "Thursday",
+            "Friday",
+            "Saturday"
+        ].iter { |day| assert test(day, "%A"); }
+
+        [
+            "Sun",
+            "Mon",
+            "Tue",
+            "Wed",
+            "Thu",
+            "Fri",
+            "Sat"
+        ].iter { |day| assert test(day, "%a"); }
+
+        [
+            "January",
+            "February",
+            "March",
+            "April",
+            "May",
+            "June",
+            "July",
+            "August",
+            "September",
+            "October",
+            "November",
+            "December"
+        ].iter { |day| assert test(day, "%B"); }
+
+        [
+            "Jan",
+            "Feb",
+            "Mar",
+            "Apr",
+            "May",
+            "Jun",
+            "Jul",
+            "Aug",
+            "Sep",
+            "Oct",
+            "Nov",
+            "Dec"
+        ].iter { |day| assert test(day, "%b"); }
+
+        assert test("19", "%C");
+        assert test("Fri Feb 13 23:31:30 2009", "%c");
+        assert test("02/13/09", "%D");
+        assert test("03", "%d");
+        assert test("13", "%d");
+        assert test(" 3", "%e");
+        assert test("13", "%e");
+        assert test("2009-02-13", "%F");
+        assert test("03", "%H");
+        assert test("13", "%H");
+        assert test("03", "%I"); // FIXME: flesh out
+        assert test("11", "%I"); // FIXME: flesh out
+        assert test("044", "%j");
+        assert test(" 3", "%k");
+        assert test("13", "%k");
+        assert test(" 1", "%l");
+        assert test("11", "%l");
+        assert test("03", "%M");
+        assert test("13", "%M");
+        assert test("\n", "%n");
+        assert test("am", "%P");
+        assert test("pm", "%P");
+        assert test("AM", "%p");
+        assert test("PM", "%p");
+        assert test("23:31", "%R");
+        assert test("11:31:30 AM", "%r");
+        assert test("11:31:30 PM", "%r");
+        assert test("03", "%S");
+        assert test("13", "%S");
+        assert test("15:31:30", "%T");
+        assert test("\t", "%t");
+        assert test("1", "%u");
+        assert test("7", "%u");
+        assert test("13-Feb-2009", "%v");
+        assert test("0", "%w");
+        assert test("6", "%w");
+        assert test("2009", "%Y");
+        assert test("09", "%y");
+        assert strptime("UTC", "%Z").get().tm_zone == "UTC";
+        assert strptime("PST", "%Z").get().tm_zone == "";
+        assert strptime("-0000", "%z").get().tm_gmtoff == 0_i32;
+        assert strptime("-0800", "%z").get().tm_gmtoff == 0_i32;
+        assert test("%", "%%");
     }
 
     #[test]
