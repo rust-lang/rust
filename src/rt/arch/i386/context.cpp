@@ -1,10 +1,6 @@
+
 #include "context.h"
-
-#include "../../rust.h"
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <assert.h>
+#include "../../rust_globals.h"
 
 extern "C" uint32_t CDECL swap_registers(registers_t *oregs,
                                          registers_t *regs)

@@ -1,18 +1,16 @@
 // Rust cycle collector. Temporary, but will probably stick around for some
 // time until LLVM's GC infrastructure is more mature.
 
-#include "rust_debug.h"
-#include "rust_internal.h"
-#include "rust_shape.h"
-#include "rust_task.h"
-#include <cassert>
-#include <cstdio>
-#include <cstdlib>
 #include <map>
 #include <set>
 #include <vector>
-#include <stdint.h>
 #include <ios>
+
+#include "rust_globals.h"
+#include "rust_cc.h"
+#include "rust_debug.h"
+#include "rust_shape.h"
+#include "rust_task.h"
 
 // The number of allocations Rust code performs before performing cycle
 // collection.

@@ -2,6 +2,9 @@
 #ifndef ARRAY_LIST_H
 #define ARRAY_LIST_H
 
+#include <inttypes.h>
+#include <stddef.h>
+
 /**
  * A simple, resizable array list.
  */

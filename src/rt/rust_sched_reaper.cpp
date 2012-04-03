@@ -1,4 +1,4 @@
-#include "rust_internal.h"
+
 #include "rust_kernel.h"
 #include "rust_sched_reaper.h"
 

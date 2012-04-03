@@ -1,5 +1,5 @@
-#include "rust_internal.h"
 
+#include "rust_stack.h"
 #include "vg/valgrind.h"
 #include "vg/memcheck.h"
 

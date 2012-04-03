@@ -1,4 +1,7 @@
+
 #include "rust_scheduler.h"
+#include "rust_task.h"
+#include "rust_globals.h"
 #include "rust_util.h"
 #include "rust_sched_launcher.h"
 

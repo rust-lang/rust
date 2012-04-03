@@ -1,7 +1,10 @@
 #ifndef RUST_STACK_H
 #define RUST_STACK_H
 
+#include "rust_globals.h"
 #include "memory_region.h"
+
+struct rust_task;
 
 struct stk_seg {
     stk_seg *prev;

@@ -1,9 +1,8 @@
 #ifndef RUST_PORT_SELECTOR_H
 #define RUST_PORT_SELECTOR_H
 
-#include "rust_internal.h"
+#include "rust_globals.h"
 
-struct rust_task;
 class rust_port;
 
 class rust_port_selector : public rust_cond {

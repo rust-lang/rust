@@ -5,6 +5,9 @@
 #ifndef CIRCULAR_BUFFER_H
 #define CIRCULAR_BUFFER_H
 
+#include "rust_globals.h"
+#include "rust_kernel.h"
+
 class
 circular_buffer : public kernel_owned<circular_buffer> {
     static const size_t INITIAL_CIRCULAR_BUFFER_SIZE_IN_UNITS = 8;

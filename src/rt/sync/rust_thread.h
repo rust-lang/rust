@@ -1,6 +1,8 @@
 #ifndef RUST_THREAD_H
 #define RUST_THREAD_H
 
+#include "rust_globals.h"
+
 /**
  * Thread utility class. Derive and implement your own run() method.
  */

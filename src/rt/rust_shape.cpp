@@ -1,16 +1,14 @@
 // Functions that interpret the shape of a type to perform various low-level
 // actions, such as copying, freeing, comparing, and so on.
 
+
 #include <algorithm>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <utility>
-#include <cassert>
-#include <cctype>
-#include <cstdio>
-#include <cstdlib>
-#include "rust_internal.h"
+
+#include "rust_task.h"
 #include "rust_shape.h"
 
 namespace shape {

@@ -1,7 +1,8 @@
 #ifndef RUST_PORT_H
 #define RUST_PORT_H
 
-#include "rust_internal.h"
+#include "rust_globals.h"
+#include "circular_buffer.h"
 
 class port_detach_cond : public rust_cond { };
 

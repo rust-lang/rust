@@ -1,4 +1,5 @@
-#include "rust_internal.h"
+
+#include "rust_kernel.h"
 
 #ifdef __APPLE__
 #include <crt_externs.h>

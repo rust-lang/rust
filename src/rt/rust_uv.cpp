@@ -1,4 +1,6 @@
-#include "rust_internal.h"
+
+#include "rust_globals.h"
+#include "rust_task.h"
 #include "uv.h"
 
 // crust fn pointers

@@ -2,6 +2,8 @@
 #ifndef LOCK_AND_SIGNAL_H
 #define LOCK_AND_SIGNAL_H
 
+#include "rust_globals.h"
+
 #ifndef RUST_NDEBUG
 #define DEBUG_LOCKS
 #endif

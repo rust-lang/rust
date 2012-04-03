@@ -2,6 +2,8 @@
 #ifndef RUST_LOG_H
 #define RUST_LOG_H
 
+#include "rust_globals.h"
+
 const uint32_t log_err = 0;
 const uint32_t log_warn = 1;
 const uint32_t log_info = 2;

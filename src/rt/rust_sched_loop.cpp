@@ -1,9 +1,5 @@
 
-#include <stdarg.h>
-#include <cassert>
-#include <pthread.h>
-#include <vector>
-#include "rust_internal.h"
+#include "rust_sched_loop.h"
 #include "rust_util.h"
 #include "rust_scheduler.h"
 
