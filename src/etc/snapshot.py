@@ -34,7 +34,7 @@ snapshot_files = {
               "lib/libcore-*.dylib",
               "lib/libstd-*.dylib",
               "lib/librustc-*.dylib",
-              "lib/librustsyntax-*.so",
+              "lib/librustsyntax-*.dylib",
               "lib/librustrt.dylib",
               "lib/librustllvm.dylib"],
     "winnt": ["bin/rustc.exe",
