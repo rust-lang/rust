@@ -13,7 +13,6 @@
 #include "rust_unwind.h"
 #include "rust_upcall.h"
 #include "rust_util.h"
-#include <stdint.h>
 
 #ifdef __GNUC__
 #define LOG_UPCALL_ENTRY(task)                            \

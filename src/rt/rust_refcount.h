@@ -26,6 +26,4 @@ public:                                                                    \
    void deref() { if(0 == sync::decrement(ref_count)) { delete_this(); } } \
    intptr_t get_ref_count() { return sync::read(ref_count); }
 
-
-
 #endif
