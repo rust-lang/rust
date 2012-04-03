@@ -1,5 +1,6 @@
-#include <assert.h>
+
 #include "../rust_globals.h"
+#include "lock_and_signal.h"
 
 /*
  * A "lock-and-signal" pair. These are necessarily coupled on pthreads
@@ -7,8 +8,6 @@
  * together here to minimize ifdefs elsewhere; you must use them as
  * if you're using a pthreads cvar+mutex pair.
  */
-
-#include "lock_and_signal.h"
 
 // FIXME: This is not a portable way of specifying an invalid pthread_t
 #define INVALID_THREAD 0

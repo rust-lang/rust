@@ -1,12 +1,12 @@
 /* Native builtins. */
 
-#include "rust_internal.h"
 #include "rust_sched_loop.h"
 #include "rust_task.h"
 #include "rust_util.h"
 #include "rust_scheduler.h"
 #include "sync/timer.h"
 #include "rust_abi.h"
+#include "rust_port.h"
 
 #ifdef __APPLE__
 #include <crt_externs.h>

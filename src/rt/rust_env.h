@@ -1,3 +1,9 @@
+
+#ifndef RUST_ENV_H
+#define RUST_ENV_H
+
+#include "rust_globals.h"
+
 struct rust_env {
     size_t num_sched_threads;
     size_t min_stack_size;
@@ -11,3 +17,5 @@ struct rust_env {
 
 rust_env* load_env();
 void free_env(rust_env *rust_env);
+
+#endif

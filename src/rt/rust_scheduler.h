@@ -1,7 +1,9 @@
 #ifndef RUST_SCHEDULER_H
 #define RUST_SCHEDULER_H
 
-#include "rust_internal.h"
+#include "rust_globals.h"
+#include "util/array_list.h"
+#include "rust_kernel.h"
 
 class rust_sched_launcher;
 

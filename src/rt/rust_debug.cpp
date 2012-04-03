@@ -1,13 +1,13 @@
 // Routines useful when debugging the Rust runtime.
 
+#include "rust_globals.h"
 #include "rust_abi.h"
 #include "rust_debug.h"
-#include "rust_internal.h"
+#include "rust_task.h"
 
 #include <iostream>
 #include <string>
 #include <sstream>
-#include <stdint.h>
 
 namespace {
 

@@ -1,10 +1,12 @@
 #ifndef RUST_SCHED_LOOP_H
 #define RUST_SCHED_LOOP_H
 
-#include "rust_internal.h"
+#include "rust_globals.h"
+#include "rust_log.h"
 #include "rust_stack.h"
 #include "rust_signal.h"
 #include "context.h"
+#include "util/indexed_list.h"
 
 enum rust_task_state {
     task_state_newborn,
@@ -23,6 +25,8 @@ enum rust_sched_loop_state {
     sched_loop_state_exit
 };
 
+class rust_kernel;
+class rust_scheduler;
 struct rust_task;
 
 typedef indexed_list<rust_task> rust_task_list;
@@ -176,6 +180,8 @@ rust_sched_loop::return_c_stack(stk_seg *stack) {
     }
 }
 
+// this is needed to appease the circular dependency gods
+#include "rust_task.h"
 
 //
 // Local Variables:

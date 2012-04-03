@@ -7,9 +7,15 @@
 #include "memory_region.h"
 #include "rust_log.h"
 #include "rust_sched_reaper.h"
+#include "util/hash_map.h"
 
 struct rust_task_thread;
 class rust_scheduler;
+class rust_port;
+
+typedef intptr_t rust_sched_id;
+typedef intptr_t rust_task_id;
+typedef intptr_t rust_port_id;
 
 typedef std::map<rust_sched_id, rust_scheduler*> sched_map;
 
@@ -80,5 +86,20 @@ public:
 
     void set_exit_status(int code);
 };
+
+template <typename T> struct kernel_owned {
+    inline void *operator new(size_t size, rust_kernel *kernel,
+                              const char *tag);
+
+    void operator delete(void *ptr) {
+        ((T *)ptr)->kernel->free(ptr);
+    }
+};
+
+template <typename T>
+inline void *kernel_owned<T>::operator new(size_t size, rust_kernel *kernel,
+                                           const char *tag) {
+    return kernel->malloc(size, tag);
+}
 
 #endif /* RUST_KERNEL_H */

@@ -6,14 +6,14 @@
   switch to the C stack.
  */
 
+#include "rust_globals.h"
+#include "rust_task.h"
 #include "rust_cc.h"
-#include "rust_internal.h"
 #include "rust_sched_loop.h"
 #include "rust_unwind.h"
 #include "rust_upcall.h"
 #include "rust_util.h"
 #include <stdint.h>
-
 
 #ifdef __GNUC__
 #define LOG_UPCALL_ENTRY(task)                            \

@@ -9,7 +9,9 @@
 #ifndef MEMORY_REGION_H
 #define MEMORY_REGION_H
 
+#include "rust_globals.h"
 #include "sync/lock_and_signal.h"
+#include "util/array_list.h"
 
 // There are three levels of debugging:
 //

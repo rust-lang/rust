@@ -1,6 +1,3 @@
-/*
- *
- */
 
 #ifndef RUST_TASK_H
 #define RUST_TASK_H
@@ -8,14 +5,15 @@
 #include <map>
 
 #include "util/array_list.h"
-
 #include "context.h"
 #include "rust_debug.h"
-#include "rust_internal.h"
 #include "rust_kernel.h"
 #include "boxed_region.h"
 #include "rust_stack.h"
 #include "rust_port_selector.h"
+#include "rust_type.h"
+#include "rust_sched_loop.h"
+#include "memory.h"
 
 // The amount of extra space at the end of each stack segment, available
 // to the rt, compiler and dynamic linker for running small functions
@@ -270,6 +268,38 @@ public:
     const char *get_cond_name() { return cond_name; }
 
     void cleanup_after_turn();
+};
+
+// FIXME: It would be really nice to be able to get rid of this.
+inline void *operator new[](size_t size, rust_task *task, const char *tag) {
+    return task->malloc(size, tag);
+}
+
+
+template <typename T> struct task_owned {
+    inline void *operator new(size_t size, rust_task *task,
+                                             const char *tag) {
+        return task->malloc(size, tag);
+    }
+
+    inline void *operator new[](size_t size, rust_task *task,
+                                               const char *tag) {
+        return task->malloc(size, tag);
+    }
+
+    inline void *operator new(size_t size, rust_task &task,
+                                             const char *tag) {
+        return task.malloc(size, tag);
+    }
+
+    inline void *operator new[](size_t size, rust_task &task,
+                                               const char *tag) {
+        return task.malloc(size, tag);
+    }
+
+    void operator delete(void *ptr) {
+        ((T *)ptr)->task->free(ptr);
+    }
 };
 
 // This stuff is on the stack-switching fast path
