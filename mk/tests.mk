@@ -66,9 +66,11 @@ endif
 # Main test targets
 ######################################################################
 
-check: tidy all check-stage2 \
+check: tidy all check-stage2
+	$(S)src/etc/check-summary.py tmp/*.log
 
-check-full: tidy all check-stage1 check-stage2 check-stage3 \
+check-full: tidy all check-stage1 check-stage2 check-stage3
+	$(S)src/etc/check-summary.py tmp/*.log
 
 # Run the tidy script in multiple parts to avoid huge 'echo' commands
 ifdef CFG_NOTIDY
@@ -119,7 +121,6 @@ tidy:
               $(ALL_TEST_INPUTS) \
 	  	| xargs -n 10 python $(S)src/etc/tidy.py
 endif
-
 
 ######################################################################
 # Extracting tests for docs
@@ -232,7 +233,8 @@ $(3)/test/coretest.stage$(1)-$(2)$$(X):			\
 check-stage$(1)-T-$(2)-H-$(3)-core-dummy:			\
 		$(3)/test/coretest.stage$(1)-$(2)$$(X)
 	@$$(call E, run: $$<)
-	$$(Q)$$(call CFG_RUN_TEST,$$<,$(2),$(3)) $$(TESTARGS)
+	$$(Q)$$(call CFG_RUN_TEST,$$<,$(2),$(3)) $$(TESTARGS)	\
+	--logfile tmp/check-stage$(1)-T-$(2)-H-$(3)-core.log
 
 # Rules for the standard library test runner
 
@@ -245,7 +247,8 @@ $(3)/test/stdtest.stage$(1)-$(2)$$(X):			\
 check-stage$(1)-T-$(2)-H-$(3)-std-dummy:			\
 		$(3)/test/stdtest.stage$(1)-$(2)$$(X)
 	@$$(call E, run: $$<)
-	$$(Q)$$(call CFG_RUN_TEST,$$<,$(2),$(3)) $$(TESTARGS)
+	$$(Q)$$(call CFG_RUN_TEST,$$<,$(2),$(3)) $$(TESTARGS)	\
+	--logfile tmp/check-stage$(1)-T-$(2)-H-$(3)-std.log
 
 # Rules for the rustc test runner
 
@@ -260,7 +263,8 @@ $(3)/test/rustctest.stage$(1)-$(2)$$(X):					\
 check-stage$(1)-T-$(2)-H-$(3)-rustc-dummy:		\
 		$(3)/test/rustctest.stage$(1)-$(2)$$(X)
 	@$$(call E, run: $$<)
-	$$(Q)$$(call CFG_RUN_TEST,$$<,$(2),$(3)) $$(TESTARGS)
+	$$(Q)$$(call CFG_RUN_TEST,$$<,$(2),$(3)) $$(TESTARGS)   \
+	--logfile tmp/check-stage$(1)-T-$(2)-H-$(3)-rustc.log
 
 # Rules for the rustdoc test runner
 
@@ -276,7 +280,8 @@ $(3)/test/rustdoctest.stage$(1)-$(2)$$(X):					\
 check-stage$(1)-T-$(2)-H-$(3)-rustdoc-dummy:		\
 		$(3)/test/rustdoctest.stage$(1)-$(2)$$(X)
 	@$$(call E, run: $$<)
-	$$(Q)$$(call CFG_RUN_TEST,$$<,$(2),$(3)) $$(TESTARGS)
+	$$(Q)$$(call CFG_RUN_TEST,$$<,$(2),$(3)) $$(TESTARGS)	\
+	--logfile tmp/check-stage$(1)-T-$(2)-H-$(3)-rustdoc.log
 
 # Rules for the cfail/rfail/rpass/bench/perf test runner
 
@@ -365,7 +370,8 @@ check-stage$(1)-T-$(2)-H-$(3)-cfail-dummy:		\
 	        $$(CFAIL_TESTS)
 	@$$(call E, run cfail: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \
-		$$(CFAIL_ARGS$(1)-T-$(2)-H-$(3))
+		$$(CFAIL_ARGS$(1)-T-$(2)-H-$(3)) \
+		--logfile tmp/check-stage$(1)-T-$(2)-H-$(3)-cfail.log
 
 check-stage$(1)-T-$(2)-H-$(3)-rfail-dummy:		\
 		$$(HBIN$(1)_H_$(3))/compiletest$$(X)	\
@@ -373,7 +379,8 @@ check-stage$(1)-T-$(2)-H-$(3)-rfail-dummy:		\
 		$$(RFAIL_TESTS)
 	@$$(call E, run rfail: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \
-		$$(RFAIL_ARGS$(1)-T-$(2)-H-$(3))
+		$$(RFAIL_ARGS$(1)-T-$(2)-H-$(3)) \
+		--logfile tmp/check-stage$(1)-T-$(2)-H-$(3)-rfail.log
 
 check-stage$(1)-T-$(2)-H-$(3)-rpass-dummy:		\
 		$$(HBIN$(1)_H_$(3))/compiletest$$(X)	\
@@ -381,7 +388,8 @@ check-stage$(1)-T-$(2)-H-$(3)-rpass-dummy:		\
 	        $$(RPASS_TESTS)
 	@$$(call E, run rpass: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \
-		$$(RPASS_ARGS$(1)-T-$(2)-H-$(3))
+		$$(RPASS_ARGS$(1)-T-$(2)-H-$(3)) \
+		--logfile tmp/check-stage$(1)-T-$(2)-H-$(3)-rpass.log
 
 check-stage$(1)-T-$(2)-H-$(3)-bench-dummy:		\
 		$$(HBIN$(1)_H_$(3))/compiletest$$(X)	\
@@ -389,7 +397,8 @@ check-stage$(1)-T-$(2)-H-$(3)-bench-dummy:		\
 		$$(BENCH_TESTS)
 	@$$(call E, run bench: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \
-		$$(BENCH_ARGS$(1)-T-$(2)-H-$(3))
+		$$(BENCH_ARGS$(1)-T-$(2)-H-$(3)) \
+		--logfile tmp/check-stage$(1)-T-$(2)-H-$(3)-bench.log
 
 check-stage$(1)-T-$(2)-H-$(3)-perf-dummy:		\
 		$$(HBIN$(1)_H_$(3))/compiletest$$(X)	\
@@ -397,7 +406,8 @@ check-stage$(1)-T-$(2)-H-$(3)-perf-dummy:		\
 	        $$(BENCH_TESTS)
 	@$$(call E, perf: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \
-		$$(PERF_ARGS$(1)-T-$(2)-H-$(3))
+		$$(PERF_ARGS$(1)-T-$(2)-H-$(3)) \
+		--logfile tmp/check-stage$(1)-T-$(2)-H-$(3)-perf.log
 
 check-stage$(1)-T-$(2)-H-$(3)-pretty-rpass-dummy:	\
 		$$(HBIN$(1)_H_$(3))/compiletest$$(X)	\
@@ -405,7 +415,8 @@ check-stage$(1)-T-$(2)-H-$(3)-pretty-rpass-dummy:	\
 	        $$(RPASS_TESTS)
 	@$$(call E, run pretty-rpass: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \
-		$$(PRETTY_RPASS_ARGS$(1)-T-$(2)-H-$(3))
+		$$(PRETTY_RPASS_ARGS$(1)-T-$(2)-H-$(3)) \
+		--logfile tmp/check-stage$(1)-T-$(2)-H-$(3)-pretty-rpass.log
 
 check-stage$(1)-T-$(2)-H-$(3)-pretty-rfail-dummy:	\
 		$$(HBIN$(1)_H_$(3))/compiletest$$(X)	\
@@ -413,7 +424,8 @@ check-stage$(1)-T-$(2)-H-$(3)-pretty-rfail-dummy:	\
 	        $$(RFAIL_TESTS)
 	@$$(call E, run pretty-rfail: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \
-		$$(PRETTY_RFAIL_ARGS$(1)-T-$(2)-H-$(3))
+		$$(PRETTY_RFAIL_ARGS$(1)-T-$(2)-H-$(3)) \
+		--logfile tmp/check-stage$(1)-T-$(2)-H-$(3)-pretty-rfail.log
 
 check-stage$(1)-T-$(2)-H-$(3)-pretty-bench-dummy:	\
 		$$(HBIN$(1)_H_$(3))/compiletest$$(X)	\
@@ -421,7 +433,8 @@ check-stage$(1)-T-$(2)-H-$(3)-pretty-bench-dummy:	\
 	        $$(BENCH_TESTS)
 	@$$(call E, run pretty-bench: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \
-		$$(PRETTY_BENCH_ARGS$(1)-T-$(2)-H-$(3))
+		$$(PRETTY_BENCH_ARGS$(1)-T-$(2)-H-$(3)) \
+		--logfile tmp/check-stage$(1)-T-$(2)-H-$(3)-pretty-bench.log
 
 check-stage$(1)-T-$(2)-H-$(3)-pretty-pretty-dummy:	\
 		$$(HBIN$(1)_H_$(3))/compiletest$$(X)	\
@@ -429,7 +442,8 @@ check-stage$(1)-T-$(2)-H-$(3)-pretty-pretty-dummy:	\
 	        $$(PRETTY_TESTS)
 	@$$(call E, run pretty-pretty: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \
-		$$(PRETTY_PRETTY_ARGS$(1)-T-$(2)-H-$(3))
+		$$(PRETTY_PRETTY_ARGS$(1)-T-$(2)-H-$(3)) \
+		--logfile tmp/check-stage$(1)-T-$(2)-H-$(3)-pretty-pretty.log
 
 check-stage$(1)-T-$(2)-H-$(3)-doc-tutorial-dummy:       \
 		$$(HBIN$(1)_H_$(3))/compiletest$$(X)	\
@@ -437,7 +451,8 @@ check-stage$(1)-T-$(2)-H-$(3)-doc-tutorial-dummy:       \
                 doc-tutorial-extract$(3)
 	@$$(call E, run doc-tutorial: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \
-                $$(DOC_TUTORIAL_ARGS$(1)-T-$(2)-H-$(3))
+                $$(DOC_TUTORIAL_ARGS$(1)-T-$(2)-H-$(3)) \
+		--logfile tmp/check-stage$(1)-T-$(2)-H-$(3)-doc-tutorial.log
 
 check-stage$(1)-T-$(2)-H-$(3)-doc-ref-dummy:            \
 		$$(HBIN$(1)_H_$(3))/compiletest$$(X)	\
@@ -445,7 +460,8 @@ check-stage$(1)-T-$(2)-H-$(3)-doc-ref-dummy:            \
                 doc-ref-extract$(3)
 	@$$(call E, run doc-ref: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \
-                $$(DOC_REF_ARGS$(1)-T-$(2)-H-$(3))
+                $$(DOC_REF_ARGS$(1)-T-$(2)-H-$(3)) \
+		--logfile tmp/check-stage$(1)-T-$(2)-H-$(3)-doc-ref.log
 
 endef
 
@@ -489,7 +505,8 @@ $(3)/test/$$(FT_DRIVER)-$(2)$$(X): \
 $(3)/test/$$(FT_DRIVER)-$(2).out: \
 		$(3)/test/$$(FT_DRIVER)-$(2)$$(X) \
 		$$(SREQ2_T_$(2)_H_$(3))
-	$$(Q)$$(call CFG_RUN_TEST,$$<,$(2),$(3))
+	$$(Q)$$(call CFG_RUN_TEST,$$<,$(2),$(3)) \
+	--logfile tmp/$$(FT_DRIVER)-$(2).log
 
 check-fast-T-$(2)-H-$(3): tidy			\
 	check-stage2-T-$(2)-H-$(3)-rustc	\

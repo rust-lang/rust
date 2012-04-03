@@ -33,6 +33,9 @@ type config = {
     // Only run tests that match this filter
     filter: option<str>,
 
+    // Write out a parseable log of tests that were run
+    logfile: option<str>,
+
     // A command line to prefix program execution with,
     // for running under valgrind
     runtool: option<str>,
