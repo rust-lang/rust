@@ -102,7 +102,6 @@ rust_uv_buf_init
 rust_uv_last_error
 rust_uv_strerror
 rust_uv_err_name
-rust_uv_ip4_test_verify_port_val
 rust_uv_ip4_addr
 rust_uv_tcp_connect
 rust_uv_tcp_bind
