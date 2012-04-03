@@ -93,6 +93,8 @@ public:
     void release_port_id(rust_port_id tid);
 
     void set_exit_status(int code);
+
+    rust_sched_id osmain_sched_id() { return osmain_scheduler; }
 };
 
 #endif /* RUST_KERNEL_H */
