@@ -73,7 +73,7 @@ type uv_stream_t = {
     fields: uv_handle_fields
 };
 
-// unix size: 272
+// 64bit unix size: 272
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
@@ -86,9 +86,22 @@ type uv_tcp_t = {
     a16: *u8, a17: *u8, a18: *u8, a19: *u8,
     a20: *u8, a21: *u8, a22: *u8, a23: *u8,
     a24: *u8, a25: *u8, a26: *u8, a27: *u8,
-    a28: *u8, a29: *u8
+    a28: *u8,
+    a30: uv_tcp_t_32bit_unix_riders
 };
-// win32 size: 240 (120)
+// 32bit unix size: 328 (164)
+#[cfg(target_arch="x86_64")]
+type uv_tcp_t_32bit_unix_riders = {
+    a29: *u8
+};
+#[cfg(target_arch="x86")]
+type uv_tcp_t_32bit_unix_riders = {
+    a29: *u8, a30: *u8, a31: *u8,
+    a32: *u8, a33: *u8, a34: *u8,
+    a35: *u8, a36: *u8
+};
+
+// 32bit win32 size: 240 (120)
 #[cfg(target_os = "win32")]
 type uv_tcp_t = {
     fields: uv_handle_fields,
@@ -138,7 +151,16 @@ type uv_write_t = {
     a00: *u8, a01: *u8, a02: *u8, a03: *u8,
     a04: *u8, a05: *u8, a06: *u8, a07: *u8,
     a08: *u8, a09: *u8, a10: *u8, a11: *u8,
-    a12: *u8, a13: *u8
+    a12: *u8,
+    a14: uv_write_t_32bit_unix_riders
+};
+#[cfg(target_arch="x86_64")]
+type uv_write_t_32bit_unix_riders = {
+    a13: *u8
+};
+#[cfg(target_arch="x86")]
+type uv_write_t_32bit_unix_riders = {
+    a13: *u8, a14: *u8
 };
 // win32 size: 136 (68)
 #[cfg(target_os = "win32")]
@@ -149,7 +171,8 @@ type uv_write_t = {
     a08: *u8, a09: *u8, a10: *u8, a11: *u8,
     a12: *u8
 };
-// unix size: 120
+// 64bit unix size: 120
+// 32bit unix size: 152 (76)
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
@@ -157,7 +180,16 @@ type uv_async_t = {
     fields: uv_handle_fields,
     a00: *u8, a01: *u8, a02: *u8, a03: *u8,
     a04: *u8, a05: *u8, a06: *u8, a07: *u8,
-    a08: *u8, a09: *u8, a10: *u8
+    a08: *u8, a09: *u8, 
+    a11: uv_async_t_32bit_unix_riders
+};
+#[cfg(target_arch="x86_64")]
+type uv_async_t_32bit_unix_riders = {
+    a10: *u8
+};
+#[cfg(target_arch="x86")]
+type uv_async_t_32bit_unix_riders = {
+    a10: *u8, a11: *u8, a12: *u8, a13: *u8
 };
 // win32 size 132 (68)
 #[cfg(target_os = "win32")]
@@ -192,49 +224,86 @@ type sockaddr_in6 = {
 };
 
 mod uv_ll_struct_stubgen {
-    #[cfg(target_os = "linux")]
-    #[cfg(target_os = "macos")]
-    #[cfg(target_os = "freebsd")]
     fn gen_stub_uv_tcp_t() -> uv_tcp_t {
-        ret { fields: { loop_handle: ptr::null(), type_: 0u32,
-                        close_cb: ptr::null(),
-                        mut data: ptr::null() },
-            a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
-            a03: 0 as *u8,
-            a04: 0 as *u8, a05: 0 as *u8, a06: 0 as *u8,
-            a07: 0 as *u8,
-            a08: 0 as *u8, a09: 0 as *u8, a10: 0 as *u8,
-            a11: 0 as *u8,
-            a12: 0 as *u8, a13: 0 as *u8, a14: 0 as *u8,
-            a15: 0 as *u8,
-            a16: 0 as *u8, a17: 0 as *u8, a18: 0 as *u8,
-            a19: 0 as *u8,
-            a20: 0 as *u8, a21: 0 as *u8, a22: 0 as *u8,
-            a23: 0 as *u8,
-            a24: 0 as *u8, a25: 0 as *u8, a26: 0 as *u8,
-            a27: 0 as *u8,
-            a28: 0 as *u8, a29: 0 as *u8
-        };
-    }
-    #[cfg(target_os = "win32")]
-    fn gen_stub_uv_tcp_t() -> uv_tcp_t {
-        ret { fields: { loop_handle: ptr::null(), type_: 0u32,
-                        close_cb: ptr::null(),
-                        mut data: ptr::null() },
-            a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
-            a03: 0 as *u8,
-            a04: 0 as *u8, a05: 0 as *u8, a06: 0 as *u8,
-            a07: 0 as *u8,
-            a08: 0 as *u8, a09: 0 as *u8, a10: 0 as *u8,
-            a11: 0 as *u8,
-            a12: 0 as *u8, a13: 0 as *u8, a14: 0 as *u8,
-            a15: 0 as *u8,
-            a16: 0 as *u8, a17: 0 as *u8, a18: 0 as *u8,
-            a19: 0 as *u8,
-            a20: 0 as *u8, a21: 0 as *u8, a22: 0 as *u8,
-            a23: 0 as *u8,
-            a24: 0 as *u8, a25: 0 as *u8
-        };
+        ret gen_stub_os();
+        #[cfg(target_os = "linux")]
+        #[cfg(target_os = "macos")]
+        #[cfg(target_os = "freebsd")]
+        fn gen_stub_os() -> uv_tcp_t {
+            ret gen_stub_arch();
+            #[cfg(target_arch="x86_64")]
+            fn gen_stub_arch() -> uv_tcp_t {
+                ret { fields: { loop_handle: ptr::null(), type_: 0u32,
+                                close_cb: ptr::null(),
+                                mut data: ptr::null() },
+                    a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
+                    a03: 0 as *u8,
+                    a04: 0 as *u8, a05: 0 as *u8, a06: 0 as *u8,
+                    a07: 0 as *u8,
+                    a08: 0 as *u8, a09: 0 as *u8, a10: 0 as *u8,
+                    a11: 0 as *u8,
+                    a12: 0 as *u8, a13: 0 as *u8, a14: 0 as *u8,
+                    a15: 0 as *u8,
+                    a16: 0 as *u8, a17: 0 as *u8, a18: 0 as *u8,
+                    a19: 0 as *u8,
+                    a20: 0 as *u8, a21: 0 as *u8, a22: 0 as *u8,
+                    a23: 0 as *u8,
+                    a24: 0 as *u8, a25: 0 as *u8, a26: 0 as *u8,
+                    a27: 0 as *u8,
+                    a28: 0 as *u8,
+                    a30: {
+                        a29: 0 as *u8
+                    }
+                };
+            }
+            #[cfg(target_arch="x86")]
+            fn gen_stub_arch() -> uv_tcp_t {
+                ret { fields: { loop_handle: ptr::null(), type_: 0u32,
+                                close_cb: ptr::null(),
+                                mut data: ptr::null() },
+                    a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
+                    a03: 0 as *u8,
+                    a04: 0 as *u8, a05: 0 as *u8, a06: 0 as *u8,
+                    a07: 0 as *u8,
+                    a08: 0 as *u8, a09: 0 as *u8, a10: 0 as *u8,
+                    a11: 0 as *u8,
+                    a12: 0 as *u8, a13: 0 as *u8, a14: 0 as *u8,
+                    a15: 0 as *u8,
+                    a16: 0 as *u8, a17: 0 as *u8, a18: 0 as *u8,
+                    a19: 0 as *u8,
+                    a20: 0 as *u8, a21: 0 as *u8, a22: 0 as *u8,
+                    a23: 0 as *u8,
+                    a24: 0 as *u8, a25: 0 as *u8, a26: 0 as *u8,
+                    a27: 0 as *u8,
+                    a28: 0 as *u8,
+                    a30: {
+                        a29: 0 as *u8, a30: 0 as *u8, a31: 0 as *u8,
+                        a32: 0 as *u8, a33: 0 as *u8, a34: 0 as *u8,
+                        a35: 0 as *u8, a36: 0 as *u8
+                    }
+                };
+            }
+        }
+        #[cfg(target_os = "win32")]
+        fn gen_stub_os() -> uv_tcp_t {
+            ret { fields: { loop_handle: ptr::null(), type_: 0u32,
+                            close_cb: ptr::null(),
+                            mut data: ptr::null() },
+                a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
+                a03: 0 as *u8,
+                a04: 0 as *u8, a05: 0 as *u8, a06: 0 as *u8,
+                a07: 0 as *u8,
+                a08: 0 as *u8, a09: 0 as *u8, a10: 0 as *u8,
+                a11: 0 as *u8,
+                a12: 0 as *u8, a13: 0 as *u8, a14: 0 as *u8,
+                a15: 0 as *u8,
+                a16: 0 as *u8, a17: 0 as *u8, a18: 0 as *u8,
+                a19: 0 as *u8,
+                a20: 0 as *u8, a21: 0 as *u8, a22: 0 as *u8,
+                a23: 0 as *u8,
+                a24: 0 as *u8, a25: 0 as *u8
+            };
+        }
     }
     #[cfg(target_os = "linux")]
     #[cfg(target_os = "macos")]
@@ -260,15 +329,38 @@ mod uv_ll_struct_stubgen {
     #[cfg(target_os = "macos")]
     #[cfg(target_os = "freebsd")]
     fn gen_stub_uv_async_t() -> uv_async_t {
-        ret { fields: { loop_handle: ptr::null(), type_: 0u32,
-                        close_cb: ptr::null(),
-                        mut data: ptr::null() },
-            a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
-            a03: 0 as *u8,
-            a04: 0 as *u8, a05: 0 as *u8, a06: 0 as *u8,
-            a07: 0 as *u8,
-            a08: 0 as *u8, a09: 0 as *u8, a10: 0 as *u8
-        };
+        ret gen_stub_arch();
+        #[cfg(target_arch = "x86_64")]
+        fn gen_stub_arch() -> uv_async_t {
+            ret { fields: { loop_handle: ptr::null(), type_: 0u32,
+                            close_cb: ptr::null(),
+                            mut data: ptr::null() },
+                a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
+                a03: 0 as *u8,
+                a04: 0 as *u8, a05: 0 as *u8, a06: 0 as *u8,
+                a07: 0 as *u8,
+                a08: 0 as *u8, a09: 0 as *u8,
+                a11: {
+                    a10: 0 as *u8
+                }
+            };
+        }
+        #[cfg(target_arch = "x86")]
+        fn gen_stub_arch() -> uv_async_t {
+            ret { fields: { loop_handle: ptr::null(), type_: 0u32,
+                            close_cb: ptr::null(),
+                            mut data: ptr::null() },
+                a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
+                a03: 0 as *u8,
+                a04: 0 as *u8, a05: 0 as *u8, a06: 0 as *u8,
+                a07: 0 as *u8,
+                a08: 0 as *u8, a09: 0 as *u8,
+                a11: {
+                    a10: 0 as *u8, a11: 0 as *u8,
+                    a12: 0 as *u8, a13: 0 as *u8
+                }
+            };
+        }
     }
     #[cfg(target_os = "win32")]
     fn gen_stub_uv_async_t() -> uv_async_t {
@@ -288,17 +380,35 @@ mod uv_ll_struct_stubgen {
     #[cfg(target_os = "macos")]
     #[cfg(target_os = "freebsd")]
     fn gen_stub_uv_write_t() -> uv_write_t {
-        ret { fields: { loop_handle: ptr::null(), type_: 0u32,
-                        close_cb: ptr::null(),
-                        mut data: ptr::null() },
-            a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
-            a03: 0 as *u8,
-            a04: 0 as *u8, a05: 0 as *u8, a06: 0 as *u8,
-            a07: 0 as *u8,
-            a08: 0 as *u8, a09: 0 as *u8, a10: 0 as *u8,
-            a11: 0 as *u8,
-            a12: 0 as *u8, a13: 0 as *u8
-        };
+        ret gen_stub_arch();
+        #[cfg(target_arch="x86_64")]
+        fn gen_stub_arch() -> uv_write_t {
+            ret { fields: { loop_handle: ptr::null(), type_: 0u32,
+                            close_cb: ptr::null(),
+                            mut data: ptr::null() },
+                a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
+                a03: 0 as *u8,
+                a04: 0 as *u8, a05: 0 as *u8, a06: 0 as *u8,
+                a07: 0 as *u8,
+                a08: 0 as *u8, a09: 0 as *u8, a10: 0 as *u8,
+                a11: 0 as *u8,
+                a12: 0 as *u8, a14: { a13: 0 as *u8 }
+            };
+        }
+        #[cfg(target_arch="x86")]
+        fn gen_stub_arch() -> uv_write_t {
+            ret { fields: { loop_handle: ptr::null(), type_: 0u32,
+                            close_cb: ptr::null(),
+                            mut data: ptr::null() },
+                a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
+                a03: 0 as *u8,
+                a04: 0 as *u8, a05: 0 as *u8, a06: 0 as *u8,
+                a07: 0 as *u8,
+                a08: 0 as *u8, a09: 0 as *u8, a10: 0 as *u8,
+                a11: 0 as *u8,
+                a12: 0 as *u8, a14: { a13: 0 as *u8, a14: 0 as *u8 }
+            };
+        }
     }
     #[cfg(target_os = "win32")]
     fn gen_stub_uv_write_t() -> uv_write_t {
