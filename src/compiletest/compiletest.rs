@@ -35,7 +35,8 @@ fn parse_config(args: [str]) -> config {
          getopts::reqopt("stage-id"),
          getopts::reqopt("mode"), getopts::optflag("ignored"),
          getopts::optopt("runtool"), getopts::optopt("rustcflags"),
-         getopts::optflag("verbose")];
+         getopts::optflag("verbose"),
+         getopts::optopt("logfile")];
 
     check (vec::is_not_empty(args));
     let args_ = vec::tail(args);
@@ -58,6 +59,7 @@ fn parse_config(args: [str]) -> config {
              if vec::len(match.free) > 0u {
                  option::some(match.free[0])
              } else { option::none },
+         logfile: getopts::opt_maybe_str(match, "logfile"),
          runtool: getopts::opt_maybe_str(match, "runtool"),
          rustcflags: getopts::opt_maybe_str(match, "rustcflags"),
          verbose: getopts::opt_present(match, "verbose")};
@@ -121,7 +123,13 @@ fn test_opts(config: config) -> test::test_opts {
            option::some(s) { option::some(s) }
            option::none { option::none }
          },
-     run_ignored: config.run_ignored}
+     run_ignored: config.run_ignored,
+     logfile:
+         alt config.logfile {
+           option::some(s) { option::some(s) }
+           option::none { option::none }
+         }
+    }
 }
 
 fn make_tests(config: config) -> [test::test_desc] {

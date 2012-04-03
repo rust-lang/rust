@@ -57,14 +57,15 @@ fn test_main(args: [str], tests: [test_desc]) {
     if !run_tests_console(opts, tests) { fail "Some tests failed"; }
 }
 
-type test_opts = {filter: option<str>, run_ignored: bool};
+type test_opts = {filter: option<str>, run_ignored: bool,
+    logfile: option<str>};
 
 type opt_res = either<test_opts, str>;
 
 // Parses command line arguments into test options
 fn parse_opts(args: [str]) -> opt_res {
     let args_ = vec::tail(args);
-    let opts = [getopts::optflag("ignored")];
+    let opts = [getopts::optflag("ignored"), getopts::optopt("logfile")];
     let match =
         alt getopts::getopts(args_, opts) {
           ok(m) { m }
@@ -77,8 +78,10 @@ fn parse_opts(args: [str]) -> opt_res {
         } else { option::none };
 
     let run_ignored = getopts::opt_present(match, "ignored");
+    let logfile = getopts::opt_maybe_str(match, "logfile");
 
-    let test_opts = {filter: filter, run_ignored: run_ignored};
+    let test_opts = {filter: filter, run_ignored: run_ignored,
+        logfile: logfile};
 
     ret either::left(test_opts);
 }
@@ -87,6 +90,7 @@ enum test_result { tr_ok, tr_failed, tr_ignored, }
 
 type console_test_state =
     @{out: io::writer,
+      log_out: option<io::writer>,
       use_color: bool,
       mut total: uint,
       mut passed: uint,
@@ -106,6 +110,12 @@ fn run_tests_console(opts: test_opts,
           }
           te_wait(test) { st.out.write_str(#fmt["test %s ... ", test.name]); }
           te_result(test, result) {
+            alt st.log_out {
+                some(f) {
+                    write_log(f, result, test);
+                }
+                none {}
+            }
             alt result {
               tr_ok {
                 st.passed += 1u;
@@ -128,8 +138,21 @@ fn run_tests_console(opts: test_opts,
         }
     }
 
+    let log_out = alt opts.logfile {
+        some(path) {
+            alt io::file_writer(path, [io::create, io::truncate]) {
+                result::ok(w) { some(w) }
+                result::err(s) {
+                    fail(#fmt("can't open output file: %s", s))
+                }
+            }
+        }
+        none { none }
+    };
+
     let st =
         @{out: io::stdout(),
+          log_out: log_out,
           use_color: use_color(),
           mut total: 0u,
           mut passed: 0u,
@@ -155,6 +178,15 @@ fn run_tests_console(opts: test_opts,
                           st.failed, st.ignored]);
 
     ret success;
+
+    fn write_log(out: io::writer, result: test_result, test: test_desc) {
+        out.write_line(#fmt("%s %s",
+                    alt result {
+                        tr_ok { "ok" }
+                        tr_failed { "failed" }
+                        tr_ignored { "ignored" }
+                    }, test.name));
+    }
 
     fn write_ok(out: io::writer, use_color: bool) {
         write_pretty(out, "ok", term::color_green, use_color);
@@ -209,6 +241,7 @@ fn should_sort_failures_before_printing_them() {
 
     let st =
         @{out: writer,
+          log_out: option::none,
           use_color: false,
           mut total: 0u,
           mut passed: 0u,
@@ -466,7 +499,8 @@ mod tests {
         // When we run ignored tests the test filter should filter out all the
         // unignored tests and flip the ignore flag on the rest to false
 
-        let opts = {filter: option::none, run_ignored: true};
+        let opts = {filter: option::none, run_ignored: true,
+            logfile: option::none};
         let tests =
             [{name: "1", fn: fn~() { }, ignore: true, should_fail: false},
              {name: "2", fn: fn~() { }, ignore: false, should_fail: false}];
@@ -479,7 +513,8 @@ mod tests {
 
     #[test]
     fn sort_tests() {
-        let opts = {filter: option::none, run_ignored: false};
+        let opts = {filter: option::none, run_ignored: false,
+            logfile: option::none};
 
         let names =
             ["sha1::test", "int::test_to_str", "int::test_pow",

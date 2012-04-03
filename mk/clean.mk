@@ -31,6 +31,7 @@ clean-misc:
 	$(Q)rm -f $(CRATE_DEPFILES:%.d=%.d.tmp)
 	$(Q)rm -Rf $(DOCS)
 	$(Q)rm -Rf $(GENERATED)
+	$(Q)rm -f tmp/*.log
 	$(Q)rm -f rustllvm/$(CFG_RUSTLLVM) rustllvm/rustllvmbits.a
 	$(Q)rm -f rt/$(CFG_RUNTIME)
 	$(Q)find rustllvm rt -name '*.[odasS]' -delete
