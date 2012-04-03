@@ -2,10 +2,11 @@
 #ifndef RUST_KERNEL_H
 #define RUST_KERNEL_H
 
+#include "rust_globals.h"
+
 #include <map>
 #include <vector>
 
-#include "rust_globals.h"
 #include "memory_region.h"
 #include "rust_log.h"
 #include "rust_sched_reaper.h"
