@@ -4,6 +4,8 @@
 
 #include <map>
 #include <vector>
+
+#include "rust_globals.h"
 #include "memory_region.h"
 #include "rust_log.h"
 #include "rust_sched_reaper.h"

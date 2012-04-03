@@ -10,7 +10,6 @@
 #include "rust_upcall.h"
 #include "rust_env.h"
 #include "rust_port.h"
-#include "rust_globals.h"
 
 // Tasks
 rust_task::rust_task(rust_sched_loop *sched_loop, rust_task_state state,
