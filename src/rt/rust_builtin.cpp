@@ -408,7 +408,7 @@ rust_ptr_eq(type_desc *t, rust_box *a, rust_box *b) {
 
 #if defined(__WIN32__)
 extern "C" CDECL void
-get_time(uint32_t *sec, uint32_t *usec) {
+get_time(int64_t *sec, int32_t *usec) {
     FILETIME fileTime;
     GetSystemTimeAsFileTime(&fileTime);
 
@@ -427,7 +427,7 @@ get_time(uint32_t *sec, uint32_t *usec) {
 }
 #else
 extern "C" CDECL void
-get_time(uint32_t *sec, uint32_t *usec) {
+get_time(int64_t *sec, int32_t *usec) {
     struct timeval tv;
     gettimeofday(&tv, NULL);
     *sec = tv.tv_sec;

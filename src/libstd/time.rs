@@ -1,19 +1,19 @@
 #[abi = "cdecl"]
 native mod rustrt {
-    fn get_time(&sec: u32, &usec: u32);
+    fn get_time(&sec: i64, &usec: i32);
     fn precise_time_ns(&ns: u64);
 }
 
 #[doc = "A record specifying a time value in seconds and microseconds."]
-type timeval = {sec: u32, usec: u32};
+type timeval = {sec: i64, usec: i32};
 
 #[doc = "
 Returns the current time as a `timeval` containing the seconds and
 microseconds since 1970-01-01T00:00:00Z.
 "]
 fn get_time() -> timeval {
-    let mut sec = 0u32;
-    let mut usec = 0u32;
+    let mut sec = 0i64;
+    let mut usec = 0i32;
     rustrt::get_time(sec, usec);
     ret {sec: sec, usec: usec};
 }
@@ -42,15 +42,15 @@ mod tests {
 
     #[test]
     fn test_get_time() {
-        const some_recent_date: u32 = 1325376000u32; // 2012-01-01T00:00:00Z
-        const some_future_date: u32 = 1577836800u32; // 2020-01-01T00:00:00Z
+        const some_recent_date: i64 = 1325376000i64; // 2012-01-01T00:00:00Z
+        const some_future_date: i64 = 1577836800i64; // 2020-01-01T00:00:00Z
 
         let tv1 = get_time();
         log(debug, "tv1=" + uint::str(tv1.sec as uint) + " sec + "
                    + uint::str(tv1.usec as uint) + " usec");
 
         assert tv1.sec > some_recent_date;
-        assert tv1.usec < 1000000u32;
+        assert tv1.usec < 1000000i32;
 
         let tv2 = get_time();
         log(debug, "tv2=" + uint::str(tv2.sec as uint) + " sec + "
@@ -58,7 +58,7 @@ mod tests {
 
         assert tv2.sec >= tv1.sec;
         assert tv2.sec < some_future_date;
-        assert tv2.usec < 1000000u32;
+        assert tv2.usec < 1000000i32;
         if tv2.sec == tv1.sec {
             assert tv2.usec >= tv1.usec;
         }

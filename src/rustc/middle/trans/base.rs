@@ -4056,7 +4056,7 @@ fn trans_fn(ccx: @crate_ctxt,
             id: ast::node_id) {
     let do_time = ccx.sess.opts.stats;
     let start = if do_time { time::get_time() }
-                else { {sec: 0u32, usec: 0u32} };
+                else { {sec: 0i64, usec: 0i32} };
     let _icx = ccx.insn_ctxt("trans_fn");
     trans_closure(ccx, path, decl, body, llfndecl, ty_self,
                   param_substs, id, {|fcx|
