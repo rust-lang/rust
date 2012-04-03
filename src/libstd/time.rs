@@ -116,6 +116,175 @@ fn now() -> tm {
     at(get_time())
 }
 
+fn strftime(format: str, tm: tm) -> str {
+    fn parse_type(ch: char, tm: tm) -> str {
+        //FIXME: Implement missing types.
+        alt check ch {
+          'A' {
+            alt check tm.tm_wday as int {
+              0 { "Sunday" }
+              1 { "Monday" }
+              2 { "Tuesday" }
+              3 { "Wednesday" }
+              4 { "Thursday" }
+              5 { "Friday" }
+              6 { "Saturday" }
+            }
+          }
+          'a' {
+            alt check tm.tm_wday as int {
+              0 { "Sun" }
+              1 { "Mon" }
+              2 { "Tue" }
+              3 { "Wed" }
+              4 { "Thu" }
+              5 { "Fri" }
+              6 { "Sat" }
+            }
+          }
+          'B' {
+            alt check tm.tm_mon as int {
+              0 { "January" }
+              1 { "February" }
+              2 { "March" }
+              3 { "April" }
+              4 { "May" }
+              5 { "June" }
+              6 { "July" }
+              7 { "August" }
+              8 { "September" }
+              9 { "October" }
+              10 { "November" }
+              11 { "December" }
+            }
+          }
+          'b' | 'h' {
+            alt check tm.tm_mon as int {
+              0 { "Jan" }
+              1 { "Feb" }
+              2 { "Mar" }
+              3 { "Apr" }
+              4 { "May" }
+              5 { "Jun" }
+              6 { "Jul" }
+              7 { "Aug" }
+              8 { "Sep" }
+              9 { "Oct" }
+              10 { "Nov" }
+              11 { "Dec" }
+            }
+          }
+          'C' { #fmt("%02d", (tm.tm_year as int + 1900) / 100) }
+          'c' {
+            #fmt("%s %s %s %s %s",
+                parse_type('a', tm),
+                parse_type('b', tm),
+                parse_type('e', tm),
+                parse_type('T', tm),
+                parse_type('Y', tm))
+          }
+          'D' | 'x' {
+            #fmt("%s/%s/%s",
+                parse_type('m', tm),
+                parse_type('d', tm),
+                parse_type('y', tm))
+          }
+          'd' { #fmt("%02d", tm.tm_mday as int) }
+          'e' { #fmt("%2d", tm.tm_mday as int) }
+          'F' {
+            #fmt("%s-%s-%s",
+                parse_type('Y', tm),
+                parse_type('m', tm),
+                parse_type('d', tm))
+          }
+          //'G' {}
+          //'g' {}
+          'H' { #fmt("%02d", tm.tm_hour as int) }
+          'I' {
+            let mut h = tm.tm_hour as int;
+            if h == 0 { h = 12 }
+            if h > 12 { h -= 12 }
+            #fmt("%02d", h)
+          }
+          'j' { #fmt("%03d", tm.tm_yday as int + 1) }
+          'k' { #fmt("%2d", tm.tm_hour as int) }
+          'l' {
+            let mut h = tm.tm_hour as int;
+            if h == 0 { h = 12 }
+            if h > 12 { h -= 12 }
+            #fmt("%2d", h)
+          }
+          'M' { #fmt("%02d", tm.tm_min as int) }
+          'm' { #fmt("%02d", tm.tm_mon as int + 1) }
+          'n' { "\n" }
+          'P' { if tm.tm_hour as int < 12 { "am" } else { "pm" } }
+          'p' { if tm.tm_hour as int < 12 { "AM" } else { "PM" } }
+          'R' {
+            #fmt("%s:%s",
+                parse_type('H', tm),
+                parse_type('M', tm))
+          }
+          'r' {
+            #fmt("%s:%s:%s %s",
+                parse_type('I', tm),
+                parse_type('M', tm),
+                parse_type('S', tm),
+                parse_type('p', tm))
+          }
+          'S' { #fmt("%02d", tm.tm_sec as int) }
+          's' { #fmt("%d", tm.to_timespec().sec as int) }
+          'T' | 'X' {
+            #fmt("%s:%s:%s",
+                parse_type('H', tm),
+                parse_type('M', tm),
+                parse_type('S', tm))
+          }
+          't' { "\t" }
+          //'U' {}
+          'u' {
+            let i = tm.tm_wday as int;
+            int::str(if i == 0 { 7 } else { i })
+          }
+          //'V' {}
+          'v' {
+            #fmt("%s-%s-%s",
+                parse_type('e', tm),
+                parse_type('b', tm),
+                parse_type('Y', tm))
+          }
+          //'W' {}
+          'w' { int::str(tm.tm_wday as int) }
+          //'X' {}
+          //'x' {}
+          'Y' { int::str(tm.tm_year as int + 1900) }
+          'y' { #fmt("%02d", (tm.tm_year as int + 1900) % 100) }
+          'Z' { tm.tm_zone }
+          'z' {
+            let sign = if tm.tm_gmtoff > 0_i32 { '+' } else { '-' };
+            let mut m = i32::abs(tm.tm_gmtoff) / 60_i32;
+            let h = m / 60_i32;
+            m -= h * 60_i32;
+            #fmt("%c%02d%02d", sign, h as int, m as int)
+          }
+          //'+' {}
+          '%' { "%" }
+        }
+    }
+
+    let mut buf = "";
+
+    io::with_str_reader(format) { |rdr|
+        while !rdr.eof() {
+            alt rdr.read_char() {
+                '%' { buf += parse_type(rdr.read_char(), tm); }
+                ch { str::push_char(buf, ch); }
+            }
+        }
+    }
+
+    buf
+}
+
 impl tm for tm {
     #[doc = "Convert time to the seconds from January 1, 1970"]
     fn to_timespec() -> timespec {
@@ -136,6 +305,58 @@ impl tm for tm {
     #[doc = "Convert time to the UTC"]
     fn to_utc() -> tm {
         at_utc(self.to_timespec())
+    }
+
+    #[doc = "
+    Return a string of the current time in the form
+    \"Thu Jan  1 00:00:00 1970\".
+    "]
+    fn ctime() -> str { self.strftime("%c") }
+
+    #[doc = "Formats the time according to the format string."]
+    fn strftime(format: str) -> str { strftime(format, self) }
+
+    #[doc = "
+    Returns a time string formatted according to RFC 822.
+
+    local: \"Thu, 22 Mar 2012 07:53:18 PST\"
+    utc:   \"Thu, 22 Mar 2012 14:53:18 UTC\"
+    "]
+    fn rfc822() -> str {
+        if self.tm_gmtoff == 0_i32 {
+            self.strftime("%a, %d %b %Y %T GMT")
+        } else {
+            self.strftime("%a, %d %b %Y %T %Z")
+        }
+    }
+
+    #[doc = "
+    Returns a time string formatted according to RFC 822 with Zulu time.
+
+    local: \"Thu, 22 Mar 2012 07:53:18 -0700\"
+    utc:   \"Thu, 22 Mar 2012 14:53:18 -0000\"
+    "]
+    fn rfc822z() -> str {
+        self.strftime("%a, %d %b %Y %T %z")
+    }
+
+    #[doc = "
+    Returns a time string formatted according to ISO 8601.
+
+    local: \"2012-02-22T07:53:18-07:00\"
+    utc:   \"2012-02-22T14:53:18Z\"
+    "]
+    fn rfc3339() -> str {
+        if self.tm_gmtoff == 0_i32 {
+            self.strftime("%Y-%m-%dT%H:%M:%SZ")
+        } else {
+            let s = self.strftime("%Y-%m-%dT%H:%M:%S");
+            let sign = if self.tm_gmtoff > 0_i32 { '+' } else { '-' };
+            let mut m = i32::abs(self.tm_gmtoff) / 60_i32;
+            let h = m / 60_i32;
+            m -= h * 60_i32;
+            s + #fmt("%c%02d:%02d", sign, h as int, m as int)
+        }
     }
 }
 
@@ -257,5 +478,90 @@ mod tests {
         assert utc.to_utc() == utc;
         assert utc.to_local() == local;
         assert utc.to_local().to_utc() == utc;
+    }
+
+    #[test]
+    fn test_ctime() {
+        os::setenv("TZ", "America/Los_Angeles");
+
+        let time = { sec: 1234567890_i64, nsec: 54321_i32 };
+        let utc   = at_utc(time);
+        let local = at(time);
+
+        assert utc.ctime()   == "Fri Feb 13 23:31:30 2009";
+        assert local.ctime() == "Fri Feb 13 15:31:30 2009";
+    }
+
+    #[test]
+    fn test_strftime() {
+        os::setenv("TZ", "America/Los_Angeles");
+
+        let time = { sec: 1234567890_i64, nsec: 54321_i32 };
+        let utc = at_utc(time);
+        let local = at(time);
+
+        assert local.strftime("") == "";
+        assert local.strftime("%A") == "Friday";
+        assert local.strftime("%a") == "Fri";
+        assert local.strftime("%B") == "February";
+        assert local.strftime("%b") == "Feb";
+        assert local.strftime("%C") == "20";
+        assert local.strftime("%c") == "Fri Feb 13 15:31:30 2009";
+        assert local.strftime("%D") == "02/13/09";
+        assert local.strftime("%d") == "13";
+        assert local.strftime("%e") == "13";
+        assert local.strftime("%F") == "2009-02-13";
+        // assert local.strftime("%G") == "2009";
+        // assert local.strftime("%g") == "09";
+        assert local.strftime("%H") == "15";
+        assert local.strftime("%I") == "03";
+        assert local.strftime("%j") == "044";
+        assert local.strftime("%k") == "15";
+        assert local.strftime("%l") == " 3";
+        assert local.strftime("%M") == "31";
+        assert local.strftime("%m") == "02";
+        assert local.strftime("%n") == "\n";
+        assert local.strftime("%P") == "pm";
+        assert local.strftime("%p") == "PM";
+        assert local.strftime("%R") == "15:31";
+        assert local.strftime("%r") == "03:31:30 PM";
+        assert local.strftime("%S") == "30";
+        assert local.strftime("%s") == "1234567890";
+        assert local.strftime("%T") == "15:31:30";
+        assert local.strftime("%t") == "\t";
+        // assert local.strftime("%U") == "06";
+        assert local.strftime("%u") == "5";
+        // assert local.strftime("%V") == "07";
+        assert local.strftime("%v") == "13-Feb-2009";
+        // assert local.strftime("%W") == "06";
+        assert local.strftime("%w") == "5";
+        // handle "%X"
+        // handle "%x"
+        assert local.strftime("%Y") == "2009";
+        assert local.strftime("%y") == "09";
+
+        // FIXME: We should probably standardize on the timezone
+        // abbreviation.
+        let zone = local.strftime("%Z");
+        assert zone == "PST" || zone == "Pacific Standard Time";
+
+        assert local.strftime("%z") == "-0800";
+        assert local.strftime("%%") == "%";
+
+        // FIXME: We should probably standardize on the timezone
+        // abbreviation.
+        let rfc822 = local.rfc822();
+        let prefix = "Fri, 13 Feb 2009 15:31:30 ";
+        assert rfc822 == prefix + "PST" ||
+               rfc822 == prefix + "Pacific Standard Time";
+
+        assert local.ctime() == "Fri Feb 13 15:31:30 2009";
+        assert local.rfc822z() == "Fri, 13 Feb 2009 15:31:30 -0800";
+        assert local.rfc3339() == "2009-02-13T15:31:30-08:00";
+
+        assert utc.ctime() == "Fri Feb 13 23:31:30 2009";
+        assert utc.rfc822() == "Fri, 13 Feb 2009 23:31:30 GMT";
+        assert utc.rfc822z() == "Fri, 13 Feb 2009 23:31:30 -0000";
+        assert utc.rfc3339() == "2009-02-13T23:31:30Z";
     }
 }
