@@ -478,14 +478,13 @@ fn install_one_crate(c: cargo, path: str, cf: str) {
             (exec_suffix == "" && !str::starts_with(path::basename(ct),
                                                     "lib")) {
             #debug("  bin: %s", ct);
-            // FIXME: need libstd os::copy or something (Issue #1983)
-            run::run_program("cp", [ct, c.bindir]);
+            copy_warn(ct, c.bindir);
             if c.opts.mode == system_mode {
                 install_one_crate_to_sysroot(ct, "bin");
             }
         } else {
             #debug("  lib: %s", ct);
-            run::run_program("cp", [ct, c.libdir]);
+            copy_warn(ct, c.bindir);
             if c.opts.mode == system_mode {
                 install_one_crate_to_sysroot(ct, libdir());
             }
@@ -499,10 +498,7 @@ fn install_one_crate_to_sysroot(ct: str, target: str) {
             let path = [_path, "..", target];
             check vec::is_not_empty(path);
             let target_dir = path::normalize(path::connect_many(path));
-            let p = run::program_output("cp", [ct, target_dir]);
-            if p.status != 0 {
-                warn(#fmt["Copying %s to %s is failed", ct, target_dir]);
-            }
+            copy_warn(ct, target_dir);
         }
         none { }
     }
@@ -772,7 +768,7 @@ fn sync_one(c: cargo, name: str, src: source) {
             info(#fmt["no signature for source %s", name]);
         }
     }
-    run::run_program("cp", [pkgfile, destpkgfile]);
+    copy_warn(pkgfile, destpkgfile);
 }
 
 fn cmd_sync(c: cargo) {
@@ -812,7 +808,7 @@ fn cmd_init(c: cargo) {
     } else {
         info(#fmt["signature ok for sources.json"]);
     }
-    run::run_program("cp", [srcfile, destsrcfile]);
+    copy_warn(srcfile, destsrcfile);
 
     info(#fmt["Initialized .cargo in %s", c.root]);
 }
@@ -851,6 +847,12 @@ fn cmd_search(c: cargo) {
         }
     });
     info(#fmt["Found %d packages.", n]);
+}
+
+fn copy_warn(src: str, dest: str) {
+  if !os::copy_file(src, dest) {
+      warn(#fmt["Copying %s to %s failed", src, dest]);
+  }
 }
 
 fn cmd_usage() {
