@@ -1,5 +1,7 @@
+
 #include "rust_port.h"
 #include "rust_port_selector.h"
+#include "rust_task.h"
 
 rust_port_selector::rust_port_selector()
     : ports(NULL), n_ports(0) {

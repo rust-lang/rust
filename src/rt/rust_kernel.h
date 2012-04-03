@@ -4,12 +4,20 @@
 
 #include <map>
 #include <vector>
+
+#include "rust_globals.h"
 #include "memory_region.h"
 #include "rust_log.h"
 #include "rust_sched_reaper.h"
+#include "util/hash_map.h"
 
 struct rust_task_thread;
 class rust_scheduler;
+class rust_port;
+
+typedef intptr_t rust_sched_id;
+typedef intptr_t rust_task_id;
+typedef intptr_t rust_port_id;
 
 typedef std::map<rust_sched_id, rust_scheduler*> sched_map;
 
@@ -79,6 +87,17 @@ public:
     void release_port_id(rust_port_id tid);
 
     void set_exit_status(int code);
+};
+
+template <typename T> struct kernel_owned {
+    inline void *operator new(size_t size, rust_kernel *kernel,
+                              const char *tag) {
+        return kernel->malloc(size, tag);
+    }
+
+    void operator delete(void *ptr) {
+        ((T *)ptr)->kernel->free(ptr);
+    }
 };
 
 #endif /* RUST_KERNEL_H */

@@ -42,6 +42,7 @@
  */
 
 #include <assert.h>
+
 template <class T>
 class lock_free_queue {
 

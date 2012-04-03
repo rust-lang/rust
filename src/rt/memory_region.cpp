@@ -1,5 +1,7 @@
-#include "rust_internal.h"
+
+#include "sync/sync.h"
 #include "memory_region.h"
+#include "rust_env.h"
 
 #if RUSTRT_TRACK_ALLOCATIONS >= 3
 #include <execinfo.h>

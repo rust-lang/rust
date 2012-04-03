@@ -1,16 +1,15 @@
 
-#include "rust_internal.h"
-#include "rust_cc.h"
-
 #ifndef __WIN32__
 #include <execinfo.h>
 #endif
 #include <iostream>
-#include <cassert>
-#include <cstring>
 #include <algorithm>
 
+#include "rust_task.h"
+#include "rust_cc.h"
 #include "rust_upcall.h"
+#include "rust_env.h"
+#include "rust_port.h"
 
 // Tasks
 rust_task::rust_task(rust_sched_loop *sched_loop, rust_task_state state,

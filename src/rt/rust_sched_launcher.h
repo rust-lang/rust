@@ -1,9 +1,10 @@
 #ifndef RUST_SCHED_LAUNCHER_H
 #define RUST_SCHED_LAUNCHER_H
 
-#include "rust_internal.h"
 #include "sync/rust_thread.h"
 #include "rust_sched_driver.h"
+#include "rust_kernel.h"
+#include "rust_sched_loop.h"
 
 class rust_sched_launcher : public kernel_owned<rust_sched_launcher> {
 public:

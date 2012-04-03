@@ -16,7 +16,6 @@
 #define ERROR 0
 
 #include <stdlib.h>
-#include <stdint.h>
 #include <inttypes.h>
 #include <stdarg.h>
 #include <sys/types.h>
@@ -25,11 +24,10 @@
 #include <string.h>
 #include <fcntl.h>
 #include <math.h>
+#include <assert.h>
 
-#include "rust.h"
 #include "rand.h"
 #include "uthash.h"
-#include "rust_env.h"
 
 #if defined(__WIN32__)
 extern "C" {
@@ -52,6 +50,28 @@ extern "C" {
 #error "Platform not supported."
 #endif
 
+#ifdef __i386__
+// 'cdecl' ABI only means anything on i386
+#ifdef __WIN32__
+#ifndef CDECL
+#define CDECL __cdecl
+#endif
+#ifndef FASTCALL
+#define FASTCALL __fastcall
+#endif
+#else
+#define CDECL __attribute__((cdecl))
+#define FASTCALL __attribute__((fastcall))
+#endif
+#else
+#define CDECL
+#define FASTCALL
+#endif
+
+/* Controls whether claims are turned into checks */
+/* Variable name must be kept consistent with trans.rs */
+extern "C" int check_claims;
+
 #define CHECKED(call)                                               \
     {                                                               \
     int res = (call);                                               \
@@ -63,5 +83,17 @@ extern "C" {
             abort();                                                \
         }                                                           \
     }
+
+#define PTR "0x%" PRIxPTR
+
+// This accounts for logging buffers.
+static size_t const BUF_BYTES = 2048;
+
+// The error status to use when the process fails
+#define PROC_FAIL_CODE 101
+
+// A cond(ition) is something we can block on. This can be a channel
+// (writing), a port (reading) or a task (waiting).
+struct rust_cond { };
 
 #endif /* RUST_GLOBALS_H */

@@ -3,7 +3,7 @@
 // that might come from the environment is loaded here, once, during
 // init.
 
-#include "rust_internal.h"
+#include "rust_env.h"
 
 // The environment variables that the runtime knows about
 #define RUST_THREADS "RUST_THREADS"

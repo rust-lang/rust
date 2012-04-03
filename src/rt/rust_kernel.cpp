@@ -1,8 +1,10 @@
-#include "rust_internal.h"
-#include "rust_util.h"
-#include "rust_scheduler.h"
 
 #include <vector>
+
+#include "rust_kernel.h"
+#include "rust_port.h"
+#include "rust_util.h"
+#include "rust_scheduler.h"
 
 #define KLOG_(...)                              \
     KLOG(this, kern, __VA_ARGS__)

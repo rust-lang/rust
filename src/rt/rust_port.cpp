@@ -1,6 +1,6 @@
-#include "rust_internal.h"
-#include "rust_port.h"
 
+#include "rust_port.h"
+#include "rust_task.h"
 
 rust_port::rust_port(rust_task *task, size_t unit_sz)
     : ref_count(1), kernel(task->kernel), task(task),

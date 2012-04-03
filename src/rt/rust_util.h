@@ -1,8 +1,9 @@
 #ifndef RUST_UTIL_H
 #define RUST_UTIL_H
 
-#include "rust_task.h"
 #include <limits.h>
+#include "rust_task.h"
+#include "rust_env.h"
 
 // Inline fn used regularly elsewhere.
 

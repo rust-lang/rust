@@ -9,7 +9,8 @@
 #undef min
 
 #include <iostream>
-#include "rust_internal.h"
+
+#include "rust_globals.h"
 #include "rust_util.h"
 
 // ISAAC pollutes our namespace.

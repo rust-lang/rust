@@ -1,5 +1,5 @@
-#include <assert.h>
-#include "rust_internal.h"
+
+#include "rust_globals.h"
 #include "rust_sched_driver.h"
 #include "rust_sched_loop.h"
 

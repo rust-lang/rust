@@ -2,7 +2,9 @@
  * A simple resizable circular buffer.
  */
 
-#include "rust_internal.h"
+#include "circular_buffer.h"
+#include "rust_globals.h"
+#include "rust_kernel.h"
 
 circular_buffer::circular_buffer(rust_kernel *kernel, size_t unit_sz) :
     kernel(kernel),

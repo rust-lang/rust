@@ -2,12 +2,11 @@
  * Logging infrastructure that aims to support multi-threading
  */
 
-#include "rust_internal.h"
+
+#include "rust_log.h"
 #include "util/array_list.h"
-#include <stdarg.h>
-#include <stdlib.h>
-#include <string.h>
 #include "rust_util.h"
+#include "rust_task.h"
 
 /**
  * Synchronizes access to the underlying logging mechanism.
