@@ -77,7 +77,7 @@ unsafe fn prepare_loop(loop_ptr: *libc::c_void)
     // will probably need to stake out a data record
     // here, as well, to keep whatever state we want to
     // use with the loop
-    
+
     // move this into a malloc
     let async = ll::async_t();
     let async_ptr = ptr::addr_of(async);
