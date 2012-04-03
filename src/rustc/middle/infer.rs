@@ -1341,10 +1341,6 @@ impl of combine for glb {
         ok(ty::mk_bot(self.infcx().tcx))
     }
 
-    fn c_regions(a: ty::region, _b: ty::region) -> cres<ty::region> {
-        ok(a) // FIXME
-    }
-
     fn c_mts(a: ty::mt, b: ty::mt) -> cres<ty::mt> {
         let tcx = self.infcx().tcx;
 

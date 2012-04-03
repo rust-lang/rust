@@ -1727,12 +1727,20 @@ fn check_item(e: @env, i: @ast::item, &&x: (), v: vt<()>) {
     alt i.node {
       ast::item_fn(decl, ty_params, _) {
         check_fn(*e, i.span, decl);
-        ensure_unique(*e, i.span, typaram_names(ty_params), ident_id,
+        ensure_unique(*e, i.span, ty_params, {|tp| tp.ident},
                       "type parameter");
       }
       ast::item_enum(_, ty_params) {
-        ensure_unique(*e, i.span, typaram_names(ty_params), ident_id,
+        ensure_unique(*e, i.span, ty_params, {|tp| tp.ident},
                       "type parameter");
+      }
+      ast::item_iface(_, methods) {
+        ensure_unique(*e, i.span, methods, {|m| m.ident},
+                      "method");
+      }
+      ast::item_impl(_, _, _, methods) {
+        ensure_unique(*e, i.span, methods, {|m| m.ident},
+                      "method");
       }
       _ { }
     }
@@ -1870,8 +1878,6 @@ fn add_name(ch: checker, sp: span, name: ident) {
     check_name(ch, sp, name);
     ch.seen += [name];
 }
-
-fn ident_id(&&i: ident) -> ident { ret i; }
 
 fn ensure_unique<T>(e: env, sp: span, elts: [T], id: fn(T) -> ident,
                     kind: str) {
