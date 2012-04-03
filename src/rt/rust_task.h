@@ -13,7 +13,6 @@
 #include "rust_port_selector.h"
 #include "rust_type.h"
 #include "rust_sched_loop.h"
-#include "memory.h"
 
 // The amount of extra space at the end of each stack segment, available
 // to the rt, compiler and dynamic linker for running small functions

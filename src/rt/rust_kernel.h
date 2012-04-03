@@ -89,17 +89,13 @@ public:
 
 template <typename T> struct kernel_owned {
     inline void *operator new(size_t size, rust_kernel *kernel,
-                              const char *tag);
+                              const char *tag) {
+        return kernel->malloc(size, tag);
+    }
 
     void operator delete(void *ptr) {
         ((T *)ptr)->kernel->free(ptr);
     }
 };
-
-template <typename T>
-inline void *kernel_owned<T>::operator new(size_t size, rust_kernel *kernel,
-                                           const char *tag) {
-    return kernel->malloc(size, tag);
-}
 
 #endif /* RUST_KERNEL_H */
