@@ -408,7 +408,7 @@ rust_ptr_eq(type_desc *t, rust_box *a, rust_box *b) {
 
 #if defined(__WIN32__)
 extern "C" CDECL void
-get_time(int64_t *sec, int32_t *usec) {
+get_time(int64_t *sec, int32_t *nsec) {
     FILETIME fileTime;
     GetSystemTimeAsFileTime(&fileTime);
 
@@ -423,15 +423,22 @@ get_time(int64_t *sec, int32_t *usec) {
     const uint64_t NANOSECONDS_FROM_1601_TO_1970 = 11644473600000000u;
     uint64_t ns_since_1970 = ns_since_1601 - NANOSECONDS_FROM_1601_TO_1970;
     *sec = ns_since_1970 / 1000000;
-    *usec = ns_since_1970 % 1000000;
+    *nsec = (ns_since_1970 % 1000000) * 1000;
 }
 #else
 extern "C" CDECL void
-get_time(int64_t *sec, int32_t *usec) {
+get_time(int64_t *sec, int32_t *nsec) {
+#ifdef __APPLE__
     struct timeval tv;
     gettimeofday(&tv, NULL);
     *sec = tv.tv_sec;
-    *usec = tv.tv_usec;
+    *nsec = tv.tv_usec * 1000;
+#else
+    timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    *sec = ts.tv_sec;
+    *nsec = ts.tv_nsec;
+#endif
 }
 #endif
 
