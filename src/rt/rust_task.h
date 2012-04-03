@@ -4,6 +4,7 @@
 
 #include <map>
 
+#include "rust_globals.h"
 #include "util/array_list.h"
 #include "context.h"
 #include "rust_debug.h"
