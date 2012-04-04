@@ -8,6 +8,8 @@
 #include "rust_abi.h"
 #include "rust_port.h"
 
+#include <time.h>
+
 #ifdef __APPLE__
 #include <crt_externs.h>
 #endif
@@ -79,7 +81,7 @@ rust_getcwd() {
         return NULL;
     }
 
-    return make_str(task->kernel, cbuf, strlen(cbuf), "rust_str(getcwd");
+    return make_str(task->kernel, cbuf, strlen(cbuf), "rust_str(getcwd)");
 }
 
 #if defined(__WIN32__)
@@ -408,7 +410,7 @@ rust_ptr_eq(type_desc *t, rust_box *a, rust_box *b) {
 
 #if defined(__WIN32__)
 extern "C" CDECL void
-get_time(uint32_t *sec, uint32_t *usec) {
+get_time(int64_t *sec, int32_t *usec) {
     FILETIME fileTime;
     GetSystemTimeAsFileTime(&fileTime);
 
@@ -427,7 +429,7 @@ get_time(uint32_t *sec, uint32_t *usec) {
 }
 #else
 extern "C" CDECL void
-get_time(uint32_t *sec, uint32_t *usec) {
+get_time(uint64_t *sec, int32_t *usec) {
     struct timeval tv;
     gettimeofday(&tv, NULL);
     *sec = tv.tv_sec;
@@ -439,6 +441,159 @@ extern "C" CDECL void
 precise_time_ns(uint64_t *ns) {
     timer t;
     *ns = t.time_ns();
+}
+
+struct rust_tm {
+    int32_t tm_sec;
+    int32_t tm_min;
+    int32_t tm_hour;
+    int32_t tm_mday;
+    int32_t tm_mon;
+    int32_t tm_year;
+    int32_t tm_wday;
+    int32_t tm_yday;
+    int32_t tm_isdst;
+    int32_t tm_gmtoff;
+    rust_str *tm_zone;
+    int32_t tm_usec;
+};
+
+void rust_tm_to_tm(rust_tm* in_tm, tm* out_tm) {
+    memset(out_tm, 0, sizeof(tm));
+    out_tm->tm_sec = in_tm->tm_sec;
+    out_tm->tm_min = in_tm->tm_min;
+    out_tm->tm_hour = in_tm->tm_hour;
+    out_tm->tm_mday = in_tm->tm_mday;
+    out_tm->tm_mon = in_tm->tm_mon;
+    out_tm->tm_year = in_tm->tm_year;
+    out_tm->tm_wday = in_tm->tm_wday;
+    out_tm->tm_yday = in_tm->tm_yday;
+    out_tm->tm_isdst = in_tm->tm_isdst;
+}
+
+void tm_to_rust_tm(tm* in_tm, rust_tm* out_tm) {
+    out_tm->tm_sec = in_tm->tm_sec;
+    out_tm->tm_min = in_tm->tm_min;
+    out_tm->tm_hour = in_tm->tm_hour;
+    out_tm->tm_mday = in_tm->tm_mday;
+    out_tm->tm_mon = in_tm->tm_mon;
+    out_tm->tm_year = in_tm->tm_year;
+    out_tm->tm_wday = in_tm->tm_wday;
+    out_tm->tm_yday = in_tm->tm_yday;
+    out_tm->tm_isdst = in_tm->tm_isdst;
+}
+
+#if defined(__WIN32__)
+#define TZSET() _tzset()
+#if defined(_MSC_VER) && (_MSC_VER >= 1400)
+#define GMTIME(clock, result) gmtime_s((result), (clock))
+#define LOCALTIME(clock, result) localtime_s((result), (clock))
+#define TIMEGM(result) _mkgmtime64(result)
+#else
+struct tm* GMTIME(const time_t *clock, tm *result) {
+    struct tm* t = gmtime(clock);
+    if (t == NULL || result == NULL) { return NULL; }
+    *result = *t;
+    return result;
+}
+struct tm* LOCALTIME(const time_t *clock, tm *result) {
+    struct tm* t = localtime(clock);
+    if (t == NULL || result == NULL) { return NULL; }
+    *result = *t;
+    return result;
+}
+#define TIMEGM(result) mktime((result)) - _timezone
+#endif
+#else
+#define TZSET() tzset()
+#define GMTIME(clock, result) gmtime_r((clock), (result))
+#define LOCALTIME(clock, result) localtime_r((clock), (result))
+#define TIMEGM(result) timegm(result)
+#endif
+
+extern "C" CDECL void
+rust_gmtime(int64_t *sec, int32_t *usec, rust_tm *timeptr) {
+    tm tm;
+    time_t s = *sec;
+    GMTIME(&s, &tm);
+
+    tm_to_rust_tm(&tm, timeptr);
+    timeptr->tm_gmtoff = 0;
+    timeptr->tm_usec = *usec;
+
+    const char *zone = "UTC";
+    size_t size = strlen(zone);
+    str_reserve_shared(&timeptr->tm_zone, size);
+    memcpy(timeptr->tm_zone->data, zone, size);
+    timeptr->tm_zone->fill = size + 1;
+    timeptr->tm_zone->data[size] = '\0';
+}
+
+extern "C" CDECL void
+rust_localtime(int64_t *sec, int32_t *usec, rust_tm *timeptr) {
+    tm tm;
+    TZSET();
+    time_t s = *sec;
+    LOCALTIME(&s, &tm);
+
+    tm_to_rust_tm(&tm, timeptr);
+
+#if defined(__WIN32__)
+    timeptr->tm_gmtoff = -timezone;
+    char zone[64];
+    strftime(zone, sizeof(zone), "%Z", &tm);
+#else
+    timeptr->tm_gmtoff = tm.tm_gmtoff;
+    const char *zone = tm.tm_zone;
+#endif
+
+    timeptr->tm_usec = *usec;
+
+    if (zone != NULL) {
+        size_t size = strlen(zone);
+        str_reserve_shared(&timeptr->tm_zone, size);
+        memcpy(timeptr->tm_zone->data, zone, size);
+        timeptr->tm_zone->fill = size + 1;
+        timeptr->tm_zone->data[size] = '\0';
+    }
+}
+
+extern "C" CDECL rust_str *
+rust_timezone(long *gmtoff) {
+    rust_task *task = rust_sched_loop::get_task();
+    tm tm;
+    TZSET();
+    time_t t = time(NULL);
+    LOCALTIME(&t, &tm);
+
+#if defined(__WIN32__)
+    *gmtoff = -timezone;
+    char zone[64];
+    strftime(zone, sizeof(zone), "%Z", &tm);
+#else
+    *gmtoff = tm.tm_gmtoff;
+    const char *zone = tm.tm_zone;
+
+    if (zone == NULL) {
+        zone = "";
+    }
+#endif
+
+    return make_str(task->kernel, zone, strlen(zone), "rust_timezone");
+}
+
+extern "C" CDECL void
+rust_timegm(rust_tm* timeptr, int64_t *out) {
+    tm t;
+    rust_tm_to_tm(timeptr, &t);
+    *out = TIMEGM(&t);
+}
+
+extern "C" CDECL void
+rust_mktime(rust_tm* timeptr, int64_t *out) {
+    tm t;
+    rust_tm_to_tm(timeptr, &t);
+    *out = mktime(&t);
 }
 
 extern "C" CDECL rust_sched_id
