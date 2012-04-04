@@ -57,6 +57,8 @@ private:
     // on the main thread
     rust_sched_driver *osmain_driver;
 
+    rust_scheduler* get_scheduler_by_id_nolock(rust_sched_id id);
+
 public:
 
     struct rust_env *env;

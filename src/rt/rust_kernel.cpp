@@ -83,11 +83,10 @@ rust_kernel::create_scheduler(rust_sched_launcher_factory *launchfac,
             // The OS main scheduler may not exit while there are other
             // schedulers
             KLOG_("Disallowing osmain scheduler to exit");
-            sched_lock.unlock();
-            rust_scheduler *sched = get_scheduler_by_id(osmain_scheduler);
+            rust_scheduler *sched =
+                get_scheduler_by_id_nolock(osmain_scheduler);
             assert(sched != NULL);
             sched->disallow_exit();
-            sched_lock.lock();
         }
 
         id = max_sched_id++;
@@ -106,6 +105,12 @@ rust_kernel::create_scheduler(rust_sched_launcher_factory *launchfac,
 rust_scheduler *
 rust_kernel::get_scheduler_by_id(rust_sched_id id) {
     scoped_lock with(sched_lock);
+    return get_scheduler_by_id_nolock(id);
+}
+
+rust_scheduler *
+rust_kernel::get_scheduler_by_id_nolock(rust_sched_id id) {
+    sched_lock.must_have_lock();
     sched_map::iterator iter = sched_table.find(id);
     if (iter != sched_table.end()) {
         return iter->second;
@@ -137,6 +142,7 @@ rust_kernel::wait_for_schedulers()
     while (!sched_table.empty()) {
         while (!join_list.empty()) {
             rust_sched_id id = join_list.back();
+            KLOG_("Deleting scheduler %d", id);
             join_list.pop_back();
             sched_map::iterator iter = sched_table.find(id);
             I(this, iter != sched_table.end());
@@ -146,12 +152,11 @@ rust_kernel::wait_for_schedulers()
             delete sched;
             if (sched_table.size() == 1) {
                 KLOG_("Allowing osmain scheduler to exit");
-                sched_lock.unlock();
                 // It's only the osmain scheduler left. Tell it to exit
-                rust_scheduler *sched = get_scheduler_by_id(osmain_scheduler);
+                rust_scheduler *sched =
+                    get_scheduler_by_id_nolock(osmain_scheduler);
                 assert(sched != NULL);
                 sched->allow_exit();
-                sched_lock.lock();
             }
         }
         if (!sched_table.empty()) {
