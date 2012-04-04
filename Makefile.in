@@ -205,7 +205,7 @@ COMPILER_INPUTS := $(filter-out $(S)src/rustc/driver/rustc.rs,     \
 
 LIBRUSTSYNTAX_CRATE := $(S)src/librustsyntax/rustsyntax.rc
 LIBRUSTSYNTAX_INPUTS := $(wildcard $(addprefix $(S)src/librustsyntax/, \
-                            rustsyntax.rc *.rs))
+                            rustsyntax.rc *.rs */*.rs */*/*.rs))
 
 RUSTC_INPUTS := $(S)src/rustc/driver/rustc.rs
 
