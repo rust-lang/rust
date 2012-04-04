@@ -49,7 +49,13 @@ fn mut_offset<T>(ptr: *mut T, count: uint) -> *mut T {
 
 #[doc = "Create an unsafe null pointer"]
 #[inline(always)]
-fn null<T>() -> *T unsafe { ret unsafe::reinterpret_cast(0u); }
+pure fn null<T>() -> *T unsafe { ret unsafe::reinterpret_cast(0u); }
+
+#[doc = "Returns true if the pointer is equal to the null pointer"]
+pure fn is_null<T>(ptr: *const T) -> bool { ptr == null() }
+
+#[doc = "Returns true if the pointer is not equal to the null pointer"]
+pure fn is_not_null<T>(ptr: *const T) -> bool { !is_null(ptr) }
 
 #[doc = "
 Copies data from one location to another
