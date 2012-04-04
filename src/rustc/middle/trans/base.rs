@@ -155,10 +155,10 @@ fn get_dest_addr(dest: dest) -> ValueRef {
     }
 }
 
-fn log_fn_time(ccx: @crate_ctxt, name: str, start: time::timeval,
-               end: time::timeval) {
+fn log_fn_time(ccx: @crate_ctxt, name: str, start: time::timespec,
+               end: time::timespec) {
     let elapsed = 1000 * ((end.sec - start.sec) as int) +
-        ((end.usec as int) - (start.usec as int)) / 1000;
+        ((end.nsec as int) - (start.nsec as int)) / 1000000;
     *ccx.stats.fn_times += [{ident: name, time: elapsed}];
 }
 
@@ -4056,7 +4056,7 @@ fn trans_fn(ccx: @crate_ctxt,
             id: ast::node_id) {
     let do_time = ccx.sess.opts.stats;
     let start = if do_time { time::get_time() }
-                else { {sec: 0u32, usec: 0u32} };
+                else { {sec: 0i64, nsec: 0i32} };
     let _icx = ccx.insn_ctxt("trans_fn");
     trans_closure(ccx, path, decl, body, llfndecl, ty_self,
                   param_substs, id, {|fcx|
