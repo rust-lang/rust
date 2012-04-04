@@ -66,10 +66,6 @@ native mod rustrt {
     fn rust_uv_tcp_init(
         loop_handle: *libc::c_void,
         handle_ptr: *ll::uv_tcp_t) -> libc::c_int;
-    fn rust_uv_buf_init(base: *u8, len: libc::size_t)
-        -> ll::uv_buf_t;
-    fn rust_uv_last_error(loop_handle: *libc::c_void) ->
-        ll::uv_err_t;
     // FIXME ref #2064
     fn rust_uv_strerror(err: *ll::uv_err_t) -> *libc::c_char;
     // FIXME ref #2064
@@ -723,6 +719,9 @@ crust fn on_alloc_cb(handle: *libc::c_void,
     -> ll::uv_buf_t unsafe {
     io::println("on_alloc_cb!");
     let char_ptr = ll::malloc_buf_base_of(suggested_size);
+    io::println(#fmt("on_alloc_cb char_ptr: %u sug. size: %u",
+                     char_ptr as uint,
+                     suggested_size as uint));
     ret ll::buf_init(char_ptr, suggested_size);
 }
 
@@ -816,6 +815,7 @@ fn impl_uv_tcp_request(ip: str, port: int, req_str: str,
     // data field in our uv_connect_t struct
     let req_str_bytes = str::bytes(req_str);
     let req_msg_ptr: *u8 = vec::unsafe::to_ptr(req_str_bytes);
+    io::println(#fmt("req_msg ptr: %u", req_msg_ptr as uint));
     let req_msg = [
         ll::buf_init(req_msg_ptr, vec::len(req_str_bytes))
     ];
@@ -1051,6 +1051,7 @@ fn impl_uv_tcp_server(server_ip: str,
 
     let resp_str_bytes = str::bytes(server_resp_msg);
     let resp_msg_ptr: *u8 = vec::unsafe::to_ptr(resp_str_bytes);
+    io::println(#fmt("resp_msg ptr: %u", resp_msg_ptr as uint));
     let resp_msg = [
         ll::buf_init(resp_msg_ptr, vec::len(resp_str_bytes))
     ];
