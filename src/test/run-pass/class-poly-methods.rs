@@ -1,3 +1,5 @@
+// xfail-test
+// needs metadata encoding on Windows
 class cat<U> {
   priv {
     let mut info : [U];
