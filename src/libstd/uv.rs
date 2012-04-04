@@ -63,36 +63,6 @@ native mod rustrt {
         repeat: libc::c_uint);
     fn rust_uv_timer_stop(handle: *libc::c_void);
     fn rust_uv_free(ptr: *libc::c_void);
-    fn rust_uv_tcp_init(
-        loop_handle: *libc::c_void,
-        handle_ptr: *ll::uv_tcp_t) -> libc::c_int;
-    // FIXME ref #2064
-    fn rust_uv_strerror(err: *ll::uv_err_t) -> *libc::c_char;
-    // FIXME ref #2064
-    fn rust_uv_err_name(err: *ll::uv_err_t) -> *libc::c_char;
-    fn rust_uv_ip4_addr(ip: *u8, port: libc::c_int)
-        -> ll::sockaddr_in;
-    // FIXME ref #2064
-    fn rust_uv_tcp_connect(connect_ptr: *ll::uv_connect_t,
-                           tcp_handle_ptr: *ll::uv_tcp_t,
-                           ++after_cb: *u8,
-                           ++addr: *ll::sockaddr_in) -> libc::c_int;
-    // FIXME ref 2064
-    fn rust_uv_tcp_bind(tcp_server: *ll::uv_tcp_t,
-                        ++addr: *ll::sockaddr_in) -> libc::c_int;
-    fn rust_uv_listen(stream: *libc::c_void, backlog: libc::c_int,
-                      cb: *u8) -> libc::c_int;
-    fn rust_uv_accept(server: *libc::c_void, client: *libc::c_void)
-        -> libc::c_int;
-    fn rust_uv_write(req: *libc::c_void, stream: *libc::c_void,
-             ++buf_in: *ll::uv_buf_t, buf_cnt: libc::c_int,
-             cb: *u8) -> libc::c_int;
-    fn rust_uv_read_start(stream: *libc::c_void, on_alloc: *u8,
-                          on_read: *u8) -> libc::c_int;
-    fn rust_uv_read_stop(stream: *libc::c_void) -> libc::c_int;
-    fn rust_uv_malloc_buf_base_of(sug_size: libc::size_t) -> *u8;
-    fn rust_uv_free_base_of_buf(++buf: ll::uv_buf_t);
-
     // sizeof testing helpers
     fn rust_uv_helper_uv_tcp_t_size() -> libc::c_uint;
     fn rust_uv_helper_uv_connect_t_size() -> libc::c_uint;
@@ -715,7 +685,7 @@ crust fn after_close_cb(handle: *libc::c_void) {
 }
 
 crust fn on_alloc_cb(handle: *libc::c_void,
-                     suggested_size: libc::size_t)
+                     ++suggested_size: libc::size_t)
     -> ll::uv_buf_t unsafe {
     io::println("on_alloc_cb!");
     let char_ptr = ll::malloc_buf_base_of(suggested_size);
@@ -909,6 +879,10 @@ crust fn on_server_read_cb(client_stream_ptr: *ll::uv_stream_t,
         // pull out the contents of the write from the client
         let buf_base = ll::get_base_from_buf(buf);
         let buf_len = ll::get_len_from_buf(buf);
+        io::println(#fmt("SERVER buf base: %u, len: %u, nread: %d",
+                         buf_base as uint,
+                         buf_len as uint,
+                         nread));
         let bytes = vec::unsafe::from_buf(buf_base, buf_len);
         let request_str = str::from_bytes(bytes);
 
@@ -1246,3 +1220,4 @@ fn test_uv_struct_size_uv_async_t() {
     io::println(output);
     assert native_handle_size as uint == rust_handle_size;
 }
+

@@ -302,22 +302,13 @@ current_kernel_malloc_alloc_cb(uv_handle_t* handle,
 
 extern "C" void
 rust_uv_buf_init(uv_buf_t* out_buf, char* base, size_t len) {
-  printf("rust_uv_buf_init: base: %lu len: %lu\n",
-		 (long unsigned int)base,
-		 (long unsigned int)len);
+    printf("rust_uv_buf_init: base: %lu len: %lu\n",
+        (long unsigned int)base,
+        (long unsigned int)len);
     *out_buf = uv_buf_init(base, len);
     printf("rust_uv_buf_init: after: result->base: %lu len: %lu\n",
-		   (unsigned long int)(*out_buf).base,
-		   (unsigned long int)(*out_buf).len);
-}
-extern "C" uv_buf_t
-rust_uv_buf_init_2(char* base, size_t len) {
-  printf("uv_buf_init: base ptr %p\n len: %lu", base,
-		 (long unsigned int)len);
-    uv_buf_t result = uv_buf_init(base, len);
-    printf("after uv_buf_init: result->base %p\n",
-		   result.base);
-	return result;
+           (unsigned long int)(*out_buf).base,
+           (unsigned long int)(*out_buf).len);
 }
 
 extern "C" uv_loop_t*
