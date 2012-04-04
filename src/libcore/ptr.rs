@@ -5,6 +5,8 @@ export mut_addr_of;
 export offset;
 export mut_offset;
 export null;
+export is_null;
+export is_not_null;
 export memcpy;
 export memmove;
 
