@@ -3,12 +3,12 @@ import syntax::{visit, ast_util};
 import driver::session::session;
 import std::map::hashmap;
 
-fn check_crate(sess: session, crate: @crate, method_map: typeck::method_map,
-               tcx: ty::ctxt) {
+fn check_crate(sess: session, crate: @crate, def_map: resolve::def_map,
+                method_map: typeck::method_map, tcx: ty::ctxt) {
     visit::visit_crate(*crate, false, visit::mk_vt(@{
         visit_item: check_item,
         visit_pat: check_pat,
-        visit_expr: bind check_expr(sess, method_map, tcx, _, _, _)
+        visit_expr: bind check_expr(sess, def_map, method_map, tcx, _, _, _)
         with *visit::default_visitor()
     }));
     sess.abort_if_errors();
@@ -43,7 +43,8 @@ fn check_pat(p: @pat, &&_is_const: bool, v: visit::vt<bool>) {
     }
 }
 
-fn check_expr(sess: session, method_map: typeck::method_map, tcx: ty::ctxt,
+fn check_expr(sess: session, def_map: resolve::def_map,
+              method_map: typeck::method_map, tcx: ty::ctxt,
               e: @expr, &&is_const: bool, v: visit::vt<bool>) {
     if is_const {
         alt e.node {
@@ -70,6 +71,21 @@ fn check_expr(sess: session, method_map: typeck::method_map, tcx: ty::ctxt,
                 sess.span_err(e.span, "can not cast to `" +
                               util::ppaux::ty_to_str(tcx, ety) +
                               "` in a constant expression");
+            }
+          }
+          expr_path(path) {
+            alt def_map.find(e.id) {
+              some(def_const(def_id)) {
+                if !ast_util::is_local(def_id) {
+                    sess.span_err(
+                        e.span, "paths in constants may only refer to \
+                                 crate-local constants");
+                }
+              }
+              _ {
+                sess.span_err(
+                    e.span, "paths in constants may only refer to constants");
+              }
             }
           }
           _ {

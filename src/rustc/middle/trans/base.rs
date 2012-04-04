@@ -4245,6 +4245,28 @@ fn trans_const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
           }
         }
       }
+      ast::expr_path(path) {
+        alt cx.tcx.def_map.find(e.id) {
+          some(ast::def_const(def_id)) {
+            // Don't know how to handle external consts
+            assert ast_util::is_local(def_id);
+            alt cx.tcx.items.get(def_id.node) {
+              ast_map::node_item(@{
+                node: ast::item_const(_, subexpr), _
+              }, _) {
+                // FIXME: Instead of recursing here to regenerate the values
+                // for other constants, we should just look up the
+                // already-defined value
+                trans_const_expr(cx, subexpr)
+              }
+              _ {
+                cx.sess.span_bug(e.span, "expected item");
+              }
+            }
+          }
+          _ { cx.sess.span_bug(e.span, "expected to find a const def") }
+        }
+      }
       _ { cx.sess.span_bug(e.span,
             "bad constant expression type in trans_const_expr"); }
     }
