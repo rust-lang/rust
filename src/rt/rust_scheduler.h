@@ -58,6 +58,7 @@ public:
     // Tells the scheduler that as soon as it runs out of tasks
     // to run it should exit
     void allow_exit();
+    void disallow_exit();
 };
 
 #endif /* RUST_SCHEDULER_H */

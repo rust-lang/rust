@@ -78,6 +78,18 @@ rust_kernel::create_scheduler(rust_sched_launcher_factory *launchfac,
     rust_scheduler *sched;
     {
         scoped_lock with(sched_lock);
+
+        if (sched_table.size() == 1) {
+            // The OS main scheduler may not exit while there are other
+            // schedulers
+            KLOG_("Disallowing osmain scheduler to exit");
+            sched_lock.unlock();
+            rust_scheduler *sched = get_scheduler_by_id(osmain_scheduler);
+            assert(sched != NULL);
+            sched->disallow_exit();
+            sched_lock.lock();
+        }
+
         id = max_sched_id++;
         K(srv, id != INTPTR_MAX, "Hit the maximum scheduler id");
         sched = new (this, "rust_scheduler")
@@ -138,8 +150,8 @@ rust_kernel::wait_for_schedulers()
                 // It's only the osmain scheduler left. Tell it to exit
                 rust_scheduler *sched = get_scheduler_by_id(osmain_scheduler);
                 assert(sched != NULL);
-                sched_lock.lock();
                 sched->allow_exit();
+                sched_lock.lock();
             }
         }
         if (!sched_table.empty()) {

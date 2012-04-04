@@ -152,3 +152,9 @@ rust_scheduler::allow_exit() {
         exit();
     }
 }
+
+void
+rust_scheduler::disallow_exit() {
+    scoped_lock with(lock);
+    may_exit = false;
+}

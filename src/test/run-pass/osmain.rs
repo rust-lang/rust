@@ -3,7 +3,7 @@
 // while it is not in use.
 
 fn main() {
-    run(10);
+    run(100);
 }
 
 fn run(i: int) {
