@@ -71,7 +71,6 @@ immediately after using `uv::ll::loop_new()`
 A `high_level_loop` record that can be used to interact with the
 loop (after you use `uv::ll::run()` on the `uv_loop_t*`, of course
 "]
-#[cfg(target_archsdfsdf="bleh")]
 unsafe fn prepare_loop(loop_ptr: *libc::c_void)
     -> high_level_loop {
     // will probably need to stake out a data record

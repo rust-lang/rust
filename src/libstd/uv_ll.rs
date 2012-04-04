@@ -442,8 +442,6 @@ native mod rustrt {
     // FIXME ref #2604 .. ?
     fn rust_uv_buf_init(out_buf: *uv_buf_t, base: *u8,
                         len: libc::size_t);
-    fn rust_uv_buf_init_2(++base: *u8, len: libc::size_t)
-        -> uv_buf_t;
     fn rust_uv_last_error(loop_handle: *libc::c_void) -> uv_err_t;
     // FIXME ref #2064
     fn rust_uv_strerror(err: *uv_err_t) -> *libc::c_char;
