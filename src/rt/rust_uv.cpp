@@ -1,3 +1,7 @@
+#ifdef __WIN32__
+// For alloca
+#include <malloc.h>
+#endif
 
 #include "rust_globals.h"
 #include "rust_task.h"
@@ -98,11 +102,7 @@ rust_uv_loop_delete(uv_loop_t* loop) {
     // from a malloc with no backtrace.
     //
     // This pads our stack with some extra space before deleting the loop
-#ifndef __WIN32__
     alloca(512);
-#else
-    _alloca(512);
-#endif
     uv_loop_delete(loop);
 }
 
