@@ -149,7 +149,7 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
         time(time_passes, "typechecking",
              bind typeck::check_crate(ty_cx, impl_map, crate));
     time(time_passes, "const checking",
-         bind middle::check_const::check_crate(sess, crate, def_map,
+         bind middle::check_const::check_crate(sess, crate, ast_map, def_map,
                                                method_map, ty_cx));
 
     if upto == cu_typeck { ret {crate: crate, tcx: some(ty_cx)}; }

@@ -3,10 +3,11 @@ import syntax::{visit, ast_util};
 import driver::session::session;
 import std::map::hashmap;
 
-fn check_crate(sess: session, crate: @crate, def_map: resolve::def_map,
+fn check_crate(sess: session, crate: @crate, ast_map: ast_map::map,
+               def_map: resolve::def_map,
                 method_map: typeck::method_map, tcx: ty::ctxt) {
     visit::visit_crate(*crate, false, visit::mk_vt(@{
-        visit_item: check_item,
+        visit_item: check_item(sess, ast_map, def_map, _, _, _),
         visit_pat: check_pat,
         visit_expr: bind check_expr(sess, def_map, method_map, tcx, _, _, _)
         with *visit::default_visitor()
@@ -14,9 +15,13 @@ fn check_crate(sess: session, crate: @crate, def_map: resolve::def_map,
     sess.abort_if_errors();
 }
 
-fn check_item(it: @item, &&_is_const: bool, v: visit::vt<bool>) {
+fn check_item(sess: session, ast_map: ast_map::map, def_map: resolve::def_map,
+              it: @item, &&_is_const: bool, v: visit::vt<bool>) {
     alt it.node {
-      item_const(_, ex) { v.visit_expr(ex, true, v); }
+      item_const(_, ex) {
+        v.visit_expr(ex, true, v);
+        check_item_recursion(sess, ast_map, def_map, it);
+      }
       item_enum(vs, _) {
         for var in vs {
             option::with_option_do(var.node.disr_expr) {|ex|
@@ -73,7 +78,7 @@ fn check_expr(sess: session, def_map: resolve::def_map,
                               "` in a constant expression");
             }
           }
-          expr_path(path) {
+          expr_path(_) {
             alt def_map.find(e.id) {
               some(def_const(def_id)) {
                 if !ast_util::is_local(def_id) {
@@ -113,6 +118,63 @@ fn check_expr(sess: session, def_map: resolve::def_map,
       _ {}
     }
     visit::visit_expr(e, is_const, v);
+}
+
+// Make sure a const item doesn't recursively refer to itself
+// FIXME: Should use the dependency graph when it's available
+fn check_item_recursion(sess: session, ast_map: ast_map::map,
+                        def_map: resolve::def_map, it: @item) {
+
+    type env = {
+        root_it: @item,
+        sess: session,
+        ast_map: ast_map::map,
+        def_map: resolve::def_map,
+        idstack: @mut [node_id],
+    };
+
+    let env = {
+        root_it: it,
+        sess: sess,
+        ast_map: ast_map,
+        def_map: def_map,
+        idstack: @mut []
+    };
+
+    let visitor = visit::mk_vt(@{
+        visit_item: visit_item,
+        visit_expr: visit_expr
+        with *visit::default_visitor()
+    });
+    visitor.visit_item(it, env, visitor);
+
+    fn visit_item(it: @item, &&env: env, v: visit::vt<env>) {
+        if (*env.idstack).contains(it.id) {
+            env.sess.span_fatal(env.root_it.span, "recursive constant");
+        }
+        vec::push(*env.idstack, it.id);
+        visit::visit_item(it, env, v);
+        vec::pop(*env.idstack);
+    }
+
+    fn visit_expr(e: @expr, &&env: env, v: visit::vt<env>) {
+        alt e.node {
+          expr_path(path) {
+            alt env.def_map.find(e.id) {
+              some(def_const(def_id)) {
+                alt check env.ast_map.get(def_id.node) {
+                  ast_map::node_item(it, _) {
+                    v.visit_item(it, env, v);
+                  }
+                }
+              }
+              _ { }
+            }
+          }
+          _ { }
+        }
+        visit::visit_expr(e, env, v);
+    }
 }
 
 // Local Variables:
