@@ -66,11 +66,17 @@ endif
 # Main test targets
 ######################################################################
 
-check: tidy all check-stage2
-	$(S)src/etc/check-summary.py tmp/*.log
+cleantmptestlogs:
+	$(Q)rm -f tmp/*.log
 
-check-full: tidy all check-stage1 check-stage2 check-stage3
-	$(S)src/etc/check-summary.py tmp/*.log
+check: cleantmptestlogs tidy all check-stage2
+	$(Q)$(S)src/etc/check-summary.py tmp/*.log
+
+check-full: cleantmptestlogs tidy all check-stage1 check-stage2 check-stage3
+	$(Q)$(S)src/etc/check-summary.py tmp/*.log
+
+check-test: cleantmptestlogs all check-stage2-rfail
+	$(Q)$(S)src/etc/check-summary.py tmp/*.log
 
 # Run the tidy script in multiple parts to avoid huge 'echo' commands
 ifdef CFG_NOTIDY

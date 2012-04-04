@@ -20,8 +20,9 @@ if __name__ == '__main__':
     ok = count('ok')
     failed = count('failed')
     ignored = count('ignored')
-    print "summary of %d test logs: %d passed; %d failed; %d ignored" % \
+    print "summary of %d test runs: %d passed; %d failed; %d ignored" % \
             (len(logfiles), ok, failed, ignored)
+    print ""
     if failed > 0:
         print "failed tests:"
         for f, s in summaries:
