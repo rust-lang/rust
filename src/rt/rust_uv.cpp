@@ -83,6 +83,22 @@ rust_uv_loop_new() {
 
 extern "C" void
 rust_uv_loop_delete(uv_loop_t* loop) {
+    // FIXME: This is a workaround for #1815. libev uses realloc(0) to
+    // free the loop, which valgrind doesn't like. We have suppressions
+    // to make valgrind ignore them.
+    //
+    // Valgrind also has a sanity check when collecting allocation backtraces
+    // that the stack pointer must be at least 512 bytes into the stack (at
+    // least 512 bytes of frames must have come before). When this is not
+    // the case it doesn't collect the backtrace.
+    //
+    // Unfortunately, with our spaghetti stacks that valgrind check triggers
+    // sometimes and we don't get the backtrace for the realloc(0), it
+    // fails to be suppressed, and it gets reported as 0 bytes lost
+    // from a malloc with no backtrace.
+    //
+    // This pads our stack with some extra space before deleting the loop
+    alloca(512);
     uv_loop_delete(loop);
 }
 
