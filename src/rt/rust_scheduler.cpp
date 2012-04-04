@@ -7,15 +7,18 @@
 
 rust_scheduler::rust_scheduler(rust_kernel *kernel,
                                size_t num_threads,
-                               rust_sched_id id) :
+                               rust_sched_id id,
+                               bool allow_exit,
+                               rust_sched_launcher_factory *launchfac) :
     kernel(kernel),
     live_threads(num_threads),
     live_tasks(0),
-    num_threads(num_threads),
     cur_thread(0),
+    may_exit(allow_exit),
+    num_threads(num_threads),
     id(id)
 {
-    create_task_threads();
+    create_task_threads(launchfac);
 }
 
 rust_scheduler::~rust_scheduler() {
@@ -23,10 +26,9 @@ rust_scheduler::~rust_scheduler() {
 }
 
 rust_sched_launcher *
-rust_scheduler::create_task_thread(int id) {
-    rust_sched_launcher *thread =
-        new (kernel, "rust_thread_sched_launcher")
-        rust_thread_sched_launcher(this, id);
+rust_scheduler::create_task_thread(rust_sched_launcher_factory *launchfac,
+                                   int id) {
+    rust_sched_launcher *thread = launchfac->create(this, id);
     KLOG(kernel, kern, "created task thread: " PTR ", id: %d",
           thread, id);
     return thread;
@@ -39,11 +41,11 @@ rust_scheduler::destroy_task_thread(rust_sched_launcher *thread) {
 }
 
 void
-rust_scheduler::create_task_threads() {
+rust_scheduler::create_task_threads(rust_sched_launcher_factory *launchfac) {
     KLOG(kernel, kern, "Using %d scheduler threads.", num_threads);
 
     for(size_t i = 0; i < num_threads; ++i) {
-        threads.push(create_task_thread(i));
+        threads.push(create_task_thread(launchfac, i));
     }
 }
 
@@ -100,12 +102,11 @@ rust_scheduler::release_task() {
     {
         scoped_lock with(lock);
         live_tasks--;
-        if (live_tasks == 0) {
+        if (live_tasks == 0 && may_exit) {
             need_exit = true;
         }
     }
     if (need_exit) {
-        // There are no more tasks on this scheduler. Time to leave
         exit();
     }
 }
@@ -135,4 +136,23 @@ rust_scheduler::release_task_thread() {
     if (new_live_threads == 0) {
         kernel->release_scheduler_id(id);
     }
+}
+
+void
+rust_scheduler::allow_exit() {
+    bool need_exit = false;
+    {
+        scoped_lock with(lock);
+        may_exit = true;
+        need_exit = live_tasks == 0;
+    }
+    if (need_exit) {
+        exit();
+    }
+}
+
+void
+rust_scheduler::disallow_exit() {
+    scoped_lock with(lock);
+    may_exit = false;
 }

@@ -22,6 +22,9 @@ typedef intptr_t rust_port_id;
 
 typedef std::map<rust_sched_id, rust_scheduler*> sched_map;
 
+class rust_sched_driver;
+class rust_sched_launcher_factory;
+
 /**
  * A global object shared by all thread domains. Most of the data structures
  * in this class are synchronized since they are accessed from multiple
@@ -54,6 +57,13 @@ class rust_kernel {
     std::vector<rust_sched_id> join_list;
 
     rust_sched_reaper sched_reaper;
+    // The single-threaded scheduler that uses the main thread
+    rust_sched_id osmain_scheduler;
+    // Runs the single-threaded scheduler that executes tasks
+    // on the main thread
+    rust_sched_driver *osmain_driver;
+
+    rust_scheduler* get_scheduler_by_id_nolock(rust_sched_id id);
 
 public:
     struct rust_env *env;
@@ -71,11 +81,13 @@ public:
     void fail();
 
     rust_sched_id create_scheduler(size_t num_threads);
+    rust_sched_id create_scheduler(rust_sched_launcher_factory *launchfac,
+                                   size_t num_threads, bool allow_exit);
     rust_scheduler* get_scheduler_by_id(rust_sched_id id);
     // Called by a scheduler to indicate that it is terminating
     void release_scheduler_id(rust_sched_id id);
     void wait_for_schedulers();
-    int wait_for_exit();
+    int run();
 
 #ifdef __WIN32__
     void win32_require(LPCTSTR fn, BOOL ok);
@@ -88,6 +100,8 @@ public:
     void release_port_id(rust_port_id tid);
 
     void set_exit_status(int code);
+
+    rust_sched_id osmain_sched_id() { return osmain_scheduler; }
 };
 
 template <typename T> struct kernel_owned {

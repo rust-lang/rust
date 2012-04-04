@@ -88,6 +88,13 @@ enum sched_mode {
     thread_per_task,
     #[doc = "Tasks are distributed among a fixed number of OS threads"]
     manual_threads(uint),
+    #[doc = "
+    Tasks are scheduled on the main OS thread
+
+    The main OS thread is the thread used to launch the runtime which,
+    in most cases, is the process's initial thread as created by the OS.
+    "]
+    osmain
 }
 
 #[doc = "
@@ -107,7 +114,7 @@ Scheduler configuration options
 "]
 type sched_opts = {
     mode: sched_mode,
-    native_stack_size: option<uint>,
+    native_stack_size: option<uint>
 };
 
 #[doc = "
@@ -525,9 +532,14 @@ fn spawn_raw(opts: task_opts, +f: fn~()) unsafe {
             }
             threads
           }
+          osmain { 0u /* Won't be used */ }
         };
 
-        let sched_id = rustrt::rust_new_sched(num_threads);
+        let sched_id = if opts.mode != osmain {
+            rustrt::rust_new_sched(num_threads)
+        } else {
+            rustrt::rust_osmain_sched_id()
+        };
         rustrt::rust_new_task_in_sched(sched_id)
     }
 
@@ -553,6 +565,7 @@ native mod rustrt {
 
     fn rust_task_is_unwinding(rt: *rust_task) -> bool;
     fn unsupervise();
+    fn rust_osmain_sched_id() -> sched_id;
 }
 
 
@@ -896,4 +909,24 @@ fn test_avoid_copying_the_body_unsupervise() {
             f();
         }
     }
+}
+
+#[test]
+fn test_osmain() {
+    let builder = task_builder();
+    let opts = {
+        sched: some({
+            mode: osmain,
+            native_stack_size: none
+        })
+        with get_opts(builder)
+    };
+    set_opts(builder, opts);
+
+    let po = comm::port();
+    let ch = comm::chan(po);
+    run(builder) {||
+        comm::send(ch, ());
+    }
+    comm::recv(po);
 }

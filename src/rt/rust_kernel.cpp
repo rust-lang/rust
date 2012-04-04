@@ -5,6 +5,7 @@
 #include "rust_port.h"
 #include "rust_util.h"
 #include "rust_scheduler.h"
+#include "rust_sched_launcher.h"
 
 #define KLOG_(...)                              \
     KLOG(this, kern, __VA_ARGS__)
@@ -19,8 +20,15 @@ rust_kernel::rust_kernel(rust_env *env) :
     rval(0),
     max_sched_id(0),
     sched_reaper(this),
+    osmain_driver(NULL),
     env(env)
 {
+    // Create the single threaded scheduler that will run on the platform's
+    // main thread
+    rust_manual_sched_launcher_factory launchfac;
+    osmain_scheduler = create_scheduler(&launchfac, 1, false);
+    osmain_driver = launchfac.get_driver();
+    sched_reaper.start();
 }
 
 void
@@ -60,24 +68,36 @@ void rust_kernel::free(void *mem) {
 
 rust_sched_id
 rust_kernel::create_scheduler(size_t num_threads) {
+    rust_thread_sched_launcher_factory launchfac;
+    return create_scheduler(&launchfac, num_threads, true);
+}
+
+rust_sched_id
+rust_kernel::create_scheduler(rust_sched_launcher_factory *launchfac,
+                              size_t num_threads, bool allow_exit) {
     rust_sched_id id;
     rust_scheduler *sched;
     {
         scoped_lock with(sched_lock);
-        // If this is the first scheduler then we need to launch
-        // the scheduler reaper.
-        bool start_reaper = sched_table.empty();
+
+        if (sched_table.size() == 1) {
+            // The OS main scheduler may not exit while there are other
+            // schedulers
+            KLOG_("Disallowing osmain scheduler to exit");
+            rust_scheduler *sched =
+                get_scheduler_by_id_nolock(osmain_scheduler);
+            assert(sched != NULL);
+            sched->disallow_exit();
+        }
+
         id = max_sched_id++;
         assert(id != INTPTR_MAX && "Hit the maximum scheduler id");
         sched = new (this, "rust_scheduler")
-            rust_scheduler(this, num_threads, id);
+            rust_scheduler(this, num_threads, id, allow_exit, launchfac);
         bool is_new = sched_table
             .insert(std::pair<rust_sched_id,
                               rust_scheduler*>(id, sched)).second;
         assert(is_new && "Reusing a sched id?");
-        if (start_reaper) {
-            sched_reaper.start();
-        }
     }
     sched->start_task_threads();
     return id;
@@ -86,6 +106,12 @@ rust_kernel::create_scheduler(size_t num_threads) {
 rust_scheduler *
 rust_kernel::get_scheduler_by_id(rust_sched_id id) {
     scoped_lock with(sched_lock);
+    return get_scheduler_by_id_nolock(id);
+}
+
+rust_scheduler *
+rust_kernel::get_scheduler_by_id_nolock(rust_sched_id id) {
+    sched_lock.must_have_lock();
     sched_map::iterator iter = sched_table.find(id);
     if (iter != sched_table.end()) {
         return iter->second;
@@ -117,6 +143,7 @@ rust_kernel::wait_for_schedulers()
     while (!sched_table.empty()) {
         while (!join_list.empty()) {
             rust_sched_id id = join_list.back();
+            KLOG_("Deleting scheduler %d", id);
             join_list.pop_back();
             sched_map::iterator iter = sched_table.find(id);
             assert(iter != sched_table.end());
@@ -124,6 +151,14 @@ rust_kernel::wait_for_schedulers()
             sched_table.erase(iter);
             sched->join_task_threads();
             delete sched;
+            if (sched_table.size() == 1) {
+                KLOG_("Allowing osmain scheduler to exit");
+                // It's only the osmain scheduler left. Tell it to exit
+                rust_scheduler *sched =
+                    get_scheduler_by_id_nolock(osmain_scheduler);
+                assert(sched != NULL);
+                sched->allow_exit();
+            }
         }
         if (!sched_table.empty()) {
             sched_lock.wait();
@@ -131,9 +166,12 @@ rust_kernel::wait_for_schedulers()
     }
 }
 
-/* Called on the main thread to wait for the kernel to exit */
+/* Called on the main thread to run the osmain scheduler to completion,
+   then wait for schedulers to exit */
 int
-rust_kernel::wait_for_exit() {
+rust_kernel::run() {
+    assert(osmain_driver != NULL);
+    osmain_driver->start_main_loop();
     sched_reaper.join();
     return rval;
 }

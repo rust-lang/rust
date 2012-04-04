@@ -16,3 +16,21 @@ rust_thread_sched_launcher::rust_thread_sched_launcher(rust_scheduler *sched,
       rust_thread(SCHED_STACK_SIZE) {
 }
 
+rust_manual_sched_launcher::rust_manual_sched_launcher(rust_scheduler *sched,
+                                                       int id)
+    : rust_sched_launcher(sched, id) {
+}
+
+rust_sched_launcher *
+rust_thread_sched_launcher_factory::create(rust_scheduler *sched, int id) {
+    return new(sched->kernel, "rust_thread_sched_launcher")
+        rust_thread_sched_launcher(sched, id);
+}
+
+rust_sched_launcher *
+rust_manual_sched_launcher_factory::create(rust_scheduler *sched, int id) {
+    assert(launcher == NULL && "I can only track one sched_launcher");
+    launcher = new(sched->kernel, "rust_manual_sched_launcher")
+        rust_manual_sched_launcher(sched, id);
+    return launcher;
+}

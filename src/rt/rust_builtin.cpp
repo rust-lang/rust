@@ -640,6 +640,12 @@ rust_dbg_call(dbg_callback cb, void *data) {
     return cb(data);
 }
 
+extern "C" CDECL rust_sched_id
+rust_osmain_sched_id() {
+    rust_task *task = rust_get_current_task();
+    return task->kernel->osmain_sched_id();
+}
+
 //
 // Local Variables:
 // mode: C++

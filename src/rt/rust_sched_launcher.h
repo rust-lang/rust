@@ -31,8 +31,42 @@ class rust_thread_sched_launcher
 public:
     rust_thread_sched_launcher(rust_scheduler *sched, int id);
     virtual void start() { rust_thread::start(); }
-    virtual void run() { driver.start_main_loop(); }
     virtual void join() { rust_thread::join(); }
+    virtual void run() { driver.start_main_loop(); }
+};
+
+class rust_manual_sched_launcher : public rust_sched_launcher {
+public:
+    rust_manual_sched_launcher(rust_scheduler *sched, int id);
+    virtual void start() { }
+    virtual void join() { }
+    rust_sched_driver *get_driver() { return &driver; };
+};
+
+class rust_sched_launcher_factory {
+public:
+    virtual ~rust_sched_launcher_factory() { }
+    virtual rust_sched_launcher *
+    create(rust_scheduler *sched, int id) = 0;
+};
+
+class rust_thread_sched_launcher_factory
+    : public rust_sched_launcher_factory {
+public:
+    virtual rust_sched_launcher *create(rust_scheduler *sched, int id);
+};
+
+class rust_manual_sched_launcher_factory
+    : public rust_sched_launcher_factory {
+private:
+    rust_manual_sched_launcher *launcher;
+public:
+    rust_manual_sched_launcher_factory() : launcher(NULL) { }
+    virtual rust_sched_launcher *create(rust_scheduler *sched, int id);
+    rust_sched_driver *get_driver() {
+        assert(launcher != NULL);
+        return launcher->get_driver();
+    }
 };
 
 #endif // RUST_SCHED_LAUNCHER_H
