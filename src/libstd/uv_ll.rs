@@ -439,7 +439,10 @@ native mod rustrt {
     fn rust_uv_tcp_init(
         loop_handle: *libc::c_void,
         handle_ptr: *uv_tcp_t) -> libc::c_int;
-    fn rust_uv_buf_init(base: *u8, len: libc::size_t)
+    // FIXME ref #2604 .. ?
+    fn rust_uv_buf_init(out_buf: *uv_buf_t, base: *u8,
+                        len: libc::size_t);
+    fn rust_uv_buf_init_2(++base: *u8, len: libc::size_t)
         -> uv_buf_t;
     fn rust_uv_last_error(loop_handle: *libc::c_void) -> uv_err_t;
     // FIXME ref #2064
@@ -626,8 +629,25 @@ unsafe fn get_base_from_buf(buf: uv_buf_t) -> *u8 {
 unsafe fn get_len_from_buf(buf: uv_buf_t) -> libc::size_t {
     ret rustrt::rust_uv_get_len_from_buf(buf);
 }
-unsafe fn buf_init(input: *u8, len: uint) -> uv_buf_t {
-    ret rustrt::rust_uv_buf_init(input, len);
+unsafe fn buf_init(++input: *u8, len: uint) -> uv_buf_t {
+    let out_buf = { base: ptr::null(), len: 0 as libc::size_t };
+    let out_buf_ptr = ptr::addr_of(out_buf);
+    io::println(#fmt("ll::buf_init - input %u len %u out_buf: %u",
+                     input as uint,
+                     len as uint,
+                     out_buf_ptr as uint));
+    // yuck :/
+    rustrt::rust_uv_buf_init(out_buf_ptr, input, len);
+    //let result = rustrt::rust_uv_buf_init_2(input, len);
+    io::println("after rust_uv_buf_init");
+    let res_base = get_base_from_buf(out_buf);
+    let res_len = get_len_from_buf(out_buf);
+    //let res_base = get_base_from_buf(result);
+    io::println(#fmt("ll::buf_init - result %u len %u",
+                     res_base as uint,
+                     res_len as uint));
+    ret out_buf;
+    //ret result;
 }
 unsafe fn ip4_addr(ip: str, port: int)
 -> sockaddr_in {
