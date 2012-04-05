@@ -2676,21 +2676,18 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         let lhs_t = structurally_resolved_type(fcx, lhs.span, lhs_t);
         ret alt (op, ty::get(lhs_t).struct) {
           (ast::add, ty::ty_vec(lhs_mt)) {
-            // For adding vectors with type L=[M TL] and R=[M TR], the result
-            // is somewhat subtle.  Let L_c=[const TL] and R_c=[const TR] be
-            // const versions of the vectors in L and R.  Next, let T be a
-            // fresh type variable where TL <: T and TR <: T.  Then the result
-            // type is a fresh type variable T1 where T1 <: [const T].  This
-            // allows the result to be either a mut or immutable vector,
-            // depending on external demands.
-            let const_vec_t =
-                ty::mk_vec(tcx, {ty: next_ty_var(fcx),
-                                 mutbl: ast::m_const});
+            // For adding vectors with type L=[ML TL] and R=[MR TR], the the
+            // result [ML T] where TL <: T and TR <: T.  In other words, the
+            // result type is (generally) the LUB of (TL, TR) and takes the
+            // mutability from the LHS.
+            let t_var = next_ty_var(fcx);
+            let const_vec_t = ty::mk_vec(tcx, {ty: t_var,
+                                               mutbl: ast::m_const});
             demand::simple(fcx, lhs.span, const_vec_t, lhs_t);
             let rhs_bot = check_expr_with(fcx, rhs, const_vec_t);
-            let result_var = next_ty_var(fcx);
-            demand::simple(fcx, lhs.span, const_vec_t, result_var);
-            fcx.write_ty(expr.id, result_var);
+            let result_vec_t = ty::mk_vec(tcx, {ty: t_var,
+                                                mutbl: lhs_mt.mutbl});
+            fcx.write_ty(expr.id, result_vec_t);
             lhs_bot | rhs_bot
           }
 
