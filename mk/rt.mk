@@ -72,7 +72,8 @@ RUNTIME_CS_$(1) := \
               rt/rust_box_annihilator.cpp \
               rt/memory_region.cpp \
               rt/boxed_region.cpp \
-              rt/arch/$$(HOST_$(1))/context.cpp
+              rt/arch/$$(HOST_$(1))/context.cpp \
+              rt/arch/$$(HOST_$(1))/gpr.cpp
 
 RUNTIME_S_$(1) := rt/arch/$$(HOST_$(1))/_context.S \
                   rt/arch/$$(HOST_$(1))/ccall.S \
