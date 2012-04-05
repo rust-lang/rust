@@ -136,3 +136,4 @@ rust_dbg_lock_wait
 rust_dbg_lock_signal
 rust_dbg_call
 rust_osmain_sched_id
+rust_compare_and_swap_ptr

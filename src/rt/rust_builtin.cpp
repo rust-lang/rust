@@ -776,6 +776,12 @@ rust_osmain_sched_id() {
     return task->kernel->osmain_sched_id();
 }
 
+extern "C" CDECL bool
+rust_compare_and_swap_ptr(intptr_t *address,
+                          intptr_t oldval, intptr_t newval) {
+    return sync::compare_and_swap(address, oldval, newval);
+}
+
 //
 // Local Variables:
 // mode: C++

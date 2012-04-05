@@ -37,6 +37,11 @@ export extfmt;
 export tuple;
 export to_str;
 
+// FIXME: This creates some APIs that I do not want to commit to. It is
+// currently exported for the uv code in std, but when that code moves into
+// core this should become unexported
+export priv;
+
 // Built-in-type support modules
 
 mod box;
@@ -61,7 +66,8 @@ mod bool;
 
 // For internal use by char, not exported
 mod unicode;
-
+// Do not export
+mod priv;
 
 // Ubiquitous-utility-type modules
 
