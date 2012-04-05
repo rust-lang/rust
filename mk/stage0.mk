@@ -1,12 +1,18 @@
 # Extract the snapshot host compiler
 
+
+
 $(HBIN0_H_$(CFG_HOST_TRIPLE))/rustc$(X):		\
 		$(S)src/snapshots.txt					\
 		$(S)src/etc/get-snapshot.py $(MKFILE_DEPS)
 	@$(call E, fetch: $@)
 #   Note: the variable "SNAPSHOT_FILE" is generally not set, and so
 #   we generally only pass one argument to this script.  
+ifdef CFG_ENABLE_LOCAL_RUST
+	$(Q)$(S)src/etc/local_stage0.sh $(CFG_HOST_TRIPLE) $(CFG_LOCAL_RUST_ROOT)
+else 
 	$(Q)$(S)src/etc/get-snapshot.py $(CFG_HOST_TRIPLE) $(SNAPSHOT_FILE)
+endif 
 	$(Q)touch $@
 
 # Host libs will be extracted by the above rule
