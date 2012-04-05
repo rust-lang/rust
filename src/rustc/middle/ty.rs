@@ -1072,12 +1072,17 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
       // Enums lower to the lowest of their variants.
       ty_enum(did, tps) {
         let mut lowest = kind_sendable;
-        for variant in *enum_variants(cx, did) {
-            for aty in variant.args {
-                // Perform any type parameter substitutions.
-                let arg_ty = substitute_type_params(cx, tps, aty);
-                lowest = lower_kind(lowest, type_kind(cx, arg_ty));
-                if lowest == kind_noncopyable { break; }
+        let variants = enum_variants(cx, did);
+        if vec::len(*variants) == 0u {
+            lowest = kind_noncopyable;
+        } else {
+            for variant in *variants {
+                for aty in variant.args {
+                    // Perform any type parameter substitutions.
+                    let arg_ty = substitute_type_params(cx, tps, aty);
+                    lowest = lower_kind(lowest, type_kind(cx, arg_ty));
+                    if lowest == kind_noncopyable { break; }
+                }
             }
         }
         lowest
