@@ -14,7 +14,7 @@ fn run(i: int) {
         ret;
     }
 
-    let builder = task::task_builder();
+    let builder = task::builder();
     let opts = {
         sched: some({
             mode: task::osmain,
@@ -26,7 +26,7 @@ fn run(i: int) {
     task::unsupervise(builder);
     task::run(builder) {||
         task::yield();
-        let builder = task::task_builder();
+        let builder = task::builder();
         let opts = {
             sched: some({
                 mode: task::single_threaded,

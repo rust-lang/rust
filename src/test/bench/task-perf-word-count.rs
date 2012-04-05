@@ -62,7 +62,7 @@ mod map_reduce {
        [future::future<task::task_result>] {
         let mut results = [];
         for i: str in inputs {
-            let builder = task::task_builder();
+            let builder = task::builder();
             results += [task::future_result(builder)];
             task::run(builder) {|| map_task(ctrl, i)}
         }
@@ -160,7 +160,7 @@ mod map_reduce {
                     // log(error, "creating new reducer for " + k);
                     let p = port();
                     let ch = chan(p);
-                    let builder = task::task_builder();
+                    let builder = task::builder();
                     results += [task::future_result(builder)];
                     task::run(builder) {||reduce_task(k, ch)}
                     c = recv(p);

@@ -30,7 +30,7 @@ export notification;
 export sched_mode;
 export sched_opts;
 export task_opts;
-export task_builder::{};
+export builder::{};
 
 export default_task_opts;
 export get_opts;
@@ -162,8 +162,8 @@ Provides detailed control over the properties and behavior of new tasks.
 // when you try to reuse the builder to spawn a new task. We'll just
 // sidestep that whole issue by making builder's uncopyable and making
 // the run function move them in.
-enum task_builder {
-    task_builder_({
+enum builder {
+    builder_({
         mut opts: task_opts,
         mut gen_body: fn@(+fn~()) -> fn~(),
         can_not_copy: option<comm::port<()>>
@@ -188,27 +188,27 @@ fn default_task_opts() -> task_opts {
     }
 }
 
-fn task_builder() -> task_builder {
-    #[doc = "Construct a task_builder"];
+fn builder() -> builder {
+    #[doc = "Construct a builder"];
 
     let body_identity = fn@(+body: fn~()) -> fn~() { body };
 
-    task_builder_({
+    builder_({
         mut opts: default_task_opts(),
         mut gen_body: body_identity,
         can_not_copy: none
     })
 }
 
-fn get_opts(builder: task_builder) -> task_opts {
-    #[doc = "Get the task_opts associated with a task_builder"];
+fn get_opts(builder: builder) -> task_opts {
+    #[doc = "Get the task_opts associated with a builder"];
 
     builder.opts
 }
 
-fn set_opts(builder: task_builder, opts: task_opts) {
+fn set_opts(builder: builder, opts: task_opts) {
     #[doc = "
-    Set the task_opts associated with a task_builder
+    Set the task_opts associated with a builder
 
     To update a single option use a pattern like the following:
 
@@ -221,7 +221,7 @@ fn set_opts(builder: task_builder, opts: task_opts) {
     builder.opts = opts;
 }
 
-fn add_wrapper(builder: task_builder, gen_body: fn@(+fn~()) -> fn~()) {
+fn add_wrapper(builder: builder, gen_body: fn@(+fn~()) -> fn~()) {
     #[doc = "
     Add a wrapper to the body of the spawned task.
 
@@ -241,7 +241,7 @@ fn add_wrapper(builder: task_builder, gen_body: fn@(+fn~()) -> fn~()) {
     };
 }
 
-fn run(-builder: task_builder, +f: fn~()) {
+fn run(-builder: builder, +f: fn~()) {
     #[doc = "
     Creates and exucutes a new child task
 
@@ -262,7 +262,7 @@ fn run(-builder: task_builder, +f: fn~()) {
 
 /* Builder convenience functions */
 
-fn future_result(builder: task_builder) -> future::future<task_result> {
+fn future_result(builder: builder) -> future::future<task_result> {
     #[doc = "
     Get a future representing the exit status of the task.
 
@@ -295,7 +295,7 @@ fn future_result(builder: task_builder) -> future::future<task_result> {
     }
 }
 
-fn future_task(builder: task_builder) -> future::future<task> {
+fn future_task(builder: builder) -> future::future<task> {
     #[doc = "Get a future representing the handle to the new task"];
 
     let mut po = comm::port();
@@ -309,7 +309,7 @@ fn future_task(builder: task_builder) -> future::future<task> {
     future::from_port(po)
 }
 
-fn unsupervise(builder: task_builder) {
+fn unsupervise(builder: builder) {
     #[doc = "Configures the new task to not propagate failure to its parent"];
 
     set_opts(builder, {
@@ -318,7 +318,7 @@ fn unsupervise(builder: task_builder) {
     });
 }
 
-fn run_listener<A:send>(-builder: task_builder,
+fn run_listener<A:send>(-builder: builder,
                         +f: fn~(comm::port<A>)) -> comm::chan<A> {
     #[doc = "
     Runs a new task while providing a channel from the parent to the child
@@ -355,10 +355,10 @@ fn spawn(+f: fn~()) {
     Sets up a new task with its own call stack and schedules it to run
     the provided unique closure.
 
-    This function is equivalent to `run(new_task_builder(), f)`.
+    This function is equivalent to `run(new_builder(), f)`.
     "];
 
-    run(task_builder(), f);
+    run(builder(), f);
 }
 
 fn spawn_listener<A:send>(+f: fn~(comm::port<A>)) -> comm::chan<A> {
@@ -384,10 +384,10 @@ fn spawn_listener<A:send>(+f: fn~(comm::port<A>)) -> comm::chan<A> {
         };
         // Likewise, the parent has both a 'po' and 'ch'
 
-    This function is equivalent to `run_listener(new_task_builder(), f)`.
+    This function is equivalent to `run_listener(new_builder(), f)`.
     "];
 
-    run_listener(task_builder(), f)
+    run_listener(builder(), f)
 }
 
 fn spawn_sched(mode: sched_mode, +f: fn~()) {
@@ -404,7 +404,7 @@ fn spawn_sched(mode: sched_mode, +f: fn~()) {
     greater than zero.
     "];
 
-    let mut builder = task_builder();
+    let mut builder = builder();
     set_opts(builder, {
         sched: some({
             mode: mode,
@@ -429,7 +429,7 @@ fn try<T:send>(+f: fn~() -> T) -> result<T,()> {
 
     let po = comm::port();
     let ch = comm::chan(po);
-    let mut builder = task_builder();
+    let mut builder = builder();
     unsupervise(builder);
     let result = future_result(builder);
     run(builder) {||
@@ -626,8 +626,8 @@ fn test_spawn_raw_notify() {
 fn test_run_basic() {
     let po = comm::port();
     let ch = comm::chan(po);
-    let builder = task_builder();
-    run(builder) {||
+    let buildr = builder();
+    run(buildr) {||
         comm::send(ch, ());
     }
     comm::recv(po);
@@ -637,29 +637,29 @@ fn test_run_basic() {
 fn test_add_wrapper() {
     let po = comm::port();
     let ch = comm::chan(po);
-    let builder = task_builder();
-    add_wrapper(builder) {|body|
+    let buildr = builder();
+    add_wrapper(buildr) {|body|
         fn~() {
             body();
             comm::send(ch, ());
         }
     }
-    run(builder) {||}
+    run(buildr) {||}
     comm::recv(po);
 }
 
 #[test]
 #[ignore(cfg(target_os = "win32"))]
 fn test_future_result() {
-    let builder = task_builder();
-    let result = future_result(builder);
-    run(builder) {||}
+    let buildr = builder();
+    let result = future_result(buildr);
+    run(buildr) {||}
     assert future::get(result) == success;
 
-    let builder = task_builder();
-    let result = future_result(builder);
-    unsupervise(builder);
-    run(builder) {|| fail }
+    let buildr = builder();
+    let result = future_result(buildr);
+    unsupervise(buildr);
+    run(buildr) {|| fail }
     assert future::get(result) == failure;
 }
 
@@ -667,9 +667,9 @@ fn test_future_result() {
 fn test_future_task() {
     let po = comm::port();
     let ch = comm::chan(po);
-    let builder = task_builder();
-    let task1 = future_task(builder);
-    run(builder) {|| comm::send(ch, get_task()) }
+    let buildr = builder();
+    let task1 = future_task(buildr);
+    run(buildr) {|| comm::send(ch, get_task()) }
     assert future::get(task1) == comm::recv(po);
 }
 
@@ -863,8 +863,8 @@ fn test_avoid_copying_the_body_spawn_listener() {
 #[test]
 fn test_avoid_copying_the_body_run() {
     avoid_copying_the_body {|f|
-        let builder = task_builder();
-        run(builder) {||
+        let buildr = builder();
+        run(buildr) {||
             f();
         }
     }
@@ -873,8 +873,8 @@ fn test_avoid_copying_the_body_run() {
 #[test]
 fn test_avoid_copying_the_body_run_listener() {
     avoid_copying_the_body {|f|
-        let builder = task_builder();
-        run_listener(builder, fn~[move f](_po: comm::port<int>) {
+        let buildr = builder();
+        run_listener(buildr, fn~[move f](_po: comm::port<int>) {
             f();
         });
     }
@@ -892,9 +892,9 @@ fn test_avoid_copying_the_body_try() {
 #[test]
 fn test_avoid_copying_the_body_future_task() {
     avoid_copying_the_body {|f|
-        let builder = task_builder();
-        future_task(builder);
-        run(builder) {||
+        let buildr = builder();
+        future_task(buildr);
+        run(buildr) {||
             f();
         }
     }
@@ -903,9 +903,9 @@ fn test_avoid_copying_the_body_future_task() {
 #[test]
 fn test_avoid_copying_the_body_unsupervise() {
     avoid_copying_the_body {|f|
-        let builder = task_builder();
-        unsupervise(builder);
-        run(builder) {||
+        let buildr = builder();
+        unsupervise(buildr);
+        run(buildr) {||
             f();
         }
     }
@@ -913,19 +913,19 @@ fn test_avoid_copying_the_body_unsupervise() {
 
 #[test]
 fn test_osmain() {
-    let builder = task_builder();
+    let buildr = builder();
     let opts = {
         sched: some({
             mode: osmain,
             native_stack_size: none
         })
-        with get_opts(builder)
+        with get_opts(buildr)
     };
-    set_opts(builder, opts);
+    set_opts(buildr, opts);
 
     let po = comm::port();
     let ch = comm::chan(po);
-    run(builder) {||
+    run(buildr) {||
         comm::send(ch, ());
     }
     comm::recv(po);

@@ -32,7 +32,7 @@ fn test00() {
     // Create and spawn tasks...
     let mut results = [];
     while i < number_of_tasks {
-        let builder = task::task_builder();
+        let builder = task::builder();
         results += [task::future_result(builder)];
         task::run(builder) {||
             test00_start(ch, i, number_of_messages)

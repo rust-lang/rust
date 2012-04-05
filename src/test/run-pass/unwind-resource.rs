@@ -15,7 +15,7 @@ fn f(c: comm::chan<bool>) {
 fn main() {
     let p = comm::port();
     let c = comm::chan(p);
-    let builder = task::task_builder();
+    let builder = task::builder();
     task::unsupervise(builder);
     task::run(builder) {|| f(c); }
     assert comm::recv(p);

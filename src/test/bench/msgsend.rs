@@ -39,7 +39,7 @@ fn run(args: [str]) {
     let to_child = to_child;
     let mut worker_results = [];
     uint::range(0u, workers) {|_i|
-        let builder = task::task_builder();
+        let builder = task::builder();
         worker_results += [task::future_result(builder)];
         task::run(builder) {||
             uint::range(0u, size / workers) {|_i|

@@ -16,7 +16,7 @@ fn test00() {
     let number_of_messages: int = 10;
     let ch = comm::chan(p);
 
-    let builder = task::task_builder();
+    let builder = task::builder();
     let r = task::future_result(builder);
     task::run(builder) {||
         test00_start(ch, number_of_messages);

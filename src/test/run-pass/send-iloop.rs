@@ -22,7 +22,7 @@ fn iloop() {
 
 fn main() {
     uint::range(0u, 16u) {|_i|
-        let builder = task::task_builder();
+        let builder = task::builder();
         task::unsupervise(builder);
         task::run(builder) {|| iloop(); }
     }

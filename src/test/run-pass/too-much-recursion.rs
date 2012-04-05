@@ -5,7 +5,7 @@
 // that it doesn't bring down the whole proc
 
 fn main() {
-    let builder = task::task_builder();
+    let builder = task::builder();
     task::unsupervise(builder);
     task::run(builder) {||
         fn f() { f() };
