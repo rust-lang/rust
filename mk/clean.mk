@@ -23,31 +23,21 @@ clean: clean-misc $(CLEAN_STAGE_RULES)
 
 clean-misc:
 	@$(call E, cleaning)
+	$(Q)find rustllvm rt $(CFG_HOST_TRIPLE)/test \
+         -name '*.[odasS]' -o \
+         -name '*.so' -o      \
+         -name '*.dylib' -o   \
+         -name '*.dll' -o     \
+         -name '*.def' -o     \
+         -name '*.bc' -o      \
+         -name '*.dSYM'       \
+         | xargs rm -f
 	$(Q)rm -f $(RUNTIME_OBJS) $(RUNTIME_DEF)
 	$(Q)rm -f $(RUSTLLVM_LIB_OBJS) $(RUSTLLVM_OBJS_OBJS) $(RUSTLLVM_DEF)
-	$(Q)rm -f $(ML_DEPFILES) $(C_DEPFILES) $(CRATE_DEPFILES)
-	$(Q)rm -f $(ML_DEPFILES:%.d=%.d.tmp)
-	$(Q)rm -f $(C_DEPFILES:%.d=%.d.tmp)
-	$(Q)rm -f $(CRATE_DEPFILES:%.d=%.d.tmp)
 	$(Q)rm -Rf $(DOCS)
 	$(Q)rm -Rf $(GENERATED)
-	$(Q)rm -f tmp/*.log
-	$(Q)rm -f rustllvm/$(CFG_RUSTLLVM) rustllvm/rustllvmbits.a
-	$(Q)rm -f rt/$(CFG_RUNTIME)
-	$(Q)find rustllvm rt -name '*.[odasS]' -delete
-	$(Q)find rustllvm rt -name '*.so' -delete
-	$(Q)find rustllvm rt -name '*.dylib' -delete
-	$(Q)find rustllvm rt -name '*.dll' -delete
-	$(Q)find rustllvm rt -name '*.def' -delete
-	$(Q)rm -Rf $(wildcard rt/*/libuv/Default)
-	$(Q)rm -f test/run_pass_stage2.rc test/run_pass_stage2_driver.rs
+	$(Q)rm -f tmp/*.log tmp/*.rc tmp/*.rs
 	$(Q)rm -Rf $(PKG_NAME)-*.tar.gz dist
-	$(Q)rm -Rf $(foreach ext,out out.tmp                      \
-                             stage0$(X) stage1$(X) stage2$(X) \
-                             bc o s so dll exe dSYM,          \
-                        $(wildcard test/*.$(ext) \
-                                   test/*/*.$(ext) \
-                                   test/bench/*/*.$(ext)))
 	$(Q)rm -Rf $(foreach ext, \
                  html aux cp fn ky log pdf pg toc tp vr cps, \
                  $(wildcard doc/*.$(ext) \
@@ -57,7 +47,6 @@ clean-misc:
 	$(Q)rm -Rf doc/version.md
 	$(Q)rm -Rf $(foreach sub, index styles files search javascript, \
                  $(wildcard doc/*/$(sub)))
-	$(Q)rm -rf libuv
 
 define CLEAN_HOST_STAGE_N
 

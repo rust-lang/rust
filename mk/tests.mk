@@ -66,16 +66,32 @@ endif
 # Main test targets
 ######################################################################
 
+.PHONY: cleantmptestlogs cleantestlibs
+
 cleantmptestlogs:
 	$(Q)rm -f tmp/*.log
 
-check: cleantmptestlogs tidy all check-stage2
+cleantestlibs:
+	$(Q)find $(CFG_HOST_TRIPLE)/test \
+         -name '*.[odasS]' -o \
+         -name '*.so' -o      \
+         -name '*.dylib' -o   \
+         -name '*.dll' -o     \
+         -name '*.def' -o     \
+         -name '*.bc' -o      \
+         -name '*.dSYM' -o    \
+         -name '*.out' -o     \
+         -name '*.err'        \
+         | xargs rm -f
+
+check: cleantestlibs cleantmptestlogs tidy all check-stage2
 	$(Q)$(S)src/etc/check-summary.py tmp/*.log
 
-check-full: cleantmptestlogs tidy all check-stage1 check-stage2 check-stage3
+check-full: cleantestlibs cleantmptestlogs tidy \
+            all check-stage1 check-stage2 check-stage3
 	$(Q)$(S)src/etc/check-summary.py tmp/*.log
 
-check-test: cleantmptestlogs all check-stage2-rfail
+check-test: cleantestlibs cleantmptestlogs all check-stage2-rfail
 	$(Q)$(S)src/etc/check-summary.py tmp/*.log
 
 # Run the tidy script in multiple parts to avoid huge 'echo' commands
@@ -166,16 +182,16 @@ define TEST_STAGEN
 
 check-stage$(1)-T-$(2)-H-$(3): tidy				\
 	check-stage$(1)-T-$(2)-H-$(3)-rustc			\
-        check-stage$(1)-T-$(2)-H-$(3)-core                      \
+	check-stage$(1)-T-$(2)-H-$(3)-core          \
 	check-stage$(1)-T-$(2)-H-$(3)-std			\
 	check-stage$(1)-T-$(2)-H-$(3)-rpass			\
 	check-stage$(1)-T-$(2)-H-$(3)-rfail			\
 	check-stage$(1)-T-$(2)-H-$(3)-cfail			\
 	check-stage$(1)-T-$(2)-H-$(3)-bench			\
-	check-stage$(1)-T-$(2)-H-$(3)-pretty                    \
-        check-stage$(1)-T-$(2)-H-$(3)-rustdoc                   \
-        check-stage$(1)-T-$(2)-H-$(3)-doc-tutorial              \
-        check-stage$(1)-T-$(2)-H-$(3)-doc-ref
+	check-stage$(1)-T-$(2)-H-$(3)-pretty        \
+    check-stage$(1)-T-$(2)-H-$(3)-rustdoc       \
+    check-stage$(1)-T-$(2)-H-$(3)-doc-tutorial  \
+    check-stage$(1)-T-$(2)-H-$(3)-doc-ref
 
 check-stage$(1)-T-$(2)-H-$(3)-core:				\
 	check-stage$(1)-T-$(2)-H-$(3)-core-dummy
