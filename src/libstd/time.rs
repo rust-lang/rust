@@ -22,7 +22,7 @@ native mod rustrt {
 
     // FIXME: The i64 values can be passed by-val when #2064 is fixed.
     fn rust_gmtime(&&sec: i64, &&nsec: i32, &&result: tm);
-    fn rust_localtime(&&sec: i64, &&nsec: i32, &result: tm);
+    fn rust_localtime(&&sec: i64, &&nsec: i32, &&result: tm);
     fn rust_timegm(&&tm: tm, &sec: i64);
     fn rust_mktime(&&tm: tm, &sec: i64);
 }
