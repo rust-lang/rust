@@ -1686,6 +1686,7 @@ purpose, you create a `.rc` crate file, which references any number of
 
 ~~~~ {.ignore}
 #[link(name = "farm", vers = "2.5", author = "mjh")];
+#[crate_type = "lib"];
 mod cow;
 mod chicken;
 mod horse;
@@ -1694,7 +1695,9 @@ mod horse;
 Compiling this file will cause `rustc` to look for files named
 `cow.rs`, `chicken.rs`, `horse.rs` in the same directory as the `.rc`
 file, compile them all together, and, depending on the presence of the
-`--lib` switch, output a shared library or an executable.
+`crate_type = "lib"` attribute, output a shared library or an executable.
+(If the line `#[crate_type = "lib"];` was omitted, `rustc` would create an
+executable.)
 
 The `#[link(...)]` part provides meta information about the module,
 which other crates can use to load the right module. More about that
@@ -1717,9 +1720,9 @@ content to the `poultry` module itself.
 
 ## Using other crates
 
-Having compiled a crate with `--lib`, you can use it in another crate
-with a `use` directive. We've already seen `use std` in several of the
-examples, which loads in the [standard library][std].
+Having compiled a crate that contains the `#[crate_type = "lib"]` attribute,
+you can use it in another crate with a `use` directive. We've already seen
+`use std` in several of the examples, which loads in the [standard library][std].
 
 [std]: http://doc.rust-lang.org/doc/std/index/General.html
 
