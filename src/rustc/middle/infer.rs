@@ -528,11 +528,14 @@ impl unify_methods for infer_ctxt {
         }
     }
 
-    fn flds(a: ty::field, b: ty::field) -> ures {
-        if a.ident != b.ident {
-            ret self.uerr(ty::terr_record_fields(a.ident, b.ident));
+    /* mk_subty passes the "smaller" type as the first argument
+     and the "bigger" type as the second -- so the first arg
+    is the actual type, and the second is the expected type */
+    fn flds(a: ty::field, e: ty::field) -> ures {
+        if e.ident != a.ident {
+            ret self.uerr(ty::terr_record_fields(e.ident, a.ident));
         }
-        self.mts(a.mt, b.mt)
+        self.mts(a.mt, e.mt)
     }
 
     fn tps(as: [ty::t], bs: [ty::t]) -> ures {
@@ -1087,13 +1090,13 @@ fn c_fieldvecs<C:combine>(self: C, as: [ty::field], bs: [ty::field])
     }
 }
 
-fn c_flds<C:combine>(self: C, a: ty::field, b: ty::field) -> cres<ty::field> {
-    if a.ident == b.ident {
-        self.c_mts(a.mt, b.mt).chain {|mt|
-            ok({ident: a.ident, mt: mt})
+fn c_flds<C:combine>(self: C, e: ty::field, a: ty::field) -> cres<ty::field> {
+    if e.ident == a.ident {
+        self.c_mts(e.mt, a.mt).chain {|mt|
+            ok({ident: e.ident, mt: mt})
         }
     } else {
-        err(ty::terr_record_fields(a.ident, b.ident))
+        err(ty::terr_record_fields(e.ident, a.ident))
     }
 }
 
