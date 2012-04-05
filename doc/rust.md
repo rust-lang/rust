@@ -1617,9 +1617,9 @@ is bounds-checked at run-time. When the check fails, it will put the
 task in a _failing state_.
 
 ~~~~
-# let builder = task::task_builder();
-# task::unsupervise(builder);
-# task::run(builder) {||
+# let buildr = task::builder();
+# task::unsupervise(buildr);
+# task::run(buildr) {||
 
 [1, 2, 3, 4][0];
 [mut 'x', 'y'][1] = 'z';
