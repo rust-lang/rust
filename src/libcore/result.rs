@@ -44,7 +44,7 @@ pure fn get_err<T, U: copy>(res: result<T, U>) -> U {
 }
 
 #[doc = "Returns true if the result is `ok`"]
-pure fn success<T, U>(res: result<T, U>) -> bool {
+pure fn is_success<T, U>(res: result<T, U>) -> bool {
     alt res {
       ok(_) { true }
       err(_) { false }
@@ -52,8 +52,8 @@ pure fn success<T, U>(res: result<T, U>) -> bool {
 }
 
 #[doc = "Returns true if the result is `error`"]
-pure fn failure<T, U>(res: result<T, U>) -> bool {
-    !success(res)
+pure fn is_failure<T, U>(res: result<T, U>) -> bool {
+    !is_success(res)
 }
 
 #[doc = "
@@ -113,9 +113,9 @@ impl extensions<T:copy, E:copy> for result<T,E> {
 
     fn get_err() -> E { get_err(self) }
 
-    fn success() -> bool { success(self) }
+    fn is_success() -> bool { is_success(self) }
 
-    fn failure() -> bool { failure(self) }
+    fn is_failure() -> bool { is_failure(self) }
 
     fn chain<U:copy>(op: fn(T) -> result<U,E>) -> result<U,E> {
         chain(self, op)

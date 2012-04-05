@@ -30,10 +30,10 @@ pure fn ne(x: int, y: int) -> bool { ret x != y; }
 pure fn ge(x: int, y: int) -> bool { ret x >= y; }
 pure fn gt(x: int, y: int) -> bool { ret x > y; }
 
-pure fn positive(x: int) -> bool { ret x > 0; }
-pure fn negative(x: int) -> bool { ret x < 0; }
-pure fn nonpositive(x: int) -> bool { ret x <= 0; }
-pure fn nonnegative(x: int) -> bool { ret x >= 0; }
+pure fn is_positive(x: int) -> bool { ret x > 0; }
+pure fn is_negative(x: int) -> bool { ret x < 0; }
+pure fn is_nonpositive(x: int) -> bool { ret x <= 0; }
+pure fn is_nonnegative(x: int) -> bool { ret x >= 0; }
 
 #[doc = "Produce a uint suitable for use in a hash table"]
 pure fn hash(x: int) -> uint { ret x as uint; }
@@ -112,7 +112,7 @@ pure fn compl(i: int) -> int {
 
 #[doc = "Computes the absolute value"]
 fn abs(i: int) -> int {
-    if negative(i) { -i } else { i }
+    if is_negative(i) { -i } else { i }
 }
 
 #[test]

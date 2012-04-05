@@ -19,10 +19,10 @@ pure fn ne(x: i8, y: i8) -> bool { x != y }
 pure fn ge(x: i8, y: i8) -> bool { x >= y }
 pure fn gt(x: i8, y: i8) -> bool { x > y }
 
-pure fn positive(x: i8) -> bool { x > 0i8 }
-pure fn negative(x: i8) -> bool { x < 0i8 }
-pure fn nonpositive(x: i8) -> bool { x <= 0i8 }
-pure fn nonnegative(x: i8) -> bool { x >= 0i8 }
+pure fn is_positive(x: i8) -> bool { x > 0i8 }
+pure fn is_negative(x: i8) -> bool { x < 0i8 }
+pure fn is_nonpositive(x: i8) -> bool { x <= 0i8 }
+pure fn is_nonnegative(x: i8) -> bool { x >= 0i8 }
 
 #[doc = "Iterate over the range [`lo`..`hi`)"]
 fn range(lo: i8, hi: i8, it: fn(i8)) {
@@ -37,5 +37,5 @@ pure fn compl(i: i8) -> i8 {
 
 #[doc = "Computes the absolute value"]
 pure fn abs(i: i8) -> i8 {
-    if negative(i) { -i } else { i }
+    if is_negative(i) { -i } else { i }
 }

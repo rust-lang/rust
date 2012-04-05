@@ -19,10 +19,10 @@ pure fn ne(x: u16, y: u16) -> bool { x != y }
 pure fn ge(x: u16, y: u16) -> bool { x >= y }
 pure fn gt(x: u16, y: u16) -> bool { x > y }
 
-pure fn positive(x: u16) -> bool { x > 0u16 }
-pure fn negative(x: u16) -> bool { x < 0u16 }
-pure fn nonpositive(x: u16) -> bool { x <= 0u16 }
-pure fn nonnegative(x: u16) -> bool { x >= 0u16 }
+pure fn is_positive(x: u16) -> bool { x > 0u16 }
+pure fn is_negative(x: u16) -> bool { x < 0u16 }
+pure fn is_nonpositive(x: u16) -> bool { x <= 0u16 }
+pure fn is_nonnegative(x: u16) -> bool { x >= 0u16 }
 
 #[doc = "Iterate over the range [`lo`..`hi`)"]
 fn range(lo: u16, hi: u16, it: fn(u16)) {
