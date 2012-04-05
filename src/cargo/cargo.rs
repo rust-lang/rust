@@ -872,6 +872,7 @@ Options:
   cargo install
 
     --mode=[system,user,local]   change mode as (system/user/local)
+    --test                       run crate tests before installing
     -g                           equivalent to --mode=user
     -G                           equivalent to --mode=system
 
