@@ -681,15 +681,17 @@ type request_wrapper = {
 };
 
 crust fn after_close_cb(handle: *libc::c_void) {
-    io::println("after uv_close!");
+    log(debug, #fmt("after uv_close! handle ptr: %?",
+                    handle));
 }
 
 crust fn on_alloc_cb(handle: *libc::c_void,
                      ++suggested_size: libc::size_t)
     -> ll::uv_buf_t unsafe {
-    io::println("on_alloc_cb!");
+    log(debug, "on_alloc_cb!");
     let char_ptr = ll::malloc_buf_base_of(suggested_size);
-    io::println(#fmt("on_alloc_cb char_ptr: %u sug. size: %u",
+    log(debug, #fmt("on_alloc_cb h: %? char_ptr: %u sugsize: %u",
+                     handle,
                      char_ptr as uint,
                      suggested_size as uint));
     ret ll::buf_init(char_ptr, suggested_size);
@@ -698,10 +700,10 @@ crust fn on_alloc_cb(handle: *libc::c_void,
 crust fn on_read_cb(stream: *ll::uv_stream_t,
                     nread: libc::ssize_t,
                     ++buf: ll::uv_buf_t) unsafe {
-    io::println(#fmt("CLIENT entering on_read_cb nred: %d", nread));
+    log(debug, #fmt("CLIENT entering on_read_cb nred: %d", nread));
     if (nread > 0) {
         // we have data
-        io::println(#fmt("CLIENT read: data! nread: %d", nread));
+        log(debug, #fmt("CLIENT read: data! nread: %d", nread));
         ll::read_stop(stream);
         let client_data = ll::
             get_data_for_uv_handle(stream as *libc::c_void)
@@ -716,58 +718,58 @@ crust fn on_read_cb(stream: *ll::uv_stream_t,
     }
     else if (nread == -1) {
         // err .. possibly EOF
-        io::println("read: eof!");
+        log(debug, "read: eof!");
     }
     else {
         // nread == 0 .. do nothing, just free buf as below
-        io::println("read: do nothing!");
+        log(debug, "read: do nothing!");
     }
     // when we're done
     ll::free_base_of_buf(buf);
-    io::println("CLIENT exiting on_read_cb");
+    log(debug, "CLIENT exiting on_read_cb");
 }
 
 crust fn on_write_complete_cb(write_req: *ll::uv_write_t,
                               status: libc::c_int) unsafe {
-    io::println(#fmt("CLIENT beginning on_write_complete_cb status: %d",
+    log(debug, #fmt("CLIENT beginning on_write_complete_cb status: %d",
                      status as int));
     let stream = ll::get_stream_handle_from_write_req(write_req);
-    io::println(#fmt("CLIENT on_write_complete_cb: tcp:%d write_handle:%d",
+    log(debug, #fmt("CLIENT on_write_complete_cb: tcp:%d write_handle:%d",
         stream as int, write_req as int));
     let result = ll::read_start(stream, on_alloc_cb, on_read_cb);
-    io::println(#fmt("CLIENT ending on_write_complete_cb .. status: %d",
+    log(debug, #fmt("CLIENT ending on_write_complete_cb .. status: %d",
                      result as int));
 }
 
 crust fn on_connect_cb(connect_req_ptr: *ll::uv_connect_t,
                              status: libc::c_int) unsafe {
-    io::println(#fmt("beginning on_connect_cb .. status: %d",
+    log(debug, #fmt("beginning on_connect_cb .. status: %d",
                      status as int));
     let stream =
         ll::get_stream_handle_from_connect_req(connect_req_ptr);
     if (status == 0i32) {
-        io::println("on_connect_cb: in status=0 if..");
+        log(debug, "on_connect_cb: in status=0 if..");
         let client_data = ll::get_data_for_req(
             connect_req_ptr as *libc::c_void)
             as *request_wrapper;
         let write_handle = (*client_data).write_req as *libc::c_void;
-        io::println(#fmt("on_connect_cb: tcp stream: %d write_handle addr %d",
+        log(debug, #fmt("on_connect_cb: tcp stream: %d write_handle addr %d",
                         stream as int, write_handle as int));
         let write_result = ll::write(write_handle,
                           stream as *libc::c_void,
                           (*client_data).req_buf,
                           on_write_complete_cb);
-        io::println(#fmt("on_connect_cb: ll::write() status: %d",
+        log(debug, #fmt("on_connect_cb: ll::write() status: %d",
                          write_result as int));
     }
     else {
         let test_loop = ll::get_loop_for_uv_handle(
             stream as *libc::c_void);
         let err_msg = ll::get_last_err_info(test_loop);
-        io::println(err_msg);
+        log(debug, err_msg);
         assert false;
     }
-    io::println("finishing on_connect_cb");
+    log(debug, "finishing on_connect_cb");
 }
 
 fn impl_uv_tcp_request(ip: str, port: int, req_str: str,
@@ -785,7 +787,7 @@ fn impl_uv_tcp_request(ip: str, port: int, req_str: str,
     // data field in our uv_connect_t struct
     let req_str_bytes = str::bytes(req_str);
     let req_msg_ptr: *u8 = vec::unsafe::to_ptr(req_str_bytes);
-    io::println(#fmt("req_msg ptr: %u", req_msg_ptr as uint));
+    log(debug, #fmt("req_msg ptr: %u", req_msg_ptr as uint));
     let req_msg = [
         ll::buf_init(req_msg_ptr, vec::len(req_str_bytes))
     ];
@@ -793,7 +795,7 @@ fn impl_uv_tcp_request(ip: str, port: int, req_str: str,
     // this to C..
     let write_handle = ll::write_t();
     let write_handle_ptr = ptr::addr_of(write_handle);
-    io::println(#fmt("tcp req: tcp stream: %d write_handle: %d",
+    log(debug, #fmt("tcp req: tcp stream: %d write_handle: %d",
                      tcp_handle_ptr as int,
                      write_handle_ptr as int));
     let client_data = { writer_handle: write_handle_ptr,
@@ -803,17 +805,17 @@ fn impl_uv_tcp_request(ip: str, port: int, req_str: str,
     let tcp_init_result = ll::tcp_init(
         test_loop as *libc::c_void, tcp_handle_ptr);
     if (tcp_init_result == 0i32) {
-        io::println("sucessful tcp_init_result");
+        log(debug, "sucessful tcp_init_result");
 
-        io::println("building addr...");
+        log(debug, "building addr...");
         let addr = ll::ip4_addr(ip, port);
         // FIXME ref #2064
         let addr_ptr = ptr::addr_of(addr);
-        io::println(#fmt("after build addr in rust. port: %u",
+        log(debug, #fmt("after build addr in rust. port: %u",
                          addr.sin_port as uint));
 
         // this should set up the connection request..
-        io::println(#fmt("before calling tcp_connect .. connect cb ptr: %u ",
+        log(debug, #fmt("before calling tcp_connect .. connect cb ptr: %u ",
                         on_connect_cb as uint));
         let tcp_connect_result = ll::tcp_connect(
             connect_req_ptr, tcp_handle_ptr,
@@ -827,17 +829,17 @@ fn impl_uv_tcp_request(ip: str, port: int, req_str: str,
             ll::set_data_for_uv_handle(
                 tcp_handle_ptr as *libc::c_void,
                 ptr::addr_of(client_data) as *libc::c_void);
-            io::println("before run tcp req loop");
+            log(debug, "before run tcp req loop");
             ll::run(test_loop);
-            io::println("after run tcp req loop");
+            log(debug, "after run tcp req loop");
         }
         else {
-           io::println("ll::tcp_connect() failure");
+           log(debug, "ll::tcp_connect() failure");
            assert false;
         }
     }
     else {
-        io::println("ll::tcp_init() failure");
+        log(debug, "ll::tcp_init() failure");
         assert false;
     }
     ll::loop_delete(test_loop);
@@ -845,12 +847,13 @@ fn impl_uv_tcp_request(ip: str, port: int, req_str: str,
 }
 
 crust fn server_after_close_cb(handle: *libc::c_void) unsafe {
-    io::println("SERVER server stream closed, should exit loop...");
+    log(debug, #fmt("SERVER server stream closed, should exit.. h: %?",
+               handle));
 }
 
 crust fn client_stream_after_close_cb(handle: *libc::c_void)
     unsafe {
-    io::println("SERVER: closed client stream, now closing server stream");
+    log(debug, "SERVER: closed client stream, now closing server stream");
     let client_data = ll::get_data_for_uv_handle(
         handle) as
         *tcp_server_data;
@@ -861,10 +864,7 @@ crust fn client_stream_after_close_cb(handle: *libc::c_void)
 crust fn after_server_resp_write(req: *ll::uv_write_t) unsafe {
     let client_stream_ptr =
         ll::get_stream_handle_from_write_req(req);
-    let client_data = ll::get_data_for_uv_handle(
-        client_stream_ptr as *libc::c_void) as
-        *tcp_server_data;
-    io::println("SERVER: resp sent... closing client stream");
+    log(debug, "SERVER: resp sent... closing client stream");
     ll::close(client_stream_ptr as *libc::c_void,
                   client_stream_after_close_cb)
 }
@@ -874,12 +874,12 @@ crust fn on_server_read_cb(client_stream_ptr: *ll::uv_stream_t,
                            ++buf: ll::uv_buf_t) unsafe {
     if (nread > 0) {
         // we have data
-        io::println(#fmt("SERVER read: data! nread: %d", nread));
+        log(debug, #fmt("SERVER read: data! nread: %d", nread));
 
         // pull out the contents of the write from the client
         let buf_base = ll::get_base_from_buf(buf);
         let buf_len = ll::get_len_from_buf(buf);
-        io::println(#fmt("SERVER buf base: %u, len: %u, nread: %d",
+        log(debug, #fmt("SERVER buf base: %u, len: %u, nread: %d",
                          buf_base as uint,
                          buf_len as uint,
                          nread));
@@ -892,8 +892,8 @@ crust fn on_server_read_cb(client_stream_ptr: *ll::uv_stream_t,
         let server_kill_msg = (*client_data).server_kill_msg;
         let write_req = (*client_data).server_write_req;
         if (str::contains(request_str, server_kill_msg)) {
-            io::println("SERVER: client request contains server_kill_msg!");
-            io::println("SERVER: sending response to client");
+            log(debug, "SERVER: client request contains server_kill_msg!");
+            log(debug, "SERVER: sending response to client");
             ll::read_stop(client_stream_ptr);
             let server_chan = *((*client_data).server_chan);
             comm::send(server_chan, request_str);
@@ -902,39 +902,45 @@ crust fn on_server_read_cb(client_stream_ptr: *ll::uv_stream_t,
                 client_stream_ptr as *libc::c_void,
                 (*client_data).server_resp_buf,
                 after_server_resp_write);
-            io::println(#fmt("SERVER: resp write result: %d",
+            log(debug, #fmt("SERVER: resp write result: %d",
                         write_result as int));
             if (write_result != 0i32) {
-                io::println("bad result for server resp ll::write()");
-                io::println(ll::get_last_err_info(
+                log(debug, "bad result for server resp ll::write()");
+                log(debug, ll::get_last_err_info(
                     ll::get_loop_for_uv_handle(client_stream_ptr
                         as *libc::c_void)));
                 assert false;
             }
         }
         else {
-            io::println("SERVER: client req DOESNT contain server_kill_msg!");
+            log(debug, "SERVER: client req DOESNT contain server_kill_msg!");
         }
     }
     else if (nread == -1) {
         // err .. possibly EOF
-        io::println("read: eof!");
+        log(debug, "read: eof!");
     }
     else {
         // nread == 0 .. do nothing, just free buf as below
-        io::println("read: do nothing!");
+        log(debug, "read: do nothing!");
     }
     // when we're done
     ll::free_base_of_buf(buf);
-    io::println("SERVER exiting on_read_cb");
+    log(debug, "SERVER exiting on_read_cb");
 }
 
 crust fn server_connection_cb(server_stream_ptr:
                                 *ll::uv_stream_t,
                               status: libc::c_int) unsafe {
-    io::println("client connecting!");
+    log(debug, "client connecting!");
     let test_loop = ll::get_loop_for_uv_handle(
                            server_stream_ptr as *libc::c_void);
+    if status != 0i32 {
+        let err_msg = ll::get_last_err_info(test_loop);
+        log(debug, #fmt("server_connect_cb: non-zero status: %?",
+                     err_msg));
+        ret;
+    }
     let server_data = ll::get_data_for_uv_handle(
         server_stream_ptr as *libc::c_void) as *tcp_server_data;
     let client_stream_ptr = (*server_data).client;
@@ -944,7 +950,7 @@ crust fn server_connection_cb(server_stream_ptr:
         client_stream_ptr as *libc::c_void,
         server_data as *libc::c_void);
     if (client_init_result == 0i32) {
-        io::println("successfully initialized client stream");
+        log(debug, "successfully initialized client stream");
         let accept_result = ll::accept(server_stream_ptr as
                                              *libc::c_void,
                                            client_stream_ptr as
@@ -956,22 +962,22 @@ crust fn server_connection_cb(server_stream_ptr:
                                                  on_alloc_cb,
                                                  on_server_read_cb);
             if (read_result == 0i32) {
-                io::println("successful server read start");
+                log(debug, "successful server read start");
             }
             else {
-                io::println(#fmt("server_connection_cb: bad read:%d",
+                log(debug, #fmt("server_connection_cb: bad read:%d",
                                 read_result as int));
                 assert false;
             }
         }
         else {
-            io::println(#fmt("server_connection_cb: bad accept: %d",
+            log(debug, #fmt("server_connection_cb: bad accept: %d",
                         accept_result as int));
             assert false;
         }
     }
     else {
-        io::println(#fmt("server_connection_cb: bad client init: %d",
+        log(debug, #fmt("server_connection_cb: bad client init: %d",
                     client_init_result as int));
         assert false;
     }
@@ -991,7 +997,8 @@ type async_handle_data = {
 };
 
 crust fn async_close_cb(handle: *libc::c_void) {
-    io::println("SERVER: closing async cb...");
+    log(debug, #fmt("SERVER: closing async cb... h: %?",
+               handle));
 }
 
 crust fn continue_async_cb(async_handle: *ll::uv_async_t,
@@ -1003,7 +1010,8 @@ crust fn continue_async_cb(async_handle: *ll::uv_async_t,
     let data = ll::get_data_for_uv_handle(
         async_handle as *libc::c_void) as *async_handle_data;
     let continue_chan = *((*data).continue_chan);
-    comm::send(continue_chan, true);
+    let should_continue = status == 0i32;
+    comm::send(continue_chan, should_continue);
     ll::close(async_handle as *libc::c_void, async_close_cb);
 }
 
@@ -1025,7 +1033,7 @@ fn impl_uv_tcp_server(server_ip: str,
 
     let resp_str_bytes = str::bytes(server_resp_msg);
     let resp_msg_ptr: *u8 = vec::unsafe::to_ptr(resp_str_bytes);
-    io::println(#fmt("resp_msg ptr: %u", resp_msg_ptr as uint));
+    log(debug, #fmt("resp_msg ptr: %u", resp_msg_ptr as uint));
     let resp_msg = [
         ll::buf_init(resp_msg_ptr, vec::len(resp_str_bytes))
     ];
@@ -1061,7 +1069,7 @@ fn impl_uv_tcp_server(server_ip: str,
         let bind_result = ll::tcp_bind(tcp_server_ptr,
                                            server_addr_ptr);
         if (bind_result == 0i32) {
-            io::println("successful uv_tcp_bind, listening");
+            log(debug, "successful uv_tcp_bind, listening");
 
             // uv_listen()
             let listen_result = ll::listen(tcp_server_ptr as
@@ -1081,37 +1089,37 @@ fn impl_uv_tcp_server(server_ip: str,
                     ll::async_send(continue_async_handle_ptr);
                     // uv_run()
                     ll::run(test_loop);
-                    io::println("server uv::run() has returned");
+                    log(debug, "server uv::run() has returned");
                 }
                 else {
-                    io::println(#fmt("uv_async_init failure: %d",
+                    log(debug, #fmt("uv_async_init failure: %d",
                             async_result as int));
                     assert false;
                 }
             }
             else {
-                io::println(#fmt("non-zero result on uv_listen: %d",
+                log(debug, #fmt("non-zero result on uv_listen: %d",
                             listen_result as int));
                 assert false;
             }
         }
         else {
-            io::println(#fmt("non-zero result on uv_tcp_bind: %d",
+            log(debug, #fmt("non-zero result on uv_tcp_bind: %d",
                         bind_result as int));
             assert false;
         }
     }
     else {
-        io::println(#fmt("non-zero result on uv_tcp_init: %d",
+        log(debug, #fmt("non-zero result on uv_tcp_init: %d",
                     tcp_init_result as int));
         assert false;
     }
     ll::loop_delete(test_loop);
 }
 
-#[test]
-#[ignore(cfg(target_os = "freebsd"))]
-fn test_uv_tcp_server_and_request() unsafe {
+// this is the impl for a test that is (maybe) ran on a
+// per-platform/arch basis below
+fn impl_uv_tcp_server_and_request() unsafe {
     let bind_ip = "0.0.0.0";
     let request_ip = "127.0.0.1";
     let port = 8888;
@@ -1135,9 +1143,9 @@ fn test_uv_tcp_server_and_request() unsafe {
     };
 
     // block until the server up is.. possibly a race?
-    io::println("before receiving on server continue_port");
+    log(debug, "before receiving on server continue_port");
     comm::recv(continue_port);
-    io::println("received on continue port, set up tcp client");
+    log(debug, "received on continue port, set up tcp client");
 
     task::spawn_sched(task::manual_threads(1u)) {||
         impl_uv_tcp_request(request_ip, port,
@@ -1152,6 +1160,28 @@ fn test_uv_tcp_server_and_request() unsafe {
     assert str::contains(msg_from_server, server_resp_msg);
 }
 
+// don't run this test on fbsd or 32bit linux
+#[cfg(target_os="win32")]
+#[cfg(target_os="darwin")]
+#[cfg(target_os="linux")]
+mod tcp_and_server_client_test {
+    #[cfg(target_arch="x86_64")]
+    mod impl64 {
+        #[test]
+        fn test_uv_tcp_server_and_request() unsafe {
+            impl_uv_tcp_server_and_request();
+        }
+    }
+    #[cfg(target_arch="x86")]
+    mod impl32 {
+        #[test]
+        #[ignore(cfg(target_os = "linux"))]
+        fn test_uv_tcp_server_and_request() unsafe {
+            impl_uv_tcp_server_and_request();
+        }
+    }
+}
+
 // struct size tests
 #[test]
 #[ignore(cfg(target_os = "freebsd"))]
@@ -1160,7 +1190,7 @@ fn test_uv_struct_size_uv_tcp_t() {
     let rust_handle_size = sys::size_of::<ll::uv_tcp_t>();
     let output = #fmt("uv_tcp_t -- native: %u rust: %u",
                       native_handle_size as uint, rust_handle_size);
-    io::println(output);
+    log(debug, output);
     assert native_handle_size as uint == rust_handle_size;
 }
 #[test]
@@ -1171,7 +1201,7 @@ fn test_uv_struct_size_uv_connect_t() {
     let rust_handle_size = sys::size_of::<ll::uv_connect_t>();
     let output = #fmt("uv_connect_t -- native: %u rust: %u",
                       native_handle_size as uint, rust_handle_size);
-    io::println(output);
+    log(debug, output);
     assert native_handle_size as uint == rust_handle_size;
 }
 #[test]
@@ -1182,7 +1212,7 @@ fn test_uv_struct_size_uv_buf_t() {
     let rust_handle_size = sys::size_of::<ll::uv_buf_t>();
     let output = #fmt("uv_buf_t -- native: %u rust: %u",
                       native_handle_size as uint, rust_handle_size);
-    io::println(output);
+    log(debug, output);
     assert native_handle_size as uint == rust_handle_size;
 }
 #[test]
@@ -1193,7 +1223,7 @@ fn test_uv_struct_size_uv_write_t() {
     let rust_handle_size = sys::size_of::<ll::uv_write_t>();
     let output = #fmt("uv_write_t -- native: %u rust: %u",
                       native_handle_size as uint, rust_handle_size);
-    io::println(output);
+    log(debug, output);
     assert native_handle_size as uint == rust_handle_size;
 }
 
@@ -1205,7 +1235,7 @@ fn test_uv_struct_size_sockaddr_in() {
     let rust_handle_size = sys::size_of::<ll::sockaddr_in>();
     let output = #fmt("sockaddr_in -- native: %u rust: %u",
                       native_handle_size as uint, rust_handle_size);
-    io::println(output);
+    log(debug, output);
     assert native_handle_size as uint == rust_handle_size;
 }
 
@@ -1217,7 +1247,7 @@ fn test_uv_struct_size_uv_async_t() {
     let rust_handle_size = sys::size_of::<ll::uv_async_t>();
     let output = #fmt("uv_async_t -- native: %u rust: %u",
                       native_handle_size as uint, rust_handle_size);
-    io::println(output);
+    log(debug, output);
     assert native_handle_size as uint == rust_handle_size;
 }
 

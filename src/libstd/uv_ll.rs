@@ -517,7 +517,7 @@ unsafe fn tcp_connect(connect_ptr: *uv_connect_t,
                       ++after_connect_cb: *u8)
 -> libc::c_int {
     let address = *addr_ptr;
-    io::println(#fmt("b4 native tcp_connect--addr port: %u cb: %u",
+    log(debug, #fmt("b4 native tcp_connect--addr port: %u cb: %u",
                      address.sin_port as uint, after_connect_cb as uint));
     ret rustrt::rust_uv_tcp_connect(connect_ptr, tcp_handle_ptr,
                                 after_connect_cb, addr_ptr);
@@ -630,18 +630,18 @@ unsafe fn get_len_from_buf(buf: uv_buf_t) -> libc::size_t {
 unsafe fn buf_init(++input: *u8, len: uint) -> uv_buf_t {
     let out_buf = { base: ptr::null(), len: 0 as libc::size_t };
     let out_buf_ptr = ptr::addr_of(out_buf);
-    io::println(#fmt("ll::buf_init - input %u len %u out_buf: %u",
+    log(debug, #fmt("ll::buf_init - input %u len %u out_buf: %u",
                      input as uint,
                      len as uint,
                      out_buf_ptr as uint));
     // yuck :/
     rustrt::rust_uv_buf_init(out_buf_ptr, input, len);
     //let result = rustrt::rust_uv_buf_init_2(input, len);
-    io::println("after rust_uv_buf_init");
+    log(debug, "after rust_uv_buf_init");
     let res_base = get_base_from_buf(out_buf);
     let res_len = get_len_from_buf(out_buf);
     //let res_base = get_base_from_buf(result);
-    io::println(#fmt("ll::buf_init - result %u len %u",
+    log(debug, #fmt("ll::buf_init - result %u len %u",
                      res_base as uint,
                      res_len as uint));
     ret out_buf;
@@ -653,7 +653,7 @@ unsafe fn ip4_addr(ip: str, port: int)
     addr_vec += [0u8]; // add null terminator
     let addr_vec_ptr = vec::unsafe::to_ptr(addr_vec);
     let ip_back = str::from_bytes(addr_vec);
-    io::println(#fmt("vec val: '%s' length: %u",
+    log(debug, #fmt("vec val: '%s' length: %u",
                      ip_back, vec::len(addr_vec)));
     ret rustrt::rust_uv_ip4_addr(addr_vec_ptr,
                                  port as libc::c_int);
