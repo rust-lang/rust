@@ -98,4 +98,6 @@ unsafe fn prepare_loop(loop_ptr: *libc::c_void)
 // we'll drain the port of pending callbacks, processing each
 crust fn interact_poke(async_handle: *libc::c_void) {
     // nothing here, yet.
+    log(debug, #fmt("interact_poke crust.. handle: %?",
+                     async_handle));
 }
