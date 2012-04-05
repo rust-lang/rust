@@ -82,7 +82,7 @@ cleantestlibs:
          -name '*.dSYM' -o    \
          -name '*.out' -o     \
          -name '*.err'        \
-         | xargs rm -f
+         | xargs rm -rf
 
 check: cleantestlibs cleantmptestlogs tidy all check-stage2
 	$(Q)$(S)src/etc/check-summary.py tmp/*.log
