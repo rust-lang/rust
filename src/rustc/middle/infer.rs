@@ -9,6 +9,7 @@ import util::ppaux::{ty_to_str, mt_to_str};
 import result::{result, extensions, ok, err, map, map2, iter2};
 import ty::type_is_bot;
 import driver::session::session;
+import util::common::{indent, indenter};
 
 export infer_ctxt;
 export new_infer_ctxt;
@@ -66,25 +67,31 @@ fn new_infer_ctxt(tcx: ty::ctxt) -> infer_ctxt {
 }
 
 fn mk_subty(cx: infer_ctxt, a: ty::t, b: ty::t) -> ures {
-    #debug[">> mk_subty(%s <: %s)", a.to_str(cx), b.to_str(cx)];
-    cx.commit {||
-        cx.tys(a, b)
+    #debug["mk_subty(%s <: %s)", a.to_str(cx), b.to_str(cx)];
+    indent {||
+        cx.commit {||
+            cx.tys(a, b)
+        }
     }
 }
 
 fn mk_eqty(cx: infer_ctxt, a: ty::t, b: ty::t) -> ures {
-    #debug[">> mk_eqty(%s <: %s)", a.to_str(cx), b.to_str(cx)];
-    cx.commit {||
-        cx.eq_tys(a, b)
+    #debug["mk_eqty(%s <: %s)", a.to_str(cx), b.to_str(cx)];
+    indent {||
+        cx.commit {||
+            cx.eq_tys(a, b)
+        }
     }
 }
 
 fn compare_tys(tcx: ty::ctxt, a: ty::t, b: ty::t) -> ures {
     let infcx = new_infer_ctxt(tcx);
-    #debug[">> compare_tys(%s == %s)", a.to_str(infcx), b.to_str(infcx)];
-    infcx.commit {||
-        mk_subty(infcx, a, b).then {||
-            mk_subty(infcx, b, a)
+    #debug["compare_tys(%s == %s)", a.to_str(infcx), b.to_str(infcx)];
+    indent {||
+        infcx.commit {||
+            mk_subty(infcx, a, b).then {||
+                mk_subty(infcx, b, a)
+            }
         }
     }
 }
@@ -226,24 +233,22 @@ impl unify_methods for infer_ctxt {
         self.set(self.vb, vid, new_v);
     }
 
-    fn commit<T:copy,E:copy>(f: fn() -> result<T,E>) -> result<T,E> {
+    fn commit<T,E>(f: fn() -> result<T,E>) -> result<T,E> {
 
         assert self.vb.bindings.len() == 0u;
         assert self.rb.bindings.len() == 0u;
 
-        let r = self.try(f);
+        let r <- self.try(f);
 
         // TODO---could use a vec::clear() that ran destructors but kept
         // the vec at its currently allocated length
         self.vb.bindings = [];
         self.rb.bindings = [];
 
-        #debug[">> Commit result: %?", r];
-
         ret r;
     }
 
-    fn try<T:copy,E:copy>(f: fn() -> result<T,E>) -> result<T,E> {
+    fn try<T,E>(f: fn() -> result<T,E>) -> result<T,E> {
 
         fn rollback_to<V:copy vid, T:copy>(
             vb: vals_and_bindings<V, T>, len: uint) {
@@ -257,7 +262,7 @@ impl unify_methods for infer_ctxt {
         let vbl = self.vb.bindings.len();
         let rbl = self.rb.bindings.len();
         #debug["try(vbl=%u, rbl=%u)", vbl, rbl];
-        let r = f();
+        let r <- f();
         alt r {
           result::ok(_) { #debug["try--ok"]; }
           result::err(_) {
@@ -309,6 +314,9 @@ impl unify_methods for infer_ctxt {
         a: bound<V>, b: bound<V>,
         merge_op: fn(V,V) -> cres<V>) -> cres<bound<V>> {
 
+        #debug["merge_bnd(%s,%s)", a.to_str(self), b.to_str(self)];
+        let _r = indenter();
+
         alt (a, b) {
           (none, none) {
             ok(none)
@@ -332,6 +340,7 @@ impl unify_methods for infer_ctxt {
         lub: fn(V,V) -> cres<V>,
         glb: fn(V,V) -> cres<V>) -> cres<bounds<V>> {
 
+        let _r = indenter();
         self.merge_bnd(a.ub, b.ub, glb).chain {|ub|
             #debug["glb of ubs %s and %s is %s",
                    a.ub.to_str(self), b.ub.to_str(self),
@@ -383,6 +392,7 @@ impl unify_methods for infer_ctxt {
         // them explicitly gives the type inferencer more
         // information and helps to produce tighter bounds
         // when necessary.
+        indent {||
         self.bnds(a.lb, b.ub).then {||
         self.bnds(b.lb, a.ub).then {||
         self.merge_bnd(a.ub, b.ub, {|x, y| x.glb(self, y)}).chain {|ub|
@@ -395,10 +405,10 @@ impl unify_methods for infer_ctxt {
             // the new bounds must themselves
             // be relatable:
             self.bnds(bnds.lb, bnds.ub).then {||
-            self.set(vb, v_id, bounded(bnds));
-            self.uok()
+                self.set(vb, v_id, bounded(bnds));
+                self.uok()
             }
-        }}}}
+        }}}}}
     }
 
     fn vars<V:copy vid, T:copy to_str st>(
@@ -465,46 +475,29 @@ impl unify_methods for infer_ctxt {
     }
 
     fn regions(a: ty::region, b: ty::region) -> ures {
-        alt (a, b) { // XXX
-          (ty::re_var(a_id), ty::re_var(b_id)) {
-            self.vars(self.rb, a_id, b_id)
-          }
-          (ty::re_var(a_id), _) {
-            self.vart(self.rb, a_id, b)
-          }
-          (_, ty::re_var(b_id)) {
-            self.tvar(self.rb, a, b_id)
-          }
+        #debug["regions(%s <= %s)", a.to_str(self), b.to_str(self)];
+        indent {||
+            alt (a, b) {
+              (ty::re_var(a_id), ty::re_var(b_id)) {
+                self.vars(self.rb, a_id, b_id)
+              }
+              (ty::re_var(a_id), _) {
+                self.vart(self.rb, a_id, b)
+              }
+              (_, ty::re_var(b_id)) {
+                self.tvar(self.rb, a, b_id)
+              }
 
-          (ty::re_free(a_id, _), ty::re_scope(b_id)) |
-          (ty::re_scope(a_id), ty::re_free(b_id, _)) |
-          (ty::re_scope(a_id), ty::re_scope(b_id)) {
-            let rm = self.tcx.region_map;
-            alt region::nearest_common_ancestor(rm, a_id, b_id) {
-              some(r_id) if r_id == a_id { self.uok() }
-              _ { err(ty::terr_regions_differ(false, b, a)) }
+              _ {
+                lub(self).c_regions(a, b).chain {|r|
+                    if b == r {
+                        self.uok()
+                    } else {
+                        err(ty::terr_regions_differ(false, b, a))
+                    }
+                }
+              }
             }
-          }
-
-          // For these types, we cannot define any additional relationship:
-          (ty::re_free(_, _), ty::re_free(_, _)) |
-          (ty::re_bound(_), ty::re_bound(_)) |
-          (ty::re_bound(_), ty::re_free(_, _)) |
-          (ty::re_bound(_), ty::re_scope(_)) |
-          (ty::re_free(_, _), ty::re_bound(_)) |
-          (ty::re_scope(_), ty::re_bound(_)) {
-            if a == b {
-                self.uok()
-            } else {
-                err(ty::terr_regions_differ(false, b, a))
-            }
-          }
-
-          (ty::re_default, _) |
-          (_, ty::re_default) {
-            // actually a compiler bug, I think.
-            err(ty::terr_regions_differ(false, b, a))
-          }
         }
     }
 
@@ -657,16 +650,17 @@ impl unify_methods for infer_ctxt {
         a: bound<T>, b: bound<T>) -> ures {
 
         #debug("bnds(%s <: %s)", a.to_str(self), b.to_str(self));
-
-        alt (a, b) {
-          (none, none) |
-          (some(_), none) |
-          (none, some(_)) {
-            self.uok()
-          }
-          (some(t_a), some(t_b)) {
-            t_a.st(self, t_b)
-          }
+        indent {||
+            alt (a, b) {
+              (none, none) |
+              (some(_), none) |
+              (none, some(_)) {
+                self.uok()
+              }
+              (some(t_a), some(t_b)) {
+                t_a.st(self, t_b)
+              }
+            }
         }
     }
 
@@ -744,7 +738,9 @@ impl unify_methods for infer_ctxt {
 
           (ty::ty_rptr(a_r, a_mt), ty::ty_rptr(b_r, b_mt)) {
             self.mts(a_mt, b_mt).then {||
-                self.regions(a_r, b_r)
+                // Non-obvious: for &a.T to be a subtype of &b.T, &a
+                // must exist for LONGER than &b.  That is, &b <= &a.
+                self.regions(b_r, a_r)
             }
           }
 
@@ -972,8 +968,11 @@ iface combine {
 
     // Combining regions (along with some specific cases that are
     // different for LUB/GLB):
+    fn c_contraregions(
+        a: ty::region, b: ty::region) -> cres<ty::region>;
     fn c_regions(
         a: ty::region, b: ty::region) -> cres<ty::region>;
+    fn c_regions_static(r: ty::region) -> cres<ty::region>;
     fn c_regions_scope_scope(
         a: ty::region, a_id: ast::node_id,
         b: ty::region, b_id: ast::node_id) -> cres<ty::region>;
@@ -1045,11 +1044,13 @@ fn c_var_t<V:copy vid, C:combine, T:copy to_str st>(
     alt self.bnd(a_bounds) {
       some(a_bnd) {
         // If a has an upper bound, return it.
+        #debug["bnd=some(%s)", a_bnd.to_str(self.infcx())];
         ret c_ts(a_bnd, b);
       }
       none {
         // If a does not have an upper bound, make b the upper bound of a
         // and then return b.
+        #debug["bnd=none"];
         let a_bounds = self.with_bnd(a_bounds, b);
         self.infcx().bnds(a_bounds.lb, a_bounds.ub).then {||
             self.infcx().set(vb, a_id, bounded(a_bounds));
@@ -1162,6 +1163,7 @@ fn c_tys<C:combine>(
     // Fast path.
     if a == b { ret ok(a); }
 
+    indent {||
     alt (ty::get(a).struct, ty::get(b).struct) {
       (ty::ty_bot, _) { self.c_bot(b) }
       (_, ty::ty_bot) { self.c_bot(b) }
@@ -1249,7 +1251,7 @@ fn c_tys<C:combine>(
       }
 
       (ty::ty_rptr(a_r, a_mt), ty::ty_rptr(b_r, b_mt)) {
-        self.c_regions(a_r, b_r).chain {|r|
+        self.c_contraregions(a_r, b_r).chain {|r|
             self.c_mts(a_mt, b_mt).chain {|mt|
                 ok(ty::mk_rptr(tcx, r, mt))
             }
@@ -1293,6 +1295,7 @@ fn c_tys<C:combine>(
 
       _ { err(ty::terr_mismatch) }
     }
+    }
 }
 
 fn c_regions<C:combine>(
@@ -1303,7 +1306,12 @@ fn c_regions<C:combine>(
            a.to_str(self.infcx()),
            b.to_str(self.infcx())];
 
+    indent {||
     alt (a, b) {
+      (ty::re_static, r) | (r, ty::re_static) {
+        self.c_regions_static(r)
+      }
+
       (ty::re_var(a_id), ty::re_var(b_id)) {
         c_vars(self, self.infcx().rb,
                a, a_id, b_id,
@@ -1351,6 +1359,7 @@ fn c_regions<C:combine>(
         // actually a compiler bug, I think.
         err(ty::terr_regions_differ(false, b, a))
       }
+    }
     }
 }
 
@@ -1441,6 +1450,16 @@ impl of combine for lub {
 
     fn c_regions(a: ty::region, b: ty::region) -> cres<ty::region> {
         ret c_regions(self, a, b);
+    }
+
+    fn c_contraregions(a: ty::region, b: ty::region) -> cres<ty::region> {
+        ret glb(self.infcx()).c_regions(a, b);
+    }
+
+    fn c_regions_static(_r: ty::region) -> cres<ty::region> {
+        // LUB of `r` and static is always static---what's bigger than
+        // that?
+        ret ok(ty::re_static);
     }
 
     fn c_regions_free_scope(
@@ -1571,6 +1590,16 @@ impl of combine for glb {
 
     fn c_regions(a: ty::region, b: ty::region) -> cres<ty::region> {
         ret c_regions(self, a, b);
+    }
+
+    fn c_contraregions(a: ty::region, b: ty::region) -> cres<ty::region> {
+        ret lub(self.infcx()).c_regions(a, b);
+    }
+
+    fn c_regions_static(r: ty::region) -> cres<ty::region> {
+        // GLB of `r` and static is always `r`; static is bigger than
+        // everything
+        ret ok(r);
     }
 
     fn c_regions_free_scope(

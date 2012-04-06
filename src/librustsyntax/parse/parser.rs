@@ -434,6 +434,8 @@ fn parse_region(p: parser) -> ast::region {
             p.bump(); p.bump();
             if string == "self" {
                 ast::re_self
+            } else if string == "static" {
+                ast::re_static
             } else {
                 ast::re_named(string)
             }

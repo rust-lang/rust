@@ -20,6 +20,7 @@ import std::map::{hashmap, int_hash};
 import std::serialization::{serialize_uint, deserialize_uint};
 import std::ufind;
 import syntax::print::pprust::*;
+import util::common::indent;
 
 export check_crate;
 export method_map;
@@ -365,6 +366,9 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
               }
               ast::re_self | ast::re_named(_) {
                 tcx.region_map.ast_type_to_region.get(region.id)
+              }
+              ast::re_static {
+                ty::re_static
               }
             };
             ty::mk_rptr(tcx, r, ast_mt_to_mt(tcx, mode, mt))
@@ -2472,7 +2476,7 @@ fn check_expr_fn_with_unifier(fcx: @fn_ctxt,
 fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                            expected: ty::t) -> bool {
 
-    #debug("typechecking expr %d (%s)",
+    #debug(">> typechecking expr %d (%s)",
            expr.id, syntax::print::pprust::expr_to_str(expr));
 
     // A generic function to factor out common logic from call and bind
@@ -3382,6 +3386,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
            ty_to_str(tcx, expected));
 
     unify(fcx, expr.span, expected, fcx.expr_ty(expr));
+
+    #debug("<< bot=%b", bot);
     ret bot;
 }
 

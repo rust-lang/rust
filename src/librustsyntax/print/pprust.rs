@@ -322,6 +322,7 @@ fn print_region(s: ps, region: ast::region) {
       ast::re_inferred { /* no-op */ }
       ast::re_named(name) { word(s.s, name); word(s.s, "."); }
       ast::re_self { word(s.s, "self"); word(s.s, "."); }
+      ast::re_static { word(s.s, "static"); word(s.s, "."); }
     }
 }
 

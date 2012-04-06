@@ -140,6 +140,9 @@ fn enc_region(w: io::writer, r: ty::region) {
         w.write_uint(id.to_uint());
         w.write_char('|');
       }
+      ty::re_static {
+        w.write_char('t');
+      }
     }
 }
 fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {

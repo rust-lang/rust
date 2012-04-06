@@ -377,6 +377,8 @@ fn resolve_region_binding(cx: ctxt, span: span, region: ast::region) {
         // }
       }
 
+      ast::re_static { /* fallthrough */ }
+
       ast::re_named(ident) {
         alt cx.scope.resolve_ident(ident) {
           some(r) {

@@ -267,6 +267,7 @@ enum region {
     re_free(node_id, bound_region),
     re_scope(node_id),
     re_var(region_vid),
+    re_static, // effectively `top` in the region lattice
     re_default
 }
 
@@ -1473,6 +1474,7 @@ fn hash_type_structure(st: sty) -> uint {
           re_scope(id)  { ((id as uint) << 2u) | 2u }
           re_var(id)    { (id.to_uint() << 2u) | 3u }
           re_default    { 4u }
+          re_bot        { 5u }
         }
     }
     alt st {

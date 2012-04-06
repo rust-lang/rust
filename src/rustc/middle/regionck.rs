@@ -28,7 +28,7 @@ fn check_expr(expr: @ast::expr, cx: ctxt, visitor: visit::vt<ctxt>) {
             alt ty::get(t).struct {
               ty::ty_rptr(region, _) {
                 alt region {
-                  ty::re_bound(_) | ty::re_free(_, _) {
+                  ty::re_bound(_) | ty::re_free(_, _) | ty::re_static {
                     /* ok */
                   }
                   ty::re_scope(rbi) {

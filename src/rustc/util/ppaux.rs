@@ -36,6 +36,7 @@ fn region_to_str(cx: ctxt, region: region) -> str {
       // These two should not be seen by end-users (very often, anyhow):
       re_var(id)    { #fmt("&%s.", id.to_str()) }
       re_default    { "&(default)." }
+      re_static     { "&static." }
     }
 }
 
