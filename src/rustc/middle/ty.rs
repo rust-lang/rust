@@ -341,7 +341,9 @@ enum type_err {
     terr_mode_mismatch(mode, mode),
     terr_constr_len(uint, uint),
     terr_constr_mismatch(@type_constr, @type_constr),
-    terr_regions_differ(bool /* variance */, region, region),
+    terr_regions_differ(region, region),
+    terr_in_field(@type_err, str),
+    terr_sorts(t, t)
 }
 
 enum param_bound {
@@ -1837,6 +1839,33 @@ fn set_default_mode(cx: ctxt, m: ast::mode, m_def: ast::rmode) {
     }
 }
 
+fn ty_sort_str(cx: ctxt, t: t) -> str {
+    alt get(t).struct {
+      ty_nil | ty_bot | ty_bool | ty_int(_) |
+      ty_uint(_) | ty_float(_) | ty_str | ty_type | ty_opaque_box |
+      ty_opaque_closure_ptr(_) {
+        ty_to_str(cx, t)
+      }
+
+      ty_enum(_, _) { "enum" }
+      ty_box(_) { "@-ptr" }
+      ty_uniq(_) { "~-ptr" }
+      ty_vec(_) { "vector" }
+      ty_ptr(_) { "*-ptr" }
+      ty_rptr(_, _) { "&-ptr" }
+      ty_rec(_) { "record" }
+      ty_fn(_) { "fn" }
+      ty_iface(_, _) { "iface" }
+      ty_class(_, _) { "class" }
+      ty_res(_, _, _) { "resource" }
+      ty_tup(_) { "tuple" }
+      ty_var(_) { "variable" }
+      ty_param(_, _) { "type parameter" }
+      ty_self(_) { "self" }
+      ty_constr(t, _) { ty_sort_str(cx, t) }
+    }
+}
+
 fn type_err_to_str(cx: ctxt, err: type_err) -> str {
     alt err {
       terr_mismatch { ret "types differ"; }
@@ -1876,8 +1905,8 @@ fn type_err_to_str(cx: ctxt, err: type_err) -> str {
       }
       terr_record_mutability { ret "record elements differ in mutability"; }
       terr_record_fields(e_fld, a_fld) {
-        ret "expected a record with field '" + e_fld +
-                "' but found one with field '" + a_fld + "'";
+        ret "expected a record with field `" + e_fld +
+                "` but found one with field `" + a_fld + "`";
       }
       terr_arg_count { ret "incorrect number of function parameters"; }
       terr_mode_mismatch(e_mode, a_mode) {
@@ -1894,15 +1923,17 @@ fn type_err_to_str(cx: ctxt, err: type_err) -> str {
                 " but found one with constraint " +
                 ty_constr_to_str(a_constr);
       }
-      terr_regions_differ(true, region_a, region_b) {
-        ret #fmt("reference lifetime %s does not match reference lifetime %s",
-                 region_to_str(cx, region_a), region_to_str(cx, region_b));
-      }
-      terr_regions_differ(false, subregion, superregion) {
+      terr_regions_differ(subregion, superregion) {
         ret #fmt("references with lifetime %s do not outlive references with \
                   lifetime %s",
                  region_to_str(cx, subregion),
                  region_to_str(cx, superregion));
+      }
+      terr_in_field(err, fname) {
+        ret #fmt("in field `%s`, %s", fname, type_err_to_str(cx, *err));
+      }
+      terr_sorts(exp, act) {
+        ret #fmt("%s vs %s", ty_sort_str(cx, exp), ty_sort_str(cx, act));
       }
     }
 }

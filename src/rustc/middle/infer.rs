@@ -493,7 +493,7 @@ impl unify_methods for infer_ctxt {
                     if b == r {
                         self.uok()
                     } else {
-                        err(ty::terr_regions_differ(false, b, a))
+                        err(ty::terr_regions_differ(b, a))
                     }
                 }
               }
@@ -521,21 +521,23 @@ impl unify_methods for infer_ctxt {
         }
     }
 
-    /* mk_subty passes the "smaller" type as the first argument
-     and the "bigger" type as the second -- so the first arg
-    is the actual type, and the second is the expected type */
-    fn flds(a: ty::field, e: ty::field) -> ures {
-        if e.ident != a.ident {
-            ret self.uerr(ty::terr_record_fields(e.ident, a.ident));
+    fn flds(a: ty::field, b: ty::field) -> ures {
+        if b.ident != a.ident {
+            // Note: the error object expects the "expected" field to
+            // come first, which is generally the supertype (b).
+            ret self.uerr(ty::terr_record_fields(b.ident, a.ident));
         }
-        self.mts(a.mt, e.mt)
+
+        self.mts(a.mt, b.mt).chain_err {|err|
+            self.uerr(ty::terr_in_field(@err, a.ident))
+        }
     }
 
     fn tps(as: [ty::t], bs: [ty::t]) -> ures {
         if check vec::same_length(as, bs) {
             iter2(as, bs) {|a, b| self.tys(a, b) }
         } else {
-            self.uerr(ty::terr_ty_param_size(as.len(), bs.len()))
+            self.uerr(ty::terr_ty_param_size(bs.len(), as.len()))
         }
     }
 
@@ -544,7 +546,7 @@ impl unify_methods for infer_ctxt {
           (_, ast::proto_any) { self.uok() }
           (ast::proto_bare, _) { self.uok() }
           (_, _) if a == b { self.uok() }
-          _ { self.uerr(ty::terr_proto_mismatch(a, b)) }
+          _ { self.uerr(ty::terr_proto_mismatch(b, a)) }
         }
     }
 
@@ -558,7 +560,7 @@ impl unify_methods for infer_ctxt {
                this check is necessary to ensure that the
                annotation in an object method matches the
                declared object type */
-            self.uerr(ty::terr_ret_style_mismatch(a_ret_style, b_ret_style))
+            self.uerr(ty::terr_ret_style_mismatch(b_ret_style, a_ret_style))
         } else {
             self.uok()
         }
@@ -672,7 +674,7 @@ impl unify_methods for infer_ctxt {
                 self.constrs(a, b)
             }
         } else {
-            self.uerr(ty::terr_constr_len(as.len(), bs.len()))
+            self.uerr(ty::terr_constr_len(bs.len(), as.len()))
         }
     }
 
@@ -713,7 +715,7 @@ impl unify_methods for infer_ctxt {
             if ty::mach_sty(cfg, a) == ty::mach_sty(cfg, b) {
                 self.uok()
             } else {
-                self.uerr(ty::terr_mismatch)
+                self.uerr(ty::terr_sorts(b, a))
             }
           }
 
@@ -757,8 +759,8 @@ impl unify_methods for infer_ctxt {
                     self.flds(a, b)
                 }
             } else {
-                ret self.uerr(ty::terr_record_size(a_fields.len(),
-                                             b_fields.len()));
+                ret self.uerr(ty::terr_record_size(b_fields.len(),
+                                                   a_fields.len()));
             }
           }
 
@@ -766,7 +768,7 @@ impl unify_methods for infer_ctxt {
             if check vec::same_length(a_tys, b_tys) {
                 iter2(a_tys, b_tys) {|a,b| self.tys(a,b) }
             } else {
-                self.uerr(ty::terr_tuple_size(a_tys.len(), b_tys.len()))
+                self.uerr(ty::terr_tuple_size(b_tys.len(), a_tys.len()))
             }
           }
 
@@ -780,7 +782,7 @@ impl unify_methods for infer_ctxt {
             }
           }
 
-          _ { self.uerr(ty::terr_mismatch) }
+          _ { self.uerr(ty::terr_sorts(b, a)) }
         }
     }
 }
@@ -1066,7 +1068,7 @@ fn c_tuptys<C:combine>(self: C, as: [ty::t], bs: [ty::t])
     if check vec::same_length(as, bs) {
         map2(as, bs) {|a, b| self.c_tys(a, b) }
     } else {
-        err(ty::terr_tuple_size(as.len(), bs.len()))
+        err(ty::terr_tuple_size(bs.len(), as.len()))
     }
 }
 
@@ -1077,7 +1079,7 @@ fn c_tps<C:combine>(self: C, _did: ast::def_id, as: [ty::t], bs: [ty::t])
     if check vec::same_length(as, bs) {
         map2(as, bs) {|a,b| self.c_tys(a, b) }
     } else {
-        err(ty::terr_ty_param_size(as.len(), bs.len()))
+        err(ty::terr_ty_param_size(bs.len(), as.len()))
     }
 }
 
@@ -1087,17 +1089,17 @@ fn c_fieldvecs<C:combine>(self: C, as: [ty::field], bs: [ty::field])
     if check vec::same_length(as, bs) {
         map2(as, bs) {|a,b| c_flds(self, a, b) }
     } else {
-        err(ty::terr_record_size(as.len(), bs.len()))
+        err(ty::terr_record_size(bs.len(), as.len()))
     }
 }
 
-fn c_flds<C:combine>(self: C, e: ty::field, a: ty::field) -> cres<ty::field> {
-    if e.ident == a.ident {
-        self.c_mts(e.mt, a.mt).chain {|mt|
-            ok({ident: e.ident, mt: mt})
+fn c_flds<C:combine>(self: C, a: ty::field, b: ty::field) -> cres<ty::field> {
+    if a.ident == b.ident {
+        self.c_mts(a.mt, b.mt).chain {|mt|
+            ok({ident: a.ident, mt: mt})
         }
     } else {
-        err(ty::terr_record_fields(e.ident, a.ident))
+        err(ty::terr_record_fields(b.ident, a.ident))
     }
 }
 
@@ -1196,7 +1198,7 @@ fn c_tys<C:combine>(
         if ty::mach_sty(cfg, a) == ty::mach_sty(cfg, b) {
             ok(a)
         } else {
-            err(ty::terr_mismatch)
+            err(ty::terr_sorts(b, a))
         }
       }
 
@@ -1293,7 +1295,7 @@ fn c_tys<C:combine>(
         }
       }
 
-      _ { err(ty::terr_mismatch) }
+      _ { err(ty::terr_sorts(b, a)) }
     }
     }
 }
@@ -1350,14 +1352,14 @@ fn c_regions<C:combine>(
             #debug["... no, %s != %s.",
                    a.to_str(self.infcx()),
                    b.to_str(self.infcx())];
-            err(ty::terr_regions_differ(false, b, a))
+            err(ty::terr_regions_differ(b, a))
         }
       }
 
       (ty::re_default, _) |
       (_, ty::re_default) {
         // actually a compiler bug, I think.
-        err(ty::terr_regions_differ(false, b, a))
+        err(ty::terr_regions_differ(b, a))
       }
     }
     }
@@ -1480,7 +1482,7 @@ impl of combine for lub {
         let rm = self.infcx().tcx.region_map;
         alt region::nearest_common_ancestor(rm, a_id, b_id) {
           some(r_id) { ok(ty::re_scope(r_id)) }
-          _ { err(ty::terr_regions_differ(false, b, a)) }
+          _ { err(ty::terr_regions_differ(b, a)) }
         }
     }
 }
@@ -1623,7 +1625,7 @@ impl of combine for glb {
         alt region::nearest_common_ancestor(rm, a_id, b_id) {
           some(r_id) if a_id == r_id { ok(b) }
           some(r_id) if b_id == r_id { ok(a) }
-          _ { err(ty::terr_regions_differ(false, b, a)) }
+          _ { err(ty::terr_regions_differ(b, a)) }
         }
     }
 }

@@ -3,7 +3,7 @@
 
 fn bad_bang(i: uint) -> ! {
     if i < 0u { } else { fail; }
-    //!^ ERROR expected `_|_` but found `()` (types differ)
+    //!^ ERROR expected `_|_` but found `()`
 }
 
 fn main() { bad_bang(5u); }
