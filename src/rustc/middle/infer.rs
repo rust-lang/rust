@@ -534,8 +534,13 @@ impl unify_methods for infer_ctxt {
     }
 
     fn tps(as: [ty::t], bs: [ty::t]) -> ures {
+        // Note: type parameters are always treated as *invariant*
+        // (otherwise the type system would be unsound).  In the
+        // future we could allow type parameters to declare a
+        // variance.  In that case, you would have to change c_tps()
+        // for LUB/GLB, which currently always returns `as`.
         if check vec::same_length(as, bs) {
-            iter2(as, bs) {|a, b| self.tys(a, b) }
+            iter2(as, bs) {|a, b| self.eq_tys(a, b) }
         } else {
             self.uerr(ty::terr_ty_param_size(bs.len(), as.len()))
         }
@@ -1080,12 +1085,8 @@ fn c_tuptys<C:combine>(self: C, as: [ty::t], bs: [ty::t])
 
 fn c_tps<C:combine>(self: C, _did: ast::def_id, as: [ty::t], bs: [ty::t])
     -> cres<[ty::t]> {
-    // FIXME #1973 lookup the declared variance of the type parameters
-    // based on did
-    if check vec::same_length(as, bs) {
-        map2(as, bs) {|a,b| self.c_tys(a, b) }
-    } else {
-        err(ty::terr_ty_param_size(bs.len(), as.len()))
+    self.infcx().tps(as, bs).then {||
+        ok(as)
     }
 }
 
@@ -1228,7 +1229,6 @@ fn c_tys<C:combine>(
 
       (ty::ty_class(a_id, a_tps), ty::ty_class(b_id, b_tps))
       if a_id == b_id {
-        // FIXME variance
         c_tps(self, a_id, a_tps, b_tps).chain {|tps|
             ok(ty::mk_class(tcx, a_id, tps))
         }
