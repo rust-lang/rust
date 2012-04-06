@@ -19,7 +19,7 @@ import std::map::hashmap;
 fn check_unused_vars(fcx: fn_ctxt) {
 
     // FIXME: could be more efficient
-    for c: norm_constraint in constraints(fcx) {
+    for constraints(fcx).each {|c|
         alt c.c.node {
           ninit(id, v) {
             if !vec_contains(fcx.enclosing.used_vars, id) && v[0] != '_' as u8

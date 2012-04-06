@@ -93,7 +93,7 @@ fn load_link(mis: [@ast::meta_item]) -> (option<str>,
     let mut name = none;
     let mut vers = none;
     let mut uuid = none;
-    for a: @ast::meta_item in mis {
+    for mis.each {|a|
         alt a.node {
             ast::meta_name_value(v, {node: ast::lit_str(s), span: _}) {
                 alt v {
@@ -128,7 +128,7 @@ fn load_pkg(filename: str) -> option<pkg> {
     let mut sigs = none;
     let mut crate_type = none;
 
-    for a in c.node.attrs {
+    for c.node.attrs.each {|a|
         alt a.node.value.node {
             ast::meta_name_value(v, {node: ast::lit_str(s), span: _}) {
                 alt v {
@@ -273,7 +273,7 @@ fn load_one_source_package(&src: source, p: map::hashmap<str, json::json>) {
     let mut tags = [];
     alt p.find("tags") {
         some(json::list(js)) {
-            for j in js {
+            for js.each {|j|
                 alt j {
                     json::string(_j) { vec::grow(tags, 1u, _j); }
                     _ { }
@@ -313,7 +313,7 @@ fn load_source_packages(&c: cargo, &src: source) {
     let pkgstr = io::read_whole_file_str(pkgfile);
     alt json::from_str(result::get(pkgstr)) {
         ok(json::list(js)) {
-            for _j: json::json in js {
+            for js.each {|_j|
                 alt _j {
                     json::dict(_p) {
                         load_one_source_package(src, _p);
@@ -423,7 +423,7 @@ fn configure(opts: options) -> cargo {
 
 fn for_each_package(c: cargo, b: fn(source, package)) {
     c.sources.values({ |v|
-        for p in copy v.packages {
+        for vec::each(copy v.packages) {|p|
             b(v, p);
         }
     })
@@ -432,7 +432,7 @@ fn for_each_package(c: cargo, b: fn(source, package)) {
 // Runs all programs in directory <buildpath>
 fn run_programs(buildpath: str) {
     let newv = os::list_dir_path(buildpath);
-    for ct: str in newv {
+    for newv.each {|ct|
         run::run_program(ct, []);
     }
 }
@@ -470,7 +470,7 @@ fn install_one_crate(c: cargo, path: str, cf: str) {
     };
     let newv = os::list_dir_path(buildpath);
     let exec_suffix = os::exe_suffix();
-    for ct: str in newv {
+    for newv.each {|ct|
         if (exec_suffix != "" && str::ends_with(ct, exec_suffix)) ||
             (exec_suffix == "" && !str::starts_with(path::basename(ct),
                                                     "lib")) {
@@ -528,7 +528,7 @@ fn install_source(c: cargo, path: str) {
         fail "This doesn't look like a rust package (no .rc files).";
     }
 
-    for cf: str in cratefiles {
+    for cratefiles.each {|cf|
         let p = load_pkg(cf);
         alt p {
             none { cont; }
@@ -618,7 +618,8 @@ fn install_uuid(c: cargo, wd: str, uuid: str) {
         ret;
     }
     error("Found multiple packages:");
-    for (s,p) in ps {
+    for ps.each {|elt|
+        let (s,p) = elt;
         info("  " + s.name + "/" + p.uuid + " (" + p.name + ")");
     }
 }
@@ -639,7 +640,8 @@ fn install_named(c: cargo, wd: str, name: str) {
         ret;
     }
     error("Found multiple packages:");
-    for (s,p) in ps {
+    for ps.each {|elt|
+        let (s,p) = elt;
         info("  " + s.name + "/" + p.uuid + " (" + p.name + ")");
     }
 }

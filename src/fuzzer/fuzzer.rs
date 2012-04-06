@@ -25,7 +25,7 @@ fn find_rust_files(&files: [str], path: str) {
     } else if os::path_is_dir(path)
         && !contains(path, "compile-fail")
         && !contains(path, "build") {
-        for p in os::list_dir_path(path) {
+        for os::list_dir_path(path).each {|p|
             find_rust_files(files, p);
         }
     }
@@ -439,7 +439,7 @@ fn content_is_dangerous_to_run(code: str) -> bool {
          "unsafe",
          "log"];    // python --> rust pipe deadlock?
 
-    for p: str in dangerous_patterns { if contains(code, p) { ret true; } }
+    for dangerous_patterns.each {|p| if contains(code, p) { ret true; } }
     ret false;
 }
 
@@ -447,7 +447,7 @@ fn content_is_dangerous_to_compile(code: str) -> bool {
     let dangerous_patterns =
         ["xfail-test"];
 
-    for p: str in dangerous_patterns { if contains(code, p) { ret true; } }
+    for dangerous_patterns.each {|p| if contains(code, p) { ret true; } }
     ret false;
 }
 
@@ -462,7 +462,7 @@ fn content_might_not_converge(code: str) -> bool {
          "\n\n\n\n\n"  // https://github.com/mozilla/rust/issues/850
         ];
 
-    for p: str in confusing_patterns { if contains(code, p) { ret true; } }
+    for confusing_patterns.each {|p| if contains(code, p) { ret true; } }
     ret false;
 }
 
@@ -475,7 +475,7 @@ fn file_might_not_converge(filename: str) -> bool {
     ];
 
 
-    for f in confusing_files { if contains(filename, f) { ret true; } }
+    for confusing_files.each {|f| if contains(filename, f) { ret true; } }
 
     ret false;
 }
@@ -509,7 +509,7 @@ fn check_roundtrip_convergence(code: @str, maxIters: uint) {
 
 fn check_convergence(files: [str]) {
     #error("pp convergence tests: %u files", vec::len(files));
-    for file in files {
+    for files.each {|file|
         if !file_might_not_converge(file) {
             let s = @result::get(io::read_whole_file_str(file));
             if !content_might_not_converge(*s) {
@@ -522,7 +522,7 @@ fn check_convergence(files: [str]) {
 }
 
 fn check_variants(files: [str], cx: context) {
-    for file in files {
+    for files.each {|file|
         if cx.mode == tm_converge && file_might_not_converge(file) {
             #error("Skipping convergence test based on file_might_not_converge");
             cont;

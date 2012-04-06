@@ -37,13 +37,13 @@ fn check_expr(tcx: ty::ctxt, ex: @expr, &&s: (), v: visit::vt<()>) {
 fn check_arms(tcx: ty::ctxt, arms: [arm]) {
     let mut i = 0;
     /* Check for unreachable patterns */
-    for arm: arm in arms {
-        for arm_pat: @pat in arm.pats {
+    for arms.each {|arm|
+        for arm.pats.each {|arm_pat|
             let mut reachable = true;
             let mut j = 0;
             while j < i {
                 if option::is_none(arms[j].guard) {
-                    for prev_pat: @pat in arms[j].pats {
+                    for vec::each(arms[j].pats) {|prev_pat|
                         if pattern_supersedes(tcx, prev_pat, arm_pat) {
                             reachable = false;
                         }
@@ -72,7 +72,7 @@ fn check_exhaustive(tcx: ty::ctxt, sp: span, pats: [@pat]) {
         ret;
     }
     // If there a non-refutable pattern in the set, we're okay.
-    for pat in pats { if !is_refutable(tcx, pat) { ret; } }
+    for pats.each {|pat| if !is_refutable(tcx, pat) { ret; } }
 
     alt ty::get(ty::node_id_to_type(tcx, pats[0].id)).struct {
       ty::ty_enum(id, _) {
@@ -90,7 +90,7 @@ fn check_exhaustive(tcx: ty::ctxt, sp: span, pats: [@pat]) {
       }
       ty::ty_tup(ts) {
         let cols = vec::to_mut(vec::from_elem(ts.len(), []));
-        for p in pats {
+        for pats.each {|p|
             alt raw_pat(p).node {
               pat_tup(sub) {
                 vec::iteri(sub) {|i, sp| cols[i] += [sp];}
@@ -103,7 +103,7 @@ fn check_exhaustive(tcx: ty::ctxt, sp: span, pats: [@pat]) {
       ty::ty_rec(fs) {
         let cols = vec::from_elem(fs.len(), {mut wild: false,
                                             mut pats: []});
-        for p in pats {
+        for pats.each {|p|
             alt raw_pat(p).node {
               pat_rec(sub, _) {
                 vec::iteri(fs) {|i, field|
@@ -122,7 +122,7 @@ fn check_exhaustive(tcx: ty::ctxt, sp: span, pats: [@pat]) {
       }
       ty::ty_bool {
         let mut saw_true = false, saw_false = false;
-        for p in pats {
+        for pats.each {|p|
             alt raw_pat(p).node {
               pat_lit(@{node: expr_lit(@{node: lit_bool(b), _}), _}) {
                 if b { saw_true = true; }
@@ -160,7 +160,7 @@ fn check_exhaustive_enum(tcx: ty::ctxt, enum_id: def_id, sp: span,
          cols: vec::to_mut(vec::from_elem(v.args.len(), []))}
     });
 
-    for pat in pats {
+    for pats.each {|pat|
         let pat = raw_pat(pat);
         alt tcx.def_map.get(pat.id) {
           def_variant(_, id) {
@@ -193,7 +193,7 @@ fn check_exhaustive_enum(tcx: ty::ctxt, enum_id: def_id, sp: span,
 fn pattern_supersedes(tcx: ty::ctxt, a: @pat, b: @pat) -> bool {
     fn patterns_supersede(tcx: ty::ctxt, as: [@pat], bs: [@pat]) -> bool {
         let mut i = 0;
-        for a: @pat in as {
+        for as.each {|a|
             if !pattern_supersedes(tcx, a, bs[i]) { ret false; }
             i += 1;
         }
@@ -202,9 +202,9 @@ fn pattern_supersedes(tcx: ty::ctxt, a: @pat, b: @pat) -> bool {
     fn field_patterns_supersede(tcx: ty::ctxt, fas: [field_pat],
                                 fbs: [field_pat]) -> bool {
         let wild = @{id: 0, node: pat_wild, span: dummy_sp()};
-        for fa: field_pat in fas {
+        for fas.each {|fa|
             let mut pb = wild;
-            for fb: field_pat in fbs {
+            for fbs.each {|fb|
                 if fa.ident == fb.ident { pb = fb.pat; }
             }
             if !pattern_supersedes(tcx, fa.pat, pb) { ret false; }
@@ -301,17 +301,17 @@ fn is_refutable(tcx: ty::ctxt, pat: @pat) -> bool {
       pat_wild | pat_ident(_, none) { false }
       pat_lit(_) | pat_range(_, _) { true }
       pat_rec(fields, _) {
-        for it: field_pat in fields {
+        for fields.each {|it|
             if is_refutable(tcx, it.pat) { ret true; }
         }
         false
       }
       pat_tup(elts) {
-        for elt in elts { if is_refutable(tcx, elt) { ret true; } }
+        for elts.each {|elt| if is_refutable(tcx, elt) { ret true; } }
         false
       }
       pat_enum(_, args) {
-        for p: @pat in args { if is_refutable(tcx, p) { ret true; } }
+        for args.each {|p| if is_refutable(tcx, p) { ret true; } }
         false
       }
     }

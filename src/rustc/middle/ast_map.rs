@@ -115,7 +115,7 @@ fn map_decoded_item(sess: session, map: map, path: path, ii: inlined_item) {
 
 fn map_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
           sp: codemap::span, id: node_id, cx: ctx, v: vt) {
-    for a in decl.inputs {
+    for decl.inputs.each {|a|
         cx.map.insert(a.id, node_arg(a, cx.local_id));
         cx.local_id += 1u;
     }
@@ -162,7 +162,7 @@ fn map_item(i: @item, cx: ctx, v: vt) {
     alt i.node {
       item_impl(_, _, _, ms) {
         let impl_did = ast_util::local_def(i.id);
-        for m in ms {
+        for ms.each {|m|
             map_method(impl_did, extend(cx, i.ident), m, cx);
         }
       }
@@ -171,7 +171,7 @@ fn map_item(i: @item, cx: ctx, v: vt) {
         cx.map.insert(dtor_id, node_item(i, item_path));
       }
       item_enum(vs, _) {
-        for v in vs {
+        for vs.each {|v|
             cx.map.insert(v.node.id, node_variant(
                 v, i, extend(cx, i.ident)));
         }
@@ -181,7 +181,7 @@ fn map_item(i: @item, cx: ctx, v: vt) {
           either::left(msg) { cx.sess.span_fatal(i.span, msg); }
           either::right(abi) { abi }
         };
-        for nitem in nm.items {
+        for nm.items.each {|nitem|
             cx.map.insert(nitem.id, node_native_item(nitem, abi, @cx.path));
         }
       }
@@ -189,7 +189,7 @@ fn map_item(i: @item, cx: ctx, v: vt) {
           cx.map.insert(ctor.node.id, node_ctor(i, item_path));
           let d_id = ast_util::local_def(i.id);
           let p = extend(cx, i.ident);
-          for ci in items {
+          for items.each {|ci|
            // only need to handle methods
            alt ci.node {
              class_method(m) { map_method(d_id, p, m, cx); }
@@ -212,7 +212,7 @@ fn map_item(i: @item, cx: ctx, v: vt) {
 fn map_view_item(vi: @view_item, cx: ctx, _v: vt) {
     alt vi.node {
       view_item_export(vps) {
-        for vp in vps {
+        for vps.each {|vp|
             let (id, name) = alt vp.node {
               view_path_simple(nm, _, id) { (id, nm) }
               view_path_glob(pth, id) | view_path_list(pth, _, id) {

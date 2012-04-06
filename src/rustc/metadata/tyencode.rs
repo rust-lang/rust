@@ -181,19 +181,19 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
         w.write_str("t[");
         w.write_str(cx.ds(def));
         w.write_char('|');
-        for t: ty::t in tys { enc_ty(w, cx, t); }
+        for tys.each {|t| enc_ty(w, cx, t); }
         w.write_char(']');
       }
       ty::ty_iface(def, tys) {
         w.write_str("x[");
         w.write_str(cx.ds(def));
         w.write_char('|');
-        for t: ty::t in tys { enc_ty(w, cx, t); }
+        for tys.each {|t| enc_ty(w, cx, t); }
         w.write_char(']');
       }
       ty::ty_tup(ts) {
         w.write_str("T[");
-        for t in ts { enc_ty(w, cx, t); }
+        for ts.each {|t| enc_ty(w, cx, t); }
         w.write_char(']');
       }
       ty::ty_box(mt) { w.write_char('@'); enc_mt(w, cx, mt); }
@@ -207,7 +207,7 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
       ty::ty_vec(mt) { w.write_char('I'); enc_mt(w, cx, mt); }
       ty::ty_rec(fields) {
         w.write_str("R[");
-        for field: ty::field in fields {
+        for fields.each {|field|
             w.write_str(field.ident);
             w.write_char('=');
             enc_mt(w, cx, field.mt);
@@ -223,7 +223,7 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
         w.write_str(cx.ds(def));
         w.write_char('|');
         enc_ty(w, cx, ty);
-        for t: ty::t in tps { enc_ty(w, cx, t); }
+        for tps.each {|t| enc_ty(w, cx, t); }
         w.write_char(']');
       }
       ty::ty_var(id) {
@@ -238,7 +238,7 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
       }
       ty::ty_self(tps) {
         w.write_str("s[");
-        for t in tps { enc_ty(w, cx, t); }
+        for tps.each {|t| enc_ty(w, cx, t); }
         w.write_char(']');
       }
       ty::ty_type { w.write_char('Y'); }
@@ -248,7 +248,7 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
       ty::ty_constr(ty, cs) {
         w.write_str("A[");
         enc_ty(w, cx, ty);
-        for tc: @ty::type_constr in cs { enc_ty_constr(w, cx, tc); }
+        for cs.each {|tc| enc_ty_constr(w, cx, tc); }
         w.write_char(']');
       }
       ty::ty_opaque_box { w.write_char('B'); }
@@ -260,7 +260,7 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
           w.write_str(s);
           #debug("~~~~ %s", "|");
           w.write_str("|");
-          for t: ty::t in tys { enc_ty(w, cx, t); }
+          for tys.each {|t| enc_ty(w, cx, t); }
           #debug("~~~~ %s", "]");
           w.write_char(']');
       }
@@ -288,13 +288,13 @@ fn enc_mode(w: io::writer, cx: @ctxt, m: mode) {
 
 fn enc_ty_fn(w: io::writer, cx: @ctxt, ft: ty::fn_ty) {
     w.write_char('[');
-    for arg: ty::arg in ft.inputs {
+    for ft.inputs.each {|arg|
         enc_mode(w, cx, arg.mode);
         enc_ty(w, cx, arg.ty);
     }
     w.write_char(']');
     let mut colon = true;
-    for c: @ty::constr in ft.constraints {
+    for ft.constraints.each {|c|
         if colon {
             w.write_char(':');
             colon = false;
@@ -314,7 +314,7 @@ fn enc_constr(w: io::writer, cx: @ctxt, c: @ty::constr) {
     w.write_str(cx.ds(c.node.id));
     w.write_char('|');
     let mut semi = false;
-    for a: @constr_arg in c.node.args {
+    for c.node.args.each {|a|
         if semi { w.write_char(';'); } else { semi = true; }
         alt a.node {
           carg_base { w.write_char('*'); }
@@ -331,7 +331,7 @@ fn enc_ty_constr(w: io::writer, cx: @ctxt, c: @ty::type_constr) {
     w.write_str(cx.ds(c.node.id));
     w.write_char('|');
     let mut semi = false;
-    for a: @ty::ty_constr_arg in c.node.args {
+    for c.node.args.each {|a|
         if semi { w.write_char(';'); } else { semi = true; }
         alt a.node {
           carg_base { w.write_char('*'); }
@@ -343,7 +343,7 @@ fn enc_ty_constr(w: io::writer, cx: @ctxt, c: @ty::type_constr) {
 }
 
 fn enc_bounds(w: io::writer, cx: @ctxt, bs: @[ty::param_bound]) {
-    for bound in *bs {
+    for vec::each(*bs) {|bound|
         alt bound {
           ty::bound_send { w.write_char('S'); }
           ty::bound_copy { w.write_char('C'); }

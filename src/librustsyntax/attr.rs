@@ -46,7 +46,7 @@ fn find_linkage_metas(attrs: [ast::attribute]) -> [@ast::meta_item] {
 
 fn find_linkage_attrs(attrs: [ast::attribute]) -> [ast::attribute] {
     let mut found = [];
-    for attr: ast::attribute in find_attrs_by_name(attrs, "link") {
+    for find_attrs_by_name(attrs, "link").each {|attr|
         alt attr.node.value.node {
           ast::meta_list(_, _) { found += [attr] }
           _ { #debug("ignoring link attribute that has incorrect type"); }
@@ -150,7 +150,7 @@ fn attr_meta(attr: ast::attribute) -> @ast::meta_item { @attr.node.value }
 // Get the meta_items from inside a vector of attributes
 fn attr_metas(attrs: [ast::attribute]) -> [@ast::meta_item] {
     let mut mitems = [];
-    for a: ast::attribute in attrs { mitems += [attr_meta(a)]; }
+    for attrs.each {|a| mitems += [attr_meta(a)]; }
     ret mitems;
 }
 
@@ -178,7 +178,7 @@ fn eq(a: @ast::meta_item, b: @ast::meta_item) -> bool {
 fn contains(haystack: [@ast::meta_item], needle: @ast::meta_item) -> bool {
     #debug("looking for %s",
            print::pprust::meta_item_to_str(*needle));
-    for item: @ast::meta_item in haystack {
+    for haystack.each {|item|
         #debug("looking in %s",
                print::pprust::meta_item_to_str(*item));
         if eq(item, needle) { #debug("found it!"); ret true; }
@@ -207,12 +207,12 @@ fn sort_meta_items(items: [@ast::meta_item]) -> [@ast::meta_item] {
 
     // This is sort of stupid here, converting to a vec of mutables and back
     let mut v: [mut @ast::meta_item] = [mut];
-    for mi: @ast::meta_item in items { v += [mut mi]; }
+    for items.each {|mi| v += [mut mi]; }
 
     std::sort::quick_sort(lteq, v);
 
     let mut v2: [@ast::meta_item] = [];
-    for mi: @ast::meta_item in v { v2 += [mi]; }
+    for v.each {|mi| v2 += [mi]; }
     ret v2;
 }
 
@@ -231,7 +231,7 @@ fn remove_meta_items_by_name(items: [@ast::meta_item], name: str) ->
 fn require_unique_names(diagnostic: span_handler,
                         metas: [@ast::meta_item]) {
     let map = map::str_hash();
-    for meta: @ast::meta_item in metas {
+    for metas.each {|meta|
         let name = get_meta_item_name(meta);
         if map.contains_key(name) {
             diagnostic.span_fatal(meta.span,

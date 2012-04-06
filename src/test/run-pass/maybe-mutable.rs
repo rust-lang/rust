@@ -4,7 +4,7 @@
 // -*- rust -*-
 fn len(v: [const int]) -> uint {
     let mut i = 0u;
-    for x: int in v { i += 1u; }
+    for v.each {|x| i += 1u; }
     ret i;
 }
 

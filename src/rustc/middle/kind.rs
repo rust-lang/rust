@@ -85,8 +85,8 @@ fn check_fn(fk: visit::fn_kind, decl: fn_decl, body: blk, sp: span,
     // the common flow point for all functions that appear in the AST.
 
     with_appropriate_checker(cx, fn_id) { |checker|
-        for @{def, span} in *freevars::get_freevars(cx.tcx, fn_id) {
-            let id = ast_util::def_id_of_def(def).node;
+        for vec::each(*freevars::get_freevars(cx.tcx, fn_id)) {|fv|
+            let id = ast_util::def_id_of_def(fv.def).node;
             if checker == check_copy {
                 let last_uses = alt check cx.last_uses.find(fn_id) {
                   some(last_use::closes_over(vars)) { vars }
@@ -96,7 +96,7 @@ fn check_fn(fk: visit::fn_kind, decl: fn_decl, body: blk, sp: span,
                     vec::position_elem(last_uses, id)) { cont; }
             }
             let ty = ty::node_id_to_type(cx.tcx, id);
-            checker(cx, ty, span);
+            checker(cx, ty, fv.span);
         }
     }
 
@@ -146,7 +146,7 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
       // Vector add copies.
       expr_binary(add, ls, rs) { maybe_copy(cx, ls); maybe_copy(cx, rs); }
       expr_rec(fields, def) {
-        for field in fields { maybe_copy(cx, field.node.expr); }
+        for fields.each {|field| maybe_copy(cx, field.node.expr); }
         alt def {
           some(ex) {
             // All noncopyable fields must be overridden
@@ -155,7 +155,7 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
               ty::ty_rec(f) { f }
               _ { cx.tcx.sess.span_bug(ex.span, "bad expr type in record"); }
             };
-            for tf in ty_fields {
+            for ty_fields.each {|tf|
                 if !vec::any(fields, {|f| f.node.ident == tf.ident}) &&
                     !ty::kind_can_be_copied(ty::type_kind(cx.tcx, tf.mt.ty)) {
                     cx.tcx.sess.span_err(ex.span,
@@ -167,14 +167,14 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
         }
       }
       expr_tup(exprs) | expr_vec(exprs, _) {
-        for expr in exprs { maybe_copy(cx, expr); }
+        for exprs.each {|expr| maybe_copy(cx, expr); }
       }
       expr_bind(_, args) {
-        for a in args { alt a { some(ex) { maybe_copy(cx, ex); } _ {} } }
+        for args.each {|a| alt a { some(ex) { maybe_copy(cx, ex); } _ {} } }
       }
       expr_call(f, args, _) {
         let mut i = 0u;
-        for arg_t in ty::ty_fn_args(ty::expr_ty(cx.tcx, f)) {
+        for ty::ty_fn_args(ty::expr_ty(cx.tcx, f)).each {|arg_t|
             alt ty::arg_mode(cx.tcx, arg_t) {
               by_copy { maybe_copy(cx, args[i]); }
               by_ref | by_val | by_mutbl_ref | by_move { }
@@ -236,7 +236,7 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
 fn check_stmt(stmt: @stmt, cx: ctx, v: visit::vt<ctx>) {
     alt stmt.node {
       stmt_decl(@{node: decl_local(locals), _}, _) {
-        for local in locals {
+        for locals.each {|local|
             alt local.node.init {
               some({op: init_assign, expr}) { maybe_copy(cx, expr); }
               _ {}

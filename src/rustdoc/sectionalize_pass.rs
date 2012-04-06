@@ -94,7 +94,7 @@ fn sectionalize(desc: option<str>) -> (option<str>, [doc::section]) {
     let mut current_section = none;
     let mut sections = [];
 
-    for line in lines {
+    for lines.each {|line|
         alt parse_header(line) {
           some(header) {
             if option::is_some(current_section) {

@@ -142,7 +142,7 @@ fn visit_ids(item: ast::inlined_item, vfn: fn@(ast::node_id)) {
             vfn(i.id);
             alt i.node {
               ast::item_res(_, _, _, d_id, c_id) { vfn(d_id); vfn(c_id); }
-              ast::item_enum(vs, _) { for v in vs { vfn(v.node.id); } }
+              ast::item_enum(vs, _) { for vs.each {|v| vfn(v.node.id); } }
               _ {}
             }
         },

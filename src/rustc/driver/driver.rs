@@ -67,7 +67,7 @@ fn parse_cfgspecs(cfgspecs: [str]) -> ast::crate_cfg {
     // FIXME: It would be nice to use the parser to parse all varieties of
     // meta_item here. At the moment we just support the meta_word variant.
     let mut words = [];
-    for s: str in cfgspecs { words += [attr::mk_word_item(s)]; }
+    for cfgspecs.each {|s| words += [attr::mk_word_item(s)]; }
     ret words;
 }
 

@@ -73,7 +73,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
         alt ident { some(i) { s += " "; s += i; } _ { } }
         s += "(";
         let mut strs = [];
-        for a: arg in inputs { strs += [fn_input_to_str(cx, a)]; }
+        for inputs.each {|a| strs += [fn_input_to_str(cx, a)]; }
         s += str::connect(strs, ", ");
         s += ")";
         if ty::get(output).struct != ty_nil {
@@ -139,12 +139,12 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
       ty_type { "type" }
       ty_rec(elems) {
         let mut strs: [str] = [];
-        for fld: field in elems { strs += [field_to_str(cx, fld)]; }
+        for elems.each {|fld| strs += [field_to_str(cx, fld)]; }
         "{" + str::connect(strs, ",") + "}"
       }
       ty_tup(elems) {
         let mut strs = [];
-        for elem in elems { strs += [ty_to_str(cx, elem)]; }
+        for elems.each {|elem| strs += [ty_to_str(cx, elem)]; }
         "(" + str::connect(strs, ",") + ")"
       }
       ty_fn(f) {
@@ -179,7 +179,7 @@ fn constr_to_str(c: @constr) -> str {
 fn constrs_str(constrs: [@constr]) -> str {
     let mut s = "";
     let mut colon = true;
-    for c: @constr in constrs {
+    for constrs.each {|c|
         if colon { s += " : "; colon = false; } else { s += ", "; }
         s += constr_to_str(c);
     }

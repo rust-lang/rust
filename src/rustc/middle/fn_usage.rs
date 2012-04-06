@@ -59,7 +59,7 @@ fn fn_usage_expr(expr: @ast::expr,
 
         let args_ctx = {unsafe_fn_legal: false,
                         generic_bare_fn_legal: false with ctx};
-        for arg in args {
+        for args.each {|arg|
             visit::visit_expr_opt(arg, args_ctx, v);
         }
       }

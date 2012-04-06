@@ -56,7 +56,7 @@ fn expr_root_(tcx: ty::ctxt, ctor_self: option<node_id>,
             let mut is_mutbl = false;
             alt ty::get(auto_unbox.t).struct {
               ty::ty_rec(fields) {
-                for fld: ty::field in fields {
+                for fields.each {|fld|
                     if str::eq(ident, fld.ident) {
                         is_mutbl = fld.mt.mutbl == m_mutbl;
                         break;
@@ -74,7 +74,7 @@ fn expr_root_(tcx: ty::ctxt, ctor_self: option<node_id>,
                           }
                           none { false }
                   };
-                  for fld: ty::field_ty in ty::lookup_class_fields(tcx, did) {
+                  for ty::lookup_class_fields(tcx, did).each {|fld|
                     if str::eq(ident, fld.ident) {
                         is_mutbl = fld.mutability == class_mutable
                             || in_self; // all fields can be mutated
@@ -169,7 +169,7 @@ fn visit_decl(d: @decl, &&cx: @ctx, v: visit::vt<@ctx>) {
     visit::visit_decl(d, cx, v);
     alt d.node {
       decl_local(locs) {
-        for loc in locs {
+        for locs.each {|loc|
             alt loc.node.init {
               some(init) {
                 if init.op == init_move { check_move_rhs(cx, init.expr); }
@@ -198,7 +198,7 @@ fn visit_expr(ex: @expr, &&cx: @ctx, v: visit::vt<@ctx>) {
         check_lval(cx, dest, msg_assign);
       }
       expr_fn(_, _, _, cap) {
-        for moved in cap.moves {
+        for cap.moves.each {|moved|
             let def = cx.tcx.def_map.get(moved.id);
             alt is_illegal_to_modify_def(cx, def, msg_move_out) {
               some(name) { mk_err(cx, moved.span, msg_move_out, moved.name); }
@@ -281,7 +281,7 @@ fn check_move_rhs(cx: @ctx, src: @expr) {
 fn check_call(cx: @ctx, f: @expr, args: [@expr]) {
     let arg_ts = ty::ty_fn_args(ty::expr_ty(cx.tcx, f));
     let mut i = 0u;
-    for arg_t: ty::arg in arg_ts {
+    for arg_ts.each {|arg_t|
         alt ty::resolved_mode(cx.tcx, arg_t.mode) {
           by_mutbl_ref { check_lval(cx, args[i], msg_mutbl_ref); }
           by_move { check_lval(cx, args[i], msg_move_out); }
@@ -294,7 +294,7 @@ fn check_call(cx: @ctx, f: @expr, args: [@expr]) {
 fn check_bind(cx: @ctx, f: @expr, args: [option<@expr>]) {
     let arg_ts = ty::ty_fn_args(ty::expr_ty(cx.tcx, f));
     let mut i = 0u;
-    for arg in args {
+    for args.each {|arg|
         alt arg {
           some(expr) {
             let o_msg = alt ty::resolved_mode(cx.tcx, arg_ts[i].mode) {

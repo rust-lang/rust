@@ -118,7 +118,7 @@ fn metas_in_cfg(cfg: ast::crate_cfg, metas: [@ast::meta_item]) -> bool {
     let has_cfg_metas = vec::len(cfg_metas) > 0u;
     if !has_cfg_metas { ret true; }
 
-    for cfg_mi: @ast::meta_item in cfg_metas {
+    for cfg_metas.each {|cfg_mi|
         if attr::contains(cfg, cfg_mi) { ret true; }
     }
 

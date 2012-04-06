@@ -328,7 +328,7 @@ fn write_mod_contents(
         write_index(ctxt, option::get(doc.index));
     }
 
-    for itemtag in doc.items {
+    for doc.items.each {|itemtag|
         write_item(ctxt, itemtag);
     }
 }
@@ -381,7 +381,7 @@ fn write_index(ctxt: ctxt, index: doc::index) {
         ret;
     }
 
-    for entry in index.entries {
+    for index.entries.each {|entry|
         let header = header_text_(entry.kind, entry.name);
         let id = entry.link;
         if option::is_some(entry.brief) {
@@ -431,7 +431,7 @@ fn write_nmod(ctxt: ctxt, doc: doc::nmoddoc) {
         write_index(ctxt, option::get(doc.index));
     }
 
-    for fndoc in doc.fns {
+    for doc.fns.each {|fndoc|
         write_item_header(ctxt, doc::fntag(fndoc));
         write_fn(ctxt, fndoc);
     }

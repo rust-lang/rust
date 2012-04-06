@@ -136,13 +136,13 @@ fn visit_expr(cx: @ctx, ex: @ast::expr, sc: scope, v: vt<scope>) {
 
 fn visit_block(cx: @ctx, b: ast::blk, sc: scope, v: vt<scope>) {
     let sc = sc;
-    for stmt in b.node.stmts {
+    for b.node.stmts.each {|stmt|
         alt stmt.node {
           ast::stmt_decl(@{node: ast::decl_item(it), _}, _) {
             v.visit_item(it, sc, v);
           }
           ast::stmt_decl(@{node: ast::decl_local(locs), _}, _) {
-            for loc in locs {
+            for locs.each {|loc|
                 alt loc.node.init {
                   some(init) {
                     if init.op == ast::init_move {
@@ -245,11 +245,11 @@ fn check_call(cx: @ctx, sc: scope, f: @ast::expr, args: [@ast::expr],
     };
     if f_may_close {
         let mut i = 0u;
-        for b in bindings {
+        for bindings.each {|b|
             let mut unsfe = vec::len(b.unsafe_tys) > 0u;
             alt b.root_var {
               some(rid) {
-                for o in sc.bs {
+                for sc.bs.each {|o|
                     if o.node_id == rid && vec::len(o.unsafe_tys) > 0u {
                         unsfe = true; break;
                     }
@@ -265,8 +265,8 @@ fn check_call(cx: @ctx, sc: scope, f: @ast::expr, args: [@ast::expr],
         }
     }
     let mut j = 0u;
-    for b in bindings {
-        for unsafe_ty in b.unsafe_tys {
+    for bindings.each {|b|
+        for b.unsafe_tys.each {|unsafe_ty|
             vec::iteri(arg_ts) {|i, arg_t|
                 let mut_alias =
                     (ast::by_mutbl_ref == ty::arg_mode(cx.tcx, arg_t));
@@ -288,13 +288,13 @@ fn check_call(cx: @ctx, sc: scope, f: @ast::expr, args: [@ast::expr],
     }
 
     // Ensure we're not passing a root by mut alias.
-    for {node: node, arg: arg} in mut_roots {
-        for b in bindings {
-            if b.node_id != arg.id {
+    for mut_roots.each {|mroot|
+        for bindings.each {|b|
+            if b.node_id != mroot.arg.id {
                 alt b.root_var {
                   some(root) {
-                    if node == root && cant_copy(*cx, b) {
-                        err(*cx, arg.span,
+                    if mroot.node == root && cant_copy(*cx, b) {
+                        err(*cx, mroot.arg.span,
                             "passing a mut reference to a \
                              variable that roots another reference");
                         break;
@@ -308,14 +308,14 @@ fn check_call(cx: @ctx, sc: scope, f: @ast::expr, args: [@ast::expr],
     // Check the bodies of block arguments against the current scope
     if blocks.len() > 0u {
         let inner_sc = {bs: bindings + sc.bs, invalid: sc.invalid};
-        for blk in blocks {
+        for blocks.each {|blk|
             alt check blk.node {
               ast::expr_fn_block(_, body) {
                 v.visit_block(body, inner_sc, v);
               }
             }
         }
-        for binding in bindings {
+        for bindings.each {|binding|
             test_scope(*cx, sc, binding, none);
         }
     }
@@ -327,7 +327,7 @@ fn check_alt(cx: ctx, input: @ast::expr, arms: [ast::arm], sc: scope,
     let orig_invalid = *sc.invalid;
     let mut all_invalid = orig_invalid;
     let root = expr_root(cx, input, true);
-    for a: ast::arm in arms {
+    for arms.each {|a|
         let mut new_bs = sc.bs;
         let root_var = path_def_id(cx, root.ex);
         let pat_id_map = pat_util::pat_id_map(cx.tcx.def_map, a.pats[0]);
@@ -336,8 +336,8 @@ fn check_alt(cx: ctx, input: @ast::expr, arms: [ast::arm], sc: scope,
             mut unsafe_tys: [unsafe_ty],
             span: span};
         let mut binding_info: [info] = [];
-        for pat in a.pats {
-            for proot in pattern_roots(cx.tcx, root.mutbl, pat) {
+        for a.pats.each {|pat|
+            for pattern_roots(cx.tcx, root.mutbl, pat).each {|proot|
                 let canon_id = pat_id_map.get(proot.name);
                 alt vec::find(binding_info, {|x| x.id == canon_id}) {
                   some(s) { s.unsafe_tys += unsafe_set(proot.mutbl); }
@@ -350,14 +350,14 @@ fn check_alt(cx: ctx, input: @ast::expr, arms: [ast::arm], sc: scope,
                 }
             }
         }
-        for info in binding_info {
+        for binding_info.each {|info|
             new_bs += [mk_binding(cx, info.id, info.span, root_var,
                                   copy info.unsafe_tys)];
-        }
+        };
         *sc.invalid = orig_invalid;
         visit::visit_arm(a, {bs: new_bs with sc}, v);
         all_invalid = join_invalid(all_invalid, *sc.invalid);
-    }
+    };
     *sc.invalid = all_invalid;
 }
 
@@ -378,7 +378,7 @@ fn check_for(cx: ctx, local: @ast::local, seq: @ast::expr, blk: ast::blk,
     }
     let root_var = path_def_id(cx, root.ex);
     let mut new_bs = sc.bs;
-    for proot in pattern_roots(cx.tcx, cur_mutbl, local.node.pat) {
+    for pattern_roots(cx.tcx, cur_mutbl, local.node.pat).each {|proot|
         new_bs += [mk_binding(cx, proot.id, proot.span, root_var,
                               unsafe_set(proot.mutbl))];
     }
@@ -392,10 +392,10 @@ fn check_var(cx: ctx, ex: @ast::expr, p: @ast::path, id: ast::node_id,
     let my_defnum = ast_util::def_id_of_def(def).node;
     let my_local_id = local_id_of_node(cx, my_defnum);
     let var_t = ty::expr_ty(cx.tcx, ex);
-    for b in sc.bs {
+    for sc.bs.each {|b|
         // excludes variables introduced since the alias was made
         if my_local_id < b.local_id {
-            for unsafe_ty in b.unsafe_tys {
+            for b.unsafe_tys.each {|unsafe_ty|
                 if ty_can_unsafely_include(cx, unsafe_ty, var_t, assign) {
                     let inv = @{reason: val_taken, node_id: b.node_id,
                                 sp: ex.span, path: p};
@@ -413,7 +413,7 @@ fn check_lval(cx: @ctx, dest: @ast::expr, sc: scope, v: vt<scope>) {
       ast::expr_path(p) {
         let def = cx.tcx.def_map.get(dest.id);
         let dnum = ast_util::def_id_of_def(def).node;
-        for b in sc.bs {
+        for sc.bs.each {|b|
             if b.root_var == some(dnum) {
                 let inv = @{reason: overwritten, node_id: b.node_id,
                             sp: dest.span, path: p};
@@ -454,7 +454,7 @@ fn test_scope(cx: ctx, sc: scope, b: binding, p: option<@ast::path>) {
     let mut prob = find_invalid(b.node_id, *sc.invalid);
     alt b.root_var {
       some(dn) {
-        for other in sc.bs {
+        for sc.bs.each {|other|
             if !is_none(prob) { break; }
             if other.node_id == dn {
                 prob = find_invalid(other.node_id, *sc.invalid);
@@ -507,7 +507,7 @@ fn ty_can_unsafely_include(cx: ctx, needle: unsafe_ty, haystack: ty::t,
         } { ret true; }
         alt ty::get(haystack).struct {
           ty::ty_enum(_, ts) {
-            for t: ty::t in ts {
+            for ts.each {|t|
                 if helper(tcx, needle, t, mutbl) { ret true; }
             }
             ret false;
@@ -516,7 +516,7 @@ fn ty_can_unsafely_include(cx: ctx, needle: unsafe_ty, haystack: ty::t,
             ret helper(tcx, needle, mt.ty, get_mutbl(mutbl, mt));
           }
           ty::ty_rec(fields) {
-            for f: ty::field in fields {
+            for fields.each {|f|
                 if helper(tcx, needle, f.mt.ty, get_mutbl(mutbl, f.mt)) {
                     ret true;
                 }
@@ -524,7 +524,7 @@ fn ty_can_unsafely_include(cx: ctx, needle: unsafe_ty, haystack: ty::t,
             ret false;
           }
           ty::ty_tup(ts) {
-            for t in ts { if helper(tcx, needle, t, mutbl) { ret true; } }
+            for ts.each {|t| if helper(tcx, needle, t, mutbl) { ret true; } }
             ret false;
           }
           ty::ty_fn({proto: ast::proto_bare, _}) { ret false; }
@@ -571,12 +571,12 @@ fn copy_is_expensive(tcx: ty::ctxt, ty: ty::t) -> bool {
           ty::ty_uniq(mt) { 1u + score_ty(tcx, mt.ty) }
           ty::ty_enum(_, ts) | ty::ty_tup(ts) {
             let mut sum = 0u;
-            for t in ts { sum += score_ty(tcx, t); }
+            for ts.each {|t| sum += score_ty(tcx, t); }
             sum
           }
           ty::ty_rec(fs) {
             let mut sum = 0u;
-            for f in fs { sum += score_ty(tcx, f.mt.ty); }
+            for fs.each {|f| sum += score_ty(tcx, f.mt.ty); }
             sum
           }
           _ {
@@ -608,11 +608,11 @@ fn pattern_roots(tcx: ty::ctxt, mutbl: option<unsafe_ty>, pat: @ast::pat)
           ast::pat_wild | ast::pat_lit(_) | ast::pat_range(_, _) |
           ast::pat_ident(_, _) {}
           ast::pat_enum(_, ps) | ast::pat_tup(ps) {
-            for p in ps { walk(tcx, mutbl, p, set); }
+            for ps.each {|p| walk(tcx, mutbl, p, set); }
           }
           ast::pat_rec(fs, _) {
             let ty = ty::node_id_to_type(tcx, pat.id);
-            for f in fs {
+            for fs.each {|f|
                 let m = ty::get_field(ty, f.ident).mt.mutbl != ast::m_imm,
                     c = if m { some(contains(ty)) } else { mutbl };
                 walk(tcx, c, f.pat, set);
@@ -649,7 +649,7 @@ fn expr_root(cx: ctx, ex: @ast::expr, autoderef: bool)
     -> {ex: @ast::expr, mutbl: option<unsafe_ty>} {
     let base_root = mutbl::expr_root_(cx.tcx, none, ex, autoderef);
     let mut unsafe_ty = none;
-    for d in *base_root.ds {
+    for vec::each(*base_root.ds) {|d|
         if d.mutbl { unsafe_ty = some(contains(d.outer_t)); break; }
     }
     ret {ex: base_root.ex, mutbl: unsafe_ty};

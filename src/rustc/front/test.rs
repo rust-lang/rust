@@ -268,7 +268,7 @@ fn mk_test_desc_vec_ty(cx: test_ctxt) -> @ast::ty {
 fn mk_test_desc_vec(cx: test_ctxt) -> @ast::expr {
     #debug("building test vector from %u tests", vec::len(cx.testfns));
     let mut descs = [];
-    for test: test in cx.testfns {
+    for cx.testfns.each {|test|
         let test_ = test; // Satisfy alias analysis
         descs += [mk_test_desc_rec(cx, test_)];
     }

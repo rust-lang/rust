@@ -5,7 +5,7 @@ iface monad<A> {
 impl <A> of monad<A> for [A] {
     fn bind<B>(f: fn(A) -> [B]) -> [B] {
         let mut r = [];
-        for elt in self { r += f(elt); }
+        for self.each {|elt| r += f(elt); }
         r
     }
 }

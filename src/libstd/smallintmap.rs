@@ -67,7 +67,7 @@ fn max_key<T: copy>(m: smallintmap<T>) -> uint {
 impl <V: copy> of map::map<uint, V> for smallintmap<V> {
     fn size() -> uint {
         let mut sz = 0u;
-        for item in self.v {
+        for vec::each(self.v) {|item|
             alt item { some(_) { sz += 1u; } _ {} }
         }
         sz
@@ -90,11 +90,11 @@ impl <V: copy> of map::map<uint, V> for smallintmap<V> {
     fn find(&&key: uint) -> option<V> { find(self, key) }
     fn rehash() { fail }
     fn items(it: fn(&&uint, V)) {
-        let mut idx = 0u;
-        for item in self.v {
-            alt item {
+        let mut idx = 0u, l = self.v.len();
+        while idx < l {
+            alt self.v[idx] {
               some(elt) {
-                it(idx, elt);
+                it(idx, copy elt);
               }
               none { }
             }
@@ -102,16 +102,14 @@ impl <V: copy> of map::map<uint, V> for smallintmap<V> {
         }
     }
     fn keys(it: fn(&&uint)) {
-        let mut idx = 0u;
-        for item in self.v {
-            if item != none { it(idx); }
+        let mut idx = 0u, l = self.v.len();
+        while idx < l {
+            if self.v[idx] != none { it(idx); }
             idx += 1u;
         }
     }
     fn values(it: fn(V)) {
-        for item in self.v {
-            alt item { some(elt) { it(elt); } _ {} }
-        }
+        self.items({|_i, v| it(v)});
     }
 }
 

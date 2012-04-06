@@ -303,7 +303,7 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
         let mut cmh_items: [@ast::meta_item] = [];
         let linkage_metas = attr::find_linkage_metas(c.node.attrs);
         attr::require_unique_names(sess.diagnostic(), linkage_metas);
-        for meta: @ast::meta_item in linkage_metas {
+        for linkage_metas.each {|meta|
             if attr::get_meta_item_name(meta) == "name" {
                 alt attr::get_meta_item_value_str(meta) {
                   some(v) { name = some(v); }
@@ -334,7 +334,7 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
         let cmh_items = attr::sort_meta_items(metas.cmh_items);
 
         sha.reset();
-        for m_: @ast::meta_item in cmh_items {
+        for cmh_items.each {|m_|
             let m = m_;
             alt m.node {
               ast::meta_name_value(key, value) {
@@ -349,7 +349,7 @@ fn build_link_meta(sess: session, c: ast::crate, output: str,
             }
         }
 
-        for dh in dep_hashes {
+        for dep_hashes.each {|dh|
             sha.input_str(len_and_str(dh));
         }
 
@@ -475,7 +475,7 @@ fn mangle(ss: path) -> str {
 
     let mut n = "_ZN"; // Begin name-sequence.
 
-    for s in ss {
+    for ss.each {|s|
         alt s { path_name(s) | path_mod(s) {
           let sani = sanitize(s);
           n += #fmt["%u%s", str::len(sani), sani];
@@ -583,7 +583,7 @@ fn link_binary(sess: session,
     } else { lib_cmd = "-shared"; }
 
     let cstore = sess.cstore;
-    for cratepath: str in cstore::get_used_crate_files(cstore) {
+    for cstore::get_used_crate_files(cstore).each {|cratepath|
         if str::ends_with(cratepath, ".rlib") {
             cc_args += [cratepath];
             cont;
@@ -596,10 +596,10 @@ fn link_binary(sess: session,
     }
 
     let ula = cstore::get_used_link_args(cstore);
-    for arg: str in ula { cc_args += [arg]; }
+    for ula.each {|arg| cc_args += [arg]; }
 
     let used_libs = cstore::get_used_libraries(cstore);
-    for l: str in used_libs { cc_args += ["-l" + l]; }
+    for used_libs.each {|l| cc_args += ["-l" + l]; }
 
     if sess.building_library {
         cc_args += [lib_cmd];

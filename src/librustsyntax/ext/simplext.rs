@@ -73,7 +73,7 @@ fn elts_to_ell(cx: ext_ctxt, elts: [@expr]) ->
    {pre: [@expr], rep: option<@expr>, post: [@expr]} {
     let mut idx: uint = 0u;
     let mut res = none;
-    for elt: @expr in elts {
+    for elts.each {|elt|
         alt elt.node {
           expr_mac(m) {
             alt m.node {
@@ -102,7 +102,7 @@ fn elts_to_ell(cx: ext_ctxt, elts: [@expr]) ->
 fn option_flatten_map<T: copy, U: copy>(f: fn@(T) -> option<U>, v: [T]) ->
    option<[U]> {
     let mut res = [];
-    for elem: T in v {
+    for v.each {|elem|
         alt f(elem) { none { ret none; } some(fv) { res += [fv]; } }
     }
     ret some(res);
@@ -163,7 +163,7 @@ selectors. */
 fn use_selectors_to_bind(b: binders, e: @expr) -> option<bindings> {
     let res = str_hash::<arb_depth<matchable>>();
     //need to do this first, to check vec lengths.
-    for sel: selector in b.literal_ast_matchers {
+    for b.literal_ast_matchers.each {|sel|
         alt sel(match_expr(e)) { none { ret none; } _ { } }
     }
     let mut never_mind: bool = false;
@@ -209,7 +209,7 @@ fn transcribe(cx: ext_ctxt, b: bindings, body: @expr) -> @expr {
 fn follow(m: arb_depth<matchable>, idx_path: @mut [uint]) ->
    arb_depth<matchable> {
     let mut res: arb_depth<matchable> = m;
-    for idx: uint in *idx_path {
+    for vec::each(*idx_path) {|idx|
         alt res {
           leaf(_) { ret res;/* end of the line */ }
           seq(new_ms, _) { res = new_ms[idx]; }
@@ -677,7 +677,7 @@ fn add_new_extension(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
 
     let mut macro_name: option<str> = none;
     let mut clauses: [@clause] = [];
-    for arg: @expr in args {
+    for args.each {|arg|
         alt arg.node {
           expr_vec(elts, mutbl) {
             if vec::len(elts) != 2u {
@@ -753,7 +753,7 @@ fn add_new_extension(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
     fn generic_extension(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                          _body: ast::mac_body, clauses: [@clause]) -> @expr {
         let arg = get_mac_arg(cx,sp,arg);
-        for c: @clause in clauses {
+        for clauses.each {|c|
             alt use_selectors_to_bind(c.params, arg) {
               some(bindings) { ret transcribe(cx, bindings, c.body); }
               none { cont; }

@@ -196,7 +196,7 @@ fn check_error_patterns(props: test_props,
 
     let mut next_err_idx = 0u;
     let mut next_err_pat = props.error_patterns[next_err_idx];
-    for line: str in str::split_char(procres.stderr, '\n') {
+    for str::split_char(procres.stderr, '\n').each {|line|
         if str::contains(line, next_err_pat) {
             #debug("found error pattern %s", next_err_pat);
             next_err_idx += 1u;
@@ -215,7 +215,7 @@ fn check_error_patterns(props: test_props,
         fatal_procres(#fmt["error pattern '%s' not found!",
                            missing_patterns[0]], procres);
     } else {
-        for pattern: str in missing_patterns {
+        for missing_patterns.each {|pattern|
             error(#fmt["error pattern '%s' not found!", pattern]);
         }
         fatal_procres("multiple error patterns not found", procres);
@@ -244,7 +244,7 @@ fn check_expected_errors(expected_errors: [errors::expected_error],
     //    filename:line1:col1: line2:col2: *warning:* msg
     // where line1:col1: is the starting point, line2:col2:
     // is the ending point, and * represents ANSI color codes.
-    for line: str in str::split_char(procres.stderr, '\n') {
+    for str::split_char(procres.stderr, '\n').each {|line|
         let mut was_expected = false;
         for vec::eachi(expected_errors) {|i, ee|
             if !found_flags[i] {

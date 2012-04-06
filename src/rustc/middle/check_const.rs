@@ -23,7 +23,7 @@ fn check_item(sess: session, ast_map: ast_map::map, def_map: resolve::def_map,
         check_item_recursion(sess, ast_map, def_map, it);
       }
       item_enum(vs, _) {
-        for var in vs {
+        for vs.each {|var|
             option::with_option_do(var.node.disr_expr) {|ex|
                 v.visit_expr(ex, true, v);
             }

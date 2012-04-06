@@ -58,7 +58,7 @@ fn main() {
         calllink10
     ];
     let rng = rand::rng();
-    for f in fns {
+    for fns.each {|f|
         let sz = rng.next() % 256u32 + 256u32;
         let frame_backoff = rng.next() % 10u32 + 1u32;
         task::try {|| runtest(f, frame_backoff) };

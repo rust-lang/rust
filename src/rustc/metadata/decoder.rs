@@ -204,7 +204,7 @@ fn resolve_path(path: [ast::ident], data: @[u8]) -> [ast::def_id] {
     let eqer = bind eq_item(_, s);
     let mut result: [ast::def_id] = [];
     #debug("resolve_path: looking up %s", s);
-    for doc: ebml::doc in lookup_hash(paths, eqer, hash_path(s)) {
+    for lookup_hash(paths, eqer, hash_path(s)).each {|doc|
         let did_doc = ebml::get_doc(doc, tag_def_id);
         result += [parse_def_id(ebml::doc_data(did_doc))];
     }
@@ -359,7 +359,7 @@ fn get_enum_variants(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
     let mut infos: [ty::variant_info] = [];
     let variant_ids = enum_variant_ids(item, cdata);
     let mut disr_val = 0;
-    for did: ast::def_id in variant_ids {
+    for variant_ids.each {|did|
         let item = find_item(did.node, items);
         let ctor_ty = item_type({crate: cdata.cnum, node: id}, item,
                                 tcx, cdata);
@@ -367,7 +367,7 @@ fn get_enum_variants(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
         let mut arg_tys: [ty::t] = [];
         alt ty::get(ctor_ty).struct {
           ty::ty_fn(f) {
-            for a: ty::arg in f.inputs { arg_tys += [a.ty]; }
+            for f.inputs.each {|a| arg_tys += [a.ty]; }
           }
           _ { /* Nullary enum variant. */ }
         }
@@ -560,7 +560,7 @@ fn get_attributes(md: ebml::doc) -> [ast::attribute] {
 }
 
 fn list_meta_items(meta_items: ebml::doc, out: io::writer) {
-    for mi: @ast::meta_item in get_meta_items(meta_items) {
+    for get_meta_items(meta_items).each {|mi|
         out.write_str(#fmt["%s\n", pprust::meta_item_to_str(*mi)]);
     }
 }
@@ -568,7 +568,7 @@ fn list_meta_items(meta_items: ebml::doc, out: io::writer) {
 fn list_crate_attributes(md: ebml::doc, hash: str, out: io::writer) {
     out.write_str(#fmt("=Crate Attributes (%s)=\n", hash));
 
-    for attr: ast::attribute in get_attributes(md) {
+    for get_attributes(md).each {|attr|
         out.write_str(#fmt["%s\n", pprust::attribute_to_str(attr)]);
     }
 
@@ -597,7 +597,7 @@ fn get_crate_deps(data: @[u8]) -> [crate_dep] {
 fn list_crate_deps(data: @[u8], out: io::writer) {
     out.write_str("=External Dependencies=\n");
 
-    for dep: crate_dep in get_crate_deps(data) {
+    for get_crate_deps(data).each {|dep|
         out.write_str(#fmt["%d %s\n", dep.cnum, dep.ident]);
     }
 

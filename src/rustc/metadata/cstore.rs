@@ -154,7 +154,7 @@ fn get_dep_hashes(cstore: cstore) -> [str] {
     }
     let sorted = std::sort::merge_sort(lteq, result);
     #debug("sorted:");
-    for x in sorted {
+    for sorted.each {|x|
         #debug("  hash[%s]: %s", x.name, x.hash);
     }
     fn mapper(ch: crate_hash) -> str { ret ch.hash; }

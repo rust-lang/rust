@@ -17,7 +17,7 @@ iface map<T> {
 impl <T> of map<T> for [T] {
     fn map<U>(f: fn(T) -> U) -> [U] {
         let mut r = [];
-        for x in self { r += [f(x)]; }
+        for self.each {|x| r += [f(x)]; }
         r
     }
 }

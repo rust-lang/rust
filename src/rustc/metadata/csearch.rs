@@ -41,7 +41,8 @@ fn lookup_defs(cstore: cstore::cstore, cnum: ast::crate_num,
                path: [ast::ident]) -> [ast::def] {
     let mut result = [];
     #debug("lookup_defs: path = %? cnum = %?", path, cnum);
-    for (c, data, def) in resolve_path(cstore, cnum, path) {
+    for resolve_path(cstore, cnum, path).each {|elt|
+        let (c, data, def) = elt;
         result += [decoder::lookup_def(c, data, def)];
     }
     ret result;
@@ -64,7 +65,7 @@ fn resolve_path(cstore: cstore::cstore, cnum: ast::crate_num,
     #debug("resolve_path %s in crates[%d]:%s",
            str::connect(path, "::"), cnum, cm.name);
     let mut result = [];
-    for def in decoder::resolve_path(path, cm.data) {
+    for decoder::resolve_path(path, cm.data).each {|def|
         if def.crate == ast::local_crate {
             result += [(cnum, cm.data, def)];
         } else {

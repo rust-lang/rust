@@ -59,7 +59,7 @@ fn usage() {
 
     println("Usage: rustdoc [options] <cratefile>\n");
     println("Options:\n");
-    for opt in opts() {
+    for opts().each {|opt|
         println(#fmt("    %s", tuple::second(opt)));
     }
     println("");

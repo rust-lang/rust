@@ -27,7 +27,7 @@ fn collect_pred(e: @expr, cx: ctxt, v: visit::vt<ctxt>) {
       // If it's a call, generate appropriate instances of the
       // call's constraints.
       expr_call(operator, operands, _) {
-        for c: @ty::constr in constraints_expr(cx.tcx, operator) {
+        for constraints_expr(cx.tcx, operator).each {|c|
             let ct: sp_constr =
                 respan(c.span,
                        aux::substitute_constr_args(cx.tcx, operands, c));
@@ -105,20 +105,21 @@ fn mk_fn_info(ccx: crate_ctxt,
     /* now we have to add bit nums for both the constraints
        and the variables... */
 
-    for c: sp_constr in { *cx.cs } {
-        next = add_constraint(cx.tcx, c, next, res_map);
+    let mut i = 0u, l = vec::len(*cx.cs);
+    while i < l {
+        next = add_constraint(cx.tcx, cx.cs[i], next, res_map);
+        i += 1u;
     }
     /* if this function has any constraints, instantiate them to the
        argument names and add them */
-    let mut sc;
-    for c: @constr in f_decl.constraints {
-        sc = ast_constr_to_sp_constr(cx.tcx, f_decl.inputs, c);
+    for f_decl.constraints.each {|c|
+        let sc = ast_constr_to_sp_constr(cx.tcx, f_decl.inputs, c);
         next = add_constraint(cx.tcx, sc, next, res_map);
     }
 
     /* Need to add constraints for args too, b/c they
     can be deinitialized */
-    for a: arg in f_decl.inputs {
+    for f_decl.inputs.each {|a|
         next = add_constraint(
             cx.tcx,
             respan(f_sp, ninit(a.id, a.ident)),

@@ -55,7 +55,7 @@ fn get_rpaths(os: session::os, cwd: path::path, sysroot: path::path,
     #debug("sysroot: %s", sysroot);
     #debug("output: %s", output);
     #debug("libs:");
-    for libpath in libs {
+    for libs.each {|libpath|
         #debug("    %s", libpath);
     }
     #debug("target_triple: %s", target_triple);
@@ -74,7 +74,7 @@ fn get_rpaths(os: session::os, cwd: path::path, sysroot: path::path,
 
     fn log_rpaths(desc: str, rpaths: [str]) {
         #debug("%s rpaths:", desc);
-        for rpath in rpaths {
+        for rpaths.each {|rpath|
             #debug("    %s", rpath);
         }
     }
@@ -179,7 +179,7 @@ fn get_install_prefix_rpath(cwd: path::path, target_triple: str) -> str {
 fn minimize_rpaths(rpaths: [str]) -> [str] {
     let set = map::str_hash::<()>();
     let mut minimized = [];
-    for rpath in rpaths {
+    for rpaths.each {|rpath|
         if !set.contains_key(rpath) {
             minimized += [rpath];
             set.insert(rpath, ());

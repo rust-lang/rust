@@ -269,7 +269,7 @@ fn synth_comment(s: ps, text: str) {
 fn commasep<IN>(s: ps, b: breaks, elts: [IN], op: fn(ps, IN)) {
     box(s, 0u, b);
     let mut first = true;
-    for elt: IN in elts {
+    for elts.each {|elt|
         if first { first = false; } else { word_space(s, ","); }
         op(s, elt);
     }
@@ -282,7 +282,7 @@ fn commasep_cmnt<IN>(s: ps, b: breaks, elts: [IN], op: fn(ps, IN),
     box(s, 0u, b);
     let len = vec::len::<IN>(elts);
     let mut i = 0u;
-    for elt: IN in elts {
+    for elts.each {|elt|
         maybe_print_comment(s, get_span(elt).hi);
         op(s, elt);
         i += 1u;
@@ -303,18 +303,18 @@ fn commasep_exprs(s: ps, b: breaks, exprs: [@ast::expr]) {
 
 fn print_mod(s: ps, _mod: ast::_mod, attrs: [ast::attribute]) {
     print_inner_attributes(s, attrs);
-    for vitem: @ast::view_item in _mod.view_items {
+    for _mod.view_items.each {|vitem|
         print_view_item(s, vitem);
     }
-    for item: @ast::item in _mod.items { print_item(s, item); }
+    for _mod.items.each {|item| print_item(s, item); }
 }
 
 fn print_native_mod(s: ps, nmod: ast::native_mod, attrs: [ast::attribute]) {
     print_inner_attributes(s, attrs);
-    for vitem: @ast::view_item in nmod.view_items {
+    for nmod.view_items.each {|vitem|
         print_view_item(s, vitem);
     }
-    for item: @ast::native_item in nmod.items { print_native_item(s, item); }
+    for nmod.items.each {|item| print_native_item(s, item); }
 }
 
 fn print_region(s: ps, region: ast::region) {
@@ -476,7 +476,7 @@ fn print_item(s: ps, &&item: @ast::item) {
             end(s);
         } else {
             bopen(s);
-            for v: ast::variant in variants {
+            for variants.each {|v|
                 space_if_not_bol(s);
                 maybe_print_comment(s, v.span.lo);
                 print_outer_attributes(s, v.node.attrs);
@@ -500,7 +500,7 @@ fn print_item(s: ps, &&item: @ast::item) {
           print_fn_args_and_ret(s, ctor.node.dec);
           space(s.s);
           print_block(s, ctor.node.body);
-          for ci in items {
+          for items.each {|ci|
                   /*
                      FIXME: collect all private items and print them
                      in a single "priv" section
@@ -556,7 +556,7 @@ fn print_item(s: ps, &&item: @ast::item) {
         print_type(s, ty);
         space(s.s);
         bopen(s);
-        for meth in methods {
+        for methods.each {|meth|
            print_method(s, meth);
         }
         bclose(s, item.span);
@@ -567,7 +567,7 @@ fn print_item(s: ps, &&item: @ast::item) {
         print_type_params(s, tps);
         word(s.s, " ");
         bopen(s);
-        for meth in methods { print_ty_method(s, meth); }
+        for methods.each {|meth| print_ty_method(s, meth); }
         bclose(s, item.span);
       }
       ast::item_res(decl, tps, body, dt_id, ct_id) {
@@ -629,7 +629,7 @@ fn print_method(s: ps, meth: @ast::method) {
 
 fn print_outer_attributes(s: ps, attrs: [ast::attribute]) {
     let mut count = 0;
-    for attr: ast::attribute in attrs {
+    for attrs.each {|attr|
         alt attr.node.style {
           ast::attr_outer { print_attribute(s, attr); count += 1; }
           _ {/* fallthrough */ }
@@ -640,7 +640,7 @@ fn print_outer_attributes(s: ps, attrs: [ast::attribute]) {
 
 fn print_inner_attributes(s: ps, attrs: [ast::attribute]) {
     let mut count = 0;
-    for attr: ast::attribute in attrs {
+    for attrs.each {|attr|
         alt attr.node.style {
           ast::attr_inner {
             print_attribute(s, attr);
@@ -716,8 +716,8 @@ fn print_possibly_embedded_block_(s: ps, blk: ast::blk, embedded: embed_type,
 
     print_inner_attributes(s, attrs);
 
-    for vi in blk.node.view_items { print_view_item(s, vi); }
-    for st: @ast::stmt in blk.node.stmts {
+    for blk.node.view_items.each {|vi| print_view_item(s, vi); }
+    for blk.node.stmts.each {|st|
         print_stmt(s, *st);
     }
     alt blk.node.expr {
@@ -957,12 +957,12 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         print_maybe_parens_discrim(s, expr);
         space(s.s);
         bopen(s);
-        for arm: ast::arm in arms {
+        for arms.each {|arm|
             space(s.s);
             cbox(s, alt_indent_unit);
             ibox(s, 0u);
             let mut first = true;
-            for p: @ast::pat in arm.pats {
+            for arm.pats.each {|p|
                 if first {
                     first = false;
                 } else { space(s.s); word_space(s, "|"); }
@@ -1189,7 +1189,7 @@ fn print_path(s: ps, &&path: @ast::path, colons_before_params: bool) {
     maybe_print_comment(s, path.span.lo);
     if path.node.global { word(s.s, "::"); }
     let mut first = true;
-    for id: ast::ident in path.node.idents {
+    for path.node.idents.each {|id|
         if first { first = false; } else { word(s.s, "::"); }
         word(s.s, id);
     }
@@ -1359,7 +1359,7 @@ fn print_arg_mode(s: ps, m: ast::mode) {
 fn print_bounds(s: ps, bounds: @[ast::ty_param_bound]) {
     if vec::len(*bounds) > 0u {
         word(s.s, ":");
-        for bound in *bounds {
+        for vec::each(*bounds) {|bound|
             nbsp(s);
             alt bound {
               ast::bound_copy { word(s.s, "copy"); }
@@ -1403,7 +1403,7 @@ fn print_meta_item(s: ps, &&item: @ast::meta_item) {
 
 fn print_simple_path(s: ps, path: ast::simple_path) {
     let mut first = true;
-    for id in path {
+    for path.each {|id|
         if first { first = false; } else { word(s.s, "::"); }
         word(s.s, id);
     }
@@ -1472,7 +1472,7 @@ fn print_view_item(s: ps, item: @ast::view_item) {
 // FIXME: The fact that this builds up the table anew for every call is
 // not good. Eventually, table should be a const.
 fn operator_prec(op: ast::binop) -> int {
-    for spec: parse::parser::op_spec in *parse::parser::prec_table() {
+    for vec::each(*parse::parser::prec_table()) {|spec|
         if spec.op == op { ret spec.prec; }
     }
     core::unreachable();
@@ -1667,7 +1667,7 @@ fn print_comment(s: ps, cmnt: lexer::cmnt) {
       }
       lexer::isolated {
         pprust::hardbreak_if_not_bol(s);
-        for line: str in cmnt.lines {
+        for cmnt.lines.each {|line|
             // Don't print empty lines because they will end up as trailing
             // whitespace
             if str::is_not_empty(line) { word(s.s, line); }
@@ -1681,7 +1681,7 @@ fn print_comment(s: ps, cmnt: lexer::cmnt) {
             hardbreak(s.s);
         } else {
             ibox(s, 0u);
-            for line: str in cmnt.lines {
+            for cmnt.lines.each {|line|
                 if str::is_not_empty(line) { word(s.s, line); }
                 hardbreak(s.s);
             }
@@ -1752,7 +1752,7 @@ fn constr_args_to_str<T>(f: fn@(T) -> str, args: [@ast::sp_constr_arg<T>]) ->
    str {
     let mut comma = false;
     let mut s = "(";
-    for a: @ast::sp_constr_arg<T> in args {
+    for args.each {|a|
         if comma { s += ", "; } else { comma = true; }
         s += constr_arg_to_str::<T>(f, a.node);
     }
@@ -1795,7 +1795,7 @@ fn ty_constr_to_str(&&c: @ast::ty_constr) -> str {
 
 fn constrs_str<T>(constrs: [T], elt: fn(T) -> str) -> str {
     let mut s = "", colon = true;
-    for c in constrs {
+    for constrs.each {|c|
         if colon { s += " : "; colon = false; } else { s += ", "; }
         s += elt(c);
     }

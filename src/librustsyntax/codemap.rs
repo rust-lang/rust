@@ -187,7 +187,7 @@ fn get_snippet(cm: codemap::codemap, fidx: uint, lo: uint, hi: uint) -> str
 }
 
 fn get_filemap(cm: codemap, filename: str) -> filemap {
-    for fm: filemap in cm.files { if fm.name == filename { ret fm; } }
+    for cm.files.each {|fm| if fm.name == filename { ret fm; } }
     //XXjdm the following triggers a mismatched type bug
     //      (or expected function, found _|_)
     fail; // ("asking for " + filename + " which we don't know about");

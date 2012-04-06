@@ -372,7 +372,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint]) -> [u8] {
       ty::ty_class(did, ts) {
         // same as records
         let mut s = [shape_struct], sub = [];
-        for f:field in ty::class_items_as_fields(ccx.tcx, did, ts) {
+        for ty::class_items_as_fields(ccx.tcx, did, ts).each {|f|
             sub += shape_of(ccx, f.mt.ty, ty_param_map);
         }
         add_substr(s, sub);
@@ -465,7 +465,7 @@ fn gen_enum_shapes(ccx: @crate_ctxt) -> ValueRef {
     let data_sz = vec::len(data) as u16;
 
     let mut info_sz = 0u16;
-    for did_ in ccx.shape_cx.tag_order {
+    for ccx.shape_cx.tag_order.each {|did_|
         let did = did_; // Satisfy alias checker.
         let num_variants = vec::len(*ty::enum_variants(ccx.tcx, did)) as u16;
         add_u16(header, header_sz + info_sz);
@@ -478,7 +478,7 @@ fn gen_enum_shapes(ccx: @crate_ctxt) -> ValueRef {
 
     let mut lv_table = [];
     i = 0u;
-    for did_ in ccx.shape_cx.tag_order {
+    for ccx.shape_cx.tag_order.each {|did_|
         let did = did_; // Satisfy alias checker.
         let variants = ty::enum_variants(ccx.tcx, did);
         add_u16(info, vec::len(*variants) as u16);

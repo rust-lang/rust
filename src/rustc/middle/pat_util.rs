@@ -55,8 +55,8 @@ fn walk_pat(pat: @pat, it: fn(@pat)) {
     it(pat);
     alt pat.node {
       pat_ident(pth, some(p)) { walk_pat(p, it); }
-      pat_rec(fields, _) { for f in fields { walk_pat(f.pat, it); } }
-      pat_enum(_, s) | pat_tup(s) { for p in s { walk_pat(p, it); } }
+      pat_rec(fields, _) { for fields.each {|f| walk_pat(f.pat, it); } }
+      pat_enum(_, s) | pat_tup(s) { for s.each {|p| walk_pat(p, it); } }
       pat_box(s) | pat_uniq(s) { walk_pat(s, it); }
       pat_wild | pat_lit(_) | pat_range(_, _) | pat_ident(_, none) {}
     }

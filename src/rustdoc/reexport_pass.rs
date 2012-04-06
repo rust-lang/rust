@@ -82,13 +82,13 @@ fn build_reexport_def_set(srv: astsrv::srv) -> def_set {
     let assoc_list = astsrv::exec(srv) {|ctxt|
         let def_set = common::new_def_hash();
         ctxt.exp_map.items {|_id, defs|
-            for def in defs {
+            for defs.each {|def|
                 if def.reexp {
                     def_set.insert(def.id, ());
                 }
             }
         }
-        for def in find_reexport_impls(ctxt) {
+        for find_reexport_impls(ctxt).each {|def|
             def_set.insert(def, ());
         }
         to_assoc_list(def_set)
@@ -137,7 +137,7 @@ fn build_reexport_def_map(
     fn fold_mod(fold: fold::fold<ctxt>, doc: doc::moddoc) -> doc::moddoc {
         let doc = fold::default_seq_fold_mod(fold, doc);
 
-        for item in doc.items {
+        for doc.items.each {|item|
             let def_id = ast_util::local_def(item.id());
             if fold.ctxt.def_set.contains_key(def_id) {
                 fold.ctxt.def_map.insert(def_id, item);
@@ -150,7 +150,7 @@ fn build_reexport_def_map(
     fn fold_nmod(fold: fold::fold<ctxt>, doc: doc::nmoddoc) -> doc::nmoddoc {
         let doc = fold::default_seq_fold_nmod(fold, doc);
 
-        for fndoc in doc.fns {
+        for doc.fns.each {|fndoc|
             let def_id = ast_util::local_def(fndoc.id());
             if fold.ctxt.def_set.contains_key(def_id) {
                 fold.ctxt.def_map.insert(def_id, doc::fntag(fndoc));
@@ -184,7 +184,7 @@ fn build_reexport_path_map(srv: astsrv::srv, -def_map: def_map) -> path_map {
             let modpath = ast_map::path_to_str(vec::init(*path));
 
             let mut reexportdocs = [];
-            for def in defs {
+            for defs.each {|def|
                 if !def.reexp { cont; }
                 alt def_map.find(def.id) {
                   some(itemtag) {
@@ -206,7 +206,8 @@ fn build_reexport_path_map(srv: astsrv::srv, -def_map: def_map) -> path_map {
             }
         }
 
-        for (path, doc) in find_reexport_impl_docs(ctxt, def_map) {
+        for find_reexport_impl_docs(ctxt, def_map).each {|elt|
+            let (path, doc) = elt;
             let docs = alt path_map.find(path) {
               some(docs) { docs + [(doc)] }
               none { [doc] }
@@ -272,7 +273,7 @@ fn for_each_reexported_impl(
         let all_impls = all_impls(m);
         alt check ctxt.impl_map.get(mod_id) {
           list::cons(impls, @list::nil) {
-            for i in *impls {
+            for vec::each(*impls) {|i|
                 // This impl is not an item in the current mod
                 if !all_impls.contains_key(i.did) {
                     // Ignore external impls because I don't
@@ -289,7 +290,7 @@ fn for_each_reexported_impl(
 
 fn all_impls(m: ast::_mod) -> map::set<ast::def_id> {
     let all_impls = common::new_def_hash();
-    for item in m.items {
+    for m.items.each {|item|
         alt item.node {
           ast::item_impl(_, _, _, _) {
             all_impls.insert(ast_util::local_def(item.id), ());

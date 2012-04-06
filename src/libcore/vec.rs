@@ -62,7 +62,7 @@ export zip;
 export swap;
 export reverse;
 export reversed;
-export iter, each, eachi;
+export iter, iter_between, each, eachi;
 export iter2;
 export iteri;
 export riter;

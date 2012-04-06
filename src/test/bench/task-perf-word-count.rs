@@ -61,7 +61,7 @@ mod map_reduce {
     fn start_mappers(ctrl: chan<ctrl_proto>, -inputs: [str]) ->
        [future::future<task::task_result>] {
         let mut results = [];
-        for i: str in inputs {
+        for inputs.each {|i|
             let builder = task::builder();
             results += [task::future_result(builder)];
             task::run(builder) {|| map_task(ctrl, i)}
@@ -174,7 +174,7 @@ mod map_reduce {
 
         reducers.values {|v| send(v, done); }
 
-        for r in results { future::get(r); }
+        for results.each {|r| future::get(r); }
     }
 }
 

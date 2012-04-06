@@ -34,7 +34,7 @@ mod map_reduce {
     enum ctrl_proto { find_reducer([u8], chan<int>), mapper_done, }
 
     fn start_mappers(ctrl: chan<ctrl_proto>, inputs: [str]) {
-        for i: str in inputs {
+        for inputs.each {|i|
             task::spawn {|| map_task(ctrl, i); };
         }
     }

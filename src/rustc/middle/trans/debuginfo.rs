@@ -152,7 +152,7 @@ fn cached_metadata<T: copy>(cache: metadata_cache, mdtag: int,
                            eq: fn(md: T) -> bool) -> option<T> unsafe {
     if cache.contains_key(mdtag) {
         let items = cache.get(mdtag);
-        for item in items {
+        for items.each {|item|
             let md: T = md_from_metadata::<T>(item);
             if eq(md) {
                 ret option::some(md);
@@ -421,7 +421,7 @@ fn create_record(cx: @crate_ctxt, t: ty::t, fields: [ast::ty_field],
                                option::get(cx.dbg_cx).names("rec"),
                                line_from_span(cx.sess.codemap,
                                               span) as int);
-    for field in fields {
+    for fields.each {|field|
         let field_t = ty::get_field(t, field.node.ident).mt.ty;
         let ty_md = create_ty(cx, field_t, field.node.mt.ty);
         let (size, align) = size_and_align_of(cx, field_t);

@@ -19,10 +19,10 @@ impl util for uint {
 
 impl util<T> for [T] {
     fn length_() -> uint { vec::len(self) }
-    fn iter_(f: fn(T)) { for x in self { f(x); } }
+    fn iter_(f: fn(T)) { for self.each {|x| f(x); } }
     fn map_<U>(f: fn(T) -> U) -> [U] {
         let mut r = [];
-        for elt in self { r += [f(elt)]; }
+        for self.each {|elt| r += [f(elt)]; }
         r
     }
 }

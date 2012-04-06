@@ -114,7 +114,7 @@ fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
         v.visit_expr(input, cx, v);
         let before = cx.current;
         let mut sets = [];
-        for arm in arms {
+        for arms.each {|arm|
             cx.current = before;
             v.visit_arm(arm, cx, v);
             sets += [cx.current];
@@ -185,7 +185,7 @@ fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
               }
             }
         }
-        for f in fns { v.visit_expr(f, cx, v); }
+        for fns.each {|f| v.visit_expr(f, cx, v); }
         vec::iter2(args, arg_ts) {|arg, arg_t|
             alt arg.node {
               expr_path(_) {
@@ -213,7 +213,7 @@ fn visit_stmt(s: @stmt, cx: ctx, v: visit::vt<ctx>) {
       stmt_decl(@{node: decl_local(ls), _}, _) {
         shadow_in_current(cx, {|id|
             let mut rslt = false;
-            for local in ls {
+            for ls.each {|local|
                 let mut found = false;
                 pat_util::pat_bindings(cx.tcx.def_map, local.node.pat,
                                        {|pid, _a, _b|
@@ -246,7 +246,7 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
       proto_box | proto_uniq | proto_bare {
         alt cx.tcx.freevars.find(id) {
           some(vars) {
-            for v in *vars {
+            for vec::each(*vars) {|v|
                 option::with_option_do(def_is_owned_local(cx, v.def)) {|nid|
                     clear_in_current(cx, nid, false);
                     cx.current += [{def: nid,
@@ -304,22 +304,22 @@ fn add_block_exit(cx: ctx, tp: block_type) -> bool {
 fn join_branches(branches: [set]) -> set {
     let mut found: set = [], i = 0u;
     let l = vec::len(branches);
-    for set in branches {
+    for branches.each {|set|
         i += 1u;
-        for {def, uses} in set {
-            if !vec::any(found, {|v| v.def == def}) {
-                let mut j = i, nne = uses;
+        for set.each {|elt|
+            if !vec::any(found, {|v| v.def == elt.def}) {
+                let mut j = i, nne = elt.uses;
                 while j < l {
-                    for {def: d2, uses} in branches[j] {
-                        if d2 == def {
-                            list::iter(uses) {|e|
+                    for vec::each(branches[j]) {|elt2|
+                        if elt2.def == elt.def {
+                            list::iter(elt2.uses) {|e|
                                 if !list::has(nne, e) { nne = cons(e, @nne); }
                             }
                         }
                     }
                     j += 1u;
                 }
-                found += [{def: def, uses: nne}];
+                found += [{def: elt.def, uses: nne}];
             }
         }
     }
@@ -327,11 +327,11 @@ fn join_branches(branches: [set]) -> set {
 }
 
 fn leave_fn(cx: ctx) {
-    for {def, uses} in cx.current {
-        list::iter(uses) {|use|
+    for cx.current.each {|elt|
+        list::iter(elt.uses) {|use|
             let key = alt use {
               var_use(pth_id) { path(pth_id) }
-              close_over(fn_id) { close(fn_id, def) }
+              close_over(fn_id) { close(fn_id, elt.def) }
             };
             if !cx.last_uses.contains_key(key) {
                 cx.last_uses.insert(key, true);
@@ -343,16 +343,16 @@ fn leave_fn(cx: ctx) {
 fn shadow_in_current(cx: ctx, p: fn(node_id) -> bool) {
     let mut out = [];
     cx.current <-> out;
-    for e in out { if !p(e.def) { cx.current += [e]; } }
+    for out.each {|e| if !p(e.def) { cx.current += [e]; } }
 }
 
 fn clear_in_current(cx: ctx, my_def: node_id, to: bool) {
-    for {def, uses} in cx.current {
-        if def == my_def {
-            list::iter(uses) {|use|
+    for cx.current.each {|elt|
+        if elt.def == my_def {
+            list::iter(elt.uses) {|use|
                 let key = alt use {
                   var_use(pth_id) { path(pth_id) }
-                  close_over(fn_id) { close(fn_id, def) }
+                  close_over(fn_id) { close(fn_id, elt.def) }
                 };
                 if !to || !cx.last_uses.contains_key(key) {
                     cx.last_uses.insert(key, to);

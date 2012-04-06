@@ -2788,7 +2788,7 @@ fn need_invoke(bcx: block) -> bool {
     loop {
         alt cur.kind {
           block_scope(info) {
-            for cleanup in info.cleanups {
+            for info.cleanups.each {|cleanup|
                 alt cleanup {
                   clean(_, cleanup_type) | clean_temp(_, _, cleanup_type) {
                     if cleanup_type == normal_exit_and_unwind {
@@ -2925,7 +2925,7 @@ fn trans_rec(bcx: block, fields: [ast::field],
     let ty_fields = alt check ty::get(t).struct { ty::ty_rec(f) { f } };
 
     let mut temp_cleanups = [];
-    for fld in fields {
+    for fields.each {|fld|
         let ix = option::get(vec::position(ty_fields, {|ft|
             str::eq(fld.node.ident, ft.ident)
         }));
@@ -2940,7 +2940,7 @@ fn trans_rec(bcx: block, fields: [ast::field],
         let mut i = 0;
         bcx = cx;
         // Copy over inherited fields
-        for tf in ty_fields {
+        for ty_fields.each {|tf|
             if !vec::any(fields, {|f| str::eq(f.node.ident, tf.ident)}) {
                 let dst = GEPi(bcx, addr, [0, i]);
                 let base = GEPi(bcx, base_val, [0, i]);
@@ -2955,7 +2955,7 @@ fn trans_rec(bcx: block, fields: [ast::field],
 
     // Now revoke the cleanups as we pass responsibility for the data
     // structure on to the caller
-    for cleanup in temp_cleanups { revoke_clean(bcx, cleanup); }
+    for temp_cleanups.each {|cleanup| revoke_clean(bcx, cleanup); }
     ret bcx;
 }
 
@@ -3707,15 +3707,16 @@ fn cleanup_and_leave(bcx: block, upto: option<BasicBlockRef>,
     let _icx = bcx.insn_ctxt("cleanup_and_leave");
     let mut cur = bcx, bcx = bcx;
     let is_lpad = leave == none;
+    let mut done = false;
     loop {
         alt cur.kind {
           block_scope(info) if info.cleanups.len() > 0u {
-            for cp in info.cleanup_paths {
-                if cp.target == leave {
-                    Br(bcx, cp.dest);
-                    ret;
-                }
+            option::with_option_do(vec::find(info.cleanup_paths,
+                                             {|cp| cp.target == leave})) {|cp|
+                Br(bcx, cp.dest);
+                done = true;
             }
+            if done { ret; }
             let sub_cx = sub_block(bcx, "cleanup");
             Br(bcx, sub_cx.llbb);
             info.cleanup_paths += [{target: leave, dest: sub_cx.llbb}];
@@ -4318,7 +4319,7 @@ fn trans_class_ctor(ccx: @crate_ctxt, path: path, decl: ast::fn_decl,
   let mut bcx = bcx_top;
   // Initialize fields to zero so init assignments can validly
   // drop their LHS
-  for field in fields {
+  for fields.each {|field|
      let ix = field_idx_strict(bcx.tcx(), sp, field.ident, fields);
      bcx = zero_alloca(bcx, GEPi(bcx, selfptr, [0, ix]),
                        field.mt.ty);

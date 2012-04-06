@@ -967,7 +967,7 @@ fn type_to_str_inner(names: type_names, outer0: [TypeRef], ty: TypeRef) ->
     fn tys_str(names: type_names, outer: [TypeRef], tys: [TypeRef]) -> str {
         let mut s: str = "";
         let mut first: bool = true;
-        for t: TypeRef in tys {
+        for tys.each {|t|
             if first { first = false; } else { s += ", "; }
             s += type_to_str_inner(names, outer, t);
         }
@@ -1019,7 +1019,7 @@ fn type_to_str_inner(names: type_names, outer0: [TypeRef], ty: TypeRef) ->
       }
       12 {
         let mut i: uint = 0u;
-        for tout: TypeRef in outer0 {
+        for outer0.each {|tout|
             i += 1u;
             if tout as int == ty as int {
                 let n: uint = vec::len::<TypeRef>(outer0) - i;

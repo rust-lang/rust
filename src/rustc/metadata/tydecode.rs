@@ -392,25 +392,20 @@ fn parse_def_id(buf: [u8]) -> ast::def_id {
         #error("didn't find ':' when parsing def id");
         fail;
     }
-    let crate_part = vec::slice::<u8>(buf, 0u, colon_idx);
-    let def_part = vec::slice::<u8>(buf, colon_idx + 1u, len);
+    let crate_part = vec::slice(buf, 0u, colon_idx);
+    let def_part = vec::slice(buf, colon_idx + 1u, len);
 
-    let mut crate_part_vec = [];
-    let mut def_part_vec = [];
-    for b: u8 in crate_part { crate_part_vec += [b]; }
-    for b: u8 in def_part { def_part_vec += [b]; }
-
-    let crate_num = alt uint::parse_buf(crate_part_vec, 10u) {
+    let crate_num = alt uint::parse_buf(crate_part, 10u) {
        some(cn) { cn as int }
        none { fail (#fmt("internal error: parse_def_id: error parsing %? \
                          as crate",
-                         crate_part_vec)); }
+                         crate_part)); }
     };
-    let def_num = alt uint::parse_buf(def_part_vec, 10u) {
+    let def_num = alt uint::parse_buf(def_part, 10u) {
        some(dn) { dn as int }
        none { fail (#fmt("internal error: parse_def_id: error parsing %? \
                          as id",
-                         def_part_vec)); }
+                         def_part)); }
     };
     ret {crate: crate_num, node: def_num};
 }

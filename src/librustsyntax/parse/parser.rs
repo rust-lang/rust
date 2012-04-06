@@ -143,12 +143,13 @@ fn new_parser(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader,
 // interpreted as a specific kind of statement, which would be confusing.
 fn bad_expr_word_table() -> hashmap<str, ()> {
     let words = str_hash();
-    for word in ["alt", "assert", "be", "break", "check", "claim",
-                 "class", "const", "cont", "copy", "crust", "do", "else",
-                 "enum", "export", "fail", "fn", "for", "if",  "iface",
-                 "impl", "import", "let", "log", "loop", "mod", "mut",
-                 "mut", "native", "pure", "resource", "ret", "trait",
-                 "type", "unchecked", "unsafe", "while", "new"] {
+    let keys = ["alt", "assert", "be", "break", "check", "claim",
+                "class", "const", "cont", "copy", "crust", "do", "else",
+                "enum", "export", "fail", "fn", "for", "if",  "iface",
+                "impl", "import", "let", "log", "loop", "mod", "mut",
+                "mut", "native", "pure", "resource", "ret", "trait",
+                "type", "unchecked", "unsafe", "while", "new"];
+    for keys.each {|word|
         words.insert(word, ());
     }
     words
@@ -312,7 +313,7 @@ fn parse_ty_field(p: parser) -> ast::ty_field {
 // otherwise, fail
 fn ident_index(p: parser, args: [ast::arg], i: ast::ident) -> uint {
     let mut j = 0u;
-    for a: ast::arg in args { if a.ident == i { ret j; } j += 1u; }
+    for args.each {|a| if a.ident == i { ret j; } j += 1u; }
     p.fatal("unbound variable `" + i + "` in constraint arg");
 }
 
@@ -1230,7 +1231,7 @@ fn parse_more_binops(p: parser, plhs: pexpr, min_prec: int) ->
     let peeked = p.token;
     if peeked == token::BINOP(token::OR) &&
        p.restriction == RESTRICT_NO_BAR_OP { ret lhs; }
-    for cur: op_spec in *p.precs {
+    for vec::each(*p.precs) {|cur|
         if cur.prec > min_prec && cur.tok == peeked {
             p.bump();
             let expr = parse_prefix_expr(p);
@@ -1414,7 +1415,7 @@ fn parse_for_expr(p: parser) -> @ast::expr {
       _ { false }
     };
     if new_style {
-        let call = parse_expr(p);
+        let call = parse_expr_res(p, RESTRICT_STMT_EXPR);
         alt call.node {
           ast::expr_call(f, args, true) {
             let b_arg = vec::last(args);
@@ -1428,6 +1429,7 @@ fn parse_for_expr(p: parser) -> @ast::expr {
           }
         }
     } else {
+        p.warn("old-style for");
         let decl = parse_local(p, false, false);
         expect_word(p, "in");
         let seq = parse_expr(p);
@@ -2328,7 +2330,7 @@ fn parse_item_enum(p: parser, attrs: [ast::attribute]) -> @ast::item {
             let arg_tys = parse_seq(token::LPAREN, token::RPAREN,
                                     seq_sep(token::COMMA),
                                     {|p| parse_ty(p, false)}, p);
-            for ty in arg_tys.node {
+            for arg_tys.node.each {|ty|
                 args += [{ty: ty, id: p.get_id()}];
             }
         } else if eat(p, token::EQ) {

@@ -280,19 +280,13 @@ fn add_clean_free(cx: block, ptr: ValueRef, shared: bool) {
 // drop glue checks whether it is zero.
 fn revoke_clean(cx: block, val: ValueRef) {
     in_scope_cx(cx) {|info|
-        let mut i = 0u;
-        for cu in info.cleanups {
-            alt cu {
-              clean_temp(v, _, _) if v == val {
-                info.cleanups =
-                    vec::slice(info.cleanups, 0u, i) +
-                    vec::slice(info.cleanups, i + 1u, info.cleanups.len());
-                scope_clean_changed(info);
-                break;
-              }
-              _ {}
-            }
-            i += 1u;
+        option::with_option_do(vec::position(info.cleanups, {|cu|
+            alt cu { clean_temp(v, _, _) if v == val { true } _ { false } }
+        })) {|i|
+            info.cleanups =
+                vec::slice(info.cleanups, 0u, i) +
+                vec::slice(info.cleanups, i + 1u, info.cleanups.len());
+            scope_clean_changed(info);
         }
     }
 }

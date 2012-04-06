@@ -42,7 +42,7 @@ fn test00() {
 
     // Read from spawned tasks...
     let mut sum = 0;
-    for r in results {
+    for results.each {|r|
         i = 0;
         while i < number_of_messages {
             let value = recv(po);
@@ -52,7 +52,7 @@ fn test00() {
     }
 
     // Join spawned tasks...
-    for r in results { future::get(r); }
+    for results.each {|r| future::get(r); }
 
     #debug("Completed: Final number is: ");
     log(error, sum);

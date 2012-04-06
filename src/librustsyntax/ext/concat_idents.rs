@@ -11,7 +11,7 @@ fn expand_syntax_ext(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
           }
         };
     let mut res: ast::ident = "";
-    for e: @ast::expr in args {
+    for args.each {|e|
         res += expr_to_ident(cx, e, "expected an ident");
     }
 

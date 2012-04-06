@@ -77,7 +77,7 @@ mod map_reduce {
                          ctrl: chan<ctrl_proto<K2, V>>, inputs: [K1]) ->
        [joinable_task] {
         let tasks = [];
-        for i in inputs {
+        for inputs.each {|i|
             let m = map, c = ctrl, ii = i;
             tasks += [task::spawn_joinable {|| map_task(m, c, ii)}];
         }
@@ -201,7 +201,7 @@ mod map_reduce {
         }
         treemap::traverse(reducers, finish);
 
-        for t in tasks { task::join(t); }
+        for tasks.each {|t| task::join(t); }
     }
 }
 
@@ -218,7 +218,7 @@ fn main(argv: [str]) {
     }
 
     let iargs = [];
-    for a in vec::slice(argv, 1u, vec::len(argv)) {
+    vec::iter_between(argv, 1u, vec::len(argv)) {|a|
         iargs += [str::bytes(a)];
     }
 

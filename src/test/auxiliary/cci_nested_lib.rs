@@ -6,7 +6,7 @@ fn alist_add<A: copy, B: copy>(lst: alist<A,B>, k: A, v: B) {
 
 fn alist_get<A: copy, B: copy>(lst: alist<A,B>, k: A) -> B {
     let eq_fn = lst.eq_fn;
-    for pair in lst.data {
+    for lst.data.each {|pair|
         let (ki, vi) = pair; // copy req'd for alias analysis
         if eq_fn(k, ki) { ret vi; }
     }

@@ -25,7 +25,7 @@ type aminoacids = {ch: char, prob: u32};
 fn make_cumulative(aa: [aminoacids]) -> [aminoacids] {
     let mut cp: u32 = 0u32;
     let mut ans: [aminoacids] = [];
-    for a: aminoacids in aa { cp += a.prob; ans += [{ch: a.ch, prob: cp}]; }
+    for aa.each {|a| cp += a.prob; ans += [{ch: a.ch, prob: cp}]; }
     ret ans;
 }
 

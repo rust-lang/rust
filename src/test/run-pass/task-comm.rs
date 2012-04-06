@@ -46,12 +46,12 @@ fn test00() {
         task::run(builder) {|| test00_start(ch, i, number_of_messages);}
     }
     let mut sum: int = 0;
-    for r in results {
+    for results.each {|r|
         i = 0;
         while i < number_of_messages { sum += recv(po); i = i + 1; }
     }
 
-    for r in results { future::get(r); }
+    for results.each {|r| future::get(r); }
 
     #debug("Completed: Final number is: ");
     assert (sum ==
@@ -132,7 +132,7 @@ fn test06() {
     }
 
 
-    for r in results { future::get(r); }
+    for results.each {|r| future::get(r); }
 }
 
 

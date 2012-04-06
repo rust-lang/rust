@@ -31,7 +31,7 @@ fn main() {
 
     fn check_str_eq(a: str, b: str) {
         let mut i: int = 0;
-        for ab: u8 in a {
+        for str::each(a) {|ab|
             log(debug, i);
             log(debug, ab);
             let bb: u8 = b[i];

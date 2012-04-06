@@ -440,7 +440,7 @@ fn resolve_block(blk: ast::blk, cx: ctxt, visitor: visit::vt<ctxt>) {
     record_parent(cx, blk.node.id);
 
     // Resolve queued locals to this block.
-    for local_id in cx.queued_locals {
+    for cx.queued_locals.each {|local_id|
         cx.region_map.local_blocks.insert(local_id, blk.node.id);
     }
 

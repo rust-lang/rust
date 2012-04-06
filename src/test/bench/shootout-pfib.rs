@@ -75,7 +75,7 @@ fn stress(num_tasks: int) {
         results += [task::future_result(builder)];
         task::run(builder) {|| stress_task(i); }
     }
-    for r in results { future::get(r); }
+    for results.each {|r| future::get(r); }
 }
 
 fn main(argv: [str]) {

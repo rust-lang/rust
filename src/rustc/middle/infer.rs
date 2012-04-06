@@ -622,7 +622,7 @@ impl unify_methods for infer_ctxt {
         let actual_arg_len = vec::len(actual_constr.node.args);
         if expected_arg_len != actual_arg_len { ret err_res; }
         let mut i = 0u;
-        for a in expected.node.args {
+        for expected.node.args.each {|a|
             let actual = actual_constr.node.args[i];
             alt a.node {
               ast::carg_base {

@@ -67,20 +67,23 @@ fn mk_filesearch(maybe_sysroot: option<path>,
 
 // FIXME #1001: This can't be an obj method
 fn search<T: copy>(filesearch: filesearch, pick: pick<T>) -> option<T> {
-    for lib_search_path in filesearch.lib_search_paths() {
+    let mut rslt = none;
+    for filesearch.lib_search_paths().each {|lib_search_path|
         #debug("searching %s", lib_search_path);
-        for path in os::list_dir_path(lib_search_path) {
+        for os::list_dir_path(lib_search_path).each {|path|
             #debug("testing %s", path);
             let maybe_picked = pick(path);
             if option::is_some(maybe_picked) {
                 #debug("picked %s", path);
-                ret maybe_picked;
+                rslt = maybe_picked;
+                break;
             } else {
                 #debug("rejected %s", path);
             }
         }
+        if option::is_some(rslt) { break; }
     }
-    ret option::none;
+    ret rslt;
 }
 
 fn relative_target_lib_path(target_triple: str) -> [path] {

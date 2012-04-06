@@ -142,11 +142,11 @@ fn float_ty_to_str(t: float_ty) -> str {
 fn is_exported(i: ident, m: _mod) -> bool {
     let mut local = false;
     let mut parent_enum : option<ident> = none;
-    for it: @item in m.items {
+    for m.items.each {|it|
         if it.ident == i { local = true; }
         alt it.node {
           item_enum(variants, _) {
-            for v: variant in variants {
+            for variants.each {|v|
                 if v.node.name == i {
                    local = true;
                    parent_enum = some(it.ident);
@@ -158,11 +158,11 @@ fn is_exported(i: ident, m: _mod) -> bool {
         if local { break; }
     }
     let mut has_explicit_exports = false;
-    for vi: @view_item in m.view_items {
+    for m.view_items.each {|vi|
         alt vi.node {
           view_item_export(vps) {
             has_explicit_exports = true;
-            for vp in vps {
+            for vps.each {|vp|
                 alt vp.node {
                   ast::view_path_simple(id, _, _) {
                     if id == i { ret true; }
@@ -177,7 +177,7 @@ fn is_exported(i: ident, m: _mod) -> bool {
                   ast::view_path_list(path, ids, _) {
                     if vec::len(*path) == 1u {
                         if i == path[0] { ret true; }
-                        for id in ids {
+                        for ids.each {|id|
                             if id.node.name == i { ret true; }
                         }
                     } else {
@@ -278,14 +278,14 @@ fn public_methods(ms: [@method]) -> [@method] {
 
 fn split_class_items(cs: [@class_member]) -> ([ivar], [@method]) {
     let mut vs = [], ms = [];
-    for c in cs {
+    for cs.each {|c|
       alt c.node {
         instance_var(i, t, cm, id, privacy) {
           vs += [{ident: i, ty: t, cm: cm, id: id, privacy: privacy}];
         }
         class_method(m) { ms += [m]; }
       }
-    }
+    };
     (vs, ms)
 }
 

@@ -372,7 +372,7 @@ impl of vid for region_vid {
 
 fn param_bounds_to_kind(bounds: param_bounds) -> kind {
     let mut kind = kind_noncopyable;
-    for bound in *bounds {
+    for vec::each(*bounds) {|bound|
         alt bound {
           bound_copy {
             if kind != kind_sendable { kind = kind_copyable; }
@@ -464,7 +464,9 @@ fn mk_t_with_id(cx: ctxt, st: sty, o_def_id: option<ast::def_id>) -> t {
       ty_param(_, _) { has_params = true; }
       ty_var(_) | ty_self(_) { has_vars = true; }
       ty_enum(_, tys) | ty_iface(_, tys) | ty_class(_, tys) {
-        for tt in tys { derive_flags(has_params, has_vars, has_rptrs, tt); }
+        for tys.each {|tt|
+            derive_flags(has_params, has_vars, has_rptrs, tt);
+        }
       }
       ty_box(m) | ty_uniq(m) | ty_vec(m) | ty_ptr(m) {
         derive_flags(has_params, has_vars, has_rptrs, m.ty);
@@ -478,22 +480,24 @@ fn mk_t_with_id(cx: ctxt, st: sty, o_def_id: option<ast::def_id>) -> t {
         derive_flags(has_params, has_vars, has_rptrs, m.ty);
       }
       ty_rec(flds) {
-        for f in flds {
+        for flds.each {|f|
           derive_flags(has_params, has_vars, has_rptrs, f.mt.ty);
         }
       }
       ty_tup(ts) {
-        for tt in ts { derive_flags(has_params, has_vars, has_rptrs, tt); }
+        for ts.each {|tt| derive_flags(has_params, has_vars, has_rptrs, tt); }
       }
       ty_fn(f) {
-        for a in f.inputs {
+        for f.inputs.each {|a|
           derive_flags(has_params, has_vars, has_rptrs, a.ty);
         }
         derive_flags(has_params, has_vars, has_rptrs, f.output);
       }
       ty_res(_, tt, tps) {
         derive_flags(has_params, has_vars, has_rptrs, tt);
-        for tt in tps { derive_flags(has_params, has_vars, has_rptrs, tt); }
+        for tps.each {|tt|
+            derive_flags(has_params, has_vars, has_rptrs, tt);
+        }
       }
       ty_constr(tt, _) {
         derive_flags(has_params, has_vars, has_rptrs, tt);
@@ -633,19 +637,19 @@ fn maybe_walk_ty(ty: t, f: fn(t) -> bool) {
       }
       ty_enum(_, subtys) | ty_iface(_, subtys) | ty_class(_, subtys)
        | ty_self(subtys) {
-        for subty: t in subtys { maybe_walk_ty(subty, f); }
+        for subtys.each {|subty| maybe_walk_ty(subty, f); }
       }
       ty_rec(fields) {
-        for fl: field in fields { maybe_walk_ty(fl.mt.ty, f); }
+        for fields.each {|fl| maybe_walk_ty(fl.mt.ty, f); }
       }
-      ty_tup(ts) { for tt in ts { maybe_walk_ty(tt, f); } }
+      ty_tup(ts) { for ts.each {|tt| maybe_walk_ty(tt, f); } }
       ty_fn(ft) {
-        for a: arg in ft.inputs { maybe_walk_ty(a.ty, f); }
+        for ft.inputs.each {|a| maybe_walk_ty(a.ty, f); }
         maybe_walk_ty(ft.output, f);
       }
       ty_res(_, sub, tps) {
         maybe_walk_ty(sub, f);
-        for tp: t in tps { maybe_walk_ty(tp, f); }
+        for tps.each {|tp| maybe_walk_ty(tp, f); }
       }
       ty_constr(sub, _) { maybe_walk_ty(sub, f); }
       ty_uniq(tm) { maybe_walk_ty(tm.ty, f); }
@@ -895,23 +899,24 @@ fn type_needs_drop(cx: ctxt, ty: t) -> bool {
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
       ty_type | ty_ptr(_) | ty_rptr(_, _) { false }
       ty_rec(flds) {
-        for f in flds { if type_needs_drop(cx, f.mt.ty) { accum = true; } }
+        for flds.each {|f| if type_needs_drop(cx, f.mt.ty) { accum = true; } }
         accum
       }
       ty_class(did, ts) {
-          for f in ty::class_items_as_fields(cx, did, ts)
-          { if type_needs_drop(cx, f.mt.ty) { accum = true; } }
+        for vec::each(ty::class_items_as_fields(cx, did, ts)) {|f|
+            if type_needs_drop(cx, f.mt.ty) { accum = true; }
+        }
         accum
       }
 
       ty_tup(elts) {
-        for m in elts { if type_needs_drop(cx, m) { accum = true; } }
+        for elts.each {|m| if type_needs_drop(cx, m) { accum = true; } }
         accum
       }
       ty_enum(did, tps) {
         let variants = enum_variants(cx, did);
-        for variant in *variants {
-            for aty in variant.args {
+        for vec::each(*variants) {|variant|
+            for variant.args.each {|aty|
                 // Perform any type parameter substitutions.
                 let arg_ty = substitute_type_params(cx, tps, aty);
                 if type_needs_drop(cx, arg_ty) { accum = true; }
@@ -968,8 +973,8 @@ fn type_needs_unwind_cleanup_(cx: ctxt, ty: t,
             true
           }
           ty_enum(did, tps) {
-            for v in *enum_variants(cx, did) {
-                for aty in v.args {
+            for vec::each(*enum_variants(cx, did)) {|v|
+                for v.args.each {|aty|
                     let t = substitute_type_params(cx, tps, aty);
                     needs_unwind_cleanup |=
                         type_needs_unwind_cleanup_(cx, t, tycache,
@@ -1068,13 +1073,15 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
       // Records lower to the lowest of their members.
       ty_rec(flds) {
         let mut lowest = kind_sendable;
-        for f in flds { lowest = lower_kind(lowest, type_kind(cx, f.mt.ty)); }
+        for flds.each {|f|
+            lowest = lower_kind(lowest, type_kind(cx, f.mt.ty));
+        }
         lowest
       }
       // Tuples lower to the lowest of their members.
       ty_tup(tys) {
         let mut lowest = kind_sendable;
-        for ty in tys { lowest = lower_kind(lowest, type_kind(cx, ty)); }
+        for tys.each {|ty| lowest = lower_kind(lowest, type_kind(cx, ty)); }
         lowest
       }
       // Enums lower to the lowest of their variants.
@@ -1084,8 +1091,8 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
         if vec::len(*variants) == 0u {
             lowest = kind_noncopyable;
         } else {
-            for variant in *variants {
-                for aty in variant.args {
+            for vec::each(*variants) {|variant|
+                for variant.args.each {|aty|
                     // Perform any type parameter substitutions.
                     let arg_ty = substitute_type_params(cx, tps, aty);
                     lowest = lower_kind(lowest, type_kind(cx, arg_ty));
@@ -1246,8 +1253,8 @@ fn type_structurally_contains(cx: ctxt, ty: t, test: fn(sty) -> bool) ->
     if test(sty) { ret true; }
     alt sty {
       ty_enum(did, tps) {
-        for variant in *enum_variants(cx, did) {
-            for aty in variant.args {
+        for vec::each(*enum_variants(cx, did)) {|variant|
+            for variant.args.each {|aty|
                 let sty = substitute_type_params(cx, tps, aty);
                 if type_structurally_contains(cx, sty, test) { ret true; }
             }
@@ -1255,13 +1262,13 @@ fn type_structurally_contains(cx: ctxt, ty: t, test: fn(sty) -> bool) ->
         ret false;
       }
       ty_rec(fields) {
-        for field in fields {
+        for fields.each {|field|
             if type_structurally_contains(cx, field.mt.ty, test) { ret true; }
         }
         ret false;
       }
       ty_tup(ts) {
-        for tt in ts {
+        for ts.each {|tt|
             if type_structurally_contains(cx, tt, test) { ret true; }
         }
         ret false;
@@ -1342,7 +1349,7 @@ fn type_is_pod(cx: ctxt, ty: t) -> bool {
       // Structural types
       ty_enum(did, tps) {
         let variants = enum_variants(cx, did);
-        for variant: variant_info in *variants {
+        for vec::each(*variants) {|variant|
             let tup_ty = mk_tup(cx, variant.args);
 
             // Perform any type parameter substitutions.
@@ -1351,12 +1358,12 @@ fn type_is_pod(cx: ctxt, ty: t) -> bool {
         }
       }
       ty_rec(flds) {
-        for f: field in flds {
+        for flds.each {|f|
             if !type_is_pod(cx, f.mt.ty) { result = false; }
         }
       }
       ty_tup(elts) {
-        for elt in elts { if !type_is_pod(cx, elt) { result = false; } }
+        for elts.each {|elt| if !type_is_pod(cx, elt) { result = false; } }
       }
       ty_res(_, inner, tps) {
         result = type_is_pod(cx, substitute_type_params(cx, tps, inner));
@@ -1452,14 +1459,14 @@ fn hash_type_structure(st: sty) -> uint {
     fn hash_subty(id: uint, subty: t) -> uint { (id << 2u) + type_id(subty) }
     fn hash_subtys(id: uint, subtys: [t]) -> uint {
         let mut h = id;
-        for s in subtys { h = (h << 2u) + type_id(s) }
+        for subtys.each {|s| h = (h << 2u) + type_id(s) }
         h
     }
     fn hash_type_constr(id: uint, c: @type_constr) -> uint {
         let mut h = id;
         h = (h << 2u) + hash_def(h, c.node.id);
         // FIXME this makes little sense
-        for a in c.node.args {
+        for c.node.args.each {|a|
             alt a.node {
               carg_base { h += h << 2u; }
               carg_lit(_) { fail "lit args not implemented yet"; }
@@ -1499,27 +1506,27 @@ fn hash_type_structure(st: sty) -> uint {
       ty_str { 17u }
       ty_enum(did, tys) {
         let mut h = hash_def(18u, did);
-        for typ: t in tys { h = hash_subty(h, typ); }
+        for tys.each {|typ| h = hash_subty(h, typ); }
         h
       }
       ty_box(mt) { hash_subty(19u, mt.ty) }
       ty_vec(mt) { hash_subty(21u, mt.ty) }
       ty_rec(fields) {
         let mut h = 26u;
-        for f in fields { h = hash_subty(h, f.mt.ty); }
+        for fields.each {|f| h = hash_subty(h, f.mt.ty); }
         h
       }
       ty_tup(ts) { hash_subtys(25u, ts) }
       ty_fn(f) {
         let mut h = 27u;
-        for a in f.inputs { h = hash_subty(h, a.ty); }
+        for f.inputs.each {|a| h = hash_subty(h, a.ty); }
         hash_subty(h, f.output)
       }
       ty_var(v) { hash_uint(30u, v.to_uint()) }
       ty_param(pid, did) { hash_def(hash_uint(31u, pid), did) }
       ty_self(ts) {
         let mut h = 28u;
-        for t in ts { h = hash_subty(h, t); }
+        for ts.each {|t| h = hash_subty(h, t); }
         h
       }
       ty_type { 32u }
@@ -1535,13 +1542,13 @@ fn hash_type_structure(st: sty) -> uint {
       }
       ty_constr(t, cs) {
         let mut h = hash_subty(36u, t);
-        for c in cs { h = (h << 2u) + hash_type_constr(h, c); }
+        for cs.each {|c| h = (h << 2u) + hash_type_constr(h, c); }
         h
       }
       ty_uniq(mt) { hash_subty(37u, mt.ty) }
       ty_iface(did, tys) {
         let mut h = hash_def(40u, did);
-        for typ: t in tys { h = hash_subty(h, typ); }
+        for tys.each {|typ| h = hash_subty(h, typ); }
         h
       }
       ty_opaque_closure_ptr(ck_block) { 41u }
@@ -1550,7 +1557,7 @@ fn hash_type_structure(st: sty) -> uint {
       ty_opaque_box { 44u }
       ty_class(did, tys) {
           let mut h = hash_def(45u, did);
-          for typ: t in tys { h = hash_subty(h, typ); }
+          for tys.each {|typ| h = hash_subty(h, typ); }
           h
       }
     }
@@ -1579,7 +1586,7 @@ fn args_eq<T>(eq: fn(T, T) -> bool,
               a: [@sp_constr_arg<T>],
               b: [@sp_constr_arg<T>]) -> bool {
     let mut i: uint = 0u;
-    for arg: @sp_constr_arg<T> in a {
+    for a.each {|arg|
         if !arg_eq(eq, arg, b[i]) { ret false; }
         i += 1u;
     }
@@ -1596,7 +1603,7 @@ fn constr_eq(c: @constr, d: @constr) -> bool {
 fn constrs_eq(cs: [@constr], ds: [@constr]) -> bool {
     if vec::len(cs) != vec::len(ds) { ret false; }
     let mut i = 0u;
-    for c: @constr in cs { if !constr_eq(c, ds[i]) { ret false; } i += 1u; }
+    for cs.each {|c| if !constr_eq(c, ds[i]) { ret false; } i += 1u; }
     ret true;
 }
 
@@ -1721,7 +1728,7 @@ fn stmt_node_id(s: @ast::stmt) -> ast::node_id {
 
 fn field_idx(id: ast::ident, fields: [field]) -> option<uint> {
     let mut i = 0u;
-    for f in fields { if f.ident == id { ret some(i); } i += 1u; }
+    for fields.each {|f| if f.ident == id { ret some(i); } i += 1u; }
     ret none;
 }
 
@@ -1739,7 +1746,7 @@ fn get_fields(rec_ty:t) -> [field] {
 
 fn method_idx(id: ast::ident, meths: [method]) -> option<uint> {
     let mut i = 0u;
-    for m in meths { if m.ident == id { ret some(i); } i += 1u; }
+    for meths.each {|m| if m.ident == id { ret some(i); } i += 1u; }
     ret none;
 }
 
@@ -2214,7 +2221,7 @@ fn lookup_class_method_by_name(cx:ctxt, did: ast::def_id, name: ident,
                                sp: span) -> def_id {
     if check is_local(did) {
        let ms = lookup_class_method_ids(cx, did);
-       for m in ms {
+       for ms.each {|m|
          if m.name == name {
              ret ast_util::local_def(m.id);
          }
@@ -2229,7 +2236,7 @@ fn lookup_class_method_by_name(cx:ctxt, did: ast::def_id, name: ident,
 
 fn class_field_tys(items: [@class_member]) -> [field_ty] {
     let mut rslt = [];
-    for it in items {
+    for items.each {|it|
        alt it.node {
           instance_var(nm, _, cm, id, privacy) {
               rslt += [{ident: nm, id: ast_util::local_def(id),
@@ -2247,7 +2254,7 @@ fn class_field_tys(items: [@class_member]) -> [field_ty] {
 fn class_items_as_fields(cx:ctxt, did: ast::def_id, substs: [ty::t])
     -> [field] {
     let mut rslt = [];
-    for f in lookup_class_fields(cx, did) {
+    for lookup_class_fields(cx, did).each {|f|
        // consider all instance vars mut, because the
        // constructor may mutate all vars
        rslt += [{ident: f.ident, mt:

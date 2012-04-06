@@ -117,7 +117,7 @@ fn visit_item(e: env, i: @ast::item) {
             e.sess.span_fatal(i.span, "library '" + native_name +
                               "' already added: can't specify link_args.");
         }
-        for a: ast::attribute in link_args {
+        for link_args.each {|a|
             alt attr::get_meta_item_value_str(attr::attr_meta(a)) {
               some(linkarg) {
                 cstore::add_used_link_args(cstore, linkarg);
@@ -153,11 +153,11 @@ fn metadata_matches(extern_metas: [@ast::meta_item],
            vec::len(local_metas), vec::len(extern_metas));
 
     #debug("crate metadata:");
-    for have: @ast::meta_item in extern_metas {
+    for extern_metas.each {|have|
         #debug("  %s", pprust::meta_item_to_str(*have));
     }
 
-    for needed: @ast::meta_item in local_metas {
+    for local_metas.each {|needed|
         #debug("looking for %s", pprust::meta_item_to_str(*needed));
         if !attr::contains(extern_metas, needed) {
             #debug("missing %s", pprust::meta_item_to_str(*needed));
@@ -375,7 +375,7 @@ fn resolve_crate_deps(e: env, cdata: @[u8]) -> cstore::cnum_map {
     // The map from crate numbers in the crate we're resolving to local crate
     // numbers
     let cnum_map = int_hash::<ast::crate_num>();
-    for dep: decoder::crate_dep in decoder::get_crate_deps(cdata) {
+    for decoder::get_crate_deps(cdata).each {|dep|
         let extrn_cnum = dep.cnum;
         let cname = dep.ident;
         // FIXME: We really need to know the linkage metas of our transitive

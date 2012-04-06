@@ -38,7 +38,7 @@ fn node_ids_in_fn(tcx: ty::ctxt, body: blk, rs: @mut [node_id]) {
 }
 
 fn init_vecs(ccx: crate_ctxt, node_ids: [node_id], len: uint) {
-    for i: node_id in node_ids {
+    for node_ids.each {|i|
         log(debug, int::str(i) + " |-> " + uint::str(len));
         add_node(ccx, i, empty_ann(len));
     }

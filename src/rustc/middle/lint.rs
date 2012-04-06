@@ -60,7 +60,8 @@ fn merge_opts(attrs: [ast::attribute], cmd_opts: [(option, bool)]) ->
     }
 
     fn contains(xs: [(option, bool)], x: option) -> bool {
-        for (o, _) in xs {
+        for xs.each {|c|
+            let (o, _) = c;
             if o == x { ret true; }
         }
         ret false;
@@ -85,7 +86,8 @@ fn merge_opts(attrs: [ast::attribute], cmd_opts: [(option, bool)]) ->
         }
     };
 
-    for (o, v) in default() {
+    for default().each {|c|
+        let (o, v) = c;
         if !contains(result, o) {
             result += [(o, v)];
         }
@@ -97,7 +99,7 @@ fn merge_opts(attrs: [ast::attribute], cmd_opts: [(option, bool)]) ->
 fn check_ctypes(tcx: ty::ctxt, crate: @ast::crate) {
     fn check_native_fn(tcx: ty::ctxt, decl: ast::fn_decl) {
         let tys = vec::map(decl.inputs) {|a| a.ty };
-        for ty in (tys + [decl.output]) {
+        for vec::each(tys + [decl.output]) {|ty|
             alt ty.node {
               ast::ty_path(_, id) {
                 alt tcx.def_map.get(id) {
@@ -125,7 +127,7 @@ fn check_ctypes(tcx: ty::ctxt, crate: @ast::crate) {
         alt it.node {
           ast::item_native_mod(nmod) if attr::native_abi(it.attrs) !=
               either::right(ast::native_abi_rust_intrinsic) {
-            for ni in nmod.items {
+            for nmod.items.each {|ni|
                 alt ni.node {
                   ast::native_item_fn(decl, tps) {
                     check_native_fn(tcx, decl);
@@ -148,7 +150,8 @@ fn check_ctypes(tcx: ty::ctxt, crate: @ast::crate) {
 fn check_crate(tcx: ty::ctxt, crate: @ast::crate,
                opts: [(option, bool)], time: bool) {
     let lint_opts = lint::merge_opts(crate.node.attrs, opts);
-    for (lopt, switch) in lint_opts {
+    for lint_opts.each {|opt|
+        let (lopt, switch) = opt;
         if switch == true {
             lopt.run(tcx, crate, time);
         }

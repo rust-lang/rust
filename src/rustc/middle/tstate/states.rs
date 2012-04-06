@@ -67,14 +67,14 @@ fn seq_states(fcx: fn_ctxt, pres: prestate, bindings: [binding]) ->
    {changed: bool, post: poststate} {
     let mut changed = false;
     let mut post = tritv_clone(pres);
-    for b: binding in bindings {
+    for bindings.each {|b|
         alt b.rhs {
           some(an_init) {
             // an expression, with or without a destination
             changed |=
                 find_pre_post_state_expr(fcx, post, an_init.expr) || changed;
             post = tritv_clone(expr_poststate(fcx.ccx, an_init.expr));
-            for i: inst in b.lhs {
+            for b.lhs.each {|i|
                 alt an_init.expr.node {
                   expr_path(p) {
                     handle_move_or_copy(fcx, post, p, an_init.expr.id, i,
@@ -91,7 +91,7 @@ fn seq_states(fcx: fn_ctxt, pres: prestate, bindings: [binding]) ->
             }
           }
           none {
-            for i: inst in b.lhs {
+            for b.lhs.each {|i|
                 // variables w/o an initializer
                 clear_in_poststate_ident_(fcx, i.node, i.ident, post);
             }
@@ -375,7 +375,7 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
         let callee_ops = callee_arg_init_ops(fcx, operator.id);
         let mut ops = [];
         let mut i = 0;
-        for a_opt: option<@expr> in maybe_args {
+        for maybe_args.each {|a_opt|
             alt a_opt {
               none {/* no-op */ }
               some(a) { ops += [callee_ops[i]]; args += [a]; }
@@ -575,7 +575,7 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
         let mut a_post;
         if vec::len(alts) > 0u {
             a_post = false_postcond(num_constrs);
-            for an_alt: arm in alts {
+            for alts.each {|an_alt|
                 alt an_alt.guard {
                   some(e) {
                     changed |= find_pre_post_state_expr(fcx, e_post, e);
@@ -702,7 +702,7 @@ fn find_pre_post_state_block(fcx: fn_ctxt, pres0: prestate, b: blk) -> bool {
      initializes.  Then <pres> becomes the new poststate. */
 
     let mut changed = false;
-    for s: @stmt in b.node.stmts {
+    for b.node.stmts.each {|s|
         changed |= find_pre_post_state_stmt(fcx, pres, s);
         pres = stmt_poststate(fcx.ccx, *s);
     }
@@ -745,12 +745,12 @@ fn find_pre_post_state_fn(fcx: fn_ctxt,
 
     // Arguments start out initialized
     let block_pre = block_prestate(fcx.ccx, f_body);
-    for a: arg in f_decl.inputs {
+    for f_decl.inputs.each {|a|
         set_in_prestate_constr(fcx, ninit(a.id, a.ident), block_pre);
     }
 
     // Instantiate any constraints on the arguments so we can use them
-    for c: @constr in f_decl.constraints {
+    for f_decl.constraints.each {|c|
         let tsc = ast_constr_to_ts_constr(fcx.ccx.tcx, f_decl.inputs, c);
         set_in_prestate_constr(fcx, tsc, block_pre);
     }
