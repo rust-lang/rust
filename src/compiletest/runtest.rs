@@ -246,7 +246,7 @@ fn check_expected_errors(expected_errors: [errors::expected_error],
     // is the ending point, and * represents ANSI color codes.
     for line: str in str::split_char(procres.stderr, '\n') {
         let mut was_expected = false;
-        vec::iteri(expected_errors) {|i, ee|
+        for vec::eachi(expected_errors) {|i, ee|
             if !found_flags[i] {
                 #debug["prefix=%s ee.kind=%s ee.msg=%s line=%s",
                        prefixes[i], ee.kind, ee.msg, line];
@@ -255,6 +255,7 @@ fn check_expected_errors(expected_errors: [errors::expected_error],
                     str::contains(line, ee.msg)) {
                     found_flags[i] = true;
                     was_expected = true;
+                    break;
                 }
             }
         }
