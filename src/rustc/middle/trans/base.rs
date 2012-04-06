@@ -4748,14 +4748,16 @@ fn create_module_map(ccx: @crate_ctxt) -> ValueRef {
 }
 
 
-fn decl_crate_map(sess: session::session, mapname: str,
+fn decl_crate_map(sess: session::session, mapmeta: link::link_meta,
                   llmod: ModuleRef) -> ValueRef {
     let targ_cfg = sess.targ_cfg;
     let int_type = T_int(targ_cfg);
     let mut n_subcrates = 1;
     let cstore = sess.cstore;
     while cstore::have_crate_data(cstore, n_subcrates) { n_subcrates += 1; }
-    let mapname = if sess.building_library { mapname } else { "toplevel" };
+    let mapname = if sess.building_library {
+        mapmeta.name + "_" + mapmeta.vers + "_" + mapmeta.extras_hash
+    } else { "toplevel" };
     let sym_name = "_rust_crate_map_" + mapname;
     let arrtype = T_array(int_type, n_subcrates as uint);
     let maptype = T_struct([int_type, arrtype]);
@@ -4766,13 +4768,15 @@ fn decl_crate_map(sess: session::session, mapname: str,
     ret map;
 }
 
-// FIXME use hashed metadata instead of crate names once we have that
 fn fill_crate_map(ccx: @crate_ctxt, map: ValueRef) {
     let mut subcrates: [ValueRef] = [];
     let mut i = 1;
     let cstore = ccx.sess.cstore;
     while cstore::have_crate_data(cstore, i) {
-        let nm = "_rust_crate_map_" + cstore::get_crate_data(cstore, i).name;
+        let cdata = cstore::get_crate_data(cstore, i);
+        let nm = "_rust_crate_map_" + cdata.name +
+            "_" + cstore::get_crate_vers(cstore, i) +
+            "_" + cstore::get_crate_hash(cstore, i);
         let cr = str::as_c_str(nm, {|buf|
             llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type, buf)
         });
@@ -4857,7 +4861,7 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
     lib::llvm::associate_type(tn, "taskptr", taskptr_type);
     let tydesc_type = T_tydesc(targ_cfg);
     lib::llvm::associate_type(tn, "tydesc", tydesc_type);
-    let crate_map = decl_crate_map(sess, link_meta.name, llmod);
+    let crate_map = decl_crate_map(sess, link_meta, llmod);
     let dbg_cx = if sess.opts.debuginfo {
         option::some(debuginfo::mk_ctxt(llmod_id))
     } else {

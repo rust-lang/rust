@@ -3,7 +3,7 @@
 
 import std::map;
 import std::map::hashmap;
-import syntax::ast;
+import syntax::{ast, attr};
 import util::common::*;
 
 export cstore::{};
@@ -12,6 +12,8 @@ export crate_metadata;
 export mk_cstore;
 export get_crate_data;
 export set_crate_data;
+export get_crate_hash;
+export get_crate_vers;
 export have_crate_data;
 export iter_crate_data;
 export add_used_crate_file;
@@ -77,6 +79,18 @@ fn mk_cstore() -> cstore {
 
 fn get_crate_data(cstore: cstore, cnum: ast::crate_num) -> crate_metadata {
     ret p(cstore).metas.get(cnum);
+}
+
+fn get_crate_hash(cstore: cstore, cnum: ast::crate_num) -> str {
+    let cdata = get_crate_data(cstore, cnum);
+    ret decoder::get_crate_hash(cdata.data);
+}
+
+fn get_crate_vers(cstore: cstore, cnum: ast::crate_num) -> str {
+    let cdata = get_crate_data(cstore, cnum);
+    let attrs = decoder::get_crate_attributes(cdata.data);
+    ret option::get(attr::meta_item_value_from_list(
+        attr::find_linkage_metas(attrs), "vers"));
 }
 
 fn set_crate_data(cstore: cstore, cnum: ast::crate_num,
