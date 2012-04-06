@@ -961,7 +961,8 @@ iface combine {
     fn tag() -> str;
     fn bnd<V:copy>(b: bounds<V>) -> option<V>;
     fn with_bnd<V:copy>(b: bounds<V>, v: V) -> bounds<V>;
-    fn c_bot(b: ty::t) -> cres<ty::t>;
+    fn c_bot_ty(b: ty::t) -> cres<ty::t>;
+    fn c_ty_bot(b: ty::t) -> cres<ty::t>;
     fn c_mts(a: ty::mt, b: ty::mt) -> cres<ty::mt>;
     fn c_contratys(t1: ty::t, t2: ty::t) -> cres<ty::t>;
     fn c_tys(t1: ty::t, t2: ty::t) -> cres<ty::t>;
@@ -974,7 +975,8 @@ iface combine {
         a: ty::region, b: ty::region) -> cres<ty::region>;
     fn c_regions(
         a: ty::region, b: ty::region) -> cres<ty::region>;
-    fn c_regions_static(r: ty::region) -> cres<ty::region>;
+    fn c_regions_static_r(r: ty::region) -> cres<ty::region>;
+    fn c_regions_r_static(r: ty::region) -> cres<ty::region>;
     fn c_regions_scope_scope(
         a: ty::region, a_id: ast::node_id,
         b: ty::region, b_id: ast::node_id) -> cres<ty::region>;
@@ -1171,8 +1173,8 @@ fn c_tys<C:combine>(
 
     indent {||
     alt (ty::get(a).struct, ty::get(b).struct) {
-      (ty::ty_bot, _) { self.c_bot(b) }
-      (_, ty::ty_bot) { self.c_bot(b) }
+      (ty::ty_bot, _) { self.c_ty_bot(b) }
+      (_, ty::ty_bot) { self.c_bot_ty(b) }
 
       (ty::ty_var(a_id), ty::ty_var(b_id)) {
         c_vars(self, self.infcx().vb,
@@ -1314,8 +1316,12 @@ fn c_regions<C:combine>(
 
     indent {||
     alt (a, b) {
-      (ty::re_static, r) | (r, ty::re_static) {
-        self.c_regions_static(r)
+      (ty::re_static, r) {
+        self.c_regions_static_r(r)
+      }
+
+      (r, ty::re_static) {
+        self.c_regions_r_static(r)
       }
 
       (ty::re_var(a_id), ty::re_var(b_id)) {
@@ -1386,8 +1392,12 @@ impl of combine for lub {
         {ub: some(v) with b}
     }
 
-    fn c_bot(b: ty::t) -> cres<ty::t> {
+    fn c_bot_ty(b: ty::t) -> cres<ty::t> {
         ok(b)
+    }
+
+    fn c_ty_bot(b: ty::t) -> cres<ty::t> {
+        self.c_bot_ty(b) // LUB is commutative
     }
 
     fn c_mts(a: ty::mt, b: ty::mt) -> cres<ty::mt> {
@@ -1465,10 +1475,13 @@ impl of combine for lub {
         ret glb(self.infcx()).c_regions(a, b);
     }
 
-    fn c_regions_static(_r: ty::region) -> cres<ty::region> {
-        // LUB of `r` and static is always static---what's bigger than
-        // that?
+    fn c_regions_static_r(_r: ty::region) -> cres<ty::region> {
+        // nothing lives longer than static
         ret ok(ty::re_static);
+    }
+
+    fn c_regions_r_static(r: ty::region) -> cres<ty::region> {
+        self.c_regions_static_r(r) // LUB is commutative
     }
 
     fn c_regions_free_scope(
@@ -1517,8 +1530,12 @@ impl of combine for glb {
         {lb: some(v) with b}
     }
 
-    fn c_bot(_b: ty::t) -> cres<ty::t> {
+    fn c_bot_ty(_b: ty::t) -> cres<ty::t> {
         ok(ty::mk_bot(self.infcx().tcx))
+    }
+
+    fn c_ty_bot(b: ty::t) -> cres<ty::t> {
+        self.c_bot_ty(b) // GLB is commutative
     }
 
     fn c_mts(a: ty::mt, b: ty::mt) -> cres<ty::mt> {
@@ -1614,10 +1631,13 @@ impl of combine for glb {
         ret lub(self.infcx()).c_regions(a, b);
     }
 
-    fn c_regions_static(r: ty::region) -> cres<ty::region> {
-        // GLB of `r` and static is always `r`; static is bigger than
-        // everything
+    fn c_regions_static_r(r: ty::region) -> cres<ty::region> {
+        // static lives longer than everything else
         ret ok(r);
+    }
+
+    fn c_regions_r_static(r: ty::region) -> cres<ty::region> {
+        self.c_regions_static_r(r) // GLB is commutative
     }
 
     fn c_regions_free_scope(
