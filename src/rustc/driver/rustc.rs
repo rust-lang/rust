@@ -1,5 +1,10 @@
-use std;
-use rustc;
+#[no_core];
+
+use core(vers = "0.2");
+use std(vers = "0.2");
+use rustc(vers = "0.2");
+
+import core::*;
 
 // -*- rust -*-
 import result::{ok, err};

@@ -1,8 +1,5 @@
 // cargo.rs - Rust package manager
 
-use rustc;
-use std;
-
 import rustc::syntax::{ast, codemap};
 import rustc::syntax::parse::parser;
 import rustc::util::filesearch::{get_cargo_root, get_cargo_root_nearest,

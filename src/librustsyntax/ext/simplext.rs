@@ -1,5 +1,3 @@
-use std;
-
 import codemap::span;
 import std::map::{hashmap, str_hash};
 

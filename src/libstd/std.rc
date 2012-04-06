@@ -8,13 +8,17 @@
 #[crate_type = "lib"];
 #[doc = "The Rust standard library"];
 
+#[no_core];
+
+use core(vers = "0.2");
+import core::*;
+
 export net, uv;
 export c_vec, four, tri, util;
 export bitv, deque, fun_treemap, list, map, smallintmap, sort, treemap, ufind;
 export rope, arena;
 export ebml, dbg, getopts, json, rand, sha1, term, time, prettyprint;
 export test, tempfile, serialization;
-
 
 // General io and system-services modules
 

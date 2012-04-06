@@ -17,4 +17,12 @@
 
 #[crate_type = "bin"];
 
+#[no_core];
+
+use core(vers = "0.2");
+use std(vers = "0.2");
+use rustc(vers = "0.2");
+
+import core::*;
+
 mod pgp;

@@ -1,5 +1,3 @@
-use std;
-
 fn gpg(args: [str]) -> { status: int, out: str, err: str } {
     ret run::program_output("gpg", args);
 }
