@@ -7,6 +7,7 @@ import diagnostic::span_handler;
 
 export attr_meta;
 export attr_metas;
+export find_linkage_attrs;
 export find_linkage_metas;
 export inline_attr;
 export find_inline_attr;
@@ -36,14 +37,22 @@ export native_abi;
 // From a list of crate attributes get only the meta_items that impact crate
 // linkage
 fn find_linkage_metas(attrs: [ast::attribute]) -> [@ast::meta_item] {
-    let mut metas: [@ast::meta_item] = [];
+    find_linkage_attrs(attrs).flat_map {|attr|
+        alt check attr.node.value.node {
+          ast::meta_list(_, items) { items }
+        }
+    }
+}
+
+fn find_linkage_attrs(attrs: [ast::attribute]) -> [ast::attribute] {
+    let mut found = [];
     for attr: ast::attribute in find_attrs_by_name(attrs, "link") {
         alt attr.node.value.node {
-          ast::meta_list(_, items) { metas += items; }
+          ast::meta_list(_, _) { found += [attr] }
           _ { #debug("ignoring link attribute that has incorrect type"); }
         }
     }
-    ret metas;
+    ret found;
 }
 
 enum inline_attr {

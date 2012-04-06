@@ -138,7 +138,7 @@ fn default_native_lib_naming(sess: session::session, static: bool) ->
     }
 }
 
-fn find_library_crate(sess: session::session,
+fn find_library_crate(sess: session::session, span: span,
                       metas: [@ast::meta_item])
    -> option<{ident: str, data: @[u8]}> {
 
@@ -163,15 +163,16 @@ fn find_library_crate(sess: session::session,
 
     let nn = default_native_lib_naming(sess, sess.opts.static);
     let x =
-        find_library_crate_aux(sess, nn, crate_name,
+        find_library_crate_aux(sess, span, nn, crate_name,
                                metas, sess.filesearch);
     if x != none || sess.opts.static { ret x; }
     let nn2 = default_native_lib_naming(sess, true);
-    ret find_library_crate_aux(sess, nn2, crate_name, metas,
+    ret find_library_crate_aux(sess, span, nn2, crate_name, metas,
                                sess.filesearch);
 }
 
 fn find_library_crate_aux(sess: session::session,
+                          span: span,
                           nn: {prefix: str, suffix: str},
                           crate_name: str,
                           metas: [@ast::meta_item],
@@ -180,7 +181,8 @@ fn find_library_crate_aux(sess: session::session,
     let prefix: str = nn.prefix + crate_name + "-";
     let suffix: str = nn.suffix;
 
-    ret filesearch::search(filesearch, { |path|
+    let mut matches = [];
+    filesearch::search(filesearch, { |path|
         #debug("inspecting file %s", path);
         let f: str = path::basename(path);
         if !(str::starts_with(f, prefix) && str::ends_with(f, suffix)) {
@@ -196,7 +198,8 @@ fn find_library_crate_aux(sess: session::session,
                     option::none
                 } else {
                     #debug("found %s with matching metadata", path);
-                    option::some({ident: path, data: cvec})
+                    matches += [{ident: path, data: cvec}];
+                    option::none
                 }
               }
               _ {
@@ -206,6 +209,25 @@ fn find_library_crate_aux(sess: session::session,
             }
         }
     });
+
+    if matches.is_empty() {
+        none
+    } else if matches.len() == 1u {
+        some(matches[0])
+    } else {
+        sess.span_err(
+            span, #fmt("multiple matching crates for `%s`", crate_name));
+        sess.note("candidates:");
+        for matches.each {|match|
+            sess.note(#fmt("path: %s", match.ident));
+            let attrs = decoder::get_crate_attributes(match.data);
+            for attr::find_linkage_attrs(attrs).each {|attr|
+                sess.note(#fmt("meta: %s", pprust::attr_to_str(attr)));
+            }
+        }
+        sess.abort_if_errors();
+        none
+    }
 }
 
 fn get_metadata_section(sess: session::session,
@@ -240,7 +262,7 @@ fn load_library_crate(sess: session::session, ident: ast::ident, span: span,
    -> {ident: str, data: @[u8]} {
 
 
-    alt find_library_crate(sess, metas) {
+    alt find_library_crate(sess, span, metas) {
       some(t) { ret t; }
       none {
         sess.span_fatal(span, #fmt["can't find crate for '%s'", ident]);
