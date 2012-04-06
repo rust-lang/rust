@@ -28,10 +28,50 @@ fn read_crates(sess: session::session, crate: ast::crate) {
                                    visit_item: bind visit_item(e, _)
                                       with *visit::default_simple_visitor()});
     visit::visit_crate(crate, (), v);
+    warn_if_multiple_versions(sess, copy e.crate_cache);
+}
+
+type cache_entry = {
+    cnum: int,
+    span: span,
+    metas: @[@ast::meta_item]
+};
+
+fn warn_if_multiple_versions(sess: session::session,
+                             crate_cache: [cache_entry]) {
+    import either::*;
+
+    if crate_cache.is_not_empty() {
+        let name = crate_name_from_metas(*crate_cache.last().metas);
+        let {lefts: matches, rights: non_matches} =
+            partition(crate_cache.map {|entry|
+                let othername = crate_name_from_metas(*entry.metas);
+                if name == othername {
+                    left(entry)
+                } else {
+                    right(entry)
+                }
+            });
+
+        assert matches.is_not_empty();
+
+        if matches.len() != 1u {
+            sess.warn(#fmt("using multiple versions of crate `%s`", name));
+            for matches.each {|match|
+                sess.span_note(match.span, "used here");
+                let attrs = [
+                    attr::mk_attr(attr::mk_list_item("link", *match.metas))
+                ];
+                note_linkage_attrs(sess, attrs);
+            }
+        }
+
+        warn_if_multiple_versions(sess, non_matches);
+    }
 }
 
 type env = @{sess: session::session,
-             mut crate_cache: [(int, @[@ast::meta_item])],
+             mut crate_cache: [cache_entry],
              mut next_crate_num: ast::crate_num};
 
 fn visit_view_item(e: env, i: @ast::view_item) {
@@ -138,28 +178,28 @@ fn default_native_lib_naming(sess: session::session, static: bool) ->
     }
 }
 
+fn crate_name_from_metas(metas: [@ast::meta_item]) -> str {
+    let name_items = attr::find_meta_items_by_name(metas, "name");
+    alt vec::last_opt(name_items) {
+      some(i) {
+        alt attr::get_meta_item_value_str(i) {
+          some(n) { n }
+          // FIXME: Probably want a warning here since the user
+          // is using the wrong type of meta item
+          _ { fail }
+        }
+      }
+      none { fail "expected to find the crate name" }
+    }
+}
+
 fn find_library_crate(sess: session::session, span: span,
                       metas: [@ast::meta_item])
    -> option<{ident: str, data: @[u8]}> {
 
     attr::require_unique_names(sess.diagnostic(), metas);
     let metas = metas;
-
-    let crate_name =
-        {
-            let name_items = attr::find_meta_items_by_name(metas, "name");
-            alt vec::last_opt(name_items) {
-              some(i) {
-                alt attr::get_meta_item_value_str(i) {
-                  some(n) { n }
-                  // FIXME: Probably want a warning here since the user
-                  // is using the wrong type of meta item
-                  _ { fail }
-                }
-              }
-              none { fail }
-            }
-        };
+    let crate_name = crate_name_from_metas(metas);
 
     let nn = default_native_lib_naming(sess, sess.opts.static);
     let x =
@@ -221,12 +261,16 @@ fn find_library_crate_aux(sess: session::session,
         for matches.each {|match|
             sess.note(#fmt("path: %s", match.ident));
             let attrs = decoder::get_crate_attributes(match.data);
-            for attr::find_linkage_attrs(attrs).each {|attr|
-                sess.note(#fmt("meta: %s", pprust::attr_to_str(attr)));
-            }
+            note_linkage_attrs(sess, attrs);
         }
         sess.abort_if_errors();
         none
+    }
+}
+
+fn note_linkage_attrs(sess: session::session, attrs: [ast::attribute]) {
+    for attr::find_linkage_attrs(attrs).each {|attr|
+        sess.note(#fmt("meta: %s", pprust::attr_to_str(attr)));
     }
 }
 
@@ -282,10 +326,10 @@ fn metas_with_ident(ident: ast::ident,
 
 fn existing_match(e: env, metas: [@ast::meta_item]) -> option<int> {
     let maybe_entry = e.crate_cache.find {|c|
-        metadata_matches(*tuple::second(c), metas)
+        metadata_matches(*c.metas, metas)
     };
 
-    maybe_entry.map {|c| tuple::first(c) }
+    maybe_entry.map {|c| c.cnum }
 }
 
 fn resolve_crate(e: env, ident: ast::ident, metas: [@ast::meta_item],
@@ -305,7 +349,7 @@ fn resolve_crate(e: env, ident: ast::ident, metas: [@ast::meta_item],
 
         // Claim this crate number and cache it
         let cnum = e.next_crate_num;
-        e.crate_cache += [(cnum, @linkage_metas)];
+        e.crate_cache += [{cnum: cnum, span: span, metas: @linkage_metas}];
         e.next_crate_num += 1;
 
         // Now resolve the crates referenced by this crate
