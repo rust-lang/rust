@@ -1,0 +1,17 @@
+#!/usr/bin/perl -w
+
+$ident = 0;
+while (<>) {
+    if (/^rust: ">>/) {
+        $indent += 1;
+    } elsif (/^rust: "<</) {
+        $indent -= 1;
+    }
+
+    printf "%03d  ", $indent;
+    for ($i = 0; $i < $indent; $i++) {
+        printf("  ");
+    }
+    print;
+}
+

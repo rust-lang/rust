@@ -5,6 +5,24 @@ import syntax::codemap::{span};
 import syntax::visit;
 import syntax::print;
 
+fn indent<R>(op: fn() -> R) -> R {
+    // Use in conjunction with the log post-processor like `src/etc/indenter`
+    // to make debug output more readable.
+    #debug[">>"];
+    let r <- op();
+    #debug["<< (Result = %?)", r];
+    ret r;
+}
+
+resource _indenter(_i: ()) {
+    #debug["<<"];
+}
+
+fn indenter() -> _indenter {
+    #debug[">>"];
+    _indenter(())
+}
+
 type flag = hashmap<str, ()>;
 
 fn def_eq(a: ast::def_id, b: ast::def_id) -> bool {
