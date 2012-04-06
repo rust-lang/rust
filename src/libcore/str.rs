@@ -1783,6 +1783,9 @@ impl extensions for str {
     "]
     #[inline]
     fn is_whitespace() -> bool { is_whitespace(self) }
+    #[inline]
+    #[doc ="Returns the size in bytes not counting the null terminator"]
+    fn len() -> uint { len(self) }
     #[doc = "
     Returns a slice of the given string from the byte range [`begin`..`end`)
 
