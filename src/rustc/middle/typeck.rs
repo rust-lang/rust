@@ -2955,21 +2955,6 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
             check_expr_with(fcx, cond, ty::mk_bool(tcx)) |
                 check_then_else(fcx, thn, elsopt, id, expr.span);
       }
-      ast::expr_for(decl, seq, body) {
-        bot = check_expr(fcx, seq);
-        let mut elt_ty;
-        let ety = fcx.expr_ty(seq);
-        alt structure_of(fcx, expr.span, ety) {
-          ty::ty_vec(vec_elt_ty) { elt_ty = vec_elt_ty.ty; }
-          ty::ty_str { elt_ty = ty::mk_mach_uint(tcx, ast::ty_u8); }
-          _ {
-            tcx.sess.span_fatal(expr.span,
-                                "mismatched types: expected vector or string "
-                                + "but found `" + ty_to_str(tcx, ety) + "`");
-          }
-        }
-        bot |= check_for(fcx, decl, elt_ty, body, id);
-      }
       ast::expr_while(cond, body) {
         bot = check_expr_with(fcx, cond, ty::mk_bool(tcx));
         check_block_no_value(fcx, body);

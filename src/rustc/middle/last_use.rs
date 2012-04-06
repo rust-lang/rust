@@ -106,10 +106,6 @@ fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
       expr_while(_, _) | expr_do_while(_, _) | expr_loop(_) {
         visit_block(lp, cx) {|| visit::visit_expr(ex, cx, v);}
       }
-      expr_for(_, coll, blk) {
-        v.visit_expr(coll, cx, v);
-        visit_block(lp, cx) {|| visit::visit_block(blk, cx, v);}
-      }
       expr_alt(input, arms, _) {
         v.visit_expr(input, cx, v);
         let before = cx.current;

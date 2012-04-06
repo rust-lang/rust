@@ -408,7 +408,7 @@ fn resolve_names(e: @env, c: @ast::crate) {
     e.sess.abort_if_errors();
 
     fn walk_expr(e: @env, exp: @ast::expr, sc: scopes, v: vt<scopes>) {
-        visit_expr_with_scope(exp, sc, v);
+        visit::visit_expr(exp, sc, v);
         alt exp.node {
           ast::expr_path(p) {
             maybe_insert(e, exp.id,
@@ -611,18 +611,6 @@ fn visit_arm_with_scope(a: ast::arm, sc: scopes, v: vt<scopes>) {
     let sc_inner = cons(scope_arm(a), @sc);
     visit::visit_expr_opt(a.guard, sc_inner, v);
     v.visit_block(a.body, sc_inner, v);
-}
-
-fn visit_expr_with_scope(x: @ast::expr, sc: scopes, v: vt<scopes>) {
-    alt x.node {
-      ast::expr_for(decl, coll, blk) {
-        let new_sc = cons(scope_loop(decl), @sc);
-        v.visit_expr(coll, sc, v);
-        v.visit_local(decl, new_sc, v);
-        v.visit_block(blk, new_sc, v);
-      }
-      _ { visit::visit_expr(x, sc, v); }
-    }
 }
 
 // This is only for irrefutable patterns (e.g. ones that appear in a let)

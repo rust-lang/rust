@@ -196,17 +196,20 @@ fn check_error_patterns(props: test_props,
 
     let mut next_err_idx = 0u;
     let mut next_err_pat = props.error_patterns[next_err_idx];
+    let mut done = false;
     for str::split_char(procres.stderr, '\n').each {|line|
         if str::contains(line, next_err_pat) {
             #debug("found error pattern %s", next_err_pat);
             next_err_idx += 1u;
             if next_err_idx == vec::len(props.error_patterns) {
                 #debug("found all error patterns");
-                ret;
+                done = true;
+                break;
             }
             next_err_pat = props.error_patterns[next_err_idx];
         }
     }
+    if done { ret; }
 
     let missing_patterns =
         vec::slice(props.error_patterns, next_err_idx,

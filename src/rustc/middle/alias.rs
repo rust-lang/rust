@@ -103,10 +103,6 @@ fn visit_expr(cx: @ctx, ex: @ast::expr, sc: scope, v: vt<scope>) {
         visit_expr(cx, f, sc, v);
       }
       ast::expr_alt(input, arms, _) { check_alt(*cx, input, arms, sc, v); }
-      ast::expr_for(decl, seq, blk) {
-        visit_expr(cx, seq, sc, v);
-        check_loop(*cx, sc) {|| check_for(*cx, decl, seq, blk, sc, v); }
-      }
       ast::expr_path(pt) {
         check_var(*cx, ex, pt, ex.id, false, sc);
         handled = false;

@@ -190,7 +190,7 @@ fn mark_for_expr(cx: ctx, e: @expr) {
             }
         }
       }
-      expr_for(_, _, _) | expr_do_while(_, _) | expr_alt(_, _, _) |
+      expr_do_while(_, _) | expr_alt(_, _, _) |
       expr_block(_) | expr_if(_, _, _) | expr_while(_, _) |
       expr_fail(_) | expr_break | expr_cont | expr_unary(_, _) |
       expr_lit(_) | expr_assert(_) | expr_check(_, _) |

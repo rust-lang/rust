@@ -453,9 +453,6 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
         set_pre_and_post(fcx.ccx, e.id, block_precond(fcx.ccx, body),
                          loop_postcond);
       }
-      expr_for(d, index, body) {
-        find_pre_post_loop(fcx, d, index, body, e.id);
-      }
       expr_index(val, sub) { find_pre_post_exprs(fcx, [val, sub], e.id); }
       expr_alt(ex, alts, _) {
         find_pre_post_expr(fcx, ex);

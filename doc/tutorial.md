@@ -690,19 +690,6 @@ do {
 } while any_cake_left();
 ~~~~
 
-When iterating over a vector, use `for` instead.
-
-~~~~
-for elt in ["red", "green", "blue"] {
-    io::println(elt);
-}
-~~~~
-
-This will go over each element in the given vector (a three-element
-vector of strings, in this case), and repeatedly execute the body with
-`elt` bound to the current element. You may add an optional type
-declaration (`elt: str`) for the iteration variable if you want.
-
 For more involved iteration, such as going over the elements of a hash
 table, Rust uses higher-order functions. We'll come back to those in a
 moment.
@@ -1095,8 +1082,8 @@ enum color {
 ~~~~
 
 If an explicit discriminator is not specified for a variant, the value
-defaults to the value of the previous variant plus one.  If the first
-variant does not have a discriminator, it defaults to 0.  For example,
+defaults to the value of the previous variant plus one. If the first
+variant does not have a discriminator, it defaults to 0. For example,
 the value of `north` is 0, `east` is 1, etc.
 
 When an enum is C-like the `as` cast operator can be used to get the
@@ -1399,7 +1386,7 @@ not sure.
 
 ~~~~
 fn for_each(v: [mut @int], iter: fn(@int)) {
-   for elt in v { iter(elt); }
+   for v.each {|elt| iter(elt); }
 }
 ~~~~
 
@@ -1422,7 +1409,7 @@ with the `copy` operator:
 ~~~~
 type mutrec = {mut x: int};
 fn for_each(v: [mut mutrec], iter: fn(mutrec)) {
-   for elt in v { iter(copy elt); }
+   for v.each {|elt| iter(copy elt); }
 }
 ~~~~
 
@@ -1509,7 +1496,7 @@ fn for_rev<T>(v: [T], act: fn(T)) {
 
 fn map<T, U>(v: [T], f: fn(T) -> U) -> [U] {
     let mut acc = [];
-    for elt in v { acc += [f(elt)]; }
+    for v.each {|elt| acc += [f(elt)]; }
     ret acc;
 }
 ~~~~
@@ -1987,7 +1974,7 @@ parameters.
 # iface to_str { fn to_str() -> str; }
 fn comma_sep<T: to_str>(elts: [T]) -> str {
     let mut result = "", first = true;
-    for elt in elts {
+    for elts.each {|elt|
         if first { first = false; }
         else { result += ", "; }
         result += elt.to_str();
@@ -2017,7 +2004,7 @@ iface seq<T> {
 impl <T> of seq<T> for [T] {
     fn len() -> uint { vec::len(self) }
     fn iter(b: fn(T)) {
-        for elt in self { b(elt); }
+        for self.each {|elt| b(elt); }
     }
 }
 ~~~~
@@ -2037,7 +2024,7 @@ However, consider this function:
 ~~~~
 # iface drawable { fn draw(); }
 fn draw_all<T: drawable>(shapes: [T]) {
-    for shape in shapes { shape.draw(); }
+    for shapes.each {|shape| shape.draw(); }
 }
 ~~~~
 
@@ -2051,7 +2038,7 @@ the function to be written simply like this:
 ~~~~
 # iface drawable { fn draw(); }
 fn draw_all(shapes: [drawable]) {
-    for shape in shapes { shape.draw(); }
+    for shapes.each {|shape| shape.draw(); }
 }
 ~~~~
 
@@ -2136,7 +2123,7 @@ native mod crypto {
 
 fn as_hex(data: [u8]) -> str {
     let mut acc = "";
-    for byte in data { acc += #fmt("%02x", byte as uint); }
+    for data.each {|byte| acc += #fmt("%02x", byte as uint); }
     ret acc;
 }
 

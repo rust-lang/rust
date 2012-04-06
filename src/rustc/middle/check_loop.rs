@@ -11,7 +11,7 @@ fn check_crate(tcx: ty::ctxt, crate: @crate) {
         },
         visit_expr: {|e: @expr, cx: ctx, v: visit::vt<ctx>|
             alt e.node {
-              expr_for(_, e, b) | expr_while(e, b) | expr_do_while(b, e) {
+              expr_while(e, b) | expr_do_while(b, e) {
                 v.visit_expr(e, cx, v);
                 v.visit_block(b, {in_loop: true with cx}, v);
               }

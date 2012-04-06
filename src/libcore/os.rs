@@ -717,6 +717,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_env_getenv() {
         let e = env();
         assert vec::len(e) > 0u;

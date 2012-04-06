@@ -289,7 +289,6 @@ enum expr_ {
     expr_cast(@expr, @ty),
     expr_if(@expr, blk, option<@expr>),
     expr_while(@expr, blk),
-    expr_for(@local, @expr, blk),
     expr_do_while(blk, @expr),
     /* Conditionless loop (can be exited with break, cont, ret, or fail)
        Same semantics as while(true) { body }, but typestate knows that the

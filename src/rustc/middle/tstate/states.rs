@@ -561,9 +561,6 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
                                             false_postcond(num_constrs));
         }
       }
-      expr_for(d, index, body) {
-        ret find_pre_post_state_loop(fcx, pres, d, index, body, e.id);
-      }
       expr_index(val, sub) {
         ret find_pre_post_state_two(fcx, pres, val, sub, e.id, oper_pure);
       }

@@ -359,11 +359,6 @@ fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
       }
       expr_while(x, b) { v.visit_expr(x, e, v); v.visit_block(b, e, v); }
       expr_loop(b) { v.visit_block(b, e, v); }
-      expr_for(dcl, x, b) {
-        v.visit_local(dcl, e, v);
-        v.visit_expr(x, e, v);
-        v.visit_block(b, e, v);
-      }
       expr_do_while(b, x) { v.visit_block(b, e, v); v.visit_expr(x, e, v); }
       expr_alt(x, arms, _) {
         v.visit_expr(x, e, v);

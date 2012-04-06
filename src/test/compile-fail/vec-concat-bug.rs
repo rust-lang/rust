@@ -1,3 +1,5 @@
+// xfail-test
+
 fn concat<T: copy>(v: [const [const T]]) -> [T] {
     let mut r = [];
 

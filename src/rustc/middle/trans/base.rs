@@ -1685,39 +1685,6 @@ fn trans_if(cx: block, cond: @ast::expr, thn: ast::blk,
     ret join_returns(cx, [then_bcx, else_bcx], [then_dest, else_dest], dest);
 }
 
-fn trans_for(cx: block, local: @ast::local, seq: @ast::expr,
-             body: ast::blk) -> block {
-    let _icx = cx.insn_ctxt("trans_for");
-    fn inner(bcx: block, local: @ast::local, curr: ValueRef, t: ty::t,
-             body: ast::blk, outer_next_cx: block) -> block {
-        let next_cx = sub_block(bcx, "next");
-        let scope_cx = loop_scope_block(bcx, cont_other(next_cx),
-                                        outer_next_cx, "for loop scope",
-                                        body.span);
-        Br(bcx, scope_cx.llbb);
-        let curr = PointerCast(bcx, curr,
-                               T_ptr(type_of(bcx.ccx(), t)));
-        let bcx = alt::bind_irrefutable_pat(scope_cx, local.node.pat,
-                                                  curr, false);
-        let bcx = trans_block(bcx, body, ignore);
-        cleanup_and_Br(bcx, scope_cx, next_cx.llbb);
-        ret next_cx;
-    }
-    let ccx = cx.ccx();
-    let next_cx = sub_block(cx, "next");
-    let seq_ty = expr_ty(cx, seq);
-    let {bcx: bcx, val: seq} = trans_temp_expr(cx, seq);
-    let seq = PointerCast(bcx, seq, T_ptr(ccx.opaque_vec_type));
-    let mut fill = tvec::get_fill(bcx, seq);
-    if ty::type_is_str(seq_ty) {
-        fill = Sub(bcx, fill, C_int(ccx, 1));
-    }
-    let bcx = tvec::iter_vec_raw(bcx, seq, seq_ty, fill,
-                                 bind inner(_, local, _, _, body, next_cx));
-    Br(bcx, next_cx.llbb);
-    ret next_cx;
-}
-
 fn trans_while(cx: block, cond: @ast::expr, body: ast::blk)
     -> block {
     let _icx = cx.insn_ctxt("trans_while");
@@ -3147,10 +3114,6 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
         ret with_cond(bcx, Load(bcx, c)) {|bcx|
             trans_check_expr(bcx, a, "Claim")
         };
-      }
-      ast::expr_for(decl, seq, body) {
-        assert dest == ignore;
-        ret trans_for(bcx, decl, seq, body);
       }
       ast::expr_while(cond, body) {
         assert dest == ignore;

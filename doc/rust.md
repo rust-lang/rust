@@ -1000,11 +1000,11 @@ the function name.
 
 ~~~~
 fn iter<T>(seq: [T], f: fn(T)) {
-    for elt: T in seq { f(elt); }
+    for seq.each {|elt| f(elt); }
 }
 fn map<T, U>(seq: [T], f: fn(T) -> U) -> [U] {
     let mut acc = [];
-    for elt in seq { acc += [f(elt)]; }
+    for seq.each {|elt| acc += [f(elt)]; }
     acc
 }
 ~~~~
@@ -2113,7 +2113,7 @@ An example a for loop:
 
 let v: [foo] = [a, b, c];
 
-for e: foo in v {
+for v.each {|e|
     bar(e);
 }
 ~~~~
@@ -2228,7 +2228,7 @@ fn main() {
 ~~~~
 
 Multiple alternative patterns may be joined with the `|` operator.  A
-range of values may be specified with `to`.  For example:
+range of values may be specified with `to`. For example:
 
 ~~~~
 # let x = 2;

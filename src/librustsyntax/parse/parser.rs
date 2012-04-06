@@ -1405,36 +1405,18 @@ fn parse_else_expr(p: parser) -> @ast::expr {
 
 fn parse_for_expr(p: parser) -> @ast::expr {
     let lo = p.last_span;
-    // FIXME remove this kludge after migration and snapshotting (#1619)
-    let new_style = alt p.token {
-      token::IDENT(_, false) { alt p.look_ahead(1u) {
-        token::DOT | token::LPAREN { true }
-        _ { false }
-      } }
-      token::IDENT(_, true) { true }
-      _ { false }
-    };
-    if new_style {
-        let call = parse_expr_res(p, RESTRICT_STMT_EXPR);
-        alt call.node {
-          ast::expr_call(f, args, true) {
-            let b_arg = vec::last(args);
-            let last = mk_expr(p, b_arg.span.lo, b_arg.span.hi,
-                               ast::expr_loop_body(b_arg));
-            @{node: ast::expr_call(f, vec::init(args) + [last], true)
-              with *call}
-          }
-          _ {
-            p.span_fatal(lo, "`for` must be followed by a block call");
-          }
-        }
-    } else {
-        p.warn("old-style for");
-        let decl = parse_local(p, false, false);
-        expect_word(p, "in");
-        let seq = parse_expr(p);
-        let body = parse_block_no_value(p);
-        mk_expr(p, lo.lo, body.span.hi, ast::expr_for(decl, seq, body))
+    let call = parse_expr_res(p, RESTRICT_STMT_EXPR);
+    alt call.node {
+      ast::expr_call(f, args, true) {
+        let b_arg = vec::last(args);
+        let last = mk_expr(p, b_arg.span.lo, b_arg.span.hi,
+                           ast::expr_loop_body(b_arg));
+        @{node: ast::expr_call(f, vec::init(args) + [last], true)
+          with *call}
+      }
+      _ {
+        p.span_fatal(lo, "`for` must be followed by a block call");
+      }
     }
 }
 
@@ -1755,8 +1737,7 @@ fn expr_requires_semi_to_be_stmt(e: @ast::expr) -> bool {
       ast::expr_if(_, _, _) | ast::expr_if_check(_, _, _)
       | ast::expr_alt(_, _, _) | ast::expr_block(_)
       | ast::expr_do_while(_, _) | ast::expr_while(_, _)
-      | ast::expr_loop(_) | ast::expr_for(_, _, _)
-      | ast::expr_call(_, _, true) {
+      | ast::expr_loop(_) | ast::expr_call(_, _, true) {
         false
       }
       _ { true }
