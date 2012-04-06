@@ -978,6 +978,10 @@ iface combine {
     fn c_regions_scope_scope(
         a: ty::region, a_id: ast::node_id,
         b: ty::region, b_id: ast::node_id) -> cres<ty::region>;
+    fn c_regions_scope_free(
+        a: ty::region, a_id: ast::node_id,
+        b: ty::region, b_id: ast::node_id, b_br: ty::bound_region)
+        -> cres<ty::region>;
     fn c_regions_free_scope(
         a: ty::region, a_id: ast::node_id, a_br: ty::bound_region,
         b: ty::region, b_id: ast::node_id) -> cres<ty::region>;
@@ -1327,9 +1331,12 @@ fn c_regions<C:combine>(
                 {|x, y| self.c_regions(x, y) })
       }
 
-      (f @ ty::re_free(f_id, f_br), s @ ty::re_scope(s_id)) |
-      (s @ ty::re_scope(s_id), f @ ty::re_free(f_id, f_br)) {
-        self.c_regions_free_scope(f, f_id, f_br, s, s_id)
+      (ty::re_free(a_id, a_br), ty::re_scope(b_id)) {
+        self.c_regions_free_scope(a, a_id, a_br, b, b_id)
+      }
+
+      (ty::re_scope(a_id), ty::re_free(b_id, b_br)) {
+        self.c_regions_scope_free(b, b_id, b, b_id, b_br)
       }
 
       (ty::re_scope(a_id), ty::re_scope(b_id)) {
@@ -1473,6 +1480,15 @@ impl of combine for lub {
         ret ok(a); // NDM--not so for nested functions
     }
 
+    fn c_regions_scope_free(
+        a: ty::region, a_id: ast::node_id,
+        b: ty::region, b_id: ast::node_id, b_br: ty::bound_region)
+        -> cres<ty::region> {
+
+        // LUB is commutative:
+        self.c_regions_free_scope(b, b_id, b_br, a, a_id)
+    }
+
     fn c_regions_scope_scope(a: ty::region, a_id: ast::node_id,
                              b: ty::region, b_id: ast::node_id)
         -> cres<ty::region> {
@@ -1612,6 +1628,15 @@ impl of combine for glb {
         // region is always a parameter to the method.  So the GLB
         // must be the scope.
         ret ok(b); // NDM--not so for nested functions
+    }
+
+    fn c_regions_scope_free(
+        a: ty::region, a_id: ast::node_id,
+        b: ty::region, b_id: ast::node_id, b_br: ty::bound_region)
+        -> cres<ty::region> {
+
+        // GLB is commutative:
+        self.c_regions_free_scope(b, b_id, b_br, a, a_id)
     }
 
     fn c_regions_scope_scope(a: ty::region, a_id: ast::node_id,
