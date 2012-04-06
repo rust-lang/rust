@@ -1,4 +1,4 @@
-#[link(name = "crateresolve",
+#[link(name = "crateresolve1",
        vers = "0.2")];
 
 #[crate_type = "lib"];
