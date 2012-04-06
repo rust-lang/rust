@@ -280,7 +280,7 @@ fn add_clean_free(cx: block, ptr: ValueRef, shared: bool) {
 // drop glue checks whether it is zero.
 fn revoke_clean(cx: block, val: ValueRef) {
     in_scope_cx(cx) {|info|
-        option::with_option_do(vec::position(info.cleanups, {|cu|
+        option::iter(vec::position(info.cleanups, {|cu|
             alt cu { clean_temp(v, _, _) if v == val { true } _ { false } }
         })) {|i|
             info.cleanups =
@@ -836,7 +836,7 @@ fn hash_mono_id(&&mi: mono_id) -> uint {
         h = h * alt param {
           mono_precise(ty, vts) {
             let mut h = ty::type_id(ty);
-            option::with_option_do(vts) {|vts|
+            option::iter(vts) {|vts|
                 for vec::each(vts) {|vt| h += hash_mono_id(vt); }
             }
             h

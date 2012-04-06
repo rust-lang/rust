@@ -40,7 +40,7 @@ fn load_props(testfile: str) -> test_props {
             pp_exact = parse_pp_exact(ln, testfile);
         }
 
-        option::with_option_do(parse_aux_build(ln)) {|ab|
+        option::iter(parse_aux_build(ln)) {|ab|
             aux_builds += [ab];
         }
     };

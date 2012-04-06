@@ -410,7 +410,7 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
 
         let base_pres = alt vec::last_opt(exs) { none { pres }
                           some(f) { expr_poststate(fcx.ccx, f) }};
-        option::with_option_do(maybe_base, {|base|
+        option::iter(maybe_base, {|base|
             changed |= find_pre_post_state_expr(fcx, base_pres, base) |
               set_poststate_ann(fcx.ccx, e.id,
                                 expr_poststate(fcx.ccx, base))});
@@ -608,7 +608,7 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
         handle_fail(fcx, pres, post);
         ret set_prestate_ann(fcx.ccx, e.id, pres) |
                 set_poststate_ann(fcx.ccx, e.id, post) |
-                option::with_option(maybe_fail_val, false, {|fail_val|
+                option::map_default(maybe_fail_val, false, {|fail_val|
                         find_pre_post_state_expr(fcx, pres, fail_val)});
       }
       expr_check(_, p) {

@@ -338,7 +338,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
 
         let use_cap_item = fn@(&&cap_item: @capture_item) {
             let d = local_node_id_to_local_def_id(fcx, cap_item.id);
-            option::with_option_do(d, { |id| use_var(fcx, id) });
+            option::iter(d, { |id| use_var(fcx, id) });
         };
         vec::iter(cap_clause.copies, use_cap_item);
         vec::iter(cap_clause.moves, use_cap_item);

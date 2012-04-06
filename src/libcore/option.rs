@@ -58,13 +58,13 @@ pure fn get_or_default<T: copy>(opt: option<T>, def: T) -> T {
     alt opt { some(x) { x } none { def } }
 }
 
-fn with_option<T, U: copy>(opt: option<T>, def: U, f: fn(T) -> U) -> U {
+fn map_default<T, U: copy>(opt: option<T>, def: U, f: fn(T) -> U) -> U {
     #[doc = "Applies a function to the contained value or returns a default"];
 
     alt opt { none { def } some(t) { f(t) } }
 }
 
-fn with_option_do<T>(opt: option<T>, f: fn(T)) {
+fn iter<T>(opt: option<T>, f: fn(T)) {
     #[doc = "Performs an operation on the contained value or does nothing"];
 
     alt opt { none { } some(t) { f(t); } }
@@ -96,10 +96,10 @@ impl extensions<T:copy> for option<T> {
     #[doc = "Returns the contained value or a default"]
     fn get_or_default(def: T) -> T { get_or_default(self, def) }
     #[doc = "Applies a function to the contained value or returns a default"]
-    fn with_option<U: copy>(def: U, f: fn(T) -> U) -> U
-        { with_option(self, def, f) }
+    fn map_default<U: copy>(def: U, f: fn(T) -> U) -> U
+        { map_default(self, def, f) }
     #[doc = "Performs an operation on the contained value or does nothing"]
-    fn with_option_do(f: fn(T)) { with_option_do(self, f) }
+    fn iter(f: fn(T)) { iter(self, f) }
     #[doc = "
     Gets the value out of an option
 

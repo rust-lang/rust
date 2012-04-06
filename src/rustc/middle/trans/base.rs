@@ -1657,7 +1657,7 @@ fn trans_if(cx: block, cond: @ast::expr, thn: ast::blk,
     let then_cx = scope_block(bcx, "then");
     then_cx.block_span = some(thn.span);
     let else_cx = scope_block(bcx, "else");
-    option::with_option_do(els) {|e| else_cx.block_span = some(e.span); }
+    option::iter(els) {|e| else_cx.block_span = some(e.span); }
     CondBr(bcx, cond_val, then_cx.llbb, else_cx.llbb);
     let then_bcx = trans_block(then_cx, thn, then_dest);
     let then_bcx = trans_block_cleanups(then_bcx, then_cx);
@@ -2717,7 +2717,7 @@ fn trans_call_inner(in_cx: block, fn_expr_ty: ty::t, ret_ty: ty::t,
             Unreachable(bcx);
         } else if ret_in_loop {
             bcx = with_cond(bcx, Load(bcx, option::get(ret_flag))) {|bcx|
-                option::with_option_do(bcx.fcx.loop_ret) {|lret|
+                option::iter(bcx.fcx.loop_ret) {|lret|
                     Store(bcx, C_bool(true), lret.flagptr);
                     Store(bcx, C_bool(false), bcx.fcx.llretptr);
                 }
@@ -3674,7 +3674,7 @@ fn cleanup_and_leave(bcx: block, upto: option<BasicBlockRef>,
     loop {
         alt cur.kind {
           block_scope(info) if info.cleanups.len() > 0u {
-            option::with_option_do(vec::find(info.cleanup_paths,
+            option::iter(vec::find(info.cleanup_paths,
                                              {|cp| cp.target == leave})) {|cp|
                 Br(bcx, cp.dest);
                 done = true;
@@ -3786,7 +3786,7 @@ fn alloc_local(cx: block, local: @ast::local) -> block {
     }
     let val = alloc_ty(cx, t);
     if cx.sess().opts.debuginfo {
-        option::with_option_do(simple_name) {|name|
+        option::iter(simple_name) {|name|
             str::as_c_str(name, {|buf|
                 llvm::LLVMSetValueName(val, buf)
             });

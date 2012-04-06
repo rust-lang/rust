@@ -1538,7 +1538,7 @@ programs that just can't be typed.
 
 ~~~~
 let n = option::none;
-# option::with_option_do(n, fn&(&&x:int) {})
+# option::iter(n, fn&(&&x:int) {})
 ~~~~
 
 If you never do anything else with `n`, the compiler will not be able

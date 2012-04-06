@@ -325,7 +325,7 @@ fn build_closure(bcx0: block,
           }
         }
     }
-    option::with_option_do(include_ret_handle) {|flagptr|
+    option::iter(include_ret_handle) {|flagptr|
         let our_ret = alt bcx.fcx.loop_ret {
           some({retptr, _}) { retptr }
           none { bcx.fcx.llretptr }

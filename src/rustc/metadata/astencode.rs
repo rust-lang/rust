@@ -692,7 +692,7 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
 
     #debug["Encoding side tables for id %d", id];
 
-    option::with_option_do(tcx.def_map.find(id)) {|def|
+    option::iter(tcx.def_map.find(id)) {|def|
         ebml_w.tag(c::tag_table_def) {||
             ebml_w.id(id);
             ebml_w.tag(c::tag_table_val) {||
@@ -700,7 +700,7 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
             }
         }
     }
-    option::with_option_do((*tcx.node_types).find(id as uint)) {|ty|
+    option::iter((*tcx.node_types).find(id as uint)) {|ty|
         ebml_w.tag(c::tag_table_node_type) {||
             ebml_w.id(id);
             ebml_w.tag(c::tag_table_val) {||
@@ -709,7 +709,7 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
         }
     }
 
-    option::with_option_do(tcx.node_type_substs.find(id)) {|tys|
+    option::iter(tcx.node_type_substs.find(id)) {|tys|
         ebml_w.tag(c::tag_table_node_type_subst) {||
             ebml_w.id(id);
             ebml_w.tag(c::tag_table_val) {||
@@ -718,7 +718,7 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
         }
     }
 
-    option::with_option_do(tcx.freevars.find(id)) {|fv|
+    option::iter(tcx.freevars.find(id)) {|fv|
         ebml_w.tag(c::tag_table_freevars) {||
             ebml_w.id(id);
             ebml_w.tag(c::tag_table_val) {||
@@ -730,7 +730,7 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
     }
 
     let lid = {crate: ast::local_crate, node: id};
-    option::with_option_do(tcx.tcache.find(lid)) {|tpbt|
+    option::iter(tcx.tcache.find(lid)) {|tpbt|
         ebml_w.tag(c::tag_table_tcache) {||
             ebml_w.id(id);
             ebml_w.tag(c::tag_table_val) {||
@@ -739,7 +739,7 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
         }
     }
 
-    option::with_option_do(tcx.ty_param_bounds.find(id)) {|pbs|
+    option::iter(tcx.ty_param_bounds.find(id)) {|pbs|
         ebml_w.tag(c::tag_table_param_bounds) {||
             ebml_w.id(id);
             ebml_w.tag(c::tag_table_val) {||
@@ -753,7 +753,7 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
     // is what we actually use in trans, all modes will have been
     // resolved.
     //
-    //option::with_option_do(tcx.inferred_modes.find(id)) {|m|
+    //option::iter(tcx.inferred_modes.find(id)) {|m|
     //    ebml_w.tag(c::tag_table_inferred_modes) {||
     //        ebml_w.id(id);
     //        ebml_w.tag(c::tag_table_val) {||
@@ -762,25 +762,25 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
     //    }
     //}
 
-    option::with_option_do(ccx.maps.mutbl_map.find(id)) {|_m|
+    option::iter(ccx.maps.mutbl_map.find(id)) {|_m|
         ebml_w.tag(c::tag_table_mutbl) {||
             ebml_w.id(id);
         }
     }
 
-    option::with_option_do(ccx.maps.copy_map.find(id)) {|_m|
+    option::iter(ccx.maps.copy_map.find(id)) {|_m|
         ebml_w.tag(c::tag_table_copy) {||
             ebml_w.id(id);
         }
     }
 
-    option::with_option_do(ccx.maps.spill_map.find(id)) {|_m|
+    option::iter(ccx.maps.spill_map.find(id)) {|_m|
         ebml_w.tag(c::tag_table_spill) {||
             ebml_w.id(id);
         }
     }
 
-    option::with_option_do(ccx.maps.last_uses.find(id)) {|m|
+    option::iter(ccx.maps.last_uses.find(id)) {|m|
         ebml_w.tag(c::tag_table_last_use) {||
             ebml_w.id(id);
             ebml_w.tag(c::tag_table_val) {||
@@ -792,7 +792,7 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
     // impl_map is not used except when emitting metadata,
     // don't need to keep it.
 
-    option::with_option_do(ccx.maps.method_map.find(id)) {|mo|
+    option::iter(ccx.maps.method_map.find(id)) {|mo|
         ebml_w.tag(c::tag_table_method_map) {||
             ebml_w.id(id);
             ebml_w.tag(c::tag_table_val) {||
@@ -801,7 +801,7 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
         }
     }
 
-    option::with_option_do(ccx.maps.vtable_map.find(id)) {|dr|
+    option::iter(ccx.maps.vtable_map.find(id)) {|dr|
         ebml_w.tag(c::tag_table_vtable_map) {||
             ebml_w.id(id);
             ebml_w.tag(c::tag_table_val) {||

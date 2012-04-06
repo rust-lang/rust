@@ -505,7 +505,7 @@ fn spawn_raw(opts: task_opts, +f: fn~()) unsafe {
       }
     };
 
-    option::with_option_do(opts.notify_chan) {|c|
+    option::iter(opts.notify_chan) {|c|
         // FIXME (1087): Would like to do notification in Rust
         rustrt::rust_task_config_notify(new_task, c);
     }

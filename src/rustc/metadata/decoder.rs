@@ -120,7 +120,7 @@ fn class_member_id(d: ebml::doc, cdata: cmd) -> ast::def_id {
 
 fn field_mutability(d: ebml::doc) -> ast::class_mutability {
     // Use maybe_get_doc in case it's a method
-    option::with_option(ebml::maybe_get_doc(d, tag_class_mut),
+    option::map_default(ebml::maybe_get_doc(d, tag_class_mut),
                   ast::class_immutable,
                   {|d|
                   alt ebml::doc_as_u8(d) as char {

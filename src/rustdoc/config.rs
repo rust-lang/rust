@@ -132,7 +132,7 @@ fn config_from_opts(
     let result = result::chain(result) {|config|
         let output_format = getopts::opt_maybe_str(
             match, opt_output_format());
-        option::with_option(output_format, result::ok(config))
+        option::map_default(output_format, result::ok(config))
            {|output_format|
             result::chain(parse_output_format(output_format)) {|output_format|
                 result::ok({
@@ -144,7 +144,7 @@ fn config_from_opts(
     };
     let result = result::chain(result) {|config|
         let output_style = getopts::opt_maybe_str(match, opt_output_style());
-        option::with_option(output_style, result::ok(config))
+        option::map_default(output_style, result::ok(config))
           {|output_style|
             result::chain(parse_output_style(output_style)) {|output_style|
                 result::ok({

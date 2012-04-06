@@ -133,7 +133,7 @@ fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
             clear_in_current(cx, root_id, false);
           }
           _ {
-            option::with_option_do(def_is_owned_local(cx, my_def)) {|nid|
+            option::iter(def_is_owned_local(cx, my_def)) {|nid|
                 clear_in_current(cx, nid, false);
                 cx.current += [{def: nid,
                                 uses: cons(var_use(ex.id), @nil)}];
@@ -188,7 +188,7 @@ fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
                 alt ty::arg_mode(cx.tcx, arg_t) {
                   by_ref | by_val | by_mutbl_ref {
                     let def = cx.def_map.get(arg.id);
-                    option::with_option_do(def_is_owned_local(cx, def)) {|id|
+                    option::iter(def_is_owned_local(cx, def)) {|id|
                         clear_in_current(cx, id, false);
                         cx.spill_map.insert(id, ());
                     }
@@ -243,7 +243,7 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
         alt cx.tcx.freevars.find(id) {
           some(vars) {
             for vec::each(*vars) {|v|
-                option::with_option_do(def_is_owned_local(cx, v.def)) {|nid|
+                option::iter(def_is_owned_local(cx, v.def)) {|nid|
                     clear_in_current(cx, nid, false);
                     cx.current += [{def: nid,
                                     uses: cons(close_over(id), @nil)}];

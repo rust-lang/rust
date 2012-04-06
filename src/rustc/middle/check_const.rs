@@ -24,7 +24,7 @@ fn check_item(sess: session, ast_map: ast_map::map, def_map: resolve::def_map,
       }
       item_enum(vs, _) {
         for vs.each {|var|
-            option::with_option_do(var.node.disr_expr) {|ex|
+            option::iter(var.node.disr_expr) {|ex|
                 v.visit_expr(ex, true, v);
             }
         }
