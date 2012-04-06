@@ -485,15 +485,14 @@ fn mangle(ss: path) -> str {
     n
 }
 
-fn exported_name(path: path, hash: str, _vers: str) -> str {
+fn exported_name(path: path, id: ast::node_id, _vers: str) -> str {
     // FIXME: versioning isn't working yet
-    ret mangle(path + [path_name(hash)]); //  + "@" + vers;
-
+    ret mangle(path + [path_name(int::str(id))]); //  + "@" + vers;
 }
 
-fn mangle_exported_name(ccx: @crate_ctxt, path: path, t: ty::t) -> str {
-    let hash = get_symbol_hash(ccx, t);
-    ret exported_name(path, hash, ccx.link_meta.vers);
+fn mangle_exported_name(ccx: @crate_ctxt, path: path, id: ast::node_id)
+    -> str {
+    ret exported_name(path, id, ccx.link_meta.vers);
 }
 
 fn mangle_internal_name_by_type_only(ccx: @crate_ctxt, t: ty::t, name: str) ->
