@@ -20,7 +20,7 @@ export list_file_metadata;
 // libraries necessary for later resolving, typechecking, linking, etc.
 fn read_crates(sess: session::session, crate: ast::crate) {
     let e = @{sess: sess,
-              crate_cache: std::map::str_hash::<int>(),
+              mut crate_cache: [],
               mut next_crate_num: 1};
     let v =
         visit::mk_simple_visitor(@{visit_view_item:
@@ -31,7 +31,7 @@ fn read_crates(sess: session::session, crate: ast::crate) {
 }
 
 type env = @{sess: session::session,
-             crate_cache: hashmap<str, int>,
+             mut crate_cache: [(int, @[@ast::meta_item])],
              mut next_crate_num: ast::crate_num};
 
 fn visit_view_item(e: env, i: @ast::view_item) {
@@ -100,21 +100,26 @@ fn list_file_metadata(sess: session::session, path: str, out: io::writer) {
     }
 }
 
-fn metadata_matches(crate_data: @[u8], metas: [@ast::meta_item]) -> bool {
+fn crate_matches(crate_data: @[u8], metas: [@ast::meta_item]) -> bool {
     let attrs = decoder::get_crate_attributes(crate_data);
     let linkage_metas = attr::find_linkage_metas(attrs);
+    metadata_matches(linkage_metas, metas)
+}
+
+fn metadata_matches(extern_metas: [@ast::meta_item],
+                    local_metas: [@ast::meta_item]) -> bool {
 
     #debug("matching %u metadata requirements against %u items",
-           vec::len(metas), vec::len(linkage_metas));
+           vec::len(local_metas), vec::len(extern_metas));
 
     #debug("crate metadata:");
-    for have: @ast::meta_item in linkage_metas {
+    for have: @ast::meta_item in extern_metas {
         #debug("  %s", pprust::meta_item_to_str(*have));
     }
 
-    for needed: @ast::meta_item in metas {
+    for needed: @ast::meta_item in local_metas {
         #debug("looking for %s", pprust::meta_item_to_str(*needed));
-        if !attr::contains(linkage_metas, needed) {
+        if !attr::contains(extern_metas, needed) {
             #debug("missing %s", pprust::meta_item_to_str(*needed));
             ret false;
         }
@@ -133,7 +138,7 @@ fn default_native_lib_naming(sess: session::session, static: bool) ->
     }
 }
 
-fn find_library_crate(sess: session::session, ident: ast::ident,
+fn find_library_crate(sess: session::session,
                       metas: [@ast::meta_item])
    -> option<{ident: str, data: @[u8]}> {
 
@@ -149,10 +154,10 @@ fn find_library_crate(sess: session::session, ident: ast::ident,
                   some(n) { n }
                   // FIXME: Probably want a warning here since the user
                   // is using the wrong type of meta item
-                  _ { ident }
+                  _ { fail }
                 }
               }
-              none { ident }
+              none { fail }
             }
         };
 
@@ -186,7 +191,7 @@ fn find_library_crate_aux(sess: session::session,
             #debug("%s is a candidate", path);
             alt get_metadata_section(sess, path) {
               option::some(cvec) {
-                if !metadata_matches(cvec, metas) {
+                if !crate_matches(cvec, metas) {
                     #debug("skipping %s, metadata doesn't match", path);
                     option::none
                 } else {
@@ -230,12 +235,12 @@ fn get_metadata_section(sess: session::session,
     ret option::none::<@[u8]>;
 }
 
-fn load_library_crate(sess: session::session, span: span, ident: ast::ident,
+fn load_library_crate(sess: session::session, ident: ast::ident, span: span,
                       metas: [@ast::meta_item])
    -> {ident: str, data: @[u8]} {
 
 
-    alt find_library_crate(sess, ident, metas) {
+    alt find_library_crate(sess, metas) {
       some(t) { ret t; }
       none {
         sess.span_fatal(span, #fmt["can't find crate for '%s'", ident]);
@@ -243,18 +248,42 @@ fn load_library_crate(sess: session::session, span: span, ident: ast::ident,
     }
 }
 
+fn metas_with_ident(ident: ast::ident,
+                    metas: [@ast::meta_item]) -> [@ast::meta_item] {
+    let name_items = attr::find_meta_items_by_name(metas, "name");
+    if name_items.is_empty() {
+        metas + [attr::mk_name_value_item_str("name", ident)]
+    } else {
+        metas
+    }
+}
+
+fn existing_match(e: env, metas: [@ast::meta_item]) -> option<int> {
+    let maybe_entry = e.crate_cache.find {|c|
+        metadata_matches(*tuple::second(c), metas)
+    };
+
+    maybe_entry.map {|c| tuple::first(c) }
+}
+
 fn resolve_crate(e: env, ident: ast::ident, metas: [@ast::meta_item],
                  span: span) -> ast::crate_num {
-    if !e.crate_cache.contains_key(ident) {
+    let metas = metas_with_ident(ident, metas);
+
+    alt existing_match(e, metas) {
+      none {
         let cinfo =
-            load_library_crate(e.sess, span, ident, metas);
+            load_library_crate(e.sess, ident, span, metas);
 
         let cfilename = cinfo.ident;
         let cdata = cinfo.data;
 
+        let attrs = decoder::get_crate_attributes(cdata);
+        let linkage_metas = attr::find_linkage_metas(attrs);
+
         // Claim this crate number and cache it
         let cnum = e.next_crate_num;
-        e.crate_cache.insert(ident, cnum);
+        e.crate_cache += [(cnum, @linkage_metas)];
         e.next_crate_num += 1;
 
         // Now resolve the crates referenced by this crate
@@ -267,7 +296,11 @@ fn resolve_crate(e: env, ident: ast::ident, metas: [@ast::meta_item],
         cstore::set_crate_data(cstore, cnum, cmeta);
         cstore::add_used_crate_file(cstore, cfilename);
         ret cnum;
-    } else { ret e.crate_cache.get(ident); }
+      }
+      some(cnum) {
+        ret cnum;
+      }
+    }
 }
 
 // Go through the crate metadata and load any crates that it references
@@ -279,19 +312,24 @@ fn resolve_crate_deps(e: env, cdata: @[u8]) -> cstore::cnum_map {
     for dep: decoder::crate_dep in decoder::get_crate_deps(cdata) {
         let extrn_cnum = dep.cnum;
         let cname = dep.ident;
+        // FIXME: We really need to know the linkage metas of our transitive
+        // dependencies in order to resolve them correctly.
+        let cmetas = [];
         #debug("resolving dep %s", cname);
-        if e.crate_cache.contains_key(cname) {
+        alt existing_match(e, metas_with_ident(cname, cmetas)) {
+          some(local_cnum) {
             #debug("already have it");
             // We've already seen this crate
-            let local_cnum = e.crate_cache.get(cname);
             cnum_map.insert(extrn_cnum, local_cnum);
-        } else {
+          }
+          none {
             #debug("need to load it");
             // This is a new one so we've got to load it
             // FIXME: Need better error reporting than just a bogus span
             let fake_span = ast_util::dummy_sp();
-            let local_cnum = resolve_crate(e, cname, [], fake_span);
+            let local_cnum = resolve_crate(e, cname, cmetas, fake_span);
             cnum_map.insert(extrn_cnum, local_cnum);
+          }
         }
     }
     ret cnum_map;
