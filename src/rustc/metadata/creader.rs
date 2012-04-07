@@ -314,14 +314,19 @@ fn load_library_crate(sess: session::session, ident: ast::ident, span: span,
     }
 }
 
-fn metas_with_ident(ident: ast::ident,
+fn metas_with(ident: ast::ident, key: str,
                     metas: [@ast::meta_item]) -> [@ast::meta_item] {
-    let name_items = attr::find_meta_items_by_name(metas, "name");
+    let name_items = attr::find_meta_items_by_name(metas, key);
     if name_items.is_empty() {
-        metas + [attr::mk_name_value_item_str("name", ident)]
+        metas + [attr::mk_name_value_item_str(key, ident)]
     } else {
         metas
     }
+}
+
+fn metas_with_ident(ident: ast::ident,
+                    metas: [@ast::meta_item]) -> [@ast::meta_item] {
+    metas_with(ident, "name", metas)
 }
 
 fn existing_match(e: env, metas: [@ast::meta_item]) -> option<int> {
@@ -381,11 +386,12 @@ fn resolve_crate_deps(e: env, cdata: @[u8]) -> cstore::cnum_map {
     let cnum_map = int_hash::<ast::crate_num>();
     for decoder::get_crate_deps(cdata).each {|dep|
         let extrn_cnum = dep.cnum;
-        let cname = dep.ident;
+        let cname = dep.name;
+        let cvers = dep.vers;
         // FIXME: We really need to know the linkage metas of our transitive
         // dependencies in order to resolve them correctly.
-        let cmetas = [];
-        #debug("resolving dep %s", cname);
+        let cmetas = metas_with(cvers, "vers", []);
+        #debug("resolving dep %s ver: %s", cname, dep.vers);
         alt existing_match(e, metas_with_ident(cname, cmetas)) {
           some(local_cnum) {
             #debug("already have it");
