@@ -669,22 +669,9 @@ get_port_id(rust_port *port) {
 }
 
 extern "C" CDECL uintptr_t
-rust_port_id_send(type_desc *t, rust_port_id target_port_id, void *sptr) {
-    bool sent = false;
+rust_port_id_send(rust_port_id target_port_id, void *sptr) {
     rust_task *task = rust_get_current_task();
-
-    LOG(task, comm, "rust_port_id*_send port: 0x%" PRIxPTR,
-        (uintptr_t) target_port_id);
-
-    rust_port *port = task->kernel->get_port_by_id(target_port_id);
-    if(port) {
-        port->send(sptr);
-        port->deref();
-        sent = true;
-    } else {
-        LOG(task, comm, "didn't get the port");
-    }
-    return (uintptr_t)sent;
+    return (uintptr_t)task->kernel->send_to_port(target_port_id, sptr);
 }
 
 // This is called by an intrinsic on the Rust stack and must run
@@ -780,6 +767,18 @@ extern "C" CDECL bool
 rust_compare_and_swap_ptr(intptr_t *address,
                           intptr_t oldval, intptr_t newval) {
     return sync::compare_and_swap(address, oldval, newval);
+}
+
+extern "C" CDECL void
+rust_task_weaken(rust_port_id chan) {
+    rust_task *task = rust_get_current_task();
+    task->kernel->weaken_task(chan);
+}
+
+extern "C" CDECL void
+rust_task_unweaken(rust_port_id chan) {
+    rust_task *task = rust_get_current_task();
+    task->kernel->unweaken_task(chan);
 }
 
 //

@@ -92,6 +92,7 @@ rust_scheduler::create_task(rust_task *spawner, const char *name) {
         if (cur_thread >= num_threads)
             cur_thread = 0;
     }
+    kernel->register_task();
     rust_sched_launcher *thread = threads[thread_no];
     return thread->get_loop()->create_task(spawner, name);
 }
@@ -106,6 +107,7 @@ rust_scheduler::release_task() {
             need_exit = true;
         }
     }
+    kernel->unregister_task();
     if (need_exit) {
         exit();
     }
