@@ -1,11 +1,11 @@
 
 
-
 #include "rust_kernel.h"
 #include "rust_port.h"
 #include "rust_util.h"
 #include "rust_scheduler.h"
 #include "rust_sched_launcher.h"
+#include <algorithm>
 
 #define KLOG_(...)                              \
     KLOG(this, kern, __VA_ARGS__)
@@ -21,6 +21,7 @@ rust_kernel::rust_kernel(rust_env *env) :
     max_sched_id(0),
     sched_reaper(this),
     osmain_driver(NULL),
+    non_weak_tasks(0),
     env(env)
 {
     // Create the single threaded scheduler that will run on the platform's
@@ -283,6 +284,84 @@ rust_kernel::set_exit_status(int code) {
     // If we've already failed then that's the code we're going to use
     if (rval != PROC_FAIL_CODE) {
         rval = code;
+    }
+}
+
+void
+rust_kernel::register_task() {
+    KLOG_("Registering task");
+    uintptr_t new_non_weak_tasks = sync::increment(non_weak_tasks);
+    KLOG_("New non-weak tasks %" PRIdPTR, new_non_weak_tasks);
+}
+
+void
+rust_kernel::unregister_task() {
+    KLOG_("Unregistering task");
+    uintptr_t new_non_weak_tasks = sync::decrement(non_weak_tasks);
+    KLOG_("New non-weak tasks %" PRIdPTR, new_non_weak_tasks);
+    if (new_non_weak_tasks == 0) {
+        end_weak_tasks();
+    }
+}
+
+void
+rust_kernel::weaken_task(rust_port_id chan) {
+    {
+        scoped_lock with(weak_task_lock);
+        KLOG_("Weakening task with channel %" PRIdPTR, chan);
+        weak_task_chans.push_back(chan);
+    }
+    uintptr_t new_non_weak_tasks = sync::decrement(non_weak_tasks);
+    KLOG_("New non-weak tasks %" PRIdPTR, new_non_weak_tasks);
+    if (new_non_weak_tasks == 0) {
+        end_weak_tasks();
+    }
+}
+
+void
+rust_kernel::unweaken_task(rust_port_id chan) {
+    uintptr_t new_non_weak_tasks = sync::increment(non_weak_tasks);
+    KLOG_("New non-weak tasks %" PRIdPTR, new_non_weak_tasks);
+    {
+        scoped_lock with(weak_task_lock);
+        KLOG_("Unweakening task with channel %" PRIdPTR, chan);
+        std::vector<rust_port_id>::iterator iter =
+            std::find(weak_task_chans.begin(), weak_task_chans.end(), chan);
+        if (iter != weak_task_chans.end()) {
+            weak_task_chans.erase(iter);
+        }
+    }
+}
+
+void
+rust_kernel::end_weak_tasks() {
+    std::vector<rust_port_id> chancopies;
+    {
+        //scoped_lock with(weak_task_lock);
+        chancopies = weak_task_chans;
+        weak_task_chans.clear();
+    }
+    while (!chancopies.empty()) {
+        rust_port_id chan = chancopies.back();
+        chancopies.pop_back();
+        KLOG_("Notifying weak task " PRIdPTR, chan);
+        uintptr_t token = 0;
+        send_to_port(chan, &token);
+    }
+}
+
+bool
+rust_kernel::send_to_port(rust_port_id chan, void *sptr) {
+    KLOG_("rust_port_id*_send port: 0x%" PRIxPTR, (uintptr_t) chan);
+
+    rust_port *port = get_port_by_id(chan);
+    if(port) {
+        port->send(sptr);
+        port->deref();
+        return true;
+    } else {
+        KLOG_("didn't get the port");
+        return false;
     }
 }
 

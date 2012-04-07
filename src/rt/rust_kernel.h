@@ -63,7 +63,15 @@ class rust_kernel {
     // on the main thread
     rust_sched_driver *osmain_driver;
 
+    // An atomically updated count of the live, 'non-weak' tasks
+    uintptr_t non_weak_tasks;
+    // Protects weak_task_chans
+    lock_and_signal weak_task_lock;
+    // A list of weak tasks that need to be told when to exit
+    std::vector<rust_port_id> weak_task_chans;
+
     rust_scheduler* get_scheduler_by_id_nolock(rust_sched_id id);
+    void end_weak_tasks();
 
 public:
     struct rust_env *env;
@@ -102,6 +110,13 @@ public:
     void set_exit_status(int code);
 
     rust_sched_id osmain_sched_id() { return osmain_scheduler; }
+
+    void register_task();
+    void unregister_task();
+    void weaken_task(rust_port_id chan);
+    void unweaken_task(rust_port_id chan);
+
+    bool send_to_port(rust_port_id chan, void *sptr);
 };
 
 template <typename T> struct kernel_owned {

@@ -37,8 +37,7 @@ enum rust_port {}
 
 #[abi = "cdecl"]
 native mod rustrt {
-    fn rust_port_id_send<T: send>(t: *sys::type_desc,
-                                  target_port: port_id,
+    fn rust_port_id_send<T: send>(target_port: port_id,
                                   data: T) -> libc::uintptr_t;
 
     fn new_port(unit_sz: libc::size_t) -> *rust_port;
@@ -114,7 +113,7 @@ whereupon the caller loses access to it.
 "]
 fn send<T: send>(ch: chan<T>, -data: T) {
     let chan_t(p) = ch;
-    let res = rustrt::rust_port_id_send(sys::get_type_desc::<T>(), p, data);
+    let res = rustrt::rust_port_id_send(p, data);
     if res != 0u unsafe {
         // Data sent successfully
         unsafe::forget(data);
