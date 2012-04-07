@@ -33,6 +33,7 @@ export list_crate_metadata;
 export crate_dep;
 export get_crate_deps;
 export get_crate_hash;
+export get_crate_vers;
 export get_impls_for_mod;
 export get_iface_methods;
 export get_crate_module_paths;
@@ -579,16 +580,22 @@ fn get_crate_attributes(data: @[u8]) -> [ast::attribute] {
     ret get_attributes(ebml::doc(data));
 }
 
-type crate_dep = {cnum: ast::crate_num, ident: str};
+type crate_dep = {cnum: ast::crate_num, name: ast::ident,
+                  vers: str, hash: str};
 
 fn get_crate_deps(data: @[u8]) -> [crate_dep] {
     let mut deps: [crate_dep] = [];
     let cratedoc = ebml::doc(data);
     let depsdoc = ebml::get_doc(cratedoc, tag_crate_deps);
     let mut crate_num = 1;
+    fn docstr(doc: ebml::doc, tag_: uint) -> str {
+        str::from_bytes(ebml::doc_data(ebml::get_doc(doc, tag_)))
+    }
     ebml::tagged_docs(depsdoc, tag_crate_dep) {|depdoc|
-        let depname = str::from_bytes(ebml::doc_data(depdoc));
-        deps += [{cnum: crate_num, ident: depname}];
+        deps += [{cnum: crate_num,
+                  name: docstr(depdoc, tag_crate_dep_name),
+                  vers: docstr(depdoc, tag_crate_dep_vers),
+                  hash: docstr(depdoc, tag_crate_dep_hash)}];
         crate_num += 1;
     };
     ret deps;
@@ -598,7 +605,8 @@ fn list_crate_deps(data: @[u8], out: io::writer) {
     out.write_str("=External Dependencies=\n");
 
     for get_crate_deps(data).each {|dep|
-        out.write_str(#fmt["%d %s\n", dep.cnum, dep.ident]);
+        out.write_str(#fmt["%d %s-%s-%s\n",
+                           dep.cnum, dep.name, dep.hash, dep.vers]);
     }
 
     out.write_str("\n");
@@ -608,6 +616,15 @@ fn get_crate_hash(data: @[u8]) -> str {
     let cratedoc = ebml::doc(data);
     let hashdoc = ebml::get_doc(cratedoc, tag_crate_hash);
     ret str::from_bytes(ebml::doc_data(hashdoc));
+}
+
+fn get_crate_vers(data: @[u8]) -> str {
+    let attrs = decoder::get_crate_attributes(data);
+    ret alt attr::meta_item_value_from_list(
+        attr::find_linkage_metas(attrs), "vers") {
+      some(ver) { ver }
+      none { "0.0" }
+    };
 }
 
 fn list_crate_items(bytes: @[u8], md: ebml::doc, out: io::writer) {

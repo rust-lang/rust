@@ -64,6 +64,10 @@ const tag_crate_hash: uint = 0x28u;
 
 const tag_parent_item: uint = 0x29u;
 
+const tag_crate_dep_name: uint = 0x2au;
+const tag_crate_dep_hash: uint = 0x2bu;
+const tag_crate_dep_vers: uint = 0x2cu;
+
 const tag_mod_impl: uint = 0x30u;
 
 const tag_item_method: uint = 0x31u;

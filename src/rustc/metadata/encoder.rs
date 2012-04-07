@@ -907,44 +907,56 @@ fn synthesize_crate_attrs(ecx: @encode_ctxt, crate: @crate) -> [attribute] {
 
 fn encode_crate_deps(ebml_w: ebml::writer, cstore: cstore::cstore) {
 
-    fn get_ordered_names(cstore: cstore::cstore) -> [str] {
+    fn get_ordered_deps(cstore: cstore::cstore) -> [decoder::crate_dep] {
         type hashkv = @{key: crate_num, val: cstore::crate_metadata};
-        type numname = {crate: crate_num, ident: str};
+        type numdep = decoder::crate_dep;
 
-        // Pull the cnums and names out of cstore
-        let mut pairs: [mut numname] = [mut];
+        // Pull the cnums and name,vers,hash out of cstore
+        let mut deps: [mut numdep] = [mut];
         cstore::iter_crate_data(cstore) {|key, val|
-            pairs += [mut {crate: key, ident: val.name}];
+            let dep = {cnum: key, name: val.name,
+                       vers: decoder::get_crate_vers(val.data),
+                       hash:  decoder::get_crate_hash(val.data)};
+            deps += [mut dep];
         };
 
         // Sort by cnum
-        fn lteq(kv1: numname, kv2: numname) -> bool { kv1.crate <= kv2.crate }
-        std::sort::quick_sort(lteq, pairs);
+        fn lteq(kv1: numdep, kv2: numdep) -> bool { kv1.cnum <= kv2.cnum }
+        std::sort::quick_sort(lteq, deps);
 
         // Sanity-check the crate numbers
         let mut expected_cnum = 1;
-        for pairs.each {|n|
-            assert (n.crate == expected_cnum);
+        for deps.each {|n|
+            assert (n.cnum == expected_cnum);
             expected_cnum += 1;
         }
 
-        // Return just the names
-        fn name(kv: numname) -> str { kv.ident }
         // mut -> immutable hack for vec::map
-        let immpairs = vec::slice(pairs, 0u, vec::len(pairs));
-        ret vec::map(immpairs, name);
+        ret vec::slice(deps, 0u, vec::len(deps));
     }
 
-    // We're just going to write a list of crate names, with the assumption
-    // that they are numbered 1 to n.
+    // We're just going to write a list of crate 'name-hash-version's, with
+    // the assumption that they are numbered 1 to n.
     // FIXME: This is not nearly enough to support correct versioning
     // but is enough to get transitive crate dependencies working.
     ebml_w.start_tag(tag_crate_deps);
-    for get_ordered_names(cstore).each {|cname|
-        ebml_w.start_tag(tag_crate_dep);
-        ebml_w.writer.write(str::bytes(cname));
-        ebml_w.end_tag();
+    for get_ordered_deps(cstore).each {|dep|
+        encode_crate_dep(ebml_w, dep);
     }
+    ebml_w.end_tag();
+}
+
+fn encode_crate_dep(ebml_w: ebml::writer, dep: decoder::crate_dep) {
+    ebml_w.start_tag(tag_crate_dep);
+    ebml_w.start_tag(tag_crate_dep_name);
+    ebml_w.writer.write(str::bytes(dep.name));
+    ebml_w.end_tag();
+    ebml_w.start_tag(tag_crate_dep_vers);
+    ebml_w.writer.write(str::bytes(dep.vers));
+    ebml_w.end_tag();
+    ebml_w.start_tag(tag_crate_dep_hash);
+    ebml_w.writer.write(str::bytes(dep.hash));
+    ebml_w.end_tag();
     ebml_w.end_tag();
 }
 

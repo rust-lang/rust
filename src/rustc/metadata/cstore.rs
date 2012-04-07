@@ -88,9 +88,7 @@ fn get_crate_hash(cstore: cstore, cnum: ast::crate_num) -> str {
 
 fn get_crate_vers(cstore: cstore, cnum: ast::crate_num) -> str {
     let cdata = get_crate_data(cstore, cnum);
-    let attrs = decoder::get_crate_attributes(cdata.data);
-    ret option::get(attr::meta_item_value_from_list(
-        attr::find_linkage_metas(attrs), "vers"));
+    ret decoder::get_crate_vers(cdata.data);
 }
 
 fn set_crate_data(cstore: cstore, cnum: ast::crate_num,
