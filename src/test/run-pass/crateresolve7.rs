@@ -1,6 +1,6 @@
 // xfail-fast
-// aux-build:crateresolve6-1.rs
-// aux-build:crateresolve6-2.rs
+// aux-build:crateresolve7-1.rs
+// aux-build:crateresolve7-2.rs
 // aux-build:crateresolve7x.rs
 
 use crateresolve7x;
