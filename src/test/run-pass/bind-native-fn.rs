@@ -1,4 +1,5 @@
 // From #1174:
+// xfail-fast
 
 use std;
 import str;
