@@ -420,8 +420,7 @@ fn symbol_hash(tcx: ty::ctxt, sha: sha1, t: ty::t, link_meta: link_meta) ->
     sha.reset();
     sha.input_str(link_meta.name);
     sha.input_str("-");
-    // FIXME: This wants to be link_meta.meta_hash
-    sha.input_str(link_meta.name);
+    sha.input_str(link_meta.extras_hash);
     sha.input_str("-");
     sha.input_str(encoder::encoded_ty(tcx, t));
     let hash = truncated_sha1_result(sha);
