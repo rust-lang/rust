@@ -65,7 +65,6 @@ fn mk_filesearch(maybe_sysroot: option<path>,
      target_triple: target_triple} as filesearch
 }
 
-// FIXME #1001: This can't be an obj method
 fn search<T: copy>(filesearch: filesearch, pick: pick<T>) -> option<T> {
     let mut rslt = none;
     for filesearch.lib_search_paths().each {|lib_search_path|
