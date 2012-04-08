@@ -5,6 +5,7 @@
 
 #include "rust_globals.h"
 #include "rust_task.h"
+#include "rust_log.h"
 #include "uv.h"
 
 // crust fn pointers
@@ -221,14 +222,18 @@ rust_uv_tcp_connect(uv_connect_t* connect_ptr,
         uv_tcp_t* tcp_ptr,
         uv_connect_cb cb,
         sockaddr_in* addr_ptr) {
-    printf("inside rust_uv_tcp_connect\n");
+    rust_task* task = rust_get_current_task();
+    LOG(task, stdlib, "inside rust_uv_tcp_connect\n");
     // FIXME ref #2064
     sockaddr_in addr = *addr_ptr;
-    printf("before tcp_connect .. port: %d\n", addr.sin_port);
-    printf("before tcp_connect.. tcp stream: %lu cb ptr: %lu\n",
-            (unsigned long int)tcp_ptr, (unsigned long int)cb);
+    LOG(task, stdlib, "before tcp_connect .. port: %d\n",
+        addr.sin_port);
+    LOG(task, stdlib, "before tcp_connect.. tcp stream:" \
+        "%lu cb ptr: %lu\n",
+        (unsigned long int)tcp_ptr, (unsigned long int)cb);
     int result = uv_tcp_connect(connect_ptr, tcp_ptr, addr, cb);
-    printf ("leaving rust_uv_tcp_connect.. and result: %d\n",
+    LOG(task, stdlib, "leaving rust_uv_tcp_connect.." \
+        "and result: %d\n",
             result);
     return result;
 }
@@ -236,8 +241,10 @@ rust_uv_tcp_connect(uv_connect_t* connect_ptr,
 extern "C" int
 rust_uv_tcp_bind(uv_tcp_t* tcp_server, sockaddr_in* addr_ptr) {
     // FIXME ref #2064
+    rust_task* task = rust_get_current_task();
     sockaddr_in addr = *addr_ptr;
-    printf("before uv_tcp_bind .. tcp_server: %lu port: %d\n",
+    LOG(task, stdlib, "before uv_tcp_bind .. tcp_server:" \
+        "%lu port: %d\n",
             (unsigned long int)tcp_server, addr.sin_port);
     return uv_tcp_bind(tcp_server, addr);
 }
@@ -302,11 +309,14 @@ current_kernel_malloc_alloc_cb(uv_handle_t* handle,
 
 extern "C" void
 rust_uv_buf_init(uv_buf_t* out_buf, char* base, size_t len) {
-    printf("rust_uv_buf_init: base: %lu len: %lu\n",
-        (long unsigned int)base,
-        (long unsigned int)len);
+    rust_task* task = rust_get_current_task();
+    LOG(task, stdlib,"rust_uv_buf_init: base: %lu" \
+        "len: %lu\n",
+        (unsigned long int)base,
+        (unsigned long int)len);
     *out_buf = uv_buf_init(base, len);
-    printf("rust_uv_buf_init: after: result->base: %lu len: %lu\n",
+    LOG(task, stdlib, "rust_uv_buf_init: after: "
+        "result->base: %" PRIxPTR " len: %\n" PRIxPTR,
            (unsigned long int)(*out_buf).base,
            (unsigned long int)(*out_buf).len);
 }
@@ -393,8 +403,10 @@ rust_uv_free_base_of_buf(uv_buf_t buf) {
 
 extern "C" struct sockaddr_in
 rust_uv_ip4_addr(const char* ip, int port) {
-    printf("before creating addr_ptr.. ip %s port %d\n", ip, port);
+    rust_task* task = rust_get_current_task();
+    LOG(task, stdlib, "before creating addr_ptr.. ip %s" \
+        "port %d\n", ip, port);
     struct sockaddr_in addr = uv_ip4_addr(ip, port);
-    printf("after creating .. port: %d\n", addr.sin_port);
+    LOG(task, stdlib, "after creating .. port: %d\n", addr.sin_port);
     return addr;
 }
