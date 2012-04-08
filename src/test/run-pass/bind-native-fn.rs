@@ -1,5 +1,4 @@
 // From #1174:
-// xfail-test bots are crashing on this on x86_64
 
 use std;
 import str;
@@ -7,7 +6,7 @@ import libc::*;
 
 #[nolink]
 native mod libc {
-    fn write(fd: c_int, buf: *u8, nbyte: size_t);
+    fn write(fd: core::libc::c_int, buf: *u8, nbyte: core::libc::size_t);
 }
 
 fn main() {
