@@ -1,2 +1,2 @@
-fn wsucc(n: int) -> int { ({ ret n + 1 } + 0); }
+fn wsucc(n: int) -> int { 0 + { ret n + 1 } }
 fn main() { }

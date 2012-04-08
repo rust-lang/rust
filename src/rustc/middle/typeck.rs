@@ -232,8 +232,10 @@ fn instantiate_path(fcx: @fn_ctxt, pth: @ast::path,
 // Type tests
 fn structurally_resolved_type(fcx: @fn_ctxt, sp: span, tp: ty::t) -> ty::t {
     alt infer::resolve_type_structure(fcx.infcx, tp) {
-      result::ok(typ_s) { ret typ_s; }
-      result::err(_) {
+      // note: the bot type doesn't count as resolved; it's what we use when
+      // there is no information about a variable.
+      result::ok(t_s) if !ty::type_is_bot(t_s) { ret t_s; }
+      _ {
         fcx.ccx.tcx.sess.span_fatal
             (sp, "the type of this value must be known in this context");
       }

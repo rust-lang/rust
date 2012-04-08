@@ -9,8 +9,6 @@ fn call_id() {
 
 fn call_id_2() { id(true) && id(ret); }
 
-fn call_id_3() { id(ret) && id(ret); }
-
 fn call_id_4() { while id(ret) { } }
 
 fn bind_id_1() { bind id(fail); }
@@ -27,7 +25,7 @@ fn log_break() { loop { log(error, break); } }
 
 fn log_cont() { do { log(error, cont); } while false }
 
-fn ret_ret() -> int { ret (ret 2) + 3; }
+fn ret_ret() -> int { ret 3 + (ret 2); }
 
 fn ret_guard() {
     alt check 2 {
@@ -53,7 +51,6 @@ fn main() {
   ret_ret();
   log_ret();
   call_id_2();
-  call_id_3();
   call_id_4();
   bind_id_2();
   ret_guard();
