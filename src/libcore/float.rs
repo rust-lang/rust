@@ -358,6 +358,12 @@ fn test_nonnegative() {
   assert(!is_nonnegative(NaN));
 }
 
+#[test]
+fn test_to_str_inf() {
+    assert to_str(infinity, 10u) == "inf";
+    assert to_str(-infinity, 10u) == "-inf";
+}
+
 //
 // Local Variables:
 // mode: rust
