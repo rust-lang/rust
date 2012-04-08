@@ -485,10 +485,8 @@ fn mangle(ss: path) -> str {
     n
 }
 
-fn exported_name(path: path, hash: str, _vers: str) -> str {
-    // FIXME: versioning isn't working yet
-    ret mangle(path + [path_name(hash)]); //  + "@" + vers;
-
+fn exported_name(path: path, hash: str, vers: str) -> str {
+    ret mangle(path + [path_name(hash)] + [path_name(vers)]);
 }
 
 fn mangle_exported_name(ccx: @crate_ctxt, path: path, t: ty::t) -> str {
