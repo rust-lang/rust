@@ -1,5 +1,4 @@
 // xfail-fast
-// xfail-test
 // aux-build:crateresolve2-1.rs
 // aux-build:crateresolve2-2.rs
 // aux-build:crateresolve2-3.rs
