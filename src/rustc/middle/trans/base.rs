@@ -1911,7 +1911,7 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, real_substs: [ty::t],
     let llfty = type_of_fn_from_ty(ccx, mono_ty);
 
     let pt = *pt + [path_name(ccx.names(name))];
-    let s = mangle_exported_name(ccx, pt, fn_id.node);
+    let s = mangle_exported_name(ccx, pt, mono_ty);
     let lldecl = decl_internal_cdecl_fn(ccx.llmod, s, llfty);
     ccx.monomorphized.insert(hash_id, lldecl);
     ccx.item_symbols.insert(fn_id.node, s);
@@ -4418,7 +4418,7 @@ fn register_fn_full(ccx: @crate_ctxt, sp: span, path: path,
 fn register_fn_fuller(ccx: @crate_ctxt, sp: span, path: path,
                       node_id: ast::node_id, node_type: ty::t,
                       cc: lib::llvm::CallConv, llfty: TypeRef) -> ValueRef {
-    let ps: str = mangle_exported_name(ccx, path, node_id);
+    let ps: str = mangle_exported_name(ccx, path, node_type);
     let llfn: ValueRef = decl_fn(ccx.llmod, ps, cc, llfty);
     ccx.item_symbols.insert(node_id, ps);
 
@@ -4547,7 +4547,7 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
             alt check i.node {
               ast::item_const(_, _) {
                 let typ = ty::node_id_to_type(ccx.tcx, i.id);
-                let s = mangle_exported_name(ccx, my_path, i.id);
+                let s = mangle_exported_name(ccx, my_path, typ);
                 let g = str::as_c_str(s, {|buf|
                     llvm::LLVMAddGlobal(ccx.llmod, type_of(ccx, typ), buf)
                 });
@@ -4634,7 +4634,7 @@ fn trans_constant(ccx: @crate_ctxt, it: @ast::item) {
         for vec::each(variants) {|variant|
             let p = path + [path_name(variant.node.name),
                             path_name("discrim")];
-            let s = mangle_exported_name(ccx, p, it.id);
+            let s = mangle_exported_name(ccx, p, ty::mk_int(ccx.tcx));
             let disr_val = vi[i].disr_val;
             note_unique_llvm_symbol(ccx, s);
             let discrim_gvar = str::as_c_str(s, {|buf|
