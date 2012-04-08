@@ -14,7 +14,7 @@ export interact, prepare_loop;
 #[doc = "
 Used to abstract-away direct interaction with a libuv loop.
 
-# Fields
+# Arguments
 
 * async_handle - a pointer to a uv_async_t struct used to 'poke'
 the C uv loop to process any pending callbacks
@@ -30,7 +30,7 @@ type high_level_loop = {
 #[doc = "
 Pass in a callback to be processed on the running libuv loop's thread
 
-# Fields
+# Arguments
 
 * a_loop - a high_level_loop record that represents a channel of
 communication with an active libuv loop running on a thread
@@ -59,14 +59,14 @@ After this is ran against a loop, a library developer can run
 the loop in its own thread and then use the returned
 `high_level_loop` to interact with it.
 
-# Fields
+# Arguments
 
 * loop_ptr - a pointer to a newly created `uv_loop_t*` with no
 handles registered (this will interfere with the internal lifecycle
 management this module provides). Ideally, this should be called
 immediately after using `uv::ll::loop_new()`
 
-# Returns
+# Return
 
 A `high_level_loop` record that can be used to interact with the
 loop (after you use `uv::ll::run()` on the `uv_loop_t*`, of course
