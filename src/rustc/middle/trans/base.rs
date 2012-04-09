@@ -1772,11 +1772,17 @@ fn lval_no_env(bcx: block, val: ValueRef, kind: lval_kind)
 fn trans_external_path(ccx: @crate_ctxt, did: ast::def_id, t: ty::t)
     -> ValueRef {
     let name = csearch::get_symbol(ccx.sess.cstore, did);
-    let llty = alt ty::get(t).struct {
-      ty::ty_fn(_) { type_of_fn_from_ty(ccx, t) }
-      _ { type_of(ccx, t) }
+    alt ty::get(t).struct {
+      ty::ty_fn(_) {
+        let llty = type_of_fn_from_ty(ccx, t);
+        ret get_extern_fn(ccx.externs, ccx.llmod, name,
+                          lib::llvm::CCallConv, llty);
+      }
+      _ {
+        let llty = type_of(ccx, t);
+        ret get_extern_const(ccx.externs, ccx.llmod, name, llty);
+      }
     };
-    ret get_extern_const(ccx.externs, ccx.llmod, name, llty);
 }
 
 fn normalize_for_monomorphization(tcx: ty::ctxt, ty: ty::t) -> option<ty::t> {
@@ -4497,9 +4503,8 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
         let crate_map = ccx.crate_map;
         let start_ty = T_fn([val_ty(rust_main), ccx.int_type, ccx.int_type,
                              val_ty(crate_map)], ccx.int_type);
-        let start = str::as_c_str("rust_start", {|buf|
-            llvm::LLVMAddGlobal(ccx.llmod, start_ty, buf)
-        });
+        let start = decl_cdecl_fn(ccx.llmod, "rust_start", start_ty);
+
         let args = [rust_main, llvm::LLVMGetParam(llfn, 0 as c_uint),
                     llvm::LLVMGetParam(llfn, 1 as c_uint), crate_map];
         let result = unsafe {
