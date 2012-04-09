@@ -4497,9 +4497,7 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
         let crate_map = ccx.crate_map;
         let start_ty = T_fn([val_ty(rust_main), ccx.int_type, ccx.int_type,
                              val_ty(crate_map)], ccx.int_type);
-        let start = str::as_c_str("rust_start", {|buf|
-            llvm::LLVMAddGlobal(ccx.llmod, start_ty, buf)
-        });
+        let start = decl_cdecl_fn(ccx.llmod, "rust_start", start_ty);
         let args = [rust_main, llvm::LLVMGetParam(llfn, 0 as c_uint),
                     llvm::LLVMGetParam(llfn, 1 as c_uint), crate_map];
         let result = unsafe {
