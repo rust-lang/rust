@@ -12,8 +12,7 @@ LLVM_EXTRA_INCDIRS_$(1)= -iquote $(S)src/llvm/include \
                          -iquote llvm/$(1)/include
 endif
 
-RUSTLLVM_OBJS_CS_$(1) := $$(addprefix rustllvm/, RustGCMetadataPrinter.cpp \
-    RustGCStrategy.cpp RustWrapper.cpp)
+RUSTLLVM_OBJS_CS_$(1) := $$(addprefix rustllvm/, RustWrapper.cpp)
 
 # Behind an ifdef for now since this requires a patched LLVM.
 ifdef CFG_STACK_GROWTH
