@@ -514,7 +514,17 @@ rust_task::new_stack(size_t requested_sz) {
 
     if (total_stack_sz + rust_stk_sz > kernel->env->max_stack_size) {
         LOG_ERR(this, task, "task %" PRIxPTR " ran out of stack", this);
-        fail();
+        if (!unwinding) {
+            fail();
+        } else {
+            // FIXME: Because we have landing pads that may need more
+            // stack than normally allowed we have to go allow the stack
+            // to grow unbounded during unwinding. Would be nice to
+            // have a different solution - maybe just double the limit.
+            LOG_ERR(this, task, "task %" PRIxPTR " has blown its stack "
+                    "budget but we are unwinding so growing the stack "
+                    "anyway");
+        }
     }
 
     size_t sz = rust_stk_sz + RED_ZONE_SIZE;
