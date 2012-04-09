@@ -28,6 +28,7 @@ fn read_crates(sess: session::session, crate: ast::crate) {
                                    visit_item: bind visit_item(e, _)
                                       with *visit::default_simple_visitor()});
     visit::visit_crate(crate, (), v);
+    dump_crates(e.crate_cache);
     warn_if_multiple_versions(sess, copy e.crate_cache);
 }
 
@@ -37,6 +38,21 @@ type cache_entry = {
     hash: str,
     metas: @[@ast::meta_item]
 };
+
+fn dump_crates(crate_cache: [cache_entry]) {
+    #debug("resolved crates:");
+    for crate_cache.each {|entry|
+        #debug("cnum: %?", entry.cnum);
+        #debug("span: %?", entry.span);
+        #debug("hash: %?", entry.hash);
+        let attrs = [
+            attr::mk_attr(attr::mk_list_item("link", *entry.metas))
+        ];
+        for attr::find_linkage_attrs(attrs).each {|attr|
+            #debug("meta: %s", pprust::attr_to_str(attr));
+        }
+    }
+}
 
 fn warn_if_multiple_versions(sess: session::session,
                              crate_cache: [cache_entry]) {
@@ -78,6 +94,7 @@ type env = @{sess: session::session,
 fn visit_view_item(e: env, i: @ast::view_item) {
     alt i.node {
       ast::view_item_use(ident, meta_items, id) {
+        #debug("resolving use stmt. ident: %?, meta: %?", ident, meta_items);
         let cnum = resolve_crate(e, ident, meta_items, "", i.span);
         cstore::add_use_stmt_cnum(e.sess.cstore, id, cnum);
       }
