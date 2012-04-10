@@ -97,6 +97,8 @@ rust_uv_hilvl_close_timer
 rust_uv_async_send
 rust_uv_async_init
 rust_uv_hilvl_async_init
+rust_uv_hilvl_timer_init
+rust_uv_hilvl_timer_start
 rust_uv_timer_init
 rust_uv_timer_start
 rust_uv_timer_stop

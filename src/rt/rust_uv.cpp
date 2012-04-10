@@ -189,7 +189,7 @@ rust_uv_hilvl_async_init(uv_loop_t* loop, crust_simple_cb cb,
 }
 
 extern "C" void*
-rust_uv_timer_init(uv_loop_t* loop, crust_simple_cb cb,
+rust_uv_hilvl_timer_init(uv_loop_t* loop, crust_simple_cb cb,
         uint8_t* buf) {
     uv_timer_t* new_timer = (uv_timer_t*)current_kernel_malloc(
             sizeof(uv_timer_t),
@@ -202,14 +202,25 @@ rust_uv_timer_init(uv_loop_t* loop, crust_simple_cb cb,
 }
 
 extern "C" void
-rust_uv_timer_start(uv_timer_t* the_timer, uint32_t timeout,
+rust_uv_hilvl_timer_start(uv_timer_t* the_timer, uint32_t timeout,
         uint32_t repeat) {
     uv_timer_start(the_timer, native_timer_cb, timeout, repeat);
 }
 
-extern "C" void
+extern "C" int
+rust_uv_timer_init(uv_loop_t* loop, uv_timer_t* timer) {
+	return uv_timer_init(loop, timer);
+}
+
+extern "C" int
+rust_uv_timer_start(uv_timer_t* the_timer, uv_timer_cb cb,
+						  uint32_t timeout, uint32_t repeat) {
+    return uv_timer_start(the_timer, cb, timeout, repeat);
+}
+
+extern "C" int
 rust_uv_timer_stop(uv_timer_t* the_timer) {
-    uv_timer_stop(the_timer);
+    return uv_timer_stop(the_timer);
 }
 
 extern "C" int
@@ -287,6 +298,10 @@ rust_uv_helper_sockaddr_in_size() {
 extern "C" size_t
 rust_uv_helper_uv_async_t_size() {
     return sizeof(uv_async_t);
+}
+extern "C" size_t
+rust_uv_helper_uv_timer_t_size() {
+    return sizeof(uv_timer_t);
 }
 
 extern "C" uv_stream_t*
