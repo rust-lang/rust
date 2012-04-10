@@ -124,8 +124,6 @@ tidy:
 		@$(call E, check: formatting)
 		$(Q)echo \
               $(wildcard $(S)src/etc/*.py)  \
-              $(ALL_CS) \
-              $(ALL_HS) \
               $(COMPILER_CRATE) \
               $(COMPILER_INPUTS) \
               $(CORELIB_CRATE) \
@@ -138,10 +136,15 @@ tidy:
               $(CARGO_INPUTS) \
               $(RUSTDOC_CRATE) \
               $(RUSTDOC_INPUTS) \
-		  | xargs -n 10 python $(S)src/etc/tidy.py
+		| xargs -n 10 python $(S)src/etc/tidy.py
 		$(Q)echo \
               $(ALL_TEST_INPUTS) \
 	  	| xargs -n 10 python $(S)src/etc/tidy.py
+		$(Q)echo \
+              $(ALL_CS) \
+              $(ALL_HS) \
+	  	| xargs -n 10 python $(S)src/etc/tidy.py
+
 endif
 
 ######################################################################
