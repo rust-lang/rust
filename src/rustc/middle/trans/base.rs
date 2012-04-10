@@ -573,7 +573,8 @@ fn make_take_glue(bcx: block, v: ValueRef, t: ty::t) {
     let _icx = bcx.insn_ctxt("make_take_glue");
     // NB: v is a *pointer* to type t here, not a direct value.
     let bcx = alt ty::get(t).struct {
-      ty::ty_box(_) | ty::ty_opaque_box {
+      ty::ty_box(_) | ty::ty_opaque_box |
+      ty::ty_evec(_, ty::vstore_box) | ty::ty_estr(ty::vstore_box) {
         incr_refcnt_of_boxed(bcx, Load(bcx, v)); bcx
       }
       ty::ty_uniq(_) {
@@ -581,7 +582,8 @@ fn make_take_glue(bcx: block, v: ValueRef, t: ty::t) {
         Store(bcx, val, v);
         bcx
       }
-      ty::ty_vec(_) | ty::ty_str {
+      ty::ty_vec(_) | ty::ty_str |
+      ty::ty_evec(_, ty::vstore_uniq) | ty::ty_estr(ty::vstore_uniq) {
         let {bcx, val} = tvec::duplicate(bcx, Load(bcx, v), t);
         Store(bcx, val, v);
         bcx
@@ -629,6 +631,12 @@ fn make_free_glue(bcx: block, v: ValueRef, t: ty::t) {
         let bcx = drop_ty(bcx, body, body_mt.ty);
         trans_free(bcx, v)
       }
+
+      ty::ty_estr(ty::vstore_box) {
+        let v = PointerCast(bcx, v, type_of(ccx, t));
+        trans_free(bcx, v)
+      }
+
       ty::ty_opaque_box {
         let v = PointerCast(bcx, v, type_of(ccx, t));
         let td = Load(bcx, GEPi(bcx, v, [0, abi::box_field_tydesc]));
@@ -641,8 +649,12 @@ fn make_free_glue(bcx: block, v: ValueRef, t: ty::t) {
         let v = PointerCast(bcx, v, type_of(ccx, t));
         uniq::make_free_glue(bcx, v, t)
       }
+      ty::ty_evec(_, ty::vstore_uniq) | ty::ty_estr(ty::vstore_uniq) |
       ty::ty_vec(_) | ty::ty_str {
         tvec::make_free_glue(bcx, PointerCast(bcx, v, type_of(ccx, t)), t)
+      }
+      ty::ty_evec(_, _) {
+          bcx.sess().unimpl("trans::base::make_free_glue on other evec");
       }
       ty::ty_fn(_) {
         closure::make_fn_glue(bcx, v, t, free_ty)
@@ -660,7 +672,8 @@ fn make_drop_glue(bcx: block, v0: ValueRef, t: ty::t) {
     let _icx = bcx.insn_ctxt("make_drop_glue");
     let ccx = bcx.ccx();
     let bcx = alt ty::get(t).struct {
-      ty::ty_box(_) | ty::ty_opaque_box {
+      ty::ty_box(_) | ty::ty_opaque_box |
+      ty::ty_estr(ty::vstore_box) {
         decr_refcnt_maybe_free(bcx, Load(bcx, v0), t)
       }
       ty::ty_uniq(_) | ty::ty_vec(_) | ty::ty_str {
@@ -900,6 +913,10 @@ fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
             cx = f(cx, llfld_a, fld.mt.ty);
         }
       }
+      ty::ty_estr(ty::vstore_fixed(n)) |
+      ty::ty_evec(_, ty::vstore_fixed(n)) {
+        cx = tvec::iter_vec_raw(cx, av, t, C_uint(cx.ccx(), n), f);
+      }
       ty::ty_tup(args) {
         for vec::eachi(args) {|i, arg|
             let llfld_a = GEPi(cx, av, [0, i as int]);
@@ -1111,8 +1128,14 @@ fn drop_ty(cx: block, v: ValueRef, t: ty::t) -> block {
 fn drop_ty_immediate(bcx: block, v: ValueRef, t: ty::t) -> block {
     let _icx = bcx.insn_ctxt("drop_ty_immediate");
     alt ty::get(t).struct {
-      ty::ty_uniq(_) | ty::ty_vec(_) | ty::ty_str { free_ty(bcx, v, t) }
-      ty::ty_box(_) | ty::ty_opaque_box {
+      ty::ty_uniq(_) | ty::ty_vec(_) | ty::ty_str |
+      ty::ty_evec(_, ty::vstore_uniq) |
+      ty::ty_estr(ty::vstore_uniq) {
+        free_ty(bcx, v, t)
+      }
+      ty::ty_box(_) | ty::ty_opaque_box |
+      ty::ty_evec(_, ty::vstore_box) |
+      ty::ty_estr(ty::vstore_box) {
         decr_refcnt_maybe_free(bcx, v, t)
       }
       _ { bcx.tcx().sess.bug("drop_ty_immediate: non-box ty"); }
@@ -1122,14 +1145,20 @@ fn drop_ty_immediate(bcx: block, v: ValueRef, t: ty::t) -> block {
 fn take_ty_immediate(bcx: block, v: ValueRef, t: ty::t) -> result {
     let _icx = bcx.insn_ctxt("take_ty_immediate");
     alt ty::get(t).struct {
-      ty::ty_box(_) | ty::ty_opaque_box {
+      ty::ty_box(_) | ty::ty_opaque_box |
+      ty::ty_evec(_, ty::vstore_box) |
+      ty::ty_estr(ty::vstore_box) {
         incr_refcnt_of_boxed(bcx, v);
         rslt(bcx, v)
       }
       ty::ty_uniq(_) {
         uniq::duplicate(bcx, v, t)
       }
-      ty::ty_str | ty::ty_vec(_) { tvec::duplicate(bcx, v, t) }
+      ty::ty_str | ty::ty_vec(_) |
+      ty::ty_evec(_, ty::vstore_uniq) |
+      ty::ty_estr(ty::vstore_uniq) {
+        tvec::duplicate(bcx, v, t)
+      }
       _ { rslt(bcx, v) }
     }
 }
@@ -1299,9 +1328,9 @@ fn trans_lit(cx: block, lit: ast::lit, dest: dest) -> block {
     let _icx = cx.insn_ctxt("trans_lit");
     if dest == ignore { ret cx; }
     alt lit.node {
-      ast::lit_str(s) { ret tvec::trans_str(cx, s, dest); }
+      ast::lit_str(s) { tvec::trans_str(cx, s, dest) }
       _ {
-        ret store_in_dest(cx, trans_crate_lit(cx.ccx(), lit), dest);
+        store_in_dest(cx, trans_crate_lit(cx.ccx(), lit), dest)
       }
     }
 }
@@ -2255,8 +2284,29 @@ fn trans_index(cx: block, ex: @ast::expr, base: @ast::expr,
     maybe_name_value(cx.ccx(), unit_sz, "unit_sz");
     let scaled_ix = Mul(bcx, ix_val, unit_sz);
     maybe_name_value(cx.ccx(), scaled_ix, "scaled_ix");
-    let lim = tvec::get_fill(bcx, v);
-    let body = tvec::get_dataptr(bcx, v, type_of(ccx, unit_ty));
+
+    let (lim,  body) = alt ty::get(base_ty).struct {
+      ty::ty_estr(ty::vstore_fixed(n)) |
+      ty::ty_evec(_, ty::vstore_fixed(n)) {
+        // FIXME: support static bounds-check elimination
+        // and/or error checking here.
+        let lim = C_uint(bcx.ccx(), n);
+        let body = GEPi(bcx, v, [0, 0]);
+        (lim, body)
+      }
+      ty::ty_estr(_) | ty::ty_evec(_, _) {
+        bcx.sess().unimpl(#fmt("unsupported evec/estr type trans_index"));
+      }
+      _ {
+        let lim = tvec::get_fill(bcx, v);
+        let body = tvec::get_dataptr(bcx, v, type_of(ccx, unit_ty));
+        (lim, body)
+      }
+    };
+
+    #debug("trans_index: lim %s", val_str(bcx.ccx().tn, lim));
+    #debug("trans_index: body %s", val_str(bcx.ccx().tn, body));
+
     let bounds_check = ICmp(bcx, lib::llvm::IntUGE, scaled_ix, lim);
     let bcx = with_cond(bcx, bounds_check) {|bcx|
         // fail: bad bounds check.
@@ -3017,6 +3067,7 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
         ret trans_rec(bcx, args, base, e.id, dest);
       }
       ast::expr_tup(args) { ret trans_tup(bcx, args, dest); }
+      ast::expr_vstore(e, v) { ret tvec::trans_vstore(bcx, e, v, dest); }
       ast::expr_lit(lit) { ret trans_lit(bcx, *lit, dest); }
       ast::expr_vec(args, _) { ret tvec::trans_vec(bcx, args, e.id, dest); }
       ast::expr_binary(op, lhs, rhs) {

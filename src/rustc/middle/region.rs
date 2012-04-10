@@ -414,6 +414,7 @@ fn resolve_ty(ty: @ast::ty, cx: ctxt, visitor: visit::vt<ctxt>) {
     cx.region_map.ast_type_to_inferred_region.insert(ty.id, inferred_region);
 
     alt ty.node {
+      ast::ty_vstore(_, ast::vstore_slice(r)) |
       ast::ty_rptr(r, _) {
         resolve_region_binding(cx, ty.span, r);
       }

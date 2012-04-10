@@ -176,6 +176,7 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
           ty_f64 { w.write_str("MF"); }
         }
       }
+      ty::ty_estr(_) { cx.tcx.sess.unimpl("tyencode::enc_sty on estr"); }
       ty::ty_str { w.write_char('S'); }
       ty::ty_enum(def, tys) {
         w.write_str("t[");
@@ -204,6 +205,7 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
         enc_region(w, r);
         enc_mt(w, cx, mt);
       }
+      ty::ty_evec(_, _) { cx.tcx.sess.unimpl("tyencode::enc_sty on evec"); }
       ty::ty_vec(mt) { w.write_char('I'); enc_mt(w, cx, mt); }
       ty::ty_rec(fields) {
         w.write_str("R[");

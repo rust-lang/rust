@@ -276,6 +276,53 @@ fn type_is_c_like_enum(fcx: @fn_ctxt, sp: span, typ: ty::t) -> bool {
 
 enum mode { m_collect, m_check, m_check_tyvar(@fn_ctxt), }
 
+fn ast_region_to_region(tcx: ty::ctxt,
+                        region: ast::region) -> ty::region {
+    alt region.node {
+      ast::re_inferred {
+        // this must be replaced later by a fixup_regions() pass
+        ty::re_default
+      }
+      ast::re_self | ast::re_named(_) {
+        tcx.region_map.ast_type_to_region.get(region.id)
+      }
+      ast::re_static {
+        ty::re_static
+      }
+    }
+}
+
+fn ast_vstore_to_vstore(tcx: ty::ctxt, span: span, n: option<uint>,
+                        v: ast::vstore) -> ty::vstore {
+    alt v {
+      ast::vstore_fixed(none) {
+        alt n {
+          some(n) { ty::vstore_fixed(n) }
+          none {
+            tcx.sess.bug("implied fixed length in ast_vstore_to_vstore with \
+                          no default length")
+          }
+        }
+      }
+      ast::vstore_fixed(some(u)) {
+        alt n {
+          some(n) if n != u {
+            tcx.sess.span_err(span,
+                              #fmt("fixed-size sequence mismatch: %u vs. %u",
+                                   u, n));
+          }
+          _ { }
+        }
+        ty::vstore_fixed(u)
+      }
+      ast::vstore_uniq { ty::vstore_uniq }
+      ast::vstore_box { ty::vstore_box }
+      ast::vstore_slice(region) {
+        ty::vstore_slice(ast_region_to_region(tcx, region))
+      }
+    }
+}
+
 // Parses the programmer's textual representation of a type into our
 // internal notion of a type. `getter` is a function that returns the type
 // corresponding to a definition ID:
@@ -361,19 +408,8 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
             ty::mk_ptr(tcx, ast_mt_to_mt(tcx, mode, mt))
           }
           ast::ty_rptr(region, mt) {
-            let r = alt region.node {
-              ast::re_inferred {
-                // this must be replaced later by a fixup_regions() pass
-                ty::re_default
-              }
-              ast::re_self | ast::re_named(_) {
-                tcx.region_map.ast_type_to_region.get(region.id)
-              }
-              ast::re_static {
-                ty::re_static
-              }
-            };
-            ty::mk_rptr(tcx, r, ast_mt_to_mt(tcx, mode, mt))
+            let region = ast_region_to_region(tcx, region);
+            ty::mk_rptr(tcx, region, ast_mt_to_mt(tcx, mode, mt))
           }
           ast::ty_tup(fields) {
             let flds = vec::map(fields, bind do_ast_ty_to_ty(tcx, mode, _));
@@ -433,6 +469,18 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
              _ {
                 tcx.sess.span_fatal(ast_ty.span,
                                     "found type name used as a variable");
+              }
+            }
+          }
+          ast::ty_vstore(t, vst) {
+            let vst = ast_vstore_to_vstore(tcx, ast_ty.span, none, vst);
+            alt ty::get(do_ast_ty_to_ty(tcx, mode, t)).struct {
+              ty::ty_vec(mt) { ty::mk_evec(tcx, mt, vst) }
+              ty::ty_str { ty::mk_estr(tcx, vst) }
+              _ {
+                tcx.sess.span_fatal(ast_ty.span,
+                                    "found sequence storage modifier \
+                                     on non-sequence type");
               }
             }
           }
@@ -2799,6 +2847,31 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
     let id = expr.id;
     let mut bot = false;
     alt expr.node {
+
+      ast::expr_vstore(ev, vst) {
+        alt ev.node {
+          ast::expr_lit(@{node: ast::lit_str(s), span:_}) {
+            let tt = ast_vstore_to_vstore(tcx, expr.span,
+                                          some(str::len(s)), vst);
+            let typ = ty::mk_estr(tcx, tt);
+            fcx.write_ty(ev.id, typ);
+            fcx.write_ty(id, typ);
+          }
+          ast::expr_vec(args, mutbl) {
+            let tt = ast_vstore_to_vstore(tcx, expr.span,
+                                          some(vec::len(args)), vst);
+            let t: ty::t = next_ty_var(fcx);
+            for args.each {|e| bot |= check_expr_with(fcx, e, t); }
+            let typ = ty::mk_evec(tcx, {ty: t, mutbl: mutbl}, tt);
+            fcx.write_ty(ev.id, typ);
+            fcx.write_ty(id, typ);
+          }
+          _ {
+            tcx.sess.span_err(expr.span, "vstore modifier on non-sequence");
+          }
+        }
+      }
+
       ast::expr_lit(lit) {
         let typ = check_lit(fcx.ccx, lit);
         fcx.write_ty(id, typ);
@@ -3319,10 +3392,12 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         bot |= check_expr(fcx, idx);
         let idx_t = fcx.expr_ty(idx);
         alt structure_of(fcx, expr.span, base_t) {
+          ty::ty_evec(mt, _) |
           ty::ty_vec(mt) {
             require_integral(fcx, idx.span, idx_t);
             fcx.write_ty(id, mt.ty);
           }
+          ty::ty_estr(_) |
           ty::ty_str {
             require_integral(fcx, idx.span, idx_t);
             let typ = ty::mk_mach_uint(tcx, ast::ty_u8);

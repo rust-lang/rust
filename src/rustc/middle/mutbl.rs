@@ -92,12 +92,14 @@ fn expr_root_(tcx: ty::ctxt, ctor_self: option<node_id>,
           expr_index(base, _) {
             let auto_unbox = maybe_auto_unbox(tcx, ty::expr_ty(tcx, base));
             alt ty::get(auto_unbox.t).struct {
+              ty::ty_evec(mt, _) |
               ty::ty_vec(mt) {
                 ds +=
                     [@{mutbl: mt.mutbl == m_mutbl,
                        kind: index,
                        outer_t: auto_unbox.t}];
               }
+              ty::ty_estr(_) |
               ty::ty_str {
                 ds += [@{mutbl: false, kind: index, outer_t: auto_unbox.t}];
               }

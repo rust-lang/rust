@@ -48,14 +48,37 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
       ty::ty_int(t) { T_int_ty(cx, t) }
       ty::ty_uint(t) { T_uint_ty(cx, t) }
       ty::ty_float(t) { T_float_ty(cx, t) }
+      ty::ty_estr(ty::vstore_uniq) |
       ty::ty_str { T_ptr(T_vec(cx, T_i8())) }
       ty::ty_enum(did, _) { type_of_enum(cx, did, t) }
+      ty::ty_estr(ty::vstore_box) { T_ptr(T_box(cx, T_i8())) }
+      ty::ty_evec(mt, ty::vstore_box) |
       ty::ty_box(mt) { T_ptr(T_box(cx, type_of(cx, mt.ty))) }
       ty::ty_opaque_box { T_ptr(T_box(cx, T_i8())) }
       ty::ty_uniq(mt) { T_ptr(type_of(cx, mt.ty)) }
+      ty::ty_evec(mt, ty::vstore_uniq) |
       ty::ty_vec(mt) { T_ptr(T_vec(cx, type_of(cx, mt.ty))) }
       ty::ty_ptr(mt) { T_ptr(type_of(cx, mt.ty)) }
       ty::ty_rptr(_, mt) { T_ptr(type_of(cx, mt.ty)) }
+
+      ty::ty_evec(mt, ty::vstore_slice(_)) {
+        T_struct([T_ptr(type_of(cx, mt.ty)),
+                  T_uint_ty(cx, ast::ty_u)])
+      }
+
+      ty::ty_estr(ty::vstore_slice(_)) {
+        T_struct([T_ptr(T_i8()),
+                  T_uint_ty(cx, ast::ty_u)])
+      }
+
+      ty::ty_estr(ty::vstore_fixed(n)) {
+        T_array(T_i8(), n)
+      }
+
+      ty::ty_evec(mt, ty::vstore_fixed(n)) {
+        T_array(type_of(cx, mt.ty), n)
+      }
+
       ty::ty_rec(fields) {
         let mut tys: [TypeRef] = [];
         for vec::each(fields) {|f|

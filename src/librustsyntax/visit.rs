@@ -170,11 +170,10 @@ fn skip_ty<E>(_t: @ty, _e: E, _v: vt<E>) {}
 
 fn visit_ty<E>(t: @ty, e: E, v: vt<E>) {
     alt t.node {
-      ty_box(mt) { v.visit_ty(mt.ty, e, v); }
-      ty_uniq(mt) { v.visit_ty(mt.ty, e, v); }
-      ty_vec(mt) { v.visit_ty(mt.ty, e, v); }
-      ty_ptr(mt) { v.visit_ty(mt.ty, e, v); }
-      ty_rptr(_, mt) { v.visit_ty(mt.ty, e, v); }
+      ty_box(mt) | ty_uniq(mt) |
+      ty_vec(mt) | ty_ptr(mt) | ty_rptr(_, mt) {
+        v.visit_ty(mt.ty, e, v);
+      }
       ty_rec(flds) {
         for flds.each {|f| v.visit_ty(f.node.mt.ty, e, v); }
       }
@@ -187,6 +186,9 @@ fn visit_ty<E>(t: @ty, e: E, v: vt<E>) {
         v.visit_ty(decl.output, e, v);
       }
       ty_path(p, _) { visit_path(p, e, v); }
+      ty_vstore(t, _) {
+        v.visit_ty(t, e, v);
+      }
       ty_constr(t, cs) {
         v.visit_ty(t, e, v);
         for cs.each {|tc|
@@ -335,6 +337,7 @@ fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
         v.visit_expr(pool, e, v);
         v.visit_expr(val, e, v);
       }
+      expr_vstore(x, _) { v.visit_expr(x, e, v); }
       expr_vec(es, _) { visit_exprs(es, e, v); }
       expr_rec(flds, base) {
         for flds.each {|f| v.visit_expr(f.node.expr, e, v); }

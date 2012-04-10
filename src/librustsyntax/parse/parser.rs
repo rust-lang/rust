@@ -382,15 +382,32 @@ fn parse_type_constraints(p: parser) -> [@ast::ty_constr] {
 
 fn parse_ty_postfix(orig_t: ast::ty_, p: parser, colons_before_params: bool,
                     lo: uint) -> @ast::ty {
+
+
+    fn mk_ty(p: parser, t: ast::ty_, lo: uint, hi: uint) -> @ast::ty {
+        @{id: p.get_id(),
+          node: t,
+          span: ast_util::mk_sp(lo, hi)}
+    }
+
+    if p.token == token::BINOP(token::SLASH) {
+        let orig_hi = p.last_span.hi;
+        alt parse_maybe_vstore(p) {
+          none { }
+          some(v) {
+            let t = ast::ty_vstore(mk_ty(p, orig_t, lo, orig_hi), v);
+            ret mk_ty(p, t, lo, p.last_span.hi);
+          }
+        }
+    }
+
     if colons_before_params && p.token == token::MOD_SEP {
         p.bump();
         expect(p, token::LT);
     } else if !colons_before_params && p.token == token::LT {
         p.bump();
     } else {
-        ret @{id: p.get_id(),
-              node: orig_t,
-              span: ast_util::mk_sp(lo, p.last_span.hi)};
+        ret mk_ty(p, orig_t, lo, p.last_span.hi);
     }
 
     // If we're here, we have explicit type parameter instantiation.
@@ -399,12 +416,11 @@ fn parse_ty_postfix(orig_t: ast::ty_, p: parser, colons_before_params: bool,
 
     alt orig_t {
       ast::ty_path(pth, ann) {
-        ret @{id: p.get_id(),
-              node: ast::ty_path(@spanned(lo, p.last_span.hi,
-                                          {global: pth.node.global,
-                                           idents: pth.node.idents,
-                                           types: seq}), ann),
-              span: ast_util::mk_sp(lo, p.last_span.hi)};
+        ret mk_ty(p, ast::ty_path(@spanned(lo, p.last_span.hi,
+                                           {global: pth.node.global,
+                                            idents: pth.node.idents,
+                                            types: seq}), ann),
+                  lo, p.last_span.hi);
       }
       _ { p.fatal("type parameter instantiation only allowed for paths"); }
     }
@@ -428,22 +444,33 @@ fn parse_ret_ty(p: parser) -> (ast::ret_style, @ast::ty) {
     }
 }
 
-fn parse_region(p: parser) -> ast::region {
-    let region_ = alt p.token {
-        token::IDENT(sid, _) if p.look_ahead(1u) == token::DOT {
-            let string = p.get_str(sid);
-            p.bump(); p.bump();
-            if string == "self" {
-                ast::re_self
-            } else if string == "static" {
-                ast::re_static
-            } else {
-                ast::re_named(string)
-            }
+fn region_from_name(p: parser, s: option<str>) -> ast::region {
+    let r = alt s {
+      some (string) {
+        if string == "self" {
+            ast::re_self
+        } else if string == "static" {
+            ast::re_static
+        } else {
+            ast::re_named(string)
         }
-        _ { ast::re_inferred }
+      }
+      none { ast::re_inferred }
     };
-    ret {id: p.get_id(), node: region_};
+
+    {id: p.get_id(), node: r}
+}
+
+fn parse_region(p: parser) -> ast::region {
+    let name =
+        alt p.token {
+          token::IDENT(sid, _) if p.look_ahead(1u) == token::DOT {
+            p.bump(); p.bump();
+            some(p.get_str(sid))
+          }
+          _ { none }
+        };
+    region_from_name(p, name)
 }
 
 fn parse_ty(p: parser, colons_before_params: bool) -> @ast::ty {
@@ -666,6 +693,44 @@ fn have_dollar(p: parser) -> option<ast::mac_> {
     }
 }
 
+fn parse_maybe_vstore(p: parser) -> option<ast::vstore> {
+    if p.token == token::BINOP(token::SLASH) {
+        p.bump();
+        alt p.token {
+          token::AT {
+            p.bump(); some(ast::vstore_box)
+          }
+          token::TILDE {
+            p.bump(); some(ast::vstore_uniq)
+          }
+          token::UNDERSCORE {
+            p.bump(); some(ast::vstore_fixed(none))
+          }
+          token::LIT_INT(i, ast::ty_i) if i >= 0 {
+            p.bump(); some(ast::vstore_fixed(some(i as uint)))
+          }
+          token::BINOP(token::AND) {
+            p.bump();
+            alt p.token {
+              token::IDENT(sid, _) {
+                p.bump();
+                let n = p.get_str(sid);
+                some(ast::vstore_slice(region_from_name(p, some(n))))
+              }
+              _ {
+                some(ast::vstore_slice(region_from_name(p, none)))
+              }
+            }
+          }
+          _ {
+            none
+          }
+        }
+    } else {
+        none
+    }
+}
+
 fn lit_from_token(p: parser, tok: token::token) -> ast::lit_ {
     alt tok {
       token::LIT_INT(i, it) { ast::lit_int(i, it) }
@@ -678,7 +743,7 @@ fn lit_from_token(p: parser, tok: token::token) -> ast::lit_ {
 }
 
 fn parse_lit(p: parser) -> ast::lit {
-    let sp = p.span;
+    let lo = p.span.lo;
     let lit = if eat_word(p, "true") {
         ast::lit_bool(true)
     } else if eat_word(p, "false") {
@@ -688,7 +753,7 @@ fn parse_lit(p: parser) -> ast::lit {
         p.bump();
         lit_from_token(p, tok)
     };
-    ret {node: lit, span: sp};
+    ret {node: lit, span: ast_util::mk_sp(lo, p.last_span.hi)};
 }
 
 fn is_ident(t: token::token) -> bool {
@@ -891,6 +956,7 @@ fn parse_bottom_expr(p: parser) -> pexpr {
         let es =
             parse_seq_to_end(token::RBRACKET, seq_sep(token::COMMA),
                              parse_expr, p);
+        hi = p.span.hi;
         ex = ast::expr_vec(es, mutbl);
     } else if p.token == token::POUND_LT {
         p.bump();
@@ -988,6 +1054,23 @@ fn parse_bottom_expr(p: parser) -> pexpr {
         hi = lit.span.hi;
         ex = ast::expr_lit(@lit);
     }
+
+    // Vstore is legal following expr_lit(lit_str(...)) and expr_vec(...)
+    // only.
+    alt ex {
+      ast::expr_lit(@{node: ast::lit_str(_), span: _}) |
+      ast::expr_vec(_, _)  {
+        alt parse_maybe_vstore(p) {
+          none { }
+          some(v) {
+            hi = p.span.hi;
+            ex = ast::expr_vstore(mk_expr(p, lo, hi, ex), v);
+          }
+        }
+      }
+      _ { }
+    }
+
     ret mk_pexpr(p, lo, hi, ex);
 }
 
@@ -1194,10 +1277,10 @@ type op_spec = {tok: token::token, op: ast::binop, prec: int};
 
 // FIXME make this a const, don't store it in parser state
 fn prec_table() -> @[op_spec] {
-    ret @[// 'as' sits between here with 12
-          {tok: token::BINOP(token::STAR), op: ast::mul, prec: 11},
-          {tok: token::BINOP(token::SLASH), op: ast::div, prec: 11},
-          {tok: token::BINOP(token::PERCENT), op: ast::rem, prec: 11},
+    ret @[{tok: token::BINOP(token::STAR), op: ast::mul, prec: 12},
+          {tok: token::BINOP(token::SLASH), op: ast::div, prec: 12},
+          {tok: token::BINOP(token::PERCENT), op: ast::rem, prec: 12},
+          // 'as' sits between here with 11
           {tok: token::BINOP(token::PLUS), op: ast::add, prec: 10},
           {tok: token::BINOP(token::MINUS), op: ast::subtract, prec: 10},
           {tok: token::BINOP(token::LSL), op: ast::lsl, prec: 9},
@@ -1222,7 +1305,7 @@ fn parse_binops(p: parser) -> @ast::expr {
 
 const unop_prec: int = 100;
 
-const as_prec: int = 12;
+const as_prec: int = 11;
 
 fn parse_more_binops(p: parser, plhs: pexpr, min_prec: int) ->
    @ast::expr {
