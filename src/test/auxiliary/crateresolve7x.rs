@@ -1,14 +1,14 @@
 // xfail-fast
-// aux-build:crateresolve7-1.rs
-// aux-build:crateresolve7-2.rs
+// aux-build:crateresolve_calories-1.rs
+// aux-build:crateresolve_calories-2.rs
 
 // These both have the same version but differ in other metadata
 mod a {
-    use cr7_1 (name = "crateresolve7", vers = "0.1", calories="100");
-    fn f() -> int { cr7_1::f() }
+    use cr_1 (name = "crateresolve_calories", vers = "0.1", calories="100");
+    fn f() -> int { cr_1::f() }
 }
 
 mod b {
-    use cr7_2 (name = "crateresolve7", vers = "0.1", calories="200");
-    fn f() -> int { cr7_2::f() }
+    use cr_2 (name = "crateresolve_calories", vers = "0.1", calories="200");
+    fn f() -> int { cr_2::f() }
 }

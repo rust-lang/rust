@@ -1,4 +1,4 @@
-#[link(name = "crateresolve7",
+#[link(name = "crateresolve_calories",
        vers = "0.1",
        calories = "100")];
 
