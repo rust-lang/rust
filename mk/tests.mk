@@ -80,6 +80,7 @@ cleantestlibs:
          -name '*.def' -o     \
          -name '*.bc' -o      \
          -name '*.dSYM' -o    \
+         -name '*.libaux' -o      \
          -name '*.out' -o     \
          -name '*.err'        \
          | xargs rm -rf

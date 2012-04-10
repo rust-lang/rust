@@ -175,9 +175,10 @@ actual:\n\
             config, props, testfile, make_typecheck_args, option::some(src))
     }
 
-    fn make_typecheck_args(config: config, _testfile: str) -> procargs {
+    fn make_typecheck_args(config: config, testfile: str) -> procargs {
         let prog = config.rustc_path;
-        let mut args = ["-", "--no-trans", "--lib", "-L", config.build_base];
+        let mut args = ["-", "--no-trans", "--lib", "-L", config.build_base,
+                        "-L", aux_output_dir_name(config, testfile)];
         args += split_maybe_args(config.rustcflags);
         ret {prog: prog, args: args};
     }
@@ -290,8 +291,9 @@ type procres = {status: int, stdout: str, stderr: str, cmdline: str};
 
 fn compile_test(config: config, props: test_props,
                 testfile: str) -> procres {
+    let link_args = ["-L", aux_output_dir_name(config, testfile)];
     compose_and_run_compiler(config, props, testfile,
-                             make_compile_args(_, props, [],
+                             make_compile_args(_, props, link_args,
                                                make_exe_name, _),
                              none)
 }
@@ -310,11 +312,18 @@ fn compose_and_run_compiler(
     mk_args: fn(config: config, _testfile: str) -> procargs,
     input: option<str>) -> procres {
 
+    if props.aux_builds.is_not_empty() {
+        ensure_dir(aux_output_dir_name(config, testfile));
+    }
+
+    let extra_link_args = ["-L", aux_output_dir_name(config, testfile)];
+
     vec::iter(props.aux_builds) {|rel_ab|
         let abs_ab = path::connect(config.aux_base, rel_ab);
-        let auxres = compose_and_run(config, abs_ab,
-                                     make_compile_args(_, props, ["--lib"],
-                                                       make_lib_name, _),
+        let mk_compile_args =
+            make_compile_args(_, props, ["--lib"] + extra_link_args,
+                              bind make_lib_name(_, _, testfile), _);
+        let auxres = compose_and_run(config, abs_ab, mk_compile_args,
                                      config.compile_lib_path, option::none);
         if auxres.status != 0 {
             fatal_procres(
@@ -325,6 +334,13 @@ fn compose_and_run_compiler(
 
     compose_and_run(config, testfile, mk_args,
                     config.compile_lib_path, input)
+}
+
+fn ensure_dir(path: path) {
+    if os::path_is_dir(path) { ret; }
+    if !os::make_dir(path, 0x1c0i32) {
+        fail #fmt("can't make dir %s", path);
+    }
 }
 
 fn compose_and_run(config: config, testfile: str,
@@ -346,10 +362,11 @@ fn make_compile_args(config: config, props: test_props, extras: [str],
     ret {prog: prog, args: args};
 }
 
-fn make_lib_name(config: config, testfile: str) -> str {
+fn make_lib_name(config: config, auxfile: str, testfile: str) -> str {
     // what we return here is not particularly important, as it
     // happens; rustc ignores everything except for the directory.
-    output_base_name(config, testfile)
+    let auxname = output_testname(auxfile);
+    path::connect(aux_output_dir_name(config, testfile), auxname)
 }
 
 fn make_exe_name(config: config, testfile: str) -> str {
@@ -440,12 +457,18 @@ fn make_out_name(config: config, testfile: str, extension: str) -> str {
     output_base_name(config, testfile) + "." + extension
 }
 
+fn aux_output_dir_name(config: config, testfile: str) -> str {
+    output_base_name(config, testfile) + ".libaux"
+}
+
+fn output_testname(testfile: str) -> str {
+    let parts = str::split_char(path::basename(testfile), '.');
+    str::connect(vec::slice(parts, 0u, vec::len(parts) - 1u), ".")
+}
+
 fn output_base_name(config: config, testfile: str) -> str {
     let base = config.build_base;
-    let filename = {
-        let parts = str::split_char(path::basename(testfile), '.');
-        str::connect(vec::slice(parts, 0u, vec::len(parts) - 1u), ".")
-    };
+    let filename = output_testname(testfile);
     #fmt["%s%s.%s", base, filename, config.stage_id]
 }
 
