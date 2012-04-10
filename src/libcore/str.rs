@@ -1509,10 +1509,8 @@ let i = str::as_bytes(\"Hello World\") { |bytes| vec::len(bytes) };
 ~~~
 "]
 fn as_bytes<T>(s: str, f: fn([u8]) -> T) -> T unsafe {
-    let mut v: [u8] = ::unsafe::reinterpret_cast(s);
-    let r = f(v);
-    ::unsafe::forget(v);
-    r
+    let v: *[u8] = ::unsafe::reinterpret_cast(ptr::addr_of(s));
+    f(*v)
 }
 
 #[doc = "
@@ -2447,6 +2445,14 @@ mod tests {
         let b = vec::unsafe::to_ptr(a);
         let c = unsafe::from_buf_len(b, 3u);
         assert (c == "AAA");
+    }
+
+    #[test]
+    #[ignore(cfg(target_os = "win32"))]
+    #[should_fail]
+    fn test_as_bytes_fail() {
+        // Don't double free
+        as_bytes("") {|_bytes| fail }
     }
 
     #[test]
