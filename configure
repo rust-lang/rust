@@ -71,7 +71,7 @@ putvar() {
     then
         printf "configure: %-20s := %.35s ...\n" $1 "$T"
     else
-        printf "configure: %-20s := %s\n" $1 "$T"
+        printf "configure: %-20s := %s %s\n" $1 "$T" "$2"
     fi
     printf "%-20s := %s\n" $1 "$T" >>config.tmp
 }
@@ -86,13 +86,22 @@ probe() {
         T=$(which $P 2>&1)
         if [ $? -eq 0 ]
         then
+            VER0=$($P --version 2>/dev/null | head -1 \
+                |  sed -e 's/[^0-9]*\([vV]\?[0-9.]\+[^ ]*\).*/\1/' )
+            if [ $? -eq 0 -a "x${VER0}" != "x" ]
+            then
+              VER="($VER0)"
+            else
+              VER=""
+            fi
             break
         else
+            VER=""
             T=""
         fi
     done
     eval $V=\$T
-    putvar $V
+    putvar $V "$VER"
 }
 
 probe_need() {
@@ -316,6 +325,7 @@ fi
 
 probe CFG_CLANG            clang++
 probe CFG_GCC              gcc
+probe CFG_LD               ld
 probe CFG_LLVM_CONFIG      llvm-config
 probe CFG_VALGRIND         valgrind
 probe CFG_PERF             perf
