@@ -58,6 +58,8 @@ const shape_bare_fn: u8 = 27u8;
 const shape_tydesc: u8 = 28u8;
 const shape_send_tydesc: u8 = 29u8;
 const shape_rptr: u8 = 31u8;
+const shape_fixedvec: u8 = 32u8;
+const shape_slice: u8 = 33u8;
 
 fn hash_res_info(ri: res_info) -> uint {
     let mut h = 5381u;
@@ -305,6 +307,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint]) -> [u8] {
       ty::ty_int(ast::ty_i64) { [shape_i64] }
       ty::ty_float(ast::ty_f32) { [shape_f32] }
       ty::ty_float(ast::ty_f64) { [shape_f64] }
+      ty::ty_estr(ty::vstore_uniq) |
       ty::ty_str {
         let mut s = [shape_vec];
         add_bool(s, true); // type is POD
@@ -340,18 +343,67 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint]) -> [u8] {
           }
         }
       }
+      ty::ty_estr(ty::vstore_box) |
+      ty::ty_evec(_, ty::vstore_box) |
       ty::ty_box(_) | ty::ty_opaque_box { [shape_box] }
       ty::ty_uniq(mt) {
         let mut s = [shape_uniq];
         add_substr(s, shape_of(ccx, mt.ty, ty_param_map));
         s
       }
+      ty::ty_evec(mt, ty::vstore_uniq) |
       ty::ty_vec(mt) {
         let mut s = [shape_vec];
         add_bool(s, ty::type_is_pod(ccx.tcx, mt.ty));
         add_substr(s, shape_of(ccx, mt.ty, ty_param_map));
         s
       }
+
+      // FIXME: grotesque hacks for encoding fixed-size evecs and estrs.
+
+      ty::ty_estr(ty::vstore_fixed(n)) {
+        let mut s = [shape_struct], sub = [];
+        let mut i = 0u;
+        let u8_t = ty::mk_mach_uint(ccx.tcx, ast::ty_u8);
+        while i < n {
+            sub += shape_of(ccx, u8_t, ty_param_map);
+        }
+        add_substr(s, sub);
+        s
+      }
+
+      ty::ty_evec(mt, ty::vstore_fixed(n)) {
+        let mut s = [shape_struct], sub = [];
+        let mut i = 0u;
+        while i < n {
+            sub += shape_of(ccx, mt.ty, ty_param_map);
+        }
+        add_substr(s, sub);
+        s
+      }
+
+
+      // FIXME: slightly-less-grotesque hack for encoding slic,e evecs and
+      // estrs.
+
+      ty::ty_estr(ty::vstore_slice(r)) {
+        let mut s = [shape_struct], sub = [];
+        let u8_mt = {ty: ty::mk_mach_uint(ccx.tcx, ast::ty_u8),
+                     mutbl: ast::m_imm };
+        sub += shape_of(ccx, ty::mk_rptr(ccx.tcx, r, u8_mt), ty_param_map);
+        sub += shape_of(ccx, ty::mk_uint(ccx.tcx), ty_param_map);
+        add_substr(s, sub);
+        s
+      }
+
+      ty::ty_evec(mt, ty::vstore_slice(r)) {
+        let mut s = [shape_struct], sub = [];
+        sub += shape_of(ccx, ty::mk_rptr(ccx.tcx, r, mt), ty_param_map);
+        sub += shape_of(ccx, ty::mk_uint(ccx.tcx), ty_param_map);
+        add_substr(s, sub);
+        s
+      }
+
       ty::ty_rec(fields) {
         let mut s = [shape_struct], sub = [];
         for vec::each(fields) {|f|
@@ -632,11 +684,17 @@ fn simplify_type(tcx: ty::ctxt, typ: ty::t) -> ty::t {
     fn simplifier(tcx: ty::ctxt, typ: ty::t) -> ty::t {
         alt ty::get(typ).struct {
           ty::ty_box(_) | ty::ty_opaque_box | ty::ty_uniq(_) | ty::ty_vec(_) |
+          ty::ty_evec(_, ty::vstore_uniq) | ty::ty_evec(_, ty::vstore_box) |
+          ty::ty_estr(ty::vstore_uniq) | ty::ty_estr(ty::vstore_box) |
           ty::ty_ptr(_) | ty::ty_rptr(_,_) { nilptr(tcx) }
           ty::ty_fn(_) { ty::mk_tup(tcx, [nilptr(tcx), nilptr(tcx)]) }
           ty::ty_res(_, sub, tps) {
             let sub1 = ty::substitute_type_params(tcx, tps, sub);
             ty::mk_tup(tcx, [ty::mk_int(tcx), simplify_type(tcx, sub1)])
+          }
+          ty::ty_evec(_, ty::vstore_slice(_)) |
+          ty::ty_estr(ty::vstore_slice(_)) {
+            ty::mk_tup(tcx, [nilptr(tcx), ty::mk_int(tcx)])
           }
           _ { typ }
         }

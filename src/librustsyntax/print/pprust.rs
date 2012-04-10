@@ -378,6 +378,10 @@ fn print_type(s: ps, &&ty: @ast::ty) {
         space(s.s);
         word(s.s, constrs_str(cs, ty_constr_to_str));
       }
+      ast::ty_vstore(t, v) {
+        print_type(s, t);
+        print_vstore(s, v);
+      }
       ast::ty_mac(_) {
           fail "print_type doesn't know how to print a ty_mac";
       }
@@ -810,12 +814,36 @@ fn print_mac(s: ps, m: ast::mac) {
     }
 }
 
+fn print_vstore(s: ps, t: ast::vstore) {
+    alt t {
+      ast::vstore_fixed(some(i)) { word_space(s, #fmt("/%u", i)); }
+      ast::vstore_fixed(none) { word_space(s, "/_"); }
+      ast::vstore_uniq { word_space(s, "/~"); }
+      ast::vstore_box { word_space(s, "/@"); }
+      ast::vstore_slice(r) {
+        alt r.node {
+          ast::re_inferred { word_space(s, "/&"); }
+          ast::re_self { word_space(s, "/&self"); }
+          ast::re_static { word_space(s, "/&static"); }
+          ast::re_named(name) {
+            word(s.s, "/&");
+            word_space(s, name);
+          }
+        }
+      }
+    }
+}
+
 fn print_expr(s: ps, &&expr: @ast::expr) {
     maybe_print_comment(s, expr.span.lo);
     ibox(s, indent_unit);
     let ann_node = node_expr(s, expr);
     s.ann.pre(ann_node);
     alt expr.node {
+      ast::expr_vstore(e, v) {
+        print_expr(s, e);
+        print_vstore(s, v);
+      }
       ast::expr_vec(exprs, mutbl) {
         ibox(s, indent_unit);
         word(s.s, "[");

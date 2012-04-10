@@ -6,6 +6,7 @@ import base::{call_memmove, shared_malloc,
                INIT, copy_val, load_if_immediate, get_tydesc,
                sub_block, do_spill_noroot,
                dest, bcx_icx};
+import syntax::codemap::span;
 import shape::llsize_of;
 import build::*;
 import common::*;
@@ -127,6 +128,48 @@ fn trans_vec(bcx: block, args: [@ast::expr], id: ast::node_id,
     }
     for vec::each(temp_cleanups) {|cln| revoke_clean(bcx, cln); }
     ret base::store_in_dest(bcx, vptr, dest);
+}
+
+fn trans_vstore(bcx: block, e: @ast::expr,
+                v: ast::vstore, dest: dest) -> block {
+    alt e.node {
+      ast::expr_lit(@{node: ast::lit_str(s), span: _}) {
+        ret trans_estr(bcx, s, v, e.span, dest);
+      }
+      ast::expr_vec(es, mutbl) {
+        bcx.ccx().sess.span_unimpl(e.span, "unhandled tvec::trans_vstore");
+      }
+      _ {
+        bcx.sess().span_bug(e.span, "vstore on non-sequence type");
+      }
+    }
+}
+
+fn trans_estr(bcx: block, s: str, vstore: ast::vstore,
+              sp: span, dest: dest) -> block {
+    let _icx = bcx.insn_ctxt("tvec::trans_estr");
+    alt vstore {
+      ast::vstore_fixed(_)
+      {
+        let c = str::as_bytes(s) {|bytes|
+            // NB: The byte vector we have here includes the trailing \0,
+            // but we are doing a fixed-size str, meaning we _exclude_
+            // the trailing \0. And we don't let LLVM null-terminate
+            // either.
+            unsafe {
+                lib::llvm::llvm::LLVMConstString(
+                    unsafe::reinterpret_cast(vec::unsafe::to_ptr(bytes)),
+                    (bytes.len() - 1u) as libc::c_uint, lib::llvm::True)
+            }
+        };
+
+        #debug("trans_estr: src %s",val_str(bcx.ccx().tn, c));
+        ret base::store_in_dest(bcx, c, dest);
+      }
+      _ {
+        bcx.ccx().sess.span_unimpl(sp, "unhandled tvec::trans_estr");
+      }
+    }
 }
 
 fn trans_str(bcx: block, s: str, dest: dest) -> block {

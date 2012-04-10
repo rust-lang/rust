@@ -358,6 +358,12 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
       expr_new(p, _, v) {
         ret find_pre_post_state_two(fcx, pres, p, v, e.id, oper_pure);
       }
+      expr_vstore(ee, _) {
+        let mut changed = find_pre_post_state_expr(fcx, pres, ee);
+        set_prestate_ann(fcx.ccx, e.id, expr_prestate(fcx.ccx, ee));
+        set_poststate_ann(fcx.ccx, e.id, expr_poststate(fcx.ccx, ee));
+        ret changed;
+      }
       expr_vec(elts, _) {
         ret find_pre_post_state_exprs(fcx, pres, e.id,
                                       vec::from_elem(vec::len(elts),
