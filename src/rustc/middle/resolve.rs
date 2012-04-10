@@ -572,7 +572,7 @@ fn visit_fn_with_scope(e: @env, fk: visit::fn_kind, decl: ast::fn_decl,
     for decl.constraints.each {|c| resolve_constr(e, c, sc, v); }
     let scope = alt fk {
       visit::fk_item_fn(_, tps) | visit::fk_res(_, tps) |
-      visit::fk_method(_, tps, _) | visit::fk_ctor(_, tps)
+      visit::fk_method(_, tps, _) | visit::fk_ctor(_, tps, _, _)
          { scope_bare_fn(decl, id, tps) }
       visit::fk_anon(ast::proto_bare) { scope_bare_fn(decl, id, []) }
       visit::fk_anon(_) | visit::fk_fn_block { scope_fn_expr(decl, id, []) }

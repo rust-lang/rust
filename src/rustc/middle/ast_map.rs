@@ -44,8 +44,14 @@ enum ast_node {
     // order they are introduced.
     node_arg(arg, uint),
     node_local(uint),
-    node_ctor(@item, @path),
+    // Constructor for either a resource or a class
+    node_ctor(ident, [ty_param], a_ctor, @path),
     node_block(blk),
+}
+
+enum a_ctor {
+  res_ctor(fn_decl, node_id, codemap::span),
+  class_ctor(@class_ctor, def_id /* ID for parent class */),
 }
 
 type map = std::map::hashmap<node_id, ast_node>;
@@ -99,7 +105,7 @@ fn map_decoded_item(sess: session, map: map, path: path, ii: inlined_item) {
     // don't decode and instantiate the impl, but just the method, we have to
     // add it to the table now:
     alt ii {
-      ii_item(i) { /* fallthrough */ }
+      ii_item(_) | ii_ctor(_,_,_,_) { /* fallthrough */ }
       ii_native(i) {
         cx.map.insert(i.id, node_native_item(i, native_abi_rust_intrinsic,
                                              @path));
@@ -118,6 +124,16 @@ fn map_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
     for decl.inputs.each {|a|
         cx.map.insert(a.id, node_arg(a, cx.local_id));
         cx.local_id += 1u;
+    }
+    alt fk {
+      visit::fk_ctor(nm, tps, self_id, parent_id) {
+          let ct = @{node: {id: id, self_id: self_id,
+                           dec: decl, body: body},
+                    span: sp};
+          cx.map.insert(id, node_ctor(nm, tps, class_ctor(ct, parent_id),
+                                      @cx.path));
+       }
+       _ {}
     }
     visit::visit_fn(fk, decl, body, sp, id, cx, v);
 }
@@ -166,8 +182,10 @@ fn map_item(i: @item, cx: ctx, v: vt) {
             map_method(impl_did, extend(cx, i.ident), m, cx);
         }
       }
-      item_res(_, _, _, dtor_id, ctor_id) {
-        cx.map.insert(ctor_id, node_ctor(i, item_path));
+      item_res(decl, tps, _, dtor_id, ctor_id) {
+        cx.map.insert(ctor_id, node_ctor(i.ident, tps,
+                                         res_ctor(decl, ctor_id, i.span),
+                                         item_path));
         cx.map.insert(dtor_id, node_item(i, item_path));
       }
       item_enum(vs, _) {
@@ -186,7 +204,6 @@ fn map_item(i: @item, cx: ctx, v: vt) {
         }
       }
       item_class(_, items, ctor) {
-          cx.map.insert(ctor.node.id, node_ctor(i, item_path));
           let d_id = ast_util::local_def(i.id);
           let p = extend(cx, i.ident);
           for items.each {|ci|
@@ -267,7 +284,7 @@ fn node_id_to_str(map: map, id: node_id) -> str {
       some(node_local(_)) { // FIXME: add more info here
         #fmt["local (id=%?)", id]
       }
-      some(node_ctor(_, _)) { // FIXME: add more info here
+      some(node_ctor(_, _, _, _)) { // FIXME: add more info here
         #fmt["node_ctor (id=%?)", id]
       }
       some(node_block(_)) {

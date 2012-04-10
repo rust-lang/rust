@@ -368,6 +368,7 @@ fn encode_privacy(ebml_w: ebml::writer, privacy: privacy) {
 /* Returns an index of items in this class */
 fn encode_info_for_class(ecx: @encode_ctxt, ebml_w: ebml::writer,
                          id: node_id, path: ast_map::path,
+                         class_tps: [ty_param],
                          items: [@class_member],
                          global_index: @mut[entry<int>])
  -> [entry<int>] {
@@ -397,13 +398,10 @@ fn encode_info_for_class(ecx: @encode_ctxt, ebml_w: ebml::writer,
                    but it works for now -- tjc */
                 *global_index += [{val: m.id, pos: ebml_w.writer.tell()}];
                 let impl_path = path + [ast_map::path_name(m.ident)];
-                /*
-                  Recall methods are (currently) monomorphic, and we don't
-                  repeat the class's ty params in the method decl
-                */
                 #debug("encode_info_for_class: doing %s %d", m.ident, m.id);
                 encode_info_for_method(ecx, ebml_w, impl_path,
-                                       should_inline(m.attrs), id, m, []);
+                                       should_inline(m.attrs), id, m,
+                                       class_tps + m.tps);
             }
             _ { /* don't encode private methods */ }
           }
@@ -415,7 +413,8 @@ fn encode_info_for_class(ecx: @encode_ctxt, ebml_w: ebml::writer,
 
 fn encode_info_for_fn(ecx: @encode_ctxt, ebml_w: ebml::writer,
                       id: node_id, ident: ident, path: ast_map::path,
-                      item: option<@item>, tps: [ty_param], decl: fn_decl) {
+                      item: option<inlined_item>, tps: [ty_param],
+                      decl: fn_decl) {
         ebml_w.start_tag(tag_items_data_item);
         encode_name(ebml_w, ident);
         encode_def_id(ebml_w, local_def(id));
@@ -428,7 +427,7 @@ fn encode_info_for_fn(ecx: @encode_ctxt, ebml_w: ebml::writer,
         encode_path(ebml_w, path, ast_map::path_name(ident));
         alt item {
            some(it) {
-             astencode::encode_inlined_item(ecx, ebml_w, path, ii_item(it));
+             astencode::encode_inlined_item(ecx, ebml_w, path, it);
            }
            none {
              encode_symbol(ecx, ebml_w, id);
@@ -441,7 +440,7 @@ fn encode_info_for_method(ecx: @encode_ctxt, ebml_w: ebml::writer,
                           impl_path: ast_map::path, should_inline: bool,
                           parent_id: node_id,
                           m: @method, all_tps: [ty_param]) {
-    #debug("encode_info_for_method: %d %s", m.id, m.ident);
+    #debug("encode_info_for_method: %d %s %u", m.id, m.ident, all_tps.len());
     ebml_w.start_tag(tag_items_data_item);
     encode_def_id(ebml_w, local_def(m.id));
     encode_family(ebml_w, purity_fn_family(m.decl.purity));
@@ -562,8 +561,8 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
            These come first because we need to write them to make
            the index, and the index needs to be in the item for the
            class itself */
-        let idx = encode_info_for_class(ecx, ebml_w, item.id, path, items,
-                                          index);
+        let idx = encode_info_for_class(ecx, ebml_w, item.id, path, tps,
+                                          items, index);
         /* Index the class*/
         add_to_index();
         /* Now, make an item for the class itself */
@@ -594,6 +593,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
                 #debug("Writing %s %d", m.ident, m.id);
                 encode_family(ebml_w, purity_fn_family(m.decl.purity));
                 encode_name(ebml_w, m.ident);
+                encode_type_param_bounds(ebml_w, ecx, tps + m.tps);
                 encode_type(ecx, ebml_w, node_id_to_type(tcx, m.id));
                 encode_def_id(ebml_w, local_def(m.id));
                 ebml_w.end_tag();
@@ -727,7 +727,6 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::writer,
             alt check ecx.ccx.tcx.items.get(i.id) {
               ast_map::node_item(_, pt) {
                 encode_info_for_item(ecx, ebml_w, i, index, *pt);
-                /* TODO: encode info for class items! */
                 /* encode ctor, then encode items */
                 alt i.node {
                   item_class(tps,_,ctor) {
@@ -737,7 +736,10 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::writer,
                           ctor.node.id);
                    *index += [{val: ctor.node.id, pos: ebml_w.writer.tell()}];
                    encode_info_for_fn(ecx, ebml_w, ctor.node.id, i.ident,
-                                      *pt, none, tps, ctor.node.dec)
+                      *pt, if tps.len() > 0u {
+                             some(ii_ctor(ctor, i.ident, tps,
+                                          local_def(i.id))) }
+                           else { none }, tps, ctor.node.dec)
                   }
                   _ {}
                 }

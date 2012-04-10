@@ -18,13 +18,14 @@ enum fn_kind {
     fk_res(ident, [ty_param]),
     fk_anon(proto),  //< an anonymous function like fn@(...)
     fk_fn_block,     //< a block {||...}
-    fk_ctor(ident, [ty_param]) // class constructor
+    fk_ctor(ident, [ty_param], node_id /* self id */,
+            def_id /* parent class id */) // class constructor
 }
 
 fn name_of_fn(fk: fn_kind) -> ident {
     alt fk {
       fk_item_fn(name, _) | fk_method(name, _, _) | fk_res(name, _)
-          | fk_ctor(name, _) { name }
+          | fk_ctor(name, _, _, _) { name }
       fk_anon(_) | fk_fn_block { "anon" }
     }
 }
@@ -32,7 +33,7 @@ fn name_of_fn(fk: fn_kind) -> ident {
 fn tps_of_fn(fk: fn_kind) -> [ty_param] {
     alt fk {
       fk_item_fn(_, tps) | fk_method(_, tps, _) | fk_res(_, tps)
-          | fk_ctor(_, tps) { tps }
+          | fk_ctor(_, tps, _, _) { tps }
       fk_anon(_) | fk_fn_block { [] }
     }
 }
@@ -141,9 +142,8 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
           for members.each {|m|
              v.visit_class_item(m, e, v);
           }
-          // make up a fake fn so as to call visit_fn on the ctor
-          v.visit_fn(fk_ctor(i.ident, tps), ctor.node.dec,
-                     ctor.node.body, ctor.span, ctor.node.id, e, v);
+          visit_class_ctor_helper(ctor, i.ident, tps,
+                                  ast_util::local_def(i.id), e, v);
       }
       item_iface(tps, methods) {
         v.visit_ty_params(tps, e, v);
@@ -268,6 +268,15 @@ fn visit_fn_decl<E>(fd: fn_decl, e: E, v: vt<E>) {
 fn visit_method_helper<E>(m: @method, e: E, v: vt<E>) {
     v.visit_fn(fk_method(m.ident, m.tps, m), m.decl, m.body, m.span,
                m.id, e, v);
+}
+
+// Similar logic to the comment on visit_method_helper - Tim
+fn visit_class_ctor_helper<E>(ctor: class_ctor, nm: ident, tps: [ty_param],
+                              parent_id: def_id, e: E, v: vt<E>) {
+    v.visit_fn(visit::fk_ctor(nm, tps, ctor.node.self_id,
+                              parent_id), ctor.node.dec,
+               ctor.node.body, ctor.span, ctor.node.id, e, v)
+
 }
 
 fn visit_fn<E>(fk: fn_kind, decl: fn_decl, body: blk, _sp: span,

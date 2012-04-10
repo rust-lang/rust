@@ -757,13 +757,14 @@ fn create_function(fcx: fn_ctxt) -> @metadata<subprogram_md> {
       ast_map::node_method(method, _, _) {
           (method.ident, method.decl.output, method.id)
       }
-      ast_map::node_ctor(item, _) {
-        alt item.node {
-            ast::item_res(decl, _, _, _, ctor_id) {
-              (item.ident, decl.output, ctor_id)
-            }
-            _ { fcx.ccx.sess.span_bug(item.span, "create_function: \
-                  expected an item_res here"); }
+      ast_map::node_ctor(nm, _, ct, _) {
+        alt ct {
+          ast_map::res_ctor(decl, ctor_id, _) {
+            (nm, decl.output, ctor_id)
+          }
+          ast_map::class_ctor(ctor,_) {
+            fcx.ccx.sess.span_bug(ctor.span, "create_function: \
+                  expected a resource ctor here"); }
           }
       }
       ast_map::node_expr(expr) {

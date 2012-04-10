@@ -214,15 +214,15 @@ fn visit_expr(ex: @expr, &&cx: @ctx, v: visit::vt<@ctx>) {
 
 fn visit_item(item: @item, &&cx: @ctx, v: visit::vt<@ctx>) {
     alt item.node {
-            item_class(tps, items, ctor) {
-                v.visit_ty_params(tps, cx, v);
-                vec::map::<@class_member, ()>(items,
-                    {|i| v.visit_class_item(i, cx, v); });
-                v.visit_fn(visit::fk_ctor(item.ident, tps), ctor.node.dec,
-                           ctor.node.body, ctor.span, ctor.node.id,
-                           @{in_ctor: some(ctor.node.self_id) with *cx}, v);
-            }
-            _ { visit::visit_item(item, cx, v); }
+      item_class(tps, items, ctor) {
+         v.visit_ty_params(tps, cx, v);
+         vec::map::<@class_member, ()>(items,
+             {|i| v.visit_class_item(i, cx, v); });
+         visit::visit_class_ctor_helper(ctor, item.ident, tps,
+                                        ast_util::local_def(item.id),
+                    @{in_ctor: some(ctor.node.self_id) with *cx}, v);
+      }
+      _ { visit::visit_item(item, cx, v); }
     }
 }
 

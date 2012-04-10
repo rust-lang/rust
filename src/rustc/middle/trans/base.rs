@@ -1906,11 +1906,7 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, real_substs: [ty::t],
         ret {val: get_item_val(ccx, fn_id.node),
              must_cast: true};
       }
-      ast_map::node_ctor(i, _) {
-        alt check ccx.tcx.items.get(i.id) {
-          ast_map::node_item(i, pt) { (pt, i.ident) }
-        }
-      }
+      ast_map::node_ctor(nm, _, _, pt) { (pt, nm) }
       _ { fail "unexpected node type"; }
     };
     let mono_ty = ty::substitute_type_params(ccx.tcx, substs, item_ty);
@@ -1950,19 +1946,19 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, real_substs: [ty::t],
         trans_fn(ccx, pt, mth.decl, mth.body, lldecl,
                  impl_self(selfty), psubsts, fn_id.node);
       }
-      ast_map::node_ctor(i, _) {
-        alt check i.node {
-          ast::item_res(decl, _, _, _, _) {
+      ast_map::node_ctor(nm, tps, ct, _) {
+        alt ct {
+          ast_map::res_ctor(decl,_, _) {
             set_inline_hint(lldecl);
             trans_res_ctor(ccx, pt, decl, fn_id.node, psubsts, lldecl);
           }
-          ast::item_class(tps, _, ctor) {
-            set_inline_hint_if_appr(i.attrs, lldecl);
+          ast_map::class_ctor(ctor, parent_id) {
+            // ctors don't have attrs, at least not right now
             let tp_tys: [ty::t] = ty::ty_params_to_tys(ccx.tcx, tps);
             trans_class_ctor(ccx, pt, ctor.node.dec, ctor.node.body, lldecl,
                  option::get_or_default(psubsts,
                    {tys:tp_tys, vtables: none, bounds: @[]}),
-              fn_id.node, i.id, ctor.span);
+              fn_id.node, parent_id, ctor.span);
           }
         }
       }
@@ -1991,6 +1987,10 @@ fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id)
             ccx.external.insert(fn_id, some(item.id));
             trans_item(ccx, *item);
             local_def(item.id)
+          }
+          csearch::found(ast::ii_ctor(ctor, nm, tps, parent_id)) {
+            ccx.external.insert(fn_id, some(ctor.node.id));
+            local_def(ctor.node.id)
           }
           csearch::found(ast::ii_native(item)) {
             ccx.external.insert(fn_id, some(item.id));
@@ -4256,17 +4256,17 @@ fn trans_const(ccx: @crate_ctxt, e: @ast::expr, id: ast::node_id) {
 fn trans_class_ctor(ccx: @crate_ctxt, path: path, decl: ast::fn_decl,
                     body: ast::blk, llctor_decl: ValueRef,
                     psubsts: param_substs, ctor_id: ast::node_id,
-                    parent_id: ast::node_id, sp: span) {
+                    parent_id: ast::def_id, sp: span) {
   // Add ctor to the ctor map
   ccx.class_ctors.insert(ctor_id, parent_id);
+
   // Translate the ctor
 
   // Set up the type for the result of the ctor
   // kludgy -- this wouldn't be necessary if the typechecker
   // special-cased constructors, then we could just look up
   // the ctor's return type.
-  let rslt_ty =  ty::mk_class(ccx.tcx, local_def(parent_id),
-                                    psubsts.tys);
+  let rslt_ty =  ty::mk_class(ccx.tcx, parent_id, psubsts.tys);
   // Make the fn context
   let fcx = new_fn_ctxt_w_id(ccx, path, llctor_decl, ctor_id,
                                    some(psubsts), some(sp));
@@ -4280,10 +4280,10 @@ fn trans_class_ctor(ccx: @crate_ctxt, path: path, decl: ast::fn_decl,
   // We *don't* want self to be passed to the ctor -- that
   // wouldn't make sense
   // So we initialize it here
+
   let selfptr = alloc_ty(bcx_top, rslt_ty);
   // initialize fields to zero
-  let fields = ty::class_items_as_fields(bcx_top.tcx(),
-                                         local_def(parent_id),
+  let fields = ty::class_items_as_fields(bcx_top.tcx(), parent_id,
                                          psubsts.tys);
   let mut bcx = bcx_top;
   // Initialize fields to zero so init assignments can validly
@@ -4381,7 +4381,7 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
                          bounds: @[]};
           trans_class_ctor(ccx, *path, ctor.node.dec, ctor.node.body,
                          get_item_val(ccx, ctor.node.id), psubsts,
-                         ctor.node.id, item.id, ctor.span);
+                           ctor.node.id, local_def(item.id), ctor.span);
         }
         // If there are ty params, the ctor will get monomorphized
 
@@ -4542,6 +4542,7 @@ fn item_path(ccx: @crate_ctxt, i: @ast::item) -> path {
 }
 
 fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
+    #debug("get_item_val: %d", id);
     alt ccx.item_vals.find(id) {
       some(v) { v }
       none {
@@ -4593,16 +4594,16 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
             exprt = true;
             register_fn(ccx, ni.span, *pth + [path_name(ni.ident)], ni.id)
           }
-          ast_map::node_ctor(i, _) {
-            alt check i.node {
-              ast::item_res(_, _, _, _, _) {
-                let my_path = item_path(ccx, i);
-                let llctor = register_fn(ccx, i.span, my_path, id);
+          ast_map::node_ctor(nm, tps, ct, pt) {
+            let my_path = *pt + [path_name(nm)];
+            alt ct {
+              ast_map::res_ctor(_,_,sp) {
+                let llctor = register_fn(ccx, sp, my_path, id);
                 set_inline_hint(llctor);
                 llctor
               }
-              ast::item_class(_, _, ctor) {
-                register_fn(ccx, i.span, item_path(ccx, i), id)
+              ast_map::class_ctor(ctor, _) {
+                register_fn(ccx, ctor.span, my_path, ctor.node.id)
               }
             }
           }
@@ -4923,7 +4924,7 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           shape_cx: mk_ctxt(llmod),
           crate_map: crate_map,
           dbg_cx: dbg_cx,
-          class_ctors: int_hash::<int>(),
+          class_ctors: int_hash::<ast::def_id>(),
           mut do_not_commit_warning_issued: false};
 
 

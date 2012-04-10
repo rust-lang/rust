@@ -2149,6 +2149,20 @@ fn impl_self_ty(tcx: ty::ctxt, did: ast::def_id) -> {n_tps: uint, ty: ty::t} {
     }
 }
 
+/*
+  Takes arguments describing a method, and returns either its origin,
+  or <none> if it's unbound.
+
+  expr: the entire method reference
+  node_id: the method's ID
+  name: the method's name
+  ty: the type of the base expression
+  tps: the ty substitutions that are part of the field expr
+    (for example: in foo.bar<int,char>(), tps would be
+     [int, char])
+  include_private: true if we're inside the same class and should
+     search private methods
+ */
 fn lookup_method(fcx: @fn_ctxt, expr: @ast::expr, node_id: ast::node_id,
                  name: ast::ident, ty: ty::t, tps: [ty::t],
                  include_private: bool)
@@ -2159,7 +2173,12 @@ fn lookup_method(fcx: @fn_ctxt, expr: @ast::expr, node_id: ast::node_id,
         let mut substs = substs;
         let n_tps = vec::len(substs), n_tys = vec::len(tps);
         let has_self = ty::type_has_vars(fty);
+        /* If either the method was declared to have ty params,
+         or ty arguments were provided, or both... */
         if method_n_tps + n_tps > 0u {
+          /* If no type arguments were given,
+             or a different number of them were given than the
+             method's declared types... */
             if n_tys == 0u || n_tys != method_n_tps {
                 if n_tys != 0u {
                     tcx.sess.span_err
@@ -2167,12 +2186,18 @@ fn lookup_method(fcx: @fn_ctxt, expr: @ast::expr, node_id: ast::node_id,
                                      parameters given for this method");
 
                 }
+                /* If not enough types were given, make some ty vars */
                 substs += vec::from_fn(method_n_tps, {|_i|
                     ty::mk_var(tcx, next_ty_var_id(fcx))
                 });
             } else {
+             /* If the right number of types were given, just add them on */
                 substs += tps;
             }
+            /*
+              For a class method, "substs" here begins with the class ty
+              params
+             */
             fcx.write_ty_substs(node_id, fty, substs);
         } else {
             if n_tys > 0u {
@@ -2209,7 +2234,6 @@ fn lookup_method_inner_(tcx: ty::ctxt, ms: [ty::method],
                         include_private: bool)
     -> option<{method_ty: ty::t, n_tps: uint, substs: [ty::t],
         origin: method_origin, self_sub: option<self_subst>}> {
-    #debug("lookup_method_inner_: %? %? %s", ms, parent, name);
     let mut i = 0u;
     for ms.each {|m|
        if m.ident == name {
@@ -2228,6 +2252,8 @@ fn lookup_method_inner_(tcx: ty::ctxt, ms: [ty::method],
                         sp, "Call to private method not allowed outside \
                           its defining class");
           }
+          #debug("lookup_method_inner_: %s has %u ty params, by its \
+            declaration", name, vec::len(*m.tps));
           ret some({method_ty: fty,
                     n_tps: vec::len(*m.tps),
                     substs: tps,

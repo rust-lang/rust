@@ -14,6 +14,8 @@ export noop_fold_ty;
 export noop_fold_block;
 export wrap;
 export fold_ty_param;
+export fold_ty_params;
+export fold_fn_decl;
 
 type ast_fold = @mut a_f;
 
@@ -270,10 +272,12 @@ fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
           item_class(typms, items, ctor) {
               let ctor_body = fld.fold_block(ctor.node.body);
               let ctor_decl = fold_fn_decl(ctor.node.dec, fld);
+              let ctor_id   = fld.new_id(ctor.node.id);
               item_class(typms,
                          vec::map(items, fld.fold_class_item),
                          {node: {body: ctor_body,
-                                     dec: ctor_decl with ctor.node}
+                                 dec: ctor_decl,
+                                 id: ctor_id with ctor.node}
                              with ctor})
           }
           item_impl(tps, ifce, ty, methods) {

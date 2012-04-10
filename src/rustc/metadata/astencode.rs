@@ -1,3 +1,5 @@
+import util::ppaux::ty_to_str;
+
 import syntax::ast;
 import syntax::fold;
 import syntax::visit;
@@ -200,8 +202,14 @@ fn visit_ids(item: ast::inlined_item, vfn: fn@(ast::node_id)) {
             vfn(id);
 
             alt fk {
+              visit::fk_ctor(nm, tps, self_id, parent_id) {
+                vec::iter(tps) {|tp| vfn(tp.id)}
+                vfn(id);
+                vfn(self_id);
+                vfn(parent_id.node);
+              }
               visit::fk_item_fn(_, tps) |
-              visit::fk_res(_, tps) | visit::fk_ctor(_, tps) {
+              visit::fk_res(_, tps) {
                 vec::iter(tps) {|tp| vfn(tp.id)}
               }
               visit::fk_method(_, tps, m) {
@@ -376,6 +384,13 @@ fn simplify_ast(ii: ast::inlined_item) -> ast::inlined_item {
       ast::ii_native(i) {
         ast::ii_native(fld.fold_native_item(i))
       }
+      ast::ii_ctor(ctor, nm, tps, parent_id) {
+        let ctor_body = fld.fold_block(ctor.node.body);
+        let ctor_decl = fold::fold_fn_decl(ctor.node.dec, fld);
+        ast::ii_ctor({node: {body: ctor_body, dec: ctor_decl
+                              with ctor.node}
+            with ctor}, nm, tps, parent_id)
+      }
     }
 }
 
@@ -403,7 +418,17 @@ fn renumber_ast(xcx: extended_decode_ctxt, ii: ast::inlined_item)
       ast::ii_native(i) {
         ast::ii_native(fld.fold_native_item(i))
       }
-    }
+      ast::ii_ctor(ctor, nm, tps, parent_id) {
+        let ctor_body = fld.fold_block(ctor.node.body);
+        let ctor_decl = fold::fold_fn_decl(ctor.node.dec, fld);
+        let new_params = fold::fold_ty_params(tps, fld);
+        let ctor_id = fld.new_id(ctor.node.id);
+        let new_parent = xcx.tr_def_id(parent_id);
+        ast::ii_ctor({node: {body: ctor_body, dec: ctor_decl, id: ctor_id
+                              with ctor.node}
+            with ctor}, nm, new_params, new_parent)
+      }
+     }
 }
 
 // ______________________________________________________________________

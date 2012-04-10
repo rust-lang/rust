@@ -302,6 +302,7 @@ impl inlined_item_methods for inlined_item {
           ii_item(i) { i.ident }
           ii_native(i) { i.ident }
           ii_method(_, m) { m.ident }
+          ii_ctor(_, nm, _, _) { nm }
         }
     }
 
@@ -310,6 +311,7 @@ impl inlined_item_methods for inlined_item {
           ii_item(i) { i.id }
           ii_native(i) { i.id }
           ii_method(_, m) { m.id }
+          ii_ctor(ctor, _, _, _) { ctor.node.id }
         }
     }
 
@@ -318,6 +320,9 @@ impl inlined_item_methods for inlined_item {
           ii_item(i) { v.visit_item(i, e, v) }
           ii_native(i) { v.visit_native_item(i, e, v) }
           ii_method(_, m) { visit::visit_method_helper(m, e, v) }
+          ii_ctor(ctor, nm, tps, parent_id) {
+              visit::visit_class_ctor_helper(ctor, nm, tps, parent_id, e, v);
+          }
         }
     }
 }

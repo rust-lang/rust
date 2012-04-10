@@ -2043,8 +2043,8 @@ fn item_path(cx: ctxt, id: ast::def_id) -> ast_map::path {
             vec::init(*path) + [ast_map::path_name(variant.node.name)]
           }
 
-          ast_map::node_ctor(i, path) {
-              *path + [ast_map::path_name(i.ident)]
+          ast_map::node_ctor(nm, _, _, path) {
+              *path + [ast_map::path_name(nm)]
           }
 
           ast_map::node_expr(_) | ast_map::node_arg(_, _) |
@@ -2121,7 +2121,6 @@ fn lookup_item_type(cx: ctxt, did: ast::def_id) -> ty_param_bounds_and_ty {
     alt cx.tcache.find(did) {
       some(tpt) { ret tpt; }
       none {
-          #debug("lookup_item_type: looking up %?", did);
         // The item is in this crate. The caller should have added it to the
         // type cache already
         assert did.crate != ast::local_crate;
@@ -2168,7 +2167,10 @@ fn lookup_class_fields(cx: ctxt, did: ast::def_id) -> [field_ty] {
            _ { cx.sess.bug("class ID bound to non-class"); }
          }
        }
-       _ { cx.sess.bug("class ID not bound to an item"); }
+       _ {
+           cx.sess.bug(#fmt("class ID not bound to an item: %s",
+                            ast_map::node_id_to_str(cx.items, did.node)));
+       }
     }
         }
   else {

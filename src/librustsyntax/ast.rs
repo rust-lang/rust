@@ -643,7 +643,7 @@ enum item_ {
     item_native_mod(native_mod),
     item_ty(@ty, [ty_param]),
     item_enum([variant], [ty_param]),
-    item_res(fn_decl /* dtor */, [ty_param], blk,
+    item_res(fn_decl /* dtor */, [ty_param], blk /* dtor body */,
              node_id /* dtor id */, node_id /* ctor id */),
     item_class([ty_param], /* ty params for class */
                [@class_member], /* methods, etc. */
@@ -703,6 +703,7 @@ enum inlined_item {
     ii_item(@item),
     ii_method(def_id /* impl id */, @method),
     ii_native(@native_item),
+    ii_ctor(class_ctor, ident, [ty_param], def_id /* parent id */)
 }
 
 //

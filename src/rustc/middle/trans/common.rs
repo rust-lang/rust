@@ -121,7 +121,9 @@ type crate_ctxt = {
      dbg_cx: option<debuginfo::debug_ctxt>,
      // Mapping from class constructors to parent class --
      // used in base::trans_closure
-     class_ctors: hashmap<ast::node_id, ast::node_id>,
+     // parent_class must be a def_id because ctors can be
+     // inlined, so the parent may be in a different crate
+     class_ctors: hashmap<ast::node_id, ast::def_id>,
      mut do_not_commit_warning_issued: bool};
 
 // Types used for llself.

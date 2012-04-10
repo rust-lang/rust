@@ -58,13 +58,18 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
         ccx.type_use_cache.insert(fn_id, uses);
         ret uses;
     }
-    alt check ccx.tcx.items.get(fn_id_loc.node) {
+    let map_node = alt ccx.tcx.items.find(fn_id_loc.node) {
+        some(x) { x }
+        none    { ccx.sess.bug(#fmt("type_uses_for: unbound item ID %?",
+                                    fn_id_loc)); }
+    };
+    alt check map_node {
       ast_map::node_item(@{node: item_fn(_, _, body), _}, _) |
       ast_map::node_item(@{node: item_res(_, _, body, _, _), _}, _) |
       ast_map::node_method(@{body, _}, _, _) {
         handle_body(cx, body);
       }
-      ast_map::node_ctor(@{node: item_res(_, _, _, _, _), _},_) |
+      ast_map::node_ctor(_, _, ast_map::res_ctor(_, _, _), _) |
       ast_map::node_variant(_, _, _) {
         uint::range(0u, n_tps) {|n| cx.uses[n] |= use_repr;}
       }
@@ -79,7 +84,7 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
             uint::range(0u, n_tps) {|n| cx.uses[n] |= flags;}
         }
       }
-      ast_map::node_ctor(@{node: item_class(_, _, ctor), _}, _) {
+      ast_map::node_ctor(_, _, ast_map::class_ctor(ctor, _), _){
         handle_body(cx, ctor.node.body);
       }
     }
