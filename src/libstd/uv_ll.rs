@@ -201,6 +201,36 @@ type uv_async_t = {
     a12: *u8
 };
 
+// 64bit unix size: 128
+// 32bit unix size: ?
+#[cfg(target_os = "linux")]
+#[cfg(target_os = "macos")]
+#[cfg(target_os = "freebsd")]
+type uv_timer_t = {
+    fields: uv_handle_fields,
+    a00: *u8, a01: *u8, a02: *u8, a03: *u8,
+    a04: *u8, a05: *u8, a06: *u8, a07: *u8,
+    a08: *u8, a09: *u8,
+    a11: uv_timer_t_32bit_unix_riders
+};
+#[cfg(target_arch="x86_64")]
+type uv_timer_t_32bit_unix_riders = {
+    a10: *u8, a11: *u8
+};
+#[cfg(target_arch="x86")]
+type uv_timer_t_32bit_unix_riders = {
+    a10: *u8, a11: *u8, a12: *u8, a13: *u8
+};
+// win32 size: ?
+#[cfg(target_os = "win32")]
+type uv_timer_t = {
+    fields: uv_handle_fields,
+    a00: *u8, a01: *u8, a02: *u8, a03: *u8,
+    a04: *u8, a05: *u8, a06: *u8, a07: *u8,
+    a08: *u8, a09: *u8, a10: *u8, a11: *u8,
+    a12: *u8
+};
+
 // unix size: 16
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
@@ -379,6 +409,57 @@ mod uv_ll_struct_stubgen {
     #[cfg(target_os = "linux")]
     #[cfg(target_os = "macos")]
     #[cfg(target_os = "freebsd")]
+    fn gen_stub_uv_timer_t() -> uv_timer_t {
+        ret gen_stub_arch();
+        #[cfg(target_arch = "x86_64")]
+        fn gen_stub_arch() -> uv_timer_t {
+            ret { fields: { loop_handle: ptr::null(), type_: 0u32,
+                            close_cb: ptr::null(),
+                            mut data: ptr::null() },
+                a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
+                a03: 0 as *u8,
+                a04: 0 as *u8, a05: 0 as *u8, a06: 0 as *u8,
+                a07: 0 as *u8,
+                a08: 0 as *u8, a09: 0 as *u8,
+                a11: {
+                    a10: 0 as *u8, a11: 0 as *u8
+                }
+            };
+        }
+        #[cfg(target_arch = "x86")]
+        fn gen_stub_arch() -> uv_timer_t {
+            ret { fields: { loop_handle: ptr::null(), type_: 0u32,
+                            close_cb: ptr::null(),
+                            mut data: ptr::null() },
+                a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
+                a03: 0 as *u8,
+                a04: 0 as *u8, a05: 0 as *u8, a06: 0 as *u8,
+                a07: 0 as *u8,
+                a08: 0 as *u8, a09: 0 as *u8,
+                a11: {
+                    a10: 0 as *u8, a11: 0 as *u8,
+                    a12: 0 as *u8, a13: 0 as *u8
+                }
+            };
+        }
+    }
+    #[cfg(target_os = "win32")]
+    fn gen_stub_uv_timer_t() -> uv_timer_t {
+        ret { fields: { loop_handle: ptr::null(), type_: 0u32,
+                        close_cb: ptr::null(),
+                        mut data: ptr::null() },
+            a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
+            a03: 0 as *u8,
+            a04: 0 as *u8, a05: 0 as *u8, a06: 0 as *u8,
+            a07: 0 as *u8,
+            a08: 0 as *u8, a09: 0 as *u8, a10: 0 as *u8,
+            a11: 0 as *u8,
+            a12: 0 as *u8
+        };
+    }
+    #[cfg(target_os = "linux")]
+    #[cfg(target_os = "macos")]
+    #[cfg(target_os = "freebsd")]
     fn gen_stub_uv_write_t() -> uv_write_t {
         ret gen_stub_arch();
         #[cfg(target_arch="x86_64")]
@@ -467,10 +548,18 @@ native mod rustrt {
     fn rust_uv_read_start(stream: *libc::c_void, on_alloc: *u8,
                           on_read: *u8) -> libc::c_int;
     fn rust_uv_read_stop(stream: *libc::c_void) -> libc::c_int;
+    fn rust_uv_timer_init(loop_handle: *libc::c_void,
+                          timer_handle: *uv_timer_t) -> libc::c_int;
+    fn rust_uv_timer_start(
+        timer_handle: *uv_timer_t,
+        cb: *u8,
+        timeout: libc::c_uint,
+        repeat: libc::c_uint) -> libc::c_int;
+    fn rust_uv_timer_stop(handle: *uv_timer_t) -> libc::c_int;
+
+    // data accessors/helpers for rust-mapped uv structs
     fn rust_uv_malloc_buf_base_of(sug_size: libc::size_t) -> *u8;
     fn rust_uv_free_base_of_buf(++buf: uv_buf_t);
-
-    // data accessors for rust-mapped uv structs
     fn rust_uv_get_stream_handle_from_connect_req(
         connect_req: *uv_connect_t)
         -> *uv_stream_t;
@@ -577,6 +666,50 @@ unsafe fn async_init(loop_handle: *libc::c_void,
 unsafe fn async_send(async_handle: *uv_async_t) {
     ret rustrt::rust_uv_async_send(async_handle);
 }
+unsafe fn buf_init(++input: *u8, len: uint) -> uv_buf_t {
+    let out_buf = { base: ptr::null(), len: 0 as libc::size_t };
+    let out_buf_ptr = ptr::addr_of(out_buf);
+    log(debug, #fmt("ll::buf_init - input %u len %u out_buf: %u",
+                     input as uint,
+                     len as uint,
+                     out_buf_ptr as uint));
+    // yuck :/
+    rustrt::rust_uv_buf_init(out_buf_ptr, input, len);
+    //let result = rustrt::rust_uv_buf_init_2(input, len);
+    log(debug, "after rust_uv_buf_init");
+    let res_base = get_base_from_buf(out_buf);
+    let res_len = get_len_from_buf(out_buf);
+    //let res_base = get_base_from_buf(result);
+    log(debug, #fmt("ll::buf_init - result %u len %u",
+                     res_base as uint,
+                     res_len as uint));
+    ret out_buf;
+    //ret result;
+}
+unsafe fn ip4_addr(ip: str, port: int)
+-> sockaddr_in {
+    let mut addr_vec = str::bytes(ip);
+    addr_vec += [0u8]; // add null terminator
+    let addr_vec_ptr = vec::unsafe::to_ptr(addr_vec);
+    let ip_back = str::from_bytes(addr_vec);
+    log(debug, #fmt("vec val: '%s' length: %u",
+                     ip_back, vec::len(addr_vec)));
+    ret rustrt::rust_uv_ip4_addr(addr_vec_ptr,
+                                 port as libc::c_int);
+}
+
+unsafe fn timer_init(loop_ptr: *libc::c_void,
+                     timer_ptr: *uv_timer_t) -> libc::c_int {
+    ret rustrt::rust_uv_timer_init(loop_ptr, timer_ptr);
+}
+unsafe fn timer_start(timer_ptr: *uv_timer_t, cb: *u8, timeout: uint,
+                      repeat: uint) -> libc::c_int {
+    ret rustrt::rust_uv_timer_start(timer_ptr, cb, timeout as libc::c_uint,
+                                    repeat as libc::c_uint);
+}
+unsafe fn timer_stop(timer_ptr: *uv_timer_t) -> libc::c_int {
+    ret rustrt::rust_uv_timer_stop(timer_ptr);
+}
 
 // libuv struct initializers
 unsafe fn tcp_t() -> uv_tcp_t {
@@ -591,6 +724,11 @@ unsafe fn write_t() -> uv_write_t {
 unsafe fn async_t() -> uv_async_t {
     ret uv_ll_struct_stubgen::gen_stub_uv_async_t();
 }
+unsafe fn timer_t() -> uv_timer_t {
+    ret uv_ll_struct_stubgen::gen_stub_uv_timer_t();
+}
+
+// data access helpers
 unsafe fn get_loop_for_uv_handle(handle: *libc::c_void)
     -> *libc::c_void {
     ret rustrt::rust_uv_get_loop_for_uv_handle(handle);
@@ -626,37 +764,6 @@ unsafe fn get_base_from_buf(buf: uv_buf_t) -> *u8 {
 }
 unsafe fn get_len_from_buf(buf: uv_buf_t) -> libc::size_t {
     ret rustrt::rust_uv_get_len_from_buf(buf);
-}
-unsafe fn buf_init(++input: *u8, len: uint) -> uv_buf_t {
-    let out_buf = { base: ptr::null(), len: 0 as libc::size_t };
-    let out_buf_ptr = ptr::addr_of(out_buf);
-    log(debug, #fmt("ll::buf_init - input %u len %u out_buf: %u",
-                     input as uint,
-                     len as uint,
-                     out_buf_ptr as uint));
-    // yuck :/
-    rustrt::rust_uv_buf_init(out_buf_ptr, input, len);
-    //let result = rustrt::rust_uv_buf_init_2(input, len);
-    log(debug, "after rust_uv_buf_init");
-    let res_base = get_base_from_buf(out_buf);
-    let res_len = get_len_from_buf(out_buf);
-    //let res_base = get_base_from_buf(result);
-    log(debug, #fmt("ll::buf_init - result %u len %u",
-                     res_base as uint,
-                     res_len as uint));
-    ret out_buf;
-    //ret result;
-}
-unsafe fn ip4_addr(ip: str, port: int)
--> sockaddr_in {
-    let mut addr_vec = str::bytes(ip);
-    addr_vec += [0u8]; // add null terminator
-    let addr_vec_ptr = vec::unsafe::to_ptr(addr_vec);
-    let ip_back = str::from_bytes(addr_vec);
-    log(debug, #fmt("vec val: '%s' length: %u",
-                     ip_back, vec::len(addr_vec)));
-    ret rustrt::rust_uv_ip4_addr(addr_vec_ptr,
-                                 port as libc::c_int);
 }
 unsafe fn malloc_buf_base_of(suggested_size: libc::size_t)
     -> *u8 {

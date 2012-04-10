@@ -53,15 +53,15 @@ native mod rustrt {
         loop_handle: *libc::c_void,
         cb: *u8,
         id: *u8) -> *libc::c_void;
-    fn rust_uv_timer_init(
+    fn rust_uv_hilvl_timer_init(
         loop_handle: *libc::c_void,
         cb: *u8,
         id: *u8) -> *libc::c_void;
-    fn rust_uv_timer_start(
+    fn rust_uv_hilvl_timer_start(
         timer_handle: *libc::c_void,
         timeout: libc::c_uint,
         repeat: libc::c_uint);
-    fn rust_uv_timer_stop(handle: *libc::c_void);
+    fn rust_uv_timer_stop(handle: *ll::uv_timer_t) -> libc::c_int;
     fn rust_uv_free(ptr: *libc::c_void);
     // sizeof testing helpers
     fn rust_uv_helper_uv_tcp_t_size() -> libc::c_uint;
@@ -71,6 +71,7 @@ native mod rustrt {
     fn rust_uv_helper_uv_err_t_size() -> libc::c_uint;
     fn rust_uv_helper_sockaddr_in_size() -> libc::c_uint;
     fn rust_uv_helper_uv_async_t_size() -> libc::c_uint;
+    fn rust_uv_helper_uv_timer_t_size() -> libc::c_uint;
 }
 
 
@@ -525,7 +526,7 @@ crust fn process_operation(
           }
           op_timer_init(id) {
             let id_ptr = vec::unsafe::to_ptr(id);
-            let timer_handle = rustrt::rust_uv_timer_init(
+            let timer_handle = rustrt::rust_uv_hilvl_timer_init(
                 lp,
                 process_timer_call,
                 id_ptr);
@@ -534,11 +535,11 @@ crust fn process_operation(
                 timer_handle));
           }
           op_timer_start(id, handle, timeout, repeat) {
-            rustrt::rust_uv_timer_start(handle, timeout,
+            rustrt::rust_uv_hilvl_timer_start(handle, timeout,
                                               repeat);
           }
           op_timer_stop(id, handle, after_cb) {
-            rustrt::rust_uv_timer_stop(handle);
+            rustrt::rust_uv_timer_stop(handle as *ll::uv_timer_t);
             comm::send(loop_chan, uv_timer_stop(id, after_cb));
           }
           op_teardown(op_handle) {
@@ -1247,6 +1248,18 @@ mod test {
             rustrt::rust_uv_helper_uv_async_t_size();
         let rust_handle_size = sys::size_of::<ll::uv_async_t>();
         let output = #fmt("uv_async_t -- native: %u rust: %u",
+                          native_handle_size as uint, rust_handle_size);
+        log(debug, output);
+        assert native_handle_size as uint == rust_handle_size;
+    }
+    
+    #[test]
+    #[ignore(cfg(target_os = "freebsd"))]
+    fn test_uv_struct_size_uv_timer_t() {
+        let native_handle_size =
+            rustrt::rust_uv_helper_uv_timer_t_size();
+        let rust_handle_size = sys::size_of::<ll::uv_timer_t>();
+        let output = #fmt("uv_timer_t -- native: %u rust: %u",
                           native_handle_size as uint, rust_handle_size);
         log(debug, output);
         assert native_handle_size as uint == rust_handle_size;
