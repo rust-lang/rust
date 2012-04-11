@@ -102,13 +102,44 @@ type console_test_state =
 fn run_tests_console(opts: test_opts,
                      tests: [test_desc]) -> bool {
 
-    fn callback(event: testevent, st: console_test_state) {
-        alt event {
+    let log_out = alt opts.logfile {
+        some(path) {
+            alt io::file_writer(path, [io::create, io::truncate]) {
+                result::ok(w) { some(w) }
+                result::err(s) {
+                    fail(#fmt("can't open output file: %s", s))
+                }
+            }
+        }
+        none { none }
+    };
+
+    let st =
+        @{out: io::stdout(),
+          log_out: log_out,
+          use_color: use_color(),
+          mut total: 0u,
+          mut passed: 0u,
+          mut failed: 0u,
+          mut ignored: 0u,
+          mut failures: []};
+
+    let p = comm::port::<testevent>();
+    let reporter = comm::chan(p);
+
+    task::spawn {||
+      run_tests(opts, tests, reporter);
+    };
+
+    while true {
+        alt comm::recv(p) {
           te_filtered(filtered_tests) {
             st.total = vec::len(filtered_tests);
             st.out.write_line(#fmt["\nrunning %u tests", st.total]);
           }
-          te_wait(test) { st.out.write_str(#fmt["test %s ... ", test.name]); }
+          te_wait(test) {
+            st.out.write_str(#fmt["test %s ... ", test.name]);
+          }
           te_result(test, result) {
             alt st.log_out {
                 some(f) {
@@ -135,32 +166,11 @@ fn run_tests_console(opts: test_opts,
               }
             }
           }
+          te_done {
+              break;
+          }
         }
     }
-
-    let log_out = alt opts.logfile {
-        some(path) {
-            alt io::file_writer(path, [io::create, io::truncate]) {
-                result::ok(w) { some(w) }
-                result::err(s) {
-                    fail(#fmt("can't open output file: %s", s))
-                }
-            }
-        }
-        none { none }
-    };
-
-    let st =
-        @{out: io::stdout(),
-          log_out: log_out,
-          use_color: use_color(),
-          mut total: 0u,
-          mut passed: 0u,
-          mut failed: 0u,
-          mut ignored: 0u,
-          mut failures: []};
-
-    run_tests(opts, tests, bind callback(_, st));
 
     assert (st.passed + st.failed + st.ignored == st.total);
     let success = st.failed == 0u;
@@ -171,7 +181,6 @@ fn run_tests_console(opts: test_opts,
 
     st.out.write_str(#fmt["\nresult: "]);
     if success {
-        // There's no parallelism at this point so it's safe to use color
         write_ok(st.out, true);
     } else { write_failed(st.out, true); }
     st.out.write_str(#fmt[". %u passed; %u failed; %u ignored\n\n", st.passed,
@@ -264,15 +273,16 @@ enum testevent {
     te_filtered([test_desc]),
     te_wait(test_desc),
     te_result(test_desc, test_result),
+    te_done,
 }
 
 type monitor_msg = (test_desc, test_result);
 
 fn run_tests(opts: test_opts, tests: [test_desc],
-             callback: fn@(testevent)) {
+             reporter: comm::chan<testevent>) {
 
     let mut filtered_tests = filter_tests(opts, tests);
-    callback(te_filtered(filtered_tests));
+    comm::send(reporter, te_filtered(filtered_tests));
 
     // It's tempting to just spawn all the tests at once, but since we have
     // many tests that run in other processes we would be making a big mess.
@@ -294,7 +304,7 @@ fn run_tests(opts: test_opts, tests: [test_desc],
                 // We are doing one test at a time so we can print the name
                 // of the test before we run it. Useful for debugging tests
                 // that hang forever.
-                callback(te_wait(test));
+                comm::send(reporter, te_wait(test));
             }
             run_test(test, ch);
             wait_idx += 1u;
@@ -303,12 +313,13 @@ fn run_tests(opts: test_opts, tests: [test_desc],
 
         let (test, result) = comm::recv(p);
         if concurrency != 1u {
-            callback(te_wait(test));
+            comm::send(reporter, te_wait(test));
         }
-        callback(te_result(test, result));
+        comm::send(reporter, te_result(test, result));
         wait_idx -= 1u;
         done_idx += 1u;
     }
+    comm::send(reporter, te_done);
 }
 
 // Windows tends to dislike being overloaded with threads.
