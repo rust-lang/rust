@@ -1402,59 +1402,13 @@ fn require_same_types(
 }
 
 mod demand {
-    fn simple(fcx: @fn_ctxt, sp: span, expected: ty::t, actual: ty::t) ->
-       ty::t {
-        full(fcx, sp, unify::unify, expected, actual, []).ty
-    }
-
-    // n.b.: order of arguments is reversed.
-    fn subty(fcx: @fn_ctxt, sp: span, actual: ty::t, expected: ty::t) {
-        full(fcx, sp, unify::unify, expected, actual, []);
-    }
-
-    fn with_substs(fcx: @fn_ctxt, sp: span, expected: ty::t, actual: ty::t,
-                   ty_param_substs_0: [ty::t]) -> ty_param_substs_and_ty {
-        full(fcx, sp, unify::unify, expected, actual, ty_param_substs_0)
-    }
-
     // Requires that the two types unify, and prints an error message if they
-    // don't. Returns the unified type and the type parameter substitutions.
-    fn full(fcx: @fn_ctxt,
-            sp: span,
-            unifier: fn@(@fn_ctxt, ty::t, ty::t)
-                -> result<(), ty::type_err>,
-            expected: ty::t,
-            actual: ty::t,
-            ty_param_substs_0: [ty::t]) ->
-       ty_param_substs_and_ty {
+    // don't.
+    fn simple(fcx: @fn_ctxt, sp: span,
+              expected: ty::t, actual: ty::t) {
 
-        let mut ty_param_substs: [mut ty::t] = [mut];
-        let mut ty_param_subst_var_ids: [ty_vid] = [];
-        for ty_param_substs_0.each {|ty_param_subst|
-            // Generate a type variable and unify it with the type parameter
-            // substitution. We will then pull out these type variables.
-            let t_0 = next_ty_var(fcx);
-            ty_param_substs += [mut t_0];
-            ty_param_subst_var_ids += [ty::ty_var_id(t_0)];
-            simple(fcx, sp, ty_param_subst, t_0);
-        }
-
-        fn mk_result(fcx: @fn_ctxt, result_ty: ty::t,
-                     ty_param_subst_var_ids: [ty_vid]) ->
-           ty_param_substs_and_ty {
-            let mut result_ty_param_substs: [ty::t] = [];
-            for ty_param_subst_var_ids.each {|var_id|
-                let tp_subst = ty::mk_var(fcx.ccx.tcx, var_id);
-                result_ty_param_substs += [tp_subst];
-            }
-            ret {substs: result_ty_param_substs, ty: result_ty};
-        }
-
-
-        alt unifier(fcx, expected, actual) {
-          result::ok(()) {
-            ret mk_result(fcx, expected, ty_param_subst_var_ids);
-          }
+        alt infer::mk_subty(fcx.infcx, actual, expected) {
+          result::ok(()) { /* ok */ }
           result::err(err) {
             fcx.ccx.tcx.sess.span_err(sp,
                                       "mismatched types: expected `" +
@@ -1465,7 +1419,6 @@ mod demand {
                                       ty::type_err_to_str(
                                           fcx.ccx.tcx, err) +
                                       ")");
-            ret mk_result(fcx, expected, ty_param_subst_var_ids);
           }
         }
     }
@@ -1938,20 +1891,27 @@ fn universally_quantify_before_call(
 
 fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
                      subpats: [@ast::pat], expected: ty::t) {
+
     // Typecheck the path.
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
+
+    // Lookup the enum and variant def ids:
     let v_def = lookup_def(pcx.fcx, path.span, pat.id);
     let v_def_ids = ast_util::variant_def_ids(v_def);
-    let ctor_tpt = ty::lookup_item_type(tcx, v_def_ids.enm);
-    instantiate_path(pcx.fcx, path, ctor_tpt, pat.span, pat.id);
+
+    // Assign the pattern the type of the *enum*, not the variant.
+    let enum_tpt = ty::lookup_item_type(tcx, v_def_ids.enm);
+    instantiate_path(pcx.fcx, path, enum_tpt, pat.span, pat.id);
 
     // Take the enum type params out of `expected`.
     alt structure_of(pcx.fcx, pat.span, expected) {
       ty::ty_enum(_, expected_tps) {
-        let ctor_ty = fcx.node_ty(pat.id);
-        demand::with_substs(pcx.fcx, pat.span, expected, ctor_ty,
-                            expected_tps);
+        // check that the type of the value being matched is a subtype
+        // of the type of the pattern:
+        let pat_ty = fcx.node_ty(pat.id);
+        demand::simple(fcx, pat.span, pat_ty, expected);
+
         // Get the number of arguments in this enum variant.
         let arg_types = variant_arg_types(pcx.fcx.ccx, pat.span,
                                           v_def_ids.var, expected_tps);
@@ -2029,12 +1989,12 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
       if !pat_util::pat_is_variant(tcx.def_map, pat) {
         let vid = lookup_local(pcx.fcx, pat.span, pat.id);
         let mut typ = ty::mk_var(tcx, vid);
-        typ = demand::simple(pcx.fcx, pat.span, expected, typ);
+        demand::simple(pcx.fcx, pat.span, expected, typ);
         let canon_id = pcx.map.get(path_to_ident(name));
         if canon_id != pat.id {
             let tv_id = lookup_local(pcx.fcx, pat.span, canon_id);
             let ct = ty::mk_var(tcx, tv_id);
-            typ = demand::simple(pcx.fcx, pat.span, ct, typ);
+            demand::simple(pcx.fcx, pat.span, ct, typ);
         }
         fcx.write_ty(pat.id, typ);
         alt sub {
@@ -2203,12 +2163,11 @@ fn require_pure_call(ccx: @crate_ctxt, caller_purity: ast::purity,
     }
 }
 
-type unifier = fn@(@fn_ctxt, span, ty::t, ty::t) -> ty::t;
+type unifier = fn@(@fn_ctxt, span, ty::t, ty::t);
 
 fn check_expr(fcx: @fn_ctxt, expr: @ast::expr) -> bool {
-    fn dummy_unify(_fcx: @fn_ctxt, _sp: span, _expected: ty::t, actual: ty::t)
-       -> ty::t {
-        actual
+    fn dummy_unify(_fcx: @fn_ctxt, _sp: span,
+                   _expected: ty::t, _actual: ty::t) {
     }
     ret check_expr_with_unifier(fcx, expr, dummy_unify,
                                 ty::mk_nil(fcx.ccx.tcx));
@@ -3139,7 +3098,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
             }
             if !check_block(fcx, arm.body) { arm_non_bot = true; }
             let bty = fcx.node_ty(arm.body.node.id);
-            result_ty = demand::simple(fcx, arm.body.span, result_ty, bty);
+            demand::simple(fcx, arm.body.span, result_ty, bty);
         }
         bot |= !arm_non_bot;
         if !arm_non_bot { result_ty = ty::mk_bot(tcx); }
