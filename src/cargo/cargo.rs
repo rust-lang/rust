@@ -18,13 +18,7 @@ import vec;
 import std::getopts;
 import getopts::{optflag, optopt, opt_present};
 
-enum _src {
-    /* Break cycles in package <-> source */
-    _source(source),
-}
-
 type package = {
-//    source: _src,
     name: str,
     uuid: str,
     url: str,
@@ -293,7 +287,6 @@ fn load_one_source_package(&src: source, p: map::hashmap<str, json::json>) {
     };
 
     vec::grow(src.packages, 1u, {
-        // source: _source(src),
         name: name,
         uuid: uuid,
         url: url,
