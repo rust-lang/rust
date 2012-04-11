@@ -389,6 +389,9 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
                      fld.new_id(i),
                      fld.fold_expr(v))
           }
+          expr_vstore(e, v) {
+            expr_vstore(fld.fold_expr(e), v)
+          }
           expr_vec(exprs, mutt) {
             expr_vec(fld.map_exprs(fld.fold_expr, exprs), mutt)
           }
@@ -497,6 +500,7 @@ fn noop_fold_ty(t: ty_, fld: ast_fold) -> ty_ {
       ty_path(path, id) {ty_path(fld.fold_path(path), fld.new_id(id))}
       // FIXME: constrs likely needs to be folded...
       ty_constr(ty, constrs) {ty_constr(fld.fold_ty(ty), constrs)}
+      ty_vstore(t, vs) {ty_vstore(fld.fold_ty(t), vs)}
       ty_mac(mac) {ty_mac(fold_mac(mac))}
       ty_infer {t}
     }

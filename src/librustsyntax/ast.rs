@@ -169,6 +169,14 @@ enum proto {
     proto_block,   // fn&
 }
 
+#[auto_serialize]
+enum vstore {
+    vstore_fixed(option<uint>),   // [1,2,3,4]/_ or 4   FIXME: uint -> @expr
+    vstore_uniq,                  // [1,2,3,4]/~
+    vstore_box,                   // [1,2,3,4]/@
+    vstore_slice(region)          // [1,2,3,4]/&(foo)?
+}
+
 pure fn is_blockish(p: ast::proto) -> bool {
     alt p {
       proto_any | proto_block { true }
@@ -278,6 +286,7 @@ enum alt_mode { alt_check, alt_exhaustive, }
 
 #[auto_serialize]
 enum expr_ {
+    expr_vstore(@expr, vstore),
     expr_vec([@expr], mutability),
     expr_rec([field], option<@expr>),
     expr_call(@expr, [@expr], bool),
@@ -459,6 +468,7 @@ enum ty_ {
     ty_tup([@ty]),
     ty_path(@path, node_id),
     ty_constr(@ty, [@ty_constr]),
+    ty_vstore(@ty, vstore),
     ty_mac(mac),
     // ty_infer means the type should be inferred instead of it having been
     // specified. This should only appear at the "top level" of a type and not

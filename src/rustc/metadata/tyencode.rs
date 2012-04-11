@@ -145,6 +145,27 @@ fn enc_region(w: io::writer, r: ty::region) {
       }
     }
 }
+
+fn enc_vstore(w: io::writer, v: ty::vstore) {
+    w.write_char('/');
+    alt v {
+      ty::vstore_fixed(u)  {
+        w.write_uint(u);
+        w.write_char('|');
+      }
+      ty::vstore_uniq {
+        w.write_char('~');
+      }
+      ty::vstore_box {
+        w.write_char('@');
+      }
+      ty::vstore_slice(r) {
+        w.write_char('&');
+        enc_region(w, r);
+      }
+    }
+}
+
 fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
     alt st {
       ty::ty_nil { w.write_char('n'); }
@@ -203,6 +224,15 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
         w.write_char('&');
         enc_region(w, r);
         enc_mt(w, cx, mt);
+      }
+      ty::ty_evec(mt, v) {
+        w.write_char('V');
+        enc_mt(w, cx, mt);
+        enc_vstore(w, v);
+      }
+      ty::ty_estr(v) {
+        w.write_char('v');
+        enc_vstore(w, v);
       }
       ty::ty_vec(mt) { w.write_char('I'); enc_mt(w, cx, mt); }
       ty::ty_rec(fields) {

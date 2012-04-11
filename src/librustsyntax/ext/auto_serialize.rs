@@ -367,8 +367,7 @@ fn ser_ty(cx: ext_ctxt, tps: ser_tps_map,
       }
 
       ast::ty_ptr(_) | ast::ty_rptr(_, _) {
-        cx.span_err(
-            ty.span, #fmt["Cannot serialize pointer types"]);
+        cx.span_err(ty.span, "cannot serialize pointer types");
         []
       }
 
@@ -390,8 +389,7 @@ fn ser_ty(cx: ext_ctxt, tps: ser_tps_map,
       }
 
       ast::ty_fn(_, _) {
-        cx.span_err(
-            ty.span, #fmt["Cannot serialize function types"]);
+        cx.span_err(ty.span, "cannot serialize function types");
         []
       }
 
@@ -448,15 +446,17 @@ fn ser_ty(cx: ext_ctxt, tps: ser_tps_map,
       }
 
       ast::ty_mac(_) {
-        cx.span_err(
-            ty.span, #fmt["Cannot serialize macro types"]);
+        cx.span_err(ty.span, "cannot serialize macro types");
         []
       }
 
       ast::ty_infer {
-        cx.span_err(
-            ty.span, #fmt["Cannot serialize inferred types"]);
+        cx.span_err(ty.span, "cannot serialize inferred types");
         []
+      }
+
+      ast::ty_vstore(_, _) {
+        cx.span_unimpl(ty.span, "serialization for vstore types");
       }
 
       ast::ty_vec(mt) {
@@ -673,6 +673,10 @@ fn deser_ty(cx: ext_ctxt, tps: deser_tps_map,
 
       ast::ty_infer {
         #ast{ fail }
+      }
+
+      ast::ty_vstore(_, _) {
+        cx.span_unimpl(ty.span, "deserialization for vstore types");
       }
 
       ast::ty_vec(mt) {

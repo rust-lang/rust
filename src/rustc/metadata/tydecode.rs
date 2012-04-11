@@ -6,6 +6,8 @@ import syntax::ast_util;
 import syntax::ast_util::respan;
 import middle::ty;
 import std::map::hashmap;
+import driver::session;
+import session::session;
 
 export parse_ty_data, parse_def_id, parse_ident;
 export parse_bounds_data;
@@ -176,6 +178,10 @@ fn parse_proto(c: char) -> ast::proto {
     }
 }
 
+fn parse_vstore(st: @pstate) -> ty::vstore {
+    st.tcx.sess.unimpl("tydecode::parse_vstore");
+}
+
 fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
     alt check next(st) {
       'n' { ret ty::mk_nil(st.tcx); }
@@ -231,6 +237,15 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
       '~' { ret ty::mk_uniq(st.tcx, parse_mt(st, conv)); }
       '*' { ret ty::mk_ptr(st.tcx, parse_mt(st, conv)); }
       'I' { ret ty::mk_vec(st.tcx, parse_mt(st, conv)); }
+      'V' {
+        let mt = parse_mt(st, conv);
+        let v = parse_vstore(st);
+        ret ty::mk_evec(st.tcx, mt, v);
+      }
+      'v' {
+        let v = parse_vstore(st);
+        ret ty::mk_estr(st.tcx, v);
+      }
       'R' {
         assert (next(st) == '[');
         let mut fields: [ty::field] = [];

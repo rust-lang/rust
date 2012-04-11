@@ -6,6 +6,7 @@ import base::{call_memmove, shared_malloc,
                INIT, copy_val, load_if_immediate, get_tydesc,
                sub_block, do_spill_noroot,
                dest, bcx_icx};
+import syntax::codemap::span;
 import shape::llsize_of;
 import build::*;
 import common::*;
@@ -127,6 +128,50 @@ fn trans_vec(bcx: block, args: [@ast::expr], id: ast::node_id,
     }
     for vec::each(temp_cleanups) {|cln| revoke_clean(bcx, cln); }
     ret base::store_in_dest(bcx, vptr, dest);
+}
+
+fn trans_vstore(bcx: block, e: @ast::expr,
+                v: ast::vstore, dest: dest) -> block {
+    alt e.node {
+      ast::expr_lit(@{node: ast::lit_str(s), span: _}) {
+        ret trans_estr(bcx, s, v, e.span, dest);
+      }
+      ast::expr_vec(es, mutbl) {
+        bcx.ccx().sess.span_unimpl(e.span, "unhandled tvec::trans_vstore");
+      }
+      _ {
+        bcx.sess().span_bug(e.span, "vstore on non-sequence type");
+      }
+    }
+}
+
+fn trans_estr(bcx: block, s: str, vstore: ast::vstore,
+              sp: span, dest: dest) -> block {
+    let _icx = bcx.insn_ctxt("tvec::trans_estr");
+    let ccx = bcx.ccx();
+
+    let c = alt vstore {
+      ast::vstore_fixed(_)
+      {
+        // "hello"/_  =>  [i8 x 6] in llvm
+        #debug("trans_estr: fixed: %s", s);
+        C_postr(s)
+      }
+
+      ast::vstore_slice(_) {
+        // "hello"  =>  (*i8,uint) in llvm
+        #debug("trans_estr: slice '%s'", s);
+        let cs = PointerCast(bcx, C_cstr(ccx, s), T_ptr(T_i8()));
+        C_struct([cs, C_uint(ccx, str::len(s))])
+      }
+
+      _ {
+        bcx.ccx().sess.span_unimpl(sp, "unhandled tvec::trans_estr");
+      }
+    };
+
+    #debug("trans_estr: type: %s", val_str(ccx.tn, c));
+    base::store_in_dest(bcx, c, dest)
 }
 
 fn trans_str(bcx: block, s: str, dest: dest) -> block {

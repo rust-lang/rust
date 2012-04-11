@@ -136,7 +136,9 @@ fn node_type_needs(cx: ctx, use: uint, id: node_id) {
 
 fn mark_for_expr(cx: ctx, e: @expr) {
     alt e.node {
-      expr_vec(_, _) | expr_rec(_, _) | expr_tup(_) |
+      expr_vstore(_, _) |
+      expr_vec(_, _) |
+      expr_rec(_, _) | expr_tup(_) |
       expr_unary(box(_), _) | expr_unary(uniq(_), _) |
       expr_cast(_, _) | expr_binary(add, _, _) |
       expr_copy(_) | expr_move(_, _) {
