@@ -1476,6 +1476,13 @@ fn make_person(+name: str, +address: str) -> person {
 }
 ~~~~
 
+Finally there is by-move style, written `-`. This indicates that the
+function will take ownership of the argument, like with by-copy style,
+but a copy must not be made. The caller is (statically) obliged to not
+use the argument after the call; it is de-initialized as part of the
+call. This is used to support ownership-passing in the presence of
+non-copyable types.
+
 # Generics
 
 ## Generic functions
