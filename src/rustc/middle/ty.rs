@@ -807,10 +807,11 @@ fn fold_region(cx: ctxt, t0: t, fldop: fn(region, bool) -> region) -> t {
 }
 
 fn substitute_type_params(cx: ctxt, substs: [ty::t], typ: t) -> t {
+    if substs.len() == 0u { ret typ; }
     let tb = get(typ);
+    if !tb.has_params { ret typ; }
     alt tb.struct {
       ty_param(idx, _) { substs[idx] }
-      _ if !tb.has_params { typ }
       s { mk_t(cx, fold_sty(s) {|t| substitute_type_params(cx, substs, t)}) }
     }
 }

@@ -100,6 +100,15 @@ impl extensions<T:copy> for option<T> {
         { map_default(self, def, f) }
     #[doc = "Performs an operation on the contained value or does nothing"]
     fn iter(f: fn(T)) { iter(self, f) }
+
+    #[doc = "Performs an operation on the contained value or does nothing"]
+    fn each(f: fn(T) -> bool) {
+        alt self {
+          none { /* ok */ }
+          some(e) { f(e); }
+        }
+    }
+
     #[doc = "
     Gets the value out of an option
 

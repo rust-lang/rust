@@ -229,7 +229,7 @@ fn instantiate_path(fcx: @fn_ctxt, pth: @ast::path,
         });
         fcx.write_ty_substs(id, tpt.ty, substs);
     } else if ty_param_count > 0u {
-        let vars = vec::from_fn(ty_param_count, {|_i| next_ty_var(fcx)});
+        let vars = fcx.next_ty_vars(ty_param_count);
         fcx.write_ty_substs(id, tpt.ty, vars);
     } else {
         fcx.write_ty(id, tpt.ty);
@@ -491,7 +491,7 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
           }
           ast::ty_infer {
             alt mode {
-              m_check_tyvar(fcx) { ret next_ty_var(fcx); }
+              m_check_tyvar(fcx) { ret fcx.next_ty_var(); }
               _ { tcx.sess.span_bug(ast_ty.span,
                                     "found `ty_infer` in unexpected place"); }
             }
@@ -596,35 +596,6 @@ fn ty_of_native_item(tcx: ty::ctxt, mode: mode, it: @ast::native_item)
 }
 
 type next_region_param_id = { mut id: uint };
-
-// fn replace_inferred(tcx: ty::ctxt, ty: ty::t,
-//                     rop: fn() -> ty::region) -> ty::t {
-//     let tb = ty::get(ty);
-//     if !tb.has_rptrs { ret ty; }
-//     alt tb.struct {
-//       // Replace re_inferred that are nested underneath
-//       // a top-level region ptr with the region ptr itself.
-//       ty::ty_rptr(ty::re_inferred, ty1) {
-//         let r = rop();
-//         ty::mk_rptr(r, replace_inferred(tcx, ty1) {|| r })
-//       }
-//       ty::ty_rptr(r, ty1) {
-//         ty::mk_rptr(r, replace_inferred(tcx, ty1) {|| r })
-//       }
-//
-//       // Do not replace inferred ptrs that appear within fn(...) types, as
-//       // those are bound by the function.
-//       ty::ty_fn(f) {
-//         ty
-//       }
-//
-//       // Otherwise just map.
-//       sty {
-//         ty::fold_sty_to_ty(tcx, sty) {|t|
-//           replace_inferred(tcx, with_r, t) }
-//       }
-//     }
-// }
 
 fn replace_default_region(tcx: ty::ctxt,
                           with_region: ty::region,
@@ -818,11 +789,13 @@ fn write_substs_to_tcx(tcx: ty::ctxt, node_id: ast::node_id,
 }
 fn write_ty_substs_to_tcx(tcx: ty::ctxt, node_id: ast::node_id, ty: ty::t,
                    +substs: [ty::t]) {
-    let ty = if ty::type_has_params(ty) {
-        ty::substitute_type_params(tcx, substs, ty)
-    } else { ty };
-    write_ty_to_tcx(tcx, node_id, ty);
-    write_substs_to_tcx(tcx, node_id, substs);
+    if substs.len() == 0u {
+        write_ty_to_tcx(tcx, node_id, ty);
+    } else {
+        let ty = ty::substitute_type_params(tcx, substs, ty);
+        write_ty_to_tcx(tcx, node_id, ty);
+        write_substs_to_tcx(tcx, node_id, substs);
+    }
 }
 
 impl methods for @fn_ctxt {
@@ -888,6 +861,17 @@ impl methods for @fn_ctxt {
     }
     fn opt_node_ty_substs(id: ast::node_id) -> option<[ty::t]> {
         self.node_type_substs.find(id)
+    }
+    fn next_ty_var_id() -> ty_vid {
+        let id = *self.next_var_id;
+        *self.next_var_id += 1u;
+        ret ty_vid(id);
+    }
+    fn next_ty_var() -> ty::t {
+        ty::mk_var(self.ccx.tcx, self.next_ty_var_id())
+    }
+    fn next_ty_vars(n: uint) -> [ty::t] {
+        vec::from_fn(n) {|_i| self.next_ty_var() }
     }
 }
 
@@ -955,9 +939,7 @@ fn fixup_self_full(cx: ty::ctxt, mty: ty::t, m_substs: [ty::t],
 
     ty::fold_ty(cx, mty) {|t|
         alt ty::get(t).struct {
-          ty::ty_self(tps) if vec::len(tps) == 0u {
-            selfty
-          }
+          ty::ty_self(tps) if vec::len(tps) == 0u { selfty }
           ty::ty_self(tps) {
             // Move the substs into the type param system of the
             // context.
@@ -2196,286 +2178,303 @@ fn check_expr_with(fcx: @fn_ctxt, expr: @ast::expr, expected: ty::t) -> bool {
     ret check_expr_with_unifier(fcx, expr, demand::simple, expected);
 }
 
-fn impl_self_ty(tcx: ty::ctxt, did: ast::def_id) -> {n_tps: uint, ty: ty::t} {
-    if did.crate == ast::local_crate {
+// determine the `self` type, using fresh variables for all variables declared
+// on the impl declaration e.g., `impl<A,B> for [(A,B)]` would return ($0, $1)
+// where $0 and $1 are freshly instantiated type variables.
+fn impl_self_ty(fcx: @fn_ctxt, did: ast::def_id) -> ty_param_substs_and_ty {
+    let tcx = fcx.ccx.tcx;
+
+    let {n_tps, raw_ty} = if did.crate == ast::local_crate {
         alt check tcx.items.get(did.node) {
           ast_map::node_item(@{node: ast::item_impl(ts, _, st, _),
                                _}, _) {
-            {n_tps: vec::len(ts), ty: ast_ty_to_ty(tcx, m_check, st)}
+            {n_tps: vec::len(ts),
+             raw_ty: ast_ty_to_ty(tcx, m_check, st)}
           }
         }
     } else {
         let ity = ty::lookup_item_type(tcx, did);
-        {n_tps: vec::len(*ity.bounds), ty: ity.ty}
-    }
+        {n_tps: vec::len(*ity.bounds),
+         raw_ty: ity.ty}
+    };
+
+    let substs = fcx.next_ty_vars(n_tps);
+    let substd_ty = ty::substitute_type_params(tcx, substs, raw_ty);
+    {substs: substs, ty: substd_ty}
 }
 
 type self_subst = {selfty: ty::t,
                    fcx: @fn_ctxt,
                    sp: span};
 
-/*
-  Takes arguments describing a method, and returns either its origin,
-  or <none> if it's unbound.
+enum lookup = {
+    fcx: @fn_ctxt,
+    expr: @ast::expr, // expr for a.b in a.b()
+    node_id: ast::node_id, // node id of call (not always expr.id)
+    m_name: ast::ident, // b in a.b(...)
+    self_ty: ty::t, // type of a in a.b(...)
+    supplied_tps: [ty::t], // Xs in a.b::<Xs>(...)
+    include_private: bool
+};
 
-  expr: the entire method reference
-  node_id: the method's ID
-  name: the method's name
-  ty: the type of the base expression
-  tps: the ty substitutions that are part of the field expr
-    (for example: in foo.bar<int,char>(), tps would be
-     [int, char])
-  include_private: true if we're inside the same class and should
-     search private methods
- */
-fn lookup_method(fcx: @fn_ctxt, expr: @ast::expr, node_id: ast::node_id,
-                 name: ast::ident, ty: ty::t, tps: [ty::t],
-                 include_private: bool)
-    -> option<method_origin> {
-    alt lookup_method_inner(fcx, expr, name, ty, include_private) {
-      some({method_ty: fty, n_tps: method_n_tps, substs, origin, self_sub}) {
-        let tcx = fcx.ccx.tcx;
-        let mut substs = substs;
-        let n_tps = vec::len(substs), n_tys = vec::len(tps);
-        let has_self = ty::type_has_vars(fty);
-        /* If either the method was declared to have ty params,
-         or ty arguments were provided, or both... */
-        if method_n_tps + n_tps > 0u {
-          /* If no type arguments were given,
-             or a different number of them were given than the
-             method's declared types... */
-            if n_tys == 0u || n_tys != method_n_tps {
-                if n_tys != 0u {
-                    tcx.sess.span_err
-                        (expr.span, "incorrect number of type \
-                                     parameters given for this method");
-
-                }
-                /* If not enough types were given, make some ty vars */
-                substs += vec::from_fn(method_n_tps, {|_i|
-                    ty::mk_var(tcx, next_ty_var_id(fcx))
-                });
-            } else {
-             /* If the right number of types were given, just add them on */
-                substs += tps;
-            }
-            /*
-              For a class method, "substs" here begins with the class ty
-              params
-             */
-            fcx.write_ty_substs(node_id, fty, substs);
-        } else {
-            if n_tys > 0u {
-                tcx.sess.span_err(expr.span, "this method does not take type \
-                                              parameters");
-            }
-            fcx.write_ty(node_id, fty);
-        }
-        if has_self && !option::is_none(self_sub) {
-            let fty = fcx.node_ty(node_id);
-            let fty = fixup_self_param(
-                fcx, fty, substs, option::get(self_sub), expr.span);
-            fcx.write_ty(node_id, fty);
-        }
-        if ty::type_has_rptrs(ty::ty_fn_ret(fty)) {
-            let fty = fcx.node_ty(node_id);
-            let self_region = region_of(fcx, expr);
-            let fty = replace_self_region(fcx.ccx.tcx, self_region, fty);
-            fcx.write_ty(node_id, fty);
-        }
-        some(origin)
-      }
-      none { none }
-    }
-}
-
-enum method_kind {
-    cls(ast::def_id), // *method* id (in both cases)
-    an_iface(ast::def_id)
-}
-
-fn lookup_method_inner_(tcx: ty::ctxt, ms: [ty::method],
-     tps: [ty::t], parent: method_kind, name: ast::ident, sp: span,
-                        include_private: bool)
-    -> option<{method_ty: ty::t,
-               n_tps: uint,
-               substs: [ty::t],
-               origin: method_origin,
-               self_sub: option<ty::t>}> {
-    let mut i = 0u;
-    for ms.each {|m|
-       if m.ident == name {
-          let fty = ty::mk_fn(tcx, {proto: ast::proto_box with m.fty});
-          if ty::type_has_vars(fty) {
-               tcx.sess.span_fatal(
-                    sp, "can not call a method that contains a \
-                                    self type through a boxed iface");
-          } else if (*m.tps).len() > 0u  &&
-               alt parent { an_iface(_) { true } cls(_) { false } } {
-                   tcx.sess.span_fatal(
-                        sp, "can not call a generic method through a \
-                                    boxed iface");
-          } else if m.privacy == ast::priv && !include_private {
-                   tcx.sess.span_fatal(
-                        sp, "Call to private method not allowed outside \
-                          its defining class");
+impl methods for lookup {
+    // Entrypoint:
+    fn method() -> option<method_origin> {
+        // First, see whether this is an interface-bounded parameter
+        let pass1 = alt ty::get(self.self_ty).struct {
+          ty::ty_param(n, did) {
+            self.method_from_param(n, did)
           }
-          #debug("lookup_method_inner_: %s has %u ty params, by its \
-            declaration", name, vec::len(*m.tps));
-          ret some({method_ty: fty,
-                    n_tps: vec::len(*m.tps),
-                    substs: tps,
-                    origin: alt parent {
-                      cls(parent_id)          {
-                        // look up method named <name>
-                        // its id is did
-                        let m_declared = ty::lookup_class_method_by_name(tcx,
-                                      parent_id, name, sp);
-                        method_static(m_declared)
-                      }
-                      an_iface(did) { method_iface(did, i) }
-                      },
-                    self_sub: none});
-       }
-       i += 1u;
+          ty::ty_iface(did, tps) {
+            self.method_from_iface(did, tps)
+          }
+          ty::ty_class(did, tps) {
+            self.method_from_class(did, tps)
+          }
+          _ {
+            none
+          }
+        };
+
+        alt pass1 {
+          some(r) { some(r) }
+          none { self.method_from_scope() }
+        }
     }
-    ret none;
-}
 
-fn lookup_method_inner(fcx: @fn_ctxt, expr: @ast::expr,
-                       name: ast::ident, ty: ty::t,
-                       include_private: bool)
-    -> option<{method_ty: ty::t,
-               n_tps: uint,
-               substs: [ty::t],
-               origin: method_origin,
-               self_sub: option<ty::t>}> {
-    let tcx = fcx.ccx.tcx;
+    fn tcx() -> ty::ctxt { self.fcx.ccx.tcx }
 
-    #debug["lookup_method_inner: expr=%s name=%s ty=%s",
-           expr_to_str(expr), name, fcx.ty_to_str(ty)];
-
-    // First, see whether this is an interface-bounded parameter
-    alt ty::get(ty).struct {
-      ty::ty_param(n, did) {
-        let mut bound_n = 0u;
-        for vec::each(*tcx.ty_param_bounds.get(did.node)) {|bound|
-            alt bound {
-              ty::bound_iface(t) {
-                let (iid, tps) = alt check ty::get(t).struct {
+    fn method_from_param(n: uint, did: ast::def_id) -> option<method_origin> {
+        let tcx = self.tcx();
+        let mut iface_bnd_idx = 0u; // count only iface bounds
+        let bounds = tcx.ty_param_bounds.get(did.node);
+        for vec::each(*bounds) {|bound|
+            let (iid, bound_tps) = alt bound {
+              ty::bound_copy | ty::bound_send { cont; /* ok */ }
+              ty::bound_iface(bound_t) {
+                alt check ty::get(bound_t).struct {
                   ty::ty_iface(i, tps) { (i, tps) }
-                };
-                let ifce_methods = ty::iface_methods(tcx, iid);
-                alt vec::position(*ifce_methods, {|m| m.ident == name}) {
-                  some(pos) {
-                    let m = ifce_methods[pos];
-                    ret some({method_ty: ty::mk_fn(tcx, {proto: ast::proto_box
-                                                         with m.fty}),
-                              n_tps: vec::len(*m.tps),
-                              substs: tps,
-                              origin: method_param(iid, pos, n, bound_n),
-                              self_sub: some(ty)
-                             });
-                  }
-                  _ {}
                 }
-                bound_n += 1u;
               }
-              _ {}
+            };
+
+            let ifce_methods = ty::iface_methods(tcx, iid);
+            alt vec::position(*ifce_methods, {|m| m.ident == self.m_name}) {
+              none {
+                /* check next bound */
+                iface_bnd_idx += 1u;
+              }
+
+              some(pos) {
+                  ret some(self.write_mty_from_m(
+                      some(self.self_ty), bound_tps, ifce_methods[pos],
+                      method_param(iid, pos, n, iface_bnd_idx)));
+              }
             }
         }
-      }
-      ty::ty_iface(did, tps) {
-        alt lookup_method_inner_(tcx, *ty::iface_methods(tcx, did), tps,
-              an_iface(did), name, expr.span, include_private) {
-           some(r) { ret some(r); }
-           none {  }
-        }
-      }
-      ty::ty_class(did, tps) {
-        alt lookup_method_inner_(tcx, *ty::iface_methods(tcx, did),
-                                /* Need to include class tps so that the
-                                    indices for ty params work out right */
-                         tps, cls(did), name, expr.span, include_private) {
-          some(r) { ret some(r); }
-          none    { }
-        }
-      }
-      _ {}
+        ret none;
     }
 
-    fn ty_from_did(tcx: ty::ctxt, did: ast::def_id) -> ty::t {
+    fn method_from_iface(
+        did: ast::def_id, iface_tps: [ty::t]) -> option<method_origin> {
+
+        let ms = *ty::iface_methods(self.tcx(), did);
+        for ms.eachi {|i, m|
+            if m.ident != self.m_name { cont; }
+
+            let m_fty = ty::mk_fn(self.tcx(), m.fty);
+
+            if ty::type_has_vars(m_fty) {
+                self.tcx().sess.span_fatal(
+                    self.expr.span,
+                    "can not call a method that contains a \
+                     self type through a boxed iface");
+            }
+
+            if (*m.tps).len() > 0u {
+                self.tcx().sess.span_fatal(
+                    self.expr.span,
+                    "can not call a generic method through a \
+                     boxed iface");
+            }
+
+            ret some(self.write_mty_from_m(
+                none, iface_tps, m,
+                method_iface(did, i)));
+        }
+
+        ret none;
+    }
+
+    fn method_from_class(did: ast::def_id, class_tps: [ty::t])
+        -> option<method_origin> {
+
+        let ms = *ty::iface_methods(self.tcx(), did);
+
+        for ms.each {|m|
+            if m.ident != self.m_name { cont; }
+
+            if m.privacy == ast::priv && !self.include_private {
+                self.tcx().sess.span_fatal(
+                    self.expr.span,
+                    "Call to private method not allowed outside \
+                     its defining class");
+            }
+
+            // look up method named <name>.
+            let m_declared = ty::lookup_class_method_by_name(
+                self.tcx(), did, self.m_name, self.expr.span);
+
+            ret some(self.write_mty_from_m(
+                none, class_tps, m,
+                method_static(m_declared)));
+        }
+
+        ret none;
+    }
+
+    fn ty_from_did(did: ast::def_id) -> ty::t {
         if did.crate == ast::local_crate {
-            alt check tcx.items.get(did.node) {
+            alt check self.tcx().items.get(did.node) {
               ast_map::node_method(m, _, _) {
-                let mt = ty_of_method(tcx, m_check, m);
-                ty::mk_fn(tcx, {proto: ast::proto_box with mt.fty})
+                let mt = ty_of_method(self.tcx(), m_check, m);
+                ty::mk_fn(self.tcx(), {proto: ast::proto_box with mt.fty})
               }
             }
         } else {
-            alt check ty::get(csearch::get_type(tcx, did).ty).struct {
+            alt check ty::get(csearch::get_type(self.tcx(), did).ty).struct {
               ty::ty_fn(fty) {
-                ty::mk_fn(tcx, {proto: ast::proto_box with fty})
+                ty::mk_fn(self.tcx(), {proto: ast::proto_box with fty})
               }
             }
         }
     }
 
-    let mut result = none, complained = false;
-    std::list::iter(fcx.ccx.impl_map.get(expr.id)) {|impls|
-        if option::is_none(result) {
+    fn method_from_scope() -> option<method_origin> {
+        let impls_vecs = self.fcx.ccx.impl_map.get(self.expr.id);
+
+        for std::list::each(impls_vecs) {|impls|
+            let mut results = [];
             for vec::each(*impls) {|im|
-                alt vec::find(im.methods, {|m| m.ident == name}) {
-                  some(m) {
-                    let mut {n_tps, ty: self_ty} = impl_self_ty(tcx, im.did);
-                    let mut {vars, ty: self_ty} = if n_tps > 0u {
-                        bind_params(fcx, self_ty, n_tps)
-                    } else {
-                        {vars: [], ty: self_ty}
-                    };
+                // Check whether this impl has a method with the right name.
+                for im.methods.find({|m| m.ident == self.m_name}).each {|m|
+
+                    // determine the `self` with fresh variables for
+                    // each parameter:
+                    let {substs: self_substs, ty: self_ty} =
+                        impl_self_ty(self.fcx, im.did);
 
                     // Here "self" refers to the callee side...
-                    //let next_rid = count_region_params(self_ty);
-                    //self_ty = instantiate_bound_regions(
-                    //    fcx.ccx.tcx,
-                    //    ty::re_bound(ty::br_param(next_rid)),
-                    //    self_ty);
-                    self_ty = universally_quantify_regions(
-                        fcx, region_env(), self_ty);
+                    let self_ty = universally_quantify_regions(
+                        self.fcx, region_env(), self_ty);
 
                     // ... and "ty" refers to the caller side.
                     let ty = universally_quantify_regions(
-                        fcx, region_env(), ty);
+                        self.fcx, region_env(), self.self_ty);
 
-                    alt unify::unify(fcx, self_ty, ty) {
+                    // if we can assign the caller to the callee, that's a
+                    // potential match.  Collect those in the vector.
+                    alt unify::unify(self.fcx, self_ty, ty) {
+                      result::err(_) { /* keep looking */ }
                       result::ok(_) {
-                        if option::is_some(result) {
-                            // FIXME[impl] score specificity?
-                            if !complained {
-                                tcx.sess.span_err(expr.span,
-                                                  "multiple applicable \
-                                                   methods in scope");
-                                complained = true;
-                            }
-                        } else {
-                            result = some({
-                                method_ty: ty_from_did(tcx, m.did),
-                                n_tps: m.n_tps,
-                                substs: vars,
-                                origin: method_static(m.did),
-                                self_sub: none
-                            });
-                        }
+                        results += [(self_substs, m.n_tps, m.did)];
                       }
-                      result::err(_) {}
                     }
-                  }
-                  _ {}
                 }
             }
+
+            if results.len() >= 1u {
+                if results.len() > 1u {
+                    self.tcx().sess.span_err(
+                        self.expr.span,
+                        "multiple applicable methods in scope");
+                }
+
+                let (self_substs, n_tps, did) = results[0];
+                let fty = self.ty_from_did(did);
+                ret some(self.write_mty_from_fty(
+                    none, self_substs, n_tps, fty,
+                    method_static(did)));
+            }
         }
+
+        ret none;
     }
-    result
+
+    fn write_mty_from_m(self_ty_sub: option<ty::t>,
+                        self_substs: [ty::t],
+                        m: ty::method,
+                        origin: method_origin) -> method_origin {
+        let tcx = self.fcx.ccx.tcx;
+
+        // a bit hokey, but the method unbound has a bare protocol, whereas
+        // a.b has a protocol like fn@() (perhaps eventually fn&()):
+        let fty = ty::mk_fn(tcx, {proto: ast::proto_box with m.fty});
+
+        ret self.write_mty_from_fty(self_ty_sub, self_substs,
+                                    (*m.tps).len(), fty, origin);
+    }
+
+    fn write_mty_from_fty(self_ty_sub: option<ty::t>,
+                          self_substs: [ty::t],
+                          n_tps_m: uint,
+                          fty: ty::t,
+                          origin: method_origin) -> method_origin {
+
+        let tcx = self.fcx.ccx.tcx;
+        let has_self = ty::type_has_vars(fty);
+
+        // Here I will use the "c_" prefix to refer to the method's
+        // owner.  You can read it as class, but it may also be an iface.
+
+        let n_tps_supplied = self.supplied_tps.len();
+        let m_substs = {
+            if n_tps_supplied == 0u {
+                self.fcx.next_ty_vars(n_tps_m)
+            } else if n_tps_m == 0u {
+                tcx.sess.span_err(
+                    self.expr.span,
+                    "this method does not take type parameters");
+                self.fcx.next_ty_vars(n_tps_m)
+            } else if n_tps_supplied != n_tps_m {
+                tcx.sess.span_err(
+                    self.expr.span,
+                    "incorrect number of type \
+                     parameters given for this method");
+                self.fcx.next_ty_vars(n_tps_m)
+            } else {
+                self.supplied_tps
+            }
+        };
+
+        let all_substs = self_substs + m_substs;
+        self.fcx.write_ty_substs(self.node_id, fty, all_substs);
+
+        // FIXME--this treatment of self and regions seems wrong.  As a rule
+        // of thumb, one ought to substitute all type parameters at once, and
+        // we are not doing so here.  The danger you open up has to do with
+        // the possibility that one of the substs in `all_substs` maps to a
+        // self type.  Right now I think this is impossible but it may not be
+        // forever, and it's just sloppy to substitute in multiple steps.
+        // Probably the self parameter ought to be part of the all_substs.
+
+        if has_self && !option::is_none(self_ty_sub) {
+            let fty = self.fcx.node_ty(self.node_id);
+            let fty = fixup_self_param(
+                self.fcx, fty, all_substs, self_ty_sub.get(),
+                self.expr.span);
+            self.fcx.write_ty(self.node_id, fty);
+        }
+
+        if ty::type_has_rptrs(ty::ty_fn_ret(fty)) {
+            let fty = self.fcx.node_ty(self.node_id);
+            let self_region = region_of(self.fcx, self.expr);
+            let fty = replace_self_region(self.tcx(), self_region, fty);
+            self.fcx.write_ty(self.node_id, fty);
+        }
+
+        ret origin;
+    }
 }
 
 // Only for fields! Returns <none> for methods>
@@ -2620,7 +2619,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
             // since we don't know them.
             arg_tys = vec::from_fn(supplied_arg_count) {|_i|
                 {mode: ast::expl(ast::by_ref),
-                 ty: next_ty_var(fcx)}
+                 ty: fcx.next_ty_var()}
             };
         }
 
@@ -2726,7 +2725,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         let (if_t, if_bot) =
             alt elsopt {
               some(els) {
-                let if_t = next_ty_var(fcx);
+                let if_t = fcx.next_ty_var();
                 let thn_bot = check_block(fcx, thn);
                 let thn_t = fcx.node_ty(thn.node.id);
                 demand::simple(fcx, thn.span, if_t, thn_t);
@@ -2754,7 +2753,14 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                         opname: str, args: [option<@ast::expr>])
         -> option<(ty::t, bool)> {
         let callee_id = ast_util::op_expr_callee_id(op_ex);
-        alt lookup_method(fcx, op_ex, callee_id, opname, self_t, [], false) {
+        let lkup = lookup({fcx: fcx,
+                           expr: op_ex,
+                           node_id: callee_id,
+                           m_name: opname,
+                           self_ty: self_t,
+                           supplied_tps: [],
+                           include_private: false});
+        alt lkup.method() {
           some(origin) {
             let {fty: method_ty, bot: bot} = {
                 let method_ty = fcx.node_ty(callee_id);
@@ -2781,7 +2787,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
             // result [ML T] where TL <: T and TR <: T.  In other words, the
             // result type is (generally) the LUB of (TL, TR) and takes the
             // mutability from the LHS.
-            let t_var = next_ty_var(fcx);
+            let t_var = fcx.next_ty_var();
             let const_vec_t = ty::mk_vec(tcx, {ty: t_var,
                                                mutbl: ast::m_const});
             demand::simple(fcx, lhs.span, const_vec_t, lhs_t);
@@ -2803,7 +2809,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
           }
 
           (_, _) if ty::is_binopable(tcx, lhs_t, op) {
-            let tvar = next_ty_var(fcx);
+            let tvar = fcx.next_ty_var();
             demand::simple(fcx, expr.span, tvar, lhs_t);
             let rhs_bot = check_expr_with(fcx, rhs, tvar);
             let rhs_t = alt op {
@@ -2879,7 +2885,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
           ast::expr_vec(args, mutbl) {
             let tt = ast_expr_vstore_to_vstore(fcx, ev,
                                                vec::len(args), vst);
-            let t: ty::t = next_ty_var(fcx);
+            let t: ty::t = fcx.next_ty_var();
             for args.each {|e| bot |= check_expr_with(fcx, e, t); }
             ty::mk_evec(tcx, {ty: t, mutbl: mutbl}, tt)
           }
@@ -2916,7 +2922,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
       ast::expr_binary(ast::gt, lhs, rhs) |
       ast::expr_binary(ast::ge, lhs, rhs) {
         let tcx = fcx.ccx.tcx;
-        let tvar = next_ty_var(fcx);
+        let tvar = fcx.next_ty_var();
         bot |= check_expr_with(fcx, lhs, tvar);
         bot |= check_expr_with(fcx, rhs, tvar);
         fcx.write_ty(id, ty::mk_bool(tcx));
@@ -3098,7 +3104,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
           bot = !may_break(body);
       }
       ast::expr_alt(discrim, arms, _) {
-        let pattern_ty = next_ty_var(fcx);
+        let pattern_ty = fcx.next_ty_var();
         bot = check_expr_with(fcx, discrim, pattern_ty);
 
         let parent_region = tcx.region_map.rvalue_to_region.get(discrim.id);
@@ -3118,7 +3124,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
             for arm.pats.each {|p| check_pat(pcx, p, pattern_ty);}
         }
         // Now typecheck the blocks.
-        let mut result_ty = next_ty_var(fcx);
+        let mut result_ty = fcx.next_ty_var();
         let mut arm_non_bot = false;
         for arms.each {|arm|
             alt arm.guard {
@@ -3278,7 +3284,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         fcx.write_ty(id, t_1);
       }
       ast::expr_vec(args, mutbl) {
-        let t: ty::t = next_ty_var(fcx);
+        let t: ty::t = fcx.next_ty_var();
         for args.each {|e| bot |= check_expr_with(fcx, e, t); }
         let typ = ty::mk_vec(tcx, {ty: t, mutbl: mutbl});
         fcx.write_ty(id, typ);
@@ -3394,8 +3400,14 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         }
         if !handled {
             let tps = vec::map(tys, {|ty| ast_ty_to_ty_crate(fcx.ccx, ty)});
-            alt lookup_method(fcx, expr, expr.id, field, expr_t, tps,
-                              self_ref(fcx, base.id)) {
+            let lkup = lookup({fcx: fcx,
+                               expr: expr,
+                               node_id: expr.id,
+                               m_name: field,
+                               self_ty: expr_t,
+                               supplied_tps: tps,
+                               include_private: self_ref(fcx, base.id)});
+            alt lkup.method() {
               some(origin) {
                 fcx.ccx.method_map.insert(id, origin);
               }
@@ -3406,7 +3418,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                                field, ty_to_str(tcx, t_err)];
                 tcx.sess.span_err(expr.span, msg);
                 // NB: Adding a bogus type to allow typechecking to continue
-                fcx.write_ty(id, next_ty_var(fcx));
+                fcx.write_ty(id, fcx.next_ty_var());
               }
             }
         }
@@ -3450,7 +3462,14 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
 
         let p_ty = fcx.expr_ty(p);
 
-        alt lookup_method(fcx, p, alloc_id, "alloc", p_ty, [], false) {
+        let lkup = lookup({fcx: fcx,
+                           expr: p,
+                           node_id: alloc_id,
+                           m_name: "alloc",
+                           self_ty: p_ty,
+                           supplied_tps: [],
+                           include_private: false});
+        alt lkup.method() {
           some(origin) {
             fcx.ccx.method_map.insert(alloc_id, origin);
 
@@ -3511,16 +3530,6 @@ fn require_integral(fcx: @fn_ctxt, sp: span, t: ty::t) {
     }
 }
 
-fn next_ty_var_id(fcx: @fn_ctxt) -> ty_vid {
-    let id = *fcx.next_var_id;
-    *fcx.next_var_id += 1u;
-    ret ty_vid(id);
-}
-
-fn next_ty_var(fcx: @fn_ctxt) -> ty::t {
-    ret ty::mk_var(fcx.ccx.tcx, next_ty_var_id(fcx));
-}
-
 fn next_region_var_id(fcx: @fn_ctxt) -> region_vid {
     let id = *fcx.next_region_var_id;
     *fcx.next_region_var_id += 1u;
@@ -3531,11 +3540,6 @@ fn next_region_var(fcx: @fn_ctxt) -> ty::region {
     ret ty::re_var(next_region_var_id(fcx));
 }
 
-fn bind_params(fcx: @fn_ctxt, tp: ty::t, count: uint)
-    -> {vars: [ty::t], ty: ty::t} {
-    let vars = vec::from_fn(count, {|_i| next_ty_var(fcx)});
-    {vars: vars, ty: ty::substitute_type_params(fcx.ccx.tcx, vars, tp)}
-}
 
 fn check_decl_initializer(fcx: @fn_ctxt, nid: ast::node_id,
                           init: ast::initializer) -> bool {
@@ -4175,11 +4179,8 @@ mod vtable {
                           _ { false }
                         };
                         if match {
-                            let {n_tps, ty: self_ty} =
-                                impl_self_ty(tcx, im.did);
-                            let {vars, ty: self_ty} = if n_tps > 0u {
-                                bind_params(fcx, self_ty, n_tps)
-                            } else { {vars: [], ty: self_ty} };
+                            let {substs: vars, ty: self_ty} =
+                                impl_self_ty(fcx, im.did);
                             let im_bs =
                                 ty::lookup_item_type(tcx, im.did).bounds;
                             alt unify::unify(fcx, ty, self_ty) {
