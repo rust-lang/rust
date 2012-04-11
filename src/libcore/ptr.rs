@@ -48,6 +48,21 @@ fn mut_offset<T>(ptr: *mut T, count: uint) -> *mut T {
     (ptr as uint + count * sys::size_of::<T>()) as *mut T
 }
 
+#[doc = "Return the offset of the first null pointer in `buf`."]
+#[inline(always)]
+unsafe fn buf_len<T>(buf: **T) -> uint {
+    position(buf) {|i| i == null() }
+}
+
+#[doc = "Return the first offset `i` such that `f(buf[i]) == true`."]
+#[inline(always)]
+unsafe fn position<T>(buf: *T, f: fn(T) -> bool) -> uint {
+    let mut i = 0u;
+    loop {
+        if f(*offset(buf, i)) { ret i; }
+        else { i += 1u; }
+    }
+}
 
 #[doc = "Create an unsafe null pointer"]
 #[inline(always)]
@@ -111,4 +126,32 @@ fn test() unsafe {
     ptr::memcpy(ptr::offset(vec::unsafe::to_ptr(v1), 2u),
                 vec::unsafe::to_ptr(v0), 1u);
     assert (v1[0] == 32002u16 && v1[1] == 32001u16 && v1[2] == 32000u16);
+}
+
+#[test]
+fn test_position() unsafe {
+    import str::as_c_str;
+    import libc::c_char;
+
+    let s = "hello";
+    assert 2u == as_c_str(s) {|p| position(p) {|c| c == 'l' as c_char} };
+    assert 4u == as_c_str(s) {|p| position(p) {|c| c == 'o' as c_char} };
+    assert 5u == as_c_str(s) {|p| position(p) {|c| c == 0 as c_char } };
+}
+
+#[test]
+fn test_buf_len() unsafe {
+    let s0 = "hello";
+    let s1 = "there";
+    let s2 = "thing";
+    str::as_c_str(s0) {|p0|
+        str::as_c_str(s1) {|p1|
+            str::as_c_str(s2) {|p2|
+                let v = [p0, p1, p2, null()];
+                vec::as_buf(v) {|vp|
+                    assert buf_len(vp) == 3u;
+                }
+            }
+        }
+    }
 }
