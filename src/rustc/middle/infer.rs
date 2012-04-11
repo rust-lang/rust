@@ -201,41 +201,11 @@ impl of st for ty::region {
     }
 }
 
-// Most of these methods, like tys() and so forth, take two parameters
-// a and b and they are tasked with "ensuring that a is a subtype of
-// b".  They return success or failure.  They make changes in-place to
-// the variable bindings: these changes are recorded in the `bindings`
-// array, which then allows the changes to be rolled back if needed.
-//
-// The merge() and merge_bnds() methods are somewhat different in that
-// they compute a new type range for a variable (generally a subset of
-// the old range).  They therefore return a result.
-impl unify_methods for infer_ctxt {
-    fn uok() -> ures {
-        ok(())
-    }
+fn uok() -> ures {
+    ok(())
+}
 
-    fn uerr(e: ty::type_err) -> ures {
-        #debug["Unification error: %?", e];
-        err(e)
-    }
-
-    fn set<V:copy vid, T:copy to_str>(
-        vb: vals_and_bindings<V, T>, vid: V,
-        +new_v: var_value<V, T>) {
-
-        let old_v = vb.vals.get(vid.to_uint());
-        vec::push(vb.bindings, (vid, old_v));
-        vb.vals.insert(vid.to_uint(), new_v);
-
-        #debug["Updating variable %s from %s to %s",
-               vid.to_str(), old_v.to_str(self), new_v.to_str(self)];
-    }
-
-    fn set_ty(vid: ty_vid, +new_v: var_value<ty_vid, ty::t>) {
-        self.set(self.vb, vid, new_v);
-    }
-
+impl methods for infer_ctxt {
     fn commit<T,E>(f: fn() -> result<T,E>) -> result<T,E> {
 
         assert self.vb.bindings.len() == 0u;
@@ -275,6 +245,21 @@ impl unify_methods for infer_ctxt {
           }
         }
         ret r;
+    }
+}
+
+impl unify_methods for infer_ctxt {
+
+    fn set<V:copy vid, T:copy to_str>(
+        vb: vals_and_bindings<V, T>, vid: V,
+        +new_v: var_value<V, T>) {
+
+        let old_v = vb.vals.get(vid.to_uint());
+        vec::push(vb.bindings, (vid, old_v));
+        vb.vals.insert(vid.to_uint(), new_v);
+
+        #debug["Updating variable %s from %s to %s",
+               vid.to_str(), old_v.to_str(self), new_v.to_str(self)];
     }
 
     fn get<V:copy vid, T:copy>(
@@ -397,7 +382,7 @@ impl unify_methods for infer_ctxt {
             // be relatable:
             self.bnds(bnds.lb, bnds.ub).then {||
                 self.set(vb, v_id, bounded(bnds));
-                self.uok()
+                uok()
             }
         }}}}}
     }
@@ -414,7 +399,7 @@ impl unify_methods for infer_ctxt {
                a_id.to_str(), a_bounds.to_str(self),
                b_id.to_str(), b_bounds.to_str(self)];
 
-        if a_id == b_id { ret self.uok(); }
+        if a_id == b_id { ret uok(); }
 
         // If both A's UB and B's LB have already been bound to types,
         // see if we can make those types subtypes.
@@ -437,7 +422,7 @@ impl unify_methods for infer_ctxt {
         // A remains a subtype of B.  Actually, there are other options,
         // but that's the route we choose to take.
         self.set_var_to_merged_bounds(vb, a_id, a_bounds, b_bounds).then {||
-            self.uok()
+            uok()
         }
     }
 
@@ -470,7 +455,7 @@ impl unify_methods for infer_ctxt {
         actual_constr: @ty::type_constr) -> ures {
 
         let err_res =
-            self.uerr(ty::terr_constr_mismatch(expected, actual_constr));
+            err(ty::terr_constr_mismatch(expected, actual_constr));
 
         if expected.node.id != actual_constr.node.id { ret err_res; }
         let expected_arg_len = vec::len(expected.node.args);
@@ -505,7 +490,7 @@ impl unify_methods for infer_ctxt {
             }
             i += 1u;
         }
-        ret self.uok();
+        ret uok();
     }
 
     fn bnds<T:copy to_str st>(
@@ -517,7 +502,7 @@ impl unify_methods for infer_ctxt {
               (none, none) |
               (some(_), none) |
               (none, some(_)) {
-                self.uok()
+                uok()
               }
               (some(t_a), some(t_b)) {
                 t_a.sub(self, t_b)
@@ -534,7 +519,7 @@ impl unify_methods for infer_ctxt {
                 self.constrs(a, b)
             }
         } else {
-            self.uerr(ty::terr_constr_len(bs.len(), as.len()))
+            err(ty::terr_constr_len(bs.len(), as.len()))
         }
     }
 
@@ -689,32 +674,102 @@ impl resolve_methods for infer_ctxt {
 }
 
 // ______________________________________________________________________
+// Type assignment
+//
+// True if rvalues of type `a` can be assigned to lvalues of type `b`.
+
+impl assignment for infer_ctxt {
+    fn assign_tys(a: ty::t, b: ty::t,
+                  encl_blk_id: ast::node_id) -> ures {
+
+        #debug["assign_tys(%s, %s)", a.to_str(self), b.to_str(self)];
+        let _r = indenter();
+
+        alt (ty::get(a).struct, ty::get(b).struct) {
+          (ty::ty_bot, _) {
+            uok()
+          }
+
+          (ty::ty_var(a_id), ty::ty_var(b_id)) {
+            let {root:_, bounds:a_bounds} = self.get(self.vb, a_id);
+            let {root:_, bounds:b_bounds} = self.get(self.vb, b_id);
+            self.assign_vars_or_sub(a, b, a_bounds, b_bounds, encl_blk_id)
+          }
+
+          (ty::ty_var(a_id), _) {
+            let {root:_, bounds:a_bounds} = self.get(self.vb, a_id);
+            let b_bounds = {lb: some(b), ub: none};
+            self.assign_vars_or_sub(a, b, a_bounds, b_bounds, encl_blk_id)
+          }
+
+          (_, ty::ty_var(b_id)) {
+            let a_bounds = {lb: none, ub: some(a)};
+            let {root:_, bounds: b_bounds} = self.get(self.vb, b_id);
+            self.assign_vars_or_sub(a, b, a_bounds, b_bounds, encl_blk_id)
+          }
+
+          (ty::ty_box(a_mt), ty::ty_rptr(_, _)) |
+          (ty::ty_uniq(a_mt), ty::ty_rptr(_, _)) {
+            let a_r = ty::re_scope(encl_blk_id);
+            let a_ty = ty::mk_rptr(self.tcx, a_r, a_mt);
+            self.sub_tys(a_ty, b).to_ures()
+          }
+
+          _ {
+            self.sub_tys(a, b).to_ures()
+          }
+        }
+    }
+
+    fn assign_tys_or_sub(a: ty::t, b: ty::t,
+                         a_b: ty::t, b_b: ty::t,
+                         encl_blk_id: ast::node_id) -> ures {
+        self.try {||
+            self.assign_tys(a_b, b_b, encl_blk_id)
+        }.chain_err {|_e|
+            self.sub_tys(a, b)
+        }
+    }
+
+    fn assign_vars_or_sub(a: ty::t, b: ty::t,
+                          a_bounds: bounds<ty::t>, b_bounds: bounds<ty::t>,
+                          encl_blk_id: ast::node_id) -> ures {
+
+        alt (a_bounds.ub, b_bounds.lb) {
+          (some(a_ub), some(b_lb)) {
+            self.assign_tys_or_sub(a, b, a_ub, b_lb, encl_blk_id)
+          }
+          _ {
+            self.sub_tys(a, b).to_ures()
+          }
+        }
+    }
+}
+
+// ______________________________________________________________________
 // Type combining
 //
-// There are two type combiners, lub and gub.  The first computes the
-// Least Upper Bound of two types `a` and `b`---that is, a mutual
+// There are three type combiners, sub, lub, and gub.  `sub` is a bit
+// different from the other two: it takes two types and makes the first
+// a subtype of the other, or fails if this cannot be done.  It does
+// return a new type but its return value is meaningless---it is only
+// there to allow for greater code reuse.
+//
+// `lub` and `glb` compute the Least Upper Bound and Greatest Lower
+// Bound respectively of two types `a` and `b`.  The LUB is a mutual
 // supertype type `c` where `a <: c` and `b <: c`.  As the name
-// implies, it tries to pick the most precise `c` possible.  `glb`
-// computes the greatest lower bound---that is, it computes a mutual
-// subtype, aiming for the most general such type possible.  Both
-// computations may fail.
+// implies, it tries to pick the most precise `c` possible.  The GLB
+// is a mutual subtype, aiming for the most general such type
+// possible.  Both computations may fail.
 //
 // There is a lot of common code for these operations, which is
-// abstracted out into functions named `c_X()` which take a combiner
+// abstracted out into functions named `super_X()` which take a combiner
 // instance as the first parameter.  This would be better implemented
 // using traits.
 //
-// The `c_X()` top-level items work for *both LUB and GLB*: any
-// operation which varies between LUB and GLB will be dynamically
-// dispatched using a `self.Y()` operation.
-//
-// In principle, the subtyping relation computed above could be built
-// on the combine framework---this would result in less code but would
-// be less efficient.  There is a significant performance gain from
-// not recreating types unless we need to.  Even so, we could write
-// the routines with a few more generics in there to mask type
-// construction (which is, after all, the significant expense) but I
-// haven't gotten around to it.
+// The `super_X()` top-level items work for *sub, lub, and glb*: any
+// operation which varies will be dynamically dispatched using a
+// `self.Y()` operation.
 
 type cres<T> = result<T,ty::type_err>;
 
@@ -736,7 +791,7 @@ iface combine {
     fn regions(a: ty::region, b: ty::region) -> cres<ty::region>;
 }
 
-enum sub = infer_ctxt;  // "less than" == "subtype" or "subregion"
+enum sub = infer_ctxt;  // "subtype", "subregion" etc
 enum lub = infer_ctxt;  // "least upper bound" (common supertype)
 enum glb = infer_ctxt;  // "greatest lower bound" (common subtype)
 
@@ -1445,7 +1500,8 @@ impl of combine for glb {
 // ______________________________________________________________________
 // Lattice operations on variables
 //
-// this is common code used by both LUB and GLB
+// This is common code used by both LUB and GLB to compute the LUB/GLB
+// for pairs of variables or for variables and values.
 
 iface lattice_ops {
     fn bnd<T:copy>(b: bounds<T>) -> option<T>;
