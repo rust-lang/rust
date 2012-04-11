@@ -1,3 +1,5 @@
+// xfail-test
+
 fn foo(x: &uint) -> &uint { x }
 
 fn main() {

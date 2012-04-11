@@ -934,10 +934,7 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span, impl_m: ty::method,
         });
         let mut if_fty = ty::mk_fn(tcx, if_m.fty);
         if_fty = ty::substitute_type_params(tcx, substs, if_fty);
-        if ty::type_has_vars(if_fty) {
-            if_fty = fixup_self_in_method_ty(tcx, if_fty, substs,
-                                             self_full(self_ty, impl_tps));
-        }
+        if_fty = fixup_self_full(tcx, if_fty, substs, self_ty, impl_tps);
         require_same_types(
             tcx, sp, impl_fty, if_fty,
             {|| "method `" + if_m.ident +
@@ -946,61 +943,84 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span, impl_m: ty::method,
     }
 }
 
-enum self_subst { self_param(ty::t, @fn_ctxt, span), self_full(ty::t, uint) }
+// Mangles an iface method ty to make its self type conform to the self type
+// of a specific impl or bounded type parameter. This is rather involved
+// because the type parameters of ifaces and impls are not required to line up
+// (an impl can have less or more parameters than the iface it implements), so
+// some mangling of the substituted types is required.
+fn fixup_self_full(cx: ty::ctxt, mty: ty::t, m_substs: [ty::t],
+                   selfty: ty::t, impl_n_tps: uint) -> ty::t {
+
+    if !ty::type_has_vars(mty) { ret mty; }
+
+    ty::fold_ty(cx, mty) {|t|
+        alt ty::get(t).struct {
+          ty::ty_self(tps) if vec::len(tps) == 0u {
+            selfty
+          }
+          ty::ty_self(tps) {
+            // Move the substs into the type param system of the
+            // context.
+            let mut substs = vec::map(tps) {|t|
+                let f = fixup_self_full(cx, t, m_substs, selfty, impl_n_tps);
+                ty::substitute_type_params(cx, m_substs, f)
+            };
+
+            // Add extra substs for impl type parameters.
+            while vec::len(substs) < impl_n_tps {
+                substs += [ty::mk_param(cx, vec::len(substs),
+                                        {crate: 0, node: 0})];
+            }
+
+            // And for method type parameters.
+            let method_n_tps =
+                (vec::len(m_substs) - vec::len(tps)) as int;
+            if method_n_tps > 0 {
+                substs += vec::tailn(m_substs, vec::len(m_substs)
+                                     - (method_n_tps as uint));
+            }
+
+            // And then instantiate the self type using all those.
+            ty::substitute_type_params(cx, substs, selfty)
+          }
+          _ {
+              t
+          }
+        }
+    }
+}
 
 // Mangles an iface method ty to make its self type conform to the self type
 // of a specific impl or bounded type parameter. This is rather involved
 // because the type parameters of ifaces and impls are not required to line up
 // (an impl can have less or more parameters than the iface it implements), so
 // some mangling of the substituted types is required.
-fn fixup_self_in_method_ty(cx: ty::ctxt, mty: ty::t, m_substs: [ty::t],
-                           self: self_subst) -> ty::t {
-    if ty::type_has_vars(mty) {
-        ty::fold_ty(cx, mty) {|t|
-            alt ty::get(t).struct {
-              ty::ty_self(tps) {
-                if vec::len(tps) > 0u {
-                    // Move the substs into the type param system of the
-                    // context.
-                    let mut substs = vec::map(tps, {|t|
-                        let f = fixup_self_in_method_ty(cx, t, m_substs,
-                                                        self);
-                        ty::substitute_type_params(cx, m_substs, f)
-                    });
-                    alt self {
-                      self_param(t, fcx, sp) {
-                        // Simply ensure that the type parameters for the self
-                        // type match the context.
-                        vec::iter2(substs, m_substs) {|s, ms|
-                            demand::simple(fcx, sp, s, ms);
-                        }
-                        t
-                      }
-                      self_full(selfty, impl_n_tps) {
-                        // Add extra substs for impl type parameters.
-                        while vec::len(substs) < impl_n_tps {
-                            substs += [ty::mk_param(cx, vec::len(substs),
-                                                    {crate: 0, node: 0})];
-                        }
-                        // And for method type parameters.
-                        let method_n_tps =
-                            (vec::len(m_substs) - vec::len(tps)) as int;
-                        if method_n_tps > 0 {
-                            substs += vec::tailn(m_substs, vec::len(m_substs)
-                                                  - (method_n_tps as uint));
-                        }
-                        // And then instantiate the self type using all those.
-                        ty::substitute_type_params(cx, substs, selfty)
-                      }
-                    }
-                } else {
-                    alt self { self_param(t, _, _) | self_full(t, _) { t } }
-                }
-              }
-              _ { t }
+fn fixup_self_param(fcx: @fn_ctxt, mty: ty::t, m_substs: [ty::t],
+                    selfty: ty::t, sp: span) -> ty::t {
+    if !ty::type_has_vars(mty) { ret mty; }
+
+    let tcx = fcx.ccx.tcx;
+    ty::fold_ty(tcx, mty) {|t|
+        alt ty::get(t).struct {
+          ty::ty_self(tps) if vec::len(tps) == 0u { selfty }
+          ty::ty_self(tps) {
+            // Move the substs into the type param system of the
+            // context.
+            let mut substs = vec::map(tps) {|t|
+                let f = fixup_self_param(fcx, t, m_substs, selfty, sp);
+                ty::substitute_type_params(tcx, m_substs, f)
+            };
+
+            // Simply ensure that the type parameters for the self
+            // type match the context.
+            vec::iter2(substs, m_substs) {|s, ms|
+                demand::simple(fcx, sp, s, ms);
             }
+            selfty
+          }
+          _ { t }
         }
-    } else { mty }
+    }
 }
 
 // Replaces all occurrences of the `self` region with `with_region`.  Note
@@ -2190,6 +2210,10 @@ fn impl_self_ty(tcx: ty::ctxt, did: ast::def_id) -> {n_tps: uint, ty: ty::t} {
     }
 }
 
+type self_subst = {selfty: ty::t,
+                   fcx: @fn_ctxt,
+                   sp: span};
+
 /*
   Takes arguments describing a method, and returns either its origin,
   or <none> if it's unbound.
@@ -2249,8 +2273,8 @@ fn lookup_method(fcx: @fn_ctxt, expr: @ast::expr, node_id: ast::node_id,
         }
         if has_self && !option::is_none(self_sub) {
             let fty = fcx.node_ty(node_id);
-            let fty = fixup_self_in_method_ty(
-                tcx, fty, substs, option::get(self_sub));
+            let fty = fixup_self_param(
+                fcx, fty, substs, option::get(self_sub), expr.span);
             fcx.write_ty(node_id, fty);
         }
         if ty::type_has_rptrs(ty::ty_fn_ret(fty)) {
@@ -2273,8 +2297,11 @@ enum method_kind {
 fn lookup_method_inner_(tcx: ty::ctxt, ms: [ty::method],
      tps: [ty::t], parent: method_kind, name: ast::ident, sp: span,
                         include_private: bool)
-    -> option<{method_ty: ty::t, n_tps: uint, substs: [ty::t],
-        origin: method_origin, self_sub: option<self_subst>}> {
+    -> option<{method_ty: ty::t,
+               n_tps: uint,
+               substs: [ty::t],
+               origin: method_origin,
+               self_sub: option<ty::t>}> {
     let mut i = 0u;
     for ms.each {|m|
        if m.ident == name {
@@ -2318,9 +2345,11 @@ fn lookup_method_inner_(tcx: ty::ctxt, ms: [ty::method],
 fn lookup_method_inner(fcx: @fn_ctxt, expr: @ast::expr,
                        name: ast::ident, ty: ty::t,
                        include_private: bool)
-    -> option<{method_ty: ty::t, n_tps: uint, substs: [ty::t],
-                  origin: method_origin,
-                  self_sub: option<self_subst>}> {
+    -> option<{method_ty: ty::t,
+               n_tps: uint,
+               substs: [ty::t],
+               origin: method_origin,
+               self_sub: option<ty::t>}> {
     let tcx = fcx.ccx.tcx;
 
     #debug["lookup_method_inner: expr=%s name=%s ty=%s",
@@ -2345,7 +2374,7 @@ fn lookup_method_inner(fcx: @fn_ctxt, expr: @ast::expr,
                               n_tps: vec::len(*m.tps),
                               substs: tps,
                               origin: method_param(iid, pos, n, bound_n),
-                              self_sub: some(self_param(ty, fcx, expr.span))
+                              self_sub: some(ty)
                              });
                   }
                   _ {}
