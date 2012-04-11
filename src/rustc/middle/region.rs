@@ -168,9 +168,10 @@ type region_map = {
     ast_type_to_inferred_region: hashmap<ast::node_id,ty::region>,
     /*
      * Mapping from an address-of operator or alt expression to its containing
-     * block. This is used as the region if the operand is an rvalue.
+     * region (usually ty::region_scope(block). This is used as the region if
+     * the operand is an rvalue.
      */
-    rvalue_to_block: hashmap<ast::node_id,ast::node_id>
+    rvalue_to_region: hashmap<ast::node_id,ty::region>
 };
 
 type region_scope = @{
@@ -366,41 +367,26 @@ fn get_inferred_region(cx: ctxt, sp: syntax::codemap::span) -> ty::region {
     }
 }
 
-fn resolve_region_binding(cx: ctxt, span: span, region: ast::region) {
-
-    let id = region.id;
-    let rm = cx.region_map;
+fn resolve_region_binding(cx: ctxt, span: span,
+                          region: ast::region) -> ty::region {
     alt region.node {
-      ast::re_inferred {
-        // option::may(cx.scope.resolve_anon()) {|r|
-        //     rm.ast_type_to_region.insert(id, r);
-        // }
-      }
-
-      ast::re_static { /* fallthrough */ }
-
+      ast::re_inferred { ty::re_default }
+      ast::re_static { ty::re_static }
       ast::re_named(ident) {
         alt cx.scope.resolve_ident(ident) {
-          some(r) {
-            rm.ast_type_to_region.insert(id, r);
-          }
-
+          some(r) { r }
           none {
-            cx.sess.span_err(
+            cx.sess.span_fatal(
                 span,
                 #fmt["the region `%s` is not declared", ident]);
           }
         }
       }
-
       ast::re_self {
         alt cx.scope.resolve_self() {
-          some(r) {
-            rm.ast_type_to_region.insert(id, r);
-          }
-
+          some(r) { r }
           none {
-            cx.sess.span_err(
+            cx.sess.span_fatal(
                 span,
                 "the `self` region is not allowed here");
           }
@@ -416,7 +402,8 @@ fn resolve_ty(ty: @ast::ty, cx: ctxt, visitor: visit::vt<ctxt>) {
     alt ty.node {
       ast::ty_vstore(_, ast::vstore_slice(r)) |
       ast::ty_rptr(r, _) {
-        resolve_region_binding(cx, ty.span, r);
+        let region = resolve_region_binding(cx, ty.span, r);
+        cx.region_map.ast_type_to_region.insert(ty.id, region);
       }
       _ { /* nothing to do */ }
     }
@@ -504,12 +491,17 @@ fn resolve_expr(expr: @ast::expr, cx: ctxt, visitor: visit::vt<ctxt>) {
                           in_alt: false with cx};
             visit::visit_expr(expr, new_cx, visitor);
         }
+        ast::expr_vstore(e, ast::vstore_slice(r)) {
+          let region = resolve_region_binding(cx, e.span, r);
+          cx.region_map.rvalue_to_region.insert(e.id, region);
+        }
         ast::expr_addr_of(_, subexpr) | ast::expr_alt(subexpr, _, _) {
             // Record the block that this expression appears in, in case the
             // operand is an rvalue.
             alt cx.parent {
                 pa_block(blk_id) {
-                    cx.region_map.rvalue_to_block.insert(subexpr.id, blk_id);
+                  let region = ty::re_scope(blk_id);
+                  cx.region_map.rvalue_to_region.insert(subexpr.id, region);
                 }
                 _ { cx.sess.span_bug(expr.span, "expr outside of block?!"); }
             }
@@ -522,7 +514,8 @@ fn resolve_expr(expr: @ast::expr, cx: ctxt, visitor: visit::vt<ctxt>) {
 fn resolve_local(local: @ast::local, cx: ctxt, visitor: visit::vt<ctxt>) {
     alt cx.parent {
         pa_block(blk_id) {
-            cx.region_map.rvalue_to_block.insert(local.node.id, blk_id);
+          let region = ty::re_scope(blk_id);
+          cx.region_map.rvalue_to_region.insert(local.node.id, region);
         }
         _ { cx.sess.span_bug(local.span, "local outside of block?!"); }
     }
@@ -566,7 +559,7 @@ fn resolve_crate(sess: session, def_map: resolve::def_map, crate: @ast::crate)
                                   local_blocks: map::int_hash(),
                                   ast_type_to_inferred_region:
                                     map::int_hash(),
-                                  rvalue_to_block: map::int_hash()},
+                                  rvalue_to_region: map::int_hash()},
                     scope: root_scope(0),
                     mut queued_locals: [],
                     parent: pa_crate,

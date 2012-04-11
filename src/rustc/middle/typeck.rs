@@ -276,49 +276,39 @@ fn type_is_c_like_enum(fcx: @fn_ctxt, sp: span, typ: ty::t) -> bool {
 
 enum mode { m_collect, m_check, m_check_tyvar(@fn_ctxt), }
 
-fn ast_region_to_region(tcx: ty::ctxt,
-                        region: ast::region) -> ty::region {
-    alt region.node {
-      ast::re_inferred {
-        // this must be replaced later by a fixup_regions() pass
-        ty::re_default
+fn ast_ty_vstore_to_vstore(tcx: ty::ctxt, ty: @ast::ty,
+                           v: ast::vstore) -> ty::vstore {
+    alt v {
+      ast::vstore_fixed(none) {
+        tcx.sess.span_bug(ty.span,
+                          "implied fixed length in ast_ty_vstore_to_vstore");
       }
-      ast::re_self | ast::re_named(_) {
-        tcx.region_map.ast_type_to_region.get(region.id)
+      ast::vstore_fixed(some(u)) {
+        ty::vstore_fixed(u)
       }
-      ast::re_static {
-        ty::re_static
+      ast::vstore_uniq { ty::vstore_uniq }
+      ast::vstore_box { ty::vstore_box }
+      ast::vstore_slice(r) {
+        ty::vstore_slice(tcx.region_map.ast_type_to_region.get(ty.id))
       }
     }
 }
 
-fn ast_vstore_to_vstore(tcx: ty::ctxt, span: span, n: option<uint>,
-                        v: ast::vstore) -> ty::vstore {
+fn ast_expr_vstore_to_vstore(fcx: @fn_ctxt, e: @ast::expr, n: uint,
+                             v: ast::vstore) -> ty::vstore {
     alt v {
-      ast::vstore_fixed(none) {
-        alt n {
-          some(n) { ty::vstore_fixed(n) }
-          none {
-            tcx.sess.bug("implied fixed length in ast_vstore_to_vstore with \
-                          no default length")
-          }
-        }
-      }
+      ast::vstore_fixed(none) { ty::vstore_fixed(n) }
       ast::vstore_fixed(some(u)) {
-        alt n {
-          some(n) if n != u {
-            tcx.sess.span_err(span,
-                              #fmt("fixed-size sequence mismatch: %u vs. %u",
-                                   u, n));
-          }
-          _ { }
+        if n != u {
+            let s = #fmt("fixed-size sequence mismatch: %u vs. %u",u, n);
+            fcx.ccx.tcx.sess.span_err(e.span,s);
         }
         ty::vstore_fixed(u)
       }
       ast::vstore_uniq { ty::vstore_uniq }
       ast::vstore_box { ty::vstore_box }
-      ast::vstore_slice(region) {
-        ty::vstore_slice(ast_region_to_region(tcx, region))
+      ast::vstore_slice(r) {
+        ty::vstore_slice(region_of(fcx, e))
       }
     }
 }
@@ -408,7 +398,7 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
             ty::mk_ptr(tcx, ast_mt_to_mt(tcx, mode, mt))
           }
           ast::ty_rptr(region, mt) {
-            let region = ast_region_to_region(tcx, region);
+            let region = tcx.region_map.ast_type_to_region.get(ast_ty.id);
             ty::mk_rptr(tcx, region, ast_mt_to_mt(tcx, mode, mt))
           }
           ast::ty_tup(fields) {
@@ -473,8 +463,8 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
             }
           }
           ast::ty_vstore(t, vst) {
-            let vst = ast_vstore_to_vstore(tcx, ast_ty.span, none, vst);
-            alt ty::get(do_ast_ty_to_ty(tcx, mode, t)).struct {
+            let vst = ast_ty_vstore_to_vstore(tcx, ast_ty, vst);
+            let ty = alt ty::get(do_ast_ty_to_ty(tcx, mode, t)).struct {
               ty::ty_vec(mt) { ty::mk_evec(tcx, mt, vst) }
               ty::ty_str { ty::mk_estr(tcx, vst) }
               _ {
@@ -482,7 +472,8 @@ fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
                                     "found sequence storage modifier \
                                      on non-sequence type");
               }
-            }
+            };
+            fixup_regions_to_block(tcx, ty, ast_ty)
           }
           ast::ty_constr(t, cs) {
             let mut out_cs = [];
@@ -2512,8 +2503,7 @@ fn region_of(fcx: @fn_ctxt, expr: @ast::expr) -> ty::region {
             }
         }
         _ {
-            let blk_id = fcx.ccx.tcx.region_map.rvalue_to_block.get(expr.id);
-            ret ty::re_scope(blk_id);
+            ret fcx.ccx.tcx.region_map.rvalue_to_region.get(expr.id);
         }
     }
 }
@@ -2849,27 +2839,32 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
     alt expr.node {
 
       ast::expr_vstore(ev, vst) {
-        alt ev.node {
+        let mut typ = alt ev.node {
           ast::expr_lit(@{node: ast::lit_str(s), span:_}) {
-            let tt = ast_vstore_to_vstore(tcx, expr.span,
-                                          some(str::len(s)), vst);
-            let typ = ty::mk_estr(tcx, tt);
-            fcx.write_ty(ev.id, typ);
-            fcx.write_ty(id, typ);
+            let tt = ast_expr_vstore_to_vstore(fcx, ev,
+                                               str::len(s), vst);
+            ty::mk_estr(tcx, tt)
           }
           ast::expr_vec(args, mutbl) {
-            let tt = ast_vstore_to_vstore(tcx, expr.span,
-                                          some(vec::len(args)), vst);
+            let tt = ast_expr_vstore_to_vstore(fcx, ev,
+                                               vec::len(args), vst);
             let t: ty::t = next_ty_var(fcx);
             for args.each {|e| bot |= check_expr_with(fcx, e, t); }
-            let typ = ty::mk_evec(tcx, {ty: t, mutbl: mutbl}, tt);
-            fcx.write_ty(ev.id, typ);
-            fcx.write_ty(id, typ);
+            ty::mk_evec(tcx, {ty: t, mutbl: mutbl}, tt)
           }
           _ {
-            tcx.sess.span_err(expr.span, "vstore modifier on non-sequence");
+            tcx.sess.span_bug(expr.span, "vstore modifier on non-sequence")
           }
+        };
+        alt vst {
+          ast::vstore_slice(_) {
+            let region = fcx.ccx.tcx.region_map.rvalue_to_region.get(ev.id);
+            typ = replace_default_region(tcx, region, typ);
+          }
+          _ { }
         }
+        fcx.write_ty(ev.id, typ);
+        fcx.write_ty(id, typ);
       }
 
       ast::expr_lit(lit) {
@@ -3075,7 +3070,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         let pattern_ty = next_ty_var(fcx);
         bot = check_expr_with(fcx, discrim, pattern_ty);
 
-        let parent_block = tcx.region_map.rvalue_to_block.get(discrim.id);
+        let parent_region = tcx.region_map.rvalue_to_region.get(discrim.id);
 
         // Typecheck the patterns first, so that we get types for all the
         // bindings.
@@ -3084,9 +3079,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
             let pcx = {
                 fcx: fcx,
                 map: pat_util::pat_id_map(tcx.def_map, arm.pats[0]),
-                alt_region: ty::re_scope(parent_block),
+                alt_region: parent_region,
                 block_region: ty::re_scope(arm.body.node.id),
-                pat_region: ty::re_scope(parent_block)
+                pat_region: parent_region
             };
 
             for arm.pats.each {|p| check_pat(pcx, p, pattern_ty);}
@@ -3529,8 +3524,7 @@ fn check_decl_local(fcx: @fn_ctxt, local: @ast::local) -> bool {
       _ {/* fall through */ }
     }
 
-    let block_id = fcx.ccx.tcx.region_map.rvalue_to_block.get(local.node.id);
-    let region = ty::re_scope(block_id);
+    let region = fcx.ccx.tcx.region_map.rvalue_to_region.get(local.node.id);
     let pcx = {
         fcx: fcx,
         map: pat_util::pat_id_map(fcx.ccx.tcx.def_map, local.node.pat),

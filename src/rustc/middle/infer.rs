@@ -908,6 +908,15 @@ fn super_tys<C:combine>(
         }
       }
 
+      (ty::ty_evec(a_mt, ty::vstore_slice(a_r)),
+       ty::ty_evec(b_mt, ty::vstore_slice(b_r))) {
+        self.contraregions(a_r, b_r).chain {|r|
+            self.mts(a_mt, b_mt).chain {|mt|
+                ok(ty::mk_evec(tcx, mt, ty::vstore_slice(r)))
+            }
+        }
+      }
+
       (ty::ty_res(a_id, a_t, a_tps), ty::ty_res(b_id, b_t, b_tps))
       if a_id == b_id {
         self.tys(a_t, b_t).chain {|t|
