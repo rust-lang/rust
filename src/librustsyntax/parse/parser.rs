@@ -392,7 +392,7 @@ fn parse_ty_postfix(orig_t: ast::ty_, p: parser, colons_before_params: bool,
 
     if p.token == token::BINOP(token::SLASH) {
         let orig_hi = p.last_span.hi;
-        alt parse_maybe_vstore(p) {
+        alt maybe_parse_vstore(p) {
           none { }
           some(v) {
             let t = ast::ty_vstore(mk_ty(p, orig_t, lo, orig_hi), v);
@@ -693,7 +693,7 @@ fn have_dollar(p: parser) -> option<ast::mac_> {
     }
 }
 
-fn parse_maybe_vstore(p: parser) -> option<ast::vstore> {
+fn maybe_parse_vstore(p: parser) -> option<ast::vstore> {
     if p.token == token::BINOP(token::SLASH) {
         p.bump();
         alt p.token {
@@ -1060,7 +1060,7 @@ fn parse_bottom_expr(p: parser) -> pexpr {
     alt ex {
       ast::expr_lit(@{node: ast::lit_str(_), span: _}) |
       ast::expr_vec(_, _)  {
-        alt parse_maybe_vstore(p) {
+        alt maybe_parse_vstore(p) {
           none { }
           some(v) {
             hi = p.span.hi;
