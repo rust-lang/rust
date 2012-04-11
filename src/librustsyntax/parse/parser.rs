@@ -706,7 +706,7 @@ fn maybe_parse_vstore(p: parser) -> option<ast::vstore> {
           token::UNDERSCORE {
             p.bump(); some(ast::vstore_fixed(none))
           }
-          token::LIT_INT(i, ast::ty_i) if i >= 0 {
+          token::LIT_INT(i, ast::ty_i) if i >= 0i64 {
             p.bump(); some(ast::vstore_fixed(some(i as uint)))
           }
           token::BINOP(token::AND) {
