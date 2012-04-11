@@ -50,7 +50,7 @@ fn fold_crate(
     {
         topmod: {
             item: {
-                name: option::get_or_default(attrs.name, doc.topmod.name())
+                name: option::get_default(attrs.name, doc.topmod.name())
                 with doc.topmod.item
             }
             with doc.topmod

@@ -2017,7 +2017,7 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, real_substs: [ty::t],
             // ctors don't have attrs, at least not right now
             let tp_tys: [ty::t] = ty::ty_params_to_tys(ccx.tcx, tps);
             trans_class_ctor(ccx, pt, ctor.node.dec, ctor.node.body, lldecl,
-                 option::get_or_default(psubsts,
+                 option::get_default(psubsts,
                    {tys:tp_tys, vtables: none, bounds: @[]}),
               fn_id.node, parent_id, ctor.span);
           }

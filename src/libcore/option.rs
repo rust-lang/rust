@@ -52,7 +52,7 @@ pure fn is_some<T>(opt: option<T>) -> bool {
     !is_none(opt)
 }
 
-pure fn get_or_default<T: copy>(opt: option<T>, def: T) -> T {
+pure fn get_default<T: copy>(opt: option<T>, def: T) -> T {
     #[doc = "Returns the contained value or a default"];
 
     alt opt { some(x) { x } none { def } }
@@ -94,7 +94,7 @@ impl extensions<T:copy> for option<T> {
     "]
     fn chain<U>(f: fn(T) -> option<U>) -> option<U> { chain(self, f) }
     #[doc = "Returns the contained value or a default"]
-    fn get_or_default(def: T) -> T { get_or_default(self, def) }
+    fn get_default(def: T) -> T { get_default(self, def) }
     #[doc = "Applies a function to the contained value or returns a default"]
     fn map_default<U: copy>(def: U, f: fn(T) -> U) -> U
         { map_default(self, def, f) }

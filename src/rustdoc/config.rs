@@ -125,7 +125,7 @@ fn config_from_opts(
     let result = result::chain(result) {|config|
         let output_dir = getopts::opt_maybe_str(match, opt_output_dir());
         result::ok({
-            output_dir: option::get_or_default(output_dir, config.output_dir)
+            output_dir: option::get_default(output_dir, config.output_dir)
             with config
         })
     };
