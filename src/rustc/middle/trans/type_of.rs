@@ -72,7 +72,7 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
       }
 
       ty::ty_estr(ty::vstore_fixed(n)) {
-        T_array(T_i8(), n)
+        T_array(T_i8(), n + 1u /* +1 for trailing null */)
       }
 
       ty::ty_evec(mt, ty::vstore_fixed(n)) {

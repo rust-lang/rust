@@ -148,28 +148,30 @@ fn trans_vstore(bcx: block, e: @ast::expr,
 fn trans_estr(bcx: block, s: str, vstore: ast::vstore,
               sp: span, dest: dest) -> block {
     let _icx = bcx.insn_ctxt("tvec::trans_estr");
-    alt vstore {
+    let ccx = bcx.ccx();
+
+    let c = alt vstore {
       ast::vstore_fixed(_)
       {
-        let c = str::as_bytes(s) {|bytes|
-            // NB: The byte vector we have here includes the trailing \0,
-            // but we are doing a fixed-size str, meaning we _exclude_
-            // the trailing \0. And we don't let LLVM null-terminate
-            // either.
-            unsafe {
-                lib::llvm::llvm::LLVMConstString(
-                    unsafe::reinterpret_cast(vec::unsafe::to_ptr(bytes)),
-                    (bytes.len() - 1u) as libc::c_uint, lib::llvm::True)
-            }
-        };
-
-        #debug("trans_estr: src %s",val_str(bcx.ccx().tn, c));
-        ret base::store_in_dest(bcx, c, dest);
+        // "hello"/_  =>  [i8 x 6] in llvm
+        #debug("trans_estr: fixed: %s", s);
+        C_postr(s)
       }
+
+      ast::vstore_slice(_) {
+        // "hello"  =>  (*i8,uint) in llvm
+        #debug("trans_estr: slice '%s'", s);
+        let cs = PointerCast(bcx, C_cstr(ccx, s), T_ptr(T_i8()));
+        C_struct([cs, C_uint(ccx, str::len(s))])
+      }
+
       _ {
         bcx.ccx().sess.span_unimpl(sp, "unhandled tvec::trans_estr");
       }
-    }
+    };
+
+    #debug("trans_estr: type: %s", val_str(ccx.tn, c));
+    base::store_in_dest(bcx, c, dest)
 }
 
 fn trans_str(bcx: block, s: str, dest: dest) -> block {

@@ -118,7 +118,7 @@ export type_is_sequence;
 export type_is_signed;
 export type_is_structural;
 export type_is_copyable;
-export type_is_tup_like;
+export type_is_slice;
 export type_is_unique;
 export type_is_c_like_enum;
 export type_structurally_contains;
@@ -858,13 +858,6 @@ fn sequence_element_type(cx: ctxt, ty: t) -> t {
     }
 }
 
-pure fn type_is_tup_like(ty: t) -> bool {
-    alt get(ty).struct {
-      ty_rec(_) | ty_tup(_) { true }
-      _ { false }
-    }
-}
-
 fn get_element_type(ty: t, i: uint) -> t {
     alt get(ty).struct {
       ty_rec(flds) { ret flds[i].mt.ty; }
@@ -884,6 +877,13 @@ pure fn type_is_boxed(ty: t) -> bool {
     alt get(ty).struct {
       ty_box(_) | ty_opaque_box { true }
       _ { false }
+    }
+}
+
+pure fn type_is_slice(ty: t) -> bool {
+    alt get(ty).struct {
+      ty_evec(_, vstore_slice(_)) | ty_estr(vstore_slice(_)) { true }
+      _ { ret false; }
     }
 }
 
