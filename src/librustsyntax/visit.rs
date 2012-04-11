@@ -137,11 +137,12 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
             visit_method_helper(m, e, v)
         }
       }
-      item_class(tps, members, ctor) {
+      item_class(tps, ifaces, members, ctor) {
           v.visit_ty_params(tps, e, v);
           for members.each {|m|
              v.visit_class_item(m, e, v);
           }
+          for ifaces.each {|p| visit_path(p.path, e, v); }
           visit_class_ctor_helper(ctor, i.ident, tps,
                                   ast_util::local_def(i.id), e, v);
       }

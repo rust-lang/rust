@@ -530,7 +530,7 @@ fn resolve_item(item: @ast::item, cx: ctxt, visitor: visit::vt<ctxt>) {
             {parent: pa_fn_item(item.id),
              scope: cx.scope.binding_subscope(item.id)}
           }
-          ast::item_impl(_, _, _, _) | ast::item_class(_, _, _) {
+          ast::item_impl(_, _, _, _) | ast::item_class(_, _, _, _) {
             {parent: pa_item(item.id),
              scope: cx.scope.self_subscope(item.id)}
           }

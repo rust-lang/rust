@@ -391,7 +391,7 @@ fn resolve_names(e: @env, c: @ast::crate) {
     e.used_imports.track = true;
     let v =
         @{visit_native_item: visit_native_item_with_scope,
-          visit_item: bind visit_item_with_scope(e, _, _, _),
+          visit_item: bind walk_item(e, _, _, _),
           visit_block: visit_block_with_scope,
           visit_decl: visit_decl_with_scope,
           visit_arm: visit_arm_with_scope,
@@ -406,6 +406,24 @@ fn resolve_names(e: @env, c: @ast::crate) {
     visit::visit_crate(*c, top_scope(), visit::mk_vt(v));
     e.used_imports.track = false;
     e.sess.abort_if_errors();
+
+    fn walk_item(e: @env, i: @ast::item, sc: scopes, v: vt<scopes>) {
+        visit_item_with_scope(e, i, sc, v);
+        /*
+          Resolve the ifaces that a class implements; do nothing for
+          non-class items
+         */
+        alt i.node {
+           ast::item_class(_, ifaces, _, _) {
+             /* visit the iface paths... */
+             for ifaces.each {|p|
+               maybe_insert(e, p.id,
+                 lookup_path_strict(*e, sc, p.path.span, p.path.node,
+                                    ns_type))};
+           }
+           _ {}
+        }
+    }
 
     fn walk_expr(e: @env, exp: @ast::expr, sc: scopes, v: vt<scopes>) {
         visit::visit_expr(exp, sc, v);
@@ -517,7 +535,7 @@ fn visit_item_with_scope(e: @env, i: @ast::item, sc: scopes, v: vt<scopes>) {
             v.visit_ty(m.decl.output, msc, v);
         }
       }
-      ast::item_class(tps, members, ctor) {
+      ast::item_class(tps, ifaces, members, ctor) {
         visit::visit_ty_params(tps, sc, v);
         // Can maybe skip this now that we require self on class fields
         let class_scope = cons(scope_item(i), @sc);
@@ -993,7 +1011,7 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace,
               ast::item_native_mod(m) {
                 ret lookup_in_local_native_mod(e, it.id, sp, name, ns);
               }
-              ast::item_class(tps, members, ctor) {
+              ast::item_class(tps, _, members, ctor) {
                   if ns == ns_type {
                     ret lookup_in_ty_params(e, name, tps);
                   }
@@ -1278,7 +1296,7 @@ fn found_def_item(i: @ast::item, ns: namespace) -> option<def> {
           _ { }
         }
       }
-      ast::item_class(_, _, _) {
+      ast::item_class(_, _, _, _) {
           if ns == ns_type {
             ret some(ast::def_class(local_def(i.id)));
           }
@@ -1407,7 +1425,11 @@ fn list_search<T: copy, U: copy>(ls: list<T>, f: fn(T) -> option<U>)
 
 fn lookup_in_local_mod(e: env, node_id: node_id, sp: span, id: ident,
                        ns: namespace, dr: dir) -> option<def> {
-    let info = e.mod_map.get(node_id);
+    let info = alt e.mod_map.find(node_id) {
+            some(x) { x }
+            none { e.sess.span_bug(sp, #fmt("lookup_in_local_mod: \
+                     module %d not in mod_map", node_id)); }
+    };
     if dr == outside && !is_exported(e, id, info) {
         // if we're in a native mod, then dr==inside, so info.m is some _mod
         ret none; // name is not visible
@@ -1582,7 +1604,7 @@ fn index_mod(md: ast::_mod) -> mod_index {
                 variant_idx += 1u;
             }
           }
-          ast::item_class(tps, items, ctor) {
+          ast::item_class(tps, _, items, ctor) {
               // add the class name itself
               add_to_index(index, it.ident, mie_item(it));
               // add the constructor decl

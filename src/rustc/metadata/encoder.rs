@@ -151,7 +151,7 @@ fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
             encode_def_id(ebml_w, local_def(it.id));
             ebml_w.end_tag();
           }
-          item_class(tps,items,ctor) {
+          item_class(_, _, items, ctor) {
             add_to_index(ebml_w, path, index, it.ident);
             ebml_w.start_tag(tag_paths_data_item);
             encode_name(ebml_w, it.ident);
@@ -556,7 +556,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_enum_variant_info(ecx, ebml_w, item.id, variants,
                                  path, index, tps);
       }
-      item_class(tps,items,ctor) {
+      item_class(tps, _ifaces, items,ctor) {
         /* First, encode the fields and methods
            These come first because we need to write them to make
            the index, and the index needs to be in the item for the
@@ -573,7 +573,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_name(ebml_w, item.ident);
         encode_path(ebml_w, path, ast_map::path_name(item.ident));
-
+        /* FIXME: encode ifaces */
         /* Encode def_ids for each field and method
          for methods, write all the stuff get_iface_method
         needs to know*/
@@ -729,7 +729,7 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::writer,
                 encode_info_for_item(ecx, ebml_w, i, index, *pt);
                 /* encode ctor, then encode items */
                 alt i.node {
-                  item_class(tps,_,ctor) {
+                  item_class(tps,_,_,ctor) {
                    /* this is assuming that ctors aren't inlined...
                       probably shouldn't assume that */
                    #debug("encoding info for ctor %s %d", i.ident,

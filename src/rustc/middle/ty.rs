@@ -2261,7 +2261,7 @@ fn lookup_class_fields(cx: ctxt, did: ast::def_id) -> [field_ty] {
     alt cx.items.find(did.node) {
        some(ast_map::node_item(i,_)) {
          alt i.node {
-           ast::item_class(_, items, _) {
+           ast::item_class(_, _, items, _) {
                class_field_tys(items)
            }
            _ { cx.sess.bug("class ID bound to non-class"); }
@@ -2303,7 +2303,7 @@ pure fn is_public(f: field_ty) -> bool {
 fn lookup_class_method_ids(cx: ctxt, did: ast::def_id)
     : is_local(did) -> [{name: ident, id: node_id, privacy: privacy}] {
     alt cx.items.find(did.node) {
-       some(ast_map::node_item(@{node: item_class(_,items,_), _}, _)) {
+       some(ast_map::node_item(@{node: item_class(_,_,items,_), _}, _)) {
          let (_,ms) = split_class_items(items);
          vec::map(ms, {|m| {name: m.ident, id: m.id,
                          privacy: m.privacy}})

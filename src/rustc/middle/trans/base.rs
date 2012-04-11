@@ -4432,9 +4432,11 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
         };
         native::trans_native_mod(ccx, native_mod, abi);
       }
-      ast::item_class(tps, items, ctor) {
+      ast::item_class(tps, _ifaces, items, ctor) {
         if tps.len() == 0u {
           let psubsts = {tys: ty::ty_params_to_tys(ccx.tcx, tps),
+                         // FIXME: vtables have to get filled in depending
+                         // on ifaces
                          vtables: none,
                          bounds: @[]};
           trans_class_ctor(ccx, *path, ctor.node.dec, ctor.node.body,

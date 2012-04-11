@@ -102,7 +102,7 @@ fn traverse_public_item(cx: ctx, item: @item) {
             }
         }
       }
-      item_class(tps, items, ctor) {
+      item_class(tps, _ifaces, items, ctor) {
         cx.rmap.insert(ctor.node.id, ());
         for vec::each(items) {|item|
             alt item.node {

@@ -203,7 +203,7 @@ fn map_item(i: @item, cx: ctx, v: vt) {
             cx.map.insert(nitem.id, node_native_item(nitem, abi, @cx.path));
         }
       }
-      item_class(_, items, ctor) {
+      item_class(_, _, items, ctor) {
           let d_id = ast_util::local_def(i.id);
           let p = extend(cx, i.ident);
           for items.each {|ci|

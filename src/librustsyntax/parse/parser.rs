@@ -2143,11 +2143,19 @@ fn ident_to_path_tys(p: parser, i: ast::ident,
     @spanned(s.lo, s.hi, p_)
 }
 
+fn parse_iface_ref_list(p:parser) -> [ast::iface_ref] {
+    parse_seq_to_before_end(token::LBRACE, seq_sep(token::COMMA),
+                   {|p| {path: parse_path(p), id: p.get_id()}}, p)
+}
+
 fn parse_item_class(p: parser, attrs: [ast::attribute]) -> @ast::item {
     let lo = p.last_span.lo;
     let class_name = parse_value_ident(p);
     let ty_params = parse_ty_params(p);
     let class_path = ident_to_path_tys(p, class_name, ty_params);
+    let ifaces : [ast::iface_ref] = if eat_word(p, "implements")
+                                       { parse_iface_ref_list(p) }
+                                    else { [] };
     expect(p, token::LBRACE);
     let mut ms: [@ast::class_member] = [];
     let ctor_id = p.get_id();
@@ -2163,9 +2171,8 @@ fn parse_item_class(p: parser, attrs: [ast::attribute]) -> @ast::item {
     p.bump();
     alt the_ctor {
       some((ct_d, ct_b, ct_s)) {
-          ret mk_item(p, lo, p.last_span.hi,
-                                             class_name,
-         ast::item_class(ty_params, ms,
+          ret mk_item(p, lo, p.last_span.hi, class_name,
+                      ast::item_class(ty_params, ifaces, ms,
                          {node: {id: ctor_id,
                                  self_id: p.get_id(),
                                  dec: ct_d,

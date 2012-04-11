@@ -216,7 +216,7 @@ fn visit_expr(ex: @expr, &&cx: @ctx, v: visit::vt<@ctx>) {
 
 fn visit_item(item: @item, &&cx: @ctx, v: visit::vt<@ctx>) {
     alt item.node {
-      item_class(tps, items, ctor) {
+      item_class(tps, _, items, ctor) {
          v.visit_ty_params(tps, cx, v);
          vec::map::<@class_member, ()>(items,
              {|i| v.visit_class_item(i, cx, v); });

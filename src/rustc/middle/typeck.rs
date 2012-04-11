@@ -128,14 +128,21 @@ fn lookup_local(fcx: @fn_ctxt, sp: span, id: ast::node_id) -> ty_vid {
     }
 }
 
-fn lookup_def(fcx: @fn_ctxt, sp: span, id: ast::node_id) -> ast::def {
-    alt fcx.ccx.tcx.def_map.find(id) {
+fn lookup_def_tcx(tcx: ty::ctxt, sp: span, id: ast::node_id) -> ast::def {
+    alt tcx.def_map.find(id) {
       some(x) { x }
       _ {
-        fcx.ccx.tcx.sess.span_fatal(sp,
-                                    "internal error looking up a definition")
+        tcx.sess.span_fatal(sp, "internal error looking up a definition")
       }
     }
+}
+
+fn lookup_def_ccx(ccx: @crate_ctxt, sp: span, id: ast::node_id) -> ast::def {
+    lookup_def_tcx(ccx.tcx, sp, id)
+}
+
+fn lookup_def(fcx: @fn_ctxt, sp: span, id: ast::node_id) -> ast::def {
+    lookup_def_ccx(fcx.ccx, sp, id)
 }
 
 // Returns the type parameter count and the type for the given definition.
@@ -567,7 +574,7 @@ fn ty_of_item(tcx: ty::ctxt, mode: mode, it: @ast::item)
         tcx.tcache.insert(local_def(it.id), tpt);
         ret tpt;
       }
-      ast::item_class(tps,_,_) {
+      ast::item_class(tps,_,_,_) {
           let {bounds,params} = mk_ty_params(tcx, tps);
           let t = ty::mk_class(tcx, local_def(it.id), params);
           let tpt = {bounds: bounds, ty: t};
@@ -1020,6 +1027,7 @@ fn instantiate_bound_regions(tcx: ty::ctxt, region: ty::region, &&ty: ty::t)
     }
 }
 
+
 // Item collection - a pair of bootstrap passes:
 //
 // (1) Collect the IDs of all type items (typedefs) and store them in a table.
@@ -1078,7 +1086,7 @@ mod collect {
               store_methods::<ast::ty_method>(tcx, id, ms, {|m|
                           ty_of_ty_method(tcx, m_collect, m)});
           }
-          ast_map::node_item(@{node: ast::item_class(_,its,_), _}, _) {
+          ast_map::node_item(@{node: ast::item_class(_,_,its,_), _}, _) {
               let (_,ms) = split_class_items(its);
               // All methods need to be stored, since lookup_method
               // relies on the same method cache for self-calls
@@ -1087,6 +1095,57 @@ mod collect {
           }
         }
     }
+    fn check_methods_against_iface(tcx: ty::ctxt, tps: [ast::ty_param],
+                          selfty: ty::t, t: @ast::ty, ms: [@ast::method]) {
+      let i_bounds = ty_param_bounds(tcx, m_collect, tps);
+      let my_methods = convert_methods(tcx, ms, i_bounds, some(selfty));
+      let iface_ty = ast_ty_to_ty(tcx, m_collect, t);
+      alt ty::get(iface_ty).struct {
+        ty::ty_iface(did, tys) {
+         // Store the iface type in the type node
+         alt check t.node {
+           ast::ty_path(_, t_id) {
+             write_ty_to_tcx(tcx, t_id, iface_ty);
+           }
+         }
+         if did.crate == ast::local_crate {
+             ensure_iface_methods(tcx, did.node);
+         }
+         for vec::each(*ty::iface_methods(tcx, did)) {|if_m|
+            alt vec::find(my_methods,
+                          {|m| if_m.ident == m.mty.ident}) {
+              some({mty: m, id, span}) {
+               if m.purity != if_m.purity {
+                  tcx.sess.span_err(
+                     span, "method `" + m.ident + "`'s purity \
+                       not match the iface method's \
+                       purity");
+               }
+               let mt = compare_impl_method(
+                         tcx, span, m, vec::len(tps), if_m, tys,
+                         selfty);
+               let old = tcx.tcache.get(local_def(id));
+               if old.ty != mt {
+                  tcx.tcache.insert(local_def(id),
+                                    {bounds: old.bounds,
+                                     ty: mt});
+                  write_ty_to_tcx(tcx, id, mt);
+               }
+              }
+              none {
+                   tcx.sess.span_err(t.span, "missing method `" +
+                      if_m.ident + "`");
+              }
+            } // alt
+          } // |if_m|
+        } // for
+        _ {
+            tcx.sess.span_fatal(t.span, "can only implement \
+                                         interface types");
+        }
+     }
+    }
+
     fn convert_class_item(tcx: ty::ctxt, v: ast_util::ivar) {
         /* we want to do something here, b/c within the
          scope of the class, it's ok to refer to fields &
@@ -1141,56 +1200,15 @@ mod collect {
             write_ty_to_tcx(tcx, it.id, selfty);
             tcx.tcache.insert(local_def(it.id), {bounds: i_bounds,
                                                  ty: selfty});
-            let my_methods = convert_methods(tcx, ms, i_bounds, some(selfty));
             alt ifce {
               some(t) {
-                let iface_ty = ast_ty_to_ty(tcx, m_collect, t);
-                alt ty::get(iface_ty).struct {
-                  ty::ty_iface(did, tys) {
-                    // Store the iface type in the type node
-                    alt check t.node {
-                      ast::ty_path(_, t_id) {
-                        write_ty_to_tcx(tcx, t_id, iface_ty);
-                      }
-                    }
-                    if did.crate == ast::local_crate {
-                        ensure_iface_methods(tcx, did.node);
-                    }
-                    for vec::each(*ty::iface_methods(tcx, did)) {|if_m|
-                        alt vec::find(my_methods,
-                                      {|m| if_m.ident == m.mty.ident}) {
-                          some({mty: m, id, span}) {
-                            if m.purity != if_m.purity {
-                                tcx.sess.span_err(
-                                    span, "method `" + m.ident + "`'s purity \
-                                           not match the iface method's \
-                                           purity");
-                            }
-                            let mt = compare_impl_method(
-                                tcx, span, m, vec::len(tps), if_m, tys,
-                                selfty);
-                            let old = tcx.tcache.get(local_def(id));
-                            if old.ty != mt {
-                                tcx.tcache.insert(local_def(id),
-                                                     {bounds: old.bounds,
-                                                     ty: mt});
-                                write_ty_to_tcx(tcx, id, mt);
-                            }
-                          }
-                          none {
-                            tcx.sess.span_err(t.span, "missing method `" +
-                                                 if_m.ident + "`");
-                          }
-                        }
-                    }
-                  }
-                  _ {
-                    tcx.sess.span_fatal(t.span, "can only implement \
-                                                    interface types");
-                  }
-                }
+                  check_methods_against_iface(tcx, tps, selfty,
+                                                    t, ms); }
+              _ {
+                  // Still have to do this to write method types
+                  // into the table
+                convert_methods(tcx, ms, i_bounds, some(selfty));
               }
-              _ {}
             }
           }
           ast::item_res(decl, tps, _, dtor_id, ctor_id) {
@@ -1221,7 +1239,7 @@ mod collect {
             write_ty_to_tcx(tcx, it.id, tpt.ty);
             ensure_iface_methods(tcx, it.id);
           }
-          ast::item_class(tps, members, ctor) {
+          ast::item_class(tps, ifaces, members, ctor) {
               // Write the class type
               let tpt = ty_of_item(tcx, m_collect, it);
               write_ty_to_tcx(tcx, it.id, tpt.ty);
@@ -1245,6 +1263,31 @@ mod collect {
               // Need to convert all methods so we can check internal
               // references to private methods
               convert_methods(tcx, methods, @[], some(selfty));
+              /*
+                Finally, check that the class really implements the ifaces
+                that it claims to implement.
+               */
+              for ifaces.each {|ifce|
+                alt lookup_def_tcx(tcx, it.span, ifce.id) {
+                   ast::def_ty(t_id) {
+                     let t = ty::lookup_item_type(tcx, t_id).ty;
+                     alt ty::get(t).struct {
+                        ty::ty_iface(_,_) {
+                            write_ty_to_tcx(tcx, ifce.id, t);
+                            check_methods_against_iface(tcx, tps, selfty,
+                               @{id: ifce.id,
+                                 node: ast::ty_path(ifce.path, ifce.id),
+                                 span: ifce.path.span},
+                               methods);
+                        }
+                        _ { tcx.sess.span_fatal(ifce.path.span,
+                           "can only implement interface types"); }
+                     }
+                   }
+                   _ { tcx.sess.span_err(ifce.path.span, "not an interface \
+                           type"); }
+                };
+              }
           }
           _ {
             // This call populates the type cache with the converted type
@@ -3978,9 +4021,9 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
         let self_ty = replace_self_region(ccx.tcx, self_region, self_ty);
         for ms.each {|m| check_method(ccx, m, self_ty);}
       }
-      ast::item_class(tps, members, ctor) {
-          let cid = some(it.id);
-          let class_t = ty::node_id_to_type(ccx.tcx, it.id);
+      ast::item_class(tps, ifaces, members, ctor) {
+          let cid = some(it.id), tcx = ccx.tcx;
+          let class_t = ty::node_id_to_type(tcx, it.id);
           let members_info = class_types(ccx, members);
           // can also ditch the enclosing_class stuff once we move to self
           // FIXME

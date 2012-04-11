@@ -493,10 +493,13 @@ fn print_item(s: ps, &&item: @ast::item) {
             bclose(s, item.span);
         }
       }
-      ast::item_class(tps,items,ctor) {
+      ast::item_class(tps,ifaces,items,ctor) {
           head(s, "class");
           word_nbsp(s, item.ident);
           print_type_params(s, tps);
+          word_space(s, "implements");
+          commasep(s, inconsistent, ifaces, {|s, p|
+                      print_path(s, p.path, false)});
           bopen(s);
           hardbreak_if_not_bol(s);
           maybe_print_comment(s, ctor.span.lo);

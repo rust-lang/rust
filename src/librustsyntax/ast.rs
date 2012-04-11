@@ -642,6 +642,9 @@ enum attr_style { attr_outer, attr_inner, }
 type attribute_ = {style: attr_style, value: meta_item};
 
 #[auto_serialize]
+type iface_ref = {path: @path, id: node_id};
+
+#[auto_serialize]
 type item = {ident: ident, attrs: [attribute],
              id: node_id, node: item_, span: span};
 
@@ -656,6 +659,7 @@ enum item_ {
     item_res(fn_decl /* dtor */, [ty_param], blk /* dtor body */,
              node_id /* dtor id */, node_id /* ctor id */),
     item_class([ty_param], /* ty params for class */
+               [iface_ref],   /* ifaces this class implements */
                [@class_member], /* methods, etc. */
                                /* (not including ctor) */
                class_ctor
