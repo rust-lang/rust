@@ -131,6 +131,8 @@ tidy:
               $(LIBRUSTSYNTAX_INPUTS) \
               $(CORELIB_CRATE) \
               $(CORELIB_INPUTS) \
+		| xargs -n 10 python $(S)src/etc/tidy.py
+		$(Q)echo \
               $(STDLIB_CRATE) \
               $(STDLIB_INPUTS) \
               $(COMPILETEST_CRATE) \
