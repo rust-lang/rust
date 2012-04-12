@@ -425,3 +425,24 @@ rust_uv_ip4_addr(const char* ip, int port) {
     LOG(task, stdlib, "after creating .. port: %d\n", addr.sin_port);
     return addr;
 }
+
+extern "C" uintptr_t*
+rust_uv_get_kernel_global_chan_ptr() {
+	uintptr_t* result = rust_get_current_task()->kernel->get_global_loop();
+	printf("global loop: %lu\n", (unsigned long int)result);
+	printf("global loop val: %lu\n", (unsigned long int)*result);
+	return result;
+}
+
+extern "C" void**
+rust_uv_get_kernel_global_async_handle() {
+	return rust_get_current_task()->kernel->get_global_async_handle();
+}
+extern "C" void
+rust_uv_set_kernel_global_async_handle(uv_async_t* handle) {
+	rust_get_current_task()->kernel->set_global_async_handle((void*)handle);
+}
+extern "C" void
+rust_uv_free_kernel_global_async_handle() {
+	free((void*)rust_get_current_task()->kernel->get_global_async_handle());
+}
