@@ -494,7 +494,7 @@ holds.
 Apply function `f` to each element of `v` and return a vector containing
 only those elements for which `f` returned true.
 "]
-fn filter<T: copy>(v: [T], f: fn(T) -> bool) -> [T] {
+fn filter<T: copy>(v: [const T], f: fn(T) -> bool) -> [T] {
     let mut result = [];
     for each(v) {|elem|
         if f(elem) { result += [elem]; }
@@ -970,23 +970,6 @@ fn unpack_slice<T,U>(s: [const T]/&, f: fn(*T, uint) -> U) -> U unsafe {
 
 #[doc = "Extension methods for vectors"]
 impl extensions<T> for [const T] {
-    #[doc = "
-    Return true if a vector contains an element with the given value
-    "]
-    #[inline]
-    fn contains(x: T) -> bool { contains(self, x) }
-    #[doc = "Returns the number of elements that are equal to a given value"]
-    #[inline]
-    fn count(x: T) -> uint { count(self, x) }
-    #[doc = "Iterates over a vector, with option to break"]
-    #[inline]
-    fn each<T>(f: fn(T) -> bool) { each(self, f) }
-    #[doc = "Iterates over a vector's elements and indices"]
-    #[inline]
-    fn eachi<T>(f: fn(uint, T) -> bool) { eachi(self, f) }
-    #[doc = "Reduce a vector from left to right"]
-    #[inline]
-    fn foldl<U: copy>(z: U, p: fn(U, T) -> U) -> U { foldl(z, self, p) }
     #[doc = "Reduce a vector from right to left"]
     #[inline]
     fn foldr<U: copy>(z: U, p: fn(T, U) -> U) -> U { foldr(self, z, p) }
@@ -1060,6 +1043,15 @@ impl extensions<T> for [const T] {
 #[doc = "Extension methods for vectors"]
 impl extensions<T: copy> for [const T] {
     #[doc = "
+    Construct a new vector from the elements of a vector for which some
+    predicate holds.
+
+    Apply function `f` to each element of `v` and return a vector containing
+    only those elements for which `f` returned true.
+    "]
+    #[inline]
+    fn filter(f: fn(T) -> bool) -> [T] { filter(self, f) }
+    #[doc = "
     Search for the first element that matches a given predicate
 
     Apply function `f` to each element of `v`, starting from the first.
@@ -1099,19 +1091,16 @@ impl extensions<T: copy> for [const T] {
 #[doc = "Extension methods for vectors"]
 impl extensions<T> for [T] {
     #[doc = "
-    Return true if a predicate matches all elements
-
-    If the vector contains no elements then true is returned.
+    Apply a function to each element of a vector and return the results
     "]
     #[inline]
-    fn all(f: fn(T) -> bool) -> bool { all(self, f) }
+    fn map<U>(f: fn(T) -> U) -> [U] { map(self, f) }
     #[doc = "
-    Return true if a predicate matches any elements
-
-    If the vector contains no elements then false is returned.
+    Apply a function to each element of a vector and return a concatenation
+    of each result vector
     "]
     #[inline]
-    fn any(f: fn(T) -> bool) -> bool { any(self, f) }
+    fn flat_map<U>(f: fn(T) -> [U]) -> [U] { flat_map(self, f) }
     #[doc = "
     Apply a function to each element of a vector and return the results
 
@@ -1122,31 +1111,7 @@ impl extensions<T> for [T] {
     fn filter_map<U: copy>(f: fn(T) -> option<U>) -> [U] {
         filter_map(self, f)
     }
-    #[doc = "
-    Apply a function eo each element of a vector and return a concatenation
-    of each result vector
-    "]
-    #[inline]
-    fn flat_map<U>(f: fn(T) -> [U]) -> [U] { flat_map(self, f) }
-    #[doc = "
-    Apply a function to each element of a vector and return the results
-    "]
-    #[inline]
-    fn map<U>(f: fn(T) -> U) -> [U] { map(self, f) }
 }
-
-#[doc = "Extension methods for vectors"]
-impl extensions<T: copy> for [T] {
-    #[doc = "
-    Construct a new vector from the elements of a vector for which some
-    predicate holds.
-
-    Apply function `f` to each element of `v` and return a vector containing
-    only those elements for which `f` returned true.
-    "]
-   #[inline]
-    fn filter(f: fn(T) -> bool) -> [T] { filter(self, f) }
- }
 
 #[doc = "Unsafe operations"]
 mod unsafe {

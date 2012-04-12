@@ -1,115 +1,81 @@
-iface iterable<A> {
-    fn iter(blk: fn(A));
+iface base_iter<A> {
+    fn each(blk: fn(A) -> bool);
+    fn size_hint() -> option<uint>;
 }
 
-impl<A> of iterable<A> for fn@(fn(A)) {
-    fn iter(blk: fn(A)) {
-        self(blk);
-    }
-}
-
-// accomodate the fact that int/uint are passed by value by default:
-impl of iterable<int> for fn@(fn(int)) {
-    fn iter(blk: fn(&&int)) {
-        self {|i| blk(i)}
-    }
-}
-
-impl of iterable<uint> for fn@(fn(uint)) {
-    fn iter(blk: fn(&&uint)) {
-        self {|i| blk(i)}
-    }
-}
-
-impl<A> of iterable<A> for [A] {
-    fn iter(blk: fn(A)) {
-        vec::iter(self, blk)
-    }
-}
-
-impl<A> of iterable<A> for option<A> {
-    fn iter(blk: fn(A)) {
-        option::iter(self, blk)
-    }
-}
-
-impl of iterable<char> for str {
-    fn iter(blk: fn(&&char)) {
-        str::chars_iter(self) { |ch| blk(ch) }
-    }
-}
-
-fn enumerate<A,IA:iterable<A>>(self: IA, blk: fn(uint, A)) {
+fn eachi<A,IA:base_iter<A>>(self: IA, blk: fn(uint, A) -> bool) {
     let mut i = 0u;
-    self.iter {|a|
-        blk(i, a);
+    for self.each {|a|
+        if !blk(i, a) { break; }
         i += 1u;
     }
 }
 
-// Here: we have to use fn@ for predicates and map functions, because
-// we will be binding them up into a closure.  Disappointing.  A true
-// region type system might be able to do better than this.
-
-fn filter<A,IA:iterable<A>>(self: IA, prd: fn@(A) -> bool, blk: fn(A)) {
-    self.iter {|a|
-        if prd(a) { blk(a) }
+fn all<A,IA:base_iter<A>>(self: IA, blk: fn(A) -> bool) -> bool {
+    for self.each {|a|
+        if !blk(a) { ret false; }
     }
+    ret true;
 }
 
-fn filter_map<A,B,IA:iterable<A>>(self: IA, cnv: fn@(A) -> option<B>,
-                                  blk: fn(B)) {
-    self.iter {|a|
-        alt cnv(a) {
-          some(b) { blk(b) }
-          none { }
+fn any<A,IA:base_iter<A>>(self: IA, blk: fn(A) -> bool) -> bool {
+    for self.each {|a|
+        if blk(a) { ret true; }
+    }
+    ret false;
+}
+
+fn filter_to_vec<A:copy,IA:base_iter<A>>(self: IA,
+                                         prd: fn(A) -> bool) -> [A] {
+    let mut result = [];
+    self.size_hint().iter {|hint| vec::reserve(result, hint); }
+    for self.each {|a|
+        if prd(a) { vec::push(result, a); }
+    }
+    ret result;
+}
+
+fn map_to_vec<A:copy,B,IA:base_iter<A>>(self: IA, op: fn(A) -> B) -> [B] {
+    let mut result = [];
+    self.size_hint().iter {|hint| vec::reserve(result, hint); }
+    for self.each {|a|
+        vec::push(result, op(a));
+    }
+    ret result;
+}
+
+fn flat_map_to_vec<A:copy,B:copy,IA:base_iter<A>,IB:base_iter<B>>(
+    self: IA, op: fn(A) -> IB) -> [B] {
+
+    let mut result = [];
+    for self.each {|a|
+        for op(a).each {|b|
+            vec::push(result, b);
         }
     }
+    ret result;
 }
 
-fn map<A,B,IA:iterable<A>>(self: IA, cnv: fn@(A) -> B, blk: fn(B)) {
-    self.iter {|a|
-        let b = cnv(a);
-        blk(b);
-    }
-}
-
-fn flat_map<A,B,IA:iterable<A>,IB:iterable<B>>(
-    self: IA, cnv: fn@(A) -> IB, blk: fn(B)) {
-    self.iter {|a|
-        cnv(a).iter(blk)
-    }
-}
-
-fn foldl<A,B,IA:iterable<A>>(self: IA, +b0: B, blk: fn(B, A) -> B) -> B {
+fn foldl<A,B,IA:base_iter<A>>(self: IA, +b0: B, blk: fn(B, A) -> B) -> B {
     let mut b <- b0;
-    self.iter {|a|
-        b <- blk(b, a);
+    for self.each {|a|
+        b = blk(b, a);
     }
     ret b;
 }
 
-fn foldr<A:copy,B,IA:iterable<A>>(
-    self: IA, +b0: B, blk: fn(A, B) -> B) -> B {
-
-    let mut b <- b0;
-    reversed(self) {|a|
-        b <- blk(a, b);
-    }
-    ret b;
-}
-
-fn to_vec<A:copy,IA:iterable<A>>(self: IA) -> [A] {
+fn to_vec<A:copy,IA:base_iter<A>>(self: IA) -> [A] {
     foldl::<A,[A],IA>(self, [], {|r, a| r + [a]})
 }
 
-// FIXME: This could be made more efficient with an riterable interface
-// #2005
-fn reversed<A:copy,IA:iterable<A>>(self: IA, blk: fn(A)) {
-    vec::riter(to_vec(self), blk)
+fn contains<A,IA:base_iter<A>>(self: IA, x: A) -> bool {
+    for self.each {|a|
+        if a == x { ret true; }
+    }
+    ret false;
 }
 
-fn count<A,IA:iterable<A>>(self: IA, x: A) -> uint {
+fn count<A,IA:base_iter<A>>(self: IA, x: A) -> uint {
     foldl(self, 0u) {|count, value|
         if value == x {
             count + 1u
@@ -127,7 +93,7 @@ fn repeat(times: uint, blk: fn()) {
     }
 }
 
-fn min<A:copy,IA:iterable<A>>(self: IA) -> A {
+fn min<A:copy,IA:base_iter<A>>(self: IA) -> A {
     alt foldl::<A,option<A>,IA>(self, none) {|a, b|
         alt a {
           some(a_) if a_ < b {
@@ -143,7 +109,7 @@ fn min<A:copy,IA:iterable<A>>(self: IA) -> A {
     }
 }
 
-fn max<A:copy,IA:iterable<A>>(self: IA) -> A {
+fn max<A:copy,IA:base_iter<A>>(self: IA) -> A {
     alt foldl::<A,option<A>,IA>(self, none) {|a, b|
         alt a {
           some(a_) if a_ > b {
@@ -159,6 +125,7 @@ fn max<A:copy,IA:iterable<A>>(self: IA) -> A {
     }
 }
 
+/*
 #[test]
 fn test_enumerate() {
     enumerate(["0", "1", "2"]) {|i,j|
@@ -297,3 +264,4 @@ fn test_foldr() {
     let sum = foldr([1, 2, 3, 4], 0, sub);
     assert sum == -2;
 }
+*/

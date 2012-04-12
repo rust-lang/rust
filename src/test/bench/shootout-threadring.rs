@@ -7,14 +7,14 @@ fn start(+token: int) {
     import iter::*;
 
     let p = comm::port();
-    let ch = iter::foldl(bind int::range(2, n_threads + 1, _),
-                         comm::chan(p)) { |ch, i|
+    let mut ch = comm::chan(p);
+    int::range(2, n_threads + 1) { |i|
         let id = n_threads + 2 - i;
         let to_child = task::spawn_listener::<int> {|p|
             roundtrip(id, p, ch)
         };
-        to_child
-    };
+        ch = to_child;
+    }
     comm::send(ch, token);
     roundtrip(1, p, ch);
 }

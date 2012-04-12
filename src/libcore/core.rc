@@ -42,6 +42,9 @@ export extfmt;
 export tuple;
 export to_str;
 
+// NDM seems to be necessary for resolve to work
+export vec_iter, option_iter;
+
 // FIXME: This creates some APIs that I do not want to commit to. It is
 // currently exported for the uv code in std, but when that code moves into
 // core this should become unexported
@@ -144,9 +147,13 @@ mod f64;
 mod str;
 mod ptr;
 mod vec;
+#[path="iter-trait"]
+mod vec_iter {
+    #[path = "vec.rs"]
+    mod inst;
+}
 mod bool;
 mod tuple;
-
 
 // Ubiquitous-utility-type modules
 
@@ -154,6 +161,11 @@ mod either;
 mod iter;
 mod logging;
 mod option;
+#[path="iter-trait"]
+mod option_iter {
+    #[path = "option.rs"]
+    mod inst;
+}
 mod result;
 mod to_str;
 
@@ -195,5 +207,4 @@ mod cmath;
 // indent-tabs-mode: nil
 // c-basic-offset: 4
 // buffer-file-coding-system: utf-8-unix
-// compile-command: "make -k -C .. 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
 // End:

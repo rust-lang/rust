@@ -101,23 +101,6 @@ impl extensions<T:copy> for option<T> {
     #[doc = "Performs an operation on the contained value or does nothing"]
     fn iter(f: fn(T)) { iter(self, f) }
 
-    #[doc = "Converts `none` to a zero-element list and `some` to a \
-             one-element list."]
-    fn to_vec() -> [T] {
-        alt self {
-          some(t) { [t] }
-          none { [] }
-        }
-    }
-
-    #[doc = "Performs an operation on the contained value or does nothing"]
-    fn each(f: fn(T) -> bool) {
-        alt self {
-          none { /* ok */ }
-          some(e) { f(e); }
-        }
-    }
-
     #[doc = "
     Gets the value out of an option
 
