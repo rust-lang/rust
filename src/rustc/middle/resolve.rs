@@ -644,10 +644,10 @@ fn visit_local_with_scope(e: @env, loc: @local, sc:scopes, v:vt<scopes>) {
           alt lookup_in_scope(*e, sc, loc.span, path_to_ident(an_ident),
                               ns_val, false) {
               some(ast::def_variant(enum_id,variant_id)) {
-                  // Declaration shadows a enum that's in scope.
+                  // Declaration shadows an enum that's in scope.
                   // That's an error.
                   e.sess.span_err(loc.span,
-                    #fmt("declaration of `%s` shadows a enum that's in scope",
+                    #fmt("declaration of `%s` shadows an enum that's in scope",
                          path_to_ident(an_ident)));
                   }
               _ {}
