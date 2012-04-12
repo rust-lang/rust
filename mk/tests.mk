@@ -2,9 +2,10 @@
 # Testing variables
 ######################################################################
 
-ALL_TEST_INPUTS = $(wildcard $(S)src/test/*/*.rs   \
-                              $(S)src/test/*/*/*.rs \
-                              $(S)src/test/*/*.rc)
+SOME_TEST_INPUTS = $(wildcard $(S)src/test/*/*.rs)
+
+SOME_MOAR_TEST_INPUTS = $(wildcard $(S)src/test/*/*/*.rs \
+                                   $(S)src/test/*/*.rc)
 
 RPASS_RC := $(wildcard $(S)src/test/run-pass/*.rc)
 RPASS_RS := $(wildcard $(S)src/test/run-pass/*.rs)
@@ -143,7 +144,10 @@ tidy:
               $(RUSTDOC_INPUTS) \
 		| xargs -n 10 python $(S)src/etc/tidy.py
 		$(Q)echo \
-              $(ALL_TEST_INPUTS) \
+              $(SOME_TEST_INPUTS) \
+	  	| xargs -n 10 python $(S)src/etc/tidy.py
+		$(Q)echo \
+              $(SOME_MOAR_TEST_INPUTS) \
 	  	| xargs -n 10 python $(S)src/etc/tidy.py
 		$(Q)echo \
               $(ALL_CS) \
