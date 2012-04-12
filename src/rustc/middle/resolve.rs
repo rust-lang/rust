@@ -647,7 +647,8 @@ fn visit_local_with_scope(e: @env, loc: @local, sc:scopes, v:vt<scopes>) {
                   // Declaration shadows an enum that's in scope.
                   // That's an error.
                   e.sess.span_err(loc.span,
-                    #fmt("declaration of `%s` shadows an enum that's in scope",
+                    #fmt("declaration of `%s` shadows an \
+                          enum that's in scope",
                          path_to_ident(an_ident)));
                   }
               _ {}
