@@ -48,7 +48,7 @@ Options:
     --out-dir <dir>    Write output to compiler-chosen filename in <dir>
     --parse-only       Parse only; do not compile, assemble, or link
     --pretty [type]    Pretty-print the input instead of compiling;
-                       valid types are: normal (un-annotated source), 
+                       valid types are: normal (un-annotated source),
                        expanded (crates expanded), typed (crates expanded,
                        with type annotations), or identified (fully
                        parenthesized, AST nodes and blocks with IDs)

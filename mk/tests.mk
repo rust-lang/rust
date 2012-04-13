@@ -2,11 +2,6 @@
 # Testing variables
 ######################################################################
 
-SOME_TEST_INPUTS = $(wildcard $(S)src/test/*/*.rs)
-
-SOME_MOAR_TEST_INPUTS = $(wildcard $(S)src/test/*/*/*.rs \
-                                   $(S)src/test/*/*.rc)
-
 RPASS_RC := $(wildcard $(S)src/test/run-pass/*.rc)
 RPASS_RS := $(wildcard $(S)src/test/run-pass/*.rs)
 RFAIL_RC := $(wildcard $(S)src/test/run-fail/*.rc)
@@ -124,34 +119,13 @@ ALL_HS := $(filter-out $(S)src/rt/vg/valgrind.h \
 
 tidy:
 		@$(call E, check: formatting)
-		$(Q)echo \
-              $(wildcard $(S)src/etc/*.py)  \
-              $(COMPILER_CRATE) \
-              $(COMPILER_INPUTS) \
-              $(LIBRUSTSYNTAX_CRATE) \
-              $(LIBRUSTSYNTAX_INPUTS) \
-              $(CORELIB_CRATE) \
-              $(CORELIB_INPUTS) \
+		$(Q)find $(S)src -name '*.r[sc]' \
 		| xargs -n 10 python $(S)src/etc/tidy.py
-		$(Q)echo \
-              $(STDLIB_CRATE) \
-              $(STDLIB_INPUTS) \
-              $(COMPILETEST_CRATE) \
-              $(COMPILETEST_INPUTS) \
-              $(CARGO_CRATE) \
-              $(CARGO_INPUTS) \
-              $(RUSTDOC_CRATE) \
-              $(RUSTDOC_INPUTS) \
+		$(Q)find $(S)src/etc -name '*.py' \
 		| xargs -n 10 python $(S)src/etc/tidy.py
-		$(Q)echo \
-              $(SOME_TEST_INPUTS) \
+		$(Q)echo $(ALL_CS) \
 	  	| xargs -n 10 python $(S)src/etc/tidy.py
-		$(Q)echo \
-              $(SOME_MOAR_TEST_INPUTS) \
-	  	| xargs -n 10 python $(S)src/etc/tidy.py
-		$(Q)echo \
-              $(ALL_CS) \
-              $(ALL_HS) \
+		$(Q)echo $(ALL_HS) \
 	  	| xargs -n 10 python $(S)src/etc/tidy.py
 
 endif

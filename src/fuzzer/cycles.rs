@@ -3,10 +3,14 @@ import std::rand;
 import uint::range;
 
 // random uint less than n
-fn under(r : rand::rng, n : uint) -> uint { assert n != 0u; r.next() as uint % n }
+fn under(r : rand::rng, n : uint) -> uint {
+    assert n != 0u; r.next() as uint % n
+}
 
 // random choice from a vec
-fn choice<T: copy>(r : rand::rng, v : [const T]) -> T { assert vec::len(v) != 0u; v[under(r, vec::len(v))] }
+fn choice<T: copy>(r : rand::rng, v : [const T]) -> T {
+    assert vec::len(v) != 0u; v[under(r, vec::len(v))]
+}
 
 // k in n chance of being true
 fn likelihood(r : rand::rng, k : uint, n : uint) -> bool { under(r, n) < k }
@@ -68,7 +72,8 @@ fn test_cycles(r : rand::rng, k: uint, n: uint)
         if (likelihood(r, k, n)) { v[i].c = @p(choice(r, v)); }
 
         if (likelihood(r, k, n)) { v[i].f = bind nopP(choice(r, v)); }
-        //if (false)               { v[i].g = bind (fn~(_x: @pointy) { })(choice(r, v)); }
+        //if (false)               { v[i].g = bind (fn~(_x: @pointy) { })(
+        // choice(r, v)); }
           // https://github.com/mozilla/rust/issues/1899
 
         if (likelihood(r, k, n)) { v[i].m = [p(choice(r, v))]; }

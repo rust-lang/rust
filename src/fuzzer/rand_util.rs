@@ -3,10 +3,14 @@ import std::rand;
 import vec;
 
 // random uint less than n
-fn under(r : rand::rng, n : uint) -> uint { assert n != 0u; r.next() as uint % n }
+fn under(r : rand::rng, n : uint) -> uint {
+    assert n != 0u; r.next() as uint % n
+}
 
 // random choice from a vec
-fn choice<T: copy>(r : rand::rng, v : [T]) -> T { assert vec::len(v) != 0u; v[under(r, vec::len(v))] }
+fn choice<T: copy>(r : rand::rng, v : [T]) -> T {
+    assert vec::len(v) != 0u; v[under(r, vec::len(v))]
+}
 
 // 1 in n chance of being true
 fn unlikely(r : rand::rng, n : uint) -> bool { under(r, n) == 0u }

@@ -1,7 +1,8 @@
 use std;
 import vec;
 
-fn vec_equal<T>(v: [T], u: [T], element_equality_test: fn@(&&T, &&T) -> bool) ->
+fn vec_equal<T>(v: [T], u: [T],
+                element_equality_test: fn@(&&T, &&T) -> bool) ->
    bool {
     let Lv = vec::len(v);
     if Lv != vec::len(u) { ret false; }

@@ -2,14 +2,16 @@
 
 Idea: provide functions for 'exhaustive' and 'random' modification of vecs.
 
-  two functions, "return all edits" and "return a random edit" <-- leaning toward this model
-    or
-  two functions, "return the number of possible edits" and "return edit #n"
+  two functions, "return all edits" and "return a random edit" <--
+    leaning toward this model or two functions, "return the number of
+    possible edits" and "return edit #n"
 
-It would be nice if this could be data-driven, so the two functions could share information:
+It would be nice if this could be data-driven, so the two functions
+could share information:
   type vec_modifier = rec(fn (<T> v, uint i) -> [T] fun, uint lo, uint di);
   const [vec_modifier] vec_modifiers = ~[rec(fun=vec_omit, 0u, 1u), ...];
-But that gives me "error: internal compiler error unimplemented consts that's not a plain literal".
+But that gives me "error: internal compiler error unimplemented consts
+that's not a plain literal".
 https://github.com/graydon/rust/issues/570
 
 vec_edits is not an iter because iters might go away.
@@ -47,7 +49,8 @@ fn ix(skip_low: uint, skip_high: uint, length: uint, it: block(uint)) {
     while i + skip_high <= length { it(i); i += 1u; }
 }
 
-// Returns a bunch of modified versions of v, some of which introduce new elements (borrowed from xs).
+// Returns a bunch of modified versions of v, some of which introduce
+// new elements (borrowed from xs).
 fn vec_edits<T: copy>(v: [T], xs: [T]) -> [[T]] {
     let edits: [[T]] = [];
     let Lv: uint = len(v);
@@ -78,7 +81,8 @@ fn vec_edits<T: copy>(v: [T], xs: [T]) -> [[T]] {
     edits
 }
 
-// Would be nice if this were built in: https://github.com/graydon/rust/issues/424
+// Would be nice if this were built in:
+// https://github.com/graydon/rust/issues/424
 fn vec_to_str(v: [int]) -> str {
     let i = 0u;
     let s = "[";
