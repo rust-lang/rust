@@ -1136,7 +1136,7 @@ impl extensions<T: copy> for [T] {
 
 #[doc = "Unsafe operations"]
 mod unsafe {
-    // FIXME: This should have crate visibility
+    // FIXME: This should have crate visibility (#1893 blocks that)
     #[doc = "The internal representation of a vector"]
     type vec_repr = {mut fill: uint, mut alloc: uint, data: u8};
 
@@ -1228,8 +1228,9 @@ mod u8 {
 
     #[doc = "String hash function"]
     fn hash(&&s: [u8]) -> uint {
-        // djb hash.
-        // FIXME: replace with murmur.
+        /* Seems to have been tragically copy/pasted from str.rs,
+           or vice versa. But I couldn't figure out how to abstract
+           it out. -- tjc */
 
         let mut u: uint = 5381u;
         vec::iter(s, { |c| u *= 33u; u += c as uint; });
