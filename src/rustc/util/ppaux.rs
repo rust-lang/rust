@@ -13,8 +13,8 @@ import driver::session::session;
 fn bound_region_to_str(_cx: ctxt, br: bound_region) -> str {
     alt br {
       br_anon          { "&" }
-      br_param(_, str) { #fmt["&%s.", str] }
-      br_self          { "&self." }
+      br_param(_, str) { #fmt["&%s", str] }
+      br_self          { "&self" }
     }
 }
 
@@ -47,14 +47,14 @@ fn re_scope_id_to_str(cx: ctxt, node_id: ast::node_id) -> str {
 
 fn region_to_str(cx: ctxt, region: region) -> str {
     alt region {
-      re_scope(node_id) { #fmt["&%s.", re_scope_id_to_str(cx, node_id)] }
+      re_scope(node_id) { #fmt["&%s", re_scope_id_to_str(cx, node_id)] }
       re_bound(br) { bound_region_to_str(cx, br) }
       re_free(id, br) { #fmt["{%d} %s", id, bound_region_to_str(cx, br)] }
 
       // These two should not be seen by end-users (very often, anyhow):
-      re_var(id)    { #fmt("&%s.", id.to_str()) }
-      re_default    { "&(default)." }
-      re_static     { "&static." }
+      re_var(id)    { #fmt("&%s", id.to_str()) }
+      re_default    { "&(default)" }
+      re_static     { "&static" }
     }
 }
 
@@ -65,6 +65,15 @@ fn mt_to_str(cx: ctxt, m: mt) -> str {
       ast::m_const { "const " }
     };
     ret mstr + ty_to_str(cx, m.ty);
+}
+
+fn vstore_to_str(cx: ctxt, vs: ty::vstore) -> str {
+    alt vs {
+      ty::vstore_fixed(n) { #fmt["%u", n] }
+      ty::vstore_uniq { "~" }
+      ty::vstore_box { "@" }
+      ty::vstore_slice(r) { region_to_str(cx, r) }
+    }
 }
 
 fn ty_to_str(cx: ctxt, typ: t) -> str {
@@ -152,7 +161,14 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
       ty_box(tm) { "@" + mt_to_str(cx, tm) }
       ty_uniq(tm) { "~" + mt_to_str(cx, tm) }
       ty_ptr(tm) { "*" + mt_to_str(cx, tm) }
-      ty_rptr(r, tm) { region_to_str(cx, r) + mt_to_str(cx, tm) }
+      ty_rptr(r, tm) {
+        let rs = region_to_str(cx, r);
+        if str::len(rs) == 1u {
+            rs + mt_to_str(cx, tm)
+        } else {
+            rs + "." + mt_to_str(cx, tm)
+        }
+      }
       ty_vec(tm) { "[" + mt_to_str(cx, tm) + "]" }
       ty_type { "type" }
       ty_rec(elems) {
@@ -179,7 +195,16 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
         let base = ast_map::path_to_str(path);
         parameterized(cx, base, tps)
       }
-      _ { ty_to_short_str(cx, typ) }
+      ty_evec(mt, vs) {
+        #fmt["[%s]/%s", mt_to_str(cx, mt),
+             vstore_to_str(cx, vs)]
+      }
+      ty_estr(vs) { #fmt["str/%s", vstore_to_str(cx, vs)] }
+      ty_opaque_box { "@?" }
+      ty_constr(t, _) { "@?" }
+      ty_opaque_closure_ptr(ck_block) { "closure&" }
+      ty_opaque_closure_ptr(ck_box) { "closure@" }
+      ty_opaque_closure_ptr(ck_uniq) { "closure~" }
     }
 }
 

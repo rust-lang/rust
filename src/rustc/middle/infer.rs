@@ -790,6 +790,13 @@ impl assignment for infer_ctxt {
                a_bnd.to_str(self), b_bnd.to_str(self)];
         let _r = indenter();
 
+        fn is_borrowable(v: ty::vstore) -> bool {
+            alt v {
+              ty::vstore_fixed(_) | ty::vstore_uniq | ty::vstore_box { true }
+              ty::vstore_slice(_) { false }
+            }
+        }
+
         alt (a_bnd, b_bnd) {
           (some(a_bnd), some(b_bnd)) {
             alt (ty::get(a_bnd).struct, ty::get(b_bnd).struct) {
@@ -799,6 +806,12 @@ impl assignment for infer_ctxt {
               }
               (ty::ty_uniq(mt_a), ty::ty_rptr(r_b, mt_b)) {
                 let nr_b = ty::mk_uniq(self.tcx, mt_b);
+                self.crosspolinate(encl_node_id, a, nr_b, r_b)
+              }
+              (ty::ty_evec(mt_a, vs_a),
+               ty::ty_evec(mt_b, ty::vstore_slice(r_b)))
+              if is_borrowable(vs_a) {
+                let nr_b = ty::mk_evec(self.tcx, mt_b, vs_a);
                 self.crosspolinate(encl_node_id, a, nr_b, r_b)
               }
               _ {
