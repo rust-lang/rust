@@ -81,20 +81,20 @@ fn flat_map<A,B,IA:iterable<A>,IB:iterable<B>>(
     }
 }
 
-fn foldl<A,B,IA:iterable<A>>(self: IA, +b0: B, blk: fn(-B, A) -> B) -> B {
+fn foldl<A,B,IA:iterable<A>>(self: IA, +b0: B, blk: fn(B, A) -> B) -> B {
     let mut b <- b0;
     self.iter {|a|
-        b = blk(b, a);
+        b <- blk(b, a);
     }
     ret b;
 }
 
 fn foldr<A:copy,B,IA:iterable<A>>(
-    self: IA, +b0: B, blk: fn(A, -B) -> B) -> B {
+    self: IA, +b0: B, blk: fn(A, B) -> B) -> B {
 
     let mut b <- b0;
     reversed(self) {|a|
-        b = blk(a, b);
+        b <- blk(a, b);
     }
     ret b;
 }
@@ -291,7 +291,7 @@ fn test_count() {
 
 #[test]
 fn test_foldr() {
-    fn sub(&&a: int, -b: int) -> int {
+    fn sub(&&a: int, &&b: int) -> int {
         a - b
     }
     let sum = foldr([1, 2, 3, 4], 0, sub);
