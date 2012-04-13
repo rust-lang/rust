@@ -1326,6 +1326,17 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
         }
         lowest
       }
+      // FIXME: (tjc) there are rules about when classes are copyable/
+      // sendable, but I'm just treating them like records (#1726)
+      ty_class(did, substs) {
+          // also factor out this code, copied from the records case
+          let mut lowest = kind_sendable;
+          let flds = class_items_as_fields(cx, did, substs);
+          for flds.each {|f|
+            lowest = lower_kind(lowest, type_kind(cx, f.mt.ty));
+          }
+          lowest
+      }
       // Tuples lower to the lowest of their members.
       ty_tup(tys) {
         let mut lowest = kind_sendable;
@@ -1356,7 +1367,6 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
           param_bounds_to_kind(cx.ty_param_bounds.get(did.node))
       }
       ty_constr(t, _) { type_kind(cx, t) }
-      ty_class(_, _) { fail "FIXME"; }
       ty_var(_) { fail "FIXME"; }
       ty_self(_) { kind_noncopyable }
     };
@@ -2248,12 +2258,24 @@ fn iface_methods(cx: ctxt, id: ast::def_id) -> @[method] {
 
 fn impl_iface(cx: ctxt, id: ast::def_id) -> option<t> {
     if id.crate == ast::local_crate {
-        alt cx.items.get(id.node) {
-          ast_map::node_item(@{node: ast::item_impl(
-              _, some(@{node: ast::ty_path(_, id), _}), _, _), _}, _) {
-            some(node_id_to_type(cx, id))
-          }
-          _ { none }
+        alt cx.items.find(id.node) {
+           some(ast_map::node_item(@{node: ast::item_impl(
+              _, some(@{id: id, _}), _, _), _}, _)) {
+              some(node_id_to_type(cx, id))
+           }
+           some(ast_map::node_item(@{node: ast::item_class(_, _, _, _, _),
+                           _},_)) {
+             alt cx.def_map.find(id.node) {
+               some(def_ty(iface_id)) {
+                   some(node_id_to_type(cx, id.node))
+               }
+               _ {
+                 cx.sess.bug("impl_iface: iface ref isn't in iface map \
+                         and isn't bound to a def_ty");
+               }
+             }
+           }
+           _ { none }
         }
     } else {
         csearch::get_impl_iface(cx, id)

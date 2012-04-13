@@ -448,7 +448,7 @@ fn map<T, U>(v: [T], f: fn(T) -> U) -> [U] {
 }
 
 #[doc = "
-Apply a function eo each element of a vector and return a concatenation
+Apply a function to each element of a vector and return a concatenation
 of each result vector
 "]
 fn flat_map<T, U>(v: [T], f: fn(T) -> [U]) -> [U] {

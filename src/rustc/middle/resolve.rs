@@ -9,6 +9,7 @@ import metadata::{csearch, cstore};
 import driver::session::session;
 import util::common::*;
 import std::map::{int_hash, str_hash, hashmap};
+import vec::each;
 import syntax::codemap::span;
 import syntax::visit;
 import visit::vt;
@@ -402,6 +403,11 @@ fn maybe_insert(e: @env, id: node_id, def: option<def>) {
     }
 }
 
+fn resolve_iface_ref(p: @iface_ref, sc: scopes, e: @env) {
+    maybe_insert(e, p.id,
+       lookup_path_strict(*e, sc, p.path.span, p.path, ns_type));
+}
+
 fn resolve_names(e: @env, c: @ast::crate) {
     e.used_imports.track = true;
     let v =
@@ -431,9 +437,10 @@ fn resolve_names(e: @env, c: @ast::crate) {
         alt i.node {
            ast::item_class(_, ifaces, _, _, _) {
              /* visit the iface paths... */
-             for ifaces.each {|p|
-               maybe_insert(e, p.id,
-                 lookup_path_strict(*e, sc, p.path.span, p.path, ns_type))};
+              for ifaces.each {|p| resolve_iface_ref(p, sc, e)};
+           }
+           ast::item_impl(_, ifce, _, _) {
+               option::iter(ifce, {|p| resolve_iface_ref(p, sc, e)});
            }
            _ {}
         }
@@ -535,7 +542,7 @@ fn visit_item_with_scope(e: @env, i: @ast::item, sc: scopes, v: vt<scopes>) {
     alt i.node {
       ast::item_impl(tps, ifce, sty, methods) {
         visit::visit_ty_params(tps, sc, v);
-        alt ifce { some(ty) { v.visit_ty(ty, sc, v); } _ {} }
+        option::iter(ifce) {|p| visit::visit_path(p.path, sc, v)};
         v.visit_ty(sty, sc, v);
         for methods.each {|m|
             v.visit_ty_params(m.tps, sc, v);
@@ -1109,11 +1116,11 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace,
                 }
                 ret some(df);
             }
-                      _ {}
-                  }
-             if left_fn {
-                left_fn_level2 = true;
-            } else if ns != ns_module {
+            _ {}
+        }
+        if left_fn {
+           left_fn_level2 = true;
+        } else if ns != ns_module {
                 left_fn = scope_is_fn(hd);
                 alt scope_closes(hd) {
                   some(node_id) { closing += [node_id]; }
@@ -1121,8 +1128,8 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace,
                 }
             }
             sc = *tl;
-          }
         }
+      }
     };
 }
 
@@ -2103,6 +2110,8 @@ fn check_exports(e: @env) {
 // Impl resolution
 
 type method_info = {did: def_id, n_tps: uint, ident: ast::ident};
+/* what are the did and ident here? */
+/* ident = the name of the impl */
 type _impl = {did: def_id, ident: ast::ident, methods: [@method_info]};
 type iscopes = list<@[@_impl]>;
 
@@ -2177,6 +2186,12 @@ fn find_impls_in_view_item(e: env, vi: @ast::view_item,
     }
 }
 
+/*
+  Given an item <i>, adds one record to the mutable vec
+  <impls> if the item is an impl; zero or more records if the
+  item is a class; and none otherwise. Each record describes
+  one interface implemented by i.
+ */
 fn find_impls_in_item(e: env, i: @ast::item, &impls: [@_impl],
                       name: option<ident>,
                       ck_exports: option<@indexed_mod>) {
@@ -2195,6 +2210,20 @@ fn find_impls_in_item(e: env, i: @ast::item, &impls: [@_impl],
                               ident: m.ident}
                         })}];
         }
+      }
+      ast::item_class(tps, ifces, items, _, _) {
+          let (_, mthds) = ast_util::split_class_items(items);
+          let n_tps = tps.len();
+          vec::iter(ifces) {|p|
+              // The def_id, in this case, identifies the combination of
+              // class and iface
+              impls += [@{did: local_def(p.id),
+                         ident: i.ident,
+                         methods: vec::map(mthds, {|m|
+                                      @{did: local_def(m.id),
+                                          n_tps: n_tps + m.tps.len(),
+                                          ident: m.ident}})}];
+          }
       }
       _ {}
     }

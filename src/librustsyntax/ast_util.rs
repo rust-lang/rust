@@ -2,20 +2,20 @@ import codemap::span;
 import ast::*;
 
 fn spanned<T: copy>(lo: uint, hi: uint, t: T) -> spanned<T> {
-    ret respan(mk_sp(lo, hi), t);
+    respan(mk_sp(lo, hi), t)
 }
 
 fn respan<T: copy>(sp: span, t: T) -> spanned<T> {
-    ret {node: t, span: sp};
+    {node: t, span: sp}
 }
 
 fn dummy_spanned<T: copy>(t: T) -> spanned<T> {
-    ret respan(dummy_sp(), t);
+    respan(dummy_sp(), t)
 }
 
 /* assuming that we're not in macro expansion */
 fn mk_sp(lo: uint, hi: uint) -> span {
-    ret {lo: lo, hi: hi, expn_info: none};
+    {lo: lo, hi: hi, expn_info: none}
 }
 
 // make this a const, once the compiler supports it
@@ -333,6 +333,16 @@ impl inlined_item_methods for inlined_item {
           }
         }
     }
+}
+
+/* True if d is either a def_self, or a chain of def_upvars
+ referring to a def_self */
+fn is_self(d: ast::def) -> bool {
+  alt d {
+    def_self(_)        { true }
+    def_upvar(_, d, _) { is_self(*d) }
+    _                  { false }
+  }
 }
 // Local Variables:
 // mode: rust

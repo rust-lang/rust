@@ -5,6 +5,7 @@ import token::{can_begin_expr, is_ident, is_plain_ident};
 import codemap::{span,fss_none};
 import util::interner;
 import ast_util::{spanned, mk_sp, ident_to_path};
+import ast::{node_id};
 import lexer::reader;
 import prec::{op_spec, as_prec};
 import attr::{parse_outer_attrs_or_ext,
@@ -1788,9 +1789,6 @@ fn parse_item_iface(p: parser, attrs: [ast::attribute]) -> @ast::item {
 //    impl name<T> for [T] { ... }
 fn parse_item_impl(p: parser, attrs: [ast::attribute]) -> @ast::item {
     let lo = p.last_span.lo;
-    fn wrap_path(p: parser, pt: @ast::path) -> @ast::ty {
-        @{id: p.get_id(), node: ast::ty_path(pt, p.get_id()), span: pt.span}
-    }
     let mut (ident, tps) = if !is_word(p, "of") {
         if p.token == token::LT { (none, parse_ty_params(p)) }
         else { (some(parse_ident(p)), parse_ty_params(p)) }
@@ -1800,7 +1798,7 @@ fn parse_item_impl(p: parser, attrs: [ast::attribute]) -> @ast::item {
         if option::is_none(ident) {
             ident = some(vec::last(path.idents));
         }
-        some(wrap_path(p, path))
+        some(@{path: path, id: p.get_id()})
     } else { none };
     let ident = alt ident {
         some(name) { name }
@@ -1855,9 +1853,13 @@ fn ident_to_path_tys(p: parser, i: ast::ident,
      }
 }
 
-fn parse_iface_ref_list(p:parser) -> [ast::iface_ref] {
+fn parse_iface_ref(p:parser) -> @ast::iface_ref {
+    @{path: parse_path(p), id: p.get_id()}
+}
+
+fn parse_iface_ref_list(p:parser) -> [@ast::iface_ref] {
     parse_seq_to_before_end(token::LBRACE, seq_sep(token::COMMA),
-                   {|p| {path: parse_path(p), id: p.get_id()}}, p)
+                            parse_iface_ref, p)
 }
 
 fn parse_item_class(p: parser, attrs: [ast::attribute]) -> @ast::item {
@@ -1866,7 +1868,7 @@ fn parse_item_class(p: parser, attrs: [ast::attribute]) -> @ast::item {
     let rp = parse_region_param(p);
     let ty_params = parse_ty_params(p);
     let class_path = ident_to_path_tys(p, class_name, ty_params);
-    let ifaces : [ast::iface_ref] = if eat_word(p, "implements")
+    let ifaces : [@ast::iface_ref] = if eat_word(p, "implements")
                                        { parse_iface_ref_list(p) }
                                     else { [] };
     expect(p, token::LBRACE);
@@ -1918,7 +1920,7 @@ fn parse_single_class_item(p: parser, privcy: ast::privacy)
 enum class_contents { ctor_decl(ast::fn_decl, ast::blk, codemap::span),
                       members([@ast::class_member]) }
 
-fn parse_class_item(p:parser, class_name_with_tps:@ast::path)
+fn parse_class_item(p:parser, class_name_with_tps: @ast::path)
     -> class_contents {
     if eat_word(p, "new") {
         let lo = p.last_span.lo;

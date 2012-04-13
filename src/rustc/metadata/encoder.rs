@@ -659,9 +659,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         }
         alt ifce {
           some(t) {
-            let i_ty = alt check t.node {
-              ty_path(_, id) { ty::node_id_to_type(tcx, id) }
-            };
+            let i_ty = ty::node_id_to_type(tcx, t.id);
             ebml_w.start_tag(tag_impl_iface);
             write_type(ecx, ebml_w, i_ty);
             ebml_w.end_tag();

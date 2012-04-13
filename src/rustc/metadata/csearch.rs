@@ -160,8 +160,9 @@ fn get_field_type(tcx: ty::ctxt, class_id: ast::def_id,
     ret {bounds: @[], rp: ast::rp_none, ty: ty};
 }
 
-fn get_impl_iface(tcx: ty::ctxt, def: ast::def_id)
-    -> option<ty::t> {
+// Given a def_id for an impl or class, return the iface it implements,
+// or none if it's not for an impl or for a class that implements ifaces
+fn get_impl_iface(tcx: ty::ctxt, def: ast::def_id) -> option<ty::t> {
     let cstore = tcx.sess.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
     decoder::get_impl_iface(cdata, def.node, tcx)

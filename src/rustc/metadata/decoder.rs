@@ -27,7 +27,6 @@ export get_class_method;
 export get_impl_method;
 export lookup_def;
 export lookup_item_name;
-export get_impl_iface;
 export resolve_path;
 export get_crate_attributes;
 export list_crate_metadata;
@@ -157,11 +156,9 @@ fn item_impl_iface(item: ebml::doc, tcx: ty::ctxt, cdata: cmd)
     -> option<ty::t> {
     let mut result = none;
     ebml::tagged_docs(item, tag_impl_iface) {|ity|
-        let t = parse_ty_data(ity.data, cdata.cnum, ity.start, tcx, {|did|
-            translate_def_id(cdata, did)
-        });
-        result = some(t);
-    }
+        result = some(parse_ty_data(ity.data, cdata.cnum, ity.start, tcx,
+                             {|did| translate_def_id(cdata, did)}));
+    };
     result
 }
 

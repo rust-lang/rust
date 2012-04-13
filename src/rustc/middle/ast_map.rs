@@ -204,16 +204,16 @@ fn map_item(i: @item, cx: ctx, v: vt) {
             cx.map.insert(nitem.id, node_native_item(nitem, abi, @cx.path));
         }
       }
-      item_class(_, _, items, ctor, _) {
+      item_class(tps, ifces, items, ctor, _) {
+          let (_, ms) = ast_util::split_class_items(items);
+          // Map iface refs to their parent classes. This is
+          // so we can find the self_ty
+          vec::iter(ifces) {|p| cx.map.insert(p.id,
+                                  node_item(i, item_path)); };
           let d_id = ast_util::local_def(i.id);
           let p = extend(cx, i.ident);
-          for items.each {|ci|
            // only need to handle methods
-           alt ci.node {
-             class_method(m) { map_method(d_id, p, m, cx); }
-             _ {}
-           }
-          }
+          vec::iter(ms) {|m| map_method(d_id, p, m, cx); }
       }
       _ { }
     }

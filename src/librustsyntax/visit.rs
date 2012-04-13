@@ -134,7 +134,7 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
       }
       item_impl(tps, ifce, ty, methods) {
         v.visit_ty_params(tps, e, v);
-        alt ifce { some(ty) { v.visit_ty(ty, e, v); } none {} }
+        option::iter(ifce, {|p| visit_path(p.path, e, v)});
         v.visit_ty(ty, e, v);
         for methods.each {|m|
             visit_method_helper(m, e, v)

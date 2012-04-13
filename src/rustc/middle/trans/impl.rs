@@ -5,13 +5,13 @@ import type_of::*;
 import build::*;
 import driver::session::session;
 import syntax::ast;
-import syntax::ast_util::local_def;
+import syntax::ast_util::{local_def, split_class_items};
 import metadata::csearch;
 import back::{link, abi};
 import lib::llvm::llvm;
 import lib::llvm::{ValueRef, TypeRef};
 import lib::llvm::llvm::LLVMGetParam;
-import ast_map::{path, path_mod, path_name};
+import ast_map::{path, path_mod, path_name, node_id_to_str};
 import std::map::hashmap;
 
 fn trans_impl(ccx: @crate_ctxt, path: path, name: ast::ident,
@@ -82,12 +82,21 @@ fn trans_vtable_callee(bcx: block, env: callee_env, vtable: ValueRef,
     {bcx: bcx, val: mptr, kind: owned, env: env}
 }
 
+fn method_from_methods(ms: [@ast::method], name: ast::ident) -> ast::def_id {
+  local_def(option::get(vec::find(ms, {|m| m.ident == name})).id)
+}
+
 fn method_with_name(ccx: @crate_ctxt, impl_id: ast::def_id,
                     name: ast::ident) -> ast::def_id {
     if impl_id.crate == ast::local_crate {
         alt check ccx.tcx.items.get(impl_id.node) {
           ast_map::node_item(@{node: ast::item_impl(_, _, _, ms), _}, _) {
-            local_def(option::get(vec::find(ms, {|m| m.ident == name})).id)
+            method_from_methods(ms, name)
+          }
+          ast_map::node_item(@{node:
+               ast::item_class(_, _, items, _, _), _}, _) {
+            let (_,ms) = split_class_items(items);
+            method_from_methods(ms, name)
           }
         }
     } else {
@@ -245,9 +254,8 @@ fn make_impl_vtable(ccx: @crate_ctxt, impl_id: ast::def_id, substs: [ty::t],
     let tcx = ccx.tcx;
     let ifce_id = ty::ty_to_def_id(option::get(ty::impl_iface(tcx, impl_id)));
     let has_tps = (*ty::lookup_item_type(ccx.tcx, impl_id).bounds).len() > 0u;
-    make_vtable(ccx, vec::map(*ty::iface_methods(tcx, ifce_id), {|im|
-        let fty = ty::subst_tps(tcx, substs,
-                                             ty::mk_fn(tcx, im.fty));
+    make_vtable(ccx, vec::map(*ty::iface_methods(tcx, ifce_id)) {|im|
+        let fty = ty::subst_tps(tcx, substs, ty::mk_fn(tcx, im.fty));
         if (*im.tps).len() > 0u || ty::type_has_vars(fty) {
             C_null(T_ptr(T_nil()))
         } else {
@@ -260,7 +268,7 @@ fn make_impl_vtable(ccx: @crate_ctxt, impl_id: ast::def_id, substs: [ty::t],
                 trans_external_path(ccx, m_id, fty)
             }
         }
-    }))
+    })
 }
 
 fn trans_cast(bcx: block, val: @ast::expr, id: ast::node_id, dest: dest)

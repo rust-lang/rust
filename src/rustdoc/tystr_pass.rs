@@ -249,8 +249,8 @@ fn fold_impl(
           ast_map::node_item(@{
             node: ast::item_impl(_, iface_ty, self_ty, _), _
           }, _) {
-            let iface_ty = option::map(iface_ty) {|iface_ty|
-                pprust::ty_to_str(iface_ty)
+            let iface_ty = option::map(iface_ty) {|p|
+                pprust::path_to_str(p.path)
             };
             (iface_ty, some(pprust::ty_to_str(self_ty)))
           }

@@ -636,6 +636,10 @@ enum attr_style { attr_outer, attr_inner, }
 #[auto_serialize]
 type attribute_ = {style: attr_style, value: meta_item};
 
+/*
+  iface_refs appear in both impls and in classes that implement ifaces.
+  resolve maps each iface_ref's id to its defining iface.
+ */
 #[auto_serialize]
 type iface_ref = {path: @path, id: node_id};
 
@@ -661,14 +665,14 @@ enum item_ {
              node_id /* dtor id */, node_id /* ctor id */,
              region_param),
     item_class([ty_param], /* ty params for class */
-               [iface_ref],   /* ifaces this class implements */
+               [@iface_ref],   /* ifaces this class implements */
                [@class_member], /* methods, etc. */
                                /* (not including ctor) */
                class_ctor,
                region_param
                ),
     item_iface([ty_param], [ty_method]),
-    item_impl([ty_param], option<@ty> /* iface */,
+    item_impl([ty_param], option<@iface_ref> /* iface */,
               @ty /* self */, [@method]),
 }
 

@@ -561,14 +561,11 @@ fn print_item(s: ps, &&item: @ast::item) {
         word(s.s, item.ident);
         print_type_params(s, tps);
         space(s.s);
-        alt ifce {
-          some(ty) {
+        option::iter(ifce, {|p|
             word_nbsp(s, "of");
-            print_type(s, ty);
+            print_path(s, p.path, false);
             space(s.s);
-          }
-          _ {}
-        }
+            });
         word_nbsp(s, "for");
         print_type(s, ty);
         space(s.s);

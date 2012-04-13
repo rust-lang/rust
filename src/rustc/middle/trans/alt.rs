@@ -164,7 +164,7 @@ fn enter_opt(tcx: ty::ctxt, m: match, opt: opt, col: uint,
         alt p.node {
           ast::pat_enum(_, subpats) {
             if opt_eq(tcx, variant_opt(tcx, p.id), opt) {
-              some(option::get_or_default(subpats,
+              some(option::get_default(subpats,
                      vec::from_elem(variant_size, dummy))) }
             else { none }
           }
