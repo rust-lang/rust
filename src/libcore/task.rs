@@ -65,7 +65,7 @@ A task that completes without failing and whose supervised children complete
 without failing is considered to exit successfully.
 
 FIXME: This description does not indicate the current behavior for linked
-failure.
+failure. (See #1868)
 "]
 enum task_result {
     success,
@@ -486,7 +486,7 @@ fn spawn_raw(opts: task_opts, +f: fn~()) unsafe {
         // FIXME: The runtime supervision API is weird here because it
         // was designed to let the child unsupervise itself, when what
         // we actually want is for parents to unsupervise new
-        // children.
+        // children. (#1868, #1789)
         fn~() {
             rustrt::unsupervise();
             f();
