@@ -42,7 +42,7 @@ fn get_lint_dict() -> lint_dict {
            desc: "proper use of core::libc types in native modules",
            default: warn}),
 
-        ("unused-imports",
+        ("unused_imports",
          @{lint: unused_imports,
            desc: "imports that are never used",
            default: ignore})
