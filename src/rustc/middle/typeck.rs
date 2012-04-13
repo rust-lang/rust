@@ -873,6 +873,15 @@ impl methods for @fn_ctxt {
     fn next_ty_vars(n: uint) -> [ty::t] {
         vec::from_fn(n) {|_i| self.next_ty_var() }
     }
+    fn report_mismatched_types(sp: span, e: ty::t, a: ty::t,
+                               err: ty::type_err) {
+        self.ccx.tcx.sess.span_err(
+            sp,
+            #fmt["mismatched types: expected `%s` but found `%s` (%s)",
+                 self.ty_to_str(e),
+                 self.ty_to_str(a),
+                 ty::type_err_to_str(self.ccx.tcx, err)]);
+    }
 }
 
 fn mk_ty_params(tcx: ty::ctxt, atps: [ast::ty_param])
@@ -996,7 +1005,7 @@ fn fixup_self_param(fcx: @fn_ctxt, mty: ty::t, m_substs: [ty::t],
             // Simply ensure that the type parameters for the self
             // type match the context.
             vec::iter2(substs, m_substs) {|s, ms|
-                demand::simple(fcx, sp, s, ms);
+                demand::suptype(fcx, sp, s, ms);
             }
             selfty
           }
@@ -1406,21 +1415,26 @@ fn require_same_types(
 mod demand {
     // Requires that the two types unify, and prints an error message if they
     // don't.
-    fn simple(fcx: @fn_ctxt, sp: span,
+    fn suptype(fcx: @fn_ctxt, sp: span,
               expected: ty::t, actual: ty::t) {
 
         alt infer::mk_subty(fcx.infcx, actual, expected) {
           result::ok(()) { /* ok */ }
           result::err(err) {
-            fcx.ccx.tcx.sess.span_err(sp,
-                                      "mismatched types: expected `" +
-                                      fcx.ty_to_str(expected) +
-                                      "` but found `" +
-                                      fcx.ty_to_str(actual) +
-                                      "` (" +
-                                      ty::type_err_to_str(
-                                          fcx.ccx.tcx, err) +
-                                      ")");
+            fcx.report_mismatched_types(sp, expected, actual, err);
+          }
+        }
+    }
+
+    // Checks that the type `actual` can be assigned to `expected`, borrowing
+    // to `encl_node_id` if necessary.
+    fn assign(fcx: @fn_ctxt, sp: span, encl_node_id: ast::node_id,
+              expected: ty::t, actual: ty::t) {
+
+        alt infer::mk_assignty(fcx.infcx, encl_node_id, actual, expected) {
+          result::ok(()) { /* ok */ }
+          result::err(err) {
+            fcx.report_mismatched_types(sp, expected, actual, err);
           }
         }
     }
@@ -1912,7 +1926,7 @@ fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
         // check that the type of the value being matched is a subtype
         // of the type of the pattern:
         let pat_ty = fcx.node_ty(pat.id);
-        demand::simple(fcx, pat.span, pat_ty, expected);
+        demand::suptype(fcx, pat.span, pat_ty, expected);
 
         // Get the number of arguments in this enum variant.
         let arg_types = variant_arg_types(pcx.fcx.ccx, pat.span,
@@ -1991,12 +2005,12 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
       if !pat_util::pat_is_variant(tcx.def_map, pat) {
         let vid = lookup_local(pcx.fcx, pat.span, pat.id);
         let mut typ = ty::mk_var(tcx, vid);
-        demand::simple(pcx.fcx, pat.span, expected, typ);
+        demand::suptype(pcx.fcx, pat.span, expected, typ);
         let canon_id = pcx.map.get(path_to_ident(name));
         if canon_id != pat.id {
             let tv_id = lookup_local(pcx.fcx, pat.span, canon_id);
             let ct = ty::mk_var(tcx, tv_id);
-            demand::simple(pcx.fcx, pat.span, ct, typ);
+            demand::suptype(pcx.fcx, pat.span, ct, typ);
         }
         fcx.write_ty(pat.id, typ);
         alt sub {
@@ -2165,17 +2179,17 @@ fn require_pure_call(ccx: @crate_ctxt, caller_purity: ast::purity,
     }
 }
 
-type unifier = fn@(@fn_ctxt, span, ty::t, ty::t);
+type unifier = fn(@fn_ctxt, span, ty::t, ty::t);
 
 fn check_expr(fcx: @fn_ctxt, expr: @ast::expr) -> bool {
-    fn dummy_unify(_fcx: @fn_ctxt, _sp: span,
-                   _expected: ty::t, _actual: ty::t) {
-    }
-    ret check_expr_with_unifier(fcx, expr, dummy_unify,
-                                ty::mk_nil(fcx.ccx.tcx));
+    ret check_expr_with_unifier(fcx, expr, ty::mk_nil(fcx.ccx.tcx)) {
+        |_fcx, _span, _t1, _t2|
+        /* unify is a no-op */
+    };
 }
+
 fn check_expr_with(fcx: @fn_ctxt, expr: @ast::expr, expected: ty::t) -> bool {
-    ret check_expr_with_unifier(fcx, expr, demand::simple, expected);
+    ret check_expr_with_unifier(fcx, expr, expected, demand::suptype);
 }
 
 // determine the `self` type, using fresh variables for all variables declared
@@ -2486,55 +2500,46 @@ fn lookup_field_ty(tcx: ty::ctxt, class_id: ast::def_id,
                 {|f| ty::lookup_field_type(tcx, class_id, f.id, substs) })
 }
 
-/*
- * Returns the region that the value named by the given expression lives in.
- * The expression must have been typechecked. If the expression is not an
- * lvalue, returns the block region.
- *
- * Note that borrowing is not detected here, because we would have to
- * immediately structurally resolve too many types otherwise. Thus the
- * reference-counted heap and exchange heap regions will be reported as block
- * regions instead. This is cleaned up in the region checking pass.
+/* Returns the region that &expr should be placed into.  If expr is an
+ * lvalue, this will be the region of the lvalue.  Otherwise, if region is
+ * an rvalue, the semantics are that the result is stored into a temporary
+ * stack position and so the resulting region will be the enclosing block.
  */
 fn region_of(fcx: @fn_ctxt, expr: @ast::expr) -> ty::region {
+    fn borrow(fcx: @fn_ctxt, expr: @ast::expr) -> ty::region {
+        let parent_id = fcx.ccx.tcx.region_map.parents.get(expr.id);
+        ret ty::re_scope(parent_id);
+    }
+
+    fn deref(fcx: @fn_ctxt, base: @ast::expr) -> ty::region {
+        let base_ty = fcx.expr_ty(base);
+        let base_ty = structurally_resolved_type(fcx, base.span, base_ty);
+        alt ty::get(base_ty).struct {
+          ty::ty_rptr(region, _) { region }
+          ty::ty_box(_) | ty::ty_uniq(_) { borrow(fcx, base) }
+          _ { region_of(fcx, base) }
+        }
+    }
+
     alt expr.node {
-        ast::expr_path(path) {
-            let defn = lookup_def(fcx, path.span, expr.id);
-            alt defn {
-                ast::def_local(local_id, _) |
-                ast::def_upvar(local_id, _, _) {
-                    let local_blocks = fcx.ccx.tcx.region_map.local_blocks;
-                    let local_block_id = local_blocks.get(local_id);
-                    ret ty::re_scope(local_block_id);
-                }
-                _ {
-                    fcx.ccx.tcx.sess.span_unimpl(expr.span,
-                                                 "immortal region");
-                }
-            }
+      ast::expr_path(path) {
+        let defn = lookup_def(fcx, path.span, expr.id);
+        alt defn {
+          ast::def_local(local_id, _) |
+          ast::def_upvar(local_id, _, _) {
+            let local_blocks = fcx.ccx.tcx.region_map.local_blocks;
+            let local_block_id = local_blocks.get(local_id);
+            ty::re_scope(local_block_id)
+          }
+          _ {
+            ty::re_static
+          }
         }
-        ast::expr_field(base, _, _) {
-            // FIXME: Insert borrowing!
-            ret region_of(fcx, base);
-        }
-        ast::expr_index(base, _) {
-            fcx.ccx.tcx.sess.span_unimpl(expr.span,
-                                         "regions of index operations");
-        }
-        ast::expr_unary(ast::deref, base) {
-            let expr_ty = fcx.expr_ty(base);
-            let expr_ty = structurally_resolved_type(fcx, expr.span, expr_ty);
-            alt ty::get(expr_ty).struct {
-                ty::ty_rptr(region, _) { region }
-                ty::ty_box(_) | ty::ty_uniq(_) {
-                    fcx.ccx.tcx.sess.span_unimpl(expr.span, "borrowing");
-                }
-                _ { ret region_of(fcx, base); }
-            }
-        }
-        _ {
-            ret fcx.ccx.tcx.region_map.rvalue_to_region.get(expr.id);
-        }
+      }
+      ast::expr_field(base, _, _) { deref(fcx, base) }
+      ast::expr_index(base, _) { deref(fcx, base) }
+      ast::expr_unary(ast::deref, base) { deref(fcx, base) }
+      _ { borrow(fcx, expr) }
     }
 }
 
@@ -2543,7 +2548,7 @@ fn check_expr_fn_with_unifier(fcx: @fn_ctxt,
                               proto: ast::proto,
                               decl: ast::fn_decl,
                               body: ast::blk,
-                              unify: unifier,
+                              unifier: unifier,
                               expected: ty::t,
                               is_loop_body: bool) {
     let tcx = fcx.ccx.tcx;
@@ -2559,7 +2564,7 @@ fn check_expr_fn_with_unifier(fcx: @fn_ctxt,
     // typecheck the body so that we have more information about the
     // argument types in the body. This is needed to make binops and
     // record projection work on type inferred arguments.
-    unify(fcx, expr.span, expected, fty);
+    unifier(fcx, expr.span, expected, fty);
 
     let ret_ty = ty::ty_fn_ret(fty);
     let arg_tys = vec::map(ty::ty_fn_args(fty)) {|a| a.ty };
@@ -2569,8 +2574,8 @@ fn check_expr_fn_with_unifier(fcx: @fn_ctxt,
              fcx.self_ty);
 }
 
-fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
-                           expected: ty::t) -> bool {
+fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr,
+                           expected: ty::t, unifier: unifier) -> bool {
 
     #debug(">> typechecking expr %d (%s)",
            expr.id, syntax::print::pprust::expr_to_str(expr));
@@ -2578,7 +2583,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
     // A generic function to factor out common logic from call and bind
     // expressions.
     fn check_call_or_bind(
-        fcx: @fn_ctxt, sp: span, fty: ty::t,
+        fcx: @fn_ctxt, sp: span, call_expr_id: ast::node_id, fty: ty::t,
         args: [option<@ast::expr>]) -> {fty: ty::t, bot: bool} {
 
         let fty = universally_quantify_before_call(fcx, region_env(), fty);
@@ -2640,9 +2645,12 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                       _ { false }
                     };
                     if is_block == check_blocks {
-                        let t = arg_tys[i].ty;
-                        bot |= check_expr_with_unifier(fcx, a, demand::simple,
-                                                       t);
+                        let arg_ty = arg_tys[i].ty;
+                        bot |= check_expr_with_unifier(fcx, a, arg_ty) {
+                            |fcx, span, expected, actual|
+                            demand::assign(fcx, span, call_expr_id,
+                                           expected, actual);
+                        };
                     }
                   }
                   none { }
@@ -2666,41 +2674,35 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         ret bot;
     }
 
-    // A generic function for checking call expressions
-    fn check_call(fcx: @fn_ctxt, sp: span, f: @ast::expr, args: [@ast::expr])
-        -> {fty: ty::t, bot: bool} {
-        let mut args_opt_0: [option<@ast::expr>] = [];
-        for args.each {|arg|
-            args_opt_0 += [some::<@ast::expr>(arg)];
-        }
+    // A generic function for doing all of the checking for call expressions
+    fn check_call(fcx: @fn_ctxt, sp: span, call_expr_id: ast::node_id,
+                  f: @ast::expr, args: [@ast::expr]) -> bool {
 
-        let bot = check_expr(fcx, f);
+        let mut bot = check_expr(fcx, f);
+        let fn_ty = fcx.expr_ty(f);
 
         // Call the generic checker.
-        let fn_ty = fcx.expr_ty(f);
-        let {fty, bot: bot1} = check_call_or_bind(fcx, sp, fn_ty, args_opt_0);
-        ret {fty: fty, bot: bot | bot1};
-    }
+        let fty = {
+            let args_opt = args.map { |arg| some(arg) };
+            let r = check_call_or_bind(fcx, sp, call_expr_id,
+                                       fn_ty, args_opt);
+            bot |= r.bot;
+            r.fty
+        };
 
-    // A generic function for doing all of the checking for call expressions
-    fn check_call_full(fcx: @fn_ctxt, sp: span, id: ast::node_id,
-                       f: @ast::expr, args: [@ast::expr]) -> bool {
-        let {fty, bot} = check_call(fcx, sp, f, args);
-
-        /* need to restrict oper to being an explicit expr_path if we're
-        inside a pure function */
+        // Need to restrict oper to being an explicit expr_path if we're
+        // inside a pure function
         require_pure_call(fcx.ccx, fcx.purity, f, sp);
 
         // Pull the return type out of the type of the function.
-        let {rt, bot} = alt structure_of(fcx, sp, fty) {
+        alt structure_of(fcx, sp, fty) {
           ty::ty_fn(f) {
-            {rt: f.output,
-             bot: bot | (f.ret_style == ast::noreturn)}
+            bot |= (f.ret_style == ast::noreturn);
+            fcx.write_ty(call_expr_id, f.output);
+            ret bot;
           }
           _ { fcx.ccx.tcx.sess.span_fatal(sp, "calling non-function"); }
-        };
-        fcx.write_ty(id, rt);
-        ret bot;
+        }
     }
 
     // A generic function for checking for or for-each loops
@@ -2708,7 +2710,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                  element_ty: ty::t, body: ast::blk,
                  node_id: ast::node_id) -> bool {
         let locid = lookup_local(fcx, local.span, local.node.id);
-        demand::simple(fcx, local.span,
+        demand::suptype(fcx, local.span,
                        ty::mk_var(fcx.ccx.tcx, locid),
                        element_ty);
         let bot = check_decl_local(fcx, local);
@@ -2728,7 +2730,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                 let if_t = fcx.next_ty_var();
                 let thn_bot = check_block(fcx, thn);
                 let thn_t = fcx.node_ty(thn.node.id);
-                demand::simple(fcx, thn.span, if_t, thn_t);
+                demand::suptype(fcx, thn.span, if_t, thn_t);
                 let els_bot = check_expr_with(fcx, els, if_t);
                 (if_t, thn_bot & els_bot)
               }
@@ -2764,7 +2766,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
           some(origin) {
             let {fty: method_ty, bot: bot} = {
                 let method_ty = fcx.node_ty(callee_id);
-                check_call_or_bind(fcx, op_ex.span, method_ty, args)
+                check_call_or_bind(fcx, op_ex.span, op_ex.id,
+                                   method_ty, args)
             };
             fcx.ccx.method_map.insert(op_ex.id, origin);
             some((ty::ty_fn_ret(method_ty), bot))
@@ -2790,7 +2793,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
             let t_var = fcx.next_ty_var();
             let const_vec_t = ty::mk_vec(tcx, {ty: t_var,
                                                mutbl: ast::m_const});
-            demand::simple(fcx, lhs.span, const_vec_t, lhs_t);
+            demand::suptype(fcx, lhs.span, const_vec_t, lhs_t);
             let rhs_bot = check_expr_with(fcx, rhs, const_vec_t);
             let result_vec_t = ty::mk_vec(tcx, {ty: t_var,
                                                 mutbl: lhs_mt.mutbl});
@@ -2810,7 +2813,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
 
           (_, _) if ty::is_binopable(tcx, lhs_t, op) {
             let tvar = fcx.next_ty_var();
-            demand::simple(fcx, expr.span, tvar, lhs_t);
+            demand::suptype(fcx, expr.span, tvar, lhs_t);
             let rhs_bot = check_expr_with(fcx, rhs, tvar);
             let rhs_t = alt op {
               ast::eq | ast::lt | ast::le | ast::ne | ast::ge |
@@ -2895,8 +2898,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         };
         alt vst {
           ast::vstore_slice(_) {
-            let region = fcx.ccx.tcx.region_map.rvalue_to_region.get(ev.id);
-            typ = replace_default_region(tcx, region, typ);
+            let r = ty::re_scope(fcx.ccx.tcx.region_map.parents.get(ev.id));
+            typ = replace_default_region(tcx, r, typ);
           }
           _ { }
         }
@@ -2935,7 +2938,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         bot |= check_binop(fcx, expr, op, lhs, rhs);
         let lhs_t = fcx.expr_ty(lhs);
         let result_t = fcx.expr_ty(expr);
-        demand::simple(fcx, expr.span, result_t, lhs_t);
+        demand::suptype(fcx, expr.span, result_t, lhs_t);
 
         // Overwrite result of check_binop...this preserves existing behavior
         // but seems quite dubious with regard to user-defined methods
@@ -3068,7 +3071,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         fcx.write_nil(id);
       }
       ast::expr_copy(a) {
-        bot = check_expr_with_unifier(fcx, a, unify, expected);
+        bot = check_expr_with_unifier(fcx, a, expected, unifier);
         fcx.write_ty(id, fcx.expr_ty(a));
       }
       ast::expr_move(lhs, rhs) {
@@ -3107,8 +3110,6 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         let pattern_ty = fcx.next_ty_var();
         bot = check_expr_with(fcx, discrim, pattern_ty);
 
-        let parent_region = tcx.region_map.rvalue_to_region.get(discrim.id);
-
         // Typecheck the patterns first, so that we get types for all the
         // bindings.
         //let pattern_ty = fcx.expr_ty(discrim);
@@ -3116,9 +3117,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
             let pcx = {
                 fcx: fcx,
                 map: pat_util::pat_id_map(tcx.def_map, arm.pats[0]),
-                alt_region: parent_region,
+                alt_region: ty::re_scope(expr.id),
                 block_region: ty::re_scope(arm.body.node.id),
-                pat_region: parent_region
+                pat_region: ty::re_scope(expr.id)
             };
 
             for arm.pats.each {|p| check_pat(pcx, p, pattern_ty);}
@@ -3133,7 +3134,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
             }
             if !check_block(fcx, arm.body) { arm_non_bot = true; }
             let bty = fcx.node_ty(arm.body.node.id);
-            demand::simple(fcx, arm.body.span, result_ty, bty);
+            demand::suptype(fcx, arm.body.span, result_ty, bty);
         }
         bot |= !arm_non_bot;
         if !arm_non_bot { result_ty = ty::mk_bot(tcx); }
@@ -3141,7 +3142,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
       }
       ast::expr_fn(proto, decl, body, captures) {
         check_expr_fn_with_unifier(fcx, expr, proto, decl, body,
-                                   unify, expected, false);
+                                   unifier, expected, false);
         capture::check_capture_clause(tcx, expr.id, proto, *captures);
       }
       ast::expr_fn_block(decl, body) {
@@ -3154,13 +3155,13 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                expr_to_str(expr),
                ty_to_str(tcx, expected));
         check_expr_fn_with_unifier(fcx, expr, proto, decl, body,
-                                   unify, expected, false);
+                                   unifier, expected, false);
       }
       ast::expr_loop_body(b) {
         let rty = structurally_resolved_type(fcx, expr.span, expected);
         let (inner_ty, proto) = alt check ty::get(rty).struct {
           ty::ty_fn(fty) {
-            demand::simple(fcx, expr.span, fty.output, ty::mk_bool(tcx));
+            demand::suptype(fcx, expr.span, fty.output, ty::mk_bool(tcx));
             (ty::mk_fn(tcx, {output: ty::mk_nil(tcx) with fty}),
              fty.proto)
           }
@@ -3168,7 +3169,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         alt check b.node {
           ast::expr_fn_block(decl, body) {
             check_expr_fn_with_unifier(fcx, b, proto, decl, body,
-                                       unify, inner_ty, true);
+                                       unifier, inner_ty, true);
           }
         }
         let block_ty = structurally_resolved_type(
@@ -3196,7 +3197,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
 
         let {fty, bot: ccob_bot} = {
             let fn_ty = fcx.expr_ty(f);
-            check_call_or_bind(fcx, expr.span, fn_ty, args)
+            check_call_or_bind(fcx, expr.span, expr.id, fn_ty, args)
         };
         bot |= ccob_bot;
 
@@ -3248,7 +3249,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
         fcx.write_ty(id, ft);
       }
       ast::expr_call(f, args, _) {
-        bot = check_call_full(fcx, expr.span, expr.id, f, args);
+        bot = check_call(fcx, expr.span, expr.id, f, args);
       }
       ast::expr_cast(e, t) {
         bot = check_expr(fcx, e);
@@ -3332,7 +3333,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                 let mut found = false;
                 for base_fields.each {|bf|
                     if str::eq(f.node.ident, bf.ident) {
-                        demand::simple(fcx, f.span, bf.mt.ty, f.node.mt.ty);
+                        demand::suptype(fcx, f.span, bf.mt.ty, f.node.mt.ty);
                         found = true;
                     }
                 }
@@ -3488,7 +3489,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
                                 constraints: []})
             };
 
-            demand::simple(fcx, expr.span,
+            demand::suptype(fcx, expr.span,
                            expected_ty, fcx.node_ty(alloc_id));
           }
 
@@ -3516,7 +3517,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt, expr: @ast::expr, unify: unifier,
            ty_to_str(tcx, fcx.expr_ty(expr)),
            ty_to_str(tcx, expected));
 
-    unify(fcx, expr.span, expected, fcx.expr_ty(expr));
+    unifier(fcx, expr.span, expected, fcx.expr_ty(expr));
 
     #debug("<< bot=%b", bot);
     ret bot;
@@ -3559,7 +3560,9 @@ fn check_decl_local(fcx: @fn_ctxt, local: @ast::local) -> bool {
       _ {/* fall through */ }
     }
 
-    let region = fcx.ccx.tcx.region_map.rvalue_to_region.get(local.node.id);
+    let region =
+        ty::re_scope(
+            fcx.ccx.tcx.region_map.local_blocks.get(local.node.id));
     let pcx = {
         fcx: fcx,
         map: pat_util::pat_id_map(fcx.ccx.tcx.def_map, local.node.pat),
@@ -3603,7 +3606,7 @@ fn check_block_no_value(fcx: @fn_ctxt, blk: ast::blk) -> bool {
     if !bot {
         let blkty = fcx.node_ty(blk.node.id);
         let nilty = ty::mk_nil(fcx.ccx.tcx);
-        demand::simple(fcx, blk.span, nilty, blkty);
+        demand::suptype(fcx, blk.span, nilty, blkty);
     }
     ret bot;
 }
@@ -3667,7 +3670,7 @@ fn check_const(ccx: @crate_ctxt, _sp: span, e: @ast::expr, id: ast::node_id) {
     check_expr(fcx, e);
     let cty = fcx.expr_ty(e);
     let declty = fcx.ccx.tcx.tcache.get(local_def(id)).ty;
-    demand::simple(fcx, e.span, declty, cty);
+    demand::suptype(fcx, e.span, declty, cty);
     writeback::resolve_type_vars_in_expr(fcx, e);
 }
 
@@ -3709,7 +3712,7 @@ fn check_enum_variants(ccx: @crate_ctxt, sp: span, vs: [ast::variant],
             check_expr(fcx, e);
             let cty = fcx.expr_ty(e);
             let declty = ty::mk_int(ccx.tcx);
-            demand::simple(fcx, e.span, declty, cty);
+            demand::suptype(fcx, e.span, declty, cty);
             // FIXME: issue #1417
             // Also, check_expr (from check_const pass) doesn't guarantee that
             // the expression in an form that eval_const_expr can handle, so
@@ -3945,7 +3948,7 @@ fn check_fn(ccx: @crate_ctxt,
     alt body.node.expr {
       some(tail_expr) {
         let tail_expr_ty = fcx.expr_ty(tail_expr);
-        demand::simple(fcx, tail_expr.span, fcx.ret_ty, tail_expr_ty);
+        demand::suptype(fcx, tail_expr.span, fcx.ret_ty, tail_expr_ty);
       }
       none { }
     }
@@ -4241,7 +4244,7 @@ mod vtable {
         alt check ty::get(iface_ty).struct {
           ty::ty_iface(_, tps) {
             vec::iter2(tps, iface_tys,
-                       {|a, b| demand::simple(fcx, sp, a, b);});
+                       {|a, b| demand::suptype(fcx, sp, a, b);});
           }
         }
     }

@@ -7,76 +7,45 @@ import driver::session::session;
 import middle::ty;
 import std::map::hashmap;
 import syntax::{ast, visit};
+import util::ppaux;
 
-// An "extended region", which includes the ordinarily-unnamed reference-
-// counted heap and exchange heap regions. This is used to detect borrowing.
-enum region_ext {
-    re_rc,
-    re_exheap,
-    re_region(ty::region)
-}
+fn check_expr(expr: @ast::expr,
+              &&tcx: ty::ctxt,
+              visitor: visit::vt<ty::ctxt>) {
+    visit::visit_expr(expr, tcx, visitor);
 
-type ctxt = {
-    tcx: ty::ctxt,
-    enclosing_block: option<ast::node_id>
-};
-
-fn check_expr(expr: @ast::expr, cx: ctxt, visitor: visit::vt<ctxt>) {
-    let t = ty::expr_ty(cx.tcx, expr);
-    if ty::type_has_rptrs(t) {
-        ty::walk_ty(t) { |t|
-            alt ty::get(t).struct {
-              ty::ty_rptr(region, _) {
-                alt region {
-                  ty::re_bound(_) | ty::re_free(_, _) | ty::re_static {
-                    /* ok */
-                  }
-                  ty::re_scope(rbi) {
-                    let referent_block_id = rbi;
-                    let enclosing_block_id = alt cx.enclosing_block {
-                      none {
-                        cx.tcx.sess.span_bug(expr.span,
-                                             "block region " +
-                                             "type outside a " +
-                                             "block?!");
-                      }
-                      some(eb) { eb }
-                    };
-
-                    if !region::scope_contains(cx.tcx.region_map,
-                                               referent_block_id,
-                                               enclosing_block_id) {
-
-                        cx.tcx.sess.span_err(expr.span, "reference " +
-                                             "escapes its block");
-                    }
-                  }
-                  ty::re_default | ty::re_var(_) {
-                    cx.tcx.sess.span_bug(expr.span,
-                                         "unresolved region");
-                  }
+    let t = ty::expr_ty(tcx, expr);
+    if !ty::type_has_rptrs(t) { ret; }
+    ty::walk_ty(t) { |t|
+        alt ty::get(t).struct {
+          ty::ty_rptr(region, _) {
+            alt region {
+              ty::re_bound(_) | ty::re_free(_, _) | ty::re_static {
+                /* ok */
+              }
+              ty::re_scope(id) {
+                if !region::scope_contains(tcx.region_map, id, expr.id) {
+                    tcx.sess.span_err(
+                        expr.span,
+                        #fmt["reference is not valid outside of %s",
+                             ppaux::re_scope_id_to_str(tcx, id)]);
                 }
               }
-              _ { /* no-op */ }
+              ty::re_default | ty::re_var(_) {
+                tcx.sess.span_bug(expr.span, "unresolved region");
+              }
             }
+          }
+          _ { /* no-op */ }
         }
     }
-
-    visit::visit_expr(expr, cx, visitor);
 }
 
-fn check_block(blk: ast::blk, cx: ctxt, visitor: visit::vt<ctxt>) {
-    let new_cx: ctxt = { enclosing_block: some(blk.node.id) with cx };
-    visit::visit_block(blk, new_cx, visitor);
-}
-
-fn check_crate(ty_cx: ty::ctxt, crate: @ast::crate) {
-    let cx: ctxt = {tcx: ty_cx, enclosing_block: none};
+fn check_crate(tcx: ty::ctxt, crate: @ast::crate) {
     let visitor = visit::mk_vt(@{
-        visit_expr: check_expr,
-        visit_block: check_block
+        visit_expr: check_expr
         with *visit::default_visitor()
     });
-    visit::visit_crate(*crate, cx, visitor);
+    visit::visit_crate(*crate, tcx, visitor);
 }
 

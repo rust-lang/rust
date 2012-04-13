@@ -18,18 +18,36 @@ fn bound_region_to_str(_cx: ctxt, br: bound_region) -> str {
     }
 }
 
-fn region_to_str(cx: ctxt, region: region) -> str {
-    alt region {
-      re_scope(node_id) {
-        alt cx.items.get(node_id) {
-            ast_map::node_block(blk) {
-                #fmt("&<block at %s>.", codemap::span_to_str(blk.span,
-                                                           cx.sess.codemap))
-            }
-            _ { cx.sess.bug("re_block refers to non-block") }
+fn re_scope_id_to_str(cx: ctxt, node_id: ast::node_id) -> str {
+    alt cx.items.get(node_id) {
+      ast_map::node_block(blk) {
+        #fmt("<block at %s>",
+             codemap::span_to_str(blk.span, cx.sess.codemap))
+      }
+      ast_map::node_expr(expr) {
+        alt expr.node {
+          ast::expr_call(_, _, _) {
+            #fmt("<call at %s>",
+                 codemap::span_to_str(expr.span, cx.sess.codemap))
+          }
+          ast::expr_alt(_, _, _) {
+            #fmt("<alt at %s>",
+                 codemap::span_to_str(expr.span, cx.sess.codemap))
+          }
+          _ { cx.sess.bug(
+              #fmt["re_scope refers to %s",
+                   ast_map::node_id_to_str(cx.items, node_id)]) }
         }
       }
+      _ { cx.sess.bug(
+          #fmt["re_scope refers to %s",
+               ast_map::node_id_to_str(cx.items, node_id)]) }
+    }
+}
 
+fn region_to_str(cx: ctxt, region: region) -> str {
+    alt region {
+      re_scope(node_id) { #fmt["&%s.", re_scope_id_to_str(cx, node_id)] }
       re_bound(br) { bound_region_to_str(cx, br) }
       re_free(id, br) { #fmt["{%d} %s", id, bound_region_to_str(cx, br)] }
 

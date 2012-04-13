@@ -15,6 +15,7 @@ export infer_ctxt;
 export new_infer_ctxt;
 export mk_subty;
 export mk_eqty;
+export mk_assignty;
 export resolve_type_structure;
 export fixup_vars;
 export resolve_var;
@@ -74,6 +75,14 @@ fn mk_subty(cx: infer_ctxt, a: ty::t, b: ty::t) -> ures {
 fn mk_eqty(cx: infer_ctxt, a: ty::t, b: ty::t) -> ures {
     #debug["mk_eqty(%s <: %s)", a.to_str(cx), b.to_str(cx)];
     indent {|| cx.commit {|| cx.eq_tys(a, b) } }.to_ures()
+}
+
+fn mk_assignty(cx: infer_ctxt, encl_node_id: ast::node_id,
+             a: ty::t, b: ty::t) -> ures {
+    #debug["mk_assignty(%s <: %s)", a.to_str(cx), b.to_str(cx)];
+    indent {|| cx.commit {||
+        cx.assign_tys(encl_node_id, a, b)
+    } }.to_ures()
 }
 
 fn compare_tys(tcx: ty::ctxt, a: ty::t, b: ty::t) -> ures {
@@ -677,12 +686,67 @@ impl resolve_methods for infer_ctxt {
 // Type assignment
 //
 // True if rvalues of type `a` can be assigned to lvalues of type `b`.
+// This may cause borrowing to the region scope for `encl_node_id`.
+//
+// The strategy here is somewhat non-obvious.  The problem is
+// that the constraint we wish to contend with is not a subtyping
+// constraint.  Currently, for variables, we only track what it
+// must be a subtype of, not what types it must be assignable to
+// (or from).  Possibly, we should track that, but I leave that
+// refactoring for another day.
+//
+// Instead, we look at each variable involved and try to extract
+// *some* sort of bound.  Typically, the type a is the argument
+// supplied to a call; it typically has a *lower bound* (which
+// comes from having been assigned a value).  What we'd actually
+// *like* here is an upper-bound, but we generally don't have
+// one.  The type b is the expected type and it typically has a
+// lower-bound too, which is good.
+//
+// The way we deal with the fact that we often don't have the
+// bounds we need is to be a bit careful.  We try to get *some*
+// bound from each side, preferring the upper from a and the
+// lower from b.  If we fail to get a bound from both sides, then
+// we just fall back to requiring that a <: b.
+//
+// Assuming we have a bound from both sides, we will then examine
+// these bounds and see if they have the form (@MT_a, &rb.MT_b)
+// (resp. ~MT_a).  If they do not, we fall back to subtyping.
+//
+// If they *do*, then we know that the two types could never be
+// subtypes of one another.  We will then construct a type @MT_b and
+// ensure that type a is a subtype of that.  This allows for the
+// possibility of assigning from a type like (say) @[mut T1] to a type
+// &[const T2] where T1 <: T2.  Basically we would require that @[mut
+// T1] <: @[const T2].  Next we require that the region for the
+// enclosing scope be a superregion of the region r.  These two checks
+// together guarantee that the type A would be a subtype of the type B
+// if the @ were converted to a region r.
+//
+// You might wonder why we don't just make the type &e.MT_a where e is
+// the enclosing region and check that &e.MT_a <: B.  The reason is
+// that the type @MT_a is (generally) just a *lower-bound*, so this
+// would be imposing @MT_a also as the upper-bound on type A.  But
+// this upper-bound might be stricter than what is truly needed.
 
 impl assignment for infer_ctxt {
-    fn assign_tys(a: ty::t, b: ty::t,
-                  encl_blk_id: ast::node_id) -> ures {
+    fn assign_tys(encl_node_id: ast::node_id,
+                  a: ty::t, b: ty::t) -> ures {
 
-        #debug["assign_tys(%s, %s)", a.to_str(self), b.to_str(self)];
+        fn select(fst: option<ty::t>, snd: option<ty::t>) -> option<ty::t> {
+            alt fst {
+              some(t) { some(t) }
+              none {
+                alt snd {
+                  some(t) { some(t) }
+                  none { none }
+                }
+              }
+            }
+        }
+
+        #debug["assign_tys(encl_node_id=%?, %s -> %s)",
+               encl_node_id, a.to_str(self), b.to_str(self)];
         let _r = indenter();
 
         alt (ty::get(a).struct, ty::get(b).struct) {
@@ -691,57 +755,75 @@ impl assignment for infer_ctxt {
           }
 
           (ty::ty_var(a_id), ty::ty_var(b_id)) {
-            let {root:_, bounds:a_bounds} = self.get(self.vb, a_id);
-            let {root:_, bounds:b_bounds} = self.get(self.vb, b_id);
-            self.assign_vars_or_sub(a, b, a_bounds, b_bounds, encl_blk_id)
+            let {root:_, bounds: a_bounds} = self.get(self.vb, a_id);
+            let {root:_, bounds: b_bounds} = self.get(self.vb, b_id);
+            let a_bnd = select(a_bounds.ub, a_bounds.lb);
+            let b_bnd = select(b_bounds.lb, b_bounds.ub);
+            self.assign_tys_or_sub(encl_node_id, a, b, a_bnd, b_bnd)
           }
 
           (ty::ty_var(a_id), _) {
             let {root:_, bounds:a_bounds} = self.get(self.vb, a_id);
-            let b_bounds = {lb: some(b), ub: none};
-            self.assign_vars_or_sub(a, b, a_bounds, b_bounds, encl_blk_id)
+            let a_bnd = select(a_bounds.ub, a_bounds.lb);
+            self.assign_tys_or_sub(encl_node_id, a, b, a_bnd, some(b))
           }
 
           (_, ty::ty_var(b_id)) {
-            let a_bounds = {lb: none, ub: some(a)};
             let {root:_, bounds: b_bounds} = self.get(self.vb, b_id);
-            self.assign_vars_or_sub(a, b, a_bounds, b_bounds, encl_blk_id)
+            let b_bnd = select(b_bounds.lb, b_bounds.ub);
+            self.assign_tys_or_sub(encl_node_id, a, b, some(a), b_bnd)
           }
 
-          (ty::ty_box(a_mt), ty::ty_rptr(_, _)) |
-          (ty::ty_uniq(a_mt), ty::ty_rptr(_, _)) {
-            let a_r = ty::re_scope(encl_blk_id);
-            let a_ty = ty::mk_rptr(self.tcx, a_r, a_mt);
-            self.sub_tys(a_ty, b).to_ures()
-          }
-
-          _ {
-            self.sub_tys(a, b).to_ures()
+          (_, _) {
+            self.assign_tys_or_sub(encl_node_id, a, b, some(a), some(b))
           }
         }
     }
 
-    fn assign_tys_or_sub(a: ty::t, b: ty::t,
-                         a_b: ty::t, b_b: ty::t,
-                         encl_blk_id: ast::node_id) -> ures {
-        self.try {||
-            self.assign_tys(a_b, b_b, encl_blk_id)
-        }.chain_err {|_e|
+    fn assign_tys_or_sub(
+        encl_node_id: ast::node_id,
+        a: ty::t, b: ty::t,
+        a_bnd: option<ty::t>, b_bnd: option<ty::t>) -> ures {
+
+        #debug["assign_tys_or_sub(encl_node_id=%?, %s -> %s, %s -> %s)",
+               encl_node_id, a.to_str(self), b.to_str(self),
+               a_bnd.to_str(self), b_bnd.to_str(self)];
+        let _r = indenter();
+
+        alt (a_bnd, b_bnd) {
+          (some(a_bnd), some(b_bnd)) {
+            alt (ty::get(a_bnd).struct, ty::get(b_bnd).struct) {
+              (ty::ty_box(mt_a), ty::ty_rptr(r_b, mt_b)) {
+                let nr_b = ty::mk_box(self.tcx, mt_b);
+                self.crosspolinate(encl_node_id, a, nr_b, r_b)
+              }
+              (ty::ty_uniq(mt_a), ty::ty_rptr(r_b, mt_b)) {
+                let nr_b = ty::mk_uniq(self.tcx, mt_b);
+                self.crosspolinate(encl_node_id, a, nr_b, r_b)
+              }
+              _ {
+                self.sub_tys(a, b)
+              }
+            }
+          }
+          _ {
             self.sub_tys(a, b)
+          }
         }
     }
 
-    fn assign_vars_or_sub(a: ty::t, b: ty::t,
-                          a_bounds: bounds<ty::t>, b_bounds: bounds<ty::t>,
-                          encl_blk_id: ast::node_id) -> ures {
+    fn crosspolinate(encl_node_id: ast::node_id,
+                     a: ty::t, nr_b: ty::t, r_b: ty::region) -> ures {
 
-        alt (a_bounds.ub, b_bounds.lb) {
-          (some(a_ub), some(b_lb)) {
-            self.assign_tys_or_sub(a, b, a_ub, b_lb, encl_blk_id)
-          }
-          _ {
-            self.sub_tys(a, b).to_ures()
-          }
+        #debug["crosspolinate(encl_node_id=%?, a=%s, nr_b=%s, r_b=%s)",
+               encl_node_id, a.to_str(self), nr_b.to_str(self),
+               r_b.to_str(self)];
+
+        indent {||
+            self.sub_tys(a, nr_b).then {||
+                let r_a = ty::re_scope(encl_node_id);
+                sub(self).contraregions(r_a, r_b).to_ures()
+            }
         }
     }
 }
