@@ -568,6 +568,9 @@ native mod rustrt {
         -> *uv_stream_t;
     fn rust_uv_get_loop_for_uv_handle(handle: *libc::c_void)
         -> *libc::c_void;
+    fn rust_uv_get_data_for_uv_loop(loop_ptr: *libc::c_void) -> *libc::c_void;
+    fn rust_uv_set_data_for_uv_loop(loop_ptr: *libc::c_void,
+                                    data: *libc::c_void);
     fn rust_uv_get_data_for_uv_handle(handle: *libc::c_void)
         -> *libc::c_void;
     fn rust_uv_set_data_for_uv_handle(handle: *libc::c_void,
@@ -744,7 +747,12 @@ unsafe fn get_stream_handle_from_write_req(
     ret rustrt::rust_uv_get_stream_handle_from_write_req(
         write_req);
 }
-
+unsafe fn get_data_for_uv_loop(loop_ptr: *libc::c_void) -> *libc::c_void {
+    rustrt::rust_uv_get_data_for_uv_loop(loop_ptr)
+}
+unsafe fn set_data_for_uv_loop(loop_ptr: *libc::c_void, data: *libc::c_void) {
+    rustrt::rust_uv_set_data_for_uv_loop(loop_ptr, data);
+}
 unsafe fn get_data_for_uv_handle(handle: *libc::c_void) -> *libc::c_void {
     ret rustrt::rust_uv_get_data_for_uv_handle(handle);
 }
