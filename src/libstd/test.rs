@@ -91,6 +91,7 @@ enum test_result { tr_ok, tr_failed, tr_ignored, }
 type console_test_state =
     @{out: io::writer,
       log_out: option<io::writer>,
+      use_color: bool,
       mut total: uint,
       mut passed: uint,
       mut failed: uint,
@@ -116,6 +117,7 @@ fn run_tests_console(opts: test_opts,
     let st =
         @{out: io::stdout(),
           log_out: log_out,
+          use_color: use_color(),
           mut total: 0u,
           mut passed: 0u,
           mut failed: 0u,
@@ -148,18 +150,18 @@ fn run_tests_console(opts: test_opts,
             alt result {
               tr_ok {
                 st.passed += 1u;
-                write_ok(st.out);
+                write_ok(st.out, st.use_color);
                 st.out.write_line("");
               }
               tr_failed {
                 st.failed += 1u;
-                write_failed(st.out);
+                write_failed(st.out, st.use_color);
                 st.out.write_line("");
                 st.failures += [test];
               }
               tr_ignored {
                 st.ignored += 1u;
-                write_ignored(st.out);
+                write_ignored(st.out, st.use_color);
                 st.out.write_line("");
               }
             }
@@ -178,9 +180,11 @@ fn run_tests_console(opts: test_opts,
     }
 
     st.out.write_str(#fmt["\nresult: "]);
-    if success { write_ok(st.out); } else { write_failed(st.out); }
-    st.out.write_str(#fmt[". %u passed; %u failed; %u ignored\n\n",
-                          st.passed, st.failed, st.ignored]);
+    if success {
+        write_ok(st.out, true);
+    } else { write_failed(st.out, true); }
+    st.out.write_str(#fmt[". %u passed; %u failed; %u ignored\n\n", st.passed,
+                          st.failed, st.ignored]);
 
     ret success;
 
@@ -193,24 +197,24 @@ fn run_tests_console(opts: test_opts,
                     }, test.name));
     }
 
-    fn write_ok(out: io::writer) {
-        write_pretty(out, "ok", term::color_green);
+    fn write_ok(out: io::writer, use_color: bool) {
+        write_pretty(out, "ok", term::color_green, use_color);
     }
 
-    fn write_failed(out: io::writer) {
-        write_pretty(out, "FAILED", term::color_red);
+    fn write_failed(out: io::writer, use_color: bool) {
+        write_pretty(out, "FAILED", term::color_red, use_color);
     }
 
-    fn write_ignored(out: io::writer) {
-        write_pretty(out, "ignored", term::color_yellow);
+    fn write_ignored(out: io::writer, use_color: bool) {
+        write_pretty(out, "ignored", term::color_yellow, use_color);
     }
 
-    fn write_pretty(out: io::writer, word: str, color: u8) {
-        if term::color_supported() {
+    fn write_pretty(out: io::writer, word: str, color: u8, use_color: bool) {
+        if use_color && term::color_supported() {
             term::fg(out, color);
         }
         out.write_str(word);
-        if term::color_supported() {
+        if use_color && term::color_supported() {
             term::reset(out);
         }
     }
@@ -247,6 +251,7 @@ fn should_sort_failures_before_printing_them() {
     let st =
         @{out: writer,
           log_out: option::none,
+          use_color: false,
           mut total: 0u,
           mut passed: 0u,
           mut failed: 0u,
@@ -261,6 +266,8 @@ fn should_sort_failures_before_printing_them() {
     let bpos = option::get(str::find_str(s, "b"));
     assert apos < bpos;
 }
+
+fn use_color() -> bool { ret get_concurrency() == 1u; }
 
 enum testevent {
     te_filtered([test_desc]),
