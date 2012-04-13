@@ -76,12 +76,7 @@ fn expand_mod_items(exts: hashmap<str, syntax_extension>, cx: ext_ctxt,
               ast::meta_list(n, _) { n }
             };
             alt exts.find(mname) {
-              none { items }
-
-              some(normal(_)) | some(macro_defining(_)) {
-                cx.span_err(
-                    attr.span,
-                    #fmt["%s cannot be used as a decorator", mname]);
+              none | some(normal(_)) | some(macro_defining(_)) {
                 items
               }
 

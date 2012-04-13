@@ -31,7 +31,7 @@ type options =
      debuginfo: bool,
      extra_debuginfo: bool,
      verify: bool,
-     lint_opts: [(lint::option, bool)],
+     lint_opts: [(lint::lint, lint::level)],
      save_temps: bool,
      stats: bool,
      time_passes: bool,
@@ -45,8 +45,7 @@ type options =
      test: bool,
      parse_only: bool,
      no_trans: bool,
-     no_asm_comments: bool,
-     warn_unused_imports: bool};
+     no_asm_comments: bool};
 
 type crate_metadata = {name: str, data: [u8]};
 

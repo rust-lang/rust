@@ -158,9 +158,16 @@ fn resolve_crate(sess: session, amap: ast_map::map, crate: @ast::crate) ->
     // check_for_collisions must happen after resolve_names so we
     // don't complain if a pattern uses the same nullary enum twice
     check_for_collisions(e, *crate);
-    if sess.opts.warn_unused_imports {
-        check_unused_imports(e);
+
+    // FIXME: move this to the lint pass when rewriting resolve.
+    for sess.opts.lint_opts.each {|pair|
+        let (lint,level) = pair;
+        if lint == lint::unused_imports && level != lint::ignore {
+            check_unused_imports(e, level);
+            break;
+        }
     }
+
     ret {def_map: e.def_map, exp_map: e.exp_map, impl_map: e.impl_map};
 }
 
@@ -361,12 +368,24 @@ fn resolve_imports(e: env) {
     e.sess.abort_if_errors();
 }
 
-fn check_unused_imports(e: @env) {
+// FIXME (#1634): move this to the lint pass when rewriting resolve. It's
+// using lint-specific control flags presently but resolve-specific data
+// structures. Should use the general lint framework (with scopes, attrs).
+fn check_unused_imports(e: @env, level: lint::level) {
     e.imports.items {|k, v|
         alt v {
             resolved(_, _, _, _, name, sp) {
               if !vec::contains(e.used_imports.data, k) {
-                e.sess.span_warn(sp, "unused import " + name);
+                  alt level {
+                    lint::warn {
+                      e.sess.span_warn(sp, "unused import " + name);
+                    }
+                    lint::error {
+                      e.sess.span_err(sp, "unused import " + name);
+                    }
+                    lint::ignore {
+                    }
+                  }
               }
             }
             _ { }

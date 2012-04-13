@@ -1,5 +1,5 @@
 // error-pattern:unused import
-// compile-flags:--warn-unused-imports
+// compile-flags:-W unused-imports
 import cal = bar::c::cc;
 
 mod foo {

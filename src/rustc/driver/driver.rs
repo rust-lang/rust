@@ -366,10 +366,16 @@ fn build_session_options(match: getopts::match,
 
     let parse_only = opt_present(match, "parse-only");
     let no_trans = opt_present(match, "no-trans");
-    let mut lint_opts = [];
-    if opt_present(match, "no-lint-ctypes") {
-        lint_opts += [(lint::ctypes, false)];
-    }
+
+    let lint_flags = (getopts::opt_strs(match, "W")
+                      + getopts::opt_strs(match, "warn"));
+    let lint_dict = lint::get_lint_dict();
+    let lint_opts = vec::map(lint_flags) {|flag|
+        alt lint::lookup_lint(lint_dict, flag) {
+          none { early_error(demitter, #fmt("unknown warning: %s", flag)) }
+          some(x) { x }
+        }
+    };
 
     let output_type =
         if parse_only || no_trans {
@@ -426,7 +432,6 @@ fn build_session_options(match: getopts::match,
     let addl_lib_search_paths = getopts::opt_strs(match, "L");
     let cfg = parse_cfgspecs(getopts::opt_strs(match, "cfg"));
     let test = opt_present(match, "test");
-    let warn_unused_imports = opt_present(match, "warn-unused-imports");
     let sopts: @session::options =
         @{crate_type: crate_type,
           static: static,
@@ -448,8 +453,7 @@ fn build_session_options(match: getopts::match,
           test: test,
           parse_only: parse_only,
           no_trans: no_trans,
-          no_asm_comments: no_asm_comments,
-          warn_unused_imports: warn_unused_imports};
+          no_asm_comments: no_asm_comments};
     ret sopts;
 }
 
@@ -521,11 +525,12 @@ fn opts() -> [getopts::opt] {
          optflag("time-passes"), optflag("time-llvm-passes"),
          optflag("count-llvm-insns"),
          optflag("no-verify"),
-         optflag("no-lint-ctypes"),
+
+         optmulti("W"), optmulti("warn"),
+
          optmulti("cfg"), optflag("test"),
          optflag("lib"), optflag("bin"), optflag("static"), optflag("gc"),
          optflag("no-asm-comments"),
-         optflag("warn-unused-imports"),
          optflag("enforce-mut-vars")];
 }
 

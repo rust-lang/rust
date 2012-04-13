@@ -39,7 +39,6 @@ Options:
     --lib              Compile a library crate
     --ls               List the symbols defined by a compiled library crate
     --no-asm-comments  Do not add comments into the assembly source
-    --no-lint-ctypes   Suppress warnings for possibly incorrect ctype usage
     --no-trans         Run all passes except translation; no output
     --no-verify        Suppress LLVM verification step (slight speedup)
                        (see http://llvm.org/docs/Passes.html for detail)
@@ -65,13 +64,15 @@ Options:
                        (see http://sources.redhat.com/autobook/autobook/
                        autobook_17.html for detail)
 
+    -W <foo>           enable warning <foo>
+    -W no-<foo>        disable warning <foo>
+    -W err-<foo>       enable warning <foo> as an error
+
     --time-passes      Time the individual phases of the compiler
     --time-llvm-passes Time the individual phases of the LLVM backend
     --count-llvm-insns Count and categorize generated LLVM instructions
-    -v --version       Print version info and exit
-    --warn-unused-imports
-                       Warn about unnecessary imports
 
+    -v --version       Print version info and exit
 ");
 }
 
