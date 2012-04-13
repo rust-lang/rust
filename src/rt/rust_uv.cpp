@@ -234,17 +234,17 @@ rust_uv_tcp_connect(uv_connect_t* connect_ptr,
         uv_connect_cb cb,
         sockaddr_in* addr_ptr) {
     rust_task* task = rust_get_current_task();
-    LOG(task, stdlib, "inside rust_uv_tcp_connect\n");
+    LOG(task, stdlib, "inside rust_uv_tcp_connect");
     // FIXME ref #2064
     sockaddr_in addr = *addr_ptr;
-    LOG(task, stdlib, "before tcp_connect .. port: %d\n",
+    LOG(task, stdlib, "before tcp_connect .. port: %d",
         addr.sin_port);
     LOG(task, stdlib, "before tcp_connect.. tcp stream:" \
-        "%lu cb ptr: %lu\n",
+        "%lu cb ptr: %lu",
         (unsigned long int)tcp_ptr, (unsigned long int)cb);
     int result = uv_tcp_connect(connect_ptr, tcp_ptr, addr, cb);
     LOG(task, stdlib, "leaving rust_uv_tcp_connect.." \
-        "and result: %d\n",
+        "and result: %d",
             result);
     return result;
 }
@@ -255,7 +255,7 @@ rust_uv_tcp_bind(uv_tcp_t* tcp_server, sockaddr_in* addr_ptr) {
     rust_task* task = rust_get_current_task();
     sockaddr_in addr = *addr_ptr;
     LOG(task, stdlib, "before uv_tcp_bind .. tcp_server:" \
-        "%lu port: %d\n",
+        "%lu port: %d",
             (unsigned long int)tcp_server, addr.sin_port);
     return uv_tcp_bind(tcp_server, addr);
 }
@@ -326,12 +326,12 @@ extern "C" void
 rust_uv_buf_init(uv_buf_t* out_buf, char* base, size_t len) {
     rust_task* task = rust_get_current_task();
     LOG(task, stdlib,"rust_uv_buf_init: base: %lu" \
-        "len: %lu\n",
+        "len: %lu",
         (unsigned long int)base,
         (unsigned long int)len);
     *out_buf = uv_buf_init(base, len);
     LOG(task, stdlib, "rust_uv_buf_init: after: "
-        "result->base: %" PRIxPTR " len: %\n" PRIxPTR,
+        "result->base: %" PRIxPTR " len: %" PRIxPTR,
            (unsigned long int)(*out_buf).base,
            (unsigned long int)(*out_buf).len);
 }
@@ -339,6 +339,17 @@ rust_uv_buf_init(uv_buf_t* out_buf, char* base, size_t len) {
 extern "C" uv_loop_t*
 rust_uv_get_loop_for_uv_handle(uv_handle_t* handle) {
     return handle->loop;
+}
+
+extern "C" void*
+rust_uv_get_data_for_uv_loop(uv_loop_t* loop) {
+    return loop->data;
+}
+
+extern "C" void
+rust_uv_set_data_for_uv_loop(uv_loop_t* loop,
+        void* data) {
+    loop->data = data;
 }
 
 extern "C" void*
@@ -420,17 +431,18 @@ extern "C" struct sockaddr_in
 rust_uv_ip4_addr(const char* ip, int port) {
     rust_task* task = rust_get_current_task();
     LOG(task, stdlib, "before creating addr_ptr.. ip %s" \
-        "port %d\n", ip, port);
+        "port %d", ip, port);
     struct sockaddr_in addr = uv_ip4_addr(ip, port);
-    LOG(task, stdlib, "after creating .. port: %d\n", addr.sin_port);
+    LOG(task, stdlib, "after creating .. port: %d", addr.sin_port);
     return addr;
 }
 
 extern "C" uintptr_t*
 rust_uv_get_kernel_global_chan_ptr() {
 	uintptr_t* result = rust_get_current_task()->kernel->get_global_loop();
-	printf("global loop: %lu\n", (unsigned long int)result);
-	printf("global loop val: %lu\n", (unsigned long int)*result);
+    rust_task* task = rust_get_current_task();
+	LOG(task, stdlib, "global loop: %lu", (unsigned long int)result);
+	LOG(task, stdlib,"global loop val: %lu", (unsigned long int)*result);
 	return result;
 }
 
