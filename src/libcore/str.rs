@@ -445,7 +445,7 @@ fn split_inner(s: str, sepfn: fn(cc: char) -> bool, count: uint,
     result
 }
 
-// FIXME use Boyer-Moore
+// See Issue #1932 for why this is a naive search
 fn iter_matches(s: str, sep: str, f: fn(uint, uint)) {
     let sep_len = len(sep), l = len(s);
     assert sep_len > 0u;
@@ -581,7 +581,7 @@ pure fn le(&&a: str, &&b: str) -> bool { a <= b }
 #[doc = "String hash function"]
 fn hash(&&s: str) -> uint {
     // djb hash.
-    // FIXME: replace with murmur.
+    // FIXME: replace with murmur. (see #859 and #1616)
     let mut u: uint = 5381u;
     for each(s) {|c| u *= 33u; u += c as uint; }
     ret u;
@@ -1072,7 +1072,7 @@ or equal to `len(s)`.
 "]
 fn find_str_between(haystack: str, needle: str, start: uint, end:uint)
   -> option<uint> {
-    // FIXME: Boyer-Moore should be significantly faster
+    // See Issue #1932 for why this is a naive search
     assert end <= len(haystack);
     let needle_len = len(needle);
     if needle_len == 0u { ret some(start); }
@@ -1600,16 +1600,11 @@ fn capacity(&&s: str) -> uint unsafe {
 #[doc = "Unsafe operations"]
 mod unsafe {
    export
-      // FIXME: stop exporting several of these
       from_buf,
-      from_buf_len,
       from_c_str,
-      from_c_str_len,
       from_bytes,
-      from_byte,
       slice_bytes,
       push_byte,
-      push_bytes,
       pop_byte,
       shift_byte,
       set_len;
@@ -1740,6 +1735,15 @@ mod unsafe {
         let null = ptr::mut_offset(ptr::mut_addr_of((*repr).data), new_len);
         *null = 0u8;
     }
+
+    #[test]
+    fn test_from_buf_len() unsafe {
+        let a = [65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 0u8];
+        let b = vec::unsafe::to_ptr(a);
+        let c = from_buf_len(b, 3u);
+        assert (c == "AAA");
+    }
+
 }
 
 #[doc = "Extension methods for strings"]
@@ -2437,14 +2441,6 @@ mod tests {
         let b = vec::unsafe::to_ptr(a);
         let c = unsafe::from_buf(b);
         assert (c == "AAAAAAA");
-    }
-
-    #[test]
-    fn test_from_buf_len() unsafe {
-        let a = [65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 0u8];
-        let b = vec::unsafe::to_ptr(a);
-        let c = unsafe::from_buf_len(b, 3u);
-        assert (c == "AAA");
     }
 
     #[test]
