@@ -98,7 +98,7 @@ fn with_envp<T>(env: option<[(str,str)]>,
     // On posixy systems we can pass a char** for envp, which is
     // a null-terminated array of "k=v\n" strings.
     alt env {
-      some (es) {
+      some(es) if !vec::is_empty(es) {
         let mut tmps = [];
         let mut ptrs = [];
 
@@ -111,7 +111,7 @@ fn with_envp<T>(env: option<[(str,str)]>,
         ptrs += [ptr::null()];
         vec::as_buf(ptrs) { |p| cb(::unsafe::reinterpret_cast(p)) }
       }
-      none {
+      _ {
         cb(ptr::null())
       }
     }
@@ -124,7 +124,7 @@ fn with_envp<T>(env: option<[(str,str)]>,
     // rather a concatenation of null-terminated k=v\0 sequences, with a final
     // \0 to terminate.
     alt env {
-      some (es) {
+      some(es) if !vec::is_empty(es) {
         let mut blk : [u8] = [];
         for vec::each(es) {|e|
             let (k,v) = e;
@@ -136,7 +136,7 @@ fn with_envp<T>(env: option<[(str,str)]>,
         blk += [0_u8];
         vec::as_buf(blk) {|p| cb(::unsafe::reinterpret_cast(p)) }
       }
-      none {
+      _ {
         cb(ptr::null())
       }
     }

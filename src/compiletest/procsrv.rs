@@ -5,7 +5,7 @@ import libc::{c_int, pid_t};
 export run;
 
 #[cfg(target_os = "win32")]
-fn target_env(lib_path: str, prog: str) -> option<[(str,str)]> {
+fn target_env(lib_path: str, prog: str) -> [(str,str)] {
 
     let env = os::env();
 
@@ -17,25 +17,29 @@ fn target_env(lib_path: str, prog: str) -> option<[(str,str)]> {
     if str::ends_with(prog, "rustc.exe") {
         env += [("RUST_THREADS", "1")]
     }
-    ret some(env);
+    ret env;
 }
 
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
-fn target_env(_lib_path: str, _prog: str) -> option<[(str,str)]> {
-    none
+fn target_env(_lib_path: str, _prog: str) -> [(str,str)] {
+    []
 }
 
 
-fn run(lib_path: str, prog: str, args: [str],
+fn run(lib_path: str,
+       prog: str,
+       args: [str],
+       env: [(str, str)],
        input: option<str>) -> {status: int, out: str, err: str} {
 
     let pipe_in = os::pipe();
     let pipe_out = os::pipe();
     let pipe_err = os::pipe();
-    let pid = spawn_process(prog, args, target_env(lib_path, prog), none,
-                            pipe_in.in, pipe_out.out, pipe_err.out);
+    let pid = spawn_process(prog, args,
+                            some(env + target_env(lib_path, prog)),
+                            none, pipe_in.in, pipe_out.out, pipe_err.out);
 
     os::close(pipe_in.in);
     os::close(pipe_out.out);

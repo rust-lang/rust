@@ -17,13 +17,16 @@ type test_props = {
     // pretty-printed
     pp_exact: option<str>,
     // Modules from aux directory that should be compiled
-    aux_builds: [str]
+    aux_builds: [str],
+    // Environment settings to use during execution
+    exec_env: [(str,str)]
 };
 
 // Load any test directives embedded in the file
 fn load_props(testfile: str) -> test_props {
     let mut error_patterns = [];
     let mut aux_builds = [];
+    let mut exec_env = [];
     let mut compile_flags = option::none;
     let mut pp_exact = option::none;
     iter_header(testfile) {|ln|
@@ -43,12 +46,17 @@ fn load_props(testfile: str) -> test_props {
         option::iter(parse_aux_build(ln)) {|ab|
             aux_builds += [ab];
         }
+
+        option::iter(parse_exec_env(ln)) {|ee|
+            exec_env += [ee];
+        }
     };
     ret {
         error_patterns: error_patterns,
         compile_flags: compile_flags,
         pp_exact: pp_exact,
-        aux_builds: aux_builds
+        aux_builds: aux_builds,
+        exec_env: exec_env
     };
 }
 
@@ -95,6 +103,18 @@ fn parse_aux_build(line: str) -> option<str> {
 
 fn parse_compile_flags(line: str) -> option<str> {
     parse_name_value_directive(line, "compile-flags")
+}
+
+fn parse_exec_env(line: str) -> option<(str, str)> {
+    parse_name_value_directive(line, "exec-env").map {|nv|
+        // nv is either FOO or FOO=BAR
+        let strs = str::splitn_char(nv, '=', 1u);
+        alt strs.len() {
+          1u { (strs[0], "") }
+          2u { (strs[0], strs[1]) }
+          n { fail #fmt["Expected 1 or 2 strings, not %u", n]; }
+        }
+    }
 }
 
 fn parse_pp_exact(line: str, testfile: str) -> option<str> {

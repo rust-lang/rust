@@ -81,7 +81,6 @@ fn run_rpass_test(config: config, props: test_props, testfile: str) {
 
     procres = exec_compiled_test(config, props, testfile);
 
-
     if procres.status != 0 { fatal_procres("test run failed!", procres); }
 }
 
@@ -139,8 +138,8 @@ fn run_pretty_test(config: config, props: test_props, testfile: str) {
     ret;
 
     fn print_source(config: config, testfile: str, src: str) -> procres {
-        compose_and_run(config, testfile, make_pp_args,
-                        config.compile_lib_path, option::some(src))
+        compose_and_run(config, testfile, make_pp_args(config, testfile),
+                        [], config.compile_lib_path, option::some(src))
     }
 
     fn make_pp_args(config: config, _testfile: str) -> procargs {
@@ -172,7 +171,9 @@ actual:\n\
     fn typecheck_source(config: config, props: test_props,
                         testfile: str, src: str) -> procres {
         compose_and_run_compiler(
-            config, props, testfile, make_typecheck_args, option::some(src))
+            config, props, testfile,
+            make_typecheck_args(config, testfile),
+            option::some(src))
     }
 
     fn make_typecheck_args(config: config, testfile: str) -> procargs {
@@ -292,24 +293,26 @@ type procres = {status: int, stdout: str, stderr: str, cmdline: str};
 fn compile_test(config: config, props: test_props,
                 testfile: str) -> procres {
     let link_args = ["-L", aux_output_dir_name(config, testfile)];
-    compose_and_run_compiler(config, props, testfile,
-                             make_compile_args(_, props, link_args,
-                                               make_exe_name, _),
-                             none)
+    compose_and_run_compiler(
+        config, props, testfile,
+        make_compile_args(config, props, link_args,
+                          make_exe_name, testfile),
+        none)
 }
 
 fn exec_compiled_test(config: config, props: test_props,
                       testfile: str) -> procres {
     compose_and_run(config, testfile,
-                             bind make_run_args(_, props, _),
-                             config.run_lib_path, option::none)
+                    make_run_args(config, props, testfile),
+                    props.exec_env,
+                    config.run_lib_path, option::none)
 }
 
 fn compose_and_run_compiler(
     config: config,
     props: test_props,
     testfile: str,
-    mk_args: fn(config: config, _testfile: str) -> procargs,
+    args: procargs,
     input: option<str>) -> procres {
 
     if props.aux_builds.is_not_empty() {
@@ -320,10 +323,10 @@ fn compose_and_run_compiler(
 
     vec::iter(props.aux_builds) {|rel_ab|
         let abs_ab = path::connect(config.aux_base, rel_ab);
-        let mk_compile_args =
-            make_compile_args(_, props, ["--lib"] + extra_link_args,
-                              bind make_lib_name(_, _, testfile), _);
-        let auxres = compose_and_run(config, abs_ab, mk_compile_args,
+        let aux_args =
+            make_compile_args(config, props, ["--lib"] + extra_link_args,
+                              bind make_lib_name(_, _, testfile), abs_ab);
+        let auxres = compose_and_run(config, abs_ab, aux_args, [],
                                      config.compile_lib_path, option::none);
         if auxres.status != 0 {
             fatal_procres(
@@ -332,7 +335,7 @@ fn compose_and_run_compiler(
         }
     }
 
-    compose_and_run(config, testfile, mk_args,
+    compose_and_run(config, testfile, args, [],
                     config.compile_lib_path, input)
 }
 
@@ -344,11 +347,12 @@ fn ensure_dir(path: path) {
 }
 
 fn compose_and_run(config: config, testfile: str,
-                   make_args: fn(config, str) -> procargs, lib_path: str,
+                   procargs: procargs,
+                   procenv: [(str, str)],
+                   lib_path: str,
                    input: option<str>) -> procres {
-    let procargs = make_args(config, testfile);
     ret program_output(config, testfile, lib_path,
-                       procargs.prog, procargs.args, input);
+                       procargs.prog, procargs.args, procenv, input);
 }
 
 fn make_compile_args(config: config, props: test_props, extras: [str],
@@ -405,14 +409,15 @@ fn split_maybe_args(argstr: option<str>) -> [str] {
 }
 
 fn program_output(config: config, testfile: str, lib_path: str, prog: str,
-                  args: [str], input: option<str>) -> procres {
+                  args: [str], env: [(str, str)],
+                  input: option<str>) -> procres {
     let cmdline =
         {
             let cmdline = make_cmdline(lib_path, prog, args);
             logv(config, #fmt["executing %s", cmdline]);
             cmdline
         };
-    let res = procsrv::run(lib_path, prog, args, input);
+    let res = procsrv::run(lib_path, prog, args, env, input);
     dump_output(config, testfile, res.out, res.err);
     ret {status: res.status,
          stdout: res.out,
