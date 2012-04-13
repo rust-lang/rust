@@ -1,6 +1,7 @@
 import driver::session::session;
 import syntax::codemap;
 import syntax::ast;
+import syntax::ast_util::*;
 import syntax::attr;
 
 export maybe_inject_libcore_ref;
@@ -23,15 +24,15 @@ fn inject_libcore_ref(sess: session,
 
     fn spanned<T: copy>(x: T) -> @ast::spanned<T> {
         ret @{node: x,
-              span: {lo: 0u, hi: 0u,
-                     expn_info: option::none}};
+            span: dummy_sp()};
     }
 
     let n1 = sess.next_node_id();
     let n2 = sess.next_node_id();
 
     let vi1 = spanned(ast::view_item_use("core", [], n1));
-    let vp = spanned(ast::view_path_glob(@["core"], n2));
+    let vp = spanned(ast::view_path_glob(ident_to_path(dummy_sp(), "core"),
+                                         n2));
     let vi2 = spanned(ast::view_item_import([vp]));
 
     let vis = [vi1, vi2] + crate.node.module.view_items;

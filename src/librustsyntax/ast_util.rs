@@ -175,8 +175,8 @@ fn is_exported(i: ident, m: _mod) -> bool {
                   }
 
                   ast::view_path_list(path, ids, _) {
-                    if vec::len(*path) == 1u {
-                        if i == path[0] { ret true; }
+                    if vec::len(path.node.idents) == 1u {
+                        if i == path.node.idents[0] { ret true; }
                         for ids.each {|id|
                             if id.node.name == i { ret true; }
                         }
@@ -185,7 +185,7 @@ fn is_exported(i: ident, m: _mod) -> bool {
                     }
                   }
 
-                  // FIXME: glob-exports aren't supported yet.
+                  // FIXME: glob-exports aren't supported yet. (#2006)
                   _ {}
                 }
             }

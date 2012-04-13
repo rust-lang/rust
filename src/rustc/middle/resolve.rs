@@ -236,15 +236,16 @@ fn map_crate(e: @env, c: @ast::crate) {
         iter_effective_import_paths(*i) { |vp|
             alt vp.node {
               ast::view_path_simple(name, path, id) {
-                e.imports.insert(id, todo(name, path, vp.span, sc));
+                e.imports.insert(id, todo(name, @path.node.idents, vp.span,
+                                          sc));
               }
               ast::view_path_glob(path, id) {
-                e.imports.insert(id, is_glob(path, sc, vp.span));
+                e.imports.insert(id, is_glob(@path.node.idents, sc, vp.span));
               }
               ast::view_path_list(mod_path, idents, _) {
                 for idents.each {|ident|
                     let t = todo(ident.node.name,
-                                 @(*mod_path + [ident.node.name]),
+                                 @(mod_path.node.idents + [ident.node.name]),
                                  ident.span, sc);
                     e.imports.insert(ident.node.id, t);
                 }
@@ -297,7 +298,7 @@ fn map_crate(e: @env, c: @ast::crate) {
         iter_effective_import_paths(*vi) { |vp|
             alt vp.node {
               ast::view_path_glob(path, _) {
-                alt follow_import(*e, sc, *path, vp.span) {
+                alt follow_import(*e, sc, path.node.idents, vp.span) {
                   some(imp) {
                     let glob = {def: imp, path: vp};
                     alt list::head(sc) {
@@ -2083,8 +2084,8 @@ fn check_exports(e: @env) {
                         check_export(e, ident, _mod, id, vi);
                       }
                       ast::view_path_list(path, ids, node_id) {
-                        let id = if vec::len(*path) == 1u {
-                            path[0]
+                        let id = if vec::len(path.node.idents) == 1u {
+                            path.node.idents[0]
                         } else {
                             e.sess.span_fatal(vp.span, "bad export name-list")
                         };
@@ -2151,12 +2152,12 @@ fn find_impls_in_view_item(e: env, vi: @ast::view_item,
         alt vp.node {
           ast::view_path_simple(name, pt, id) {
             let mut found = [];
-            if vec::len(*pt) == 1u {
+            if vec::len(pt.node.idents) == 1u {
                 option::iter(sc) {|sc|
                     list::iter(sc) {|level|
                         if vec::len(found) == 0u {
                             for vec::each(*level) {|imp|
-                                if imp.ident == pt[0] {
+                                if imp.ident == pt.node.idents[0] {
                                     found += [@{ident: name with *imp}];
                                 }
                             }

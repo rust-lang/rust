@@ -1426,31 +1426,23 @@ fn print_meta_item(s: ps, &&item: @ast::meta_item) {
     end(s);
 }
 
-fn print_simple_path(s: ps, path: ast::simple_path) {
-    let mut first = true;
-    for path.each {|id|
-        if first { first = false; } else { word(s.s, "::"); }
-        word(s.s, id);
-    }
-}
-
 fn print_view_path(s: ps, &&vp: @ast::view_path) {
     alt vp.node {
       ast::view_path_simple(ident, path, _) {
-        if path[vec::len(*path)-1u] != ident {
+        if path.node.idents[vec::len(path.node.idents)-1u] != ident {
             word_space(s, ident);
             word_space(s, "=");
         }
-        print_simple_path(s, *path);
+        print_path(s, path, false);
       }
 
       ast::view_path_glob(path, _) {
-        print_simple_path(s, *path);
+        print_path(s, path, false);
         word(s.s, "::*");
       }
 
       ast::view_path_list(path, idents, _) {
-        print_simple_path(s, *path);
+        print_path(s, path, false);
         word(s.s, "::{");
         commasep(s, inconsistent, idents) {|s, w|
             word(s.s, w.node.name)

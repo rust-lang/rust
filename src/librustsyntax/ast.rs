@@ -18,8 +18,8 @@ import std::serialization::{serializer,
                             serialize_bool,
                             deserialize_bool};
 
+/* Note #1972 -- spans are serialized but not deserialized */
 fn serialize_span<S>(_s: S, _v: span) {
-    // FIXME-- serialize some span info
 }
 
 fn deserialize_span<D>(_d: D) -> span {
@@ -171,7 +171,10 @@ enum proto {
 
 #[auto_serialize]
 enum vstore {
-    vstore_fixed(option<uint>),   // [1,2,3,4]/_ or 4   FIXME: uint -> @expr
+    /* FIXME: Change uint to @expr (actually only constant exprs,
+       as per #2112)
+     */
+    vstore_fixed(option<uint>),   // [1,2,3,4]/_ or 4
     vstore_uniq,                  // [1,2,3,4]/~
     vstore_box,                   // [1,2,3,4]/@
     vstore_slice(region)          // [1,2,3,4]/&(foo)?
@@ -250,7 +253,9 @@ enum init_op { init_assign, init_move, }
 type initializer = {op: init_op, expr: @expr};
 
 #[auto_serialize]
-type local_ =  // FIXME: should really be a refinement on pat
+type local_ =  /* FIXME: should really be a refinement on pat
+                  (pending discussion of #1697, #2178...)
+                */
     {is_mutbl: bool, ty: @ty, pat: @pat,
      init: option<initializer>, id: node_id};
 
@@ -289,7 +294,7 @@ enum expr_ {
     expr_vstore(@expr, vstore),
     expr_vec([@expr], mutability),
     expr_rec([field], option<@expr>),
-    expr_call(@expr, [@expr], bool),
+    expr_call(@expr, [@expr], bool), // True iff last argument is a block
     expr_tup([@expr]),
     expr_bind(@expr, [option<@expr>]),
     expr_binary(binop, @expr, @expr),
@@ -315,6 +320,7 @@ enum expr_ {
     /*
      * FIXME: many of these @exprs should be constrained with
      * is_lval once we have constrained types working.
+     * (See #34)
      */
     expr_copy(@expr),
     expr_move(@expr, @expr),
@@ -341,9 +347,6 @@ enum expr_ {
 
     /* preds that typestate is aware of */
     expr_check(expr_check_mode, @expr),
-
-    /* FIXME Would be nice if expr_check desugared
-       to expr_if_check. */
     expr_if_check(@expr, blk, option<@expr>),
     expr_mac(mac),
 }
@@ -587,11 +590,6 @@ type variant_ = {name: ident, attrs: [attribute], args: [variant_arg],
 #[auto_serialize]
 type variant = spanned<variant_>;
 
-// FIXME: May want to just use path here, which would allow things like
-// 'import ::foo'
-#[auto_serialize]
-type simple_path = [ident];
-
 #[auto_serialize]
 type path_list_ident_ = {name: ident, id: node_id};
 
@@ -609,13 +607,13 @@ enum view_path_ {
     // or just
     //
     // foo::bar::baz  (with 'baz =' implicitly on the left)
-    view_path_simple(ident, @simple_path, node_id),
+    view_path_simple(ident, @path, node_id),
 
     // foo::bar::*
-    view_path_glob(@simple_path, node_id),
+    view_path_glob(@path, node_id),
 
     // foo::bar::{a,b,c}
-    view_path_list(@simple_path, [path_list_ident], node_id)
+    view_path_list(@path, [path_list_ident], node_id)
 }
 
 #[auto_serialize]
@@ -676,9 +674,6 @@ type class_member = spanned<class_member_>;
 enum class_member_ {
     instance_var(ident, @ty, class_mutability, node_id, privacy),
     class_method(@method)
-    // without constrained types, have to duplicate some stuff. or factor out
-    // item to separate out things with type params?
-    // (FIXME) where do we enforce that type params is empty?
 }
 
 #[auto_serialize]

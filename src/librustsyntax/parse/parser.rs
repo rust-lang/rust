@@ -2624,7 +2624,10 @@ fn parse_view_path(p: parser) -> @ast::view_path {
         let mut hi = p.span.hi;
         ret @spanned(lo, hi,
                      ast::view_path_simple(first_ident,
-                                           @path, p.get_id()));
+                        @spanned(lo, hi,
+                                 {global: false, idents: path,
+                                         types: []}),
+                        p.get_id()));
       }
 
       token::MOD_SEP {
@@ -2647,8 +2650,11 @@ fn parse_view_path(p: parser) -> @ast::view_path {
                               parse_path_list_ident, p).node;
                 let mut hi = p.span.hi;
                 ret @spanned(lo, hi,
-                             ast::view_path_list(@path, idents,
-                                                 p.get_id()));
+                             ast::view_path_list(@spanned(lo, hi,
+                                {global: false,
+                                 idents: path,
+                                        types: []}), idents,
+                             p.get_id()));
               }
 
               // foo::bar::*
@@ -2656,8 +2662,11 @@ fn parse_view_path(p: parser) -> @ast::view_path {
                 p.bump();
                 let mut hi = p.span.hi;
                 ret @spanned(lo, hi,
-                             ast::view_path_glob(@path,
-                                                 p.get_id()));
+                             ast::view_path_glob(@spanned(lo, hi,
+                               {global: false,
+                                idents: path,
+                                types: []}),
+                               p.get_id()));
               }
 
               _ { break; }
@@ -2669,7 +2678,10 @@ fn parse_view_path(p: parser) -> @ast::view_path {
     let mut hi = p.span.hi;
     let last = path[vec::len(path) - 1u];
     ret @spanned(lo, hi,
-                 ast::view_path_simple(last, @path,
+                 ast::view_path_simple(last, @spanned(lo, hi,
+                                                      {global: false,
+                                                              idents: path,
+                                                              types: []}),
                                        p.get_id()));
 }
 

@@ -3,6 +3,7 @@ import std::map::hashmap;
 import syntax::ast::*;
 import syntax::print::pprust;
 import syntax::ast_util;
+import middle::pat_util::*;
 import syntax::ast_util::inlined_item_methods;
 import syntax::{visit, codemap};
 import driver::session::session;
@@ -233,9 +234,7 @@ fn map_view_item(vi: @view_item, cx: ctx, _v: vt) {
             let (id, name) = alt vp.node {
               view_path_simple(nm, _, id) { (id, nm) }
               view_path_glob(pth, id) | view_path_list(pth, _, id) {
-                  // should be a constraint on the type
-                assert (vec::is_not_empty(*pth));
-                (id, vec::last(*pth))
+                (id, path_to_ident(pth))
               }
             };
             cx.map.insert(id, node_export(vp, extend(cx, name)));
