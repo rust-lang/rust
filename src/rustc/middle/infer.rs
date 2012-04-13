@@ -1,6 +1,7 @@
 import std::smallintmap;
 import std::smallintmap::smallintmap;
 import std::smallintmap::map;
+import std::map::hashmap;
 import middle::ty;
 import middle::ty::{ty_vid, region_vid, vid};
 import syntax::ast;
@@ -77,11 +78,12 @@ fn mk_eqty(cx: infer_ctxt, a: ty::t, b: ty::t) -> ures {
     indent {|| cx.commit {|| cx.eq_tys(a, b) } }.to_ures()
 }
 
-fn mk_assignty(cx: infer_ctxt, encl_node_id: ast::node_id,
+fn mk_assignty(cx: infer_ctxt, a_node_id: ast::node_id,
              a: ty::t, b: ty::t) -> ures {
-    #debug["mk_assignty(%s <: %s)", a.to_str(cx), b.to_str(cx)];
+    #debug["mk_assignty(%? / %s <: %s)",
+           a_node_id, a.to_str(cx), b.to_str(cx)];
     indent {|| cx.commit {||
-        cx.assign_tys(encl_node_id, a, b)
+        cx.assign_tys(a_node_id, a, b)
     } }.to_ures()
 }
 
@@ -686,7 +688,7 @@ impl resolve_methods for infer_ctxt {
 // Type assignment
 //
 // True if rvalues of type `a` can be assigned to lvalues of type `b`.
-// This may cause borrowing to the region scope for `encl_node_id`.
+// This may cause borrowing to the region scope enclosing `a_node_id`.
 //
 // The strategy here is somewhat non-obvious.  The problem is
 // that the constraint we wish to contend with is not a subtyping
@@ -730,7 +732,7 @@ impl resolve_methods for infer_ctxt {
 // this upper-bound might be stricter than what is truly needed.
 
 impl assignment for infer_ctxt {
-    fn assign_tys(encl_node_id: ast::node_id,
+    fn assign_tys(a_node_id: ast::node_id,
                   a: ty::t, b: ty::t) -> ures {
 
         fn select(fst: option<ty::t>, snd: option<ty::t>) -> option<ty::t> {
@@ -745,8 +747,8 @@ impl assignment for infer_ctxt {
             }
         }
 
-        #debug["assign_tys(encl_node_id=%?, %s -> %s)",
-               encl_node_id, a.to_str(self), b.to_str(self)];
+        #debug["assign_tys(a_node_id=%?, %s -> %s)",
+               a_node_id, a.to_str(self), b.to_str(self)];
         let _r = indenter();
 
         alt (ty::get(a).struct, ty::get(b).struct) {
@@ -759,34 +761,34 @@ impl assignment for infer_ctxt {
             let {root:_, bounds: b_bounds} = self.get(self.vb, b_id);
             let a_bnd = select(a_bounds.ub, a_bounds.lb);
             let b_bnd = select(b_bounds.lb, b_bounds.ub);
-            self.assign_tys_or_sub(encl_node_id, a, b, a_bnd, b_bnd)
+            self.assign_tys_or_sub(a_node_id, a, b, a_bnd, b_bnd)
           }
 
           (ty::ty_var(a_id), _) {
             let {root:_, bounds:a_bounds} = self.get(self.vb, a_id);
             let a_bnd = select(a_bounds.ub, a_bounds.lb);
-            self.assign_tys_or_sub(encl_node_id, a, b, a_bnd, some(b))
+            self.assign_tys_or_sub(a_node_id, a, b, a_bnd, some(b))
           }
 
           (_, ty::ty_var(b_id)) {
             let {root:_, bounds: b_bounds} = self.get(self.vb, b_id);
             let b_bnd = select(b_bounds.lb, b_bounds.ub);
-            self.assign_tys_or_sub(encl_node_id, a, b, some(a), b_bnd)
+            self.assign_tys_or_sub(a_node_id, a, b, some(a), b_bnd)
           }
 
           (_, _) {
-            self.assign_tys_or_sub(encl_node_id, a, b, some(a), some(b))
+            self.assign_tys_or_sub(a_node_id, a, b, some(a), some(b))
           }
         }
     }
 
     fn assign_tys_or_sub(
-        encl_node_id: ast::node_id,
+        a_node_id: ast::node_id,
         a: ty::t, b: ty::t,
         a_bnd: option<ty::t>, b_bnd: option<ty::t>) -> ures {
 
-        #debug["assign_tys_or_sub(encl_node_id=%?, %s -> %s, %s -> %s)",
-               encl_node_id, a.to_str(self), b.to_str(self),
+        #debug["assign_tys_or_sub(a_node_id=%?, %s -> %s, %s -> %s)",
+               a_node_id, a.to_str(self), b.to_str(self),
                a_bnd.to_str(self), b_bnd.to_str(self)];
         let _r = indenter();
 
@@ -802,17 +804,17 @@ impl assignment for infer_ctxt {
             alt (ty::get(a_bnd).struct, ty::get(b_bnd).struct) {
               (ty::ty_box(mt_a), ty::ty_rptr(r_b, mt_b)) {
                 let nr_b = ty::mk_box(self.tcx, mt_b);
-                self.crosspolinate(encl_node_id, a, nr_b, r_b)
+                self.crosspolinate(a_node_id, a, nr_b, r_b)
               }
               (ty::ty_uniq(mt_a), ty::ty_rptr(r_b, mt_b)) {
                 let nr_b = ty::mk_uniq(self.tcx, mt_b);
-                self.crosspolinate(encl_node_id, a, nr_b, r_b)
+                self.crosspolinate(a_node_id, a, nr_b, r_b)
               }
               (ty::ty_evec(mt_a, vs_a),
                ty::ty_evec(mt_b, ty::vstore_slice(r_b)))
               if is_borrowable(vs_a) {
                 let nr_b = ty::mk_evec(self.tcx, mt_b, vs_a);
-                self.crosspolinate(encl_node_id, a, nr_b, r_b)
+                self.crosspolinate(a_node_id, a, nr_b, r_b)
               }
               _ {
                 self.sub_tys(a, b)
@@ -825,17 +827,26 @@ impl assignment for infer_ctxt {
         }
     }
 
-    fn crosspolinate(encl_node_id: ast::node_id,
-                     a: ty::t, nr_b: ty::t, r_b: ty::region) -> ures {
+    fn crosspolinate(a_node_id: ast::node_id,
+                     a: ty::t,
+                     nr_b: ty::t,
+                     r_b: ty::region) -> ures {
 
-        #debug["crosspolinate(encl_node_id=%?, a=%s, nr_b=%s, r_b=%s)",
-               encl_node_id, a.to_str(self), nr_b.to_str(self),
+        #debug["crosspolinate(a_node_id=%?, a=%s, nr_b=%s, r_b=%s)",
+               a_node_id, a.to_str(self), nr_b.to_str(self),
                r_b.to_str(self)];
 
         indent {||
             self.sub_tys(a, nr_b).then {||
-                let r_a = ty::re_scope(encl_node_id);
-                sub(self).contraregions(r_a, r_b).to_ures()
+                let a_scope_id = self.tcx.region_map.parents.get(a_node_id);
+                let r_a = ty::re_scope(a_scope_id);
+                #debug["a_scope_id=%?", a_scope_id];
+                sub(self).contraregions(r_a, r_b).chain {|_r|
+                    // if successful, add an entry indicating that
+                    // borrowing occurred
+                    self.tcx.borrowings.insert(a_node_id, ());
+                    uok()
+                }
             }
         }
     }
