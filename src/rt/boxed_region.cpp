@@ -20,12 +20,11 @@ rust_opaque_box *boxed_region::malloc(type_desc *td) {
     if (live_allocs) live_allocs->prev = box;
     live_allocs = box;
 
-#   ifdef DUMP_BOXED_REGION
-    fprintf(stderr, "Allocated box %p with td %p,"
-            " size %lu==%lu+%lu, align %lu, prev %p, next %p\n",
-            box, td, total_size, header_size, body_size, body_align,
-            box->prev, box->next);
-#   endif
+    LOG(rust_get_current_task(), box,
+        "@malloc()=%p with td %p, size %lu==%lu+%lu, "
+        "align %lu, prev %p, next %p\n",
+        box, td, total_size, header_size, body_size, body_align,
+        box->prev, box->next);
 
     return box;
 }
@@ -46,10 +45,9 @@ void boxed_region::free(rust_opaque_box *box) {
     // double frees (kind of).
     assert(box->td != NULL);
 
-#   ifdef DUMP_BOXED_REGION
-    fprintf(stderr, "Freed box %p with td %p, prev %p, next %p\n",
-            box, box->td, box->prev, box->next);
-#   endif
+    LOG(rust_get_current_task(), box,
+        "@free(%p) with td %p, prev %p, next %p\n",
+        box, box->td, box->prev, box->next);
 
     if (box->prev) box->prev->next = box->next;
     if (box->next) box->next->prev = box->prev;

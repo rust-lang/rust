@@ -236,6 +236,7 @@ void print_crate_log_map(const cratemap* map) {
 // These are pseudo-modules used to control logging in the runtime.
 
 uint32_t log_rt_mem;
+uint32_t log_rt_box;
 uint32_t log_rt_comm;
 uint32_t log_rt_task;
 uint32_t log_rt_dom;
@@ -251,6 +252,7 @@ uint32_t log_rt_callback;
 
 static const mod_entry _rt_module_map[] =
     {{"::rt::mem", &log_rt_mem},
+     {"::rt::box", &log_rt_box},
      {"::rt::comm", &log_rt_comm},
      {"::rt::task", &log_rt_task},
      {"::rt::dom", &log_rt_dom},

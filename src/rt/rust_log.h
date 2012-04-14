@@ -58,6 +58,7 @@ private:
 void update_log_settings(void* crate_map, char* settings);
 
 extern uint32_t log_rt_mem;
+extern uint32_t log_rt_box;
 extern uint32_t log_rt_comm;
 extern uint32_t log_rt_task;
 extern uint32_t log_rt_dom;
