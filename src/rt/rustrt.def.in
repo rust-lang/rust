@@ -12,6 +12,7 @@ debug_abi_2
 get_port_id
 get_task_id
 get_time
+rust_tzset
 rust_gmtime
 rust_localtime
 rust_timegm
