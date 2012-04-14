@@ -313,8 +313,8 @@ fn shared_malloc(cx: block, llptr_ty: TypeRef, llsize: ValueRef)
 //
 // The runtime equivalent is box_body() in "rust_internal.h".
 fn opaque_box_body(bcx: block,
-                      body_t: ty::t,
-                      boxptr: ValueRef) -> ValueRef {
+                   body_t: ty::t,
+                   boxptr: ValueRef) -> ValueRef {
     let _icx = bcx.insn_ctxt("opaque_box_body");
     let ccx = bcx.ccx();
     let boxptr = PointerCast(bcx, boxptr, T_ptr(T_box_header(ccx)));
@@ -2323,6 +2323,10 @@ fn trans_index(cx: block, ex: @ast::expr, base: @ast::expr,
     ret lval_owned(bcx, PointerCast(bcx, elt, T_ptr(llunitty)));
 }
 
+fn expr_is_borrowed(bcx: block, e: @ast::expr) -> bool {
+    bcx.tcx().borrowings.contains_key(e.id)
+}
+
 fn expr_is_lval(bcx: block, e: @ast::expr) -> bool {
     let ccx = bcx.ccx();
     ty::expr_is_lval(ccx.maps.method_map, e)
@@ -2553,6 +2557,7 @@ fn trans_arg_expr(cx: block, arg: ty::arg, lldestty: TypeRef, e: @ast::expr,
       }
       none { trans_temp_lval(cx, e) }
     };
+    let lv = adapt_borrowed_value(lv, arg, e);
     let mut bcx = lv.bcx;
     let mut val = lv.val;
     let arg_mode = ty::resolved_mode(ccx.tcx, arg.mode);
@@ -2609,6 +2614,58 @@ fn trans_arg_expr(cx: block, arg: ty::arg, lldestty: TypeRef, e: @ast::expr,
         val = PointerCast(bcx, val, lldestty);
     }
     ret rslt(bcx, val);
+}
+
+fn adapt_borrowed_value(lv: lval_result, arg: ty::arg,
+                        e: @ast::expr) -> lval_result {
+    let bcx = lv.bcx;
+    if !expr_is_borrowed(bcx, e) { ret lv; }
+
+    let e_ty = expr_ty(bcx, e);
+    alt ty::get(e_ty).struct {
+      ty::ty_box(mt) {
+        let box_ptr = {
+            alt lv.kind {
+              temporary { lv.val }
+              owned { Load(bcx, lv.val) }
+              owned_imm { lv.val }
+            }
+        };
+        let body_ptr = GEPi(bcx, box_ptr, [0, abi::box_field_body]);
+        ret lval_temp(bcx, body_ptr);
+      }
+
+      ty::ty_uniq(_) {
+        ret lv; // no change needed at runtime (I think)
+      }
+
+      ty::ty_estr(ty::vstore_box) |
+      ty::ty_evec(_, ty::vstore_box) {
+        bcx.tcx().sess.span_unimpl(
+            e.span, #fmt["borrowing a value of type %s",
+                         ty_to_str(bcx.tcx(), e_ty)]);
+      }
+
+      ty::ty_estr(ty::vstore_uniq) |
+      ty::ty_evec(_, ty::vstore_uniq) {
+        bcx.tcx().sess.span_unimpl(
+            e.span, #fmt["borrowing a value of type %s",
+                         ty_to_str(bcx.tcx(), e_ty)]);
+      }
+
+      ty::ty_estr(ty::vstore_fixed(_)) |
+      ty::ty_evec(_, ty::vstore_fixed(_)) {
+        bcx.tcx().sess.span_unimpl(
+            e.span, #fmt["borrowing a value of type %s",
+                         ty_to_str(bcx.tcx(), e_ty)]);
+      }
+
+      _ {
+        bcx.tcx().sess.span_bug(
+            e.span, #fmt["cannot borrow a value of type %s",
+                         ty_to_str(bcx.tcx(), e_ty)]);
+      }
+    }
 }
 
 enum call_args {
@@ -3006,7 +3063,12 @@ fn trans_expr_save_in(bcx: block, e: @ast::expr, dest: ValueRef)
 fn trans_temp_lval(bcx: block, e: @ast::expr) -> lval_result {
     let _icx = bcx.insn_ctxt("trans_temp_lval");
     let mut bcx = bcx;
-    if expr_is_lval(bcx, e) {
+    if expr_is_lval(bcx, e) && !expr_is_borrowed(bcx, e) {
+        // if the expression is borrowed, then are not actually passing the
+        // lvalue itself, but rather an adaptation of it.  This is a bit of a
+        // hack, though, but it only needs to exist so long as we have
+        // reference modes and the like---otherwise, all potentially borrowed
+        // things will go directly through trans_expr() as they ought to.
         ret trans_lval(bcx, e);
     } else {
         let ty = expr_ty(bcx, e);
@@ -3046,12 +3108,6 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
     let _icx = bcx.insn_ctxt("trans_expr");
     let tcx = bcx.tcx();
     debuginfo::update_source_pos(bcx, e.span);
-
-    #debug["trans_expr(e=%s,e.id=%d,dest=%s,ty=%s)",
-           expr_to_str(e),
-           e.id,
-           dest_str(bcx.ccx(), dest),
-           ty_to_str(tcx, expr_ty(bcx, e))];
 
     if expr_is_lval(bcx, e) {
         ret lval_to_dps(bcx, e, dest);
@@ -3264,9 +3320,10 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
         let bcx = trans_expr(bcx, val, save_in(ptr_val));
         store_in_dest(bcx, ptr_val, dest)
       }
-      _ { bcx.tcx().sess.span_bug(e.span, "trans_expr reached \
-             fall-through case"); }
-
+      _ {
+        bcx.tcx().sess.span_bug(e.span, "trans_expr reached \
+                                         fall-through case");
+      }
     }
 }
 

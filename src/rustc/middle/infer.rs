@@ -844,6 +844,7 @@ impl assignment for infer_ctxt {
                 sub(self).contraregions(r_a, r_b).chain {|_r|
                     // if successful, add an entry indicating that
                     // borrowing occurred
+                    #debug["borrowing expression #%?", a_node_id];
                     self.tcx.borrowings.insert(a_node_id, ());
                     uok()
                 }

@@ -875,6 +875,13 @@ pure fn type_is_boxed(ty: t) -> bool {
     }
 }
 
+pure fn type_is_region_ptr(ty: t) -> bool {
+    alt get(ty).struct {
+      ty_rptr(_, _) { true }
+      _ { false }
+    }
+}
+
 pure fn type_is_slice(ty: t) -> bool {
     alt get(ty).struct {
       ty_evec(_, vstore_slice(_)) | ty_estr(vstore_slice(_)) { true }
@@ -924,7 +931,7 @@ pure fn type_is_scalar(ty: t) -> bool {
 // FIXME maybe inline this for speed?
 fn type_is_immediate(ty: t) -> bool {
     ret type_is_scalar(ty) || type_is_boxed(ty) ||
-        type_is_unique(ty);
+        type_is_unique(ty) || type_is_region_ptr(ty);
 }
 
 fn type_needs_drop(cx: ctxt, ty: t) -> bool {

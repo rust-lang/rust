@@ -2581,7 +2581,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
     // A generic function to factor out common logic from call and bind
     // expressions.
     fn check_call_or_bind(
-        fcx: @fn_ctxt, sp: span, call_expr_id: ast::node_id, fty: ty::t,
+        fcx: @fn_ctxt, sp: span, fty: ty::t,
         args: [option<@ast::expr>]) -> {fty: ty::t, bot: bool} {
 
         let fty = universally_quantify_before_call(fcx, region_env(), fty);
@@ -2680,8 +2680,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         // Call the generic checker.
         let fty = {
             let args_opt = args.map { |arg| some(arg) };
-            let r = check_call_or_bind(fcx, sp, call_expr_id,
-                                       fn_ty, args_opt);
+            let r = check_call_or_bind(fcx, sp, fn_ty, args_opt);
             bot |= r.bot;
             r.fty
         };
@@ -2762,8 +2761,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
           some(origin) {
             let {fty: method_ty, bot: bot} = {
                 let method_ty = fcx.node_ty(callee_id);
-                check_call_or_bind(fcx, op_ex.span, op_ex.id,
-                                   method_ty, args)
+                check_call_or_bind(fcx, op_ex.span, method_ty, args)
             };
             fcx.ccx.method_map.insert(op_ex.id, origin);
             some((ty::ty_fn_ret(method_ty), bot))
@@ -3194,7 +3192,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
 
         let {fty, bot: ccob_bot} = {
             let fn_ty = fcx.expr_ty(f);
-            check_call_or_bind(fcx, expr.span, expr.id, fn_ty, args)
+            check_call_or_bind(fcx, expr.span, fn_ty, args)
         };
         bot |= ccob_bot;
 
