@@ -110,6 +110,7 @@ This function accepts strings such as
 * '', or, equivalently, '.' (understood as 0)
 * '5.'
 * '.5', or, equivalently,  '0.5'
+* 'inf', '-inf', 'NaN'
 
 Leading and trailing whitespace are ignored.
 
@@ -123,6 +124,14 @@ Leading and trailing whitespace are ignored.
 where `n` is the floating-point number represented by `[num]`.
 "]
 fn from_str(num: str) -> option<float> {
+   if num == "inf" {
+       ret some(infinity);
+   } else if num == "-inf" {
+       ret some(neg_infinity);
+   } else if num == "NaN" {
+       ret some(NaN);
+   }
+
    let mut pos = 0u;               //Current byte position in the string.
                                    //Used to walk the string in O(n).
    let len = str::len(num);        //Length of the string, in bytes.
@@ -301,6 +310,15 @@ fn test_from_str() {
    assert from_str("-.5") == some(-0.5);
    assert from_str("-.5") == some(-0.5);
    assert from_str("-5") == some(-5.);
+   assert from_str("-0") == some(-0.);
+   assert from_str("0") == some(0.);
+   assert from_str("inf") == some(infinity);
+   assert from_str("-inf") == some(neg_infinity);
+   // note: NaN != NaN, hence this slightly complex test
+   alt from_str("NaN") {
+       some(f) { assert is_NaN(f); }
+       none { fail; }
+   }
 
    assert from_str("") == none;
    assert from_str("x") == none;
