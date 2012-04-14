@@ -1,0 +1,39 @@
+#[no_core];
+
+// Use one template module to specify in a single file the implementation
+// of functions for multiple types
+
+#[path = "module-polymorphism3-files"]
+mod mystd {
+
+    // The template is specified in float-template.rs
+    #[path = "float-template"]
+    mod float {
+        // The type of the float
+        import inst::T;
+
+        // Define T as appropriate for platform
+        #[path = "inst_float.rs"]
+        mod inst;
+    }
+
+    // Use the same template
+    #[path = "float-template"]
+    mod f64 {
+
+        import inst::T;
+
+        // Define T as f64
+        #[path = "inst_f64.rs"]
+        mod inst;
+    }
+
+    #[path = "float-template"]
+    mod f32 {
+        import inst::T;
+
+        #[path = "inst_f32.rs"]
+        mod inst;
+    }
+
+}
