@@ -1531,9 +1531,9 @@ interop, without copying the original string.
 
 # Example
 
-```
+~~~
 let s = str::as_buf(\"PATH\", { |path_buf| libc::getenv(path_buf) });
-```
+~~~
 "]
 fn as_c_str<T>(s: str, f: fn(*libc::c_char) -> T) -> T unsafe {
     as_buf(s) {|buf| f(buf as *libc::c_char) }
