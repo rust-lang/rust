@@ -1,0 +1,28 @@
+#[no_core];
+
+
+#[path = "module-polymorphism4-files"]
+mod cat {
+
+    import inst::*;
+
+    #[path = "cat.rs"]
+    mod inst;
+
+    #[path = "trait.rs"]
+    mod trait;
+
+}
+
+#[path = "module-polymorphism4-files"]
+mod dog {
+
+    import inst::*;
+
+    #[path = "dog.rs"]
+    mod inst;
+
+    #[path = "trait.rs"]
+    mod trait;
+
+}
