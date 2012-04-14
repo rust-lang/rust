@@ -608,9 +608,6 @@ fn link_binary(sess: session,
             cc_args += ["-Wl,-install_name,@rpath/"
                         + path::basename(output)];
         }
-    } else {
-        // FIXME: why do we hardcode -lm?
-        cc_args += ["-lm"];
     }
 
     // Always want the runtime linked in
