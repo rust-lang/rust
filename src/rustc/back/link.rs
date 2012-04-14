@@ -580,6 +580,8 @@ fn link_binary(sess: session,
         lib_cmd = "-dynamiclib";
     } else { lib_cmd = "-shared"; }
 
+    // # Crate linking
+
     let cstore = sess.cstore;
     for cstore::get_used_crate_files(cstore).each {|cratepath|
         if str::ends_with(cratepath, ".rlib") {
@@ -596,6 +598,18 @@ fn link_binary(sess: session,
     let ula = cstore::get_used_link_args(cstore);
     for ula.each {|arg| cc_args += [arg]; }
 
+    // # Native library linking
+
+    // User-supplied library search paths (-L on the cammand line) These are
+    // the same paths used to find Rust crates, so some of them may have been
+    // added already by the previous crate linking code. This only allows them
+    // to be found at compile time so it is still entirely up to outside
+    // forces to make sure that library can be found at runtime.
+
+    let addl_paths = sess.opts.addl_lib_search_paths;
+    for addl_paths.each {|path| cc_args += ["-L" + path]; }
+
+    // The names of the native libraries
     let used_libs = cstore::get_used_libraries(cstore);
     for used_libs.each {|l| cc_args += ["-l" + l]; }
 
@@ -639,6 +653,8 @@ fn link_binary(sess: session,
     // Stack growth requires statically linking a __morestack function
     cc_args += ["-lmorestack"];
 
+    // FIXME: At some point we want to rpath our guesses as to where
+    // native libraries might live, based on the addl_lib_search_paths
     cc_args += rpath::get_rpath_flags(sess, output);
 
     #debug("%s link args: %s", cc_prog, str::connect(cc_args, " "));
