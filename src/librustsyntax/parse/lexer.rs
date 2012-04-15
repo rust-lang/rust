@@ -2,6 +2,8 @@ import util::interner;
 import util::interner::intern;
 import diagnostic;
 
+export reader, new_reader, next_token, is_whitespace;
+
 type reader = @{
     cm: codemap::codemap,
     span_diagnostic: diagnostic::span_handler,
