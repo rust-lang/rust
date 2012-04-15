@@ -1,3 +1,26 @@
+export filename;
+export filemap;
+export span;
+export file_substr;
+export codemap;
+export expn_info;
+export expn_info_;
+export expanded_from;
+export new_filemap;
+export new_filemap_w_substr;
+export mk_substr_filename;
+export lookup_char_pos;
+export adjust_span;
+export span_to_str;
+export span_to_lines;
+export file_lines;
+export get_line;
+export next_line;
+export span_to_snippet;
+export loc;
+export get_filemap;
+export new_codemap;
+
 type filename = str;
 
 type file_pos = {ch: uint, byte: uint};
