@@ -58,7 +58,7 @@ fn print_crate(cm: codemap, span_diagnostic: diagnostic::span_handler,
                crate: @ast::crate, filename: str, in: io::reader,
                out: io::writer, ann: pp_ann) {
     let boxes: [pp::breaks] = [];
-    let r = comments::gather_comments_and_literals(cm, span_diagnostic,
+    let r = comments::gather_comments_and_literals(span_diagnostic,
                                                    filename, in);
     let s =
         @{s: pp::mk_printer(out, default_columns),

@@ -104,7 +104,7 @@ fn new_parser_from_file(sess: parse_sess, cfg: ast::crate_cfg, path: str,
                                        sess.chpos, sess.byte_pos);
     sess.cm.files += [filemap];
     let itr = @interner::mk(str::hash, str::eq);
-    let rdr = lexer::new_reader(sess.cm, sess.span_diagnostic, filemap, itr);
+    let rdr = lexer::new_reader(sess.span_diagnostic, filemap, itr);
     ret new_parser(sess, cfg, rdr, ftype);
 }
 
@@ -116,7 +116,7 @@ fn new_parser_from_source_str(sess: parse_sess, cfg: ast::crate_cfg,
         (name, ss, source, sess.chpos, sess.byte_pos);
     sess.cm.files += [filemap];
     let itr = @interner::mk(str::hash, str::eq);
-    let rdr = lexer::new_reader(sess.cm, sess.span_diagnostic,
+    let rdr = lexer::new_reader(sess.span_diagnostic,
                                 filemap, itr);
     ret new_parser(sess, cfg, rdr, ftype);
 }

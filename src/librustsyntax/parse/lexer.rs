@@ -5,7 +5,6 @@ import diagnostic;
 export reader, new_reader, next_token, is_whitespace;
 
 type reader = @{
-    cm: codemap::codemap,
     span_diagnostic: diagnostic::span_handler,
     src: @str,
     len: uint,
@@ -57,12 +56,10 @@ impl reader for reader {
     }
 }
 
-fn new_reader(cm: codemap::codemap,
-              span_diagnostic: diagnostic::span_handler,
+fn new_reader(span_diagnostic: diagnostic::span_handler,
               filemap: codemap::filemap,
               itr: @interner::interner<str>) -> reader {
-    let r = @{cm: cm,
-              span_diagnostic: span_diagnostic,
+    let r = @{span_diagnostic: span_diagnostic,
               src: filemap.src, len: str::len(*filemap.src),
               mut col: 0u, mut pos: 0u, mut curr: -1 as char,
               mut chpos: filemap.start_pos.ch, mut strs: [],
