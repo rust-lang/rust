@@ -9,6 +9,8 @@ export is_null;
 export is_not_null;
 export memcpy;
 export memmove;
+export buf_len;
+export position;
 
 import libc::c_void;
 
