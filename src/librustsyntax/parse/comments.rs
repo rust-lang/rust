@@ -187,7 +187,7 @@ fn gather_comments_and_literals(cm: codemap::codemap,
             literals += [{lit: s, pos: tok.chpos}];
             log(debug, "tok lit: " + s);
         } else {
-            log(debug, "tok: " + token::to_str(rdr, tok.tok));
+            log(debug, "tok: " + token::to_str(*rdr.interner, tok.tok));
         }
         first_read = false;
     }

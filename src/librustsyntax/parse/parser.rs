@@ -155,13 +155,17 @@ fn bad_expr_word_table() -> hashmap<str, ()> {
     words
 }
 
+fn token_to_str(reader: reader, token: token::token) -> str {
+    token::to_str(*reader.interner, token)
+}
+
 fn unexpected_last(p: parser, t: token::token) -> ! {
     p.span_fatal(p.last_span,
-                 "unexpected token: '" + token::to_str(p.reader, t) + "'");
+                 "unexpected token: '" + token_to_str(p.reader, t) + "'");
 }
 
 fn unexpected(p: parser) -> ! {
-    p.fatal("unexpected token: '" + token::to_str(p.reader, p.token) + "'");
+    p.fatal("unexpected token: '" + token_to_str(p.reader, p.token) + "'");
 }
 
 fn expect(p: parser, t: token::token) {
@@ -169,9 +173,9 @@ fn expect(p: parser, t: token::token) {
         p.bump();
     } else {
         let mut s: str = "expecting '";
-        s += token::to_str(p.reader, t);
+        s += token_to_str(p.reader, t);
         s += "' but found '";
-        s += token::to_str(p.reader, p.token);
+        s += token_to_str(p.reader, p.token);
         p.fatal(s + "'");
     }
 }
@@ -185,9 +189,9 @@ fn expect_gt(p: parser) {
         p.swap(token::BINOP(token::LSR), p.span.lo + 1u, p.span.hi);
     } else {
         let mut s: str = "expecting ";
-        s += token::to_str(p.reader, token::GT);
+        s += token_to_str(p.reader, token::GT);
         s += ", found ";
-        s += token::to_str(p.reader, p.token);
+        s += token_to_str(p.reader, p.token);
         p.fatal(s);
     }
 }
@@ -200,7 +204,7 @@ fn parse_ident(p: parser) -> ast::ident {
     alt p.token {
       token::IDENT(i, _) { p.bump(); ret p.get_str(i); }
       _ { p.fatal("expecting ident, found "
-                  + token::to_str(p.reader, p.token)); }
+                  + token_to_str(p.reader, p.token)); }
     }
 }
 
@@ -242,7 +246,7 @@ fn eat_word(p: parser, word: str) -> bool {
 fn expect_word(p: parser, word: str) {
     if !eat_word(p, word) {
         p.fatal("expecting " + word + ", found " +
-                    token::to_str(p.reader, p.token));
+                    token_to_str(p.reader, p.token));
     }
 }
 
@@ -1626,7 +1630,7 @@ fn parse_pat(p: parser) -> @ast::pat {
                 p.bump();
                 if p.token != token::RBRACE {
                     p.fatal("expecting }, found " +
-                                token::to_str(p.reader, p.token));
+                                token_to_str(p.reader, p.token));
                 }
                 etc = true;
                 break;
@@ -1926,7 +1930,7 @@ fn parse_block_tail_(p: parser, lo: uint, s: ast::blk_check_mode,
                   t {
                     if stmt_ends_with_semi(*stmt) {
                         p.fatal("expected ';' or '}' after expression but \
-                                 found '" + token::to_str(p.reader, t) +
+                                 found '" + token_to_str(p.reader, t) +
                                 "'");
                     }
                     stmts += [stmt];
@@ -2251,7 +2255,7 @@ fn parse_mod_items(p: parser, term: token::token,
           some(i) { items += [i]; }
           _ {
             p.fatal("expected item but found '" +
-                    token::to_str(p.reader, p.token) + "'");
+                    token_to_str(p.reader, p.token) + "'");
           }
         }
         #debug["parse_mod_items: attrs=%?", attrs];
