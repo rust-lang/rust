@@ -47,7 +47,7 @@ fn mk_substr_filename(cm: codemap, sp: span) -> str
 }
 
 fn next_line(file: filemap, chpos: uint, byte_pos: uint) {
-    file.lines += [{ch: chpos, byte: byte_pos}];
+    file.lines += [{ch: chpos, byte: byte_pos + file.start_pos.byte}];
 }
 
 type lookup_fn = fn@(file_pos) -> uint;

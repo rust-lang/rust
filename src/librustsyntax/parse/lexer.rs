@@ -33,8 +33,7 @@ impl reader for reader {
             self.col += 1u;
             self.chpos += 1u;
             if self.curr == '\n' {
-                codemap::next_line(self.filemap, self.chpos, self.pos +
-                                   self.filemap.start_pos.byte);
+                codemap::next_line(self.filemap, self.chpos, self.pos);
                 self.col = 0u;
             }
             let next = str::char_range_at(*self.src, self.pos);
