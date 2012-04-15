@@ -2616,7 +2616,7 @@ fn trans_arg_expr(cx: block, arg: ty::arg, lldestty: TypeRef, e: @ast::expr,
     ret rslt(bcx, val);
 }
 
-fn adapt_borrowed_value(lv: lval_result, arg: ty::arg,
+fn adapt_borrowed_value(lv: lval_result, _arg: ty::arg,
                         e: @ast::expr) -> lval_result {
     let bcx = lv.bcx;
     if !expr_is_borrowed(bcx, e) { ret lv; }

@@ -896,6 +896,8 @@ iface combine {
     fn ret_styles(r1: ret_style, r2: ret_style) -> cres<ret_style>;
     fn contraregions(a: ty::region, b: ty::region) -> cres<ty::region>;
     fn regions(a: ty::region, b: ty::region) -> cres<ty::region>;
+    fn vstores(vk: ty::terr_vstore_kind,
+               a: ty::vstore, b: ty::vstore) -> cres<ty::vstore>;
 }
 
 enum sub = infer_ctxt;  // "subtype", "subregion" etc
@@ -948,6 +950,27 @@ fn super_args<C:combine>(
         self.contratys(a.ty, b.ty).chain {|t|
             ok({mode: m, ty: t})
         }
+    }
+}
+
+fn super_vstores<C:combine>(
+    self: C, vk: ty::terr_vstore_kind,
+    a: ty::vstore, b: ty::vstore) -> cres<ty::vstore> {
+
+    alt (a, b) {
+      (ty::vstore_slice(a_r), ty::vstore_slice(b_r)) {
+        self.contraregions(a_r, b_r).chain {|r|
+            ok(ty::vstore_slice(r))
+        }
+      }
+
+      _ if a == b {
+        ok(a)
+      }
+
+      _ {
+        err(ty::terr_vstores_differ(vk, b, a))
+      }
     }
 }
 
@@ -1070,12 +1093,17 @@ fn super_tys<C:combine>(
         }
       }
 
-      (ty::ty_evec(a_mt, ty::vstore_slice(a_r)),
-       ty::ty_evec(b_mt, ty::vstore_slice(b_r))) {
-        self.contraregions(a_r, b_r).chain {|r|
-            self.mts(a_mt, b_mt).chain {|mt|
-                ok(ty::mk_evec(tcx, mt, ty::vstore_slice(r)))
+      (ty::ty_evec(a_mt, vs_a), ty::ty_evec(b_mt, vs_b)) {
+        self.mts(a_mt, b_mt).chain {|mt|
+            self.vstores(ty::terr_vec, vs_a, vs_b).chain {|vs|
+                ok(ty::mk_evec(tcx, mt, vs))
             }
+        }
+      }
+
+      (ty::ty_estr(vs_a), ty::ty_estr(vs_b)) {
+        self.vstores(ty::terr_str, vs_a, vs_b).chain {|vs|
+            ok(ty::mk_estr(tcx,vs))
         }
       }
 
@@ -1232,6 +1260,11 @@ impl of combine for sub {
 
     fn flds(a: ty::field, b: ty::field) -> cres<ty::field> {
         super_flds(self, a, b)
+    }
+
+    fn vstores(vk: ty::terr_vstore_kind,
+               a: ty::vstore, b: ty::vstore) -> cres<ty::vstore> {
+        super_vstores(self, vk, a, b)
     }
 
     fn modes(a: ast::mode, b: ast::mode) -> cres<ast::mode> {
@@ -1400,6 +1433,11 @@ impl of combine for lub {
 
     fn flds(a: ty::field, b: ty::field) -> cres<ty::field> {
         super_flds(self, a, b)
+    }
+
+    fn vstores(vk: ty::terr_vstore_kind,
+               a: ty::vstore, b: ty::vstore) -> cres<ty::vstore> {
+        super_vstores(self, vk, a, b)
     }
 
     fn modes(a: ast::mode, b: ast::mode) -> cres<ast::mode> {
@@ -1585,6 +1623,11 @@ impl of combine for glb {
 
     fn flds(a: ty::field, b: ty::field) -> cres<ty::field> {
         super_flds(self, a, b)
+    }
+
+    fn vstores(vk: ty::terr_vstore_kind,
+               a: ty::vstore, b: ty::vstore) -> cres<ty::vstore> {
+        super_vstores(self, vk, a, b)
     }
 
     fn modes(a: ast::mode, b: ast::mode) -> cres<ast::mode> {

@@ -11,6 +11,7 @@ import syntax::codemap::span;
 import metadata::csearch;
 import util::common::*;
 import util::ppaux::region_to_str;
+import util::ppaux::vstore_to_str;
 import util::ppaux::ty_to_str;
 import util::ppaux::ty_constr_to_str;
 import syntax::print::pprust::*;
@@ -105,7 +106,7 @@ export ty_fn_args;
 export type_constr;
 export kind, kind_sendable, kind_copyable, kind_noncopyable;
 export kind_can_be_copied, kind_can_be_sent, proto_kind, kind_lteq, type_kind;
-export type_err;
+export type_err, terr_vstore_kind;
 export type_err_to_str;
 export type_needs_drop;
 export type_allows_implicit_copy;
@@ -328,6 +329,10 @@ type constr_general<ARG> = spanned<constr_general_<ARG, def_id>>;
 type type_constr = constr_general<@path>;
 type constr = constr_general<uint>;
 
+enum terr_vstore_kind {
+    terr_vec, terr_str
+}
+
 // Data structures used in type unification
 enum type_err {
     terr_mismatch,
@@ -348,6 +353,7 @@ enum type_err {
     terr_constr_len(uint, uint),
     terr_constr_mismatch(@type_constr, @type_constr),
     terr_regions_differ(region, region),
+    terr_vstores_differ(terr_vstore_kind, vstore, vstore),
     terr_in_field(@type_err, str),
     terr_sorts(t, t)
 }
@@ -1976,6 +1982,10 @@ fn ty_sort_str(cx: ctxt, t: t) -> str {
 }
 
 fn type_err_to_str(cx: ctxt, err: type_err) -> str {
+    fn terr_vstore_kind_to_str(k: terr_vstore_kind) -> str {
+        alt k { terr_vec { "[]" } terr_str { "str" } }
+    }
+
     alt err {
       terr_mismatch { ret "types differ"; }
       terr_ret_style_mismatch(expect, actual) {
@@ -2037,6 +2047,12 @@ fn type_err_to_str(cx: ctxt, err: type_err) -> str {
                   lifetime %s",
                  region_to_str(cx, subregion),
                  region_to_str(cx, superregion));
+      }
+      terr_vstores_differ(k, e_vs, a_vs) {
+        ret #fmt("%s storage differs: expected %s but found %s",
+                 terr_vstore_kind_to_str(k),
+                 vstore_to_str(cx, e_vs),
+                 vstore_to_str(cx, a_vs));
       }
       terr_in_field(err, fname) {
         ret #fmt("in field `%s`, %s", fname, type_err_to_str(cx, *err));
