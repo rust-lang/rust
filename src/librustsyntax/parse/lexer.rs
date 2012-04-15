@@ -11,7 +11,6 @@ type reader = @{
     mut pos: uint,
     mut curr: char,
     mut chpos: uint,
-    mut strs: [str],
     filemap: codemap::filemap,
     interner: @interner::interner<str>
 };
@@ -59,7 +58,7 @@ fn new_reader(span_diagnostic: diagnostic::span_handler,
               itr: @interner::interner<str>) -> reader {
     let r = @{span_diagnostic: span_diagnostic, src: filemap.src,
               mut col: 0u, mut pos: 0u, mut curr: -1 as char,
-              mut chpos: filemap.start_pos.ch, mut strs: [],
+              mut chpos: filemap.start_pos.ch,
               filemap: filemap, interner: itr};
     if r.pos < (*filemap.src).len() {
         let next = str::char_range_at(*r.src, r.pos);
