@@ -1,30 +1,10 @@
-#[doc = "Operations and constants for `u64`"];
+type T = u64;
 
-const min_value: u64 = 0u64;
-const max_value: u64 = 0u64 - 1u64;
+// Type-specific functions here. These must be reexported by the
+// parent module so that they appear in core::u8 and not core::u8::u8;
 
-pure fn min(x: u64, y: u64) -> u64 { if x < y { x } else { y } }
-pure fn max(x: u64, y: u64) -> u64 { if x > y { x } else { y } }
 
-pure fn add(x: u64, y: u64) -> u64 { ret x + y; }
-pure fn sub(x: u64, y: u64) -> u64 { ret x - y; }
-pure fn mul(x: u64, y: u64) -> u64 { ret x * y; }
-pure fn div(x: u64, y: u64) -> u64 { ret x / y; }
-pure fn rem(x: u64, y: u64) -> u64 { ret x % y; }
-
-pure fn lt(x: u64, y: u64) -> bool { ret x < y; }
-pure fn le(x: u64, y: u64) -> bool { ret x <= y; }
-pure fn eq(x: u64, y: u64) -> bool { ret x == y; }
-pure fn ne(x: u64, y: u64) -> bool { ret x != y; }
-pure fn ge(x: u64, y: u64) -> bool { ret x >= y; }
-pure fn gt(x: u64, y: u64) -> bool { ret x > y; }
-
-#[doc = "Iterate over the range [`lo`..`hi`)"]
-fn range(lo: u64, hi: u64, it: fn(u64)) {
-    let mut i = lo;
-    while i < hi { it(i); i += 1u64; }
-}
-
+// FIXME: Surely we can generalize this to apply to all uint types
 #[doc = "Convert to a string in a given base"]
 fn to_str(n: u64, radix: uint) -> str {
     assert (0u < radix && radix <= 16u);
@@ -79,9 +59,4 @@ fn from_str(buf: str, radix: u64) -> option<u64> {
         if i == 0u { ret some(n); }
         i -= 1u;
     };
-}
-
-#[doc = "Computes the bitwise complement"]
-pure fn compl(i: u64) -> u64 {
-    max_value ^ i
 }
