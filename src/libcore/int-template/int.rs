@@ -1,48 +1,13 @@
-#[doc = "Operations and constants for `int`"];
+type T = int;
 
-#[cfg(target_arch="x86")]
-const min_value: int = -1 << 31;
+#[cfg(target_arch = "x86")]
+const bits: T = 32 as T;
 
-#[cfg(target_arch="x86_64")]
-const min_value: int = -1 << 63;
-
-// FIXME: Find another way to access the machine word size in a const expr
-// (See Issue #2001)
-#[cfg(target_arch="x86")]
-const max_value: int = (-1 << 31)-1;
-
-#[cfg(target_arch="x86_64")]
-const max_value: int = (-1 << 63)-1;
-
-pure fn min(x: int, y: int) -> int { if x < y { x } else { y } }
-pure fn max(x: int, y: int) -> int { if x > y { x } else { y } }
-
-pure fn add(x: int, y: int) -> int { ret x + y; }
-pure fn sub(x: int, y: int) -> int { ret x - y; }
-pure fn mul(x: int, y: int) -> int { ret x * y; }
-pure fn div(x: int, y: int) -> int { ret x / y; }
-pure fn rem(x: int, y: int) -> int { ret x % y; }
-
-pure fn lt(x: int, y: int) -> bool { ret x < y; }
-pure fn le(x: int, y: int) -> bool { ret x <= y; }
-pure fn eq(x: int, y: int) -> bool { ret x == y; }
-pure fn ne(x: int, y: int) -> bool { ret x != y; }
-pure fn ge(x: int, y: int) -> bool { ret x >= y; }
-pure fn gt(x: int, y: int) -> bool { ret x > y; }
-
-pure fn is_positive(x: int) -> bool { ret x > 0; }
-pure fn is_negative(x: int) -> bool { ret x < 0; }
-pure fn is_nonpositive(x: int) -> bool { ret x <= 0; }
-pure fn is_nonnegative(x: int) -> bool { ret x >= 0; }
+#[cfg(target_arch = "x86_64")]
+const bits: T = 64 as T;
 
 #[doc = "Produce a uint suitable for use in a hash table"]
 pure fn hash(x: int) -> uint { ret x as uint; }
-
-#[doc = "Iterate over the range `[lo..hi)`"]
-fn range(lo: int, hi: int, it: fn(int)) {
-    let mut i = lo;
-    while i < hi { it(i); i += 1; }
-}
 
 #[doc = "
 Parse a buffer of bytes
@@ -105,15 +70,6 @@ fn pow(base: int, exponent: uint) -> int {
     ret acc;
 }
 
-#[doc = "Computes the bitwise complement"]
-pure fn compl(i: int) -> int {
-    uint::compl(i as uint) as int
-}
-
-#[doc = "Computes the absolute value"]
-fn abs(i: int) -> int {
-    if is_negative(i) { -i } else { i }
-}
 
 #[test]
 fn test_from_str() {
@@ -186,11 +142,3 @@ fn test_overflows() {
    assert (min_value <= 0);
    assert (min_value + max_value + 1 == 0);
 }
-
-// Local Variables:
-// mode: rust;
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:
