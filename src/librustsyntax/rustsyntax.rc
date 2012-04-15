@@ -26,6 +26,7 @@ mod parse {
     mod lexer;
     mod parser;
     mod token;
+    mod comments;
 }
 
 mod print {

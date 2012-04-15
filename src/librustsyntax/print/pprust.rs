@@ -1,3 +1,4 @@
+import parse::comments;
 import parse::lexer;
 import codemap::codemap;
 import pp::{break_offset, word, printer,
@@ -22,8 +23,8 @@ fn no_ann() -> pp_ann {
 type ps =
     @{s: pp::printer,
       cm: option<codemap>,
-      comments: option<[lexer::cmnt]>,
-      literals: option<[lexer::lit]>,
+      comments: option<[comments::cmnt]>,
+      literals: option<[comments::lit]>,
       mut cur_cmnt: uint,
       mut cur_lit: uint,
       mut boxes: [pp::breaks],
@@ -37,8 +38,8 @@ fn rust_printer(writer: io::writer) -> ps {
     let boxes: [pp::breaks] = [];
     ret @{s: pp::mk_printer(writer, default_columns),
           cm: none::<codemap>,
-          comments: none::<[lexer::cmnt]>,
-          literals: none::<[lexer::lit]>,
+          comments: none::<[comments::cmnt]>,
+          literals: none::<[comments::lit]>,
           mut cur_cmnt: 0u,
           mut cur_lit: 0u,
           mut boxes: boxes,
@@ -57,8 +58,8 @@ fn print_crate(cm: codemap, span_diagnostic: diagnostic::span_handler,
                crate: @ast::crate, filename: str, in: io::reader,
                out: io::writer, ann: pp_ann) {
     let boxes: [pp::breaks] = [];
-    let r = lexer::gather_comments_and_literals(cm, span_diagnostic, filename,
-                                                in);
+    let r = comments::gather_comments_and_literals(cm, span_diagnostic,
+                                                   filename, in);
     let s =
         @{s: pp::mk_printer(out, default_columns),
           cm: some(cm),
@@ -1570,7 +1571,7 @@ fn maybe_print_trailing_comment(s: ps, span: codemap::span,
     alt s.cm { some(ccm) { cm = ccm; } _ { ret; } }
     alt next_comment(s) {
       some(cmnt) {
-        if cmnt.style != lexer::trailing { ret; }
+        if cmnt.style != comments::trailing { ret; }
         let span_line = codemap::lookup_char_pos(cm, span.hi);
         let comment_line = codemap::lookup_char_pos(cm, cmnt.pos);
         let mut next = cmnt.pos + 1u;
@@ -1645,7 +1646,7 @@ fn print_literal(s: ps, &&lit: @ast::lit) {
 
 fn lit_to_str(l: @ast::lit) -> str { be to_str(l, print_literal); }
 
-fn next_lit(s: ps, pos: uint) -> option<lexer::lit> {
+fn next_lit(s: ps, pos: uint) -> option<comments::lit> {
     alt s.literals {
       some(lits) {
         while s.cur_lit < vec::len(lits) {
@@ -1674,15 +1675,15 @@ fn maybe_print_comment(s: ps, pos: uint) {
     }
 }
 
-fn print_comment(s: ps, cmnt: lexer::cmnt) {
+fn print_comment(s: ps, cmnt: comments::cmnt) {
     alt cmnt.style {
-      lexer::mixed {
+      comments::mixed {
         assert (vec::len(cmnt.lines) == 1u);
         zerobreak(s.s);
         word(s.s, cmnt.lines[0]);
         zerobreak(s.s);
       }
-      lexer::isolated {
+      comments::isolated {
         pprust::hardbreak_if_not_bol(s);
         for cmnt.lines.each {|line|
             // Don't print empty lines because they will end up as trailing
@@ -1691,7 +1692,7 @@ fn print_comment(s: ps, cmnt: lexer::cmnt) {
             hardbreak(s.s);
         }
       }
-      lexer::trailing {
+      comments::trailing {
         word(s.s, " ");
         if vec::len(cmnt.lines) == 1u {
             word(s.s, cmnt.lines[0]);
@@ -1705,7 +1706,7 @@ fn print_comment(s: ps, cmnt: lexer::cmnt) {
             end(s);
         }
       }
-      lexer::blank_line {
+      comments::blank_line {
         // We need to do at least one, possibly two hardbreaks.
         let is_semi =
             alt s.s.last_token() {
@@ -1754,14 +1755,14 @@ fn to_str<T>(t: T, f: fn@(ps, T)) -> str {
     io::mem_buffer_str(buffer)
 }
 
-fn next_comment(s: ps) -> option<lexer::cmnt> {
+fn next_comment(s: ps) -> option<comments::cmnt> {
     alt s.comments {
       some(cmnts) {
         if s.cur_cmnt < vec::len(cmnts) {
             ret some(cmnts[s.cur_cmnt]);
-        } else { ret none::<lexer::cmnt>; }
+        } else { ret none::<comments::cmnt>; }
       }
-      _ { ret none::<lexer::cmnt>; }
+      _ { ret none::<comments::cmnt>; }
     }
 }
 
