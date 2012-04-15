@@ -395,7 +395,7 @@ fn decl_x86_64_fn(tys: x86_64_tys,
 }
 
 fn link_name(i: @ast::native_item) -> str {
-    alt attr::get_meta_item_value_str_by_name(i.attrs, "link_name") {
+    alt attr::first_attr_value_str_by_name(i.attrs, "link_name") {
       none { ret i.ident; }
       option::some(ln) { ret ln; }
     }
@@ -989,7 +989,7 @@ fn register_crust_fn(ccx: @crate_ctxt, sp: span,
 
 fn abi_of_native_fn(ccx: @crate_ctxt, i: @ast::native_item)
     -> ast::native_abi {
-    alt attr::get_meta_item_value_str_by_name(i.attrs, "abi") {
+    alt attr::first_attr_value_str_by_name(i.attrs, "abi") {
       none {
         alt check ccx.tcx.items.get(i.id) {
           ast_map::node_native_item(_, abi, _) { abi }

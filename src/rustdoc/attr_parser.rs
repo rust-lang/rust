@@ -65,7 +65,7 @@ fn parse_crate(attrs: [ast::attribute]) -> crate_attrs {
     let link_metas = attr::find_linkage_metas(attrs);
 
     {
-        name: attr::meta_item_value_from_list(link_metas, "name")
+        name: attr::last_meta_item_value_str_by_name(link_metas, "name")
     }
 }
 

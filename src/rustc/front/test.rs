@@ -238,7 +238,7 @@ fn mk_path(cx: test_ctxt, path: [ast::ident]) -> [ast::ident] {
     // the paths with std::
     let is_std = {
         let items = attr::find_linkage_metas(cx.crate.node.attrs);
-        alt attr::meta_item_value_from_list(items, "name") {
+        alt attr::last_meta_item_value_str_by_name(items, "name") {
           some("std") { true }
           _ { false }
         }

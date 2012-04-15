@@ -115,7 +115,7 @@ fn visit_item(e: env, i: @ast::item) {
 
         let cstore = e.sess.cstore;
         let native_name =
-            alt attr::get_meta_item_value_str_by_name(i.attrs, "link_name") {
+            alt attr::first_attr_value_str_by_name(i.attrs, "link_name") {
               some(nn) {
                 if nn == "" {
                     e.sess.span_fatal(
@@ -387,10 +387,11 @@ fn resolve_crate(e: env, ident: ast::ident, metas: [@ast::meta_item],
         // Now resolve the crates referenced by this crate
         let cnum_map = resolve_crate_deps(e, cdata);
 
-        let cname = alt attr::meta_item_value_from_list(metas, "name") {
-          option::some(v) { v }
-          option::none { ident }
-        };
+        let cname =
+            alt attr::last_meta_item_value_str_by_name(metas, "name") {
+              option::some(v) { v }
+              option::none { ident }
+            };
         let cmeta = @{name: cname, data: cdata,
                       cnum_map: cnum_map, cnum: cnum};
 

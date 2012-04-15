@@ -129,7 +129,7 @@ fn building_library(req_crate_type: crate_type, crate: @ast::crate,
         if testing {
             false
         } else {
-            alt syntax::attr::get_meta_item_value_str_by_name(
+            alt syntax::attr::first_attr_value_str_by_name(
                 crate.node.attrs,
                 "crate_type") {
               option::some("lib") { true }

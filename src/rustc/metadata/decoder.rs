@@ -620,7 +620,7 @@ fn get_crate_hash(data: @[u8]) -> str {
 
 fn get_crate_vers(data: @[u8]) -> str {
     let attrs = decoder::get_crate_attributes(data);
-    ret alt attr::meta_item_value_from_list(
+    ret alt attr::last_meta_item_value_str_by_name(
         attr::find_linkage_metas(attrs), "vers") {
       some(ver) { ver }
       none { "0.0" }

@@ -81,7 +81,7 @@ fn parse_companion_mod(cx: ctx, prefix: str, suffix: option<str>)
 }
 
 fn cdir_path_opt(id: str, attrs: [ast::attribute]) -> str {
-    alt attr::get_meta_item_value_str_by_name(attrs, "path") {
+    alt attr::first_attr_value_str_by_name(attrs, "path") {
       some(d) {
         ret d;
       }

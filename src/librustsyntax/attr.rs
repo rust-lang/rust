@@ -4,82 +4,140 @@ import std::map;
 import std::map::hashmap;
 import either::either;
 import diagnostic::span_handler;
+import ast_util::dummy_spanned;
 
-export attr_meta;
-export attr_metas;
-export find_linkage_attrs;
-export find_linkage_metas;
-export inline_attr;
-export find_inline_attr;
-export find_attrs_by_name;
-export attrs_contains_name;
-export find_meta_items_by_name;
-export contains;
-export contains_name;
-export sort_meta_items;
-export remove_meta_items_by_name;
-export require_unique_names;
-export get_attr_name;
-export get_meta_item_name;
-export get_meta_item_value_str;
-export get_meta_item_value_str_by_name;
-export get_meta_item_list;
-export meta_item_value_from_list;
-export meta_item_list_from_list;
-export name_value_str_pair;
+// Constructors
 export mk_name_value_item_str;
 export mk_name_value_item;
 export mk_list_item;
 export mk_word_item;
 export mk_attr;
+
+// Conversion
+export attr_meta;
+export attr_metas;
+
+// Accessors
+export get_attr_name;
+export get_meta_item_name;
+export get_meta_item_value_str;
+export get_meta_item_list;
+export get_name_value_str_pair;
+
+// Searching
+export find_attrs_by_name;
+export find_meta_items_by_name;
+export contains;
+export contains_name;
+export attrs_contains_name;
+export first_attr_value_str_by_name;
+export last_meta_item_value_str_by_name;
+export last_meta_item_list_by_name;
+
+// Higher-level applications
+export sort_meta_items;
+export remove_meta_items_by_name;
+export find_linkage_attrs;
+export find_linkage_metas;
 export native_abi;
+export inline_attr;
+export find_inline_attr;
+export require_unique_names;
 
-// From a list of crate attributes get only the meta_items that impact crate
-// linkage
-fn find_linkage_metas(attrs: [ast::attribute]) -> [@ast::meta_item] {
-    find_linkage_attrs(attrs).flat_map {|attr|
-        alt check attr.node.value.node {
-          ast::meta_list(_, items) { items }
-        }
+/* Constructors */
+
+fn mk_name_value_item_str(name: ast::ident, value: str) -> @ast::meta_item {
+    let value_lit = dummy_spanned(ast::lit_str(value));
+    ret mk_name_value_item(name, value_lit);
+}
+
+fn mk_name_value_item(name: ast::ident, value: ast::lit) -> @ast::meta_item {
+    ret @dummy_spanned(ast::meta_name_value(name, value));
+}
+
+fn mk_list_item(name: ast::ident, items: [@ast::meta_item]) ->
+   @ast::meta_item {
+    ret @dummy_spanned(ast::meta_list(name, items));
+}
+
+fn mk_word_item(name: ast::ident) -> @ast::meta_item {
+    ret @dummy_spanned(ast::meta_word(name));
+}
+
+fn mk_attr(item: @ast::meta_item) -> ast::attribute {
+    ret dummy_spanned({style: ast::attr_inner, value: *item});
+}
+
+
+/* Conversion */
+
+fn attr_meta(attr: ast::attribute) -> @ast::meta_item { @attr.node.value }
+
+// Get the meta_items from inside a vector of attributes
+fn attr_metas(attrs: [ast::attribute]) -> [@ast::meta_item] {
+    let mut mitems = [];
+    for attrs.each {|a| mitems += [attr_meta(a)]; }
+    ret mitems;
+}
+
+
+/* Accessors */
+
+fn get_attr_name(attr: ast::attribute) -> ast::ident {
+    get_meta_item_name(@attr.node.value)
+}
+
+fn get_meta_item_name(meta: @ast::meta_item) -> ast::ident {
+    alt meta.node {
+      ast::meta_word(n) { n }
+      ast::meta_name_value(n, _) { n }
+      ast::meta_list(n, _) { n }
     }
 }
 
-fn find_linkage_attrs(attrs: [ast::attribute]) -> [ast::attribute] {
-    let mut found = [];
-    for find_attrs_by_name(attrs, "link").each {|attr|
-        alt attr.node.value.node {
-          ast::meta_list(_, _) { found += [attr] }
-          _ { #debug("ignoring link attribute that has incorrect type"); }
-        }
-    }
-    ret found;
-}
-
-enum inline_attr {
-    ia_none,
-    ia_hint,
-    ia_always
-}
-
-// True if something like #[inline] is found in the list of attrs.
-fn find_inline_attr(attrs: [ast::attribute]) -> inline_attr {
-    // TODO---validate the usage of #[inline] and #[inline(always)]
-    vec::foldl(ia_none, attrs) {|ia,attr|
-        alt attr.node.value.node {
-          ast::meta_word("inline") { ia_hint }
-          ast::meta_list("inline", items) {
-            if !vec::is_empty(find_meta_items_by_name(items, "always")) {
-                ia_always
-            } else {
-                ia_hint
-            }
-          }
-          _ { ia }
-        }
+#[doc = "
+Gets the string value if the meta_item is a meta_name_value variant
+containing a string, otherwise none
+"]
+fn get_meta_item_value_str(meta: @ast::meta_item) -> option<str> {
+    alt meta.node {
+      ast::meta_name_value(_, v) {
+        alt v.node { ast::lit_str(s) { option::some(s) } _ { option::none } }
+      }
+      _ { option::none }
     }
 }
 
-// Search a list of attributes and return only those with a specific name
+#[doc = "Gets a list of inner meta items from a list meta_item type"]
+fn get_meta_item_list(meta: @ast::meta_item) -> option<[@ast::meta_item]> {
+    alt meta.node {
+      ast::meta_list(_, l) { option::some(l) }
+      _ { option::none }
+    }
+}
+
+#[doc = "
+If the meta item is a nam-value type with a string value then returns
+a tuple containing the name and string value, otherwise `none`
+"]
+fn get_name_value_str_pair(
+    item: @ast::meta_item
+) -> option<(str, str)> {
+    alt attr::get_meta_item_value_str(item) {
+      some(value) {
+        let name = attr::get_meta_item_name(item);
+        some((name, value))
+      }
+      none { none }
+    }
+}
+
+
+/* Searching */
+
+#[doc = "
+Search a list of attributes and return only those with a specific name
+"]
 fn find_attrs_by_name(attrs: [ast::attribute], name: ast::ident) ->
    [ast::attribute] {
     let filter = (
@@ -92,14 +150,9 @@ fn find_attrs_by_name(attrs: [ast::attribute], name: ast::ident) ->
     ret vec::filter_map(attrs, filter);
 }
 
-fn attrs_contains_name(attrs: [ast::attribute], name: ast::ident) -> bool {
-    vec::is_not_empty(find_attrs_by_name(attrs, name))
-}
-
-fn get_attr_name(attr: ast::attribute) -> ast::ident {
-    get_meta_item_name(@attr.node.value)
-}
-
+#[doc = "
+Searcha list of meta items and return only those with a specific name
+"]
 fn find_meta_items_by_name(metas: [@ast::meta_item], name: ast::ident) ->
    [@ast::meta_item] {
     let filter = fn@(&&m: @ast::meta_item) -> option<@ast::meta_item> {
@@ -110,48 +163,20 @@ fn find_meta_items_by_name(metas: [@ast::meta_item], name: ast::ident) ->
     ret vec::filter_map(metas, filter);
 }
 
-fn get_meta_item_name(meta: @ast::meta_item) -> ast::ident {
-    alt meta.node {
-      ast::meta_word(n) { n }
-      ast::meta_name_value(n, _) { n }
-      ast::meta_list(n, _) { n }
+#[doc = "
+Returns true if a list of meta items contains another meta item. The
+comparison is performed structurally.
+"]
+fn contains(haystack: [@ast::meta_item], needle: @ast::meta_item) -> bool {
+    #debug("looking for %s",
+           print::pprust::meta_item_to_str(*needle));
+    for haystack.each {|item|
+        #debug("looking in %s",
+               print::pprust::meta_item_to_str(*item));
+        if eq(item, needle) { #debug("found it!"); ret true; }
     }
-}
-
-// Gets the string value if the meta_item is a meta_name_value variant
-// containing a string, otherwise none
-fn get_meta_item_value_str(meta: @ast::meta_item) -> option<str> {
-    alt meta.node {
-      ast::meta_name_value(_, v) {
-        alt v.node { ast::lit_str(s) { option::some(s) } _ { option::none } }
-      }
-      _ { option::none }
-    }
-}
-
-fn get_meta_item_value_str_by_name(attrs: [ast::attribute], name: ast::ident)
-    -> option<str> {
-    let mattrs = find_attrs_by_name(attrs, name);
-    if vec::len(mattrs) > 0u {
-        ret get_meta_item_value_str(attr_meta(mattrs[0]));
-    }
-    ret option::none;
-}
-
-fn get_meta_item_list(meta: @ast::meta_item) -> option<[@ast::meta_item]> {
-    alt meta.node {
-      ast::meta_list(_, l) { option::some(l) }
-      _ { option::none }
-    }
-}
-
-fn attr_meta(attr: ast::attribute) -> @ast::meta_item { @attr.node.value }
-
-// Get the meta_items from inside a vector of attributes
-fn attr_metas(attrs: [ast::attribute]) -> [@ast::meta_item] {
-    let mut mitems = [];
-    for attrs.each {|a| mitems += [attr_meta(a)]; }
-    ret mitems;
+    #debug("found it not :(");
+    ret false;
 }
 
 fn eq(a: @ast::meta_item, b: @ast::meta_item) -> bool {
@@ -175,22 +200,61 @@ fn eq(a: @ast::meta_item, b: @ast::meta_item) -> bool {
         }
 }
 
-fn contains(haystack: [@ast::meta_item], needle: @ast::meta_item) -> bool {
-    #debug("looking for %s",
-           print::pprust::meta_item_to_str(*needle));
-    for haystack.each {|item|
-        #debug("looking in %s",
-               print::pprust::meta_item_to_str(*item));
-        if eq(item, needle) { #debug("found it!"); ret true; }
-    }
-    #debug("found it not :(");
-    ret false;
-}
-
 fn contains_name(metas: [@ast::meta_item], name: ast::ident) -> bool {
     let matches = find_meta_items_by_name(metas, name);
     ret vec::len(matches) > 0u;
 }
+
+fn attrs_contains_name(attrs: [ast::attribute], name: ast::ident) -> bool {
+    vec::is_not_empty(find_attrs_by_name(attrs, name))
+}
+
+fn first_attr_value_str_by_name(attrs: [ast::attribute], name: ast::ident)
+    -> option<str> {
+    let mattrs = find_attrs_by_name(attrs, name);
+    if vec::len(mattrs) > 0u {
+        ret get_meta_item_value_str(attr_meta(mattrs[0]));
+    }
+    ret option::none;
+}
+
+fn last_meta_item_by_name(
+    items: [@ast::meta_item],
+    name: str
+) -> option<@ast::meta_item> {
+    let items = attr::find_meta_items_by_name(items, name);
+    vec::last_opt(items)
+}
+
+fn last_meta_item_value_str_by_name(
+    items: [@ast::meta_item],
+    name: str
+) -> option<str> {
+    alt last_meta_item_by_name(items, name) {
+      some(item) {
+        alt attr::get_meta_item_value_str(item) {
+          some(value) { some(value) }
+          none { none }
+        }
+      }
+      none { none }
+    }
+}
+
+fn last_meta_item_list_by_name(
+    items: [@ast::meta_item],
+    name: str
+) -> option<[@ast::meta_item]> {
+    alt last_meta_item_by_name(items, name) {
+      some(item) {
+        attr::get_meta_item_list(item)
+      }
+      none { none }
+    }
+}
+
+
+/* Higher-level applications */
 
 // FIXME: This needs to sort by meta_item variant in addition to the item name
 fn sort_meta_items(items: [@ast::meta_item]) -> [@ast::meta_item] {
@@ -228,21 +292,31 @@ fn remove_meta_items_by_name(items: [@ast::meta_item], name: str) ->
     ret vec::filter_map(items, filter);
 }
 
-fn require_unique_names(diagnostic: span_handler,
-                        metas: [@ast::meta_item]) {
-    let map = map::str_hash();
-    for metas.each {|meta|
-        let name = get_meta_item_name(meta);
-        if map.contains_key(name) {
-            diagnostic.span_fatal(meta.span,
-                                  #fmt["duplicate meta item `%s`", name]);
+fn find_linkage_attrs(attrs: [ast::attribute]) -> [ast::attribute] {
+    let mut found = [];
+    for find_attrs_by_name(attrs, "link").each {|attr|
+        alt attr.node.value.node {
+          ast::meta_list(_, _) { found += [attr] }
+          _ { #debug("ignoring link attribute that has incorrect type"); }
         }
-        map.insert(name, ());
+    }
+    ret found;
+}
+
+#[doc = "
+From a list of crate attributes get only the meta_items that impact crate
+linkage
+"]
+fn find_linkage_metas(attrs: [ast::attribute]) -> [@ast::meta_item] {
+    find_linkage_attrs(attrs).flat_map {|attr|
+        alt check attr.node.value.node {
+          ast::meta_list(_, items) { items }
+        }
     }
 }
 
 fn native_abi(attrs: [ast::attribute]) -> either<str, ast::native_abi> {
-    ret alt attr::get_meta_item_value_str_by_name(attrs, "abi") {
+    ret alt attr::first_attr_value_str_by_name(attrs, "abi") {
       option::none {
         either::right(ast::native_abi_cdecl)
       }
@@ -261,77 +335,42 @@ fn native_abi(attrs: [ast::attribute]) -> either<str, ast::native_abi> {
     };
 }
 
-fn meta_item_from_list(
-    items: [@ast::meta_item],
-    name: str
-) -> option<@ast::meta_item> {
-    let items = attr::find_meta_items_by_name(items, name);
-    vec::last_opt(items)
+enum inline_attr {
+    ia_none,
+    ia_hint,
+    ia_always
 }
 
-fn meta_item_value_from_list(
-    items: [@ast::meta_item],
-    name: str
-) -> option<str> {
-    alt meta_item_from_list(items, name) {
-      some(item) {
-        alt attr::get_meta_item_value_str(item) {
-          some(value) { some(value) }
-          none { none }
+#[doc = "True if something like #[inline] is found in the list of attrs."]
+fn find_inline_attr(attrs: [ast::attribute]) -> inline_attr {
+    // TODO---validate the usage of #[inline] and #[inline(always)]
+    vec::foldl(ia_none, attrs) {|ia,attr|
+        alt attr.node.value.node {
+          ast::meta_word("inline") { ia_hint }
+          ast::meta_list("inline", items) {
+            if !vec::is_empty(find_meta_items_by_name(items, "always")) {
+                ia_always
+            } else {
+                ia_hint
+            }
+          }
+          _ { ia }
         }
-      }
-      none { none }
     }
 }
 
-fn meta_item_list_from_list(
-    items: [@ast::meta_item],
-    name: str
-) -> option<[@ast::meta_item]> {
-    alt meta_item_from_list(items, name) {
-      some(item) {
-        attr::get_meta_item_list(item)
-      }
-      none { none }
+
+fn require_unique_names(diagnostic: span_handler,
+                        metas: [@ast::meta_item]) {
+    let map = map::str_hash();
+    for metas.each {|meta|
+        let name = get_meta_item_name(meta);
+        if map.contains_key(name) {
+            diagnostic.span_fatal(meta.span,
+                                  #fmt["duplicate meta item `%s`", name]);
+        }
+        map.insert(name, ());
     }
-}
-
-fn name_value_str_pair(
-    item: @ast::meta_item
-) -> option<(str, str)> {
-    alt attr::get_meta_item_value_str(item) {
-      some(value) {
-        let name = attr::get_meta_item_name(item);
-        some((name, value))
-      }
-      none { none }
-    }
-}
-
-fn span<T: copy>(item: T) -> ast::spanned<T> {
-    ret {node: item, span: ast_util::dummy_sp()};
-}
-
-fn mk_name_value_item_str(name: ast::ident, value: str) -> @ast::meta_item {
-    let value_lit = span(ast::lit_str(value));
-    ret mk_name_value_item(name, value_lit);
-}
-
-fn mk_name_value_item(name: ast::ident, value: ast::lit) -> @ast::meta_item {
-    ret @span(ast::meta_name_value(name, value));
-}
-
-fn mk_list_item(name: ast::ident, items: [@ast::meta_item]) ->
-   @ast::meta_item {
-    ret @span(ast::meta_list(name, items));
-}
-
-fn mk_word_item(name: ast::ident) -> @ast::meta_item {
-    ret @span(ast::meta_word(name));
-}
-
-fn mk_attr(item: @ast::meta_item) -> ast::attribute {
-    ret span({style: ast::attr_inner, value: *item});
 }
 
 //

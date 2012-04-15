@@ -5,6 +5,10 @@ fn respan<T: copy>(sp: span, t: T) -> spanned<T> {
     ret {node: t, span: sp};
 }
 
+fn dummy_spanned<T: copy>(t: T) -> spanned<T> {
+    ret respan(dummy_sp(), t);
+}
+
 /* assuming that we're not in macro expansion */
 fn mk_sp(lo: uint, hi: uint) -> span {
     ret {lo: lo, hi: hi, expn_info: none};
