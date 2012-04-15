@@ -7,7 +7,6 @@ export reader, new_reader, next_token, is_whitespace;
 type reader = @{
     span_diagnostic: diagnostic::span_handler,
     src: @str,
-    len: uint,
     mut col: uint,
     mut pos: uint,
     mut curr: char,
@@ -25,12 +24,12 @@ impl reader for reader {
         ret str::slice(*self.src, start - 1u, self.pos - 1u);
     }
     fn next() -> char {
-        if self.pos < self.len {
+        if self.pos < (*self.src).len() {
             ret str::char_at(*self.src, self.pos);
         } else { ret -1 as char; }
     }
     fn bump() {
-        if self.pos < self.len {
+        if self.pos < (*self.src).len() {
             self.col += 1u;
             self.chpos += 1u;
             if self.curr == '\n' {
@@ -59,12 +58,11 @@ impl reader for reader {
 fn new_reader(span_diagnostic: diagnostic::span_handler,
               filemap: codemap::filemap,
               itr: @interner::interner<str>) -> reader {
-    let r = @{span_diagnostic: span_diagnostic,
-              src: filemap.src, len: str::len(*filemap.src),
+    let r = @{span_diagnostic: span_diagnostic, src: filemap.src,
               mut col: 0u, mut pos: 0u, mut curr: -1 as char,
               mut chpos: filemap.start_pos.ch, mut strs: [],
               filemap: filemap, interner: itr};
-    if r.pos < r.len {
+    if r.pos < (*filemap.src).len() {
         let next = str::char_range_at(*r.src, r.pos);
         r.pos = next.next;
         r.curr = next.ch;
