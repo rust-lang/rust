@@ -37,7 +37,7 @@ iface handler {
 
 type handler_t = @{
     mut err_count: uint,
-    _emit: emitter
+    emit: emitter
 };
 
 type codemap_t = @{
@@ -73,11 +73,11 @@ impl codemap_span_handler of span_handler for codemap_t {
 
 impl codemap_handler of handler for handler_t {
     fn fatal(msg: str) -> ! {
-        self._emit(none, msg, fatal);
+        self.emit(none, msg, fatal);
         fail;
     }
     fn err(msg: str) {
-        self._emit(none, msg, error);
+        self.emit(none, msg, error);
         self.bump_err_count();
     }
     fn bump_err_count() {
@@ -90,17 +90,17 @@ impl codemap_handler of handler for handler_t {
         }
     }
     fn warn(msg: str) {
-        self._emit(none, msg, warning);
+        self.emit(none, msg, warning);
     }
     fn note(msg: str) {
-        self._emit(none, msg, note);
+        self.emit(none, msg, note);
     }
     fn bug(msg: str) -> ! {
         self.fatal(ice_msg(msg));
     }
     fn unimpl(msg: str) -> ! { self.bug("unimplemented " + msg); }
     fn emit(cmsp: option<(codemap::codemap, span)>, msg: str, lvl: level) {
-        self._emit(cmsp, msg, lvl);
+        self.emit(cmsp, msg, lvl);
     }
 }
 
@@ -127,7 +127,7 @@ fn mk_handler(emitter: option<emitter>) -> handler {
 
     @{
         mut err_count: 0u,
-        _emit: emit
+        emit: emit
     } as handler
 }
 
