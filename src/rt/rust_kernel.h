@@ -73,9 +73,9 @@ class rust_kernel {
     rust_scheduler* get_scheduler_by_id_nolock(rust_sched_id id);
     void end_weak_tasks();
 
-	// Used to communicate with the process-side, global libuv loop
-	uintptr_t global_loop_chan;
-	void** global_async_handle;
+    // Used to communicate with the process-side, global libuv loop
+    uintptr_t global_loop_chan;
+    void** global_async_handle;
 
 public:
     struct rust_env *env;
@@ -122,10 +122,10 @@ public:
 
     bool send_to_port(rust_port_id chan, void *sptr);
 
-	uintptr_t* get_global_loop() { return &global_loop_chan; }
-	void** get_global_async_handle() { return global_async_handle; }
-	void set_global_async_handle(void* handle) {
-		*global_async_handle = handle; }
+    uintptr_t* get_global_loop() { return &global_loop_chan; }
+    void** get_global_async_handle() { return global_async_handle; }
+    void set_global_async_handle(void* handle) {
+        *global_async_handle = handle; }
 };
 
 template <typename T> struct kernel_owned {

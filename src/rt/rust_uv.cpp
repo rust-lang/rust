@@ -209,12 +209,12 @@ rust_uv_hilvl_timer_start(uv_timer_t* the_timer, uint32_t timeout,
 
 extern "C" int
 rust_uv_timer_init(uv_loop_t* loop, uv_timer_t* timer) {
-	return uv_timer_init(loop, timer);
+    return uv_timer_init(loop, timer);
 }
 
 extern "C" int
 rust_uv_timer_start(uv_timer_t* the_timer, uv_timer_cb cb,
-						  uint32_t timeout, uint32_t repeat) {
+                        uint32_t timeout, uint32_t repeat) {
     return uv_timer_start(the_timer, cb, timeout, repeat);
 }
 
@@ -439,22 +439,22 @@ rust_uv_ip4_addr(const char* ip, int port) {
 
 extern "C" uintptr_t*
 rust_uv_get_kernel_global_chan_ptr() {
-	uintptr_t* result = rust_get_current_task()->kernel->get_global_loop();
+    uintptr_t* result = rust_get_current_task()->kernel->get_global_loop();
     rust_task* task = rust_get_current_task();
-	LOG(task, stdlib, "global loop: %lu", (unsigned long int)result);
-	LOG(task, stdlib,"global loop val: %lu", (unsigned long int)*result);
-	return result;
+    LOG(task, stdlib, "global loop: %lu", (unsigned long int)result);
+    LOG(task, stdlib,"global loop val: %lu", (unsigned long int)*result);
+    return result;
 }
 
 extern "C" void**
 rust_uv_get_kernel_global_async_handle() {
-	return rust_get_current_task()->kernel->get_global_async_handle();
+    return rust_get_current_task()->kernel->get_global_async_handle();
 }
 extern "C" void
 rust_uv_set_kernel_global_async_handle(uv_async_t* handle) {
-	rust_get_current_task()->kernel->set_global_async_handle((void*)handle);
+    rust_get_current_task()->kernel->set_global_async_handle((void*)handle);
 }
 extern "C" void
 rust_uv_free_kernel_global_async_handle() {
-	free((void*)rust_get_current_task()->kernel->get_global_async_handle());
+    free((void*)rust_get_current_task()->kernel->get_global_async_handle());
 }

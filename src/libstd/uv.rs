@@ -1252,7 +1252,7 @@ mod test {
         log(debug, output);
         assert native_handle_size as uint == rust_handle_size;
     }
-    
+
     #[test]
     #[ignore(cfg(target_os = "freebsd"))]
     fn test_uv_struct_size_uv_timer_t() {
