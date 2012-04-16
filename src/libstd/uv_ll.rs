@@ -732,9 +732,9 @@ unsafe fn timer_t() -> uv_timer_t {
 }
 
 // data access helpers
-unsafe fn get_loop_for_uv_handle(handle: *libc::c_void)
+unsafe fn get_loop_for_uv_handle<T>(handle: *T)
     -> *libc::c_void {
-    ret rustrt::rust_uv_get_loop_for_uv_handle(handle);
+    ret rustrt::rust_uv_get_loop_for_uv_handle(handle as *libc::c_void);
 }
 unsafe fn get_stream_handle_from_connect_req(connect: *uv_connect_t)
     -> *uv_stream_t {
@@ -753,12 +753,13 @@ unsafe fn get_data_for_uv_loop(loop_ptr: *libc::c_void) -> *libc::c_void {
 unsafe fn set_data_for_uv_loop(loop_ptr: *libc::c_void, data: *libc::c_void) {
     rustrt::rust_uv_set_data_for_uv_loop(loop_ptr, data);
 }
-unsafe fn get_data_for_uv_handle(handle: *libc::c_void) -> *libc::c_void {
-    ret rustrt::rust_uv_get_data_for_uv_handle(handle);
+unsafe fn get_data_for_uv_handle<T>(handle: *T) -> *libc::c_void {
+    ret rustrt::rust_uv_get_data_for_uv_handle(handle as *libc::c_void);
 }
-unsafe fn set_data_for_uv_handle(handle: *libc::c_void,
-                    data: *libc::c_void) {
-    rustrt::rust_uv_set_data_for_uv_handle(handle, data);
+unsafe fn set_data_for_uv_handle<T, U>(handle: *T,
+                    data: *U) {
+    rustrt::rust_uv_set_data_for_uv_handle(handle as *libc::c_void,
+                                           data as *libc::c_void);
 }
 unsafe fn get_data_for_req(req: *libc::c_void) -> *libc::c_void {
     ret rustrt::rust_uv_get_data_for_req(req);
