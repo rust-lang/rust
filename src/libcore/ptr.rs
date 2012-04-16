@@ -11,6 +11,7 @@ export memcpy;
 export memmove;
 export buf_len;
 export position;
+export extensions;
 
 import libc::c_void;
 
@@ -98,6 +99,15 @@ and destination may overlap.
 unsafe fn memmove<T>(dst: *T, src: *T, count: uint)  {
     let n = count * sys::size_of::<T>();
     libc_::memmove(dst as *c_void, src as *c_void, n);
+}
+
+#[doc = "Extension methods for pointers"]
+impl extensions<T> for *T {
+    #[doc = "Returns true if the pointer is equal to the null pointer."]
+    pure fn is_null<T>() -> bool { is_null(self) }
+
+    #[doc = "Returns true if the pointer is not equal to the null pointer."]
+    pure fn is_not_null<T>() -> bool { is_not_null(self) }
 }
 
 #[test]

@@ -8,6 +8,7 @@ import path = path::path;
 import str::extensions;
 import vec::extensions;
 import option::extensions;
+import ptr::extensions;
 
 export path, option, some, none, unreachable;
 export extensions;
