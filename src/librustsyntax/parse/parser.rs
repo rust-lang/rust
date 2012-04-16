@@ -451,15 +451,13 @@ fn parse_ret_ty(p: parser) -> (ast::ret_style, @ast::ty) {
 fn region_from_name(p: parser, s: option<str>) -> ast::region {
     let r = alt s {
       some (string) {
-        if string == "self" {
-            ast::re_self
-        } else if string == "static" {
+        if string == "static" {
             ast::re_static
         } else {
             ast::re_named(string)
         }
       }
-      none { ast::re_inferred }
+      none { ast::re_anon }
     };
 
     {id: p.get_id(), node: r}

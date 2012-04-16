@@ -13,7 +13,7 @@ import driver::session::session;
 fn bound_region_to_str(_cx: ctxt, br: bound_region) -> str {
     alt br {
       br_anon          { "&" }
-      br_param(_, str) { #fmt["&%s", str] }
+      br_named(str)    { #fmt["&%s", str] }
       br_self          { "&self" }
     }
 }
@@ -53,7 +53,6 @@ fn region_to_str(cx: ctxt, region: region) -> str {
 
       // These two should not be seen by end-users (very often, anyhow):
       re_var(id)    { #fmt("&%s", id.to_str()) }
-      re_default    { "&(default)" }
       re_static     { "&static" }
     }
 }

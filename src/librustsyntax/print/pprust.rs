@@ -320,9 +320,8 @@ fn print_native_mod(s: ps, nmod: ast::native_mod, attrs: [ast::attribute]) {
 
 fn print_region(s: ps, region: ast::region) {
     alt region.node {
-      ast::re_inferred { /* no-op */ }
+      ast::re_anon { /* no-op */ }
       ast::re_named(name) { word(s.s, name); word(s.s, "."); }
-      ast::re_self { word(s.s, "self"); word(s.s, "."); }
       ast::re_static { word(s.s, "static"); word(s.s, "."); }
     }
 }
@@ -826,8 +825,7 @@ fn print_vstore(s: ps, t: ast::vstore) {
       ast::vstore_box { word_space(s, "/@"); }
       ast::vstore_slice(r) {
         alt r.node {
-          ast::re_inferred { word_space(s, "/&"); }
-          ast::re_self { word_space(s, "/&self"); }
+          ast::re_anon { word_space(s, "/&"); }
           ast::re_static { word_space(s, "/&static"); }
           ast::re_named(name) {
             word(s.s, "/&");

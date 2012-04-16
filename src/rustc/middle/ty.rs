@@ -36,7 +36,7 @@ export expr_ty;
 export expr_ty_params_and_ty;
 export expr_is_lval;
 export field_ty;
-export fold_ty, fold_sty_to_ty, fold_region, fold_ty_var;
+export fold_ty, fold_sty_to_ty, fold_region, fold_regions, fold_ty_var;
 export field;
 export field_idx;
 export get_field;
@@ -99,7 +99,7 @@ export ty_uniq, mk_uniq, mk_imm_uniq, type_is_unique_box;
 export ty_var, mk_var;
 export ty_self, mk_self;
 export region, bound_region;
-export get, type_has_params, type_has_vars, type_has_rptrs, type_id;
+export get, type_has_params, type_has_vars, type_has_regions, type_id;
 export ty_var_id;
 export ty_to_def_id;
 export ty_fn_args;
@@ -230,7 +230,7 @@ type t_box = @{struct: sty,
                id: uint,
                has_params: bool,
                has_vars: bool,
-               has_rptrs: bool,
+               has_regions: bool,
                o_def_id: option<ast::def_id>};
 
 // To reduce refcounting cost, we're representing types as unsafe pointers
@@ -250,7 +250,7 @@ pure fn get(t: t) -> t_box unsafe {
 
 fn type_has_params(t: t) -> bool { get(t).has_params }
 fn type_has_vars(t: t) -> bool { get(t).has_vars }
-fn type_has_rptrs(t: t) -> bool { get(t).has_rptrs }
+fn type_has_regions(t: t) -> bool { get(t).has_regions }
 fn type_def_id(t: t) -> option<ast::def_id> { get(t).o_def_id }
 fn type_id(t: t) -> uint { get(t).id }
 
@@ -272,20 +272,13 @@ enum region {
     re_free(node_id, bound_region),
     re_scope(node_id),
     re_var(region_vid),
-    re_static, // effectively `top` in the region lattice
-    re_default
+    re_static // effectively `top` in the region lattice
 }
 
 enum bound_region {
-    // The `self` region for a given class/impl/iface.  The defining item may
-    // appear in another crate.
-    br_self,
-
-    // The anonymous region parameter for a given function.
-    br_anon,
-
-    // A named region parameter.
-    br_param(uint, str)
+    br_self,      // The self region for classes, impls
+    br_anon,      // The anonymous region parameter for a given function.
+    br_named(str) // A named region parameter.
 }
 
 // NB: If you change this, you'll probably want to change the corresponding
@@ -461,21 +454,21 @@ fn mk_t_with_id(cx: ctxt, st: sty, o_def_id: option<ast::def_id>) -> t {
       some(t) { unsafe { ret unsafe::reinterpret_cast(t); } }
       _ {}
     }
-    let mut has_params = false, has_vars = false, has_rptrs = false;
-    fn derive_flags(&has_params: bool, &has_vars: bool, &has_rptrs: bool,
+    let mut has_params = false, has_vars = false, has_regions = false;
+    fn derive_flags(&has_params: bool, &has_vars: bool, &has_regions: bool,
                     tt: t) {
         let t = get(tt);
         has_params |= t.has_params;
         has_vars |= t.has_vars;
-        has_rptrs |= t.has_rptrs;
+        has_regions |= t.has_regions;
     }
     alt st {
       ty_estr(vstore_slice(_)) {
-        has_rptrs = true;
+        has_regions = true;
       }
       ty_evec(mt, vstore_slice(_)) {
-        has_rptrs = true;
-        derive_flags(has_params, has_vars, has_rptrs, mt.ty);
+        has_regions = true;
+        derive_flags(has_params, has_vars, has_regions, mt.ty);
       }
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
       ty_str | ty_estr(_) | ty_type | ty_opaque_closure_ptr(_) |
@@ -484,49 +477,50 @@ fn mk_t_with_id(cx: ctxt, st: sty, o_def_id: option<ast::def_id>) -> t {
       ty_var(_) | ty_self(_) { has_vars = true; }
       ty_enum(_, tys) | ty_iface(_, tys) | ty_class(_, tys) {
         for tys.each {|tt|
-            derive_flags(has_params, has_vars, has_rptrs, tt);
+            derive_flags(has_params, has_vars, has_regions, tt);
         }
       }
       ty_box(m) | ty_uniq(m) | ty_vec(m) | ty_evec(m, _) | ty_ptr(m) {
-        derive_flags(has_params, has_vars, has_rptrs, m.ty);
+        derive_flags(has_params, has_vars, has_regions, m.ty);
       }
       ty_rptr(r, m) {
         alt r {
           ty::re_var(_) { has_vars = true; }
           _ { }
         }
-        has_rptrs = true;
-        derive_flags(has_params, has_vars, has_rptrs, m.ty);
+        has_regions = true;
+        derive_flags(has_params, has_vars, has_regions, m.ty);
       }
       ty_rec(flds) {
         for flds.each {|f|
-          derive_flags(has_params, has_vars, has_rptrs, f.mt.ty);
+          derive_flags(has_params, has_vars, has_regions, f.mt.ty);
         }
       }
       ty_tup(ts) {
-        for ts.each {|tt| derive_flags(has_params, has_vars, has_rptrs, tt); }
+        for ts.each {|tt| derive_flags(has_params, has_vars,
+                                       has_regions, tt); }
       }
       ty_fn(f) {
         for f.inputs.each {|a|
-          derive_flags(has_params, has_vars, has_rptrs, a.ty);
+          derive_flags(has_params, has_vars, has_regions, a.ty);
         }
-        derive_flags(has_params, has_vars, has_rptrs, f.output);
+        derive_flags(has_params, has_vars, has_regions, f.output);
       }
       ty_res(_, tt, tps) {
-        derive_flags(has_params, has_vars, has_rptrs, tt);
+        derive_flags(has_params, has_vars, has_regions, tt);
         for tps.each {|tt|
-            derive_flags(has_params, has_vars, has_rptrs, tt);
+            derive_flags(has_params, has_vars, has_regions, tt);
         }
       }
       ty_constr(tt, _) {
-        derive_flags(has_params, has_vars, has_rptrs, tt);
+        derive_flags(has_params, has_vars, has_regions, tt);
       }
     }
     let t = @{struct: st,
               id: cx.next_id,
               has_params: has_params,
               has_vars: has_vars,
-              has_rptrs: has_rptrs,
+              has_regions: has_regions,
               o_def_id: o_def_id};
     cx.interner.insert(key, t);
     cx.next_id += 1u;
@@ -771,11 +765,53 @@ fn fold_ty_var(cx: ctxt, t0: t, fldop: fn(ty_vid) -> t) -> t {
     }
 }
 
+// n.b. this function is intended to eventually replace fold_region() below,
+// that is why its name is so similar.
+fn fold_regions(
+    cx: ctxt,
+    ty: t,
+    fldr: fn(r: region, in_fn: bool) -> region) -> t {
+
+    fn do_fold(cx: ctxt, ty: t, in_fn: bool,
+               fldr: fn(region, bool) -> region) -> t {
+        let tb = ty::get(ty);
+        if !tb.has_regions { ret ty; }
+        alt tb.struct {
+          ty::ty_rptr(r, mt) {
+            let m_r = fldr(r, in_fn);
+            let m_t = do_fold(cx, mt.ty, in_fn, fldr);
+            ty::mk_rptr(cx, m_r, {ty: m_t, mutbl: mt.mutbl})
+          }
+          ty_estr(vstore_slice(r)) {
+            let m_r = fldr(r, in_fn);
+            ty::mk_estr(cx, vstore_slice(m_r))
+          }
+          ty_evec(mt, vstore_slice(r)) {
+            let m_r = fldr(r, in_fn);
+            let m_t = do_fold(cx, mt.ty, in_fn, fldr);
+            ty::mk_evec(cx, {ty: m_t, mutbl: mt.mutbl}, vstore_slice(m_r))
+          }
+          sty @ ty_fn(_) {
+            fold_sty_to_ty(cx, sty) {|t|
+                do_fold(cx, t, true, fldr)
+            }
+          }
+          sty {
+            fold_sty_to_ty(cx, sty) {|t|
+                do_fold(cx, t, in_fn, fldr)
+            }
+          }
+        }
+    }
+
+    do_fold(cx, ty, false, fldr)
+}
+
 fn fold_region(cx: ctxt, t0: t, fldop: fn(region, bool) -> region) -> t {
     fn do_fold(cx: ctxt, t0: t, under_r: bool,
                fldop: fn(region, bool) -> region) -> t {
         let tb = get(t0);
-        if !tb.has_rptrs { ret t0; }
+        if !tb.has_regions { ret t0; }
         alt tb.struct {
           ty_rptr(r, {ty: t1, mutbl: m}) {
             let m_r = fldop(r, under_r);
@@ -1544,9 +1580,9 @@ fn type_autoderef(cx: ctxt, t: t) -> t {
 
 fn hash_bound_region(br: bound_region) -> uint {
     alt br { // no idea if this is any good
-      br_self { 0u }
-      br_anon { 1u }
-      br_param(id, _) { id }
+      ty::br_self { 0u }
+      ty::br_anon { 1u }
+      ty::br_named(str) { str::hash(str) }
     }
 }
 
@@ -1588,8 +1624,7 @@ fn hash_type_structure(st: sty) -> uint {
                                (hash_bound_region(br)) << 2u | 1u }
           re_scope(id)  { ((id as uint) << 2u) | 2u }
           re_var(id)    { (id.to_uint() << 2u) | 3u }
-          re_default    { 4u }
-          re_bot        { 5u }
+          re_bot        { 4u }
         }
     }
     alt st {

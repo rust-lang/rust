@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-$ident = 0;
+$indent = 0;
 while (<>) {
     if (/^rust: ">>/) {
         $indent += 1;

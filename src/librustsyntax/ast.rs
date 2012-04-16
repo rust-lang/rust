@@ -451,9 +451,8 @@ type region = {id: node_id, node: region_};
 
 #[auto_serialize]
 enum region_ {
-    re_inferred,
+    re_anon,
     re_named(ident),
-    re_self,
     re_static
 }
 

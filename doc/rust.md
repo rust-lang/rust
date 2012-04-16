@@ -1270,7 +1270,7 @@ are written after the name of the implementation, or if that is not
 specified, after the `impl` keyword.
 
 ~~~~
-# iface seq { }
+# iface seq<T> { }
 
 impl <T> of seq<T> for [T] {
     /* ... */

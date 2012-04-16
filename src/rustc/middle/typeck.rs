@@ -21,6 +21,8 @@ import std::serialization::{serialize_uint, deserialize_uint};
 import std::ufind;
 import syntax::print::pprust::*;
 import util::common::indent;
+import std::list;
+import list::{list, nil, cons};
 
 export check_crate;
 export method_map;
@@ -65,6 +67,10 @@ type crate_ctxt = {impl_map: resolve::impl_map,
 
 type class_map = hashmap<ast::node_id, ty::t>;
 
+// a list of mapping from in-scope-region-names ("isr") to the
+// corresponding ty::region
+type isr_alist = @list<(str, ty::region)>;
+
 type fn_ctxt =
     // var_bindings, locals and next_var_id are shared
     // with any nested functions that capture the environment
@@ -77,8 +83,10 @@ type fn_ctxt =
      proto: ast::proto,
      infcx: infer::infer_ctxt,
      locals: hashmap<ast::node_id, ty_vid>,
-     next_var_id: @mut uint,
-     next_region_var_id: @mut uint,
+     ty_var_counter: @mut uint,
+     region_var_counter: @mut uint,
+
+     in_scope_regions: isr_alist,
 
      // While type checking a function, the intermediate types for the
      // expressions, blocks, and so forth contained within the function are
@@ -225,7 +233,7 @@ fn instantiate_path(fcx: @fn_ctxt, pth: @ast::path,
                 sp, "this item does not take type parameters");
         }
         let substs = vec::map(pth.node.types, {|aty|
-            ast_ty_to_ty_crate(fcx.ccx, aty)
+            fcx.to_ty(aty)
         });
         fcx.write_ty_substs(id, tpt.ty, substs);
     } else if ty_param_count > 0u {
@@ -281,26 +289,6 @@ fn type_is_c_like_enum(fcx: @fn_ctxt, sp: span, typ: ty::t) -> bool {
     ret ty::type_is_c_like_enum(fcx.ccx.tcx, typ_s);
 }
 
-enum mode { m_collect, m_check, m_check_tyvar(@fn_ctxt), }
-
-fn ast_ty_vstore_to_vstore(tcx: ty::ctxt, ty: @ast::ty,
-                           v: ast::vstore) -> ty::vstore {
-    alt v {
-      ast::vstore_fixed(none) {
-        tcx.sess.span_bug(ty.span,
-                          "implied fixed length in ast_ty_vstore_to_vstore");
-      }
-      ast::vstore_fixed(some(u)) {
-        ty::vstore_fixed(u)
-      }
-      ast::vstore_uniq { ty::vstore_uniq }
-      ast::vstore_box { ty::vstore_box }
-      ast::vstore_slice(r) {
-        ty::vstore_slice(tcx.region_map.ast_type_to_region.get(ty.id))
-      }
-    }
-}
-
 fn ast_expr_vstore_to_vstore(fcx: @fn_ctxt, e: @ast::expr, n: uint,
                              v: ast::vstore) -> ty::vstore {
     alt v {
@@ -315,7 +303,133 @@ fn ast_expr_vstore_to_vstore(fcx: @fn_ctxt, e: @ast::expr, n: uint,
       ast::vstore_uniq { ty::vstore_uniq }
       ast::vstore_box { ty::vstore_box }
       ast::vstore_slice(r) {
-        ty::vstore_slice(region_of(fcx, e))
+        ty::vstore_slice(ast_region_to_region(fcx, fcx, e.span, r))
+      }
+    }
+}
+
+iface ast_conv {
+    fn tcx() -> ty::ctxt;
+    fn ccx() -> @crate_ctxt;
+    fn get_item_ty(id: ast::def_id) -> ty::ty_param_bounds_and_ty;
+    fn ty_infer(span: span) -> ty::t;
+}
+
+impl of ast_conv for @crate_ctxt {
+    fn tcx() -> ty::ctxt { self.tcx }
+    fn ccx() -> @crate_ctxt { self }
+
+    fn get_item_ty(id: ast::def_id) -> ty::ty_param_bounds_and_ty {
+        if id.crate != ast::local_crate {
+            csearch::get_type(self.tcx, id)
+        } else {
+            alt self.tcx.items.find(id.node) {
+              some(ast_map::node_item(item, _)) {
+                ty_of_item(self, item)
+              }
+              some(ast_map::node_native_item(native_item, _, _)) {
+                ty_of_native_item(self, native_item)
+              }
+              x {
+                self.tcx.sess.bug(#fmt["unexpected sort of item \
+                                        in get_item_ty(): %?", x]);
+              }
+            }
+        }
+    }
+
+    fn ty_infer(span: span) -> ty::t {
+        self.tcx.sess.span_bug(span,
+                               "found `ty_infer` in unexpected place");
+    }
+}
+
+impl of ast_conv for @fn_ctxt {
+    fn tcx() -> ty::ctxt { self.ccx.tcx }
+    fn ccx() -> @crate_ctxt { self.ccx }
+
+    fn get_item_ty(id: ast::def_id) -> ty::ty_param_bounds_and_ty {
+        ty::lookup_item_type(self.tcx(), id)
+    }
+
+    fn ty_infer(_span: span) -> ty::t {
+        self.next_ty_var()
+    }
+}
+
+iface region_scope {
+    fn anon_region() -> ty::region;
+    fn named_region(id: str) -> option<ty::region>;
+}
+
+enum base_rscope { base_rscope }
+impl of region_scope for base_rscope {
+    fn anon_region() -> ty::region { ty::re_bound(ty::br_anon) }
+    fn named_region(_id: str) -> option<ty::region> { none }
+}
+
+impl of region_scope for @fn_ctxt {
+    fn anon_region() -> ty::region { self.next_region_var() }
+    fn named_region(id: str) -> option<ty::region> {
+        self.in_scope_regions.find(id)
+    }
+}
+
+enum anon_rscope = {anon: ty::region, base: region_scope};
+fn in_anon_rscope<RS: region_scope>(self: RS, r: ty::region) -> @anon_rscope {
+    @anon_rscope({anon: r, base: self as region_scope})
+}
+impl of region_scope for @anon_rscope {
+    fn anon_region() -> ty::region { self.anon }
+    fn named_region(id: str) -> option<ty::region> {
+        self.base.named_region(id)
+    }
+}
+
+enum self_rscope { self_rscope }
+impl of region_scope for self_rscope {
+    fn anon_region() -> ty::region { ty::re_bound(ty::br_self) }
+    fn named_region(id: str) -> option<ty::region> {
+        if id == "self" {some(self.anon_region())} else {none}
+    }
+}
+
+enum binding_rscope = {base: region_scope};
+fn in_binding_rscope<RS: region_scope>(self: RS) -> @binding_rscope {
+    let base = self as region_scope;
+    @binding_rscope({base: base})
+}
+impl of region_scope for @binding_rscope {
+    fn anon_region() -> ty::region { ty::re_bound(ty::br_anon) }
+    fn named_region(id: str) -> option<ty::region> {
+        let nr = self.base.named_region(id);
+        alt nr {
+          some(r) { some(r) }
+          none { some(ty::re_bound(ty::br_named(id))) }
+        }
+    }
+}
+
+fn ast_region_to_region<AC: ast_conv, RS: region_scope>(
+    self: AC, rscope: RS, span: span, a_r: ast::region) -> ty::region {
+
+    alt a_r.node {
+      ast::re_anon {
+        rscope.anon_region()
+      }
+      ast::re_named(id) {
+        alt rscope.named_region(id) {
+          some(r) { r }
+          none {
+            self.tcx().sess.span_err(
+                span,
+                #fmt["named region `%s` not in scope here", id]);
+            rscope.anon_region()
+          }
+        }
+      }
+      ast::re_static {
+        ty::re_static
       }
     }
 }
@@ -323,208 +437,211 @@ fn ast_expr_vstore_to_vstore(fcx: @fn_ctxt, e: @ast::expr, n: uint,
 // Parses the programmer's textual representation of a type into our
 // internal notion of a type. `getter` is a function that returns the type
 // corresponding to a definition ID:
-fn ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty) -> ty::t {
-    fn getter(tcx: ty::ctxt, mode: mode, id: ast::def_id)
-            -> ty::ty_param_bounds_and_ty {
+fn ast_ty_to_ty<AC: ast_conv, RS: region_scope>(
+    self: AC, rscope: RS, &&ast_ty: @ast::ty) -> ty::t {
 
-        alt mode {
-          m_check | m_check_tyvar(_) { ty::lookup_item_type(tcx, id) }
-          m_collect {
-            if id.crate != ast::local_crate { csearch::get_type(tcx, id) }
-            else {
-                alt tcx.items.find(id.node) {
-                  some(ast_map::node_item(item, _)) {
-                    ty_of_item(tcx, mode, item)
-                  }
-                  some(ast_map::node_native_item(native_item, _, _)) {
-                    ty_of_native_item(tcx, mode, native_item)
-                  }
-                  _ {
-                    tcx.sess.bug("unexpected sort of item in ast_ty_to_ty");
-                  }
-                }
-            }
-          }
-        }
+    fn ast_mt_to_mt<AC: ast_conv, RS: region_scope>(
+        self: AC, rscope: RS, mt: ast::mt) -> ty::mt {
+
+        ret {ty: ast_ty_to_ty(self, rscope, mt.ty), mutbl: mt.mutbl};
     }
-    fn ast_mt_to_mt(tcx: ty::ctxt, mode: mode, mt: ast::mt) -> ty::mt {
-        ret {ty: do_ast_ty_to_ty(tcx, mode, mt.ty), mutbl: mt.mutbl};
-    }
-    fn instantiate(tcx: ty::ctxt, sp: span, mode: mode, id: ast::def_id,
-                   path_id: ast::node_id, args: [@ast::ty]) -> ty::t {
-        let ty_param_bounds_and_ty = getter(tcx, mode, id);
-        if vec::len(*ty_param_bounds_and_ty.bounds) == 0u {
-            ret ty_param_bounds_and_ty.ty;
-        }
+
+    fn instantiate<AC: ast_conv, RS: region_scope>(
+        self: AC, rscope: RS, sp: span, id: ast::def_id,
+        path_id: ast::node_id, args: [@ast::ty]) -> ty::t {
+
+        let tcx = self.tcx();
+        let {bounds, ty} = self.get_item_ty(id);
+
+        // The type of items may include a reference to the bound anon region.
+        // Replace it with the current binding for that region in this
+        // context.
+        //
+        // n.b. Ordinarily, one should do all substitutions at once to avoid
+        // capture problems.  But in this instance it is ok to substitute for
+        // the bound region first and then type parameters second, as the
+        // bound region cannot be replaced with a type parameter.
+        let ty = subst_anon_region(tcx, rscope.anon_region(), ty);
 
         // The typedef is type-parametric. Do the type substitution.
-        let mut param_bindings: [ty::t] = [];
-        if vec::len(args) != vec::len(*ty_param_bounds_and_ty.bounds) {
-            tcx.sess.span_fatal(sp, "wrong number of type arguments for a \
-                                     polymorphic type");
+        if vec::len(args) != vec::len(*bounds) {
+            tcx.sess.span_fatal(
+                sp, "wrong number of type arguments for a \
+                     polymorphic type");
         }
-        for args.each {|ast_ty|
-            param_bindings += [do_ast_ty_to_ty(tcx, mode, ast_ty)];
-        }
-        #debug("substituting(%s into %s)",
-               str::concat(vec::map(param_bindings, {|t| ty_to_str(tcx, t)})),
-               ty_to_str(tcx, ty_param_bounds_and_ty.ty));
-        let typ =
-            ty::substitute_type_params(tcx, param_bindings,
-                                       ty_param_bounds_and_ty.ty);
+        let param_bindings = args.map { |t| ast_ty_to_ty(self, rscope, t) };
+        #debug("substituting(%? into %?)",
+               vec::map(param_bindings) {|t| ty_to_str(tcx, t)},
+               ty_to_str(tcx, ty));
+        let ty = ty::substitute_type_params(tcx, param_bindings, ty);
         write_substs_to_tcx(tcx, path_id, param_bindings);
-        ret typ;
+        ret ty;
     }
-    fn do_ast_ty_to_ty(tcx: ty::ctxt, mode: mode, &&ast_ty: @ast::ty)
-            -> ty::t {
 
-        alt tcx.ast_ty_to_ty_cache.find(ast_ty) {
-          some(ty::atttce_resolved(ty)) { ret ty; }
-          some(ty::atttce_unresolved) {
-            tcx.sess.span_fatal(ast_ty.span, "illegal recursive type. \
-                                              insert a enum in the cycle, \
-                                              if this is desired)");
+    fn mk_vstore<AC: ast_conv, RS: region_scope>(
+        self: AC, rscope: RS, a_seq_ty: @ast::ty, vst: ty::vstore) -> ty::t {
+
+        let tcx = self.tcx();
+        let seq_ty = ast_ty_to_ty(self, rscope, a_seq_ty);
+        alt ty::get(seq_ty).struct {
+          ty::ty_vec(mt) { ty::mk_evec(tcx, mt, vst) }
+          ty::ty_str { ty::mk_estr(tcx, vst) }
+          _ {
+            tcx.sess.span_bug(a_seq_ty.span,
+                              "found sequence storage modifier \
+                               on non-sequence type")
           }
-          none { /* go on */ }
         }
-
-        tcx.ast_ty_to_ty_cache.insert(ast_ty, ty::atttce_unresolved);
-        let typ = alt ast_ty.node {
-          ast::ty_nil { ty::mk_nil(tcx) }
-          ast::ty_bot { ty::mk_bot(tcx) }
-          ast::ty_box(mt) {
-            ty::mk_box(tcx, ast_mt_to_mt(tcx, mode, mt))
-          }
-          ast::ty_uniq(mt) {
-            ty::mk_uniq(tcx, ast_mt_to_mt(tcx, mode, mt))
-          }
-          ast::ty_vec(mt) {
-            ty::mk_vec(tcx, ast_mt_to_mt(tcx, mode, mt))
-          }
-          ast::ty_ptr(mt) {
-            ty::mk_ptr(tcx, ast_mt_to_mt(tcx, mode, mt))
-          }
-          ast::ty_rptr(region, mt) {
-            let region = tcx.region_map.ast_type_to_region.get(ast_ty.id);
-            ty::mk_rptr(tcx, region, ast_mt_to_mt(tcx, mode, mt))
-          }
-          ast::ty_tup(fields) {
-            let flds = vec::map(fields, bind do_ast_ty_to_ty(tcx, mode, _));
-            ty::mk_tup(tcx, flds)
-          }
-          ast::ty_rec(fields) {
-            let mut flds: [field] = [];
-            for fields.each {|f|
-                let tm = ast_mt_to_mt(tcx, mode, f.node.mt);
-                flds += [{ident: f.node.ident, mt: tm}];
-            }
-            ty::mk_rec(tcx, flds)
-          }
-          ast::ty_fn(proto, decl) {
-            ty::mk_fn(tcx, ty_of_fn_decl(tcx, mode, proto, decl))
-          }
-          ast::ty_path(path, id) {
-            let a_def = alt tcx.def_map.find(id) {
-              none { tcx.sess.span_fatal(ast_ty.span, #fmt("unbound path %s",
-                                                       path_to_str(path))); }
-              some(d) { d }};
-            alt a_def {
-              ast::def_ty(did) | ast::def_class(did) {
-                instantiate(tcx, ast_ty.span, mode, did,
-                            id, path.node.types)
-              }
-              ast::def_prim_ty(nty) {
-                alt nty {
-                  ast::ty_bool { ty::mk_bool(tcx) }
-                  ast::ty_int(it) { ty::mk_mach_int(tcx, it) }
-                  ast::ty_uint(uit) { ty::mk_mach_uint(tcx, uit) }
-                  ast::ty_float(ft) { ty::mk_mach_float(tcx, ft) }
-                  ast::ty_str { ty::mk_str(tcx) }
-                }
-              }
-              ast::def_ty_param(id, n) {
-                if vec::len(path.node.types) > 0u {
-                    tcx.sess.span_err(ast_ty.span, "provided type parameters \
-                                                    to a type parameter");
-                }
-                ty::mk_param(tcx, n, id)
-              }
-              ast::def_self(self_id) {
-                alt check tcx.items.get(self_id) {
-                  ast_map::node_item(@{node: ast::item_iface(tps, _), _}, _) {
-                    if vec::len(tps) != vec::len(path.node.types) {
-                        tcx.sess.span_err(ast_ty.span, "incorrect number of \
-                                                        type parameters to \
-                                                        self type");
-                    }
-                    ty::mk_self(tcx, vec::map(path.node.types, {|ast_ty|
-                        do_ast_ty_to_ty(tcx, mode, ast_ty)
-                    }))
-                  }
-                }
-              }
-             _ {
-                tcx.sess.span_fatal(ast_ty.span,
-                                    "found type name used as a variable");
-              }
-            }
-          }
-          ast::ty_vstore(t, vst) {
-            let vst = ast_ty_vstore_to_vstore(tcx, ast_ty, vst);
-            let ty = alt ty::get(do_ast_ty_to_ty(tcx, mode, t)).struct {
-              ty::ty_vec(mt) { ty::mk_evec(tcx, mt, vst) }
-              ty::ty_str { ty::mk_estr(tcx, vst) }
-              _ {
-                tcx.sess.span_fatal(ast_ty.span,
-                                    "found sequence storage modifier \
-                                     on non-sequence type");
-              }
-            };
-            fixup_regions_to_block(tcx, ty, ast_ty)
-          }
-          ast::ty_constr(t, cs) {
-            let mut out_cs = [];
-            for cs.each {|constr|
-                out_cs += [ty::ast_constr_to_constr(tcx, constr)];
-            }
-            ty::mk_constr(tcx, do_ast_ty_to_ty(tcx, mode, t), out_cs)
-          }
-          ast::ty_infer {
-            alt mode {
-              m_check_tyvar(fcx) { ret fcx.next_ty_var(); }
-              _ { tcx.sess.span_bug(ast_ty.span,
-                                    "found `ty_infer` in unexpected place"); }
-            }
-          }
-          ast::ty_mac(_) {
-              tcx.sess.span_bug(ast_ty.span,
-                                    "found `ty_mac` in unexpected place");
-          }
-        };
-
-        tcx.ast_ty_to_ty_cache.insert(ast_ty, ty::atttce_resolved(typ));
-        ret typ;
     }
 
-    ret do_ast_ty_to_ty(tcx, mode, ast_ty);
+    let tcx = self.tcx();
+
+    alt tcx.ast_ty_to_ty_cache.find(ast_ty) {
+      some(ty::atttce_resolved(ty)) { ret ty; }
+      some(ty::atttce_unresolved) {
+        tcx.sess.span_fatal(ast_ty.span, "illegal recursive type. \
+                                          insert a enum in the cycle, \
+                                          if this is desired)");
+      }
+      none { /* go on */ }
+    }
+
+    tcx.ast_ty_to_ty_cache.insert(ast_ty, ty::atttce_unresolved);
+    let typ = alt ast_ty.node {
+      ast::ty_nil { ty::mk_nil(tcx) }
+      ast::ty_bot { ty::mk_bot(tcx) }
+      ast::ty_box(mt) {
+        ty::mk_box(tcx, ast_mt_to_mt(self, rscope, mt))
+      }
+      ast::ty_uniq(mt) {
+        ty::mk_uniq(tcx, ast_mt_to_mt(self, rscope, mt))
+      }
+      ast::ty_vec(mt) {
+        ty::mk_vec(tcx, ast_mt_to_mt(self, rscope, mt))
+      }
+      ast::ty_ptr(mt) {
+        ty::mk_ptr(tcx, ast_mt_to_mt(self, rscope, mt))
+      }
+      ast::ty_rptr(region, mt) {
+        let r = ast_region_to_region(self, rscope, ast_ty.span, region);
+        let mt = ast_mt_to_mt(self, in_anon_rscope(rscope, r), mt);
+        ty::mk_rptr(tcx, r, mt)
+      }
+      ast::ty_tup(fields) {
+        let flds = vec::map(fields) { |t| ast_ty_to_ty(self, rscope, t) };
+        ty::mk_tup(tcx, flds)
+      }
+      ast::ty_rec(fields) {
+        let flds = fields.map {|f|
+            let tm = ast_mt_to_mt(self, rscope, f.node.mt);
+            {ident: f.node.ident, mt: tm}
+        };
+        ty::mk_rec(tcx, flds)
+      }
+      ast::ty_fn(proto, decl) {
+        ty::mk_fn(tcx, ty_of_fn_decl(self, rscope, proto, decl))
+      }
+      ast::ty_path(path, id) {
+        let a_def = alt tcx.def_map.find(id) {
+          none { tcx.sess.span_fatal(ast_ty.span, #fmt("unbound path %s",
+                                                       path_to_str(path))); }
+          some(d) { d }};
+        alt a_def {
+          ast::def_ty(did) | ast::def_class(did) {
+            instantiate(self, rscope, ast_ty.span, did, id, path.node.types)
+          }
+          ast::def_prim_ty(nty) {
+            alt nty {
+              ast::ty_bool { ty::mk_bool(tcx) }
+              ast::ty_int(it) { ty::mk_mach_int(tcx, it) }
+              ast::ty_uint(uit) { ty::mk_mach_uint(tcx, uit) }
+              ast::ty_float(ft) { ty::mk_mach_float(tcx, ft) }
+              ast::ty_str { ty::mk_str(tcx) }
+            }
+          }
+          ast::def_ty_param(id, n) {
+            if vec::len(path.node.types) > 0u {
+                tcx.sess.span_err(ast_ty.span, "provided type parameters \
+                                                to a type parameter");
+            }
+            ty::mk_param(tcx, n, id)
+          }
+          ast::def_self(self_id) {
+            alt check tcx.items.get(self_id) {
+              ast_map::node_item(@{node: ast::item_iface(tps, _), _}, _) {
+                if vec::len(tps) != vec::len(path.node.types) {
+                    tcx.sess.span_err(ast_ty.span, "incorrect number of \
+                                                    type parameters to \
+                                                    self type");
+                }
+                ty::mk_self(tcx, vec::map(path.node.types, {|ast_ty|
+                    ast_ty_to_ty(self, rscope, ast_ty)
+                }))
+              }
+            }
+          }
+          _ {
+            tcx.sess.span_fatal(ast_ty.span,
+                                "found type name used as a variable");
+          }
+        }
+      }
+      ast::ty_vstore(a_t, ast::vstore_slice(a_r)) {
+        let r = ast_region_to_region(self, rscope, ast_ty.span, a_r);
+        mk_vstore(self, in_anon_rscope(rscope, r), a_t, ty::vstore_slice(r))
+      }
+      ast::ty_vstore(a_t, ast::vstore_uniq) {
+        mk_vstore(self, rscope, a_t, ty::vstore_uniq)
+      }
+      ast::ty_vstore(a_t, ast::vstore_box) {
+        mk_vstore(self, rscope, a_t, ty::vstore_box)
+      }
+      ast::ty_vstore(a_t, ast::vstore_fixed(some(u))) {
+        mk_vstore(self, rscope, a_t, ty::vstore_fixed(u))
+      }
+      ast::ty_vstore(_, ast::vstore_fixed(none)) {
+        tcx.sess.span_bug(
+            ast_ty.span,
+            "implied fixed length in ast_ty_vstore_to_vstore");
+      }
+      ast::ty_constr(t, cs) {
+        let mut out_cs = [];
+        for cs.each {|constr|
+            out_cs += [ty::ast_constr_to_constr(tcx, constr)];
+        }
+        ty::mk_constr(tcx, ast_ty_to_ty(self, rscope, t), out_cs)
+      }
+      ast::ty_infer {
+        self.ty_infer(ast_ty.span)
+      }
+      ast::ty_mac(_) {
+        tcx.sess.span_bug(ast_ty.span,
+                          "found `ty_mac` in unexpected place");
+      }
+    };
+
+    tcx.ast_ty_to_ty_cache.insert(ast_ty, ty::atttce_resolved(typ));
+    ret typ;
 }
 
-fn ty_of_item(tcx: ty::ctxt, mode: mode, it: @ast::item)
+fn ty_of_item(ccx: @crate_ctxt, it: @ast::item)
     -> ty::ty_param_bounds_and_ty {
+
     let def_id = local_def(it.id);
+    let tcx = ccx.tcx;
     alt tcx.tcache.find(def_id) {
       some(tpt) { ret tpt; }
       _ {}
     }
     alt it.node {
       ast::item_const(t, _) {
-        let typ = ast_ty_to_ty(tcx, mode, t);
+        let typ = ccx.to_ty(t);
         let tpt = {bounds: @[], ty: typ};
         tcx.tcache.insert(local_def(it.id), tpt);
         ret tpt;
       }
       ast::item_fn(decl, tps, _) {
-        ret ty_of_fn(tcx, mode, decl, tps, local_def(it.id));
+        ret ty_of_fn(ccx, decl, tps, local_def(it.id));
       }
       ast::item_ty(t, tps) {
         alt tcx.tcache.find(local_def(it.id)) {
@@ -534,26 +651,24 @@ fn ty_of_item(tcx: ty::ctxt, mode: mode, it: @ast::item)
         // Tell ast_ty_to_ty() that we want to perform a recursive
         // call to resolve any named types.
         let tpt = {
-            let t0 = ast_ty_to_ty(tcx, mode, t);
-            let t1 = {
+            let ty = {
+                let t0 = ccx.to_ty(t);
                 // Do not associate a def id with a named, parameterized type
                 // like "foo<X>".  This is because otherwise ty_to_str will
                 // print the name as merely "foo", as it has no way to
                 // reconstruct the value of X.
-                if vec::is_empty(tps) {
+                if !vec::is_empty(tps) { t0 } else {
                     ty::mk_with_id(tcx, t0, def_id)
-                } else {
-                    t0
                 }
             };
-            {bounds: ty_param_bounds(tcx, mode, tps), ty: t1}
+            {bounds: ty_param_bounds(ccx, tps), ty: ty}
         };
         tcx.tcache.insert(local_def(it.id), tpt);
         ret tpt;
       }
       ast::item_res(decl, tps, _, _, _) {
-        let {bounds, params} = mk_ty_params(tcx, tps);
-        let t_arg = ty_of_arg(tcx, mode, decl.inputs[0]);
+        let {bounds, params} = mk_ty_params(ccx, tps);
+        let t_arg = ty_of_arg(ccx, base_rscope, decl.inputs[0]);
         let t = ty::mk_res(tcx, local_def(it.id), t_arg.ty, params);
         let t_res = {bounds: bounds, ty: t};
         tcx.tcache.insert(local_def(it.id), t_res);
@@ -561,21 +676,21 @@ fn ty_of_item(tcx: ty::ctxt, mode: mode, it: @ast::item)
       }
       ast::item_enum(_, tps) {
         // Create a new generic polytype.
-        let {bounds, params} = mk_ty_params(tcx, tps);
+        let {bounds, params} = mk_ty_params(ccx, tps);
         let t = ty::mk_enum(tcx, local_def(it.id), params);
         let tpt = {bounds: bounds, ty: t};
         tcx.tcache.insert(local_def(it.id), tpt);
         ret tpt;
       }
       ast::item_iface(tps, ms) {
-        let {bounds, params} = mk_ty_params(tcx, tps);
+        let {bounds, params} = mk_ty_params(ccx, tps);
         let t = ty::mk_iface(tcx, local_def(it.id), params);
         let tpt = {bounds: bounds, ty: t};
         tcx.tcache.insert(local_def(it.id), tpt);
         ret tpt;
       }
       ast::item_class(tps,_,_,_) {
-          let {bounds,params} = mk_ty_params(tcx, tps);
+          let {bounds,params} = mk_ty_params(ccx, tps);
           let t = ty::mk_class(tcx, local_def(it.id), params);
           let tpt = {bounds: bounds, ty: t};
           tcx.tcache.insert(local_def(it.id), tpt);
@@ -585,11 +700,11 @@ fn ty_of_item(tcx: ty::ctxt, mode: mode, it: @ast::item)
       ast::item_native_mod(_) { fail; }
     }
 }
-fn ty_of_native_item(tcx: ty::ctxt, mode: mode, it: @ast::native_item)
+fn ty_of_native_item(ccx: @crate_ctxt, it: @ast::native_item)
     -> ty::ty_param_bounds_and_ty {
     alt it.node {
       ast::native_item_fn(fn_decl, params) {
-        ret ty_of_native_fn_decl(tcx, mode, fn_decl, params,
+        ret ty_of_native_fn_decl(ccx, fn_decl, params,
                                  local_def(it.id));
       }
     }
@@ -597,49 +712,116 @@ fn ty_of_native_item(tcx: ty::ctxt, mode: mode, it: @ast::native_item)
 
 type next_region_param_id = { mut id: uint };
 
-fn replace_default_region(tcx: ty::ctxt,
-                          with_region: ty::region,
-                          ty: ty::t) -> ty::t {
-    let mut last_region = with_region;
-    ret ty::fold_region(tcx, ty) {|region, under_rptr|
-        if !under_rptr {
-            last_region = alt region {
-              ty::re_default { with_region }
-              _ { region }
-            }
-        }
-        last_region
-   };
-}
-
-fn default_region_to_bound_anon(tcx: ty::ctxt, ty: ty::t) -> ty::t {
-    replace_default_region(tcx, ty::re_bound(ty::br_anon), ty)
-}
-
-fn default_region_to_bound_self(tcx: ty::ctxt, ty: ty::t) -> ty::t {
-    replace_default_region(tcx, ty::re_bound(ty::br_self), ty)
-}
-
-fn fixup_regions_to_block(tcx: ty::ctxt, ty: ty::t, ast_ty: @ast::ty)
-        -> ty::t {
-    let region = tcx.region_map.ast_type_to_inferred_region.get(ast_ty.id);
-    replace_default_region(tcx, region, ty)
-}
-
-fn replace_bound_regions_with_free_regions(
+fn collect_named_regions_in_tys(
     tcx: ty::ctxt,
-    id: ast::node_id,
+    isr: isr_alist,
+    tys: [ty::t],
+    to_r: fn(str) -> ty::region) -> isr_alist {
+
+    tys.foldl(isr) { |isr, t|
+        collect_named_regions_in_ty(tcx, isr, t, to_r)
+    }
+}
+
+fn collect_named_regions_in_ty(
+    _tcx: ty::ctxt,
+    isr: isr_alist,
+    ty: ty::t,
+    to_r: fn(str) -> ty::region) -> isr_alist {
+
+    fn append_isr(isr: isr_alist,
+                  to_r: fn(str) -> ty::region,
+                  r: ty::region) -> isr_alist {
+        alt r {
+          ty::re_free(_, _) | ty::re_static | ty::re_scope(_) |
+          ty::re_var(_) | ty::re_bound(ty::br_anon) |
+          ty::re_bound(ty::br_self) {
+            isr
+          }
+          ty::re_bound(br @ ty::br_named(id)) {
+            alt isr.find(id) {
+              some(_) { isr }
+              none { @cons((id, to_r(id)), isr) }
+            }
+          }
+        }
+    }
+
+    let mut isr = isr;
+
+    ty::maybe_walk_ty(ty) {|t|
+        alt ty::get(t).struct {
+          // do not walk fn contents
+          ty::ty_fn(_) { false }
+
+          // collect named regions into the isr list
+          ty::ty_evec(_, ty::vstore_slice(r)) |
+          ty::ty_estr(ty::vstore_slice(r)) |
+          ty::ty_rptr(r, _) { isr = append_isr(isr, to_r, r); true }
+
+          // otherwise just walk the types
+          _ { true }
+        }
+    }
+
+    ret isr;
+}
+
+fn replace_bound_self(
+    tcx: ty::ctxt,
+    self_r: ty::region,
     ty: ty::t) -> ty::t {
 
-    ty::fold_region(tcx, ty) {|region, _under_rptr|
-        alt region {
-          ty::re_bound(br) { ty::re_free(id, br) }
-          _ { region }
+    ty::fold_regions(tcx, ty) { |r, _in_fn|
+        if r == ty::re_bound(ty::br_self) {self_r} else {r}
+    }
+}
+
+fn replace_bound_regions(
+    tcx: ty::ctxt,
+    span: span,
+    anon_r: ty::region,
+    isr: isr_alist,
+    ty: ty::t) -> ty::t {
+
+    ty::fold_regions(tcx, ty) { |r, in_fn|
+        alt r {
+          ty::re_bound(ty::br_named(id)) {
+            alt isr.find(id) {
+              // In most cases, all named, bound regions will be mapped to
+              // some free region.
+              some(fr) { fr }
+
+              // But in the case of a fn() type, there may be named regions
+              // within that remain bound:
+              none { assert in_fn; r }
+            }
+          }
+
+          // As long as we are not within a fn() type, `&T` is mapped to the
+          // free region anon_r.  But within a fn type, it remains bound.
+          ty::re_bound(ty::br_anon) if !in_fn { anon_r }
+          ty::re_bound(ty::br_anon) { r }
+
+          // The &self region is special.  Any bound references to self should
+          // have already been replaced using replace_bound_self() when
+          // this function is called.
+          ty::re_bound(ty::br_self) {
+            tcx.sess.span_bug(span, "Bound self region found");
+          }
+
+          // Free regions like these just stay the same:
+          ty::re_static |
+          ty::re_scope(_) |
+          ty::re_free(_, _) |
+          ty::re_var(_) { r }
         }
     }
 }
 
-fn ty_of_arg(tcx: ty::ctxt, mode: mode, a: ast::arg) -> ty::arg {
+fn ty_of_arg<AC: ast_conv, RS: region_scope>(
+    self: AC, rscope: RS, a: ast::arg) -> ty::arg {
+
     fn arg_mode(tcx: ty::ctxt, m: ast::mode, ty: ty::t) -> ast::mode {
         alt m {
           ast::infer(_) {
@@ -663,117 +845,113 @@ fn ty_of_arg(tcx: ty::ctxt, mode: mode, a: ast::arg) -> ty::arg {
         }
     }
 
-    let ty = ast_ty_to_ty(tcx, mode, a.ty);
-    let mode = arg_mode(tcx, a.mode, ty);
+    let ty = ast_ty_to_ty(self, rscope, a.ty);
+    let mode = arg_mode(self.tcx(), a.mode, ty);
     {mode: mode, ty: ty}
 }
-fn ty_of_fn_decl(tcx: ty::ctxt,
-                 mode: mode,
-                 proto: ast::proto,
-                 decl: ast::fn_decl) -> ty::fn_ty {
-    let input_tys = vec::map(decl.inputs) {|a|
-        let arg_ty = ty_of_arg(tcx, mode, a);
-        {ty: default_region_to_bound_anon(tcx, arg_ty.ty)
-         with arg_ty}
-    };
+fn ty_of_fn_decl<AC: ast_conv, RS: region_scope>(
+    self: AC, rscope: RS,
+    proto: ast::proto,
+    decl: ast::fn_decl) -> ty::fn_ty {
 
-    let output_ty = {
-        let t = ast_ty_to_ty(tcx, mode, decl.output);
-        default_region_to_bound_anon(tcx, t)
-    };
-
-    let out_constrs = vec::map(decl.constraints) {|constr|
-        ty::ast_constr_to_constr(tcx, constr)
-    };
-    {proto: proto, inputs: input_tys,
-     output: output_ty, ret_style: decl.cf, constraints: out_constrs}
+    #debug["ty_of_fn_decl"];
+    indent {||
+        // new region names that appear inside of the fn decl are bound to
+        // that function type
+        let rb = in_binding_rscope(rscope);
+        let input_tys = vec::map(decl.inputs) { |a| ty_of_arg(self, rb, a) };
+        let output_ty = ast_ty_to_ty(self, rb, decl.output);
+        let out_constrs = vec::map(decl.constraints) {|constr|
+            ty::ast_constr_to_constr(self.tcx(), constr)
+        };
+        {proto: proto, inputs: input_tys,
+         output: output_ty, ret_style: decl.cf, constraints: out_constrs}
+    }
 }
-fn ty_of_fn(tcx: ty::ctxt, mode: mode, decl: ast::fn_decl,
-            ty_params: [ast::ty_param], def_id: ast::def_id)
-    -> ty::ty_param_bounds_and_ty {
-    let bounds = ty_param_bounds(tcx, mode, ty_params);
-    let tofd = ty_of_fn_decl(tcx, mode, ast::proto_bare, decl);
-    let tpt = {bounds: bounds, ty: ty::mk_fn(tcx, tofd)};
-    tcx.tcache.insert(def_id, tpt);
+
+fn ty_of_fn(ccx: @crate_ctxt,
+            decl: ast::fn_decl,
+            ty_params: [ast::ty_param],
+            def_id: ast::def_id) -> ty::ty_param_bounds_and_ty {
+
+    let bounds = ty_param_bounds(ccx, ty_params);
+    let tofd = ty_of_fn_decl(ccx, base_rscope, ast::proto_bare, decl);
+    let tpt = {bounds: bounds, ty: ty::mk_fn(ccx.tcx, tofd)};
+    ccx.tcx.tcache.insert(def_id, tpt);
     ret tpt;
 }
-fn ty_of_native_fn_decl(tcx: ty::ctxt, mode: mode, decl: ast::fn_decl,
-                        ty_params: [ast::ty_param], def_id: ast::def_id)
-    -> ty::ty_param_bounds_and_ty {
-    let bounds = ty_param_bounds(tcx, mode, ty_params);
-    let input_tys = vec::map(decl.inputs) {|a|
-        ty_of_arg(tcx, mode, a)
-    };
-    let output_ty = ast_ty_to_ty(tcx, mode, decl.output);
 
-    let t_fn = ty::mk_fn(tcx, {proto: ast::proto_bare,
-                               inputs: input_tys,
-                               output: output_ty,
-                               ret_style: ast::return_val,
-                               constraints: []});
+fn ty_of_native_fn_decl(ccx: @crate_ctxt,
+                        decl: ast::fn_decl,
+                        ty_params: [ast::ty_param],
+                        def_id: ast::def_id) -> ty::ty_param_bounds_and_ty {
+
+    let bounds = ty_param_bounds(ccx, ty_params);
+    let rb = in_binding_rscope(base_rscope);
+    let input_tys = vec::map(decl.inputs) { |a| ty_of_arg(ccx, rb, a) };
+    let output_ty = ast_ty_to_ty(ccx, rb, decl.output);
+
+    let t_fn = ty::mk_fn(ccx.tcx, {proto: ast::proto_bare,
+                                   inputs: input_tys,
+                                   output: output_ty,
+                                   ret_style: ast::return_val,
+                                   constraints: []});
     let tpt = {bounds: bounds, ty: t_fn};
-    tcx.tcache.insert(def_id, tpt);
+    ccx.tcx.tcache.insert(def_id, tpt);
     ret tpt;
 }
-fn ty_param_bounds(tcx: ty::ctxt, mode: mode, params: [ast::ty_param])
-    -> @[ty::param_bounds] {
-    let mut result = [];
-    for params.each {|param|
-        result += [alt tcx.ty_param_bounds.find(param.id) {
+
+fn ty_param_bounds(ccx: @crate_ctxt,
+                   params: [ast::ty_param]) -> @[ty::param_bounds] {
+
+    @params.map { |param|
+        alt ccx.tcx.ty_param_bounds.find(param.id) {
           some(bs) { bs }
           none {
-            let mut bounds = [];
-            for vec::each(*param.bounds) {|b|
-                bounds += [alt b {
+            let bounds = @vec::map(*param.bounds) { |b|
+                alt b {
                   ast::bound_send { ty::bound_send }
                   ast::bound_copy { ty::bound_copy }
                   ast::bound_iface(t) {
-                    let ity = ast_ty_to_ty(tcx, mode, t);
+                    let ity = ccx.to_ty(t);
                     alt ty::get(ity).struct {
                       ty::ty_iface(_, _) {}
                       _ {
-                        tcx.sess.span_fatal(
+                        ccx.tcx.sess.span_fatal(
                             t.span, "type parameter bounds must be \
                                      interface types");
                       }
                     }
                     ty::bound_iface(ity)
                   }
-                }];
-            }
-            let boxed = @bounds;
-            tcx.ty_param_bounds.insert(param.id, boxed);
-            boxed
+                }
+            };
+            ccx.tcx.ty_param_bounds.insert(param.id, bounds);
+            bounds
           }
-        }];
+        }
     }
-    @result
 }
-fn ty_of_method(tcx: ty::ctxt, mode: mode, m: @ast::method) -> ty::method {
-    {ident: m.ident, tps: ty_param_bounds(tcx, mode, m.tps),
-     fty: ty_of_fn_decl(tcx, mode, ast::proto_bare, m.decl),
+
+fn ty_of_method(ccx: @crate_ctxt, m: @ast::method) -> ty::method {
+    {ident: m.ident, tps: ty_param_bounds(ccx, m.tps),
+     fty: ty_of_fn_decl(ccx, base_rscope, ast::proto_bare, m.decl),
      purity: m.decl.purity, privacy: m.privacy}
 }
-fn ty_of_ty_method(tcx: ty::ctxt, mode: mode, m: ast::ty_method)
-    -> ty::method {
-    {ident: m.ident, tps: ty_param_bounds(tcx, mode, m.tps),
-     fty: ty_of_fn_decl(tcx, mode, ast::proto_bare, m.decl),
-    // assume public, because this is only invoked on iface methods
+
+fn ty_of_ty_method(self: @crate_ctxt, m: ast::ty_method) -> ty::method {
+    {ident: m.ident,
+     tps: ty_param_bounds(self, m.tps),
+     fty: ty_of_fn_decl(self, base_rscope, ast::proto_bare, m.decl),
+     // assume public, because this is only invoked on iface methods
      purity: m.decl.purity, privacy: ast::pub}
 }
 
-// A convenience function to use a crate_ctxt to resolve names for
-// ast_ty_to_ty.
-fn ast_ty_to_ty_crate(ccx: @crate_ctxt, &&ast_ty: @ast::ty) -> ty::t {
-    ret ast_ty_to_ty(ccx.tcx, m_check, ast_ty);
-}
-
 // A wrapper around ast_ty_to_ty_crate that handles ty_infer.
-fn ast_ty_to_ty_crate_infer(ccx: @crate_ctxt, &&ast_ty: @ast::ty) ->
-   option<ty::t> {
+fn ast_ty_to_ty_infer(fcx: @fn_ctxt, &&ast_ty: @ast::ty) -> option<ty::t> {
     alt ast_ty.node {
       ast::ty_infer { none }
-      _ { some(ast_ty_to_ty_crate(ccx, ast_ty)) }
+      _ { some(fcx.to_ty(ast_ty)) }
     }
 }
 
@@ -785,7 +963,9 @@ fn write_ty_to_tcx(tcx: ty::ctxt, node_id: ast::node_id, ty: ty::t) {
 }
 fn write_substs_to_tcx(tcx: ty::ctxt, node_id: ast::node_id,
                        +substs: [ty::t]) {
-    tcx.node_type_substs.insert(node_id, substs);
+    if substs.len() > 0u {
+        tcx.node_type_substs.insert(node_id, substs);
+    }
 }
 fn write_ty_substs_to_tcx(tcx: ty::ctxt, node_id: ast::node_id, ty: ty::t,
                    +substs: [ty::t]) {
@@ -798,8 +978,27 @@ fn write_ty_substs_to_tcx(tcx: ty::ctxt, node_id: ast::node_id, ty: ty::t,
     }
 }
 
+impl methods for @crate_ctxt {
+    fn to_ty(ast_ty: @ast::ty) -> ty::t {
+        ast_ty_to_ty(self, base_rscope, ast_ty)
+    }
+
+    fn to_self_ty(ast_ty: @ast::ty) -> ty::t {
+        ast_ty_to_ty(self, self_rscope, ast_ty)
+    }
+}
+
+impl methods for isr_alist {
+    fn find(id: str) -> option<ty::region> {
+        for list::each(*self) { |isr|
+            let (isr_id, isr_r) = isr;
+            if isr_id == id { ret some(isr_r); }
+        }
+        ret none;
+    }
+}
+
 impl methods for @fn_ctxt {
-    fn tcx() -> ty::ctxt { self.ccx.tcx }
     fn tag() -> str { #fmt["%x", ptr::addr_of(*self) as uint] }
     fn ty_to_str(t: ty::t) -> str {
         ty_to_str(self.ccx.tcx, resolve_type_vars_if_possible(self, t))
@@ -826,6 +1025,10 @@ impl methods for @fn_ctxt {
     }
     fn write_bot(node_id: ast::node_id) {
         self.write_ty(node_id, ty::mk_bot(self.tcx()));
+    }
+
+    fn to_ty(ast_t: @ast::ty) -> ty::t {
+        ast_ty_to_ty(self, self, ast_t)
     }
 
     fn expr_ty(ex: @ast::expr) -> ty::t {
@@ -863,8 +1066,8 @@ impl methods for @fn_ctxt {
         self.node_type_substs.find(id)
     }
     fn next_ty_var_id() -> ty_vid {
-        let id = *self.next_var_id;
-        *self.next_var_id += 1u;
+        let id = *self.ty_var_counter;
+        *self.ty_var_counter += 1u;
         ret ty_vid(id);
     }
     fn next_ty_var() -> ty::t {
@@ -872,6 +1075,14 @@ impl methods for @fn_ctxt {
     }
     fn next_ty_vars(n: uint) -> [ty::t] {
         vec::from_fn(n) {|_i| self.next_ty_var() }
+    }
+    fn next_region_var_id() -> region_vid {
+        let id = *self.region_var_counter;
+        *self.region_var_counter += 1u;
+        ret region_vid(id);
+    }
+    fn next_region_var() -> ty::region {
+        ret ty::re_var(self.next_region_var_id());
     }
     fn report_mismatched_types(sp: span, e: ty::t, a: ty::t,
                                err: ty::type_err) {
@@ -884,13 +1095,14 @@ impl methods for @fn_ctxt {
     }
 }
 
-fn mk_ty_params(tcx: ty::ctxt, atps: [ast::ty_param])
+fn mk_ty_params(ccx: @crate_ctxt, atps: [ast::ty_param])
     -> {bounds: @[ty::param_bounds], params: [ty::t]} {
+
     let mut i = 0u;
-    let bounds = ty_param_bounds(tcx, m_collect, atps);
+    let bounds = ty_param_bounds(ccx, atps);
     {bounds: bounds,
      params: vec::map(atps, {|atp|
-         let t = ty::mk_param(tcx, i, local_def(atp.id));
+         let t = ty::mk_param(ccx.tcx, i, local_def(atp.id));
          i += 1u;
          t
      })}
@@ -1050,9 +1262,11 @@ fn instantiate_bound_regions(tcx: ty::ctxt, region: ty::region, &&ty: ty::t)
 // We then annotate the AST with the resulting types and return the annotated
 // AST, along with a table mapping item IDs to their types.
 mod collect {
-    fn get_enum_variant_types(tcx: ty::ctxt, enum_ty: ty::t,
+    fn get_enum_variant_types(ccx: @crate_ctxt, enum_ty: ty::t,
                               variants: [ast::variant],
                               ty_params: [ast::ty_param]) {
+        let tcx = ccx.tcx;
+
         // Create a set of parameter types shared among all the variants.
         for variants.each {|variant|
             // Nullary enum constructors get turned into constants; n-ary enum
@@ -1062,170 +1276,174 @@ mod collect {
             } else {
                 // As above, tell ast_ty_to_ty() that trans_ty_item_to_ty()
                 // should be called to resolve named types.
-                let mut args: [arg] = [];
-                for variant.node.args.each {|va|
-                    let arg_ty = {
-                        // NDM We need BOUNDS here.  It should be that this
-                        // yields a type like "foo &anon".  Basically every
-                        // nominal type is going to require a region bound.
-                        let arg_ty = ast_ty_to_ty(tcx, m_collect, va.ty);
-                        default_region_to_bound_anon(tcx, arg_ty)
-                    };
-
-                    args += [{mode: ast::expl(ast::by_copy), ty: arg_ty}];
-                }
+                let args = variant.node.args.map { |va|
+                    {mode: ast::expl(ast::by_copy),
+                     ty: ccx.to_ty(va.ty)}
+                };
                 // FIXME: this will be different for constrained types
                 ty::mk_fn(tcx,
                           {proto: ast::proto_box,
                            inputs: args, output: enum_ty,
                            ret_style: ast::return_val, constraints: []})
             };
-            let tpt = {bounds: ty_param_bounds(tcx, m_collect, ty_params),
+            let tpt = {bounds: ty_param_bounds(ccx, ty_params),
                        ty: result_ty};
             tcx.tcache.insert(local_def(variant.node.id), tpt);
             write_ty_to_tcx(tcx, variant.node.id, result_ty);
         }
     }
-    fn ensure_iface_methods(tcx: ty::ctxt, id: ast::node_id) {
-        fn store_methods<T>(tcx: ty::ctxt, id: ast::node_id,
+
+    fn ensure_iface_methods(ccx: @crate_ctxt, id: ast::node_id) {
+        fn store_methods<T>(ccx: @crate_ctxt, id: ast::node_id,
                             stuff: [T], f: fn@(T) -> ty::method) {
-            ty::store_iface_methods(tcx, id, @vec::map(stuff, f));
+            ty::store_iface_methods(ccx.tcx, id, @vec::map(stuff, f));
         }
 
+        let tcx = ccx.tcx;
         alt check tcx.items.get(id) {
           ast_map::node_item(@{node: ast::item_iface(_, ms), _}, _) {
-              store_methods::<ast::ty_method>(tcx, id, ms, {|m|
-                          ty_of_ty_method(tcx, m_collect, m)});
+              store_methods::<ast::ty_method>(ccx, id, ms) {|m|
+                  ty_of_ty_method(ccx, m)
+              };
           }
           ast_map::node_item(@{node: ast::item_class(_,_,its,_), _}, _) {
               let (_,ms) = split_class_items(its);
               // All methods need to be stored, since lookup_method
               // relies on the same method cache for self-calls
-              store_methods::<@ast::method>(tcx, id, ms, {|m|
-                          ty_of_method(tcx, m_collect, m)});
+              store_methods::<@ast::method>(ccx, id, ms) {|m|
+                  ty_of_method(ccx, m)
+              };
           }
         }
     }
-    fn check_methods_against_iface(tcx: ty::ctxt, tps: [ast::ty_param],
-                          selfty: ty::t, t: @ast::ty, ms: [@ast::method]) {
-      let i_bounds = ty_param_bounds(tcx, m_collect, tps);
-      let my_methods = convert_methods(tcx, ms, i_bounds, some(selfty));
-      let iface_ty = ast_ty_to_ty(tcx, m_collect, t);
-      alt ty::get(iface_ty).struct {
-        ty::ty_iface(did, tys) {
-         // Store the iface type in the type node
-         alt check t.node {
-           ast::ty_path(_, t_id) {
-             write_ty_to_tcx(tcx, t_id, iface_ty);
-           }
-         }
-         if did.crate == ast::local_crate {
-             ensure_iface_methods(tcx, did.node);
-         }
-         for vec::each(*ty::iface_methods(tcx, did)) {|if_m|
-            alt vec::find(my_methods,
-                          {|m| if_m.ident == m.mty.ident}) {
-              some({mty: m, id, span}) {
-               if m.purity != if_m.purity {
-                  tcx.sess.span_err(
-                     span, "method `" + m.ident + "`'s purity \
-                       not match the iface method's \
-                       purity");
-               }
-               let mt = compare_impl_method(
-                         tcx, span, m, vec::len(tps), if_m, tys,
-                         selfty);
-               let old = tcx.tcache.get(local_def(id));
-               if old.ty != mt {
-                  tcx.tcache.insert(local_def(id),
-                                    {bounds: old.bounds,
-                                     ty: mt});
-                  write_ty_to_tcx(tcx, id, mt);
-               }
+
+    fn check_methods_against_iface(ccx: @crate_ctxt, tps: [ast::ty_param],
+                                   selfty: ty::t, t: @ast::ty,
+                                   ms: [@ast::method]) {
+
+        let tcx = ccx.tcx;
+        let i_bounds = ty_param_bounds(ccx, tps);
+        let my_methods = convert_methods(ccx, ms, i_bounds, some(selfty));
+        let iface_ty = ccx.to_ty(t);
+        alt ty::get(iface_ty).struct {
+          ty::ty_iface(did, tys) {
+            // Store the iface type in the type node
+            alt check t.node {
+              ast::ty_path(_, t_id) {
+                write_ty_to_tcx(tcx, t_id, iface_ty);
               }
-              none {
-                   tcx.sess.span_err(t.span, "missing method `" +
-                      if_m.ident + "`");
-              }
-            } // alt
-          } // |if_m|
-        } // for
-        _ {
+            }
+            if did.crate == ast::local_crate {
+                ensure_iface_methods(ccx, did.node);
+            }
+            for vec::each(*ty::iface_methods(tcx, did)) {|if_m|
+                alt vec::find(my_methods,
+                              {|m| if_m.ident == m.mty.ident}) {
+                  some({mty: m, id, span}) {
+                    if m.purity != if_m.purity {
+                        ccx.tcx.sess.span_err(
+                            span, #fmt["method `%s`'s purity \
+                                        not match the iface method's \
+                                        purity", m.ident]);
+                    }
+                    let mt = compare_impl_method(
+                        ccx.tcx, span, m, vec::len(tps),
+                        if_m, tys, selfty);
+                    let old = tcx.tcache.get(local_def(id));
+                    if old.ty != mt {
+                        tcx.tcache.insert(local_def(id),
+                                          {bounds: old.bounds,
+                                           ty: mt});
+                        write_ty_to_tcx(tcx, id, mt);
+                    }
+                  }
+                  none {
+                    tcx.sess.span_err(t.span, "missing method `" +
+                                      if_m.ident + "`");
+                  }
+                } // alt
+            } // |if_m|
+          } // for
+          _ {
             tcx.sess.span_fatal(t.span, "can only implement \
                                          interface types");
         }
-     }
+      }
     }
 
-    fn convert_class_item(tcx: ty::ctxt, v: ast_util::ivar) {
+    fn convert_class_item(ccx: @crate_ctxt, v: ast_util::ivar) {
         /* we want to do something here, b/c within the
          scope of the class, it's ok to refer to fields &
         methods unqualified */
 
         /* they have these types *within the scope* of the
          class. outside the class, it's done with expr_field */
-        let tt = ast_ty_to_ty(tcx, m_collect, v.ty);
+        let tt = ccx.to_self_ty(v.ty);
         #debug("convert_class_item: %s %?", v.ident, v.id);
-        write_ty_to_tcx(tcx, v.id, tt);
+        write_ty_to_tcx(ccx.tcx, v.id, tt);
     }
-    fn convert_methods(tcx: ty::ctxt, ms: [@ast::method],
-        i_bounds: @[ty::param_bounds], maybe_self: option<ty::t>)
+
+    fn convert_methods(ccx: @crate_ctxt, ms: [@ast::method],
+                       i_bounds: @[ty::param_bounds],
+                       maybe_self: option<ty::t>)
         -> [{mty: ty::method, id: ast::node_id, span: span}] {
-        let mut my_methods = [];
-        for ms.each {|m|
-           alt maybe_self {
+
+        let tcx = ccx.tcx;
+        vec::map(ms) { |m|
+            alt maybe_self {
               some(selfty) {
                 write_ty_to_tcx(tcx, m.self_id, selfty);
               }
-              _ {}
+             _ {}
            }
-           let bounds = ty_param_bounds(tcx, m_collect, m.tps);
-           let mty = ty_of_method(tcx, m_collect, m);
-           my_methods += [{mty: mty, id: m.id, span: m.span}];
-           let fty = ty::mk_fn(tcx, mty.fty);
-           tcx.tcache.insert(local_def(m.id),
-                             {bounds: @(*i_bounds + *bounds),
-                                     ty: fty});
-           write_ty_to_tcx(tcx, m.id, fty);
+            let bounds = ty_param_bounds(ccx, m.tps);
+            let mty = ty_of_method(ccx, m);
+            let fty = ty::mk_fn(tcx, mty.fty);
+            tcx.tcache.insert(local_def(m.id),
+                              {bounds: @(*i_bounds + *bounds),
+                               ty: fty});
+            write_ty_to_tcx(tcx, m.id, fty);
+            {mty: mty, id: m.id, span: m.span}
         }
-        my_methods
     }
-    fn convert(tcx: ty::ctxt, it: @ast::item) {
+
+    fn convert(ccx: @crate_ctxt, it: @ast::item) {
+        let tcx = ccx.tcx;
         alt it.node {
           // These don't define types.
           ast::item_mod(_) {}
           ast::item_native_mod(m) {
             if syntax::attr::native_abi(it.attrs) ==
                either::right(ast::native_abi_rust_intrinsic) {
-                for m.items.each {|item| check_intrinsic_type(tcx, item); }
+                for m.items.each { |item| check_intrinsic_type(ccx, item); }
             }
           }
           ast::item_enum(variants, ty_params) {
-            let tpt = ty_of_item(tcx, m_collect, it);
+            let tpt = ty_of_item(ccx, it);
             write_ty_to_tcx(tcx, it.id, tpt.ty);
-            get_enum_variant_types(tcx, tpt.ty, variants, ty_params);
+            get_enum_variant_types(ccx, tpt.ty, variants, ty_params);
           }
           ast::item_impl(tps, ifce, selfty, ms) {
-            let i_bounds = ty_param_bounds(tcx, m_collect, tps);
-            let selfty = ast_ty_to_ty(tcx, m_collect, selfty);
+            let i_bounds = ty_param_bounds(ccx, tps);
+            let selfty = ccx.to_self_ty(selfty);
             write_ty_to_tcx(tcx, it.id, selfty);
-            tcx.tcache.insert(local_def(it.id), {bounds: i_bounds,
-                                                 ty: selfty});
+            tcx.tcache.insert(local_def(it.id),
+                              {bounds: i_bounds, ty: selfty});
             alt ifce {
               some(t) {
-                  check_methods_against_iface(tcx, tps, selfty,
-                                                    t, ms); }
+                check_methods_against_iface(ccx, tps, selfty, t, ms);
+              }
               _ {
-                  // Still have to do this to write method types
-                  // into the table
-                convert_methods(tcx, ms, i_bounds, some(selfty));
+                // Still have to do this to write method types
+                // into the table
+                convert_methods(ccx, ms, i_bounds, some(selfty));
               }
             }
           }
           ast::item_res(decl, tps, _, dtor_id, ctor_id) {
-            let {bounds, params} = mk_ty_params(tcx, tps);
+            let {bounds, params} = mk_ty_params(ccx, tps);
             let def_id = local_def(it.id);
-            let t_arg = ty_of_arg(tcx, m_collect, decl.inputs[0]);
+            let t_arg = ty_of_arg(ccx, base_rscope, decl.inputs[0]);
             let t_res = ty::mk_res(tcx, def_id, t_arg.ty, params);
             let t_ctor = ty::mk_fn(tcx, {
                 proto: ast::proto_box,
@@ -1246,34 +1464,36 @@ mod collect {
             write_ty_to_tcx(tcx, dtor_id, t_dtor);
           }
           ast::item_iface(_, ms) {
-            let tpt = ty_of_item(tcx, m_collect, it);
+            let tpt = ty_of_item(ccx, it);
             write_ty_to_tcx(tcx, it.id, tpt.ty);
-            ensure_iface_methods(tcx, it.id);
+            ensure_iface_methods(ccx, it.id);
           }
           ast::item_class(tps, ifaces, members, ctor) {
               // Write the class type
-              let tpt = ty_of_item(tcx, m_collect, it);
+              let tpt = ty_of_item(ccx, it);
               write_ty_to_tcx(tcx, it.id, tpt.ty);
               // Write the ctor type
-              let t_ctor = ty::mk_fn(tcx,
-                                     ty_of_fn_decl(tcx, m_collect,
-                                             ast::proto_any, ctor.node.dec));
+              let t_ctor =
+                  ty::mk_fn(tcx,
+                            ty_of_fn_decl(ccx, base_rscope,
+                                          ast::proto_any,
+                                          ctor.node.dec));
               write_ty_to_tcx(tcx, ctor.node.id, t_ctor);
               tcx.tcache.insert(local_def(ctor.node.id),
                                    {bounds: tpt.bounds, ty: t_ctor});
-              ensure_iface_methods(tcx, it.id);
+              ensure_iface_methods(ccx, it.id);
               /* FIXME: check for proper public/privateness */
               // Write the type of each of the members
               let (fields, methods) = split_class_items(members);
               for fields.each {|f|
-                 convert_class_item(tcx, f);
+                 convert_class_item(ccx, f);
               }
               // The selfty is just the class type
               let selfty = ty::mk_class(tcx, local_def(it.id),
-                                        mk_ty_params(tcx, tps).params);
+                                        mk_ty_params(ccx, tps).params);
               // Need to convert all methods so we can check internal
               // references to private methods
-              convert_methods(tcx, methods, @[], some(selfty));
+              convert_methods(ccx, methods, @[], some(selfty));
               /*
                 Finally, check that the class really implements the ifaces
                 that it claims to implement.
@@ -1284,8 +1504,8 @@ mod collect {
                      let t = ty::lookup_item_type(tcx, t_id).ty;
                      alt ty::get(t).struct {
                         ty::ty_iface(_,_) {
-                            write_ty_to_tcx(tcx, ifce.id, t);
-                            check_methods_against_iface(tcx, tps, selfty,
+                          write_ty_to_tcx(tcx, ifce.id, t);
+                            check_methods_against_iface(ccx, tps, selfty,
                                @{id: ifce.id,
                                  node: ast::ty_path(ifce.path, ifce.id),
                                  span: ifce.path.span},
@@ -1304,26 +1524,26 @@ mod collect {
             // This call populates the type cache with the converted type
             // of the item in passing. All we have to do here is to write
             // it into the node type table.
-            let tpt = ty_of_item(tcx, m_collect, it);
+            let tpt = ty_of_item(ccx, it);
             write_ty_to_tcx(tcx, it.id, tpt.ty);
           }
         }
     }
-    fn convert_native(tcx: ty::ctxt, i: @ast::native_item) {
+    fn convert_native(ccx: @crate_ctxt, i: @ast::native_item) {
         // As above, this call populates the type table with the converted
         // type of the native item. We simply write it into the node type
         // table.
-        let tpt = ty_of_native_item(tcx, m_collect, i);
+        let tpt = ty_of_native_item(ccx, i);
         alt i.node {
           ast::native_item_fn(_, _) {
-            write_ty_to_tcx(tcx, i.id, tpt.ty);
+            write_ty_to_tcx(ccx.tcx, i.id, tpt.ty);
           }
         }
     }
-    fn collect_item_types(tcx: ty::ctxt, crate: @ast::crate) {
+    fn collect_item_types(ccx: @crate_ctxt, crate: @ast::crate) {
         visit::visit_crate(*crate, (), visit::mk_simple_visitor(@{
-            visit_item: bind convert(tcx, _),
-            visit_native_item: bind convert_native(tcx, _)
+            visit_item: bind convert(ccx, _),
+            visit_native_item: bind convert_native(ccx, _)
             with *visit::default_simple_visitor()
         }));
     }
@@ -1661,23 +1881,24 @@ mod writeback {
 
 }
 
-fn check_intrinsic_type(tcx: ty::ctxt, it: @ast::native_item) {
-    fn param(tcx: ty::ctxt, n: uint) -> ty::t {
-        ty::mk_param(tcx, n, local_def(0))
+fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::native_item) {
+    fn param(ccx: @crate_ctxt, n: uint) -> ty::t {
+        ty::mk_param(ccx.tcx, n, local_def(0))
     }
     fn arg(m: ast::rmode, ty: ty::t) -> ty::arg {
         {mode: ast::expl(m), ty: ty}
     }
+    let tcx = ccx.tcx;
     let (n_tps, inputs, output) = alt it.ident {
-      "size_of" | "align_of" { (1u, [], ty::mk_uint(tcx)) }
+      "size_of" | "align_of" { (1u, [], ty::mk_uint(ccx.tcx)) }
       "get_tydesc" { (1u, [], ty::mk_nil_ptr(tcx)) }
-      "init" { (1u, [], param(tcx, 0u)) }
-      "forget" { (1u, [arg(ast::by_move, param(tcx, 0u))],
+      "init" { (1u, [], param(ccx, 0u)) }
+      "forget" { (1u, [arg(ast::by_move, param(ccx, 0u))],
                   ty::mk_nil(tcx)) }
-      "reinterpret_cast" { (2u, [arg(ast::by_ref, param(tcx, 0u))],
-                            param(tcx, 1u)) }
-      "addr_of" { (1u, [arg(ast::by_ref, param(tcx, 0u))],
-                   ty::mk_imm_ptr(tcx, param(tcx, 0u))) }
+      "reinterpret_cast" { (2u, [arg(ast::by_ref, param(ccx, 0u))],
+                            param(ccx, 1u)) }
+      "addr_of" { (1u, [arg(ast::by_ref, param(ccx, 0u))],
+                   ty::mk_imm_ptr(tcx, param(ccx, 0u))) }
       other {
         tcx.sess.span_err(it.span, "unrecognized intrinsic function: `" +
                           other + "`");
@@ -1688,7 +1909,7 @@ fn check_intrinsic_type(tcx: ty::ctxt, it: @ast::native_item) {
                               inputs: inputs, output: output,
                               ret_style: ast::return_val,
                               constraints: []});
-    let i_ty = ty_of_native_item(tcx, m_collect, it);
+    let i_ty = ty_of_native_item(ccx, it);
     let i_n_tps = (*i_ty.bounds).len();
     if i_n_tps != n_tps {
         tcx.sess.span_err(it.span, #fmt("intrinsic has wrong number \
@@ -1699,7 +1920,7 @@ fn check_intrinsic_type(tcx: ty::ctxt, it: @ast::native_item) {
             tcx, it.span, i_ty.ty, fty,
             {|| #fmt["intrinsic has wrong type. \
                       expected %s",
-                     ty_to_str(tcx, fty)]});
+                     ty_to_str(ccx.tcx, fty)]});
     }
 }
 
@@ -1708,101 +1929,7 @@ fn check_intrinsic_type(tcx: ty::ctxt, it: @ast::native_item) {
 type gather_result =
     {infcx: infer::infer_ctxt,
      locals: hashmap<ast::node_id, ty_vid>,
-     next_var_id: @mut uint};
-
-// Used only as a helper for check_fn.
-fn gather_locals(ccx: @crate_ctxt,
-                 decl: ast::fn_decl,
-                 body: ast::blk,
-                 arg_tys: [ty::t],
-                 old_fcx: option<@fn_ctxt>) -> gather_result {
-    let {infcx, locals, nvi} = alt old_fcx {
-      none {
-        {infcx: infer::new_infer_ctxt(ccx.tcx),
-         locals: int_hash(),
-         nvi: @mut 0u}
-      }
-      some(fcx) {
-        {infcx: fcx.infcx,
-         locals: fcx.locals,
-         nvi: fcx.next_var_id}
-      }
-    };
-    let tcx = ccx.tcx;
-
-    let next_var_id = fn@() -> uint {
-        let rv = *nvi; *nvi += 1u; ret rv;
-    };
-
-    let assign = fn@(nid: ast::node_id, ty_opt: option<ty::t>) {
-        let var_id = ty_vid(next_var_id());
-        locals.insert(nid, var_id);
-        alt ty_opt {
-          none {/* nothing to do */ }
-          some(typ) {
-            infer::mk_eqty(infcx, ty::mk_var(tcx, var_id), typ);
-          }
-        }
-    };
-
-    // Add formal parameters.
-    vec::iter2(arg_tys, decl.inputs) {|arg_ty, input|
-        assign(input.id, some(arg_ty));
-        #debug["Argument %s is assigned to %s",
-               input.ident, locals.get(input.id).to_str()];
-    }
-
-    // Add explicitly-declared locals.
-    let visit_local = fn@(local: @ast::local, &&e: (), v: visit::vt<()>) {
-        let mut local_ty_opt = ast_ty_to_ty_crate_infer(ccx, local.node.ty);
-        alt local_ty_opt {
-            some(local_ty) if ty::type_has_rptrs(local_ty) {
-                local_ty_opt = some(fixup_regions_to_block(ccx.tcx, local_ty,
-                                                           local.node.ty));
-            }
-            _ { /* nothing to do */ }
-        }
-
-        assign(local.node.id, local_ty_opt);
-        #debug["Local variable %s is assigned to %s",
-               pat_to_str(local.node.pat),
-               locals.get(local.node.id).to_str()];
-        visit::visit_local(local, e, v);
-    };
-
-    // Add pattern bindings.
-    let visit_pat = fn@(p: @ast::pat, &&e: (), v: visit::vt<()>) {
-        alt p.node {
-          ast::pat_ident(path, _)
-          if !pat_util::pat_is_variant(ccx.tcx.def_map, p) {
-            assign(p.id, none);
-            #debug["Pattern binding %s is assigned to %s",
-                   path.node.idents[0],
-                   locals.get(p.id).to_str()];
-          }
-          _ {}
-        }
-        visit::visit_pat(p, e, v);
-    };
-
-    // Don't descend into fns and items
-    fn visit_fn<T>(_fk: visit::fn_kind, _decl: ast::fn_decl, _body: ast::blk,
-                   _sp: span, _id: ast::node_id, _t: T, _v: visit::vt<T>) {
-    }
-    fn visit_item<E>(_i: @ast::item, _e: E, _v: visit::vt<E>) { }
-
-    let visit =
-        @{visit_local: visit_local,
-          visit_pat: visit_pat,
-          visit_fn: bind visit_fn(_, _, _, _, _, _, _),
-          visit_item: bind visit_item(_, _, _)
-              with *visit::default_visitor()};
-
-    visit::visit_block(body, (), visit::mk_vt(visit));
-    ret {infcx: infcx,
-         locals: locals,
-         next_var_id: nvi};
-}
+     ty_var_counter: @mut uint};
 
 // AST fragment checking
 fn check_lit(ccx: @crate_ctxt, lit: @ast::lit) -> ty::t {
@@ -1816,9 +1943,9 @@ fn check_lit(ccx: @crate_ctxt, lit: @ast::lit) -> ty::t {
     }
 }
 
-fn valid_range_bounds(tcx: ty::ctxt, from: @ast::expr, to: @ast::expr)
+fn valid_range_bounds(ccx: @crate_ctxt, from: @ast::expr, to: @ast::expr)
     -> bool {
-    const_eval::compare_lit_exprs(tcx, from, to) <= 0
+    const_eval::compare_lit_exprs(ccx.tcx, from, to) <= 0
 }
 
 type pat_ctxt = {
@@ -1830,76 +1957,75 @@ type pat_ctxt = {
     pat_region: ty::region
 };
 
-fn count_region_params(ty: ty::t) -> uint {
-    if (!ty::type_has_rptrs(ty)) { ret 0u; }
-
-    let count = @mut 0u;
-    ty::walk_ty(ty) {|ty|
-        alt ty::get(ty).struct {
-            ty::ty_rptr(ty::re_bound(ty::br_param(param_id, _)), _) {
-                if param_id > *count {
-                    *count = param_id;
-                }
-            }
-            _ { /* no-op */ }
-        }
-    };
-    ret *count;
+fn subst_anon_region(tcx: ty::ctxt,
+                     with_r: ty::region,
+                     ty: ty::t) -> ty::t {
+    ty::fold_regions(tcx, ty) {|r, in_fn|
+        if !in_fn && r == ty::re_bound(ty::br_anon) {with_r} else {r}
+    }
 }
 
-type region_env = hashmap<ty::bound_region, region_vid>;
+// Helper for the other universally_quantify_*() routines.  Extracts the bound
+// regions from bound_tys and then replaces those same regions with fresh
+// variables in `sty`, returning the resulting type.
+fn universally_quantify_from_sty(fcx: @fn_ctxt,
+                                 span: span,
+                                 bound_tys: [ty::t],
+                                 sty: ty::sty) -> ty::t {
 
-fn region_env() -> @region_env {
-    ret @ty::br_hashmap();
+    let tcx = fcx.tcx();
+    let isr = collect_named_regions_in_tys(tcx, @nil, bound_tys) { |_id|
+        fcx.next_region_var()
+    };
+    let anon_r = fcx.next_region_var();
+    ty::fold_sty_to_ty(fcx.ccx.tcx, sty) {|t|
+        replace_bound_regions(tcx, span, anon_r, isr, t)
+    }
 }
 
 // Replaces all region parameters in the given type with region variables.
 // Does not descend into fn types.  This is used when deciding whether an impl
 // applies at a given call site.  See also universally_quantify_before_call().
-fn universally_quantify_regions(fcx: @fn_ctxt, renv: @region_env,
+fn universally_quantify_regions(fcx: @fn_ctxt,
+                                span: span,
                                 ty: ty::t) -> ty::t {
-    ty::fold_region(fcx.ccx.tcx, ty) {|r, _under_rptr|
-        alt r {
-          ty::re_bound(br) {
-            alt (*renv).find(br) {
-              some(var_id) { ty::re_var(var_id) }
-              none {
-                let var_id = next_region_var_id(fcx);
-                (*renv).insert(br, var_id);
-                ty::re_var(var_id)
-              }
-            }
-          }
-          _ { r }
-        }
-    }
+    universally_quantify_from_sty(fcx, span, [ty], ty::get(ty).struct)
 }
 
 // Expects a function type.  Replaces all region parameters in the arguments
 // and return type with fresh region variables. This is used when typechecking
 // function calls, bind expressions, and method calls.
-fn universally_quantify_before_call(
-    fcx: @fn_ctxt, renv: @region_env, ty: ty::t) -> ty::t {
-    if ty::type_has_rptrs(ty) {
-        // This is subtle: we expect `ty` to be a function type, but
-        // fold_region() will not descend into function types.  As it happens
-        // we only want to descend 1 level, so we just bypass fold_region for
-        // the outer type and apply it to all of the types contained with
-        // `ty`.
-        alt ty::get(ty).struct {
-          sty @ ty::ty_fn(_) {
-            ty::fold_sty_to_ty(fcx.ccx.tcx, sty) {|t|
-                universally_quantify_regions(fcx, renv, t)
-            }
-          }
-          _ {
-            // if not a function type, we're gonna' report an error
-            // at some point, since the user is trying to call this thing
-            ty
-          }
-        }
-    } else {
+fn universally_quantify_before_call(fcx: @fn_ctxt,
+                                    span: span,
+                                    ty: ty::t) -> ty::t {
+    if !ty::type_has_regions(ty) { ret ty; }
+
+    // This is subtle: we expect `ty` to be a function type, which normally
+    // introduce a level of binding.  In this case, we want to process the
+    // types bound by the function but not by any nested functions.
+    // Therefore, we match one level of structure.
+    //
+    // Specifically what we do is:
+    // - Find the set of named regions that appear in arguments, return
+    //   type, etc. We use collect_named_regions_in_ty(), which
+    //   returns a free version of the region---not quite what we want.
+    //
+    // - So then we map the resulting map so that we each bound region
+    //   will be mapped to a fresh variable.
+    //
+    // - Finally, we can use fold_sty_to_ty() and replace_bound_regions()
+    //   to replace the bound regions as well as the bound anonymous region.
+    //   We have to use fold_sty_to_ty() to ignore the outer fn().
+    alt ty::get(ty).struct {
+      sty @ ty::ty_fn(fty) {
+        let all_tys = fty.inputs.map({|a| a.ty}) + [fty.output];
+        universally_quantify_from_sty(fcx, span, all_tys, sty)
+      }
+      _ {
+        // if not a function type, we're gonna' report an error
+        // at some point, since the user is trying to call this thing
         ty
+      }
     }
 }
 
@@ -1993,7 +2119,7 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
             // no-op
         } else if !ty::type_is_numeric(b_ty) {
             tcx.sess.span_err(pat.span, "non-numeric type used in range");
-        } else if !valid_range_bounds(tcx, begin, end) {
+        } else if !valid_range_bounds(pcx.fcx.ccx, begin, end) {
             tcx.sess.span_err(begin.span, "lower range bound must be less \
                                            than upper");
         }
@@ -2200,7 +2326,7 @@ fn impl_self_ty(fcx: @fn_ctxt, did: ast::def_id) -> ty_param_substs_and_ty {
           ast_map::node_item(@{node: ast::item_impl(ts, _, st, _),
                                _}, _) {
             {n_tps: vec::len(ts),
-             raw_ty: ast_ty_to_ty(tcx, m_check, st)}
+             raw_ty: fcx.to_ty(st)}
           }
         }
     } else {
@@ -2348,7 +2474,7 @@ impl methods for lookup {
         if did.crate == ast::local_crate {
             alt check self.tcx().items.get(did.node) {
               ast_map::node_method(m, _, _) {
-                let mt = ty_of_method(self.tcx(), m_check, m);
+                let mt = ty_of_method(self.fcx.ccx, m);
                 ty::mk_fn(self.tcx(), {proto: ast::proto_box with mt.fty})
               }
             }
@@ -2364,7 +2490,7 @@ impl methods for lookup {
     fn method_from_scope() -> option<method_origin> {
         let impls_vecs = self.fcx.ccx.impl_map.get(self.expr.id);
 
-        for std::list::each(impls_vecs) {|impls|
+        for list::each(impls_vecs) {|impls|
             let mut results = [];
             for vec::each(*impls) {|im|
                 // Check whether this impl has a method with the right name.
@@ -2376,12 +2502,14 @@ impl methods for lookup {
                         impl_self_ty(self.fcx, im.did);
 
                     // Here "self" refers to the callee side...
-                    let self_ty = universally_quantify_regions(
-                        self.fcx, region_env(), self_ty);
+                    let self_ty =
+                        universally_quantify_regions(
+                            self.fcx, self.expr.span, self_ty);
 
                     // ... and "ty" refers to the caller side.
-                    let ty = universally_quantify_regions(
-                        self.fcx, region_env(), self.self_ty);
+                    let ty =
+                        universally_quantify_regions(
+                            self.fcx, self.expr.span, self.self_ty);
 
                     // if we can assign the caller to the callee, that's a
                     // potential match.  Collect those in the vector.
@@ -2477,7 +2605,7 @@ impl methods for lookup {
             self.fcx.write_ty(self.node_id, fty);
         }
 
-        if ty::type_has_rptrs(ty::ty_fn_ret(fty)) {
+        if ty::type_has_regions(ty::ty_fn_ret(fty)) {
             let fty = self.fcx.node_ty(self.node_id);
             let self_region = region_of(self.fcx, self.expr);
             let fty = replace_self_region(self.tcx(), self_region, fty);
@@ -2491,10 +2619,13 @@ impl methods for lookup {
 // Only for fields! Returns <none> for methods>
 // FIXME: privacy flags
 fn lookup_field_ty(tcx: ty::ctxt, class_id: ast::def_id,
-   items:[ty::field_ty], fieldname: ast::ident, substs: [ty::t])
-    -> option<ty::t> {
-    option::map(vec::find(items, {|f| f.ident == fieldname}),
-                {|f| ty::lookup_field_type(tcx, class_id, f.id, substs) })
+                   items:[ty::field_ty], fieldname: ast::ident,
+                   substs: [ty::t]) -> option<ty::t> {
+
+    let o_field = vec::find(items, {|f| f.ident == fieldname});
+    option::map(o_field) {|f|
+        ty::lookup_field_type(tcx, class_id, f.id, substs)
+    }
 }
 
 /* Returns the region that &expr should be placed into.  If expr is an
@@ -2548,8 +2679,7 @@ fn check_expr_fn_with_unifier(fcx: @fn_ctxt,
                               is_loop_body: bool,
                               unifier: fn()) {
     let tcx = fcx.ccx.tcx;
-    let fty = ty::mk_fn(tcx,
-                        ty_of_fn_decl(tcx, m_check_tyvar(fcx), proto, decl));
+    let fty = ty::mk_fn(tcx, ty_of_fn_decl(fcx, fcx, proto, decl));
 
     #debug("check_expr_fn_with_unifier %s fty=%s",
            expr_to_str(expr), fcx.ty_to_str(fty));
@@ -2584,7 +2714,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         fcx: @fn_ctxt, sp: span, fty: ty::t,
         args: [option<@ast::expr>]) -> {fty: ty::t, bot: bool} {
 
-        let fty = universally_quantify_before_call(fcx, region_env(), fty);
+        let fty = universally_quantify_before_call(fcx, sp, fty);
         #debug["check_call_or_bind: after universal quant., fty=%s",
                fcx.ty_to_str(fty)];
         let sty = structure_of(fcx, sp, fty);
@@ -2871,17 +3001,14 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
     let id = expr.id;
     let mut bot = false;
     alt expr.node {
-
       ast::expr_vstore(ev, vst) {
-        let mut typ = alt ev.node {
+        let typ = alt ev.node {
           ast::expr_lit(@{node: ast::lit_str(s), span:_}) {
-            let tt = ast_expr_vstore_to_vstore(fcx, ev,
-                                               str::len(s), vst);
+            let tt = ast_expr_vstore_to_vstore(fcx, ev, str::len(s), vst);
             ty::mk_estr(tcx, tt)
           }
           ast::expr_vec(args, mutbl) {
-            let tt = ast_expr_vstore_to_vstore(fcx, ev,
-                                               vec::len(args), vst);
+            let tt = ast_expr_vstore_to_vstore(fcx, ev, vec::len(args), vst);
             let t: ty::t = fcx.next_ty_var();
             for args.each {|e| bot |= check_expr_with(fcx, e, t); }
             ty::mk_evec(tcx, {ty: t, mutbl: mutbl}, tt)
@@ -2890,13 +3017,6 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             tcx.sess.span_bug(expr.span, "vstore modifier on non-sequence")
           }
         };
-        alt vst {
-          ast::vstore_slice(_) {
-            let r = ty::re_scope(fcx.ccx.tcx.region_map.parents.get(ev.id));
-            typ = replace_default_region(tcx, r, typ);
-          }
-          _ { }
-        }
         fcx.write_ty(ev.id, typ);
         fcx.write_ty(id, typ);
       }
@@ -3028,8 +3148,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         };
         alt expr_opt {
           none {
-            let nil = ty::mk_nil(tcx);
-            if !are_compatible(fcx, ret_ty, nil) {
+            if !are_compatible(fcx, ret_ty, ty::mk_nil(tcx)) {
                 tcx.sess.span_err(expr.span,
                                   "ret; in function returning non-nil");
             }
@@ -3248,7 +3367,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
       }
       ast::expr_cast(e, t) {
         bot = check_expr(fcx, e);
-        let t_1 = ast_ty_to_ty_crate(fcx.ccx, t);
+        let t_1 = fcx.to_ty(t);
         let t_e = fcx.expr_ty(e);
 
         alt ty::get(t_1).struct {
@@ -3395,7 +3514,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
           _ {}
         }
         if !handled {
-            let tps = vec::map(tys, {|ty| ast_ty_to_ty_crate(fcx.ccx, ty)});
+            let tps = vec::map(tys) { |ty| fcx.to_ty(ty) };
             let lkup = lookup({fcx: fcx,
                                expr: expr,
                                node_id: expr.id,
@@ -3526,17 +3645,6 @@ fn require_integral(fcx: @fn_ctxt, sp: span, t: ty::t) {
     }
 }
 
-fn next_region_var_id(fcx: @fn_ctxt) -> region_vid {
-    let id = *fcx.next_region_var_id;
-    *fcx.next_region_var_id += 1u;
-    ret region_vid(id);
-}
-
-fn next_region_var(fcx: @fn_ctxt) -> ty::region {
-    ret ty::re_var(next_region_var_id(fcx));
-}
-
-
 fn check_decl_initializer(fcx: @fn_ctxt, nid: ast::node_id,
                           init: ast::initializer) -> bool {
     let lty = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, init.expr.span, nid));
@@ -3657,8 +3765,9 @@ fn check_const(ccx: @crate_ctxt, _sp: span, e: @ast::expr, id: ast::node_id) {
           proto: ast::proto_box,
           infcx: infer::new_infer_ctxt(ccx.tcx),
           locals: int_hash(),
-          next_var_id: @mut 0u,
-          next_region_var_id: @mut 0u,
+          ty_var_counter: @mut 0u,
+          region_var_counter: @mut 0u,
+          in_scope_regions: @nil,
           node_types: smallintmap::mk(),
           node_type_substs: map::int_hash(),
           ccx: ccx};
@@ -3694,8 +3803,9 @@ fn check_enum_variants(ccx: @crate_ctxt, sp: span, vs: [ast::variant],
           proto: ast::proto_box,
           infcx: infer::new_infer_ctxt(ccx.tcx),
           locals: int_hash(),
-          next_var_id: @mut 0u,
-          next_region_var_id: @mut 0u,
+          ty_var_counter: @mut 0u,
+          region_var_counter: @mut 0u,
+          in_scope_regions: @nil,
           node_types: smallintmap::mk(),
           node_type_substs: map::int_hash(),
           ccx: ccx};
@@ -3882,59 +3992,84 @@ fn check_fn(ccx: @crate_ctxt,
             old_fcx: option<@fn_ctxt>,
             self_ty: option<ty::t>) {
 
+    let tcx = ccx.tcx;
+
     // See big comment in region.rs.
-    let arg_tys = arg_tys.map {|arg_ty|
-        replace_bound_regions_with_free_regions(ccx.tcx, fid, arg_ty)
+    let isr = {
+        let all_tys = arg_tys + [ret_ty] + self_ty.to_vec();
+        let old_isr = option::map_default(old_fcx, @nil) {
+            |fcx| fcx.in_scope_regions };
+        collect_named_regions_in_tys(tcx, old_isr, all_tys) {
+            |id| ty::re_free(fid, ty::br_named(id)) }
     };
-    let ret_ty =
-        replace_bound_regions_with_free_regions(ccx.tcx, fid, ret_ty);
-    let self_ty = option::map(self_ty) {|st|
-        replace_bound_regions_with_free_regions(ccx.tcx, fid, st)
+    let anon_r = ty::re_free(fid, ty::br_anon);
+    let self_r = ty::re_free(fid, ty::br_self);
+    let arg_tys = arg_tys.map {|arg_ty|
+        let arg_ty = replace_bound_self(tcx, self_r, arg_ty);
+        replace_bound_regions(tcx, body.span, anon_r, isr, arg_ty)
+    };
+    let ret_ty = replace_bound_self(tcx, self_r, ret_ty);
+    let ret_ty = replace_bound_regions(tcx, body.span, anon_r, isr, ret_ty);
+    let self_ty = option::map(self_ty) {|self_ty|
+        let self_ty = replace_bound_self(tcx, self_r, self_ty);
+        replace_bound_regions(tcx, body.span, anon_r, isr, self_ty)
     };
 
     #debug["check_fn(arg_tys=%?, ret_ty=%?, self_ty=%?)",
-           arg_tys.map {|a| ty_to_str(ccx.tcx, a) },
-           ty_to_str(ccx.tcx, ret_ty),
-           option::map(self_ty) {|st| ty_to_str(ccx.tcx, st) }];
+           arg_tys.map {|a| ty_to_str(tcx, a) },
+           ty_to_str(tcx, ret_ty),
+           option::map(self_ty) {|st| ty_to_str(tcx, st) }];
 
     // If old_fcx is some(...), this is a block fn { |x| ... }.
     // In that case, the purity is inherited from the context.
-    let {purity, node_types, node_type_substs} = alt old_fcx {
-      none {
-        {purity: decl.purity,
-         node_types: smallintmap::mk(),
-         node_type_substs: map::int_hash()}
-      }
-      some(f) {
-        assert decl.purity == ast::impure_fn;
-        {purity: f.purity,
-         node_types: f.node_types,
-         node_type_substs: f.node_type_substs}
-      }
-    };
+    let fcx: @fn_ctxt = {
+        let {infcx, locals, tvc, rvc, purity,
+             node_types, node_type_substs} = alt old_fcx {
+          none {
+            {infcx: infer::new_infer_ctxt(tcx),
+             locals: int_hash(),
+             tvc: @mut 0u,
+             rvc: @mut 0u,
+             purity: decl.purity,
+             node_types: smallintmap::mk(),
+             node_type_substs: map::int_hash()}
+          }
+          some(fcx) {
+            assert decl.purity == ast::impure_fn;
+            {infcx: fcx.infcx,
+             locals: fcx.locals,
+             tvc: fcx.ty_var_counter,
+             rvc: fcx.region_var_counter,
+             purity: fcx.purity,
+             node_types: fcx.node_types,
+             node_type_substs: fcx.node_type_substs}
+          }
+        };
 
-    let gather_result = gather_locals(ccx, decl, body, arg_tys, old_fcx);
-    let indirect_ret_ty = if indirect_ret {
-        let ofcx = option::get(old_fcx);
-        alt ofcx.indirect_ret_ty {
-          some(t) { some(t) }
-          none { some(ofcx.ret_ty) }
-        }
-    } else { none };
-    let fcx: @fn_ctxt =
+        let indirect_ret_ty = if indirect_ret {
+            let ofcx = option::get(old_fcx);
+            alt ofcx.indirect_ret_ty {
+              some(t) { some(t) }
+              none { some(ofcx.ret_ty) }
+            }
+        } else { none };
+
         @{self_ty: self_ty,
           ret_ty: ret_ty,
           indirect_ret_ty: indirect_ret_ty,
           purity: purity,
           proto: proto,
-          infcx: gather_result.infcx,
-          locals: gather_result.locals,
-          next_var_id: gather_result.next_var_id,
-          next_region_var_id: @mut 0u,
+          infcx: infcx,
+          locals: locals,
+          ty_var_counter: tvc,
+          region_var_counter: rvc,
+          in_scope_regions: isr,
           node_types: node_types,
           node_type_substs: node_type_substs,
-          ccx: ccx};
+          ccx: ccx}
+    };
 
+    gather_locals(fcx, decl, body, arg_tys);
     check_constraints(fcx, decl.constraints, decl.inputs);
     check_block(fcx, body);
 
@@ -3962,6 +4097,76 @@ fn check_fn(ccx: @crate_ctxt,
         vtable::resolve_in_block(fcx, body);
         writeback::resolve_type_vars_in_fn(fcx, decl, body);
     }
+
+    fn gather_locals(fcx: @fn_ctxt,
+                     decl: ast::fn_decl,
+                     body: ast::blk,
+                     arg_tys: [ty::t]) {
+        let tcx = fcx.ccx.tcx;
+
+        let assign = fn@(nid: ast::node_id, ty_opt: option<ty::t>) {
+            let var_id = fcx.next_ty_var_id();
+            fcx.locals.insert(nid, var_id);
+            alt ty_opt {
+              none {/* nothing to do */ }
+              some(typ) {
+                infer::mk_eqty(fcx.infcx, ty::mk_var(tcx, var_id), typ);
+              }
+            }
+        };
+
+        // Add formal parameters.
+        vec::iter2(arg_tys, decl.inputs) {|arg_ty, input|
+            assign(input.id, some(arg_ty));
+            #debug["Argument %s is assigned to %s",
+                   input.ident, fcx.locals.get(input.id).to_str()];
+        }
+
+        // Add explicitly-declared locals.
+        let visit_local = fn@(local: @ast::local,
+                              &&e: (), v: visit::vt<()>) {
+            let o_ty = alt local.node.ty.node {
+              ast::ty_infer { none }
+              _ { some(fcx.to_ty(local.node.ty)) }
+            };
+            assign(local.node.id, o_ty);
+            #debug["Local variable %s is assigned to %s",
+                   pat_to_str(local.node.pat),
+                   fcx.locals.get(local.node.id).to_str()];
+            visit::visit_local(local, e, v);
+        };
+
+        // Add pattern bindings.
+        let visit_pat = fn@(p: @ast::pat, &&e: (), v: visit::vt<()>) {
+            alt p.node {
+              ast::pat_ident(path, _)
+              if !pat_util::pat_is_variant(fcx.ccx.tcx.def_map, p) {
+                assign(p.id, none);
+                #debug["Pattern binding %s is assigned to %s",
+                       path.node.idents[0],
+                       fcx.locals.get(p.id).to_str()];
+              }
+              _ {}
+            }
+            visit::visit_pat(p, e, v);
+        };
+
+        // Don't descend into fns and items
+        fn visit_fn<T>(_fk: visit::fn_kind, _decl: ast::fn_decl,
+                       _body: ast::blk, _sp: span,
+                       _id: ast::node_id, _t: T, _v: visit::vt<T>) {
+        }
+        fn visit_item<E>(_i: @ast::item, _e: E, _v: visit::vt<E>) { }
+
+        let visit =
+            @{visit_local: visit_local,
+              visit_pat: visit_pat,
+              visit_fn: bind visit_fn(_, _, _, _, _, _, _),
+              visit_item: bind visit_item(_, _, _)
+              with *visit::default_visitor()};
+
+        visit::visit_block(body, (), visit::mk_vt(visit));
+    }
 }
 
 fn check_method(ccx: @crate_ctxt, method: @ast::method, self_ty: ty::t) {
@@ -3973,11 +4178,11 @@ fn class_types(ccx: @crate_ctxt, members: [@ast::class_member]) -> class_map {
     for members.each {|m|
       alt m.node {
          ast::instance_var(_,t,_,id,_) {
-           rslt.insert(id, ast_ty_to_ty(ccx.tcx, m_collect, t));
+           rslt.insert(id, ccx.to_ty(t));
          }
          ast::class_method(mth) {
              rslt.insert(mth.id, ty::mk_fn(ccx.tcx,
-                ty_of_method(ccx.tcx, m_collect, mth).fty));
+                ty_of_method(ccx, mth).fty));
          }
       }
     }
@@ -4006,7 +4211,7 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
         check_bare_fn(ccx, decl, body, dtor_id, none);
       }
       ast::item_impl(tps, _, ty, ms) {
-        let self_ty = ast_ty_to_ty(ccx.tcx, m_check, ty);
+        let self_ty = ccx.to_self_ty(ty);
         let self_region = ty::re_free(it.id, ty::br_self);
         let self_ty = replace_self_region(ccx.tcx, self_region, self_ty);
         for ms.each {|m| check_method(ccx, m, self_ty);}
@@ -4044,7 +4249,11 @@ fn arg_is_argv_ty(_tcx: ty::ctxt, a: ty::arg) -> bool {
     }
 }
 
-fn check_main_fn_ty(tcx: ty::ctxt, main_id: ast::node_id, main_span: span) {
+fn check_main_fn_ty(ccx: @crate_ctxt,
+                    main_id: ast::node_id,
+                    main_span: span) {
+
+    let tcx = ccx.tcx;
     let main_t = ty::node_id_to_type(tcx, main_id);
     alt ty::get(main_t).struct {
       ty::ty_fn({proto: ast::proto_bare, inputs, output,
@@ -4082,10 +4291,11 @@ fn check_main_fn_ty(tcx: ty::ctxt, main_id: ast::node_id, main_span: span) {
     }
 }
 
-fn check_for_main_fn(tcx: ty::ctxt, crate: @ast::crate) {
+fn check_for_main_fn(ccx: @crate_ctxt, crate: @ast::crate) {
+    let tcx = ccx.tcx;
     if !tcx.sess.building_library {
         alt tcx.sess.main_fn {
-          some((id, sp)) { check_main_fn_ty(tcx, id, sp); }
+          some((id, sp)) { check_main_fn_ty(ccx, id, sp); }
           none { tcx.sess.span_err(crate.span, "main function not found"); }
         }
     }
@@ -4165,7 +4375,7 @@ mod vtable {
           }
           _ {
             let mut found = none;
-            std::list::iter(isc) {|impls|
+            list::iter(isc) {|impls|
                 if option::is_none(found) {
                     for vec::each(*impls) {|im|
                         let match = alt ty::impl_iface(tcx, im.did) {
@@ -4314,20 +4524,19 @@ mod vtable {
 
 fn check_crate(tcx: ty::ctxt, impl_map: resolve::impl_map,
                crate: @ast::crate) -> (method_map, vtable_map) {
-    collect::collect_item_types(tcx, crate);
-
     let ccx = @{impl_map: impl_map,
                 method_map: std::map::int_hash(),
                 vtable_map: std::map::int_hash(),
                 enclosing_class_id: none,
                 enclosing_class: std::map::int_hash(),
                 tcx: tcx};
+    collect::collect_item_types(ccx, crate);
     let visit = visit::mk_simple_visitor(@{
         visit_item: bind check_item(ccx, _)
         with *visit::default_simple_visitor()
     });
     visit::visit_crate(*crate, (), visit);
-    check_for_main_fn(tcx, crate);
+    check_for_main_fn(ccx, crate);
     tcx.sess.abort_if_errors();
     (ccx.method_map, ccx.vtable_map)
 }

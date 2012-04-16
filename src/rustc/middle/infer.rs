@@ -592,7 +592,7 @@ impl resolve_methods for infer_ctxt {
             self.rb,
             {|_t| false },
             rid,
-            {|| err(unresolved_region(rid)) });
+            {|| ok(ty::re_static) });
     }
 
     fn resolve_ty(typ: ty::t) -> fres<ty::t> {
@@ -1169,7 +1169,10 @@ impl of combine for sub {
     }
 
     fn regions(a: ty::region, b: ty::region) -> cres<ty::region> {
-        #debug["regions(%s <= %s)", a.to_str(*self), b.to_str(*self)];
+        #debug["%s.regions(%s, %s)",
+               self.tag(),
+               a.to_str(self.infcx()),
+               b.to_str(self.infcx())];
         indent {||
             alt (a, b) {
               (ty::re_var(a_id), ty::re_var(b_id)) {
@@ -1376,8 +1379,7 @@ impl of combine for lub {
                            {|x, y| self.regions(x, y) })
               }
 
-              (ty::re_var(v_id), r) |
-              (r, ty::re_var(v_id)) {
+              (ty::re_var(v_id), r) | (r, ty::re_var(v_id)) {
                 lattice_var_t(self, self.infcx().rb,
                               v_id, r,
                               {|x, y| self.regions(x, y) })
@@ -1414,12 +1416,6 @@ impl of combine for lub {
                 } else {
                     err(ty::terr_regions_differ(b, a))
                 }
-              }
-
-              (ty::re_default, _) |
-              (_, ty::re_default) {
-                // actually a compiler bug, I think.
-                err(ty::terr_regions_differ(b, a))
               }
             }
         }
@@ -1561,10 +1557,10 @@ impl of combine for glb {
                              {|x, y| self.regions(x, y) })
               }
 
-              (ty::re_var(v_id), _) | (_, ty::re_var(v_id)) {
-               lattice_var_t(self, self.infcx().rb,
-                             v_id, b,
-                             {|x, y| self.regions(x, y) })
+              (ty::re_var(v_id), r) | (r, ty::re_var(v_id)) {
+                lattice_var_t(self, self.infcx().rb,
+                              v_id, r,
+                              {|x, y| self.regions(x, y) })
               }
 
               (f @ ty::re_free(f_id, f_br), ty::re_scope(s_id)) |
@@ -1600,12 +1596,6 @@ impl of combine for glb {
                 } else {
                     err(ty::terr_regions_differ(b, a))
                 }
-              }
-
-              (ty::re_default, _) |
-              (_, ty::re_default) {
-                // actually a compiler bug, I think.
-                err(ty::terr_regions_differ(b, a))
               }
             }
         }
@@ -1727,7 +1717,7 @@ fn lattice_vars<V:copy vid, T:copy to_str st, L:lattice_ops combine>(
     let {root: a_vid, bounds: a_bounds} = self.infcx().get(vb, a_vid);
     let {root: b_vid, bounds: b_bounds} = self.infcx().get(vb, b_vid);
 
-    #debug["%s.vars(%s=%s <: %s=%s)",
+    #debug["%s.lattice_vars(%s=%s <: %s=%s)",
            self.tag(),
            a_vid.to_str(), a_bounds.to_str(self.infcx()),
            b_vid.to_str(), b_bounds.to_str(self.infcx())];
@@ -1758,15 +1748,15 @@ fn lattice_vars<V:copy vid, T:copy to_str st, L:lattice_ops combine>(
 
 fn lattice_var_t<V:copy vid, T:copy to_str st, L:lattice_ops combine>(
     self: L, vb: vals_and_bindings<V, T>,
-    a_vid: V, b: T,
+    a_id: V, b: T,
     c_ts: fn(T, T) -> cres<T>) -> cres<T> {
 
-    let {root: a_id, bounds: a_bounds} = self.infcx().get(vb, a_vid);
+    let {root: a_id, bounds: a_bounds} = self.infcx().get(vb, a_id);
 
     // The comments in this function are written for LUB, but they
     // apply equally well to GLB if you inverse upper/lower/sub/super/etc.
 
-    #debug["%s.var_ty(%s=%s <: %s)",
+    #debug["%s.lattice_vart(%s=%s <: %s)",
            self.tag(),
            a_id.to_str(), a_bounds.to_str(self.infcx()),
            b.to_str(self.infcx())];

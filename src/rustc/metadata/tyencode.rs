@@ -104,10 +104,8 @@ fn enc_bound_region(w: io::writer, br: ty::bound_region) {
     alt br {
       ty::br_self { w.write_char('s') }
       ty::br_anon { w.write_char('a') }
-      ty::br_param(id, s) {
+      ty::br_named(s) {
         w.write_char('[');
-        w.write_uint(id);
-        w.write_char('|');
         w.write_str(s);
         w.write_char(']')
       }
@@ -131,9 +129,6 @@ fn enc_region(w: io::writer, r: ty::region) {
         w.write_char('s');
         w.write_int(nid);
         w.write_char('|');
-      }
-      ty::re_default {
-        w.write_char('i');
       }
       ty::re_var(id) {
         w.write_char('v');

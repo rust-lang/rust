@@ -162,12 +162,9 @@ type binding = {node_id: ast::node_id,
 type region_map = {
     /* Mapping from a block/function expression to its parent. */
     parents: hashmap<ast::node_id,ast::node_id>,
-    /* Mapping from a region type in the AST to its resolved region. */
-    ast_type_to_region: hashmap<ast::node_id,ty::region>,
+
     /* Mapping from a local variable to its containing block. */
-    local_blocks: hashmap<ast::node_id,ast::node_id>,
-    /* Mapping from an AST type node to the region that `&` resolves to. */
-    ast_type_to_inferred_region: hashmap<ast::node_id,ty::region>,
+    local_blocks: hashmap<ast::node_id,ast::node_id>
 };
 
 type region_scope = @{
@@ -197,69 +194,6 @@ impl methods for region_scope {
 
     fn self_subscope(node_id: ast::node_id) -> region_scope {
         @{node_id: node_id, kind: rsk_self(self)}
-    }
-
-    fn find(nm: str) -> option<binding> {
-        alt self.kind {
-          rsk_root { none }
-          rsk_body(parent) { parent.find(nm) }
-          rsk_self(parent) { parent.find(nm) }
-          rsk_binding(parent, bs) {
-            alt (*bs).find({|b| b.name == nm }) {
-              none { parent.find(nm) }
-              some(b) { some(b) }
-            }
-          }
-        }
-    }
-
-    // fn resolve_anon() -> option<ty::region> {
-    //     alt self.kind {
-    //       rsk_root { none }
-    //       rsk_body(_) { none }
-    //       rsk_self(_) { none }
-    //       rsk_binding(_, _) { ty::re_bound(ty::br_anon) }
-    //     }
-    // }
-
-    fn resolve_self_helper(bound: bool) -> option<ty::region> {
-        alt self.kind {
-          rsk_root { none }
-          rsk_self(_) if bound { some(ty::re_bound(ty::br_self)) }
-          rsk_self(_) { some(ty::re_free(self.node_id, ty::br_self)) }
-          rsk_binding(p, _) { p.resolve_self_helper(bound) }
-          rsk_body(p) { p.resolve_self_helper(false) }
-        }
-    }
-
-    fn resolve_self() -> option<ty::region> {
-        self.resolve_self_helper(true)
-    }
-
-    fn resolve_ident(nm: str) -> option<ty::region> {
-        alt self.find(nm) {
-          some(b) if b.node_id == self.node_id {
-            some(ty::re_bound(b.br))
-          }
-
-          some(b) {
-            some(ty::re_free(b.node_id, b.br))
-          }
-
-          none {
-            alt self.kind {
-              rsk_self(_) | rsk_root | rsk_body(_) { none }
-              rsk_binding(_, bs) {
-                let idx = (*bs).len();
-                let br = ty::br_param(idx, nm);
-                vec::push(*bs, {node_id: self.node_id,
-                                name: nm,
-                                br: br});
-                some(ty::re_bound(br))
-              }
-            }
-          }
-        }
     }
 }
 
@@ -349,50 +283,6 @@ fn get_inferred_region(cx: ctxt, sp: syntax::codemap::span) -> ty::region {
       pa_item(_) { ty::re_bound(ty::br_anon) }
       pa_crate { cx.sess.span_bug(sp, "inferred region at crate level?!"); }
     }
-}
-
-fn resolve_region_binding(cx: ctxt, span: span,
-                          region: ast::region) -> ty::region {
-    alt region.node {
-      ast::re_inferred { ty::re_default }
-      ast::re_static { ty::re_static }
-      ast::re_named(ident) {
-        alt cx.scope.resolve_ident(ident) {
-          some(r) { r }
-          none {
-            cx.sess.span_fatal(
-                span,
-                #fmt["the region `%s` is not declared", ident]);
-          }
-        }
-      }
-      ast::re_self {
-        alt cx.scope.resolve_self() {
-          some(r) { r }
-          none {
-            cx.sess.span_fatal(
-                span,
-                "the `self` region is not allowed here");
-          }
-        }
-      }
-    }
-}
-
-fn resolve_ty(ty: @ast::ty, cx: ctxt, visitor: visit::vt<ctxt>) {
-    let inferred_region = get_inferred_region(cx, ty.span);
-    cx.region_map.ast_type_to_inferred_region.insert(ty.id, inferred_region);
-
-    alt ty.node {
-      ast::ty_vstore(_, ast::vstore_slice(r)) |
-      ast::ty_rptr(r, _) {
-        let region = resolve_region_binding(cx, ty.span, r);
-        cx.region_map.ast_type_to_region.insert(ty.id, region);
-      }
-      _ { /* nothing to do */ }
-    }
-
-    visit::visit_ty(ty, cx, visitor);
 }
 
 fn opt_parent_id(cx: ctxt) -> option<ast::node_id> {
@@ -531,16 +421,12 @@ fn resolve_crate(sess: session, def_map: resolve::def_map, crate: @ast::crate)
     let cx: ctxt = {sess: sess,
                     def_map: def_map,
                     region_map: @{parents: map::int_hash(),
-                                  ast_type_to_region: map::int_hash(),
-                                  local_blocks: map::int_hash(),
-                                  ast_type_to_inferred_region:
-                                    map::int_hash()},
+                                  local_blocks: map::int_hash()},
                     scope: root_scope(0),
                     parent: pa_crate};
     let visitor = visit::mk_vt(@{
         visit_block: resolve_block,
         visit_item: resolve_item,
-        visit_ty: resolve_ty,
         visit_arm: resolve_arm,
         visit_pat: resolve_pat,
         visit_expr: resolve_expr,

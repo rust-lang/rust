@@ -15,12 +15,13 @@ fn check_expr(expr: @ast::expr,
     visit::visit_expr(expr, tcx, visitor);
 
     let t = ty::expr_ty(tcx, expr);
-    if !ty::type_has_rptrs(t) { ret; }
+    if !ty::type_has_regions(t) { ret; }
     ty::walk_ty(t) { |t|
         alt ty::get(t).struct {
           ty::ty_rptr(region, _) {
             alt region {
-              ty::re_bound(_) | ty::re_free(_, _) | ty::re_static {
+              ty::re_bound(_) | ty::re_free(_, _) | ty::re_static |
+              ty::re_var(_) {
                 /* ok */
               }
               ty::re_scope(id) {
@@ -30,9 +31,6 @@ fn check_expr(expr: @ast::expr,
                         #fmt["reference is not valid outside of %s",
                              ppaux::re_scope_id_to_str(tcx, id)]);
                 }
-              }
-              ty::re_default | ty::re_var(_) {
-                tcx.sess.span_bug(expr.span, "unresolved region");
               }
             }
           }
