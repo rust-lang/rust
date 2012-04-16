@@ -1,0 +1,6 @@
+#[link(name = "issue2196c", vers = "0.1")];
+#[crate_type = "lib"];
+
+use b(name = "issue2196b");
+#[path = "issue-2196-d.rs"]
+mod d;
