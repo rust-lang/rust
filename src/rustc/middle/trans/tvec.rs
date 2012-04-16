@@ -134,7 +134,7 @@ fn trans_vstore(bcx: block, e: @ast::expr,
                 v: ast::vstore, dest: dest) -> block {
     alt e.node {
       ast::expr_lit(@{node: ast::lit_str(s), span: _}) {
-        ret trans_estr(bcx, s, v, e.span, dest);
+        ret trans_estr(bcx, s, v, dest);
       }
       ast::expr_vec(es, mutbl) {
         bcx.ccx().sess.span_unimpl(e.span, "unhandled tvec::trans_vstore");
@@ -146,7 +146,7 @@ fn trans_vstore(bcx: block, e: @ast::expr,
 }
 
 fn trans_estr(bcx: block, s: str, vstore: ast::vstore,
-              sp: span, dest: dest) -> block {
+              dest: dest) -> block {
     let _icx = bcx.insn_ctxt("tvec::trans_estr");
     let ccx = bcx.ccx();
 
@@ -165,22 +165,21 @@ fn trans_estr(bcx: block, s: str, vstore: ast::vstore,
         C_struct([cs, C_uint(ccx, str::len(s))])
       }
 
-      _ {
-        bcx.ccx().sess.span_unimpl(sp, "unhandled tvec::trans_estr");
+      ast::vstore_uniq {
+        let cs = PointerCast(bcx, C_cstr(ccx, s), T_ptr(T_i8()));
+        let len = C_uint(ccx, str::len(s));
+        Call(bcx, ccx.upcalls.str_new_uniq, [cs, len])
+      }
+
+      ast::vstore_box {
+        let cs = PointerCast(bcx, C_cstr(ccx, s), T_ptr(T_i8()));
+        let len = C_uint(ccx, str::len(s));
+        Call(bcx, ccx.upcalls.str_new_shared, [cs, len])
       }
     };
 
     #debug("trans_estr: type: %s", val_str(ccx.tn, c));
     base::store_in_dest(bcx, c, dest)
-}
-
-fn trans_str(bcx: block, s: str, dest: dest) -> block {
-    let _icx = bcx.insn_ctxt("tvec::trans_str");
-    let ccx = bcx.ccx();
-    let cs = PointerCast(bcx, C_cstr(ccx, s), T_ptr(T_i8()));
-    let len = C_uint(ccx, str::len(s));
-    let n = Call(bcx, ccx.upcalls.str_new, [cs, len]);
-    ret base::store_in_dest(bcx, n, dest);
 }
 
 fn trans_append(bcx: block, vec_ty: ty::t, lhsptr: ValueRef,

@@ -673,10 +673,11 @@ fn make_drop_glue(bcx: block, v0: ValueRef, t: ty::t) {
     let ccx = bcx.ccx();
     let bcx = alt ty::get(t).struct {
       ty::ty_box(_) | ty::ty_opaque_box |
-      ty::ty_estr(ty::vstore_box) {
+      ty::ty_estr(ty::vstore_box) | ty::ty_evec(_, ty::vstore_box) {
         decr_refcnt_maybe_free(bcx, Load(bcx, v0), t)
       }
-      ty::ty_uniq(_) | ty::ty_vec(_) | ty::ty_str {
+      ty::ty_uniq(_) | ty::ty_vec(_) | ty::ty_str |
+      ty::ty_evec(_, ty::vstore_uniq) | ty::ty_estr(ty::vstore_uniq) {
         free_ty(bcx, Load(bcx, v0), t)
       }
       ty::ty_res(did, inner, tps) {
@@ -1328,7 +1329,7 @@ fn trans_lit(cx: block, lit: ast::lit, dest: dest) -> block {
     let _icx = cx.insn_ctxt("trans_lit");
     if dest == ignore { ret cx; }
     alt lit.node {
-      ast::lit_str(s) { tvec::trans_str(cx, s, dest) }
+      ast::lit_str(s) { tvec::trans_estr(cx, s, ast::vstore_uniq, dest) }
       _ {
         store_in_dest(cx, trans_crate_lit(cx.ccx(), lit), dest)
       }
@@ -2294,16 +2295,18 @@ fn trans_index(cx: block, ex: @ast::expr, base: @ast::expr,
         let body = GEPi(bcx, v, [0, 0]);
         (lim, body)
       }
+
       ty::ty_estr(ty::vstore_slice(_)) |
       ty::ty_evec(_, ty::vstore_slice(_)) {
-        let body = Load(bcx, GEPi(bcx, v, [0, 0]));
-        let lim = Load(bcx, GEPi(bcx, v, [0, 1]));
+        let body = Load(bcx, GEPi(bcx, v, [0, abi::slice_elt_base]));
+        let lim = Load(bcx, GEPi(bcx, v, [0, abi::slice_elt_len]));
         (lim, body)
       }
 
-      ty::ty_estr(_) | ty::ty_evec(_, _) {
+      ty::ty_estr(ty::vstore_box) | ty::ty_evec(_, ty::vstore_box) {
         bcx.sess().unimpl(#fmt("unsupported evec/estr type trans_index"));
       }
+
       _ {
         let lim = tvec::get_fill(bcx, v);
         let body = tvec::get_dataptr(bcx, v, type_of(ccx, unit_ty));

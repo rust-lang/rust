@@ -49,7 +49,7 @@ fn trans_opt(bcx: block, o: opt) -> opt_result {
           ast::expr_lit(@{node: ast::lit_str(s), _}) {
             let strty = ty::mk_str(bcx.tcx());
             let cell = empty_dest_cell();
-            bcx = tvec::trans_str(bcx, s, by_val(cell));
+            bcx = tvec::trans_estr(bcx, s, ast::vstore_uniq, by_val(cell));
             add_clean_temp(bcx, *cell, strty);
             ret single_result(rslt(bcx, *cell));
           }

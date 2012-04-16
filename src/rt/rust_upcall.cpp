@@ -290,23 +290,66 @@ upcall_shared_realloc(void *ptr, size_t size) {
 
 /**********************************************************************/
 
-struct s_str_new_args {
+struct s_str_new_uniq_args {
     const char *cstr;
     size_t len;
     rust_str *retval;
 };
 
 extern "C" CDECL void
-upcall_s_str_new(s_str_new_args *args) {
+upcall_s_str_new_uniq(s_str_new_uniq_args *args) {
     rust_task *task = rust_get_current_task();
     LOG_UPCALL_ENTRY(task);
-    args->retval = make_str(task->kernel, args->cstr, args->len, "str_new");
+    args->retval = make_str(task->kernel, args->cstr, args->len,
+                            "str_new_uniq");
 }
 
 extern "C" CDECL rust_str*
+upcall_str_new_uniq(const char *cstr, size_t len) {
+    s_str_new_uniq_args args = { cstr, len, 0 };
+    UPCALL_SWITCH_STACK(&args, upcall_s_str_new_uniq);
+    return args.retval;
+}
+
+// FIXME: this is an old compatibility-name for upcall_str_new_uniq
+// can remove after next snapshot.
+extern "C" CDECL rust_str*
 upcall_str_new(const char *cstr, size_t len) {
-    s_str_new_args args = { cstr, len, 0 };
-    UPCALL_SWITCH_STACK(&args, upcall_s_str_new);
+    s_str_new_uniq_args args = { cstr, len, 0 };
+    UPCALL_SWITCH_STACK(&args, upcall_s_str_new_uniq);
+    return args.retval;
+}
+
+
+
+struct s_str_new_shared_args {
+    const char *cstr;
+    size_t len;
+    rust_opaque_box *retval;
+};
+
+extern "C" CDECL void
+upcall_s_str_new_shared(s_str_new_shared_args *args) {
+    rust_task *task = rust_get_current_task();
+    LOG_UPCALL_ENTRY(task);
+
+    size_t str_fill = args->len + 1;
+    size_t str_alloc = str_fill;
+    args->retval = (rust_opaque_box *)
+        task->kernel->malloc(sizeof(rust_opaque_box) +
+                             vec_size<char>(str_fill),
+                             "str_new_shared");
+    rust_str *str = (rust_str *)box_body(args->retval);
+    str->fill = str_fill;
+    str->alloc = str_alloc;
+    memcpy(&str->data, args->cstr, args->len);
+    str->data[args->len] = '\0';
+}
+
+extern "C" CDECL rust_opaque_box*
+upcall_str_new_shared(const char *cstr, size_t len) {
+    s_str_new_shared_args args = { cstr, len, 0 };
+    UPCALL_SWITCH_STACK(&args, upcall_s_str_new_shared);
     return args.retval;
 }
 

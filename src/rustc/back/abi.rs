@@ -71,6 +71,9 @@ const vec_elt_alloc: int = 1;
 
 const vec_elt_elems: int = 2;
 
+const slice_elt_base: int = 0;
+const slice_elt_len: int = 1;
+
 const worst_case_glue_call_args: int = 7;
 
 const abi_version: uint = 1u;
