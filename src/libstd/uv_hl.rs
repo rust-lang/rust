@@ -112,7 +112,7 @@ unsafe fn run_high_level_loop(loop_ptr: *libc::c_void,
     let async_handle = ptr::addr_of(async);
     // associate the async handle with the loop
     ll::async_init(loop_ptr, async_handle, high_level_wake_up_cb);
-    
+
     // initialize our loop data and store it in the loop
     let data: global_loop_data = {
         async_handle: async_handle,
@@ -256,7 +256,7 @@ crust fn tear_down_close_cb(handle: *ll::uv_async_t) unsafe {
                     handle));
     // TODO: iterate through open handles on the loop and uv_close()
     // them all
-    let data = ll::get_data_for_uv_handle(handle) as *global_loop_data;
+    //let data = ll::get_data_for_uv_handle(handle) as *global_loop_data;
 }
 
 fn high_level_tear_down(data: *global_loop_data) unsafe {
@@ -458,12 +458,11 @@ mod test {
         };
         log(debug, "exiting simple timer cb");
     }
-    #[test]
-    fn test_uv_hl_simple_timer() unsafe {
+
+    fn impl_uv_hl_simple_timer(hl_loop: high_level_loop) unsafe {
         let exit_po = comm::port::<bool>();
         let exit_ch = comm::chan(exit_po);
         let exit_ch_ptr = ptr::addr_of(exit_ch);
-        let hl_loop = get_global_loop();
         let timer_handle = ll::timer_t();
         let timer_ptr = ptr::addr_of(timer_handle);
         interact(hl_loop) {|loop_ptr|
@@ -488,5 +487,12 @@ mod test {
         };
         comm::recv(exit_po);
         log(debug, "test_uv_hl_simple_timer: msg recv on exit_po, done..");
+    }
+    #[test]
+    #[ignore(cfg(target_os = "freebsd"))]
+    fn test_uv_hl_high_level_global_timer() unsafe {
+        let hl_loop = get_global_loop();
+        impl_uv_hl_simple_timer(hl_loop);
+        impl_uv_hl_simple_timer(hl_loop);
     }
 }
