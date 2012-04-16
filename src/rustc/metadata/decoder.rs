@@ -397,18 +397,27 @@ fn item_impl_methods(cdata: cmd, item: ebml::doc, base_tps: uint)
 }
 
 fn get_impls_for_mod(cdata: cmd, m_id: ast::node_id,
-                     name: option<ast::ident>)
+                     name: option<ast::ident>,
+                     get_cdata: fn(ast::crate_num) -> cmd)
     -> @[@middle::resolve::_impl] {
     let data = cdata.data;
     let mod_item = lookup_item(m_id, data);
     let mut result = [];
     ebml::tagged_docs(mod_item, tag_mod_impl) {|doc|
-        let did = translate_def_id(cdata, parse_def_id(ebml::doc_data(doc)));
-        let item = lookup_item(did.node, data), nm = item_name(item);
+        let did = parse_def_id(ebml::doc_data(doc));
+        let local_did = translate_def_id(cdata, did);
+        // The impl may be defined in a different crate. Ask the caller
+        // to give us the metadata
+        let impl_cdata = get_cdata(local_did.crate);
+        let impl_data = impl_cdata.data;
+        let item = lookup_item(local_did.node, impl_data);
+        let nm = item_name(item);
         if alt name { some(n) { n == nm } none { true } } {
             let base_tps = item_ty_param_count(item);
-            result += [@{did: did, ident: nm,
-                         methods: item_impl_methods(cdata, item, base_tps)}];
+            result += [@{
+                did: local_did, ident: nm,
+                methods: item_impl_methods(impl_cdata, item, base_tps)
+            }];
         }
     }
     @result
