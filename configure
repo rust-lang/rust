@@ -294,7 +294,9 @@ opt fast-make 0 "use .gitmodules as timestamp for submodule deps"
 opt manage-submodules 1 "let the build manage the git submodules"
 opt mingw-cross 0 "cross-compile for win32 using mingw"
 opt clang 0 "prefer clang to gcc for building the runtime"
+opt local-rust 0 "use an installed rustc rather than downloading a snapshot"
 valopt prefix "/usr/local" "set installation prefix"
+valopt local-rust-root "/usr/local" "set prefix for local rust binary"
 valopt llvm-root "" "set LLVM root"
 valopt host-triple "${DEFAULT_HOST_TRIPLE}" "LLVM host triple"
 valopt target-triples "${CFG_HOST_TRIPLE}" "LLVM target triples"
@@ -337,7 +339,6 @@ probe CFG_XETEX            xetex
 probe CFG_LUATEX           luatex
 probe CFG_NODE             nodejs node
 
-
 if [ ! -z "$CFG_PANDOC" ]
 then
     PV=$(pandoc --version | awk '/^pandoc/ {print $2}')
@@ -346,6 +347,14 @@ then
 	step_msg "pandoc $PV is too old. disabling"
 	BAD_PANDOC=1
     fi
+fi
+
+if [ ! -z "$CFG_ENABLE_LOCAL_RUST" -a ! -f ${CFG_LOCAL_RUST_ROOT}/bin/rustc ]
+then
+    err "no local rust to use"
+else
+    LRV=`${CFG_LOCAL_RUST_ROOT}/bin/rustc --version`
+    step_msg "using rustc at: ${CFG_LOCAL_RUST_ROOT} with version: " $LRV
 fi
 
 if [ -z "$CFG_ENABLE_CLANG" -a -z "$CFG_GCC" ]
@@ -715,7 +724,6 @@ do
     putvar $CFG_LLVM_BUILD_DIR
     putvar $CFG_LLVM_INST_DIR
 done
-
 
 # Munge any paths that appear in config.mk back to posix-y
 perl -i.bak -p -e 's@ ([a-zA-Z]):[/\\]@ /\1/@go;' \
