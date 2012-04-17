@@ -1975,13 +1975,17 @@ fn universally_quantify_from_sty(fcx: @fn_ctxt,
                                  bound_tys: [ty::t],
                                  sty: ty::sty) -> ty::t {
 
-    let tcx = fcx.tcx();
-    let isr = collect_named_regions_in_tys(tcx, @nil, bound_tys) { |_id|
-        fcx.next_region_var()
-    };
-    let anon_r = fcx.next_region_var();
-    ty::fold_sty_to_ty(fcx.ccx.tcx, sty) {|t|
-        replace_bound_regions(tcx, span, anon_r, isr, t)
+    #debug["universally_quantify_from_sty(bound_tys=%?)",
+           bound_tys.map {|x| fcx.ty_to_str(x) }];
+    indent {||
+        let tcx = fcx.tcx();
+        let isr = collect_named_regions_in_tys(tcx, @nil, bound_tys) { |_id|
+            fcx.next_region_var()
+        };
+        let anon_r = fcx.next_region_var();
+        ty::fold_sty_to_ty(fcx.ccx.tcx, sty) { |t|
+            replace_bound_regions(tcx, span, anon_r, isr, t)
+        }
     }
 }
 
@@ -2000,7 +2004,9 @@ fn universally_quantify_regions(fcx: @fn_ctxt,
 fn universally_quantify_before_call(fcx: @fn_ctxt,
                                     span: span,
                                     ty: ty::t) -> ty::t {
-    if !ty::type_has_regions(ty) { ret ty; }
+
+    #debug["universally_quantify_before_call(ty=%s)",
+           fcx.ty_to_str(ty)];
 
     // This is subtle: we expect `ty` to be a function type, which normally
     // introduce a level of binding.  In this case, we want to process the
@@ -2018,12 +2024,14 @@ fn universally_quantify_before_call(fcx: @fn_ctxt,
     // - Finally, we can use fold_sty_to_ty() and replace_bound_regions()
     //   to replace the bound regions as well as the bound anonymous region.
     //   We have to use fold_sty_to_ty() to ignore the outer fn().
-    alt ty::get(ty).struct {
+    alt structure_of(fcx, span, ty) {
       sty @ ty::ty_fn(fty) {
         let all_tys = fty.inputs.map({|a| a.ty}) + [fty.output];
         universally_quantify_from_sty(fcx, span, all_tys, sty)
       }
-      _ {
+      sty {
+        #debug["not a fn ty: %?", sty];
+
         // if not a function type, we're gonna' report an error
         // at some point, since the user is trying to call this thing
         ty
@@ -2719,44 +2727,43 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         let fty = universally_quantify_before_call(fcx, sp, fty);
         #debug["check_call_or_bind: after universal quant., fty=%s",
                fcx.ty_to_str(fty)];
-        let sty = structure_of(fcx, sp, fty);
+
+        let supplied_arg_count = vec::len(args);
+
         // Grab the argument types
-        let mut arg_tys = alt sty {
-          ty::ty_fn({inputs: arg_tys, _}) { arg_tys }
+        let arg_tys = alt structure_of(fcx, sp, fty) {
+          ty::ty_fn({inputs: arg_tys, output: ret_ty, _}) {
+            let expected_arg_count = vec::len(arg_tys);
+            if expected_arg_count == supplied_arg_count {
+                arg_tys.map { |a| a.ty }
+            } else {
+                fcx.ccx.tcx.sess.span_err(
+                    sp, #fmt["this function takes %u parameter%s but %u \
+                              parameter%s supplied", expected_arg_count,
+                             if expected_arg_count == 1u {
+                                 ""
+                             } else {
+                                 "s"
+                             },
+                             supplied_arg_count,
+                             if supplied_arg_count == 1u {
+                                 " was"
+                             } else {
+                                 "s were"
+                             }]);
+                fcx.next_ty_vars(supplied_arg_count)
+            }
+          }
+
           _ {
+            // I would like to make this span_err, but it's really hard due to
+            // the way that expr_bind() is written.
             fcx.ccx.tcx.sess.span_fatal(sp, "mismatched types: \
                                              expected function or native \
                                              function but found "
-                                        + fcx.ty_to_str(fty))
+                                        + fcx.ty_to_str(fty));
           }
         };
-
-        // Check that the correct number of arguments were supplied.
-        let expected_arg_count = vec::len(arg_tys);
-        let supplied_arg_count = vec::len(args);
-        if expected_arg_count != supplied_arg_count {
-            fcx.ccx.tcx.sess.span_err(
-                sp, #fmt["this function takes %u parameter%s but %u \
-                          parameter%s supplied", expected_arg_count,
-                         if expected_arg_count == 1u {
-                             ""
-                         } else {
-                             "s"
-                         },
-                         supplied_arg_count,
-                         if supplied_arg_count == 1u {
-                             " was"
-                         } else {
-                             "s were"
-                         }]);
-
-            // Just use fresh type variables for the types,
-            // since we don't know them.
-            arg_tys = vec::from_fn(supplied_arg_count) {|_i|
-                {mode: ast::expl(ast::by_ref),
-                 ty: fcx.next_ty_var()}
-            };
-        }
 
         // Check the arguments.
         // We do this in a pretty awful way: first we typecheck any arguments
@@ -2775,7 +2782,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                       _ { false }
                     };
                     if is_block == check_blocks {
-                        let arg_ty = arg_tys[i].ty;
+                        let arg_ty = arg_tys[i];
                         bot |= check_expr_with_unifier(fcx, a, arg_ty) {||
                             demand::assign(fcx, a.span, arg_ty, a);
                         };
