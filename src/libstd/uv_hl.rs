@@ -15,8 +15,10 @@ import ll = uv_ll;
 
 native mod rustrt {
     fn rust_uv_get_kernel_global_chan_ptr() -> *libc::uintptr_t;
-    fn rust_uv_get_kernel_global_async_handle() -> **libc::c_void;
-    fn rust_uv_set_kernel_global_async_handle(handle: *ll::uv_async_t);
+    fn rust_uv_get_kernel_global_async_handle() -> *libc::uintptr_t;
+    fn rust_compare_and_swap_ptr(address: *libc::uintptr_t,
+                                 oldval: libc::uintptr_t,
+                                 newval: libc::uintptr_t) -> bool;
 }
 
 #[doc = "
@@ -75,7 +77,8 @@ fn get_global_loop() -> high_level_loop unsafe {
             outer_global_loop_body(port);
         };
         log(debug, "after priv::chan_from_global_ptr");
-        let handle = get_global_async_handle();
+        let handle = get_global_async_handle_native_representation()
+            as **ll::uv_async_t;
         ret { async_handle: handle, op_chan: chan };
     }
 }
@@ -104,7 +107,7 @@ unsafe fn run_high_level_loop(loop_ptr: *libc::c_void,
                               msg_po: comm::port<high_level_msg>,
                               before_run: fn~(*global_loop_data),
                               before_msg_drain: fn~() -> bool,
-                              before_tear_down: fn~()) {
+                              before_tear_down: fn~(*global_loop_data)) {
     // set up the special async handle we'll use to allow multi-task
     // communication with this loop
     let async = ll::async_t();
@@ -117,7 +120,7 @@ unsafe fn run_high_level_loop(loop_ptr: *libc::c_void,
         async_handle: async_handle,
         mut active: true,
         before_msg_drain: before_msg_drain,
-        before_tear_down: before_tear_down,
+        before_tear_down: gdc_callback(before_tear_down),
         msg_po_ptr: ptr::addr_of(msg_po),
         mut refd_handles: [mut],
         mut unrefd_handles: [mut]
@@ -263,7 +266,11 @@ crust fn tear_down_close_cb(handle: *ll::uv_async_t) unsafe {
 fn high_level_tear_down(data: *global_loop_data) unsafe {
     log(debug, "high_level_tear_down() called, close async_handle");
     // call user-suppled before_tear_down cb
-    (*data).before_tear_down();
+    alt (*data).before_tear_down {
+      gdc_callback(cb) {
+        cb(data);
+      }
+    }
     let async_handle = (*data).async_handle;
     ll::close(async_handle as *libc::c_void, tear_down_close_cb);
 }
@@ -330,19 +337,32 @@ enum high_level_msg {
     tear_down
 }
 
-fn get_global_async_handle() -> **ll::uv_async_t {
-    ret rustrt::rust_uv_get_kernel_global_async_handle() as **ll::uv_async_t;
+unsafe fn get_global_async_handle_native_representation()
+    -> *libc::uintptr_t {
+    ret rustrt::rust_uv_get_kernel_global_async_handle();
 }
 
-fn set_global_async_handle(handle: *ll::uv_async_t) {
-    rustrt::rust_uv_set_kernel_global_async_handle(handle);
+unsafe fn get_global_async_handle() -> *ll::uv_async_t {
+    ret (*get_global_async_handle_native_representation()) as *ll::uv_async_t;
+}
+
+unsafe fn set_global_async_handle(old: *ll::uv_async_t,
+                           new_ptr: *ll::uv_async_t) {
+    rustrt::rust_compare_and_swap_ptr(
+        get_global_async_handle_native_representation(),
+        old as libc::uintptr_t,
+        new_ptr as libc::uintptr_t);
+}
+
+enum global_data_callback {
+    gdc_callback(fn~(*global_loop_data))
 }
 
 type global_loop_data = {
     async_handle: *ll::uv_async_t,
     mut active: bool,
     before_msg_drain: fn~() -> bool,
-    before_tear_down: fn~(),
+    before_tear_down: global_data_callback,
     msg_po_ptr: *comm::port<high_level_msg>,
     mut refd_handles: [mut *libc::c_void],
     mut unrefd_handles: [mut *libc::c_void]
@@ -399,7 +419,8 @@ unsafe fn inner_global_loop_body(weak_exit_po_in: comm::port<()>,
         // before_run
         {|data|
             // set the handle as the global
-            set_global_async_handle((*data).async_handle);
+            set_global_async_handle(0u as *ll::uv_async_t,
+                                    (*data).async_handle);
             // when this is ran, our async_handle is set up, so let's
             // do an async_send with it
             ll::async_send((*data).async_handle);
@@ -422,8 +443,9 @@ unsafe fn inner_global_loop_body(weak_exit_po_in: comm::port<()>,
             }
         },
         // before_tear_down
-        {||
-            set_global_async_handle(0 as *ll::uv_async_t);
+        {|data|
+            set_global_async_handle((*data).async_handle,
+                                    0 as *ll::uv_async_t);
         });
     // supposed to return a bool to indicate to the enclosing loop whether
     // it should continue or not..
