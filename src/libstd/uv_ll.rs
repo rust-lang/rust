@@ -202,7 +202,7 @@ type uv_async_t = {
 };
 
 // 64bit unix size: 128
-// 32bit unix size: ?
+// 32bit unix size: 84
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
@@ -219,16 +219,16 @@ type uv_timer_t_32bit_unix_riders = {
 };
 #[cfg(target_arch="x86")]
 type uv_timer_t_32bit_unix_riders = {
-    a10: *u8, a11: *u8, a12: *u8, a13: *u8
+    a10: *u8, a11: *u8, a12: *u8, a13: *u8,
+    a14: *u8, a15: *u8, a16: *u8
 };
-// win32 size: ?
+// win32 size: 64
 #[cfg(target_os = "win32")]
 type uv_timer_t = {
     fields: uv_handle_fields,
     a00: *u8, a01: *u8, a02: *u8, a03: *u8,
     a04: *u8, a05: *u8, a06: *u8, a07: *u8,
-    a08: *u8, a09: *u8, a10: *u8, a11: *u8,
-    a12: *u8
+    a08: *u8, a09: *u8, a10: *u8, a11: *u8
 };
 
 // unix size: 16
@@ -438,7 +438,9 @@ mod uv_ll_struct_stubgen {
                 a08: 0 as *u8, a09: 0 as *u8,
                 a11: {
                     a10: 0 as *u8, a11: 0 as *u8,
-                    a12: 0 as *u8, a13: 0 as *u8
+                    a12: 0 as *u8, a13: 0 as *u8,
+                    a14: 0 as *u8, a15: 0 as *u8,
+                    a16: 0 as *u8
                 }
             };
         }
@@ -453,8 +455,7 @@ mod uv_ll_struct_stubgen {
             a04: 0 as *u8, a05: 0 as *u8, a06: 0 as *u8,
             a07: 0 as *u8,
             a08: 0 as *u8, a09: 0 as *u8, a10: 0 as *u8,
-            a11: 0 as *u8,
-            a12: 0 as *u8
+            a11: 0 as *u8
         };
     }
     #[cfg(target_os = "linux")]
