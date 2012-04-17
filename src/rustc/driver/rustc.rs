@@ -63,6 +63,8 @@ Options:
                        (default: host triple)
                        (see http://sources.redhat.com/autobook/autobook/
                        autobook_17.html for detail)
+    --debug-rustc      enables different output that helps in debugging rustc,
+                       but may be less clear for normal use
 
     -W <foo>           enable warning <foo>
     -W no-<foo>        disable warning <foo>

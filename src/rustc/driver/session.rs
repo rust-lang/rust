@@ -45,7 +45,8 @@ type options =
      test: bool,
      parse_only: bool,
      no_trans: bool,
-     no_asm_comments: bool};
+     no_asm_comments: bool,
+     debug_rustc: bool};
 
 type crate_metadata = {name: str, data: [u8]};
 

@@ -50,11 +50,13 @@ fn region_to_str(cx: ctxt, region: region) -> str {
       re_scope(node_id) { #fmt["&%s", re_scope_id_to_str(cx, node_id)] }
       re_bound(br) { bound_region_to_str(cx, br) }
       re_free(id, br) {
-        // For debugging, this version is sometimes helpful:
-        //  #fmt["{%d} %s", id, bound_region_to_str(cx, br)]
-
-        // But this version is what the user expects to see:
-        bound_region_to_str(cx, br)
+        if cx.sess.opts.debug_rustc {
+            // For debugging, this version is sometimes helpful:
+            #fmt["{%d} %s", id, bound_region_to_str(cx, br)]
+        } else {
+            // But this version is what the user expects to see:
+            bound_region_to_str(cx, br)
+        }
       }
 
       // These two should not be seen by end-users (very often, anyhow):

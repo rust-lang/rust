@@ -400,6 +400,7 @@ fn build_session_options(match: getopts::match,
     let sysroot_opt = getopts::opt_maybe_str(match, "sysroot");
     let target_opt = getopts::opt_maybe_str(match, "target");
     let mut no_asm_comments = getopts::opt_present(match, "no-asm-comments");
+    let debug_rustc = getopts::opt_present(match, "debug-rustc");
     alt output_type {
       // unless we're emitting huamn-readable assembly, omit comments.
       link::output_type_llvm_assembly | link::output_type_assembly {}
@@ -453,7 +454,8 @@ fn build_session_options(match: getopts::match,
           test: test,
           parse_only: parse_only,
           no_trans: no_trans,
-          no_asm_comments: no_asm_comments};
+          no_asm_comments: no_asm_comments,
+          debug_rustc: debug_rustc};
     ret sopts;
 }
 
@@ -531,7 +533,7 @@ fn opts() -> [getopts::opt] {
          optmulti("cfg"), optflag("test"),
          optflag("lib"), optflag("bin"), optflag("static"), optflag("gc"),
          optflag("no-asm-comments"),
-         optflag("enforce-mut-vars")];
+         optflag("debug-rustc")];
 }
 
 type output_filenames = @{out_filename: str, obj_filename:str};

@@ -148,6 +148,7 @@ fn build_session() -> (session::session, @mut bool) {
         parse_only: false,
         no_trans: false,
         no_asm_comments: false,
+        debug_rustc: false,
     };
 
     let codemap = codemap::new_codemap();
