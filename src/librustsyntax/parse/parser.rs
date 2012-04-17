@@ -146,7 +146,7 @@ fn bad_expr_word_table() -> hashmap<str, ()> {
     let keys = ["alt", "assert", "be", "break", "check", "claim",
                 "class", "const", "cont", "copy", "crust", "do", "else",
                 "enum", "export", "fail", "fn", "for", "if",  "iface",
-                "impl", "import", "let", "log", "loop", "mod", "mut",
+                "impl", "import", "let", "log", "loop", "mod",
                 "mut", "native", "pure", "resource", "ret", "trait",
                 "type", "unchecked", "unsafe", "while", "new"];
     for keys.each {|word|
