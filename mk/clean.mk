@@ -29,9 +29,11 @@ clean-misc:
          -name '*.dylib' -o   \
          -name '*.dll' -o     \
          -name '*.def' -o     \
-         -name '*.bc' -o      \
-         -name '*.dSYM'       \
+         -name '*.bc'         \
          | xargs rm -f
+	$(Q)find rustllvm rt $(CFG_HOST_TRIPLE)\
+         -name '*.dSYM'       \
+         | xargs rm -Rf
 	$(Q)rm -f $(RUNTIME_OBJS) $(RUNTIME_DEF)
 	$(Q)rm -f $(RUSTLLVM_LIB_OBJS) $(RUSTLLVM_OBJS_OBJS) $(RUSTLLVM_DEF)
 	$(Q)rm -Rf $(DOCS)
