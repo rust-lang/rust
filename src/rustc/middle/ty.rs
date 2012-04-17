@@ -2078,8 +2078,8 @@ fn type_err_to_str(cx: ctxt, err: type_err) -> str {
                 ty_constr_to_str(a_constr);
       }
       terr_regions_differ(subregion, superregion) {
-        ret #fmt("references with lifetime %s do not outlive references with \
-                  lifetime %s",
+        ret #fmt("references with lifetime %s do not necessarily \
+                  outlive references with lifetime %s",
                  region_to_str(cx, subregion),
                  region_to_str(cx, superregion));
       }

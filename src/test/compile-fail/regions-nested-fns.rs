@@ -1,5 +1,3 @@
-// xfail-test
-
 fn ignore<T>(t: T) {}
 
 fn nested(x: &x.int) {
@@ -9,13 +7,13 @@ fn nested(x: &x.int) {
     ignore(fn&(z: &z.int) {
         ay = x;
         ay = &y;
-        ay = z; //! ERROR foo
+        ay = z; //! ERROR references with lifetime
     });
 
     ignore(fn&(z: &z.int) -> &z.int {
-        if false { ret x; }  //! ERROR bar
-        if false { ret &y; } //! ERROR bar
-        if false { ret ay; } //! ERROR bar
+        if false { ret x; }  //! ERROR references with lifetime
+        if false { ret &y; } //! ERROR references with lifetime
+        if false { ret ay; } //! ERROR references with lifetime
         ret z;
     });
 }

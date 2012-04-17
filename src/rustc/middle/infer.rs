@@ -1373,23 +1373,28 @@ impl of combine for lub {
                 ok(ty::re_static) // nothing lives longer than static
               }
 
-              (ty::re_var(a_id), ty::re_var(b_id)) {
-                lattice_vars(self, self.infcx().rb,
-                           a, a_id, b_id,
-                           {|x, y| self.regions(x, y) })
+              (ty::re_var(_), _) | (_, ty::re_var(_)) {
+                lattice_rvars(self, a, b)
               }
 
-              (ty::re_var(v_id), r) | (r, ty::re_var(v_id)) {
-                lattice_var_t(self, self.infcx().rb,
-                              v_id, r,
-                              {|x, y| self.regions(x, y) })
-              }
-
-              (f @ ty::re_free(f_id, f_br), ty::re_scope(s_id)) |
-              (ty::re_scope(s_id), f @ ty::re_free(f_id, f_br)) {
-                // for LUB, the scope is within the function and the free
-                // region is always a parameter to the method.
-                ok(f) // NDM--not so for nested functions
+              (f @ ty::re_free(f_id, _), ty::re_scope(s_id)) |
+              (ty::re_scope(s_id), f @ ty::re_free(f_id, _)) {
+                // For LUB, generally the scope is within the fn and
+                // the free region is a parameter to the fn.  In that case,
+                // the free region will always live as long as the fn,
+                // which is longer than the scope.
+                //
+                // However, with nested fns, it can happen that the
+                // scope surrounds the fn itself.  In that case, we do
+                // not know which will live longer---it depends on the
+                // value provided for the free region in any given
+                // call.  And so we must just back off to re_static as
+                // the LUB.
+                let rm = self.infcx().tcx.region_map;
+                alt region::nearest_common_ancestor(rm, f_id, s_id) {
+                  some(r_id) if r_id == f_id { ok(f) }
+                  _ { ok(ty::re_static) }
+                }
               }
 
               (ty::re_scope(a_id), ty::re_scope(b_id)) {
@@ -1399,7 +1404,7 @@ impl of combine for lub {
                 let rm = self.infcx().tcx.region_map;
                 alt region::nearest_common_ancestor(rm, a_id, b_id) {
                   some(r_id) { ok(ty::re_scope(r_id)) }
-                  _ { err(ty::terr_regions_differ(b, a)) }
+                  _ { ok(ty::re_static) }
                 }
               }
 
@@ -1414,7 +1419,7 @@ impl of combine for lub {
                 if a == b {
                     ok(a)
                 } else {
-                    err(ty::terr_regions_differ(b, a))
+                    ok(ty::re_static)
                 }
               }
             }
@@ -1551,24 +1556,26 @@ impl of combine for glb {
                 ok(r)
               }
 
-              (ty::re_var(a_id), ty::re_var(b_id)) {
-                lattice_vars(self, self.infcx().rb,
-                             a, a_id, b_id,
-                             {|x, y| self.regions(x, y) })
+              (ty::re_var(_), _) | (_, ty::re_var(_)) {
+                lattice_rvars(self, a, b)
               }
 
-              (ty::re_var(v_id), r) | (r, ty::re_var(v_id)) {
-                lattice_var_t(self, self.infcx().rb,
-                              v_id, r,
-                              {|x, y| self.regions(x, y) })
-              }
-
-              (f @ ty::re_free(f_id, f_br), ty::re_scope(s_id)) |
-              (ty::re_scope(s_id), f @ ty::re_free(f_id, f_br)) {
-                // for GLB, the scope is within the function and the free
-                // region is always a parameter to the method.  So the GLB
-                // must be the scope.
-                ok(b) // NDM--not so for nested functions
+              (ty::re_free(f_id, _), s @ ty::re_scope(s_id)) |
+              (s @ ty::re_scope(s_id), ty::re_free(f_id, _)) {
+                // For GLB, generally the scope is within the fn and
+                // the free region is a parameter to the fn.  In that case,
+                // the scope is always shorter than the free region.
+                //
+                // However, with nested fns, it can happen that the
+                // scope surrounds the fn itself.  In that case, we do
+                // not know which will live longer---it depends on the
+                // value provided for the free region in any given
+                // call.  And so we cannot give a GLB.
+                let rm = self.infcx().tcx.region_map;
+                alt region::nearest_common_ancestor(rm, f_id, s_id) {
+                  some(r_id) if r_id == f_id { ok(s) }
+                  _ { err(ty::terr_regions_differ(b, a)) }
+                }
               }
 
               (ty::re_scope(a_id), ty::re_scope(b_id)) {
@@ -1701,6 +1708,34 @@ fn lattice_tys<L:lattice_ops combine>(
             super_tys(self, a, b)
           }
         }
+    }
+}
+
+// Pull out some common code from LUB/GLB for handling region vars:
+fn lattice_rvars<L:lattice_ops combine>(
+    self: L, a: ty::region, b: ty::region) -> cres<ty::region> {
+
+    alt (a, b) {
+      (ty::re_var(a_id), ty::re_var(b_id)) {
+        lattice_vars(self, self.infcx().rb,
+                     a, a_id, b_id,
+                     {|x, y| self.regions(x, y) })
+      }
+
+      (ty::re_var(v_id), r) | (r, ty::re_var(v_id)) {
+        lattice_var_t(self, self.infcx().rb,
+                      v_id, r,
+                      {|x, y| self.regions(x, y) })
+      }
+
+      _ {
+        self.infcx().tcx.sess.bug(
+            #fmt["%s: lattice_rvars invoked with a=%s and b=%s, \
+                  neither of which are region variables",
+                 self.tag(),
+                 a.to_str(self.infcx()),
+                 b.to_str(self.infcx())]);
+      }
     }
 }
 
