@@ -31,7 +31,10 @@ try:
         if line.endswith(" \n") or line.endswith("\t\n"):
             report_err("trailing whitespace")
         line_len = len(line)-2 if autocrlf else len(line)-1
-        if line_len > cols:
+
+        # Along long lines if they are part of an expected error message
+        # in a test, which is denoted with "//!":
+        if line_len > cols and "//!" not in line:
             report_err("line longer than %d chars" % cols)
 except UnicodeDecodeError, e:
     report_err("UTF-8 decoding error " + str(e))
