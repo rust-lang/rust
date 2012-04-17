@@ -446,11 +446,7 @@ rust_uv_get_kernel_global_chan_ptr() {
     return result;
 }
 
-extern "C" void**
+extern "C" uintptr_t*
 rust_uv_get_kernel_global_async_handle() {
     return rust_get_current_task()->kernel->get_global_async_handle();
-}
-extern "C" void
-rust_uv_set_kernel_global_async_handle(uv_async_t* handle) {
-    rust_get_current_task()->kernel->set_global_async_handle((void*)handle);
 }
