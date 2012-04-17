@@ -55,7 +55,7 @@ fn get_global_loop() -> high_level_loop unsafe {
     let builder_fn = {||
         let builder = task::builder();
         let opts = {
-            supervise: true,
+            supervise: false,
             notify_chan: none,
             sched:
                 some({mode: task::manual_threads(1u),
