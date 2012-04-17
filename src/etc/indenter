@@ -1,6 +1,8 @@
-#!/usr/bin/perl -w
+#!/usr/bin/perl
+use strict;
+use warnings;
 
-$indent = 0;
+my $indent = 0;
 while (<>) {
     if (/^rust: ">>/) {
         $indent += 1;
@@ -8,10 +10,6 @@ while (<>) {
         $indent -= 1;
     }
 
-    printf "%03d  ", $indent;
-    for ($i = 0; $i < $indent; $i++) {
-        printf("  ");
-    }
-    print;
+    printf "%03d  %s%s", $indent, ("  " x $indent), $_;
 }
 
