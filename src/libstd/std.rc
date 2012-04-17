@@ -28,6 +28,7 @@ mod net;
 mod uv;
 mod uv_ll;
 mod uv_hl;
+mod uv_global_loop;
 
 
 // Utility modules
