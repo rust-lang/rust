@@ -166,8 +166,10 @@ fn ref_handle<T>(hl_loop: high_level_loop, handle: *T) unsafe {
 }
 #[doc="
 "]
-fn unref_handle<T>(hl_loop: high_level_loop, handle: *T) unsafe {
-    send_high_level_msg(hl_loop, auto_unref_handle(handle as *libc::c_void));
+fn unref_handle<T>(hl_loop: high_level_loop, handle: *T,
+                   user_close_cb: *u8) unsafe {
+    send_high_level_msg(hl_loop, auto_unref_handle(handle as *libc::c_void,
+                                                   user_close_cb));
 }
 
 /////////////////////
@@ -232,8 +234,8 @@ crust fn high_level_wake_up_cb(async_handle: *libc::c_void,
                       auto_ref_handle(handle) {
                         high_level_ref(data, handle);
                       }
-                      auto_unref_handle(handle) {
-                        high_level_unref(data, handle, false);
+                      auto_unref_handle(handle, user_close_cb) {
+                        high_level_unref(data, handle, false, user_close_cb);
                       }
                       tear_down {
                         log(debug,"incoming hl_msg: got tear_down");
@@ -277,12 +279,8 @@ unsafe fn high_level_ref(data: *global_loop_data, handle: *libc::c_void) {
     (*data).refd_handles = refd_handles;
 }
 
-crust fn auto_unref_close_cb(handle: *libc::c_void) {
-    log(debug, "closing handle via high_level_unref");
-}
-
 unsafe fn high_level_unref(data: *global_loop_data, handle: *libc::c_void,
-                   manual_unref: bool) {
+                   manual_unref: bool, user_close_cb: *u8) {
     log(debug,"incoming hl_msg: got auto_unref_handle");
     let mut refd_handles = (*data).refd_handles;
     let mut unrefd_handles = (*data).unrefd_handles;
@@ -299,7 +297,7 @@ unsafe fn high_level_unref(data: *global_loop_data, handle: *libc::c_void,
         }
     }
     else {
-        ll::close(handle, auto_unref_close_cb);
+        ll::close(handle, user_close_cb);
         let last_idx = vec::len(refd_handles) - 1u;
         let handle_idx = vec::position_elem(refd_handles, handle);
         alt handle_idx {
@@ -328,7 +326,7 @@ unsafe fn high_level_unref(data: *global_loop_data, handle: *libc::c_void,
 enum high_level_msg {
     interaction (fn~(*libc::c_void)),
     auto_ref_handle (*libc::c_void),
-    auto_unref_handle (*libc::c_void),
+    auto_unref_handle (*libc::c_void, *u8),
     tear_down
 }
 
@@ -384,8 +382,6 @@ unsafe fn outer_global_loop_body(msg_po: comm::port<high_level_msg>) {
     };
 
     ll::loop_delete(loop_ptr);
-    // once we get here, show's over.
-    rustrt::rust_uv_free_kernel_global_async_handle();
 }
 
 unsafe fn inner_global_loop_body(weak_exit_po_in: comm::port<()>,
@@ -437,22 +433,22 @@ unsafe fn inner_global_loop_body(weak_exit_po_in: comm::port<()>,
 #[cfg(test)]
 mod test {
     crust fn simple_timer_close_cb(timer_ptr: *ll::uv_timer_t) unsafe {
-        log(debug, "UNUSED...");
+        log(debug, "user close cb for timer_ptr");
+        let exit_ch_ptr = ll::get_data_for_uv_handle(
+            timer_ptr as *libc::c_void) as *comm::chan<bool>;
+        let exit_ch = *exit_ch_ptr;
+        comm::send(exit_ch, true);
     }
     crust fn simple_timer_cb(timer_ptr: *ll::uv_timer_t,
                              status: libc::c_int) unsafe {
         log(debug, "in simple timer cb");
-        let exit_ch_ptr = ll::get_data_for_uv_handle(
-            timer_ptr as *libc::c_void) as *comm::chan<bool>;
         ll::timer_stop(timer_ptr);
         let hl_loop = get_global_loop();
         interact(hl_loop) {|loop_ptr|
             log(debug, "closing timer");
             //ll::close(timer_ptr as *libc::c_void, simple_timer_close_cb);
-            unref_handle(hl_loop, timer_ptr);
+            unref_handle(hl_loop, timer_ptr, simple_timer_close_cb);
             log(debug, "about to deref exit_ch_ptr");
-            let exit_ch = *exit_ch_ptr;
-            comm::send(exit_ch, true);
             log(debug, "after msg sent on deref'd exit_ch");
         };
         log(debug, "exiting simple timer cb");
