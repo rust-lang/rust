@@ -17,7 +17,6 @@ native mod rustrt {
     fn rust_uv_get_kernel_global_chan_ptr() -> *libc::uintptr_t;
     fn rust_uv_get_kernel_global_async_handle() -> **libc::c_void;
     fn rust_uv_set_kernel_global_async_handle(handle: *ll::uv_async_t);
-    fn rust_uv_free_kernel_global_async_handle();
 }
 
 #[doc = "
