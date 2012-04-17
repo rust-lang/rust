@@ -34,6 +34,9 @@ export ll;
 import hl = uv_hl;
 export hl;
 
+import global_loop = uv_global_loop;
+export global_loop;
+
 #[nolink]
 native mod rustrt {
     fn rust_uv_loop_new() -> *libc::c_void;
