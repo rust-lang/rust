@@ -75,6 +75,7 @@ class rust_kernel {
 
     // Used to communicate with the process-side, global libuv loop
     uintptr_t global_loop_chan;
+    void* async_handle_stub;
     void** global_async_handle;
 
 public:

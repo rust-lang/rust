@@ -454,7 +454,3 @@ extern "C" void
 rust_uv_set_kernel_global_async_handle(uv_async_t* handle) {
     rust_get_current_task()->kernel->set_global_async_handle((void*)handle);
 }
-extern "C" void
-rust_uv_free_kernel_global_async_handle() {
-    free((void*)rust_get_current_task()->kernel->get_global_async_handle());
-}
