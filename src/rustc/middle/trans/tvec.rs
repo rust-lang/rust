@@ -145,6 +145,40 @@ fn trans_vstore(bcx: block, e: @ast::expr,
     }
 }
 
+fn get_base_and_len(cx: block, v: ValueRef, e_ty: ty::t)
+    -> (ValueRef, ValueRef) {
+
+    let tcx = cx.ccx().tcx;
+    let vec_ty = ty::type_autoderef(tcx, e_ty);
+    let unit_ty = ty::sequence_element_type(tcx, vec_ty);
+    let vstore = alt ty::get(vec_ty).struct {
+      ty::ty_estr(vst) | ty::ty_evec(_, vst) { vst }
+      _ { ty::vstore_uniq }
+    };
+
+    alt vstore {
+      ty::vstore_fixed(n) {
+        let base = GEPi(cx, v, [0, 0]);
+        let len = C_uint(cx.ccx(), n);
+        (base, len)
+      }
+      ty::vstore_slice(_) {
+        let base = Load(cx, GEPi(cx, v, [0, abi::slice_elt_base]));
+        let len = Load(cx, GEPi(cx, v, [0, abi::slice_elt_len]));
+        (base, len)
+      }
+      ty::vstore_uniq {
+        let base = tvec::get_dataptr(cx, v,
+                                     type_of::type_of(cx.ccx(), unit_ty));
+        let len = tvec::get_fill(cx, v);
+        (base, len)
+      }
+      ty::vstore_box {
+        cx.ccx().sess.unimpl("unhandled tvec::get_base_and_len");
+      }
+    }
+}
+
 fn trans_estr(bcx: block, s: str, vstore: ast::vstore,
               dest: dest) -> block {
     let _icx = bcx.insn_ctxt("tvec::trans_estr");

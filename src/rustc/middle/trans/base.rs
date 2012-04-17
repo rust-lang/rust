@@ -2257,6 +2257,7 @@ fn trans_rec_field_inner(bcx: block, val: ValueRef, ty: ty::t,
     ret {bcx: bcx, val: val, kind: owned};
 }
 
+
 fn trans_index(cx: block, ex: @ast::expr, base: @ast::expr,
                idx: @ast::expr) -> lval_result {
     let _icx = cx.insn_ctxt("trans_index");
@@ -2286,43 +2287,17 @@ fn trans_index(cx: block, ex: @ast::expr, base: @ast::expr,
     let scaled_ix = Mul(bcx, ix_val, unit_sz);
     maybe_name_value(cx.ccx(), scaled_ix, "scaled_ix");
 
-    let (lim,  body) = alt ty::get(base_ty).struct {
-      ty::ty_estr(ty::vstore_fixed(n)) |
-      ty::ty_evec(_, ty::vstore_fixed(n)) {
-        // FIXME: support static bounds-check elimination
-        // and/or error checking here.
-        let lim = C_uint(bcx.ccx(), n);
-        let body = GEPi(bcx, v, [0, 0]);
-        (lim, body)
-      }
+    let (base, len) = tvec::get_base_and_len(bcx, v, base_ty);
 
-      ty::ty_estr(ty::vstore_slice(_)) |
-      ty::ty_evec(_, ty::vstore_slice(_)) {
-        let body = Load(bcx, GEPi(bcx, v, [0, abi::slice_elt_base]));
-        let lim = Load(bcx, GEPi(bcx, v, [0, abi::slice_elt_len]));
-        (lim, body)
-      }
+    #debug("trans_index: base %s", val_str(bcx.ccx().tn, base));
+    #debug("trans_index: len %s", val_str(bcx.ccx().tn, len));
 
-      ty::ty_estr(ty::vstore_box) | ty::ty_evec(_, ty::vstore_box) {
-        bcx.sess().unimpl(#fmt("unsupported evec/estr type trans_index"));
-      }
-
-      _ {
-        let lim = tvec::get_fill(bcx, v);
-        let body = tvec::get_dataptr(bcx, v, type_of(ccx, unit_ty));
-        (lim, body)
-      }
-    };
-
-    #debug("trans_index: lim %s", val_str(bcx.ccx().tn, lim));
-    #debug("trans_index: body %s", val_str(bcx.ccx().tn, body));
-
-    let bounds_check = ICmp(bcx, lib::llvm::IntUGE, scaled_ix, lim);
+    let bounds_check = ICmp(bcx, lib::llvm::IntUGE, scaled_ix, len);
     let bcx = with_cond(bcx, bounds_check) {|bcx|
         // fail: bad bounds check.
         trans_fail(bcx, some(ex.span), "bounds check")
     };
-    let elt = InBoundsGEP(bcx, body, [ix_val]);
+    let elt = InBoundsGEP(bcx, base, [ix_val]);
     ret lval_owned(bcx, PointerCast(bcx, elt, T_ptr(llunitty)));
 }
 
@@ -2543,6 +2518,7 @@ fn trans_loop_body(bcx: block, e: @ast::expr, ret_flag: option<ValueRef>,
 fn trans_arg_expr(cx: block, arg: ty::arg, lldestty: TypeRef, e: @ast::expr,
                   &temp_cleanups: [ValueRef], ret_flag: option<ValueRef>)
     -> result {
+    #debug("+++ trans_arg_expr on %s", expr_to_str(e));
     let _icx = cx.insn_ctxt("trans_arg_expr");
     let ccx = cx.ccx();
     let e_ty = expr_ty(cx, e);
@@ -2563,6 +2539,7 @@ fn trans_arg_expr(cx: block, arg: ty::arg, lldestty: TypeRef, e: @ast::expr,
     let lv = adapt_borrowed_value(lv, arg, e);
     let mut bcx = lv.bcx;
     let mut val = lv.val;
+    #debug("   adapted value: %s", val_str(bcx.ccx().tn, val));
     let arg_mode = ty::resolved_mode(ccx.tcx, arg.mode);
     if is_bot {
         // For values of type _|_, we generate an
@@ -2572,50 +2549,52 @@ fn trans_arg_expr(cx: block, arg: ty::arg, lldestty: TypeRef, e: @ast::expr,
         val = llvm::LLVMGetUndef(lldestty);
     } else if arg_mode == ast::by_ref || arg_mode == ast::by_val {
         let mut copied = false;
-        let imm = ty::type_is_immediate(e_ty);
+        let imm = ty::type_is_immediate(arg.ty);
         if arg_mode == ast::by_ref && lv.kind != owned && imm {
             val = do_spill_noroot(bcx, val);
             copied = true;
         }
         if ccx.maps.copy_map.contains_key(e.id) && lv.kind != temporary {
             if !copied {
-                let alloc = alloc_ty(bcx, e_ty);
+                let alloc = alloc_ty(bcx, arg.ty);
                 bcx = copy_val(bcx, INIT, alloc,
-                               load_if_immediate(bcx, val, e_ty), e_ty);
+                               load_if_immediate(bcx, val, arg.ty), arg.ty);
                 val = alloc;
-            } else { bcx = take_ty(bcx, val, e_ty); }
-            add_clean(bcx, val, e_ty);
+            } else { bcx = take_ty(bcx, val, arg.ty); }
+            add_clean(bcx, val, arg.ty);
         }
         if arg_mode == ast::by_val && (lv.kind == owned || !imm) {
             val = Load(bcx, val);
         }
     } else if arg_mode == ast::by_copy || arg_mode == ast::by_move {
-        let alloc = alloc_ty(bcx, e_ty);
+        let alloc = alloc_ty(bcx, arg.ty);
         let move_out = arg_mode == ast::by_move ||
             ccx.maps.last_uses.contains_key(e.id);
         if lv.kind == temporary { revoke_clean(bcx, val); }
-        if lv.kind == owned || !ty::type_is_immediate(e_ty) {
-            memmove_ty(bcx, alloc, val, e_ty);
-            if move_out && ty::type_needs_drop(ccx.tcx, e_ty) {
-                bcx = zero_alloca(bcx, val, e_ty);
+        if lv.kind == owned || !ty::type_is_immediate(arg.ty) {
+            memmove_ty(bcx, alloc, val, arg.ty);
+            if move_out && ty::type_needs_drop(ccx.tcx, arg.ty) {
+                bcx = zero_alloca(bcx, val, arg.ty);
             }
         } else { Store(bcx, val, alloc); }
         val = alloc;
         if lv.kind != temporary && !move_out {
-            bcx = take_ty(bcx, val, e_ty);
+            bcx = take_ty(bcx, val, arg.ty);
         }
 
         // In the event that failure occurs before the call actually
         // happens, have to cleanup this copy:
-        add_clean_temp_mem(bcx, val, e_ty);
+        add_clean_temp_mem(bcx, val, arg.ty);
         temp_cleanups += [val];
-    } else if ty::type_is_immediate(e_ty) && lv.kind != owned {
-        val = do_spill(bcx, val, e_ty);
+    } else if ty::type_is_immediate(arg.ty) && lv.kind != owned {
+        val = do_spill(bcx, val, arg.ty);
     }
 
     if !is_bot && arg.ty != e_ty || ty::type_has_params(arg.ty) {
+        #debug("    casting from %s", val_str(bcx.ccx().tn, val));
         val = PointerCast(bcx, val, lldestty);
     }
+    #debug("--- trans_arg_expr passing %s", val_str(bcx.ccx().tn, val));
     ret rslt(bcx, val);
 }
 
@@ -2642,25 +2621,17 @@ fn adapt_borrowed_value(lv: lval_result, _arg: ty::arg,
         ret lv; // no change needed at runtime (I think)
       }
 
-      ty::ty_estr(ty::vstore_box) |
-      ty::ty_evec(_, ty::vstore_box) {
-        bcx.tcx().sess.span_unimpl(
-            e.span, #fmt["borrowing a value of type %s",
-                         ty_to_str(bcx.tcx(), e_ty)]);
-      }
-
-      ty::ty_estr(ty::vstore_uniq) |
-      ty::ty_evec(_, ty::vstore_uniq) {
-        bcx.tcx().sess.span_unimpl(
-            e.span, #fmt["borrowing a value of type %s",
-                         ty_to_str(bcx.tcx(), e_ty)]);
-      }
-
-      ty::ty_estr(ty::vstore_fixed(_)) |
-      ty::ty_evec(_, ty::vstore_fixed(_)) {
-        bcx.tcx().sess.span_unimpl(
-            e.span, #fmt["borrowing a value of type %s",
-                         ty_to_str(bcx.tcx(), e_ty)]);
+      ty::ty_str | ty::ty_vec(_) |
+      ty::ty_estr(_) |
+      ty::ty_evec(_, _) {
+        let ccx = bcx.ccx();
+        let unit_ty = ty::sequence_element_type(ccx.tcx, e_ty);
+        let llunit_ty = type_of(ccx, unit_ty);
+        let (base, len) = tvec::get_base_and_len(bcx, lv.val, e_ty);
+        let p = alloca(bcx, T_struct([T_ptr(llunit_ty), ccx.int_type]));
+        Store(bcx, base, GEPi(bcx, p, [0, abi::slice_elt_base]));
+        Store(bcx, len, GEPi(bcx, p, [0, abi::slice_elt_len]));
+        ret lval_temp(bcx, p);
       }
 
       _ {

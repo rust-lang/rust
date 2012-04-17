@@ -810,10 +810,27 @@ impl assignment for infer_ctxt {
                 let nr_b = ty::mk_uniq(self.tcx, mt_b);
                 self.crosspolinate(a_node_id, a, nr_b, r_b)
               }
+              (ty::ty_estr(vs_a),
+               ty::ty_estr(ty::vstore_slice(r_b)))
+              if is_borrowable(vs_a) {
+                let nr_b = ty::mk_estr(self.tcx, vs_a);
+                self.crosspolinate(a_node_id, a, nr_b, r_b)
+              }
+              (ty::ty_str,
+               ty::ty_estr(ty::vstore_slice(r_b))) {
+                let nr_b = ty::mk_str(self.tcx);
+                self.crosspolinate(a_node_id, a, nr_b, r_b)
+              }
+
               (ty::ty_evec(mt_a, vs_a),
                ty::ty_evec(mt_b, ty::vstore_slice(r_b)))
               if is_borrowable(vs_a) {
                 let nr_b = ty::mk_evec(self.tcx, mt_b, vs_a);
+                self.crosspolinate(a_node_id, a, nr_b, r_b)
+              }
+              (ty::ty_vec(mt_a),
+               ty::ty_evec(mt_b, ty::vstore_slice(r_b))) {
+                let nr_b = ty::mk_vec(self.tcx, mt_b);
                 self.crosspolinate(a_node_id, a, nr_b, r_b)
               }
               _ {
