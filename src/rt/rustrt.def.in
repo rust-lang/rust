@@ -139,7 +139,6 @@ rust_uv_get_len_from_buf
 rust_uv_get_kernel_global_chan_ptr
 rust_uv_get_kernel_global_async_handle
 rust_uv_set_kernel_global_async_handle
-rust_uv_free_kernel_global_async_handle
 rust_dbg_lock_create
 rust_dbg_lock_destroy
 rust_dbg_lock_lock
