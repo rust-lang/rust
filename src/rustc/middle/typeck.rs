@@ -376,7 +376,8 @@ impl of region_scope for @fn_ctxt {
 }
 
 enum anon_rscope = {anon: ty::region, base: region_scope};
-fn in_anon_rscope<RS: region_scope>(self: RS, r: ty::region) -> @anon_rscope {
+fn in_anon_rscope<RS: region_scope copy>(self: RS, r: ty::region)
+    -> @anon_rscope {
     @anon_rscope({anon: r, base: self as region_scope})
 }
 impl of region_scope for @anon_rscope {
@@ -395,7 +396,7 @@ impl of region_scope for self_rscope {
 }
 
 enum binding_rscope = {base: region_scope};
-fn in_binding_rscope<RS: region_scope>(self: RS) -> @binding_rscope {
+fn in_binding_rscope<RS: region_scope copy>(self: RS) -> @binding_rscope {
     let base = self as region_scope;
     @binding_rscope({base: base})
 }
@@ -410,7 +411,7 @@ impl of region_scope for @binding_rscope {
     }
 }
 
-fn ast_region_to_region<AC: ast_conv, RS: region_scope>(
+fn ast_region_to_region<AC: ast_conv, RS: region_scope copy>(
     self: AC, rscope: RS, span: span, a_r: ast::region) -> ty::region {
 
     alt a_r.node {
@@ -437,16 +438,16 @@ fn ast_region_to_region<AC: ast_conv, RS: region_scope>(
 // Parses the programmer's textual representation of a type into our
 // internal notion of a type. `getter` is a function that returns the type
 // corresponding to a definition ID:
-fn ast_ty_to_ty<AC: ast_conv, RS: region_scope>(
+fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy>(
     self: AC, rscope: RS, &&ast_ty: @ast::ty) -> ty::t {
 
-    fn ast_mt_to_mt<AC: ast_conv, RS: region_scope>(
+    fn ast_mt_to_mt<AC: ast_conv, RS: region_scope copy>(
         self: AC, rscope: RS, mt: ast::mt) -> ty::mt {
 
         ret {ty: ast_ty_to_ty(self, rscope, mt.ty), mutbl: mt.mutbl};
     }
 
-    fn instantiate<AC: ast_conv, RS: region_scope>(
+    fn instantiate<AC: ast_conv, RS: region_scope copy>(
         self: AC, rscope: RS, sp: span, id: ast::def_id,
         path_id: ast::node_id, args: [@ast::ty]) -> ty::t {
 
@@ -478,7 +479,7 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope>(
         ret ty;
     }
 
-    fn mk_vstore<AC: ast_conv, RS: region_scope>(
+    fn mk_vstore<AC: ast_conv, RS: region_scope copy>(
         self: AC, rscope: RS, a_seq_ty: @ast::ty, vst: ty::vstore) -> ty::t {
 
         let tcx = self.tcx();
@@ -819,7 +820,7 @@ fn replace_bound_regions(
     }
 }
 
-fn ty_of_arg<AC: ast_conv, RS: region_scope>(
+fn ty_of_arg<AC: ast_conv, RS: region_scope copy>(
     self: AC, rscope: RS, a: ast::arg) -> ty::arg {
 
     fn arg_mode(tcx: ty::ctxt, m: ast::mode, ty: ty::t) -> ast::mode {
@@ -849,7 +850,7 @@ fn ty_of_arg<AC: ast_conv, RS: region_scope>(
     let mode = arg_mode(self.tcx(), a.mode, ty);
     {mode: mode, ty: ty}
 }
-fn ty_of_fn_decl<AC: ast_conv, RS: region_scope>(
+fn ty_of_fn_decl<AC: ast_conv, RS: region_scope copy>(
     self: AC, rscope: RS,
     proto: ast::proto,
     decl: ast::fn_decl) -> ty::fn_ty {
