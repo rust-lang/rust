@@ -1,7 +1,7 @@
 import result::result;
 import either::{either, left, right};
 import std::map::{hashmap, str_hash};
-import token::can_begin_expr;
+import token::{can_begin_expr, is_ident, is_plain_ident};
 import codemap::{span,fss_none};
 import util::interner;
 import ast::{node_id, spanned};
@@ -160,24 +160,7 @@ fn new_parser(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader,
       mut restriction: UNRESTRICTED,
       reader: rdr,
       binop_precs: binop_prec_table(),
-      bad_expr_words: bad_expr_word_table()}
-}
-
-// These are the words that shouldn't be allowed as value identifiers,
-// because, if used at the start of a line, they will cause the line to be
-// interpreted as a specific kind of statement, which would be confusing.
-fn bad_expr_word_table() -> hashmap<str, ()> {
-    let words = str_hash();
-    let keys = ["alt", "assert", "be", "break", "check", "claim",
-                "class", "const", "cont", "copy", "crust", "do", "else",
-                "enum", "export", "fail", "fn", "for", "if",  "iface",
-                "impl", "import", "let", "log", "loop", "mod",
-                "mut", "native", "pure", "resource", "ret", "trait",
-                "type", "unchecked", "unsafe", "while", "new"];
-    for keys.each {|word|
-        words.insert(word, ());
-    }
-    words
+      bad_expr_words: token::bad_expr_word_table()}
 }
 
 fn token_to_str(reader: reader, token: token::token) -> str {
@@ -276,21 +259,19 @@ fn expect_word(p: parser, word: str) {
 }
 
 fn check_bad_word(p: parser) {
-    alt p.token {
-      token::IDENT(sid, false) {
-        let w = p.get_str(sid);
-        if p.bad_expr_words.contains_key(w) {
-            p.fatal("found " + w + " in expression position");
-        }
-      }
-      _ { }
+    if token::is_bad_expr_word(p.token, p.bad_expr_words,
+                               *p.reader.interner) {
+        let w = token_to_str(p.reader, p.token);
+        p.fatal("found " + w + " in expression position");
     }
 }
 
 fn parse_ty_fn(p: parser) -> ast::fn_decl {
     fn parse_fn_input_ty(p: parser) -> ast::arg {
         let mode = parse_arg_mode(p);
-        let name = if is_plain_ident(p) && p.look_ahead(1u) == token::COLON {
+        let name = if is_plain_ident(p.token)
+            && p.look_ahead(1u) == token::COLON {
+
             let name = parse_value_ident(p);
             p.bump();
             name
@@ -783,15 +764,6 @@ fn parse_lit(p: parser) -> ast::lit {
     ret {node: lit, span: ast_util::mk_sp(lo, p.last_span.hi)};
 }
 
-fn is_ident(t: token::token) -> bool {
-    alt t { token::IDENT(_, _) { ret true; } _ { } }
-    ret false;
-}
-
-fn is_plain_ident(p: parser) -> bool {
-    ret alt p.token { token::IDENT(_, false) { true } _ { false } };
-}
-
 fn parse_path(p: parser) -> @ast::path {
     let lo = p.span.lo;
     let global = eat(p, token::MOD_SEP);
@@ -858,10 +830,6 @@ fn mk_mac_expr(p: parser, lo: uint, hi: uint, m: ast::mac_) -> @ast::expr {
           span: ast_util::mk_sp(lo, hi)};
 }
 
-fn is_bar(t: token::token) -> bool {
-    alt t { token::BINOP(token::OR) | token::OROR { true } _ { false } }
-}
-
 fn mk_lit_u32(p: parser, i: u32) -> @ast::expr {
     let span = p.span;
     let lv_lit = @{node: ast::lit_uint(i as u64, ast::ty_u32),
@@ -925,7 +893,7 @@ fn parse_bottom_expr(p: parser) -> pexpr {
     } else if p.token == token::LBRACE {
         p.bump();
         if is_word(p, "mut") ||
-               is_plain_ident(p) && p.look_ahead(1u) == token::COLON {
+               is_plain_ident(p.token) && p.look_ahead(1u) == token::COLON {
             let mut fields = [parse_field(p, token::COLON)];
             let mut base = none;
             while p.token != token::RBRACE {
@@ -940,7 +908,7 @@ fn parse_bottom_expr(p: parser) -> pexpr {
             hi = p.span.hi;
             expect(p, token::RBRACE);
             ex = ast::expr_rec(fields, base);
-        } else if is_bar(p.token) {
+        } else if token::is_bar(p.token) {
             ret pexpr(parse_fn_block_expr(p));
         } else {
             let blk = parse_block_tail(p, lo, ast::default_blk);
@@ -1211,7 +1179,8 @@ fn parse_dot_or_call_expr_with(p: parser, e0: pexpr) -> pexpr {
           }
 
           // expr {|| ... }
-          token::LBRACE if is_bar(p.look_ahead(1u)) && permits_call(p) {
+          token::LBRACE if (token::is_bar(p.look_ahead(1u))
+                            && permits_call(p)) {
             p.bump();
             let blk = parse_fn_block_expr(p);
             alt e.node {
@@ -1683,7 +1652,7 @@ fn parse_pat(p: parser) -> @ast::pat {
                 hi = val.span.hi;
                 pat = ast::pat_lit(val);
             }
-        } else if is_plain_ident(p) &&
+        } else if is_plain_ident(p.token) &&
             alt p.look_ahead(1u) {
               token::LPAREN | token::LBRACKET | token::LT { false }
               _ { true }
@@ -1751,7 +1720,7 @@ fn parse_instance_var(p:parser, pr: ast::privacy) -> @ast::class_member {
     if eat_word(p, "mut") || eat_word(p, "mutable") {
         is_mutbl = ast::class_mutable;
     }
-    if !is_plain_ident(p) {
+    if !is_plain_ident(p.token) {
         p.fatal("expecting ident");
     }
     let name = parse_ident(p);

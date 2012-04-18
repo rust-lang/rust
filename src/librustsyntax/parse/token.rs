@@ -1,6 +1,7 @@
 
 import util::interner;
 import util::interner::interner;
+import std::map::{hashmap, str_hash};
 
 type str_num = uint;
 
@@ -190,6 +191,49 @@ pure fn can_begin_expr(t: token) -> bool {
       MOD_SEP { true }
       _ { false }
     }
+}
+
+fn is_ident(t: token::token) -> bool {
+    alt t { token::IDENT(_, _) { ret true; } _ { } }
+    ret false;
+}
+
+fn is_plain_ident(t: token::token) -> bool {
+    ret alt t { token::IDENT(_, false) { true } _ { false } };
+}
+
+fn is_bar(t: token::token) -> bool {
+    alt t { token::BINOP(token::OR) | token::OROR { true } _ { false } }
+}
+
+fn is_bad_expr_word(t: token,
+                    bad_expr_words: hashmap<str, ()>,
+                    in: interner<str>) -> bool {
+    alt t {
+      token::IDENT(_, false) {
+        bad_expr_words.contains_key(to_str(in, t))
+      }
+      _ { false }
+    }
+}
+
+#[doc = "
+These are the words that shouldn't be allowed as value identifiers,
+because, if used at the start of a line, they will cause the line to be
+interpreted as a specific kind of statement, which would be confusing.
+"]
+fn bad_expr_word_table() -> hashmap<str, ()> {
+    let words = str_hash();
+    let keys = ["alt", "assert", "be", "break", "check", "claim",
+                "class", "const", "cont", "copy", "crust", "do", "else",
+                "enum", "export", "fail", "fn", "for", "if",  "iface",
+                "impl", "import", "let", "log", "loop", "mod",
+                "mut", "native", "pure", "resource", "ret", "trait",
+                "type", "unchecked", "unsafe", "while", "new"];
+    for keys.each {|word|
+        words.insert(word, ());
+    }
+    words
 }
 
 // Local Variables:
