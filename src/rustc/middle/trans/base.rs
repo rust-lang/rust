@@ -2757,8 +2757,8 @@ fn trans_call_inner(in_cx: block, fn_expr_ty: ty::t, ret_ty: ty::t,
         let mut bcx = f_res.bcx;
         let ccx = cx.ccx();
         let ret_flag = if ret_in_loop {
-            let flag = alloca(in_cx, T_bool());
-            Store(cx, C_bool(false), flag);
+            let flag = alloca(bcx, T_bool());
+            Store(bcx, C_bool(false), flag);
             some(flag)
         } else { none };
 
