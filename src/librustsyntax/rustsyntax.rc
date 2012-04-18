@@ -26,12 +26,16 @@ mod parse {
     export parser;
     export lexer;
     export comments;
+    export prec;
 
     mod eval;
     mod lexer;
     mod parser;
     mod token;
     mod comments;
+
+    #[doc = "Functions dealing with operator precedence"]
+    mod prec;
 }
 
 mod print {

@@ -934,7 +934,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
       }
       ast::expr_unary(op, expr) {
         word(s.s, ast_util::unop_to_str(op));
-        print_op_maybe_parens(s, expr, parse::parser::unop_prec);
+        print_op_maybe_parens(s, expr, parse::prec::unop_prec);
       }
       ast::expr_addr_of(m, expr) {
         word(s.s, "&");
@@ -943,7 +943,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
       }
       ast::expr_lit(lit) { print_literal(s, lit); }
       ast::expr_cast(expr, ty) {
-        print_op_maybe_parens(s, expr, parse::parser::as_prec);
+        print_op_maybe_parens(s, expr, parse::prec::as_prec);
         space(s.s);
         word_space(s, "as");
         print_type(s, ty);
@@ -1488,7 +1488,7 @@ fn print_view_item(s: ps, item: @ast::view_item) {
 // FIXME: The fact that this builds up the table anew for every call is
 // not good. Eventually, table should be a const.
 fn operator_prec(op: ast::binop) -> int {
-    for vec::each(*parse::parser::prec_table()) {|spec|
+    for vec::each(*parse::prec::binop_prec_table()) {|spec|
         if spec.op == op { ret spec.prec; }
     }
     core::unreachable();
@@ -1497,7 +1497,7 @@ fn operator_prec(op: ast::binop) -> int {
 fn need_parens(expr: @ast::expr, outer_prec: int) -> bool {
     alt expr.node {
       ast::expr_binary(op, _, _) { operator_prec(op) < outer_prec }
-      ast::expr_cast(_, _) { parse::parser::as_prec < outer_prec }
+      ast::expr_cast(_, _) { parse::prec::as_prec < outer_prec }
       // This may be too conservative in some cases
       ast::expr_assign(_, _) { true }
       ast::expr_move(_, _) { true }

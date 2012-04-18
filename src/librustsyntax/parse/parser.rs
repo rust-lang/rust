@@ -7,8 +7,8 @@ import util::interner;
 import ast::{node_id, spanned};
 import ast_util::{mk_sp, ident_to_path};
 import lexer::reader;
+import prec::{op_spec, binop_prec_table, as_prec};
 
-export as_prec;
 export expr_requires_semi_to_be_stmt;
 export file_type;
 export mk_item;
@@ -31,9 +31,7 @@ export parse_pat;
 export parse_sess;
 export parse_stmt;
 export parse_ty;
-export prec_table;
 export stmt_ends_with_semi;
-export unop_prec;
 
 enum restriction {
     UNRESTRICTED,
@@ -71,7 +69,7 @@ type parser = @{
     mut buffer: [{tok: token::token, span: span}],
     mut restriction: restriction,
     reader: reader,
-    precs: @[op_spec],
+    binop_precs: @[op_spec],
     bad_expr_words: hashmap<str, ()>
 };
 
@@ -161,7 +159,7 @@ fn new_parser(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader,
       mut buffer: [],
       mut restriction: UNRESTRICTED,
       reader: rdr,
-      precs: prec_table(),
+      binop_precs: binop_prec_table(),
       bad_expr_words: bad_expr_word_table()}
 }
 
@@ -1301,40 +1299,10 @@ fn parse_prefix_expr(p: parser) -> pexpr {
     ret mk_pexpr(p, lo, hi, ex);
 }
 
-type op_spec = {tok: token::token, op: ast::binop, prec: int};
-
-
-// FIXME make this a const, don't store it in parser state
-fn prec_table() -> @[op_spec] {
-    ret @[{tok: token::BINOP(token::STAR), op: ast::mul, prec: 12},
-          {tok: token::BINOP(token::SLASH), op: ast::div, prec: 12},
-          {tok: token::BINOP(token::PERCENT), op: ast::rem, prec: 12},
-          // 'as' sits between here with 11
-          {tok: token::BINOP(token::PLUS), op: ast::add, prec: 10},
-          {tok: token::BINOP(token::MINUS), op: ast::subtract, prec: 10},
-          {tok: token::BINOP(token::LSL), op: ast::lsl, prec: 9},
-          {tok: token::BINOP(token::LSR), op: ast::lsr, prec: 9},
-          {tok: token::BINOP(token::ASR), op: ast::asr, prec: 9},
-          {tok: token::BINOP(token::AND), op: ast::bitand, prec: 8},
-          {tok: token::BINOP(token::CARET), op: ast::bitxor, prec: 7},
-          {tok: token::BINOP(token::OR), op: ast::bitor, prec: 6},
-          {tok: token::LT, op: ast::lt, prec: 4},
-          {tok: token::LE, op: ast::le, prec: 4},
-          {tok: token::GE, op: ast::ge, prec: 4},
-          {tok: token::GT, op: ast::gt, prec: 4},
-          {tok: token::EQEQ, op: ast::eq, prec: 3},
-          {tok: token::NE, op: ast::ne, prec: 3},
-          {tok: token::ANDAND, op: ast::and, prec: 2},
-          {tok: token::OROR, op: ast::or, prec: 1}];
-}
 
 fn parse_binops(p: parser) -> @ast::expr {
     ret parse_more_binops(p, parse_prefix_expr(p), 0);
 }
-
-const unop_prec: int = 100;
-
-const as_prec: int = 11;
 
 fn parse_more_binops(p: parser, plhs: pexpr, min_prec: int) ->
    @ast::expr {
@@ -1343,7 +1311,7 @@ fn parse_more_binops(p: parser, plhs: pexpr, min_prec: int) ->
     let peeked = p.token;
     if peeked == token::BINOP(token::OR) &&
        p.restriction == RESTRICT_NO_BAR_OP { ret lhs; }
-    for vec::each(*p.precs) {|cur|
+    for vec::each(*p.binop_precs) {|cur|
         if cur.prec > min_prec && cur.tok == peeked {
             p.bump();
             let expr = parse_prefix_expr(p);
