@@ -27,6 +27,7 @@ mod parse {
     export lexer;
     export comments;
     export prec;
+    export classify;
 
     mod eval;
     mod lexer;
@@ -36,6 +37,9 @@ mod parse {
 
     #[doc = "Functions dealing with operator precedence"]
     mod prec;
+
+    #[doc = "Routines the parser uses to classify AST nodes"]
+    mod classify;
 }
 
 mod print {

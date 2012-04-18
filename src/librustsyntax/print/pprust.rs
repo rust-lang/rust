@@ -685,7 +685,7 @@ fn print_stmt(s: ps, st: ast::stmt) {
         word(s.s, ";");
       }
     }
-    if parse::parser::stmt_ends_with_semi(st) { word(s.s, ";"); }
+    if parse::classify::stmt_ends_with_semi(st) { word(s.s, ";"); }
     maybe_print_trailing_comment(s, st.span, none::<uint>);
 }
 
@@ -1508,7 +1508,7 @@ fn need_parens(expr: @ast::expr, outer_prec: int) -> bool {
       ast::expr_assert(_) { true }
       ast::expr_check(_, _) { true }
       ast::expr_log(_, _, _) { true }
-      _ { !parse::parser::expr_requires_semi_to_be_stmt(expr) }
+      _ { !parse::classify::expr_requires_semi_to_be_stmt(expr) }
     }
 }
 

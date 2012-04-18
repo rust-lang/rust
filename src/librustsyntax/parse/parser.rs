@@ -9,7 +9,6 @@ import ast_util::{mk_sp, ident_to_path};
 import lexer::reader;
 import prec::{op_spec, binop_prec_table, as_prec};
 
-export expr_requires_semi_to_be_stmt;
 export file_type;
 export mk_item;
 export next_node_id;
@@ -31,7 +30,6 @@ export parse_pat;
 export parse_sess;
 export parse_stmt;
 export parse_ty;
-export stmt_ends_with_semi;
 
 enum restriction {
     UNRESTRICTED,
@@ -1776,38 +1774,9 @@ fn parse_stmt(p: parser, first_item_attrs: [ast::attribute]) -> @ast::stmt {
 fn expr_is_complete(p: parser, e: pexpr) -> bool {
     log(debug, ("expr_is_complete", p.restriction,
                 print::pprust::expr_to_str(*e),
-                expr_requires_semi_to_be_stmt(*e)));
+                classify::expr_requires_semi_to_be_stmt(*e)));
     ret p.restriction == RESTRICT_STMT_EXPR &&
-        !expr_requires_semi_to_be_stmt(*e);
-}
-
-fn expr_requires_semi_to_be_stmt(e: @ast::expr) -> bool {
-    alt e.node {
-      ast::expr_if(_, _, _) | ast::expr_if_check(_, _, _)
-      | ast::expr_alt(_, _, _) | ast::expr_block(_)
-      | ast::expr_do_while(_, _) | ast::expr_while(_, _)
-      | ast::expr_loop(_) | ast::expr_call(_, _, true) {
-        false
-      }
-      _ { true }
-    }
-}
-
-fn stmt_ends_with_semi(stmt: ast::stmt) -> bool {
-    alt stmt.node {
-      ast::stmt_decl(d, _) {
-        ret alt d.node {
-              ast::decl_local(_) { true }
-              ast::decl_item(_) { false }
-            }
-      }
-      ast::stmt_expr(e, _) {
-        ret expr_requires_semi_to_be_stmt(e);
-      }
-      ast::stmt_semi(e, _) {
-        ret false;
-      }
-    }
+        !classify::expr_requires_semi_to_be_stmt(*e);
 }
 
 fn parse_block(p: parser) -> ast::blk {
@@ -1890,7 +1859,7 @@ fn parse_block_tail_(p: parser, lo: uint, s: ast::blk_check_mode,
                     expr = some(e);
                   }
                   t {
-                    if stmt_ends_with_semi(*stmt) {
+                    if classify::stmt_ends_with_semi(*stmt) {
                         p.fatal("expected ';' or '}' after expression but \
                                  found '" + token_to_str(p.reader, t) +
                                 "'");
@@ -1903,7 +1872,7 @@ fn parse_block_tail_(p: parser, lo: uint, s: ast::blk_check_mode,
               _ { // All other kinds of statements:
                 stmts += [stmt];
 
-                if stmt_ends_with_semi(*stmt) {
+                if classify::stmt_ends_with_semi(*stmt) {
                     expect(p, token::SEMI);
                 }
               }
