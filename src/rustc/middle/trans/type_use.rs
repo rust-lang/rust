@@ -180,6 +180,21 @@ fn mark_for_expr(cx: ctx, e: @expr) {
         // after the chosen field
         let base_ty = ty::node_id_to_type(cx.ccx.tcx, base.id);
         type_needs(cx, use_repr, ty::type_autoderef(cx.ccx.tcx, base_ty));
+
+        option::iter(cx.ccx.maps.method_map.find(e.id)) {|mth|
+            alt mth {
+              typeck::method_static(did) {
+                option::iter(cx.ccx.tcx.node_type_substs.find(e.id)) {|ts|
+                    vec::iter2(type_uses_for(cx.ccx, did, ts.len()), ts)
+                        {|uses, subst| type_needs(cx, uses, subst)}
+                }
+              }
+              typeck::method_param(_, _, param, _) {
+                cx.uses[param] |= use_tydesc;
+              }
+              typeck::method_iface(_, _) {}
+            }
+        }
       }
       expr_log(_, _, val) {
         node_type_needs(cx, use_tydesc, val.id);
