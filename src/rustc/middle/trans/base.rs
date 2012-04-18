@@ -706,11 +706,23 @@ fn make_drop_glue(bcx: block, v0: ValueRef, t: ty::t) {
 fn get_res_dtor(ccx: @crate_ctxt, did: ast::def_id, substs: [ty::t])
    -> ValueRef {
     let _icx = ccx.insn_ctxt("trans_res_dtor");
-    let did = if did.crate != ast::local_crate {
-        maybe_instantiate_inline(ccx, did)
-    } else { did };
-    assert did.crate == ast::local_crate;
-    monomorphic_fn(ccx, did, substs, none, none).val
+    if (substs.len() > 0u) {
+        let did = if did.crate != ast::local_crate {
+            maybe_instantiate_inline(ccx, did)
+        } else { did };
+        assert did.crate == ast::local_crate;
+        monomorphic_fn(ccx, did, substs, none, none).val
+    } else if did.crate == ast::local_crate {
+        get_item_val(ccx, did.node)
+    } else {
+        let fty = ty::mk_fn(ccx.tcx, {proto: ast::proto_bare,
+                                      inputs: [{mode: ast::expl(ast::by_ref),
+                                                ty: ty::mk_nil_ptr(ccx.tcx)}],
+                                      output: ty::mk_nil(ccx.tcx),
+                                      ret_style: ast::return_val,
+                                      constraints: []});
+        trans_external_path(ccx, did, fty)
+    }
 }
 
 fn trans_res_drop(bcx: block, rs: ValueRef, did: ast::def_id,
@@ -1946,7 +1958,6 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, real_substs: [ty::t],
     let s = mangle_exported_name(ccx, pt, mono_ty);
     let lldecl = decl_internal_cdecl_fn(ccx.llmod, s, llfty);
     ccx.monomorphized.insert(hash_id, lldecl);
-    ccx.item_symbols.insert(fn_id.node, s);
 
     let psubsts = some({tys: substs, vtables: vtables, bounds: tpt.bounds});
     alt check map_node {
