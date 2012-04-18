@@ -78,7 +78,7 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
             let flags = alt check i.ident {
               "size_of" | "align_of" | "init" |
               "reinterpret_cast" { use_repr }
-              "get_tydesc" { use_tydesc }
+              "get_tydesc" | "needs_drop" { use_tydesc }
               "forget" | "addr_of" { 0u }
             };
             uint::range(0u, n_tps) {|n| cx.uses[n] |= flags;}

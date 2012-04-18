@@ -801,6 +801,10 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::native_item,
       "addr_of" {
         Store(bcx, get_param(decl, first_real_arg), fcx.llretptr);
       }
+      "needs_drop" {
+        Store(bcx, C_bool(ty::type_needs_drop(ccx.tcx, tp_ty)),
+              fcx.llretptr);
+      }
     }
     build_return(bcx);
     finish_fn(fcx, lltop);
