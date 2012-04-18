@@ -21,7 +21,12 @@ mod fold;
 mod util {
     mod interner;
 }
+
 mod parse {
+    export parser;
+    export lexer;
+    export comments;
+
     mod eval;
     mod lexer;
     mod parser;

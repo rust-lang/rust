@@ -8,6 +8,33 @@ import ast::{node_id, spanned};
 import ast_util::{mk_sp, ident_to_path};
 import lexer::reader;
 
+export as_prec;
+export expr_requires_semi_to_be_stmt;
+export file_type;
+export mk_item;
+export next_node_id;
+export new_parser_from_file;
+export new_parser_from_source_str;
+export parser;
+export parse_crate_from_file;
+export parse_crate_from_crate_file;
+export parse_crate_from_source_str;
+export parse_crate_mod;
+export parse_expr;
+export parse_expr_from_source_str;
+export parse_from_source_str;
+export parse_inner_attrs_and_next;
+export parse_item;
+export parse_mod_items;
+export parse_outer_attributes;
+export parse_pat;
+export parse_sess;
+export parse_stmt;
+export parse_ty;
+export prec_table;
+export stmt_ends_with_semi;
+export unop_prec;
+
 enum restriction {
     UNRESTRICTED,
     RESTRICT_STMT_EXPR,

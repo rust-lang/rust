@@ -2,6 +2,11 @@ import io::reader_util;
 import util::interner;
 import lexer::{ reader, new_reader, next_token, is_whitespace };
 
+export cmnt;
+export lit;
+export cmnt_style;
+export gather_comments_and_literals;
+
 enum cmnt_style {
     isolated, // No code on either side of each line of the comment
     trailing, // Code exists to the left of the comment
