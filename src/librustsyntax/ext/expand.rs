@@ -5,7 +5,7 @@ import fold::*;
 import ext::base::*;
 import ext::qquote::{qq_helper};
 import parse::parser;
-import parse::parser::parse_expr_from_source_str;
+import parse::parse_expr_from_source_str;
 
 
 import codemap::{span, expanded_from};
@@ -110,7 +110,7 @@ fn core_macros() -> str {
 }";
 }
 
-fn expand_crate(parse_sess: parser::parse_sess,
+fn expand_crate(parse_sess: parse::parse_sess,
                 cfg: ast::crate_cfg, c: @crate) -> @crate {
     let exts = syntax_expander_table();
     let afp = default_ast_fold();

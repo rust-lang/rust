@@ -1,5 +1,5 @@
 import attr;
-import parser::{parser, new_parser_from_file,
+import parser::{parser,
                 parse_inner_attrs_and_next,
                 parse_mod_items, SOURCE_FILE};
 
@@ -7,7 +7,7 @@ export eval_crate_directives_to_mod;
 
 type ctx =
     @{p: parser,
-      sess: parser::parse_sess,
+      sess: parse::parse_sess,
       cfg: ast::crate_cfg};
 
 fn eval_crate_directives(cx: ctx, cdirs: [@ast::crate_directive], prefix: str,

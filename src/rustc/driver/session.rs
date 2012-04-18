@@ -3,7 +3,7 @@ import syntax::{ast, codemap};
 import syntax::ast::node_id;
 import codemap::span;
 import syntax::ast::{int_ty, uint_ty, float_ty};
-import syntax::parse::parser::parse_sess;
+import syntax::parse::parse_sess;
 import util::filesearch;
 import back::target_strs;
 import middle::lint;
@@ -106,7 +106,7 @@ impl session for session {
         self.span_diagnostic.handler().unimpl(msg)
     }
     fn next_node_id() -> ast::node_id {
-        ret syntax::parse::parser::next_node_id(self.parse_sess);
+        ret syntax::parse::next_node_id(self.parse_sess);
     }
     fn diagnostic() -> diagnostic::span_handler {
         self.span_diagnostic

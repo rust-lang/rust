@@ -1,7 +1,7 @@
 // -*- rust -*-
 import metadata::{creader, cstore};
 import session::session;
-import syntax::parse::{parser};
+import syntax::parse;
 import syntax::{ast, codemap};
 import syntax::attr;
 import middle::{trans, resolve, freevars, kind, ty, typeck, fn_usage,
@@ -76,10 +76,10 @@ fn input_is_stdin(filename: str) -> bool { filename == "-" }
 fn parse_input(sess: session, cfg: ast::crate_cfg, input: str)
     -> @ast::crate {
     if !input_is_stdin(input) {
-        parser::parse_crate_from_file(input, cfg, sess.parse_sess)
+        parse::parse_crate_from_file(input, cfg, sess.parse_sess)
     } else {
         let src = @str::from_bytes(io::stdin().read_whole_stream());
-        parser::parse_crate_from_source_str(input, src, cfg, sess.parse_sess)
+        parse::parse_crate_from_source_str(input, src, cfg, sess.parse_sess)
     }
 }
 

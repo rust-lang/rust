@@ -9,10 +9,10 @@ import io::*;
 import rustc::driver::diagnostic;
 import rustc::syntax::ast;
 import rustc::syntax::codemap;
-import rustc::syntax::parse::parser;
+import rustc::syntax::parse;
 import rustc::syntax::print::*;
 
-fn new_parse_sess() -> parser::parse_sess {
+fn new_parse_sess() -> parse::parse_sess {
     let cm = codemap::new_codemap();
     let handler = diagnostic::mk_handler(option::none);
     let sess = @{
@@ -27,14 +27,14 @@ fn new_parse_sess() -> parser::parse_sess {
 
 iface fake_ext_ctxt {
     fn cfg() -> ast::crate_cfg;
-    fn parse_sess() -> parser::parse_sess;
+    fn parse_sess() -> parse::parse_sess;
 }
 
 type fake_session = ();
 
 impl of fake_ext_ctxt for fake_session {
     fn cfg() -> ast::crate_cfg { [] }
-    fn parse_sess() -> parser::parse_sess { new_parse_sess() }
+    fn parse_sess() -> parse::parse_sess { new_parse_sess() }
 }
 
 fn mk_ctxt() -> fake_ext_ctxt {

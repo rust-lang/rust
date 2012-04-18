@@ -46,7 +46,7 @@ fn syntax_expander_table() -> hashmap<str, syntax_extension> {
 
 iface ext_ctxt {
     fn codemap() -> codemap;
-    fn parse_sess() -> parser::parse_sess;
+    fn parse_sess() -> parse::parse_sess;
     fn cfg() -> ast::crate_cfg;
     fn print_backtrace();
     fn backtrace() -> expn_info;
@@ -60,14 +60,14 @@ iface ext_ctxt {
     fn next_id() -> ast::node_id;
 }
 
-fn mk_ctxt(parse_sess: parser::parse_sess,
+fn mk_ctxt(parse_sess: parse::parse_sess,
            cfg: ast::crate_cfg) -> ext_ctxt {
-    type ctxt_repr = {parse_sess: parser::parse_sess,
+    type ctxt_repr = {parse_sess: parse::parse_sess,
                       cfg: ast::crate_cfg,
                       mut backtrace: expn_info};
     impl of ext_ctxt for ctxt_repr {
         fn codemap() -> codemap { self.parse_sess.cm }
-        fn parse_sess() -> parser::parse_sess { self.parse_sess }
+        fn parse_sess() -> parse::parse_sess { self.parse_sess }
         fn cfg() -> ast::crate_cfg { self.cfg }
         fn print_backtrace() { }
         fn backtrace() -> expn_info { self.backtrace }
@@ -111,7 +111,7 @@ fn mk_ctxt(parse_sess: parser::parse_sess,
             self.parse_sess.span_diagnostic.handler().bug(msg);
         }
         fn next_id() -> ast::node_id {
-            ret parser::next_node_id(self.parse_sess);
+            ret parse::next_node_id(self.parse_sess);
         }
     }
     let imp : ctxt_repr = {

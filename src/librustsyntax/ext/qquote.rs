@@ -5,7 +5,7 @@ import visit::*;
 import ext::base::*;
 import ext::build::*;
 import parse::parser;
-import parse::parser::{parser, parse_from_source_str};
+import parse::parser::parse_from_source_str;
 
 import print::*;
 import io::*;

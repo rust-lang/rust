@@ -4,32 +4,30 @@ import std::map::{hashmap, str_hash};
 import token::{can_begin_expr, is_ident, is_plain_ident};
 import codemap::{span,fss_none};
 import util::interner;
-import ast::{node_id, spanned};
+import ast::spanned;
 import ast_util::{mk_sp, ident_to_path};
 import lexer::reader;
-import prec::{op_spec, binop_prec_table, as_prec};
+import prec::{op_spec, as_prec};
 
+export expect;
 export file_type;
 export mk_item;
-export next_node_id;
-export new_parser_from_file;
-export new_parser_from_source_str;
+export restriction;
 export parser;
-export parse_crate_from_file;
-export parse_crate_from_crate_file;
-export parse_crate_from_source_str;
+export parse_crate_directives;
 export parse_crate_mod;
 export parse_expr;
-export parse_expr_from_source_str;
-export parse_from_source_str;
 export parse_inner_attrs_and_next;
 export parse_item;
 export parse_mod_items;
 export parse_outer_attributes;
 export parse_pat;
-export parse_sess;
 export parse_stmt;
 export parse_ty;
+
+// FIXME: #ast expects to find this here but it's actually defined in `parse`
+import parse_from_source_str;
+export parse_from_source_str;
 
 enum restriction {
     UNRESTRICTED,
@@ -39,23 +37,6 @@ enum restriction {
 }
 
 enum file_type { CRATE_FILE, SOURCE_FILE, }
-
-type parse_sess = @{
-    cm: codemap::codemap,
-    mut next_id: node_id,
-    span_diagnostic: diagnostic::span_handler,
-    // these two must be kept up to date
-    mut chpos: uint,
-    mut byte_pos: uint
-};
-
-fn next_node_id(sess: parse_sess) -> node_id {
-    let rv = sess.next_id;
-    sess.next_id += 1;
-    // ID 0 is reserved for the crate and doesn't actually exist in the AST
-    assert rv != 0;
-    ret rv;
-}
 
 type parser = @{
     sess: parse_sess,
@@ -109,56 +90,6 @@ impl parser for parser {
         interner::get(*self.reader.interner, i)
     }
     fn get_id() -> node_id { next_node_id(self.sess) }
-}
-
-fn new_parser_from_file(sess: parse_sess, cfg: ast::crate_cfg, path: str,
-                        ftype: file_type) ->
-   parser {
-    let src = alt io::read_whole_file_str(path) {
-      result::ok(src) {
-        // FIXME: This copy is unfortunate
-        @src
-      }
-      result::err(e) {
-        sess.span_diagnostic.handler().fatal(e)
-      }
-    };
-    let filemap = codemap::new_filemap(path, src,
-                                       sess.chpos, sess.byte_pos);
-    sess.cm.files += [filemap];
-    let itr = @interner::mk(str::hash, str::eq);
-    let rdr = lexer::new_reader(sess.span_diagnostic, filemap, itr);
-    ret new_parser(sess, cfg, rdr, ftype);
-}
-
-fn new_parser_from_source_str(sess: parse_sess, cfg: ast::crate_cfg,
-                              name: str, ss: codemap::file_substr,
-                              source: @str) -> parser {
-    let ftype = SOURCE_FILE;
-    let filemap = codemap::new_filemap_w_substr
-        (name, ss, source, sess.chpos, sess.byte_pos);
-    sess.cm.files += [filemap];
-    let itr = @interner::mk(str::hash, str::eq);
-    let rdr = lexer::new_reader(sess.span_diagnostic,
-                                filemap, itr);
-    ret new_parser(sess, cfg, rdr, ftype);
-}
-
-fn new_parser(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader,
-              ftype: file_type) -> parser {
-    let tok0 = lexer::next_token(rdr);
-    let span0 = ast_util::mk_sp(tok0.chpos, rdr.chpos);
-    @{sess: sess,
-      cfg: cfg,
-      file_type: ftype,
-      mut token: tok0.tok,
-      mut span: span0,
-      mut last_span: span0,
-      mut buffer: [],
-      mut restriction: UNRESTRICTED,
-      reader: rdr,
-      binop_precs: binop_prec_table(),
-      bad_expr_words: token::bad_expr_word_table()}
 }
 
 fn token_to_str(reader: reader, token: token::token) -> str {
@@ -2690,50 +2621,6 @@ fn parse_native_view(p: parser) -> [@ast::view_item] {
     maybe_parse_view_while(p, [], is_view_item)
 }
 
-fn parse_crate_from_source_file(input: str, cfg: ast::crate_cfg,
-                                sess: parse_sess) -> @ast::crate {
-    let p = new_parser_from_file(sess, cfg, input, SOURCE_FILE);
-    let r = parse_crate_mod(p, cfg);
-    sess.chpos = p.reader.chpos;
-    sess.byte_pos = sess.byte_pos + p.reader.pos;
-    ret r;
-}
-
-
-fn parse_expr_from_source_str(name: str, source: @str, cfg: ast::crate_cfg,
-                              sess: parse_sess) -> @ast::expr {
-    let p = new_parser_from_source_str(sess, cfg, name, fss_none, source);
-    let r = parse_expr(p);
-    sess.chpos = p.reader.chpos;
-    sess.byte_pos = sess.byte_pos + p.reader.pos;
-    ret r;
-}
-
-fn parse_from_source_str<T>(f: fn (p: parser) -> T,
-                            name: str, ss: codemap::file_substr,
-                            source: @str, cfg: ast::crate_cfg,
-                            sess: parse_sess)
-    -> T
-{
-    let p = new_parser_from_source_str(sess, cfg, name, ss, source);
-    let r = f(p);
-    if !p.reader.is_eof() {
-        p.reader.fatal("expected end-of-string");
-    }
-    sess.chpos = p.reader.chpos;
-    sess.byte_pos = sess.byte_pos + p.reader.pos;
-    ret r;
-}
-
-fn parse_crate_from_source_str(name: str, source: @str, cfg: ast::crate_cfg,
-                               sess: parse_sess) -> @ast::crate {
-    let p = new_parser_from_source_str(sess, cfg, name, fss_none, source);
-    let r = parse_crate_mod(p, cfg);
-    sess.chpos = p.reader.chpos;
-    sess.byte_pos = sess.byte_pos + p.reader.pos;
-    ret r;
-}
-
 // Parses a source module as a crate
 fn parse_crate_mod(p: parser, _cfg: ast::crate_cfg) -> @ast::crate {
     let lo = p.span.lo;
@@ -2820,45 +2707,6 @@ fn parse_crate_directives(p: parser, term: token::token,
         first_outer_attr = [];
     }
     ret cdirs;
-}
-
-fn parse_crate_from_crate_file(input: str, cfg: ast::crate_cfg,
-                               sess: parse_sess) -> @ast::crate {
-    let p = new_parser_from_file(sess, cfg, input, CRATE_FILE);
-    let lo = p.span.lo;
-    let prefix = path::dirname(p.reader.filemap.name);
-    let leading_attrs = parse_inner_attrs_and_next(p);
-    let crate_attrs = leading_attrs.inner;
-    let first_cdir_attr = leading_attrs.next;
-    let cdirs = parse_crate_directives(p, token::EOF, first_cdir_attr);
-    sess.chpos = p.reader.chpos;
-    sess.byte_pos = sess.byte_pos + p.reader.pos;
-    let cx =
-        @{p: p,
-          sess: sess,
-          cfg: p.cfg};
-    let (companionmod, _) = path::splitext(path::basename(input));
-    let (m, attrs) = eval::eval_crate_directives_to_mod(
-        cx, cdirs, prefix, option::some(companionmod));
-    let mut hi = p.span.hi;
-    expect(p, token::EOF);
-    ret @spanned(lo, hi,
-                 {directives: cdirs,
-                  module: m,
-                  attrs: crate_attrs + attrs,
-                  config: p.cfg});
-}
-
-fn parse_crate_from_file(input: str, cfg: ast::crate_cfg, sess: parse_sess) ->
-   @ast::crate {
-    if str::ends_with(input, ".rc") {
-        parse_crate_from_crate_file(input, cfg, sess)
-    } else if str::ends_with(input, ".rs") {
-        parse_crate_from_source_file(input, cfg, sess)
-    } else {
-        sess.span_diagnostic.handler().fatal("unknown input file type: " +
-                                             input)
-    }
 }
 
 //

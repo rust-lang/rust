@@ -1,7 +1,7 @@
 // cargo.rs - Rust package manager
 
 import rustc::syntax::{ast, codemap};
-import rustc::syntax::parse::parser;
+import rustc::syntax::parse;
 import rustc::util::filesearch::{get_cargo_root, get_cargo_root_nearest,
                                  get_cargo_sysroot, libdir};
 import rustc::driver::diagnostic;
@@ -119,7 +119,7 @@ fn load_pkg(filename: str) -> option<pkg> {
         mut chpos: 0u,
         mut byte_pos: 0u
     };
-    let c = parser::parse_crate_from_crate_file(filename, [], sess);
+    let c = parse::parse_crate_from_crate_file(filename, [], sess);
 
     let mut name = none;
     let mut vers = none;

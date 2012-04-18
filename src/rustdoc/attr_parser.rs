@@ -21,6 +21,7 @@ type crate_attrs = {
 mod test {
 
     fn parse_attributes(source: str) -> [ast::attribute] {
+        import rustc::syntax::parse;
         import rustc::syntax::parse::parser;
         import rustc::syntax::codemap;
         import rustc::driver::diagnostic;
@@ -34,7 +35,7 @@ mod test {
             mut chpos: 0u,
             mut byte_pos: 0u
         };
-        let parser = parser::new_parser_from_source_str(
+        let parser = parse::new_parser_from_source_str(
             parse_sess, [], "-", codemap::fss_none, @source);
 
         parser::parse_outer_attributes(parser)

@@ -9,10 +9,10 @@ import io::*;
 import rustc::driver::diagnostic;
 import rustc::syntax::ast;
 import rustc::syntax::codemap;
-import rustc::syntax::parse::parser;
+import rustc::syntax::parse;
 import rustc::syntax::print::*;
 
-fn new_parse_sess() -> parser::parse_sess {
+fn new_parse_sess() -> parse::parse_sess {
   fail;
 }
 
@@ -23,7 +23,7 @@ iface fake_ext_ctxt {
 type fake_options = {cfg: ast::crate_cfg};
 
 type fake_session = {opts: @fake_options,
-                     parse_sess: parser::parse_sess};
+                     parse_sess: parse::parse_sess};
 
 impl of fake_ext_ctxt for fake_session {
     fn session() -> fake_session {self}

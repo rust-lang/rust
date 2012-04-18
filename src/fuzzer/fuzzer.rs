@@ -1,7 +1,7 @@
 import io::writer_util;
 
 import rustc::syntax::{ast, ast_util, fold, visit, codemap};
-import rustc::syntax::parse::parser;
+import rustc::syntax::parse;
 import rustc::syntax::print::pprust;
 import rustc::driver::diagnostic;
 
@@ -429,7 +429,7 @@ fn parse_and_print(code: @str) -> str {
         mut byte_pos: 0u
     };
     write_file(filename, *code);
-    let crate = parser::parse_crate_from_source_str(
+    let crate = parse::parse_crate_from_source_str(
         filename, code, [], sess);
     io::with_str_reader(*code) { |rdr|
         as_str(bind pprust::print_crate(sess.cm,
@@ -579,7 +579,7 @@ fn check_variants(files: [str], cx: context) {
             mut byte_pos: 0u
         };
         let crate =
-            parser::parse_crate_from_source_str(
+            parse::parse_crate_from_source_str(
                 file,
                 s, [], sess);
         io::with_str_reader(*s) { |rdr|

@@ -34,7 +34,7 @@ import e = encoder;
 // used in testing:
 import driver::diagnostic;
 import syntax::codemap;
-import syntax::parse::parser;
+import syntax::parse;
 import syntax::print::pprust;
 
 export encode_inlined_item;
@@ -956,7 +956,7 @@ fn decode_item_ast(par_doc: ebml::doc) -> @ast::item {
 }
 
 #[cfg(test)]
-fn new_parse_sess() -> parser::parse_sess {
+fn new_parse_sess() -> parse::parse_sess {
     let cm = codemap::new_codemap();
     let handler = diagnostic::mk_handler(option::none);
     let sess = @{
@@ -972,7 +972,7 @@ fn new_parse_sess() -> parser::parse_sess {
 #[cfg(test)]
 iface fake_ext_ctxt {
     fn cfg() -> ast::crate_cfg;
-    fn parse_sess() -> parser::parse_sess;
+    fn parse_sess() -> parse::parse_sess;
 }
 
 #[cfg(test)]
@@ -981,7 +981,7 @@ type fake_session = ();
 #[cfg(test)]
 impl of fake_ext_ctxt for fake_session {
     fn cfg() -> ast::crate_cfg { [] }
-    fn parse_sess() -> parser::parse_sess { new_parse_sess() }
+    fn parse_sess() -> parse::parse_sess { new_parse_sess() }
 }
 
 #[cfg(test)]
