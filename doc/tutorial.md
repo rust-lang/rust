@@ -183,8 +183,8 @@ mode for your favorite editor, let us know so that we can link to it.
 Assuming you've programmed in any C-family language (C++, Java,
 JavaScript, C#, or PHP), Rust will feel familiar. The main surface
 difference to be aware of is that the bodies of `if` statements and of
-loops *have* to be wrapped in brackets. Single-statement, bracket-less
-bodies are not allowed.
+`while` loops *have* to be wrapped in brackets. Single-statement,
+bracket-less bodies are not allowed.
 
 If the verbosity of that bothers you, consider the fact that this
 allows you to omit the parentheses around the condition in `if`,
@@ -690,9 +690,9 @@ do {
 } while any_cake_left();
 ~~~~
 
-For more involved iteration, such as going over the elements of a hash
-table, Rust uses higher-order functions. We'll come back to those in a
-moment.
+For more involved iteration, such as going over the elements of a
+collection, Rust uses higher-order functions. We'll come back to those
+in a moment.
 
 ## Failure
 
@@ -951,6 +951,49 @@ for_rev([1, 2, 3]) {|n|
 
 Note that, because `for_rev()` returns unit type, no semicolon is
 needed when the final closure is pulled outside of the parentheses.
+
+# For loops
+
+To allow breaking out of loops, many iteration functions, such as
+`vec::each`, take a function that returns a boolean, and can return
+`false` to break off iteration.
+
+~~~~
+vec::each([2, 4, 8, 5, 16]) {|n|
+    if n % 2 != 0 {
+        io::println("found odd number!");
+        false
+    } else { true }
+}
+~~~~
+
+You can see how that gets noisy. As a syntactic convenience, if the
+call is preceded by the keyword `for`, the block will implicitly
+return `true`, and `break` and `cont` can be used, much like in a
+`while` loop, to explicitly return `false` or `true`.
+
+~~~~
+for vec::each([2, 4, 8, 5, 16]) {|n|
+    if n % 2 != 0 {
+        io::println("found odd number!");
+        break;
+    }
+}
+~~~~
+
+As an added bonus, you can use the `ret` keyword, which is not
+normally allowed in blocks, in a block that appears as the body of a
+`for` loop — this will cause a return to happen from the outer
+function, not just the loop body.
+
+~~~~
+fn contains(v: [int], elt: int) -> bool {
+    for vec::each(v) {|x|
+        if (x == elt) { ret true; }
+    }
+    false
+}
+~~~~
 
 # Datatypes
 
