@@ -1,20 +1,19 @@
 ## Add Rust keywords here. Lines start with '#' are ignored
 
 alt any as assert
-be bind block bool break
-char check claim class const cont copy crust
+be bind break
+check claim class const cont copy crust
 do
 else enum export
-f32 f64 fail false float fn for
-i16 i32 i64 i8 if iface impl import in int
+fail false fn for
+if iface impl import
 let log loop
 mod move mut
 native new
-obj  
+of
 priv pure
 resource ret
-self send str
+self send
 tag to trait true type
-u16 u32 u64 u8 uint unchecked unsafe use
-vec
+unchecked unsafe use
 while with
