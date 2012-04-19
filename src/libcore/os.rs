@@ -33,6 +33,7 @@ export homedir, list_dir, list_dir_path, path_is_dir, path_exists,
        make_absolute, make_dir, remove_dir, change_dir, remove_file,
        copy_file;
 export last_os_error;
+export set_exit_status;
 
 // FIXME: move these to str perhaps?
 export as_c_charp, fill_charp_buf;
@@ -45,6 +46,7 @@ native mod rustrt {
     fn rust_list_files(path: str) -> [str];
     fn rust_process_wait(handle: c_int) -> c_int;
     fn last_os_error() -> str;
+    fn rust_set_exit_status(code: libc::intptr_t);
 }
 
 
@@ -630,6 +632,17 @@ fn last_os_error() -> str {
     rustrt::last_os_error()
 }
 
+#[doc = "
+Sets the process exit code
+
+Sets the exit code returned by the process if all supervised tasks terminate
+successfully (without failing). If the current root task fails and is
+supervised by the scheduler then any user-specified exit status is ignored and
+the process exits with the default failure status
+"]
+fn set_exit_status(code: int) {
+    rustrt::rust_set_exit_status(code as libc::intptr_t);
+}
 
 #[cfg(target_os = "macos")]
 mod consts {

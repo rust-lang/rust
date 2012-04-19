@@ -6,7 +6,6 @@ export size_of;
 export align_of;
 export refcount;
 export log_str;
-export set_exit_status;
 
 enum type_desc = {
     first_param: **libc::c_int,
@@ -20,7 +19,6 @@ native mod rustrt {
     fn refcount<T>(t: @T) -> libc::intptr_t;
     fn unsupervise();
     fn shape_log_str<T>(t: *sys::type_desc, data: T) -> str;
-    fn rust_set_exit_status(code: libc::intptr_t);
 }
 
 #[abi = "rust-intrinsic"]
@@ -57,18 +55,6 @@ fn refcount<T>(t: @T) -> uint {
 
 fn log_str<T>(t: T) -> str {
     rustrt::shape_log_str(get_type_desc::<T>(), t)
-}
-
-#[doc = "
-Sets the process exit code
-
-Sets the exit code returned by the process if all supervised tasks terminate
-successfully (without failing). If the current root task fails and is
-supervised by the scheduler then any user-specified exit status is ignored and
-the process exits with the default failure status
-"]
-fn set_exit_status(code: int) {
-    rustrt::rust_set_exit_status(code as libc::intptr_t);
 }
 
 #[cfg(test)]

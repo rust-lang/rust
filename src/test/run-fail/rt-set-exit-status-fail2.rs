@@ -7,7 +7,7 @@ fn main() {
             // Setting the exit status after the runtime has already
             // failed has no effect and the process exits with the
             // runtime's exit code
-            sys::set_exit_status(50);
+            os::set_exit_status(50);
         }
         let i = r(());
     };
