@@ -21,7 +21,7 @@ fn expand_syntax_ext(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
         cx.span_fatal(sp, "malformed #env call");
     }
     // FIXME: if this was more thorough it would manufacture an
-    // option<str> rather than just an maybe-empty string.
+    // option<str> rather than just an maybe-empty string. (Issue #2248)
 
     let var = expr_to_str(cx, args[0], "#env requires a string");
     alt os::getenv(var) {

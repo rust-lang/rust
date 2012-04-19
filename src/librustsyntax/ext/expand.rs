@@ -98,7 +98,7 @@ fn new_span(cx: ext_ctxt, sp: span) -> span {
 // FIXME: this is a terrible kludge to inject some macros into the default
 // compilation environment. When the macro-definition system is substantially
 // more mature, these should move from here, into a compiled part of libcore
-// at very least.
+// at very least. (Issue #2247)
 
 fn core_macros() -> str {
     ret
