@@ -269,9 +269,10 @@ crust fn high_level_wake_up_cb(async_handle: *ll::uv_async_t,
 crust fn tear_down_close_cb(handle: *ll::uv_async_t) unsafe {
     log(debug, #fmt("tear_down_close_cb called, closing handle at %?",
                     handle));
-    // TODO: iterate through open handles on the loop and uv_close()
-    // them all
-    //let data = ll::get_data_for_uv_handle(handle) as *global_loop_data;
+    let data = ll::get_data_for_uv_handle(handle) as *global_loop_data;
+    if vec::len((*data).refd_handles) > 0 {
+        fail "Didn't unref all high-level handles";
+    }
 }
 
 fn high_level_tear_down(data: *global_loop_data) unsafe {
