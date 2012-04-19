@@ -40,6 +40,8 @@ type ast_fold_precursor =
      fold_expr: fn@(expr_, span, ast_fold) -> (expr_, span),
      fold_ty: fn@(ty_, span, ast_fold) -> (ty_, span),
      fold_constr: fn@(ast::constr_, span, ast_fold) -> (constr_, span),
+     fold_ty_constr: fn@(ast::ty_constr_, span, ast_fold)
+        -> (ty_constr_, span),
      fold_mod: fn@(_mod, ast_fold) -> _mod,
      fold_native_mod: fn@(native_mod, ast_fold) -> native_mod,
      fold_variant: fn@(variant_, span, ast_fold) -> (variant_, span),
@@ -67,6 +69,7 @@ type a_f =
      fold_expr: fn@(&&@expr) -> @expr,
      fold_ty: fn@(&&@ty) -> @ty,
      fold_constr: fn@(&&@constr) -> @constr,
+     fold_ty_constr: fn@(&&@ty_constr) -> @ty_constr,
      fold_mod: fn@(_mod) -> _mod,
      fold_native_mod: fn@(native_mod) -> native_mod,
      fold_variant: fn@(variant) -> variant,
@@ -97,6 +100,7 @@ fn nf_decl_dummy(&&_d: @decl) -> @decl { fail; }
 fn nf_expr_dummy(&&_e: @expr) -> @expr { fail; }
 fn nf_ty_dummy(&&_t: @ty) -> @ty { fail; }
 fn nf_constr_dummy(&&_c: @constr) -> @constr { fail; }
+fn nf_ty_constr_dummy(&&_c: @ty_constr) -> @ty_constr { fail; }
 fn nf_mod_dummy(_m: _mod) -> _mod { fail; }
 fn nf_native_mod_dummy(_n: native_mod) -> native_mod { fail; }
 fn nf_variant_dummy(_v: variant) -> variant { fail; }
@@ -141,9 +145,7 @@ fn fold_mac_(m: mac, fld: ast_fold) -> mac {
              alt m.node {
                mac_invoc(pth, arg, body) {
                  mac_invoc(fld.fold_path(pth),
-                           // FIXME: bind should work, but causes a crash
-                           option::map(arg) {|arg| fld.fold_expr(arg)},
-                           body)
+                           option::map(arg, fld.fold_expr), body)
                }
                mac_embed_type(ty) { mac_embed_type(fld.fold_ty(ty)) }
                mac_embed_block(blk) { mac_embed_block(fld.fold_block(blk)) }
@@ -500,8 +502,8 @@ fn noop_fold_ty(t: ty_, fld: ast_fold) -> ty_ {
       ty_fn(proto, decl) {ty_fn(proto, fold_fn_decl(decl, fld))}
       ty_tup(tys) {ty_tup(vec::map(tys) {|ty| fld.fold_ty(ty)})}
       ty_path(path, id) {ty_path(fld.fold_path(path), fld.new_id(id))}
-      // FIXME: constrs likely needs to be folded...
-      ty_constr(ty, constrs) {ty_constr(fld.fold_ty(ty), constrs)}
+      ty_constr(ty, constrs) {ty_constr(fld.fold_ty(ty),
+                                vec::map(constrs, fld.fold_ty_constr))}
       ty_vstore(t, vs) {ty_vstore(fld.fold_ty(t), vs)}
       ty_mac(mac) {ty_mac(fold_mac(mac))}
       ty_infer {t}
@@ -512,6 +514,11 @@ fn noop_fold_constr(c: constr_, fld: ast_fold) -> constr_ {
     {path: fld.fold_path(c.path), args: c.args, id: fld.new_id(c.id)}
 }
 
+fn noop_fold_ty_constr(c: ty_constr_, fld: ast_fold) -> ty_constr_ {
+    let rslt: ty_constr_ =
+        {path: fld.fold_path(c.path), args: c.args, id: fld.new_id(c.id)};
+    rslt
+}
 // ...nor do modules
 fn noop_fold_mod(m: _mod, fld: ast_fold) -> _mod {
     ret {view_items: vec::map(m.view_items, fld.fold_view_item),
@@ -594,6 +601,7 @@ fn default_ast_fold() -> @ast_fold_precursor {
           fold_expr: wrap(noop_fold_expr),
           fold_ty: wrap(noop_fold_ty),
           fold_constr: wrap(noop_fold_constr),
+          fold_ty_constr: wrap(noop_fold_ty_constr),
           fold_mod: noop_fold_mod,
           fold_native_mod: noop_fold_native_mod,
           fold_variant: wrap(noop_fold_variant),
@@ -608,6 +616,7 @@ fn default_ast_fold() -> @ast_fold_precursor {
 fn make_fold(afp: ast_fold_precursor) -> ast_fold {
     // FIXME: Have to bind all the bare functions into shared functions
     // because @mut is invariant with respect to its contents
+    // I assume this has something to do with Issue #1973 - tjc
     let result: ast_fold =
         @mut {fold_crate: bind nf_crate_dummy(_),
                   fold_crate_directive: bind nf_crate_directive_dummy(_),
@@ -625,6 +634,7 @@ fn make_fold(afp: ast_fold_precursor) -> ast_fold {
                   fold_expr: bind nf_expr_dummy(_),
                   fold_ty: bind nf_ty_dummy(_),
                   fold_constr: bind nf_constr_dummy(_),
+                  fold_ty_constr: bind nf_ty_constr_dummy(_),
                   fold_mod: bind nf_mod_dummy(_),
                   fold_native_mod: bind nf_native_mod_dummy(_),
                   fold_variant: bind nf_variant_dummy(_),
@@ -714,6 +724,13 @@ fn make_fold(afp: ast_fold_precursor) -> ast_fold {
         let (n, s) = afp.fold_constr(x.node, x.span, f);
         ret @{node: n, span: afp.new_span(s)};
     }
+    fn f_ty_constr(afp: ast_fold_precursor, f: ast_fold,
+                   &&x: @ast::ty_constr) ->
+       @ast::ty_constr {
+        let (n, s) : (ty_constr_, span) =
+            afp.fold_ty_constr(x.node, x.span, f);
+        ret @{node: n, span: afp.new_span(s)};
+    }
     fn f_mod(afp: ast_fold_precursor, f: ast_fold, x: _mod) -> _mod {
         ret afp.fold_mod(x, f);
     }
@@ -755,6 +772,7 @@ fn make_fold(afp: ast_fold_precursor) -> ast_fold {
          fold_expr: bind f_expr(afp, result, _),
          fold_ty: bind f_ty(afp, result, _),
          fold_constr: bind f_constr(afp, result, _),
+         fold_ty_constr: bind f_ty_constr(afp, result, _),
          fold_mod: bind f_mod(afp, result, _),
          fold_native_mod: bind f_native_mod(afp, result, _),
          fold_variant: bind f_variant(afp, result, _),
