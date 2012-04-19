@@ -1539,6 +1539,21 @@ fn as_c_str<T>(s: str, f: fn(*libc::c_char) -> T) -> T unsafe {
     as_buf(s) {|buf| f(buf as *libc::c_char) }
 }
 
+
+#[doc = "
+Work with the byte buffer and length of a slice.
+
+The unpacked length is one byte longer than the 'official' indexable
+length of the string. This is to permit probing the byte past the
+indexable area for a null byte, as is the case in slices pointing
+to full strings, or suffixes of them.
+"]
+fn unpack_slice<T>(s: str/&, f: fn(*u8, uint) -> T) -> T unsafe {
+    let v : *(*u8,uint) = ::unsafe::reinterpret_cast(ptr::addr_of(s));
+    let (buf,len) = *v;
+    f(buf, len)
+}
+
 #[doc = "
 Reserves capacity for exactly `n` bytes in the given string, not including
 the null terminator.
@@ -2705,5 +2720,17 @@ mod tests {
             }
         }
         assert found_b;
+    }
+
+    #[test]
+    fn test_unpack_slice() unsafe {
+        let a = "hello";
+        unpack_slice(a) {|buf, len|
+            assert a[0] == 'h' as u8;
+            assert *buf == 'h' as u8;
+            assert len == 6u;
+            assert *ptr::offset(buf,4u) == 'o' as u8;
+            assert *ptr::offset(buf,5u) == 0u8;
+        }
     }
 }
