@@ -32,6 +32,7 @@ export exe_suffix, dll_suffix, sysname;
 export homedir, list_dir, list_dir_path, path_is_dir, path_exists,
        make_absolute, make_dir, remove_dir, change_dir, remove_file,
        copy_file;
+export last_os_error;
 
 // FIXME: move these to str perhaps?
 export as_c_charp, fill_charp_buf;
@@ -43,6 +44,7 @@ native mod rustrt {
     fn rust_path_exists(path: *libc::c_char) -> c_int;
     fn rust_list_files(path: str) -> [str];
     fn rust_process_wait(handle: c_int) -> c_int;
+    fn last_os_error() -> str;
 }
 
 
@@ -623,6 +625,10 @@ fn remove_file(p: path) -> bool {
     }
 }
 
+#[doc = "Get a string representing the platform-dependent last error"]
+fn last_os_error() -> str {
+    rustrt::last_os_error()
+}
 
 
 #[cfg(target_os = "macos")]
@@ -659,6 +665,10 @@ mod consts {
 #[cfg(test)]
 mod tests {
 
+    #[test]
+    fn last_os_error() {
+        log(debug, last_os_error());
+    }
 
     fn make_rand_name() -> str {
         import rand;

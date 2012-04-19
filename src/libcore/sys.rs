@@ -2,7 +2,6 @@
 
 export type_desc;
 export get_type_desc;
-export last_os_error;
 export size_of;
 export align_of;
 export refcount;
@@ -18,10 +17,6 @@ enum type_desc = {
 
 #[abi = "cdecl"]
 native mod rustrt {
-    // Explicitly re-export native stuff we want to be made
-    // available outside this crate. Otherwise it's
-    // visible-in-crate, but not re-exported.
-    fn last_os_error() -> str;
     fn refcount<T>(t: @T) -> libc::intptr_t;
     fn unsupervise();
     fn shape_log_str<T>(t: *sys::type_desc, data: T) -> str;
@@ -43,11 +38,6 @@ performing dark magick.
 "]
 fn get_type_desc<T>() -> *type_desc {
     rusti::get_tydesc::<T>() as *type_desc
-}
-
-#[doc = "Get a string representing the platform-dependent last error"]
-fn last_os_error() -> str {
-    rustrt::last_os_error()
 }
 
 #[doc = "Returns the size of a type"]
@@ -83,11 +73,6 @@ fn set_exit_status(code: int) {
 
 #[cfg(test)]
 mod tests {
-
-    #[test]
-    fn last_os_error() {
-        log(debug, last_os_error());
-    }
 
     #[test]
     fn size_of_basic() {
