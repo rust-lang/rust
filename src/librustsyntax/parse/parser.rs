@@ -49,6 +49,7 @@ type parser = @{
     mut restriction: restriction,
     reader: reader,
     binop_precs: @[op_spec],
+    keywords: hashmap<str, ()>,
     bad_expr_words: hashmap<str, ()>
 };
 
@@ -82,6 +83,9 @@ impl parser for parser {
     }
     fn span_fatal(sp: span, m: str) -> ! {
         self.sess.span_diagnostic.span_fatal(sp, m)
+    }
+    fn bug(m: str) -> ! {
+        self.sess.span_diagnostic.span_bug(self.span, m)
     }
     fn warn(m: str) {
         self.sess.span_diagnostic.span_warn(self.span, m)
@@ -161,7 +165,15 @@ fn eat(p: parser, tok: token::token) -> bool {
     ret if p.token == tok { p.bump(); true } else { false };
 }
 
+// A sanity check that the word we are asking for is a known keyword
+fn require_keyword(p: parser, word: str) {
+    if !p.keywords.contains_key(word) {
+        p.bug(#fmt("unknown keyword: %s", word));
+    }
+}
+
 fn is_word(p: parser, word: str) -> bool {
+    require_keyword(p, word);
     ret alt p.token {
           token::IDENT(sid, false) { str::eq(word, p.get_str(sid)) }
           _ { false }
@@ -169,6 +181,7 @@ fn is_word(p: parser, word: str) -> bool {
 }
 
 fn eat_word(p: parser, word: str) -> bool {
+    require_keyword(p, word);
     alt p.token {
       token::IDENT(sid, false) {
         if str::eq(word, p.get_str(sid)) {
@@ -181,6 +194,7 @@ fn eat_word(p: parser, word: str) -> bool {
 }
 
 fn expect_word(p: parser, word: str) {
+    require_keyword(p, word);
     if !eat_word(p, word) {
         p.fatal("expecting " + word + ", found " +
                     token_to_str(p.reader, p.token));
@@ -386,6 +400,9 @@ fn parse_ret_ty(p: parser) -> (ast::ret_style, @ast::ty) {
 fn region_from_name(p: parser, s: option<str>) -> ast::region {
     let r = alt s {
       some (string) {
+        // FIXME: To be consistent with our type resolution the
+        // static region should probably be resolved during type
+        // checking, not in the parser.
         if string == "static" {
             ast::re_static
         } else {
@@ -2578,14 +2595,7 @@ fn parse_view_item(p: parser) -> @ast::view_item {
 }
 
 fn is_view_item(p: parser) -> bool {
-    alt p.token {
-      token::IDENT(sid, false) {
-        let st = p.get_str(sid);
-        ret str::eq(st, "use") || str::eq(st, "import") ||
-                str::eq(st, "export");
-      }
-      _ { ret false; }
-    }
+    is_word(p, "use") || is_word(p, "import") || is_word(p, "export")
 }
 
 fn maybe_parse_view(
