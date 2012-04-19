@@ -1992,6 +1992,7 @@ fn parse_item_impl(p: parser, attrs: [ast::attribute]) -> @ast::item {
 fn parse_item_res(p: parser, attrs: [ast::attribute]) -> @ast::item {
     let lo = p.last_span.lo;
     let ident = parse_value_ident(p);
+    let rp = parse_region_param(p);
     let ty_params = parse_ty_params(p);
     expect(p, token::LPAREN);
     let arg_ident = parse_value_ident(p);
@@ -2010,7 +2011,8 @@ fn parse_item_res(p: parser, attrs: [ast::attribute]) -> @ast::item {
          cf: ast::return_val,
          constraints: []};
     ret mk_item(p, lo, dtor.span.hi, ident,
-                ast::item_res(decl, ty_params, dtor, p.get_id(), p.get_id()),
+                ast::item_res(decl, ty_params, dtor,
+                              p.get_id(), p.get_id(), rp),
                 attrs);
 }
 
@@ -2035,6 +2037,7 @@ fn parse_iface_ref_list(p:parser) -> [ast::iface_ref] {
 fn parse_item_class(p: parser, attrs: [ast::attribute]) -> @ast::item {
     let lo = p.last_span.lo;
     let class_name = parse_value_ident(p);
+    let rp = parse_region_param(p);
     let ty_params = parse_ty_params(p);
     let class_path = ident_to_path_tys(p, class_name, ty_params);
     let ifaces : [ast::iface_ref] = if eat_word(p, "implements")
@@ -2057,11 +2060,11 @@ fn parse_item_class(p: parser, attrs: [ast::attribute]) -> @ast::item {
       some((ct_d, ct_b, ct_s)) {
           ret mk_item(p, lo, p.last_span.hi, class_name,
                       ast::item_class(ty_params, ifaces, ms,
-                         {node: {id: ctor_id,
-                                 self_id: p.get_id(),
-                                 dec: ct_d,
-                                 body: ct_b},
-                          span: ct_s}), attrs); }
+                                      {node: {id: ctor_id,
+                                              self_id: p.get_id(),
+                                              dec: ct_d,
+                                              body: ct_b},
+                                       span: ct_s}, rp), attrs); }
        /*
          Is it strange for the parser to check this?
        */
@@ -2236,17 +2239,23 @@ fn parse_type_decl(p: parser) -> {lo: uint, ident: ast::ident} {
 
 fn parse_item_type(p: parser, attrs: [ast::attribute]) -> @ast::item {
     let t = parse_type_decl(p);
+    let rp = parse_region_param(p);
     let tps = parse_ty_params(p);
     expect(p, token::EQ);
     let ty = parse_ty(p, false);
     let mut hi = p.span.hi;
     expect(p, token::SEMI);
-    ret mk_item(p, t.lo, hi, t.ident, ast::item_ty(ty, tps), attrs);
+    ret mk_item(p, t.lo, hi, t.ident, ast::item_ty(ty, tps, rp), attrs);
+}
+
+fn parse_region_param(p: parser) -> ast::region_param {
+    if eat(p, token::BINOP(token::AND)) {ast::rp_self} else {ast::rp_none}
 }
 
 fn parse_item_enum(p: parser, attrs: [ast::attribute]) -> @ast::item {
     let lo = p.last_span.lo;
     let id = parse_ident(p);
+    let rp = parse_region_param(p);
     let ty_params = parse_ty_params(p);
     let mut variants: [ast::variant] = [];
     // Newtype syntax
@@ -2265,7 +2274,7 @@ fn parse_item_enum(p: parser, attrs: [ast::attribute]) -> @ast::item {
                      id: p.get_id(),
                      disr_expr: none});
         ret mk_item(p, lo, ty.span.hi, id,
-                    ast::item_enum([variant], ty_params), attrs);
+                    ast::item_enum([variant], ty_params, rp), attrs);
     }
     expect(p, token::LBRACE);
 
@@ -2301,7 +2310,7 @@ fn parse_item_enum(p: parser, attrs: [ast::attribute]) -> @ast::item {
         p.fatal("discriminator values can only be used with a c-like enum");
     }
     ret mk_item(p, lo, p.last_span.hi, id,
-                ast::item_enum(variants, ty_params), attrs);
+                ast::item_enum(variants, ty_params, rp), attrs);
 }
 
 fn parse_fn_ty_proto(p: parser) -> ast::proto {

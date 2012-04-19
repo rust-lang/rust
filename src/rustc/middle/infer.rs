@@ -538,9 +538,19 @@ impl unify_methods for infer_ctxt {
         sub(self).tys(a, b).chain {|_t| ok(()) }
     }
 
+    fn sub_regions(a: ty::region, b: ty::region) -> ures {
+        sub(self).regions(a, b).chain {|_t| ok(()) }
+    }
+
     fn eq_tys(a: ty::t, b: ty::t) -> ures {
         self.sub_tys(a, b).then {||
             self.sub_tys(b, a)
+        }
+    }
+
+    fn eq_regions(a: ty::region, b: ty::region) -> ures {
+        self.sub_regions(a, b).then {||
+            self.sub_regions(b, a)
         }
     }
 }
@@ -905,6 +915,7 @@ iface combine {
     fn contratys(a: ty::t, b: ty::t) -> cres<ty::t>;
     fn tys(a: ty::t, b: ty::t) -> cres<ty::t>;
     fn tps(as: [ty::t], bs: [ty::t]) -> cres<[ty::t]>;
+    fn substs(as: ty::substs, bs: ty::substs) -> cres<ty::substs>;
     fn fns(a: ty::fn_ty, b: ty::fn_ty) -> cres<ty::fn_ty>;
     fn flds(a: ty::field, b: ty::field) -> cres<ty::field>;
     fn modes(a: ast::mode, b: ast::mode) -> cres<ast::mode>;
@@ -920,6 +931,41 @@ iface combine {
 enum sub = infer_ctxt;  // "subtype", "subregion" etc
 enum lub = infer_ctxt;  // "least upper bound" (common supertype)
 enum glb = infer_ctxt;  // "greatest lower bound" (common subtype)
+
+fn super_substs<C:combine>(
+    self: C, a: ty::substs, b: ty::substs) -> cres<ty::substs> {
+
+    fn eq_opt_regions(infcx: infer_ctxt,
+                      a: option<ty::region>,
+                      b: option<ty::region>) -> cres<option<ty::region>> {
+        alt (a, b) {
+          (none, none) {
+            ok(none)
+          }
+          (some(a), some(b)) {
+            infcx.eq_regions(a, b);
+            ok(some(a))
+          }
+          (_, _) {
+            // If these two substitutions are for the same type (and
+            // they should be), then the type should either
+            // consistenly have a region parameter or not have a
+            // region parameter.
+            infcx.tcx.sess.bug(
+                #fmt["substitution a had opt_region %s and \
+                      b had opt_region %s",
+                     a.to_str(infcx),
+                     b.to_str(infcx)]);
+          }
+        }
+    }
+
+    self.tps(a.tps, b.tps).chain { |tps|
+        eq_opt_regions(self.infcx(), a.self_r, b.self_r).chain { |self_r|
+            ok({self_r: self_r, tps: tps})
+        }
+    }
+}
 
 fn super_tps<C:combine>(
     self: C, as: [ty::t], bs: [ty::t]) -> cres<[ty::t]> {
@@ -1057,9 +1103,9 @@ fn super_tys<C:combine>(
         ok(a)
       }
 
-      (ty::ty_enum(a_id, a_tps), ty::ty_enum(b_id, b_tps))
+      (ty::ty_enum(a_id, a_substs), ty::ty_enum(b_id, b_substs))
       if a_id == b_id {
-        self.tps(a_tps, b_tps).chain {|tps|
+        self.substs(a_substs, b_substs).chain {|tps|
             ok(ty::mk_enum(tcx, a_id, tps))
         }
       }
@@ -1071,10 +1117,10 @@ fn super_tys<C:combine>(
         }
       }
 
-      (ty::ty_class(a_id, a_tps), ty::ty_class(b_id, b_tps))
+      (ty::ty_class(a_id, a_substs), ty::ty_class(b_id, b_substs))
       if a_id == b_id {
-        self.tps(a_tps, b_tps).chain {|tps|
-            ok(ty::mk_class(tcx, a_id, tps))
+        self.substs(a_substs, b_substs).chain {|substs|
+            ok(ty::mk_class(tcx, a_id, substs))
         }
       }
 
@@ -1124,11 +1170,12 @@ fn super_tys<C:combine>(
         }
       }
 
-      (ty::ty_res(a_id, a_t, a_tps), ty::ty_res(b_id, b_t, b_tps))
+      (ty::ty_res(a_id, a_t, a_substs),
+       ty::ty_res(b_id, b_t, b_substs))
       if a_id == b_id {
         self.tys(a_t, b_t).chain {|t|
-            self.tps(a_tps, b_tps).chain {|tps|
-                ok(ty::mk_res(tcx, a_id, t, tps))
+            self.substs(a_substs, b_substs).chain {|substs|
+                ok(ty::mk_res(tcx, a_id, t, substs))
             }
         }
       }
@@ -1297,6 +1344,10 @@ impl of combine for sub {
 
     fn fns(a: ty::fn_ty, b: ty::fn_ty) -> cres<ty::fn_ty> {
         super_fns(self, a, b)
+    }
+
+    fn substs(as: ty::substs, bs: ty::substs) -> cres<ty::substs> {
+        super_substs(self, as, bs)
     }
 
     fn tps(as: [ty::t], bs: [ty::t]) -> cres<[ty::t]> {
@@ -1468,6 +1519,10 @@ impl of combine for lub {
 
     fn fns(a: ty::fn_ty, b: ty::fn_ty) -> cres<ty::fn_ty> {
         super_fns(self, a, b)
+    }
+
+    fn substs(as: ty::substs, bs: ty::substs) -> cres<ty::substs> {
+        super_substs(self, as, bs)
     }
 
     fn tps(as: [ty::t], bs: [ty::t]) -> cres<[ty::t]> {
@@ -1654,6 +1709,10 @@ impl of combine for glb {
 
     fn fns(a: ty::fn_ty, b: ty::fn_ty) -> cres<ty::fn_ty> {
         super_fns(self, a, b)
+    }
+
+    fn substs(as: ty::substs, bs: ty::substs) -> cres<ty::substs> {
+        super_substs(self, as, bs)
     }
 
     fn tps(as: [ty::t], bs: [ty::t]) -> cres<[ty::t]> {

@@ -263,11 +263,10 @@ fn extract_variant_args(bcx: block, pat_id: ast::node_id,
     let _icx = bcx.insn_ctxt("alt::extract_variant_args");
     let ccx = bcx.fcx.ccx;
     let enum_ty_substs = alt check ty::get(node_id_type(bcx, pat_id)).struct {
-      ty::ty_enum(id, tps) { assert id == vdefs.enm; tps }
+      ty::ty_enum(id, substs) { assert id == vdefs.enm; substs.tps }
     };
     let mut blobptr = val;
     let variants = ty::enum_variants(ccx.tcx, vdefs.enm);
-    let mut args = [];
     let size = ty::enum_variant_with_id(ccx.tcx, vdefs.enm,
                                         vdefs.var).args.len();
     if size > 0u && (*variants).len() != 1u {
@@ -275,14 +274,12 @@ fn extract_variant_args(bcx: block, pat_id: ast::node_id,
             PointerCast(bcx, val, T_opaque_enum_ptr(ccx));
         blobptr = GEPi(bcx, enumptr, [0, 1]);
     }
-    let mut i = 0u;
     let vdefs_tg = vdefs.enm;
     let vdefs_var = vdefs.var;
-    while i < size {
-        args += [GEP_enum(bcx, blobptr, vdefs_tg, vdefs_var,
-                          enum_ty_substs, i)];
-        i += 1u;
-    }
+    let args = vec::from_fn(size) { |i|
+        GEP_enum(bcx, blobptr, vdefs_tg, vdefs_var,
+                 enum_ty_substs, i)
+    };
     ret {vals: args, bcx: bcx};
 }
 

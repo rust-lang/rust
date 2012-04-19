@@ -15,7 +15,7 @@ enum vt<E> { mk_vt(visitor<E>), }
 enum fn_kind {
     fk_item_fn(ident, [ty_param]), //< an item declared with fn()
     fk_method(ident, [ty_param], @method),
-    fk_res(ident, [ty_param]),
+    fk_res(ident, [ty_param], region_param),
     fk_anon(proto),  //< an anonymous function like fn@(...)
     fk_fn_block,     //< a block {||...}
     fk_ctor(ident, [ty_param], node_id /* self id */,
@@ -24,7 +24,7 @@ enum fn_kind {
 
 fn name_of_fn(fk: fn_kind) -> ident {
     alt fk {
-      fk_item_fn(name, _) | fk_method(name, _, _) | fk_res(name, _)
+      fk_item_fn(name, _) | fk_method(name, _, _) | fk_res(name, _, _)
           | fk_ctor(name, _, _, _) { name }
       fk_anon(_) | fk_fn_block { "anon" }
     }
@@ -32,7 +32,7 @@ fn name_of_fn(fk: fn_kind) -> ident {
 
 fn tps_of_fn(fk: fn_kind) -> [ty_param] {
     alt fk {
-      fk_item_fn(_, tps) | fk_method(_, tps, _) | fk_res(_, tps)
+      fk_item_fn(_, tps) | fk_method(_, tps, _) | fk_res(_, tps, _)
           | fk_ctor(_, tps, _, _) { tps }
       fk_anon(_) | fk_fn_block { [] }
     }
@@ -118,12 +118,15 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
         for nm.view_items.each {|vi| v.visit_view_item(vi, e, v); }
         for nm.items.each {|ni| v.visit_native_item(ni, e, v); }
       }
-      item_ty(t, tps) { v.visit_ty(t, e, v); v.visit_ty_params(tps, e, v); }
-      item_res(decl, tps, body, dtor_id, _) {
-        v.visit_fn(fk_res(i.ident, tps), decl, body, i.span,
+      item_ty(t, tps, rp) {
+        v.visit_ty(t, e, v);
+        v.visit_ty_params(tps, e, v);
+      }
+      item_res(decl, tps, body, dtor_id, _, rp) {
+        v.visit_fn(fk_res(i.ident, tps, rp), decl, body, i.span,
                    dtor_id, e, v);
       }
-      item_enum(variants, tps) {
+      item_enum(variants, tps, _) {
         v.visit_ty_params(tps, e, v);
         for variants.each {|vr|
             for vr.node.args.each {|va| v.visit_ty(va.ty, e, v); }
@@ -137,7 +140,7 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
             visit_method_helper(m, e, v)
         }
       }
-      item_class(tps, ifaces, members, ctor) {
+      item_class(tps, ifaces, members, ctor, _) {
           v.visit_ty_params(tps, e, v);
           for members.each {|m|
              v.visit_class_item(m, e, v);

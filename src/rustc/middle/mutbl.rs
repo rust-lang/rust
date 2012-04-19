@@ -30,18 +30,18 @@ fn expr_root_(tcx: ty::ctxt, ctor_self: option<node_id>,
                          outer_t: t}];
                 t = mt.ty;
               }
-              ty::ty_res(_, inner, tps) {
+              ty::ty_res(_, inner, substs) {
                 ds += [@{mutbl: false, kind: unbox(false), outer_t: t}];
-                t = ty::substitute_type_params(tcx, tps, inner);
+                t = ty::subst(tcx, substs, inner);
               }
-              ty::ty_enum(did, tps) {
+              ty::ty_enum(did, substs) {
                 let variants = ty::enum_variants(tcx, did);
                 if vec::len(*variants) != 1u ||
                        vec::len(variants[0].args) != 1u {
                     break;
                 }
                 ds += [@{mutbl: false, kind: unbox(false), outer_t: t}];
-                t = ty::substitute_type_params(tcx, tps, variants[0].args[0]);
+                t = ty::subst(tcx, substs, variants[0].args[0]);
               }
               _ { break; }
             }
@@ -216,7 +216,7 @@ fn visit_expr(ex: @expr, &&cx: @ctx, v: visit::vt<@ctx>) {
 
 fn visit_item(item: @item, &&cx: @ctx, v: visit::vt<@ctx>) {
     alt item.node {
-      item_class(tps, _, items, ctor) {
+      item_class(tps, _, items, ctor, _) {
          v.visit_ty_params(tps, cx, v);
          vec::map::<@class_member, ()>(items,
              {|i| v.visit_class_item(i, cx, v); });

@@ -297,7 +297,7 @@ fn GEP_enum(bcx: block, llblobptr: ValueRef, enum_id: ast::def_id,
     assert ix < variant.args.len();
 
     let arg_lltys = vec::map(variant.args, {|aty|
-        type_of(ccx, ty::substitute_type_params(ccx.tcx, ty_substs, aty))
+        type_of(ccx, ty::subst_tps(ccx.tcx, ty_substs, aty))
     });
     let typed_blobptr = PointerCast(bcx, llblobptr,
                                     T_ptr(T_struct(arg_lltys)));
@@ -686,8 +686,8 @@ fn make_drop_glue(bcx: block, v0: ValueRef, t: ty::t) {
       ty::ty_evec(_, ty::vstore_uniq) | ty::ty_estr(ty::vstore_uniq) {
         free_ty(bcx, Load(bcx, v0), t)
       }
-      ty::ty_res(did, inner, tps) {
-        trans_res_drop(bcx, v0, did, inner, tps)
+      ty::ty_res(did, inner, substs) {
+        trans_res_drop(bcx, v0, did, inner, substs.tps)
       }
       ty::ty_fn(_) {
         closure::make_fn_glue(bcx, v0, t, drop_ty)
@@ -735,7 +735,7 @@ fn trans_res_drop(bcx: block, rs: ValueRef, did: ast::def_id,
                   inner_t: ty::t, tps: [ty::t]) -> block {
     let _icx = bcx.insn_ctxt("trans_res_drop");
     let ccx = bcx.ccx();
-    let inner_t_s = ty::substitute_type_params(ccx.tcx, tps, inner_t);
+    let inner_t_s = ty::subst_tps(ccx.tcx, tps, inner_t);
 
     let drop_flag = GEPi(bcx, rs, [0, 0]);
     with_cond(bcx, IsNotNull(bcx, Load(bcx, drop_flag))) {|bcx|
@@ -911,7 +911,7 @@ fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
             let v_id = variant.id;
             for vec::each(args) {|a|
                 let llfldp_a = GEP_enum(cx, a_tup, tid, v_id, tps, j);
-                let ty_subst = ty::substitute_type_params(ccx.tcx, tps, a.ty);
+                let ty_subst = ty::subst_tps(ccx.tcx, tps, a.ty);
                 cx = f(cx, llfldp_a, ty_subst);
                 j += 1u;
             }
@@ -943,19 +943,20 @@ fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
             cx = f(cx, llfld_a, arg);
         }
       }
-      ty::ty_res(_, inner, tps) {
+      ty::ty_res(_, inner, substs) {
         let tcx = cx.tcx();
-        let inner1 = ty::substitute_type_params(tcx, tps, inner);
+        let inner1 = ty::subst(tcx, substs, inner);
         let llfld_a = GEPi(cx, av, [0, 1]);
         ret f(cx, llfld_a, inner1);
       }
-      ty::ty_enum(tid, tps) {
+      ty::ty_enum(tid, substs) {
         let variants = ty::enum_variants(cx.tcx(), tid);
         let n_variants = (*variants).len();
 
         // Cast the enums to types we can GEP into.
         if n_variants == 1u {
-            ret iter_variant(cx, av, variants[0], tps, tid, f);
+            ret iter_variant(cx, av, variants[0],
+                             substs.tps, tid, f);
         }
 
         let ccx = cx.ccx();
@@ -979,15 +980,16 @@ fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
                                        int::to_str(variant.disr_val, 10u));
             AddCase(llswitch, C_int(ccx, variant.disr_val), variant_cx.llbb);
             let variant_cx =
-                iter_variant(variant_cx, llunion_a_ptr, variant, tps, tid, f);
+                iter_variant(variant_cx, llunion_a_ptr, variant,
+                             substs.tps, tid, f);
             Br(variant_cx, next_cx.llbb);
         }
         ret next_cx;
       }
-      ty::ty_class(did, tps) {
+      ty::ty_class(did, substs) {
           // a class is like a record type
         let mut i: int = 0;
-        for vec::each(ty::class_items_as_fields(cx.tcx(), did, tps)) {|fld|
+        for vec::each(ty::class_items_as_fields(cx.tcx(), did, substs)) {|fld|
             let llfld_a = GEPi(cx, av, [0, i]);
             cx = f(cx, llfld_a, fld.mt.ty);
             i += 1;
@@ -1617,17 +1619,17 @@ fn autoderef(cx: block, v: ValueRef, t: ty::t) -> result_t {
             t1 = mt.ty;
             v1 = v;
           }
-          ty::ty_res(did, inner, tps) {
-            t1 = ty::substitute_type_params(ccx.tcx, tps, inner);
+          ty::ty_res(did, inner, substs) {
+            t1 = ty::subst(ccx.tcx, substs, inner);
             v1 = GEPi(cx, v1, [0, 1]);
           }
-          ty::ty_enum(did, tps) {
+          ty::ty_enum(did, substs) {
             let variants = ty::enum_variants(ccx.tcx, did);
             if (*variants).len() != 1u || variants[0].args.len() != 1u {
                 break;
             }
             t1 =
-                ty::substitute_type_params(ccx.tcx, tps, variants[0].args[0]);
+                ty::subst(ccx.tcx, substs, variants[0].args[0]);
             v1 = PointerCast(cx, v1, T_ptr(type_of(ccx, t1)));
           }
           _ { break; }
@@ -1939,7 +1941,7 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, real_substs: [ty::t],
     let (pt, name) = alt map_node {
       ast_map::node_item(i, pt) {
         alt i.node {
-          ast::item_res(_, _, _, dtor_id, _) {
+          ast::item_res(_, _, _, dtor_id, _, _) {
             item_ty = ty::node_id_to_type(ccx.tcx, dtor_id);
           }
           _ {}
@@ -1958,7 +1960,7 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, real_substs: [ty::t],
       ast_map::node_ctor(nm, _, _, pt) { (pt, nm) }
       _ { fail "unexpected node type"; }
     };
-    let mono_ty = ty::substitute_type_params(ccx.tcx, substs, item_ty);
+    let mono_ty = ty::subst_tps(ccx.tcx, substs, item_ty);
     let llfty = type_of_fn_from_ty(ccx, mono_ty);
 
     let pt = *pt + [path_name(ccx.names(name))];
@@ -1972,7 +1974,8 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, real_substs: [ty::t],
         set_inline_hint_if_appr(i.attrs, lldecl);
         trans_fn(ccx, pt, decl, body, lldecl, no_self, psubsts, fn_id.node);
       }
-      ast_map::node_item(@{node: ast::item_res(d, _, body, d_id, _), _}, _) {
+      ast_map::node_item(
+          @{node: ast::item_res(d, _, body, d_id, _, _), _}, _) {
         trans_fn(ccx, pt, d, body, lldecl, no_self, psubsts, d_id);
       }
       ast_map::node_native_item(i, _, _) {
@@ -1990,7 +1993,7 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, real_substs: [ty::t],
       ast_map::node_method(mth, impl_def_id, _) {
         set_inline_hint_if_appr(mth.attrs, lldecl);
         let selfty = ty::node_id_to_type(ccx.tcx, mth.self_id);
-        let selfty = ty::substitute_type_params(ccx.tcx, substs, selfty);
+        let selfty = ty::subst_tps(ccx.tcx, substs, selfty);
         trans_fn(ccx, pt, mth.decl, mth.body, lldecl,
                  impl_self(selfty), psubsts, fn_id.node);
       }
@@ -2048,7 +2051,7 @@ fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id)
             ccx.external.insert(parent_id, some(item.id));
             let mut my_id = 0;
             alt check item.node {
-              ast::item_enum(_, _) {
+              ast::item_enum(_, _, _) {
                 let vs_here = ty::enum_variants(ccx.tcx, local_def(item.id));
                 let vs_there = ty::enum_variants(ccx.tcx, parent_id);
                 vec::iter2(*vs_here, *vs_there) {|here, there|
@@ -2056,14 +2059,16 @@ fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id)
                     ccx.external.insert(there.id, some(here.id.node));
                 }
               }
-              ast::item_res(_, _, _, _, ctor_id) { my_id = ctor_id; }
+              ast::item_res(_, _, _, _, ctor_id, _) {
+                my_id = ctor_id;
+              }
             }
             trans_item(ccx, *item);
             local_def(my_id)
           }
           csearch::found(ast::ii_method(impl_did, mth)) {
             ccx.external.insert(fn_id, some(mth.id));
-            let {bounds: impl_bnds, ty: impl_ty} =
+            let {bounds: impl_bnds, rp: _, ty: impl_ty} =
                 ty::lookup_item_type(ccx.tcx, impl_did);
             if (*impl_bnds).len() + mth.tps.len() == 0u {
                 let llfn = get_item_val(ccx, mth.id);
@@ -2264,8 +2269,8 @@ fn trans_rec_field_inner(bcx: block, val: ValueRef, ty: ty::t,
                          field: ast::ident, sp: span) -> lval_result {
     let fields = alt ty::get(ty).struct {
             ty::ty_rec(fs) { fs }
-            ty::ty_class(did,ts) {
-                ty::class_items_as_fields(bcx.tcx(), did, ts) }
+            ty::ty_class(did, substs) {
+                ty::class_items_as_fields(bcx.tcx(), did, substs) }
             // Constraint?
             _ { bcx.tcx().sess.span_bug(sp, "trans_rec_field:\
                  base expr has non-record type"); }
@@ -4379,7 +4384,9 @@ fn trans_class_ctor(ccx: @crate_ctxt, path: path, decl: ast::fn_decl,
   // kludgy -- this wouldn't be necessary if the typechecker
   // special-cased constructors, then we could just look up
   // the ctor's return type.
-  let rslt_ty =  ty::mk_class(ccx.tcx, parent_id, psubsts.tys);
+  let rslt_ty =  ty::mk_class(ccx.tcx, parent_id,
+                              dummy_substs(psubsts.tys));
+
   // Make the fn context
   let fcx = new_fn_ctxt_w_id(ccx, path, llctor_decl, ctor_id,
                                    some(psubsts), some(sp));
@@ -4397,7 +4404,7 @@ fn trans_class_ctor(ccx: @crate_ctxt, path: path, decl: ast::fn_decl,
   let selfptr = alloc_ty(bcx_top, rslt_ty);
   // initialize fields to zero
   let fields = ty::class_items_as_fields(bcx_top.tcx(), parent_id,
-                                         psubsts.tys);
+                                         dummy_substs(psubsts.tys));
   let mut bcx = bcx_top;
   // Initialize fields to zero so init assignments can validly
   // drop their LHS
@@ -4450,7 +4457,7 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
       ast::item_impl(tps, _, _, ms) {
         impl::trans_impl(ccx, *path, item.ident, ms, tps);
       }
-      ast::item_res(decl, tps, body, dtor_id, ctor_id) {
+      ast::item_res(decl, tps, body, dtor_id, ctor_id, _) {
         if tps.len() == 0u {
             let llctor_decl = get_item_val(ccx, ctor_id);
             trans_res_ctor(ccx, *path, decl, ctor_id, none, llctor_decl);
@@ -4463,7 +4470,7 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
       ast::item_mod(m) {
         trans_mod(ccx, m);
       }
-      ast::item_enum(variants, tps) {
+      ast::item_enum(variants, tps, _) {
         if tps.len() == 0u {
             let degen = variants.len() == 1u;
             let vi = ty::enum_variants(ccx.tcx, local_def(item.id));
@@ -4487,7 +4494,7 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
         };
         native::trans_native_mod(ccx, native_mod, abi);
       }
-      ast::item_class(tps, _ifaces, items, ctor) {
+      ast::item_class(tps, _ifaces, items, ctor, _) {
         if tps.len() == 0u {
           let psubsts = {tys: ty::ty_params_to_tys(ccx.tcx, tps),
                          // FIXME: vtables have to get filled in depending
@@ -4495,7 +4502,7 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
                          vtables: none,
                          bounds: @[]};
           trans_class_ctor(ccx, *path, ctor.node.dec, ctor.node.body,
-                         get_item_val(ccx, ctor.node.id), psubsts,
+                           get_item_val(ccx, ctor.node.id), psubsts,
                            ctor.node.id, local_def(item.id), ctor.span);
         }
         // If there are ty params, the ctor will get monomorphized
@@ -4684,7 +4691,7 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
                 set_inline_hint_if_appr(i.attrs, llfn);
                 llfn
               }
-              ast::item_res(_, _, _, dtor_id, _) {
+              ast::item_res(_, _, _, dtor_id, _, _) {
                 // Note that the destructor is associated with the item's id,
                 // not the dtor_id. This is a bit counter-intuitive, but
                 // simplifies ty_res, which would have to carry around two
@@ -4726,7 +4733,7 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
             assert v.node.args.len() != 0u;
             let pth = *pth + [path_name(enm.ident), path_name(v.node.name)];
             let llfn = alt check enm.node {
-              ast::item_enum(_, _) {
+              ast::item_enum(_, _, _) {
                 register_fn(ccx, v.span, pth, id)
               }
             };
@@ -4747,7 +4754,7 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
 fn trans_constant(ccx: @crate_ctxt, it: @ast::item) {
     let _icx = ccx.insn_ctxt("trans_constant");
     alt it.node {
-      ast::item_enum(variants, _) {
+      ast::item_enum(variants, _, _) {
         let vi = ty::enum_variants(ccx.tcx, {crate: ast::local_crate,
                                              node: it.id});
         let mut i = 0;

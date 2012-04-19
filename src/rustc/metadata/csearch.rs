@@ -157,7 +157,7 @@ fn get_field_type(tcx: ty::ctxt, class_id: ast::def_id,
                  class_id, def)});
     #debug("got field data %?", the_field);
     let ty = decoder::item_type(def, the_field, tcx, cdata);
-    ret {bounds: @[], ty: ty};
+    ret {bounds: @[], rp: ast::rp_none, ty: ty};
 }
 
 fn get_impl_iface(tcx: ty::ctxt, def: ast::def_id)

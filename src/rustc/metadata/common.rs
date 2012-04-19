@@ -84,6 +84,8 @@ const tag_path_elt_name: uint = 0x43u;
 const tag_item_field: uint = 0x44u;
 const tag_class_mut: uint = 0x45u;
 
+const tag_region_param: uint = 0x46u;
+
 // used to encode crate_ctxt side tables
 enum astencode_tag { // Reserves 0x50 -- 0x6f
     tag_ast = 0x50,

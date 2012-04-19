@@ -646,20 +646,28 @@ type item = {ident: ident, attrs: [attribute],
              id: node_id, node: item_, span: span};
 
 #[auto_serialize]
+enum region_param {
+    rp_none,
+    rp_self
+}
+
+#[auto_serialize]
 enum item_ {
     item_const(@ty, @expr),
     item_fn(fn_decl, [ty_param], blk),
     item_mod(_mod),
     item_native_mod(native_mod),
-    item_ty(@ty, [ty_param]),
-    item_enum([variant], [ty_param]),
+    item_ty(@ty, [ty_param], region_param),
+    item_enum([variant], [ty_param], region_param),
     item_res(fn_decl /* dtor */, [ty_param], blk /* dtor body */,
-             node_id /* dtor id */, node_id /* ctor id */),
+             node_id /* dtor id */, node_id /* ctor id */,
+             region_param),
     item_class([ty_param], /* ty params for class */
                [iface_ref],   /* ifaces this class implements */
                [@class_member], /* methods, etc. */
                                /* (not including ctor) */
-               class_ctor
+               class_ctor,
+               region_param
                ),
     item_iface([ty_param], [ty_method]),
     item_impl([ty_param], option<@ty> /* iface */,

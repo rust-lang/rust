@@ -882,7 +882,7 @@ fn node_id_type(bcx: block, id: ast::node_id) -> ty::t {
     let tcx = bcx.tcx();
     let t = ty::node_id_to_type(tcx, id);
     alt bcx.fcx.param_substs {
-      some(substs) { ty::substitute_type_params(tcx, substs.tys, t) }
+      some(substs) { ty::subst_tps(tcx, substs.tys, t) }
       _ { assert !ty::type_has_params(t); t }
     }
 }
@@ -894,7 +894,7 @@ fn node_id_type_params(bcx: block, id: ast::node_id) -> [ty::t] {
     let params = ty::node_id_to_type_params(tcx, id);
     alt bcx.fcx.param_substs {
       some(substs) {
-        vec::map(params) {|t| ty::substitute_type_params(tcx, substs.tys, t) }
+        vec::map(params) {|t| ty::subst_tps(tcx, substs.tys, t) }
       }
       _ { params }
     }
@@ -908,6 +908,10 @@ fn field_idx_strict(cx: ty::ctxt, sp: span, ident: ast::ident,
                      have a field named %s", ident)); }
             some(i) { i as int }
         }
+}
+
+fn dummy_substs(tps: [ty::t]) -> ty::substs {
+    {self_r: some(ty::re_bound(ty::br_self)), tps: tps}
 }
 
 //

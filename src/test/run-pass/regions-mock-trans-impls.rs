@@ -2,11 +2,11 @@ import libc, sys, unsafe;
 
 enum arena = ();
 
-type bcx = {
+type bcx& = {
     fcx: &fcx
 };
 
-type fcx = {
+type fcx& = {
     arena: &arena,
     ccx: &ccx
 };

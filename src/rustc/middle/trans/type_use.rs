@@ -65,7 +65,7 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
     };
     alt check map_node {
       ast_map::node_item(@{node: item_fn(_, _, body), _}, _) |
-      ast_map::node_item(@{node: item_res(_, _, body, _, _), _}, _) |
+      ast_map::node_item(@{node: item_res(_, _, body, _, _, _), _}, _) |
       ast_map::node_method(@{body, _}, _, _) {
         handle_body(cx, body);
       }
@@ -107,13 +107,12 @@ fn type_needs_inner(cx: ctx, use: uint, ty: ty::t,
             alt ty::get(ty).struct {
               ty::ty_fn(_) | ty::ty_ptr(_) | ty::ty_rptr(_, _) |
               ty::ty_box(_) | ty::ty_iface(_, _) { false }
-              ty::ty_enum(did, tps) {
+              ty::ty_enum(did, substs) {
                 if option::is_none(list::find(enums_seen, {|id| id == did})) {
                     let seen = list::cons(did, @enums_seen);
                     for vec::each(*ty::enum_variants(cx.ccx.tcx, did)) {|v|
                         for vec::each(v.args) {|aty|
-                            let t = ty::substitute_type_params(cx.ccx.tcx,
-                                                               tps, aty);
+                            let t = ty::subst(cx.ccx.tcx, substs, aty);
                             type_needs_inner(cx, use, t, seen);
                         }
                     }
@@ -153,7 +152,7 @@ fn mark_for_expr(cx: ctx, e: @expr) {
         }
       }
       expr_path(_) {
-        option::iter(cx.ccx.tcx.node_type_substs.find(e.id)) {|ts|
+        cx.ccx.tcx.node_type_substs.find(e.id).iter {|ts|
             let id = ast_util::def_id_of_def(cx.ccx.tcx.def_map.get(e.id));
             vec::iter2(type_uses_for(cx.ccx, id, ts.len()), ts) {|uses, subst|
                 type_needs(cx, uses, subst)

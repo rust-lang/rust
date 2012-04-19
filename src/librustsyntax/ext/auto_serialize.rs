@@ -102,11 +102,11 @@ fn expand(cx: ext_ctxt,
 
     vec::flat_map(in_items) {|in_item|
         alt in_item.node {
-          ast::item_ty(ty, tps) {
+          ast::item_ty(ty, tps, _) {
             [filter_attrs(in_item)] + ty_fns(cx, in_item.ident, ty, tps)
           }
 
-          ast::item_enum(variants, tps) {
+          ast::item_enum(variants, tps, _) {
             [filter_attrs(in_item)] + enum_fns(cx, in_item.ident,
                                                in_item.span, variants, tps)
           }

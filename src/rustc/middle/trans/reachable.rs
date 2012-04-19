@@ -84,7 +84,7 @@ fn traverse_public_item(cx: ctx, item: @item) {
               for vec::each(nm.items) {|item| cx.rmap.insert(item.id, ()); }
           }
       }
-      item_res(_, tps, blk, _, _) {
+      item_res(_, tps, blk, _, _, _) {
         // resources seem to be unconditionally inlined
         traverse_inline_body(cx, blk);
       }
@@ -102,7 +102,7 @@ fn traverse_public_item(cx: ctx, item: @item) {
             }
         }
       }
-      item_class(tps, _ifaces, items, ctor) {
+      item_class(tps, _ifaces, items, ctor, _) {
         cx.rmap.insert(ctor.node.id, ());
         for vec::each(items) {|item|
             alt item.node {
@@ -117,7 +117,8 @@ fn traverse_public_item(cx: ctx, item: @item) {
             }
         }
       }
-      item_const(_, _) | item_ty(_, _) | item_enum(_, _) | item_iface(_, _) {}
+      item_const(_, _) | item_ty(_, _, _) |
+      item_enum(_, _, _) | item_iface(_, _) {}
     }
 }
 
@@ -152,7 +153,9 @@ fn traverse_all_resources(cx: ctx, crate_mod: _mod) {
         visit_item: {|i, cx, v|
             visit::visit_item(i, cx, v);
             alt i.node {
-              item_res(_, _, _, _, _) { traverse_public_item(cx, i); }
+              item_res(_, _, _, _, _, _) {
+                traverse_public_item(cx, i);
+              }
               _ {}
             }
         }

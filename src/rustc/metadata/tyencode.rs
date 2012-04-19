@@ -100,18 +100,25 @@ fn enc_mt(w: io::writer, cx: @ctxt, mt: ty::mt) {
     }
     enc_ty(w, cx, mt.ty);
 }
-fn enc_bound_region(w: io::writer, br: ty::bound_region) {
-    alt br {
-      ty::br_self { w.write_char('s') }
-      ty::br_anon { w.write_char('a') }
-      ty::br_named(s) {
-        w.write_char('[');
-        w.write_str(s);
-        w.write_char(']')
+
+fn enc_opt<T>(w: io::writer, t: option<T>, enc_f: fn(T)) {
+    alt t {
+      none { w.write_char('n') }
+      some(v) {
+        w.write_char('s');
+        enc_f(v);
       }
     }
 }
-fn enc_region(w: io::writer, r: ty::region) {
+
+fn enc_substs(w: io::writer, cx: @ctxt, substs: ty::substs) {
+    enc_opt(w, substs.self_r) { |r| enc_region(w, cx, r) }
+    w.write_char('[');
+    for substs.tps.each { |t| enc_ty(w, cx, t); }
+    w.write_char(']');
+}
+
+fn enc_region(w: io::writer, cx: @ctxt, r: ty::region) {
     alt r {
       ty::re_bound(br) {
         w.write_char('b');
@@ -130,18 +137,29 @@ fn enc_region(w: io::writer, r: ty::region) {
         w.write_int(nid);
         w.write_char('|');
       }
-      ty::re_var(id) {
-        w.write_char('v');
-        w.write_uint(id.to_uint());
-        w.write_char('|');
-      }
       ty::re_static {
         w.write_char('t');
+      }
+      ty::re_var(_) {
+        // these should not crop up after typeck
+        cx.tcx.sess.bug("Cannot encode region variables");
       }
     }
 }
 
-fn enc_vstore(w: io::writer, v: ty::vstore) {
+fn enc_bound_region(w: io::writer, br: ty::bound_region) {
+    alt br {
+      ty::br_self { w.write_char('s') }
+      ty::br_anon { w.write_char('a') }
+      ty::br_named(s) {
+        w.write_char('[');
+        w.write_str(s);
+        w.write_char(']')
+      }
+    }
+}
+
+fn enc_vstore(w: io::writer, cx: @ctxt, v: ty::vstore) {
     w.write_char('/');
     alt v {
       ty::vstore_fixed(u)  {
@@ -156,7 +174,7 @@ fn enc_vstore(w: io::writer, v: ty::vstore) {
       }
       ty::vstore_slice(r) {
         w.write_char('&');
-        enc_region(w, r);
+        enc_region(w, cx, r);
       }
     }
 }
@@ -193,11 +211,11 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
         }
       }
       ty::ty_str { w.write_char('S'); }
-      ty::ty_enum(def, tys) {
+      ty::ty_enum(def, substs) {
         w.write_str("t[");
         w.write_str(cx.ds(def));
         w.write_char('|');
-        for tys.each {|t| enc_ty(w, cx, t); }
+        enc_substs(w, cx, substs);
         w.write_char(']');
       }
       ty::ty_iface(def, tys) {
@@ -217,17 +235,17 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
       ty::ty_ptr(mt) { w.write_char('*'); enc_mt(w, cx, mt); }
       ty::ty_rptr(r, mt) {
         w.write_char('&');
-        enc_region(w, r);
+        enc_region(w, cx, r);
         enc_mt(w, cx, mt);
       }
       ty::ty_evec(mt, v) {
         w.write_char('V');
         enc_mt(w, cx, mt);
-        enc_vstore(w, v);
+        enc_vstore(w, cx, v);
       }
       ty::ty_estr(v) {
         w.write_char('v');
-        enc_vstore(w, v);
+        enc_vstore(w, cx, v);
       }
       ty::ty_vec(mt) { w.write_char('I'); enc_mt(w, cx, mt); }
       ty::ty_rec(fields) {
@@ -243,12 +261,12 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
         enc_proto(w, f.proto);
         enc_ty_fn(w, cx, f);
       }
-      ty::ty_res(def, ty, tps) {
+      ty::ty_res(def, ty, substs) {
         w.write_str("r[");
         w.write_str(cx.ds(def));
         w.write_char('|');
         enc_ty(w, cx, ty);
-        for tps.each {|t| enc_ty(w, cx, t); }
+        enc_substs(w, cx, substs);
         w.write_char(']');
       }
       ty::ty_var(id) {
@@ -277,7 +295,7 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
         w.write_char(']');
       }
       ty::ty_opaque_box { w.write_char('B'); }
-      ty::ty_class(def, tys) {
+      ty::ty_class(def, substs) {
           #debug("~~~~ %s", "a[");
           w.write_str("a[");
           let s = cx.ds(def);
@@ -285,7 +303,7 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
           w.write_str(s);
           #debug("~~~~ %s", "|");
           w.write_str("|");
-          for tys.each {|t| enc_ty(w, cx, t); }
+          enc_substs(w, cx, substs);
           #debug("~~~~ %s", "]");
           w.write_char(']');
       }

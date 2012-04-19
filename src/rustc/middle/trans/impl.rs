@@ -178,7 +178,7 @@ fn resolve_vtable_in_fn_ctxt(fcx: fn_ctxt, vt: typeck::vtable_origin)
         let tys = alt fcx.param_substs {
           some(substs) {
             vec::map(tys, {|t|
-                ty::substitute_type_params(fcx.ccx.tcx, substs.tys, t)
+                ty::subst_tps(fcx.ccx.tcx, substs.tys, t)
             })
           }
           _ { tys }
@@ -244,7 +244,7 @@ fn make_impl_vtable(ccx: @crate_ctxt, impl_id: ast::def_id, substs: [ty::t],
     let ifce_id = ty::ty_to_def_id(option::get(ty::impl_iface(tcx, impl_id)));
     let has_tps = (*ty::lookup_item_type(ccx.tcx, impl_id).bounds).len() > 0u;
     make_vtable(ccx, vec::map(*ty::iface_methods(tcx, ifce_id), {|im|
-        let fty = ty::substitute_type_params(tcx, substs,
+        let fty = ty::subst_tps(tcx, substs,
                                              ty::mk_fn(tcx, im.fty));
         if (*im.tps).len() > 0u || ty::type_has_vars(fty) {
             C_null(T_ptr(T_nil()))

@@ -265,36 +265,42 @@ fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
           }
           item_mod(m) { item_mod(fld.fold_mod(m)) }
           item_native_mod(nm) { item_native_mod(fld.fold_native_mod(nm)) }
-          item_ty(t, typms) { item_ty(fld.fold_ty(t),
-                                      fold_ty_params(typms, fld)) }
-          item_enum(variants, typms) {
+          item_ty(t, typms, rp) { item_ty(fld.fold_ty(t),
+                                          fold_ty_params(typms, fld),
+                                          rp) }
+          item_enum(variants, typms, r) {
             item_enum(vec::map(variants, fld.fold_variant),
-                      fold_ty_params(typms, fld))
+                      fold_ty_params(typms, fld),
+                      r)
           }
-          item_class(typms, ifaces, items, ctor) {
+          item_class(typms, ifaces, items, ctor, rp) {
               let ctor_body = fld.fold_block(ctor.node.body);
               let ctor_decl = fold_fn_decl(ctor.node.dec, fld);
               let ctor_id   = fld.new_id(ctor.node.id);
-              item_class(typms, vec::map(ifaces, {|p|
-                              {path: fld.fold_path(p.path),
-                               id: fld.new_id(p.id)}}),
-                         vec::map(items, fld.fold_class_item),
-                         {node: {body: ctor_body,
-                                 dec: ctor_decl,
-                                 id: ctor_id with ctor.node}
-                             with ctor})
+              item_class(
+                  typms,
+                  vec::map(ifaces, {|p|
+                      {path: fld.fold_path(p.path),
+                       id: fld.new_id(p.id)}}),
+                  vec::map(items, fld.fold_class_item),
+                  {node: {body: ctor_body,
+                          dec: ctor_decl,
+                          id: ctor_id with ctor.node}
+                   with ctor},
+                  rp)
           }
           item_impl(tps, ifce, ty, methods) {
             item_impl(tps, option::map(ifce, fld.fold_ty), fld.fold_ty(ty),
                       vec::map(methods, fld.fold_method))
           }
           item_iface(tps, methods) { item_iface(tps, methods) }
-          item_res(decl, typms, body, did, cid) {
+          item_res(decl, typms, body, did, cid, rp) {
             item_res(fold_fn_decl(decl, fld),
                      fold_ty_params(typms, fld),
                      fld.fold_block(body),
                      fld.new_id(did),
-                     fld.new_id(cid))
+                     fld.new_id(cid),
+                     rp)
           }
         };
 }

@@ -434,7 +434,7 @@ fn resolve_names(e: @env, c: @ast::crate) {
           non-class items
          */
         alt i.node {
-           ast::item_class(_, ifaces, _, _) {
+           ast::item_class(_, ifaces, _, _, _) {
              /* visit the iface paths... */
              for ifaces.each {|p|
                maybe_insert(e, p.id,
@@ -559,7 +559,7 @@ fn visit_item_with_scope(e: @env, i: @ast::item, sc: scopes, v: vt<scopes>) {
             v.visit_ty(m.decl.output, msc, v);
         }
       }
-      ast::item_class(tps, ifaces, members, ctor) {
+      ast::item_class(tps, ifaces, members, ctor, _) {
         visit::visit_ty_params(tps, sc, v);
         // Can maybe skip this now that we require self on class fields
         let class_scope = cons(scope_item(i), @sc);
@@ -613,7 +613,7 @@ fn visit_fn_with_scope(e: @env, fk: visit::fn_kind, decl: ast::fn_decl,
     // for f's constrs in the table.
     for decl.constraints.each {|c| resolve_constr(e, c, sc, v); }
     let scope = alt fk {
-      visit::fk_item_fn(_, tps) | visit::fk_res(_, tps) |
+      visit::fk_item_fn(_, tps) | visit::fk_res(_, tps, _) |
       visit::fk_method(_, tps, _) | visit::fk_ctor(_, tps, _, _)
          { scope_bare_fn(decl, id, tps) }
       visit::fk_anon(ast::proto_bare) { scope_bare_fn(decl, id, []) }
@@ -1019,7 +1019,7 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace,
               ast::item_impl(tps, _, _, _) {
                 if ns == ns_type { ret lookup_in_ty_params(e, name, tps); }
               }
-              ast::item_enum(_, tps) | ast::item_ty(_, tps) {
+              ast::item_enum(_, tps, _) | ast::item_ty(_, tps, _) {
                 if ns == ns_type { ret lookup_in_ty_params(e, name, tps); }
               }
               ast::item_iface(tps, _) {
@@ -1036,7 +1036,7 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace,
               ast::item_native_mod(m) {
                 ret lookup_in_local_native_mod(e, it.id, sp, name, ns);
               }
-              ast::item_class(tps, _, members, ctor) {
+              ast::item_class(tps, _, members, ctor, _) {
                   if ns == ns_type {
                     ret lookup_in_ty_params(e, name, tps);
                   }
@@ -1210,7 +1210,7 @@ fn lookup_in_block(e: env, name: ident, sp: span, b: ast::blk_, pos: uint,
               }
               ast::decl_item(it) {
                 alt it.node {
-                  ast::item_enum(variants, _) {
+                  ast::item_enum(variants, _, _) {
                     if ns == ns_type {
                         if str::eq(it.ident, name) {
                             ret some(ast::def_ty(local_def(it.id)));
@@ -1309,10 +1309,10 @@ fn found_def_item(i: @ast::item, ns: namespace) -> option<def> {
       ast::item_native_mod(_) {
         if ns == ns_module { ret some(ast::def_native_mod(local_def(i.id))); }
       }
-      ast::item_ty(_, _) | item_iface(_, _) | item_enum(_, _) {
+      ast::item_ty(_, _, _) | item_iface(_, _) | item_enum(_, _, _) {
         if ns == ns_type { ret some(ast::def_ty(local_def(i.id))); }
       }
-      ast::item_res(_, _, _, _, ctor_id) {
+      ast::item_res(_, _, _, _, ctor_id, _) {
         alt ns {
           ns_val {
             ret some(ast::def_fn(local_def(ctor_id), ast::impure_fn));
@@ -1321,7 +1321,7 @@ fn found_def_item(i: @ast::item, ns: namespace) -> option<def> {
           _ { }
         }
       }
-      ast::item_class(_, _, _, _) {
+      ast::item_class(_, _, _, _, _) {
           if ns == ns_type {
             ret some(ast::def_class(local_def(i.id)));
           }
@@ -1614,12 +1614,12 @@ fn index_mod(md: ast::_mod) -> mod_index {
     for md.items.each {|it|
         alt it.node {
           ast::item_const(_, _) | ast::item_fn(_, _, _) | ast::item_mod(_) |
-          ast::item_native_mod(_) | ast::item_ty(_, _) |
-          ast::item_res(_, _, _, _, _) |
+          ast::item_native_mod(_) | ast::item_ty(_, _, _) |
+          ast::item_res(_, _, _, _, _, _) |
           ast::item_impl(_, _, _, _) | ast::item_iface(_, _) {
             add_to_index(index, it.ident, mie_item(it));
           }
-          ast::item_enum(variants, _) {
+          ast::item_enum(variants, _, _) {
             add_to_index(index, it.ident, mie_item(it));
             let mut variant_idx: uint = 0u;
             for variants.each {|v|
@@ -1629,7 +1629,7 @@ fn index_mod(md: ast::_mod) -> mod_index {
                 variant_idx += 1u;
             }
           }
-          ast::item_class(tps, _, items, ctor) {
+          ast::item_class(tps, _, items, ctor, _) {
               // add the class name itself
               add_to_index(index, it.ident, mie_item(it));
               // add the constructor decl
@@ -1763,7 +1763,7 @@ fn check_item(e: @env, i: @ast::item, &&x: (), v: vt<()>) {
         ensure_unique(*e, i.span, ty_params, {|tp| tp.ident},
                       "type parameter");
       }
-      ast::item_enum(_, ty_params) {
+      ast::item_enum(_, ty_params, _) {
         ensure_unique(*e, i.span, ty_params, {|tp| tp.ident},
                       "type parameter");
       }
@@ -1837,7 +1837,7 @@ fn check_block(e: @env, b: ast::blk, &&x: (), v: vt<()>) {
               }
               ast::decl_item(it) {
                 alt it.node {
-                  ast::item_enum(variants, _) {
+                  ast::item_enum(variants, _, _) {
                     add_name(types, it.span, it.ident);
                     for variants.each {|v|
                         add_name(values, v.span, v.node.name);
@@ -1849,10 +1849,10 @@ fn check_block(e: @env, b: ast::blk, &&x: (), v: vt<()>) {
                   ast::item_const(_, _) | ast::item_fn(_, _, _) {
                     add_name(values, it.span, it.ident);
                   }
-                  ast::item_ty(_, _) | ast::item_iface(_, _) {
+                  ast::item_ty(_, _, _) | ast::item_iface(_, _) {
                     add_name(types, it.span, it.ident);
                   }
-                  ast::item_res(_, _, _, _, _) {
+                  ast::item_res(_, _, _, _, _, _) {
                     add_name(types, it.span, it.ident);
                     add_name(values, it.span, it.ident);
                   }
@@ -2030,7 +2030,7 @@ fn check_exports(e: @env) {
           some(ms) {
             let maybe_id = list_search(ms) {|m|
                 alt m {
-                  mie_item(@{node: item_enum(_, _), id, _}) { some(id) }
+                  mie_item(@{node: item_enum(_, _, _), id, _}) { some(id) }
                   _ { none }
                 }
             };

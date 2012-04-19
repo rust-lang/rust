@@ -183,13 +183,13 @@ fn map_item(i: @item, cx: ctx, v: vt) {
             map_method(impl_did, extend(cx, i.ident), m, cx);
         }
       }
-      item_res(decl, tps, _, dtor_id, ctor_id) {
+      item_res(decl, tps, _, dtor_id, ctor_id, _) {
         cx.map.insert(ctor_id, node_ctor(i.ident, tps,
                                          res_ctor(decl, ctor_id, i.span),
                                          item_path));
         cx.map.insert(dtor_id, node_item(i, item_path));
       }
-      item_enum(vs, _) {
+      item_enum(vs, _, _) {
         for vs.each {|v|
             cx.map.insert(v.node.id, node_variant(
                 v, i, extend(cx, i.ident)));
@@ -204,7 +204,7 @@ fn map_item(i: @item, cx: ctx, v: vt) {
             cx.map.insert(nitem.id, node_native_item(nitem, abi, @cx.path));
         }
       }
-      item_class(_, _, items, ctor) {
+      item_class(_, _, items, ctor, _) {
           let d_id = ast_util::local_def(i.id);
           let p = extend(cx, i.ident);
           for items.each {|ci|

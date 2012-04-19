@@ -125,10 +125,10 @@ fn test_fun_to_str() {
 }
 
 fn res_to_str(decl: ast::fn_decl, name: ast::ident,
-              params: [ast::ty_param]) -> str {
+              params: [ast::ty_param], rp: ast::region_param) -> str {
     let buffer = io::mem_buffer();
     let s = rust_printer(io::mem_buffer_writer(buffer));
-    print_res(s, decl, name, params);
+    print_res(s, decl, name, params, rp);
     end(s); // Close the head box
     end(s); // Close the outer box
     eof(s.s);
@@ -454,11 +454,12 @@ fn print_item(s: ps, &&item: @ast::item) {
         print_native_mod(s, nmod, item.attrs);
         bclose(s, item.span);
       }
-      ast::item_ty(ty, params) {
+      ast::item_ty(ty, params, rp) {
         ibox(s, indent_unit);
         ibox(s, 0u);
         word_nbsp(s, "type");
         word(s.s, item.ident);
+        print_region_param(s, rp);
         print_type_params(s, params);
         end(s); // end the inner ibox
 
@@ -468,7 +469,7 @@ fn print_item(s: ps, &&item: @ast::item) {
         word(s.s, ";");
         end(s); // end the outer ibox
       }
-      ast::item_enum(variants, params) {
+      ast::item_enum(variants, params, rp) {
         let newtype =
             vec::len(variants) == 1u &&
                 str::eq(item.ident, variants[0].node.name) &&
@@ -478,6 +479,7 @@ fn print_item(s: ps, &&item: @ast::item) {
             word_space(s, "enum");
         } else { head(s, "enum"); }
         word(s.s, item.ident);
+        print_region_param(s, rp);
         print_type_params(s, params);
         space(s.s);
         if newtype {
@@ -500,9 +502,10 @@ fn print_item(s: ps, &&item: @ast::item) {
             bclose(s, item.span);
         }
       }
-      ast::item_class(tps,ifaces,items,ctor) {
+      ast::item_class(tps,ifaces,items,ctor, rp) {
           head(s, "class");
           word_nbsp(s, item.ident);
+          print_region_param(s, rp);
           print_type_params(s, tps);
           word_space(s, "implements");
           commasep(s, inconsistent, ifaces, {|s, p|
@@ -584,8 +587,8 @@ fn print_item(s: ps, &&item: @ast::item) {
         for methods.each {|meth| print_ty_method(s, meth); }
         bclose(s, item.span);
       }
-      ast::item_res(decl, tps, body, dt_id, ct_id) {
-        print_res(s, decl, item.ident, tps);
+      ast::item_res(decl, tps, body, dt_id, ct_id, rp) {
+        print_res(s, decl, item.ident, tps, rp);
         print_block(s, body);
       }
     }
@@ -593,9 +596,10 @@ fn print_item(s: ps, &&item: @ast::item) {
 }
 
 fn print_res(s: ps, decl: ast::fn_decl, name: ast::ident,
-             typarams: [ast::ty_param]) {
+             typarams: [ast::ty_param], rp: ast::region_param) {
     head(s, "resource");
     word(s.s, name);
+    print_region_param(s, rp);
     print_type_params(s, typarams);
     popen(s);
     word_space(s, decl.inputs[0].ident + ":");
@@ -1398,6 +1402,13 @@ fn print_bounds(s: ps, bounds: @[ast::ty_param_bound]) {
               ast::bound_iface(t) { print_type(s, t); }
             }
         }
+    }
+}
+
+fn print_region_param(s: ps, rp: ast::region_param) {
+    alt rp {
+      ast::rp_self { word(s.s, "&") }
+      ast::rp_none { }
     }
 }
 

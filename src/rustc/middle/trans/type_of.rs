@@ -89,8 +89,8 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
       }
       ty::ty_fn(_) { T_fn_pair(cx, type_of_fn_from_ty(cx, t)) }
       ty::ty_iface(_, _) { T_opaque_iface(cx) }
-      ty::ty_res(_, sub, tps) {
-        let sub1 = ty::substitute_type_params(cx.tcx, tps, sub);
+      ty::ty_res(_, sub, substs) {
+        let sub1 = ty::subst(cx.tcx, substs, sub);
         ret T_struct([T_i8(), type_of(cx, sub1)]);
       }
       ty::ty_param(_, _) { T_typaram(cx.tn) }

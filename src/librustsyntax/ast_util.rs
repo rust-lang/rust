@@ -149,7 +149,7 @@ fn is_exported(i: ident, m: _mod) -> bool {
     for m.items.each {|it|
         if it.ident == i { local = true; }
         alt it.node {
-          item_enum(variants, _) {
+          item_enum(variants, _, _) {
             for variants.each {|v|
                 if v.node.name == i {
                    local = true;
