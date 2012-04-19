@@ -21,8 +21,9 @@ native mod rustrt {
 Race-free helper to get access to a global task where a libuv
 loop is running.
 
-Use `uv::hl::interact`, `uv::hl::ref_handle` and `uv::hl::unref_handle` to
-do operations against the global loop that this function returns.
+Use `uv::hl::interact`, `uv::hl::ref`, `uv::hl::unref` and
+uv `uv::hl::unref_and_close` to do operations against the global
+loop that this function returns.
 
 # Return
 
@@ -33,6 +34,7 @@ fn get() -> hl::high_level_loop {
     ret get_monitor_task_gl();
 }
 
+// WARNING: USE ONLY ONE get_*_task_gl fn in the scope of a process lifetime.
 #[doc(hidden)]
 fn get_monitor_task_gl() -> hl::high_level_loop {
     let monitor_loop_chan =
@@ -51,6 +53,7 @@ fn get_monitor_task_gl() -> hl::high_level_loop {
         });
 }
 
+// WARNING: USE ONLY ONE get_*_task_gl fn in the scope of a process lifetime.
 #[doc(hidden)]
 fn get_single_task_gl() -> hl::high_level_loop {
     let global_loop_chan_ptr = rustrt::rust_uv_get_kernel_global_chan_ptr();
@@ -323,7 +326,7 @@ mod test {
         hl::interact(hl_loop) {|loop_ptr|
             log(debug, "closing timer");
             //ll::close(timer_ptr as *libc::c_void, simple_timer_close_cb);
-            hl::unref_handle(hl_loop, timer_ptr, simple_timer_close_cb);
+            hl::unref_and_close(hl_loop, timer_ptr, simple_timer_close_cb);
             log(debug, "about to deref exit_ch_ptr");
             log(debug, "after msg sent on deref'd exit_ch");
         };
@@ -342,7 +345,7 @@ mod test {
             log(debug, "user code inside interact loop!!!");
             let init_status = ll::timer_init(loop_ptr, timer_ptr);
             if(init_status == 0i32) {
-                hl::ref_handle(hl_loop, timer_ptr);
+                hl::ref(hl_loop, timer_ptr);
                 ll::set_data_for_uv_handle(
                     timer_ptr as *libc::c_void,
                     exit_ch_ptr as *libc::c_void);

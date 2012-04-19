@@ -595,8 +595,8 @@ unsafe fn run(loop_handle: *libc::c_void) {
     rustrt::rust_uv_run(loop_handle);
 }
 
-unsafe fn close(handle: *libc::c_void, cb: *u8) {
-    rustrt::rust_uv_close(handle, cb);
+unsafe fn close<T>(handle: *T, cb: *u8) {
+    rustrt::rust_uv_close(handle as *libc::c_void, cb);
 }
 
 unsafe fn tcp_init(loop_handle: *libc::c_void, handle: *uv_tcp_t)
