@@ -1,3 +1,4 @@
+import parse::classify::*;
 import parse::comments;
 import parse::lexer;
 import codemap::codemap;
@@ -240,6 +241,12 @@ fn is_end(s: ps) -> bool {
 fn is_bol(s: ps) -> bool {
     ret s.s.last_token() == pp::EOF ||
             s.s.last_token() == pp::hardbreak_tok();
+}
+
+fn in_cbox(s: ps) -> bool {
+    let len = vec::len(s.boxes);
+    if len == 0u { ret false; }
+    ret s.boxes[len - 1u] == pp::consistent;
 }
 
 fn hardbreak_if_not_bol(s: ps) { if !is_bol(s) { hardbreak(s.s); } }
@@ -1484,34 +1491,6 @@ fn print_view_item(s: ps, item: @ast::view_item) {
     end(s); // end outer head-block
 }
 
-
-// FIXME: The fact that this builds up the table anew for every call is
-// not good. Eventually, table should be a const.
-fn operator_prec(op: ast::binop) -> int {
-    for vec::each(*parse::prec::binop_prec_table()) {|spec|
-        if spec.op == op { ret spec.prec; }
-    }
-    core::unreachable();
-}
-
-fn need_parens(expr: @ast::expr, outer_prec: int) -> bool {
-    alt expr.node {
-      ast::expr_binary(op, _, _) { operator_prec(op) < outer_prec }
-      ast::expr_cast(_, _) { parse::prec::as_prec < outer_prec }
-      // This may be too conservative in some cases
-      ast::expr_assign(_, _) { true }
-      ast::expr_move(_, _) { true }
-      ast::expr_swap(_, _) { true }
-      ast::expr_assign_op(_, _, _) { true }
-      ast::expr_ret(_) { true }
-      ast::expr_be(_) { true }
-      ast::expr_assert(_) { true }
-      ast::expr_check(_, _) { true }
-      ast::expr_log(_, _, _) { true }
-      _ { !parse::classify::expr_requires_semi_to_be_stmt(expr) }
-    }
-}
-
 fn print_op_maybe_parens(s: ps, expr: @ast::expr, outer_prec: int) {
     let add_them = need_parens(expr, outer_prec);
     if add_them { popen(s); }
@@ -1594,12 +1573,6 @@ fn print_remaining_comments(s: ps) {
           _ { break; }
         }
     }
-}
-
-fn in_cbox(s: ps) -> bool {
-    let len = vec::len(s.boxes);
-    if len == 0u { ret false; }
-    ret s.boxes[len - 1u] == pp::consistent;
 }
 
 fn print_literal(s: ps, &&lit: @ast::lit) {
@@ -1837,25 +1810,6 @@ fn proto_to_str(p: ast::proto) -> str {
       ast::proto_uniq { "fn~" }
       ast::proto_box { "fn@" }
     };
-}
-
-fn ends_in_lit_int(ex: @ast::expr) -> bool {
-    alt ex.node {
-      ast::expr_lit(@{node: ast::lit_int(_, ast::ty_i), _}) { true }
-      ast::expr_binary(_, _, sub) | ast::expr_unary(_, sub) |
-      ast::expr_move(_, sub) | ast::expr_copy(sub) |
-      ast::expr_assign(_, sub) | ast::expr_be(sub) |
-      ast::expr_assign_op(_, _, sub) | ast::expr_swap(_, sub) |
-      ast::expr_log(_, _, sub) | ast::expr_assert(sub) |
-      ast::expr_check(_, sub) { ends_in_lit_int(sub) }
-      ast::expr_fail(osub) | ast::expr_ret(osub) {
-        alt osub {
-          some(ex) { ends_in_lit_int(ex) }
-          _ { false }
-        }
-      }
-      _ { false }
-    }
 }
 
 //
