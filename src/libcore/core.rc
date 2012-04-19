@@ -7,24 +7,29 @@
 #[license = "MIT"];
 #[crate_type = "lib"];
 
-// Don't link to core. We are core.
-#[no_core];
-
 #[doc = "
-The Rust core library
-
-The core library provides functionality that is closely tied to the Rust
+The Rust core library provides functionality that is closely tied to the Rust
 built-in types and runtime services, or that is used in nearly every
 non-trivial program.
 
-It is linked by default to all crates and the contents imported. The effect is
-as though the user had written the following:
+`core` includes modules corresponding to each of the integer types, each of
+the floating point types, the `bool` type, tules, characters, strings, vectors
+(`vec`), shared boxes (`box`), and unsafe pointers (`ptr`).  Additionally,
+`core` provides very commonly used built-in types and operations, concurrency
+primitives, platform abstractions, I/O, and complete bindings to the C
+standard library.
+
+`core` is linked by default to all crates and the contents imported.
+Implicitly, all crates behave as if they included the following prologue:
 
     use core;
     import core::*;
 
-This behavior can be disabled with the `no_core` crate attribute.
+This behavior can be disabled with the `#[no_core]` crate attribute.
 "];
+
+// Don't link to core. We are core.
+#[no_core];
 
 export int, i8, i16, i32, i64;
 export uint, u8, u16, u32, u64;
@@ -41,6 +46,7 @@ export to_str;
 // currently exported for the uv code in std, but when that code moves into
 // core this should become unexported
 export priv;
+
 
 // Built-in-type support modules
 
@@ -129,6 +135,7 @@ mod u64 {
     mod inst;
 }
 
+
 mod box;
 mod char;
 mod float;
@@ -138,46 +145,48 @@ mod str;
 mod ptr;
 mod vec;
 mod bool;
+mod tuple;
 
-// For internal use by char, not exported
-mod unicode;
-// Do not export
-mod priv;
 
 // Ubiquitous-utility-type modules
 
 mod either;
+mod iter;
+mod logging;
 mod option;
 mod result;
-mod tuple;
-mod iter;
-
-// Useful ifaces
-
 mod to_str;
 
-// Runtime and language-primitive support
-
-mod libc;
-mod os;
-mod io;
-mod run;
-mod rand;
-mod path;
-
-mod cmath;
-mod sys;
-mod unsafe;
-mod logging;
 
 // Concurrency
 mod comm;
 mod task;
 mod future;
 
-// Compiler support modules
+
+// Runtime and language-primitive support
+
+mod io;
+mod libc;
+mod os;
+mod path;
+mod rand;
+mod run;
+mod sys;
+mod unsafe;
+
+
+// Modules supporting compiler-generated code
+// Exported but not part of the public interface
 
 mod extfmt;
+
+
+// For internal use, not exported
+
+mod unicode;
+mod priv;
+mod cmath;
 
 
 // Local Variables:
