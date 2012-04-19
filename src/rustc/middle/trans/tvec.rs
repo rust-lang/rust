@@ -102,6 +102,7 @@ fn trans_evec(bcx: block, args: [@ast::expr],
     let vec_ty = node_id_type(bcx, id);
     let unit_ty = ty::sequence_element_type(bcx.tcx(), vec_ty);
     let llunitty = type_of::type_of(ccx, unit_ty);
+    let unit_sz = llsize_of(ccx, llunitty);
 
     let mut {bcx, val, dataptr} =
         alt vst {
@@ -122,8 +123,14 @@ fn trans_evec(bcx: block, args: [@ast::expr],
             let n = vec::len(args);
             let n = C_uint(ccx, n);
             let vp = base::arrayalloca(bcx, llunitty, n);
-            let v = C_struct([vp, n]);
-            {bcx: bcx, val: v, dataptr: vp}
+            let len = Mul(bcx, n, unit_sz);
+
+            let p = base::alloca(bcx, T_struct([T_ptr(llunitty),
+                                                ccx.int_type]));
+            Store(bcx, vp, GEPi(bcx, p, [0, abi::slice_elt_base]));
+            Store(bcx, len, GEPi(bcx, p, [0, abi::slice_elt_len]));
+
+            {bcx: bcx, val: p, dataptr: vp}
           }
           ast::vstore_uniq {
             let {bcx, val} = alloc_uniq(bcx, llunitty, args.len());
@@ -156,6 +163,9 @@ fn trans_evec(bcx: block, args: [@ast::expr],
       ast::vstore_fixed(_) {
         // We wrote into the destination in the fixed case.
         ret bcx;
+      }
+      ast::vstore_slice(_) {
+        ret base::store_in_dest(bcx, Load(bcx, val), dest);
       }
       _ {
         ret base::store_in_dest(bcx, val, dest);
