@@ -514,16 +514,16 @@ fn gen_enum_shapes(ccx: @crate_ctxt) -> ValueRef {
     // to each variant shape). As we do so, build up the header.
 
     let mut header = [];
-    let mut info = [];
+    let mut inf = [];
     let header_sz = 2u16 * ccx.shape_cx.next_tag_id;
     let data_sz = vec::len(data) as u16;
 
-    let mut info_sz = 0u16;
+    let mut inf_sz = 0u16;
     for ccx.shape_cx.tag_order.each {|did_|
         let did = did_; // Satisfy alias checker.
         let num_variants = vec::len(*ty::enum_variants(ccx.tcx, did)) as u16;
-        add_u16(header, header_sz + info_sz);
-        info_sz += 2u16 * (num_variants + 2u16) + 3u16;
+        add_u16(header, header_sz + inf_sz);
+        inf_sz += 2u16 * (num_variants + 2u16) + 3u16;
     }
 
     // Construct the info tables, which contain offsets to the shape of each
@@ -535,11 +535,11 @@ fn gen_enum_shapes(ccx: @crate_ctxt) -> ValueRef {
     for ccx.shape_cx.tag_order.each {|did_|
         let did = did_; // Satisfy alias checker.
         let variants = ty::enum_variants(ccx.tcx, did);
-        add_u16(info, vec::len(*variants) as u16);
+        add_u16(inf, vec::len(*variants) as u16);
 
         // Construct the largest-variants table.
-        add_u16(info,
-                header_sz + info_sz + data_sz + (vec::len(lv_table) as u16));
+        add_u16(inf,
+                header_sz + inf_sz + data_sz + (vec::len(lv_table) as u16));
 
         let lv = largest_variants(ccx, did);
         add_u16(lv_table, vec::len(lv) as u16);
@@ -555,22 +555,22 @@ fn gen_enum_shapes(ccx: @crate_ctxt) -> ValueRef {
         let size_align = if dynamic { {size: 0u16, align: 0u8} }
                          else { compute_static_enum_size(ccx, lv, did) };
         // Write in the static size and alignment of the enum.
-        add_u16(info, size_align.size);
-        info += [size_align.align];
+        add_u16(inf, size_align.size);
+        inf += [size_align.align];
 
         // Now write in the offset of each variant.
         for vec::each(*variants) {|_v|
-            add_u16(info, header_sz + info_sz + offsets[i]);
+            add_u16(inf, header_sz + inf_sz + offsets[i]);
             i += 1u;
         }
     }
 
     assert (i == vec::len(offsets));
     assert (header_sz == vec::len(header) as u16);
-    assert (info_sz == vec::len(info) as u16);
+    assert (inf_sz == vec::len(inf) as u16);
     assert (data_sz == vec::len(data) as u16);
 
-    header += info;
+    header += inf;
     header += data;
     header += lv_table;
 

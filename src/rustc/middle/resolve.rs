@@ -500,18 +500,22 @@ fn resolve_names(e: @env, c: @ast::crate) {
               }
               _ {
                 e.sess.span_err(p.span,
-                                "not a enum variant: " +
+                                "not an enum variant: " +
                                     ast_util::path_name(p));
               }
             }
           }
           /* Here we determine whether a given pat_ident binds a new
-           variable a refers to a nullary enum. */
+           variable or refers to a nullary enum. */
           ast::pat_ident(p, none) {
               alt lookup_in_scope(*e, sc, p.span, path_to_ident(p),
                                   ns_val, false) {
                 some(fnd@ast::def_variant(_,_)) {
                     e.def_map.insert(pat.id, fnd);
+                }
+                some(fnd@ast::def_const(_)) {
+                    e.sess.span_err(p.span, "Sorry, rebinding or matching \
+                      against symbolic constants is not allowed.");
                 }
                 // Binds a var -- nothing needs to be done
                 _ {}
@@ -1446,16 +1450,16 @@ fn list_search<T: copy, U: copy>(ls: list<T>, f: fn(T) -> option<U>)
 
 fn lookup_in_local_mod(e: env, node_id: node_id, sp: span, id: ident,
                        ns: namespace, dr: dir) -> option<def> {
-    let info = alt e.mod_map.find(node_id) {
+    let inf = alt e.mod_map.find(node_id) {
             some(x) { x }
             none { e.sess.span_bug(sp, #fmt("lookup_in_local_mod: \
                      module %d not in mod_map", node_id)); }
     };
-    if dr == outside && !is_exported(e, id, info) {
-        // if we're in a native mod, then dr==inside, so info.m is some _mod
+    if dr == outside && !is_exported(e, id, inf) {
+        // if we're in a native mod, then dr==inside, so inf.m is some _mod
         ret none; // name is not visible
     }
-    alt info.index.find(id) {
+    alt inf.index.find(id) {
       none { }
       some(lst) {
         let found = list_search(lst, bind lookup_in_mie(e, _, ns));
@@ -1465,7 +1469,7 @@ fn lookup_in_local_mod(e: env, node_id: node_id, sp: span, id: ident,
       }
     }
     // not local or explicitly imported; try globs:
-    ret lookup_glob_in_mod(e, info, sp, id, ns, outside);
+    ret lookup_glob_in_mod(e, inf, sp, id, ns, outside);
 }
 
 fn lookup_in_globs(e: env, globs: [glob_imp_def], sp: span, id: ident,

@@ -381,7 +381,7 @@ fn in_scope_cx(cx: block, f: fn(scope_info)) {
     let mut cur = cx;
     loop {
         alt cur.kind {
-          block_scope(info) { f(info); ret; }
+          block_scope(inf) { f(inf); ret; }
           _ {}
         }
         cur = block_parent(cur);

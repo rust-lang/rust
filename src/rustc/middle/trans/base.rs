@@ -371,19 +371,19 @@ fn get_tydesc(ccx: @crate_ctxt, t: ty::t,
               &static_ti: option<@tydesc_info>) -> ValueRef {
     assert !ty::type_has_params(t);
     // Otherwise, generate a tydesc if necessary, and return it.
-    let info = get_static_tydesc(ccx, t);
-    static_ti = some(info);
-    info.tydesc
+    let inf = get_static_tydesc(ccx, t);
+    static_ti = some(inf);
+    inf.tydesc
 }
 
 fn get_static_tydesc(ccx: @crate_ctxt, t: ty::t) -> @tydesc_info {
     alt ccx.tydescs.find(t) {
-      some(info) { ret info; }
+      some(inf) { ret inf; }
       none {
         ccx.stats.n_static_tydescs += 1u;
-        let info = declare_tydesc(ccx, t);
-        ccx.tydescs.insert(t, info);
-        ret info;
+        let inf = declare_tydesc(ccx, t);
+        ccx.tydescs.insert(t, inf);
+        ret inf;
       }
     }
 }
@@ -455,7 +455,7 @@ fn declare_tydesc(ccx: @crate_ctxt, t: ty::t) -> @tydesc_info {
     let gvar = str::as_c_str(name, {|buf|
         llvm::LLVMAddGlobal(ccx.llmod, ccx.tydesc_type, buf)
     });
-    let info =
+    let inf =
         @{ty: t,
           tydesc: gvar,
           size: llsize,
@@ -464,7 +464,7 @@ fn declare_tydesc(ccx: @crate_ctxt, t: ty::t) -> @tydesc_info {
           mut drop_glue: none,
           mut free_glue: none};
     log(debug, "--- declare_tydesc " + ty_to_str(ccx.tcx, t));
-    ret info;
+    ret inf;
 }
 
 type glue_helper = fn@(block, ValueRef, ty::t);
@@ -2870,8 +2870,8 @@ fn need_invoke(bcx: block) -> bool {
     let mut cur = bcx;
     loop {
         alt cur.kind {
-          block_scope(info) {
-            for info.cleanups.each {|cleanup|
+          block_scope(inf) {
+            for inf.cleanups.each {|cleanup|
                 alt cleanup {
                   clean(_, cleanup_type) | clean_temp(_, _, cleanup_type) {
                     if cleanup_type == normal_exit_and_unwind {
@@ -2892,8 +2892,8 @@ fn need_invoke(bcx: block) -> bool {
 
 fn have_cached_lpad(bcx: block) -> bool {
     let mut res = false;
-    in_lpad_scope_cx(bcx) {|info|
-        alt info.landing_pad {
+    in_lpad_scope_cx(bcx) {|inf|
+        alt inf.landing_pad {
           some(_) { res = true; }
           none { res = false; }
         }
@@ -2905,9 +2905,9 @@ fn in_lpad_scope_cx(bcx: block, f: fn(scope_info)) {
     let mut bcx = bcx;
     loop {
         alt bcx.kind {
-          block_scope(info) {
-            if info.cleanups.len() > 0u || bcx.parent == parent_none {
-                f(info); ret;
+          block_scope(inf) {
+            if inf.cleanups.len() > 0u || bcx.parent == parent_none {
+                f(inf); ret;
             }
           }
           _ {}
@@ -2920,13 +2920,13 @@ fn get_landing_pad(bcx: block) -> BasicBlockRef {
     let _icx = bcx.insn_ctxt("get_landing_pad");
 
     let mut cached = none, pad_bcx = bcx; // Guaranteed to be set below
-    in_lpad_scope_cx(bcx) {|info|
+    in_lpad_scope_cx(bcx) {|inf|
         // If there is a valid landing pad still around, use it
-        alt info.landing_pad {
+        alt inf.landing_pad {
           some(target) { cached = some(target); }
           none {
             pad_bcx = sub_block(bcx, "unwind");
-            info.landing_pad = some(pad_bcx.llbb);
+            inf.landing_pad = some(pad_bcx.llbb);
           }
         }
     }
@@ -3792,8 +3792,8 @@ fn cleanup_and_leave(bcx: block, upto: option<BasicBlockRef>,
     let mut done = false;
     loop {
         alt cur.kind {
-          block_scope(info) if info.cleanups.len() > 0u {
-            option::iter(vec::find(info.cleanup_paths,
+          block_scope(inf) if inf.cleanups.len() > 0u {
+            option::iter(vec::find(inf.cleanup_paths,
                                              {|cp| cp.target == leave})) {|cp|
                 Br(bcx, cp.dest);
                 done = true;
@@ -3801,7 +3801,7 @@ fn cleanup_and_leave(bcx: block, upto: option<BasicBlockRef>,
             if done { ret; }
             let sub_cx = sub_block(bcx, "cleanup");
             Br(bcx, sub_cx.llbb);
-            info.cleanup_paths += [{target: leave, dest: sub_cx.llbb}];
+            inf.cleanup_paths += [{target: leave, dest: sub_cx.llbb}];
             bcx = trans_block_cleanups_(sub_cx, cur, is_lpad);
           }
           _ {}
