@@ -157,7 +157,7 @@ unsafe fn outer_global_loop_body(
 
     ll::loop_delete(loop_ptr);
 }
-        
+
 unsafe fn monitor_task_loop_body(weak_exit_po_in: comm::port<()>,
                           msg_po_in: comm::port<hl::high_level_msg>,
                           loop_ptr: *libc::c_void,

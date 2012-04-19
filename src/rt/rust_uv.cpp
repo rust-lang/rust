@@ -448,7 +448,7 @@ rust_uv_get_kernel_global_chan_ptr() {
 
 extern "C" uintptr_t*
 rust_uv_get_kernel_monitor_global_chan_ptr() {
-	return rust_uv_get_kernel_global_chan_ptr();
+    return rust_uv_get_kernel_global_chan_ptr();
 }
 
 extern "C" uintptr_t*
