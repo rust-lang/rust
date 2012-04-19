@@ -349,12 +349,15 @@ then
     fi
 fi
 
-if [ ! -z "$CFG_ENABLE_LOCAL_RUST" -a ! -f ${CFG_LOCAL_RUST_ROOT}/bin/rustc ]
+if [ ! -z "$CFG_ENABLE_LOCAL_RUST" ]
 then
-    err "no local rust to use"
-else
-    LRV=`${CFG_LOCAL_RUST_ROOT}/bin/rustc --version`
-    step_msg "using rustc at: ${CFG_LOCAL_RUST_ROOT} with version: " $LRV
+    if [ ! -f ${CFG_LOCAL_RUST_ROOT}/bin/rustc ]
+    then
+        err "no local rust to use"
+    else
+        LRV=`${CFG_LOCAL_RUST_ROOT}/bin/rustc --version`
+        step_msg "using rustc at: ${CFG_LOCAL_RUST_ROOT} with version: " $LRV
+    fi
 fi
 
 if [ -z "$CFG_ENABLE_CLANG" -a -z "$CFG_GCC" ]
