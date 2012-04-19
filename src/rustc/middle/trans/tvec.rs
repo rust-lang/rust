@@ -35,8 +35,8 @@ fn pointer_add(bcx: block, ptr: ValueRef, bytes: ValueRef) -> ValueRef {
     ret PointerCast(bcx, InBoundsGEP(bcx, bptr, [bytes]), old_ty);
 }
 
-fn alloc_raw(bcx: block, fill: ValueRef, alloc: ValueRef) -> result {
-    let _icx = bcx.insn_ctxt("tvec::alloc_raw");
+fn alloc_uniq_raw(bcx: block, fill: ValueRef, alloc: ValueRef) -> result {
+    let _icx = bcx.insn_ctxt("tvec::alloc_uniq_raw");
     let ccx = bcx.ccx();
     let llvecty = ccx.opaque_vec_type;
     let vecsize = Add(bcx, alloc, llsize_of(ccx, llvecty));
@@ -46,34 +46,23 @@ fn alloc_raw(bcx: block, fill: ValueRef, alloc: ValueRef) -> result {
     ret {bcx: bcx, val: vecptr};
 }
 
-type alloc_result =
-    {bcx: block,
-     val: ValueRef,
-     unit_ty: ty::t,
-     llunitty: TypeRef};
-
-fn alloc(bcx: block, vec_ty: ty::t, elts: uint) -> alloc_result {
-    let _icx = bcx.insn_ctxt("tvec::alloc");
+fn alloc_uniq(bcx: block, llunitty: TypeRef, elts: uint) -> result {
+    let _icx = bcx.insn_ctxt("tvec::alloc_uniq");
     let ccx = bcx.ccx();
-    let unit_ty = ty::sequence_element_type(bcx.tcx(), vec_ty);
-    let llunitty = type_of::type_of(ccx, unit_ty);
     let llvecty = T_vec(ccx, llunitty);
     let unit_sz = llsize_of(ccx, llunitty);
 
     let fill = Mul(bcx, C_uint(ccx, elts), unit_sz);
     let alloc = if elts < 4u { Mul(bcx, C_int(ccx, 4), unit_sz) }
                 else { fill };
-    let {bcx: bcx, val: vptr} = alloc_raw(bcx, fill, alloc);
+    let {bcx: bcx, val: vptr} = alloc_uniq_raw(bcx, fill, alloc);
     let vptr = PointerCast(bcx, vptr, T_ptr(llvecty));
 
-    ret {bcx: bcx,
-         val: vptr,
-         unit_ty: unit_ty,
-         llunitty: llunitty};
+    ret {bcx: bcx, val: vptr};
 }
 
-fn duplicate(bcx: block, vptr: ValueRef, vec_ty: ty::t) -> result {
-    let _icx = bcx.insn_ctxt("tvec::duplicate");
+fn duplicate_uniq(bcx: block, vptr: ValueRef, vec_ty: ty::t) -> result {
+    let _icx = bcx.insn_ctxt("tvec::duplicate_uniq");
     let ccx = bcx.ccx();
     let fill = get_fill(bcx, vptr);
     let size = Add(bcx, fill, llsize_of(ccx, ccx.opaque_vec_type));
@@ -98,9 +87,9 @@ fn make_free_glue(bcx: block, vptr: ValueRef, vec_ty: ty::t) ->
     }
 }
 
-fn trans_vec(bcx: block, args: [@ast::expr], id: ast::node_id,
-             dest: dest) -> block {
-    let _icx = bcx.insn_ctxt("tvec::trans_vec");
+fn trans_evec(bcx: block, args: [@ast::expr],
+              vst: ast::vstore, id: ast::node_id, dest: dest) -> block {
+    let _icx = bcx.insn_ctxt("tvec::trans_evec");
     let ccx = bcx.ccx();
     let mut bcx = bcx;
     if dest == base::ignore {
@@ -109,16 +98,50 @@ fn trans_vec(bcx: block, args: [@ast::expr], id: ast::node_id,
         }
         ret bcx;
     }
-    let vec_ty = node_id_type(bcx, id);
-    let mut {bcx: bcx,
-             val: vptr,
-             unit_ty: unit_ty,
-             llunitty: llunitty} = alloc(bcx, vec_ty, args.len());
 
-    add_clean_free(bcx, vptr, true);
+    let vec_ty = node_id_type(bcx, id);
+    let unit_ty = ty::sequence_element_type(bcx.tcx(), vec_ty);
+    let llunitty = type_of::type_of(ccx, unit_ty);
+
+    let mut {bcx, val, dataptr} =
+        alt vst {
+          ast::vstore_fixed(_) {
+            // Destination should be pre-allocated for us.
+            let v = alt dest {
+              base::save_in(v) {
+                PointerCast(bcx, v, T_ptr(llunitty))
+              }
+              _ {
+                bcx.ccx().sess.bug("bad dest for vstore_fixed \
+                                    in tvec::trans_evec");
+              }
+            };
+            {bcx: bcx, val: v, dataptr: v}
+          }
+          ast::vstore_slice(_) {
+            let n = vec::len(args);
+            let n = C_uint(ccx, n);
+            let vp = base::arrayalloca(bcx, llunitty, n);
+            let v = C_struct([vp, n]);
+            {bcx: bcx, val: v, dataptr: vp}
+          }
+          ast::vstore_uniq {
+            let {bcx, val} = alloc_uniq(bcx, llunitty, args.len());
+            add_clean_free(bcx, val, true);
+            let dataptr = get_dataptr(bcx, val, llunitty);
+            {bcx: bcx, val: val, dataptr: dataptr}
+          }
+          ast::vstore_box {
+            bcx.ccx().sess.unimpl("unhandled tvec::trans_evec");
+          }
+        };
+
+
     // Store the individual elements.
-    let dataptr = get_dataptr(bcx, vptr, llunitty);
-    let mut i = 0u, temp_cleanups = [vptr];
+    let mut i = 0u, temp_cleanups = [val];
+    #debug("trans_evec: v: %s, dataptr: %s",
+           val_str(ccx.tn, val),
+           val_str(ccx.tn, dataptr));
     for vec::each(args) {|e|
         let lleltptr = InBoundsGEP(bcx, dataptr, [C_uint(ccx, i)]);
         bcx = base::trans_expr_save_in(bcx, e, lleltptr);
@@ -126,8 +149,18 @@ fn trans_vec(bcx: block, args: [@ast::expr], id: ast::node_id,
         temp_cleanups += [lleltptr];
         i += 1u;
     }
+
     for vec::each(temp_cleanups) {|cln| revoke_clean(bcx, cln); }
-    ret base::store_in_dest(bcx, vptr, dest);
+
+    alt vst {
+      ast::vstore_fixed(_) {
+        // We wrote into the destination in the fixed case.
+        ret bcx;
+      }
+      _ {
+        ret base::store_in_dest(bcx, val, dest);
+      }
+    }
 }
 
 fn trans_vstore(bcx: block, e: @ast::expr,
@@ -137,7 +170,7 @@ fn trans_vstore(bcx: block, e: @ast::expr,
         ret trans_estr(bcx, s, v, dest);
       }
       ast::expr_vec(es, mutbl) {
-        bcx.ccx().sess.span_unimpl(e.span, "unhandled tvec::trans_vstore");
+        ret trans_evec(bcx, es, v, e.id, dest);
       }
       _ {
         bcx.sess().span_bug(e.span, "vstore on non-sequence type");
@@ -148,9 +181,13 @@ fn trans_vstore(bcx: block, e: @ast::expr,
 fn get_base_and_len(cx: block, v: ValueRef, e_ty: ty::t)
     -> (ValueRef, ValueRef) {
 
-    let tcx = cx.ccx().tcx;
+    let ccx = cx.ccx();
+    let tcx = ccx.tcx;
     let vec_ty = ty::type_autoderef(tcx, e_ty);
     let unit_ty = ty::sequence_element_type(tcx, vec_ty);
+    let llunitty = type_of::type_of(ccx, unit_ty);
+    let unit_sz = llsize_of(ccx, llunitty);
+
     let vstore = alt ty::get(vec_ty).struct {
       ty::ty_estr(vst) | ty::ty_evec(_, vst) { vst }
       _ { ty::vstore_uniq }
@@ -159,7 +196,8 @@ fn get_base_and_len(cx: block, v: ValueRef, e_ty: ty::t)
     alt vstore {
       ty::vstore_fixed(n) {
         let base = GEPi(cx, v, [0, 0]);
-        let len = C_uint(cx.ccx(), n + 1u /* +1 for null */);
+        let n = if ty::type_is_str(e_ty) { n + 1u } else { n };
+        let len = Mul(cx, C_uint(ccx, n), unit_sz);
         (base, len)
       }
       ty::vstore_slice(_) {
@@ -168,8 +206,7 @@ fn get_base_and_len(cx: block, v: ValueRef, e_ty: ty::t)
         (base, len)
       }
       ty::vstore_uniq {
-        let base = tvec::get_dataptr(cx, v,
-                                     type_of::type_of(cx.ccx(), unit_ty));
+        let base = tvec::get_dataptr(cx, v, llunitty);
         let len = tvec::get_fill(cx, v);
         (base, len)
       }
@@ -222,11 +259,7 @@ fn trans_append(bcx: block, vec_ty: ty::t, lhsptr: ValueRef,
     // Cast to opaque interior vector types if necessary.
     let ccx = bcx.ccx();
     let unit_ty = ty::sequence_element_type(ccx.tcx, vec_ty);
-    let strings = alt check ty::get(vec_ty).struct {
-      ty::ty_str { true }
-      ty::ty_vec(_) { false }
-    };
-
+    let strings = ty::type_is_str(vec_ty);
     let llunitty = type_of::type_of(ccx, unit_ty);
 
     let lhs = Load(bcx, lhsptr);
@@ -248,7 +281,7 @@ fn trans_append(bcx: block, vec_ty: ty::t, lhsptr: ValueRef,
     if strings { lhs_off = Sub(bcx, lhs_off, C_int(ccx, 1)); }
     let write_ptr = pointer_add(bcx, lhs_data, lhs_off);
     let write_ptr_ptr = do_spill_noroot(bcx, write_ptr);
-    iter_vec_raw(bcx, rhs, vec_ty, rfill, {|bcx, addr, _ty|
+    iter_vec_uniq(bcx, rhs, vec_ty, rfill, {|bcx, addr, _ty|
         let write_ptr = Load(bcx, write_ptr_ptr);
         let bcx = copy_val(bcx, INIT, write_ptr,
                            load_if_immediate(bcx, addr, unit_ty), unit_ty);
@@ -304,7 +337,8 @@ fn trans_add(bcx: block, vec_ty: ty::t, lhs: ValueRef,
     let lhs_fill = get_fill(bcx, lhs);
     let rhs_fill = get_fill(bcx, rhs);
     let new_fill = Add(bcx, lhs_fill, rhs_fill);
-    let mut {bcx: bcx, val: new_vec_ptr} = alloc_raw(bcx, new_fill, new_fill);
+    let mut {bcx: bcx, val: new_vec_ptr} =
+        alloc_uniq_raw(bcx, new_fill, new_fill);
     new_vec_ptr = PointerCast(bcx, new_vec_ptr, T_ptr(T_vec(ccx, llunitty)));
 
     let write_ptr_ptr = do_spill_noroot
@@ -320,8 +354,8 @@ fn trans_add(bcx: block, vec_ty: ty::t, lhs: ValueRef,
         ret bcx;
     };
 
-    let bcx = iter_vec_raw(bcx, lhs, vec_ty, lhs_fill, copy_fn);
-    let bcx = iter_vec_raw(bcx, rhs, vec_ty, rhs_fill, copy_fn);
+    let bcx = iter_vec_uniq(bcx, lhs, vec_ty, lhs_fill, copy_fn);
+    let bcx = iter_vec_uniq(bcx, rhs, vec_ty, rhs_fill, copy_fn);
     ret base::store_in_dest(bcx, new_vec_ptr, dest);
 }
 
@@ -329,14 +363,11 @@ type val_and_ty_fn = fn@(block, ValueRef, ty::t) -> result;
 
 type iter_vec_block = fn(block, ValueRef, ty::t) -> block;
 
-fn iter_vec_raw(bcx: block, vptr: ValueRef, vec_ty: ty::t,
+fn iter_vec_raw(bcx: block, data_ptr: ValueRef, vec_ty: ty::t,
                 fill: ValueRef, f: iter_vec_block) -> block {
-    let _icx = bcx.insn_ctxt("tvec::iter_vec_raw");
-    let ccx = bcx.ccx();
+    let _icx = bcx.insn_ctxt("tvec::iter_vec_uniq");
+
     let unit_ty = ty::sequence_element_type(bcx.tcx(), vec_ty);
-    let llunitty = type_of::type_of(ccx, unit_ty);
-    let vptr = PointerCast(bcx, vptr, T_ptr(T_vec(ccx, llunitty)));
-    let data_ptr = get_dataptr(bcx, vptr, llunitty);
 
     // Calculate the last pointer address we want to handle.
     // FIXME: Optimize this when the size of the unit type is statically
@@ -354,16 +385,29 @@ fn iter_vec_raw(bcx: block, vptr: ValueRef, vec_ty: ty::t,
     CondBr(header_cx, not_yet_at_end, body_cx.llbb, next_cx.llbb);
     let body_cx = f(body_cx, data_ptr, unit_ty);
     AddIncomingToPhi(data_ptr, InBoundsGEP(body_cx, data_ptr,
-                                           [C_int(ccx, 1)]), body_cx.llbb);
+                                           [C_int(bcx.ccx(), 1)]),
+                     body_cx.llbb);
     Br(body_cx, header_cx.llbb);
     ret next_cx;
+
+}
+
+fn iter_vec_uniq(bcx: block, vptr: ValueRef, vec_ty: ty::t,
+                 fill: ValueRef, f: iter_vec_block) -> block {
+    let _icx = bcx.insn_ctxt("tvec::iter_vec_uniq");
+    let ccx = bcx.ccx();
+    let unit_ty = ty::sequence_element_type(bcx.tcx(), vec_ty);
+    let llunitty = type_of::type_of(ccx, unit_ty);
+    let vptr = PointerCast(bcx, vptr, T_ptr(T_vec(ccx, llunitty)));
+    let data_ptr = get_dataptr(bcx, vptr, llunitty);
+    iter_vec_raw(bcx, data_ptr, vec_ty, fill, f)
 }
 
 fn iter_vec(bcx: block, vptr: ValueRef, vec_ty: ty::t,
             f: iter_vec_block) -> block {
     let _icx = bcx.insn_ctxt("tvec::iter_vec");
     let vptr = PointerCast(bcx, vptr, T_ptr(bcx.ccx().opaque_vec_type));
-    ret iter_vec_raw(bcx, vptr, vec_ty, get_fill(bcx, vptr), f);
+    ret iter_vec_uniq(bcx, vptr, vec_ty, get_fill(bcx, vptr), f);
 }
 
 //

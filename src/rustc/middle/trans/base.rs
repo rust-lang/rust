@@ -259,6 +259,12 @@ fn alloca(cx: block, t: TypeRef) -> ValueRef {
     ret Alloca(raw_block(cx.fcx, cx.fcx.llstaticallocas), t);
 }
 
+fn arrayalloca(cx: block, t: TypeRef, v: ValueRef) -> ValueRef {
+    let _icx = cx.insn_ctxt("arrayalloca");
+    if cx.unreachable { ret llvm::LLVMGetUndef(t); }
+    ret ArrayAlloca(raw_block(cx.fcx, cx.fcx.llstaticallocas), t, v);
+}
+
 // Given a pointer p, returns a pointer sz(p) (i.e., inc'd by sz bytes).
 // The type of the returned pointer is always i8*.  If you care about the
 // return type, use bump_ptr().
@@ -584,7 +590,7 @@ fn make_take_glue(bcx: block, v: ValueRef, t: ty::t) {
       }
       ty::ty_vec(_) | ty::ty_str |
       ty::ty_evec(_, ty::vstore_uniq) | ty::ty_estr(ty::vstore_uniq) {
-        let {bcx, val} = tvec::duplicate(bcx, Load(bcx, v), t);
+        let {bcx, val} = tvec::duplicate_uniq(bcx, Load(bcx, v), t);
         Store(bcx, val, v);
         bcx
       }
@@ -928,7 +934,8 @@ fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
       }
       ty::ty_estr(ty::vstore_fixed(n)) |
       ty::ty_evec(_, ty::vstore_fixed(n)) {
-        cx = tvec::iter_vec_raw(cx, av, t, C_uint(cx.ccx(), n), f);
+        let (base, len) = tvec::get_base_and_len(cx, av, t);
+        cx = tvec::iter_vec_raw(cx, base, t, len, f);
       }
       ty::ty_tup(args) {
         for vec::eachi(args) {|i, arg|
@@ -1170,7 +1177,7 @@ fn take_ty_immediate(bcx: block, v: ValueRef, t: ty::t) -> result {
       ty::ty_str | ty::ty_vec(_) |
       ty::ty_evec(_, ty::vstore_uniq) |
       ty::ty_estr(ty::vstore_uniq) {
-        tvec::duplicate(bcx, v, t)
+        tvec::duplicate_uniq(bcx, v, t)
       }
       _ { rslt(bcx, v) }
     }
@@ -3121,7 +3128,9 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
       ast::expr_tup(args) { ret trans_tup(bcx, args, dest); }
       ast::expr_vstore(e, v) { ret tvec::trans_vstore(bcx, e, v, dest); }
       ast::expr_lit(lit) { ret trans_lit(bcx, *lit, dest); }
-      ast::expr_vec(args, _) { ret tvec::trans_vec(bcx, args, e.id, dest); }
+      ast::expr_vec(args, _) {
+        ret tvec::trans_evec(bcx, args, ast::vstore_uniq, e.id, dest);
+      }
       ast::expr_binary(op, lhs, rhs) {
         ret trans_binary(bcx, op, lhs, rhs, dest, e);
       }

@@ -367,6 +367,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint]) -> [u8] {
         let u8_t = ty::mk_mach_uint(ccx.tcx, ast::ty_u8);
         while i < n {
             sub += shape_of(ccx, u8_t, ty_param_map);
+            i += 1u;
         }
         add_substr(s, sub);
         s
@@ -377,6 +378,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint]) -> [u8] {
         let mut i = 0u;
         while i < n {
             sub += shape_of(ccx, mt.ty, ty_param_map);
+            i += 1u;
         }
         add_substr(s, sub);
         s
