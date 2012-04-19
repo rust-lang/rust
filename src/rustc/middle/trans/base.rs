@@ -2298,7 +2298,11 @@ fn trans_index(cx: block, ex: @ast::expr, base: @ast::expr,
     let scaled_ix = Mul(bcx, ix_val, unit_sz);
     maybe_name_value(cx.ccx(), scaled_ix, "scaled_ix");
 
-    let (base, len) = tvec::get_base_and_len(bcx, v, base_ty);
+    let mut (base, len) = tvec::get_base_and_len(bcx, v, base_ty);
+
+    if ty::type_is_str(base_ty) {
+        len = Sub(bcx, len, C_uint(bcx.ccx(), 1u));
+    }
 
     #debug("trans_index: base %s", val_str(bcx.ccx().tn, base));
     #debug("trans_index: len %s", val_str(bcx.ccx().tn, len));

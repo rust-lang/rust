@@ -78,9 +78,10 @@ fn all_whitespace(s: str, begin: uint, end: uint) -> bool {
 fn trim_whitespace_prefix_and_push_line(&lines: [str],
                                         s: str, col: uint) unsafe {
     let mut s1;
-    if all_whitespace(s, 0u, col) {
-        if col < str::len(s) {
-            s1 = str::slice(s, col, str::len(s));
+    let len = str::len(s);
+    if all_whitespace(s, 0u, uint::min(len, col)) {
+        if col < len {
+            s1 = str::slice(s, col, len);
         } else { s1 = ""; }
     } else { s1 = s; }
     log(debug, "pushing line: " + s1);

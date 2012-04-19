@@ -159,7 +159,7 @@ fn get_base_and_len(cx: block, v: ValueRef, e_ty: ty::t)
     alt vstore {
       ty::vstore_fixed(n) {
         let base = GEPi(cx, v, [0, 0]);
-        let len = C_uint(cx.ccx(), n);
+        let len = C_uint(cx.ccx(), n + 1u /* +1 for null */);
         (base, len)
       }
       ty::vstore_slice(_) {
@@ -187,16 +187,16 @@ fn trans_estr(bcx: block, s: str, vstore: ast::vstore,
     let c = alt vstore {
       ast::vstore_fixed(_)
       {
-        // "hello"/_  =>  [i8 x 6] in llvm
+        // "hello"/_  =>  "hello"/5  =>  [i8 x 6] in llvm
         #debug("trans_estr: fixed: %s", s);
         C_postr(s)
       }
 
       ast::vstore_slice(_) {
-        // "hello"  =>  (*i8,uint) in llvm
+        // "hello"  =>  (*i8, 6u) in llvm
         #debug("trans_estr: slice '%s'", s);
         let cs = PointerCast(bcx, C_cstr(ccx, s), T_ptr(T_i8()));
-        C_struct([cs, C_uint(ccx, str::len(s))])
+        C_struct([cs, C_uint(ccx, str::len(s) + 1u /* +1 for null */)])
       }
 
       ast::vstore_uniq {

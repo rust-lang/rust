@@ -1352,6 +1352,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn char_at1() {
         //Generate a large rope
         let mut r = of_str(@ "123456789");
