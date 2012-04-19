@@ -6,7 +6,7 @@ import ll = uv_ll;
 import hl = uv_hl;
 import get_gl = get;
 
-export get;
+export get, get_single_task_gl;
 
 native mod rustrt {
     fn rust_uv_get_kernel_global_chan_ptr() -> *libc::uintptr_t;
@@ -26,7 +26,44 @@ loop is running.
 loop.
 "]
 fn get() -> hl::high_level_loop {
+    ret get_single_task_gl();
+}
+
+#[doc(hidden)]
+fn get_single_task_gl() -> hl::high_level_loop {
     let global_loop_chan_ptr = rustrt::rust_uv_get_kernel_global_chan_ptr();
+    ret spawn_global_weak_task(
+        global_loop_chan_ptr,
+        {|weak_exit_po, msg_po, loop_ptr, first_msg|
+            log(debug, "about to enter inner loop");
+            unsafe {
+                single_task_loop_body(weak_exit_po, msg_po, loop_ptr,
+                                      copy(first_msg))
+            }
+        },
+        {|msg_ch|
+            log(debug, "after priv::chan_from_global_ptr");
+            unsafe {
+                let handle = get_global_async_handle_native_representation()
+                    as **ll::uv_async_t;
+                hl::single_task_loop(
+                    { async_handle: handle, op_chan: msg_ch })
+            }
+        }
+    );
+}
+
+// INTERNAL API
+
+fn spawn_global_weak_task(
+        global_loop_chan_ptr: *libc::uintptr_t,
+        weak_task_body_cb: fn~(
+            comm::port<()>,
+            comm::port<hl::high_level_msg>,
+            *libc::c_void,
+            hl::high_level_msg) -> bool,
+        after_task_spawn_cb: fn~(comm::chan<hl::high_level_msg>)
+          -> hl::high_level_loop) -> hl::high_level_loop {
     log(debug, #fmt("ENTERING global_loop::get() loop chan: %?",
        global_loop_chan_ptr));
 
@@ -44,25 +81,26 @@ fn get() -> hl::high_level_loop {
     };
     unsafe {
         log(debug, "before priv::chan_from_global_ptr");
-        let chan = priv::chan_from_global_ptr::<hl::high_level_msg>(
+        let msg_ch = priv::chan_from_global_ptr::<hl::high_level_msg>(
             global_loop_chan_ptr,
             builder_fn) {|port|
 
             // the actual body of our global loop lives here
             log(debug, "initialized global port task!");
             log(debug, "GLOBAL initialized global port task!");
-            outer_global_loop_body(port);
+            outer_global_loop_body(port, weak_task_body_cb);
         };
-        log(debug, "after priv::chan_from_global_ptr");
-        let handle = get_global_async_handle_native_representation()
-            as **ll::uv_async_t;
-        ret { async_handle: handle, op_chan: chan };
+        ret after_task_spawn_cb(msg_ch);
     }
 }
 
-// INTERNAL API
-
-unsafe fn outer_global_loop_body(msg_po: comm::port<hl::high_level_msg>) {
+unsafe fn outer_global_loop_body(
+    msg_po: comm::port<hl::high_level_msg>,
+    weak_task_body_cb: fn~(
+        comm::port<()>,
+        comm::port<hl::high_level_msg>,
+        *libc::c_void,
+        hl::high_level_msg) -> bool) {
     // we're going to use a single libuv-generated loop ptr
     // for the duration of the process
     let loop_ptr = ll::loop_new();
@@ -87,9 +125,8 @@ unsafe fn outer_global_loop_body(msg_po: comm::port<hl::high_level_msg>) {
                                    left_val));
                     false
                 }, {|right_val|
-                    log(debug, "about to enter inner loop");
-                    inner_global_loop_body(weak_exit_po, msg_po, loop_ptr,
-                                          copy(right_val))
+                    weak_task_body_cb(weak_exit_po, msg_po, loop_ptr,
+                                      right_val)
                 }, comm::select2(weak_exit_po, msg_po));
             log(debug,#fmt("GLOBAL LOOP EXITED, WAITING TO RESTART? %?",
                        continue));
@@ -99,7 +136,7 @@ unsafe fn outer_global_loop_body(msg_po: comm::port<hl::high_level_msg>) {
     ll::loop_delete(loop_ptr);
 }
 
-unsafe fn inner_global_loop_body(weak_exit_po_in: comm::port<()>,
+unsafe fn single_task_loop_body(weak_exit_po_in: comm::port<()>,
                           msg_po_in: comm::port<hl::high_level_msg>,
                           loop_ptr: *libc::c_void,
                           -first_interaction: hl::high_level_msg) -> bool {

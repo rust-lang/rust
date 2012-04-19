@@ -6,7 +6,7 @@ provide a high-level, abstracted interface to some set of
 libuv functionality.
 "];
 
-export high_level_loop, high_level_msg;
+export high_level_loop, hl_loop_ext, high_level_msg;
 export run_high_level_loop, interact, ref_handle, unref_handle;
 
 import ll = uv_ll;
@@ -22,10 +22,39 @@ the C uv loop to process any pending callbacks
 * op_chan - a channel used to send function callbacks to be processed
 by the C uv loop
 "]
-type high_level_loop = {
-    async_handle: **ll::uv_async_t,
-    op_chan: comm::chan<high_level_msg>
-};
+enum high_level_loop {
+    single_task_loop({
+        async_handle: **ll::uv_async_t,
+        op_chan: comm::chan<high_level_msg>
+    }),
+    monitor_task_loop({
+        op_chan: comm::chan<high_level_msg>
+    })
+}
+
+impl hl_loop_ext for high_level_loop {
+    fn async_handle() -> **ll::uv_async_t {
+        alt self {
+          single_task_loop({async_handle, op_chan}) {
+            ret async_handle;
+          }
+          _ {
+            fail "variant of hl::high_level_loop that doesn't include" +
+                "an async_handle field";
+          }
+        }
+    }
+    fn op_chan() -> comm::chan<high_level_msg> {
+        alt self {
+          single_task_loop({async_handle, op_chan}) {
+            ret op_chan;
+          }
+          monitor_task_loop({op_chan}) {
+            ret op_chan;
+          }
+        }
+    }
+}
 
 #[doc="
 Represents the range of interactions with a `high_level_loop`
@@ -158,15 +187,15 @@ enum global_loop_data {
 
 unsafe fn send_high_level_msg(hl_loop: high_level_loop,
                               -msg: high_level_msg) unsafe {
-    comm::send(hl_loop.op_chan, msg);
+    comm::send(hl_loop.op_chan(), msg);
 
     // if the global async handle == 0, then that means
     // the loop isn't active, so we don't need to wake it up,
     // (the loop's enclosing task should be blocking on a message
     // receive on this port)
-    if (*(hl_loop.async_handle) != 0 as *ll::uv_async_t) {
+    if (*(hl_loop.async_handle()) != 0 as *ll::uv_async_t) {
         log(debug,"global async handle != 0, waking up loop..");
-        ll::async_send(*(hl_loop.async_handle));
+        ll::async_send(*(hl_loop.async_handle()));
     }
     else {
         log(debug,"GLOBAL ASYNC handle == 0");
