@@ -71,8 +71,8 @@ upcall_call_shim_on_c_stack(void *args, void *fn_ptr) {
     try {
         task->call_on_c_stack(args, fn_ptr);
     } catch (...) {
-        LOG_ERR(task, task, "Native code threw an exception");
-        abort();
+        // Logging here is not reliable
+        assert(false && "Native code threw an exception");
     }
 
     task->record_stack_limit();
@@ -96,9 +96,8 @@ upcall_call_shim_on_rust_stack(void *args, void *fn_ptr) {
     } catch (...) {
         // We can't count on being able to unwind through arbitrary
         // code. Our best option is to just fail hard.
-        LOG_ERR(task, task,
-                "Rust task failed after reentering the Rust stack");
-        abort();
+        // Logging here is not reliable
+        assert(false && "Rust task failed after reentering the Rust stack");
     }
 
     // FIXME: As above
