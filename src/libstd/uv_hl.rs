@@ -193,12 +193,17 @@ unsafe fn send_high_level_msg(hl_loop: high_level_loop,
     // the loop isn't active, so we don't need to wake it up,
     // (the loop's enclosing task should be blocking on a message
     // receive on this port)
-    if (*(hl_loop.async_handle()) != 0 as *ll::uv_async_t) {
-        log(debug,"global async handle != 0, waking up loop..");
-        ll::async_send(*(hl_loop.async_handle()));
-    }
-    else {
-        log(debug,"GLOBAL ASYNC handle == 0");
+    alt hl_loop {
+      single_task_loop({async_handle, op_chan}) {
+        if ((*async_handle) != 0 as *ll::uv_async_t) {
+            log(debug,"global async handle != 0, waking up loop..");
+            ll::async_send((*async_handle));
+        }
+        else {
+            log(debug,"GLOBAL ASYNC handle == 0");
+        }
+      }
+      _ {}
     }
 }
 
