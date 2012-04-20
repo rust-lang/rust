@@ -37,6 +37,9 @@ mod parse {
     mod comments;
     mod attr;
 
+    #[doc = "Common routines shared by parser mods"]
+    mod common;
+
     #[doc = "Functions dealing with operator precedence"]
     mod prec;
 

@@ -1,11 +1,11 @@
 import either::{either, left, right};
-import parser::{parse_seq,
+import common::{parse_seq,
                 seq_sep,
                 expect,
-                parse_lit,
                 parse_ident,
-                parse_syntax_ext_naked,
                 spanned};
+import parser::{parse_lit,
+                parse_syntax_ext_naked};
 
 export attr_or_ext;
 export parse_outer_attributes;
