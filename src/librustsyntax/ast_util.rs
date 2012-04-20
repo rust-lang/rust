@@ -1,6 +1,10 @@
 import codemap::span;
 import ast::*;
 
+fn spanned<T: copy>(lo: uint, hi: uint, t: T) -> spanned<T> {
+    ret respan(mk_sp(lo, hi), t);
+}
+
 fn respan<T: copy>(sp: span, t: T) -> spanned<T> {
     ret {node: t, span: sp};
 }

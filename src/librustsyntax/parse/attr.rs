@@ -1,9 +1,9 @@
 import either::{either, left, right};
+import ast_util::spanned;
 import common::{parse_seq,
                 seq_sep,
                 expect,
-                parse_ident,
-                spanned};
+                parse_ident};
 import parser::{parse_lit,
                 parse_syntax_ext_naked};
 

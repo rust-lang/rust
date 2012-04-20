@@ -1,5 +1,5 @@
 import std::map::{hashmap};
-import ast::spanned;
+import ast_util::spanned;
 import parser::parser;
 
 fn token_to_str(reader: reader, token: token::token) -> str {
@@ -25,10 +25,6 @@ fn expect(p: parser, t: token::token) {
         s += token_to_str(p.reader, p.token);
         p.fatal(s + "'");
     }
-}
-
-fn spanned<T: copy>(lo: uint, hi: uint, node: T) -> spanned<T> {
-    ret {node: node, span: ast_util::mk_sp(lo, hi)};
 }
 
 fn parse_ident(p: parser) -> ast::ident {

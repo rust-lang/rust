@@ -4,8 +4,7 @@ import std::map::{hashmap, str_hash};
 import token::{can_begin_expr, is_ident, is_plain_ident};
 import codemap::{span,fss_none};
 import util::interner;
-import ast::spanned;
-import ast_util::{mk_sp, ident_to_path};
+import ast_util::{spanned, mk_sp, ident_to_path};
 import lexer::reader;
 import prec::{op_spec, as_prec};
 import attr::{parse_outer_attrs_or_ext,
