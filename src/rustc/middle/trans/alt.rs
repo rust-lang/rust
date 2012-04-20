@@ -163,7 +163,8 @@ fn enter_opt(tcx: ty::ctxt, m: match, opt: opt, col: uint,
     enter_match(tcx.def_map, m, col, val) {|p|
         alt p.node {
           ast::pat_enum(_, subpats) {
-            if opt_eq(tcx, variant_opt(tcx, p.id), opt) { some(subpats) }
+            if opt_eq(tcx, variant_opt(tcx, p.id), opt) {
+              some(option::get_or_default(subpats, [])) }
             else { none }
           }
           ast::pat_ident(_, none) if pat_is_variant(tcx.def_map, p) {
@@ -700,16 +701,15 @@ fn bind_irrefutable_pat(bcx: block, pat: @ast::pat, val: ValueRef,
         let vdefs = ast_util::variant_def_ids(ccx.tcx.def_map.get(pat.id));
         let args = extract_variant_args(bcx, pat.id, vdefs, val);
         let mut i = 0;
-        for vec::each(args.vals) {|argval|
+        option::iter(sub) {|sub| for vec::each(args.vals) {|argval|
             bcx = bind_irrefutable_pat(bcx, sub[i], argval, make_copy);
             i += 1;
-        }
+        }}
       }
       ast::pat_rec(fields, _) {
         let rec_fields = ty::get_fields(node_id_type(bcx, pat.id));
         for vec::each(fields) {|f|
             let ix = option::get(ty::field_idx(f.ident, rec_fields));
-            // how to get rid of this check?
             let fldptr = GEPi(bcx, val, [0, ix as int]);
             bcx = bind_irrefutable_pat(bcx, f.pat, fldptr, make_copy);
         }

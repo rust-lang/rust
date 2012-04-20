@@ -779,7 +779,7 @@ fn ser_enum(cx: ext_ctxt, tps: ser_tps_map, e_name: str,
                 if vec::is_empty(pats) {
                     ast::pat_ident(cx.path(v_span, [v_name]), none)
                 } else {
-                    ast::pat_enum(cx.path(v_span, [v_name]), pats)
+                    ast::pat_enum(cx.path(v_span, [v_name]), some(pats))
                 }
             },
 

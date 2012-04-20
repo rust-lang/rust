@@ -3,6 +3,7 @@ import syntax::ast::*;
 import syntax::ast_util::{variant_def_ids, dummy_sp, unguarded_pat};
 import middle::const_eval::{compare_lit_exprs, lit_expr_eq};
 import syntax::codemap::span;
+import syntax::print::pprust::pat_to_str;
 import pat_util::*;
 import syntax::visit;
 import driver::session::session;
@@ -166,12 +167,21 @@ fn check_exhaustive_enum(tcx: ty::ctxt, enum_id: def_id, sp: span,
           def_variant(_, id) {
             let variant_idx =
                 option::get(vec::position(*variants, {|v| v.id == id}));
+            let arg_len = variants[variant_idx].args.len();
             columns_by_variant[variant_idx].seen = true;
             alt pat.node {
-              pat_enum(_, args) {
+              pat_enum(_, some(args)) {
                 vec::iteri(args) {|i, p|
                     columns_by_variant[variant_idx].cols[i] += [p];
                 }
+              }
+              pat_enum(_, none) {
+                  /* (*) pattern -- we fill in n '_' patterns, if the variant
+                   has n args */
+                let wild_pat = @{id: tcx.sess.next_node_id(),
+                                   node: pat_wild, span: pat.span};
+                uint::range(0u, arg_len) {|i|
+                    columns_by_variant[variant_idx].cols[i] += [wild_pat]};
               }
               _ {}
             }
@@ -225,9 +235,12 @@ fn pattern_supersedes(tcx: ty::ctxt, a: @pat, b: @pat) -> bool {
       }
       pat_enum(va, suba) {
         alt b.node {
-          pat_enum(vb, subb) {
+          pat_enum(vb, some(subb)) {
             tcx.def_map.get(a.id) == tcx.def_map.get(b.id) &&
-                patterns_supersede(tcx, suba, subb)
+                alt suba { none { true }
+                           some(subaa) {
+                               patterns_supersede(tcx, subaa, subb)
+                           }}
           }
           _ { false }
         }
@@ -310,10 +323,11 @@ fn is_refutable(tcx: ty::ctxt, pat: @pat) -> bool {
         for elts.each {|elt| if is_refutable(tcx, elt) { ret true; } }
         false
       }
-      pat_enum(_, args) {
-        for args.each {|p| if is_refutable(tcx, p) { ret true; } }
+      pat_enum(_, some(args)) {
+        for args.each {|p| if is_refutable(tcx, p) { ret true; } };
         false
       }
+      pat_enum(_,_) { false }
     }
 }
 

@@ -2046,7 +2046,7 @@ fn universally_quantify_before_call(fcx: @fn_ctxt,
 }
 
 fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
-                     subpats: [@ast::pat], expected: ty::t) {
+                     subpats: option<[@ast::pat]>, expected: ty::t) {
 
     // Typecheck the path.
     let fcx = pcx.fcx;
@@ -2075,8 +2075,9 @@ fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
                     tcx, v_def_ids.enm, v_def_ids.var);
             vinfo.args.map { |t| ty::subst(tcx, expected_substs, t) }
         };
-
-        let subpats_len = subpats.len(), arg_len = arg_types.len();
+        let arg_len = arg_types.len(), subpats_len = alt subpats {
+            none { arg_len }
+            some(ps) { ps.len() }};
         if arg_len > 0u {
             // N-ary variant.
             if arg_len != subpats_len {
@@ -2089,9 +2090,11 @@ fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
                 tcx.sess.span_fatal(pat.span, s);
             }
 
-            vec::iter2(subpats, arg_types) {|subpat, arg_ty|
-                check_pat(pcx, subpat, arg_ty);
-            }
+            option::iter(subpats) {|pats|
+                vec::iter2(pats, arg_types) {|subpat, arg_ty|
+                  check_pat(pcx, subpat, arg_ty);
+                }
+            };
         } else if subpats_len > 0u {
             tcx.sess.span_fatal
                 (pat.span, #fmt["this pattern has %u field%s, \
@@ -2159,8 +2162,8 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
           _ {}
         }
       }
-      ast::pat_ident(path, _) {
-        check_pat_variant(pcx, pat, path, [], expected);
+      ast::pat_ident(path, c) {
+        check_pat_variant(pcx, pat, path, some([]), expected);
       }
       ast::pat_enum(path, subpats) {
         check_pat_variant(pcx, pat, path, subpats, expected);
@@ -3885,7 +3888,7 @@ fn check_enum_variants(ccx: @crate_ctxt,
     }) {
         ccx.tcx.sess.span_err(sp, "illegal recursive enum type. \
                                    wrap the inner value in a box to \
-                                   make it represenable");
+                                   make it representable");
     }
 
     // Check that it is possible to instantiate this enum:

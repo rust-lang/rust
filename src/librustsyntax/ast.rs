@@ -148,7 +148,8 @@ enum pat_ {
     // records this pattern's node_id in an auxiliary
     // set (of "pat_idents that refer to nullary enums")
     pat_ident(@path, option<@pat>),
-    pat_enum(@path, [@pat]),
+    pat_enum(@path, option<[@pat]>), // "none" means a * pattern where
+                                  // we don't bind the fields to names
     pat_rec([field_pat], bool),
     pat_tup([@pat]),
     pat_box(@pat),

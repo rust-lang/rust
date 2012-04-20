@@ -220,7 +220,8 @@ fn visit_pat<E>(p: @pat, e: E, v: vt<E>) {
     alt p.node {
       pat_enum(path, children) {
         visit_path(path, e, v);
-        for children.each {|child| v.visit_pat(child, e, v); }
+        option::iter(children) {|children|
+                for children.each {|child| v.visit_pat(child, e, v); }}
       }
       pat_rec(fields, _) {
         for fields.each {|f| v.visit_pat(f.pat, e, v); }
@@ -231,7 +232,7 @@ fn visit_pat<E>(p: @pat, e: E, v: vt<E>) {
       }
       pat_ident(path, inner) {
           visit_path(path, e, v);
-          option::iter(inner, {|subpat| v.visit_pat(subpat, e, v)});
+          option::iter(inner) {|subpat| v.visit_pat(subpat, e, v)};
       }
       pat_lit(ex) { v.visit_expr(ex, e, v); }
       pat_range(e1, e2) { v.visit_expr(e1, e, v); v.visit_expr(e2, e, v); }

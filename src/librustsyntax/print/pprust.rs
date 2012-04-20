@@ -1248,16 +1248,21 @@ fn print_pat(s: ps, &&pat: @ast::pat) {
         print_path(s, path, true);
         alt sub {
           some(p) { word(s.s, "@"); print_pat(s, p); }
-          _ {}
+          none {}
         }
       }
-      ast::pat_enum(path, args) {
+      ast::pat_enum(path, args_) {
         print_path(s, path, true);
-        if vec::len(args) > 0u {
-            popen(s);
-            commasep(s, inconsistent, args, print_pat);
-            pclose(s);
-        } else { }
+        alt args_ {
+          none { word(s.s, "(*)"); }
+          some(args) {
+            if vec::len(args) > 0u {
+              popen(s);
+              commasep(s, inconsistent, args, print_pat);
+              pclose(s);
+            } else { }
+          }
+        }
       }
       ast::pat_rec(fields, etc) {
         word(s.s, "{");

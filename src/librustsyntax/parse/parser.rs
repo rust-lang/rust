@@ -1417,24 +1417,38 @@ fn parse_pat(p: parser) -> @ast::pat {
         } else {
             let enum_path = parse_path_and_ty_param_substs(p, true);
             hi = enum_path.span.hi;
-            let mut args: [@ast::pat];
+            let mut args: [@ast::pat] = [];
+            let mut star_pat = false;
             alt p.token {
               token::LPAREN {
-                let a =
-                    parse_seq(token::LPAREN, token::RPAREN,
-                              seq_sep(token::COMMA), parse_pat, p);
-                args = a.node;
-                hi = a.span.hi;
+                alt p.look_ahead(1u) {
+                  token::BINOP(token::STAR) {
+                    // This is a "top constructor only" pat
+                    p.bump(); p.bump();
+                    star_pat = true;
+                    expect(p, token::RPAREN);
+                  }
+                  _ {
+                   let a =
+                       parse_seq(token::LPAREN, token::RPAREN,
+                                seq_sep(token::COMMA), parse_pat, p);
+                    args = a.node;
+                    hi = a.span.hi;
+                  }
+                }
               }
-              _ { args = []; }
+              _ { }
             }
             // at this point, we're not sure whether it's a enum or a bind
-            if vec::len(args) == 0u &&
+            if star_pat {
+                 pat = ast::pat_enum(enum_path, none);
+            }
+            else if vec::is_empty(args) &&
                vec::len(enum_path.node.idents) == 1u {
                 pat = ast::pat_ident(enum_path, none);
             }
             else {
-                pat = ast::pat_enum(enum_path, args);
+                pat = ast::pat_enum(enum_path, some(args));
             }
         }
       }

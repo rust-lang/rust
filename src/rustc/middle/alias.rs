@@ -600,11 +600,11 @@ fn pattern_roots(tcx: ty::ctxt, mutbl: option<unsafe_ty>, pat: @ast::pat)
           if !pat_util::pat_is_variant(tcx.def_map, pat) {
             set += [{id: pat.id, name: path_to_ident(nm), mutbl: mutbl,
                         span: pat.span}];
-            alt sub { some(p) { walk(tcx, mutbl, p, set); } _ {} }
+            option::iter(sub) {|p| walk(tcx, mutbl, p, set); };
           }
           ast::pat_wild | ast::pat_lit(_) | ast::pat_range(_, _) |
-          ast::pat_ident(_, _) {}
-          ast::pat_enum(_, ps) | ast::pat_tup(ps) {
+          ast::pat_ident(_, _) | ast::pat_enum(_, none) {}
+          ast::pat_enum(_, some(ps)) | ast::pat_tup(ps) {
             for ps.each {|p| walk(tcx, mutbl, p, set); }
           }
           ast::pat_rec(fs, _) {
