@@ -37,6 +37,7 @@ export expr_ty_params_and_ty;
 export expr_is_lval;
 export field_ty;
 export fold_ty, fold_sty_to_ty, fold_region, fold_regions, fold_ty_var;
+export fold_regions_and_ty;
 export field;
 export field_idx;
 export get_field;
@@ -147,6 +148,7 @@ export item_path_str;
 export ast_ty_to_ty_cache_entry;
 export atttce_unresolved, atttce_resolved;
 export mach_sty;
+export ty_sort_str;
 
 // Data types
 

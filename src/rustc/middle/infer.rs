@@ -17,9 +17,9 @@ export new_infer_ctxt;
 export mk_subty;
 export mk_eqty;
 export mk_assignty;
-export resolve_type_structure;
-export fixup_vars;
-export resolve_var;
+export resolve_shallow;
+export resolve_deep;
+export resolve_deep_var;
 export compare_tys;
 export fixup_err, fixup_err_to_str;
 
@@ -92,16 +92,23 @@ fn compare_tys(tcx: ty::ctxt, a: ty::t, b: ty::t) -> ures {
     mk_eqty(infcx, a, b)
 }
 
-fn resolve_type_structure(cx: infer_ctxt, a: ty::t) -> fres<ty::t> {
-    cx.resolve_ty(a)
+// Resolves one level of type structure but not any type variables
+// that may be nested within.
+fn resolve_shallow(cx: infer_ctxt, a: ty::t) -> fres<ty::t> {
+    resolver(cx, false, false).resolve(a)
 }
 
-fn resolve_var(cx: infer_ctxt, vid: ty_vid) -> fres<ty::t> {
-    cx.fixup_ty(ty::mk_var(cx.tcx, vid))
+// see resolve_deep()
+fn resolve_deep_var(cx: infer_ctxt, vid: ty_vid,
+                    force_vars: bool) -> fres<ty::t> {
+    resolver(cx, true, force_vars).resolve(ty::mk_var(cx.tcx, vid))
 }
 
-fn fixup_vars(cx: infer_ctxt, a: ty::t) -> fres<ty::t> {
-    cx.fixup_ty(a)
+// Resolves all levels of type structure.  If `force_vars` is true,
+// then we will resolve unconstrained type/region variables to
+// something arbitrary.  Otherwise, we preserve them as variables.
+fn resolve_deep(cx: infer_ctxt, a: ty::t, force_vars: bool) -> fres<ty::t> {
+    resolver(cx, true, force_vars).resolve(a)
 }
 
 impl methods for ures {
@@ -555,25 +562,137 @@ impl unify_methods for infer_ctxt {
     }
 }
 
-impl resolve_methods for infer_ctxt {
-    fn rok(t: ty::t) -> fres<ty::t> {
-        #debug["Resolve OK: %s", t.to_str(self)];
-        ok(t)
+// Resolution is the process of removing type variables and replacing
+// them with their inferred values.  There are several "modes" for
+// resolution.  The first is a shallow resolution: this only resolves
+// one layer, but does not resolve any nested variables.  So, for
+// example, if we have two variables A and B, and the constraint that
+// A <: [B] and B <: int, then shallow resolution on A would yield
+// [B].  Deep resolution, on the other hand, would yield [int].
+//
+// But there is one more knob: the force_vars variable controls the
+// behavior in the face of unconstrained variables.  If we have A, B
+// and only the constraint that A <: B, then the result is [_|_] if
+// force_vars is true and [B] otherwise.  We use force_vars == true
+// when resolving types after typeck, but false otherwise (for
+// example, when pretty-printing them for errors).
+
+type resolve_state = @{
+    infcx: infer_ctxt,
+    deep: bool,
+    force_vars: bool,
+    mut err: option<fixup_err>,
+    mut r_seen: [region_vid],
+    mut v_seen: [ty_vid]
+};
+
+fn resolver(infcx: infer_ctxt, deep: bool, fvars: bool) -> resolve_state {
+    @{infcx: infcx,
+      deep: deep,
+      force_vars: fvars,
+      mut err: none,
+      mut r_seen: [],
+      mut v_seen: []}
+}
+
+impl methods for resolve_state {
+    fn resolve(typ: ty::t) -> fres<ty::t> {
+        self.err = none;
+
+        // n.b. This is a hokey mess because the current fold doesn't
+        // allow us to pass back errors in any useful way.
+
+        assert vec::is_empty(self.v_seen) && vec::is_empty(self.r_seen);
+        let rty = self.resolve1(typ);
+        assert vec::is_empty(self.v_seen) && vec::is_empty(self.r_seen);
+        alt self.err {
+          none {
+            #debug["Resolved %s to %s (deep=%b, force_vars=%b)",
+                   ty_to_str(self.infcx.tcx, typ),
+                   ty_to_str(self.infcx.tcx, rty),
+                   self.deep,
+                   self.force_vars];
+            ret ok(rty);
+          }
+          some(e) { ret err(e); }
+        }
     }
 
-    fn rerr<T>(v: fixup_err) -> fres<T> {
-        #debug["Resolve error: %?", v];
-        err(v)
+    fn resolve1(typ: ty::t) -> ty::t {
+        let tb = ty::get(typ);
+        alt tb.struct {
+          ty::ty_var(vid) { self.resolve_ty_var(vid) }
+          _ if !tb.has_regions && !self.deep { typ }
+          _ {
+            ty::fold_regions_and_ty(
+                self.infcx.tcx, typ,
+                { |r| self.resolve_region(r) },
+                { |t| self.resolve_if_deep(t) },
+                { |t| self.resolve_if_deep(t) })
+          }
+        }
+    }
+
+    fn resolve_if_deep(typ: ty::t) -> ty::t {
+        if !self.deep {typ} else {self.resolve1(typ)}
+    }
+
+    fn resolve_region(orig: ty::region) -> ty::region {
+        alt orig {
+          ty::re_var(rid) { self.resolve_region_var(rid) }
+          _ { orig }
+        }
+    }
+
+    fn resolve_region_var(rid: region_vid) -> ty::region {
+        if vec::contains(self.r_seen, rid) {
+            self.err = some(cyclic_region(rid));
+            ret ty::re_var(rid);
+        } else {
+            vec::push(self.r_seen, rid);
+            let r = self.resolve_var(
+                self.infcx.rb,
+                {|_t| false },
+                rid,
+                {||
+                    if self.force_vars {ty::re_static}
+                    else {ty::re_var(rid)}
+                });
+            vec::pop(self.r_seen);
+            ret r;
+        }
+    }
+
+    fn resolve_ty_var(vid: ty_vid) -> ty::t {
+        if vec::contains(self.v_seen, vid) {
+            self.err = some(cyclic_ty(vid));
+            ret ty::mk_var(self.infcx.tcx, vid);
+        } else {
+            vec::push(self.v_seen, vid);
+            let tcx = self.infcx.tcx;
+            let t0 = self.resolve_var(
+                self.infcx.vb,
+                {|t| type_is_bot(t) },
+                vid,
+                {||
+                    if self.force_vars {ty::mk_bot(tcx)}
+                    else {ty::mk_var(tcx, vid)}
+                });
+            let t1 = self.resolve1(t0);
+            vec::pop(self.v_seen);
+            ret t1;
+        }
     }
 
     fn resolve_var<V: copy vid, T:copy to_str>(
         vb: vals_and_bindings<V, T>, bot_guard: fn(T)->bool,
-        vid: V, unbound: fn() -> fres<T>) -> fres<T> {
+        vid: V, unbound: fn() -> T) -> T {
 
-        let {root:_, bounds} = self.get(vb, vid);
+        let {root:_, bounds} = self.infcx.get(vb, vid);
 
         #debug["resolve_var(%s) bounds=%s",
-               vid.to_str(), bounds.to_str(self)];
+               vid.to_str(),
+               bounds.to_str(self.infcx)];
 
         // Nonobvious: prefer the most specific type
         // (i.e., the lower bound) to the more general
@@ -582,114 +701,10 @@ impl resolve_methods for infer_ctxt {
         // perf. penalties, so it pays to know more.
 
         alt bounds {
-          { ub:_, lb:some(t) } if !bot_guard(t) { ok(t) }
-          { ub:some(t), lb:_ } { ok(t) }
-          { ub:_, lb:some(t) } { ok(t) }
+          { ub:_, lb:some(t) } if !bot_guard(t) { t }
+          { ub:some(t), lb:_ } { t }
+          { ub:_, lb:some(t) } { t }
           { ub:none, lb:none } { unbound() }
-        }
-    }
-
-    fn resolve_ty_var(vid: ty_vid) -> fres<ty::t> {
-        ret self.resolve_var(
-            self.vb,
-            {|t| type_is_bot(t) },
-            vid,
-            {|| ok(ty::mk_bot(self.tcx)) });
-    }
-
-    fn resolve_region_var(rid: region_vid) -> fres<ty::region> {
-        ret self.resolve_var(
-            self.rb,
-            {|_t| false },
-            rid,
-            {|| ok(ty::re_static) });
-    }
-
-    fn resolve_ty(typ: ty::t) -> fres<ty::t> {
-        alt ty::get(typ).struct {
-          ty::ty_var(vid) { self.resolve_ty_var(vid) }
-          ty::ty_rptr(ty::re_var(rid), base_ty) {
-            alt self.resolve_region_var(rid) {
-              err(terr)  { err(terr) }
-              ok(region) {
-                self.rok(ty::mk_rptr(self.tcx, region, base_ty))
-              }
-            }
-          }
-          _ { self.rok(typ) }
-        }
-    }
-
-    fn fixup_region(r: ty::region,
-                    &r_seen: [region_vid],
-                    err: @mut option<fixup_err>) -> ty::region {
-        alt r {
-          ty::re_var(rid) if vec::contains(r_seen, rid) {
-            *err = some(cyclic_region(rid)); r
-          }
-
-          ty::re_var(rid) {
-            alt self.resolve_region_var(rid) {
-              result::ok(r1) {
-                vec::push(r_seen, rid);
-                let r2 = self.fixup_region(r1, r_seen, err);
-                vec::pop(r_seen);
-                ret r2;
-              }
-              result::err(e) { *err = some(e); r }
-            }
-          }
-
-          _ { r }
-        }
-    }
-
-    fn fixup_ty1(ty: ty::t,
-                 &ty_seen: [ty_vid],
-                 &r_seen: [region_vid],
-                 err: @mut option<fixup_err>) -> ty::t {
-        let tb = ty::get(ty);
-        if !tb.has_vars { ret ty; }
-        alt tb.struct {
-          ty::ty_var(vid) if vec::contains(ty_seen, vid) {
-            *err = some(cyclic_ty(vid)); ty
-          }
-
-          ty::ty_var(vid) {
-            alt self.resolve_ty_var(vid) {
-              result::err(e) { *err = some(e); ty }
-              result::ok(ty1) {
-                vec::push(ty_seen, vid);
-                let ty2 = self.fixup_ty1(ty1, ty_seen, r_seen, err);
-                vec::pop(ty_seen);
-                ret ty2;
-              }
-            }
-          }
-
-          ty::ty_rptr(r, {ty: base_ty, mutbl: m}) {
-            let base_ty1 = self.fixup_ty1(base_ty, ty_seen, r_seen, err);
-            let r1 = self.fixup_region(r, r_seen, err);
-            ret ty::mk_rptr(self.tcx, r1, {ty: base_ty1, mutbl: m});
-          }
-
-          sty {
-            ty::fold_sty_to_ty(self.tcx, sty) {|t|
-                self.fixup_ty1(t, ty_seen, r_seen, err)
-            }
-          }
-        }
-    }
-
-    fn fixup_ty(typ: ty::t) -> fres<ty::t> {
-        #debug["fixup_ty(%s)", ty_to_str(self.tcx, typ)];
-        let mut ty_seen = [];
-        let mut r_seen = [];
-        let unresolved = @mut none;
-        let rty = self.fixup_ty1(typ, ty_seen, r_seen, unresolved);
-        alt *unresolved {
-          none { ret self.rok(rty); }
-          some(e) { ret self.rerr(e); }
         }
     }
 }

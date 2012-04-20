@@ -12,7 +12,8 @@ import middle::ty;
 import middle::ty::{arg, field, node_type_table, mk_nil,
                     ty_param_bounds_and_ty, lookup_public_fields};
 import middle::ty::{ty_vid, region_vid, vid};
-import util::ppaux::{ty_to_str, region_to_str};
+import util::ppaux::{ty_to_str, region_to_str,
+                     bound_region_to_str, vstore_to_str};
 import std::smallintmap;
 import std::smallintmap::map;
 import std::map;
@@ -257,7 +258,7 @@ fn instantiate_path(fcx: @fn_ctxt,
 
 // Type tests
 fn structurally_resolved_type(fcx: @fn_ctxt, sp: span, tp: ty::t) -> ty::t {
-    alt infer::resolve_type_structure(fcx.infcx, tp) {
+    alt infer::resolve_shallow(fcx.infcx, tp) {
       // note: the bot type doesn't count as resolved; it's what we use when
       // there is no information about a variable.
       result::ok(t_s) if !ty::type_is_bot(t_s) { ret t_s; }
@@ -272,17 +273,6 @@ fn structurally_resolved_type(fcx: @fn_ctxt, sp: span, tp: ty::t) -> ty::t {
 // Returns the one-level-deep structure of the given type.
 fn structure_of(fcx: @fn_ctxt, sp: span, typ: ty::t) -> ty::sty {
     ty::get(structurally_resolved_type(fcx, sp, typ)).struct
-}
-
-// Returns the one-level-deep structure of the given type or none if it
-// is not known yet.
-fn structure_of_maybe(fcx: @fn_ctxt, _sp: span, typ: ty::t) ->
-   option<ty::sty> {
-    let r = infer::resolve_type_structure(fcx.infcx, typ);
-    alt r {
-      result::ok(typ_s) { some(ty::get(typ_s).struct) }
-      result::err(_) { none }
-    }
 }
 
 fn type_is_integral(fcx: @fn_ctxt, sp: span, typ: ty::t) -> bool {
@@ -523,18 +513,60 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy>(
         ret ty;
     }
 
-    fn mk_vstore<AC: ast_conv, RS: region_scope copy>(
+    fn mk_bounded<AC: ast_conv, RS: region_scope copy>(
         self: AC, rscope: RS, a_seq_ty: @ast::ty, vst: ty::vstore) -> ty::t {
 
         let tcx = self.tcx();
         let seq_ty = ast_ty_to_ty(self, rscope, a_seq_ty);
+
         alt ty::get(seq_ty).struct {
-          ty::ty_vec(mt) { ty::mk_evec(tcx, mt, vst) }
-          ty::ty_str { ty::mk_estr(tcx, vst) }
+          ty::ty_vec(mt) {
+            ret ty::mk_evec(tcx, mt, vst);
+          }
+
+          ty::ty_str {
+            ret ty::mk_estr(tcx, vst);
+          }
+
+          ty::ty_enum(_, subst) |
+          ty::ty_class(_, subst) |
+          ty::ty_res(_, _, subst) {
+            // n.b.: This is a hacky abuse of the vstore terminology to also
+            // make it work for region bounds.  The idea is to allow a type
+            // Id/&r where Id is an enum, class, or resource, but not Id/@
+            // etc.  We also do not want to allow Id/&r if the given
+            // enum/class/resource does not define a region parameter.
+            //
+            // Really, these "/&r" bounds ought to be part of the path, like
+            // type parameters.  (In fact, we could generalize to allowing
+            // multiple such bounds someday)
+            alt (subst.self_r, vst) {
+              (some(_), ty::vstore_slice(_)) { /* ok */ }
+              (none, ty::vstore_slice(_)) {
+                tcx.sess.span_err(
+                    a_seq_ty.span,
+                    #fmt["inappropriate bound for %s, \
+                          which is not declared as containing \
+                          region pointers",
+                         ty::ty_sort_str(tcx, seq_ty)]);
+              }
+              (_, _) {
+                tcx.sess.span_err(
+                    a_seq_ty.span,
+                    #fmt["a %s bound is not appropriate for %s",
+                         vstore_to_str(tcx, vst),
+                         ty::ty_sort_str(tcx, seq_ty)]);
+              }
+            }
+            ret seq_ty;
+          }
+
           _ {
-            tcx.sess.span_bug(a_seq_ty.span,
-                              "found sequence storage modifier \
-                               on non-sequence type")
+            tcx.sess.span_err(
+                a_seq_ty.span,
+                #fmt["Bound not allowed on a %s.",
+                     ty::ty_sort_str(tcx, seq_ty)]);
+            ret seq_ty;
           }
         }
     }
@@ -633,21 +665,21 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy>(
       }
       ast::ty_vstore(a_t, ast::vstore_slice(a_r)) {
         let r = ast_region_to_region(self, rscope, ast_ty.span, a_r);
-        mk_vstore(self, in_anon_rscope(rscope, r), a_t, ty::vstore_slice(r))
+        mk_bounded(self, in_anon_rscope(rscope, r), a_t, ty::vstore_slice(r))
       }
       ast::ty_vstore(a_t, ast::vstore_uniq) {
-        mk_vstore(self, rscope, a_t, ty::vstore_uniq)
+        mk_bounded(self, rscope, a_t, ty::vstore_uniq)
       }
       ast::ty_vstore(a_t, ast::vstore_box) {
-        mk_vstore(self, rscope, a_t, ty::vstore_box)
+        mk_bounded(self, rscope, a_t, ty::vstore_box)
       }
       ast::ty_vstore(a_t, ast::vstore_fixed(some(u))) {
-        mk_vstore(self, rscope, a_t, ty::vstore_fixed(u))
+        mk_bounded(self, rscope, a_t, ty::vstore_fixed(u))
       }
       ast::ty_vstore(_, ast::vstore_fixed(none)) {
         tcx.sess.span_bug(
             ast_ty.span,
-            "implied fixed length in ast_ty_vstore_to_vstore");
+            "implied fixed length for bound");
       }
       ast::ty_constr(t, cs) {
         let mut out_cs = [];
@@ -1656,7 +1688,7 @@ fn do_autoderef(fcx: @fn_ctxt, sp: span, t: ty::t) -> ty::t {
 }
 
 fn resolve_type_vars_if_possible(fcx: @fn_ctxt, typ: ty::t) -> ty::t {
-    alt infer::fixup_vars(fcx.infcx, typ) {
+    alt infer::resolve_deep(fcx.infcx, typ, false) {
       result::ok(new_type) { ret new_type; }
       result::err(_) { ret typ; }
     }
@@ -1731,7 +1763,7 @@ mod writeback {
     fn resolve_type_vars_in_type(fcx: @fn_ctxt, sp: span, typ: ty::t) ->
        option<ty::t> {
         if !ty::type_has_vars(typ) { ret some(typ); }
-        alt infer::fixup_vars(fcx.infcx, typ) {
+        alt infer::resolve_deep(fcx.infcx, typ, true) {
           result::ok(new_type) { ret some(new_type); }
           result::err(e) {
             if !fcx.ccx.tcx.sess.has_errors() {
@@ -1852,7 +1884,7 @@ mod writeback {
     fn visit_local(l: @ast::local, wbcx: wb_ctxt, v: wb_vt) {
         if !wbcx.success { ret; }
         let var_id = lookup_local(wbcx.fcx, l.span, l.node.id);
-        alt infer::resolve_var(wbcx.fcx.infcx, var_id) {
+        alt infer::resolve_deep_var(wbcx.fcx.infcx, var_id, true) {
           result::ok(lty) {
             #debug["Type for local %s (id %d) resolved to %s",
                    pat_to_str(l.node.pat), l.node.id,
@@ -1998,12 +2030,18 @@ fn universally_quantify_from_sty(fcx: @fn_ctxt,
            bound_tys.map {|x| fcx.ty_to_str(x) }];
     indent {||
         let tcx = fcx.tcx();
-        let isr = collect_bound_regions_in_tys(tcx, @nil, bound_tys) { |_id|
-            fcx.next_region_var()
+        let isr = collect_bound_regions_in_tys(tcx, @nil, bound_tys) { |br|
+            let rvar = fcx.next_region_var();
+            #debug["Bound region %s maps to %s",
+                   bound_region_to_str(fcx.ccx.tcx, br),
+                   region_to_str(fcx.ccx.tcx, rvar)];
+            rvar
         };
-        ty::fold_sty_to_ty(fcx.ccx.tcx, sty) { |t|
+        let t_res = ty::fold_sty_to_ty(fcx.ccx.tcx, sty) { |t|
             replace_bound_regions(tcx, span, isr, t)
-        }
+        };
+        #debug["Result of universal quant. is %s", fcx.ty_to_str(t_res)];
+        t_res
     }
 }
 
@@ -4477,7 +4515,7 @@ mod vtable {
 
     fn fixup_ty(fcx: @fn_ctxt, sp: span, ty: ty::t) -> ty::t {
         let tcx = fcx.ccx.tcx;
-        alt infer::fixup_vars(fcx.infcx, ty) {
+        alt infer::resolve_deep(fcx.infcx, ty, true) {
           result::ok(new_type) { new_type }
           result::err(e) {
             tcx.sess.span_fatal(

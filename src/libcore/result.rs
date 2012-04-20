@@ -142,7 +142,9 @@ checking for overflow:
         assert incd == [2u, 3u, 4u];
     }
 "]
-fn map<T,U:copy,V:copy>(ts: [T], op: fn(T) -> result<V,U>) -> result<[V],U> {
+fn map<T,U:copy,V:copy>(
+    ts: [T], op: fn(T) -> result<V,U>) -> result<[V],U> {
+
     let mut vs: [V] = [];
     vec::reserve(vs, vec::len(ts));
     for vec::each(ts) {|t|
@@ -152,6 +154,20 @@ fn map<T,U:copy,V:copy>(ts: [T], op: fn(T) -> result<V,U>) -> result<[V],U> {
         }
     }
     ret ok(vs);
+}
+
+fn map_opt<T,U:copy,V:copy>(
+    o_t: option<T>, op: fn(T) -> result<V,U>) -> result<option<V>,U> {
+
+    alt o_t {
+      none { ok(none) }
+      some(t) {
+        alt op(t) {
+          ok(v) { ok(some(v)) }
+          err(e) { err(e) }
+        }
+      }
+    }
 }
 
 #[doc = "Same as map, but it operates over two parallel vectors.
