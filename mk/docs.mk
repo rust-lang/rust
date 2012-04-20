@@ -21,7 +21,7 @@ doc/rust.css: rust.css
 	$(Q)cp -a $< $@ 2> /dev/null
 
 DOCS += doc/rust.html
-doc/rust.html: rust.md doc/version.md doc/keywords.md doc/rust.css
+doc/rust.html: rust.md doc/version.md doc/rust.css
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
 	"$(CFG_PANDOC)" \
@@ -44,7 +44,7 @@ doc/rust.html: rust.md doc/version.md doc/keywords.md doc/rust.css
       else
 
 DOCS += doc/rust.pdf
-doc/rust.tex: rust.md doc/version.md doc/keywords.md
+doc/rust.tex: rust.md doc/version.md
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_NODE) $(S)doc/prep.js $< | \
 	"$(CFG_PANDOC)" \
@@ -145,10 +145,6 @@ doc/version.md: $(MKFILE_DEPS) rust.md
 	@$(call E, version-stamp: $@)
 	$(Q)echo "$(CFG_VERSION)" >$@
 
-doc/keywords.md: $(S)doc/keywords.txt $(MKFILE_DEPS) rust.md
-	@$(call E, grep -v: $$@)
-	$(Q)grep -v '^#' $< >$@
-
-GENERATED += doc/keywords.md doc/version.md
+GENERATED += doc/version.md
 
 docs: $(DOCS)
