@@ -14,7 +14,7 @@ use core(vers = "0.2");
 import core::*;
 
 export net, uv;
-export c_vec, util;
+export c_vec, util, timer;
 export bitv, deque, fun_treemap, list, map, smallintmap, sort, treemap, ufind;
 export rope, arena;
 export ebml, dbg, getopts, json, rand, sha1, term, time, prettyprint;
@@ -35,6 +35,7 @@ mod uv_global_loop;
 
 mod c_vec;
 mod util;
+mod timer;
 
 
 // Collections
