@@ -337,7 +337,7 @@ void
 rust_kernel::end_weak_tasks() {
     std::vector<rust_port_id> chancopies;
     {
-        //scoped_lock with(weak_task_lock);
+        scoped_lock with(weak_task_lock);
         chancopies = weak_task_chans;
         weak_task_chans.clear();
     }
