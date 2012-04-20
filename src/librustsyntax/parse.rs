@@ -86,7 +86,7 @@ fn parse_crate_from_crate_file(input: str, cfg: ast::crate_cfg,
     let p = new_parser_from_file(sess, cfg, input, parser::CRATE_FILE);
     let lo = p.span.lo;
     let prefix = path::dirname(p.reader.filemap.name);
-    let leading_attrs = parser::parse_inner_attrs_and_next(p);
+    let leading_attrs = attr::parse_inner_attrs_and_next(p);
     let crate_attrs = leading_attrs.inner;
     let first_cdir_attr = leading_attrs.next;
     let cdirs = parser::parse_crate_directives(
