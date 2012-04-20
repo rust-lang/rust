@@ -143,16 +143,7 @@ import std::list::list;
 import std::map;
 import std::map::hashmap;
 
-/* Represents the type of the most immediate parent node. */
-enum parent {
-    pa_fn_item(ast::node_id),
-    pa_block(ast::node_id),
-    pa_nested_fn(ast::node_id),
-    pa_item(ast::node_id),
-    pa_call(ast::node_id),
-    pa_alt(ast::node_id),
-    pa_crate
-}
+type parent = option<ast::node_id>;
 
 /* Records the parameter ID of a region name. */
 type binding = {node_id: ast::node_id,
@@ -167,42 +158,10 @@ type region_map = {
     local_blocks: hashmap<ast::node_id,ast::node_id>
 };
 
-type region_scope = @{
-    node_id: ast::node_id,
-    kind: region_scope_kind
-};
-
-enum region_scope_kind {
-    rsk_root,
-    rsk_body(region_scope),
-    rsk_self(region_scope),
-    rsk_binding(region_scope, @mut [binding])
-}
-
-fn root_scope(node_id: ast::node_id) -> region_scope {
-    @{node_id: node_id, kind: rsk_root}
-}
-
-impl methods for region_scope {
-    fn body_subscope(node_id: ast::node_id) -> region_scope {
-        @{node_id: node_id, kind: rsk_body(self)}
-    }
-
-    fn binding_subscope(node_id: ast::node_id) -> region_scope {
-        @{node_id: node_id, kind: rsk_binding(self, @mut [])}
-    }
-
-    fn self_subscope(node_id: ast::node_id) -> region_scope {
-        @{node_id: node_id, kind: rsk_self(self)}
-    }
-}
-
 type ctxt = {
     sess: session,
     def_map: resolve::def_map,
     region_map: @region_map,
-
-    scope: region_scope,
 
     parent: parent
 };
@@ -269,40 +228,8 @@ fn nearest_common_ancestor(region_map: @region_map, scope_a: ast::node_id,
     }
 }
 
-fn get_inferred_region(cx: ctxt, sp: syntax::codemap::span) -> ty::region {
-    // We infer to the caller region if we're at item scope
-    // and to the block region if we're at block scope.
-    //
-    // TODO: What do we do if we're in an alt?
-
-    ret alt cx.parent {
-      pa_fn_item(_) | pa_nested_fn(_) { ty::re_bound(ty::br_anon) }
-      pa_block(node_id) | pa_call(node_id) | pa_alt(node_id) {
-        ty::re_scope(node_id)
-      }
-      pa_item(_) { ty::re_bound(ty::br_anon) }
-      pa_crate { cx.sess.span_bug(sp, "inferred region at crate level?!"); }
-    }
-}
-
-fn opt_parent_id(cx: ctxt) -> option<ast::node_id> {
-    alt cx.parent {
-      pa_fn_item(parent_id) |
-      pa_item(parent_id) |
-      pa_block(parent_id) |
-      pa_alt(parent_id) |
-      pa_call(parent_id) |
-      pa_nested_fn(parent_id) {
-        some(parent_id)
-      }
-      pa_crate {
-        none
-      }
-    }
-}
-
 fn parent_id(cx: ctxt, span: span) -> ast::node_id {
-    alt opt_parent_id(cx) {
+    alt cx.parent {
       none {
         cx.sess.span_bug(span, "crate should not be parent here");
       }
@@ -313,7 +240,7 @@ fn parent_id(cx: ctxt, span: span) -> ast::node_id {
 }
 
 fn record_parent(cx: ctxt, child_id: ast::node_id) {
-    alt opt_parent_id(cx) {
+    alt cx.parent {
       none { /* no-op */ }
       some(parent_id) {
         cx.region_map.parents.insert(child_id, parent_id);
@@ -326,8 +253,7 @@ fn resolve_block(blk: ast::blk, cx: ctxt, visitor: visit::vt<ctxt>) {
     record_parent(cx, blk.node.id);
 
     // Descend.
-    let new_cx: ctxt = {parent: pa_block(blk.node.id),
-                        scope: cx.scope.body_subscope(blk.node.id)
+    let new_cx: ctxt = {parent: some(blk.node.id)
                         with cx};
     visit::visit_block(blk, new_cx, visitor);
 }
@@ -361,21 +287,15 @@ fn resolve_expr(expr: @ast::expr, cx: ctxt, visitor: visit::vt<ctxt>) {
     record_parent(cx, expr.id);
     alt expr.node {
       ast::expr_fn(_, _, _, _) | ast::expr_fn_block(_, _) {
-        let new_cx = {parent: pa_nested_fn(expr.id),
-                      scope: cx.scope.binding_subscope(expr.id)
-                      with cx};
+        let new_cx = {parent: some(expr.id) with cx};
         visit::visit_expr(expr, new_cx, visitor);
       }
       ast::expr_call(_, _, _) {
-        let new_cx = {parent: pa_call(expr.id),
-                      scope: cx.scope.binding_subscope(expr.id)
-                      with cx};
+        let new_cx = {parent: some(expr.id) with cx};
         visit::visit_expr(expr, new_cx, visitor);
       }
       ast::expr_alt(subexpr, _, _) {
-        let new_cx = {parent: pa_alt(expr.id),
-                      scope: cx.scope.binding_subscope(expr.id)
-                      with cx};
+        let new_cx = {parent: some(expr.id) with cx};
         visit::visit_expr(expr, new_cx, visitor);
       }
       _ {
@@ -392,27 +312,7 @@ fn resolve_local(local: @ast::local, cx: ctxt, visitor: visit::vt<ctxt>) {
 
 fn resolve_item(item: @ast::item, cx: ctxt, visitor: visit::vt<ctxt>) {
     // Items create a new outer block scope as far as we're concerned.
-    let {parent, scope} = {
-        alt item.node {
-          ast::item_fn(_, _, _) | ast::item_enum(_, _) {
-            {parent: pa_fn_item(item.id),
-             scope: cx.scope.binding_subscope(item.id)}
-          }
-          ast::item_impl(_, _, _, _) | ast::item_class(_, _, _, _) {
-            {parent: pa_item(item.id),
-             scope: cx.scope.self_subscope(item.id)}
-          }
-          _ {
-            {parent: pa_item(item.id),
-             scope: root_scope(item.id)}
-          }
-        }
-    };
-
-    let new_cx: ctxt = {parent: parent,
-                        scope: scope
-                        with cx};
-
+    let new_cx: ctxt = {parent: some(item.id) with cx};
     visit::visit_item(item, new_cx, visitor);
 }
 
@@ -422,8 +322,7 @@ fn resolve_crate(sess: session, def_map: resolve::def_map, crate: @ast::crate)
                     def_map: def_map,
                     region_map: @{parents: map::int_hash(),
                                   local_blocks: map::int_hash()},
-                    scope: root_scope(0),
-                    parent: pa_crate};
+                    parent: none};
     let visitor = visit::mk_vt(@{
         visit_block: resolve_block,
         visit_item: resolve_item,

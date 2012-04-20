@@ -163,7 +163,8 @@ fn enter_opt(tcx: ty::ctxt, m: match, opt: opt, col: uint,
     enter_match(tcx.def_map, m, col, val) {|p|
         alt p.node {
           ast::pat_enum(_, subpats) {
-            if opt_eq(tcx, variant_opt(tcx, p.id), opt) { some(subpats) }
+            if opt_eq(tcx, variant_opt(tcx, p.id), opt) {
+              some(option::get_or_default(subpats, [])) }
             else { none }
           }
           ast::pat_ident(_, none) if pat_is_variant(tcx.def_map, p) {
@@ -263,11 +264,10 @@ fn extract_variant_args(bcx: block, pat_id: ast::node_id,
     let _icx = bcx.insn_ctxt("alt::extract_variant_args");
     let ccx = bcx.fcx.ccx;
     let enum_ty_substs = alt check ty::get(node_id_type(bcx, pat_id)).struct {
-      ty::ty_enum(id, tps) { assert id == vdefs.enm; tps }
+      ty::ty_enum(id, substs) { assert id == vdefs.enm; substs.tps }
     };
     let mut blobptr = val;
     let variants = ty::enum_variants(ccx.tcx, vdefs.enm);
-    let mut args = [];
     let size = ty::enum_variant_with_id(ccx.tcx, vdefs.enm,
                                         vdefs.var).args.len();
     if size > 0u && (*variants).len() != 1u {
@@ -275,14 +275,12 @@ fn extract_variant_args(bcx: block, pat_id: ast::node_id,
             PointerCast(bcx, val, T_opaque_enum_ptr(ccx));
         blobptr = GEPi(bcx, enumptr, [0, 1]);
     }
-    let mut i = 0u;
     let vdefs_tg = vdefs.enm;
     let vdefs_var = vdefs.var;
-    while i < size {
-        args += [GEP_enum(bcx, blobptr, vdefs_tg, vdefs_var,
-                          enum_ty_substs, i)];
-        i += 1u;
-    }
+    let args = vec::from_fn(size) { |i|
+        GEP_enum(bcx, blobptr, vdefs_tg, vdefs_var,
+                 enum_ty_substs, i)
+    };
     ret {vals: args, bcx: bcx};
 }
 
@@ -703,16 +701,15 @@ fn bind_irrefutable_pat(bcx: block, pat: @ast::pat, val: ValueRef,
         let vdefs = ast_util::variant_def_ids(ccx.tcx.def_map.get(pat.id));
         let args = extract_variant_args(bcx, pat.id, vdefs, val);
         let mut i = 0;
-        for vec::each(args.vals) {|argval|
+        option::iter(sub) {|sub| for vec::each(args.vals) {|argval|
             bcx = bind_irrefutable_pat(bcx, sub[i], argval, make_copy);
             i += 1;
-        }
+        }}
       }
       ast::pat_rec(fields, _) {
         let rec_fields = ty::get_fields(node_id_type(bcx, pat.id));
         for vec::each(fields) {|f|
             let ix = option::get(ty::field_idx(f.ident, rec_fields));
-            // how to get rid of this check?
             let fldptr = GEPi(bcx, val, [0, ix as int]);
             bcx = bind_irrefutable_pat(bcx, f.pat, fldptr, make_copy);
         }

@@ -34,9 +34,8 @@ fn expand_expr(exts: hashmap<str, syntax_extension>, cx: ext_ctxt,
                   some(normal({expander: exp, span: exp_sp})) {
                     let expanded = exp(cx, pth.span, args, body);
 
-                    let info = {call_site: s,
-                                callie: {name: extname, span: exp_sp}};
-                    cx.bt_push(expanded_from(info));
+                    cx.bt_push(expanded_from({call_site: s,
+                                callie: {name: extname, span: exp_sp}}));
                     //keep going, outside-in
                     let fully_expanded = fld.fold_expr(expanded).node;
                     cx.bt_pop();
@@ -98,7 +97,7 @@ fn new_span(cx: ext_ctxt, sp: span) -> span {
 // FIXME: this is a terrible kludge to inject some macros into the default
 // compilation environment. When the macro-definition system is substantially
 // more mature, these should move from here, into a compiled part of libcore
-// at very least.
+// at very least. (Issue #2247)
 
 fn core_macros() -> str {
     ret

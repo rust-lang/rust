@@ -5,6 +5,7 @@ import syntax::attr;
 import syntax::codemap::span;
 import std::map::{map,hashmap,hash_from_strs};
 import io::writer_util;
+import syntax::print::pprust::expr_to_str;
 
 export lint, ctypes, unused_imports;
 export level, ignore, warn, error;
@@ -12,17 +13,18 @@ export lookup_lint, lint_dict, get_lint_dict, check_crate;
 
 #[doc="
 
-A 'lint' check is a kind of miscallaneous constraint that a user _might_ want
+A 'lint' check is a kind of miscellaneous constraint that a user _might_ want
 to enforce, but might reasonably want to permit as well, on a module-by-module
 basis. They contrast with static constraints enforced by other phases of the
 compiler, which are generally required to hold in order to compile the program
-correctly at all.
+at all.
 
 "]
 
 enum lint {
     ctypes,
     unused_imports,
+    while_true
 }
 
 enum level {
@@ -35,6 +37,10 @@ type lint_spec = @{lint: lint,
 
 type lint_dict = hashmap<str,lint_spec>;
 
+/*
+  Pass names should not contain a '-', as the compiler normalizes
+  '-' to '_' in command-line flags
+ */
 fn get_lint_dict() -> lint_dict {
     let v = [
         ("ctypes",
@@ -45,7 +51,12 @@ fn get_lint_dict() -> lint_dict {
         ("unused_imports",
          @{lint: unused_imports,
            desc: "imports that are never used",
-           default: ignore})
+           default: ignore}),
+
+        ("while_true",
+         @{lint: while_true,
+           desc: "suggest using loop { } instead of while(true) { }",
+           default: warn})
     ];
     hash_from_strs(v)
 }
@@ -165,9 +176,32 @@ fn check_item(cx: ctxt, i: @ast::item) {
             alt lint {
               ctypes { check_item_ctypes(cx, level, i); }
               unused_imports { check_item_unused_imports(cx, level, i); }
+              while_true { check_item_while_true(cx, level, i); }
             }
         }
     }
+}
+
+fn check_item_while_true(cx: ctxt, level: level, it: @ast::item) {
+    let visit = visit::mk_simple_visitor(@{
+        visit_expr: fn@(e: @ast::expr) {
+           alt e.node {
+             ast::expr_while(cond, _) {
+                alt cond.node {
+                    ast::expr_lit(@{node: ast::lit_bool(true),_}) {
+                            cx.span_lint(
+                              level, e.span,
+                              "Denote infinite loops with loop { ... }");
+                    }
+                    _ {}
+                }
+             }
+             _ {}
+          }
+        }
+        with *visit::default_simple_visitor()
+    });
+    visit::visit_item(it, (), visit);
 }
 
 fn check_item_unused_imports(_cx: ctxt, _level: level, _it: @ast::item) {

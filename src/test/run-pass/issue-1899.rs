@@ -1,4 +1,4 @@
 fn main()
 {
-    let _b = [bind (fn~() {})()];
+    let _b = [bind (fn~() { })()];
 }

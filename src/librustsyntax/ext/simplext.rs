@@ -456,7 +456,8 @@ fn p_t_s_rec(cx: ext_ctxt, m: matchable, s: selector, b: binders) {
               }
             }
           }
-          /* FIXME: handle embedded types and blocks, at least */
+          /* FIXME: handle embedded types and blocks, at least
+             (Issue #2251) */
           expr_mac(mac) {
             p_t_s_r_mac(cx, mac, s, b);
           }
@@ -715,7 +716,7 @@ fn add_new_extension(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                            body: elts[1u]}];
 
                     // FIXME: check duplicates (or just simplify
-                    // the macro arg situation)
+                    // the macro arg situation) (Issue #2251)
                   }
                   _ {
                       cx.span_bug(mac.span, "undocumented invariant in \

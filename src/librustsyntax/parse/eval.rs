@@ -1,7 +1,6 @@
-import attr;
 import parser::{parser,
-                parse_inner_attrs_and_next,
                 parse_mod_items, SOURCE_FILE};
+import attr::parse_inner_attrs_and_next;
 
 export eval_crate_directives_to_mod;
 
@@ -81,7 +80,7 @@ fn parse_companion_mod(cx: ctx, prefix: str, suffix: option<str>)
 }
 
 fn cdir_path_opt(id: str, attrs: [ast::attribute]) -> str {
-    alt attr::first_attr_value_str_by_name(attrs, "path") {
+    alt ::attr::first_attr_value_str_by_name(attrs, "path") {
       some(d) {
         ret d;
       }

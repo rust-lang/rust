@@ -1,3 +1,4 @@
+import parse::classify::*;
 import parse::comments;
 import parse::lexer;
 import codemap::codemap;
@@ -124,10 +125,10 @@ fn test_fun_to_str() {
 }
 
 fn res_to_str(decl: ast::fn_decl, name: ast::ident,
-              params: [ast::ty_param]) -> str {
+              params: [ast::ty_param], rp: ast::region_param) -> str {
     let buffer = io::mem_buffer();
     let s = rust_printer(io::mem_buffer_writer(buffer));
-    print_res(s, decl, name, params);
+    print_res(s, decl, name, params, rp);
     end(s); // Close the head box
     end(s); // Close the outer box
     eof(s.s);
@@ -240,6 +241,12 @@ fn is_end(s: ps) -> bool {
 fn is_bol(s: ps) -> bool {
     ret s.s.last_token() == pp::EOF ||
             s.s.last_token() == pp::hardbreak_tok();
+}
+
+fn in_cbox(s: ps) -> bool {
+    let len = vec::len(s.boxes);
+    if len == 0u { ret false; }
+    ret s.boxes[len - 1u] == pp::consistent;
 }
 
 fn hardbreak_if_not_bol(s: ps) { if !is_bol(s) { hardbreak(s.s); } }
@@ -447,11 +454,12 @@ fn print_item(s: ps, &&item: @ast::item) {
         print_native_mod(s, nmod, item.attrs);
         bclose(s, item.span);
       }
-      ast::item_ty(ty, params) {
+      ast::item_ty(ty, params, rp) {
         ibox(s, indent_unit);
         ibox(s, 0u);
         word_nbsp(s, "type");
         word(s.s, item.ident);
+        print_region_param(s, rp);
         print_type_params(s, params);
         end(s); // end the inner ibox
 
@@ -461,7 +469,7 @@ fn print_item(s: ps, &&item: @ast::item) {
         word(s.s, ";");
         end(s); // end the outer ibox
       }
-      ast::item_enum(variants, params) {
+      ast::item_enum(variants, params, rp) {
         let newtype =
             vec::len(variants) == 1u &&
                 str::eq(item.ident, variants[0].node.name) &&
@@ -471,6 +479,7 @@ fn print_item(s: ps, &&item: @ast::item) {
             word_space(s, "enum");
         } else { head(s, "enum"); }
         word(s.s, item.ident);
+        print_region_param(s, rp);
         print_type_params(s, params);
         space(s.s);
         if newtype {
@@ -493,9 +502,10 @@ fn print_item(s: ps, &&item: @ast::item) {
             bclose(s, item.span);
         }
       }
-      ast::item_class(tps,ifaces,items,ctor) {
+      ast::item_class(tps,ifaces,items,ctor, rp) {
           head(s, "class");
           word_nbsp(s, item.ident);
+          print_region_param(s, rp);
           print_type_params(s, tps);
           word_space(s, "implements");
           commasep(s, inconsistent, ifaces, {|s, p|
@@ -577,8 +587,8 @@ fn print_item(s: ps, &&item: @ast::item) {
         for methods.each {|meth| print_ty_method(s, meth); }
         bclose(s, item.span);
       }
-      ast::item_res(decl, tps, body, dt_id, ct_id) {
-        print_res(s, decl, item.ident, tps);
+      ast::item_res(decl, tps, body, dt_id, ct_id, rp) {
+        print_res(s, decl, item.ident, tps, rp);
         print_block(s, body);
       }
     }
@@ -586,9 +596,10 @@ fn print_item(s: ps, &&item: @ast::item) {
 }
 
 fn print_res(s: ps, decl: ast::fn_decl, name: ast::ident,
-             typarams: [ast::ty_param]) {
+             typarams: [ast::ty_param], rp: ast::region_param) {
     head(s, "resource");
     word(s.s, name);
+    print_region_param(s, rp);
     print_type_params(s, typarams);
     popen(s);
     word_space(s, decl.inputs[0].ident + ":");
@@ -1237,16 +1248,21 @@ fn print_pat(s: ps, &&pat: @ast::pat) {
         print_path(s, path, true);
         alt sub {
           some(p) { word(s.s, "@"); print_pat(s, p); }
-          _ {}
+          none {}
         }
       }
-      ast::pat_enum(path, args) {
+      ast::pat_enum(path, args_) {
         print_path(s, path, true);
-        if vec::len(args) > 0u {
-            popen(s);
-            commasep(s, inconsistent, args, print_pat);
-            pclose(s);
-        } else { }
+        alt args_ {
+          none { word(s.s, "(*)"); }
+          some(args) {
+            if vec::len(args) > 0u {
+              popen(s);
+              commasep(s, inconsistent, args, print_pat);
+              pclose(s);
+            } else { }
+          }
+        }
       }
       ast::pat_rec(fields, etc) {
         word(s.s, "{");
@@ -1394,6 +1410,13 @@ fn print_bounds(s: ps, bounds: @[ast::ty_param_bound]) {
     }
 }
 
+fn print_region_param(s: ps, rp: ast::region_param) {
+    alt rp {
+      ast::rp_self { word(s.s, "/&") }
+      ast::rp_none { }
+    }
+}
+
 fn print_type_params(s: ps, &&params: [ast::ty_param]) {
     if vec::len(params) > 0u {
         word(s.s, "<");
@@ -1484,34 +1507,6 @@ fn print_view_item(s: ps, item: @ast::view_item) {
     end(s); // end outer head-block
 }
 
-
-// FIXME: The fact that this builds up the table anew for every call is
-// not good. Eventually, table should be a const.
-fn operator_prec(op: ast::binop) -> int {
-    for vec::each(*parse::prec::binop_prec_table()) {|spec|
-        if spec.op == op { ret spec.prec; }
-    }
-    core::unreachable();
-}
-
-fn need_parens(expr: @ast::expr, outer_prec: int) -> bool {
-    alt expr.node {
-      ast::expr_binary(op, _, _) { operator_prec(op) < outer_prec }
-      ast::expr_cast(_, _) { parse::prec::as_prec < outer_prec }
-      // This may be too conservative in some cases
-      ast::expr_assign(_, _) { true }
-      ast::expr_move(_, _) { true }
-      ast::expr_swap(_, _) { true }
-      ast::expr_assign_op(_, _, _) { true }
-      ast::expr_ret(_) { true }
-      ast::expr_be(_) { true }
-      ast::expr_assert(_) { true }
-      ast::expr_check(_, _) { true }
-      ast::expr_log(_, _, _) { true }
-      _ { !parse::classify::expr_requires_semi_to_be_stmt(expr) }
-    }
-}
-
 fn print_op_maybe_parens(s: ps, expr: @ast::expr, outer_prec: int) {
     let add_them = need_parens(expr, outer_prec);
     if add_them { popen(s); }
@@ -1594,12 +1589,6 @@ fn print_remaining_comments(s: ps) {
           _ { break; }
         }
     }
-}
-
-fn in_cbox(s: ps) -> bool {
-    let len = vec::len(s.boxes);
-    if len == 0u { ret false; }
-    ret s.boxes[len - 1u] == pp::consistent;
 }
 
 fn print_literal(s: ps, &&lit: @ast::lit) {
@@ -1837,25 +1826,6 @@ fn proto_to_str(p: ast::proto) -> str {
       ast::proto_uniq { "fn~" }
       ast::proto_box { "fn@" }
     };
-}
-
-fn ends_in_lit_int(ex: @ast::expr) -> bool {
-    alt ex.node {
-      ast::expr_lit(@{node: ast::lit_int(_, ast::ty_i), _}) { true }
-      ast::expr_binary(_, _, sub) | ast::expr_unary(_, sub) |
-      ast::expr_move(_, sub) | ast::expr_copy(sub) |
-      ast::expr_assign(_, sub) | ast::expr_be(sub) |
-      ast::expr_assign_op(_, _, sub) | ast::expr_swap(_, sub) |
-      ast::expr_log(_, _, sub) | ast::expr_assert(sub) |
-      ast::expr_check(_, sub) { ends_in_lit_int(sub) }
-      ast::expr_fail(osub) | ast::expr_ret(osub) {
-        alt osub {
-          some(ex) { ends_in_lit_int(ex) }
-          _ { false }
-        }
-      }
-      _ { false }
-    }
 }
 
 //

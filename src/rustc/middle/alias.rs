@@ -503,7 +503,7 @@ fn ty_can_unsafely_include(cx: ctx, needle: unsafe_ty, haystack: ty::t,
         } { ret true; }
         alt ty::get(haystack).struct {
           ty::ty_enum(_, ts) {
-            for ts.each {|t|
+            for ts.tps.each {|t|
                 if helper(tcx, needle, t, mutbl) { ret true; }
             }
             ret false;
@@ -565,10 +565,11 @@ fn copy_is_expensive(tcx: ty::ctxt, ty: ty::t) -> bool {
           ty::ty_fn(_) { 4u }
           ty::ty_str | ty::ty_vec(_) | ty::ty_param(_, _) { 50u }
           ty::ty_uniq(mt) { 1u + score_ty(tcx, mt.ty) }
-          ty::ty_enum(_, ts) | ty::ty_tup(ts) {
-            let mut sum = 0u;
-            for ts.each {|t| sum += score_ty(tcx, t); }
-            sum
+          ty::ty_enum(_, substs) {
+            substs.tps.foldl(0u) { |sum, t| sum + score_ty(tcx, t) }
+          }
+          ty::ty_tup(ts) {
+            ts.foldl(0u) { |sum, t| sum + score_ty(tcx, t) }
           }
           ty::ty_rec(fs) {
             let mut sum = 0u;
@@ -599,11 +600,11 @@ fn pattern_roots(tcx: ty::ctxt, mutbl: option<unsafe_ty>, pat: @ast::pat)
           if !pat_util::pat_is_variant(tcx.def_map, pat) {
             set += [{id: pat.id, name: path_to_ident(nm), mutbl: mutbl,
                         span: pat.span}];
-            alt sub { some(p) { walk(tcx, mutbl, p, set); } _ {} }
+            option::iter(sub) {|p| walk(tcx, mutbl, p, set); };
           }
           ast::pat_wild | ast::pat_lit(_) | ast::pat_range(_, _) |
-          ast::pat_ident(_, _) {}
-          ast::pat_enum(_, ps) | ast::pat_tup(ps) {
+          ast::pat_ident(_, _) | ast::pat_enum(_, none) {}
+          ast::pat_enum(_, some(ps)) | ast::pat_tup(ps) {
             for ps.each {|p| walk(tcx, mutbl, p, set); }
           }
           ast::pat_rec(fs, _) {

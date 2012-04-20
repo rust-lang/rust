@@ -1,9 +1,6 @@
 import codemap::span;
 import base::ext_ctxt;
 
-// NOTE: Moved from fmt.rs which had this fixme:
-// FIXME: Cleanup the naming of these functions
-
 fn mk_lit(cx: ext_ctxt, sp: span, lit: ast::lit_) -> @ast::expr {
     let sp_lit = @{node: lit, span: sp};
     ret @{id: cx.next_id(), node: ast::expr_lit(sp_lit), span: sp};

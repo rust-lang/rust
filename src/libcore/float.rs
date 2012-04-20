@@ -51,10 +51,10 @@ fn to_str_common(num: float, digits: uint, exact: bool) -> str {
     if (frac < epsilon && !exact) || digits == 0u { ret accum; }
     accum += ".";
     let mut i = digits;
-    let mut epsilon = 1. / pow_with_uint(10u, i);
-    while i > 0u && (frac >= epsilon || exact) {
+    let mut epsilon_prime = 1. / pow_with_uint(10u, i);
+    while i > 0u && (frac >= epsilon_prime || exact) {
         frac *= 10.0;
-        epsilon *= 10.0;
+        epsilon_prime *= 10.0;
         let digit = frac as uint;
         accum += uint::str(digit);
         frac -= digit as float;

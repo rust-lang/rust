@@ -218,6 +218,38 @@ fn is_bad_expr_word(t: token,
 }
 
 #[doc = "
+All the valid words that have meaning in the Rust language. Some of these are
+nonetheless valid as identifiers becasue they are unambiguous.
+"]
+fn keyword_table() -> hashmap<str, ()> {
+    let keywords = str_hash();
+    bad_expr_word_table().keys() {|word|
+        keywords.insert(word, ());
+    }
+    let other_keywords = [
+        "as",
+        "bind",
+        "else",
+        "false",
+        "implements",
+        "move",
+        "of",
+        "priv",
+        "self",
+        "send",
+        "static",
+        "to",
+        "true",
+        "use",
+        "with"
+    ];
+    for other_keywords.each {|word|
+        keywords.insert(word, ());
+    }
+    ret keywords;
+}
+
+#[doc = "
 These are the words that shouldn't be allowed as value identifiers,
 because, if used at the start of a line, they will cause the line to be
 interpreted as a specific kind of statement, which would be confusing.
@@ -228,8 +260,8 @@ fn bad_expr_word_table() -> hashmap<str, ()> {
                 "class", "const", "cont", "copy", "crust", "do", "else",
                 "enum", "export", "fail", "fn", "for", "if",  "iface",
                 "impl", "import", "let", "log", "loop", "mod",
-                "mut", "native", "pure", "resource", "ret", "trait",
-                "type", "unchecked", "unsafe", "while", "new"];
+                "mut", "mutable", "native", "new", "pure", "resource",
+                "ret", "trait", "type", "unchecked", "unsafe", "while"];
     for keys.each {|word|
         words.insert(word, ());
     }

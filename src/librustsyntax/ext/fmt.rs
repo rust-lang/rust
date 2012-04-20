@@ -42,6 +42,7 @@ fn expand_syntax_ext(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
 // be factored out in common with other code that builds expressions.
 // FIXME: Cleanup the naming of these functions
 // NOTE: Moved many of the common ones to build.rs --kevina
+// See Issue #2249
 fn pieces_to_expr(cx: ext_ctxt, sp: span, pieces: [piece], args: [@ast::expr])
    -> @ast::expr {
     fn make_path_vec(_cx: ext_ctxt, ident: ast::ident) -> [ast::ident] {
@@ -125,7 +126,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span, pieces: [piece], args: [@ast::expr])
     }
     fn make_new_conv(cx: ext_ctxt, sp: span, cnv: conv, arg: @ast::expr) ->
        @ast::expr {
-        // FIXME: Extract all this validation into extfmt::ct
+        // FIXME: Move validation code into core::extfmt (Issue #2249)
 
         fn is_signed_type(cnv: conv) -> bool {
             alt cnv.ty {

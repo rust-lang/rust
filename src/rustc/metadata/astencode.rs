@@ -143,8 +143,8 @@ fn visit_ids(item: ast::inlined_item, vfn: fn@(ast::node_id)) {
         visit_item: fn@(i: @ast::item) {
             vfn(i.id);
             alt i.node {
-              ast::item_res(_, _, _, d_id, c_id) { vfn(d_id); vfn(c_id); }
-              ast::item_enum(vs, _) { for vs.each {|v| vfn(v.node.id); } }
+              ast::item_res(_, _, _, d_id, c_id, _) { vfn(d_id); vfn(c_id); }
+              ast::item_enum(vs, _, _) { for vs.each {|v| vfn(v.node.id); } }
               _ {}
             }
         },
@@ -209,7 +209,7 @@ fn visit_ids(item: ast::inlined_item, vfn: fn@(ast::node_id)) {
                 vfn(parent_id.node);
               }
               visit::fk_item_fn(_, tps) |
-              visit::fk_res(_, tps) {
+              visit::fk_res(_, tps, _) {
                 vec::iter(tps) {|tp| vfn(tp.id)}
               }
               visit::fk_method(_, tps, m) {
@@ -679,7 +679,10 @@ impl helpers for ebml::writer {
                     self.emit_bounds(ecx, bs)
                 }
             }
-            self.emit_rec_field("ty", 0u) {||
+            self.emit_rec_field("rp", 1u) {||
+                ast::serialize_region_param(self, tpbt.rp)
+            }
+            self.emit_rec_field("ty", 2u) {||
                 self.emit_ty(ecx, tpbt.ty);
             }
         }
@@ -848,6 +851,11 @@ impl decoder for ebml::doc {
 
 impl decoder for ebml::ebml_deserializer {
     fn read_ty(xcx: extended_decode_ctxt) -> ty::t {
+        // Note: regions types embed local node ids.  In principle, we
+        // should translate these node ids into the new decode
+        // context.  However, we do not bother, because region types
+        // are not used during trans.
+
         tydecode::parse_ty_data(
             self.parent.data, xcx.dcx.cdata.cnum, self.pos, xcx.dcx.tcx,
             xcx.tr_def_id(_))
@@ -870,7 +878,10 @@ impl decoder for ebml::ebml_deserializer {
                 bounds: self.read_rec_field("bounds", 0u) {||
                     @self.read_to_vec {|| self.read_bounds(xcx) }
                 },
-                ty: self.read_rec_field("ty", 1u) {||
+                rp: self.read_rec_field("rp", 1u) {||
+                    ast::deserialize_region_param(self)
+                },
+                ty: self.read_rec_field("ty", 2u) {||
                     self.read_ty(xcx)
                 }
             }

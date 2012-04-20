@@ -192,6 +192,7 @@ fn eq(a: @ast::meta_item, b: @ast::meta_item) -> bool {
           }
           ast::meta_list(na, la) {
 
+            // [Fixme-sorting]
             // FIXME (#607): Needs implementing
             // This involves probably sorting the list by name and
             // meta_item variant
@@ -257,6 +258,7 @@ fn last_meta_item_list_by_name(
 /* Higher-level applications */
 
 // FIXME: This needs to sort by meta_item variant in addition to the item name
+// (See [Fixme-sorting])
 fn sort_meta_items(items: [@ast::meta_item]) -> [@ast::meta_item] {
     fn lteq(&&ma: @ast::meta_item, &&mb: @ast::meta_item) -> bool {
         fn key(m: @ast::meta_item) -> ast::ident {

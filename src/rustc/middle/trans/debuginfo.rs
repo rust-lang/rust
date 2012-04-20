@@ -747,7 +747,7 @@ fn create_function(fcx: fn_ctxt) -> @metadata<subprogram_md> {
     let (ident, ret_ty, id) = alt cx.tcx.items.get(fcx.id) {
       ast_map::node_item(item, _) {
         alt item.node {
-          ast::item_fn(decl, _, _) | ast::item_res(decl, _, _, _, _) {
+          ast::item_fn(decl, _, _) | ast::item_res(decl, _, _, _, _, _) {
             (item.ident, decl.output, item.id)
           }
           _ { fcx.ccx.sess.span_bug(item.span, "create_function: item \

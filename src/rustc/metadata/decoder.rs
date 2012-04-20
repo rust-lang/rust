@@ -15,6 +15,7 @@ import syntax::print::pprust;
 import cmd=cstore::crate_metadata;
 import middle::trans::common::maps;
 import util::ppaux::ty_to_str;
+import ebml::deserializer;
 
 export get_class_fields;
 export get_symbol;
@@ -176,6 +177,18 @@ fn item_ty_param_bounds(item: ebml::doc, tcx: ty::ctxt, cdata: cmd)
     @bounds
 }
 
+fn item_ty_region_param(item: ebml::doc) -> ast::region_param {
+    alt ebml::maybe_get_doc(item, tag_region_param) {
+      some(rp_doc) {
+        let dsr = ebml::ebml_deserializer(rp_doc);
+        ast::deserialize_region_param(dsr)
+      }
+      none { // not all families of items have region params
+        ast::rp_none
+      }
+    }
+}
+
 fn item_ty_param_count(item: ebml::doc) -> uint {
     let mut n = 0u;
     ebml::tagged_docs(item, tag_items_data_item_ty_param_bounds,
@@ -272,12 +285,14 @@ fn lookup_def(cnum: ast::crate_num, data: @[u8], did_: ast::def_id) ->
 
 fn get_type(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
     -> ty::ty_param_bounds_and_ty {
+
     let item = lookup_item(id, cdata.data);
     let t = item_type({crate: cdata.cnum, node: id}, item, tcx, cdata);
     let tp_bounds = if family_has_type_params(item_family(item)) {
         item_ty_param_bounds(item, tcx, cdata)
     } else { @[] };
-    ret {bounds: tp_bounds, ty: t};
+    let rp = item_ty_region_param(item);
+    ret {bounds: tp_bounds, rp: rp, ty: t};
 }
 
 fn get_type_param_count(data: @[u8], id: ast::node_id) -> uint {

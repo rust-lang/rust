@@ -96,13 +96,15 @@ impl of qq_helper for @ast::pat {
 
 fn gather_anti_quotes<N: qq_helper>(lo: uint, node: N) -> aq_ctxt
 {
-    let v = @{visit_expr: visit_aq_expr,
-              visit_ty: visit_aq_ty
+    let v = @{visit_expr: {|node, &&cx, v|
+                  visit_aq(node, "from_expr", cx, v)},
+              visit_ty: {|node, &&cx, v|
+                  visit_aq(node, "from_ty", cx, v)}
               with *default_visitor()};
     let cx = @{lo:lo, mut gather: []};
     node.visit(cx, mk_vt(v));
     // FIXME: Maybe this is an overkill (merge_sort), it might be better
-    //   to just keep the gather array in sorted order ...
+    //   to just keep the gather array in sorted order ... (Issue #2250)
     cx.gather = std::sort::merge_sort({|a,b| a.lo < b.lo}, copy cx.gather);
     ret cx;
 }
@@ -116,14 +118,6 @@ fn visit_aq<T:qq_helper>(node: T, constr: str, &&cx: aq_ctxt, v: vt<aq_ctxt>)
       }
       _ {node.visit(cx, v);}
     }
-}
-// FIXME: these are only here because I (kevina) couldn't figure out how to
-// get bind to work in gather_anti_quotes
-fn visit_aq_expr(node: @ast::expr, &&cx: aq_ctxt, v: vt<aq_ctxt>) {
-    visit_aq(node,"from_expr",cx,v);
-}
-fn visit_aq_ty(node: @ast::ty, &&cx: aq_ctxt, v: vt<aq_ctxt>) {
-    visit_aq(node,"from_ty",cx,v);
 }
 
 fn is_space(c: char) -> bool {
@@ -180,8 +174,8 @@ fn parse_stmt(p: parser) -> @ast::stmt {
 
 fn parse_item(p: parser) -> @ast::item {
     alt (parser::parse_item(p, [])) {
-      some(item) {item}
-      none {fail; /* FIXME: Error message, somehow */}
+      some(item) { item }
+      none       { fail "parse_item: parsing an item failed"; }
     }
 }
 

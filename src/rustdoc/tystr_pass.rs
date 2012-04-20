@@ -112,7 +112,7 @@ fn fold_enum(
             let sig = astsrv::exec(srv) {|ctxt|
                 alt check ctxt.ast_map.get(doc_id) {
                   ast_map::node_item(@{
-                    node: ast::item_enum(ast_variants, _), _
+                    node: ast::item_enum(ast_variants, _, _), _
                   }, _) {
                     let ast_variant = option::get(
                         vec::find(ast_variants) {|v|
@@ -149,9 +149,9 @@ fn fold_res(
         sig: some(astsrv::exec(srv) {|ctxt|
             alt check ctxt.ast_map.get(doc.id()) {
               ast_map::node_item(@{
-                node: ast::item_res(decl, tys, _, _, _), _
+                node: ast::item_res(decl, tys, _, _, _, rp), _
               }, _) {
-                pprust::res_to_str(decl, doc.name(), tys)
+                pprust::res_to_str(decl, doc.name(), tys, rp)
               }
             }
         })
@@ -303,7 +303,7 @@ fn fold_type(
             alt ctxt.ast_map.get(doc.id()) {
               ast_map::node_item(@{
                 ident: ident,
-                node: ast::item_ty(ty, params), _
+                node: ast::item_ty(ty, params, ast::rp_none), _
               }, _) {
                 some(#fmt(
                     "type %s%s = %s",

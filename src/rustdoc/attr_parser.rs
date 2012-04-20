@@ -38,7 +38,7 @@ mod test {
         let parser = parse::new_parser_from_source_str(
             parse_sess, [], "-", codemap::fss_none, @source);
 
-        parser::parse_outer_attributes(parser)
+        parse::attr::parse_outer_attributes(parser)
     }
 }
 

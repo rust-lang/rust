@@ -182,6 +182,65 @@ fn parse_vstore(st: @pstate) -> ty::vstore {
     st.tcx.sess.unimpl("tydecode::parse_vstore");
 }
 
+fn parse_substs(st: @pstate, conv: conv_did) -> ty::substs {
+    let self_r = parse_opt(st) {|| parse_region(st) };
+
+    assert next(st) == '[';
+    let mut params: [ty::t] = [];
+    while peek(st) != ']' { params += [parse_ty(st, conv)]; }
+    st.pos = st.pos + 1u;
+
+    ret {self_r: self_r, tps: params};
+}
+
+fn parse_bound_region(st: @pstate) -> ty::bound_region {
+    alt check next(st) {
+      's' { ty::br_self }
+      'a' { ty::br_anon }
+      '[' { ty::br_named(parse_str(st, ']')) }
+    }
+}
+
+fn parse_region(st: @pstate) -> ty::region {
+    alt check next(st) {
+      'b' {
+        ty::re_bound(parse_bound_region(st))
+      }
+      'f' {
+        assert next(st) == '[';
+        let id = parse_int(st);
+        assert next(st) == '|';
+        let br = parse_bound_region(st);
+        assert next(st) == ']';
+        ty::re_free(id, br)
+      }
+      's' {
+        let id = parse_int(st);
+        assert next(st) == '|';
+        ty::re_scope(id)
+      }
+      't' {
+        ty::re_static
+      }
+    }
+}
+
+fn parse_opt<T>(st: @pstate, f: fn() -> T) -> option<T> {
+    alt check next(st) {
+      'n' { none }
+      's' { some(f()) }
+    }
+}
+
+fn parse_str(st: @pstate, term: char) -> str {
+    let mut result = "";
+    while peek(st) != term {
+        result += str::from_byte(next_byte(st));
+    }
+    next(st);
+    ret result;
+}
+
 fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
     alt check next(st) {
       'n' { ret ty::mk_nil(st.tcx); }
@@ -209,10 +268,9 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
       't' {
         assert (next(st) == '[');
         let def = parse_def(st, conv);
-        let mut params: [ty::t] = [];
-        while peek(st) != ']' { params += [parse_ty(st, conv)]; }
-        st.pos = st.pos + 1u;
-        ret ty::mk_enum(st.tcx, def, params);
+        let substs = parse_substs(st, conv);
+        assert next(st) == ']';
+        ret ty::mk_enum(st.tcx, def, substs);
       }
       'x' {
         assert (next(st) == '[');
@@ -250,11 +308,7 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
         assert (next(st) == '[');
         let mut fields: [ty::field] = [];
         while peek(st) != ']' {
-            let mut name = "";
-            while peek(st) != '=' {
-                name += str::from_byte(next_byte(st));
-            }
-            st.pos = st.pos + 1u;
+            let name = parse_str(st, '=');
             fields += [{ident: name, mt: parse_mt(st, conv)}];
         }
         st.pos = st.pos + 1u;
@@ -275,10 +329,9 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
         assert (next(st) == '[');
         let def = parse_def(st, conv);
         let inner = parse_ty(st, conv);
-        let mut params: [ty::t] = [];
-        while peek(st) != ']' { params += [parse_ty(st, conv)]; }
-        st.pos = st.pos + 1u;
-        ret ty::mk_res(st.tcx, def, inner, params);
+        let substs = parse_substs(st, conv);
+        assert next(st) == ']';
+        ret ty::mk_res(st.tcx, def, inner, substs);
       }
       'X' {
         ret ty::mk_var(st.tcx, ty::ty_vid(parse_int(st) as uint));
@@ -326,10 +379,9 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
           #debug("saw a [");
           let did = parse_def(st, conv);
           #debug("parsed a def_id %?", did);
-          let mut params: [ty::t] = [];
-          while peek(st) != ']' { params += [parse_ty(st, conv)]; }
+          let substs = parse_substs(st, conv);
           assert (next(st) == ']');
-          ret ty::mk_class(st.tcx, did, params);
+          ret ty::mk_class(st.tcx, did, substs);
       }
       c { #error("unexpected char in type string: %c", c); fail;}
     }

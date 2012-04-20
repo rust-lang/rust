@@ -6,4 +6,8 @@ fn main() {
     let p = "hello"/~;
     let r = foo(p);
     assert r == 'h' as u8;
+
+    let p = "hello";
+    let r = foo(p);
+    assert r == 'h' as u8;
 }

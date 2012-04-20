@@ -10,11 +10,12 @@ import syntax::{ast, ast_util};
 import middle::ast_map;
 import driver::session::session;
 
-fn bound_region_to_str(_cx: ctxt, br: bound_region) -> str {
+fn bound_region_to_str(cx: ctxt, br: bound_region) -> str {
     alt br {
-      br_anon          { "&" }
-      br_named(str)    { #fmt["&%s", str] }
-      br_self          { "&self" }
+      br_anon                             { "&" }
+      br_named(str)                       { #fmt["&%s", str] }
+      br_self if cx.sess.opts.debug_rustc { "&<self>" }
+      br_self                             { "&self" }
     }
 }
 
@@ -127,12 +128,23 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
     fn field_to_str(cx: ctxt, f: field) -> str {
         ret f.ident + ": " + mt_to_str(cx, f.mt);
     }
-    fn parameterized(cx: ctxt, base: str, tps: [ty::t]) -> str {
+    fn parameterized(cx: ctxt,
+                     base: str,
+                     self_r: option<ty::region>,
+                     tps: [ty::t]) -> str {
+
+        let r_str = alt self_r {
+          none { "" }
+          some(r) {
+            #fmt["/%s", region_to_str(cx, r)]
+          }
+        };
+
         if vec::len(tps) > 0u {
             let strs = vec::map(tps, {|t| ty_to_str(cx, t)});
-            #fmt["%s<%s>", base, str::connect(strs, ",")]
+            #fmt["%s%s<%s>", base, r_str, str::connect(strs, ",")]
         } else {
-            base
+            #fmt["%s%s", base, r_str]
         }
     }
 
@@ -141,9 +153,11 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
       some(def_id) {
         let cs = ast_map::path_to_str(ty::item_path(cx, def_id));
         ret alt ty::get(typ).struct {
-          ty_enum(_, tps) | ty_res(_, _, tps) | ty_iface(_, tps) |
-          ty_class(_, tps) {
-            parameterized(cx, cs, tps)
+          ty_enum(_, substs) | ty_res(_, _, substs) | ty_class(_, substs) {
+            parameterized(cx, cs, substs.self_r, substs.tps)
+          }
+          ty_iface(_, tps) {
+            parameterized(cx, cs, none, tps)
           }
           _ { cs }
         };
@@ -164,7 +178,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
       ty_float(ast::ty_f) { "float" }
       ty_float(t) { ast_util::float_ty_to_str(t) }
       ty_str { "str" }
-      ty_self(ts) { parameterized(cx, "self", ts) }
+      ty_self(ts) { parameterized(cx, "self", none, ts) }
       ty_box(tm) { "@" + mt_to_str(cx, tm) }
       ty_uniq(tm) { "~" + mt_to_str(cx, tm) }
       ty_ptr(tm) { "*" + mt_to_str(cx, tm) }
@@ -196,11 +210,15 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
       ty_param(id, _) {
         "'" + str::from_bytes([('a' as u8) + (id as u8)])
       }
-      ty_enum(did, tps) | ty_res(did, _, tps) | ty_iface(did, tps) |
-      ty_class(did, tps) {
+      ty_enum(did, substs) | ty_res(did, _, substs) | ty_class(did, substs) {
         let path = ty::item_path(cx, did);
         let base = ast_map::path_to_str(path);
-        parameterized(cx, base, tps)
+        parameterized(cx, base, substs.self_r, substs.tps)
+      }
+      ty_iface(did, tps) {
+        let path = ty::item_path(cx, did);
+        let base = ast_map::path_to_str(path);
+        parameterized(cx, base, none, tps)
       }
       ty_evec(mt, vs) {
         #fmt["[%s]/%s", mt_to_str(cx, mt),

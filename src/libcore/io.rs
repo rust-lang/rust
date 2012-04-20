@@ -110,7 +110,7 @@ impl reader_util for reader {
 
     fn read_line() -> str {
         let mut buf: [u8] = [];
-        while true {
+        loop {
             let ch = self.read_byte();
             if ch == -1 || ch == 10 { break; }
             buf += [ch as u8];
@@ -120,7 +120,7 @@ impl reader_util for reader {
 
     fn read_c_str() -> str {
         let mut buf: [u8] = [];
-        while true {
+        loop {
             let ch = self.read_byte();
             if ch < 1 { break; } else { buf += [ch as u8]; }
         }

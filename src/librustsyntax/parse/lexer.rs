@@ -258,7 +258,8 @@ fn scan_number(c: char, rdr: reader) -> token::token {
             ret token::LIT_FLOAT(intern(*rdr.interner, num_str),
                                  ast::ty_f64);
             /* FIXME: if this is out of range for either a 32-bit or
-            64-bit float, it won't be noticed till the back-end */
+            64-bit float, it won't be noticed till the back-end (Issue #2252)
+            */
         } else {
             is_float = true;
         }
@@ -317,7 +318,7 @@ fn next_token_inner(rdr: reader) -> token::token {
         if str::eq(accum_str, "_") { ret token::UNDERSCORE; }
         let is_mod_name = c == ':' && rdr.next() == ':';
 
-        // FIXME: perform NFKC normalization here.
+        // FIXME: perform NFKC normalization here. (Issue #2253)
         ret token::IDENT(interner::intern::<str>(*rdr.interner,
                                                  accum_str), is_mod_name);
     }

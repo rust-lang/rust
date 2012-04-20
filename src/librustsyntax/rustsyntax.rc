@@ -28,12 +28,17 @@ mod parse {
     export comments;
     export prec;
     export classify;
+    export attr;
 
     mod eval;
     mod lexer;
     mod parser;
     mod token;
     mod comments;
+    mod attr;
+
+    #[doc = "Common routines shared by parser mods"]
+    mod common;
 
     #[doc = "Functions dealing with operator precedence"]
     mod prec;

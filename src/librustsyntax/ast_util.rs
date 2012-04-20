@@ -1,6 +1,10 @@
 import codemap::span;
 import ast::*;
 
+fn spanned<T: copy>(lo: uint, hi: uint, t: T) -> spanned<T> {
+    ret respan(mk_sp(lo, hi), t);
+}
+
 fn respan<T: copy>(sp: span, t: T) -> spanned<T> {
     ret {node: t, span: sp};
 }
@@ -149,7 +153,7 @@ fn is_exported(i: ident, m: _mod) -> bool {
     for m.items.each {|it|
         if it.ident == i { local = true; }
         alt it.node {
-          item_enum(variants, _) {
+          item_enum(variants, _, _) {
             for variants.each {|v|
                 if v.node.name == i {
                    local = true;

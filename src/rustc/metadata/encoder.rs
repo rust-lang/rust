@@ -16,6 +16,7 @@ import middle::ast_map;
 import syntax::attr;
 import driver::session::session;
 import std::serialization::serializer;
+import std::ebml::serializer;
 
 export encode_metadata;
 export encoded_ty;
@@ -38,6 +39,12 @@ fn encode_name(ebml_w: ebml::writer, name: str) {
 
 fn encode_def_id(ebml_w: ebml::writer, id: def_id) {
     ebml_w.wr_tagged_str(tag_def_id, def_to_str(id));
+}
+
+fn encode_region_param(ebml_w: ebml::writer, rp: region_param) {
+    ebml_w.wr_tag(tag_region_param) {||
+        serialize_region_param(ebml_w, rp)
+    }
 }
 
 fn encode_named_def_id(ebml_w: ebml::writer, name: str, id: def_id) {
@@ -132,14 +139,14 @@ fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
                                             index);
             ebml_w.end_tag();
           }
-          item_ty(_, tps) {
+          item_ty(_, tps, _) {
             add_to_index(ebml_w, path, index, it.ident);
             ebml_w.start_tag(tag_paths_data_item);
             encode_name(ebml_w, it.ident);
             encode_def_id(ebml_w, local_def(it.id));
             ebml_w.end_tag();
           }
-          item_res(_, tps, _, _, ctor_id) {
+          item_res(_, tps, _, _, ctor_id, _) {
             add_to_index(ebml_w, path, index, it.ident);
             ebml_w.start_tag(tag_paths_data_item);
             encode_name(ebml_w, it.ident);
@@ -151,7 +158,7 @@ fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
             encode_def_id(ebml_w, local_def(it.id));
             ebml_w.end_tag();
           }
-          item_class(_, _, items, ctor) {
+          item_class(_, _, items, ctor, _) {
             add_to_index(ebml_w, path, index, it.ident);
             ebml_w.start_tag(tag_paths_data_item);
             encode_name(ebml_w, it.ident);
@@ -165,7 +172,7 @@ fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
                                       index);
             ebml_w.end_tag();
           }
-          item_enum(variants, tps) {
+          item_enum(variants, _, _) {
             add_to_index(ebml_w, path, index, it.ident);
             ebml_w.start_tag(tag_paths_data_item);
             encode_name(ebml_w, it.ident);
@@ -480,7 +487,8 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
                         index: @mut [entry<int>], path: ast_map::path) {
 
     let tcx = ecx.ccx.tcx;
-    let must_write = alt item.node { item_enum(_, _) { true } _ { false } };
+    let must_write =
+        alt item.node { item_enum(_, _, _) { true } _ { false } };
     if !must_write && !ecx.ccx.reachable.contains_key(item.id) { ret; }
 
     fn add_to_index_(item: @item, ebml_w: ebml::writer,
@@ -528,7 +536,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_path(ebml_w, path, ast_map::path_name(item.ident));
         ebml_w.end_tag();
       }
-      item_ty(_, tps) {
+      item_ty(_, tps, rp) {
         add_to_index();
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
@@ -537,26 +545,28 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_name(ebml_w, item.ident);
         encode_path(ebml_w, path, ast_map::path_name(item.ident));
+        encode_region_param(ebml_w, rp);
         ebml_w.end_tag();
       }
-      item_enum(variants, tps) {
+      item_enum(variants, tps, rp) {
         add_to_index();
-        ebml_w.start_tag(tag_items_data_item);
-        encode_def_id(ebml_w, local_def(item.id));
-        encode_family(ebml_w, 't');
-        encode_type_param_bounds(ebml_w, ecx, tps);
-        encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
-        encode_name(ebml_w, item.ident);
-        for variants.each {|v|
-            encode_variant_id(ebml_w, local_def(v.node.id));
+        ebml_w.wr_tag(tag_items_data_item) {||
+            encode_def_id(ebml_w, local_def(item.id));
+            encode_family(ebml_w, 't');
+            encode_type_param_bounds(ebml_w, ecx, tps);
+            encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
+            encode_name(ebml_w, item.ident);
+            for variants.each {|v|
+                encode_variant_id(ebml_w, local_def(v.node.id));
+            }
+            astencode::encode_inlined_item(ecx, ebml_w, path, ii_item(item));
+            encode_path(ebml_w, path, ast_map::path_name(item.ident));
+            encode_region_param(ebml_w, rp);
         }
-        astencode::encode_inlined_item(ecx, ebml_w, path, ii_item(item));
-        encode_path(ebml_w, path, ast_map::path_name(item.ident));
-        ebml_w.end_tag();
         encode_enum_variant_info(ecx, ebml_w, item.id, variants,
                                  path, index, tps);
       }
-      item_class(tps, _ifaces, items,ctor) {
+      item_class(tps, _ifaces, items, ctor, rp) {
         /* First, encode the fields and methods
            These come first because we need to write them to make
            the index, and the index needs to be in the item for the
@@ -573,6 +583,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_name(ebml_w, item.ident);
         encode_path(ebml_w, path, ast_map::path_name(item.ident));
+        encode_region_param(ebml_w, rp);
         /* FIXME: encode ifaces */
         /* Encode def_ids for each field and method
          for methods, write all the stuff get_iface_method
@@ -605,7 +616,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_index(ebml_w, bkts, write_int);
         ebml_w.end_tag();
       }
-      item_res(_, tps, _, _, ctor_id) {
+      item_res(_, tps, _, _, ctor_id, rp) {
         add_to_index();
         let fn_ty = node_id_to_type(tcx, ctor_id);
 
@@ -620,6 +631,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
             encode_symbol(ecx, ebml_w, item.id);
         }
         encode_path(ebml_w, path, ast_map::path_name(item.ident));
+        encode_region_param(ebml_w, rp);
         ebml_w.end_tag();
 
         *index += [{val: ctor_id, pos: ebml_w.writer.tell()}];
@@ -732,7 +744,7 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::writer,
                 encode_info_for_item(ecx, ebml_w, i, index, *pt);
                 /* encode ctor, then encode items */
                 alt i.node {
-                  item_class(tps,_,_,ctor) {
+                  item_class(tps, _, _, ctor, _) {
                    /* this is assuming that ctors aren't inlined...
                       probably shouldn't assume that */
                    #debug("encoding info for ctor %s %d", i.ident,
