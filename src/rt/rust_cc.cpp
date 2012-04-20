@@ -340,7 +340,8 @@ class mark : public shape::data<mark,shape::ptr> {
     void walk_fn2(char code) {
         switch (code) {
           case shape::SHAPE_BOX_FN: {
-              shape::data<mark,shape::ptr>::walk_fn_contents1();
+              shape::bump_dp<void*>(dp); // skip over the code ptr
+              walk_box2();               // walk over the environment ptr
               break;
           }
           case shape::SHAPE_BARE_FN:        // Does not close over data.
