@@ -179,7 +179,20 @@ fn parse_proto(c: char) -> ast::proto {
 }
 
 fn parse_vstore(st: @pstate) -> ty::vstore {
-    st.tcx.sess.unimpl("tydecode::parse_vstore");
+    assert next(st) == '/';
+
+    let c = peek(st);
+    if '0' <= c && c <= '9' {
+        let n = parse_int(st) as uint;
+        assert next(st) == '|';
+        ret ty::vstore_fixed(n);
+    }
+
+    alt check next(st) {
+      '~' { ty::vstore_uniq }
+      '@' { ty::vstore_box }
+      '&' { ty::vstore_slice(parse_region(st)) }
+    }
 }
 
 fn parse_substs(st: @pstate, conv: conv_did) -> ty::substs {
