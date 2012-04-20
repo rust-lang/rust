@@ -124,9 +124,6 @@ rust_kernel::get_scheduler_by_id_nolock(rust_sched_id id) {
 void
 rust_kernel::release_scheduler_id(rust_sched_id id) {
     scoped_lock with(sched_lock);
-    // This list will most likely only ever have a single element in it, but
-    // it's an actual list because we could potentially get here multiple
-    // times before the main thread ever calls wait_for_schedulers()
     join_list.push_back(id);
     sched_lock.signal();
 }
