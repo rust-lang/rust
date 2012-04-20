@@ -365,7 +365,7 @@ mod test {
         log(debug, "global_loop timer test: msg recv on exit_po, done..");
     }
     #[test]
-    #[ignore(cfg(target_os = "freebsd"))]
+    #[ignore]
     fn test_uv_global_loop_high_level_global_timer() unsafe {
         let hl_loop = get_gl();
         task::spawn_sched(task::manual_threads(1u), {||

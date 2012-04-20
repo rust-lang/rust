@@ -473,7 +473,7 @@ mod test {
     }
 
     #[test]
-    #[ignore(cfg(target_os = "freebsd"))]
+    #[ignore]
     fn test_uv_hl_async() unsafe {
         let exit_po = comm::port::<()>();
         let exit_ch = comm::chan(exit_po);
