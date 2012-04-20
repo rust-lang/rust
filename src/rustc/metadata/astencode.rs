@@ -101,6 +101,13 @@ fn decode_inlined_item(cdata: cstore::crate_metadata,
         decode_side_tables(xcx, ast_doc);
         #debug["< Decoded inlined fn: %s::%s",
                ast_map::path_to_str(path), ii.ident()];
+        alt ii {
+          ast::ii_item(i) {
+            #debug(">>> DECODED ITEM >>>\n%s\n<<< DECODED ITEM <<<",
+                   rustsyntax::print::pprust::item_to_str(i));
+          }
+          _ { }
+        }
         some(ii)
       }
     }
