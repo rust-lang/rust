@@ -2563,6 +2563,7 @@ fn trans_arg_expr(cx: block, arg: ty::arg, lldestty: TypeRef, e: @ast::expr,
       }
       none { trans_temp_lval(cx, e) }
     };
+    #debug("   pre-adaptation value: %s", val_str(lv.bcx.ccx().tn, lv.val));
     let lv = adapt_borrowed_value(lv, arg, e);
     let mut bcx = lv.bcx;
     let mut val = lv.val;
@@ -2618,7 +2619,7 @@ fn trans_arg_expr(cx: block, arg: ty::arg, lldestty: TypeRef, e: @ast::expr,
     }
 
     if !is_bot && arg.ty != e_ty || ty::type_has_params(arg.ty) {
-        #debug("    casting from %s", val_str(bcx.ccx().tn, val));
+        #debug("   casting from %s", val_str(bcx.ccx().tn, val));
         val = PointerCast(bcx, val, lldestty);
     }
     #debug("--- trans_arg_expr passing %s", val_str(bcx.ccx().tn, val));
@@ -2652,10 +2653,21 @@ fn adapt_borrowed_value(lv: lval_result, _arg: ty::arg,
       ty::ty_estr(_) |
       ty::ty_evec(_, _) {
         let ccx = bcx.ccx();
+        let val = alt lv.kind {
+          temporary { lv.val }
+          owned { load_if_immediate(bcx, lv.val, e_ty) }
+          owned_imm { lv.val }
+        };
+
         let unit_ty = ty::sequence_element_type(ccx.tcx, e_ty);
         let llunit_ty = type_of(ccx, unit_ty);
-        let (base, len) = tvec::get_base_and_len(bcx, lv.val, e_ty);
+        let (base, len) = tvec::get_base_and_len(bcx, val, e_ty);
         let p = alloca(bcx, T_struct([T_ptr(llunit_ty), ccx.int_type]));
+
+        #debug("adapt_borrowed_value: adapting %s to %s",
+               val_str(bcx.ccx().tn, val),
+               val_str(bcx.ccx().tn, p));
+
         Store(bcx, base, GEPi(bcx, p, [0, abi::slice_elt_base]));
         Store(bcx, len, GEPi(bcx, p, [0, abi::slice_elt_len]));
         ret lval_temp(bcx, p);
@@ -3064,12 +3076,7 @@ fn trans_expr_save_in(bcx: block, e: @ast::expr, dest: ValueRef)
 fn trans_temp_lval(bcx: block, e: @ast::expr) -> lval_result {
     let _icx = bcx.insn_ctxt("trans_temp_lval");
     let mut bcx = bcx;
-    if expr_is_lval(bcx, e) && !expr_is_borrowed(bcx, e) {
-        // if the expression is borrowed, then are not actually passing the
-        // lvalue itself, but rather an adaptation of it.  This is a bit of a
-        // hack, though, but it only needs to exist so long as we have
-        // reference modes and the like---otherwise, all potentially borrowed
-        // things will go directly through trans_expr() as they ought to.
+    if expr_is_lval(bcx, e) {
         ret trans_lval(bcx, e);
     } else {
         let ty = expr_ty(bcx, e);
