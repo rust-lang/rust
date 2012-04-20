@@ -2249,7 +2249,12 @@ fn parse_item_type(p: parser, attrs: [ast::attribute]) -> @ast::item {
 }
 
 fn parse_region_param(p: parser) -> ast::region_param {
-    if eat(p, token::BINOP(token::AND)) {ast::rp_self} else {ast::rp_none}
+    if eat(p, token::BINOP(token::SLASH)) {
+        expect(p, token::BINOP(token::AND));
+        ast::rp_self
+    } else {
+        ast::rp_none
+    }
 }
 
 fn parse_item_enum(p: parser, attrs: [ast::attribute]) -> @ast::item {

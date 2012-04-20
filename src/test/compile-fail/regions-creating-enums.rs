@@ -1,4 +1,4 @@
-enum ast& {
+enum ast/& {
     num(uint),
     add(&ast, &ast)
 }

@@ -10,15 +10,15 @@ type item_ty_no2 = {
     x: &foo.uint //! ERROR named regions other than `self` are not allowed as part of a type declaration
 };
 
-type item_ty_yes0& = {
+type item_ty_yes0/& = {
     x: &uint
 };
 
-type item_ty_yes1& = {
+type item_ty_yes1/& = {
     x: &self.uint
 };
 
-type item_ty_yes2& = {
+type item_ty_yes2/& = {
     x: &foo.uint //! ERROR named regions other than `self` are not allowed as part of a type declaration
 };
 

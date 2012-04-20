@@ -1407,7 +1407,7 @@ fn print_bounds(s: ps, bounds: @[ast::ty_param_bound]) {
 
 fn print_region_param(s: ps, rp: ast::region_param) {
     alt rp {
-      ast::rp_self { word(s.s, "&") }
+      ast::rp_self { word(s.s, "/&") }
       ast::rp_none { }
     }
 }
