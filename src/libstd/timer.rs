@@ -140,11 +140,13 @@ crust fn delayed_send_close_cb(handle: *uv::ll::uv_timer_t) unsafe {
 #[cfg(test)]
 mod test {
     #[test]
+    #[ignore]
     fn test_timer_simple_sleep_test() {
         sleep(1u);
     }
 
     #[test]
+    #[ignore]
     fn test_timer_recv_timeout_before_time_passes() {
         let expected = rand::rng().gen_str(16u);
         let test_po = comm::port::<str>();
@@ -163,6 +165,7 @@ mod test {
     }
 
     #[test]
+    #[ignore]
     fn test_timer_recv_timeout_after_time_passes() {
         let expected = rand::rng().gen_str(16u);
         let fail_msg = rand::rng().gen_str(16u);
