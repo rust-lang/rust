@@ -26,6 +26,9 @@ export parse_stmt;
 export parse_ty;
 
 // FIXME: #ast expects to find this here but it's actually defined in `parse`
+// Fixing this will be easier when we have export decls on individual items --
+// then parse can export this publicly, and everything else crate-visibly.
+// (See #1893)
 import parse_from_source_str;
 export parse_from_source_str;
 
@@ -224,8 +227,10 @@ fn parse_ty_fn(p: parser) -> ast::fn_decl {
     let inputs =
         parse_seq(token::LPAREN, token::RPAREN, seq_sep(token::COMMA),
                   parse_fn_input_ty, p);
-    // FIXME: there's no syntax for this right now anyway
-    //  auto constrs = parse_constrs(~[], p);
+    // FIXME: constrs is empty because right now, higher-order functions
+    // can't have constrained types.
+    // Not sure whether that would be desirable anyway. See #34 for the
+    // story on constrained types.
     let constrs: [@ast::constr] = [];
     let (ret_style, ret_ty) = parse_ret_ty(p);
     ret {inputs: inputs.node, output: ret_ty,
@@ -400,9 +405,9 @@ fn parse_ret_ty(p: parser) -> (ast::ret_style, @ast::ty) {
 fn region_from_name(p: parser, s: option<str>) -> ast::region {
     let r = alt s {
       some (string) {
-        // FIXME: To be consistent with our type resolution the
+        // FIXME: To be consistent with our type resolution, the
         // static region should probably be resolved during type
-        // checking, not in the parser.
+        // checking, not in the parser. (Issue #2256)
         if string == "static" {
             ast::re_static
         } else {
@@ -973,12 +978,8 @@ fn parse_bottom_expr(p: parser) -> pexpr {
         hi = p.span.hi;
     } else if eat_word(p, "be") {
         let e = parse_expr(p);
-
-        // FIXME: Is this the right place for this check?
-        if /*check*/ast_util::is_call_expr(e) {
-            hi = e.span.hi;
-            ex = ast::expr_be(e);
-        } else { p.fatal("non-call expression in tail call"); }
+        hi = e.span.hi;
+        ex = ast::expr_be(e);
     } else if eat_word(p, "copy") {
         let e = parse_expr(p);
         ex = ast::expr_copy(e);
@@ -2070,6 +2071,19 @@ fn parse_item_class(p: parser, attrs: [ast::attribute]) -> @ast::item {
     }
 }
 
+fn parse_single_class_item(p: parser, privcy: ast::privacy)
+    -> @ast::class_member {
+   if eat_word(p, "let") {
+      let a_var = parse_instance_var(p, privcy);
+      expect(p, token::SEMI);
+      ret a_var;
+   }
+   else {
+       let m = parse_method(p, privcy);
+       ret @{node: ast::class_method(m), span: m.span};
+   }
+}
+
 // lets us identify the constructor declaration at
 // parse time
 enum class_contents { ctor_decl(ast::fn_decl, ast::blk, codemap::span),
@@ -2089,35 +2103,18 @@ fn parse_class_item(p:parser, class_name_with_tps:@ast::path)
         let body = parse_block(p);
         ret ctor_decl(decl, body, ast_util::mk_sp(lo, p.last_span.hi));
     }
-    // FIXME: refactor
     else if eat_word(p, "priv") {
             expect(p, token::LBRACE);
             let mut results = [];
             while p.token != token::RBRACE {
-               if eat_word(p, "let") {
-                  let a_var = parse_instance_var(p, ast::priv);
-                  expect(p, token::SEMI);
-                  results += [a_var];
-               }
-               else {
-                   let m = parse_method(p, ast::priv);
-                   results += [@{node: ast::class_method(m), span: m.span}];
-               }
+                    results += [parse_single_class_item(p, ast::priv)];
             }
             p.bump();
             ret members(results);
     }
     else {
         // Probably need to parse attrs
-        ret if eat_word(p, "let") {
-             let ivar = parse_instance_var(p, ast::pub);
-             expect(p, token::SEMI);
-             members([ivar])
-        }
-        else {
-            let m = parse_method(p, ast::pub);
-            members([@{node: ast::class_method(m), span: m.span}])
-        }
+        ret members([parse_single_class_item(p, ast::pub)]);
     }
 }
 

@@ -3160,8 +3160,10 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         fcx.write_bot(id);
       }
       ast::expr_be(e) {
-        // FIXME: prove instead of assert
-        assert (ast_util::is_call_expr(e));
+        if !ast_util::is_call_expr(e) {
+           tcx.sess.span_err(expr.span,
+              "non-call expression in tail call");
+        }
         check_expr_with(fcx, e, fcx.ret_ty);
         bot = true;
         fcx.write_nil(id);
