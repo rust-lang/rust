@@ -3,7 +3,7 @@ Utilities that leverage libuv's `uv_timer_*` API
 "];
 
 import uv = uv;
-export delayed_send, sleep;
+export delayed_send, sleep, recv_timeout;
 
 #[doc = "
 Wait for timeout period then send provided value over a channel
@@ -16,9 +16,9 @@ for *at least* that period of time.
 
 # Arguments
 
-msecs - a timeout period, in milliseconds, to wait
-ch - a channel of type T to send a `val` on
-val - a value of type T to send over the provided `ch`
+* msecs - a timeout period, in milliseconds, to wait
+* ch - a channel of type T to send a `val` on
+* val - a value of type T to send over the provided `ch`
 "]
 fn delayed_send<T: send>(msecs: uint, ch: comm::chan<T>, val: T) {
     task::spawn() {||
@@ -80,6 +80,39 @@ fn sleep(msecs: uint) {
     comm::recv(exit_po);
 }
 
+#[doc = "
+Receive on a port for (up to) a specified time, then return an `option<T>`
+
+This call will block to receive on the provided port for up to the specified
+timeout. Depending on whether the provided port receives in that time period,
+`recv_timeout` will return an `option<T>` representing the result.
+
+# Arguments
+
+* msecs - an mount of time, in milliseconds, to wait to receive
+* wait_port - a `comm::port<T>` to receive on
+
+# Returns
+
+An `option<T>` representing the outcome of the call. If the call `recv`'d on
+the provided port in the allotted timeout period, then the result will be a
+`some(T)`. If not, then `none` will be returned.
+"]
+fn recv_timeout<T: send>(msecs: uint, wait_po: comm::port<T>) -> option<T> {
+    let timeout_po = comm::port::<()>();
+    let timeout_ch = comm::chan(timeout_po);
+    delayed_send(msecs, timeout_ch, ());
+    either::either(
+        {|left_val|
+            log(debug, #fmt("recv_time .. left_val %?",
+                           left_val));
+            none
+        }, {|right_val|
+            some(right_val)
+        }, comm::select2(timeout_po, wait_po)
+    )
+}
+
 // INTERNAL API
 crust fn delayed_send_cb(handle: *uv::ll::uv_timer_t,
                                 status: libc::c_int) unsafe {
@@ -108,6 +141,43 @@ crust fn delayed_send_close_cb(handle: *uv::ll::uv_timer_t) unsafe {
 mod test {
     #[test]
     fn test_timer_simple_sleep_test() {
-        sleep(2000u);
+        sleep(1u);
+    }
+
+    #[test]
+    fn test_timer_recv_timeout_before_time_passes() {
+        let expected = rand::rng().gen_str(16u);
+        let test_po = comm::port::<str>();
+        let test_ch = comm::chan(test_po);
+
+        task::spawn() {||
+            delayed_send(1u, test_ch, expected);
+        };
+
+        let actual = alt recv_timeout(1000u, test_po) {
+          some(val) { val }
+          _ { fail "test_timer_recv_timeout_before_time_passes:"+
+                    " didn't receive result before timeout"; }
+        };
+        assert actual == expected;
+    }
+
+    #[test]
+    fn test_timer_recv_timeout_after_time_passes() {
+        let expected = rand::rng().gen_str(16u);
+        let fail_msg = rand::rng().gen_str(16u);
+        let test_po = comm::port::<str>();
+        let test_ch = comm::chan(test_po);
+
+        task::spawn() {||
+            delayed_send(1000u, test_ch, expected);
+        };
+
+        let actual = alt recv_timeout(1u, test_po) {
+          none { fail_msg }
+          _ { fail "test_timer_recv_timeout_before_time_passes:"+
+                    " didn't receive result before timeout"; }
+        };
+        assert actual == fail_msg;
     }
 }

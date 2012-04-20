@@ -841,7 +841,7 @@ mod test {
             // we have data
             log(debug, #fmt("CLIENT read: data! nread: %d", nread));
             read_stop(stream);
-            let client_data = 
+            let client_data =
                 get_data_for_uv_handle(stream as *libc::c_void)
                   as *request_wrapper;
             let buf_base = get_base_from_buf(buf);
