@@ -92,21 +92,19 @@ fn compare_tys(tcx: ty::ctxt, a: ty::t, b: ty::t) -> ures {
     mk_eqty(infcx, a, b)
 }
 
-// Resolves one level of type structure but not any type variables
-// that may be nested within.
-fn resolve_shallow(cx: infer_ctxt, a: ty::t) -> fres<ty::t> {
-    resolver(cx, false, false).resolve(a)
+// See comment on the type `resolve_state` below
+fn resolve_shallow(cx: infer_ctxt, a: ty::t,
+                   force_vars: bool) -> fres<ty::t> {
+    resolver(cx, false, force_vars).resolve(a)
 }
 
-// see resolve_deep()
+// See comment on the type `resolve_state` below
 fn resolve_deep_var(cx: infer_ctxt, vid: ty_vid,
                     force_vars: bool) -> fres<ty::t> {
     resolver(cx, true, force_vars).resolve(ty::mk_var(cx.tcx, vid))
 }
 
-// Resolves all levels of type structure.  If `force_vars` is true,
-// then we will resolve unconstrained type/region variables to
-// something arbitrary.  Otherwise, we preserve them as variables.
+// See comment on the type `resolve_state` below
 fn resolve_deep(cx: infer_ctxt, a: ty::t, force_vars: bool) -> fres<ty::t> {
     resolver(cx, true, force_vars).resolve(a)
 }
@@ -556,8 +554,12 @@ impl unify_methods for infer_ctxt {
     }
 
     fn eq_regions(a: ty::region, b: ty::region) -> ures {
-        self.sub_regions(a, b).then {||
-            self.sub_regions(b, a)
+        #debug["eq_regions(%s, %s)",
+               a.to_str(self), b.to_str(self)];
+        indent {||
+            self.sub_regions(a, b).then {||
+                self.sub_regions(b, a)
+            }
         }
     }
 }
@@ -599,16 +601,20 @@ impl methods for resolve_state {
     fn resolve(typ: ty::t) -> fres<ty::t> {
         self.err = none;
 
+        #debug["Resolving %s (deep=%b, force_vars=%b)",
+               ty_to_str(self.infcx.tcx, typ),
+               self.deep,
+               self.force_vars];
+
         // n.b. This is a hokey mess because the current fold doesn't
         // allow us to pass back errors in any useful way.
 
         assert vec::is_empty(self.v_seen) && vec::is_empty(self.r_seen);
-        let rty = self.resolve1(typ);
+        let rty = indent {|| self.resolve1(typ) };
         assert vec::is_empty(self.v_seen) && vec::is_empty(self.r_seen);
         alt self.err {
           none {
-            #debug["Resolved %s to %s (deep=%b, force_vars=%b)",
-                   ty_to_str(self.infcx.tcx, typ),
+            #debug["Resolved to %s (deep=%b, force_vars=%b)",
                    ty_to_str(self.infcx.tcx, rty),
                    self.deep,
                    self.force_vars];
@@ -619,25 +625,32 @@ impl methods for resolve_state {
     }
 
     fn resolve1(typ: ty::t) -> ty::t {
-        let tb = ty::get(typ);
-        alt tb.struct {
-          ty::ty_var(vid) { self.resolve_ty_var(vid) }
-          _ if !tb.has_regions && !self.deep { typ }
-          _ {
-            ty::fold_regions_and_ty(
-                self.infcx.tcx, typ,
-                { |r| self.resolve_region(r) },
-                { |t| self.resolve_if_deep(t) },
-                { |t| self.resolve_if_deep(t) })
-          }
-        }
+        #debug("Resolve1(%s)", typ.to_str(self.infcx));
+        indent(fn&() -> ty::t {
+            if !ty::get(typ).has_vars { ret typ; }
+
+            let tb = ty::get(typ);
+            alt tb.struct {
+              ty::ty_var(vid) { self.resolve_ty_var(vid) }
+              _ if !tb.has_regions && !self.deep { typ }
+              _ {
+                ty::fold_regions_and_ty(
+                    self.infcx.tcx, typ,
+                    { |r| self.resolve_region(r) },
+                    { |t| self.resolve_if_deep(t) },
+                    { |t| self.resolve_if_deep(t) })
+              }
+            }
+        })
     }
 
     fn resolve_if_deep(typ: ty::t) -> ty::t {
+        #debug("Resolve_if_deep(%s)", typ.to_str(self.infcx));
         if !self.deep {typ} else {self.resolve1(typ)}
     }
 
     fn resolve_region(orig: ty::region) -> ty::region {
+        #debug("Resolve_region(%s)", orig.to_str(self.infcx));
         alt orig {
           ty::re_var(rid) { self.resolve_region_var(rid) }
           _ { orig }
@@ -650,16 +663,15 @@ impl methods for resolve_state {
             ret ty::re_var(rid);
         } else {
             vec::push(self.r_seen, rid);
-            let r = self.resolve_var(
-                self.infcx.rb,
-                {|_t| false },
-                rid,
-                {||
-                    if self.force_vars {ty::re_static}
-                    else {ty::re_var(rid)}
-                });
+            let {root:_, bounds} = self.infcx.get(self.infcx.rb, rid);
+            let r1 = alt bounds {
+              { ub:_, lb:some(t) } { self.resolve_region(t) }
+              { ub:some(t), lb:_ } { self.resolve_region(t) }
+              { ub:none, lb:none } if self.force_vars { ty::re_static }
+              { ub:none, lb:none } { ty::re_var(rid) }
+            };
             vec::pop(self.r_seen);
-            ret r;
+            ret r1;
         }
     }
 
@@ -670,41 +682,23 @@ impl methods for resolve_state {
         } else {
             vec::push(self.v_seen, vid);
             let tcx = self.infcx.tcx;
-            let t0 = self.resolve_var(
-                self.infcx.vb,
-                {|t| type_is_bot(t) },
-                vid,
-                {||
-                    if self.force_vars {ty::mk_bot(tcx)}
-                    else {ty::mk_var(tcx, vid)}
-                });
-            let t1 = self.resolve1(t0);
+
+            // Nonobvious: prefer the most specific type
+            // (i.e., the lower bound) to the more general
+            // one.  More general types in Rust (e.g., fn())
+            // tend to carry more restrictions or higher
+            // perf. penalties, so it pays to know more.
+
+            let {root:_, bounds} = self.infcx.get(self.infcx.vb, vid);
+            let t1 = alt bounds {
+              { ub:_, lb:some(t) } if !type_is_bot(t) { self.resolve1(t) }
+              { ub:some(t), lb:_ } { self.resolve1(t) }
+              { ub:_, lb:some(t) } { self.resolve1(t) }
+              { ub:none, lb:none } if self.force_vars { ty::mk_bot(tcx) }
+              { ub:none, lb:none } { ty::mk_var(tcx, vid) }
+            };
             vec::pop(self.v_seen);
             ret t1;
-        }
-    }
-
-    fn resolve_var<V: copy vid, T:copy to_str>(
-        vb: vals_and_bindings<V, T>, bot_guard: fn(T)->bool,
-        vid: V, unbound: fn() -> T) -> T {
-
-        let {root:_, bounds} = self.infcx.get(vb, vid);
-
-        #debug["resolve_var(%s) bounds=%s",
-               vid.to_str(),
-               bounds.to_str(self.infcx)];
-
-        // Nonobvious: prefer the most specific type
-        // (i.e., the lower bound) to the more general
-        // one.  More general types in Rust (e.g., fn())
-        // tend to carry more restrictions or higher
-        // perf. penalties, so it pays to know more.
-
-        alt bounds {
-          { ub:_, lb:some(t) } if !bot_guard(t) { t }
-          { ub:some(t), lb:_ } { t }
-          { ub:_, lb:some(t) } { t }
-          { ub:none, lb:none } { unbound() }
         }
     }
 }
@@ -958,8 +952,9 @@ fn super_substs<C:combine>(
             ok(none)
           }
           (some(a), some(b)) {
-            infcx.eq_regions(a, b);
-            ok(some(a))
+            infcx.eq_regions(a, b).then {||
+                ok(some(a))
+            }
           }
           (_, _) {
             // If these two substitutions are for the same type (and

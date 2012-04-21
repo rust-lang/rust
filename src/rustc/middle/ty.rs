@@ -483,12 +483,26 @@ fn mk_t_with_id(cx: ctxt, st: sty, o_def_id: option<ast::def_id>) -> t {
         has_vars |= t.has_vars;
         has_regions |= t.has_regions;
     }
+    fn derive_rflags(&has_vars: bool, &has_regions: bool, r: region) {
+        has_regions = true;
+        alt r {
+          ty::re_var(_) { has_vars = true; }
+          _ { }
+        }
+    }
+    fn derive_sflags(&has_params: bool, &has_vars: bool, &has_regions: bool,
+                     substs: substs) {
+        for substs.tps.each {|tt|
+            derive_flags(has_params, has_vars, has_regions, tt);
+        }
+        substs.self_r.iter { |r| derive_rflags(has_vars, has_regions, r) }
+    }
     alt st {
-      ty_estr(vstore_slice(_)) {
-        has_regions = true;
+      ty_estr(vstore_slice(r)) {
+        derive_rflags(has_vars, has_regions, r);
       }
-      ty_evec(mt, vstore_slice(_)) {
-        has_regions = true;
+      ty_evec(mt, vstore_slice(r)) {
+        derive_rflags(has_vars, has_regions, r);
         derive_flags(has_params, has_vars, has_regions, mt.ty);
       }
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
@@ -497,10 +511,7 @@ fn mk_t_with_id(cx: ctxt, st: sty, o_def_id: option<ast::def_id>) -> t {
       ty_param(_, _) { has_params = true; }
       ty_var(_) | ty_self(_) { has_vars = true; }
       ty_enum(_, substs) | ty_class(_, substs) {
-        for substs.tps.each {|tt|
-            derive_flags(has_params, has_vars, has_regions, tt);
-        }
-        substs.self_r.iter { |_i| has_regions = true; }
+        derive_sflags(has_params, has_vars, has_regions, substs);
       }
       ty_iface(_, tys) {
         for tys.each {|tt|
@@ -511,11 +522,7 @@ fn mk_t_with_id(cx: ctxt, st: sty, o_def_id: option<ast::def_id>) -> t {
         derive_flags(has_params, has_vars, has_regions, m.ty);
       }
       ty_rptr(r, m) {
-        alt r {
-          ty::re_var(_) { has_vars = true; }
-          _ { }
-        }
-        has_regions = true;
+        derive_rflags(has_vars, has_regions, r);
         derive_flags(has_params, has_vars, has_regions, m.ty);
       }
       ty_rec(flds) {
@@ -535,9 +542,7 @@ fn mk_t_with_id(cx: ctxt, st: sty, o_def_id: option<ast::def_id>) -> t {
       }
       ty_res(_, tt, substs) {
         derive_flags(has_params, has_vars, has_regions, tt);
-        for substs.tps.each {|tt|
-            derive_flags(has_params, has_vars, has_regions, tt);
-        }
+        derive_sflags(has_params, has_vars, has_regions, substs);
       }
       ty_constr(tt, _) {
         derive_flags(has_params, has_vars, has_regions, tt);
@@ -933,10 +938,11 @@ fn subst(cx: ctxt,
          substs: substs,
          typ: t) -> t {
 
-    if substs_is_noop(substs) { ret typ; }
     #debug["subst(substs=%s, typ=%s)",
            substs_to_str(cx, substs),
            ty_to_str(cx, typ)];
+
+    if substs_is_noop(substs) { ret typ; }
     let r = do_subst(cx, substs, typ);
     #debug["  r = %s", ty_to_str(cx, r)];
     ret r;

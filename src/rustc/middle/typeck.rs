@@ -258,7 +258,7 @@ fn instantiate_path(fcx: @fn_ctxt,
 
 // Type tests
 fn structurally_resolved_type(fcx: @fn_ctxt, sp: span, tp: ty::t) -> ty::t {
-    alt infer::resolve_shallow(fcx.infcx, tp) {
+    alt infer::resolve_shallow(fcx.infcx, tp, true) {
       // note: the bot type doesn't count as resolved; it's what we use when
       // there is no information about a variable.
       result::ok(t_s) if !ty::type_is_bot(t_s) { ret t_s; }
@@ -1348,7 +1348,7 @@ mod collect {
                                 constraints: []})
             };
             let tpt = {bounds: ty_param_bounds(ccx, ty_params),
-                       rp: ast::rp_none,
+                       rp: rp,
                        ty: result_ty};
             tcx.tcache.insert(local_def(variant.node.id), tpt);
             write_ty_to_tcx(tcx, variant.node.id, result_ty);
