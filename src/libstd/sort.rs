@@ -1,6 +1,7 @@
 #[doc = "Sorting methods"];
 import vec::len;
 
+export le;
 export merge_sort;
 export quick_sort;
 export quick_sort3;
