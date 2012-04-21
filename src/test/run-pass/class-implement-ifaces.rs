@@ -14,7 +14,7 @@ class cat implements noisy {
     }
   }
 
-  let mutable how_hungry : int;
+  let mut how_hungry : int;
   let name : str;
 
   new(in_x : uint, in_y : int, in_name: str)

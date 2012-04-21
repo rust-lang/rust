@@ -260,7 +260,7 @@ fn bad_expr_word_table() -> hashmap<str, ()> {
                 "class", "const", "cont", "copy", "crust", "do", "else",
                 "enum", "export", "fail", "fn", "for", "if",  "iface",
                 "impl", "import", "let", "log", "loop", "mod",
-                "mut", "mutable", "native", "new", "pure", "resource",
+                "mut", "native", "new", "pure", "resource",
                 "ret", "trait", "type", "unchecked", "unsafe", "while"];
     for keys.each {|word|
         words.insert(word, ());

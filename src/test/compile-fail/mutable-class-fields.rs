@@ -1,7 +1,7 @@
 // error-pattern:assigning to immutable field
 class cat {
   priv {
-    let mutable meows : uint;
+    let mut meows : uint;
   }
 
   let how_hungry : int;
