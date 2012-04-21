@@ -7,7 +7,8 @@ import middle::ty;
 import tstate::ann::{precond, prestate,
                      implies, ann_precond, ann_prestate};
 import aux::*;
-import syntax::print::pprust::ty_to_str;
+
+import util::ppaux::ty_to_str;
 import bitvectors::*;
 import annotate::annotate_crate;
 import collect_locals::mk_f_to_fn_info;
@@ -116,13 +117,14 @@ fn check_states_against_conditions(fcx: fn_ctxt,
        !ty::type_is_nil(ty::ty_fn_ret(ty::node_id_to_type(
            fcx.ccx.tcx, id))) &&
        f_decl.cf == return_val {
+        let fn_ty = ty::node_id_to_type(fcx.ccx.tcx, id);
         fcx.ccx.tcx.sess.span_err(f_body.span,
-                                  "in function " + fcx.name +
-                                      ", not all control paths \
-                                        return a value");
+                    #fmt("in function `%s`, not all control paths \
+                          return a value", fcx.name));
         fcx.ccx.tcx.sess.span_fatal(f_decl.output.span,
-                                    "see declared return type of '" +
-                                    ty_to_str(f_decl.output) + "'");
+                                    #fmt("see function return type of `%s`",
+                                         ty_to_str(fcx.ccx.tcx,
+                                           ty::ty_fn_ret(fn_ty))));
     } else if f_decl.cf == noreturn {
 
         // check that this really always fails
