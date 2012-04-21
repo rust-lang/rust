@@ -517,12 +517,13 @@ fn rustc_sysroot() -> str {
 fn install_source(c: cargo, path: str) {
     #debug("source: %s", path);
     os::change_dir(path);
-    let contents = os::list_dir_path(".");
 
-    #debug("contents: %s", str::connect(contents, ", "));
-
-    let cratefiles =
-        vec::filter::<str>(contents, { |n| str::ends_with(n, ".rc") });
+    let mut cratefiles = [];
+    for os::walk_dir(".") {|p|
+        if str::ends_with(p, ".rc") {
+            cratefiles += [p];
+        }
+    }
 
     if vec::is_empty(cratefiles) {
         fail "This doesn't look like a rust package (no .rc files).";
