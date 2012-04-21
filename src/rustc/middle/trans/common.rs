@@ -99,6 +99,8 @@ type crate_ctxt = {
      type_use_cache: hashmap<ast::def_id, [type_use::type_uses]>,
      // Cache generated vtables
      vtables: hashmap<mono_id, ValueRef>,
+     // Cache of constant strings,
+     const_cstr_cache: hashmap<str, ValueRef>,
      module_data: hashmap<str, ValueRef>,
      lltypes: hashmap<ty::t, TypeRef>,
      names: namegen,
@@ -762,6 +764,11 @@ fn C_u8(i: uint) -> ValueRef { ret C_integral(T_i8(), i as u64, False); }
 // This is a 'c-like' raw string, which differs from
 // our boxed-and-length-annotated strings.
 fn C_cstr(cx: @crate_ctxt, s: str) -> ValueRef {
+    alt cx.const_cstr_cache.find(s) {
+      some(llval) { ret llval; }
+      none { }
+    }
+
     let sc = str::as_c_str(s) {|buf|
         llvm::LLVMConstString(buf, str::len(s) as c_uint, False)
     };
@@ -771,6 +778,9 @@ fn C_cstr(cx: @crate_ctxt, s: str) -> ValueRef {
     llvm::LLVMSetInitializer(g, sc);
     llvm::LLVMSetGlobalConstant(g, True);
     lib::llvm::SetLinkage(g, lib::llvm::InternalLinkage);
+
+    cx.const_cstr_cache.insert(s, g);
+
     ret g;
 }
 
