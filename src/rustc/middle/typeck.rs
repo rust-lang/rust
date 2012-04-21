@@ -1334,8 +1334,6 @@ mod collect {
             let result_ty = if vec::len(variant.node.args) == 0u {
                 enum_ty
             } else {
-                // As above, tell ast_ty_to_ty() that trans_ty_item_to_ty()
-                // should be called to resolve named types.
                 let rs = type_rscope(rp);
                 let args = variant.node.args.map { |va|
                     let arg_ty = ccx.to_ty(rs, va.ty);
