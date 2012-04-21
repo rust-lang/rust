@@ -1299,16 +1299,6 @@ fn replace_self_region(tcx: ty::ctxt, with_region: ty::region,
    }
 }
 
-fn instantiate_bound_regions(tcx: ty::ctxt, region: ty::region, &&ty: ty::t)
-        -> ty::t {
-    ty::fold_region(tcx, ty) {|r, _under_rptr|
-        alt r {
-          ty::re_bound(_) { region }
-          _ { r }
-        }
-    }
-}
-
 // Item collection - a pair of bootstrap passes:
 //
 // (1) Collect the IDs of all type items (typedefs) and store them in a table.
