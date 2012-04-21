@@ -71,6 +71,7 @@ export permute;
 export windowed;
 export as_buf;
 export as_mut_buf;
+export unpack_slice;
 export unsafe;
 export u8;
 export extensions;
@@ -952,6 +953,15 @@ fn as_buf<E,T>(v: [const E], f: fn(*E) -> T) -> T unsafe {
 
 fn as_mut_buf<E,T>(v: [mut E], f: fn(*mut E) -> T) -> T unsafe {
     let buf = unsafe::to_ptr(v) as *mut E; f(buf)
+}
+
+#[doc = "
+Work with the buffer and length of a slice.
+"]
+fn unpack_slice<T,U>(s: [const T]/&, f: fn(*T, uint) -> U) -> U unsafe {
+    let v : *(*T,uint) = ::unsafe::reinterpret_cast(ptr::addr_of(s));
+    let (buf,len) = *v;
+    f(buf, len / sys::size_of::<T>())
 }
 
 #[doc = "Extension methods for vectors"]

@@ -20,6 +20,7 @@ export
    as_bytes,
    as_buf,
    as_c_str,
+   unpack_slice,
 
    // Adding things to and removing things from a string
    push_char,
