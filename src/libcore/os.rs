@@ -34,6 +34,7 @@ export homedir, list_dir, list_dir_path, path_is_dir, path_exists,
        copy_file;
 export last_os_error;
 export set_exit_status;
+export walk_dir;
 
 // FIXME: move these to str perhaps?
 export as_c_charp, fill_charp_buf;
@@ -387,7 +388,34 @@ fn homedir() -> option<path> {
     }
 }
 
+#[doc = "Recursively walk a directory structure"]
+fn walk_dir(p: path, f: fn(path) -> bool) {
 
+    walk_dir_(p, f);
+
+    fn walk_dir_(p: path, f: fn(path) -> bool) -> bool {
+        let mut keepgoing = true;
+        list_dir(p).each {|q|
+            let path = path::connect(p, q);
+            if !f(path) {
+                keepgoing = false;
+                false
+            } else {
+                if path_is_dir(path) {
+                    if !walk_dir_(path, f) {
+                        keepgoing = false;
+                        false
+                    } else {
+                        true
+                    }
+                } else {
+                    true
+                }
+            }
+        }
+        ret keepgoing;
+    }
+}
 
 #[doc = "Indicates whether a path represents a directory"]
 fn path_is_dir(p: path) -> bool {
