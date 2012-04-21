@@ -2646,26 +2646,19 @@ impl methods for lookup {
                           tps: self_substs.tps + m_substs};
         self.fcx.write_ty_substs(self.node_id, fty, all_substs);
 
-        // FIXME--this treatment of self and regions seems wrong.  As a rule
-        // of thumb, one ought to substitute all type parameters at once, and
-        // we are not doing so here.  The danger you open up has to do with
-        // the possibility that one of the substs in `all_substs` maps to a
-        // self type.  Right now I think this is impossible but it may not be
-        // forever, and it's just sloppy to substitute in multiple steps.
-        // Probably the self parameter ought to be part of the all_substs.
+        // n.b. This treatment of self is risky but ok.  As a rule of thumb,
+        // one ought to substitute all type parameters at once, and we are not
+        // doing so here.  The danger you open up has to do with the
+        // possibility that one of the substs in `all_substs` maps to a self
+        // type.  However, right now I think it is safe because the types in
+        // `all_substs` may not refer to self.  This may not stay true
+        // forever, though.
 
         if has_self && !option::is_none(self_ty_sub) {
             let fty = self.fcx.node_ty(self.node_id);
             let fty = fixup_self_param(
                 self.fcx, fty, all_substs.tps, self_ty_sub.get(),
                 self.expr.span);
-            self.fcx.write_ty(self.node_id, fty);
-        }
-
-        if ty::type_has_regions(ty::ty_fn_ret(fty)) {
-            let fty = self.fcx.node_ty(self.node_id);
-            let self_region = region_of(self.fcx, self.expr);
-            let fty = replace_self_region(self.tcx(), self_region, fty);
             self.fcx.write_ty(self.node_id, fty);
         }
 
