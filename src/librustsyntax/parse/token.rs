@@ -187,6 +187,16 @@ pure fn can_begin_expr(t: token) -> bool {
     }
 }
 
+fn is_lit(t: token::token) -> bool {
+    ret alt t {
+          token::LIT_INT(_, _) { true }
+          token::LIT_UINT(_, _) { true }
+          token::LIT_FLOAT(_, _) { true }
+          token::LIT_STR(_) { true }
+          _ { false }
+        }
+}
+
 fn is_ident(t: token::token) -> bool {
     alt t { token::IDENT(_, _) { ret true; } _ { } }
     ret false;

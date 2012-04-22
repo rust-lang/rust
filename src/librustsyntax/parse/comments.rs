@@ -148,16 +148,6 @@ fn consume_comment(rdr: reader, code_to_the_left: bool, &comments: [cmnt]) {
     #debug("<<< consume comment");
 }
 
-fn is_lit(t: token::token) -> bool {
-    ret alt t {
-          token::LIT_INT(_, _) { true }
-          token::LIT_UINT(_, _) { true }
-          token::LIT_FLOAT(_, _) { true }
-          token::LIT_STR(_) { true }
-          _ { false }
-        }
-}
-
 type lit = {lit: str, pos: uint};
 
 fn gather_comments_and_literals(span_diagnostic: diagnostic::span_handler,
@@ -186,7 +176,7 @@ fn gather_comments_and_literals(span_diagnostic: diagnostic::span_handler,
             break;
         }
         let tok = next_token(rdr);
-        if is_lit(tok.tok) {
+        if token::is_lit(tok.tok) {
             let s = rdr.get_str_from(tok.bpos);
             literals += [{lit: s, pos: tok.chpos}];
             log(debug, "tok lit: " + s);
