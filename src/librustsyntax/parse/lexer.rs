@@ -367,23 +367,7 @@ fn next_token_inner(rdr: reader) -> token::token {
         } else { ret token::COLON; }
       }
 
-      '$' {
-        rdr.bump();
-        if is_dec_digit(rdr.curr) {
-            let mut val = dec_digit_val(rdr.curr) as uint;
-            while is_dec_digit(rdr.next()) {
-                rdr.bump();
-                val = val * 10u + (dec_digit_val(rdr.curr) as uint);
-            }
-            rdr.bump();
-            ret token::DOLLAR_NUM(val);
-        } else if rdr.curr == '(' {
-            rdr.bump();
-            ret token::DOLLAR_LPAREN;
-        } else {
-            rdr.fatal("expected digit");
-        }
-      }
+      '$' { rdr.bump(); ret token::DOLLAR; }
 
 
 

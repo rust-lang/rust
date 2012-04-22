@@ -53,9 +53,7 @@ enum token {
     LBRACE,
     RBRACE,
     POUND,
-
-    DOLLAR_LPAREN,
-    DOLLAR_NUM(uint),
+    DOLLAR,
 
     /* Literals */
     LIT_INT(i64, ast::int_ty),
@@ -122,11 +120,7 @@ fn to_str(in: interner<str>, t: token) -> str {
       LBRACE { ret "{"; }
       RBRACE { ret "}"; }
       POUND { ret "#"; }
-
-      DOLLAR_LPAREN { ret "$("; }
-      DOLLAR_NUM(u) {
-        ret "$" + uint::to_str(u as uint, 10u);
-      }
+      DOLLAR { ret "$"; }
 
       /* Literals */
       LIT_INT(c, ast::ty_char) {

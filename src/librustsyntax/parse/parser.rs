@@ -327,7 +327,7 @@ fn parse_region(p: parser) -> ast::region {
 fn parse_ty(p: parser, colons_before_params: bool) -> @ast::ty {
     let lo = p.span.lo;
 
-    alt have_dollar(p) {
+    alt maybe_parse_dollar_mac(p) {
       some(e) {
         ret @{id: p.get_id(),
               node: ast::ty_mac(spanned(lo, p.span.hi, e)),
@@ -440,19 +440,27 @@ fn parse_fn_block_arg(p: parser) -> ast::arg {
     ret {mode: m, ty: t, ident: i, id: p.get_id()};
 }
 
-fn have_dollar(p: parser) -> option<ast::mac_> {
+fn maybe_parse_dollar_mac(p: parser) -> option<ast::mac_> {
     alt p.token {
-      token::DOLLAR_NUM(num) {
-        p.bump();
-        some(ast::mac_var(num))
-      }
-      token::DOLLAR_LPAREN {
+      token::DOLLAR {
         let lo = p.span.lo;
         p.bump();
-        let e = parse_expr(p);
-        expect(p, token::RPAREN);
-        let hi = p.last_span.hi;
-        some(ast::mac_aq(ast_util::mk_sp(lo,hi), e))
+        alt p.token {
+          token::LIT_INT(num, ast::ty_i) {
+            p.bump();
+            some(ast::mac_var(num as uint))
+          }
+          token::LPAREN {
+            p.bump();
+            let e = parse_expr(p);
+            expect(p, token::RPAREN);
+            let hi = p.last_span.hi;
+            some(ast::mac_aq(ast_util::mk_sp(lo,hi), e))
+          }
+          _ {
+            p.fatal("expected `(` or integer literal");
+          }
+        }
       }
       _ {none}
     }
@@ -623,7 +631,7 @@ fn parse_bottom_expr(p: parser) -> pexpr {
 
     let mut ex: ast::expr_;
 
-    alt have_dollar(p) {
+    alt maybe_parse_dollar_mac(p) {
       some(x) {ret pexpr(mk_mac_expr(p, lo, p.span.hi, x));}
       _ {}
     }
