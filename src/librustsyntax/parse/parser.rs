@@ -710,7 +710,8 @@ fn parse_bottom_expr(p: parser) -> pexpr {
                              parse_expr, p);
         hi = p.span.hi;
         ex = ast::expr_vec(es, mutbl);
-    } else if p.token == token::POUND_LT {
+    } else if p.token == token::POUND && p.look_ahead(1u) == token::LT {
+        p.bump();
         p.bump();
         let ty = parse_ty(p, false);
         expect(p, token::GT);
@@ -718,7 +719,8 @@ fn parse_bottom_expr(p: parser) -> pexpr {
         /* hack: early return to take advantage of specialized function */
         ret pexpr(mk_mac_expr(p, lo, p.span.hi,
                               ast::mac_embed_type(ty)));
-    } else if p.token == token::POUND_LBRACE {
+    } else if p.token == token::POUND && p.look_ahead(1u) == token::LBRACE {
+        p.bump();
         p.bump();
         let blk = ast::mac_embed_block(
             parse_block_tail(p, lo, ast::default_blk));
@@ -726,6 +728,10 @@ fn parse_bottom_expr(p: parser) -> pexpr {
     } else if p.token == token::ELLIPSIS {
         p.bump();
         ret pexpr(mk_mac_expr(p, lo, p.span.hi, ast::mac_ellipsis));
+    } else if p.token == token::POUND {
+        let ex_ext = parse_syntax_ext(p);
+        hi = ex_ext.span.hi;
+        ex = ex_ext.node;
     } else if eat_word(p, "bind") {
         let e = parse_expr_res(p, RESTRICT_NO_CALL_EXPRS);
         let es =
@@ -733,10 +739,6 @@ fn parse_bottom_expr(p: parser) -> pexpr {
                       parse_expr_or_hole, p);
         hi = es.span.hi;
         ex = ast::expr_bind(e, es.node);
-    } else if p.token == token::POUND {
-        let ex_ext = parse_syntax_ext(p);
-        hi = ex_ext.span.hi;
-        ex = ex_ext.node;
     } else if eat_word(p, "fail") {
         if can_begin_expr(p.token) {
             let e = parse_expr(p);

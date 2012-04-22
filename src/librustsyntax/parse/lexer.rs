@@ -357,12 +357,7 @@ fn next_token_inner(rdr: reader) -> token::token {
       '[' { rdr.bump(); ret token::LBRACKET; }
       ']' { rdr.bump(); ret token::RBRACKET; }
       '@' { rdr.bump(); ret token::AT; }
-      '#' {
-        rdr.bump();
-        if rdr.curr == '<' { rdr.bump(); ret token::POUND_LT; }
-        if rdr.curr == '{' { rdr.bump(); ret token::POUND_LBRACE; }
-        ret token::POUND;
-      }
+      '#' { rdr.bump(); ret token::POUND; }
       '~' { rdr.bump(); ret token::TILDE; }
       ':' {
         rdr.bump();

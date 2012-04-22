@@ -53,8 +53,6 @@ enum token {
     LBRACE,
     RBRACE,
     POUND,
-    POUND_LBRACE,
-    POUND_LT,
 
     DOLLAR_LPAREN,
     DOLLAR_NUM(uint),
@@ -124,8 +122,6 @@ fn to_str(in: interner<str>, t: token) -> str {
       LBRACE { ret "{"; }
       RBRACE { ret "}"; }
       POUND { ret "#"; }
-      POUND_LBRACE { ret "#{"; }
-      POUND_LT { ret "#<"; }
 
       DOLLAR_LPAREN { ret "$("; }
       DOLLAR_NUM(u) {
