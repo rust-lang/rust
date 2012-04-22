@@ -64,13 +64,10 @@ enum token {
     LIT_UINT(u64, ast::uint_ty),
     LIT_FLOAT(str_num, ast::float_ty),
     LIT_STR(str_num),
-    LIT_BOOL(bool),
 
     /* Name components */
     IDENT(str_num, bool),
-    IDX(int),
     UNDERSCORE,
-    BRACEQUOTE(str_num),
     EOF,
 
 }
@@ -156,15 +153,12 @@ fn to_str(in: interner<str>, t: token) -> str {
       LIT_STR(s) { // FIXME: escape.
         ret "\"" + interner::get::<str>(in, s) + "\"";
       }
-      LIT_BOOL(b) { if b { ret "true"; } else { ret "false"; } }
 
       /* Name components */
       IDENT(s, _) {
         ret interner::get::<str>(in, s);
       }
-      IDX(i) { ret "_" + int::to_str(i, 10u); }
       UNDERSCORE { ret "_"; }
-      BRACEQUOTE(_) { ret "<bracequote>"; }
       EOF { ret "<eof>"; }
     }
 }

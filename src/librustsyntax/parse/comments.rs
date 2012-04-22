@@ -154,7 +154,6 @@ fn is_lit(t: token::token) -> bool {
           token::LIT_UINT(_, _) { true }
           token::LIT_FLOAT(_, _) { true }
           token::LIT_STR(_) { true }
-          token::LIT_BOOL(_) { true }
           _ { false }
         }
 }
