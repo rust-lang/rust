@@ -95,6 +95,7 @@ type crate_ctxt = {
      external: hashmap<ast::def_id, option<ast::node_id>>,
      // Cache instances of monomorphized functions
      monomorphized: hashmap<mono_id, ValueRef>,
+     monomorphizing: hashmap<ast::def_id, uint>,
      // Cache computed type parameter uses (see type_use.rs)
      type_use_cache: hashmap<ast::def_id, [type_use::type_uses]>,
      // Cache generated vtables

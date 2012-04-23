@@ -1938,7 +1938,7 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, real_substs: [ty::t],
 
     let map_node = ccx.tcx.items.get(fn_id.node);
     // Get the path so that we can create a symbol
-    let (pt, name) = alt map_node {
+    let (pt, name, span) = alt map_node {
       ast_map::node_item(i, pt) {
         alt i.node {
           ast::item_res(_, _, _, dtor_id, _, _) {
@@ -1946,22 +1946,32 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, real_substs: [ty::t],
           }
           _ {}
         }
-        (pt, i.ident)
+        (pt, i.ident, i.span)
       }
-      ast_map::node_variant(v, _, pt) { (pt, v.node.name) }
-      ast_map::node_method(m, _, pt) { (pt, m.ident) }
+      ast_map::node_variant(v, enm, pt) { (pt, v.node.name, enm.span) }
+      ast_map::node_method(m, _, pt) { (pt, m.ident, m.span) }
       ast_map::node_native_item(i, ast::native_abi_rust_intrinsic, pt)
-      { (pt, i.ident) }
+      { (pt, i.ident, i.span) }
       ast_map::node_native_item(_, abi, _) {
         // Natives don't have to be monomorphized.
         ret {val: get_item_val(ccx, fn_id.node),
              must_cast: true};
       }
-      ast_map::node_ctor(nm, _, _, pt) { (pt, nm) }
+      ast_map::node_ctor(nm, _, _, pt) { (pt, nm, ast_util::dummy_sp()) }
       _ { fail "unexpected node type"; }
     };
     let mono_ty = ty::subst_tps(ccx.tcx, substs, item_ty);
     let llfty = type_of_fn_from_ty(ccx, mono_ty);
+
+    let depth = option::get_or_default(ccx.monomorphizing.find(fn_id), 0u);
+    // Random cut-off -- code that needs to instantiate the same function
+    // recursively more than ten times can probably safely be assumed to be
+    // causing an infinite expansion.
+    if depth > 10u {
+        ccx.sess.span_fatal(
+            span, "overly deep expansion of inlined function");
+    }
+    ccx.monomorphizing.insert(fn_id, depth + 1u);
 
     let pt = *pt + [path_name(ccx.names(name))];
     let s = mangle_exported_name(ccx, pt, mono_ty);
@@ -2014,6 +2024,7 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id, real_substs: [ty::t],
         }
       }
     }
+    ccx.monomorphizing.insert(fn_id, depth);
     {val: lldecl, must_cast: must_cast}
 }
 
@@ -5022,6 +5033,7 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           tydescs: ty::new_ty_hash(),
           external: util::common::new_def_hash(),
           monomorphized: map::hashmap(hash_mono_id, {|a, b| a == b}),
+          monomorphizing: ast_util::new_def_id_hash(),
           type_use_cache: util::common::new_def_hash(),
           vtables: map::hashmap(hash_mono_id, {|a, b| a == b}),
           const_cstr_cache: map::str_hash(),
