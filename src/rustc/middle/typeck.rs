@@ -3305,9 +3305,20 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         let rty = structurally_resolved_type(fcx, expr.span, expected);
         let (inner_ty, proto) = alt check ty::get(rty).struct {
           ty::ty_fn(fty) {
-            demand::suptype(fcx, expr.span, fty.output, ty::mk_bool(tcx));
-            (ty::mk_fn(tcx, {output: ty::mk_nil(tcx) with fty}),
-             fty.proto)
+            alt infer::mk_subty(fcx.infcx, fty.output, ty::mk_bool(tcx)) {
+              result::ok(_) {}
+              result::err(err) {
+                tcx.sess.span_fatal(
+                    expr.span, #fmt("a loop function's last argument should \
+                                     return `bool`, not `%s`",
+                                    ty_to_str(tcx, fty.output)));
+              }
+            }
+            (ty::mk_fn(tcx, {output: ty::mk_nil(tcx) with fty}), fty.proto)
+          }
+          _ {
+            tcx.sess.span_fatal(expr.span, "a loop function's last argument \
+                                            should be of function type");
           }
         };
         alt check b.node {
