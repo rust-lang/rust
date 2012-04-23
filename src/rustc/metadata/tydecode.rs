@@ -307,6 +307,11 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
       '@' { ret ty::mk_box(st.tcx, parse_mt(st, conv)); }
       '~' { ret ty::mk_uniq(st.tcx, parse_mt(st, conv)); }
       '*' { ret ty::mk_ptr(st.tcx, parse_mt(st, conv)); }
+      '&' {
+        let r = parse_region(st);
+        let mt = parse_mt(st, conv);
+        ret ty::mk_rptr(st.tcx, r, mt);
+      }
       'I' { ret ty::mk_vec(st.tcx, parse_mt(st, conv)); }
       'V' {
         let mt = parse_mt(st, conv);

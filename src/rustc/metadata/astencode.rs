@@ -844,6 +844,12 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
             }
         }
     }
+
+    option::iter(tcx.borrowings.find(id)) {|_i|
+        ebml_w.tag(c::tag_table_borrowings) {||
+            ebml_w.id(id);
+        }
+    }
 }
 
 impl decoder for ebml::doc {
@@ -914,6 +920,8 @@ fn decode_side_tables(xcx: extended_decode_ctxt,
             dcx.maps.copy_map.insert(id, ());
         } else if tag == (c::tag_table_spill as uint) {
             dcx.maps.spill_map.insert(id, ());
+        } else if tag == (c::tag_table_borrowings as uint) {
+            dcx.tcx.borrowings.insert(id, ());
         } else {
             let val_doc = entry_doc[c::tag_table_val];
             let val_dsr = ebml::ebml_deserializer(val_doc);
