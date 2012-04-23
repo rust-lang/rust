@@ -128,25 +128,6 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
     fn field_to_str(cx: ctxt, f: field) -> str {
         ret f.ident + ": " + mt_to_str(cx, f.mt);
     }
-    fn parameterized(cx: ctxt,
-                     base: str,
-                     self_r: option<ty::region>,
-                     tps: [ty::t]) -> str {
-
-        let r_str = alt self_r {
-          none { "" }
-          some(r) {
-            #fmt["/%s", region_to_str(cx, r)]
-          }
-        };
-
-        if vec::len(tps) > 0u {
-            let strs = vec::map(tps, {|t| ty_to_str(cx, t)});
-            #fmt["%s%s<%s>", base, r_str, str::connect(strs, ",")]
-        } else {
-            #fmt["%s%s", base, r_str]
-        }
-    }
 
     // if there is an id, print that instead of the structural type:
     alt ty::type_def_id(typ) {
@@ -230,6 +211,26 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
       ty_opaque_closure_ptr(ck_block) { "closure&" }
       ty_opaque_closure_ptr(ck_box) { "closure@" }
       ty_opaque_closure_ptr(ck_uniq) { "closure~" }
+    }
+}
+
+fn parameterized(cx: ctxt,
+                 base: str,
+                 self_r: option<ty::region>,
+                 tps: [ty::t]) -> str {
+
+    let r_str = alt self_r {
+      none { "" }
+      some(r) {
+        #fmt["/%s", region_to_str(cx, r)]
+      }
+    };
+
+    if vec::len(tps) > 0u {
+        let strs = vec::map(tps, {|t| ty_to_str(cx, t)});
+        #fmt["%s%s<%s>", base, r_str, str::connect(strs, ",")]
+    } else {
+        #fmt["%s%s", base, r_str]
     }
 }
 

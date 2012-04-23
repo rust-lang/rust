@@ -2243,7 +2243,8 @@ fn trans_var(cx: block, def: ast::def, id: ast::node_id)-> lval_maybe_callee {
             // Nullary variant.
             let enum_ty = node_id_type(cx, id);
             let llenumblob = alloc_ty(cx, enum_ty);
-            let llenumty = type_of_enum(ccx, tid, enum_ty);
+            // FIXME: This pointer cast probably isn't necessary
+            let llenumty = type_of(ccx, enum_ty);
             let llenumptr = PointerCast(cx, llenumblob, T_ptr(llenumty));
             let lldiscrimptr = GEPi(cx, llenumptr, [0, 0]);
             let lldiscrim_gv = lookup_discriminant(ccx, vid);
