@@ -149,6 +149,7 @@ export ast_ty_to_ty_cache_entry;
 export atttce_unresolved, atttce_resolved;
 export mach_sty;
 export ty_sort_str;
+export normalize_ty;
 
 // Data types
 
@@ -2674,6 +2675,27 @@ fn ty_params_to_tys(tcx: ty::ctxt, tps: [ast::ty_param]) -> [t] {
                 ty::mk_param(tcx, i, ast_util::local_def(tps[i].id))
         })
 }
+
+#[doc = "
+Returns an equivalent type with all the typedefs and self regions removed
+"]
+fn normalize_ty(cx: ctxt, t: t) -> t {
+    let t = alt get(t).struct {
+        ty_enum(did, r) {
+            alt r.self_r {
+              some(_) {
+                // This enum has a self region. Get rid of it
+                mk_enum(cx, did, {self_r: none, tps: r.tps })
+              }
+              none { t }
+            }
+        }
+        _ { t }
+    };
+    let sty = fold_sty(get(t).struct) {|t| normalize_ty(cx, t) };
+    mk_t(cx, sty)
+}
+
 // Local Variables:
 // mode: rust
 // fill-column: 78;
