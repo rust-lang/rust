@@ -1368,6 +1368,10 @@ fn print_fn_block_args(s: ps, decl: ast::fn_decl) {
         ibox(s, indent_unit);
         print_arg_mode(s, x.mode);
         word(s.s, x.ident);
+        if x.ty.node != ast::ty_infer {
+            word_space(s, ":");
+            print_type(s, x.ty);
+        }
         end(s);
     }
     commasep(s, inconsistent, decl.inputs, print_arg);
