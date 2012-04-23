@@ -2155,9 +2155,29 @@ alt_pat : pat [ "to" pat ] ? [ "if" expr ] ;
 An `alt` expression branches on a *pattern*. The exact form of matching that
 occurs depends on the pattern. Patterns consist of some combination of
 literals, destructured enum constructors, records and tuples, variable binding
-specifications and placeholders (`_`). An `alt` expression has a *head
+specifications, wildcards (`*`), and placeholders (`_`). An `alt` expression has a *head
 expression*, which is the value to compare to the patterns. The type of the
 patterns must equal the type of the head expression.
+
+In a pattern whose head expression has an `enum` type, a placeholder (`_`) stands for a
+*single* data field, whereas a wildcard `*` stands for *all* the fields of a particular
+variant. For example:
+
+~~~~
+enum list<X> { nil, cons(X, @list<X>) }
+
+let x: list<int> = cons(10, @cons(11, @nil));
+
+alt x {
+    cons(_, @nil) { fail "singleton list"; }
+    cons(*)       { ret; }
+    nil           { fail "empty list"; }
+}
+~~~~
+
+The first pattern matches lists constructed by applying `cons` to any head value, and a
+tail value of `@nil`. The second pattern matches `any` list constructed with `cons`,
+ignoring the values of its arguments. 
 
 To execute an `alt` expression, first the head expression is evaluated, then
 its value is sequentially compared to the patterns in the arms until a match
