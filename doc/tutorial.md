@@ -729,7 +729,8 @@ top-level module will be called `foo`, and you can set `RUST_LOG` to
 `foo` to enable `warn`, `info` and `debug` logging for the module.
 
 Turned-off `log` statements impose minimal overhead on the code that
-contains them, so except in code that needs to be really, really fast,
+contains them, because the arguments to `log` are evaluated lazily.
+So except in code that needs to be really, really fast,
 you should feel free to scatter around debug logging statements, and
 leave them in.
 
@@ -742,6 +743,9 @@ and will log the formatted string:
 #warn("only %d seconds remaining", 10);
 #error("fatal: %s", get_error_string());
 ~~~~
+
+Because the macros `#debug`, `#warn`, and `#error` expand to calls to `log`,
+their arguments are also lazily evaluated.
 
 ## Assertions
 
