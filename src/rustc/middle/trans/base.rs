@@ -2341,7 +2341,7 @@ fn trans_callee(bcx: block, e: @ast::expr) -> lval_maybe_callee {
     let _icx = bcx.insn_ctxt("trans_callee");
     alt e.node {
       ast::expr_path(path) { ret trans_path(bcx, e.id); }
-      ast::expr_field(base, ident, _) {
+      ast::expr_field(base, _, _) {
         // Lval means this is a record field, so not a method
         if !expr_is_lval(bcx, e) {
             alt bcx.ccx().maps.method_map.find(e.id) {

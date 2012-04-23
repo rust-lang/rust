@@ -95,13 +95,15 @@ fn method_with_name(ccx: @crate_ctxt, impl_id: ast::def_id,
     }
 }
 
-fn method_ty_param_count(ccx: @crate_ctxt, m_id: ast::def_id) -> uint {
+fn method_ty_param_count(ccx: @crate_ctxt, m_id: ast::def_id,
+                         i_id: ast::def_id) -> uint {
     if m_id.crate == ast::local_crate {
         alt check ccx.tcx.items.get(m_id.node) {
           ast_map::node_method(m, _, _) { vec::len(m.tps) }
         }
     } else {
-        csearch::get_type_param_count(ccx.sess.cstore, m_id)
+        csearch::get_type_param_count(ccx.sess.cstore, m_id) -
+            csearch::get_type_param_count(ccx.sess.cstore, i_id)
     }
 }
 
@@ -115,7 +117,7 @@ fn trans_monomorphized_callee(bcx: block, callee_id: ast::node_id,
         let ccx = bcx.ccx();
         let mname = ty::iface_methods(ccx.tcx, iface_id)[n_method].ident;
         let mth_id = method_with_name(bcx.ccx(), impl_did, mname);
-        let n_m_tps = method_ty_param_count(ccx, mth_id);
+        let n_m_tps = method_ty_param_count(ccx, mth_id, impl_did);
         let node_substs = node_id_type_params(bcx, callee_id);
         let ty_substs = impl_substs +
             vec::tailn(node_substs, node_substs.len() - n_m_tps);
