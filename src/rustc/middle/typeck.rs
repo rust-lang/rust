@@ -4418,50 +4418,44 @@ mod vtable {
             ret vtable_iface(did, tps);
           }
           _ {
-            let mut found = none;
-            list::iter(isc) {|impls|
-                if option::is_none(found) {
-                    for vec::each(*impls) {|im|
-                        let match = alt ty::impl_iface(tcx, im.did) {
-                          some(ity) {
-                            alt check ty::get(ity).struct {
-                              ty::ty_iface(id, _) { id == iface_id }
+            for list::each(isc) {|impls|
+                let mut found = none;
+                for vec::each(*impls) {|im|
+                    let match = alt ty::impl_iface(tcx, im.did) {
+                      some(ity) {
+                        alt check ty::get(ity).struct {
+                          ty::ty_iface(id, _) { id == iface_id }
+                        }
+                      }
+                      _ { false }
+                    };
+                    if match {
+                        let {substs: substs, ty: self_ty} =
+                            impl_self_ty(fcx, im.did);
+                        let im_bs = ty::lookup_item_type(tcx, im.did).bounds;
+                        alt unify::unify(fcx, ty, self_ty) {
+                          result::ok(_) {
+                            if option::is_some(found) {
+                                tcx.sess.span_err(
+                                    sp, "multiple applicable implementations \
+                                         in scope");
+                            } else {
+                                let vars = substs.tps;
+                                connect_iface_tps(fcx, sp, vars,
+                                                  iface_tps, im.did);
+                                let params = vec::map(vars, {|t|
+                                    fixup_ty(fcx, sp, t)});
+                                let subres = lookup_vtables(
+                                    fcx, isc, sp, im_bs, params, false);
+                                found = some(vtable_static(im.did, params,
+                                                           subres));
                             }
                           }
-                          _ { false }
-                        };
-                        if match {
-                            let {substs: substs, ty: self_ty} =
-                                impl_self_ty(fcx, im.did);
-                            let im_bs =
-                                ty::lookup_item_type(tcx, im.did).bounds;
-                            alt unify::unify(fcx, ty, self_ty) {
-                              result::ok(_) {
-                                if option::is_some(found) {
-                                    tcx.sess.span_err(
-                                        sp, "multiple applicable implemen\
-                                             tations in scope");
-                                } else {
-                                    let vars = substs.tps;
-                                    connect_iface_tps(fcx, sp, vars,
-                                                      iface_tps, im.did);
-                                    let params = vec::map(vars, {|t|
-                                        fixup_ty(fcx, sp, t)});
-                                    let subres = lookup_vtables(
-                                        fcx, isc, sp, im_bs, params, false);
-                                    found = some(vtable_static(im.did, params,
-                                                               subres));
-                                }
-                              }
-                              result::err(_) {}
-                            }
+                          result::err(_) {}
                         }
                     }
                 }
-            }
-            alt found {
-              some(rslt) { ret rslt; }
-              _ {}
+                alt found { some(x) { ret x; } _ {} }
             }
           }
         }

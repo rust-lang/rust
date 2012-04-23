@@ -70,18 +70,13 @@ type ext_hash = hashmap<{did: def_id, ident: str, ns: namespace}, def>;
 fn new_ext_hash() -> ext_hash {
     type key = {did: def_id, ident: str, ns: namespace};
     fn hash(v: key) -> uint {
-        ret str::hash(v.ident) + util::common::hash_def(v.did) +
-                alt v.ns {
-                  ns_val { 1u }
-                  ns_type { 2u }
-                  ns_module { 3u }
-                };
+        str::hash(v.ident) + util::common::hash_def(v.did) + v.ns as uint
     }
     fn eq(v1: key, v2: key) -> bool {
         ret util::common::def_eq(v1.did, v2.did) &&
-                str::eq(v1.ident, v2.ident) && v1.ns == v2.ns;
+            str::eq(v1.ident, v2.ident) && v1.ns == v2.ns;
     }
-    ret std::map::hashmap::<key, def>(hash, eq);
+    std::map::hashmap(hash, {|a, b| a == b})
 }
 
 enum mod_index_entry {
@@ -851,22 +846,16 @@ enum ctxt { in_mod(def), in_scope(scopes), }
 
 fn unresolved_err(e: env, cx: ctxt, sp: span, name: ident, kind: str) {
     fn find_fn_or_mod_scope(sc: scopes) -> option<scope> {
-        let mut sc = sc;
-        loop {
-            alt sc {
-              cons(cur, rest) {
-                alt cur {
-                  scope_crate | scope_bare_fn(_, _, _) |
-                  scope_fn_expr(_, _, _) |
-                  scope_item(@{node: ast::item_mod(_), _}) {
-                    ret some(cur);
-                  }
-                  _ { sc = *rest; }
-                }
+        for list::each(sc) {|cur|
+            alt cur {
+              scope_crate | scope_bare_fn(_, _, _) | scope_fn_expr(_, _, _) |
+              scope_item(@{node: ast::item_mod(_), _}) {
+                ret some(cur);
               }
-              _ { ret none; }
+              _ {}
             }
-        };
+        }
+        ret none;
     }
     let mut path = name;
     alt cx {
@@ -887,9 +876,7 @@ fn unresolved_err(e: env, cx: ctxt, sp: span, name: ident, kind: str) {
             path = e.mod_map.get(did.node).path + path;
         } else if did.node != ast::crate_node_id {
             let paths = e.ext_map.get(did);
-            if vec::len(paths) > 0u {
-                path = str::connect(paths, "::") + "::" + path;
-            }
+            path = str::connect(paths + [path], "::");
         }
       }
     }
@@ -1673,18 +1660,12 @@ fn ns_for_def(d: def) -> namespace {
     }
 }
 
-// if we're searching for a value, it's ok if we found
-// a enum
-fn ns_ok(wanted:namespace, actual:namespace) -> bool {
-    wanted == actual
-}
-
 fn lookup_external(e: env, cnum: int, ids: [ident], ns: namespace) ->
    option<def> {
     let mut result = none;
     for csearch::lookup_defs(e.sess.cstore, cnum, ids).each {|d|
         e.ext_map.insert(def_id_of_def(d), ids);
-        if ns_ok(ns, ns_for_def(d)) { result = some(d); }
+        if ns == ns_for_def(d) { result = some(d); }
     }
     ret result;
 }
