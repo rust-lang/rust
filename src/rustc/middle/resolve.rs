@@ -231,16 +231,16 @@ fn map_crate(e: @env, c: @ast::crate) {
         iter_effective_import_paths(*i) { |vp|
             alt vp.node {
               ast::view_path_simple(name, path, id) {
-                e.imports.insert(id, todo(name, @path.node.idents, vp.span,
+                e.imports.insert(id, todo(name, @path.idents, vp.span,
                                           sc));
               }
               ast::view_path_glob(path, id) {
-                e.imports.insert(id, is_glob(@path.node.idents, sc, vp.span));
+                e.imports.insert(id, is_glob(@path.idents, sc, vp.span));
               }
               ast::view_path_list(mod_path, idents, _) {
                 for idents.each {|ident|
                     let t = todo(ident.node.name,
-                                 @(mod_path.node.idents + [ident.node.name]),
+                                 @(mod_path.idents + [ident.node.name]),
                                  ident.span, sc);
                     e.imports.insert(ident.node.id, t);
                 }
@@ -293,7 +293,7 @@ fn map_crate(e: @env, c: @ast::crate) {
         iter_effective_import_paths(*vi) { |vp|
             alt vp.node {
               ast::view_path_glob(path, _) {
-                alt follow_import(*e, sc, path.node.idents, vp.span) {
+                alt follow_import(*e, sc, path.idents, vp.span) {
                   some(imp) {
                     let glob = {def: imp, path: vp};
                     alt list::head(sc) {
@@ -433,8 +433,7 @@ fn resolve_names(e: @env, c: @ast::crate) {
              /* visit the iface paths... */
              for ifaces.each {|p|
                maybe_insert(e, p.id,
-                 lookup_path_strict(*e, sc, p.path.span, p.path.node,
-                                    ns_type))};
+                 lookup_path_strict(*e, sc, p.path.span, p.path, ns_type))};
            }
            _ {}
         }
@@ -445,8 +444,7 @@ fn resolve_names(e: @env, c: @ast::crate) {
         alt exp.node {
           ast::expr_path(p) {
             maybe_insert(e, exp.id,
-                         lookup_path_strict(*e, sc, exp.span, p.node,
-                                            ns_val));
+                         lookup_path_strict(*e, sc, exp.span, p, ns_val));
           }
           ast::expr_fn(_, _, _, cap_clause) {
             let rci = bind resolve_capture_item(e, sc, _);
@@ -461,7 +459,7 @@ fn resolve_names(e: @env, c: @ast::crate) {
         alt t.node {
           ast::ty_path(p, id) {
             maybe_insert(e, id,
-                         lookup_path_strict(*e, sc, t.span, p.node, ns_type));
+                         lookup_path_strict(*e, sc, t.span, p, ns_type));
           }
           _ { }
         }
@@ -483,13 +481,13 @@ fn resolve_names(e: @env, c: @ast::crate) {
     }
     fn walk_constr(e: @env, p: @ast::path, sp: span, id: node_id, sc: scopes,
                    _v: vt<scopes>) {
-        maybe_insert(e, id, lookup_path_strict(*e, sc, sp, p.node, ns_val));
+        maybe_insert(e, id, lookup_path_strict(*e, sc, sp, p, ns_val));
     }
     fn walk_pat(e: @env, pat: @ast::pat, sc: scopes, v: vt<scopes>) {
         visit::visit_pat(pat, sc, v);
         alt pat.node {
           ast::pat_enum(p, _) {
-            alt lookup_path_strict(*e, sc, p.span, p.node, ns_val) {
+            alt lookup_path_strict(*e, sc, p.span, p, ns_val) {
               some(fnd@ast::def_variant(_,_)) {
                 e.def_map.insert(pat.id, fnd);
               }
@@ -709,7 +707,7 @@ fn follow_import(e: env, sc: scopes, path: [ident], sp: span) ->
 }
 
 fn resolve_constr(e: @env, c: @ast::constr, sc: scopes, _v: vt<scopes>) {
-    alt lookup_path_strict(*e, sc, c.span, c.node.path.node, ns_val) {
+    alt lookup_path_strict(*e, sc, c.span, c.node.path, ns_val) {
        some(d@ast::def_fn(_,ast::pure_fn)) {
          e.def_map.insert(c.node.id, d);
        }
@@ -892,7 +890,7 @@ fn mk_unresolved_msg(id: ident, kind: str) -> str {
 }
 
 // Lookup helpers
-fn lookup_path_strict(e: env, sc: scopes, sp: span, pth: ast::path_,
+fn lookup_path_strict(e: env, sc: scopes, sp: span, pth: @ast::path,
                       ns: namespace) -> option<def> {
     let n_idents = vec::len(pth.idents);
     let headns = if n_idents == 1u { ns } else { ns_module };
@@ -2069,8 +2067,8 @@ fn check_exports(e: @env) {
                         check_export(e, ident, _mod, id, vi);
                       }
                       ast::view_path_list(path, ids, node_id) {
-                        let id = if vec::len(path.node.idents) == 1u {
-                            path.node.idents[0]
+                        let id = if vec::len(path.idents) == 1u {
+                            path.idents[0]
                         } else {
                             e.sess.span_fatal(vp.span, "bad export name-list")
                         };
@@ -2137,12 +2135,12 @@ fn find_impls_in_view_item(e: env, vi: @ast::view_item,
         alt vp.node {
           ast::view_path_simple(name, pt, id) {
             let mut found = [];
-            if vec::len(pt.node.idents) == 1u {
+            if vec::len(pt.idents) == 1u {
                 option::iter(sc) {|sc|
                     list::iter(sc) {|level|
                         if vec::len(found) == 0u {
                             for vec::each(*level) {|imp|
-                                if imp.ident == pt.node.idents[0] {
+                                if imp.ident == pt.idents[0] {
                                     found += [@{ident: name with *imp}];
                                 }
                             }

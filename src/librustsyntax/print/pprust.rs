@@ -1222,16 +1222,16 @@ fn print_for_decl(s: ps, loc: @ast::local, coll: @ast::expr) {
 
 fn print_path(s: ps, &&path: @ast::path, colons_before_params: bool) {
     maybe_print_comment(s, path.span.lo);
-    if path.node.global { word(s.s, "::"); }
+    if path.global { word(s.s, "::"); }
     let mut first = true;
-    for path.node.idents.each {|id|
+    for path.idents.each {|id|
         if first { first = false; } else { word(s.s, "::"); }
         word(s.s, id);
     }
-    if vec::len(path.node.types) > 0u {
+    if vec::len(path.types) > 0u {
         if colons_before_params { word(s.s, "::"); }
         word(s.s, "<");
-        commasep(s, inconsistent, path.node.types, print_type);
+        commasep(s, inconsistent, path.types, print_type);
         word(s.s, ">");
     }
 }
@@ -1455,7 +1455,7 @@ fn print_meta_item(s: ps, &&item: @ast::meta_item) {
 fn print_view_path(s: ps, &&vp: @ast::view_path) {
     alt vp.node {
       ast::view_path_simple(ident, path, _) {
-        if path.node.idents[vec::len(path.node.idents)-1u] != ident {
+        if path.idents[vec::len(path.idents)-1u] != ident {
             word_space(s, ident);
             word_space(s, "=");
         }

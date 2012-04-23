@@ -493,7 +493,7 @@ impl unify_methods for infer_ctxt {
               ast::carg_ident(p) {
                 alt actual.node {
                   ast::carg_ident(q) {
-                    if p.node != q.node { ret err_res; }
+                    if p.idents != q.idents { ret err_res; }
                   }
                   _ { ret err_res; }
                 }

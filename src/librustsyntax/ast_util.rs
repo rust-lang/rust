@@ -21,7 +21,7 @@ fn mk_sp(lo: uint, hi: uint) -> span {
 // make this a const, once the compiler supports it
 fn dummy_sp() -> span { ret mk_sp(0u, 0u); }
 
-fn path_name(p: @path) -> str { path_name_i(p.node.idents) }
+fn path_name(p: @path) -> str { path_name_i(p.idents) }
 
 fn path_name_i(idents: [ident]) -> str { str::connect(idents, "::") }
 
@@ -183,8 +183,8 @@ fn is_exported(i: ident, m: _mod) -> bool {
                   }
 
                   ast::view_path_list(path, ids, _) {
-                    if vec::len(path.node.idents) == 1u {
-                        if i == path.node.idents[0] { ret true; }
+                    if vec::len(path.idents) == 1u {
+                        if i == path.idents[0] { ret true; }
                         for ids.each {|id|
                             if id.node.name == i { ret true; }
                         }
@@ -249,7 +249,7 @@ fn default_block(stmts1: [@stmt], expr1: option<@expr>, id1: node_id) ->
 }
 
 fn ident_to_path(s: span, i: ident) -> @path {
-    @respan(s, {global: false, idents: [i], types: []})
+    @{span: s, global: false, idents: [i], types: []}
 }
 
 pure fn is_unguarded(&&a: arm) -> bool {

@@ -183,20 +183,13 @@ fn kill_poststate(fcx: fn_ctxt, id: node_id, c: tsconstr) -> bool {
 fn clear_in_poststate_expr(fcx: fn_ctxt, e: @expr, t: poststate) {
     alt e.node {
       expr_path(p) {
-        alt vec::last_opt(p.node.idents) {
-          some(i) {
-            alt local_node_id_to_def(fcx, e.id) {
-              some(def_local(nid, _)) {
-                clear_in_poststate_(bit_num(fcx, ninit(nid, i)), t);
-              }
-              some(_) {/* ignore args (for now...) */ }
-              _ {
-                fcx.ccx.tcx.sess.bug("clear_in_poststate_expr: \
-                                   unbound var");
-              }
-            }
+        alt local_node_id_to_def(fcx, e.id) {
+          some(def_local(nid, _)) {
+            clear_in_poststate_(bit_num(fcx, ninit(nid, vec::last(p.idents))),
+                                t);
           }
-          _ { fcx.ccx.tcx.sess.bug("clear_in_poststate_expr"); }
+          some(_) {/* ignore args (for now...) */ }
+          _ { fcx.ccx.tcx.sess.bug("clear_in_poststate_expr: unbound var"); }
         }
       }
       _ {/* do nothing */ }

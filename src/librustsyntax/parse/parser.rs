@@ -67,7 +67,7 @@ impl parser for parser {
         if vec::len(self.buffer) == 0u {
             let next = lexer::next_token(self.reader);
             self.token = next.tok;
-            self.span = ast_util::mk_sp(next.chpos, self.reader.chpos);
+            self.span = mk_sp(next.chpos, self.reader.chpos);
         } else {
             let next = vec::pop(self.buffer);
             self.token = next.tok;
@@ -76,12 +76,12 @@ impl parser for parser {
     }
     fn swap(next: token::token, lo: uint, hi: uint) {
         self.token = next;
-        self.span = ast_util::mk_sp(lo, hi);
+        self.span = mk_sp(lo, hi);
     }
     fn look_ahead(distance: uint) -> token::token {
         while vec::len(self.buffer) < distance {
             let next = lexer::next_token(self.reader);
-            let sp = ast_util::mk_sp(next.chpos, self.reader.chpos);
+            let sp = mk_sp(next.chpos, self.reader.chpos);
             self.buffer = [{tok: next.tok, span: sp}] + self.buffer;
         }
         ret self.buffer[distance - 1u].tok;
@@ -140,7 +140,7 @@ fn parse_ty_methods(p: parser) -> [ast::ty_method] {
         let d = parse_ty_fn(p), fhi = p.last_span.hi;
         expect(p, token::SEMI);
         {ident: ident, attrs: attrs, decl: {purity: pur with d}, tps: tps,
-         span: ast_util::mk_sp(flo, fhi)}
+         span: mk_sp(flo, fhi)}
     }, p).node
 }
 
@@ -237,7 +237,7 @@ fn parse_ty_postfix(orig_t: ast::ty_, p: parser, colons_before_params: bool,
     fn mk_ty(p: parser, t: ast::ty_, lo: uint, hi: uint) -> @ast::ty {
         @{id: p.get_id(),
           node: t,
-          span: ast_util::mk_sp(lo, hi)}
+          span: mk_sp(lo, hi)}
     }
 
     if p.token == token::BINOP(token::SLASH) {
@@ -266,10 +266,10 @@ fn parse_ty_postfix(orig_t: ast::ty_, p: parser, colons_before_params: bool,
 
     alt orig_t {
       ast::ty_path(pth, ann) {
-        ret mk_ty(p, ast::ty_path(@spanned(lo, p.last_span.hi,
-                                           {global: pth.node.global,
-                                            idents: pth.node.idents,
-                                            types: seq}), ann),
+        ret mk_ty(p, ast::ty_path(@{span: mk_sp(lo, p.last_span.hi),
+                                    global: pth.global,
+                                    idents: pth.idents,
+                                    types: seq}, ann),
                   lo, p.last_span.hi);
       }
       _ { p.fatal("type parameter instantiation only allowed for paths"); }
@@ -282,7 +282,7 @@ fn parse_ret_ty(p: parser) -> (ast::ret_style, @ast::ty) {
         if eat(p, token::NOT) {
             (ast::noreturn, @{id: p.get_id(),
                               node: ast::ty_bot,
-                              span: ast_util::mk_sp(lo, p.last_span.hi)})
+                              span: mk_sp(lo, p.last_span.hi)})
         } else {
             (ast::return_val, parse_ty(p, false))
         }
@@ -290,7 +290,7 @@ fn parse_ret_ty(p: parser) -> (ast::ret_style, @ast::ty) {
         let pos = p.span.lo;
         (ast::return_val, @{id: p.get_id(),
                             node: ast::ty_nil,
-                            span: ast_util::mk_sp(pos, pos)})
+                            span: mk_sp(pos, pos)})
     }
 }
 
@@ -331,7 +331,7 @@ fn parse_ty(p: parser, colons_before_params: bool) -> @ast::ty {
       some(e) {
         ret @{id: p.get_id(),
               node: ast::ty_mac(spanned(lo, p.span.hi, e)),
-              span: ast_util::mk_sp(lo, p.span.hi)};
+              span: mk_sp(lo, p.span.hi)};
       }
       none {}
     }
@@ -373,7 +373,7 @@ fn parse_ty(p: parser, colons_before_params: bool) -> @ast::ty {
             p.bump();
             ast::ty_constr(@{id: p.get_id(),
                              node: t,
-                             span: ast_util::mk_sp(lo, hi)},
+                             span: mk_sp(lo, hi)},
                            parse_type_constraints(p))
         } else { t }
     } else if p.token == token::LBRACKET {
@@ -435,7 +435,7 @@ fn parse_fn_block_arg(p: parser) -> ast::arg {
             } else {
                 @{id: p.get_id(),
                   node: ast::ty_infer,
-                  span: ast_util::mk_sp(p.span.lo, p.span.hi)}
+                  span: mk_sp(p.span.lo, p.span.hi)}
             };
     ret {mode: m, ty: t, ident: i, id: p.get_id()};
 }
@@ -455,7 +455,7 @@ fn maybe_parse_dollar_mac(p: parser) -> option<ast::mac_> {
             let e = parse_expr(p);
             expect(p, token::RPAREN);
             let hi = p.last_span.hi;
-            some(ast::mac_aq(ast_util::mk_sp(lo,hi), e))
+            some(ast::mac_aq(mk_sp(lo,hi), e))
           }
           _ {
             p.fatal("expected `(` or integer literal");
@@ -526,7 +526,7 @@ fn parse_lit(p: parser) -> ast::lit {
         p.bump();
         lit_from_token(p, tok)
     };
-    ret {node: lit, span: ast_util::mk_sp(lo, p.last_span.hi)};
+    ret {node: lit, span: mk_sp(lo, p.last_span.hi)};
 }
 
 fn parse_path(p: parser) -> @ast::path {
@@ -536,13 +536,12 @@ fn parse_path(p: parser) -> @ast::path {
     while p.look_ahead(1u) != token::LT && eat(p, token::MOD_SEP) {
         ids += [parse_ident(p)];
     }
-    ret @spanned(lo, p.last_span.hi,
-                 {global: global, idents: ids, types: []});
+    @{span: mk_sp(lo, p.last_span.hi), global: global, idents: ids, types: []}
 }
 
 fn parse_value_path(p: parser) -> @ast::path {
     let pt = parse_path(p);
-    let last_word = pt.node.idents[vec::len(pt.node.idents)-1u];
+    let last_word = vec::last(pt.idents);
     if p.bad_expr_words.contains_key(last_word) {
         p.fatal("found " + last_word + " in expression position");
     }
@@ -552,15 +551,12 @@ fn parse_value_path(p: parser) -> @ast::path {
 fn parse_path_and_ty_param_substs(p: parser, colons: bool) -> @ast::path {
     let lo = p.span.lo;
     let path = parse_path(p);
-    let b = if colons {
-                eat(p, token::MOD_SEP)
-            } else {
-                p.token == token::LT
-            };
+    let b = if colons { eat(p, token::MOD_SEP) }
+            else { p.token == token::LT };
     if b {
         let seq = parse_seq_lt_gt(some(token::COMMA),
                                   {|p| parse_ty(p, false)}, p);
-        @spanned(lo, seq.span.hi, {types: seq.node with path.node})
+        @{span: mk_sp(lo, seq.span.hi), types: seq.node with *path}
     } else { path }
 }
 
@@ -586,13 +582,13 @@ fn parse_field(p: parser, sep: token::token) -> ast::field {
 }
 
 fn mk_expr(p: parser, lo: uint, hi: uint, node: ast::expr_) -> @ast::expr {
-    ret @{id: p.get_id(), node: node, span: ast_util::mk_sp(lo, hi)};
+    ret @{id: p.get_id(), node: node, span: mk_sp(lo, hi)};
 }
 
 fn mk_mac_expr(p: parser, lo: uint, hi: uint, m: ast::mac_) -> @ast::expr {
     ret @{id: p.get_id(),
-          node: ast::expr_mac({node: m, span: ast_util::mk_sp(lo, hi)}),
-          span: ast_util::mk_sp(lo, hi)};
+          node: ast::expr_mac({node: m, span: mk_sp(lo, hi)}),
+          span: mk_sp(lo, hi)};
 }
 
 fn mk_lit_u32(p: parser, i: u32) -> @ast::expr {
@@ -1156,7 +1152,7 @@ fn parse_capture_clause(p: parser) -> @ast::capture_clause {
             alt p.token {
               token::IDENT(_, _) {
                 let id = p.get_id();
-                let sp = ast_util::mk_sp(p.span.lo, p.span.hi);
+                let sp = mk_sp(p.span.lo, p.span.hi);
                 let ident = parse_ident(p);
                 res += [@{id:id, name:ident, span:sp}];
                 if !eat(p, token::COMMA) {
@@ -1364,7 +1360,7 @@ fn parse_pat(p: parser) -> @ast::pat {
             let lo1 = p.last_span.lo;
             let fieldname = parse_ident(p);
             let hi1 = p.last_span.lo;
-            let fieldpath = ast_util::ident_to_path(ast_util::mk_sp(lo1, hi1),
+            let fieldpath = ast_util::ident_to_path(mk_sp(lo1, hi1),
                                           fieldname);
             let mut subpat;
             if p.token == token::COLON {
@@ -1376,7 +1372,7 @@ fn parse_pat(p: parser) -> @ast::pat {
                 }
                 subpat = @{id: p.get_id(),
                            node: ast::pat_ident(fieldpath, none),
-                           span: ast_util::mk_sp(lo, hi)};
+                           span: mk_sp(lo, hi)};
             }
             fields += [{ident: fieldname, pat: subpat}];
         }
@@ -1389,7 +1385,7 @@ fn parse_pat(p: parser) -> @ast::pat {
         if p.token == token::RPAREN {
             hi = p.span.hi;
             p.bump();
-            let lit = @{node: ast::lit_nil, span: ast_util::mk_sp(lo, hi)};
+            let lit = @{node: ast::lit_nil, span: mk_sp(lo, hi)};
             let expr = mk_expr(p, lo, hi, ast::expr_lit(lit));
             pat = ast::pat_lit(expr);
         } else {
@@ -1454,7 +1450,7 @@ fn parse_pat(p: parser) -> @ast::pat {
                  pat = ast::pat_enum(enum_path, none);
             }
             else if vec::is_empty(args) &&
-               vec::len(enum_path.node.idents) == 1u {
+               vec::len(enum_path.idents) == 1u {
                 pat = ast::pat_ident(enum_path, none);
             }
             else {
@@ -1463,7 +1459,7 @@ fn parse_pat(p: parser) -> @ast::pat {
         }
       }
     }
-    ret @{id: p.get_id(), node: pat, span: ast_util::mk_sp(lo, hi)};
+    ret @{id: p.get_id(), node: pat, span: mk_sp(lo, hi)};
 }
 
 fn parse_local(p: parser, is_mutbl: bool,
@@ -1472,7 +1468,7 @@ fn parse_local(p: parser, is_mutbl: bool,
     let pat = parse_pat(p);
     let mut ty = @{id: p.get_id(),
                    node: ast::ty_infer,
-                   span: ast_util::mk_sp(lo, lo)};
+                   span: mk_sp(lo, lo)};
     if eat(p, token::COLON) { ty = parse_ty(p, false); }
     let init = if allow_init { parse_initializer(p) } else { none };
     ret @spanned(lo, p.last_span.hi,
@@ -1504,7 +1500,7 @@ fn parse_instance_var(p:parser, pr: ast::privacy) -> @ast::class_member {
     expect(p, token::COLON);
     let ty = parse_ty(p, false);
     ret @{node: ast::instance_var(name, ty, is_mutbl, p.get_id(), pr),
-          span: ast_util::mk_sp(lo, p.last_span.hi)};
+          span: mk_sp(lo, p.last_span.hi)};
 }
 
 fn parse_stmt(p: parser, first_item_attrs: [ast::attribute]) -> @ast::stmt {
@@ -1739,7 +1735,7 @@ fn mk_item(p: parser, lo: uint, hi: uint, ident: ast::ident, node: ast::item_,
           attrs: attrs,
           id: p.get_id(),
           node: node,
-          span: ast_util::mk_sp(lo, hi)};
+          span: mk_sp(lo, hi)};
 }
 
 fn parse_item_fn(p: parser, purity: ast::purity,
@@ -1775,7 +1771,7 @@ fn parse_method(p: parser, pr: ast::privacy) -> @ast::method {
     let (inner_attrs, body) = parse_inner_attrs_and_block(p, true);
     let attrs = attrs + inner_attrs;
     @{ident: ident, attrs: attrs, tps: tps, decl: decl, body: body,
-      id: p.get_id(), span: ast_util::mk_sp(lo, body.span.hi),
+      id: p.get_id(), span: mk_sp(lo, body.span.hi),
       self_id: p.get_id(), privacy: pr}
 }
 
@@ -1802,7 +1798,7 @@ fn parse_item_impl(p: parser, attrs: [ast::attribute]) -> @ast::item {
     let ifce = if eat_word(p, "of") {
         let path = parse_path_and_ty_param_substs(p, false);
         if option::is_none(ident) {
-            ident = some(path.node.idents[vec::len(path.node.idents) - 1u]);
+            ident = some(vec::last(path.idents));
         }
         some(wrap_path(p, path))
     } else { none };
@@ -1836,7 +1832,7 @@ fn parse_item_res(p: parser, attrs: [ast::attribute]) -> @ast::item {
                ident: arg_ident, id: p.get_id()}],
          output: @{id: p.get_id(),
                    node: ast::ty_nil,
-                   span: ast_util::mk_sp(lo, lo)},
+                   span: mk_sp(lo, lo)},
          purity: ast::impure_fn,
          cf: ast::return_val,
          constraints: []};
@@ -1850,13 +1846,13 @@ fn parse_item_res(p: parser, attrs: [ast::attribute]) -> @ast::item {
 fn ident_to_path_tys(p: parser, i: ast::ident,
                      typarams: [ast::ty_param]) -> @ast::path {
     let s = p.last_span;
-    let p_: ast::path_ = {global: false, idents: [i],
-          types: vec::map(typarams,
-            {|tp| @{id: p.get_id(),
-                   node: ast::ty_path(ident_to_path(s, tp.ident),
-                                      p.get_id()),
-                        span: s}})};
-    @spanned(s.lo, s.hi, p_)
+    @{span: s, global: false, idents: [i],
+      types: vec::map(typarams, {|tp|
+          @{id: p.get_id(),
+            node: ast::ty_path(ident_to_path(s, tp.ident),
+                               p.get_id()),
+            span: s}})
+     }
 }
 
 fn parse_iface_ref_list(p:parser) -> [ast::iface_ref] {
@@ -1934,7 +1930,7 @@ fn parse_class_item(p:parser, class_name_with_tps:@ast::path)
                       span: decl_.output.span}
                     with decl_};
         let body = parse_block(p);
-        ret ctor_decl(decl, body, ast_util::mk_sp(lo, p.last_span.hi));
+        ret ctor_decl(decl, body, mk_sp(lo, p.last_span.hi));
     }
     else if eat_word(p, "priv") {
             expect(p, token::LBRACE);
@@ -2014,7 +2010,7 @@ fn parse_item_native_fn(p: parser, attrs: [ast::attribute],
           attrs: attrs,
           node: ast::native_item_fn(decl, t.tps),
           id: p.get_id(),
-          span: ast_util::mk_sp(lo, hi)};
+          span: mk_sp(lo, hi)};
 }
 
 fn parse_fn_purity(p: parser) -> ast::purity {
@@ -2236,13 +2232,10 @@ fn parse_view_path(p: parser) -> @ast::view_path {
             let id = parse_ident(p);
             path += [id];
         }
-        let mut hi = p.span.hi;
-        ret @spanned(lo, hi,
-                     ast::view_path_simple(first_ident,
-                        @spanned(lo, hi,
-                                 {global: false, idents: path,
-                                         types: []}),
-                        p.get_id()));
+        let path = @{span: mk_sp(lo, p.span.hi), global: false,
+                     idents: path, types: []};
+        ret @spanned(lo, p.span.hi,
+                     ast::view_path_simple(first_ident, path, p.get_id()));
       }
 
       token::MOD_SEP {
@@ -2263,25 +2256,19 @@ fn parse_view_path(p: parser) -> @ast::view_path {
                     parse_seq(token::LBRACE, token::RBRACE,
                               seq_sep(token::COMMA),
                               parse_path_list_ident, p).node;
-                let mut hi = p.span.hi;
-                ret @spanned(lo, hi,
-                             ast::view_path_list(@spanned(lo, hi,
-                                {global: false,
-                                 idents: path,
-                                        types: []}), idents,
-                             p.get_id()));
+                let path = @{span: mk_sp(lo, p.span.hi),
+                             global: false, idents: path, types: []};
+                ret @spanned(lo, p.span.hi,
+                             ast::view_path_list(path, idents, p.get_id()));
               }
 
               // foo::bar::*
               token::BINOP(token::STAR) {
                 p.bump();
-                let mut hi = p.span.hi;
-                ret @spanned(lo, hi,
-                             ast::view_path_glob(@spanned(lo, hi,
-                               {global: false,
-                                idents: path,
-                                types: []}),
-                               p.get_id()));
+                let path = @{span: mk_sp(lo, p.span.hi),
+                             global: false, idents: path, types: []};
+                ret @spanned(lo, p.span.hi,
+                             ast::view_path_glob(path, p.get_id()));
               }
 
               _ { break; }
@@ -2290,14 +2277,11 @@ fn parse_view_path(p: parser) -> @ast::view_path {
       }
       _ { }
     }
-    let mut hi = p.span.hi;
     let last = path[vec::len(path) - 1u];
-    ret @spanned(lo, hi,
-                 ast::view_path_simple(last, @spanned(lo, hi,
-                                                      {global: false,
-                                                              idents: path,
-                                                              types: []}),
-                                       p.get_id()));
+    let path = @{span: mk_sp(lo, p.span.hi), global: false,
+                 idents: path, types: []};
+    ret @spanned(lo, p.span.hi,
+                 ast::view_path_simple(last, path, p.get_id()));
 }
 
 fn parse_view_paths(p: parser) -> [@ast::view_path] {

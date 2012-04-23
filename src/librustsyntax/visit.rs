@@ -213,7 +213,7 @@ fn visit_constr<E>(_operator: @path, _sp: span, _id: node_id, _e: E,
 }
 
 fn visit_path<E>(p: @path, e: E, v: vt<E>) {
-    for p.node.types.each {|tp| v.visit_ty(tp, e, v); }
+    for p.types.each {|tp| v.visit_ty(tp, e, v); }
 }
 
 fn visit_pat<E>(p: @pat, e: E, v: vt<E>) {

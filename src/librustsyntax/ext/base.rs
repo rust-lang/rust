@@ -137,9 +137,9 @@ fn expr_to_str(cx: ext_ctxt, expr: @ast::expr, error: str) -> str {
 fn expr_to_ident(cx: ext_ctxt, expr: @ast::expr, error: str) -> ast::ident {
     alt expr.node {
       ast::expr_path(p) {
-        if vec::len(p.node.types) > 0u || vec::len(p.node.idents) != 1u {
+        if vec::len(p.types) > 0u || vec::len(p.idents) != 1u {
             cx.span_fatal(expr.span, error);
-        } else { ret p.node.idents[0]; }
+        } else { ret p.idents[0]; }
       }
       _ { cx.span_fatal(expr.span, error); }
     }

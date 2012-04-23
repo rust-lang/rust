@@ -5,14 +5,14 @@ import base::*;
 
 import fold::*;
 import ast_util::respan;
-import ast::{ident, path, ty, blk_, expr, path_, expr_path,
+import ast::{ident, path, ty, blk_, expr, expr_path,
              expr_vec, expr_mac, mac_invoc, node_id};
 
 export add_new_extension;
 
 fn path_to_ident(pth: @path) -> option<ident> {
-    if vec::len(pth.node.idents) == 1u && vec::len(pth.node.types) == 0u {
-        ret some(pth.node.idents[0u]);
+    if vec::len(pth.idents) == 1u && vec::len(pth.types) == 0u {
+        ret some(pth.idents[0u]);
     }
     ret none;
 }
@@ -190,7 +190,7 @@ fn transcribe(cx: ext_ctxt, b: bindings, body: @expr) -> @expr {
     let afp = default_ast_fold();
     let f_pre =
         {fold_ident: bind transcribe_ident(cx, b, idx_path, _, _),
-         fold_path: bind transcribe_path(cx, b, idx_path, _, _, _),
+         fold_path: bind transcribe_path(cx, b, idx_path, _, _),
          fold_expr:
              bind transcribe_expr(cx, b, idx_path, _, _, _, afp.fold_expr),
          fold_ty: bind transcribe_type(cx, b, idx_path, _, _, _, afp.fold_ty),
@@ -329,17 +329,17 @@ fn transcribe_ident(cx: ext_ctxt, b: bindings, idx_path: @mut [uint],
 
 
 fn transcribe_path(cx: ext_ctxt, b: bindings, idx_path: @mut [uint],
-                   p: path_, s:span, _fld: ast_fold) -> (path_, span) {
+                   p: path, _fld: ast_fold) -> path {
     // Don't substitute into qualified names.
-    if vec::len(p.types) > 0u || vec::len(p.idents) != 1u { ret (p, s); }
-    ret alt follow_for_trans(cx, b.find(p.idents[0]), idx_path) {
-          some(match_ident(id)) {
-            ({global: false, idents: [id.node], types: []}, id.span)
-          }
-          some(match_path(a_pth)) { (a_pth.node, a_pth.span) }
-          some(m) { match_error(cx, m, "a path") }
-          none { (p, s) }
-        }
+    if vec::len(p.types) > 0u || vec::len(p.idents) != 1u { ret p; }
+    alt follow_for_trans(cx, b.find(p.idents[0]), idx_path) {
+      some(match_ident(id)) {
+        {span: id.span, global: false, idents: [id.node], types: []}
+      }
+      some(match_path(a_pth)) { *a_pth }
+      some(m) { match_error(cx, m, "a path") }
+      none { p }
+    }
 }
 
 
@@ -351,15 +351,15 @@ fn transcribe_expr(cx: ext_ctxt, b: bindings, idx_path: @mut [uint],
     ret alt e {
           expr_path(p) {
             // Don't substitute into qualified names.
-            if vec::len(p.node.types) > 0u || vec::len(p.node.idents) != 1u {
+            if vec::len(p.types) > 0u || vec::len(p.idents) != 1u {
                 (e, s);
             }
-            alt follow_for_trans(cx, b.find(p.node.idents[0]), idx_path) {
+            alt follow_for_trans(cx, b.find(p.idents[0]), idx_path) {
               some(match_ident(id)) {
-                (expr_path(@respan(id.span,
-                                   {global: false,
-                                    idents: [id.node],
-                                    types: []})), id.span)
+                (expr_path(@{span: id.span,
+                             global: false,
+                             idents: [id.node],
+                             types: []}), id.span)
               }
               some(match_path(a_pth)) { (expr_path(a_pth), s) }
               some(match_expr(a_exp)) { (a_exp.node, a_exp.span) }

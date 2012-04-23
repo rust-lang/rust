@@ -224,7 +224,7 @@ fn instantiate_path(fcx: @fn_ctxt,
                     sp: span,
                     id: ast::node_id) {
     let ty_param_count = vec::len(*tpt.bounds);
-    let ty_substs_len = vec::len(pth.node.types);
+    let ty_substs_len = vec::len(pth.types);
 
     // For now, there is no way to explicitly specify the region bound.
     // This will have to change eventually.
@@ -248,7 +248,7 @@ fn instantiate_path(fcx: @fn_ctxt,
             (sp, "not enough type parameters provided for this item");
         fcx.next_ty_vars(ty_param_count)
     } else {
-        pth.node.types.map { |aty| fcx.to_ty(aty) }
+        pth.types.map { |aty| fcx.to_ty(aty) }
     };
 
     let substs = {self_r: self_r, tps: tps};
@@ -593,7 +593,7 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy>(
           some(d) { d }};
         alt a_def {
           ast::def_ty(did) | ast::def_class(did) {
-            instantiate(self, rscope, ast_ty.span, did, id, path.node.types)
+            instantiate(self, rscope, ast_ty.span, did, id, path.types)
           }
           ast::def_prim_ty(nty) {
             alt nty {
@@ -605,7 +605,7 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy>(
             }
           }
           ast::def_ty_param(id, n) {
-            if vec::len(path.node.types) > 0u {
+            if vec::len(path.types) > 0u {
                 tcx.sess.span_err(ast_ty.span, "provided type parameters \
                                                 to a type parameter");
             }
@@ -614,12 +614,12 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy>(
           ast::def_self(self_id) {
             alt check tcx.items.get(self_id) {
               ast_map::node_item(@{node: ast::item_iface(tps, _), _}, _) {
-                if vec::len(tps) != vec::len(path.node.types) {
+                if vec::len(tps) != vec::len(path.types) {
                     tcx.sess.span_err(ast_ty.span, "incorrect number of \
                                                     type parameters to \
                                                     self type");
                 }
-                ty::mk_self(tcx, vec::map(path.node.types, {|ast_ty|
+                ty::mk_self(tcx, vec::map(path.types, {|ast_ty|
                     ast_ty_to_ty(self, rscope, ast_ty)
                 }))
               }
@@ -3970,22 +3970,20 @@ fn check_constraints(fcx: @fn_ctxt, cs: [@ast::constr], args: [ast::arg]) {
                     }
                     ast::carg_ident(i) {
                       if i < num_args {
-                          let p: ast::path_ =
-                              {global: false,
-                               idents: [args[i].ident],
-                               types: []};
+                          let p = @{span: a.span, global: false,
+                                    idents: [args[i].ident], types: []};
                           let arg_occ_node_id =
                               fcx.ccx.tcx.sess.next_node_id();
                           fcx.ccx.tcx.def_map.insert
                               (arg_occ_node_id,
                                ast::def_arg(args[i].id, args[i].mode));
                           {id: arg_occ_node_id,
-                           node: ast::expr_path(@respan(a.span, p)),
+                           node: ast::expr_path(p),
                            span: a.span}
                       } else {
-                          fcx.ccx.tcx.sess.span_bug(a.span,
-                                                    "check_constraints:\
-                     carg_ident index out of bounds");
+                          fcx.ccx.tcx.sess.span_bug(
+                              a.span, "check_constraints:\
+                                       carg_ident index out of bounds");
                       }
                     }
                   }];
@@ -4181,7 +4179,7 @@ fn check_fn(ccx: @crate_ctxt,
               if !pat_util::pat_is_variant(fcx.ccx.tcx.def_map, p) {
                 assign(p.id, none);
                 #debug["Pattern binding %s is assigned to %s",
-                       path.node.idents[0],
+                       path.idents[0],
                        fcx.locals.get(p.id).to_str()];
               }
               _ {}

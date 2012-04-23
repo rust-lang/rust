@@ -30,9 +30,8 @@ fn mk_unary(cx: ext_ctxt, sp: span, op: ast::unop, e: @ast::expr)
 }
 fn mk_path(cx: ext_ctxt, sp: span, idents: [ast::ident]) ->
     @ast::expr {
-    let path = {global: false, idents: idents, types: []};
-    let sp_path = @{node: path, span: sp};
-    let pathexpr = ast::expr_path(sp_path);
+    let path = @{span: sp, global: false, idents: idents, types: []};
+    let pathexpr = ast::expr_path(path);
     ret @{id: cx.next_id(), node: pathexpr, span: sp};
 }
 fn mk_access_(cx: ext_ctxt, sp: span, p: @ast::expr, m: ast::ident)

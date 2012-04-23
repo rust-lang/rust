@@ -19,8 +19,8 @@ fn expand_expr(exts: hashmap<str, syntax_extension>, cx: ext_ctxt,
           expr_mac(mac) {
             alt mac.node {
               mac_invoc(pth, args, body) {
-                assert (vec::len(pth.node.idents) > 0u);
-                let extname = pth.node.idents[0];
+                assert (vec::len(pth.idents) > 0u);
+                let extname = pth.idents[0];
                 alt exts.find(extname) {
                   none {
                     cx.span_fatal(pth.span,

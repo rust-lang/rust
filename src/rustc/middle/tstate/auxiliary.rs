@@ -594,7 +594,7 @@ fn expr_to_constr_arg(tcx: ty::ctxt, e: @expr) -> @constr_arg_use {
           some(def_local(nid, _)) | some(def_arg(nid, _)) |
           some(def_binding(nid)) | some(def_upvar(nid, _, _)) {
             ret @respan(p.span,
-                        carg_ident({ident: p.node.idents[0], node: nid}));
+                        carg_ident({ident: p.idents[0], node: nid}));
           }
           some(what) {
               tcx.sess.span_bug(e.span,

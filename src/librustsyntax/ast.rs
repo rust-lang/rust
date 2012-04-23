@@ -37,10 +37,7 @@ type ident = str;
 type fn_ident = option<ident>;
 
 #[auto_serialize]
-type path_ = {global: bool, idents: [ident], types: [@ty]};
-
-#[auto_serialize]
-type path = spanned<path_>;
+type path = {span: span, global: bool, idents: [ident], types: [@ty]};
 
 #[auto_serialize]
 type crate_num = int;

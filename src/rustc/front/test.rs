@@ -206,6 +206,10 @@ fn nospan<T: copy>(t: T) -> ast::spanned<T> {
     ret {node: t, span: dummy_sp()};
 }
 
+fn path_node(ids: [ast::ident]) -> @ast::path {
+    @{span: dummy_sp(), global: false, idents: ids, types: []}
+}
+
 fn mk_tests(cx: test_ctxt) -> @ast::item {
     let ret_ty = mk_test_desc_vec_ty(cx);
 
@@ -248,10 +252,7 @@ fn mk_path(cx: test_ctxt, path: [ast::ident]) -> [ast::ident] {
 
 // The ast::ty of [std::test::test_desc]
 fn mk_test_desc_vec_ty(cx: test_ctxt) -> @ast::ty {
-    let test_desc_ty_path =
-        @nospan({global: false,
-                 idents: mk_path(cx, ["test", "test_desc"]),
-                 types: []});
+    let test_desc_ty_path = path_node(mk_path(cx, ["test", "test_desc"]));
 
     let test_desc_ty: ast::ty =
         {id: cx.sess.next_node_id(),
@@ -294,7 +295,7 @@ fn mk_test_desc_rec(cx: test_ctxt, test: test) -> @ast::expr {
     let name_field: ast::field =
         nospan({mutbl: ast::m_imm, ident: "name", expr: @name_expr});
 
-    let fn_path = @nospan({global: false, idents: path, types: []});
+    let fn_path = path_node(path);
 
     let fn_expr: ast::expr =
         {id: cx.sess.next_node_id(),
@@ -380,7 +381,7 @@ fn mk_test_wrapper(cx: test_ctxt,
 }
 
 fn mk_main(cx: test_ctxt) -> @ast::item {
-    let str_pt = @nospan({global: false, idents: ["str"], types: []});
+    let str_pt = path_node(["str"]);
     let str_ty = @{id: cx.sess.next_node_id(),
                    node: ast::ty_path(str_pt, cx.sess.next_node_id()),
                    span: dummy_sp()};
@@ -426,8 +427,7 @@ fn mk_main(cx: test_ctxt) -> @ast::item {
 fn mk_test_main_call(cx: test_ctxt) -> @ast::expr {
 
     // Get the args passed to main so we can pass the to test_main
-    let args_path =
-        @nospan({global: false, idents: ["args"], types: []});
+    let args_path = path_node(["args"]);
 
     let args_path_expr_: ast::expr_ = ast::expr_path(args_path);
 
@@ -435,8 +435,7 @@ fn mk_test_main_call(cx: test_ctxt) -> @ast::expr {
         {id: cx.sess.next_node_id(), node: args_path_expr_, span: dummy_sp()};
 
     // Call __test::test to generate the vector of test_descs
-    let test_path =
-        @nospan({global: false, idents: ["tests"], types: []});
+    let test_path = path_node(["tests"]);
 
     let test_path_expr_: ast::expr_ = ast::expr_path(test_path);
 
@@ -449,10 +448,7 @@ fn mk_test_main_call(cx: test_ctxt) -> @ast::expr {
         {id: cx.sess.next_node_id(), node: test_call_expr_, span: dummy_sp()};
 
     // Call std::test::test_main
-    let test_main_path =
-        @nospan({global: false,
-                 idents: mk_path(cx, ["test", "test_main"]),
-                 types: []});
+    let test_main_path = path_node(mk_path(cx, ["test", "test_main"]));
 
     let test_main_path_expr_: ast::expr_ = ast::expr_path(test_main_path);
 

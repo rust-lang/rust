@@ -124,19 +124,17 @@ fn expand(cx: ext_ctxt,
 impl helpers for ext_ctxt {
     fn helper_path(base_path: @ast::path,
                    helper_name: str) -> @ast::path {
-        let head = vec::init(base_path.node.idents);
-        let tail = vec::last(base_path.node.idents);
+        let head = vec::init(base_path.idents);
+        let tail = vec::last(base_path.idents);
         self.path(base_path.span, head + [helper_name + "_" + tail])
     }
 
     fn path(span: span, strs: [str]) -> @ast::path {
-        @{node: {global: false, idents: strs, types: []},
-          span: span}
+        @{span: span, global: false, idents: strs, types: []}
     }
 
     fn path_tps(span: span, strs: [str], tps: [@ast::ty]) -> @ast::path {
-        @{node: {global: false, idents: strs, types: tps},
-          span: span}
+        @{span: span, global: false, idents: strs, types: tps}
     }
 
     fn ty_path(span: span, strs: [str], tps: [@ast::ty]) -> @ast::ty {
@@ -195,10 +193,7 @@ impl helpers for ext_ctxt {
     }
 
     fn binder_pat(span: span, nm: str) -> @ast::pat {
-        let path = @{node: {global: false,
-                            idents: [nm],
-                            types: []},
-                     span: span};
+        let path = @{span: span, global: false, idents: [nm], types: []};
         @{id: self.next_id(),
           node: ast::pat_ident(path, none),
           span: span}
@@ -292,7 +287,7 @@ fn ser_path(cx: ext_ctxt, tps: ser_tps_map, path: @ast::path,
             ast::expr_path(
                 cx.helper_path(path, "serialize")));
 
-    let ty_args = vec::map(path.node.types) {|ty|
+    let ty_args = vec::map(path.types) {|ty|
         let sv_stmts = ser_ty(cx, tps, ty, cx.clone(s), #ast{ __v });
         let sv = cx.expr(path.span,
                          ast::expr_block(cx.blk(path.span, sv_stmts)));
@@ -428,9 +423,9 @@ fn ser_ty(cx: ext_ctxt, tps: ser_tps_map,
       }
 
       ast::ty_path(path, _) {
-        if vec::len(path.node.idents) == 1u &&
-            vec::is_empty(path.node.types) {
-            let ident = path.node.idents[0];
+        if vec::len(path.idents) == 1u &&
+            vec::is_empty(path.types) {
+            let ident = path.idents[0];
 
             alt tps.find(ident) {
               some(f) { f(v) }
@@ -566,7 +561,7 @@ fn deser_path(cx: ext_ctxt, tps: deser_tps_map, path: @ast::path,
             ast::expr_path(
                 cx.helper_path(path, "deserialize")));
 
-    let ty_args = vec::map(path.node.types) {|ty|
+    let ty_args = vec::map(path.types) {|ty|
         let dv_expr = deser_ty(cx, tps, ty, cx.clone(d));
         cx.lambda(cx.expr_blk(dv_expr))
     };
@@ -650,9 +645,9 @@ fn deser_ty(cx: ext_ctxt, tps: deser_tps_map,
       }
 
       ast::ty_path(path, _) {
-        if vec::len(path.node.idents) == 1u &&
-            vec::is_empty(path.node.types) {
-            let ident = path.node.idents[0];
+        if vec::len(path.idents) == 1u &&
+            vec::is_empty(path.types) {
+            let ident = path.idents[0];
 
             alt tps.find(ident) {
               some(f) { f() }

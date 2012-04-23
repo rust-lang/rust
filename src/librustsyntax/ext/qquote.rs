@@ -142,7 +142,7 @@ fn expand_ast(ecx: ext_ctxt, _sp: span,
             ecx.span_fatal(_sp, "#ast requires exactly one arg");
         }
         alt (args[0].node) {
-          ast::expr_path(@{node: {idents: id, _},_}) if vec::len(id) == 1u
+          ast::expr_path(@{idents: id, _}) if vec::len(id) == 1u
               {what = id[0]}
           _ {ecx.span_fatal(args[0].span, "expected an identifier");}
         }

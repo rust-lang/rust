@@ -46,7 +46,7 @@ type ast_fold_precursor =
      fold_native_mod: fn@(native_mod, ast_fold) -> native_mod,
      fold_variant: fn@(variant_, span, ast_fold) -> (variant_, span),
      fold_ident: fn@(&&ident, ast_fold) -> ident,
-     fold_path: fn@(path_, span, ast_fold) -> (path_, span),
+     fold_path: fn@(path, ast_fold) -> path,
      fold_local: fn@(local_, span, ast_fold) -> (local_, span),
      map_exprs: fn@(fn@(&&@expr) -> @expr, [@expr]) -> [@expr],
      new_id: fn@(node_id) -> node_id,
@@ -559,8 +559,8 @@ fn noop_fold_variant(v: variant_, fld: ast_fold) -> variant_ {
 
 fn noop_fold_ident(&&i: ident, _fld: ast_fold) -> ident { ret i; }
 
-fn noop_fold_path(&&p: path_, fld: ast_fold) -> path_ {
-    ret {global: p.global,
+fn noop_fold_path(&&p: path, fld: ast_fold) -> path {
+    ret {span: fld.new_span(p.span), global: p.global,
          idents: vec::map(p.idents, fld.fold_ident),
          types: vec::map(p.types, fld.fold_ty)};
 }
@@ -613,7 +613,7 @@ fn default_ast_fold() -> @ast_fold_precursor {
           fold_native_mod: noop_fold_native_mod,
           fold_variant: wrap(noop_fold_variant),
           fold_ident: noop_fold_ident,
-          fold_path: wrap(noop_fold_path),
+          fold_path: noop_fold_path,
           fold_local: wrap(noop_fold_local),
           map_exprs: noop_map_exprs,
           new_id: noop_id,
@@ -754,8 +754,7 @@ fn make_fold(afp: ast_fold_precursor) -> ast_fold {
         ret afp.fold_ident(x, f);
     }
     fn f_path(afp: ast_fold_precursor, f: ast_fold, &&x: @path) -> @path {
-        let (n, s) = afp.fold_path(x.node, x.span, f);
-        ret @{node: n, span: afp.new_span(s)};
+        @afp.fold_path(*x, f)
     }
     fn f_local(afp: ast_fold_precursor, f: ast_fold, &&x: @local) -> @local {
         let (n, s) = afp.fold_local(x.node, x.span, f);
