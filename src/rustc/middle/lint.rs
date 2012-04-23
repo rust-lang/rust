@@ -172,7 +172,7 @@ fn time(do_it: bool, what: str, thunk: fn()) {
 
 fn check_item(cx: ctxt, i: @ast::item) {
     cx.with_warn_attrs(i.attrs) {|cx|
-        cx.curr.items {|lint, level|
+        for cx.curr.each {|lint, level|
             alt lint {
               ctypes { check_item_ctypes(cx, level, i); }
               unused_imports { check_item_unused_imports(cx, level, i); }
@@ -265,7 +265,7 @@ fn check_crate(tcx: ty::ctxt, crate: @ast::crate,
                tcx: tcx};
 
     // Install defaults.
-    cx.dict.items {|_k, spec| cx.set_level(spec.lint, spec.default); }
+    for cx.dict.each {|_k, spec| cx.set_level(spec.lint, spec.default); }
 
     // Install command-line options, overriding defaults.
     for lint_opts.each {|pair|

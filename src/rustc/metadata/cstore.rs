@@ -106,7 +106,7 @@ fn have_crate_data(cstore: cstore, cnum: ast::crate_num) -> bool {
 }
 
 fn iter_crate_data(cstore: cstore, i: fn(ast::crate_num, crate_metadata)) {
-    p(cstore).metas.items {|k,v| i(k, v);};
+    for p(cstore).metas.each {|k,v| i(k, v);};
 }
 
 fn add_used_crate_file(cstore: cstore, lib: str) {
@@ -155,7 +155,7 @@ fn get_dep_hashes(cstore: cstore) -> [str] {
     type crate_hash = {name: str, hash: str};
     let mut result = [];
 
-    p(cstore).use_crate_map.values {|cnum|
+    for p(cstore).use_crate_map.each_value {|cnum|
         let cdata = cstore::get_crate_data(cstore, cnum);
         let hash = decoder::get_crate_hash(cdata.data);
         #debug("Add hash[%s]: %s", cdata.name, hash);

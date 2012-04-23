@@ -85,7 +85,7 @@ fn to_writer(wr: io::writer, j: json) {
 
         wr.write_str("{ ");
         let mut first = true;
-        d.items { |key, value|
+        for d.each { |key, value|
             if !first {
                 wr.write_str(", ");
             }
@@ -481,7 +481,7 @@ fn eq(value0: json, value1: json) -> bool {
       (dict(d0), dict(d1)) {
           if d0.size() == d1.size() {
               let mut equal = true;
-              d0.items { |k, v0|
+              for d0.each { |k, v0|
                   alt d1.find(k) {
                     some(v1) {
                         if !eq(v0, v1) { equal = false; } }

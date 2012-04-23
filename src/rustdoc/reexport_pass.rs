@@ -47,7 +47,7 @@ fn to_assoc_list<K:copy, V:copy>(
 ) -> [(K, V)] {
 
     let mut vec = [];
-    map.items {|k, v|
+    for map.each {|k, v|
         vec += [(k, v)];
     }
     ret vec;
@@ -81,7 +81,7 @@ fn from_str_assoc_list<V:copy>(
 fn build_reexport_def_set(srv: astsrv::srv) -> def_set {
     let assoc_list = astsrv::exec(srv) {|ctxt|
         let def_set = common::new_def_hash();
-        ctxt.exp_map.items {|_id, defs|
+        for ctxt.exp_map.each {|_id, defs|
             for defs.each {|def|
                 if def.reexp {
                     def_set.insert(def.id, ());
@@ -172,7 +172,7 @@ fn build_reexport_path_map(srv: astsrv::srv, -def_map: def_map) -> path_map {
         let def_map = from_def_assoc_list(def_assoc_list);
         let path_map = map::str_hash::<[(str,doc::itemtag)]>();
 
-        ctxt.exp_map.items {|exp_id, defs|
+        for ctxt.exp_map.each {|exp_id, defs|
             let path = alt check ctxt.ast_map.get(exp_id) {
               ast_map::node_export(_, path) { path }
             };

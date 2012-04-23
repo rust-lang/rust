@@ -206,7 +206,7 @@ fn encode_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt, crate: @crate)
 fn encode_reexport_paths(ebml_w: ebml::writer,
                          ecx: @encode_ctxt, &index: [entry<str>]) {
     let tcx = ecx.ccx.tcx;
-    ecx.ccx.exp_map.items {|exp_id, defs|
+    for ecx.ccx.exp_map.each {|exp_id, defs|
         for defs.each {|def|
             if !def.reexp { cont; }
             let path = alt check tcx.items.get(exp_id) {

@@ -526,7 +526,7 @@ fn make_generic_glue(ccx: @crate_ctxt, t: ty::t, llfn: ValueRef,
 
 fn emit_tydescs(ccx: @crate_ctxt) {
     let _icx = ccx.insn_ctxt("emit_tydescs");
-    ccx.tydescs.items {|key, val|
+    for ccx.tydescs.each {|key, val|
         let glue_fn_ty = T_ptr(T_glue_fn(ccx));
         let ti = val;
         let take_glue =
@@ -4871,7 +4871,7 @@ fn create_module_map(ccx: @crate_ctxt) -> ValueRef {
     });
     lib::llvm::SetLinkage(map, lib::llvm::InternalLinkage);
     let mut elts: [ValueRef] = [];
-    ccx.module_data.items {|key, val|
+    for ccx.module_data.each {|key, val|
         let elt = C_struct([p2i(ccx, C_cstr(ccx, key)),
                             p2i(ccx, val)]);
         elts += [elt];
@@ -5091,7 +5091,7 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
     }
 
     if ccx.sess.opts.count_llvm_insns {
-        ccx.stats.llvm_insns.items() { |k, v|
+        for ccx.stats.llvm_insns.each { |k, v|
             io::println(#fmt("%-7u %s", v, k));
         }
     }

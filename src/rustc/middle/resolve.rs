@@ -352,7 +352,7 @@ fn map_crate(e: @env, c: @ast::crate) {
 
 fn resolve_imports(e: env) {
     e.used_imports.track = true;
-    e.imports.items {|id, v|
+    for e.imports.each {|id, v|
         alt check v {
           todo(name, path, span, scopes) {
             resolve_import(e, id, name, *path, span, scopes);
@@ -368,7 +368,7 @@ fn resolve_imports(e: env) {
 // using lint-specific control flags presently but resolve-specific data
 // structures. Should use the general lint framework (with scopes, attrs).
 fn check_unused_imports(e: @env, level: lint::level) {
-    e.imports.items {|k, v|
+    for e.imports.each {|k, v|
         alt v {
             resolved(_, _, _, _, name, sp) {
               if !vec::contains(e.used_imports.data, k) {
@@ -1673,8 +1673,8 @@ fn lookup_external(e: env, cnum: int, ids: [ident], ns: namespace) ->
 fn check_for_collisions(e: @env, c: ast::crate) {
     // Module indices make checking those relatively simple -- just check each
     // name for multiple entities in the same namespace.
-    e.mod_map.values {|val|
-        val.index.items {|k, v| check_mod_name(*e, k, v); };
+    for e.mod_map.each_value {|val|
+        for val.index.each {|k, v| check_mod_name(*e, k, v); };
     };
     // Other scopes have to be checked the hard way.
     let v =
@@ -1912,7 +1912,7 @@ fn check_exports(e: @env) {
             assert mid.crate == ast::local_crate;
             let ixm = e.mod_map.get(mid.node);
 
-            ixm.index.items() {|ident, mies|
+            for ixm.index.each {|ident, mies|
                 list::iter(mies) {|mie|
                     alt mie {
                       mie_item(item) {
@@ -2055,7 +2055,7 @@ fn check_exports(e: @env) {
         }
     }
 
-    e.mod_map.values {|_mod|
+    for e.mod_map.each_value {|_mod|
         alt _mod.m {
           some(m) {
             let glob_is_re_exported = int_hash();

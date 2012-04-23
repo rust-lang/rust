@@ -555,7 +555,7 @@ fn norm_a_constraint(id: def_id, c: constraint) -> [norm_constraint] {
 // non-exhaustive match in trans.
 fn constraints(fcx: fn_ctxt) -> [norm_constraint] {
     let mut rslt: [norm_constraint] = [];
-    fcx.enclosing.constrs.items {|key, val|
+    for fcx.enclosing.constrs.each {|key, val|
         rslt += norm_a_constraint(key, val);
     };
     ret rslt;
@@ -875,7 +875,7 @@ fn copy_in_poststate_two(fcx: fn_ctxt, src_post: poststate,
     }
 
 
-    fcx.enclosing.constrs.values {|val|
+    for fcx.enclosing.constrs.each_value {|val|
         // replace any occurrences of the src def_id with the
         // dest def_id
         let insts = find_instances(fcx, subst, val);

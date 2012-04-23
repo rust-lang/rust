@@ -217,7 +217,7 @@ nonetheless valid as identifiers becasue they are unambiguous.
 "]
 fn keyword_table() -> hashmap<str, ()> {
     let keywords = str_hash();
-    bad_expr_word_table().keys() {|word|
+    for bad_expr_word_table().each_key {|word|
         keywords.insert(word, ());
     }
     let other_keywords = [

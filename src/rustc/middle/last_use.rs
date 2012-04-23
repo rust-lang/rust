@@ -70,7 +70,7 @@ fn find_last_uses(c: @crate, def_map: resolve::def_map,
               mut blocks: nil};
     visit::visit_crate(*c, cx, v);
     let mini_table = std::map::int_hash();
-    cx.last_uses.items {|key, val|
+    for cx.last_uses.each {|key, val|
         if val {
             alt key {
               path(id) {

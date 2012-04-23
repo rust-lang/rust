@@ -93,7 +93,7 @@ mod map_reduce {
 
         map(input, bind emit(intermediates, ctrl, _, _));
 
-        intermediates.values {|v| send(v, release); }
+        for intermediates.each_value {|v| send(v, release); }
 
         send(ctrl, mapper_done);
     }
@@ -172,7 +172,7 @@ mod map_reduce {
             }
         }
 
-        reducers.values {|v| send(v, done); }
+        for reducers.each_value {|v| send(v, done); }
 
         for results.each {|r| future::get(r); }
     }

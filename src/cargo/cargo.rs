@@ -222,7 +222,7 @@ fn try_parse_sources(filename: str, sources: map::hashmap<str, source>) {
     let c = io::read_whole_file_str(filename);
     alt json::from_str(result::get(c)) {
         ok(json::dict(j)) {
-            j.items { |k, v|
+            for j.each { |k, v|
                 sources.insert(k, parse_source(k, v));
                 #debug("source: %s", k);
             }
@@ -404,11 +404,11 @@ fn configure(opts: options) -> cargo {
     need_dir(c.libdir);
     need_dir(c.bindir);
 
-    sources.keys { |k|
+    for sources.each_key { |k|
         let mut s = sources.get(k);
         load_source_packages(c, s);
         sources.insert(k, s);
-    };
+    }
 
     if c.pgp {
         pgp::init(c.root);
@@ -422,11 +422,11 @@ fn configure(opts: options) -> cargo {
 }
 
 fn for_each_package(c: cargo, b: fn(source, package)) {
-    c.sources.values({ |v|
+    for c.sources.each_value {|v|
         for vec::each(copy v.packages) {|p|
             b(v, p);
         }
-    })
+    }
 }
 
 // Runs all programs in directory <buildpath>
@@ -592,7 +592,7 @@ fn cargo_suggestion(c: cargo, syncing: bool, fallback: fn())
     }
     if !syncing {
         let mut npkg = 0u;
-        c.sources.values({ |v| npkg += vec::len(v.packages) });
+        for c.sources.each_value { |v| npkg += vec::len(v.packages) }
         if npkg == 0u {
             error("No packages known. You may wish to run " +
                   "\"cargo sync\".");
@@ -776,7 +776,7 @@ fn cmd_sync(c: cargo) {
         sync_one(c, c.opts.free[2], c.sources.get(c.opts.free[2]));
     } else {
         cargo_suggestion(c, true, { || } );
-        c.sources.items { |k, v|
+        for c.sources.each { |k, v|
             sync_one(c, k, v);
         }
     }

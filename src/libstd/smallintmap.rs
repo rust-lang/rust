@@ -89,27 +89,27 @@ impl <V: copy> of map::map<uint, V> for smallintmap<V> {
     fn get(&&key: uint) -> V { get(self, key) }
     fn find(&&key: uint) -> option<V> { find(self, key) }
     fn rehash() { fail }
-    fn items(it: fn(&&uint, V)) {
+    fn each(it: fn(&&uint, V) -> bool) {
         let mut idx = 0u, l = self.v.len();
         while idx < l {
             alt self.v[idx] {
               some(elt) {
-                it(idx, copy elt);
+                if !it(idx, copy elt) { break; }
               }
               none { }
             }
             idx += 1u;
         }
     }
-    fn keys(it: fn(&&uint)) {
+    fn each_key(it: fn(&&uint) -> bool) {
         let mut idx = 0u, l = self.v.len();
         while idx < l {
-            if self.v[idx] != none { it(idx); }
+            if self.v[idx] != none && !it(idx) { ret; }
             idx += 1u;
         }
     }
-    fn values(it: fn(V)) {
-        self.items({|_i, v| it(v)});
+    fn each_value(it: fn(V) -> bool) {
+        self.each {|_i, v| it(v)}
     }
 }
 

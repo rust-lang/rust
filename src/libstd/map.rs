@@ -56,13 +56,13 @@ iface map<K: copy, V: copy> {
     fn remove(K) -> option<V>;
 
     #[doc = "Iterate over all the key/value pairs in the map"]
-    fn items(fn(K, V));
+    fn each(fn(K, V) -> bool);
 
     #[doc = "Iterate over all the keys in the map"]
-    fn keys(fn(K));
+    fn each_key(fn(K) -> bool);
 
     #[doc = "Iterate over all the values in the map"]
-    fn values(fn(V));
+    fn each_value(fn(V) -> bool);
 }
 
 // FIXME: package this up and export it as a datatype usable for
@@ -207,49 +207,40 @@ mod chained {
         ret vec::to_mut(vec::from_elem(nchains, absent));
     }
 
-    fn foreach_entry<K: copy, V: copy>(chain0: chain<K,V>,
-                                     blk: fn(@entry<K,V>)) {
-        let mut chain = chain0;
-        loop {
-            alt chain {
-              absent { ret; }
-              present(entry) {
-                let next = entry.next;
-                blk(entry); // may modify entry.next!
-                chain = next;
-              }
-            }
-        }
-    }
-
-    fn foreach_chain<K: copy, V: copy>(chains: [const chain<K,V>],
-                                     blk: fn(@entry<K,V>)) {
-        let mut i = 0u;
-        let n = vec::len(chains);
+    fn each_entry<K: copy, V: copy>(tbl: t<K, V>,
+                                    blk: fn(@entry<K,V>) -> bool) {
+        let mut i = 0u, n = vec::len(tbl.chains);
         while i < n {
-            foreach_entry(chains[i], blk);
+            let mut chain = tbl.chains[i];
+            loop {
+                alt chain {
+                  absent { break; }
+                  present(entry) {
+                    let next = entry.next;
+                    if !blk(entry) { ret; }
+                    chain = next;
+                  }
+                }
+            }
             i += 1u;
         }
     }
 
     fn rehash<K: copy, V: copy>(tbl: t<K,V>) {
-        let old_chains = tbl.chains;
-        let n_old_chains = vec::len(old_chains);
+        let n_old_chains = vec::len(tbl.chains);
         let n_new_chains: uint = uint::next_power_of_two(n_old_chains + 1u);
-        tbl.chains = chains(n_new_chains);
-        foreach_chain(old_chains) { |entry|
+        let new_chains = chains(n_new_chains);
+        for each_entry(tbl) {|entry|
             let idx = entry.hash % n_new_chains;
-            entry.next = tbl.chains[idx];
-            tbl.chains[idx] = present(entry);
+            entry.next = new_chains[idx];
+            new_chains[idx] = present(entry);
         }
+        tbl.chains = new_chains;
     }
 
-    fn items<K: copy, V: copy>(tbl: t<K,V>, blk: fn(K,V)) {
-        let tbl_chains = tbl.chains;  // Satisfy alias checker.
-        foreach_chain(tbl_chains) { |entry|
-            let key = entry.key;
-            let value = entry.value;
-            blk(key, value);
+    fn each<K: copy, V: copy>(tbl: t<K,V>, blk: fn(K,V) -> bool) {
+        for each_entry(tbl) {|entry|
+            if !blk(copy entry.key, copy entry.value) { break; }
         }
     }
 
@@ -277,11 +268,11 @@ mod chained {
 
         fn remove(k: K) -> option<V> { remove(self, k) }
 
-        fn items(blk: fn(K, V)) { items(self, blk); }
+        fn each(blk: fn(K, V) -> bool) { each(self, blk); }
 
-        fn keys(blk: fn(K)) { items(self) { |k, _v| blk(k) } }
+        fn each_key(blk: fn(K) -> bool) { each(self) { |k, _v| blk(k)} }
 
-        fn values(blk: fn(V)) { items(self) { |_k, v| blk(v) } }
+        fn each_value(blk: fn(V) -> bool) { each(self) { |_k, v| blk(v)} }
     }
 
     fn mk<K: copy, V: copy>(hasher: hashfn<K>, eqer: eqfn<K>) -> t<K,V> {

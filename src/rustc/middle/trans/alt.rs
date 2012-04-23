@@ -365,7 +365,7 @@ fn compile_submatch(bcx: block, m: match, vals: [ValueRef],
           some(e) {
             // Temporarily set bindings. They'll be rewritten to PHI nodes
             // for the actual arm block.
-            data.id_map.items {|key, val|
+            for data.id_map.each {|key, val|
                 let loc = local_mem(option::get(assoc(key, m[0].bound)));
                 bcx.fcx.lllocals.insert(val, loc);
             };
@@ -565,7 +565,7 @@ fn make_phi_bindings(bcx: block, map: [exit_node],
     let _icx = bcx.insn_ctxt("alt::make_phi_bindings");
     let our_block = bcx.llbb as uint;
     let mut success = true, bcx = bcx;
-    ids.items {|name, node_id|
+    for ids.each {|name, node_id|
         let mut llbbs = [];
         let mut vals = [];
         for vec::each(map) {|ex|
@@ -583,7 +583,7 @@ fn make_phi_bindings(bcx: block, map: [exit_node],
     };
     if success {
         // Copy references that the alias analysis considered unsafe
-        ids.values {|node_id|
+        for ids.each_value {|node_id|
             if bcx.ccx().maps.copy_map.contains_key(node_id) {
                 let local = alt bcx.fcx.lllocals.find(node_id) {
                   some(local_mem(x)) { x }

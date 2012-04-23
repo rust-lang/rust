@@ -167,7 +167,7 @@ fn use_selectors_to_bind(b: binders, e: @expr) -> option<bindings> {
         alt sel(match_expr(e)) { none { ret none; } _ { } }
     }
     let mut never_mind: bool = false;
-    b.real_binders.items {|key, val|
+    for b.real_binders.each {|key, val|
         alt val(match_expr(e)) {
           none { never_mind = true; }
           some(mtc) { res.insert(key, mtc); }
@@ -251,7 +251,7 @@ fn free_vars(b: bindings, e: @expr, it: fn(ident)) {
             with *default_ast_fold()};
     let f = make_fold(f_pre);
     f.fold_expr(e); // ignore result
-    idents.keys {|x| it(x); };
+    for idents.each_key {|x| it(x); };
 }
 
 
