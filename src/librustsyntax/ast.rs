@@ -37,7 +37,11 @@ type ident = str;
 type fn_ident = option<ident>;
 
 #[auto_serialize]
-type path = {span: span, global: bool, idents: [ident], types: [@ty]};
+type path = {span: span,
+             global: bool,
+             idents: [ident],
+             rp: option<@region>,
+             types: [@ty]};
 
 #[auto_serialize]
 type crate_num = int;
@@ -175,7 +179,7 @@ enum vstore {
     vstore_fixed(option<uint>),   // [1,2,3,4]/_ or 4
     vstore_uniq,                  // [1,2,3,4]/~
     vstore_box,                   // [1,2,3,4]/@
-    vstore_slice(region)          // [1,2,3,4]/&(foo)?
+    vstore_slice(@region)         // [1,2,3,4]/&(foo)?
 }
 
 pure fn is_blockish(p: ast::proto) -> bool {
@@ -462,7 +466,7 @@ enum ty_ {
     ty_uniq(mt),
     ty_vec(mt),
     ty_ptr(mt),
-    ty_rptr(region, mt),
+    ty_rptr(@region, mt),
     ty_rec([ty_field]),
     ty_fn(proto, fn_decl),
     ty_tup([@ty]),
@@ -671,8 +675,8 @@ enum item_ {
                class_ctor,
                region_param
                ),
-    item_iface([ty_param], [ty_method]),
-    item_impl([ty_param], option<@iface_ref> /* iface */,
+    item_iface([ty_param], region_param, [ty_method]),
+    item_impl([ty_param], region_param, option<@iface_ref> /* iface */,
               @ty /* self */, [@method]),
 }
 

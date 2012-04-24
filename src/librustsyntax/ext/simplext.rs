@@ -334,7 +334,8 @@ fn transcribe_path(cx: ext_ctxt, b: bindings, idx_path: @mut [uint],
     if vec::len(p.types) > 0u || vec::len(p.idents) != 1u { ret p; }
     alt follow_for_trans(cx, b.find(p.idents[0]), idx_path) {
       some(match_ident(id)) {
-        {span: id.span, global: false, idents: [id.node], types: []}
+        {span: id.span, global: false, idents: [id.node],
+         rp: none, types: []}
       }
       some(match_path(a_pth)) { *a_pth }
       some(m) { match_error(cx, m, "a path") }
@@ -359,6 +360,7 @@ fn transcribe_expr(cx: ext_ctxt, b: bindings, idx_path: @mut [uint],
                 (expr_path(@{span: id.span,
                              global: false,
                              idents: [id.node],
+                             rp: none,
                              types: []}), id.span)
               }
               some(match_path(a_pth)) { (expr_path(a_pth), s) }

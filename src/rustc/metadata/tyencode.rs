@@ -220,11 +220,11 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
         enc_substs(w, cx, substs);
         w.write_char(']');
       }
-      ty::ty_iface(def, tys) {
+      ty::ty_iface(def, substs) {
         w.write_str("x["/&);
         w.write_str(cx.ds(def));
         w.write_char('|');
-        for tys.each {|t| enc_ty(w, cx, t); }
+        enc_substs(w, cx, substs);
         w.write_char(']');
       }
       ty::ty_tup(ts) {
@@ -281,9 +281,9 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
         w.write_char('|');
         w.write_str(uint::str(id));
       }
-      ty::ty_self(tps) {
+      ty::ty_self(substs) {
         w.write_str("s["/&);
-        for tps.each {|t| enc_ty(w, cx, t); }
+        enc_substs(w, cx, substs);
         w.write_char(']');
       }
       ty::ty_type { w.write_char('Y'); }

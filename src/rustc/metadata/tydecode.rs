@@ -104,7 +104,8 @@ fn parse_path(st: @pstate) -> @ast::path {
           c {
             if c == '(' {
                 ret @{span: ast_util::dummy_sp(),
-                      global: false, idents: idents, types: []};
+                      global: false, idents: idents,
+                      rp: none, types: []};
             } else { idents += [parse_ident_(st, is_last)]; }
           }
         }
@@ -286,12 +287,11 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
         ret ty::mk_enum(st.tcx, def, substs);
       }
       'x' {
-        assert (next(st) == '[');
+        assert next(st) == '[';
         let def = parse_def(st, conv);
-        let mut params: [ty::t] = [];
-        while peek(st) != ']' { params += [parse_ty(st, conv)]; }
-        st.pos = st.pos + 1u;
-        ret ty::mk_iface(st.tcx, def, params);
+        let substs = parse_substs(st, conv);
+        assert next(st) == ']';
+        ret ty::mk_iface(st.tcx, def, substs);
       }
       'p' {
         let did = parse_def(st, conv);
@@ -299,10 +299,9 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
       }
       's' {
         assert next(st) == '[';
-        let mut params = [];
-        while peek(st) != ']' { params += [parse_ty(st, conv)]; }
-        st.pos += 1u;
-        ret ty::mk_self(st.tcx, params);
+        let substs = parse_substs(st, conv);
+        assert next(st) == ']';
+        ret ty::mk_self(st.tcx, substs);
       }
       '@' { ret ty::mk_box(st.tcx, parse_mt(st, conv)); }
       '~' { ret ty::mk_uniq(st.tcx, parse_mt(st, conv)); }
@@ -344,7 +343,7 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
         parse_ty_rust_fn(st, conv, proto)
       }
       'r' {
-        assert (next(st) == '[');
+        assert next(st) == '[';
         let def = parse_def(st, conv);
         let inner = parse_ty(st, conv);
         let substs = parse_substs(st, conv);

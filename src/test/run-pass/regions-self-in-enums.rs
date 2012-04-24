@@ -1,6 +1,4 @@
-// xfail-test
-
-enum int_wrapper {
+enum int_wrapper/& {
     int_wrapper_ctor(&int)
 }
 

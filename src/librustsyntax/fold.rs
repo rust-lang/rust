@@ -287,12 +287,18 @@ fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
                    with ctor},
                   rp)
           }
-          item_impl(tps, ifce, ty, methods) {
-              item_impl(tps, option::map(ifce, {|p| fold_iface_ref(p, fld)}),
+          item_impl(tps, rp, ifce, ty, methods) {
+              item_impl(fold_ty_params(tps, fld),
+                        rp,
+                        ifce.map { |p| fold_iface_ref(p, fld) },
                         fld.fold_ty(ty),
-                      vec::map(methods, fld.fold_method))
+                        vec::map(methods, fld.fold_method))
           }
-          item_iface(tps, methods) { item_iface(tps, methods) }
+          item_iface(tps, rp, methods) {
+            item_iface(fold_ty_params(tps, fld),
+                       rp,
+                       methods)
+          }
           item_res(decl, typms, body, did, cid, rp) {
             item_res(fold_fn_decl(decl, fld),
                      fold_ty_params(typms, fld),
@@ -565,6 +571,7 @@ fn noop_fold_ident(&&i: ident, _fld: ast_fold) -> ident { ret i; }
 fn noop_fold_path(&&p: path, fld: ast_fold) -> path {
     ret {span: fld.new_span(p.span), global: p.global,
          idents: vec::map(p.idents, fld.fold_ident),
+         rp: p.rp,
          types: vec::map(p.types, fld.fold_ty)};
 }
 

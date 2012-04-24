@@ -132,7 +132,7 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
             for vr.node.args.each {|va| v.visit_ty(va.ty, e, v); }
         }
       }
-      item_impl(tps, ifce, ty, methods) {
+      item_impl(tps, _rp, ifce, ty, methods) {
         v.visit_ty_params(tps, e, v);
         option::iter(ifce, {|p| visit_path(p.path, e, v)});
         v.visit_ty(ty, e, v);
@@ -149,7 +149,7 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
           visit_class_ctor_helper(ctor, i.ident, tps,
                                   ast_util::local_def(i.id), e, v);
       }
-      item_iface(tps, methods) {
+      item_iface(tps, _rp, methods) {
         v.visit_ty_params(tps, e, v);
         for methods.each {|m|
             for m.decl.inputs.each {|a| v.visit_ty(a.ty, e, v); }

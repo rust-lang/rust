@@ -48,7 +48,7 @@ fn find_pre_post_item(ccx: crate_ctxt, i: item) {
       }
       item_mod(m) { find_pre_post_mod(m); }
       item_native_mod(nm) { find_pre_post_native_mod(nm); }
-      item_ty(_, _, _) | item_enum(_, _, _) | item_iface(_, _) { ret; }
+      item_ty(*) | item_enum(*) | item_iface(*) { ret; }
       item_res(_, _, body, dtor_id, _, _) {
         let fcx =
             {enclosing: ccx.fm.get(dtor_id),
@@ -60,7 +60,7 @@ fn find_pre_post_item(ccx: crate_ctxt, i: item) {
       item_class(_,_,_,_,_) {
           fail "find_pre_post_item: shouldn't be called on item_class";
       }
-      item_impl(_, _, _, ms) {
+      item_impl(_, _, _, _, ms) {
         for ms.each {|m| find_pre_post_method(ccx, m); }
       }
     }

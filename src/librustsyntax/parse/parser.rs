@@ -175,7 +175,7 @@ fn parse_type_constr_arg(p: parser) -> @ast::ty_constr_arg {
     if p.token == token::DOT {
         // "*..." notation for record fields
         p.bump();
-        let pth = parse_path(p);
+        let pth = parse_path_without_tps(p);
         carg = ast::carg_ident(pth);
     }
     // No literals yet, I guess?
@@ -196,7 +196,7 @@ fn parse_constr_arg(args: [ast::arg], p: parser) -> @ast::constr_arg {
 
 fn parse_ty_constr(fn_args: [ast::arg], p: parser) -> @ast::constr {
     let lo = p.span.lo;
-    let path = parse_path(p);
+    let path = parse_path_without_tps(p);
     let args: {node: [@ast::constr_arg], span: span} =
         parse_seq(token::LPAREN, token::RPAREN, seq_sep(token::COMMA),
                   {|p| parse_constr_arg(fn_args, p)}, p);
@@ -206,7 +206,7 @@ fn parse_ty_constr(fn_args: [ast::arg], p: parser) -> @ast::constr {
 
 fn parse_constr_in_type(p: parser) -> @ast::ty_constr {
     let lo = p.span.lo;
-    let path = parse_path(p);
+    let path = parse_path_without_tps(p);
     let args: [@ast::ty_constr_arg] =
         parse_seq(token::LPAREN, token::RPAREN, seq_sep(token::COMMA),
                   parse_type_constr_arg, p).node;
@@ -231,52 +231,6 @@ fn parse_type_constraints(p: parser) -> [@ast::ty_constr] {
     ret parse_constrs(parse_constr_in_type, p);
 }
 
-fn parse_ty_postfix(orig_t: ast::ty_, p: parser, colons_before_params: bool,
-                    lo: uint) -> @ast::ty {
-
-
-    fn mk_ty(p: parser, t: ast::ty_, lo: uint, hi: uint) -> @ast::ty {
-        @{id: p.get_id(),
-          node: t,
-          span: mk_sp(lo, hi)}
-    }
-
-    if p.token == token::BINOP(token::SLASH) {
-        let orig_hi = p.last_span.hi;
-        alt maybe_parse_vstore(p) {
-          none { }
-          some(v) {
-            let t = ast::ty_vstore(mk_ty(p, orig_t, lo, orig_hi), v);
-            ret mk_ty(p, t, lo, p.last_span.hi);
-          }
-        }
-    }
-
-    if colons_before_params && p.token == token::MOD_SEP {
-        p.bump();
-        expect(p, token::LT);
-    } else if !colons_before_params && p.token == token::LT {
-        p.bump();
-    } else {
-        ret mk_ty(p, orig_t, lo, p.last_span.hi);
-    }
-
-    // If we're here, we have explicit type parameter instantiation.
-    let seq = parse_seq_to_gt(some(token::COMMA), {|p| parse_ty(p, false)},
-                              p);
-
-    alt orig_t {
-      ast::ty_path(pth, ann) {
-        ret mk_ty(p, ast::ty_path(@{span: mk_sp(lo, p.last_span.hi),
-                                    global: pth.global,
-                                    idents: pth.idents,
-                                    types: seq}, ann),
-                  lo, p.last_span.hi);
-      }
-      _ { p.fatal("type parameter instantiation only allowed for paths"); }
-    }
-}
-
 fn parse_ret_ty(p: parser) -> (ast::ret_style, @ast::ty) {
     ret if eat(p, token::RARROW) {
         let lo = p.span.lo;
@@ -295,7 +249,7 @@ fn parse_ret_ty(p: parser) -> (ast::ret_style, @ast::ty) {
     }
 }
 
-fn region_from_name(p: parser, s: option<str>) -> ast::region {
+fn region_from_name(p: parser, s: option<str>) -> @ast::region {
     let r = alt s {
       some (string) {
         // FIXME: To be consistent with our type resolution, the
@@ -310,10 +264,26 @@ fn region_from_name(p: parser, s: option<str>) -> ast::region {
       none { ast::re_anon }
     };
 
-    {id: p.get_id(), node: r}
+    @{id: p.get_id(), node: r}
 }
 
-fn parse_region(p: parser) -> ast::region {
+// Parses something like "&x"
+fn parse_region(p: parser) -> @ast::region {
+    expect(p, token::BINOP(token::AND));
+    alt p.token {
+      token::IDENT(sid, _) {
+        p.bump();
+        let n = p.get_str(sid);
+        region_from_name(p, some(n))
+      }
+      _ {
+        region_from_name(p, none)
+      }
+    }
+}
+
+// Parses something like "&x." (note the trailing dot)
+fn parse_region_dot(p: parser) -> @ast::region {
     let name =
         alt p.token {
           token::IDENT(sid, _) if p.look_ahead(1u) == token::DOT {
@@ -384,7 +354,7 @@ fn parse_ty(p: parser, colons_before_params: bool) -> @ast::ty {
         t
     } else if p.token == token::BINOP(token::AND) {
         p.bump();
-        let region = parse_region(p);
+        let region = parse_region_dot(p);
         let mt = parse_mt(p);
         ast::ty_rptr(region, mt)
     } else if eat_keyword(p, "fn") {
@@ -398,10 +368,28 @@ fn parse_ty(p: parser, colons_before_params: bool) -> @ast::ty {
         expect_keyword(p, "fn");
         ast::ty_fn(ast::proto_bare, parse_ty_fn(p))
     } else if p.token == token::MOD_SEP || is_ident(p.token) {
-        let path = parse_path(p);
+        let path = parse_path_with_tps(p, colons_before_params);
         ast::ty_path(path, p.get_id())
     } else { p.fatal("expecting type"); };
-    ret parse_ty_postfix(t, p, colons_before_params, lo);
+
+    fn mk_ty(p: parser, t: ast::ty_, lo: uint, hi: uint) -> @ast::ty {
+        @{id: p.get_id(),
+          node: t,
+          span: mk_sp(lo, hi)}
+    }
+
+    let ty = mk_ty(p, t, lo, p.last_span.hi);
+
+    // Consider a vstore suffix like /@ or /~
+    alt maybe_parse_vstore(p) {
+      none {
+        ret ty;
+      }
+      some(v) {
+        let t1 = ast::ty_vstore(ty, v);
+        ret mk_ty(p, t1, lo, p.last_span.hi);
+      }
+    }
 }
 
 fn parse_arg_mode(p: parser) -> ast::mode {
@@ -484,17 +472,7 @@ fn maybe_parse_vstore(p: parser) -> option<ast::vstore> {
             p.bump(); some(ast::vstore_fixed(some(i as uint)))
           }
           token::BINOP(token::AND) {
-            p.bump();
-            alt p.token {
-              token::IDENT(sid, _) {
-                p.bump();
-                let n = p.get_str(sid);
-                some(ast::vstore_slice(region_from_name(p, some(n))))
-              }
-              _ {
-                some(ast::vstore_slice(region_from_name(p, none)))
-              }
-            }
+            some(ast::vstore_slice(parse_region(p)))
           }
           _ {
             none
@@ -530,18 +508,19 @@ fn parse_lit(p: parser) -> ast::lit {
     ret {node: lit, span: mk_sp(lo, p.last_span.hi)};
 }
 
-fn parse_path(p: parser) -> @ast::path {
+fn parse_path_without_tps(p: parser) -> @ast::path {
     let lo = p.span.lo;
     let global = eat(p, token::MOD_SEP);
     let mut ids = [parse_ident(p)];
     while p.look_ahead(1u) != token::LT && eat(p, token::MOD_SEP) {
         ids += [parse_ident(p)];
     }
-    @{span: mk_sp(lo, p.last_span.hi), global: global, idents: ids, types: []}
+    @{span: mk_sp(lo, p.last_span.hi), global: global,
+      idents: ids, rp: none, types: []}
 }
 
 fn parse_value_path(p: parser) -> @ast::path {
-    let pt = parse_path(p);
+    let pt = parse_path_without_tps(p);
     let last_word = vec::last(pt.idents);
     if is_restricted_keyword(p, last_word) {
         p.fatal("found " + last_word + " in expression position");
@@ -549,16 +528,45 @@ fn parse_value_path(p: parser) -> @ast::path {
     pt
 }
 
-fn parse_path_and_ty_param_substs(p: parser, colons: bool) -> @ast::path {
+fn parse_path_with_tps(p: parser, colons: bool) -> @ast::path {
+    #debug["parse_path_with_tps(colons=%b)", colons];
+
     let lo = p.span.lo;
-    let path = parse_path(p);
-    let b = if colons { eat(p, token::MOD_SEP) }
-            else { p.token == token::LT };
-    if b {
-        let seq = parse_seq_lt_gt(some(token::COMMA),
-                                  {|p| parse_ty(p, false)}, p);
-        @{span: mk_sp(lo, seq.span.hi), types: seq.node with *path}
-    } else { path }
+    let path = parse_path_without_tps(p);
+    if colons && !eat(p, token::MOD_SEP) {
+        ret path;
+    }
+
+    // Parse the region parameter, if any, which will
+    // be written "foo/&x"
+    let rp = {
+        // Hack: avoid parsing vstores like /@ and /~.  This is painful
+        // because the notation for region bounds and the notation for vstores
+        // is... um... the same.  I guess that's my fault.  This is still not
+        // ideal as for str/& we end up parsing more than we ought to and have
+        // to sort it out later.
+        if p.token == token::BINOP(token::SLASH)
+            && p.look_ahead(1u) == token::BINOP(token::AND) {
+
+            expect(p, token::BINOP(token::SLASH));
+            some(parse_region(p))
+        } else {
+            none
+        }
+    };
+
+    // Parse any type parameters which may appear:
+    let tps = {
+        if p.token == token::LT {
+            parse_seq_lt_gt(some(token::COMMA), {|p| parse_ty(p, false)}, p)
+        } else {
+            {node: [], span: path.span}
+        }
+    };
+
+    ret @{span: mk_sp(lo, tps.span.hi),
+          rp: rp,
+          types: tps.node with *path};
 }
 
 fn parse_mutability(p: parser) -> ast::mutability {
@@ -803,7 +811,7 @@ fn parse_bottom_expr(p: parser) -> pexpr {
                   is_ident(p.token) && !is_keyword(p, "true") &&
                       !is_keyword(p, "false") {
         check_restricted_keywords(p);
-        let pth = parse_path_and_ty_param_substs(p, true);
+        let pth = parse_path_with_tps(p, true);
         hi = pth.span.hi;
         ex = ast::expr_path(pth);
     } else {
@@ -850,7 +858,7 @@ fn parse_syntax_ext_naked(p: parser, lo: uint) -> @ast::expr {
       token::IDENT(_, _) {}
       _ { p.fatal("expected a syntax expander name"); }
     }
-    let pth = parse_path(p);
+    let pth = parse_path_without_tps(p);
     //temporary for a backwards-compatible cycle:
     let sep = seq_sep(token::COMMA);
     let mut e = none;
@@ -1424,7 +1432,7 @@ fn parse_pat(p: parser) -> @ast::pat {
                       else { none };
             pat = ast::pat_ident(name, sub);
         } else {
-            let enum_path = parse_path_and_ty_param_substs(p, true);
+            let enum_path = parse_path_with_tps(p, true);
             hi = enum_path.span.hi;
             let mut args: [@ast::pat] = [];
             let mut star_pat = false;
@@ -1779,24 +1787,39 @@ fn parse_method(p: parser, pr: ast::privacy) -> @ast::method {
 }
 
 fn parse_item_iface(p: parser, attrs: [ast::attribute]) -> @ast::item {
-    let lo = p.last_span.lo, ident = parse_ident(p),
-        tps = parse_ty_params(p), meths = parse_ty_methods(p);
+    let lo = p.last_span.lo, ident = parse_ident(p);
+    let rp = parse_region_param(p);
+    let tps = parse_ty_params(p);
+    let meths = parse_ty_methods(p);
     ret mk_item(p, lo, p.last_span.hi, ident,
-                ast::item_iface(tps, meths), attrs);
+                ast::item_iface(tps, rp, meths), attrs);
 }
 
-// Parses three variants (with the initial params always optional):
-//    impl <T: copy> of to_str for [T] { ... }
-//    impl name<T> of to_str for [T] { ... }
-//    impl name<T> for [T] { ... }
+// Parses three variants (with the region/type params always optional):
+//    impl /&<T: copy> of to_str for [T] { ... }
+//    impl name/&<T> of to_str for [T] { ... }
+//    impl name/&<T> for [T] { ... }
 fn parse_item_impl(p: parser, attrs: [ast::attribute]) -> @ast::item {
     let lo = p.last_span.lo;
-    let mut (ident, tps) = if !is_keyword(p, "of") {
-        if p.token == token::LT { (none, parse_ty_params(p)) }
-        else { (some(parse_ident(p)), parse_ty_params(p)) }
-    } else { (none, []) };
+    fn wrap_path(p: parser, pt: @ast::path) -> @ast::ty {
+        @{id: p.get_id(), node: ast::ty_path(pt, p.get_id()), span: pt.span}
+    }
+    let mut (ident, rp, tps) = {
+        if p.token == token::LT {
+            (none, ast::rp_none, parse_ty_params(p))
+        } else if p.token == token::BINOP(token::SLASH) {
+            (none, parse_region_param(p), parse_ty_params(p))
+        }
+        else if is_keyword(p, "of") {
+            (none, ast::rp_none, [])
+        } else {
+            let id = parse_ident(p);
+            let rp = parse_region_param(p);
+            (some(id), rp, parse_ty_params(p))
+        }
+    };
     let ifce = if eat_keyword(p, "of") {
-        let path = parse_path_and_ty_param_substs(p, false);
+        let path = parse_path_with_tps(p, false);
         if option::is_none(ident) {
             ident = some(vec::last(path.idents));
         }
@@ -1812,7 +1835,7 @@ fn parse_item_impl(p: parser, attrs: [ast::attribute]) -> @ast::item {
     expect(p, token::LBRACE);
     while !eat(p, token::RBRACE) { meths += [parse_method(p, ast::pub)]; }
     ret mk_item(p, lo, p.last_span.hi, ident,
-                ast::item_impl(tps, ifce, ty, meths), attrs);
+                ast::item_impl(tps, rp, ifce, ty, meths), attrs);
 }
 
 fn parse_item_res(p: parser, attrs: [ast::attribute]) -> @ast::item {
@@ -1842,21 +1865,32 @@ fn parse_item_res(p: parser, attrs: [ast::attribute]) -> @ast::item {
                 attrs);
 }
 
-// Instantiates ident <i> with references to <typarams> as arguments
+// Instantiates ident <i> with references to <typarams> as arguments.  Used to
+// create a path that refers to a class which will be defined as the return
+// type of the ctor function.
 fn ident_to_path_tys(p: parser, i: ast::ident,
+                     rp: ast::region_param,
                      typarams: [ast::ty_param]) -> @ast::path {
     let s = p.last_span;
+
+    // Hack.  But then, this whole function is in service of a hack.
+    let a_r = alt rp {
+      ast::rp_none { none }
+      ast::rp_self { some(region_from_name(p, some("self"))) }
+    };
+
     @{span: s, global: false, idents: [i],
+      rp: a_r,
       types: vec::map(typarams, {|tp|
           @{id: p.get_id(),
-            node: ast::ty_path(ident_to_path(s, tp.ident),
-                               p.get_id()),
+            node: ast::ty_path(ident_to_path(s, tp.ident), p.get_id()),
             span: s}})
      }
 }
 
 fn parse_iface_ref(p:parser) -> @ast::iface_ref {
-    @{path: parse_path(p), id: p.get_id()}
+    @{path: parse_path_with_tps(p, false),
+      id: p.get_id()}
 }
 
 fn parse_iface_ref_list(p:parser) -> [@ast::iface_ref] {
@@ -1869,7 +1903,7 @@ fn parse_item_class(p: parser, attrs: [ast::attribute]) -> @ast::item {
     let class_name = parse_value_ident(p);
     let rp = parse_region_param(p);
     let ty_params = parse_ty_params(p);
-    let class_path = ident_to_path_tys(p, class_name, ty_params);
+    let class_path = ident_to_path_tys(p, class_name, rp, ty_params);
     let ifaces : [@ast::iface_ref] = if eat_keyword(p, "implements")
                                        { parse_iface_ref_list(p) }
                                     else { [] };
@@ -2240,7 +2274,7 @@ fn parse_view_path(p: parser) -> @ast::view_path {
             path += [id];
         }
         let path = @{span: mk_sp(lo, p.span.hi), global: false,
-                     idents: path, types: []};
+                     idents: path, rp: none, types: []};
         ret @spanned(lo, p.span.hi,
                      ast::view_path_simple(first_ident, path, p.get_id()));
       }
@@ -2264,7 +2298,8 @@ fn parse_view_path(p: parser) -> @ast::view_path {
                               seq_sep(token::COMMA),
                               parse_path_list_ident, p).node;
                 let path = @{span: mk_sp(lo, p.span.hi),
-                             global: false, idents: path, types: []};
+                             global: false, idents: path,
+                             rp: none, types: []};
                 ret @spanned(lo, p.span.hi,
                              ast::view_path_list(path, idents, p.get_id()));
               }
@@ -2273,7 +2308,8 @@ fn parse_view_path(p: parser) -> @ast::view_path {
               token::BINOP(token::STAR) {
                 p.bump();
                 let path = @{span: mk_sp(lo, p.span.hi),
-                             global: false, idents: path, types: []};
+                             global: false, idents: path,
+                             rp: none, types: []};
                 ret @spanned(lo, p.span.hi,
                              ast::view_path_glob(path, p.get_id()));
               }
@@ -2286,7 +2322,7 @@ fn parse_view_path(p: parser) -> @ast::view_path {
     }
     let last = path[vec::len(path) - 1u];
     let path = @{span: mk_sp(lo, p.span.hi), global: false,
-                 idents: path, types: []};
+                 idents: path, rp: none, types: []};
     ret @spanned(lo, p.span.hi,
                  ast::view_path_simple(last, path, p.get_id()));
 }

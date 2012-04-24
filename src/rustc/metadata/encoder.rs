@@ -185,14 +185,14 @@ fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
             ebml_w.end_tag();
             encode_enum_variant_paths(ebml_w, variants, path, index);
           }
-          item_iface(_, _) {
+          item_iface(*) {
             add_to_index(ebml_w, path, index, it.ident);
             ebml_w.start_tag(tag_paths_data_item);
             encode_name(ebml_w, it.ident);
             encode_def_id(ebml_w, local_def(it.id));
             ebml_w.end_tag();
           }
-          item_impl(_, _, _, _) {}
+          item_impl(*) {}
         }
     }
 }
@@ -649,11 +649,12 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_path(ebml_w, path, ast_map::path_name(item.ident));
         ebml_w.end_tag();
       }
-      item_impl(tps, ifce, _, methods) {
+      item_impl(tps, rp, ifce, _, methods) {
         add_to_index();
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
         encode_family(ebml_w, 'i');
+        encode_region_param(ebml_w, rp);
         encode_type_param_bounds(ebml_w, ecx, tps);
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_name(ebml_w, item.ident);
@@ -681,11 +682,12 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
                    should_inline(m.attrs), item.id, m, tps + m.tps);
         }
       }
-      item_iface(tps, ms) {
+      item_iface(tps, rp, ms) {
         add_to_index();
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
         encode_family(ebml_w, 'I');
+        encode_region_param(ebml_w, rp);
         encode_type_param_bounds(ebml_w, ecx, tps);
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_name(ebml_w, item.ident);

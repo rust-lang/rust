@@ -1,4 +1,4 @@
-// xfail-test it don't work yet
+// xfail-test
 
 fn foo(x: [uint]/&) -> uint {
     x[0]

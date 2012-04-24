@@ -4477,7 +4477,7 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
             }
         }
       }
-      ast::item_impl(tps, _, _, ms) {
+      ast::item_impl(tps, _rp, _, _, ms) {
         impl::trans_impl(ccx, *path, item.ident, ms, tps);
       }
       ast::item_res(decl, tps, body, dtor_id, ctor_id, _) {

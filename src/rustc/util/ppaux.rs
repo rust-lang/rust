@@ -134,11 +134,9 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
       some(def_id) {
         let cs = ast_map::path_to_str(ty::item_path(cx, def_id));
         ret alt ty::get(typ).struct {
-          ty_enum(_, substs) | ty_res(_, _, substs) | ty_class(_, substs) {
+          ty_enum(_, substs) | ty_res(_, _, substs) | ty_class(_, substs) |
+          ty_iface(_, substs) {
             parameterized(cx, cs, substs.self_r, substs.tps)
-          }
-          ty_iface(_, tps) {
-            parameterized(cx, cs, none, tps)
           }
           _ { cs }
         };
@@ -159,7 +157,6 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
       ty_float(ast::ty_f) { "float" }
       ty_float(t) { ast_util::float_ty_to_str(t) }
       ty_str { "str" }
-      ty_self(ts) { parameterized(cx, "self", none, ts) }
       ty_box(tm) { "@" + mt_to_str(cx, tm) }
       ty_uniq(tm) { "~" + mt_to_str(cx, tm) }
       ty_ptr(tm) { "*" + mt_to_str(cx, tm) }
@@ -191,15 +188,18 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
       ty_param(id, _) {
         "'" + str::from_bytes([('a' as u8) + (id as u8)])
       }
+      ty_self(substs) {
+        parameterized(cx, "self", substs.self_r, substs.tps)
+      }
       ty_enum(did, substs) | ty_res(did, _, substs) | ty_class(did, substs) {
         let path = ty::item_path(cx, did);
         let base = ast_map::path_to_str(path);
         parameterized(cx, base, substs.self_r, substs.tps)
       }
-      ty_iface(did, tps) {
+      ty_iface(did, substs) {
         let path = ty::item_path(cx, did);
         let base = ast_map::path_to_str(path);
-        parameterized(cx, base, none, tps)
+        parameterized(cx, base, substs.self_r, substs.tps)
       }
       ty_evec(mt, vs) {
         #fmt["[%s]/%s", mt_to_str(cx, mt),

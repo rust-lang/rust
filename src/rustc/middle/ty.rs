@@ -325,14 +325,14 @@ enum sty {
     ty_rptr(region, mt),
     ty_rec([field]),
     ty_fn(fn_ty),
-    ty_iface(def_id, [t]),
+    ty_iface(def_id, substs),
     ty_class(def_id, substs),
     ty_res(def_id, t, substs),
     ty_tup([t]),
 
     ty_var(ty_vid), // type variable during typechecking
     ty_param(uint, def_id), // type parameter
-    ty_self([t]), // interface method self type
+    ty_self(substs), // interface method self type
 
     ty_type, // type_desc*
     ty_opaque_box, // used by monomorphizer to represent any @ box
@@ -520,15 +520,9 @@ fn mk_t_with_id(cx: ctxt, st: sty, o_def_id: option<ast::def_id>) -> t {
       ty_opaque_box {}
       ty_param(_, _) { has_params = true; }
       ty_var(_) | ty_self(_) { has_vars = true; }
-      ty_enum(_, substs) | ty_class(_, substs) {
+      ty_enum(_, substs) | ty_class(_, substs) | ty_iface(_, substs) {
         derive_sflags(has_params, has_vars, has_regions,
                       has_resources, substs);
-      }
-      ty_iface(_, tys) {
-        for tys.each {|tt|
-            derive_flags(has_params, has_vars, has_regions,
-                         has_resources, tt);
-        }
       }
       ty_box(m) | ty_uniq(m) | ty_vec(m) | ty_evec(m, _) | ty_ptr(m) {
         derive_flags(has_params, has_vars, has_regions,
@@ -652,8 +646,8 @@ fn mk_tup(cx: ctxt, ts: [t]) -> t { mk_t(cx, ty_tup(ts)) }
 
 fn mk_fn(cx: ctxt, fty: fn_ty) -> t { mk_t(cx, ty_fn(fty)) }
 
-fn mk_iface(cx: ctxt, did: ast::def_id, tys: [t]) -> t {
-    mk_t(cx, ty_iface(did, tys))
+fn mk_iface(cx: ctxt, did: ast::def_id, substs: substs) -> t {
+    mk_t(cx, ty_iface(did, substs))
 }
 
 fn mk_class(cx: ctxt, class_id: ast::def_id, substs: substs) -> t {
@@ -667,7 +661,7 @@ fn mk_res(cx: ctxt, did: ast::def_id,
 
 fn mk_var(cx: ctxt, v: ty_vid) -> t { mk_t(cx, ty_var(v)) }
 
-fn mk_self(cx: ctxt, tps: [t]) -> t { mk_t(cx, ty_self(tps)) }
+fn mk_self(cx: ctxt, substs: substs) -> t { mk_t(cx, ty_self(substs)) }
 
 fn mk_param(cx: ctxt, n: uint, k: def_id) -> t { mk_t(cx, ty_param(n, k)) }
 
@@ -712,11 +706,9 @@ fn maybe_walk_ty(ty: t, f: fn(t) -> bool) {
       ty_ptr(tm) | ty_rptr(_, tm) {
         maybe_walk_ty(tm.ty, f);
       }
-      ty_enum(_, substs) | ty_class(_, substs) {
+      ty_enum(_, substs) | ty_class(_, substs) |
+      ty_iface(_, substs) | ty_self(substs) {
         for substs.tps.each {|subty| maybe_walk_ty(subty, f); }
-      }
-      ty_iface(_, subtys) |ty_self(subtys) {
-        for subtys.each {|subty| maybe_walk_ty(subty, f); }
       }
       ty_rec(fields) {
         for fields.each {|fl| maybe_walk_ty(fl.mt.ty, f); }
@@ -764,11 +756,11 @@ fn fold_sty(sty: sty, fldop: fn(t) -> t) -> sty {
       ty_enum(tid, substs) {
         ty_enum(tid, fold_substs(substs, fldop))
       }
-      ty_iface(did, subtys) {
-        ty_iface(did, vec::map(subtys) {|t| fldop(t) })
+      ty_iface(did, substs) {
+        ty_iface(did, fold_substs(substs, fldop))
       }
-      ty_self(subtys) {
-        ty_self(vec::map(subtys) {|t| fldop(t) })
+      ty_self(substs) {
+        ty_self(fold_substs(substs, fldop))
       }
       ty_rec(fields) {
         let new_fields = vec::map(fields) {|fl|
@@ -863,6 +855,12 @@ fn fold_regions_and_ty(
       }
       ty_class(def_id, substs) {
         ty::mk_class(cx, def_id, fold_substs(substs, fldr, fldt))
+      }
+      ty_iface(def_id, substs) {
+        ty::mk_iface(cx, def_id, fold_substs(substs, fldr, fldt))
+      }
+      ty_self(substs) {
+        ty::mk_self(cx, fold_substs(substs, fldr, fldt))
       }
       ty_res(def_id, t, substs) {
         ty::mk_res(cx, def_id, fldt(t),
@@ -1828,10 +1826,8 @@ fn hash_type_structure(st: sty) -> uint {
       }
       ty_var(v) { hash_uint(30u, v.to_uint()) }
       ty_param(pid, did) { hash_def(hash_uint(31u, pid), did) }
-      ty_self(ts) {
-        let mut h = 28u;
-        for ts.each {|t| h = hash_subty(h, t); }
-        h
+      ty_self(substs) {
+        hash_substs(28u, substs)
       }
       ty_type { 32u }
       ty_bot { 34u }
@@ -1850,10 +1846,9 @@ fn hash_type_structure(st: sty) -> uint {
         h
       }
       ty_uniq(mt) { hash_subty(37u, mt.ty) }
-      ty_iface(did, tys) {
+      ty_iface(did, substs) {
         let mut h = hash_def(40u, did);
-        for tys.each {|typ| h = hash_subty(h, typ); }
-        h
+        hash_substs(h, substs)
       }
       ty_opaque_closure_ptr(ck_block) { 41u }
       ty_opaque_closure_ptr(ck_box) { 42u }
@@ -2286,7 +2281,7 @@ fn impl_iface(cx: ctxt, id: ast::def_id) -> option<t> {
     if id.crate == ast::local_crate {
         alt cx.items.find(id.node) {
            some(ast_map::node_item(@{node: ast::item_impl(
-              _, some(@{id: id, _}), _, _), _}, _)) {
+              _, _, some(@{id: id, _}), _, _), _}, _)) {
               some(node_id_to_type(cx, id))
            }
            some(ast_map::node_item(@{node: ast::item_class(_, _, _, _, _),

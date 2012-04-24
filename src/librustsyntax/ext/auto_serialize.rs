@@ -130,11 +130,11 @@ impl helpers for ext_ctxt {
     }
 
     fn path(span: span, strs: [str]) -> @ast::path {
-        @{span: span, global: false, idents: strs, types: []}
+        @{span: span, global: false, idents: strs, rp: none, types: []}
     }
 
     fn path_tps(span: span, strs: [str], tps: [@ast::ty]) -> @ast::path {
-        @{span: span, global: false, idents: strs, types: tps}
+        @{span: span, global: false, idents: strs, rp: none, types: tps}
     }
 
     fn ty_path(span: span, strs: [str], tps: [@ast::ty]) -> @ast::ty {
@@ -193,7 +193,8 @@ impl helpers for ext_ctxt {
     }
 
     fn binder_pat(span: span, nm: str) -> @ast::pat {
-        let path = @{span: span, global: false, idents: [nm], types: []};
+        let path = @{span: span, global: false, idents: [nm],
+                     rp: none, types: []};
         @{id: self.next_id(),
           node: ast::pat_ident(path, none),
           span: span}

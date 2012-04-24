@@ -88,12 +88,12 @@ fn moddoc_from_mod(
                     resdoc_from_resource(itemdoc)
                 ))
               }
-              ast::item_iface(_, methods) {
+              ast::item_iface(_, _, methods) {
                 some(doc::ifacetag(
                     ifacedoc_from_iface(itemdoc, methods)
                 ))
               }
-              ast::item_impl(_, _, _, methods) {
+              ast::item_impl(_, _, _, _, methods) {
                 some(doc::impltag(
                     impldoc_from_impl(itemdoc, methods)
                 ))

@@ -435,14 +435,14 @@ fn resolve_names(e: @env, c: @ast::crate) {
           non-class items
          */
         alt i.node {
-           ast::item_class(_, ifaces, _, _, _) {
-             /* visit the iface paths... */
-              for ifaces.each {|p| resolve_iface_ref(p, sc, e)};
-           }
-           ast::item_impl(_, ifce, _, _) {
-               option::iter(ifce, {|p| resolve_iface_ref(p, sc, e)});
-           }
-           _ {}
+          ast::item_class(_, ifaces, _, _, _) {
+            /* visit the iface paths... */
+            for ifaces.each {|p| resolve_iface_ref(p, sc, e) ;}
+          }
+          ast::item_impl(_, _, ifce, _, _) {
+            ifce.iter { |p| resolve_iface_ref(p, sc, e); }
+          }
+          _ {}
         }
     }
 
@@ -540,7 +540,7 @@ fn visit_item_with_scope(e: @env, i: @ast::item, sc: scopes, v: vt<scopes>) {
 
     let sc = cons(scope_item(i), @sc);
     alt i.node {
-      ast::item_impl(tps, ifce, sty, methods) {
+      ast::item_impl(tps, _, ifce, sty, methods) {
         visit::visit_ty_params(tps, sc, v);
         option::iter(ifce) {|p| visit::visit_path(p.path, sc, v)};
         v.visit_ty(sty, sc, v);
@@ -551,7 +551,7 @@ fn visit_item_with_scope(e: @env, i: @ast::item, sc: scopes, v: vt<scopes>) {
                        m.decl, m.body, m.span, m.id, msc, v);
         }
       }
-      ast::item_iface(tps, methods) {
+      ast::item_iface(tps, _, methods) {
         visit::visit_ty_params(tps, sc, v);
         for methods.each {|m|
             let msc = cons(scope_method(i.id, tps + m.tps), @sc);
@@ -1008,13 +1008,13 @@ fn lookup_in_scope(e: env, sc: scopes, sp: span, name: ident, ns: namespace,
           }
           scope_item(it) {
             alt it.node {
-              ast::item_impl(tps, _, _, _) {
+              ast::item_impl(tps, _, _, _, _) {
                 if ns == ns_type { ret lookup_in_ty_params(e, name, tps); }
               }
               ast::item_enum(_, tps, _) | ast::item_ty(_, tps, _) {
                 if ns == ns_type { ret lookup_in_ty_params(e, name, tps); }
               }
-              ast::item_iface(tps, _) {
+              ast::item_iface(tps, _, _) {
                 if ns == ns_type {
                     if name == "self" {
                         ret some(def_self(it.id));
@@ -1286,7 +1286,7 @@ fn lookup_in_block(e: env, name: ident, sp: span, b: ast::blk_, pos: uint,
 
 fn found_def_item(i: @ast::item, ns: namespace) -> option<def> {
     alt i.node {
-      ast::item_const(_, _) {
+      ast::item_const(*) {
         if ns == ns_val {
             ret some(ast::def_const(local_def(i.id))); }
       }
@@ -1301,7 +1301,7 @@ fn found_def_item(i: @ast::item, ns: namespace) -> option<def> {
       ast::item_native_mod(_) {
         if ns == ns_module { ret some(ast::def_native_mod(local_def(i.id))); }
       }
-      ast::item_ty(_, _, _) | item_iface(_, _) | item_enum(_, _, _) {
+      ast::item_ty(*) | item_iface(*) | item_enum(*) {
         if ns == ns_type { ret some(ast::def_ty(local_def(i.id))); }
       }
       ast::item_res(_, _, _, _, ctor_id, _) {
@@ -1313,12 +1313,12 @@ fn found_def_item(i: @ast::item, ns: namespace) -> option<def> {
           _ { }
         }
       }
-      ast::item_class(_, _, _, _, _) {
+      ast::item_class(*) {
           if ns == ns_type {
             ret some(ast::def_class(local_def(i.id)));
           }
       }
-      ast::item_impl(_,_,_,_) { /* ??? */ }
+      ast::item_impl(*) { /* ??? */ }
     }
     ret none;
 }
@@ -1607,8 +1607,7 @@ fn index_mod(md: ast::_mod) -> mod_index {
         alt it.node {
           ast::item_const(_, _) | ast::item_fn(_, _, _) | ast::item_mod(_) |
           ast::item_native_mod(_) | ast::item_ty(_, _, _) |
-          ast::item_res(_, _, _, _, _, _) |
-          ast::item_impl(_, _, _, _) | ast::item_iface(_, _) {
+          ast::item_res(*) | ast::item_impl(*) | ast::item_iface(*) {
             add_to_index(index, it.ident, mie_item(it));
           }
           ast::item_enum(variants, _, _) {
@@ -1753,11 +1752,11 @@ fn check_item(e: @env, i: @ast::item, &&x: (), v: vt<()>) {
         ensure_unique(*e, i.span, ty_params, {|tp| tp.ident},
                       "type parameter");
       }
-      ast::item_iface(_, methods) {
+      ast::item_iface(_, _, methods) {
         ensure_unique(*e, i.span, methods, {|m| m.ident},
                       "method");
       }
-      ast::item_impl(_, _, _, methods) {
+      ast::item_impl(_, _, _, _, methods) {
         ensure_unique(*e, i.span, methods, {|m| m.ident},
                       "method");
       }
@@ -1832,13 +1831,13 @@ fn check_block(e: @env, b: ast::blk, &&x: (), v: vt<()>) {
                   ast::item_mod(_) | ast::item_native_mod(_) {
                     add_name(mods, it.span, it.ident);
                   }
-                  ast::item_const(_, _) | ast::item_fn(_, _, _) {
+                  ast::item_const(_, _) | ast::item_fn(*) {
                     add_name(values, it.span, it.ident);
                   }
-                  ast::item_ty(_, _, _) | ast::item_iface(_, _) {
+                  ast::item_ty(*) | ast::item_iface(*) {
                     add_name(types, it.span, it.ident);
                   }
-                  ast::item_res(_, _, _, _, _, _) {
+                  ast::item_res(*) {
                     add_name(types, it.span, it.ident);
                     add_name(values, it.span, it.ident);
                   }
@@ -2196,7 +2195,7 @@ fn find_impls_in_item(e: env, i: @ast::item, &impls: [@_impl],
                       name: option<ident>,
                       ck_exports: option<@indexed_mod>) {
     alt i.node {
-      ast::item_impl(_, ifce, _, mthds) {
+      ast::item_impl(_, _, ifce, _, mthds) {
         if alt name { some(n) { n == i.ident } _ { true } } &&
            alt ck_exports {
              some(m) { is_exported(e, i.ident, m) }

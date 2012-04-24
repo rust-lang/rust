@@ -325,11 +325,14 @@ fn print_native_mod(s: ps, nmod: ast::native_mod, attrs: [ast::attribute]) {
     for nmod.items.each {|item| print_native_item(s, item); }
 }
 
-fn print_region(s: ps, region: ast::region) {
+fn print_region(s: ps, region: @ast::region) {
     alt region.node {
-      ast::re_anon { /* no-op */ }
-      ast::re_named(name) { word(s.s, name); word(s.s, "."); }
-      ast::re_static { word(s.s, "static"); word(s.s, "."); }
+      ast::re_anon { word_space(s, "&"); }
+      ast::re_static { word_space(s, "&static"); }
+      ast::re_named(name) {
+        word(s.s, "&");
+        word_space(s, name);
+      }
     }
 }
 
@@ -353,8 +356,10 @@ fn print_type(s: ps, &&ty: @ast::ty) {
       }
       ast::ty_ptr(mt) { word(s.s, "*"); print_mt(s, mt); }
       ast::ty_rptr(region, mt) {
-        word(s.s, "&");
-        print_region(s, region);
+        alt region.node {
+          ast::re_anon { word(s.s, "&"); }
+          _ { print_region(s, region); word(s.s, "."); }
+        }
         print_mt(s, mt);
       }
       ast::ty_rec(fields) {
@@ -556,9 +561,10 @@ fn print_item(s: ps, &&item: @ast::item) {
           }
           bclose(s, item.span);
        }
-      ast::item_impl(tps, ifce, ty, methods) {
+      ast::item_impl(tps, rp, ifce, ty, methods) {
         head(s, "impl");
         word(s.s, item.ident);
+        print_region_param(s, rp);
         print_type_params(s, tps);
         space(s.s);
         option::iter(ifce, {|p|
@@ -575,9 +581,10 @@ fn print_item(s: ps, &&item: @ast::item) {
         }
         bclose(s, item.span);
       }
-      ast::item_iface(tps, methods) {
+      ast::item_iface(tps, rp, methods) {
         head(s, "iface");
         word(s.s, item.ident);
+        print_region_param(s, rp);
         print_type_params(s, tps);
         word(s.s, " ");
         bopen(s);
@@ -831,16 +838,7 @@ fn print_vstore(s: ps, t: ast::vstore) {
       ast::vstore_fixed(none) { word_space(s, "/_"); }
       ast::vstore_uniq { word_space(s, "/~"); }
       ast::vstore_box { word_space(s, "/@"); }
-      ast::vstore_slice(r) {
-        alt r.node {
-          ast::re_anon { word_space(s, "/&"); }
-          ast::re_static { word_space(s, "/&static"); }
-          ast::re_named(name) {
-            word(s.s, "/&");
-            word_space(s, name);
-          }
-        }
-      }
+      ast::vstore_slice(r) { word(s.s, "/"); print_region(s, r); }
     }
 }
 
@@ -1225,11 +1223,22 @@ fn print_path(s: ps, &&path: @ast::path, colons_before_params: bool) {
         if first { first = false; } else { word(s.s, "::"); }
         word(s.s, id);
     }
-    if vec::len(path.types) > 0u {
+    if path.rp.is_some() || !path.types.is_empty() {
         if colons_before_params { word(s.s, "::"); }
-        word(s.s, "<");
-        commasep(s, inconsistent, path.types, print_type);
-        word(s.s, ">");
+
+        alt path.rp {
+          none { /* ok */ }
+          some(r) {
+            word(s.s, "/");
+            print_region(s, r);
+          }
+        }
+
+        if !path.types.is_empty() {
+            word(s.s, "<");
+            commasep(s, inconsistent, path.types, print_type);
+            word(s.s, ">");
+        }
     }
 }
 

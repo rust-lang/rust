@@ -94,7 +94,7 @@ fn traverse_public_item(cx: ctx, item: @item) {
             traverse_inline_body(cx, blk);
         }
       }
-      item_impl(tps, _, _, ms) {
+      item_impl(tps, _, _, _, ms) {
         for vec::each(ms) {|m|
             if tps.len() > 0u || m.tps.len() > 0u ||
                attr::find_inline_attr(m.attrs) != attr::ia_none {
@@ -117,8 +117,8 @@ fn traverse_public_item(cx: ctx, item: @item) {
             }
         }
       }
-      item_const(_, _) | item_ty(_, _, _) |
-      item_enum(_, _, _) | item_iface(_, _) {}
+      item_const(*) | item_ty(*) |
+      item_enum(*) | item_iface(*) {}
     }
 }
 

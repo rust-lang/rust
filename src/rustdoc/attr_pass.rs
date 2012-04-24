@@ -204,14 +204,14 @@ fn merge_method_attrs(
     let attrs: [(str, option<str>)] = astsrv::exec(srv) {|ctxt|
         alt ctxt.ast_map.get(item_id) {
           ast_map::node_item(@{
-            node: ast::item_iface(_, methods), _
+            node: ast::item_iface(_, _, methods), _
           }, _) {
             par::seqmap(methods) {|method|
                 (method.ident, attr_parser::parse_desc(method.attrs))
             }
           }
           ast_map::node_item(@{
-            node: ast::item_impl(_, _, _, methods), _
+            node: ast::item_impl(_, _, _, _, methods), _
           }, _) {
             par::seqmap(methods) {|method|
                 (method.ident, attr_parser::parse_desc(method.attrs))

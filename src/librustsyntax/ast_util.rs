@@ -248,7 +248,8 @@ fn default_block(stmts1: [@stmt], expr1: option<@expr>, id1: node_id) ->
 }
 
 fn ident_to_path(s: span, i: ident) -> @path {
-    @{span: s, global: false, idents: [i], types: []}
+    @{span: s, global: false, idents: [i],
+      rp: none, types: []}
 }
 
 pure fn is_unguarded(&&a: arm) -> bool {

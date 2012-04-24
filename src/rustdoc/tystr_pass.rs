@@ -197,7 +197,7 @@ fn get_method_sig(
     astsrv::exec(srv) {|ctxt|
         alt check ctxt.ast_map.get(item_id) {
           ast_map::node_item(@{
-            node: ast::item_iface(_, methods), _
+            node: ast::item_iface(_, _, methods), _
           }, _) {
             alt check vec::find(methods) {|method|
                 method.ident == method_name
@@ -212,7 +212,7 @@ fn get_method_sig(
             }
           }
           ast_map::node_item(@{
-            node: ast::item_impl(_, _, _, methods), _
+            node: ast::item_impl(_, _, _, _, methods), _
           }, _) {
             alt check vec::find(methods) {|method|
                 method.ident == method_name
@@ -247,7 +247,7 @@ fn fold_impl(
     let (iface_ty, self_ty) = astsrv::exec(srv) {|ctxt|
         alt ctxt.ast_map.get(doc.id()) {
           ast_map::node_item(@{
-            node: ast::item_impl(_, iface_ty, self_ty, _), _
+            node: ast::item_impl(_, _, iface_ty, self_ty, _), _
           }, _) {
             let iface_ty = option::map(iface_ty) {|p|
                 pprust::path_to_str(p.path)

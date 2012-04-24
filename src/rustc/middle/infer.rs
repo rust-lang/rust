@@ -15,6 +15,7 @@ import util::common::{indent, indenter};
 export infer_ctxt;
 export new_infer_ctxt;
 export mk_subty;
+export mk_subr;
 export mk_eqty;
 export mk_assignty;
 export resolve_shallow;
@@ -71,6 +72,11 @@ fn new_infer_ctxt(tcx: ty::ctxt) -> infer_ctxt {
 fn mk_subty(cx: infer_ctxt, a: ty::t, b: ty::t) -> ures {
     #debug["mk_subty(%s <: %s)", a.to_str(cx), b.to_str(cx)];
     indent {|| cx.commit {|| sub(cx).tys(a, b) } }.to_ures()
+}
+
+fn mk_subr(cx: infer_ctxt, a: ty::region, b: ty::region) -> ures {
+    #debug["mk_subr(%s <: %s)", a.to_str(cx), b.to_str(cx)];
+    indent {|| cx.commit {|| sub(cx).regions(a, b) } }.to_ures()
 }
 
 fn mk_eqty(cx: infer_ctxt, a: ty::t, b: ty::t) -> ures {
@@ -1120,10 +1126,10 @@ fn super_tys<C:combine>(
         }
       }
 
-      (ty::ty_iface(a_id, a_tps), ty::ty_iface(b_id, b_tps))
+      (ty::ty_iface(a_id, a_substs), ty::ty_iface(b_id, b_substs))
       if a_id == b_id {
-        self.tps(a_tps, b_tps).chain {|tps|
-            ok(ty::mk_iface(tcx, a_id, tps))
+        self.substs(a_substs, b_substs).chain {|substs|
+            ok(ty::mk_iface(tcx, a_id, substs))
         }
       }
 
