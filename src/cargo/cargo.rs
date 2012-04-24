@@ -423,7 +423,10 @@ fn configure(opts: options) -> cargo {
 
 fn for_each_package(c: cargo, b: fn(source, package)) {
     for c.sources.each_value {|v|
-        for vec::each(copy v.packages) {|p|
+        // FIXME (#2280): this temporary shouldn't be
+        // necessary, but seems to be, for borrowing.
+        let pks = copy v.packages;
+        for vec::each(pks) {|p|
             b(v, p);
         }
     }

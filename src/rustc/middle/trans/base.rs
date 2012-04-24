@@ -5096,7 +5096,10 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
         io::println(#fmt("n_null_glues: %u", ccx.stats.n_null_glues));
         io::println(#fmt("n_real_glues: %u", ccx.stats.n_real_glues));
 
-        for vec::each(copy *ccx.stats.fn_times) {|timing|
+        // FIXME (#2280): this temporary shouldn't be
+        // necessary, but seems to be, for borrowing.
+        let times = copy *ccx.stats.fn_times;
+        for vec::each(times) {|timing|
             io::println(#fmt("time: %s took %d ms", timing.ident,
                              timing.time));
         }

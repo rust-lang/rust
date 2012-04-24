@@ -727,7 +727,10 @@ fn find_instances(_fcx: fn_ctxt, subst: subst, c: constraint) ->
     alt c {
       cinit(_, _, _) {/* this is dealt with separately */ }
       cpred(p, descs) {
-        for vec::each(copy *descs) {|d|
+        // FIXME (#2280): this temporary shouldn't be
+        // necessary, but seems to be, for borrowing.
+        let ds = copy *descs;
+        for vec::each(ds) {|d|
             if args_mention(d.node.args, find_in_subst_bool, subst) {
                 let old_bit_num = d.node.bit_num;
                 let newv = replace(subst, d);

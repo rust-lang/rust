@@ -119,7 +119,10 @@ fn writer(path: str, writech: comm::chan<comm::chan<line>>, size: uint)
             while prev <= i {
                 if lines.contains_key(prev) {
                     #debug("WS %u", prev);
-                    cout.write(lines.get(prev));
+                    // FIXME (#2280): this temporary shouldn't be
+                    // necessary, but seems to be, for borrowing.
+                    let v : [u8] = lines.get(prev);
+                    cout.write(v);
                     done += 1_u;
                     lines.remove(prev);
                     prev += 1_u;
