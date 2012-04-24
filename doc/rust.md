@@ -2177,7 +2177,8 @@ alt x {
 
 The first pattern matches lists constructed by applying `cons` to any head value, and a
 tail value of `@nil`. The second pattern matches `any` list constructed with `cons`,
-ignoring the values of its arguments. 
+ignoring the values of its arguments. The difference between `_` and `*` is that the pattern `C(_)` is only type-correct if
+`C` has exactly one argument, while the pattern `C(*)` is type-correct for any enum variant `C`, regardless of how many arguments `C` has.
 
 To execute an `alt` expression, first the head expression is evaluated, then
 its value is sequentially compared to the patterns in the arms until a match
