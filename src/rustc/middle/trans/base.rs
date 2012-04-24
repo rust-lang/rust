@@ -223,7 +223,7 @@ fn trans_native_call(cx: block, externs: hashmap<str, ValueRef>,
         get_simple_extern_fn(cx, externs, llmod, name, n);
     let mut call_args: [ValueRef] = [];
     for vec::each(args) {|a|
-        call_args += [ZExtOrBitCast(cx, a, cx.ccx().int_type)];
+        call_args += [a];
     }
     ret Call(cx, llnative, call_args);
 }
