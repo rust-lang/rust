@@ -18,7 +18,6 @@ fn collect_ids_stmt(s: @stmt, rs: @mut [node_id]) {
         log_stmt(*s);
         *rs += [id];
       }
-      _ { }
     }
 }
 

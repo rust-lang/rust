@@ -25,7 +25,7 @@ fn default_configuration(sess: session, argv0: str, input: str) ->
       session::os_macos { "libc.dylib" }
       session::os_linux { "libc.so.6" }
       session::os_freebsd { "libc.so.7" }
-      _ { "libc.so" }
+      // _ { "libc.so" }
     };
 
     let mk = attr::mk_name_value_item_str;

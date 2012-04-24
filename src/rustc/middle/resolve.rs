@@ -1656,7 +1656,7 @@ fn ns_for_def(d: def) -> namespace {
       ast::def_variant(_, _) { ns_val }
       ast::def_fn(_, _) | ast::def_self(_) |
       ast::def_const(_) | ast::def_arg(_, _) | ast::def_local(_, _) |
-      ast::def_upvar(_, _, _) |  ast::def_self(_) { ns_val }
+      ast::def_upvar(_, _, _) { ns_val }
       ast::def_mod(_) | ast::def_native_mod(_) { ns_module }
       ast::def_ty(_) | ast::def_binding(_) | ast::def_use(_) |
       ast::def_ty_param(_, _) | ast::def_prim_ty(_) | ast::def_class(_)

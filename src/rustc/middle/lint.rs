@@ -245,7 +245,6 @@ fn check_item_ctypes(cx: ctxt, level: level, it: @ast::item) {
               ast::native_item_fn(decl, tps) {
                 check_native_fn(cx, level, decl);
               }
-              _ { }
             }
         }
       }

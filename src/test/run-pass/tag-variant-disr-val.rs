@@ -38,7 +38,6 @@ fn get_color_alt(color: color) -> str {
       imaginary {"imaginary"}
       purple {"purple"}
       orange {"orange"}
-      _ {"unknown"}
     }
 }
 

@@ -17,7 +17,6 @@ fn format_addr(ip: ip_addr) -> str {
       ipv4(a, b, c, d) {
         #fmt["%u.%u.%u.%u", a as uint, b as uint, c as uint, d as uint]
       }
-      _ { fail "Unsupported address type"; }
     }
 }
 
