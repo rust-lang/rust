@@ -1,7 +1,5 @@
 // error-pattern: overly deep expansion
 // issue 2258
-// This is currently exposing a memory leak, and xfailed for that reason
-// xfail-test
 
 iface to_opt {
     fn to_option() -> option<self>;

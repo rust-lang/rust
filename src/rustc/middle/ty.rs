@@ -1176,7 +1176,8 @@ fn type_needs_unwind_cleanup_(cx: ctxt, ty: t,
     let mut encountered_box = encountered_box;
     let mut needs_unwind_cleanup = false;
     maybe_walk_ty(ty) {|ty|
-        alt get(ty).struct {
+        let old_encountered_box = encountered_box;
+        let result = alt get(ty).struct {
           ty_box(_) | ty_opaque_box {
             encountered_box = true;
             true
@@ -1216,7 +1217,10 @@ fn type_needs_unwind_cleanup_(cx: ctxt, ty: t,
             needs_unwind_cleanup = true;
             false
           }
-        }
+        };
+
+        encountered_box = old_encountered_box;
+        result
     }
 
     ret needs_unwind_cleanup;
