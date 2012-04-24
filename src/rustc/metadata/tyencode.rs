@@ -7,7 +7,6 @@ import driver::session::session;
 import middle::ty;
 import middle::ty::vid;
 import syntax::print::pprust::*;
-import middle::trans::reachable;
 
 export ctxt;
 export ty_abbrev;
@@ -17,11 +16,14 @@ export enc_ty;
 export enc_bounds;
 export enc_mode;
 
-type ctxt =
+type ctxt = {
     // Def -> str Callback:
+    ds: fn@(def_id) -> str,
     // The type context.
-    {ds: fn@(def_id) -> str, tcx: ty::ctxt,
-     reachable: reachable::map, abbrevs: abbrev_ctxt};
+    tcx: ty::ctxt,
+    reachable: fn@(node_id) -> bool,
+    abbrevs: abbrev_ctxt
+};
 
 // Compact string representation for ty.t values. API ty_str & parse_from_str.
 // Extra parameters are for converting to/from def_ids in the string rep.
@@ -61,7 +63,7 @@ fn enc_ty(w: io::writer, cx: @ctxt, t: ty::t) {
                 // Do not emit node ids that map to unexported names.  Those
                 // are not helpful.
                 if def_id.crate != local_crate ||
-                    cx.reachable.contains_key(def_id.node) {
+                    cx.reachable(def_id.node) {
                     w.write_char('"');
                     w.write_str(cx.ds(def_id));
                     w.write_char('|');

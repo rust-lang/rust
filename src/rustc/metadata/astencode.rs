@@ -659,7 +659,7 @@ impl helpers for @e::encode_ctxt {
     fn ty_str_ctxt() -> @tyencode::ctxt {
         @{ds: e::def_to_str,
           tcx: self.ccx.tcx,
-          reachable: self.ccx.reachable,
+          reachable: encoder::reachable(self, _),
           abbrevs: tyencode::ac_use_abbrevs(self.type_abbrevs)}
     }
 }

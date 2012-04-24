@@ -20,6 +20,7 @@ import std::ebml::serializer;
 
 export encode_metadata;
 export encoded_ty;
+export reachable;
 
 // used by astencode:
 export def_to_str;
@@ -31,6 +32,10 @@ type abbrev_map = map::hashmap<ty::t, tyencode::ty_abbrev>;
 
 type encode_ctxt = {ccx: @crate_ctxt,
                     type_abbrevs: abbrev_map};
+
+fn reachable(ecx: @encode_ctxt, id: node_id) -> bool {
+    ecx.ccx.reachable.contains_key(id)
+}
 
 // Path table encoding
 fn encode_name(ebml_w: ebml::writer, name: str) {
@@ -110,7 +115,7 @@ fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
                             module: _mod, path: [str], &index: [entry<str>]) {
     // FIXME factor out add_to_index/start/encode_name/encode_def_id/end ops
     for module.items.each {|it|
-        if !ecx.ccx.reachable.contains_key(it.id) ||
+        if !reachable(ecx, it.id) ||
            !ast_util::is_exported(it.ident, module) { cont; }
         alt it.node {
           item_const(_, _) {
@@ -235,7 +240,7 @@ fn encode_type_param_bounds(ebml_w: ebml::writer, ecx: @encode_ctxt,
                             params: [ty_param]) {
     let ty_str_ctxt = @{ds: def_to_str,
                         tcx: ecx.ccx.tcx,
-                        reachable: ecx.ccx.reachable,
+                        reachable: reachable(ecx, _),
                         abbrevs: tyencode::ac_use_abbrevs(ecx.type_abbrevs)};
     for params.each {|param|
         ebml_w.start_tag(tag_items_data_item_ty_param_bounds);
@@ -255,7 +260,7 @@ fn write_type(ecx: @encode_ctxt, ebml_w: ebml::writer, typ: ty::t) {
     let ty_str_ctxt =
         @{ds: def_to_str,
           tcx: ecx.ccx.tcx,
-          reachable: ecx.ccx.reachable,
+          reachable: reachable(ecx, _),
           abbrevs: tyencode::ac_use_abbrevs(ecx.type_abbrevs)};
     tyencode::enc_ty(ebml_w.writer, ty_str_ctxt, typ);
 }
@@ -489,7 +494,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
     let tcx = ecx.ccx.tcx;
     let must_write =
         alt item.node { item_enum(_, _, _) { true } _ { false } };
-    if !must_write && !ecx.ccx.reachable.contains_key(item.id) { ret; }
+    if !must_write && !reachable(ecx, item.id) { ret; }
 
     fn add_to_index_(item: @item, ebml_w: ebml::writer,
                      index: @mut [entry<int>]) {
@@ -704,7 +709,7 @@ fn encode_info_for_native_item(ecx: @encode_ctxt, ebml_w: ebml::writer,
                                nitem: @native_item,
                                index: @mut [entry<int>],
                                path: ast_map::path, abi: native_abi) {
-    if !ecx.ccx.reachable.contains_key(nitem.id) { ret; }
+    if !reachable(ecx, nitem.id) { ret; }
     *index += [{val: nitem.id, pos: ebml_w.writer.tell()}];
 
     ebml_w.start_tag(tag_items_data_item);
@@ -1019,7 +1024,7 @@ fn encode_metadata(cx: @crate_ctxt, crate: @crate) -> [u8] {
 fn encoded_ty(tcx: ty::ctxt, t: ty::t) -> str {
     let cx = @{ds: def_to_str,
                tcx: tcx,
-               reachable: std::map::int_hash(),
+               reachable: {|_id| false},
                abbrevs: tyencode::ac_no_abbrevs};
     let buf = io::mem_buffer();
     tyencode::enc_ty(io::mem_buffer_writer(buf), cx, t);
