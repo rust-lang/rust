@@ -166,6 +166,13 @@ define TEST_STAGEN
 # $(2) is the target triple to test
 # $(3) is the host triple to test
 
+# Prerequisites for compiletest tests
+TEST_SREQ$(1)_T_$(2)_H_$(3) = \
+	$$(HBIN$(1)_H_$(3))/compiletest$$(X) \
+	$$(HSREQ$(1)_$(2)_$(3)) \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTSYNTAX)
+
+
 check-stage$(1)-T-$(2)-H-$(3): tidy				\
 	check-stage$(1)-T-$(2)-H-$(3)-rustc			\
 	check-stage$(1)-T-$(2)-H-$(3)-core          \
@@ -373,8 +380,7 @@ DOC_REF_ARGS$(1)-T-$(2)-H-$(3) :=			\
         --mode run-pass
 
 check-stage$(1)-T-$(2)-H-$(3)-cfail-dummy:		\
-		$$(HBIN$(1)_H_$(3))/compiletest$$(X)	\
-		$$(SREQ$(1)_T_$(2)_H_$(3))		\
+		$$(TEST_SREQ$(1)_T_$(2)_H_$(3))		\
 	        $$(CFAIL_TESTS)
 	@$$(call E, run cfail: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \
@@ -382,8 +388,7 @@ check-stage$(1)-T-$(2)-H-$(3)-cfail-dummy:		\
 		--logfile tmp/check-stage$(1)-T-$(2)-H-$(3)-cfail.log
 
 check-stage$(1)-T-$(2)-H-$(3)-rfail-dummy:		\
-		$$(HBIN$(1)_H_$(3))/compiletest$$(X)	\
-		$$(SREQ$(1)_T_$(2)_H_$(3))		\
+		$$(TEST_SREQ$(1)_T_$(2)_H_$(3))		\
 		$$(RFAIL_TESTS)
 	@$$(call E, run rfail: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \
@@ -391,8 +396,7 @@ check-stage$(1)-T-$(2)-H-$(3)-rfail-dummy:		\
 		--logfile tmp/check-stage$(1)-T-$(2)-H-$(3)-rfail.log
 
 check-stage$(1)-T-$(2)-H-$(3)-rpass-dummy:		\
-		$$(HBIN$(1)_H_$(3))/compiletest$$(X)	\
-		$$(SREQ$(1)_T_$(2)_H_$(3))		\
+		$$(TEST_SREQ$(1)_T_$(2)_H_$(3))		\
 	        $$(RPASS_TESTS)
 	@$$(call E, run rpass: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \
@@ -400,8 +404,7 @@ check-stage$(1)-T-$(2)-H-$(3)-rpass-dummy:		\
 		--logfile tmp/check-stage$(1)-T-$(2)-H-$(3)-rpass.log
 
 check-stage$(1)-T-$(2)-H-$(3)-bench-dummy:		\
-		$$(HBIN$(1)_H_$(3))/compiletest$$(X)	\
-		$$(SREQ$(1)_T_$(2)_H_$(3))		\
+		$$(TEST_SREQ$(1)_T_$(2)_H_$(3))		\
 		$$(BENCH_TESTS)
 	@$$(call E, run bench: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \
@@ -409,8 +412,7 @@ check-stage$(1)-T-$(2)-H-$(3)-bench-dummy:		\
 		--logfile tmp/check-stage$(1)-T-$(2)-H-$(3)-bench.log
 
 check-stage$(1)-T-$(2)-H-$(3)-perf-dummy:		\
-		$$(HBIN$(1)_H_$(3))/compiletest$$(X)	\
-	        $$(SREQ$(1)_T_$(2)_H_$(3))		\
+	        $$(TEST_SREQ$(1)_T_$(2)_H_$(3))		\
 	        $$(BENCH_TESTS)
 	@$$(call E, perf: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \
@@ -418,8 +420,7 @@ check-stage$(1)-T-$(2)-H-$(3)-perf-dummy:		\
 		--logfile tmp/check-stage$(1)-T-$(2)-H-$(3)-perf.log
 
 check-stage$(1)-T-$(2)-H-$(3)-pretty-rpass-dummy:	\
-		$$(HBIN$(1)_H_$(3))/compiletest$$(X)	\
-	        $$(SREQ$(1)_T_$(2)_H_$(3))		\
+	        $$(TEST_SREQ$(1)_T_$(2)_H_$(3))		\
 	        $$(RPASS_TESTS)
 	@$$(call E, run pretty-rpass: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \
@@ -427,8 +428,7 @@ check-stage$(1)-T-$(2)-H-$(3)-pretty-rpass-dummy:	\
 		--logfile tmp/check-stage$(1)-T-$(2)-H-$(3)-pretty-rpass.log
 
 check-stage$(1)-T-$(2)-H-$(3)-pretty-rfail-dummy:	\
-		$$(HBIN$(1)_H_$(3))/compiletest$$(X)	\
-	        $$(SREQ$(1)_T_$(2)_H_$(3))		\
+	        $$(TEST_SREQ$(1)_T_$(2)_H_$(3))		\
 	        $$(RFAIL_TESTS)
 	@$$(call E, run pretty-rfail: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \
@@ -436,8 +436,7 @@ check-stage$(1)-T-$(2)-H-$(3)-pretty-rfail-dummy:	\
 		--logfile tmp/check-stage$(1)-T-$(2)-H-$(3)-pretty-rfail.log
 
 check-stage$(1)-T-$(2)-H-$(3)-pretty-bench-dummy:	\
-		$$(HBIN$(1)_H_$(3))/compiletest$$(X)	\
-		$$(SREQ$(1)_T_$(2)_H_$(3))		\
+		$$(TEST_SREQ$(1)_T_$(2)_H_$(3))		\
 	        $$(BENCH_TESTS)
 	@$$(call E, run pretty-bench: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \
@@ -445,8 +444,7 @@ check-stage$(1)-T-$(2)-H-$(3)-pretty-bench-dummy:	\
 		--logfile tmp/check-stage$(1)-T-$(2)-H-$(3)-pretty-bench.log
 
 check-stage$(1)-T-$(2)-H-$(3)-pretty-pretty-dummy:	\
-		$$(HBIN$(1)_H_$(3))/compiletest$$(X)	\
-	        $$(SREQ$(1)_T_$(2)_H_$(3))		\
+	        $$(TEST_SREQ$(1)_T_$(2)_H_$(3))		\
 	        $$(PRETTY_TESTS)
 	@$$(call E, run pretty-pretty: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \
@@ -454,8 +452,7 @@ check-stage$(1)-T-$(2)-H-$(3)-pretty-pretty-dummy:	\
 		--logfile tmp/check-stage$(1)-T-$(2)-H-$(3)-pretty-pretty.log
 
 check-stage$(1)-T-$(2)-H-$(3)-doc-tutorial-dummy:       \
-		$$(HBIN$(1)_H_$(3))/compiletest$$(X)	\
-	        $$(SREQ$(1)_T_$(2)_H_$(3))		\
+	        $$(TEST_SREQ$(1)_T_$(2)_H_$(3))		\
                 doc-tutorial-extract$(3)
 	@$$(call E, run doc-tutorial: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \
@@ -463,8 +460,7 @@ check-stage$(1)-T-$(2)-H-$(3)-doc-tutorial-dummy:       \
 		--logfile tmp/check-stage$(1)-T-$(2)-H-$(3)-doc-tutorial.log
 
 check-stage$(1)-T-$(2)-H-$(3)-doc-ref-dummy:            \
-		$$(HBIN$(1)_H_$(3))/compiletest$$(X)	\
-	        $$(SREQ$(1)_T_$(2)_H_$(3))		\
+	        $$(TEST_SREQ$(1)_T_$(2)_H_$(3))		\
                 doc-ref-extract$(3)
 	@$$(call E, run doc-ref: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \

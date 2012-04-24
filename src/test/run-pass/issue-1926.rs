@@ -1,12 +1,12 @@
 // xfail-test
 // fails pretty printing for some reason
-use rustc;
-import rustc::driver::diagnostic;
-import rustc::syntax;
-import rustc::syntax::ast;
-import rustc::syntax::codemap;
-import rustc::syntax::print::pprust;
-import rustc::syntax::parse::parser;
+use syntax(name = "rustsyntax");
+import syntax::diagnostic;
+import syntax;
+import syntax::ast;
+import syntax::codemap;
+import syntax::print::pprust;
+import syntax::parse::parser;
 
 fn new_parse_sess() -> parser::parse_sess {
     let cm = codemap::new_codemap();

@@ -1,16 +1,15 @@
 // xfail-pretty
 
 use std;
-use rustc;
+use syntax(name = "rustsyntax");
 
-import rustc::*;
 import std::io::*;
 
-import rustc::driver::diagnostic;
-import rustc::syntax::ast;
-import rustc::syntax::codemap;
-import rustc::syntax::parse::parser;
-import rustc::syntax::print::*;
+import syntax::diagnostic;
+import syntax::ast;
+import syntax::codemap;
+import syntax::parse::parser;
+import syntax::print::*;
 
 fn new_parse_sess() -> parser::parse_sess {
   fail;
