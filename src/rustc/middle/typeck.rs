@@ -2371,15 +2371,16 @@ fn require_pure_call(ccx: @crate_ctxt, caller_purity: ast::purity,
     }
 }
 
-fn check_expr(fcx: @fn_ctxt, expr: @ast::expr) -> bool {
-    ret check_expr_with_unifier(fcx, expr, ty::mk_nil(fcx.ccx.tcx)) {||
-        /* do not take any action on unify */
-    };
+fn check_expr_with(fcx: @fn_ctxt, expr: @ast::expr, expected: ty::t) -> bool {
+    check_expr(fcx, expr, some(expected))
 }
 
-fn check_expr_with(fcx: @fn_ctxt, expr: @ast::expr, expected: ty::t) -> bool {
+fn check_expr(fcx: @fn_ctxt, expr: @ast::expr,
+              expected: option<ty::t>) -> bool {
     ret check_expr_with_unifier(fcx, expr, expected) {||
-        demand::suptype(fcx, expr.span, expected, fcx.expr_ty(expr));
+        for expected.each {|t|
+            demand::suptype(fcx, expr.span, t, fcx.expr_ty(expr));
+        }
     };
 }
 
@@ -2790,7 +2791,7 @@ fn check_expr_fn_with_unifier(fcx: @fn_ctxt,
 
 fn check_expr_with_unifier(fcx: @fn_ctxt,
                            expr: @ast::expr,
-                           expected: ty::t,
+                           expected: option<ty::t>,
                            unifier: fn()) -> bool {
 
     #debug(">> typechecking expr %d (%s)",
@@ -2861,7 +2862,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                     };
                     if is_block == check_blocks {
                         let arg_ty = arg_tys[i];
-                        bot |= check_expr_with_unifier(fcx, a, arg_ty) {||
+                        bot |= check_expr_with_unifier(
+                            fcx, a, some(arg_ty)) {||
                             demand::assign(fcx, a.span, arg_ty, a);
                         };
                     }
@@ -2881,7 +2883,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
     // A generic function for checking assignment expressions
     fn check_assignment(fcx: @fn_ctxt, _sp: span, lhs: @ast::expr,
                         rhs: @ast::expr, id: ast::node_id) -> bool {
-        let mut bot = check_expr(fcx, lhs);
+        let mut bot = check_expr(fcx, lhs, none);
         bot |= check_expr_with(fcx, rhs, fcx.expr_ty(lhs));
         fcx.write_ty(id, ty::mk_nil(fcx.ccx.tcx));
         ret bot;
@@ -2891,7 +2893,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
     fn check_call(fcx: @fn_ctxt, sp: span, call_expr_id: ast::node_id,
                   f: @ast::expr, args: [@ast::expr]) -> bool {
 
-        let mut bot = check_expr(fcx, f);
+        let mut bot = check_expr(fcx, f, none);
         let fn_ty = fcx.expr_ty(f);
 
         // Call the generic checker.
@@ -2992,7 +2994,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                    lhs: @ast::expr,
                    rhs: @ast::expr) -> bool {
         let tcx = fcx.ccx.tcx;
-        let lhs_bot = check_expr(fcx, lhs);
+        let lhs_bot = check_expr(fcx, lhs, none);
         let lhs_t = fcx.expr_ty(lhs);
         let lhs_t = structurally_resolved_type(fcx, lhs.span, lhs_t);
         ret alt (op, ty::get(lhs_t).struct) {
@@ -3015,7 +3017,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
           (_, _) if ty::type_is_integral(lhs_t) &&
           ast_util::is_shift_binop(op) {
             // Shift is a special case: rhs can be any integral type
-            let rhs_bot = check_expr(fcx, rhs);
+            let rhs_bot = check_expr(fcx, rhs, none);
             let rhs_t = fcx.expr_ty(rhs);
             require_integral(fcx, rhs.span, rhs_t);
             fcx.write_ty(expr.id, lhs_t);
@@ -3063,7 +3065,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
           }
           _ {}
         }
-        check_expr(fcx, rhs);
+        check_expr(fcx, rhs, none);
         tcx.sess.span_err(
             ex.span, "binary operation " + ast_util::binop_to_str(op) +
             " cannot be applied to type `" +
@@ -3081,6 +3083,19 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                               op_str, fcx.ty_to_str(rhs_t)]);
             rhs_t
           }
+        }
+    }
+    fn unpack_expected<O: copy>(fcx: @fn_ctxt, expected: option<ty::t>,
+                                unpack: fn(ty::sty) -> option<O>)
+        -> option<O> {
+        alt expected {
+          some(t) {
+            alt infer::resolve_shallow(fcx.infcx, t, true) {
+              result::ok(t) { unpack(ty::get(t).struct) }
+              _ { none }
+            }
+          }
+          _ { none }
         }
     }
 
@@ -3147,7 +3162,19 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         fcx.write_nil(expr.id);
       }
       ast::expr_unary(unop, oper) {
-        bot = check_expr(fcx, oper);
+        let exp_inner = unpack_expected(fcx, expected) {|sty|
+            alt unop {
+              ast::box(_) | ast::uniq(_) {
+                alt sty {
+                  ty::ty_box(mt) | ty::ty_uniq(mt) { some(mt.ty) }
+                  _ { none }
+                }
+              }
+              ast::not | ast::neg { some(expected.get()) }
+              ast::deref { none }
+            }
+        };
+        bot = check_expr(fcx, oper, exp_inner);
         let mut oper_t = fcx.expr_ty(oper);
         alt unop {
           ast::box(mutbl) {
@@ -3202,12 +3229,12 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         fcx.write_ty(id, oper_t);
       }
       ast::expr_addr_of(mutbl, oper) {
-        bot = check_expr(fcx, oper);
-        let mut oper_t = fcx.expr_ty(oper);
-
+        bot = check_expr(fcx, oper, unpack_expected(fcx, expected) {|ty|
+            alt ty { ty::ty_rptr(_, mt) { some(mt.ty) } _ { none } }
+        });
         let region = region_of(fcx, oper);
-        let tm = { ty: oper_t, mutbl: mutbl };
-        oper_t = ty::mk_rptr(tcx, region, tm);
+        let tm = { ty: fcx.expr_ty(oper), mutbl: mutbl };
+        let oper_t = ty::mk_rptr(tcx, region, tm);
         fcx.write_ty(id, oper_t);
       }
       ast::expr_path(pth) {
@@ -3255,7 +3282,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
       ast::expr_log(_, lv, e) {
         bot = check_expr_with(fcx, lv, ty::mk_mach_uint(tcx, ast::ty_u32));
         // Note: this does not always execute, so do not propagate bot:
-        check_expr(fcx, e);
+        check_expr(fcx, e, none);
         fcx.write_nil(id);
       }
       ast::expr_check(_, e) {
@@ -3272,7 +3299,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         fcx.write_nil(id);
       }
       ast::expr_copy(a) {
-        bot = check_expr_with(fcx, a, expected);
+        bot = check_expr(fcx, a, expected);
         fcx.write_ty(id, fcx.expr_ty(a));
       }
       ast::expr_move(lhs, rhs) {
@@ -3348,26 +3375,22 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
       }
       ast::expr_fn_block(decl, body) {
         // Take the prototype from the expected type, but default to block:
-        let proto = alt ty::get(expected).struct {
-          ty::ty_fn({proto, _}) { proto }
-          _ { ast::proto_box }
-        };
-        #debug("checking expr_fn_block %s expected=%s",
-               expr_to_str(expr),
-               ty_to_str(tcx, expected));
+        let proto = unpack_expected(fcx, expected, {|sty|
+            alt sty { ty::ty_fn({proto, _}) { some(proto) } _ { none } }
+        }).get_default(ast::proto_box);
         check_expr_fn_with_unifier(fcx, expr, proto, decl, body,
                                    false, unifier);
       }
       ast::expr_loop_body(b) {
-        let rty = structurally_resolved_type(fcx, expr.span, expected);
-        let (inner_ty, proto) = alt check ty::get(rty).struct {
+        let expected_sty = unpack_expected(fcx, expected, {|x|some(x)}).get();
+        let (inner_ty, proto) = alt expected_sty {
           ty::ty_fn(fty) {
             alt infer::mk_subty(fcx.infcx, fty.output, ty::mk_bool(tcx)) {
               result::ok(_) {}
               result::err(err) {
                 tcx.sess.span_fatal(
-                    expr.span, #fmt("a loop function's last argument should \
-                                     return `bool`, not `%s`",
+                    expr.span, #fmt("a loop function's last argument \
+                                     should return `bool`, not `%s`",
                                     ty_to_str(tcx, fty.output)));
               }
             }
@@ -3406,7 +3429,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
       }
       ast::expr_bind(f, args) {
         // Call the generic checker.
-        bot = check_expr(fcx, f);
+        bot = check_expr(fcx, f, none);
 
         let {fty, bot: ccob_bot} = {
             let fn_ty = fcx.expr_ty(f);
@@ -3465,7 +3488,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         bot = check_call(fcx, expr.span, expr.id, f, args);
       }
       ast::expr_cast(e, t) {
-        bot = check_expr(fcx, e);
+        bot = check_expr(fcx, e, none);
         let t_1 = fcx.to_ty(t);
         let t_e = fcx.expr_ty(e);
 
@@ -3506,8 +3529,11 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
       ast::expr_tup(elts) {
         let mut elt_ts = [];
         vec::reserve(elt_ts, vec::len(elts));
-        for elts.each {|e|
-            check_expr(fcx, e);
+        let flds = unpack_expected(fcx, expected) {|sty|
+            alt sty { ty::ty_tup(flds) { some(flds) } _ { none } }
+        };
+        for elts.eachi {|i, e|
+            check_expr(fcx, e, flds.map {|fs| fs[i]});
             let ety = fcx.expr_ty(e);
             elt_ts += [ety];
         }
@@ -3515,9 +3541,17 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         fcx.write_ty(id, typ);
       }
       ast::expr_rec(fields, base) {
-        option::iter(base) {|b| check_expr(fcx, b); }
+        option::iter(base) {|b| check_expr(fcx, b, expected); }
+        let expected = if expected == none && base != none {
+            some(fcx.expr_ty(base.get()))
+        } else { expected };
+        let flds = unpack_expected(fcx, expected) {|sty|
+            alt sty { ty::ty_rec(flds) { some(flds) } _ { none } }
+        };
         let fields_t = vec::map(fields, {|f|
-            bot |= check_expr(fcx, f.node.expr);
+            bot |= check_expr(fcx, f.node.expr, flds.chain {|flds|
+                vec::find(flds) {|tf| tf.ident == f.node.ident}
+            }.map {|tf| tf.mt.ty});
             let expr_t = fcx.expr_ty(f.node.expr);
             let expr_mt = {ty: expr_t, mutbl: f.node.mutbl};
             // for the most precise error message,
@@ -3531,7 +3565,6 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             fcx.write_ty(id, typ);
           }
           some(bexpr) {
-            bot |= check_expr(fcx, bexpr);
             let bexpr_t = fcx.expr_ty(bexpr);
             let mut base_fields: [field] = [];
             alt structure_of(fcx, expr.span, bexpr_t) {
@@ -3560,7 +3593,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         }
       }
       ast::expr_field(base, field, tys) {
-        bot |= check_expr(fcx, base);
+        bot |= check_expr(fcx, base, none);
         let expr_t = structurally_resolved_type(fcx, expr.span,
                                                 fcx.expr_ty(base));
         let base_t = do_autoderef(fcx, expr.span, expr_t);
@@ -3638,10 +3671,10 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         }
       }
       ast::expr_index(base, idx) {
-        bot |= check_expr(fcx, base);
+        bot |= check_expr(fcx, base, none);
         let raw_base_t = fcx.expr_ty(base);
         let base_t = do_autoderef(fcx, expr.span, raw_base_t);
-        bot |= check_expr(fcx, idx);
+        bot |= check_expr(fcx, idx, none);
         let idx_t = fcx.expr_ty(idx);
         alt structure_of(fcx, expr.span, base_t) {
           ty::ty_evec(mt, _) |
@@ -3671,8 +3704,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         }
       }
       ast::expr_new(p, alloc_id, v) {
-        bot |= check_expr(fcx, p);
-        bot |= check_expr(fcx, v);
+        bot |= check_expr(fcx, p, none);
+        bot |= check_expr(fcx, v, none);
 
         let p_ty = fcx.expr_ty(p);
 
@@ -3728,7 +3761,10 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
     #debug("type of expr %s is %s, expected is %s",
            syntax::print::pprust::expr_to_str(expr),
            ty_to_str(tcx, fcx.expr_ty(expr)),
-           ty_to_str(tcx, expected));
+           alt expected {
+               some(t) { ty_to_str(tcx, t) }
+               _ { "empty" }
+           });
 
     unifier();
 
@@ -3739,7 +3775,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
 fn require_integral(fcx: @fn_ctxt, sp: span, t: ty::t) {
     if !type_is_integral(fcx, sp, t) {
         fcx.ccx.tcx.sess.span_err(sp, "mismatched types: expected \
-                                       `integer` but found `"
+                                       integral type but found `"
                                   + fcx.ty_to_str(t) + "`");
     }
 }
@@ -3796,7 +3832,7 @@ fn check_stmt(fcx: @fn_ctxt, stmt: @ast::stmt) -> bool {
       }
       ast::stmt_semi(expr, id) {
         node_id = id;
-        bot = check_expr(fcx, expr);
+        bot = check_expr(fcx, expr, none);
       }
     }
     fcx.write_nil(node_id);
@@ -3841,7 +3877,7 @@ fn check_block(fcx0: @fn_ctxt, blk: ast::blk) -> bool {
         if bot && !warned {
             fcx.ccx.tcx.sess.span_warn(e.span, "unreachable expression");
         }
-        bot |= check_expr(fcx, e);
+        bot |= check_expr(fcx, e, none);
         let ety = fcx.expr_ty(e);
         fcx.write_ty(blk.node.id, ety);
       }
@@ -3870,7 +3906,7 @@ fn check_const(ccx: @crate_ctxt, _sp: span, e: @ast::expr, id: ast::node_id) {
           node_types: smallintmap::mk(),
           node_type_substs: map::int_hash(),
           ccx: ccx};
-    check_expr(fcx, e);
+    check_expr(fcx, e, none);
     let cty = fcx.expr_ty(e);
     let declty = fcx.ccx.tcx.tcache.get(local_def(id)).ty;
     demand::suptype(fcx, e.span, declty, cty);
@@ -3915,7 +3951,7 @@ fn check_enum_variants(ccx: @crate_ctxt,
     for vs.each {|v|
         alt v.node.disr_expr {
           some(e) {
-            check_expr(fcx, e);
+            check_expr(fcx, e, none);
             let cty = fcx.expr_ty(e);
             let declty = ty::mk_int(ccx.tcx);
             demand::suptype(fcx, e.span, declty, cty);
