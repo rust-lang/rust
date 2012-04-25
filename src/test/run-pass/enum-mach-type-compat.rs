@@ -11,11 +11,23 @@ enum result<T, U> {
 
 type error = int;
 
+#[cfg(target_arch = "x86_64")]
 fn get_fd() -> result<int, error> {
     getsockopt_i64()
 }
 
+#[cfg(target_arch = "x86_64")]
 fn getsockopt_i64() -> result<i64, error> {
+    fail
+}
+
+#[cfg(target_arch = "x86")]
+fn get_fd() -> result<int, error> {
+    getsockopt_i32()
+}
+
+#[cfg(target_arch = "x86")]
+fn getsockopt_i32() -> result<i32, error> {
     fail
 }
 
