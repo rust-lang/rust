@@ -213,7 +213,6 @@ fn keyword_table() -> hashmap<str, ()> {
         "as",
         "bind",
         "else",
-        "false",
         "implements",
         "move",
         "of",
@@ -222,7 +221,6 @@ fn keyword_table() -> hashmap<str, ()> {
         "send",
         "static",
         "to",
-        "true",
         "use",
         "with"
     ];
@@ -241,9 +239,9 @@ fn bad_expr_word_table() -> hashmap<str, ()> {
     let words = str_hash();
     let keys = ["alt", "assert", "be", "break", "check", "claim",
                 "class", "const", "cont", "copy", "crust", "do", "else",
-                "enum", "export", "fail", "fn", "for", "if",  "iface",
-                "impl", "import", "let", "log", "loop", "mod",
-                "mut", "native", "new", "pure", "resource",
+                "enum", "export", "fail", "false", "fn", "for", "if",
+                "iface", "impl", "import", "let", "log", "loop", "mod",
+                "mut", "native", "new", "pure", "resource", "true",
                 "ret", "trait", "type", "unchecked", "unsafe", "while"];
     for keys.each {|word|
         words.insert(word, ());
