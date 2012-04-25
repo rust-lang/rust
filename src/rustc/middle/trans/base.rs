@@ -393,6 +393,11 @@ fn set_no_inline(f: ValueRef) {
                               0u as c_uint);
 }
 
+fn set_no_unwind(f: ValueRef) {
+    llvm::LLVMAddFunctionAttr(f, lib::llvm::NoUnwindAttribute as c_uint,
+                              0u as c_uint);
+}
+
 // Tell LLVM to emit the information necessary to unwind the stack for the
 // function f.
 fn set_uwtable(f: ValueRef) {

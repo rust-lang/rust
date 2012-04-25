@@ -38,7 +38,11 @@ fn declare_upcalls(targ_cfg: @session::config,
         let mut arg_tys: [TypeRef] = [];
         for tys.each {|t| arg_tys += [t]; }
         let fn_ty = T_fn(arg_tys, rv);
-        ret base::decl_cdecl_fn(llmod, prefix + name, fn_ty);
+        let f = base::decl_cdecl_fn(llmod, prefix + name, fn_ty);
+        if name != "fail" {
+            base::set_no_unwind(f);
+        }
+        ret f;
     }
     let d = bind decl(llmod, "upcall_", _, _, _);
     let dv = bind decl(llmod, "upcall_", _, _, T_void());
