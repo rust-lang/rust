@@ -58,7 +58,7 @@ fn require_keyword(p: parser, word: str) {
     }
 }
 
-fn is_word(p: parser, word: str) -> bool {
+fn is_keyword(p: parser, word: str) -> bool {
     require_keyword(p, word);
     ret alt p.token {
           token::IDENT(sid, false) { str::eq(word, p.get_str(sid)) }
@@ -66,7 +66,7 @@ fn is_word(p: parser, word: str) -> bool {
         };
 }
 
-fn eat_word(p: parser, word: str) -> bool {
+fn eat_keyword(p: parser, word: str) -> bool {
     require_keyword(p, word);
     alt p.token {
       token::IDENT(sid, false) {
@@ -79,9 +79,9 @@ fn eat_word(p: parser, word: str) -> bool {
     }
 }
 
-fn expect_word(p: parser, word: str) {
+fn expect_keyword(p: parser, word: str) {
     require_keyword(p, word);
-    if !eat_word(p, word) {
+    if !eat_keyword(p, word) {
         p.fatal("expecting " + word + ", found " +
                     token_to_str(p.reader, p.token));
     }

@@ -387,15 +387,15 @@ fn parse_ty(p: parser, colons_before_params: bool) -> @ast::ty {
         let region = parse_region(p);
         let mt = parse_mt(p);
         ast::ty_rptr(region, mt)
-    } else if eat_word(p, "fn") {
+    } else if eat_keyword(p, "fn") {
         let proto = parse_fn_ty_proto(p);
         alt proto {
           ast::proto_bare { p.warn("fn is deprecated, use native fn"); }
           _ { /* fallthrough */ }
         }
         ast::ty_fn(proto, parse_ty_fn(p))
-    } else if eat_word(p, "native") {
-        expect_word(p, "fn");
+    } else if eat_keyword(p, "native") {
+        expect_keyword(p, "fn");
         ast::ty_fn(ast::proto_bare, parse_ty_fn(p))
     } else if p.token == token::MOD_SEP || is_ident(p.token) {
         let path = parse_path(p);
@@ -518,9 +518,9 @@ fn lit_from_token(p: parser, tok: token::token) -> ast::lit_ {
 
 fn parse_lit(p: parser) -> ast::lit {
     let lo = p.span.lo;
-    let lit = if eat_word(p, "true") {
+    let lit = if eat_keyword(p, "true") {
         ast::lit_bool(true)
-    } else if eat_word(p, "false") {
+    } else if eat_keyword(p, "false") {
         ast::lit_bool(false)
     } else {
         let tok = p.token;
@@ -562,11 +562,11 @@ fn parse_path_and_ty_param_substs(p: parser, colons: bool) -> @ast::path {
 }
 
 fn parse_mutability(p: parser) -> ast::mutability {
-    if eat_word(p, "mut") {
+    if eat_keyword(p, "mut") {
         ast::m_mutbl
-    } else if eat_word(p, "mut") {
+    } else if eat_keyword(p, "mut") {
         ast::m_mutbl
-    } else if eat_word(p, "const") {
+    } else if eat_keyword(p, "const") {
         ast::m_const
     } else {
         ast::m_imm
@@ -654,12 +654,14 @@ fn parse_bottom_expr(p: parser) -> pexpr {
         ret mk_pexpr(p, lo, hi, ast::expr_tup(es));
     } else if p.token == token::LBRACE {
         p.bump();
-        if is_word(p, "mut") ||
+        if is_keyword(p, "mut") ||
                is_plain_ident(p.token) && p.look_ahead(1u) == token::COLON {
             let mut fields = [parse_field(p, token::COLON)];
             let mut base = none;
             while p.token != token::RBRACE {
-                if eat_word(p, "with") { base = some(parse_expr(p)); break; }
+                if eat_keyword(p, "with") {
+                    base = some(parse_expr(p)); break;
+                }
                 expect(p, token::COMMA);
                 if p.token == token::RBRACE {
                     // record ends by an optional trailing comma
@@ -676,26 +678,26 @@ fn parse_bottom_expr(p: parser) -> pexpr {
             let blk = parse_block_tail(p, lo, ast::default_blk);
             ret mk_pexpr(p, blk.span.lo, blk.span.hi, ast::expr_block(blk));
         }
-    } else if eat_word(p, "new") {
+    } else if eat_keyword(p, "new") {
         expect(p, token::LPAREN);
         let r = parse_expr(p);
         expect(p, token::RPAREN);
         let v = parse_expr(p);
         ret mk_pexpr(p, lo, p.span.hi,
                      ast::expr_new(r, p.get_id(), v));
-    } else if eat_word(p, "if") {
+    } else if eat_keyword(p, "if") {
         ret pexpr(parse_if_expr(p));
-    } else if eat_word(p, "for") {
+    } else if eat_keyword(p, "for") {
         ret pexpr(parse_for_expr(p));
-    } else if eat_word(p, "while") {
+    } else if eat_keyword(p, "while") {
         ret pexpr(parse_while_expr(p));
-    } else if eat_word(p, "do") {
+    } else if eat_keyword(p, "do") {
         ret pexpr(parse_do_while_expr(p));
-    } else if eat_word(p, "loop") {
+    } else if eat_keyword(p, "loop") {
         ret pexpr(parse_loop_expr(p));
-    } else if eat_word(p, "alt") {
+    } else if eat_keyword(p, "alt") {
         ret pexpr(parse_alt_expr(p));
-    } else if eat_word(p, "fn") {
+    } else if eat_keyword(p, "fn") {
         let proto = parse_fn_ty_proto(p);
         alt proto {
           ast::proto_bare { p.fatal("fn expr are deprecated, use fn@"); }
@@ -703,9 +705,9 @@ fn parse_bottom_expr(p: parser) -> pexpr {
           _ { /* fallthrough */ }
         }
         ret pexpr(parse_fn_expr(p, proto));
-    } else if eat_word(p, "unchecked") {
+    } else if eat_keyword(p, "unchecked") {
         ret pexpr(parse_block_expr(p, lo, ast::unchecked_blk));
-    } else if eat_word(p, "unsafe") {
+    } else if eat_keyword(p, "unsafe") {
         ret pexpr(parse_block_expr(p, lo, ast::unsafe_blk));
     } else if p.token == token::LBRACKET {
         p.bump();
@@ -737,20 +739,20 @@ fn parse_bottom_expr(p: parser) -> pexpr {
         let ex_ext = parse_syntax_ext(p);
         hi = ex_ext.span.hi;
         ex = ex_ext.node;
-    } else if eat_word(p, "bind") {
+    } else if eat_keyword(p, "bind") {
         let e = parse_expr_res(p, RESTRICT_NO_CALL_EXPRS);
         let es =
             parse_seq(token::LPAREN, token::RPAREN, seq_sep(token::COMMA),
                       parse_expr_or_hole, p);
         hi = es.span.hi;
         ex = ast::expr_bind(e, es.node);
-    } else if eat_word(p, "fail") {
+    } else if eat_keyword(p, "fail") {
         if can_begin_expr(p.token) {
             let e = parse_expr(p);
             hi = e.span.hi;
             ex = ast::expr_fail(some(e));
         } else { ex = ast::expr_fail(none); }
-    } else if eat_word(p, "log") {
+    } else if eat_keyword(p, "log") {
         expect(p, token::LPAREN);
         let lvl = parse_expr(p);
         expect(p, token::COMMA);
@@ -758,18 +760,18 @@ fn parse_bottom_expr(p: parser) -> pexpr {
         ex = ast::expr_log(2, lvl, e);
         hi = p.span.hi;
         expect(p, token::RPAREN);
-    } else if eat_word(p, "assert") {
+    } else if eat_keyword(p, "assert") {
         let e = parse_expr(p);
         ex = ast::expr_assert(e);
         hi = e.span.hi;
-    } else if eat_word(p, "check") {
+    } else if eat_keyword(p, "check") {
         /* Should be a predicate (pure boolean function) applied to
            arguments that are all either slot variables or literals.
            but the typechecker enforces that. */
         let e = parse_expr(p);
         hi = e.span.hi;
         ex = ast::expr_check(ast::checked_expr, e);
-    } else if eat_word(p, "claim") {
+    } else if eat_keyword(p, "claim") {
         /* Same rules as check, except that if check-claims
          is enabled (a command-line flag), then the parser turns
         claims into check */
@@ -777,29 +779,29 @@ fn parse_bottom_expr(p: parser) -> pexpr {
         let e = parse_expr(p);
         hi = e.span.hi;
         ex = ast::expr_check(ast::claimed_expr, e);
-    } else if eat_word(p, "ret") {
+    } else if eat_keyword(p, "ret") {
         if can_begin_expr(p.token) {
             let e = parse_expr(p);
             hi = e.span.hi;
             ex = ast::expr_ret(some(e));
         } else { ex = ast::expr_ret(none); }
-    } else if eat_word(p, "break") {
+    } else if eat_keyword(p, "break") {
         ex = ast::expr_break;
         hi = p.span.hi;
-    } else if eat_word(p, "cont") {
+    } else if eat_keyword(p, "cont") {
         ex = ast::expr_cont;
         hi = p.span.hi;
-    } else if eat_word(p, "be") {
+    } else if eat_keyword(p, "be") {
         let e = parse_expr(p);
         hi = e.span.hi;
         ex = ast::expr_be(e);
-    } else if eat_word(p, "copy") {
+    } else if eat_keyword(p, "copy") {
         let e = parse_expr(p);
         ex = ast::expr_copy(e);
         hi = e.span.hi;
     } else if p.token == token::MOD_SEP ||
-                  is_ident(p.token) && !is_word(p, "true") &&
-                      !is_word(p, "false") {
+                  is_ident(p.token) && !is_keyword(p, "true") &&
+                      !is_keyword(p, "false") {
         check_bad_word(p);
         let pth = parse_path_and_ty_param_substs(p, true);
         hi = pth.span.hi;
@@ -1051,7 +1053,7 @@ fn parse_more_binops(p: parser, plhs: pexpr, min_prec: int) ->
             ret parse_more_binops(p, bin, min_prec);
         }
     }
-    if as_prec > min_prec && eat_word(p, "as") {
+    if as_prec > min_prec && eat_keyword(p, "as") {
         let rhs = parse_ty(p, true);
         let _as =
             mk_pexpr(p, lhs.span.lo, rhs.span.hi, ast::expr_cast(lhs, rhs));
@@ -1115,7 +1117,7 @@ fn parse_if_expr_1(p: parser) ->
     let thn = parse_block(p);
     let mut els: option<@ast::expr> = none;
     let mut hi = thn.span.hi;
-    if eat_word(p, "else") {
+    if eat_keyword(p, "else") {
         let elexpr = parse_else_expr(p);
         els = some(elexpr);
         hi = elexpr.span.hi;
@@ -1124,7 +1126,7 @@ fn parse_if_expr_1(p: parser) ->
 }
 
 fn parse_if_expr(p: parser) -> @ast::expr {
-    if eat_word(p, "check") {
+    if eat_keyword(p, "check") {
         let q = parse_if_expr_1(p);
         ret mk_expr(p, q.lo, q.hi, ast::expr_if_check(q.cond, q.then, q.els));
     } else {
@@ -1171,10 +1173,10 @@ fn parse_capture_clause(p: parser) -> @ast::capture_clause {
 
     if eat(p, token::LBRACKET) {
         while !eat(p, token::RBRACKET) {
-            if eat_word(p, "copy") {
+            if eat_keyword(p, "copy") {
                 copies += eat_ident_list(p);
                 expect_opt_trailing_semi(p);
-            } else if eat_word(p, "move") {
+            } else if eat_keyword(p, "move") {
                 moves += eat_ident_list(p);
                 expect_opt_trailing_semi(p);
             } else {
@@ -1204,7 +1206,7 @@ fn parse_fn_block_expr(p: parser) -> @ast::expr {
 }
 
 fn parse_else_expr(p: parser) -> @ast::expr {
-    if eat_word(p, "if") {
+    if eat_keyword(p, "if") {
         ret parse_if_expr(p);
     } else {
         let blk = parse_block(p);
@@ -1240,7 +1242,7 @@ fn parse_while_expr(p: parser) -> @ast::expr {
 fn parse_do_while_expr(p: parser) -> @ast::expr {
     let lo = p.last_span.lo;
     let body = parse_block_no_value(p);
-    expect_word(p, "while");
+    expect_keyword(p, "while");
     let cond = parse_expr(p);
     let mut hi = cond.span.hi;
     ret mk_expr(p, lo, hi, ast::expr_do_while(body, cond));
@@ -1255,7 +1257,7 @@ fn parse_loop_expr(p: parser) -> @ast::expr {
 
 fn parse_alt_expr(p: parser) -> @ast::expr {
     let lo = p.last_span.lo;
-    let mode = if eat_word(p, "check") { ast::alt_check }
+    let mode = if eat_keyword(p, "check") { ast::alt_check }
                else { ast::alt_exhaustive };
     let discriminant = parse_expr(p);
     expect(p, token::LBRACE);
@@ -1263,7 +1265,7 @@ fn parse_alt_expr(p: parser) -> @ast::expr {
     while p.token != token::RBRACE {
         let pats = parse_pats(p);
         let mut guard = none;
-        if eat_word(p, "if") { guard = some(parse_expr(p)); }
+        if eat_keyword(p, "if") { guard = some(parse_expr(p)); }
         let blk = parse_block(p);
         arms += [{pats: pats, guard: guard, body: blk}];
     }
@@ -1402,9 +1404,9 @@ fn parse_pat(p: parser) -> @ast::pat {
         }
       }
       tok {
-        if !is_ident(tok) || is_word(p, "true") || is_word(p, "false") {
+        if !is_ident(tok) || is_keyword(p, "true") || is_keyword(p, "false") {
             let val = parse_expr_res(p, RESTRICT_NO_BAR_OP);
-            if eat_word(p, "to") {
+            if eat_keyword(p, "to") {
                 let end = parse_expr_res(p, RESTRICT_NO_BAR_OP);
                 hi = end.span.hi;
                 pat = ast::pat_range(val, end);
@@ -1478,7 +1480,7 @@ fn parse_local(p: parser, is_mutbl: bool,
 }
 
 fn parse_let(p: parser) -> @ast::decl {
-    let is_mutbl = eat_word(p, "mut");
+    let is_mutbl = eat_keyword(p, "mut");
     let lo = p.span.lo;
     let mut locals = [parse_local(p, is_mutbl, true)];
     while eat(p, token::COMMA) {
@@ -1491,7 +1493,7 @@ fn parse_let(p: parser) -> @ast::decl {
 fn parse_instance_var(p:parser, pr: ast::privacy) -> @ast::class_member {
     let mut is_mutbl = ast::class_immutable;
     let lo = p.span.lo;
-    if eat_word(p, "mut") {
+    if eat_keyword(p, "mut") {
         is_mutbl = ast::class_mutable;
     }
     if !is_plain_ident(p.token) {
@@ -1513,9 +1515,9 @@ fn parse_stmt(p: parser, first_item_attrs: [ast::attribute]) -> @ast::stmt {
     }
 
     let lo = p.span.lo;
-    if is_word(p, "let") {
+    if is_keyword(p, "let") {
         check_expected_item(p, first_item_attrs);
-        expect_word(p, "let");
+        expect_keyword(p, "let");
         let decl = parse_let(p);
         ret @spanned(lo, decl.span.hi, ast::stmt_decl(decl, p.get_id()));
     } else {
@@ -1575,11 +1577,11 @@ fn parse_inner_attrs_and_block(
     }
 
     let lo = p.span.lo;
-    if eat_word(p, "unchecked") {
+    if eat_keyword(p, "unchecked") {
         expect(p, token::LBRACE);
         let {inner, next} = maybe_parse_inner_attrs_and_next(p, parse_attrs);
         ret (inner, parse_block_tail_(p, lo, ast::unchecked_blk, next));
-    } else if eat_word(p, "unsafe") {
+    } else if eat_keyword(p, "unsafe") {
         expect(p, token::LBRACE);
         let {inner, next} = maybe_parse_inner_attrs_and_next(p, parse_attrs);
         ret (inner, parse_block_tail_(p, lo, ast::unsafe_blk, next));
@@ -1668,8 +1670,8 @@ fn parse_ty_param(p: parser) -> ast::ty_param {
     let ident = parse_ident(p);
     if eat(p, token::COLON) {
         while p.token != token::COMMA && p.token != token::GT {
-            if eat_word(p, "send") { bounds += [ast::bound_send]; }
-            else if eat_word(p, "copy") { bounds += [ast::bound_copy]; }
+            if eat_keyword(p, "send") { bounds += [ast::bound_send]; }
+            else if eat_keyword(p, "copy") { bounds += [ast::bound_copy]; }
             else { bounds += [ast::bound_iface(parse_ty(p, false))]; }
         }
     }
@@ -1789,11 +1791,11 @@ fn parse_item_iface(p: parser, attrs: [ast::attribute]) -> @ast::item {
 //    impl name<T> for [T] { ... }
 fn parse_item_impl(p: parser, attrs: [ast::attribute]) -> @ast::item {
     let lo = p.last_span.lo;
-    let mut (ident, tps) = if !is_word(p, "of") {
+    let mut (ident, tps) = if !is_keyword(p, "of") {
         if p.token == token::LT { (none, parse_ty_params(p)) }
         else { (some(parse_ident(p)), parse_ty_params(p)) }
     } else { (none, []) };
-    let ifce = if eat_word(p, "of") {
+    let ifce = if eat_keyword(p, "of") {
         let path = parse_path_and_ty_param_substs(p, false);
         if option::is_none(ident) {
             ident = some(vec::last(path.idents));
@@ -1802,9 +1804,9 @@ fn parse_item_impl(p: parser, attrs: [ast::attribute]) -> @ast::item {
     } else { none };
     let ident = alt ident {
         some(name) { name }
-        none { expect_word(p, "of"); fail; }
+        none { expect_keyword(p, "of"); fail; }
     };
-    expect_word(p, "for");
+    expect_keyword(p, "for");
     let ty = parse_ty(p, false);
     let mut meths = [];
     expect(p, token::LBRACE);
@@ -1868,7 +1870,7 @@ fn parse_item_class(p: parser, attrs: [ast::attribute]) -> @ast::item {
     let rp = parse_region_param(p);
     let ty_params = parse_ty_params(p);
     let class_path = ident_to_path_tys(p, class_name, ty_params);
-    let ifaces : [@ast::iface_ref] = if eat_word(p, "implements")
+    let ifaces : [@ast::iface_ref] = if eat_keyword(p, "implements")
                                        { parse_iface_ref_list(p) }
                                     else { [] };
     expect(p, token::LBRACE);
@@ -1904,7 +1906,7 @@ fn parse_item_class(p: parser, attrs: [ast::attribute]) -> @ast::item {
 
 fn parse_single_class_item(p: parser, privcy: ast::privacy)
     -> @ast::class_member {
-   if eat_word(p, "let") {
+   if eat_keyword(p, "let") {
       let a_var = parse_instance_var(p, privcy);
       expect(p, token::SEMI);
       ret a_var;
@@ -1922,7 +1924,7 @@ enum class_contents { ctor_decl(ast::fn_decl, ast::blk, codemap::span),
 
 fn parse_class_item(p:parser, class_name_with_tps: @ast::path)
     -> class_contents {
-    if eat_word(p, "new") {
+    if eat_keyword(p, "new") {
         let lo = p.last_span.lo;
         // Can ctors have attrs?
             // result type is always the type of the class
@@ -1934,7 +1936,7 @@ fn parse_class_item(p:parser, class_name_with_tps: @ast::path)
         let body = parse_block(p);
         ret ctor_decl(decl, body, mk_sp(lo, p.last_span.hi));
     }
-    else if eat_word(p, "priv") {
+    else if eat_keyword(p, "priv") {
             expect(p, token::LBRACE);
             let mut results = [];
             while p.token != token::RBRACE {
@@ -2016,9 +2018,12 @@ fn parse_item_native_fn(p: parser, attrs: [ast::attribute],
 }
 
 fn parse_fn_purity(p: parser) -> ast::purity {
-    if eat_word(p, "fn") { ast::impure_fn }
-    else if eat_word(p, "pure") { expect_word(p, "fn"); ast::pure_fn }
-    else if eat_word(p, "unsafe") { expect_word(p, "fn"); ast::unsafe_fn }
+    if eat_keyword(p, "fn") { ast::impure_fn }
+    else if eat_keyword(p, "pure") { expect_keyword(p, "fn"); ast::pure_fn }
+    else if eat_keyword(p, "unsafe") {
+        expect_keyword(p, "fn");
+        ast::unsafe_fn
+    }
     else { unexpected(p); }
 }
 
@@ -2047,7 +2052,7 @@ fn parse_native_mod_items(p: parser, first_item_attrs: [ast::attribute]) ->
 
 fn parse_item_native_mod(p: parser, attrs: [ast::attribute]) -> @ast::item {
     let lo = p.last_span.lo;
-    expect_word(p, "mod");
+    expect_keyword(p, "mod");
     let id = parse_ident(p);
     expect(p, token::LBRACE);
     let more_attrs = parse_inner_attrs_and_next(p);
@@ -2178,36 +2183,36 @@ fn fn_expr_lookahead(tok: token::token) -> bool {
 }
 
 fn parse_item(p: parser, attrs: [ast::attribute]) -> option<@ast::item> {
-    if eat_word(p, "const") {
+    if eat_keyword(p, "const") {
         ret some(parse_item_const(p, attrs));
-    } else if is_word(p, "fn") && !fn_expr_lookahead(p.look_ahead(1u)) {
+    } else if is_keyword(p, "fn") && !fn_expr_lookahead(p.look_ahead(1u)) {
         p.bump();
         ret some(parse_item_fn(p, ast::impure_fn, attrs));
-    } else if eat_word(p, "pure") {
-        expect_word(p, "fn");
+    } else if eat_keyword(p, "pure") {
+        expect_keyword(p, "fn");
         ret some(parse_item_fn(p, ast::pure_fn, attrs));
-    } else if is_word(p, "unsafe") && p.look_ahead(1u) != token::LBRACE {
+    } else if is_keyword(p, "unsafe") && p.look_ahead(1u) != token::LBRACE {
         p.bump();
-        expect_word(p, "fn");
+        expect_keyword(p, "fn");
         ret some(parse_item_fn(p, ast::unsafe_fn, attrs));
-    } else if eat_word(p, "crust") {
-        expect_word(p, "fn");
+    } else if eat_keyword(p, "crust") {
+        expect_keyword(p, "fn");
         ret some(parse_item_fn(p, ast::crust_fn, attrs));
-    } else if eat_word(p, "mod") {
+    } else if eat_keyword(p, "mod") {
         ret some(parse_item_mod(p, attrs));
-    } else if eat_word(p, "native") {
+    } else if eat_keyword(p, "native") {
         ret some(parse_item_native_mod(p, attrs));
-    } if eat_word(p, "type") {
+    } if eat_keyword(p, "type") {
         ret some(parse_item_type(p, attrs));
-    } else if eat_word(p, "enum") {
+    } else if eat_keyword(p, "enum") {
         ret some(parse_item_enum(p, attrs));
-    } else if eat_word(p, "iface") {
+    } else if eat_keyword(p, "iface") {
         ret some(parse_item_iface(p, attrs));
-    } else if eat_word(p, "impl") {
+    } else if eat_keyword(p, "impl") {
         ret some(parse_item_impl(p, attrs));
-    } else if eat_word(p, "resource") {
+    } else if eat_keyword(p, "resource") {
         ret some(parse_item_res(p, attrs));
-    } else if eat_word(p, "class") {
+    } else if eat_keyword(p, "class") {
         ret some(parse_item_class(p, attrs));
     }
 else { ret none; }
@@ -2298,11 +2303,11 @@ fn parse_view_paths(p: parser) -> [@ast::view_path] {
 fn parse_view_item(p: parser) -> @ast::view_item {
     let lo = p.span.lo;
     let the_item =
-        if eat_word(p, "use") {
+        if eat_keyword(p, "use") {
             parse_use(p)
-        } else if eat_word(p, "import") {
+        } else if eat_keyword(p, "import") {
             ast::view_item_import(parse_view_paths(p))
-        } else if eat_word(p, "export") {
+        } else if eat_keyword(p, "export") {
             ast::view_item_export(parse_view_paths(p))
         } else {
             fail
@@ -2313,7 +2318,7 @@ fn parse_view_item(p: parser) -> @ast::view_item {
 }
 
 fn is_view_item(p: parser) -> bool {
-    is_word(p, "use") || is_word(p, "import") || is_word(p, "export")
+    is_keyword(p, "use") || is_keyword(p, "import") || is_keyword(p, "export")
 }
 
 fn maybe_parse_view(
@@ -2327,7 +2332,7 @@ fn maybe_parse_view_import_only(
     p: parser,
     first_item_attrs: [ast::attribute]) -> [@ast::view_item] {
 
-    maybe_parse_view_while(p, first_item_attrs, bind is_word(_, "import"))
+    maybe_parse_view_while(p, first_item_attrs, bind is_keyword(_, "import"))
 }
 
 fn maybe_parse_view_while(
@@ -2385,8 +2390,8 @@ fn parse_crate_directive(p: parser, first_outer_attr: [ast::attribute]) ->
     let expect_mod = vec::len(outer_attrs) > 0u;
 
     let lo = p.span.lo;
-    if expect_mod || is_word(p, "mod") {
-        expect_word(p, "mod");
+    if expect_mod || is_keyword(p, "mod") {
+        expect_keyword(p, "mod");
         let id = parse_ident(p);
         alt p.token {
           // mod x = "foo.rs";
@@ -2424,7 +2429,7 @@ fn parse_crate_directives(p: parser, term: token::token,
     // seeing the terminator next, so if we do see it then fail the same way
     // parse_crate_directive would
     if vec::len(first_outer_attr) > 0u && p.token == term {
-        expect_word(p, "mod");
+        expect_keyword(p, "mod");
     }
 
     let mut cdirs: [@ast::crate_directive] = [];
