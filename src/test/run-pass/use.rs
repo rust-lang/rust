@@ -1,17 +1,14 @@
-// xfail-test
-use std;
-use libc;
-use zed(name = "std");
-use bar(name = "std", vers = "0.1");
+#[no_core];
+use core;
+use zed(name = "core");
+use bar(name = "core", vers = "0.2");
 
 
-// FIXME: commented out since resolve doesn't know how to handle crates yet.
-// import str;
-// import x = str;
+import core::str;
+import x = zed::str;
 mod baz {
-    // import str;
-    // import x = str;
-
+    import bar::str;
+    import x = core::str;
 }
 
 fn main() { }
