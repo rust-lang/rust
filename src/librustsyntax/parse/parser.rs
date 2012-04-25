@@ -59,7 +59,7 @@ type parser = @{
     reader: reader,
     binop_precs: @[op_spec],
     keywords: hashmap<str, ()>,
-    bad_expr_words: hashmap<str, ()>
+    restricted_keywords: hashmap<str, ()>
 };
 
 impl parser for parser {
@@ -543,7 +543,7 @@ fn parse_path(p: parser) -> @ast::path {
 fn parse_value_path(p: parser) -> @ast::path {
     let pt = parse_path(p);
     let last_word = vec::last(pt.idents);
-    if is_bad_expr_word(p, last_word) {
+    if is_restricted_keyword(p, last_word) {
         p.fatal("found " + last_word + " in expression position");
     }
     pt
@@ -802,7 +802,7 @@ fn parse_bottom_expr(p: parser) -> pexpr {
     } else if p.token == token::MOD_SEP ||
                   is_ident(p.token) && !is_keyword(p, "true") &&
                       !is_keyword(p, "false") {
-        check_bad_expr_word(p);
+        check_restricted_keywords(p);
         let pth = parse_path_and_ty_param_substs(p, true);
         hi = pth.span.hi;
         ex = ast::expr_path(pth);
@@ -1370,7 +1370,7 @@ fn parse_pat(p: parser) -> @ast::pat {
                 p.bump();
                 subpat = parse_pat(p);
             } else {
-                if is_bad_expr_word(p, fieldname) {
+                if is_restricted_keyword(p, fieldname) {
                     p.fatal("found " + fieldname + " in binding position");
                 }
                 subpat = @{id: p.get_id(),
@@ -2098,7 +2098,7 @@ fn parse_item_enum(p: parser, attrs: [ast::attribute]) -> @ast::item {
     let mut variants: [ast::variant] = [];
     // Newtype syntax
     if p.token == token::EQ {
-        if is_bad_expr_word(p, id) {
+        if is_restricted_keyword(p, id) {
             p.fatal("found " + id + " in enum constructor position");
         }
         p.bump();

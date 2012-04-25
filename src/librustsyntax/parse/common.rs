@@ -43,7 +43,7 @@ fn parse_path_list_ident(p: parser) -> ast::path_list_ident {
 }
 
 fn parse_value_ident(p: parser) -> ast::ident {
-    check_bad_expr_word(p);
+    check_restricted_keywords(p);
     ret parse_ident(p);
 }
 
@@ -87,15 +87,15 @@ fn expect_keyword(p: parser, word: str) {
     }
 }
 
-fn is_bad_expr_word(p: parser, word: str) -> bool {
-    p.bad_expr_words.contains_key(word)
+fn is_restricted_keyword(p: parser, word: str) -> bool {
+    p.restricted_keywords.contains_key(word)
 }
 
-fn check_bad_expr_word(p: parser) {
+fn check_restricted_keywords(p: parser) {
     alt p.token {
       token::IDENT(_, false) {
         let w = token_to_str(p.reader, p.token);
-        if is_bad_expr_word(p, w) {
+        if is_restricted_keyword(p, w) {
             p.fatal("found `" + w + "` in expression position");
         }
       }

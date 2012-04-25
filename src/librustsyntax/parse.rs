@@ -132,7 +132,7 @@ fn new_parser(sess: parse_sess, cfg: ast::crate_cfg, rdr: lexer::reader,
       reader: rdr,
       binop_precs: prec::binop_prec_table(),
       keywords: token::keyword_table(),
-      bad_expr_words: token::bad_expr_word_table()}
+      restricted_keywords: token::restricted_keyword_table()}
 }
 
 fn new_parser_from_source_str(sess: parse_sess, cfg: ast::crate_cfg,

@@ -201,15 +201,28 @@ fn is_bar(t: token::token) -> bool {
 }
 
 #[doc = "
-All the valid words that have meaning in the Rust language. Some of these are
-nonetheless valid as identifiers becasue they are unambiguous.
+All the valid words that have meaning in the Rust language.
+
+Rust keywords are either 'contextual' or 'restricted'. Contextual
+keywords may be used as identifiers because their appearance in
+the grammar is unambiguous. Restricted keywords may not appear
+in positions that might otherwise contain _value identifiers_.
 "]
 fn keyword_table() -> hashmap<str, ()> {
     let keywords = str_hash();
-    for bad_expr_word_table().each_key {|word|
+    for contextual_keyword_table().each_key {|word|
         keywords.insert(word, ());
     }
-    let other_keywords = [
+    for restricted_keyword_table().each_key {|word|
+        keywords.insert(word, ());
+    }
+    ret keywords;
+}
+
+#[doc = "Keywords that may be used as identifiers"]
+fn contextual_keyword_table() -> hashmap<str, ()> {
+    let words = str_hash();
+    let keys = [
         "as",
         "bind",
         "else",
@@ -217,32 +230,50 @@ fn keyword_table() -> hashmap<str, ()> {
         "move",
         "of",
         "priv",
-        "self",
-        "send",
-        "static",
+        "self", "send", "static",
         "to",
         "use",
         "with"
     ];
-    for other_keywords.each {|word|
-        keywords.insert(word, ());
+    for keys.each {|word|
+        words.insert(word, ());
     }
-    ret keywords;
+    words
 }
 
 #[doc = "
-These are the words that shouldn't be allowed as value identifiers,
-because, if used at the start of a line, they will cause the line to be
-interpreted as a specific kind of statement, which would be confusing.
+Keywords that may not appear in any position that might otherwise contain a
+_value identifier_. Restricted keywords may still be used as other types of
+identifiers.
+
+Reasons:
+
+* For some (most?), if used at the start of a line, they will cause the line
+  to be interpreted as a specific kind of statement, which would be confusing.
+
+* `true` or `false` as identifiers would always be shadowed by
+  the boolean constants
 "]
-fn bad_expr_word_table() -> hashmap<str, ()> {
+fn restricted_keyword_table() -> hashmap<str, ()> {
     let words = str_hash();
-    let keys = ["alt", "assert", "be", "break", "check", "claim",
-                "class", "const", "cont", "copy", "crust", "do", "else",
-                "enum", "export", "fail", "false", "fn", "for", "if",
-                "iface", "impl", "import", "let", "log", "loop", "mod",
-                "mut", "native", "new", "pure", "resource", "true",
-                "ret", "trait", "type", "unchecked", "unsafe", "while"];
+    let keys = [
+        "alt",
+        "assert",
+        "be", "break",
+        "check", "claim", "class", "const", "cont", "copy", "crust",
+        "do",
+        "else", "enum", "export",
+        "fail", "false", "fn", "for",
+        "if", "iface", "impl", "import",
+        "let", "log", "loop",
+        "mod", "mut",
+        "native", "new",
+        "pure",
+        "resource", "ret",
+        "true", "trait", "type",
+        "unchecked", "unsafe",
+        "while"
+    ];
     for keys.each {|word|
         words.insert(word, ());
     }
