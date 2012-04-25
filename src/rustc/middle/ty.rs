@@ -227,7 +227,8 @@ type ctxt =
       iface_method_cache: hashmap<def_id, @[method]>,
       ty_param_bounds: hashmap<ast::node_id, param_bounds>,
       inferred_modes: hashmap<ast::node_id, ast::mode>,
-      borrowings: hashmap<ast::node_id, ()>};
+      borrowings: hashmap<ast::node_id, ()>,
+      normalized_cache: hashmap<t, t>};
 
 type t_box = @{struct: sty,
                id: uint,
@@ -461,7 +462,8 @@ fn mk_ctxt(s: session::session, dm: resolve::def_map, amap: ast_map::map,
       iface_method_cache: new_def_hash(),
       ty_param_bounds: map::int_hash(),
       inferred_modes: map::int_hash(),
-      borrowings: map::int_hash()}
+      borrowings: map::int_hash(),
+      normalized_cache: new_ty_hash()}
 }
 
 
@@ -2680,6 +2682,11 @@ fn ty_params_to_tys(tcx: ty::ctxt, tps: [ast::ty_param]) -> [t] {
 Returns an equivalent type with all the typedefs and self regions removed
 "]
 fn normalize_ty(cx: ctxt, t: t) -> t {
+    alt cx.normalized_cache.find(t) {
+      some(t) { ret t; }
+      none { }
+    }
+
     let t = alt get(t).struct {
         ty_enum(did, r) {
             alt r.self_r {
@@ -2693,7 +2700,9 @@ fn normalize_ty(cx: ctxt, t: t) -> t {
         _ { t }
     };
     let sty = fold_sty(get(t).struct) {|t| normalize_ty(cx, t) };
-    mk_t(cx, sty)
+    let t_norm = mk_t(cx, sty);
+    cx.normalized_cache.insert(t, t_norm);
+    ret t_norm;
 }
 
 // Local Variables:
