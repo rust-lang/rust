@@ -200,17 +200,6 @@ fn is_bar(t: token::token) -> bool {
     alt t { token::BINOP(token::OR) | token::OROR { true } _ { false } }
 }
 
-fn is_bad_expr_word(t: token,
-                    bad_expr_words: hashmap<str, ()>,
-                    in: interner<str>) -> bool {
-    alt t {
-      token::IDENT(_, false) {
-        bad_expr_words.contains_key(to_str(in, t))
-      }
-      _ { false }
-    }
-}
-
 #[doc = "
 All the valid words that have meaning in the Rust language. Some of these are
 nonetheless valid as identifiers becasue they are unambiguous.
