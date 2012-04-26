@@ -39,7 +39,7 @@ type doc = {data: @[u8], start: uint, end: uint};
 
 type tagged_doc = {tag: uint, doc: doc};
 
-fn vuint_at(data: [u8], start: uint) -> {val: uint, next: uint} {
+fn vuint_at(data: [u8]/&, start: uint) -> {val: uint, next: uint} {
     let a = data[start];
     if a & 0x80u8 != 0u8 {
         ret {val: (a & 0x7fu8) as uint, next: start + 1u};
@@ -152,20 +152,23 @@ fn doc_as_i64(d: doc) -> i64 { doc_as_u64(d) as i64 }
 type writer = {writer: io::writer, mut size_positions: [uint]};
 
 fn write_sized_vuint(w: io::writer, n: uint, size: uint) {
-    let buf: [u8] = alt size {
-      1u { [0x80u8 | (n as u8)] }
-      2u { [0x40u8 | ((n >> 8_u) as u8), n as u8] }
+    alt size {
+      1u {
+        w.write([0x80u8 | (n as u8)]/&);
+      }
+      2u {
+        w.write([0x40u8 | ((n >> 8_u) as u8), n as u8]/&);
+      }
       3u {
-        [0x20u8 | ((n >> 16_u) as u8), (n >> 8_u) as u8,
-               n as u8]
+        w.write([0x20u8 | ((n >> 16_u) as u8), (n >> 8_u) as u8,
+                 n as u8]/&);
       }
       4u {
-        [0x10u8 | ((n >> 24_u) as u8), (n >> 16_u) as u8,
-               (n >> 8_u) as u8, n as u8]
+        w.write([0x10u8 | ((n >> 24_u) as u8), (n >> 16_u) as u8,
+                 (n >> 8_u) as u8, n as u8]/&);
       }
       _ { fail #fmt("vint to write too big: %?", n); }
     };
-    w.write(buf);
 }
 
 fn write_vuint(w: io::writer, n: uint) {
@@ -191,7 +194,7 @@ impl writer for writer {
 
         // Write a placeholder four-byte size.
         self.size_positions += [self.writer.tell()];
-        let zeroes: [u8] = [0u8, 0u8, 0u8, 0u8];
+        let zeroes: [u8]/& = [0u8, 0u8, 0u8, 0u8]/&;
         self.writer.write(zeroes);
     }
 
@@ -212,42 +215,54 @@ impl writer for writer {
         self.end_tag();
     }
 
-    fn wr_tagged_bytes(tag_id: uint, b: [u8]) {
+    fn wr_tagged_bytes(tag_id: uint, b: [u8]/&) {
         write_vuint(self.writer, tag_id);
         write_vuint(self.writer, vec::len(b));
         self.writer.write(b);
     }
 
     fn wr_tagged_u64(tag_id: uint, v: u64) {
-        self.wr_tagged_bytes(tag_id, io::u64_to_be_bytes(v, 8u));
+        io::u64_to_be_bytes(v, 8u) {|v|
+            self.wr_tagged_bytes(tag_id, v);
+        }
     }
 
     fn wr_tagged_u32(tag_id: uint, v: u32) {
-        self.wr_tagged_bytes(tag_id, io::u64_to_be_bytes(v as u64, 4u));
+        io::u64_to_be_bytes(v as u64, 4u) {|v|
+            self.wr_tagged_bytes(tag_id, v);
+        }
     }
 
     fn wr_tagged_u16(tag_id: uint, v: u16) {
-        self.wr_tagged_bytes(tag_id, io::u64_to_be_bytes(v as u64, 2u));
+        io::u64_to_be_bytes(v as u64, 2u) {|v|
+            self.wr_tagged_bytes(tag_id, v);
+        }
     }
 
     fn wr_tagged_u8(tag_id: uint, v: u8) {
-        self.wr_tagged_bytes(tag_id, [v]);
+        self.wr_tagged_bytes(tag_id, [v]/&);
     }
 
     fn wr_tagged_i64(tag_id: uint, v: i64) {
-        self.wr_tagged_bytes(tag_id, io::u64_to_be_bytes(v as u64, 8u));
+        io::u64_to_be_bytes(v as u64, 8u) {|v|
+            self.wr_tagged_bytes(tag_id, v);
+        }
     }
 
     fn wr_tagged_i32(tag_id: uint, v: i32) {
-        self.wr_tagged_bytes(tag_id, io::u64_to_be_bytes(v as u64, 4u));
+        io::u64_to_be_bytes(v as u64, 4u) {|v|
+            self.wr_tagged_bytes(tag_id, v);
+        }
     }
 
     fn wr_tagged_i16(tag_id: uint, v: i16) {
-        self.wr_tagged_bytes(tag_id, io::u64_to_be_bytes(v as u64, 2u));
+        io::u64_to_be_bytes(v as u64, 2u) {|v|
+            self.wr_tagged_bytes(tag_id, v);
+        }
     }
 
     fn wr_tagged_i8(tag_id: uint, v: i8) {
-        self.wr_tagged_bytes(tag_id, [v as u8]);
+        self.wr_tagged_bytes(tag_id, [v as u8]/&);
     }
 
     fn wr_tagged_str(tag_id: uint, v: str) {
@@ -260,7 +275,7 @@ impl writer for writer {
         self.wr_tagged_bytes(tag_id, str::bytes(v));
     }
 
-    fn wr_bytes(b: [u8]) {
+    fn wr_bytes(b: [u8]/&) {
         #debug["Write %u bytes", vec::len(b)];
         self.writer.write(b);
     }

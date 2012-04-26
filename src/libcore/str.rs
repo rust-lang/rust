@@ -33,6 +33,7 @@ export
 
    // Transforming strings
    bytes,
+   byte_slice,
    chars,
    substr,
    slice,
@@ -321,6 +322,16 @@ fn bytes(s: str) -> [u8] unsafe {
     ::unsafe::forget(s_copy);
     vec::unsafe::set_len(v, len(s));
     ret v;
+}
+
+#[doc = "
+Work with the string as a byte slice, not including trailing null.
+"]
+#[inline(always)]
+fn byte_slice<T>(s: str/&, f: fn([u8]/&) -> T) -> T unsafe {
+    unpack_slice(s) {|p,n|
+        vec::unsafe::form_slice(p, n-1u, f)
+    }
 }
 
 #[doc = "Convert a string to a vector of characters"]
@@ -1549,6 +1560,7 @@ length of the string. This is to permit probing the byte past the
 indexable area for a null byte, as is the case in slices pointing
 to full strings, or suffixes of them.
 "]
+#[inline(always)]
 fn unpack_slice<T>(s: str/&, f: fn(*u8, uint) -> T) -> T unsafe {
     let v : *(*u8,uint) = ::unsafe::reinterpret_cast(ptr::addr_of(s));
     let (buf,len) = *v;

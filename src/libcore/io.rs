@@ -297,23 +297,22 @@ enum fileflag { append, create, truncate, no_flag, }
 // FIXME: eventually u64
 // #2004
 iface writer {
-    fn write([const u8]);
+    fn write([const u8]/&);
     fn seek(int, seek_style);
     fn tell() -> uint;
     fn flush() -> int;
 }
 
 impl <T: writer, C> of writer for {base: T, cleanup: C} {
-    fn write(bs: [const u8]) { self.base.write(bs); }
+    fn write(bs: [const u8]/&) { self.base.write(bs); }
     fn seek(off: int, style: seek_style) { self.base.seek(off, style); }
     fn tell() -> uint { self.base.tell() }
     fn flush() -> int { self.base.flush() }
 }
 
 impl of writer for *libc::FILE {
-    fn write(v: [const u8]) unsafe {
-        let len = vec::len(v);
-        vec::as_buf(v) {|vbuf|
+    fn write(v: [const u8]/&) unsafe {
+        vec::unpack_slice(v) {|vbuf, len|
             let nout = libc::fwrite(vbuf as *c_void, len, 1u, self);
             if nout < 1 as size_t {
                 #error("error writing buffer");
@@ -339,10 +338,9 @@ fn FILE_writer(f: *libc::FILE, cleanup: bool) -> writer {
 }
 
 impl of writer for fd_t {
-    fn write(v: [const u8]) unsafe {
-        let len = vec::len(v);
+    fn write(v: [const u8]/&) unsafe {
         let mut count = 0u;
-        vec::as_buf(v) {|vbuf|
+        vec::unpack_slice(v) {|vbuf, len|
             while count < len {
                 let vb = ptr::offset(vbuf, count) as *c_void;
                 let nout = libc::write(self, vb, len);
@@ -408,26 +406,66 @@ fn mk_file_writer(path: str, flags: [fileflag])
     }
 }
 
-fn u64_to_le_bytes(n: u64, size: uint) -> [u8] {
-    let mut bytes: [u8] = [], i = size, n = n;
-    while i > 0u {
-        bytes += [(n & 255_u64) as u8];
-        n >>= 8_u64;
-        i -= 1u;
+fn u64_to_le_bytes<T>(n: u64, size: uint, f: fn([u8]/&) -> T) -> T {
+    assert size <= 8u;
+    alt size {
+      1u { f([n as u8]/&) }
+      2u { f([n as u8,
+              (n >> 8) as u8]/&) }
+      4u { f([n as u8,
+              (n >> 8) as u8,
+              (n >> 16) as u8,
+              (n >> 24) as u8]/&) }
+      8u { f([n as u8,
+              (n >> 8) as u8,
+              (n >> 16) as u8,
+              (n >> 24) as u8,
+              (n >> 32) as u8,
+              (n >> 40) as u8,
+              (n >> 48) as u8,
+              (n >> 56) as u8]/&) }
+      _ {
+
+        let mut bytes: [u8] = [], i = size, n = n;
+        while i > 0u {
+            bytes += [(n & 255_u64) as u8];
+            n >>= 8_u64;
+            i -= 1u;
+        }
+        f(bytes)
+      }
     }
-    ret bytes;
 }
 
-fn u64_to_be_bytes(n: u64, size: uint) -> [u8] {
+fn u64_to_be_bytes<T>(n: u64, size: uint, f: fn([u8]/&) -> T) -> T {
     assert size <= 8u;
-    let mut bytes: [u8] = [];
-    let mut i = size;
-    while i > 0u {
-        let shift = ((i - 1u) * 8u) as u64;
-        bytes += [(n >> shift) as u8];
-        i -= 1u;
+    alt size {
+      1u { f([n as u8]/&) }
+      2u { f([(n >> 8) as u8,
+              n as u8]/&) }
+      4u { f([(n >> 24) as u8,
+              (n >> 16) as u8,
+              (n >> 8) as u8,
+              n as u8]/&) }
+      8u { f([(n >> 56) as u8,
+              (n >> 48) as u8,
+              (n >> 40) as u8,
+              (n >> 32) as u8,
+              (n >> 24) as u8,
+              (n >> 16) as u8,
+              (n >> 8) as u8,
+              n as u8]/&) }
+      _ {
+        let mut bytes: [u8] = [];
+        let mut i = size;
+        while i > 0u {
+            let shift = ((i - 1u) * 8u) as u64;
+            bytes += [(n >> shift) as u8];
+            i -= 1u;
+        }
+        f(bytes)
+      }
     }
-    ret bytes;
 }
 
 fn u64_from_be_bytes(data: [u8], start: uint, size: uint) -> u64 {
@@ -448,45 +486,67 @@ impl writer_util for writer {
         if ch as uint < 128u {
             self.write([ch as u8]);
         } else {
-            self.write(str::bytes(str::from_char(ch)));
+            self.write_str(str::from_char(ch));
         }
     }
-    fn write_str(s: str) { self.write(str::bytes(s)); }
-    fn write_line(s: str) { self.write(str::bytes(s + "\n")); }
-    fn write_int(n: int) { self.write(str::bytes(int::to_str(n, 10u))); }
-    fn write_uint(n: uint) { self.write(str::bytes(uint::to_str(n, 10u))); }
+    fn write_str(s: str/&) { str::byte_slice(s) {|v| self.write(v); } }
+    fn write_line(s: str/&) {
+        self.write_str(s);
+        self.write_str("\n"/&);
+    }
+    fn write_int(n: int) { self.write_str(int::to_str(n, 10u)); }
+    fn write_uint(n: uint) { self.write_str(uint::to_str(n, 10u)); }
 
     fn write_le_uint(n: uint, size: uint) {
-        self.write(u64_to_le_bytes(n as u64, size));
+        u64_to_le_bytes(n as u64, size) {|v| self.write(v); }
     }
     fn write_le_int(n: int, size: uint) {
-        self.write(u64_to_le_bytes(n as u64, size));
+        u64_to_le_bytes(n as u64, size) {|v| self.write(v); }
     }
-
     fn write_be_uint(n: uint, size: uint) {
-        self.write(u64_to_be_bytes(n as u64, size));
+        u64_to_be_bytes(n as u64, size) {|v| self.write(v); }
     }
     fn write_be_int(n: int, size: uint) {
-        self.write(u64_to_be_bytes(n as u64, size));
+        u64_to_be_bytes(n as u64, size) {|v| self.write(v); }
+    }
+    fn write_be_u64(n: u64) {
+        u64_to_be_bytes(n, 8u) {|v| self.write(v); }
+    }
+    fn write_be_u32(n: u32) {
+        u64_to_be_bytes(n as u64, 4u) {|v| self.write(v); }
+    }
+    fn write_be_u16(n: u16) {
+        u64_to_be_bytes(n as u64, 2u) {|v| self.write(v); }
+    }
+    fn write_be_i64(n: i64) {
+        u64_to_be_bytes(n as u64, 8u) {|v| self.write(v); }
+    }
+    fn write_be_i32(n: i32) {
+        u64_to_be_bytes(n as u64, 4u) {|v| self.write(v); }
+    }
+    fn write_be_i16(n: i16) {
+        u64_to_be_bytes(n as u64, 2u) {|v| self.write(v); }
+    }
+    fn write_le_u64(n: u64) {
+        u64_to_le_bytes(n, 8u) {|v| self.write(v); }
+    }
+    fn write_le_u32(n: u32) {
+        u64_to_le_bytes(n as u64, 4u) {|v| self.write(v); }
+    }
+    fn write_le_u16(n: u16) {
+        u64_to_le_bytes(n as u64, 2u) {|v| self.write(v); }
+    }
+    fn write_le_i64(n: i64) {
+        u64_to_le_bytes(n as u64, 8u) {|v| self.write(v); }
+    }
+    fn write_le_i32(n: i32) {
+        u64_to_le_bytes(n as u64, 4u) {|v| self.write(v); }
+    }
+    fn write_le_i16(n: i16) {
+        u64_to_le_bytes(n as u64, 2u) {|v| self.write(v); }
     }
 
-    fn write_be_u64(n: u64) { self.write(u64_to_be_bytes(n, 8u)); }
-    fn write_be_u32(n: u32) { self.write(u64_to_be_bytes(n as u64, 4u)); }
-    fn write_be_u16(n: u16) { self.write(u64_to_be_bytes(n as u64, 2u)); }
-
-    fn write_be_i64(n: i64) { self.write(u64_to_be_bytes(n as u64, 8u)); }
-    fn write_be_i32(n: i32) { self.write(u64_to_be_bytes(n as u64, 4u)); }
-    fn write_be_i16(n: i16) { self.write(u64_to_be_bytes(n as u64, 2u)); }
-
-    fn write_le_u64(n: u64) { self.write(u64_to_le_bytes(n, 8u)); }
-    fn write_le_u32(n: u32) { self.write(u64_to_le_bytes(n as u64, 4u)); }
-    fn write_le_u16(n: u16) { self.write(u64_to_le_bytes(n as u64, 2u)); }
-
-    fn write_le_i64(n: i64) { self.write(u64_to_le_bytes(n as u64, 8u)); }
-    fn write_le_i32(n: i32) { self.write(u64_to_le_bytes(n as u64, 4u)); }
-    fn write_le_i16(n: i16) { self.write(u64_to_le_bytes(n as u64, 2u)); }
-
-    fn write_u8(n: u8) { self.write([n]) }
+    fn write_u8(n: u8) { self.write([n]/&) }
 }
 
 fn file_writer(path: str, flags: [fileflag]) -> result<writer, str> {
@@ -518,7 +578,7 @@ type mem_buffer = @{mut buf: [mut u8],
                     mut pos: uint};
 
 impl of writer for mem_buffer {
-    fn write(v: [const u8]) {
+    fn write(v: [const u8]/&) {
         // Fast path.
         if self.pos == vec::len(self.buf) {
             for vec::each(v) {|b| self.buf += [mut b]; }

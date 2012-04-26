@@ -190,45 +190,45 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
         alt t {
           ty_i { w.write_char('i'); }
           ty_char { w.write_char('c'); }
-          ty_i8 { w.write_str("MB"); }
-          ty_i16 { w.write_str("MW"); }
-          ty_i32 { w.write_str("ML"); }
-          ty_i64 { w.write_str("MD"); }
+          ty_i8 { w.write_str("MB"/&); }
+          ty_i16 { w.write_str("MW"/&); }
+          ty_i32 { w.write_str("ML"/&); }
+          ty_i64 { w.write_str("MD"/&); }
         }
       }
       ty::ty_uint(t) {
         alt t {
           ty_u { w.write_char('u'); }
-          ty_u8 { w.write_str("Mb"); }
-          ty_u16 { w.write_str("Mw"); }
-          ty_u32 { w.write_str("Ml"); }
-          ty_u64 { w.write_str("Md"); }
+          ty_u8 { w.write_str("Mb"/&); }
+          ty_u16 { w.write_str("Mw"/&); }
+          ty_u32 { w.write_str("Ml"/&); }
+          ty_u64 { w.write_str("Md"/&); }
         }
       }
       ty::ty_float(t) {
         alt t {
           ty_f { w.write_char('l'); }
-          ty_f32 { w.write_str("Mf"); }
-          ty_f64 { w.write_str("MF"); }
+          ty_f32 { w.write_str("Mf"/&); }
+          ty_f64 { w.write_str("MF"/&); }
         }
       }
       ty::ty_str { w.write_char('S'); }
       ty::ty_enum(def, substs) {
-        w.write_str("t[");
+        w.write_str("t["/&);
         w.write_str(cx.ds(def));
         w.write_char('|');
         enc_substs(w, cx, substs);
         w.write_char(']');
       }
       ty::ty_iface(def, tys) {
-        w.write_str("x[");
+        w.write_str("x["/&);
         w.write_str(cx.ds(def));
         w.write_char('|');
         for tys.each {|t| enc_ty(w, cx, t); }
         w.write_char(']');
       }
       ty::ty_tup(ts) {
-        w.write_str("T[");
+        w.write_str("T["/&);
         for ts.each {|t| enc_ty(w, cx, t); }
         w.write_char(']');
       }
@@ -251,7 +251,7 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
       }
       ty::ty_vec(mt) { w.write_char('I'); enc_mt(w, cx, mt); }
       ty::ty_rec(fields) {
-        w.write_str("R[");
+        w.write_str("R["/&);
         for fields.each {|field|
             w.write_str(field.ident);
             w.write_char('=');
@@ -264,7 +264,7 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
         enc_ty_fn(w, cx, f);
       }
       ty::ty_res(def, ty, substs) {
-        w.write_str("r[");
+        w.write_str("r["/&);
         w.write_str(cx.ds(def));
         w.write_char('|');
         enc_ty(w, cx, ty);
@@ -282,16 +282,16 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
         w.write_str(uint::str(id));
       }
       ty::ty_self(tps) {
-        w.write_str("s[");
+        w.write_str("s["/&);
         for tps.each {|t| enc_ty(w, cx, t); }
         w.write_char(']');
       }
       ty::ty_type { w.write_char('Y'); }
-      ty::ty_opaque_closure_ptr(ty::ck_block) { w.write_str("C&"); }
-      ty::ty_opaque_closure_ptr(ty::ck_box) { w.write_str("C@"); }
-      ty::ty_opaque_closure_ptr(ty::ck_uniq) { w.write_str("C~"); }
+      ty::ty_opaque_closure_ptr(ty::ck_block) { w.write_str("C&"/&); }
+      ty::ty_opaque_closure_ptr(ty::ck_box) { w.write_str("C@"/&); }
+      ty::ty_opaque_closure_ptr(ty::ck_uniq) { w.write_str("C~"/&); }
       ty::ty_constr(ty, cs) {
-        w.write_str("A[");
+        w.write_str("A["/&);
         enc_ty(w, cx, ty);
         for cs.each {|tc| enc_ty_constr(w, cx, tc); }
         w.write_char(']');
@@ -299,12 +299,12 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
       ty::ty_opaque_box { w.write_char('B'); }
       ty::ty_class(def, substs) {
           #debug("~~~~ %s", "a[");
-          w.write_str("a[");
+          w.write_str("a["/&);
           let s = cx.ds(def);
           #debug("~~~~ %s", s);
           w.write_str(s);
           #debug("~~~~ %s", "|");
-          w.write_str("|");
+          w.write_char('|');
           enc_substs(w, cx, substs);
           #debug("~~~~ %s", "]");
           w.write_char(']');
@@ -313,11 +313,11 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
 }
 fn enc_proto(w: io::writer, proto: proto) {
     alt proto {
-      proto_uniq { w.write_str("f~"); }
-      proto_box { w.write_str("f@"); }
+      proto_uniq { w.write_str("f~"/&); }
+      proto_box { w.write_str("f@"/&); }
       proto_block { w.write_str("f&"); }
-      proto_any { w.write_str("f*"); }
-      proto_bare { w.write_str("fn"); }
+      proto_any { w.write_str("f*"/&); }
+      proto_bare { w.write_str("fn"/&); }
     }
 }
 

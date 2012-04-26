@@ -150,9 +150,8 @@ fn capacity<T>(&&v: [const T]) -> uint unsafe {
 
 #[doc = "Returns the length of a vector"]
 #[inline(always)]
-pure fn len<T>(&&v: [const T]) -> uint unsafe {
-    let repr: **unsafe::vec_repr = ::unsafe::reinterpret_cast(addr_of(v));
-    (**repr).fill / sys::size_of::<T>()
+pure fn len<T>(&&v: [const T]/&) -> uint unsafe {
+    unpack_slice(v) {|_p, len| len}
 }
 
 #[doc = "
@@ -823,13 +822,15 @@ fn iter_between<T>(v: [const T], start: uint, end: uint, f: fn(T)) {
 Iterates over a vector, with option to break
 "]
 #[inline(always)]
-fn each<T>(v: [const T], f: fn(T) -> bool) unsafe {
-    let mut n = len(v);
-    let mut p = ptr::offset(unsafe::to_ptr(v), 0u);
-    while n > 0u {
-        if !f(*p) { break; }
-        p = ptr::offset(p, 1u);
-        n -= 1u;
+fn each<T>(v: [const T]/&, f: fn(T) -> bool) unsafe {
+    vec::unpack_slice(v) {|p, n|
+        let mut n = n;
+        let mut p = p;
+        while n > 0u {
+            if !f(*p) { break; }
+            p = ptr::offset(p, 1u);
+            n -= 1u;
+        }
     }
 }
 
@@ -837,13 +838,15 @@ fn each<T>(v: [const T], f: fn(T) -> bool) unsafe {
 Iterates over a vector's elements and indices
 "]
 #[inline(always)]
-fn eachi<T>(v: [const T], f: fn(uint, T) -> bool) unsafe {
-    let mut i = 0u, l = len(v);
-    let mut p = ptr::offset(unsafe::to_ptr(v), 0u);
-    while i < l {
-        if !f(i, *p) { break; }
-        p = ptr::offset(p, 1u);
-        i += 1u;
+fn eachi<T>(v: [const T]/&, f: fn(uint, T) -> bool) unsafe {
+    vec::unpack_slice(v) {|p, n|
+        let mut i = 0u;
+        let mut p = p;
+        while i < n {
+            if !f(i, *p) { break; }
+            p = ptr::offset(p, 1u);
+            i += 1u;
+        }
     }
 }
 
@@ -958,6 +961,7 @@ fn as_mut_buf<E,T>(v: [mut E], f: fn(*mut E) -> T) -> T unsafe {
 #[doc = "
 Work with the buffer and length of a slice.
 "]
+#[inline(always)]
 fn unpack_slice<T,U>(s: [const T]/&, f: fn(*T, uint) -> U) -> U unsafe {
     let v : *(*T,uint) = ::unsafe::reinterpret_cast(ptr::addr_of(s));
     let (buf,len) = *v;
@@ -1190,6 +1194,17 @@ mod unsafe {
     unsafe fn to_ptr<T>(v: [const T]) -> *T {
         let repr: **vec_repr = ::unsafe::reinterpret_cast(addr_of(v));
         ret ::unsafe::reinterpret_cast(addr_of((**repr).data));
+    }
+
+
+    #[doc = "
+    Form a slice from a pointer and length (as a number of units, not bytes).
+    "]
+    #[inline(always)]
+    unsafe fn form_slice<T,U>(p: *T, len: uint, f: fn([T]/&) -> U) -> U {
+        let pair = (p, len * sys::size_of::<T>());
+        let v : *([T]/&) = ::unsafe::reinterpret_cast(ptr::addr_of(pair));
+        f(*v)
     }
 }
 

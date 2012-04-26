@@ -62,7 +62,7 @@ fn encode_named_def_id(ebml_w: ebml::writer, name: str, id: def_id) {
 fn encode_mutability(ebml_w: ebml::writer, mt: class_mutability) {
     ebml_w.wr_tag(tag_class_mut) {||
         ebml_w.writer.write([alt mt { class_immutable { 'i' }
-                class_mutable { 'm' } } as u8]);
+                class_mutable { 'm' } } as u8]/&);
         }
 }
 
@@ -230,7 +230,7 @@ fn encode_reexport_paths(ebml_w: ebml::writer,
 // Item info table encoding
 fn encode_family(ebml_w: ebml::writer, c: char) {
     ebml_w.start_tag(tag_items_data_item_family);
-    ebml_w.writer.write([c as u8]);
+    ebml_w.writer.write([c as u8]/&);
     ebml_w.end_tag();
 }
 
@@ -1016,7 +1016,7 @@ fn encode_metadata(cx: @crate_ctxt, crate: @crate) -> [u8] {
 
     // Pad this, since something (LLVM, presumably) is cutting off the
     // remaining % 4 bytes.
-    buf_w.write([0u8, 0u8, 0u8, 0u8]);
+    buf_w.write([0u8, 0u8, 0u8, 0u8]/&);
     io::mem_buffer_buf(buf)
 }
 
