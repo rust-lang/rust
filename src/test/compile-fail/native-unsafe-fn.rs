@@ -1,5 +1,4 @@
 // -*- rust -*-
-// error-pattern: unsafe functions can only be called
 
 #[abi = "cdecl"]
 native mod test {
@@ -8,6 +7,7 @@ native mod test {
 
 fn main() {
     let x = test::free;
+    //!^ ERROR access to unsafe function requires unsafe function or block
 }
 
 

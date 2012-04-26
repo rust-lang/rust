@@ -844,9 +844,10 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
         }
     }
 
-    option::iter(tcx.borrowings.find(id)) {|_i|
+    option::iter(tcx.borrowings.find(id)) {|s|
         ebml_w.tag(c::tag_table_borrowings) {||
             ebml_w.id(id);
+            ebml_w.wr_tagged_i64(c::tag_table_val as uint, s as i64);
         }
     }
 }
@@ -919,8 +920,6 @@ fn decode_side_tables(xcx: extended_decode_ctxt,
             dcx.maps.copy_map.insert(id, ());
         } else if tag == (c::tag_table_spill as uint) {
             dcx.maps.spill_map.insert(id, ());
-        } else if tag == (c::tag_table_borrowings as uint) {
-            dcx.tcx.borrowings.insert(id, ());
         } else {
             let val_doc = entry_doc[c::tag_table_val];
             let val_dsr = ebml::ebml_deserializer(val_doc);
@@ -952,7 +951,10 @@ fn decode_side_tables(xcx: extended_decode_ctxt,
                                            val_dsr.read_method_origin(xcx));
             } else if tag == (c::tag_table_vtable_map as uint) {
                 dcx.maps.vtable_map.insert(id,
-                                         val_dsr.read_vtable_res(xcx));
+                                           val_dsr.read_vtable_res(xcx));
+            } else if tag == (c::tag_table_borrowings as uint) {
+                let scope_id = ebml::doc_as_i64(val_doc) as int;
+                dcx.tcx.borrowings.insert(id, scope_id);
             } else {
                 xcx.dcx.tcx.sess.bug(
                     #fmt["unknown tag found in side tables: %x", tag]);

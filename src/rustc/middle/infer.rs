@@ -24,6 +24,15 @@ export resolve_deep_var;
 export compare_tys;
 export fixup_err, fixup_err_to_str;
 
+// Extra information needed to perform an assignment that may borrow.
+// The `expr_id` is the is of the expression whose type is being
+// assigned, and `borrow_scope` is the region scope to use if the
+// value should be borrowed.
+type assignment = {
+    expr_id: ast::node_id,
+    borrow_scope: ast::node_id
+};
+
 type bound<T:copy> = option<T>;
 
 type bounds<T:copy> = {lb: bound<T>, ub: bound<T>};
@@ -84,12 +93,12 @@ fn mk_eqty(cx: infer_ctxt, a: ty::t, b: ty::t) -> ures {
     indent {|| cx.commit {|| cx.eq_tys(a, b) } }.to_ures()
 }
 
-fn mk_assignty(cx: infer_ctxt, a_node_id: ast::node_id,
-             a: ty::t, b: ty::t) -> ures {
+fn mk_assignty(cx: infer_ctxt, anmnt: assignment,
+               a: ty::t, b: ty::t) -> ures {
     #debug["mk_assignty(%? / %s <: %s)",
-           a_node_id, a.to_str(cx), b.to_str(cx)];
+           anmnt, a.to_str(cx), b.to_str(cx)];
     indent {|| cx.commit {||
-        cx.assign_tys(a_node_id, a, b)
+        cx.assign_tys(anmnt, a, b)
     } }.to_ures()
 }
 
@@ -765,8 +774,7 @@ impl methods for resolve_state {
 // this upper-bound might be stricter than what is truly needed.
 
 impl assignment for infer_ctxt {
-    fn assign_tys(a_node_id: ast::node_id,
-                  a: ty::t, b: ty::t) -> ures {
+    fn assign_tys(anmnt: assignment, a: ty::t, b: ty::t) -> ures {
 
         fn select(fst: option<ty::t>, snd: option<ty::t>) -> option<ty::t> {
             alt fst {
@@ -780,8 +788,8 @@ impl assignment for infer_ctxt {
             }
         }
 
-        #debug["assign_tys(a_node_id=%?, %s -> %s)",
-               a_node_id, a.to_str(self), b.to_str(self)];
+        #debug["assign_tys(anmnt=%?, %s -> %s)",
+               anmnt, a.to_str(self), b.to_str(self)];
         let _r = indenter();
 
         alt (ty::get(a).struct, ty::get(b).struct) {
@@ -794,34 +802,34 @@ impl assignment for infer_ctxt {
             let {root:_, bounds: b_bounds} = self.get(self.vb, b_id);
             let a_bnd = select(a_bounds.ub, a_bounds.lb);
             let b_bnd = select(b_bounds.lb, b_bounds.ub);
-            self.assign_tys_or_sub(a_node_id, a, b, a_bnd, b_bnd)
+            self.assign_tys_or_sub(anmnt, a, b, a_bnd, b_bnd)
           }
 
           (ty::ty_var(a_id), _) {
             let {root:_, bounds:a_bounds} = self.get(self.vb, a_id);
             let a_bnd = select(a_bounds.ub, a_bounds.lb);
-            self.assign_tys_or_sub(a_node_id, a, b, a_bnd, some(b))
+            self.assign_tys_or_sub(anmnt, a, b, a_bnd, some(b))
           }
 
           (_, ty::ty_var(b_id)) {
             let {root:_, bounds: b_bounds} = self.get(self.vb, b_id);
             let b_bnd = select(b_bounds.lb, b_bounds.ub);
-            self.assign_tys_or_sub(a_node_id, a, b, some(a), b_bnd)
+            self.assign_tys_or_sub(anmnt, a, b, some(a), b_bnd)
           }
 
           (_, _) {
-            self.assign_tys_or_sub(a_node_id, a, b, some(a), some(b))
+            self.assign_tys_or_sub(anmnt, a, b, some(a), some(b))
           }
         }
     }
 
     fn assign_tys_or_sub(
-        a_node_id: ast::node_id,
+        anmnt: assignment,
         a: ty::t, b: ty::t,
         a_bnd: option<ty::t>, b_bnd: option<ty::t>) -> ures {
 
-        #debug["assign_tys_or_sub(a_node_id=%?, %s -> %s, %s -> %s)",
-               a_node_id, a.to_str(self), b.to_str(self),
+        #debug["assign_tys_or_sub(anmnt=%?, %s -> %s, %s -> %s)",
+               anmnt, a.to_str(self), b.to_str(self),
                a_bnd.to_str(self), b_bnd.to_str(self)];
         let _r = indenter();
 
@@ -837,34 +845,34 @@ impl assignment for infer_ctxt {
             alt (ty::get(a_bnd).struct, ty::get(b_bnd).struct) {
               (ty::ty_box(mt_a), ty::ty_rptr(r_b, mt_b)) {
                 let nr_b = ty::mk_box(self.tcx, mt_b);
-                self.crosspolinate(a_node_id, a, nr_b, r_b)
+                self.crosspolinate(anmnt, a, nr_b, r_b)
               }
               (ty::ty_uniq(mt_a), ty::ty_rptr(r_b, mt_b)) {
                 let nr_b = ty::mk_uniq(self.tcx, mt_b);
-                self.crosspolinate(a_node_id, a, nr_b, r_b)
+                self.crosspolinate(anmnt, a, nr_b, r_b)
               }
               (ty::ty_estr(vs_a),
                ty::ty_estr(ty::vstore_slice(r_b)))
               if is_borrowable(vs_a) {
                 let nr_b = ty::mk_estr(self.tcx, vs_a);
-                self.crosspolinate(a_node_id, a, nr_b, r_b)
+                self.crosspolinate(anmnt, a, nr_b, r_b)
               }
               (ty::ty_str,
                ty::ty_estr(ty::vstore_slice(r_b))) {
                 let nr_b = ty::mk_str(self.tcx);
-                self.crosspolinate(a_node_id, a, nr_b, r_b)
+                self.crosspolinate(anmnt, a, nr_b, r_b)
               }
 
               (ty::ty_evec(mt_a, vs_a),
                ty::ty_evec(mt_b, ty::vstore_slice(r_b)))
               if is_borrowable(vs_a) {
                 let nr_b = ty::mk_evec(self.tcx, mt_b, vs_a);
-                self.crosspolinate(a_node_id, a, nr_b, r_b)
+                self.crosspolinate(anmnt, a, nr_b, r_b)
               }
               (ty::ty_vec(mt_a),
                ty::ty_evec(mt_b, ty::vstore_slice(r_b))) {
                 let nr_b = ty::mk_vec(self.tcx, mt_b);
-                self.crosspolinate(a_node_id, a, nr_b, r_b)
+                self.crosspolinate(anmnt, a, nr_b, r_b)
               }
               _ {
                 self.sub_tys(a, b)
@@ -877,25 +885,25 @@ impl assignment for infer_ctxt {
         }
     }
 
-    fn crosspolinate(a_node_id: ast::node_id,
+    fn crosspolinate(anmnt: assignment,
                      a: ty::t,
                      nr_b: ty::t,
                      r_b: ty::region) -> ures {
 
-        #debug["crosspolinate(a_node_id=%?, a=%s, nr_b=%s, r_b=%s)",
-               a_node_id, a.to_str(self), nr_b.to_str(self),
+        #debug["crosspolinate(anmnt=%?, a=%s, nr_b=%s, r_b=%s)",
+               anmnt, a.to_str(self), nr_b.to_str(self),
                r_b.to_str(self)];
 
         indent {||
             self.sub_tys(a, nr_b).then {||
-                let a_scope_id = self.tcx.region_map.parents.get(a_node_id);
-                let r_a = ty::re_scope(a_scope_id);
-                #debug["a_scope_id=%?", a_scope_id];
+                let r_a = ty::re_scope(anmnt.borrow_scope);
+                #debug["anmnt=%?", anmnt];
                 sub(self).contraregions(r_a, r_b).chain {|_r|
                     // if successful, add an entry indicating that
                     // borrowing occurred
-                    #debug["borrowing expression #%?", a_node_id];
-                    self.tcx.borrowings.insert(a_node_id, ());
+                    #debug["borrowing expression #%?", anmnt];
+                    self.tcx.borrowings.insert(anmnt.expr_id,
+                                               anmnt.borrow_scope);
                     uok()
                 }
             }

@@ -49,7 +49,7 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTSYNTAX): \
 		$$(TCORELIB_DEFAULT$(1)_T_$(2)_H_$(3))      \
 		$$(TSTDLIB_DEFAULT$(1)_T_$(2)_H_$(3))
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< && touch $$@
+	$$(STAGE$(1)_T_$(2)_H_$(3)) $(BORROWCK) -o $$@ $$< && touch $$@
 
 endef
 

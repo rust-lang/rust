@@ -39,12 +39,12 @@ mod middle {
     mod ast_map;
     mod resolve;
     mod typeck;
-    mod fn_usage;
     mod check_loop;
     mod check_alt;
     mod check_const;
     mod lint;
     mod mutbl;
+    mod borrowck;
     mod alias;
     mod last_use;
     mod block_use;

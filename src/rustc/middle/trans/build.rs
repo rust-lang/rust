@@ -18,7 +18,7 @@ fn count_insn(cx: block, category: str) {
     if (cx.ccx().sess.opts.count_llvm_insns) {
 
         let h = cx.ccx().stats.llvm_insns;
-        let mut v = cx.ccx().stats.llvm_insn_ctxt;
+        let v = cx.ccx().stats.llvm_insn_ctxt;
 
         // Build version of path with cycles removed.
 

@@ -136,6 +136,7 @@ import driver::session::session;
 import middle::ty;
 import syntax::{ast, visit};
 import syntax::codemap::span;
+import syntax::print::pprust;
 import util::common::new_def_hash;
 
 import std::list;
@@ -151,10 +152,12 @@ type binding = {node_id: ast::node_id,
                 br: ty::bound_region};
 
 type region_map = {
-    /* Mapping from a block/function expression to its parent. */
+    // Mapping from a block/function expression to its parent.
     parents: hashmap<ast::node_id,ast::node_id>,
 
-    /* Mapping from a local variable to its containing block. */
+    // Mapping from arguments and local variables to the block in
+    // which they are declared. Arguments are considered to be declared
+    // within the body of the function.
     local_blocks: hashmap<ast::node_id,ast::node_id>
 };
 
@@ -163,7 +166,43 @@ type ctxt = {
     def_map: resolve::def_map,
     region_map: @region_map,
 
-    parent: parent
+    // These two fields (parent and closure_parent) specify the parent
+    // scope of the current expression.  The parent scope is the
+    // innermost block, call, or alt expression during the execution
+    // of which the current expression will be evaluated.  Generally
+    // speaking, the innermost parent scope is also the closest
+    // suitable ancestor in the AST tree.
+    //
+    // However, there are two subtle cases where the parent scope for
+    // an expression is not strictly derived from the AST. The first
+    // such exception concerns call arguments and the second concerns
+    // closures (which, at least today, are always call arguments).
+    // Consider:
+    //
+    // { // block a
+    //    foo( // call b
+    //        x,
+    //        y,
+    //        fn&() {
+    //          // fn body c
+    //        })
+    // }
+    //
+    // Here, the parent of the three argument expressions is
+    // actually the block `a`, not the call `b`, because they will
+    // be evaluated before the call conceptually takes place.
+    // However, the body of the closure is parented by the call
+    // `b` (it cannot be invoked except during that call, after
+    // all).
+    //
+    // To capture these patterns, we use two fields.  The first,
+    // parent, is the parent scope of a normal expression.  The
+    // second, closure_parent, is the parent scope that a closure body
+    // ought to use.  These only differ in the case of calls, where
+    // the closure parent is the call, but the parent is the container
+    // of the call.
+    parent: parent,
+    closure_parent: parent
 };
 
 // Returns true if `subscope` is equal to or is lexically nested inside
@@ -213,18 +252,20 @@ fn nearest_common_ancestor(region_map: @region_map, scope_a: ast::node_id,
     // where they diverge.  If one vector is a suffix of the other,
     // then the corresponding scope is a superscope of the other.
 
+    if a_ancestors[a_index] != b_ancestors[b_index] {
+        ret none;
+    }
+
     loop {
-        if a_ancestors[a_index] != b_ancestors[b_index] {
-            if a_index == a_ancestors.len() {
-                ret none;
-            } else {
-                ret some(a_ancestors[a_index + 1u]);
-            }
-        }
+        // Loop invariant: a_ancestors[a_index] == b_ancestors[b_index]
+        // for all indices between a_index and the end of the array
         if a_index == 0u { ret some(scope_a); }
         if b_index == 0u { ret some(scope_b); }
         a_index -= 1u;
         b_index -= 1u;
+        if a_ancestors[a_index] != b_ancestors[b_index] {
+            ret some(a_ancestors[a_index + 1u]);
+        }
     }
 }
 
@@ -243,6 +284,7 @@ fn record_parent(cx: ctxt, child_id: ast::node_id) {
     alt cx.parent {
       none { /* no-op */ }
       some(parent_id) {
+        #debug["parent of node %d is node %d", child_id, parent_id];
         cx.region_map.parents.insert(child_id, parent_id);
       }
     }
@@ -253,8 +295,8 @@ fn resolve_block(blk: ast::blk, cx: ctxt, visitor: visit::vt<ctxt>) {
     record_parent(cx, blk.node.id);
 
     // Descend.
-    let new_cx: ctxt = {parent: some(blk.node.id)
-                        with cx};
+    let new_cx: ctxt = {parent: some(blk.node.id),
+                        closure_parent: some(blk.node.id) with cx};
     visit::visit_block(blk, new_cx, visitor);
 }
 
@@ -286,16 +328,16 @@ fn resolve_pat(pat: @ast::pat, cx: ctxt, visitor: visit::vt<ctxt>) {
 fn resolve_expr(expr: @ast::expr, cx: ctxt, visitor: visit::vt<ctxt>) {
     record_parent(cx, expr.id);
     alt expr.node {
-      ast::expr_fn(*) | ast::expr_fn_block(*) {
-        let new_cx = {parent: some(expr.id) with cx};
-        visit::visit_expr(expr, new_cx, visitor);
-      }
-      ast::expr_call(_, _, _) {
-        let new_cx = {parent: some(expr.id) with cx};
+      ast::expr_call(*) {
+        #debug["node %d: %s", expr.id, pprust::expr_to_str(expr)];
+        let new_cx = {closure_parent: some(expr.id) with cx};
         visit::visit_expr(expr, new_cx, visitor);
       }
       ast::expr_alt(subexpr, _, _) {
-        let new_cx = {parent: some(expr.id) with cx};
+        #debug["node %d: %s", expr.id, pprust::expr_to_str(expr)];
+        let new_cx = {parent: some(expr.id),
+                      closure_parent: some(expr.id)
+                      with cx};
         visit::visit_expr(expr, new_cx, visitor);
       }
       _ {
@@ -312,8 +354,39 @@ fn resolve_local(local: @ast::local, cx: ctxt, visitor: visit::vt<ctxt>) {
 
 fn resolve_item(item: @ast::item, cx: ctxt, visitor: visit::vt<ctxt>) {
     // Items create a new outer block scope as far as we're concerned.
-    let new_cx: ctxt = {parent: some(item.id) with cx};
+    let new_cx: ctxt = {closure_parent: some(item.id),
+                        parent: some(item.id) with cx};
     visit::visit_item(item, new_cx, visitor);
+}
+
+fn resolve_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
+              sp: span, id: ast::node_id, cx: ctxt,
+              visitor: visit::vt<ctxt>) {
+
+    let fn_cx = alt fk {
+      visit::fk_item_fn(*) | visit::fk_method(*) | visit::fk_res(*) |
+      visit::fk_ctor(*) {
+        // Top-level functions are a root scope.
+        {parent: some(id), closure_parent: some(id) with cx}
+      }
+
+      visit::fk_anon(*) | visit::fk_fn_block(*) {
+        // Closures use the closure_parent.
+        {parent: cx.closure_parent with cx}
+      }
+    };
+
+    #debug["visiting fn with body %d. cx.parent: %? \
+            cx.closure_parent: %? fn_cx.parent: %?",
+           body.node.id, cx.parent,
+           cx.closure_parent, fn_cx.parent];
+
+    for decl.inputs.each { |input|
+        cx.region_map.local_blocks.insert(
+            input.id, body.node.id);
+    }
+
+    visit::visit_fn(fk, decl, body, sp, id, fn_cx, visitor);
 }
 
 fn resolve_crate(sess: session, def_map: resolve::def_map, crate: @ast::crate)
@@ -322,10 +395,12 @@ fn resolve_crate(sess: session, def_map: resolve::def_map, crate: @ast::crate)
                     def_map: def_map,
                     region_map: @{parents: map::int_hash(),
                                   local_blocks: map::int_hash()},
-                    parent: none};
+                    parent: none,
+                    closure_parent: none};
     let visitor = visit::mk_vt(@{
         visit_block: resolve_block,
         visit_item: resolve_item,
+        visit_fn: resolve_fn,
         visit_arm: resolve_arm,
         visit_pat: resolve_pat,
         visit_expr: resolve_expr,

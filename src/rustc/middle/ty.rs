@@ -29,6 +29,8 @@ export constr;
 export constr_general;
 export constr_table;
 export ctxt;
+export deref, deref_sty;
+export index, index_sty;
 export def_has_ty_params;
 export expr_has_ty_params;
 export expr_ty;
@@ -126,7 +128,7 @@ export type_is_unique;
 export type_is_c_like_enum;
 export type_structurally_contains;
 export type_structurally_contains_uniques;
-export type_autoderef;
+export type_autoderef, deref, deref_sty;
 export type_param;
 export type_needs_unwind_cleanup;
 export canon_mode;
@@ -228,7 +230,8 @@ type ctxt =
       iface_method_cache: hashmap<def_id, @[method]>,
       ty_param_bounds: hashmap<ast::node_id, param_bounds>,
       inferred_modes: hashmap<ast::node_id, ast::mode>,
-      borrowings: hashmap<ast::node_id, ()>,
+      // maps the id of borrowed expr to scope of borrowed ptr
+      borrowings: hashmap<ast::node_id, ast::node_id>,
       normalized_cache: hashmap<t, t>};
 
 enum tbox_flag {
@@ -571,6 +574,8 @@ fn mk_int(cx: ctxt) -> t { mk_t(cx, ty_int(ast::ty_i)) }
 fn mk_float(cx: ctxt) -> t { mk_t(cx, ty_float(ast::ty_f)) }
 
 fn mk_uint(cx: ctxt) -> t { mk_t(cx, ty_uint(ast::ty_u)) }
+
+fn mk_u8(cx: ctxt) -> t { mk_t(cx, ty_uint(ast::ty_u8)) }
 
 fn mk_mach_int(cx: ctxt, tm: ast::int_ty) -> t { mk_t(cx, ty_int(tm)) }
 
@@ -1711,25 +1716,63 @@ fn vars_in_type(ty: t) -> [ty_vid] {
     rslt
 }
 
+// Returns the type and mutability of *t.
+//
+// The parameter `expl` indicates if this is an *explicit* dereference.  Some
+// types---notably unsafe ptrs---can only be dereferenced explicitly.
+fn deref(cx: ctxt, t: t, expl: bool) -> option<mt> {
+    deref_sty(cx, get(t).struct, expl)
+}
+fn deref_sty(cx: ctxt, sty: sty, expl: bool) -> option<mt> {
+    alt sty {
+      ty_rptr(_, mt) | ty_box(mt) | ty_uniq(mt) {
+        some(mt)
+      }
+
+      ty_ptr(mt) if expl {
+        some(mt)
+      }
+
+      ty_res(_, inner, substs) {
+        let inner = subst(cx, substs, inner);
+        some({ty: inner, mutbl: ast::m_imm})
+      }
+
+      ty_enum(did, substs) {
+        let variants = enum_variants(cx, did);
+        if vec::len(*variants) == 1u && vec::len(variants[0].args) == 1u {
+            let v_t = subst(cx, substs, variants[0].args[0]);
+            some({ty: v_t, mutbl: ast::m_imm})
+        } else {
+            none
+        }
+      }
+
+      _ { none }
+    }
+}
+
 fn type_autoderef(cx: ctxt, t: t) -> t {
-    let mut t1 = t;
+    let mut t = t;
     loop {
-        alt get(t1).struct {
-          ty_box(mt) | ty_uniq(mt) | ty::ty_rptr(_, mt) { t1 = mt.ty; }
-          ty_res(_, inner, substs) {
-            t1 = subst(cx, substs, inner);
-          }
-          ty_enum(did, substs) {
-            let variants = enum_variants(cx, did);
-            if vec::len(*variants) != 1u || vec::len(variants[0].args) != 1u {
-                break;
-            }
-            t1 = subst(cx, substs, variants[0].args[0]);
-          }
-          _ { break; }
+        alt deref(cx, t, false) {
+          none { ret t; }
+          some(mt) { t = mt.ty; }
         }
     }
-    ret t1;
+}
+
+// Returns the type and mutability of t[i]
+fn index(cx: ctxt, t: t) -> option<mt> {
+    index_sty(cx, get(t).struct)
+}
+
+fn index_sty(cx: ctxt, sty: sty) -> option<mt> {
+    alt sty {
+      ty_vec(mt) | ty_evec(mt, _) { some(mt) }
+      ty_str | ty_estr(_) { some({ty: mk_u8(cx), mutbl: ast::m_imm}) }
+      _ { none }
+    }
 }
 
 fn hash_bound_region(br: bound_region) -> uint {

@@ -47,7 +47,8 @@ type options =
      parse_only: bool,
      no_trans: bool,
      no_asm_comments: bool,
-     debug_rustc: bool};
+     debug_rustc: bool,
+     borrowck: uint}; // 0=off,1=warn,2=err
 
 type crate_metadata = {name: str, data: [u8]};
 
@@ -139,6 +140,7 @@ fn basic_options() -> @options {
         no_trans: false,
         no_asm_comments: false,
         debug_rustc: false,
+        borrowck: 0u,
     }
 }
 
