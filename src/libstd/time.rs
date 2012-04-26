@@ -823,6 +823,8 @@ impl tm for tm {
 mod tests {
     import task;
 
+    // FIXME #2160: These tests are all run in the same task because
+    // getenv/setenv interacts poorly with threads on OS X
     #[test]
     fn test_all() {
         test_get_time();
