@@ -1,6 +1,7 @@
 /*
   Predicates on exprs and stmts that the pretty-printer and parser use
  */
+import ast_util::*;
 
 fn expr_requires_semi_to_be_stmt(e: @ast::expr) -> bool {
     alt e.node {
@@ -31,14 +32,7 @@ fn stmt_ends_with_semi(stmt: ast::stmt) -> bool {
     }
 }
 
-fn operator_prec(op: ast::binop) -> int {
-    for vec::each(*parse::prec::binop_prec_table()) {|spec|
-        if spec.op == op { ret spec.prec; }
-    }
-    core::unreachable();
-}
-
-fn need_parens(expr: @ast::expr, outer_prec: int) -> bool {
+fn need_parens(expr: @ast::expr, outer_prec: uint) -> bool {
     alt expr.node {
       ast::expr_binary(op, _, _) { operator_prec(op) < outer_prec }
       ast::expr_cast(_, _) { parse::prec::as_prec < outer_prec }

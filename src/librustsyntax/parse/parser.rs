@@ -4,10 +4,10 @@ import std::map::{hashmap, str_hash};
 import token::{can_begin_expr, is_ident, is_plain_ident};
 import codemap::{span,fss_none};
 import util::interner;
-import ast_util::{spanned, mk_sp, ident_to_path};
+import ast_util::{spanned, mk_sp, ident_to_path, operator_prec};
 import ast::{node_id};
 import lexer::reader;
-import prec::{op_spec, as_prec};
+import prec::{as_prec, token_to_binop};
 import attr::{parse_outer_attrs_or_ext,
               parse_inner_attrs_and_next,
               parse_outer_attributes,
@@ -57,7 +57,6 @@ type parser = @{
     mut buffer: [{tok: token::token, span: span}],
     mut restriction: restriction,
     reader: reader,
-    binop_precs: @[op_spec],
     keywords: hashmap<str, ()>,
     restricted_keywords: hashmap<str, ()>
 };
@@ -1040,26 +1039,31 @@ fn parse_prefix_expr(p: parser) -> pexpr {
 
 
 fn parse_binops(p: parser) -> @ast::expr {
-    ret parse_more_binops(p, parse_prefix_expr(p), 0);
+    ret parse_more_binops(p, parse_prefix_expr(p), 0u);
 }
 
-fn parse_more_binops(p: parser, plhs: pexpr, min_prec: int) ->
+fn parse_more_binops(p: parser, plhs: pexpr, min_prec: uint) ->
    @ast::expr {
     let lhs = to_expr(plhs);
     if expr_is_complete(p, plhs) { ret lhs; }
     let peeked = p.token;
     if peeked == token::BINOP(token::OR) &&
        p.restriction == RESTRICT_NO_BAR_OP { ret lhs; }
-    for vec::each(*p.binop_precs) {|cur|
-        if cur.prec > min_prec && cur.tok == peeked {
-            p.bump();
-            let expr = parse_prefix_expr(p);
-            let rhs = parse_more_binops(p, expr, cur.prec);
-            p.get_id(); // see ast_util::op_expr_callee_id
-            let bin = mk_pexpr(p, lhs.span.lo, rhs.span.hi,
-                              ast::expr_binary(cur.op, lhs, rhs));
-            ret parse_more_binops(p, bin, min_prec);
-        }
+    let cur_opt   = token_to_binop(peeked);
+    alt cur_opt {
+     some(cur_op) {
+       let cur_prec = operator_prec(cur_op);
+       if cur_prec > min_prec {
+          p.bump();
+          let expr = parse_prefix_expr(p);
+          let rhs = parse_more_binops(p, expr, cur_prec);
+          p.get_id(); // see ast_util::op_expr_callee_id
+          let bin = mk_pexpr(p, lhs.span.lo, rhs.span.hi,
+                            ast::expr_binary(cur_op, lhs, rhs));
+          ret parse_more_binops(p, bin, min_prec);
+       }
+     }
+     _ {}
     }
     if as_prec > min_prec && eat_keyword(p, "as") {
         let rhs = parse_ty(p, true);

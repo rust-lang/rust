@@ -6,6 +6,7 @@ import pp::{break_offset, word, printer,
             space, zerobreak, hardbreak, breaks, consistent,
             inconsistent, eof};
 import diagnostic;
+import ast_util::operator_prec;
 
 // The ps is stored here to prevent recursive type.
 enum ann_node {
@@ -936,7 +937,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         print_op_maybe_parens(s, lhs, prec);
         space(s.s);
         word_space(s, ast_util::binop_to_str(op));
-        print_op_maybe_parens(s, rhs, prec + 1);
+        print_op_maybe_parens(s, rhs, prec + 1u);
       }
       ast::expr_unary(op, expr) {
         word(s.s, ast_util::unop_to_str(op));
@@ -1517,7 +1518,7 @@ fn print_view_item(s: ps, item: @ast::view_item) {
     end(s); // end outer head-block
 }
 
-fn print_op_maybe_parens(s: ps, expr: @ast::expr, outer_prec: int) {
+fn print_op_maybe_parens(s: ps, expr: @ast::expr, outer_prec: uint) {
     let add_them = need_parens(expr, outer_prec);
     if add_them { popen(s); }
     print_expr(s, expr);

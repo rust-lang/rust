@@ -344,6 +344,23 @@ fn is_self(d: ast::def) -> bool {
     _                  { false }
   }
 }
+
+#[doc = "Maps a binary operator to its precedence"]
+fn operator_prec(op: ast::binop) -> uint {
+  alt op {
+      mul | div | rem   { 12u }
+      // 'as' sits between here with 11
+      add | subtract    { 10u }
+      lsl | lsr | asr   {  9u }
+      bitand            {  8u }
+      bitxor            {  7u }
+      bitor             {  6u }
+      lt | le | ge | gt {  4u }
+      eq | ne           {  3u }
+      and               {  2u }
+      or                {  1u }
+  }
+}
 // Local Variables:
 // mode: rust
 // fill-column: 78;

@@ -130,7 +130,6 @@ fn new_parser(sess: parse_sess, cfg: ast::crate_cfg, rdr: lexer::reader,
       mut buffer: [],
       mut restriction: parser::UNRESTRICTED,
       reader: rdr,
-      binop_precs: prec::binop_prec_table(),
       keywords: token::keyword_table(),
       restricted_keywords: token::restricted_keyword_table()}
 }
