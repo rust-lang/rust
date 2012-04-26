@@ -488,6 +488,9 @@ fn declare_generic_glue(ccx: @crate_ctxt, t: ty::t, llfnty: TypeRef,
     note_unique_llvm_symbol(ccx, fn_nm);
     let llfn = decl_cdecl_fn(ccx.llmod, fn_nm, llfnty);
     set_glue_inlining(llfn, t);
+    if name != "drop" || !ty::type_has_resources(t) {
+        set_no_unwind(llfn);
+    }
     ret llfn;
 }
 
