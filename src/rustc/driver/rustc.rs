@@ -9,23 +9,24 @@ import core::*;
 // -*- rust -*-
 import result::{ok, err};
 import std::getopts;
-import io::writer_util;
+import std::map::hashmap;
 import getopts::{opt_present};
 import rustc::driver::driver::*;
 import rustc::syntax::codemap;
 import rustc::driver::diagnostic;
+import rustc::middle::lint;
 
 fn version(argv0: str) {
     let mut vers = "unknown version";
     let env_vers = #env["CFG_VERSION"];
     if str::len(env_vers) != 0u { vers = env_vers; }
-    io::stdout().write_str(#fmt["%s %s\n", argv0, vers]);
-    io::stdout().write_str(#fmt["host: %s\n", host_triple()]);
+    io::println(#fmt("%s %s", argv0, vers));
+    io::println(#fmt("host: %s", host_triple()));
 }
 
 fn usage(argv0: str) {
-    io::stdout().write_str(#fmt["Usage: %s [options] <input>\n", argv0] +
-                               "
+    io::println(#fmt("Usage: %s [options] <input>\n", argv0) +
+                 "
 Options:
 
     --bin              Compile an executable crate (default)
@@ -70,12 +71,38 @@ Options:
     -W no-<foo>        disable warning <foo>
     -W err-<foo>       enable warning <foo> as an error
 
+    -W help            Print available warnings and default settings
+
     --time-passes      Time the individual phases of the compiler
     --time-llvm-passes Time the individual phases of the LLVM backend
     --count-llvm-insns Count and categorize generated LLVM instructions
 
     -v --version       Print version info and exit
 ");
+}
+
+fn describe_warnings() {
+    let lint_dict = lint::get_lint_dict();
+    let mut max_key = 0u;
+    for lint_dict.each_key {|k| max_key = uint::max(k.len(), max_key); }
+    fn padded(max: uint, s: str) -> str {
+        str::from_bytes(vec::from_elem(max - s.len(), ' ' as u8)) + s
+    }
+    io::println(#fmt("\nAvailable warnings:\n"));
+    io::println(#fmt("    %s  %7.7s  %s",
+                     padded(max_key, "name"), "default", "meaning"));
+    io::println(#fmt("    %s  %7.7s  %s\n",
+                     padded(max_key, "----"), "-------", "-------"));
+    for lint_dict.each {|k, v|
+        let k = str::replace(k, "_", "-");
+        io::println(#fmt("    %s  %7.7s  %s",
+                         padded(max_key, k),
+                         alt v.default { lint::warn { "warn" }
+                                        lint::error { "error" }
+                                        lint::ignore { "ignore" } },
+                         v.desc));
+    }
+    io::println("");
 }
 
 fn run_compiler(args: [str], demitter: diagnostic::emitter) {
@@ -94,10 +121,19 @@ fn run_compiler(args: [str], demitter: diagnostic::emitter) {
             early_error(demitter, getopts::fail_str(f))
           }
         };
+
     if opt_present(match, "h") || opt_present(match, "help") {
         usage(binary);
         ret;
     }
+
+    let lint_flags = (getopts::opt_strs(match, "W")
+                      + getopts::opt_strs(match, "warn"));
+    if lint_flags.contains("help") {
+        describe_warnings();
+        ret;
+    }
+
     if opt_present(match, "v") || opt_present(match, "version") {
         version(binary);
         ret;
