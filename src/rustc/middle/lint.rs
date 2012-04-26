@@ -24,7 +24,8 @@ at all.
 enum lint {
     ctypes,
     unused_imports,
-    while_true
+    while_true,
+    path_statement,
 }
 
 enum level {
@@ -56,7 +57,13 @@ fn get_lint_dict() -> lint_dict {
         ("while_true",
          @{lint: while_true,
            desc: "suggest using loop { } instead of while(true) { }",
+           default: warn}),
+
+        ("path_statement",
+         @{lint: path_statement,
+           desc: "path statements with no effect",
            default: warn})
+
     ];
     hash_from_strs(v)
 }
@@ -177,6 +184,7 @@ fn check_item(cx: ctxt, i: @ast::item) {
               ctypes { check_item_ctypes(cx, level, i); }
               unused_imports { check_item_unused_imports(cx, level, i); }
               while_true { check_item_while_true(cx, level, i); }
+              path_statement { check_item_path_statement(cx, level, i); }
             }
         }
     }
@@ -250,6 +258,25 @@ fn check_item_ctypes(cx: ctxt, level: level, it: @ast::item) {
       }
       _ {/* nothing to do */ }
     }
+}
+
+fn check_item_path_statement(cx: ctxt, level: level, it: @ast::item) {
+    let visit = visit::mk_simple_visitor(@{
+        visit_stmt: fn@(s: @ast::stmt) {
+            alt s.node {
+              ast::stmt_semi(@{id: _,
+                               node: ast::expr_path(@path),
+                               span: _}, _) {
+                cx.span_lint(
+                    level, s.span,
+                    "path statement with no effect");
+              }
+              _ {}
+            }
+        }
+        with *visit::default_simple_visitor()
+    });
+    visit::visit_item(it, (), visit);
 }
 
 
