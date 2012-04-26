@@ -191,7 +191,7 @@ fn check_item_while_true(cx: ctxt, level: level, it: @ast::item) {
                     ast::expr_lit(@{node: ast::lit_bool(true),_}) {
                             cx.span_lint(
                               level, e.span,
-                              "Denote infinite loops with loop { ... }");
+                              "denote infinite loops with loop { ... }");
                     }
                     _ {}
                 }
