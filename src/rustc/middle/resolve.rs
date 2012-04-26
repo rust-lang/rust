@@ -2115,8 +2115,14 @@ fn check_exports(e: @env) {
 // Impl resolution
 
 type method_info = {did: def_id, n_tps: uint, ident: ast::ident};
-/* what are the did and ident here? */
-/* ident = the name of the impl */
+/* An _impl represents an implementation that's currently in scope.
+   Its fields:
+   * did: the def id of the class or impl item
+   * ident: the name of the impl, unless it has no name (as in
+   "impl of X") in which case the ident
+   is the ident of the iface that's being implemented
+   * methods: the item's methods
+*/
 type _impl = {did: def_id, ident: ast::ident, methods: [@method_info]};
 type iscopes = list<@[@_impl]>;
 

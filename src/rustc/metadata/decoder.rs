@@ -156,8 +156,7 @@ fn item_impl_iface(item: ebml::doc, tcx: ty::ctxt, cdata: cmd)
     -> option<ty::t> {
     let mut result = none;
     ebml::tagged_docs(item, tag_impl_iface) {|ity|
-        result = some(parse_ty_data(ity.data, cdata.cnum, ity.start, tcx,
-                             {|did| translate_def_id(cdata, did)}));
+        result = some(doc_type(ity, tcx, cdata));
     };
     result
 }
@@ -304,7 +303,7 @@ fn get_impl_iface(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
 fn get_impl_method(cdata: cmd, id: ast::node_id, name: str) -> ast::def_id {
     let items = ebml::get_doc(ebml::doc(cdata.data), tag_items);
     let mut found = none;
-    ebml::tagged_docs(find_item(id, items), tag_item_method) {|mid|
+    ebml::tagged_docs(find_item(id, items), tag_item_impl_method) {|mid|
         let m_did = parse_def_id(ebml::doc_data(mid));
         if item_name(find_item(m_did.node, items)) == name {
             found = some(translate_def_id(cdata, m_did));
@@ -320,7 +319,7 @@ fn get_class_method(cdata: cmd, id: ast::node_id, name: str) -> ast::def_id {
             some(it) { it }
             none { fail (#fmt("get_class_method: class id not found \
              when looking up method %s", name)) }};
-    ebml::tagged_docs(cls_items, tag_item_method) {|mid|
+    ebml::tagged_docs(cls_items, tag_item_iface_method) {|mid|
         let m_did = class_member_id(mid, cdata);
         if item_name(mid) == name {
             found = some(m_did);
@@ -398,10 +397,12 @@ fn get_enum_variants(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
 fn item_impl_methods(cdata: cmd, item: ebml::doc, base_tps: uint)
     -> [@middle::resolve::method_info] {
     let mut rslt = [];
-    ebml::tagged_docs(item, tag_item_method) {|doc|
+    ebml::tagged_docs(item, tag_item_impl_method) {|doc|
         let m_did = parse_def_id(ebml::doc_data(doc));
         let mth_item = lookup_item(m_did.node, cdata.data);
         rslt += [@{did: translate_def_id(cdata, m_did),
+                    /* FIXME tjc: take a look at this, it may relate
+                     to #2323 */
                    n_tps: item_ty_param_count(mth_item) - base_tps,
                    ident: item_name(mth_item)}];
     }
@@ -416,21 +417,39 @@ fn get_impls_for_mod(cdata: cmd, m_id: ast::node_id,
     let mod_item = lookup_item(m_id, data);
     let mut result = [];
     ebml::tagged_docs(mod_item, tag_mod_impl) {|doc|
-        let did = parse_def_id(ebml::doc_data(doc));
+        /*
+          Pair of an item did and an iface did.
+          The second one is unneeded if the first id names
+          an impl; disambiguates if it's a class
+        */
+        let did = parse_def_id(ebml::doc_data(ebml::get_doc(doc,
+                                                      tag_mod_impl_use)));
         let local_did = translate_def_id(cdata, did);
-        // The impl may be defined in a different crate. Ask the caller
-        // to give us the metadata
+        /*
+        // iface is optional
+        let iface_did = option::map(ebml::maybe_get_doc(doc,
+                                           tag_mod_impl_iface)) {|d|
+                                     parse_def_id(ebml::doc_data(d))};
+        option::iter(iface_did) {|x|
+                let _local_iface_did = translate_def_id(cdata, x);
+        };
+        */
+        // CONFUSED -- previous code is pointless
+          // The impl may be defined in a different crate. Ask the caller
+          // to give us the metadata
         let impl_cdata = get_cdata(local_did.crate);
         let impl_data = impl_cdata.data;
         let item = lookup_item(local_did.node, impl_data);
         let nm = item_name(item);
         if alt name { some(n) { n == nm } none { true } } {
-            let base_tps = item_ty_param_count(item);
-            result += [@{
+           let base_tps = item_ty_param_count(item);
+           result += [@{
+                   // here, we need to... reconstruct the iface_ref?
+                   // probz broken
                 did: local_did, ident: nm,
                 methods: item_impl_methods(impl_cdata, item, base_tps)
             }];
-        }
+        };
     }
     @result
 }
@@ -441,7 +460,7 @@ fn get_iface_methods(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
     let data = cdata.data;
     let item = lookup_item(id, data);
     let mut result = [];
-    ebml::tagged_docs(item, tag_item_method) {|mth|
+    ebml::tagged_docs(item, tag_item_iface_method) {|mth|
         let bounds = item_ty_param_bounds(mth, tcx, cdata);
         let name = item_name(mth);
         let ty = doc_type(mth, tcx, cdata);

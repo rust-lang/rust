@@ -1,5 +1,7 @@
 // Metadata encoding
 
+import util::ppaux::ty_to_str;
+
 import std::{ebml, map, list};
 import std::map::hashmap;
 import io::writer_util;
@@ -197,6 +199,12 @@ fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
     }
 }
 
+fn encode_iface_ref(ebml_w: ebml::writer, ecx: @encode_ctxt, t: @iface_ref) {
+    ebml_w.start_tag(tag_impl_iface);
+    encode_type(ecx, ebml_w, node_id_to_type(ecx.ccx.tcx, t.id));
+    ebml_w.end_tag();
+}
+
 fn encode_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt, crate: @crate)
     -> [entry<str>] {
     let mut index: [entry<str>] = [];
@@ -361,12 +369,52 @@ fn encode_info_for_mod(ecx: @encode_ctxt, ebml_w: ebml::writer, md: _mod,
       list::cons(impls, @list::nil) {
         for vec::each(*impls) {|i|
             if ast_util::is_exported(i.ident, md) {
-                ebml_w.wr_tagged_str(tag_mod_impl, def_to_str(i.did));
-            }
-        }
+                ebml_w.start_tag(tag_mod_impl);
+            /* If did stands for an iface
+               ref, we need to map it to its parent class */
+                ebml_w.start_tag(tag_mod_impl_use);
+                let iface_ty = alt ecx.ccx.tcx.items.get(i.did.node) {
+                  ast_map::node_item(it@@{node: cl@item_class(*),_},_) {
+                    ebml_w.wr_str(def_to_str(local_def(it.id)));
+                    some(ty::lookup_item_type(ecx.ccx.tcx, i.did).ty)
+                  }
+                  ast_map::node_item(@{node: item_impl(_,_,
+                                           some(ifce),_,_),_},_) {
+                    ebml_w.wr_str(def_to_str(i.did));
+                    some(ty::node_id_to_type(ecx.ccx.tcx, ifce.id))
+                  }
+                  _ {
+                      ebml_w.wr_str(def_to_str(i.did)); none
+                  }
+                };
+                ebml_w.end_tag();
+
+                /*
+                /* Write the iface did if it exists */
+                option::iter(iface_ty) {|i|
+                alt ty::get(i).struct {
+                  ty::ty_iface(did, tys) {
+                    // FIXME: tys?
+                      ebml_w.start_tag(tag_mod_impl_iface);
+                     ebml_w.wr_str(def_to_str(did));
+                     ebml_w.end_tag();
+
+                  }
+                  t {
+                      ecx.ccx.tcx.sess.bug(#fmt("Expected item to implement \
+                       an iface, but found %s",
+                       util::ppaux::ty_to_str(ecx.ccx.tcx, i)));
+                  }
+                }}
+                */
+                ebml_w.end_tag();
+            } // if
+            } // for
+      } // list::cons alt
+      _ {
+          ecx.ccx.tcx.sess.bug(#fmt("encode_info_for_mod: empty impl_map \
+            entry for %?", path));
       }
-      _ { ecx.ccx.tcx.sess.bug(#fmt("encode_info_for_mod: empty impl_map \
-            entry for %?", path)); }
     }
     encode_path(ebml_w, path, ast_map::path_mod(name));
     ebml_w.end_tag();
@@ -571,7 +619,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_enum_variant_info(ecx, ebml_w, item.id, variants,
                                  path, index, tps);
       }
-      item_class(tps, _ifaces, items, ctor, rp) {
+      item_class(tps, ifaces, items, ctor, rp) {
         /* First, encode the fields and methods
            These come first because we need to write them to make
            the index, and the index needs to be in the item for the
@@ -589,7 +637,9 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_name(ebml_w, item.ident);
         encode_path(ebml_w, path, ast_map::path_name(item.ident));
         encode_region_param(ebml_w, rp);
-        /* FIXME: encode ifaces */
+        for ifaces.each {|t|
+           encode_iface_ref(ebml_w, ecx, t);
+        }
         /* Encode def_ids for each field and method
          for methods, write all the stuff get_iface_method
         needs to know*/
@@ -605,14 +655,21 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
            alt m.privacy {
               priv { /* do nothing */ }
               pub {
-                ebml_w.start_tag(tag_item_method);
-                #debug("Writing %s %d", m.ident, m.id);
+                /* Write the info that's needed when viewing this class
+                   as an iface */
+                ebml_w.start_tag(tag_item_iface_method);
                 encode_family(ebml_w, purity_fn_family(m.decl.purity));
                 encode_name(ebml_w, m.ident);
                 encode_type_param_bounds(ebml_w, ecx, tps + m.tps);
                 encode_type(ecx, ebml_w, node_id_to_type(tcx, m.id));
                 encode_def_id(ebml_w, local_def(m.id));
                 ebml_w.end_tag();
+                /* Write the info that's needed when viewing this class
+                   as an impl (just the method def_id) */
+                ebml_w.start_tag(tag_item_impl_method);
+                ebml_w.writer.write(str::bytes(def_to_str(local_def(m.id))));
+                ebml_w.end_tag();
+
               }
            }
         }
@@ -659,19 +716,13 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_name(ebml_w, item.ident);
         for methods.each {|m|
-            ebml_w.start_tag(tag_item_method);
+            ebml_w.start_tag(tag_item_impl_method);
             ebml_w.writer.write(str::bytes(def_to_str(local_def(m.id))));
             ebml_w.end_tag();
         }
-        alt ifce {
-          some(t) {
-            let i_ty = ty::node_id_to_type(tcx, t.id);
-            ebml_w.start_tag(tag_impl_iface);
-            write_type(ecx, ebml_w, i_ty);
-            ebml_w.end_tag();
-          }
-          _ {}
-        }
+        option::iter(ifce) {|t|
+           encode_iface_ref(ebml_w, ecx, t)
+        };
         encode_path(ebml_w, path, ast_map::path_name(item.ident));
         ebml_w.end_tag();
 
@@ -693,7 +744,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_name(ebml_w, item.ident);
         let mut i = 0u;
         for vec::each(*ty::iface_methods(tcx, local_def(item.id))) {|mty|
-            ebml_w.start_tag(tag_item_method);
+            ebml_w.start_tag(tag_item_iface_method);
             encode_name(ebml_w, mty.ident);
             encode_type_param_bounds(ebml_w, ecx, ms[i].tps);
             encode_type(ecx, ebml_w, ty::mk_fn(tcx, mty.fty));

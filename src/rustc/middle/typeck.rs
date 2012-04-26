@@ -4686,8 +4686,10 @@ mod vtable {
             let mut found = [];
 
             for list::each(isc) {|impls|
+            /* For each impl in scope... */
                 for vec::each(*impls) {|im|
-                    // find the iface that the impl is an impl of (if any)
+                    // im = one specific impl
+                    // find the iface that im implements (if any)
                     let of_ty = alt ty::impl_iface(tcx, im.did) {
                       some(of_ty) { of_ty }
                       _ { cont; }

@@ -70,7 +70,7 @@ const tag_crate_dep_vers: uint = 0x2cu;
 
 const tag_mod_impl: uint = 0x30u;
 
-const tag_item_method: uint = 0x31u;
+const tag_item_iface_method: uint = 0x31u;
 const tag_impl_iface: uint = 0x32u;
 
 // discriminator value for variants
@@ -85,6 +85,17 @@ const tag_item_field: uint = 0x44u;
 const tag_class_mut: uint = 0x45u;
 
 const tag_region_param: uint = 0x46u;
+const tag_mod_impl_use: uint = 0x47u;
+const tag_mod_impl_iface: uint = 0x48u;
+/*
+  iface items contain tag_item_iface_method elements,
+  impl items contain tag_item_impl_method elements, and classes
+  have both. That's because some code treats classes like ifaces,
+  and other code treats them like impls. Because classes can contain
+  both, tag_item_iface_method and tag_item_impl_method have to be two
+  different tags.
+ */
+const tag_item_impl_method: uint = 0x49u;
 
 // used to encode crate_ctxt side tables
 enum astencode_tag { // Reserves 0x50 -- 0x6f
