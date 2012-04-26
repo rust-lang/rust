@@ -38,11 +38,10 @@ fn declare_upcalls(targ_cfg: @session::config,
         let mut arg_tys: [TypeRef] = [];
         for tys.each {|t| arg_tys += [t]; }
         let fn_ty = T_fn(arg_tys, rv);
-        let f = base::decl_cdecl_fn(llmod, prefix + name, fn_ty);
-        if name != "fail" {
-            base::set_no_unwind(f);
-        }
-        ret f;
+        ret base::decl_cdecl_fn(llmod, prefix + name, fn_ty);
+    }
+    fn nothrow(f: ValueRef) -> ValueRef {
+        base::set_no_unwind(f); f
     }
     let d = bind decl(llmod, "upcall_", _, _, _);
     let dv = bind decl(llmod, "upcall_", _, _, T_void());
@@ -55,35 +54,42 @@ fn declare_upcalls(targ_cfg: @session::config,
                              T_ptr(T_i8()),
                              size_t]),
           malloc:
-              d("malloc", [T_ptr(tydesc_type)], T_ptr(T_i8())),
+              nothrow(d("malloc", [T_ptr(tydesc_type)],
+                        T_ptr(T_i8()))),
           free:
-              dv("free", [T_ptr(T_i8())]),
+              nothrow(dv("free", [T_ptr(T_i8())])),
           validate_box:
-              dv("validate_box", [T_ptr(T_i8())]),
+              nothrow(dv("validate_box", [T_ptr(T_i8())])),
           shared_malloc:
-              d("shared_malloc", [size_t], T_ptr(T_i8())),
+              nothrow(d("shared_malloc", [size_t], T_ptr(T_i8()))),
           shared_free:
-              dv("shared_free", [T_ptr(T_i8())]),
+              nothrow(dv("shared_free", [T_ptr(T_i8())])),
           shared_realloc:
-              d("shared_realloc", [T_ptr(T_i8()), size_t], T_ptr(T_i8())),
+              nothrow(d("shared_realloc", [T_ptr(T_i8()), size_t],
+                        T_ptr(T_i8()))),
           mark:
               d("mark", [T_ptr(T_i8())], int_t),
           vec_grow:
-              dv("vec_grow", [T_ptr(T_ptr(opaque_vec_t)), int_t]),
+              nothrow(dv("vec_grow", [T_ptr(T_ptr(opaque_vec_t)), int_t])),
           str_new_uniq:
-              d("str_new_uniq", [T_ptr(T_i8()), int_t], T_ptr(opaque_vec_t)),
+              nothrow(d("str_new_uniq", [T_ptr(T_i8()), int_t],
+                        T_ptr(opaque_vec_t))),
           str_new_shared:
-              d("str_new_shared", [T_ptr(T_i8()), int_t], T_ptr(T_i8())),
+              nothrow(d("str_new_shared", [T_ptr(T_i8()), int_t],
+                        T_ptr(T_i8()))),
           str_concat:
-              d("str_concat", [T_ptr(opaque_vec_t), T_ptr(opaque_vec_t)],
-                T_ptr(opaque_vec_t)),
+              nothrow(d("str_concat", [T_ptr(opaque_vec_t),
+                                       T_ptr(opaque_vec_t)],
+                        T_ptr(opaque_vec_t))),
           cmp_type:
               dv("cmp_type",
                  [T_ptr(T_i1()), T_ptr(tydesc_type),
-                  T_ptr(T_ptr(tydesc_type)), T_ptr(T_i8()), T_ptr(T_i8()),
+                  T_ptr(T_ptr(tydesc_type)), T_ptr(T_i8()),
+                  T_ptr(T_i8()),
                   T_i8()]),
           log_type:
-              dv("log_type", [T_ptr(tydesc_type), T_ptr(T_i8()), T_i32()]),
+              dv("log_type", [T_ptr(tydesc_type),
+                              T_ptr(T_i8()), T_i32()]),
           alloc_c_stack:
               d("alloc_c_stack", [size_t], T_ptr(T_i8())),
           call_shim_on_c_stack:
@@ -95,9 +101,9 @@ fn declare_upcalls(targ_cfg: @session::config,
               d("call_shim_on_rust_stack",
                 [T_ptr(T_i8()), T_ptr(T_i8())], int_t),
           rust_personality:
-              d("rust_personality", [], T_i32()),
+              nothrow(d("rust_personality", [], T_i32())),
           reset_stack_limit:
-              dv("reset_stack_limit", [])
+              nothrow(dv("reset_stack_limit", []))
          };
 }
 //
