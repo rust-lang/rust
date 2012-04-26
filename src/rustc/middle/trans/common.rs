@@ -680,25 +680,14 @@ fn T_opaque_cbox_ptr(cx: @crate_ctxt) -> TypeRef {
     ret T_opaque_box_ptr(cx);
 }
 
-fn T_enum_variant(cx: @crate_ctxt) -> TypeRef {
+fn T_enum_discrim(cx: @crate_ctxt) -> TypeRef {
     ret cx.int_type;
-}
-
-fn T_enum(cx: @crate_ctxt, size: uint) -> TypeRef {
-    let s = "enum_" + uint::to_str(size, 10u);
-    alt name_has_type(cx.tn, s) { some(t) { ret t; } _ {} }
-    let t =
-        if size == 0u {
-            T_struct([T_enum_variant(cx)])
-        } else { T_struct([T_enum_variant(cx), T_array(T_i8(), size)]) };
-    associate_type(cx.tn, s, t);
-    ret t;
 }
 
 fn T_opaque_enum(cx: @crate_ctxt) -> TypeRef {
     let s = "opaque_enum";
     alt name_has_type(cx.tn, s) { some(t) { ret t; } _ {} }
-    let t = T_struct([T_enum_variant(cx), T_i8()]);
+    let t = T_struct([T_enum_discrim(cx), T_i8()]);
     associate_type(cx.tn, s, t);
     ret t;
 }

@@ -200,7 +200,7 @@ fn compute_static_enum_size(ccx: @crate_ctxt, largest_variants: [uint],
     // FIXME (issue #792): This is wrong. If the enum starts with an 8 byte
     // aligned quantity, we don't align it.
     if vec::len(*variants) > 1u {
-        let variant_t = T_enum_variant(ccx);
+        let variant_t = T_enum_discrim(ccx);
         max_size += llsize_of_real(ccx, variant_t) as u16;
         let align = llalign_of_pref(ccx, variant_t) as u8;
         if max_align < align { max_align = align; }

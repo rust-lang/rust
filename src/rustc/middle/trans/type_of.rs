@@ -158,10 +158,10 @@ fn type_of_enum(cx: @crate_ctxt, did: ast::def_id, t: ty::t)
         let degen = (*ty::enum_variants(cx.tcx, did)).len() == 1u;
         let size = shape::static_size_of_enum(cx, t);
         if !degen {
-            [T_enum_variant(cx), T_array(T_i8(), size)]
+            [T_enum_discrim(cx), T_array(T_i8(), size)]
         }
         else if size == 0u {
-            [T_enum_variant(cx)]
+            [T_enum_discrim(cx)]
         }
         else {
             [T_array(T_i8(), size)]
