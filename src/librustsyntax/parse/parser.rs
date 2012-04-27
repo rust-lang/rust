@@ -508,6 +508,13 @@ fn parse_lit(p: parser) -> ast::lit {
 }
 
 fn parse_path_without_tps(p: parser) -> @ast::path {
+    parse_path_without_tps_(p, parse_ident, parse_ident)
+}
+
+fn parse_path_without_tps_(
+    p: parser, parse_ident: fn(parser) -> ast::ident,
+    parse_last_ident: fn(parser) -> ast::ident) -> @ast::path {
+
     let lo = p.span.lo;
     let global = eat(p, token::MOD_SEP);
     let mut ids = [];
@@ -516,10 +523,11 @@ fn parse_path_without_tps(p: parser) -> @ast::path {
             p.look_ahead(2u) != token::LT
             && p.look_ahead(1u) == token::MOD_SEP;
 
-        ids += [parse_ident(p)];
         if is_not_last {
+            ids += [parse_ident(p)];
             expect(p, token::MOD_SEP);
         } else {
+            ids += [parse_last_ident(p)];
             break;
         }
     }
@@ -528,12 +536,7 @@ fn parse_path_without_tps(p: parser) -> @ast::path {
 }
 
 fn parse_value_path(p: parser) -> @ast::path {
-    let pt = parse_path_without_tps(p);
-    let last_word = vec::last(pt.idents);
-    if is_restricted_keyword(p, last_word) {
-        p.fatal("found " + last_word + " in expression position");
-    }
-    pt
+    parse_path_without_tps_(p, parse_ident, parse_value_ident)
 }
 
 fn parse_path_with_tps(p: parser, colons: bool) -> @ast::path {
