@@ -22,7 +22,7 @@ fn main() {
     // Send it through the shape code
     let y = #fmt["%?", x];
 
-    #debug("align inner = %?", sys::align_of::<inner>()); // 8
+    #debug("align inner = %?", sys::pref_align_of::<inner>()); // 8
     #debug("size outer = %?", sys::size_of::<outer>());   // 12
     #debug("y = %s", y);                                  // (22, (0))
 

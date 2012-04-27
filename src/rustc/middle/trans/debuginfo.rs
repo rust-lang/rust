@@ -451,7 +451,7 @@ fn create_boxed_type(cx: @crate_ctxt, outer: ty::t, _inner: ty::t,
                                           ast::ty_uint(ast::ty_u), span);
     let scx = create_structure(file_node, ty_to_str(cx.tcx, outer), 0);
     add_member(scx, "refcnt", 0, sys::size_of::<uint>() as int,
-               sys::align_of::<uint>() as int, refcount_type.node);
+               sys::min_align_of::<uint>() as int, refcount_type.node);
     add_member(scx, "boxed", 0, 8, //XXX member_size_and_align(??)
                8, //XXX just a guess
                boxed.node);
@@ -502,9 +502,9 @@ fn create_vec(cx: @crate_ctxt, vec_t: ty::t, elem_t: ty::t,
     let size_t_type = create_basic_type(cx, ty::mk_uint(cx.tcx),
                                         ast::ty_uint(ast::ty_u), vec_ty_span);
     add_member(scx, "fill", 0, sys::size_of::<libc::size_t>() as int,
-               sys::align_of::<libc::size_t>() as int, size_t_type.node);
+               sys::min_align_of::<libc::size_t>() as int, size_t_type.node);
     add_member(scx, "alloc", 0, sys::size_of::<libc::size_t>() as int,
-               sys::align_of::<libc::size_t>() as int, size_t_type.node);
+               sys::min_align_of::<libc::size_t>() as int, size_t_type.node);
     let subrange = llmdnode([lltag(SubrangeTag), lli64(0), lli64(0)]);
     let (arr_size, arr_align) = size_and_align_of(cx, elem_t);
     let data_ptr = create_composite_type(ArrayTypeTag, "", file_node.node, 0,
@@ -512,7 +512,7 @@ fn create_vec(cx: @crate_ctxt, vec_t: ty::t, elem_t: ty::t,
                                          option::some(elem_ty_md.node),
                                          option::some([subrange]));
     add_member(scx, "data", 0, 0, // clang says the size should be 0
-               sys::align_of::<u8>() as int, data_ptr);
+               sys::min_align_of::<u8>() as int, data_ptr);
     let llnode = finish_structure(scx);
     ret @{node: llnode, data: {hash: ty::type_id(vec_t)}};
 }

@@ -3,7 +3,8 @@
 export type_desc;
 export get_type_desc;
 export size_of;
-export align_of;
+export min_align_of;
+export pref_align_of;
 export refcount;
 export log_str;
 
@@ -43,8 +44,21 @@ fn size_of<T>() -> uint unsafe {
     rusti::size_of::<T>()
 }
 
-#[doc = "Returns the alignment of a type"]
-fn align_of<T>() -> uint unsafe {
+#[doc = "
+Returns the ABI-required minimum alignment of a type
+
+This is the alignment used for struct fields. It may be smaller
+than the preferred alignment.
+"]
+fn min_align_of<T>() -> uint unsafe {
+    // FIXME: use rusti::min_align_of after snapshot
+    // rusti::align_of::<T>()
+    fail "FIXME: uncomment the above line to use min_align_of";
+}
+
+#[doc = "Returns the preferred alignment of a type"]
+fn pref_align_of<T>() -> uint unsafe {
+    // FIXME: use rusti::pref_align_of after snapshot
     rusti::align_of::<T>()
 }
 
@@ -85,24 +99,24 @@ mod tests {
 
     #[test]
     fn align_of_basic() {
-        assert align_of::<u8>() == 1u;
-        assert align_of::<u16>() == 2u;
-        assert align_of::<u32>() == 4u;
+        assert pref_align_of::<u8>() == 1u;
+        assert pref_align_of::<u16>() == 2u;
+        assert pref_align_of::<u32>() == 4u;
     }
 
     #[test]
     #[cfg(target_arch = "x86")]
     #[cfg(target_arch = "arm")]
     fn align_of_32() {
-        assert align_of::<uint>() == 4u;
-        assert align_of::<*uint>() == 4u;
+        assert pref_align_of::<uint>() == 4u;
+        assert pref_align_of::<*uint>() == 4u;
     }
 
     #[test]
     #[cfg(target_arch = "x86_64")]
     fn align_of_64() {
-        assert align_of::<uint>() == 8u;
-        assert align_of::<*uint>() == 8u;
+        assert pref_align_of::<uint>() == 8u;
+        assert pref_align_of::<*uint>() == 8u;
     }
 }
 
