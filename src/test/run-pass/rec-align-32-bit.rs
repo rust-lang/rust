@@ -2,6 +2,12 @@
 // xfail-win32
 // Issue #2303
 
+#[abi = "rust-intrinsic"]
+native mod rusti {
+    fn pref_align_of<T>() -> uint;
+    fn min_align_of<T>() -> uint;
+}
+
 // This is the type with the questionable alignment
 type inner = {
     c64: u64
@@ -22,24 +28,18 @@ fn main() {
     // Send it through the shape code
     let y = #fmt["%?", x];
 
-    #debug("align inner = %?", sys::pref_align_of::<inner>()); // 8
-    #debug("size outer = %?", sys::size_of::<outer>());   // 12
-    #debug("y = %s", y);                                  // (22, (0))
+    #debug("align inner = %?", rusti::min_align_of::<inner>());
+    #debug("size outer = %?", sys::size_of::<outer>());
+    #debug("y = %s", y);
 
     // per clang/gcc the alignment of `inner` is 4 on x86.
-    // we say it's 8
-    //assert sys::align_of::<inner>() == 4u; // fails
+    assert rusti::min_align_of::<inner>() == 4u;
 
     // per clang/gcc the size of `outer` should be 12
     // because `inner`s alignment was 4.
-    // LLVM packs the struct the way clang likes, despite
-    // our intents regarding the alignment of `inner` and
-    // we end up with the same size `outer` as clang
-    assert sys::size_of::<outer>() == 12u; // passes
+    assert sys::size_of::<outer>() == 12u;
 
-    // But now our shape code doesn't find the inner struct
-    // We print (22, (0))
-    assert y == "(22, (44))"; // fails
+    assert y == "(22, (44))";
 }
 
 #[cfg(target_arch = "x86_64")]
