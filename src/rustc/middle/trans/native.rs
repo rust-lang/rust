@@ -764,11 +764,6 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::native_item,
         Store(bcx, C_uint(ccx, shape::llsize_of_real(ccx, lltp_ty)),
               fcx.llretptr);
       }
-      // FIXME: Transitional. Please remove me.
-      "align_of" {
-        Store(bcx, C_uint(ccx, shape::llalign_of_pref(ccx, lltp_ty)),
-              fcx.llretptr);
-      }
       "min_align_of" {
         Store(bcx, C_uint(ccx, shape::llalign_of_min(ccx, lltp_ty)),
               fcx.llretptr);

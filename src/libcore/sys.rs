@@ -26,7 +26,8 @@ native mod rustrt {
 native mod rusti {
     fn get_tydesc<T>() -> *();
     fn size_of<T>() -> uint;
-    fn align_of<T>() -> uint;
+    fn pref_align_of<T>() -> uint;
+    fn min_align_of<T>() -> uint;
 }
 
 #[doc = "
@@ -51,15 +52,12 @@ This is the alignment used for struct fields. It may be smaller
 than the preferred alignment.
 "]
 fn min_align_of<T>() -> uint unsafe {
-    // FIXME: use rusti::min_align_of after snapshot
-    // rusti::align_of::<T>()
-    fail "FIXME: uncomment the above line to use min_align_of";
+    rusti::min_align_of::<T>()
 }
 
 #[doc = "Returns the preferred alignment of a type"]
 fn pref_align_of<T>() -> uint unsafe {
-    // FIXME: use rusti::pref_align_of after snapshot
-    rusti::align_of::<T>()
+    rusti::pref_align_of::<T>()
 }
 
 #[doc = "Returns the refcount of a shared box"]
