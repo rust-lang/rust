@@ -69,7 +69,7 @@ impl parser for parser {
             self.token = next.tok;
             self.span = mk_sp(next.chpos, self.reader.chpos);
         } else {
-            let next = vec::pop(self.buffer);
+            let next = vec::shift(self.buffer);
             self.token = next.tok;
             self.span = next.span;
         }
@@ -82,7 +82,7 @@ impl parser for parser {
         while vec::len(self.buffer) < distance {
             let next = lexer::next_token(self.reader);
             let sp = mk_sp(next.chpos, self.reader.chpos);
-            self.buffer = [{tok: next.tok, span: sp}] + self.buffer;
+            vec::push(self.buffer, {tok: next.tok, span: sp});
         }
         ret self.buffer[distance - 1u].tok;
     }
