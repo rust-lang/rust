@@ -2007,7 +2007,8 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::native_item) {
     }
     let tcx = ccx.tcx;
     let (n_tps, inputs, output) = alt it.ident {
-      "size_of" | "align_of" { (1u, [], ty::mk_uint(ccx.tcx)) }
+      "size_of" | "align_of" |
+      "pref_align_of" | "min_align_of" { (1u, [], ty::mk_uint(ccx.tcx)) }
       "get_tydesc" { (1u, [], ty::mk_nil_ptr(tcx)) }
       "init" { (1u, [], param(ccx, 0u)) }
       "forget" { (1u, [arg(ast::by_move, param(ccx, 0u))],
