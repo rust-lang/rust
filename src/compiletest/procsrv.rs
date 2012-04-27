@@ -7,7 +7,7 @@ export run;
 #[cfg(target_os = "win32")]
 fn target_env(lib_path: str, prog: str) -> [(str,str)] {
 
-    let env = os::env();
+    let mut env = os::env();
 
     env = vec::map(env) {|pair|
         let (k,v) = pair;
