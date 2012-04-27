@@ -766,9 +766,16 @@ native mod llvm {
     fn LLVMAddTargetData(TD: TargetDataRef, PM: PassManagerRef);
     /** Returns the size of a type. FIXME: rv is actually a C_Ulonglong! */
     fn LLVMStoreSizeOfType(TD: TargetDataRef, Ty: TypeRef) -> c_uint;
-    /** Returns the alignment of a type. */
+    /** Returns the preferred alignment of a type. */
     fn LLVMPreferredAlignmentOfType(TD: TargetDataRef,
                                     Ty: TypeRef) -> c_uint;
+    /** Returns the minimum alignment of a type. */
+    fn LLVMABIAlignmentOfType(TD: TargetDataRef,
+                              Ty: TypeRef) -> c_uint;
+    /** Returns the minimum alignment of a type when part of a call frame. */
+    fn LLVMCallFrameAlignmentOfType(TD: TargetDataRef,
+                                    Ty: TypeRef) -> c_uint;
+
     /** Disposes target data. */
     fn LLVMDisposeTargetData(TD: TargetDataRef);
 
