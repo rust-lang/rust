@@ -1,2 +1,2 @@
-fn true() { } //! ERROR found `true` in expression position
+fn true() { } //! ERROR found `true` in restricted position
 fn main() { }

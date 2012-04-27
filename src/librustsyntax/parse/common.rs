@@ -95,11 +95,15 @@ fn check_restricted_keywords(p: parser) {
     alt p.token {
       token::IDENT(_, false) {
         let w = token_to_str(p.reader, p.token);
-        if is_restricted_keyword(p, w) {
-            p.fatal("found `" + w + "` in expression position");
-        }
+        check_restricted_keywords_(p, w);
       }
       _ { }
+    }
+}
+
+fn check_restricted_keywords_(p: parser, w: ast::ident) {
+    if is_restricted_keyword(p, w) {
+        p.fatal("found `" + w + "` in restricted position");
     }
 }
 

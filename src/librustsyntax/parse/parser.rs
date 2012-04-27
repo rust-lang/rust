@@ -1384,7 +1384,11 @@ fn parse_pat(p: parser) -> @ast::pat {
             }
 
             let lo1 = p.last_span.lo;
-            let fieldname = parse_ident(p);
+            let fieldname = if p.look_ahead(1u) == token::COLON {
+                parse_ident(p)
+            } else {
+                parse_value_ident(p)
+            };
             let hi1 = p.last_span.lo;
             let fieldpath = ast_util::ident_to_path(mk_sp(lo1, hi1),
                                           fieldname);
@@ -1393,9 +1397,6 @@ fn parse_pat(p: parser) -> @ast::pat {
                 p.bump();
                 subpat = parse_pat(p);
             } else {
-                if is_restricted_keyword(p, fieldname) {
-                    p.fatal("found `" + fieldname + "` in binding position");
-                }
                 subpat = @{id: p.get_id(),
                            node: ast::pat_ident(fieldpath, none),
                            span: mk_sp(lo, hi)};
@@ -2147,9 +2148,7 @@ fn parse_item_enum(p: parser, attrs: [ast::attribute]) -> @ast::item {
     let mut variants: [ast::variant] = [];
     // Newtype syntax
     if p.token == token::EQ {
-        if is_restricted_keyword(p, id) {
-            p.fatal("found `" + id + "` in enum constructor position");
-        }
+        check_restricted_keywords_(p, id);
         p.bump();
         let ty = parse_ty(p, false);
         expect(p, token::SEMI);
