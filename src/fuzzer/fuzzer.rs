@@ -271,7 +271,7 @@ fn check_variants_T<T: copy>(
                 // testing the string for stability is easier and ok for now.
                 let handler = diagnostic::mk_handler(none);
                 let str3 =
-                    @as_str(bind pprust::print_crate(
+                    ~as_str(bind pprust::print_crate(
                         codemap,
                         diagnostic::mk_span_handler(handler, codemap),
                         crate2,
@@ -417,7 +417,7 @@ fn check_compiling(filename: str) -> happiness {
 }
 
 
-fn parse_and_print(code: @str) -> str {
+fn parse_and_print(code: ~str) -> str {
     let filename = "tmp.rs";
     let cm = codemap::new_codemap();
     let handler = diagnostic::mk_handler(none);
@@ -507,7 +507,7 @@ fn file_might_not_converge(filename: str) -> bool {
     ret false;
 }
 
-fn check_roundtrip_convergence(code: @str, maxIters: uint) {
+fn check_roundtrip_convergence(+code: ~str, maxIters: uint) {
 
     let mut i = 0u;
     let mut newv = code;
@@ -516,7 +516,7 @@ fn check_roundtrip_convergence(code: @str, maxIters: uint) {
     while i < maxIters {
         oldv = newv;
         if content_might_not_converge(*oldv) { ret; }
-        newv = @parse_and_print(oldv);
+        newv = ~parse_and_print(oldv);
         if oldv == newv { break; }
         i += 1u;
     }
@@ -538,7 +538,7 @@ fn check_convergence(files: [str]) {
     #error("pp convergence tests: %u files", vec::len(files));
     for files.each {|file|
         if !file_might_not_converge(file) {
-            let s = @result::get(io::read_whole_file_str(file));
+            let s = ~result::get(io::read_whole_file_str(file));
             if !content_might_not_converge(*s) {
                 #error("pp converge: %s", file);
                 // Change from 7u to 2u once
@@ -557,7 +557,7 @@ fn check_variants(files: [str], cx: context) {
             cont;
         }
 
-        let s = @result::get(io::read_whole_file_str(file));
+        let s = ~result::get(io::read_whole_file_str(file));
         if contains(*s, "#") {
             cont; // Macros are confusing
         }

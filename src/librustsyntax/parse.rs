@@ -73,20 +73,22 @@ fn parse_crate_from_source_file(input: str, cfg: ast::crate_cfg,
     ret r;
 }
 
-fn parse_crate_from_source_str(name: str, source: @str, cfg: ast::crate_cfg,
-                               sess: parse_sess) -> @ast::crate {
+fn parse_crate_from_source_str(name: str, source: ~str,
+               cfg: ast::crate_cfg, sess: parse_sess) -> @ast::crate {
+  // FIXME: Get rid of copy once there's a snapshot
     let p = new_parser_from_source_str(
-        sess, cfg, name, codemap::fss_none, source);
+           sess, cfg, name, codemap::fss_none, @(*source));
     let r = parser::parse_crate_mod(p, cfg);
     sess.chpos = p.reader.chpos;
     sess.byte_pos = sess.byte_pos + p.reader.pos;
     ret r;
 }
 
-fn parse_expr_from_source_str(name: str, source: @str, cfg: ast::crate_cfg,
-                              sess: parse_sess) -> @ast::expr {
+fn parse_expr_from_source_str(name: str, source: ~str,
+               cfg: ast::crate_cfg, sess: parse_sess) -> @ast::expr {
+  // FIXME: Get rid of copy once there's a snapshot
     let p = new_parser_from_source_str(
-        sess, cfg, name, codemap::fss_none, source);
+        sess, cfg, name, codemap::fss_none, @(*source));
     let r = parser::parse_expr(p);
     sess.chpos = p.reader.chpos;
     sess.byte_pos = sess.byte_pos + p.reader.pos;
@@ -134,12 +136,15 @@ fn new_parser(sess: parse_sess, cfg: ast::crate_cfg, rdr: lexer::reader,
       restricted_keywords: token::restricted_keyword_table()}
 }
 
+/* FIXME: still taking an @ b/c #ast using this.
+ Fix when there's a snapshot */
 fn new_parser_from_source_str(sess: parse_sess, cfg: ast::crate_cfg,
                               name: str, ss: codemap::file_substr,
                               source: @str) -> parser {
     let ftype = parser::SOURCE_FILE;
     let filemap = codemap::new_filemap_w_substr
-        (name, ss, source, sess.chpos, sess.byte_pos);
+      // FIXME: remove copy once there's a new snap
+      (name, ss, ~(*source), sess.chpos, sess.byte_pos);
     sess.cm.files += [filemap];
     let itr = @interner::mk(str::hash, str::eq);
     let rdr = lexer::new_reader(sess.span_diagnostic,
@@ -148,12 +153,10 @@ fn new_parser_from_source_str(sess: parse_sess, cfg: ast::crate_cfg,
 }
 
 fn new_parser_from_file(sess: parse_sess, cfg: ast::crate_cfg, path: str,
-                        ftype: parser::file_type) ->
-   parser {
-    let src = alt io::read_whole_file_str(path) {
+                        ftype: parser::file_type) -> parser {
+    let src = alt io::read_whole_file_ref(path) {
       result::ok(src) {
-        // FIXME: This copy is unfortunate
-        @src
+        src
       }
       result::err(e) {
         sess.span_diagnostic.handler().fatal(e)

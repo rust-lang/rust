@@ -78,7 +78,7 @@ fn parse_input(sess: session, cfg: ast::crate_cfg, input: str)
     if !input_is_stdin(input) {
         parse::parse_crate_from_file(input, cfg, sess.parse_sess)
     } else {
-        let src = @str::from_bytes(io::stdin().read_whole_stream());
+        let src = ~str::from_bytes(io::stdin().read_whole_stream());
         parse::parse_crate_from_source_str(input, src, cfg, sess.parse_sess)
     }
 }

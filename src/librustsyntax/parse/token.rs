@@ -124,7 +124,7 @@ fn to_str(in: interner<str>, t: token) -> str {
 
       /* Literals */
       LIT_INT(c, ast::ty_char) {
-        // FIXME: escape.
+        // FIXME: escape. (#2306)
         let mut tmp = "'";
         str::push_char(tmp, c as char);
         str::push_char(tmp, '\'');
@@ -140,7 +140,7 @@ fn to_str(in: interner<str>, t: token) -> str {
         ret interner::get::<str>(in, s) +
             ast_util::float_ty_to_str(t);
       }
-      LIT_STR(s) { // FIXME: escape.
+      LIT_STR(s) { // FIXME: escape. (#2306)
         ret "\"" + interner::get::<str>(in, s) + "\"";
       }
 

@@ -38,7 +38,7 @@ enum file_substr {
 }
 
 type filemap =
-    @{name: filename, substr: file_substr, src: @str,
+    @{name: filename, substr: file_substr, src: ~str,
       start_pos: file_pos, mut lines: [file_pos]};
 
 type codemap = @{mut files: [filemap]};
@@ -48,7 +48,7 @@ type loc = {file: filemap, line: uint, col: uint};
 fn new_codemap() -> codemap { @{mut files: [] } }
 
 fn new_filemap_w_substr(filename: filename, substr: file_substr,
-                        src: @str,
+                        -src: ~str,
                         start_pos_ch: uint, start_pos_byte: uint)
    -> filemap {
     ret @{name: filename, substr: substr, src: src,
@@ -56,7 +56,7 @@ fn new_filemap_w_substr(filename: filename, substr: file_substr,
           mut lines: [{ch: start_pos_ch, byte: start_pos_byte}]};
 }
 
-fn new_filemap(filename: filename, src: @str,
+fn new_filemap(filename: filename, -src: ~str,
                start_pos_ch: uint, start_pos_byte: uint)
     -> filemap {
     ret new_filemap_w_substr(filename, fss_none, src,

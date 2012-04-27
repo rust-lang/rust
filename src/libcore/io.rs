@@ -650,6 +650,24 @@ fn read_whole_file_str(file: str) -> result<str, str> {
     })
 }
 
+/*
+  Returns the result as a unique boxed string rather than a string
+ */
+fn read_whole_file_ref(file: str) -> result<~str, str> {
+     let f = os::as_c_charp(file, {|pathbuf|
+        os::as_c_charp("r", {|modebuf|
+            libc::fopen(pathbuf, modebuf)
+        })
+    });
+    ret if f as uint == 0u { result::err("error opening " + file) }
+        else unsafe {
+        let buf : ~mut [const u8] = ~mut [const];
+        let self = FILE_reader(f, true);
+        while (!self.eof()) { *buf += self.read_bytes(2048u); }
+        result::ok(str::unsafe::from_bytes_move(buf))
+    }
+}
+
 // FIXME implement this in a low-level way. Going through the abstractions is
 // pointless. // #2004
 fn read_whole_file(file: str) -> result<[u8], str> {

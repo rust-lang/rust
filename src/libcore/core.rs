@@ -49,7 +49,7 @@ mod std {
 
 #[doc = "
 A standard function to use to indicate unreachable code. Because the
-function is guaranteed to fail typestate will correctly identify
+function is guaranteed to fail, typestate will correctly identify
 any code paths following the appearance of this function as unreachable.
 "]
 fn unreachable() -> ! {
