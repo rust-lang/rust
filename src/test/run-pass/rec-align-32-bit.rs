@@ -1,4 +1,5 @@
 // xfail-pretty
+// xfail-win32
 // Issue #2303
 
 // This is the type with the questionable alignment
