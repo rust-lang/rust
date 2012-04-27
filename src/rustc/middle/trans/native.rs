@@ -765,7 +765,7 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::native_item,
               fcx.llretptr);
       }
       "align_of" {
-        Store(bcx, C_uint(ccx, shape::llalign_of_real(ccx, lltp_ty)),
+        Store(bcx, C_uint(ccx, shape::llalign_of_pref(ccx, lltp_ty)),
               fcx.llretptr);
       }
       "get_tydesc" {

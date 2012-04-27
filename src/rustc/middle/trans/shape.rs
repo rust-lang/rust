@@ -117,7 +117,7 @@ fn largest_variants(ccx: @crate_ctxt, tag_id: ast::def_id) -> [uint] {
             } else {
                 let llty = type_of::type_of(ccx, elem_t);
                 min_size += llsize_of_real(ccx, llty);
-                min_align += llalign_of_real(ccx, llty);
+                min_align += llalign_of_pref(ccx, llty);
             }
         }
 
@@ -190,7 +190,7 @@ fn compute_static_enum_size(ccx: @crate_ctxt, largest_variants: [uint],
 
         let llty = trans::common::T_struct(lltys);
         let dp = llsize_of_real(ccx, llty) as u16;
-        let variant_align = llalign_of_real(ccx, llty) as u8;
+        let variant_align = llalign_of_pref(ccx, llty) as u8;
 
         if max_size < dp { max_size = dp; }
         if max_align < variant_align { max_align = variant_align; }
@@ -202,7 +202,7 @@ fn compute_static_enum_size(ccx: @crate_ctxt, largest_variants: [uint],
     if vec::len(*variants) > 1u {
         let variant_t = T_enum_variant(ccx);
         max_size += llsize_of_real(ccx, variant_t) as u16;
-        let align = llalign_of_real(ccx, variant_t) as u8;
+        let align = llalign_of_pref(ccx, variant_t) as u8;
         if max_align < align { max_align = align; }
     }
 
@@ -630,8 +630,10 @@ fn llsize_of_real(cx: @crate_ctxt, t: TypeRef) -> uint {
     ret llvm::LLVMStoreSizeOfType(cx.td.lltd, t) as uint;
 }
 
-// Returns the real alignment of the given type for the current target.
-fn llalign_of_real(cx: @crate_ctxt, t: TypeRef) -> uint {
+// Returns the preferred alignment of the given type for the current target.
+// The preffered alignment may be larger than the alignment used when
+// packing the type into structs
+fn llalign_of_pref(cx: @crate_ctxt, t: TypeRef) -> uint {
     ret llvm::LLVMPreferredAlignmentOfType(cx.td.lltd, t) as uint;
 }
 

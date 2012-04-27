@@ -1896,7 +1896,7 @@ fn make_mono_id(ccx: @crate_ctxt, item: ast::def_id, substs: [ty::t],
                         !ty::type_needs_drop(ccx.tcx, subst) {
                     let llty = type_of(ccx, subst);
                     let size = shape::llsize_of_real(ccx, llty);
-                    let align = shape::llalign_of_real(ccx, llty);
+                    let align = shape::llalign_of_pref(ccx, llty);
                     // Special value for nil to prevent problems with undef
                     // return pointers.
                     if size == 1u && ty::type_is_nil(subst) {
