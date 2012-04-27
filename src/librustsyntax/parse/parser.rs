@@ -1395,7 +1395,7 @@ fn parse_pat(p: parser) -> @ast::pat {
                 subpat = parse_pat(p);
             } else {
                 if is_restricted_keyword(p, fieldname) {
-                    p.fatal("found " + fieldname + " in binding position");
+                    p.fatal("found `" + fieldname + "` in binding position");
                 }
                 subpat = @{id: p.get_id(),
                            node: ast::pat_ident(fieldpath, none),
@@ -2149,7 +2149,7 @@ fn parse_item_enum(p: parser, attrs: [ast::attribute]) -> @ast::item {
     // Newtype syntax
     if p.token == token::EQ {
         if is_restricted_keyword(p, id) {
-            p.fatal("found " + id + " in enum constructor position");
+            p.fatal("found `" + id + "` in enum constructor position");
         }
         p.bump();
         let ty = parse_ty(p, false);
