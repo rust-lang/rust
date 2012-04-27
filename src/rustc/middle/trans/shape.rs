@@ -637,6 +637,12 @@ fn llalign_of_pref(cx: @crate_ctxt, t: TypeRef) -> uint {
     ret llvm::LLVMPreferredAlignmentOfType(cx.td.lltd, t) as uint;
 }
 
+// Returns the minimum alignment of a type required by the plattform.
+// This is the alignment that will be used for struct fields.
+fn llalign_of_min(cx: @crate_ctxt, t: TypeRef) -> uint {
+    ret llvm::LLVMABIAlignmentOfType(cx.td.lltd, t) as uint;
+}
+
 fn llsize_of(cx: @crate_ctxt, t: TypeRef) -> ValueRef {
     ret llvm::LLVMConstIntCast(lib::llvm::llvm::LLVMSizeOf(t), cx.int_type,
                                False);
