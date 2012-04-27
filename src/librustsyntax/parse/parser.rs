@@ -821,7 +821,6 @@ fn parse_bottom_expr(p: parser) -> pexpr {
     } else if p.token == token::MOD_SEP ||
                   is_ident(p.token) && !is_keyword(p, "true") &&
                       !is_keyword(p, "false") {
-        check_restricted_keywords(p);
         let pth = parse_path_with_tps(p, true);
         hi = pth.span.hi;
         ex = ast::expr_path(pth);
