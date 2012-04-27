@@ -28,7 +28,7 @@ import consts::*;
 export close, fclose, fsync_fd, waitpid;
 export env, getenv, setenv, fdopen, pipe;
 export getcwd, dll_filename, self_exe_path;
-export exe_suffix, dll_suffix, sysname;
+export exe_suffix, dll_suffix, sysname, arch;
 export homedir, list_dir, list_dir_path, path_is_dir, path_exists,
        make_absolute, make_dir, remove_dir, change_dir, remove_file,
        copy_file;
@@ -700,8 +700,14 @@ mod consts {
     fn dll_suffix() -> str { ".dll" }
 }
 
+#[cfg(target_arch = "x86")]
+fn arch() -> str { "x86" }
 
+#[cfg(target_arch = "x86_64")]
+fn arch() -> str { "x86_64" }
 
+#[cfg(target_arch = "arm")]
+fn arch() -> str { "arm" }
 
 #[cfg(test)]
 mod tests {
