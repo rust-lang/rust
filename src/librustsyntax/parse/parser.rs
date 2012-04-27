@@ -510,10 +510,10 @@ fn parse_lit(p: parser) -> ast::lit {
 fn parse_path_without_tps(p: parser) -> @ast::path {
     let lo = p.span.lo;
     let global = eat(p, token::MOD_SEP);
-    let mut ids = [parse_ident(p)];
-    while p.look_ahead(1u) != token::LT && eat(p, token::MOD_SEP) {
+    let mut ids = [];
+    do {
         ids += [parse_ident(p)];
-    }
+    } while p.look_ahead(1u) != token::LT && eat(p, token::MOD_SEP);
     @{span: mk_sp(lo, p.last_span.hi), global: global,
       idents: ids, rp: none, types: []}
 }
