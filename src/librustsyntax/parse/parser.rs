@@ -511,9 +511,18 @@ fn parse_path_without_tps(p: parser) -> @ast::path {
     let lo = p.span.lo;
     let global = eat(p, token::MOD_SEP);
     let mut ids = [];
-    do {
+    loop {
+        let is_not_last =
+            p.look_ahead(2u) != token::LT
+            && p.look_ahead(1u) == token::MOD_SEP;
+
         ids += [parse_ident(p)];
-    } while p.look_ahead(1u) != token::LT && eat(p, token::MOD_SEP);
+        if is_not_last {
+            expect(p, token::MOD_SEP);
+        } else {
+            break;
+        }
+    }
     @{span: mk_sp(lo, p.last_span.hi), global: global,
       idents: ids, rp: none, types: []}
 }
