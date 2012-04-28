@@ -111,6 +111,11 @@ rust_uv_loop_delete(uv_loop_t* loop) {
     uv_loop_delete(loop);
 }
 
+extern "C" int
+rust_uv_loop_refcount(uv_loop_t* loop) {
+	return uv_loop_refcount(loop);
+}
+
 extern "C" void
 rust_uv_loop_set_data(uv_loop_t* loop, void* data) {
     loop->data = data;

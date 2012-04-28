@@ -512,6 +512,7 @@ mod uv_ll_struct_stubgen {
 native mod rustrt {
     fn rust_uv_loop_new() -> *libc::c_void;
     fn rust_uv_loop_delete(lp: *libc::c_void);
+    fn rust_uv_loop_refcount(loop_ptr: *libc::c_void) -> libc::c_int;
     fn rust_uv_run(loop_handle: *libc::c_void);
     fn rust_uv_close(handle: *libc::c_void, cb: *u8);
     fn rust_uv_async_send(handle: *uv_async_t);
@@ -599,6 +600,10 @@ unsafe fn loop_new() -> *libc::c_void {
 
 unsafe fn loop_delete(loop_handle: *libc::c_void) {
     rustrt::rust_uv_loop_delete(loop_handle);
+}
+
+unsafe fn loop_refcount(loop_ptr: *libc::c_void) -> libc::c_int {
+    ret rustrt::rust_uv_loop_refcount(loop_ptr);
 }
 
 unsafe fn run(loop_handle: *libc::c_void) {
