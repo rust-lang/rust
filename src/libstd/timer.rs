@@ -142,6 +142,47 @@ mod test {
     }
 
     #[test]
+    fn test_gl_timer_sleep_stress1() {
+        iter::repeat(500u) {||
+            sleep(1u);
+        }
+    }
+
+    #[test]
+    fn test_gl_timer_sleep_stress2() {
+        let po = comm::port();
+        let ch = comm::chan(po);
+
+        let repeat = 100u;
+        let spec = {
+
+            [(1u, 100u),
+             (10u, 10u),
+             (100u, 2u)]
+
+        };
+
+        iter::repeat(repeat) {||
+
+            for spec.each {|spec|
+                let (times, maxms) = spec;
+                task::spawn {||
+                    import rand::*;
+                    let rng = rng();
+                    iter::repeat(times) {||
+                        sleep(rng.next() as uint % maxms);
+                    }
+                    comm::send(ch, ());
+                }
+            }
+        }
+
+        iter::repeat(repeat * spec.len()) {||
+            comm::recv(po)
+        }
+    }
+
+    #[test]
     fn test_gl_timer_recv_timeout_before_time_passes() {
         let expected = rand::rng().gen_str(16u);
         let test_po = comm::port::<str>();
