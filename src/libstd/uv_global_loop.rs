@@ -10,11 +10,6 @@ export get, get_single_task_gl, get_monitor_task_gl;
 
 native mod rustrt {
     fn rust_uv_get_kernel_global_chan_ptr() -> *libc::uintptr_t;
-    fn rust_uv_get_kernel_monitor_global_chan_ptr() -> *libc::uintptr_t;
-    fn rust_uv_get_kernel_global_async_handle() -> *libc::uintptr_t;
-    fn rust_compare_and_swap_ptr(address: *libc::uintptr_t,
-                                 oldval: libc::uintptr_t,
-                                 newval: libc::uintptr_t) -> bool;
 }
 
 #[doc ="
