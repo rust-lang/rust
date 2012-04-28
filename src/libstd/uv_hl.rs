@@ -13,16 +13,12 @@ import ll = uv_ll;
 
 #[doc = "
 Used to abstract-away direct interaction with a libuv loop.
-
-# Arguments
-
-* async_handle - a pointer to a pointer to a uv_async_t struct used to 'poke'
-the C uv loop to process any pending callbacks
-
-* op_chan - a channel used to send function callbacks to be processed
-by the C uv loop
 "]
 enum high_level_loop {
+    #[doc="
+    `high_level_loop` variant that carries a `comm::chan` and
+    a `*ll::uv_async_t`.
+    "]
     simple_task_loop({
         async_handle: *ll::uv_async_t,
         op_chan: comm::chan<high_level_msg>
@@ -34,23 +30,36 @@ Represents the range of interactions with a `high_level_loop`
 "]
 enum high_level_msg {
     interaction (fn~(*libc::c_void)),
+    #[doc="
+For use in libraries that roll their own `high_level_loop` (like
+`std::uv::global_loop`)
+
+Is used to signal to the loop that it should close the internally-held
+async handle and do a sanity check to make sure that all other handles are
+closed, causing a failure otherwise. This should not be sent/used from
+'normal' user code.
+    "]
     teardown_loop
 }
 
 #[doc = "
-Given a vanilla `uv_loop_t*`
+Useful for anyone who wants to roll their own `high_level_loop`.
 
 # Arguments
 
 * loop_ptr - a pointer to a currently unused libuv loop. Its `data` field
 will be overwritten before the loop begins
-must be a pointer to a clean rust `uv_async_t` record
-* msg_po - an active port that receives `high_level_msg`s
-* before_run - a unique closure that is invoked after `uv_async_init` is
-called on the `async_handle` passed into this callback, just before `uv_run`
-is called on the provided `loop_ptr`
-* before_msg_drain - a unique closure that is invoked every time the loop is
-awoken, but before the port pointed to in the `msg_po` argument is drained
+* msg_po - an active port that receives `high_level_msg`s. You can distribute
+a paired channel to users, along with the `async_handle` returned in the
+following callback (combine them to make a `hl::simpler_task_loop` varient
+of `hl::high_level_loop`)
+* before_run - a unique closure that is invoked before `uv_run()` is called
+on the provided `loop_ptr`. An `async_handle` is passed in which will be
+live for the duration of the loop. You can distribute this to users so that
+they can interact with the loop safely.
+* before_msg_process - a unique closure that is invoked at least once when
+the loop is woken up, and once more for every message that is drained from
+the loop's msg port
 * before_tear_down - called just before the loop invokes `uv_close()` on the
 provided `async_handle`. `uv_run` should return shortly after
 "]
@@ -93,17 +102,25 @@ Provide a callback to be processed by `a_loop`
 The primary way to do operations again a running `high_level_loop` that
 doesn't involve creating a uv handle via `safe_handle`
 
+# Warning
+
+This function is the only safe way to interact with _any_ `high_level_loop`.
+Using functions in the `uv::ll` module outside of the `cb` passed into
+this function is _very dangerous_.
+
 # Arguments
 
-* a_loop - a `high_level_loop` that you want to do operations against
+* hl_loop - a `uv::hl::high_level_loop` that you want to do operations against
 * cb - a function callback to be processed on the running loop's
-thread. The only parameter is an opaque pointer to the running
-uv_loop_t. In the context of this callback, it is safe to use this pointer
-to do various uv_* API calls. _DO NOT_ send this pointer out via ports/chans
+thread. The only parameter passed in is an opaque pointer representing the
+running `uv_loop_t*`. In the context of this callback, it is safe to use
+this pointer to do various uv_* API calls contained within the `uv::ll`
+module. It is not safe to send the `loop_ptr` param to this callback out
+via ports/chans.
 "]
-unsafe fn interact(a_loop: high_level_loop,
+unsafe fn interact(hl_loop: high_level_loop,
                       -cb: fn~(*libc::c_void)) {
-    send_high_level_msg(a_loop, interaction(cb));
+    send_high_level_msg(hl_loop, interaction(cb));
 }
 
 // INTERNAL API

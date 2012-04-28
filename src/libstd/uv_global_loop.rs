@@ -28,7 +28,6 @@ fn get() -> hl::high_level_loop {
     ret get_monitor_task_gl();
 }
 
-// WARNING: USE ONLY ONE get_*_task_gl fn in the scope of a process lifetime.
 #[doc(hidden)]
 fn get_monitor_task_gl() -> hl::high_level_loop {
     let monitor_loop_chan_ptr =
@@ -100,7 +99,7 @@ unsafe fn spawn_libuv_weak_task() -> (*ll::uv_async_t,
     let exit_po = comm::port::<(*ll::uv_async_t,
                               comm::chan<hl::high_level_msg>)>();
     let exit_ch = comm::chan(exit_po);
-    
+
     task::spawn_sched(task::manual_threads(1u)) {||
         log(debug, "entering global libuv task");
         let loop_ptr = ll::loop_new();

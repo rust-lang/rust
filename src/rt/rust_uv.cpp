@@ -113,7 +113,7 @@ rust_uv_loop_delete(uv_loop_t* loop) {
 
 extern "C" int
 rust_uv_loop_refcount(uv_loop_t* loop) {
-	return uv_loop_refcount(loop);
+    return uv_loop_refcount(loop);
 }
 
 extern "C" void
