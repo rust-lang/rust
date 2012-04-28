@@ -27,9 +27,6 @@ rust_kernel::rust_kernel(rust_env *env) :
     // set up storage of pointers needed to
     // access the global loop.
     global_loop_chan = 0;
-    async_handle_inner = (uintptr_t)0;
-    global_async_handle = &async_handle_inner;
-    *global_async_handle = (uintptr_t)0;
 
     // Create the single threaded scheduler that will run on the platform's
     // main thread

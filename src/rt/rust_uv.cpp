@@ -450,13 +450,3 @@ rust_uv_get_kernel_global_chan_ptr() {
     LOG(task, stdlib,"global loop val: %lu", (unsigned long int)*result);
     return result;
 }
-
-extern "C" uintptr_t*
-rust_uv_get_kernel_monitor_global_chan_ptr() {
-    return rust_uv_get_kernel_global_chan_ptr();
-}
-
-extern "C" uintptr_t*
-rust_uv_get_kernel_global_async_handle() {
-    return rust_get_current_task()->kernel->get_global_async_handle();
-}
