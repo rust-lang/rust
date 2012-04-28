@@ -105,7 +105,7 @@ impl codemap_handler of handler for handler_t {
 }
 
 fn ice_msg(msg: str) -> str {
-    #fmt["internal compiler error %s", msg]
+    #fmt["internal compiler error: %s", msg]
 }
 
 fn mk_span_handler(handler: handler, cm: codemap::codemap) -> span_handler {

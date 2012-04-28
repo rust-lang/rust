@@ -215,12 +215,18 @@ fn monitor(f: fn~(diagnostic::emitter)) {
                     none,
                     diagnostic::ice_msg("unexpected failure"),
                     diagnostic::error);
-                let note = "The compiler hit an unexpected failure path. \
-                            This is a bug. Try running with \
-                            RUST_LOG=rustc=0,::rt::backtrace \
-                            to get further details and report the results \
-                            to github.com/mozilla/rust/issues";
-                diagnostic::emit(none, note, diagnostic::note);
+
+                for [
+
+                    "the compiler hit an unexpected failure path. \
+                     this is a bug",
+                    "try running with RUST_LOG=rustc=0,::rt::backtrace \
+                     to get further details and report the results \
+                     to github.com/mozilla/rust/issues"
+
+                ].each {|note|
+                    diagnostic::emit(none, note, diagnostic::note)
+                }
             }
             // Fail so the process returns a failure code
             fail;
