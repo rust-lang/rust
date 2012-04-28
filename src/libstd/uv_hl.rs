@@ -6,8 +6,8 @@ provide a high-level, abstracted interface to some set of
 libuv functionality.
 "];
 
-export high_level_loop, hl_loop_ext, high_level_msg;
-export run_high_level_loop, interact, ref, unref, unref_and_close;
+export high_level_loop, high_level_msg;
+export run_high_level_loop, interact;
 
 import ll = uv_ll;
 
@@ -26,41 +26,7 @@ enum high_level_loop {
     simple_task_loop({
         async_handle: *ll::uv_async_t,
         op_chan: comm::chan<high_level_msg>
-    }),
-    single_task_loop({
-        async_handle: **ll::uv_async_t,
-        op_chan: comm::chan<high_level_msg>
-    }),
-    monitor_task_loop({
-        op_chan: comm::chan<high_level_msg>
     })
-}
-
-impl hl_loop_ext for high_level_loop {
-    fn async_handle() -> **ll::uv_async_t {
-        alt self {
-          single_task_loop({async_handle, op_chan}) {
-            ret async_handle;
-          }
-          _ {
-            fail "variant of hl::high_level_loop that doesn't include" +
-                "an async_handle field";
-          }
-        }
-    }
-    fn op_chan() -> comm::chan<high_level_msg> {
-        alt self {
-          single_task_loop({async_handle, op_chan}) {
-            ret op_chan;
-          }
-          monitor_task_loop({op_chan}) {
-            ret op_chan;
-          }
-          simple_task_loop({async_handle, op_chan}) {
-            ret op_chan;
-          }
-        }
-    }
 }
 
 #[doc="
@@ -68,9 +34,7 @@ Represents the range of interactions with a `high_level_loop`
 "]
 enum high_level_msg {
     interaction (fn~(*libc::c_void)),
-    ref_handle (*libc::c_void),
-    manual_unref_handle (*libc::c_void, option<*u8>),
-    tear_down
+    teardown_loop
 }
 
 #[doc = "
@@ -93,7 +57,8 @@ provided `async_handle`. `uv_run` should return shortly after
 unsafe fn run_high_level_loop(loop_ptr: *libc::c_void,
                               msg_po: comm::port<high_level_msg>,
                               before_run: fn~(*ll::uv_async_t),
-                              before_msg_drain: fn~(*ll::uv_async_t) -> bool,
+                              before_msg_process:
+                                fn~(*ll::uv_async_t, bool) -> bool,
                               before_tear_down: fn~(*ll::uv_async_t)) {
     // set up the special async handle we'll use to allow multi-task
     // communication with this loop
@@ -106,11 +71,9 @@ unsafe fn run_high_level_loop(loop_ptr: *libc::c_void,
     let data: hl_loop_data = default_gl_data({
         async_handle: async_handle,
         mut active: true,
-        before_msg_drain: before_msg_drain,
+        before_msg_process: before_msg_process,
         before_tear_down: before_tear_down,
-        msg_po_ptr: ptr::addr_of(msg_po),
-        mut refd_handles: [mut],
-        mut unrefd_handles: [mut]
+        msg_po_ptr: ptr::addr_of(msg_po)
     });
     let data_ptr = ptr::addr_of(data);
     ll::set_data_for_uv_handle(async_handle, data_ptr);
@@ -143,44 +106,6 @@ unsafe fn interact(a_loop: high_level_loop,
     send_high_level_msg(a_loop, interaction(cb));
 }
 
-iface uv_handle_manager<T> {
-    fn init() -> T;
-}
-
-type safe_handle_fields<T> = {
-    hl_loop: high_level_loop,
-    handle: T,
-    close_cb: *u8
-};
-
-/*fn safe_handle<T>(a_loop: high_level_loop,
-                  handle_val: T,
-                  handle_init_cb: fn~(*libc::c_void, *T),
-                  close_cb: *u8) {
-
-resource safe_handle_container<T>(handle_fields: safe_handle_fields<T>) {
-}
-}*/
-
-
-#[doc="
-Needs to be encapsulated within `safe_handle`
-"]
-fn ref<T>(hl_loop: high_level_loop, handle: *T) unsafe {
-    send_high_level_msg(hl_loop, ref_handle(handle as *libc::c_void));
-}
-#[doc="
-Needs to be encapsulated within `safe_handle`
-"]
-fn unref<T>(hl_loop: high_level_loop, handle: *T) unsafe {
-    send_high_level_msg(hl_loop, manual_unref_handle(handle as *libc::c_void,
-                                                   none));
-}
-fn unref_and_close<T>(hl_loop: high_level_loop, handle: *T, cb: *u8) unsafe {
-    send_high_level_msg(hl_loop, manual_unref_handle(handle as *libc::c_void,
-                                                   some(cb)));
-}
-
 // INTERNAL API
 
 // data that lives for the lifetime of the high-evel oo
@@ -188,36 +113,26 @@ enum hl_loop_data {
     default_gl_data({
         async_handle: *ll::uv_async_t,
         mut active: bool,
-        before_msg_drain: fn~(*ll::uv_async_t) -> bool,
+        before_msg_process: fn~(*ll::uv_async_t, bool) -> bool,
         before_tear_down: fn~(*ll::uv_async_t),
-        msg_po_ptr: *comm::port<high_level_msg>,
-        mut refd_handles: [mut *libc::c_void],
-        mut unrefd_handles: [mut *libc::c_void]})
+        msg_po_ptr: *comm::port<high_level_msg>})
 }
 
 unsafe fn send_high_level_msg(hl_loop: high_level_loop,
-                              -msg: high_level_msg) unsafe {
-    comm::send(hl_loop.op_chan(), msg);
+                              -msg: high_level_msg) {
+    let op_chan = alt hl_loop{simple_task_loop({async_handle, op_chan}){
+      op_chan}};
+    comm::send(op_chan, msg);
 
     // if the global async handle == 0, then that means
     // the loop isn't active, so we don't need to wake it up,
     // (the loop's enclosing task should be blocking on a message
     // receive on this port)
     alt hl_loop {
-      single_task_loop({async_handle, op_chan}) {
-        if ((*async_handle) != 0 as *ll::uv_async_t) {
-            log(debug,"global async handle != 0, waking up loop..");
-            ll::async_send((*async_handle));
-        }
-        else {
-            log(debug,"GLOBAL ASYNC handle == 0");
-        }
-      }
       simple_task_loop({async_handle, op_chan}) {
         log(debug,"simple async handle != 0, waking up loop..");
         ll::async_send((async_handle));
       }
-      _ {}
     }
 }
 
@@ -228,71 +143,57 @@ unsafe fn send_high_level_msg(hl_loop: high_level_loop,
 // data member
 crust fn high_level_wake_up_cb(async_handle: *ll::uv_async_t,
                                status: int) unsafe {
-    // nothing here, yet.
     log(debug, #fmt("high_level_wake_up_cb crust.. handle: %? status: %?",
                      async_handle, status));
     let loop_ptr = ll::get_loop_for_uv_handle(async_handle);
     let data = ll::get_data_for_uv_handle(async_handle) as *hl_loop_data;
-    // we check to see if the loop is "active" (the loop is set to
-    // active = false the first time we realize we need to 'tear down',
-    // set subsequent calls to the global async handle may be triggered
-    // before all of the uv_close() calls are processed and loop exits
-    // on its own. So if the loop isn't active, we won't run the user's
-    // on_wake callback (and, consequently, let messages pile up, probably
-    // in the loops msg_po)
-    if (*data).active {
-        log(debug, "before on_wake");
-        let mut do_msg_drain = (*data).before_msg_drain(async_handle);
-        let mut continue = true;
-        if do_msg_drain {
-            let msg_po = *((*data).msg_po_ptr);
-            if comm::peek(msg_po) {
-                // if this is true, we'll iterate over the
-                // msgs waiting in msg_po until there's no more
-                log(debug,"got msg_po");
-                while(continue) {
-                    log(debug,"before alt'ing on high_level_msg");
-                    alt comm::recv(msg_po) {
+    alt (*data).active {
+      true {
+        let msg_po = *((*data).msg_po_ptr);
+        alt comm::peek(msg_po) {
+          true {
+            loop {
+                let msg = comm::recv(msg_po);
+                alt (*data).active {
+                  true {
+                    alt msg {
                       interaction(cb) {
-                        log(debug,"got interaction, before cb..");
-                        // call it..
+                        (*data).before_msg_process(async_handle,
+                                                   (*data).active);
                         cb(loop_ptr);
-                        log(debug,"after calling cb");
                       }
-                      ref_handle(handle) {
-                        high_level_ref(data, handle);
-                      }
-                      manual_unref_handle(handle, user_close_cb) {
-                        high_level_unref(data, handle, true, user_close_cb);
-                      }
-                      tear_down {
-                        log(debug,"incoming hl_msg: got tear_down");
+                      teardown_loop {
+                        begin_teardown(data);
                       }
                     }
-                    continue = comm::peek(msg_po);
+                  }
+                  false {
+                    // drop msg ?
+                  }
                 }
+                if !comm::peek(msg_po) { break; }
             }
-            else {
-                log(debug, "in hl wake_cb, no pending messages");
-            }
+          }
+          false {
+            // no pending msgs
+          }
         }
-        log(debug, #fmt("after on_wake, continue? %?", continue));
-        if !do_msg_drain {
-            high_level_tear_down(data);
-        }
+      }
+      false {
+        // loop not active
+      }
     }
 }
 
 crust fn tear_down_close_cb(handle: *ll::uv_async_t) unsafe {
-    log(debug, #fmt("tear_down_close_cb called, closing handle at %?",
-                    handle));
-    let data = ll::get_data_for_uv_handle(handle) as *hl_loop_data;
-    if vec::len((*data).refd_handles) > 0u {
-        fail "Didn't unref all high-level handles";
-    }
+    let loop_ptr = ll::get_loop_for_uv_handle(handle);
+    let loop_refs = ll::loop_refcount(loop_ptr);
+    log(debug, #fmt("tear_down_close_cb called, closing handle at %? refs %?",
+                    handle, loop_refs));
+    assert loop_refs == 1i32;
 }
 
-fn high_level_tear_down(data: *hl_loop_data) unsafe {
+fn begin_teardown(data: *hl_loop_data) unsafe {
     log(debug, "high_level_tear_down() called, close async_handle");
     // call user-suppled before_tear_down cb
     let async_handle = (*data).async_handle;
@@ -300,90 +201,6 @@ fn high_level_tear_down(data: *hl_loop_data) unsafe {
     ll::close(async_handle as *libc::c_void, tear_down_close_cb);
 }
 
-unsafe fn high_level_ref(data: *hl_loop_data, handle: *libc::c_void) {
-    log(debug,"incoming hl_msg: got ..ref_handle");
-    let mut refd_handles = (*data).refd_handles;
-    let mut unrefd_handles = (*data).unrefd_handles;
-    let handle_already_refd = refd_handles.contains(handle);
-    if handle_already_refd {
-        fail "attempt to do a high-level ref an already ref'd handle";
-    }
-    let handle_already_unrefd = unrefd_handles.contains(handle);
-    // if we are ref'ing a handle (by ptr) that was already unref'd,
-    // probably
-    if handle_already_unrefd {
-        let last_idx = vec::len(unrefd_handles) - 1u;
-        let handle_idx = vec::position_elem(unrefd_handles, handle);
-        alt handle_idx {
-          none {
-            fail "trying to remove handle that isn't in unrefd_handles";
-          }
-          some(idx) {
-            unrefd_handles[idx] <-> unrefd_handles[last_idx];
-            vec::pop(unrefd_handles);
-          }
-        }
-        (*data).unrefd_handles = unrefd_handles;
-    }
-    refd_handles += [handle];
-    (*data).refd_handles = refd_handles;
-}
-
-unsafe fn high_level_unref(data: *hl_loop_data, handle: *libc::c_void,
-                   manual_unref: bool, user_close_cb: option<*u8>) {
-    log(debug,"incoming hl_msg: got auto_unref_handle");
-    let mut refd_handles = (*data).refd_handles;
-    let mut unrefd_handles = (*data).unrefd_handles;
-    log(debug, #fmt("refs: %?, unrefs %? handle %?", vec::len(refd_handles),
-                    vec::len(unrefd_handles), handle));
-    let handle_already_refd = refd_handles.contains(handle);
-    if !handle_already_refd {
-        fail "attempting to high-level unref an untracked handle";
-    }
-    let double_unref = unrefd_handles.contains(handle);
-    if double_unref {
-        log(debug, "double unref encountered");
-        if manual_unref {
-            // will allow a user to manual unref, but only signal
-            // a fail when a double-unref is caused by a user
-            fail "attempting to high-level unref an unrefd handle";
-        }
-        else {
-            log(debug, "not failing...");
-        }
-    }
-    else {
-        log(debug, "attempting to unref handle");
-        alt user_close_cb {
-          some(cb) {
-            ll::close(handle, cb);
-          }
-          none { }
-        }
-        let last_idx = vec::len(refd_handles) - 1u;
-        let handle_idx = vec::position_elem(refd_handles, handle);
-        alt handle_idx {
-          none {
-            fail "trying to remove handle that isn't in refd_handles";
-          }
-          some(idx) {
-            refd_handles[idx] <-> refd_handles[last_idx];
-            vec::pop(refd_handles);
-          }
-        }
-        (*data).refd_handles = refd_handles;
-        unrefd_handles += [handle];
-        (*data).unrefd_handles = unrefd_handles;
-        if vec::len(refd_handles) == 0u {
-            log(debug, "0 referenced handles, start loop teardown");
-            high_level_tear_down(data);
-        }
-        else {
-            log(debug, "more than 0 referenced handles");
-        }
-    }
-
-}
 #[cfg(test)]
 mod test {
     crust fn async_close_cb(handle: *ll::uv_async_t) unsafe {
@@ -397,7 +214,7 @@ mod test {
         log(debug, #fmt("async_handle_cb handle %? status %?",handle,status));
         let hl_loop = (*(ll::get_data_for_uv_handle(handle)
                         as *ah_data)).hl_loop;
-        unref_and_close(hl_loop, handle, async_close_cb);
+        ll::close(handle, async_close_cb);
     }
     type ah_data = {
         hl_loop: high_level_loop,
@@ -414,7 +231,6 @@ mod test {
         };
         let ah_data_ptr = ptr::addr_of(ah_data);
         interact(hl_loop) {|loop_ptr|
-            ref(hl_loop, ah_ptr);
             ll::async_init(loop_ptr, ah_ptr, async_handle_cb);
             ll::set_data_for_uv_handle(ah_ptr, ah_data_ptr as *libc::c_void);
             ll::async_send(ah_ptr);
@@ -446,9 +262,9 @@ mod test {
                     }));
                 },
                 // before_msg_drain
-                {|async_handle|
-                    log(debug,#fmt("hltest before_msg_drain: async_handle %?",
-                                  async_handle));
+                {|async_handle, status|
+                    log(debug,#fmt("hltest before_msg_drain: handle %? %?",
+                                  async_handle, status));
                     true
                 },
                 // before_tear_down
@@ -473,7 +289,6 @@ mod test {
     }
 
     #[test]
-    #[ignore]
     fn test_uv_hl_async() unsafe {
         let exit_po = comm::port::<()>();
         let exit_ch = comm::chan(exit_po);
@@ -485,27 +300,30 @@ mod test {
         // under race-condition type situations.. this ensures that the loop
         // lives until, at least, all of the impl_uv_hl_async() runs have been
         // called, at least.
-        let lifetime_handle = ll::async_t();
-        let lifetime_handle_ptr = ptr::addr_of(lifetime_handle);
-        interact(hl_loop) {|loop_ptr|
-            ref(hl_loop, lifetime_handle_ptr);
-            ll::async_init(loop_ptr, lifetime_handle_ptr,
-                          lifetime_async_callback);
-        };
-
+        let work_exit_po = comm::port::<()>();
+        let work_exit_ch = comm::chan(work_exit_po);
         iter::repeat(7u) {||
             task::spawn_sched(task::manual_threads(1u), {||
                 impl_uv_hl_async(hl_loop);
+                comm::send(work_exit_ch, ());
             });
         };
-        impl_uv_hl_async(hl_loop);
-        impl_uv_hl_async(hl_loop);
-        impl_uv_hl_async(hl_loop);
-        interact(hl_loop) {|loop_ptr|
-            ll::close(lifetime_handle_ptr, lifetime_handle_close);
-            unref(hl_loop, lifetime_handle_ptr);
-            log(debug, "close and unref lifetime handle");
+        iter::repeat(7u) {||
+            comm::recv(work_exit_po);
         };
+        log(debug, "sending teardown_loop msg..");
+        // the teardown msg usually comes, in the case of the global loop,
+        // as a result of receiving a msg on the weaken_task port. but,
+        // anyone rolling their own high_level_loop can decide when to
+        // send the msg. it's assert and barf, though, if all of your
+        // handles aren't uv_close'd first
+        alt hl_loop {
+          simple_task_loop({async_handle, op_chan}) {
+            comm::send(op_chan, teardown_loop);
+            ll::async_send(async_handle);
+          }
+        }
         comm::recv(exit_po);
+        log(debug, "after recv on exit_po.. exiting..");
     }
 }
