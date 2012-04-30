@@ -97,7 +97,7 @@ LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
   const Target *TheTarget = TargetRegistry::lookupTarget(triple, Err);
   std::string FeaturesStr;
   std::string Trip(triple);
-  std::string CPUStr = llvm::sys::getHostCPUName();
+  std::string CPUStr("generic");
   TargetMachine *Target =
     TheTarget->createTargetMachine(Trip, CPUStr, FeaturesStr,
 				   Options, Reloc::PIC_,
