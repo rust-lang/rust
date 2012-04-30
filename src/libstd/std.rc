@@ -23,6 +23,7 @@ export test, tempfile, serialization;
 // General io and system-services modules
 
 mod net;
+mod net_ip;
 mod net_tcp;
 
 // libuv modules
