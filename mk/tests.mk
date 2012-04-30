@@ -120,6 +120,7 @@ ALL_HS := $(filter-out $(S)src/rt/vg/valgrind.h \
 tidy:
 		@$(call E, check: formatting)
 		$(Q)find $(S)src -name '*.r[sc]' \
+		| grep '^$(S)src/test' -v \
 		| xargs -n 10 python $(S)src/etc/tidy.py
 		$(Q)find $(S)src/etc -name '*.py' \
 		| xargs -n 10 python $(S)src/etc/tidy.py

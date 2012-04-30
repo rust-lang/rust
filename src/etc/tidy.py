@@ -32,9 +32,7 @@ try:
             report_err("trailing whitespace")
         line_len = len(line)-2 if autocrlf else len(line)-1
 
-        # Along long lines if they are part of an expected error message
-        # in a test, which is denoted with "//!":
-        if line_len > cols and "//!" not in line:
+        if line_len > cols:
             report_err("line longer than %d chars" % cols)
 except UnicodeDecodeError, e:
     report_err("UTF-8 decoding error " + str(e))
