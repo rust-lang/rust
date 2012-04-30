@@ -105,6 +105,7 @@ type fn_ctxt =
      ty_var_counter: @mut uint,
      region_var_counter: @mut uint,
 
+     mut blocks: [ast::node_id], // stack of blocks in scope, may be empty
      in_scope_regions: isr_alist,
 
      // While type checking a function, the intermediate types for the
@@ -276,10 +277,8 @@ fn instantiate_path(fcx: @fn_ctxt,
 
 // Type tests
 fn structurally_resolved_type(fcx: @fn_ctxt, sp: span, tp: ty::t) -> ty::t {
-    alt infer::resolve_shallow(fcx.infcx, tp, true) {
-      // note: the bot type doesn't count as resolved; it's what we use when
-      // there is no information about a variable.
-      result::ok(t_s) if !ty::type_is_bot(t_s) { ret t_s; }
+    alt infer::resolve_shallow(fcx.infcx, tp, false) {
+      result::ok(t_s) if !ty::type_is_var(t_s) { ret t_s; }
       _ {
         fcx.ccx.tcx.sess.span_fatal
             (sp, "the type of this value must be known in this context");
@@ -322,7 +321,16 @@ fn ast_expr_vstore_to_vstore(fcx: @fn_ctxt, e: @ast::expr, n: uint,
       ast::vstore_uniq { ty::vstore_uniq }
       ast::vstore_box { ty::vstore_box }
       ast::vstore_slice(r) {
-        ty::vstore_slice(ast_region_to_region(fcx, fcx, e.span, r))
+        alt fcx.block_region() {
+          result::ok(b_r) {
+            let rscope = in_anon_rscope(fcx, b_r);
+            ty::vstore_slice(ast_region_to_region(fcx, rscope, e.span, r))
+          }
+          result::err(msg) {
+            fcx.ccx.tcx.sess.span_err(e.span, msg);
+            ty::vstore_slice(ty::re_static)
+          }
+        }
       }
     }
 }
@@ -386,8 +394,9 @@ impl of region_scope for empty_rscope {
     fn anon_region() -> result<ty::region, str> {
         result::err("region types are not allowed here")
     }
-    fn named_region(_id: str) -> result<ty::region, str> {
-        result::err("region types are not allowed here")
+    fn named_region(id: str) -> result<ty::region, str> {
+        if id == "static" { result::ok(ty::re_static) }
+        else { result::err("only the static region is allowed here") }
     }
 }
 
@@ -395,9 +404,7 @@ enum type_rscope = ast::region_param;
 impl of region_scope for type_rscope {
     fn anon_region() -> result<ty::region, str> {
         alt *self {
-          ast::rp_self {
-            result::ok(ty::re_bound(ty::br_self))
-          }
+          ast::rp_self { result::ok(ty::re_bound(ty::br_self)) }
           ast::rp_none {
             result::err("to use region types here, the containing type \
                          must be declared with a region bound")
@@ -405,11 +412,12 @@ impl of region_scope for type_rscope {
         }
     }
     fn named_region(id: str) -> result<ty::region, str> {
-        if id == "self" {
-            self.anon_region()
-        } else {
-            result::err("named regions other than `self` are not \
-                         allowed as part of a type declaration")
+        empty_rscope.named_region(id).chain_err { |_e|
+            if id == "self" { self.anon_region() }
+            else {
+                result::err("named regions other than `self` are not \
+                             allowed as part of a type declaration")
+            }
         }
     }
 }
@@ -419,11 +427,14 @@ impl of region_scope for @fn_ctxt {
         result::ok(self.next_region_var())
     }
     fn named_region(id: str) -> result<ty::region, str> {
-        alt self.in_scope_regions.find(ty::br_named(id)) {
-          some(r) { result::ok(r) }
-          none {
-            result::err(#fmt["named region `%s` not in scope here", id])
-          }
+        empty_rscope.named_region(id).chain_err { |_e|
+            alt self.in_scope_regions.find(ty::br_named(id)) {
+              some(r) { result::ok(r) }
+              none if id == "blk" { self.block_region() }
+              none {
+                result::err(#fmt["named region `%s` not in scope here", id])
+              }
+            }
         }
     }
 }
@@ -477,7 +488,6 @@ fn ast_region_to_region<AC: ast_conv, RS: region_scope>(
     let res = alt a_r.node {
       ast::re_anon { rscope.anon_region() }
       ast::re_named(id) { rscope.named_region(id) }
-      ast::re_static { result::ok(ty::re_static) }
     };
 
     get_region_reporting_err(self.tcx(), span, res)
@@ -772,6 +782,49 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy>(
     ret typ;
 }
 
+fn check_bounds_are_used(ccx: @crate_ctxt,
+                         span: span,
+                         tps: [ast::ty_param],
+                         rp: ast::region_param,
+                         ty: ty::t) {
+    let mut r_used = alt rp {
+      ast::rp_self { false }
+      ast::rp_none { true }
+    };
+
+    if tps.len() == 0u && r_used { ret; }
+    let tps_used = vec::to_mut(vec::from_elem(tps.len(), false));
+
+    ty::walk_regions_and_ty(
+        ccx.tcx, ty,
+        { |r|
+            alt r {
+              ty::re_bound(_) { r_used = true; }
+              _ { }
+            }
+        },
+        { |t|
+            alt ty::get(t).struct {
+              ty::ty_param(idx, _) { tps_used[idx] = true; }
+              _ { }
+            }
+            true
+        });
+
+    if !r_used {
+        ccx.tcx.sess.span_err(
+            span, "lifetime `self` unused inside \
+                   reference-parameterized type.");
+    }
+
+    for tps_used.eachi { |i, b|
+        if !b {
+            ccx.tcx.sess.span_err(
+                span, #fmt["Type parameter %s is unused.", tps[i].ident]);
+        }
+    }
+}
+
 fn ty_of_item(ccx: @crate_ctxt, it: @ast::item)
     -> ty::ty_param_bounds_and_ty {
 
@@ -816,6 +869,9 @@ fn ty_of_item(ccx: @crate_ctxt, it: @ast::item)
             };
             {bounds: ty_param_bounds(ccx, tps), rp: rp, ty: ty}
         };
+
+        check_bounds_are_used(ccx, t.span, tps, rp, tpt.ty);
+
         tcx.tcache.insert(local_def(it.id), tpt);
         ret tpt;
       }
@@ -1124,6 +1180,12 @@ impl methods for @fn_ctxt {
     fn tag() -> str { #fmt["%x", ptr::addr_of(*self) as uint] }
     fn ty_to_str(t: ty::t) -> str {
         ty_to_str(self.ccx.tcx, resolve_type_vars_if_possible(self, t))
+    }
+    fn block_region() -> result<ty::region, str> {
+        alt vec::last_opt(self.blocks) {
+          some(bid) { result::ok(ty::re_scope(bid)) }
+          none { result::err("no block is in scope here") }
+        }
     }
     fn write_ty(node_id: ast::node_id, ty: ty::t) {
         #debug["write_ty(%d, %s) in fcx %s",
@@ -3144,7 +3206,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         -> option<O> {
         alt expected {
           some(t) {
-            alt infer::resolve_shallow(fcx.infcx, t, true) {
+            alt infer::resolve_shallow(fcx.infcx, t, false) {
               result::ok(t) { unpack(ty::get(t).struct) }
               _ { none }
             }
@@ -3913,6 +3975,7 @@ fn check_block(fcx0: @fn_ctxt, blk: ast::blk) -> bool {
       ast::unsafe_blk { @{purity: ast::unsafe_fn with *fcx0} }
       ast::default_blk { fcx0 }
     };
+    vec::push(fcx.blocks, blk.node.id);
     let mut bot = false;
     let mut warned = false;
     for blk.node.stmts.each {|s|
@@ -3943,6 +4006,7 @@ fn check_block(fcx0: @fn_ctxt, blk: ast::blk) -> bool {
     if bot {
         fcx.write_bot(blk.node.id);
     }
+    vec::pop(fcx.blocks);
     ret bot;
 }
 
@@ -3960,6 +4024,7 @@ fn check_const(ccx: @crate_ctxt, _sp: span, e: @ast::expr, id: ast::node_id) {
           locals: int_hash(),
           ty_var_counter: @mut 0u,
           region_var_counter: @mut 0u,
+          mut blocks: [],
           in_scope_regions: @nil,
           node_types: smallintmap::mk(),
           node_type_substs: map::int_hash(),
@@ -4000,6 +4065,7 @@ fn check_enum_variants(ccx: @crate_ctxt,
           locals: int_hash(),
           ty_var_counter: @mut 0u,
           region_var_counter: @mut 0u,
+          mut blocks: [],
           in_scope_regions: @nil,
           node_types: smallintmap::mk(),
           node_type_substs: map::int_hash(),
@@ -4262,6 +4328,7 @@ fn check_fn(ccx: @crate_ctxt,
           locals: locals,
           ty_var_counter: tvc,
           region_var_counter: rvc,
+          mut blocks: [],
           in_scope_regions: isr,
           node_types: node_types,
           node_type_substs: node_type_substs,
@@ -4350,21 +4417,27 @@ fn check_fn(ccx: @crate_ctxt,
             visit::visit_pat(p, e, v);
         };
 
+        let visit_block = fn@(b: ast::blk, &&e: (), v: visit::vt<()>) {
+            vec::push(fcx.blocks, b.node.id);
+            visit::visit_block(b, e, v);
+            vec::pop(fcx.blocks);
+        };
+
         // Don't descend into fns and items
-        fn visit_fn<T>(_fk: visit::fn_kind, _decl: ast::fn_decl,
-                       _body: ast::blk, _sp: span,
-                       _id: ast::node_id, _t: T, _v: visit::vt<T>) {
+        fn visit_fn(_fk: visit::fn_kind, _decl: ast::fn_decl,
+                    _body: ast::blk, _sp: span,
+                    _id: ast::node_id, &&_t: (), _v: visit::vt<()>) {
         }
-        fn visit_item<E>(_i: @ast::item, _e: E, _v: visit::vt<E>) { }
+        fn visit_item(_i: @ast::item, &&_e: (), _v: visit::vt<()>) { }
 
-        let visit =
-            @{visit_local: visit_local,
-              visit_pat: visit_pat,
-              visit_fn: bind visit_fn(_, _, _, _, _, _, _),
-              visit_item: bind visit_item(_, _, _)
-              with *visit::default_visitor()};
+        let visit = visit::mk_vt(@{visit_local: visit_local,
+                                   visit_pat: visit_pat,
+                                   visit_fn: visit_fn,
+                                   visit_item: visit_item,
+                                   visit_block: visit_block
+                                   with *visit::default_visitor()});
 
-        visit::visit_block(body, (), visit::mk_vt(visit));
+        visit.visit_block(body, (), visit);
     }
 }
 

@@ -4,7 +4,8 @@ fn send<T: send>(ch: _chan<T>, -data: T) {
     log(debug, data);
     fail;
 }
-type _chan<T> = int;
+
+enum _chan<T> = int;
 
 // Tests that "log(debug, message);" is flagged as using
 // message after the send deinitializes it

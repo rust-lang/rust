@@ -579,11 +579,8 @@ impl unify_methods for infer_ctxt {
 // [B].  Deep resolution, on the other hand, would yield [int].
 //
 // But there is one more knob: the force_vars variable controls the
-// behavior in the face of unconstrained variables.  If we have A, B
-// and only the constraint that A <: B, then the result is [_|_] if
-// force_vars is true and [B] otherwise.  We use force_vars == true
-// when resolving types after typeck, but false otherwise (for
-// example, when pretty-printing them for errors).
+// behavior in the face of unconstrained variables.  If it is true,
+// then unconstrained variables result in an error.
 
 type resolve_state = @{
     infcx: infer_ctxt,
@@ -673,8 +670,12 @@ impl methods for resolve_state {
             let r1 = alt bounds {
               { ub:_, lb:some(t) } { self.resolve_region(t) }
               { ub:some(t), lb:_ } { self.resolve_region(t) }
-              { ub:none, lb:none } if self.force_vars { ty::re_static }
-              { ub:none, lb:none } { ty::re_var(rid) }
+              { ub:none, lb:none } {
+                if self.force_vars {
+                    self.err = some(unresolved_region(rid));
+                }
+                ty::re_var(rid)
+              }
             };
             vec::pop(self.r_seen);
             ret r1;
@@ -700,8 +701,12 @@ impl methods for resolve_state {
               { ub:_, lb:some(t) } if !type_is_bot(t) { self.resolve1(t) }
               { ub:some(t), lb:_ } { self.resolve1(t) }
               { ub:_, lb:some(t) } { self.resolve1(t) }
-              { ub:none, lb:none } if self.force_vars { ty::mk_bot(tcx) }
-              { ub:none, lb:none } { ty::mk_var(tcx, vid) }
+              { ub:none, lb:none } {
+                if self.force_vars {
+                    self.err = some(unresolved_ty(vid));
+                }
+                ty::mk_var(tcx, vid)
+              }
             };
             vec::pop(self.v_seen);
             ret t1;

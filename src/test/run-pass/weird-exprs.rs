@@ -1,6 +1,6 @@
 // Just a grab bag of stuff that you wouldn't want to actually write.
 
-fn strange() -> bool { let _x = ret true; }
+fn strange() -> bool { let _x: bool = ret true; }
 
 fn funny() {
     fn f(_x: ()) { }
@@ -20,13 +20,14 @@ fn zombiejesus() {
         while (ret) {
             if (ret) {
                 alt (ret) {
-                    _ {
+                    1 {
                         if (ret) {
                             ret
                         } else {
                             ret
                         }
                     }
+                    _ { ret }
                 };
             } else if (ret) {
                 ret;
@@ -51,7 +52,7 @@ fn canttouchthis() -> uint {
     pure fn p() -> bool { true }
     let _a = (assert (true)) == (check (p()));
     let _c = (check (p())) == ();
-    let _b = (log(debug, 0) == (ret 0u));
+    let _b: bool = (log(debug, 0) == (ret 0u));
 }
 
 fn angrydome() {

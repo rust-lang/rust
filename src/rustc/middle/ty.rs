@@ -37,7 +37,7 @@ export expr_ty_params_and_ty;
 export expr_is_lval;
 export field_ty;
 export fold_ty, fold_sty_to_ty, fold_region, fold_regions, fold_ty_var;
-export fold_regions_and_ty;
+export fold_regions_and_ty, walk_regions_and_ty;
 export field;
 export field_idx;
 export get_field;
@@ -97,7 +97,7 @@ export ty_tup, mk_tup;
 export ty_type, mk_type;
 export ty_uint, mk_uint, mk_mach_uint;
 export ty_uniq, mk_uniq, mk_imm_uniq, type_is_unique_box;
-export ty_var, mk_var;
+export ty_var, mk_var, type_is_var;
 export ty_self, mk_self;
 export region, bound_region;
 export get, type_has_params, type_has_vars, type_has_regions;
@@ -818,6 +818,21 @@ fn fold_ty_var(cx: ctxt, t0: t, fldop: fn(ty_vid) -> t) -> t {
     }
 }
 
+fn walk_regions_and_ty(
+    cx: ctxt,
+    ty: t,
+    walkr: fn(r: region),
+    walkt: fn(t: t) -> bool) {
+
+    if (walkt(ty)) {
+        fold_regions_and_ty(
+            cx, ty,
+            { |r| walkr(r); r },
+            { |t| walkt(t); walk_regions_and_ty(cx, t, walkr, walkt); t },
+            { |t| walkt(t); walk_regions_and_ty(cx, t, walkr, walkt); t });
+    }
+}
+
 fn fold_regions_and_ty(
     cx: ctxt,
     ty: t,
@@ -999,6 +1014,13 @@ fn subst(cx: ctxt,
 fn type_is_nil(ty: t) -> bool { get(ty).struct == ty_nil }
 
 fn type_is_bot(ty: t) -> bool { get(ty).struct == ty_bot }
+
+fn type_is_var(ty: t) -> bool {
+    alt get(ty).struct {
+      ty_var(_) { true }
+      _ { false }
+    }
+}
 
 fn type_is_bool(ty: t) -> bool { get(ty).struct == ty_bool }
 

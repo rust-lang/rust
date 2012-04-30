@@ -1,3 +1,5 @@
+// xfail-test
+
 // xfail-fast
 // aux-build:cci_class_6.rs
 use cci_class_6;

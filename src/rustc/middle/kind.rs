@@ -4,6 +4,7 @@ import syntax::codemap::span;
 import ty::{kind, kind_copyable, kind_sendable, kind_noncopyable};
 import driver::session::session;
 import std::map::hashmap;
+import syntax::print::pprust::expr_to_str;
 
 // Kind analysis pass. There are three kinds:
 //
@@ -138,6 +139,7 @@ fn check_block(b: blk, cx: ctx, v: visit::vt<ctx>) {
 }
 
 fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
+    #debug["kind::check_expr(%s)", expr_to_str(e)];
     alt e.node {
       expr_assign(_, ex) | expr_assign_op(_, _, ex) |
       expr_unary(box(_), ex) | expr_unary(uniq(_), ex) |

@@ -250,16 +250,7 @@ fn parse_ret_ty(p: parser) -> (ast::ret_style, @ast::ty) {
 
 fn region_from_name(p: parser, s: option<str>) -> @ast::region {
     let r = alt s {
-      some (string) {
-        // FIXME: To be consistent with our type resolution, the
-        // static region should probably be resolved during type
-        // checking, not in the parser. (Issue #2256)
-        if string == "static" {
-            ast::re_static
-        } else {
-            ast::re_named(string)
-        }
-      }
+      some (string) { ast::re_named(string) }
       none { ast::re_anon }
     };
 

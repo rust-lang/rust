@@ -18,7 +18,7 @@ type item_ty_yes1/& = {
     x: &self.uint
 };
 
-type item_ty_yes2/& = {
+type item_ty_yes2/& = { //! ERROR lifetime `self` unused inside reference-parameterized type
     x: &foo.uint //! ERROR named regions other than `self` are not allowed as part of a type declaration
 };
 

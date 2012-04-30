@@ -251,23 +251,23 @@ fn find_library_crate_aux(sess: session::session,
         if !(str::starts_with(f, prefix) && str::ends_with(f, suffix)) {
             #debug("skipping %s, doesn't look like %s*%s", path, prefix,
                    suffix);
-            option::none
+            option::none::<()>
         } else {
             #debug("%s is a candidate", path);
             alt get_metadata_section(sess, path) {
               option::some(cvec) {
                 if !crate_matches(cvec, metas, hash) {
                     #debug("skipping %s, metadata doesn't match", path);
-                    option::none
+                    option::none::<()>
                 } else {
                     #debug("found %s with matching metadata", path);
                     matches += [{ident: path, data: cvec}];
-                    option::none
+                    option::none::<()>
                 }
               }
               _ {
                 #debug("could not load metadata for %s", path);
-                option::none
+                option::none::<()>
               }
             }
         }

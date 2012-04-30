@@ -14,7 +14,7 @@ native mod rustrt {
     fn rust_task_unweaken(ch: rust_port_id);
 }
 
-type global_ptr<T: send> = *libc::uintptr_t;
+type global_ptr = *libc::uintptr_t;
 
 #[doc = "
 Atomically gets a channel from a pointer to a pointer-sized memory location
@@ -22,7 +22,7 @@ or, if no channel exists creates and installs a new channel and sets up a new
 task to receive from it.
 "]
 unsafe fn chan_from_global_ptr<T: send>(
-    global: global_ptr<T>,
+    global: global_ptr,
     builder: fn() -> task::builder,
     f: fn~(comm::port<T>)
 ) -> comm::chan<T> {

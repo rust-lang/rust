@@ -329,7 +329,6 @@ fn print_native_mod(s: ps, nmod: ast::native_mod, attrs: [ast::attribute]) {
 fn print_region(s: ps, region: @ast::region) {
     alt region.node {
       ast::re_anon { word_space(s, "&"); }
-      ast::re_static { word_space(s, "&static"); }
       ast::re_named(name) {
         word(s.s, "&");
         word_space(s, name);

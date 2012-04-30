@@ -452,11 +452,7 @@ enum prim_ty {
 type region = {id: node_id, node: region_};
 
 #[auto_serialize]
-enum region_ {
-    re_anon,
-    re_named(ident),
-    re_static
-}
+enum region_ { re_anon, re_named(ident) }
 
 #[auto_serialize]
 enum ty_ {

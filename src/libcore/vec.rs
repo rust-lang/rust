@@ -1168,7 +1168,9 @@ mod unsafe {
     #[inline(always)]
     unsafe fn form_slice<T,U>(p: *T, len: uint, f: fn([T]/&) -> U) -> U {
         let pair = (p, len * sys::size_of::<T>());
-        let v : *([T]/&) = ::unsafe::reinterpret_cast(ptr::addr_of(pair));
+        // FIXME: should use &blk not &static here, but a snapshot is req'd
+        let v : *([T]/&static) =
+            ::unsafe::reinterpret_cast(ptr::addr_of(pair));
         f(*v)
     }
 }
