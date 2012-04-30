@@ -127,12 +127,14 @@ rust_alignof<double>() {
 // On 32-bit x86 the alignment of 64-bit ints in structures is 4 bytes
 // Which is different from the preferred 8-byte alignment reported
 // by __alignof__ (at least on gcc).
+#ifndef __WIN32__
 #ifdef __i386__
 template<>
 inline size_t
 rust_alignof<uint64_t>() {
     return 4;
 }
+#endif
 #endif
 
 
