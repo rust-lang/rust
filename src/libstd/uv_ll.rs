@@ -250,7 +250,7 @@ type sockaddr_in = {
 #[cfg(target_os = "win32")]
 type sockaddr_in6 = {
     a0: *u8, a1: *u8,
-    a2: *u8, a3: *u8
+    a2: *u8, a3: (u8, u8, u8, u8)
 };
 
 mod uv_ll_struct_stubgen {
@@ -777,12 +777,13 @@ unsafe fn set_data_for_uv_handle<T, U>(handle: *T,
     rustrt::rust_uv_set_data_for_uv_handle(handle as *libc::c_void,
                                            data as *libc::c_void);
 }
-unsafe fn get_data_for_req(req: *libc::c_void) -> *libc::c_void {
-    ret rustrt::rust_uv_get_data_for_req(req);
+unsafe fn get_data_for_req<T>(req: *T) -> *libc::c_void {
+    ret rustrt::rust_uv_get_data_for_req(req as *libc::c_void);
 }
-unsafe fn set_data_for_req(req: *libc::c_void,
-                    data: *libc::c_void) {
-    rustrt::rust_uv_set_data_for_req(req, data);
+unsafe fn set_data_for_req<T, U>(req: *T,
+                    data: *U) {
+    rustrt::rust_uv_set_data_for_req(req as *libc::c_void,
+                                     data as *libc::c_void);
 }
 unsafe fn get_base_from_buf(buf: uv_buf_t) -> *u8 {
     ret rustrt::rust_uv_get_base_from_buf(buf);
@@ -806,6 +807,19 @@ unsafe fn get_last_err_info(uv_loop: *libc::c_void) -> str {
     ret #fmt("LIBUV ERROR: name: %s msg: %s",
                     err_name, err_msg);
 }
+
+unsafe fn get_last_err_data(uv_loop: *libc::c_void) -> uv_err_data {
+    let err = last_error(uv_loop);
+    let err_ptr = ptr::addr_of(err);
+    let err_name = str::unsafe::from_c_str(err_name(err_ptr));
+    let err_msg = str::unsafe::from_c_str(strerror(err_ptr));
+    { err_name: err_name, err_msg: err_msg }
+}
+
+type uv_err_data = {
+    err_name: str,
+    err_msg: str
+};
 
 #[cfg(test)]
 mod test {
