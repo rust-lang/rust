@@ -152,7 +152,7 @@ fn new_parser_from_file(sess: parse_sess, cfg: ast::crate_cfg, path: str,
    parser {
     let src = alt io::read_whole_file_str(path) {
       result::ok(src) {
-        // FIXME: This copy is unfortunate
+        // FIXME: This copy is unfortunate (#2319)
         @src
       }
       result::err(e) {
