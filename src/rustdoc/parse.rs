@@ -27,18 +27,18 @@ fn from_file(file: str) -> @ast::crate {
         file, [], new_parse_sess())
 }
 
-fn from_str(source: ~str) -> @ast::crate {
+fn from_str(source: str) -> @ast::crate {
     parse::parse_crate_from_source_str(
-        "-", source, [], new_parse_sess())
+        "-", @source, [], new_parse_sess())
 }
 
-fn from_file_sess(sess: session::session, &&file: str) -> @ast::crate {
+fn from_file_sess(sess: session::session, file: str) -> @ast::crate {
     parse::parse_crate_from_file(file, cfg(sess), sess.parse_sess)
 }
 
-fn from_str_sess(sess: session::session, &&source: ~str) -> @ast::crate {
+fn from_str_sess(sess: session::session, source: str) -> @ast::crate {
     parse::parse_crate_from_source_str(
-        "-", source, cfg(sess), sess.parse_sess)
+        "-", @source, cfg(sess), sess.parse_sess)
 }
 
 fn cfg(sess: session::session) -> ast::crate_cfg {

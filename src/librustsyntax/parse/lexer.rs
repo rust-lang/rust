@@ -6,7 +6,7 @@ export reader, new_reader, next_token, is_whitespace;
 
 type reader = @{
     span_diagnostic: diagnostic::span_handler,
-    src: ~str,
+    src: @str,
     mut col: uint,
     mut pos: uint,
     mut curr: char,

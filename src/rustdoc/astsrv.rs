@@ -36,10 +36,7 @@ type ctxt = {
 
 type srv_owner<T> = fn(srv: srv) -> T;
 type ctxt_handler<T> = fn~(ctxt: ctxt) -> T;
-/* The idea is that a parser takes an input of type U,
-   which lets us have parsers that either take unboxed or
-   boxed strings. */
-type parser<U> = fn~(session::session, U) -> @ast::crate;
+type parser = fn~(session::session, str) -> @ast::crate;
 
 enum msg {
     handle_request(fn~(ctxt)),
@@ -51,14 +48,14 @@ enum srv = {
 };
 
 fn from_str<T>(source: str, owner: srv_owner<T>) -> T {
-    run(owner, ~source, parse::from_str_sess)
+    run(owner, source, parse::from_str_sess)
 }
 
 fn from_file<T>(file: str, owner: srv_owner<T>) -> T {
     run(owner, file, parse::from_file_sess)
 }
 
-fn run<T, U: send>(owner: srv_owner<T>, +source: U, parse: parser<U>) -> T {
+fn run<T>(owner: srv_owner<T>, source: str, parse: parser) -> T {
 
     let srv_ = srv({
         ch: task::spawn_listener {|po|
@@ -71,7 +68,7 @@ fn run<T, U: send>(owner: srv_owner<T>, +source: U, parse: parser<U>) -> T {
     ret res;
 }
 
-fn act<U>(po: comm::port<msg>, source: U, parse: parser<U>) {
+fn act(po: comm::port<msg>, source: str, parse: parser) {
     let (sess, ignore_errors) = build_session();
 
     let ctxt = build_ctxt(

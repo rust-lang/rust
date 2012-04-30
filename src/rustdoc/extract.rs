@@ -289,7 +289,7 @@ fn should_extract_tys() {
 mod test {
 
     fn mk_doc(source: str) -> doc::doc {
-        let ast = parse::from_str(~source);
+        let ast = parse::from_str(source);
         extract(ast, "")
     }
 
@@ -349,7 +349,7 @@ mod test {
 
     #[test]
     fn extract_should_use_default_crate_name() {
-        let source = ~"";
+        let source = "";
         let ast = parse::from_str(source);
         let doc = extract(ast, "burp");
         assert doc.cratemod().name() == "burp";

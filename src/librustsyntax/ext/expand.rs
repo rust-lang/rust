@@ -121,7 +121,7 @@ fn expand_crate(parse_sess: parse::parse_sess,
             with *afp};
     let f = make_fold(f_pre);
     let cm = parse_expr_from_source_str("<core-macros>",
-                                        ~core_macros(),
+                                        @core_macros(),
                                         cfg,
                                         parse_sess);
 

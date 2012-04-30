@@ -124,19 +124,6 @@ fn from_bytes(vv: [u8]) -> str unsafe {
 }
 
 #[doc = "
-Convert a unique vector of bytes (passed by move)
-   to a unique boxed UTF-8 string
-
-# Failure
-
-Fails if invalid UTF-8
-"]
-fn from_bytes_move(-vv: ~mut [const u8]) -> ~str unsafe {
-   assert is_utf8(::unsafe::reinterpret_cast(vv));
-   ret unsafe::from_bytes_move(vv);
-}
-
-#[doc = "
 Convert a byte to a UTF-8 string
 
 # Failure
@@ -1644,7 +1631,6 @@ mod unsafe {
       from_buf,
       from_c_str,
       from_bytes,
-      from_bytes_move,
       slice_bytes,
       push_byte,
       pop_byte,
@@ -1697,13 +1683,6 @@ mod unsafe {
        let scopy: str = ::unsafe::reinterpret_cast(vcopy);
        ::unsafe::forget(vcopy);
        ret scopy;
-   }
-
-   unsafe fn from_bytes_move(-v: ~mut [const u8]) -> ~str unsafe {
-     *v += [0u8];
-     let s: ~str = ::unsafe::reinterpret_cast(v);
-     ::unsafe::forget(v);
-     s
    }
 
    #[doc = "
