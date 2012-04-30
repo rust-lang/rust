@@ -6,6 +6,7 @@ import vec;
 import uint;
 
 export ip_addr;
+export format_addr;
 export v4;
 //format_addr, parse_addr;
 
