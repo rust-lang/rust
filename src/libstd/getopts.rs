@@ -19,27 +19,45 @@ The following example shows simple command line parsing for an application
 that requires an input file to be specified, accepts an optional output file
 name following -o, and accepts both -h and --help as optional flags.
 
+    use std;
+    import std::getopts::{optopt,optflag,getopts,opt_present,opt_maybe_str,
+        fail_str};
+
+    fn do_work(in: str, out: option<str>) {
+        // ...
+    }
+
+    fn print_usage(program: str) {
+        io::println(\"Usage: \" + program + \" [options]\");
+        io::println(\"-o\t\tOutput\");
+        io::println(\"-h --help\tUsage\");
+    }
+
     fn main(args: [str]) {
+        check vec::is_not_empty(args);
+
+        let program : str = vec::head(args);
+
         let opts = [
             optopt(\"o\"),
             optflag(\"h\"),
             optflag(\"help\")
         ];
-        let match = alt getopts(vec::shift(args), opts) {
-          ok(m) { m }
-          err(f) { fail fail_str(f) }
+        let match = alt getopts(vec::tail(args), opts) {
+            result::ok(m) { m }
+            result::err(f) { fail fail_str(f) }
         };
         if opt_present(match, \"h\") || opt_present(match, \"help\") {
-            print_usage();
+            print_usage(program);
             ret;
         }
         let output = opt_maybe_str(match, \"o\");
-        let input = if !vec::is_empty(match.free) {
+        let input = if vec::is_not_empty(match.free) {
             match.free[0]
         } else {
-            print_usage();
+            print_usage(program);
             ret;
-        }
+        };
         do_work(input, output);
     }
 
