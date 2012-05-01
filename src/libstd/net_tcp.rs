@@ -4,16 +4,36 @@ High-level interface to libuv's TCP functionality
 
 import ip = net_ip;
 
-export tcp_connect_result;
-export connect;
+export tcp_connect_result, tcp_write_result;
+export connect, write;
 
-enum tcp_socket {
-    valid_tcp_socket(@tcp_socket_data)
+resource tcp_socket(socket_data: @tcp_socket_data) unsafe {
+    let closed_po = comm::port::<()>();
+    let closed_ch = comm::chan(closed_po);
+    let close_data = {
+        closed_ch: closed_ch
+    };
+    let close_data_ptr = ptr::addr_of(close_data);
+    let stream_handle_ptr = ptr::addr_of((*socket_data).stream_handle);
+    uv::hl::interact((*socket_data).hl_loop) {|loop_ptr|
+        log(debug, #fmt("interact dtor for tcp_socket stream %? loop %?",
+            stream_handle_ptr, loop_ptr));
+        uv::ll::set_data_for_uv_handle(stream_handle_ptr,
+                                       close_data_ptr);
+        uv::ll::close(stream_handle_ptr, tcp_socket_dtor_close_cb);
+    };
+    comm::recv(closed_po);
+    log(debug, "exiting dtor for tcp_socket");
 }
 
 enum tcp_connect_result {
     tcp_connected(tcp_socket),
     tcp_connect_error(uv::ll::uv_err_data)
+}
+
+enum tcp_write_result {
+    tcp_write_success,
+    tcp_write_error(uv::ll::uv_err_data)
 }
 
 #[doc="
@@ -37,19 +57,19 @@ fn connect(input_ip: ip::ip_addr, port: uint) -> tcp_connect_result unsafe {
         closed_signal_ch: comm::chan(closed_signal_po)
     };
     let conn_data_ptr = ptr::addr_of(conn_data);
+    let hl_loop = uv::global_loop::get();
     let socket_data = @{
         reader_port: comm::port::<[u8]>(),
         stream_handle : uv::ll::tcp_t(),
         connect_req : uv::ll::connect_t(),
-        write_req : uv::ll::write_t()
+        write_req : uv::ll::write_t(),
+        hl_loop: hl_loop
     };
     log(debug, #fmt("tcp_connect result_ch %?", conn_data.result_ch));
     // get an unsafe representation of our stream_handle_ptr that
     // we can send into the interact cb to be handled in libuv..
     let socket_data_ptr: *tcp_socket_data =
         ptr::addr_of(*socket_data);
-    // in we go!
-    let hl_loop = uv::global_loop::get();
     log(debug, #fmt("stream_handl_ptr outside interact %?",
         ptr::addr_of((*socket_data_ptr).stream_handle)));
     uv::hl::interact(hl_loop) {|loop_ptr|
@@ -113,7 +133,7 @@ fn connect(input_ip: ip::ip_addr, port: uint) -> tcp_connect_result unsafe {
     alt comm::recv(result_po) {
       conn_success {
         log(debug, "tcp::connect - received success on result_po");
-        tcp_connected(valid_tcp_socket(socket_data))
+        tcp_connected(tcp_socket(socket_data))
       }
       conn_failure(err_data) {
         comm::recv(closed_signal_po);
@@ -122,7 +142,87 @@ fn connect(input_ip: ip::ip_addr, port: uint) -> tcp_connect_result unsafe {
       }
     }
 }
+
+#[doc="
+Write binary data to a tcp stream
+"]
+fn write(sock: tcp_socket, raw_write_data: [[u8]]) -> tcp_write_result
+    unsafe {
+    let socket_data_ptr = ptr::addr_of(**sock);
+    let write_req_ptr = ptr::addr_of((*socket_data_ptr).write_req);
+    let stream_handle_ptr =
+        ptr::addr_of((*socket_data_ptr).stream_handle);
+    let write_buf_vec = iter::map_to_vec(raw_write_data) {|raw_bytes|
+        uv::ll::buf_init(vec::unsafe::to_ptr(raw_bytes),
+                         vec::len(raw_bytes))
+    };
+    let write_buf_vec_ptr = ptr::addr_of(write_buf_vec);
+    let result_po = comm::port::<tcp_write_result>();
+    let write_data = {
+        result_ch: comm::chan(result_po)
+    };
+    let write_data_ptr = ptr::addr_of(write_data);
+    uv::hl::interact((*socket_data_ptr).hl_loop) {|loop_ptr|
+        log(debug, #fmt("in interact cb for tcp::write %?", loop_ptr));
+        alt uv::ll::write(write_req_ptr,
+                          stream_handle_ptr,
+                          write_buf_vec_ptr,
+                          tcp_write_complete_cb) {
+          0i32 {
+            log(debug, "uv_write() invoked successfully");
+            uv::ll::set_data_for_req(write_req_ptr, write_data_ptr);
+          }
+          _ {
+            log(debug, "error invoking uv_write()");
+            let err_data = uv::ll::get_last_err_data(loop_ptr);
+            comm::send((*write_data_ptr).result_ch,
+                       tcp_write_error(err_data));
+          }
+        }
+    };
+    comm::recv(result_po)
+}
+
+
+
 // INTERNAL API
+
+type tcp_socket_close_data = {
+    closed_ch: comm::chan<()>
+};
+
+crust fn tcp_socket_dtor_close_cb(handle: *uv::ll::uv_tcp_t) unsafe {
+    let data = uv::ll::get_data_for_uv_handle(handle)
+        as *tcp_socket_close_data;
+    let closed_ch = (*data).closed_ch;
+    comm::send(closed_ch, ());
+    log(debug, "tcp_socket_dtor_close_cb exiting..");
+}
+
+crust fn tcp_write_complete_cb(write_req: *uv::ll::uv_write_t,
+                              status: libc::c_int) unsafe {
+    let write_data_ptr = uv::ll::get_data_for_req(write_req)
+        as *write_req_data;
+    alt status {
+      0i32 {
+        log(debug, "successful write complete");
+        comm::send((*write_data_ptr).result_ch, tcp_write_success);
+      }
+      _ {
+        let stream_handle_ptr = uv::ll::get_stream_handle_from_write_req(
+            write_req);
+        let loop_ptr = uv::ll::get_loop_for_uv_handle(stream_handle_ptr);
+        let err_data = uv::ll::get_last_err_data(loop_ptr);
+        log(debug, "failure to write");
+        comm::send((*write_data_ptr).result_ch, tcp_write_error(err_data));
+      }
+    }
+}
+
+type write_req_data = {
+    result_ch: comm::chan<tcp_write_result>
+};
+
 type connect_req_data = {
     result_ch: comm::chan<conn_attempt>,
     closed_signal_ch: comm::chan<()>
@@ -177,7 +277,8 @@ type tcp_socket_data = {
     reader_port: comm::port<[u8]>,
     stream_handle: uv::ll::uv_tcp_t,
     connect_req: uv::ll::uv_connect_t,
-    write_req: uv::ll::uv_write_t
+    write_req: uv::ll::uv_write_t,
+    hl_loop: uv::hl::high_level_loop
 };
 
 // convert rust ip_addr to libuv's native representation
@@ -190,10 +291,10 @@ fn ipv4_ip_addr_to_sockaddr_in(input: ip::ip_addr,
 mod test {
     #[test]
     fn test_gl_tcp_ipv4_request() {
-        let ip_str = "127.0.0.1";
+        let ip_str = "173.194.79.99";
         let port = 80u;
         let expected_read_msg = "foo";
-        let actual_write_msg = "bar";
+        let actual_write_msg = "GET / HTTP/1.1\r\n\r\n";
         let host_ip = ip::v4::parse_addr(ip_str);
 
         let data_po = comm::port::<[u8]>();
@@ -202,12 +303,16 @@ mod test {
         alt connect(host_ip, port) {
           tcp_connected(sock) {
             log(debug, "successful tcp connect");
-            /*
-            let write_data = str::as_buf(actual_write_msg);
-            alt write(sock, [write_data]) {
+            let mut write_data: [[u8]] = [];
+            let write_data = [str::as_bytes(actual_write_msg) {|str_bytes|
+                str_bytes
+            }];
+            alt write(sock, write_data) {
               tcp_write_success {
+                log(debug, "tcp::write successful");
+                /*
                 let mut total_read_data: [u8] = [];
-                let reader_po = read_start(sock);nyw
+                let reader_po = read_start(sock);
                 loop {
                     alt comm::recv(reader_po) {
                       new_read_data(data) {
@@ -228,12 +333,15 @@ mod test {
                     }
                 }
                 comm::send(data_ch, total_read_data);
+                */
               }
-              tcp_write_error {
-                fail "error during write attempt.. FIXME need err info";
+              tcp_write_error(err_data) {
+                log(debug, "tcp_write_error received..");
+                log(debug, #fmt("tcp write error: %? %?", err_data.err_name,
+                               err_data.err_msg));
+                assert false;
               }
             }
-            */
           }
           tcp_connect_error(err_data) {
             log(debug, "tcp_connect_error received..");
