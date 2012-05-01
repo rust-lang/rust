@@ -647,11 +647,13 @@ unsafe fn accept(server: *libc::c_void, client: *libc::c_void)
     ret rustrt::rust_uv_accept(server, client);
 }
 
-unsafe fn write(req: *libc::c_void, stream: *libc::c_void,
+unsafe fn write<T>(req: *uv_write_t, stream: *T,
          buf_in: *[uv_buf_t], cb: *u8) -> libc::c_int {
     let buf_ptr = vec::unsafe::to_ptr(*buf_in);
     let buf_cnt = vec::len(*buf_in) as i32;
-    ret rustrt::rust_uv_write(req, stream, buf_ptr, buf_cnt, cb);
+    ret rustrt::rust_uv_write(req as *libc::c_void,
+                              stream as *libc::c_void,
+                              buf_ptr, buf_cnt, cb);
 }
 unsafe fn read_start(stream: *uv_stream_t, on_alloc: *u8,
                      on_read: *u8) -> libc::c_int {
@@ -907,7 +909,7 @@ mod test {
             let client_data = get_data_for_req(
                 connect_req_ptr as *libc::c_void)
                 as *request_wrapper;
-            let write_handle = (*client_data).write_req as *libc::c_void;
+            let write_handle = (*client_data).write_req;
             log(debug, #fmt("on_connect_cb: tcp: %d write_hdl: %d",
                             stream as int, write_handle as int));
             let write_result = write(write_handle,
@@ -1053,7 +1055,7 @@ mod test {
                 let server_chan = *((*client_data).server_chan);
                 comm::send(server_chan, request_str);
                 let write_result = write(
-                    write_req as *libc::c_void,
+                    write_req,
                     client_stream_ptr as *libc::c_void,
                     (*client_data).server_resp_buf,
                     after_server_resp_write);
