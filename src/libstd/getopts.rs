@@ -4,12 +4,12 @@ Simple getopt alternative.
 Construct a vector of options, either by using reqopt, optopt, and optflag or
 by building them from components yourself, and pass them to getopts, along
 with a vector of actual arguments (not including argv[0]). You'll either get a
-failure code back, or a match.  You'll have to verify whether the amount of
+failure code back, or a match. You'll have to verify whether the amount of
 'free' arguments in the match is what you expect. Use opt_* accessors to get
 argument values out of the match object.
 
 Single-character options are expected to appear on the command line with a
-single preceeding dash; multiple-character options are expected to be
+single preceding dash; multiple-character options are expected to be
 proceeded by two dashes. Options that expect an argument accept their argument
 following either a space or an equals sign.
 
@@ -19,27 +19,45 @@ The following example shows simple command line parsing for an application
 that requires an input file to be specified, accepts an optional output file
 name following -o, and accepts both -h and --help as optional flags.
 
+    use std;
+    import std::getopts::{optopt,optflag,getopts,opt_present,opt_maybe_str,
+        fail_str};
+
+    fn do_work(in: str, out: option<str>) {
+        // ...
+    }
+
+    fn print_usage(program: str) {
+        io::println(\"Usage: \" + program + \" [options]\");
+        io::println(\"-o\t\tOutput\");
+        io::println(\"-h --help\tUsage\");
+    }
+
     fn main(args: [str]) {
+        check vec::is_not_empty(args);
+
+        let program : str = vec::head(args);
+
         let opts = [
             optopt(\"o\"),
             optflag(\"h\"),
             optflag(\"help\")
         ];
-        let match = alt getopts(vec::shift(args), opts) {
-          ok(m) { m }
-          err(f) { fail fail_str(f) }
+        let match = alt getopts(vec::tail(args), opts) {
+            result::ok(m) { m }
+            result::err(f) { fail fail_str(f) }
         };
         if opt_present(match, \"h\") || opt_present(match, \"help\") {
-            print_usage();
+            print_usage(program);
             ret;
         }
         let output = opt_maybe_str(match, \"o\");
-        let input = if !vec::is_empty(match.free) {
+        let input = if vec::is_not_empty(match.free) {
             match.free[0]
         } else {
-            print_usage();
+            print_usage(program);
             ret;
-        }
+        };
         do_work(input, output);
     }
 
