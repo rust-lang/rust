@@ -70,7 +70,7 @@ fn resolve_path(cstore: cstore::cstore, cnum: ast::crate_num,
             result += [(cnum, cm.data, def)];
         } else {
             if cm.cnum_map.contains_key(def.crate) {
-                // This reexport is itself a reexport from anther crate
+                // This reexport is itself a reexport from another crate
                 let next_cnum = cm.cnum_map.get(def.crate);
                 let next_cm_data = cstore::get_crate_data(cstore, next_cnum);
                 result += [(next_cnum, next_cm_data.data, def)];

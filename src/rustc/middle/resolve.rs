@@ -1667,9 +1667,12 @@ fn ns_for_def(d: def) -> namespace {
 fn lookup_external(e: env, cnum: int, ids: [ident], ns: namespace) ->
    option<def> {
     let mut result = none;
+    let mut done = false;
     for csearch::lookup_defs(e.sess.cstore, cnum, ids).each {|d|
         e.ext_map.insert(def_id_of_def(d), ids);
-        if ns == ns_for_def(d) { result = some(d); }
+        if ns == ns_for_def(d) && !done {
+                result = some(d);
+         }
     }
     ret result;
 }
@@ -1998,8 +2001,14 @@ fn check_exports(e: @env) {
                 }
             }
         }
-        found_something |= lookup_glob_any(e, _mod, vi.span, ident,
-                                           export_id);
+        /*
+          This code previously used bitwise or (|=) but that was wrong,
+          because we need or to be lazy here. If something was already
+          found, we don't want to call lookup_glob_any (see #2316 for
+          what happens if we do)
+         */
+        found_something = found_something ||
+           lookup_glob_any(e, _mod, vi.span, ident, export_id);
         if !found_something {
             e.sess.span_warn(vi.span,
                              #fmt("exported item %s is not defined", ident));
