@@ -22,11 +22,11 @@ rust_kernel::rust_kernel(rust_env *env) :
     sched_reaper(this),
     osmain_driver(NULL),
     non_weak_tasks(0),
+    global_loop_chan(0),
+    global_env_chan(0),
     env(env)
+
 {
-    // set up storage of pointers needed to
-    // access the global loop.
-    global_loop_chan = 0;
 
     // Create the single threaded scheduler that will run on the platform's
     // main thread

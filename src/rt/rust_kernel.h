@@ -75,6 +75,8 @@ class rust_kernel {
 
     // Used to communicate with the process-side, global libuv loop
     uintptr_t global_loop_chan;
+    // Used to serialize access to getenv/setenv
+    uintptr_t global_env_chan;
 
 public:
     struct rust_env *env;
@@ -122,6 +124,7 @@ public:
     bool send_to_port(rust_port_id chan, void *sptr);
 
     uintptr_t* get_global_loop() { return &global_loop_chan; }
+    uintptr_t* get_global_env_chan() { return &global_env_chan; }
 };
 
 template <typename T> struct kernel_owned {

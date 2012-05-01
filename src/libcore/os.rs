@@ -121,60 +121,13 @@ mod win32 {
     }
 }
 
-
-#[cfg(target_os = "linux")]
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "freebsd")]
-fn getenv(n: str) -> option<str> unsafe {
-    let s = as_c_charp(n, libc::getenv);
-    ret if unsafe::reinterpret_cast(s) == 0 {
-            option::none::<str>
-        } else {
-            let s = unsafe::reinterpret_cast(s);
-            option::some::<str>(str::unsafe::from_buf(s))
-        };
+fn getenv(n: str) -> option<str> {
+    global_env::getenv(n)
 }
 
-#[cfg(target_os = "win32")]
-fn getenv(n: str) -> option<str> unsafe {
-    import libc::types::os::arch::extra::*;
-    import libc::funcs::extra::kernel32::*;
-    import win32::*;
-    as_utf16_p(n) {|u|
-        fill_utf16_buf_and_decode() {|buf, sz|
-            GetEnvironmentVariableW(u, buf, sz)
-        }
-    }
-}
-
-
-#[cfg(target_os = "linux")]
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "freebsd")]
 fn setenv(n: str, v: str) {
-
-    // FIXME: remove this when export globs work properly.
-    import libc::funcs::posix01::unistd::setenv;
-    as_c_charp(n) {|nbuf|
-        as_c_charp(v) {|vbuf|
-            setenv(nbuf, vbuf, 1i32);
-        }
-    }
+    global_env::setenv(n, v)
 }
-
-
-#[cfg(target_os = "win32")]
-fn setenv(n: str, v: str) {
-    // FIXME: remove imports when export globs work properly.
-    import libc::funcs::extra::kernel32::*;
-    import win32::*;
-    as_utf16_p(n) {|nbuf|
-        as_utf16_p(v) {|vbuf|
-            SetEnvironmentVariableW(nbuf, vbuf);
-        }
-    }
-}
-
 
 fn fdopen(fd: c_int) -> *FILE {
     ret as_c_charp("r") {|modebuf|
@@ -726,7 +679,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore(reason = "fails periodically on mac")]
     fn test_setenv() {
         let n = make_rand_name();
         setenv(n, "VALUE");
@@ -734,7 +686,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore(reason = "fails periodically on mac")]
     fn test_setenv_overwrite() {
         let n = make_rand_name();
         setenv(n, "1");
@@ -747,7 +698,6 @@ mod tests {
     // Windows GetEnvironmentVariable requires some extra work to make sure
     // the buffer the variable is copied into is the right size
     #[test]
-    #[ignore(reason = "fails periodically on mac")]
     fn test_getenv_big() {
         let mut s = "";
         let mut i = 0;

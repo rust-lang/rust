@@ -199,6 +199,7 @@ mod extfmt;
 mod unicode;
 mod priv;
 mod cmath;
+mod global_env;
 
 
 // Local Variables:
