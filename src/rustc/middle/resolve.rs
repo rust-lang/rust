@@ -1667,12 +1667,9 @@ fn ns_for_def(d: def) -> namespace {
 fn lookup_external(e: env, cnum: int, ids: [ident], ns: namespace) ->
    option<def> {
     let mut result = none;
-    let mut done = false;
     for csearch::lookup_defs(e.sess.cstore, cnum, ids).each {|d|
         e.ext_map.insert(def_id_of_def(d), ids);
-        if ns == ns_for_def(d) && !done {
-                result = some(d);
-         }
+        if ns == ns_for_def(d) { result = some(d); }
     }
     ret result;
 }
