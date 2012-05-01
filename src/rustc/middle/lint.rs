@@ -3,7 +3,7 @@ import middle::ty;
 import syntax::{ast, visit};
 import syntax::attr;
 import syntax::codemap::span;
-import std::map::{map,hashmap,hash_from_strs};
+import std::map::{map,hashmap,int_hash,hash_from_strs};
 import io::writer_util;
 import syntax::print::pprust::expr_to_str;
 
@@ -26,6 +26,7 @@ enum lint {
     unused_imports,
     while_true,
     path_statement,
+    old_vecs,
 }
 
 enum level {
@@ -62,7 +63,12 @@ fn get_lint_dict() -> lint_dict {
         ("path_statement",
          @{lint: path_statement,
            desc: "path statements with no effect",
-           default: warn})
+           default: warn}),
+
+        ("old_vecs",
+         @{lint: old_vecs,
+           desc: "old (deprecated) vectors and strings",
+           default: ignore})
 
     ];
     hash_from_strs(v)
@@ -185,6 +191,7 @@ fn check_item(cx: ctxt, i: @ast::item) {
               unused_imports { check_item_unused_imports(cx, level, i); }
               while_true { check_item_while_true(cx, level, i); }
               path_statement { check_item_path_statement(cx, level, i); }
+              old_vecs { check_item_old_vecs(cx, level, i); }
             }
         }
     }
@@ -274,6 +281,50 @@ fn check_item_path_statement(cx: ctxt, level: level, it: @ast::item) {
               _ {}
             }
         }
+        with *visit::default_simple_visitor()
+    });
+    visit::visit_item(it, (), visit);
+}
+
+fn check_item_old_vecs(cx: ctxt, level: level, it: @ast::item) {
+    let uses_vstore = int_hash();
+
+    let visit = visit::mk_simple_visitor(@{
+
+        visit_expr:fn@(e: @ast::expr) {
+            alt e.node {
+              ast::expr_vec(_, _) |
+              ast::expr_lit(@{node: ast::lit_str(_), span:_})
+              if ! uses_vstore.contains_key(e.id) {
+                cx.span_lint(level, e.span, "deprecated vec/str expr");
+              }
+              ast::expr_vstore(@inner, _) {
+                uses_vstore.insert(inner.id, true);
+              }
+              _ { }
+            }
+        },
+
+        visit_ty: fn@(t: @ast::ty) {
+            alt t.node {
+              ast::ty_vec(_)
+              if ! uses_vstore.contains_key(t.id) {
+                cx.span_lint(level, t.span, "deprecated vec type");
+              }
+
+              ast::ty_path(@{span: _, global: _, idents: ids,
+                             rp: none, types: _}, _)
+              if ids == ["str"] && (! uses_vstore.contains_key(t.id)) {
+                cx.span_lint(level, t.span, "deprecated str type");
+              }
+
+              ast::ty_vstore(inner, _) {
+                uses_vstore.insert(inner.id, true);
+              }
+              _ { }
+            }
+        }
+
         with *visit::default_simple_visitor()
     });
     visit::visit_item(it, (), visit);
