@@ -9,6 +9,7 @@ Aleksander Balicki <balicki.aleksander@gmail.com>
 Alexander Stavonin <a.stavonin@gmail.com>
 Andreas Gal <gal@mozilla.com>
 Austin Seipp <mad.one@gmail.com>
+Benjamin Kircher <benjamin.kircher@gmail.com>
 Ben Striegel <ben.striegel@gmail.com>
 Benjamin Jackman <ben@jackman.biz>
 Brendan Eich <brendan@mozilla.org>
