@@ -34,6 +34,7 @@ export peek;
 export recv_chan;
 export select2;
 export methods;
+export listen;
 
 
 #[doc = "
@@ -84,6 +85,12 @@ impl methods<T: send> for chan<T> {
     fn recv() -> T { recv_chan(self) }
     fn peek() -> bool { peek_chan(self) }
 
+}
+
+#[doc = "Open a new receiving channel for the duration of a function"]
+fn listen<T: send, U>(f: fn(chan<T>) -> U) -> U {
+    let po = port();
+    f(po.chan())
 }
 
 resource port_ptr<T: send>(po: *rust_port) {
@@ -441,4 +448,14 @@ fn test_chan_peek() {
     let ch = po.chan();
     ch.send(());
     assert ch.peek();
+}
+
+#[test]
+fn test_listen() {
+    listen {|parent|
+        task::spawn {||
+            parent.send("oatmeal-salad");
+        }
+        assert parent.recv() == "oatmeal-salad";
+    }
 }
