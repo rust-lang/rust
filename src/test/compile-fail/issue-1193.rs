@@ -1,4 +1,4 @@
-// error-pattern: Sorry, rebinding or matching against symbolic
+// error-pattern: pattern variable conflicts
 mod foo {
     type t = u8;
 

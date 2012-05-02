@@ -514,8 +514,8 @@ fn resolve_names(e: @env, c: @ast::crate) {
                     e.def_map.insert(pat.id, fnd);
                 }
                 some(fnd@ast::def_const(_)) {
-                    e.sess.span_err(p.span, "Sorry, rebinding or matching \
-                      against symbolic constants is not allowed.");
+                    e.sess.span_err(p.span, "pattern variable conflicts \
+                       with constant '" + path_to_ident(p) + "'");
                 }
                 // Binds a var -- nothing needs to be done
                 _ {}
