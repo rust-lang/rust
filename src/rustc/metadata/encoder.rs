@@ -372,8 +372,7 @@ fn encode_info_for_mod(ecx: @encode_ctxt, ebml_w: ebml::writer, md: _mod,
                 ebml_w.start_tag(tag_mod_impl);
             /* If did stands for an iface
                ref, we need to map it to its parent class */
-                ebml_w.start_tag(tag_mod_impl_use);
-                let iface_ty = alt ecx.ccx.tcx.items.get(i.did.node) {
+                alt ecx.ccx.tcx.items.get(i.did.node) {
                   ast_map::node_item(it@@{node: cl@item_class(*),_},_) {
                     ebml_w.wr_str(def_to_str(local_def(it.id)));
                     some(ty::lookup_item_type(ecx.ccx.tcx, i.did).ty)
@@ -387,26 +386,6 @@ fn encode_info_for_mod(ecx: @encode_ctxt, ebml_w: ebml::writer, md: _mod,
                       ebml_w.wr_str(def_to_str(i.did)); none
                   }
                 };
-                ebml_w.end_tag();
-
-                /*
-                /* Write the iface did if it exists */
-                option::iter(iface_ty) {|i|
-                alt ty::get(i).struct {
-                  ty::ty_iface(did, tys) {
-                    // FIXME: tys?
-                      ebml_w.start_tag(tag_mod_impl_iface);
-                     ebml_w.wr_str(def_to_str(did));
-                     ebml_w.end_tag();
-
-                  }
-                  t {
-                      ecx.ccx.tcx.sess.bug(#fmt("Expected item to implement \
-                       an iface, but found %s",
-                       util::ppaux::ty_to_str(ecx.ccx.tcx, i)));
-                  }
-                }}
-                */
                 ebml_w.end_tag();
             } // if
             } // for

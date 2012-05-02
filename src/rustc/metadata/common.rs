@@ -85,8 +85,7 @@ const tag_item_field: uint = 0x44u;
 const tag_class_mut: uint = 0x45u;
 
 const tag_region_param: uint = 0x46u;
-const tag_mod_impl_use: uint = 0x47u;
-const tag_mod_impl_iface: uint = 0x48u;
+const tag_mod_impl_iface: uint = 0x47u;
 /*
   iface items contain tag_item_iface_method elements,
   impl items contain tag_item_impl_method elements, and classes
@@ -95,7 +94,7 @@ const tag_mod_impl_iface: uint = 0x48u;
   both, tag_item_iface_method and tag_item_impl_method have to be two
   different tags.
  */
-const tag_item_impl_method: uint = 0x49u;
+const tag_item_impl_method: uint = 0x48u;
 
 // used to encode crate_ctxt side tables
 enum astencode_tag { // Reserves 0x50 -- 0x6f
