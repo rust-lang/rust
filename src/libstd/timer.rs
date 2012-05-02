@@ -143,7 +143,7 @@ mod test {
 
     #[test]
     fn test_gl_timer_sleep_stress1() {
-        iter::repeat(500u) {||
+        iter::repeat(200u) {||
             sleep(1u);
         }
     }
@@ -153,12 +153,12 @@ mod test {
         let po = comm::port();
         let ch = comm::chan(po);
 
-        let repeat = 100u;
+        let repeat = 20u;
         let spec = {
 
-            [(1u, 100u),
+            [(1u,  20u),
              (10u, 10u),
-             (100u, 2u)]
+             (20u, 2u)]
 
         };
 
