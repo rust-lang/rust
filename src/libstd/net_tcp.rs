@@ -4,7 +4,7 @@ High-level interface to libuv's TCP functionality
 
 import ip = net_ip;
 
-export tcp_connect_result, tcp_write_result, tcp_read_start_result;
+export tcp_err_data, tcp_connect_result, tcp_write_result, tcp_read_start_result;
 export connect, write;
 
 resource tcp_socket(socket_data: @tcp_socket_data) unsafe {
@@ -26,25 +26,40 @@ resource tcp_socket(socket_data: @tcp_socket_data) unsafe {
     log(debug, "exiting dtor for tcp_socket");
 }
 
+type tcp_err_data = {
+    err_name: str,
+    err_msg: str
+};
+
+iface to_tcp_err_iface {
+    fn to_tcp_err() -> tcp_err_data;
+}
+
+impl of to_tcp_err_iface for uv::ll::uv_err_data {
+    fn to_tcp_err() -> tcp_err_data {
+        { err_name: self.err_name, err_msg: self.err_msg }
+    }
+}
+
 enum tcp_connect_result {
     tcp_connected(tcp_socket),
-    tcp_connect_error(uv::ll::uv_err_data)
+    tcp_connect_error(tcp_err_data)
 }
 
 enum tcp_write_result {
     tcp_write_success,
-    tcp_write_error(uv::ll::uv_err_data)
+    tcp_write_error(tcp_err_data)
 }
 
 enum tcp_read_start_result {
     tcp_read_start_success(comm::port<tcp_read_result>),
-    tcp_read_start_error(uv::ll::uv_err_data)
+    tcp_read_start_error(tcp_err_data)
 }
 
 enum tcp_read_result {
     tcp_read_data([u8]),
     tcp_read_done,
-    tcp_read_err(uv::ll::uv_err_data)
+    tcp_read_err(tcp_err_data)
 }
 
 #[doc="
@@ -126,7 +141,7 @@ fn connect(input_ip: ip::ip_addr, port: uint) -> tcp_connect_result unsafe {
                     // ip or somesuch
                     let err_data = uv::ll::get_last_err_data(loop_ptr);
                     comm::send((*conn_data_ptr).result_ch,
-                               conn_failure(err_data));
+                               conn_failure(err_data.to_tcp_err()));
                     uv::ll::set_data_for_uv_handle(stream_handle_ptr,
                                                    conn_data_ptr);
                     uv::ll::close(stream_handle_ptr, stream_error_close_cb);
@@ -139,7 +154,7 @@ fn connect(input_ip: ip::ip_addr, port: uint) -> tcp_connect_result unsafe {
             // failure to create a tcp handle
             let err_data = uv::ll::get_last_err_data(loop_ptr);
             comm::send((*conn_data_ptr).result_ch,
-                       conn_failure(err_data));
+                       conn_failure(err_data.to_tcp_err()));
           }
         }
     };
@@ -151,7 +166,7 @@ fn connect(input_ip: ip::ip_addr, port: uint) -> tcp_connect_result unsafe {
       conn_failure(err_data) {
         comm::recv(closed_signal_po);
         log(debug, "tcp::connect - received failure on result_po");
-        tcp_connect_error(err_data)
+        tcp_connect_error(err_data.to_tcp_err())
       }
     }
 }
@@ -189,7 +204,7 @@ fn write(sock: tcp_socket, raw_write_data: [[u8]]) -> tcp_write_result
             log(debug, "error invoking uv_write()");
             let err_data = uv::ll::get_last_err_data(loop_ptr);
             comm::send((*write_data_ptr).result_ch,
-                       tcp_write_error(err_data));
+                       tcp_write_error(err_data.to_tcp_err()));
           }
         }
     };
@@ -220,7 +235,7 @@ fn read_start(sock: tcp_socket) -> tcp_read_start_result unsafe {
     };
     alt comm::recv(start_po) {
       some(err_data) {
-        tcp_read_start_error(err_data)
+        tcp_read_start_error(err_data.to_tcp_err())
       }
       none {
         tcp_read_start_success((**sock).reader_po)
@@ -230,7 +245,7 @@ fn read_start(sock: tcp_socket) -> tcp_read_start_result unsafe {
 
 fn read_stop(sock: tcp_socket) -> option<uv::ll::uv_err_data> unsafe {
     let stream_handle_ptr = ptr::addr_of((**sock).stream_handle);
-    let stop_po = comm::port::<option<uv::ll::uv_err_data>>();
+    let stop_po = comm::port::<option<tcp_err_data>>();
     let stop_ch = comm::chan(stop_po);
     uv::hl::interact((**sock).hl_loop) {|loop_ptr|
         log(debug, "in interact cb for tcp::read_stop");
@@ -242,7 +257,7 @@ fn read_stop(sock: tcp_socket) -> option<uv::ll::uv_err_data> unsafe {
           _ {
             log(debug, "failure in calling uv_read_stop");
             let err_data = uv::ll::get_last_err_data(loop_ptr);
-            comm::send(stop_ch, some(err_data));
+            comm::send(stop_ch, some(err_data.to_tcp_err()));
           }
         }
     };
