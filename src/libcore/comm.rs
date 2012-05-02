@@ -28,6 +28,7 @@ import either::either;
 
 export send;
 export recv;
+export recv_chan;
 export peek;
 export select2;
 export chan::{};
@@ -52,6 +53,10 @@ native mod rustrt {
     fn rust_port_select(dptr: **rust_port, ports: **rust_port,
                         n_ports: libc::size_t,
                         yield: *libc::uintptr_t);
+    fn rust_port_take(port_id: port_id) -> *rust_port;
+    fn rust_port_drop(p: *rust_port);
+    fn rust_port_task(p: *rust_port) -> libc::uintptr_t;
+    fn get_task_id() -> libc::uintptr_t;
 }
 
 #[abi = "rust-intrinsic"]
@@ -131,6 +136,25 @@ Receive from a port.  If no data is available on the port then the
 task will block until data becomes available.
 "]
 fn recv<T: send>(p: port<T>) -> T { recv_(***p) }
+
+#[doc(hidden)]
+fn recv_chan<T: send>(ch: comm::chan<T>) -> T {
+    resource portref(p: *rust_port) {
+        if !ptr::is_null(p) {
+            rustrt::rust_port_drop(p);
+        }
+    }
+
+    let p = portref(rustrt::rust_port_take(*ch));
+
+    if ptr::is_null(*p) {
+        fail "unable to locate port for channel"
+    } else if rustrt::get_task_id() != rustrt::rust_port_task(*p) {
+        fail "attempting to receive on unowned channel"
+    }
+
+    recv_(*p)
+}
 
 #[doc = "Receive on a raw port pointer"]
 fn recv_<T: send>(p: *rust_port) -> T {
@@ -326,4 +350,32 @@ fn test_select2_stress() {
 
     assert as == 400;
     assert bs == 400;
+}
+
+#[test]
+fn test_recv_chan() {
+    let po = port();
+    let ch = chan(po);
+    send(ch, "flower");
+    assert recv_chan(ch) == "flower";
+}
+
+#[test]
+#[should_fail]
+#[ignore(cfg(target_os = "win32"))]
+fn test_recv_chan_dead() {
+    let ch = chan(port());
+    send(ch, "flower");
+    recv_chan(ch);
+}
+
+#[test]
+#[ignore(cfg(target_os = "win32"))]
+fn test_recv_chan_wrong_task() {
+    let po = port();
+    let ch = chan(po);
+    send(ch, "flower");
+    assert result::is_failure(task::try {||
+        recv_chan(ch)
+    })
 }

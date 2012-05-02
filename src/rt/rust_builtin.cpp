@@ -631,6 +631,24 @@ sched_threads() {
 }
 
 extern "C" CDECL rust_port*
+rust_port_take(rust_port_id id) {
+    rust_task *task = rust_get_current_task();
+    return task->kernel->get_port_by_id(id);
+}
+
+extern "C" CDECL void
+rust_port_drop(rust_port *p) {
+    assert(p != NULL);
+    p->deref();
+}
+
+extern "C" CDECL rust_task_id
+rust_port_task(rust_port *p) {
+    assert(p != NULL);
+    return p->task->id;
+}
+
+extern "C" CDECL rust_port*
 new_port(size_t unit_sz) {
     rust_task *task = rust_get_current_task();
     LOG(task, comm, "new_port(task=0x%" PRIxPTR " (%s), unit_sz=%d)",
