@@ -58,7 +58,7 @@ const uint8_t SHAPE_STACK_FN = 26u;
 const uint8_t SHAPE_BARE_FN = 27u;
 const uint8_t SHAPE_TYDESC = 28u;
 const uint8_t SHAPE_SEND_TYDESC = 29u;
-const uint8_t SHAPE_IFACE = 31u;
+const uint8_t SHAPE_RPTR = 31u;
 
 #ifdef _LP64
 const uint8_t SHAPE_PTR = SHAPE_U64;
