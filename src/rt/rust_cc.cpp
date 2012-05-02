@@ -73,7 +73,7 @@ class irc : public shape::data<irc,shape::ptr> {
                                   in_tables, in_data),
       ircs(in_ircs) {}
 
-    void walk_vec2(bool is_pod, uint16_t sp_size) {
+    void walk_vec2(bool is_pod) {
         if (is_pod || shape::get_dp<void *>(dp) == NULL)
             return;     // There can't be any outbound pointers from this.
 
@@ -305,7 +305,7 @@ class mark : public shape::data<mark,shape::ptr> {
                                    in_tables, in_data),
       marked(in_marked) {}
 
-    void walk_vec2(bool is_pod, uint16_t sp_size) {
+    void walk_vec2(bool is_pod) {
         if (is_pod || shape::get_dp<void *>(dp) == NULL)
             return;     // There can't be any outbound pointers from this.
 

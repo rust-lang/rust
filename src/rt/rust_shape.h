@@ -429,7 +429,7 @@ ctxt<T>::walk_vec0() {
     uint16_t sp_size = get_u16_bump(sp);
     const uint8_t *end_sp = sp + sp_size;
 
-    static_cast<T *>(this)->walk_vec1(is_pod, sp_size);
+    static_cast<T *>(this)->walk_vec1(is_pod);
 
     sp = end_sp;
 }
@@ -569,7 +569,7 @@ public:
                    const type_param *params, const uint8_t *end_sp);
     void walk_var1(uint8_t param);
 
-    void walk_vec1(bool is_pod, uint16_t sp_size) {
+    void walk_vec1(bool is_pod) {
         DPRINT("vec<"); walk(); DPRINT(">");
     }
     void walk_uniq1() {
@@ -645,7 +645,7 @@ public:
     void walk_tydesc1(char) { sa.set(sizeof(void *),   sizeof(void *)); }
     void walk_closure1();
 
-    void walk_vec1(bool is_pod, uint16_t sp_size) {
+    void walk_vec1(bool is_pod) {
         sa.set(sizeof(void *), sizeof(void *));
     }
 
@@ -903,8 +903,8 @@ public:
         static_cast<T *>(this)->walk_struct2(end_sp);
     }
 
-    void walk_vec1(bool is_pod, uint16_t sp_size) {
-        DATA_SIMPLE(void *, walk_vec2(is_pod, sp_size));
+    void walk_vec1(bool is_pod) {
+        DATA_SIMPLE(void *, walk_vec2(is_pod));
     }
 
     void walk_box1() { DATA_SIMPLE(void *, walk_box2()); }
@@ -1102,7 +1102,7 @@ private:
       out(other.out),
       prefix("") {}
 
-    void walk_vec2(bool is_pod, uint16_t sp_size) {
+    void walk_vec2(bool is_pod) {
         if (!get_dp<void *>(dp))
             out << prefix << "(null)";
         else

@@ -43,7 +43,7 @@ class annihilator : public shape::data<annihilator,shape::ptr> {
         : shape::data<annihilator,shape::ptr>(in_task, in_align, in_sp,
                                         in_params, in_tables, in_data) {}
 
-    void walk_vec2(bool is_pod, uint16_t sp_size) {
+    void walk_vec2(bool is_pod) {
         void *vec = shape::get_dp<void *>(dp);
         walk_vec2(is_pod, get_vec_data_range(dp));
         task->kernel->free(vec);

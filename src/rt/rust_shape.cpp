@@ -337,7 +337,7 @@ public:
                          in_dp),
       result(0) {}
 
-    void walk_vec2(bool is_pod, uint16_t sp_size) {
+    void walk_vec2(bool is_pod) {
         walk_vec2(is_pod, get_vec_data_range(dp));
     }
 
