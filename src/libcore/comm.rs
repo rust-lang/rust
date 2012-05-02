@@ -26,45 +26,25 @@ io::println(comm::recv(p));
 
 import either::either;
 
+export port::{};
+export chan::{};
 export send;
 export recv;
-export recv_chan;
 export peek;
+export recv_chan;
 export select2;
-export chan::{};
-export port::{};
 
-enum rust_port {}
 
-#[abi = "cdecl"]
-native mod rustrt {
-    fn rust_port_id_send<T: send>(target_port: port_id,
-                                  data: T) -> libc::uintptr_t;
+#[doc = "
+A communication endpoint that can receive messages
 
-    fn new_port(unit_sz: libc::size_t) -> *rust_port;
-    fn del_port(po: *rust_port);
-    fn rust_port_begin_detach(po: *rust_port,
-                              yield: *libc::uintptr_t);
-    fn rust_port_end_detach(po: *rust_port);
-    fn get_port_id(po: *rust_port) -> port_id;
-    fn rust_port_size(po: *rust_port) -> libc::size_t;
-    fn port_recv(dptr: *uint, po: *rust_port,
-                 yield: *libc::uintptr_t);
-    fn rust_port_select(dptr: **rust_port, ports: **rust_port,
-                        n_ports: libc::size_t,
-                        yield: *libc::uintptr_t);
-    fn rust_port_take(port_id: port_id) -> *rust_port;
-    fn rust_port_drop(p: *rust_port);
-    fn rust_port_task(p: *rust_port) -> libc::uintptr_t;
-    fn get_task_id() -> libc::uintptr_t;
+Each port has a unique per-task identity and may not be replicated or
+transmitted. If a port value is copied, both copies refer to the same
+port.  Ports may be associated with multiple `chan`s.
+"]
+enum port<T: send> {
+    port_t(@port_ptr<T>)
 }
-
-#[abi = "rust-intrinsic"]
-native mod rusti {
-    fn init<T>() -> T;
-}
-
-type port_id = int;
 
 // It's critical that this only have one variant, so it has a record
 // layout, and will work in the rust_task structure in task.rs.
@@ -80,6 +60,44 @@ themselves transmitted over other channels.
 "]
 enum chan<T: send> {
     chan_t(port_id)
+}
+
+#[doc = "Constructs a port"]
+fn port<T: send>() -> port<T> {
+    port_t(@port_ptr(rustrt::new_port(sys::size_of::<T>())))
+}
+
+#[doc = "
+Constructs a channel. The channel is bound to the port used to
+construct it.
+"]
+fn chan<T: send>(p: port<T>) -> chan<T> {
+    chan_t(rustrt::get_port_id(***p))
+}
+
+#[doc = "
+Sends data over a channel. The sent data is moved into the channel,
+whereupon the caller loses access to it.
+"]
+fn send<T: send>(ch: chan<T>, -data: T) {
+    let chan_t(p) = ch;
+    let res = rustrt::rust_port_id_send(p, data);
+    if res != 0u unsafe {
+        // Data sent successfully
+        unsafe::forget(data);
+    }
+    task::yield();
+}
+
+#[doc = "
+Receive from a port.  If no data is available on the port then the
+task will block until data becomes available.
+"]
+fn recv<T: send>(p: port<T>) -> T { recv_(***p) }
+
+#[doc = "Returns true if there are messages available"]
+fn peek<T: send>(p: port<T>) -> bool {
+    rustrt::rust_port_size(***p) != 0u as libc::size_t
 }
 
 resource port_ptr<T: send>(po: *rust_port) {
@@ -103,39 +121,6 @@ resource port_ptr<T: send>(po: *rust_port) {
     rustrt::del_port(po);
 }
 
-#[doc = "
-A communication endpoint that can receive messages
-
-Each port has a unique per-task identity and may not be replicated or
-transmitted. If a port value is copied, both copies refer to the same
-port.  Ports may be associated with multiple `chan`s.
-"]
-enum port<T: send> { port_t(@port_ptr<T>) }
-
-#[doc = "
-Sends data over a channel. The sent data is moved into the channel,
-whereupon the caller loses access to it.
-"]
-fn send<T: send>(ch: chan<T>, -data: T) {
-    let chan_t(p) = ch;
-    let res = rustrt::rust_port_id_send(p, data);
-    if res != 0u unsafe {
-        // Data sent successfully
-        unsafe::forget(data);
-    }
-    task::yield();
-}
-
-#[doc = "Constructs a port"]
-fn port<T: send>() -> port<T> {
-    port_t(@port_ptr(rustrt::new_port(sys::size_of::<T>())))
-}
-
-#[doc = "
-Receive from a port.  If no data is available on the port then the
-task will block until data becomes available.
-"]
-fn recv<T: send>(p: port<T>) -> T { recv_(***p) }
 
 #[doc(hidden)]
 fn recv_chan<T: send>(ch: comm::chan<T>) -> T {
@@ -210,18 +195,45 @@ fn select2<A: send, B: send>(p_a: port<A>, p_b: port<B>)
     }
 }
 
-#[doc = "Returns true if there are messages available"]
-fn peek<T: send>(p: port<T>) -> bool {
-    rustrt::rust_port_size(***p) != 0u as libc::size_t
+
+/* Implementation details */
+
+
+enum rust_port {}
+
+type port_id = int;
+
+#[abi = "cdecl"]
+native mod rustrt {
+    fn rust_port_id_send<T: send>(target_port: port_id,
+                                  data: T) -> libc::uintptr_t;
+
+    fn new_port(unit_sz: libc::size_t) -> *rust_port;
+    fn del_port(po: *rust_port);
+    fn rust_port_begin_detach(po: *rust_port,
+                              yield: *libc::uintptr_t);
+    fn rust_port_end_detach(po: *rust_port);
+    fn get_port_id(po: *rust_port) -> port_id;
+    fn rust_port_size(po: *rust_port) -> libc::size_t;
+    fn port_recv(dptr: *uint, po: *rust_port,
+                 yield: *libc::uintptr_t);
+    fn rust_port_select(dptr: **rust_port, ports: **rust_port,
+                        n_ports: libc::size_t,
+                        yield: *libc::uintptr_t);
+    fn rust_port_take(port_id: port_id) -> *rust_port;
+    fn rust_port_drop(p: *rust_port);
+    fn rust_port_task(p: *rust_port) -> libc::uintptr_t;
+    fn get_task_id() -> libc::uintptr_t;
 }
 
-#[doc = "
-Constructs a channel. The channel is bound to the port used to
-construct it.
-"]
-fn chan<T: send>(p: port<T>) -> chan<T> {
-    chan_t(rustrt::get_port_id(***p))
+#[abi = "rust-intrinsic"]
+native mod rusti {
+    fn init<T>() -> T;
 }
+
+
+/* Tests */
+
 
 #[test]
 fn create_port_and_chan() { let p = port::<int>(); chan(p); }
