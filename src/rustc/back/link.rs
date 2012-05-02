@@ -466,6 +466,14 @@ fn sanitize(s: str) -> str {
           }
         }
     }
+
+    // Underscore-qualify anything that didn't start as an ident.
+    if result.len() > 0u &&
+        result[0] != '_' as u8 &&
+        ! char::is_XID_start(result[0] as char) {
+        ret "_" + result;
+    }
+
     ret result;
 }
 
