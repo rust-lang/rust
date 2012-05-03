@@ -20,6 +20,12 @@ fn main() {
 
     log(debug, b);
 
+    assert b < c;
+    assert b <= c;
+    assert b != c;
+    assert c >= b;
+    assert c > b;
+
     assert a < c;
     assert a <= c;
     assert a != c;

@@ -49,8 +49,8 @@ class annihilator : public shape::data<annihilator,shape::ptr> {
         task->kernel->free(vec);
     }
 
-    void walk_fixedvec2(uint16_t sz, bool is_pod) {
-        walk_vec2(is_pod, get_fixedvec_data_range(sz, dp));
+    void walk_fixedvec2(uint16_t n_elts, size_t elt_sz, bool is_pod) {
+        walk_vec2(is_pod, get_fixedvec_data_range(n_elts, elt_sz, dp));
     }
 
     void walk_vec2(bool is_pod,

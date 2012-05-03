@@ -100,8 +100,8 @@ class irc : public shape::data<irc,shape::ptr> {
         walk_vec2(is_pod, get_slice_data_range(is_str, dp));
     }
 
-    void walk_fixedvec2(uint16_t sz, bool is_pod) {
-        walk_vec2(is_pod, get_fixedvec_data_range(sz, dp));
+    void walk_fixedvec2(uint16_t n_elts, size_t elt_sz, bool is_pod) {
+        walk_vec2(is_pod, get_fixedvec_data_range(n_elts, elt_sz, dp));
     }
 
     void walk_tag2(shape::tag_info &tinfo, uint32_t tag_variant) {
@@ -356,8 +356,8 @@ class mark : public shape::data<mark,shape::ptr> {
         walk_vec2(is_pod, get_slice_data_range(is_str, dp));
     }
 
-    void walk_fixedvec2(uint16_t sz, bool is_pod) {
-        walk_vec2(is_pod, get_fixedvec_data_range(sz, dp));
+    void walk_fixedvec2(uint16_t n_elts, size_t elt_sz, bool is_pod) {
+        walk_vec2(is_pod, get_fixedvec_data_range(n_elts, elt_sz, dp));
     }
 
     void walk_tag2(shape::tag_info &tinfo, uint32_t tag_variant) {

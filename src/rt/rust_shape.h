@@ -524,12 +524,12 @@ ctxt<T>::walk_rptr0() {
 template<typename T>
 void
 ctxt<T>::walk_fixedvec0() {
-    uint16_t vec_size = get_u16_bump(sp);
+    uint16_t n_elts = get_u16_bump(sp);
     bool is_pod = *sp++;
     uint16_t sp_size = get_u16_bump(sp);
     const uint8_t *end_sp = sp + sp_size;
 
-    static_cast<T *>(this)->walk_fixedvec1(vec_size, is_pod);
+    static_cast<T *>(this)->walk_fixedvec1(n_elts, is_pod);
 
     sp = end_sp;
 }
@@ -629,8 +629,8 @@ public:
     void walk_rptr1() {
         DPRINT("&<"); walk(); DPRINT(">");
     }
-    void walk_fixedvec1(uint16_t sz, bool is_pod) {
-      DPRINT("fixedvec<%u, ", sz); walk(); DPRINT(">");
+    void walk_fixedvec1(uint16_t n_elts, bool is_pod) {
+      DPRINT("fixedvec<%u, ", n_elts); walk(); DPRINT(">");
     }
     void walk_slice1(bool is_pod, bool is_str) {
       DPRINT("slice<"); walk(); DPRINT(">");
@@ -721,10 +721,10 @@ public:
         abort();    // TODO
     }
 
-    void walk_fixedvec1(uint16_t sz, bool is_pod) {
+    void walk_fixedvec1(uint16_t n_elts, bool is_pod) {
         size_of sub(*this);
         sub.walk();
-        sa.set(sub.sa.size * sz, sub.sa.alignment);
+        sa.set(sub.sa.size * n_elts, sub.sa.alignment);
     }
 
     template<typename T>
@@ -959,9 +959,9 @@ protected:
                                                              ptr_pair &dp);
 
     static std::pair<uint8_t *,uint8_t *>
-        get_fixedvec_data_range(uint16_t sz, ptr dp);
+        get_fixedvec_data_range(uint16_t n_elts, size_t elt_sz, ptr dp);
     static std::pair<ptr_pair,ptr_pair>
-        get_fixedvec_data_range(uint16_t sz, ptr_pair &dp);
+        get_fixedvec_data_range(uint16_t n_elts, size_t elt_sz, ptr_pair &dp);
 
 public:
     data(rust_task *in_task,
@@ -989,10 +989,10 @@ public:
         DATA_SIMPLE(void *, walk_slice2(is_pod, is_str));
     }
 
-    void walk_fixedvec1(uint16_t sz, bool is_pod) {
+    void walk_fixedvec1(uint16_t n_elts, bool is_pod) {
         size_align sa = size_of::get(*this);
         ALIGN_TO(sa.alignment);
-        static_cast<T *>(this)->walk_fixedvec2(sz, is_pod);
+        static_cast<T *>(this)->walk_fixedvec2(n_elts, sa.size, is_pod);
     }
 
     void walk_box1() { DATA_SIMPLE(void *, walk_box2()); }
@@ -1132,16 +1132,19 @@ data<T,U>::get_slice_data_range(bool is_str, ptr_pair &dp) {
 
 template<typename T,typename U>
 std::pair<uint8_t *,uint8_t *>
-data<T,U>::get_fixedvec_data_range(uint16_t sz, ptr dp) {
+data<T,U>::get_fixedvec_data_range(uint16_t n_elts, size_t elt_sz, ptr dp) {
     uint8_t* ptr = (uint8_t*)(dp);
-    return std::make_pair(ptr, ptr + sz);
+    return std::make_pair(ptr, ptr + (((size_t)n_elts) * elt_sz));
 }
 
 template<typename T,typename U>
 std::pair<ptr_pair,ptr_pair>
-data<T,U>::get_fixedvec_data_range(uint16_t sz, ptr_pair &dp) {
-    std::pair<uint8_t *,uint8_t *> fst = get_fixedvec_data_range(sz, dp.fst);
-    std::pair<uint8_t *,uint8_t *> snd = get_fixedvec_data_range(sz, dp.snd);
+data<T,U>::get_fixedvec_data_range(uint16_t n_elts, size_t elt_sz,
+                                   ptr_pair &dp) {
+    std::pair<uint8_t *,uint8_t *> fst =
+        get_fixedvec_data_range(n_elts, elt_sz, dp.fst);
+    std::pair<uint8_t *,uint8_t *> snd =
+        get_fixedvec_data_range(n_elts, elt_sz, dp.snd);
     ptr_pair start(fst.first, snd.first);
     ptr_pair end(fst.second, snd.second);
     return std::make_pair(start, end);
@@ -1248,13 +1251,13 @@ private:
     }
 
     void walk_slice2(bool is_pod, bool is_str) {
-        walk_vec2(is_pod, get_slice_data_range(dp, is_str));
+        walk_vec2(is_pod, get_slice_data_range(is_str, dp));
         out << "/&";
     }
 
-    void walk_fixedvec2(uint16_t sz, bool is_pod) {
-        walk_vec2(is_pod, get_fixedvec_data_range(sz, dp));
-        out << "/" << sz;
+    void walk_fixedvec2(uint16_t n_elts, size_t elt_sz, bool is_pod) {
+        walk_vec2(is_pod, get_fixedvec_data_range(n_elts, elt_sz, dp));
+        out << "/" << n_elts;
     }
 
     void walk_tag2(tag_info &tinfo, tag_variant_t tag_variant) {
