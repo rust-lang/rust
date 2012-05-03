@@ -630,6 +630,10 @@ fn llsize_of_real(cx: @crate_ctxt, t: TypeRef) -> uint {
     ret llvm::LLVMStoreSizeOfType(cx.td.lltd, t) as uint;
 }
 
+fn llsize_of_alloc(cx: @crate_ctxt, t: TypeRef) -> uint {
+    ret llvm::LLVMABISizeOfType(cx.td.lltd, t) as uint;
+}
+
 // Returns the preferred alignment of the given type for the current target.
 // The preffered alignment may be larger than the alignment used when
 // packing the type into structs

@@ -81,6 +81,10 @@ fn classify_ty(ty: TypeRef) -> [x86_64_reg_class] {
                     uint::max(a, ty_align(t))
                 }
             }
+            11 /* array */ {
+                let elt = llvm::LLVMGetElementType(ty);
+                ty_align(elt)
+            }
             _ {
                 fail "ty_size: unhandled type"
             }
@@ -99,6 +103,12 @@ fn classify_ty(ty: TypeRef) -> [x86_64_reg_class] {
                 vec::foldl(0u, struct_tys(ty)) {|s, t|
                     s + ty_size(t)
                 }
+            }
+            11 /* array */ {
+              let len = llvm::LLVMGetArrayLength(ty) as uint;
+              let elt = llvm::LLVMGetElementType(ty);
+              let eltsz = ty_size(elt);
+              len * eltsz
             }
             _ {
                 fail "ty_size: unhandled type"
@@ -186,6 +196,16 @@ fn classify_ty(ty: TypeRef) -> [x86_64_reg_class] {
             }
             10 /* struct */ {
                 classify_struct(struct_tys(ty), cls, i, off);
+            }
+            11 /* array */ {
+              // FIXME: I HAVE NO IDEA WHAT I AM DOING THIS MUST BE WRONG
+              let len = llvm::LLVMGetArrayLength(ty) as uint;
+              if len == 0u {
+              } else {
+                  let elt = llvm::LLVMGetElementType(ty);
+                  let tys = vec::from_elem(len, elt);
+                  classify_struct(tys, cls, i, off);
+              }
             }
             _ {
                 fail "classify: unhandled type";
