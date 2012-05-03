@@ -1,3 +1,6 @@
+// The classification code for the x86 ABI is taken from the clay language
+// https://github.com/jckarter/clay/blob/master/compiler/src/externals.cpp
+
 import driver::session::{session, arch_x86_64};
 import syntax::codemap::span;
 import libc::c_uint;
