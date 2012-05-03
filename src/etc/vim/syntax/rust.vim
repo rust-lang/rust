@@ -56,8 +56,10 @@ syn case match
 
 syn match   rustCharacter   "'\([^'\\]\|\\\(['nrt\\\"]\|x\x\{2}\|u\x\{4}\|U\x\{8}\)\)'"
 
-syn region    rustComment     start="/\*" end="\*/" contains=rustComment
-syn region    rustComment     start="//" skip="\\$" end="$" keepend
+syn region    rustComment     start="/\*" end="\*/" contains=rustComment,rustTodo
+syn region    rustComment     start="//" skip="\\$" end="$" contains=rustTodo keepend
+
+syn keyword   rustTodo        TODO FIXME XXX NB
 
 hi def link rustString        String
 hi def link rustCharacter     Character
