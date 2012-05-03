@@ -141,7 +141,7 @@ fn qsort3<T: copy>(compare_func_lt: le<T>, compare_func_eq: le<T>,
     qsort3::<T>(compare_func_lt, compare_func_eq, arr, i, right);
 }
 
-// FIXME: This should take lt and eq types
+// FIXME: This should take lt and eq types (#2348)
 #[doc = "
 Fancy quicksort. Sorts a mut vector in place.
 

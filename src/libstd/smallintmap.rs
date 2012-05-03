@@ -6,7 +6,7 @@ import core::option;
 import core::option::{some, none};
 
 // FIXME: Should not be @; there's a bug somewhere in rustc that requires this
-// to be.
+// to be. (#2347)
 type smallintmap<T: copy> = @{mut v: [mut option<T>]};
 
 #[doc = "Create a smallintmap"]
