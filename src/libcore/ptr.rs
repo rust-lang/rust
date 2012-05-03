@@ -104,10 +104,10 @@ unsafe fn memmove<T>(dst: *T, src: *T, count: uint)  {
 #[doc = "Extension methods for pointers"]
 impl extensions<T> for *T {
     #[doc = "Returns true if the pointer is equal to the null pointer."]
-    pure fn is_null<T>() -> bool { is_null(self) }
+    pure fn is_null() -> bool { is_null(self) }
 
     #[doc = "Returns true if the pointer is not equal to the null pointer."]
-    pure fn is_not_null<T>() -> bool { is_not_null(self) }
+    pure fn is_not_null() -> bool { is_not_null(self) }
 }
 
 #[test]
