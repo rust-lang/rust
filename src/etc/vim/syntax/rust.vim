@@ -15,11 +15,17 @@ if !exists("main_syntax")
 endif
 
 syn keyword   rustKeyword     alt as assert be bind break
-syn keyword   rustKeyword     check claim cont const copy do else enum export fail
-syn keyword   rustKeyword     fn for if iface impl import in inline lambda let log
+syn keyword   rustKeyword     check claim cont const copy do else export fail
+syn keyword   rustKeyword     for if impl import in inline lambda let log
 syn keyword   rustKeyword     loop mod mut mutable native note of prove pure
-syn keyword   rustKeyword     resource ret self syntax to type unchecked
+syn keyword   rustKeyword     ret self syntax to unchecked
 syn keyword   rustKeyword     unsafe use while with
+" FIXME: Scoped impl's name is also fallen in this category
+syn keyword   rustKeyword     mod iface resource class enum type nextgroup=rustIdentifier skipwhite
+syn keyword   rustKeyword     fn nextgroup=rustFuncName skipwhite
+
+syn match     rustIdentifier  "\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*" display contained
+syn match     rustFuncName    "\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*" display contained
 
 " Reserved words
 syn keyword   rustKeyword     m32 m64 m128 f80 f16 f128 class trait
@@ -59,6 +65,8 @@ hi def link rustNumber        Number
 hi def link rustBoolean       Boolean
 hi def link rustFloat         Float
 hi def link rustKeyword       Keyword
+hi def link rustIdentifier    Identifier
+hi def link rustFuncName      Function
 hi def link rustComment       Comment
 hi def link rustMacro         Macro
 hi def link rustType          Type
