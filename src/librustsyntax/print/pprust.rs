@@ -526,6 +526,10 @@ fn print_item(s: ps, &&item: @ast::item) {
                   /*
                      FIXME: collect all private items and print them
                      in a single "priv" section
+
+                     tjc: I'm not going to fix this yet b/c we might
+                     change how exports work, including for class items
+                     (see #1893)
                    */
              hardbreak_if_not_bol(s);
              maybe_print_comment(s, ci.span.lo);
@@ -816,7 +820,7 @@ fn print_mac(s: ps, m: ast::mac) {
           _ { word(s.s, " "); }
         }
         option::iter(arg, bind print_expr(s, _));
-        // FIXME: extension 'body'
+        // FIXME: extension 'body' (#2339)
       }
       ast::mac_embed_type(ty) {
         word(s.s, "#<");
@@ -1735,7 +1739,7 @@ fn escape_str(st: str, to_escape: char) -> str {
           cur {
             if cur == to_escape { out += "\\"; }
             // FIXME some (or all?) non-ascii things should be escaped
-
+            // (See #2306)
             str::push_char(out, cur);
           }
         }
