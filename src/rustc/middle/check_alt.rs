@@ -122,7 +122,8 @@ fn is_useful(tcx: ty::ctxt, m: matrix, v: [@pat]) -> useful {
 
     alt pat_ctor_id(tcx, v[0]) {
       none {
-        if is_complete(tcx, m, left_ty) {
+        alt missing_ctor(tcx, m, left_ty) {
+          none {
             alt ty::get(left_ty).struct {
               ty::ty_bool {
                 alt is_useful_specialized(tcx, m, v, val(const_int(1i64)),
@@ -149,9 +150,14 @@ fn is_useful(tcx: ty::ctxt, m: matrix, v: [@pat]) -> useful {
                 is_useful_specialized(tcx, m, v, single, arity, left_ty)
               }
             }
-        } else {
-            is_useful(tcx, vec::filter_map(m, {|r| default(tcx, r)}),
-                      vec::tail(v))
+          }
+          some(ctor) {
+            alt is_useful(tcx, vec::filter_map(m, {|r| default(tcx, r)}),
+                          vec::tail(v)) {
+              useful_ { useful(left_ty, ctor) }
+              u { u }
+            }
+          }
         }
       }
       some(v0_ctor) {
@@ -202,13 +208,13 @@ fn is_wild(tcx: ty::ctxt, p: @pat) -> bool {
     }
 }
 
-fn is_complete(tcx: ty::ctxt, m: matrix, left_ty: ty::t) -> bool {
+fn missing_ctor(tcx: ty::ctxt, m: matrix, left_ty: ty::t) -> option<ctor> {
     alt ty::get(left_ty).struct {
       ty::ty_box(_) | ty::ty_uniq(_) | ty::ty_tup(_) | ty::ty_rec(_) {
         for m.each {|r|
-            if !is_wild(tcx, r[0]) { ret true; }
+            if !is_wild(tcx, r[0]) { ret none; }
         }
-        ret false;
+        ret some(single);
       }
       ty::ty_enum(eid, _) {
         let mut found = [];
@@ -217,9 +223,17 @@ fn is_complete(tcx: ty::ctxt, m: matrix, left_ty: ty::t) -> bool {
                 if !vec::contains(found, id) { found += [id]; }
             }
         }
-        found.len() == (*ty::enum_variants(tcx, eid)).len()
+        let variants = ty::enum_variants(tcx, eid);
+        if found.len() != (*variants).len() {
+            for vec::each(*variants) {|v|
+                if !found.contains(variant(v.id)) {
+                    ret some(variant(v.id));
+                }
+            }
+            fail;
+        } else { none }
       }
-      ty::ty_nil { true }
+      ty::ty_nil { none }
       ty::ty_bool {
         let mut true_found = false, false_found = false;
         for m.each {|r|
@@ -229,9 +243,11 @@ fn is_complete(tcx: ty::ctxt, m: matrix, left_ty: ty::t) -> bool {
               some(val(const_int(0i64))) { false_found = true; }
             }
         }
-        true_found && false_found
+        if true_found && false_found { none }
+        else if true_found { some(val(const_int(0i64))) }
+        else { some(val(const_int(1i64))) }
       }
-      _ { false }
+      _ { some(single) }
     }
 }
 

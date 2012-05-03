@@ -16,6 +16,9 @@ fn main() {
       (a, b) {}
       (b, a) {}
     }
+    alt a { //! ERROR b not covered
+      a {}
+    }
     // This is exhaustive, though the algorithm got it wrong at one point
     alt (a, b) {
       (a, _) {}
