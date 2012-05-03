@@ -1,3 +1,4 @@
+// xfail-win32
 // Passing enums by value
 
 enum void { }
