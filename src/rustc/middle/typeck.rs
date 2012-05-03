@@ -559,20 +559,27 @@ fn ast_path_to_ty<AC: ast_conv, RS: region_scope copy>(
 /*
   Instantiates the path for the given iface reference, assuming that
   it's bound to a valid iface type. Returns the def_id for the defining
-  iface
+  iface. Fails if the type is a type other than an iface type.
  */
 fn instantiate_iface_ref(ccx: @crate_ctxt, t: @ast::iface_ref,
                          rp: ast::region_param)
     -> (ast::def_id, ty_param_substs_and_ty) {
 
+    let sp = t.path.span, err = "can only implement interface types",
+        sess = ccx.tcx.sess;
+
     alt lookup_def_tcx(ccx.tcx, t.path.span, t.id) {
       ast::def_ty(t_id) {
-        (t_id, ast_path_to_ty(ccx, type_rscope(rp), t_id, t.path, t.id))
+        let tpt = ast_path_to_ty(ccx, type_rscope(rp), t_id, t.path, t.id);
+        alt ty::get(tpt.ty).struct {
+           ty::ty_iface(*) {
+              (t_id, tpt)
+           }
+           _ { sess.span_fatal(sp, err); }
+        }
       }
       _ {
-        ccx.tcx.sess.span_fatal(
-            t.path.span,
-            "can only implement interface types");
+          sess.span_fatal(sp, err);
       }
     }
 }
