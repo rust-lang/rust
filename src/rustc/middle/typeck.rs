@@ -2738,6 +2738,25 @@ impl methods for lookup {
                     self.tcx().sess.span_err(
                         self.expr.span,
                         "multiple applicable methods in scope");
+
+                    // I would like to print out how each impl was imported,
+                    // but I cannot for the life of me figure out how to
+                    // annotate resolve to preserve this information.
+                    for results.eachi { |i, result|
+                        let (_, _, did) = result;
+                        let span = if did.crate == ast::local_crate {
+                            alt check self.tcx().items.get(did.node) {
+                              ast_map::node_method(m, _, _) { m.span }
+                            }
+                        } else {
+                            self.expr.span
+                        };
+                        self.tcx().sess.span_note(
+                            span,
+                            #fmt["candidate #%u is %s",
+                                 (i+1u),
+                                 ty::item_path_str(self.tcx(), did)]);
+                    }
                 }
 
                 let (self_substs, n_tps, did) = results[0];
