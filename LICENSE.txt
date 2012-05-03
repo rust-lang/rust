@@ -199,7 +199,7 @@ included:
   as the Rust compiler or runtime libraries themselves).
 
 * The libuv asynchronous I/O library. Code for this package
-  is found in the src/rt/libuv directory, within this
+  is found in the src/libuv directory, within this
   distribution. This package is redistributed under the
   following terms, as noted in its source:
 
@@ -230,7 +230,7 @@ included:
 
 
 * Additional libraries included in libuv carry separate
-  BSD-compatible licenses. See src/rt/libuv/LICENSE for
+  BSD-compatible licenses. See src/libuv/LICENSE for
   details.
 
 
