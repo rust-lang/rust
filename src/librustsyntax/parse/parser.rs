@@ -1206,7 +1206,7 @@ fn parse_capture_clause(p: parser) -> @ast::capture_clause {
 fn parse_fn_expr(p: parser, proto: ast::proto) -> @ast::expr {
     let lo = p.last_span.lo;
     let capture_clause = parse_capture_clause(p);
-    let decl = parse_fn_decl(p, ast::impure_fn, parse_fn_block_arg);
+    let decl = parse_fn_decl(p, ast::impure_fn);
     let body = parse_block(p);
     ret mk_expr(p, lo, body.span.hi,
                 ast::expr_fn(proto, decl, body, capture_clause));
@@ -1699,12 +1699,11 @@ fn parse_ty_params(p: parser) -> [ast::ty_param] {
     } else { [] }
 }
 
-fn parse_fn_decl(p: parser, purity: ast::purity,
-                 parse_arg_fn: fn(parser) -> ast::arg)
+fn parse_fn_decl(p: parser, purity: ast::purity)
     -> ast::fn_decl {
     let inputs: ast::spanned<[ast::arg]> =
         parse_seq(token::LPAREN, token::RPAREN, seq_sep(token::COMMA),
-                  parse_arg_fn, p);
+                  parse_arg, p);
     // Use the args list to translate each bound variable
     // mentioned in a constraint to an arg index.
     // Seems weird to do this in the parser, but I'm not sure how else to.
@@ -1761,7 +1760,7 @@ fn parse_item_fn(p: parser, purity: ast::purity,
                  attrs: [ast::attribute]) -> @ast::item {
     let lo = p.last_span.lo;
     let t = parse_fn_header(p);
-    let decl = parse_fn_decl(p, purity, parse_arg);
+    let decl = parse_fn_decl(p, purity);
     let (inner_attrs, body) = parse_inner_attrs_and_block(p, true);
     let attrs = attrs + inner_attrs;
     ret mk_item(p, lo, body.span.hi, t.ident,
@@ -1786,7 +1785,7 @@ fn parse_method(p: parser, pr: ast::privacy) -> @ast::method {
     let lo = p.span.lo, pur = parse_fn_purity(p);
     let ident = parse_method_name(p);
     let tps = parse_ty_params(p);
-    let decl = parse_fn_decl(p, pur, parse_arg);
+    let decl = parse_fn_decl(p, pur);
     let (inner_attrs, body) = parse_inner_attrs_and_block(p, true);
     let attrs = attrs + inner_attrs;
     @{ident: ident, attrs: attrs, tps: tps, decl: decl, body: body,
@@ -1970,7 +1969,7 @@ fn parse_class_item(p:parser, class_name_with_tps: @ast::path)
         let lo = p.last_span.lo;
         // Can ctors have attrs?
             // result type is always the type of the class
-        let decl_ = parse_fn_decl(p, ast::impure_fn, parse_arg);
+        let decl_ = parse_fn_decl(p, ast::impure_fn);
         let decl = {output: @{id: p.get_id(),
                       node: ast::ty_path(class_name_with_tps, p.get_id()),
                       span: decl_.output.span}
@@ -2049,7 +2048,7 @@ fn parse_item_native_fn(p: parser, attrs: [ast::attribute],
                         purity: ast::purity) -> @ast::native_item {
     let lo = p.last_span.lo;
     let t = parse_fn_header(p);
-    let decl = parse_fn_decl(p, purity, parse_arg);
+    let decl = parse_fn_decl(p, purity);
     let mut hi = p.span.hi;
     expect(p, token::SEMI);
     ret @{ident: t.ident,

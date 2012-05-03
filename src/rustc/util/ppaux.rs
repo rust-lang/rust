@@ -130,9 +130,18 @@ fn ty_to_str(cx: ctxt, typ: t) -> str {
     }
 
     // if there is an id, print that instead of the structural type:
-    for ty::type_def_id(typ).each { |def_id|
-        // note that this typedef cannot have type parameters
-        ret ast_map::path_to_str(ty::item_path(cx, def_id));
+    alt ty::type_def_id(typ) {
+      some(def_id) {
+        let cs = ast_map::path_to_str(ty::item_path(cx, def_id));
+        ret alt ty::get(typ).struct {
+          ty_enum(_, substs) | ty_res(_, _, substs) | ty_class(_, substs) |
+          ty_iface(_, substs) {
+            parameterized(cx, cs, substs.self_r, substs.tps)
+          }
+          _ { cs }
+        };
+      }
+      none { /* fallthrough */}
     }
 
     // pretty print the structural type representation:

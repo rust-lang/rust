@@ -1096,14 +1096,6 @@ impl extensions<T> for [T] {
     #[inline]
     fn map<U>(f: fn(T) -> U) -> [U] { map(self, f) }
     #[doc = "
-    Apply a function to the index and value of each element in the vector
-    and return the results
-    "]
-    fn mapi<U>(f: fn(uint, T) -> U) -> [U] {
-        let mut i = 0u;
-        self.map { |e| i += 1u; f(i - 1u, e) }
-    }
-    #[doc = "
     Apply a function to each element of a vector and return a concatenation
     of each result vector
     "]

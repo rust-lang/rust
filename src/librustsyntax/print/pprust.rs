@@ -1351,6 +1351,13 @@ fn print_cap_clause(s: ps, cap_clause: ast::capture_clause) {
 
 fn print_fn_args_and_ret(s: ps, decl: ast::fn_decl) {
     popen(s);
+    fn print_arg(s: ps, x: ast::arg) {
+        ibox(s, indent_unit);
+        print_arg_mode(s, x.mode);
+        word_space(s, x.ident + ":");
+        print_type(s, x.ty);
+        end(s);
+    }
     commasep(s, inconsistent, decl.inputs, print_arg);
     pclose(s);
     word(s.s, constrs_str(decl.constraints, {|c|
@@ -1367,6 +1374,16 @@ fn print_fn_args_and_ret(s: ps, decl: ast::fn_decl) {
 
 fn print_fn_block_args(s: ps, decl: ast::fn_decl) {
     word(s.s, "|");
+    fn print_arg(s: ps, x: ast::arg) {
+        ibox(s, indent_unit);
+        print_arg_mode(s, x.mode);
+        word(s.s, x.ident);
+        if x.ty.node != ast::ty_infer {
+            word_space(s, ":");
+            print_type(s, x.ty);
+        }
+        end(s);
+    }
     commasep(s, inconsistent, decl.inputs, print_arg);
     word(s.s, "|");
     if decl.output.node != ast::ty_infer {
@@ -1524,23 +1541,6 @@ fn print_mt(s: ps, mt: ast::mt) {
     print_type(s, mt.ty);
 }
 
-fn print_arg(s: ps, input: ast::arg) {
-    ibox(s, indent_unit);
-    print_arg_mode(s, input.mode);
-    alt input.ty.node {
-      ast::ty_infer {
-        word(s.s, input.ident);
-      }
-      _ {
-        if str::len(input.ident) > 0u {
-            word_space(s, input.ident + ":");
-        }
-        print_type(s, input.ty);
-      }
-    }
-    end(s);
-}
-
 fn print_ty_fn(s: ps, opt_proto: option<ast::proto>,
                decl: ast::fn_decl, id: option<ast::ident>,
                tps: option<[ast::ty_param]>) {
@@ -1550,6 +1550,13 @@ fn print_ty_fn(s: ps, opt_proto: option<ast::proto>,
     alt tps { some(tps) { print_type_params(s, tps); } _ { } }
     zerobreak(s.s);
     popen(s);
+    fn print_arg(s: ps, input: ast::arg) {
+        print_arg_mode(s, input.mode);
+        if str::len(input.ident) > 0u {
+            word_space(s, input.ident + ":");
+        }
+        print_type(s, input.ty);
+    }
     commasep(s, inconsistent, decl.inputs, print_arg);
     pclose(s);
     maybe_print_comment(s, decl.output.span.lo);
