@@ -20,6 +20,7 @@ export eq_vec;
 //        union, intersection, and difference. At that point, we could write
 //        an optimizing version of this module that produces a different obj
 //        for the case where nbits <= 32.
+// (Issue #2341)
 
 #[doc = "The bitvector type"]
 type bitv = @{storage: [mut uint], nbits: uint};
@@ -104,7 +105,7 @@ pure fn get(v: bitv, i: uint) -> bool {
 }
 
 // FIXME: This doesn't account for the actual size of the vectors,
-// so it could end up comparing garbage bits
+// so it could end up comparing garbage bits (#2342)
 #[doc = "
 Compares two bitvectors
 
@@ -112,16 +113,10 @@ Both bitvectors must be the same length. Returns `true` if both bitvectors
 contain identical elements.
 "]
 fn equal(v0: bitv, v1: bitv) -> bool {
-    // FIXME: when we can break or return from inside an iterator loop,
-    //        we can eliminate this painful while-loop
-
     let len = vec::len(v1.storage);
-    let mut i = 0u;
-    while i < len {
+    for uint::iterate(0u, len) {|i|
         if v0.storage[i] != v1.storage[i] { ret false; }
-        i = i + 1u;
     }
-    ret true;
 }
 
 #[doc = "Set all bits to 0"]
