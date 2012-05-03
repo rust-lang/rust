@@ -39,20 +39,25 @@ syn match     rustItemPath    "\(\w\|::\)\+"
 
 syn region	  rustString      start=+L\="+ skip=+\\\\\|\\"+ end=+"+
 
-"integer number, or floating point number without a dot and with "f".
-syn case ignore
-syn match	  rustNumber		display contained "\d\+\(u\=l\{0,2}\|ll\=u\)\>"
-"hex number
-syn match	  rustNumber		display contained "0x\x\+\(u\=l\{0,2}\|ll\=u\)\>"
-syn match	rustFloat		display contained "\d\+f"
-"floating point number, with dot, optional exponent
-syn match	rustFloat		display contained "\d\+\.\d*\(e[-+]\=\d\+\)\=[fl]\="
-"floating point number, starting with a dot, optional exponent
-syn match	rustFloat		display contained "\.\d\+\(e[-+]\=\d\+\)\=[fl]\=\>"
-"floating point number, without dot, with exponent
-syn match	rustFloat		display contained "\d\+e[-+]\=\d\+[fl]\=\>"
+" Number/Float literals
+syn match     rustNumber      display "\<\d\>"
+syn match     rustNumber      display "\<[1-9]\d\+\>"
+syn match     rustNumber      display "\<\d\+\(u\|u8\|u16\|u32\|u64\)\>"
+syn match     rustNumber      display "\<\d\+\(i8\|i16\|i32\|i64\)\>"
 
-syn case match
+syn match     rustHexNumber   display "\<0[xX]\x\+\>"
+syn match     rustHexNumber   display "\<0[xX]\x\+_\(u\|u8\|u16\|u32\|u64\)\>"
+syn match     rustHexNumber   display "\<0[xX]\x\+_\(i8\|i16\|i32\|i64\)\>"
+syn match     rustOctNumber   display "\<0\o\+\>"
+syn match     rustOctNumber   display "\<0\o\+_\(u\|u8\|u16\|u32\|u64\)\>"
+syn match     rustOctNumber   display "\<0\o\+_\(i8\|i16\|i32\|i64\)\>"
+syn match     rustBinNumber   display "\<0[bB][01]\+\>"
+syn match     rustBinNumber   display "\<0[bB][01]\+_\(u\|u8\|u16\|u32\|u64\)\>"
+syn match     rustBinNumber   display "\<0[bB][01]\+_\(i8\|i16\|i32\|i64\)\>"
+
+syn match     rustFloat       display "\.\d\+\%([eE][+-]\=\d\+\)\=\>"
+syn match     rustFloat       display "\<\d\+[eE][+-]\=\d\+\>"
+syn match     rustFloat       display "\<\d\+\.\d*\%([eE][+-]\=\d\+\)\="
 
 syn match   rustCharacter   "'\([^'\\]\|\\\(['nrt\\\"]\|x\x\{2}\|u\x\{4}\|U\x\{8}\)\)'"
 
@@ -60,6 +65,10 @@ syn region    rustComment     start="/\*" end="\*/" contains=rustComment,rustTod
 syn region    rustComment     start="//" skip="\\$" end="$" contains=rustTodo keepend
 
 syn keyword   rustTodo        TODO FIXME XXX NB
+
+hi def link rustHexNumber     rustNumber
+hi def link rustOctNumber     rustNumber
+hi def link rustBinNumber     rustNumber
 
 hi def link rustString        String
 hi def link rustCharacter     Character
