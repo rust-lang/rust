@@ -13,7 +13,7 @@ import vec::each;
 import syntax::codemap::span;
 import syntax::visit;
 import visit::vt;
-import std::{list, deque};
+import std::{list};
 import std::list::{list, nil, cons};
 import option::{is_none, is_some};
 import syntax::print::pprust::*;
