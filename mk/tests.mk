@@ -515,6 +515,7 @@ $(3)/test/$$(FT_DRIVER)-$(2).out: \
 
 check-fast-T-$(2)-H-$(3): tidy			\
 	check-stage2-T-$(2)-H-$(3)-rustc	\
+	check-stage2-T-$(2)-H-$(3)-core		\
 	check-stage2-T-$(2)-H-$(3)-std		\
 	$(3)/test/$$(FT_DRIVER)-$(2).out
 
