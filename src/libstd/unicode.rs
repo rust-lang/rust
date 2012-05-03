@@ -144,9 +144,7 @@ mod icu {
     // = UCHAR_SCRIPT_EXTENSIONS;
     const UCHAR_OTHER_PROPERTY_LIMIT : UProperty = 0x7001;
 
-    const UCHAR_INVALID_CODE : UProperty = 0xffffffff;
-    // FIXME: should be -1, change when compiler supports negative
-    // constants
+    const UCHAR_INVALID_CODE : UProperty = -1;
 
     #[link_name = "icuuc"]
     #[abi = "cdecl"]
