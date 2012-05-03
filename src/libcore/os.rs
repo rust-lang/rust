@@ -813,6 +813,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore(cgf(target_os = "win32"))]
     fn test_setenv_overwrite() {
         let n = make_rand_name();
         setenv(n, "1");
@@ -825,6 +826,7 @@ mod tests {
     // Windows GetEnvironmentVariable requires some extra work to make sure
     // the buffer the variable is copied into is the right size
     #[test]
+    #[ignore(cgf(target_os = "win32"))]
     fn test_getenv_big() {
         let mut s = "";
         let mut i = 0;
