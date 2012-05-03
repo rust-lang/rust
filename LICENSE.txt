@@ -186,6 +186,7 @@ included:
     USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
     OF SUCH DAMAGE.
 
+
 * The auxiliary file src/etc/pkg/modpath.iss contains a
   library routine compiled, by Inno Setup, into the Windows
   installer binary. This file is licensed under the LGPL,
@@ -197,6 +198,7 @@ included:
   therefore LGPL, but not the terms governing distribution
   of any of the files installed by such an installer (such
   as the Rust compiler or runtime libraries themselves).
+
 
 * The libuv asynchronous I/O library. Code for this package
   is found in the src/libuv directory, within this
@@ -242,19 +244,19 @@ included:
   consulting representative comments claiming copyright
   ownership for a file.
 
-   For example, the text:
+  For example, the text:
 
       "Copyright (c) 2011 Google Inc."
 
-   appears in some files, and these files thereby denote
-   that their author and copyright-holder is Google Inc.
+  appears in some files, and these files thereby denote
+  that their author and copyright-holder is Google Inc.
 
-   In all such cases, the absence of explicit licensing text
-   indicates that the contributor chose to license their
-   work for distribution under identical terms to those
-   Mozilla has chosen for the collective work, enumerated
-   below.  The only difference is the retention of copyright
-   itself, held by the contributor.
+  In all such cases, the absence of explicit licensing text
+  indicates that the contributor chose to license their
+  work for distribution under identical terms to those
+  Mozilla has chosen for the collective work, enumerated
+  below.  The only difference is the retention of copyright
+  itself, held by the contributor.
 
 
 The remaining code and documentation in the collective work
