@@ -66,7 +66,7 @@ iface map<K: copy, V: copy> {
 }
 
 // FIXME: package this up and export it as a datatype usable for
-// external code that doesn't want to pay the cost of a box.
+// external code that doesn't want to pay the cost of a box. (#2344)
 mod chained {
     type entry<K, V> = {
         hash: uint,

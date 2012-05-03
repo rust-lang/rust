@@ -14,7 +14,7 @@ iface t<T> {
 }
 
 // FIXME eventually, a proper datatype plus an exported impl would be
-// preferrable
+// preferrable (#2343)
 fn create<T: copy>() -> t<T> {
     type cell<T> = option<T>;
 
