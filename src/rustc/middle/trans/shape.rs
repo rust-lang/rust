@@ -361,50 +361,39 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint]) -> [u8] {
         s
       }
 
-      // FIXME: grotesque hacks for encoding fixed-size evecs and estrs.
-
       ty::ty_estr(ty::vstore_fixed(n)) {
-        let mut s = [shape_struct], sub = [];
-        let mut i = 0u;
+        let mut s = [shape_fixedvec];
         let u8_t = ty::mk_mach_uint(ccx.tcx, ast::ty_u8);
-        while i < n {
-            sub += shape_of(ccx, u8_t, ty_param_map);
-            i += 1u;
-        }
-        add_substr(s, sub);
+        assert (n + 1u) <= 0xffffu;
+        add_u16(s, (n + 1u) as u16);
+        add_bool(s, true);
+        add_substr(s, shape_of(ccx, u8_t, ty_param_map));
         s
       }
 
       ty::ty_evec(mt, ty::vstore_fixed(n)) {
-        let mut s = [shape_struct], sub = [];
-        let mut i = 0u;
-        while i < n {
-            sub += shape_of(ccx, mt.ty, ty_param_map);
-            i += 1u;
-        }
-        add_substr(s, sub);
+        let mut s = [shape_fixedvec];
+        assert n <= 0xffffu;
+        add_u16(s, n as u16);
+        add_bool(s, ty::type_is_pod(ccx.tcx, mt.ty));
+        add_substr(s, shape_of(ccx, mt.ty, ty_param_map));
         s
       }
 
-
-      // FIXME: slightly-less-grotesque hack for encoding slic,e evecs and
-      // estrs.
-
       ty::ty_estr(ty::vstore_slice(r)) {
-        let mut s = [shape_struct], sub = [];
-        let u8_mt = {ty: ty::mk_mach_uint(ccx.tcx, ast::ty_u8),
-                     mutbl: ast::m_imm };
-        sub += shape_of(ccx, ty::mk_rptr(ccx.tcx, r, u8_mt), ty_param_map);
-        sub += shape_of(ccx, ty::mk_uint(ccx.tcx), ty_param_map);
-        add_substr(s, sub);
+        let mut s = [shape_slice];
+        let u8_t = ty::mk_mach_uint(ccx.tcx, ast::ty_u8);
+        add_bool(s, true); // is_pod
+        add_bool(s, true); // is_str
+        add_substr(s, shape_of(ccx, u8_t, ty_param_map));
         s
       }
 
       ty::ty_evec(mt, ty::vstore_slice(r)) {
-        let mut s = [shape_struct], sub = [];
-        sub += shape_of(ccx, ty::mk_rptr(ccx.tcx, r, mt), ty_param_map);
-        sub += shape_of(ccx, ty::mk_uint(ccx.tcx), ty_param_map);
-        add_substr(s, sub);
+        let mut s = [shape_slice];
+        add_bool(s, ty::type_is_pod(ccx.tcx, mt.ty));
+        add_bool(s, false); // is_str
+        add_substr(s, shape_of(ccx, mt.ty, ty_param_map));
         s
       }
 
@@ -434,9 +423,9 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t, ty_param_map: [uint]) -> [u8] {
         add_substr(s, sub);
         s
       }
-      ty::ty_rptr(_, tm) {
+      ty::ty_rptr(_, mt) {
         let mut s = [shape_rptr];
-        add_substr(s, shape_of(ccx, tm.ty, ty_param_map));
+        add_substr(s, shape_of(ccx, mt.ty, ty_param_map));
         s
       }
       ty::ty_res(did, raw_subt, substs) {

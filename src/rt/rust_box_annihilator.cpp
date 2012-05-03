@@ -49,8 +49,16 @@ class annihilator : public shape::data<annihilator,shape::ptr> {
         task->kernel->free(vec);
     }
 
+    void walk_fixedvec2(uint16_t sz, bool is_pod) {
+        walk_vec2(is_pod, get_fixedvec_data_range(sz, dp));
+    }
+
     void walk_vec2(bool is_pod,
                   const std::pair<shape::ptr,shape::ptr> &data_range) {
+
+        if (is_pod)
+            return;
+
         annihilator sub(*this, data_range.first);
         shape::ptr data_end = sub.end_dp = data_range.second;
         while (sub.dp < data_end) {
@@ -63,6 +71,10 @@ class annihilator : public shape::data<annihilator,shape::ptr> {
         shape::data<annihilator,shape::ptr>
           ::walk_variant1(tinfo, tag_variant);
     }
+
+    void walk_rptr2() { }
+
+    void walk_slice2(bool, bool) { }
 
     void walk_uniq2() {
         void *x = *((void **)dp);

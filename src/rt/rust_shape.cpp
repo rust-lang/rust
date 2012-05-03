@@ -254,6 +254,9 @@ class cmp : public data<cmp,ptr_pair> {
     friend class data<cmp,ptr_pair>;
 
 private:
+    void walk_slice2(bool is_pod,
+                     const std::pair<ptr_pair,ptr_pair> &data_range);
+
     void walk_vec2(bool is_pod,
                    const std::pair<ptr_pair,ptr_pair> &data_range);
 
@@ -269,6 +272,12 @@ private:
     }
 
     inline void walk_uniq_contents2(cmp &sub) {
+        sub.align = true;
+        sub.walk();
+        result = sub.result;
+    }
+
+    inline void walk_rptr_contents2(cmp &sub) {
         sub.align = true;
         sub.walk();
         result = sub.result;
@@ -341,12 +350,26 @@ public:
         walk_vec2(is_pod, get_vec_data_range(dp));
     }
 
+    void walk_slice2(bool is_pod, bool is_str) {
+        // Slices compare just like vecs.
+        walk_vec2(is_pod, get_slice_data_range(is_str, dp));
+    }
+
+    void walk_fixedvec2(uint16_t sz, bool is_pod) {
+        // Fixedvecs compare just like vecs.
+        walk_vec2(is_pod, get_fixedvec_data_range(sz, dp));
+    }
+
     void walk_box2() {
         data<cmp,ptr_pair>::walk_box_contents1();
     }
 
     void walk_uniq2() {
         data<cmp,ptr_pair>::walk_uniq_contents1();
+    }
+
+    void walk_rptr2() {
+        data<cmp,ptr_pair>::walk_rptr_contents1();
     }
 
     void walk_iface2() {

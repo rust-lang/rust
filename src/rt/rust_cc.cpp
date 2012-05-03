@@ -73,17 +73,35 @@ class irc : public shape::data<irc,shape::ptr> {
                                   in_tables, in_data),
       ircs(in_ircs) {}
 
-    void walk_vec2(bool is_pod) {
-        if (is_pod || shape::get_dp<void *>(dp) == NULL)
-            return;     // There can't be any outbound pointers from this.
 
-        std::pair<uint8_t *,uint8_t *> data_range(get_vec_data_range(dp));
+    void walk_vec2(bool is_pod, std::pair<uint8_t *,uint8_t *> data_range) {
+
+        // There can't be any outbound pointers from pod.
+        if (is_pod)
+            return;
+
         irc sub(*this, data_range.first);
         shape::ptr data_end = sub.end_dp = data_range.second;
         while (sub.dp < data_end) {
             sub.walk_reset();
+            // FIXME: shouldn't this be 'sub.align = true;'?
             align = true;
         }
+    }
+
+    void walk_vec2(bool is_pod) {
+        if (shape::get_dp<void *>(dp) == NULL)
+            return;
+
+        walk_vec2(is_pod, get_vec_data_range(dp));
+    }
+
+    void walk_slice2(bool is_pod, bool is_str) {
+        walk_vec2(is_pod, get_slice_data_range(is_str, dp));
+    }
+
+    void walk_fixedvec2(uint16_t sz, bool is_pod) {
+        walk_vec2(is_pod, get_fixedvec_data_range(sz, dp));
     }
 
     void walk_tag2(shape::tag_info &tinfo, uint32_t tag_variant) {
@@ -100,6 +118,10 @@ class irc : public shape::data<irc,shape::ptr> {
 
     void walk_uniq2() {
         shape::data<irc,shape::ptr>::walk_uniq_contents1();
+    }
+
+    void walk_rptr2() {
+        shape::data<irc,shape::ptr>::walk_rptr_contents1();
     }
 
     void walk_fn2(char code) {
@@ -136,6 +158,8 @@ class irc : public shape::data<irc,shape::ptr> {
     void walk_subcontext2(irc &sub) { sub.walk(); }
 
     void walk_uniq_contents2(irc &sub) { sub.walk(); }
+
+    void walk_rptr_contents2(irc &sub) { sub.walk(); }
 
     void walk_box_contents2(irc &sub) {
         maybe_record_irc();
@@ -305,11 +329,12 @@ class mark : public shape::data<mark,shape::ptr> {
                                    in_tables, in_data),
       marked(in_marked) {}
 
-    void walk_vec2(bool is_pod) {
-        if (is_pod || shape::get_dp<void *>(dp) == NULL)
-            return;     // There can't be any outbound pointers from this.
+    void walk_vec2(bool is_pod, std::pair<uint8_t *,uint8_t *> data_range) {
 
-        std::pair<uint8_t *,uint8_t *> data_range(get_vec_data_range(dp));
+        // There can't be any outbound pointers from pod.
+        if (is_pod)
+            return;
+
         if (data_range.second - data_range.first > 100000)
             abort();    // FIXME: Temporary sanity check.
 
@@ -319,6 +344,20 @@ class mark : public shape::data<mark,shape::ptr> {
             sub.walk_reset();
             align = true;
         }
+    }
+
+    void walk_vec2(bool is_pod) {
+        if (shape::get_dp<void *>(dp) == NULL)
+            return;
+        walk_vec2(is_pod, get_vec_data_range(dp));
+    }
+
+    void walk_slice2(bool is_pod, bool is_str) {
+        walk_vec2(is_pod, get_slice_data_range(is_str, dp));
+    }
+
+    void walk_fixedvec2(uint16_t sz, bool is_pod) {
+        walk_vec2(is_pod, get_fixedvec_data_range(sz, dp));
     }
 
     void walk_tag2(shape::tag_info &tinfo, uint32_t tag_variant) {
@@ -335,6 +374,10 @@ class mark : public shape::data<mark,shape::ptr> {
 
     void walk_uniq2() {
         shape::data<mark,shape::ptr>::walk_uniq_contents1();
+    }
+
+    void walk_rptr2() {
+        shape::data<mark,shape::ptr>::walk_rptr_contents1();
     }
 
     void walk_fn2(char code) {
@@ -371,6 +414,8 @@ class mark : public shape::data<mark,shape::ptr> {
     void walk_subcontext2(mark &sub) { sub.walk(); }
 
     void walk_uniq_contents2(mark &sub) { sub.walk(); }
+
+    void walk_rptr_contents2(mark &sub) { sub.walk(); }
 
     void walk_box_contents2(mark &sub) {
         rust_opaque_box *box_ptr = *(rust_opaque_box **) dp;

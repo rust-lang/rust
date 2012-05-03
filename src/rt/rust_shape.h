@@ -59,6 +59,8 @@ const uint8_t SHAPE_BARE_FN = 27u;
 const uint8_t SHAPE_TYDESC = 28u;
 const uint8_t SHAPE_SEND_TYDESC = 29u;
 const uint8_t SHAPE_RPTR = 31u;
+const uint8_t SHAPE_FIXEDVEC = 32u;
+const uint8_t SHAPE_SLICE = 33u;
 
 #ifdef _LP64
 const uint8_t SHAPE_PTR = SHAPE_U64;
@@ -279,6 +281,9 @@ private:
     void walk_struct0();
     void walk_res0();
     void walk_var0();
+    void walk_rptr0();
+    void walk_fixedvec0();
+    void walk_slice0();
 };
 
 
@@ -377,8 +382,11 @@ ctxt<T>::walk() {
     case SHAPE_UNIQ_FN:
     case SHAPE_STACK_FN:
     case SHAPE_BARE_FN:  static_cast<T*>(this)->walk_fn1(s); break;
-    case SHAPE_SEND_TYDESC:
-    case SHAPE_TYDESC:   static_cast<T*>(this)->walk_tydesc1(s); break;
+    case SHAPE_TYDESC:
+    case SHAPE_SEND_TYDESC: static_cast<T*>(this)->walk_tydesc1(s); break;
+    case SHAPE_RPTR:     walk_rptr0();            break;
+    case SHAPE_FIXEDVEC: walk_fixedvec0();        break;
+    case SHAPE_SLICE:    walk_slice0();           break;
     default:             abort();
     }
 }
@@ -504,6 +512,44 @@ ctxt<T>::walk_uniq0() {
 
 template<typename T>
 void
+ctxt<T>::walk_rptr0() {
+    uint16_t sp_size = get_u16_bump(sp);
+    const uint8_t *end_sp = sp + sp_size;
+
+    static_cast<T *>(this)->walk_rptr1();
+
+    sp = end_sp;
+}
+
+template<typename T>
+void
+ctxt<T>::walk_fixedvec0() {
+    uint16_t vec_size = get_u16_bump(sp);
+    bool is_pod = *sp++;
+    uint16_t sp_size = get_u16_bump(sp);
+    const uint8_t *end_sp = sp + sp_size;
+
+    static_cast<T *>(this)->walk_fixedvec1(vec_size, is_pod);
+
+    sp = end_sp;
+}
+
+template<typename T>
+void
+ctxt<T>::walk_slice0() {
+    bool is_pod = *sp++;
+    bool is_str = *sp++;
+    uint16_t sp_size = get_u16_bump(sp);
+    const uint8_t *end_sp = sp + sp_size;
+
+    static_cast<T *>(this)->walk_slice1(is_pod, is_str);
+
+    sp = end_sp;
+}
+
+
+template<typename T>
+void
 ctxt<T>::walk_struct0() {
     uint16_t sp_size = get_u16_bump(sp);
     const uint8_t *end_sp = sp + sp_size;
@@ -580,6 +626,15 @@ public:
     void walk_box1() {
         DPRINT("@<"); walk(); DPRINT(">");
     }
+    void walk_rptr1() {
+        DPRINT("&<"); walk(); DPRINT(">");
+    }
+    void walk_fixedvec1(uint16_t sz, bool is_pod) {
+      DPRINT("fixedvec<%u, ", sz); walk(); DPRINT(">");
+    }
+    void walk_slice1(bool is_pod, bool is_str) {
+      DPRINT("slice<"); walk(); DPRINT(">");
+    }
 
     void walk_fn1(char kind) {
         switch(kind) {
@@ -641,6 +696,9 @@ public:
     void walk_struct1(const uint8_t *end_sp);
 
     void walk_uniq1()       { sa.set(sizeof(void *),   sizeof(void *)); }
+    void walk_rptr1()       { sa.set(sizeof(void *),   sizeof(void *)); }
+    void walk_slice1(bool,bool)
+                            { sa.set(sizeof(void *)*2, sizeof(void *)); }
     void walk_box1()        { sa.set(sizeof(void *),   sizeof(void *)); }
     void walk_fn1(char)     { sa.set(sizeof(void *)*2, sizeof(void *)); }
     void walk_iface1()      { sa.set(sizeof(void *),   sizeof(void *)); }
@@ -661,6 +719,12 @@ public:
     void walk_res1(const rust_fn *dtor, unsigned n_params,
                    const type_param *params, const uint8_t *end_sp) {
         abort();    // TODO
+    }
+
+    void walk_fixedvec1(uint16_t sz, bool is_pod) {
+        size_of sub(*this);
+        sub.walk();
+        sa.set(sub.sa.size * sz, sub.sa.alignment);
     }
 
     template<typename T>
@@ -881,12 +945,23 @@ protected:
 
     void walk_box_contents1();
     void walk_uniq_contents1();
+    void walk_rptr_contents1();
     void walk_fn_contents1();
     void walk_iface_contents1();
     void walk_variant1(tag_info &tinfo, tag_variant_t variant);
 
     static std::pair<uint8_t *,uint8_t *> get_vec_data_range(ptr dp);
     static std::pair<ptr_pair,ptr_pair> get_vec_data_range(ptr_pair &dp);
+
+    static std::pair<uint8_t *,uint8_t *> get_slice_data_range(bool is_str,
+                                                               ptr dp);
+    static std::pair<ptr_pair,ptr_pair> get_slice_data_range(bool is_str,
+                                                             ptr_pair &dp);
+
+    static std::pair<uint8_t *,uint8_t *>
+        get_fixedvec_data_range(uint16_t sz, ptr dp);
+    static std::pair<ptr_pair,ptr_pair>
+        get_fixedvec_data_range(uint16_t sz, ptr_pair &dp);
 
 public:
     data(rust_task *in_task,
@@ -902,6 +977,7 @@ public:
     void walk_tag1(tag_info &tinfo);
 
     void walk_struct1(const uint8_t *end_sp) {
+        // FIXME: shouldn't we be aligning to the first element here?
         static_cast<T *>(this)->walk_struct2(end_sp);
     }
 
@@ -909,9 +985,21 @@ public:
         DATA_SIMPLE(void *, walk_vec2(is_pod));
     }
 
+    void walk_slice1(bool is_pod, bool is_str) {
+        DATA_SIMPLE(void *, walk_slice2(is_pod, is_str));
+    }
+
+    void walk_fixedvec1(uint16_t sz, bool is_pod) {
+        size_align sa = size_of::get(*this);
+        ALIGN_TO(sa.alignment);
+        static_cast<T *>(this)->walk_fixedvec2(sz, is_pod);
+    }
+
     void walk_box1() { DATA_SIMPLE(void *, walk_box2()); }
 
     void walk_uniq1() { DATA_SIMPLE(void *, walk_uniq2()); }
+
+    void walk_rptr1() { DATA_SIMPLE(void *, walk_rptr2()); }
 
     void walk_fn1(char code) {
         ALIGN_TO(rust_alignof<void *>());
@@ -987,6 +1075,15 @@ data<T,U>::walk_uniq_contents1() {
 
 template<typename T,typename U>
 void
+data<T,U>::walk_rptr_contents1() {
+    typename U::template data<uint8_t *>::t box_ptr = bump_dp<uint8_t *>(dp);
+    U data_ptr(box_ptr);
+    T sub(*static_cast<T *>(this), data_ptr);
+    static_cast<T *>(this)->walk_rptr_contents2(sub);
+}
+
+template<typename T,typename U>
+void
 data<T,U>::walk_variant1(tag_info &tinfo, tag_variant_t variant_id) {
     std::pair<const uint8_t *,const uint8_t *> variant_ptr_and_end =
       this->get_variant_sp(tinfo, variant_id);
@@ -1011,6 +1108,45 @@ data<T,U>::get_vec_data_range(ptr_pair &dp) {
     ptr_pair end(fst.second, snd.second);
     return std::make_pair(start, end);
 }
+
+template<typename T,typename U>
+std::pair<uint8_t *,uint8_t *>
+data<T,U>::get_slice_data_range(bool is_str, ptr dp) {
+    uint8_t* ptr = bump_dp<uint8_t*>(dp);
+    size_t len = bump_dp<size_t>(dp);
+    if (is_str) len--;
+    return std::make_pair(ptr, ptr + len);
+}
+
+template<typename T,typename U>
+std::pair<ptr_pair,ptr_pair>
+data<T,U>::get_slice_data_range(bool is_str, ptr_pair &dp) {
+    std::pair<uint8_t *,uint8_t *> fst =
+        get_slice_data_range(is_str, dp.fst);
+    std::pair<uint8_t *,uint8_t *> snd =
+        get_slice_data_range(is_str, dp.snd);
+    ptr_pair start(fst.first, snd.first);
+    ptr_pair end(fst.second, snd.second);
+    return std::make_pair(start, end);
+}
+
+template<typename T,typename U>
+std::pair<uint8_t *,uint8_t *>
+data<T,U>::get_fixedvec_data_range(uint16_t sz, ptr dp) {
+    uint8_t* ptr = (uint8_t*)(dp);
+    return std::make_pair(ptr, ptr + sz);
+}
+
+template<typename T,typename U>
+std::pair<ptr_pair,ptr_pair>
+data<T,U>::get_fixedvec_data_range(uint16_t sz, ptr_pair &dp) {
+    std::pair<uint8_t *,uint8_t *> fst = get_fixedvec_data_range(sz, dp.fst);
+    std::pair<uint8_t *,uint8_t *> snd = get_fixedvec_data_range(sz, dp.snd);
+    ptr_pair start(fst.first, snd.first);
+    ptr_pair end(fst.second, snd.second);
+    return std::make_pair(start, end);
+}
+
 
 template<typename T,typename U>
 void
@@ -1111,6 +1247,16 @@ private:
             walk_vec2(is_pod, get_vec_data_range(dp));
     }
 
+    void walk_slice2(bool is_pod, bool is_str) {
+        walk_vec2(is_pod, get_slice_data_range(dp, is_str));
+        out << "/&";
+    }
+
+    void walk_fixedvec2(uint16_t sz, bool is_pod) {
+        walk_vec2(is_pod, get_fixedvec_data_range(sz, dp));
+        out << "/" << sz;
+    }
+
     void walk_tag2(tag_info &tinfo, tag_variant_t tag_variant) {
         // out << prefix << "tag" << tag_variant;
         out << prefix << get_variant_name(tinfo, tag_variant);
@@ -1127,6 +1273,12 @@ private:
         out << prefix << "~";
         prefix = "";
         data<log,ptr>::walk_uniq_contents1();
+    }
+
+    void walk_rptr2() {
+        out << prefix << "&";
+        prefix = "";
+        data<log,ptr>::walk_rptr_contents1();
     }
 
     void walk_fn2(char kind) {
@@ -1165,8 +1317,15 @@ private:
         sub.walk();
     }
 
+    void walk_rptr_contents2(log &sub) {
+        out << prefix;
+        sub.align = true;
+        sub.walk();
+    }
+
     void walk_struct2(const uint8_t *end_sp);
     void walk_vec2(bool is_pod, const std::pair<ptr,ptr> &data);
+    void walk_slice2(bool is_pod, const std::pair<ptr,ptr> &data);
     void walk_variant2(tag_info &tinfo,
                        tag_variant_t variant_id,
                        const std::pair<const uint8_t *,const uint8_t *>
