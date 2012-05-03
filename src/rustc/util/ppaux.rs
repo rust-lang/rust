@@ -84,6 +84,12 @@ fn vstore_to_str(cx: ctxt, vs: ty::vstore) -> str {
     }
 }
 
+fn tys_to_str(cx: ctxt, ts: [t]) -> str {
+    let mut rs = "";
+    for ts.each {|t| rs += ty_to_str(cx, t); }
+    rs
+}
+
 fn ty_to_str(cx: ctxt, typ: t) -> str {
     fn fn_input_to_str(cx: ctxt, input: {mode: ast::mode, ty: t}) ->
        str {

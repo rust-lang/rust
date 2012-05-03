@@ -12,8 +12,7 @@ import metadata::csearch;
 import util::common::*;
 import util::ppaux::region_to_str;
 import util::ppaux::vstore_to_str;
-import util::ppaux::ty_to_str;
-import util::ppaux::ty_constr_to_str;
+import util::ppaux::{ty_to_str, tys_to_str, ty_constr_to_str};
 import syntax::print::pprust::*;
 
 export ty_vid, region_vid, vid;

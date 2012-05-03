@@ -1,6 +1,7 @@
 import result::{result, extensions};
 import syntax::{ast, ast_util};
 import ast::spanned;
+import ast_map::node_id_to_str;
 import syntax::ast_util::{local_def, respan, split_class_items};
 import syntax::visit;
 import metadata::csearch;
@@ -12,7 +13,7 @@ import middle::ty;
 import middle::ty::{arg, field, node_type_table, mk_nil,
                     ty_param_bounds_and_ty, lookup_public_fields};
 import middle::ty::{ty_vid, region_vid, vid};
-import util::ppaux::{ty_to_str, region_to_str,
+import util::ppaux::{ty_to_str, tys_to_str, region_to_str,
                      bound_region_to_str, vstore_to_str};
 import std::smallintmap;
 import std::smallintmap::map;
@@ -1639,6 +1640,8 @@ mod collect {
             let fty = ty::mk_fn(tcx, mty.fty);
             tcx.tcache.insert(
                 local_def(m.id),
+                // n.b. This code is kind of sketchy (concat'ing i_bounds
+                // with bounds), but removing *i_bounds breaks other stuff
                 {bounds: @(*i_bounds + *bounds), rp: rp, ty: fty});
             write_ty_to_tcx(tcx, m.id, fty);
             {mty: mty, id: m.id, span: m.span}

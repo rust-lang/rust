@@ -430,17 +430,17 @@ fn resolve_names(e: @env, c: @ast::crate) {
 
     fn walk_item(e: @env, i: @ast::item, sc: scopes, v: vt<scopes>) {
         visit_item_with_scope(e, i, sc, v);
-        /*
-          Resolve the ifaces that a class implements; do nothing for
-          non-class items
-         */
         alt i.node {
-          ast::item_class(_, ifaces, _, _, _) {
-            /* visit the iface paths... */
-            for ifaces.each {|p| resolve_iface_ref(p, sc, e) ;}
-          }
+          /* At this point, the code knows what ifaces the iface refs
+             refer to, so it's possible to resolve them.
+           */
           ast::item_impl(_, _, ifce, _, _) {
-            ifce.iter { |p| resolve_iface_ref(p, sc, e); }
+            ifce.iter {|p| resolve_iface_ref(p, sc, e);}
+          }
+          ast::item_class(_, ifaces, _, _, _) {
+            for ifaces.each {|p|
+               resolve_iface_ref(p, sc, e);
+            }
           }
           _ {}
         }
@@ -529,6 +529,10 @@ fn resolve_names(e: @env, c: @ast::crate) {
 
 
 // Visit helper functions
+/*
+  This is used in more than one context, thus should only call generic
+  visit methods. Called both from map_crate and resolve_names.
+ */
 fn visit_item_with_scope(e: @env, i: @ast::item, sc: scopes, v: vt<scopes>) {
     // Some magic here. Items with the !resolve_unexported attribute
     // cause us to consider every name to be exported when resolving their
@@ -567,6 +571,12 @@ fn visit_item_with_scope(e: @env, i: @ast::item, sc: scopes, v: vt<scopes>) {
         /* visit the constructor... */
         let ctor_scope = cons(scope_method(ctor.node.self_id, tps),
                               @class_scope);
+        /*
+          but, I should visit the ifaces refs in the class scope, no?
+         */
+        for ifaces.each {|p|
+            visit::visit_path(p.path, class_scope, v);
+        }
         visit_fn_with_scope(e, visit::fk_item_fn(i.ident, tps), ctor.node.dec,
                             ctor.node.body, ctor.span, ctor.node.id,
                             ctor_scope, v);

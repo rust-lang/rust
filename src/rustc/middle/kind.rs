@@ -242,6 +242,9 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
                         ty::ty_class(parent_id, ts) {
                             /* ...and if it has a class type, prepend the
                                class bounds onto the method bounds */
+                            /* n.b. this code is very likely sketchy --
+                             currently, class-impl-very-parameterized-iface
+                             fails here and is thus xfailed */
                             bounds =
                              @(*ty::lookup_item_type(cx.tcx, parent_id).bounds
                                + *bounds);
@@ -260,6 +263,13 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
                 }
               }
             };
+            if vec::len(ts) != vec::len(*bounds) {
+              // Fail earlier to make debugging easier
+              fail #fmt("Internal error: in kind::check_expr, length \
+                  mismatch between actual and declared bounds: actual = \
+                  %s (%u tys), declared = %s (%u tys)", ts, ts.len(),
+                        *bounds, bounds.len());
+            }
             vec::iter2(ts, *bounds) {|ty, bound|
                 check_bounds(cx, e.span, ty, bound)
             }
