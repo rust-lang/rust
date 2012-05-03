@@ -1,4 +1,5 @@
 // xfail-pretty
+// xfail-win32
 // Issue #2303
 
 #[abi = "rust-intrinsic"]
@@ -19,33 +20,7 @@ type outer = {
     t: inner
 };
 
-
-#[cfg(target_os = "linux")]
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "freebsd")]
-mod m {
-    #[cfg(target_arch = "x86")]
-    mod m {
-        fn align() -> uint { 4u }
-        fn size() -> uint { 12u }
-    }
-
-    #[cfg(target_arch = "x86_64")]
-    mod m {
-        fn align() -> uint { 8u }
-        fn size() -> uint { 16u }
-    }
-}
-
-#[cfg(target_os = "win32")]
-mod m {
-    #[cfg(target_arch = "x86")]
-    mod m {
-        fn align() -> uint { 8u }
-        fn size() -> uint { 16u }
-    }
-}
-
+#[cfg(target_arch = "x86")]
 fn main() {
 
     let x = {c8: 22u8, t: {c64: 44u64}};
@@ -58,11 +33,14 @@ fn main() {
     #debug("y = %s", y);
 
     // per clang/gcc the alignment of `inner` is 4 on x86.
-    assert rusti::min_align_of::<inner>() == m::m::align();
+    assert rusti::min_align_of::<inner>() == 4u;
 
     // per clang/gcc the size of `outer` should be 12
     // because `inner`s alignment was 4.
-    assert sys::size_of::<outer>() == m::m::size();
+    assert sys::size_of::<outer>() == 12u;
 
     assert y == "(22, (44))";
 }
+
+#[cfg(target_arch = "x86_64")]
+fn main() { }
