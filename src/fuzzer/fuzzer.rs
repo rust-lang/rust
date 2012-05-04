@@ -154,11 +154,11 @@ fn steal(crate: ast::crate, tm: test_mode) -> stolen_stuff {
 fn safe_to_replace_expr(e: ast::expr_, _tm: test_mode) -> bool {
     alt e {
       // https://github.com/mozilla/rust/issues/652
-      ast::expr_if(_, _, _) { false }
+      ast::expr_if(*) { false }
       ast::expr_block(_) { false }
 
       // expr_call is also missing a constraint
-      ast::expr_fn_block(_, _) { false }
+      ast::expr_fn_block(*) { false }
 
       _ { true }
     }

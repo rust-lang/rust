@@ -340,23 +340,20 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
       expr_log(_, lvl, arg) {
         find_pre_post_exprs(fcx, [lvl, arg], e.id);
       }
-      expr_fn(_, _, _, cap_clause) {
+      expr_fn(_, _, _, cap_clause) | expr_fn_block(_, _, cap_clause) {
         find_pre_post_expr_fn_upvars(fcx, e);
 
-        let use_cap_item = fn@(&&cap_item: @capture_item) {
+        for cap_clause.each { |cap_item|
             let d = local_node_id_to_local_def_id(fcx, cap_item.id);
             option::iter(d, { |id| use_var(fcx, id) });
-        };
-        vec::iter(cap_clause.copies, use_cap_item);
-        vec::iter(cap_clause.moves, use_cap_item);
-
-        vec::iter(cap_clause.moves) { |cap_item|
-            log(debug, ("forget_in_postcond: ", cap_item));
-            forget_in_postcond(fcx, e.id, cap_item.id);
         }
-      }
-      expr_fn_block(_, _) {
-        find_pre_post_expr_fn_upvars(fcx, e);
+
+        for cap_clause.each { |cap_item|
+            if cap_item.is_move {
+                log(debug, ("forget_in_postcond: ", cap_item));
+                forget_in_postcond(fcx, e.id, cap_item.id);
+            }
+        }
       }
       expr_block(b) {
         find_pre_post_block(fcx, b);

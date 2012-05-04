@@ -363,8 +363,10 @@ fn find_pre_post_state_cap_clause(fcx: fn_ctxt, e_id: node_id,
     let ccx = fcx.ccx;
     let pres_changed = set_prestate_ann(ccx, e_id, pres);
     let post = tritv_clone(pres);
-    vec::iter(cap_clause.moves) { |cap_item|
-        forget_in_poststate(fcx, post, cap_item.id);
+    for cap_clause.each { |cap_item|
+        if cap_item.is_move {
+            forget_in_poststate(fcx, post, cap_item.id);
+        }
     }
     ret set_poststate_ann(ccx, e_id, post) || pres_changed;
 }
@@ -418,9 +420,11 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
       expr_mac(_) { fcx.ccx.tcx.sess.bug("unexpanded macro"); }
       expr_lit(l) { ret pure_exp(fcx.ccx, e.id, pres); }
       expr_fn(_, _, _, cap_clause) {
-        ret find_pre_post_state_cap_clause(fcx, e.id, pres, *cap_clause);
+        ret find_pre_post_state_cap_clause(fcx, e.id, pres, cap_clause);
       }
-      expr_fn_block(_, _) { ret pure_exp(fcx.ccx, e.id, pres); }
+      expr_fn_block(_, _, cap_clause) {
+        ret find_pre_post_state_cap_clause(fcx, e.id, pres, cap_clause);
+      }
       expr_block(b) {
         ret find_pre_post_state_block(fcx, pres, b) |
                 set_prestate_ann(fcx.ccx, e.id, pres) |

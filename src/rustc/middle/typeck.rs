@@ -275,7 +275,8 @@ fn instantiate_path(fcx: @fn_ctxt,
     fcx.write_ty_substs(id, tpt.ty, substs);
 }
 
-// Type tests
+// Resolves `typ` by a single level if `typ` is a type variable.  If no
+// resolution is possible, then an error is reported.
 fn structurally_resolved_type(fcx: @fn_ctxt, sp: span, tp: ty::t) -> ty::t {
     alt infer::resolve_shallow(fcx.infcx, tp, false) {
       result::ok(t_s) if !ty::type_is_var(t_s) { ret t_s; }
@@ -285,7 +286,6 @@ fn structurally_resolved_type(fcx: @fn_ctxt, sp: span, tp: ty::t) -> ty::t {
       }
     }
 }
-
 
 // Returns the one-level-deep structure of the given type.
 fn structure_of(fcx: @fn_ctxt, sp: span, typ: ty::t) -> ty::sty {
@@ -689,7 +689,7 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy>(
         ty::mk_rec(tcx, flds)
       }
       ast::ty_fn(proto, decl) {
-        ty::mk_fn(tcx, ty_of_fn_decl(self, rscope, proto, decl))
+        ty::mk_fn(tcx, ty_of_fn_decl(self, rscope, proto, decl, none))
       }
       ast::ty_path(path, id) {
         let a_def = alt tcx.def_map.find(id) {
@@ -777,7 +777,13 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy>(
         ty::mk_constr(tcx, ast_ty_to_ty(self, rscope, t), out_cs)
       }
       ast::ty_infer {
-        self.ty_infer(ast_ty.span)
+        // ty_infer should only appear as the type of arguments or return
+        // values in a fn_expr, or as the type of local variables.  Both of
+        // these cases are handled specially and should not descend into this
+        // routine.
+        self.tcx().sess.span_bug(
+            ast_ty.span,
+            "found `ty_infer` in unexpected place");
       }
       ast::ty_mac(_) {
         tcx.sess.span_bug(ast_ty.span,
@@ -850,7 +856,8 @@ fn ty_of_item(ccx: @crate_ctxt, it: @ast::item)
       }
       ast::item_fn(decl, tps, _) {
         let bounds = ty_param_bounds(ccx, tps);
-        let tofd = ty_of_fn_decl(ccx, empty_rscope, ast::proto_bare, decl);
+        let tofd = ty_of_fn_decl(ccx, empty_rscope, ast::proto_bare,
+                                 decl, none);
         let tpt = {bounds: bounds,
                    rp: ast::rp_none, // functions do not have a self
                    ty: ty::mk_fn(ccx.tcx, tofd)};
@@ -884,7 +891,8 @@ fn ty_of_item(ccx: @crate_ctxt, it: @ast::item)
       }
       ast::item_res(decl, tps, _, _, _, rp) {
         let {bounds, substs} = mk_substs(ccx, tps, rp);
-        let t_arg = ty_of_arg(ccx, type_rscope(rp), decl.inputs[0]);
+        let t_arg = ty_of_arg(ccx, type_rscope(rp),
+                              decl.inputs[0], none);
         let t = ty::mk_res(tcx, local_def(it.id), t_arg.ty, substs);
         let t_res = {bounds: bounds, rp: rp, ty: t};
         tcx.tcache.insert(local_def(it.id), t_res);
@@ -1027,16 +1035,27 @@ fn replace_bound_regions(
 }
 
 fn ty_of_arg<AC: ast_conv, RS: region_scope copy>(
-    self: AC, rscope: RS, a: ast::arg) -> ty::arg {
+    self: AC, rscope: RS, a: ast::arg,
+    expected_ty: option<ty::arg>) -> ty::arg {
 
-    fn arg_mode(tcx: ty::ctxt, m: ast::mode, ty: ty::t) -> ast::mode {
-        alt m {
+    let ty = alt a.ty.node {
+      ast::ty_infer if expected_ty.is_some() {expected_ty.get().ty}
+      ast::ty_infer {self.ty_infer(a.ty.span)}
+      _ {ast_ty_to_ty(self, rscope, a.ty)}
+    };
+
+    let mode = {
+        alt a.mode {
+          ast::infer(_) if expected_ty.is_some() {
+            result::get(ty::unify_mode(self.tcx(), a.mode,
+                                       expected_ty.get().mode))
+          }
           ast::infer(_) {
             alt ty::get(ty).struct {
               // If the type is not specified, then this must be a fn expr.
               // Leave the mode as infer(_), it will get inferred based
               // on constraints elsewhere.
-              ty::ty_var(_) { m }
+              ty::ty_var(_) {a.mode}
 
               // If the type is known, then use the default for that type.
               // Here we unify m and the default.  This should update the
@@ -1044,30 +1063,48 @@ fn ty_of_arg<AC: ast_conv, RS: region_scope copy>(
               // will have been unified with m yet:
               _ {
                 let m1 = ast::expl(ty::default_arg_mode_for_ty(ty));
-                result::get(ty::unify_mode(tcx, m, m1))
+                result::get(ty::unify_mode(self.tcx(), a.mode, m1))
               }
             }
           }
-          ast::expl(_) { m }
+          ast::expl(_) {a.mode}
         }
-    }
+    };
 
-    let ty = ast_ty_to_ty(self, rscope, a.ty);
-    let mode = arg_mode(self.tcx(), a.mode, ty);
     {mode: mode, ty: ty}
 }
+
+type expected_tys = option<{inputs: [ty::arg],
+                            output: ty::t}>;
+
 fn ty_of_fn_decl<AC: ast_conv, RS: region_scope copy>(
     self: AC, rscope: RS,
     proto: ast::proto,
-    decl: ast::fn_decl) -> ty::fn_ty {
+    decl: ast::fn_decl,
+    expected_tys: expected_tys) -> ty::fn_ty {
 
     #debug["ty_of_fn_decl"];
     indent {||
         // new region names that appear inside of the fn decl are bound to
         // that function type
         let rb = in_binding_rscope(rscope);
-        let input_tys = vec::map(decl.inputs) { |a| ty_of_arg(self, rb, a) };
-        let output_ty = ast_ty_to_ty(self, rb, decl.output);
+
+        let input_tys = decl.inputs.mapi { |i, a|
+            let expected_arg_ty = expected_tys.chain { |e|
+                // no guarantee that the correct number of expected args
+                // were supplied
+                if i < e.inputs.len() {some(e.inputs[i])} else {none}
+            };
+            ty_of_arg(self, rb, a, expected_arg_ty)
+        };
+
+        let expected_ret_ty = expected_tys.map { |e| e.output };
+        let output_ty = alt decl.output.node {
+          ast::ty_infer if expected_ret_ty.is_some() {expected_ret_ty.get()}
+          ast::ty_infer {self.ty_infer(decl.output.span)}
+          _ {ast_ty_to_ty(self, rb, decl.output)}
+        };
+
         let out_constrs = vec::map(decl.constraints) {|constr|
             ty::ast_constr_to_constr(self.tcx(), constr)
         };
@@ -1083,7 +1120,7 @@ fn ty_of_native_fn_decl(ccx: @crate_ctxt,
 
     let bounds = ty_param_bounds(ccx, ty_params);
     let rb = in_binding_rscope(empty_rscope);
-    let input_tys = vec::map(decl.inputs) { |a| ty_of_arg(ccx, rb, a) };
+    let input_tys = decl.inputs.map { |a| ty_of_arg(ccx, rb, a, none) };
     let output_ty = ast_ty_to_ty(ccx, rb, decl.output);
 
     let t_fn = ty::mk_fn(ccx.tcx, {proto: ast::proto_bare,
@@ -1135,7 +1172,8 @@ fn ty_of_method(ccx: @crate_ctxt,
                 rp: ast::region_param) -> ty::method {
     {ident: m.ident,
      tps: ty_param_bounds(ccx, m.tps),
-     fty: ty_of_fn_decl(ccx, type_rscope(rp), ast::proto_bare, m.decl),
+     fty: ty_of_fn_decl(ccx, type_rscope(rp), ast::proto_bare,
+                        m.decl, none),
      purity: m.decl.purity,
      privacy: m.privacy}
 }
@@ -1145,7 +1183,8 @@ fn ty_of_ty_method(self: @crate_ctxt,
                    rp: ast::region_param) -> ty::method {
     {ident: m.ident,
      tps: ty_param_bounds(self, m.tps),
-     fty: ty_of_fn_decl(self, type_rscope(rp), ast::proto_bare, m.decl),
+     fty: ty_of_fn_decl(self, type_rscope(rp), ast::proto_bare,
+                        m.decl, none),
      // assume public, because this is only invoked on iface methods
      purity: m.decl.purity, privacy: ast::pub}
 }
@@ -1649,7 +1688,8 @@ mod collect {
           ast::item_res(decl, tps, _, dtor_id, ctor_id, rp) {
             let {bounds, substs} = mk_substs(ccx, tps, rp);
             let def_id = local_def(it.id);
-            let t_arg = ty_of_arg(ccx, type_rscope(rp), decl.inputs[0]);
+            let t_arg = ty_of_arg(ccx, type_rscope(rp),
+                                  decl.inputs[0], none);
             let t_res = ty::mk_res(tcx, def_id, t_arg.ty, substs);
 
             let t_ctor = ty::mk_fn(tcx, {
@@ -1691,7 +1731,8 @@ mod collect {
                           ty_of_fn_decl(ccx,
                                         empty_rscope,
                                         ast::proto_any,
-                                        ctor.node.dec));
+                                        ctor.node.dec,
+                                        none));
             write_ty_to_tcx(tcx, ctor.node.id, t_ctor);
             tcx.tcache.insert(local_def(ctor.node.id),
                               {bounds: tpt.bounds,
@@ -1961,7 +2002,7 @@ mod writeback {
         resolve_type_vars_for_node(wbcx, e.span, e.id);
         alt e.node {
           ast::expr_fn(_, decl, _, _) |
-          ast::expr_fn_block(decl, _) {
+          ast::expr_fn_block(decl, _, _) {
             vec::iter(decl.inputs) {|input|
                 let r_ty = resolve_type_vars_for_node(wbcx, e.span, input.id);
 
@@ -2902,35 +2943,6 @@ fn region_of(fcx: @fn_ctxt, expr: @ast::expr) -> ty::region {
     }
 }
 
-fn check_expr_fn_with_unifier(fcx: @fn_ctxt,
-                              expr: @ast::expr,
-                              proto: ast::proto,
-                              decl: ast::fn_decl,
-                              body: ast::blk,
-                              is_loop_body: bool,
-                              unifier: fn()) {
-    let tcx = fcx.ccx.tcx;
-    let fty = ty::mk_fn(tcx, ty_of_fn_decl(fcx, fcx, proto, decl));
-
-    #debug("check_expr_fn_with_unifier %s fty=%s",
-           expr_to_str(expr), fcx.ty_to_str(fty));
-
-    fcx.write_ty(expr.id, fty);
-
-    // Unify the type of the function with the expected type before we
-    // typecheck the body so that we have more information about the
-    // argument types in the body. This is needed to make binops and
-    // record projection work on type inferred arguments.
-    unifier();
-
-    let ret_ty = ty::ty_fn_ret(fty);
-    let arg_tys = vec::map(ty::ty_fn_args(fty)) {|a| a.ty };
-
-    check_fn(fcx.ccx, proto, decl, body, expr.id,
-             ret_ty, arg_tys, is_loop_body, some(fcx),
-             fcx.self_ty);
-}
-
 fn check_expr_with_unifier(fcx: @fn_ctxt,
                            expr: @ast::expr,
                            expected: option<ty::t>,
@@ -2999,7 +3011,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                 alt a_opt {
                   some(a) {
                     let is_block = alt a.node {
-                      ast::expr_fn_block(_, _) { true }
+                      ast::expr_fn_block(*) { true }
                       _ { false }
                     };
                     if is_block == check_blocks {
@@ -3227,6 +3239,11 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
           }
         }
     }
+
+    // Resolves `expected` by a single level if it is a variable and passes it
+    // through the `unpack` function.  It there is no expected type or
+    // resolution is not possible (e.g., no constraints yet present), just
+    // returns `none`.
     fn unpack_expected<O: copy>(fcx: @fn_ctxt, expected: option<ty::t>,
                                 unpack: fn(ty::sty) -> option<O>)
         -> option<O> {
@@ -3240,6 +3257,42 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
           _ { none }
         }
     }
+
+    fn check_expr_fn(fcx: @fn_ctxt,
+                     expr: @ast::expr,
+                     proto: ast::proto,
+                     decl: ast::fn_decl,
+                     body: ast::blk,
+                     is_loop_body: bool,
+                     expected: option<ty::t>) {
+        let tcx = fcx.ccx.tcx;
+
+        let expected_tys = unpack_expected(fcx, expected) { |sty|
+            alt sty {
+              ty::ty_fn(fn_ty) {some({inputs:fn_ty.inputs,
+                                      output:fn_ty.output})}
+              _ {none}
+            }
+        };
+
+        // construct the function type
+        let fty = ty::mk_fn(tcx,
+                            ty_of_fn_decl(fcx, fcx, proto, decl,
+                                          expected_tys));
+
+        #debug("check_expr_fn_with_unifier %s fty=%s",
+               expr_to_str(expr), fcx.ty_to_str(fty));
+
+        fcx.write_ty(expr.id, fty);
+
+        let ret_ty = ty::ty_fn_ret(fty);
+        let arg_tys = vec::map(ty::ty_fn_args(fty)) {|a| a.ty };
+
+        check_fn(fcx.ccx, proto, decl, body, expr.id,
+                 ret_ty, arg_tys, is_loop_body, some(fcx),
+                 fcx.self_ty);
+    }
+
 
     let tcx = fcx.ccx.tcx;
     let id = expr.id;
@@ -3510,20 +3563,25 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         if !arm_non_bot { result_ty = ty::mk_bot(tcx); }
         fcx.write_ty(id, result_ty);
       }
-      ast::expr_fn(proto, decl, body, captures) {
-        check_expr_fn_with_unifier(fcx, expr, proto, decl, body,
-                                   false, unifier);
-        capture::check_capture_clause(tcx, expr.id, proto, *captures);
+      ast::expr_fn(proto, decl, body, cap_clause) {
+        check_expr_fn(fcx, expr, proto, decl, body, false, expected);
+        capture::check_capture_clause(tcx, expr.id, proto, cap_clause);
       }
-      ast::expr_fn_block(decl, body) {
+      ast::expr_fn_block(decl, body, cap_clause) {
         // Take the prototype from the expected type, but default to block:
         let proto = unpack_expected(fcx, expected, {|sty|
             alt sty { ty::ty_fn({proto, _}) { some(proto) } _ { none } }
         }).get_default(ast::proto_box);
-        check_expr_fn_with_unifier(fcx, expr, proto, decl, body,
-                                   false, unifier);
+        check_expr_fn(fcx, expr, proto, decl, body, false, expected);
+        capture::check_capture_clause(tcx, expr.id, proto, cap_clause);
       }
       ast::expr_loop_body(b) {
+        // a loop body is the special argument to a `for` loop.  We know that
+        // there will be an expected type in this context because it can only
+        // appear in the context of a call, so we get the expected type of the
+        // parameter. The catch here is that we need to validate two things:
+        // 1. a closure that returns a bool is expected
+        // 2. the cloure that was given returns unit
         let expected_sty = unpack_expected(fcx, expected, {|x|some(x)}).get();
         let (inner_ty, proto) = alt expected_sty {
           ty::ty_fn(fty) {
@@ -3544,10 +3602,10 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
           }
         };
         alt check b.node {
-          ast::expr_fn_block(decl, body) {
-            check_expr_fn_with_unifier(fcx, b, proto, decl, body, true) {||
-                demand::suptype(fcx, b.span, inner_ty, fcx.expr_ty(b));
-            }
+          ast::expr_fn_block(decl, body, cap_clause) {
+            check_expr_fn(fcx, b, proto, decl, body, true, some(inner_ty));
+            demand::suptype(fcx, b.span, inner_ty, fcx.expr_ty(b));
+            capture::check_capture_clause(tcx, b.id, proto, cap_clause);
           }
         }
         let block_ty = structurally_resolved_type(

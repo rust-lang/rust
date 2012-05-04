@@ -154,12 +154,15 @@ fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
         v.visit_expr(dest, cx, v);
         clear_if_path(cx, dest, v, true);
       }
+      expr_fn_block(_, _, cap_clause) |
       expr_fn(_, _, _, cap_clause) {
         // n.b.: safe to ignore copies, as if they are unused
         // then they are ignored, otherwise they will show up
         // as freevars in the body.
-        vec::iter(cap_clause.moves) {|ci|
-            clear_def_if_local(cx, cx.def_map.get(ci.id), false);
+        for cap_clause.each { |ci|
+            if ci.is_move {
+                clear_def_if_local(cx, cx.def_map.get(ci.id), false);
+            }
         }
         visit::visit_expr(ex, cx, v);
       }
@@ -169,7 +172,7 @@ fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
         let arg_ts = ty::ty_fn_args(ty::expr_ty(cx.tcx, f));
         vec::iter2(args, arg_ts) {|arg, arg_t|
             alt arg.node {
-              expr_fn(_, _, _, _) | expr_fn_block(_, _)
+              expr_fn(*) | expr_fn_block(*)
               if is_blockish(ty::ty_fn_proto(arg_t.ty)) {
                 fns += [arg];
               }

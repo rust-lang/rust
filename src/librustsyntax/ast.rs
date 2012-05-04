@@ -311,8 +311,8 @@ enum expr_ {
        (implicit) condition is always true. */
     expr_loop(blk),
     expr_alt(@expr, [arm], alt_mode),
-    expr_fn(proto, fn_decl, blk, @capture_clause),
-    expr_fn_block(fn_decl, blk),
+    expr_fn(proto, fn_decl, blk, capture_clause),
+    expr_fn_block(fn_decl, blk, capture_clause),
     // Inner expr is always an expr_fn_block. We need the wrapping node to
     // sanely type this (a function returning nil on the inside but bool on
     // the outside).
@@ -356,15 +356,13 @@ enum expr_ {
 #[auto_serialize]
 type capture_item = {
     id: int,
+    is_move: bool,
     name: ident, // Currently, can only capture a local var.
     span: span
 };
 
 #[auto_serialize]
-type capture_clause = {
-    copies: [@capture_item],
-    moves: [@capture_item]
-};
+type capture_clause = [capture_item];
 
 /*
 // Says whether this is a block the user marked as

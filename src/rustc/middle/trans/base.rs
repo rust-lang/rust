@@ -2544,11 +2544,11 @@ fn trans_cast(cx: block, e: @ast::expr, id: ast::node_id,
 fn trans_loop_body(bcx: block, e: @ast::expr, ret_flag: option<ValueRef>,
                    dest: dest) -> block {
     alt check e.node {
-      ast::expr_loop_body(b@@{node: ast::expr_fn_block(decl, body), _}) {
+      ast::expr_loop_body(b@@{node: ast::expr_fn_block(decl, body, cap), _}) {
         alt check ty::get(expr_ty(bcx, e)).struct {
           ty::ty_fn({proto, _}) {
             closure::trans_expr_fn(bcx, proto, decl, body, e.span, b.id,
-                                   {copies: [], moves: []}, some(ret_flag),
+                                   cap, some(ret_flag),
                                    dest)
           }
         }
@@ -2800,7 +2800,7 @@ fn trans_call_inner(in_cx: block, fn_expr_ty: ty::t, ret_ty: ty::t,
     -> block {
     let ret_in_loop = alt args {
       arg_exprs(args) { args.len() > 0u && alt vec::last(args).node {
-        ast::expr_loop_body(@{node: ast::expr_fn_block(_, body), _}) {
+        ast::expr_loop_body(@{node: ast::expr_fn_block(_, body, _), _}) {
           body_contains_ret(body)
         }
         _ { false }
@@ -3166,15 +3166,15 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
       ast::expr_addr_of(_, x) { ret trans_addr_of(bcx, x, dest); }
       ast::expr_fn(proto, decl, body, cap_clause) {
         ret closure::trans_expr_fn(bcx, proto, decl, body, e.span, e.id,
-                                   *cap_clause, none, dest);
+                                   cap_clause, none, dest);
       }
-      ast::expr_fn_block(decl, body) {
+      ast::expr_fn_block(decl, body, cap_clause) {
         alt check ty::get(expr_ty(bcx, e)).struct {
           ty::ty_fn({proto, _}) {
             #debug("translating fn_block %s with type %s",
                    expr_to_str(e), ty_to_str(tcx, expr_ty(bcx, e)));
             ret closure::trans_expr_fn(bcx, proto, decl, body, e.span, e.id,
-                                       {copies: [], moves: []}, none, dest);
+                                       cap_clause, none, dest);
           }
         }
       }

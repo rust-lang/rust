@@ -160,7 +160,7 @@ fn mark_for_expr(cx: ctx, e: @expr) {
             }
         }
       }
-      expr_fn(_, _, _, _) | expr_fn_block(_, _) {
+      expr_fn(*) | expr_fn_block(*) {
         alt ty::ty_fn_proto(ty::expr_ty(cx.ccx.tcx, e)) {
           proto_bare | proto_any | proto_uniq {}
           proto_box | proto_block {

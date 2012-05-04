@@ -398,25 +398,51 @@ fn parse_arg_mode(p: parser) -> ast::mode {
     } else { ast::infer(p.get_id()) }
 }
 
-fn parse_arg(p: parser) -> ast::arg {
+fn parse_capture_item_or(
+    p: parser,
+    parse_arg_fn: fn() -> arg_or_capture_item) -> arg_or_capture_item {
+
+    fn parse_capture_item(p: parser, is_move: bool) -> ast::capture_item {
+        let id = p.get_id();
+        let sp = mk_sp(p.span.lo, p.span.hi);
+        let ident = parse_ident(p);
+        {id: id, is_move: is_move, name: ident, span: sp}
+    }
+
+    if eat_keyword(p, "move") {
+        either::right(parse_capture_item(p, true))
+    } else if eat_keyword(p, "copy") {
+        either::right(parse_capture_item(p, false))
+    } else {
+        parse_arg_fn()
+    }
+}
+
+fn parse_arg(p: parser) -> arg_or_capture_item {
     let m = parse_arg_mode(p);
     let i = parse_value_ident(p);
     expect(p, token::COLON);
     let t = parse_ty(p, false);
-    ret {mode: m, ty: t, ident: i, id: p.get_id()};
+    either::left({mode: m, ty: t, ident: i, id: p.get_id()})
 }
 
-fn parse_fn_block_arg(p: parser) -> ast::arg {
-    let m = parse_arg_mode(p);
-    let i = parse_value_ident(p);
-    let t = if eat(p, token::COLON) {
-                parse_ty(p, false)
-            } else {
-                @{id: p.get_id(),
-                  node: ast::ty_infer,
-                  span: mk_sp(p.span.lo, p.span.hi)}
-            };
-    ret {mode: m, ty: t, ident: i, id: p.get_id()};
+fn parse_arg_or_capture_item(p: parser) -> arg_or_capture_item {
+    parse_capture_item_or(p) {|| parse_arg(p) }
+}
+
+fn parse_fn_block_arg(p: parser) -> arg_or_capture_item {
+    parse_capture_item_or(p) {||
+        let m = parse_arg_mode(p);
+        let i = parse_value_ident(p);
+        let t = if eat(p, token::COLON) {
+                    parse_ty(p, false)
+                } else {
+                    @{id: p.get_id(),
+                      node: ast::ty_infer,
+                      span: mk_sp(p.span.lo, p.span.hi)}
+                };
+        either::left({mode: m, ty: t, ident: i, id: p.get_id()})
+    }
 }
 
 fn maybe_parse_dollar_mac(p: parser) -> option<ast::mac_> {
@@ -1149,74 +1175,27 @@ fn parse_if_expr(p: parser) -> @ast::expr {
     }
 }
 
-// Parses:
-//
-//   CC := [copy ID*; move ID*]
-//
-// where any part is optional and trailing ; is permitted.
-fn parse_capture_clause(p: parser) -> @ast::capture_clause {
-    fn expect_opt_trailing_semi(p: parser) {
-        if !eat(p, token::SEMI) {
-            if p.token != token::RBRACKET {
-                p.fatal("expecting ; or ]");
-            }
-        }
-    }
-
-    fn eat_ident_list(p: parser) -> [@ast::capture_item] {
-        let mut res = [];
-        loop {
-            alt p.token {
-              token::IDENT(_, _) {
-                let id = p.get_id();
-                let sp = mk_sp(p.span.lo, p.span.hi);
-                let ident = parse_ident(p);
-                res += [@{id:id, name:ident, span:sp}];
-                if !eat(p, token::COMMA) {
-                    ret res;
-                }
-              }
-
-              _ { ret res; }
-            }
-        };
-    }
-
-    let mut copies = [];
-    let mut moves = [];
-
-    if eat(p, token::LBRACKET) {
-        while !eat(p, token::RBRACKET) {
-            if eat_keyword(p, "copy") {
-                copies += eat_ident_list(p);
-                expect_opt_trailing_semi(p);
-            } else if eat_keyword(p, "move") {
-                moves += eat_ident_list(p);
-                expect_opt_trailing_semi(p);
-            } else {
-                let s: str = "expecting send, copy, or move clause";
-                p.fatal(s);
-            }
-        }
-    }
-
-    ret @{copies: copies, moves: moves};
-}
-
 fn parse_fn_expr(p: parser, proto: ast::proto) -> @ast::expr {
     let lo = p.last_span.lo;
-    let capture_clause = parse_capture_clause(p);
-    let decl = parse_fn_decl(p, ast::impure_fn);
+
+    let cc_old = parse_old_skool_capture_clause(p);
+
+    // if we want to allow fn expression argument types to be inferred in the
+    // future, just have to change parse_arg to parse_fn_block_arg.
+    let (decl, capture_clause) =
+        parse_fn_decl(p, ast::impure_fn, parse_arg_or_capture_item);
+
     let body = parse_block(p);
     ret mk_expr(p, lo, body.span.hi,
-                ast::expr_fn(proto, decl, body, capture_clause));
+                ast::expr_fn(proto, decl, body, capture_clause + cc_old));
 }
 
 fn parse_fn_block_expr(p: parser) -> @ast::expr {
     let lo = p.last_span.lo;
-    let decl = parse_fn_block_decl(p);
+    let (decl, captures) = parse_fn_block_decl(p);
     let body = parse_block_tail(p, lo, ast::default_blk);
-    ret mk_expr(p, lo, body.span.hi, ast::expr_fn_block(decl, body));
+    ret mk_expr(p, lo, body.span.hi,
+                ast::expr_fn_block(decl, body, captures));
 }
 
 fn parse_else_expr(p: parser) -> @ast::expr {
@@ -1699,46 +1678,107 @@ fn parse_ty_params(p: parser) -> [ast::ty_param] {
     } else { [] }
 }
 
-fn parse_fn_decl(p: parser, purity: ast::purity)
-    -> ast::fn_decl {
-    let inputs: ast::spanned<[ast::arg]> =
+// FIXME Remove after snapshot
+fn parse_old_skool_capture_clause(p: parser) -> ast::capture_clause {
+    fn expect_opt_trailing_semi(p: parser) {
+        if !eat(p, token::SEMI) {
+            if p.token != token::RBRACKET {
+                p.fatal("expecting ; or ]");
+            }
+        }
+    }
+
+    fn eat_ident_list(p: parser, is_move: bool) -> [ast::capture_item] {
+        let mut res = [];
+        loop {
+            alt p.token {
+              token::IDENT(_, _) {
+                let id = p.get_id();
+                let sp = mk_sp(p.span.lo, p.span.hi);
+                let ident = parse_ident(p);
+                res += [{id:id, is_move: is_move, name:ident, span:sp}];
+                if !eat(p, token::COMMA) {
+                    ret res;
+                }
+              }
+
+              _ { ret res; }
+            }
+        };
+    }
+
+    let mut cap_items = [];
+
+    if eat(p, token::LBRACKET) {
+        while !eat(p, token::RBRACKET) {
+            if eat_keyword(p, "copy") {
+                cap_items += eat_ident_list(p, false);
+                expect_opt_trailing_semi(p);
+            } else if eat_keyword(p, "move") {
+                cap_items += eat_ident_list(p, true);
+                expect_opt_trailing_semi(p);
+            } else {
+                let s: str = "expecting send, copy, or move clause";
+                p.fatal(s);
+            }
+        }
+    }
+
+    ret cap_items;
+}
+
+type arg_or_capture_item = either<ast::arg, ast::capture_item>;
+
+
+fn parse_fn_decl(p: parser, purity: ast::purity,
+                 parse_arg_fn: fn(parser) -> arg_or_capture_item)
+    -> (ast::fn_decl, ast::capture_clause) {
+
+    let args_or_capture_items: [arg_or_capture_item] =
         parse_seq(token::LPAREN, token::RPAREN, seq_sep(token::COMMA),
-                  parse_arg, p);
+                  parse_arg_fn, p).node;
+
+    let inputs = either::lefts(args_or_capture_items);
+    let capture_clause = either::rights(args_or_capture_items);
+
     // Use the args list to translate each bound variable
     // mentioned in a constraint to an arg index.
     // Seems weird to do this in the parser, but I'm not sure how else to.
     let mut constrs = [];
     if p.token == token::COLON {
         p.bump();
-        constrs = parse_constrs({|x| parse_ty_constr(inputs.node, x) }, p);
+        constrs = parse_constrs({|x| parse_ty_constr(inputs, x) }, p);
     }
     let (ret_style, ret_ty) = parse_ret_ty(p);
-    ret {inputs: inputs.node,
-         output: ret_ty,
-         purity: purity,
-         cf: ret_style,
-         constraints: constrs};
+    ret ({inputs: inputs,
+          output: ret_ty,
+          purity: purity,
+          cf: ret_style,
+          constraints: constrs}, capture_clause);
 }
 
-fn parse_fn_block_decl(p: parser) -> ast::fn_decl {
-    let inputs = if eat(p, token::OROR) {
-                     []
-                 } else {
-                     parse_seq(token::BINOP(token::OR),
-                               token::BINOP(token::OR),
-                               seq_sep(token::COMMA),
-                               parse_fn_block_arg, p).node
-                 };
+fn parse_fn_block_decl(p: parser) -> (ast::fn_decl, ast::capture_clause) {
+    let inputs_captures = {
+        if eat(p, token::OROR) {
+            []
+        } else {
+            parse_seq(token::BINOP(token::OR),
+                      token::BINOP(token::OR),
+                      seq_sep(token::COMMA),
+                      parse_fn_block_arg, p).node
+        }
+    };
     let output = if eat(p, token::RARROW) {
                      parse_ty(p, false)
                  } else {
                      @{id: p.get_id(), node: ast::ty_infer, span: p.span}
                  };
-    ret {inputs: inputs,
-         output: output,
-         purity: ast::impure_fn,
-         cf: ast::return_val,
-         constraints: []};
+    ret ({inputs: either::lefts(inputs_captures),
+          output: output,
+          purity: ast::impure_fn,
+          cf: ast::return_val,
+          constraints: []},
+         either::rights(inputs_captures));
 }
 
 fn parse_fn_header(p: parser) -> {ident: ast::ident, tps: [ast::ty_param]} {
@@ -1760,7 +1800,7 @@ fn parse_item_fn(p: parser, purity: ast::purity,
                  attrs: [ast::attribute]) -> @ast::item {
     let lo = p.last_span.lo;
     let t = parse_fn_header(p);
-    let decl = parse_fn_decl(p, purity);
+    let (decl, _) = parse_fn_decl(p, purity, parse_arg);
     let (inner_attrs, body) = parse_inner_attrs_and_block(p, true);
     let attrs = attrs + inner_attrs;
     ret mk_item(p, lo, body.span.hi, t.ident,
@@ -1785,7 +1825,7 @@ fn parse_method(p: parser, pr: ast::privacy) -> @ast::method {
     let lo = p.span.lo, pur = parse_fn_purity(p);
     let ident = parse_method_name(p);
     let tps = parse_ty_params(p);
-    let decl = parse_fn_decl(p, pur);
+    let (decl, _) = parse_fn_decl(p, pur, parse_arg);
     let (inner_attrs, body) = parse_inner_attrs_and_block(p, true);
     let attrs = attrs + inner_attrs;
     @{ident: ident, attrs: attrs, tps: tps, decl: decl, body: body,
@@ -1969,7 +2009,7 @@ fn parse_class_item(p:parser, class_name_with_tps: @ast::path)
         let lo = p.last_span.lo;
         // Can ctors have attrs?
             // result type is always the type of the class
-        let decl_ = parse_fn_decl(p, ast::impure_fn);
+        let (decl_, _) = parse_fn_decl(p, ast::impure_fn, parse_arg);
         let decl = {output: @{id: p.get_id(),
                       node: ast::ty_path(class_name_with_tps, p.get_id()),
                       span: decl_.output.span}
@@ -2048,7 +2088,7 @@ fn parse_item_native_fn(p: parser, attrs: [ast::attribute],
                         purity: ast::purity) -> @ast::native_item {
     let lo = p.last_span.lo;
     let t = parse_fn_header(p);
-    let decl = parse_fn_decl(p, purity);
+    let (decl, _) = parse_fn_decl(p, purity, parse_arg);
     let mut hi = p.span.hi;
     expect(p, token::SEMI);
     ret @{ident: t.ident,

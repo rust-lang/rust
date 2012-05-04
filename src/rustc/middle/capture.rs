@@ -36,7 +36,7 @@ fn check_capture_clause(tcx: ty::ctxt,
     let freevars = freevars::get_freevars(tcx, fn_expr_id);
     let seen_defs = map::int_hash();
 
-    let check_capture_item = fn@(&&cap_item: @ast::capture_item) {
+    let check_capture_item = fn@(cap_item: ast::capture_item) {
         let cap_def = tcx.def_map.get(cap_item.id);
         if !vec::any(*freevars, {|fv| fv.def == cap_def}) {
             tcx.sess.span_warn(
@@ -54,36 +54,19 @@ fn check_capture_clause(tcx: ty::ctxt,
         }
     };
 
-    let check_not_upvar = fn@(&&cap_item: @ast::capture_item) {
-        alt tcx.def_map.get(cap_item.id) {
-          ast::def_upvar(_, _, _) {
-            tcx.sess.span_err(
-                cap_item.span,
-                #fmt("upvars (like '%s') cannot be moved into a closure",
-                     cap_item.name));
-          }
-          _ {}
-        }
-    };
-
-    let check_block_captures = fn@(v: [@ast::capture_item]) {
-        if check vec::is_not_empty(v) {
-            let cap_item0 = vec::head(v);
+    alt fn_proto {
+      ast::proto_any | ast::proto_block {
+        if vec::is_not_empty(cap_clause) {
+            let cap_item0 = vec::head(cap_clause);
             tcx.sess.span_err(
                 cap_item0.span,
                 "cannot capture values explicitly with a block closure");
         }
-    };
-
-    alt fn_proto {
-      ast::proto_any | ast::proto_block {
-        check_block_captures(cap_clause.copies);
-        check_block_captures(cap_clause.moves);
       }
       ast::proto_bare | ast::proto_box | ast::proto_uniq {
-        vec::iter(cap_clause.copies, check_capture_item);
-        vec::iter(cap_clause.moves, check_capture_item);
-        vec::iter(cap_clause.moves, check_not_upvar);
+        for cap_clause.each { |cap_item|
+            check_capture_item(cap_item);
+        }
       }
     }
 }
@@ -95,23 +78,30 @@ fn compute_capture_vars(tcx: ty::ctxt,
     let freevars = freevars::get_freevars(tcx, fn_expr_id);
     let cap_map = map::int_hash();
 
-    vec::iter(cap_clause.copies) { |cap_item|
+    // first add entries for anything explicitly named in the cap clause
+
+    for cap_clause.each { |cap_item|
         let cap_def = tcx.def_map.get(cap_item.id);
         let cap_def_id = ast_util::def_id_of_def(cap_def).node;
-        if vec::any(*freevars, {|fv| fv.def == cap_def}) {
-            cap_map.insert(cap_def_id, { def:cap_def, mode:cap_copy });
+        if cap_item.is_move {
+            // if we are moving the value in, but it's not actually used,
+            // must drop it.
+            if vec::any(*freevars, {|fv| fv.def == cap_def}) {
+                cap_map.insert(cap_def_id, { def:cap_def, mode:cap_move });
+            } else {
+                cap_map.insert(cap_def_id, { def:cap_def, mode:cap_drop });
+            }
+        } else {
+            // if we are copying the value in, but it's not actually used,
+            // just ignore it.
+            if vec::any(*freevars, {|fv| fv.def == cap_def}) {
+                cap_map.insert(cap_def_id, { def:cap_def, mode:cap_copy });
+            }
         }
     }
 
-    vec::iter(cap_clause.moves) { |cap_item|
-        let cap_def = tcx.def_map.get(cap_item.id);
-        let cap_def_id = ast_util::def_id_of_def(cap_def).node;
-        if vec::any(*freevars, {|fv| fv.def == cap_def}) {
-            cap_map.insert(cap_def_id, { def:cap_def, mode:cap_move });
-        } else {
-            cap_map.insert(cap_def_id, { def:cap_def, mode:cap_drop });
-        }
-    }
+    // now go through anything that is referenced but was not explicitly
+    // named and add that
 
     let implicit_mode = alt fn_proto {
       ast::proto_any | ast::proto_block { cap_ref }

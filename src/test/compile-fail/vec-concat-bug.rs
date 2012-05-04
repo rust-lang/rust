@@ -4,7 +4,6 @@ fn concat<T: copy>(v: [const [const T]]) -> [T] {
     // Earlier versions of our type checker accepted this:
     vec::iter(v) {|&&inner: [T]|
         //!^ ERROR values differ in mutability
-        //!^^ ERROR values differ in mutability
         r += inner;
     }
 

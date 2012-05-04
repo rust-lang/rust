@@ -117,16 +117,14 @@ fn check_fn_cap_clause(cx: ctx,
     });
     //log("freevar_ids", freevar_ids);
     with_appropriate_checker(cx, id) { |checker|
-        let check_var = fn@(&&cap_item: @capture_item) {
+        for cap_clause.each { |cap_item|
             let cap_def = cx.tcx.def_map.get(cap_item.id);
             let cap_def_id = ast_util::def_id_of_def(cap_def).node;
             if !vec::contains(freevar_ids, cap_def_id) {
                 let ty = ty::node_id_to_type(cx.tcx, cap_def_id);
                 checker(cx, ty, cap_item.span);
             }
-        };
-        vec::iter(cap_clause.copies, check_var);
-        vec::iter(cap_clause.moves, check_var);
+        }
     }
 }
 
@@ -227,8 +225,8 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
             }
         }
       }
-      expr_fn(_, _, _, cap_clause) {
-        check_fn_cap_clause(cx, e.id, *cap_clause);
+      expr_fn(_, _, _, cap_clause) | expr_fn_block(_, _, cap_clause) {
+        check_fn_cap_clause(cx, e.id, cap_clause);
       }
       _ { }
     }

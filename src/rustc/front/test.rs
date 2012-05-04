@@ -365,15 +365,10 @@ fn mk_test_wrapper(cx: test_ctxt,
         rules: ast::default_blk
     });
 
-    let wrapper_capture: @ast::capture_clause = @{
-        copies: [],
-        moves: []
-    };
-
     let wrapper_expr: ast::expr = {
         id: cx.sess.next_node_id(),
         node: ast::expr_fn(ast::proto_bare, wrapper_decl,
-                           wrapper_body, wrapper_capture),
+                           wrapper_body, []),
         span: span
     };
 

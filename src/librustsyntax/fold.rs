@@ -456,8 +456,9 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
               expr_fn(proto, fold_fn_decl(decl, fld),
                       fld.fold_block(body), captures)
           }
-          expr_fn_block(decl, body) {
-            expr_fn_block(fold_fn_decl(decl, fld), fld.fold_block(body))
+          expr_fn_block(decl, body, captures) {
+            expr_fn_block(fold_fn_decl(decl, fld), fld.fold_block(body),
+                          captures)
           }
           expr_block(blk) { expr_block(fld.fold_block(blk)) }
           expr_move(el, er) {

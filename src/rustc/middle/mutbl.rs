@@ -199,14 +199,17 @@ fn visit_expr(ex: @expr, &&cx: @ctx, v: visit::vt<@ctx>) {
       expr_assign(dest, src) | expr_assign_op(_, dest, src) {
         check_lval(cx, dest, msg_assign);
       }
-      expr_fn(_, _, _, cap) {
-        for cap.moves.each {|moved|
-            let def = cx.tcx.def_map.get(moved.id);
-            alt is_illegal_to_modify_def(cx, def, msg_move_out) {
-              some(name) { mk_err(cx, moved.span, msg_move_out, moved.name); }
-              _ { }
+      expr_fn(_, _, _, cap_clause) | expr_fn_block(_, _, cap_clause) {
+        for cap_clause.each { |cap_item|
+            if cap_item.is_move {
+                let def = cx.tcx.def_map.get(cap_item.id);
+                alt is_illegal_to_modify_def(cx, def, msg_move_out) {
+                  some(name) { mk_err(cx, cap_item.span,
+                                      msg_move_out, name); }
+                  _ { }
+                }
+                cx.mutbl_map.insert(ast_util::def_id_of_def(def).node, ());
             }
-            cx.mutbl_map.insert(ast_util::def_id_of_def(def).node, ());
         }
       }
       _ { }

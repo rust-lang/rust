@@ -182,8 +182,8 @@ fn cant_copy(cx: ctx, b: binding) -> bool {
 fn local_id_for_args(cx: ctx, args: [@ast::expr]) -> uint {
     for vec::each(args) {|arg|
         alt arg.node {
-          ast::expr_fn_block(decl, _) | ast::expr_fn(_, decl, _, _) |
-          ast::expr_loop_body(@{node: ast::expr_fn_block(decl, _), _}) {
+          ast::expr_fn_block(decl, _, _) | ast::expr_fn(_, decl, _, _) |
+          ast::expr_loop_body(@{node: ast::expr_fn_block(decl, _, _), _}) {
             if decl.inputs.len() > 0u {
                 ret local_id_of_node(cx, decl.inputs[0].id);
             }
@@ -216,7 +216,7 @@ fn check_call(cx: @ctx, sc: scope, f: @ast::expr, args: [@ast::expr],
           ast::by_ref | ast::by_val | ast::by_move | ast::by_copy {}
         }
         alt arg.node {
-          ast::expr_fn_block(_, _) { blocks += [arg]; }
+          ast::expr_fn_block(*) { blocks += [arg]; }
           ast::expr_loop_body(b) { blocks += [b]; }
           _ {
             let root_var = path_def_id(*cx, root.ex);
@@ -267,7 +267,7 @@ fn check_call(cx: @ctx, sc: scope, f: @ast::expr, args: [@ast::expr],
                 let mut_alias =
                     (ast::by_mutbl_ref == ty::arg_mode(cx.tcx, arg_t));
                 alt args[i].node {
-                  ast::expr_fn_block(_, _) | ast::expr_loop_body(_) {}
+                  ast::expr_fn_block(*) | ast::expr_loop_body(_) {}
                   _ {
                     if i != j && ty_can_unsafely_include(
                         *cx, unsafe_ty, arg_t.ty, mut_alias) &&
@@ -306,7 +306,7 @@ fn check_call(cx: @ctx, sc: scope, f: @ast::expr, args: [@ast::expr],
         let inner_sc = {bs: bindings + sc.bs, invalid: sc.invalid};
         for blocks.each {|blk|
             alt check blk.node {
-              ast::expr_fn_block(_, body) {
+              ast::expr_fn_block(_, body, _) {
                 v.visit_block(body, inner_sc, v);
               }
             }

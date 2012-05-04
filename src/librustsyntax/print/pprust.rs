@@ -519,7 +519,7 @@ fn print_item(s: ps, &&item: @ast::item) {
           hardbreak_if_not_bol(s);
           maybe_print_comment(s, ctor.span.lo);
           head(s, "new");
-          print_fn_args_and_ret(s, ctor.node.dec);
+          print_fn_args_and_ret(s, ctor.node.dec, []);
           space(s.s);
           print_block(s, ctor.node.body);
           for items.each {|ci|
@@ -1018,18 +1018,17 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         // head-box, will be closed by print-block at start
         ibox(s, 0u);
         word(s.s, proto_to_str(proto));
-        print_cap_clause(s, *cap_clause);
-        print_fn_args_and_ret(s, decl);
+        print_fn_args_and_ret(s, decl, cap_clause);
         space(s.s);
         print_block(s, body);
       }
-      ast::expr_fn_block(decl, body) {
+      ast::expr_fn_block(decl, body, cap_clause) {
         // containing cbox, will be closed by print-block at }
         cbox(s, indent_unit);
         // head-box, will be closed by print-block at start
         ibox(s, 0u);
         word(s.s, "{");
-        print_fn_block_args(s, decl);
+        print_fn_block_args(s, decl, cap_clause);
         print_possibly_embedded_block(s, body, block_block_fn, indent_unit);
       }
       ast::expr_loop_body(body) {
@@ -1319,46 +1318,27 @@ fn print_fn(s: ps, decl: ast::fn_decl, name: ast::ident,
     }
     word(s.s, name);
     print_type_params(s, typarams);
-    print_fn_args_and_ret(s, decl);
+    print_fn_args_and_ret(s, decl, []);
 }
 
-fn print_cap_clause(s: ps, cap_clause: ast::capture_clause) {
-    fn print_cap_item(s: ps, &&cap_item: @ast::capture_item) {
-        word(s.s, cap_item.name);
-    }
-
-    let has_copies = vec::is_not_empty(cap_clause.copies);
-    let has_moves = vec::is_not_empty(cap_clause.moves);
-    if !has_copies && !has_moves { ret; }
-
-    word(s.s, "[");
-
-    if has_copies {
-        word_nbsp(s, "copy");
-        commasep(s, inconsistent, cap_clause.copies, print_cap_item);
-        if has_moves {
-            word_space(s, ";");
+fn print_fn_args(s: ps, decl: ast::fn_decl,
+                 cap_items: [ast::capture_item]) {
+    commasep(s, inconsistent, decl.inputs, print_arg);
+    if cap_items.is_not_empty() {
+        let mut first = decl.inputs.is_empty();
+        for cap_items.each { |cap_item|
+            if first { first = false; } else { word_space(s, ","); }
+            if cap_item.is_move { word_nbsp(s, "move") }
+            else { word_nbsp(s, "copy") }
+            word(s.s, cap_item.name);
         }
     }
-
-    if has_moves {
-        word_nbsp(s, "move");
-        commasep(s, inconsistent, cap_clause.moves, print_cap_item);
-    }
-
-    word(s.s, "]");
 }
 
-fn print_fn_args_and_ret(s: ps, decl: ast::fn_decl) {
+fn print_fn_args_and_ret(s: ps, decl: ast::fn_decl,
+                         cap_items: [ast::capture_item]) {
     popen(s);
-    fn print_arg(s: ps, x: ast::arg) {
-        ibox(s, indent_unit);
-        print_arg_mode(s, x.mode);
-        word_space(s, x.ident + ":");
-        print_type(s, x.ty);
-        end(s);
-    }
-    commasep(s, inconsistent, decl.inputs, print_arg);
+    print_fn_args(s, decl, cap_items);
     pclose(s);
     word(s.s, constrs_str(decl.constraints, {|c|
         ast_fn_constr_to_str(decl, c)
@@ -1372,19 +1352,10 @@ fn print_fn_args_and_ret(s: ps, decl: ast::fn_decl) {
     }
 }
 
-fn print_fn_block_args(s: ps, decl: ast::fn_decl) {
+fn print_fn_block_args(s: ps, decl: ast::fn_decl,
+                       cap_items: [ast::capture_item]) {
     word(s.s, "|");
-    fn print_arg(s: ps, x: ast::arg) {
-        ibox(s, indent_unit);
-        print_arg_mode(s, x.mode);
-        word(s.s, x.ident);
-        if x.ty.node != ast::ty_infer {
-            word_space(s, ":");
-            print_type(s, x.ty);
-        }
-        end(s);
-    }
-    commasep(s, inconsistent, decl.inputs, print_arg);
+    print_fn_args(s, decl, cap_items);
     word(s.s, "|");
     if decl.output.node != ast::ty_infer {
         space_if_not_bol(s);
@@ -1541,6 +1512,23 @@ fn print_mt(s: ps, mt: ast::mt) {
     print_type(s, mt.ty);
 }
 
+fn print_arg(s: ps, input: ast::arg) {
+    ibox(s, indent_unit);
+    print_arg_mode(s, input.mode);
+    alt input.ty.node {
+      ast::ty_infer {
+        word(s.s, input.ident);
+      }
+      _ {
+        if str::len(input.ident) > 0u {
+            word_space(s, input.ident + ":");
+        }
+        print_type(s, input.ty);
+      }
+    }
+    end(s);
+}
+
 fn print_ty_fn(s: ps, opt_proto: option<ast::proto>,
                decl: ast::fn_decl, id: option<ast::ident>,
                tps: option<[ast::ty_param]>) {
@@ -1550,13 +1538,6 @@ fn print_ty_fn(s: ps, opt_proto: option<ast::proto>,
     alt tps { some(tps) { print_type_params(s, tps); } _ { } }
     zerobreak(s.s);
     popen(s);
-    fn print_arg(s: ps, input: ast::arg) {
-        print_arg_mode(s, input.mode);
-        if str::len(input.ident) > 0u {
-            word_space(s, input.ident + ":");
-        }
-        print_type(s, input.ty);
-    }
     commasep(s, inconsistent, decl.inputs, print_arg);
     pclose(s);
     maybe_print_comment(s, decl.output.span.lo);

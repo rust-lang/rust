@@ -390,7 +390,7 @@ fn check_unused_imports(e: @env, level: lint::level) {
     };
 }
 
-fn resolve_capture_item(e: @env, sc: scopes, &&cap_item: @ast::capture_item) {
+fn resolve_capture_item(e: @env, sc: scopes, cap_item: ast::capture_item) {
     let dcur = lookup_in_scope_strict(
         *e, sc, cap_item.span, cap_item.name, ns_val);
     maybe_insert(e, cap_item.id, dcur);
@@ -453,10 +453,11 @@ fn resolve_names(e: @env, c: @ast::crate) {
             maybe_insert(e, exp.id,
                          lookup_path_strict(*e, sc, exp.span, p, ns_val));
           }
-          ast::expr_fn(_, _, _, cap_clause) {
-            let rci = bind resolve_capture_item(e, sc, _);
-            vec::iter(cap_clause.copies, rci);
-            vec::iter(cap_clause.moves, rci);
+          ast::expr_fn(_, _, _, cap_clause) |
+          ast::expr_fn_block(_, _, cap_clause) {
+            for cap_clause.each { |ci|
+                resolve_capture_item(e, sc, ci);
+            }
           }
           _ { }
         }

@@ -384,7 +384,7 @@ fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
       expr_fn(proto, decl, body, _) {
         v.visit_fn(fk_anon(proto), decl, body, ex.span, ex.id, e, v);
       }
-      expr_fn_block(decl, body) {
+      expr_fn_block(decl, body, _) {
         v.visit_fn(fk_fn_block, decl, body, ex.span, ex.id, e, v);
       }
       expr_block(b) { v.visit_block(b, e, v); }

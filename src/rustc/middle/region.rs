@@ -286,7 +286,7 @@ fn resolve_pat(pat: @ast::pat, cx: ctxt, visitor: visit::vt<ctxt>) {
 fn resolve_expr(expr: @ast::expr, cx: ctxt, visitor: visit::vt<ctxt>) {
     record_parent(cx, expr.id);
     alt expr.node {
-      ast::expr_fn(_, _, _, _) | ast::expr_fn_block(_, _) {
+      ast::expr_fn(*) | ast::expr_fn_block(*) {
         let new_cx = {parent: some(expr.id) with cx};
         visit::visit_expr(expr, new_cx, visitor);
       }
