@@ -1475,9 +1475,12 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
 
           ty_box(mt) |
           ty_uniq(mt) |
-          ty_ptr(mt) |
           ty_rptr(_, mt) {
             be type_requires(cx, seen, r_ty, mt.ty);
+          }
+
+          ty_ptr(mt) {
+            false           // unsafe ptrs can always be NULL
           }
 
           ty_rec(fields) {
