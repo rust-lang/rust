@@ -552,11 +552,11 @@ fn T_task(targ_cfg: @session::config) -> TypeRef {
     ret t;
 }
 
-fn T_tydesc_field(cx: @crate_ctxt, field: int) -> TypeRef unsafe {
+fn T_tydesc_field(cx: @crate_ctxt, field: uint) -> TypeRef unsafe {
     // Bit of a kludge: pick the fn typeref out of the tydesc..
 
     let tydesc_elts: [TypeRef] =
-        vec::from_elem::<TypeRef>(abi::n_tydesc_fields as uint,
+        vec::from_elem::<TypeRef>(abi::n_tydesc_fields,
                                  T_nil());
     llvm::LLVMGetStructElementTypes(cx.tydesc_type,
                                     to_ptr::<TypeRef>(tydesc_elts));
@@ -902,12 +902,12 @@ fn node_id_type_params(bcx: block, id: ast::node_id) -> [ty::t] {
 
 fn field_idx_strict(cx: ty::ctxt, sp: span, ident: ast::ident,
                     fields: [ty::field])
-    -> int {
+    -> uint {
     alt ty::field_idx(ident, fields) {
-            none { cx.sess.span_bug(sp, #fmt("base expr doesn't appear to \
-                     have a field named %s", ident)); }
-            some(i) { i as int }
-        }
+       none { cx.sess.span_bug(sp, #fmt("base expr doesn't appear to \
+                 have a field named %s", ident)); }
+       some(i) { i }
+    }
 }
 
 fn dummy_substs(tps: [ty::t]) -> ty::substs {

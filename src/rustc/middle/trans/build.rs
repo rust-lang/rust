@@ -427,7 +427,7 @@ fn GEP(cx: block, Pointer: ValueRef, Indices: [ValueRef]) -> ValueRef {
 
 // Simple wrapper around GEP that takes an array of ints and wraps them
 // in C_i32()
-fn GEPi(cx: block, base: ValueRef, ixs: [int]) -> ValueRef {
+fn GEPi(cx: block, base: ValueRef, ixs: [uint]) -> ValueRef {
     let mut v: [ValueRef] = [];
     for vec::each(ixs) {|i| v += [C_i32(i as i32)]; }
     count_insn(cx, "gepi");

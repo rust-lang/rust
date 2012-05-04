@@ -13,18 +13,18 @@ import common::*;
 
 fn get_fill(bcx: block, vptr: ValueRef) -> ValueRef {
     let _icx = bcx.insn_ctxt("tvec::get_fill");
-    Load(bcx, GEPi(bcx, vptr, [0, abi::vec_elt_fill]))
+    Load(bcx, GEPi(bcx, vptr, [0u, abi::vec_elt_fill]))
 }
 fn set_fill(bcx: block, vptr: ValueRef, fill: ValueRef) {
-    Store(bcx, fill, GEPi(bcx, vptr, [0, abi::vec_elt_fill]));
+    Store(bcx, fill, GEPi(bcx, vptr, [0u, abi::vec_elt_fill]));
 }
 fn get_alloc(bcx: block, vptr: ValueRef) -> ValueRef {
-    Load(bcx, GEPi(bcx, vptr, [0, abi::vec_elt_alloc]))
+    Load(bcx, GEPi(bcx, vptr, [0u, abi::vec_elt_alloc]))
 }
 fn get_dataptr(bcx: block, vptr: ValueRef, unit_ty: TypeRef)
     -> ValueRef {
     let _icx = bcx.insn_ctxt("tvec::get_dataptr");
-    let ptr = GEPi(bcx, vptr, [0, abi::vec_elt_elems]);
+    let ptr = GEPi(bcx, vptr, [0u, abi::vec_elt_elems]);
     PointerCast(bcx, ptr, T_ptr(unit_ty))
 }
 
@@ -41,8 +41,8 @@ fn alloc_uniq_raw(bcx: block, fill: ValueRef, alloc: ValueRef) -> result {
     let llvecty = ccx.opaque_vec_type;
     let vecsize = Add(bcx, alloc, llsize_of(ccx, llvecty));
     let vecptr = shared_malloc(bcx, T_ptr(llvecty), vecsize);
-    Store(bcx, fill, GEPi(bcx, vecptr, [0, abi::vec_elt_fill]));
-    Store(bcx, alloc, GEPi(bcx, vecptr, [0, abi::vec_elt_alloc]));
+    Store(bcx, fill, GEPi(bcx, vecptr, [0u, abi::vec_elt_fill]));
+    Store(bcx, alloc, GEPi(bcx, vecptr, [0u, abi::vec_elt_alloc]));
     ret {bcx: bcx, val: vecptr};
 }
 
@@ -69,7 +69,7 @@ fn duplicate_uniq(bcx: block, vptr: ValueRef, vec_ty: ty::t) -> result {
     let newptr = shared_malloc(bcx, val_ty(vptr), size);
     call_memmove(bcx, newptr, vptr, size);
     let unit_ty = ty::sequence_element_type(bcx.tcx(), vec_ty);
-    Store(bcx, fill, GEPi(bcx, newptr, [0, abi::vec_elt_alloc]));
+    Store(bcx, fill, GEPi(bcx, newptr, [0u, abi::vec_elt_alloc]));
     let bcx = if ty::type_needs_drop(bcx.tcx(), unit_ty) {
         iter_vec(bcx, newptr, vec_ty, base::take_ty)
     } else { bcx };
@@ -127,8 +127,8 @@ fn trans_evec(bcx: block, args: [@ast::expr],
 
             let p = base::alloca(bcx, T_struct([T_ptr(llunitty),
                                                 ccx.int_type]));
-            Store(bcx, vp, GEPi(bcx, p, [0, abi::slice_elt_base]));
-            Store(bcx, len, GEPi(bcx, p, [0, abi::slice_elt_len]));
+            Store(bcx, vp, GEPi(bcx, p, [0u, abi::slice_elt_base]));
+            Store(bcx, len, GEPi(bcx, p, [0u, abi::slice_elt_len]));
 
             {bcx: bcx, val: p, dataptr: vp}
           }
@@ -205,14 +205,14 @@ fn get_base_and_len(cx: block, v: ValueRef, e_ty: ty::t)
 
     alt vstore {
       ty::vstore_fixed(n) {
-        let base = GEPi(cx, v, [0, 0]);
+        let base = GEPi(cx, v, [0u, 0u]);
         let n = if ty::type_is_str(e_ty) { n + 1u } else { n };
         let len = Mul(cx, C_uint(ccx, n), unit_sz);
         (base, len)
       }
       ty::vstore_slice(_) {
-        let base = Load(cx, GEPi(cx, v, [0, abi::slice_elt_base]));
-        let len = Load(cx, GEPi(cx, v, [0, abi::slice_elt_len]));
+        let base = Load(cx, GEPi(cx, v, [0u, abi::slice_elt_base]));
+        let len = Load(cx, GEPi(cx, v, [0u, abi::slice_elt_len]));
         (base, len)
       }
       ty::vstore_uniq {

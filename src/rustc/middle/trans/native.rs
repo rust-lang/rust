@@ -599,7 +599,7 @@ fn trans_native_mod(ccx: @crate_ctxt,
                     let mut atys = x86_64.arg_tys;
                     let mut attrs = x86_64.attrs;
                     if x86_64.sret {
-                        let llretptr = GEPi(bcx, llargbundle, [0, n as int]);
+                        let llretptr = GEPi(bcx, llargbundle, [0u, n]);
                         let llretloc = Load(bcx, llretptr);
                         llargvals = [llretloc];
                         atys = vec::tail(atys);
@@ -608,14 +608,14 @@ fn trans_native_mod(ccx: @crate_ctxt,
                     while i < n {
                         let llargval = if atys[i].cast {
                             let arg_ptr = GEPi(bcx, llargbundle,
-                                               [0, i as int]);
+                                               [0u, i]);
                             let arg_ptr = BitCast(bcx, arg_ptr,
                                               T_ptr(atys[i].ty));
                             Load(bcx, arg_ptr)
                         } else if option::is_some(attrs[i]) {
-                            GEPi(bcx, llargbundle, [0, i as int])
+                            GEPi(bcx, llargbundle, [0u, i])
                         } else {
-                            load_inbounds(bcx, llargbundle, [0, i as int])
+                            load_inbounds(bcx, llargbundle, [0u, i])
                         };
                         llargvals += [llargval];
                         i += 1u;
@@ -624,7 +624,7 @@ fn trans_native_mod(ccx: @crate_ctxt,
                 _ {
                     while i < n {
                         let llargval = load_inbounds(bcx, llargbundle,
-                                                          [0, i as int]);
+                                                          [0u, i]);
                         llargvals += [llargval];
                         i += 1u;
                     }
@@ -652,7 +652,7 @@ fn trans_native_mod(ccx: @crate_ctxt,
                         ret;
                     }
                     let n = vec::len(tys.arg_tys);
-                    let llretptr = GEPi(bcx, llargbundle, [0, n as int]);
+                    let llretptr = GEPi(bcx, llargbundle, [0u, n]);
                     let llretloc = Load(bcx, llretptr);
                     if x86_64.ret_ty.cast {
                         let tmp_ptr = BitCast(bcx, llretloc,
@@ -666,7 +666,7 @@ fn trans_native_mod(ccx: @crate_ctxt,
                     if tys.ret_def {
                         let n = vec::len(tys.arg_tys);
                         // R** llretptr = &args->r;
-                        let llretptr = GEPi(bcx, llargbundle, [0, n as int]);
+                        let llretptr = GEPi(bcx, llargbundle, [0u, n]);
                         // R* llretloc = *llretptr; /* (args->r) */
                         let llretloc = Load(bcx, llretptr);
                         // *args->r = r;
@@ -736,11 +736,11 @@ fn trans_native_mod(ccx: @crate_ctxt,
             let implicit_args = first_real_arg; // ret + env
             while i < n {
                 let llargval = get_param(llwrapfn, i + implicit_args);
-                store_inbounds(bcx, llargval, llargbundle, [0, i as int]);
+                store_inbounds(bcx, llargval, llargbundle, [0u, i]);
                 i += 1u;
             }
             let llretptr = get_param(llwrapfn, 0u);
-            store_inbounds(bcx, llretptr, llargbundle, [0, n as int]);
+            store_inbounds(bcx, llretptr, llargbundle, [0u, n]);
         }
 
         fn build_ret(bcx: block, _tys: @c_stack_tys,
@@ -868,12 +868,12 @@ fn trans_crust_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
             let mut llargvals = [];
             let mut i = 0u;
             let n = vec::len(tys.arg_tys);
-            let llretptr = load_inbounds(bcx, llargbundle, [0, n as int]);
+            let llretptr = load_inbounds(bcx, llargbundle, [0u, n]);
             llargvals += [llretptr];
             let llenvptr = C_null(T_opaque_box_ptr(bcx.ccx()));
             llargvals += [llenvptr];
             while i < n {
-                let llargval = load_inbounds(bcx, llargbundle, [0, i as int]);
+                let llargval = load_inbounds(bcx, llargbundle, [0u, i]);
                 llargvals += [llargval];
                 i += 1u;
             }
@@ -924,33 +924,28 @@ fn trans_crust_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
                         let mut argval = get_param(llwrapfn, i + j);
                         if option::is_some(attrs[i]) {
                             argval = Load(bcx, argval);
-                            store_inbounds(bcx, argval, llargbundle,
-                                                        [0, i as int]);
+                            store_inbounds(bcx, argval, llargbundle, [0u, i]);
                         } else if atys[i].cast {
-                            let argptr = GEPi(bcx, llargbundle,
-                                              [0, i as int]);
+                            let argptr = GEPi(bcx, llargbundle, [0u, i]);
                             let argptr = BitCast(bcx, argptr,
                                                  T_ptr(atys[i].ty));
                             Store(bcx, argval, argptr);
                         } else {
-                            store_inbounds(bcx, argval, llargbundle,
-                                                        [0, i as int]);
+                            store_inbounds(bcx, argval, llargbundle, [0u, i]);
                         }
                         i += 1u;
                     }
-                    store_inbounds(bcx, llretptr, llargbundle, [0, n as int]);
+                    store_inbounds(bcx, llretptr, llargbundle, [0u, n]);
                 }
                 _ {
                     let llretptr = alloca(bcx, tys.ret_ty);
-                    let mut i = 0u;
                     let n = vec::len(tys.arg_tys);
-                    while i < n {
+                    uint::range(0u, n) {|i|
                         let llargval = get_param(llwrapfn, i);
                         store_inbounds(bcx, llargval, llargbundle,
-                                                      [0, i as int]);
-                        i += 1u;
-                    }
-                    store_inbounds(bcx, llretptr, llargbundle, [0, n as int]);
+                                                      [0u, i]);
+                    };
+                    store_inbounds(bcx, llretptr, llargbundle, [0u, n]);
                 }
             }
         }
@@ -965,8 +960,7 @@ fn trans_crust_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
                         ret;
                     }
                     let n = vec::len(tys.arg_tys);
-                    let llretval = load_inbounds(bcx, llargbundle,
-                                                      [0, n as int]);
+                    let llretval = load_inbounds(bcx, llargbundle, [0u, n]);
                     let llretval = if x86_64.ret_ty.cast {
                         let retptr = BitCast(bcx, llretval,
                                                   T_ptr(x86_64.ret_ty.ty));
@@ -978,8 +972,7 @@ fn trans_crust_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
                 }
                 _ {
                     let n = vec::len(tys.arg_tys);
-                    let llretval = load_inbounds(bcx, llargbundle,
-                                                      [0, n as int]);
+                    let llretval = load_inbounds(bcx, llargbundle, [0u, n]);
                     let llretval = Load(bcx, llretval);
                     Ret(bcx, llretval);
                 }

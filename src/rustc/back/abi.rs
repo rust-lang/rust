@@ -1,55 +1,54 @@
 
 
 
-// FIXME: Most of these should be uints.
-const rc_base_field_refcnt: int = 0;
+const rc_base_field_refcnt: uint = 0u;
 
-const task_field_refcnt: int = 0;
+const task_field_refcnt: uint = 0u;
 
-const task_field_stk: int = 2;
+const task_field_stk: uint = 2u;
 
-const task_field_runtime_sp: int = 3;
+const task_field_runtime_sp: uint = 3u;
 
-const task_field_rust_sp: int = 4;
+const task_field_rust_sp: uint = 4u;
 
-const task_field_gc_alloc_chain: int = 5;
+const task_field_gc_alloc_chain: uint = 5u;
 
-const task_field_dom: int = 6;
+const task_field_dom: uint = 6u;
 
-const n_visible_task_fields: int = 7;
+const n_visible_task_fields: uint = 7u;
 
-const dom_field_interrupt_flag: int = 1;
+const dom_field_interrupt_flag: uint = 1u;
 
-const frame_glue_fns_field_mark: int = 0;
+const frame_glue_fns_field_mark: uint = 0u;
 
-const frame_glue_fns_field_drop: int = 1;
+const frame_glue_fns_field_drop: uint = 1u;
 
-const frame_glue_fns_field_reloc: int = 2;
+const frame_glue_fns_field_reloc: uint = 2u;
 
-const box_field_refcnt: int = 0;
-const box_field_tydesc: int = 1;
-const box_field_prev: int = 2;
-const box_field_next: int = 3;
-const box_field_body: int = 4;
+const box_field_refcnt: uint = 0u;
+const box_field_tydesc: uint = 1u;
+const box_field_prev: uint = 2u;
+const box_field_next: uint = 3u;
+const box_field_body: uint = 4u;
 
-const general_code_alignment: int = 16;
+const general_code_alignment: uint = 16u;
 
-const tydesc_field_first_param: int = 0;
-const tydesc_field_size: int = 1;
-const tydesc_field_align: int = 2;
-const tydesc_field_take_glue: int = 3;
-const tydesc_field_drop_glue: int = 4;
-const tydesc_field_free_glue: int = 5;
-const tydesc_field_unused: int = 6;
-const tydesc_field_sever_glue: int = 7;
-const tydesc_field_mark_glue: int = 8;
-const tydesc_field_unused2: int = 9;
-const tydesc_field_unused_2: int = 10;
-const tydesc_field_shape: int = 11;
-const tydesc_field_shape_tables: int = 12;
-const tydesc_field_n_params: int = 13;
-const tydesc_field_obj_params: int = 14; // FIXME unused
-const n_tydesc_fields: int = 15;
+const tydesc_field_first_param: uint = 0u;
+const tydesc_field_size: uint = 1u;
+const tydesc_field_align: uint = 2u;
+const tydesc_field_take_glue: uint = 3u;
+const tydesc_field_drop_glue: uint = 4u;
+const tydesc_field_free_glue: uint = 5u;
+const tydesc_field_unused: uint = 6u;
+const tydesc_field_sever_glue: uint = 7u;
+const tydesc_field_mark_glue: uint = 8u;
+const tydesc_field_unused2: uint = 9u;
+const tydesc_field_unused_2: uint = 10u;
+const tydesc_field_shape: uint = 11u;
+const tydesc_field_shape_tables: uint = 12u;
+const tydesc_field_n_params: uint = 13u;
+const tydesc_field_obj_params: uint = 14u; // FIXME unused (#2351)
+const n_tydesc_fields: uint = 15u;
 
 const cmp_glue_op_eq: uint = 0u;
 
@@ -58,23 +57,23 @@ const cmp_glue_op_lt: uint = 1u;
 const cmp_glue_op_le: uint = 2u;
 
 // The two halves of a closure: code and environment.
-const fn_field_code: int = 0;
-const fn_field_box: int = 1;
+const fn_field_code: uint = 0u;
+const fn_field_box: uint = 1u;
 
 // closures, see trans_closure.rs
-const closure_body_ty_params: int = 0;
-const closure_body_bindings: int = 1;
+const closure_body_ty_params: uint = 0u;
+const closure_body_bindings: uint = 1u;
 
-const vec_elt_fill: int = 0;
+const vec_elt_fill: uint = 0u;
 
-const vec_elt_alloc: int = 1;
+const vec_elt_alloc: uint = 1u;
 
-const vec_elt_elems: int = 2;
+const vec_elt_elems: uint = 2u;
 
-const slice_elt_base: int = 0;
-const slice_elt_len: int = 1;
+const slice_elt_base: uint = 0u;
+const slice_elt_len: uint = 1u;
 
-const worst_case_glue_call_args: int = 7;
+const worst_case_glue_call_args: uint = 7u;
 
 const abi_version: uint = 1u;
 

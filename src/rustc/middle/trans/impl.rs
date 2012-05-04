@@ -78,7 +78,7 @@ fn trans_vtable_callee(bcx: block, env: callee_env, vtable: ValueRef,
     let llfty = type_of::type_of_fn_from_ty(ccx, fty);
     let vtable = PointerCast(bcx, vtable,
                              T_ptr(T_array(T_ptr(llfty), n_method + 1u)));
-    let mptr = Load(bcx, GEPi(bcx, vtable, [0, n_method as int]));
+    let mptr = Load(bcx, GEPi(bcx, vtable, [0u, n_method]));
     {bcx: bcx, val: mptr, kind: owned, env: env}
 }
 
@@ -153,11 +153,11 @@ fn trans_iface_callee(bcx: block, base: @ast::expr,
     -> lval_maybe_callee {
     let _icx = bcx.insn_ctxt("impl::trans_iface_callee");
     let {bcx, val} = trans_temp_expr(bcx, base);
-    let vtable = Load(bcx, PointerCast(bcx, GEPi(bcx, val, [0, 0]),
+    let vtable = Load(bcx, PointerCast(bcx, GEPi(bcx, val, [0u, 0u]),
                                      T_ptr(T_ptr(T_vtable()))));
-    let box = Load(bcx, GEPi(bcx, val, [0, 1]));
+    let box = Load(bcx, GEPi(bcx, val, [0u, 1u]));
     // FIXME[impl] I doubt this is alignment-safe
-    let self = GEPi(bcx, box, [0, abi::box_field_body]);
+    let self = GEPi(bcx, box, [0u, abi::box_field_body]);
     let env = self_env(self, ty::mk_opaque_box(bcx.tcx()), some(box));
     trans_vtable_callee(bcx, env, vtable, callee_id, n_method)
 }
@@ -282,12 +282,12 @@ fn trans_cast(bcx: block, val: @ast::expr, id: ast::node_id, dest: dest)
     let bcx = trans_expr_save_in(bcx, val, body);
     revoke_clean(bcx, box);
     let result = get_dest_addr(dest);
-    Store(bcx, box, PointerCast(bcx, GEPi(bcx, result, [0, 1]),
+    Store(bcx, box, PointerCast(bcx, GEPi(bcx, result, [0u, 1u]),
                                 T_ptr(val_ty(box))));
     let orig = ccx.maps.vtable_map.get(id)[0];
     let orig = resolve_vtable_in_fn_ctxt(bcx.fcx, orig);
     let vtable = get_vtable(bcx.ccx(), orig);
-    Store(bcx, vtable, PointerCast(bcx, GEPi(bcx, result, [0, 0]),
+    Store(bcx, vtable, PointerCast(bcx, GEPi(bcx, result, [0u, 0u]),
                                    T_ptr(val_ty(vtable))));
     bcx
 }
