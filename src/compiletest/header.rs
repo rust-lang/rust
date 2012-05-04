@@ -29,7 +29,7 @@ fn load_props(testfile: str) -> test_props {
     let mut exec_env = [];
     let mut compile_flags = option::none;
     let mut pp_exact = option::none;
-    iter_header(testfile) {|ln|
+    for iter_header(testfile) {|ln|
         alt parse_error_pattern(ln) {
           option::some(ep) { error_patterns += [ep]; }
           option::none { }
@@ -62,14 +62,11 @@ fn load_props(testfile: str) -> test_props {
 
 fn is_test_ignored(config: config, testfile: str) -> bool {
     let mut found = false;
-    iter_header(testfile) {|ln|
-        // FIXME: Can't return or break from iterator
-        // (Fix when Issue #1619 is resolved)
-        found = found || parse_name_directive(ln, "xfail-test");
-        found = found || parse_name_directive(ln, xfail_target());
-        if (config.mode == common::mode_pretty) {
-            found = found || parse_name_directive(ln, "xfail-pretty");
-        }
+    for iter_header(testfile) {|ln|
+        if parse_name_directive(ln, "xfail-test") { ret true; }
+        if parse_name_directive(ln, xfail_target()) { ret true; }
+        if config.mode == common::mode_pretty &&
+           parse_name_directive(ln, "xfail-pretty") { ret true; }
     };
     ret found;
 
@@ -78,7 +75,7 @@ fn is_test_ignored(config: config, testfile: str) -> bool {
     }
 }
 
-fn iter_header(testfile: str, it: fn(str)) {
+fn iter_header(testfile: str, it: fn(str) -> bool) -> bool {
     let rdr = result::get(io::file_reader(testfile));
     while !rdr.eof() {
         let ln = rdr.read_line();
@@ -88,9 +85,10 @@ fn iter_header(testfile: str, it: fn(str)) {
         // with a warm page cache. Maybe with a cold one.
         if str::starts_with(ln, "fn")
             || str::starts_with(ln, "mod") {
-            break;
-        } else { it(ln); }
+            ret false;
+        } else { if !(it(ln)) { ret false; } }
     }
+    ret true;
 }
 
 fn parse_error_pattern(line: str) -> option<str> {
