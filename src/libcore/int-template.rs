@@ -46,6 +46,7 @@ pure fn compl(i: T) -> T {
 }
 
 #[doc = "Computes the absolute value"]
+// FIXME: abs should return an unsigned int (#2353)
 pure fn abs(i: T) -> T {
     if is_negative(i) { -i } else { i }
 }
