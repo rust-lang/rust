@@ -313,7 +313,8 @@ fn strptime(s: str, format: str) -> result<tm, str> {
                 .chain { |pos| parse_type(s, pos, 'd', tm) }
           }
           'H' {
-            // FIXME: range check.
+            // FIXME: range check. (#2350 -- same issue for all FIXMEs in this
+            // file.)
             alt match_digits(s, pos, 2u, false) {
               some(item) { let (v, pos) = item; tm.tm_hour = v; ok(pos) }
               none { err("Invalid hour") }
