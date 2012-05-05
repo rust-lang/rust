@@ -6,4 +6,4 @@ import tcp = net_tcp;
 export tcp;
 
 import ip = net_ip;
-export ip; 
+export ip;
