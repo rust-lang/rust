@@ -637,14 +637,15 @@ unsafe fn tcp_bind(tcp_server_ptr: *uv_tcp_t,
                                  addr_ptr);
 }
 
-unsafe fn listen(stream: *libc::c_void, backlog: libc::c_int,
+unsafe fn listen<T>(stream: *T, backlog: libc::c_int,
                  cb: *u8) -> libc::c_int {
-    ret rustrt::rust_uv_listen(stream, backlog, cb);
+    ret rustrt::rust_uv_listen(stream as *libc::c_void, backlog, cb);
 }
 
-unsafe fn accept(server: *libc::c_void, client: *libc::c_void)
+unsafe fn accept<T, U>(server: *T, client: *T)
     -> libc::c_int {
-    ret rustrt::rust_uv_accept(server, client);
+    ret rustrt::rust_uv_accept(server as *libc::c_void,
+                               client as *libc::c_void);
 }
 
 unsafe fn write<T>(req: *uv_write_t, stream: *T,
