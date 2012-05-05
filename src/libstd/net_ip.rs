@@ -14,6 +14,7 @@ export v4;
 enum ip_addr {
     #[doc="An IPv4 address"]
     ipv4(u8, u8, u8, u8),
+    ipv6(u16,u16,u16,u16,u16,u16,u16,u16)
 }
 
 #[doc="
@@ -27,6 +28,9 @@ fn format_addr(ip: ip_addr) -> str {
     alt ip {
       ipv4(a, b, c, d) {
         #fmt["%u.%u.%u.%u", a as uint, b as uint, c as uint, d as uint]
+      }
+      ipv6(a,b,c,d,e,f,g,h) {
+        fail "FIXME impl parsing of ipv6 addr";
       }
     }
 }
