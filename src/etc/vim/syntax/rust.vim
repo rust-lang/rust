@@ -81,6 +81,7 @@ hi def link rustFuncName      Function
 hi def link rustComment       Comment
 hi def link rustMacro         Macro
 hi def link rustType          Type
+hi def link rustTodo          Todo
 
 syn sync minlines=200
 syn sync maxlines=500
