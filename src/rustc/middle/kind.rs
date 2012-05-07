@@ -4,6 +4,7 @@ import syntax::codemap::span;
 import ty::{kind, kind_copyable, kind_sendable, kind_noncopyable};
 import driver::session::session;
 import std::map::hashmap;
+import util::ppaux::{ty_to_str, tys_to_str};
 import syntax::print::pprust::expr_to_str;
 import freevars::freevar_entry;
 
@@ -267,8 +268,8 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
               // Fail earlier to make debugging easier
               fail #fmt("Internal error: in kind::check_expr, length \
                   mismatch between actual and declared bounds: actual = \
-                  %s (%u tys), declared = %s (%u tys)", ts, ts.len(),
-                        *bounds, bounds.len());
+                  %s (%u tys), declared = %? (%u tys)",
+                  tys_to_str(cx.tcx, ts), ts.len(), *bounds, (*bounds).len());
             }
             vec::iter2(ts, *bounds) {|ty, bound|
                 check_bounds(cx, e.span, ty, bound)
