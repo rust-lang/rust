@@ -88,6 +88,7 @@ resource icx_popper(ccx: @crate_ctxt) {
 
 impl ccx_icx for @crate_ctxt {
     fn insn_ctxt(s: str) -> icx_popper {
+        #debug("new insn_ctxt: %s", s);
         if (self.sess.opts.count_llvm_insns) {
             *self.stats.llvm_insn_ctxt += [s];
         }
@@ -356,7 +357,9 @@ fn malloc_boxed(bcx: block, t: ty::t) -> {box: ValueRef, body: ValueRef} {
     let _icx = bcx.insn_ctxt("trans_malloc_boxed");
     let mut ti = none;
     let box = malloc_boxed_raw(bcx, t, ti);
-    let body = GEPi(bcx, box, [0u, abi::box_field_body]);
+    let box_no_addrspace = non_gc_box_cast(
+        bcx, box, ty::mk_imm_box(bcx.tcx(), t));
+    let body = GEPi(bcx, box_no_addrspace, [0u, abi::box_field_body]);
     ret {box: box, body: body};
 }
 
@@ -2399,7 +2402,8 @@ fn trans_lval(cx: block, e: @ast::expr) -> lval_result {
         let t = expr_ty(cx, base);
         let val = alt check ty::get(t).struct {
           ty::ty_box(_) {
-            GEPi(sub.bcx, sub.val, [0u, abi::box_field_body])
+            let non_gc_val = non_gc_box_cast(sub.bcx, sub.val, t);
+            GEPi(sub.bcx, non_gc_val, [0u, abi::box_field_body])
           }
           ty::ty_res(_, _, _) {
             GEPi(sub.bcx, sub.val, [0u, 1u])
@@ -2415,6 +2419,21 @@ fn trans_lval(cx: block, e: @ast::expr) -> lval_result {
       }
       _ { cx.sess().span_bug(e.span, "non-lval in trans_lval"); }
     }
+}
+
+#[doc = "
+Get the type of a box in the default address space.
+
+Shared box pointers live in address space 1 so the GC strategy can find them.
+Before taking a pointer to the inside of a box it should be cast into address
+space 0. Otherwise the resulting (non-box) pointer will be in the wrong
+address space and thus be the wrong type.
+"]
+fn non_gc_box_cast(cx: block, val: ValueRef, t: ty::t) -> ValueRef {
+    #debug("non_gc_box_cast");
+    add_comment(cx, "non_gc_box_cast");
+    let non_gc_t = type_of_non_gc_box(cx.ccx(), t);
+    PointerCast(cx, val, non_gc_t)
 }
 
 fn lval_maybe_callee_to_lval(c: lval_maybe_callee, ty: ty::t) -> lval_result {

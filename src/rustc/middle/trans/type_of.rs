@@ -11,6 +11,7 @@ export type_of;
 export type_of_explicit_args;
 export type_of_fn_from_ty;
 export type_of_fn;
+export type_of_non_gc_box;
 
 fn type_of_explicit_args(cx: @crate_ctxt, inputs: [ty::arg]) -> [TypeRef] {
     vec::map(inputs) {|arg|
@@ -42,6 +43,24 @@ fn type_of_fn_from_ty(cx: @crate_ctxt, fty: ty::t) -> TypeRef {
     type_of_fn(cx, ty::ty_fn_args(fty), ty::ty_fn_ret(fty))
 }
 
+fn type_of_non_gc_box(cx: @crate_ctxt, t: ty::t) -> TypeRef {
+    assert !ty::type_has_vars(t);
+
+    let t_norm = ty::normalize_ty(cx.tcx, t);
+    if t != t_norm {
+        type_of_non_gc_box(cx, t_norm)
+    } else {
+        alt ty::get(t).struct {
+          ty::ty_box(mt) {
+            T_ptr(T_box(cx, type_of(cx, mt.ty)))
+          }
+          _ {
+            cx.sess.bug("non-box in type_of_non_gc_box");
+          }
+        }
+    }
+}
+
 fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
     assert !ty::type_has_vars(t);
 
@@ -68,10 +87,10 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
           ty::ty_estr(ty::vstore_uniq) |
           ty::ty_str { T_ptr(T_vec(cx, T_i8())) }
           ty::ty_enum(did, _) { type_of_enum(cx, did, t) }
-          ty::ty_estr(ty::vstore_box) { T_ptr(T_box(cx, T_i8())) }
+          ty::ty_estr(ty::vstore_box) { T_box_ptr(T_box(cx, T_i8())) }
           ty::ty_evec(mt, ty::vstore_box) |
-          ty::ty_box(mt) { T_ptr(T_box(cx, type_of(cx, mt.ty))) }
-          ty::ty_opaque_box { T_ptr(T_box(cx, T_i8())) }
+          ty::ty_box(mt) { T_box_ptr(T_box(cx, type_of(cx, mt.ty))) }
+          ty::ty_opaque_box { T_box_ptr(T_box(cx, T_i8())) }
           ty::ty_uniq(mt) { T_ptr(type_of(cx, mt.ty)) }
           ty::ty_evec(mt, ty::vstore_uniq) |
           ty::ty_vec(mt) { T_ptr(T_vec(cx, type_of(cx, mt.ty))) }

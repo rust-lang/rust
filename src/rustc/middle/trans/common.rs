@@ -642,12 +642,17 @@ fn T_box(cx: @crate_ctxt, t: TypeRef) -> TypeRef {
     ret T_struct(T_box_header_fields(cx) + [t]);
 }
 
+fn T_box_ptr(t: TypeRef) -> TypeRef {
+    const box_addrspace: uint = 1u;
+    ret llvm::LLVMPointerType(t, box_addrspace as c_uint);
+}
+
 fn T_opaque_box(cx: @crate_ctxt) -> TypeRef {
     ret T_box(cx, T_i8());
 }
 
 fn T_opaque_box_ptr(cx: @crate_ctxt) -> TypeRef {
-    ret T_ptr(T_opaque_box(cx));
+    ret T_box_ptr(T_opaque_box(cx));
 }
 
 fn T_port(cx: @crate_ctxt, _t: TypeRef) -> TypeRef {

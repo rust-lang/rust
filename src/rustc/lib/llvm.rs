@@ -1034,7 +1034,15 @@ fn type_to_str_inner(names: type_names, outer0: [TypeRef], ty: TypeRef) ->
                 ret "*\\" + int::str(n as int);
             }
         }
-        ret "*" +
+        let addrstr = {
+            let addrspace = llvm::LLVMGetPointerAddressSpace(ty) as uint;
+            if addrspace == 0u {
+                ""
+            } else {
+                #fmt("addrspace(%u)", addrspace)
+            }
+        };
+        ret addrstr + "*" +
                 type_to_str_inner(names, outer, llvm::LLVMGetElementType(ty));
       }
       13 { ret "Vector"; }
