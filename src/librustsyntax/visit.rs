@@ -16,8 +16,8 @@ enum fn_kind {
     fk_item_fn(ident, [ty_param]), //< an item declared with fn()
     fk_method(ident, [ty_param], @method),
     fk_res(ident, [ty_param], region_param),
-    fk_anon(proto),  //< an anonymous function like fn@(...)
-    fk_fn_block,     //< a block {||...}
+    fk_anon(proto, capture_clause),  //< an anonymous function like fn@(...)
+    fk_fn_block(capture_clause),     //< a block {||...}
     fk_ctor(ident, [ty_param], node_id /* self id */,
             def_id /* parent class id */) // class constructor
 }
@@ -26,7 +26,7 @@ fn name_of_fn(fk: fn_kind) -> ident {
     alt fk {
       fk_item_fn(name, _) | fk_method(name, _, _) | fk_res(name, _, _)
           | fk_ctor(name, _, _, _) { name }
-      fk_anon(_) | fk_fn_block { "anon" }
+      fk_anon(*) | fk_fn_block(*) { "anon" }
     }
 }
 
@@ -34,7 +34,7 @@ fn tps_of_fn(fk: fn_kind) -> [ty_param] {
     alt fk {
       fk_item_fn(_, tps) | fk_method(_, tps, _) | fk_res(_, tps, _)
           | fk_ctor(_, tps, _, _) { tps }
-      fk_anon(_) | fk_fn_block { [] }
+      fk_anon(*) | fk_fn_block(*) { [] }
     }
 }
 
@@ -381,11 +381,13 @@ fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
         v.visit_expr(x, e, v);
         for arms.each {|a| v.visit_arm(a, e, v); }
       }
-      expr_fn(proto, decl, body, _) {
-        v.visit_fn(fk_anon(proto), decl, body, ex.span, ex.id, e, v);
+      expr_fn(proto, decl, body, cap_clause) {
+        v.visit_fn(fk_anon(proto, cap_clause), decl, body,
+                   ex.span, ex.id, e, v);
       }
-      expr_fn_block(decl, body, _) {
-        v.visit_fn(fk_fn_block, decl, body, ex.span, ex.id, e, v);
+      expr_fn_block(decl, body, cap_clause) {
+        v.visit_fn(fk_fn_block(cap_clause), decl, body,
+                   ex.span, ex.id, e, v);
       }
       expr_block(b) { v.visit_block(b, e, v); }
       expr_assign(a, b) { v.visit_expr(b, e, v); v.visit_expr(a, e, v); }

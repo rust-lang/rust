@@ -1018,7 +1018,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         // head-box, will be closed by print-block at start
         ibox(s, 0u);
         word(s.s, proto_to_str(proto));
-        print_fn_args_and_ret(s, decl, cap_clause);
+        print_fn_args_and_ret(s, decl, *cap_clause);
         space(s.s);
         print_block(s, body);
       }
@@ -1028,7 +1028,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         // head-box, will be closed by print-block at start
         ibox(s, 0u);
         word(s.s, "{");
-        print_fn_block_args(s, decl, cap_clause);
+        print_fn_block_args(s, decl, *cap_clause);
         print_possibly_embedded_block(s, body, block_block_fn, indent_unit);
       }
       ast::expr_loop_body(body) {

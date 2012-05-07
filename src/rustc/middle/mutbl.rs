@@ -200,7 +200,7 @@ fn visit_expr(ex: @expr, &&cx: @ctx, v: visit::vt<@ctx>) {
         check_lval(cx, dest, msg_assign);
       }
       expr_fn(_, _, _, cap_clause) | expr_fn_block(_, _, cap_clause) {
-        for cap_clause.each { |cap_item|
+        for (*cap_clause).each { |cap_item|
             if cap_item.is_move {
                 let def = cx.tcx.def_map.get(cap_item.id);
                 alt is_illegal_to_modify_def(cx, def, msg_move_out) {

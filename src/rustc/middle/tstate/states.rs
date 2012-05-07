@@ -363,7 +363,7 @@ fn find_pre_post_state_cap_clause(fcx: fn_ctxt, e_id: node_id,
     let ccx = fcx.ccx;
     let pres_changed = set_prestate_ann(ccx, e_id, pres);
     let post = tritv_clone(pres);
-    for cap_clause.each { |cap_item|
+    for (*cap_clause).each { |cap_item|
         if cap_item.is_move {
             forget_in_poststate(fcx, post, cap_item.id);
         }

@@ -223,8 +223,7 @@ fn visit_ids(item: ast::inlined_item, vfn: fn@(ast::node_id)) {
                 vfn(m.self_id);
                 vec::iter(tps) {|tp| vfn(tp.id)}
               }
-              visit::fk_anon(_) |
-              visit::fk_fn_block {
+              visit::fk_anon(*) | visit::fk_fn_block(*) {
               }
             }
 

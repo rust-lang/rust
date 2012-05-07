@@ -362,7 +362,7 @@ type capture_item = {
 };
 
 #[auto_serialize]
-type capture_clause = [capture_item];
+type capture_clause = @[capture_item];
 
 /*
 // Says whether this is a block the user marked as

@@ -343,12 +343,12 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
       expr_fn(_, _, _, cap_clause) | expr_fn_block(_, _, cap_clause) {
         find_pre_post_expr_fn_upvars(fcx, e);
 
-        for cap_clause.each { |cap_item|
+        for (*cap_clause).each { |cap_item|
             let d = local_node_id_to_local_def_id(fcx, cap_item.id);
             option::iter(d, { |id| use_var(fcx, id) });
         }
 
-        for cap_clause.each { |cap_item|
+        for (*cap_clause).each { |cap_item|
             if cap_item.is_move {
                 log(debug, ("forget_in_postcond: ", cap_item));
                 forget_in_postcond(fcx, e.id, cap_item.id);

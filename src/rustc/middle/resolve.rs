@@ -455,7 +455,7 @@ fn resolve_names(e: @env, c: @ast::crate) {
           }
           ast::expr_fn(_, _, _, cap_clause) |
           ast::expr_fn_block(_, _, cap_clause) {
-            for cap_clause.each { |ci|
+            for (*cap_clause).each { |ci|
                 resolve_capture_item(e, sc, ci);
             }
           }
@@ -615,10 +615,12 @@ fn visit_fn_with_scope(e: @env, fk: visit::fn_kind, decl: ast::fn_decl,
     for decl.constraints.each {|c| resolve_constr(e, c, sc, v); }
     let scope = alt fk {
       visit::fk_item_fn(_, tps) | visit::fk_res(_, tps, _) |
-      visit::fk_method(_, tps, _) | visit::fk_ctor(_, tps, _, _)
-         { scope_bare_fn(decl, id, tps) }
-      visit::fk_anon(ast::proto_bare) { scope_bare_fn(decl, id, []) }
-      visit::fk_anon(_) | visit::fk_fn_block { scope_fn_expr(decl, id, []) }
+      visit::fk_method(_, tps, _) | visit::fk_ctor(_, tps, _, _) {
+        scope_bare_fn(decl, id, tps) }
+      visit::fk_anon(ast::proto_bare, _) {
+        scope_bare_fn(decl, id, []) }
+      visit::fk_anon(_, _) | visit::fk_fn_block(_) {
+        scope_fn_expr(decl, id, []) }
     };
 
     visit::visit_fn(fk, decl, body, sp, id, cons(scope, @sc), v);

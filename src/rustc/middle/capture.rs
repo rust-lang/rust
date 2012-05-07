@@ -31,12 +31,11 @@ type capture_map = map::hashmap<ast::def_id, capture_var>;
 // errors for any irregularities which we identify.
 fn check_capture_clause(tcx: ty::ctxt,
                         fn_expr_id: ast::node_id,
-                        fn_proto: ast::proto,
                         cap_clause: ast::capture_clause) {
     let freevars = freevars::get_freevars(tcx, fn_expr_id);
     let seen_defs = map::int_hash();
 
-    let check_capture_item = fn@(cap_item: ast::capture_item) {
+    for (*cap_clause).each { |cap_item|
         let cap_def = tcx.def_map.get(cap_item.id);
         if !vec::any(*freevars, {|fv| fv.def == cap_def}) {
             tcx.sess.span_warn(
@@ -52,22 +51,6 @@ fn check_capture_clause(tcx: ty::ctxt,
                 #fmt("variable '%s' captured more than once",
                      cap_item.name));
         }
-    };
-
-    alt fn_proto {
-      ast::proto_any | ast::proto_block {
-        if vec::is_not_empty(cap_clause) {
-            let cap_item0 = vec::head(cap_clause);
-            tcx.sess.span_err(
-                cap_item0.span,
-                "cannot capture values explicitly with a block closure");
-        }
-      }
-      ast::proto_bare | ast::proto_box | ast::proto_uniq {
-        for cap_clause.each { |cap_item|
-            check_capture_item(cap_item);
-        }
-      }
     }
 }
 
@@ -80,7 +63,7 @@ fn compute_capture_vars(tcx: ty::ctxt,
 
     // first add entries for anything explicitly named in the cap clause
 
-    for cap_clause.each { |cap_item|
+    for (*cap_clause).each { |cap_item|
         let cap_def = tcx.def_map.get(cap_item.id);
         let cap_def_id = ast_util::def_id_of_def(cap_def).node;
         if cap_item.is_move {

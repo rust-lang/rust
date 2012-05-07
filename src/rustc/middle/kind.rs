@@ -5,6 +5,7 @@ import ty::{kind, kind_copyable, kind_sendable, kind_noncopyable};
 import driver::session::session;
 import std::map::hashmap;
 import syntax::print::pprust::expr_to_str;
+import freevars::freevar_entry;
 
 // Kind analysis pass. There are three kinds:
 //
@@ -56,17 +57,61 @@ fn check_crate(tcx: ty::ctxt, method_map: typeck::method_map,
     ret ctx.rval_map;
 }
 
+type check_fn = fn@(ctx, option<@freevar_entry>, bool, ty::t, sp: span);
+
 // Yields the appropriate function to check the kind of closed over
 // variables. `id` is the node_id for some expression that creates the
 // closure.
-fn with_appropriate_checker(cx: ctx, id: node_id,
-                            b: fn(fn@(ctx, ty::t, sp: span))) {
+fn with_appropriate_checker(cx: ctx, id: node_id, b: fn(check_fn)) {
+    fn check_for_uniq(cx: ctx, fv: option<@freevar_entry>, is_move: bool,
+                      var_t: ty::t, sp: span) {
+        // all captured data must be sendable, regardless of whether it is
+        // moved in or copied in
+        check_send(cx, var_t, sp);
+
+        // check that only immutable variables are implicitly copied in
+        if !is_move {
+            for fv.each { |fv|
+                check_imm_free_var(cx, fv.def, fv.span);
+            }
+        }
+    }
+
+    fn check_for_box(cx: ctx, fv: option<@freevar_entry>, is_move: bool,
+                     var_t: ty::t, sp: span) {
+        // copied in data must be copyable, but moved in data can be anything
+        if !is_move { check_copy(cx, var_t, sp); }
+
+        // check that only immutable variables are implicitly copied in
+        if !is_move {
+            for fv.each { |fv|
+                check_imm_free_var(cx, fv.def, fv.span);
+            }
+        }
+    }
+
+    fn check_for_block(cx: ctx, fv: option<@freevar_entry>, _is_move: bool,
+                       _var_t: ty::t, sp: span) {
+        // only restriction: no capture clauses (we would have to take
+        // ownership of the moved/copied in data).
+        if fv.is_none() {
+            cx.tcx.sess.span_err(
+                sp,
+                "cannot capture values explicitly with a block closure");
+        }
+    }
+
+    fn check_for_bare(cx: ctx, _fv: option<@freevar_entry>, _is_move: bool,
+                      _var_t: ty::t, sp: span) {
+        cx.tcx.sess.span_err(sp, "attempted dynamic environment capture");
+    }
+
     let fty = ty::node_id_to_type(cx.tcx, id);
     alt ty::ty_fn_proto(fty) {
-      proto_uniq { b(check_send); }
-      proto_box { b(check_copy); }
-      proto_bare { b(check_none); }
-      proto_any | proto_block { /* no check needed */ }
+      proto_uniq { b(check_for_uniq) }
+      proto_box { b(check_for_box) }
+      proto_bare { b(check_for_bare) }
+      proto_any | proto_block { b(check_for_block) }
     }
 }
 
@@ -75,57 +120,52 @@ fn with_appropriate_checker(cx: ctx, id: node_id,
 fn check_fn(fk: visit::fn_kind, decl: fn_decl, body: blk, sp: span,
             fn_id: node_id, cx: ctx, v: visit::vt<ctx>) {
 
-    // n.b.: This could be the body of either a fn decl or a fn expr.  In the
-    // former case, the prototype will be proto_bare and no check occurs.  In
-    // the latter case, we do not check the variables that in the capture
-    // clause (as we don't have access to that here) but just those that
-    // appear free.  The capture clauses are checked below, in check_expr().
-    //
-    // We could do this check also in check_expr(), but it seems more
-    // "future-proof" to do it this way, as check_fn_body() is supposed to be
-    // the common flow point for all functions that appear in the AST.
+    // Find the check function that enforces the appropriate bounds for this
+    // kind of function:
+    with_appropriate_checker(cx, fn_id) { |chk|
 
-    with_appropriate_checker(cx, fn_id) { |checker|
+        // Begin by checking the variables in the capture clause, if any.
+        // Here we slightly abuse the map function to both check and report
+        // errors and produce a list of the def id's for all capture
+        // variables.  This list is used below to avoid checking and reporting
+        // on a given variable twice.
+        let cap_clause = alt fk {
+          visit::fk_anon(_, cc) | visit::fk_fn_block(cc) { cc }
+          visit::fk_item_fn(*) | visit::fk_method(*) |
+          visit::fk_res(*) | visit::fk_ctor(*) { @[] }
+        };
+        let captured_vars = (*cap_clause).map { |cap_item|
+            let cap_def = cx.tcx.def_map.get(cap_item.id);
+            let cap_def_id = ast_util::def_id_of_def(cap_def).node;
+            let ty = ty::node_id_to_type(cx.tcx, cap_def_id);
+            chk(cx, none, cap_item.is_move, ty, cap_item.span);
+            cap_def_id
+        };
+
+        // Iterate over any free variables that may not have appeared in the
+        // capture list.  Ensure that they too are of the appropriate kind.
         for vec::each(*freevars::get_freevars(cx.tcx, fn_id)) {|fv|
             let id = ast_util::def_id_of_def(fv.def).node;
-            if checker == check_copy {
+
+            // skip over free variables that appear in the cap clause
+            if captured_vars.contains(id) { cont; }
+
+            // if this is the last use of the variable, then it will be
+            // a move and not a copy
+            let is_move = {
                 let last_uses = alt check cx.last_uses.find(fn_id) {
                   some(last_use::closes_over(vars)) { vars }
                   none { [] }
                 };
-                if option::is_some(
-                    vec::position_elem(last_uses, id)) { cont; }
-            }
+                last_uses.contains(id)
+            };
+
             let ty = ty::node_id_to_type(cx.tcx, id);
-            checker(cx, ty, fv.span);
+            chk(cx, some(fv), is_move, ty, fv.span);
         }
     }
 
     visit::visit_fn(fk, decl, body, sp, fn_id, cx, v);
-}
-
-fn check_fn_cap_clause(cx: ctx,
-                       id: node_id,
-                       cap_clause: capture_clause) {
-    // Check that the variables named in the clause which are not free vars
-    // (if any) are also legal.  freevars are checked above in check_fn().
-    // This is kind of a degenerate case, as captured variables will generally
-    // appear free in the body.
-    let freevars = freevars::get_freevars(cx.tcx, id);
-    let freevar_ids = vec::map(*freevars, { |freevar|
-        ast_util::def_id_of_def(freevar.def).node
-    });
-    //log("freevar_ids", freevar_ids);
-    with_appropriate_checker(cx, id) { |checker|
-        for cap_clause.each { |cap_item|
-            let cap_def = cx.tcx.def_map.get(cap_item.id);
-            let cap_def_id = ast_util::def_id_of_def(cap_def).node;
-            if !vec::contains(freevar_ids, cap_def_id) {
-                let ty = ty::node_id_to_type(cx.tcx, cap_def_id);
-                checker(cx, ty, cap_item.span);
-            }
-        }
-    }
 }
 
 fn check_block(b: blk, cx: ctx, v: visit::vt<ctx>) {
@@ -225,9 +265,6 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
             }
         }
       }
-      expr_fn(_, _, _, cap_clause) | expr_fn_block(_, _, cap_clause) {
-        check_fn_cap_clause(cx, e.id, cap_clause);
-      }
       _ { }
     }
     visit::visit_expr(e, cx, v);
@@ -307,6 +344,35 @@ fn check_copy_ex(cx: ctx, ex: @expr, _warn: bool) {
     }
 }
 
+fn check_imm_free_var(cx: ctx, def: def, sp: span) {
+    let msg = "mutable variables cannot be implicitly captured; \
+               use a capture clause";
+    alt def {
+      def_local(_, is_mutbl) {
+        if is_mutbl {
+            cx.tcx.sess.span_err(sp, msg);
+        }
+      }
+      def_arg(_, mode) {
+        alt ty::resolved_mode(cx.tcx, mode) {
+          by_ref | by_val { /* ok */ }
+          by_mutbl_ref | by_move | by_copy {
+            cx.tcx.sess.span_err(sp, msg);
+          }
+        }
+      }
+      def_upvar(_, def1, _) {
+        check_imm_free_var(cx, *def1, sp);
+      }
+      def_binding(*) | def_self(*) { /*ok*/ }
+      _ {
+        cx.tcx.sess.span_bug(
+            sp,
+            #fmt["unknown def for free variable: %?", def]);
+      }
+    }
+}
+
 fn check_copy(cx: ctx, ty: ty::t, sp: span) {
     if !ty::kind_can_be_copied(ty::type_kind(cx.tcx, ty)) {
         cx.tcx.sess.span_err(sp, "copying a noncopyable value");
@@ -317,10 +383,6 @@ fn check_send(cx: ctx, ty: ty::t, sp: span) {
     if !ty::kind_can_be_sent(ty::type_kind(cx.tcx, ty)) {
         cx.tcx.sess.span_err(sp, "not a sendable value");
     }
-}
-
-fn check_none(cx: ctx, _ty: ty::t, sp: span) {
-    cx.tcx.sess.span_err(sp, "attempted dynamic environment capture");
 }
 
 //

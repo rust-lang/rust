@@ -3565,7 +3565,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
       }
       ast::expr_fn(proto, decl, body, cap_clause) {
         check_expr_fn(fcx, expr, proto, decl, body, false, expected);
-        capture::check_capture_clause(tcx, expr.id, proto, cap_clause);
+        capture::check_capture_clause(tcx, expr.id, cap_clause);
       }
       ast::expr_fn_block(decl, body, cap_clause) {
         // Take the prototype from the expected type, but default to block:
@@ -3573,7 +3573,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             alt sty { ty::ty_fn({proto, _}) { some(proto) } _ { none } }
         }).get_default(ast::proto_box);
         check_expr_fn(fcx, expr, proto, decl, body, false, expected);
-        capture::check_capture_clause(tcx, expr.id, proto, cap_clause);
+        capture::check_capture_clause(tcx, expr.id, cap_clause);
       }
       ast::expr_loop_body(b) {
         // a loop body is the special argument to a `for` loop.  We know that
@@ -3605,7 +3605,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
           ast::expr_fn_block(decl, body, cap_clause) {
             check_expr_fn(fcx, b, proto, decl, body, true, some(inner_ty));
             demand::suptype(fcx, b.span, inner_ty, fcx.expr_ty(b));
-            capture::check_capture_clause(tcx, b.id, proto, cap_clause);
+            capture::check_capture_clause(tcx, b.id, cap_clause);
           }
         }
         let block_ty = structurally_resolved_type(

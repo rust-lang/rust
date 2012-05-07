@@ -1187,7 +1187,8 @@ fn parse_fn_expr(p: parser, proto: ast::proto) -> @ast::expr {
 
     let body = parse_block(p);
     ret mk_expr(p, lo, body.span.hi,
-                ast::expr_fn(proto, decl, body, capture_clause + cc_old));
+                ast::expr_fn(proto, decl, body,
+                             @(*capture_clause + cc_old)));
 }
 
 fn parse_fn_block_expr(p: parser) -> @ast::expr {
@@ -1679,7 +1680,7 @@ fn parse_ty_params(p: parser) -> [ast::ty_param] {
 }
 
 // FIXME Remove after snapshot
-fn parse_old_skool_capture_clause(p: parser) -> ast::capture_clause {
+fn parse_old_skool_capture_clause(p: parser) -> [ast::capture_item] {
     fn expect_opt_trailing_semi(p: parser) {
         if !eat(p, token::SEMI) {
             if p.token != token::RBRACKET {
@@ -1739,7 +1740,7 @@ fn parse_fn_decl(p: parser, purity: ast::purity,
                   parse_arg_fn, p).node;
 
     let inputs = either::lefts(args_or_capture_items);
-    let capture_clause = either::rights(args_or_capture_items);
+    let capture_clause = @either::rights(args_or_capture_items);
 
     // Use the args list to translate each bound variable
     // mentioned in a constraint to an arg index.
@@ -1778,7 +1779,7 @@ fn parse_fn_block_decl(p: parser) -> (ast::fn_decl, ast::capture_clause) {
           purity: ast::impure_fn,
           cf: ast::return_val,
           constraints: []},
-         either::rights(inputs_captures));
+         @either::rights(inputs_captures));
 }
 
 fn parse_fn_header(p: parser) -> {ident: ast::ident, tps: [ast::ty_param]} {

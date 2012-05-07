@@ -159,7 +159,7 @@ fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
         // n.b.: safe to ignore copies, as if they are unused
         // then they are ignored, otherwise they will show up
         // as freevars in the body.
-        for cap_clause.each { |ci|
+        for (*cap_clause).each { |ci|
             if ci.is_move {
                 clear_def_if_local(cx, cx.def_map.get(ci.id), false);
             }
