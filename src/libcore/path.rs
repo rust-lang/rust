@@ -200,9 +200,17 @@ fn splitext(p: path) -> (str, str) {
 }
 
 #[doc = "
-Removes extra '.' and '..' entries from paths
+Collapses redundant path separators.
 
 Does not follow symbolic links.
+
+# Examples
+
+* '/a/../b' becomes '/b'
+* 'a/./b/' becomes 'a/b/'
+* 'a/b/../../../' becomes '..'
+* '/a/b/c/../d/./../../e/' becomes '/a/e/'
+
 "]
 fn normalize(p: path) -> path {
     let s = split(p);
