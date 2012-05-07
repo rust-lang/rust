@@ -1629,7 +1629,9 @@ fn capacity(&&s: str) -> uint unsafe {
 mod unsafe {
    export
       from_buf,
+      from_buf_len,
       from_c_str,
+      from_c_str_len,
       from_bytes,
       slice_bytes,
       push_byte,
