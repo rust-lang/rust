@@ -15,10 +15,10 @@
 rust_kernel::rust_kernel(rust_env *env) :
     _region(env, true),
     _log(NULL),
-    max_task_id(0),
-    max_port_id(0),
+    max_task_id(1),
+    max_port_id(1),
     rval(0),
-    max_sched_id(0),
+    max_sched_id(1),
     sched_reaper(this),
     osmain_driver(NULL),
     non_weak_tasks(0),
@@ -116,6 +116,7 @@ rust_kernel::get_scheduler_by_id(rust_sched_id id) {
 
 rust_scheduler *
 rust_kernel::get_scheduler_by_id_nolock(rust_sched_id id) {
+    assert(id != 0 && "invalid scheduler id");
     sched_lock.must_have_lock();
     sched_map::iterator iter = sched_table.find(id);
     if (iter != sched_table.end()) {
@@ -250,6 +251,7 @@ rust_kernel::release_port_id(rust_port_id id) {
 
 rust_port *
 rust_kernel::get_port_by_id(rust_port_id id) {
+    assert(id != 0 && "invalid port id");
     scoped_lock with(port_lock);
     rust_port *port = NULL;
     // get leaves port unchanged if not found.
