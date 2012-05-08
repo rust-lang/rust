@@ -642,7 +642,7 @@ unsafe fn listen<T>(stream: *T, backlog: libc::c_int,
     ret rustrt::rust_uv_listen(stream as *libc::c_void, backlog, cb);
 }
 
-unsafe fn accept<T, U>(server: *T, client: *T)
+unsafe fn accept(server: *libc::c_void, client: *libc::c_void)
     -> libc::c_int {
     ret rustrt::rust_uv_accept(server as *libc::c_void,
                                client as *libc::c_void);
